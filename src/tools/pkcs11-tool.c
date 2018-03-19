@@ -2632,7 +2632,7 @@ parse_ec_pkey(EVP_PKEY *pkey, int private, struct gostkey_info *gost)
 		header_len = point-gost->public.value;
 		memcpy(point, buf, point_len);
 		gost->public.len = header_len+point_len;
-#ifndef EC_POINT_NO_ASN1_OCTET_STRING // workaround for non-compliant cards not expecting DER encoding
+#ifdef EC_POINT_NO_ASN1_OCTET_STRING // workaround for non-compliant cards not expecting DER encoding
 		gost->public.len   -= header_len;
 		gost->public.value += header_len;
 #endif
