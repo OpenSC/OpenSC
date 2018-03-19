@@ -364,7 +364,7 @@ static void print_tags_recursive(const u8 * buf0, const u8 * buf,
 		size_t len;
 
 		r = sc_asn1_read_tag(&tagp, bytesleft, &cla, &tag, &len);
-		if (r != SC_SUCCESS) {
+		if (r != SC_SUCCESS || tagp == NULL) {
 			printf("Error in decoding.\n");
 			return;
 		}
@@ -475,8 +475,10 @@ const u8 *sc_asn1_find_tag(sc_context_t *ctx, const u8 * buf,
 
 		buf = p;
 		/* read a tag */
-		if (sc_asn1_read_tag(&p, left, &cla, &tag, &taglen) != SC_SUCCESS)
+		if (sc_asn1_read_tag(&p, left, &cla, &tag, &taglen) != SC_SUCCESS
+				|| p == NULL)
 			return NULL;
+
 		left -= (p - buf);
 		/* we need to shift the class byte to the leftmost
 		 * byte of the tag */
@@ -506,7 +508,8 @@ const u8 *sc_asn1_skip_tag(sc_context_t *ctx, const u8 ** buf, size_t *buflen,
 	size_t len = *buflen, taglen;
 	unsigned int cla = 0, tag;
 
-	if (sc_asn1_read_tag((const u8 **) &p, len, &cla, &tag, &taglen) != SC_SUCCESS)
+	if (sc_asn1_read_tag((const u8 **) &p, len, &cla, &tag, &taglen) != SC_SUCCESS
+			|| p == NULL)
 		return NULL;
 	switch (cla & 0xC0) {
 	case SC_ASN1_TAG_UNIVERSAL:

@@ -573,7 +573,8 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 		 * the buffer is bigger, so it will not produce "ASN1.tag too long!" */
 
 		body = rbuf;
-		if (sc_asn1_read_tag(&body, 0xffff, &cla_out, &tag_out, &bodylen) !=  SC_SUCCESS)  {
+		if (sc_asn1_read_tag(&body, 0xffff, &cla_out, &tag_out, &bodylen) !=  SC_SUCCESS
+				|| body == NULL)  {
 			/* only early beta cards had this problem */
 			sc_log(card->ctx, "***** received buffer tag MISSING ");
 			body = rbuf;
@@ -679,6 +680,9 @@ static int piv_generate_key(sc_card_t *card,
 		in_len = rbuflen;
 
 		r = sc_asn1_read_tag(&cp, rbuflen, &cla_out, &tag_out, &in_len);
+		if (cp == NULL) {
+			r = SC_ERROR_ASN1_OBJECT_NOT_FOUND;
+		}
 		if (r != SC_SUCCESS) {
 			sc_log(card->ctx, "Tag buffer not found");
 			goto err;
@@ -881,7 +885,8 @@ static int piv_read_obj_from_file(sc_card_t * card, char * filename,
 		goto err;
 	}
 	body = tagbuf;
-	if (sc_asn1_read_tag(&body, 0xfffff, &cla_out, &tag_out, &bodylen) != SC_SUCCESS) {
+	if (sc_asn1_read_tag(&body, 0xfffff, &cla_out, &tag_out, &bodylen) != SC_SUCCESS
+			|| body == NULL) {
 		sc_log(card->ctx, "DER problem");
 		r = SC_ERROR_INVALID_ASN1_OBJECT;
 		goto err;
@@ -947,7 +952,8 @@ piv_get_data(sc_card_t * card, int enumtag, u8 **buf, size_t *buf_len)
 		r = piv_general_io(card, 0xCB, 0x3F, 0xFF, tagbuf,  p - tagbuf, &rbuf, &rbuflen);
 		if (r > 0) {
 			body = rbuf;
-			if (sc_asn1_read_tag(&body, 0xffff, &cla_out, &tag_out, &bodylen) !=  SC_SUCCESS) {
+			if (sc_asn1_read_tag(&body, 0xffff, &cla_out, &tag_out, &bodylen) !=  SC_SUCCESS
+					|| body == NULL) {
 				sc_log(card->ctx, "***** received buffer tag MISSING ");
 				r = SC_ERROR_FILE_NOT_FOUND;
 				goto err;
@@ -2847,8 +2853,8 @@ piv_process_history(sc_card_t *card)
 
 		body = ocfhfbuf;
 		if (sc_asn1_read_tag(&body, ocfhflen, &cla_out,
-				&tag_out, &bodylen) != SC_SUCCESS ||
-				cla_out+tag_out != 0x30) {
+					&tag_out, &bodylen) != SC_SUCCESS
+				|| cla_out+tag_out != 0x30) {
 			sc_log(card->ctx, "DER problem");
 			r = SC_ERROR_INVALID_ASN1_OBJECT;
 			goto err;
@@ -2857,8 +2863,8 @@ piv_process_history(sc_card_t *card)
 		while (bodylen > 0) {
 			seqtag = seq;
 			if (sc_asn1_read_tag(&seq, bodylen, &cla_out,
-					&tag_out, &seqlen) != SC_SUCCESS ||
-					cla_out+tag_out != 0x30) {
+						&tag_out, &seqlen) != SC_SUCCESS
+					|| cla_out+tag_out != 0x30) {
 				sc_log(card->ctx, "DER problem");
 				r = SC_ERROR_INVALID_ASN1_OBJECT;
 				goto err;

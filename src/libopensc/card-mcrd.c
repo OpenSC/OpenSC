@@ -606,8 +606,8 @@ static void process_arr(sc_card_t * card, sc_file_t * file,
 	skip = 1;		/* Skip over initial unknown SC DOs. */
 	for (;;) {
 		buf = p;
-		if (sc_asn1_read_tag(&p, left, &cla, &tag, &taglen) !=
-		    SC_SUCCESS)
+		if (sc_asn1_read_tag(&p, left, &cla, &tag, &taglen) != SC_SUCCESS
+				|| p == NULL)
 			break;
 		left -= (p - buf);
 		tag |= cla;

@@ -1269,7 +1269,7 @@ sc_pkcs15_read_der_file(sc_context_t *ctx, char * filename,
 	if (r != SC_SUCCESS && r != SC_ERROR_ASN1_END_OF_CONTENTS)
 		goto out;
 
-	if (tag_out == SC_ASN1_TAG_EOC || body == NULL)   {
+	if (body == NULL)   {
 		r = SC_SUCCESS;
 		goto out;
 	}

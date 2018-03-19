@@ -922,7 +922,7 @@ pgp_enumerate_blob(sc_card_t *card, pgp_blob_t *blob)
 
 		r = sc_asn1_read_tag(&data, blob->len - (in - blob->data),
 					&cla, &tag, &len);
-		if (r < 0) {
+		if (r < 0 || data == NULL) {
 			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
 				 "Unexpected end of contents\n");
 			return SC_ERROR_OBJECT_NOT_VALID;
@@ -2132,6 +2132,8 @@ pgp_parse_and_set_pubkey_output(sc_card_t *card, u8* data, size_t data_len,
 		r = sc_asn1_read_tag((const u8**)&part,
 							 data_len - (in - data),
 							 &cla, &tag, &len);
+		if (part == NULL)
+			r = SC_ERROR_ASN1_OBJECT_NOT_FOUND;
 		LOG_TEST_RET(card->ctx, r, "Unexpected end of contents.");
 		/* undo ASN1's split of tag & class */
 		for (tmptag = tag; tmptag > 0x0FF; tmptag >>= 8) {

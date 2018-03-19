@@ -821,6 +821,8 @@ myeid_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 
 			dataptr = data_obj.Data;
 			r = sc_asn1_read_tag((const u8 **)&dataptr, data_obj.DataLen, &cla, &tag, &taglen);
+			if (dataptr == NULL)
+				r = SC_ERROR_ASN1_OBJECT_NOT_FOUND;
 			LOG_TEST_RET(ctx, r, "Invalid EC public key data. Cannot parse DER structure.");
 
 			if (taglen == 0)

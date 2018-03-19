@@ -533,17 +533,19 @@ static int gids_get_pin_status(sc_card_t *card, int pinreference, int *tries_lef
 	r = gids_get_DO(card, GIDS_APPLET_EFID, dataObjectIdentifier, buffer, &buffersize);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to update the masterfile");
 
-	p = sc_asn1_find_tag(card->ctx, buffer, sizeof(buffer), GIDS_TRY_COUNTER_OLD_TAG, &datasize);
+	buffersize = buffersize > sizeof(buffer) ? sizeof(buffer) : buffersize;
+
+	p = sc_asn1_find_tag(card->ctx, buffer, buffersize, GIDS_TRY_COUNTER_OLD_TAG, &datasize);
 	if (p && datasize == 1) {
 		if (tries_left)
 			*tries_left = p[0];
 	}
-	p = sc_asn1_find_tag(card->ctx, buffer, sizeof(buffer), GIDS_TRY_COUNTER_TAG, &datasize);
+	p = sc_asn1_find_tag(card->ctx, buffer, buffersize, GIDS_TRY_COUNTER_TAG, &datasize);
 	if (p && datasize == 1) {
 		if (tries_left)
 			*tries_left = p[0];
 	}
-	p = sc_asn1_find_tag(card->ctx, buffer, sizeof(buffer), GIDS_TRY_LIMIT_TAG, &datasize);
+	p = sc_asn1_find_tag(card->ctx, buffer, buffersize , GIDS_TRY_LIMIT_TAG, &datasize);
 	if (p && datasize == 1) {
 		if (tries_left)
 			*max_tries = p[0];
