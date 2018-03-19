@@ -47,7 +47,7 @@ sc_parse_ef_gdo_content(const unsigned char *gdo, size_t gdo_len,
 			}
 			break;
 		}
-		if (tag == SC_ASN1_TAG_EOC) {
+		if (p == NULL) {
 			/* done parsing */
 			break;
 		}
