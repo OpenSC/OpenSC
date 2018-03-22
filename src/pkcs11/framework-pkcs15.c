@@ -625,7 +625,8 @@ pkcs15_cert_extract_label(struct pkcs15_cert_object *cert)
 			cert->cert_data->subject, cert->cert_data->subject_len,
 			&cn_oid, &cn_name, &cn_len);
 		if (rv == SC_SUCCESS) {
-			sc_log(context, "pkcs15_cert_extract_label(): Name from DN is %s", cn_name);
+			sc_log(context, "pkcs15_cert_extract_label(): Name from DN is %.*s",
+					(unsigned int) cn_len, cn_name);
 			cn_len = MIN(cn_len, SC_PKCS15_MAX_LABEL_SIZE-1);
 			memcpy(cert->cert_p15obj->label, cn_name, cn_len);
 			cert->cert_p15obj->label[cn_len] = '\0';
