@@ -98,38 +98,40 @@ parse_x509_cert(sc_context_t *ctx, struct sc_pkcs15_der *der, struct sc_pkcs15_c
 	cert->data.len = data_len;
 
 	r = sc_asn1_decode(ctx, asn1_cert, obj, objlen, NULL, NULL);
-	LOG_TEST_RET(ctx, r, "ASN.1 parsing of certificate failed");
-
+	cert->key = pubkey;
 	cert->version++;
 
+	LOG_TEST_GOTO_ERR(ctx, r, "ASN.1 parsing of certificate failed");
+
 	if (!pubkey)
-		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ASN1_OBJECT, "Unable to decode subjectPublicKeyInfo from cert");
-	cert->key = pubkey;
+		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_INVALID_ASN1_OBJECT, "Unable to decode subjectPublicKeyInfo from cert");
 
 	sc_asn1_clear_algorithm_id(&sig_alg);
 
 	if (serial && serial_len)   {
 		sc_format_asn1_entry(asn1_serial_number + 0, serial, &serial_len, 1);
 		r = sc_asn1_encode(ctx, asn1_serial_number, &cert->serial, &cert->serial_len);
-		free(serial);
-		LOG_TEST_RET(ctx, r, "ASN.1 encoding of serial failed");
+		LOG_TEST_GOTO_ERR(ctx, r, "ASN.1 encoding of serial failed");
 	}
 
 	if (subject && subject_len)   {
 		sc_format_asn1_entry(asn1_subject + 0, subject, &subject_len, 1);
 		r = sc_asn1_encode(ctx, asn1_subject, &cert->subject, &cert->subject_len);
-		free(subject);
-		LOG_TEST_RET(ctx, r, "ASN.1 encoding of subject");
+		LOG_TEST_GOTO_ERR(ctx, r, "ASN.1 encoding of subject");
 	}
 
 	if (issuer && issuer_len)   {
 		sc_format_asn1_entry(asn1_issuer + 0, issuer, &issuer_len, 1);
 		r = sc_asn1_encode(ctx, asn1_issuer, &cert->issuer, &cert->issuer_len);
-		free(issuer);
-		LOG_TEST_RET(ctx, r, "ASN.1 encoding of issuer");
+		LOG_TEST_GOTO_ERR(ctx, r, "ASN.1 encoding of issuer");
 	}
 
-	return SC_SUCCESS;
+err:
+	free(serial);
+	free(subject);
+	free(issuer);
+
+	return r;
 }
 
 
@@ -539,8 +541,7 @@ sc_pkcs15_free_certificate(struct sc_pkcs15_cert *cert)
 		return;
 	}
 
-	if (cert->key)
-		sc_pkcs15_free_pubkey(cert->key);
+	sc_pkcs15_free_pubkey(cert->key);
 	free(cert->subject);
 	free(cert->issuer);
 	free(cert->serial);
@@ -555,7 +556,6 @@ sc_pkcs15_free_cert_info(sc_pkcs15_cert_info_t *cert)
 {
 	if (!cert)
 		return;
-	if (cert->value.value)
-		free(cert->value.value);
+	free(cert->value.value);
 	free(cert);
 }
