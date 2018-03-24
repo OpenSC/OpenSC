@@ -1635,7 +1635,7 @@ pgp_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 						if (blob->len) {
 							if (digitp (blob->data)) {
 								char *q;
-								size_t n, m;
+								unsigned int n, m;
 		
 								n = strtol ((char*)blob->data, &q, 10);
 								if (q >= (char *)blob->data + blob->len
