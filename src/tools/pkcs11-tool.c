@@ -234,7 +234,7 @@ static const char *option_help[] = {
 	"Hash some data",
 	"Derive a secret key using another key and some data",
 	"Derive ECDHpass DER encoded pubkey for compatibility with some PKCS#11 implementations",
-	"Specify mechanism (use -M for a list of supported mechanisms)",
+	"Specify mechanism (use -M for a list of supported mechanisms), or by hexadecimal, e.g., 0x80001234",
 	"Specify hash algorithm used with RSA-PKCS-PSS signature and RSA-PKCS-OAEP decryption",
 	"Specify MGF (Message Generation Function) used for RSA-PSS signature and RSA-OAEP decryption (possible values are MGF1-SHA1 to MGF1-SHA512)",
 	"Specify how many bytes should be used for salt in RSA-PSS signatures (default is digest size)",
@@ -6076,6 +6076,9 @@ static CK_MECHANISM_TYPE p11_name_to_mechanism(const char *name)
 {
 	struct mech_info *mi;
 
+	if (strncasecmp("0x", name, 2) == 0) {
+		return strtoul(name, NULL, 0);
+	}
 	for (mi = p11_mechanisms; mi->name; mi++) {
 		if (!strcasecmp(mi->name, name)
 		 || (mi->short_name && !strcasecmp(mi->short_name, name)))
