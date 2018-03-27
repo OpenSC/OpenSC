@@ -231,7 +231,8 @@
 					</term>
 					<listitem><para>Use the specified <replaceable>mechanism</replaceable>
 					for token operations. See <option>-M</option> for a list
-					of mechanisms supported by your token.</para></listitem>
+					of mechanisms supported by your token. The mechanism can also be specified in
+					hexadecimal, e.g., <replaceable>0x80001234</replaceable>.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
