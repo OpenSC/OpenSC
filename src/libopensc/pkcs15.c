@@ -312,11 +312,15 @@ sc_pkcs15_encode_tokeninfo(sc_context_t *ctx, sc_pkcs15_tokeninfo_t *ti,
 		sc_format_asn1_entry(asn1_algo_infos[ii] + 0, &ti->supported_algos[ii].reference, &reference_len, 1);
 		sc_format_asn1_entry(asn1_algo_infos[ii] + 1, &ti->supported_algos[ii].mechanism, &mechanism_len, 1);
 		sc_format_asn1_entry(asn1_algo_infos[ii] + 2,
-			asn1_algo_infos_parameters[ii], NULL, 0);
-		sc_format_asn1_entry(asn1_algo_infos_parameters[ii] + 0,
-			NULL, NULL, 0);
-		sc_format_asn1_entry(asn1_algo_infos_parameters[ii] + 1,
-			&ti->supported_algos[ii].parameters, &parameter_len, 0);
+			asn1_algo_infos_parameters[ii], NULL, 1);
+		if (!ti->supported_algos[ii].parameters)	{
+			sc_format_asn1_entry(asn1_algo_infos_parameters[ii] + 0,
+				NULL, NULL, 1);
+		}
+		else {
+			sc_format_asn1_entry(asn1_algo_infos_parameters[ii] + 1,
+				&ti->supported_algos[ii].parameters, &parameter_len, 0);
+		}
 		sc_format_asn1_entry(asn1_algo_infos[ii] + 3, &ti->supported_algos[ii].operations, &operations_len, 1);
 		sc_format_asn1_entry(asn1_algo_infos[ii] + 4, &ti->supported_algos[ii].algo_id, NULL, 1);
 		sc_format_asn1_entry(asn1_algo_infos[ii] + 5, &ti->supported_algos[ii].algo_ref, &algo_ref_len, 1);
