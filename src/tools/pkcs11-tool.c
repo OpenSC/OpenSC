@@ -490,34 +490,35 @@ get##ATTR(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj, CK_ULONG_PTR pulCount) \
 /*
  * Define attribute accessors
  */
-ATTR_METHOD(CLASS, CK_OBJECT_CLASS);
-ATTR_METHOD(ALWAYS_AUTHENTICATE, CK_BBOOL);
-ATTR_METHOD(PRIVATE, CK_BBOOL);
-ATTR_METHOD(MODIFIABLE, CK_BBOOL);
-ATTR_METHOD(ENCRYPT, CK_BBOOL);
-ATTR_METHOD(DECRYPT, CK_BBOOL);
-ATTR_METHOD(SIGN, CK_BBOOL);
-ATTR_METHOD(VERIFY, CK_BBOOL);
-ATTR_METHOD(WRAP, CK_BBOOL);
-ATTR_METHOD(UNWRAP, CK_BBOOL);
-ATTR_METHOD(DERIVE, CK_BBOOL);
-ATTR_METHOD(OPENSC_NON_REPUDIATION, CK_BBOOL);
-ATTR_METHOD(KEY_TYPE, CK_KEY_TYPE);
-ATTR_METHOD(CERTIFICATE_TYPE, CK_CERTIFICATE_TYPE);
-ATTR_METHOD(MODULUS_BITS, CK_ULONG);
-ATTR_METHOD(VALUE_LEN, CK_ULONG);
-VARATTR_METHOD(LABEL, char);
-VARATTR_METHOD(APPLICATION, char);
-VARATTR_METHOD(ID, unsigned char);
-VARATTR_METHOD(OBJECT_ID, unsigned char);
-VARATTR_METHOD(MODULUS, CK_BYTE);
+ATTR_METHOD(CLASS, CK_OBJECT_CLASS);			/* getCLASS */
+ATTR_METHOD(ALWAYS_AUTHENTICATE, CK_BBOOL); 		/* getALWAYS_AUTHENTICATE */
+ATTR_METHOD(PRIVATE, CK_BBOOL); 			/* getPRIVATE */
+ATTR_METHOD(MODIFIABLE, CK_BBOOL);			/* getMODIFIABLE */
+ATTR_METHOD(ENCRYPT, CK_BBOOL);				/* getENCRYPT */
+ATTR_METHOD(DECRYPT, CK_BBOOL);				/* getDECRYPT */
+ATTR_METHOD(SIGN, CK_BBOOL);				/* getSIGN */
+ATTR_METHOD(VERIFY, CK_BBOOL);				/* getVERIFY */
+ATTR_METHOD(WRAP, CK_BBOOL);				/* getWRAP */
+ATTR_METHOD(UNWRAP, CK_BBOOL);				/* getUNWRAP */
+ATTR_METHOD(DERIVE, CK_BBOOL);				/* getDERIVE */
+ATTR_METHOD(OPENSC_NON_REPUDIATION, CK_BBOOL);		/* getOPENSC_NON_REPUDIATION */
+ATTR_METHOD(KEY_TYPE, CK_KEY_TYPE);			/* getKEY_TYPE */
+ATTR_METHOD(CERTIFICATE_TYPE, CK_CERTIFICATE_TYPE);	/* getCERTIFICATE_TYPE */
+ATTR_METHOD(MODULUS_BITS, CK_ULONG);			/* getMODULUS_BITS */
+ATTR_METHOD(VALUE_LEN, CK_ULONG);			/* getVALUE_LEN */
+VARATTR_METHOD(LABEL, char);				/* getLABEL */
+VARATTR_METHOD(SUBJECT, unsigned char);			/* getSUBJECT */
+VARATTR_METHOD(APPLICATION, char);			/* getAPPLICATION */
+VARATTR_METHOD(ID, unsigned char);			/* getID */
+VARATTR_METHOD(OBJECT_ID, unsigned char);		/* getOBJECT_ID */
+VARATTR_METHOD(MODULUS, CK_BYTE);			/* getMODULUS */
 #ifdef ENABLE_OPENSSL
-VARATTR_METHOD(PUBLIC_EXPONENT, CK_BYTE);
+VARATTR_METHOD(PUBLIC_EXPONENT, CK_BYTE);		/* getPUBLIC_EXPONENT */
 #endif
-VARATTR_METHOD(VALUE, unsigned char);
-VARATTR_METHOD(GOSTR3410_PARAMS, unsigned char);
-VARATTR_METHOD(EC_POINT, unsigned char);
-VARATTR_METHOD(EC_PARAMS, unsigned char);
+VARATTR_METHOD(VALUE, unsigned char);			/* getVALUE */
+VARATTR_METHOD(GOSTR3410_PARAMS, unsigned char);	/* getGOSTR3410_PARAMS */
+VARATTR_METHOD(EC_POINT, unsigned char);		/* getEC_POINT */
+VARATTR_METHOD(EC_PARAMS, unsigned char);		/* getEC_PARAMS */
 
 
 int main(int argc, char * argv[])
@@ -3676,6 +3677,9 @@ static void show_cert(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 	CK_ULONG	size;
 	unsigned char	*id;
 	char		*label;
+#if defined(ENABLE_OPENSSL)
+	unsigned char	*subject;
+#endif /* ENABLE_OPENSSL */
 
 	printf("Certificate Object; type = ");
 	switch (cert_type) {
@@ -3697,6 +3701,24 @@ static void show_cert(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 		printf("  label:      %s\n", label);
 		free(label);
 	}
+
+#if defined(ENABLE_OPENSSL)
+	if ((subject = getSUBJECT(sess, obj, &size)) != NULL) {
+		X509_NAME *name;
+		const unsigned char *tmp = subject;
+
+		name = d2i_X509_NAME(NULL, &tmp, size);
+		if(name) {
+			BIO *bio = BIO_new(BIO_s_file());
+			BIO_set_fp(bio, stdout, BIO_NOCLOSE);
+			printf("  subject:    DN: ");
+			X509_NAME_print(bio, name, XN_FLAG_RFC2253);
+			printf("\n");
+			BIO_free(bio);
+		}
+		free(subject);
+	}
+#endif /* ENABLE_OPENSSL */
 
 	if ((id = getID(sess, obj, &size)) != NULL && size) {
 		unsigned int	n;
