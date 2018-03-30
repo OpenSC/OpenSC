@@ -173,7 +173,7 @@ cac_map_usage(unsigned int cert_usage, int algorithm, unsigned int *pub_usage_pt
 static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 {
 	static const pindata pins[] = {
-		{ "1", NULL, "", 0x00,
+		{ "1", "PIN", "", 0x00,
 		  SC_PKCS15_PIN_TYPE_ASCII_NUMERIC,
 		  8, 4, 8,
 		  SC_PKCS15_PIN_FLAG_NEEDS_PADDING |
@@ -245,7 +245,7 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 		sc_format_path(pins[i].path, &pin_info.path);
 		pin_info.tries_left    = -1;
 
-		label = pins[i].label? pins[i].label : cac_get_name(card->type);
+		label = pins[i].label;
 		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "CAC Adding pin %d label=%s",i, label);
 		strncpy(pin_obj.label, label, SC_PKCS15_MAX_LABEL_SIZE - 1);
 		pin_obj.flags = pins[i].obj_flags;
