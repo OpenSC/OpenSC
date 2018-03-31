@@ -214,6 +214,7 @@ static struct piv_aid piv_aids[] = {
 #define CI_CANT_USE_GETDATA_FOR_STATE	    0x00000008U /* No object to test verification inplace of VERIFY Lc=0 */
 #define CI_LEAKS_FILE_NOT_FOUND		    0x00000010U /* GET DATA of empty object returns 6A 82 even if PIN not verified */
 #define CI_DISCOVERY_USELESS		    0x00000020U /* Discovery can not be used to query active AID */
+#define CI_PIV_AID_LOSE_STATE		    0x00000040U /* PIV AID can lose the login state run with out it*/
 
 #define CI_OTHER_AID_LOSE_STATE		    0x00000100U /* Other drivers match routines may reset our security state and lose AID!!! */
 #define CI_NFC_EXPOSE_TOO_MUCH		    0x00000200U /* PIN, crypto and objects exposed over NFS in violation of 800-73-3 */
@@ -2965,8 +2966,6 @@ static int piv_match_card(sc_card_t *card)
 {
 	int r = 0;
 
-        SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-
 	/* piv_match_card may be called with card->type, set by opensc.conf */
 	/* user provide card type must be one we know */
 	switch (card->type) {
@@ -2975,6 +2974,7 @@ static int piv_match_card(sc_card_t *card)
 		case SC_CARD_TYPE_PIV_II_HIST:
 		case SC_CARD_TYPE_PIV_II_NEO:
 		case SC_CARD_TYPE_PIV_II_YUBIKEY4:
+		case SC_CARD_TYPE_PIV_II_GI_DE:
 			break;
 		default:
 			return 0; /* can not handle the card */
@@ -3005,8 +3005,7 @@ static int piv_match_card_continued(sc_card_t *card)
 	sc_file_t aidfile;
 	int type  = -1;
 	piv_private_data_t *priv = NULL;
-
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+	int saved_type = card->type;
 
 	/* Since we send an APDU, the card's logout function may be called...
 	 * however it may be in dirty memory */
@@ -3020,6 +3019,7 @@ static int piv_match_card_continued(sc_card_t *card)
 		case SC_CARD_TYPE_PIV_II_HIST:
 		case SC_CARD_TYPE_PIV_II_NEO:
 		case SC_CARD_TYPE_PIV_II_YUBIKEY4:
+		case SC_CARD_TYPE_PIV_II_GI_DE:
 			type = card->type;
 			break;
 		default:
@@ -3043,6 +3043,18 @@ static int piv_match_card_continued(sc_card_t *card)
 					!(memcmp(card->reader->atr_info.hist_bytes, "Yubikey", 7))) {
 				type = SC_CARD_TYPE_PIV_II_NEO;
 			}
+			/*
+			 * https://csrc.nist.gov/csrc/media/projects/cryptographic-module-validation-program/documents/security-policies/140sp1239.pdf
+			 * lists 2 ATRS with historical bytes:
+			 *   73 66 74 65 2D 63 64 30 38 30
+			 *   73 66 74 65 20 63 64 31 34 34
+			 * will check for 73 66 74 65
+			 */
+			else if (card->reader->atr_info.hist_bytes_len >= 4 &&
+					!(memcmp(card->reader->atr_info.hist_bytes, "sfte", 4))) {
+				type = SC_CARD_TYPE_PIV_II_GI_DE;
+			}
+
 			else if (card->reader->atr_info.hist_bytes[0] == 0x80u) { /* compact TLV */
 				p = card->reader->atr_info.hist_bytes;
 				pe = p + card->reader->atr_info.hist_bytes_len;
@@ -3129,6 +3141,7 @@ static int piv_match_card_continued(sc_card_t *card)
 		/* don't match. Does not have a PIV applet. */
 		sc_unlock(card);
 		piv_finish(card);
+		card->type = saved_type;
 		return 0;
 	}
 
@@ -3226,6 +3239,13 @@ static int piv_init(sc_card_t *card)
 
 		case SC_CARD_TYPE_PIV_II_HIST:
 			priv->card_issues |= 0;
+			break;
+
+		case SC_CARD_TYPE_PIV_II_GI_DE:
+			priv->card_issues |= CI_VERIFY_LC0_FAIL
+				| CI_PIV_AID_LOSE_STATE
+				| CI_OTHER_AID_LOSE_STATE;;
+			/* TODO may need more research */
 			break;
 
 		case SC_CARD_TYPE_PIV_II_GENERIC:
@@ -3564,6 +3584,13 @@ static int piv_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 		goto err;
 	}
 
+	/* can we detect and then select the PIV AID without losinig the login state? */
+	if ((priv->card_issues & CI_DISCOVERY_USELESS)
+			&& (priv->card_issues & CI_PIV_AID_LOSE_STATE)) {
+		r = 0; /* do nothing, hope card was not interferred with */
+		goto err;
+	}
+
 	/* make sure our application is active */
 
 	/* first see if AID is active AID by reading discovery object '7E' */
@@ -3576,8 +3603,13 @@ static int piv_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 	    r = piv_find_discovery(card);
 	}
 
-	if (r < 0)
-		r = piv_select_aid(card, piv_aids[0].value, piv_aids[0].len_short, temp, &templen);
+	if (r < 0) {
+		if (!(priv->card_issues & CI_PIV_AID_LOSE_STATE)) {
+			r = piv_select_aid(card, piv_aids[0].value, piv_aids[0].len_short, temp, &templen);
+		} else {
+			r = 0; /* cant do anything with this card, hope there was no interference */
+		}
+	}
 
 	if (r < 0) /* bad error return will show up in sc_lock as error*/
 		goto err;
