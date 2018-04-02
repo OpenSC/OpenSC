@@ -2976,6 +2976,7 @@ static int piv_match_card(sc_card_t *card)
 		case SC_CARD_TYPE_PIV_II_HIST:
 		case SC_CARD_TYPE_PIV_II_NEO:
 		case SC_CARD_TYPE_PIV_II_YUBIKEY4:
+		case SC_CARD_TYPE_PIV_II_GI_DE:
 			break;
 		default:
 			return 0; /* can not handle the card */
@@ -3021,7 +3022,7 @@ static int piv_match_card_continued(sc_card_t *card)
 		case SC_CARD_TYPE_PIV_II_HIST:
 		case SC_CARD_TYPE_PIV_II_NEO:
 		case SC_CARD_TYPE_PIV_II_YUBIKEY4:
-		case SC_CARD_TYPE_PIV_II_CAC:
+		case SC_CARD_TYPE_PIV_II_GI_DE:
 			type = card->type;
 			break;
 		default:
@@ -3050,11 +3051,11 @@ static int piv_match_card_continued(sc_card_t *card)
 			 * lists 2 ATRS with historical bytes:
 			 *   73 66 74 65 2D 63 64 30 38 30
 			 *   73 66 74 65 20 63 64 31 34 34
-			 * will check for 73 66 74
+			 * will check for 73 66 74 65
 			 */
-			else if (card->reader->atr_info.hist_bytes_len >= 3 &&
-					!(memcmp(card->reader->atr_info.hist_bytes, "fte", 3))) {
-				type = SC_CARD_TYPE_PIV_II_CAC;
+			else if (card->reader->atr_info.hist_bytes_len >= 4 &&
+					!(memcmp(card->reader->atr_info.hist_bytes, "sfte", 4))) {
+				type = SC_CARD_TYPE_PIV_II_GI_DE;
 			}
 
 			else if (card->reader->atr_info.hist_bytes[0] == 0x80u) { /* compact TLV */
@@ -3243,7 +3244,7 @@ static int piv_init(sc_card_t *card)
 			priv->card_issues |= 0;
 			break;
 
-		case SC_CARD_TYPE_PIV_II_CAC:
+		case SC_CARD_TYPE_PIV_II_GI_DE:
 			priv->card_issues |= CI_VERIFY_LC0_FAIL
 				| CI_PIV_AID_LOSE_STATE
 				| CI_OTHER_AID_LOSE_STATE;;
