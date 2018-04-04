@@ -138,7 +138,7 @@ AM_CONDITIONAL([HAVE_UNKNOWN_WARNING_OPTION], [test "${have_unknown_warning_opti
 
 AC_ARG_ENABLE(
 	[strict],
-	[AS_HELP_STRING([--disable-strict],[disable strict compile mode @<:@disabled@:>@])],
+	[AS_HELP_STRING([--disable-strict],[disable strict compile mode @<:@enabled@:>@])],
 	,
 	[enable_strict="yes"]
 )
