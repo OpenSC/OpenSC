@@ -269,6 +269,7 @@ int sc_connect_card(sc_reader_t *reader, sc_card_t **card_out)
 		for (i = 0; ctx->card_drivers[i] != NULL; i++) {
 			struct sc_card_driver *drv = ctx->card_drivers[i];
 			const struct sc_card_operations *ops = drv->ops;
+			int saved_type = card->type;
 
 			sc_log(ctx, "trying driver '%s'", drv->short_name);
 			if (ops == NULL || ops->match_card == NULL)   {
@@ -292,6 +293,7 @@ int sc_connect_card(sc_reader_t *reader, sc_card_t **card_out)
 				sc_log(ctx, "driver '%s' init() failed: %s", drv->name, sc_strerror(r));
 				if (r == SC_ERROR_INVALID_CARD) {
 					card->driver = NULL;
+					card->type = saved_type;
 					continue;
 				}
 				goto err;

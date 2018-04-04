@@ -658,7 +658,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		sc_format_path(objects[i].path, &obj_info.path);
 
 		/* See if the object can not be present on the card */
-		r = (card->ops->card_ctl)(card, SC_CARDCTL_PIV_OBJECT_PRESENT, &obj_info.path);
+		r = sc_card_ctl(card, SC_CARDCTL_PIV_OBJECT_PRESENT, &obj_info.path);
 		if (r == 1)
 			continue; /* Not on card, do not define the object */
 			
@@ -734,7 +734,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		cert_obj.flags = certs[i].obj_flags;
 
 		/* See if the cert might be present or not. */
-		r = (card->ops->card_ctl)(card, SC_CARDCTL_PIV_OBJECT_PRESENT, &cert_info.path);
+		r = sc_card_ctl(card, SC_CARDCTL_PIV_OBJECT_PRESENT, &cert_info.path);
 		if (r == 1) {
 			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Cert can not be present,i=%d", i);
 			continue;
@@ -948,7 +948,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 
 		label = pins[i].label;
 		if (i == 0 &&
-			(card->ops->card_ctl)(card, SC_CARDCTL_PIV_PIN_PREFERENCE,
+			sc_card_ctl(card, SC_CARDCTL_PIV_PIN_PREFERENCE,
 					&pin_ref) == 0 &&
 				pin_ref == 0x00) { /* must be 80 for PIV pin, or 00 for Global PIN */
 			pin_info.attrs.pin.reference = pin_ref;
