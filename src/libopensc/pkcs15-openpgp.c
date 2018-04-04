@@ -147,6 +147,9 @@ read_file(sc_card_t *card, const char *path_name, void *buf, size_t len)
 
 	if (file->size < len)
 		len = file->size;
+
+	sc_file_free(file);
+
 	return sc_read_binary(card, 0, (u8 *) buf, len, 0);
 }
 
@@ -162,7 +165,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 	const pgp_pin_cfg_t *pin_cfg = (card->type == SC_CARD_TYPE_OPENPGP_V1)
 	                               ? pin_cfg_v1 : pin_cfg_v2;
 	sc_path_t path;
-	sc_file_t *file;
+	sc_file_t *file = NULL;
 
 	set_string(&p15card->tokeninfo->label, "OpenPGP card");
 	set_string(&p15card->tokeninfo->manufacturer_id, "OpenPGP project");
@@ -377,6 +380,7 @@ failed:
 				"Failed to initialize OpenPGP emulation: %s\n",
 				sc_strerror(r));
 	}
+	sc_file_free(file);
 
 	return r;
 }
