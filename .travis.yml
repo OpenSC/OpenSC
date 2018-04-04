@@ -85,8 +85,7 @@ script:
       fi;
     fi
   - if [ -z "$HOST" -a "${COVERITY_SCAN_BRANCH}" != 1 ]; then
-      make check;
-      make dist;
+      make check && make dist;
     fi
   - if [ ! -z "$HOST" -a "${COVERITY_SCAN_BRANCH}" != 1 ]; then
       make install;
