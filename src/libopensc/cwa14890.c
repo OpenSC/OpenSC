@@ -1291,7 +1291,7 @@ int cwa_create_secure_channel(sc_card_t * card,
 
 	/* get challenge: retrieve 8 random bytes from card */
 	sc_log(ctx, "Step 8.4.1.11: Prepare External Auth: Get Challenge");
-	res = card->ops->get_challenge(card, sm->icc.rnd, sizeof(sm->icc.rnd));
+	res = sc_get_challenge(card, sm->icc.rnd, sizeof(sm->icc.rnd));
 	if (res != SC_SUCCESS) {
 		msg = "Get Challenge failed";
 		goto csc_end;
