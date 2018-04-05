@@ -987,7 +987,7 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 		 *        (or invent something else)
 		 */
 		if (rv == SC_ERROR_FILE_NOT_FOUND && cache_valid && df_from_cache)   {
-			card->cache.valid = 0;
+			sc_invalidate_cache(card);
 			sc_log(ctx, "iasecc_select_file() file not found, retry without cached DF");
 			if (file_out)   {
 				sc_file_free(*file_out);

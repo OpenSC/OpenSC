@@ -34,10 +34,6 @@
 #include "asn1.h"
 #include "common/compat_strlcpy.h"
 
-/*
-#define INVALIDATE_CARD_CACHE_IN_UNLOCK
-*/
-
 #ifdef ENABLE_SM
 static int sc_card_sm_load(sc_card_t *card, const char *path, const char *module);
 static int sc_card_sm_unload(sc_card_t *card);
@@ -382,9 +378,7 @@ int sc_reset(sc_card_t *card, int do_cold_reset)
 		return r;
 
 	r = card->reader->ops->reset(card->reader, do_cold_reset);
-	/* invalidate cache */
-	memset(&card->cache, 0, sizeof(card->cache));
-	card->cache.valid = 0;
+	sc_invalidate_cache(card);
 
 	r2 = sc_mutex_unlock(card->ctx, card->mutex);
 	if (r2 != SC_SUCCESS) {
@@ -413,9 +407,7 @@ int sc_lock(sc_card_t *card)
 		if (card->reader->ops->lock != NULL) {
 			r = card->reader->ops->lock(card->reader);
 			while (r == SC_ERROR_CARD_RESET || r == SC_ERROR_READER_REATTACHED) {
-				/* invalidate cache */
-				memset(&card->cache, 0, sizeof(card->cache));
-				card->cache.valid = 0;
+				sc_invalidate_cache(card);
 				if (was_reset++ > 4) /* TODO retry a few times */
 					break;
 				r = card->reader->ops->lock(card->reader);
@@ -466,12 +458,12 @@ int sc_unlock(sc_card_t *card)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	if (--card->lock_count == 0) {
-#ifdef INVALIDATE_CARD_CACHE_IN_UNLOCK
-		/* invalidate cache */
-		memset(&card->cache, 0, sizeof(card->cache));
-		card->cache.valid = 0;
-		sc_log(card->ctx, "cache invalidated");
-#endif
+		if (card->flags & SC_CARD_FLAG_KEEP_ALIVE) {
+			/* Multiple processes accessing the card will most likely render
+			 * the card cache useless. To not have a bad cache, we explicitly
+			 * invalidate it. */
+			sc_invalidate_cache(card);
+		}
 		/* release reader lock */
 		if (card->reader->ops->unlock != NULL)
 			r = card->reader->ops->unlock(card->reader);
@@ -1233,7 +1225,16 @@ scconf_block *sc_get_conf_block(sc_context_t *ctx, const char *name1, const char
 	return conf_block;
 }
 
-void sc_print_cache(struct sc_card *card)   {
+void sc_invalidate_cache(struct sc_card *card)
+{
+	if (card) {
+		memset(&card->cache, 0, sizeof(card->cache));
+		card->cache.valid = 0;
+	}
+}
+
+void sc_print_cache(struct sc_card *card)
+{
 	struct sc_context *ctx = NULL;
 
 	if (card == NULL)

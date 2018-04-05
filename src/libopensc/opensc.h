@@ -1340,6 +1340,7 @@ int sc_parse_ef_gdo(struct sc_card *card,
 		unsigned char *chn, size_t *chn_len);
 int sc_update_dir(struct sc_card *card, sc_app_info_t *app);
 
+void sc_invalidate_cache(struct sc_card *card);
 void sc_print_cache(struct sc_card *card);
 
 struct sc_algorithm_info * sc_card_find_rsa_alg(struct sc_card *card,

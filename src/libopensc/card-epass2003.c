@@ -2443,7 +2443,7 @@ epass2003_erase_card(struct sc_card *card)
 	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
-	card->cache.valid = 0;
+	sc_invalidate_cache(card);
 
 	r = sc_delete_file(card, sc_get_mf_path());
 	LOG_TEST_RET(card->ctx, r, "delete MF failed");
