@@ -1157,8 +1157,7 @@ static int starcos_erase_card(sc_card_t *card)
 	
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
-	/* invalidate cache */
-	card->cache.valid = 0;
+	sc_invalidate_cache(card);
 	if (apdu.sw1 == 0x69 && apdu.sw2 == 0x85)
 		/* no MF to delete, ignore error */
 		return SC_SUCCESS;

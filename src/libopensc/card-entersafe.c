@@ -1061,8 +1061,7 @@ static int entersafe_erase_card(sc_card_t *card)
 	
 	r = entersafe_transmit_apdu(card, &apdu,0,0,0,0);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
-	/* invalidate cache */
-	card->cache.valid = 0;
+	sc_invalidate_cache(card);
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xEE, 0x00, 0x00);
 	apdu.cla=0x84;
