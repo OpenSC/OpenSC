@@ -480,12 +480,12 @@ int sc_get_encoding_flags(sc_context_t *ctx,
 	/* TODO: Could convert GOSTR3410_HASH_GOSTR3411 -> GOSTR3410_RAW and
 	 *       ECDSA_HASH_ -> ECDSA_RAW using OpenSSL (not much benefit though). */
 
-
 	if ((caps & iflags) == iflags) {
 		/* Card supports the signature operation we want to do, great, let's
 		 * go with it then. */
 		*sflags = iflags;
 		*pflags = 0;
+
 	} else if ((caps & SC_ALGORITHM_RSA_PAD_PSS) &&
 			(iflags & SC_ALGORITHM_RSA_PAD_PSS)) {
 		*sflags |= SC_ALGORITHM_RSA_PAD_PSS;

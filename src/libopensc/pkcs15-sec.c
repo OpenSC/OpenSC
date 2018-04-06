@@ -34,6 +34,25 @@
 #include "pkcs15.h"
 #include "pkcs11/pkcs11.h"
 
+static int sec_env_add_param(sc_security_env_t* se, const sc_sec_env_param_t* p)
+{
+	size_t i;
+
+	if (!se || !p)
+	    return SC_ERROR_INCORRECT_PARAMETERS;
+
+	for (i = 0; i < SC_SEC_ENV_MAX_PARAMS; i++) {
+	    if (se->params[i].value == NULL) {
+		se->params[i] = *p;
+
+		return SC_SUCCESS;
+	    }
+	}
+
+	return SC_ERROR_TOO_MANY_OBJECTS;
+}
+
+
 static sc_path_t get_file_path(const struct sc_pkcs15_object* obj)
 {
 	sc_path_t path;
@@ -343,7 +362,8 @@ int sc_pkcs15_unwrap(struct sc_pkcs15_card *p15card,
 		const struct sc_pkcs15_object *key,
 		struct sc_pkcs15_object *target_key,
 		unsigned long flags,
-		const u8 * in, size_t inlen)
+		const u8 * in, size_t inlen,
+		const u8 * param, size_t paramlen)
 {
 	sc_context_t *ctx = p15card->card->ctx;
 	int r;
@@ -356,6 +376,7 @@ int sc_pkcs15_unwrap(struct sc_pkcs15_card *p15card,
 	u8 *out = 0;
 	size_t poutlen = 0;
 	sc_path_t path, target_file_id;
+	sc_sec_env_param_t senv_param;
 
 	LOG_FUNC_CALLED(ctx);
 
@@ -379,31 +400,36 @@ int sc_pkcs15_unwrap(struct sc_pkcs15_card *p15card,
 
 	if (!tkey->path.len && tkey->path.aid.len) {
 		/* Target key is a SDO allocated in application DF */
-		path = tkey->path;
+		target_file_id = tkey->path;
 	}
 	else if (tkey->path.len == 2 && p15card->file_app != NULL) {
 		/* Path is relative to app. DF */
 		path = p15card->file_app->path;
 		target_file_id = tkey->path;
 		sc_append_path(&path, &target_file_id);
-		senv.target_file_ref = target_file_id;
-		senv.flags |= SC_SEC_ENV_TARGET_FILE_REF_PRESENT;
+		target_file_id = path;
 	}
 	else if (tkey->path.len > 2) {
 		path = tkey->path;
 		memcpy(target_file_id.value, tkey->path.value + tkey->path.len - 2, 2);
 		target_file_id.len = 2;
 		target_file_id.type = SC_PATH_TYPE_FILE_ID;
-		senv.target_file_ref = target_file_id;
-		senv.flags |= SC_SEC_ENV_TARGET_FILE_REF_PRESENT;
 	}
 	else {
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "invalid unwrapping target key path");
 	}
 
+	senv_param = (sc_sec_env_param_t) { SC_SEC_ENV_PARAM_TARGET_FILE, (u8*) &target_file_id, sizeof(target_file_id)};
+	LOG_TEST_RET(ctx, sec_env_add_param(&senv, &senv_param), "failed to add target file path to security environment");
+
 	r = sc_get_encoding_flags(ctx, flags, alg_info->flags, &pad_flags, &sec_flags);
 	LOG_TEST_RET(ctx, r, "cannot encode security operation flags");
 	senv.algorithm_flags = sec_flags;
+
+	if ((sec_flags & SC_ALGORITHM_AES_CBC & SC_ALGORITHM_AES_CBC_PAD) > 0) {
+	    senv_param = (sc_sec_env_param_t) { SC_SEC_ENV_PARAM_IV, (u8*) param, paramlen };
+	    LOG_TEST_RET(ctx, sec_env_add_param(&senv, &senv_param), "failed to add IV to security environment");
+	}
 
 	r = use_key(p15card, key, &senv, sc_unwrap, in, inlen, out,
 		    poutlen);
@@ -422,7 +448,8 @@ int sc_pkcs15_wrap(struct sc_pkcs15_card *p15card,
 		const struct sc_pkcs15_object *key,
 		struct sc_pkcs15_object *target_key,
 		unsigned long flags,
-		u8 * cryptogram, size_t* crgram_len) {
+		u8 * cryptogram, size_t* crgram_len,
+		const u8 * param, size_t paramlen) {
 	sc_context_t *ctx = p15card->card->ctx;
 	int r;
 	sc_algorithm_info_t *alg_info = NULL;
@@ -437,6 +464,7 @@ int sc_pkcs15_wrap(struct sc_pkcs15_card *p15card,
 	u8 *out = 0;
 	size_t *poutlen = 0, inlen = 0;
 	sc_path_t path, target_file_id;
+	sc_sec_env_param_t senv_param;
 
 	LOG_FUNC_CALLED(ctx);
 
@@ -476,36 +504,44 @@ int sc_pkcs15_wrap(struct sc_pkcs15_card *p15card,
 		break;
 	}
 
-	if (!path.len && path.aid.len) {
+	if (!tkey_path.len && tkey_path.aid.len) {
 		/* Target key is a SDO allocated in application DF */
-		path = tkey_path;
+		target_file_id = tkey_path;
 	} else if (tkey_path.len == 2 && p15card->file_app != NULL) {
 		/* Path is relative to app. DF */
 		path = p15card->file_app->path;
 		target_file_id = tkey_path;
 		sc_append_path(&path, &target_file_id);
-		senv.target_file_ref = target_file_id;
-		senv.flags |= SC_SEC_ENV_TARGET_FILE_REF_PRESENT;
+		target_file_id  = path;
 	} else if (tkey_path.len > 2) {
-		path = tkey_path;
+		/*path = tkey_path;*/
 		memcpy(target_file_id.value, tkey_path.value + tkey_path.len - 2, 2);
 		target_file_id.len = 2;
 		target_file_id.type = SC_PATH_TYPE_FILE_ID;
-		senv.target_file_ref = target_file_id;
-		senv.flags |= SC_SEC_ENV_TARGET_FILE_REF_PRESENT;
 	}
 	else {
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "invalid unwrapping target key path");
 	}
+	senv_param = (sc_sec_env_param_t) { SC_SEC_ENV_PARAM_TARGET_FILE, (u8*) &target_file_id, sizeof(target_file_id)};
+	LOG_TEST_RET(ctx, sec_env_add_param(&senv, &senv_param), "failed to add target file path to security environment");
 
 	r = sc_get_encoding_flags(ctx, flags, alg_info->flags, &pad_flags, &sec_flags);
 	LOG_TEST_RET(ctx, r, "cannot encode security operation flags");
 	senv.algorithm_flags = sec_flags;
 
+	if ((sec_flags & (SC_ALGORITHM_AES_CBC | SC_ALGORITHM_AES_CBC_PAD)) > 0) {
+	    senv_param = (sc_sec_env_param_t) { SC_SEC_ENV_PARAM_IV, (u8*) param, paramlen };
+	    LOG_TEST_RET(ctx, sec_env_add_param(&senv, &senv_param), "failed to add IV to security environment");
+	}
+
 	out = cryptogram;
 	poutlen = crgram_len;
 	r = use_key(p15card, key, &senv, sc_wrap, in, inlen, out,
 			*poutlen);
+
+	if (r > -1)
+	    *poutlen = r;
+
 	/* TODO: handle SC_ERROR_BUFFER_TOO_SMALL, return size in *poutlen */
 	LOG_TEST_RET(ctx, r, "use_key() failed");
 

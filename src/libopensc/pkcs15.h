@@ -666,13 +666,15 @@ int sc_pkcs15_unwrap(struct sc_pkcs15_card *p15card,
 		const struct sc_pkcs15_object *key,
 		struct sc_pkcs15_object *target_key,
 		unsigned long flags,
-		const u8 * in, size_t inlen);
+		const u8 * in, size_t inlen,
+		const u8 * param, size_t paramlen);
 
 int sc_pkcs15_wrap(struct sc_pkcs15_card *p15card,
 		const struct sc_pkcs15_object *key,
 		struct sc_pkcs15_object *target_key,
 		unsigned long flags,
-		u8 * cryptogram, size_t* crgram_len);
+		u8 * cryptogram, size_t* crgram_len,
+		const u8 * param, size_t paramlen);
 
 int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 				const struct sc_pkcs15_object *prkey_obj,

@@ -227,8 +227,10 @@ static int myeid_init(struct sc_card *card)
 	/* State that we have an RNG */
 	card->caps |= SC_CARD_CAP_RNG | SC_CARD_CAP_ISO7816_PIN_INFO;
 
-	/* if (card->version.fw_major >= 41) */ /* TODO: check the version number that actually supports these ops */
-		card->caps |= SC_CARD_CAP_WRAP_KEY | SC_CARD_CAP_UNWRAP_KEY;
+	if ((card->version.fw_major == 40 && card->version.fw_minor == 10 )
+		|| card->version.fw_major >= 41)
+		card->caps |= SC_CARD_CAP_WRAP_KEY | SC_CARD_CAP_UNWRAP_KEY
+			   | SC_CARD_CAP_ONCARD_SESSION_OBJECTS;
 
 	card->max_recv_size = 255;
 	card->max_send_size = 255;
@@ -612,6 +614,8 @@ static int myeid_set_security_env_rsa(sc_card_t *card, const sc_security_env_t *
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 *p;
 	int r;
+	size_t i;
+	sc_path_t *target_file;
 
 	assert(card != NULL && env != NULL);
 	LOG_FUNC_CALLED(card->ctx);
@@ -639,8 +643,12 @@ static int myeid_set_security_env_rsa(sc_card_t *card, const sc_security_env_t *
 		apdu.p2 = 0xB6;
 		break;
 	case SC_SEC_OPERATION_UNWRAP:
-		apdu.p1 = 0x41;		/* emulating unwrapping with DECIPHER operation */
-		apdu.p2 = 0xB8;		/* TODO: set correct params when operation is implemented on card */
+		apdu.p1 = 0x41;
+		apdu.p2 = 0xB8;
+		break;
+	case SC_SEC_OPERATION_WRAP:
+		apdu.p1 = 0x81;
+		apdu.p2 = 0xB8;
 		break;
 	default:
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -660,18 +668,38 @@ static int myeid_set_security_env_rsa(sc_card_t *card, const sc_security_env_t *
 		memcpy(p, env->file_ref.value, 2);
 		p += 2;
 	}
-	if (env->flags & SC_SEC_ENV_KEY_REF_PRESENT && env->operation != SC_SEC_OPERATION_UNWRAP)
+	if (env->flags & SC_SEC_ENV_KEY_REF_PRESENT && env->operation != SC_SEC_OPERATION_UNWRAP &&
+		env->operation != SC_SEC_OPERATION_WRAP)
 	{
 		*p++ = 0x84;
 		*p++ = 1;
 		*p++ = 0;
 	}
-	if (env->flags & SC_SEC_ENV_TARGET_FILE_REF_PRESENT)
-	{
+	for (i = 0; i < SC_SEC_ENV_MAX_PARAMS; i++)
+	    if (env->params[i].param_type == SC_SEC_ENV_PARAM_TARGET_FILE) {
+		target_file = (sc_path_t*) env->params[i].value;
+		if (env->params[i].value_len < sizeof(sc_path_t) || target_file->len != 2) {
+			sc_log(card->ctx, "wrong length of target file reference.\n");
+			return SC_ERROR_WRONG_LENGTH;
+		}
 		*p++ = 0x83;
 		*p++ = 2;
-		memcpy(p, env->target_file_ref.value, 2);
+		memcpy(p, target_file->value, 2);
 		p+= 2;
+		break;
+	    }
+
+	if (env->operation ==  SC_SEC_OPERATION_UNWRAP || env->operation == SC_SEC_OPERATION_WRAP) /* & SC_SEC_ENV_IV_PRESENT*/
+	{
+	    /* add IV if present */
+		for (i = 0; i < SC_SEC_ENV_MAX_PARAMS; i++)
+			if (env->params[i].param_type == SC_SEC_ENV_PARAM_IV) {
+				*p++ = 0x87;
+				*p++ = (unsigned char) env->params[i].value_len;
+				memcpy(p, env->params[i].value, env->params[i].value_len);
+				p+=(unsigned char) env->params[i].value_len;
+				break;
+			}
 	}
 	r = p - sbuf;
 	apdu.lc = r;
@@ -842,7 +870,7 @@ static int myeid_set_security_env(struct sc_card *card,
 				tmp.algorithm_ref = 0x00;
 			}
 			/* from this point, there's no difference to RSA SE */
-			return myeid_set_security_env_rsa(card, env, se_num);
+			return myeid_set_security_env_rsa(card, &tmp, se_num);
 		}
 		else
 		{
