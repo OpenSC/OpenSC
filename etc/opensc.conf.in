@@ -103,6 +103,12 @@ app default {
 		# Default: true
 		# enable_pinpad = false;
 		#
+		# Some pinpad readers can only handle one exact length of the PIN.
+		# fixed_pinlength sets this value so that OpenSC expands the padding to
+		# this length.
+		# Default: 0 (i.e. not fixed)
+		# fixed_pinlength = 6;
+		#
 		# Detect reader capabilities with escape commands (wrapped APDUs with
 		# CLA=0xFF as defined by PC/SC pt. 3 and BSI TR-03119, e.g. for getting
 		# the UID, escaped PIN commands and the reader's firmware version)

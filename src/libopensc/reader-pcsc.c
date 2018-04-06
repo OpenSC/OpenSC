@@ -82,6 +82,7 @@ struct pcsc_global_private_data {
 	SCARDCONTEXT pcsc_ctx;
 	SCARDCONTEXT pcsc_wait_ctx;
 	int enable_pinpad;
+	int fixed_pinlength;
 	int enable_pace;
 	size_t force_max_recv_size;
 	size_t force_max_send_size;
@@ -766,6 +767,7 @@ static int pcsc_init(sc_context_t *ctx)
 	gpriv->transaction_end_action = SCARD_LEAVE_CARD;
 	gpriv->reconnect_action = SCARD_LEAVE_CARD;
 	gpriv->enable_pinpad = 1;
+	gpriv->fixed_pinlength = 0;
 	gpriv->enable_pace = 1;
 	gpriv->pcsc_ctx = -1;
 	gpriv->pcsc_wait_ctx = -1;
@@ -788,6 +790,8 @@ static int pcsc_init(sc_context_t *ctx)
 			pcsc_reset_action(scconf_get_str(conf_block, "reconnect_action", "leave"));
 		gpriv->enable_pinpad = scconf_get_bool(conf_block, "enable_pinpad",
 				gpriv->enable_pinpad);
+		gpriv->fixed_pinlength = scconf_get_bool(conf_block, "fixed_pinlength",
+				gpriv->fixed_pinlength);
 		gpriv->enable_pace = scconf_get_bool(conf_block, "enable_pace",
 				gpriv->enable_pace);
 		gpriv->force_max_send_size = scconf_get_int(conf_block,
@@ -1887,9 +1891,16 @@ part10_check_pin_min_max(sc_reader_t *reader, struct sc_pin_cmd_data *data)
 	unsigned char buffer[256];
 	size_t length = sizeof buffer;
 	struct pcsc_private_data *priv = reader->drv_data;
+	struct pcsc_global_private_data *gpriv = (struct pcsc_global_private_data *) reader->ctx->reader_drv_data;
 	struct sc_pin_cmd_pin *pin_ref =
 		data->flags & SC_PIN_CMD_IMPLICIT_CHANGE ?
 		&data->pin1 : &data->pin2;
+
+	if (gpriv->fixed_pinlength != 0) {
+		pin_ref->min_length = gpriv->fixed_pinlength;
+		pin_ref->max_length = gpriv->fixed_pinlength;
+		return 0;
+	}
 
 	if (!priv->get_tlv_properties)
 		return 0;
