@@ -1330,13 +1330,16 @@ sc_pkcs15init_init_skdf(struct sc_pkcs15_card *p15card, struct sc_profile *profi
 	key_info->key_reference = 0;
 	switch (keyargs->algorithm) {
 	case SC_ALGORITHM_DES:
-		key_info->key_type = CKM_DES_ECB;
+		key_info->key_type = CKK_DES;
 		break;
 	case SC_ALGORITHM_3DES:
-		key_info->key_type = CKM_DES3_ECB;
+		key_info->key_type = CKK_DES3;
 		break;
 	case SC_ALGORITHM_AES:
-		key_info->key_type = CKM_AES_ECB;
+		key_info->key_type = CKK_AES;
+		break;
+	default:
+		key_info->key_type = CKK_GENERIC_SECRET;
 		break;
 	}
 	key_info->value_len = keybits;
@@ -1931,11 +1934,17 @@ sc_pkcs15init_store_secret_key(struct sc_pkcs15_card *p15card, struct sc_profile
 
 	sc_pkcs15_free_object_content(object);
 
-	/* Now update the SKDF */
-	r = sc_pkcs15init_add_object(p15card, profile, SC_PKCS15_SKDF, object);
-	LOG_TEST_RET(ctx, r, "Failed to add new secret key PKCS#15 object");
+	/* Now update the SKDF, unless it is a session object.
+	   If we have an on card session object, we have created the actual key object on card.
+	   The card handles removing it when the session is finished or during the next reset.
+	   We will maintain the object in the P15 structure in memory for duration of the session,
+	   but we don't want it to be written into SKDF. */
+	if (!object->session_object) {
+		r = sc_pkcs15init_add_object(p15card, profile, SC_PKCS15_SKDF, object);
+		LOG_TEST_RET(ctx, r, "Failed to add new secret key PKCS#15 object");
+	}
 
-	if (!r && profile->ops->emu_store_data)   {
+	if (!r && profile->ops->emu_store_data && !object->session_object)   {
 		r = profile->ops->emu_store_data(p15card, profile, object, NULL, NULL);
 		if (r == SC_ERROR_NOT_IMPLEMENTED)
 			r = SC_SUCCESS;
@@ -2584,6 +2593,7 @@ key_pkcs15_algo(struct sc_pkcs15_card *p15card, unsigned int algorithm)
 	case SC_ALGORITHM_3DES:
 		return SC_PKCS15_TYPE_SKEY_3DES;
 	case SC_ALGORITHM_AES:
+	case SC_ALGORITHM_UNDEFINED:
 		return SC_PKCS15_TYPE_SKEY_GENERIC;
 	}
 	sc_log(ctx, "Unsupported key algorithm.");

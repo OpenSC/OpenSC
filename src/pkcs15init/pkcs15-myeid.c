@@ -481,11 +481,11 @@ myeid_fixup_supported_algos(struct sc_profile *profile, struct sc_pkcs15_card *p
 	switch (object->type) {
 	case SC_PKCS15_TYPE_SKEY_GENERIC:
 		switch (skey_info->key_type | (skey_info->value_len << 16)) {
-		case CKM_AES_ECB | (128 << 16):
+		case CKK_AES | (128 << 16):
 			_add_supported_algo(profile, p15card, object, SC_PKCS15_ALGO_OP_DECIPHER|SC_PKCS15_ALGO_OP_ENCIPHER, CKM_AES_ECB, &id_aes128_ecb);
 			_add_supported_algo(profile, p15card, object, SC_PKCS15_ALGO_OP_DECIPHER|SC_PKCS15_ALGO_OP_ENCIPHER, CKM_AES_CBC, &id_aes128_cbc);
 			break;
-		case CKM_AES_ECB | (256 << 16):
+		case CKK_AES | (256 << 16):
 			_add_supported_algo(profile, p15card, object, SC_PKCS15_ALGO_OP_DECIPHER|SC_PKCS15_ALGO_OP_ENCIPHER, CKM_AES_ECB, &id_aes256_ecb);
 			_add_supported_algo(profile, p15card, object, SC_PKCS15_ALGO_OP_DECIPHER|SC_PKCS15_ALGO_OP_ENCIPHER, CKM_AES_CBC, &id_aes256_cbc);
 			break;
@@ -539,10 +539,10 @@ myeid_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 			if ((skey_info->access_flags & SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE) == SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE)
 				extractable = TRUE;
 			switch (skey_info->key_type) {
-			case CKM_AES_ECB:
+			case CKK_AES:
 				ef_structure = SC_CARDCTL_MYEID_KEY_AES;
 				break;
-			case CKM_DES_ECB:
+			case CKK_DES:
 				ef_structure = SC_CARDCTL_MYEID_KEY_DES;
 				break;
 			default:
