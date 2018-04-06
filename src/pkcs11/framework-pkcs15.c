@@ -2586,11 +2586,6 @@ pkcs15_create_data(struct sc_pkcs11_slot *slot, struct sc_profile *profile,
 		}
 	}
 
-	if (args.der_encoded.len == 0) {
-		rv = CKR_TEMPLATE_INCOMPLETE;
-		goto out;
-	}
-
 	rc = sc_pkcs15init_store_data_object(fw_data->p15_card, profile, &args, &data_obj);
 	if (rc < 0) {
 		rv = sc_to_cryptoki_error(rc, "C_CreateObject");
