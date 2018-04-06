@@ -68,6 +68,11 @@ extern "C" {
 #define SC_SEC_ENV_ALG_PRESENT		0x0010
 #define SC_SEC_ENV_TARGET_FILE_REF_PRESENT 0x0020
 
+/* sc_security_env additional parameters */
+#define SC_SEC_ENV_MAX_PARAMS		10
+#define SC_SEC_ENV_PARAM_IV		1
+#define SC_SEC_ENV_PARAM_TARGET_FILE	2
+
 /* PK algorithms */
 #define SC_ALGORITHM_RSA		0
 #define SC_ALGORITHM_DSA		1
@@ -79,6 +84,7 @@ extern "C" {
 #define SC_ALGORITHM_3DES		65
 #define SC_ALGORITHM_GOST		66
 #define SC_ALGORITHM_AES		67
+#define SC_ALGORITHM_UNDEFINED		68	/* used with CKK_GENERIC_SECRET type keys */
 
 /* Hash algorithms */
 #define SC_ALGORITHM_MD5		128
@@ -195,6 +201,13 @@ extern "C" {
 #define SC_ALGORITHM_EXT_EC_UNCOMPRESES  0x00000010
 #define SC_ALGORITHM_EXT_EC_COMPRESS     0x00000020
 
+/* symmetric algorithm flags. More algorithms to be added when implemented. */
+#define SC_ALGORITHM_AES_ECB		 0x01000000
+#define SC_ALGORITHM_AES_CBC		 0x02000000
+#define SC_ALGORITHM_AES_CBC_PAD	 0x04000000
+#define SC_ALGORITHM_AES_FLAGS		 0x0F000000
+
+
 /* Event masks for sc_wait_for_event() */
 #define SC_EVENT_CARD_INSERTED		0x0001
 #define SC_EVENT_CARD_REMOVED		0x0002
@@ -212,6 +225,13 @@ struct sc_supported_algo_info {
 	unsigned int algo_ref;
 };
 
+typedef struct sc_sec_env_param {
+	unsigned int param_type;
+	unsigned char* value;
+	unsigned int value_len;
+} sc_sec_env_param_t;
+
+
 typedef struct sc_security_env {
 	unsigned long flags;
 	int operation;
@@ -224,6 +244,8 @@ typedef struct sc_security_env {
 	struct sc_path target_file_ref; /* target key file in unwrap operation */
 
 	struct sc_supported_algo_info supported_algos[SC_MAX_SUPPORTED_ALGORITHMS];
+	/* optional parameters */
+	struct sc_sec_env_param params[SC_SEC_ENV_MAX_PARAMS];
 } sc_security_env_t;
 
 struct sc_algorithm_id {
