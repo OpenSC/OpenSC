@@ -56,10 +56,10 @@ before_install:
     fi
 
 before_script:
+  # Optionally try to upload to Coverity Scan
+  # On error (propably quota is exhausted), just continue
   - if [ "${DO_COVERITY_SCAN}" == "yes" ]; then
       if ! curl -s 'https://scan.coverity.com/scripts/travisci_build_coverity_scan.sh' | bash;
-        # coverity could not be initialized; propably quota is exhausted
-        # just continue with the normal CI build
         true;
       fi;
     fi
@@ -83,11 +83,7 @@ script:
       if [ $TRAVIS_OS_NAME == osx ]; then
         ./MacOSX/build;
       else
-        if curl -s 'https://scan.coverity.com/scripts/travisci_build_coverity_scan.sh' | bash;
-          make;
-        else
-          true;
-        fi;
+        make;
       fi;
     fi
   - if [ -z "$HOST" -a "${DO_COVERITY_SCAN}" != "yes" ]; then
