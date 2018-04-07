@@ -56,13 +56,6 @@ before_install:
     fi
 
 before_script:
-  # Optionally try to upload to Coverity Scan
-  # On error (propably quota is exhausted), just continue
-  - if [ "${DO_COVERITY_SCAN}" == "yes" ]; then
-      if ! curl -s 'https://scan.coverity.com/scripts/travisci_build_coverity_scan.sh' | bash;
-        true;
-      fi;
-    fi
   - ./bootstrap
   - if [ -z "$HOST" ]; then
       CFLAGS="-Werror" ./configure $ENABLE_DOC --enable-dnie-ui;
@@ -77,6 +70,9 @@ before_script:
       unset CXX;
       ./configure --host=$HOST --disable-openssl --disable-readline --disable-zlib --disable-notify --prefix=${TRAVIS_BUILD_DIR}/win32/opensc || cat config.log;
     fi
+  # Optionally try to upload to Coverity Scan
+  # On error (propably quota is exhausted), just continue
+  - if [ "${DO_COVERITY_SCAN}" = "yes" ]; then curl -s 'https://scan.coverity.com/scripts/travisci_build_coverity_scan.sh' | bash || true; fi
 
 script:
   - if [ "${DO_COVERITY_SCAN}" != "yes" ]; then
