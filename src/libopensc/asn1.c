@@ -158,8 +158,10 @@ static void print_hex(const u8 * buf, size_t buflen, size_t depth)
 	char *lines = malloc(lines_len);
 	char *line = lines;
 
-	if (buf == NULL || buflen == 0 || lines == NULL)
+	if (buf == NULL || buflen == 0 || lines == NULL) {
+		free(lines);
 		return;
+	}
 
 	sc_hex_dump(buf, buflen, lines, lines_len);
 

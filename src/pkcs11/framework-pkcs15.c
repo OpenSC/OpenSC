@@ -1618,7 +1618,7 @@ pkcs15_login(struct sc_pkcs11_slot *slot, CK_USER_TYPE userType,
 		}
 	}
 
-	if (userType  == CKU_CONTEXT_SPECIFIC && pin_info) {
+	if (userType  == CKU_CONTEXT_SPECIFIC) {
 		int auth_meth_saved = pin_info->auth_method;
 
 		sc_log(context, "Setting SC_AC_CONTEXT_SPECIFIC");

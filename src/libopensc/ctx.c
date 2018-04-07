@@ -808,6 +808,7 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 	set_defaults(ctx, &opts);
 
 	if (0 != list_init(&ctx->readers)) {
+		sc_release_context(ctx);
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
 	list_attributes_seeker(&ctx->readers, reader_list_seeker);
