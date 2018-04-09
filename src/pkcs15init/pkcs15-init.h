@@ -290,6 +290,7 @@ struct sc_pkcs15init_certargs {
 
 #define P15_ATTR_TYPE_LABEL	0
 #define P15_ATTR_TYPE_ID	1
+#define P15_ATTR_TYPE_VALUE	2
 
 
 extern struct	sc_pkcs15_object *sc_pkcs15init_new_object(int, const char *,
