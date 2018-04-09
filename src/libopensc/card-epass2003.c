@@ -2696,6 +2696,7 @@ epass2003_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries
 
 			data->pin1.max_tries = maxtries;
 		}
+//reomve below code, because the old implement only return PIN retries, now modify the code and return PIN status
 //		return r;
 	}
 	else if (data->cmd == SC_PIN_CMD_UNBLOCK) { /* verify */
