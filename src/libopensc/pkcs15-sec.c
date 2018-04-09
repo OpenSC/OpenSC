@@ -456,6 +456,15 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	r = use_key(p15card, obj, &senv, sc_compute_signature, tmp, inlen,
 			out, outlen);
 	LOG_TEST_RET(ctx, r, "use_key() failed");
+
+	/* Some cards may return RSA signature as integer without leading zero bytes */
+	/* Already know outlen >= modlen and r >= 0 */
+	if (obj->type == SC_PKCS15_TYPE_PRKEY_RSA && (unsigned)r < modlen) {
+		memmove(out + modlen - r, out, r);
+		memset(out, 0, modlen - r);
+		r = modlen;
+	}
+
 	sc_mem_clear(buf, sizeof(buf));
 
 	LOG_FUNC_RETURN(ctx, r);
