@@ -263,10 +263,6 @@ app default {
 		#
 		# flags = "rng", "keep_alive", "0x80000000";
 
-		# Enable pkcs11 initialization.
-		# Default: no
-		# pkcs11_enable_InitToken = yes;
-
 		#
 		# Context: PKCS#15 emulation layer
 		#
@@ -951,6 +947,10 @@ app default {
 			# The location of the driver library
 			# module = @LIBDIR@@LIB_PRE@p15emu_custom@DYN_LIB_EXT@;
 		# }
+
+		# Enable initialization and card recognition in PKCS#11 layer.
+		# Default: no
+		# pkcs11_enable_InitToken = yes;
 
 		# some additional application parameters:
 		# - type (generic, protected) used to distinguish the common access application
