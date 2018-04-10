@@ -1485,11 +1485,6 @@ static int cac_process_ACA(sc_card_t *card, cac_private_data_t *priv)
 	//r = cac_parse_ACA(card, priv, tl, tl_len, val, val_len);
 	r = cac_find_first_pki_applet(card, &index);
         if (r == SC_SUCCESS) {
-		priv = cac_new_private_data();
-		if (!priv) {
-			r = SC_ERROR_OUT_OF_MEMORY;
-			goto done;
-		}
 		r = cac_populate_cac_1(card, index, priv);
 		if (r == SC_SUCCESS) {
 			priv->aca_path = malloc(sizeof(sc_path_t));
@@ -1544,6 +1539,14 @@ static int cac_find_and_initialize(sc_card_t *card, int initialize)
 	r = cac_select_ACA(card);
 	if (r == SC_SUCCESS) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "ACA found, is CAC-2 without CCC");
+		if (!initialize) /* match card only */
+			return r;
+
+		if (!priv) {
+			priv = cac_new_private_data();
+			if (!priv)
+				return SC_ERROR_OUT_OF_MEMORY;
+		}
 		r = cac_process_ACA(card, priv);
 		if (r == SC_SUCCESS) {
 			card->type = SC_CARD_TYPE_CAC_II;
