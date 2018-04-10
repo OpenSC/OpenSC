@@ -1297,9 +1297,14 @@ static int cac_parse_CCC(sc_card_t *card, cac_private_data_t *priv, u8 *tl,
 				return r;
 			break;
 		case CAC_TAG_CC_VERSION_NUMBER:
+			/* ignore the version numbers for now */
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
+				"TAG:CC Version = 0x%02x", *val);
+			break;
 		case CAC_TAG_GRAMMAR_VERION_NUMBER:
 			/* ignore the version numbers for now */
-			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"TAG:Version");
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
+				"TAG:Grammar Version = 0x%02x", *val);
 			break;
 		case CAC_TAG_CARDURL:
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"TAG:CARDURL");
@@ -1311,9 +1316,10 @@ static int cac_parse_CCC(sc_card_t *card, cac_private_data_t *priv, u8 *tl,
 		 * The following are really for file systems cards. This code only cares about CAC VM cards
 		 */
 		case CAC_TAG_PKCS15:
-			/* should verify that this is '0'. If it's not zero, we should drop out of here and
-			 * 	let the PKCS 15 code handle this card */
-			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"TAG:PKCS5");
+			/* TODO should verify that this is '0'. If it's not
+			 * zero, we should drop out of here and let the PKCS 15
+			 * code handle this card */
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"TAG:PKCS15 = 0x%02x", *val);
 			break;
 		case CAC_TAG_DATA_MODEL:
 		case CAC_TAG_CARD_APDU:
@@ -1324,8 +1330,8 @@ static int cac_parse_CCC(sc_card_t *card, cac_private_data_t *priv, u8 *tl,
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"TAG:FSSpecific(0x%x)", tag);
 			break;
 		case CAC_TAG_ACCESS_CONTROL:
-			/* handle access control later */
-			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"TAG:ACCESS Control");
+			/* TODO handle access control later */
+			sc_log_hex(card->ctx, "TAG:ACCESS Control", val, len);
 			break;
 		case CAC_TAG_NEXT_CCC:
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"TAG:NEXT CCC");
