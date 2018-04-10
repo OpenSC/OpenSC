@@ -1806,14 +1806,13 @@ pkcs15_initialize(struct sc_pkcs11_slot *slot, void *ptr,
 {
 	struct sc_pkcs11_card *p11card = slot->p11card;
 	struct sc_cardctl_pkcs11_init_token args;
-	scconf_block *atrblock = NULL;
+	scconf_block *conf_block = NULL;
 	int rc, enable_InitToken = 0;
 	CK_RV rv;
 
 	sc_log(context, "Get 'enable-InitToken' card configuration option");
-	atrblock = sc_match_atr_block(p11card->card->ctx, NULL, &p11card->reader->atr);
-	if (atrblock)
-		enable_InitToken = scconf_get_bool(atrblock, "pkcs11_enable_InitToken", 0);
+	conf_block = sc_get_conf_block(p11card->card->ctx, "framework", "pkcs15", 1);
+	enable_InitToken = scconf_get_bool(conf_block, "pkcs11_enable_InitToken", 0);
 
 	memset(&args, 0, sizeof(args));
 	args.so_pin = pPin;

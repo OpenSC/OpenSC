@@ -302,12 +302,17 @@ again:
 		sc_log(context, "%s: Detected framework %d. Creating tokens.", reader->name, i);
 		/* Bind 'generic' application or (emulated?) card without applications */
 		if (app_generic || !p11card->card->app_count)   {
-			scconf_block *atrblock = NULL;
+			scconf_block *conf_block = NULL;
 			int enable_InitToken = 0;
 
-			atrblock = sc_match_atr_block(p11card->card->ctx, NULL, &p11card->reader->atr);
-			if (atrblock)
-				enable_InitToken = scconf_get_bool(atrblock, "pkcs11_enable_InitToken", 0);
+			conf_block = sc_match_atr_block(p11card->card->ctx, NULL,
+				&p11card->reader->atr);
+			if (!conf_block) /* check default block */
+				conf_block = sc_get_conf_block(context,
+					"framework", "pkcs15", 1);
+
+			enable_InitToken = scconf_get_bool(conf_block,
+				"pkcs11_enable_InitToken", 0);
 
 			sc_log(context, "%s: Try to bind 'generic' token.", reader->name);
 			rv = frameworks[i]->bind(p11card, app_generic);
