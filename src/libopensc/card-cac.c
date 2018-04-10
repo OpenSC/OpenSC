@@ -73,6 +73,7 @@
 /* TAGS in a TL file */
 #define CAC_TAG_CERTIFICATE           0x70
 #define CAC_TAG_CERTINFO              0x71
+#define CAC_TAG_MSCUID                0x72
 #define CAC_TAG_CUID                  0xF0
 #define CAC_TAG_CC_VERSION_NUMBER     0xF1
 #define CAC_TAG_GRAMMAR_VERION_NUMBER 0xF2
@@ -696,6 +697,9 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 				if ((len >= 1) && (val_len >=1)) {
 					cert_type = *val_ptr;
 				}
+			}
+			if (tag == CAC_TAG_MSCUID) {
+				sc_log_hex(card->ctx, "MSCUID", val_ptr, len);
 			}
 			if ((val_len < len) || (tl_len < tl_head_len)) {
 				break;
