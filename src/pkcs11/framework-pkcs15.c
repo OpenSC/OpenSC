@@ -4257,6 +4257,16 @@ pkcs15_dobj_get_value(struct sc_pkcs11_session *session,
 
 	if (!out_data)
 		return SC_ERROR_INVALID_ARGUMENTS;
+	if (dobj->info->data.len == 0)
+	/* CKA_VALUE is empty */
+	{
+		struct sc_pkcs15_data *data = calloc(sizeof(struct sc_pkcs15_data), 1);
+		data->data_len = 0;
+		data->data = NULL;
+		*out_data = data;
+		return SC_SUCCESS;
+	}
+
 	fw_data = (struct pkcs15_fw_data *) p11card->fws_data[session->slot->fw_data_idx];
 	if (!fw_data)
 		return sc_to_cryptoki_error(SC_ERROR_INTERNAL, "C_GetAttributeValue");
@@ -4281,6 +4291,14 @@ data_value_to_attr(CK_ATTRIBUTE_PTR attr, struct sc_pkcs15_data *data)
 	if (!attr || !data)
 		return CKR_ATTRIBUTE_VALUE_INVALID;
 
+
+	if (data->data_len == 0)
+	/* value is empty */
+	{
+		attr->ulValueLen = data->data_len;
+		attr->pValue = NULL_PTR;
+		return CKR_OK;
+	}
 	sc_log(context,
 	       "data_value_to_attr(): data(%p,len:%"SC_FORMAT_LEN_SIZE_T"u)",
 	       data, data->data_len);
@@ -4362,7 +4380,8 @@ pkcs15_dobj_get_attribute(struct sc_pkcs11_session *session, void *object, CK_AT
 		if (rv == CKR_OK)
 			rv = data_value_to_attr(attr, data);
 		if (data) {
-			free(data->data);
+			if (data->data)
+				free(data->data);
 			free(data);
 		}
 		if (rv != CKR_OK)
