@@ -1582,20 +1582,9 @@ epass2003_set_security_env(struct sc_card *card, const sc_security_env_t * env, 
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	exdata = (epass2003_exdata *)card->drv_data;
-	exdata->currAlg = SC_ALGORITHM_RSA;   //default algorithm
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0x41, 0);
-	switch (env->operation) {
-	case SC_SEC_OPERATION_DECIPHER:
-		apdu.p2 = 0xB8;
-		break;
-	case SC_SEC_OPERATION_SIGN:
-		apdu.p2 = 0xB8;
-		break;
-	default:
-		return SC_ERROR_INVALID_ARGUMENTS;
-	}
-
+    
 	p = sbuf;
 	*p++ = 0x80;		/* algorithm reference */
 	*p++ = 0x01;
@@ -1632,6 +1621,16 @@ epass2003_set_security_env(struct sc_card *card, const sc_security_env_t * env, 
 			sc_log(card->ctx, "%0x Alg Not Support! ", env->algorithm_flags);
 			goto err;
 		}
+	}
+	else if(env->algorithm == SC_ALGORITHM_RSA)
+	{
+		exdata->currAlg = SC_ALGORITHM_RSA; 
+		apdu.p2 = 0xB8;
+		sc_log(card->ctx, "setenv RSA Algorithm alg_flags = %0x\n",env->algorithm_flags);
+	}
+	else
+	{
+		sc_log(card->ctx, "%0x Alg Not Support! ", env->algorithm);
 	}
 
 	if (se_num > 0) {
@@ -1697,7 +1696,8 @@ static int epass2003_decipher(struct sc_card *card, const u8 * data, size_t data
 	{
 		if(exdata->ecAlgFlags | SC_ALGORITHM_ECDSA_HASH_SHA1)
 		{
-			hash_data(data, datalen, sbuf, SC_ALGORITHM_ECDSA_HASH_SHA1);
+			r = hash_data(data, datalen, sbuf, SC_ALGORITHM_ECDSA_HASH_SHA1);
+			LOG_TEST_RET(card->ctx, r, "hash_data failed"); 
 			sc_format_apdu(card, &apdu, SC_APDU_CASE_3,0x2A, 0x9E, 0x9A);
 			apdu.data = sbuf;
 			apdu.lc = 0x14;
@@ -1705,7 +1705,8 @@ static int epass2003_decipher(struct sc_card *card, const u8 * data, size_t data
 		}
 		else if (exdata->ecAlgFlags | SC_ALGORITHM_ECDSA_HASH_SHA256)
 		{
-			hash_data(data, datalen, sbuf, SC_ALGORITHM_ECDSA_HASH_SHA256);
+			r = hash_data(data, datalen, sbuf, SC_ALGORITHM_ECDSA_HASH_SHA256);
+			LOG_TEST_RET(card->ctx, r, "hash_data failed");
 			sc_format_apdu(card, &apdu, SC_APDU_CASE_3,0x2A, 0x9E, 0x9A);
 			apdu.data = sbuf;
 			apdu.lc = 0x20;
@@ -1728,15 +1729,30 @@ static int epass2003_decipher(struct sc_card *card, const u8 * data, size_t data
 		}
 		LOG_FUNC_RETURN(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2));
 	}
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_EXT, 0x2A, 0x80, 0x86);
-	apdu.resp = rbuf;
-	apdu.resplen = sizeof(rbuf);
-	apdu.le = 256;
+	else if(exdata->currAlg == SC_ALGORITHM_RSA)
+	{
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_4_EXT, 0x2A, 0x80, 0x86);
+		apdu.resp = rbuf;
+		apdu.resplen = sizeof(rbuf);
+		apdu.le = 0;
 
-	memcpy(sbuf, data, datalen);
-	apdu.data = sbuf;
-	apdu.lc = datalen;
-	apdu.datalen = datalen;
+		memcpy(sbuf, data, datalen);
+		apdu.data = sbuf;
+		apdu.lc = datalen;
+		apdu.datalen = datalen;
+	}
+	else
+	{
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_4_EXT, 0x2A, 0x80, 0x86);
+		apdu.resp = rbuf;
+		apdu.resplen = sizeof(rbuf);
+		apdu.le = 256;
+
+		memcpy(sbuf, data, datalen);
+		apdu.data = sbuf;
+		apdu.lc = datalen;
+		apdu.datalen = datalen;
+	}
 
 	r = sc_transmit_apdu_t(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
@@ -2680,13 +2696,17 @@ epass2003_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries
 
 			data->pin1.max_tries = maxtries;
 		}
-
-		return r;
+//reomve below code, because the old implement only return PIN retries, now modify the code and return PIN status
+//		return r;
 	}
-	/* verify */
-	if (data->cmd == SC_PIN_CMD_UNBLOCK) {
+	else if (data->cmd == SC_PIN_CMD_UNBLOCK) { /* verify */
 		r = external_key_auth(card, (kid + 1), (unsigned char *)data->pin1.data,
 				data->pin1.len);
+		LOG_TEST_RET(card->ctx, r, "verify pin failed");
+	}
+	else if (data->cmd == SC_PIN_CMD_CHANGE || data->cmd == SC_PIN_CMD_UNBLOCK) { /* change */
+		r = update_secret_key(card, 0x04, kid, data->pin2.data,
+				(unsigned long)data->pin2.len);
 		LOG_TEST_RET(card->ctx, r, "verify pin failed");
 	}
 	else {
@@ -2699,13 +2719,11 @@ epass2003_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries
 	}
 	LOG_TEST_RET(card->ctx, r, "verify pin failed");
 
-
-	if (data->cmd == SC_PIN_CMD_CHANGE || data->cmd == SC_PIN_CMD_UNBLOCK) {
-		/* change */
-		r = update_secret_key(card, 0x04, kid, data->pin2.data,
-				(unsigned long)data->pin2.len);
-		LOG_TEST_RET(card->ctx, r, "verify pin failed");
+	if (r == SC_SUCCESS)
+	{
+		data->pin1.logged_in = SC_PIN_STATE_LOGGED_IN;
 	}
+
 	return r;
 }
 
