@@ -559,4 +559,26 @@
 			</variablelist>
 		</para>
 	</refsect1>
+
+	<refsect1>
+		<title>Examples</title>
+		<para>
+			To list all certificates on the smart card:
+				<programlisting>pkcs11-tool --list-objects --type cert</programlisting>
+
+			To read the certificate with ID <replaceable>KEY_ID</replaceable>
+			in DER format from smart card:
+				<programlisting>pkcs11-tool --read-object  --id KEY_ID --type cert --outfile cert.der</programlisting>
+
+			To convert the certificate in DER formato to PEM format, use OpenSSL
+			tools:
+				<programlisting>openssl x509 -inform DER -in cert.der -outform PEM > cert.pem</programlisting>
+
+			To sign some data stored in file <replaceable>data</replaceable>
+			using the private key with ID <replaceable>ID</replaceable> and
+			using the RSA-PKCS mechanism:
+				<programlisting>pkcs11-tool --sign --id ID --mechanism RSA-PKCS --input-file data --output-file data.sig</programlisting>
+		</para>
+	</refsect1>
+
 </refentry>
