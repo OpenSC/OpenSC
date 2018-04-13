@@ -1094,6 +1094,15 @@ static int coolkey_select_applet(sc_card_t *card)
 			&aid[0], sizeof(aid), NULL, NULL,  NULL, 0);
 }
 
+/* select the gp card manager */
+static int coolkey_select_card_mgr(sc_card_t *card)
+{
+	u8 aid[] = { 0xa0, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00 };
+	return coolkey_apdu_io(card, ISO7816_CLASS, ISO7816_INS_SELECT_FILE, 4, 0,
+			&aid[0], sizeof(aid), NULL, NULL,  NULL, 0);
+}
+
+
 static void
 coolkey_make_cuid_from_cplc(coolkey_cuid_t *cuid, global_platform_cplc_data_t *cplc_data)
 {
@@ -1951,7 +1960,7 @@ static int coolkey_select_file(sc_card_t *card, const sc_path_t *in_path, sc_fil
 		*file_out = file;
 	}
 
-    return SC_SUCCESS;
+	return SC_SUCCESS;
 }
 
 static int coolkey_finish(sc_card_t *card)
@@ -2144,12 +2153,6 @@ static int coolkey_initialize(sc_card_t *card)
 	if (card->drv_data) {
 		return SC_SUCCESS;
 	}
-
-	/* Select a coolkey read the coolkey objects out */
-	r = coolkey_select_applet(card);
-	if (r < 0) {
-		return r;
-	}
 	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"Coolkey Applet found");
 
 	priv = coolkey_new_private_data();
@@ -2161,6 +2164,13 @@ static int coolkey_initialize(sc_card_t *card)
 	if (r < 0) {
 		goto cleanup;
 	}
+
+	/* Select a coolkey read the coolkey objects out */
+	r = coolkey_select_applet(card);
+	if (r < 0) {
+		return r;
+	}
+
 	priv->protocol_version_major = life_cycle.protocol_version_major;
 	priv->protocol_version_minor = life_cycle.protocol_version_minor;
 	priv->pin_count = life_cycle.pin_count;
@@ -2211,6 +2221,14 @@ static int coolkey_initialize(sc_card_t *card)
 	/* if we didn't pull the cuid from the combined object, then grab it now */
 	if (!combined_processed) {
 		global_platform_cplc_data_t cplc_data;
+		/* select the card manager, because a card with applet only will have
+		   already selected the coolkey applet */
+
+		r = coolkey_select_card_mgr(card);
+		if (r < 0) {
+			goto cleanup;
+		}
+
 		r = coolkey_get_cplc_data(card, &cplc_data);
 		if (r < 0) {
 			goto cleanup;
