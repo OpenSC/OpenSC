@@ -1431,11 +1431,9 @@ int cwa_encode_apdu(sc_card_t * card,
 		   sizeof(u8));
 	ccbuf = calloc(MAX(SC_MAX_APDU_BUFFER_SIZE, 20 + from->datalen),
 		   sizeof(u8));
-	if (!to->resp) {
-		/* if no response create a buffer for the encoded response */
-		to->resp = calloc(MAX_RESP_BUFFER_SIZE, sizeof(u8));
-		to->resplen = MAX_RESP_BUFFER_SIZE;
-	}
+	/* always create a new buffer for the encoded response */
+	to->resp = calloc(MAX_RESP_BUFFER_SIZE, sizeof(u8));
+	to->resplen = MAX_RESP_BUFFER_SIZE;
 	if (!apdubuf || !ccbuf || (!from->resp && !to->resp)) {
 		res = SC_ERROR_OUT_OF_MEMORY;
 		goto err;

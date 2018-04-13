@@ -760,15 +760,23 @@ static int dnie_sm_free_wrapped_apdu(struct sc_card *card,
 
 	if ((*sm_apdu) != plain) {
 		rv = cwa_decode_response(card, provider, *sm_apdu);
-		if (plain) {
-			plain->resplen = (*sm_apdu)->resplen;
+		if (plain && rv == SC_SUCCESS) {
+			if (plain->resp) {
+				/* copy the response into the original resp buffer */
+				if ((*sm_apdu)->resplen <= plain->resplen) {
+					memcpy(plain->resp, (*sm_apdu)->resp, (*sm_apdu)->resplen);
+					plain->resplen = (*sm_apdu)->resplen;
+				} else {
+					sc_log(card->ctx, "Invalid initial length, needed %lu bytes but has %lu",
+							(*sm_apdu)->resplen, plain->resplen);
+					rv = SC_ERROR_BUFFER_TOO_SMALL;
+				}
+			}
 			plain->sw1 = (*sm_apdu)->sw1;
 			plain->sw2 = (*sm_apdu)->sw2;
-			if (((*sm_apdu)->data) != plain->data)
-				free((unsigned char *) (*sm_apdu)->data);
-			if ((*sm_apdu)->resp != plain->resp)
-				free((*sm_apdu)->resp);
 		}
+		free((unsigned char *) (*sm_apdu)->data);
+		free((*sm_apdu)->resp);
 		free(*sm_apdu);
 	}
 	*sm_apdu = NULL;
