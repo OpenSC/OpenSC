@@ -6,7 +6,7 @@ define([PRODUCT_NAME], [OpenSC])
 define([PRODUCT_TARNAME], [opensc])
 define([PRODUCT_BUGREPORT], [https://github.com/OpenSC/OpenSC/issues])
 define([PACKAGE_VERSION_MAJOR], [0])
-define([PACKAGE_VERSION_MINOR], [17])
+define([PACKAGE_VERSION_MINOR], [18])
 define([PACKAGE_VERSION_FIX], [0])
 define([PACKAGE_SUFFIX], [])
 
@@ -43,8 +43,8 @@ OPENSC_VS_FF_PRODUCT_URL="VS_FF_PRODUCT_URL"
 #   (Code changed:                      REVISION++)
 #   (Oldest interface removed:          OLDEST++)
 #   (Interfaces added:                  CURRENT++, REVISION=0)
-OPENSC_LT_CURRENT="5"
-OPENSC_LT_OLDEST="5"
+OPENSC_LT_CURRENT="6"
+OPENSC_LT_OLDEST="6"
 OPENSC_LT_REVISION="0"
 OPENSC_LT_AGE="0"
 OPENSC_LT_AGE="$((${OPENSC_LT_CURRENT}-${OPENSC_LT_OLDEST}))"

@@ -20,8 +20,8 @@ install:
         throw "There are newer queued builds for this pull request, failing early." }
   - date /T & time /T
   - set PATH=C:\cygwin\bin;%PATH%
-  - set OPENPACE_VER=1.0.2
-  - set ZLIB_VER_DOT=1.2.8
+  - set OPENPACE_VER=1.0.3
+  - set ZLIB_VER_DOT=1.2.11
   - ps: $env:PACKAGE_NAME=(git describe --tags)
   - ps: >-
       If ($env:Platform -Match "x86") {
