@@ -89,7 +89,7 @@ option "x509-dir"        -
     default="@X509DIR@"
     optional
 option "disable-ta-checks"   -
-    "Disable checking the validity period of CV certifcates"
+    "Disable checking the validity period of CV certificates"
     flag off
 option "disable-ca-checks"   -
     "Disable passive authentication"

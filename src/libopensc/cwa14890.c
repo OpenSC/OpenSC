@@ -51,7 +51,7 @@
  * according to iso7816-4 sect 5.2.2.
  *
  * Notice that current implementation does not handle properly
- * multibyte tag id. Just asume that tag is 1-byte length
+ * multibyte tag id. Just assume that tag is 1-byte length
  * Also, encodings for data length longer than 0x01000000 bytes
  * are not supported (tag 0x84)
  */
@@ -135,7 +135,7 @@ static int cwa_increase_ssc(sc_card_t * card)
  *
  * Adds an 0x80 at the end of buffer and as many zeroes to get len 
  * multiple of 8
- * Buffer must be long enougth to store additional bytes
+ * Buffer must be long enough to store additional bytes
  *
  * @param buffer where to compose data
  * @param len pointer to buffer length
@@ -151,10 +151,10 @@ static void cwa_iso7816_padding(u8 * buf, size_t * buflen)
 /**
  * compose a BER-TLV data in provided buffer.
  *
- * Multybyte tag id are not supported
+ * Multibyte tag id are not supported
  * Also multibyte id 0x84 is unhandled
  *
- * Notice that TLV is composed starting at offset lenght from
+ * Notice that TLV is composed starting at offset length from
  * the buffer. Consecutive calls to cwa_add_tlv, appends a new
  * TLV at the end of the buffer
  *
@@ -176,7 +176,7 @@ static int cwa_compose_tlv(sc_card_t * card,
 	/* preliminary checks */
 	if (!card || !card->ctx || !out || !outlen)
 		return SC_ERROR_INVALID_ARGUMENTS;
-	/* comodity vars */
+	/* commodity vars */
 	ctx = card->ctx;
 
 	LOG_FUNC_CALLED(ctx);
@@ -215,7 +215,7 @@ static int cwa_compose_tlv(sc_card_t * card,
  * Parse and APDU Response and extract specific BER-TLV data.
  *
  * NOTICE that iso7816 sect 5.2.2 states that Tag length may be 1 to n bytes
- * length. In this code we'll assume allways tag lenght = 1 byte
+ * length. In this code we'll assume always tag length = 1 byte
  *
  * FIXME use `sc_asn1_read_tag` or similar instead
  *
@@ -237,7 +237,7 @@ static int cwa_parse_tlv(sc_card_t * card,
 	/* preliminary checks */
 	if (!card || !card->ctx)
 		return SC_ERROR_INVALID_ARGUMENTS;
-	/* comodity vars */
+	/* commodity vars */
 	ctx = card->ctx;
 
 	LOG_FUNC_CALLED(ctx);
@@ -316,11 +316,11 @@ static int cwa_parse_tlv(sc_card_t * card,
  *
  * This routine uses Root CA public key data From Annex III of manual
  * to verify intermediate CA icc certificate provided by card
- * if verify sucess, then extract public keys from intermediate CA
+ * if verify success, then extract public keys from intermediate CA
  * and verify icc certificate
  *
  * @param card pointer to sc_card_contex
- * @param sub_ca_cert icc intermediate CA certificate readed from card
+ * @param sub_ca_cert icc intermediate CA certificate read from card
  * @param icc_ca icc certificate from card
  * @return SC_SUCCESS if verification is ok; else error code
  */
@@ -421,8 +421,8 @@ static int cwa_verify_cvc_certificate(sc_card_t * card,
 /**
  * Alternate implementation for set_security environment.
  *
- * Used to handle raw apdu data in set_security_env() on SM stblishment
- * Standard set_securiy_env() method has sc_security_env->buffer limited
+ * Used to handle raw apdu data in set_security_env() on SM establishment
+ * Standard set_security_env() method has sc_security_env->buffer limited
  * to 8 bytes; so cannot send some of required SM commands.
  *
  * @param card pointer to card data 
@@ -941,7 +941,7 @@ static int cwa_verify_internal_auth(sc_card_t * card,
 	}
 	len2 = BN_bn2bin(sigbn, buf2);	/* copy result to buffer */
 	if (len2 <= 0) {
-		msg = "Verify Signature: cannot conver bignum to buffer";
+		msg = "Verify Signature: cannot convert bignum to buffer";
 		res = SC_ERROR_INTERNAL;
 		goto verify_internal_done;
 	}
@@ -982,11 +982,11 @@ static int cwa_verify_internal_auth(sc_card_t * card,
 /**
  * Create Secure Messaging channel.
  *
- * This is the main entry point for CWA14890 SM chanel creation.
+ * This is the main entry point for CWA14890 SM channel creation.
  * It closely follows cwa standard, with a minor modification:
- * - ICC serial number is taken at the begining of SM creation
+ * - ICC serial number is taken at the beginning of SM creation
  * - ICC and IFD certificate agreement process is reversed, to allow
- * card to retain key references on further proccess (this behavior
+ * card to retain key references on further process (this behavior
  * is also defined in standard)
  *
  * Based on Several documents:
@@ -1029,7 +1029,7 @@ int cwa_create_secure_channel(sc_card_t * card,
 		return SC_ERROR_INVALID_ARGUMENTS;
 	if (!provider)
 		return SC_ERROR_SM_NOT_INITIALIZED;
-	/* comodity vars */
+	/* commodity vars */
 	ctx = card->ctx;
 
 	LOG_FUNC_CALLED(ctx);
@@ -1085,7 +1085,7 @@ int cwa_create_secure_channel(sc_card_t * card,
 	/* Read Intermediate CA from card */
 	if (!provider->cwa_get_icc_intermediate_ca_cert) {
 		sc_log(ctx,
-		       "Step 8.4.1.6: Skip Retrieveing ICC intermediate CA");
+		       "Step 8.4.1.6: Skip Retrieving ICC intermediate CA");
 		ca_cert = NULL;
 	} else {
 		sc_log(ctx, "Step 8.4.1.7: Retrieving ICC intermediate CA");
@@ -1187,7 +1187,7 @@ int cwa_create_secure_channel(sc_card_t * card,
 	res = cwa_compose_tlv(card, 0x83, bufferlen, buffer, &tlv, &tlvlen);
 	if (res != SC_SUCCESS) {
 		msg =
-		    "Cannot compose tlv for setting intermeditate CA key reference";
+		    "Cannot compose tlv for setting intermediate CA key reference";
 		goto csc_end;
 	}
 	res = cwa_set_security_env(card, 0x81, 0xB6, tlv, tlvlen);
@@ -1196,7 +1196,7 @@ int cwa_create_secure_channel(sc_card_t * card,
 		goto csc_end;
 	}
 
-	/* Send IFD certiticate in CVC format C_CV_IFD */
+	/* Send IFD certificate in CVC format C_CV_IFD */
 	sc_log(ctx,
 	       "Step 8.4.1.5: Send CVC IFD Certificate for ICC verification");
 	res = provider->cwa_get_cvc_ifd_cert(card, &cert, &certlen);
@@ -1475,7 +1475,7 @@ int cwa_encode_apdu(sc_card_t * card,
 
 		/* start kriptbuff with iso padding indicator */
 		*cryptbuf = 0x01;
-		/* aply TDES + CBC with kenc and iv=(0,..,0) */
+		/* apply TDES + CBC with kenc and iv=(0,..,0) */
 		DES_ede3_cbc_encrypt(msgbuf, cryptbuf + 1, dlen, &k1, &k2, &k1,
 				     &iv, DES_ENCRYPT);
 		/* compose data TLV and add to result buffer */
@@ -1536,7 +1536,7 @@ int cwa_encode_apdu(sc_card_t * card,
 
 	/* compose and add computed MAC TLV to result buffer */
 	tlv_len = (card->atr.value[15] >= DNIE_30_VERSION)? 8 : 4;
-	sc_log(ctx, "Using TLV lenght: %"SC_FORMAT_LEN_SIZE_T"u", tlv_len);
+	sc_log(ctx, "Using TLV length: %"SC_FORMAT_LEN_SIZE_T"u", tlv_len);
 	res = cwa_compose_tlv(card, 0x8E, tlv_len, macbuf, &apdubuf, &apdulen);
 	if (res != SC_SUCCESS) {
 		msg = "Encode APDU compose_tlv(0x87) failed";

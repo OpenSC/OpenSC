@@ -2197,7 +2197,7 @@ authentic_sm_free_wrapped_apdu(struct sc_card *card, struct sc_apdu *plain, stru
 
         if (plain)   {
 		if (plain->resplen < (*sm_apdu)->resplen)
-			LOG_TEST_RET(ctx, SC_ERROR_BUFFER_TOO_SMALL, "Unsufficient plain APDU response size");
+			LOG_TEST_RET(ctx, SC_ERROR_BUFFER_TOO_SMALL, "Insufficient plain APDU response size");
 		memcpy(plain->resp, (*sm_apdu)->resp, (*sm_apdu)->resplen);
 		plain->resplen = (*sm_apdu)->resplen;
 		plain->sw1 = (*sm_apdu)->sw1;

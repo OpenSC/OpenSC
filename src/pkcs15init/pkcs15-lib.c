@@ -803,7 +803,7 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 
 		sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PUK, &puk_ainfo);
 		r = sc_pkcs15init_qualify_pin(card, "SO PUK", args->so_puk_len, &puk_ainfo);
-		LOG_TEST_RET(ctx, r, "Failed to qulify SO PUK");
+		LOG_TEST_RET(ctx, r, "Failed to qualify SO PUK");
 
 		if (!(pin_label = args->so_pin_label)) {
 			if (pin_attrs->flags & SC_PKCS15_PIN_FLAG_SO_PIN)
@@ -2617,7 +2617,7 @@ sc_pkcs15init_select_intrinsic_id(struct sc_pkcs15_card *p15card, struct sc_prof
 	if (id_out->len)
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 
-	/* Native ID style is not intrisic one */
+	/* Native ID style is not intrinsic one */
 	if (id_style == SC_PKCS15INIT_ID_STYLE_NATIVE)
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 
@@ -2643,7 +2643,7 @@ sc_pkcs15init_select_intrinsic_id(struct sc_pkcs15_card *p15card, struct sc_prof
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 	}
 
-	/* Skip silently if key is not inintialized. */
+	/* Skip silently if key is not initialized. */
 	if (pubkey->algorithm == SC_ALGORITHM_RSA && !pubkey->u.rsa.modulus.len)
 		goto done;
 	else if (pubkey->algorithm == SC_ALGORITHM_DSA && !pubkey->u.dsa.pub.data)
@@ -3772,7 +3772,7 @@ found:
  *
  * In the latter case, there's a problem here if e.g. the SO PIN
  * defined by the profile is optional, and hasn't been set.
- * On the orther hands, some cards do not return access conditions
+ * On the other hands, some cards do not return access conditions
  * in their response to SELECT FILE), so the latter case has been
  * used in most cards while the first case was added much later.
  */

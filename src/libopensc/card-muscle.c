@@ -241,7 +241,7 @@ static int muscle_update_binary(sc_card_t *card, unsigned int idx, const u8* buf
 		if(buffer == NULL) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
 
 		r = msc_read_object(card, objectId, 0, buffer, file->size);
-		/* TODO: RETREIVE ACLS */
+		/* TODO: RETRIEVE ACLS */
 		if(r < 0) goto update_bin_free_buffer;
 		r = msc_delete_object(card, objectId, 0);
 		if(r < 0) goto update_bin_free_buffer;
@@ -602,7 +602,7 @@ static int muscle_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *cmd,
 
 static int muscle_card_extract_key(sc_card_t *card, sc_cardctl_muscle_key_info_t *info)
 {
-	/* CURRENTLY DONT SUPPOT EXTRACTING PRIVATE KEYS... */
+	/* CURRENTLY DONT SUPPORT EXTRACTING PRIVATE KEYS... */
 	switch(info->keyType) {
 	case 1: /* RSA */
 		return msc_extract_rsa_public_key(card,
@@ -618,7 +618,7 @@ static int muscle_card_extract_key(sc_card_t *card, sc_cardctl_muscle_key_info_t
 
 static int muscle_card_import_key(sc_card_t *card, sc_cardctl_muscle_key_info_t *info)
 {
-	/* CURRENTLY DONT SUPPOT EXTRACTING PRIVATE KEYS... */
+	/* CURRENTLY DONT SUPPORT EXTRACTING PRIVATE KEYS... */
 	switch(info->keyType) {
 	case 0x02: /* RSA_PRIVATE */
 	case 0x03: /* RSA_PRIVATE_CRT */
@@ -721,7 +721,7 @@ static int muscle_decipher(sc_card_t * card,
 	u8 key_id;
 	int r;
 
-	/* saniti check */
+	/* sanity check */
 	if (priv->env.operation != SC_SEC_OPERATION_DECIPHER)
 		return SC_ERROR_INVALID_ARGUMENTS;
 

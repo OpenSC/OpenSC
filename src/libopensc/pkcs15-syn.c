@@ -116,7 +116,7 @@ sc_pkcs15_bind_synthetic(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
 	conf_block = sc_get_conf_block(ctx, "framework", "pkcs15", 1);
 
 	if (!conf_block) {
-		/* no conf file found => try bultin drivers  */
+		/* no conf file found => try builtin drivers  */
 		sc_log(ctx, "no conf file (or section), trying all builtin emulators");
 		for (i = 0; builtin_emulators[i].name; i++) {
 			sc_log(ctx, "trying %s", builtin_emulators[i].name);

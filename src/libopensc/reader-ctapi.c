@@ -141,7 +141,7 @@ static int refresh_attributes(sc_reader_t *reader)
 	} else {
 		if (rbuf[0] != CTBCS_P2_STATUS_ICC) {
 			/* Should we be more tolerant here? I do not think so... */
-			sc_log(reader->ctx, "Invalid data object returnd on CTBCS_P2_STATUS_ICC: 0x%x", rbuf[0]);
+			sc_log(reader->ctx, "Invalid data object returned on CTBCS_P2_STATUS_ICC: 0x%x", rbuf[0]);
 		return SC_ERROR_TRANSMIT_FAILED;
 		}
 		/* Fixme - should not be reached */
@@ -435,11 +435,11 @@ static int ctapi_load_module(sc_context_t *ctx,
 		if (rbuf[0] != CTBCS_P2_STATUS_TFU) {
 			/* Number of slots might also detected by using CTBCS_P2_STATUS_ICC.
 			   If you think that's important please do it... ;) */
-			sc_log(reader->ctx, "Invalid data object returnd on CTBCS_P2_STATUS_TFU: 0x%x", rbuf[0]);
+			sc_log(reader->ctx, "Invalid data object returned on CTBCS_P2_STATUS_TFU: 0x%x", rbuf[0]);
 		}
 		NumUnits = rbuf[1];
 		if (NumUnits + 4 > lr) {
-			sc_log(reader->ctx, "Invalid data returnd: %d functional units, size %d", NumUnits, rv);
+			sc_log(reader->ctx, "Invalid data returned: %d functional units, size %d", NumUnits, rv);
 		}
 		priv->ctapi_functional_units = 0;
 		for(i = 0; i < NumUnits; i++) {

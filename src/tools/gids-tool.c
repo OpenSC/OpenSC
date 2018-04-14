@@ -88,7 +88,7 @@ static const char *option_help[] = {
 	"Define serial number",
 	"Unblock the user PIN after an administrator authentication",
 	"Change the administrator key",
-	"Define the new adminastrator key",
+	"Define the new administrator key",
 	"Uses reader number <arg> [0]",
 	"Wait for a card to be inserted",
 	"Verbose operation. Use several times to enable debug output.",
@@ -241,7 +241,7 @@ static int unblock(sc_card_t* card, const char *so_pin, const char *user_pin) {
 		fprintf(stderr, "reset pin failed with %s\n", sc_strerror(r));
 		return -1;
 	}
-	printf("Unblock PIN done successfuly\n");
+	printf("Unblock PIN done successfully\n");
 	// the card should have deauthenticated the admin, but to be sure:
 	sc_logout(card);
 	return 0;

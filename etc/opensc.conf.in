@@ -51,7 +51,7 @@ app default {
 	# disable_popups = true;
 
 	# Enable default card driver
-	# Default card driver is explicitely enabled for the 'opensc-explorer' and 'opensc-tool'.
+	# Default card driver is explicitly enabled for the 'opensc-explorer' and 'opensc-tool'.
 	#
 	# Default: false
 	# enable_default_driver = true;
@@ -147,7 +147,7 @@ app default {
 	# statically linked drivers that may be removed in the future.
 	#
 	# A special value of 'internal' will load all
-	# statically linked drivers. If an unknown (ie. not
+	# statically linked drivers. If an unknown (i.e. not
 	# internal) driver is supplied, a separate configuration
 	# configuration block has to be written for the driver.
 	# Default: internal
@@ -982,8 +982,8 @@ app default {
 		# - type (generic, protected) used to distinguish the common access application
 		#   and application for which authentication to perform some operation cannot be
 		#   obtained with the common procedures (ex. object creation protected by secure messaging).
-		#   Used by PKCS#11 module configurated to expose restricted number of slots.
-		#   (for ex. configurated to expose only User PIN slot, User and Sign PINs slots, ...)
+		#   Used by PKCS#11 module configured to expose restricted number of slots.
+		#   (for ex. configured to expose only User PIN slot, User and Sign PINs slots, ...)
 		#
 		# - disable: do not expose application in PKCS15 framework
 		#            default 'false'
@@ -1071,7 +1071,7 @@ app opensc-pkcs11 {
 		# abusing an existing login or they may logout unnoticed.
 		#
 		# With this setting enabled the login state of the token is tracked and
-		# cached (including the PIN). Every transaction is preceeded by
+		# cached (including the PIN). Every transaction is preceded by
 		# restoring the login state.  After every transaction a logout is
 		# performed. This setting by default also enables `lock_login` (see
 		# above) to disable access for other applications during the atomic

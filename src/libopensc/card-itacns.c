@@ -510,7 +510,7 @@ static int itacns_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 	//Returned file->size should be 16. 
 	//We choose to not consider it as critical, because some cards 
 	//do not return FCI/FCP templates that include the file size.
-	//Notify abnormal lenght anyway.
+	//Notify abnormal length anyway.
 	if (len != 16) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, 
 				"Unexpected file length of EF_IDCarta (%lu)\n",

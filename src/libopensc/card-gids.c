@@ -117,7 +117,7 @@ static struct sc_card_driver gids_drv = {
 
 struct gids_aid {
 	int enumtag;
-	size_t len_short;	/* min lenght without version */
+	size_t len_short;	/* min length without version */
 	size_t len_long;	/* With version and other stuff */
 	u8 *value;
 };
@@ -393,7 +393,7 @@ static int gids_read_gidsfile(sc_card_t* card, char *directory, char *filename, 
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,r);
 }
 
-// check for the existance of a file
+// check for the existence of a file
 static int gids_does_file_exists(sc_card_t *card, char* directory, char* filename) {
 	struct gids_private_data* privatedata = (struct gids_private_data*) card->drv_data;
 	int fileIdentifier, dataObjectIdentifier;
@@ -1768,7 +1768,7 @@ static int gids_initialize(sc_card_t *card, sc_cardctl_gids_init_param_t* param)
 	u8 EveryoneReadAdminWriteAc[] = {0x62,0x0C,0x82,0x01,0x39,0x83,0x02,0xA0,0x12,0x8C,0x03,0x03,0x20,0x00};
 	u8 UserReadWriteAc[] = {0x62,0x0C,0x82,0x01,0x39,0x83,0x02,0xA0,0x13,0x8C,0x03,0x03,0x30,0x30};
 	u8 AdminReadWriteAc[] = {0x62,0x0C,0x82,0x01,0x39,0x83,0x02,0xA0,0x14,0x8C,0x03,0x03,0x20,0x20};
-	// File type=18=key file ; type = symetric key
+	// File type=18=key file ; type = symmetric key
 	u8 AdminKey[] = {0x62,0x1A,0x82,0x01,0x18,0x83,0x02,0xB0,0x80,0x8C,0x04,0x87,0x00,0x20,0xFF,0xA5,
 											0x0B,0xA4,0x09,0x80,0x01,0x02,0x83,0x01,0x80,0x95,0x01,0xC0};
 	// file used to store other file references. Format undocumented.

@@ -42,7 +42,7 @@ static struct sc_atr_table mcrd_atrs[] = {
 	  "D-Trust", SC_CARD_TYPE_MCRD_DTRUST, 0, NULL},
 	{"3b:ff:11:00:ff:80:b1:fe:45:1f:03:00:68:d2:76:00:00:28:ff:05:1e:31:80:00:90:00:a6", NULL,
 	  "D-Trust", SC_CARD_TYPE_MCRD_DTRUST, 0, NULL},
-	/* Certain pcsc-lite versions (1.5.3 for example on Ubuntu 10.04) incorrectly trunkate the wram ATR to the length of the cold ATR  */
+	/* Certain pcsc-lite versions (1.5.3 for example on Ubuntu 10.04) incorrectly truncate the warm ATR to the length of the cold ATR  */
 	/* See opensc.conf for further information */
 	{"3B:FE:94:00:FF:80:B1:FA:45:1F:03:45:73:74:45:49:44:20", NULL, "Broken EstEID 1.1 warm", SC_CARD_TYPE_MCRD_ESTEID_V11, 0, NULL},
 	{"3b:fe:94:00:ff:80:b1:fa:45:1f:03:45:73:74:45:49:44:20:76:65:72:20:31:2e:30:43", NULL, "EstEID 1.0 cold", SC_CARD_TYPE_MCRD_ESTEID_V10, 0, NULL},
@@ -517,7 +517,7 @@ static int load_special_files(sc_card_t * card)
 }
 
 /* Return the SE number from the keyD for the FID.  If ref_data is not
-   NULL the reference data is returned; this shoudl be an array of at
+   NULL the reference data is returned; this should be an array of at
    least 2 bytes.  Returns -1 on error.  */
 static int get_se_num_from_keyd(sc_card_t * card, unsigned short fid,
 				u8 * ref_data)
@@ -1189,7 +1189,7 @@ static int mcrd_restore_se(sc_card_t * card, int se_num)
 
 
 /* It seems that MICARDO does not fully comply with ISO, so I use
-   values gathered from peeking actual signing opeations using a
+   values gathered from peeking actual signing operations using a
    different system.
    It has been generalized [?] and modified by information coming from
    openpgp card implementation, EstEID 'manual' and some other sources. -mp
@@ -1229,7 +1229,7 @@ static int mcrd_set_security_env(sc_card_t * card,
 		case SC_SEC_OPERATION_DECIPHER:
 		case SC_SEC_OPERATION_DERIVE:
 			sc_log(card->ctx,
-				 "Using keyref %d to dechiper\n",
+				 "Using keyref %d to decipher\n",
 				 env->key_ref[0]);
 			mcrd_restore_se(card, 6);
 			mcrd_delete_ref_to_authkey(card);
@@ -1263,7 +1263,7 @@ static int mcrd_set_security_env(sc_card_t * card,
 		switch (env->operation) {
 		case SC_SEC_OPERATION_DECIPHER:
 			sc_log(card->ctx,
-				 "Using keyref %d to dechiper\n",
+				 "Using keyref %d to decipher\n",
 				 env->key_ref[0]);
 			mcrd_delete_ref_to_authkey(card);
 			mcrd_delete_ref_to_signkey(card);
@@ -1317,7 +1317,7 @@ static int mcrd_set_security_env(sc_card_t * card,
 			fid |= env->file_ref.value[env->file_ref.len - 1];
 			num = get_se_num_from_keyd(card, fid, p);
 			if (num != -1) {
-				/* Need to restore the security environmnet. */
+				/* Need to restore the security environment. */
 				if (num) {
 					r = mcrd_restore_se(card, num);
 					SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r,
@@ -1436,7 +1436,7 @@ static int mcrd_decipher(struct sc_card *card,
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
 
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
-		 "Will dervie (%d) for %"SC_FORMAT_LEN_SIZE_T"u (0x%02"SC_FORMAT_LEN_SIZE_T"x) bytes using key %d algorithm %d flags %d\n",
+		 "Will derive (%d) for %"SC_FORMAT_LEN_SIZE_T"u (0x%02"SC_FORMAT_LEN_SIZE_T"x) bytes using key %d algorithm %d flags %d\n",
 		 env->operation, crgram_len, crgram_len, env->key_ref[0],
 		 env->algorithm, env->algorithm_flags);
 

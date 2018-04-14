@@ -1507,7 +1507,7 @@ gpk_generate_key(sc_card_t *card, struct sc_cardctl_gpk_genkey *args)
 }
 
 /*
- * Store a privat key component
+ * Store a private key component
  */
 static int
 gpk_pkfile_load(sc_card_t *card, struct sc_cardctl_gpk_pkload *args)

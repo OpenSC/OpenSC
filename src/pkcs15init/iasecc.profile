@@ -52,7 +52,7 @@ PIN so-pin {
     reference = 2
 }
 
-# CHV5 used for Oberthur's specifique access condition "PIN or SOPIN"
+# CHV5 used for Oberthur's specific access condition "PIN or SOPIN"
 # Any value for this pin can given, when the OpenSC tools are asking for.
 
 # Additional filesystem info.

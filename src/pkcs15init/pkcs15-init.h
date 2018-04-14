@@ -367,7 +367,7 @@ extern int	sc_pkcs15init_delete_object(struct sc_pkcs15_card *,
 				struct sc_profile *,
 				struct sc_pkcs15_object *);
 /* Replace an existing cert with a new one, which is assumed to be
- * compatible with the correcsponding private key (e.g. the old and
+ * compatible with the corresponding private key (e.g. the old and
  * new cert should have the same public key).
  */
 extern int	sc_pkcs15init_update_certificate(struct sc_pkcs15_card *,

@@ -303,7 +303,7 @@ struct sm_card_operations {
 /*
  * @struct sm_module_operations
  *	API to use external SM modules:
- *	- 'initiliaze' - get APDU(s) to initialize SM session;
+ *	- 'initialize' - get APDU(s) to initialize SM session;
  *	- 'get apdus' - get secured APDUs to execute particular command;
  *	- 'finalize' - get APDU(s) to finalize SM session;
  *	- 'module init' - initialize external module (allocate data, read configuration, ...);
@@ -357,7 +357,7 @@ int sc_sm_update_apdu_response(struct sc_card *, unsigned char *, size_t, int, s
 int sc_sm_single_transmit(struct sc_card *, struct sc_apdu *);
 
 /**
- * @brief Stops SM and frees allocated ressources.
+ * @brief Stops SM and frees allocated resources.
  *
  * Calls \a card->sm_ctx.ops.close() if available and \c card->sm_ctx.sm_mode
  * is \c SM_MODE_TRANSMIT

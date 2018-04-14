@@ -619,7 +619,7 @@ static int entersafe_select_path(sc_card_t *card,
 	 {
 		  if ( pathlen - bMatch == 2 )
 		  {
-			   /* we are in the rigth directory */
+			   /* we are in the right directory */
 			   return entersafe_select_fid(card, path[bMatch], path[bMatch+1], file_out);
 		  }
 		  else if ( pathlen - bMatch > 2 )
@@ -894,9 +894,9 @@ static int entersafe_internal_set_security_env(sc_card_t *card,
 }
 
 /**
- * We don't really set the security envirment,but cache it.It will be set when 
+ * We don't really set the security environment,but cache it.It will be set when
  * security operation is performed later.Because we may transport partial of
- * the sign/decipher data within the security envirment apdu.
+ * the sign/decipher data within the security environment apdu.
  */
 static int entersafe_set_security_env(sc_card_t *card,
 									  const sc_security_env_t *env,

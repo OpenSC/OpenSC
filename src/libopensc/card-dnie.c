@@ -128,7 +128,7 @@ H13-H15: 0x0F 0x65 0x81 final phase: tarjeta no operativa
  * OpenDNIe defines two ATR's for user and finalized card state
  */
 static struct sc_atr_table dnie_atrs[] = {
-	/* TODO: get ATR for uninitalized DNIe */
+	/* TODO: get ATR for uninitialized DNIe */
 	{		/** card activated; normal operation state */
 	 "3B:7F:00:00:00:00:6A:44:4E:49:65:00:00:00:00:00:00:03:90:00",
 	 "FF:FF:00:FF:FF:FF:FF:FF:FF:FF:FF:00:00:00:00:00:00:FF:FF:FF",
@@ -215,7 +215,7 @@ int dnie_ask_user_consent(struct sc_card * card, const char *title, const char *
 	int n = 0;		/* to iterate on to-be-sent messages */
 #endif
 	int res = SC_ERROR_INTERNAL;	/* by default error :-( */
-	char *msg = NULL;	/* to makr errors */
+	char *msg = NULL;	/* to mark errors */
 
 	if ((card == NULL) || (card->ctx == NULL))
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -248,7 +248,7 @@ int dnie_ask_user_consent(struct sc_card * card, const char *title, const char *
 	header_ref = CFStringCreateWithCString( NULL, title, strlen(title) );
 	message_ref = CFStringCreateWithCString( NULL,message, strlen(message) );
 
-	/* Displlay user notification alert */
+	/* Display user notification alert */
 	CFUserNotificationDisplayAlert(
 		0, /* no timeout */
 		kCFUserNotificationNoteAlertLevel,  /* Alert level */
@@ -398,8 +398,8 @@ static sc_card_driver_t dnie_driver = {
 /**
  * Parse configuration file for dnie parameters.
  *
- * DNIe card driver has two main paramaters:
- * - The name of the user consent Application to be used in Linux. This application shoud be any of pinentry-xxx family
+ * DNIe card driver has two main parameters:
+ * - The name of the user consent Application to be used in Linux. This application should be any of pinentry-xxx family
  * - A flag to indicate if user consent is to be used in this driver. If false, the user won't be prompted for confirmation on signature operations
  *
  * @See ../../etc/opensc.conf for details
@@ -471,7 +471,7 @@ static int dnie_generate_key(sc_card_t * card, void *data)
 /**
  * Analyze a buffer looking for provided data pattern.
  *
- * Comodity function for dnie_get_info() that searches a byte array
+ * Commodity function for dnie_get_info() that searches a byte array
  * in provided buffer
  *
  * @param card pointer to card info data
@@ -654,7 +654,7 @@ static int dnie_get_serialnr(sc_card_t * card, sc_serial_number_t * serial)
 	/* official driver read 0x11 bytes, but only uses 7. Manual says just 7 (for le) */
 	dnie_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xb8, 0x00, 0x00, 0x07, 0,
 					rbuf, sizeof(rbuf), NULL, 0);
-	apdu.cla = 0x90;	/* propietary cmd */
+	apdu.cla = 0x90;	/* proprietary cmd */
 	/* send apdu */
 	result = sc_transmit_apdu(card, &apdu);
 	if (result != SC_SUCCESS) {
@@ -915,10 +915,10 @@ static unsigned long le2ulong(u8 * pt)
 /**
  * Uncompress data if in compressed format.
  *
- * @param card poiner to sc_card_t structure
+ * @param card pointer to sc_card_t structure
  * @param from buffer to get data from
  * @param len pointer to buffer length
- * @return uncompresed or original buffer; len points to new buffer length
+ * @return uncompressed or original buffer; len points to new buffer length
  *        on error return null
  */
 static u8 *dnie_uncompress(sc_card_t * card, u8 * from, size_t *len)
@@ -933,7 +933,7 @@ static u8 *dnie_uncompress(sc_card_t * card, u8 * from, size_t *len)
 		return NULL;
 	LOG_FUNC_CALLED(card->ctx);
 
-	/* if data size not enought for compression header assume uncompressed */
+	/* if data size not enough for compression header assume uncompressed */
 	if (*len < 8)
 		goto compress_exit;
 	/* evaluate compressed an uncompressed sizes (little endian format) */
@@ -1052,7 +1052,7 @@ static int dnie_fill_cache(sc_card_t * card)
 				free(apdu.resp);
 			LOG_FUNC_RETURN(ctx, r);	/* arriving here means response error */
 		}
-		/* copy received data into buffer. realloc() if not enought space */
+		/* copy received data into buffer. realloc() if not enough space */
 		count = apdu.resplen;
 		buffer = realloc(buffer, len + count);
 		if (!buffer) {
@@ -1078,7 +1078,7 @@ static int dnie_fill_cache(sc_card_t * card)
 	if (apdu.resp != tmp)
 		free(apdu.resp);
 	if (pt == NULL) {
-		sc_log(ctx, "Uncompress proccess failed");
+		sc_log(ctx, "Uncompress process failed");
 		free(buffer);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
 	}
@@ -1102,10 +1102,10 @@ static int dnie_fill_cache(sc_card_t * card)
  *
  * @param card pointer to sc_card_t structure
  * @param idx offset from card file to ask data for
- * @param buf where to store readed data. must be non null
+ * @param buf where to store read data. must be non null
  * @param count number of bytes to read
  * @param flags. not used
- * @return number of bytes readed, 0 on EOF, error code on error
+ * @return number of bytes read, 0 on EOF, error code on error
  */
 static int dnie_read_binary(struct sc_card *card,
 			    unsigned int idx,
@@ -1211,8 +1211,8 @@ static int dnie_compose_and_send_apdu(sc_card_t *card, const u8 *path, size_t pa
  * - only handles some types: 
  * -- <strong>SC_PATH_TYPE_FILE_ID</strong> 2-byte long file ID
  * -- <strong>SC_PATH_TYPE_DF_NAME</strong> named DF's
- * -- <strong>SC_PATH_TYPE_PARENT</strong>  jump to parent DF of current EF/DF - undocummented in DNIe manual
- * -- other file types are marked as unssupported
+ * -- <strong>SC_PATH_TYPE_PARENT</strong>  jump to parent DF of current EF/DF - undocumented in DNIe manual
+ * -- other file types are marked as unsupported
  *
  * - Also MF must be addressed by their Name, not their ID
  * So some magic is needed:
@@ -1333,7 +1333,7 @@ static int dnie_select_file(struct sc_card *card,
  * No reason to do it, as is needed to do SM handshake...
  * Also: official driver reads in blocks of 20 bytes. 
  * Why? Manual and iso-7816-4 states that only 8 bytes 
- * are required... so we will obbey Manual
+ * are required... so we will obey Manual
  *
  * @param card Pointer to card Structure
  * @param rnd Where to store challenge
@@ -1640,7 +1640,7 @@ static int dnie_decipher(struct sc_card *card,
  * and applies
  *
  * @param card pointer to sc_card_t structure
- * @param data data to be hased/signed
+ * @param data data to be hashed/signed
  * @param datalen length of provided data
  * @param out buffer to store results into
  * @param outlen available space in result buffer
@@ -1657,7 +1657,7 @@ static int dnie_compute_signature(struct sc_card *card,
 	struct sc_apdu apdu;
 	u8 rbuf[MAX_RESP_BUFFER_SIZE];	/* to receive sign response */
 
-	/* some preliminar checks */
+	/* some preliminary checks */
 	if ((card == NULL) || (card->ctx == NULL))
 		return SC_ERROR_INVALID_ARGUMENTS;
 	/* OK: start working */
@@ -1892,7 +1892,7 @@ static int dnie_card_ctl(struct sc_card *card,
  * the read_binary() file cache work
  *
  * Extract real file length from compressed file is done by mean of
- * reading 8 first bytes for uncompressed/compressed lenght. 
+ * reading 8 first bytes for uncompressed/compressed length. 
  * Lengths are provided as two 4-byte little endian numbers
  *
  * Implemented just like a direct read binary apdu bypassing dnie file cache
@@ -1942,7 +1942,7 @@ static int dnie_read_header(struct sc_card *card)
 }
 
 /** 
- *  Access control list bytes for propietary DNIe FCI response for DF's.
+ *  Access control list bytes for proprietary DNIe FCI response for DF's.
  *  based in information from official DNIe Driver
  *  Parsing code based on itacns card driver
  */
@@ -1953,7 +1953,7 @@ static int df_acl[] = {		/* to handle DF's */
 };
 
 /** 
- *  Access control list bytes for propietary DNIe FCI response for EF's.
+ *  Access control list bytes for proprietary DNIe FCI response for EF's.
  *  based in information from official DNIe Driver
  *  Parsing code based on itacns card driver
  */
@@ -1968,7 +1968,7 @@ static int ef_acl[] = {		/* to handle EF's */
  *
  * Parse SelectFile's File Control information.
  * - First, std iso_parse_fci is called to parse std fci tags
- * - Then analyze propietary tag according DNIe Manual
+ * - Then analyze proprietary tag according DNIe Manual
  *
  * @param card OpenSC card structure pointer
  * @param file currently selected EF or DF
@@ -2133,7 +2133,7 @@ static int dnie_process_fci(struct sc_card *card,
  * Not implemented yet, as current availability for DNIe user driver 
  * is unknown
  *
- * @param card Pointer to Card Driver data structrure
+ * @param card Pointer to Card Driver data structure
  * @param data Pointer to Pin data structure
  * @return SC_SUCCESS if ok; else error code
  */
@@ -2191,7 +2191,7 @@ static int dnie_pin_verify(struct sc_card *card,
 	dnie_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x20, 0x00, 0x00, 0, pinlen,
 					NULL, 0, pinbuffer, pinlen);
 
-	/* and send to card throught virtual channel */
+	/* and send to card through virtual channel */
 	res = sc_transmit_apdu(card, &apdu);
 	if (res != SC_SUCCESS) {
 		LOG_TEST_RET(card->ctx, res, "VERIFY APDU Transmit fail");
@@ -2240,7 +2240,7 @@ static int dnie_pin_cmd(struct sc_card *card,
 
 	/* 
 	* some flags and settings from documentation 
-	* No (easy) way to handle pinpad throught SM, so disable it
+	* No (easy) way to handle pinpad through SM, so disable it
 	*/
 	data->flags &= ~SC_PIN_CMD_NEED_PADDING; /* no pin padding */
 	data->flags &= ~SC_PIN_CMD_USE_PINPAD;	 /* cannot handle pinpad */

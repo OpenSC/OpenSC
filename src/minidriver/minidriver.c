@@ -223,11 +223,11 @@ static void logprintf(PCARD_DATA pCardData, int level, _Printf_format_string_ co
 {
 	va_list arg;
 	VENDOR_SPECIFIC *vs;
-/* Use a simplied log to get all messages including messages
+/* Use a simplified log to get all messages including messages
  * before opensc is loaded. The file must be modifiable by all
  * users as we maybe called under lsa or user. Note data from
  * multiple process and threads may get intermingled.
- * flush to get last message before ann crash
+ * flush to get last message before any crash
  * close so as the file is not left open during any wait.
  */
 	DWORD md_debug = 0;
@@ -653,7 +653,7 @@ md_get_config_bool(PCARD_DATA pCardData, char *flag_name, BOOL ret_default)
 static BOOL
 md_is_pinpad_dlg_enable_cancel(PCARD_DATA pCardData)
 {
-	logprintf(pCardData, 2, "Is cancelling the PIN pad dialog enableed?\n");
+	logprintf(pCardData, 2, "Is cancelling the PIN pad dialog enabled?\n");
 	return md_get_config_bool(pCardData, "md_pinpad_dlg_enable_cancel", FALSE);
 }
 
@@ -815,7 +815,7 @@ md_contguid_build_cont_guid_from_key(PCARD_DATA pCardData, struct sc_pkcs15_obje
 	DWORD dwret = SCARD_S_SUCCESS;
 
 	szGuid[0] = '\0';
-	/* priorize the use of the key id over the key label as a container name */
+	/* prioritize the use of the key id over the key label as a container name */
 	if (md_is_guid_as_id(pCardData) && prkey_info->id.len > 0 && prkey_info->id.len <= MAX_CONTAINER_NAME_LEN)  {
 		memcpy(szGuid, prkey_info->id.value, prkey_info->id.len);
 		szGuid[prkey_info->id.len] = 0;
@@ -1582,7 +1582,7 @@ md_fs_add_msroots(PCARD_DATA pCardData, struct md_file **head)
  *    2b. Change the index of internal p15_container according to the index from 'DATA' file.
  *	  Records from 'DATA' file are ignored is they do not have
  *		the corresponding PKCS#15 private key object.
- * 3. Initalize the content of the 'soft' 'cmapfile' from the inernal p15-containers.
+ * 3. Initialize the content of the 'soft' 'cmapfile' from the internal p15-containers.
  */
 static DWORD
 md_set_cmapfile(PCARD_DATA pCardData, struct md_file *file)
@@ -1813,7 +1813,7 @@ md_set_cmapfile(PCARD_DATA pCardData, struct md_file *file)
 		cont->id = prkey_info->id;
 		cont->prkey_obj = prkey_objs[ii];
 
-		/* Try to find the friend objects: certficate and public key */
+		/* Try to find the friend objects: certificate and public key */
 		if (!sc_pkcs15_find_cert_by_id(vs->p15card, &cont->id, &cont->cert_obj))
 			logprintf(pCardData, 2, "found certificate friend '%.*s'\n", (int) sizeof cont->cert_obj->label, cont->cert_obj->label);
 
@@ -2674,7 +2674,7 @@ md_query_key_sizes(PCARD_DATA pCardData, DWORD dwKeySpec, CARD_KEY_SIZES *pKeySi
 	pKeySizes->dwMaximumBitlen = 0;
 	pKeySizes->dwIncrementalBitlen = 0;
 
-	/* dwKeySpec=0 is a special value when the key size is queried without specifing the algorithm.
+	/* dwKeySpec=0 is a special value when the key size is queried without specifying the algorithm.
 	Used on old minidriver version. In this case, it is RSA */
 	if ((dwKeySpec == 0) || (dwKeySpec == AT_KEYEXCHANGE) || (dwKeySpec == AT_SIGNATURE)) {
 		for (i = 0; i < count; i++) {
@@ -2981,7 +2981,7 @@ md_dialog_perform_pin_operation(PCARD_DATA pCardData, int operation, struct sc_p
 		tc.dwFlags |= TDF_ALLOW_DIALOG_CANCELLATION;
 		tc.dwCommonButtons = TDCBF_CANCEL_BUTTON;
 	} else {
-		/* can't use TDCBF_CANCEL_BUTTON since this would implicitely set TDF_ALLOW_DIALOG_CANCELLATION */
+		/* can't use TDCBF_CANCEL_BUTTON since this would implicitly set TDF_ALLOW_DIALOG_CANCELLATION */
 		tc.dwCommonButtons = TDCBF_CLOSE_BUTTON;
 	}
 
@@ -4383,7 +4383,7 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 		goto err;
 	}
 
-	/* filter boggus input: the data to decrypt is shorter than the RSA key ? */
+	/* filter bogus input: the data to decrypt is shorter than the RSA key ? */
 	if ( pInfo->cbData < prkey_info->modulus_length / 8)
 	{
 		/* according to the minidriver specs, this is the error code to return
@@ -5362,8 +5362,8 @@ DWORD WINAPI CardDeriveKey(__in PCARD_DATA pCardData,
 	if (pAgreementInfo->dwFlags & ~(KDF_USE_SECRET_AS_HMAC_KEY_FLAG | CARD_RETURN_KEY_HANDLE | CARD_BUFFER_SIZE_ONLY))
 		return SCARD_E_INVALID_PARAMETER;
 
-	/* according to the documenation, CARD_DERIVE_KEY_CURRENT_VERSION should be equal to 2. 
-	In pratice it is not 2 but 1
+	/* according to the documentation, CARD_DERIVE_KEY_CURRENT_VERSION should be equal to 2.
+	In practice it is not 2 but 1
 
 	if ( pAgreementInfo->dwVersion < CARD_DERIVE_KEY_CURRENT_VERSION
 			&& pCardData->dwVersion == CARD_DATA_CURRENT_VERSION)
@@ -5473,7 +5473,7 @@ DWORD WINAPI CardDeriveKey(__in PCARD_DATA pCardData,
 		szAlgorithm = BCRYPT_SHA1_ALGORITHM;
 	}
 
-	/* check the values with the KDF choosen */
+	/* check the values with the KDF chosen */
 	if (wcscmp(pAgreementInfo->pwszKDF, BCRYPT_KDF_HASH) == 0) {
 	}
 	else if (wcscmp(pAgreementInfo->pwszKDF, BCRYPT_KDF_HMAC) == 0) {
@@ -5924,7 +5924,7 @@ DWORD WINAPI CardGetContainerProperty(__in PCARD_DATA pCardData,
 	if (bContainerIndex >= MD_MAX_KEY_CONTAINERS)
 		return SCARD_E_NO_KEY_CONTAINER;
 
-	/* the test for the existence of containers is redondant with the one made in CardGetContainerInfo but CCP_PIN_IDENTIFIER does not do it */
+	/* the test for the existence of containers is redundant with the one made in CardGetContainerInfo but CCP_PIN_IDENTIFIER does not do it */
 	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
 	if (!vs)
 		return SCARD_E_INVALID_PARAMETER;
@@ -6606,11 +6606,11 @@ DWORD WINAPI CardAcquireContext(__inout PCARD_DATA pCardData, __in DWORD dwFlags
 		return SCARD_E_INVALID_PARAMETER;
 	if (!(dwFlags & CARD_SECURE_KEY_INJECTION_NO_CARD_MODE)) {
 		if( pCardData->hSCardCtx == 0)   {
-			logprintf(pCardData, 0, "Invalide handle.\n");
+			logprintf(pCardData, 0, "Invalid handle.\n");
 			return SCARD_E_INVALID_HANDLE;
 		}
 		if( pCardData->hScard == 0)   {
-			logprintf(pCardData, 0, "Invalide handle.\n");
+			logprintf(pCardData, 0, "Invalid handle.\n");
 			return SCARD_E_INVALID_HANDLE;
 		}
 	}
@@ -6624,7 +6624,7 @@ DWORD WINAPI CardAcquireContext(__inout PCARD_DATA pCardData, __in DWORD dwFlags
 		return SCARD_E_INVALID_PARAMETER;
 	if ( pCardData->pwszCardName == NULL )
 		return SCARD_E_INVALID_PARAMETER;
-	/* <2 lenght or >=0x22 are not ISO compliant */
+	/* <2 length or >=0x22 are not ISO compliant */
 	if (pCardData->cbAtr >= 0x22 || pCardData->cbAtr <= 0x2)
 		return SCARD_E_INVALID_PARAMETER;
 	/* ATR beginning by 0x00 or 0xFF are not ISO compliant */

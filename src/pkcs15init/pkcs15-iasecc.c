@@ -93,7 +93,7 @@ iasecc_pkcs15_delete_file(struct sc_pkcs15_card *p15card, struct sc_profile *pro
 	rv = sc_pkcs15init_authenticate(profile, p15card, df, SC_AC_OP_DELETE);
 	card->caps = caps;
 
-	LOG_TEST_RET(ctx, rv, "Cannnot authenticate SC_AC_OP_DELETE");
+	LOG_TEST_RET(ctx, rv, "Cannot authenticate SC_AC_OP_DELETE");
 
 	memset(&path, 0, sizeof(path));
 	path.type = SC_PATH_TYPE_FILE_ID;
@@ -374,7 +374,7 @@ iasecc_sdo_set_key_acls_from_profile(struct sc_profile *profile, struct sc_card 
 
 	/* Get ACLs from profile template */
 	rv = sc_profile_get_file(profile, template, &file);
-	LOG_TEST_RET(ctx, rv, "IasEcc: cannot instanciate private key file");
+	LOG_TEST_RET(ctx, rv, "IasEcc: cannot instantiate private key file");
 
 	/* Convert PKCS15 ACLs to SE ACLs */
 	rv = iasecc_file_convert_acls(ctx, profile, file);
@@ -473,7 +473,7 @@ iasecc_sdo_allocate_prvkey(struct sc_profile *profile, struct sc_card *card,
 		sdo->docp.non_repudiation.value = calloc(1, 1);
 		if (!sdo->docp.non_repudiation.value)
 			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
-		sdo->docp.non_repudiation.tag = IASECC_DOCP_TAG_NON_REPUDATION;
+		sdo->docp.non_repudiation.tag = IASECC_DOCP_TAG_NON_REPUDIATION;
 		sdo->docp.non_repudiation.size = 1;
 
 		sdo->data.prv_key.compulsory.value = calloc(1, 1);
@@ -496,7 +496,7 @@ iasecc_sdo_allocate_prvkey(struct sc_profile *profile, struct sc_card *card,
 		If present, this attribute has to be the same in the 'GENERATE KEY' template data.
 */
 		if (!(key_info->access_flags & SC_PKCS15_PRKEY_ACCESS_LOCAL) && (key_info->usage & SC_PKCS15_PRKEY_USAGE_NONREPUDIATION))
-			sc_log(ctx, "Non fatal error: NON_REPUDATION can be used only for the localy generated keys");
+			sc_log(ctx, "Non fatal error: NON_REPUDIATION can be used only for the locally generated keys");
 
 		if ((key_info->access_flags & SC_PKCS15_PRKEY_ACCESS_LOCAL)
 				&& (key_info->usage & SC_PKCS15_PRKEY_USAGE_SIGN)
@@ -1137,7 +1137,7 @@ iasecc_pkcs15_generate_key(struct sc_profile *profile, sc_pkcs15_card_t *p15card
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
-	/* TODO: Check if native IAS middleware accepts the meaningfull path value. */
+	/* TODO: Check if native IAS middleware accepts the meaningful path value. */
 	rv = sc_profile_get_parent(profile, "private-key", &file);
 	LOG_TEST_RET(ctx, rv, "IasEcc: cannot get private key parent file");
 

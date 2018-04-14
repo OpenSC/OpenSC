@@ -72,7 +72,7 @@ int iso_get_sm_apdu(struct sc_card *card, struct sc_apdu *apdu, struct sc_apdu *
 int iso_free_sm_apdu(struct sc_card *card, struct sc_apdu *apdu, struct sc_apdu **sm_apdu);
 
 /**
- * @brief Cleans up allocated ressources of the ISO SM driver
+ * @brief Cleans up allocated resources of the ISO SM driver
  *
  * \c iso_sm_close() is designed as SM card operation. However, have in mind
  * that this card operation is not called automatically for \c

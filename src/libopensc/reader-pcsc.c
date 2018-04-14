@@ -1399,7 +1399,7 @@ static int pcsc_detect_readers(sc_context_t *ctx)
 		}
 		if (rv == (LONG)SCARD_E_SHARING_VIOLATION) {
 			/* Assume that there is a card in the reader in shared mode if
-			 * direct communcation failed */
+			 * direct communication failed */
 			rv = gpriv->SCardConnect(gpriv->pcsc_ctx, reader->name,
 					SCARD_SHARE_SHARED,
 					SCARD_PROTOCOL_T0|SCARD_PROTOCOL_T1, &card_handle,

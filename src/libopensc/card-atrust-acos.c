@@ -467,7 +467,7 @@ static int atrust_acos_select_file(struct sc_card *card,
 		if ( card->cache.valid && bMatch >= 0 )
 		{
 			if ( pathlen - bMatch == 2 )
-				/* we are in the rigth directory */
+				/* we are in the right directory */
 				return atrust_acos_select_fid(card, path[bMatch], path[bMatch+1], file_out);
 			else if ( pathlen - bMatch > 2 )
 			{

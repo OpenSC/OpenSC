@@ -1,5 +1,5 @@
 /*
- * sc-ossl-compat.h: OpenSC ecompatability for older OpenSSL versions
+ * sc-ossl-compat.h: OpenSC compatibility for older OpenSSL versions
  *
  * Copyright (C) 2016	Douglas E. Engert <deengert@gmail.com>
  *
@@ -30,7 +30,7 @@ extern "C" {
 #include <openssl/opensslv.h>
 #include <openssl/opensslconf.h>
 /*
- * Provide backward compatability to older versions of OpenSSL
+ * Provide backward compatibility to older versions of OpenSSL
  * while using most of OpenSSL 1.1  API
  *
  * LibreSSL is a fork of OpenSSL from 2014
@@ -51,7 +51,7 @@ extern "C" {
  *
  * EVP_CIPHER_CTX_new	    does a EVP_CIPHER_CTX_init
  * EVP_CIPHER_CTX_free	    does a EVP_CIPHER_CTX_cleanup
- * EVP_CIPHER_CTX_cleanup   does equivelent of a EVP_CIPHER_CTX_init
+ * EVP_CIPHER_CTX_cleanup   does equivalent of a EVP_CIPHER_CTX_init
  * Use EVP_CIPHER_CTX_new, EVP_CIPHER_CTX_free, and  EVP_CIPHER_CTX_cleanup between operations
  */
 

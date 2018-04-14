@@ -734,7 +734,7 @@ static int starcos_select_file(sc_card_t *card,
 		if ( card->cache.valid && bMatch >= 0 )
 		{
 			if ( pathlen - bMatch == 2 )
-				/* we are in the rigth directory */
+				/* we are in the right directory */
 				return starcos_select_fid(card, path[bMatch], path[bMatch+1], file_out, 1);
 			else if ( pathlen - bMatch > 2 )
 			{
@@ -821,9 +821,9 @@ static u8 process_acl_entry(sc_file_t *in, unsigned int method, unsigned int in_
  * \param card pointer to the sc_card object
  * \param file pointer to the sc_file object
  * \param data pointer to a sc_starcos_create_data structure
- * \return SC_SUCCESS if no error occured otherwise error code
+ * \return SC_SUCCESS if no error occurred otherwise error code
  *
- * This function tries to create a somewhat useable Starcos spk 2.3 acl
+ * This function tries to create a somewhat usable Starcos spk 2.3 acl
  * from the OpenSC internal acl (storing the result in the supplied
  * sc_starcos_create_data structure). 
  */
@@ -1067,7 +1067,7 @@ static int starcos_create_ef(sc_card_t *card, sc_starcos_create_data *data)
  * \param file pointer to a sc_file object
  * \return SC_SUCCESS or error code
  *
- * This function finishs the creation of a DF (or MF) and activates
+ * This function finishes the creation of a DF (or MF) and activates
  * the ACs.
  */
 static int starcos_create_end(sc_card_t *card, sc_file_t *file)

@@ -85,7 +85,7 @@ extern "C" {
 /* Key derivation algorithms */
 #define SC_ALGORITHM_PBKDF2		192
 
-/* Key encryption algoprithms */
+/* Key encryption algorithms */
 #define SC_ALGORITHM_PBES2		256
 
 #define SC_ALGORITHM_ONBOARD_KEY_GEN	0x80000000
@@ -143,7 +143,7 @@ extern "C" {
 /* define mask of all algorithms that can do raw */
 #define SC_ALGORITHM_RAW_MASK (SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_GOSTR3410_RAW | SC_ALGORITHM_ECDSA_RAW)
 
-/* extened algorithm bits for selected mechs */
+/* extended algorithm bits for selected mechs */
 #define SC_ALGORITHM_EXT_EC_F_P          0x00000001
 #define SC_ALGORITHM_EXT_EC_F_2M         0x00000002
 #define SC_ALGORITHM_EXT_EC_ECPARAMETERS 0x00000004
@@ -361,7 +361,7 @@ typedef struct sc_reader {
 struct sc_pin_cmd_pin {
 	const char *prompt;	/* Prompt to display */
 
-	const unsigned char *data;		/* PIN, if given by the appliction */
+	const unsigned char *data;		/* PIN, if given by the application */
 	int len;		/* set to -1 to get pin from pin pad */
 
 	size_t min_length;	/* min length of PIN */
@@ -601,7 +601,7 @@ struct sc_card_operations {
 	int (*decipher)(struct sc_card *card, const u8 * crgram,
 		        size_t crgram_len, u8 * out, size_t outlen);
 
-	/* compute_signature:  Generates a digital signature on the card.  Similiar
+	/* compute_signature:  Generates a digital signature on the card.  Similar
 	 *   to the function decipher. */
 	int (*compute_signature)(struct sc_card *card, const u8 * data,
 				 size_t data_len, u8 * out, size_t outlen);
@@ -679,7 +679,7 @@ typedef struct {
 	unsigned long (*thread_id)(void);
 } sc_thread_context_t;
 
-/** Stop modifing or using external resources
+/** Stop modifying or using external resources
  *
  * Currently this is used to avoid freeing duplicated external resources for a
  * process that has been forked. For example, a child process may want to leave
@@ -724,7 +724,7 @@ typedef struct sc_context {
 /** Sends a APDU to the card
  *  @param  card  struct sc_card object to which the APDU should be send
  *  @param  apdu  sc_apdu_t object of the APDU to be send
- *  @return SC_SUCCESS on succcess and an error code otherwise
+ *  @return SC_SUCCESS on success and an error code otherwise
  */
 int sc_transmit_apdu(struct sc_card *, struct sc_apdu *);
 
@@ -788,7 +788,7 @@ typedef struct {
 	/** version number of this structure (0 for this version) */
 	unsigned int  ver;
 	/** name of the application (used for finding application
-	 *  dependend configuration data). If NULL the name "default"
+	 *  dependent configuration data). If NULL the name "default"
 	 *  will be used. */
 	const char    *app_name;
 	/** context flags */
@@ -919,7 +919,7 @@ int sc_disconnect_card(struct sc_card *card);
 /**
  * Checks if a card is present in a reader
  * @param reader Reader structure
- * @retval If an error occured, the return value is a (negative)
+ * @retval If an error occurred, the return value is a (negative)
  *	OpenSC error code. If no card is present, 0 is returned.
  *	Otherwise, a positive value is returned, which is a
  *	combination of flags. The flag SC_READER_CARD_PRESENT is
@@ -942,9 +942,9 @@ int sc_detect_card_presence(sc_reader_t *reader);
  * @param event (OUT) the events that occurred. This is also ORed
  *   from the SC_EVENT_CARD_* constants listed above.
  * @param timeout Amount of millisecs to wait; -1 means forever
- * @retval < 0 if an error occured
+ * @retval < 0 if an error occurred
  * @retval = 0 if a an event happened
- * @retval = 1 if the timeout occured
+ * @retval = 1 if the timeout occurred
  */
 int sc_wait_for_event(sc_context_t *ctx, unsigned int event_mask,
                       sc_reader_t **event_reader, unsigned int *event,
@@ -1045,7 +1045,7 @@ int sc_read_binary(struct sc_card *card, unsigned int idx, u8 * buf,
  * @param  buf    buffer with the data
  * @param  count  number of bytes to write
  * @param  flags  flags for the WRITE BINARY command (currently not used)
- * @return number of bytes writen or an error code
+ * @return number of bytes written or an error code
  */
 int sc_write_binary(struct sc_card *card, unsigned int idx, const u8 * buf,
 		    size_t count, unsigned long flags);
@@ -1056,7 +1056,7 @@ int sc_write_binary(struct sc_card *card, unsigned int idx, const u8 * buf,
  * @param  buf    buffer with the new data
  * @param  count  number of bytes to update
  * @param  flags  flags for the UPDATE BINARY command (currently not used)
- * @return number of bytes writen or an error code
+ * @return number of bytes written or an error code
  */
 int sc_update_binary(struct sc_card *card, unsigned int idx, const u8 * buf,
 		     size_t count, unsigned long flags);
@@ -1067,7 +1067,7 @@ int sc_update_binary(struct sc_card *card, unsigned int idx, const u8 * buf,
  * @param  idx    index within the file for the data to be erased
  * @param  count  number of bytes to erase
  * @param  flags  flags for the ERASE BINARY command (currently not used)
- * @return number of bytes writen or an error code
+ * @return number of bytes written or an error code
  */
 int sc_erase_binary(struct sc_card *card, unsigned int idx,
 		    size_t count, unsigned long flags);
@@ -1096,10 +1096,10 @@ int sc_read_record(struct sc_card *card, unsigned int rec_nr, u8 * buf,
  * Writes data to a record from the current (i.e. selected) file.
  * @param  card    struct sc_card object on which to issue the command
  * @param  rec_nr  SC_READ_RECORD_CURRENT or a record number starting from 1
- * @param  buf     buffer with to the data to be writen
+ * @param  buf     buffer with to the data to be written
  * @param  count   number of bytes to write
  * @param  flags   flags (may contain a short file id of a file to select)
- * @retval number of bytes writen or an error value
+ * @retval number of bytes written or an error value
  */
 int sc_write_record(struct sc_card *card, unsigned int rec_nr, const u8 * buf,
 		    size_t count, unsigned long flags);
@@ -1109,7 +1109,7 @@ int sc_write_record(struct sc_card *card, unsigned int rec_nr, const u8 * buf,
  * @param  buf     buffer with to the data for the new record
  * @param  count   length of the data
  * @param  flags   flags (may contain a short file id of a file to select)
- * @retval number of bytes writen or an error value
+ * @retval number of bytes written or an error value
  */
 int sc_append_record(struct sc_card *card, const u8 * buf, size_t count,
 		     unsigned long flags);
@@ -1117,10 +1117,10 @@ int sc_append_record(struct sc_card *card, const u8 * buf, size_t count,
  * Updates the data of a record from the current (i.e. selected) file.
  * @param  card    struct sc_card object on which to issue the command
  * @param  rec_nr  SC_READ_RECORD_CURRENT or a record number starting from 1
- * @param  buf     buffer with to the new data to be writen
+ * @param  buf     buffer with to the new data to be written
  * @param  count   number of bytes to update
  * @param  flags   flags (may contain a short file id of a file to select)
- * @retval number of bytes writen or an error value
+ * @retval number of bytes written or an error value
  */
 int sc_update_record(struct sc_card *card, unsigned int rec_nr, const u8 * buf,
 		     size_t count, unsigned long flags);

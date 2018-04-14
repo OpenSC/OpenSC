@@ -37,7 +37,7 @@
 #include "iasecc.h"
 #include "aux-data.h"
 
-#define IASECC_GEMALTO_MD_APPLICAITON_NAME "CSP"
+#define IASECC_GEMALTO_MD_APPLICATION_NAME "CSP"
 #define IASECC_GEMALTO_MD_DEFAULT_CONT_LABEL "Default Key Container"
 
 static int
@@ -137,7 +137,7 @@ _iasecc_parse_df(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *df)
 	for(ii=0; ii<count; ii++)   {
 		struct sc_pkcs15_data_info *dinfo = (struct sc_pkcs15_data_info *)dobjs[ii]->data;
 
-		if (strcmp(dinfo->app_label, IASECC_GEMALTO_MD_APPLICAITON_NAME))
+		if (strcmp(dinfo->app_label, IASECC_GEMALTO_MD_APPLICATION_NAME))
 			continue;
 
 		if (!strcmp(dobjs[ii]->label, IASECC_GEMALTO_MD_DEFAULT_CONT_LABEL))   {
@@ -151,7 +151,7 @@ _iasecc_parse_df(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *df)
 		struct sc_pkcs15_data_info *dinfo = (struct sc_pkcs15_data_info *)dobjs[ii]->data;
 		int default_cont = 0;
 
-		if (strcmp(dinfo->app_label, IASECC_GEMALTO_MD_APPLICAITON_NAME))
+		if (strcmp(dinfo->app_label, IASECC_GEMALTO_MD_APPLICATION_NAME))
 			continue;
 
 		if (!strcmp(dobjs[ii]->label, IASECC_GEMALTO_MD_DEFAULT_CONT_LABEL))

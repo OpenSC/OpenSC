@@ -127,7 +127,7 @@ static BOOL AddNotificationIcon(void)
 		if (basename) {
 			basename++;
 			if (0 != strcmp(basename, "opensc-notify.exe")) {
-				/* Allow creation of sytem tray icon only for
+				/* Allow creation of system tray icon only for
 				 * "opensc-notify.exe" to avoid creation of the same icon by
 				 * multiple processes. */
 				delete_icon = FALSE;

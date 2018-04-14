@@ -253,7 +253,7 @@ iasecc_select_mf(struct sc_card *card, struct sc_file **file_out)
 		struct sc_apdu apdu;
 		unsigned char apdu_resp[SC_MAX_APDU_BUFFER_SIZE];
 
-		/* ISO 'select' command failes when not FCP data returned */
+		/* ISO 'select' command fails when not FCP data returned */
 		sc_format_path("3F00", &path);
 		path.type = SC_PATH_TYPE_FILE_ID;
 
@@ -283,7 +283,7 @@ iasecc_select_mf(struct sc_card *card, struct sc_file **file_out)
 
 	/* Ignore the FCP of the MF, because:
 	 * - some cards do not return it;
-	 * - there is not need of it -- create/delete of the files in MF is not invisaged.
+	 * - there is not need of it -- create/delete of the files in MF is not envisaged.
 	 */
 	mf_file = sc_file_new();
 	if (mf_file == NULL)
@@ -812,7 +812,7 @@ iasecc_emulate_fcp(struct sc_context *ctx, struct sc_apdu *apdu)
 
 
 /* TODO: redesign using of cache
- * TODO: do not keep inermediate results in 'file_out' argument */
+ * TODO: do not keep intermediate results in 'file_out' argument */
 static int
 iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 		 struct sc_file **file_out)
@@ -1747,7 +1747,7 @@ iasecc_set_security_env(struct sc_card *card,
 		LOG_TEST_RET(ctx, rv, "Cannot convert SC_AC_OP_PSO_DECRYPT acl");
 		algo_ref = iasecc_get_algorithm(ctx, env, SC_PKCS15_ALGO_OP_DECIPHER,  CKM_RSA_PKCS);
 		if (!algo_ref)
-			LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Application do not supports DECHIPHER:RSA_PKCS");
+			LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Application do not supports DECIPHER:RSA_PKCS");
 
 		cse_crt_ct[2] = env->key_ref[0] | IASECC_OBJECT_REF_LOCAL;
 		cse_crt_ct[5] = algo_ref;	/* IASECC_ALGORITHM_RSA_PKCS_DECRYPT | IASECC_ALGORITHM_SHA1 */

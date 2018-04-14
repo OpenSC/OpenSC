@@ -1145,7 +1145,7 @@ pgp_select_file(sc_card_t *card, const sc_path_t *path, sc_file_t **ret)
 		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 	}
 
-	/* ignore explicitely mentioned MF at the path's beginning */
+	/* ignore explicitly mentioned MF at the path's beginning */
 	path_start = pgp_strip_path(card, path);
 
 	/* starting with the MF ... */
@@ -1155,7 +1155,7 @@ pgp_select_file(sc_card_t *card, const sc_path_t *path, sc_file_t **ret)
 		unsigned int	id = bebytes2ushort(path->value + n);
 		int		r = pgp_get_blob(card, blob, id, &blob);
 
-		/* This file ID is refered when importing key&certificate via pkcs15init, like above.
+		/* This file ID is referred when importing key&certificate via pkcs15init, like above.
 		 * We pretend to successfully find this inexistent file. */
 		if (id == 0x4402 || id == 0x5f48) {
 			if (ret == NULL)

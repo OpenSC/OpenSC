@@ -297,7 +297,7 @@ static int createShares(const BIGNUM *s, const unsigned char t, const unsigned c
  * @param shares Shares used to reconstruct secret (should contain t entries)
  * @param t Threshold used to reconstruct the secret
  * @param prime Prime for finite field arithmetic
- * @param s Pointer for storage of calculated secred
+ * @param s Pointer for storage of calculated secret
  */
 static int reconstructSecret(secret_share_t *shares, unsigned char t, const BIGNUM *prime, BIGNUM *s)
 {

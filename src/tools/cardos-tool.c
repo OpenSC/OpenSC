@@ -465,7 +465,7 @@ static int cardos_sm4h(const unsigned char *in, size_t inlen, unsigned char
 		memcpy(&enc_input[0],&in[5],plain_lc);
 	for (i=0; i < 8; i++) enc_input[i+plain_lc] = des_out[i];
 	enc_input[plain_lc+8] = 0x80; /* iso padding */
-	/* calloc already cleard the remaining bytes to 00 */
+	/* calloc already cleared the remaining bytes to 00 */
 
 	if (outlen < 5 + enc_input_len) {
 		free(mac_input);
@@ -485,18 +485,18 @@ static int cardos_sm4h(const unsigned char *in, size_t inlen, unsigned char
 	/* xor data and IV (8 bytes 00) to get input data */
 	for (i=0; i < 8; i++) des_in[i] = enc_input[i] ^ 00;
 
-	/* encrypt with des2 (tripple des, but using keys A-B-A) */
+	/* encrypt with des2 (triple des, but using keys A-B-A) */
 	DES_ecb2_encrypt(&des_in, &des_out, &ks_a, &ks_b, 1);
 
 	/* copy encrypted bytes into output */
 	for (i=0; i < 8; i++) out[5+i] = des_out[i];
 
-	/* encrypt other blocks (usualy one) */
+	/* encrypt other blocks (usually one) */
 	for (j=1; j < (enc_input_len / 8); j++) {
 		/* xor data and prev. result to get input data */
 		for (i=0; i < 8; i++) des_in[i] = enc_input[i+j*8] ^ des_out[i];
 
-		/* encrypt with des2 (tripple des, but using keys A-B-A) */
+		/* encrypt with des2 (triple des, but using keys A-B-A) */
 		DES_ecb2_encrypt(&des_in, &des_out, &ks_a, &ks_b, 1);
 
 		/* copy encrypted bytes into output */

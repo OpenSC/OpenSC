@@ -10,7 +10,7 @@ cardinfo {
     pin-encoding    = ascii-numeric;
     pin-pad-char    = 0xFF;
 
-    # Delete or not the public key when inconporating the 
+    # Delete or not the public key when incorporating the
     # corresponding certificate.
     keep-public-key        = yes;   # yes/no 
 }
@@ -138,7 +138,7 @@ filesystem {
                 # Private DES keys
                 BSO private-des {
                     size    = 24;  # 192 bits
-                    # READ acl used insted of DECIPHER/ENCIPHER/CHECKSUM
+                    # READ acl used instead of DECIPHER/ENCIPHER/CHECKSUM
                 }
 
                 # Private data

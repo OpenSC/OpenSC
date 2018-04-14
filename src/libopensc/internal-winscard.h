@@ -237,7 +237,7 @@ typedef LONG (PCSC_API *SCardGetAttrib_t)(SCARDHANDLE hCard, DWORD dwAttrId,\
 /* structures used (but not defined) in PCSC Part 10:
  * "IFDs with Secure Pin Entry Capabilities" */
 
-/* Set structure elements aligment on bytes
+/* Set structure elements alignment on bytes
  * http://gcc.gnu.org/onlinedocs/gcc/Structure_002dPacking-Pragmas.html */
 #if defined(__APPLE__) || defined(sun)
 #pragma pack(1)

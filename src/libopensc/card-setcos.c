@@ -405,7 +405,7 @@ static int setcos_pin_index_44(int *pins, int len, int pin)
 	return 0;
 }
 
-/* The ACs are allways for the SETEC_LCSI_ACTIVATED state, even if
+/* The ACs are always for the SETEC_LCSI_ACTIVATED state, even if
  * we have to create the file in the SC_FILE_STATUS_INITIALISATION state. */
 static int setcos_create_file_44(sc_card_t *card, sc_file_t *file)
 {
@@ -485,7 +485,7 @@ static int setcos_create_file_44(sc_card_t *card, sc_file_t *file)
 			}
 		}
 
-		/* Add the commands that are allways allowed */
+		/* Add the commands that are always allowed */
 		if (bCommands_always) {
 			bBuf[len++] = 1;
 			bBuf[len++] = bCommands_always;
@@ -499,7 +499,7 @@ static int setcos_create_file_44(sc_card_t *card, sc_file_t *file)
 			else
 				bBuf[len++] = pins[i] & 0x07;  /* pin ref */
 		}
-		/* Add ommands that require the key */
+		/* Add commands that require the key */
 		if (bCommands_key) {
 			bBuf[len++] = 2 | 0x20;			/* indicate keyNumber present */
 			bBuf[len++] = bCommands_key;
@@ -786,7 +786,7 @@ static void parse_sec_attr_44(sc_file_t *file, const u8 *buf, size_t len)
 	int		iOperation;
 	const int*	p_idx;
 
-	/* Check all sub-AC definitions whitin the total AC */
+	/* Check all sub-AC definitions within the total AC */
 	while (len > 1) {				/* minimum length = 2 */
 		int	iACLen   = buf[iOffset] & 0x0F;
 
@@ -1038,7 +1038,7 @@ static int setcos_generate_store_key(sc_card_t *card,
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	/* Setup key-generation paramters */
+	/* Setup key-generation parameters */
 	len = 0;
 	if (data->op_type == OP_TYPE_GENERATE)
 		sbuf[len++] = 0x92;	/* algo ID: RSA CRT */

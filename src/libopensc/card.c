@@ -138,7 +138,7 @@ size_t sc_get_max_recv_size(const sc_card_t *card)
 	}
 	max_recv_size = card->max_recv_size;
 
-	/* initialize max_recv_size to a meaningfull value */
+	/* initialize max_recv_size to a meaningful value */
 	if (card->caps & SC_CARD_CAP_APDU_EXT) {
 		if (!max_recv_size)
 			max_recv_size = 65536;
@@ -165,7 +165,7 @@ size_t sc_get_max_send_size(const sc_card_t *card)
 
 	max_send_size = card->max_send_size;
 
-	/* initialize max_send_size to a meaningfull value */
+	/* initialize max_send_size to a meaningful value */
 	if (card->caps & SC_CARD_CAP_APDU_EXT
 			&& card->reader->active_protocol != SC_PROTO_T0) {
 		if (!max_send_size)
@@ -303,7 +303,7 @@ int sc_connect_card(sc_reader_t *reader, sc_card_t **card_out)
 	if (card->name == NULL)
 		card->name = card->driver->name;
 
-	/* initialize max_send_size/max_recv_size to a meaningfull value */
+	/* initialize max_send_size/max_recv_size to a meaningful value */
 	card->max_recv_size = sc_get_max_recv_size(card);
 	card->max_send_size = sc_get_max_send_size(card);
 
