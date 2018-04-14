@@ -24,7 +24,7 @@
 		<para>
 			The <command>piv-tool</command> utility can be used from the command line to perform
 			miscellaneous smart card operations on a HSPD-12 PIV smart card as defined in NIST 800-73-3.
-			It is intened for use with test cards only. It can be used to load objects, and generate
+			It is intended for use with test cards only. It can be used to load objects, and generate
 			key pairs, as well as send arbitrary APDU commands to a card after having authenticated
 			to the card using the card key provided by the card vendor.
 		</para>

@@ -142,7 +142,7 @@ void mscfs_check_cache(mscfs_t* fs)
 int mscfs_lookup_path(mscfs_t* fs, const u8 *path, int pathlen, msc_id* objectId, int isDirectory)
 {
 	u8* oid = objectId->id;
-	if ((pathlen & 1) != 0) /* not divisble by 2 */
+	if ((pathlen & 1) != 0) /* not divisible by 2 */
 		return MSCFS_INVALID_ARGS;
 	if(isDirectory) {
 		/* Directory must be right next to root */

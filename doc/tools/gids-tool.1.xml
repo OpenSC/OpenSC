@@ -75,7 +75,7 @@
 					<term>
 						<option>--new-admin-key</option> <replaceable>argument</replaceable>
 					</term>
-					<listitem><para>Define the new adminastrator key.</para></listitem>
+					<listitem><para>Define the new administrator key.</para></listitem>
 				</varlistentry>
 				<varlistentry>
 					<term>

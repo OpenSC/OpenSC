@@ -119,7 +119,7 @@ typedef struct common_key_info_st {
  * We need to return a GUID like value for each object
  * But this needs to be some what unique.
  * So we will use two different methods, depending 
- * on the size of the sereal number.
+ * on the size of the serial number.
  * If it is 25 bytes, then it was from a FASCN. If 16 bytes
  * its from a GUID.
  * If neither, we will uase the default method. 
@@ -153,12 +153,12 @@ static int piv_get_guid(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_o
 	if (id.len == 1 && serialnr.len == 25) {
 
 		/* It is from a FASCN, and we need to shorten it but keep
-		 * as much uniquness as possible.
+		 * as much uniqueness as possible.
 		 * FASC-N is stored like a ISO 7811 Magnetic Strip Card 
 		 * Using the ANSI/ISO BCD Data Format
 		 * 4 data bit + 1 parity bit (odd) least significant bit first. 
 		 * It starts with the Start Sentinel 0x0b ";" 
-		 * Fields are seperated by 0x0d "="
+		 * Fields are separated by 0x0d "="
 		 * Ends with End Sentinel 0x0f "?"
 		 * Its 39 characters + the LRC 
 		 * http://www.dataip.co.uk/Reference/MagneticCardBCD.php
@@ -323,7 +323,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 };
 	/* 
 	 * NIST 800-73-1 lifted the restriction on 
-	 * requering pin protected certs. Thus the default is to   
+	 * requiring pin protected certs. Thus the default is to
 	 * not require this.
 	 */
 	/* certs will be pulled out from the cert objects */
@@ -386,7 +386,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 	 * but can be derived from the certificates. 
 	 * the cert, pubkey and privkey are a set. 
 	 * Key usages bits taken from pkcs15v1_1 Table 2
-	 * RSA and EC hav differents set of usage 
+	 * RSA and EC have different sets of usage
 	 */
 	static const pubdata pubkeys[PIV_NUM_CERTS_AND_KEYS] = {
 
@@ -699,7 +699,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 	 * they are in order 
 	 * We need to read the cert, get modulus and keylen 
 	 * We use those for the pubkey, and priv key objects. 
-	 * If no cert, then see if pubkey (i.e. we are initilizing,
+	 * If no cert, then see if pubkey (i.e. we are initializing,
 	 * and the pubkey is in a file,) then add pubkey and privkey
 	 * If no cert and no pubkey, skip adding them. 
  
@@ -909,7 +909,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 				break;
 
 			default:
-				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Unsuported key.algorithm %d", cert_out->key->algorithm);
+				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Unsupported key.algorithm %d", cert_out->key->algorithm);
 				ckis[i].pubkey_len = 0; /* set some value for now */
 		}
 		ckis[i].pubkey_from_cert = cert_out->key;
@@ -975,9 +975,9 @@ sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "DEE Adding pin %d label=%s",i, label);
 
 
 	/* set public keys */
-	/* We may only need this during initialzation when genkey
+	/* We may only need this during initialization when genkey
 	 * gets the pubkey, but it can not be read from the card 
-	 * at a later time. The piv-tool can stach  pubkey in file 
+	 * at a later time. The piv-tool can stash  pubkey in file
 	 */ 
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "PIV-II adding pub keys...");
 	for (i = 0; i < PIV_NUM_CERTS_AND_KEYS; i++) {
@@ -1003,7 +1003,7 @@ sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "DEE Adding pin %d label=%s",i, label);
 		if (pubkeys[i].auth_id)
 			sc_pkcs15_format_id(pubkeys[i].auth_id, &pubkey_obj.auth_id);
 
-		/* If no cert found, piv-tool may have stached the pubkey 
+		/* If no cert found, piv-tool may have stashed the pubkey
 		 * so we can use it when generating a certificate request
 		 * The file is a OpenSSL DER EVP_KEY, which looks like 
 		 * a certificate subjectPublicKeyInfo.
@@ -1149,11 +1149,11 @@ sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "DEE Adding pin %d label=%s",i, label);
 
 		/*
 		 * When no cert is present and a pubkey in a file was found, 
-		 * means the caller is initilaizeing a card. A sign operation 
+		 * means the caller is initializing a card. A sign operation
 		 * will be required to sign a certificate request even if 
 		 * normal usage would not allow it. Set SC_PKCS15_PRKEY_USAGE_SIGN 
-		 * TODO if code is added to allow key generation and reqest
-		 * sign in the same session, similiar code will be needed. 
+		 * TODO if code is added to allow key generation and request
+		 * sign in the same session, similar code will be needed.
 		 */
 
 		if (ckis[i].pubkey_from_file == 1) {

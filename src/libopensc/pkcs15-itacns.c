@@ -401,7 +401,7 @@ static int get_name_from_EF_DatiPersonali(unsigned char *EFdata,
 {
 	/*
 	 * Bytes 0-5 contain the ASCII encoding of the following TLV
-	 * strcture's total size, in base 16.
+	 * structure's total size, in base 16.
 	 */
 
 	const unsigned int EF_personaldata_maxlen = 400;
@@ -689,7 +689,7 @@ static int itacns_check_and_add_keyset(sc_pkcs15_card_t *p15card,
 			"Could not read certificate file");
 		path.index = cert_offset;
 		path.count = (certlen[1] << 8) + certlen[2];
-		/* If those bytes are 00, then we are probably dealign with an
+		/* If those bytes are 00, then we are probably dealing with an
 		 * empty file. */
 		if (path.count == 0)
 			return 0;

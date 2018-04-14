@@ -106,7 +106,7 @@ CANDLEFLAGS = -dzlib="C:\zlib-dll" $(CANDLEFLAGS)
 # If you want support for EAC:
 # - Download OpenPACE and
 # - uncomment the line starting with OPENPACE_DEF 
-# - set the OPENPACE_INCL_DIR below to the OpenPACE include directory preceeded by "/I"
+# - set the OPENPACE_INCL_DIR below to the OpenPACE include directory preceded by "/I"
 # - set the OPENPACE_LIB  below to your OpenPACE lib file
 #OPENPACE_DEF= /DENABLE_OPENPACE
 !IF "$(OPENPACE_DEF)" == "/DENABLE_OPENPACE"

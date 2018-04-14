@@ -35,7 +35,7 @@ app default {
 	# What reader drivers to load at start-up
 	#
 	# A special value of 'internal' will load all
-	# statically linked drivers. If an unknown (ie. not
+	# statically linked drivers. If an unknown (i.e. not
 	# internal) driver is supplied, a separate configuration
 	# configuration block has to be written for the driver.
 	# Default: internal
@@ -96,7 +96,7 @@ app default {
 	# What card drivers to load at start-up
 	#
 	# A special value of 'internal' will load all
-	# statically linked drivers. If an unknown (ie. not
+	# statically linked drivers. If an unknown (i.e. not
 	# internal) driver is supplied, a separate configuration
 	# configuration block has to be written for the driver.
 	# Default: internal

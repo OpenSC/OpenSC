@@ -763,7 +763,7 @@ static int starcos_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		tkey.key_header[4] = 0x0f;	/* do state transition */
 	else
 		tkey.key_header[4] = 0x8f;	/* no state transition */
-	tkey.key_header[5] = 0x11; /* requiere local state == 1 to update key */
+	tkey.key_header[5] = 0x11; /* require local state == 1 to update key */
 	tkey.key_header[6] = 0x33;
 	tkey.key_header[7] = 0x00;
 	tkey.key_header[8] = 0x09;

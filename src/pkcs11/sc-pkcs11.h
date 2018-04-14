@@ -158,7 +158,7 @@ struct sc_pkcs11_framework_ops {
 				CK_CHAR_PTR, CK_ULONG,
 				CK_CHAR_PTR, CK_ULONG);
 	/*
-	 * In future: functions to create new objects (ie. certificates, private keys)
+	 * In future: functions to create new objects (i.e. certificates, private keys)
 	 */
 	CK_RV (*init_token)(struct sc_pkcs11_slot *, void *,
 				CK_UTF8CHAR_PTR, CK_ULONG,
@@ -219,7 +219,7 @@ struct sc_pkcs11_slot {
 	sc_timestamp_t slot_state_expires;
 
 	int fw_data_idx;		/* Index of framework data */
-	struct sc_app_info *app_info;	/* Application assosiated to slot */
+	struct sc_app_info *app_info;	/* Application associated to slot */
 	list_t logins;			/* tracks all calls to C_Login if atomic operations are requested */
 	int flags;
 };

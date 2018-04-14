@@ -243,7 +243,7 @@ openct_reader_connect(sc_reader_t *reader)
 	}
 
 	if (rc == 0) {
-		sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "openct_reader_connect recved no data\n");
+		sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "openct_reader_connect received no data\n");
 		return SC_ERROR_READER;
 	}
 

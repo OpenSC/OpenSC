@@ -18,7 +18,7 @@ It isn't
 It doesn't have
   - anything else but data. No locking, no threads etc.
 
-It has heirarchical data blocks, it has lists.
+It has hierarchical data blocks, it has lists.
 
 Similar, but different:
   - .ini files. scconf is block structured, has lists and arrays
@@ -132,9 +132,9 @@ const scconf_block *scconf_find_block(const scconf_context * config,
 	const scconf_block * block, const char *item_name);
 
 This finds a block in the given context. This function doesn't descend
-the heirarchy, it only finds blocks in the top level of either
+the hierarchy, it only finds blocks in the top level of either
 the context (the root block) or of the block given in the block
-paramter (if not NULL).
+parameter (if not NULL).
 
 The block pointer returned points to data held by the context, hence
 the const qualifier.

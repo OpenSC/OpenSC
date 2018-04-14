@@ -570,7 +570,7 @@
 			in DER format from smart card:
 				<programlisting>pkcs11-tool --read-object  --id KEY_ID --type cert --outfile cert.der</programlisting>
 
-			To convert the certificate in DER formato to PEM format, use OpenSSL
+			To convert the certificate in DER format to PEM format, use OpenSSL
 			tools:
 				<programlisting>openssl x509 -inform DER -in cert.der -outform PEM > cert.pem</programlisting>
 

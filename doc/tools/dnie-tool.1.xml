@@ -68,7 +68,7 @@
 						<option>-V</option>
 					</term>
 					<listitem><para>Show DNIe sw version.
-					Displays sofware version for in-card DNIe OS</para></listitem>
+					Displays software version for in-card DNIe OS</para></listitem>
 				</varlistentry>
 				<varlistentry>
 					<term>

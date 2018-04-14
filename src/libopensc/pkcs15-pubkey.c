@@ -200,7 +200,7 @@ sc_pkcs15_decode_pubkey_direct_value(struct sc_pkcs15_card *p15card, struct sc_p
 		LOG_TEST_RET(ctx, rv, "Failed to decode 'SPKI' direct value");
 
 		rv = sc_pkcs15_encode_pubkey(ctx, pubkey, &info->direct.raw.value, &info->direct.raw.len);
-		LOG_TEST_RET(ctx, rv, "Failed to endode 'RAW' direct value");
+		LOG_TEST_RET(ctx, rv, "Failed to encode 'RAW' direct value");
 		sc_pkcs15_free_pubkey(pubkey);
 	}
 

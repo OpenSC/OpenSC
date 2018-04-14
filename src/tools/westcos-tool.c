@@ -477,7 +477,7 @@ int main(int argc, char *argv[])
 			file = sc_file_new();
 			if(file == NULL)
 			{
-				printf("Not enougth memory.\n");
+				printf("Not enough memory.\n");
 				goto out;
 			}
 
@@ -596,7 +596,7 @@ int main(int argc, char *argv[])
 
 		if(rsa == NULL || bn == NULL || mem == NULL)
 		{
-			printf("Not enougth memory.\n");
+			printf("Not enough memory.\n");
 			goto out;
 		}
 
@@ -608,7 +608,7 @@ int main(int argc, char *argv[])
 
 		if(mem == NULL)
 		{
-			printf("Not enougth memory.\n");
+			printf("Not enough memory.\n");
 			goto out;
 		}
 
@@ -638,7 +638,7 @@ int main(int argc, char *argv[])
 			file = sc_file_new();
 			if(file == NULL)
 			{
-				printf("Not enougth memory.\n");
+				printf("Not enough memory.\n");
 				goto out;
 			}
 
@@ -814,7 +814,7 @@ int main(int argc, char *argv[])
 		b = malloc(file->size);
 		if(b == NULL)
 		{
-				printf("Not enougth memory.\n");
+				printf("Not enough memory.\n");
 				goto out;
 		}
 
@@ -864,7 +864,7 @@ int main(int argc, char *argv[])
 		b = malloc(file->size);
 		if(b == NULL)
 		{
-			printf("Not enougth memory.\n");
+			printf("Not enough memory.\n");
 			goto out;
 		}
 

@@ -155,7 +155,7 @@ enum {
  	SC_CARDCTL_RUTOKEN_GENERATE_KEY_DO,
  	SC_CARDCTL_RUTOKEN_DELETE_DO,
  	SC_CARDCTL_RUTOKEN_GET_INFO,
- 	/* NON STANDART  */
+ 	/* NON STANDARD  */
  	SC_CARDCTL_RUTOKEN_GET_DO_INFO,
  	SC_CARDCTL_RUTOKEN_GOST_ENCIPHER, 
  	SC_CARDCTL_RUTOKEN_GOST_DECIPHER,
@@ -1023,7 +1023,7 @@ typedef struct sc_cardctl_isoApplet_ec_parameters {
 
 typedef struct sc_cardctl_isoApplet_genkey {
 	u8 algorithm_ref;			/* Algorithm reference sent to card */
-	unsigned int priv_key_ref;	/* Private key refernce sent to card */
+	unsigned int priv_key_ref;	/* Private key reference sent to card */
 	union {
 		struct
 		{
@@ -1040,7 +1040,7 @@ typedef struct sc_cardctl_isoApplet_genkey {
 
 typedef struct sc_cardctl_isoApplet_import_key {
 	u8 algorithm_ref;			/* Algorithm reference sent to card */
-	unsigned int priv_key_ref;	/* Private key refernce sent to card */
+	unsigned int priv_key_ref;	/* Private key reference sent to card */
 	union {
 		struct
 		{
@@ -1084,7 +1084,7 @@ typedef struct sc_cardctl_coolkey_attribute {
 typedef struct sc_cardctl_coolkey_find_object {
 	int type; /* in parameter */
 	unsigned long find_id; /* in parameter */
-	sc_cardctl_coolkey_attribute_t *coolkey_template; /* in paramter */
+	sc_cardctl_coolkey_attribute_t *coolkey_template; /* in parameter */
 	int template_count;                       /* in parameter */
 	sc_cardctl_coolkey_object_t *obj; /* out parameter */
 } sc_cardctl_coolkey_find_object_t;

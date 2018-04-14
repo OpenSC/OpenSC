@@ -313,7 +313,7 @@ static int npa_unlock_esign(sc_card_t *card)
 		}
 		r = perform_chip_authentication(card, &ef_cardsecurity, &ef_cardsecurity_len);
 		if ( SC_SUCCESS != r) {
-			sc_log(card->ctx, "Error verifying the chips authenticy.\n");
+			sc_log(card->ctx, "Error verifying the chip's authenticity.\n");
 		}
 
 		sc_log(card->ctx, "Proved Access rights to eSign application with configured key as ST.\n");
@@ -343,7 +343,7 @@ static int npa_init(sc_card_t * card)
 	}
 
 	card->caps |= SC_CARD_CAP_APDU_EXT | SC_CARD_CAP_RNG;
-	/* 1520 bytes is the minimum lenght of the communication buffer in all
+	/* 1520 bytes is the minimum length of the communication buffer in all
 	 * Chip/OS variants */
 	card->max_recv_size = 1520;
 	card->max_send_size = 1520;
@@ -382,7 +382,7 @@ static int npa_init(sc_card_t * card)
 	/* unlock the eSign application for reading the certificates
 	 * by the PKCS#15 layer (i.e. sc_pkcs15_bind_internal) */
 	if (SC_SUCCESS != npa_unlock_esign(card))
-		sc_log(card->ctx, "Propably not all functionality will be available.\n");
+		sc_log(card->ctx, "Probably not all functionality will be available.\n");
 
 err:
 	return r;
@@ -757,7 +757,7 @@ static int npa_logout(sc_card_t *card)
 
 	if (card->reader->capabilities & SC_READER_CAP_PACE_GENERIC) {
 		/* If PACE is done between reader and card, SM is transparent to us as
-		 * it ends at the reader. With CLA=0x0C we provoque a SM error to
+		 * it ends at the reader. With CLA=0x0C we provoke a SM error to
 		 * disable SM on the reader. */
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0xA4, 0x00, 0x00);
 		apdu.cla = 0x0C;

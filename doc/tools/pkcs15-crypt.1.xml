@@ -174,9 +174,9 @@
 					</term>
 					<listitem><para>When signing with ECDSA key this option indicates
 					to <command>pkcs15-crypt</command> the signature output format.
-					Possible values are 'rs'(default) -- two concatanated
+					Possible values are 'rs'(default) -- two concatenated
 					integers (PKCS#11), 'sequence' or 'openssl' -- DER encoded sequence
-					of two integeres (OpenSSL).</para></listitem>
+					of two integers (OpenSSL).</para></listitem>
 				</varlistentry>
 
 				<varlistentry>

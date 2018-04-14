@@ -27,7 +27,7 @@ BEGIN
 			VALUE "ProductName", "@OPENSC_VS_FF_PRODUCT_NAME@"
 			VALUE "ProductVersion", "@OPENSC_VERSION_MAJOR@,@OPENSC_VERSION_MINOR@,@OPENSC_VERSION_FIX@,@OPENSC_VERSION_REVISION@"
 			VALUE "SpecialBuild", ""
-			VALUE "FileDescription", "OpenSC common usage application extention"
+			VALUE "FileDescription", "OpenSC common usage application extension"
 		END
 	END
 	BLOCK "VarFileInfo"

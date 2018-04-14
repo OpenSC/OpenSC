@@ -140,7 +140,7 @@ static int set_sec_attr(sc_file_t *file, unsigned int am, unsigned int ac,
 {
 	const amode_entry_t *table;
 
-        /* CHV with reference '0' is the trasport PIN
+        /* CHV with reference '0' is the transport PIN
 	 * and is presented as 'AUT' key with reference '0'*/
 	if (meth == SC_AC_CHV && ac == 0)
 		meth = SC_AC_AUT;
@@ -377,7 +377,7 @@ static int asepcos_set_security_attributes(sc_card_t *card, sc_file_t *file)
 	u8     buf[64], *p;
 	int    r = SC_SUCCESS;
 
-	/* first check wether the security attributes in encoded form
+	/* first check whether the security attributes in encoded form
 	 * are already set. If present use these */
 	if (file->sec_attr != NULL && file->sec_attr_len != 0)
 		return asepcos_set_sec_attributes(card, file->sec_attr,
@@ -420,7 +420,7 @@ static int asepcos_set_security_attributes(sc_card_t *card, sc_file_t *file)
 			*p++ = (st.fileid >> 8 ) & 0xff;
 			*p++ = st.fileid & 0xff;
 		} else {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "unknow auth method: '%d'", ent->method);
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "unknown auth method: '%d'", ent->method);
 			return SC_ERROR_INTERNAL;
 		} 
 	}
@@ -746,7 +746,7 @@ static int asepcos_delete_file(sc_card_t *card, const sc_path_t *path)
 		buf[0] = path->value[path->len-2]; 
 		buf[1] = path->value[path->len-1];
 	} else {
-		/* presumedly a DF */
+		/* presumably a DF */
 		atype = SC_APDU_CASE_1;
 		ftype = 0x00;
 	}
@@ -1008,7 +1008,7 @@ static int asepcos_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *pdata,
 		}
 		break;
 	default:
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "error: unknow cmd type");
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "error: unknown cmd type");
 		return SC_ERROR_INTERNAL;
 	}
 	/* Clear the buffer - it may contain pins */

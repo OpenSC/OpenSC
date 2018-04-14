@@ -80,7 +80,7 @@ sm_oberthur_diversify_keyset(struct sc_context *ctx, struct sm_info *sm_info,
 			sc_log(ctx, "key_buf:%s", sc_dump_hex(key_buff, 16));
 
 			rv = sm_encrypt_des_ecb3(master_key, key_buff, sizeof(key_buff), &tmp, &tmp_len);
-			LOG_TEST_RET(ctx, rv, "GP init session: cannot derivate key");
+			LOG_TEST_RET(ctx, rv, "GP init session: cannot derive key");
 
 			memcpy(keys[ii], tmp, sizeof(gp_keyset->enc));
 			free(tmp);

@@ -161,7 +161,7 @@ sc_pkcs15_get_name_from_dn(struct sc_context *ctx, const u8 *dn, size_t dn_len,
 
 	rdn = sc_asn1_skip_tag(ctx, &dn, &dn_len, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, &rdn_len);
 	if (rdn == NULL)
-		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ASN1_OBJECT, "ASN.1 decoding of Distiguished Name");
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ASN1_OBJECT, "ASN.1 decoding of Distinguished Name");
 
 	for (next_ava = rdn, next_ava_len = rdn_len; next_ava_len; ) {
 		const u8 *ava, *dummy, *oidp;
@@ -222,7 +222,7 @@ sc_pkcs15_get_name_from_dn(struct sc_context *ctx, const u8 *dn, size_t dn_len,
  * The extension is identified by it's oid value.
  * NOTE: extensions can occur in any number or any order, which is why we
  *	can't parse them with a single pass of the asn1 decoder.
- * If is_critical is supplied, then it is set to 1 if the extention is critical
+ * If is_critical is supplied, then it is set to 1 if the extension is critical
  * and 0 if it is not.
  * The data in the extension is extension specific.
  * The following are common extension values:

@@ -55,7 +55,7 @@ const char *gengetopt_args_info_help[] = {
   "  -P, --private-key=FILENAME    Terminal's private key",
   "      --cvc-dir=DIRECTORY       Where to look for the CVCA's certificate\n                                  (default=`/home/fm/.local/etc/eac/cvc')",
   "      --x509-dir=DIRECTORY      Where to look for the CSCA's certificate\n                                  (default=`/home/fm/.local/etc/eac/x509')",
-  "      --disable-ta-checks       Disable checking the validity period of CV\n                                  certifcates  (default=off)",
+  "      --disable-ta-checks       Disable checking the validity period of CV\n                                  certificates  (default=off)",
   "      --disable-ca-checks       Disable passive authentication  (default=off)",
   "\nRead and write data groups:",
   "      --read-dg1                Read DG 1   (Document Type)  (default=off)",
@@ -2085,7 +2085,7 @@ cmdline_parser_internal (
               goto failure;
           
           }
-          /* Disable checking the validity period of CV certifcates.  */
+          /* Disable checking the validity period of CV certificates.  */
           else if (strcmp (long_options[option_index].name, "disable-ta-checks") == 0)
           {
           

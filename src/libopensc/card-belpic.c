@@ -20,14 +20,14 @@
 
 /*     About the Belpic (Belgian Personal Identity Card) card
  *
- * The Belpic card is a Cyberflex Java card, so you normaly communicate
+ * The Belpic card is a Cyberflex Java card, so you normally communicate
  * with an applet running on the card. In order to support a pkcs15 file
  * structure, an  applet (the Belpic applet) has been build that emulates
  * this. So the card's behaviour is specific for this Belpic applet, that's
  * why a separate driver has been made.
  *
  * The card contains the citizen's ID data (name, address, photo, ...) and
- * her keys and certs. The ID data are in a seperate directory on the card and
+ * her keys and certs. The ID data are in a separate directory on the card and
  * are not handled by this software. For the cryptographic data (keys and certs)
  * a pkcs#15 structure has been chosen and they can be accessed and used
  * by the OpenSC software.
@@ -35,20 +35,20 @@
  * The current situation about the cryptographic data is: there is 1 PIN
  * that protects 2 private keys and corresponding certs. Then there is a
  * CA cert and the root cert. The first key (Auth Key) can be used for
- * authentication, the second one (NonRep Key) for non repudation purposes
+ * authentication, the second one (NonRep Key) for non repudiation purposes
  * (so it can be used as an alternative to manual signatures).
  *
  * There are some special things to note, which all have some consequences:
  * (1) the SELECT FILE command doesn't return any FCI (file length, type, ...)
  * (2) the NonRep key needs a VERIFY PIN before a signature can be done with it
- * (3) pin pad readers had to be supported by a proprietory interface (as at
- *     that moment no other solution was known/avaiable/ready)
+ * (3) pin pad readers had to be supported by a proprietary interface (as at
+ *     that moment no other solution was known/available/ready)
  * The consequences are:
  *
  * For (1): we let the SELECT FILE command return that the file length is
- * a fixed large number and that each file is a transparant working EF
+ * a fixed large number and that each file is a transparent working EF
  * (except the root dir 3F 00). This way however, there is a problem with the
- * sc_read_binary() function that will only stop reading untill it receivces
+ * sc_read_binary() function that will only stop reading until it receives
  * a 0. Therefore, we use the 'next_idx' trick. Or, if that might fail
  * and so a READ BINARY past the end of file is done, length 0 is returned
  * instead of an error code.
@@ -58,11 +58,11 @@
  * causes other problems and is less user-friendly). A GUI being popped up
  * by the pkcs11 lib before each NonRep signature has another important
  * security advantage: applications that cache the PIN can't silently do
- * a NonRep signature because there will allways be the GUI.
+ * a NonRep signature because there will always be the GUI.
  *
  * For (3), we link dynamically against a pin pad lib (DLL) that implements the
- * proprietory API for a specific pin pad. For each pin pad reader (identified
- * by it's PC/SC reader name), a pin pad lib correspondends. Some reader/lib
+ * proprietary API for a specific pin pad. For each pin pad reader (identified
+ * by it's PC/SC reader name), a pin pad lib corresponds. Some reader/lib
  * name pairs are hardcoded, and others can be added in the config file.
  * Note that there's also a GUI used in this case: if a signature with the
  * NonRep key is done: a dialog box is shown that asks the user to enter
@@ -381,7 +381,7 @@ static int belpic_set_security_env(sc_card_t *card,
 
 	/* If a NonRep signature will be done, ask to enter a PIN. It would be more
 	 * logical to put the code below into the compute signature function because
-	 * a Verify Pin call must immediately preceed a Compute Signature call.
+	 * a Verify Pin call must immediately precede a Compute Signature call.
 	 * It's not done because the Compute Signature is completely ISO7816 compliant
 	 * so we use the iso7816_compute_signature() function, and because this function
 	 * doesn't know about the key reference.

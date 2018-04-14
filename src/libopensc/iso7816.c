@@ -423,7 +423,7 @@ iso7816_process_fci(struct sc_card *card, struct sc_file *file,
 
 			case 0x86:
 				if (SC_SUCCESS != sc_file_set_sec_attr(file, p, length)) {
-					sc_log(ctx, "Warning: Could not set file security prperties");
+					sc_log(ctx, "Warning: Could not set file security properties");
 				}
 				break;
 

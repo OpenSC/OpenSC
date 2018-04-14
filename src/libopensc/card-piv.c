@@ -175,14 +175,14 @@ typedef struct piv_private_data {
 	int tries_left; /* SC_PIN_CMD_GET_INFO tries_left from last */
 	unsigned int card_issues; /* card_issues flags for this card */
 	int object_test_verify; /* Can test this object to set verification state of card */
-	int yubico_version; /* 3 byte version number of NEO or Ybuikey4  as integer */
+	int yubico_version; /* 3 byte version number of NEO or Yubikey4  as integer */
 } piv_private_data_t;
 
 #define PIV_DATA(card) ((piv_private_data_t*)card->drv_data)
 
 struct piv_aid {
 	int enumtag;
-	size_t len_short;	/* min lenght without version */
+	size_t len_short;	/* min length without version */
 	size_t len_long;	/* With version and other stuff */
 	u8 *value;
 };
@@ -194,7 +194,7 @@ struct piv_aid {
  * i.e. "A0 00 00 03 08 00 00 01 00 02 00".
  * but we don't need the version number. but could get it from the PIX.
  *
- * 800-73-3 Part 1 now referes to "01 00" i.e. going back to 800-73-1.
+ * 800-73-3 Part 1 now refers to "01 00" i.e. going back to 800-73-1.
  * The main differences between 73-1, and 73-3 are the addition of the
  * key History object and keys, as well as Discovery and Iris objects.
  * These can be discovered by trying GET DATA
@@ -423,7 +423,7 @@ piv_find_obj_by_containerid(sc_card_t *card, const u8 * str)
 }
 
 /*
- * If ptr == NULL, just return the size of the tag and lenght and data
+ * If ptr == NULL, just return the size of the tag and length and data
  * otherwise, store tag and length at **ptr, and increment
  */
 
@@ -469,7 +469,7 @@ put_tag_and_len(unsigned int tag, size_t len, u8 **ptr)
  * Send a command and receive data. There is always something to send.
  * Used by  GET DATA, PUT DATA, GENERAL AUTHENTICATE
  * and GENERATE ASYMMETRIC KEY PAIR.
- * GET DATA may call to get the first 128 bytes to get the lenght from the tag.
+ * GET DATA may call to get the first 128 bytes to get the length from the tag.
  *
  * A caller may provide a buffer, and length to read. If not provided,
  * an internal 4096 byte buffer is used, and a copy is returned to the
@@ -775,7 +775,7 @@ static int piv_find_aid(sc_card_t * card, sc_file_t *aid_file)
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	/* first  see if the default applcation will return a template
+	/* first  see if the default application will return a template
 	 * that we know about.
 	 */
 
@@ -1316,7 +1316,7 @@ piv_write_certificate(sc_card_t *card, const u8* buf, size_t count, unsigned lon
 	p += count;
 	put_tag_and_len(0x71, 1, &p);
 	/* Use 01 as per NIST 800-73-3 */
-	*p++ = (flags)? 0x01:0x00; /* certinfo, i.e. gziped? */
+	*p++ = (flags)? 0x01:0x00; /* certinfo, i.e. gzipped? */
 	put_tag_and_len(0xFE,0,&p); /* LRC tag */
 
 	sc_log(card->ctx, "DEE buf %p len %"SC_FORMAT_LEN_PTRDIFF_T"u %"SC_FORMAT_LEN_SIZE_T"u",
@@ -1336,10 +1336,10 @@ piv_write_certificate(sc_card_t *card, const u8* buf, size_t count, unsigned lon
  * Note: the select file will have saved the object type for us
  * Write is used by piv-tool, so we will use flags:
  *  length << 8 | 8bits:
- * object           xxxx0000
- * uncompresed cert xxx00001
- * compressed cert  xxx10001
- * pubkey           xxxx0010
+ * object            xxxx0000
+ * uncompressed cert xxx00001
+ * compressed cert   xxx10001
+ * pubkey            xxxx0010
  *
  * to indicate we are writing a cert and if is compressed
  * or if we are writing a pubkey in to the cache.
@@ -1438,8 +1438,8 @@ static int piv_write_binary(sc_card_t *card, unsigned int idx,
 
 /*
  * Card initialization is NOT standard.
- * Some cards use mutual or external authentication usings 3des or aes key. We
- * will read in the key from a file either binary or hex encided.
+ * Some cards use mutual or external authentication using 3des or aes key. We
+ * will read in the key from a file either binary or hex encoded.
  * This is only needed during initialization/personalization of the card
  */
 
@@ -1532,7 +1532,7 @@ static int piv_get_key(sc_card_t *card, unsigned int alg_id, u8 **key, size_t *l
 		r = SC_ERROR_OUT_OF_MEMORY;
 		goto err;
 	}
-	keybuf[fsize] = 0x00;    /* incase it is text need null */
+	keybuf[fsize] = 0x00;    /* in case it is text need null */
 
 	if (fread(keybuf, 1, fsize, f) != fsize) {
 		sc_log(card->ctx, " Unable to read key\n");
@@ -1639,7 +1639,7 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 
 	r = piv_get_key(card, alg_id, &key, &keylen);
 	if (r) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Error  getting General Auth key\n");
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Error getting General Auth key\n");
 		goto err;
 	}
 
@@ -1919,7 +1919,7 @@ static int piv_general_external_authenticate(sc_card_t *card,
 
 	r = piv_get_key(card, alg_id, &key, &keylen);
 	if (r) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Error  geting General Auth key\n");
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Error getting General Auth key\n");
 		goto err;
 	}
 
@@ -2127,7 +2127,7 @@ piv_get_serial_nr_from_CHUI(sc_card_t* card, sc_serial_number_t* serial)
 			       fascn, fascnlen, guid, guidlen, gbits);
 
 			if (fascn && fascnlen == 25) {
-				/* test if guid and the fascn starts with ;9999 (in ISO 4bit + partiy code) */
+				/* test if guid and the fascn starts with ;9999 (in ISO 4bit + parity code) */
 				if (!(gbits && fascn[0] == 0xD4 && fascn[1] == 0xE7
 						    && fascn[2] == 0x39 && (fascn[3] | 0x7F) == 0xFF)) {
 					serial->len = fascnlen < SC_MAX_SERIALNR ? fascnlen : SC_MAX_SERIALNR;
@@ -2204,7 +2204,7 @@ static int piv_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 					return piv_general_external_authenticate(card,
 						*(opts+1), *(opts+2));
 					break;
-				case'M':
+				case 'M':
 					return piv_general_mutual_authenticate(card,
 						*(opts+1), *(opts+2));
 					break;
@@ -2255,7 +2255,7 @@ static int piv_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 	while (len > 0) {
 		size_t n = len > 8 ? 8 : len;
 
-		/* NIST 800-73-3 says use 9B, previous verisons used 00 */
+		/* NIST 800-73-3 says use 9B, previous versions used 00 */
 		r = piv_general_io(card, 0x87, 0x00, 0x9B, sbuf, p - sbuf, &rbuf, &rbuflen);
 		if (r < 0) {
 			sc_unlock(card);
@@ -2523,7 +2523,7 @@ static int piv_select_file(sc_card_t *card, const sc_path_t *in_path,
 
 	/* only support single EF in current application */
 	/*
-	 * PIV emulates files, and only does so becauses sc_pkcs15_* uses
+	 * PIV emulates files, and only does so because sc_pkcs15_* uses
 	 * select_file and read_binary. The emulation adds path emulated structures
 	 * so piv_select_file will find it.
 	 * there is no dir. Only direct access to emulated files
@@ -2791,7 +2791,7 @@ piv_process_history(sc_card_t *card)
 			}
 		}
 		else {
-			sc_log(card->ctx, "Problem with Histroy object\n");
+			sc_log(card->ctx, "Problem with History object\n");
 			goto err;
 		}
 	}
@@ -3098,7 +3098,7 @@ static int piv_match_card_continued(sc_card_t *card)
 	priv->tries_left = 10; /* will assume OK at start */
 	priv->pstate = PIV_STATE_MATCH;
 
-	/* Some objects will only be present if Histroy object says so */
+	/* Some objects will only be present if History object says so */
 	for (i=0; i < PIV_OBJ_LAST_ENUM -1; i++)
 		if(piv_objects[i].flags & PIV_OBJECT_NOT_PRESENT)
 			priv->obj_cache[i].flags |= PIV_OBJ_CACHE_NOT_PRESENT;
@@ -3270,7 +3270,7 @@ static int piv_init(sc_card_t *card)
 
 	 flags = SC_ALGORITHM_RSA_RAW;
 
-	_sc_card_add_rsa_alg(card, 1024, flags, 0); /* manditory */
+	_sc_card_add_rsa_alg(card, 1024, flags, 0); /* mandatory */
 	_sc_card_add_rsa_alg(card, 2048, flags, 0); /* optional */
 	_sc_card_add_rsa_alg(card, 3072, flags, 0); /* optional */
 
@@ -3288,9 +3288,9 @@ static int piv_init(sc_card_t *card)
 	 * 800-73-3 cards may have a history object and/or a discovery object
 	 * We want to process them now as this has information on what
 	 * keys and certs the card has and how the pin might be used.
-	 * If they fail, ignore it there are optional and introdced in
+	 * If they fail, ignore it there are optional and introduced in
 	 * NIST 800-73-3 and NIST 800-73-2 so some older cards may 
-	 * not handle the requets. 
+	 * not handle the request.
 	 */
 	piv_process_history(card);
 
@@ -3373,7 +3373,7 @@ piv_check_protected_objects(sc_card_t *card)
 	 * If we can't determine the security state from this process,
 	 * set card_issues CI_CANT_USE_GETDATA_FOR_STATE
 	 * and return SC_ERROR_PIN_CODE_INCORRECT
-	 * The curcomvention is to add a dummy Printed Info object in the card.
+	 * The circumvention is to add a dummy Printed Info object in the card.
 	 * so we will have an object to test.
 	 *
 	 * We save the object's number to use in the future.
@@ -3473,7 +3473,7 @@ piv_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 	 * to avoid any interference from other applications.  
 	 * Sc_unlock will be called at a later time after the next card command 
 	 * that should be a crypto operation. If its not then it is a error by the 
-	 * calling appication. 
+	 * calling application.
 	 */
 	if (data->cmd == SC_PIN_CMD_VERIFY && data->pin_type == SC_AC_CONTEXT_SPECIFIC) {
 		priv->context_specific = 1;
@@ -3502,7 +3502,7 @@ piv_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 		priv->pin_cmd_verify = 0;
 	}
 
-	/* If verify worked, we are loged_in */
+	/* If verify worked, we are logged_in */
 	if (data->cmd == SC_PIN_CMD_VERIFY) {
 	    if (r >= 0)
 		priv->logged_in = SC_PIN_STATE_LOGGED_IN;
@@ -3564,7 +3564,7 @@ static int piv_logout(sc_card_t *card)
  * processes, and they may have taken action already
  * and changed the AID and or may have sent a  VERIFY with PIN
  * So test the state of the card.
- * this is very similiar to what the piv_match routtine does,
+ * this is very similar to what the piv_match routine does,
  */
 
 static int piv_card_reader_lock_obtained(sc_card_t *card, int was_reset)
@@ -3584,10 +3584,10 @@ static int piv_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 		goto err;
 	}
 
-	/* can we detect and then select the PIV AID without losinig the login state? */
+	/* can we detect and then select the PIV AID without losing the login state? */
 	if ((priv->card_issues & CI_DISCOVERY_USELESS)
 			&& (priv->card_issues & CI_PIV_AID_LOSE_STATE)) {
-		r = 0; /* do nothing, hope card was not interferred with */
+		r = 0; /* do nothing, hope card was not interfered with */
 		goto err;
 	}
 

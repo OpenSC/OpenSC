@@ -194,7 +194,7 @@ static int load_cert(const char * cert_id, const char * cert_file,
 				cert_file, strerror(errno));
         goto err;
     }
-	if (compress) { /* file is gziped already */
+	if (compress) { /* file is gzipped already */
 		struct stat stat_buf;
 
 		if (0 != stat(cert_file, &stat_buf)) {

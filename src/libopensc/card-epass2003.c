@@ -1303,7 +1303,7 @@ epass2003_select_fid_(struct sc_card *card, sc_path_t * in_path, sc_file_t ** fi
 	}
 
 	if (path[0] == 0x29) {	/* TODO:0x29 accords with FID prefix in profile  */
-		/* Not allowed to select prvate key file, so fake fci. */
+		/* Not allowed to select private key file, so fake fci. */
 		/* 62 16 82 02 11 00 83 02 29 00 85 02 08 00 86 08 FF 90 90 90 FF FF FF FF */
 		apdu.resplen = 0x18;
 		memcpy(apdu.resp,
@@ -1480,7 +1480,7 @@ epass2003_select_path(struct sc_card *card, const u8 pathbuf[16], const size_t l
 
 	if (card->cache.valid && bMatch > 2) {
 		if (pathlen - bMatch == 2) {
-			/* we are in the rigth directory */
+			/* we are in the right directory */
 			return epass2003_select_fid(card, path[bMatch], path[bMatch + 1], file_out);
 		}
 		else if (pathlen - bMatch > 2) {
@@ -2696,7 +2696,7 @@ epass2003_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries
 
 			data->pin1.max_tries = maxtries;
 		}
-//reomve below code, because the old implement only return PIN retries, now modify the code and return PIN status
+//remove below code, because the old implement only return PIN retries, now modify the code and return PIN status
 //		return r;
 	}
 	else if (data->cmd == SC_PIN_CMD_UNBLOCK) { /* verify */

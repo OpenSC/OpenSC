@@ -3536,7 +3536,7 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 			bytes = getEC_POINT(sess, obj, &size);
 			/*
 			 * (We only support uncompressed for now)
-			 * Uncompresed EC_POINT is DER OCTET STRING of "04||x||y"
+			 * Uncompressed EC_POINT is DER OCTET STRING of "04||x||y"
 			 * So a "256" bit key has x and y of 32 bytes each
 			 * something like: "04 41 04||x||y"
 			 * Do simple size calculation based on DER encoding
@@ -5406,7 +5406,7 @@ static CK_SESSION_HANDLE test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE
 
 	/* This is done in NSS */
 	getMODULUS(session, priv_key, &mod_len);
-	if (mod_len < 5 || mod_len > 10000) { /* should be resonable limits */
+	if (mod_len < 5 || mod_len > 10000) { /* should be reasonable limits */
 		fprintf(stderr, "ERR: GetAttribute(privkey, CKA_MODULUS) doesn't seem to work\n");
 		return session;
 	}
@@ -5495,7 +5495,7 @@ static CK_SESSION_HANDLE test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE
 	C_UnloadModule(module);
 
 	/* Now we assume the user turns of her PC and comes back tomorrow to see
-	 * if here cert is allready made and to install it (as is done next) */
+	 * if here cert is already made and to install it (as is done next) */
 
 	printf("\n*** In real life, the cert req should now be sent to the CA ***\n");
 
@@ -5529,7 +5529,7 @@ static CK_SESSION_HANDLE test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE
 	if (!delete_object(session))
 		util_fatal("Failed to delete certificate");
 
-	printf("\n==> OK, successfull! Should work with Mozilla\n");
+	printf("\n==> OK, successful! Should work with Mozilla\n");
 	return session;
 }
 
