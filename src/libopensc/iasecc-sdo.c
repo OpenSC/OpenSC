@@ -83,7 +83,7 @@ iasecc_sdo_convert_acl(struct sc_card *card, struct iasecc_sdo *sdo,
 		{SC_AC_OP_READ,		IASECC_ACL_GET_DATA},
 		{0x00, 0x00}
 	};
-	unsigned char mask = 0x80, op_mask;
+	unsigned char mask = 0x80, op_mask = 0;
 	int ii;
 
 	LOG_FUNC_CALLED(ctx);
@@ -94,10 +94,10 @@ iasecc_sdo_convert_acl(struct sc_card *card, struct iasecc_sdo *sdo,
 			break;
 		}
 	}
-	if (ops[ii].mask == 0)
+	if (op_mask == 0)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
 
-	sc_log(ctx, "OP:%i, mask:0x%X", op, ops[ii].mask);
+	sc_log(ctx, "OP:%i, mask:0x%X", op, op_mask);
 	sc_log(ctx, "AMB:%X, scbs:%s", sdo->docp.amb, sc_dump_hex(sdo->docp.scbs, IASECC_MAX_SCBS));
 	sc_log(ctx, "docp.acls_contact:%s", sc_dump_hex(sdo->docp.acls_contact.value, sdo->docp.acls_contact.size));
 

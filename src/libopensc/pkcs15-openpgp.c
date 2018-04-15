@@ -371,7 +371,9 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 			goto failed;
 	}
 
-	/* PKCS#15 DATA object from OpenPGP private DOs */
+	/* Add PKCS#15 DATA objects from other OpenPGP card DOs. The return
+	 * value is ignored, so this will not cause initialization to fail.
+	 */
 	sc_pkcs15emu_openpgp_add_data(p15card);
 
 failed:
@@ -392,7 +394,7 @@ sc_pkcs15emu_openpgp_add_data(sc_pkcs15_card_t *p15card)
 	int i, r;
 
 	LOG_FUNC_CALLED(ctx);
-	/* There is 4 private DO from 0101 to 0104 */
+	/* Optional private use DOs 0101 to 0104 */
 	for (i = 1; i <= PGP_NUM_PRIVDO; i++) {
 		sc_pkcs15_data_info_t dat_info;
 		sc_pkcs15_object_t dat_obj;
@@ -405,8 +407,8 @@ sc_pkcs15emu_openpgp_add_data(sc_pkcs15_card_t *p15card)
 		snprintf(name, 8, "PrivDO%d", i);
 		snprintf(path, 9, "3F00010%d", i);
 
-		/* Check if the DO can be read.
-		 * We won't expose pkcs15 DATA object if DO is empty.
+		/* Check if the DO can be read and is not empty. Otherwise we
+		 * won't expose a PKCS#15 DATA object.
 		 */
 		r = read_file(p15card->card, path, content, sizeof(content));
 		if (r <= 0 ) {
@@ -428,8 +430,9 @@ sc_pkcs15emu_openpgp_add_data(sc_pkcs15_card_t *p15card)
 
 		sc_log(ctx, "Add %s data object", name);
 		r = sc_pkcs15emu_add_data_object(p15card, &dat_obj, &dat_info);
+		LOG_TEST_RET(ctx, r, "Could not add data object to framework");
 	}
-	LOG_FUNC_RETURN(ctx, r);
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
 static int openpgp_detect_card(sc_pkcs15_card_t *p15card)

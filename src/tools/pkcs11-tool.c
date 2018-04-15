@@ -3234,7 +3234,7 @@ find_mechanism(CK_SLOT_ID slot, CK_FLAGS flags,
 	count = get_mechanisms(slot, &mechs, flags);
 	if (count)   {
 		if (list && list_len)   {
-			unsigned ii, jj;
+			unsigned ii = list_len, jj;
 
 			for (jj=0; jj<count; jj++)   {
 				for (ii=0; ii<list_len; ii++)
