@@ -528,83 +528,83 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		{ "05", "Retired KEY MAN 1",
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_DECRYPT | SC_PKCS15_PRKEY_USAGE_UNWRAP,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_DERIVE,
-			"", 0x82, "01", SC_PKCS15_CO_FLAG_PRIVATE, 1},
+			"", 0x82, "01", SC_PKCS15_CO_FLAG_PRIVATE, 0},
 		{ "06", "Retired KEY MAN 2",
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_DECRYPT | SC_PKCS15_PRKEY_USAGE_UNWRAP,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_DERIVE,
-			"", 0x83, "01", SC_PKCS15_CO_FLAG_PRIVATE, 1},
+			"", 0x83, "01", SC_PKCS15_CO_FLAG_PRIVATE, 0},
 		{ "07", "Retired KEY MAN 3",
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_DECRYPT | SC_PKCS15_PRKEY_USAGE_UNWRAP,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_DERIVE,
-			"", 0x84, "01", SC_PKCS15_CO_FLAG_PRIVATE, 1},
+			"", 0x84, "01", SC_PKCS15_CO_FLAG_PRIVATE, 0},
 		{ "08", "Retired KEY MAN 4",
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_DECRYPT | SC_PKCS15_PRKEY_USAGE_UNWRAP,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_DERIVE,
-			"", 0x85, "01", SC_PKCS15_CO_FLAG_PRIVATE, 1},
+			"", 0x85, "01", SC_PKCS15_CO_FLAG_PRIVATE, 0},
 		{ "09", "Retired KEY MAN 5",
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_DECRYPT | SC_PKCS15_PRKEY_USAGE_UNWRAP,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_DERIVE,
-			"", 0x86, "01", SC_PKCS15_CO_FLAG_PRIVATE, 1},
+			"", 0x86, "01", SC_PKCS15_CO_FLAG_PRIVATE, 0},
 		{ "10", "Retired KEY MAN 6",
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_DECRYPT | SC_PKCS15_PRKEY_USAGE_UNWRAP,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_DERIVE,
-			"", 0x87, "01", SC_PKCS15_CO_FLAG_PRIVATE, 1},
+			"", 0x87, "01", SC_PKCS15_CO_FLAG_PRIVATE, 0},
 		{ "11", "Retired KEY MAN 7",
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_DECRYPT | SC_PKCS15_PRKEY_USAGE_UNWRAP,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_DERIVE,
-			"", 0x88, "01", SC_PKCS15_CO_FLAG_PRIVATE, 1},
+			"", 0x88, "01", SC_PKCS15_CO_FLAG_PRIVATE, 0},
 		{ "12", "Retired KEY MAN 8",
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_DECRYPT | SC_PKCS15_PRKEY_USAGE_UNWRAP,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_DERIVE,
-			"", 0x89, "01", SC_PKCS15_CO_FLAG_PRIVATE, 1},
+			"", 0x89, "01", SC_PKCS15_CO_FLAG_PRIVATE, 0},
 		{ "13", "Retired KEY MAN 9",
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_DECRYPT | SC_PKCS15_PRKEY_USAGE_UNWRAP,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_DERIVE,
-			"", 0x8A, "01", SC_PKCS15_CO_FLAG_PRIVATE, 1},
+			"", 0x8A, "01", SC_PKCS15_CO_FLAG_PRIVATE, 0},
 		{ "14", "Retired KEY MAN 10",
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_DECRYPT | SC_PKCS15_PRKEY_USAGE_UNWRAP,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_DERIVE,
-			"", 0x8B, "01", SC_PKCS15_CO_FLAG_PRIVATE, 1},
+			"", 0x8B, "01", SC_PKCS15_CO_FLAG_PRIVATE, 0},
 		{ "15", "Retired KEY MAN 11",
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_DECRYPT | SC_PKCS15_PRKEY_USAGE_UNWRAP,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_DERIVE,
-			"", 0x8C, "01", SC_PKCS15_CO_FLAG_PRIVATE, 1},
+			"", 0x8C, "01", SC_PKCS15_CO_FLAG_PRIVATE, 0},
 		{ "16", "Retired KEY MAN 12",
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_DECRYPT | SC_PKCS15_PRKEY_USAGE_UNWRAP,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_DERIVE,
-			"", 0x8D, "01", SC_PKCS15_CO_FLAG_PRIVATE, 1},
+			"", 0x8D, "01", SC_PKCS15_CO_FLAG_PRIVATE, 0},
 		{ "17", "Retired KEY MAN 13",
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_DECRYPT | SC_PKCS15_PRKEY_USAGE_UNWRAP,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_DERIVE,
-			"", 0x8E, "01", SC_PKCS15_CO_FLAG_PRIVATE, 1},
+			"", 0x8E, "01", SC_PKCS15_CO_FLAG_PRIVATE, 0},
 		{ "18", "Retired KEY MAN 14",
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_DECRYPT | SC_PKCS15_PRKEY_USAGE_UNWRAP,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_DERIVE,
-			"", 0x8F, "01", SC_PKCS15_CO_FLAG_PRIVATE, 1},
+			"", 0x8F, "01", SC_PKCS15_CO_FLAG_PRIVATE, 0},
 		{ "19", "Retired KEY MAN 15",
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_DECRYPT | SC_PKCS15_PRKEY_USAGE_UNWRAP,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_DERIVE,
-			"", 0x90, "01", SC_PKCS15_CO_FLAG_PRIVATE, 1},
+			"", 0x90, "01", SC_PKCS15_CO_FLAG_PRIVATE, 0},
 		{ "20", "Retired KEY MAN 16",
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_DECRYPT | SC_PKCS15_PRKEY_USAGE_UNWRAP,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_DERIVE,
-			"", 0x91, "01", SC_PKCS15_CO_FLAG_PRIVATE, 1},
+			"", 0x91, "01", SC_PKCS15_CO_FLAG_PRIVATE, 0},
 		{ "21", "Retired KEY MAN 17",
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_DECRYPT | SC_PKCS15_PRKEY_USAGE_UNWRAP,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_DERIVE,
-			"", 0x92, "01", SC_PKCS15_CO_FLAG_PRIVATE, 1},
+			"", 0x92, "01", SC_PKCS15_CO_FLAG_PRIVATE, 0},
 		{ "22", "Retired KEY MAN 18",
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_DECRYPT | SC_PKCS15_PRKEY_USAGE_UNWRAP,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_DERIVE,
-			"", 0x93, "01", SC_PKCS15_CO_FLAG_PRIVATE, 1},
+			"", 0x93, "01", SC_PKCS15_CO_FLAG_PRIVATE, 0},
 		{ "23", "Retired KEY MAN 19",
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_DECRYPT | SC_PKCS15_PRKEY_USAGE_UNWRAP,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_DERIVE,
-			"", 0x94, "01", SC_PKCS15_CO_FLAG_PRIVATE, 1},
+			"", 0x94, "01", SC_PKCS15_CO_FLAG_PRIVATE, 0},
 		{ "24", "Retired KEY MAN 20",
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_DECRYPT | SC_PKCS15_PRKEY_USAGE_UNWRAP,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_DERIVE,
-			"", 0x95, "01", SC_PKCS15_CO_FLAG_PRIVATE, 1}
+			"", 0x95, "01", SC_PKCS15_CO_FLAG_PRIVATE, 0}
 	};
 
 	int    r, i;
@@ -1142,7 +1142,7 @@ sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "DEE Adding pin %d label=%s",i, label);
 
 		strncpy(prkey_obj.label, prkeys[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
 		prkey_obj.flags = prkeys[i].obj_flags;
-		prkey_obj.user_consent = prkeys[i].user_consent;
+		prkey_obj.user_consent = prkeys[i].user_consent; /* only Sign key */
 
 		if (prkeys[i].auth_id)
 			sc_pkcs15_format_id(prkeys[i].auth_id, &prkey_obj.auth_id);
@@ -1165,6 +1165,10 @@ sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "DEE Adding pin %d label=%s",i, label);
 			case SC_ALGORITHM_RSA:
 				if(ckis[i].cert_keyUsage_present) {
 					prkey_info.usage |= ckis[i].priv_usage;
+					/* If retired key and non gov cert has NONREPUDIATION, treat as user_consent */
+					if (i >= 4 && (ckis[i].priv_usage & SC_PKCS15_PRKEY_USAGE_NONREPUDIATION)) {
+						prkey_obj.user_consent = 1;
+					}
 				} else {
 					prkey_info.usage |= prkeys[i].usage_rsa;
 				}
@@ -1174,6 +1178,10 @@ sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "DEE Adding pin %d label=%s",i, label);
 			case SC_ALGORITHM_EC:
 				if (ckis[i].cert_keyUsage_present) {
 					prkey_info.usage  |= ckis[i].priv_usage;
+					/* If retired key and non gov cert has NONREPUDIATION, treat as user_consent */
+					if (i >= 4 && (ckis[i].priv_usage & SC_PKCS15_PRKEY_USAGE_NONREPUDIATION)) {
+						prkey_obj.user_consent = 1;
+					}
 				} else {
 					prkey_info.usage  |= prkeys[i].usage_ec;
 				}

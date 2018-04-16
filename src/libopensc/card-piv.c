@@ -2871,7 +2871,7 @@ piv_process_history(sc_card_t *card)
 			}
 			keyref = sc_asn1_find_tag(card->ctx, seq, seqlen, 0x04, &keyreflen);
 			if (!keyref || keyreflen != 1 ||
-					(*keyref < 0x82 && *keyref > 0x95)) {
+					(*keyref < 0x82 || *keyref > 0x95)) {
 				sc_log(card->ctx, "DER problem");
 				r = SC_ERROR_INVALID_ASN1_OBJECT;
 				goto err;
