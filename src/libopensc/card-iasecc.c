@@ -45,6 +45,7 @@
 /* #include "sm.h" */
 #include "pkcs15.h"
 /* #include "hash-strings.h" */
+#include "gp.h"
 
 #include "iasecc.h"
 
@@ -90,12 +91,6 @@ static struct sc_atr_table iasecc_known_atrs[] = {
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
-static struct sc_aid GlobalPlatform_CardManager_AID = {
-	{ 0xA0,0x00,0x00,0x00,0x03,0x00,0x00}, 7
-};
-static struct sc_aid GlobalPlatform_ISD_Default_RID = {
-	{ 0xA0,0x00,0x00,0x01,0x51,0x00,0x00}, 7
-};
 static struct sc_aid OberthurIASECC_AID = {
 	{0xA0,0x00,0x00,0x00,0x77,0x01,0x08,0x00,0x07,0x00,0x00,0xFE,0x00,0x00,0x01,0x00}, 16
 };
@@ -477,8 +472,6 @@ static int
 iasecc_init_oberthur(struct sc_card *card)
 {
 	struct sc_context *ctx = card->ctx;
-	unsigned char resp[0x100];
-	size_t resp_len;
 	unsigned int flags;
 	int rv = 0;
 
@@ -495,10 +488,9 @@ iasecc_init_oberthur(struct sc_card *card)
 
 	iasecc_parse_ef_atr(card);
 
-	resp_len = sizeof(resp);
-	if (iasecc_select_aid(card, &GlobalPlatform_CardManager_AID, resp, &resp_len))   {
-		resp_len = sizeof(resp);
-		iasecc_select_aid(card, &GlobalPlatform_ISD_Default_RID, resp, &resp_len);
+	/* if we fail to select CM, */
+	if (gp_select_card_manager(card)) {
+		gp_select_isd_rid(card);
 	}
 
 	rv = iasecc_oberthur_match(card);

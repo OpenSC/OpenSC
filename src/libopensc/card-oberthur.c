@@ -39,6 +39,7 @@
 #include "internal.h"
 #include "cardctl.h"
 #include "pkcs15.h"
+#include "gp.h"
 
 #define OBERTHUR_PIN_LOCAL	0x80
 #define OBERTHUR_PIN_REFERENCE_USER	0x81
@@ -157,19 +158,10 @@ auth_select_aid(struct sc_card *card)
 	unsigned char apdu_resp[SC_MAX_APDU_BUFFER_SIZE];
 	struct auth_private_data *data =  (struct auth_private_data *) card->drv_data;
 	int rv, ii;
-	unsigned char cm[7] = {0xA0,0x00,0x00,0x00,0x03,0x00,0x00};
 	struct sc_path tmp_path;
 
 	/* Select Card Manager (to deselect previously selected application) */
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, 0x04, 0x0C);
-	apdu.lc = sizeof(cm);
-	/* apdu.le = sizeof(cm)+4; */
-	apdu.data = cm;
-	apdu.datalen = sizeof(cm);
-	apdu.resplen = sizeof(apdu_resp);
-	apdu.resp = apdu_resp;
-
-	rv = sc_transmit_apdu(card, &apdu);
+	rv = gp_select_card_manager(card);
 	LOG_TEST_RET(card->ctx, rv, "APDU transmit failed");
 
 	/* Get smart card serial number */

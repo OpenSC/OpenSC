@@ -7,7 +7,7 @@ EXTRA_DIST = Makefile.mak opensc.dll.manifest
 lib_LTLIBRARIES = libopensc.la
 noinst_HEADERS = cards.h ctbcs.h internal.h esteid.h muscle.h muscle-filesystem.h \
 	internal-winscard.h p15card-helper.h pkcs15-syn.h \
-	opensc.h pkcs15.h \
+	opensc.h pkcs15.h gp.h \
 	cardctl.h asn1.h log.h simpletlv.h \
 	errors.h types.h compression.h itacns.h iso7816.h \
 	authentic.h iasecc.h iasecc-sdo.h sm.h card-sc-hsm.h \
@@ -23,7 +23,7 @@ AM_OBJCFLAGS = $(AM_CFLAGS)
 libopensc_la_SOURCES_BASE = \
 	sc.c ctx.c log.c errors.c \
 	asn1.c base64.c sec.c card.c iso7816.c dir.c ef-atr.c \
-	ef-gdo.c padding.c apdu.c simpletlv.c \
+	ef-gdo.c padding.c apdu.c simpletlv.c gp.c \
 	\
 	pkcs15.c pkcs15-cert.c pkcs15-data.c pkcs15-pin.c \
 	pkcs15-prkey.c pkcs15-pubkey.c pkcs15-skey.c \
