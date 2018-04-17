@@ -1292,12 +1292,6 @@ static int pcsc_detect_readers(sc_context_t *ctx)
 		goto out;
 	}
 
-	/* temporarily mark all readers as removed */
-	for (i=0;i < sc_ctx_get_reader_count(ctx);i++) {
-		sc_reader_t *reader = sc_ctx_get_reader(ctx, i);
-		reader->flags |= SC_READER_REMOVED;
-	}
-
 	sc_log(ctx, "Probing PC/SC readers");
 
 	do {
@@ -1353,28 +1347,39 @@ static int pcsc_detect_readers(sc_context_t *ctx)
 		goto out;
 	}
 
+	/* check if existing readers were returned in the list */
+	for (i = 0; i < sc_ctx_get_reader_count(ctx); i++) {
+		sc_reader_t *reader = sc_ctx_get_reader(ctx, i);
+
+		if (!reader) {
+			ret = SC_ERROR_INTERNAL;
+			goto out;
+		}
+
+		for (reader_name = reader_buf; *reader_name != '\x0';
+				reader_name += strlen(reader_name) + 1) {
+			if (!strcmp(reader->name, reader_name))
+				break;
+		}
+
+		if (*reader_name != '\x0') {
+			/* existing reader found; remove it from the list */
+			char *next_reader_name = reader_name + strlen(reader_name) + 1;
+
+			memmove(reader_name, next_reader_name,
+					(reader_buf + reader_buf_size) - next_reader_name);
+			reader_buf_size -= (next_reader_name - reader_name);
+		} else {
+			/* existing reader not found */
+			reader->flags |= SC_READER_REMOVED;
+		}
+	}
+
+	/* add readers remaining in the list */
 	for (reader_name = reader_buf; *reader_name != '\x0';
 		   	reader_name += strlen(reader_name) + 1) {
-		sc_reader_t *reader = NULL, *old_reader = NULL;
+		sc_reader_t *reader = NULL;
 		struct pcsc_private_data *priv = NULL;
-		int found = 0;
-
-		for (i=0;i < sc_ctx_get_reader_count(ctx) && !found;i++) {
-			old_reader = sc_ctx_get_reader(ctx, i);
-			if (old_reader == NULL) {
-				ret = SC_ERROR_INTERNAL;
-				goto out;
-			}
-			if (!strcmp(old_reader->name, reader_name)) {
-				found = 1;
-			}
-		}
-
-		/* Reader already available, skip */
-		if (found) {
-			old_reader->flags &= ~SC_READER_REMOVED;
-			continue;
-		}
 
 		ret = pcsc_add_reader(ctx, reader_name, strlen(reader_name), &reader);
 		if (ret != SC_SUCCESS) {
