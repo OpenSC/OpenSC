@@ -3583,19 +3583,12 @@ static int piv_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 		goto err;
 	}
 
-	/* can we detect and then select the PIV AID without losing the login state? */
-	if ((priv->card_issues & CI_DISCOVERY_USELESS)
-			&& (priv->card_issues & CI_PIV_AID_LOSE_STATE)) {
-		r = 0; /* do nothing, hope card was not interfered with */
-		goto err;
-	}
-
 	/* make sure our application is active */
 
 	/* first see if AID is active AID by reading discovery object '7E' */
 	/* If not try selecting AID */
 
-	/* but if x card does not support DISCOVERY object we can not use it */
+	/* but if card does not support DISCOVERY object we can not use it */
 	if (priv->card_issues & CI_DISCOVERY_USELESS) {
 	    r =  SC_ERROR_NO_CARD_SUPPORT;
 	} else {
@@ -3603,7 +3596,7 @@ static int piv_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 	}
 
 	if (r < 0) {
-		if (!(priv->card_issues & CI_PIV_AID_LOSE_STATE)) {
+		if (was_reset > 0 || !(priv->card_issues & CI_PIV_AID_LOSE_STATE)) {
 			r = piv_select_aid(card, piv_aids[0].value, piv_aids[0].len_short, temp, &templen);
 		} else {
 			r = 0; /* cant do anything with this card, hope there was no interference */
