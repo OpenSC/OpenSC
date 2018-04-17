@@ -58,6 +58,7 @@
 #include "compression.h"
 #endif
 #include "iso7816.h"
+#include "gp.h"
 #include "../pkcs11/pkcs11.h"
 
 
@@ -1093,15 +1094,6 @@ static int coolkey_select_applet(sc_card_t *card)
 	return coolkey_apdu_io(card, ISO7816_CLASS, ISO7816_INS_SELECT_FILE, 4, 0,
 			&aid[0], sizeof(aid), NULL, NULL,  NULL, 0);
 }
-
-/* select the gp card manager */
-static int coolkey_select_card_mgr(sc_card_t *card)
-{
-	u8 aid[] = { 0xa0, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00 };
-	return coolkey_apdu_io(card, ISO7816_CLASS, ISO7816_INS_SELECT_FILE, 4, 0,
-			&aid[0], sizeof(aid), NULL, NULL,  NULL, 0);
-}
-
 
 static void
 coolkey_make_cuid_from_cplc(coolkey_cuid_t *cuid, global_platform_cplc_data_t *cplc_data)
@@ -2224,7 +2216,7 @@ static int coolkey_initialize(sc_card_t *card)
 		/* select the card manager, because a card with applet only will have
 		   already selected the coolkey applet */
 
-		r = coolkey_select_card_mgr(card);
+		r = gp_select_card_manager(card);
 		if (r < 0) {
 			goto cleanup;
 		}

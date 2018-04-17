@@ -4,7 +4,7 @@ TARGET                  = opensc.dll opensc_a.lib
 OBJECTS			= \
 	sc.obj ctx.obj log.obj errors.obj \
 	asn1.obj base64.obj sec.obj card.obj iso7816.obj dir.obj ef-atr.obj \
-	ef-gdo.obj padding.obj apdu.obj simpletlv.obj \
+	ef-gdo.obj padding.obj apdu.obj simpletlv.obj gp.obj \
 	\
 	pkcs15.obj pkcs15-cert.obj pkcs15-data.obj pkcs15-pin.obj \
 	pkcs15-prkey.obj pkcs15-pubkey.obj pkcs15-skey.obj \
