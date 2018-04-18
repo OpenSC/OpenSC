@@ -448,7 +448,7 @@ int sc_pkcs15_wrap(struct sc_pkcs15_card *p15card,
 		const struct sc_pkcs15_object *key,
 		struct sc_pkcs15_object *target_key,
 		unsigned long flags,
-		u8 * cryptogram, size_t* crgram_len,
+		u8 * cryptogram, unsigned long* crgram_len,
 		const u8 * param, size_t paramlen) {
 	sc_context_t *ctx = p15card->card->ctx;
 	int r;
@@ -462,7 +462,8 @@ int sc_pkcs15_wrap(struct sc_pkcs15_card *p15card,
 	sc_path_t tkey_path;
 	u8 *in = 0;
 	u8 *out = 0;
-	size_t *poutlen = 0, inlen = 0;
+	unsigned long *poutlen = 0;
+	size_t inlen = 0;
 	sc_path_t path, target_file_id;
 	sc_sec_env_param_t senv_param;
 
