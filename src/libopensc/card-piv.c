@@ -3452,6 +3452,16 @@ piv_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 		data->pin1.tries_left = priv->tries_left;
 		if (tries_left)
 			*tries_left = priv->tries_left;
+
+		/*
+		 * If called to check on the login state for a context specific login
+		 * return not logged in. Needed because of logic in e6f7373ef066  
+		 */
+		if (data->pin_type == SC_AC_CONTEXT_SPECIFIC) {
+			data->pin1.logged_in = 0;
+			 LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+		}
+
 		if (priv->logged_in == SC_PIN_STATE_LOGGED_IN) {
 			/* Avoid status requests when the user is logged in to handle NIST
 			 * 800-73-4 Part 2:

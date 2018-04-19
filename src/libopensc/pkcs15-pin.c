@@ -700,7 +700,7 @@ int sc_pkcs15_get_pin_info(struct sc_pkcs15_card *p15card,
 	/* Try to update PIN info from card */
 	memset(&data, 0, sizeof(data));
 	data.cmd = SC_PIN_CMD_GET_INFO;
-	data.pin_type = SC_AC_CHV;
+	data.pin_type = pin_info->auth_method;
 	data.pin_reference = pin_info->attrs.pin.reference;
 
 	r = sc_pin_cmd(card, &data, NULL);
