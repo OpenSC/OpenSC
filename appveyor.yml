@@ -87,7 +87,7 @@ build_script:
       }
   - bash -c "exec 0</dev/null && ./bootstrap"
   # disable features to speed up the script
-  - bash -c "exec 0</dev/null && ./configure --disable-openssl --disable-readline --disable-zlib || cat config.log"
+  - bash -c "exec 0</dev/null && ./configure --with-cygwin-native --disable-openssl --disable-readline --disable-zlib || cat config.log"
   - bash -c "make -C etc opensc.conf"
   - cp win32/winconfig.h config.h
   - nmake /f Makefile.mak %NMAKE_EXTRA%
