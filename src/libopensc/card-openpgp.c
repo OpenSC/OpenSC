@@ -497,6 +497,41 @@ pgp_init(sc_card_t *card)
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
+/**
+ * Internal: get features of the card: capabilities, ...
+ */
+static void
+pgp_parse_hist_bytes(sc_card_t *card, u8 *ctlv, size_t ctlv_len)
+{
+	struct pgp_priv_data *priv = DRVDATA(card);
+	size_t offs;
+
+	for (offs = 0; offs < ctlv_len; offs++) {
+		switch (ctlv[offs]) {
+			case 0x73: /* IS07816-4 hist bytes 3rd function table */
+				if (offs+3 < ctlv_len) {
+					/* bit 0x40 in byte 3 of TL 0x73 means "extended Le/Lc" */
+					if (ctlv[offs+3] & 0x40) {
+						card->caps |= SC_CARD_CAP_APDU_EXT;
+						priv->ext_caps |= EXT_CAP_APDU_EXT;
+					}
+					/* bit 0x80 in byte 3 of TL 0x73 means "Command chaining" */
+					if ((ctlv[offs+3] & 0x40) &&
+					    (priv->bcd_version >= OPENPGP_CARD_3_0)) {
+						priv->ext_caps |= EXT_CAP_CHAINING;
+					}
+				}
+				break;
+			case 0x31:
+				if ((offs + 1 < ctlv_len) &&
+				    (priv->bcd_version >= OPENPGP_CARD_3_0)) {
+					// ToDo ...
+				}
+				break;
+		}
+		offs += ctlv[offs] & 0x0F;
+	}
+}
 
 /**
  * Internal: get features of the card: capabilities, ...
@@ -510,20 +545,19 @@ pgp_get_card_features(sc_card_t *card)
 	size_t i;
 	pgp_blob_t *blob, *blob6e, *blob73;
 
+	/* parse card capabilities from historical bytes in ATR */
 	if (hist_bytes_len > 0) {
-		/* parse card capabilities from historical bytes */
-		for (i = 0; (i < hist_bytes_len) && (hist_bytes[i] != 0x73); i++)
-			;
-		/* IS07816-4 hist bytes 3rd function table */
-		if ((hist_bytes[i] == 0x73) && (hist_bytes_len > i+3)) {
-			/* bit 0x40 in byte 3 of TL 0x73 means "extended Le/Lc" */
-			if (hist_bytes[i+3] & 0x40) {
-				card->caps |= SC_CARD_CAP_APDU_EXT;
-				priv->ext_caps |= EXT_CAP_APDU_EXT;
-			}
-			/* bit 0x80 in byte 3 of TL 0x73 means "Command chaining" */
-			if (hist_bytes[i+3] & 0x80)
-				priv->ext_caps |= EXT_CAP_CHAINING;
+		/* category indicator 0x00, 0x10 or 0x80 => compact TLV (ISO) */
+		switch (hist_bytes[0]) {
+			case 0x00:
+				pgp_parse_hist_bytes(card, hist_bytes+1, hist_bytes_len-4);
+				break;
+			case 0x80:
+				pgp_parse_hist_bytes(card, hist_bytes+1, hist_bytes_len-1);
+				break;
+			case 0x10:
+				pgp_parse_hist_bytes(card, hist_bytes+2, hist_bytes_len-2);
+				break;
 		}
 	}
 
@@ -532,20 +566,7 @@ pgp_get_card_features(sc_card_t *card)
 		if ((pgp_get_blob(card, priv->mf, 0x5f52, &blob) >= 0) &&
 		    (blob->data != NULL) && (blob->data[0] == 0x00)) {
 
-			/* find beginning of "interesting" bytes */
-			for (i = 0; (i < blob->len) && (blob->data[i] != 0x73); i++)
-				;
-			/* IS07816-4 hist bytes 3rd function table */
-			if ((blob->data[i] == 0x73) && (blob->len > i+3)) {
-				/* bit 0x40 in byte 3 of TL 0x73 means "extended Le/Lc" */
-				if (blob->data[i+3] & 0x40) {
-					card->caps |= SC_CARD_CAP_APDU_EXT;
-					priv->ext_caps |= EXT_CAP_APDU_EXT;
-				}
-				/* bit 0x80 in byte 3 of TL 0x73 means "Command chaining" */
-				if (blob->data[i+3] & 0x80)
-					priv->ext_caps |= EXT_CAP_CHAINING;
-			}
+			pgp_parse_hist_bytes(card, hist_bytes+1, hist_bytes_len-4);
 
 			/* get card status from historical bytes status indicator */
 			if ((blob->data[0] == 0x00) && (blob->len >= 4))
