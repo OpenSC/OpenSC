@@ -85,8 +85,11 @@ enum _version {		/* 2-byte BCD-alike encoded version number */
 	OPENPGP_CARD_1_1 = 0x0101,
 	OPENPGP_CARD_2_0 = 0x0200,
 	OPENPGP_CARD_2_1 = 0x0201,
+	OPENPGP_CARD_2_2 = 0x0202,
 	OPENPGP_CARD_3_0 = 0x0300,
 	OPENPGP_CARD_3_1 = 0x0301,
+	OPENPGP_CARD_3_2 = 0x0302,
+	OPENPGP_CARD_3_3 = 0x0303,
 };
 
 enum _access {		/* access flags for the respective DO/file */
