@@ -96,20 +96,23 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 #endif
 	{ "rutoken",	(void *(*)(void)) sc_get_rutoken_driver },
 	{ "rutoken_ecp",(void *(*)(void)) sc_get_rtecp_driver },
-	{ "westcos",	(void *(*)(void)) sc_get_westcos_driver },
 	{ "myeid",      (void *(*)(void)) sc_get_myeid_driver },
-	{ "sc-hsm",		(void *(*)(void)) sc_get_sc_hsm_driver },
 #if defined(ENABLE_OPENSSL) && defined(ENABLE_SM)
 	{ "dnie",       (void *(*)(void)) sc_get_dnie_driver },
 #endif
 	{ "masktech",	(void *(*)(void)) sc_get_masktech_driver },
+	{ "atrust-acos",(void *(*)(void)) sc_get_atrust_acos_driver },
+	{ "westcos",	(void *(*)(void)) sc_get_westcos_driver },
 
-/* Here should be placed drivers that need some APDU transactions to
- * recognise its cards. */
+/* Here should be placed drivers that need some APDU transactions in the
+ * driver's `match_card()` function. */
+	/* MUSCLE card applet returns 9000 on whatever AID is selected, see
+	 * https://github.com/JavaCardOS/MuscleCard-Applet/blob/master/musclecard/src/com/musclecard/CardEdge/CardEdge.java#L326
+	 * put the muscle driver first to cope with this bug. */
+	{ "muscle",	(void *(*)(void)) sc_get_muscle_driver },
+	{ "sc-hsm",	(void *(*)(void)) sc_get_sc_hsm_driver },
 	{ "mcrd",	(void *(*)(void)) sc_get_mcrd_driver },
 	{ "setcos",	(void *(*)(void)) sc_get_setcos_driver },
-	{ "muscle",	(void *(*)(void)) sc_get_muscle_driver },
-	{ "atrust-acos",(void *(*)(void)) sc_get_atrust_acos_driver },
 	{ "PIV-II",	(void *(*)(void)) sc_get_piv_driver },
 	{ "cac",	(void *(*)(void)) sc_get_cac_driver },
 	{ "itacns",	(void *(*)(void)) sc_get_itacns_driver },
