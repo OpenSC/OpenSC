@@ -380,7 +380,7 @@ static GApplication *application = NULL;
 void sc_notify_init(void)
 {
 	sc_notify_close();
-	application = g_application_new("org.opensc.notify", G_APPLICATION_FLAGS_NONE);
+	application = g_application_new("org.opensc.notify", G_APPLICATION_NON_UNIQUE);
 	if (application) {
 		g_application_register(application, NULL, NULL);
 	}
