@@ -463,7 +463,7 @@ int main(int argc, char *argv[])
 		sc_ctx_log_to_file(ctx, "stderr");
 	}
 
-	err = util_connect_card(ctx, &card, opt_reader, opt_wait, verbose);
+	err = util_connect_card_ex(ctx, &card, opt_reader, opt_wait, 0, verbose);
 	if (err)
 		goto end;
 
@@ -510,7 +510,6 @@ end:
 	if (p15card)
 		sc_pkcs15_unbind(p15card);
 	if (card) {
-		sc_unlock(card);
 		sc_disconnect_card(card);
 	}
 	if (ctx)
