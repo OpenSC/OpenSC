@@ -262,7 +262,6 @@ static void die(int ret)
 {
 	sc_file_free(current_file);
 	if (card) {
-		sc_unlock(card);
 		sc_disconnect_card(card);
 	}
 	if (ctx)
@@ -273,7 +272,10 @@ static void die(int ret)
 static void select_current_path_or_die(void)
 {
 	if (current_path.type || current_path.len) {
-		int r = sc_select_file(card, &current_path, NULL);
+		int r = sc_lock(card);
+		if (r == SC_SUCCESS)
+			r = sc_select_file(card, &current_path, NULL);
+		sc_unlock(card);
 		if (r) {
 			printf("unable to select parent DF: %s\n", sc_strerror(r));
 			die(1);
@@ -470,7 +472,10 @@ static int do_ls(int argc, char **argv)
 	u8 buf[256], *cur = buf;
 	int r, count;
 
-	r = sc_list_files(card, buf, sizeof(buf));
+	r = sc_lock(card);
+	if (r == SC_SUCCESS)
+		r = sc_list_files(card, buf, sizeof(buf));
+	sc_unlock(card);
 	if (r < 0) {
 		check_ret(r, SC_AC_OP_LIST_FILES, "unable to receive file listing", current_file);
 		return -1;
@@ -507,7 +512,10 @@ static int do_ls(int argc, char **argv)
 				}
 			}
 
-			r = sc_select_file(card, &path, &file);
+			r = sc_lock(card);
+			if (r == SC_SUCCESS)
+				r = sc_select_file(card, &path, &file);
+			sc_unlock(card);
 			if (r) {
 				printf(" %02X%02X unable to select file, %s\n", cur[0], cur[1], sc_strerror(r));
 			} else {
@@ -565,7 +573,10 @@ static int do_find(int argc, char **argv)
 			}
 		}
 
-		r = sc_select_file(card, &path, &file);
+		r = sc_lock(card);
+		if (r == SC_SUCCESS)
+			r = sc_select_file(card, &path, &file);
+		sc_unlock(card);
 		switch (r) {
 		case SC_SUCCESS:
 			file->id = (fid[0] << 8) | fid[1];
@@ -620,7 +631,10 @@ static int do_find_tags(int argc, char **argv)
 		printf("(%04X)\r", tag);
 		fflush(stdout);
 
-		r = sc_get_data(card, tag, rbuf, sizeof rbuf);
+		r = sc_lock(card);
+		if (r == SC_SUCCESS)
+			r = sc_get_data(card, tag, rbuf, sizeof rbuf);
+		sc_unlock(card);
 		if (r >= 0) {
 			printf(" %04X ", tag);
 			if (tag == 0)
@@ -678,7 +692,10 @@ static int do_cd(int argc, char **argv)
 			path.len -= 2;
 		}
 
-		r = sc_select_file(card, &path, &file);
+		r = sc_lock(card);
+		if (r == SC_SUCCESS)
+			r = sc_select_file(card, &path, &file);
+		sc_unlock(card);
 		if (r) {
 			printf("unable to go up: %s\n", sc_strerror(r));
 			return -1;
@@ -691,7 +708,10 @@ static int do_cd(int argc, char **argv)
 	if (arg_to_path(argv[0], &path, 0) != 0)
 		return usage(do_cd);
 
-	r = sc_select_file(card, &path, &file);
+	r = sc_lock(card);
+	if (r == SC_SUCCESS)
+		r = sc_select_file(card, &path, &file);
+	sc_unlock(card);
 	if (r) {
 		check_ret(r, SC_AC_OP_SELECT, "unable to select DF", current_file);
 		return -1;
@@ -724,7 +744,10 @@ static int read_and_util_print_binary_file(sc_file_t *file)
 	if (!buf)
 		return -1;
 
-	r = sc_read_binary(card, 0, buf, size, 0);
+	r = sc_lock(card);
+	if (r == SC_SUCCESS)
+		r = sc_read_binary(card, 0, buf, size, 0);
+	sc_unlock(card);
 	if (r < 0)   {
 		check_ret(r, SC_AC_OP_READ, "read failed", file);
 		return -1;
@@ -744,8 +767,11 @@ static int read_and_print_record_file(sc_file_t *file, unsigned char sfi)
 	int rec, r;
 
 	for (rec = 1; ; rec++) {
-		r = sc_read_record(card, rec, buf, sizeof(buf),
-			SC_RECORD_BY_REC_NR | sfi);
+		r = sc_lock(card);
+		if (r == SC_SUCCESS)
+			r = sc_read_record(card, rec, buf, sizeof(buf),
+					SC_RECORD_BY_REC_NR | sfi);
+		sc_unlock(card);
 		if (r == SC_ERROR_RECORD_NOT_FOUND)
 			return 0;
 		if (r < 0) {
@@ -794,7 +820,10 @@ static int do_cat(int argc, char **argv)
 			if (arg_to_path(argv[0], &path, 0) != 0)
 				return usage(do_cat);
 
-			r = sc_select_file(card, &path, &file);
+			r = sc_lock(card);
+			if (r == SC_SUCCESS)
+				r = sc_select_file(card, &path, &file);
+			sc_unlock(card);
 			if (r) {
 				check_ret(r, SC_AC_OP_SELECT, "unable to select file",
 					current_file);
@@ -839,7 +868,10 @@ static int do_info(int argc, char **argv)
 		if (arg_to_path(argv[0], &path, 0) != 0)
 			return usage(do_info);
 
-		r = sc_select_file(card, &path, &file);
+		r = sc_lock(card);
+		if (r == SC_SUCCESS)
+			r = sc_select_file(card, &path, &file);
+		sc_unlock(card);
 		if (r) {
 			printf("unable to select file: %s\n", sc_strerror(r));
 			return -1;
@@ -952,7 +984,10 @@ static int create_file(sc_file_t *file)
 {
 	int r;
 
-	r = sc_create_file(card, file);
+	r = sc_lock(card);
+	if (r == SC_SUCCESS)
+		r = sc_create_file(card, file);
+	sc_unlock(card);
 	if (r) {
 		check_ret(r, SC_AC_OP_CREATE, "CREATE FILE failed", current_file);
 		return -1;
@@ -1035,7 +1070,10 @@ static int do_delete(int argc, char **argv)
 	if (path.len != 2)
 		return usage(do_delete);
 	path.type = SC_PATH_TYPE_FILE_ID;
-	r = sc_delete_file(card, &path);
+	r = sc_lock(card);
+	if (r == SC_SUCCESS)
+		r = sc_delete_file(card, &path);
+	sc_unlock(card);
 	if (r) {
 		check_ret(r, SC_AC_OP_DELETE, "DELETE FILE failed", current_file);
 		return -1;
@@ -1116,7 +1154,10 @@ static int do_verify(int argc, char **argv)
 		data.pin1.data = buf;
 		data.pin1.len = buflen;
 	}
-	r = sc_pin_cmd(card, &data, &tries_left);
+	r = sc_lock(card);
+	if (r == SC_SUCCESS)
+		r = sc_pin_cmd(card, &data, &tries_left);
+	sc_unlock(card);
 
 	if (r) {
 		if (r == SC_ERROR_PIN_CODE_INCORRECT) {
@@ -1178,7 +1219,10 @@ static int do_change(int argc, char **argv)
 	data.pin2.data = newpinlen ? newpin : NULL;
 	data.pin2.len = newpinlen;
 
-	r = sc_pin_cmd(card, &data, &tries_left);
+	r = sc_lock(card);
+	if (r == SC_SUCCESS)
+		r = sc_pin_cmd(card, &data, &tries_left);
+	sc_unlock(card);
 	if (r) {
 		if (r == SC_ERROR_PIN_CODE_INCORRECT) {
 			if (tries_left >= 0)
@@ -1240,7 +1284,10 @@ static int do_unblock(int argc, char **argv)
 	data.pin2.data = newpinlen ? newpin : NULL;
 	data.pin2.len = newpinlen;
 
-	r = sc_pin_cmd(card, &data, NULL);
+	r = sc_lock(card);
+	if (r == SC_SUCCESS)
+		r = sc_pin_cmd(card, &data, NULL);
+	sc_unlock(card);
 	if (r) {
 		if (r == SC_ERROR_PIN_CODE_INCORRECT)
 			printf("Incorrect code.\n");
@@ -1275,7 +1322,10 @@ static int do_get(int argc, char **argv)
 		perror(filename);
 		goto err;
 	}
-	r = sc_select_file(card, &path, &file);
+	r = sc_lock(card);
+	if (r == SC_SUCCESS)
+		r = sc_select_file(card, &path, &file);
+	sc_unlock(card);
 	if (r) {
 		check_ret(r, SC_AC_OP_SELECT, "unable to select file", current_file);
 		goto err;
@@ -1344,7 +1394,10 @@ static int do_update_binary(int argc, char **argv)
 		return -1;
 	}
 
-	r = sc_select_file(card, &path, &file);
+	r = sc_lock(card);
+	if (r == SC_SUCCESS)
+		r = sc_select_file(card, &path, &file);
+	sc_unlock(card);
 	if (r) {
 		check_ret(r, SC_AC_OP_SELECT, "unable to select file", current_file);
 		return -1;
@@ -1355,7 +1408,10 @@ static int do_update_binary(int argc, char **argv)
 		goto err;
 	}
 
-	r = sc_update_binary(card, offs, buf, buflen, 0);
+	r = sc_lock(card);
+	if (r == SC_SUCCESS)
+		r = sc_update_binary(card, offs, buf, buflen, 0);
+	sc_unlock(card);
 	if (r < 0) {
 		printf("Cannot update %04X; return %i\n", file->id, r);
 		goto err;
@@ -1389,7 +1445,10 @@ static int do_update_record(int argc, char **argv)
 
 	printf("in: %i; %i; %s\n", rec, offs, argv[3]);
 
-	r = sc_select_file(card, &path, &file);
+	r = sc_lock(card);
+	if (r == SC_SUCCESS)
+		r = sc_select_file(card, &path, &file);
+	sc_unlock(card);
 	if (r) {
 		check_ret(r, SC_AC_OP_SELECT, "unable to select file", current_file);
 		return -1;
@@ -1416,7 +1475,10 @@ static int do_update_record(int argc, char **argv)
 		goto err;
 	}
 
-	r = sc_update_record(card, rec, buf, r, SC_RECORD_BY_REC_NR);
+	r = sc_lock(card);
+	if (r == SC_SUCCESS)
+		r = sc_update_record(card, rec, buf, r, SC_RECORD_BY_REC_NR);
+	sc_unlock(card);
 	if (r<0)   {
 		printf("Cannot update record %i; return %i\n", rec, r);
 		goto err;
@@ -1455,7 +1517,10 @@ static int do_put(int argc, char **argv)
 		perror(filename);
 		goto err;
 	}
-	r = sc_select_file(card, &path, &file);
+	r = sc_lock(card);
+	if (r == SC_SUCCESS)
+		r = sc_select_file(card, &path, &file);
+	sc_unlock(card);
 	if (r) {
 		check_ret(r, SC_AC_OP_SELECT, "unable to select file", current_file);
 		goto err;
@@ -1471,7 +1536,10 @@ static int do_put(int argc, char **argv)
 		}
 		if (r != c)
 			count = c = r;
-		r = sc_update_binary(card, idx, buf, c, 0);
+		r = sc_lock(card);
+		if (r == SC_SUCCESS)
+			r = sc_update_binary(card, idx, buf, c, 0);
+		sc_unlock(card);
 		if (r < 0) {
 			check_ret(r, SC_AC_OP_READ, "update failed", file);
 			goto err;
@@ -1520,7 +1588,10 @@ static int do_erase(int argc, char **argv)
 	if (argc != 0)
 		return usage(do_erase);
 
-	r = sc_card_ctl(card, SC_CARDCTL_ERASE_CARD, NULL);
+	r = sc_lock(card);
+	if (r == SC_SUCCESS)
+		r = sc_card_ctl(card, SC_CARDCTL_ERASE_CARD, NULL);
+	sc_unlock(card);
 	if (r) {
 		printf("Failed to erase card: %s\n", sc_strerror (r));
 		return -1;
@@ -1542,7 +1613,10 @@ static int do_random(int argc, char **argv)
 		return -1;
 	}
 
-	r = sc_get_challenge(card, buffer, count);
+	r = sc_lock(card);
+	if (r == SC_SUCCESS)
+		r = sc_get_challenge(card, buffer, count);
+	sc_unlock(card);
 	if (r < 0) {
 		printf("Failed to get random bytes: %s\n", sc_strerror(r));
 		return -1;
@@ -1563,7 +1637,10 @@ static int do_get_data(int argc, char **argv)
 		return usage(do_get_data);
 
 	tag = strtoul(argv[0], NULL, 16);
-	r = sc_get_data(card, tag, buffer, sizeof(buffer));
+	r = sc_lock(card);
+	if (r == SC_SUCCESS)
+		r = sc_get_data(card, tag, buffer, sizeof(buffer));
+	sc_unlock(card);
 	if (r < 0) {
 		printf("Failed to get data object: %s\n", sc_strerror(r));
 		return -1;
@@ -1611,7 +1688,10 @@ static int do_put_data(int argc, char **argv)
 	}
 
 	/* Call OpenSC to do put data */
-	r = sc_put_data(card, tag, buf, buflen);
+	r = sc_lock(card);
+	if (r == SC_SUCCESS)
+		r = sc_put_data(card, tag, buf, buflen);
+	sc_unlock(card);
 	if (r < 0) {
 		printf("Cannot put data to %04X; return %i\n", tag, r);
 		return -1;
@@ -1655,7 +1735,10 @@ static int do_apdu(int argc, char **argv)
 	printf("Sending: ");
 	util_hex_dump(stdout, buf, len, " ");
 	printf("\n");
-	r = sc_transmit_apdu(card, &apdu);
+	r = sc_lock(card);
+	if (r == SC_SUCCESS)
+		r = sc_transmit_apdu(card, &apdu);
+	sc_unlock(card);
 	if (r) {
 		fprintf(stderr, "APDU transmit failed: %s\n", sc_strerror(r));
 		return 1;
@@ -1692,7 +1775,10 @@ static int do_asn1(int argc, char **argv)
 			puts("Invalid file path");
 			return -1;
 		}
-		r = sc_select_file(card, &path, &file);
+		r = sc_lock(card);
+		if (r == SC_SUCCESS)
+			r = sc_select_file(card, &path, &file);
+		sc_unlock(card);
 		if (r) {
 			check_ret(r, SC_AC_OP_SELECT, "unable to select file", current_file);
 			goto err;
@@ -1717,7 +1803,10 @@ static int do_asn1(int argc, char **argv)
 	if (!buf) {
 		goto err;
 	}
-	r = sc_read_binary(card, 0, buf, len, 0);
+	r = sc_lock(card);
+	if (r == SC_SUCCESS)
+		r = sc_read_binary(card, 0, buf, len, 0);
+	sc_unlock(card);
 	if (r < 0) {
 		check_ret(r, SC_AC_OP_READ, "read failed", file);
 		goto err;
@@ -1930,7 +2019,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	err = util_connect_card(ctx, &card, opt_reader, opt_wait, 0);
+	err = util_connect_card_ex(ctx, &card, opt_reader, opt_wait, 0, 0);
 	if (err)
 		goto end;
 
@@ -1949,14 +2038,20 @@ int main(int argc, char *argv[])
 		}
 	} else {
 		sc_format_path("3F00", &current_path);
-		r = sc_select_file(card, &current_path, &current_file);
+		r = sc_lock(card);
+		if (r == SC_SUCCESS)
+			r = sc_select_file(card, &current_path, &current_file);
+		sc_unlock(card);
 		if (r) {
 			printf("unable to select MF: %s\n", sc_strerror(r));
 			return 1;
 		}
 	}
 
-	r = sc_card_ctl(card, SC_CARDCTL_LIFECYCLE_SET, &lcycle);
+	r = sc_lock(card);
+	if (r == SC_SUCCESS)
+		r = sc_card_ctl(card, SC_CARDCTL_LIFECYCLE_SET, &lcycle);
+	sc_unlock(card);
 	if (r && r != SC_ERROR_NOT_SUPPORTED)
 		printf("unable to change lifecycle: %s\n", sc_strerror(r));
 
