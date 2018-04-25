@@ -457,10 +457,10 @@ void sc_notify_id(struct sc_context *ctx, struct sc_atr *atr,
 
 	switch (id) {
 		case NOTIFY_CARD_INSERTED:
-			icon = "dialog-information";
+			icon = "contact-new";
 			break;
 		case NOTIFY_CARD_REMOVED:
-			icon = "media-removed";
+			icon = "media-eject";
 			break;
 		case NOTIFY_PIN_GOOD:
 			icon = "changes-allow";
