@@ -429,7 +429,10 @@ static int print_file(sc_card_t *in_card, const sc_file_t *file,
 			return 1;
 		}
 
-		r = sc_read_binary(in_card, 0, buf, file->size, 0);
+		r = sc_lock(card);
+		if (r == SC_SUCCESS)
+			r = sc_read_binary(in_card, 0, buf, file->size, 0);
+		sc_unlock(card);
 		if (r > 0)
 			util_hex_dump_asc(stdout, buf, r, 0);
 		free(buf);
@@ -439,7 +442,10 @@ static int print_file(sc_card_t *in_card, const sc_file_t *file,
 
 		for (i=0; i < file->record_count; i++) {
 			printf("Record %d\n", i);
-			r = sc_read_record(in_card, i, buf, 256, 0);
+			r = sc_lock(card);
+			if (r == SC_SUCCESS)
+				r = sc_read_record(in_card, i, buf, 256, 0);
+			sc_unlock(card);
 			if (r > 0)
 				util_hex_dump_asc(stdout, buf, r, 0);
 		}
@@ -453,7 +459,10 @@ static int enum_dir(sc_path_t path, int depth)
 	int r, file_type;
 	u8 files[SC_MAX_APDU_BUFFER_SIZE];
 
-	r = sc_select_file(card, &path, &file);
+	r = sc_lock(card);
+	if (r == SC_SUCCESS)
+		r = sc_select_file(card, &path, &file);
+	sc_unlock(card);
 	if (r) {
 		fprintf(stderr, "SELECT FILE failed: %s\n", sc_strerror(r));
 		return 1;
@@ -464,7 +473,10 @@ static int enum_dir(sc_path_t path, int depth)
 	if (file_type == SC_FILE_TYPE_DF) {
 		int i;
 
-		r = sc_list_files(card, files, sizeof(files));
+		r = sc_lock(card);
+		if (r == SC_SUCCESS)
+			r = sc_list_files(card, files, sizeof(files));
+		sc_unlock(card);
 		if (r < 0) {
 			fprintf(stderr, "sc_list_files() failed: %s\n", sc_strerror(r));
 			return 1;
@@ -520,7 +532,10 @@ static int send_apdu(void)
 		for (r = 0; r < len0; r++)
 			printf("%02X ", buf[r]);
 		printf("\n");
-		r = sc_transmit_apdu(card, &apdu);
+		r = sc_lock(card);
+		if (r == SC_SUCCESS)
+			r = sc_transmit_apdu(card, &apdu);
+		sc_unlock(card);
 		if (r) {
 			fprintf(stderr, "APDU transmit failed: %s\n", sc_strerror(r));
 			return 1;
@@ -538,7 +553,10 @@ static void print_serial(sc_card_t *in_card)
 	int r;
 	sc_serial_number_t serial;
 
-	r = sc_card_ctl(in_card, SC_CARDCTL_GET_SERIALNR, &serial);
+	r = sc_lock(card);
+	if (r == SC_SUCCESS)
+		r = sc_card_ctl(in_card, SC_CARDCTL_GET_SERIALNR, &serial);
+	sc_unlock(card);
 	if (r)
 		fprintf(stderr, "sc_card_ctl(*, SC_CARDCTL_GET_SERIALNR, *) failed\n");
 	else
@@ -658,7 +676,10 @@ static int card_reset(const char *reset_type)
 
 	cold_reset = !reset_type || strcmp(reset_type, "cold") == 0;
 
-	r = sc_reset(card, cold_reset);
+	r = sc_lock(card);
+	if (r == SC_SUCCESS)
+		r = sc_reset(card, cold_reset);
+	sc_unlock(card);
 	if (r) {
 		fprintf(stderr, "sc_reset(%s) failed: %d\n",
 			cold_reset ? "cold" : "warm", r);
@@ -843,7 +864,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	err = util_connect_card(ctx, &card, opt_reader, opt_wait, verbose);
+	err = util_connect_card_ex(ctx, &card, opt_reader, opt_wait, 0, verbose);
 	if (err)
 		goto end;
 
@@ -895,7 +916,6 @@ int main(int argc, char *argv[])
 	}
 end:
 	if (card) {
-		sc_unlock(card);
 		sc_disconnect_card(card);
 	}
 	if (ctx)
