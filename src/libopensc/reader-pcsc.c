@@ -762,7 +762,7 @@ static int pcsc_init(sc_context_t *ctx)
 	/* PC/SC Defaults */
 	gpriv->provider_library = DEFAULT_PCSC_PROVIDER;
 	gpriv->connect_exclusive = 0;
-	gpriv->disconnect_action = SCARD_RESET_CARD;
+	gpriv->disconnect_action = SCARD_LEAVE_CARD;
 	gpriv->transaction_end_action = SCARD_LEAVE_CARD;
 	gpriv->reconnect_action = SCARD_LEAVE_CARD;
 	gpriv->enable_pinpad = 1;
