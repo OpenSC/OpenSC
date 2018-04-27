@@ -61,7 +61,6 @@ if ! test -e ${BUILDPATH}/target/$PREFIX/lib/pkgconfig; then
 		--sysconfdir=$PREFIX/etc \
 		--enable-cvcdir=$PREFIX/etc/cvc \
 		--enable-x509dir=$PREFIX/etc/x509 \
-		--disable-notify \
 		--disable-dependency-tracking \
 		--enable-shared \
 		--enable-static \
