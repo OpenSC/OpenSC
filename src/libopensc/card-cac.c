@@ -652,7 +652,7 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 		priv->cache_buf_len = tlv_len;
 
 		for (tl_ptr = tl, val_ptr=val, tlv_ptr = priv->cache_buf;
-				tl_len > 2 && val_len > 0 && tlv_len > 0;
+				tl_len >= 2 /*&& val_len >= 0*/ && tlv_len > 0;
 				val_len -= len, tlv_len -= len, val_ptr += len, tlv_ptr += len) {
 			/* get the tag and the length */
 			tl_start = tl_ptr;
