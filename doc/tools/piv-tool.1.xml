@@ -94,7 +94,7 @@
 				<varlistentry>
 					<term>
 						<option>--cert</option> <replaceable>ref</replaceable>,
-						<option>-s</option> <replaceable>ref</replaceable>
+						<option>-C</option> <replaceable>ref</replaceable>
 					</term>
 					<listitem><para>Load a certificate onto the card.
 					<replaceable>ref</replaceable> is <literal>9A</literal>,

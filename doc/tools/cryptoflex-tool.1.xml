@@ -121,7 +121,8 @@
 
 				<varlistentry>
 					<term>
-						<option>--read-key</option>
+						<option>--read-key</option>,
+						<option>-R</option>
 					</term>
 					<listitem><para>Reads a public key from the card, allowing the user to
 					extract and store or use the public key
@@ -154,6 +155,15 @@
 						<option>-V</option>
 					</term>
 					<listitem><para>Verifies CHV1 before issuing commands</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--wait</option>,
+						<option>-w</option>
+					</term>
+					<listitem><para>Causes <command>cryptoflex-tool</command> to
+					wait for a card insertion.</para></listitem>
 				</varlistentry>
 
 			</variablelist>

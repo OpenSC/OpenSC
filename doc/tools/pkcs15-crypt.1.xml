@@ -140,11 +140,16 @@
 
 				<varlistentry>
 					<term>
+						<option>--md5</option>
 						<option>--sha-1</option>
+						<option>--sha-224</option>
+						<option>--sha-256</option>
+						<option>--sha-384</option>
+						<option>--sha-512</option>
 					</term>
-					<listitem><para>This option tells <command>pkcs15-crypt</command>
-					that the input file is the result of an SHA1 hash operation,
-					rather than an MD5 hash. Again, the data must be in binary
+					<listitem><para>These options tell <command>pkcs15-crypt</command>
+					that the input file is the result of the specified hash operation.
+					By default, an MD5 hash is expected. Again, the data must be in binary
 					representation.</para></listitem>
 				</varlistentry>
 
@@ -177,6 +182,15 @@
 					Possible values are 'rs'(default) -- two concatenated
 					integers (PKCS#11), 'sequence' or 'openssl' -- DER encoded sequence
 					of two integers (OpenSSL).</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--wait</option>,
+						<option>-w</option>
+					</term>
+					<listitem><para>Causes <command>pkcs15-crypt</command> to
+					wait for a card insertion.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>

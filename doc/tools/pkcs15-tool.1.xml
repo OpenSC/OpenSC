@@ -77,9 +77,16 @@
 
 				<varlistentry>
 					<term>
+						<option>--list-info</option>
+					</term>
+					<listitem><para>List card objects.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
 						<option>--list-applications</option>
 					</term>
-					<listitem><para>List the on-card PKCS#15 applications</para></listitem>
+					<listitem><para>List the on-card PKCS#15 applications.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -110,6 +117,18 @@
 					<listitem><para>List all private keys stored on the token. General
 					information about each private key is listed (eg. key name, id and
 					algorithm). Actual private key values are not displayed.
+					For some cards the PKCS#15 attributes of the private keys are protected for reading
+					and need the authentication with the User PIN.
+					In such a case the <option>--verify-pin</option> option has to be used.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--list-secret-keys</option>
+					</term>
+					<listitem><para>List all secret (symmetric) keys stored on the token. General
+					information about each secret key is listed (eg. key name, id and
+					algorithm). Actual secret key values are not displayed.
 					For some cards the PKCS#15 attributes of the private keys are protected for reading
 					and need the authentication with the User PIN.
 					In such a case the <option>--verify-pin</option> option has to be used.</para></listitem>
@@ -243,6 +262,22 @@
 
 				<varlistentry>
 					<term>
+						<option>--test-update</option>,
+						<option>-T</option>,
+					</term>
+					<listitem><para>Test if the card needs a security update</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--update</option>,
+						<option>-U</option>,
+					</term>
+					<listitem><para>Update the card with a security update</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
 						<option>--reader</option> <replaceable>num</replaceable>
 					</term>
 					<listitem><para>Forces <command>pkcs15-tool</command> to use reader
@@ -271,10 +306,48 @@
 
 				<varlistentry>
 					<term>
+						<option>--pin</option> <replaceable>PIN</replaceable>
+					</term>
+					<listitem><para>Specify PIN</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--puk</option> <replaceable>PUK</replaceable>
+					</term>
+					<listitem><para>Specify Unblock PIN</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--new-pin</option> <replaceable>PIN</replaceable>
+					</term>
+					<listitem><para>Specify New PIN (when changing or unblocking)</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
 						<option>--verify-pin</option>
 					</term>
 					<listitem><para>Verify PIN after card binding and before issuing any command
                                         (without 'auth-id' the first non-SO, non-Unblock PIN will be verified)</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--test-session-pin</option>
+					</term>
+					<listitem><para>Equivalent to <option>--verify-pin</option>
+					with additional session PIN generation</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--wait</option>,
+						<option>-w</option>
+					</term>
+					<listitem><para>Causes <command>pkcs15-tool</command> to
+					wait for a card insertion.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>

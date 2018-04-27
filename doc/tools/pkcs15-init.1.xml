@@ -314,11 +314,11 @@
 							optionally followed by a slash and the length of the key in bits.
 							It is a good idea to specify the key ID along with this command,
 							using the <option>id</option> option, otherwise an intrinsic ID
-                                                        will be calculated from the key material. Look the description of
-                                                        the 'pkcs15-id-style' attribute in the 'pkcs15.profile' for the details
-                                                        about the algorithm used to calculate intrinsic ID.
-                                                        For the multi-application cards the target PKCS#15 application can be
-                                                        specified by the hexadecimal AID value of the <option>aid</option> option.
+							will be calculated from the key material. Look the description of
+							the 'pkcs15-id-style' attribute in the 'pkcs15.profile' for the details
+							about the algorithm used to calculate intrinsic ID.
+							For the multi-application cards the target PKCS#15 application can be
+							specified by the hexadecimal AID value of the <option>aid</option> option.
 						</para>
 					</listitem>
 				</varlistentry>
@@ -333,10 +333,10 @@
 							from <replaceable>filename</replaceable>. The file is supposed to
 							contain one long option per line, without the leading dashes,
 							for instance:
-<programlisting>
-	pin		frank
-	puk		zappa
-</programlisting>
+							<programlisting>
+pin		frank
+puk		zappa
+							</programlisting>
 						</para>
 						<para>
 							You can specify <option>--options-file</option> several times.
@@ -528,6 +528,15 @@
 							flag several times to enable debug output in the OpenSC library.
 						</para>
 					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--wait</option>,
+						<option>-w</option>
+					</term>
+					<listitem><para>Causes <command>pkcs15-init</command> to
+					wait for a card insertion.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>

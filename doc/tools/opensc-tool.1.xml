@@ -57,6 +57,12 @@
 				</varlistentry>
 				<varlistentry>
 					<term>
+						<option>--list-algorithms</option>,
+					</term>
+					<listitem><para>Lists algorithms supported by card</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
 						<option>--info</option>,
 						<option>-i</option>
 					</term>
@@ -89,6 +95,20 @@
 						<option>-n</option>
 					</term>
 					<listitem><para>Print the name of the inserted card (driver).</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--get-conf-entry</option> <replaceable>conf</replaceable>,
+						<option>-G</option> <replaceable>conf</replaceable>
+					</term>
+					<listitem><para>Get configuration key, format: section:name:key</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--set-conf-entry</option> <replaceable>conf</replaceable>,
+						<option>-S</option> <replaceable>conf</replaceable>
+					</term>
+					<listitem><para>Get configuration key, format: section:name:key:value</para></listitem>
 				</varlistentry>
 				<varlistentry>
 					<term>
