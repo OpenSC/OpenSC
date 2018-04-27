@@ -278,6 +278,17 @@ static void notify_proxy(struct sc_context *ctx,
 	 * we're including NotificationProxy which has similar features */
 	const char notificationproxy[] = "/Library/Security/tokend/OpenSC.tokend/Contents/Resources/Applications/NotificationProxy.app/Contents/MacOS/NotificationProxy";
 
+	if (ctx && ctx->app_name
+			&& (0 == strcmp(ctx->app_name, "opensc-pkcs11")
+				|| 0 == strcmp(ctx->app_name, "onepin-opensc-pkcs11"))) {
+		/* some programs don't like forking when loading our PKCS#11 module,
+		 * see https://github.com/OpenSC/OpenSC/issues/1174.
+		 * TODO implementing an XPC service which sends the notification should
+		 * work, though. See
+		 * https://github.com/OpenSC/OpenSC/issues/1304#issuecomment-376656003 */
+		return;
+	}
+
 	if (child > 0) {
 		int status;
 		if (0 == waitpid(child, &status, WNOHANG)) {
