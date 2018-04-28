@@ -102,10 +102,11 @@ typedef struct starcos_ex_data_st {
 /*Finds appropriate alg based on sec environment and writes these into the ptr
 * returns number of bytes which were added, 0 if no alg specified. -1 if not supported
 * The smartcard will use some standard algs (see "standard" comment) if no alg is defined */
-int starcos_find_algorithm_flags_3_2(sc_card_t *card, const sc_security_env_t *env, u8 *p){
+int starcos_find_algorithm_flags_3_2(sc_card_t *card, const sc_security_env_t *env, u8 *p, size_t p_len){
 	sc_context_t *ctx = card->ctx;
 	if (env->flags & SC_SEC_ENV_ALG_REF_PRESENT) {
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Found alg ref id%02x\n",env->algorithm_ref & 0xFF );
+		if (p_len < 3) return SC_ERROR_OUT_OF_MEMORY;
 		*p++ = 0x80;
 		*p++ = 0x01;
 		*p++ = env->algorithm_ref & 0xFF;
@@ -114,65 +115,29 @@ int starcos_find_algorithm_flags_3_2(sc_card_t *card, const sc_security_env_t *e
 		switch (((starcos_ex_data *)card->drv_data)->sec_ops) {
 			case SC_SEC_OPERATION_DECIPHER: // encipher algorithms used here (see starcos manual)
 				if(env->algorithm == SC_ALGORITHM_RSA){
+					if (p_len < 4) return SC_ERROR_OUT_OF_MEMORY;
 					*p++= 0x89;
 					*p++= 0x02;
 					*p++= 0x11;//encipher
 					*p++= 0x30;//rsa (standard)
 					return 4;
 				}
-				if(env->algorithm == SC_ALGORITHM_DES){
-					return -1; //for now, not supported
-					/**p++= 0x89;
-					*p++= 0x02;
-					*p++= 0x11;//encipher
-					*p++= 0x11;//des
-					*p++= 0x00; //Here: some modes missing (CBC, ICV)*/
-				}
-				if(env->algorithm == SC_ALGORITHM_3DES){
-					return -1; //for now, not supported
-					/**p++= 0x89;
-					*p++= 0x02;
-					*p++= 0x11;//encipher
-					*p++= 0x21;//3des
-					*p++= 0x00; //Here: some modes missing (CBC, ICV)*/
+				if((env->algorithm == SC_ALGORITHM_DES) || (env->algorithm == SC_ALGORITHM_3DES)){
+					return SC_ERROR_NOT_SUPPORTED;
 				}
 				return 0;
 			case SC_SEC_OPERATION_SIGN:
 				if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1) {
+					if (p_len < 4) return SC_ERROR_OUT_OF_MEMORY;
 					*p++= 0x89;
 					*p++= 0x02;
 					*p++= 0x13;//signature
 					*p++= 0x23;//PKCS RSA (standard)
-					if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA1){
-						//TODO: not tested yet
-						*p++= 0x10;
-						return 5;
-					}
-					if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_RIPEMD160){
-						//TODO: not tested yet
-						*p++= 0x20;
-						return 5;
-					}
 					return 4;
 				}
 				//iso 9796-2 DINSIG
 				if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_ISO9796) {
-					return -1; //TODO: Not supported because not tested yet
-					*p++= 0x89;
-					*p++= 0x02;
-					*p++= 0x13;//signature
-					*p++= 0x13;//ISO 9796 and  RSA (standard)
-					if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA1){
-						//TODO: not tested yet
-						*p++= 0x10;
-						return 5;
-					}
-					if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_RIPEMD160){
-						//TODO: not tested yet
-						*p++= 0x20;
-						return 5;
-					}
-					return 4;
+					return SC_ERROR_NOT_SUPPORTED;
 				}
 				break;
 			case SC_SEC_OPERATION_AUTHENTICATE:
@@ -186,32 +151,17 @@ int starcos_find_algorithm_flags_3_2(sc_card_t *card, const sc_security_env_t *e
 				} else {
 					/*according to manual implemented using client-server authentication?*/
 					if(env->algorithm_flags & SC_ALGORITHM_RSA_PADS){ //RSA
+						if (p_len < 4) return SC_ERROR_OUT_OF_MEMORY;
 						*p++= 0x89;
 						*p++= 0x02;
 						*p++= 0x23;//asymmetric authentication
 						*p++= 0x13;// client-server with RSA (standard)a
 						return 4;
 					} else {
-						/*TODO: NOT supported yet: client-server with with ECC (eliptic curve cryptography?)
+						/*TODO: NOT supported yet: client-server with with ECC
 						if(ecc -> 2324)	*/
-						return -1;
-						*p++= 0x89;
-						*p++= 0x02;
-						*p++= 0x23;//asymmetric authentication
-						*p++= 0x24;// client-server with ECC
+						return SC_ERROR_NOT_SUPPORTED;
 					}
-					/*internal authenticate ICAO(International Civil Aviation Organisation)?, with RSA (standard)
-					if(internal authenticate ICAO and rsa){
-						*p++= 0x89;
-						*p++= 0x02;
-						*p++= 0x23;//asymmetric authentication
-						*p++= 0x53;// internal authentication ICAO (??)
-						if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA1){
-							//TODO: not tested yet
-							*p++= 0x10;
-							return 5;
-						}
-						return 4;*/
 				}
 				break;
 			default:	//don*t do anything ?
@@ -406,7 +356,7 @@ static int process_fci(sc_context_t *ctx, sc_file_t *file,
 	return SC_SUCCESS;
 }
 
-static int process_fci_v3_2_v3_4_v3_5(sc_context_t *ctx, sc_file_t *file,
+static int process_fci_v3(sc_context_t *ctx, sc_file_t *file,
 		       const u8 *buf, size_t buflen)
 {
 	size_t taglen, len = buflen;
@@ -442,7 +392,7 @@ static int process_fci_v3_2_v3_4_v3_5(sc_context_t *ctx, sc_file_t *file,
 	return SC_SUCCESS;
 }
 
-static int process_fcp_v3_2_v3_4_v3_5(sc_context_t *ctx, sc_file_t *file,
+static int process_fcp_v3(sc_context_t *ctx, sc_file_t *file,
 		       const u8 *buf, size_t buflen)
 {
 	size_t taglen, len = buflen;
@@ -761,10 +711,10 @@ static int starcos_select_fid(sc_card_t *card,
 					|| card->type == SC_CARD_TYPE_STARCOS_V3_4
 					|| card->type == SC_CARD_TYPE_STARCOS_V3_5) {
 				if (isFCP) {
-					r = process_fcp_v3_2_v3_4_v3_5(card->ctx, file, apdu.resp,
+					r = process_fcp_v3(card->ctx, file, apdu.resp,
 							apdu.resplen);
 				} else {
-					r = process_fci_v3_2_v3_4_v3_5(card->ctx, file, apdu.resp,
+					r = process_fci_v3(card->ctx, file, apdu.resp,
 							apdu.resplen);
 				}
 			} else {
@@ -1558,10 +1508,6 @@ static int starcos_set_security_env(sc_card_t *card,
 				ex_data->sec_ops = SC_SEC_OPERATION_DECIPHER;
 				break;
 			case SC_SEC_OPERATION_SIGN:
-				//ex_data->sec_ops = SC_SEC_OPERATION_SIGN;
-				//sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0x41, 0xB6);
-				//see ref manual "compute digital signature"
-				//break;
 				/*TODO: for now: use internal authenticate to perform this operation
 				* (only works for RSA ?)
 				* not adequate setting found yet, no function to compare given,
@@ -1590,9 +1536,10 @@ static int starcos_set_security_env(sc_card_t *card,
 		p += env->key_ref_len -1;
 		*p -= 0x03;
 		p++;
-		temp = starcos_find_algorithm_flags_3_2(card, env, p);
-		if(temp < 0)
-			return SC_ERROR_NOT_SUPPORTED;
+		temp = starcos_find_algorithm_flags_3_2(card, env, p, SC_MAX_APDU_BUFFER_SIZE - (p - sbuf));
+		if (temp < 0) {
+			return temp; // Returns e.g. SC_ERROR_OUT_OF_MEMORY, SC_ERROR_NOT_SUPPORTED
+		}
 		p += temp;
 
 		/*Complete APDU and send*/
@@ -1922,7 +1869,8 @@ static int starcos_decipher(struct sc_card *card,
 		if(card->type == SC_CARD_TYPE_STARCOS_V3_2){
 			u8 *tempbuf = NULL;
 			tempbuf = malloc(SC_MAX_APDU_BUFFER_SIZE);
-
+			if (tempbuf == NULL)
+				return SC_ERROR_OUT_OF_MEMORY;
 			apdu.resp    = tempbuf;
 			apdu.resplen = SC_MAX_APDU_BUFFER_SIZE;
 			// starcos 3.2 expects 0x00 otherwise error -> buffer must be max size
@@ -2030,7 +1978,7 @@ static int starcos_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 			//only consider last 8 bytes (apparently common practice)
 			offs = taglen > 8 ? taglen - 8 : 0;
 			memcpy(&card->serialnr, tag + offs, MIN(8, taglen));
-			card->serialnr.len = 8;
+			card->serialnr.len = MIN(8, taglen);
 			break;
 		}
 		case SC_CARD_TYPE_STARCOS_V3_4:
@@ -2165,7 +2113,6 @@ static struct sc_card_driver * sc_get_driver(void)
 	starcos_ops.card_ctl    = starcos_card_ctl;
 	starcos_ops.logout      = starcos_logout;
 	starcos_ops.pin_cmd     = starcos_pin_cmd;
-	starcos_ops.list_files	= NULL;
 
 	return &starcos_drv;
 }
