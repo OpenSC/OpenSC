@@ -641,6 +641,14 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 			goto done;
 	}
 
+	/* XXX TODO
+	 * we can not assume that the following structures are
+	 * SimpleTLV unless we check properties of the applet (GET PROPERTIES)
+	 * and make sure that "Type of Tag Supported" is 0x00.
+	 * Otherwise the formatting is different and we need a different
+	 * encoding to present it in PKCS#11 layer
+	 * XXX TODO
+	 */
 	switch (priv->object_type) {
 	case CAC_OBJECT_TYPE_TLV_FILE:
 		tlv_len = tl_len + val_len;
