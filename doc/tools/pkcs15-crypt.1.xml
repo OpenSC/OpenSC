@@ -132,10 +132,14 @@
 						<option>--reader</option> <replaceable>N</replaceable>,
 						<option>-r</option> <replaceable>N</replaceable>
 					</term>
-					<listitem><para>Selects the <replaceable>N</replaceable>-th smart
-					card reader configured by the system. If unspecified,
-					<command>pkcs15-crypt</command> will use the first reader
-					found.</para></listitem>
+					<listitem>
+						<para>
+							Specify the reader to use. By default, the first
+							reader with a present card is used. If
+							<replaceable>num</replaceable> is an ATR, the
+							reader with a matching card will be chosen.
+						</para>
+					</listitem>
 				</varlistentry>
 
 				<varlistentry>

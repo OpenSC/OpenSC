@@ -82,8 +82,14 @@
 						<option>--reader</option> <replaceable>argument</replaceable>,
 						<option>-r</option> <replaceable>argument</replaceable>
 					</term>
-					<listitem><para>Uses reader number
-					<replaceable>argument</replaceable>.</para></listitem>
+					<listitem>
+						<para>
+							Specify the reader to use. By default, the first
+							reader with a present card is used. If
+							<replaceable>num</replaceable> is an ATR, the
+							reader with a matching card will be chosen.
+						</para>
+					</listitem>
 				</varlistentry>
 				<varlistentry>
 					<term>

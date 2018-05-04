@@ -280,9 +280,14 @@
 					<term>
 						<option>--reader</option> <replaceable>num</replaceable>
 					</term>
-					<listitem><para>Forces <command>pkcs15-tool</command> to use reader
-					number <replaceable>num</replaceable> for operations. The default is to use
-					reader number 0, the first reader in the system.</para></listitem>
+					<listitem>
+						<para>
+							Specify the reader to use. By default, the first
+							reader with a present card is used. If
+							<replaceable>num</replaceable> is an ATR, the
+							reader with a matching card will be chosen.
+						</para>
+					</listitem>
 				</varlistentry>
 
 				<varlistentry>

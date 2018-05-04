@@ -74,7 +74,14 @@
             <option>--reader</option> <replaceable>number</replaceable>,
             <option>-r</option> <replaceable>number</replaceable>
           </term>
-          <listitem><para>Use smart card in specified reader. Default is reader 0.</para></listitem>
+          <listitem>
+            <para>
+              Specify the reader to use. By default, the first
+              reader with a present card is used. If
+              <replaceable>num</replaceable> is an ATR, the
+              reader with a matching card will be chosen.
+            </para>
+          </listitem>
         </varlistentry>
         <varlistentry>
           <term>

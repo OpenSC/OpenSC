@@ -2574,7 +2574,7 @@ parse_objects(const char *list, unsigned int action)
 			}
 		}
 		if (del_flags[n].name == NULL) {
-			fprintf(stderr, "Unknown argument for --delete_objects: %.*s\n", len, list);
+			fprintf(stderr, "Unknown argument for --delete-objects: %.*s\n", len, list);
 			exit(0);
 		}
 		list += len;

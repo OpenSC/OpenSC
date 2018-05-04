@@ -170,11 +170,11 @@
 			</para>
 			<para>
 				Note that usage of <option>--id</option> option in the <command>pkcs15-init</command>
-                                commands to generate or to import a new key is deprecated.
-                                Better practice is to let the middleware to derive the identifier from the key material.
-                                (SHA1(modulus) for RSA, SHA1(pub) for DSA, ...).
-                                This allows easily set up relation between 'related' objects
-                                (private/public keys and certificates).
+				commands to generate or to import a new key is deprecated.
+				Better practice is to let the middleware to derive the identifier from the key material.
+				(SHA1(modulus) for RSA, SHA1(pub) for DSA, ...).
+				This allows easily set up relation between 'related' objects
+				(private/public keys and certificates).
 			</para>
 			<para>
 				In addition to the PEM key file format, <command>pkcs15-init</command> also
@@ -255,12 +255,12 @@
 		<title>Options</title>
 		<para>
 			<variablelist>
-                                <varlistentry>
-                                        <term>
-                                                <option>--version</option>,
-                                        </term>
-                                        <listitem><para>Print the OpenSC package release version.</para></listitem>
-                                </varlistentry>
+				<varlistentry>
+					<term>
+						<option>--version</option>,
+					</term>
+					<listitem><para>Print the OpenSC package release version.</para></listitem>
+				</varlistentry>
 				<varlistentry>
 					<term>
 						<option>--card-profile</option> <replaceable>name</replaceable>,
@@ -289,6 +289,17 @@
 
 				<varlistentry>
 					<term>
+						<option>--serial</option> <replaceable>SERIAL</replaceable>
+					</term>
+					<listitem>
+						<para>
+							Specify the serial number of the card.
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
 						<option>--erase-card</option>,
 						<option>-E</option>
 					</term>
@@ -297,6 +308,18 @@
 							This will erase the card prior to creating the PKCS #15 structure,
 							if the card supports it. If the card does not support erasing,
 							<command>pkcs15-init</command> will fail.
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--erase-application</option> <replaceable>AID</replaceable>
+					</term>
+					<listitem>
+						<para>
+							This will erase the application with the application identifier
+							<replaceable>AID</replaceable>.
 						</para>
 					</listitem>
 				</varlistentry>
@@ -334,8 +357,8 @@
 							contain one long option per line, without the leading dashes,
 							for instance:
 							<programlisting>
-pin		frank
-puk		zappa
+								pin		1234
+								puk		87654321
 							</programlisting>
 						</para>
 						<para>
@@ -365,6 +388,17 @@ puk		zappa
 							these options only on a secured system, or in an
 							options file specified with
 							<option>--options-file</option>.
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--no-so-pin</option>,
+					</term>
+					<listitem>
+						<para>
+							Do not install a SO PIN, and do not prompt for it.
 						</para>
 					</listitem>
 				</varlistentry>
@@ -419,13 +453,25 @@ puk		zappa
 							Tells <command>pkcs15-init</command> to store the certificate given
 							in <option>filename</option> on the card, creating a certificate
 							object with the ID specified via the <option>--id</option> option.
-                                                        Without supplied ID an intrinsic ID will be calculated from the
-                                                        certificate's public key. Look the description of the 'pkcs15-id-style'
-                                                        attribute in the 'pkcs15.profile' for the details
-                                                        about the algorithm used to calculate intrinsic ID.
+							Without supplied ID an intrinsic ID will be calculated from the
+							certificate's public key. Look the description of the 'pkcs15-id-style'
+							attribute in the 'pkcs15.profile' for the details
+							about the algorithm used to calculate intrinsic ID.
 							The file is assumed to contain the PEM encoded certificate.
-                                                        For the multi-application cards the target application can be specified
-                                                        by the hexadecimal AID value of the <option>aid</option> option.
+							For the multi-application cards the target application can be specified
+							by the hexadecimal AID value of the <option>aid</option> option.
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--store-pin</option>,
+						<option>-P</option>
+					</term>
+					<listitem>
+						<para>
+							Store a new PIN/PUK on the card.
 						</para>
 					</listitem>
 				</varlistentry>
@@ -459,11 +505,11 @@ puk		zappa
 							formats can be specified using <option>--format</option>.
 							It is a good idea to specify the key ID along with this command,
 							using the <option>--id</option> option, otherwise an intrinsic ID
-                                                        will be calculated from the key material. Look the description of
-                                                        the 'pkcs15-id-style' attribute in the 'pkcs15.profile' for the details
-                                                        about the algorithm used to calculate intrinsic ID.
-                                                        For the multi-application cards the target PKCS#15 application can be
-                                                        specified by the hexadecimal AID value of the <option>aid</option> option.
+							will be calculated from the key material. Look the description of
+							the 'pkcs15-id-style' attribute in the 'pkcs15.profile' for the details
+							about the algorithm used to calculate intrinsic ID.
+							For the multi-application cards the target PKCS#15 application can be
+							specified by the hexadecimal AID value of the <option>aid</option> option.
 						</para>
 					</listitem>
 				</varlistentry>
@@ -478,10 +524,24 @@ puk		zappa
 							secret key to the card. The file is assumed to contain the raw key.
 							They key type should be specified with <option>--secret-key-algorithm</option>
 							option.
+						</para>
+						<para>
 							You may additionally specify the key ID along with this command,
 							using the <option>--id</option> option, otherwise a random ID is generated.
 							For the multi-application cards the target PKCS#15 application can be
 							specified by the hexadecimal AID value of the <option>aid</option> option.
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--store-data</option> <replaceable>filename</replaceable>,
+						<option>-W</option> <replaceable>filename</replaceable>
+					</term>
+					<listitem>
+						<para>
+							Store a data object.
 						</para>
 					</listitem>
 				</varlistentry>
@@ -495,11 +555,62 @@ puk		zappa
 						<para>
 							Tells <command>pkcs15-init</command> to update the certificate
 							object with the ID specified via the <option>--id</option> option
-							with the certificate in <option>filename</option>.
+							with the certificate in <replaceable>filename</replaceable>.
 							The file is assumed to contain a PEM encoded certificate.
 						</para>
 						<para>Pay extra attention when updating mail decryption certificates, as
-						missing certificates can render e-mail messages unreadable!
+							missing certificates can render e-mail messages unreadable!
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--delete-objects</option> <replaceable>arg</replaceable>,
+						<option>-D</option> <replaceable>arg</replaceable>
+					</term>
+					<listitem>
+						<para>
+							Tells <command>pkcs15-init</command> to delete the
+							specified object.  <replaceable>arg</replaceable>
+							is comma-separated list containing any of
+							<literal>privkey</literal>, <literal>pubkey</literal>,
+							<literal>secrkey</literal>, <literal>cert</literal>,
+							<literal>chain</literal> or <literal>data</literal>.
+						</para>
+						<para>
+							When <literal>data</literal> is specified, an
+							-<option>--application-id</option> must also be
+							specified, in the other cases an
+							<option>--id</option> must also be specified
+						</para>
+						<para>
+							When <literal>chain</literal> is specified, the
+							certificate chain starting with the cert with
+							specified ID will be deleted, until there's a CA
+							certificate that certifies another cert on the card
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--change-attributes</option> <replaceable>arg</replaceable>,
+						<option>-A</option> <replaceable>arg</replaceable>
+					</term>
+					<listitem>
+						<para>
+							Tells <command>pkcs15-init</command> to change the
+							specified attribute. <replaceable>arg</replaceable>
+							is either <literal>privkey</literal>,
+							<literal>pubkey</literal>, <literal>secrkey</literal>,
+							<literal>cert</literal> or <literal>data</literal>.
+							You also have to specify the <option>--id</option>
+							of the object.
+							For now, you can only change the <option>--label</option>, e.g:
+							<programlisting>
+								pkcs15-init -A cert --id 45 -a 1 --label Jim
+							</programlisting>
 						</para>
 					</listitem>
 				</varlistentry>
@@ -513,6 +624,35 @@ puk		zappa
 						<para>
 							Tells <command>pkcs15-init</command> to not ask for the transport
 							keys and use default keys, as known by the card driver.
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--sanity-check</option>,
+						<option>-T</option>
+					</term>
+					<listitem>
+						<para>
+							Tells <command>pkcs15-init</command> to perform a
+							card specific sanity check and possibly update
+							procedure.
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--reader</option> <replaceable>num</replaceable>,
+						<option>-r</option> <replaceable>num</replaceable>
+					</term>
+					<listitem>
+						<para>
+							Specify the reader to use. By default, the first
+							reader with a present card is used. If
+							<replaceable>num</replaceable> is an ATR, the
+							reader with a matching card will be chosen.
 						</para>
 					</listitem>
 				</varlistentry>
@@ -536,7 +676,7 @@ puk		zappa
 						<option>-w</option>
 					</term>
 					<listitem><para>Causes <command>pkcs15-init</command> to
-					wait for a card insertion.</para></listitem>
+							wait for a card insertion.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -544,6 +684,227 @@ puk		zappa
 						<option>--use-pinpad</option>
 					</term>
 					<listitem><para>Do not prompt the user; if no PINs supplied, pinpad will be used.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--puk-id</option> <replaceable>ID</replaceable>
+					</term>
+					<listitem>
+						<para>
+							Specify ID of PUK to use/create
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--puk-label</option> <replaceable>LABEL</replaceable>
+					</term>
+					<listitem>
+						<para>
+							Specify label of PUK
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--public-key-label</option> <replaceable>LABEL</replaceable>
+					</term>
+					<listitem>
+						<para>
+							Specify public key label (use with <option>--generate-key</option>)
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--cert-label</option> <replaceable>LABEL</replaceable>
+					</term>
+					<listitem>
+						<para>
+							Specify user cert label (use with <option>--store-private-key</option>)
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--application-name</option> <replaceable>arg</replaceable>
+					</term>
+					<listitem>
+						<para>
+							Specify application name of data object (use with <option>--store-data-object</option>)
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--aid</option> <replaceable>AID</replaceable>
+					</term>
+					<listitem>
+						<para>
+							Specify AID of the on-card PKCS#15 application to be binded to (in hexadecimal form)
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--output-file</option> <replaceable>filename</replaceable>
+						<option>-o</option> <replaceable>filename</replaceable>,
+					</term>
+					<listitem>
+						<para>
+							Output public portion of generated key to file
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--passphrase</option> <replaceable>PASSPHRASE</replaceable>
+					</term>
+					<listitem>
+						<para>
+							Specify passphrase for unlocking secret key
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--authority</option>
+					</term>
+					<listitem>
+						<para>
+							Mark certificate as a CA certificate
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--key-usage</option> <replaceable>arg</replaceable>
+						<option>-u</option> <replaceable>arg</replaceable>,
+					</term>
+					<listitem>
+						<para>
+							Specifies the X.509 key usage.
+							<replaceable>arg</replaceable> is comma-separated
+							list containing any of
+							<literal>digitalSignature</literal>,
+							<literal>nonRepudiation</literal>,
+							<literal>keyEncipherment</literal>,
+							<literal>dataEncipherment</literal>,
+							<literal>keyAgreement</literal>,
+							<literal>keyCertSign</literal>,
+							<literal>cRLSign</literal>. Abbreviated names are
+							allowed if unique (e.g.
+							<literal>dataEnc</literal>).
+						</para>
+						<para>
+							The alias <literal>sign</literal> is equivalent to
+							<literal>digitalSignature,keyCertSign,cRLSign</literal>
+						</para>
+						<para>
+							The alias <literal>decrypt</literal> is equivalent to
+							<literal>keyEncipherment,dataEncipherment</literal>
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--finalize</option>
+						<option>-F</option>,
+					</term>
+					<listitem>
+						<para>
+							Finish initialization phase of the smart card
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--update-last-update</option>
+					</term>
+					<listitem>
+						<para>
+							Update 'lastUpdate' attribute of tokenInfo
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--ignore-ca-certificates</option>
+					</term>
+					<listitem>
+						<para>
+							When storing PKCS#12 ignore CA certificates
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--update-existing</option>
+					</term>
+					<listitem>
+						<para>
+							Store or update existing certificate
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--extractable</option>
+					</term>
+					<listitem>
+						<para>
+							Private key stored as an extractable key
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--insecure</option>
+					</term>
+					<listitem>
+						<para>
+							Insecure mode: do not require a PIN for private key
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--md-container-guid</option> <replaceable>GUID</replaceable>
+					</term>
+					<listitem>
+						<para>
+							For a new key specify GUID for a MD container
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--help</option>
+						<option>-h</option>,
+					</term>
+					<listitem>
+						<para>
+							Display help message
+						</para>
+					</listitem>
 				</varlistentry>
 
 			</variablelist>
