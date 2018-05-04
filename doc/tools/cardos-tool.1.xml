@@ -59,8 +59,14 @@ smart cards and similar security tokens based on Siemens Card/OS M4.
 						<option>--reader</option> <replaceable>number</replaceable>,
 						<option>-r</option> <replaceable>number</replaceable>
 					</term>
-					<listitem><para>Specify the reader number <replaceable>number</replaceable> to use.
-					The default is reader <literal>0</literal>.</para></listitem>
+					<listitem>
+						<para>
+							Specify the reader to use. By default, the first
+							reader with a present card is used. If
+							<replaceable>num</replaceable> is an ATR, the
+							reader with a matching card will be chosen.
+						</para>
+					</listitem>
 				</varlistentry>
 				<varlistentry>
 					<term>

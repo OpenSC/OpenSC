@@ -204,8 +204,14 @@
 						<option>--reader</option> <replaceable>num</replaceable>,
 						<option>-r</option> <replaceable>num</replaceable>
 					</term>
-					<listitem><para>Use the given reader number. The default is
-					<literal>0</literal>, the first reader in the system.</para></listitem>
+					<listitem>
+						<para>
+							Specify the reader to use. By default, the first
+							reader with a present card is used. If
+							<replaceable>num</replaceable> is an ATR, the
+							reader with a matching card will be chosen.
+						</para>
+					</listitem>
 				</varlistentry>
 				
 				<varlistentry>
