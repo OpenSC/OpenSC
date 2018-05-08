@@ -41,10 +41,10 @@
 unsigned char MYEID_DEFAULT_PUBKEY[] = {0x01, 0x00, 0x01};
 #define MYEID_DEFAULT_PUBKEY_LEN       sizeof(MYEID_DEFAULT_PUBKEY)
 
-#define MYEID_PROP_INFO_1_EXCTRACTABLE		0x01;
-#define MYEID_PROP_INFO_1_TRUSTED		0x02;
-#define MYEID_PROP_INFO_1_WRAP_WITH_TRUSTED	0x04;
-#define MYEID_PROP_INFO_2_SESSION_OBJECT	0x08;
+#define MYEID_PROP_INFO_2_EXCTRACTABLE			0x08;
+#define MYEID_PROP_INFO_1_TRUSTED				0x04;
+#define MYEID_PROP_INFO_1_WRAP_WITH_TRUSTED		0x08;
+#define MYEID_PROP_INFO_2_SESSION_OBJECT		0x01;
 
 /* For Myeid, all objects are files that can be deleted in any order */
 static int
@@ -626,7 +626,7 @@ myeid_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	    prop_info[0] |= (pin_reference << 4);
 
 	if (extractable)
-	    prop_info[0] |= MYEID_PROP_INFO_1_EXCTRACTABLE;
+	    prop_info[1] |= MYEID_PROP_INFO_2_EXCTRACTABLE;
 
 	if (object->session_object != 0) /* Object will be removed during next reset. */
 		prop_info[1] |= MYEID_PROP_INFO_2_SESSION_OBJECT;
