@@ -201,4 +201,10 @@
 		</para>
 	</refsect1>
 
+	<refsect1>
+		<title>Authors</title>
+		<para><command>piv-tool</command> was written by
+		Douglas E. Engert <email>deengert@gmail.com</email>.</para>
+	</refsect1>
+
 </refentry>

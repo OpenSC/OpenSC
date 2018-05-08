@@ -88,4 +88,10 @@ smart cards and similar security tokens based on Siemens Card/OS M4.
 			</variablelist>
 		</para>
 	</refsect1>
+
+	<refsect1>
+		<title>Authors</title>
+		<para><command>cardos-tool</command> was written by
+		Andreas Jellinghaus <email>aj@dungeon.inka.de</email>.</para>
+	</refsect1>
 </refentry>

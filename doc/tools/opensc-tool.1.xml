@@ -175,4 +175,10 @@
 		</para>
 	</refsect1>
 
+	<refsect1>
+		<title>Authors</title>
+		<para><command>opensc-tool</command> was written by
+		Juha Yrjölä <email>juha.yrjola@iki.fi</email>.</para>
+	</refsect1>
+
 </refentry>

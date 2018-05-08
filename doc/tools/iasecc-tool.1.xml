@@ -84,4 +84,10 @@
 			</variablelist>
 		</para>
 	</refsect1>
+
+	<refsect1>
+		<title>Authors</title>
+		<para><command>iasecc-tool</command> was written by
+		Viktor Tarasov <email>viktor.tarasov@gmail.com</email>.</para>
+	</refsect1>
 </refentry>

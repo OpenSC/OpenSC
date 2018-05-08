@@ -263,4 +263,10 @@
 		</para>
 	</refsect1>
 
+	<refsect1>
+		<title>Authors</title>
+		<para><command>sc-hsm-tool</command> was written by
+		Andreas Schwier <email>andreas.schwier@cardcontact.de</email>.</para>
+	</refsect1>
+
 </refentry>

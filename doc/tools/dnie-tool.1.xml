@@ -125,10 +125,6 @@ to enable debug output in the opensc library.</para></listitem>
 	</refsect1>
 	
 	<refsect1>
-		<title>See also</title>
-		<para>opensc(7)</para>
-	</refsect1>
-	<refsect1>
 		<title>Authors</title>
 		<para><command>dnie-tool</command> was written by
 		Juan Antonio Martinez <email>jonsito@terra.es</email>.</para>

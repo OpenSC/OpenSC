@@ -581,4 +581,10 @@
 		</para>
 	</refsect1>
 
+	<refsect1>
+		<title>Authors</title>
+		<para><command>pkcs11-tool</command> was written by
+		Olaf Kirch <email>okir@suse.de</email>.</para>
+	</refsect1>
+
 </refentry>

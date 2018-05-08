@@ -357,8 +357,8 @@
 							contain one long option per line, without the leading dashes,
 							for instance:
 							<programlisting>
-								pin		1234
-								puk		87654321
+pin		1234
+puk		87654321
 							</programlisting>
 						</para>
 						<para>
@@ -919,6 +919,12 @@
 				<manvolnum>5</manvolnum>
 			</citerefentry>
 		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Authors</title>
+		<para><command>pkcs15-init</command> was written by
+		Olaf Kirch <email>okir@suse.de</email>.</para>
 	</refsect1>
 
 </refentry>

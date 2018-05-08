@@ -120,4 +120,10 @@
 		</para>
 	</refsect1>
 
+	<refsect1>
+		<title>Authors</title>
+		<para><command>gids-tool</command> was written by
+		Vincent Le Toux <email>vincent.letoux@mysmartlogon.com</email>.</para>
+	</refsect1>
+
 </refentry>
