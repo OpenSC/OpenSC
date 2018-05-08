@@ -2302,6 +2302,10 @@ pkcs15_create_secret_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 		case CKA_UNWRAP:
 			args.usage |= pkcs15_check_bool_cka(attr, SC_PKCS15_PRKEY_USAGE_UNWRAP);
 			break;
+		case CKA_EXTRACTABLE:
+			if (pkcs15_check_bool_cka(attr, 1))
+					args.access_flags |= SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE;
+			break;
 		default:
 			/* ignore unknown attrs, or flag error? */
 			continue;

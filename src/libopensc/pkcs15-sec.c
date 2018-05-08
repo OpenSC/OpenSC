@@ -540,11 +540,14 @@ int sc_pkcs15_wrap(struct sc_pkcs15_card *p15card,
 	r = use_key(p15card, key, &senv, sc_wrap, in, inlen, out,
 			*poutlen);
 
-	if (r > -1)
-	    *poutlen = r;
+	if (r > -1) {
+            if (*crgram_len < (unsigned) r) {
+					*poutlen = r;
+					LOG_TEST_RET(ctx, SC_ERROR_BUFFER_TOO_SMALL, "Buffer too small to hold the wrapped key.");
+			}
 
-	/* TODO: handle SC_ERROR_BUFFER_TOO_SMALL, return size in *poutlen */
-	LOG_TEST_RET(ctx, r, "use_key() failed");
+            *poutlen = r;
+        }
 
 	LOG_FUNC_RETURN(ctx, r);
 }
