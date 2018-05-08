@@ -227,7 +227,7 @@ static int myeid_init(struct sc_card *card)
 	/* State that we have an RNG */
 	card->caps |= SC_CARD_CAP_RNG | SC_CARD_CAP_ISO7816_PIN_INFO;
 
-	if ((card->version.fw_major == 40 && card->version.fw_minor == 10 )
+	if ((card->version.fw_major == 40 && card->version.fw_minor >= 10 )
 		|| card->version.fw_major >= 41)
 		card->caps |= SC_CARD_CAP_WRAP_KEY | SC_CARD_CAP_UNWRAP_KEY
 			   | SC_CARD_CAP_ONCARD_SESSION_OBJECTS;
@@ -1273,12 +1273,11 @@ static int myeid_wrap_key(struct sc_card *card, u8 *out, size_t outlen)
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	LOG_TEST_RET(ctx, r, "compute_signature failed");
+	LOG_TEST_RET(ctx, r, "wrap key failed");
 
-	if (apdu.resplen > outlen)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_BUFFER_TOO_SMALL);
+	if (apdu.resplen <= outlen)
+		memcpy(out, apdu.resp, apdu.resplen);
 
-	memcpy(out, apdu.resp, apdu.resplen);
 	LOG_FUNC_RETURN(ctx, apdu.resplen);
 }
 
