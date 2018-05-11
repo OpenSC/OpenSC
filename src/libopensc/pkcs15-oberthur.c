@@ -738,7 +738,7 @@ sc_pkcs15emu_oberthur_add_prvkey(struct sc_pkcs15_card *p15card,
 			unsigned int id = path.value[path.len - 2] * 0x100 + path.value[path.len - 1];
 
 			if (id == ccont.id_cert)   {
-				strncpy(kobj.label, objs[ii]->label, sizeof(kobj.label) - 1);
+				strcpy(kobj.label, objs[ii]->label);
 				break;
 			}
 		}

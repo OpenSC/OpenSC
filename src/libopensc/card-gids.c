@@ -462,7 +462,7 @@ static int gids_create_file(sc_card_t *card, char* directory, char* filename) {
 	memset(masterfilebuffer + offset, 0, sizeof(gids_mf_record_t));
 	record = (gids_mf_record_t*) (masterfilebuffer + offset);
 	strncpy(record->directory, directory, 8);
-	strncpy(record->filename, filename, 8);
+	strcpy(record->filename, filename);
 	record->fileIdentifier = fileIdentifier;
 	record->dataObjectIdentifier = dataObjectIdentifier;
 
