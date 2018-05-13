@@ -39,7 +39,7 @@ do
              REVISION=$OPTARG
              ;;
          R)
-             REVISION=`git describe | perl -ne 'print $1 if /^[\.0-9]*-([0-9]*)-g[a-z0-9]*$/;'`
+             REVISION=`git describe | perl -ne 'print $1 if /^[\.0-9]*([-~]rc[0-9]+)?-([0-9]*)-g[a-z0-9]*$/;'`
              ;;
          ?)
              usage
