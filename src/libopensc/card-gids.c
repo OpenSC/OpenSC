@@ -33,6 +33,7 @@ Some features are undocumented like the format used to store certificates. They 
 
 #include <stdlib.h>
 #include <string.h>
+#include "../common/compat_strlcpy.h"
 
 #ifdef ENABLE_OPENSSL
 /* openssl only needed for card administration */
@@ -462,7 +463,7 @@ static int gids_create_file(sc_card_t *card, char* directory, char* filename) {
 	memset(masterfilebuffer + offset, 0, sizeof(gids_mf_record_t));
 	record = (gids_mf_record_t*) (masterfilebuffer + offset);
 	strncpy(record->directory, directory, 8);
-	strcpy(record->filename, filename);
+	strlcpy(record->filename, filename, sizeof(record->filename));
 	record->fileIdentifier = fileIdentifier;
 	record->dataObjectIdentifier = dataObjectIdentifier;
 
