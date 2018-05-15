@@ -3,6 +3,7 @@
  *
  * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
  * Copyright (C) 2012 www.CardContact.de, Andreas Schwier, Minden, Germany
+ * Copyright (C) 2018 GSMK - Gesellschaft für Sichere Mobile Kommunikation mbH
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -88,6 +89,8 @@ static const struct option options[] = {
 #endif
 	{ "wrap-key",				1, NULL,		'W' },
 	{ "unwrap-key",				1, NULL,		'U' },
+	{ "public-key-auth",		1, NULL,		'K' },
+	{ "required-pub-keys",		1, NULL,        'n' },
 	{ "dkek-shares",			1, NULL,		's' },
 	{ "so-pin",					1, NULL,		OPT_SO_PIN },
 	{ "pin",					1, NULL,		OPT_PIN },
@@ -115,6 +118,8 @@ static const char *option_help[] = {
 #endif
 	"Wrap key and save to <filename>",
 	"Unwrap key read from <filename>",
+	"Use public key authentication, set total number of public keys",
+	"Number of public keys required for authentication [1]",
 	"Number of DKEK shares [No DKEK]",
 	"Define security officer PIN (SO-PIN)",
 	"Define user PIN",
@@ -561,12 +566,25 @@ static void print_info(sc_card_t *card, sc_file_t *file)
 
 
 
-static int initialize(sc_card_t *card, const char *so_pin, const char *user_pin, int retry_counter, const char *bio1, const char *bio2, int dkek_shares, const char *label)
+static int initialize(sc_card_t *card, const char *so_pin, const char *user_pin, int retry_counter, const char *bio1, const char *bio2, int dkek_shares, int num_of_pub_keys, int required_pub_keys, const char *label)
 {
 	sc_cardctl_sc_hsm_init_param_t param;
 	size_t len;
 	char *_so_pin = NULL, *_user_pin = NULL;
 	int r;
+
+	if (num_of_pub_keys != 1 && num_of_pub_keys < 1) {
+		fprintf(stderr, "Total number of public keys for authentication must be > 0\n");
+		return -1;
+	}
+	if (required_pub_keys < 1) {
+		fprintf(stderr, "Number of public keys required for authentication must be > 0\n");
+		return -1;
+	}
+	if (required_pub_keys > num_of_pub_keys) {
+		fprintf(stderr, "Required public keys must be <= total number of public keys\n");
+		return -1;
+	}
 
 	if (so_pin == NULL) {
 		printf("Enter SO-PIN (16 hexadecimal characters) : ");
@@ -1687,6 +1705,8 @@ int main(int argc, char *argv[])
 	const char *opt_bio1 = NULL;
 	const char *opt_bio2 = NULL;
 	int opt_retry_counter = 3;
+	int opt_num_of_pub_keys = -1;
+	int opt_required_pub_keys = 1;
 	int opt_dkek_shares = -1;
 	int opt_key_reference = -1;
 	int opt_password_shares_threshold = -1;
@@ -1698,7 +1718,7 @@ int main(int argc, char *argv[])
 	sc_card_t *card = NULL;
 
 	while (1) {
-		c = getopt_long(argc, argv, "XC:I:P:W:U:s:i:fr:wv", options, &long_optind);
+		c = getopt_long(argc, argv, "XC:I:P:W:U:K:n:s:i:fr:wv", options, &long_optind);
 		if (c == -1)
 			break;
 		if (c == '?')
@@ -1732,6 +1752,12 @@ int main(int argc, char *argv[])
 			do_unwrap_key = 1;
 			opt_filename = optarg;
 			action_count++;
+			break;
+		case 'K':
+			opt_num_of_pub_keys = atol(optarg);
+			break;
+		case 'n':
+			opt_required_pub_keys = atol(optarg);
 			break;
 		case OPT_PASSWORD:
 			util_get_pin(optarg, &opt_password);
@@ -1781,6 +1807,15 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	if (!do_initialize && opt_num_of_pub_keys != -1) {
+		fprintf(stderr, "Option -K (--public-key-auth) requires option -X\n");
+		exit(1);
+	}
+	if (!do_initialize && opt_required_pub_keys != 1) {
+		fprintf(stderr, "Option -n (--required-pub-keys) requires option -X\n");
+		exit(1);
+	}
+
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L || (defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER >= 0x20700000L)
 	OPENSSL_init_crypto(OPENSSL_INIT_LOAD_CRYPTO_STRINGS
 		| OPENSSL_INIT_ADD_ALL_CIPHERS
@@ -1817,7 +1852,7 @@ int main(int argc, char *argv[])
 		goto fail;
 	}
 
-	if (do_initialize && initialize(card, opt_so_pin, opt_pin, opt_retry_counter, opt_bio1, opt_bio2, opt_dkek_shares, opt_label))
+	if (do_initialize && initialize(card, opt_so_pin, opt_pin, opt_retry_counter, opt_bio1, opt_bio2, opt_dkek_shares, opt_num_of_pub_keys, opt_required_pub_keys, opt_label))
 		goto fail;
 
 	if (do_create_dkek_share && create_dkek_share(card, opt_filename, opt_iter, opt_password, opt_password_shares_threshold, opt_password_shares_total))
