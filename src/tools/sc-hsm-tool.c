@@ -573,7 +573,7 @@ static int initialize(sc_card_t *card, const char *so_pin, const char *user_pin,
 	char *_so_pin = NULL, *_user_pin = NULL;
 	int r;
 
-	if (num_of_pub_keys != 1 && num_of_pub_keys < 1) {
+	if (num_of_pub_keys != -1 && num_of_pub_keys < 1) {
 		fprintf(stderr, "Total number of public keys for authentication must be > 0\n");
 		return -1;
 	}
@@ -581,7 +581,7 @@ static int initialize(sc_card_t *card, const char *so_pin, const char *user_pin,
 		fprintf(stderr, "Number of public keys required for authentication must be > 0\n");
 		return -1;
 	}
-	if (required_pub_keys > num_of_pub_keys) {
+	if (num_of_pub_keys != -1 && required_pub_keys > num_of_pub_keys) {
 		fprintf(stderr, "Required public keys must be <= total number of public keys\n");
 		return -1;
 	}
@@ -673,6 +673,8 @@ static int initialize(sc_card_t *card, const char *so_pin, const char *user_pin,
 	}
 
 	param.dkek_shares = (char)dkek_shares;
+	param.num_of_pub_keys = (char)num_of_pub_keys;
+	param.required_pub_keys = (u8)required_pub_keys;
 	param.label = (char *)label;
 
 	r = sc_card_ctl(card, SC_CARDCTL_SC_HSM_INITIALIZE, (void *)&param);

@@ -4,6 +4,7 @@
  * Driver for the SmartCard-HSM, a light-weight hardware security module
  *
  * Copyright (C) 2012 Andreas Schwier, CardContact, Minden, Germany, and others
+ * Copyright (C) 2018 GSMK - Gesellschaft für Sichere Mobile Kommunikation mbH
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -1235,7 +1236,7 @@ static int sc_hsm_initialize(sc_card_t *card, sc_cardctl_sc_hsm_init_param_t *pa
 	int r;
 	size_t tilen;
 	sc_apdu_t apdu;
-	u8 ibuff[64+0xFF], *p;
+	u8 ibuff[68+0xFF], *p;
 
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -1268,6 +1269,13 @@ static int sc_hsm_initialize(sc_card_t *card, sc_cardctl_sc_hsm_init_param_t *pa
 		*p++ = (u8)params->dkek_shares;
 	}
 
+	if (params->num_of_pub_keys > 0) {
+		*p++ = 0x93;	// Use public key authentication
+		*p++ = 0x02;
+		*p++ = params->num_of_pub_keys; // Total number of public keys used for public authentication
+		*p++ = params->required_pub_keys; // Number of public keys required for authentication
+	}
+
 	if (params->bio1.len) {
 		*p++ = 0x95;
 		*p++ = params->bio1.len;
@@ -1279,7 +1287,7 @@ static int sc_hsm_initialize(sc_card_t *card, sc_cardctl_sc_hsm_init_param_t *pa
 		*p++ = params->bio2.len;
 		memcpy(p, params->bio2.value, params->bio2.len);
 		p += params->bio2.len;
-	}
+  }
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x50, 0x00, 0x00);
 	apdu.cla = 0x80;
