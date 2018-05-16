@@ -451,6 +451,7 @@ static int sc_hsm_soc_biomatch(sc_card_t *card, struct sc_pin_cmd_data *data,
 
 
 
+#ifdef ENABLE_SM
 #ifdef ENABLE_OPENPACE
 #include "sm/sm-eac.h"
 #include <eac/cv_cert.h>
@@ -572,6 +573,7 @@ static int sc_hsm_perform_chip_authentication(sc_card_t *card)
 {
 	return SC_ERROR_NOT_SUPPORTED;
 }
+#endif
 #endif
 
 
