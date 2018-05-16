@@ -1320,9 +1320,13 @@ int iso7816_read_binary_sfid(sc_card_t *card, unsigned char sfid,
 	apdu.le = read;
 
 	r = sc_transmit_apdu(card, &apdu);
+	if (r < 0)
+		goto err;
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	if (r < 0 && r != SC_ERROR_FILE_END_REACHED)
+		goto err;
 	/* emulate the behaviour of sc_read_binary */
-	if (r >= 0)
-		r = apdu.resplen;
+	r = apdu.resplen;
 
 	while(1) {
 		if (r >= 0 && ((size_t) r) != read) {
