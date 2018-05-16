@@ -1,5 +1,120 @@
 NEWS for OpenSC -- History of user visible changes
 
+# New in 0.18.0; 2018-05-16
+## General Improvements
+* PKCS#15
+    * fixed parsing ECC parameters from TokenInfo (#1134)
+    * Added PKCS#15 emulator for DIN 66291 profile
+    * Cope with empty serial number in TokenInfo
+* Build Environment
+    * Treat compiler warnings as errors (use `--disable-strict` to avoid)
+    * MacOS
+        * optionally use CTK in package builder
+        * fixed detection of OpenPACE package
+        * macOS High Sierra: fixed dmg creation
+        * fixed DNIe UI compatibility
+* Windows: Use Dedicated md/pkcs11 installation folders instead of installing to System32/SysWOW64
+* fixed (possible) memory leaks for PIV, JPKI, PKCS#11, Minidriver
+* fixed many issues reported via compiler warnings, coverity scan and clang's static analyzer
+* beautify printed ASN.1 data, add support for ASN.1 time types
+* SimpleTLV: Skip correctly two bytes after reading 2b size (#1231)
+* added support for `keep_alive` commands for cards with multiple applets to be enabled via `opensc.conf`
+* added support for bash completion for arguments that expect filenames
+* added keyword `old` for selecting `card_drivers` via `opensc.conf`
+* improved documentation manuals for OpenSC tools
+* use `leave` as default for `disconnect_action` for PC/SC readers
+## PKCS#11
+* Make OpenSC PKCS#11 Vendor Defined attributes, mechanisms etc unique
+## Minidriver
+* added CNS ATR (#1153)
+* Add multiple PINs support to minidriver
+* protect MD entry points with `CriticalSection`
+## Tokend
+* Configuration value for not propagating certificates that require user authentication (`ignore_private_certificate`)
+## CryptoTokenKit
+* Added support for PIN pad
+* fixed codesigning of opensc tools
+* Added complete support for system integration with https://github.com/frankmorgner/OpenSCToken
+## OpenSC Tools
+* `cardos-tool`
+    * List human-readable version for CardOS 5.3
+* `pkcs11-tool`
+    * fixed overwriting digestinfo + hash for RSA-PKCS Signature
+    * Enable support for RSA-PSS signatures in pkcs11-tool
+    * Add support for RSA-OAEP
+    * Fixed #1286 
+    * Add missing pkcs11-tool options to man page
+    * allow mechanism to be specified in hexadecimal
+    * fixed default module path on Windows to use opensc-pkcs11.dll
+* `pkcs11-spy`
+    * Add support for RSA-OAEP
+    * Add support for RSA-PSS
+* `pkcs15init`
+    * Fix rutokenS FCP parsing (#1259)
+* `egk-tool`
+    * Read data from German Health Care Card (Elektronische Gesundheitskarte, eGK)
+* `opensc-asn1`
+    * Parse ASN.1 from files
+* `opensc-tool`/`opensc-explorer`
+    * Allow extended APDUs
+## Authentic
+* Correctly handle APDUs with more than 256 bytes (#1205)
+## Coolkey
+* Copy labels from certificate objects to the keys
+## Common Access Card
+* Fixed infinite reading of certificate
+* Added support for Alt token card
+## MyEID
+* support for RAW RSA signature for 2048 bit keys
+## IAS/ECC
+* Support for new MinInt agent card
+## PIV
+* Get cardholder name from the first certificate if token label not specified
+* implemented keep alive command (#1256)
+* fixed signature creation with `CKA_ALWAYS_AUTHENTICATE` (i.e. PKCS#11 `C_Login(CKU_CONTEXT_SPECIFIC)`)
+## CardOS
+* fixed card name for CardOS 5
+* added ATR `"3b:d2:18:00:81:31:fe:58:c9:02:17"`
+* Try forcing `max_send_size` for PSO:DEC
+## DNIe
+* DNIe: card also supports 1920 bits (#1247)
+## GIDS
+* Fix GIDS admin authentication
+## epass 3000
+* Add ECC support
+* Fix #1073
+* Fix #1115
+* Fix buffer underrun in decipher
+* Fix #1306
+## Starcos
+* added serial number for 3.4
+* fixed setting key reference for 3.4
+* added support for PIN status queries for 3.4
+## EstEID
+* ECDSA/ECDH token support
+* Fix crash when certificate read failed (#1176)
+* Cleanup expired EstEID card ATR-s
+* Fix reading EstEID certificates with T=0 (#1193)
+## OpenPGP
+* Added support for PIN logout and status
+* factory reset is possible if LCS is supported
+* Added support for OpenPGP card V3
+* fixed selecting Applet
+* implemented keep alive command
+* Retrieve OpenPGP applet version from OpenPGP applet on YubiKey token (#1262)
+## German ID card
+* fixed recognition of newer cards
+## SC-HSM
+* Don't block generic contactless ATR
+* changed default labels of GoID
+* added PIN commands for GoID 1.0
+## Starcos
+* Added Support for Starcos 3.4 and 3.5
+## MioCOS
+* disabled by default, use `card_drivers = old;` to enable; driver will be removed soon.
+## BlueZ PKCS#15 applet
+* disabled by default, use `card_drivers = old;` to enable; driver will be removed soon.
+
 # New in 0.17.0; 2017-07-18
 ## Support for new Cards
 * CAC (Common Access Card)
