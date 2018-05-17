@@ -739,6 +739,7 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 		break;
 	default:
 		/* Unknown object type */
+		sc_log(card->ctx, "Unknown object type: %x", priv->object_type);
 		r = SC_ERROR_INTERNAL;
 		goto done;
 	}
