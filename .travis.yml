@@ -1,7 +1,5 @@
 language: c
 
-sudo: false
-
 addons:
   apt_packages:
     - binutils-mingw-w64-i686
@@ -15,6 +13,7 @@ addons:
     - xsltproc
     - gengetopt
     - help2man
+    - libcmocka-dev
 
 env:
   global:
@@ -52,7 +51,7 @@ before_install:
         brew update;
         brew uninstall libtool;
         brew install libtool;
-        brew install gengetopt help2man;
+        brew install gengetopt help2man cmocka;
     fi
 
 before_script:

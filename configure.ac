@@ -255,6 +255,13 @@ AC_ARG_ENABLE(
 	[enable_notify="detect"]
 )
 
+AC_ARG_ENABLE(
+	[tests],
+	[AS_HELP_STRING([--enable-tests],[Build tests in src/tests/ directory @<:@detect@:>@])],
+	,
+	[enable_tests="detect"]
+)
+
 AC_ARG_WITH(
 	[xsl-stylesheetsdir],
 	[AS_HELP_STRING([--with-xsl-stylesheetsdir=PATH],[docbook xsl-stylesheets for svn build @<:@detect@:>@])],
@@ -508,6 +515,26 @@ if test "${enable_notify}" = "yes"; then
 		fi
 	else
 		AC_MSG_ERROR([notification linkage required, but no notification provider was found])
+	fi
+fi
+
+PKG_CHECK_MODULES( [CMOCKA], [cmocka],
+		  [ have_cmocka="yes" ],
+		  [ have_cmocka="no" ])
+
+if test "${enable_tests}" = "detect"; then
+	if test "${have_cmocka}" = "yes"; then
+		enable_tests="yes"
+	else
+		enable_tests="no"
+	fi
+fi
+
+if test "${enable_tests}" = "yes"; then
+	if test "${have_cmocka}" = "yes"; then
+		AC_DEFINE([ENABLE_TESTS], [1], [Build tests in tests/ subdirectory])
+	else
+		AC_MSG_ERROR([Tests required, but cmocka is not available])
 	fi
 fi
 
@@ -997,6 +1024,7 @@ AM_CONDITIONAL([ENABLE_MINIDRIVER_SETUP_CUSTOMACTION], [test "${enable_minidrive
 AM_CONDITIONAL([ENABLE_SM], [test "${enable_sm}" = "yes"])
 AM_CONDITIONAL([ENABLE_DNIE_UI], [test "${enable_dnie_ui}" = "yes"])
 AM_CONDITIONAL([ENABLE_NPATOOL], [test "${ENABLE_NPATOOL}" = "yes"])
+AM_CONDITIONAL([ENABLE_TESTS], [test "${ENABLE_TESTS}" = "yes"])
 AM_CONDITIONAL([GIT_CHECKOUT], [test "${GIT_CHECKOUT}" = "yes"])
 
 if test "${enable_pedantic}" = "yes"; then
@@ -1025,6 +1053,7 @@ AC_CONFIG_FILES([
 	src/scconf/Makefile
 	src/tests/Makefile
 	src/tests/regression/Makefile
+	src/tests/p11test/Makefile
 	src/tools/Makefile
 	src/tools/versioninfo-tools.rc
 	src/tools/versioninfo-opensc-notify.rc
@@ -1082,6 +1111,7 @@ SM support:              ${enable_sm}
 SM default module:       ${DEFAULT_SM_MODULE}
 DNIe UI support:         ${enable_dnie_ui}
 Notification support:    ${enable_notify}
+Build tests:             ${enable_tests}
 Debug file:              ${DEBUG_FILE}
 
 PC/SC default provider:  ${DEFAULT_PCSC_PROVIDER}
