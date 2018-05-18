@@ -42,14 +42,23 @@ static int
 gp_select_aid(struct sc_card *card, const struct sc_aid *aid)
 {
 	struct sc_apdu apdu;
+	int rv;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, 0x04, 0x0C);
 	apdu.lc = aid->len;
 	apdu.data = aid->value;
 	apdu.datalen = aid->len;
 
-	return sc_transmit_apdu(card, &apdu);
+	rv = sc_transmit_apdu(card, &apdu);
 
+	if (rv < 0)
+		return rv;
+
+	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	if (rv < 0)
+		return rv;
+
+	return apdu.resplen;
 }
 
 /* Select the Open Platform Card Manager */
@@ -59,7 +68,7 @@ gp_select_card_manager(struct sc_card *card)
 	int rv;
 
 	LOG_FUNC_CALLED(card->ctx);
-	rv =  gp_select_aid(card, &gp_card_manager);
+	rv = gp_select_aid(card, &gp_card_manager);
 	LOG_FUNC_RETURN(card->ctx, rv);
 }
 
