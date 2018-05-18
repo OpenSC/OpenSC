@@ -439,52 +439,6 @@ fix_authentic_ddo(struct sc_pkcs15_card *p15card)
 	}
 }
 
-
-static void
-fix_starcos_pkcs15_card(struct sc_pkcs15_card *p15card)
-{
-	struct sc_context *ctx = p15card->card->ctx;
-
-	/* set special flags based on card meta data */
-	if (strcmp(p15card->card->driver->short_name,"cardos") == 0
-			&& p15card->tokeninfo && p15card->tokeninfo->label) {
-
-		/* D-Trust cards (D-TRUST, D-SIGN) */
-		if (strstr(p15card->tokeninfo->label,"D-TRUST") != NULL
-				|| strstr(p15card->tokeninfo->label,"D-SIGN") != NULL) {
-
-			/* D-TRUST Card 2.0 2cc (standard cards, which always add
-			 * SHA1 prefix itself */
-			if (strstr(p15card->tokeninfo->label, "2cc") != NULL) {
-				p15card->card->caps |= SC_CARD_CAP_ONLY_RAW_HASH_STRIPPED;
-				sc_log(ctx, "D-TRUST 2cc card detected, only SHA1 works with this card");
-				/* XXX: add detection when other hash than SHA1 is used with
-				 *      such a card, as this produces invalid signatures.
-				 */
-			}
-
-			/* D-SIGN multicard 2.0 2ca (cards working with all types of hashes
-			 * and no addition of prefix) */
-			else if (strstr(p15card->tokeninfo->label, "2ca") != NULL) {
-				p15card->card->caps |= SC_CARD_CAP_ONLY_RAW_HASH;
-				sc_log(ctx, "D-TRUST 2ca card detected");
-			}
-
-			/* D-TRUST card 2.4 2ce (cards working with all types of hashes
-			 * and no addition of prefix) */
-			else if (strstr(p15card->tokeninfo->label, "2ce") != NULL) {
-				p15card->card->caps |= SC_CARD_CAP_ONLY_RAW_HASH;
-				sc_log(ctx, "D-TRUST 2ce card detected");
-			}
-
-			/* XXX: probably there are more D-Trust card in the wild,
-			 *      which also need these flags to produce valid signatures
-			 */
-		}
-	}
-}
-
-
 static int
 parse_ddo(struct sc_pkcs15_card *p15card, const u8 * buf, size_t buflen)
 {
@@ -1293,8 +1247,6 @@ sc_pkcs15_bind(struct sc_card *card, struct sc_aid *aid,
 			goto error;
 	}
 done:
-	fix_starcos_pkcs15_card(p15card);
-
 	*p15card_out = p15card;
 	sc_unlock(card);
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);

@@ -39,9 +39,9 @@ static struct sc_atr_table mcrd_atrs[] = {
 	{"3B:FF:94:00:FF:80:B1:FE:45:1F:03:00:68:D2:76:00:00:28:FF:05:1E:31:80:00:90:00:23", NULL,
 	  "Micardo 2.1/German BMI/D-Trust", SC_CARD_TYPE_MCRD_GENERIC, 0, NULL},
 	{"3b:6f:00:ff:00:68:d2:76:00:00:28:ff:05:1e:31:80:00:90:00", NULL,
-	  "D-Trust", SC_CARD_TYPE_MCRD_DTRUST, 0, NULL},
+	  "D-Trust", SC_CARD_TYPE_MCRD_GENERIC, 0, NULL},
 	{"3b:ff:11:00:ff:80:b1:fe:45:1f:03:00:68:d2:76:00:00:28:ff:05:1e:31:80:00:90:00:a6", NULL,
-	  "D-Trust", SC_CARD_TYPE_MCRD_DTRUST, 0, NULL},
+	  "D-Trust", SC_CARD_TYPE_MCRD_GENERIC, 0, NULL},
 	/* Certain pcsc-lite versions (1.5.3 for example on Ubuntu 10.04) incorrectly truncate the warm ATR to the length of the cold ATR  */
 	/* See opensc.conf for further information */
 	{"3B:FE:94:00:FF:80:B1:FA:45:1F:03:45:73:74:45:49:44:20", NULL, "Broken EstEID 1.1 warm", SC_CARD_TYPE_MCRD_ESTEID_V11, 0, NULL},
@@ -1253,9 +1253,7 @@ static int mcrd_set_security_env(sc_card_t * card,
 		return 0;
 	}
 
-	if (card->type == SC_CARD_TYPE_MCRD_DTRUST
-	    || card->type == SC_CARD_TYPE_MCRD_GENERIC) {
-		sc_log(card->ctx, "Using SC_CARD_TYPE_MCRD_DTRUST\n");
+	if (card->type == SC_CARD_TYPE_MCRD_GENERIC) {
 		/* some sanity checks */
 		if (env->flags & SC_SEC_ENV_ALG_PRESENT) {
 			if (env->algorithm != SC_ALGORITHM_RSA)
@@ -1303,8 +1301,7 @@ static int mcrd_set_security_env(sc_card_t * card,
 	*p++ = 0x03;
 	*p++ = 0x80;
 
-	if (card->type == SC_CARD_TYPE_MCRD_DTRUST
-	    || card->type == SC_CARD_TYPE_MCRD_GENERIC) {
+	if (card->type == SC_CARD_TYPE_MCRD_GENERIC) {
 		unsigned char fid;
 
 		fid = env->key_ref[0];
@@ -1515,8 +1512,7 @@ static int mcrd_pin_cmd(sc_card_t * card, struct sc_pin_cmd_data *data,
 		return SC_SUCCESS;
 	}
 
-	if (card->type == SC_CARD_TYPE_MCRD_DTRUST
-	    || card->type == SC_CARD_TYPE_MCRD_GENERIC) {
+	if (SC_CARD_TYPE_MCRD_GENERIC) {
 		sc_log(card->ctx, "modify pin reference for D-Trust\n");
 		if (data->pin_reference == 0x02)
 			data->pin_reference = data->pin_reference | 0x80;
