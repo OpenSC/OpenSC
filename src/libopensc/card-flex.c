@@ -64,7 +64,7 @@ static struct sc_atr_table flex_atrs[] = {
 	/* 32K e-gate v4 */
 	{ "3B:95:18:40:FF:62:04:01:01:05", NULL, "Cryptoflex 32K e-gate v4", SC_CARD_TYPE_FLEX_CRYPTO, FLAG_KEYGEN, NULL },
 
-	/* new cryptoflex 32k card - atr looks very similiar to old 8k card */
+	/* new cryptoflex 32k card - atr looks very similar to old 8k card */
 	{ "3b:95:15:40:ff:68:01:02:45:47", NULL, "Cryptoflex 32K", SC_CARD_TYPE_FLEX_CRYPTO, FLAG_KEYGEN, NULL },
 
 	{ "3B:E2:00:00:40:20:49:06", NULL, "Cryptoflex", SC_CARD_TYPE_FLEX_CRYPTO, 0, NULL },

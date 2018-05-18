@@ -21,11 +21,6 @@ rm -rf /Library/OpenSC
 rm -rf /Library/Security/tokend/OpenSC.tokend
 rm -rf /System/Library/Security/tokend/OpenSC.tokend
 
-if [ -e "/Library/OpenSC/OpenSCTokenApp.app/Contents/PlugIns/OpenSCToken.appex" ]
-then
-	pluginkit -r /Library/OpenSC/OpenSCTokenApp.app/Contents/PlugIns/OpenSCToken.appex
-fi
-
 # delete receipts on 10.6+
 for file in /var/db/receipts/org.opensc-project.mac.bom /var/db/receipts/org.opensc-project.mac.plist; do
 	test -f $file && rm -f $file

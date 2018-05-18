@@ -207,7 +207,7 @@ int sc_pkcs15_parse_tokeninfo(sc_context_t *ctx,
 	r = sc_asn1_decode(ctx, asn1_tokeninfo, buf, blen, NULL, NULL);
 	LOG_TEST_RET(ctx, r, "ASN.1 parsing of EF(TokenInfo) failed");
 
-	if (asn1_toki_attrs[1].flags & SC_ASN1_PRESENT)   {
+	if (asn1_toki_attrs[1].flags & SC_ASN1_PRESENT && serial_len > 0)   {
 		ti->serial_number = malloc(serial_len * 2 + 1);
 		if (ti->serial_number == NULL)
 			return SC_ERROR_OUT_OF_MEMORY;
@@ -1187,6 +1187,10 @@ sc_pkcs15_bind_internal(struct sc_pkcs15_card *p15card, struct sc_aid *aid)
 	}
 
 	*(p15card->tokeninfo) = tokeninfo;
+
+	if (!p15card->tokeninfo->serial_number && 0 == card->serialnr.len) {
+		sc_card_ctl(p15card->card, SC_CARDCTL_GET_SERIALNR, &card->serialnr);
+	}
 
 	if (!p15card->tokeninfo->serial_number && card->serialnr.len)   {
 		char *serial = calloc(1, card->serialnr.len*2 + 1);
@@ -2565,7 +2569,7 @@ sc_pkcs15_allocate_object_content(struct sc_context *ctx, struct sc_pkcs15_objec
 	/* Need to pass by temporary variable,
 	 * because 'value' and 'content.value' pointers can be the sames.
 	 */
-	tmp_buf = (unsigned char *)sc_mem_alloc_secure(ctx, len);
+	tmp_buf = calloc(sizeof *tmp_buf, len);
 	if (!tmp_buf)
 		return SC_ERROR_OUT_OF_MEMORY;
 

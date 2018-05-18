@@ -271,7 +271,7 @@ static const cac_cuid_t cac_cac1_cuid = {
 };
 
 /*
- *  CAC-1 general objectes defined in 4.3.1.2 of CAC Applet Developer Guide Version 1.0.
+ *  CAC-1 general objects defined in 4.3.1.2 of CAC Applet Developer Guide Version 1.0.
  *   doubles as a source for CAC-2 labels.
  */
 static const cac_object_t cac_1_objects[] = {
@@ -326,7 +326,7 @@ static int cac_is_cert(cac_private_data_t * priv, const sc_path_t *in_path)
  * an internal 4096 byte buffer is used, and a copy is returned to the
  * caller. that need to be freed by the caller.
  *
- * modelled after a similiar function in card-piv.c
+ * modelled after a similar function in card-piv.c
  */
 
 static int cac_apdu_io(sc_card_t *card, int ins, int p1, int p2,
@@ -1066,7 +1066,7 @@ static int cac_select_file_by_type(sc_card_t *card, const sc_path_t *in_path, sc
 		if (cac_is_cert(priv, in_path)) {
 			priv->object_type = CAC_OBJECT_TYPE_CERT;
 		}
-		/* forget any old cacheed values */
+		/* forget any old cached values */
 		if (priv->cache_buf) {
 			free(priv->cache_buf);
 			priv->cache_buf = NULL;
@@ -1148,7 +1148,7 @@ static int cac_select_file_by_type(sc_card_t *card, const sc_path_t *in_path, sc
 	if (r)
 		LOG_FUNC_RETURN(ctx, r);
 
-		/* CAC cards enver return FCI, fake one */
+		/* CAC cards never return FCI, fake one */
 	file = sc_file_new();
 	if (file == NULL)
 			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
@@ -1256,7 +1256,7 @@ static int cac_parse_cardurl(sc_card_t *card, cac_private_data_t *priv, cac_card
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"CARDURL: ski_object found");
 	break;
 	default:
-		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"CARDURL: unkown object_object found (type=0x%x)", val->cardApplicationType);
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"CARDURL: unknown object_object found (type=0x%x)", val->cardApplicationType);
 		/* don't fail just because there is an unknown object in the CCC */
 		break;
 	}
@@ -1615,7 +1615,7 @@ static int cac_init(sc_card_t *card)
 	}
 	flags = SC_ALGORITHM_RSA_RAW;
 
-	_sc_card_add_rsa_alg(card, 1024, flags, 0); /* manditory */
+	_sc_card_add_rsa_alg(card, 1024, flags, 0); /* mandatory */
 	_sc_card_add_rsa_alg(card, 2048, flags, 0); /* optional */
 	_sc_card_add_rsa_alg(card, 3072, flags, 0); /* optional */
 

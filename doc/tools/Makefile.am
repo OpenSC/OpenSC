@@ -2,6 +2,8 @@ MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
 
 EXTRA_DIST = completion-template
 
+TESTS = test-manpage.sh
+
 dist_noinst_DATA = $(wildcard $(srcdir)/*.xml)
 if ENABLE_DOC
 html_DATA = tools.html

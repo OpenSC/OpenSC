@@ -1593,7 +1593,7 @@ auth_pin_verify_pinpad(struct sc_card *card, int pin_reference, int *tries_left)
 	pin_cmd.flags |= SC_PIN_CMD_NEED_PADDING;
 
 	/* For Oberthur card, PIN command data length has to be 0x40.
-	 * In PCSC10 v2.06 the uppler limit of pin.max_length is 8.
+	 * In PCSC10 v2.06 the upper limit of pin.max_length is 8.
 	 *
 	 * The standard sc_build_pin() throws an error when 'pin.len > pin.max_length' .
 	 * So, let's build our own APDU.
@@ -1775,7 +1775,7 @@ auth_pin_change(struct sc_card *card, unsigned int type,
 	else if (!data->pin1.len && !data->pin2.len)   {
 		/* Oberthur unblock style with PIN pad. */
 		rv = auth_pin_change_pinpad(card, data, tries_left);
-		LOG_TEST_RET(card->ctx, rv, "'PIN CHANGE' failedi: SOPIN verify with pinpad failed");
+		LOG_TEST_RET(card->ctx, rv, "'PIN CHANGE' failed: SOPIN verify with pinpad failed");
 	}
 	else   {
 		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS, "'PIN CHANGE' failed");

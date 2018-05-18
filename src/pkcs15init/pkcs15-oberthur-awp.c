@@ -1012,7 +1012,7 @@ awp_encode_cert_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *ob
 	 * i2c_ASN1_INTEGER which is not in OpenSSL 1.1  
 	 * It was adding the tag V_ASN1_INTEGER and the one byte length back in in effect creating
 	 * a DER encoded ASN1_INTEGER
-	 * So we can simplifty the code and make compatable with OpenSSL 1.1. This needs to be tested
+	 * So we can simplify the code and make compatible with OpenSSL 1.1. This needs to be tested
 	 */
 	ci->serial.len = 0;
 	ci->serial.value = NULL;
@@ -1801,7 +1801,7 @@ awp_update_df_delete_cert(struct sc_pkcs15_card *p15card, struct sc_profile *pro
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "file-id:%X", file_id);
 
 	rv = awp_new_file(p15card, profile, obj->type, file_id & 0xFF, &info_file, NULL);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "AWP 'delete cert' update DF failed: cannt get allocate new AWP file");
+	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "AWP 'delete cert' update DF failed: cannot get allocate new AWP file");
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "info file-id:%X", info_file->id);
 
 	rv = cosm_delete_file(p15card, profile, info_file);
@@ -1835,7 +1835,7 @@ awp_update_df_delete_prvkey(struct sc_pkcs15_card *p15card, struct sc_profile *p
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "file-id:%X", file_id);
 
 	rv = awp_new_file(p15card, profile, obj->type, file_id & 0xFF, &info_file, NULL);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "AWP 'delete prkey' update DF failed: cannt get allocate new AWP file");
+	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "AWP 'delete prkey' update DF failed: cannot get allocate new AWP file");
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "info file-id:%X", info_file->id);
 
 	rv = cosm_delete_file(p15card, profile, info_file);
@@ -1869,7 +1869,7 @@ awp_update_df_delete_pubkey(struct sc_pkcs15_card *p15card, struct sc_profile *p
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "file-id:%X", file_id);
 
 	rv = awp_new_file(p15card, profile, obj->type, file_id & 0xFF, &info_file, NULL);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "AWP 'delete pubkey' update DF failed: cannt get allocate new AWP file");
+	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "AWP 'delete pubkey' update DF failed: cannot get allocate new AWP file");
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "info file-id:%X", info_file->id);
 
 	rv = cosm_delete_file(p15card, profile, info_file);
@@ -1903,7 +1903,7 @@ awp_update_df_delete_data(struct sc_pkcs15_card *p15card, struct sc_profile *pro
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "file-id:%X", file_id);
 
 	rv = awp_new_file(p15card, profile, obj->type, file_id & 0xFF, &info_file, NULL);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "AWP 'delete DATA' update DF failed: cannt get allocate new AWP file");
+	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "AWP 'delete DATA' update DF failed: cannot get allocate new AWP file");
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "info file-id:%X", info_file->id);
 
 	rv = cosm_delete_file(p15card, profile, info_file);

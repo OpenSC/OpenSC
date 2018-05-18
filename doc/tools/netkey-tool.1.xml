@@ -74,7 +74,14 @@
             <option>--reader</option> <replaceable>number</replaceable>,
             <option>-r</option> <replaceable>number</replaceable>
           </term>
-          <listitem><para>Use smart card in specified reader. Default is reader 0.</para></listitem>
+          <listitem>
+            <para>
+              Specify the reader to use. By default, the first
+              reader with a present card is used. If
+              <replaceable>num</replaceable> is an ATR, the
+              reader with a matching card will be chosen.
+            </para>
+          </listitem>
         </varlistentry>
         <varlistentry>
           <term>
@@ -91,7 +98,7 @@
     <title>PIN format</title>
     <para>With the <option>-p</option>, <option>-u</option>, <option>-0</option> or the <option>-1</option>
     one of the cards pins may be specified. You may use plain ascii-strings (i.e. 123456) or a hex-string
-    (i.e. 31:32:33:34:35:36). A hex-string must consists of exacly n 2-digit hexnumbers separated by n-1 colons.
+    (i.e. 31:32:33:34:35:36). A hex-string must consist of exactly n 2-digit hexnumbers separated by n-1 colons.
     Otherwise it will be interpreted as an ascii string. For example :12:34: and 1:2:3:4 are both pins of
     length 7, while 12:34 and 01:02:03:04 are pins of length 2 and 4.</para>
   </refsect1>
@@ -112,7 +119,7 @@
     current value of your global PIN. </para>
 
     <para>For most of the commands that <command>netkey-tool</command> can execute, you have
-    to specify one pin. One notable exeption is the <command>nullpin</command> command, but
+    to specify one pin. One notable exception is the <command>nullpin</command> command, but
     this command can only be executed once in the lifetime of a NetKey E4 card.</para>
 
     <para>
@@ -154,7 +161,7 @@
           </term>
           <listitem><para>This command can be executed only if the global PIN of your card is
           in nullpin-state. There's no way to return back to nullpin-state once you have changed
-          your global PIN. You don't need a pin to execute the nullpin-command. After a succesfull
+          your global PIN. You don't need a pin to execute the nullpin-command. After a successful
           nullpin-command <command>netkey-tool</command> will display your cards initial
           PUK-value.</para></listitem>
         </varlistentry>

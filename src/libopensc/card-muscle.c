@@ -94,9 +94,11 @@ static int muscle_match_card(sc_card_t *card)
 		apdu.resp = response;
 		r = sc_transmit_apdu(card, &apdu);
 		if (r == SC_SUCCESS && response[0] == 0x01) {
-				card->type = SC_CARD_TYPE_MUSCLE_V1;
-				return 1;
+			card->type = SC_CARD_TYPE_MUSCLE_V1;
+		} else {
+			card->type = SC_CARD_TYPE_MUSCLE_GENERIC;
 		}
+		return 1;
 	}
 	return 0;
 }
@@ -241,7 +243,7 @@ static int muscle_update_binary(sc_card_t *card, unsigned int idx, const u8* buf
 		if(buffer == NULL) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
 
 		r = msc_read_object(card, objectId, 0, buffer, file->size);
-		/* TODO: RETREIVE ACLS */
+		/* TODO: RETRIEVE ACLS */
 		if(r < 0) goto update_bin_free_buffer;
 		r = msc_delete_object(card, objectId, 0);
 		if(r < 0) goto update_bin_free_buffer;
@@ -476,17 +478,16 @@ static int muscle_init(sc_card_t *card)
 	card->caps |= SC_CARD_CAP_RNG;
 
 	/* Card type detection */
-	if (_sc_match_atr(card, muscle_atrs, &card->type) < 0)   {
-		free(priv->fs);
-		free(card->drv_data);
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED);
-	}
-
+	_sc_match_atr(card, muscle_atrs, &card->type);
 	if(card->type == SC_CARD_TYPE_MUSCLE_ETOKEN_72K) {
 		card->caps |= SC_CARD_CAP_APDU_EXT;
 	}
 	if(card->type == SC_CARD_TYPE_MUSCLE_JCOP241) {
 		card->caps |= SC_CARD_CAP_APDU_EXT;
+	}
+	if (!(card->caps & SC_CARD_CAP_APDU_EXT)) {
+		card->max_recv_size = 255;
+		card->max_send_size = 255;
 	}
 	if(card->type == SC_CARD_TYPE_MUSCLE_JCOP242R2_NO_EXT_APDU) {
 	        /* Tyfone JCOP v242R2 card that doesn't support extended APDUs */
@@ -602,7 +603,7 @@ static int muscle_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *cmd,
 
 static int muscle_card_extract_key(sc_card_t *card, sc_cardctl_muscle_key_info_t *info)
 {
-	/* CURRENTLY DONT SUPPOT EXTRACTING PRIVATE KEYS... */
+	/* CURRENTLY DONT SUPPORT EXTRACTING PRIVATE KEYS... */
 	switch(info->keyType) {
 	case 1: /* RSA */
 		return msc_extract_rsa_public_key(card,
@@ -618,7 +619,7 @@ static int muscle_card_extract_key(sc_card_t *card, sc_cardctl_muscle_key_info_t
 
 static int muscle_card_import_key(sc_card_t *card, sc_cardctl_muscle_key_info_t *info)
 {
-	/* CURRENTLY DONT SUPPOT EXTRACTING PRIVATE KEYS... */
+	/* CURRENTLY DONT SUPPORT EXTRACTING PRIVATE KEYS... */
 	switch(info->keyType) {
 	case 0x02: /* RSA_PRIVATE */
 	case 0x03: /* RSA_PRIVATE_CRT */
@@ -721,7 +722,7 @@ static int muscle_decipher(sc_card_t * card,
 	u8 key_id;
 	int r;
 
-	/* saniti check */
+	/* sanity check */
 	if (priv->env.operation != SC_SEC_OPERATION_DECIPHER)
 		return SC_ERROR_INVALID_ARGUMENTS;
 

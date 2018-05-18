@@ -101,7 +101,7 @@ static int asepcos_erase(struct sc_profile *profile, sc_pkcs15_card_t *p15card)
 	 *       - use EF(DIR) to get the DF of the OpenSC
 	 *         pkcs15 application.
 	 */
-	/* Check wether a transport exists and verify it if present */
+	/* Check whether a transport exists and verify it if present */
 
 	p15card->opts.use_pin_cache = 1;
 	r = asepcos_check_verify_tpin(profile, p15card);
@@ -137,7 +137,7 @@ static int asepcos_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_context_t *ctx = p15card->card->ctx;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
-	/* Check wether a transport exists and verify it if present */
+	/* Check whether a transport exists and verify it if present */
 	r = asepcos_check_verify_tpin(profile, p15card);
 	if (r != SC_SUCCESS)
 		return r;
@@ -367,7 +367,7 @@ static int asepcos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	r = sc_pkcs15init_authenticate(profile, p15card, tfile, SC_AC_OP_CREATE);
 	sc_file_free(tfile);
 	if (r != SC_SUCCESS) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "unable to create PIN file, insufficent rights");
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "unable to create PIN file, insufficient rights");
 		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, r);
 	}
 

@@ -49,6 +49,7 @@ static struct sc_atr_table pgp_atrs[] = {
 	{ "3b:da:18:ff:81:b1:fe:75:1f:03:00:31:c5:73:c0:01:40:00:90:00:0c", NULL, "CryptoStick v1.2 (OpenPGP v2.0)", SC_CARD_TYPE_OPENPGP_V2, 0, NULL },
 	{ "3b:da:11:ff:81:b1:fe:55:1f:03:00:31:84:73:80:01:80:00:90:00:e4", NULL, "Gnuk v1.0.x (OpenPGP v2.0)", SC_CARD_TYPE_OPENPGP_GNUK, 0, NULL },
 	{ "3b:fc:13:00:00:81:31:fe:15:59:75:62:69:6b:65:79:4e:45:4f:72:33:e1", NULL, "Yubikey NEO (OpenPGP v2.0)", SC_CARD_TYPE_OPENPGP_V2, 0, NULL },
+	{ "3b:f8:13:00:00:81:31:fe:15:59:75:62:69:6b:65:79:34:d4", NULL, "Yubikey 4 (OpenPGP v2.1)", SC_CARD_TYPE_OPENPGP_V2, 0, NULL },
 	{ "3b:da:18:ff:81:b1:fe:75:1f:03:00:31:f5:73:c0:01:60:00:90:00:1c", NULL, "OpenPGP card V3", SC_CARD_TYPE_OPENPGP_V3, 0, NULL },
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
@@ -317,6 +318,16 @@ struct pgp_priv_data {
 	sc_security_env_t	sec_env;
 };
 
+static int
+get_full_pgp_aid(sc_card_t *card, sc_file_t *file)
+{
+	int r = 0;
+	/* explicitly get the full aid */
+	r = sc_get_data(card, 0x004F, file->name, sizeof file->name);
+	file->namelen = MAX(r, 0);
+
+	return r;
+}
 
 /**
  * ABI: check if card's ATR matches one of driver's
@@ -330,7 +341,7 @@ pgp_match_card(sc_card_t *card)
 	i = _sc_match_atr(card, pgp_atrs, &card->type);
 	if (i >= 0) {
 		card->name = pgp_atrs[i].name;
-		return 1;
+		LOG_FUNC_RETURN(card->ctx, 1);
 	}
 	else {
 		sc_path_t	partial_aid;
@@ -345,6 +356,8 @@ pgp_match_card(sc_card_t *card)
 			static char card_name[SC_MAX_APDU_BUFFER_SIZE] = "OpenPGP card";
 			card->type = SC_CARD_TYPE_OPENPGP_BASE;
 			card->name = card_name;
+			if (file->namelen != 16)
+				(void) get_full_pgp_aid(card, file);
 			if (file->namelen == 16) {
 				unsigned char major = file->name[6];
 				unsigned char minor = file->name[7];
@@ -358,8 +371,10 @@ pgp_match_card(sc_card_t *card)
 					case 3:
 						card->type = SC_CARD_TYPE_OPENPGP_V3;
 						break;
+					default:
+						break;
 				}
-				snprintf(card_name, sizeof card_name, "OpenPGP card V%u.%u", major, minor);
+				snprintf(card_name, sizeof(card_name), "OpenPGP card V%u.%u", major, minor);
 			}
 			sc_file_free(file);
 			return 1;
@@ -409,12 +424,11 @@ pgp_init(sc_card_t *card)
 
 	if (file->namelen != 16) {
 		/* explicitly get the full aid */
-		r = sc_get_data(card, 0x004F, file->name, sizeof file->name);
+		r = get_full_pgp_aid(card, file);
 		if (r < 0) {
 			pgp_finish(card);
 			return r;
 		}
-		file->namelen = r;
 	}
 
 	/* read information from AID */
@@ -922,7 +936,7 @@ pgp_enumerate_blob(sc_card_t *card, pgp_blob_t *blob)
 
 		r = sc_asn1_read_tag(&data, blob->len - (in - blob->data),
 					&cla, &tag, &len);
-		if (r < 0) {
+		if (r < 0 || data == NULL) {
 			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
 				 "Unexpected end of contents\n");
 			return SC_ERROR_OBJECT_NOT_VALID;
@@ -1131,7 +1145,7 @@ pgp_select_file(sc_card_t *card, const sc_path_t *path, sc_file_t **ret)
 		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 	}
 
-	/* ignore explicitely mentioned MF at the path's beginning */
+	/* ignore explicitly mentioned MF at the path's beginning */
 	path_start = pgp_strip_path(card, path);
 
 	/* starting with the MF ... */
@@ -1141,7 +1155,7 @@ pgp_select_file(sc_card_t *card, const sc_path_t *path, sc_file_t **ret)
 		unsigned int	id = bebytes2ushort(path->value + n);
 		int		r = pgp_get_blob(card, blob, id, &blob);
 
-		/* This file ID is refered when importing key&certificate via pkcs15init, like above.
+		/* This file ID is referred when importing key&certificate via pkcs15init, like above.
 		 * We pretend to successfully find this inexistent file. */
 		if (id == 0x4402 || id == 0x5f48) {
 			if (ret == NULL)
@@ -2132,6 +2146,8 @@ pgp_parse_and_set_pubkey_output(sc_card_t *card, u8* data, size_t data_len,
 		r = sc_asn1_read_tag((const u8**)&part,
 							 data_len - (in - data),
 							 &cla, &tag, &len);
+		if (part == NULL)
+			r = SC_ERROR_ASN1_OBJECT_NOT_FOUND;
 		LOG_TEST_RET(card->ctx, r, "Unexpected end of contents.");
 		/* undo ASN1's split of tag & class */
 		for (tmptag = tag; tmptag > 0x0FF; tmptag >>= 8) {
@@ -2547,8 +2563,8 @@ pgp_store_key(sc_card_t *card, sc_cardctl_openpgp_keystore_info_t *key_info)
 {
 	sc_context_t *ctx = card->ctx;
 	sc_cardctl_openpgp_keygen_info_t pubkey;
-	u8 *data;
-	size_t len;
+	u8 *data = NULL;
+	size_t len = 0;
 	int r;
 
 	LOG_FUNC_CALLED(ctx);

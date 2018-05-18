@@ -855,7 +855,12 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 	sc_pkcs15emu_sc_hsm_read_tokeninfo(p15card);
 
 	if (p15card->tokeninfo->label == NULL) {
-		p15card->tokeninfo->label = strdup("SmartCard-HSM");
+		if (p15card->card->type == SC_CARD_TYPE_SC_HSM_GOID
+				|| p15card->card->type == SC_CARD_TYPE_SC_HSM_SOC) {
+			p15card->tokeninfo->label = strdup("GoID");
+		} else {
+			p15card->tokeninfo->label = strdup("SmartCard-HSM");
+		}
 		if (p15card->tokeninfo->label == NULL)
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 	}
@@ -866,7 +871,12 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 	}
 
 	if (p15card->tokeninfo->manufacturer_id == NULL) {
-		p15card->tokeninfo->manufacturer_id = strdup("www.CardContact.de");
+		if (p15card->card->type == SC_CARD_TYPE_SC_HSM_GOID
+				|| p15card->card->type == SC_CARD_TYPE_SC_HSM_SOC) {
+			p15card->tokeninfo->manufacturer_id = strdup("Bundesdruckerei GmbH");
+		} else {
+			p15card->tokeninfo->manufacturer_id = strdup("www.CardContact.de");
+		}
 		if (p15card->tokeninfo->manufacturer_id == NULL)
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 	}

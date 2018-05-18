@@ -68,11 +68,11 @@ static void npa_drv_data_free(struct npa_drv_data *drv_data)
 static struct sc_atr_table npa_atrs[] = {
 	{"3B:8A:80:01:80:31:F8:73:F7:41:E0:82:90:00:75",
 		"FF:FF:FF:FF:FF:FF:00:FF:00:00:FF:FF:FF:FF:00",
-		"German ID card (neuer Personalausweis, nPA)", SC_CARD_TYPE_NPA, 0, NULL},
+		NULL, SC_CARD_TYPE_NPA, 0, NULL},
 	{"3B:88:80:01:00:00:00:00:00:00:00:00:09", NULL,
-		"German ID card (neuer Personalausweis, nPA)", SC_CARD_TYPE_NPA, 0, NULL},
+		NULL, SC_CARD_TYPE_NPA, 0, NULL},
 	{"3B:87:80:01:80:31:B8:73:84:01:E0:19", NULL,
-		"German ID card (neuer Personalausweis, nPA)", SC_CARD_TYPE_NPA, 0, NULL},
+		NULL, SC_CARD_TYPE_NPA, 0, NULL},
 	{"3B:84:80:01:00:00:90:00:95", NULL,
 		"German ID card (Test neuer Personalausweis)", SC_CARD_TYPE_NPA_TEST, 0, NULL},
 	{"3B:88:80:01:00:E1:F3:5E:13:77:83:00:00",
@@ -149,9 +149,31 @@ err:
 
 static int npa_match_card(sc_card_t * card)
 {
-	if (_sc_match_atr(card, npa_atrs, &card->type) < 0)
-		return 0;
-	return 1;
+	int r = 0;
+	unsigned char *ef_cardaccess = NULL;
+	size_t ef_cardaccess_len = 0;
+
+	r = _sc_match_atr(card, npa_atrs, &card->type);
+	if (r >= 0) {
+		if (NULL == card->name) {
+			card->name = npa_atrs[r].name;
+		}
+		r = 1;
+	} else {
+		r = 0;
+	}
+
+	if (0 == r
+			&& SC_SUCCESS == iso7816_read_binary_sfid(
+				card, SFID_EF_CARDACCESS,
+			   	&ef_cardaccess, &ef_cardaccess_len)) {
+		card->type = SC_CARD_TYPE_NPA;
+		r = 1;
+	}
+
+	free(ef_cardaccess);
+
+	return r;
 }
 
 static void npa_get_cached_pace_params(sc_card_t *card,
@@ -313,7 +335,7 @@ static int npa_unlock_esign(sc_card_t *card)
 		}
 		r = perform_chip_authentication(card, &ef_cardsecurity, &ef_cardsecurity_len);
 		if ( SC_SUCCESS != r) {
-			sc_log(card->ctx, "Error verifying the chips authenticy.\n");
+			sc_log(card->ctx, "Error verifying the chip's authenticity.\n");
 		}
 
 		sc_log(card->ctx, "Proved Access rights to eSign application with configured key as ST.\n");
@@ -343,7 +365,7 @@ static int npa_init(sc_card_t * card)
 	}
 
 	card->caps |= SC_CARD_CAP_APDU_EXT | SC_CARD_CAP_RNG;
-	/* 1520 bytes is the minimum lenght of the communication buffer in all
+	/* 1520 bytes is the minimum length of the communication buffer in all
 	 * Chip/OS variants */
 	card->max_recv_size = 1520;
 	card->max_send_size = 1520;
@@ -381,8 +403,22 @@ static int npa_init(sc_card_t * card)
 
 	/* unlock the eSign application for reading the certificates
 	 * by the PKCS#15 layer (i.e. sc_pkcs15_bind_internal) */
-	if (SC_SUCCESS != npa_unlock_esign(card))
-		sc_log(card->ctx, "Propably not all functionality will be available.\n");
+	if (SC_SUCCESS == sc_enum_apps(card)) {
+		unsigned char esign_aid[] = {
+			0xA0, 0x00, 0x00, 0x01, 0x67, 0x45, 0x53, 0x49, 0x47, 0x4E,
+		};
+		int i;
+		for (i = 0; i < card->app_count; i++)   {
+			struct sc_app_info *app_info = card->app[i];
+			if (sizeof esign_aid == app_info->aid.len
+					&& 0 == memcmp(esign_aid, app_info->aid.value, sizeof esign_aid)) {
+				if (SC_SUCCESS != npa_unlock_esign(card)) {
+					sc_log(card->ctx, "Probably not all functionality will be available.\n");
+				}
+				break;
+			}
+		}
+	}
 
 err:
 	return r;
@@ -757,7 +793,7 @@ static int npa_logout(sc_card_t *card)
 
 	if (card->reader->capabilities & SC_READER_CAP_PACE_GENERIC) {
 		/* If PACE is done between reader and card, SM is transparent to us as
-		 * it ends at the reader. With CLA=0x0C we provoque a SM error to
+		 * it ends at the reader. With CLA=0x0C we provoke a SM error to
 		 * disable SM on the reader. */
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0xA4, 0x00, 0x00);
 		apdu.cla = 0x0C;

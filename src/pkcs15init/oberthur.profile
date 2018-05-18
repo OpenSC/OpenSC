@@ -42,7 +42,7 @@ PIN so-pin {
 	reference = 4
 }
 
-# CHV5 used for Oberthur's specifique access condition "PIN or SOPIN"
+# CHV5 used for Oberthur's specific access condition "PIN or SOPIN"
 # Any value for this pin can given, when the OpenSC tools are asking for.
 
 # Additional filesystem info.
@@ -84,7 +84,7 @@ filesystem {
 					file-id	 = 4000;
 					type	= internal-ef;
 					size = 24;  # 192 bits
-					# READ acl used insted of DECRYPT/ENCRYPT/CHECKSUM
+					# READ acl used instead of DECRYPT/ENCRYPT/CHECKSUM
 					ACL = UPDATE=CHV1, READ=CHV1;
 				}
 			

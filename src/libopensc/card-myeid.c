@@ -614,9 +614,9 @@ static int myeid_set_security_env_rsa(sc_card_t *card, const sc_security_env_t *
 	assert(card != NULL && env != NULL);
 	LOG_FUNC_CALLED(card->ctx);
 
-	if (env->flags & SC_SEC_ENV_KEY_REF_ASYMMETRIC)
+	if (env->flags & SC_SEC_ENV_KEY_REF_SYMMETRIC)
 	{
-		sc_log(card->ctx, "asymmetric keyref not supported.\n");
+		sc_log(card->ctx, "symmetric keyref not supported.\n");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	if (se_num > 0)
@@ -697,9 +697,9 @@ static int myeid_set_security_env_ec(sc_card_t *card, const sc_security_env_t *e
 	assert(card != NULL && env != NULL);
 	LOG_FUNC_CALLED(card->ctx);
 
-	if (env->flags & SC_SEC_ENV_KEY_REF_ASYMMETRIC)
+	if (env->flags & SC_SEC_ENV_KEY_REF_SYMMETRIC)
 	{
-		sc_log(card->ctx, "asymmetric keyref not supported.");
+		sc_log(card->ctx, "symmetric keyref not supported.");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	if (se_num > 0)

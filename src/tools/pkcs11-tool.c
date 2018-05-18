@@ -234,7 +234,7 @@ static const char *option_help[] = {
 	"Hash some data",
 	"Derive a secret key using another key and some data",
 	"Derive ECDHpass DER encoded pubkey for compatibility with some PKCS#11 implementations",
-	"Specify mechanism (use -M for a list of supported mechanisms)",
+	"Specify mechanism (use -M for a list of supported mechanisms), or by hexadecimal, e.g., 0x80001234",
 	"Specify hash algorithm used with RSA-PKCS-PSS signature and RSA-PKCS-OAEP decryption",
 	"Specify MGF (Message Generation Function) used for RSA-PSS signature and RSA-OAEP decryption (possible values are MGF1-SHA1 to MGF1-SHA512)",
 	"Specify how many bytes should be used for salt in RSA-PSS signatures (default is digest size)",
@@ -490,34 +490,35 @@ get##ATTR(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj, CK_ULONG_PTR pulCount) \
 /*
  * Define attribute accessors
  */
-ATTR_METHOD(CLASS, CK_OBJECT_CLASS);
-ATTR_METHOD(ALWAYS_AUTHENTICATE, CK_BBOOL);
-ATTR_METHOD(PRIVATE, CK_BBOOL);
-ATTR_METHOD(MODIFIABLE, CK_BBOOL);
-ATTR_METHOD(ENCRYPT, CK_BBOOL);
-ATTR_METHOD(DECRYPT, CK_BBOOL);
-ATTR_METHOD(SIGN, CK_BBOOL);
-ATTR_METHOD(VERIFY, CK_BBOOL);
-ATTR_METHOD(WRAP, CK_BBOOL);
-ATTR_METHOD(UNWRAP, CK_BBOOL);
-ATTR_METHOD(DERIVE, CK_BBOOL);
-ATTR_METHOD(OPENSC_NON_REPUDIATION, CK_BBOOL);
-ATTR_METHOD(KEY_TYPE, CK_KEY_TYPE);
-ATTR_METHOD(CERTIFICATE_TYPE, CK_CERTIFICATE_TYPE);
-ATTR_METHOD(MODULUS_BITS, CK_ULONG);
-ATTR_METHOD(VALUE_LEN, CK_ULONG);
-VARATTR_METHOD(LABEL, char);
-VARATTR_METHOD(APPLICATION, char);
-VARATTR_METHOD(ID, unsigned char);
-VARATTR_METHOD(OBJECT_ID, unsigned char);
-VARATTR_METHOD(MODULUS, CK_BYTE);
+ATTR_METHOD(CLASS, CK_OBJECT_CLASS);			/* getCLASS */
+ATTR_METHOD(ALWAYS_AUTHENTICATE, CK_BBOOL); 		/* getALWAYS_AUTHENTICATE */
+ATTR_METHOD(PRIVATE, CK_BBOOL); 			/* getPRIVATE */
+ATTR_METHOD(MODIFIABLE, CK_BBOOL);			/* getMODIFIABLE */
+ATTR_METHOD(ENCRYPT, CK_BBOOL);				/* getENCRYPT */
+ATTR_METHOD(DECRYPT, CK_BBOOL);				/* getDECRYPT */
+ATTR_METHOD(SIGN, CK_BBOOL);				/* getSIGN */
+ATTR_METHOD(VERIFY, CK_BBOOL);				/* getVERIFY */
+ATTR_METHOD(WRAP, CK_BBOOL);				/* getWRAP */
+ATTR_METHOD(UNWRAP, CK_BBOOL);				/* getUNWRAP */
+ATTR_METHOD(DERIVE, CK_BBOOL);				/* getDERIVE */
+ATTR_METHOD(OPENSC_NON_REPUDIATION, CK_BBOOL);		/* getOPENSC_NON_REPUDIATION */
+ATTR_METHOD(KEY_TYPE, CK_KEY_TYPE);			/* getKEY_TYPE */
+ATTR_METHOD(CERTIFICATE_TYPE, CK_CERTIFICATE_TYPE);	/* getCERTIFICATE_TYPE */
+ATTR_METHOD(MODULUS_BITS, CK_ULONG);			/* getMODULUS_BITS */
+ATTR_METHOD(VALUE_LEN, CK_ULONG);			/* getVALUE_LEN */
+VARATTR_METHOD(LABEL, char);				/* getLABEL */
+VARATTR_METHOD(APPLICATION, char);			/* getAPPLICATION */
+VARATTR_METHOD(ID, unsigned char);			/* getID */
+VARATTR_METHOD(OBJECT_ID, unsigned char);		/* getOBJECT_ID */
+VARATTR_METHOD(MODULUS, CK_BYTE);			/* getMODULUS */
 #ifdef ENABLE_OPENSSL
-VARATTR_METHOD(PUBLIC_EXPONENT, CK_BYTE);
+VARATTR_METHOD(SUBJECT, unsigned char);			/* getSUBJECT */
+VARATTR_METHOD(PUBLIC_EXPONENT, CK_BYTE);		/* getPUBLIC_EXPONENT */
 #endif
-VARATTR_METHOD(VALUE, unsigned char);
-VARATTR_METHOD(GOSTR3410_PARAMS, unsigned char);
-VARATTR_METHOD(EC_POINT, unsigned char);
-VARATTR_METHOD(EC_PARAMS, unsigned char);
+VARATTR_METHOD(VALUE, unsigned char);			/* getVALUE */
+VARATTR_METHOD(GOSTR3410_PARAMS, unsigned char);	/* getGOSTR3410_PARAMS */
+VARATTR_METHOD(EC_POINT, unsigned char);		/* getEC_POINT */
+VARATTR_METHOD(EC_PARAMS, unsigned char);		/* getEC_PARAMS */
 
 
 int main(int argc, char * argv[])
@@ -2632,7 +2633,7 @@ parse_ec_pkey(EVP_PKEY *pkey, int private, struct gostkey_info *gost)
 		header_len = point-gost->public.value;
 		memcpy(point, buf, point_len);
 		gost->public.len = header_len+point_len;
-#ifndef EC_POINT_NO_ASN1_OCTET_STRING // workaround for non-compliant cards not expecting DER encoding
+#ifdef EC_POINT_NO_ASN1_OCTET_STRING // workaround for non-compliant cards not expecting DER encoding
 		gost->public.len   -= header_len;
 		gost->public.value += header_len;
 #endif
@@ -3233,7 +3234,7 @@ find_mechanism(CK_SLOT_ID slot, CK_FLAGS flags,
 	count = get_mechanisms(slot, &mechs, flags);
 	if (count)   {
 		if (list && list_len)   {
-			unsigned ii, jj;
+			unsigned ii = list_len, jj;
 
 			for (jj=0; jj<count; jj++)   {
 				for (ii=0; ii<list_len; ii++)
@@ -3535,7 +3536,7 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 			bytes = getEC_POINT(sess, obj, &size);
 			/*
 			 * (We only support uncompressed for now)
-			 * Uncompresed EC_POINT is DER OCTET STRING of "04||x||y"
+			 * Uncompressed EC_POINT is DER OCTET STRING of "04||x||y"
 			 * So a "256" bit key has x and y of 32 bytes each
 			 * something like: "04 41 04||x||y"
 			 * Do simple size calculation based on DER encoding
@@ -3676,6 +3677,9 @@ static void show_cert(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 	CK_ULONG	size;
 	unsigned char	*id;
 	char		*label;
+#if defined(ENABLE_OPENSSL)
+	unsigned char	*subject;
+#endif /* ENABLE_OPENSSL */
 
 	printf("Certificate Object; type = ");
 	switch (cert_type) {
@@ -3697,6 +3701,24 @@ static void show_cert(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 		printf("  label:      %s\n", label);
 		free(label);
 	}
+
+#if defined(ENABLE_OPENSSL)
+	if ((subject = getSUBJECT(sess, obj, &size)) != NULL) {
+		X509_NAME *name;
+		const unsigned char *tmp = subject;
+
+		name = d2i_X509_NAME(NULL, &tmp, size);
+		if(name) {
+			BIO *bio = BIO_new(BIO_s_file());
+			BIO_set_fp(bio, stdout, BIO_NOCLOSE);
+			printf("  subject:    DN: ");
+			X509_NAME_print(bio, name, XN_FLAG_RFC2253);
+			printf("\n");
+			BIO_free(bio);
+		}
+		free(subject);
+	}
+#endif /* ENABLE_OPENSSL */
 
 	if ((id = getID(sess, obj, &size)) != NULL && size) {
 		unsigned int	n;
@@ -5384,7 +5406,7 @@ static CK_SESSION_HANDLE test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE
 
 	/* This is done in NSS */
 	getMODULUS(session, priv_key, &mod_len);
-	if (mod_len < 5 || mod_len > 10000) { /* should be resonable limits */
+	if (mod_len < 5 || mod_len > 10000) { /* should be reasonable limits */
 		fprintf(stderr, "ERR: GetAttribute(privkey, CKA_MODULUS) doesn't seem to work\n");
 		return session;
 	}
@@ -5473,7 +5495,7 @@ static CK_SESSION_HANDLE test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE
 	C_UnloadModule(module);
 
 	/* Now we assume the user turns of her PC and comes back tomorrow to see
-	 * if here cert is allready made and to install it (as is done next) */
+	 * if here cert is already made and to install it (as is done next) */
 
 	printf("\n*** In real life, the cert req should now be sent to the CA ***\n");
 
@@ -5507,7 +5529,7 @@ static CK_SESSION_HANDLE test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE
 	if (!delete_object(session))
 		util_fatal("Failed to delete certificate");
 
-	printf("\n==> OK, successfull! Should work with Mozilla\n");
+	printf("\n==> OK, successful! Should work with Mozilla\n");
 	return session;
 }
 
@@ -6076,6 +6098,9 @@ static CK_MECHANISM_TYPE p11_name_to_mechanism(const char *name)
 {
 	struct mech_info *mi;
 
+	if (strncasecmp("0x", name, 2) == 0) {
+		return strtoul(name, NULL, 0);
+	}
 	for (mi = p11_mechanisms; mi->name; mi++) {
 		if (!strcasecmp(mi->name, name)
 		 || (mi->short_name && !strcasecmp(mi->short_name, name)))

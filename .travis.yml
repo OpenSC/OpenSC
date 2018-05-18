@@ -1,7 +1,5 @@
 language: c
 
-sudo: false
-
 addons:
   apt_packages:
     - binutils-mingw-w64-i686
@@ -15,19 +13,18 @@ addons:
     - xsltproc
     - gengetopt
     - help2man
-  coverity_scan:
-    project:
-      name: "OpenSC/OpenSC"
-      description: "Build submitted via Travis CI"
-    notification_email: viktor.tarasov@gmail.com
-    build_command:   "make -j 4"
-    branch_pattern: coverity_scan
+    - libcmocka-dev
 
 env:
   global:
     # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
     #   via the "travis encrypt" command using the project repo's public key
     - secure: "UkHn7wy4im8V1nebCWbAetnDSOLRUbOlF6++ovk/7Bnso1/lnhXHelyzgRxfD/oI68wm9nnRV+RQEZ9+72Ug1CyvHxyyxxkwal/tPeHH4B/L+aGdPi0id+5OZSKIm77VP3m5s102sJMJgH7DFd03+nUd0K26p0tk8ad4j1geV4c="
+    - COVERITY_SCAN_BRANCH_PATTERN="(master|coverity.*)"
+    - COVERITY_SCAN_NOTIFICATION_EMAIL="viktor.tarasov@gmail.com"
+    - COVERITY_SCAN_BUILD_COMMAND="make -j 4"
+    - COVERITY_SCAN_PROJECT_NAME="$TRAVIS_REPO_SLUG"
+    - SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)
 
 matrix:
   fast_finish: true
@@ -46,21 +43,18 @@ matrix:
       env: HOST=x86_64-w64-mingw32
     - os: linux
       env: HOST=i686-w64-mingw32
+    - os: linux
+      env: DO_COVERITY_SCAN=yes
 
 before_install:
   - if [ "$TRAVIS_OS_NAME" == "osx" ]; then
         brew update;
         brew uninstall libtool;
         brew install libtool;
-        brew install gengetopt help2man;
+        brew install gengetopt help2man cmocka;
     fi
 
 before_script:
-  # we run a weekly cron job in travis on the coverity branch
-  # just synchronize it with master to get a new report
-  - if [ "${COVERITY_SCAN_BRANCH}" == 1 ]; then
-      git reset --hard origin/master;
-    fi
   - ./bootstrap
   - if [ -z "$HOST" ]; then
       CFLAGS="-Werror" ./configure $ENABLE_DOC --enable-dnie-ui;
@@ -75,20 +69,22 @@ before_script:
       unset CXX;
       ./configure --host=$HOST --disable-openssl --disable-readline --disable-zlib --disable-notify --prefix=${TRAVIS_BUILD_DIR}/win32/opensc || cat config.log;
     fi
+  # Optionally try to upload to Coverity Scan
+  # On error (propably quota is exhausted), just continue
+  - if [ "${DO_COVERITY_SCAN}" = "yes" ]; then curl -s 'https://scan.coverity.com/scripts/travisci_build_coverity_scan.sh' | bash || true; fi
 
 script:
-  - if [ "${COVERITY_SCAN_BRANCH}" != 1 ]; then
+  - if [ "${DO_COVERITY_SCAN}" != "yes" ]; then
       if [ $TRAVIS_OS_NAME == osx ]; then
         ./MacOSX/build;
       else
         make;
       fi;
     fi
-  - if [ -z "$HOST" -a "${COVERITY_SCAN_BRANCH}" != 1 ]; then
-      make check;
-      make dist;
+  - if [ -z "$HOST" -a "${DO_COVERITY_SCAN}" != "yes" ]; then
+      make check && make dist;
     fi
-  - if [ ! -z "$HOST" -a "${COVERITY_SCAN_BRANCH}" != 1 ]; then
+  - if [ ! -z "$HOST" -a "${DO_COVERITY_SCAN}" != "yes" ]; then
       make install;
       wine "C:/Program Files (x86)/Inno Setup 5/ISCC.exe" win32/OpenSC.iss;
     fi

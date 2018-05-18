@@ -128,5 +128,6 @@ src/tests/lottery
 src/tests/p15dump
 src/tests/pintest
 src/tests/prngtest
+src/tests/p11test/p11test
 
 version.m4.ci

@@ -60,9 +60,9 @@ typedef struct cwa_provider_st {
 	*
 	* This code is called before any operation required in
 	* standard cwa14890 SM stablisment process. It's usually
-	* used for adquiring/initialize data to be used in the
+	* used for acquiring/initialize data to be used in the
 	* process (i.e: retrieve card serial number), to make sure
-	* that no extra apdu is sent during the SM stablishment procedure
+	* that no extra apdu is sent during the SM establishment procedure
 	*
 	* @param card pointer to card driver structure
 	* @param provider pointer to SM data provider for DNIe
@@ -74,8 +74,8 @@ typedef struct cwa_provider_st {
 	/** 
  	* CWA-14890 SM stablisment post-operations.
 	*
-	* This code is called after sucessfull SM chanel stablishment
-	* procedure, and before returning from create_sm_chanel() function
+	* This code is called after successful SM channel establishment
+	* procedure, and before returning from create_sm_channel() function
 	* May be use for store data, trace, logs and so
 	*
 	* @param card pointer to card driver structure
@@ -115,7 +115,7 @@ typedef struct cwa_provider_st {
 	/**
 	* Get RSA IFD (Terminal) private key data.
 	* 
-	* Notice that resulting data should be keept in memory as little 
+	* Notice that resulting data should be kept in memory as little
 	* as possible Erasing them once used
 	*
 	* @param card pointer to card driver structure
@@ -131,7 +131,7 @@ typedef struct cwa_provider_st {
 	 *
 	 * But to do this, an special OpenSSL with PACE extensions is
 	 * needed. In the meantime, let's use binary buffers to get
-	 * CVC and key references, until an CV_CERT hancling API 
+	 * CVC and key references, until an CV_CERT handling API
 	 * become available in standard OpenSSL
 	 *
 	 *@see http://openpace.sourceforge.net
@@ -150,7 +150,7 @@ typedef struct cwa_provider_st {
 	* @return SC_SUCCESS if ok; else error code
 	*/
 	int (*cwa_get_cvc_ca_cert) (sc_card_t * card, u8 ** cert,
-				    size_t * lenght);
+				    size_t * length);
 
 	/**
 	* Retrieve IFD (application) CVC certificate and length.
@@ -165,7 +165,7 @@ typedef struct cwa_provider_st {
 	* @return SC_SUCCESS if ok; else error code
 	*/
 	int (*cwa_get_cvc_ifd_cert) (sc_card_t * card, u8 ** cert,
-				     size_t * lenght);
+				     size_t * length);
 
 	/**
 	* Retrieve public key reference for Root CA to validate CVC intermediate CA certs.

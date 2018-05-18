@@ -135,6 +135,12 @@
 					</term>
 					<listitem><para>Generate a new key pair (public and private pair.)</para></listitem>
 				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--keygen</option>
+					</term>
+					<listitem><para>Generate a new key.</para></listitem>
+				</varlistentry>
 
 				<varlistentry>
 					<term>
@@ -231,7 +237,8 @@
 					</term>
 					<listitem><para>Use the specified <replaceable>mechanism</replaceable>
 					for token operations. See <option>-M</option> for a list
-					of mechanisms supported by your token.</para></listitem>
+					of mechanisms supported by your token. The mechanism can also be specified in
+					hexadecimal, e.g., <replaceable>0x80001234</replaceable>.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -307,6 +314,13 @@
 
 				<varlistentry>
 					<term>
+						<option>--sensitive</option>
+					</term>
+					<listitem><para>Set the CKA_SENSITIVE attribute (object cannot be revealed in plaintext).</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
 						<option>--set-id</option> <replaceable>id</replaceable>,
 						<option>-e</option> <replaceable>id</replaceable>
 					</term>
@@ -341,6 +355,13 @@
 						<option>--derive</option>,
 					</term>
 					<listitem><para>Derive a secret key using another key and some data.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--derive-pass-der</option>,
+					</term>
+					<listitem><para>Derive ECDHpass DER encoded pubkey for compatibility with some PKCS#11 implementations</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -538,4 +559,32 @@
 			</variablelist>
 		</para>
 	</refsect1>
+
+	<refsect1>
+		<title>Examples</title>
+		<para>
+			To list all certificates on the smart card:
+				<programlisting>pkcs11-tool --list-objects --type cert</programlisting>
+
+			To read the certificate with ID <replaceable>KEY_ID</replaceable>
+			in DER format from smart card:
+				<programlisting>pkcs11-tool --read-object  --id KEY_ID --type cert --outfile cert.der</programlisting>
+
+			To convert the certificate in DER format to PEM format, use OpenSSL
+			tools:
+				<programlisting>openssl x509 -inform DER -in cert.der -outform PEM > cert.pem</programlisting>
+
+			To sign some data stored in file <replaceable>data</replaceable>
+			using the private key with ID <replaceable>ID</replaceable> and
+			using the RSA-PKCS mechanism:
+				<programlisting>pkcs11-tool --sign --id ID --mechanism RSA-PKCS --input-file data --output-file data.sig</programlisting>
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Authors</title>
+		<para><command>pkcs11-tool</command> was written by
+		Olaf Kirch <email>okir@suse.de</email>.</para>
+	</refsect1>
+
 </refentry>

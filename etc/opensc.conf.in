@@ -21,40 +21,30 @@ app default {
 	#
 	# debug_file = @DEBUG_FILE@
 
-	# Reopen debug file at the every debug message.
-	#
-	# For Windows it's forced to 'true'. The reason is that
-	#   in Windows file handles can not be shared between DLL-s,
-	#   each DLL has a separate file handle table.
-	#
-	# Default: false
-	# reopen_debug_file = true;
-
 	# PKCS#15 initialization / personalization
 	# profiles directory for pkcs15-init.
 	# Default: @PROFILE_DIR_DEFAULT@
 	#
 	# profile_dir = @PROFILE_DIR@;
 
-	# Paranoid memory allocation.
-	#
-	# If set to 'true', then refuse to continue when locking of non-pageable
-	# memory fails. This can cause subtle failures but is more secure when
-	# you have a swap disk.
-	# Default: false
-	#
-	# paranoid_memory = false;
-
-	# Dsiable pop-ups of built-in GUI
+	# Disable pop-ups of built-in GUI
 	#
 	# Default: false
 	# disable_popups = true;
 
 	# Enable default card driver
-	# Default card driver is explicitely enabled for the 'opensc-explorer' and 'opensc-tool'.
+	# Default card driver is explicitly enabled for the 'opensc-explorer' and 'opensc-tool'.
 	#
 	# Default: false
 	# enable_default_driver = true;
+
+	# List of readers to ignore
+	# If any of the strings listed below is matched in a reader name (case
+	# sensitive, partial matching possible), the reader is ignored by OpenSC.
+	# Use `opensc-tool --list-readers` to see all currently connected readers.
+	#
+	# Default: empty
+	# ignored_readers = "CardMan 1021", "SPR 532";
 
 	# CT-API module configuration.
 	reader_driver ctapi {
@@ -147,7 +137,7 @@ app default {
 	# statically linked drivers that may be removed in the future.
 	#
 	# A special value of 'internal' will load all
-	# statically linked drivers. If an unknown (ie. not
+	# statically linked drivers. If an unknown (i.e. not
 	# internal) driver is supplied, a separate configuration
 	# configuration block has to be written for the driver.
 	# Default: internal
@@ -187,15 +177,6 @@ app default {
 		#st_certificate = ZZSTTERM00001.cvcert;
 		#st_key = ZZSTTERM00001.pkcs8;
 	}
-
-	# Force using specific card driver
-	#
-	# If this option is present, OpenSC will use the supplied
-	# driver with all inserted cards.
-	#
-	# Default: autodetect
-	#
-	# force_card_driver = customcos;
 
 	# Configuration block for DNIe
 	#
@@ -982,8 +963,8 @@ app default {
 		# - type (generic, protected) used to distinguish the common access application
 		#   and application for which authentication to perform some operation cannot be
 		#   obtained with the common procedures (ex. object creation protected by secure messaging).
-		#   Used by PKCS#11 module configurated to expose restricted number of slots.
-		#   (for ex. configurated to expose only User PIN slot, User and Sign PINs slots, ...)
+		#   Used by PKCS#11 module configured to expose restricted number of slots.
+		#   (for ex. configured to expose only User PIN slot, User and Sign PINs slots, ...)
 		#
 		# - disable: do not expose application in PKCS15 framework
 		#            default 'false'
@@ -1071,7 +1052,7 @@ app opensc-pkcs11 {
 		# abusing an existing login or they may logout unnoticed.
 		#
 		# With this setting enabled the login state of the token is tracked and
-		# cached (including the PIN). Every transaction is preceeded by
+		# cached (including the PIN). Every transaction is preceded by
 		# restoring the login state.  After every transaction a logout is
 		# performed. This setting by default also enables `lock_login` (see
 		# above) to disable access for other applications during the atomic
@@ -1119,21 +1100,6 @@ app opensc-pkcs11 {
 		#
 		# Default: false
 		# create_puk_slot = true;
-
-		# Report as 'zero' the CKA_ID attribute of CA certificate
-		# For the unknown reason the middleware of the manufacturer of gemalto (axalto, gemplus)
-		# card reports as '0' the CKA_ID of CA cartificates.
-		# Maybe someone else will need it. (Would be nice to know who and what for -- VTA)
-		#
-		# Default: false
-		# zero_ckaid_for_ca_certs = true;
-
-		# List of readers to ignore
-		# If any of the strings listed below is matched (case sensitive) in a reader name,
-		# the reader is ignored by the PKCS#11 module.
-		#
-		# Default: empty
-		# ignored_readers = "CardMan 1021", "SPR 532";
 
 		# Symbolic names of PINs for which slots are created
 		# Card can contain more then one PINs or more then one on-card application with

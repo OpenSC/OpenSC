@@ -430,7 +430,7 @@ static int pattern_match(const char *pattern, const char *string)
 		return 0;
 
 	while (*pattern != '\0' && *string != '\0') {
-		/* wildcard matching multple characters */
+		/* wildcard matching multiple characters */
 		if (*pattern == '*') {
 			for (pattern++; *string != '\0' ; string++)
 				if (pattern_match(pattern, string))

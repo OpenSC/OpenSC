@@ -1185,7 +1185,7 @@ int perform_pace(sc_card_t *card,
 				pace_input.pin_id, chat, &pace_output->mse_set_at_sw1,
 				&pace_output->mse_set_at_sw2);
 		if (r < 0) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not select protocol proberties "
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not select protocol properties "
 					"(MSE: Set AT failed).");
 			goto err;
 		}
@@ -1570,7 +1570,7 @@ int perform_terminal_authentication(sc_card_t *card,
 				cvc_cert->body->certificate_authority_reference->data,
 				cvc_cert->body->certificate_authority_reference->length);
 		if (r < 0) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not select protocol proberties "
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not select protocol properties "
 					"(MSE: Set AT failed).");
 			goto err;
 		}
@@ -1609,7 +1609,7 @@ int perform_terminal_authentication(sc_card_t *card,
 			(unsigned char *) eacsmctx->eph_pub_key->data, eacsmctx->eph_pub_key->length,
 			auxiliary_data, auxiliary_data_len);
 	if (r < 0) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not select protocol proberties "
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not select protocol properties "
 				"(MSE: Set AT failed).");
 		goto err;
 	}
@@ -1834,7 +1834,7 @@ int perform_chip_authentication_ex(sc_card_t *card, void *eac_ctx,
 
 	r = eac_mse_set_at_ca(card, ctx->ca_ctx->protocol);
 	if (r < 0) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not select protocol proberties "
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not select protocol properties "
 				"(MSE: Set AT failed).");
 		goto err;
 	}

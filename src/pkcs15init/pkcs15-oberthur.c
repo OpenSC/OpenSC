@@ -78,7 +78,7 @@ cosm_write_tokeninfo (struct sc_pkcs15_card *p15card, struct sc_profile *profile
 
 	if (file->size < 16) {
 		rv = SC_ERROR_INCONSISTENT_PROFILE;
-		SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_NORMAL, rv, "Unsufficient size of the "COSM_TITLE"-token-info file");
+		SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_NORMAL, rv, "Insufficient size of the "COSM_TITLE"-token-info file");
 	}
 
 	buffer = calloc(1, file->size);
@@ -138,11 +138,11 @@ cosm_delete_file(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 	path.len -= 2;
 
 	rv = sc_select_file(p15card->card, &path, &parent);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Cannnot select parent");
+	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Cannot select parent");
 
 	rv = sc_pkcs15init_authenticate(profile, p15card, parent, SC_AC_OP_DELETE);
 	sc_file_free(parent);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Cannnot authenticate SC_AC_OP_DELETE");
+	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Cannot authenticate SC_AC_OP_DELETE");
 
 	memset(&path, 0, sizeof(path));
 	path.type = SC_PATH_TYPE_FILE_ID;
@@ -689,7 +689,7 @@ cosm_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "create private key ID:%s",  sc_pkcs15_print_id(&key_info->id));
 	/* Here, the path of private key file should be defined.
-	 * Neverthelles, we need to instanciate private key to get the ACLs. */
+	 * Nevertheless, we need to instantiate private key to get the ACLs. */
 	rv = cosm_new_file(profile, p15card->card, SC_PKCS15_TYPE_PRKEY_RSA, key_info->key_reference, &file);
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Cannot create key: failed to allocate new key object");
 

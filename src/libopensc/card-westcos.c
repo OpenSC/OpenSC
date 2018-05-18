@@ -349,7 +349,7 @@ static int westcos_process_fci(sc_card_t * card, sc_file_t * file,
 				file->ef_structure = SC_FILE_EF_CYCLIC;
 				break;
 			default:
-				type = "unknow";
+				type = "unknown";
 			}
 			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
 				"  type: %s\n", type);
@@ -452,7 +452,7 @@ static int _convertion_ac_methode(sc_file_t * file, int low,
 	acl = sc_file_get_acl_entry(file, operation);
 	if (acl == NULL) {
 
-		/* par defaut always */
+		/* per default always */
 		*buf = 0xff;
 		*buf_key = 0x00;
 		return 0;

@@ -343,7 +343,8 @@ iso7816_process_fci(struct sc_card *card, struct sc_file *file,
 			p < end;
 			p += length, length = end - p) {
 
-		if (SC_SUCCESS != sc_asn1_read_tag(&p, length, &cla, &tag, &length)) {
+		if (SC_SUCCESS != sc_asn1_read_tag(&p, length, &cla, &tag, &length)
+				|| p == NULL) {
 			break;
 		}
 		switch (cla | tag) {
@@ -422,7 +423,7 @@ iso7816_process_fci(struct sc_card *card, struct sc_file *file,
 
 			case 0x86:
 				if (SC_SUCCESS != sc_file_set_sec_attr(file, p, length)) {
-					sc_log(ctx, "Warning: Could not set file security prperties");
+					sc_log(ctx, "Warning: Could not set file security properties");
 				}
 				break;
 
@@ -849,7 +850,7 @@ iso7816_set_security_env(struct sc_card *card,
 		p += env->file_ref.len;
 	}
 	if (env->flags & SC_SEC_ENV_KEY_REF_PRESENT) {
-		if (env->flags & SC_SEC_ENV_KEY_REF_ASYMMETRIC)
+		if (env->flags & SC_SEC_ENV_KEY_REF_SYMMETRIC)
 			*p++ = 0x83;
 		else
 			*p++ = 0x84;
@@ -1017,6 +1018,7 @@ iso7816_build_pin_apdu(struct sc_card *card, struct sc_apdu *apdu,
 	case SC_AC_CHV:
 		/* fall through */
 	case SC_AC_SESSION:
+	case SC_AC_CONTEXT_SPECIFIC:
 		break;
 	default:
 		return SC_ERROR_INVALID_ARGUMENTS;

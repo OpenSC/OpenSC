@@ -1,5 +1,5 @@
 /*
- * sc-ossl-compat.h: OpenSC ecompatability for older OpenSSL versions
+ * sc-ossl-compat.h: OpenSC compatibility for older OpenSSL versions
  *
  * Copyright (C) 2016	Douglas E. Engert <deengert@gmail.com>
  *
@@ -30,7 +30,7 @@ extern "C" {
 #include <openssl/opensslv.h>
 #include <openssl/opensslconf.h>
 /*
- * Provide backward compatability to older versions of OpenSSL
+ * Provide backward compatibility to older versions of OpenSSL
  * while using most of OpenSSL 1.1  API
  *
  * LibreSSL is a fork of OpenSSL from 2014
@@ -51,7 +51,7 @@ extern "C" {
  *
  * EVP_CIPHER_CTX_new	    does a EVP_CIPHER_CTX_init
  * EVP_CIPHER_CTX_free	    does a EVP_CIPHER_CTX_cleanup
- * EVP_CIPHER_CTX_cleanup   does equivelent of a EVP_CIPHER_CTX_init
+ * EVP_CIPHER_CTX_cleanup   does equivalent of a EVP_CIPHER_CTX_init
  * Use EVP_CIPHER_CTX_new, EVP_CIPHER_CTX_free, and  EVP_CIPHER_CTX_cleanup between operations
  */
 
@@ -93,6 +93,7 @@ extern "C" {
 #define OPENSSL_malloc_init		CRYPTO_malloc_init
 
 #define EVP_PKEY_get0_RSA(x)		(x->pkey.rsa)
+#define EVP_PKEY_get0_EC_KEY(x)		(x->pkey.ec)
 #define EVP_PKEY_get0_DSA(x)		(x->pkey.dsa)
 #define X509_get_extension_flags(x)	(x->ex_flags)
 #define X509_get_key_usage(x)		(x->ex_kusage)
@@ -101,6 +102,11 @@ extern "C" {
 #if !defined(LIBRESSL_VERSION_NUMBER) || LIBRESSL_VERSION_NUMBER < 0x2050300fL
 #define X509_up_ref(cert)		CRYPTO_add(&cert->references, 1, CRYPTO_LOCK_X509)
 #endif
+#endif
+
+/* ASN1_STRING_data is deprecated in OpenSSL 1.1.0 */
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
+#define ASN1_STRING_get0_data(x)	ASN1_STRING_data(x)
 #endif
 
 /*
@@ -139,6 +145,9 @@ extern "C" {
 #endif
 #ifndef OPENSSL_NO_DSA
 #include <openssl/dsa.h>
+#endif
+#ifndef OPENSSL_NO_EC
+#include <openssl/ecdsa.h>
 #endif
 
 #ifndef OPENSSL_NO_RSA
@@ -238,6 +247,21 @@ static sc_ossl_inline void DSA_get0_key(const DSA *d, const BIGNUM **pub_key, co
 
 /* NOTE: DSA_set0_*  functions not defined because they are not currently used in OpenSC */
 #endif /* OPENSSL_NO_DSA */
+
+
+#ifndef OPENSSL_NO_EC
+static sc_ossl_inline int ECDSA_SIG_set0(ECDSA_SIG *sig, BIGNUM *r, BIGNUM *s)
+{
+    if (r == NULL || s == NULL)
+        return 0;
+    BN_clear_free(sig->r);
+    BN_clear_free(sig->s);
+    sig->r = r;
+    sig->s = s;
+    return 1;
+}
+#endif /* OPENSSL_NO_EC */
+
 
 #endif /* OPENSSL_VERSION_NUMBER < 0x10100000L */
 

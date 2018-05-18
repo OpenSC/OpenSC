@@ -234,18 +234,21 @@ static int infocamere_1200_init(sc_pkcs15_card_t * p15card)
 
 	int r;
 
-	const unsigned char *iccsn, *chn;
-	size_t iccsn_len, chn_len;
+	unsigned char chn[8];
+	size_t chn_len = sizeof chn;
+	sc_serial_number_t iccsn;
+	iccsn.len = sizeof iccsn.value;
 
-	r = sc_parse_ef_gdo(card, &iccsn, &iccsn_len, &chn, &chn_len);
+
+	r = sc_parse_ef_gdo(card, iccsn.value, &iccsn.len, chn, &chn_len);
 	if (r < 0)
 		return r;
 
-	if (!iccsn_len || chn_len < 2 || chn_len > 8) {
+	if (!iccsn.len || chn_len < 2 || chn_len > 8) {
 		return SC_ERROR_WRONG_CARD;
 	}
 
-	sc_bin_to_hex(iccsn, iccsn_len, serial, sizeof(serial), 0);
+	sc_bin_to_hex(iccsn.value, iccsn.len, serial, sizeof(serial), 0);
 
 	if (!
 			(chn[0] == 0x12

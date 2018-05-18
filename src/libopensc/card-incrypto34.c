@@ -141,7 +141,7 @@ static const struct sc_card_error incrypto34_errors[] = {
 /* no error, maybe a note */
 { 0x9000, SC_SUCCESS,		NULL},
 { 0x9001, SC_SUCCESS,		"success, but eeprom weakness detected"},
-{ 0x9850, SC_SUCCESS,		"over/underflow useing in/decrease"}
+{ 0x9850, SC_SUCCESS,		"over/underflow using in/decrease"}
 };
 
 static int incrypto34_check_sw(sc_card_t *card, unsigned int sw1, unsigned int sw2)

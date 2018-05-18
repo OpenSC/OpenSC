@@ -81,7 +81,7 @@ static void show_pin(sc_card_t *card, int pin)
 	if(f->type!=SC_FILE_TYPE_WORKING_EF || f->ef_structure!=SC_FILE_EF_LINEAR_VARIABLE_TLV ||
 	   f->prop_attr_len!=5 || f->prop_attr[0]!=0x01 || f->prop_attr[1]!=0x80
 	){
-		printf("\nInvald PIN-file: Type=%d, EF-Structure=%d, Prop-Len=%lu %02X:%02X:%02X\n",
+		printf("\nInvalid PIN-file: Type=%d, EF-Structure=%d, Prop-Len=%lu %02X:%02X:%02X\n",
 			f->type, f->ef_structure, (unsigned long) f->prop_attr_len,
 			f->prop_attr[0], f->prop_attr[1], f->prop_attr[2]
 		);
@@ -130,7 +130,7 @@ static void show_certs(sc_card_t *card)
 			continue;
 		}
 		if(f->type!=SC_FILE_TYPE_WORKING_EF || f->ef_structure!=SC_FILE_EF_TRANSPARENT){
-			printf(", Invald Cert-file: Type=%d, EF-Structure=%d\n", f->type, f->ef_structure);
+			printf(", Invalid Cert-file: Type=%d, EF-Structure=%d\n", f->type, f->ef_structure);
 			continue;
 		}
 		if((j=sc_read_binary(card,0,buf,f->size,0))<0){
@@ -219,7 +219,7 @@ static void show_card(sc_card_t    *card)
 	if(file->type!=SC_FILE_TYPE_WORKING_EF || file->ef_structure!=SC_FILE_EF_TRANSPARENT ||
 	   file->size!=12 || (len=sc_read_binary(card,0,buf,12,0))!=12 || buf[0]!=0x5A || buf[1]!=0x0A
 	){
-		printf("\nInvald Serial-Number: Type=%d, EF-Structure=%d, Size=%lu\n",
+		printf("\nInvalid Serial-Number: Type=%d, EF-Structure=%d, Size=%lu\n",
 			file->type, file->ef_structure, (unsigned long) file->size
 		);
 		return;
@@ -488,7 +488,7 @@ int main(
 		fprintf(stderr,"\nstore Certificate into card at position 2 and read it back into file\n");
 		fprintf(stderr,"  %s --pin1 123456 cert /tmp/cert1 2\n", argv[0]);
 		fprintf(stderr,"  %s cert 2 /tmp/cert2\n", argv[0]);
-		fprintf(stderr,"\nBe carful - this tool may destroy your card\n");
+		fprintf(stderr,"\nBe careful - this tool may destroy your card\n");
 		fprintf(stderr,"\nQuestions? Comments? ==> opensc-user@opensc-project.org\n");
 		exit(1);
 	}

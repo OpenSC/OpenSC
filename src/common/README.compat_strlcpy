@@ -1,5 +1,5 @@
 strncpy() is unsafe since it does not always add a final NUL-byte.
-OpenBSD developped a safer version called strlcpy().
+OpenBSD developed a safer version called strlcpy().
 
 Use "man -l strlcpy.3" to read the manpage.
 

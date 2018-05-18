@@ -160,7 +160,7 @@ typedef struct global_platform_cplc_data {
 	u8 ic_personalization_id[4];
 } global_platform_cplc_data_t;
 
-/* format of the coolkey_cuid, either contructed from cplc data or read from the combined object */
+/* format of the coolkey_cuid, either constructed from cplc data or read from the combined object */
 typedef struct coolkey_cuid {
 	u8 ic_fabricator[2];
 	u8 ic_type[2];
@@ -214,7 +214,7 @@ typedef struct coolkey_decompressed_header {
 	u8 object_offset[2];
 	u8 object_count[2];
 	u8 token_name_length;
-	u8 token_name[255];      /* arbitary size up to token_name_length */
+	u8 token_name[255];      /* arbitrary size up to token_name_length */
 } coolkey_decompressed_header_t;
 
 /*
@@ -293,11 +293,11 @@ struct coolkey_fixed_attributes_values {
 	uint32_t  cka_always_sensitive:1;
 	uint32_t  cka_extractable:1;
 	uint32_t  cka_never_extractable:1;
-	uint32_t  reseved:8;
+	uint32_t  reserved:8;
 };
 
  *  cka_class is used to determine which booleans are valid. Any attributes in the full attribute list
- *  takes precidence over the fixed attributes. That is if there is a CKA_ID in the full attribute list,
+ *  takes precedence over the fixed attributes. That is if there is a CKA_ID in the full attribute list,
  *  The cka_id in the fixed_attributes is ignored. When determining which boolean attribute is valid, the
  *  cka_class in the fixed attributes are used, even if it is overridden by the  full attribute list.
  * valid cka_class values and their corresponding valid bools are as follows:
@@ -658,7 +658,7 @@ coolkey_get_fixed_boolean_bit(CK_ATTRIBUTE_TYPE type)
 	return 0; /* return no bits */
 }
 /* This table lets us return a pointer to the CKA_ID value without allocating data or
- * creating a changable static that could cause thread issues */
+ * creating a changeable static that could cause thread issues */
 static const u8 coolkey_static_cka_id[16] = {
 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
 };
@@ -860,21 +860,21 @@ struct coolkey_error_codes_st {
 };
 
 static const struct coolkey_error_codes_st coolkey_error_codes[]= {
-	{SC_ERROR_UNKNOWN,                       "Reservered 0x9c00" },
+	{SC_ERROR_UNKNOWN,                       "Reserved 0x9c00" },
 	{SC_ERROR_NOT_ENOUGH_MEMORY,             "No memory left on card" },
 	{SC_ERROR_PIN_CODE_INCORRECT,            "Authentication failed" },
 	{SC_ERROR_NOT_ALLOWED,                   "Operation not allowed" },
-	{SC_ERROR_UNKNOWN,                       "Reservered 0x9c04" },
+	{SC_ERROR_UNKNOWN,                       "Reserved 0x9c04" },
 	{SC_ERROR_NO_CARD_SUPPORT,               "Unsupported feature" },
 	{SC_ERROR_SECURITY_STATUS_NOT_SATISFIED, "Not authorized" },
 	{SC_ERROR_DATA_OBJECT_NOT_FOUND,         "Object not found" },
 	{SC_ERROR_FILE_ALREADY_EXISTS,           "Object exists" },
 	{SC_ERROR_NO_CARD_SUPPORT,               "Incorrect Algorithm" },
-	{SC_ERROR_UNKNOWN,                       "Reservered 0x9c0a" },
+	{SC_ERROR_UNKNOWN,                       "Reserved 0x9c0a" },
 	{SC_ERROR_SM_INVALID_CHECKSUM,           "Signature invalid" },
 	{SC_ERROR_AUTH_METHOD_BLOCKED,           "Identity blocked" },
-	{SC_ERROR_UNKNOWN,                       "Reservered 0x9c0d" },
-	{SC_ERROR_UNKNOWN,                       "Reservered 0x9c0e" },
+	{SC_ERROR_UNKNOWN,                       "Reserved 0x9c0d" },
+	{SC_ERROR_UNKNOWN,                       "Reserved 0x9c0e" },
 	{SC_ERROR_INCORRECT_PARAMETERS,          "Invalid parameter" },
 	{SC_ERROR_INCORRECT_PARAMETERS,          "Incorrect P1" },
 	{SC_ERROR_INCORRECT_PARAMETERS,          "Incorrect P2" },
@@ -914,7 +914,7 @@ static int coolkey_check_sw(sc_card_t *card, unsigned int sw1, unsigned int sw2)
  * an internal 4096 byte buffer is used, and a copy is returned to the
  * caller. that need to be freed by the caller.
  *
- * modelled after a similiar function in card-piv.c. The coolkey version
+ * modelled after a similar function in card-piv.c. The coolkey version
  * adds the coolkey nonce to user authenticated operations.
  */
 
@@ -1134,7 +1134,7 @@ static int coolkey_read_object(sc_card_t *card, unsigned long object_id, size_t 
 		if (r < 0) {
 			goto fail;
 		}
-		/* santity check to make sure we don't overflow left */
+		/* sanity check to make sure we don't overflow left */
 		if ((left < len) || (len == 0)) {
 			r = SC_ERROR_INTERNAL;
 			goto fail;
@@ -1903,7 +1903,7 @@ static unsigned short coolkey_get_key_id(unsigned long object_id) {
 }
 
 /*
- * COOLKEY cards don't select objects in the applet, objects are selected by a paramter
+ * COOLKEY cards don't select objects in the applet, objects are selected by a parameter
  * to the APDU. We create paths for the object in which the path value is the object_id
  * and the path type is SC_PATH_SELECT_FILE_ID (so we could cache at the PKCS #15 level if
  * we wanted to.
@@ -2267,7 +2267,7 @@ static int coolkey_init(sc_card_t *card)
 	/* set Token Major/minor version */
 	flags = SC_ALGORITHM_RSA_RAW;
 
-	_sc_card_add_rsa_alg(card, 1024, flags, 0); /* manditory */
+	_sc_card_add_rsa_alg(card, 1024, flags, 0); /* mandatory */
 	_sc_card_add_rsa_alg(card, 2048, flags, 0); /* optional */
 	_sc_card_add_rsa_alg(card, 3072, flags, 0); /* optional */
 

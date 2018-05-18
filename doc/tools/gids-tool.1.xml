@@ -75,15 +75,21 @@
 					<term>
 						<option>--new-admin-key</option> <replaceable>argument</replaceable>
 					</term>
-					<listitem><para>Define the new adminastrator key.</para></listitem>
+					<listitem><para>Define the new administrator key.</para></listitem>
 				</varlistentry>
 				<varlistentry>
 					<term>
 						<option>--reader</option> <replaceable>argument</replaceable>,
 						<option>-r</option> <replaceable>argument</replaceable>
 					</term>
-					<listitem><para>Uses reader number
-					<replaceable>argument</replaceable>.</para></listitem>
+					<listitem>
+						<para>
+							Specify the reader to use. By default, the first
+							reader with a present card is used. If
+							<replaceable>num</replaceable> is an ATR, the
+							reader with a matching card will be chosen.
+						</para>
+					</listitem>
 				</varlistentry>
 				<varlistentry>
 					<term>
@@ -112,6 +118,12 @@
 				<manvolnum>1</manvolnum>
 			</citerefentry>
 		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Authors</title>
+		<para><command>gids-tool</command> was written by
+		Vincent Le Toux <email>vincent.letoux@mysmartlogon.com</email>.</para>
 	</refsect1>
 
 </refentry>

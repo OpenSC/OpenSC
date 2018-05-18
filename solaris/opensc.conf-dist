@@ -35,7 +35,7 @@ app default {
 	# What reader drivers to load at start-up
 	#
 	# A special value of 'internal' will load all
-	# statically linked drivers. If an unknown (ie. not
+	# statically linked drivers. If an unknown (i.e. not
 	# internal) driver is supplied, a separate configuration
 	# configuration block has to be written for the driver.
 	# Default: internal
@@ -96,7 +96,7 @@ app default {
 	# What card drivers to load at start-up
 	#
 	# A special value of 'internal' will load all
-	# statically linked drivers. If an unknown (ie. not
+	# statically linked drivers. If an unknown (i.e. not
 	# internal) driver is supplied, a separate configuration
 	# configuration block has to be written for the driver.
 	# Default: internal
@@ -135,15 +135,6 @@ app default {
 		# atr = 00:11:22:33:44;
 		# atr = 55:66:77:88:99:aa:bb;
 	# }
-
-	# Force using specific card driver
-	#
-	# If this option is present, OpenSC will use the supplied
-	# driver with all inserted cards.
-	#
-	# Default: autodetect
-	#
-	# force_card_driver = miocos;
 
 	# Below are the framework specific configuration blocks.
 

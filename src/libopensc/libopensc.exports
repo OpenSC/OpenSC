@@ -130,7 +130,6 @@ sc_list_files
 sc_lock
 sc_logout
 sc_make_cache_dir
-sc_mem_alloc_secure
 sc_mem_clear
 sc_mem_reverse
 sc_match_atr_block

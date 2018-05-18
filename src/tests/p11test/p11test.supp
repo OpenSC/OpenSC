@@ -1,0 +1,30 @@
+{
+   Suppress pcsc_detect_readers()
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:malloc
+   obj:*
+   obj:*
+   fun:pcsc_detect_readers
+   fun:sc_ctx_detect_readers
+   fun:sc_context_create
+   fun:C_Initialize
+}
+{
+   Suppress MessageSend() errors
+   Memcheck:Param
+   socketcall.sendto(msg)
+   fun:send
+   fun:MessageSend
+   fun:MessageSendWithHeader
+   fun:SCardConnect
+   fun:pcsc_detect_readers
+   fun:sc_ctx_detect_readers
+   fun:sc_context_create
+   fun:C_Initialize
+   fun:load_pkcs11_module
+   fun:group_setup
+   obj:/usr/lib64/libcmocka.so.0.3.1
+   fun:_cmocka_run_group_tests
+}
+

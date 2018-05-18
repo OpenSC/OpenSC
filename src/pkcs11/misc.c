@@ -187,7 +187,7 @@ CK_RV push_login_state(struct sc_pkcs11_slot *slot,
 	}
 
 	if (pPin && ulPinLen) {
-		login->pPin = sc_mem_alloc_secure(context, (sizeof *pPin)*ulPinLen);
+		login->pPin = calloc((sizeof *pPin), ulPinLen);
 		if (login->pPin == NULL) {
 			goto err;
 		}
@@ -458,7 +458,6 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t * ctx)
 	conf->init_sloppy = 1;
 	conf->pin_unblock_style = SC_PKCS11_PIN_UNBLOCK_NOT_ALLOWED;
 	conf->create_puk_slot = 0;
-	conf->zero_ckaid_for_ca_certs = 0;
 	conf->create_slots_flags = SC_PKCS11_SLOT_CREATE_ALL;
 
 	conf_block = sc_get_conf_block(ctx, "pkcs11", NULL, 1);
@@ -484,7 +483,6 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t * ctx)
 		conf->pin_unblock_style = SC_PKCS11_PIN_UNBLOCK_SO_LOGGED_INITPIN;
 
 	conf->create_puk_slot = scconf_get_bool(conf_block, "create_puk_slot", conf->create_puk_slot);
-	conf->zero_ckaid_for_ca_certs = scconf_get_bool(conf_block, "zero_ckaid_for_ca_certs", conf->zero_ckaid_for_ca_certs);
 
 	create_slots_for_pins = (char *)scconf_get_str(conf_block, "create_slots_for_pins", "all");
 	conf->create_slots_flags = 0;
@@ -503,8 +501,8 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t * ctx)
 
 	sc_log(ctx, "PKCS#11 options: max_virtual_slots=%d slots_per_card=%d "
 		 "hide_empty_tokens=%d lock_login=%d atomic=%d pin_unblock_style=%d "
-		 "zero_ckaid_for_ca_certs=%d create_slots_flags=0x%X",
+		 "create_slots_flags=0x%X",
 		 conf->max_virtual_slots, conf->slots_per_card,
 		 conf->hide_empty_tokens, conf->lock_login, conf->atomic, conf->pin_unblock_style,
-		 conf->zero_ckaid_for_ca_certs, conf->create_slots_flags);
+		 conf->create_slots_flags);
 }
