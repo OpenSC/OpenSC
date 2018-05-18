@@ -1,7 +1,7 @@
 TOPDIR = ..
 
 SUBDIRS = common scconf ui sm pkcs15init \
-		  libopensc pkcs11 tools tests
+		  libopensc pkcs11 tools
 
 default: all
 
@@ -13,6 +13,10 @@ SUBDIRS = $(SUBDIRS) minidriver
 
 !IF "$(SM_DEF)" == "/DENABLE_SM"
 SUBDIRS = $(SUBDIRS) smm
+!ENDIF
+
+!IF "$(TESTS_DEF)" == "/DENABLE_TESTS"
+SUBDIRS = $(SUBDIRS) tests
 !ENDIF
 
 all clean::

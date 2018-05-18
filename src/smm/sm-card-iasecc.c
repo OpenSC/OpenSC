@@ -248,7 +248,7 @@ sm_iasecc_get_apdu_verify_pin(struct sc_context *ctx, struct sm_info *sm_info, s
 	rapdu->apdu.p1 = 0x00;
 	rapdu->apdu.p2 = pin_data->pin_reference & ~IASECC_OBJECT_REF_GLOBAL;
 	if (pin_data->pin1.len > SM_MAX_DATA_SIZE)
-		LOG_TEST_RET(ctx, rv, "SM get 'VERIFY PIN' APDU: invelid PIN size");
+		LOG_TEST_RET(ctx, rv, "SM get 'VERIFY PIN' APDU: invalid PIN size");
 
 	memcpy((unsigned char *)rapdu->apdu.data, pin_data->pin1.data, pin_data->pin1.len);
 	rapdu->apdu.datalen = pin_data->pin1.len;
@@ -637,7 +637,7 @@ sm_iasecc_decode_card_data(struct sc_context *ctx, struct sm_info *sm_info, stru
 
 			if (out && out_len)   {
 				if (out_len < offs + decrypted_len)
-					LOG_TEST_RET(ctx, SC_ERROR_BUFFER_TOO_SMALL, "IAS/ECC decode answer(s): unsufficient output buffer size");
+					LOG_TEST_RET(ctx, SC_ERROR_BUFFER_TOO_SMALL, "IAS/ECC decode answer(s): insufficient output buffer size");
 
 				memcpy(out + offs, decrypted, decrypted_len);
 

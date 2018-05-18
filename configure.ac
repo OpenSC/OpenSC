@@ -6,7 +6,7 @@ define([PRODUCT_NAME], [OpenSC])
 define([PRODUCT_TARNAME], [opensc])
 define([PRODUCT_BUGREPORT], [https://github.com/OpenSC/OpenSC/issues])
 define([PACKAGE_VERSION_MAJOR], [0])
-define([PACKAGE_VERSION_MINOR], [17])
+define([PACKAGE_VERSION_MINOR], [18])
 define([PACKAGE_VERSION_FIX], [0])
 define([PACKAGE_SUFFIX], [])
 
@@ -43,8 +43,8 @@ OPENSC_VS_FF_PRODUCT_URL="VS_FF_PRODUCT_URL"
 #   (Code changed:                      REVISION++)
 #   (Oldest interface removed:          OLDEST++)
 #   (Interfaces added:                  CURRENT++, REVISION=0)
-OPENSC_LT_CURRENT="5"
-OPENSC_LT_OLDEST="5"
+OPENSC_LT_CURRENT="6"
+OPENSC_LT_OLDEST="6"
 OPENSC_LT_REVISION="0"
 OPENSC_LT_AGE="0"
 OPENSC_LT_AGE="$((${OPENSC_LT_CURRENT}-${OPENSC_LT_OLDEST}))"
@@ -138,7 +138,7 @@ AM_CONDITIONAL([HAVE_UNKNOWN_WARNING_OPTION], [test "${have_unknown_warning_opti
 
 AC_ARG_ENABLE(
 	[strict],
-	[AS_HELP_STRING([--disable-strict],[disable strict compile mode @<:@disabled@:>@])],
+	[AS_HELP_STRING([--disable-strict],[disable strict compile mode @<:@enabled@:>@])],
 	,
 	[enable_strict="yes"]
 )
@@ -253,6 +253,13 @@ AC_ARG_ENABLE(
 	[AS_HELP_STRING([--enable-notify],[enable notifications @<:@detect@:>@])],
 	,
 	[enable_notify="detect"]
+)
+
+AC_ARG_ENABLE(
+	[tests],
+	[AS_HELP_STRING([--enable-tests],[Build tests in src/tests/ directory @<:@detect@:>@])],
+	,
+	[enable_tests="detect"]
 )
 
 AC_ARG_WITH(
@@ -446,10 +453,13 @@ if test "${enable_dnie_ui}" = "yes"; then
 	AC_DEFINE([ENABLE_DNIE_UI], [1], [Enable the use of external user interface program to request DNIe user pin])
 
 	case "${host}" in
-		*-*-darwin)
-			if test "${enable_dnie_ui}" = "yes"; then
-				LDFLAGS="${LDFLAGS} -framework Carbon"
-			fi
+		*-*-darwin*)
+			LDFLAGS="${LDFLAGS} -framework Carbon"
+		;;
+	esac
+	case "${host}" in
+		*-apple-*)
+			LDFLAGS="${LDFLAGS} -framework CoreFoundation"
 		;;
 	esac
 fi
@@ -505,6 +515,26 @@ if test "${enable_notify}" = "yes"; then
 		fi
 	else
 		AC_MSG_ERROR([notification linkage required, but no notification provider was found])
+	fi
+fi
+
+PKG_CHECK_MODULES( [CMOCKA], [cmocka],
+		  [ have_cmocka="yes" ],
+		  [ have_cmocka="no" ])
+
+if test "${enable_tests}" = "detect"; then
+	if test "${have_cmocka}" = "yes"; then
+		enable_tests="yes"
+	else
+		enable_tests="no"
+	fi
+fi
+
+if test "${enable_tests}" = "yes"; then
+	if test "${have_cmocka}" = "yes"; then
+		AC_DEFINE([ENABLE_TESTS], [1], [Build tests in tests/ subdirectory])
+	else
+		AC_MSG_ERROR([Tests required, but cmocka is not available])
 	fi
 fi
 
@@ -994,6 +1024,7 @@ AM_CONDITIONAL([ENABLE_MINIDRIVER_SETUP_CUSTOMACTION], [test "${enable_minidrive
 AM_CONDITIONAL([ENABLE_SM], [test "${enable_sm}" = "yes"])
 AM_CONDITIONAL([ENABLE_DNIE_UI], [test "${enable_dnie_ui}" = "yes"])
 AM_CONDITIONAL([ENABLE_NPATOOL], [test "${ENABLE_NPATOOL}" = "yes"])
+AM_CONDITIONAL([ENABLE_TESTS], [test "${ENABLE_TESTS}" = "yes"])
 AM_CONDITIONAL([GIT_CHECKOUT], [test "${GIT_CHECKOUT}" = "yes"])
 
 if test "${enable_pedantic}" = "yes"; then
@@ -1022,6 +1053,7 @@ AC_CONFIG_FILES([
 	src/scconf/Makefile
 	src/tests/Makefile
 	src/tests/regression/Makefile
+	src/tests/p11test/Makefile
 	src/tools/Makefile
 	src/tools/versioninfo-tools.rc
 	src/tools/versioninfo-opensc-notify.rc
@@ -1079,6 +1111,7 @@ SM support:              ${enable_sm}
 SM default module:       ${DEFAULT_SM_MODULE}
 DNIe UI support:         ${enable_dnie_ui}
 Notification support:    ${enable_notify}
+Build tests:             ${enable_tests}
 Debug file:              ${DEBUG_FILE}
 
 PC/SC default provider:  ${DEFAULT_PCSC_PROVIDER}

@@ -94,14 +94,14 @@ WHY RE-INVENT THE WHEEL?
 ========================
 
 I re-implemented getopt, getopt_long, and getopt_long_only because
-there were noticable bugs in several versions of the GNU
+there were noticeable bugs in several versions of the GNU
 implementations, and because the GNU versions aren't always available
 on some systems (*BSD, for example.) Other systems don't include any
 sort of standard argument parser (Win32 with Microsoft tools, for
 example, has no getopt.)
 
 These should do all the expected Unix- and GNU-style argument
-parsing, including permution, bunching, long options with single or
+parsing, including permutation, bunching, long options with single or
 double dashes (double dashes are required if you use
 my_getopt_long,) and optional arguments for both long and short
 options. A word with double dashes all by themselves halts argument
@@ -112,11 +112,11 @@ separated by '='.
 
 As with the GNU versions, a '+' prefix to the short option
 specification (or the POSIXLY_CORRECT environment variable) disables
-permution, a '-' prefix to the short option specification returns 1
+permutation, a '-' prefix to the short option specification returns 1
 for non-options, ':' after a short option indicates a required
 argument, and '::' after a short option specification indicates an
 optional argument (which must appear in the same word.) If you'd like
-to recieve ':' instead of '?' for missing option arguments, prefix the
+to receive ':' instead of '?' for missing option arguments, prefix the
 short option specification with ':'.
 
 The original intent was to re-implement the documented behavior of

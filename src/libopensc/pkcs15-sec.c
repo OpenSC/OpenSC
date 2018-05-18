@@ -2,7 +2,7 @@
  * pkcs15-sec.c: PKCS#15 cryptography functions
  *
  * Copyright (C) 2001, 2002  Juha Yrjölä <juha.yrjola@iki.fi>
- * Copyrigth (C) 2007        Nils Larsch <nils@larsch.net>
+ * Copyright (C) 2007        Nils Larsch <nils@larsch.net>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -49,7 +49,7 @@ static int select_key_file(struct sc_pkcs15_card *p15card,
 	/* TODO: Why file_app may be NULL -- at least 3F00 has to be present?
 	 * Check validity of the following assumption. */
 	/* For pkcs15-emulated cards, the file_app may be NULL,
-	 * in that case we allways assume an absolute path */
+	 * in that case we always assume an absolute path */
 	if (!prkey->path.len && prkey->path.aid.len) {
 		/* Private key is a SDO allocated in application DF */
 		path = prkey->path;

@@ -345,7 +345,7 @@ isoApplet_get_curve(u8 *oid, size_t oid_len, const struct ec_curve **curve_out)
  * @param[in] pubkey The public key of the generated key pair
  *                   returned by the card.
  *
- * @return	SC_ERROR_INVALID_ARGURMENTS: Invalid key length.
+ * @return	SC_ERROR_INVALID_ARGUMENTS: Invalid key length.
  *          SC_ERROR_OUT_OF_MEMORY
  */
 static int
@@ -434,7 +434,7 @@ err:
  * @param[in/out] pubkey The public key of the generated key pair
  *						 returned by the card.
  *
- * @return SC_ERROR_INVALID_ARGURMENTS: Invalid key length or curve.
+ * @return SC_ERROR_INVALID_ARGUMENTS: Invalid key length or curve.
  *         SC_ERROR_OUT_OF_MEMORY
  *         SC_ERROR_INCOMPATIBLE_KEY: The data returned by the card
  *                                    was unexpected and can not be
@@ -736,7 +736,7 @@ isoApplet_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_pkcs15_
 		args.algorithm_ref = SC_ISOAPPLET_ALG_REF_EC_GEN;
 		if(key->u.ec.params.der.len == 0 || key->u.ec.params.der.value == NULL) {
 			r = sc_pkcs15_fix_ec_parameters(card->ctx, &key->u.ec.params);
-			LOG_TEST_RET(card->ctx, r, "EC key storing failed: Unkown curve.");
+			LOG_TEST_RET(card->ctx, r, "EC key storing failed: Unknown curve.");
 		}
 		r = isoApplet_get_curve(key->u.ec.params.der.value, key->u.ec.params.der.len, &curve);
 		LOG_TEST_RET(card->ctx, r, "EC key generation failed: Unsupported curve");

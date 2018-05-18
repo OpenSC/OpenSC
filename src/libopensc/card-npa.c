@@ -1,7 +1,7 @@
 /*
  * card-npa.c: Recognize known German identity cards
  *
- * Copyright (C) 2011-2015 Frank Morgner <frankmorgner@gmail.com>
+ * Copyright (C) 2011-2018 Frank Morgner <frankmorgner@gmail.com>
  *
  * This file is part of OpenSC.
  *
@@ -68,11 +68,11 @@ static void npa_drv_data_free(struct npa_drv_data *drv_data)
 static struct sc_atr_table npa_atrs[] = {
 	{"3B:8A:80:01:80:31:F8:73:F7:41:E0:82:90:00:75",
 		"FF:FF:FF:FF:FF:FF:00:FF:00:00:FF:FF:FF:FF:00",
-		"German ID card (neuer Personalausweis, nPA)", SC_CARD_TYPE_NPA, 0, NULL},
+		NULL, SC_CARD_TYPE_NPA, 0, NULL},
 	{"3B:88:80:01:00:00:00:00:00:00:00:00:09", NULL,
-		"German ID card (neuer Personalausweis, nPA)", SC_CARD_TYPE_NPA, 0, NULL},
+		NULL, SC_CARD_TYPE_NPA, 0, NULL},
 	{"3B:87:80:01:80:31:B8:73:84:01:E0:19", NULL,
-		"German ID card (neuer Personalausweis, nPA)", SC_CARD_TYPE_NPA, 0, NULL},
+		NULL, SC_CARD_TYPE_NPA, 0, NULL},
 	{"3B:84:80:01:00:00:90:00:95", NULL,
 		"German ID card (Test neuer Personalausweis)", SC_CARD_TYPE_NPA_TEST, 0, NULL},
 	{"3B:88:80:01:00:E1:F3:5E:13:77:83:00:00",
@@ -149,9 +149,31 @@ err:
 
 static int npa_match_card(sc_card_t * card)
 {
-	if (_sc_match_atr(card, npa_atrs, &card->type) < 0)
-		return 0;
-	return 1;
+	int r = 0;
+	unsigned char *ef_cardaccess = NULL;
+	size_t ef_cardaccess_len = 0;
+
+	r = _sc_match_atr(card, npa_atrs, &card->type);
+	if (r >= 0) {
+		if (NULL == card->name) {
+			card->name = npa_atrs[r].name;
+		}
+		r = 1;
+	} else {
+		r = 0;
+	}
+
+	if (0 == r
+			&& SC_SUCCESS == iso7816_read_binary_sfid(
+				card, SFID_EF_CARDACCESS,
+			   	&ef_cardaccess, &ef_cardaccess_len)) {
+		card->type = SC_CARD_TYPE_NPA;
+		r = 1;
+	}
+
+	free(ef_cardaccess);
+
+	return r;
 }
 
 static void npa_get_cached_pace_params(sc_card_t *card,
@@ -291,9 +313,9 @@ static int npa_unlock_esign(sc_card_t *card)
 	}
 
 	/* FIXME set flags with opensc.conf */
-	npa_default_flags |= NPA_FLAG_DISABLE_CHECK_ALL;
-	npa_default_flags |= NPA_FLAG_DISABLE_CHECK_TA;
-	npa_default_flags |= NPA_FLAG_DISABLE_CHECK_CA;
+	eac_default_flags |= EAC_FLAG_DISABLE_CHECK_ALL;
+	eac_default_flags |= EAC_FLAG_DISABLE_CHECK_TA;
+	eac_default_flags |= EAC_FLAG_DISABLE_CHECK_CA;
 
 	/* FIXME show an alert to the user if can == NULL */
 	r = perform_pace(card, pace_input, &pace_output, EAC_TR_VERSION_2_02);
@@ -313,7 +335,7 @@ static int npa_unlock_esign(sc_card_t *card)
 		}
 		r = perform_chip_authentication(card, &ef_cardsecurity, &ef_cardsecurity_len);
 		if ( SC_SUCCESS != r) {
-			sc_log(card->ctx, "Error verifying the chips authenticy.\n");
+			sc_log(card->ctx, "Error verifying the chip's authenticity.\n");
 		}
 
 		sc_log(card->ctx, "Proved Access rights to eSign application with configured key as ST.\n");
@@ -343,7 +365,7 @@ static int npa_init(sc_card_t * card)
 	}
 
 	card->caps |= SC_CARD_CAP_APDU_EXT | SC_CARD_CAP_RNG;
-	/* 1520 bytes is the minimum lenght of the communication buffer in all
+	/* 1520 bytes is the minimum length of the communication buffer in all
 	 * Chip/OS variants */
 	card->max_recv_size = 1520;
 	card->max_send_size = 1520;
@@ -381,8 +403,22 @@ static int npa_init(sc_card_t * card)
 
 	/* unlock the eSign application for reading the certificates
 	 * by the PKCS#15 layer (i.e. sc_pkcs15_bind_internal) */
-	if (SC_SUCCESS != npa_unlock_esign(card))
-		sc_log(card->ctx, "Propably not all functionality will be available.\n");
+	if (SC_SUCCESS == sc_enum_apps(card)) {
+		unsigned char esign_aid[] = {
+			0xA0, 0x00, 0x00, 0x01, 0x67, 0x45, 0x53, 0x49, 0x47, 0x4E,
+		};
+		int i;
+		for (i = 0; i < card->app_count; i++)   {
+			struct sc_app_info *app_info = card->app[i];
+			if (sizeof esign_aid == app_info->aid.len
+					&& 0 == memcmp(esign_aid, app_info->aid.value, sizeof esign_aid)) {
+				if (SC_SUCCESS != npa_unlock_esign(card)) {
+					sc_log(card->ctx, "Probably not all functionality will be available.\n");
+				}
+				break;
+			}
+		}
+	}
 
 err:
 	return r;
@@ -451,7 +487,7 @@ static int npa_pin_cmd_get_info(struct sc_card *card,
 			/* usually 10 tries */
 			*tries_left = 10;
 			data->pin1.max_tries = 10;
-			r = npa_pace_get_tries_left(card,
+			r = eac_pace_get_tries_left(card,
 					pin_reference, tries_left);
 			data->pin1.tries_left = *tries_left;
 			break;
@@ -460,7 +496,7 @@ static int npa_pin_cmd_get_info(struct sc_card *card,
 			/* usually 3 tries */
 			*tries_left = 3;
 			data->pin1.max_tries = 3;
-			r = npa_pace_get_tries_left(card,
+			r = eac_pace_get_tries_left(card,
 					pin_reference, tries_left);
 			data->pin1.tries_left = *tries_left;
 			break;
@@ -511,10 +547,10 @@ static int npa_pace_verify(struct sc_card *card,
 			&& r != SC_SUCCESS
 			&& pace_output.mse_set_at_sw1 == 0x63
 			&& (pace_output.mse_set_at_sw2 & 0xc0) == 0xc0
-			&& (pace_output.mse_set_at_sw2 & 0x0f) <= UC_PIN_SUSPENDED) {
+			&& (pace_output.mse_set_at_sw2 & 0x0f) <= EAC_UC_PIN_SUSPENDED) {
 		/* TODO ask for user consent when automatically resuming the PIN */
 		sc_log(card->ctx, "%s is suspended. Will try to resume it with %s.\n",
-				npa_secret_name(pin_reference), npa_secret_name(PACE_PIN_ID_CAN));
+				eac_secret_name(pin_reference), eac_secret_name(PACE_PIN_ID_CAN));
 
 		pace_input.pin_id = PACE_PIN_ID_CAN;
 		pace_input.pin = NULL;
@@ -532,9 +568,9 @@ static int npa_pace_verify(struct sc_card *card,
 			r = perform_pace(card, pace_input, &pace_output, EAC_TR_VERSION_2_02);
 
 			if (r == SC_SUCCESS) {
-				sc_log(card->ctx, "%s resumed.\n", npa_secret_name(pin_reference));
+				sc_log(card->ctx, "%s resumed.\n", eac_secret_name(pin_reference));
 				if (tries_left) {
-					*tries_left = MAX_PIN_TRIES;
+					*tries_left = EAC_MAX_PIN_TRIES;
 				}
 			} else {
 				if (tries_left) {
@@ -552,10 +588,10 @@ static int npa_pace_verify(struct sc_card *card,
 	if (pin_reference == PACE_PIN_ID_PIN && tries_left) {
 	   if (*tries_left == 0) {
 		   sc_log(card->ctx, "%s is suspended and must be resumed.\n",
-				   npa_secret_name(pin_reference));
+				   eac_secret_name(pin_reference));
 	   } else if (*tries_left == 1) {
 		   sc_log(card->ctx, "%s is blocked and must be unblocked.\n",
-				   npa_secret_name(pin_reference));
+				   eac_secret_name(pin_reference));
 	   }
 	}
 
@@ -581,6 +617,79 @@ static int npa_standard_pin_cmd(struct sc_card *card,
 		r = SC_ERROR_INTERNAL;
 	} else {
 		r = iso_drv->ops->pin_cmd(card, data, tries_left);
+	}
+
+	return r;
+}
+
+#ifdef ENABLE_OPENSSL
+#include <openssl/evp.h>
+#endif
+
+int
+npa_reset_retry_counter(sc_card_t *card, enum s_type pin_id,
+		int ask_for_secret, const char *new, size_t new_len)
+{
+	sc_apdu_t apdu;
+	char *p = NULL;
+	int r;
+
+	if (ask_for_secret && (!new || !new_len)) {
+		if (!(SC_READER_CAP_PIN_PAD & card->reader->capabilities)) {
+#if OPENSSL_VERSION_NUMBER >= 0x10000000L
+			p = malloc(EAC_MAX_PIN_LEN+1);
+			if (!p) {
+				sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Not enough memory for new PIN.\n");
+				return SC_ERROR_OUT_OF_MEMORY;
+			}
+			if (0 > EVP_read_pw_string_min(p,
+						EAC_MIN_PIN_LEN, EAC_MAX_PIN_LEN+1,
+						"Please enter your new PIN: ", 0)) {
+				sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not read new PIN.\n");
+				free(p);
+				return SC_ERROR_INTERNAL;
+			}
+			new_len = strlen(p);
+			if (new_len > EAC_MAX_PIN_LEN)
+				return SC_ERROR_INVALID_PIN_LENGTH;
+			new = p;
+#else
+			return SC_ERROR_NOT_SUPPORTED;
+#endif
+		}
+	}
+
+	sc_format_apdu(card, &apdu, 0, 0x2C, 0, pin_id);
+	apdu.data = (u8 *) new;
+	apdu.datalen = new_len;
+	apdu.lc = apdu.datalen;
+
+	if (new_len || ask_for_secret) {
+		apdu.p1 = 0x02;
+		apdu.cse = SC_APDU_CASE_3_SHORT;
+	} else {
+		apdu.p1 = 0x03;
+		apdu.cse = SC_APDU_CASE_1;
+	}
+
+	if (ask_for_secret && !new_len) {
+		struct sc_pin_cmd_data data;
+		data.apdu = &apdu;
+		data.cmd = SC_PIN_CMD_CHANGE;
+		data.flags = SC_PIN_CMD_IMPLICIT_CHANGE;
+		data.pin2.encoding = SC_PIN_ENCODING_ASCII;
+		data.pin2.length_offset = 0;
+		data.pin2.offset = 5;
+		data.pin2.max_length = EAC_MAX_PIN_LEN;
+		data.pin2.min_length = EAC_MIN_PIN_LEN;
+		data.pin2.pad_length = 0;
+		r = card->reader->ops->perform_verify(card->reader, &data);
+	} else
+		r = sc_transmit_apdu(card, &apdu);
+
+	if (p) {
+		sc_mem_clear(p, new_len);
+		free(p);
 	}
 
 	return r;
@@ -684,7 +793,7 @@ static int npa_logout(sc_card_t *card)
 
 	if (card->reader->capabilities & SC_READER_CAP_PACE_GENERIC) {
 		/* If PACE is done between reader and card, SM is transparent to us as
-		 * it ends at the reader. With CLA=0x0C we provoque a SM error to
+		 * it ends at the reader. With CLA=0x0C we provoke a SM error to
 		 * disable SM on the reader. */
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0xA4, 0x00, 0x00);
 		apdu.cla = 0x0C;

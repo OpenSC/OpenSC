@@ -271,7 +271,7 @@ static const cac_cuid_t cac_cac1_cuid = {
 };
 
 /*
- *  CAC-1 general objectes defined in 4.3.1.2 of CAC Applet Developer Guide Version 1.0.
+ *  CAC-1 general objects defined in 4.3.1.2 of CAC Applet Developer Guide Version 1.0.
  *   doubles as a source for CAC-2 labels.
  */
 static const cac_object_t cac_1_objects[] = {
@@ -326,7 +326,7 @@ static int cac_is_cert(cac_private_data_t * priv, const sc_path_t *in_path)
  * an internal 4096 byte buffer is used, and a copy is returned to the
  * caller. that need to be freed by the caller.
  *
- * modelled after a similiar function in card-piv.c
+ * modelled after a similar function in card-piv.c
  */
 
 static int cac_apdu_io(sc_card_t *card, int ins, int p1, int p2,
@@ -445,6 +445,9 @@ static int cac_read_file(sc_card_t *card, int file_type, u8 **out_buf, size_t *o
 	len = sizeof(count);
 	out_ptr = count;
 	r = cac_apdu_io(card, CAC_INS_READ_FILE, 0, 0, &params[0], sizeof(params), &out_ptr, &len);
+	if (len == 0) {
+		r = SC_ERROR_FILE_NOT_FOUND;
+	}
 	if (r < 0)
 		goto fail;
 
@@ -462,6 +465,10 @@ static int cac_read_file(sc_card_t *card, int file_type, u8 **out_buf, size_t *o
 		params[1] = len;
 		r = cac_apdu_io(card, CAC_INS_READ_FILE, HIGH_BYTE_OF_SHORT(offset), LOW_BYTE_OF_SHORT(offset),
 						&params[0], sizeof(params), &out_ptr, &len);
+		/* if there is no data, assume there is no file */
+		if (len == 0) {
+			r = SC_ERROR_FILE_NOT_FOUND;
+		}
 		if (r < 0) {
 			goto fail;
 		}
@@ -1059,7 +1066,7 @@ static int cac_select_file_by_type(sc_card_t *card, const sc_path_t *in_path, sc
 		if (cac_is_cert(priv, in_path)) {
 			priv->object_type = CAC_OBJECT_TYPE_CERT;
 		}
-		/* forget any old cacheed values */
+		/* forget any old cached values */
 		if (priv->cache_buf) {
 			free(priv->cache_buf);
 			priv->cache_buf = NULL;
@@ -1141,7 +1148,7 @@ static int cac_select_file_by_type(sc_card_t *card, const sc_path_t *in_path, sc
 	if (r)
 		LOG_FUNC_RETURN(ctx, r);
 
-		/* CAC cards enver return FCI, fake one */
+		/* CAC cards never return FCI, fake one */
 	file = sc_file_new();
 	if (file == NULL)
 			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
@@ -1249,7 +1256,7 @@ static int cac_parse_cardurl(sc_card_t *card, cac_private_data_t *priv, cac_card
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"CARDURL: ski_object found");
 	break;
 	default:
-		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"CARDURL: unkown object_object found (type=0x%x)", val->cardApplicationType);
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"CARDURL: unknown object_object found (type=0x%x)", val->cardApplicationType);
 		/* don't fail just because there is an unknown object in the CCC */
 		break;
 	}
@@ -1469,6 +1476,48 @@ static int cac_populate_cac_1(sc_card_t *card, int index, cac_private_data_t *pr
 	return SC_SUCCESS;
 }
 
+static int cac_process_ACA(sc_card_t *card, cac_private_data_t *priv)
+{
+	int r, index;
+	u8 *tl = NULL, *val = NULL;
+	size_t tl_len, val_len;
+
+
+	r = cac_read_file(card, CAC_FILE_TAG, &tl, &tl_len);
+	if (r < 0)
+		goto done;
+
+	r = cac_read_file(card, CAC_FILE_VALUE, &val, &val_len);
+	if (r < 0)
+		goto done;
+
+	/* TODO we should process the ACA file -- so far we are happy we can read it */
+	//r = cac_parse_ACA(card, priv, tl, tl_len, val, val_len);
+	r = cac_find_first_pki_applet(card, &index);
+        if (r == SC_SUCCESS) {
+		priv = cac_new_private_data();
+		if (!priv) {
+			r = SC_ERROR_OUT_OF_MEMORY;
+			goto done;
+		}
+		r = cac_populate_cac_1(card, index, priv);
+		if (r == SC_SUCCESS) {
+			priv->aca_path = malloc(sizeof(sc_path_t));
+			if (!priv->aca_path) {
+				r = SC_ERROR_OUT_OF_MEMORY;
+				goto done;
+			}
+			memcpy(priv->aca_path, &cac_ACA_Path, sizeof(sc_path_t));
+		}
+	}
+done:
+	if (tl)
+		free(tl);
+	if (val)
+		free(val);
+	return r;
+}
+
 /*
  * Look for a CAC card. If it exists, initialize our data structures
  */
@@ -1504,21 +1553,12 @@ static int cac_find_and_initialize(sc_card_t *card, int initialize)
 	/* Even some ALT tokens can be missing CCC so we should try with ACA */
 	r = cac_select_ACA(card);
 	if (r == SC_SUCCESS) {
-		r = cac_find_first_pki_applet(card, &index);
-	        if (r == SC_SUCCESS) {
-			priv = cac_new_private_data();
-			if (!priv)
-				return SC_ERROR_OUT_OF_MEMORY;
-			r = cac_populate_cac_1(card, index, priv);
-			if (r == SC_SUCCESS) {
-				priv->aca_path = malloc(sizeof(sc_path_t));
-				if (!priv->aca_path)
-					return SC_ERROR_OUT_OF_MEMORY;
-				memcpy(priv->aca_path, &cac_ACA_Path, sizeof(sc_path_t));
-				card->type = SC_CARD_TYPE_CAC_II;
-				card->drv_data = priv;
-				return r;
-			}
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "ACA found, is CAC-2 without CCC");
+		r = cac_process_ACA(card, priv);
+		if (r == SC_SUCCESS) {
+			card->type = SC_CARD_TYPE_CAC_II;
+			card->drv_data = priv;
+			return r;
 		}
 	}
 
@@ -1575,7 +1615,7 @@ static int cac_init(sc_card_t *card)
 	}
 	flags = SC_ALGORITHM_RSA_RAW;
 
-	_sc_card_add_rsa_alg(card, 1024, flags, 0); /* manditory */
+	_sc_card_add_rsa_alg(card, 1024, flags, 0); /* mandatory */
 	_sc_card_add_rsa_alg(card, 2048, flags, 0); /* optional */
 	_sc_card_add_rsa_alg(card, 3072, flags, 0); /* optional */
 

@@ -214,7 +214,7 @@ int sc_enum_apps(sc_card_t *card)
 		size_t rec_size;
 
 		/* Arbitrary set '16' as maximal number of records to check out:
-		 * to avoid endless loop because of some uncomplete cards/drivers */
+		 * to avoid endless loop because of some incomplete cards/drivers */
 		for (rec_nr = 1; rec_nr < 16; rec_nr++) {
 			r = sc_read_record(card, rec_nr, buf, sizeof(buf), SC_RECORD_BY_REC_NR);
 			if (r == SC_ERROR_RECORD_NOT_FOUND)
@@ -259,10 +259,8 @@ void sc_free_apps(sc_card_t *card)
 	int	i;
 
 	for (i = 0; i < card->app_count; i++) {
-		if (card->app[i]->label)
-			free(card->app[i]->label);
-		if (card->app[i]->ddo.value)
-			free(card->app[i]->ddo.value);
+		free(card->app[i]->label);
+		free(card->app[i]->ddo.value);
 		free(card->app[i]);
 	}
 	card->app_count = -1;

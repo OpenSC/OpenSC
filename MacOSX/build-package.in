@@ -1,21 +1,13 @@
 #!/bin/bash
-# Building the installer is only tested and supported on 10.9+ with Xcode 6.0.1
-# Built package targets 10.10
-# Building should also work on older versions with older revisions or slight changes, YMMV
+# Build the macOS installer for the tokend and command line tools.
+#
+# This is only tested and supported on macOS 10.10 or later, using Xcode 6.0.1.
+# Building should also work on older macOS versions with slight changes; YMMV.
 
-# You need to have  the following from homebrew or macports or fink:
-# autoconf automake libtool pkg-config
+# You need to install the following packages from homebrew or macports or fink:
+# autoconf automake libtool pkg-config help2man gengetopt
 
-# If you want to compile with OpenSCToken/CryptoTokenKit set the following:
-#ENABLE_CRYPTOTOKENKIT="--disable-pcsc  --enable-cryptotokenkit"
-# When using CryptoTokenKit, code signing is required
-#SIGNING_IDENTITY=BA3CE53D402E3C75246557E2890F929F4A778DDE
-
-if test -z "$ENABLE_CRYPTOTOKENKIT"; then
-	export MACOSX_DEPLOYMENT_TARGET="10.10"
-else
-	export MACOSX_DEPLOYMENT_TARGET="10.12"
-fi
+export MACOSX_DEPLOYMENT_TARGET="10.10"
 
 set -ex
 test -x ./configure || ./bootstrap
@@ -69,8 +61,6 @@ if ! test -e ${BUILDPATH}/target/$PREFIX/lib/pkgconfig; then
 		--sysconfdir=$PREFIX/etc \
 		--enable-cvcdir=$PREFIX/etc/cvc \
 		--enable-x509dir=$PREFIX/etc/x509 \
-		$ENABLE_CRYPTOTOKENKIT \
-		--disable-notify \
 		--disable-dependency-tracking \
 		--enable-shared \
 		--enable-static \
@@ -96,48 +86,34 @@ if ! test -e ${BUILDPATH}/target/$PREFIX/lib/pkgconfig; then
 	./MacOSX/libtool-bundle ${BUILDPATH}/target/$PREFIX/lib/opensc-pkcs11.so ${BUILDPATH}/target/$PREFIX/lib
 fi
 
-if test -z "$ENABLE_CRYPTOTOKENKIT"; then
-	# Check out OpenSC.tokend, if not already fetched.
-	if ! test -e OpenSC.tokend; then
-		git clone http://github.com/OpenSC/OpenSC.tokend.git
-	fi
-
-	# Create the symlink to OpenSC sources
-	test -L OpenSC.tokend/build/opensc-src || ln -sf ${BUILDPATH}/src OpenSC.tokend/build/opensc-src
-
-	# Build and copy OpenSC.tokend
-	xcodebuild -target OpenSC -configuration Deployment -project OpenSC.tokend/Tokend.xcodeproj install DSTROOT=${BUILDPATH}/target
-
-	#if ! test -e $BUILDPATH/target/Library/Security/tokend/OpenSC.tokend/Contents/Resources/Applications/terminal-notifier.app; then
-		#if ! test -e terminal-notifier-1.7.1.zip; then
-			#curl -L https://github.com/julienXX/terminal-notifier/releases/download/1.7.1/terminal-notifier-1.7.1.zip > terminal-notifier-1.7.1.zip
-		#fi
-		#if ! test -e terminal-notifier-1.7.1; then
-			#unzip terminal-notifier-1.7.1.zip
-		#fi
-		#mkdir -p $BUILDPATH/target/Library/Security/tokend/OpenSC.tokend/Contents/Resources/Applications
-		#cp -r terminal-notifier-1.7.1/terminal-notifier.app $BUILDPATH/target/Library/Security/tokend/OpenSC.tokend/Contents/Resources/Applications
-	#fi
-
-	if ! test -e NotificationProxy; then
-		git clone http://github.com/frankmorgner/NotificationProxy.git
-	fi
-	xcodebuild -target NotificationProxy -configuration Release -project NotificationProxy/NotificationProxy.xcodeproj install DSTROOT=$BUILDPATH/target/Library/Security/tokend/OpenSC.tokend/Contents/Resources/
-	mkdir -p "$BUILDPATH/target/Applications"
-	osacompile -o "$BUILDPATH/target/Applications/OpenSC Notify.app" "MacOSX/OpenSC_Notify.applescript"
-else
-	# Check out OpenSCToken, if not already fetched.
-	if ! test -e OpenSCToken; then
-		git clone http://github.com/frankmorgner/OpenSCToken.git
-	fi
-
-	# Build and copy OpenSCTokenApp
-	xcodebuild -target OpenSCTokenApp -configuration Release -project OpenSCToken/OpenSCTokenApp.xcodeproj install DSTROOT=${BUILDPATH}/target
-
-	codesign --sign "$SIGNING_IDENTITY" --force --entitlements MacOSX/opensc.entitlements target/Library/OpenSC/bin/*
-	codesign --sign "$SIGNING_IDENTITY" --force --entitlements MacOSX/opensc.entitlements target/Library/OpenSC/lib/*.dylib
-	codesign --sign "$SIGNING_IDENTITY" --force --entitlements MacOSX/opensc.entitlements --deep target/Library/OpenSC/lib/opensc-pkcs11.bundle
+# Check out OpenSC.tokend, if not already fetched.
+if ! test -e OpenSC.tokend; then
+	git clone http://github.com/OpenSC/OpenSC.tokend.git
 fi
+
+# Create the symlink to OpenSC sources
+test -L OpenSC.tokend/build/opensc-src || ln -sf ${BUILDPATH}/src OpenSC.tokend/build/opensc-src
+
+# Build and copy OpenSC.tokend
+xcodebuild -target OpenSC -configuration Deployment -project OpenSC.tokend/Tokend.xcodeproj install DSTROOT=${BUILDPATH}/target
+
+#if ! test -e $BUILDPATH/target/Library/Security/tokend/OpenSC.tokend/Contents/Resources/Applications/terminal-notifier.app; then
+	#if ! test -e terminal-notifier-1.7.1.zip; then
+		#curl -L https://github.com/julienXX/terminal-notifier/releases/download/1.7.1/terminal-notifier-1.7.1.zip > terminal-notifier-1.7.1.zip
+	#fi
+	#if ! test -e terminal-notifier-1.7.1; then
+		#unzip terminal-notifier-1.7.1.zip
+	#fi
+	#mkdir -p $BUILDPATH/target/Library/Security/tokend/OpenSC.tokend/Contents/Resources/Applications
+	#cp -r terminal-notifier-1.7.1/terminal-notifier.app $BUILDPATH/target/Library/Security/tokend/OpenSC.tokend/Contents/Resources/Applications
+#fi
+
+if ! test -e NotificationProxy; then
+	git clone http://github.com/frankmorgner/NotificationProxy.git
+fi
+xcodebuild -target NotificationProxy -configuration Release -project NotificationProxy/NotificationProxy.xcodeproj install DSTROOT=$BUILDPATH/target/Library/Security/tokend/OpenSC.tokend/Contents/Resources/
+mkdir -p "$BUILDPATH/target/Applications"
+osacompile -o "$BUILDPATH/target/Applications/OpenSC Notify.app" "MacOSX/OpenSC_Notify.applescript"
 
 imagedir=$(mktemp -d)
 

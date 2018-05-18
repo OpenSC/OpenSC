@@ -314,7 +314,7 @@ int dnie_read_file(sc_card_t * card,
 		goto dnie_read_file_end;
 	}
 	fsize = (*file)->size;
-	/* reserve enought space to read data from card */
+	/* reserve enough space to read data from card */
 	if (fsize <= 0) {
 		res = SC_ERROR_FILE_TOO_SMALL;
 		msg = "provided buffer size is too small";
@@ -330,7 +330,7 @@ int dnie_read_file(sc_card_t * card,
 	sc_log(ctx, "read_binary(): expected '%"SC_FORMAT_LEN_SIZE_T"u' bytes",
 	       fsize);
 	res = sc_read_binary(card, 0, data, fsize, 0L);
-	if (res < 0) {		/* read_binary returns number of bytes readed */
+	if (res < 0) {		/* read_binary returns number of bytes read */
 		res = SC_ERROR_CARD_CMD_FAILED;
 		msg = "read_binary() failed";
 		goto dnie_read_file_err;
@@ -361,7 +361,7 @@ int dnie_read_file(sc_card_t * card,
  * No validation is done except that received data is effectively a certificate
  * @param card Pointer to card driver structure
  * @param certpat path to requested certificate
- * @param cert where to store resultig data
+ * @param cert where to store resulting data
  * @return SC_SUCCESS if ok, else error code
  */
 static int dnie_read_certificate(sc_card_t * card, char *certpath, X509 ** cert)
@@ -436,7 +436,7 @@ static int dnie_get_root_ca_pubkey(sc_card_t * card, EVP_PKEY ** root_ca_key)
 			EVP_PKEY_free(*root_ca_key);
 		if (root_ca_rsa)
 			RSA_free(root_ca_rsa);
-		sc_log(card->ctx, "Cannot set RSA valuses for CA public key");
+		sc_log(card->ctx, "Cannot set RSA values for CA public key");
 		return SC_ERROR_INTERNAL;
 	}
 
@@ -457,7 +457,7 @@ static int dnie_get_root_ca_pubkey(sc_card_t * card, EVP_PKEY ** root_ca_key)
  * (in CardVerifiable Certificate format) to be sent to the
  * card in External Authentication process
  * As this is local provider, just points to provided static data,
- * and allways return success
+ * and always return success
  *
  * @param card Pointer to card driver Certificate
  * @param cert Where to store resulting byte array
@@ -479,7 +479,7 @@ static int dnie_get_cvc_ca_cert(sc_card_t * card, u8 ** cert, size_t * length)
  * (in CardVerifiable Certificate format) to be sent to the
  * card in External Authentication process
  * As this is local provider, just points to provided static data,
- * and allways return success
+ * and always return success
  *
  * @param card Pointer to card driver Certificate
  * @param cert Where to store resulting byte array
@@ -502,7 +502,7 @@ static int dnie_get_cvc_ifd_cert(sc_card_t * card, u8 ** cert, size_t * length)
  * (in CardVerifiable Certificate format) to be sent to the
  * card in External Authentication process
  * As this is local provider, just points to provided static data,
- * and allways return success
+ * and always return success
  *
  * @param card Pointer to card driver Certificate
  * @param cert Where to store resulting byte array
@@ -651,7 +651,7 @@ static int dnie_get_root_ca_pubkey_ref(sc_card_t * card, u8 ** buf,
  * Retrieve public key reference for intermediate CA to validate IFD cert.
  *
  * This is required in the process of On card external authenticate
- * As this driver is for local SM authentication SC_SUCCESS is allways returned
+ * As this driver is for local SM authentication SC_SUCCESS is always returned
  *
  * @param card Pointer to card driver structure
  * @param buf where to store resulting key reference
@@ -671,7 +671,7 @@ static int dnie_get_intermediate_ca_pubkey_ref(sc_card_t * card, u8 ** buf,
  *
  * This tells the card with in memory key reference is to be used
  * when CVC cert is sent for external auth procedure
- * As this driver is for local SM authentication SC_SUCCESS is allways returned
+ * As this driver is for local SM authentication SC_SUCCESS is always returned
  *
  * @param card pointer to card driver structure
  * @param buf where to store data to be sent
@@ -690,7 +690,7 @@ static int dnie_get_ifd_pubkey_ref(sc_card_t * card, u8 ** buf, size_t * len)
  *
  * This tells the card with in memory key reference is to be used
  * when CVC cert is sent for external auth procedure
- * As this driver is for local SM authentication SC_SUCCESS is allways returned
+ * As this driver is for local SM authentication SC_SUCCESS is always returned
  *
  * @param card pointer to card driver structure
  * @param buf where to store data to be sent
@@ -708,7 +708,7 @@ static int dnie_get_ifd_pubkey_ref_pin(sc_card_t * card, u8 ** buf, size_t * len
 /**
  * Retrieve key reference for ICC privkey.
  *
- * In local SM stablishment, just retrieve key reference from static
+ * In local SM establishment, just retrieve key reference from static
  * data tables and just return success
  *
  * @param card pointer to card driver structure
@@ -772,7 +772,7 @@ static int dnie_get_sn_icc(sc_card_t * card)
 	struct sm_cwa_session * sm = &card->sm_ctx.info.session.cwa;
 
 	res = sc_card_ctl(card, SC_CARDCTL_GET_SERIALNR, &serial);
-	LOG_TEST_RET(card->ctx, res, "Error in gettting serial number");
+	LOG_TEST_RET(card->ctx, res, "Error in getting serial number");
 	/* copy into sn_icc buffer.Remember that dnie sn has 7 bytes length */
 	memset(sm->icc.sn, 0, sizeof(sm->icc.sn));
 	memcpy(&sm->icc.sn[1], serial.value, 7);

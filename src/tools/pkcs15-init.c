@@ -236,7 +236,7 @@ static const char *		option_help[] = {
 	"Store public key",
 	"Store secret key",
 	"Store an X.509 certificate",
-	"Update an X.509 certificate (carefull with mail decryption certs!!)",
+	"Update an X.509 certificate (careful with mail decryption certs!!)",
 	"Store a data object",
 	"Delete object(s) (use \"help\" for more information)",
 	"Change attribute(s) (use \"help\" for more information)",
@@ -268,7 +268,7 @@ static const char *		option_help[] = {
 	"Mark certificate as a CA certificate",
 	"Specify X.509 key usage (use \"--key-usage help\" for more information)",
 	"Finish initialization phase of the smart card",
-	"Update 'lastUpdate' attribut of tokenInfo",
+	"Update 'lastUpdate' attribute of tokenInfo",
 	"When storing PKCS#12 ignore CA certificates",
 	"Store or update existing certificate",
 
@@ -1474,7 +1474,7 @@ static int cert_is_root(sc_pkcs15_cert_t *c)
 }
 
 /* Check if the cert has a 'sibling' and return it's parent cert.
- * Should be made more effcicient for long chains by caching the certs.
+ * Should be made more efficient for long chains by caching the certs.
  */
 static int get_cert_info(sc_pkcs15_card_t *myp15card, sc_pkcs15_object_t *certobj,
 	int *has_sibling, int *stop, sc_pkcs15_object_t **issuercert)
@@ -1531,7 +1531,7 @@ done:
 /* Delete object(s) by ID. The 'which' param can be any combination of
  * SC_PKCS15INIT_TYPE_PRKEY, SC_PKCS15INIT_TYPE_PUBKEY, SC_PKCS15INIT_TYPE_CERT
  * and SC_PKCS15INIT_TYPE_CHAIN. In the last case, every cert in the chain is
- * deleted, starting with the cert with ID 'id' and untill a CA cert is
+ * deleted, starting with the cert with ID 'id' and until a CA cert is
  * reached that certified other remaining certs on the card.
  */
 static int do_delete_crypto_objects(sc_pkcs15_card_t *myp15card,
@@ -2556,7 +2556,7 @@ parse_objects(const char *list, unsigned int action)
 				printf("When \"data\" is specified, an --application-id must also be specified,\n");
 				printf("  in the other cases an \"--id\" must also be specified\n");
 				printf("When \"chain\" is specified, the certificate chain starting with the cert\n");
-				printf("  with specified ID will be deleted, untill there's a CA cert that certifies\n");
+				printf("  with specified ID will be deleted, until there's a CA cert that certifies\n");
 				printf("  another cert on the card\n");
 			}
 			else {
@@ -2574,7 +2574,7 @@ parse_objects(const char *list, unsigned int action)
 			}
 		}
 		if (del_flags[n].name == NULL) {
-			fprintf(stderr, "Unknown argument for --delete_objects: %.*s\n", len, list);
+			fprintf(stderr, "Unknown argument for --delete-objects: %.*s\n", len, list);
 			exit(0);
 		}
 		list += len;

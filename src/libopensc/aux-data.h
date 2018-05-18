@@ -1,6 +1,6 @@
 /*
  * aux-data.h: Non PKCS#15, non ISO7816 data
- *             Used to pass auxiliary data from non PKCS#15, non ISO7816 appliations (like minidriver)
+ *             Used to pass auxiliary data from non PKCS#15, non ISO7816 applications (like minidriver)
  *             to card specific part through the standard PKCS#15 and ISO7816 frameworks
  *
  * Copyright (C) 2016  Viktor Tarasov <viktor.tarasov@gmail.com>

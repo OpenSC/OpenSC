@@ -1,7 +1,7 @@
 /*
  * reader-escape.c: implementation related to escape commands with pseudo APDUs
  *
- * Copyright (C) 2013-2015  Frank Morgner
+ * Copyright (C) 2013-2018  Frank Morgner
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -43,20 +43,31 @@
 #include <endian.h>
 #endif
 
-static const u8 escape_cla                          = 0xff;
-static const u8 escape_ins                          = 0x9a;
+int get_pace_capabilities(u8 *bitmap)
+{
+	if (!bitmap)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
-static const u8 escape_p1_PIN                       = 0x04;
-static const u8 escape_p2_GetReaderPACECapabilities = 0x01;
-static const u8 escape_p2_EstablishPACEChannel      = 0x02;
-/*static const u8 escape_p2_DestroyPACEChannel        = 0x03;*/
-static const u8 escape_p2_PC_to_RDR_Secure          = 0x10;
+	/* BitMap */
+	*bitmap = EAC_BITMAP_PACE|EAC_BITMAP_EID|EAC_BITMAP_ESIGN;
 
-static const u8 escape_p1_IFD                       = 0x01;
-static const u8 escape_p2_vendor                    = 0x01;
-/*static const u8 escape_p2_product                   = 0x03;*/
-static const u8 escape_p2_version_firmware          = 0x06;
-/*static const u8 escape_p2_version_driver            = 0x07;*/
+	return SC_SUCCESS;
+}
+
+const u8 escape_cla                          = 0xff;
+const u8 escape_ins                          = 0x9a;
+
+const u8 escape_p1_PIN                       = 0x04;
+const u8 escape_p2_GetReaderPACECapabilities = 0x01;
+const u8 escape_p2_EstablishPACEChannel      = 0x02;
+/*const u8 escape_p2_DestroyPACEChannel        = 0x03;*/
+const u8 escape_p2_PC_to_RDR_Secure          = 0x10;
+
+const u8 escape_p1_IFD                       = 0x01;
+const u8 escape_p2_vendor                    = 0x01;
+/*const u8 escape_p2_product                   = 0x03;*/
+const u8 escape_p2_version_firmware          = 0x06;
+/*const u8 escape_p2_version_driver            = 0x07;*/
 
 struct sc_asn1_entry g_boolean[] = {
 	{ "boolean",
@@ -79,7 +90,7 @@ struct sc_asn1_entry g_numeric_string_as_octet_string[] = {
 	{ NULL , 0 , 0 , 0 , NULL , NULL }
 };
 
-static const struct sc_asn1_entry g_EstablishPACEChannelInput_data[] = {
+const struct sc_asn1_entry g_EstablishPACEChannelInput_data[] = {
 	{ "passwordID",
 		/* use an OCTET STRING to avoid a conversion to int */
 		SC_ASN1_STRUCT, SC_ASN1_CTX|0x01|SC_ASN1_CONS, 0, NULL, NULL },
@@ -94,7 +105,7 @@ static const struct sc_asn1_entry g_EstablishPACEChannelInput_data[] = {
 		SC_ASN1_STRUCT, SC_ASN1_CTX|0x05|SC_ASN1_CONS, SC_ASN1_OPTIONAL|SC_ASN1_ALLOC, NULL, NULL },
 	{ NULL , 0 , 0 , 0 , NULL , NULL }
 };
-static const struct sc_asn1_entry g_EstablishPACEChannelOutput_data[] = {
+const struct sc_asn1_entry g_EstablishPACEChannelOutput_data[] = {
 	{ "errorCode",
 		SC_ASN1_STRUCT, SC_ASN1_CTX|0x01|SC_ASN1_CONS, 0, NULL, NULL },
 	{ "statusMSESetAT",
@@ -109,7 +120,7 @@ static const struct sc_asn1_entry g_EstablishPACEChannelOutput_data[] = {
 		SC_ASN1_STRUCT, SC_ASN1_CTX|0x06|SC_ASN1_CONS, SC_ASN1_OPTIONAL|SC_ASN1_ALLOC, NULL, NULL },
 	{ NULL , 0 , 0 , 0 , NULL , NULL }
 };
-static const struct sc_asn1_entry g_EstablishPACEChannel[] = {
+const struct sc_asn1_entry g_EstablishPACEChannel[] = {
 	{ "EstablishPACEChannel",
 		SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE|SC_ASN1_CONS, 0, NULL, NULL },
 	{ NULL , 0 , 0 , 0 , NULL , NULL }

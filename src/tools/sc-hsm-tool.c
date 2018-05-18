@@ -297,7 +297,7 @@ static int createShares(const BIGNUM *s, const unsigned char t, const unsigned c
  * @param shares Shares used to reconstruct secret (should contain t entries)
  * @param t Threshold used to reconstruct the secret
  * @param prime Prime for finite field arithmetic
- * @param s Pointer for storage of calculated secred
+ * @param s Pointer for storage of calculated secret
  */
 static int reconstructSecret(secret_share_t *shares, unsigned char t, const BIGNUM *prime, BIGNUM *s)
 {
@@ -1223,7 +1223,8 @@ static size_t determineLength(const u8 *tlv, size_t buflen)
 	unsigned int cla,tag;
 	size_t len;
 
-	if (sc_asn1_read_tag(&ptr, buflen, &cla, &tag, &len) != SC_SUCCESS) {
+	if (sc_asn1_read_tag(&ptr, buflen, &cla, &tag, &len) != SC_SUCCESS
+			|| ptr == NULL) {
 		return 0;
 	}
 
@@ -1515,16 +1516,16 @@ static int unwrap_key(sc_card_t *card, int keyid, const char *inf, const char *p
 	fclose(in);
 
 	ptr = keyblob;
-	if ((sc_asn1_read_tag(&ptr, keybloblen, &cla, &tag, &len) != SC_SUCCESS) ||
-			((cla & SC_ASN1_TAG_CONSTRUCTED) != SC_ASN1_TAG_CONSTRUCTED) ||
-			((tag != SC_ASN1_TAG_SEQUENCE)) ){
+	if ((sc_asn1_read_tag(&ptr, keybloblen, &cla, &tag, &len) != SC_SUCCESS)
+		   	|| ((cla & SC_ASN1_TAG_CONSTRUCTED) != SC_ASN1_TAG_CONSTRUCTED)
+		   	|| (tag != SC_ASN1_TAG_SEQUENCE) ){
 		fprintf(stderr, "Invalid wrapped key format (Outer sequence).\n");
 		return -1;
 	}
 
-	if ((sc_asn1_read_tag(&ptr, len, &cla, &tag, &olen) != SC_SUCCESS) ||
-			(cla & SC_ASN1_TAG_CONSTRUCTED) ||
-			((tag != SC_ASN1_TAG_OCTET_STRING)) ){
+	if ((sc_asn1_read_tag(&ptr, len, &cla, &tag, &olen) != SC_SUCCESS)
+		   	|| ((cla & SC_ASN1_TAG_CONSTRUCTED) != SC_ASN1_TAG_CONSTRUCTED)
+		   	|| (tag != SC_ASN1_TAG_OCTET_STRING) ){
 		fprintf(stderr, "Invalid wrapped key format (Key binary).\n");
 		return -1;
 	}

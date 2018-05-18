@@ -244,7 +244,7 @@ int sc_apdu_set_resp(sc_context_t *ctx, sc_apdu_t *apdu, const u8 *buf,
  *                        +-------------------------------+
  *                                                        |
  *                                                        v
- *                                               card->reader->ops->tranmit
+ *                                               card->reader->ops->transmit
  */
 
 /** basic consistency check of the sc_apdu_t object
@@ -350,7 +350,7 @@ sc_detect_apdu_cse(const sc_card_t *card, sc_apdu_t *apdu)
 	if (apdu->cse == SC_APDU_CASE_2 || apdu->cse == SC_APDU_CASE_3 ||
 	    apdu->cse == SC_APDU_CASE_4) {
 		int btype = apdu->cse & SC_APDU_SHORT_MASK;
-		/* if either Lc or Le is bigger than the maximun for
+		/* if either Lc or Le is bigger than the maximum for
 		 * short APDUs and the card supports extended APDUs
 		 * use extended APDUs (unless Lc is greater than
 		 * 255 and command chaining is activated) */
@@ -443,7 +443,7 @@ sc_get_response(struct sc_card *card, struct sc_apdu *apdu, size_t olen)
 	if (!card->ops->get_response)
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "no GET RESPONSE command");
 
-	/* call GET RESPONSE until we have read all data requested or until the card retuns 0x9000,
+	/* call GET RESPONSE until we have read all data requested or until the card returns 0x9000,
 	 * whatever happens first. */
 
 	/* if there are already data in response append a new data to the end of the buffer */
@@ -524,7 +524,7 @@ sc_transmit(sc_card_t *card, sc_apdu_t *apdu)
 	LOG_TEST_RET(ctx, r, "transmit APDU failed");
 
 	/* ok, the APDU was successfully transmitted. Now we have two special cases:
-	 * 1. the card returned 0x6Cxx: in this case APDU will be re-trasmitted with Le set to SW2
+	 * 1. the card returned 0x6Cxx: in this case APDU will be re-transmitted with Le set to SW2
 	 * (possible only if response buffer size is larger than new Le = SW2)
 	 */
 	if (apdu->sw1 == 0x6C && (apdu->flags & SC_APDU_FLAGS_NO_RETRY_WL) == 0)

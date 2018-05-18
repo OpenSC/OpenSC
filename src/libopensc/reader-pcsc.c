@@ -762,7 +762,7 @@ static int pcsc_init(sc_context_t *ctx)
 	/* PC/SC Defaults */
 	gpriv->provider_library = DEFAULT_PCSC_PROVIDER;
 	gpriv->connect_exclusive = 0;
-	gpriv->disconnect_action = SCARD_RESET_CARD;
+	gpriv->disconnect_action = SCARD_LEAVE_CARD;
 	gpriv->transaction_end_action = SCARD_LEAVE_CARD;
 	gpriv->reconnect_action = SCARD_LEAVE_CARD;
 	gpriv->enable_pinpad = 1;
@@ -1399,7 +1399,7 @@ static int pcsc_detect_readers(sc_context_t *ctx)
 		}
 		if (rv == (LONG)SCARD_E_SHARING_VIOLATION) {
 			/* Assume that there is a card in the reader in shared mode if
-			 * direct communcation failed */
+			 * direct communication failed */
 			rv = gpriv->SCardConnect(gpriv->pcsc_ctx, reader->name,
 					SCARD_SHARE_SHARED,
 					SCARD_PROTOCOL_T0|SCARD_PROTOCOL_T1, &card_handle,

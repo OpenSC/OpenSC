@@ -625,7 +625,8 @@ pkcs15_cert_extract_label(struct pkcs15_cert_object *cert)
 			cert->cert_data->subject, cert->cert_data->subject_len,
 			&cn_oid, &cn_name, &cn_len);
 		if (rv == SC_SUCCESS) {
-			sc_log(context, "pkcs15_cert_extract_label(): Name from DN is %s", cn_name);
+			sc_log(context, "pkcs15_cert_extract_label(): Name from DN is %.*s",
+					(unsigned int) cn_len, cn_name);
 			cn_len = MIN(cn_len, SC_PKCS15_MAX_LABEL_SIZE-1);
 			memcpy(cert->cert_p15obj->label, cn_name, cn_len);
 			cert->cert_p15obj->label[cn_len] = '\0';
@@ -1326,7 +1327,7 @@ _add_pin_related_objects(struct sc_pkcs11_slot *slot, struct sc_pkcs15_object *p
 			pkcs15_add_object(slot, obj, NULL);
 		}
 		else   {
-			sc_log(context, "Slot:%p Object %d skeeped", slot, i);
+			sc_log(context, "Slot:%p Object %d skipped", slot, i);
 			continue;
 		}
 
@@ -1365,7 +1366,7 @@ _add_public_objects(struct sc_pkcs11_slot *slot, struct pkcs15_fw_data *fw_data)
 		if (obj->p15_object->flags & SC_PKCS15_CO_FLAG_PRIVATE)
 			continue;
 		/* PKCS#15 4.1.3 is a little vague, but implies if not PRIVATE it is readable
-		 * even if there is an auth_id to allow writting for example.
+		 * even if there is an auth_id to allow writing for example.
 		 * See bug issue #291
 		 * treat pubkey and cert as readable.a
 		 */
@@ -1617,7 +1618,16 @@ pkcs15_login(struct sc_pkcs11_slot *slot, CK_USER_TYPE userType,
 		}
 	}
 
-	rc = sc_pkcs15_verify_pin(p15card, auth_object, pPin, ulPinLen);
+	if (userType  == CKU_CONTEXT_SPECIFIC) {
+		int auth_meth_saved = pin_info->auth_method;
+
+		sc_log(context, "Setting SC_AC_CONTEXT_SPECIFIC");
+		pin_info->auth_method = SC_AC_CONTEXT_SPECIFIC;
+		rc = sc_pkcs15_verify_pin(p15card, auth_object, pPin, ulPinLen);
+		pin_info->auth_method = auth_meth_saved;
+	} else
+		rc = sc_pkcs15_verify_pin(p15card, auth_object, pPin, ulPinLen);
+
 	sc_log(context, "PKCS15 verify PIN returned %d", rc);
 
 	if (rc != SC_SUCCESS)
@@ -2291,7 +2301,7 @@ pkcs15_create_secret_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 	    skey_info->key_type = key_type; /* PKCS#11 CKK_* */
 	    skey_info->data.value = args.key.data;
 	    skey_info->data.len = args.key.data_len;
-	    skey_info->value_len = args.value_len; /* callers prefered length */
+	    skey_info->value_len = args.value_len; /* callers preferred length */
 	    args.key.data = NULL;
 	}
 	else {
@@ -2630,7 +2640,7 @@ pkcs15_create_object(struct sc_pkcs11_slot *slot, CK_ATTRIBUTE_PTR pTemplate, CK
 	/* TODO The previous code does not check for CKA_TOKEN=TRUE
 	 * PKCS#11 CreatObject examples always have it, but
 	 * PKCS#11 says the default is false.
-	 * for backward compatability, will default to TRUE
+	 * for backward compatibility, will default to TRUE
 	 */
 	 /* Dont need profile id creating session only objects */
 	if (_token == TRUE) {
@@ -3042,7 +3052,7 @@ pkcs15_skey_destroy(struct sc_pkcs11_session *session, void *object)
 		return sc_to_cryptoki_error(rv, "C_DestroyObject");
 
 	/* Oppose to pkcs15_add_object */
-	--any_obj->refcount; /* correct refcont */
+	--any_obj->refcount; /* correct refcount */
 	list_delete(&session->slot->objects, any_obj);
 	/* Delete object in pkcs15 */
 	rv = __pkcs15_delete_object(fw_data, any_obj);
@@ -3126,7 +3136,7 @@ pkcs15_any_destroy(struct sc_pkcs11_session *session, void *object)
 		rv = sc_pkcs15init_delete_object(fw_data->p15_card, profile, obj->base.p15_object);
 	if (rv >= 0) {
 		/* Oppose to pkcs15_add_object */
-		--any_obj->refcount; /* correct refcont */
+		--any_obj->refcount; /* correct refcount */
 		list_delete(&session->slot->objects, any_obj);
 		/* Delete object in pkcs15 */
 		rv = __pkcs15_delete_object(fw_data, any_obj);
@@ -3753,7 +3763,7 @@ pkcs15_prkey_sign(struct sc_pkcs11_session *session, void *obj,
 	if (rv < 0 && !sc_pkcs11_conf.lock_login && !prkey_has_path) {
 		/* If private key PKCS#15 object do not have 'path' attribute,
 		 * and if PKCS#11 login session is not locked,
-		 * the compute signature could fail because of concurent access to the card
+		 * the compute signature could fail because of concurrent access to the card
 		 * by other application that could change the current DF.
 		 * In this particular case try to 'reselect' application DF.
 		 */
@@ -4626,7 +4636,18 @@ get_ec_pubkey_point(struct sc_pkcs15_pubkey *key, CK_ATTRIBUTE_PTR attr)
 		if (rc != SC_SUCCESS)
 			return sc_to_cryptoki_error(rc, NULL);
 
-		check_attribute_buffer(attr, value_len);
+		if (attr->pValue == NULL_PTR) {
+			attr->ulValueLen = value_len;
+			free(value);
+			return CKR_OK;
+		}
+		if (attr->ulValueLen < value_len) {
+			attr->ulValueLen = value_len;
+			free(value);
+			return CKR_BUFFER_TOO_SMALL;
+		}
+		attr->ulValueLen = value_len;
+
 		memcpy(attr->pValue, value, value_len);
 		free(value);
 		return CKR_OK;
@@ -4914,7 +4935,7 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 
 #ifdef ENABLE_OPENSSL
 		/* all our software hashes are in OpenSSL */
-		/* Only if card did not lists the hashs, will we
+		/* Only if card did not list the hashes, will we
 		 * help it a little, by adding all the OpenSSL hashes
 		 * that have PKCS#11 mechanisms.
 		 */

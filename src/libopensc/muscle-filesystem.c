@@ -142,7 +142,7 @@ void mscfs_check_cache(mscfs_t* fs)
 int mscfs_lookup_path(mscfs_t* fs, const u8 *path, int pathlen, msc_id* objectId, int isDirectory)
 {
 	u8* oid = objectId->id;
-	if ((pathlen & 1) != 0) /* not divisble by 2 */
+	if ((pathlen & 1) != 0) /* not divisible by 2 */
 		return MSCFS_INVALID_ARGS;
 	if(isDirectory) {
 		/* Directory must be right next to root */
@@ -224,7 +224,7 @@ int mscfs_loadFileInfo(mscfs_t* fs, const u8 *path, int pathlen, mscfs_file_t **
 		}
 		*file_data = NULL;
 	}
-	if(*file_data == NULL && (0 == memcmp("\x3F\x00\x00\x00", fullPath.id, 4) || 0 == memcmp("\x3F\x00\x3F\x00", fullPath.id, 4 ))) {
+	if(*file_data == NULL && (0 == memcmp("\x3F\x00\x00\x00", fullPath.id, 4) || 0 == memcmp("\x3F\x00\x50\x15", fullPath.id, 4 ) || 0 == memcmp("\x3F\x00\x3F\x00", fullPath.id, 4))) {
 		static mscfs_file_t ROOT_FILE;
 		ROOT_FILE.ef = 0;
 		ROOT_FILE.size = 0;

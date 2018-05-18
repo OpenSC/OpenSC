@@ -611,7 +611,7 @@ typedef struct sc_pkcs15_card {
 /* flags suitable for struct sc_pkcs15_card */
 #define SC_PKCS15_CARD_FLAG_EMULATED			0x02000000
 
-/* X509 bits for certificate usage extansion */
+/* X509 bits for certificate usage extension */
 #define SC_X509_DIGITAL_SIGNATURE     0x0001UL
 #define SC_X509_NON_REPUDIATION       0x0002UL
 #define SC_X509_KEY_ENCIPHERMENT      0x0004UL
@@ -885,7 +885,7 @@ int sc_pkcs15_encode_unusedspace(struct sc_context *ctx,
 			 struct sc_pkcs15_card *p15card,
 			 u8 **buf, size_t *buflen);
 
-/* Deduce private key attributes from cerresponding certificate */
+/* Deduce private key attributes from corresponding certificate */
 int sc_pkcs15_prkey_attrs_from_cert(struct sc_pkcs15_card *, struct sc_pkcs15_object *,
 		struct sc_pkcs15_object **);
 

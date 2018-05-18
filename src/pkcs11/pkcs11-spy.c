@@ -50,7 +50,7 @@ static void *modhandle = NULL;
 /* Spy module output */
 static FILE *spy_output = NULL;
 
-/* Inits the spy. If successfull, po != NULL */
+/* Inits the spy. If successful, po != NULL */
 static CK_RV
 init_spy(void)
 {
@@ -153,7 +153,7 @@ init_spy(void)
 
 #ifdef _WIN32
 	if (!spy_output) {
-		/* try for the machine version first, as we may be runing
+		/* try for the machine version first, as we may be running
 		 * without a user during login
 		 */
 		rc = RegOpenKeyEx( HKEY_LOCAL_MACHINE, "Software\\OpenSC Project\\PKCS11-Spy", 0, KEY_QUERY_VALUE, &hKey );
@@ -188,7 +188,7 @@ init_spy(void)
 	module = getenv("PKCS11SPY");
 #ifdef _WIN32
 	if (!module) {
-		/* try for the machine version first, as we may be runing
+		/* try for the machine version first, as we may be running
 		 * without a user during login
 		 */
 		rc = RegOpenKeyEx( HKEY_LOCAL_MACHINE, "Software\\OpenSC Project\\PKCS11-Spy",

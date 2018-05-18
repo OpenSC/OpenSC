@@ -1610,14 +1610,17 @@ static int sc_hsm_init(struct sc_card *card)
 
 	sc_path_set(&path, SC_PATH_TYPE_DF_NAME, sc_hsm_aid.value, sc_hsm_aid.len, 0, 0);
 	if (sc_hsm_select_file_ex(card, &path, 0, &file) == SC_SUCCESS
-			&& file && file->prop_attr && file->prop_attr_len >= 5) {
+			&& file && file->prop_attr && file->prop_attr_len >= 2) {
 		static char card_name[SC_MAX_APDU_BUFFER_SIZE];
-		u8 type = file->prop_attr[2];
-		u8 major = file->prop_attr[3];
-		u8 minor = file->prop_attr[4];
+		u8 type = 0xFF;
+		u8 major = file->prop_attr[file->prop_attr_len - 2];
+		u8 minor = file->prop_attr[file->prop_attr_len - 1];
 		char p00[] = "SmartCard-HSM Applet for JCOP";
 		char p01[] = "SmartCard-HSM Demo Applet for JCOP";
 		char *p = "SmartCard-HSM";
+		if (file->prop_attr_len >= 3) {
+			type = file->prop_attr[file->prop_attr_len - 3];
+		}
 		switch (type) {
 			case 0x00:
 				p = p00;

@@ -51,7 +51,7 @@ static int epass2003_pkcs15_init_card(struct sc_profile *profile,
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	sc_do_log(card->ctx, SC_LOG_DEBUG_VERBOSE_TOOL,NULL,0,NULL,
-			"ePass2003 doesn't surpport SO-PIN and SO-PUK. You can unblock key with PUK. \n");
+			"ePass2003 doesn't support SO-PIN and SO-PUK. You can unblock key with PUK. \n");
 	{			/* MF */
 		struct sc_file *mf_file;
 		struct sc_file *skey_file;

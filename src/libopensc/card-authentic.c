@@ -494,7 +494,6 @@ authentic_init(struct sc_card *card)
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
-
 static int
 authentic_erase_binary(struct sc_card *card, unsigned int offs, size_t count, unsigned long flags)
 {
@@ -810,96 +809,46 @@ authentic_select_file(struct sc_card *card, const struct sc_path *path,
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
-
-static int
-authentic_apdus_allocate(struct sc_apdu **head, struct sc_apdu **new)
-{
-	struct sc_apdu *allocated_apdu = NULL, *tmp_apdu = NULL;
-
-	if (!head)
-		return SC_ERROR_INVALID_ARGUMENTS;
-
-	allocated_apdu = calloc(1, sizeof(struct sc_apdu));
-	if (!allocated_apdu)
-		return SC_ERROR_OUT_OF_MEMORY;
-
-	if (*head == NULL)
-		*head = allocated_apdu;
-
-	if (new)
-		*new = allocated_apdu;
-
-	tmp_apdu = *head;
-	while(tmp_apdu->next)
-		tmp_apdu = tmp_apdu->next;
-
-	tmp_apdu->next = allocated_apdu;
-
-	return 0;
-}
-
-
-static void
-authentic_apdus_free(struct sc_apdu *apdu)
-{
-	while(apdu)   {
-		struct sc_apdu *tmp_apdu = apdu->next;
-		free(apdu);
-		apdu = tmp_apdu;
-	}
-}
-
-
 static int
 authentic_read_binary(struct sc_card *card, unsigned int idx,
 		unsigned char *buf, size_t count, unsigned long flags)
 {
 	struct sc_context *ctx = card->ctx;
-	struct sc_apdu *apdus = NULL, *cur_apdu = NULL;
-	size_t sz, rest;
-	int rv;
+	struct sc_apdu apdu;
+	size_t sz, rest, ret_count = 0;
+	int rv = SC_SUCCESS;
 
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx,
 	       "offs:%i,count:%"SC_FORMAT_LEN_SIZE_T"u,max_recv_size:%"SC_FORMAT_LEN_SIZE_T"u",
 	       idx, count, card->max_recv_size);
 
-	/* Data size more then 256 bytes can happen when card reader is
-	 * configurated with max_send/recv_size more then 255/256 bytes
-	 *   (for ex. 'remote-access' reader) .
-	 * In this case create chained 'read-binary' APDUs.
-	 */
-	sc_log(ctx, "reader flags 0x%lX", card->reader->flags);
-	if (count > 256 && !(card->reader->flags & SC_READER_HAS_WAITING_AREA))
-		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Invalid size of the data to read");
-
 	rest = count;
 	while(rest)   {
-		if (authentic_apdus_allocate(&apdus, &cur_apdu))
-			LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "cannot allocate APDU");
-
 		sz = rest > 256 ? 256 : rest;
-		sc_format_apdu(card, cur_apdu, SC_APDU_CASE_2_SHORT, 0xB0, (idx >> 8) & 0x7F, idx & 0xFF);
-		cur_apdu->le = sz;
-		cur_apdu->resplen = count;
-		cur_apdu->resp = buf;
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xB0, (idx >> 8) & 0x7F, idx & 0xFF);
+		apdu.le = sz;
+		apdu.resplen = sz;
+		apdu.resp = (buf + ret_count);
+
+		rv = sc_transmit_apdu(card, &apdu);
+		if(!rv)
+			ret_count += apdu.resplen;
+		else
+			break;
 
 		idx += sz;
 		rest -= sz;
 	}
 
-	if (!apdus)   {
+	if (rv)   {
 		LOG_TEST_RET(ctx, SC_ERROR_INTERNAL, "authentic_read_binary() failed");
 		LOG_FUNC_RETURN(ctx, count);
 	}
 
-	rv = sc_transmit_apdu(card, apdus);
+	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	if (!rv)
-		rv = sc_check_sw(card, apdus->sw1, apdus->sw2);
-	if (!rv)
-		count = apdus->resplen;
-
-	authentic_apdus_free(apdus);
+		count = ret_count;
 
 	LOG_TEST_RET(ctx, rv, "authentic_read_binary() failed");
 	LOG_FUNC_RETURN(ctx, count);
@@ -911,46 +860,38 @@ authentic_write_binary(struct sc_card *card, unsigned int idx,
 		const unsigned char *buf, size_t count, unsigned long flags)
 {
 	struct sc_context *ctx = card->ctx;
-	struct sc_apdu *apdus = NULL, *cur_apdu = NULL;
+	struct sc_apdu apdu;
 	size_t sz, rest;
-	int rv;
+	int rv = SC_SUCCESS;
 
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx,
 	       "offs:%i,count:%"SC_FORMAT_LEN_SIZE_T"u,max_send_size:%"SC_FORMAT_LEN_SIZE_T"u",
 	       idx, count, card->max_send_size);
 
-	/* see comments for authentic_read_binary() */
-	sc_log(ctx, "reader flags 0x%lX", card->reader->flags);
-	if (count > 255 && !(card->reader->flags & SC_READER_HAS_WAITING_AREA))
-		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Invalid size of the data to read");
-
 	rest = count;
 	while(rest)   {
-		if (authentic_apdus_allocate(&apdus, &cur_apdu))
-			LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "cannot allocate APDU");
-
 		sz = rest > 255 ? 255 : rest;
-		sc_format_apdu(card, cur_apdu, SC_APDU_CASE_3_SHORT, 0xD0, (idx >> 8) & 0x7F, idx & 0xFF);
-		cur_apdu->lc = sz;
-		cur_apdu->datalen = sz;
-		cur_apdu->data = buf + count - rest;
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xD0, (idx >> 8) & 0x7F, idx & 0xFF);
+		apdu.lc = sz;
+		apdu.datalen = sz;
+		apdu.data = buf + count - rest;
+
+		rv = sc_transmit_apdu(card, &apdu);
+		if(rv)
+			break;
 
 		idx += sz;
 		rest -= sz;
 	}
 
-	if (!apdus)
+	if (rv)
 	{
 		LOG_TEST_RET(ctx, SC_ERROR_INTERNAL, "authentic_write_binary() failed");
 		LOG_FUNC_RETURN(ctx, count);
 	}
 
-	rv = sc_transmit_apdu(card, apdus);
-	if (!rv)
-		rv = sc_check_sw(card, apdus->sw1, apdus->sw2);
-
-	authentic_apdus_free(apdus);
+	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
 
 	LOG_TEST_RET(ctx, rv, "authentic_write_binary() failed");
 	LOG_FUNC_RETURN(ctx, count);
@@ -962,46 +903,38 @@ authentic_update_binary(struct sc_card *card, unsigned int idx,
 		const unsigned char *buf, size_t count, unsigned long flags)
 {
 	struct sc_context *ctx = card->ctx;
-	struct sc_apdu *apdus = NULL, *cur_apdu = NULL;
+	struct sc_apdu apdu;
 	size_t sz, rest;
-	int rv;
+	int rv = SC_SUCCESS;
 
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx,
 	       "offs:%i,count:%"SC_FORMAT_LEN_SIZE_T"u,max_send_size:%"SC_FORMAT_LEN_SIZE_T"u",
 	       idx, count, card->max_send_size);
 
-	/* see comments for authentic_read_binary() */
-	sc_log(ctx, "reader flags 0x%lX", card->reader->flags);
-	if (count > 255 && !(card->reader->flags & SC_READER_HAS_WAITING_AREA))
-		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Invalid size of the data to read");
-
 	rest = count;
 	while(rest)   {
-		if (authentic_apdus_allocate(&apdus, &cur_apdu))
-			LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "cannot allocate APDU");
-
 		sz = rest > 255 ? 255 : rest;
-		sc_format_apdu(card, cur_apdu, SC_APDU_CASE_3_SHORT, 0xD6, (idx >> 8) & 0x7F, idx & 0xFF);
-		cur_apdu->lc = sz;
-		cur_apdu->datalen = sz;
-		cur_apdu->data = buf + count - rest;
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xD6, (idx >> 8) & 0x7F, idx & 0xFF);
+		apdu.lc = sz;
+		apdu.datalen = sz;
+		apdu.data = buf + count - rest;
+
+		rv = sc_transmit_apdu(card, &apdu);
+		if(rv)
+			break;
 
 		idx += sz;
 		rest -= sz;
 	}
 
-	if (!apdus)
+	if (rv)
 	{
 		LOG_TEST_RET(ctx, SC_ERROR_INTERNAL, "authentic_update_binary() failed");
 		LOG_FUNC_RETURN(ctx, count);
 	}
 
-	rv = sc_transmit_apdu(card, apdus);
-	if (!rv)
-		rv = sc_check_sw(card, apdus->sw1, apdus->sw2);
-
-	authentic_apdus_free(apdus);
+	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
 
 	LOG_TEST_RET(ctx, rv, "authentic_update_binary() failed");
 	LOG_FUNC_RETURN(ctx, count);
@@ -2118,6 +2051,21 @@ authentic_finish(struct sc_card *card)
 }
 
 
+static int authentic_card_reader_lock_obtained(sc_card_t *card, int was_reset)
+{
+	int r = SC_SUCCESS;
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	if (was_reset > 0
+			&& card->type == SC_CARD_TYPE_OBERTHUR_AUTHENTIC_3_2) {
+		r = authentic_select_aid(card, aid_AuthentIC_3_2, sizeof(aid_AuthentIC_3_2), NULL, NULL);
+	}
+
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+
+
 /* SM related */
 #ifdef ENABLE_SM
 static int
@@ -2252,7 +2200,7 @@ authentic_sm_free_wrapped_apdu(struct sc_card *card, struct sc_apdu *plain, stru
 
         if (plain)   {
 		if (plain->resplen < (*sm_apdu)->resplen)
-			LOG_TEST_RET(ctx, SC_ERROR_BUFFER_TOO_SMALL, "Unsufficient plain APDU response size");
+			LOG_TEST_RET(ctx, SC_ERROR_BUFFER_TOO_SMALL, "Insufficient plain APDU response size");
 		memcpy(plain->resp, (*sm_apdu)->resp, (*sm_apdu)->resplen);
 		plain->resplen = (*sm_apdu)->resplen;
 		plain->sw1 = (*sm_apdu)->sw1;
@@ -2370,6 +2318,7 @@ sc_get_driver(void)
 	authentic_ops.card_ctl = authentic_card_ctl;
 	authentic_ops.process_fci = authentic_process_fci;
 	authentic_ops.pin_cmd = authentic_pin_cmd;
+	authentic_ops.card_reader_lock_obtained = authentic_card_reader_lock_obtained;
 
 	return &authentic_drv;
 }

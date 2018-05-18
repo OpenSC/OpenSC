@@ -221,7 +221,7 @@ int sc_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
  * This function will copy a PIN, convert and pad it as required
  *
  * Note about the SC_PIN_ENCODING_GLP encoding:
- * PIN buffers are allways 16 nibbles (8 bytes) and look like this:
+ * PIN buffers are always 16 nibbles (8 bytes) and look like this:
  *   0x2 + len + pin_in_BCD + paddingnibbles
  * in which the paddingnibble = 0xF
  * E.g. if PIN = 12345, then sbuf = {0x25, 0x12, 0x34, 0x5F, 0xFF, 0xFF, 0xFF, 0xFF}

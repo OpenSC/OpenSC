@@ -434,7 +434,7 @@ static int jcop_process_fci(sc_card_t *card, sc_file_t *file,
 	       /* Files may be locked by anyone who can MODIFY. */
 	       /* opensc seems to think LOCK ACs are only on DFs */
 	       /* sa_to_acl(file, SC_AC_OP_LOCK, sa[0] & 0xf); */
-	       /* there are seperate SIGN, ENCIPHER, and DECIPHER ACs.
+	       /* there are separate SIGN, ENCIPHER, and DECIPHER ACs.
 		  I use SIGN for SC_AC_OP_CRYPTO unless it is NEVER, in 
 		  which case I use DECIPHER */
 	       if ((sa[1] & 0xf0) == 0x10)

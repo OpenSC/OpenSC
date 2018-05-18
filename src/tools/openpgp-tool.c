@@ -531,7 +531,7 @@ int delete_key_openpgp(sc_card_t *card, u8 key_id)
 		/* Send APDU to card */
 		r = sc_transmit_apdu(card, &apdu);
 		if (r) {
-			fprintf(stderr, "Transmiting APDU failed: %s\n", sc_strerror(r));
+			fprintf(stderr, "Transmitting APDU failed: %s\n", sc_strerror(r));
 			return r;
 		}
 	}

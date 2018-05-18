@@ -171,7 +171,7 @@ int main(int argc, char* argv[])
 	}
 
 	if ( strcmp(card->name,"dnie") ) {
-		fprintf(stderr, "Error: Card sems not to be a  DNIe\n");
+		fprintf(stderr, "Error: Card seems not to be a DNIe\n");
 		err=-1;
 		goto dnie_tool_end;
 	}
@@ -211,12 +211,12 @@ int main(int argc, char* argv[])
 	}
 	if (opt_operation & OP_GET_IDESP) {
 		if (data[3]==NULL) 
-			printf("IDESP:	 (No disponible)\n");
+			printf("IDESP:	 (Not available)\n");
 		else 	printf("IDESP:	 %s\n",data[3]);
 	}
 	if (opt_operation & OP_GET_VERSION) {
 		if (data[4]==NULL)
-			printf("DNIe Version:  (No disponible)\n");
+			printf("DNIe Version:  (Not available)\n");
 		else 	printf("DNIe Version:  %s\n",data[4]);
 	}
 	if (opt_operation & OP_GET_SERIALNR) {

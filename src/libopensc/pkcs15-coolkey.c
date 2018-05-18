@@ -561,7 +561,7 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 
 		memset(&obj_obj, 0, sizeof(obj_obj));
 		/* coolkey applets have label only on the certificates,
-		 * but we should copy it also to the keys maching the same ID */
+		 * but we should copy it also to the keys matching the same ID */
 		coolkey_get_attribute_bytes(card, &coolkey_obj, CKA_LABEL, (u8 *)obj_obj.label, &len, sizeof(obj_obj.label));
 		coolkey_get_flags(card, &coolkey_obj, &obj_obj.flags);
 		if (obj_obj.flags & SC_PKCS15_CO_FLAG_PRIVATE) {

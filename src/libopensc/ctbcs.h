@@ -107,7 +107,7 @@
 #define CTBCS_P2_INPUT_ASTERISKS	0x02	/* Echo input as asterisks */
 
 /*
- * Tags for paramaters to input, output et al.
+ * Tags for parameters to input, output et al.
  */
 #define CTBCS_TAG_PROMPT		0x50
 #define CTBCS_TAG_VERIFY_CMD		0x52
@@ -143,9 +143,9 @@
  */
 #define CTBCS_SW1_RESET_CT_OK		0x90	/* Reset CT successful */
 #define CTBCS_SW2_RESET_CT_OK		0x00
-#define CTBCS_SW1_RESET_SYNC_OK		0x90	/* Synchoronous ICC, */
+#define CTBCS_SW1_RESET_SYNC_OK		0x90	/* Synchronous ICC, */
 #define CTBCS_SW2_RESET_SYNC_OK		0x00	/* reset successful */
-#define CTBCS_SW1_RESET_ASYNC_OK	0x90	/* Asynchoronous ICC, */
+#define CTBCS_SW1_RESET_ASYNC_OK	0x90	/* Asynchronous ICC, */
 #define CTBCS_SW2_RESET_ASYNC_OK	0x01	/* reset successful */
 #define CTBCS_SW1_RESET_ERROR		0x64	/* Reset not successful */
 #define CTBCS_SW2_RESET_ERROR		0x00
@@ -153,9 +153,9 @@
 /*
  * Return codes for Request ICC
  */
-#define CTBCS_SW1_REQUEST_SYNC_OK 	0x90	/* Synchoronous ICC, */
+#define CTBCS_SW1_REQUEST_SYNC_OK 	0x90	/* Synchronous ICC, */
 #define CTBCS_SW2_REQUEST_SYNC_OK 	0x00	/* reset successful */
-#define CTBCS_SW1_REQUEST_ASYNC_OK 	0x90	/* Asynchoronous ICC, */
+#define CTBCS_SW1_REQUEST_ASYNC_OK 	0x90	/* Asynchronous ICC, */
 #define CTBCS_SW2_REQUEST_ASYNC_OK 	0x01	/* reset successful */
 #define CTBCS_SW1_REQUEST_NO_CARD	0x62	/* No card present */
 #define CTBCS_SW2_REQUEST_NO_CARD	0x00
@@ -169,9 +169,9 @@
 /*
  * Return codes for Eject ICC
  */
-#define CTBCS_SW1_EJECT_OK		0x90	/* Command succesful, */
+#define CTBCS_SW1_EJECT_OK		0x90	/* Command successful, */
 #define CTBCS_SW2_EJECT_OK		0x00
-#define CTBCS_SW1_EJECT_REMOVED		0x90	/* Command succesful, */
+#define CTBCS_SW1_EJECT_REMOVED		0x90	/* Command successful, */
 #define CTBCS_SW2_EJECT_REMOVED		0x01	/* Card removed */
 #define CTBCS_SW1_EJECT_NOT_REMOVED	0x62	/* Card not removed */
 #define CTBCS_SW2_EJECT_NOT_REMOVED	0x00

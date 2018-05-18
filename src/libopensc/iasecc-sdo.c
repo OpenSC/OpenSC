@@ -83,7 +83,7 @@ iasecc_sdo_convert_acl(struct sc_card *card, struct iasecc_sdo *sdo,
 		{SC_AC_OP_READ,		IASECC_ACL_GET_DATA},
 		{0x00, 0x00}
 	};
-	unsigned char mask = 0x80, op_mask;
+	unsigned char mask = 0x80, op_mask = 0;
 	int ii;
 
 	LOG_FUNC_CALLED(ctx);
@@ -94,10 +94,10 @@ iasecc_sdo_convert_acl(struct sc_card *card, struct iasecc_sdo *sdo,
 			break;
 		}
 	}
-	if (ops[ii].mask == 0)
+	if (op_mask == 0)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
 
-	sc_log(ctx, "OP:%i, mask:0x%X", op, ops[ii].mask);
+	sc_log(ctx, "OP:%i, mask:0x%X", op, op_mask);
 	sc_log(ctx, "AMB:%X, scbs:%s", sdo->docp.amb, sc_dump_hex(sdo->docp.scbs, IASECC_MAX_SCBS));
 	sc_log(ctx, "docp.acls_contact:%s", sc_dump_hex(sdo->docp.acls_contact.value, sdo->docp.acls_contact.size));
 
@@ -344,7 +344,7 @@ iasecc_se_parse(struct sc_card *card, unsigned char *data, size_t data_len, stru
 		LOG_TEST_RET(ctx, size_size, "parse error: invalid SDO SE data size");
 
 		if (data_len != size + size_size + 3)
-			LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "parse error: invalide SDO SE data size");
+			LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "parse error: invalid SDO SE data size");
 
 		data += 3 + size_size;
 		data_len = size;
@@ -364,7 +364,7 @@ iasecc_se_parse(struct sc_card *card, unsigned char *data, size_t data_len, stru
 	LOG_TEST_RET(ctx, size_size, "parse error: invalid size data");
 
 	if (data_len != size + size_size + 1)
-		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "parse error: invalide SE data size");
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "parse error: invalid SE data size");
 
 	offs = 1 + size_size;
 	for (; offs < data_len;)   {
@@ -375,7 +375,7 @@ iasecc_se_parse(struct sc_card *card, unsigned char *data, size_t data_len, stru
 	}
 
 	if (offs != data_len)
-		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "parse error: not totaly parsed");
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "parse error: not totally parsed");
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
@@ -583,7 +583,7 @@ iasecc_parse_docp(struct sc_card *card, unsigned char *data, size_t data_len, st
 		LOG_TEST_RET(ctx, rv, "iasecc_parse_get_tlv() get and parse TLV error");
 
 		sc_log(ctx,
-		       "iasecc_parse_docp() parse_get_tlv retuned %i; tag %X; size %"SC_FORMAT_LEN_SIZE_T"u",
+		       "iasecc_parse_docp() parse_get_tlv returned %i; tag %X; size %"SC_FORMAT_LEN_SIZE_T"u",
 		       rv, tlv.tag, tlv.size);
 
 		if (tlv.tag == IASECC_DOCP_TAG_ACLS)   {
@@ -606,7 +606,7 @@ iasecc_parse_docp(struct sc_card *card, unsigned char *data, size_t data_len, st
 		else if (tlv.tag == IASECC_DOCP_TAG_ISSUER_DATA)   {
 			sdo->docp.issuer_data = tlv;
 		}
-		else if (tlv.tag == IASECC_DOCP_TAG_NON_REPUDATION)   {
+		else if (tlv.tag == IASECC_DOCP_TAG_NON_REPUDIATION)   {
 			sdo->docp.non_repudiation = tlv;
 		}
 		else if (tlv.tag == IASECC_DOCP_TAG_USAGE_REMAINING)   {
@@ -655,7 +655,7 @@ iasecc_sdo_parse_data(struct sc_card *card, unsigned char *data, struct iasecc_s
 		free(tlv.value);
 		LOG_TEST_RET(ctx, rv, "parse error: cannot parse DOCP");
 	}
-	else if (tlv.tag == IASECC_DOCP_TAG_NON_REPUDATION)   {
+	else if (tlv.tag == IASECC_DOCP_TAG_NON_REPUDIATION)   {
 		sdo->docp.non_repudiation = tlv;
 	}
 	else if (tlv.tag == IASECC_DOCP_TAG_USAGE_REMAINING)   {
@@ -745,7 +745,7 @@ iasecc_sdo_parse(struct sc_card *card, unsigned char *data, size_t data_len, str
 	LOG_TEST_RET(ctx, size_size, "parse error: invalid size data");
 
 	if (data_len != size + size_size + 3)
-		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "parse error: invalide SDO data size");
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "parse error: invalid SDO data size");
 
 	sc_log(ctx,
 	       "sz %"SC_FORMAT_LEN_SIZE_T"u, sz_size %"SC_FORMAT_LEN_SIZE_T"u",
@@ -760,7 +760,7 @@ iasecc_sdo_parse(struct sc_card *card, unsigned char *data, size_t data_len, str
 	}
 
 	if (offs != data_len)
-		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "parse error: not totaly parsed");
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "parse error: not totally parsed");
 
 	sc_log(ctx,
 	       "docp.acls_contact.size %"SC_FORMAT_LEN_SIZE_T"u, docp.size.size %"SC_FORMAT_LEN_SIZE_T"u",
@@ -803,7 +803,7 @@ iasecc_sdo_allocate_and_parse(struct sc_card *card, unsigned char *data, size_t 
 	LOG_TEST_RET(ctx, size_size, "parse error: invalid size data");
 
 	if (data_len != size + size_size + 3)
-		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "parse error: invalide SDO data size");
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "parse error: invalid SDO data size");
 
 	sc_log(ctx,
 	       "sz %"SC_FORMAT_LEN_SIZE_T"u, sz_size %"SC_FORMAT_LEN_SIZE_T"u",
@@ -818,7 +818,7 @@ iasecc_sdo_allocate_and_parse(struct sc_card *card, unsigned char *data, size_t 
 	}
 
 	if (offs != data_len)
-		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "parse error: not totaly parsed");
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "parse error: not totally parsed");
 
 	sc_log(ctx,
 	       "docp.acls_contact.size %"SC_FORMAT_LEN_SIZE_T"u; docp.size.size %"SC_FORMAT_LEN_SIZE_T"u",
@@ -922,7 +922,7 @@ iasecc_encode_docp(struct sc_context *ctx, struct iasecc_sdo_docp *docp, unsigne
 	LOG_TEST_RET(ctx, rv, "ECC: cannot add USAGE REMAINING to blob");
 
 	rv = iasecc_update_blob(ctx, &docp->non_repudiation, &tmp_blob, &blob_size);
-	LOG_TEST_RET(ctx, rv, "ECC: cannot add NON REPUDATION to blob");
+	LOG_TEST_RET(ctx, rv, "ECC: cannot add NON REPUDIATION to blob");
 
 	rv = iasecc_update_blob(ctx, &docp->size, &tmp_blob, &blob_size);
 	LOG_TEST_RET(ctx, rv, "ECC: cannot add SIZE to blob");
@@ -1212,7 +1212,7 @@ iasecc_sdo_parse_card_answer(struct sc_context *ctx, unsigned char *data, size_t
 
 		if (*(data + offs) == IASECC_CARD_ANSWER_TAG_DATA )   {
 			if (size > sizeof(out->data))
-				LOG_TEST_RET(ctx, SC_ERROR_BUFFER_TOO_SMALL, "iasecc_sm_decode_answer() unbelivable !!!");
+				LOG_TEST_RET(ctx, SC_ERROR_BUFFER_TOO_SMALL, "iasecc_sm_decode_answer() unbelievable !!!");
 
 			memcpy(out->data, data + offs + size_size + 1, size);
 			out->data_len = size;
