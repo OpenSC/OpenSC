@@ -1611,7 +1611,7 @@ static int cac_init(sc_card_t *card)
 
 	r = cac_find_and_initialize(card, 1);
 	if (r < 0) {
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_CARD);
 	}
 	flags = SC_ALGORITHM_RSA_RAW;
 

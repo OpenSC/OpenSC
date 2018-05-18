@@ -83,7 +83,7 @@ static int asepcos_init(sc_card_t *card)
 	if (card->type == SC_CARD_TYPE_ASEPCOS_JAVA) {
 		int r = asepcos_select_asepcos_applet(card);
 		if (r != SC_SUCCESS)
-			return r;
+			return SC_ERROR_INVALID_CARD;
 	}
 
 	/* Set up algorithm info. */

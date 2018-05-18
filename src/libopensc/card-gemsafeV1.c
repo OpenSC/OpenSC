@@ -180,9 +180,9 @@ static int gemsafe_init(struct sc_card *card)
 		memcpy(exdata->aid, gemsafe_pteid_aid, sizeof(gemsafe_pteid_aid));
 		exdata->aid_len = sizeof(gemsafe_pteid_aid);
 	} else if (card->type == SC_CARD_TYPE_GEMSAFEV1_SEEID) {
-                memcpy(exdata->aid, gemsafe_seeid_aid, sizeof(gemsafe_seeid_aid));
-                exdata->aid_len = sizeof(gemsafe_seeid_aid);
-        }
+		memcpy(exdata->aid, gemsafe_seeid_aid, sizeof(gemsafe_seeid_aid));
+		exdata->aid_len = sizeof(gemsafe_seeid_aid);
+	}
 
 	/* increase lock_count here to prevent sc_unlock to select
 	 * applet twice in gp_select_applet */
@@ -192,7 +192,7 @@ static int gemsafe_init(struct sc_card *card)
 	if (r < 0) {
 		free(exdata);
 		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "applet selection failed\n");
-		return SC_ERROR_INTERNAL;
+		return SC_ERROR_INVALID_CARD;
 	}
 	card->lock_count--;
 
@@ -232,7 +232,7 @@ static int gemsafe_init(struct sc_card *card)
 	card->caps |= SC_CARD_CAP_ISO7816_PIN_INFO;
 	card->drv_data = exdata;
 
-	return 0;
+	return SC_SUCCESS;
 }
 
 static int gemsafe_finish(sc_card_t *card)

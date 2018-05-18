@@ -634,7 +634,7 @@ static int gids_init(sc_card_t * card)
 	// cache some data in memory
 	data = (struct gids_private_data*) calloc(1, sizeof(struct gids_private_data));
 	if (!data) {
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_MEMORY_FAILURE);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
 	}
 	memset(data, 0, sizeof(struct gids_private_data));
 	card->drv_data = data;

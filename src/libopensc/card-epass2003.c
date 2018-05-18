@@ -1168,7 +1168,7 @@ epass2003_init(struct sc_card *card)
 
 	/* decide FIPS/Non-FIPS mode */
 	if (SC_SUCCESS != get_data(card, 0x86, data, datalen))
-		return SC_ERROR_CARD_CMD_FAILED;
+		return SC_ERROR_INVALID_CARD;
 
 	if (0x01 == data[2])
 		exdata->smtype = KEY_TYPE_AES;

@@ -606,7 +606,7 @@ iasecc_init(struct sc_card *card)
 	else if (card->type == SC_CARD_TYPE_IASECC_MI)
 		rv = iasecc_init_amos_or_sagem(card);
 	else
-		LOG_FUNC_RETURN(ctx, SC_ERROR_NO_CARD_SUPPORT);
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_CARD);
 
 
 	if (!rv)   {
@@ -631,8 +631,10 @@ iasecc_init(struct sc_card *card)
 	card->sm_ctx.ops.update_binary = _iasecc_sm_update_binary;
 #endif
 
-	if (!rv)
+	if (!rv) {
 		sc_log(ctx, "EF.ATR(aid:'%s')", sc_dump_hex(card->ef_atr->aid.value, card->ef_atr->aid.len));
+		rv = SC_ERROR_INVALID_CARD;
+	}
 	LOG_FUNC_RETURN(ctx, rv);
 }
 

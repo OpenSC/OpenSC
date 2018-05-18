@@ -228,7 +228,7 @@ static int belpic_init(sc_card_t *card)
 		memset(carddata, 0, sizeof(carddata));
 
 		if((r = get_carddata(card, carddata, sizeof(carddata))) < 0) {
-			return r;
+			return SC_ERROR_INVALID_CARD;
 		}
 		if (carddata[BELPIC_CARDDATA_OFF_APPLETVERS] >= 0x17) {
 			key_size = 2048;

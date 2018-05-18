@@ -413,13 +413,13 @@ pgp_init(sc_card_t *card)
 	path.type = SC_PATH_TYPE_DF_NAME;
 	if ((r = iso_ops->select_file(card, &path, &file)) < 0) {
 		pgp_finish(card);
-		LOG_FUNC_RETURN(card->ctx, r);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_CARD);
 	}
 
 	/* defensive programming check */
 	if (!file)   {
 		pgp_finish(card);
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OBJECT_NOT_FOUND);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_CARD);
 	}
 
 	if (file->namelen != 16) {
@@ -427,7 +427,7 @@ pgp_init(sc_card_t *card)
 		r = get_full_pgp_aid(card, file);
 		if (r < 0) {
 			pgp_finish(card);
-			return r;
+			return SC_ERROR_INVALID_CARD;
 		}
 	}
 

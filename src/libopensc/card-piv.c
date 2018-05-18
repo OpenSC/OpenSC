@@ -3295,11 +3295,9 @@ static int piv_init(sc_card_t *card)
 
 	piv_process_discovery(card);
 
-	r = 0;
-
 	priv->pstate=PIV_STATE_NORMAL;
 	sc_unlock(card) ; /* obtained in piv_match */
-	LOG_FUNC_RETURN(card->ctx, r);
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
 
