@@ -543,8 +543,10 @@ err:
 static int cryptotokenkit_detect_readers(sc_context_t *ctx)
 {
 	size_t i;
+	NSUInteger j;
 	int r;
 	TKSmartCardSlotManager *mngr = [TKSmartCardSlotManager defaultManager];
+	NSMutableArray *slotNames;
 
 	LOG_FUNC_CALLED(ctx);
 
@@ -554,38 +556,37 @@ static int cryptotokenkit_detect_readers(sc_context_t *ctx)
 	 	goto err;
 	}
 
-	/* temporarily mark all readers as removed */
-	for (i=0; i < sc_ctx_get_reader_count(ctx); i++) {
-		sc_reader_t *reader = sc_ctx_get_reader(ctx, i);
-		reader->flags |= SC_READER_REMOVED;
-	}
-
 	sc_log(ctx, "Probing CryptoTokenKit readers");
 
-	for (NSString *slotName in [mngr slotNames]) {
-		sc_reader_t *old_reader;
-		int found = 0;
-		const char *reader_name = [slotName UTF8String];
+	slotNames = [[mngr slotNames] mutableCopy];
+
+	/* check if existing readers were returned in the list */
+	for (i = 0; i < sc_ctx_get_reader_count(ctx); i++) {
+		sc_reader_t *reader = sc_ctx_get_reader(ctx, i);
+
+		if (reader == NULL) {
+			r = SC_ERROR_INTERNAL;
+			goto err;
+		}
+
+		for (j = 0; j < [slotNames count]; j++) {
+			if (!strcmp(reader->name, [slotNames[j] UTF8String]))
+				break;
+		}
+
+		if (j < [slotNames count]) {
+			/* existing reader found; remove it from the list */
+			[slotNames removeObjectAtIndex:j];
+		} else {
+			/* existing reader not found */
+			reader->flags |= SC_READER_REMOVED;
+		}
+	}
+
+	/* add readers remaining in the list */
+	for (NSString *slotName in slotNames) {
 		dispatch_semaphore_t sema = dispatch_semaphore_create(0);
-
-		for (i=0; i < sc_ctx_get_reader_count(ctx) && !found; i++) {
-			old_reader = sc_ctx_get_reader(ctx, i);
-			if (old_reader == NULL) {
-				r = SC_ERROR_INTERNAL;
-				goto err;
-			}
-			if (!strcmp(old_reader->name, reader_name)) {
-				found = 1;
-			}
-		}
-
-		/* Reader already available, skip */
-		if (found) {
-			old_reader->flags &= ~SC_READER_REMOVED;
-			continue;
-		}
-
-		sc_log(ctx, "Found new CryptoTokenKit reader '%s'", reader_name);
+		sc_log(ctx, "Found new CryptoTokenKit reader '%s'", [slotName UTF8String]);
 		[mngr getSlotWithName:slotName reply:^(TKSmartCardSlot *slot) {
 			cryptotokenkit_use_reader(ctx, slot, NULL);
 		 	dispatch_semaphore_signal(sema);
