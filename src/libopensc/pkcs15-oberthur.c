@@ -29,6 +29,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include "../common/compat_strlcpy.h"
 
 #include "pkcs15.h"
 #include "log.h"
@@ -738,7 +739,7 @@ sc_pkcs15emu_oberthur_add_prvkey(struct sc_pkcs15_card *p15card,
 			unsigned int id = path.value[path.len - 2] * 0x100 + path.value[path.len - 1];
 
 			if (id == ccont.id_cert)   {
-				strncpy(kobj.label, objs[ii]->label, sizeof(kobj.label) - 1);
+				strlcpy(kobj.label, objs[ii]->label, sizeof(kobj.label));
 				break;
 			}
 		}
