@@ -349,13 +349,29 @@ int sc_ctx_log_to_file(sc_context_t *ctx, const char* filename)
 	return SC_SUCCESS;
 }
 
+static void
+set_drivers(struct _sc_ctx_options *opts, const scconf_list *list)
+{
+	const char *s_internal = "internal", *s_old = "old";
+	if (list != NULL)
+		del_drvs(opts);
+	while (list != NULL) {
+		if (strcmp(list->data, s_internal) == 0)
+			add_internal_drvs(opts);
+		else if (strcmp(list->data, s_old) == 0)
+			add_old_drvs(opts);
+		else
+			add_drv(opts, list->data);
+		list = list->next;
+	}
+}
 
 static int
 load_parameters(sc_context_t *ctx, scconf_block *block, struct _sc_ctx_options *opts)
 {
 	int err = 0;
 	const scconf_list *list;
-	const char *val, *s_internal = "internal", *s_old = "old";
+	const char *val;
 	int debug;
 #ifdef _WIN32
 	char expanded_val[PATH_MAX];
@@ -389,17 +405,7 @@ load_parameters(sc_context_t *ctx, scconf_block *block, struct _sc_ctx_options *
 		ctx->flags |= SC_CTX_FLAG_ENABLE_DEFAULT_DRIVER;
 
 	list = scconf_find_list(block, "card_drivers");
-	if (list != NULL)
-		del_drvs(opts);
-	while (list != NULL) {
-		if (strcmp(list->data, s_internal) == 0)
-			add_internal_drvs(opts);
-		else if (strcmp(list->data, s_old) == 0)
-			add_old_drvs(opts);
-		else
-			add_drv(opts, list->data);
-		list = list->next;
-	}
+	set_drivers(opts, list);
 
 	return err;
 }
@@ -790,6 +796,7 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 	sc_context_t		*ctx;
 	struct _sc_ctx_options	opts;
 	int			r;
+	char			*driver;
 
 	if (ctx_out == NULL || parm == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -846,14 +853,17 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 		return r;
 	}
 
+	driver = getenv("OPENSC_DRIVER");
+	if (driver) {
+		scconf_list *list = NULL;
+		scconf_list_add(&list, driver);
+		set_drivers(&opts, list);
+		scconf_list_destroy(list);
+	}
+
 	load_card_drivers(ctx, &opts);
 	load_card_atrs(ctx);
 
-	char *driver = getenv("OPENSC_DRIVER");
-	if (driver) {
-		if (SC_SUCCESS != sc_set_card_driver(ctx, driver))
-			sc_log(ctx, "Warning: Could not load %s.", driver);
-	}
 	del_drvs(&opts);
 	sc_ctx_detect_readers(ctx);
 	*ctx_out = ctx;
