@@ -15,6 +15,14 @@ _FUNCTION_NAME()
     fi
 
     case "${prev}" in
+        MODULEOPTS)
+            _filedir so
+            return 0
+            ;;
+        FILEOPTS)
+            _filedir
+            return 0
+            ;;
         OPTSWITHARGS)
             return 0
             ;;

@@ -847,7 +847,7 @@ sc_pkcs11_deri(struct sc_pkcs11_session *session,
 	/* Get the size of the data to be returned
 	 * If the card could derive a key an leave it on the card
 	 * then no data is returned.
-	 * If the card returns the data, we will store it in the sercet key CKA_VALUE
+	 * If the card returns the data, we will store it in the secret key CKA_VALUE
 	 */
 
 	ulDataLen = 0;
@@ -867,7 +867,7 @@ sc_pkcs11_deri(struct sc_pkcs11_session *session,
 		goto out;
 	}
 
-	/* Now do the actuall derivation */
+	/* Now do the actual derivation */
 
 	rv = operation->type->derive(operation, basekey,
 	    pMechanism->pParameter, pMechanism->ulParameterLen,

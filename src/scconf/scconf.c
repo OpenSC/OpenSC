@@ -147,7 +147,7 @@ const char *scconf_get_str(const scconf_block * block, const char *option, const
 	if (!list)
 		return def;
 
-	/* ignore non 'auto-configurated' values */
+	/* ignore non 'auto-configured' values */
 	if (*list->data == '@' && *(list->data + strlen(list->data) - 1) == '@')
 		return def;
 

@@ -68,7 +68,7 @@
 						<option>-V</option>
 					</term>
 					<listitem><para>Show DNIe sw version.
-					Displays sofware version for in-card DNIe OS</para></listitem>
+					Displays software version for in-card DNIe OS</para></listitem>
 				</varlistentry>
 				<varlistentry>
 					<term>
@@ -86,8 +86,14 @@
 						<option>--reader</option> <replaceable>number</replaceable>,
 						<option>-r</option> <replaceable>number</replaceable>
 					</term>
-					<listitem><para>Specify the reader <replaceable>number</replaceable> to use.
-					The default is reader 0.</para></listitem>
+					<listitem>
+						<para>
+							Specify the reader to use. By default, the first
+							reader with a present card is used. If
+							<replaceable>num</replaceable> is an ATR, the
+							reader with a matching card will be chosen.
+						</para>
+					</listitem>
 				</varlistentry>
 				<varlistentry>
 					<term>
@@ -118,10 +124,6 @@ to enable debug output in the opensc library.</para></listitem>
 		</para>
 	</refsect1>
 	
-	<refsect1>
-		<title>See also</title>
-		<para>opensc(7)</para>
-	</refsect1>
 	<refsect1>
 		<title>Authors</title>
 		<para><command>dnie-tool</command> was written by

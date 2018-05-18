@@ -323,7 +323,7 @@ static int westcos_pkcs15init_finalize_card(sc_card_t *card)
 {
 	int r;
 
-	/* be sure authentificate card */
+	/* be sure authenticate card */
 	r = sc_card_ctl(card, SC_CARDCTL_WESTCOS_AUT_KEY, NULL);
 	if(r) return (r);
 

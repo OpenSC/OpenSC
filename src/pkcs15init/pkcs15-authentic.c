@@ -636,7 +636,7 @@ authentic_pkcs15_generate_key(struct sc_profile *profile, sc_pkcs15_card_t *p15c
 	LOG_TEST_RET(ctx, rv, "generate key failed");
 
 	pubkey->algorithm = SC_ALGORITHM_RSA;
-	//FIXME: allocate/copy/free to reduce memory likage
+	//FIXME: allocate/copy/free to reduce memory leakage
 	pubkey->u.rsa.modulus = sdo->data.prvkey->u.rsa.modulus;
 	pubkey->u.rsa.exponent = sdo->data.prvkey->u.rsa.exponent;
 	sdo->data.prvkey = NULL;

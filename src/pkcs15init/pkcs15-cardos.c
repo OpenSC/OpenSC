@@ -139,7 +139,7 @@ cardos_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *d
 		return r;
 
 	/* Create a default security environment for this DF.
-	 * This SE autometically becomes the current SE when the
+	 * This SE automatically becomes the current SE when the
 	 * DF is selected. */
 	if ((r = cardos_create_sec_env(profile, p15card->card, 0x01, 0x00)) < 0)
 		return r;

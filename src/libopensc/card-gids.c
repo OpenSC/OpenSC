@@ -117,7 +117,7 @@ static struct sc_card_driver gids_drv = {
 
 struct gids_aid {
 	int enumtag;
-	size_t len_short;	/* min lenght without version */
+	size_t len_short;	/* min length without version */
 	size_t len_long;	/* With version and other stuff */
 	u8 *value;
 };
@@ -393,7 +393,7 @@ static int gids_read_gidsfile(sc_card_t* card, char *directory, char *filename, 
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,r);
 }
 
-// check for the existance of a file
+// check for the existence of a file
 static int gids_does_file_exists(sc_card_t *card, char* directory, char* filename) {
 	struct gids_private_data* privatedata = (struct gids_private_data*) card->drv_data;
 	int fileIdentifier, dataObjectIdentifier;
@@ -533,17 +533,19 @@ static int gids_get_pin_status(sc_card_t *card, int pinreference, int *tries_lef
 	r = gids_get_DO(card, GIDS_APPLET_EFID, dataObjectIdentifier, buffer, &buffersize);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to update the masterfile");
 
-	p = sc_asn1_find_tag(card->ctx, buffer, sizeof(buffer), GIDS_TRY_COUNTER_OLD_TAG, &datasize);
+	buffersize = buffersize > sizeof(buffer) ? sizeof(buffer) : buffersize;
+
+	p = sc_asn1_find_tag(card->ctx, buffer, buffersize, GIDS_TRY_COUNTER_OLD_TAG, &datasize);
 	if (p && datasize == 1) {
 		if (tries_left)
 			*tries_left = p[0];
 	}
-	p = sc_asn1_find_tag(card->ctx, buffer, sizeof(buffer), GIDS_TRY_COUNTER_TAG, &datasize);
+	p = sc_asn1_find_tag(card->ctx, buffer, buffersize, GIDS_TRY_COUNTER_TAG, &datasize);
 	if (p && datasize == 1) {
 		if (tries_left)
 			*tries_left = p[0];
 	}
-	p = sc_asn1_find_tag(card->ctx, buffer, sizeof(buffer), GIDS_TRY_LIMIT_TAG, &datasize);
+	p = sc_asn1_find_tag(card->ctx, buffer, buffersize , GIDS_TRY_LIMIT_TAG, &datasize);
 	if (p && datasize == 1) {
 		if (tries_left)
 			*max_tries = p[0];
@@ -773,7 +775,7 @@ static int gids_set_security_env(sc_card_t *card,
 	if (!(env->flags & SC_SEC_ENV_KEY_REF_PRESENT)) {
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED);
 	}
-	if (env->flags & SC_SEC_ENV_KEY_REF_ASYMMETRIC)
+	if (env->flags & SC_SEC_ENV_KEY_REF_SYMMETRIC)
 		*p++ = 0x83;
 	else
 		*p++ = 0x84;
@@ -1766,7 +1768,7 @@ static int gids_initialize(sc_card_t *card, sc_cardctl_gids_init_param_t* param)
 	u8 EveryoneReadAdminWriteAc[] = {0x62,0x0C,0x82,0x01,0x39,0x83,0x02,0xA0,0x12,0x8C,0x03,0x03,0x20,0x00};
 	u8 UserReadWriteAc[] = {0x62,0x0C,0x82,0x01,0x39,0x83,0x02,0xA0,0x13,0x8C,0x03,0x03,0x30,0x30};
 	u8 AdminReadWriteAc[] = {0x62,0x0C,0x82,0x01,0x39,0x83,0x02,0xA0,0x14,0x8C,0x03,0x03,0x20,0x20};
-	// File type=18=key file ; type = symetric key
+	// File type=18=key file ; type = symmetric key
 	u8 AdminKey[] = {0x62,0x1A,0x82,0x01,0x18,0x83,0x02,0xB0,0x80,0x8C,0x04,0x87,0x00,0x20,0xFF,0xA5,
 											0x0B,0xA4,0x09,0x80,0x01,0x02,0x83,0x01,0x80,0x95,0x01,0xC0};
 	// file used to store other file references. Format undocumented.
@@ -2047,12 +2049,26 @@ static int gids_card_ctl(sc_card_t * card, unsigned long cmd, void *ptr)
 	}
 }
 
+static int gids_card_reader_lock_obtained(sc_card_t *card, int was_reset)
+{
+	int r = SC_SUCCESS;
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	if (was_reset > 0) {
+		u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
+		size_t resplen = sizeof(rbuf);
+		r = gids_select_aid(card, gids_aid.value, gids_aid.len, rbuf, &resplen);
+	}
+
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+
 static struct sc_card_driver *sc_get_driver(void)
 {
 
 	if (iso_ops == NULL)
 		iso_ops = sc_get_iso7816_driver()->ops;
-
 
 	gids_ops.match_card = gids_match_card;
 	gids_ops.init = gids_init;
@@ -2088,6 +2104,8 @@ static struct sc_card_driver *sc_get_driver(void)
 	gids_ops.put_data = NULL;
 	gids_ops.delete_record = NULL;
 	gids_ops.read_public_key = gids_read_public_key;
+	gids_ops.card_reader_lock_obtained = gids_card_reader_lock_obtained;
+
 	return &gids_drv;
 }
 

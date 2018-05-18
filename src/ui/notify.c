@@ -127,7 +127,7 @@ static BOOL AddNotificationIcon(void)
 		if (basename) {
 			basename++;
 			if (0 != strcmp(basename, "opensc-notify.exe")) {
-				/* Allow creation of sytem tray icon only for
+				/* Allow creation of system tray icon only for
 				 * "opensc-notify.exe" to avoid creation of the same icon by
 				 * multiple processes. */
 				delete_icon = FALSE;
@@ -278,6 +278,17 @@ static void notify_proxy(struct sc_context *ctx,
 	 * we're including NotificationProxy which has similar features */
 	const char notificationproxy[] = "/Library/Security/tokend/OpenSC.tokend/Contents/Resources/Applications/NotificationProxy.app/Contents/MacOS/NotificationProxy";
 
+	if (ctx && ctx->app_name
+			&& (0 == strcmp(ctx->app_name, "opensc-pkcs11")
+				|| 0 == strcmp(ctx->app_name, "onepin-opensc-pkcs11"))) {
+		/* some programs don't like forking when loading our PKCS#11 module,
+		 * see https://github.com/OpenSC/OpenSC/issues/1174.
+		 * TODO implementing an XPC service which sends the notification should
+		 * work, though. See
+		 * https://github.com/OpenSC/OpenSC/issues/1304#issuecomment-376656003 */
+		return;
+	}
+
 	if (child > 0) {
 		int status;
 		if (0 == waitpid(child, &status, WNOHANG)) {
@@ -380,7 +391,7 @@ static GApplication *application = NULL;
 void sc_notify_init(void)
 {
 	sc_notify_close();
-	application = g_application_new("org.opensc-project.opensc-notify", G_APPLICATION_FLAGS_NONE);
+	application = g_application_new("org.opensc.notify", G_APPLICATION_NON_UNIQUE);
 	if (application) {
 		g_application_register(application, NULL, NULL);
 	}
@@ -398,20 +409,22 @@ static void notify_gio(struct sc_context *ctx,
 		const char *title, const char *text, const char *icon,
 		const char *group)
 {
-	if (application) {
+	if (application
+			&& g_application_get_is_registered(application)
+			&& g_application_get_dbus_connection(application)) {
 		GIcon *gicon = NULL;
-		GNotification *notification = g_notification_new (title);
+		GNotification *notification = g_notification_new(title);
 		if (!notification) {
 			return;
 		}
 
 		if (text) {
-			g_notification_set_body (notification, text);
+			g_notification_set_body(notification, text);
 		}
 		if (icon) {
-			gicon = g_themed_icon_new (icon);
+			gicon = g_themed_icon_new(icon);
 			if (gicon) {
-				g_notification_set_icon (notification, gicon);
+				g_notification_set_icon(notification, gicon);
 			}
 		}
 
@@ -455,10 +468,10 @@ void sc_notify_id(struct sc_context *ctx, struct sc_atr *atr,
 
 	switch (id) {
 		case NOTIFY_CARD_INSERTED:
-			icon = "dialog-information";
+			icon = "contact-new";
 			break;
 		case NOTIFY_CARD_REMOVED:
-			icon = "media-removed";
+			icon = "media-eject";
 			break;
 		case NOTIFY_PIN_GOOD:
 			icon = "changes-allow";

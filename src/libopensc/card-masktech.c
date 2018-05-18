@@ -273,7 +273,7 @@ static int masktech_pin_change(sc_card_t *card,
 	change_data.pin2.prompt = data->pin2.prompt;
 
 	rv = iso_ops->pin_cmd(card, &change_data, tries_left);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, rv, "APDU transmit failed - chnage PIN");
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, rv, "APDU transmit failed - change PIN");
 
 	return 0;
 }

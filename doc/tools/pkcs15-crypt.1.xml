@@ -132,19 +132,28 @@
 						<option>--reader</option> <replaceable>N</replaceable>,
 						<option>-r</option> <replaceable>N</replaceable>
 					</term>
-					<listitem><para>Selects the <replaceable>N</replaceable>-th smart
-					card reader configured by the system. If unspecified,
-					<command>pkcs15-crypt</command> will use the first reader
-					found.</para></listitem>
+					<listitem>
+						<para>
+							Specify the reader to use. By default, the first
+							reader with a present card is used. If
+							<replaceable>num</replaceable> is an ATR, the
+							reader with a matching card will be chosen.
+						</para>
+					</listitem>
 				</varlistentry>
 
 				<varlistentry>
 					<term>
+						<option>--md5</option>
 						<option>--sha-1</option>
+						<option>--sha-224</option>
+						<option>--sha-256</option>
+						<option>--sha-384</option>
+						<option>--sha-512</option>
 					</term>
-					<listitem><para>This option tells <command>pkcs15-crypt</command>
-					that the input file is the result of an SHA1 hash operation,
-					rather than an MD5 hash. Again, the data must be in binary
+					<listitem><para>These options tell <command>pkcs15-crypt</command>
+					that the input file is the result of the specified hash operation.
+					By default, an MD5 hash is expected. Again, the data must be in binary
 					representation.</para></listitem>
 				</varlistentry>
 
@@ -174,9 +183,18 @@
 					</term>
 					<listitem><para>When signing with ECDSA key this option indicates
 					to <command>pkcs15-crypt</command> the signature output format.
-					Possible values are 'rs'(default) -- two concatanated
+					Possible values are 'rs'(default) -- two concatenated
 					integers (PKCS#11), 'sequence' or 'openssl' -- DER encoded sequence
-					of two integeres (OpenSSL).</para></listitem>
+					of two integers (OpenSSL).</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--wait</option>,
+						<option>-w</option>
+					</term>
+					<listitem><para>Causes <command>pkcs15-crypt</command> to
+					wait for a card insertion.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -204,6 +222,12 @@
 				<manvolnum>1</manvolnum>
 			</citerefentry>
 		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Authors</title>
+		<para><command>pkcs15-crypt</command> was written by
+		Juha Yrjölä <email>juha.yrjola@iki.fi</email>.</para>
 	</refsect1>
 
 </refentry>

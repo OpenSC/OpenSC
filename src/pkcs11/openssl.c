@@ -329,7 +329,7 @@ static CK_RV gostr3410_verify_data(const unsigned char *pubkey, int pubkey_len,
 	EVP_PKEY_CTX *pkey_ctx = NULL;
 	EC_POINT *P;
 	BIGNUM *X, *Y;
-	ASN1_OCTET_STRING *octet;
+	ASN1_OCTET_STRING *octet = NULL;
 	const EC_GROUP *group = NULL;
 	char paramset[2] = "A";
 	int r = -1, ret_vrf = 0;

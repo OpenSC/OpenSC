@@ -24,7 +24,7 @@
 		<para>
 			The <command>piv-tool</command> utility can be used from the command line to perform
 			miscellaneous smart card operations on a HSPD-12 PIV smart card as defined in NIST 800-73-3.
-			It is intened for use with test cards only. It can be used to load objects, and generate
+			It is intended for use with test cards only. It can be used to load objects, and generate
 			key pairs, as well as send arbitrary APDU commands to a card after having authenticated
 			to the card using the card key provided by the card vendor.
 		</para>
@@ -94,7 +94,7 @@
 				<varlistentry>
 					<term>
 						<option>--cert</option> <replaceable>ref</replaceable>,
-						<option>-s</option> <replaceable>ref</replaceable>
+						<option>-C</option> <replaceable>ref</replaceable>
 					</term>
 					<listitem><para>Load a certificate onto the card.
 					<replaceable>ref</replaceable> is <literal>9A</literal>,
@@ -154,8 +154,14 @@
 						<option>--reader</option> <replaceable>num</replaceable>,
 						<option>-r</option> <replaceable>num</replaceable>
 					</term>
-					<listitem><para>Use the given reader number. The default is
-					<literal>0</literal>, the first reader in the system.</para></listitem>
+					<listitem>
+						<para>
+							Specify the reader to use. By default, the first
+							reader with a present card is used. If
+							<replaceable>num</replaceable> is an ATR, the
+							reader with a matching card will be chosen.
+						</para>
+					</listitem>
 				</varlistentry>
 				<varlistentry>
 					<term>
@@ -193,6 +199,12 @@
 				<manvolnum>1</manvolnum>
 			</citerefentry>
 		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Authors</title>
+		<para><command>piv-tool</command> was written by
+		Douglas E. Engert <email>deengert@gmail.com</email>.</para>
 	</refsect1>
 
 </refentry>

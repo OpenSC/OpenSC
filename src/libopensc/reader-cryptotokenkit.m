@@ -183,7 +183,7 @@ static int cryptotokenkit_connect(sc_reader_t *reader)
 		return SC_ERROR_CARD_NOT_PRESENT;
 
 	/* if tksmartcard.context is set to nil, we know that the card has been
-	 * reset or aquired by a different session */
+	 * reset or acquired by a different session */
 	priv->tksmartcard.context = @(YES);
 
 	/* attempt to detect protocol in use T0/T1/RAW */

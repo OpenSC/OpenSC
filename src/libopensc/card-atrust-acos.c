@@ -467,7 +467,7 @@ static int atrust_acos_select_file(struct sc_card *card,
 		if ( card->cache.valid && bMatch >= 0 )
 		{
 			if ( pathlen - bMatch == 2 )
-				/* we are in the rigth directory */
+				/* we are in the right directory */
 				return atrust_acos_select_fid(card, path[bMatch], path[bMatch+1], file_out);
 			else if ( pathlen - bMatch > 2 )
 			{
@@ -551,7 +551,7 @@ static int atrust_acos_set_security_env(struct sc_card *card,
 
 	/* copy key reference, if present */
 	if (env->flags & SC_SEC_ENV_KEY_REF_PRESENT) {
-		if (env->flags & SC_SEC_ENV_KEY_REF_ASYMMETRIC)
+		if (env->flags & SC_SEC_ENV_KEY_REF_SYMMETRIC)
 			*p++ = 0x83;
 		else
 			*p++ = 0x84;

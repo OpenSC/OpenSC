@@ -299,7 +299,7 @@ static const struct sc_card_error cardos_errors[] = {
 /* no error, maybe a note */
 { 0x9000, SC_SUCCESS,		NULL}, 
 { 0x9001, SC_SUCCESS,		"success, but eeprom weakness detected"}, 
-{ 0x9850, SC_SUCCESS,		"over/underflow useing in/decrease"}
+{ 0x9850, SC_SUCCESS,		"over/underflow using in/decrease"}
 };
 
 static int cardos_check_sw(sc_card_t *card, unsigned int sw1, unsigned int sw2)
@@ -352,7 +352,7 @@ get_next_part:
 	len = apdu.resplen;
 	while (len != 0) {
 		size_t   tlen = 0, ilen = 0;
-		/* is there a file informatin block (0x6f) ? */
+		/* is there a file information block (0x6f) ? */
 		p = sc_asn1_find_tag(card->ctx, p, len, 0x6f, &tlen);
 		if (p == NULL) {
 			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "directory tag missing");
@@ -372,7 +372,7 @@ get_next_part:
 			buf[fids++] = q[1];
 			buflen -= 2;
 		} else
-			/* not enought space left in buffer => break */
+			/* not enough space left in buffer => break */
 			break;
 		/* extract next offset */
 		q = sc_asn1_find_tag(card->ctx, p, tlen, 0x8a, &ilen);
@@ -893,7 +893,7 @@ cardos_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 	/* There are two ways to create a signature, depending on the way,
 	 * the key was created: RSA_SIG and RSA_PURE_SIG.
 	 * We can use the following reasoning, to determine the correct operation:
-	 * 1. We check for several caps flags (as set in card->caps), to pervent generating
+	 * 1. We check for several caps flags (as set in card->caps), to prevent generating
 	 *    invalid signatures with duplicated hash prefixes with some cards
 	 * 2. Use the information from AlgorithmInfo of the TokenInfo file.
 	 *    This information is parsed in set_security_env and stored in a static variable.

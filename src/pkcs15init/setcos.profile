@@ -7,7 +7,7 @@ cardinfo {
     pin-pad-char	= 0x00;
 }
 
-# Addtional default settings
+# Additional default settings
 option default {
     macros {
         protected	= *=$SOPIN, READ=NONE;
@@ -20,7 +20,7 @@ option default {
     }
 }
 
-# Addtional onepin option settings
+# Additional onepin option settings
 option onepin {
     macros {
         protected	= *=$PIN, READ=NONE;

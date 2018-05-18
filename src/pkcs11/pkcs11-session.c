@@ -61,7 +61,7 @@ CK_RV C_OpenSession(CK_SLOT_ID slotID,	/* the slot's ID */
 	if (rv != CKR_OK)
 		goto out;
 
-	/* Check that no conflictions sessions exist */
+	/* Check that no conflicting sessions exist */
 	if (!(flags & CKF_RW_SESSION) && (slot->login_user == CKU_SO)) {
 		rv = CKR_SESSION_READ_WRITE_SO_EXISTS;
 		goto out;

@@ -119,7 +119,7 @@
 #include "simclist.h"
 
 
-/* minumum number of elements for sorting with quicksort instead of insertion */
+/* minimum number of elements for sorting with quicksort instead of insertion */
 #define SIMCLIST_MINQUICKSORTELS        24
 
 
@@ -199,7 +199,7 @@ static simclist_inline struct list_entry_s *list_findpos(const list_t *simclist_
  * 3. avoid interference with user's RNG
  *
  * Facts pro system RNG:
- * 1. may be more accurate (irrelevant for SimCList randno purposes)
+ * 1. may be more accurate (irrelevant for SimCList random purposes)
  * 2. why reinvent the wheel
  *
  * Default to local RNG for user's ease of use.

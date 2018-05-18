@@ -19,7 +19,7 @@
  */
 /**
  * @file
- * @defgroup npa Interface to German identity card (neuer Personalausweis, nPA)
+ * @defgroup eac Interface to Extended Access Control
  * @{
  */
 #ifndef _SC_EAC_H
@@ -80,50 +80,6 @@ enum eac_tr_version {
 };
 #endif
 
-/** @brief NPA capabilities (TR-03119): PACE */
-#define NPA_BITMAP_PACE  0x40
-/** @brief NPA capabilities (TR-03119): EPA: eID */
-#define NPA_BITMAP_EID   0x20
-/** @brief NPA capabilities (TR-03119): EPA: eSign */
-#define NPA_BITMAP_ESIGN 0x10
-
-/** @brief NPA result (TR-03119): Kein Fehler */
-#define NPA_SUCCESS                            0x00000000
-/** @brief NPA result (TR-03119): Längen im Input sind inkonsistent */
-#define NPA_ERROR_LENGTH_INCONSISTENT          0xD0000001
-/** @brief NPA result (TR-03119): Unerwartete Daten im Input */
-#define NPA_ERROR_UNEXPECTED_DATA              0xD0000002
-/** @brief NPA result (TR-03119): Unerwartete Kombination von Daten im Input */
-#define NPA_ERROR_UNEXPECTED_DATA_COMBINATION  0xD0000003
-/** @brief NPA result (TR-03119): Die Karte unterstützt das PACE – Verfahren nicht.  (Unerwartete Struktur in Antwortdaten der Karte) */
-#define NPA_ERROR_CARD_NOT_SUPPORTED           0xE0000001
-/** @brief NPA result (TR-03119): Der Kartenleser unterstützt den angeforderten bzw. den ermittelten Algorithmus nicht.  */
-#define NPA_ERROR_ALGORITH_NOT_SUPPORTED       0xE0000002
-/** @brief NPA result (TR-03119): Der Kartenleser kennt die PIN – ID nicht. */
-#define NPA_ERROR_PINID_NOT_SUPPORTED          0xE0000003
-/** @brief NPA result (TR-03119): Negative Antwort der Karte auf Select EF_CardAccess (needs to be OR-ed with SW1|SW2) */
-#define NPA_ERROR_SELECT_EF_CARDACCESS         0xF0000000
-/** @brief NPA result (TR-03119): Negative Antwort der Karte auf Read Binary (needs to be OR-ed with SW1|SW2) */
-#define NPA_ERROR_READ_BINARY                  0xF0010000
-/** @brief NPA result (TR-03119): Negative Antwort der Karte auf MSE: Set AT (needs to be OR-ed with SW1|SW2) */
-#define NPA_ERROR_MSE_SET_AT                   0xF0020000
-/** @brief NPA result (TR-03119): Negative Antwort der Karte auf General Authenticate Step 1 (needs to be OR-ed with SW1|SW2) */
-#define NPA_ERROR_GENERAL_AUTHENTICATE_1       0xF0030000
-/** @brief NPA result (TR-03119): Negative Antwort der Karte auf General Authenticate Step 2 (needs to be OR-ed with SW1|SW2) */
-#define NPA_ERROR_GENERAL_AUTHENTICATE_2       0xF0040000
-/** @brief NPA result (TR-03119): Negative Antwort der Karte auf General Authenticate Step 3 (needs to be OR-ed with SW1|SW2) */
-#define NPA_ERROR_GENERAL_AUTHENTICATE_3       0xF0050000
-/** @brief NPA result (TR-03119): Negative Antwort der Karte auf General Authenticate Step 4 (needs to be OR-ed with SW1|SW2) */
-#define NPA_ERROR_GENERAL_AUTHENTICATE_4       0xF0060000
-/** @brief NPA result (TR-03119): Kommunikationsabbruch mit Karte. */
-#define NPA_ERROR_COMMUNICATION                0xF0100001
-/** @brief NPA result (TR-03119): Keine Karte im Feld. */
-#define NPA_ERROR_NO_CARD                      0xF0100002
-/** @brief NPA result (TR-03119): Benutzerabbruch. */
-#define NPA_ERROR_ABORTED                      0xF0200001
-/** @brief NPA result (TR-03119): Benutzer – Timeout */
-#define NPA_ERROR_TIMEOUT                      0xF0200002
-
 /** @brief File identifier of EF.CardAccess */
 #define  FID_EF_CARDACCESS   0x011C
 /** @brief Short file identifier of EF.CardAccess */
@@ -134,17 +90,17 @@ enum eac_tr_version {
 #define SFID_EF_CARDSECURITY 0x1D
 
 /** @brief Maximum length of PIN */
-#define MAX_PIN_LEN       6
+#define EAC_MAX_PIN_LEN       6
 /** @brief Minimum length of PIN */
-#define MIN_PIN_LEN       6
+#define EAC_MIN_PIN_LEN       6
 /** @brief Length of CAN */
-#define CAN_LEN       6
+#define EAC_CAN_LEN       6
 /** @brief Minimum length of MRZ */
-#define MAX_MRZ_LEN       128
+#define EAC_MAX_MRZ_LEN       128
 /** @brief Number of retries for PIN */
-#define MAX_PIN_TRIES     3
+#define EAC_MAX_PIN_TRIES     3
 /** @brief Usage counter of PIN in suspended state */
-#define UC_PIN_SUSPENDED  1
+#define EAC_UC_PIN_SUSPENDED  1
 
 
 /**
@@ -154,18 +110,7 @@ enum eac_tr_version {
  *
  * @return Printable string containing the name
  */
-const char *npa_secret_name(enum s_type pin_id);
-
-
-/** 
- * @brief Get the PACE capabilities
- * 
- * @param[in,out] bitmap where to store capabilities bitmap
- * @note Since this code offers no support for terminal certificate, the bitmap is always \c PACE_BITMAP_PACE|PACE_BITMAP_EID
- * 
- * @return \c SC_SUCCESS or error code if an error occurred
- */
-int get_pace_capabilities(u8 *bitmap);
+const char *eac_secret_name(enum s_type pin_id);
 
 /** 
  * @brief Establish secure messaging using PACE
@@ -233,25 +178,8 @@ int perform_chip_authentication(sc_card_t *card,
 int perform_chip_authentication_ex(sc_card_t *card, void *eacsmctx,
 		unsigned char *picc_pubkey, size_t picc_pubkey_len);
 
-/** 
- * @brief Sends a reset retry counter APDU
- *
- * According to TR-03110 the reset retry counter APDU is used to set a new PIN
- * or to reset the retry counter of the PIN. The standard requires this
- * operation to be authorized either by an established PACE channel or by the
- * effective authorization of the terminal's certificate.
- * 
- * @param[in] card
- * @param[in] pin_id         Type of secret (usually PIN or CAN). You may use <tt>enum s_type</tt> from \c <openssl/pace.h>.
- * @param[in] ask_for_secret whether to ask the user for the secret (\c 1) or not (\c 0)
- * @param[in] new            (optional) new secret
- * @param[in] new_len        (optional) length of \a new
- * 
- * @return \c SC_SUCCESS or error code if an error occurred
- */
-int npa_reset_retry_counter(sc_card_t *card,
-		enum s_type pin_id, int ask_for_secret,
-		const char *new, size_t new_len);
+/** @brief Disable all sanity checks done by OpenSC */
+#define EAC_FLAG_DISABLE_CHECK_ALL 1
 
 /** 
  * @brief Sends an MSE:Set AT to determine the number of remaining tries
@@ -262,34 +190,16 @@ int npa_reset_retry_counter(sc_card_t *card,
  * 
  * @return \c SC_SUCCESS or error code if an error occurred
  */
-int npa_pace_get_tries_left(sc_card_t *card,
+int eac_pace_get_tries_left(sc_card_t *card,
 		enum s_type pin_id, int *tries_left);
-/** 
- * @brief Send APDU to unblock the PIN
- *
- * @param[in] card
- */
-#define npa_unblock_pin(card) \
-	npa_reset_retry_counter(card, PACE_PIN, 0, NULL, 0)
-/**
- * @brief Send APDU to set a new PIN
- *
- * @param[in] card
- * @param[in] newp           (optional) new PIN
- * @param[in] newplen        (optional) length of \a new
- */
-#define npa_change_pin(card, newp, newplen) \
-	npa_reset_retry_counter(card, PACE_PIN, 1, newp, newplen)
 
-/** @brief Disable all sanity checks done by libnpa */
-#define NPA_FLAG_DISABLE_CHECK_ALL 1
 /** @brief Disable checking validity period of CV certificates */
-#define NPA_FLAG_DISABLE_CHECK_TA 2
+#define EAC_FLAG_DISABLE_CHECK_TA 2
 /** @brief Disable checking passive authentication during CA */
-#define NPA_FLAG_DISABLE_CHECK_CA 4
+#define EAC_FLAG_DISABLE_CHECK_CA 4
 
-/** @brief Use \c npa_default_flags to disable checks for EAC/SM */
-extern char npa_default_flags;
+/** @brief Use \c eac_default_flags to disable checks for EAC/SM */
+extern char eac_default_flags;
 
 #ifdef  __cplusplus
 }

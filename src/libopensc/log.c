@@ -114,11 +114,14 @@ static void sc_do_log_va(sc_context_t *ctx, int level, const char *file, int lin
 	if (r < 0)
 		return;
 
-	if (ctx->reopen_log_file)   {
-		r = sc_ctx_log_to_file(ctx, ctx->debug_filename);
-		if (r < 0)
-			return;
-	}
+#ifdef _WIN32
+	/* In Windows, file handles can not be shared between DLL-s, each DLL has a
+	 * separate file handle table. Make sure we always have a valid file
+	 * descriptor. */
+	r = sc_ctx_log_to_file(ctx, ctx->debug_filename);
+	if (r < 0)
+		return;
+#endif
 
 	outf = ctx->debug_file;
 	if (outf == NULL)
@@ -130,11 +133,11 @@ static void sc_do_log_va(sc_context_t *ctx, int level, const char *file, int lin
 		fprintf(outf, "\n");
 	fflush(outf);
 
-	if (ctx->reopen_log_file)   {
-		if (ctx->debug_file && (ctx->debug_file != stderr && ctx->debug_file != stdout))
-			fclose(ctx->debug_file);
-		ctx->debug_file = NULL;
-	}
+#ifdef _WIN32
+	if (ctx->debug_file && (ctx->debug_file != stderr && ctx->debug_file != stdout))
+		fclose(ctx->debug_file);
+	ctx->debug_file = NULL;
+#endif
 
 	return;
 }

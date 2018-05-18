@@ -335,7 +335,7 @@ iasecc_sm_initialize(struct sc_card *card, unsigned se_num, unsigned cmd)
 	rv = iasecc_sm_transmit_apdus (card, &rdata, cwa_session->mdata, &cwa_session->mdata_len);
 	if (rv == SC_ERROR_PIN_CODE_INCORRECT)
 		sc_log(ctx, "SM initialization failed, %i tries left", (rdata.data + rdata.length - 1)->apdu.sw2 & 0x0F);
-	LOG_TEST_RET(ctx, rv, "iasecc_sm_initialize() trasmit APDUs failed");
+	LOG_TEST_RET(ctx, rv, "iasecc_sm_initialize() transmit APDUs failed");
 
 	rdata.free(&rdata);
 

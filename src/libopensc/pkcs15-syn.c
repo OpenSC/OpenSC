@@ -82,6 +82,7 @@ int sc_pkcs15_is_emulation_only(sc_card_t *card)
 		case SC_CARD_TYPE_OPENPGP_V1:
 		case SC_CARD_TYPE_OPENPGP_V2:
 		case SC_CARD_TYPE_OPENPGP_GNUK:
+		case SC_CARD_TYPE_OPENPGP_V3:
 		case SC_CARD_TYPE_SC_HSM:
 		case SC_CARD_TYPE_SC_HSM_SOC:
 		case SC_CARD_TYPE_DNIE_BASE:
@@ -90,6 +91,11 @@ int sc_pkcs15_is_emulation_only(sc_card_t *card)
 		case SC_CARD_TYPE_DNIE_USER:
 		case SC_CARD_TYPE_DNIE_TERMINATED:
 		case SC_CARD_TYPE_IASECC_GEMALTO:
+		case SC_CARD_TYPE_PIV_II_GENERIC:
+		case SC_CARD_TYPE_PIV_II_HIST:
+		case SC_CARD_TYPE_PIV_II_NEO:
+		case SC_CARD_TYPE_PIV_II_YUBIKEY4:
+
 			return 1;
 		default:
 			return 0;
@@ -111,7 +117,7 @@ sc_pkcs15_bind_synthetic(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
 	conf_block = sc_get_conf_block(ctx, "framework", "pkcs15", 1);
 
 	if (!conf_block) {
-		/* no conf file found => try bultin drivers  */
+		/* no conf file found => try builtin drivers  */
 		sc_log(ctx, "no conf file (or section), trying all builtin emulators");
 		for (i = 0; builtin_emulators[i].name; i++) {
 			sc_log(ctx, "trying %s", builtin_emulators[i].name);

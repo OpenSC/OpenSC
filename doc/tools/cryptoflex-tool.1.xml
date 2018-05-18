@@ -121,7 +121,8 @@
 
 				<varlistentry>
 					<term>
-						<option>--read-key</option>
+						<option>--read-key</option>,
+						<option>-R</option>
 					</term>
 					<listitem><para>Reads a public key from the card, allowing the user to
 					extract and store or use the public key
@@ -133,9 +134,14 @@
 						<option>--reader</option> <replaceable>num</replaceable>,
 						<option>-r</option> <replaceable>num</replaceable>
 					</term>
-					<listitem><para>Forces <command>cryptoflex-tool</command> to use
-					reader number <replaceable>num</replaceable> for operations. The default
-					is to use reader number 0, the first reader in the system.</para></listitem>
+					<listitem>
+						<para>
+							Specify the reader to use. By default, the first
+							reader with a present card is used. If
+							<replaceable>num</replaceable> is an ATR, the
+							reader with a matching card will be chosen.
+						</para>
+					</listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -156,6 +162,15 @@
 					<listitem><para>Verifies CHV1 before issuing commands</para></listitem>
 				</varlistentry>
 
+				<varlistentry>
+					<term>
+						<option>--wait</option>,
+						<option>-w</option>
+					</term>
+					<listitem><para>Causes <command>cryptoflex-tool</command> to
+					wait for a card insertion.</para></listitem>
+				</varlistentry>
+
 			</variablelist>
 		</para>
 	</refsect1>
@@ -168,6 +183,12 @@
 				<manvolnum>1</manvolnum>
 			</citerefentry>
 		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Authors</title>
+		<para><command>cryptoflex-tool</command> was written by
+		Juha Yrjölä <email>juha.yrjola@iki.fi</email>.</para>
 	</refsect1>
 
 </refentry>

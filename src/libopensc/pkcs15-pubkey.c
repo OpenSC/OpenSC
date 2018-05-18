@@ -200,7 +200,7 @@ sc_pkcs15_decode_pubkey_direct_value(struct sc_pkcs15_card *p15card, struct sc_p
 		LOG_TEST_RET(ctx, rv, "Failed to decode 'SPKI' direct value");
 
 		rv = sc_pkcs15_encode_pubkey(ctx, pubkey, &info->direct.raw.value, &info->direct.raw.len);
-		LOG_TEST_RET(ctx, rv, "Failed to endode 'RAW' direct value");
+		LOG_TEST_RET(ctx, rv, "Failed to encode 'RAW' direct value");
 		sc_pkcs15_free_pubkey(pubkey);
 	}
 
@@ -939,7 +939,6 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_obj
 
 	pubkey = calloc(1, sizeof(struct sc_pkcs15_pubkey));
 	if (pubkey == NULL) {
-		free(data);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 	}
 	pubkey->algorithm = algorithm;
@@ -990,10 +989,11 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_obj
 	}
 
 err:
-	if (r)
+	if (r) {
 		sc_pkcs15_free_pubkey(pubkey);
-	else
+	} else
 		*out = pubkey;
+	free(data);
 
 	LOG_FUNC_RETURN(ctx, r);
 }
@@ -1269,7 +1269,7 @@ sc_pkcs15_read_der_file(sc_context_t *ctx, char * filename,
 	if (r != SC_SUCCESS && r != SC_ERROR_ASN1_END_OF_CONTENTS)
 		goto out;
 
-	if (tag_out == SC_ASN1_TAG_EOC || body == NULL)   {
+	if (body == NULL)   {
 		r = SC_SUCCESS;
 		goto out;
 	}

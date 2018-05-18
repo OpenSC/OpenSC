@@ -1,7 +1,7 @@
 #include <winresrc.h>
 
 #define IDC_STATIC -1
-/* defined twice: in ressource file and in source code */
+/* defined twice: in resource file and in source code */
 #define IDI_SMARTCARD       102
 
 #ifndef __MINGW32__

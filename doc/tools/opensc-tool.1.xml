@@ -57,6 +57,12 @@
 				</varlistentry>
 				<varlistentry>
 					<term>
+						<option>--list-algorithms</option>,
+					</term>
+					<listitem><para>Lists algorithms supported by card</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
 						<option>--info</option>,
 						<option>-i</option>
 					</term>
@@ -92,11 +98,31 @@
 				</varlistentry>
 				<varlistentry>
 					<term>
+						<option>--get-conf-entry</option> <replaceable>conf</replaceable>,
+						<option>-G</option> <replaceable>conf</replaceable>
+					</term>
+					<listitem><para>Get configuration key, format: section:name:key</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--set-conf-entry</option> <replaceable>conf</replaceable>,
+						<option>-S</option> <replaceable>conf</replaceable>
+					</term>
+					<listitem><para>Get configuration key, format: section:name:key:value</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
 						<option>--reader</option> <replaceable>num</replaceable>,
 						<option>-r</option> <replaceable>num</replaceable>
 					</term>
-					<listitem><para>Use the given reader number.
-					The default is <literal>0</literal>, the first reader in the system.</para></listitem>
+					<listitem>
+						<para>
+							Specify the reader to use. By default, the first
+							reader with a present card is used. If
+							<replaceable>num</replaceable> is an ATR, the
+							reader with a matching card will be chosen.
+						</para>
+					</listitem>
 				</varlistentry>
 				<varlistentry>
 					<term>
@@ -147,6 +173,12 @@
 				<manvolnum>1</manvolnum>
 			</citerefentry>
 		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Authors</title>
+		<para><command>opensc-tool</command> was written by
+		Juha Yrjölä <email>juha.yrjola@iki.fi</email>.</para>
 	</refsect1>
 
 </refentry>

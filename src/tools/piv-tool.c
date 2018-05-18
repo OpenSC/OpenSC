@@ -2,7 +2,7 @@
  * piv-tool.c: Tool for accessing smart cards with libopensc
  *
  * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
- * Copyright (C) 2005,2010 Douglas E. Engert <deengert@anl.gov>
+ * Copyright (C) 2005,2010 Douglas E. Engert <deengert@gmail.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -194,7 +194,7 @@ static int load_cert(const char * cert_id, const char * cert_file,
 				cert_file, strerror(errno));
         goto err;
     }
-	if (compress) { /* file is gziped already */
+	if (compress) { /* file is gzipped already */
 		struct stat stat_buf;
 
 		if (0 != stat(cert_file, &stat_buf)) {

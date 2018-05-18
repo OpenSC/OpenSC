@@ -42,8 +42,8 @@ struct gengetopt_args_info
   int reader_arg;	/**< @brief Number of the PC/SC reader to use (-1 for autodetect) (default='-1').  */
   char * reader_orig;	/**< @brief Number of the PC/SC reader to use (-1 for autodetect) original value given at command line.  */
   const char *reader_help; /**< @brief Number of the PC/SC reader to use (-1 for autodetect) help description.  */
-  unsigned int verbose_min; /**< @brief Use (several times) to be more verbose's minimum occurreces */
-  unsigned int verbose_max; /**< @brief Use (several times) to be more verbose's maximum occurreces */
+  unsigned int verbose_min; /**< @brief Use (several times) to be more verbose's minimum occurrences */
+  unsigned int verbose_max; /**< @brief Use (several times) to be more verbose's maximum occurrences */
   const char *verbose_help; /**< @brief Use (several times) to be more verbose help description.  */
   int pd_flag;	/**< @brief Show 'Persönliche Versicherungsdaten' (XML) (default=off).  */
   const char *pd_help; /**< @brief Show 'Persönliche Versicherungsdaten' (XML) help description.  */

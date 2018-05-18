@@ -757,7 +757,7 @@ sc_pkcs11_init_lock(CK_C_INITIALIZE_ARGS_PTR args)
 		/* Shall be used in threaded environment, must use operating system locking */
 		global_locking = default_mutex_funcs;
 	} else if (applock && !oslock) {
-		/* Shall be used in threaded envirnoment, must use app provided locking */
+		/* Shall be used in threaded environment, must use app provided locking */
 		global_locking = args;
 	} else if (!applock && !oslock) {
 		/* Shall not be used in threaded environment, use operating system locking */
