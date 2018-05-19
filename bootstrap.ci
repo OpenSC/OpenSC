@@ -10,16 +10,12 @@ OPTIONS:
    -h      Show this message
    -s      Package suffix
    -S      Use package suffix as 'g' appended with the date of last commit
-   -b      Package branch
-   -B      Use package branch as current Git branch
 EOF
 }
 
 
 SUFFIX=
-VERBOSE=
-KEEPVERSION=
-while getopts “:hs:SK” OPTION
+while getopts “:hs:S” OPTION
 do
      case $OPTION in
          h)
