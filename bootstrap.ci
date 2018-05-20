@@ -36,7 +36,7 @@ do
 done
 
 set -e
-set -x
+
 if [ -f Makefile ]; then
   make distclean
 fi
