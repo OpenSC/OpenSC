@@ -101,8 +101,8 @@ static int opt_pin = 0;
 static const char *pin = NULL;
 static int opt_erase = 0;
 static int opt_delkey = 0;
-static int opt_dump_do = 0;
-static unsigned int do_dump_idx;
+static size_t opt_dump_do = 0;
+static unsigned int do_dump_idx[200];	/* large enough and checked on input */
 
 static const char *app_name = "openpgp-tool";
 
@@ -481,8 +481,10 @@ static int decode_options(int argc, char **argv)
 				printf("Unable to parse DO identifier\n");
 				return 1;
 			}
-			do_dump_idx = (unsigned int) (val | 0x100);
-			opt_dump_do++;
+			if (opt_dump_do < sizeof(do_dump_idx) / sizeof(*do_dump_idx)) {
+				do_dump_idx[opt_dump_do] = (unsigned int) (val | 0x100);
+				opt_dump_do++;
+			}
 			actions++;
 			break;
 		default:
@@ -814,7 +816,11 @@ int main(int argc, char **argv)
 	}
 
 	if (opt_dump_do) {
-		exit_status |= do_dump_do(card, do_dump_idx);
+		size_t n;
+
+		for (n = 0; n < opt_dump_do; n++) {
+			exit_status |= do_dump_do(card, do_dump_idx[n]);
+		}
 	}
 
 	if (opt_genkey)
