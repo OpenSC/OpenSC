@@ -144,7 +144,7 @@ static const char *option_help[] = {
 	"Verify PIN (CHV1, CHV2, CHV3...)",
 	"PIN string",
 	"Delete key (1, 2, 3 or all)",
-/* d */ "Dump private data object number <arg> (i.e. PRIVATE-DO-<arg>)",
+/* d */ "Dump private data object number <arg> (i.e. DO <arg>)",
 };
 
 
