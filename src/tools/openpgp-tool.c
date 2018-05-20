@@ -213,11 +213,16 @@ static char *prettify_manufacturer(void *ptr)
 			case 0x0006: return "Yubico";
 			case 0x0007: return "OpenKMS";
 			case 0x0008: return "LogoEmail";
+			case 0x0009: return "Fidesmo";
+			case 0x000A: return "Dangerous Things";
 
 			case 0x002A: return "Magrathea";
+			case 0x0042: return "GnuPG e.V.";
 
 			case 0x1337: return "Warsaw Hackerspace";
-
+			case 0x2342: return "warpzone"; /* hackerspace Muenster.  */
+			case 0x63AF: return "Trustica";
+			case 0xBD0E: return "Paranoidlabs";
 			case 0xF517: return "FSIJ";
 
 			/* 0x0000 and 0xFFFF are defined as test cards per spec,
