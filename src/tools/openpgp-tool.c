@@ -102,7 +102,7 @@ static const char *pin = NULL;
 static int opt_erase = 0;
 static int opt_delkey = 0;
 static int opt_dump_do = 0;
-static u8 do_dump_idx;
+static unsigned int do_dump_idx;
 
 static const char *app_name = "openpgp-tool";
 
@@ -402,6 +402,8 @@ static void display_data(const struct ef_name_map *map, void *data)
 static int decode_options(int argc, char **argv)
 {
 	int c;
+	char *endptr;
+	unsigned long val;
 
 	while ((c = getopt_long(argc, argv,"r:x:CUG:L:EhwvVd:", options, (int *) 0)) != EOF) {
 		switch (c) {
@@ -473,7 +475,13 @@ static int decode_options(int argc, char **argv)
 				key_id = 'a';
 			break;
 		case 'd':
-			do_dump_idx = optarg[0] - '0';
+			endptr = NULL;
+			val = strtoul(optarg, &endptr, 16);
+			if (endptr == NULL || endptr == optarg || *endptr != '\0') {
+				printf("Unable to parse DO identifier\n");
+				return 1;
+			}
+			do_dump_idx = (unsigned int) (val | 0x100);
 			opt_dump_do++;
 			actions++;
 			break;
@@ -544,6 +552,11 @@ static int do_dump_do(sc_card_t *card, unsigned int tag)
 	// Private DO are specified up to 254 bytes
 	unsigned char buffer[254];
 	memset(buffer, '\0', sizeof(buffer));
+
+	if (tag < 0x101 || tag > 0x104) {
+		printf("Illegal DO identifier\n");
+		return 1;
+	}
 
 	r = sc_get_data(card, tag, buffer, sizeof(buffer));
 	if (r < 0) {
@@ -801,7 +814,7 @@ int main(int argc, char **argv)
 	}
 
 	if (opt_dump_do) {
-		exit_status |= do_dump_do(card, 0x0100 + do_dump_idx);
+		exit_status |= do_dump_do(card, do_dump_idx);
 	}
 
 	if (opt_genkey)
