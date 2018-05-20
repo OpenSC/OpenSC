@@ -316,6 +316,7 @@ static int decode_options(int argc, char **argv)
 				key_id = optarg[0] - '0';
 			else                              /* Arg string is 'all' */
 				key_id = 'a';
+			actions++;
 			break;
 		case 'd':
 			do_dump_idx = optarg[0] - '0';
