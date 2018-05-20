@@ -40,6 +40,16 @@
 			<variablelist>
 				<varlistentry>
 					<term>
+						<option>--card-info</option>,
+						<option>-C</option>
+					</term>
+					<listitem><para>
+					Show card information.
+					</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
 						<option>--exec</option> <replaceable>prog</replaceable>,
 						<option>-x</option> <replaceable>prog</replaceable>
 					</term>
