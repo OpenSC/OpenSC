@@ -93,7 +93,7 @@ const char *gengetopt_args_info_help[] = {
   "  -t, --translate=FILENAME      File with APDUs of HEX_STRINGs to send through\n                                  the secure channel  (default=`stdin')",
   "      --tr-03110v201            Force compliance to BSI TR-03110 version 2.01\n                                  (default=off)",
   "      --disable-all-checks      Disable all checking of fly-by-data\n                                  (default=off)",
-  "\nReport bugs to opensc-devel@lists.sourceforge.net\n\nWritten by Frank Morgner <frankmorgner@gmail.com>",
+  "\nReport bugs to https://github.com/OpenSC/OpenSC/issues\n\nWritten by Frank Morgner <frankmorgner@gmail.com>",
     0
 };
 

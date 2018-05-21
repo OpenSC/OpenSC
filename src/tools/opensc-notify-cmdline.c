@@ -43,7 +43,7 @@ const char *gengetopt_args_info_help[] = {
   "  -R, --notify-card-removed   See notify_card_inserted in opensc.conf\n                                (default=off)",
   "  -G, --notify-pin-good       See notify_pin_good in opensc.conf  (default=off)",
   "  -B, --notify-pin-bad        See notify_pin_bad in opensc.conf  (default=off)",
-  "\nReport bugs to opensc-devel@lists.sourceforge.net\n\nWritten by Frank Morgner <frankmorgner@gmail.com>",
+  "\nReport bugs to https://github.com/OpenSC/OpenSC/issues\n\nWritten by Frank Morgner <frankmorgner@gmail.com>",
     0
 };
 
@@ -1072,6 +1072,7 @@ cmdline_parser_internal (
   
   int override;
   int initialize;
+  int check_required;
   int check_ambiguity;
 
   char *optarg;
@@ -1083,6 +1084,7 @@ cmdline_parser_internal (
   
   override = params->override;
   initialize = params->initialize;
+  check_required = params->check_required;
   check_ambiguity = params->check_ambiguity;
 
   if (initialize)
