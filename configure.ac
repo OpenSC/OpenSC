@@ -531,9 +531,7 @@ if test "${enable_tests}" = "detect"; then
 fi
 
 if test "${enable_tests}" = "yes"; then
-	if test "${have_cmocka}" = "yes"; then
-		AC_DEFINE([ENABLE_TESTS], [1], [Build tests in tests/ subdirectory])
-	else
+	if test "${have_cmocka}" != "yes"; then
 		AC_MSG_ERROR([Tests required, but cmocka is not available])
 	fi
 fi
@@ -1021,7 +1019,7 @@ AM_CONDITIONAL([ENABLE_MINIDRIVER_SETUP_CUSTOMACTION], [test "${enable_minidrive
 AM_CONDITIONAL([ENABLE_SM], [test "${enable_sm}" = "yes"])
 AM_CONDITIONAL([ENABLE_DNIE_UI], [test "${enable_dnie_ui}" = "yes"])
 AM_CONDITIONAL([ENABLE_NPATOOL], [test "${ENABLE_NPATOOL}" = "yes"])
-AM_CONDITIONAL([ENABLE_TESTS], [test "${ENABLE_TESTS}" = "yes"])
+AM_CONDITIONAL([ENABLE_TESTS], [test "${enable_tests}" = "yes"])
 AM_CONDITIONAL([GIT_CHECKOUT], [test "${GIT_CHECKOUT}" = "yes"])
 
 if test "${enable_pedantic}" = "yes"; then
