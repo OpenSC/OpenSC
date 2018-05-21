@@ -1295,7 +1295,7 @@ sc_pkcs15init_init_skdf(struct sc_pkcs15_card *p15card, struct sc_profile *profi
 	struct sc_pkcs15_object *object = NULL;
 	const char	*label;
 	unsigned int	usage;
-	unsigned int	keybits = keyargs->value_len;
+	unsigned int	keybits = keyargs->value_len * 8;
 	int		r = 0, key_type;
 
 	LOG_FUNC_CALLED(ctx);
