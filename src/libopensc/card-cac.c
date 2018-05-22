@@ -6,9 +6,10 @@
  * Copyright (C) 2005,2006,2007,2008,2009,2010 Douglas E. Engert <deengert@anl.gov>
  * Copyright (C) 2006, Identity Alliance, Thomas Harning <thomas.harning@identityalliance.com>
  * Copyright (C) 2007, EMC, Russell Larner <rlarner@rsa.com>
- * Copyright (C) 2016, Red Hat, Inc.
+ * Copyright (C) 2016 - 2018, Red Hat, Inc.
  *
  * CAC driver author: Robert Relyea <rrelyea@redhat.com>
+ * Further work: Jakub Jelen <jjelen@redhat.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -63,11 +64,13 @@
  *  CAC hardware and APDU constants
  */
 #define CAC_MAX_CHUNK_SIZE 240
-#define CAC_INS_GET_CERTIFICATE 0x36  /* CAC1 command to read a certificate */
-#define CAC_INS_SIGN_DECRYPT    0x42  /* A crypto operation */
+#define CAC_INS_GET_CERTIFICATE       0x36  /* CAC1 command to read a certificate */
+#define CAC_INS_SIGN_DECRYPT          0x42  /* A crypto operation */
+#define CAC_INS_READ_FILE             0x52  /* read a TL or V file */
+#define CAC_INS_GET_ACR               0x4c
+#define CAC_INS_GET_PROPERTIES        0x56
 #define CAC_P1_STEP    0x80
 #define CAC_P1_FINAL   0x00
-#define CAC_INS_READ_FILE       0x52  /* read a TL or V file */
 #define CAC_FILE_TAG    1
 #define CAC_FILE_VALUE  2
 /* TAGS in a TL file */
@@ -87,9 +90,26 @@
 #define CAC_TAG_STATUS_TUPLES         0xFC
 #define CAC_TAG_NEXT_CCC              0xFD
 #define CAC_TAG_ERROR_CODES           0xFE
-#define CAC_APP_TYPE_GENERAL    0x01
-#define CAC_APP_TYPE_SKI        0x02
-#define CAC_APP_TYPE_PKI        0x04
+#define CAC_TAG_APPLET_FAMILY         0x01
+#define CAC_TAG_NUMBER_APPLETS        0x94
+#define CAC_TAG_APPLET_ENTRY          0x93
+#define CAC_TAG_APPLET_AID            0x92
+#define CAC_TAG_APPLET_INFORMATION    0x01
+#define CAC_TAG_NUMBER_OF_OBJECTS     0x40
+#define CAC_TAG_TV_BUFFER             0x50
+#define CAC_TAG_PKI_OBJECT            0x51
+#define CAC_TAG_OBJECT_ID             0x41
+#define CAC_TAG_BUFFER_PROPERTIES     0x42
+#define CAC_TAG_PKI_PROPERTIES        0x43
+
+#define CAC_APP_TYPE_GENERAL          0x01
+#define CAC_APP_TYPE_SKI              0x02
+#define CAC_APP_TYPE_PKI              0x04
+
+#define CAC_ACR_ACR                   0x00
+#define CAC_ACR_APPLET_OBJECT         0x10
+#define CAC_ACR_AMP                   0x20
+#define CAC_ACR_SERVICE               0x21
 
 /* hardware data structures (returned in the CCC) */
 /* part of the card_url */
@@ -141,6 +161,14 @@ typedef struct cac_object {
 	int fd;
 	sc_path_t path;
 } cac_object_t;
+
+typedef struct {
+	unsigned int num_objects;
+	/* OID has two bytes and there is max 10 of them */
+	unsigned char objects[10][2];
+	/* Format is SimpleTLV? (Type of Tag Supported) */
+	unsigned char simpletlv[10];
+} cac_properties_t;
 
 /*
  * Flags for Current Selected Object Type
@@ -420,6 +448,50 @@ static int cac_apdu_io(sc_card_t *card, int ins, int p1, int p2,
 
 err:
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+}
+
+/*
+ * Get ACR of currently ACA applet identified by the  acr_type
+ * 5.3.3.5 Get ACR APDU
+ */
+static int
+cac_get_acr(sc_card_t *card, int acr_type, u8 **out_buf, size_t *out_len)
+{
+	u8 *out = NULL;
+	u8 *out_ptr;
+	/* XXX assuming it will not be longer than 255 B */
+	size_t len = 256;
+	int r;
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	/* for simplicity we support only ACR without arguments now */
+	if (acr_type != 0x00 && acr_type != 0x10
+	    && acr_type != 0x20 && acr_type != 0x21) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+
+	out = out_ptr = malloc(len);
+
+	r = cac_apdu_io(card, CAC_INS_GET_ACR, acr_type, 0, NULL, 0, &out_ptr, &len);
+	if (len == 0) {
+		r = SC_ERROR_FILE_NOT_FOUND;
+	}
+	if (r < 0)
+		goto fail;
+
+	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
+	    "got %"SC_FORMAT_LEN_SIZE_T"u bytes out_ptr=%p", len, out_ptr);
+
+	*out_len = len;
+	*out_buf = out;
+	return SC_SUCCESS;
+
+fail:
+	if (out)
+		free(out);
+	*out_len = 0;
+	return r;
 }
 
 /*
@@ -964,7 +1036,7 @@ static int cac_rsa_op(sc_card_t *card,
 	if (rbuflen != 0) {
 		int n = MIN(rbuflen, outplen);
 		memcpy(outp,rbuf, n);
-		/*outp += n;     unused */ 
+		/*outp += n;     unused */
 		outplen -= n;
 	}
 	free(rbuf);
@@ -1210,6 +1282,131 @@ static int cac_path_from_cardurl(sc_card_t *card, sc_path_t *path, cac_card_url_
 	return SC_SUCCESS;
 }
 
+static int cac_get_properties(sc_card_t *card, cac_properties_t *prop)
+{
+	u8 *rbuf = NULL;
+	size_t rbuflen = 0, len;
+	u8 *val, *val_end;
+	size_t i = 0;
+	int r;
+	prop->num_objects = 0;
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	r = cac_apdu_io(card, CAC_INS_GET_PROPERTIES, 0x01, 0x00, NULL, 0,
+		&rbuf, &rbuflen);
+	if (r < 0)
+		return r;
+
+	val = rbuf;
+	val_end = val + rbuflen;
+	for (; val < val_end; val += len) {
+		/* get the tag and the length */
+		u8 tag;
+		if (sc_simpletlv_read_tag(&val, val_end - val, &tag, &len) != SC_SUCCESS)
+			break;
+
+		switch (tag) {
+		case CAC_TAG_APPLET_INFORMATION:
+			if (len != 5)
+				break;
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
+			    "TAG: Applet Information: Family: 0x%0x", val[0]);
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
+			    "     Applet Version: 0x%02x 0x%02x 0x%02x 0x%02x",
+			    val[1], val[2], val[3], val[4]);
+			break;
+		case CAC_TAG_NUMBER_OF_OBJECTS:
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
+			    "TAG: Num objects = %hhd", *val);
+			prop->num_objects = *val;
+			break;
+
+		case CAC_TAG_TV_BUFFER:
+			if (len < 11)
+				break;
+			/* TODO parse the inner SimpleTLV structure */
+			/* skipping 2B of TL encoding of inner structure */
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
+			    "TAG: TV Buffer ID = 0x%02x 0x%02x", val[2], val[3]);
+			memcpy(&prop->objects[i], &val[2], 2);
+			/* skipping 4B OID (TLV) + 2B TL for the properties */
+			prop->simpletlv[i] = val[6];
+			i++;
+			break;
+		case CAC_TAG_PKI_OBJECT:
+			if (len < 11)
+				break;
+			/* TODO parse the inner SimpleTLV structure */
+			/* skipping 2B of TL encoding of inner structure */
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
+			    "TAG: PKI Object ID = 0x%02x 0x%02x", val[2], val[3]);
+			memcpy(&prop->objects[i], &val[2], 2);
+			/* skipping 4B OID (TLV) + 2B TL for the properties */
+			prop->simpletlv[i] = val[6];
+			i++;
+			break;
+		default:
+			/* ignore tags we don't understand */
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
+			    "TAG: Unknown (0x%02x)",tag );
+			break;
+		}
+	}
+	/* sanity */
+	if (i != prop->num_objects)
+		return SC_ERROR_INVALID_DATA;
+
+	return SC_SUCCESS;
+}
+
+static int cac_parse_aid(sc_card_t *card, cac_private_data_t *priv, u8 *aid, int aid_len)
+{
+	cac_object_t new_object;
+	cac_properties_t prop;
+	size_t i;
+	int r;
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	/* Search for PKI applets. Ignore generic objects for now */
+	if (aid_len < 6 || memcmp(aid, CAC_1_RID "\x01", 6) != 0)
+		return SC_SUCCESS;
+
+	sc_mem_clear(&new_object.path, sizeof(sc_path_t));
+	memcpy(new_object.path.aid.value, aid, aid_len);
+	new_object.path.aid.len = aid_len;
+
+	/* Call without OID set will just select the AID without subseqent
+	 * OID selection, which we need to figure out just now
+	 */
+	cac_select_file_by_type(card, &new_object.path, NULL, SC_CARD_TYPE_CAC_II);
+	r = cac_get_properties(card, &prop);
+	if (r < 0)
+		return SC_ERROR_INTERNAL;
+
+	for (i = 0; i < prop.num_objects; i++) {
+		/* don't fail just because we have more certs than we can support */
+		if (priv->cert_next >= MAX_CAC_SLOTS)
+			return SC_SUCCESS;
+
+		/* OID here has always 2B */
+		memcpy(new_object.path.value, &prop.objects[i], 2);
+		new_object.path.len = 2;
+		new_object.path.type = SC_PATH_TYPE_FILE_ID;
+
+		new_object.name = cac_labels[priv->cert_next];
+		new_object.fd = priv->cert_next+1;
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
+		    "ACA: pki_object found, cert_next=%d (%s),",
+		    priv->cert_next, new_object.name);
+		cac_add_object_to_list(&priv->pki_list, &new_object);
+		priv->cert_next++;
+	}
+
+	return SC_SUCCESS;
+}
+
 static int cac_parse_cardurl(sc_card_t *card, cac_private_data_t *priv, cac_card_url_t *val, int len)
 {
 	cac_object_t new_object;
@@ -1249,7 +1446,7 @@ static int cac_parse_cardurl(sc_card_t *card, cac_private_data_t *priv, cac_card
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"CARDURL: ski_object found");
 	break;
 	default:
-		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"CARDURL: unknown object_object found (type=0x%x)", val->cardApplicationType);
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"CARDURL: unknown object_object found (type=0x%02x)", val->cardApplicationType);
 		/* don't fail just because there is an unknown object in the CCC */
 		break;
 	}
@@ -1336,7 +1533,7 @@ static int cac_parse_CCC(sc_card_t *card, cac_private_data_t *priv, u8 *tl,
 		case CAC_TAG_STATUS_TUPLES:
 		case CAC_TAG_REDIRECTION:
 		case CAC_TAG_ERROR_CODES:
-			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"TAG:FSSpecific(0x%x)", tag);
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"TAG:FSSpecific(0x%02x)", tag);
 			break;
 		case CAC_TAG_ACCESS_CONTROL:
 			/* TODO handle access control later */
@@ -1358,7 +1555,7 @@ static int cac_parse_CCC(sc_card_t *card, cac_private_data_t *priv, u8 *tl,
 			break;
 		default:
 			/* ignore tags we don't understand */
-			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"TAG:Unknown (0x%x)",tag );
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"TAG:Unknown (0x%02x)",tag );
 			break;
 		}
 	}
@@ -1387,6 +1584,56 @@ done:
 	if (val)
 		free(val);
 	return r;
+}
+
+/* Service Applet Table (Table 5-21) should list all the applets on the
+ * card, which is a good start if we don't have CCC
+ */
+static int cac_parse_ACA_service(sc_card_t *card, cac_private_data_t *priv,
+    u8 *val, size_t val_len)
+{
+	size_t len = 0;
+	u8 *val_end = val + val_len;
+	int r;
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	for (; val < val_end; val += len) {
+		/* get the tag and the length */
+		u8 tag;
+		if (sc_simpletlv_read_tag(&val, val_end - val, &tag, &len) != SC_SUCCESS)
+			break;
+
+		switch (tag) {
+		case CAC_TAG_APPLET_FAMILY:
+			if (len != 5)
+				break;
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
+			    "TAG: Applet Information: Family: 0x%02x", val[0]);
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
+			    "     Applet Version: 0x%02x 0x%02x 0x%02x 0x%02x",
+			    val[1], val[2], val[3], val[4]);
+			break;
+		case CAC_TAG_NUMBER_APPLETS:
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
+			    "TAG: Num applets = %hhd", *val);
+			break;
+		case CAC_TAG_APPLET_ENTRY:
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
+			    "TAG: Applet Entry");
+			/* This is SimpleTLV prefixed with applet ID (1B) */
+			r = cac_parse_aid(card, priv, &val[3], val[2]);
+			if (r < 0)
+				return r;
+			break;
+		default:
+			/* ignore tags we don't understand */
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
+			    "TAG: Unknown (0x%02x)", tag);
+			break;
+		}
+	}
+	return SC_SUCCESS;
 }
 
 /* select a CAC-1 pki applet by index */
@@ -1477,39 +1724,30 @@ static int cac_populate_cac_1(sc_card_t *card, int index, cac_private_data_t *pr
 
 static int cac_process_ACA(sc_card_t *card, cac_private_data_t *priv)
 {
-	int r, index;
-	u8 *tl = NULL, *val = NULL;
-	size_t tl_len, val_len;
+	int r;
+	u8 *val = NULL;
+	size_t val_len;
 
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	r = cac_read_file(card, CAC_FILE_TAG, &tl, &tl_len);
+	/* Assuming ACA is already selected */
+	r = cac_get_acr(card, CAC_ACR_SERVICE, &val, &val_len);
 	if (r < 0)
 		goto done;
 
-	r = cac_read_file(card, CAC_FILE_VALUE, &val, &val_len);
-	if (r < 0)
-		goto done;
-
-	/* TODO we should process the ACA file -- so far we are happy we can read it */
-	//r = cac_parse_ACA(card, priv, tl, tl_len, val, val_len);
-	r = cac_find_first_pki_applet(card, &index);
+	r = cac_parse_ACA_service(card, priv, val, val_len);
         if (r == SC_SUCCESS) {
-		r = cac_populate_cac_1(card, index, priv);
-		if (r == SC_SUCCESS) {
-			priv->aca_path = malloc(sizeof(sc_path_t));
-			if (!priv->aca_path) {
-				r = SC_ERROR_OUT_OF_MEMORY;
-				goto done;
-			}
-			memcpy(priv->aca_path, &cac_ACA_Path, sizeof(sc_path_t));
+		priv->aca_path = malloc(sizeof(sc_path_t));
+		if (!priv->aca_path) {
+			r = SC_ERROR_OUT_OF_MEMORY;
+			goto done;
 		}
+		memcpy(priv->aca_path, &cac_ACA_Path, sizeof(sc_path_t));
 	}
 done:
-	if (tl)
-		free(tl);
 	if (val)
 		free(val);
-	return r;
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 }
 
 /*
