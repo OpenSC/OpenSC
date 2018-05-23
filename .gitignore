@@ -57,6 +57,7 @@ tags
 *.obj
 *.exp
 *.res
+*.ggo
 ChangeLog
 
 doc/tools/cardos-tool
@@ -102,6 +103,10 @@ src/tools/pkcs11-tool
 src/tools/dnie-tool
 src/tools/npa-tool
 src/tools/sceac-example
+src/tools/opensc-notify
+src/tools/org.opensc.notify.desktop
+src/tools/opensc-asn1
+src/tools/egk-tool
 
 win32/OpenSC.iss
 win32/OpenSC.wxs
