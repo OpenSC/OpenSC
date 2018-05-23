@@ -224,6 +224,9 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 	}
 
 	/* set pins */
+	/* TODO we should not create PIN objects if it is not initialized
+	 * (opensc-tool -s 0020000000 returns 0x6A 0x88)
+	 */
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "CAC adding pins...");
 	for (i = 0; pins[i].id; i++) {
 		struct sc_pkcs15_auth_info pin_info;
