@@ -162,12 +162,16 @@ typedef struct cac_object {
 	sc_path_t path;
 } cac_object_t;
 
+#define CAC_MAX_OBJECTS 10
+
 typedef struct {
 	unsigned int num_objects;
-	/* OID has two bytes and there is max 10 of them */
-	unsigned char objects[10][2];
-	/* Format is SimpleTLV? (Type of Tag Supported) */
-	unsigned char simpletlv[10];
+	/* OID has two bytes */
+	unsigned char objects[CAC_MAX_OBJECTS][2];
+	/* Format is NOT SimpleTLV? */
+	unsigned char simpletlv[CAC_MAX_OBJECTS];
+	/* Is certificate object and private key is initialized */
+	unsigned char privatekey[CAC_MAX_OBJECTS];
 } cac_properties_t;
 
 /*
@@ -181,6 +185,7 @@ typedef struct {
  */
 #define CAC_OBJECT_TYPE_CERT		1
 #define CAC_OBJECT_TYPE_TLV_FILE	4
+#define CAC_OBJECT_TYPE_GENERIC		5
 
 /*
  * CAC private data per card state
@@ -258,7 +263,6 @@ static int cac_add_object_to_list(list_t *list, const cac_object_t *object)
 
 #define CAC_2_RID "\xA0\x00\x00\x01\x16"
 #define CAC_1_RID "\xA0\x00\x00\x00\x79"
-#define CAC_1_CM_AID "\xA0\x00\x00\x00\x30\x00\00"
 
 static const sc_path_t cac_ACA_Path = {
 	"", 0,
@@ -713,14 +717,6 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 			goto done;
 	}
 
-	/* XXX TODO
-	 * we can not assume that the following structures are
-	 * SimpleTLV unless we check properties of the applet (GET PROPERTIES)
-	 * and make sure that "Type of Tag Supported" is 0x00.
-	 * Otherwise the formatting is different and we need a different
-	 * encoding to present it in PKCS#11 layer
-	 * XXX TODO
-	 */
 	switch (priv->object_type) {
 	case CAC_OBJECT_TYPE_TLV_FILE:
 		tlv_len = tl_len + val_len;
@@ -809,6 +805,11 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 			goto done;
 		}
 		break;
+	case CAC_OBJECT_TYPE_GENERIC:
+		/* TODO
+		 * We have some two buffers in unknown encoding that we
+		 * need to present in PKCS#15 layer.
+		 */
 	default:
 		/* Unknown object type */
 		sc_log(card->ctx, "Unknown object type: %x", priv->object_type);
@@ -1073,6 +1074,129 @@ static int cac_decipher(sc_card_t *card,
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, cac_rsa_op(card, data, datalen, out, outlen));
 }
 
+static int parse_properties_object(sc_card_t *card, u8 type,
+    u8 *data, size_t data_len, cac_properties_t *prop, size_t *i)
+{
+	size_t len;
+	u8 *val, *val_end, tag;
+	int parsed = 0;
+
+	if (data_len < 11)
+		return -1;
+
+	/* Initilize: non-PKI applet */
+	prop->privatekey[*i] = 0;
+
+	val = data;
+	val_end = data + data_len;
+	for (; val < val_end; val += len) {
+		/* get the tag and the length */
+		if (sc_simpletlv_read_tag(&val, val_end - val, &tag, &len) != SC_SUCCESS)
+			break;
+
+		switch (tag) {
+		case CAC_TAG_OBJECT_ID:
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
+			    "TAG: Object ID = 0x%02x 0x%02x", val[0], val[1]);
+			memcpy(&prop->objects[*i], val, 2);
+			parsed++;
+			break;
+
+		case CAC_TAG_BUFFER_PROPERTIES:
+			/* First byte is "Type of Tag Supported" */
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
+			    "TAG: Buffer Properties: Type of Tag Supported = 0x%02x",
+			    val[0]);
+			prop->simpletlv[*i] = val[0];
+			parsed++;
+			break;
+
+		case CAC_TAG_PKI_PROPERTIES:
+			/* 4th byte is "Private Key Initialized" */
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
+			    "TAG: PKI Properties: Private Key Initialized = 0x%02x",
+			    val[2]);
+			prop->privatekey[*i] = val[2];
+			parsed++;
+			break;
+
+		default:
+			/* ignore tags we don't understand */
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
+			    "TAG: Unknown (0x%02x)",tag );
+			break;
+		}
+	}
+	if (parsed < 2)
+		return SC_ERROR_INVALID_DATA;
+
+	(*i)++;
+	return SC_SUCCESS;
+}
+
+static int cac_get_properties(sc_card_t *card, cac_properties_t *prop)
+{
+	u8 *rbuf = NULL;
+	size_t rbuflen = 0, len;
+	u8 *val, *val_end, tag;
+	size_t i = 0;
+	int r;
+	prop->num_objects = 0;
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	r = cac_apdu_io(card, CAC_INS_GET_PROPERTIES, 0x01, 0x00, NULL, 0,
+		&rbuf, &rbuflen);
+	if (r < 0)
+		return r;
+
+	val = rbuf;
+	val_end = val + rbuflen;
+	for (; val < val_end; val += len) {
+		/* get the tag and the length */
+		if (sc_simpletlv_read_tag(&val, val_end - val, &tag, &len) != SC_SUCCESS)
+			break;
+
+		switch (tag) {
+		case CAC_TAG_APPLET_INFORMATION:
+			if (len != 5)
+				break;
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
+			    "TAG: Applet Information: Family: 0x%0x", val[0]);
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
+			    "     Applet Version: 0x%02x 0x%02x 0x%02x 0x%02x",
+			    val[1], val[2], val[3], val[4]);
+			break;
+		case CAC_TAG_NUMBER_OF_OBJECTS:
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
+			    "TAG: Num objects = %hhd", *val);
+			/* make sure we do not overrun buffer */
+			prop->num_objects = MIN(val[0], CAC_MAX_OBJECTS);
+			break;
+
+		case CAC_TAG_TV_BUFFER:
+		case CAC_TAG_PKI_OBJECT:
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
+			    "TAG: TV/PKI Object nr. %"SC_FORMAT_LEN_SIZE_T"u (0x%02x)", i, tag);
+			if (i >= CAC_MAX_OBJECTS)
+				return SC_SUCCESS;
+
+			parse_properties_object(card, tag, val, len, prop, &i);
+			break;
+		default:
+			/* ignore tags we don't understand */
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
+			    "TAG: Unknown (0x%02x)",tag );
+			break;
+		}
+	}
+	/* sanity */
+	if (i != prop->num_objects)
+		return SC_ERROR_INVALID_DATA;
+
+	return SC_SUCCESS;
+}
+
 /*
  * CAC cards use SC_PATH_SELECT_OBJECT_ID rather than SC_PATH_SELECT_FILE_ID. In order to use more
  * of the PKCS #15 structure, we call the selection SC_PATH_SELECT_FILE_ID, but we set p1 to 2 instead
@@ -1127,10 +1251,11 @@ static int cac_select_file_by_type(sc_card_t *card, const sc_path_t *in_path, sc
 	 * and object type here:
 	 */
 	if (priv) { /* don't record anything if we haven't been initialized yet */
-		priv->object_type = CAC_OBJECT_TYPE_TLV_FILE;
+		priv->object_type = CAC_OBJECT_TYPE_GENERIC;
 		if (cac_is_cert(priv, in_path)) {
 			priv->object_type = CAC_OBJECT_TYPE_CERT;
 		}
+
 		/* forget any old cached values */
 		if (priv->cache_buf) {
 			free(priv->cache_buf);
@@ -1195,6 +1320,7 @@ static int cac_select_file_by_type(sc_card_t *card, const sc_path_t *in_path, sc
 
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(ctx, r, "APDU transmit failed");
+
 	if (file_out == NULL) {
 		/* For some cards 'SELECT' can be only with request to return FCI/FCP. */
 		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
@@ -1213,7 +1339,37 @@ static int cac_select_file_by_type(sc_card_t *card, const sc_path_t *in_path, sc
 	if (r)
 		LOG_FUNC_RETURN(ctx, r);
 
-		/* CAC cards never return FCI, fake one */
+	/* This needs to come after the applet selection */
+	if (priv && in_path->len) {
+		/* get applet properties to know if we can treat the
+		 * buffer as SimpleLTV and if we have PKI applet.
+		 *
+		 * Do this only if we select applets for reading
+		 * (not during driver initialization)
+		 */
+		cac_properties_t prop;
+		size_t i = -1;
+
+		r = cac_get_properties(card, &prop);
+		if (r == SC_SUCCESS) {
+			for (i = 0; i < prop.num_objects; i++) {
+				sc_log(card->ctx, "Searching for our OID: 0x%02x 0x%02x = 0x%02x 0x%02x",
+				    prop.objects[i][0], prop.objects[i][1],
+					in_path->value[0], in_path->value[1]);
+				if (memcmp(prop.objects[i],
+				    in_path->value, 2) == 0)
+					break;
+			}
+		}
+		if (i < prop.num_objects) {
+			if (prop.privatekey[i])
+				priv->object_type = CAC_OBJECT_TYPE_CERT;
+			else if (prop.simpletlv[i] == 0)
+				priv->object_type = CAC_OBJECT_TYPE_TLV_FILE;
+		}
+	}
+
+	/* CAC cards never return FCI, fake one */
 	file = sc_file_new();
 	if (file == NULL)
 			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
@@ -1282,84 +1438,6 @@ static int cac_path_from_cardurl(sc_card_t *card, sc_path_t *path, cac_card_url_
 	return SC_SUCCESS;
 }
 
-static int cac_get_properties(sc_card_t *card, cac_properties_t *prop)
-{
-	u8 *rbuf = NULL;
-	size_t rbuflen = 0, len;
-	u8 *val, *val_end;
-	size_t i = 0;
-	int r;
-	prop->num_objects = 0;
-
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-
-	r = cac_apdu_io(card, CAC_INS_GET_PROPERTIES, 0x01, 0x00, NULL, 0,
-		&rbuf, &rbuflen);
-	if (r < 0)
-		return r;
-
-	val = rbuf;
-	val_end = val + rbuflen;
-	for (; val < val_end; val += len) {
-		/* get the tag and the length */
-		u8 tag;
-		if (sc_simpletlv_read_tag(&val, val_end - val, &tag, &len) != SC_SUCCESS)
-			break;
-
-		switch (tag) {
-		case CAC_TAG_APPLET_INFORMATION:
-			if (len != 5)
-				break;
-			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
-			    "TAG: Applet Information: Family: 0x%0x", val[0]);
-			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
-			    "     Applet Version: 0x%02x 0x%02x 0x%02x 0x%02x",
-			    val[1], val[2], val[3], val[4]);
-			break;
-		case CAC_TAG_NUMBER_OF_OBJECTS:
-			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
-			    "TAG: Num objects = %hhd", *val);
-			prop->num_objects = *val;
-			break;
-
-		case CAC_TAG_TV_BUFFER:
-			if (len < 11)
-				break;
-			/* TODO parse the inner SimpleTLV structure */
-			/* skipping 2B of TL encoding of inner structure */
-			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
-			    "TAG: TV Buffer ID = 0x%02x 0x%02x", val[2], val[3]);
-			memcpy(&prop->objects[i], &val[2], 2);
-			/* skipping 4B OID (TLV) + 2B TL for the properties */
-			prop->simpletlv[i] = val[6];
-			i++;
-			break;
-		case CAC_TAG_PKI_OBJECT:
-			if (len < 11)
-				break;
-			/* TODO parse the inner SimpleTLV structure */
-			/* skipping 2B of TL encoding of inner structure */
-			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
-			    "TAG: PKI Object ID = 0x%02x 0x%02x", val[2], val[3]);
-			memcpy(&prop->objects[i], &val[2], 2);
-			/* skipping 4B OID (TLV) + 2B TL for the properties */
-			prop->simpletlv[i] = val[6];
-			i++;
-			break;
-		default:
-			/* ignore tags we don't understand */
-			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
-			    "TAG: Unknown (0x%02x)",tag );
-			break;
-		}
-	}
-	/* sanity */
-	if (i != prop->num_objects)
-		return SC_ERROR_INVALID_DATA;
-
-	return SC_SUCCESS;
-}
-
 static int cac_parse_aid(sc_card_t *card, cac_private_data_t *priv, u8 *aid, int aid_len)
 {
 	cac_object_t new_object;
@@ -1389,6 +1467,12 @@ static int cac_parse_aid(sc_card_t *card, cac_private_data_t *priv, u8 *aid, int
 		/* don't fail just because we have more certs than we can support */
 		if (priv->cert_next >= MAX_CAC_SLOTS)
 			return SC_SUCCESS;
+
+		/* If the private key is not initialized, we can safely
+		 * ignore this object here
+		 */
+		if (!prop.privatekey[i])
+			continue;
 
 		/* OID here has always 2B */
 		memcpy(new_object.path.value, &prop.objects[i], 2);
