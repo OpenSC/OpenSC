@@ -9,6 +9,8 @@ configuration:
   - Light-Release
 
 environment:
+  GH_TOKEN:
+    secure: aLu3tFc7lRJbotnmnHLx/QruIHc5rLaGm1RttoEdy4QILlPXzVkCZ6loYMz0sfrY
   matrix:
     - VSVER: 14
     - VSVER: 12
@@ -91,8 +93,8 @@ build_script:
   - bash -c "make -C etc opensc.conf"
   - cp win32/winconfig.h config.h
   - nmake /f Makefile.mak %NMAKE_EXTRA%
-  - cd win32 && nmake /f Makefile.mak %NMAKE_EXTRA% VSVER=%VSVER% OpenSC.msi
-  - move OpenSC.msi %ARTIFACT%.msi
+  - cd win32 && nmake /f Makefile.mak %NMAKE_EXTRA% VSVER=%VSVER% OpenSC.msi && cd ..
+  - move win32\OpenSC.msi %ARTIFACT%.msi
   - appveyor PushArtifact %ARTIFACT%.msi
   # put all pdb files for dump analysis, but this consumes approx 100 MB per build
   - md %ARTIFACT%-Debug
@@ -102,6 +104,11 @@ build_script:
       }
   - appveyor PushArtifact %ARTIFACT%-Debug.zip
 
+  # keep in sync with .travis.yml
+  - bash -c "git config --global user.email 'no-reply@appveyor.com'"
+  - bash -c "git config --global user.name 'AppVeyor'"
+  - bash -c ".github/push_artifacts.sh \"AppVeyor build ${APPVEYOR_BUILD_NUMBER}.${APPVEYOR_JOB_NUMBER}\""
+
 cache:
   - C:\zlib -> appveyor.yml
   - C:\zlib-Win32 -> appveyor.yml
@@ -110,17 +117,3 @@ cache:
   - C:\openpace-Win32 -> appveyor.yml
   - C:\openpace-Win64 -> appveyor.yml
   - cngsdk.msi -> appveyor.yml
-
-deploy:
-  - provider: GitHub
-    tag: $(APPVEYOR_REPO_TAG_NAME)
-    release: OpenSC-$(APPVEYOR_REPO_TAG_NAME)
-    description: 'release OpenSC $(APPVEYOR_REPO_TAG_NAME)'
-    auth_token:
-      secure: NGaTqWohBQa7fgE62rEm2sp9jkv6S9FRc3YEi3T5CpaoyIY6K89FJjqzaoPLr8vj
-    artifact: /OpenSC-.*\.msi/
-    draft: false
-    prerelease: true
-    on:
-      branch: /0.16.0-rc.*/		# here branch is release tag
-      appveyor_repo_tag: true  		# deploy on tag push only
