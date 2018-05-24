@@ -27,7 +27,7 @@ OPENSC_NOTIFY_BUILT_SOURCES = opensc-notify-cmdline.h opensc-notify-cmdline.c
 OPENSC_ASN1_BUILT_SOURCES = opensc-asn1-cmdline.h opensc-asn1-cmdline.c
 
 MAINTAINERCLEANFILES = $(srcdir)/Makefile.in $(srcdir)/versioninfo-tools.rc $(srcdir)/versioninfo-opensc-notify.rc
-EXTRA_DIST = Makefile.mak versioninfo-tools.rc.in versioninfo-opensc-notify.rc.in npa-tool.ggo.in npa-tool.1 opensc-notify.ggo.in egk-tool.ggo.in egk-tool.1 opensc-asn1.ggo.in opensc-asn1.1 org.opensc.notify.desktop.in
+EXTRA_DIST = Makefile.mak versioninfo-tools.rc.in versioninfo-opensc-notify.rc.in npa-tool.ggo.in npa-tool.1 opensc-notify.ggo.in egk-tool.ggo.in egk-tool.1 opensc-asn1.ggo.in opensc-asn1.1 org.opensc.notify.desktop.in exe.manifest
 
 noinst_HEADERS = util.h fread_to_eof.h
 noinst_PROGRAMS = sceac-example
