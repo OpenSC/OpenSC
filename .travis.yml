@@ -16,9 +16,12 @@ addons:
 
 env:
   global:
-    # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
-    #   via the "travis encrypt" command using the project repo's public key
+    # The next declaration are encrypted envirnmet variables, created via the
+    # "travis encrypt" command using the project repo's public key
+    # COVERITY_SCAN_TOKEN
     - secure: "UkHn7wy4im8V1nebCWbAetnDSOLRUbOlF6++ovk/7Bnso1/lnhXHelyzgRxfD/oI68wm9nnRV+RQEZ9+72Ug1CyvHxyyxxkwal/tPeHH4B/L+aGdPi0id+5OZSKIm77VP3m5s102sJMJgH7DFd03+nUd0K26p0tk8ad4j1geV4c="
+    # GH_TOKEN
+    - secure: "cUAvpN/XUPMIN5cgWAbIOhghRoLXyw7SCydzGaJ1Ucqb9Ml2v5iuLLuN57YbZHTiWw03vy6rYVzzwMDrHX8r3oUALsv7ViJHG4PzIe7fAFZsZpHECmGsp6SEnue7m7BNy3FT8KYbiXxnxDO0SxmFXlrPAYR0WMZCWx2TENYcafs="
     - COVERITY_SCAN_BRANCH_PATTERN="(master|coverity.*)"
     - COVERITY_SCAN_NOTIFICATION_EMAIL="viktor.tarasov@gmail.com"
     - COVERITY_SCAN_BUILD_COMMAND="make -j 4"
@@ -30,6 +33,7 @@ matrix:
   include:
     - compiler: clang
       os: osx
+      env: DO_PUSH_ARTIFACT=yes
     - compiler: gcc
       os: osx
     - compiler: clang
@@ -39,9 +43,13 @@ matrix:
       os: linux
       env: ENABLE_DOC=--enable-doc
     - os: linux
-      env: HOST=x86_64-w64-mingw32
+      env:
+        - HOST=x86_64-w64-mingw32
+        - DO_PUSH_ARTIFACT=yes
     - os: linux
-      env: HOST=i686-w64-mingw32
+      env:
+        - HOST=i686-w64-mingw32
+        - DO_PUSH_ARTIFACT=yes
     - os: linux
       env: DO_COVERITY_SCAN=yes
 
@@ -93,6 +101,13 @@ after_script:
   # https://github.com/moodlerooms/moodle-plugin-ci/issues/33 for details
   - if [ ! -z "$HOST" ]; then
       killall services.exe;
+    fi
+
+  # keep in sync with appveyor.yml
+  - if [ "${DO_PUSH_ARTIFACT}" = "yes" ]; then
+      git config --global user.email "builds@travis-ci.org";
+      git config --global user.name "Travis CI";
+      .github/push_artifacts.sh "Travis CI build ${TRAVIS_JOB_NUMBER}";
     fi
 
 cache: ccache
