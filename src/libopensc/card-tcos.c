@@ -408,7 +408,7 @@ static int tcos_select_file(sc_card_t *card,
 	file->path = *in_path;
 
 	for(i=2; i+1<apdu.resplen && i+1+apdu.resp[i+1]<apdu.resplen; i+=2+apdu.resp[i+1]){
-		int j, len=apdu.resp[i+1];
+		size_t j, len=apdu.resp[i+1];
 		unsigned char type=apdu.resp[i], *d=apdu.resp+i+2;
 
 		switch (type) {
@@ -432,8 +432,8 @@ static int tcos_select_file(sc_card_t *card,
 			file->id = (d[0]<<8) | d[1];
 			break;
 		case 0x84:
-			memcpy(file->name, d, len);
-			file->namelen = len;
+			file->namelen = MIN(sizeof file->name, len);
+			memcpy(file->name, d, file->namelen);
 			break;
 		case 0x86:
 			sc_file_set_sec_attr(file, d, len); 

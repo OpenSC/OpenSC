@@ -794,7 +794,7 @@ static int cac_get_serial_nr_from_CUID(sc_card_t* card, sc_serial_number_t* seri
         }
 	if (priv->cac_id_len) {
 		serial->len = MIN(priv->cac_id_len, SC_MAX_SERIALNR);
-		memcpy(serial->value, priv->cac_id, priv->cac_id_len);
+		memcpy(serial->value, priv->cac_id, serial->len);
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
 	}
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_FILE_NOT_FOUND);

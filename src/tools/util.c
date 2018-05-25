@@ -339,10 +339,11 @@ const char * util_acl_to_str(const sc_acl_entry_t *e)
 			strcpy(buf, "????");
 			break;
 		}
-		strcat(line, buf);
-		strcat(line, " ");
+		strncat(line, buf, sizeof line);
+		strncat(line, " ", sizeof line);
 		e = e->next;
 	}
+	line[(sizeof line)-1] = '\0'; /* make sure it's NUL terminated */
 	line[strlen(line)-1] = 0; /* get rid of trailing space */
 	return line;
 }

@@ -951,7 +951,7 @@ decrypt_response(struct sc_card *card, unsigned char *in, size_t inlen, unsigned
 	while (0x80 != plaintext[cipher_len - 2] && (cipher_len - 2 > 0))
 		cipher_len--;
 
-	if (2 == cipher_len)
+	if (2 == cipher_len || *out_len < cipher_len - 2)
 		return -1;
 
 	memcpy(out, plaintext, cipher_len - 2);
@@ -977,6 +977,7 @@ epass2003_sm_unwrap_apdu(struct sc_card *card, struct sc_apdu *sm, struct sc_apd
 	r = sc_check_sw(card, sm->sw1, sm->sw2);
 	if (r == SC_SUCCESS) {
 		if (exdata->sm) {
+			len = plain->resplen;
 			if (0 != decrypt_response(card, sm->resp, sm->resplen, plain->resp, &len))
 				return SC_ERROR_CARD_CMD_FAILED;
 		}

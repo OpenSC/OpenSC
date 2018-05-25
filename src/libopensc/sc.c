@@ -628,7 +628,7 @@ int sc_file_set_sec_attr(sc_file_t *file, const u8 *sec_attr,
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
-	if (sec_attr == NULL) {
+	if (sec_attr == NULL || sec_attr_len) {
 		if (file->sec_attr != NULL)
 			free(file->sec_attr);
 		file->sec_attr = NULL;

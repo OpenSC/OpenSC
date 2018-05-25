@@ -79,7 +79,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 	/* read the serial (document number) */
 	r = sc_read_record (card, SC_ESTEID_PD_DOCUMENT_NR, buff, sizeof(buff), SC_RECORD_BY_REC_NR);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "read document number failed");
-	buff[r] = '\0';
+	buff[MIN((size_t) r, (sizeof buff)-1)] = '\0';
 	set_string (&p15card->tokeninfo->serial_number, (const char *) buff);
 
 	p15card->tokeninfo->flags = SC_PKCS15_TOKEN_PRN_GENERATION

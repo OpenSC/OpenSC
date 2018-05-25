@@ -149,7 +149,7 @@ int read_file(struct sc_card *card, char *str_path, unsigned char **data, size_t
 		goto err;
 	}
 
-	len = file ? file->size : 4096;
+	len = file && file->size > 0 ? file->size : 4096;
 	p = realloc(*data, len);
 	if (!p) {
 		goto err;

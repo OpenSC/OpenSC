@@ -208,7 +208,7 @@ static int gemsafe_get_cert_len(sc_card_t *card)
 	 * the private key.
 	 */
 	ind = 2; /* skip length */
-	while (ibuf[ind] == 0x01) {
+	while (ibuf[ind] == 0x01 && i < gemsafe_cert_max) {
 		if (ibuf[ind+1] == 0xFE) {
 			gemsafe_prkeys[i].ref = ibuf[ind+4];
 			sc_log(card->ctx, "Key container %d is allocated and uses key_ref %d",

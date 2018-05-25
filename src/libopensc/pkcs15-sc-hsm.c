@@ -837,12 +837,14 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 		r = read_file(p15card, (u8 *) "\x2F\x02", efbin, &len, 1);
 		LOG_TEST_RET(card->ctx, r, "Skipping optional EF.C_DevAut");
 
-		/* save EF_C_DevAut for further use */
-		ptr = realloc(priv->EF_C_DevAut, len);
-		if (ptr) {
-			memcpy(ptr, efbin, len);
-			priv->EF_C_DevAut = ptr;
-			priv->EF_C_DevAut_len = len;
+		if (len > 0) {
+			/* save EF_C_DevAut for further use */
+			ptr = realloc(priv->EF_C_DevAut, len);
+			if (ptr) {
+				memcpy(ptr, efbin, len);
+				priv->EF_C_DevAut = ptr;
+				priv->EF_C_DevAut_len = len;
+			}
 		}
 
 		ptr = efbin;
