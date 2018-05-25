@@ -1289,6 +1289,8 @@ static int myeid_unwrap_key(struct sc_card *card, const u8 *crgram, size_t crgra
 	struct sc_apdu apdu;
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
+	u8 p2 = 0x86;
+	myeid_private_data_t* priv;
 
 	LOG_FUNC_CALLED(card->ctx);
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
@@ -1298,12 +1300,26 @@ static int myeid_unwrap_key(struct sc_card *card, const u8 *crgram, size_t crgra
 	if (crgram_len > 256)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
+	if (card->drv_data)
+	{
+		priv = (myeid_private_data_t*) card->drv_data;
+
+		if (priv->sec_env)
+		{
+			if (priv->sec_env->algorithm == SC_ALGORITHM_AES ||
+				priv->sec_env->algorithm == SC_ALGORITHM_3DES ||
+				priv->sec_env->algorithm == SC_ALGORITHM_DES)
+						p2 = 0x84;		/* Set correct P2 for symmetric crypto */
+		}
+	}
+
 	/* INS: 0x2A  PERFORM SECURITY OPERATION
 	    * P1:  0x00  Do not expect response - the deciphered data will be placed into the target key EF.
-	    * P2:  0x86  Cmd: Padding indicator byte followed by cryptogram */
+	    * P2:  0x86  Cmd: Padding indicator byte followed by cryptogram
+		* P2:  0x84  Cmd: AES/3DES Cryptogram (plain value encoded in BER-TLV DO, but not including SM DOs) */
 	sc_format_apdu(card, &apdu,
 		(crgram_len < 256) ? SC_APDU_CASE_4_SHORT : SC_APDU_CASE_3_SHORT,
-		0x2A, 0x00, 0x86);
+		0x2A, 0x00, p2);
 
 	apdu.resp = rbuf;
 	apdu.resplen = sizeof(rbuf);
@@ -1317,11 +1333,16 @@ static int myeid_unwrap_key(struct sc_card *card, const u8 *crgram, size_t crgra
 		memcpy(sbuf + 1, crgram, crgram_len / 2);
 		apdu.lc = crgram_len / 2 + 1;
 	}
-	else
+	else if (p2 == 0x86)
 	{
 		sbuf[0] = 0; /* padding indicator byte, 0x00 = No further indication */
 		memcpy(sbuf + 1, crgram, crgram_len);
 		apdu.lc = crgram_len + 1;
+	}
+	else /* symmetric crypto, no padding indicator byte */
+	{
+		memcpy(sbuf, crgram, crgram_len);
+		apdu.lc = crgram_len;
 	}
 
 	apdu.datalen = apdu.lc;
