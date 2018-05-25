@@ -32,6 +32,7 @@
 extern "C" {
 #endif
 
+int gp_select_aid(struct sc_card *card, const struct sc_aid *aid);
 int gp_select_card_manager(struct sc_card *card);
 int gp_select_isd_rid(struct sc_card *card);
 

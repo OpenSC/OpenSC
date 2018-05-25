@@ -38,7 +38,7 @@ static const struct sc_aid gp_isd_rid = {
 
 
 /* Select AID */
-static int
+int
 gp_select_aid(struct sc_card *card, const struct sc_aid *aid)
 {
 	struct sc_apdu apdu;

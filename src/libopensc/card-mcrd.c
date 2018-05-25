@@ -34,6 +34,7 @@
 #include "asn1.h"
 #include "cardctl.h"
 #include "esteid.h"
+#include "gp.h"
 
 static const struct sc_atr_table mcrd_atrs[] = {
 	{"3B:FF:94:00:FF:80:B1:FE:45:1F:03:00:68:D2:76:00:00:28:FF:05:1E:31:80:00:90:00:23", NULL,
@@ -59,13 +60,13 @@ static const struct sc_atr_table mcrd_atrs[] = {
 	{NULL, NULL, NULL, 0, 0, NULL}
 };
 
-static const unsigned char EstEID_v3_AID[] = {0xF0, 0x45, 0x73, 0x74, 0x45, 0x49, 0x44, 0x20, 0x76, 0x65, 0x72, 0x20, 0x31, 0x2E, 0x30};
-static const unsigned char EstEID_v35_AID[] = {0xD2, 0x33, 0x00, 0x00, 0x00, 0x45, 0x73, 0x74, 0x45, 0x49, 0x44, 0x20, 0x76, 0x33, 0x35};
-static const unsigned char AzeDIT_v35_AID[] = {0xD0, 0x31, 0x00, 0x00, 0x00, 0x44, 0x69, 0x67, 0x69, 0x49, 0x44};
+static const struct sc_aid EstEID_v3_AID = { {0xF0, 0x45, 0x73, 0x74, 0x45, 0x49, 0x44, 0x20, 0x76, 0x65, 0x72, 0x20, 0x31, 0x2E, 0x30}, 15 };
+static const struct sc_aid EstEID_v35_AID = { {0xD2, 0x33, 0x00, 0x00, 0x00, 0x45, 0x73, 0x74, 0x45, 0x49, 0x44, 0x20, 0x76, 0x33, 0x35}, 15 };
+static const struct sc_aid AzeDIT_v35_AID = { {0xD0, 0x31, 0x00, 0x00, 0x00, 0x44, 0x69, 0x67, 0x69, 0x49, 0x44}, 11 };
 
 static struct sc_card_operations mcrd_ops;
 static struct sc_card_driver mcrd_drv = {
-	"MICARDO 2.1 / EstEID 1.0 - 3.0",
+	"MICARDO 2.1 / EstEID 1.0 - 3.5",
 	"mcrd",
 	&mcrd_ops,
 	NULL, 0, NULL
@@ -299,7 +300,6 @@ int is_esteid_card(sc_card_t *card) {
 static int mcrd_match_card(sc_card_t * card)
 {
 	int i = 0, r = 0;
-	sc_apdu_t apdu;
 
 	i = _sc_match_atr(card, mcrd_atrs, &card->type);
 	if (i >= 0) {
@@ -307,16 +307,9 @@ static int mcrd_match_card(sc_card_t * card)
 		return 1;
 	}
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3, 0xA4, 0x04, 0x00);
-	apdu.lc = sizeof(EstEID_v35_AID);
-	apdu.data = EstEID_v35_AID;
-	apdu.datalen = sizeof(EstEID_v35_AID);
-	apdu.resplen = 0;
-	apdu.le = 0;
-	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
-	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "SELECT AID: %02X%02X", apdu.sw1, apdu.sw2);
-	if(apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
+	LOG_FUNC_CALLED(card->ctx);
+	r = gp_select_aid(card, &EstEID_v35_AID);
+	if (r >= 0) {
 	        sc_log(card->ctx, "AID found");
 	        card->type = SC_CARD_TYPE_MCRD_ESTEID_V30;
 	        return 1;
@@ -330,7 +323,6 @@ static int mcrd_init(sc_card_t * card)
 	struct mcrd_priv_data *priv;
 	int r;
 	sc_path_t tmppath;
-	sc_apdu_t apdu;
 
 	priv = calloc(1, sizeof *priv);
 	if (!priv)
@@ -357,45 +349,18 @@ static int mcrd_init(sc_card_t * card)
 			_sc_card_add_ec_alg(card, 384, flags, ext_flags, NULL);
 			sc_reset(card, 0);
 
-			sc_format_apdu(card, &apdu, SC_APDU_CASE_3, 0xA4, 0x04, 0x00);
-			apdu.lc = sizeof(EstEID_v3_AID);
-			apdu.data = EstEID_v3_AID;
-			apdu.datalen = sizeof(EstEID_v3_AID);
-			apdu.resplen = 0;
-			apdu.le = 0;
-			r = sc_transmit_apdu(card, &apdu);
+			r = gp_select_aid(card, &EstEID_v3_AID);
 			if (r < 0)
-				SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_CARD, "APDU transmit failed");
-			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "SELECT AID: %02X%02X", apdu.sw1, apdu.sw2);
-			if(apdu.sw1 != 0x90 && apdu.sw2 != 0x00)
 			{
-				sc_format_apdu(card, &apdu, SC_APDU_CASE_3, 0xA4, 0x04, 0x00);
-				apdu.lc = sizeof(EstEID_v35_AID);
-				apdu.data = EstEID_v35_AID;
-				apdu.datalen = sizeof(EstEID_v35_AID);
-				apdu.resplen = 0;
-				apdu.le = 0;
-				r = sc_transmit_apdu(card, &apdu);
-				if (r < 0)
-					SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_CARD, "APDU transmit failed");
-				sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "SELECT AID: %02X%02X", apdu.sw1, apdu.sw2);
-				if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
+				r = gp_select_aid(card, &EstEID_v35_AID);
+				if (r >= 0) {
 					// Force EstEID 3.5 card recv size 255 with T=0 to avoid recursive read binary
 					// sc_read_binary cannot handle recursive 61 00 calls
 					if (card->reader && card->reader->active_protocol == SC_PROTO_T0)
 						card->max_recv_size = 255;
 				} else {
-					sc_format_apdu(card, &apdu, SC_APDU_CASE_3, 0xA4, 0x04, 0x00);
-					apdu.lc = sizeof(AzeDIT_v35_AID);
-					apdu.data = AzeDIT_v35_AID;
-					apdu.datalen = sizeof(AzeDIT_v35_AID);
-					apdu.resplen = 0;
-					apdu.le = 0;
-					r = sc_transmit_apdu(card, &apdu);
-					if (r < 0)
-						SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_CARD, "APDU transmit failed");
-					sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "SELECT AID: %02X%02X", apdu.sw1, apdu.sw2);
-					if (apdu.sw1 != 0x90 && apdu.sw2 != 0x00) {
+					r = gp_select_aid(card, &AzeDIT_v35_AID);
+					if (r < 0) {
 						free(card->drv_data);
 						card->drv_data = NULL;
 						SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_CARD);
