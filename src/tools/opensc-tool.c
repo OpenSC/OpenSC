@@ -457,7 +457,7 @@ static int enum_dir(sc_path_t path, int depth)
 {
 	sc_file_t *file;
 	int r, file_type;
-	u8 files[SC_MAX_APDU_BUFFER_SIZE];
+	u8 files[SC_MAX_EXT_APDU_BUFFER_SIZE];
 
 	r = sc_lock(card);
 	if (r == SC_SUCCESS)
@@ -483,15 +483,16 @@ static int enum_dir(sc_path_t path, int depth)
 		}
 		if (r == 0) {
 			printf("Empty directory\n");
-		} else
-		for (i = 0; i < r/2; i++) {
-			sc_path_t tmppath;
+		} else {
+			for (i = 0; i < r/2; i++) {
+				sc_path_t tmppath;
 
-			memset(&tmppath, 0, sizeof(tmppath));
-			memcpy(&tmppath, &path, sizeof(path));
-			memcpy(tmppath.value + tmppath.len, files + 2*i, 2);
-			tmppath.len += 2;
-			enum_dir(tmppath, depth + 1);
+				memset(&tmppath, 0, sizeof(tmppath));
+				memcpy(&tmppath, &path, sizeof(path));
+				memcpy(tmppath.value + tmppath.len, files + 2*i, 2);
+				tmppath.len += 2;
+				enum_dir(tmppath, depth + 1);
+			}
 		}
 	}
 	return 0;

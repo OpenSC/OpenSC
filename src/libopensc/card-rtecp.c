@@ -275,7 +275,7 @@ static int rtecp_select_file(sc_card_t *card,
 		set_acl_from_sec_attr(card, file);
 	else
 		r = SC_ERROR_UNKNOWN_DATA_RECEIVED;
-	if (r)
+	if (r && !file_out)
 		sc_file_free(file);
 	else
 	{

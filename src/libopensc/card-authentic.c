@@ -560,6 +560,9 @@ authentic_set_current_files(struct sc_card *card, struct sc_path *path,
 			sc_file_dup(&card->cache.current_df, file);
 
 			if (cur_df_path.len)   {
+				if (cur_df_path.len + card->cache.current_df->path.len > sizeof card->cache.current_df->path.value
+						|| cur_df_path.len > sizeof card->cache.current_df->path.value)
+					LOG_FUNC_RETURN(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
 				memcpy(card->cache.current_df->path.value + cur_df_path.len,
 						card->cache.current_df->path.value,
 						card->cache.current_df->path.len);
@@ -988,7 +991,7 @@ authentic_process_fci(struct sc_card *card, struct sc_file *file,
 	}
 
 	sc_log_hex(ctx, "ACL data", file->sec_attr, file->sec_attr_len);
-	for (ii = 0; ii < file->sec_attr_len / 2; ii++)  {
+	for (ii = 0; ii < file->sec_attr_len / 2 && ii < sizeof ops_DF; ii++)  {
 		unsigned char op = file->type == SC_FILE_TYPE_DF ? ops_DF[ii] : ops_EF[ii];
 		unsigned char acl = *(file->sec_attr + ii*2);
 		unsigned char cred_id = *(file->sec_attr + ii*2 + 1);

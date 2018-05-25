@@ -550,6 +550,7 @@ static int itacns_add_data_files(sc_pkcs15_card_t *p15card)
 		sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL,
 			"Could not read EF_DatiPersonali: "
 			"keeping generic card name");
+		return SC_SUCCESS;
 	}
 
 	{

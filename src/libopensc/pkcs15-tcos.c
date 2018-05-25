@@ -132,7 +132,7 @@ static int insert_key(
 		int i, rec_no=0;
 		if(prkey_info.path.len>=2) prkey_info.path.len-=2;
 		sc_append_file_id(&prkey_info.path, 0x5349);
-		if(sc_select_file(card, &prkey_info.path, NULL)!=SC_SUCCESS){
+		if(sc_select_file(card, &prkey_info.path, NULL)!=SC_SUCCESS || !f->prop_attr){
 			sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
 				"Select(%s) failed\n",
 				sc_print_path(&prkey_info.path));
@@ -157,7 +157,8 @@ static int insert_key(
 			if(buf[i]==0xB8) can_crypt++;
 		}
 	} else {
-		if(sc_select_file(card, &prkey_info.path, &f)!=SC_SUCCESS){
+		if(sc_select_file(card, &prkey_info.path, &f)!=SC_SUCCESS
+			   	|| !f->prop_attr || f->prop_attr_len < 2){
 			sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
 				"Select(%s) failed\n",
 				sc_print_path(&prkey_info.path));
@@ -245,7 +246,8 @@ static int insert_pin(
 			return 1;
 		}
 	} else {
-		if(sc_select_file(card, &pin_info.path, &f)!=SC_SUCCESS){
+		if(sc_select_file(card, &pin_info.path, &f)!=SC_SUCCESS
+			   	|| !f->prop_attr || f->prop_attr_len < 4){
 			sc_debug(ctx, SC_LOG_DEBUG_NORMAL,"Select(%s) failed\n", path);
 			return 1;
 		}

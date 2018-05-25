@@ -664,12 +664,17 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 		cert_len = 0;
 		cert_ptr = NULL;
 		cert_type = 0;
-		for (tl_ptr = tl, val_ptr=val; tl_len >= 2;
-				val_len -= len, val_ptr += len, tl_len -= tl_head_len) {
+		for (tl_ptr = tl, val_ptr = val; tl_len >= 2;
+		    val_len -= len, val_ptr += len, tl_len -= tl_head_len) {
 			tl_start = tl_ptr;
 			if (sc_simpletlv_read_tag(&tl_ptr, tl_len, &tag, &len) != SC_SUCCESS)
 				break;
 			tl_head_len = tl_ptr - tl_start;
+
+			/* incomplete value */
+			if (val_len < len)
+				break;
+
 			if (tag == CAC_TAG_CERTIFICATE) {
 				cert_len = len;
 				cert_ptr = val_ptr;

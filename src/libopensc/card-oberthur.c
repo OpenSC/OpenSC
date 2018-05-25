@@ -476,6 +476,9 @@ auth_select_file(struct sc_card *card, const struct sc_path *in_path,
 
 	memcpy(&path, in_path, sizeof(struct sc_path));
 
+	if (!auth_current_df)
+		return SC_ERROR_OBJECT_NOT_FOUND;
+
 	sc_log(card->ctx, "in_path; type=%d, path=%s, out %p",
 			in_path->type, sc_print_path(in_path), file_out);
 	sc_log(card->ctx, "current path; type=%d, path=%s",
@@ -2113,6 +2116,10 @@ auth_read_binary(struct sc_card *card, unsigned int offset,
 	bn[1].data = NULL;
 
 	LOG_FUNC_CALLED(card->ctx);
+
+	if (!auth_current_ef)
+		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS, "Invalid auth_current_ef");
+
 	sc_log(card->ctx,
 	       "offset %i; size %"SC_FORMAT_LEN_SIZE_T"u; flags 0x%lX",
 	       offset, count, flags);

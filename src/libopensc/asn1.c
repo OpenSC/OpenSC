@@ -103,6 +103,7 @@ int sc_asn1_read_tag(const u8 ** buf, size_t buflen, unsigned int *cla_out,
 	len = *p & 0x7f;
 	if (*p++ & 0x80) {
 		unsigned int a = 0;
+		left--;
 		if (len > 4 || len > left)
 			return SC_ERROR_INVALID_ASN1_OBJECT;
 		left -= len;

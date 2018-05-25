@@ -2548,7 +2548,7 @@ iasecc_get_serialnr(struct sc_card *card, struct sc_serial_number *serial)
 	if (card->type == SC_CARD_TYPE_IASECC_SAGEM)   {
 		/* 5A 0A 92 50 00 20 10 10 25 00 01 3F */
 		/*            00 02 01 01 02 50 00 13  */
-		for (ii=0; ii < rbuf[1] - offs; ii++)
+		for (ii=0; (ii < rbuf[1] - offs) && (ii + offs + 2 < sizeof(rbuf)); ii++)
 			*(card->serialnr.value + ii) = ((rbuf[ii + offs + 1] & 0x0F) << 4)
 				+ ((rbuf[ii + offs + 2] & 0xF0) >> 4) ;
 		card->serialnr.len = ii;
