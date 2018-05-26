@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<refentry id="egk-tool">
+	<refmeta>
+		<refentrytitle>egk-tool</refentrytitle>
+		<manvolnum>1</manvolnum>
+		<refmiscinfo class="productname">OpenSC</refmiscinfo>
+		<refmiscinfo class="manual">OpenSC Tools</refmiscinfo>
+		<refmiscinfo class="source">opensc</refmiscinfo>
+	</refmeta>
+
+	<refnamediv>
+		<refname>egk-tool</refname>
+		<refpurpose>displays information on the German electronic health card (elektronische Gesundheitskarte, <abbrev>eGK</abbrev>)
+		</refpurpose>
+	</refnamediv>
+
+	<refsynopsisdiv>
+		<cmdsynopsis>
+			<command>egk-tool</command>
+			<arg choice="opt"><replaceable class="option">OPTIONS</replaceable></arg>
+		</cmdsynopsis>
+	</refsynopsisdiv>
+
+	<refsect1>
+		<title>Description</title>
+		<para>
+			The <command>egk-tool</command> utility is used to display information stored on the German elektronic health card (elektronische Gesundheitskarte, <abbrev>eGK</abbrev>).
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Options</title>
+		<para>
+			<variablelist>
+				<varlistentry>
+					<term>
+						<option>--help</option>,
+						<option>-h</option></term>
+					<listitem><para>Print help and exit.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--version</option>,
+						<option>-V</option></term>
+					<listitem><para>Print version and exit.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--reader</option> <replaceable>arg</replaceable>,
+						<option>-r</option> <replaceable>arg</replaceable>
+					</term>
+					<listitem><para>
+						Specify the reader to use.
+						Use <literal>-1</literal> as <replaceable>arg</replaceable>
+						to automatically detect the reader to use.
+						By default, the first reader with a present card is used.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--verbose</option>,
+						<option>-v</option>
+					</term>
+					<listitem><para>
+						Causes <command>egk-tool</command> to be more verbose.
+						Specify this flag several times to be more verbose.
+					</para></listitem>
+				</varlistentry>
+			</variablelist>
+		</para>
+
+		<refsect2>
+			<title>Health Care Application (<abbrev>HCA</abbrev>)</title>
+			<variablelist>
+				<varlistentry>
+					<term><option>--pd</option></term>
+					<listitem><para>
+						Show 'Persönliche Versicherungsdaten' (XML).
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>--vd</option></term>
+					<listitem><para>
+						Show 'Allgemeine Versicherungsdaten' (XML).
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>--gvd</option></term>
+					<listitem><para>
+						Show 'Geschützte Versicherungsdaten' (XML).
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>--vsd-status</option></term>
+					<listitem><para>
+						Show 'Versichertenstammdaten-Status'.
+					</para></listitem>
+				</varlistentry>
+			</variablelist>
+		</refsect2>
+	</refsect1>
+
+	<refsect1>
+		<title>Authors</title>
+		<para><command>egk-tool</command> was written by
+		Frank Morgner <email>frankmorgner@gmail.com</email>.</para>
+	</refsect1>
+
+	<!--
+	<refsect1>
+		<title>Reporting Bugs</title>
+		<para>Report bugs to <ulink url="@PACKAGE_BUGREPORT@">@PACKAGE_BUGREPORT@</ulink>.</para>
+	</refsect1>
+	-->
+</refentry>

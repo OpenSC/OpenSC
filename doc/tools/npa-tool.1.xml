@@ -1,0 +1,440 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<refentry id="npa-tool">
+	<refmeta>
+		<refentrytitle>npa-tool</refentrytitle>
+		<manvolnum>1</manvolnum>
+		<refmiscinfo class="productname">OpenSC</refmiscinfo>
+		<refmiscinfo class="manual">OpenSC Tools</refmiscinfo>
+		<refmiscinfo class="source">opensc</refmiscinfo>
+	</refmeta>
+
+	<refnamediv>
+		<refname>npa-tool</refname>
+		<refpurpose>displays information on the German eID card (neuer Personalausweis, <abbrev>nPA</abbrev>).
+		</refpurpose>
+	</refnamediv>
+
+	<refsynopsisdiv>
+		<cmdsynopsis>
+			<command>npa-tool</command>
+			<arg choice="opt"><replaceable class="option">OPTIONS</replaceable></arg>
+		</cmdsynopsis>
+	</refsynopsisdiv>
+
+	<refsect1>
+		<title>Description</title>
+		<para>
+			The <command>npa-tool</command> utility is used to display information
+			stored on the German eID card (neuer Personalausweis, <abbrev>nPA</abbrev>),
+			and to perform some write and verification operations.
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Options</title>
+		<para>
+			<variablelist>
+				<varlistentry>
+					<term>
+						<option>--help</option>,
+						<option>-h</option></term>
+					<listitem><para>Print help and exit.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--version</option>,
+						<option>-V</option></term>
+					<listitem><para>Print version and exit.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--reader</option> <replaceable>arg</replaceable>,
+						<option>-r</option> <replaceable>arg</replaceable>
+					</term>
+					<listitem><para>
+						Specify the reader to use.
+						Use <literal>-1</literal> as <replaceable>arg</replaceable>
+						to automatically detect the reader to use.
+						By default, the first reader with a present card is used.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--verbose</option>,
+						<option>-v</option>
+					</term>
+					<listitem><para>
+						Causes <command>npa-tool</command> to be more verbose.
+						Specify this flag several times to be more verbose.
+					</para></listitem>
+				</varlistentry>
+			</variablelist>
+		</para>
+
+		<refsect2>
+			<title>Password Authenticated Connection Establishment (<abbrev>PACE</abbrev>)</title>
+			<variablelist>
+				<varlistentry>
+					<term>
+						<option>--pin</option> <arg choice="opt"><replaceable>STRING</replaceable></arg>,
+						<option>-p</option> <arg choice="opt"><replaceable>STRING</replaceable></arg>
+					</term>
+					<listitem><para>
+						Run <abbrev>PACE</abbrev> with (transport) eID-PIN.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--puk</option> <arg choice="opt"><replaceable>STRING</replaceable></arg>,
+						<option>-u</option> <arg choice="opt"><replaceable>STRING</replaceable></arg>
+					</term>
+					<listitem><para>
+						Run <abbrev>PACE</abbrev> with PUK.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--can</option> <arg choice="opt"><replaceable>STRING</replaceable></arg>,
+						<option>-c</option> <arg choice="opt"><replaceable>STRING</replaceable></arg>
+					</term>
+					<listitem><para>
+						Run <abbrev>PACE</abbrev> with Card Access Number (<abbrev>CAN</abbrev>).
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--mrz</option> <arg choice="opt"><replaceable>STRING</replaceable></arg>,
+						<option>-m</option> <arg choice="opt"><replaceable>STRING</replaceable></arg>
+					</term>
+					<listitem><para>
+						Run <abbrev>PACE</abbrev> with Machine Readable Zone (<abbrev>MRZ</abbrev>).
+						Enter the <abbrev>MRZ</abbrev> without newlines.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>--env</option></term>
+					<listitem><para>
+						Specify whether to use environment variables <envar>PIN</envar>,
+						<envar>PUK</envar>, <envar>CAN</envar>, <envar>MRZ</envar>,
+						and <envar>NEWPIN</envar>.
+						You may want to clean your environment before enabling this.
+						(default=off)
+					</para></listitem>
+				</varlistentry>
+			</variablelist>
+		</refsect2>
+
+		<refsect2>
+			<title>PIN management</title>
+			<variablelist>
+				<varlistentry>
+					<term>
+						<option>--new-pin</option> <arg choice="opt"><replaceable>STRING</replaceable></arg>,
+						<option>-N</option> <arg choice="opt"><replaceable>STRING</replaceable></arg>
+					</term>
+					<listitem><para>
+						Install a new PIN.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--resume</option>,
+						<option>-R</option>
+					</term>
+					<listitem><para>
+						Resume eID-PIN (uses <abbrev>CAN</abbrev> to activate last retry).
+						(default=off)
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--unblock</option>,
+						<option>-U</option>
+					</term>
+					<listitem><para>
+						Unblock PIN (uses PUK to activate three more retries).
+						(default=off)
+					</para></listitem>
+				</varlistentry>
+			</variablelist>
+		</refsect2>
+
+		<refsect2>
+			<title>Terminal Authentication (<abbrev>TA</abbrev>) and Chip Authentication (<abbrev>CA</abbrev>)</title>
+			<variablelist>
+				<varlistentry>
+					<term>
+						<option>--cv-certificate</option> <replaceable>FILENAME</replaceable>,
+						<option>-C</option> <replaceable>FILENAME</replaceable>
+					</term>
+					<listitem><para>
+						Specify Card Verifiable (<abbrev>CV</abbrev>) certificate
+						to create a certificate chain.
+						The option can be given multiple times, in which case the
+						order is important.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>--cert-desc</option> <replaceable>HEX_STRING</replaceable></term>
+					<listitem><para>
+						Certificate description to show for Terminal Authentication.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>--chat</option> <replaceable>HEX_STRING</replaceable></term>
+					<listitem><para>
+						Specify the Card Holder Authorization Template
+						(<abbrev>CHAT</abbrev>) to use.
+						If not given, it defaults to the terminal's CHAT.
+						Use <literal>7F4C0E060904007F000703010203530103</literal>
+						to trigger EAC on the CAT-C (Komfortleser).
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--auxiliary-data</option> <replaceable>HEX_STRING</replaceable>,
+						<option>-A</option> <replaceable>HEX_STRING</replaceable>
+					</term>
+					<listitem><para>
+						Specify the terminal's auxiliary data.
+						If not given, the default is determined by verification
+						of validity, age and community ID.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--private-key</option> <replaceable>FILENAME</replaceable>,
+						<option>-P</option> <replaceable>FILENAME</replaceable>
+					</term>
+					<listitem><para>
+						Specify the terminal's private key.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>--cvc-dir</option> <replaceable>DIRECTORY</replaceable></term>
+					<listitem><para>
+						Specify where to look for the certificate of the 
+						Country Verifying Certification Authority
+						(<abbrev>CVCA</abbrev>).
+						If not given, it defaults to
+						<filename class="directory">/home/fm/.local/etc/eac/cvc</filename>.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+					<option>--x509-dir</option> <replaceable>DIRECTORY</replaceable></term>
+					<listitem><para>
+						Specify where to look for the X.509 certificate.
+						If not given, it defaults to
+						<filename class="directory">/home/fm/.local/etc/eac/x509</filename>.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>--disable-ta-checks</option></term>
+					<listitem><para>
+						Disable checking the validity period of CV certificates.
+						(default=off)
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>--disable-ca-checks</option></term>
+					<listitem><para>
+						Disable passive authentication. (default=off)
+					</para></listitem>
+				</varlistentry>
+			</variablelist>
+		</refsect2>
+
+		<refsect2>
+			<title>Read and write data groups</title>
+			<variablelist>
+				<varlistentry>
+					<term><option>--read-dg1</option></term>
+					<listitem><para>Read data group 1: Document Type.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>--read-dg2</option></term>
+					<listitem><para>Read data group 2: Issuing State.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>--read-dg3</option></term>
+					<listitem><para>Read data group 3: Date of Expiry.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>--read-dg4</option></term>
+					<listitem><para>Read data group 4: Given Name(s).</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>--read-dg5</option></term>
+					<listitem><para>Read data group 5: Family Name.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>--read-dg6</option></term>
+					<listitem><para>Read data group 6: Religious/Artistic Name.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>--read-dg7</option></term>
+					<listitem><para>Read data group 7: Academic Title.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>--read-dg8</option></term>
+					<listitem><para>Read data group 8: Date of Birth.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>--read-dg9</option></term>
+					<listitem><para>Read data group 9: Place of Birth.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>--read-dg10</option></term>
+					<listitem><para>Read data group 10: Nationality.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>--read-dg11</option></term>
+					<listitem><para>Read data group 11: Sex.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>--read-dg12</option></term>
+					<listitem><para>Read data group 12: Optional Data.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>--read-dg13</option></term>
+					<listitem><para>Read data group 13: Birth Name.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>--read-dg14</option></term>
+					<listitem><para>Read data group 14.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>--read-dg15</option></term>
+					<listitem><para>Read data group 15.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>--read-dg16</option></term>
+					<listitem><para>Read data group 16.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>--read-dg17</option></term>
+					<listitem><para>Read data group 17: Normal Place of Residence.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>--read-dg18</option></term>
+					<listitem><para>Read data group 18: Community ID.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>--read-dg19</option></term>
+					<listitem><para>Read data group 19: Residence Permit I.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>--read-dg20</option></term>
+					<listitem><para>Read data group 20: Residence Permit II.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>--read-dg21</option></term>
+					<listitem><para>Read data group 21: Optional Data.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+					<option>--write-dg17</option> <replaceable>HEX_STRING</replaceable></term>
+					<listitem><para>Write data group 17: Normal Place of Residence.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+					<option>--write-dg18</option> <replaceable>HEX_STRING</replaceable></term>
+					<listitem><para>Write data group 18: Community ID.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+					<option>--write-dg19</option> <replaceable>HEX_STRING</replaceable></term>
+					<listitem><para>Write data group 19: Residence Permit I.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+					<option>--write-dg20</option> <replaceable>HEX_STRING</replaceable></term>
+					<listitem><para>Write data group 20: Residence Permit II.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>--write-dg21</option> <replaceable>HEX_STRING</replaceable></term>
+					<listitem><para>Write data group 21: Optional Data.</para></listitem>
+				</varlistentry>
+			</variablelist>
+		</refsect2>
+
+		<refsect2>
+			<title>Verification of validity, age and community ID</title>
+			<variablelist>
+				<varlistentry>
+					<term><option>--verify-validity</option> <replaceable>YYYYMMDD</replaceable></term>
+					<listitem><para>
+						Verify chip's validity with a reference date.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>--older-than</option> <replaceable>YYYYMMDD</replaceable></term>
+					<listitem><para>
+						Verify age with a reference date.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>--verify-community</option> <replaceable>HEX_STRING</replaceable></term>
+					<listitem><para>
+						Verify community ID with a reference ID.
+					</para></listitem>
+				</varlistentry>
+			</variablelist>
+		</refsect2>
+
+		<refsect2>
+			<title>Special options, not always useful</title>
+			<variablelist>
+				<varlistentry>
+					<term>
+						<option>--break</option>,
+						<option>-b</option>
+					</term>
+					<listitem><para>
+						Brute force PIN, CAN or PUK.
+						Use together with options <option>-p</option>,
+						<option>-a</option>, or <option>-u</option>.
+						(default=off)
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--translate</option> <replaceable>FILENAME</replaceable>,
+						<option>-t</option> <replaceable>FILENAME</replaceable>
+					</term>
+					<listitem><para>
+						Specify the file with APDUs of HEX_STRINGs to send
+						through the secure channel.
+						(default=`stdin')
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>--tr-03110v201</option></term>
+					<listitem><para>
+						Force compliance to BSI TR-03110 version 2.01. (default=off)
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>--disable-all-checks</option></term>
+					<listitem><para>
+						 Disable all checking of fly-by-data. (default=off)
+					</para></listitem>
+				</varlistentry>
+			</variablelist>
+		</refsect2>
+	</refsect1>
+
+	<refsect1>
+		<title>Authors</title>
+		<para><command>npa-tool</command> was written by
+		Frank Morgner <email>frankmorgner@gmail.com</email>.</para>
+	</refsect1>
+
+	<!--
+	<refsect1>
+		<title>Reporting Bugs</title>
+		<para>Report bugs to <ulink url="@PACKAGE_BUGREPORT@">@PACKAGE_BUGREPORT@</ulink>.</para>
+	</refsect1>
+	-->
+</refentry>
