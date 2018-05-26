@@ -40,7 +40,7 @@ const char *gengetopt_args_info_help[] = {
   "  -m, --message[=STRING]      Main text of the notification",
   "\n Mode: standard\n  Manually send standard notifications.",
   "  -I, --notify-card-inserted  See notify_card_inserted in opensc.conf\n                                (default=off)",
-  "  -R, --notify-card-removed   See notify_card_inserted in opensc.conf\n                                (default=off)",
+  "  -R, --notify-card-removed   See notify_card_removed in opensc.conf\n                                (default=off)",
   "  -G, --notify-pin-good       See notify_pin_good in opensc.conf  (default=off)",
   "  -B, --notify-pin-bad        See notify_pin_bad in opensc.conf  (default=off)",
   "\nReport bugs to https://github.com/OpenSC/OpenSC/issues\n\nWritten by Frank Morgner <frankmorgner@gmail.com>",
