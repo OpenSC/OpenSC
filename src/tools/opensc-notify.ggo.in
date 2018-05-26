@@ -27,7 +27,7 @@ modeoption "notify-card-inserted"    I
     flag off
     mode="standard"
 modeoption "notify-card-removed"  R
-    "See notify_card_inserted in opensc.conf"
+    "See notify_card_removed in opensc.conf"
     flag off
     mode="standard"
 modeoption "notify-pin-good"  G
