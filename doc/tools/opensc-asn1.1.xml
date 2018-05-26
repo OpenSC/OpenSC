@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<refentry id="opensc-asn1">
+	<refmeta>
+		<refentrytitle>opensc-asn1</refentrytitle>
+		<manvolnum>1</manvolnum>
+		<refmiscinfo class="productname">OpenSC</refmiscinfo>
+		<refmiscinfo class="manual">OpenSC Tools</refmiscinfo>
+		<refmiscinfo class="source">opensc</refmiscinfo>
+	</refmeta>
+
+	<refnamediv>
+		<refname>opensc-asn1</refname>
+		<refpurpose>parse ASN.1 data
+		</refpurpose>
+	</refnamediv>
+
+	<refsynopsisdiv>
+		<cmdsynopsis>
+			<command>opensc-asn1</command>
+			<arg choice="opt"><replaceable class="option">OPTIONS</replaceable></arg>
+			<arg choice="opt"><replaceable class="option">FILES</replaceable></arg>
+		</cmdsynopsis>
+	</refsynopsisdiv>
+
+	<refsect1>
+		<title>Description</title>
+		<para>
+			The <command>opensc-asn1</command> utility is used to parse ASN.1 data.
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Options</title>
+		<para>
+			<variablelist>
+				<varlistentry>
+					<term>
+						<option>--help</option>,
+						<option>-h</option></term>
+					<listitem><para>Print help and exit.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--version</option>,
+						<option>-V</option></term>
+					<listitem><para>Print version and exit.</para></listitem>
+				</varlistentry>
+			</variablelist>
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Authors</title>
+		<para><command>opensc-asn1</command> was written by
+		Frank Morgner <email>frankmorgner@gmail.com</email>.</para>
+	</refsect1>
+
+	<!--
+	<refsect1>
+		<title>Reporting Bugs</title>
+		<para>Report bugs to <ulink url="@PACKAGE_BUGREPORT@">@PACKAGE_BUGREPORT@</ulink>.</para>
+	</refsect1>
+	-->
+</refentry>

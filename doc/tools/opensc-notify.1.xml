@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<refentry id="opensc-notify">
+	<refmeta>
+		<refentrytitle>opensc-notify</refentrytitle>
+		<manvolnum>1</manvolnum>
+		<refmiscinfo class="productname">OpenSC</refmiscinfo>
+		<refmiscinfo class="manual">OpenSC Tools</refmiscinfo>
+		<refmiscinfo class="source">opensc</refmiscinfo>
+	</refmeta>
+
+	<refnamediv>
+		<refname>opensc-notify</refname>
+		<refpurpose> monitor smart card events and send notifications
+		</refpurpose>
+	</refnamediv>
+
+	<refsynopsisdiv>
+		<cmdsynopsis>
+			<command>opensc-notify</command>
+			<arg choice="opt"><replaceable class="option">OPTIONS</replaceable></arg>
+		</cmdsynopsis>
+	</refsynopsisdiv>
+
+	<refsect1>
+		<title>Description</title>
+		<para>
+			The <command>opensc-notify</command> utility is used to
+			monitor smart card events and send the appropriate notification.
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Options</title>
+		<para>
+			<variablelist>
+				<varlistentry>
+					<term>
+						<option>--help</option>,
+						<option>-h</option></term>
+					<listitem><para>Print help and exit.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--version</option>,
+						<option>-V</option></term>
+					<listitem><para>Print version and exit.</para></listitem>
+				</varlistentry>
+			</variablelist>
+		</para>
+
+		<refsect2>
+			<title>Mode: customized</title>
+			<para>
+				Send customized notifications.
+			</para>
+			<variablelist>
+				<varlistentry>
+					<term>
+						<option>--title</option> <arg choice="opt"><replaceable>STRING</replaceable></arg>,
+						<option>-t</option> <arg choice="opt"><replaceable>STRING</replaceable></arg>
+					</term>
+					<listitem><para>
+						Specify the title of the notification.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--message</option> <arg choice="opt"><replaceable>STRING</replaceable></arg>,
+						<option>-m</option> <arg choice="opt"><replaceable>STRING</replaceable></arg>
+					</term>
+					<listitem><para>
+						Specify the main text of the notification.
+					</para></listitem>
+				</varlistentry>
+			</variablelist>
+		</refsect2>
+
+		<refsect2>
+			<title>Mode: standard</title>
+			<para>
+				Manually send standard notifications.
+			</para>
+			<variablelist>
+				<varlistentry>
+					<term>
+						<option>--notify-card-inserted</option>,
+						<option>-I</option></term>
+					<listitem><para>
+						See <parameter>notify_card_inserted</parameter>
+						in <filename>opensc.conf</filename> (default=off).
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--notify-card-removed</option>,
+						<option>-R</option></term>
+					<listitem><para>
+						See <parameter>notify_card_removed</parameter>
+						in <filename>opensc.conf</filename> (default=off).
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--notify-pin-good</option>,
+						<option>-G</option></term>
+					<listitem><para>
+						See <parameter>notify_pin_good</parameter>
+						in <filename>opensc.conf</filename> (default=off).
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--notify-pin-bad</option>,
+						<option>-B</option></term>
+					<listitem><para>
+						See <parameter>notify_pin_bad</parameter>
+						in <filename>opensc.conf</filename> (default=off).
+					</para></listitem>
+				</varlistentry>
+			</variablelist>
+		</refsect2>
+	</refsect1>
+
+	<refsect1>
+		<title>Authors</title>
+		<para><command>opensc-notify</command> was written by
+		Frank Morgner <email>frankmorgner@gmail.com</email>.</para>
+	</refsect1>
+
+	<!--
+	<refsect1>
+		<title>Reporting Bugs</title>
+		<para>Report bugs to <ulink url="@PACKAGE_BUGREPORT@">@PACKAGE_BUGREPORT@</ulink>.</para>
+	</refsect1>
+	-->
+</refentry>
