@@ -106,7 +106,8 @@
 			<variablelist>
 				<varlistentry>
 					<term>
-						<command>apdu</command> <replaceable>hex-data</replaceable>
+						<command>apdu</command>
+						<replaceable>hex-data</replaceable>
 					</term>
 					<listitem>
 						<para>Send a custom APDU command <replaceable>hex-data</replaceable>.</para>
@@ -115,7 +116,8 @@
 
 				<varlistentry>
 					<term>
-						<command>asn1</command> <replaceable>file-id</replaceable>
+						<command>asn1</command>
+						<replaceable>file-id</replaceable>
 					</term>
 					<listitem><para>Parse and print the ASN.1 encoded content of the file specified by
 							<replaceable>file-id</replaceable>.</para></listitem>
@@ -123,7 +125,11 @@
 
 				<varlistentry>
 					<term>
-						<command>cat</command> [<replaceable>file-id</replaceable> | sfi:<replaceable>short-id</replaceable>]
+						<command>cat</command>
+						<group choice="opt">
+							<arg choice="plain"><replaceable>file-id</replaceable></arg>
+							<arg choice="plain"><literal>sfi:</literal><replaceable>short-id</replaceable></arg>
+						</group>
 					</term>
 					<listitem><para>Print the contents of the currently selected EF or the contents
 							of a file specified by <replaceable>file-id</replaceable> or the short file id
@@ -133,13 +139,19 @@
 
 				<varlistentry>
 					<term>
-						<command>cd</command> {.. | <replaceable>file-id</replaceable> | aid:<replaceable>DF-name</replaceable>}
+						<command>cd</command>
+						<group choice="req">
+							<arg choice="plain"><literal>..</literal></arg>
+							<arg choice="plain"><replaceable>file-id</replaceable></arg>
+							<arg choice="plain"><literal>aid:</literal><replaceable>DF-name</replaceable></arg>
+						</group>
 					</term>
 					<listitem><para>
 							Change to another DF specified by the argument passed.
-							If the argument given is <literal>..</literal>, then move up one level in the
-							file system hierarchy.
-							If it is <replaceable>file-id</replaceable>, which must be a DF directly
+							If the argument given is <literal>..</literal>,
+							then move up one level in the file system hierarchy.
+							If it is <replaceable>file-id</replaceable>,
+							which must be a DF directly
 							beneath the current DF, then change to that DF.
 							If it is an application identifier given as
 							<literal>aid:</literal><replaceable>DF-name</replaceable>,
@@ -150,7 +162,12 @@
 
 				<varlistentry>
 					<term>
-						<command>change</command> CHV<replaceable>pin-ref</replaceable> [[<replaceable>old-pin</replaceable>] <replaceable>new-pin</replaceable>]
+						<command>change</command>
+						<arg choice="plain"><literal>CHV</literal><replaceable>pin-ref</replaceable></arg>
+						<arg choice="opt">
+							<arg choice="opt"><replaceable>old-pin</replaceable></arg>
+							<replaceable>new-pin</replaceable>
+						</arg>
 					</term>
 					<listitem>
 						<para>Change a PIN, where <replaceable>pin-ref</replaceable> is the PIN reference.</para>
@@ -185,7 +202,9 @@
 
 				<varlistentry>
 					<term>
-						<command>create</command> <replaceable>file-id</replaceable> <replaceable>size</replaceable>
+						<command>create</command>
+						<replaceable>file-id</replaceable>
+						<replaceable>size</replaceable>
 					</term>
 					<listitem><para>Create a new EF.  <replaceable>file-id</replaceable> specifies the
 							id number and <replaceable>size</replaceable> is the size of the new file.
@@ -194,7 +213,8 @@
 
 				<varlistentry>
 					<term>
-						<command>debug</command> [<replaceable>level</replaceable>]
+						<command>debug</command>
+						<arg choice="opt"><replaceable>level</replaceable></arg>
 					</term>
 					<listitem>
 						<para>Set OpenSC debug level to <replaceable>level</replaceable>.</para>
@@ -204,14 +224,17 @@
 
 				<varlistentry>
 					<term>
-						<command>delete</command> <replaceable>file-id</replaceable>
+						<command>delete</command>
+						<replaceable>file-id</replaceable>
 					</term>
 					<listitem><para>Remove the EF or DF specified by <replaceable>file-id</replaceable></para></listitem>
 				</varlistentry>
 
 				<varlistentry>
 					<term>
-						<command>do_get</command> <replaceable>hex-tag</replaceable> [<replaceable>output</replaceable>]
+						<command>do_get</command>
+						<replaceable>hex-tag</replaceable>
+						<arg choice="opt"><replaceable>output</replaceable></arg>
 					</term>
 					<listitem>
 						<para>Copy the internal card's 'tagged' data into the local file.</para>
@@ -227,7 +250,9 @@
 
 				<varlistentry>
 					<term>
-						<command>do_put</command> <replaceable>hex-tag</replaceable> <replaceable>input</replaceable>
+						<command>do_put</command>
+						<replaceable>hex-tag</replaceable>
+						<replaceable>input</replaceable>
 					</term>
 					<listitem>
 						<para>Update internal card's 'tagged' data. </para>
@@ -240,7 +265,8 @@
 
 				<varlistentry>
 					<term>
-						<command>echo</command> <replaceable>string</replaceable> ...
+						<command>echo</command>
+						<arg choice="plain" rep="repeat"><replaceable>string</replaceable></arg>
 					</term>
 					<listitem>
 						<para>Print the <replaceable>string</replaceable>s given.</para>
@@ -256,7 +282,9 @@
 
 				<varlistentry>
 					<term>
-						<command>get</command> <replaceable>file-id</replaceable> [<replaceable>output</replaceable>]
+						<command>get</command>
+						<replaceable>file-id</replaceable>
+						<arg choice="opt"><replaceable>output</replaceable></arg>
 					</term>
 					<listitem>
 						<para>Copy an EF to a local file. The local file is specified
@@ -271,7 +299,8 @@
 
 				<varlistentry>
 					<term>
-						<command>info</command> [<replaceable>file-id</replaceable>]
+						<command>info</command>
+						<arg choice="opt"><replaceable>file-id</replaceable></arg>
 					</term>
 					<listitem><para>Display attributes of a file specified by <replaceable>file-id</replaceable>.
 							If <replaceable>file-id</replaceable> is not supplied,
@@ -280,7 +309,8 @@
 
 				<varlistentry>
 					<term>
-						<command>ls</command> [<replaceable>pattern</replaceable> ...]
+						<command>ls</command>
+						<arg choice="opt" rep="repeat"><replaceable>pattern</replaceable></arg>
 					</term>
 					<listitem><para>List files in the current DF.
 							If no <replaceable>pattern</replaceable> is given, then all files are listed.
@@ -290,7 +320,11 @@
 
 				<varlistentry>
 					<term>
-						<command>find</command> [<replaceable>start-id</replaceable> [<replaceable>end-id</replaceable>]]
+						<command>find</command>
+						<arg choice="opt">
+							<replaceable>start-id</replaceable>
+							<arg choice="opt"><replaceable>end-id</replaceable></arg>
+						</arg>
 					</term>
 					<listitem><para>Find all files in the current DF.
 							Files are found by selecting all file identifiers in the range from <replaceable>start-fid</replaceable> to <replaceable>end-fid</replaceable> (by default from 0000 to FFFF).</para></listitem>
@@ -298,7 +332,11 @@
 
 				<varlistentry>
 					<term>
-						<command>find_tags</command> [<replaceable>start-tag</replaceable> [<replaceable>end-tag</replaceable>]]
+						<command>find_tags</command>
+						<arg choice="opt">
+							<replaceable>start-tag</replaceable>
+							<arg choice="opt"><replaceable>end-tag</replaceable></arg>
+						</arg>
 					</term>
 					<listitem><para>Find all tags of data objects in the current context.
 							Tags are found by using GET DATA in the range from <replaceable>start-tag</replaceable> to <replaceable>end-tag</replaceable> (by default from 0000 to FFFF).</para></listitem>
@@ -306,7 +344,9 @@
 
 				<varlistentry>
 					<term>
-						<command>mkdir</command> <replaceable>file-id</replaceable> <replaceable>size</replaceable>
+						<command>mkdir</command>
+						<replaceable>file-id</replaceable>
+						<replaceable>size</replaceable>
 					</term>
 					<listitem><para>Create a DF. <replaceable>file-id</replaceable> specifies the id number
 							and <replaceable>size</replaceable> is the size of the new file.</para></listitem>
@@ -314,7 +354,9 @@
 
 				<varlistentry>
 					<term>
-						<command>put</command> <replaceable>file-id</replaceable> <replaceable>input</replaceable>
+						<command>put</command>
+						<replaceable>file-id</replaceable>
+						<replaceable>input</replaceable>
 					</term>
 					<listitem><para>Copy a local file to the card. The local file is specified
 							by <replaceable>input</replaceable> while the card file is specified by <replaceable>file-id</replaceable>.
@@ -330,7 +372,8 @@
 
 				<varlistentry>
 					<term>
-						<command>random</command> <replaceable>count</replaceable>
+						<command>random</command>
+						<replaceable>count</replaceable>
 					</term>
 					<listitem>
 						<para>Generate random sequence of <replaceable>count</replaceable> bytes.</para>
@@ -339,20 +382,26 @@
 
 				<varlistentry>
 					<term>
-						<command>rm</command> <replaceable>file-id</replaceable>
+						<command>rm</command>
+						<replaceable>file-id</replaceable>
 					</term>
 					<listitem><para>Remove the EF or DF specified by <replaceable>file-id</replaceable></para></listitem>
 				</varlistentry>
 
 				<varlistentry>
 					<term>
-						<command>unblock</command> CHV<replaceable>pin-ref</replaceable> [<replaceable>puk</replaceable> [<replaceable>new pin</replaceable>]]
+						<command>unblock</command>
+						<literal>CHV</literal><replaceable>pin-ref</replaceable>
+						<arg choice="opt">
+							<replaceable>puk</replaceable>
+							<arg choice="opt"><replaceable>new-pin</replaceable></arg>
+						</arg>
 					</term>
 					<listitem>
 						<para>
 							Unblock the PIN denoted by <replaceable>pin-ref</replaceable>
 							using the PUK <replaceable>puk</replaceable>, and set potentially
-							change its value to <replaceable>new pin</replaceable>.
+							change its value to <replaceable>new-pin</replaceable>.
 						</para>
 						<para>
 							PUK and PIN values can be a sequence of hexadecimal values,
@@ -414,7 +463,10 @@
 
 				<varlistentry>
 					<term>
-						<command>update_binary</command> <replaceable>file-id</replaceable> <replaceable>offs</replaceable> <replaceable>data</replaceable>
+						<command>update_binary</command>
+						<replaceable>file-id</replaceable>
+						<replaceable>offs</replaceable>
+						<replaceable>data</replaceable>
 					</term>
 					<listitem>
 						<para>Binary update of the file specified by
@@ -428,7 +480,11 @@
 
 				<varlistentry>
 					<term>
-						<command>update_record</command> <replaceable>file-id</replaceable> <replaceable>rec-nr</replaceable> <replaceable>rec-offs</replaceable> <replaceable>data</replaceable>
+						<command>update_record</command>
+						<replaceable>file-id</replaceable>
+						<replaceable>rec-nr</replaceable>
+						<replaceable>rec-offs</replaceable>
+						<replaceable>data</replaceable>
 					</term>
 					<listitem>
 						<para>Update record specified by <replaceable>rec-nr</replaceable> of the file
@@ -442,7 +498,9 @@
 
 				<varlistentry>
 					<term>
-						<command>verify</command> <replaceable>key-type</replaceable> <replaceable>key-id</replaceable> [<replaceable>key</replaceable>]
+						<command>verify</command>
+						<replaceable>key-type</replaceable><replaceable>key-id</replaceable>
+						<arg choice="opt"><replaceable>key</replaceable></arg>
 					</term>
 					<listitem><para>Present a PIN or key to the card, where
 							<replaceable>key-type</replaceable> can be one of <literal>CHV</literal>,
@@ -489,10 +547,14 @@
 
 				<varlistentry>
 					<term>
-						<command>sm</command> <replaceable>[open]</replaceable>|<replaceable>[close]</replaceable>
+						<command>sm</command>
+						<group choice="req">
+							<arg choice="plain"><literal>open</literal></arg>
+							<arg choice="plain"><literal>close</literal></arg>
+						</group>
 					</term>
 					<listitem>
-						<para>Calls the card's <replaceable>open</replaceable> or <replaceable>close</replaceable> Secure Messaging handler.</para>
+						<para>Calls the card's <literal>open</literal> or <literal>close</literal> Secure Messaging handler.</para>
 					</listitem>
 				</varlistentry>
 

@@ -27,12 +27,12 @@
 			layout, such as the path of the application DF, various PKCS #15 files within
 			that directory, and the access conditions on these files. It also defines
 			general information about PIN, key and certificate objects. Currently, there
-			is only one such generic profile, <command>pkcs15.profile</command>.
+			is only one such generic profile, <filename>pkcs15.profile</filename>.
 		</para>
 		<para>
 			The card specific profile contains additional information required during
 			card initialization, such as location of PIN files, key references etc.
-			Profiles currently reside in <command>@pkgdatadir@</command>
+			Profiles currently reside in <filename class="directory">@pkgdatadir@</filename>
 		</para>
 	</refsect1>
 

@@ -83,8 +83,8 @@
 				</varlistentry>
 				<varlistentry>
 					<term>
-						<option>--reader</option> <replaceable>number</replaceable>,
-						<option>-r</option> <replaceable>number</replaceable>
+						<option>--reader</option> <replaceable>num</replaceable>,
+						<option>-r</option> <replaceable>num</replaceable>
 					</term>
 					<listitem>
 						<para>

@@ -126,10 +126,11 @@
 				</varlistentry>
 				<varlistentry>
 					<term>
-						<option>--reset</option>[=<replaceable>type</replaceable>],
+						<option>--reset</option> <arg choice="opt"><replaceable>type</replaceable></arg>,
 					</term>
 					<listitem><para>Resets the card in reader.
-					The default reset type is <literal>cold</literal>, but warm reset is also possible.</para></listitem>
+					The default reset type is <literal>cold</literal>,
+					but <literal>warm</literal> reset is also possible.</para></listitem>
 				</varlistentry>
 				<varlistentry>
 					<term>
