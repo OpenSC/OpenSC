@@ -104,6 +104,8 @@ const char *sc_strerror(int error)
 		"Unable to load external module",
 		"EF offset too large",
 		"Not implemented"
+		"Invalid Simple TLV object",
+		"Premature end of Simple TLV stream",
 	};
 	const int int_base = -SC_ERROR_INTERNAL;
 

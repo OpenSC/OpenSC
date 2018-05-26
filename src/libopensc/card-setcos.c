@@ -788,8 +788,8 @@ static void parse_sec_attr_44(sc_file_t *file, const u8 *buf, size_t len)
 
 	/* Check all sub-AC definitions within the total AC */
 	while (len > 1) {				/* minimum length = 2 */
-		int	iACLen   = buf[iOffset] & 0x0F;
-		if ((size_t) iACLen > len)
+		size_t iACLen   = buf[iOffset] & 0x0F;
+		if (iACLen > len)
 			break;
 
 		iPinCount = -1;			/* default no pin required */
@@ -797,8 +797,8 @@ static void parse_sec_attr_44(sc_file_t *file, const u8 *buf, size_t len)
 
 		if (buf[iOffset] & 0X80) { /* AC in adaptive coding */
 			/* Evaluates only the command-byte, not the optional P1/P2/Option bytes */
-			int	iParmLen = 1;			/* command-byte is always present */
-			int	iKeyLen  = 0;			/* Encryption key is optional */
+			size_t	iParmLen = 1;			/* command-byte is always present */
+			size_t	iKeyLen  = 0;			/* Encryption key is optional */
 
 			if (buf[iOffset]   & 0x20) iKeyLen++;
 			if (buf[iOffset+1] & 0x40) iParmLen++;
@@ -809,7 +809,7 @@ static void parse_sec_attr_44(sc_file_t *file, const u8 *buf, size_t len)
 			/* Get KeyNumber if available */
 			if(iKeyLen) {
 				int iSC;
-				if (len < 1+iACLen)
+				if (len < 1+(size_t)iACLen)
 					break;
 				iSC = buf[iOffset+iACLen];
 
@@ -830,7 +830,7 @@ static void parse_sec_attr_44(sc_file_t *file, const u8 *buf, size_t len)
 
 			/* Get PinNumber if available */
 			if (iACLen > (1+iParmLen+iKeyLen)) {  /* check via total length if pin is present */
-				if (len < 1+1+1+iParmLen)
+				if (len < 1+1+1+(size_t)iParmLen)
 					break;
 				iKeyRef = buf[iOffset+1+1+iParmLen];  /* PTL + AM-header + parameter-bytes */
 				iMethod = SC_AC_CHV;
@@ -873,7 +873,7 @@ static void parse_sec_attr_44(sc_file_t *file, const u8 *buf, size_t len)
 
 			if (buf[iOffset] & 0x20) {
 				int iSC;
-				if (len < 1 + iACLen)
+				if (len < 1 + (size_t)iACLen)
 					break;
 				iSC = buf[iOffset + iACLen];
 
