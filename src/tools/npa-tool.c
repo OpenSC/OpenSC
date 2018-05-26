@@ -443,7 +443,7 @@ main (int argc, char **argv)
 	if (cmdline.cvc_dir_given)
 		EAC_set_cvc_default_dir(cmdline.cvc_dir_arg);
 	if (cmdline.x509_dir_given)
-		EAC_set_x509_default_dir(cmdline.cvc_dir_arg);
+		EAC_set_x509_default_dir(cmdline.x509_dir_arg);
 
 	if (cmdline.break_flag) {
 		/* The biggest number sprintf could write with "%llu is 18446744073709551615 */
