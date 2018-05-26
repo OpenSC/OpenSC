@@ -71,8 +71,8 @@
         </varlistentry>
         <varlistentry>
           <term>
-            <option>--reader</option> <replaceable>number</replaceable>,
-            <option>-r</option> <replaceable>number</replaceable>
+            <option>--reader</option> <replaceable>num</replaceable>,
+            <option>-r</option> <replaceable>num</replaceable>
           </term>
           <listitem>
             <para>
@@ -147,8 +147,14 @@
         </varlistentry>
         <varlistentry>
           <term>
-            <command>change</command> { <parameter>pin</parameter> | <parameter>puk</parameter> |
-          <parameter>pin0</parameter> | <parameter>pin1</parameter> } <replaceable>new-pin</replaceable>
+            <command>change</command>
+            <group choice="req">
+              <arg choice="plain">pin</arg>
+              <arg choice="plain">puk</arg>
+              <arg choice="plain">pin0</arg>
+              <arg choice="plain">pin1</arg>
+             </group>
+            <replaceable>new-pin</replaceable>
           </term>
           <listitem><para>This changes the value of the specified pin to the given new value.
           You must specify either the current value of the pin or another pin to be able to do
@@ -167,7 +173,12 @@
         </varlistentry>
         <varlistentry>
           <term>
-            <command>unblock</command> { <parameter>pin</parameter> | <parameter>pin0</parameter> | <parameter>pin1</parameter> }
+            <command>unblock</command>
+            <group choice="req">
+              <arg choice="plain">pin</arg>
+              <arg choice="plain">pin0</arg>
+              <arg choice="plain">pin1</arg>
+             </group>
           </term>
           <listitem><para>This unblocks the specified pin. You must specify another pin
           to be able to do this and if you don't specify a correct one,

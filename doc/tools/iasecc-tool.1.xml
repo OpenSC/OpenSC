@@ -34,7 +34,7 @@
 			<variablelist>
 				<varlistentry>
 					<term>
-						<option>--reader</option> <replaceable>number</replaceable>,
+						<option>--reader</option> <replaceable>num</replaceable>,
 					</term>
 					<listitem>
 						<para>
