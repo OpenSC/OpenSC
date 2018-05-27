@@ -172,6 +172,7 @@
 
 				<varlistentry>
 					<term>
+						<option>--verbose</option>
 						<option>-v</option>
 					</term>
 					<listitem><para>Causes <command>westcos-tool</command> to be more
