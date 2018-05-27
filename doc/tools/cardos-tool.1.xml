@@ -49,6 +49,13 @@ smart cards and similar security tokens based on Siemens Card/OS M4.
 				</varlistentry>
 				<varlistentry>
 					<term>
+						<option>--help</option>,
+						<option>-h</option>
+					</term>
+					<listitem><para>Print help message on screen.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
 						<option>--info</option>,
 						<option>-i</option>
 					</term>
@@ -67,6 +74,20 @@ smart cards and similar security tokens based on Siemens Card/OS M4.
 							reader with a matching card will be chosen.
 						</para>
 					</listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--startkey</option> <replaceable>arg</replaceable>,
+						<option>-s</option> <replaceable>arg</replaceable>
+					</term>
+					<listitem><para>Specify startkey for format.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--change-startkey</option> <replaceable>arg</replaceable>,
+						<option>-S</option> <replaceable>arg</replaceable>
+					</term>
+					<listitem><para>Change Startkey with given APDU command.</para></listitem>
 				</varlistentry>
 				<varlistentry>
 					<term>
