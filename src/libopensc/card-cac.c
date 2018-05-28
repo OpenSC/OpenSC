@@ -165,13 +165,17 @@ typedef struct cac_object {
 #define CAC_MAX_OBJECTS 10
 
 typedef struct {
-	unsigned int num_objects;
 	/* OID has two bytes */
-	unsigned char objects[CAC_MAX_OBJECTS][2];
+	unsigned char oid[2];
 	/* Format is NOT SimpleTLV? */
-	unsigned char simpletlv[CAC_MAX_OBJECTS];
+	unsigned char simpletlv;
 	/* Is certificate object and private key is initialized */
-	unsigned char privatekey[CAC_MAX_OBJECTS];
+	unsigned char privatekey;
+} cac_properties_object_t;
+
+typedef struct {
+	unsigned int num_objects;
+	cac_properties_object_t objects[CAC_MAX_OBJECTS];
 } cac_properties_t;
 
 /*
@@ -462,7 +466,6 @@ static int
 cac_get_acr(sc_card_t *card, int acr_type, u8 **out_buf, size_t *out_len)
 {
 	u8 *out = NULL;
-	u8 *out_ptr;
 	/* XXX assuming it will not be longer than 255 B */
 	size_t len = 256;
 	int r;
@@ -475,9 +478,7 @@ cac_get_acr(sc_card_t *card, int acr_type, u8 **out_buf, size_t *out_len)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
-	out = out_ptr = malloc(len);
-
-	r = cac_apdu_io(card, CAC_INS_GET_ACR, acr_type, 0, NULL, 0, &out_ptr, &len);
+	r = cac_apdu_io(card, CAC_INS_GET_ACR, acr_type, 0, NULL, 0, &out, &len);
 	if (len == 0) {
 		r = SC_ERROR_FILE_NOT_FOUND;
 	}
@@ -485,7 +486,7 @@ cac_get_acr(sc_card_t *card, int acr_type, u8 **out_buf, size_t *out_len)
 		goto fail;
 
 	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
-	    "got %"SC_FORMAT_LEN_SIZE_T"u bytes out_ptr=%p", len, out_ptr);
+	    "got %"SC_FORMAT_LEN_SIZE_T"u bytes out=%p", len, out);
 
 	*out_len = len;
 	*out_buf = out;
@@ -494,6 +495,7 @@ cac_get_acr(sc_card_t *card, int acr_type, u8 **out_buf, size_t *out_len)
 fail:
 	if (out)
 		free(out);
+	*out_buf = NULL;
 	*out_len = 0;
 	return r;
 }
@@ -728,7 +730,7 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 		priv->cache_buf_len = tlv_len;
 
 		for (tl_ptr = tl, val_ptr=val, tlv_ptr = priv->cache_buf;
-				tl_len >= 2 /*&& val_len >= 0*/ && tlv_len > 0;
+				tl_len >= 2 && tlv_len > 0;
 				val_len -= len, tlv_len -= len, val_ptr += len, tlv_ptr += len) {
 			/* get the tag and the length */
 			tl_start = tl_ptr;
@@ -1075,7 +1077,7 @@ static int cac_decipher(sc_card_t *card,
 }
 
 static int parse_properties_object(sc_card_t *card, u8 type,
-    u8 *data, size_t data_len, cac_properties_t *prop, size_t *i)
+    u8 *data, size_t data_len, cac_properties_object_t *object)
 {
 	size_t len;
 	u8 *val, *val_end, tag;
@@ -1085,7 +1087,7 @@ static int parse_properties_object(sc_card_t *card, u8 type,
 		return -1;
 
 	/* Initilize: non-PKI applet */
-	prop->privatekey[*i] = 0;
+	object->privatekey = 0;
 
 	val = data;
 	val_end = data + data_len;
@@ -1098,7 +1100,7 @@ static int parse_properties_object(sc_card_t *card, u8 type,
 		case CAC_TAG_OBJECT_ID:
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
 			    "TAG: Object ID = 0x%02x 0x%02x", val[0], val[1]);
-			memcpy(&prop->objects[*i], val, 2);
+			memcpy(&object->oid, val, 2);
 			parsed++;
 			break;
 
@@ -1107,7 +1109,7 @@ static int parse_properties_object(sc_card_t *card, u8 type,
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
 			    "TAG: Buffer Properties: Type of Tag Supported = 0x%02x",
 			    val[0]);
-			prop->simpletlv[*i] = val[0];
+			object->simpletlv = val[0];
 			parsed++;
 			break;
 
@@ -1116,7 +1118,7 @@ static int parse_properties_object(sc_card_t *card, u8 type,
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
 			    "TAG: PKI Properties: Private Key Initialized = 0x%02x",
 			    val[2]);
-			prop->privatekey[*i] = val[2];
+			object->privatekey = val[2];
 			parsed++;
 			break;
 
@@ -1130,7 +1132,6 @@ static int parse_properties_object(sc_card_t *card, u8 type,
 	if (parsed < 2)
 		return SC_ERROR_INVALID_DATA;
 
-	(*i)++;
 	return SC_SUCCESS;
 }
 
@@ -1181,7 +1182,9 @@ static int cac_get_properties(sc_card_t *card, cac_properties_t *prop)
 			if (i >= CAC_MAX_OBJECTS)
 				return SC_SUCCESS;
 
-			parse_properties_object(card, tag, val, len, prop, &i);
+			if (parse_properties_object(card, tag, val, len,
+			    &prop->objects[i]) == SC_SUCCESS)
+				i++;
 			break;
 		default:
 			/* ignore tags we don't understand */
@@ -1354,17 +1357,17 @@ static int cac_select_file_by_type(sc_card_t *card, const sc_path_t *in_path, sc
 		if (r == SC_SUCCESS) {
 			for (i = 0; i < prop.num_objects; i++) {
 				sc_log(card->ctx, "Searching for our OID: 0x%02x 0x%02x = 0x%02x 0x%02x",
-				    prop.objects[i][0], prop.objects[i][1],
+				    prop.objects[i].oid[0], prop.objects[i].oid[1],
 					in_path->value[0], in_path->value[1]);
-				if (memcmp(prop.objects[i],
+				if (memcmp(prop.objects[i].oid,
 				    in_path->value, 2) == 0)
 					break;
 			}
 		}
 		if (i < prop.num_objects) {
-			if (prop.privatekey[i])
+			if (prop.objects[i].privatekey)
 				priv->object_type = CAC_OBJECT_TYPE_CERT;
-			else if (prop.simpletlv[i] == 0)
+			else if (prop.objects[i].simpletlv == 0)
 				priv->object_type = CAC_OBJECT_TYPE_TLV_FILE;
 		}
 	}
@@ -1447,8 +1450,8 @@ static int cac_parse_aid(sc_card_t *card, cac_private_data_t *priv, u8 *aid, int
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	/* Search for PKI applets. Ignore generic objects for now */
-	if (aid_len < 6 || memcmp(aid, CAC_1_RID "\x01", 6) != 0)
+	/* Search for PKI applets (7 B). Ignore generic objects for now */
+	if (aid_len != 7 || memcmp(aid, CAC_1_RID "\x01", 6) != 0)
 		return SC_SUCCESS;
 
 	sc_mem_clear(&new_object.path, sizeof(sc_path_t));
@@ -1471,11 +1474,11 @@ static int cac_parse_aid(sc_card_t *card, cac_private_data_t *priv, u8 *aid, int
 		/* If the private key is not initialized, we can safely
 		 * ignore this object here
 		 */
-		if (!prop.privatekey[i])
+		if (!prop.objects[i].privatekey)
 			continue;
 
 		/* OID here has always 2B */
-		memcpy(new_object.path.value, &prop.objects[i], 2);
+		memcpy(new_object.path.value, &prop.objects[i].oid, 2);
 		new_object.path.len = 2;
 		new_object.path.type = SC_PATH_TYPE_FILE_ID;
 
@@ -1699,12 +1702,24 @@ static int cac_parse_ACA_service(sc_card_t *card, cac_private_data_t *priv,
 			    val[1], val[2], val[3], val[4]);
 			break;
 		case CAC_TAG_NUMBER_APPLETS:
+			if (len != 1) {
+				sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
+				    "TAG: Num applets = (bad length %"SC_FORMAT_LEN_SIZE_T"u)",
+				    len);
+				break;
+			}
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
 			    "TAG: Num applets = %hhd", *val);
 			break;
 		case CAC_TAG_APPLET_ENTRY:
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
 			    "TAG: Applet Entry");
+			/* Make sure we match the outer length */
+			if (val[2] != len - 3) {
+				sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
+				    "bad length of internal buffer");
+				break;
+			}
 			/* This is SimpleTLV prefixed with applet ID (1B) */
 			r = cac_parse_aid(card, priv, &val[3], val[2]);
 			if (r < 0)
