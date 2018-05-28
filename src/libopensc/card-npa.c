@@ -65,22 +65,6 @@ static void npa_drv_data_free(struct npa_drv_data *drv_data)
 	}
 }
 
-static struct sc_atr_table npa_atrs[] = {
-	{"3B:8A:80:01:80:31:F8:73:F7:41:E0:82:90:00:75",
-		"FF:FF:FF:FF:FF:FF:00:FF:00:00:FF:FF:FF:FF:00",
-		NULL, SC_CARD_TYPE_NPA, 0, NULL},
-	{"3B:88:80:01:00:00:00:00:00:00:00:00:09", NULL,
-		NULL, SC_CARD_TYPE_NPA, 0, NULL},
-	{"3B:87:80:01:80:31:B8:73:84:01:E0:19", NULL,
-		NULL, SC_CARD_TYPE_NPA, 0, NULL},
-	{"3B:84:80:01:00:00:90:00:95", NULL,
-		"German ID card (Test neuer Personalausweis)", SC_CARD_TYPE_NPA_TEST, 0, NULL},
-	{"3B:88:80:01:00:E1:F3:5E:13:77:83:00:00",
-		"FF:FF:FF:FF:00:FF:FF:FF:FF:FF:FF:FF:00",
-		"German ID card (Test Online-Ausweisfunktion)", SC_CARD_TYPE_NPA_ONLINE, 0, NULL},
-	{NULL, NULL, NULL, 0, 0, NULL}
-};
-
 static struct sc_card_operations npa_ops;
 static struct sc_card_driver npa_drv = {
 	"German ID card (neuer Personalausweis, nPA)",
@@ -150,28 +134,42 @@ err:
 static int npa_match_card(sc_card_t * card)
 {
 	int r = 0;
-	unsigned char *ef_cardaccess = NULL;
-	size_t ef_cardaccess_len = 0;
 
-	r = _sc_match_atr(card, npa_atrs, &card->type);
-	if (r >= 0) {
-		if (NULL == card->name) {
-			card->name = npa_atrs[r].name;
+	if (0 == r && SC_SUCCESS == sc_enum_apps(card)) {
+		unsigned char esign_aid_0[] = {
+			0xE8, 0x28, 0xBD, 0x08, 0x0F, 0xA0, 0x00, 0x00, 0x01, 0x67, 0x45, 0x53, 0x49, 0x47, 0x4E,
+		}, esign_aid_1[] = {
+			0xa0, 0x00, 0x00, 0x02, 0x47, 0x10, 0x01,
+		}, esign_aid_2[] = {
+			0xe8, 0x07, 0x04, 0x00, 0x7f, 0x00, 0x07, 0x03, 0x02,
+		}, esign_aid_3[] = {
+			0xA0, 0x00, 0x00, 0x01, 0x67, 0x45, 0x53, 0x49, 0x47, 0x4E,
+		};
+		int i, found_0 = 0, found_1 = 0, found_2 = 0, found_3 = 0;
+		for (i = 0; i < card->app_count; i++)   {
+			struct sc_app_info *app_info = card->app[i];
+			if (sizeof esign_aid_0 == app_info->aid.len
+					&& 0 == memcmp(esign_aid_0, app_info->aid.value,
+						sizeof esign_aid_0))
+				found_0 = 1;
+			if (sizeof esign_aid_1 == app_info->aid.len
+					&& 0 == memcmp(esign_aid_1, app_info->aid.value,
+						sizeof esign_aid_1))
+				found_1 = 1;
+			if (sizeof esign_aid_2 == app_info->aid.len
+					&& 0 == memcmp(esign_aid_2, app_info->aid.value,
+						sizeof esign_aid_2))
+				found_2 = 1;
+			if (sizeof esign_aid_3 == app_info->aid.len
+					&& 0 == memcmp(esign_aid_3, app_info->aid.value,
+						sizeof esign_aid_3))
+				found_3 = 1;
 		}
-		r = 1;
-	} else {
-		r = 0;
+		if (found_0 && found_1 && found_2 && found_3) {
+			card->type = SC_CARD_TYPE_NPA;
+			r = 1;
+		}
 	}
-
-	if (0 == r
-			&& SC_SUCCESS == iso7816_read_binary_sfid(
-				card, SFID_EF_CARDACCESS,
-			   	&ef_cardaccess, &ef_cardaccess_len)) {
-		card->type = SC_CARD_TYPE_NPA;
-		r = 1;
-	}
-
-	free(ef_cardaccess);
 
 	return r;
 }
@@ -317,7 +315,7 @@ static int npa_unlock_esign(sc_card_t *card)
 	eac_default_flags |= EAC_FLAG_DISABLE_CHECK_TA;
 	eac_default_flags |= EAC_FLAG_DISABLE_CHECK_CA;
 
-	/* FIXME show an alert to the user if can == NULL */
+	/* FIXME show an alert to the user if CAN is NULL */
 	r = perform_pace(card, pace_input, &pace_output, EAC_TR_VERSION_2_02);
 	if (SC_SUCCESS != r) {
 		sc_log(card->ctx, "Error verifying CAN.\n");
@@ -403,21 +401,8 @@ static int npa_init(sc_card_t * card)
 
 	/* unlock the eSign application for reading the certificates
 	 * by the PKCS#15 layer (i.e. sc_pkcs15_bind_internal) */
-	if (SC_SUCCESS == sc_enum_apps(card)) {
-		unsigned char esign_aid[] = {
-			0xA0, 0x00, 0x00, 0x01, 0x67, 0x45, 0x53, 0x49, 0x47, 0x4E,
-		};
-		int i;
-		for (i = 0; i < card->app_count; i++)   {
-			struct sc_app_info *app_info = card->app[i];
-			if (sizeof esign_aid == app_info->aid.len
-					&& 0 == memcmp(esign_aid, app_info->aid.value, sizeof esign_aid)) {
-				if (SC_SUCCESS != npa_unlock_esign(card)) {
-					sc_log(card->ctx, "Probably not all functionality will be available.\n");
-				}
-				break;
-			}
-		}
+	if (SC_SUCCESS != npa_unlock_esign(card)) {
+		sc_log(card->ctx, "Probably not all functionality will be available.\n");
 	}
 
 err:
