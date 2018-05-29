@@ -869,6 +869,10 @@ static int myeid_set_security_env(struct sc_card *card,
 			{
 				tmp.algorithm_ref = 0x00;
 			}
+
+			if ((tmp.algorithm_flags & SC_ALGORITHM_AES_CBC_PAD) == SC_ALGORITHM_AES_CBC_PAD)
+				tmp.algorithm_ref |= 0x80;		/* set PKCS#7 padding */
+
 			/* from this point, there's no difference to RSA SE */
 			return myeid_set_security_env_rsa(card, &tmp, se_num);
 		}
@@ -1267,7 +1271,7 @@ static int myeid_wrap_key(struct sc_card *card, u8 *out, size_t outlen)
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0x2A, 0x84, 0x00);
 	apdu.resp = rbuf;
 	apdu.resplen = sizeof(rbuf);
-	apdu.le = outlen;
+	apdu.le = 0;
 	apdu.lc = 0;
 
 	r = sc_transmit_apdu(card, &apdu);
@@ -1325,7 +1329,7 @@ static int myeid_unwrap_key(struct sc_card *card, const u8 *crgram, size_t crgra
 	apdu.resplen = sizeof(rbuf);
 	apdu.le = crgram_len;
 
-	if (crgram_len == 256)
+	if (crgram_len == 256 && p2 == 0x86)
 	{
 		apdu.le = 0;
 		/* padding indicator byte, 0x81 = first half of 2048 bit cryptogram */
@@ -1352,10 +1356,10 @@ static int myeid_unwrap_key(struct sc_card *card, const u8 *crgram, size_t crgra
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
 	{
-		if (crgram_len == 256)
+		if (crgram_len == 256 && p2 == 0x86) /* with symmetric crypto, we support only single apdu unwrap for now */
 		{
 			sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT,
-				0x2A, 0x00, 0x86);
+				0x2A, 0x00, p2);
 			apdu.resp = rbuf;
 			apdu.resplen = sizeof(rbuf);
 			apdu.le = crgram_len;

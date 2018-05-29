@@ -426,7 +426,7 @@ int sc_pkcs15_unwrap(struct sc_pkcs15_card *p15card,
 	LOG_TEST_RET(ctx, r, "cannot encode security operation flags");
 	senv.algorithm_flags = sec_flags;
 
-	if ((sec_flags & SC_ALGORITHM_AES_CBC & SC_ALGORITHM_AES_CBC_PAD) > 0) {
+	if ((sec_flags & (SC_ALGORITHM_AES_CBC | SC_ALGORITHM_AES_CBC_PAD)) > 0) {
 	    senv_param = (sc_sec_env_param_t) { SC_SEC_ENV_PARAM_IV, (u8*) param, paramlen };
 	    LOG_TEST_RET(ctx, sec_env_add_param(&senv, &senv_param), "failed to add IV to security environment");
 	}

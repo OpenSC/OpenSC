@@ -2198,12 +2198,21 @@ out:	return rv;
 }
 
 
-/* TODO Only Session secret key objects are supported for now
+/*
+ * Secret key objects can be stored on card, if the card supports them
+ *
  * Session objects have CKA_TOKEN=false
+ *
+ * CKA_TOKEN = FALSE can mean two things:
+ *		1. If the card supports on card session objects, the object is stored on card for duration of the PKCS#11 session.
+ *		   Depending on card implementation, it can be automatically deleted during the card's reset.
+ *		   This kind of objects are not written to the PKCS#15 directory file.
+ *		2. If the card doesn't support on card session objects, a CKA_TOKEN = FALSE object is stored only in OpenSC's memory.
+
+
  * This is used by the C_DeriveKey with ECDH to hold the
  * key, and the calling application can then retrieve tha attributes as needed.
- * TODO If a card can support  secret key objects on the card, this
- * code will need to be expanded.
+ * .
  */
 static CK_RV
 pkcs15_create_secret_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile,
@@ -2348,10 +2357,11 @@ pkcs15_create_secret_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 	    skey_info->data.len = args.key.data_len;
 	    skey_info->value_len = args.value_len; /* callers preferred length */
 	    args.key.data = NULL;
+		key_obj->session_object = 1;
 	}
 	else {
 	    if(_token == FALSE)
-		args.session_object = 1;	/* store the object on card for duration of the session. */
+			args.session_object = 1;	/* store the object on card for duration of the session. */
 
 	    rc = sc_pkcs15init_store_secret_key(fw_data->p15_card, profile, &args, &key_obj);
 	    if (rc < 0) {
@@ -4752,9 +4762,8 @@ pkcs15_skey_get_attribute(struct sc_pkcs11_session *session,
 		*(CK_OBJECT_CLASS*)attr->pValue = CKO_SECRET_KEY;
 		break;
 	case CKA_TOKEN:
-		/*TODO DEE change if on card skeys are supported */
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
-		*(CK_BBOOL*)attr->pValue = FALSE;
+		*(CK_BBOOL*)attr->pValue = skey->base.p15_object->session_object == 0;
 		break;
 	case CKA_PRIVATE:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
