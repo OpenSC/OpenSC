@@ -1098,6 +1098,11 @@ static int parse_properties_object(sc_card_t *card, u8 type,
 
 		switch (tag) {
 		case CAC_TAG_OBJECT_ID:
+			if (len != 2) {
+				sc_log(card->ctx, "TAG: Object ID: "
+				    "Invalid length %"SC_FORMAT_LEN_SIZE_T"u", len);
+				break;
+			}
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
 			    "TAG: Object ID = 0x%02x 0x%02x", val[0], val[1]);
 			memcpy(&object->oid, val, 2);
@@ -1105,6 +1110,11 @@ static int parse_properties_object(sc_card_t *card, u8 type,
 			break;
 
 		case CAC_TAG_BUFFER_PROPERTIES:
+			if (len != 5) {
+				sc_log(card->ctx, "TAG: Buffer Properties: "
+				    "Invalid length %"SC_FORMAT_LEN_SIZE_T"u", len);
+				break;
+			}
 			/* First byte is "Type of Tag Supported" */
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
 			    "TAG: Buffer Properties: Type of Tag Supported = 0x%02x",
@@ -1115,6 +1125,15 @@ static int parse_properties_object(sc_card_t *card, u8 type,
 
 		case CAC_TAG_PKI_PROPERTIES:
 			/* 4th byte is "Private Key Initialized" */
+			if (len != 4) {
+				sc_log(card->ctx, "TAG: PKI Properties: "
+				    "Invalid length %"SC_FORMAT_LEN_SIZE_T"u", len);
+				break;
+			}
+			if (type != CAC_TAG_PKI_OBJECT) {
+				sc_log(card->ctx, "TAG: PKI Properties outside of PKI Object");
+				break;
+			}
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
 			    "TAG: PKI Properties: Private Key Initialized = 0x%02x",
 			    val[2]);
@@ -1160,15 +1179,24 @@ static int cac_get_properties(sc_card_t *card, cac_properties_t *prop)
 
 		switch (tag) {
 		case CAC_TAG_APPLET_INFORMATION:
-			if (len != 5)
+			if (len != 5) {
+				sc_log(card->ctx, "TAG: Applet Information: "
+				    "Invalid length %"SC_FORMAT_LEN_SIZE_T"u", len);
 				break;
+			}
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
 			    "TAG: Applet Information: Family: 0x%0x", val[0]);
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
 			    "     Applet Version: 0x%02x 0x%02x 0x%02x 0x%02x",
 			    val[1], val[2], val[3], val[4]);
 			break;
+
 		case CAC_TAG_NUMBER_OF_OBJECTS:
+			if (len != 1) {
+				sc_log(card->ctx, "TAG: Num objects: "
+				    "Invalid length %"SC_FORMAT_LEN_SIZE_T"u", len);
+				break;
+			}
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
 			    "TAG: Num objects = %hhd", *val);
 			/* make sure we do not overrun buffer */
@@ -1176,9 +1204,13 @@ static int cac_get_properties(sc_card_t *card, cac_properties_t *prop)
 			break;
 
 		case CAC_TAG_TV_BUFFER:
-		case CAC_TAG_PKI_OBJECT:
+			if (len != 17) {
+				sc_log(card->ctx, "TAG: TV Object: "
+				    "Invalid length %"SC_FORMAT_LEN_SIZE_T"u", len);
+				break;
+			}
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
-			    "TAG: TV/PKI Object nr. %"SC_FORMAT_LEN_SIZE_T"u (0x%02x)", i, tag);
+			    "TAG: TV Object nr. %"SC_FORMAT_LEN_SIZE_T"u", i);
 			if (i >= CAC_MAX_OBJECTS)
 				return SC_SUCCESS;
 
@@ -1186,6 +1218,23 @@ static int cac_get_properties(sc_card_t *card, cac_properties_t *prop)
 			    &prop->objects[i]) == SC_SUCCESS)
 				i++;
 			break;
+
+		case CAC_TAG_PKI_OBJECT:
+			if (len != 17) {
+				sc_log(card->ctx, "TAG: PKI Object: "
+				    "Invalid length %"SC_FORMAT_LEN_SIZE_T"u", len);
+				break;
+			}
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
+			    "TAG: PKI Object nr. %"SC_FORMAT_LEN_SIZE_T"u", i);
+			if (i >= CAC_MAX_OBJECTS)
+				return SC_SUCCESS;
+
+			if (parse_properties_object(card, tag, val, len,
+			    &prop->objects[i]) == SC_SUCCESS)
+				i++;
+			break;
+
 		default:
 			/* ignore tags we don't understand */
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
@@ -1343,7 +1392,7 @@ static int cac_select_file_by_type(sc_card_t *card, const sc_path_t *in_path, sc
 		LOG_FUNC_RETURN(ctx, r);
 
 	/* This needs to come after the applet selection */
-	if (priv && in_path->len) {
+	if (priv && in_path->len >= 2) {
 		/* get applet properties to know if we can treat the
 		 * buffer as SimpleLTV and if we have PKI applet.
 		 *
@@ -1590,14 +1639,24 @@ static int cac_parse_CCC(sc_card_t *card, cac_private_data_t *priv, u8 *tl,
 				return r;
 			break;
 		case CAC_TAG_CC_VERSION_NUMBER:
+			if (len != 1) {
+				sc_log(card->ctx, "TAG: CC Version: "
+				    "Invalid length %"SC_FORMAT_LEN_SIZE_T"u", len);
+				break;
+			}
 			/* ignore the version numbers for now */
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
-				"TAG:CC Version = 0x%02x", *val);
+				"TAG: CC Version = 0x%02x", *val);
 			break;
 		case CAC_TAG_GRAMMAR_VERION_NUMBER:
+			if (len != 1) {
+				sc_log(card->ctx, "TAG: Grammar Version: "
+				    "Invalid length %"SC_FORMAT_LEN_SIZE_T"u", len);
+				break;
+			}
 			/* ignore the version numbers for now */
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
-				"TAG:Grammar Version = 0x%02x", *val);
+				"TAG: Grammar Version = 0x%02x", *val);
 			break;
 		case CAC_TAG_CARDURL:
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"TAG:CARDURL");
@@ -1609,10 +1668,15 @@ static int cac_parse_CCC(sc_card_t *card, cac_private_data_t *priv, u8 *tl,
 		 * The following are really for file systems cards. This code only cares about CAC VM cards
 		 */
 		case CAC_TAG_PKCS15:
+			if (len != 1) {
+				sc_log(card->ctx, "TAG: PKCS15: "
+				    "Invalid length %"SC_FORMAT_LEN_SIZE_T"u", len);
+				break;
+			}
 			/* TODO should verify that this is '0'. If it's not
 			 * zero, we should drop out of here and let the PKCS 15
 			 * code handle this card */
-			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"TAG:PKCS15 = 0x%02x", *val);
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"TAG: PKCS15 = 0x%02x", *val);
 			break;
 		case CAC_TAG_DATA_MODEL:
 		case CAC_TAG_CARD_APDU:
