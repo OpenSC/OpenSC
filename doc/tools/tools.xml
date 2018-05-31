@@ -1,40 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook V4.2//EN"
-                      "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd">
+"http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd">
 
 <book xmlns:xi="http://www.w3.org/2001/XInclude">
-	<title>OpenSC Manuals</title>
-	<reference>
-		<referenceinfo>
-			<title>OpenSC tools</title>
-		</referenceinfo>
-		<xi:include href="cardos-tool.1.xml"/>
-		<xi:include href="cryptoflex-tool.1.xml"/>
-		<xi:include href="dnie-tool.1.xml"/>
-		<xi:include href="egk-tool.1.xml"/>
-		<xi:include href="eidenv.1.xml"/>
-		<xi:include href="gids-tool.1.xml"/>
-		<xi:include href="iasecc-tool.1.xml"/>
-		<xi:include href="netkey-tool.1.xml"/>
-		<xi:include href="npa-tool.1.xml"/>
-		<xi:include href="openpgp-tool.1.xml"/>
-		<xi:include href="opensc-asn1.1.xml"/>
-		<xi:include href="opensc-explorer.1.xml"/>
-		<xi:include href="opensc-notify.1.xml"/>
-		<xi:include href="opensc-tool.1.xml"/>
-		<xi:include href="piv-tool.1.xml"/>
-		<xi:include href="pkcs11-tool.1.xml"/>
-		<xi:include href="pkcs15-crypt.1.xml"/>
-		<xi:include href="pkcs15-init.1.xml"/>
-		<xi:include href="pkcs15-tool.1.xml"/>
-		<xi:include href="sc-hsm-tool.1.xml"/>
-		<xi:include href="westcos-tool.1.xml"/>
-	</reference>
+	<title>OpenSC Manual Pages: Section 1</title>
 
-	<reference>
-		<referenceinfo>
-			<title>OpenSC file formats</title>
-		</referenceinfo>
-		<xi:include href="pkcs15-profile.5.xml"/>
-	</reference>
+	<xi:include href="cardos-tool.1.xml"/>
+	<xi:include href="cryptoflex-tool.1.xml"/>
+	<xi:include href="dnie-tool.1.xml"/>
+	<xi:include href="egk-tool.1.xml"/>
+	<xi:include href="eidenv.1.xml"/>
+	<xi:include href="gids-tool.1.xml"/>
+	<xi:include href="iasecc-tool.1.xml"/>
+	<xi:include href="netkey-tool.1.xml"/>
+	<xi:include href="npa-tool.1.xml"/>
+	<xi:include href="openpgp-tool.1.xml"/>
+	<xi:include href="opensc-asn1.1.xml"/>
+	<xi:include href="opensc-explorer.1.xml"/>
+	<xi:include href="opensc-notify.1.xml"/>
+	<xi:include href="opensc-tool.1.xml"/>
+	<xi:include href="piv-tool.1.xml"/>
+	<xi:include href="pkcs11-tool.1.xml"/>
+	<xi:include href="pkcs15-crypt.1.xml"/>
+	<xi:include href="pkcs15-init.1.xml"/>
+	<xi:include href="pkcs15-tool.1.xml"/>
+	<xi:include href="sc-hsm-tool.1.xml"/>
+	<xi:include href="westcos-tool.1.xml"/>
 </book>

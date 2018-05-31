@@ -1057,6 +1057,7 @@ AC_CONFIG_FILES([
 	Makefile
 	doc/Makefile
 	doc/tools/Makefile
+	doc/files/Makefile
 	etc/Makefile
 	src/Makefile
 	src/common/Makefile

@@ -284,8 +284,8 @@ app default {
 		#
 		# md_read_only: Mark card as read/only card in Minidriver/BaseCSP interface (Default: false)
 		# md_supports_X509_enrollment: Indicate X509 enrollment support at Minidriver/BaseCSP interface (Default: false)
-		# md_guid_as_id: Use the GUID generated for the key as id in the PKCS#15 structure (Default: false - auto generated)
-		# md_guid_as_label: Use the GUID generated for the key as label in the PKCS#15 structure (Default: false - no label set)
+		# md_guid_as_id: Use the GUID generated for the key as id in the PKCS#15 structure (Default: false, i.e. auto generated)
+		# md_guid_as_label: Use the GUID generated for the key as label in the PKCS#15 structure (Default: false, i.e. no label set)
 		# md_supports_container_key_gen: Card allows generating key pairs on the card (Default: false)
 		# md_supports_container_key_import: Card allows importing private keys (Default: false)
 		#
@@ -890,11 +890,10 @@ app default {
 		# Whether to use the cache files in the user's
 		# home directory.
 		#
-		# At the moment you have to 'teach' the card
-		# to the system by running command: pkcs15-tool -L
+		# Note: If caching is done by a system process, caching may be placed
+		# inaccessible from the user account. Use a global caching directory if
+		# you wish to share the cached information.
 		#
-		# WARNING: Caching shouldn't be used in setuid root
-		# applications.
 		# Default: false
 		# use_file_caching = true;
 		#

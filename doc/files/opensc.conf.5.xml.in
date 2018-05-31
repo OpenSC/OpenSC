@@ -1,0 +1,1647 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<refentry id="opensc.conf">
+	<refmeta>
+		<refentrytitle>opensc.conf</refentrytitle>
+		<manvolnum>5</manvolnum>
+		<refmiscinfo class="productname">OpenSC</refmiscinfo>
+		<refmiscinfo class="manual">OpenSC File Formats</refmiscinfo>
+		<refmiscinfo class="source">opensc</refmiscinfo>
+	</refmeta>
+
+	<refnamediv>
+		<refname>opensc.conf</refname>
+		<refpurpose>configuration file for OpenSC</refpurpose>
+	</refnamediv>
+
+	<refsect1>
+		<title>Description</title>
+		<para>
+			OpenSC obtains configuration data from the following sources in the following order
+			<orderedlist>
+				<listitem><para>
+						command-line options
+				</para></listitem>
+				<listitem><para>
+						environment variables
+				</para></listitem>
+				<listitem><para>
+						Windows registry (if available)
+				</para></listitem>
+				<listitem><para>
+						system-wide configuration file
+						(<literal>@sysconfdir@/opensc.conf</literal>)
+				</para></listitem>
+			</orderedlist>
+		</para>
+		<para>
+			The configuration file, <literal>opensc.conf</literal>, is composed
+			of <replaceable>block</replaceable>s, which, in general, have the
+			following format:
+			<programlisting>
+<replaceable>key</replaceable><arg choice="opt" rep="repeat">, <replaceable>name</replaceable></arg> {
+	<replaceable>block_contents</replaceable>
+}
+			</programlisting>
+			<replaceable>block_contents</replaceable> is one or more
+			<replaceable>block_item</replaceable>s where a
+			<replaceable>block_item</replaceable> is one of
+			<itemizedlist>
+				<listitem><para>
+						# <replaceable>comment string</replaceable>
+				</para></listitem>
+				<listitem><para>
+						<replaceable>key</replaceable><arg choice="opt" rep="repeat">, <replaceable>name</replaceable></arg> = <replaceable>value</replaceable>;
+				</para></listitem>
+				<listitem><para>
+						<replaceable>block</replaceable>
+				</para></listitem>
+			</itemizedlist>
+		</para>
+		<para>
+			At the root level, <literal>opensc.conf</literal> should contain
+			one or more application specific configuration blocks:
+			<programlisting>
+app <replaceable>application</replaceable> {
+	<replaceable>block_contents</replaceable>
+}
+			</programlisting>
+			<replaceable>application</replaceable>
+			specifies one of:
+			<itemizedlist>
+				<listitem><para>
+						<literal>default</literal>: The fall-back configuration block for all applications
+				</para></listitem>
+				<listitem><para>
+						<literal>opensc-pkcs11</literal>: Configuration block for the PKCS#11 module (<filename>opensc-pkcs11@DYN_LIB_EXT@</filename>)
+				</para></listitem>
+				<listitem><para>
+						<literal>onepin-opensc-pkcs11</literal>: Configuration block for the PKCS#11 one-PIN-module (<filename>onepin-opensc-pkcs11@DYN_LIB_EXT@</filename>)
+				</para></listitem>
+				<listitem><para>
+						<literal>cardmod</literal>: Configuration block for Windows' minidriver (<filename>opensc-minidriver.dll</filename>)
+				</para></listitem>
+				<listitem><para>
+						<literal>tokend</literal>: Configuration block for macOS' tokend (<application>OpenSC.tokend</application>)
+				</para></listitem>
+				<listitem><para>
+						<literal>cardos-tool</literal>,
+						<literal>cryptoflex-tool</literal>,
+						<literal>dnie-tool</literal>,
+						<literal>egk-tool</literal>,
+						<literal>eidenv</literal>,
+						<literal>gids-tool</literal>,
+						<literal>iasecc-tool</literal>,
+						<literal>netkey-tool</literal>,
+						<literal>npa-tool</literal>,
+						<literal>openpgp-tool</literal>,
+						<literal>opensc-asn1</literal>,
+						<literal>opensc-explorer</literal>,
+						<literal>opensc-notify</literal>,
+						<literal>opensc-tool</literal>,
+						<literal>piv-tool</literal>,
+						<literal>pkcs11-tool</literal>,
+						<literal>pkcs15-crypt</literal>,
+						<literal>pkcs15-init</literal>,
+						<literal>pkcs15-tool</literal>,
+						<literal>sc-hsm-tool</literal>,
+						<literal>westcos-tool</literal>:
+						Configuration block for OpenSC tools
+				</para></listitem>
+			</itemizedlist>
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Configuration Options</title>
+		<variablelist>
+			<varlistentry id="debug">
+				<term>
+					<option>debug = <replaceable>num</replaceable>;</option>
+				</term>
+				<listitem><para>
+						Amount of debug info to print (Default:
+						<literal>0</literal>). A greater value means more
+						debug info.
+					</para>
+					<para>
+						The environment variable
+						<envar>OPENSC_DEBUG</envar> overwrites this
+						setting.
+				</para></listitem>
+			</varlistentry>
+			<varlistentry>
+				<term>
+					<option>debug_file = <replaceable>filename</replaceable>;</option>
+				</term>
+				<listitem><para>
+						The file to which debug output will be written
+						(Default: <literal>stderr</literal>). Special
+						values <literal>stdout</literal> and
+						<literal>stderr</literal> are recognized.
+				</para></listitem>
+			</varlistentry>
+			<varlistentry>
+				<term>
+					<option>profile_dir = <replaceable>filename</replaceable>;</option>
+				</term>
+				<listitem><para>
+						PKCS#15 initialization/personalization profiles
+						directory for 
+						<citerefentry>
+							<refentrytitle>pkcs15-init</refentrytitle>
+							<manvolnum>1</manvolnum>.
+						</citerefentry>
+						(Default: <literal>@PROFILE_DIR_DEFAULT@</literal>).
+					</para>
+					<para>
+						If this configuration value is not found on
+						Windows, the registry key
+						<filename>HKLM\Software\OpenSC
+							Project\OpenSC\ProfileDir</filename> is
+						checked.
+				</para></listitem>
+			</varlistentry>
+			<varlistentry>
+				<term>
+					<option>disable_popups = <replaceable>bool</replaceable>;</option>
+				</term>
+				<listitem><para>
+						Disable pop-ups of built-in GUI (Default: <literal>false</literal>).
+				</para></listitem>
+			</varlistentry>
+			<varlistentry>
+				<term>
+					<option>enable_default_driver = <replaceable>bool</replaceable>;</option>
+				</term>
+				<listitem><para>
+						Enable default card driver (Default:
+						<literal>false</literal>). Default card driver is
+						explicitly enabled for
+						<citerefentry>
+							<refentrytitle>opensc-explorer</refentrytitle>
+							<manvolnum>1</manvolnum>.
+						</citerefentry>
+						and
+						<citerefentry>
+							<refentrytitle>opensc-tool</refentrytitle>
+							<manvolnum>1</manvolnum>.
+						</citerefentry>
+				</para></listitem>
+			</varlistentry>
+			<varlistentry id="card_drivers">
+				<term>
+					<option>card_drivers = <arg choice="plain"
+							rep="repeat"><replaceable>name</replaceable></arg>;</option>
+				</term>
+				<listitem><para>
+						Whitelist of card drivers to load at start-up.
+						The special value <literal>internal</literal> (the
+						default) will load all statically linked drivers.
+					</para>
+					<para>
+						If an unknown (i.e. not internal or old) driver is
+						supplied, a separate configuration configuration
+						block has to be written for the driver. A special
+						value <literal>old</literal> will load all
+						statically linked drivers that may be removed in
+						the future.
+					</para>
+					<para>
+						The list of supported card driver names can be
+						retrieved from the output of <command>opensc-tool
+							--list-drivers</command>.
+					</para>
+					<para>
+						The environment variable
+						<envar>OPENSC_DRIVER</envar> overwrites this
+						setting.
+				</para></listitem>
+			</varlistentry>
+			<varlistentry>
+				<term>
+					<option>ignored_readers = <arg choice="plain"
+							rep="repeat"><replaceable>name</replaceable></arg>;</option>
+				</term>
+				<listitem><para>
+						List of readers to ignore (Default: empty). If any
+						of the comma separated strings listed is matched in
+						a reader name (case sensitive, partial matching
+						possible), the reader is ignored by OpenSC. Use
+						<command>opensc-tool --list-readers</command> to
+						see all currently connected readers.
+				</para></listitem>
+			</varlistentry>
+			<varlistentry>
+				<term>
+					<option>reader_driver <replaceable>name</replaceable> {
+						<replaceable>block_contents</replaceable>
+						}
+					</option>
+				</term>
+				<listitem>
+					<para>
+						Configuration of the smart card reader driver where <replaceable>name</replaceable> is one of:
+						<itemizedlist>
+							<listitem><para>
+									<literal>ctapi</literal>: See <xref linkend="ctapi"/>
+								</para>
+							</listitem>
+							<listitem><para>
+									<literal>pcsc</literal>: See <xref linkend="pcsc"/>
+							</para></listitem>
+							<listitem><para>
+									<literal>openct</literal>: See <xref linkend="openct"/>
+							</para></listitem>
+							<listitem><para>
+									<literal>cryptotokenkit</literal>: Configuration block for CryptoTokenKit readers
+							</para></listitem>
+						</itemizedlist>
+					</para>
+					<para>
+						See <xref linkend="reader_driver"/>.
+					</para>
+				</listitem>
+			</varlistentry>
+			<varlistentry>
+				<term>
+					<option>card_driver <replaceable>name</replaceable> {
+						<replaceable>block_contents</replaceable>
+						}
+					</option>
+				</term>
+				<listitem><para>
+						Configuration of the card driver where <replaceable>name</replaceable> is one of:
+						<itemizedlist>
+							<listitem><para>
+									<literal>npa</literal>: See <xref linkend="npa"/>
+							</para></listitem>
+							<listitem><para>
+									<literal>dnie</literal>: See <xref linkend="dnie"/>
+							</para></listitem>
+							<listitem><para>
+									Any other value: Configuration block for an externally loaded card driver
+							</para></listitem>
+						</itemizedlist>
+					</para>
+				</listitem>
+			</varlistentry>
+			<varlistentry>
+				<term>
+					<option>card_atr <replaceable>hexstring</replaceable> {
+						<replaceable>block_contents</replaceable>
+						}
+					</option>
+				</term>
+				<listitem><para>
+						In addition to the built-in list of known cards in
+						the card driver, you can configure a new card for
+						the driver using the <option>card_atr</option>
+						block.
+					</para>
+					<para>
+						For details see <xref linkend="card_atr"/>.
+					</para>
+				</listitem>
+			</varlistentry>
+			<varlistentry>
+				<term>
+					<option>secure_messaging <replaceable>name</replaceable> {
+						<replaceable>block_contents</replaceable>
+						}
+					</option>
+				</term>
+				<listitem><para>
+						Configuration options for the secure messaging profile <replaceable>name</replaceable>:
+					</para>
+					<variablelist>
+						<varlistentry>
+							<term>
+								<option>module_name = <replaceable>filename</replaceable>;</option>
+							</term>
+							<listitem><para>
+									Name of external SM module (Default: @DEFAULT_SM_MODULE@).
+							</para></listitem>
+						</varlistentry>
+						<varlistentry>
+							<term>
+								<option>module_path = <replaceable>filename</replaceable>;</option>
+							</term>
+							<listitem><para>
+									Directory with external SM module
+									(Default: @libdir@).
+								</para>
+								<para>
+									If this configuration value is not
+									found on Windows, the registry key
+									<filename>HKLM\Software\OpenSC
+										Project\OpenSC\SmDir</filename> is
+									checked.
+							</para></listitem>
+						</varlistentry>
+						<varlistentry>
+							<term>
+								<option>module_data = <replaceable>value</replaceable>;</option>
+							</term>
+							<listitem><para>
+									Specific data to tune the module initialization.
+							</para></listitem>
+						</varlistentry>
+						<varlistentry>
+							<term>
+								<option>mode = <replaceable>value</replaceable>;</option>
+							</term>
+							<listitem><para>
+									Secure messaging mode. Known parameters:
+									<itemizedlist>
+										<listitem><para>
+												<literal>transmit</literal>:
+												In this mode the
+												procedure to securize
+												an APDU is called by
+												the OpenSC general APDU
+												transmit procedure. In
+												this mode all APDUs,
+												except the ones
+												filtered by the card
+												specific procedure, are
+												securized.
+										</para></listitem>
+										<listitem><para>
+												<literal>acl</literal>:
+												In this mode APDU are
+												securized only if
+												needed by the ACLs of
+												the command to be
+												executed.
+										</para></listitem>
+									</itemizedlist>
+							</para></listitem>
+						</varlistentry>
+						<varlistentry>
+							<term>
+								<option>flags = <replaceable>value</replaceable>;</option>
+							</term>
+							<listitem><para>
+									Secure messaging type specific flags.
+							</para></listitem>
+						</varlistentry>
+						<varlistentry>
+							<term>
+								<option>kmc = <replaceable>hexstring</replaceable>;</option>
+							</term>
+							<listitem><para>
+									Default KMC of the GP Card Manager for the Oberthur's Java cards.
+							</para></listitem>
+						</varlistentry>
+						<varlistentry>
+							<term>
+								<option>ifd_serial = <replaceable>hexstring</replaceable>;</option>
+							</term>
+						</varlistentry>
+						<varlistentry>
+							<term>
+								<option>keyset[_<replaceable>aid</replaceable>]_<replaceable>num</replaceable>_enc =
+									<replaceable>value</replaceable>;</option>
+								<option>keyset[_<replaceable>aid</replaceable>]_<replaceable>num</replaceable>_mac =
+									<replaceable>value</replaceable>;</option>
+							</term>
+							<listitem><para>
+									Keyset values from IAM profiles of
+									the Gemalto IAS/ECC cards with an
+									optional application identifier
+							</para></listitem>
+						</varlistentry>
+					</variablelist>
+				</listitem>
+			</varlistentry>
+			<varlistentry>
+				<term>
+					<option>framework <replaceable>name</replaceable> {
+						<replaceable>block_contents</replaceable>
+						}
+					</option>
+				</term>
+				<listitem><para>
+						Internal configuration options where <replaceable>name</replaceable> is one of:
+						<itemizedlist>
+							<listitem><para>
+									<literal>pkcs15</literal>: See <xref linkend="framework pkcs15"/>
+							</para></listitem>
+							<listitem><para>
+									<literal>tokend</literal>: See <xref linkend="framework tokend"/>
+							</para></listitem>
+						</itemizedlist>
+					</para>
+				</listitem>
+			</varlistentry>
+			<varlistentry>
+				<term>
+					<option>pkcs11 {
+						<replaceable>block_contents</replaceable>
+						}
+					</option>
+				</term>
+				<listitem><para>
+						Parameters for the OpenSC PKCS11 module.
+					</para>
+					<para>
+						For details see <xref linkend="pkcs11"/>.
+					</para>
+				</listitem>
+			</varlistentry>
+		</variablelist>
+
+		<refsect2 id="reader_driver">
+			<title>Configuration of Smart Card Reader Driver</title>
+
+			<refsect3>
+				<title>Configuration Options for all Reader Drivers</title>
+				<variablelist>
+					<varlistentry>
+						<term>
+							<option>max_send_size = <replaceable>num</replaceable>;</option>
+							<option>max_recv_size = <replaceable>num</replaceable>;</option>
+						</term>
+						<listitem><para>
+								Limit command and response sizes
+								(Default:
+								<option>max_send_size</option>
+								= <literal>255</literal>,
+								<option>max_recv_size</option>
+								= <literal>256</literal>) . Some
+								Readers don't propagate their
+								transceive capabilities correctly.
+								max_send_size and max_recv_size
+								allow setting the limits manually,
+								for example to enable extended
+								length capabilities.
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term>
+							<option>enable_escape <replaceable>bool</replaceable>;</option>
+						</term>
+						<listitem><para>
+								Detect reader capabilities with
+								escape commands (wrapped APDUs with
+								CLA=0xFF as defined by PC/SC pt. 3
+								and BSI TR-03119, e.g. for getting
+								the UID, escaped PIN commands and
+								the reader's firmware version,
+								Default: <literal>false</literal>)
+						</para></listitem>
+					</varlistentry>
+				</variablelist>
+			</refsect3>
+
+			<refsect3 id="ctapi">
+				<title>Configuration of CT-API Readers</title>
+				<variablelist>
+					<varlistentry>
+						<term>
+							<option>module <replaceable>filename</replaceable> {
+								ports = <replaceable>nums</replaceable>;
+								}
+							</option>
+						</term>
+						<listitem><para>
+								Load the specified CT-API module with the specified number of ports.
+						</para></listitem>
+					</varlistentry>
+				</variablelist>
+			</refsect3>
+
+			<refsect3 id="pcsc">
+				<title>Configuration of PC/SC Readers</title>
+				<variablelist>
+					<varlistentry>
+						<term>
+							<option>connect_exclusive = <replaceable>bool</replaceable>;</option>
+						</term>
+						<listitem><para>
+								Connect to reader in exclusive mode
+								(Default: <literal>false</literal>)?
+								This option has no effect in Windows' minidriver.
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term>
+							<option>disconnect_action = <replaceable>action</replaceable>;</option>
+						</term>
+						<listitem><para>
+								What to do when disconnecting from
+								a card (SCardDisconnect). Valid
+								values are
+								<literal>leave</literal>,
+								<literal>reset</literal>,
+								<literal>unpower</literal> (Default:
+								<literal>leave</literal>).
+								This option has no effect in Windows' minidriver.
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term>
+							<option>transaction_end_action = <replaceable>action</replaceable>;</option>
+						</term>
+						<listitem><para>
+								What to do at the end of a
+								transaction (SCardEndTransaction).
+								Valid values
+								are <literal>leave</literal>,
+								<literal>reset</literal>,
+								<literal>unpower</literal> (Default:
+								<literal>leave</literal>).
+								This option has no effect in Windows' minidriver.
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term>
+							<option>reconnect_action = <replaceable>action</replaceable>;</option>
+						</term>
+						<listitem><para>
+								What to do when reconnection to a
+								card (SCardReconnect). Valid values
+								are <literal>leave</literal>,
+								<literal>reset</literal>,
+								<literal>unpower</literal> (Default:
+								<literal>leave</literal>).
+								This option has no effect in Windows' minidriver.
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term>
+							<option>enable_pinpad = <replaceable>bool</replaceable>;</option>
+						</term>
+						<listitem><para>
+								Enable pinpad if detected (PC/SC
+								v2.0.2 Part 10, Default:
+								<literal>true</literal>)
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term>
+							<option>fixed_pinlength = <replaceable>num</replaceable>;</option>
+						</term>
+						<listitem><para>
+								Some pinpad readers can only handle
+								one exact length of the PIN.
+								<option>fixed_pinlength</option>
+								sets this value so that OpenSC
+								expands the padding to this length
+								(Default: <literal>0</literal>,
+								i.e. not fixed).
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term>
+							<option>provider_library = <replaceable>filename</replaceable>;</option>
+						</term>
+						<listitem><para>
+								Use specific PC/SC provider
+								(Default:
+								<literal>@DEFAULT_PCSC_PROVIDER@</literal>).
+						</para></listitem>
+					</varlistentry>
+				</variablelist>
+			</refsect3>
+
+			<refsect3 id="openct">
+				<title>Configuration of OpenCT Readers</title>
+				<variablelist>
+					<varlistentry>
+						<term>
+							<option>readers = <replaceable>num</replaceable>;</option>
+						</term>
+						<listitem><para>
+								Virtual readers to allocate (Default: <literal>2</literal>).
+						</para></listitem>
+					</varlistentry>
+				</variablelist>
+			</refsect3>
+
+		</refsect2>
+
+		<refsect2 id="npa">
+			<title>Configuration Options for German ID Card</title>
+			<variablelist>
+				<varlistentry>
+					<term>
+						<option>can = <replaceable>value</replaceable>;</option>
+					</term>
+					<listitem><para>
+							German ID card requires the CAN to
+							be verified before QES PIN. This,
+							however, is not part of the PKCS#15
+							profile of the card. So for
+							verifying the QES PIN we actually
+							need both. The CAN may be given
+							here. If the CAN is not given here,
+							it will be prompted on the command
+							line or on the reader (depending on
+							the reader's capabilities).
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>st_dv_certificate = <replaceable>filename</replaceable>;</option>
+						<option>st_certificate = <replaceable>filename</replaceable>;</option>
+						<option>st_key = <replaceable>filename</replaceable>;</option>
+					</term>
+					<listitem><para>
+							QES is only possible with a Comfort
+							Reader (CAT-K), which holds a
+							cryptographic key to authenticate
+							itself as signature terminal (ST).
+							We usually will use the reader's
+							capability to sign the data.
+							However, during developement you
+							may specify soft certificates and
+							keys for a ST.
+						</para>
+						<para>
+							An example PKI can be found in the
+							example data for the
+							<ulink
+								url="https://github.com/frankmorgner/vsmartcard/tree/master/virtualsmartcard/npa-example-data">German
+								ID card emulator</ulink>
+					</para></listitem>
+				</varlistentry>
+			</variablelist>
+		</refsect2>
+
+		<refsect2 id="dnie">
+			<title>Configuration Options for DNIe</title>
+			<variablelist>
+				<varlistentry>
+					<term>
+						<option>user_consent_enabled = <replaceable>bool</replaceable>;</option>
+					</term>
+					<listitem><para>
+							Configure the warning message when
+							performing a signature operation
+							with the DNIe. Only used if
+							compiled with
+							<option>--enable-dnie-ui</option>
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>user_consent_app = <replaceable>filename</replaceable>;</option>
+					</term>
+					<listitem><para>
+							Specify the pinentry application to
+							use if warning is configured to be
+							displayed using pinentry (Default:
+							<literal>/usr/bin/pinentry</literal>).
+							Only used if compiled with
+							<option>--enable-dnie-ui</option>
+					</para></listitem>
+				</varlistentry>
+			</variablelist>
+		</refsect2>
+
+		<refsect2 id="card_atr">
+			<title>Configuration based on ATR</title>
+			<para>
+				<variablelist>
+					<varlistentry>
+						<term>
+							<option>atrmask = <replaceable>hexstring</replaceable>;</option>
+						</term>
+						<listitem><para>
+								The mask is logically AND'd with an
+								card ATR prior to comparison with
+								the ATR reference value above.
+								Using this mask allows identifying
+								and configuring multiple ATRs as
+								the same card model.
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term>
+							<option>driver = <replaceable>name</replaceable>;</option>
+						</term>
+						<listitem><para>
+								When enabled, overrides all
+								possible settings from the card
+								drivers built-in card configuration
+								list.
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term>
+							<option>name = <replaceable>name</replaceable>;</option>
+						</term>
+						<listitem><para>
+								Set card name for card drivers that
+								allows it.
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term>
+							<option>type = <replaceable>num</replaceable>;</option>
+						</term>
+						<listitem><para>
+								Allows setting the exact type of
+								the card internally used by the
+								card driver. Allowed values can be
+								found in the source code of
+								<filename>cards.h</filename>.
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term>
+							<option>flags = <arg choice="plain"
+									rep="repeat"><replaceable>value</replaceable></arg>;</option>
+						</term>
+						<listitem><para>
+								Card flags as an hex value.
+								Multiple values are OR'd together.
+								Depending on card driver, this
+								allows fine-tuning the capabilities
+								in the card driver for your card.
+							</para>
+							<para>
+								Optionally, some known parameters
+								can be specified as strings:
+								<itemizedlist>
+									<listitem><para>
+											<literal>rng</literal>:
+											On-board random number
+											source
+									</para></listitem>
+									<listitem><para>
+											<literal>keep_alive</literal>:
+											Request the card driver
+											to send a "keep alive"
+											command before each
+											transaction to make
+											sure that the required
+											applet is still
+											selected.
+									</para></listitem>
+								</itemizedlist>
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term>
+							<option>pkcs15emu = <replaceable>name</replaceable>;</option>
+						</term>
+						<listitem><para>
+								When using PKCS#15 emulation, force
+								the emulation driver for specific
+								cards. Required for external
+								drivers, but can be used with
+								built-in drivers, too.
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term>
+							<option>force_protocol = <replaceable>value</replaceable>;</option>
+						</term>
+						<listitem><para>
+								Force protocol selection for
+								specific cards. Known parameters:
+								<itemizedlist>
+									<listitem><para>
+											<literal>t0</literal>
+									</para></listitem>
+									<listitem><para>
+											<literal>t1</literal>
+									</para></listitem>
+									<listitem><para>
+											<literal>raw</literal>
+									</para></listitem>
+								</itemizedlist>
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term>
+							<option>md_read_only = <replaceable>bool</replaceable>;</option>
+						</term>
+						<listitem><para>
+								Mark card as read/only card in
+								Minidriver/BaseCSP interface
+								(Default: <literal>false</literal>).
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term>
+							<option>md_supports_X509_enrollment = <replaceable>bool</replaceable>;</option>
+						</term>
+						<listitem><para>
+								Indicate X509 enrollment support at
+								Minidriver/BaseCSP interface
+								(Default: <literal>false</literal>).
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term>
+							<option>md_guid_as_id = <replaceable>bool</replaceable>;</option>
+						</term>
+						<listitem><para>
+								Use the GUID generated for the key
+								as id in the PKCS#15 structure
+								(Default: <literal>false</literal>, i.e. auto generated)
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term>
+							<option>md_guid_as_label = <replaceable>bool</replaceable>;</option>
+						</term>
+						<listitem><para>
+								Use the GUID generated for the key
+								as label in the PKCS#15 structure
+								(Default: <literal>false</literal>,
+								i.e. no label set).
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term>
+							<option>md_supports_container_key_gen = <replaceable>bool</replaceable>;</option>
+						</term>
+						<listitem><para>
+								Card allows generating key pairs on the card (Default: <literal>false</literal>).
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term>
+							<option>md_supports_container_key_import = <replaceable>bool</replaceable>;</option>
+						</term>
+						<listitem><para>
+								Card allows importing private keys
+								(Default: <literal>false</literal>).
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term>
+							<option>md_pinpad_dlg_title = <replaceable>value</replaceable>;</option>
+						</term>
+						<listitem><para>
+								Window title of the PIN pad dialog
+								(Default: <literal>"Windows
+									Security"</literal>).
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term>
+							<option>md_pinpad_dlg_icon = <replaceable>filename</replaceable>;</option>
+						</term>
+						<listitem><para>
+								Filename of the icon for the PIN
+								pad dialog; use
+								<literal>""</literal> for no icon
+								(Default: Built-in smart card icon).
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term>
+							<option>md_pinpad_dlg_main = <replaceable>value</replaceable>;</option>
+						</term>
+						<listitem><para>
+								Main instruction of the PIN pad
+								dialog (Default: <literal>"OpenSC
+									Smart Card Provider"</literal>).
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term>
+							<option>md_pinpad_dlg_content_user = <replaceable>value</replaceable>;</option>
+						</term>
+						<listitem><para>
+								Content of the PIN pad dialog for
+								role "user" (Default:
+								<literal>"Please verify your
+									fingerprint or PIN on the
+									card."</literal>).
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term>
+							<option>md_pinpad_dlg_content_user_sign = <replaceable>value</replaceable>;</option>
+						</term>
+						<listitem><para>
+								Content of the PIN pad dialog for
+								role "user+signature" (Default:
+								<literal>"Please verify your
+									fingerprint or PIN for the
+									digital signature PIN on the
+									card."</literal>).
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term>
+							<option>md_pinpad_dlg_content_user_sign = <replaceable>name</replaceable>;</option>
+						</term>
+						<listitem><para>
+								Content of the PIN pad dialog for
+								role "user+signature" (Default:
+								<literal>"Please verify your
+									fingerprint or PIN for the
+									digital signature PIN on the
+									card."</literal>).
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term>
+							<option>md_pinpad_dlg_content_admin = <replaceable>value</replaceable>;</option>
+						</term>
+						<listitem><para>
+								Content of the PIN pad dialog for
+								role "admin" (Default:
+								<literal>"Please enter your PIN to
+									unblock the user PIN on the
+									PINPAD."</literal>)
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term>
+							<option>md_pinpad_dlg_content_cancel = <replaceable>value</replaceable>;</option>
+						</term>
+						<listitem><para>
+								Content of the PIN pad dialog after
+								pressing "Cancel", when the reader
+								doesn't respond to SCardCancel
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term>
+							<option>md_pinpad_dlg_expanded = <replaceable>value</replaceable>;</option>
+						</term>
+						<listitem><para>
+								Expanded information of the PIN pad
+								dialog (Default: <literal>"This
+									window will be closed
+									automatically after the PIN has
+									been submitted on the PINPAD
+									(timeout typically after 30
+									seconds)."</literal>)
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term>
+							<option>md_pinpad_dlg_expanded_cancel = <replaceable>value</replaceable>;</option>
+						</term>
+						<listitem><para>
+								Expanded information of the PIN pad
+								dialog after pressing "Cancel",
+								when the reader doesn't respond to
+								SCardCancel (Default:
+								<literal>"Some readers only support
+									canceling the operation on the
+									PIN pad. Press Cancel or remove
+									the card."</literal>).
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term>
+							<option>md_pinpad_dlg_enable_cancel = <replaceable>bool</replaceable>;</option>
+						</term>
+						<listitem><para>
+								Allow the user to cancel the PIN
+								pad dialog (Default:
+								<literal>false</literal>)
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term>
+							<option>md_pinpad_dlg_timeout = <replaceable>num</replaceable>;</option>
+						</term>
+						<listitem><para>
+								Time in seconds for the progress
+								bar of the PIN pad dialog to tick.
+								<literal>0</literal> removes the
+								progress bar (Default:
+								<literal>30</literal>).
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term>
+							<option>notify_card_inserted = <replaceable>value</replaceable>;</option>
+							<option>notify_card_inserted_text = <replaceable>value</replaceable>;</option>
+						</term>
+						<listitem><para>
+								Notification title and text when
+								card was inserted (Default:
+								<literal>"Smart card
+									detected"</literal>, ATR of
+								the card).
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term>
+							<option>notify_card_removed = <replaceable>value</replaceable>;</option>
+							<option>notify_card_removed_text = <replaceable>value</replaceable>;</option>
+						</term>
+						<listitem><para>
+								Notification title and text when
+								card was removed (Default:
+								<literal>"Smart card
+									removed"</literal>, name of
+								smart card reader).
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term>
+							<option>notify_pin_good = <replaceable>value</replaceable>;</option>
+							<option>notify_pin_good_text = <replaceable>value</replaceable>;</option>
+						</term>
+						<listitem><para>
+								Notification title and text when
+								PIN was verified (Default:
+								<literal>"PIN verified"</literal>,
+								<literal>"Smart card is
+									unlocked"</literal>).
+						</para></listitem>
+					</varlistentry>
+					<varlistentry>
+						<term>
+							<option>notify_pin_bad = <replaceable>value</replaceable>;</option>
+							<option>notify_pin_bad_text = <replaceable>value</replaceable>;</option>
+						</term>
+						<listitem><para>
+								Notification title and text when
+								PIN was wrong (Default:
+								<literal>"PIN not
+									verified"</literal>,
+								<literal>"Smart card is
+									locked"</literal>).
+						</para></listitem>
+					</varlistentry>
+				</variablelist>
+			</para>
+		</refsect2>
+
+		<refsect2 id="framework pkcs15">
+			<title>Configuration of PKCS#15 Framework</title>
+			<variablelist>
+				<varlistentry>
+					<term>
+						<option>use_file_caching = <replaceable>bool</replaceable>;</option>
+					</term>
+					<listitem><para>
+							Whether to cache the card's files (e.g.
+							certificates) on disk in
+							<option>file_cache_dir</option> (Default:
+							<literal>false</literal>).
+						</para>
+						<para>
+							If caching is done by a system process, the
+							cached files may be placed inaccessible from
+							the user account. Use a globally readable and
+							writable location if you wish to share the
+							cached information. Note that the cached files
+							may contain personal data such as name and mail
+							address.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>file_cache_dir = <replaceable>filename</replaceable>;</option>
+					</term>
+					<listitem><para>
+							Where to cache the card's files. The default values are:
+							<itemizedlist>
+								<listitem>
+									<para>
+										<filename><envar>HOME</envar>/.eid/cache/</filename> (Unix)
+									</para>
+								</listitem>
+								<listitem>
+									<para>
+										<filename><envar>USERPROFILE</envar>\.eid-cache\</filename> (Windows)
+									</para>
+								</listitem>
+							</itemizedlist>
+						</para>
+						<para>
+							If caching is done by a system process, the
+							cached files may be placed inaccessible from
+							a user account. Use a globally readable and
+							writable location if you wish to share the
+							cached information. Note that the cached files
+							may contain personal data such as name and mail
+							address.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>use_pin_caching = <replaceable>bool</replaceable>;</option>
+					</term>
+					<listitem><para>
+							Use PIN caching (Default: <literal>true</literal>)?
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>pin_cache_counter = <replaceable>num</replaceable>;</option>
+					</term>
+					<listitem><para>
+							How many times to use a PIN from cache before
+							re-authenticating it (Default:
+							<literal>10</literal>)?
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>pin_cache_ignore_user_consent = <replaceable>bool</replaceable>;</option>
+					</term>
+					<listitem><para>
+							Older PKCS#11 applications not supporting
+							<literal>CKA_ALWAYS_AUTHENTICATE</literal> may
+							need to set this to get signatures to work with
+							some cards (Default: <literal>false</literal>).
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>enable_pkcs15_emulation = <replaceable>bool</replaceable>;</option>
+					</term>
+					<listitem><para>
+							Enable pkcs15 emulation (Default:
+							<literal>true</literal>).
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>try_emulation_first = <replaceable>bool</replaceable>;</option>
+					</term>
+					<listitem><para>
+							Prefer pkcs15 emulation code before the normal
+							pkcs15 processing (Default:
+							<literal>no</literal>).  Some cards work in
+							emu-only mode, and do not depend on this
+							option.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>enable_builtin_emulation = <replaceable>bool</replaceable>;</option>
+					</term>
+					<listitem><para>
+							Enable builtin emulators (Default:
+							<literal>true</literal>).
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>builtin_emulators = <replaceable>emulators</replaceable>;</option>
+					</term>
+					<listitem><para>
+							List of the builtin pkcs15 emulators to test
+							(Default: <literal>westcos, openpgp, infocamere,
+								starcert, tcos, esteid, itacns, postecert,
+								PIV-II, cac, gemsafeGPK, gemsafeV1, actalis,
+								atrust-acos, tccardos, entersafe, pteid,
+								oberthur, sc-hsm, dnie, gids, iasecc, jpki,
+								coolkey, din66291</literal>)
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>pkcs11_enable_InitToken = <replaceable>bool</replaceable>;</option>
+					</term>
+					<listitem><para>
+							Enable initialization and card recognition
+							(Default: <literal>false</literal>).
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>emulate <replaceable>name</replaceable> {
+							<replaceable>block_contents</replaceable>
+							}
+						</option>
+					</term>
+					<listitem><para>
+							Configuration options for a PKCS#15 emulator
+							where <replaceable>name</replaceable> is a
+							short name for an external card driver.
+						</para>
+						<variablelist>
+							<varlistentry>
+								<term>
+									<option>module = <replaceable>filename</replaceable>;</option>
+								</term>
+								<listitem><para>
+										For pkcs15 emulators loaded from an
+										external shared library/DLL, you need to
+										specify the path name of the module and
+										customize the card_atr example above
+										correctly.
+								</para></listitem>
+							</varlistentry>
+							<varlistentry>
+								<term>
+									<option>function = <replaceable>name</replaceable>;</option>
+								</term>
+								<listitem><para>
+										Get the init function name of the
+										emulator (Default:
+										<literal>sc_pkcs15_init_func_ex</literal>)
+								</para></listitem>
+							</varlistentry>
+						</variablelist>
+					</listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>application <replaceable>hexstring</replaceable> {
+							<replaceable>block_contents</replaceable>
+							}
+						</option>
+					</term>
+					<listitem>
+						<para>
+							Configuration of the on-card-application where
+							<replaceable>hexstring</replaceable> is the
+							application identifier (AID).
+						</para>
+						<variablelist>
+							<varlistentry>
+								<term>
+									<option>type = <replaceable>name</replaceable>;</option>
+								</term>
+								<listitem><para>
+										Type of application where
+										<replaceable>name</replaceable> is one
+										of:
+										<itemizedlist>
+											<listitem><para>
+													<literal>generic</literal>
+											</para></listitem>
+											<listitem><para>
+													<literal>protected</literal>
+											</para></listitem>
+										</itemizedlist>
+									</para>
+									<para>
+										Used to distinguish the common access
+										application and application for which
+										authentication to perform some
+										operation cannot be obtained with the
+										common procedures (ex. object creation
+										protected by secure messaging).  Used
+										by PKCS#11 module configured to expose
+										restricted number of slots.  (for ex.
+										configured to expose only User PIN
+										slot, User and Sign PINs slots, ...)
+								</para></listitem>
+							</varlistentry>
+							<varlistentry>
+								<term>
+									<option>model = <replaceable>name</replaceable>;</option>
+								</term>
+							</varlistentry>
+							<varlistentry>
+								<term>
+									<option>disable = <replaceable>bool</replaceable>;</option>
+								</term>
+								<listitem><para>
+										Do not expose application in PKCS#15
+										framework (Default:
+										<literal>false</literal>)
+								</para></listitem>
+							</varlistentry>
+						</variablelist>
+					</listitem>
+				</varlistentry>
+			</variablelist>
+		</refsect2>
+
+		<refsect2 id="framework tokend">
+			<title>Configuration of Tokend</title>
+			<variablelist>
+				<varlistentry>
+					<term>
+						<option>score = <replaceable>num</replaceable>;</option>
+					</term>
+					<listitem><para>
+							Score for <application>OpenSC.tokend</application>
+							(Default: <literal>300</literal>).  The tokend with
+							the highest score shall be used.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>ignore_private_certificate = <replaceable>bool</replaceable>;</option>
+					</term>
+					<listitem><para>
+							Tokend ignore to read PIN protected certificate
+							that is set
+							<literal>SC_PKCS15_CO_FLAG_PRIVATE</literal> flag
+							(Default: <literal>true</literal>).
+					</para></listitem>
+				</varlistentry>
+			</variablelist>
+		</refsect2>
+
+		<refsect2 id="pkcs11">
+			<title>Configuration of PKCS#11</title>
+			<variablelist>
+				<varlistentry>
+					<term>
+						<option>max_virtual_slots = <replaceable>num</replaceable>;</option>
+					</term>
+					<listitem><para>
+							Maximum Number of virtual slots (Default:
+							<literal>16</literal>). If there are more slots
+							than defined here, the remaining slots will be
+							hidden from PKCS#11.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>slots_per_card = <replaceable>num</replaceable>;</option>
+					</term>
+					<listitem><para>
+							Maximum number of slots per smart card (Default:
+							<literal>4</literal>).  If the card has fewer keys
+							than defined here, the remaining number of slots
+							will be empty.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>lock_login = <replaceable>bool</replaceable>;</option>
+					</term>
+					<listitem><para>
+							By default, the OpenSC PKCS#11 module will not lock
+							your card once you authenticate to the card via
+							<literal>C_Login</literal> (Default:
+							<literal>false</literal>).
+
+							Thus the other users or other applications is not
+							prevented from connecting to the card and perform
+							crypto operations (which may be possible because
+							you have already authenticated with the card). This
+							setting is not very secure.
+						</para>
+						<para>
+							Also, if your card is not locked, you can enconter
+							problems due to limitation of the OpenSC framework,
+							that still is not thoroughly tested in the multi
+							threads environment.
+						</para>
+						<para>
+							Your settings will be more secure if you choose to
+							lock your card. Nevertheless this behavior is a
+							known violation of PKCS#11 specification. Now once
+							one application has started using your card with
+							<literal>C_Login</literal>, no other application
+							can use it, until the first is done and calls
+							<literal>C_Logout</literal> or
+							<literal>C_Finalize</literal>. In the case of many
+							PKCS#11 application this does not happen until you
+							exit the application.
+						</para>
+						<para>
+							Thus it is impossible to use several smart card
+							aware applications at the same time, e.g. you
+							cannot run both <application>Firefox</application>
+							and <application>Thunderbird</application> at the
+							same time, if both are configured to use your smart
+							card.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>atomic = <replaceable>bool</replaceable>;</option>
+					</term>
+					<listitem><para>
+							By default, interacting with the OpenSC PKCS#11
+							module may change the state of the token, e.g.
+							whether a user is logged in or not (Default:
+							<literal>false</literal>).
+						</para>
+						<para>
+							Thus other users or other applications may change
+							or use the state of the token unknowingly. Other
+							applications may create signatures abusing an
+							existing login or they may logout unnoticed.
+						</para>
+						<para>
+							With this setting enabled the login state of the
+							token is tracked and cached (including the PIN).
+							Every transaction is preceded by restoring the
+							login state.  After every transaction a logout is
+							performed. This setting by default also enables
+							<option>lock_login</option> to disable access for
+							other applications during the atomic transactions.
+						</para>
+						<para>
+							Please note that any PIN-pad should be disabled
+							(see <option>enable_pinpad</option>), because the
+							user would have to input his PIN for every
+							transaction.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>init_sloppy = <replaceable>bool</replaceable>;</option>
+					</term>
+					<listitem><para>
+							With this setting disabled, the OpenSC PKCS#11
+							module will initialize the slots available when the
+							application calls <literal>C_GetSlotList</literal>.
+							With this setting enabled, the slots will also get
+							initialized when <literal>C_GetSlotInfo</literal>
+							is called (Default: <literal>true</literal>).
+						</para>
+						<para>
+							This setting is a workaround for
+							<application>Java</application> which does not call
+							<literal>C_GetSlotList</literal> when configured
+							with a static <literal>slot</literal> instead of
+							<literal>slotListIndex</literal>.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>user_pin_unblock_style = <replaceable>mode</replaceable>;</option>
+					</term>
+					<listitem><para>
+						User PIN unblock style <replaceable>mode</replaceable>
+						is one of:
+						<itemizedlist>
+							<listitem><para>
+									<literal>none</literal> (Default): PIN
+									unblock is not possible with PKCS#11 API
+							</para></listitem>
+							<listitem><para>
+									<literal>set_pin_in_unlogged_session</literal>:
+									<literal>C_SetPIN</literal> in unlogged
+									session: PUK is passed as the
+									<literal>OldPin</literal> argument of the
+									<literal>C_SetPIN</literal> call.
+							</para></listitem>
+							<listitem><para>
+									<literal>set_pin_in_specific_context</literal>:
+									<literal>C_SetPIN</literal> in the
+									<literal>CKU_SPECIFIC_CONTEXT</literal>
+									logged session: PUK is passed as the
+									<literal>OldPin</literal> argument of the
+									<literal>C_SetPIN</literal> call.
+							</para></listitem>
+							<listitem><para>
+									<literal>init_pin_in_so_session</literal>:
+									<literal>C_InitPIN</literal> in
+									<literal>CKU_SO</literal> logged session:
+									User PIN 'UNBLOCK' is protected by SOPIN.
+									(PUK == SOPIN).
+							</para></listitem>
+						</itemizedlist>
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>create_puk_slot = <replaceable>bool</replaceable>;</option>
+					</term>
+					<listitem><para>
+							Create slot for unblocking PIN with PUK (Default:
+							<literal>false</literal>). This way PKCS#11 API can
+							be used to login with PUK and change a PIN.  May
+							cause problems with some applications like
+							<application>Firefox</application> and
+							<application>Thunderbird</application>.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>create_slots_for_pins =  <arg choice="plain"
+								rep="repeat"><replaceable>mode</replaceable></arg>;</option>
+					</term>
+					<listitem><para>
+							Symbolic names of PINs for which slots are created
+							where <replaceable>mode</replaceable> is a list of:
+							<itemizedlist>
+								<listitem><para>
+										<literal>all</literal> (Default): All
+										non-SO-PIN, non-unblocking PINs
+								</para></listitem>
+								<listitem><para>
+										<literal>user</literal>: The first
+										global or first local PIN
+								</para></listitem>
+								<listitem><para>
+										<literal>sign</literal>: The second PIN
+										(first local, second global or second
+										local)
+								</para></listitem>
+							</itemizedlist>
+						</para>
+						<para>
+							Card can contain more then one PINs or more then
+							one on-card application with its own PINs.
+							Normally, to access all of them with the PKCS#11
+							API a slot has to be created for all of them. Many
+							slots could be annoying for some of widely used
+							application, like FireFox. This configuration
+							parameter allows to select the PIN(s) for which
+							PKCS#11 slot will be created.
+						</para>
+						<para>
+							Only PINs initialised, non-SO-PIN, non-unblocking
+							are associated with symbolic name.
+						</para>
+						<para>
+							For the module to simulate the opensc-onepin module
+							behavior the following option
+							<option>create_slots_for_pins = "user";</option>
+					</para></listitem>
+				</varlistentry>
+			</variablelist>
+		</refsect2>
+
+	</refsect1>
+
+	<refsect1>
+		<title>Environment</title>
+		<variablelist>
+			<varlistentry>
+				<term>
+					<envar>OPENSC_CONF</envar>
+				</term>
+				<listitem><para>
+						Filename for a user defined configuration file
+					</para>
+					<para>
+						If this environment variable is not found on
+						Windows, the registry key
+						<filename>HKLM\Software\OpenSC
+							Project\OpenSC\ConfigFile</filename> is
+						checked.
+				</para></listitem>
+			</varlistentry>
+			<varlistentry>
+				<term>
+					<envar>OPENSC_DEBUG</envar>
+				</term>
+				<listitem><para>
+						See <xref linkend="debug"/>
+				</para></listitem>
+			</varlistentry>
+			<varlistentry>
+				<term>
+					<envar>OPENSC_DRIVER</envar>
+				</term>
+				<listitem><para>
+						See <xref linkend="card_drivers"/>
+				</para></listitem>
+			</varlistentry>
+			<varlistentry>
+				<term>
+					<envar>CARDMOD_LOW_LEVEL_DEBUG</envar>
+				</term>
+				<listitem><para>
+						Write minidriver debug information to
+						<filename>C:\tmp\md.log</filename>, if set to
+						<literal>1</literal>.
+					</para>
+					<para>
+						If this environment variable is not found on
+						Windows, the registry key
+						<filename>HKLM\Software\OpenSC
+							Project\OpenSC\MiniDriverDebug</filename> is
+						checked.
+				</para></listitem>
+			</varlistentry>
+			<varlistentry>
+				<term>
+					<envar>PIV_EXT_AUTH_KEY</envar>,
+					<envar>PIV_9A_KEY</envar>,
+					<envar>PIV_9C_KEY</envar>,
+					<envar>PIV_9D_KEY</envar>,
+					<envar>PIV_9E_KEY</envar>
+				</term>
+				<listitem><para>
+						PIV configuration during initialization with
+						<application>piv-tool</application>.
+				</para></listitem>
+			</varlistentry>
+		</variablelist>
+	</refsect1>
+
+	<refsect1>
+		<title>Files</title>
+		<variablelist>
+			<varlistentry>
+				<term>
+					<filename>@sysconfdir@/opensc.conf</filename>
+				</term>
+				<listitem><para>
+						System-wide configuration file
+				</para></listitem>
+			</varlistentry>
+			<varlistentry>
+				<term>
+					<filename>@docdir@/opensc.conf</filename>
+				</term>
+				<listitem><para>
+						Extended example configuration file
+				</para></listitem>
+			</varlistentry>
+		</variablelist>
+	</refsect1>
+
+</refentry>
