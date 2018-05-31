@@ -40,11 +40,64 @@
 			<variablelist>
 				<varlistentry>
 					<term>
+						<option>--del-key</option> <replaceable>arg</replaceable>
+					</term>
+					<listitem><para>
+						Delete key indicated by <replaceable>arg</replaceable>.
+						<replaceable>arg</replaceable> can be <literal>1</literal>,
+						<literal>2</literal>, <literal>3</literal>, or
+						<literal>all</literal>.
+					</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--do</option> <replaceable>arg</replaceable>,
+						<option>-d</option> <replaceable>arg</replaceable>
+					</term>
+					<listitem><para>
+						Dump private data object (<abbrev>DO</abbrev>)
+						indicated by <replaceable>arg</replaceable>.
+						<replaceable>arg</replaceable> can be in the form
+						<replaceable>x</replaceable>,
+						<literal>10</literal><replaceable>x</replaceable>, or
+						<literal>010</literal><replaceable>x</replaceable>
+						to access <literal>DO 010</literal><replaceable>x</replaceable>,
+						where <replaceable>x</replaceable> is <literal>1</literal>,
+						<literal>2</literal>, <literal>3</literal>, or
+						<literal>4</literal>.
+					</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--erase</option>,
+						<option>-E</option>
+					</term>
+					<listitem><para>
+						Erase (i.e. reset) the card.
+					</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
 						<option>--exec</option> <replaceable>prog</replaceable>,
 						<option>-x</option> <replaceable>prog</replaceable>
 					</term>
 					<listitem><para>
-					Execute the given program with data in environment variables.
+						Execute the given program with data in environment variables.
+					</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--gen-key</option> <replaceable>arg</replaceable>,
+						<option>-G</option> <replaceable>arg</replaceable>
+					</term>
+					<listitem><para>
+						Generate key with the ID given as <replaceable>arg</replaceable>.
+						<replaceable>arg</replaceable> can be one of <literal>1</literal>,
+						<literal>2</literal>, or <literal>3</literal>.
 					</para></listitem>
 				</varlistentry>
 
@@ -54,16 +107,30 @@
 						<option>-h</option>
 					</term>
 					<listitem><para>
-					Print help message on screen.
+						Print help message on screen.
 					</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
 					<term>
-						<option>--raw</option>
+						<option>--key-length</option> <replaceable>bitlength</replaceable>,
+						<option>-L</option> <replaceable>bitlength</replaceable>
 					</term>
 					<listitem><para>
-					Print values in raw format, as they are stored on the card.
+						Specify the length of the key to be generated.
+						If not given, it defaults to 2048 bit.
+					</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--pin</option> <replaceable>string</replaceable>
+					</term>
+					<listitem><para>
+						The PIN text to verify. If set to
+						env:<replaceable>VARIABLE</replaceable>, the value of
+						the environment variable
+						<replaceable>VARIABLE</replaceable> is used.
 					</para></listitem>
 				</varlistentry>
 
@@ -72,7 +139,29 @@
 						<option>--pretty</option>
 					</term>
 					<listitem><para>
-					Print values in pretty format.
+						Print values in pretty format.
+					</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--raw</option>
+					</term>
+					<listitem><para>
+						Print values in raw format, as they are stored on the card.
+					</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--reader</option> <replaceable>num</replaceable>,
+						<option>-r</option> <replaceable>num</replaceable>
+					</term>
+					<listitem><para>
+						Specify the reader to use. By default, the first
+						reader with a present card is used. If
+						<replaceable>num</replaceable> is an ATR, the
+						reader with a matching card will be chosen.
 					</para></listitem>
 				</varlistentry>
 
@@ -82,72 +171,17 @@
 						<option>-U</option>
 					</term>
 					<listitem><para>
-					Show card holder information.
+						Show card holder information.
 					</para></listitem>
-				</varlistentry>
-
-				<varlistentry>
-					<term>
-						<option>--reader</option> <replaceable>num</replaceable>,
-						<option>-r</option> <replaceable>num</replaceable>
-					</term>
-					<listitem>
-						<para>
-							Specify the reader to use. By default, the first
-							reader with a present card is used. If
-							<replaceable>num</replaceable> is an ATR, the
-							reader with a matching card will be chosen.
-						</para>
-					</listitem>
 				</varlistentry>
 
 				<varlistentry>
 					<term>
 						<option>--verify</option> <replaceable>pintype</replaceable>
 					</term>
-					<listitem>
-						<para>
+					<listitem><para>
 						Verify PIN (CHV1, CHV2 or CHV3).
-						</para>
-					</listitem>
-				</varlistentry>
-
-				<varlistentry>
-					<term>
-						<option>--pin</option> <replaceable>string</replaceable>
-					</term>
-					<listitem>
-						<para>
-						The PIN text to verify. If set to
-						env:<replaceable>VARIABLE</replaceable>, the value of
-						the environment variable
-						<replaceable>VARIABLE</replaceable> is used.
-						</para>
-					</listitem>
-				</varlistentry>
-
-				<varlistentry>
-					<term>
-						<option>--gen-key</option> <replaceable>ID</replaceable>,
-						<option>-G</option> <replaceable>ID</replaceable>
-					</term>
-					<listitem>
-						<para>
-						Generate key. Specify key ID (1, 2 or 3) to generate.
-						</para>
-					</listitem>
-				</varlistentry>
-
-				<varlistentry>
-					<term>
-						<option>--key-length</option> <replaceable>bitlength</replaceable>,
-						<option>-L</option> <replaceable>bitlength</replaceable>
-					</term>
-					<listitem>
-						<para>
-						Length (default 2048 bit) of the key to be generated.
-						</para>
-					</listitem>
+					</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -156,7 +190,7 @@
 						<option>-V</option>
 					</term>
 					<listitem><para>
-					Print the version of the utility and exit.
+						Print the version of the utility and exit.
 					</para></listitem>
 				</varlistentry>
 
@@ -166,7 +200,7 @@
 						<option>-v</option>
 					</term>
 					<listitem><para>
-					Verbose operation. Use several times to enable debug output.
+						Verbose operation. Use several times to enable debug output.
 					</para></listitem>
 				</varlistentry>
 
@@ -176,10 +210,9 @@
 						<option>-w</option>
 					</term>
 					<listitem><para>
-					Wait for a card to be inserted.
+						Wait for a card to be inserted.
 					</para></listitem>
 				</varlistentry>
-
 			</variablelist>
 		</para>
 	</refsect1>
