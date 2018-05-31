@@ -28,6 +28,7 @@
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
 #include <openssl/opensslv.h>
+#include <openssl/x509.h>
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L
 #include <openssl/conf.h>
 #include <openssl/opensslconf.h> /* for OPENSSL_NO_* */
