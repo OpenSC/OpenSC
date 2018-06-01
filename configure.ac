@@ -898,9 +898,6 @@ if test "${enable_man}" = "yes" -o "${enable_doc}" = "yes"; then
 	AC_MSG_RESULT([ok])
 fi
 
-AC_ARG_VAR([HELP2MAN],
-           [absolute path to help2man used for man page generation of npa-tool])
-AC_PATH_PROG(HELP2MAN, help2man, not found)
 AC_ARG_VAR([GENGETOPT],
            [absolute path to gengetopt used for command line parsing of npa-tool])
 AC_PATH_PROG(GENGETOPT, gengetopt, not found)
