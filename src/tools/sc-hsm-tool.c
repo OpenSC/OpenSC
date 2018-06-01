@@ -1524,7 +1524,7 @@ static int unwrap_key(sc_card_t *card, int keyid, const char *inf, const char *p
 	}
 
 	if ((sc_asn1_read_tag(&ptr, len, &cla, &tag, &olen) != SC_SUCCESS)
-		   	|| ((cla & SC_ASN1_TAG_CONSTRUCTED) != SC_ASN1_TAG_CONSTRUCTED)
+		   	|| ((cla & SC_ASN1_TAG_CONSTRUCTED) == SC_ASN1_TAG_CONSTRUCTED)
 		   	|| (tag != SC_ASN1_TAG_OCTET_STRING) ){
 		fprintf(stderr, "Invalid wrapped key format (Key binary).\n");
 		return -1;
