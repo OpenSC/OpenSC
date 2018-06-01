@@ -50,7 +50,7 @@ before_install:
         brew update;
         brew uninstall libtool;
         brew install libtool;
-        brew install gengetopt cmocka;
+        brew install gengetopt help2man cmocka;
     fi
 
 before_script:
