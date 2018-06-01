@@ -12,7 +12,6 @@ addons:
     - wine
     - xsltproc
     - gengetopt
-    - help2man
     - libcmocka-dev
 
 env:
@@ -51,7 +50,7 @@ before_install:
         brew update;
         brew uninstall libtool;
         brew install libtool;
-        brew install gengetopt help2man cmocka;
+        brew install gengetopt cmocka;
     fi
 
 before_script:
