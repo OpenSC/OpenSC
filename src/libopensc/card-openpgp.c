@@ -507,32 +507,25 @@ static void
 pgp_parse_hist_bytes(sc_card_t *card, u8 *ctlv, size_t ctlv_len)
 {
 	struct pgp_priv_data *priv = DRVDATA(card);
-	size_t offs;
+	const u8 *ptr;
 
-	for (offs = 0; offs < ctlv_len; offs++) {
-		switch (ctlv[offs]) {
-			case 0x73: /* IS07816-4 hist bytes 3rd function table */
-				if (offs+3 < ctlv_len) {
-					/* bit 0x40 in byte 3 of TL 0x73 means "extended Le/Lc" */
-					if (ctlv[offs+3] & 0x40) {
-						card->caps |= SC_CARD_CAP_APDU_EXT;
-						priv->ext_caps |= EXT_CAP_APDU_EXT;
-					}
-					/* bit 0x80 in byte 3 of TL 0x73 means "Command chaining" */
-					if ((ctlv[offs+3] & 0x40) &&
-					    (priv->bcd_version >= OPENPGP_CARD_3_0)) {
-						priv->ext_caps |= EXT_CAP_CHAINING;
-					}
-				}
-				break;
-			case 0x31:
-				if ((offs + 1 < ctlv_len) &&
-				    (priv->bcd_version >= OPENPGP_CARD_3_0)) {
-					// ToDo ...
-				}
-				break;
+	/* IS07816-4 hist bytes: 3rd function table */
+	if ((ptr = sc_compacttlv_find_tag(ctlv, ctlv_len, 0x73)) != NULL) {
+		/* bit 0x40 in byte 3 of TL 0x73 means "extended Le/Lc" */
+		if (ptr[2] & 0x40) {
+			card->caps |= SC_CARD_CAP_APDU_EXT;
+			priv->ext_caps |= EXT_CAP_APDU_EXT;
 		}
-		offs += ctlv[offs] & 0x0F;
+		/* bit 0x80 in byte 3 of TL 0x73 means "Command chaining" */
+		if ((ptr[2] & 0x80) &&
+		    (priv->bcd_version >= OPENPGP_CARD_3_0)) {
+			priv->ext_caps |= EXT_CAP_CHAINING;
+		}
+	}
+
+	if ((priv->bcd_version >= OPENPGP_CARD_3_0) &&
+	    ((ptr = sc_compacttlv_find_tag(ctlv, ctlv_len, 0x73)) != NULL)) {
+		// ToDo ...
 	}
 }
 
