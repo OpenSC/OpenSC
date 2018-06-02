@@ -948,6 +948,20 @@ unsigned sc_crc32(const unsigned char *value, size_t len)
 	return  crc%0xffff;
 }
 
+const u8 *sc_compacttlv_find_tag(const u8 *buf, size_t len, u8 tag)
+{
+	if (buf != NULL) {
+		size_t idx;
+
+	        for (idx = 0; idx < len; idx++) {
+			if (buf[idx] == tag && idx + (tag & 0x0F) < len)
+				return buf + (idx + 1);
+			idx += (buf[idx] & 0x0F);
+                }
+        }
+	return NULL;
+}
+
 /**************************** mutex functions ************************/
 
 int sc_mutex_create(const sc_context_t *ctx, void **mutex)
