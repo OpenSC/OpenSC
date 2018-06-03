@@ -767,7 +767,9 @@ static int dnie_sm_free_wrapped_apdu(struct sc_card *card,
 					memcpy(plain->resp, (*sm_apdu)->resp, (*sm_apdu)->resplen);
 					plain->resplen = (*sm_apdu)->resplen;
 				} else {
-					sc_log(card->ctx, "Invalid initial length, needed %lu bytes but has %lu",
+					sc_log(card->ctx, "Invalid initial length,"
+							" needed %"SC_FORMAT_LEN_SIZE_T"u bytes"
+							" but has %"SC_FORMAT_LEN_SIZE_T"u",
 							(*sm_apdu)->resplen, plain->resplen);
 					rv = SC_ERROR_BUFFER_TOO_SMALL;
 				}
