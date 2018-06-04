@@ -575,6 +575,7 @@ static int cac_cac1_get_certificate(sc_card_t *card, u8 **out_buf, size_t *out_l
 	sc_apdu_t apdu;
 	int r = SC_SUCCESS;
 
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	/* get the size */
 	size = left = *out_buf ? *out_len : sizeof(buf);
@@ -591,6 +592,10 @@ static int cac_cac1_get_certificate(sc_card_t *card, u8 **out_buf, size_t *out_l
 		if (r < 0) {
 			break;
 		}
+		if (apdu.resplen == 0) {
+			r = SC_ERROR_INTERNAL;
+			break;
+		}
 		/* in the old CAC-1, 0x63 means 'more data' in addition to 'pin failed' */
 		if (apdu.sw1 != 0x63)  {
 			/* we've either finished reading, or hit an error, break */
@@ -598,21 +603,22 @@ static int cac_cac1_get_certificate(sc_card_t *card, u8 **out_buf, size_t *out_l
 			left -= len;
 			break;
 		}
-		next_len = MIN(left,apdu.sw2);
+		next_len = MIN(left, apdu.sw2);
 	}
 	if (r < 0) {
-		return r;
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 	}
 	r = size - left;
 	if (*out_buf == NULL) {
 		*out_buf = malloc(r);
 		if (*out_buf == NULL) {
-			return SC_ERROR_OUT_OF_MEMORY;
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,
+			    SC_ERROR_OUT_OF_MEMORY);
 		}
 		memcpy(*out_buf, buf, r);
 	}
 	*out_len = r;
-	return r;
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
 
 /* Create a fake tag/length file in Simple TLV for cac1 cards based on the val_len.
