@@ -1757,8 +1757,12 @@ static int cac_parse_ACA_service(sc_card_t *card, cac_private_data_t *priv,
 
 		switch (tag) {
 		case CAC_TAG_APPLET_FAMILY:
-			if (len != 5)
+			if (len != 5) {
+				sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
+				    "TAG: Applet Information = (bad length %"
+				    SC_FORMAT_LEN_SIZE_T"u)", len);
 				break;
+			}
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
 			    "TAG: Applet Information: Family: 0x%02x", val[0]);
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
