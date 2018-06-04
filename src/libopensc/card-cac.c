@@ -1779,7 +1779,7 @@ static int cac_parse_ACA_service(sc_card_t *card, cac_private_data_t *priv,
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
 			    "TAG: Applet Entry");
 			/* Make sure we match the outer length */
-			if (val[2] != len - 3) {
+			if (len < 3 || val[2] != len - 3) {
 				sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
 				    "bad length of internal buffer");
 				break;
