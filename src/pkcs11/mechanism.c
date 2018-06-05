@@ -868,7 +868,7 @@ sc_pkcs11_wrap(struct sc_pkcs11_session *session,
 			targetKey, wrappedData,
 			wrappedDataLen);
 
-	session_stop_operation(session, SC_PKCS11_OPERATION_UNWRAP);
+	session_stop_operation(session, SC_PKCS11_OPERATION_WRAP);
 
 	return rv;
 }

@@ -1261,7 +1261,7 @@ static int myeid_wrap_key(struct sc_card *card, u8 *out, size_t outlen)
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	int r;
 
-	assert(card != NULL && out != NULL);
+	assert(card != NULL);
 	ctx = card->ctx;
 	LOG_FUNC_CALLED(ctx);
 
@@ -1279,7 +1279,7 @@ static int myeid_wrap_key(struct sc_card *card, u8 *out, size_t outlen)
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(ctx, r, "wrap key failed");
 
-	if (apdu.resplen <= outlen)
+	if (apdu.resplen <= outlen && out != NULL)
 		memcpy(out, apdu.resp, apdu.resplen);
 
 	LOG_FUNC_RETURN(ctx, apdu.resplen);
