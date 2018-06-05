@@ -510,7 +510,7 @@ pgp_parse_hist_bytes(sc_card_t *card, u8 *ctlv, size_t ctlv_len)
 	const u8 *ptr;
 
 	/* IS07816-4 hist bytes: 3rd function table */
-	if ((ptr = sc_compacttlv_find_tag(ctlv, ctlv_len, 0x73)) != NULL) {
+	if ((ptr = sc_compacttlv_find_tag(ctlv, ctlv_len, 0x73, NULL)) != NULL) {
 		/* bit 0x40 in byte 3 of TL 0x73 means "extended Le/Lc" */
 		if (ptr[2] & 0x40) {
 			card->caps |= SC_CARD_CAP_APDU_EXT;
@@ -524,7 +524,7 @@ pgp_parse_hist_bytes(sc_card_t *card, u8 *ctlv, size_t ctlv_len)
 	}
 
 	if ((priv->bcd_version >= OPENPGP_CARD_3_0) &&
-	    ((ptr = sc_compacttlv_find_tag(ctlv, ctlv_len, 0x73)) != NULL)) {
+	    ((ptr = sc_compacttlv_find_tag(ctlv, ctlv_len, 0x31, NULL)) != NULL)) {
 		// ToDo ...
 	}
 }
