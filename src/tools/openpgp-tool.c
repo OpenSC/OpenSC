@@ -391,11 +391,10 @@ static int do_userinfo(sc_card_t *card)
 
 static int do_dump_do(sc_card_t *card, unsigned int tag)
 {
-	int r, tmp;
-	FILE *fp;
+	int r;
+	size_t length;
+	unsigned char buffer[254];	// Private DO are specified up to 254 bytes
 
-	// Private DO are specified up to 254 bytes
-	unsigned char buffer[254];
 	memset(buffer, '\0', sizeof(buffer));
 
 	if (tag < 0x101 || tag > 0x104) {
@@ -406,36 +405,40 @@ static int do_dump_do(sc_card_t *card, unsigned int tag)
 	r = sc_get_data(card, tag, buffer, sizeof(buffer));
 	if (r < 0) {
 		printf("Failed to get data object: %s\n", sc_strerror(r));
-		if(SC_ERROR_SECURITY_STATUS_NOT_SATISFIED == r) {
+		if (SC_ERROR_SECURITY_STATUS_NOT_SATISFIED == r) {
 			printf("Make sure the 'verify' and 'pin' parameters are correct.\n");
 		}
 		return r;
 	}
+	length = (size_t) r;	/* r is guaranteed to be non-negative */
 
-	if(opt_raw) {
-		r = 0;
-		#ifndef _WIN32
+	if (opt_raw) {
+		int tmp;
+		FILE *fp;
+
+#ifndef _WIN32
 		tmp = dup(fileno(stdout));
-		#else
+#else
 		tmp = _dup(_fileno(stdout));
-		#endif
+#endif
 		if (tmp < 0)
 			return EXIT_FAILURE;
 		fp = freopen(NULL, "wb", stdout);
 		if (fp) {
-			r = (int)fwrite(buffer, sizeof(char), sizeof(buffer), fp);
+			r = (int) fwrite(buffer, sizeof(char), length, fp);
 		}
-		#ifndef _WIN32
+#ifndef _WIN32
 		dup2(tmp, fileno(stdout));
-		#else
+#else
 		_dup2(tmp, _fileno(stdout));
-		#endif
+#endif
 		clearerr(stdout);
 		close(tmp);
-		if (sizeof(buffer) != r)
+
+		if (length != r)	/* fail on write errors */
 			return EXIT_FAILURE;
 	} else {
-		util_hex_dump_asc(stdout, buffer, r, -1);
+		util_hex_dump_asc(stdout, buffer, length, -1);
 	}
 
 	return EXIT_SUCCESS;
