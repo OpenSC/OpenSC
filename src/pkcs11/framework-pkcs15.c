@@ -3728,6 +3728,15 @@ pkcs15_prkey_sign(struct sc_pkcs11_session *session, void *obj,
 	case CKM_SHA512_RSA_PKCS:
 		flags = SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_SHA512;
 		break;
+	case CKM_RSA_PKCS_PSS:
+		flags = SC_ALGORITHM_RSA_PAD_PSS | SC_ALGORITHM_RSA_HASH_NONE;
+		break;
+	case CKM_SHA1_RSA_PKCS_PSS:
+		flags = SC_ALGORITHM_RSA_PAD_PSS | SC_ALGORITHM_RSA_HASH_SHA1;
+		break;
+	case CKM_SHA256_RSA_PKCS_PSS:
+		flags = SC_ALGORITHM_RSA_PAD_PSS | SC_ALGORITHM_RSA_HASH_SHA256;
+		break;
 	case CKM_RIPEMD160_RSA_PKCS:
 		flags = SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_RIPEMD160;
 		break;
@@ -4994,6 +5003,24 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 	}
 
 	/* TODO support other padding mechanisms */
+
+	if (rsa_flags & SC_ALGORITHM_RSA_PAD_PSS) {
+		mt = sc_pkcs11_new_fw_mechanism(CKM_RSA_PKCS_PSS, &mech_info, CKK_RSA, NULL, NULL);
+		rc = sc_pkcs11_register_mechanism(p11card, mt);
+		if (rc != CKR_OK)
+			return rc;
+
+		if (rsa_flags & SC_ALGORITHM_RSA_HASH_SHA1) {
+			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card, CKM_SHA1_RSA_PKCS_PSS, CKM_SHA_1, mt);
+			if (rc != CKR_OK)
+				return rc;
+		}
+		if (rsa_flags & SC_ALGORITHM_RSA_HASH_SHA256) {
+			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card, CKM_SHA256_RSA_PKCS_PSS, CKM_SHA256, mt);
+			if (rc != CKR_OK)
+				return rc;
+		}
+	}
 
 	if (rsa_flags & SC_ALGORITHM_ONBOARD_KEY_GEN) {
 		mech_info.flags = CKF_GENERATE_KEY_PAIR;

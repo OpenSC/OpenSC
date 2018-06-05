@@ -310,6 +310,11 @@ int sc_get_encoding_flags(sc_context_t *ctx,
 
 		*sflags |= (caps & SC_ALGORITHM_RAW_MASK); /* adds in the one raw type */
 		*pflags = 0;
+	} else if (iflags & SC_ALGORITHM_RSA_PAD_PSS) {
+		if (caps & SC_ALGORITHM_RSA_PAD_PSS)
+			*sflags |= SC_ALGORITHM_RSA_PAD_PSS;
+		else
+			*pflags |= SC_ALGORITHM_RSA_PAD_PSS;
 	} else {
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "unsupported algorithm");
 	}

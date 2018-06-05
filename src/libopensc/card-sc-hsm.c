@@ -984,6 +984,8 @@ static int sc_hsm_set_security_env(sc_card_t *card,
 			} else {
 				priv->algorithm = ALGO_RSA_PKCS1;
 			}
+		} else if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PSS) {
+			priv->algorithm = ALGO_RSA_PSS;
 		} else {
 			if (env->operation == SC_SEC_OPERATION_DECIPHER) {
 				priv->algorithm = ALGO_RSA_DECRYPT;
@@ -1607,7 +1609,7 @@ static int sc_hsm_init(struct sc_card *card)
 		card->drv_data = priv;
 	}
 
-	flags = SC_ALGORITHM_RSA_RAW|SC_ALGORITHM_ONBOARD_KEY_GEN;
+	flags = SC_ALGORITHM_RSA_RAW|SC_ALGORITHM_RSA_PAD_PSS|SC_ALGORITHM_ONBOARD_KEY_GEN;
 
 	_sc_card_add_rsa_alg(card, 1024, flags, 0);
 	_sc_card_add_rsa_alg(card, 1536, flags, 0);
