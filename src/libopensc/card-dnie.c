@@ -163,7 +163,7 @@ const char *user_consent_message="Esta a punto de realizar una firma digital\nco
  */
 char *user_consent_msgs[] = { "SETTITLE", "SETDESC", "CONFIRM", "BYE" };
 
-#ifdef linux
+#if !defined(__APPLE__) && !defined(_WIN32)
 /**
  * Do fgets() without interruptions.
  *
@@ -203,7 +203,7 @@ int dnie_ask_user_consent(struct sc_card * card, const char *title, const char *
 	CFStringRef header_ref; /* to store title */
 	CFStringRef message_ref; /* to store message */
 #endif
-#ifdef linux
+#if !defined(__APPLE__) && !defined(_WIN32)
 	pid_t pid;
 	FILE *fin=NULL;
 	FILE *fout=NULL;	/* to handle pipes as streams */
@@ -271,7 +271,7 @@ int dnie_ask_user_consent(struct sc_card * card, const char *title, const char *
 	if( result == kCFUserNotificationAlternateResponse )
 		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 	LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ALLOWED);
-#elif linux
+#else
 	/* check that user_consent_app exists. TODO: check if executable */
 	res = stat(GET_DNIE_UI_CTX(card).user_consent_app, &st_file);
 	if (res != 0) {
@@ -361,8 +361,6 @@ do_error:
 	/* close out channel to force client receive EOF and also die */
 	if (fout != NULL) fclose(fout);
 	if (fin != NULL) fclose(fin);
-#else
-#error "Don't know how to handle user consent in this (rare) Operating System"
 #endif
 	if (msg != NULL)
 		sc_log(card->ctx, "%s", msg);
