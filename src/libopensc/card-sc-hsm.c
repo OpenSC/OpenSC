@@ -1652,8 +1652,8 @@ static int sc_hsm_init(struct sc_card *card)
 		if (file->prop_attr[1] & 0x04) {
 			card->caps |= SC_CARD_CAP_SESSION_PIN;
 		}
-		sc_file_free(file);
 	}
+	sc_file_free(file);
 
 	card->max_send_size = 1431;		// 1439 buffer size - 8 byte TLV because of odd ins in UPDATE BINARY
 	if (card->type == SC_CARD_TYPE_SC_HSM_SOC
