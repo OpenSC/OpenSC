@@ -435,7 +435,7 @@ static int do_dump_do(sc_card_t *card, unsigned int tag)
 		clearerr(stdout);
 		close(tmp);
 
-		if (length != r)	/* fail on write errors */
+		if (length != (size_t) r)	/* fail on write errors */
 			return EXIT_FAILURE;
 	} else {
 		util_hex_dump_asc(stdout, buffer, length, -1);
