@@ -591,6 +591,7 @@ static int list_algorithms(void)
 	const id2str_t rsa_flag_names[] = {
 		{ SC_ALGORITHM_RSA_PAD_PKCS1,      "pkcs1"     },
 		{ SC_ALGORITHM_RSA_PAD_ANSI,       "ansi"      },
+		{ SC_ALGORITHM_RSA_PAD_PSS,        "pss"       },
 		{ SC_ALGORITHM_RSA_PAD_ISO9796,    "iso9796"   },
 		{ SC_ALGORITHM_RSA_HASH_SHA1,      "sha1"      },
 		{ SC_ALGORITHM_RSA_HASH_MD5,       "MD5"       },
