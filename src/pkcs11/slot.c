@@ -210,6 +210,7 @@ CK_RV card_removed(sc_reader_t * reader)
 CK_RV card_detect(sc_reader_t *reader)
 {
 	struct sc_pkcs11_card *p11card = NULL;
+	int free_p11card = 0;
 	int rc;
 	CK_RV rv;
 	unsigned int i;
@@ -256,15 +257,17 @@ again:
 		p11card = (struct sc_pkcs11_card *)calloc(1, sizeof(struct sc_pkcs11_card));
 		if (!p11card)
 			return CKR_HOST_MEMORY;
+		free_p11card = 1;
 		p11card->reader = reader;
 	}
 
 	if (p11card->card == NULL) {
 		sc_log(context, "%s: Connecting ... ", reader->name);
 		rc = sc_connect_card(reader, &p11card->card);
-		if (rc != SC_SUCCESS)   {
+		if (rc != SC_SUCCESS) {
 			sc_log(context, "%s: SC connect card error %i", reader->name, rc);
-			return sc_to_cryptoki_error(rc, NULL);
+			rv = sc_to_cryptoki_error(rc, NULL);
+			goto fail;
 		}
 
 		/* escape commands are only guaranteed to be working with a card
@@ -293,8 +296,10 @@ again:
 			if (frameworks[i]->bind != NULL)
 				break;
 		/*TODO: only first framework is used: pkcs15init framework is not reachable here */
-		if (frameworks[i] == NULL)
-			return CKR_GENERAL_ERROR;
+		if (frameworks[i] == NULL) {
+			rv = CKR_GENERAL_ERROR;
+			goto fail;
+		}
 
 		p11card->framework = frameworks[i];
 
@@ -324,7 +329,7 @@ again:
 				sc_log(context,
 				       "%s: cannot bind 'generic' token: rv 0x%lX",
 				       reader->name, rv);
-				return rv;
+				goto fail;
 			}
 
 			sc_log(context, "%s: Creating 'generic' token.", reader->name);
@@ -333,7 +338,7 @@ again:
 				sc_log(context,
 				       "%s: create 'generic' token error 0x%lX",
 				       reader->name, rv);
-				return rv;
+				goto fail;
 			}
 		}
 
@@ -359,13 +364,24 @@ again:
 				sc_log(context,
 				       "%s: create %s token error 0x%lX",
 				       reader->name, app_name, rv);
-				return rv;
+				goto fail;
 			}
 		}
 	}
 
 	sc_log(context, "%s: Detection ended", reader->name);
 	return CKR_OK;
+
+fail:
+	if (free_p11card) {
+		if (p11card->card != NULL)
+			sc_disconnect_card(p11card->card);
+		if (p11card->framework)
+			p11card->framework->unbind(p11card);
+		free(p11card);
+	}
+
+	return rv;
 }
 
 
