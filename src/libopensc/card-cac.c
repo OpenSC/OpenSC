@@ -162,7 +162,7 @@ typedef struct cac_object {
 	sc_path_t path;
 } cac_object_t;
 
-#define CAC_MAX_OBJECTS 10
+#define CAC_MAX_OBJECTS 16
 
 typedef struct {
 	/* OID has two bytes */
@@ -280,19 +280,25 @@ static const sc_path_t cac_CCC_Path = {
 	{ CAC_TO_AID(CAC_2_RID "\xDB\x00") }
 };
 
-#define MAX_CAC_SLOTS 10		/* arbitrary, just needs to be 'large enough' */
+#define MAX_CAC_SLOTS 16		/* arbitrary, just needs to be 'large enough' */
 /* default certificate labels for the CAC card */
 static const char *cac_labels[MAX_CAC_SLOTS] = {
 	"CAC ID Certificate",
 	"CAC Email Signature Certificate",
 	"CAC Email Encryption Certificate",
-	"CAC Cert 3",
 	"CAC Cert 4",
 	"CAC Cert 5",
 	"CAC Cert 6",
 	"CAC Cert 7",
 	"CAC Cert 8",
-	"CAC Cert 9"
+	"CAC Cert 9",
+	"CAC Cert 10",
+	"CAC Cert 11",
+	"CAC Cert 12",
+	"CAC Cert 13",
+	"CAC Cert 14",
+	"CAC Cert 15",
+	"CAC Cert 16"
 };
 
 /* template for a cac1 pki object */
