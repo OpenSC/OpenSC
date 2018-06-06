@@ -242,6 +242,7 @@ static int sc_hsm_match_card(struct sc_card *card)
 {
 	sc_path_t path;
 	int i, r, type = 0;
+	sc_file_t *file = NULL;
 
 	i = _sc_match_atr(card, sc_hsm_atrs, &type);
 	if (i >= 0 && type != SC_CARD_TYPE_SC_HSM_SOC) {
@@ -250,8 +251,17 @@ static int sc_hsm_match_card(struct sc_card *card)
 	}
 
 	sc_path_set(&path, SC_PATH_TYPE_DF_NAME, sc_hsm_aid.value, sc_hsm_aid.len, 0, 0);
-	r = sc_hsm_select_file(card, &path, NULL);
+	r = sc_hsm_select_file(card, &path, &file);
 	LOG_TEST_RET(card->ctx, r, "Could not select SmartCard-HSM application");
+
+	// Validate that card returns a FCP with a proprietary tag 85 with value longer than 2 byte (Fixes #1377)
+	if (file != NULL) {
+		i = file->prop_attr_len;
+		sc_file_free(file);
+		if (i < 2) {
+			return 0;
+		}
+	}
 
 	if (type == SC_CARD_TYPE_SC_HSM_SOC) {
 		card->type = SC_CARD_TYPE_SC_HSM_SOC;
