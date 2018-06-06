@@ -1626,7 +1626,7 @@ static int gids_delete_cert(sc_card_t *card, sc_pkcs15_object_t* object) {
 	unsigned short fileIdentifier, DO;
 	u8 masterfilebuffer[MAX_GIDS_FILE_SIZE];
 	size_t masterfilebuffersize = 0;
-	gids_mf_record_t *records = (gids_mf_record_t *) masterfilebuffer;
+	gids_mf_record_t *records = (gids_mf_record_t *) (masterfilebuffer+1);
 	size_t recordcount, recordnum = (size_t) -1;
 	size_t i;
 
@@ -1648,7 +1648,7 @@ static int gids_delete_cert(sc_card_t *card, sc_pkcs15_object_t* object) {
 	memcpy(masterfilebuffer, privatedata->masterfile, privatedata->masterfilesize);
 	masterfilebuffersize = privatedata->masterfilesize;
 
-	recordcount = (masterfilebuffersize / sizeof(gids_mf_record_t));
+	recordcount = ((masterfilebuffersize-1) / sizeof(gids_mf_record_t));
 	for (i = 0; i < recordcount; i++) {
 		if (records[i].fileIdentifier == fileIdentifier && records[i].dataObjectIdentifier == DO) {
 			recordnum = i;
@@ -1659,7 +1659,7 @@ static int gids_delete_cert(sc_card_t *card, sc_pkcs15_object_t* object) {
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_FILE_NOT_FOUND);
 	}
 
-	for (i = (recordnum+1) * sizeof(gids_mf_record_t); i < masterfilebuffersize; i++) {
+	for (i = 1 + (recordnum+1) * sizeof(gids_mf_record_t); i < masterfilebuffersize; i++) {
 		masterfilebuffer[i - sizeof(gids_mf_record_t)] = masterfilebuffer[i];
 	}
 	masterfilebuffersize -= sizeof(gids_mf_record_t);
