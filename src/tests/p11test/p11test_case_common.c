@@ -156,6 +156,9 @@ int callback_certificates(test_certs_t *objects,
 	const u_char *cp;
 	test_cert_t *o = NULL;
 
+	if (*(CK_CERTIFICATE_TYPE *)template[3].pValue != CKC_X_509)
+		return 0;
+
 	if ((o = add_object(objects, template[0], template[2])) == NULL)
 		return -1;
 
