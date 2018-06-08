@@ -13,13 +13,11 @@ modeoption "title"          t
     "Title of the notification"
     string
     mode="customized"
-    argoptional
     optional
 modeoption "message"        m
     "Main text of the notification"
     string
     mode="customized"
-    argoptional
     optional
 
 modeoption "notify-card-inserted"    I
