@@ -1358,6 +1358,18 @@ scconf_block *sc_match_atr_block(sc_context_t *ctx, struct sc_card_driver *drive
 unsigned sc_crc32(const unsigned char *value, size_t len);
 
 /**
+ * Find a given tag in a compact TLV structure
+ * @param[in]  buf  input buffer holding the compact TLV structure
+ * @param[in]  len  length of the input buffer @buf in bytes
+ * @param[in]  tag  compact tag to search for - high nibble: plain tag, low nibble: length.
+ *                  If length is 0, only the plain tag is used for searching,
+ *                  in any other case, the length must also match.
+ * @param[out] outlen pointer where the size of the buffer returned is to be stored
+ * @return pointer to the tag value found within @buf, or NULL if not found/on error
+ */
+const u8 *sc_compacttlv_find_tag(const u8 *buf, size_t len, u8 tag, size_t *outlen);
+
+/**
  * Used to initialize the @c sc_remote_data structure --
  * reset the header of the 'remote APDUs' list, set the handlers
  * to manipulate the list.
