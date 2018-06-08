@@ -543,7 +543,8 @@ int sc_pkcs15_wrap(struct sc_pkcs15_card *p15card,
 	if (r > -1) {
             if (*crgram_len < (unsigned) r) {
 					*poutlen = r;
-					LOG_TEST_RET(ctx, SC_ERROR_BUFFER_TOO_SMALL, "Buffer too small to hold the wrapped key.");
+					if (out != NULL) /* if NULL, return success and required buffer length by PKCS#11 convention */
+						LOG_TEST_RET(ctx, SC_ERROR_BUFFER_TOO_SMALL, "Buffer too small to hold the wrapped key.");
 			}
 
             *poutlen = r;
