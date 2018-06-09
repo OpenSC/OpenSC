@@ -2985,9 +2985,7 @@ static int piv_match_card(sc_card_t *card)
 
 static int piv_match_card_continued(sc_card_t *card)
 {
-	int i, i7e, k;
-	size_t j;
-	u8 *p, *pe;
+	int i, i7e;
 	sc_file_t aidfile;
 	int type  = -1;
 	piv_private_data_t *priv = NULL;
@@ -3042,23 +3040,21 @@ static int piv_match_card_continued(sc_card_t *card)
 			}
 
 			else if (card->reader->atr_info.hist_bytes[0] == 0x80u) { /* compact TLV */
-				p = card->reader->atr_info.hist_bytes;
-				pe = p + card->reader->atr_info.hist_bytes_len;
-				p++; /* skip 0x80u byte */
-				while (p < pe && type == -1) {
-					j = *p & 0x0fu; /* length */
-					if ((*p++ & 0xf0u) == 0xf0u) { /*looking for 15 */
-						if ((p + j) <= pe) {
-							for (k = 0; piv_aids[k].len_long != 0; k++) {
-								if (j == piv_aids[k].len_long
-									&& !memcmp(p, piv_aids[k].value,j)) {
-									type = SC_CARD_TYPE_PIV_II_HIST;
-									break;
-								}
-							}
+				size_t datalen;
+				const u8 *data = sc_compacttlv_find_tag(card->reader->atr_info.hist_bytes + 1,
+									card->reader->atr_info.hist_bytes_len - 1,
+									0xF0, &datalen);
+
+				if (data != NULL) {
+					int k;
+
+					for (k = 0; piv_aids[k].len_long != 0; k++) {
+						if (datalen == piv_aids[k].len_long
+							&& !memcmp(data, piv_aids[k].value, datalen)) {
+							type = SC_CARD_TYPE_PIV_II_HIST;
+							break;
 						}
 					}
-					p += j;
 				}
 			}
 		}
