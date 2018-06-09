@@ -2985,8 +2985,7 @@ static int piv_match_card(sc_card_t *card)
 
 static int piv_match_card_continued(sc_card_t *card)
 {
-	int i, i7e;
-	sc_file_t aidfile;
+	int i;
 	int type  = -1;
 	piv_private_data_t *priv = NULL;
 	int saved_type = card->type;
@@ -3100,6 +3099,8 @@ static int piv_match_card_continued(sc_card_t *card)
 
 	if (i < 0) {
 		/* Detect by selecting applet */
+		sc_file_t aidfile;
+
 		i = piv_find_aid(card, &aidfile);
 	}
 
@@ -3111,7 +3112,8 @@ static int piv_match_card_continued(sc_card_t *card)
 		 * SC_ERROR_FILE_NOT_FOUND means we cannot use discovery 
 		 * to test for active AID.
 		 */
-		i7e = piv_find_discovery(card);
+		int i7e = piv_find_discovery(card);
+
 		if (i7e != 0 && i7e !=  SC_ERROR_FILE_NOT_FOUND) {
 			priv->card_issues |= CI_DISCOVERY_USELESS;
 			priv->obj_cache[PIV_OBJ_DISCOVERY].flags |= PIV_OBJ_CACHE_NOT_PRESENT;
