@@ -1835,11 +1835,11 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 
 	LOG_FUNC_CALLED(card->ctx);
 
-	/* There's some funny padding indicator that must be
-	 * prepended... hmm. */
+	/* padding according to OpenPGP card spec 1.1, 2.x & 3.x section 7.2.9 */
 	if (!(temp = malloc(inlen + 1)))
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
-	temp[0] = '\0';
+	/* padding byte: 0x00 = RSA; 0x02 = AES [v2.1+ only] */
+	temp[0] = 0x00;
 	memcpy(temp + 1, in, inlen);
 	in = temp;
 	inlen += 1;
