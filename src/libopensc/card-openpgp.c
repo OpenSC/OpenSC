@@ -195,7 +195,7 @@ static int		pgp_get_pubkey_pem(sc_card_t *, unsigned int,
 /* Gnuk only supports 1 key length (2048 bit) */
 #define MAXLEN_RESP_PUBKEY_GNUK  271
 
-static struct do_info		pgp1_objects[] = {	/* OpenPGP card spec 1.1 */
+static struct do_info		pgp1x_objects[] = {	/* OpenPGP card spec 1.1 */
 	{ 0x004f, SIMPLE,      READ_ALWAYS | WRITE_NEVER, NULL,               NULL        },
 	{ 0x005b, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  NULL,               sc_put_data },
 	{ 0x005e, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  sc_get_data,        sc_put_data },
@@ -244,7 +244,9 @@ static struct do_info		pgp1_objects[] = {	/* OpenPGP card spec 1.1 */
 	{ 0, 0, 0, NULL, NULL },
 };
 
-static struct do_info		pgp2_objects[] = {	/* OpenPGP card spec 2.0 */
+static struct do_info		pgp21_objects[] = {	/* OpenPGP card spec 2.1 */
+	{ 0x00d5, SIMPLE,      READ_NEVER  | WRITE_PIN3,  NULL,               sc_put_data },
+	/* OpenPGP card spec 2.0 */
 	{ 0x004d, CONSTRUCTED, READ_NEVER  | WRITE_PIN3,  NULL,               sc_put_data },
 	{ 0x004f, SIMPLE,      READ_ALWAYS | WRITE_NEVER, sc_get_data,        NULL        },
 	{ 0x005b, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  NULL,               sc_put_data },
@@ -303,6 +305,9 @@ static struct do_info		pgp2_objects[] = {	/* OpenPGP card spec 2.0 */
 	{ DO_ENCR_SYM, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  pgp_get_pubkey_pem, NULL   },
 	{ 0, 0, 0, NULL, NULL },
 };
+
+static struct do_info		*pgp20_objects = pgp21_objects + 1;
+
 
 #define DRVDATA(card)        ((struct pgp_priv_data *) ((card)->drv_data))
 struct pgp_priv_data {
@@ -461,11 +466,9 @@ pgp_init(sc_card_t *card)
 	}
 
 	/* set pointer to correct list of card objects */
-	if (priv->bcd_version < OPENPGP_CARD_2_0) {
-		priv->pgp_objects = pgp1_objects;
-	} else {
-		priv->pgp_objects = pgp2_objects;
-	}
+	priv->pgp_objects = (priv->bcd_version < OPENPGP_CARD_2_0) ? pgp1x_objects
+			  : (priv->bcd_version < OPENPGP_CARD_2_1) ? pgp20_objects
+			  :					     pgp21_objects;
 
 	/* change file path to MF for re-use in MF */
 	sc_format_path("3f00", &file->path);
