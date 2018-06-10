@@ -251,7 +251,17 @@ static struct do_info		pgp1x_objects[] = {	/* OpenPGP card spec 1.1 */
 	{ 0, 0, 0, NULL, NULL },
 };
 
-static struct do_info		pgp21_objects[] = {	/* OpenPGP card spec 2.1 */
+static struct do_info		pgp33_objects[] = {	/* OpenPGP card spec 3.3 */
+	{ 0x00f9, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  NULL,               sc_put_data },
+	/* OpenPGP card spec 3.0 - 3.2 */
+	{ 0x00d6, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  NULL,               sc_put_data },
+	{ 0x00d7, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  NULL,               sc_put_data },
+	{ 0x00d8, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  NULL,               sc_put_data },
+	/* DO 7F66 is CONSTRUCTED in spec; we treat it as SIMPLE: no need to parse TLV */
+	{ 0x7f66, SIMPLE,      READ_ALWAYS | WRITE_NEVER, NULL,               sc_put_data },
+	/* DO 7F74 is CONSTRUCTED in spec; we treat it as SIMPLE for the time being */
+	{ 0x7f74, SIMPLE,      READ_ALWAYS | WRITE_NEVER, NULL,               sc_put_data },
+	/* OpenPGP card spec 2.1 & 2.2 */
 	{ 0x00d5, SIMPLE,      READ_NEVER  | WRITE_PIN3,  NULL,               sc_put_data },
 	/* OpenPGP card spec 2.0 */
 	{ 0x004d, CONSTRUCTED, READ_NEVER  | WRITE_PIN3,  NULL,               sc_put_data },
@@ -313,7 +323,9 @@ static struct do_info		pgp21_objects[] = {	/* OpenPGP card spec 2.1 */
 	{ 0, 0, 0, NULL, NULL },
 };
 
-static struct do_info		*pgp20_objects = pgp21_objects + 1;
+static struct do_info		*pgp30_objects = pgp33_objects + 1;
+static struct do_info		*pgp21_objects = pgp33_objects + 6;
+static struct do_info		*pgp20_objects = pgp33_objects + 7;
 
 
 #define DRVDATA(card)        ((struct pgp_priv_data *) ((card)->drv_data))
@@ -475,7 +487,9 @@ pgp_init(sc_card_t *card)
 	/* set pointer to correct list of card objects */
 	priv->pgp_objects = (priv->bcd_version < OPENPGP_CARD_2_0) ? pgp1x_objects
 			  : (priv->bcd_version < OPENPGP_CARD_2_1) ? pgp20_objects
-			  :					     pgp21_objects;
+			  : (priv->bcd_version < OPENPGP_CARD_3_0) ? pgp21_objects
+			  : (priv->bcd_version < OPENPGP_CARD_3_3) ? pgp30_objects
+			  :					     pgp33_objects;
 
 	/* change file path to MF for re-use in MF */
 	sc_format_path("3f00", &file->path);
