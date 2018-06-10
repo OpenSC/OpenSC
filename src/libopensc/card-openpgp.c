@@ -121,6 +121,7 @@ enum _ext_caps {	/* extended capabilities/features */
 	EXT_CAP_KEY_IMPORT          = 0x0020,
 	EXT_CAP_GET_CHALLENGE       = 0x0040,
 	EXT_CAP_SM                  = 0x0080,
+	EXT_CAP_LCS                 = 0x0100,
 	EXT_CAP_CHAINING            = 0x1000,
 	EXT_CAP_APDU_EXT            = 0x2000
 };
@@ -593,6 +594,9 @@ pgp_get_card_features(sc_card_t *card)
 		}
 	}
 
+	/* v1.1 does not support lifecycle via ACTIVATE & TERMINATE: set default */
+	priv->ext_caps &= ~EXT_CAP_LCS;
+
 	if (priv->bcd_version >= OPENPGP_CARD_2_0) {
 		/* get card capabilities from "historical bytes" DO */
 		if ((pgp_get_blob(card, priv->mf, 0x5f52, &blob) >= 0) &&
@@ -601,8 +605,12 @@ pgp_get_card_features(sc_card_t *card)
 			pgp_parse_hist_bytes(card, hist_bytes+1, hist_bytes_len-4);
 
 			/* get card status from historical bytes status indicator */
-			if ((blob->data[0] == 0x00) && (blob->len >= 4))
+			if ((blob->data[0] == 0x00) && (blob->len >= 4)) {
 				priv->state = blob->data[blob->len-3];
+				/* state not CARD_STATE_UNKNOWN => LCS supported */
+				if (priv->state != CARD_STATE_UNKNOWN)
+					priv->ext_caps |= EXT_CAP_LCS;
+			}
 		}
 	}
 
@@ -2759,8 +2767,7 @@ pgp_erase_card(sc_card_t *card)
 
 	LOG_FUNC_CALLED(card->ctx);
 
-	if (priv->bcd_version < OPENPGP_CARD_2_0
-			|| priv->state == CARD_STATE_UNKNOWN) {
+	if ((priv->ext_caps & EXT_CAP_LCS) == 0) {
 		LOG_TEST_RET(card->ctx, SC_ERROR_NO_CARD_SUPPORT,
 				"Card does not offer life cycle management");
 	}
