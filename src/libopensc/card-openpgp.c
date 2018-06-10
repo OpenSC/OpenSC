@@ -669,7 +669,6 @@ pgp_get_card_features(sc_card_t *card)
 					/* v3.0+: max. size of special DOs is at bytes 7-8 */
 					priv->max_specialDO_size = bebytes2ushort(blob->data + 6);
 				}
-				/* TODO read Extended length information from DO 7F66 in OpenPGP 3.0 and later */
 			}
 		}
 
@@ -698,6 +697,22 @@ pgp_get_card_features(sc_card_t *card)
 
 					_sc_card_add_rsa_alg(card, keylen, flags, 0);
 				}
+			}
+		}
+
+		if (priv->bcd_version >= OPENPGP_CARD_3_0) {
+			/* v3.0+: get length info from "extended length information" DO */
+			if ((pgp_get_blob(card, blob6e, 0x7f66, &blob) >= 0) &&
+				(blob->data != NULL) && (blob->len >= 8)) {
+				/* kludge: treat as SIMPLE DO and use appropriate offsets */
+				card->max_send_size = bebytes2ushort(blob->data + 2);
+				card->max_recv_size = bebytes2ushort(blob->data + 6);
+			}
+
+			/* v3.0+: get card features from "general feature management" DO */
+			if ((pgp_get_blob(card, blob6e, 0x7f74, &blob) >= 0) &&
+				(blob->data != NULL) && (blob->len >= 5)) {
+				// ToDo: parse tag 81 in this DO ...
 			}
 		}
 	}
