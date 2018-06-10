@@ -662,7 +662,6 @@ pgp_get_card_features(sc_card_t *card)
 					if ((priv->sm_algo == SM_ALGO_NONE) && (priv->ext_caps & EXT_CAP_SM))
 						priv->sm_algo = SM_ALGO_UNKNOWN;
 				}
-				/* TODO read Extended length information from DO 7F66 in OpenPGP 3.0 and later */
 			}
 		}
 
@@ -691,6 +690,16 @@ pgp_get_card_features(sc_card_t *card)
 
 					_sc_card_add_rsa_alg(card, keylen, flags, 0);
 				}
+			}
+		}
+
+		if (priv->bcd_version >= OPENPGP_CARD_3_0) {
+			/* v3.0+: get length info from "extended length information" DO */
+			if ((pgp_get_blob(card, blob6e, 0x7f66, &blob) >= 0) &&
+				(blob->data != NULL) && (blob->len >= 8)) {
+				/* kludge: treat as SIMPLE DO and use appropriate offsets */
+				card->max_send_size = bebytes2ushort(blob->data + 2);
+				card->max_recv_size = bebytes2ushort(blob->data + 6);
 			}
 		}
 	}
