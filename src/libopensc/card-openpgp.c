@@ -315,13 +315,12 @@ static struct do_info		pgp33_objects[] = {	/* OpenPGP card spec 3.3 */
 	{ 0x5f48, CONSTRUCTED, READ_NEVER  | WRITE_PIN3,  NULL,               sc_put_data },
 	{ 0x5f50, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  sc_get_data,        sc_put_data },
 	{ 0x5f52, SIMPLE,      READ_ALWAYS | WRITE_NEVER, sc_get_data,        NULL        },
-	/* The 7F21 is constructed DO in spec, but in practice, its content can be retrieved
-	 * as simple DO (no need to parse TLV). */
+	/* DO 7F21 is CONSTRUCTED in spec; we treat it as SIMPLE: no need to parse TLV */
 	{ DO_CERT, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  sc_get_data,        sc_put_data },
 	{ 0x7f48, CONSTRUCTED, READ_NEVER  | WRITE_NEVER, NULL,               NULL        },
 	{ 0x7f49, CONSTRUCTED, READ_ALWAYS | WRITE_NEVER, NULL,               NULL        },
 	{ DO_AUTH,     CONSTRUCTED, READ_ALWAYS | WRITE_NEVER, pgp_get_pubkey,     NULL   },
-	/* The 0xA401, 0xB601, 0xB801 are just symbolic, it does not represent any real DO.
+	/* The DOs 0xA401, 0xB601, 0xB801 are virtual DOs, they do not represent any real DO.
 	 * However, their R/W access condition may block the process of importing key in pkcs15init.
 	 * So we set their accesses condition as WRITE_PIN3 (writable). */
 	{ DO_AUTH_SYM, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  pgp_get_pubkey_pem, NULL   },
