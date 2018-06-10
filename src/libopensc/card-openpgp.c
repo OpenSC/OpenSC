@@ -131,6 +131,15 @@ enum _card_state {
 	CARD_STATE_ACTIVATED      = 0x05
 };
 
+enum _sm_algo {
+	SM_ALGO_NONE    = 0,	/* SM not supported */
+	SM_ALGO_AES128  = 1,
+	SM_ALGO_AES256  = 2,
+	SM_ALGO_SCP11b  = 3,
+	SM_ALGO_3DES    = 256,	/* 2.x: coded as 0 in DO C0 */
+	SM_ALGO_UNKNOWN = 257	/* 3.x: coded as 0 in DO C0 */
+};
+
 typedef struct pgp_blob {
 	struct pgp_blob *	next;	/* pointer to next sibling */
 	struct pgp_blob *	parent;	/* pointer to parent */
@@ -329,9 +338,10 @@ static struct do_info		*pgp20_objects = pgp33_objects + 7;
 
 
 #define DRVDATA(card)        ((struct pgp_priv_data *) ((card)->drv_data))
+
 struct pgp_priv_data {
-	pgp_blob_t *		mf;
-	pgp_blob_t *		current;	/* currently selected file */
+	pgp_blob_t		*mf;
+	pgp_blob_t		*current;	/* currently selected file */
 
 	enum _version		bcd_version;
 	struct do_info		*pgp_objects;
@@ -339,11 +349,14 @@ struct pgp_priv_data {
 	enum _card_state	state;		/* card state */
 	enum _ext_caps		ext_caps;	/* extended capabilities */
 
+	enum _sm_algo		sm_algo;	/* Secure Messaging algorithm */
+
 	size_t			max_challenge_size;
 	size_t			max_cert_size;
 
 	sc_security_env_t	sec_env;
 };
+
 
 static int
 get_full_pgp_aid(sc_card_t *card, sc_file_t *file)
@@ -632,10 +645,22 @@ pgp_get_card_features(sc_card_t *card)
 				priv->max_challenge_size = bebytes2ushort(blob->data + 2);
 				/* v2.0+: max. cert size it at bytes 5-6 */
 				priv->max_cert_size = bebytes2ushort(blob->data + 4);
+
 				if (priv->bcd_version < OPENPGP_CARD_3_0) {
+					/* v2.x: SM algorithm is at byte 2: 0 == 3DES */
+					priv->sm_algo = blob->data[0];
+					if ((priv->sm_algo == SM_ALGO_NONE) && (priv->ext_caps & EXT_CAP_SM))
+						priv->sm_algo = SM_ALGO_3DES;
+
 					/* v2.x: max. send/receive sizes are at bytes 7-8 resp. 9-10 */
 					card->max_send_size = bebytes2ushort(blob->data + 6);
 					card->max_recv_size = bebytes2ushort(blob->data + 8);
+				}
+				else {
+					/* v3.0+: SM algorithm is at byte 2: 0 == UNKNOWN */
+					priv->sm_algo = blob->data[0];
+					if ((priv->sm_algo == SM_ALGO_NONE) && (priv->ext_caps & EXT_CAP_SM))
+						priv->sm_algo = SM_ALGO_UNKNOWN;
 				}
 				/* TODO read Extended length information from DO 7F66 in OpenPGP 3.0 and later */
 			}
