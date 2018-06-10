@@ -20,11 +20,18 @@
 
 /*
  * Specifications:
- * http://www.g10code.de/docs/openpgp-card-1.0.pdf (obsolete)
- * http://www.g10code.de/docs/openpgp-card-1.1.pdf
- * http://www.g10code.de/docs/openpgp-card-2.0.pdf
- * http://www.g10code.de/docs/openpgp-card-2.1.pdf (minor changes to v2.0)
- * http://www.g10code.de/docs/openpgp-card-3.0.pdf (not yet supported)
+ * (all available from: https://gnupg.org/ftp/specs/)
+ * https://gnupg.org/ftp/specs/openpgp-card-1.0.pdf (obsolete)
+ * https://gnupg.org/ftp/specs/openpgp-card-1.1.pdf
+ * https://gnupg.org/ftp/specs/OpenPGP-smart-card-application-2.0.pdf
+ * https://gnupg.org/ftp/specs/OpenPGP-smart-card-application-2.1.pdf
+ * https://gnupg.org/ftp/specs/OpenPGP-smart-card-application-2.2.pdf
+ * https://gnupg.org/ftp/specs/OpenPGP-smart-card-application-3.0.pdf
+ * https://gnupg.org/ftp/specs/OpenPGP-smart-card-application-3.1.pdf
+ * https://gnupg.org/ftp/specs/OpenPGP-smart-card-application-3.2.pdf
+ * https://gnupg.org/ftp/specs/OpenPGP-smart-card-application-3.3.pdf
+ * https://gnupg.org/ftp/specs/OpenPGP-smart-card-application-3.3.0.pdf
+ * https://gnupg.org/ftp/specs/OpenPGP-smart-card-application-3.3.1.pdf
  */
 
 #if HAVE_CONFIG_H
@@ -441,7 +448,7 @@ pgp_init(sc_card_t *card)
 
 	/* read information from AID */
 	if (file->namelen == 16) {
-		/* OpenPGP card spec 1.1 & 2.0, section 4.2.1 & 4.1.2.1 */
+		/* OpenPGP card spec 1.1, 2.x & 3.x, section 4.2.1 & 4.1.2.1 */
 		priv->bcd_version = bebytes2ushort(file->name + 6);
 		card->version.fw_major = card->version.hw_major = BCD2CHAR(file->name[6]);
 		card->version.fw_minor = card->version.hw_minor = BCD2CHAR(file->name[7]);
@@ -583,7 +590,7 @@ pgp_get_card_features(sc_card_t *card)
 		/* get "extended capabilities" DO */
 		if ((pgp_get_blob(card, blob73, 0x00c0, &blob) >= 0) &&
 		    (blob->data != NULL) && (blob->len > 0)) {
-			/* in v2.0 bit 0x04 in first byte means "algorithm attributes changeable" */
+			/* v2.0+: bit 0x04 in first byte means "algorithm attributes changeable" */
 			if ((blob->data[0] & 0x04) &&
 					(priv->bcd_version >= OPENPGP_CARD_2_0))
 				priv->ext_caps |= EXT_CAP_ALG_ATTR_CHANGEABLE;
@@ -601,18 +608,18 @@ pgp_get_card_features(sc_card_t *card)
 				card->caps |= SC_CARD_CAP_RNG;
 				priv->ext_caps |= EXT_CAP_GET_CHALLENGE;
 			}
-			/* in v2.0 bit 0x80 in first byte means "support Secure Messaging" */
+			/* v2.0+: bit 0x80 in first byte means "support Secure Messaging" */
 			if ((blob->data[0] & 0x80) &&
 					(priv->bcd_version >= OPENPGP_CARD_2_0))
 				priv->ext_caps |= EXT_CAP_SM;
 
 			if ((priv->bcd_version >= OPENPGP_CARD_2_0) && (blob->len >= 10)) {
-				/* max. challenge size is at bytes 3-4 */
+				/* v2.0+: max. challenge size is at bytes 3-4 */
 				priv->max_challenge_size = bebytes2ushort(blob->data + 2);
-				/* max. cert size it at bytes 5-6 */
+				/* v2.0+: max. cert size it at bytes 5-6 */
 				priv->max_cert_size = bebytes2ushort(blob->data + 4);
 				if (priv->bcd_version < OPENPGP_CARD_3_0) {
-					/* max. send/receive sizes are at bytes 7-8 resp. 9-10 */
+					/* v2.x: max. send/receive sizes are at bytes 7-8 resp. 9-10 */
 					card->max_send_size = bebytes2ushort(blob->data + 6);
 					card->max_recv_size = bebytes2ushort(blob->data + 8);
 				}
@@ -632,7 +639,7 @@ pgp_get_card_features(sc_card_t *card)
 			unsigned long flags;
 
 			/* Is this correct? */
-			/* OpenPGP card spec 1.1 & 2.0, section 7.2.9 & 7.2.10 */
+			/* OpenPGP card spec 1.1 & 2.x, section 7.2.9 & 7.2.10 / v3.x section 7.2.11 & 7.2.12 */
 			flags = SC_ALGORITHM_RSA_PAD_PKCS1;
 			flags |= SC_ALGORITHM_RSA_HASH_NONE;
 			/* Can be generated in card */
@@ -1835,7 +1842,7 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 
 	LOG_FUNC_CALLED(card->ctx);
 
-	/* padding according to OpenPGP card spec 1.1, 2.x & 3.x section 7.2.9 */
+	/* padding according to OpenPGP card spec 1.1 & 2.x section 7.2.9 / 3.x section 7.2.11 */
 	if (!(temp = malloc(inlen + 1)))
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 	/* padding byte: 0x00 = RSA; 0x02 = AES [v2.1+ only] */
