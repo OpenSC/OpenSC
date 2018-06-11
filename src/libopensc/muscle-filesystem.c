@@ -53,6 +53,7 @@ mscfs_t *mscfs_new(void) {
 
 void mscfs_free(mscfs_t *fs) {
 	mscfs_clear_cache(fs);
+	free(fs);
 }
 
 void mscfs_clear_cache(mscfs_t* fs) {
