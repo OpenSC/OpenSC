@@ -280,7 +280,7 @@ static const sc_path_t cac_CCC_Path = {
 	{ CAC_TO_AID(CAC_2_RID "\xDB\x00") }
 };
 
-#define MAX_CAC_SLOTS 16		/* arbitrary, just needs to be 'large enough' */
+#define MAX_CAC_SLOTS 16		/* Maximum number of slots is 16 now */
 /* default certificate labels for the CAC card */
 static const char *cac_labels[MAX_CAC_SLOTS] = {
 	"CAC ID Certificate",
@@ -1088,7 +1088,7 @@ static int cac_decipher(sc_card_t *card,
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, cac_rsa_op(card, data, datalen, out, outlen));
 }
 
-static int parse_properties_object(sc_card_t *card, u8 type,
+static int cac_parse_properties_object(sc_card_t *card, u8 type,
     u8 *data, size_t data_len, cac_properties_object_t *object)
 {
 	size_t len;
@@ -1226,7 +1226,7 @@ static int cac_get_properties(sc_card_t *card, cac_properties_t *prop)
 			if (i >= CAC_MAX_OBJECTS)
 				return SC_SUCCESS;
 
-			if (parse_properties_object(card, tag, val, len,
+			if (cac_parse_properties_object(card, tag, val, len,
 			    &prop->objects[i]) == SC_SUCCESS)
 				i++;
 			break;
@@ -1242,7 +1242,7 @@ static int cac_get_properties(sc_card_t *card, cac_properties_t *prop)
 			if (i >= CAC_MAX_OBJECTS)
 				return SC_SUCCESS;
 
-			if (parse_properties_object(card, tag, val, len,
+			if (cac_parse_properties_object(card, tag, val, len,
 			    &prop->objects[i]) == SC_SUCCESS)
 				i++;
 			break;
