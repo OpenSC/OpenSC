@@ -518,9 +518,14 @@ if test "${enable_notify}" = "yes"; then
 	fi
 fi
 
-PKG_CHECK_MODULES( [CMOCKA], [cmocka],
-		  [ have_cmocka="yes" ],
-		  [ have_cmocka="no" ])
+have_cmocka="yes"
+PKG_CHECK_MODULES([CMOCKA], [cmocka >= 1.1.0],,[have_cmocka="no"])
+AC_CHECK_HEADER([setjmp.h])
+AC_CHECK_HEADER([cmocka.h],, [have_cmocka="no"],
+[#include <stdarg.h>
+#include <stddef.h>
+#include <setjmp.h>
+])
 
 if test "${enable_tests}" = "detect"; then
 	if test "${have_cmocka}" = "yes"; then
