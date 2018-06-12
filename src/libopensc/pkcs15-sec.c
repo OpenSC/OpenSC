@@ -485,7 +485,7 @@ int sc_pkcs15_wrap(struct sc_pkcs15_card *p15card,
 	}
 
 	if (!(target_key->type == SC_PKCS15_TYPE_PRKEY_RSA ||
-			(key->type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_SKEY)) {
+			(target_key->type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_SKEY)) {
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Target key type not supported");
 	}
 
