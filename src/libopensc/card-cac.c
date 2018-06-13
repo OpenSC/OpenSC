@@ -1518,7 +1518,8 @@ static int cac_parse_aid(sc_card_t *card, cac_private_data_t *priv, u8 *aid, int
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	/* Search for PKI applets (7 B). Ignore generic objects for now */
-	if (aid_len != 7 || memcmp(aid, CAC_1_RID "\x01", 6) != 0)
+	if (aid_len != 7 || (memcmp(aid, CAC_1_RID "\x01", 6) != 0
+	    && memcmp(aid, CAC_1_RID "\x00", 6) != 0))
 		return SC_SUCCESS;
 
 	sc_mem_clear(&new_object.path, sizeof(sc_path_t));
