@@ -1224,8 +1224,10 @@ static int cac_get_properties(sc_card_t *card, cac_properties_t *prop)
 			}
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
 			    "TAG: TV Object nr. %"SC_FORMAT_LEN_SIZE_T"u", i);
-			if (i >= CAC_MAX_OBJECTS)
+			if (i >= CAC_MAX_OBJECTS) {
+				free(rbuf);
 				return SC_SUCCESS;
+			}
 
 			if (cac_parse_properties_object(card, tag, val, len,
 			    &prop->objects[i]) == SC_SUCCESS)
@@ -1240,8 +1242,10 @@ static int cac_get_properties(sc_card_t *card, cac_properties_t *prop)
 			}
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
 			    "TAG: PKI Object nr. %"SC_FORMAT_LEN_SIZE_T"u", i);
-			if (i >= CAC_MAX_OBJECTS)
+			if (i >= CAC_MAX_OBJECTS) {
+				free(rbuf);
 				return SC_SUCCESS;
+			}
 
 			if (cac_parse_properties_object(card, tag, val, len,
 			    &prop->objects[i]) == SC_SUCCESS)
@@ -1255,6 +1259,7 @@ static int cac_get_properties(sc_card_t *card, cac_properties_t *prop)
 			break;
 		}
 	}
+	free(rbuf);
 	/* sanity */
 	if (i != prop->num_objects)
 		return SC_ERROR_INVALID_DATA;
