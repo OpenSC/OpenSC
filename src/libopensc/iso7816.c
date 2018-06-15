@@ -58,7 +58,7 @@ static const struct sc_card_error iso7816_errors[] = {
 	{ 0x6283, SC_ERROR_CARD_CMD_FAILED,	"Selected file invalidated" },
 	{ 0x6284, SC_ERROR_CARD_CMD_FAILED,	"FCI not formatted according to ISO 7816-4" },
 	{ 0x6285, SC_ERROR_CARD_CMD_FAILED,	"Selected file in termination state" },
-	{ 0x6286, SC_ERROR_CARD_CMD_FAILED,	"No input data available from a sensori on the card" },
+	{ 0x6286, SC_ERROR_CARD_CMD_FAILED,	"No input data available from a sensor on the card" },
 
 	{ 0x6300, SC_ERROR_CARD_CMD_FAILED,	"Warning: no information given, non-volatile memory has changed" },
 	{ 0x6381, SC_ERROR_CARD_CMD_FAILED,	"Warning: file filled up by last write" },
