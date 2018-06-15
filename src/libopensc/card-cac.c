@@ -1539,22 +1539,26 @@ static int cac_parse_aid(sc_card_t *card, cac_private_data_t *priv, u8 *aid, int
 		if (priv->cert_next >= MAX_CAC_SLOTS)
 			return SC_SUCCESS;
 
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
+		    "ACA: pki_object found, cert_next=%d (%s), privkey=%d",
+		    priv->cert_next, cac_labels[priv->cert_next],
+		    prop.objects[i].privatekey);
+
 		/* If the private key is not initialized, we can safely
-		 * ignore this object here
+		 * ignore this object here, but increase the pointer to follow
+		 * the certificate labels
 		 */
-		if (!prop.objects[i].privatekey)
+		if (!prop.objects[i].privatekey) {
+			priv->cert_next++;
 			continue;
+		}
 
 		/* OID here has always 2B */
 		memcpy(new_object.path.value, &prop.objects[i].oid, 2);
 		new_object.path.len = 2;
 		new_object.path.type = SC_PATH_TYPE_FILE_ID;
-
 		new_object.name = cac_labels[priv->cert_next];
 		new_object.fd = priv->cert_next+1;
-		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
-		    "ACA: pki_object found, cert_next=%d (%s),",
-		    priv->cert_next, new_object.name);
 		cac_add_object_to_list(&priv->pki_list, &new_object);
 		priv->cert_next++;
 	}
