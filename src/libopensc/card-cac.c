@@ -1781,9 +1781,8 @@ static int cac_parse_ACA_service(sc_card_t *card, cac_private_data_t *priv,
 		switch (tag) {
 		case CAC_TAG_APPLET_FAMILY:
 			if (len != 5) {
-				sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
-				    "TAG: Applet Information = (bad length %"
-				    SC_FORMAT_LEN_SIZE_T"u)", len);
+				sc_log(card->ctx, "TAG: Applet Information: "
+				    "bad length %"SC_FORMAT_LEN_SIZE_T"u", len);
 				break;
 			}
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
@@ -1794,23 +1793,23 @@ static int cac_parse_ACA_service(sc_card_t *card, cac_private_data_t *priv,
 			break;
 		case CAC_TAG_NUMBER_APPLETS:
 			if (len != 1) {
-				sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
-				    "TAG: Num applets = (bad length %"SC_FORMAT_LEN_SIZE_T"u)",
-				    len);
+				sc_log(card->ctx, "TAG: Num applets: "
+				    "bad length %"SC_FORMAT_LEN_SIZE_T"u", len);
 				break;
 			}
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
 			    "TAG: Num applets = %hhd", *val);
 			break;
 		case CAC_TAG_APPLET_ENTRY:
-			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
-			    "TAG: Applet Entry");
 			/* Make sure we match the outer length */
 			if (len < 3 || val[2] != len - 3) {
-				sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
-				    "bad length of internal buffer");
+				sc_log(card->ctx, "TAG: Applet Entry: "
+				    "bad length (%"SC_FORMAT_LEN_SIZE_T
+				    "u) or length of internal buffer", len);
 				break;
 			}
+			sc_debug_hex(card->ctx, SC_LOG_DEBUG_VERBOSE,
+			    "TAG: Applet Entry: AID", &val[3], val[2]);
 			/* This is SimpleTLV prefixed with applet ID (1B) */
 			r = cac_parse_aid(card, priv, &val[3], val[2]);
 			if (r < 0)
