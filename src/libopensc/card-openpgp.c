@@ -359,6 +359,9 @@ struct pgp_priv_data {
 };
 
 
+/**
+ * Internal: get OpenPGP application identifier from AID DO 004F
+ */
 static int
 get_full_pgp_aid(sc_card_t *card, sc_file_t *file)
 {
@@ -370,9 +373,10 @@ get_full_pgp_aid(sc_card_t *card, sc_file_t *file)
 	return r;
 }
 
+
 /**
  * ABI: check if card's ATR matches one of driver's
- * or if the OpenPGP application is present.
+ * or if the OpenPGP application is present on the card.
  */
 static int
 pgp_match_card(sc_card_t *card)
@@ -428,7 +432,7 @@ pgp_match_card(sc_card_t *card)
 #define BCD2CHAR(x) (((((x) & 0xF0) >> 4) * 10) + ((x) & 0x0F))
 
 /**
- * ABI: initialize driver.
+ * ABI: initialize driver & allocate private data.
  */
 static int
 pgp_init(sc_card_t *card)
@@ -538,8 +542,9 @@ pgp_init(sc_card_t *card)
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
+
 /**
- * Internal: get features of the card: capabilities, ...
+ * Internal: parse historic bytes to get card capabilities.
  */
 static void
 pgp_parse_hist_bytes(sc_card_t *card, u8 *ctlv, size_t ctlv_len)
@@ -566,6 +571,7 @@ pgp_parse_hist_bytes(sc_card_t *card, u8 *ctlv, size_t ctlv_len)
 		// ToDo ...
 	}
 }
+
 
 /**
  * Internal: get features of the card: capabilities, ...
@@ -729,7 +735,7 @@ pgp_get_card_features(sc_card_t *card)
 
 
 /**
- * ABI: terminate driver.
+ * ABI: terminate driver & free private data.
  */
 static int
 pgp_finish(sc_card_t *card)
@@ -1007,7 +1013,7 @@ pgp_read_blob(sc_card_t *card, pgp_blob_t *blob)
 }
 
 
-/*
+/**
  * Internal: enumerate contents of a data blob.
  * The OpenPGP card has a TLV encoding according ASN.1 BER-encoding rules.
  */
@@ -1201,7 +1207,7 @@ pgp_strip_path(sc_card_t *card, const sc_path_t *path)
 
 
 /**
- * ABI: SELECT FILE.
+ * ABI: ISO 7816-4 SELECT FILE - search given file & make it the currently selected one.
  */
 static int
 pgp_select_file(sc_card_t *card, const sc_path_t *path, sc_file_t **ret)
@@ -1281,7 +1287,7 @@ pgp_select_file(sc_card_t *card, const sc_path_t *path, sc_file_t **ret)
 
 
 /**
- * ABI: LIST FILES.
+ * ABI: ISO 7816-4 LIST FILES - enumerate all files in current DF.
  */
 static int
 pgp_list_files(sc_card_t *card, u8 *buf, size_t buflen)
@@ -1316,6 +1322,10 @@ pgp_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 	LOG_FUNC_RETURN(card->ctx, k);
 }
 
+
+/**
+ * ABI: ISO 7816-4 GET CHALLENGE - generate random byte sequence.
+ */
 static int
 pgp_get_challenge(struct sc_card *card, u8 *rnd, size_t len)
 {
@@ -1337,7 +1347,7 @@ pgp_get_challenge(struct sc_card *card, u8 *rnd, size_t len)
 
 
 /**
- * ABI: READ BINARY.
+ * ABI: ISO 7816-4 READ BINARY - read data from currently selected EF.
  */
 static int
 pgp_read_binary(sc_card_t *card, unsigned int idx,
@@ -1373,7 +1383,7 @@ pgp_read_binary(sc_card_t *card, unsigned int idx,
 
 
 /**
- * ABI: WRITE BINARY.
+ * ABI: ISO 7816-4 WRITE BINARY - write data to currently selected EF.
  */
 static int
 pgp_write_binary(sc_card_t *card, unsigned int idx,
@@ -1384,7 +1394,7 @@ pgp_write_binary(sc_card_t *card, unsigned int idx,
 
 
 /**
- * Internal: get public key from card: as DF + sub-wEFs.
+ * Internal: get public key from card - as DF + sub-wEFs.
  */
 static int
 pgp_get_pubkey(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
@@ -1416,7 +1426,7 @@ pgp_get_pubkey(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 
 
 /**
- * Internal: get public key from card: as one wEF.
+ * Internal: get public key from card - as one wEF.
  */
 static int
 pgp_get_pubkey_pem(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
@@ -1458,7 +1468,7 @@ pgp_get_pubkey_pem(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 
 
 /**
- * ABI: GET DATA.
+ * ABI: ISO 7816-4 GET DATA - get contents of a DO.
  */
 static int
 pgp_get_data(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
@@ -1566,7 +1576,7 @@ pgp_put_data_plain(sc_card_t *card, unsigned int tag, const u8 *buf, size_t buf_
 
 	LOG_FUNC_CALLED(card->ctx);
 
-	/* Extended Header list (004D DO) needs a variant of PUT DATA command */
+	/* Extended Header list (DO 004D) needs a variant of PUT DATA command */
 	if (tag == 0x004D) {
 		ins = 0xDB;
 		p1 = 0x3F;
@@ -1604,7 +1614,7 @@ pgp_put_data_plain(sc_card_t *card, unsigned int tag, const u8 *buf, size_t buf_
 
 
 /**
- * ABI: PUT DATA.
+ * ABI: ISO 7816-4 PUT DATA - write contents of a DO.
  */
 static int
 pgp_put_data(sc_card_t *card, unsigned int tag, const u8 *buf, size_t buf_len)
@@ -1675,7 +1685,7 @@ pgp_put_data(sc_card_t *card, unsigned int tag, const u8 *buf, size_t buf_len)
 
 
 /**
- * ABI: PIN cmd: verify/change/unblock a PIN.
+ * ABI: ISO 7816-9 PIN CMD - verify/change/unblock a PIN.
  */
 static int
 pgp_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
@@ -1755,6 +1765,9 @@ pgp_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 }
 
 
+/**
+ * ABI: ISO 7816-8 LOGOUT - reset all access rights gained.
+ */
 int pgp_logout(struct sc_card *card)
 {
 	int r = SC_SUCCESS;
@@ -1786,7 +1799,7 @@ int pgp_logout(struct sc_card *card)
 
 
 /**
- * ABI: set security environment.
+ * ABI: ISO 7816-8 SET SECURITY ENVIRONMENT.
  */
 static int
 pgp_set_security_env(sc_card_t *card,
@@ -1839,7 +1852,7 @@ pgp_set_security_env(sc_card_t *card,
 
 
 /**
- * ABI: COMPUTE DIGITAL SIGNATURE.
+ * ABI: ISO 7816-8 COMPUTE DIGITAL SIGNATURE.
  */
 static int
 pgp_compute_signature(sc_card_t *card, const u8 *data,
@@ -1895,7 +1908,7 @@ pgp_compute_signature(sc_card_t *card, const u8 *data,
 
 
 /**
- * ABI: DECIPHER.
+ * ABI: ISO 7816-8 DECIPHER - perform deciphering operation.
  */
 static int
 pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
@@ -2828,7 +2841,7 @@ pgp_erase_card(sc_card_t *card)
 
 
 /**
- * ABI: card ctl: perform special card-specific operations.
+ * ABI: ISO 7816-9 CARD CTL - perform special card-specific operations.
  */
 static int
 pgp_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
@@ -2865,7 +2878,7 @@ pgp_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 
 
 /**
- * Internal: delete key.
+ * Internal: delete key (GnuK only).
  */
 static int
 gnuk_delete_key(sc_card_t *card, u8 key_id)
@@ -2907,7 +2920,7 @@ gnuk_delete_key(sc_card_t *card, u8 key_id)
 
 
 /**
- * ABI: DELETE FILE.
+ * ABI: ISO 7816-9 DELETE FILE - delete EF or DF given.
  */
 static int
 pgp_delete_file(sc_card_t *card, const sc_path_t *path)
@@ -2926,7 +2939,7 @@ pgp_delete_file(sc_card_t *card, const sc_path_t *path)
 	/* save "current" blob */
 	blob = priv->current;
 
-	/* do try to delete MF */
+	/* don't try to delete MF */
 	if (blob == priv->mf)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 
@@ -2957,7 +2970,7 @@ pgp_delete_file(sc_card_t *card, const sc_path_t *path)
 
 
 /**
- * ABI: UPDATE BINARY.
+ * ABI: ISO 7816-4 UPDATE BINARY - update data in current EF.
  */
 static int
 pgp_update_binary(sc_card_t *card, unsigned int idx,
@@ -2984,6 +2997,9 @@ pgp_update_binary(sc_card_t *card, unsigned int idx,
 }
 
 
+/**
+ * ABI: card reader lock obtained - re-select card applet if necessary.
+ */
 static int pgp_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 {
 	struct pgp_priv_data *priv = DRVDATA(card); /* may be null during initialization */
@@ -3020,6 +3036,9 @@ static int pgp_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 }
 
 
+/**
+ * API: integrate OpenPGP driver into OpenSC's driver list.
+ */
 struct sc_card_driver *
 sc_get_openpgp_driver(void)
 {
