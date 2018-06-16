@@ -51,13 +51,18 @@
 #include <openssl/sha.h>
 #endif /* ENABLE_OPENSSL */
 
+static const char default_cardname[]    = "OpenPGP card";
+static const char default_cardname_v1[] = "OpenPGP card v1.x";
+static const char default_cardname_v2[] = "OpenPGP card v2.x";
+static const char default_cardname_v3[] = "OpenPGP card v3.x";
+
 static struct sc_atr_table pgp_atrs[] = {
-	{ "3b:fa:13:00:ff:81:31:80:45:00:31:c1:73:c0:01:00:00:90:00:b1", NULL, "OpenPGP card v1.0/1.1", SC_CARD_TYPE_OPENPGP_V1, 0, NULL },
-	{ "3b:da:18:ff:81:b1:fe:75:1f:03:00:31:c5:73:c0:01:40:00:90:00:0c", NULL, "CryptoStick v1.2 (OpenPGP v2.0)", SC_CARD_TYPE_OPENPGP_V2, 0, NULL },
+	{ "3b:fa:13:00:ff:81:31:80:45:00:31:c1:73:c0:01:00:00:90:00:b1", NULL, default_cardname_v1, SC_CARD_TYPE_OPENPGP_V1, 0, NULL },
+	{ "3b:da:18:ff:81:b1:fe:75:1f:03:00:31:c5:73:c0:01:40:00:90:00:0c", NULL, default_cardname_v2, SC_CARD_TYPE_OPENPGP_V2, 0, NULL },
 	{ "3b:da:11:ff:81:b1:fe:55:1f:03:00:31:84:73:80:01:80:00:90:00:e4", NULL, "Gnuk v1.0.x (OpenPGP v2.0)", SC_CARD_TYPE_OPENPGP_GNUK, 0, NULL },
 	{ "3b:fc:13:00:00:81:31:fe:15:59:75:62:69:6b:65:79:4e:45:4f:72:33:e1", NULL, "Yubikey NEO (OpenPGP v2.0)", SC_CARD_TYPE_OPENPGP_V2, 0, NULL },
 	{ "3b:f8:13:00:00:81:31:fe:15:59:75:62:69:6b:65:79:34:d4", NULL, "Yubikey 4 (OpenPGP v2.1)", SC_CARD_TYPE_OPENPGP_V2, 0, NULL },
-	{ "3b:da:18:ff:81:b1:fe:75:1f:03:00:31:f5:73:c0:01:60:00:90:00:1c", NULL, "OpenPGP card V3", SC_CARD_TYPE_OPENPGP_V3, 0, NULL },
+	{ "3b:da:18:ff:81:b1:fe:75:1f:03:00:31:f5:73:c0:01:60:00:90:00:1c", NULL, default_cardname_v3, SC_CARD_TYPE_OPENPGP_V3, 0, NULL },
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
@@ -376,6 +381,8 @@ get_full_pgp_aid(sc_card_t *card, sc_file_t *file)
 }
 
 
+#define BCD2UCHAR(x) (((((x) & 0xF0) >> 4) * 10) + ((x) & 0x0F))
+
 /**
  * ABI: check if card's ATR matches one of driver's
  * or if the OpenPGP application is present on the card.
@@ -402,28 +409,30 @@ pgp_match_card(sc_card_t *card)
 		/* OpenPGP card only supports selection *with* requested FCI */
 		i = iso_ops->select_file(card, &partial_aid, &file);
 		if (SC_SUCCESS == i) {
-			static char card_name[SC_MAX_APDU_BUFFER_SIZE] = "OpenPGP card";
 			card->type = SC_CARD_TYPE_OPENPGP_BASE;
-			card->name = card_name;
+			card->name = default_cardname;
+
 			if (file->namelen != 16)
 				(void) get_full_pgp_aid(card, file);
 			if (file->namelen == 16) {
-				unsigned char major = file->name[6];
-				unsigned char minor = file->name[7];
+				unsigned char major = BCD2UCHAR(file->name[6]);
+
 				switch (major) {
 					case 1:
 						card->type = SC_CARD_TYPE_OPENPGP_V1;
+						card->name = default_cardname_v1;
 						break;
 					case 2:
 						card->type = SC_CARD_TYPE_OPENPGP_V2;
+						card->name = default_cardname_v2;
 						break;
 					case 3:
 						card->type = SC_CARD_TYPE_OPENPGP_V3;
+						card->name = default_cardname_v3;
 						break;
 					default:
 						break;
 				}
-				snprintf(card_name, sizeof(card_name), "OpenPGP card V%u.%u", major, minor);
 			}
 			sc_file_free(file);
 			LOG_FUNC_RETURN(card->ctx, 1);
@@ -432,8 +441,6 @@ pgp_match_card(sc_card_t *card)
 	LOG_FUNC_RETURN(card->ctx, 0);
 }
 
-
-#define BCD2CHAR(x) (((((x) & 0xF0) >> 4) * 10) + ((x) & 0x0F))
 
 /**
  * ABI: initialize driver & allocate private data.
@@ -483,8 +490,19 @@ pgp_init(sc_card_t *card)
 	if (file->namelen == 16) {
 		/* OpenPGP card spec 1.1, 2.x & 3.x, section 4.2.1 & 4.1.2.1 */
 		priv->bcd_version = bebytes2ushort(file->name + 6);
-		card->version.fw_major = card->version.hw_major = BCD2CHAR(file->name[6]);
-		card->version.fw_minor = card->version.hw_minor = BCD2CHAR(file->name[7]);
+		card->version.fw_major = card->version.hw_major = BCD2UCHAR(file->name[6]);
+		card->version.fw_minor = card->version.hw_minor = BCD2UCHAR(file->name[7]);
+
+		/* for "standard" cards, include detailed card version in card name */
+		if (card->name == default_cardname_v1 ||
+		    card->name == default_cardname_v2 ||
+		    card->name == default_cardname_v3) {
+			static char card_name[SC_MAX_APDU_BUFFER_SIZE] = "OpenPGP card";
+
+			snprintf(card_name, sizeof(card_name), "OpenPGP card v%u.%u",
+				 card->version.hw_major, card->version.hw_minor);
+			card->name = card_name;
+		}
 
 		/* kludge: get card's serial number from manufacturer ID + serial number */
 		memcpy(card->serialnr.value, file->name + 8, 6);
