@@ -443,7 +443,6 @@ pgp_init(sc_card_t *card)
 	sc_file_t	*file = NULL;
 	struct do_info	*info;
 	int		r;
-	pgp_blob_t 	*child = NULL;
 
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -525,8 +524,9 @@ pgp_init(sc_card_t *card)
 
 	/* populate MF - add matching blobs listed in the pgp_objects table */
 	for (info = priv->pgp_objects; (info != NULL) && (info->id > 0); info++) {
-		if (((info->access & READ_MASK) != READ_NEVER) &&
-			(info->get_fn != NULL)) {
+		if (((info->access & READ_MASK) != READ_NEVER) && (info->get_fn != NULL)) {
+			pgp_blob_t *child = NULL;
+
 			child = pgp_new_blob(card, priv->mf, info->id, sc_file_new());
 
 			/* catch out of memory condition */
