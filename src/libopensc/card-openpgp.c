@@ -383,6 +383,8 @@ pgp_match_card(sc_card_t *card)
 {
 	int i;
 
+	LOG_FUNC_CALLED(card->ctx);
+
 	i = _sc_match_atr(card, pgp_atrs, &card->type);
 	if (i >= 0) {
 		card->name = pgp_atrs[i].name;
@@ -422,10 +424,10 @@ pgp_match_card(sc_card_t *card)
 				snprintf(card_name, sizeof(card_name), "OpenPGP card V%u.%u", major, minor);
 			}
 			sc_file_free(file);
-			return 1;
+			LOG_FUNC_RETURN(card->ctx, 1);
 		}
 	}
-	return 0;
+	LOG_FUNC_RETURN(card->ctx, 0);
 }
 
 
@@ -448,7 +450,7 @@ pgp_init(sc_card_t *card)
 
 	priv = calloc (1, sizeof *priv);
 	if (!priv)
-		return SC_ERROR_OUT_OF_MEMORY;
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 	card->drv_data = priv;
 
 	card->cla = 0x00;
@@ -472,7 +474,7 @@ pgp_init(sc_card_t *card)
 		r = get_full_pgp_aid(card, file);
 		if (r < 0) {
 			pgp_finish(card);
-			return SC_ERROR_INVALID_CARD;
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_CARD);
 		}
 	}
 
