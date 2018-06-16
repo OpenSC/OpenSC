@@ -903,13 +903,15 @@ pgp_new_blob(sc_card_t *card, pgp_blob_t *parent, unsigned int file_id,
 			*p = blob;
 		}
 		else {
-			u8 id_str[2];
+			char path[10] = "0000";	/* long enough */
 
 			/* no parent: set file's path = file's id */
-			/* FIXME sc_format_path expects an hex string of a file
-			 * identifier. ushort2bebytes instead delivers a two bytes binary
-			 * string */
-			sc_format_path((char *) ushort2bebytes(id_str, file_id), &blob->file->path);
+			if (4 != snprintf(path, sizeof(path), "%04X", file_id & 0xFFFF)) {
+				free(blob);
+				return NULL;
+			}
+
+			sc_format_path(path, &blob->file->path);
 		}
 
 		/* find matching DO info: set file type depending on it */
