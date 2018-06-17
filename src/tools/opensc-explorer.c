@@ -92,6 +92,7 @@ static int do_info(int argc, char **argv);
 static int do_create(int argc, char **argv);
 static int do_mkdir(int argc, char **argv);
 static int do_delete(int argc, char **argv);
+static int do_pininfo(int argc, char **argv);
 static int do_verify(int argc, char **argv);
 static int do_change(int argc, char **argv);
 static int do_unblock(int argc, char **argv);
@@ -152,6 +153,9 @@ static struct command	cmds[] = {
 	{ do_delete,
 		"rm",	"<file id>",
 		"remove an EF/DF"			},
+	{ do_pininfo,
+		"pin_info",	"{CHV|KEY|AUT|PRO}<key ref>",
+		"get information on PIN or key from the card"	},
 	{ do_verify,
 		"verify",	"{CHV|KEY|AUT|PRO}<key ref> [<pin>]",
 		"present a PIN or key to the card"	},
@@ -1080,6 +1084,60 @@ static int do_delete(int argc, char **argv)
 		check_ret(r, SC_AC_OP_DELETE, "DELETE FILE failed", current_file);
 		return -1;
 	}
+	return 0;
+}
+
+static int do_pininfo(int argc, char **argv)
+{
+	const id2str_t typeNames[] = {
+		{ SC_AC_CHV,	"CHV"	},
+		{ SC_AC_AUT,	"KEY"	},
+		{ SC_AC_AUT,	"AUT"	},
+		{ SC_AC_PRO,	"PRO"	},
+		{ SC_AC_NONE,	NULL, 	}
+	};
+	int r, tries_left = -1;
+	size_t i;
+	struct sc_pin_cmd_data data;
+	int prefix_len = 0;
+
+	if (argc != 1)
+		return usage(do_pininfo);
+
+	memset(&data, 0, sizeof(data));
+	data.cmd = SC_PIN_CMD_GET_INFO;
+
+	data.pin_type = SC_AC_NONE;
+	for (i = 0; typeNames[i].str; i++) {
+		prefix_len = strlen(typeNames[i].str);
+		if (strncasecmp(argv[0], typeNames[i].str, prefix_len) == 0) {
+			data.pin_type = typeNames[i].id;
+			break;
+		}
+	}
+	if (data.pin_type == SC_AC_NONE) {
+		printf("Invalid type.\n");
+		return usage(do_pininfo);
+	}
+	if (sscanf(argv[0] + prefix_len, "%d", &data.pin_reference) != 1) {
+		printf("Invalid key reference.\n");
+		return usage(do_pininfo);
+	}
+
+	r = sc_lock(card);
+	if (r == SC_SUCCESS)
+		r = sc_pin_cmd(card, &data, &tries_left);
+	sc_unlock(card);
+
+	if (r) {
+		printf("Unable to get PIN info: %s\n", sc_strerror(r));
+		return -1;
+	}
+	if (tries_left > 0)
+		printf("Logged %s, %d tries left.\n",
+			(data.pin1.logged_in) ? "in" : "out", tries_left);
+	else
+		printf("Logged %s\n.", (data.pin1.logged_in) ? "in" : "out");
 	return 0;
 }
 
