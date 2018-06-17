@@ -354,6 +354,18 @@
 
 				<varlistentry>
 					<term>
+						<command>pin_info</command>
+						<replaceable>key-type</replaceable><replaceable>key-id</replaceable>
+					</term>
+					<listitem><para>Get information on a PIN or key from the card, where
+							<replaceable>key-type</replaceable> can be one of <literal>CHV</literal>,
+							<literal>KEY</literal>, <literal>AUT</literal> or <literal>PRO</literal>.
+							<replaceable>key-id</replaceable> is a number representing the key or PIN reference.
+					</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
 						<command>put</command>
 						<replaceable>file-id</replaceable>
 						<replaceable>input</replaceable>
