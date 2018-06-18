@@ -1254,15 +1254,18 @@ static int cac_get_properties(sc_card_t *card, cac_properties_t *prop)
 
 		default:
 			/* ignore tags we don't understand */
-			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
-			    "TAG: Unknown (0x%02x)",tag );
+			sc_log(card->ctx, "TAG: Unknown (0x%02x), len=%"
+			    SC_FORMAT_LEN_SIZE_T"u", tag, len);
 			break;
 		}
 	}
 	free(rbuf);
 	/* sanity */
 	if (i != prop->num_objects)
-		return SC_ERROR_INVALID_DATA;
+		sc_log(card->ctx, "The announced number of objects (%u) "
+		    "did not match reality (%"SC_FORMAT_LEN_SIZE_T"u)",
+		    prop->num_objects, i);
+	prop->num_objects = i;
 
 	return SC_SUCCESS;
 }
