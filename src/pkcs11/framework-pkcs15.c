@@ -794,7 +794,6 @@ __pkcs15_create_data_object(struct pkcs15_fw_data *fw_data,
 }
 
 
-#ifdef USE_PKCS15_INIT
 static int
 __pkcs15_create_secret_key_object(struct pkcs15_fw_data *fw_data,
 		struct sc_pkcs15_object *object, struct pkcs15_any_object **skey_object)
@@ -812,7 +811,6 @@ __pkcs15_create_secret_key_object(struct pkcs15_fw_data *fw_data,
 
 	return 0;
 }
-#endif
 
 
 static int
