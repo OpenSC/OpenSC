@@ -1390,9 +1390,9 @@ static int cac_path_from_cardurl(sc_card_t *card, sc_path_t *path, cac_card_url_
 	}
 	sc_mem_clear(path, sizeof(sc_path_t));
 	memcpy(path->aid.value, &val->rid, sizeof(val->rid));
-	memcpy(&path->aid.value[5], &val->applicationID, sizeof(val->applicationID));
+	memcpy(&path->aid.value[5], val->applicationID, sizeof(val->applicationID));
 	path->aid.len = sizeof(val->rid) + sizeof(val->applicationID);
-	memcpy(path->value, &val->objectID, sizeof(val->objectID));
+	memcpy(path->value, val->objectID, sizeof(val->objectID));
 	path->len = sizeof(val->objectID);
 	path->type = SC_PATH_TYPE_FILE_ID;
 	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
