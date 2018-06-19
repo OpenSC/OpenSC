@@ -1232,7 +1232,7 @@ static int sc_hsm_initialize(sc_card_t *card, sc_cardctl_sc_hsm_init_param_t *pa
 	int r;
 	size_t tilen;
 	sc_apdu_t apdu;
-	u8 ibuff[50], *p;
+	u8 ibuff[50+0xFF], *p;
 
 	LOG_FUNC_CALLED(card->ctx);
 
