@@ -1145,7 +1145,7 @@ static int rutoken_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 
 	LOG_FUNC_CALLED(card->ctx);
 
-	r = iso_ops->get_challenge(card, rnd, sizeof rbuf);
+	r = iso_ops->get_challenge(card, rbuf, sizeof rbuf);
 	LOG_TEST_RET(card->ctx, r, "GET CHALLENGE cmd failed");
 
 	if (len < (size_t) r) {
