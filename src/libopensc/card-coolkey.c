@@ -2137,7 +2137,7 @@ static int coolkey_initialize(sc_card_t *card)
 	/* Select a coolkey read the coolkey objects out */
 	r = coolkey_select_applet(card);
 	if (r < 0) {
-		return r;
+		goto cleanup;
 	}
 
 	priv->protocol_version_major = life_cycle.protocol_version_major;
