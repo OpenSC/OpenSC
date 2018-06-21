@@ -183,6 +183,8 @@ cosm_erase_card(struct sc_profile *profile, struct sc_pkcs15_card *p15card)
 
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "erase file ddf %04X",df->id);
 	cosm_delete_file(p15card, profile, df);
+	if (rv < 0 && rv != SC_ERROR_FILE_NOT_FOUND)
+		goto done;
 
 	if (sc_profile_get_file(profile, "private-DF", &dir) >= 0) {
 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "erase file dir %04X",dir->id);
