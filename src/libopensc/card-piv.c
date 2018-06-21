@@ -898,7 +898,7 @@ static int piv_read_obj_from_file(sc_card_t * card, char * filename,
 		goto err;
 	}
 	memcpy(*buf, tagbuf, len); /* copy first or only part */
-	if (rbuflen > len) {
+	if (rbuflen > len + sizeof(tagbuf)) {
 		len = read(f, *buf + sizeof(tagbuf), rbuflen - sizeof(tagbuf)); /* read rest */
 		if (len != rbuflen - sizeof(tagbuf)) {
 			r = SC_ERROR_INVALID_ASN1_OBJECT;

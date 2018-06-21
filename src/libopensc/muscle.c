@@ -617,6 +617,8 @@ int msc_extract_rsa_public_key(sc_card_t *card,
 	if(!*modulus) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
 	memcpy(*modulus, buffer, *modLength);
 	*expLength = (buffer[*modLength] << 8) | buffer[*modLength + 1];
+	if (*expLength > sizeof buffer)
+		return SC_ERROR_OUT_OF_MEMORY;
 	r = msc_read_object(card, inputId, fileLocation, buffer, *expLength);
 	if(r < 0) {
 		free(*modulus); *modulus = NULL;
