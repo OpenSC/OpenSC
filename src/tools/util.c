@@ -102,7 +102,7 @@ util_connect_card_ex(sc_context_t *ctx, sc_card_t **cardp,
 		else {
 			/* If the reader identifier looks like an ATR, try to find the reader with that card */
 			if (is_string_valid_atr(reader_id))   {
-				unsigned char atr_buf[SC_MAX_ATR_SIZE * 3];
+				unsigned char atr_buf[SC_MAX_ATR_SIZE];
 				size_t atr_buf_len = sizeof(atr_buf);
 				unsigned int i;
 
