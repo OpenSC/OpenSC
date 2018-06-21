@@ -734,8 +734,8 @@ sc_pkcs15init_finalize_profile(struct sc_card *card, struct sc_profile *profile,
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	if (card->app_count < 0)
-		sc_enum_apps(card);
+	if (card->app_count < 0 && SC_SUCCESS != sc_enum_apps(card))
+		sc_log(ctx, "Could not enumerate apps");
 
 	if (aid)   {
 		sc_log(ctx, "finalize profile for AID %s", sc_dump_hex(aid->value, aid->len));
