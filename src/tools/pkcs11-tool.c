@@ -4687,7 +4687,8 @@ static int test_signature(CK_SESSION_HANDLE sess)
 	data[0] = 0x00;
 	data[1] = 0x01;
 	memset(data + 2, 0xFF, dataLen - 3 - dataLens[1]);
-	data[dataLen - 36] = 0x00;
+	if (dataLen >= 36)
+		data[dataLen - 36] = 0x00;
 	memcpy(data + (dataLen - dataLens[1]), datas[1], dataLens[1]);
 	datas[0] = data;
 	dataLens[0] = dataLen;
