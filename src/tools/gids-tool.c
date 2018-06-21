@@ -345,7 +345,9 @@ static int gids_get_DO(sc_card_t* card, int fileIdentifier, int dataObjectIdenti
 	if (datasize > *responselen) {
 		return SC_ERROR_BUFFER_TOO_SMALL;
 	}
-	memcpy(response, p, datasize);
+	if (response) {
+		memcpy(response, p, datasize);
+	}
 	*responselen = datasize;
 	return SC_SUCCESS;
 }
