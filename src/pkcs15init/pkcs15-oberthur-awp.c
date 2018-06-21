@@ -1387,25 +1387,26 @@ awp_update_df_create_cert(struct sc_pkcs15_card *p15card, struct sc_profile *pro
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
 		 "Cert Der(%p,%"SC_FORMAT_LEN_SIZE_T"u)", der.value, der.len);
 	rv = awp_encode_cert_info(p15card, obj, &icert);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "'Create Cert' update DF failed: cannot encode info");
+	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_NORMAL, rv, "'Create Cert' update DF failed: cannot encode info");
 
 	rv = awp_set_certificate_info(p15card, profile, info_file, &icert);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "'Create Cert' update DF failed: cannot set info");
+	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_NORMAL, rv, "'Create Cert' update DF failed: cannot set info");
 
 	rv = awp_update_object_list(p15card, profile, SC_PKCS15_TYPE_CERT_X509, obj_id & 0xFF);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "'Create Cert' update DF failed: cannot update list");
+	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_NORMAL, rv, "'Create Cert' update DF failed: cannot update list");
 
 	rv = awp_update_container(p15card, profile, SC_PKCS15_TYPE_CERT_X509, &icert.id, obj_id, &prvkey_id);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "'Create Cert' update DF failed: cannot update container");
+	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_NORMAL, rv, "'Create Cert' update DF failed: cannot update container");
 
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "PrvKeyID:%04X", prvkey_id);
 
 	if (prvkey_id)
 		rv = awp_update_key_info(p15card, profile, prvkey_id, &icert);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "'Create Cert' update DF failed: cannot update key info");
+	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_NORMAL, rv, "'Create Cert' update DF failed: cannot update key info");
 
 	awp_free_cert_info(&icert);
 
+err:
 	sc_file_free(info_file);
 	sc_file_free(obj_file);
 
