@@ -578,9 +578,9 @@ void sc_file_dup(sc_file_t **dest, const sc_file_t *src)
 	const sc_acl_entry_t *e;
 	unsigned int op;
 
+	*dest = NULL;
 	if (!sc_file_valid(src))
 		return;
-	*dest = NULL;
 	newf = sc_file_new();
 	if (newf == NULL)
 		return;
