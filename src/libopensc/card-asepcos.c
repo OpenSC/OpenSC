@@ -1019,6 +1019,7 @@ static int asepcos_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *pdata,
 			if ((apdu.sw2 & 0xF0) == 0xC0 && tries_left != NULL)
 				*tries_left = apdu.sw2 & 0x0F;
 			r = SC_ERROR_PIN_CODE_INCORRECT;
+			return r;
 		}
 		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	}
