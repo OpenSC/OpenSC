@@ -1377,7 +1377,7 @@ static int mcrd_compute_signature(sc_card_t * card,
 	int r;
 	sc_apdu_t apdu;
 
-	if (card == NULL || data == NULL || out == NULL)
+	if (data == NULL || out == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	env = &priv->sec_env;
 
