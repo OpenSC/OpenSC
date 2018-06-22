@@ -90,23 +90,26 @@ extern "C" {
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
 #define RSA_PKCS1_OpenSSL		RSA_PKCS1_SSLeay
-#define OPENSSL_malloc_init		CRYPTO_malloc_init
 
-#define EVP_PKEY_get0_RSA(x)		(x->pkey.rsa)
-#define EVP_PKEY_get0_EC_KEY(x)		(x->pkey.ec)
-#define EVP_PKEY_get0_DSA(x)		(x->pkey.dsa)
 #define X509_get_extension_flags(x)	(x->ex_flags)
 #define X509_get_key_usage(x)		(x->ex_kusage)
 #define X509_get_extended_key_usage(x)	(x->ex_xkusage)
-#define EVP_PKEY_up_ref(user_key)	CRYPTO_add(&user_key->references, 1, CRYPTO_LOCK_EVP_PKEY)
 #if !defined(LIBRESSL_VERSION_NUMBER) || LIBRESSL_VERSION_NUMBER < 0x2050300fL
 #define X509_up_ref(cert)		CRYPTO_add(&cert->references, 1, CRYPTO_LOCK_X509)
 #endif
+#if !defined(LIBRESSL_VERSION_NUMBER) || LIBRESSL_VERSION_NUMBER < 0x20700000L
+#define OPENSSL_malloc_init		CRYPTO_malloc_init
+#define EVP_PKEY_get0_RSA(x)		(x->pkey.rsa)
+#define EVP_PKEY_get0_EC_KEY(x)		(x->pkey.ec)
+#define EVP_PKEY_get0_DSA(x)		(x->pkey.dsa)
+#define EVP_PKEY_up_ref(user_key)	CRYPTO_add(&user_key->references, 1, CRYPTO_LOCK_EVP_PKEY)
+#define ASN1_STRING_get0_data(x)	ASN1_STRING_data(x)
+#endif
 #endif
 
-/* ASN1_STRING_data is deprecated in OpenSSL 1.1.0 */
-#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
-#define ASN1_STRING_get0_data(x)	ASN1_STRING_data(x)
+/* workaround unused value warning for a macro that does nothing */
+#if defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER >= 0x20700000L
+#define OPENSSL_malloc_init()
 #endif
 
 /*
@@ -116,7 +119,7 @@ extern "C" {
  * If that is not good enough, versions could be added to libopensc
  */
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || (defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER < 0x20700000L)
 /* based on OpenSSL-1.1.0 e_os2.h */
 /* sc_ossl_inline: portable inline definition usable in public headers */
 # if !defined(inline) && !defined(__cplusplus)
@@ -135,7 +138,7 @@ extern "C" {
 # endif
 #endif
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || (defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER < 0x2050300fL)
 
 #define RSA_bits(R) (BN_num_bits(R->n))
 
