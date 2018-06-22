@@ -3,6 +3,6 @@ Name=OpenSC Notify
 Type=Application
 Comment=Monitor smart card events to send notifications.
 Exec=@bindir@/opensc-notify
-Icon=preferences-system-notifications
+Icon=utilities-system-monitor
 Categories=Security;System;
 NoDisplay=true
