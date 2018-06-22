@@ -351,6 +351,18 @@ err:
 	return r;
 }
 
+static int npa_finish(sc_card_t * card)
+{
+	sc_sm_stop(card);
+	npa_drv_data_free(card->drv_data);
+	card->drv_data = NULL;
+#ifdef ENABLE_OPENPACE
+	EAC_cleanup();
+#endif
+
+	return SC_SUCCESS;
+}
+
 static int npa_init(sc_card_t * card)
 {
 	int flags = SC_ALGORITHM_ECDSA_RAW;
@@ -392,6 +404,7 @@ static int npa_init(sc_card_t * card)
 #endif
 	card->drv_data = npa_drv_data_create();
 	if (!card->drv_data) {
+		npa_finish(card);
 		r = SC_ERROR_OUT_OF_MEMORY;
 		goto err;
 	}
@@ -407,18 +420,6 @@ static int npa_init(sc_card_t * card)
 
 err:
 	return r;
-}
-
-static int npa_finish(sc_card_t * card)
-{
-	sc_sm_stop(card);
-	npa_drv_data_free(card->drv_data);
-	card->drv_data = NULL;
-#ifdef ENABLE_OPENPACE
-	EAC_cleanup();
-#endif
-
-	return SC_SUCCESS;
 }
 
 static int npa_set_security_env(struct sc_card *card,
