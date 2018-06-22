@@ -23,7 +23,7 @@ p11test_SOURCES = p11test.c p11test_loader.c \
 	p11test_case_pss_oaep.c \
 	p11test_helpers.c
 p11test_CFLAGS = -DNDEBUG $(CMOCKA_CFLAGS)
-p11test_LDADD = -lssl -lcrypto $(CMOCKA_LDLAGS)
+p11test_LDADD = -lssl -lcrypto $(CMOCKA_LIBS)
 
 if WIN32
 p11test_SOURCES += $(top_builddir)/win32/versioninfo.rc
