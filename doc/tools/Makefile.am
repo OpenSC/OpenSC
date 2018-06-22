@@ -15,7 +15,6 @@ man5_MANS = $(patsubst $(srcdir)/%.xml, %, $(wildcard $(srcdir)/*.5.xml))
 endif
 
 completion_DATA = $(patsubst $(srcdir)/%.1.xml, %, $(wildcard $(srcdir)/*.1.xml))
-completiondir = $(sysconfdir)/bash_completion.d
 
 tools.html: $(srcdir)/tools.xml $(wildcard $(srcdir)/*.1.xml) $(wildcard $(srcdir)/*.5.xml)
 	$(XSLTPROC) --nonet --path "$(srcdir)/..:$(xslstylesheetsdir)/html" --xinclude -o $@ html.xsl $<
