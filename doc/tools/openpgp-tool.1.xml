@@ -123,6 +123,16 @@
 
 				<varlistentry>
 					<term>
+						<option>--key-info</option>,
+						<option>-K</option>
+					</term>
+					<listitem><para>
+						Show information of keys on the card.
+					</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
 						<option>--key-length</option> <replaceable>bitlength</replaceable>,
 						<option>-L</option> <replaceable>bitlength</replaceable>
 					</term>
