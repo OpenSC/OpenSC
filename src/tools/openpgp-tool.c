@@ -73,6 +73,8 @@ struct ef_name_map {
 /* declare functions */
 static void show_version(void);
 static char *prettify_hex(u8 *data, size_t length, char *buffer, size_t buflen);
+static char *prettify_algorithm(u8 *data, size_t length);
+static char *prettify_date(u8 *data, size_t length);
 static char *prettify_version(u8 *data, size_t length);
 static char *prettify_manufacturer(u8 *data, size_t length);
 static char *prettify_serialnumber(u8 *data, size_t length);
@@ -91,6 +93,7 @@ static int opt_raw = 0;
 static int verbose = 0;
 static int opt_userinfo = 0;
 static int opt_cardinfo = 0;
+static int opt_keyinfo = 0;
 static char *exec_program = NULL;
 static int opt_genkey = 0;
 static u8 key_id = 0;
@@ -114,6 +117,7 @@ static const struct option options[] = {
 	{ "pretty",    no_argument,       NULL, OPT_PRETTY },
 	{ "card-info", no_argument,       NULL, 'C'        },
 	{ "user-info", no_argument,       NULL, 'U'        },
+	{ "key-info",  no_argument,       NULL, 'K'        },
 	{ "gen-key",   required_argument, NULL, 'G'        },
 	{ "key-length",required_argument, NULL, 'L'        },
 	{ "help",      no_argument,       NULL, 'h'        },
@@ -135,6 +139,7 @@ static const char *option_help[] = {
 	"Print values in pretty format",
 /* C */	"Show card information",
 /* U */	"Show card holder information",
+/* K */	"Show key information",
 /* G */ "Generate key",
 /* L */ "Key length (default 2048)",
 /* h */	"Print this help message",
@@ -153,6 +158,19 @@ static const struct ef_name_map card_data[] = {
 	{ "Version",       "OPENPGP_VERSION",      "3F00:004F", TYPE_HEX,  6,  2, prettify_version      },
 	{ "Manufacturer",  "OPENPGP_MANUFACTURER", "3F00:004F", TYPE_HEX,  8,  2, prettify_manufacturer },
 	{ "Serial number", "OPENPGP_SERIALNO",     "3F00:004F", TYPE_HEX, 10,  4, prettify_serialnumber },
+	{ NULL, NULL, NULL, TYPE_NULL, 0, 0, NULL }
+};
+
+static const struct ef_name_map key_data[] = {
+	{ "Aut Algorithm",   "OPENPGP_AUT_ALGORITHM", "3F00:006E:0073:00C3", TYPE_HEX,  0,  0, prettify_algorithm },
+	{ "Aut Create Date", "OPENPGP_AUT_DATE",      "3F00:006E:0073:00CD", TYPE_HEX,  8,  4, prettify_date      },
+	{ "Aut Fingerprint", "OPENPGP_AUT_FP",        "3F00:006E:0073:00C5", TYPE_HEX, 40, 20, NULL               },
+	{ "Dec Algorithm",   "OPENPGP_DEC_ALGORITHM", "3F00:006E:0073:00C2", TYPE_HEX,  0,  0, prettify_algorithm },
+	{ "Dec Create Date", "OPENPGP_DEC_DATE",      "3F00:006E:0073:00CD", TYPE_HEX,  4,  4, prettify_date      },
+	{ "Dec Fingerprint", "OPENPGP_DEC_FP",        "3F00:006E:0073:00C5", TYPE_HEX, 20, 20, NULL               },
+	{ "Sig Algorithm",   "OPENPGP_SIG_ALGORITHM", "3F00:006E:0073:00C1", TYPE_HEX,  0,  0, prettify_algorithm },
+	{ "Sig Create Date", "OPENPGP_SIG_DATE",      "3F00:006E:0073:00CD", TYPE_HEX,  0,  4, prettify_date      },
+	{ "Sig Fingerprint", "OPENPGP_SIG_FP",        "3F00:006E:0073:00C5", TYPE_HEX,  0, 20, NULL               },
 	{ NULL, NULL, NULL, TYPE_NULL, 0, 0, NULL }
 };
 
@@ -195,6 +213,46 @@ static char *prettify_hex(u8 *data, size_t length, char *buffer, size_t buflen)
 
 			return buffer;
 		}
+	}
+	return NULL;
+}
+
+
+/* prettify algorithm parameters */
+static char *prettify_algorithm(u8 *data, size_t length)
+{
+	if (data != NULL && length >= 1) {
+		static char result[64];	/* large enough */
+
+		if (data[0] == 0x01 && length >= 5) {		/* RSA */
+			unsigned short modulus = (data[1] << 8) + data[2];
+			snprintf(result, sizeof(result), "RSA%u", modulus);
+			return result;
+		}
+		else if (data[0] == 0x12) {			/* ECDH */
+			strcpy(result, "ECDH");
+			return result;
+		}
+		else if (data[0] == 0x13) {			/* ECDSA */
+			strcpy(result, "ECDSA");
+			return result;
+		}
+	}
+	return NULL;
+}
+
+
+/* prettify date/time */
+static char *prettify_date(u8 *data, size_t length)
+{
+	if (data != NULL && length == 4) {
+		time_t time = (data[0] << 24) + (data[1] << 16) + (data[2] << 8) + data[3];
+		struct tm *tp;
+		static char result[64];	/* large enough */
+
+		tp = gmtime(&time);
+		strftime(result, sizeof(result), "%Y-%m-%d %T", tp);
+		return result;
 	}
 	return NULL;
 }
@@ -403,7 +461,7 @@ static int decode_options(int argc, char **argv)
 	char *endptr;
 	unsigned long val;
 
-	while ((c = getopt_long(argc, argv,"r:x:CUG:L:EhwvVd:", options, (int *) 0)) != EOF) {
+	while ((c = getopt_long(argc, argv,"r:x:CUG:KL:EhwvVd:", options, (int *) 0)) != EOF) {
 		switch (c) {
 		case 'r':
 			opt_reader = optarg;
@@ -436,6 +494,10 @@ static int decode_options(int argc, char **argv)
 			break;
 		case 'U':
 			opt_userinfo++;
+			actions++;
+			break;
+		case 'K':
+			opt_keyinfo++;
 			actions++;
 			break;
 		case 'G':
@@ -811,6 +873,9 @@ int main(int argc, char **argv)
 
 	if (opt_userinfo)
 		exit_status |= do_info(card, user_data);
+
+	if (opt_keyinfo)
+		exit_status |= do_info(card, key_data);
 
 	if (opt_verify && opt_pin) {
 		exit_status |= do_verify(card, verifytype, pin);
