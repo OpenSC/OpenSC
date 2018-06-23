@@ -488,23 +488,34 @@ pgp_init(sc_card_t *card)
 
 	/* read information from AID */
 	if (file->namelen == 16) {
+		static char card_name[SC_MAX_APDU_BUFFER_SIZE] = "OpenPGP card";
+
 		/* OpenPGP card spec 1.1, 2.x & 3.x, section 4.2.1 & 4.1.2.1 */
 		priv->bcd_version = bebytes2ushort(file->name + 6);
 		card->version.fw_major = card->version.hw_major = BCD2UCHAR(file->name[6]);
 		card->version.fw_minor = card->version.hw_minor = BCD2UCHAR(file->name[7]);
 
-		/* for "standard" cards, include detailed card version in card name */
+		/* for "standard" cards, include detailed card version & serial no. in card name */
 		if (card->name == default_cardname_v1 ||
 		    card->name == default_cardname_v2 ||
 		    card->name == default_cardname_v3) {
-			static char card_name[SC_MAX_APDU_BUFFER_SIZE] = "OpenPGP card";
-
-			snprintf(card_name, sizeof(card_name), "OpenPGP card v%u.%u",
-				 card->version.hw_major, card->version.hw_minor);
-			card->name = card_name;
+			snprintf(card_name, sizeof(card_name),
+				 "OpenPGP card v%u.%u (%04X %08lX)",
+				 card->version.hw_major, card->version.hw_minor,
+				 bebytes2ushort(file->name + 8),
+				 bebytes2ulong(file->name + 10));
 		}
+		else if (card->name != NULL) {
+			/* for other cards, append serial number to the card name */
+			snprintf(card_name, sizeof(card_name),
+				 "%s (%04X %08lX)",
+				 card->name,
+				 bebytes2ushort(file->name + 8),
+				 bebytes2ulong(file->name + 10));
+		}
+		card->name = card_name;
 
-		/* kludge: get card's serial number from manufacturer ID + serial number */
+		/* GPG compatibility: set card's serial number to manufacturer ID + serial number */
 		memcpy(card->serialnr.value, file->name + 8, 6);
 		card->serialnr.len = 6;
 	} else {
