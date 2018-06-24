@@ -737,13 +737,14 @@ pgp_get_card_features(sc_card_t *card)
 			/* Can be generated in card */
 			flags |= SC_ALGORITHM_ONBOARD_KEY_GEN;
 
-			if ((pgp_get_blob(card, blob73, i, &blob) >= 0) &&
-				(blob->data != NULL) && (blob->len >= 4)) {
-				if (blob->data[0] == 0x01) {	/* Algorithm ID [RFC4880]: RSA */
-					unsigned int keylen = bebytes2ushort(blob->data + 1);  /* Measured in bit */
+			/* OpenPGP card spec 1.1 & 2.x section 4.3.3.6 / v3.x section 4.4.3.7 */
+			if ((pgp_get_blob(card, blob73, i, &blob) >= 0) && (blob->data != NULL)) {
+				if (blob->len >= 3 && blob->data[0] == 0x01) {	/* RSA [RFC 4880] */
+					unsigned int keybits = bebytes2ushort(blob->data + 1);
 
-					_sc_card_add_rsa_alg(card, keylen, flags, 0);
+					_sc_card_add_rsa_alg(card, keybits, flags, 0);
 				}
+				/* v3.0+: [RFC 4880 & 6637] 0x12 = ECDH, 0x13 = ECDSA */
 			}
 		}
 
