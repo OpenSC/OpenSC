@@ -452,7 +452,6 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t * ctx)
 	} else {
 		conf->slots_per_card = 4;
 	}
-	conf->hide_empty_tokens = 1;
 	conf->atomic = 0;
 	conf->lock_login = 0;
 	conf->init_sloppy = 1;
@@ -467,7 +466,6 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t * ctx)
 	/* contains the defaults, if there is a "pkcs11" config block */
 	conf->max_virtual_slots = scconf_get_int(conf_block, "max_virtual_slots", conf->max_virtual_slots);
 	conf->slots_per_card = scconf_get_int(conf_block, "slots_per_card", conf->slots_per_card);
-	conf->hide_empty_tokens = scconf_get_bool(conf_block, "hide_empty_tokens", conf->hide_empty_tokens);
 	conf->atomic = scconf_get_bool(conf_block, "atomic", conf->atomic);
 	if (conf->atomic)
 		conf->lock_login = 1;
@@ -497,12 +495,12 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t * ctx)
 			conf->create_slots_flags |= SC_PKCS11_SLOT_CREATE_ALL;
 		op = strtok(NULL, " ,");
 	}
-        free(tmp);
+	free(tmp);
 
 	sc_log(ctx, "PKCS#11 options: max_virtual_slots=%d slots_per_card=%d "
-		 "hide_empty_tokens=%d lock_login=%d atomic=%d pin_unblock_style=%d "
+		 "lock_login=%d atomic=%d pin_unblock_style=%d "
 		 "create_slots_flags=0x%X",
 		 conf->max_virtual_slots, conf->slots_per_card,
-		 conf->hide_empty_tokens, conf->lock_login, conf->atomic, conf->pin_unblock_style,
+		 conf->lock_login, conf->atomic, conf->pin_unblock_style,
 		 conf->create_slots_flags);
 }
