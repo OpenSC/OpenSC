@@ -1001,15 +1001,6 @@ app opensc-pkcs11 {
 		# (max_virtual_slots/slots_per_card) limits the number of readers
 		# that can be used on the system. Default is then 16/4=4 readers.
 
-		# Normally, the pkcs11 module will create
-		# the full number of slots defined above by
-		# num_slots. If there are fewer pins/keys on
-		# the card, the remaining keys will be empty
-		# (and you will be able to create new objects
-		# within them).
-		# Default: true
-		# hide_empty_tokens = false;
-
 		# By default, the OpenSC PKCS#11 module will not lock your card
 		# once you authenticate to the card via C_Login.
 		#

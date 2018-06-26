@@ -71,7 +71,6 @@ struct sc_pkcs11_config {
 	unsigned int plug_and_play;
 	unsigned int max_virtual_slots;
 	unsigned int slots_per_card;
-	unsigned char hide_empty_tokens;
 	unsigned char lock_login;
 	unsigned char atomic;
 	unsigned char init_sloppy;
