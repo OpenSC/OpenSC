@@ -527,20 +527,6 @@ AC_CHECK_HEADER([cmocka.h],, [have_cmocka="no"],
 #include <setjmp.h>
 ])
 
-if test "${enable_tests}" = "detect"; then
-	if test "${have_cmocka}" = "yes"; then
-		enable_tests="yes"
-	else
-		enable_tests="no"
-	fi
-fi
-
-if test "${enable_tests}" = "yes"; then
-	if test "${have_cmocka}" != "yes"; then
-		AC_MSG_ERROR([Tests required, but cmocka is not available])
-	fi
-fi
-
 AC_ARG_VAR([ZLIB_CFLAGS], [C compiler flags for zlib])
 AC_ARG_VAR([ZLIB_LIBS], [linker flags for zlib])
 if test -z "${ZLIB_LIBS}"; then
@@ -665,6 +651,23 @@ if test "${enable_openssl}" = "yes"; then
 else
 	OPENSSL_CFLAGS=""
 	OPENSSL_LIBS=""
+fi
+
+if test "${enable_tests}" = "detect"; then
+	if test "${have_cmocka}" = "yes" -a "${have_openssl}" = "yes"; then
+		enable_tests="yes"
+	else
+		enable_tests="no"
+	fi
+fi
+
+if test "${enable_tests}" = "yes"; then
+	if test "${have_cmocka}" != "yes"; then
+		AC_MSG_ERROR([Tests required, but cmocka is not available])
+	fi
+	if test "${have_openssl}" != "yes"; then
+		AC_MSG_ERROR([Tests required, but openssl is not available])
+	fi
 fi
 
 
