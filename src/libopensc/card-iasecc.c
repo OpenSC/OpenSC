@@ -827,16 +827,16 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 	sc_log(ctx, "iasecc_select_file() path:%s", sc_print_path(path));
 
 	sc_print_cache(card);
-	if (lpath.len >= 2 && lpath.value[0] == 0x3F && lpath.value[1] == 0x00)   {
+	if (path->type != SC_PATH_TYPE_DF_NAME
+			&& lpath.len >= 2
+			&& lpath.value[0] == 0x3F && lpath.value[1] == 0x00)   {
 		sc_log(ctx, "EF.ATR(aid:'%s')", card->ef_atr ? sc_dump_hex(card->ef_atr->aid.value, card->ef_atr->aid.len) : "");
 
 		rv = iasecc_select_mf(card, file_out);
 		LOG_TEST_RET(ctx, rv, "MF selection error");
 
-		if (lpath.len >= 2 && lpath.value[0] == 0x3F && lpath.value[1] == 0x00)	   {
-			memmove(&lpath.value[0], &lpath.value[2], lpath.len - 2);
-			lpath.len -=  2;
-		}
+		memmove(&lpath.value[0], &lpath.value[2], lpath.len - 2);
+		lpath.len -=  2;
 	}
 
 	if (lpath.aid.len)	{
