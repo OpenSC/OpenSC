@@ -2121,14 +2121,20 @@ iasecc_pin_get_policy (struct sc_card *card, struct sc_pin_cmd_data *data)
 
 	if (card->cache.valid && card->cache.current_df)   {
 		sc_file_dup(&save_current_df, card->cache.current_df);
-		if (save_current_df == NULL)
-			LOG_TEST_GOTO_ERR(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot duplicate current DF file");
+		if (save_current_df == NULL) {
+			rv = SC_ERROR_OUT_OF_MEMORY;
+			sc_log(ctx, "Cannot duplicate current DF file");
+			goto err;
+		}
 	}
 
 	if (card->cache.valid && card->cache.current_ef)   {
 		sc_file_dup(&save_current_ef, card->cache.current_ef);
-		if (save_current_ef == NULL)
-			LOG_TEST_GOTO_ERR(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot duplicate current EF file");
+		if (save_current_ef == NULL) {
+			rv = SC_ERROR_OUT_OF_MEMORY;
+			sc_log(ctx, "Cannot duplicate current EF file");
+			goto err;
+		}
 	}
 
 	if (!(data->pin_reference & IASECC_OBJECT_REF_LOCAL) && card->cache.valid && card->cache.current_df) {
@@ -2148,8 +2154,11 @@ iasecc_pin_get_policy (struct sc_card *card, struct sc_pin_cmd_data *data)
 	rv = iasecc_sdo_get_data(card, &sdo);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Cannot get SDO PIN data");
 
-	if (sdo.docp.acls_contact.size == 0)
-		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_INVALID_DATA, "Extremely strange ... there is no ACLs");
+	if (sdo.docp.acls_contact.size == 0) {
+		rv = SC_ERROR_INVALID_DATA;
+		sc_log(ctx, "Extremely strange ... there is no ACLs");
+		goto err;
+	}
 
 	sc_log(ctx,
 	       "iasecc_pin_get_policy() sdo.docp.size.size %"SC_FORMAT_LEN_SIZE_T"u",
