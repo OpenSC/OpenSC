@@ -570,6 +570,8 @@ static int list_data_objects(void)
 		else {
 			printf("\tAuth ID:         %s\n", sc_pkcs15_print_id(&objs[i]->auth_id));
 		}
+
+		printf("\n");
 	}
 	return 0;
 }
@@ -1672,7 +1674,7 @@ static void list_info(void)
 			count++;
 		}
 	}
-	printf("\n");
+	printf((compact) ? "\n" : "\n\n");
 }
 
 static int dump(void)
