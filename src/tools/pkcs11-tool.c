@@ -350,9 +350,9 @@ struct mech_info {
 	const char *	short_name;
 };
 struct x509cert_info {
-	unsigned char	subject[256];
+	unsigned char	subject[512];
 	int		subject_len;
-	unsigned char	issuer[256];
+	unsigned char	issuer[512];
 	int		issuer_len;
 	unsigned char	serialnum[128];
 	int		serialnum_len;
