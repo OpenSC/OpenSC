@@ -132,7 +132,7 @@ static int insert_key(
 		int i, rec_no=0;
 		if(prkey_info.path.len>=2) prkey_info.path.len-=2;
 		sc_append_file_id(&prkey_info.path, 0x5349);
-		if(sc_select_file(card, &prkey_info.path, NULL)!=SC_SUCCESS || !f->prop_attr){
+		if(sc_select_file(card, &prkey_info.path, NULL)!=SC_SUCCESS){
 			sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
 				"Select(%s) failed\n",
 				sc_print_path(&prkey_info.path));
