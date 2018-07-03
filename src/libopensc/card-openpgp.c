@@ -623,13 +623,19 @@ pgp_get_card_features(sc_card_t *card)
 		/* category indicator 0x00, 0x10 or 0x80 => compact TLV (ISO) */
 		switch (hist_bytes[0]) {
 			case 0x00:
-				pgp_parse_hist_bytes(card, hist_bytes+1, hist_bytes_len-4);
+				if (hist_bytes_len > 4) {
+					pgp_parse_hist_bytes(card, hist_bytes+1, hist_bytes_len-4);
+				}
 				break;
 			case 0x80:
-				pgp_parse_hist_bytes(card, hist_bytes+1, hist_bytes_len-1);
+				if (hist_bytes_len > 1) {
+					pgp_parse_hist_bytes(card, hist_bytes+1, hist_bytes_len-1);
+				}
 				break;
 			case 0x10:
-				pgp_parse_hist_bytes(card, hist_bytes+2, hist_bytes_len-2);
+				if (hist_bytes_len > 2) {
+					pgp_parse_hist_bytes(card, hist_bytes+2, hist_bytes_len-2);
+				}
 				break;
 		}
 	}
@@ -642,7 +648,9 @@ pgp_get_card_features(sc_card_t *card)
 		if ((pgp_get_blob(card, priv->mf, 0x5f52, &blob) >= 0) &&
 		    (blob->data != NULL) && (blob->data[0] == 0x00)) {
 
-			pgp_parse_hist_bytes(card, hist_bytes+1, hist_bytes_len-4);
+			if (hist_bytes_len > 4) {
+				pgp_parse_hist_bytes(card, hist_bytes+1, hist_bytes_len-4);
+			}
 
 			/* get card status from historical bytes status indicator */
 			if ((blob->data[0] == 0x00) && (blob->len >= 4)) {
