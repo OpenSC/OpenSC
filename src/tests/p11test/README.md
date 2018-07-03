@@ -10,9 +10,8 @@ using  [`cmocka`](https://cmocka.org/) unit testing framework
 
 Build OpenSC from source:
 
-    git clone git@github.com:Jakuje/OpenSC.git
+    git clone git@github.com:OpenSC/OpenSC.git
     cd OpenSC
-    git checkout jjelen-testsuite		# not in master yet
     ./bootstrap
     ./configure
     make -j4
