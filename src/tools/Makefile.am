@@ -177,4 +177,4 @@ org.opensc.notify.desktop: org.opensc.notify.desktop.in
 	$(do_subst) < $(abs_srcdir)/org.opensc.notify.desktop.in > $@
 
 clean-local:
-	rm -f $(abs_builddir)/npa-tool.ggo $(abs_builddir)/opensc-notify.ggo
+	rm -f $(abs_builddir)/npa-tool.ggo $(abs_builddir)/opensc-notify.ggo $(abs_builddir)/opensc-asn1.ggo $(abs_builddir)/egk-tool.ggo org.opensc.notify.desktop
