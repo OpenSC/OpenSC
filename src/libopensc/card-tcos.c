@@ -343,7 +343,6 @@ static int tcos_select_file(sc_card_t *card,
 	sc_apdu_t apdu;
 	sc_file_t *file=NULL;
 	u8 buf[SC_MAX_APDU_BUFFER_SIZE], pathbuf[SC_MAX_PATH_SIZE], *path = pathbuf;
-	unsigned int i;
 	int r, pathlen;
 
 	assert(card != NULL && in_path != NULL);
@@ -407,42 +406,7 @@ static int tcos_select_file(sc_card_t *card,
 	*file_out = file;
 	file->path = *in_path;
 
-	for(i=2; i+1<apdu.resplen && i+1+apdu.resp[i+1]<apdu.resplen; i+=2+apdu.resp[i+1]){
-		size_t j, len=apdu.resp[i+1];
-		unsigned char type=apdu.resp[i], *d=apdu.resp+i+2;
-
-		switch (type) {
-		case 0x80:
-		case 0x81:
-			file->size=0;
-			for(j=0; j<len; ++j) file->size = (file->size<<8) | d[j];
-			break;
-		case 0x82:
-			file->shareable = (d[0] & 0x40) ? 1 : 0;
-			file->ef_structure = d[0] & 7;
-			switch ((d[0]>>3) & 7) {
-			case 0: file->type = SC_FILE_TYPE_WORKING_EF; break;
-			case 7: file->type = SC_FILE_TYPE_DF; break;
-			default:
-				sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "invalid file type %02X in file descriptor\n", d[0]);
-				SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_UNKNOWN_DATA_RECEIVED);
-			}
-			break;
-		case 0x83:
-			file->id = (d[0]<<8) | d[1];
-			break;
-		case 0x84:
-			file->namelen = MIN(sizeof file->name, len);
-			memcpy(file->name, d, file->namelen);
-			break;
-		case 0x86:
-			sc_file_set_sec_attr(file, d, len); 
-			break;
-		default:
-			if (len>0) sc_file_set_prop_attr(file, d, len); 
-		}
-	}
-	file->magic = SC_FILE_MAGIC;
+	iso_ops->process_fci(card, file, apdu.resp, apdu.resplen);
 
 	parse_sec_attr(card, file, file->sec_attr, file->sec_attr_len);
 
