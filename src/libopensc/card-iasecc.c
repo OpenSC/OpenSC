@@ -2504,6 +2504,12 @@ iasecc_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_le
 static int
 iasecc_get_serialnr(struct sc_card *card, struct sc_serial_number *serial)
 {
+#if 1
+	/* the current implementation doesn't perform any bounds check when parsing
+	 * the serial number. Hence, we disable this code until someone has time to
+	 * fix this. */
+	LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+#else
 	struct sc_context *ctx = card->ctx;
 	struct sc_iin *iin = &card->serialnr.iin;
 	struct sc_apdu apdu;
@@ -2573,6 +2579,7 @@ end:
 		memcpy(serial, &card->serialnr, sizeof(*serial));
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+#endif
 }
 
 
