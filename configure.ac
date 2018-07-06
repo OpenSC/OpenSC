@@ -840,7 +840,7 @@ if test "${enable_cryptotokenkit}" = "yes"; then
 	AC_DEFINE([ENABLE_CRYPTOTOKENKIT], [1], [Define if CryptoTokenKit is to be enabled])
 fi
 PKG_CHECK_MODULES([BASH_COMPLETION], [bash-completion >= 2.0],
-	[completiondir="`pkg-config --variable=completionsdir bash-completion`"],
+	[completiondir="`pkg-config --variable=completionsdir --define-variable=prefix=${prefix} bash-completion`"],
 	[completiondir="${sysconfdir}/bash_completion.d"])
 AC_SUBST([completiondir])
 
