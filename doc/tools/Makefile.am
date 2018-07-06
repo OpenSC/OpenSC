@@ -36,7 +36,7 @@ tools.html: $(srcdir)/tools.xml $(wildcard $(srcdir)/*.1.xml) $(wildcard $(srcdi
 				| sort -u | grep -- '^\-' | tr '\n' ' ')," \
 		| sed "s,OPTSWITHARGS,\
 			$(shell sed -n 's,.*<option>\([^<]*\)</option>.*<replaceable>.*,\1,pg' $< \
-				| sort -u | grep -- '^\-' | tr '\n' '|' | sed 's,|$$,,')," \
+				| sort -u | grep -- '^\-' | tr '\n' '|' | sed 's,|$$,,' | grep ^ || echo "!*")," \
 		| sed "s,FILEOPTS,\
 			$(shell sed -n 's,.*<option>\([^<]*\)</option>.*<replaceable>.*filename.*,\1,pg' $< \
 				| sort -u | grep -- '^\-' | tr '\n' '|' | sed 's,|$$,,' | grep ^ || echo "!*"),"  \
