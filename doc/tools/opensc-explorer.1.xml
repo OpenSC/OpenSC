@@ -331,9 +331,9 @@
 							to <replaceable>data</replaceable>.
 						</para>
 						<para>
-							<replaceable>data</replaceable>
-							can be given either as a sequence of hexadecimal values,
-							or as string enclosed in double quotes (<literal>"..."</literal>),
+							<replaceable>data</replaceable> is either a
+							sequence of hexadecimal values or a string enclosed
+							in double quotes (<literal>"..."</literal>).
 						</para>
 					</listitem>
 				</varlistentry>

@@ -1730,7 +1730,7 @@ static int do_get_data(int argc, char **argv)
 static int do_put_data(int argc, char **argv)
 {
 	unsigned int tag;
-	u8 buf[8192];
+	u8 buf[SC_MAX_EXT_APDU_BUFFER_SIZE];
 	size_t buflen = sizeof(buf);
 	int r;
 
@@ -1744,8 +1744,8 @@ static int do_put_data(int argc, char **argv)
 	/* buflen is the max length of reception buffer */
 	r = parse_string_or_hexdata(argv[1], buf, &buflen);
 	if (r < 0) {
-		printf("unable to parse data\n");
-		return -1;
+		printf("error parsing %s: %s\n", argv[1], sc_strerror(r));
+		return r;
 	}
 
 	/* Call OpenSC to do put data */
