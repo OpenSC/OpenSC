@@ -1766,7 +1766,7 @@ static int do_put_data(int argc, char **argv)
 static int do_apdu(int argc, char **argv)
 {
 	sc_apdu_t apdu;
-	u8 buf[SC_MAX_EXT_APDU_BUFFER_SIZE * 2];
+	u8 buf[SC_MAX_EXT_APDU_BUFFER_SIZE];
 	u8 rbuf[SC_MAX_EXT_APDU_BUFFER_SIZE];
 	size_t len, i;
 	int r;
@@ -1774,8 +1774,9 @@ static int do_apdu(int argc, char **argv)
 	if (argc < 1)
 		return usage(do_apdu);
 
-	for (i = 0, len = 0; i < (unsigned) argc; i++)   {
-		size_t len0 = strlen(argv[i]);
+	/* loop over the args and parse them, making sure the result fits into buf[] */
+	for (i = 1, len = 0; i < (unsigned) argc && len < sizeof(buf); i++)   {
+		size_t len0 = sizeof(buf) - len;
 
 		if ((r = parse_string_or_hexdata(argv[i], buf + len, &len0)) < 0) {
 			fprintf(stderr, "error parsing %s: %s\n", argv[i], sc_strerror(r));
