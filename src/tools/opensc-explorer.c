@@ -175,7 +175,7 @@ static struct command	cmds[] = {
 		"do_get",	"<hex tag> [<output file>]",
 		"get a data object"			},
 	{ do_put_data,
-		"do_put",	"<hex tag> <data>",
+		"do_put",	"<hex tag> <data> ...",
 		"put a data object"			},
 	{ do_erase,
 		"erase",	"",
@@ -1728,28 +1728,31 @@ static int do_get_data(int argc, char **argv)
 static int do_put_data(int argc, char **argv)
 {
 	unsigned int tag;
-	u8 buf[8192];
-	size_t buflen = sizeof(buf);
+	u8 buf[SC_MAX_EXT_APDU_BUFFER_SIZE];
+	size_t i, len;
 	int r;
 
-	if (argc != 2)
+	if (argc < 2)
 		return usage(do_put_data);
 
 	/* Extract DO's tag */
 	tag = strtoul(argv[0], NULL, 16);
 
 	/* Extract the new content */
-	/* buflen is the max length of reception buffer */
-	r = parse_string_or_hexdata(argv[1], buf, &buflen);
-	if (r < 0) {
-		printf("unable to parse data\n");
-		return -1;
+	for (i = 1, len = 0; i < (unsigned) argc; i++)   {
+		size_t len0 = sizeof(buf) - len;
+
+		if ((r = parse_string_or_hexdata(argv[i], buf + len, &len0)) < 0) {
+			fprintf(stderr, "error parsing %s: %s\n", argv[i], sc_strerror(r));
+			return r;
+		};
+		len += len0;
 	}
 
 	/* Call OpenSC to do put data */
 	r = sc_lock(card);
 	if (r == SC_SUCCESS)
-		r = sc_put_data(card, tag, buf, buflen);
+		r = sc_put_data(card, tag, buf, len);
 	sc_unlock(card);
 	if (r < 0) {
 		printf("Cannot put data to %04X; return %i\n", tag, r);
