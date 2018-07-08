@@ -181,7 +181,7 @@ static struct command	cmds[] = {
 		"erase",	"",
 		"erase card"				},
 	{ do_random,
-		"random",	"<count>",
+		"random",	"<count> [<output-file>]",
 		"obtain <count> random bytes from card"	},
 	{ do_update_record,
 		"update_record", "<file-id> <rec-no> <rec-offs> <data>",
@@ -1663,8 +1663,10 @@ static int do_random(int argc, char **argv)
 {
 	unsigned char buffer[SC_MAX_EXT_APDU_BUFFER_SIZE];
 	int r, count;
+	const char *filename = NULL;
+	FILE *outf = NULL;
 
-	if (argc != 1)
+	if (argc < 1 || argc > 2)
 		return usage(do_random);
 
 	count = atoi(argv[0]);
@@ -1672,6 +1674,23 @@ static int do_random(int argc, char **argv)
 		printf("Number must be in range 0..%"SC_FORMAT_LEN_SIZE_T"u\n",
 			   	sizeof buffer);
 		return -1;
+	}
+
+	if (argc == 2) {
+		filename = argv[1];
+
+		if (interactive && strcmp(filename, "-") == 0) {
+			fprintf(stderr, "Binary writing to stdout not supported in interactive mode\n");
+			return -1;
+		}
+
+		outf = (strcmp(filename, "-") == 0)
+			? stdout
+			: fopen(filename, "wb");
+		if (outf == NULL) {
+			perror(filename);
+			return -1;
+		}
 	}
 
 	r = sc_lock(card);
@@ -1683,7 +1702,27 @@ static int do_random(int argc, char **argv)
 		return -1;
 	}
 
-	util_hex_dump_asc(stdout, buffer, count, 0);
+	if (argc == 2) {
+		/* outf is guaranteed to be non-NULL */
+		size_t written = fwrite(buffer, 1, count, outf);
+
+		if (written < (size_t) count)
+			perror(filename);
+		if (outf == stdout) {
+			printf("\nTotal of %"SC_FORMAT_LEN_SIZE_T"u random bytes written\n", written);
+		}
+		else
+			printf("Total of %"SC_FORMAT_LEN_SIZE_T"u random bytes written to %s\n",
+				written, filename);
+
+		fclose(outf);
+
+		if (written < (size_t) count)
+			return -1;
+	}
+	else {
+		util_hex_dump_asc(stdout, buffer, count, 0);
+	}
 	return 0;
 }
 
