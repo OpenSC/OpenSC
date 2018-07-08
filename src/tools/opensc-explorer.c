@@ -1562,7 +1562,7 @@ static int do_put(int argc, char **argv)
 	sc_path_t path;
 	sc_file_t *file = NULL;
 	const char *filename;
-	FILE *outf = NULL;
+	FILE *inf = NULL;
 
 	if (argc < 1 || argc > 2)
 		return usage(do_put);
@@ -1570,8 +1570,8 @@ static int do_put(int argc, char **argv)
 		return usage(do_put);
 
 	filename = (argc == 2) ? argv[1] : path_to_filename(&path, '_');
-	outf = fopen(filename, "rb");
-	if (outf == NULL) {
+	inf = fopen(filename, "rb");
+	if (inf == NULL) {
 		perror(filename);
 		goto err;
 	}
@@ -1587,7 +1587,7 @@ static int do_put(int argc, char **argv)
 	while (count) {
 		int c = count > sizeof(buf) ? sizeof(buf) : count;
 
-		r = fread(buf, 1, c, outf);
+		r = fread(buf, 1, c, inf);
 		if (r < 0) {
 			perror("fread");
 			goto err;
@@ -1614,8 +1614,8 @@ static int do_put(int argc, char **argv)
 	err = 0;
 err:
 	sc_file_free(file);
-	if (outf)
-		fclose(outf);
+	if (inf)
+		fclose(inf);
 	select_current_path_or_die();
 	return -err;
 }
