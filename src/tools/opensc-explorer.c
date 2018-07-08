@@ -2056,9 +2056,6 @@ static char *read_cmdline(FILE *script, char *prompt)
 int main(int argc, char *argv[])
 {
 	int r, c, long_optind = 0, err = 0;
-	char *line;
-	int cargc;
-	char *cargv[260];
 	sc_context_param_t ctx_param;
 	int lcycle = SC_CARDCTRL_LIFECYCLE_ADMIN;
 	FILE *script = stdin;
@@ -2170,6 +2167,9 @@ int main(int argc, char *argv[])
 	}
 
 	while (!feof(script)) {
+		char *line;
+		int cargc;
+		char *cargv[260];
 		struct command *cmd;
 		char prompt[3*SC_MAX_PATH_STRING_SIZE];
 
