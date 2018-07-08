@@ -522,10 +522,15 @@
 					<term>
 						<command>random</command>
 						<replaceable>count</replaceable>
+						<arg choice="opt"><replaceable>output-file</replaceable></arg>
 					</term>
 					<listitem>
 						<para>
-							Generate <replaceable>count</replaceable> bytes of random data.
+							Generate <replaceable>count</replaceable> bytes
+							of random data.
+							If <replaceable>output-file</replaceable> is given,
+							write the data to the host computer's file denoted
+							by it, otherwise show the data as hex dump.
 						</para>
 					</listitem>
 				</varlistentry>
