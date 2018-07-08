@@ -2087,9 +2087,6 @@ static char *read_cmdline(FILE *script, char *prompt)
 int main(int argc, char *argv[])
 {
 	int r, c, long_optind = 0, err = 0;
-	char *line;
-	int cargc;
-	char *cargv[260];
 	sc_context_param_t ctx_param;
 	int lcycle = SC_CARDCTRL_LIFECYCLE_ADMIN;
 	FILE *script = stdin;
@@ -2163,9 +2160,9 @@ int main(int argc, char *argv[])
 			}
 			r = do_cd(1, args);
 			if (r) {
-				printf("unable to select file %s: %s\n",
+				fprintf(stderr, "unable to select file %s: %s\n",
 					opt_startfile, sc_strerror(r));
-				return -1;
+				die(1);
 			}
 		}
 	} else {
@@ -2175,8 +2172,8 @@ int main(int argc, char *argv[])
 			r = sc_select_file(card, &current_path, &current_file);
 		sc_unlock(card);
 		if (r) {
-			printf("unable to select MF: %s\n", sc_strerror(r));
-			return 1;
+			fprintf(stderr, "unable to select MF: %s\n", sc_strerror(r));
+			die(1);
 		}
 	}
 
@@ -2227,9 +2224,11 @@ int main(int argc, char *argv[])
 		if (cmd == NULL) {
 			fprintf(stderr, "%s command: %s\n",
 				(multiple) ? "Ambiguous" : "Unknown", cargv[0]);
-			do_help((multiple) ? 1 : 0, cargv);
+			if (interactive)
+				do_help((multiple) ? 1 : 0, cargv);
+			err = -1;
 		} else {
-			cmd->func(cargc-1, cargv+1);
+			err = cmd->func(cargc-1, cargv+1);
 		}
 	}
 end:
