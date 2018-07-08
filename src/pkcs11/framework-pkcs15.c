@@ -5072,6 +5072,9 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 	/* TODO support other padding mechanisms */
 
 	if (rsa_flags & SC_ALGORITHM_RSA_PAD_PSS) {
+		CK_FLAGS old_flags = mech_info.flags;		// PSS is not available for decryption
+		mech_info.flags &= ~(CKF_DECRYPT|CKF_VERIFY);
+
 		mt = sc_pkcs11_new_fw_mechanism(CKM_RSA_PKCS_PSS, &mech_info, CKK_RSA, NULL, NULL);
 		rc = sc_pkcs11_register_mechanism(p11card, mt);
 		if (rc != CKR_OK)
@@ -5087,6 +5090,7 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 			if (rc != CKR_OK)
 				return rc;
 		}
+		mech_info.flags = old_flags;
 	}
 
 	if (rsa_flags & SC_ALGORITHM_ONBOARD_KEY_GEN) {
