@@ -1555,8 +1555,15 @@ static int cac_parse_CCC(sc_card_t *card, cac_private_data_t *priv, u8 *tl,
 	for (; (tl < tl_end) && (val< val_end); val += len) {
 		/* get the tag and the length */
 		u8 tag;
-		if (sc_simpletlv_read_tag(&tl, tl_end - tl, &tag, &len) != SC_SUCCESS)
+		r = sc_simpletlv_read_tag(&tl, tl_end - tl, &tag, &len);
+		if (r != SC_SUCCESS && r != SC_ERROR_TLV_END_OF_CONTENTS) {
+			sc_log(card->ctx, "Failed to parse tag from buffer");
 			break;
+		}
+		if (val + len > val_end) {
+			sc_log(card->ctx, "Invalid length %"SC_FORMAT_LEN_SIZE_T"u", len);
+			break;
+		}
 		switch (tag) {
 		case CAC_TAG_CUID:
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"TAG:CUID");
