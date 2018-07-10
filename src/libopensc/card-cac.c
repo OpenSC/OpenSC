@@ -64,7 +64,6 @@
  *  CAC hardware and APDU constants
  */
 #define CAC_MAX_CHUNK_SIZE 240
-#define CAC_INS_GET_CERTIFICATE       0x36  /* CAC1 command to read a certificate */
 #define CAC_INS_SIGN_DECRYPT          0x42  /* A crypto operation */
 #define CAC_INS_READ_FILE             0x52  /* read a TL or V file */
 #define CAC_INS_GET_ACR               0x4c
@@ -301,23 +300,23 @@ static const char *cac_labels[MAX_CAC_SLOTS] = {
 	"CAC Cert 16"
 };
 
-/* template for a cac1 pki object */
-static const cac_object_t cac_cac1_pki_obj = {
+/* template for a CAC pki object */
+static const cac_object_t cac_cac_pki_obj = {
 	"CAC Certificate", 0x0, { { 0 }, 0, 0, 0, SC_PATH_TYPE_DF_NAME,
 	{ CAC_TO_AID(CAC_1_RID "\x01\x00") } }
 };
 
-/* template for cac1 cuid */
-static const cac_cuid_t cac_cac1_cuid = {
+/* template for emulated cuid */
+static const cac_cuid_t cac_cac_cuid = {
 	{ 0xa0, 0x00, 0x00, 0x00, 0x79 },
 	2, 2, 0
 };
 
 /*
- *  CAC-1 general objects defined in 4.3.1.2 of CAC Applet Developer Guide Version 1.0.
+ *  CAC general objects defined in 4.3.1.2 of CAC Applet Developer Guide Version 1.0.
  *   doubles as a source for CAC-2 labels.
  */
-static const cac_object_t cac_1_objects[] = {
+static const cac_object_t cac_objects[] = {
 	{ "Person Instance", 0x200, { { 0 }, 0, 0, 0, SC_PATH_TYPE_DF_NAME,
 		{ CAC_TO_AID(CAC_1_RID "\x02\x00") }}},
 	{ "Personnel", 0x201, { { 0 }, 0, 0, 0, SC_PATH_TYPE_DF_NAME,
@@ -332,7 +331,7 @@ static const cac_object_t cac_1_objects[] = {
 		{ CAC_TO_AID(CAC_1_RID "\x02\xFE") }}},
 };
 
-static const int cac_1_object_count = sizeof(cac_1_objects)/sizeof(cac_1_objects[0]);
+static const int cac_object_count = sizeof(cac_objects)/sizeof(cac_objects[0]);
 
 /*
  * use the object id to find our object info on the object in our CAC-1 list
@@ -341,9 +340,9 @@ static const cac_object_t *cac_find_obj_by_id(unsigned short object_id)
 {
 	int i;
 
-	for (i=0; i < cac_1_object_count; i++) {
-		if (cac_1_objects[i].fd == object_id) {
-			return &cac_1_objects[i];
+	for (i = 0; i < cac_object_count; i++) {
+		if (cac_objects[i].fd == object_id) {
+			return &cac_objects[i];
 		}
 	}
 	return NULL;
@@ -568,97 +567,6 @@ fail:
 	return r;
 }
 
-/*
- * OLD cac read certificate, only use with CAC-1 card.
- */
-static int cac_cac1_get_certificate(sc_card_t *card, u8 **out_buf, size_t *out_len)
-{
-	u8 buf[CAC_MAX_SIZE];
-	u8 *out_ptr;
-	size_t size = 0;
-	size_t left = 0;
-	size_t len, next_len;
-	sc_apdu_t apdu;
-	int r = SC_SUCCESS;
-
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-
-	/* get the size */
-	size = left = *out_buf ? *out_len : sizeof(buf);
-	out_ptr = *out_buf ? *out_buf : buf;
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, CAC_INS_GET_CERTIFICATE, 0, 0 );
-	next_len = MIN(left, 100);
-	for (; left > 0; left -= len, out_ptr += len) {
-		len = next_len;
-		apdu.resp = out_ptr;
-		apdu.le = len;
-		apdu.resplen = left;
-
-		r = sc_transmit_apdu(card, &apdu);
-		if (r < 0) {
-			break;
-		}
-		if (apdu.resplen == 0) {
-			r = SC_ERROR_INTERNAL;
-			break;
-		}
-		/* in the old CAC-1, 0x63 means 'more data' in addition to 'pin failed' */
-		if (apdu.sw1 != 0x63)  {
-			/* we've either finished reading, or hit an error, break */
-			r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-			left -= len;
-			break;
-		}
-		next_len = MIN(left, apdu.sw2);
-	}
-	if (r < 0) {
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
-	}
-	r = size - left;
-	if (*out_buf == NULL) {
-		*out_buf = malloc(r);
-		if (*out_buf == NULL) {
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,
-			    SC_ERROR_OUT_OF_MEMORY);
-		}
-		memcpy(*out_buf, buf, r);
-	}
-	*out_len = r;
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
-}
-
-/* Create a fake tag/length file in Simple TLV for cac1 cards based on the val_len.
- */
-int cac_cac1_get_cert_tag(sc_card_t *card, size_t val_len, u8 **tlp, size_t *tl_len_p)
-{
-	static const u8 cac_cac1_cert_tag[] = { CAC_TAG_CERTINFO, 1, CAC_TAG_CERTIFICATE, 0xff, 0, 0 };
-	u8 *tl, *tl1, *tl2;
-	size_t tl_len;
-	int rv = SC_SUCCESS;
-
-	tl_len = sizeof(cac_cac1_cert_tag);
-	tl = malloc(tl_len);
-	if (tl == NULL)
-		return SC_ERROR_OUT_OF_MEMORY;
-	memcpy(tl, cac_cac1_cert_tag, tl_len);
-
-	rv = sc_simpletlv_put_tag(CAC_TAG_CERTINFO, 1, tl, tl_len, &tl1);
-	if (rv != SC_SUCCESS)
-		goto failure;
-
-	val_len -= 1; /* one byte is CERTINFO Value */
-	tl_len -= (tl1 - tl);
-	rv = sc_simpletlv_put_tag(CAC_TAG_CERTIFICATE, val_len, tl1, tl_len, &tl2);
-	if (rv != SC_SUCCESS)
-		goto failure;
-
-	*tlp = tl;
-	*tl_len_p = (tl2 - tl);
-	return SC_SUCCESS;
-failure:
-	free(tl);
-	return rv;
-}
 
 /*
  * Callers of this may be expecting a certificate,
@@ -705,31 +613,14 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 	if (priv->object_type <= 0)
 		 SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL);
 
-	if ((card->type == SC_CARD_TYPE_CAC_I) && (priv->object_type == CAC_OBJECT_TYPE_CERT)) {
-		/* SPICE smart card emulator only presents CAC-1 cards with the old CAC-1 interface as
-		 * certs. If we are a cac 1 card, use the old interface */
-		r = cac_cac1_get_certificate(card, &val, &val_len);
-		if (r == SC_ERROR_INS_NOT_SUPPORTED) {
-			/* The CACv1 instruction is not recognized. Try with CACv2 */
-			card->type = SC_CARD_TYPE_CAC_II;
-		} else if (r < 0)
-			goto done;
+	r = cac_read_file(card, CAC_FILE_TAG, &tl, &tl_len);
+	if (r < 0)  {
+		goto done;
 	}
 
-	if ((card->type == SC_CARD_TYPE_CAC_I) && (priv->object_type == CAC_OBJECT_TYPE_CERT)) {
-		r = cac_cac1_get_cert_tag(card, val_len, &tl, &tl_len);
-		if (r < 0)
-			goto done;
-	} else {
-		r = cac_read_file(card, CAC_FILE_TAG, &tl, &tl_len);
-		if (r < 0)  {
-			goto done;
-		}
-
-		r = cac_read_file(card, CAC_FILE_VALUE, &val, &val_len);
-		if (r < 0)
-			goto done;
-	}
+	r = cac_read_file(card, CAC_FILE_VALUE, &val, &val_len);
+	if (r < 0)
+		goto done;
 
 	switch (priv->object_type) {
 	case CAC_OBJECT_TYPE_TLV_FILE:
@@ -1388,7 +1279,7 @@ static int cac_select_file_by_type(sc_card_t *card, const sc_path_t *in_path, sc
 		apdu.p2 = 0;		/* first record, return FCI */
 	}
 	else {
-		apdu.p2 = (type == SC_CARD_TYPE_CAC_I)? 0x00 : 0x0C;
+		apdu.p2 = 0x0C;
 	}
 
 	r = sc_transmit_apdu(card, &apdu);
@@ -1828,48 +1719,59 @@ static int cac_parse_ACA_service(sc_card_t *card, cac_private_data_t *priv,
 	return SC_SUCCESS;
 }
 
-/* select a CAC-1 pki applet by index */
+/* select a CAC pki applet by index */
 static int cac_select_pki_applet(sc_card_t *card, int index)
 {
-	sc_path_t applet_path = cac_cac1_pki_obj.path;
+	sc_path_t applet_path = cac_cac_pki_obj.path;
 	applet_path.aid.value[applet_path.aid.len-1] = index;
-	return cac_select_file_by_type(card, &applet_path, NULL, SC_CARD_TYPE_CAC_I);
+	return cac_select_file_by_type(card, &applet_path, NULL, SC_CARD_TYPE_CAC_II);
 }
 
 /*
- *  Find the first existing CAC-1 applet. If none found, then this isn't a CAC-1
+ *  Find the first existing CAC applet. If none found, then this isn't a CAC
  */
 static int cac_find_first_pki_applet(sc_card_t *card, int *index_out)
 {
 	int r, i;
-	for (i=0; i < MAX_CAC_SLOTS; i++) {
+	for (i = 0; i < MAX_CAC_SLOTS; i++) {
 		r = cac_select_pki_applet(card, i);
 		if (r == SC_SUCCESS) {
+			/* Try to read first two bytes of the buffer to
+			 * make sure it is not just malfunctioning card
+			 */
+			u8 params[2] = {CAC_FILE_TAG, 2};
+			u8 data[2], *out_ptr = data;
+			size_t len = 2;
+			r = cac_apdu_io(card, CAC_INS_READ_FILE, 0, 0,
+			    &params[0], sizeof(params), &out_ptr, &len);
+			if (r != 2)
+				continue;
+
 			*index_out = i;
-			return r;
+			return SC_SUCCESS;
 		}
 	}
 	return SC_ERROR_OBJECT_NOT_FOUND;
 }
 
 /*
- * CAC-1 has been found, identify all the certs and general containers.
- * This emulates CAC-2's CCC.
+ * This emulates CCC for Alt tokens, that do not come with CCC nor ACA applets
  */
-static int cac_populate_cac_1(sc_card_t *card, int index, cac_private_data_t *priv)
+static int cac_populate_cac_alt(sc_card_t *card, int index, cac_private_data_t *priv)
 {
 	int r, i;
-	cac_object_t pki_obj = cac_cac1_pki_obj;
+	cac_object_t pki_obj = cac_cac_pki_obj;
 	u8 buf[100];
 	u8 *val;
 	size_t val_len;
 
 	/* populate PKI objects */
-	for (i=index; i < MAX_CAC_SLOTS; i++) {
+	for (i = index; i < MAX_CAC_SLOTS; i++) {
 		r = cac_select_pki_applet(card, i);
 		if (r == SC_SUCCESS) {
 			pki_obj.name = cac_labels[i];
-			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"CAC1: pki_object found, cert_next=%d (%s),", i, pki_obj.name);
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
+			    "CAC: pki_object found, cert_next=%d (%s),", i, pki_obj.name);
 			pki_obj.path.aid.value[pki_obj.path.aid.len-1] = i;
 			pki_obj.fd = i+1; /* don't use id of zero */
 			cac_add_object_to_list(&priv->pki_list, &pki_obj);
@@ -1877,18 +1779,21 @@ static int cac_populate_cac_1(sc_card_t *card, int index, cac_private_data_t *pr
 	}
 
 	/* populate non-PKI objects */
-	for (i=0; i < cac_1_object_count; i++) {
-		r = cac_select_file_by_type(card, &cac_1_objects[i].path, NULL, SC_CARD_TYPE_CAC_I);
+	for (i=0; i < cac_object_count; i++) {
+		r = cac_select_file_by_type(card, &cac_objects[i].path, NULL,
+		    SC_CARD_TYPE_CAC_II);
 		if (r == SC_SUCCESS) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"CAC1: obj_object found, cert_next=%d (%s),", i, cac_1_objects[i].name);
-			cac_add_object_to_list(&priv->general_list, &cac_1_objects[i]);
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
+			    "CAC: obj_object found, cert_next=%d (%s),",
+			    i, cac_objects[i].name);
+			cac_add_object_to_list(&priv->general_list, &cac_objects[i]);
 		}
 	}
 
 	/*
 	 * create a cuid to simulate the cac 2 cuid.
 	 */
-	priv->cuid = cac_cac1_cuid;
+	priv->cuid = cac_cac_cuid;
 	/* create a serial number by hashing the first 100 bytes of the
 	 * first certificate on the card */
 	r = cac_select_pki_applet(card, index);
@@ -1896,9 +1801,8 @@ static int cac_populate_cac_1(sc_card_t *card, int index, cac_private_data_t *pr
 		return r; /* shouldn't happen unless the card has been removed or is malfunctioning */
 	}
 	val = buf;
-	val_len = sizeof(buf);
-	r = cac_cac1_get_certificate(card, &val, &val_len);
-	if (r >= 0) {
+	val_len = cac_read_binary(card, 0, val, sizeof(buf), 0);
+	if (val_len > 0) {
 		priv->cac_id = malloc(20);
 		if (priv->cac_id == NULL) {
 			return SC_ERROR_OUT_OF_MEMORY;
@@ -1906,6 +1810,8 @@ static int cac_populate_cac_1(sc_card_t *card, int index, cac_private_data_t *pr
 #ifdef ENABLE_OPENSSL
 		SHA1(val, val_len, priv->cac_id);
 		priv->cac_id_len = 20;
+		sc_debug_hex(card->ctx, SC_LOG_DEBUG_VERBOSE,
+		    "cuid", priv->cac_id, priv->cac_id_len);
 #else
 		sc_log(card->ctx, "OpenSSL Required");
 		return SC_ERROR_NOT_SUPPORTED;
@@ -1994,10 +1900,10 @@ static int cac_find_and_initialize(sc_card_t *card, int initialize)
 		}
 	}
 
-	/* is this a CAC-1 specified in DoD "CAC Applet Developer Guide" version 1.0 September 2002 */
+	/* is this a CAC Alt token without any accompanying structures */
 	r = cac_find_first_pki_applet(card, &index);
 	if (r == SC_SUCCESS) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "applet found, is CAC-1");
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "PKI applet found, is bare CAC Alt");
 		if (!initialize) /* match card only */
 			return r;
 
@@ -2006,12 +1912,13 @@ static int cac_find_and_initialize(sc_card_t *card, int initialize)
 			if (!priv)
 				return SC_ERROR_OUT_OF_MEMORY;
 		}
-		r = cac_populate_cac_1(card, index, priv);
+		card->drv_data = priv; /* needed for the read_binary() */
+		r = cac_populate_cac_alt(card, index, priv);
 		if (r == SC_SUCCESS) {
-			card->type = SC_CARD_TYPE_CAC_I;
-			card->drv_data = priv;
+			card->type = SC_CARD_TYPE_CAC_II;
 			return r;
 		}
+		card->drv_data = NULL; /* reset on failure */
 	}
 	if (priv) {
 		cac_free_private_data(priv);
