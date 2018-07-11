@@ -270,6 +270,13 @@ AC_ARG_WITH(
 )
 
 AC_ARG_WITH(
+	[completiondir],
+	[AS_HELP_STRING([--with-completiondir=PATH],[Directory of Bash completion @<:@detect@:>@])],
+	[completiondir="${withval}"],
+	[completiondir="detect"]
+)
+
+AC_ARG_WITH(
 	[pcsc-provider],
 	[AS_HELP_STRING([--with-pcsc-provider=PATH],[Path to system pcsc provider @<:@system default@:>@])],
 	,
@@ -842,9 +849,13 @@ if test "${enable_cryptotokenkit}" = "yes"; then
 	fi
 	AC_DEFINE([ENABLE_CRYPTOTOKENKIT], [1], [Define if CryptoTokenKit is to be enabled])
 fi
-PKG_CHECK_MODULES([BASH_COMPLETION], [bash-completion >= 2.0],
-	[completiondir="`pkg-config --variable=completionsdir bash-completion`"],
-	[completiondir="${sysconfdir}/bash_completion.d"])
+
+if test "${completiondir}" = "detect"; then
+	echo completion ${completiondir}
+	PKG_CHECK_MODULES([BASH_COMPLETION], [bash-completion >= 2.0],
+		[completiondir="`pkg-config --variable=completionsdir bash-completion`"],
+		[completiondir="${sysconfdir}/bash_completion.d"])
+fi
 AC_SUBST([completiondir])
 
 
@@ -1101,6 +1112,7 @@ Product URL:             ${OPENSC_VS_FF_PRODUCT_URL}
 
 User binaries:           $(eval eval eval echo "${bindir}")
 Configuration files:     $(eval eval eval echo "${sysconfdir}")
+Bash completion:         ${completiondir}
 XSL stylesheets:         ${xslstylesheetsdir}
 
 man support:             ${enable_man}
