@@ -1986,17 +1986,26 @@ static int do_help(int argc, char **argv)
 {
 	struct command	*cmd;
 
-	if (argc)
-		return usage(do_help);
+	printf("%s commands:\n", (argc) ? "Matching" : "Supported");
 
-	printf("Supported commands:\n");
 	for (cmd = cmds; cmd->name; cmd++) {
-		int len = strlen(cmd->name) + strlen(cmd->args);
-		printf("  %s %s%*s  %s\n",
-			cmd->name, cmd->args,
-			(len > 40) ? 0 : (40 - len), "",
-			cmd->help);
+		int i;
+		int match = 0;
+
+		for (i = 0; i < argc; i++) {
+			if (strncmp(cmd->name, argv[i], strlen(argv[i])) == 0)
+				match++;
+		}
+		if (match || !argc) {
+			int len = strlen(cmd->name) + strlen(cmd->args);
+
+			printf("  %s %s%*s  %s\n",
+				cmd->name, cmd->args,
+				(len > 40) ? 0 : (40 - len), "",
+				cmd->help);
+		}
 	}
+
 	return 0;
 }
 
@@ -2210,7 +2219,7 @@ int main(int argc, char *argv[])
 		if (cmd == NULL) {
 			fprintf(stderr, "%s command: %s\n",
 				(multiple) ? "Ambiguous" : "Unknown", cargv[0]);
-			do_help(0, NULL);
+			do_help((multiple) ? 1 : 0, cargv);
 		} else {
 			cmd->func(cargc-1, cargv+1);
 		}

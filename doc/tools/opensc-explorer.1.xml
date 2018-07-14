@@ -394,6 +394,22 @@
 
 				<varlistentry>
 					<term>
+						<command>help</command>
+						<arg choice="opt"><replaceable>pattern</replaceable></arg>
+					</term>
+					<listitem>
+						<para>
+							Display the list of available commands, their options
+							and parameters together with a short help text.
+							If <replaceable>pattern</replaceable> is given,
+							the commands shown are limited to those matching
+							<replaceable>pattern</replaceable>.
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
 						<command>info</command>
 						<arg choice="opt"><replaceable>file-id</replaceable></arg>
 					</term>
