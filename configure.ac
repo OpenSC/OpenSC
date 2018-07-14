@@ -123,9 +123,6 @@ case "${host}" in
 		PROFILE_DIR_DEFAULT="\$(pkgdatadir)"
 	;;
 esac
-AC_DEFINE_UNQUOTED([DEBUG_FILE], ["${DEBUG_FILE}"], [Debug file])
-AC_DEFINE_UNQUOTED([PROFILE_DIR], ["${PROFILE_DIR}"], [Directory of profiles])
-AC_DEFINE_UNQUOTED([PROFILE_DIR_DEFAULT], ["${PROFILE_DIR_DEFAULT}"], [Default directory of profiles])
 
 case "${host}" in
 	*-mingw*)
@@ -347,7 +344,6 @@ AC_MSG_RESULT([${xslstylesheetsdir}])
 AC_MSG_CHECKING([git checkout])
 GIT_CHECKOUT="no"
 if test -n "${GIT}" -a -d "${srcdir}/.git"; then
-	AC_DEFINE([HAVE_CONFIG_VERSION_H], [1], [extra version available in config-version.h])
 	GIT_CHECKOUT="yes"
 fi
 AC_MSG_RESULT([${GIT_CHECKOUT}])
@@ -881,26 +877,23 @@ if test "${enable_sm}" = "yes"; then
 	DEFAULT_SM_MODULE="${LIB_PRE}smm-local${DYN_LIB_EXT}"
 	case "${host}" in
 		*-mingw*|*-winnt*|*-cygwin*)
-			DEFAULT_SM_MODULE_PATH="\# module_path = \"\";"
+			DEFAULT_SM_MODULE_PATH="%PROGRAMFILES%\\\OpenSC Project\\\OpenSC\\\tools"
 		;;
 		*)
-			DEFAULT_SM_MODULE_PATH="module_path = \$(libdir);"
+			DEFAULT_SM_MODULE_PATH="${libdir}"
 		;;
 	esac
-	AC_DEFINE_UNQUOTED([DEFAULT_SM_MODULE], ["${DEFAULT_SM_MODULE}"], [Default SM module])
-	AC_DEFINE_UNQUOTED([DEFAULT_SM_MODULE_PATH], ["${DEFAULT_SM_MODULE_PATH}"], [Default SM module path])
 fi
 
 if test "${with_pkcs11_provider}" = "detect"; then
 	if test "${WIN32}" != "yes"; then
-		DEFAULT_PKCS11_PROVIDER="opensc-pkcs11${DYN_LIB_EXT}"
+		DEFAULT_PKCS11_PROVIDER="${libdir}/opensc-pkcs11${DYN_LIB_EXT}"
 	else
 		DEFAULT_PKCS11_PROVIDER="%PROGRAMFILES%\\\OpenSC Project\\\OpenSC\\\pkcs11\\\opensc-pkcs11.dll"
 	fi
 else
 	DEFAULT_PKCS11_PROVIDER="${with_pkcs11_provider}"
 fi
-AC_DEFINE_UNQUOTED([DEFAULT_PKCS11_PROVIDER], ["${DEFAULT_PKCS11_PROVIDER}"], [Default PKCS11 provider])
 
 if test "${enable_man}" = "detect"; then
 	if test "${WIN32}" = "yes"; then
@@ -1129,13 +1122,13 @@ CT-API support:          ${enable_ctapi}
 minidriver support:      ${enable_minidriver}
 SM support:              ${enable_sm}
 SM default module:       ${DEFAULT_SM_MODULE}
+SM default path:         $(eval eval eval echo "${DEFAULT_SM_MODULE_PATH}")
 DNIe UI support:         ${enable_dnie_ui}
 Notification support:    ${enable_notify}
 Build tests:             ${enable_tests}
-Debug file:              ${DEBUG_FILE}
 
 PC/SC default provider:  ${DEFAULT_PCSC_PROVIDER}
-PKCS11 default provider: ${DEFAULT_PKCS11_PROVIDER}
+PKCS11 default provider: $(eval eval eval echo "${DEFAULT_PKCS11_PROVIDER}")
 
 Host:                    ${host}
 Compiler:                ${CC}
