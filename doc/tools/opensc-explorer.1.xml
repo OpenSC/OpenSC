@@ -109,9 +109,18 @@
 	<refsect1>
 		<title>Commands</title>
 		<para>
-			The following commands are supported at <command>opensc-explorer</command>'s
-			interactive prompt or in script files passed via the command line parameter
-			<replaceable class="parameter">SCRIPT</replaceable>.
+			<command>opensc-explorer</command> supports commands with arguments
+			at its interactive prompt or in script files passed via the command line
+			parameter <replaceable class="parameter">SCRIPT</replaceable>.
+		</para>
+		<para>
+			Similar to a command shell like e.g. <code>bash</code>,
+			each input line is split into white-space separated words.
+			Of these words, the first one is used as the command,
+			while the remaining ones are treated as arguments to that command.
+		</para>
+		<para>
+			The following commands are supported:
 			<variablelist>
 				<varlistentry>
 					<term>
