@@ -2121,10 +2121,14 @@ int main(int argc, char *argv[])
 
 	if (opt_startfile) {
 		if(*opt_startfile) {
-			char startpath[1024];
+			char startpath[SC_MAX_PATH_STRING_SIZE * 2];
 			char *args[] = { startpath };
 
-			strncpy(startpath, opt_startfile, sizeof(startpath)-1);
+			if (strlcpy(startpath, opt_startfile, sizeof(startpath)) >= sizeof(startpath)) {
+				fprintf(stderr, "unable to select file %s: name too long\n",
+					opt_startfile);
+				die(1);
+			}
 			r = do_cd(1, args);
 			if (r) {
 				printf("unable to select file %s: %s\n",
