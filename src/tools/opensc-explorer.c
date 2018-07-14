@@ -281,7 +281,7 @@ static void select_current_path_or_die(void)
 			r = sc_select_file(card, &current_path, NULL);
 		sc_unlock(card);
 		if (r) {
-			printf("unable to select parent DF: %s\n", sc_strerror(r));
+			fprintf(stderr, "unable to select parent DF: %s\n", sc_strerror(r));
 			die(1);
 		}
 	}
@@ -300,7 +300,7 @@ ambiguous_match(struct command *table, const char *cmd)
 		}
 	}
 	if (matches > 1) {
-		printf("Ambiguous command: %s\n", cmd);
+		fprintf(stderr, "Ambiguous command: %s\n", cmd);
 		return NULL;
 	}
 	return last_match;
@@ -322,12 +322,12 @@ arg_to_fid(const char *arg, u8 *fid)
 	unsigned int fid0, fid1;
 
 	if (strlen(arg) != 4) {
-		printf("Wrong ID length.\n");
+		fprintf(stderr, "Wrong ID length.\n");
 		return -1;
 	}
 
 	if (sscanf(arg, "%02X%02X", &fid0, &fid1) != 2) {
-		printf("Invalid ID.\n");
+		fprintf(stderr, "Invalid ID.\n");
 		return -1;
 	}
 
@@ -351,7 +351,7 @@ arg_to_path(const char *arg, sc_path_t *path, int is_id)
 		path->type = SC_PATH_TYPE_DF_NAME;
 		path->len  = sizeof(path->value);
 		if ((r = sc_hex_to_bin(p, path->value, &path->len)) < 0) {
-			printf("Error parsing AID: %s\n", p);
+			fprintf(stderr, "Error parsing AID: %s\n", p);
 			return r;
 		}
 	} else {
@@ -368,7 +368,7 @@ arg_to_path(const char *arg, sc_path_t *path, int is_id)
 			*path = current_path;
 			if (path->type == SC_PATH_TYPE_DF_NAME)   {
 				if (path->len > sizeof(path->aid.value))   {
-					printf("Invalid length of DF_NAME path\n");
+					fprintf(stderr, "Invalid length of DF_NAME path\n");
 					return -1;
 				}
 
@@ -511,7 +511,7 @@ static int do_ls(int argc, char **argv)
 				sc_append_path_id(&path, cur, 2);
 			} else {
 				if (sc_path_set(&path, SC_PATH_TYPE_FILE_ID, cur, 2, 0, 0) != SC_SUCCESS) {
-					printf("unable to set path.\n");
+					fprintf(stderr, "unable to set path.\n");
 					die(1);
 				}
 			}
@@ -521,7 +521,7 @@ static int do_ls(int argc, char **argv)
 				r = sc_select_file(card, &path, &file);
 			sc_unlock(card);
 			if (r) {
-				printf(" %02X%02X unable to select file, %s\n", cur[0], cur[1], sc_strerror(r));
+				fprintf(stderr, " %02X%02X unable to select file, %s\n", cur[0], cur[1], sc_strerror(r));
 			} else {
 				file->id = (cur[0] << 8) | cur[1];
 					print_file(file);
@@ -572,7 +572,7 @@ static int do_find(int argc, char **argv)
 			sc_append_path_id(&path, fid, sizeof fid);
 		} else {
 			if (sc_path_set(&path, SC_PATH_TYPE_FILE_ID, fid, 2, 0, 0) != SC_SUCCESS) {
-				printf("unable to set path.\n");
+				fprintf(stderr, "unable to set path.\n");
 				die(1);
 			}
 		}
@@ -685,7 +685,7 @@ static int do_cd(int argc, char **argv)
 	if (strcmp(argv[0], "..") == 0) {
 		path = current_path;
 		if (path.len < 4) {
-			printf("unable to go up, already in MF.\n");
+			fprintf(stderr, "unable to go up, already in MF.\n");
 			return -1;
 		}
 
@@ -701,7 +701,7 @@ static int do_cd(int argc, char **argv)
 			r = sc_select_file(card, &path, &file);
 		sc_unlock(card);
 		if (r) {
-			printf("unable to go up: %s\n", sc_strerror(r));
+			fprintf(stderr, "unable to go up: %s\n", sc_strerror(r));
 			return -1;
 		}
 		sc_file_free(current_file);
@@ -721,7 +721,7 @@ static int do_cd(int argc, char **argv)
 		return -1;
 	}
 	if ((file->type != SC_FILE_TYPE_DF) && (card->type != SC_CARD_TYPE_BELPIC_EID)) {
-		printf("Error: file is not a DF.\n");
+		fprintf(stderr, "Error: file is not a DF.\n");
 		sc_file_free(file);
 		select_current_path_or_die();
 		return -1;
@@ -811,7 +811,7 @@ static int do_cat(int argc, char **argv)
 			const char *sfi_n = argv[0] + strlen(sfi_prefix);
 
 			if(!current_file) {
-				printf("A DF must be selected to read by SFI\n");
+				fprintf(stderr, "A DF must be selected to read by SFI\n");
 				goto err;
 			}
 			path = current_path;
@@ -819,7 +819,7 @@ static int do_cat(int argc, char **argv)
 			not_current = 0;
 			sfi = atoi(sfi_n);
 			if ((sfi < 1) || (sfi > 30)) {
-				printf("Invalid SFI: %s\n", sfi_n);
+				fprintf(stderr, "Invalid SFI: %s\n", sfi_n);
 				return usage(do_cat);
 			}
 		} else {
@@ -839,7 +839,7 @@ static int do_cat(int argc, char **argv)
 	}
 	if (file->type != SC_FILE_TYPE_WORKING_EF &&
 		!(file->type == SC_FILE_TYPE_DF && sfi)) {
-		printf("only working EFs may be read\n");
+		fprintf(stderr, "only working EFs may be read\n");
 		goto err;
 	}
 	if (file->ef_structure == SC_FILE_EF_TRANSPARENT && !sfi)
@@ -879,7 +879,7 @@ static int do_info(int argc, char **argv)
 			r = sc_select_file(card, &path, &file);
 		sc_unlock(card);
 		if (r) {
-			printf("unable to select file: %s\n", sc_strerror(r));
+			fprintf(stderr, "unable to select file: %s\n", sc_strerror(r));
 			return -1;
 		}
 	} else
@@ -1116,11 +1116,11 @@ static int do_pininfo(int argc, char **argv)
 		}
 	}
 	if (data.pin_type == SC_AC_NONE) {
-		printf("Invalid type.\n");
+		fprintf(stderr, "Invalid type.\n");
 		return usage(do_pininfo);
 	}
 	if (sscanf(argv[0] + prefix_len, "%d", &data.pin_reference) != 1) {
-		printf("Invalid key reference.\n");
+		fprintf(stderr, "Invalid key reference.\n");
 		return usage(do_pininfo);
 	}
 
@@ -1130,7 +1130,7 @@ static int do_pininfo(int argc, char **argv)
 	sc_unlock(card);
 
 	if (r) {
-		printf("Unable to get PIN info: %s\n", sc_strerror(r));
+		fprintf(stderr, "Unable to get PIN info: %s\n", sc_strerror(r));
 		return -1;
 	}
 	if (tries_left > 0)
@@ -1171,11 +1171,11 @@ static int do_verify(int argc, char **argv)
 		}
 	}
 	if (data.pin_type == SC_AC_NONE) {
-		printf("Invalid type.\n");
+		fprintf(stderr, "Invalid type.\n");
 		return usage(do_verify);
 	}
 	if (sscanf(argv[0] + prefix_len, "%d", &data.pin_reference) != 1) {
-		printf("Invalid key reference.\n");
+		fprintf(stderr, "Invalid key reference.\n");
 		return usage(do_verify);
 	}
 
@@ -1192,13 +1192,13 @@ static int do_verify(int argc, char **argv)
 			printf("Please enter PIN: ");
 			r = util_getpass(&pin, &len, stdin);
 			if (r < 0) {
-				printf("util_getpass error.\n");
+				fprintf(stderr, "util_getpass error.\n");
 				return -1;
 			}
 
 			if (strlcpy((char *)buf, pin, sizeof(buf)) >= sizeof(buf)) {
 				free(pin);
-				printf("PIN too long - aborting VERIFY.\n");
+				fprintf(stderr, "PIN too long - aborting VERIFY.\n");
 				return -1;
 			}
 			free(pin);
@@ -1208,7 +1208,7 @@ static int do_verify(int argc, char **argv)
 	} else {
 		r = parse_string_or_hexdata(argv[1], buf, &buflen);
 		if (0 != r) {
-			printf("Invalid key value.\n");
+			fprintf(stderr, "Invalid key value.\n");
 			return usage(do_verify);
 		}
 		data.pin1.data = buf;
@@ -1226,7 +1226,7 @@ static int do_verify(int argc, char **argv)
 			else
 				printf("Incorrect code.\n");
 		} else
-			printf("Unable to verify PIN code: %s\n", sc_strerror(r));
+			fprintf(stderr, "Unable to verify PIN code: %s\n", sc_strerror(r));
 		return -1;
 	}
 	printf("Code correct.\n");
@@ -1248,18 +1248,18 @@ static int do_change(int argc, char **argv)
 	if (argc < 1 || argc > 3)
 		return usage(do_change);
 	if (strncasecmp(argv[0], "CHV", 3)) {
-		printf("Invalid type.\n");
+		fprintf(stderr, "Invalid type.\n");
 		return usage(do_change);
 	}
 	if (sscanf(argv[0] + 3, "%d", &ref) != 1) {
-		printf("Invalid key reference.\n");
+		fprintf(stderr, "Invalid key reference.\n");
 		return usage(do_change);
 	}
 
 	if (argc == 3) {
 		oldpinlen = sizeof(oldpin);
 		if (parse_string_or_hexdata(argv[1], oldpin, &oldpinlen) != 0) {
-			printf("Invalid key value.\n");
+			fprintf(stderr, "Invalid key value.\n");
 			return usage(do_change);
 		}
 	}
@@ -1267,7 +1267,7 @@ static int do_change(int argc, char **argv)
 	if (argc >= 2) {
 		newpinlen = sizeof(newpin);
 		if (parse_string_or_hexdata(argv[argc-1], newpin, &newpinlen) != 0) {
-			printf("Invalid key value.\n");
+			fprintf(stderr, "Invalid key value.\n");
 			return usage(do_change);
 		}
 	}
@@ -1290,7 +1290,7 @@ static int do_change(int argc, char **argv)
 			else
 				printf("Incorrect code.\n");
 		}
-		printf("Unable to change PIN code: %s\n", sc_strerror(r));
+		fprintf(stderr, "Unable to change PIN code: %s\n", sc_strerror(r));
 		return -1;
 	}
 	printf("PIN changed.\n");
@@ -1313,7 +1313,7 @@ static int do_unblock(int argc, char **argv)
 	if (argc < 1 || argc > 3)
 		return usage(do_unblock);
 	if (strncasecmp(argv[0], "CHV", 3)) {
-		printf("Invalid type.\n");
+		fprintf(stderr, "Invalid type.\n");
 		return usage(do_unblock);
 	}
 	if (sscanf(argv[0] + 3, "%d", &ref) != 1) {
@@ -1324,7 +1324,7 @@ static int do_unblock(int argc, char **argv)
 	if (argc > 1) {
 		puklen = sizeof(puk);
 		if (parse_string_or_hexdata(argv[1], puk, &puklen) != 0) {
-			printf("Invalid key value.\n");
+			fprintf(stderr, "Invalid key value.\n");
 			return usage(do_unblock);
 		}
 	}
@@ -1332,7 +1332,7 @@ static int do_unblock(int argc, char **argv)
 	if (argc > 2)   {
 		newpinlen = sizeof(newpin);
 		if (parse_string_or_hexdata(argv[2], newpin, &newpinlen) != 0) {
-			printf("Invalid key value.\n");
+			fprintf(stderr, "Invalid key value.\n");
 			return usage(do_unblock);
 		}
 	}
@@ -1350,8 +1350,8 @@ static int do_unblock(int argc, char **argv)
 	sc_unlock(card);
 	if (r) {
 		if (r == SC_ERROR_PIN_CODE_INCORRECT)
-			printf("Incorrect code.\n");
-		printf("Unable to unblock PIN code: %s\n", sc_strerror(r));
+			fprintf(stderr, "Incorrect code.\n");
+		fprintf(stderr, "Unable to unblock PIN code: %s\n", sc_strerror(r));
 		return -1;
 	}
 	printf("PIN unblocked.\n");
@@ -1391,7 +1391,7 @@ static int do_get(int argc, char **argv)
 		goto err;
 	}
 	if (file->type != SC_FILE_TYPE_WORKING_EF) {
-		printf("only working EFs may be read\n");
+		fprintf(stderr, "only working EFs may be read\n");
 		goto err;
 	}
 	count = file->size;
@@ -1405,7 +1405,7 @@ static int do_get(int argc, char **argv)
 			goto err;
 		}
 		if ((r != c) && (card->type != SC_CARD_TYPE_BELPIC_EID)) {
-			printf("expecting %d, got only %d bytes.\n", c, r);
+			fprintf(stderr, "expecting %d, got only %d bytes.\n", c, r);
 			goto err;
 		}
 		if ((r == 0) && (card->type == SC_CARD_TYPE_BELPIC_EID))
@@ -1450,7 +1450,7 @@ static int do_update_binary(int argc, char **argv)
 
 	r = parse_string_or_hexdata(argv[2], buf, &buflen);
 	if (r < 0) {
-		printf("unable to parse data\n");
+		fprintf(stderr, "unable to parse data\n");
 		return -1;
 	}
 
@@ -1464,7 +1464,7 @@ static int do_update_binary(int argc, char **argv)
 	}
 
 	if (file->ef_structure != SC_FILE_EF_TRANSPARENT)   {
-		printf("EF structure should be SC_FILE_EF_TRANSPARENT\n");
+		fprintf(stderr, "EF structure should be SC_FILE_EF_TRANSPARENT\n");
 		goto err;
 	}
 
@@ -1473,7 +1473,7 @@ static int do_update_binary(int argc, char **argv)
 		r = sc_update_binary(card, offs, buf, buflen, 0);
 	sc_unlock(card);
 	if (r < 0) {
-		printf("Cannot update %04X; return %i\n", file->id, r);
+		fprintf(stderr, "Cannot update %04X; return %i\n", file->id, r);
 		goto err;
 	}
 
@@ -1515,23 +1515,23 @@ static int do_update_record(int argc, char **argv)
 	}
 
 	if (file->ef_structure != SC_FILE_EF_LINEAR_VARIABLE)   {
-		printf("EF structure should be SC_FILE_EF_LINEAR_VARIABLE\n");
+		fprintf(stderr, "EF structure should be SC_FILE_EF_LINEAR_VARIABLE\n");
 		goto err;
 	} else if (rec < 1 || rec > file->record_count)   {
-		printf("Invalid record number %i\n", rec);
+		fprintf(stderr, "Invalid record number %i\n", rec);
 		goto err;
 	}
 
 	r = sc_read_record(card, rec, buf, sizeof(buf), SC_RECORD_BY_REC_NR);
 	if (r<0)   {
-		printf("Cannot read record %i; return %i\n", rec, r);
+		fprintf(stderr, "Cannot read record %i; return %i\n", rec, r);
 		goto err;;
 	}
 
 	buflen = sizeof(buf) - offs;
 	i = parse_string_or_hexdata(argv[3], buf + offs, &buflen);
 	if (!i) {
-		printf("unable to parse data\n");
+		fprintf(stderr, "unable to parse data\n");
 		goto err;
 	}
 
@@ -1540,7 +1540,7 @@ static int do_update_record(int argc, char **argv)
 		r = sc_update_record(card, rec, buf, r, SC_RECORD_BY_REC_NR);
 	sc_unlock(card);
 	if (r<0)   {
-		printf("Cannot update record %i; return %i\n", rec, r);
+		fprintf(stderr, "Cannot update record %i; return %i\n", rec, r);
 		goto err;
 	}
 
@@ -1605,7 +1605,7 @@ static int do_put(int argc, char **argv)
 			goto err;
 		}
 		if (r != c) {
-			printf("expecting %d, wrote only %d bytes.\n", c, r);
+			fprintf(stderr, "expecting %d, wrote only %d bytes.\n", c, r);
 			goto err;
 		}
 		idx += c;
@@ -1653,7 +1653,7 @@ static int do_erase(int argc, char **argv)
 		r = sc_card_ctl(card, SC_CARDCTL_ERASE_CARD, NULL);
 	sc_unlock(card);
 	if (r) {
-		printf("Failed to erase card: %s\n", sc_strerror (r));
+		fprintf(stderr, "Failed to erase card: %s\n", sc_strerror (r));
 		return -1;
 	}
 	return 0;
@@ -1671,7 +1671,7 @@ static int do_random(int argc, char **argv)
 
 	count = atoi(argv[0]);
 	if (count < 0 || (size_t) count > sizeof buffer) {
-		printf("Number must be in range 0..%"SC_FORMAT_LEN_SIZE_T"u\n",
+		fprintf(stderr, "Number must be in range 0..%"SC_FORMAT_LEN_SIZE_T"u\n",
 			   	sizeof buffer);
 		return -1;
 	}
@@ -1698,7 +1698,7 @@ static int do_random(int argc, char **argv)
 		r = sc_get_challenge(card, buffer, count);
 	sc_unlock(card);
 	if (r < 0) {
-		printf("Failed to get random bytes: %s\n", sc_strerror(r));
+		fprintf(stderr, "Failed to get random bytes: %s\n", sc_strerror(r));
 		return -1;
 	}
 
@@ -1742,7 +1742,7 @@ static int do_get_data(int argc, char **argv)
 		r = sc_get_data(card, tag, buffer, sizeof(buffer));
 	sc_unlock(card);
 	if (r < 0) {
-		printf("Failed to get data object: %s\n", sc_strerror(r));
+		fprintf(stderr, "Failed to get data object: %s\n", sc_strerror(r));
 		return -1;
 	}
 
@@ -1783,7 +1783,7 @@ static int do_put_data(int argc, char **argv)
 	/* buflen is the max length of reception buffer */
 	r = parse_string_or_hexdata(argv[1], buf, &buflen);
 	if (r < 0) {
-		printf("error parsing %s: %s\n", argv[1], sc_strerror(r));
+		fprintf(stderr, "error parsing %s: %s\n", argv[1], sc_strerror(r));
 		return r;
 	}
 
@@ -1793,7 +1793,7 @@ static int do_put_data(int argc, char **argv)
 		r = sc_put_data(card, tag, buf, buflen);
 	sc_unlock(card);
 	if (r < 0) {
-		printf("Cannot put data to %04X; return %i\n", tag, r);
+		fprintf(stderr, "Cannot put data to %04X; return %i\n", tag, r);
 		return -1;
 	}
 
@@ -1851,7 +1851,7 @@ static int do_apdu(int argc, char **argv)
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	if (r)
-		printf("Failure: %s\n", sc_strerror(r));
+		fprintf(stderr, "Failure: %s\n", sc_strerror(r));
 	else
 		printf("Success!\n");
 
@@ -1873,7 +1873,7 @@ static int do_asn1(int argc, char **argv)
 	/* select file */
 	if (argc) {
 		if (arg_to_path(argv[0], &path, 0) != 0) {
-			puts("Invalid file path");
+			fprintf(stderr, "Invalid file path\n");
 			return -1;
 		}
 		r = sc_lock(card);
@@ -1890,13 +1890,13 @@ static int do_asn1(int argc, char **argv)
 		not_current = 0;
 	}
 	if (file->type != SC_FILE_TYPE_WORKING_EF) {
-		printf("only working EFs may be read\n");
+		fprintf(stderr, "only working EFs may be read\n");
 		goto err;
 	}
 
 	/* read */
 	if (file->ef_structure != SC_FILE_EF_TRANSPARENT) {
-		printf("only transparent file type is supported at the moment\n");
+		fprintf(stderr, "only transparent file type is supported at the moment\n");
 		goto err;
 	}
 	len = file->size;
@@ -1946,14 +1946,14 @@ static int do_sm(int argc, char **argv)
 #ifdef ENABLE_SM
 	if (!strcmp(argv[0],"open"))   {
 		if (!card->sm_ctx.ops.open)   {
-			printf("Not supported\n");
+			fprintf(stderr, "Not supported\n");
 			return -1;
 		}
 		r = card->sm_ctx.ops.open(card);
 	}
 	else if (!strcmp(argv[0],"close"))   {
 		if (!card->sm_ctx.ops.close)   {
-			printf("Not supported\n");
+			fprintf(stderr, "Not supported\n");
 			return -1;
 		}
 		r = card->sm_ctx.ops.close(card);
@@ -1964,7 +1964,7 @@ static int do_sm(int argc, char **argv)
 		printf("Success!\n");
 	}
 	else   {
-		printf("Failure: %s\n", sc_strerror(r));
+		fprintf(stderr, "Failure: %s\n", sc_strerror(r));
 	}
 
 	return ret;
