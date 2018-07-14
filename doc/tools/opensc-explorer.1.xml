@@ -450,7 +450,7 @@
 
 				<varlistentry>
 					<term>
-						<command>find_tags</command>
+						<command>tag_find</command>
 						<arg choice="opt">
 							<replaceable>start-tag</replaceable>
 							<arg choice="opt"><replaceable>end-tag</replaceable></arg>

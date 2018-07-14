@@ -130,7 +130,7 @@ static struct command	cmds[] = {
 		"find",	"[<start id> [<end id>]]",
 		"find all files in the current DF"	},
 	{ do_find_tags,
-		"find_tags",	"[<start tag> [<end tag>]]",
+		"tag_find",	"[<start tag> [<end tag>]]",
 		"find all tags of data objects in the current context"	},
 	{ do_cd,
 		"cd",	"{.. | <file id> | aid:<DF name>}",
