@@ -32,7 +32,7 @@ dist_pkgdata_DATA = \
 	openpgp.profile sc-hsm.profile \
 	isoApplet.profile gids.profile
 
-AM_CPPFLAGS = -DSC_PKCS15_PROFILE_DIRECTORY=\"$(pkgdatadir)\" \
+AM_CPPFLAGS = -D'SC_PKCS15_PROFILE_DIRECTORY="$(pkgdatadir)"' \
 	-I$(top_srcdir)/src
 AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS)
 
