@@ -1347,6 +1347,8 @@ sc_card_sm_load(struct sc_card *card, const char *module_path, const char *in_mo
 	char temp_path[PATH_MAX];
 	size_t temp_len;
 	const char path_delim = '\\';
+	char expanded_val[PATH_MAX];
+	DWORD expanded_len;
 #else
 	const char path_delim = '/';
 #endif
@@ -1360,16 +1362,20 @@ sc_card_sm_load(struct sc_card *card, const char *module_path, const char *in_mo
 		return sc_card_sm_unload(card);
 
 #ifdef _WIN32
-	if (!module_path)   {
+	if (!module_path || strlen(module_path) == 0)   {
 		temp_len = PATH_MAX;
 		rv = sc_ctx_win32_get_config_value(NULL, "SmDir", "Software\\OpenSC Project\\OpenSC",
 				temp_path, &temp_len);
 		if (rv == SC_SUCCESS)
 			module_path = temp_path;
 	}
+	expanded_len = PATH_MAX;
+	expanded_len = ExpandEnvironmentStringsA(module_path, expanded_val, expanded_len);
+	if (0 < expanded_len && expanded_len < sizeof expanded_val)
+		module_path = expanded_val;
 #endif
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "SM module '%s' located in '%s'", in_module, module_path);
-	if (module_path)   {
+	if (module_path && strlen(module_path) > 0)   {
 		int sz = strlen(in_module) + strlen(module_path) + 3;
 		module = malloc(sz);
 		if (module)
@@ -1475,8 +1481,8 @@ sc_card_sm_check(struct sc_card *card)
 		LOG_TEST_RET(ctx, SC_ERROR_INCONSISTENT_CONFIGURATION, "SM configuration block not preset");
 
 	/* check if an external SM module has to be used */
-	module_path = scconf_get_str(sm_conf_block, "module_path", NULL);
-	module_name = scconf_get_str(sm_conf_block, "module_name", NULL);
+	module_path = scconf_get_str(sm_conf_block, "module_path", DEFAULT_SM_MODULE_PATH);
+	module_name = scconf_get_str(sm_conf_block, "module_name", DEFAULT_SM_MODULE);
 	sc_log(ctx, "SM module '%s' in  '%s'", module_name, module_path);
 	if (!module_name)
 		LOG_TEST_RET(ctx, SC_ERROR_INCONSISTENT_CONFIGURATION, "Invalid SM configuration: module not defined");

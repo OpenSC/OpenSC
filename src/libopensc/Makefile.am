@@ -15,6 +15,8 @@ noinst_HEADERS = cards.h ctbcs.h internal.h esteid.h muscle.h muscle-filesystem.
 	jpki.h sc-ossl-compat.h card-npa.h ccid-types.h reader-tr03119.h
 
 AM_CPPFLAGS = -DOPENSC_CONF_PATH=\"$(sysconfdir)/opensc.conf\" \
+     -DDEFAULT_SM_MODULE_PATH=\"$(DEFAULT_SM_MODULE_PATH)\" \
+     -DDEFAULT_SM_MODULE=\"$(DEFAULT_SM_MODULE)\" \
 	-I$(top_srcdir)/src
 AM_CFLAGS = $(OPENPACE_CFLAGS) $(OPTIONAL_OPENSSL_CFLAGS) $(OPTIONAL_OPENCT_CFLAGS) \
 	$(OPTIONAL_PCSC_CFLAGS) $(OPTIONAL_ZLIB_CFLAGS)

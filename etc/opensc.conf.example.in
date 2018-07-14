@@ -797,8 +797,8 @@ app default {
 		# name of external SM module
 		# module_name = @DEFAULT_SM_MODULE@;
 		# directory with external SM module
-		# Default: defined by windows register
-		@DEFAULT_SM_MODULE_PATH@
+		# Default: @DEFAULT_SM_MODULE_PATH@
+		# module_path = @DEFAULT_SM_MODULE_PATH@;
 
 		# specific data to tune the module initialization
 		# module_data = "Here can be your SM module init data";
@@ -821,7 +821,7 @@ app default {
 
 	secure_messaging local_gemalto_iam  {
 		module_name = @DEFAULT_SM_MODULE@;
-		@DEFAULT_SM_MODULE_PATH@
+		# module_path = @DEFAULT_SM_MODULE_PATH@;
 		# module_data = "";
 		type = acl;	     # transmit, acl
 
@@ -840,7 +840,7 @@ app default {
 
 	secure_messaging local_amos  {
 		module_name = @DEFAULT_SM_MODULE@;
-		@DEFAULT_SM_MODULE_PATH@
+		# module_path = @DEFAULT_SM_MODULE_PATH@;
 		# module_data = "";
 		mode = acl;
 		ifd_serial = "11:22:33:44:55:66:77:88";
@@ -850,7 +850,7 @@ app default {
 
 	secure_messaging local_amos_eid  {
 		module_name = @DEFAULT_SM_MODULE@;
-		@DEFAULT_SM_MODULE_PATH@
+		# module_path = @DEFAULT_SM_MODULE_PATH@;
 		# module_data = "";
 		mode = acl;
 		ifd_serial = "11:22:33:44:55:66:77:88";
@@ -860,7 +860,7 @@ app default {
 
 	secure_messaging local_adele  {
 		module_name = @DEFAULT_SM_MODULE@;
-		@DEFAULT_SM_MODULE_PATH@
+		# module_path = @DEFAULT_SM_MODULE_PATH@;
 		# module_data = "";
 		type = acl;	     # transmit, acl
 
