@@ -288,21 +288,33 @@ static void select_current_path_or_die(void)
 }
 
 static struct command *
-ambiguous_match(struct command *table, const char *cmd)
+ambiguous_match(struct command *table, const char *cmd, int *ambiguous)
 {
 	struct command *last_match = NULL;
-	int matches = 0;
 
-	for (; table->name; table++) {
-		if (strncasecmp(cmd, table->name, strlen(cmd)) == 0) {
-			last_match = table;
-			matches++;
+	if (table != NULL && cmd != NULL) {
+		for (; table->name; table++) {
+			size_t cmdlen = strlen(cmd);
+
+			/* compare cmd with prefix of known command */
+			if (strncasecmp(table->name, cmd, cmdlen) == 0) {
+				/* succeed immediately if lengths match too, i.e. exact match */
+				if (cmdlen == strlen(table->name))
+					return table;
+				/* fail on multiple prefix-only matches */
+				if (last_match != NULL) {
+					if (ambiguous != NULL)
+						*ambiguous = 1;
+					return NULL;
+				}
+				/* remember latest prefix-only match */
+				last_match = table;
+			}
 		}
 	}
-	if (matches > 1) {
-		fprintf(stderr, "Ambiguous command: %s\n", cmd);
-		return NULL;
-	}
+	/* indicate as non-ambiguous if there was no match */
+	if (ambiguous != NULL && last_match == NULL)
+		*ambiguous = 0;
 	return last_match;
 }
 
@@ -2178,6 +2190,10 @@ int main(int argc, char *argv[])
 	}
 
 	while (!feof(script)) {
+		char *line;
+		int cargc;
+		char *cargv[260];
+		int multiple;
 		struct command *cmd;
 		char prompt[3*SC_MAX_PATH_STRING_SIZE];
 
@@ -2190,8 +2206,10 @@ int main(int argc, char *argv[])
 			continue;
 		for (r=cargc; r < (int)DIM(cargv); r++)
 			cargv[r] = "";
-		cmd = ambiguous_match(cmds, cargv[0]);
+		cmd = ambiguous_match(cmds, cargv[0], &multiple);
 		if (cmd == NULL) {
+			fprintf(stderr, "%s command: %s\n",
+				(multiple) ? "Ambiguous" : "Unknown", cargv[0]);
 			do_help(0, NULL);
 		} else {
 			cmd->func(cargc-1, cargv+1);
