@@ -1774,7 +1774,8 @@ static int do_put_data(int argc, char **argv)
 	tag = strtoul(argv[0], NULL, 16);
 
 	/* Extract the new content */
-	for (i = 1, len = 0; i < (unsigned) argc; i++)   {
+	/* loop over the args and parse them, making sure the result fits into buf[] */
+	for (i = 1, len = 0; i < (unsigned) argc && len < sizeof(buf); i++)   {
 		size_t len0 = sizeof(buf) - len;
 
 		if ((r = parse_string_or_hexdata(argv[i], buf + len, &len0)) < 0) {
@@ -1810,7 +1811,8 @@ static int do_apdu(int argc, char **argv)
 	if (argc < 1)
 		return usage(do_apdu);
 
-	for (i = 0, len = 0; i < (unsigned) argc; i++)   {
+	/* loop over the args and parse them, making sure the result fits into buf[] */
+	for (i = 1, len = 0; i < (unsigned) argc && len < sizeof(buf); i++)   {
 		size_t len0 = sizeof(buf) - len;
 
 		if ((r = parse_string_or_hexdata(argv[i], buf + len, &len0)) < 0) {
