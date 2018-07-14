@@ -2131,9 +2131,9 @@ int main(int argc, char *argv[])
 			}
 			r = do_cd(1, args);
 			if (r) {
-				printf("unable to select file %s: %s\n",
+				fprintf(stderr, "unable to select file %s: %s\n",
 					opt_startfile, sc_strerror(r));
-				return -1;
+				die(1);
 			}
 		}
 	} else {
@@ -2143,8 +2143,8 @@ int main(int argc, char *argv[])
 			r = sc_select_file(card, &current_path, &current_file);
 		sc_unlock(card);
 		if (r) {
-			printf("unable to select MF: %s\n", sc_strerror(r));
-			return 1;
+			fprintf(stderr, "unable to select MF: %s\n", sc_strerror(r));
+			die(1);
 		}
 	}
 
