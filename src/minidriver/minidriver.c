@@ -684,8 +684,22 @@ md_is_pinpad_dlg_enable_cancel(PCARD_DATA pCardData)
 static BOOL
 md_is_read_only(PCARD_DATA pCardData)
 {
+	BOOL ret = TRUE;
+
 	logprintf(pCardData, 2, "Is read-only?\n");
-	return md_get_config_bool(pCardData, "md_read_only", TRUE);
+
+	if (pCardData && pCardData->pvVendorSpecific) {
+		VENDOR_SPECIFIC *vs = (VENDOR_SPECIFIC*) pCardData->pvVendorSpecific;
+		if (vs->p15card && vs->p15card->tokeninfo) {
+			if (vs->p15card->tokeninfo->flags & SC_PKCS15_TOKEN_READONLY) {
+				ret = TRUE;
+			} else {
+				ret = FALSE;
+			}
+		}
+	}
+
+	return md_get_config_bool(pCardData, "md_read_only", ret);
 }
 
 
