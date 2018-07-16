@@ -822,11 +822,11 @@ app <replaceable>application</replaceable> {
 					</varlistentry>
 					<varlistentry>
 						<term>
-							<option>md_read_only = <replaceable>bool</replaceable>;</option>
+							<option>read_only = <replaceable>bool</replaceable>;</option>
 						</term>
 						<listitem><para>
 								Mark card as read/only card in
-								Minidriver/BaseCSP interface
+								PKCS#11/Minidriver/BaseCSP interface
 								(Default: <literal>false</literal>).
 						</para></listitem>
 					</varlistentry>
