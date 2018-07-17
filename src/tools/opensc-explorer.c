@@ -732,7 +732,7 @@ static int do_cd(int argc, char **argv)
 static int read_and_util_print_binary_file(sc_file_t *file)
 {
 	unsigned char *buf = NULL;
-	int r;
+	int r, ret = -1;
 	size_t size;
 
 	if (file->size) {
@@ -750,15 +750,17 @@ static int read_and_util_print_binary_file(sc_file_t *file)
 	sc_unlock(card);
 	if (r < 0)   {
 		check_ret(r, SC_AC_OP_READ, "read failed", file);
-		return -1;
+		goto err;
 	}
 	if ((r == 0) && (card->type == SC_CARD_TYPE_BELPIC_EID))
-		return -1;
+		goto err;
 
 	util_hex_dump_asc(stdout, buf, r, 0);
 
+	ret = 0;
+err:
 	free(buf);
-	return 0;
+	return ret;
 }
 
 static int read_and_print_record_file(sc_file_t *file, unsigned char sfi)
