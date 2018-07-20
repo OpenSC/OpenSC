@@ -1063,6 +1063,7 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 	PCSC_TLV_STRUCTURE *pcsc_tlv;
 	LONG rv;
 	const char *log_disabled = "but it's disabled in configuration file";
+	int id_vendor = 0, id_product = 0;
 
 	LOG_FUNC_CALLED(ctx);
 
@@ -1129,6 +1130,17 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 			reader->capabilities |= SC_READER_CAP_PIN_PAD;
 		} else {
 			sc_log(ctx, "%s %s", log_text, log_disabled);
+		}
+	}
+
+	/* Some readers claim to have PinPAD support even if they have not */
+	if ((reader->capabilities & SC_READER_CAP_PIN_PAD) &&
+		part10_get_vendor_product(reader, card_handle, &id_vendor, &id_product) == SC_SUCCESS) {
+		/* HID Global OMNIKEY 3x21/6121 Smart Card Reader, fixed in libccid 1.4.29 (remove when last supported OS is using 1.4.29) */
+		if ((id_vendor == 0x076B && id_product == 0x3031) ||
+			(id_vendor == 0x076B && id_product == 0x6632)) {
+			sc_log(ctx, "%s is not pinpad reader, ignoring", reader->name);
+			reader->capabilities &= ~SC_READER_CAP_PIN_PAD;
 		}
 	}
 
