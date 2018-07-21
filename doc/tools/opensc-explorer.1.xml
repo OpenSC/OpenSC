@@ -330,7 +330,7 @@
 					<term>
 						<command>do_put</command>
 						<replaceable>hex-tag</replaceable>
-						<arg choice="plain" rep="repeat"><replaceable>data</replaceable></arg>
+						<replaceable>data</replaceable>
 					</term>
 					<listitem>
 						<para>
@@ -340,8 +340,8 @@
 							to <replaceable>data</replaceable>.
 						</para>
 						<para>
-							<replaceable>data</replaceable> is a series of
-							sequences of hexadecimal values and strings enclosed
+							<replaceable>data</replaceable> is either a
+							sequence of hexadecimal values or a string enclosed
 							in double quotes (<literal>"..."</literal>).
 						</para>
 					</listitem>

@@ -175,7 +175,7 @@ static struct command	cmds[] = {
 		"do_get",	"<hex tag> [<output file>]",
 		"get a data object"			},
 	{ do_put_data,
-		"do_put",	"<hex tag> <data> ...",
+		"do_put",	"<hex tag> <data>",
 		"put a data object"			},
 	{ do_erase,
 		"erase",	"",
@@ -1764,25 +1764,19 @@ static int do_put_data(int argc, char **argv)
 {
 	unsigned int tag;
 	u8 buf[SC_MAX_EXT_APDU_BUFFER_SIZE];
-	size_t i, len;
+	size_t len;
 	int r;
 
-	if (argc < 2)
+	if (argc != 2)
 		return usage(do_put_data);
 
 	/* Extract DO's tag */
 	tag = strtoul(argv[0], NULL, 16);
 
 	/* Extract the new content */
-	/* loop over the args and parse them, making sure the result fits into buf[] */
-	for (i = 1, len = 0; i < (unsigned) argc && len < sizeof(buf); i++)   {
-		size_t len0 = sizeof(buf) - len;
-
-		if ((r = parse_string_or_hexdata(argv[i], buf + len, &len0)) < 0) {
-			fprintf(stderr, "error parsing %s: %s\n", argv[i], sc_strerror(r));
-			return r;
-		};
-		len += len0;
+	if ((r = parse_string_or_hexdata(argv[1], buf, &len)) < 0) {
+		fprintf(stderr, "error parsing %s: %s\n", argv[1], sc_strerror(r));
+		return r;
 	}
 
 	/* Call OpenSC to do put data */
