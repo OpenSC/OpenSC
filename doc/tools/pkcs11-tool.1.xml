@@ -483,6 +483,13 @@
 
 				<varlistentry>
 					<term>
+						<option>--verify</option>,
+					</term>
+					<listitem><para>Verify signature of some data.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
 						<option>--read-object</option>,
 						<option>-r</option>
 					</term>
@@ -528,6 +535,13 @@
 					</term>
 					<listitem><para>Specify the subject in hexadecimal format (use with
 					<option>--type</option> cert/privkey/pubkey).</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--signature-file</option> <replaceable>filename</replaceable>
+					</term>
+					<listitem><para>The path to the signature file for signature verification</para></listitem>
 				</varlistentry>
 
 				<varlistentry>

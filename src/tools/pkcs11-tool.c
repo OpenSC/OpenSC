@@ -150,6 +150,8 @@ enum {
 	OPT_HASH_ALGORITHM,
 	OPT_MGF,
 	OPT_SALT,
+	OPT_VERIFY,
+	OPT_SIGNATURE_FILE,
 };
 
 static const struct option options[] = {
@@ -161,6 +163,7 @@ static const struct option options[] = {
 	{ "list-objects",	0, NULL,		'O' },
 
 	{ "sign",		0, NULL,		's' },
+	{ "verify",		0, NULL,		OPT_VERIFY },
 	{ "decrypt",		0, NULL,		OPT_DECRYPT },
 	{ "hash",		0, NULL,		'h' },
 	{ "derive",		0, NULL,		OPT_DERIVE },
@@ -203,6 +206,7 @@ static const struct option options[] = {
 	{ "set-id",		1, NULL,		'e' },
 	{ "attr-from",		1, NULL,		OPT_ATTR_FROM },
 	{ "input-file",		1, NULL,		'i' },
+	{ "signature-file",	1, NULL,		OPT_SIGNATURE_FILE },
 	{ "output-file",	1, NULL,		'o' },
 	{ "signature-format",	1, NULL,		'f' },
 
@@ -230,6 +234,7 @@ static const char *option_help[] = {
 	"Show objects on token",
 
 	"Sign some data",
+	"Verify a signature of some data",
 	"Decrypt some data",
 	"Hash some data",
 	"Derive a secret key using another key and some data",
@@ -272,6 +277,7 @@ static const char *option_help[] = {
 	"Set the CKA_ID of an object, <args>= the (new) CKA_ID",
 	"Use <arg> to create some attributes when writing an object",
 	"Specify the input file",
+	"Specify the file with signature for verification",
 	"Specify the output file",
 	"Format for ECDSA signature <arg>: 'rs' (default), 'sequence', 'openssl'",
 
@@ -293,6 +299,7 @@ static const char *	app_name = "pkcs11-tool"; /* for utils.c */
 static int		verbose = 0;
 static const char *	opt_input = NULL;
 static const char *	opt_output = NULL;
+static const char *	opt_signature_file = NULL;
 static const char *	opt_module = DEFAULT_PKCS11_PROVIDER;
 static int		opt_slot_set = 0;
 static CK_SLOT_ID	opt_slot = 0;
@@ -331,8 +338,8 @@ static int		opt_derive_pass_der = 0;
 static unsigned long	opt_random_bytes = 0;
 static CK_MECHANISM_TYPE opt_hash_alg = 0;
 static unsigned long	opt_mgf = 0;
-static long	        salt_len = 0;
-static int		salt_len_given = 0; /* 0 - not given, 1 - given with input parameters */
+static long	        opt_salt_len = 0;
+static int		opt_salt_len_given = 0; /* 0 - not given, 1 - given with input parameters */
 
 static void *module = NULL;
 static CK_FUNCTION_LIST_PTR p11 = NULL;
@@ -396,6 +403,7 @@ static void		show_key(CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		show_cert(CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		show_dobj(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj);
 static void		sign_data(CK_SLOT_ID, CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
+static void		verify_signature(CK_SLOT_ID, CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		decrypt_data(CK_SLOT_ID, CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		hash_data(CK_SLOT_ID, CK_SESSION_HANDLE);
 static void		derive_key(CK_SLOT_ID, CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
@@ -532,6 +540,7 @@ int main(int argc, char * argv[])
 	int do_list_mechs = 0;
 	int do_list_objects = 0;
 	int do_sign = 0;
+	int do_verify = 0;
 	int do_decrypt = 0;
 	int do_hash = 0;
 	int do_derive = 0;
@@ -685,6 +694,9 @@ int main(int argc, char * argv[])
 		case 'i':
 			opt_input = optarg;
 			break;
+		case OPT_SIGNATURE_FILE:
+			opt_signature_file = optarg;
+			break;
 		case 'l':
 			need_session |= NEED_SESSION_RW;
 			opt_login = 1;
@@ -700,8 +712,8 @@ int main(int argc, char * argv[])
 			opt_mgf = p11_name_to_mgf(optarg);
 			break;
 		case OPT_SALT:
-			salt_len = (CK_ULONG) strtoul(optarg, NULL, 0);
-			salt_len_given = 1;
+			opt_salt_len = (CK_ULONG) strtoul(optarg, NULL, 0);
+			opt_salt_len_given = 1;
 			break;
 		case 'o':
 			opt_output = optarg;
@@ -724,6 +736,11 @@ int main(int argc, char * argv[])
 		case 's':
 			need_session |= NEED_SESSION_RW;
 			do_sign = 1;
+			action_count++;
+			break;
+		case OPT_VERIFY:
+			need_session |= NEED_SESSION_RO;
+			do_verify = 1;
 			action_count++;
 			break;
 		case OPT_DECRYPT:
@@ -1037,6 +1054,16 @@ int main(int argc, char * argv[])
 			util_fatal("Private key not found");
 	}
 
+	if (do_verify) {
+		if (!find_object(session, CKO_PUBLIC_KEY, &object,
+		        opt_object_id_len ? opt_object_id : NULL,
+		        opt_object_id_len, 0) &&
+		    !find_object(session, CKO_CERTIFICATE, &object,
+		        opt_object_id_len ? opt_object_id : NULL,
+		        opt_object_id_len, 0))
+			util_fatal("Public key nor certificate not found");
+	}
+
 	/* before list objects, so we can see a derived key */
 	if (do_derive)
 		derive_key(opt_slot, session, object);
@@ -1046,6 +1073,9 @@ int main(int argc, char * argv[])
 
 	if (do_sign)
 		sign_data(opt_slot, session, object);
+
+	if (do_verify)
+		verify_signature(opt_slot, session, object);
 
 	if (do_decrypt)
 		decrypt_data(opt_slot, session, object);
@@ -1636,7 +1666,7 @@ static int unlock_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess, int login_type)
 }
 
 /* return digest length in bytes */
-static unsigned long figure_pss_salt_length(const int hash) {
+static unsigned long hash_length(const int hash) {
 	unsigned long sLen = 0;
 	switch (hash) {
 	case  CKM_SHA_1:
@@ -1662,6 +1692,115 @@ static unsigned long figure_pss_salt_length(const int hash) {
 	return sLen;
 }
 
+static unsigned long
+parse_pss_params(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key,
+    CK_MECHANISM *mech, CK_RSA_PKCS_PSS_PARAMS *pss_params)
+{
+	unsigned long hashlen = 0;
+
+	if (pss_params == NULL)
+		return 0;
+
+	pss_params->hashAlg = 0;
+
+	if (opt_hash_alg != 0 && opt_mechanism != CKM_RSA_PKCS_PSS)
+		util_fatal("The hash-algorithm is applicable only to "
+			"RSA-PKCS-PSS mechanism");
+
+	/* set "default" MGF and hash algorithms. We can overwrite MGF later */
+	switch (opt_mechanism) {
+	case CKM_RSA_PKCS_PSS:
+		pss_params->hashAlg = opt_hash_alg;
+
+		switch (opt_hash_alg) {
+		case CKM_SHA224:
+			pss_params->mgf = CKG_MGF1_SHA224;
+			break;
+		case CKM_SHA256:
+			pss_params->mgf = CKG_MGF1_SHA256;
+			break;
+		case CKM_SHA384:
+			pss_params->mgf = CKG_MGF1_SHA384;
+			break;
+		case CKM_SHA512:
+			pss_params->mgf = CKG_MGF1_SHA512;
+			break;
+		default:
+			/* the PSS should use SHA-1 if not specified */
+			pss_params->hashAlg = CKM_SHA_1;
+			/* fallthrough */
+		case CKM_SHA_1:
+			pss_params->mgf = CKG_MGF1_SHA1;
+		}
+		break;
+
+	case CKM_SHA1_RSA_PKCS_PSS:
+		pss_params->hashAlg = CKM_SHA_1;
+		pss_params->mgf = CKG_MGF1_SHA1;
+		break;
+
+	case CKM_SHA224_RSA_PKCS_PSS:
+		pss_params->hashAlg = CKM_SHA224;
+		pss_params->mgf = CKG_MGF1_SHA224;
+		break;
+
+	case CKM_SHA256_RSA_PKCS_PSS:
+		pss_params->hashAlg = CKM_SHA256;
+		pss_params->mgf = CKG_MGF1_SHA256;
+		break;
+
+	case CKM_SHA384_RSA_PKCS_PSS:
+		pss_params->hashAlg = CKM_SHA384;
+		pss_params->mgf = CKG_MGF1_SHA384;
+		break;
+
+	case CKM_SHA512_RSA_PKCS_PSS:
+		pss_params->hashAlg = CKM_SHA512;
+		pss_params->mgf = CKG_MGF1_SHA512;
+		break;
+	}
+
+	/* One of RSA-PSS mechanisms above: They need parameters */
+	if (pss_params->hashAlg) {
+		if (opt_mgf != 0)
+			pss_params->mgf = opt_mgf;
+
+		hashlen = hash_length(pss_params->hashAlg);
+
+		if (opt_salt_len_given == 1) { /* salt size explicitly given */
+			unsigned long modlen = 0;
+			if (opt_salt_len < 0 && opt_salt_len != -1 && opt_salt_len != -2)
+				util_fatal("Salt length must be greater or equal "
+				    "to zero, or equal to -1 (meaning: use digest size) "
+				    "or to -2 (meaning: use maximum permissible size");
+		  
+			modlen = (get_private_key_length(session, key) + 7) / 8;
+			switch (opt_salt_len) {
+			case -1: /* salt size equals to digest size */
+				pss_params->sLen = hashlen;
+				break;
+			case -2: /* maximum permissible salt len */
+				pss_params->sLen = modlen - hashlen -2;
+				break;
+			default: /* use given size but its value must be >= 0 */
+				pss_params->sLen = opt_salt_len;
+				break;
+			} /* end switch (opt_salt_len_given) */
+		} else { /* use default: salt len of digest size */
+			pss_params->sLen = hashlen;
+		}
+
+		mech->pParameter = pss_params;
+		mech->ulParameterLen = sizeof(*pss_params);
+
+		fprintf(stderr, "PSS parameters: hashAlg=%s, mgf=%s, salt_len=%lu B\n",
+			p11_mechanism_to_name(pss_params->hashAlg),
+			p11_mgf_to_name(pss_params->mgf),
+			pss_params->sLen);
+	}
+	return hashlen;
+}
+
 static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		CK_OBJECT_HANDLE key)
 {
@@ -1671,8 +1810,7 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	CK_RV		rv;
 	CK_ULONG	sig_len;
 	int		fd, r;
-
-	unsigned long hashlen = 0, modlen = 0;
+	unsigned long	hashlen;
 
 	if (!opt_mechanism_used)
 		if (!find_mechanism(slot, CKF_SIGN|CKF_HW, NULL, 0, &opt_mechanism))
@@ -1681,102 +1819,9 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	fprintf(stderr, "Using signature algorithm %s\n", p11_mechanism_to_name(opt_mechanism));
 	memset(&mech, 0, sizeof(mech));
 	mech.mechanism = opt_mechanism;
-	pss_params.hashAlg = 0;
-
-	if (opt_hash_alg != 0 && opt_mechanism != CKM_RSA_PKCS_PSS)
-		util_fatal("The hash-algorithm is applicable only to "
-			"RSA-PKCS-PSS mechanism");
-
-	/* set "default" MGF and hash algorithms. We can overwrite MGF later */
-	switch (opt_mechanism) {
-	case CKM_RSA_PKCS_PSS:
-		pss_params.hashAlg = opt_hash_alg;
-
-		switch (opt_hash_alg) {
-		case CKM_SHA224:
-			pss_params.mgf = CKG_MGF1_SHA224;
-			break;
-		case CKM_SHA256:
-			pss_params.mgf = CKG_MGF1_SHA256;
-			break;
-		case CKM_SHA384:
-			pss_params.mgf = CKG_MGF1_SHA384;
-			break;
-		case CKM_SHA512:
-			pss_params.mgf = CKG_MGF1_SHA512;
-			break;
-		default:
-			/* the PSS should use SHA-1 if not specified */
-			pss_params.hashAlg = CKM_SHA_1;
-			/* fallthrough */
-		case CKM_SHA_1:
-			pss_params.mgf = CKG_MGF1_SHA1;
-		}
-		break;
-
-	case CKM_SHA1_RSA_PKCS_PSS:
-		pss_params.hashAlg = CKM_SHA_1;
-		pss_params.mgf = CKG_MGF1_SHA1;
-		break;
-
-	case CKM_SHA224_RSA_PKCS_PSS:
-		pss_params.hashAlg = CKM_SHA224;
-		pss_params.mgf = CKG_MGF1_SHA224;
-		break;
-
-	case CKM_SHA256_RSA_PKCS_PSS:
-		pss_params.hashAlg = CKM_SHA256;
-		pss_params.mgf = CKG_MGF1_SHA256;
-		break;
-
-	case CKM_SHA384_RSA_PKCS_PSS:
-		pss_params.hashAlg = CKM_SHA384;
-		pss_params.mgf = CKG_MGF1_SHA384;
-		break;
-
-	case CKM_SHA512_RSA_PKCS_PSS:
-		pss_params.hashAlg = CKM_SHA512;
-		pss_params.mgf = CKG_MGF1_SHA512;
-		break;
-	}
-
-	/* One of RSA-PSS mechanisms above: They need parameters */
-	if (pss_params.hashAlg) {
-		if (opt_mgf != 0)
-			pss_params.mgf = opt_mgf;
-
-		hashlen = figure_pss_salt_length(pss_params.hashAlg);
-
-		if (salt_len_given == 1) { /* salt size explicitly given */
-			if (salt_len < 0 && salt_len != -1 && salt_len != -2)
-				util_fatal("Salt length must be greater or equal \
-to zero, or equal to -1 (meaning: use digest size) or to -2 \
-(meaning: use maximum permissible size");
-		  
-			modlen = (get_private_key_length(session, key) + 7) / 8;
-			switch(salt_len) {
-			case -1: /* salt size equals to digest size */
-				pss_params.sLen = hashlen;
-				break;
-			case -2: /* maximum permissible salt len */
-				pss_params.sLen = modlen - hashlen -2;
-				break;
-			default: /* use given size but its value must be >= 0 */
-				pss_params.sLen = salt_len;
-				break;
-			} /* end switch (salt_len_given) */
-		} else { /* use default: salt len of digest size */
-			pss_params.sLen = hashlen;
-		}
-
-		mech.pParameter = &pss_params;
-		mech.ulParameterLen = sizeof(pss_params);
-
-		fprintf(stderr, "PSS parameters: hashAlg=%s, mgf=%s, salt_len=%lu B\n",
-			p11_mechanism_to_name(pss_params.hashAlg),
-			p11_mgf_to_name(pss_params.mgf),
-			pss_params.sLen);
-	}
+	hashlen = parse_pss_params(session, key, &mech, &pss_params);
+	if (hashlen == 0)
+		util_fatal("Invalid RSA-PSS parameters");
 
 	if (opt_input == NULL)
 		fd = 0;
@@ -1787,12 +1832,15 @@ to zero, or equal to -1 (meaning: use digest size) or to -2 \
 	if (r < 0)
 		util_fatal("Cannot read from %s: %m", opt_input);
 
-	if (opt_mechanism == CKM_RSA_PKCS_PSS && (unsigned long)r != hashlen)
-		util_fatal("For %s mechanism, message size (got %d bytes) must be equal to specified digest length (%lu)\n",
-			p11_mechanism_to_name(opt_mechanism), r, hashlen);
+	if (opt_mechanism == CKM_RSA_PKCS_PSS) {
+		if  ((unsigned long)r != hashlen)
+			util_fatal("For %s mechanism, message size (got %d bytes) "
+			     "must be equal to specified digest length (%lu)\n",
+			    p11_mechanism_to_name(opt_mechanism), r, hashlen);
+	}
 
 	rv = CKR_CANCEL;
-	if (r < (int) sizeof(in_buffer))   {
+	if (r < (int) sizeof(in_buffer)) {
 		rv = p11->C_SignInit(session, &mech, key);
 		if (rv != CKR_OK)
 			p11_fatal("C_SignInit", rv);
@@ -1833,12 +1881,16 @@ to zero, or equal to -1 (meaning: use digest size) or to -2 \
 		util_fatal("failed to open %s: %m", opt_output);
 	}
 
-	if (opt_mechanism == CKM_ECDSA || opt_mechanism == CKM_ECDSA_SHA1 || opt_mechanism == CKM_ECDSA_SHA256 || opt_mechanism == CKM_ECDSA_SHA384 || opt_mechanism == CKM_ECDSA_SHA512 || opt_mechanism == CKM_ECDSA_SHA224) {
-		if (opt_sig_format &&  (!strcmp(opt_sig_format, "openssl") || !strcmp(opt_sig_format, "sequence"))) {
+	if (opt_mechanism == CKM_ECDSA || opt_mechanism == CKM_ECDSA_SHA1 ||
+	    opt_mechanism == CKM_ECDSA_SHA256 || opt_mechanism == CKM_ECDSA_SHA384 ||
+	    opt_mechanism == CKM_ECDSA_SHA512 || opt_mechanism == CKM_ECDSA_SHA224) {
+		if (opt_sig_format && (!strcmp(opt_sig_format, "openssl") ||
+		                       !strcmp(opt_sig_format, "sequence"))) {
 			unsigned char *seq;
 			size_t seqlen;
 
-			if (sc_asn1_sig_value_rs_to_sequence(NULL, sig_buffer, sig_len, &seq, &seqlen)) {
+			if (sc_asn1_sig_value_rs_to_sequence(NULL, sig_buffer,
+			    sig_len, &seq, &seqlen)) {
 				util_fatal("Failed to convert signature to ASN.1 sequence format");
 			}
 
@@ -1854,6 +1906,97 @@ to zero, or equal to -1 (meaning: use digest size) or to -2 \
 		util_fatal("Failed to write to %s: %m", opt_output);
 	if (fd != 1)
 		close(fd);
+}
+
+static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
+		CK_OBJECT_HANDLE key)
+{
+	unsigned char	in_buffer[1025], sig_buffer[512];
+	CK_MECHANISM	mech;
+	CK_RSA_PKCS_PSS_PARAMS pss_params;
+	CK_RV		rv;
+	CK_ULONG	sig_len;
+	int		fd, fd2, r, r2;
+	unsigned long   hashlen;
+
+	if (!opt_mechanism_used)
+		if (!find_mechanism(slot, CKF_VERIFY|CKF_HW, NULL, 0, &opt_mechanism))
+			util_fatal("Mechanism not supported for signature verification");
+
+	fprintf(stderr, "Using signature algorithm %s\n", p11_mechanism_to_name(opt_mechanism));
+	memset(&mech, 0, sizeof(mech));
+	mech.mechanism = opt_mechanism;
+	hashlen = parse_pss_params(session, key, &mech, &pss_params);
+	if (hashlen == 0)
+		util_fatal("Invalid RSA-PSS parameters");
+
+	/* Open a signature file */
+	if (opt_signature_file == NULL)
+		util_fatal("No file with signature provided. Use --signature-file");
+	else if ((fd2 = open(opt_signature_file, O_RDONLY|O_BINARY)) < 0)
+		util_fatal("Cannot open %s: %m", opt_signature_file);
+
+	r2 = read(fd2, sig_buffer, sizeof(sig_buffer));
+	if (r2 < 0)
+		util_fatal("Cannot read from %s: %m", opt_signature_file);
+
+	close(fd2);
+
+	/* Open the data file */
+	if (opt_input == NULL)
+		fd = 0;
+	else if ((fd = open(opt_input, O_RDONLY|O_BINARY)) < 0)
+		util_fatal("Cannot open %s: %m", opt_input);
+
+	r = read(fd, in_buffer, sizeof(in_buffer));
+	if (r < 0)
+		util_fatal("Cannot read from %s: %m", opt_input);
+
+	if (opt_mechanism == CKM_RSA_PKCS_PSS) {
+		if ((unsigned long)r != hashlen)
+			util_fatal("For %s mechanism, message size (got %d bytes)"
+			    " must be equal to specified digest length (%lu)\n",
+			    p11_mechanism_to_name(opt_mechanism), r, hashlen);
+	}
+
+	rv = CKR_CANCEL;
+	if (r < (int) sizeof(in_buffer)) {
+		rv = p11->C_VerifyInit(session, &mech, key);
+		if (rv != CKR_OK)
+			p11_fatal("C_VerifyInit", rv);
+
+		sig_len = r2;
+		rv =  p11->C_Verify(session, in_buffer, r, sig_buffer, sig_len);
+	}
+
+	if (rv != CKR_OK) {
+		rv = p11->C_VerifyInit(session, &mech, key);
+		if (rv != CKR_OK)
+			p11_fatal("C_VerifyInit", rv);
+
+		do   {
+			rv = p11->C_VerifyUpdate(session, in_buffer, r);
+			if (rv != CKR_OK)
+				p11_fatal("C_VerifyUpdate", rv);
+
+			r = read(fd, in_buffer, sizeof(in_buffer));
+		} while (r > 0);
+
+		sig_len = sizeof(sig_buffer);
+		rv = p11->C_VerifyFinal(session, sig_buffer, sig_len);
+		if (rv != CKR_OK)
+			p11_fatal("C_VerifyFinal", rv);
+	}
+
+	if (fd != 0)
+		close(fd);
+
+	if (rv == CKR_OK)
+		printf("Signature is valid\n");
+	else if (rv == CKR_SIGNATURE_INVALID)
+		printf("Invalid signature\n");
+	else
+		printf("Cryptoki returned erorr: %s\n", CKR2Str(rv));
 }
 
 
