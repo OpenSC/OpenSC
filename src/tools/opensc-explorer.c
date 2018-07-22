@@ -2015,29 +2015,36 @@ static int do_quit(int argc, char **argv)
 	return 0;
 }
 
-static int parse_cmdline(char *in, char **argv, int maxargc)
+static int parse_cmdline(char *in, char **argv, int argvsize)
 {
 	int	argc;
 
-	for (argc = 0; argc < maxargc; argc++) {
+	for (argc = 0; argc < argvsize-1; argc++) {
 		in += strspn(in, " \t\n");
-		if (*in == '\0')
+
+		if (*in == '\0') {		/* end of input reached */
+			argv[argc] = NULL;
 			return argc;
-		if (*in == '"') {
-			/* Parse quoted string */
+		}
+		if (*in == '"') {		/* double-quoted string */
 			argv[argc] = in++;
 			in += strcspn(in, "\"");
-			if (*in++ != '"')
+			if (*in++ != '"') {	/* error: unbalanced quote */
+				argv[0] = NULL;
 				return 0;
-		} else {
-			/* White space delimited word */
+			}
+		}
+		else {				/* white-space delimited word */
 			argv[argc] = in;
 			in += strcspn(in, " \t\n");
 		}
 		if (*in != '\0')
 			*in++ = '\0';
 	}
-	return argc;
+
+	/* error: too many arguments - argv[] exhausted */
+	argv[0] = NULL;
+	return 0;
 }
 
 static char *read_cmdline(FILE *script, char *prompt)
@@ -2210,11 +2217,11 @@ int main(int argc, char *argv[])
 		line = read_cmdline(script, prompt);
 		if (line == NULL)
 			break;
+
 		cargc = parse_cmdline(line, cargv, DIM(cargv));
 		if ((cargc < 1) || (*cargv[0] == '#'))
 			continue;
-		for (r=cargc; r < (int)DIM(cargv); r++)
-			cargv[r] = "";
+
 		cmd = ambiguous_match(cmds, cargv[0], &multiple);
 		if (cmd == NULL) {
 			fprintf(stderr, "%s command: %s\n",
