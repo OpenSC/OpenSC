@@ -2049,7 +2049,7 @@ static int parse_cmdline(char *in, char **argv, int argvsize)
 
 static char *read_cmdline(FILE *script, char *prompt)
 {
-	static char buf[256];
+	static char buf[SC_MAX_EXT_APDU_BUFFER_SIZE];
 	static int initialized;
 	static int interactive;
 
@@ -2061,20 +2061,23 @@ static char *read_cmdline(FILE *script, char *prompt)
 			using_history();
 #endif
 	}
-#ifdef ENABLE_READLINE
+
 	if (interactive) {
+#ifdef ENABLE_READLINE
 		char *line = readline(prompt);
-		if (line && strlen(line) > 2 )
+
+		/* add line to history if longer than 2 characters */
+		if (line != NULL && strlen(line) > 2)
 			add_history(line);
+
+		/* return in interactive case with readline */
 		return line;
-	}
-#endif
-	/* Either we don't have readline or we are not running
-	   interactively */
-#ifndef ENABLE_READLINE
-	if (interactive)
+#else
 		printf("%s", prompt);
 #endif
+	}
+
+	/* either we don't have readline or we are not running interactively */
 	fflush(stdout);
 	if (fgets(buf, sizeof(buf), script) == NULL)
 		return NULL;
