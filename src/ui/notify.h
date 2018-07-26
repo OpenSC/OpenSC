@@ -39,6 +39,8 @@ void sc_notify_id(struct sc_context *ctx, struct sc_atr *atr,
  * initialized before calling `sc_notify_init()`. If not initialized, we're
  * using the HINSTANCE of the EXE */
 extern HINSTANCE sc_notify_instance;
+/* This is the message created when the user clicks on "exit". */
+#define WMAPP_EXIT (WM_APP + 2)
 #endif
 
 #ifdef __cplusplus

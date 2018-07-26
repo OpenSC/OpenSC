@@ -167,6 +167,9 @@ WinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPSTR lpCmdLine, int nShowC
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
 		}
+		if (msg.message == WM_COMMAND && LOWORD(msg.wParam) == WMAPP_EXIT) {
+			break;
+		}
 	}
 
 	CloseHandle(hThread);

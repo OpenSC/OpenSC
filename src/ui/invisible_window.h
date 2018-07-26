@@ -22,7 +22,7 @@
 
 HWND create_invisible_window(LPCTSTR lpszClassName,
 		LRESULT (CALLBACK* WndProc)(HWND, UINT, WPARAM, LPARAM),
-	   	HINSTANCE hInstance)
+		HINSTANCE hInstance)
 {
 	HWND hWnd = NULL;
 	WNDCLASSEX wx = {0};

@@ -75,30 +75,55 @@ void sc_notify_close(void)
 // {83C35893-99C6-4600-BFDB-45925C53BDD9}
 static const GUID myGUID = { 0x83c35893, 0x99c6, 0x4600, { 0xbf, 0xdb, 0x45, 0x92, 0x5c, 0x53, 0xbd, 0xd9 } };
 HINSTANCE sc_notify_instance = NULL;
-HWND hwndNotification = NULL;
+HWND sc_notify_hwnd = NULL;
 BOOL delete_icon = TRUE;
 #define IDI_SMARTCARD       102
-UINT const WMAPP_NOTIFYCALLBACK = WM_APP + 1;
+#define WMAPP_NOTIFYCALLBACK (WM_APP + 1)
 static BOOL RestoreTooltip();
+void ShowContextMenu(HWND hwnd, POINT pt);
 
 // we need commctrl v6 for LoadIconMetric()
 #include <commctrl.h>
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-	if ((message == WM_DESTROY)
-			|| (message == WMAPP_NOTIFYCALLBACK
-				&& (LOWORD(lParam) == NIN_BALLOONTIMEOUT
-					|| LOWORD(lParam) == NIN_BALLOONUSERCLICK))) {
-#if 0
-		DeleteNotificationIcon();
-#else
-		RestoreTooltip();
-#endif
-		return TRUE;
+	switch (message) {
+		case WM_COMMAND:
+			{
+				int const wmId = LOWORD(wParam);
+				// Parse the menu selection:
+				switch (wmId)
+				{
+					case WMAPP_EXIT:
+						break;
+
+					default:
+						return DefWindowProc(hwnd, message, wParam, lParam);
+				}
+			}
+			break;
+
+		case WMAPP_NOTIFYCALLBACK:
+			switch (LOWORD(lParam)) {
+				case NIN_BALLOONTIMEOUT:
+				case NIN_BALLOONUSERCLICK:
+					RestoreTooltip();
+					break;
+
+				case WM_CONTEXTMENU:
+					{
+						POINT const pt = { LOWORD(wParam), HIWORD(wParam) };
+						ShowContextMenu(hwnd, pt);
+					}
+					break;
+			}
+			break;
+
+		default:
+			return DefWindowProc(hwnd, message, wParam, lParam);
 	}
 
-	return DefWindowProc(hwnd, message, wParam, lParam);
+    return 0;
 }
 
 static const char* lpszClassName = "NOTIFY_CLASS";
@@ -109,13 +134,14 @@ static BOOL AddNotificationIcon(void)
 	TCHAR path[MAX_PATH]={0};
 	BOOL r;
 
-	hwndNotification = create_invisible_window(lpszClassName, WndProc, sc_notify_instance);
-	if (!hwndNotification) {
+	sc_notify_hwnd = create_invisible_window(lpszClassName, WndProc,
+			sc_notify_instance);
+	if (!sc_notify_hwnd) {
 		return FALSE;
 	}
 
 	nid.cbSize = sizeof(NOTIFYICONDATA);
-	nid.hWnd = hwndNotification;
+	nid.hWnd = sc_notify_hwnd;
 	// add the icon, setting the icon, tooltip, and callback message.
 	// the icon will be identified with the GUID
 	nid.uFlags = NIF_ICON | NIF_TIP | NIF_MESSAGE | NIF_SHOWTIP | NIF_GUID;
@@ -139,10 +165,11 @@ static BOOL AddNotificationIcon(void)
 		strcpy(nid.szTip, PACKAGE_NAME);
 	}
 
-	r  = Shell_NotifyIcon(NIM_ADD, &nid);
-
-    nid.uVersion = NOTIFYICON_VERSION_4;
-    r &= Shell_NotifyIcon(NIM_SETVERSION, &nid);
+	r = Shell_NotifyIcon(NIM_ADD, &nid);
+	if (TRUE == r) {
+		nid.uVersion = NOTIFYICON_VERSION_4;
+		r = Shell_NotifyIcon(NIM_SETVERSION, &nid);
+	}
 
 	return r;
 }
@@ -162,8 +189,9 @@ static BOOL DeleteNotificationIcon(void)
 
 	r  = Shell_NotifyIcon(NIM_DELETE, &nid);
 
-	r &= delete_invisible_window(hwndNotification, lpszClassName,
+	r &= delete_invisible_window(sc_notify_hwnd, lpszClassName,
 			sc_notify_instance);
+	sc_notify_hwnd = NULL;
 
 	return r;
 }
@@ -179,6 +207,30 @@ static BOOL RestoreTooltip()
 
     return Shell_NotifyIcon(NIM_MODIFY, &nid);
 }
+
+void ShowContextMenu(HWND hwnd, POINT pt)
+{
+	HMENU hMenu;
+	hMenu=CreatePopupMenu();
+
+    if (hMenu) {
+		AppendMenu(hMenu, MF_STRING, WMAPP_EXIT, "E&xit");
+
+		// our window must be foreground before calling TrackPopupMenu or the menu will not disappear when the user clicks away
+		SetForegroundWindow(hwnd);
+
+		// respect menu drop alignment
+		UINT uFlags = TPM_RIGHTBUTTON;
+		if (GetSystemMetrics(SM_MENUDROPALIGNMENT) != 0) {
+			uFlags |= TPM_RIGHTALIGN;
+		} else {
+			uFlags |= TPM_LEFTALIGN;
+		}
+
+		TrackPopupMenuEx(hMenu, uFlags, pt.x, pt.y, hwnd, NULL);
+	}
+}
+
 
 static void notify_shell(struct sc_context *ctx,
 		const char *title, const char *text, LPCTSTR icon_path, int icon_index)
