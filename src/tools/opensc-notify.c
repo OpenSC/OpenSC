@@ -22,23 +22,13 @@
 #endif
 
 #include "libopensc/log.h"
-#include "opensc-notify-cmdline.h"
 #include "ui/notify.h"
-#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 static int run_daemon = 0;
 static struct sc_context *ctx = NULL;
-
-void stop_daemon(int signo)
-{
-#ifdef PCSCLITE_GOOD
-	sc_cancel(ctx);
-#endif
-	run_daemon = 0;
-}
 
 #ifndef _WIN32
 #include <time.h>
@@ -57,23 +47,17 @@ void Sleep(unsigned int Milliseconds)
 
 	nanosleep(&req , &rem);
 }
-#else
-#include "ui/invisible_window.h"
-static HINSTANCE g_hInstance = NULL;
-
-LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
-{
-	if (message == WM_CLOSE) {
-		sc_cancel(ctx);
-		run_daemon = 0;
-		return TRUE;
-	}
-
-	return DefWindowProc(hwnd, message, wParam, lParam);
-}
 #endif
 
-void notify_daemon(void)
+void stop_daemon()
+{
+#ifdef PCSCLITE_GOOD
+	sc_cancel(ctx);
+#endif
+	run_daemon = 0;
+}
+
+void notify_daemon()
 {
 	int r;
 	const unsigned int event_mask = SC_EVENT_CARD_EVENTS;
@@ -85,22 +69,6 @@ void notify_daemon(void)
 	const int timeout = 20000;
 	struct sc_atr old_atr;
 	void *reader_states = NULL;
-#ifdef _WIN32
-	LPCTSTR lpszClassName = "OPENSC_NOTIFY_CLASS";
-	HWND hwnd = create_invisible_window(lpszClassName, WndProc, g_hInstance);
-#elif HAVE_SIGACTION
-	struct sigaction new_sig, old_sig;
-
-	/* Register signal handlers */
-	new_sig.sa_handler = stop_daemon;
-	sigemptyset(&new_sig.sa_mask);
-	new_sig.sa_flags = SA_RESTART;
-	if ((sigaction(SIGINT, &new_sig, &old_sig) < 0)
-			|| (sigaction(SIGTERM, &new_sig, &old_sig) < 0)) {
-		fprintf(stderr, "Failed to create signal handler: %s", strerror(errno));
-		return;
-	}
-#endif
 
 	r = sc_establish_context(&ctx, "opensc-notify");
 	if (r < 0 || !ctx) {
@@ -155,14 +123,27 @@ void notify_daemon(void)
 		sc_release_context(ctx);
 		ctx = NULL;
 	}
-#ifdef _WIN32
-	delete_invisible_window(hwnd, lpszClassName, g_hInstance);
-#endif
 }
 
 #ifdef _WIN32
-#include "ui/char_str_from_wchar.h"
+#include "ui/invisible_window.h"
 #include <shellapi.h>
+
+LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	if (message == WM_CLOSE || message == WM_QUIT) {
+		stop_daemon();
+		return TRUE;
+	}
+
+	return DefWindowProc(hwnd, message, wParam, lParam);
+}
+
+DWORD WINAPI ThreadProc(_In_ LPVOID lpParameter)
+{
+	notify_daemon();
+	return 0;
+}
 
 /* This application shall be executable without a console.  Therefor we're
  * creating a windows application that requires `WinMain()` rather than
@@ -170,37 +151,74 @@ void notify_daemon(void)
 int WINAPI
 WinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPSTR lpCmdLine, int nShowCmd)
 {
-	LPWSTR *wargv = NULL;
-	char **argv = NULL;
-	int argc = 0, i;
+	LPCTSTR lpszClassName = "OPENSC_NOTIFY_CLASS";
+	HWND hwnd = create_invisible_window(lpszClassName, WndProc, hInstance);
 
-	wargv = CommandLineToArgvW(GetCommandLineW(), &argc);
-	if (wargv == NULL) {
-		return 1;
+	sc_notify_init();
+	run_daemon = 1;
+	HANDLE hThread = CreateThread(NULL, 0, ThreadProc, NULL, 0, NULL);
+
+	MSG msg;
+	BOOL bRet = FALSE;
+	while((bRet = GetMessage( &msg, NULL, 0, 0 )) != 0) {
+		if (bRet == -1) {
+			// handle the error and possibly exit
+		} else {
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+		}
 	}
 
-	argv = LocalAlloc(0, (sizeof *argv) * argc);
-	if (argv == NULL) {
-		goto err;
-	}
-	for (i = 0; i < argc; i++) {
-		argv[i] = char_str_from_wchar(wargv[i]);
-	}
+	CloseHandle(hThread);
+	sc_notify_close();
 
-	g_hInstance = hInstance;
+	delete_invisible_window(hwnd, lpszClassName, hInstance);
+
+	return 0;
+}
 
 #else
+
+#ifdef HAVE_SIGACTION
+#include <signal.h>
+
+void sig_handler(int sig) {
+	stop_daemon();
+}
+
+void set_sa_handler(void)
+{
+	struct sigaction new_sig, old_sig;
+
+	/* Register signal handlers */
+	new_sig.sa_handler = sig_handler;
+	sigemptyset(&new_sig.sa_mask);
+	new_sig.sa_flags = SA_RESTART;
+	if ((sigaction(SIGINT, &new_sig, &old_sig) < 0)
+			|| (sigaction(SIGTERM, &new_sig, &old_sig) < 0)) {
+		fprintf(stderr, "Failed to create signal handler: %s", strerror(errno));
+	}
+}
+
+#else
+
+void set_sa_handler(void)
+{
+}
+#endif
+
+#include "opensc-notify-cmdline.h"
+
 int
 main (int argc, char **argv)
 {
 	struct gengetopt_args_info cmdline;
-#endif
-
-#ifndef _WIN32
-	if (cmdline_parser(argc, argv, &cmdline) != 0)
-		goto err;
+	memset(&cmdline, 0, sizeof cmdline);
 
 	sc_notify_init();
+
+	if (cmdline_parser(argc, argv, &cmdline) != 0)
+		goto err;
 
 	if (cmdline.customized_mode_counter) {
 		sc_notify(cmdline.title_arg, cmdline.message_arg);
@@ -223,6 +241,7 @@ main (int argc, char **argv)
 
 	if ((!cmdline.customized_mode_counter && !cmdline.standard_mode_counter)
 			|| cmdline.daemon_mode_counter) {
+		set_sa_handler();
 		run_daemon = 1;
 		notify_daemon();
 	} else {
@@ -230,27 +249,10 @@ main (int argc, char **argv)
 		Sleep(100);
 	}
 
-	sc_notify_close();
-
-	cmdline_parser_free (&cmdline);
-#else
-	/* FIXME the command line parser fails with our transformed argv. As quick
-	 * fix, we only use daemon mode */
-	sc_notify_init();
-	run_daemon = 1;
-	notify_daemon();
-	sc_notify_close();
-#endif
 err:
-#ifdef _WIN32
-	if (argv) {
-		for (i = 0; i <= argc; i++) {
-			LocalFree(argv[i]);
-		}
-		LocalFree(argv);
-	}
-	LocalFree(wargv);
-#endif
+	sc_notify_close();
+	cmdline_parser_free (&cmdline);
 
 	return 0;
 }
+#endif
