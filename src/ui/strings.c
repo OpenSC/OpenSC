@@ -237,6 +237,9 @@ const char *ui_get_str(struct sc_context *ctx, struct sc_atr *atr,
 				case MD_PINPAD_DLG_CANCEL:
 					str = "Abbrechen";
 					break;
+				case NOTIFY_EXIT:
+					str = "Beenden";
+					break;
 				default:
 					str = NULL;
 					break;
@@ -305,6 +308,9 @@ const char *ui_get_str(struct sc_context *ctx, struct sc_atr *atr,
 					break;
 				case MD_PINPAD_DLG_CANCEL:
 					str = "Cancel";
+					break;
+				case NOTIFY_EXIT:
+					str = "Exit";
 					break;
 				default:
 					str = NULL;

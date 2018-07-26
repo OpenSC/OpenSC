@@ -214,7 +214,7 @@ void ShowContextMenu(HWND hwnd, POINT pt)
 	hMenu=CreatePopupMenu();
 
     if (hMenu) {
-		AppendMenu(hMenu, MF_STRING, WMAPP_EXIT, "E&xit");
+		AppendMenu(hMenu, MF_STRING, WMAPP_EXIT, ui_get_str(NULL, NULL, NULL, NOTIFY_EXIT));
 
 		// our window must be foreground before calling TrackPopupMenu or the menu will not disappear when the user clicks away
 		SetForegroundWindow(hwnd);
