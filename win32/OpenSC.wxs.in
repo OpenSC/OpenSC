@@ -56,8 +56,13 @@
     <Media Id="1" Cabinet="OpenSC.cab" EmbedCab="yes" CompressionLevel="high"/>
     <MajorUpgrade DowngradeErrorMessage="Can't downgrade." AllowSameVersionUpgrades="yes"/>
     <Directory Id="TARGETDIR" Name="SourceDir">
-      <!-- Install critical DLL-s to system folder. NB! Id-s can not contain "-" characters! -->
-      <!-- Install tools and profiles to Program Files -->
+      <Component Id="SCardSvr" Guid="*" Win64="$(var.Win64YesNo)" Permanent="yes">
+        <!-- Start SCardSvr Service during startup -->
+        <RegistryValue Root="HKLM" Key="System\CurrentControlSet\Services\SCardSvr" Type="integer" Name="Start" Value="2" KeyPath="yes"/>
+        <!-- Start SCardSvr Service now -->
+        <!-- <ServiceControl Id="StartSCardSvrService" Name="SCardSvr" Start="install" /> -->
+      </Component>
+
       <Directory Id="$(var.PlatformProgramFilesFolder)" Name="PFiles">
         <Directory Id="OpenSC_Project_Dir" Name="OpenSC Project">
           <!-- Most of the stuff goes to the Program Files folder -->
@@ -323,6 +328,7 @@
     <!-- Set up the features  -->
     <Feature Id="Complete" Level="1" Title="OpenSC software suite" Display="expand">
       <Feature Id="OpenSC_core" Level="1" Title="OpenSC core library" Description="Core DLL and configuration file used by all other components." Absent="disallow">
+        <ComponentRef Id="SCardSvr"/>
         <ComponentRef Id="opensc.dll"/>
         <?ifdef zlib ?>
           <ComponentRef Id="zlib1.dll"/>
