@@ -356,9 +356,6 @@ static int npa_finish(sc_card_t * card)
 	sc_sm_stop(card);
 	npa_drv_data_free(card->drv_data);
 	card->drv_data = NULL;
-#ifdef ENABLE_OPENPACE
-	EAC_cleanup();
-#endif
 
 	return SC_SUCCESS;
 }
@@ -399,9 +396,6 @@ static int npa_init(sc_card_t * card)
 	if (r != SC_SUCCESS)
 		goto err;
 
-#ifdef ENABLE_OPENPACE
-	EAC_init();
-#endif
 	card->drv_data = npa_drv_data_create();
 	if (!card->drv_data) {
 		npa_finish(card);

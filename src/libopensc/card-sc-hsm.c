@@ -1709,10 +1709,6 @@ static int sc_hsm_finish(sc_card_t * card)
 	free(priv->EF_C_DevAut);
 	free(priv);
 
-#ifdef ENABLE_OPENPACE
-	EAC_cleanup();
-#endif
-
 	return SC_SUCCESS;
 }
 
