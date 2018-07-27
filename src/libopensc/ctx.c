@@ -165,7 +165,8 @@ struct _sc_ctx_options {
 
 
 int
-sc_ctx_win32_get_config_value(char *name_env, char *name_reg, char *name_key,
+sc_ctx_win32_get_config_value(const char *name_env,
+	   	const char *name_reg, const char *name_key,
 		char *out, size_t *out_len)
 {
 #ifdef _WIN32

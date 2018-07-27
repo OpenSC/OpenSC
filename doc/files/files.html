@@ -50,7 +50,11 @@ span.errortext {
 				</p></li><li class="listitem"><p>
 						environment variables
 				</p></li><li class="listitem"><p>
-						Windows registry (if available)
+						Windows registry key in
+						<code class="literal">HKEY_CURRENT_USER</code> (if available)
+				</p></li><li class="listitem"><p>
+						Windows registry key in
+						<code class="literal">HKEY_LOCAL_MACHINE</code> (if available)
 				</p></li><li class="listitem"><p>
 						system-wide configuration file
 						(<code class="literal">/home/fm/.local/etc/opensc.conf</code>)
@@ -118,7 +122,7 @@ app <em class="replaceable"><code>application</code></em> {
 						<code class="literal">westcos-tool</code>:
 						Configuration block for OpenSC tools
 				</p></li></ul></div><p>
-		</p></div><div class="refsect1"><a name="idm99"></a><h2>Configuration Options</h2><div class="variablelist"><dl class="variablelist"><dt><a name="debug"></a><span class="term">
+		</p></div><div class="refsect1"><a name="idm103"></a><h2>Configuration Options</h2><div class="variablelist"><dl class="variablelist"><dt><a name="debug"></a><span class="term">
 					<code class="option">debug = <em class="replaceable"><code>num</code></em>;</code>
 				</span></dt><dd><p>
 						Amount of debug info to print (Default:
@@ -146,7 +150,7 @@ app <em class="replaceable"><code>application</code></em> {
 					</p><p>
 						If this configuration value is not found on
 						Windows, the registry key
-						<code class="filename">HKLM\Software\OpenSC
+						<code class="filename">Software\OpenSC
 							Project\OpenSC\ProfileDir</code> is
 						checked.
 				</p></dd><dt><span class="term">
@@ -257,7 +261,7 @@ app <em class="replaceable"><code>application</code></em> {
 								</p><p>
 									If this configuration value is not
 									found on Windows, the registry key
-									<code class="filename">HKLM\Software\OpenSC
+									<code class="filename">Software\OpenSC
 										Project\OpenSC\SmDir</code> is
 									checked.
 							</p></dd><dt><span class="term">
@@ -328,7 +332,7 @@ app <em class="replaceable"><code>application</code></em> {
 						Parameters for the OpenSC PKCS11 module.
 					</p><p>
 						For details see <a class="xref" href="#pkcs11" title="Configuration of PKCS#11">the section called &#8220;Configuration of PKCS#11&#8221;</a>.
-					</p></dd></dl></div><div class="refsect2"><a name="reader_driver"></a><h3>Configuration of Smart Card Reader Driver</h3><div class="refsect3"><a name="idm326"></a><h4>Configuration Options for all Reader Drivers</h4><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+					</p></dd></dl></div><div class="refsect2"><a name="reader_driver"></a><h3>Configuration of Smart Card Reader Driver</h3><div class="refsect3"><a name="idm330"></a><h4>Configuration Options for all Reader Drivers</h4><div class="variablelist"><dl class="variablelist"><dt><span class="term">
 							<code class="option">max_send_size = <em class="replaceable"><code>num</code></em>;</code>
 							<code class="option">max_recv_size = <em class="replaceable"><code>num</code></em>;</code>
 						</span></dt><dd><p>
@@ -607,68 +611,53 @@ app <em class="replaceable"><code>application</code></em> {
 						</span></dt><dd><p>
 								Content of the PIN pad dialog for
 								role "user" (Default:
-								<code class="literal">"Please verify your
-									fingerprint or PIN on the
-									card."</code>).
+								<code class="literal">"Please enter your PIN on the PIN
+									pad."</code>).
 						</p></dd><dt><span class="term">
 							<code class="option">md_pinpad_dlg_content_user_sign = <em class="replaceable"><code>value</code></em>;</code>
 						</span></dt><dd><p>
 								Content of the PIN pad dialog for
 								role "user+signature" (Default:
-								<code class="literal">"Please verify your
-									fingerprint or PIN for the
-									digital signature PIN on the
-									card."</code>).
-						</p></dd><dt><span class="term">
-							<code class="option">md_pinpad_dlg_content_user_sign = <em class="replaceable"><code>name</code></em>;</code>
-						</span></dt><dd><p>
-								Content of the PIN pad dialog for
-								role "user+signature" (Default:
-								<code class="literal">"Please verify your
-									fingerprint or PIN for the
-									digital signature PIN on the
-									card."</code>).
+								<code class="literal">"Please enter your digital signature
+									PIN on the PIN pad."</code>).
 						</p></dd><dt><span class="term">
 							<code class="option">md_pinpad_dlg_content_admin = <em class="replaceable"><code>value</code></em>;</code>
 						</span></dt><dd><p>
 								Content of the PIN pad dialog for
 								role "admin" (Default:
-								<code class="literal">"Please enter your PIN to
-									unblock the user PIN on the
-									PINPAD."</code>)
-						</p></dd><dt><span class="term">
-							<code class="option">md_pinpad_dlg_content_cancel = <em class="replaceable"><code>value</code></em>;</code>
-						</span></dt><dd><p>
-								Content of the PIN pad dialog after
-								pressing "Cancel", when the reader
-								doesn't respond to SCardCancel
+								<code class="literal">"Please enter your PIN to unblock the
+									user PIN on the PIN pad."</code>)
 						</p></dd><dt><span class="term">
 							<code class="option">md_pinpad_dlg_expanded = <em class="replaceable"><code>value</code></em>;</code>
 						</span></dt><dd><p>
 								Expanded information of the PIN pad
-								dialog (Default: <code class="literal">"This
-									window will be closed
-									automatically after the PIN has
-									been submitted on the PINPAD
-									(timeout typically after 30
-									seconds)."</code>)
-						</p></dd><dt><span class="term">
-							<code class="option">md_pinpad_dlg_expanded_cancel = <em class="replaceable"><code>value</code></em>;</code>
-						</span></dt><dd><p>
-								Expanded information of the PIN pad
-								dialog after pressing "Cancel",
-								when the reader doesn't respond to
-								SCardCancel (Default:
-								<code class="literal">"Some readers only support
-									canceling the operation on the
-									PIN pad. Press Cancel or remove
-									the card."</code>).
+								dialog (Default: <code class="literal">"This window will be
+									closed automatically after the PIN has been
+									submitted on the PIN pad (timeout typically
+									after 30 seconds)."</code>)
 						</p></dd><dt><span class="term">
 							<code class="option">md_pinpad_dlg_enable_cancel = <em class="replaceable"><code>bool</code></em>;</code>
 						</span></dt><dd><p>
 								Allow the user to cancel the PIN
 								pad dialog (Default:
-								<code class="literal">false</code>)
+								<code class="literal">false</code>).
+
+								If this value is set to
+								<code class="literal">true</code>, the user needs to
+								click "OK" to start the PIN verification on the
+								PIN pad. The user can choose the default
+								behavior by enabling or disabling the checkbox
+								of the dialog. The setting is saved by the
+								program's full path
+								(<em class="replaceable"><code>program_path</code></em>) that
+								uses OpenSC.
+							</p><p>
+								The registry key <code class="filename">HKCU\Software\OpenSC
+									Project\OpenSC\md_pinpad_dlg_enable_cancel\<em class="replaceable"><code>program_path</code></em></code>
+								overwrites this setting with a
+								<code class="literal">DWORD</code> set to either
+								<code class="literal">1</code> (enabled) or
+								<code class="literal">0</code> (disabled).
 						</p></dd><dt><span class="term">
 							<code class="option">md_pinpad_dlg_timeout = <em class="replaceable"><code>num</code></em>;</code>
 						</span></dt><dd><p>
@@ -786,10 +775,12 @@ app <em class="replaceable"><code>application</code></em> {
 						<code class="option">builtin_emulators = <em class="replaceable"><code>emulators</code></em>;</code>
 					</span></dt><dd><p>
 							List of the builtin pkcs15 emulators to test
-							(Default: <code class="literal">esteid, openpgp, tcos,
-								starcert, itacns, infocamere, postecert,
-								actalis, atrust-acos, gemsafeGPK,
-								gemsafeV1, tccardos, PIV-II</code>)
+							(Default: <code class="literal">westcos, openpgp, infocamere,
+								starcert, tcos, esteid, itacns, postecert,
+								PIV-II, cac, gemsafeGPK, gemsafeV1, actalis,
+								atrust-acos, tccardos, entersafe, pteid,
+								oberthur, sc-hsm, dnie, gids, iasecc, jpki,
+								coolkey, din66291</code>)
 					</p></dd><dt><span class="term">
 						<code class="option">pkcs11_enable_InitToken = <em class="replaceable"><code>bool</code></em>;</code>
 					</span></dt><dd><p>
@@ -1029,14 +1020,14 @@ app <em class="replaceable"><code>application</code></em> {
 							For the module to simulate the opensc-onepin module
 							behavior the following option
 							<code class="option">create_slots_for_pins = "user";</code>
-					</p></dd></dl></div></div></div><div class="refsect1"><a name="idm979"></a><h2>Environment</h2><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+					</p></dd></dl></div></div></div><div class="refsect1"><a name="idm971"></a><h2>Environment</h2><div class="variablelist"><dl class="variablelist"><dt><span class="term">
 					<code class="envar">OPENSC_CONF</code>
 				</span></dt><dd><p>
 						Filename for a user defined configuration file
 					</p><p>
 						If this environment variable is not found on
 						Windows, the registry key
-						<code class="filename">HKLM\Software\OpenSC
+						<code class="filename">Software\OpenSC
 							Project\OpenSC\ConfigFile</code> is
 						checked.
 				</p></dd><dt><span class="term">
@@ -1060,7 +1051,7 @@ app <em class="replaceable"><code>application</code></em> {
 					</p><p>
 						If this environment variable is not found on
 						Windows, the registry key
-						<code class="filename">HKLM\Software\OpenSC
+						<code class="filename">Software\OpenSC
 							Project\OpenSC\MiniDriverDebug</code> is
 						checked.
 				</p></dd><dt><span class="term">
@@ -1072,7 +1063,7 @@ app <em class="replaceable"><code>application</code></em> {
 				</span></dt><dd><p>
 						PIV configuration during initialization with
 						<span class="application">piv-tool</span>.
-				</p></dd></dl></div></div><div class="refsect1"><a name="idm1020"></a><h2>Files</h2><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+				</p></dd></dl></div></div><div class="refsect1"><a name="idm1012"></a><h2>Files</h2><div class="variablelist"><dl class="variablelist"><dt><span class="term">
 					<code class="filename">/home/fm/.local/etc/opensc.conf</code>
 				</span></dt><dd><p>
 						System-wide configuration file
@@ -1080,7 +1071,7 @@ app <em class="replaceable"><code>application</code></em> {
 					<code class="filename">/home/fm/.local/share/doc/opensc/opensc.conf</code>
 				</span></dt><dd><p>
 						Extended example configuration file
-				</p></dd></dl></div></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="pkcs15-profile"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>pkcs15-profile &#8212; format of profile for <span class="command"><strong>pkcs15-init</strong></span></p></div><div class="refsect1"><a name="idm1044"></a><h2>Description</h2><p>
+				</p></dd></dl></div></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="pkcs15-profile"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>pkcs15-profile &#8212; format of profile for <span class="command"><strong>pkcs15-init</strong></span></p></div><div class="refsect1"><a name="idm1036"></a><h2>Description</h2><p>
 			The <span class="command"><strong>pkcs15-init</strong></span> utility for PKCS #15 smart card
 			personalization is controlled via profiles. When starting, it will read two
 			such profiles at the moment, a generic application profile, and a card
@@ -1096,10 +1087,10 @@ app <em class="replaceable"><code>application</code></em> {
 			The card specific profile contains additional information required during
 			card initialization, such as location of PIN files, key references etc.
 			Profiles currently reside in <code class="filename">@pkgdatadir@</code>
-		</p></div><div class="refsect1"><a name="idm1052"></a><h2>Syntax</h2><p>
+		</p></div><div class="refsect1"><a name="idm1044"></a><h2>Syntax</h2><p>
 			This section should contain information about the profile syntax. Will add
 			this soonishly.
-		</p></div><div class="refsect1"><a name="idm1055"></a><h2>See also</h2><p>
+		</p></div><div class="refsect1"><a name="idm1047"></a><h2>See also</h2><p>
 			<span class="citerefentry"><span class="refentrytitle">pkcs15-init</span>(1)</span>,
 			<span class="citerefentry"><span class="refentrytitle">pkcs15-crypt</span>(1)</span>
 		</p></div></div></div></body></html>

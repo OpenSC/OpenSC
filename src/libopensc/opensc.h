@@ -838,8 +838,9 @@ int sc_ctx_detect_readers(sc_context_t *ctx);
  * @param key path of register key
  * @return SC_SUCCESS on success and an error code otherwise.
  */
-int sc_ctx_win32_get_config_value(char *env, char *reg, char *key, char *out,
-	size_t *out_size);
+int sc_ctx_win32_get_config_value(const char *env,
+		const char *reg, const char *key,
+		char *out, size_t *out_size);
 
 /**
  * Returns a pointer to the specified sc_reader_t object

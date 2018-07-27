@@ -113,14 +113,8 @@ const char *ui_get_str(struct sc_context *ctx, struct sc_atr *atr,
 		case MD_PINPAD_DLG_CONTENT_ADMIN:
 			option = "md_pinpad_dlg_content_admin";
 			break;
-		case MD_PINPAD_DLG_CONTENT_CANCEL:
-			option = "md_pinpad_dlg_content_cancel";
-			break;
 		case MD_PINPAD_DLG_EXPANDED:
 			option = "md_pinpad_dlg_expanded";
-			break;
-		case MD_PINPAD_DLG_EXPANDED_CANCEL:
-			option = "md_pinpad_dlg_expanded_cancel";
 			break;
 		case MD_PINPAD_DLG_ICON:
 			option = "md_pinpad_dlg_icon";
@@ -148,6 +142,9 @@ const char *ui_get_str(struct sc_context *ctx, struct sc_atr *atr,
 			break;
 		case NOTIFY_PIN_BAD_TEXT:
 			option = "notify_pin_bad_text";
+			break;
+		case MD_PINPAD_DLG_VERIFICATION:
+			option = "md_pinpad_dlg_verification";
 			break;
 		default:
 			option = NULL;
@@ -191,14 +188,8 @@ const char *ui_get_str(struct sc_context *ctx, struct sc_atr *atr,
 				case MD_PINPAD_DLG_CONTENT_ADMIN:
 					str = "Bitte geben Sie Ihre PIN zum Entsperren der Nutzer-PIN auf dem PIN-Pad ein.";
 					break;
-				case MD_PINPAD_DLG_CONTENT_CANCEL:
-					str = "Nutzen Sie das PIN-Pad, um den Vorgang abzubrechen.";
-					break;
 				case MD_PINPAD_DLG_EXPANDED:
 					str = "Dieses Fenster wird automatisch geschlossen, wenn die PIN am PIN-Pad eingegeben wurde (Timeout typischerweise nach 30 Sekunden).";
-					break;
-				case MD_PINPAD_DLG_EXPANDED_CANCEL:
-					str = "Einige Kartenleser unterstützen das Abbrechen ausschließlich am PIN-Pad. Drücken Sie Cancel (Abbruch) oder entfernen Sie die Karte.";
 					break;
 				case NOTIFY_CARD_INSERTED:
 					if (p15card) {
@@ -228,9 +219,11 @@ const char *ui_get_str(struct sc_context *ctx, struct sc_atr *atr,
 				case NOTIFY_PIN_BAD_TEXT:
 					str = "Smartcard ist gesperrt";
 					break;
+				case MD_PINPAD_DLG_VERIFICATION:
+					str = "Sofort PIN am PIN-Pad abfragen";
+					break;
 
 				case MD_PINPAD_DLG_CONTROL_COLLAPSED:
-					/* fall through */
 				case MD_PINPAD_DLG_CONTROL_EXPANDED:
 					str = "Weitere Informationen";
 					break;
@@ -246,7 +239,6 @@ const char *ui_get_str(struct sc_context *ctx, struct sc_atr *atr,
 			}
 			break;
 		case EN:
-			/* fall through */
 		default:
 			switch (id) {
 				case MD_PINPAD_DLG_TITLE:
@@ -264,14 +256,8 @@ const char *ui_get_str(struct sc_context *ctx, struct sc_atr *atr,
 				case MD_PINPAD_DLG_CONTENT_ADMIN:
 					str = "Please enter your PIN to unblock the user PIN on the PIN pad.";
 					break;
-				case MD_PINPAD_DLG_CONTENT_CANCEL:
-					str = "Use the PIN pad to cancel the operation.";
-					break;
 				case MD_PINPAD_DLG_EXPANDED:
 					str = "This window will be closed automatically after the PIN has been submitted on the PIN pad (timeout typically after 30 seconds).";
-					break;
-				case MD_PINPAD_DLG_EXPANDED_CANCEL:
-					str = "Some readers only support canceling the operation on the PIN pad. Press Cancel or remove the card.";
 					break;
 				case NOTIFY_CARD_INSERTED:
 					if (p15card) {
@@ -301,8 +287,11 @@ const char *ui_get_str(struct sc_context *ctx, struct sc_atr *atr,
 				case NOTIFY_PIN_BAD_TEXT:
 					str = "Smart card is locked";
 					break;
+				case MD_PINPAD_DLG_VERIFICATION:
+					str = "Immediately request PIN on PIN-Pad";
+					break;
+
 				case MD_PINPAD_DLG_CONTROL_COLLAPSED:
-					/* fall through */
 				case MD_PINPAD_DLG_CONTROL_EXPANDED:
 					str = "Click here for more information";
 					break;

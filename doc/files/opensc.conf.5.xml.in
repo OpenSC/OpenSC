@@ -25,7 +25,12 @@
 						environment variables
 				</para></listitem>
 				<listitem><para>
-						Windows registry (if available)
+						Windows registry key in
+						<literal>HKEY_CURRENT_USER</literal> (if available)
+				</para></listitem>
+				<listitem><para>
+						Windows registry key in
+						<literal>HKEY_LOCAL_MACHINE</literal> (if available)
 				</para></listitem>
 				<listitem><para>
 						system-wide configuration file
@@ -156,7 +161,7 @@ app <replaceable>application</replaceable> {
 					<para>
 						If this configuration value is not found on
 						Windows, the registry key
-						<filename>HKLM\Software\OpenSC
+						<filename>Software\OpenSC
 							Project\OpenSC\ProfileDir</filename> is
 						checked.
 				</para></listitem>
@@ -333,7 +338,7 @@ app <replaceable>application</replaceable> {
 								<para>
 									If this configuration value is not
 									found on Windows, the registry key
-									<filename>HKLM\Software\OpenSC
+									<filename>Software\OpenSC
 										Project\OpenSC\SmDir</filename> is
 									checked.
 							</para></listitem>
@@ -911,9 +916,8 @@ app <replaceable>application</replaceable> {
 						<listitem><para>
 								Content of the PIN pad dialog for
 								role "user" (Default:
-								<literal>"Please verify your
-									fingerprint or PIN on the
-									card."</literal>).
+								<literal>"Please enter your PIN on the PIN
+									pad."</literal>).
 						</para></listitem>
 					</varlistentry>
 					<varlistentry>
@@ -923,23 +927,8 @@ app <replaceable>application</replaceable> {
 						<listitem><para>
 								Content of the PIN pad dialog for
 								role "user+signature" (Default:
-								<literal>"Please verify your
-									fingerprint or PIN for the
-									digital signature PIN on the
-									card."</literal>).
-						</para></listitem>
-					</varlistentry>
-					<varlistentry>
-						<term>
-							<option>md_pinpad_dlg_content_user_sign = <replaceable>name</replaceable>;</option>
-						</term>
-						<listitem><para>
-								Content of the PIN pad dialog for
-								role "user+signature" (Default:
-								<literal>"Please verify your
-									fingerprint or PIN for the
-									digital signature PIN on the
-									card."</literal>).
+								<literal>"Please enter your digital signature
+									PIN on the PIN pad."</literal>).
 						</para></listitem>
 					</varlistentry>
 					<varlistentry>
@@ -949,19 +938,8 @@ app <replaceable>application</replaceable> {
 						<listitem><para>
 								Content of the PIN pad dialog for
 								role "admin" (Default:
-								<literal>"Please enter your PIN to
-									unblock the user PIN on the
-									PINPAD."</literal>)
-						</para></listitem>
-					</varlistentry>
-					<varlistentry>
-						<term>
-							<option>md_pinpad_dlg_content_cancel = <replaceable>value</replaceable>;</option>
-						</term>
-						<listitem><para>
-								Content of the PIN pad dialog after
-								pressing "Cancel", when the reader
-								doesn't respond to SCardCancel
+								<literal>"Please enter your PIN to unblock the
+									user PIN on the PIN pad."</literal>)
 						</para></listitem>
 					</varlistentry>
 					<varlistentry>
@@ -970,27 +948,10 @@ app <replaceable>application</replaceable> {
 						</term>
 						<listitem><para>
 								Expanded information of the PIN pad
-								dialog (Default: <literal>"This
-									window will be closed
-									automatically after the PIN has
-									been submitted on the PINPAD
-									(timeout typically after 30
-									seconds)."</literal>)
-						</para></listitem>
-					</varlistentry>
-					<varlistentry>
-						<term>
-							<option>md_pinpad_dlg_expanded_cancel = <replaceable>value</replaceable>;</option>
-						</term>
-						<listitem><para>
-								Expanded information of the PIN pad
-								dialog after pressing "Cancel",
-								when the reader doesn't respond to
-								SCardCancel (Default:
-								<literal>"Some readers only support
-									canceling the operation on the
-									PIN pad. Press Cancel or remove
-									the card."</literal>).
+								dialog (Default: <literal>"This window will be
+									closed automatically after the PIN has been
+									submitted on the PIN pad (timeout typically
+									after 30 seconds)."</literal>)
 						</para></listitem>
 					</varlistentry>
 					<varlistentry>
@@ -1000,7 +961,25 @@ app <replaceable>application</replaceable> {
 						<listitem><para>
 								Allow the user to cancel the PIN
 								pad dialog (Default:
-								<literal>false</literal>)
+								<literal>false</literal>).
+
+								If this value is set to
+								<literal>true</literal>, the user needs to
+								click "OK" to start the PIN verification on the
+								PIN pad. The user can choose the default
+								behavior by enabling or disabling the checkbox
+								of the dialog. The setting is saved by the
+								program's full path
+								(<replaceable>program_path</replaceable>) that
+								uses OpenSC.
+							</para>
+							<para>
+								The registry key <filename>HKCU\Software\OpenSC
+									Project\OpenSC\md_pinpad_dlg_enable_cancel\<replaceable>program_path</replaceable></filename>
+								overwrites this setting with a
+								<literal>DWORD</literal> set to either
+								<literal>1</literal> (enabled) or
+								<literal>0</literal> (disabled).
 						</para></listitem>
 					</varlistentry>
 					<varlistentry>
@@ -1568,7 +1547,7 @@ app <replaceable>application</replaceable> {
 					<para>
 						If this environment variable is not found on
 						Windows, the registry key
-						<filename>HKLM\Software\OpenSC
+						<filename>Software\OpenSC
 							Project\OpenSC\ConfigFile</filename> is
 						checked.
 				</para></listitem>
@@ -1601,7 +1580,7 @@ app <replaceable>application</replaceable> {
 					<para>
 						If this environment variable is not found on
 						Windows, the registry key
-						<filename>HKLM\Software\OpenSC
+						<filename>Software\OpenSC
 							Project\OpenSC\MiniDriverDebug</filename> is
 						checked.
 				</para></listitem>

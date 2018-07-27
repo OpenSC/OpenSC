@@ -37,6 +37,7 @@
 
 #include <windows.h>
 #include <Commctrl.h>
+#include <timeapi.h>
 #include "cardmod.h"
 
 #include "common/compat_strlcpy.h"
@@ -121,6 +122,8 @@ HINSTANCE g_inst;
 
  /* defined twice: in versioninfo-minidriver.rc.in and in minidriver.c */
 #define IDI_SMARTCARD   102
+
+#define SUBKEY_ENABLE_CANCEL "Software\\OpenSC Project\\OpenSC\\md_pinpad_dlg_enable_cancel"
 
 /* magic to determine previous pinpad authentication */
 #define MAGIC_SESSION_PIN "opensc-minidriver"
@@ -649,11 +652,30 @@ md_get_config_bool(PCARD_DATA pCardData, char *flag_name, BOOL ret_default)
 }
 
 
-/* 'Write' mode can be enabled from the OpenSC configuration file*/
+/* 'cancellation' mode can be enabled from the OpenSC configuration file*/
 static BOOL
 md_is_pinpad_dlg_enable_cancel(PCARD_DATA pCardData)
 {
+	TCHAR path[MAX_PATH]={0};
+
 	logprintf(pCardData, 2, "Is cancelling the PIN pad dialog enabled?\n");
+
+	if (GetModuleFileName(NULL, path, ARRAYSIZE(path))) {
+		DWORD enable_cancel;
+		size_t sz = sizeof enable_cancel;
+
+		if (SC_SUCCESS == sc_ctx_win32_get_config_value(NULL, path,
+					SUBKEY_ENABLE_CANCEL,
+					(char *)(&enable_cancel), &sz)) {
+			switch (enable_cancel) {
+				case 0:
+					return FALSE;
+				case 1:
+					return TRUE;
+			}
+		}
+	}
+
 	return md_get_config_bool(pCardData, "md_pinpad_dlg_enable_cancel", FALSE);
 }
 
@@ -2821,65 +2843,85 @@ static const char *md_get_ui_str(PCARD_DATA pCardData, enum ui_str id)
 static HRESULT CALLBACK md_dialog_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam, LONG_PTR dwRefData)
 {
 	LONG_PTR param;
-	int timeout;
 
 	UNREFERENCED_PARAMETER(lParam);
 	switch (message) {
 		case TDN_CREATED:
 			{
 				PCARD_DATA pCardData = (PCARD_DATA)((LONG_PTR*)dwRefData)[7];
+				DWORD now = timeGetTime();
+
 				/* remove the icon from the window title */
 				SendMessage(hWnd, WM_SETICON, (LPARAM) ICON_BIG, (LONG_PTR) NULL);
 				SendMessage(hWnd, WM_SETICON, (LPARAM) ICON_SMALL, (LONG_PTR) NULL);
+
+				/* store parameter like pCardData for further use if needed */
+				((LONG_PTR*)dwRefData)[11] = (LONG_PTR) now;
+				SetWindowLongPtr(hWnd, GWLP_USERDATA, dwRefData);
+				((LONG_PTR*)dwRefData)[10] = (LONG_PTR) hWnd;
+
 				if (!md_is_pinpad_dlg_enable_cancel(pCardData)) {
+					int timeout = md_get_pinpad_dlg_timeout(pCardData);
+					if (timeout > 0) {
+						SendMessage(hWnd, TDM_SET_PROGRESS_BAR_RANGE, 0, MAKELPARAM(0, timeout*1000));
+					}
+
 					/* disable "Close" */
 					SendMessage(hWnd, TDM_ENABLE_BUTTON, IDCLOSE, 0);
+
+					/* launch the function in another thread context store the thread handle */
+					((LONG_PTR*)dwRefData)[9] = (LONG_PTR) CreateThread(NULL, 0, md_dialog_perform_pin_operation_thread, (LPVOID) dwRefData, 0, NULL);
+				} else {
+					int timeout = md_get_pinpad_dlg_timeout(pCardData);
+					if (timeout > 0) {
+						SendMessage(hWnd, TDM_SET_PROGRESS_BAR_RANGE, 0, 0);
+						SendMessage(hWnd, TDM_SET_PROGRESS_BAR_STATE, PBST_PAUSED, 0);
+					}
 				}
-				timeout = md_get_pinpad_dlg_timeout(pCardData);
-				if (timeout > 0) {
-					/* update the progress bar with the tick counter for the number of specified seconds */
-					SendMessage(hWnd, TDM_SET_PROGRESS_BAR_RANGE, 0, MAKELPARAM(0, timeout*1000));
-				}
-				/* store parameter like pCardData for further use if needed */
-				SetWindowLongPtr(hWnd, GWLP_USERDATA, dwRefData);
-				/* launch the function in another thread context store the thread handle */
-				((LONG_PTR*)dwRefData)[10] = (LONG_PTR) hWnd;
-				((LONG_PTR*)dwRefData)[9] = (LONG_PTR) CreateThread(NULL, 0, md_dialog_perform_pin_operation_thread, (LPVOID) dwRefData, 0, NULL);
 			}
 			return S_OK;
 
 		case TDN_TIMER:
-			/* tick down for 30 seconds */
-			SendMessage(hWnd, TDM_SET_PROGRESS_BAR_POS, 30000 - wParam, 0L);
+			SendMessage(hWnd, TDM_SET_PROGRESS_BAR_POS, wParam, 0L);
 			return S_OK;
 
 		case TDN_BUTTON_CLICKED:
-			/* We ignore anything else than the Cancel button */
-			if (LOWORD(wParam) != IDCANCEL)
-				return S_FALSE;
+			switch(LOWORD(wParam)) {
+				case IDCANCEL:
+					DestroyWindow(hWnd);
+					break;
 
-			param = GetWindowLongPtr(hWnd, GWLP_USERDATA);
-			if (param) {
-				PCARD_DATA pCardData = (PCARD_DATA)((LONG_PTR*)param)[7];
-				VENDOR_SPECIFIC* vs = (VENDOR_SPECIFIC*) pCardData->pvVendorSpecific;
-				WCHAR *pszContent = wchar_from_char_str(md_get_ui_str(pCardData,
-							MD_PINPAD_DLG_CONTENT_CANCEL));
-				WCHAR *pszExpandedInformation = wchar_from_char_str(md_get_ui_str(pCardData,
-							MD_PINPAD_DLG_EXPANDED_CANCEL));
+				case IDOK:
+					param = GetWindowLongPtr(hWnd, GWLP_USERDATA);
+					if (param) {
+						PCARD_DATA pCardData = (PCARD_DATA)((LONG_PTR*)param)[7];
+						VENDOR_SPECIFIC* vs = (VENDOR_SPECIFIC*) pCardData->pvVendorSpecific;
 
-				sc_cancel(vs->ctx);
+						int timeout = md_get_pinpad_dlg_timeout(pCardData);
+						if (timeout > 0) {
+							DWORD start = (DWORD)((LONG_PTR*)dwRefData)[11];
+							DWORD delta = timeGetTime() - start;
+							SendMessage(hWnd, TDM_SET_PROGRESS_BAR_RANGE, 0, MAKELPARAM(delta, delta + timeout*1000));
+							SendMessage(hWnd, TDM_SET_PROGRESS_BAR_STATE, PBST_NORMAL, 0);
+						}
 
-				SendMessage(hWnd, TDM_SET_ELEMENT_TEXT,
-						TDE_CONTENT, (LPARAM) pszContent);
-				SendMessage(hWnd, TDM_SET_ELEMENT_TEXT,
-						TDE_EXPANDED_INFORMATION, (LPARAM) pszExpandedInformation);
-				SendMessage(hWnd, TDM_UPDATE_ICON, TDIE_ICON_MAIN, (LPARAM)MAKEINTRESOURCE(TD_INFORMATION_ICON));
-				/* remove the icon from the window title */
-				SendMessage(hWnd, WM_SETICON, (LPARAM) ICON_BIG, (LONG_PTR) NULL);
-				SendMessage(hWnd, WM_SETICON, (LPARAM) ICON_SMALL, (LONG_PTR) NULL);
+						/* disable "OK" and "Cancel" */
+						SendMessage(hWnd, TDM_ENABLE_BUTTON, IDOK, 0);
+						SendMessage(hWnd, TDM_ENABLE_BUTTON, IDCANCEL, 0);
 
-				LocalFree(pszContent);
-				LocalFree(pszExpandedInformation);
+						/* disable "x" */
+						HMENU menu = GetSystemMenu(hWnd, FALSE);
+						if (menu) {
+							EnableMenuItem(menu, SC_CLOSE, MF_BYCOMMAND | MF_GRAYED);
+						}
+
+						/* launch the function in another thread context store the thread handle */
+						((LONG_PTR*)dwRefData)[9] = (LONG_PTR) CreateThread(NULL, 0, md_dialog_perform_pin_operation_thread, (LPVOID) dwRefData, 0, NULL);
+					}
+					break;
+
+				default:
+					return S_FALSE;
 			}
 			break;
 
@@ -2905,11 +2947,12 @@ md_dialog_perform_pin_operation(PCARD_DATA pCardData, int operation, struct sc_p
 		const u8 *pin1, size_t pin1len,
 		const u8 *pin2, size_t *pin2len, BOOL displayUI, DWORD role)
 {
-	LONG_PTR parameter[11];
+	LONG_PTR parameter[12];
 	INT_PTR result = 0;
 	HWND hWndDlg = 0;
 	TASKDIALOGCONFIG tc = {0};
 	int rv = 0;
+	BOOL checked, user_checked;
 	VENDOR_SPECIFIC* pv = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
 
 	/* stack the parameters */
@@ -2924,6 +2967,7 @@ md_dialog_perform_pin_operation(PCARD_DATA pCardData, int operation, struct sc_p
 	parameter[8] = (LONG_PTR)role;
 	parameter[9] = 0; /* place holder for thread handle */
 	parameter[10] = 0; /* place holder for window handle */
+	parameter[11] = 0; /* place holder for end of timer */
 
 	/* launch the function to perform in the same thread context */
 	if (!displayUI) {
@@ -2947,6 +2991,8 @@ md_dialog_perform_pin_operation(PCARD_DATA pCardData, int operation, struct sc_p
 			MD_PINPAD_DLG_CONTROL_COLLAPSED));
 	tc.pszExpandedInformation = wchar_from_char_str(md_get_ui_str(pCardData,
 			MD_PINPAD_DLG_EXPANDED));
+	tc.pszVerificationText = wchar_from_char_str(md_get_ui_str(pCardData,
+			MD_PINPAD_DLG_VERIFICATION));
 	switch (role) {
 		case ROLE_ADMIN:
 			tc.pszContent = wchar_from_char_str(md_get_ui_str(pCardData,
@@ -2977,12 +3023,14 @@ md_dialog_perform_pin_operation(PCARD_DATA pCardData, int operation, struct sc_p
 		tc.dwFlags |= TDF_SHOW_PROGRESS_BAR | TDF_CALLBACK_TIMER;
 	}
 	
-	if (md_is_pinpad_dlg_enable_cancel(pCardData)) {
-		tc.dwFlags |= TDF_ALLOW_DIALOG_CANCELLATION;
-		tc.dwCommonButtons = TDCBF_CANCEL_BUTTON;
-	} else {
+	checked = !md_is_pinpad_dlg_enable_cancel(pCardData);
+	if (checked) {
+		tc.dwFlags |= TDF_VERIFICATION_FLAG_CHECKED;
 		/* can't use TDCBF_CANCEL_BUTTON since this would implicitly set TDF_ALLOW_DIALOG_CANCELLATION */
 		tc.dwCommonButtons = TDCBF_CLOSE_BUTTON;
+	} else {
+		tc.dwFlags |= TDF_ALLOW_DIALOG_CANCELLATION;
+		tc.dwCommonButtons = TDCBF_CANCEL_BUTTON | TDCBF_OK_BUTTON;
 	}
 
 	tc.hMainIcon = md_get_pinpad_dlg_icon(pCardData);
@@ -2995,7 +3043,30 @@ md_dialog_perform_pin_operation(PCARD_DATA pCardData, int operation, struct sc_p
 	tc.lpCallbackData = (LONG_PTR)parameter;
 	tc.cbSize = sizeof(tc);
 
-	result = TaskDialogIndirect(&tc, NULL, NULL, NULL);
+	result = TaskDialogIndirect(&tc, NULL, NULL, &user_checked);
+
+	if (user_checked != checked) {
+		TCHAR path[MAX_PATH]={0};
+		if (GetModuleFileName(NULL, path, ARRAYSIZE(path))) {
+			HKEY hKey;
+			LSTATUS lstatus = RegOpenKeyExA(HKEY_CURRENT_USER,
+					SUBKEY_ENABLE_CANCEL, 0, KEY_WRITE, &hKey);
+			if (ERROR_SUCCESS != lstatus) {
+				lstatus = RegCreateKeyExA(HKEY_CURRENT_USER,
+						SUBKEY_ENABLE_CANCEL, 0, NULL, REG_OPTION_NON_VOLATILE,
+						KEY_WRITE, NULL, &hKey, NULL);
+			}
+			if (ERROR_SUCCESS == lstatus) {
+				DWORD enable_cancel = 0;
+				if (user_checked == FALSE) {
+					enable_cancel = 1;
+				}
+				lstatus = RegSetValueEx(hKey, path, 0, REG_DWORD,
+						(const BYTE*)&enable_cancel, sizeof(enable_cancel));
+				RegCloseKey(hKey);
+			}
+		}
+	}
 
 	LocalFree((WCHAR *) tc.pszWindowTitle);
 	LocalFree((WCHAR *) tc.pszMainInstruction);
