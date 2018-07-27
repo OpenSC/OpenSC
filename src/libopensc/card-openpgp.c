@@ -59,7 +59,7 @@ static const char default_cardname_v3[] = "OpenPGP card v3.x";
 static struct sc_atr_table pgp_atrs[] = {
 	{ "3b:fa:13:00:ff:81:31:80:45:00:31:c1:73:c0:01:00:00:90:00:b1", NULL, default_cardname_v1, SC_CARD_TYPE_OPENPGP_V1, 0, NULL },
 	{ "3b:da:18:ff:81:b1:fe:75:1f:03:00:31:c5:73:c0:01:40:00:90:00:0c", NULL, default_cardname_v2, SC_CARD_TYPE_OPENPGP_V2, 0, NULL },
-	{ "3b:da:11:ff:81:b1:fe:55:1f:03:00:31:84:73:80:01:80:00:90:00:e4", NULL, "Gnuk v1.0.x (OpenPGP v2.0)", SC_CARD_TYPE_OPENPGP_GNUK, 0, NULL },
+	{ "3b:da:11:ff:81:b1:fe:55:1f:03:00:31:84:73:80:01:80:00:90:00:e4", NULL, "Gnuk v1.x.x (OpenPGP v2.0)", SC_CARD_TYPE_OPENPGP_GNUK, 0, NULL },
 	{ "3b:fc:13:00:00:81:31:fe:15:59:75:62:69:6b:65:79:4e:45:4f:72:33:e1", NULL, "Yubikey NEO (OpenPGP v2.0)", SC_CARD_TYPE_OPENPGP_V2, 0, NULL },
 	{ "3b:f8:13:00:00:81:31:fe:15:59:75:62:69:6b:65:79:34:d4", NULL, "Yubikey 4 (OpenPGP v2.1)", SC_CARD_TYPE_OPENPGP_V2, 0, NULL },
 	{ "3b:da:18:ff:81:b1:fe:75:1f:03:00:31:f5:73:c0:01:60:00:90:00:1c", NULL, default_cardname_v3, SC_CARD_TYPE_OPENPGP_V3, 0, NULL },
@@ -572,6 +572,30 @@ pgp_init(sc_card_t *card)
 	/* get card_features from ATR & DOs */
 	pgp_get_card_features(card);
 
+	/* add supported algorithms based on specification */
+	unsigned long flags;
+	flags = SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE;
+	flags |= SC_ALGORITHM_ONBOARD_KEY_GEN; // Can be generated in card
+
+	switch (card->type) {
+		case SC_CARD_TYPE_OPENPGP_V3:
+			/* RSA 1024 was removed for v3+ */
+			_sc_card_add_rsa_alg(card, 2048, flags, 0);
+			_sc_card_add_rsa_alg(card, 3072, flags, 0);
+			_sc_card_add_rsa_alg(card, 4096, flags, 0);
+			/* TODO add ECC as implemented in OpenSC */
+			/* v3.0+ supports: [RFC 4880 & 6637] 0x12 = ECDH, 0x13 = ECDSA */
+			break;
+		case SC_CARD_TYPE_OPENPGP_GNUK:
+		case SC_CARD_TYPE_OPENPGP_V2:
+		default:
+			_sc_card_add_rsa_alg(card, 1024, flags, 0);
+			_sc_card_add_rsa_alg(card, 2048, flags, 0);
+			_sc_card_add_rsa_alg(card, 3072, flags, 0);
+			_sc_card_add_rsa_alg(card, 4096, flags, 0);
+			break;
+	}
+
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
@@ -719,7 +743,12 @@ pgp_get_card_features(sc_card_t *card)
 			card->max_pin_len = blob->data[1];
 		}
 
-		/* get supported algorithms & key lengths from "algorithm attributes" DOs */
+		/* get _current_ algorithms & key lengths from "algorithm attributes" DOs
+		 *
+		 * All available algorithms should be already provided by pgp_init. However, if another
+		 * algorithm is found in the "algorithm attributes" DOs, it is supported by the card as
+		 * well and therefore added 
+		 * see OpenPGP card spec 1.1 & 2.x section 4.3.3.6 / v3.x section 4.4.3.7 */
 		for (i = 0x00c1; i <= 0x00c3; i++) {
 			unsigned long flags;
 
