@@ -167,12 +167,9 @@ struct _sc_ctx_options {
 int
 sc_ctx_win32_get_config_value(const char *name_env,
 	   	const char *name_reg, const char *name_key,
-		char *out, size_t *out_len)
+		void *out, size_t *out_len)
 {
 #ifdef _WIN32
-	char temp[PATH_MAX + 1];
-	char *value = NULL;
-	DWORD temp_len = PATH_MAX;
 	long rc;
 	HKEY hKey;
 
@@ -180,9 +177,12 @@ sc_ctx_win32_get_config_value(const char *name_env,
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	if (name_env)   {
-		value = getenv(name_env);
-		if (value)
-			goto done;
+		char *value = value = getenv(name_env);
+		if (strlen(value) < *out_len)
+			return SC_ERROR_NOT_ENOUGH_MEMORY;
+		memcpy(out, value, strlen(value));
+		*out_len = strlen(value);
+		return SC_SUCCESS;
 	}
 
 	if (!name_reg)
@@ -193,35 +193,25 @@ sc_ctx_win32_get_config_value(const char *name_env,
 
 	rc = RegOpenKeyExA(HKEY_CURRENT_USER, name_key, 0, KEY_QUERY_VALUE, &hKey);
 	if (rc == ERROR_SUCCESS) {
-		temp_len = PATH_MAX;
-		rc = RegQueryValueEx( hKey, name_reg, NULL, NULL, (LPBYTE) temp, &temp_len);
-		if ((rc == ERROR_SUCCESS) && (temp_len < PATH_MAX))
-			value = temp;
+		DWORD len = *out_len;
+		rc = RegQueryValueEx(hKey, name_reg, NULL, NULL, out, &len);
 		RegCloseKey(hKey);
-	}
-
-	if (!value) {
-		rc = RegOpenKeyExA( HKEY_LOCAL_MACHINE, name_key, 0, KEY_QUERY_VALUE, &hKey );
 		if (rc == ERROR_SUCCESS) {
-			temp_len = PATH_MAX;
-			rc = RegQueryValueEx( hKey, name_reg, NULL, NULL, (LPBYTE) temp, &temp_len);
-			if ((rc == ERROR_SUCCESS) && (temp_len < PATH_MAX))
-				value = temp;
-			RegCloseKey(hKey);
+			*out_len = len;
+			return SC_SUCCESS;
 		}
 	}
 
-done:
-	if (value) {
-		if (strlen(value) >= *out_len)
-			return SC_ERROR_BUFFER_TOO_SMALL;
-		strcpy(out, value);
-		*out_len = strlen(out);
-		return SC_SUCCESS;
+	rc = RegOpenKeyExA(HKEY_LOCAL_MACHINE, name_key, 0, KEY_QUERY_VALUE, &hKey);
+	if (rc == ERROR_SUCCESS) {
+		DWORD len = *out_len;
+		rc = RegQueryValueEx(hKey, name_reg, NULL, NULL, out, &len);
+		RegCloseKey(hKey);
+		if (rc == ERROR_SUCCESS) {
+			*out_len = len;
+			return SC_SUCCESS;
+		}
 	}
-
-	memset(out, 0, *out_len);
-	*out_len = 0;
 
 	return SC_ERROR_OBJECT_NOT_FOUND;
 #else
@@ -677,13 +667,14 @@ static void process_config_file(sc_context_t *ctx, struct _sc_ctx_options *opts)
 
 	memset(ctx->conf_blocks, 0, sizeof(ctx->conf_blocks));
 #ifdef _WIN32
-	temp_len = PATH_MAX;
+	temp_len = PATH_MAX-1;
 	r = sc_ctx_win32_get_config_value("OPENSC_CONF", "ConfigFile", "Software\\OpenSC Project\\OpenSC",
 		temp_path, &temp_len);
 	if (r)   {
 		sc_log(ctx, "process_config_file doesn't find opensc config file. Please set the registry key.");
 		return;
 	}
+	temp_path[temp_len] = '\0';
 	conf_path = temp_path;
 #else
 	conf_path = getenv("OPENSC_CONF");

@@ -840,7 +840,7 @@ int sc_ctx_detect_readers(sc_context_t *ctx);
  */
 int sc_ctx_win32_get_config_value(const char *env,
 		const char *reg, const char *key,
-		char *out, size_t *out_size);
+		void *out, size_t *out_size);
 
 /**
  * Returns a pointer to the specified sc_reader_t object

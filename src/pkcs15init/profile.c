@@ -342,11 +342,12 @@ sc_profile_load(struct sc_profile *profile, const char *filename)
 
 	if (!profile_dir) {
 #ifdef _WIN32
-		temp_len = PATH_MAX;
+		temp_len = PATH_MAX - 1;
 		res = sc_ctx_win32_get_config_value(NULL, "ProfileDir", "Software\\OpenSC Project\\OpenSC",
 				temp_path, &temp_len);
 		if (res)
 			LOG_FUNC_RETURN(ctx, res);
+		temp_path[temp_len] = '\0';
 		profile_dir = temp_path;
 #else
 		profile_dir = SC_PKCS15_PROFILE_DIRECTORY;
