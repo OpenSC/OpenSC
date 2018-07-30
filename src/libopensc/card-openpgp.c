@@ -59,7 +59,7 @@ static const char default_cardname_v3[] = "OpenPGP card v3.x";
 static struct sc_atr_table pgp_atrs[] = {
 	{ "3b:fa:13:00:ff:81:31:80:45:00:31:c1:73:c0:01:00:00:90:00:b1", NULL, default_cardname_v1, SC_CARD_TYPE_OPENPGP_V1, 0, NULL },
 	{ "3b:da:18:ff:81:b1:fe:75:1f:03:00:31:c5:73:c0:01:40:00:90:00:0c", NULL, default_cardname_v2, SC_CARD_TYPE_OPENPGP_V2, 0, NULL },
-	{ "3b:da:11:ff:81:b1:fe:55:1f:03:00:31:84:73:80:01:80:00:90:00:e4", NULL, "Gnuk v1.x.x (OpenPGP v2.0)", SC_CARD_TYPE_OPENPGP_GNUK, 0, NULL },
+	{ "3b:da:11:ff:81:b1:fe:55:1f:03:00:31:84:73:80:01:80:00:90:00:e4", NULL, "Gnuk v1.0.x (OpenPGP v2.0)", SC_CARD_TYPE_OPENPGP_GNUK, 0, NULL },
 	{ "3b:fc:13:00:00:81:31:fe:15:59:75:62:69:6b:65:79:4e:45:4f:72:33:e1", NULL, "Yubikey NEO (OpenPGP v2.0)", SC_CARD_TYPE_OPENPGP_V2, 0, NULL },
 	{ "3b:f8:13:00:00:81:31:fe:15:59:75:62:69:6b:65:79:34:d4", NULL, "Yubikey 4 (OpenPGP v2.1)", SC_CARD_TYPE_OPENPGP_V2, 0, NULL },
 	{ "3b:da:18:ff:81:b1:fe:75:1f:03:00:31:f5:73:c0:01:60:00:90:00:1c", NULL, default_cardname_v3, SC_CARD_TYPE_OPENPGP_V3, 0, NULL },
@@ -583,10 +583,16 @@ pgp_init(sc_card_t *card)
 			_sc_card_add_rsa_alg(card, 2048, flags, 0);
 			_sc_card_add_rsa_alg(card, 3072, flags, 0);
 			_sc_card_add_rsa_alg(card, 4096, flags, 0);
-			/* TODO add ECC as implemented in OpenSC */
-			/* v3.0+ supports: [RFC 4880 & 6637] 0x12 = ECDH, 0x13 = ECDSA */
+			/* TODO add ECC
+			 * v3.0+ supports: [RFC 4880 & 6637] 0x12 = ECDH, 0x13 = ECDSA */
 			break;
 		case SC_CARD_TYPE_OPENPGP_GNUK:
+			_sc_card_add_rsa_alg(card, 2048, flags, 0);
+			/* TODO add ECC for more recent Gnuk (1.2.x)
+			 * these are not include in SC_CARD_TYPE_OPENPGP_GNUK, but
+			 * are treated like SC_CARD_TYPE_OPENPGP_V2 
+			 * Gnuk supports NIST, SECG and Curve25519 from version 1.2.x on */
+			break;
 		case SC_CARD_TYPE_OPENPGP_V2:
 		default:
 			_sc_card_add_rsa_alg(card, 1024, flags, 0);
