@@ -1196,7 +1196,7 @@ static int coolkey_read_binary(sc_card_t *card, unsigned int idx,
 {
 	coolkey_private_data_t * priv = COOLKEY_DATA(card);
 	int r = 0, len;
-	u8 *data = NULL;;
+	u8 *data = NULL;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (idx > priv->obj->length) {
