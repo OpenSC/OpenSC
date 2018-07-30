@@ -89,7 +89,7 @@
 #define COOLKEY_INS_COMPUTE_CRYPT              0x36
 #define COOLKEY_INS_COMPUTE_ECC_KEY_AGREEMENT  0x37
 #define COOLKEY_INS_COMPUTE_ECC_SIGNATURE      0x38
-#define COOLKEY_INS_GET_RANDOM                 0x73
+#define COOLKEY_INS_GET_RANDOM                 0x72
 #define COOLKEY_INS_READ_OBJECT                0x56
 #define COOLKEY_INS_WRITE_OBJECT               0x54
 #define COOLKEY_INS_LOGOUT                     0x61
