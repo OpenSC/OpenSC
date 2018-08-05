@@ -57,7 +57,7 @@ span.errortext {
 						<code class="literal">HKEY_LOCAL_MACHINE</code> (if available)
 				</p></li><li class="listitem"><p>
 						system-wide configuration file
-						(<code class="literal">/home/fm/.local/etc/opensc.conf</code>)
+						(<code class="literal">/usr/etc/opensc.conf</code>)
 				</p></li></ol></div><p>
 		</p><p>
 			The configuration file, <code class="literal">opensc.conf</code>, is composed
@@ -146,7 +146,7 @@ app <em class="replaceable"><code>application</code></em> {
 						directory for 
 						<span class="citerefentry"><span class="refentrytitle">pkcs15-init</span>(1).
 						</span>
-						(Default: <code class="literal">/home/fm/.local/share/opensc</code>).
+						(Default: <code class="literal">/usr/share/opensc</code>).
 					</p><p>
 						If this configuration value is not found on
 						Windows, the registry key
@@ -257,7 +257,7 @@ app <em class="replaceable"><code>application</code></em> {
 								<code class="option">module_path = <em class="replaceable"><code>filename</code></em>;</code>
 							</span></dt><dd><p>
 									Directory with external SM module
-									(Default: /home/fm/.local/lib).
+									(Default: /usr/lib).
 								</p><p>
 									If this configuration value is not
 									found on Windows, the registry key
@@ -1064,11 +1064,11 @@ app <em class="replaceable"><code>application</code></em> {
 						PIV configuration during initialization with
 						<span class="application">piv-tool</span>.
 				</p></dd></dl></div></div><div class="refsect1"><a name="idm1012"></a><h2>Files</h2><div class="variablelist"><dl class="variablelist"><dt><span class="term">
-					<code class="filename">/home/fm/.local/etc/opensc.conf</code>
+					<code class="filename">/usr/etc/opensc.conf</code>
 				</span></dt><dd><p>
 						System-wide configuration file
 				</p></dd><dt><span class="term">
-					<code class="filename">/home/fm/.local/share/doc/opensc/opensc.conf</code>
+					<code class="filename">/usr/share/doc/opensc/opensc.conf</code>
 				</span></dt><dd><p>
 						Extended example configuration file
 				</p></dd></dl></div></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="pkcs15-profile"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>pkcs15-profile &#8212; format of profile for <span class="command"><strong>pkcs15-init</strong></span></p></div><div class="refsect1"><a name="idm1036"></a><h2>Description</h2><p>
