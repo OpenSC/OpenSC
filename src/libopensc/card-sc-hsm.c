@@ -1432,9 +1432,198 @@ static int sc_hsm_unwrap_key(sc_card_t *card, sc_cardctl_sc_hsm_wrapped_key_t *p
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(ctx, r, "APDU transmit failed");
 
-	r =  sc_check_sw(card, apdu.sw1, apdu.sw2);
-
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(ctx, r, "Check SW error");
+
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+}
+
+
+
+static int get_CAR(u8 *carstr, sc_context_t *ctx, const u8 *buf, size_t buflen)
+{
+	const u8 *cb = NULL, *car = NULL;
+	size_t taglen;
+
+	LOG_FUNC_CALLED(ctx);
+
+	/* find embedded Certificate Body (should be right at the start) */
+	if (!(cb = sc_asn1_find_tag(ctx, buf, buflen, 0x7F4E, &taglen))) {
+		LOG_FUNC_RETURN(ctx, SC_ERROR_UNKNOWN);
+	}
+    buf = cb;
+    buflen = taglen;
+
+    /* find embedded Certification Authority Reference (CAR) */
+	if (!(car = sc_asn1_find_tag(ctx, buf, buflen, 0x42, &taglen))) {
+		LOG_FUNC_RETURN(ctx, SC_ERROR_UNKNOWN);
+	}
+
+    /* return CAR */
+    strncpy((char*) carstr, (const char*) car, taglen);
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+}
+
+
+static int verify_certificate(sc_card_t *card, const u8 *cert, size_t cert_len, const u8 *chr, size_t chr_len)
+{
+	u8 tag = SC_ASN1_TAG_CONTEXT | SC_ASN1_TAG_BIT_STRING; /* 0x83 */
+	size_t pukref_len, car_len;
+	u8 car[BUFSIZ] = { 0 };
+	u8 pukref[BUFSIZ];
+	sc_apdu_t apdu;
+	u8 *ptr;
+	int r;
+
+	LOG_FUNC_CALLED(card->ctx);
+
+	/* check if public key is already known */
+	if ((r = sc_asn1_put_tag(tag, chr, chr_len, pukref, sizeof(pukref), &ptr)) < 0) {
+		fprintf(stderr, "Error formatting ASN.1 sequence: %s\n", sc_strerror(r));
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN);
+	}
+	pukref_len = ptr - pukref;
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3, 0x22, 0x81, 0xB6);
+	apdu.cla = 0x00;
+	apdu.lc = pukref_len;
+	apdu.data = pukref;
+	apdu.datalen = pukref_len;
+
+	r = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	if (!r) {
+		/* already known */
+		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+	}
+	if (apdu.sw1 != 0x6A && apdu.sw2 != 0x88) {
+		LOG_TEST_RET(card->ctx, SC_ERROR_UNKNOWN, "Check SW error");
+	}
+
+	/* select public key for verification */
+	r = get_CAR(car, card->ctx, cert, cert_len);
+	LOG_TEST_RET(card->ctx, r, "cannot parse CAR");
+	car_len = strlen((const char*) car);
+
+	if ((r = sc_asn1_put_tag(tag, car, car_len, pukref, sizeof(pukref), &ptr)) < 0) {
+		fprintf(stderr, "Error formatting ASN.1 sequence: %s\n", sc_strerror(r));
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN);
+	}
+	pukref_len = ptr - pukref;
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3, 0x22, 0x81, 0xB6);
+	apdu.cla = 0x00;
+	apdu.lc = pukref_len;
+	apdu.data = pukref;
+	apdu.datalen = pukref_len;
+
+	r = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	LOG_TEST_RET(card->ctx, r, "Check SW error");
+
+	/* verify certificate */
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3, 0x2A, 0x00, 0xBE);
+	apdu.cla = 0x00;
+	apdu.lc = cert_len;
+	apdu.data = cert;
+	apdu.datalen = cert_len;
+
+	r = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	LOG_TEST_RET(card->ctx, r, "Check SW error");
+
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+}
+
+
+
+static int sc_hsm_register_public_key(sc_card_t *card, sc_cardctl_sc_hsm_public_key_t *params)
+{
+	u8 tag = SC_ASN1_TAG_CONTEXT | SC_ASN1_TAG_BIT_STRING; /* 0x83 */
+	size_t outer_car_len, pukref_len;
+	u8 recvbuf[MAX_EXT_APDU_LENGTH];
+	sc_context_t *ctx = card->ctx;
+	const u8 *outer_car = NULL;
+	u8 pukref[BUFSIZ];
+	sc_apdu_t apdu;
+	u8 *ptr;
+	int r;
+
+	LOG_FUNC_CALLED(card->ctx);
+
+	/* get status */
+#if 1
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_EXT, 0x54, 0x00, 0x00);
+	apdu.cla = 0x80;
+	apdu.resp = recvbuf;
+	apdu.resplen = sizeof(recvbuf);
+	apdu.le = 4;
+
+	r = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_RET(ctx, r, "APDU transmit failed");
+
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	LOG_TEST_RET(ctx, r, "Check SW error");
+
+	printf("numberOfPublicKeys=%d\n", recvbuf[0]);
+	printf("missingPublicKeys=%d\n", recvbuf[1]);
+	printf("requiredPublicKeysForAuthentication=%d\n", recvbuf[2]);
+	printf("authenticatedPublicKeys=%d\n", recvbuf[3]);
+#endif
+
+	/* verify dicacert */
+	r = verify_certificate(card, params->dicacert, params->dicacert_length, params->dicacert_chr, params->dicacert_chr_length);
+	LOG_TEST_RET(ctx, r, "device issuer certificate verification failed");
+
+	/* verify devcert */
+	r = verify_certificate(card, params->devcert, params->devcert_length, params->devcert_chr, params->devcert_chr_length);
+	LOG_TEST_RET(ctx, r, "device issuer certificate verification failed");
+
+	/* manage SE */
+	if (!(outer_car = sc_asn1_find_tag(ctx, params->pk, params->pk_length, 0x42, &outer_car_len))) {
+		LOG_FUNC_RETURN(ctx, SC_ERROR_UNKNOWN);
+	}
+
+	if ((r = sc_asn1_put_tag(tag, outer_car, outer_car_len, pukref, sizeof(pukref), &ptr)) < 0) {
+		fprintf(stderr, "Error formatting ASN.1 sequence: %s\n", sc_strerror(r));
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN);
+	}
+	pukref_len = ptr - pukref;
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3, 0x22, 0x81, 0xB6);
+	apdu.cla = 0x00;
+	apdu.lc = pukref_len;
+	apdu.data = pukref;
+	apdu.datalen = pukref_len;
+
+	r = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	LOG_TEST_RET(card->ctx, r, "Check SW error");
+
+	/* manage public key authentication */
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_4, 0x54, 0x00, 0x00);
+	apdu.cla = 0x80;
+	apdu.lc = params->pk_length;
+	apdu.data = params->pk;
+	apdu.datalen = params->pk_length;
+	apdu.resp = recvbuf;
+	apdu.resplen = sizeof(recvbuf);
+	apdu.le = 4;
+
+	r = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_RET(ctx, r, "APDU transmit failed");
+	r =  sc_check_sw(card, apdu.sw1, apdu.sw2);
+	LOG_TEST_RET(ctx, r, "Check SW error");
+
+	printf("numberOfPublicKeys=%d\n", recvbuf[0]);
+	printf("missingPublicKeys=%d\n", recvbuf[1]);
+	printf("requiredPublicKeysForAuthentication=%d\n", recvbuf[2]);
+	printf("authenticatedPublicKeys=%d\n", recvbuf[3]);
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
@@ -1605,6 +1794,8 @@ static int sc_hsm_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 		return sc_hsm_wrap_key(card, (sc_cardctl_sc_hsm_wrapped_key_t *)ptr);
 	case SC_CARDCTL_SC_HSM_UNWRAP_KEY:
 		return sc_hsm_unwrap_key(card, (sc_cardctl_sc_hsm_wrapped_key_t *)ptr);
+	case SC_CARDCTL_SC_HSM_REGISTER_PUBLIC_KEY:
+		return sc_hsm_register_public_key(card, (sc_cardctl_sc_hsm_public_key_t *)ptr);
 	}
 	return SC_ERROR_NOT_SUPPORTED;
 }
