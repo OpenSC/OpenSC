@@ -91,6 +91,7 @@ static const struct option options[] = {
 	{ "unwrap-key",				1, NULL,		'U' },
 	{ "public-key-auth",		1, NULL,		'K' },
 	{ "required-pub-keys",		1, NULL,        'n' },
+	{ "export-for-pub-key-auth",1, NULL,        'e' },
 	{ "dkek-shares",			1, NULL,		's' },
 	{ "so-pin",					1, NULL,		OPT_SO_PIN },
 	{ "pin",					1, NULL,		OPT_PIN },
@@ -120,6 +121,7 @@ static const char *option_help[] = {
 	"Unwrap key read from <filename>",
 	"Use public key authentication, set total number of public keys",
 	"Number of public keys required for authentication [1]",
+	"Export key for public key authentication",
 	"Number of DKEK shares [No DKEK]",
 	"Define security officer PIN (SO-PIN)",
 	"Define user PIN",
@@ -129,7 +131,7 @@ static const char *option_help[] = {
 	"Define password for DKEK share",
 	"Define threshold for number of password shares required for reconstruction",
 	"Define number of password shares",
-	"Key reference for key wrap/unwrap",
+	"Key reference for key wrap/unwrap/export",
 	"Token label for --initialize",
 	"Force replacement of key and certificate",
 	"Uses reader number <arg> [0]",
@@ -1687,6 +1689,123 @@ static int unwrap_key(sc_card_t *card, int keyid, const char *inf, const char *p
 }
 
 
+static int export_key(sc_card_t *card, int keyid, const char *outf)
+{
+	sc_path_t path;
+	FILE *outfp = NULL;
+	u8 fid[2];
+	u8 ef_cert[MAX_CERT];
+	u8 dev_aut_cert[MAX_CERT];
+	u8 dica[MAX_CERT];
+	u8 tag = SC_ASN1_TAG_CONSTRUCTED | SC_ASN1_TAG_SEQUENCE; /* 0x30 */
+	int r, ef_cert_len, dev_aut_cert_len, dica_len, total_certs_len;
+	u8 *data, *out, *ptr;
+	size_t datalen, outlen;
+
+	if ((keyid < 1) || (keyid > 255)) {
+		fprintf(stderr, "Invalid key reference (must be 0 < keyid <= 255)\n");
+		return -1;
+	}
+
+	fid[0] = EE_CERTIFICATE_PREFIX;
+	fid[1] = (unsigned char)keyid;
+	ef_cert_len = 0;
+
+	/* Try to select a related EF containing the certificate for the key */
+	sc_path_set(&path, SC_PATH_TYPE_FILE_ID, fid, sizeof(fid), 0, 0);
+	r = sc_select_file(card, &path, NULL);
+	if (r != SC_SUCCESS) {
+		fprintf(stderr, "Wrong key reference (-i %d)? Failed to select file: %s\n", keyid, sc_strerror(r));
+		return -1;
+	}
+
+	ef_cert_len = sc_read_binary(card, 0, ef_cert, sizeof(ef_cert), 0);
+	if (ef_cert_len < 0) {
+		fprintf(stderr, "Error reading certificate %s. Skipping\n", sc_strerror(ef_cert_len));
+		ef_cert_len = 0;
+	} else {
+		ef_cert_len = determineLength(ef_cert, ef_cert_len);
+	}
+
+	/* C_DevAut */
+	fid[0] = 0x2F;
+	fid[1] = 0x02;
+	dev_aut_cert_len = 0;
+
+	/* Read concatenation of both certificates */
+	sc_path_set(&path, SC_PATH_TYPE_FILE_ID, fid, sizeof(fid), 0, 0);
+	r = sc_select_file(card, &path, NULL);
+	if (r != SC_SUCCESS) {
+		fprintf(stderr, "Failed to select certificates: %s\n", sc_strerror(r));
+		return -1;
+	}
+
+	total_certs_len = sc_read_binary(card, 0, dev_aut_cert, sizeof(dev_aut_cert), 0);
+	if (total_certs_len < 0) {
+		fprintf(stderr, "Error reading certificate: %s\n", sc_strerror(total_certs_len));
+		return -1;
+	} else {
+		dev_aut_cert_len = determineLength(dev_aut_cert, total_certs_len);
+		dica_len = total_certs_len - dev_aut_cert_len;
+		memcpy(dica, dev_aut_cert + dev_aut_cert_len, dica_len);
+	}
+	if (dica_len == 0) {
+		fprintf(stderr, "Could not determine device issuer certificate\n");
+		return -1;
+	}
+
+	if ((outfp = fopen(outf, "r"))) {
+		fprintf(stderr, "Output file '%s' already exists\n", outf);
+		fclose(outfp);
+		return -1;
+	}
+	fprintf(stderr, "Warning: Device certificate chain not verified!\n");
+
+	datalen = ef_cert_len + dev_aut_cert_len + dica_len;
+	outlen = 8 + datalen;
+	if (!(data = malloc(datalen))) {
+		fprintf(stderr, "Malloc failed\n");
+		return -1;
+	}
+	if (!(out = malloc(outlen))) {
+		fprintf(stderr, "Malloc failed\n");
+		free(data);
+		return -1;
+	}
+	memcpy(data, ef_cert, ef_cert_len);
+	memcpy(data + ef_cert_len, dev_aut_cert, dev_aut_cert_len);
+	memcpy(data + ef_cert_len + dev_aut_cert_len, dica, dica_len);
+
+	if ((r = sc_asn1_put_tag(tag, data, datalen, out, outlen, &ptr)) < 0) {
+		fprintf(stderr, "Error formatting ASN1 sequence: %s\n", sc_strerror(r));
+		free(out);
+		free(data);
+		return -1;
+	}
+	outlen = ptr - out;
+
+	if (!(outfp = fopen(outf, "wb"))) {
+		perror(outf);
+		free(out);
+		free(data);
+		return -1;
+	}
+
+	if (fwrite(out, 1, outlen, outfp) != (size_t)outlen) {
+		perror(outf);
+		fclose(outfp);
+		free(out);
+		free(data);
+		return -1;
+	}
+
+	fclose(outfp);
+	free(out);
+	free(data);
+	return 0;
+}
+
+
 
 int main(int argc, char *argv[])
 {
@@ -1698,6 +1817,7 @@ int main(int argc, char *argv[])
 	int do_create_dkek_share = 0;
 	int do_wrap_key = 0;
 	int do_unwrap_key = 0;
+	int do_export_key = 0;
 	sc_path_t path;
 	sc_file_t *file = NULL;
 	const char *opt_so_pin = NULL;
@@ -1720,7 +1840,7 @@ int main(int argc, char *argv[])
 	sc_card_t *card = NULL;
 
 	while (1) {
-		c = getopt_long(argc, argv, "XC:I:P:W:U:K:n:s:i:fr:wv", options, &long_optind);
+		c = getopt_long(argc, argv, "XC:I:P:W:U:K:n:e:s:i:fr:wv", options, &long_optind);
 		if (c == -1)
 			break;
 		if (c == '?')
@@ -1760,6 +1880,11 @@ int main(int argc, char *argv[])
 			break;
 		case 'n':
 			opt_required_pub_keys = atol(optarg);
+			break;
+		case 'e':
+			do_export_key = 1;
+			opt_filename = optarg;
+			action_count++;
 			break;
 		case OPT_PASSWORD:
 			util_get_pin(optarg, &opt_password);
@@ -1817,6 +1942,22 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "Option -n (--required-pub-keys) requires option -X\n");
 		exit(1);
 	}
+	if (do_initialize && do_export_key) {
+		fprintf(stderr, "Option -e (--export-for-pub-key-auth) excludes option -X\n");
+		exit(1);
+	}
+	if (do_wrap_key && do_export_key) {
+		fprintf(stderr, "Option -e (--export-for-pub-key-auth) excludes option -W\n");
+		exit(1);
+	}
+	if (do_unwrap_key && do_export_key) {
+		fprintf(stderr, "Option -e (--export-for-pub-key-auth) excludes option -U\n");
+		exit(1);
+	}
+	if (do_export_key && opt_key_reference == -1) {
+		fprintf(stderr, "Option -e (--export-for-pub-key-auth) requires option -i\n");
+		exit(1);
+	}
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L || (defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER >= 0x20700000L)
 	OPENSSL_init_crypto(OPENSSL_INIT_LOAD_CRYPTO_STRINGS
@@ -1870,6 +2011,9 @@ int main(int argc, char *argv[])
 		goto fail;
 
 	if (do_unwrap_key && unwrap_key(card, opt_key_reference, opt_filename, opt_pin, opt_force))
+		goto fail;
+
+	if (do_export_key && export_key(card, opt_key_reference, opt_filename))
 		goto fail;
 
 	if (action_count == 0) {
