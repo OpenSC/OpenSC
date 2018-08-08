@@ -274,6 +274,7 @@ enum {
 	SC_CARDCTL_SC_HSM_IMPORT_DKEK_SHARE,
 	SC_CARDCTL_SC_HSM_WRAP_KEY,
 	SC_CARDCTL_SC_HSM_UNWRAP_KEY,
+	SC_CARDCTL_SC_HSM_REGISTER_PUBLIC_KEY,
 
 	/*
 	 * DNIe specific calls
@@ -1076,6 +1077,19 @@ typedef struct sc_cardctl_sc_hsm_wrapped_key {
 	u8 *wrapped_key;			/* Binary wrapped key */
 	size_t wrapped_key_length;	/* Length of key blob */
 } sc_cardctl_sc_hsm_wrapped_key_t;
+
+typedef struct sc_cardctl_sc_hsm_public_key {
+	const u8 *pk;               /* Public key */
+	size_t pk_length;           /* Length of key */
+	const u8 *devcert;			/* Device certificate */
+	size_t devcert_length;		/* Length of device certificate */
+	const u8 *dicacert;			/* Device issuer certificate */
+	size_t dicacert_length;		/* Length of device issuer certificate */
+	const u8 *devcert_chr;      /* Device certificate CHR */
+	size_t devcert_chr_length;  /* Length of device certificate CHR */
+	const u8 *dicacert_chr;     /* Device issuer certificate CHR */
+	size_t dicacert_chr_length;	/* Device issuer certificate CHR length */
+} sc_cardctl_sc_hsm_public_key_t;
 
 /*
  * isoApplet

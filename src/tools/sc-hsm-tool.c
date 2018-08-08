@@ -92,6 +92,7 @@ static const struct option options[] = {
 	{ "public-key-auth",		1, NULL,		'K' },
 	{ "required-pub-keys",		1, NULL,        'n' },
 	{ "export-for-pub-key-auth",1, NULL,        'e' },
+	{ "register-public-key",    1, NULL,        'g' },
 	{ "dkek-shares",			1, NULL,		's' },
 	{ "so-pin",					1, NULL,		OPT_SO_PIN },
 	{ "pin",					1, NULL,		OPT_PIN },
@@ -122,6 +123,7 @@ static const char *option_help[] = {
 	"Use public key authentication, set total number of public keys",
 	"Number of public keys required for authentication [1]",
 	"Export key for public key authentication",
+	"Register public key for public key authentication (PKA file)",
 	"Number of DKEK shares [No DKEK]",
 	"Define security officer PIN (SO-PIN)",
 	"Define user PIN",
@@ -1805,6 +1807,164 @@ static int export_key(sc_card_t *card, int keyid, const char *outf)
 	return 0;
 }
 
+static void get_CHR(char *chrstr, int is_cvc, sc_context_t *ctx, const u8 *buf, size_t buflen)
+{
+	const u8 *cv = NULL, *cb = NULL, *chr = NULL;
+	size_t taglen;
+
+	/* find CV certificate (should be right at the start) */
+	if (is_cvc) {
+		if (!(cv = sc_asn1_find_tag(ctx, buf, buflen, 0x7F21, &taglen))) {
+			strcpy(chrstr, "(CV certificate not found)");
+			return;
+		}
+		buf = cv;
+		buflen = taglen;
+	}
+
+	/* find embedded Certificate Body */
+	if (!(cb = sc_asn1_find_tag(ctx, buf, buflen, 0x7F4E, &taglen))) {
+		strcpy(chrstr, "(Certificate Body not found)");
+		return;
+	}
+    buf = cb;
+    buflen = taglen;
+
+    /* find embedded Certification Holder Reference (CHR) */
+	if (!(chr = sc_asn1_find_tag(ctx, buf, buflen, 0x5F20, &taglen))) {
+		strcpy(chrstr, "(CHR not found)");
+		return;
+	}
+
+    /* return CHR */
+    strncpy(chrstr, (const char*) chr, taglen);
+}
+
+
+static int register_public_key_with_card(sc_context_t *ctx, sc_card_t *card, const u8 *pk, size_t pk_len, const u8 *devcert, size_t devcert_len, const u8 *dicacert, size_t dicacert_len)
+{
+	sc_cardctl_sc_hsm_public_key_t public_key;
+	char pk_chr[BUFSIZ] = { 0 }, devcert_chr[BUFSIZ] = { 0 }, dicacert_chr[BUFSIZ] = { 0 };
+	int r;
+
+	get_CHR(pk_chr, 1, ctx, pk, pk_len);
+	get_CHR(devcert_chr, 0, ctx, devcert, devcert_len);
+	fprintf(stderr, "Adding the key issued to '%s' on device '%s'.\n", pk_chr, devcert_chr);
+	get_CHR(dicacert_chr, 0, ctx, dicacert, dicacert_len);
+
+	public_key.pk = pk;
+	public_key.pk_length = pk_len;
+	public_key.devcert = devcert;
+	public_key.devcert_length = devcert_len;
+	public_key.dicacert = dicacert;
+	public_key.dicacert_length = dicacert_len;
+	public_key.devcert_chr = (const u8*) devcert_chr;
+	public_key.devcert_chr_length = strlen(devcert_chr);
+	public_key.dicacert_chr = (const u8*) dicacert_chr;
+	public_key.dicacert_chr_length = strlen(dicacert_chr);
+
+	r = sc_card_ctl(card, SC_CARDCTL_SC_HSM_REGISTER_PUBLIC_KEY, (void *)&public_key);
+	if (r == SC_ERROR_INS_NOT_SUPPORTED) { /* Not supported or not initialized for public key registration */
+		fprintf(stderr, "Card not initialized for public key registration\n");
+		return -1;
+	}
+	if (r < 0) {
+		fprintf(stderr, "sc_card_ctl(*, SC_CARDCTL_SC_HSM_REGISTER_PUBLIC_KEY, *) failed with %s\n", sc_strerror(r));
+		return -1;
+	}
+	return 0;
+}
+
+
+
+static int register_public_key(sc_context_t *ctx, sc_card_t *card, const char *inf)
+{
+	FILE *in;
+	struct stat sb;
+	u8 *pka;
+	u8 tag = SC_ASN1_TAG_CONSTRUCTED | SC_ASN1_TAG_SEQUENCE; /* 0x30 */
+	unsigned int cla_out, tag_out;
+	const u8 *buf;
+	const u8 *pk;
+	const u8 *devcert;
+	const u8 *dicacert;
+	size_t taglen, pk_len, devcert_len, dicacert_len;
+	int r;
+
+	if (!(in = fopen(inf, "rb"))) {
+		perror(inf);
+		return -1;
+	}
+	if (fstat(fileno(in), &sb)) {
+		perror("cannot fstat");
+		fclose(in);
+		return -1;
+	}
+	if (sb.st_size == 0) {
+		fprintf(stderr, "File is empty\n");
+		fclose(in);
+		return -1;
+	}
+	if (!(pka = malloc(sb.st_size))) {
+		fprintf(stderr, "Malloc failed\n");
+		fclose(in);
+		return -1;
+	}
+	if (fread(pka, 1, sb.st_size, in) != (size_t)sb.st_size) {
+		perror(inf);
+		free(pka);
+		fclose(in);
+		return -1;
+	}
+	fclose(in);
+	if (pka[0] != tag) {
+		fprintf(stderr, "File does not contain a public key with certificates\n");
+		free(pka);
+		return -1;
+	}
+
+	/* read ASN.1 sequence */
+	buf = pka;
+	if ((r = sc_asn1_read_tag(&buf, sb.st_size, &cla_out, &tag_out, &taglen)) < 0) {
+		fprintf(stderr, "Error reading ASN.1 sequence: %s\n", sc_strerror(r));
+		free(pka);
+		return -1;
+	}
+
+	/* read public key */
+	if ((r = sc_asn1_read_tag(&buf, sb.st_size, &cla_out, &tag_out, &taglen)) < 0) {
+		fprintf(stderr, "Error reading ASN.1 sequence: %s\n", sc_strerror(r));
+		free(pka);
+		return -1;
+	}
+	pk = buf;
+	pk_len = taglen;
+	buf += taglen;
+
+	/* read device certificate */
+	if ((r = sc_asn1_read_tag(&buf, sb.st_size, &cla_out, &tag_out, &taglen)) < 0) {
+		fprintf(stderr, "Error reading ASN.1 sequence: %s\n", sc_strerror(r));
+		free(pka);
+		return -1;
+	}
+	devcert = buf;
+	devcert_len = taglen;
+	buf += taglen;
+
+	/* read device CA */
+	if ((r = sc_asn1_read_tag(&buf, sb.st_size, &cla_out, &tag_out, &taglen)) < 0) {
+		fprintf(stderr, "Error reading ASN.1 sequence: %s\n", sc_strerror(r));
+		free(pka);
+		return -1;
+	}
+	dicacert = buf;
+	dicacert_len = taglen;
+
+    r = register_public_key_with_card(ctx, card, pk, pk_len, devcert, devcert_len, dicacert, dicacert_len);
+	free(pka);
+	return r;
+}
+
 
 
 int main(int argc, char *argv[])
@@ -1818,6 +1978,7 @@ int main(int argc, char *argv[])
 	int do_wrap_key = 0;
 	int do_unwrap_key = 0;
 	int do_export_key = 0;
+	int do_register_public_key = 0;
 	sc_path_t path;
 	sc_file_t *file = NULL;
 	const char *opt_so_pin = NULL;
@@ -1840,7 +2001,7 @@ int main(int argc, char *argv[])
 	sc_card_t *card = NULL;
 
 	while (1) {
-		c = getopt_long(argc, argv, "XC:I:P:W:U:K:n:e:s:i:fr:wv", options, &long_optind);
+		c = getopt_long(argc, argv, "XC:I:P:W:U:K:n:e:g:s:i:fr:wv", options, &long_optind);
 		if (c == -1)
 			break;
 		if (c == '?')
@@ -1883,6 +2044,11 @@ int main(int argc, char *argv[])
 			break;
 		case 'e':
 			do_export_key = 1;
+			opt_filename = optarg;
+			action_count++;
+			break;
+		case 'g':
+			do_register_public_key = 1;
 			opt_filename = optarg;
 			action_count++;
 			break;
@@ -1958,6 +2124,22 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "Option -e (--export-for-pub-key-auth) requires option -i\n");
 		exit(1);
 	}
+	if (do_initialize && do_register_public_key) {
+		fprintf(stderr, "Option -g (--register-public-key) excludes option -X\n");
+		exit(1);
+	}
+	if (do_wrap_key && do_register_public_key) {
+		fprintf(stderr, "Option -g (--register-public-key) excludes option -W\n");
+		exit(1);
+	}
+	if (do_unwrap_key && do_register_public_key) {
+		fprintf(stderr, "Option -g (--register-public-key) excludes option -U\n");
+		exit(1);
+	}
+	if (do_export_key && do_register_public_key) {
+		fprintf(stderr, "Option -g (--register-public-key) excludes option -e\n");
+		exit(1);
+	}
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L || (defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER >= 0x20700000L)
 	OPENSSL_init_crypto(OPENSSL_INIT_LOAD_CRYPTO_STRINGS
@@ -2014,6 +2196,9 @@ int main(int argc, char *argv[])
 		goto fail;
 
 	if (do_export_key && export_key(card, opt_key_reference, opt_filename))
+		goto fail;
+
+	if (do_register_public_key && register_public_key(ctx, card, opt_filename))
 		goto fail;
 
 	if (action_count == 0) {
