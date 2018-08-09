@@ -9,7 +9,7 @@ if ENABLE_MAN
 man5_MANS = pkcs15-profile.5  opensc.conf.5
 endif
 
-opensc.conf.5: $(srcdir)/opensc.conf.5.xml.in
+opensc.conf.5.xml opensc.conf.5: $(srcdir)/opensc.conf.5.xml.in
 	sed \
 		-e 's|@sysconfdir[@]|$(sysconfdir)|g' \
 		-e 's|@docdir[@]|$(docdir)|g' \
