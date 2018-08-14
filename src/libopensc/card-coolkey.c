@@ -1129,7 +1129,7 @@ static int coolkey_read_object(sc_card_t *card, unsigned long object_id, size_t 
 	do {
 		ulong2bebytes(&params.offset[0], offset);
 		params.length = MIN(left, COOLKEY_MAX_CHUNK_SIZE);
-		len = left+2;
+		len = left;
 		r = coolkey_apdu_io(card, COOLKEY_CLASS, COOLKEY_INS_READ_OBJECT, 0, 0,
 			(u8 *)&params, sizeof(params), &out_ptr, &len, nonce, nonce_size);
 		if (r < 0) {
