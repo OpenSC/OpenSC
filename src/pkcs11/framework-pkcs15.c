@@ -2661,6 +2661,7 @@ pkcs15_create_object(struct sc_pkcs11_slot *slot, CK_ATTRIBUTE_PTR pTemplate, CK
 	CK_OBJECT_CLASS	_class;
 	CK_BBOOL _token = FALSE;
 	int rv, rc;
+	CK_BBOOL p15init_create_object;
 
 	fw_data = (struct pkcs15_fw_data *) p11card->fws_data[slot->fw_data_idx];
 	if (!fw_data)
@@ -2689,7 +2690,9 @@ pkcs15_create_object(struct sc_pkcs11_slot *slot, CK_ATTRIBUTE_PTR pTemplate, CK
 	 */
 	 /* Dont need profile id creating session only objects,
 	    except when the card supports temporary on card session objects */
-	if (_token == TRUE || (p11card->card->caps & SC_CARD_CAP_ONCARD_SESSION_OBJECTS) == SC_CARD_CAP_ONCARD_SESSION_OBJECTS) {
+	p15init_create_object = _token == TRUE || (p11card->card->caps & SC_CARD_CAP_ONCARD_SESSION_OBJECTS) == SC_CARD_CAP_ONCARD_SESSION_OBJECTS;
+
+	if (p15init_create_object) {
 		struct sc_aid *aid = NULL;
 
 		rc = sc_lock(p11card->card);
@@ -2735,7 +2738,9 @@ pkcs15_create_object(struct sc_pkcs11_slot *slot, CK_ATTRIBUTE_PTR pTemplate, CK
 		rv = CKR_FUNCTION_NOT_SUPPORTED;
 	}
 
-	if (_token == TRUE) {
+	if (p15init_create_object) {
+		// TODO: after sc_pkcs15init_unbind, user may have to enter PIN on a pin pad reader even though authentication state
+		// is supposed to remain open. Check why this happens.
 		sc_pkcs15init_unbind(profile);
 		sc_unlock(p11card->card);
 	}
