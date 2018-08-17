@@ -1898,30 +1898,28 @@ pgp_set_MSE(sc_card_t *card, int key, int command)
 	sc_apdu_t	apdu;
 	u8	apdu_case = SC_APDU_CASE_3;
 	u8	apdu_data[3];
-	u8	com;
 	int	r;
 
 	LOG_FUNC_CALLED(card->ctx);
 
-	// check is MSE is supported
+	// check if MSE is supported
 	if (!(priv->ext_caps & EXT_CAP_MSE))
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 
-	// translate command into internal byte representation
+	// translate input 'command' into actual internal byte representation
 	switch(command){
 	case 2:
-		com = 0xb8;
+		command = 0xb8;
 		break;
 	case 3:
-		com = 0xa4;
+		command = 0xa4;
 		break;
 	default:
-		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
-				"invalid function call");
+		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS, "invalid function call");
 	}
 
 	// create apdu
-	sc_format_apdu(card, &apdu, apdu_case, 0x22, 0x41, com);
+	sc_format_apdu(card, &apdu, apdu_case, 0x22, 0x41, command);
 	apdu.lc = 3;
 	apdu_data[0] = 0x83;
 	apdu_data[1] = 0x01;
