@@ -219,7 +219,29 @@ scconf_block *scconf_block_add(scconf_context * config, scconf_block * block, co
 
 static void scconf_parse_parent(scconf_parser * parser)
 {
+	scconf_block  *curr_block = parser->block;
+	
 	parser->block = parser->block->parent;
+
+	/* if no items remove curr_block */
+	if (!curr_block->items) {
+		scconf_item **base_item = &parser->block->items;
+		scconf_item *curr_item  = parser->block->items;
+
+		while(curr_item) {
+			if (curr_item->value.block == curr_block)  {
+				*base_item = curr_item->next;
+				scconf_block_destroy(curr_item->value.block);
+				if (curr_item->key)
+					free(curr_item->key);
+				curr_item->key = NULL;
+				free(curr_item);
+				break;
+			}
+			base_item = &curr_item->next;
+			curr_item = curr_item->next;
+		}
+	}
 
 	parser->last_item = parser->block->items;
 	if (parser->last_item) {
@@ -245,7 +267,6 @@ static void scconf_parse_reset_state(scconf_parser * parser)
 
 void scconf_parse_token(scconf_parser * parser, int token_type, const char *token)
 {
-	scconf_item *item;
 	int len;
 
 	if (parser->error) {
@@ -260,11 +281,8 @@ void scconf_parse_token(scconf_parser * parser, int token_type, const char *toke
 		}
 		/* fall through - treat empty lines as comments */
 	case TOKEN_TYPE_COMMENT:
-		item = scconf_item_add_internal(parser, SCCONF_ITEM_TYPE_COMMENT);
-		if (!item) {
-			return;
-		}
-		item->value.comment = token ? strdup(token) : NULL;
+		/* dont add comments or blank lines treat as empty lines */
+		token_type = TOKEN_TYPE_NEWLINE;
 		break;
 	case TOKEN_TYPE_STRING:
 		{
