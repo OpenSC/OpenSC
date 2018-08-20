@@ -818,6 +818,7 @@ int sc_put_data(sc_card_t *card, unsigned int tag, const u8 *buf, size_t len)
 int sc_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 {
 	int r;
+	size_t retry = 10;
 
 	if (len == 0)
 		return SC_SUCCESS;
@@ -835,15 +836,19 @@ int sc_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 	if (r != SC_SUCCESS)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 
-	while (len > 0) {
+	while (len > 0 && retry > 0) {
 		r = card->ops->get_challenge(card, rnd, len);
 		if (r < 0) {
 			sc_unlock(card);
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 		}
 
-		rnd += (size_t) r;
-		len -= (size_t) r;
+		if (r > 0) {
+			rnd += (size_t) r;
+			len -= (size_t) r;
+		} else {
+			retry--;
+		}
 	}
 
 	sc_unlock(card);
