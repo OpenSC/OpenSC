@@ -479,6 +479,7 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 	size_t * recvbuflen)
 {
 	int r;
+	int r_tag ;
 	sc_apdu_t apdu;
 	u8 rbufinitbuf[4096];
 	u8 *rbuf;
@@ -572,16 +573,12 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 		 * the buffer is bigger, so it will not produce "ASN1.tag too long!" */
 
 		body = rbuf;
-		if (sc_asn1_read_tag(&body, rbuflen, &cla_out, &tag_out, &bodylen) !=  SC_SUCCESS
+		r_tag = sc_asn1_read_tag(&body, apdu.resplen, &cla_out, &tag_out, &bodylen);
+		sc_log(card->ctx, "r_tag:%d body:%p", r_tag, body);
+		if ( (r_tag != SC_SUCCESS && r_tag != SC_ERROR_ASN1_END_OF_CONTENTS)
 				|| body == NULL)  {
-			/* only early beta cards had this problem */
-			sc_log(card->ctx, "***** received buffer tag MISSING ");
 			body = rbuf;
-			/* some readers/cards might return 6c 00 */
-			if (apdu.sw1 == 0x61  || apdu.sw2 == 0x6c )
-				bodylen = 12000;
-			else
-				bodylen = apdu.resplen;
+			bodylen = apdu.resplen;
 		}
 
 		rbuflen = body - rbuf + bodylen;
@@ -856,6 +853,7 @@ static int piv_read_obj_from_file(sc_card_t * card, char * filename,
 	u8 **buf, size_t *buf_len)
 {
 	int r;
+	int r_tag;
 	int f = -1;
 	size_t len;
 	u8 tagbuf[16];
@@ -881,10 +879,11 @@ static int piv_read_obj_from_file(sc_card_t * card, char * filename,
 		goto err;
 	}
 	body = tagbuf;
-	if (sc_asn1_read_tag(&body, 0xfffff, &cla_out, &tag_out, &bodylen) != SC_SUCCESS
+	r_tag = sc_asn1_read_tag(&body, len, &cla_out, &tag_out, &bodylen);
+	if ((r_tag != SC_SUCCESS && r_tag != SC_ERROR_ASN1_END_OF_CONTENTS)
 			|| body == NULL) {
 		sc_log(card->ctx, "DER problem");
-		r = SC_ERROR_INVALID_ASN1_OBJECT;
+		r = SC_ERROR_FILE_NOT_FOUND;
 		goto err;
 	}
 	rbuflen = body - tagbuf + bodylen;
@@ -947,10 +946,12 @@ piv_get_data(sc_card_t * card, int enumtag, u8 **buf, size_t *buf_len)
 		rbuflen = sizeof(rbufinitbuf);
 		r = piv_general_io(card, 0xCB, 0x3F, 0xFF, tagbuf,  p - tagbuf, &rbuf, &rbuflen);
 		if (r > 0) {
+			int r_tag;
 			body = rbuf;
-			if (sc_asn1_read_tag(&body, 0xffff, &cla_out, &tag_out, &bodylen) !=  SC_SUCCESS
+			r_tag = sc_asn1_read_tag(&body, rbuflen, &cla_out, &tag_out, &bodylen);
+			if ((r_tag != SC_SUCCESS && r_tag != SC_ERROR_ASN1_END_OF_CONTENTS)
 					|| body == NULL) {
-				sc_log(card->ctx, "***** received buffer tag MISSING ");
+				sc_log(card->ctx, "r_tag:%d body:%p", r_tag, body);
 				r = SC_ERROR_FILE_NOT_FOUND;
 				goto err;
 			}
