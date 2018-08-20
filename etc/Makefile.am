@@ -7,9 +7,8 @@ EXTRA_DIST = $(CV_CERTS) Makefile.mak
 
 SUFFIXES = .in
 
-dist_noinst_DATA = opensc.conf.example.in
+dist_noinst_DATA = opensc.conf opensc.conf.example.in
 nodist_noinst_DATA = opensc.conf.example
-dist_sysconf_DATA = opensc.conf
 
 # Make sure we build this every time
 # as there is no dependency for this.
@@ -32,10 +31,17 @@ opensc.conf.example: opensc.conf.example.in force
 		< $< > $@
 
 install-exec-hook: opensc.conf.example
+	$(MKDIR_P) "$(DESTDIR)$(sysconfdir)"
+	if [ -f "$(DESTDIR)$(sysconfdir)/opensc.conf" ]; then \
+		$(INSTALL_DATA) $(srcdir)/opensc.conf "$(DESTDIR)$(sysconfdir)/opensc.conf.new"; \
+	else \
+		$(INSTALL_DATA) $(srcdir)/opensc.conf "$(DESTDIR)$(sysconfdir)/opensc.conf"; \
+	fi
 	$(MKDIR_P) "$(DESTDIR)$(docdir)"
 	$(INSTALL_DATA) opensc.conf.example "$(DESTDIR)$(docdir)/opensc.conf";
 
 uninstall-hook: opensc.conf.example
+	rm -f "$(DESTDIR)$(sysconfdir)/opensc.conf.new" "$(DESTDIR)$(sysconfdir)/opensc.conf"
 	rm -f "$(DESTDIR)$(docdir)/opensc.conf"
 
 if ENABLE_OPENPACE
