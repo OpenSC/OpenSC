@@ -637,7 +637,8 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 				val_len -= len, tlv_len -= len, val_ptr += len, tlv_ptr += len) {
 			/* get the tag and the length */
 			tl_start = tl_ptr;
-			if (sc_simpletlv_read_tag(&tl_ptr, tl_len, &tag, &len) != SC_SUCCESS)
+			r = sc_simpletlv_read_tag(&tl_ptr, tl_len, &tag, &len);
+			if (r != SC_SUCCESS && r != SC_ERROR_TLV_END_OF_CONTENTS)
 				break;
 			tl_head_len = (tl_ptr - tl_start);
 			sc_simpletlv_put_tag(tag, len, tlv_ptr, tlv_len, &tlv_ptr);
@@ -646,6 +647,8 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 
 			/* don't crash on bad data */
 			if (val_len < len) {
+				sc_log(card->ctx, "Received too long value %"SC_FORMAT_LEN_SIZE_T"u, "
+				    "while only %"SC_FORMAT_LEN_SIZE_T"u left. Truncating", len, val_len);
 				len = val_len;
 			}
 			/* if we run out of return space, truncate */
@@ -664,12 +667,21 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 		cert_len = 0;
 		cert_ptr = NULL;
 		cert_type = 0;
-		for (tl_ptr = tl, val_ptr=val; tl_len >= 2;
-				val_len -= len, val_ptr += len, tl_len -= tl_head_len) {
+		for (tl_ptr = tl, val_ptr = val; tl_len >= 2;
+		    val_len -= len, val_ptr += len, tl_len -= tl_head_len) {
 			tl_start = tl_ptr;
-			if (sc_simpletlv_read_tag(&tl_ptr, tl_len, &tag, &len) != SC_SUCCESS)
+			r = sc_simpletlv_read_tag(&tl_ptr, tl_len, &tag, &len);
+			if (r != SC_SUCCESS && r != SC_ERROR_TLV_END_OF_CONTENTS)
 				break;
 			tl_head_len = tl_ptr - tl_start;
+
+			/* incomplete value */
+			if (val_len < len) {
+				sc_log(card->ctx, "Read incomplete value %"SC_FORMAT_LEN_SIZE_T"u, "
+				    "while only %"SC_FORMAT_LEN_SIZE_T"u left", len, val_len);
+				break;
+			}
+
 			if (tag == CAC_TAG_CERTIFICATE) {
 				cert_len = len;
 				cert_ptr = val_ptr;
@@ -681,9 +693,6 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 			}
 			if (tag == CAC_TAG_MSCUID) {
 				sc_log_hex(card->ctx, "MSCUID", val_ptr, len);
-			}
-			if ((val_len < len) || (tl_len < tl_head_len)) {
-				break;
 			}
 		}
 		/* if the info byte is 1, then the cert is compressed, decompress it */
@@ -789,7 +798,7 @@ static int cac_get_serial_nr_from_CUID(sc_card_t* card, sc_serial_number_t* seri
         }
 	if (priv->cac_id_len) {
 		serial->len = MIN(priv->cac_id_len, SC_MAX_SERIALNR);
-		memcpy(serial->value, priv->cac_id, priv->cac_id_len);
+		memcpy(serial->value, priv->cac_id, serial->len);
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
 	}
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_FILE_NOT_FOUND);
@@ -1381,9 +1390,9 @@ static int cac_path_from_cardurl(sc_card_t *card, sc_path_t *path, cac_card_url_
 	}
 	sc_mem_clear(path, sizeof(sc_path_t));
 	memcpy(path->aid.value, &val->rid, sizeof(val->rid));
-	memcpy(&path->aid.value[5], &val->applicationID, sizeof(val->applicationID));
+	memcpy(&path->aid.value[5], val->applicationID, sizeof(val->applicationID));
 	path->aid.len = sizeof(val->rid) + sizeof(val->applicationID);
-	memcpy(path->value, &val->objectID, sizeof(val->objectID));
+	memcpy(path->value, val->objectID, sizeof(val->objectID));
 	path->len = sizeof(val->objectID);
 	path->type = SC_PATH_TYPE_FILE_ID;
 	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
@@ -1546,8 +1555,15 @@ static int cac_parse_CCC(sc_card_t *card, cac_private_data_t *priv, u8 *tl,
 	for (; (tl < tl_end) && (val< val_end); val += len) {
 		/* get the tag and the length */
 		u8 tag;
-		if (sc_simpletlv_read_tag(&tl, tl_end - tl, &tag, &len) != SC_SUCCESS)
+		r = sc_simpletlv_read_tag(&tl, tl_end - tl, &tag, &len);
+		if (r != SC_SUCCESS && r != SC_ERROR_TLV_END_OF_CONTENTS) {
+			sc_log(card->ctx, "Failed to parse tag from buffer");
 			break;
+		}
+		if (val + len > val_end) {
+			sc_log(card->ctx, "Invalid length %"SC_FORMAT_LEN_SIZE_T"u", len);
+			break;
+		}
 		switch (tag) {
 		case CAC_TAG_CUID:
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"TAG:CUID");

@@ -72,7 +72,7 @@ sc_parse_ef_gdo_content(const unsigned char *gdo, size_t gdo_len,
 		}
 
 		p += tag_len;
-		left -= (p - gdo);
+		left = gdo_len - (p - gdo);
 	}
 
 	if (!iccsn_found && iccsn_len)

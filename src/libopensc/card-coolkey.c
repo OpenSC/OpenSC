@@ -1129,7 +1129,7 @@ static int coolkey_read_object(sc_card_t *card, unsigned long object_id, size_t 
 	do {
 		ulong2bebytes(&params.offset[0], offset);
 		params.length = MIN(left, COOLKEY_MAX_CHUNK_SIZE);
-		len = left+2;
+		len = left;
 		r = coolkey_apdu_io(card, COOLKEY_CLASS, COOLKEY_INS_READ_OBJECT, 0, 0,
 			(u8 *)&params, sizeof(params), &out_ptr, &len, nonce, nonce_size);
 		if (r < 0) {
@@ -1467,7 +1467,7 @@ coolkey_find_attribute(sc_card_t *card, sc_cardctl_coolkey_attribute_t *attribut
 	for (i=0; i < attribute_count; i++) {
 		size_t record_len = coolkey_get_attribute_record_len(attr, object_record_type, buf_len);
 		/* make sure we have the complete record */
-		if (buf_len < record_len) {
+		if (buf_len < record_len || record_len < 4) {
 				return SC_ERROR_CORRUPTED_DATA;
 		}
 		/* does the attribute match the one we are looking for */

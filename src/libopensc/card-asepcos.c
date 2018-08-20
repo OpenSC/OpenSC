@@ -169,7 +169,7 @@ static int asepcos_parse_sec_attr(sc_card_t *card, sc_file_t *file, const u8 *bu
 
 	while (len != 0) {
 		unsigned int amode, tlen = 3;
-		if (len < 5 && p[0] != 0x80 && p[1] != 0x01) {
+		if (len < 5 || p[0] != 0x80 || p[1] != 0x01) {
 			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "invalid access mode encoding");
 			return SC_ERROR_INTERNAL;
 		}

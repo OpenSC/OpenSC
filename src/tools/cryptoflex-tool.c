@@ -21,6 +21,7 @@
 #include "config.h"
 
 #include "libopensc/sc-ossl-compat.h"
+#include "libopensc/internal.h"
 #include <openssl/bn.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
@@ -331,7 +332,7 @@ static int read_public_key(RSA *rsa)
 		fprintf(stderr, "Unable to select public key file: %s\n", sc_strerror(r));
 		return 2;
 	}
-	bufsize = file->size;
+	bufsize = MIN(file->size, sizeof buf);
 	sc_file_free(file);
 	r = sc_read_binary(card, 0, buf, bufsize, 0);
 	if (r < 0) {
@@ -382,7 +383,7 @@ static int read_private_key(RSA *rsa)
 	e = sc_file_get_acl_entry(file, SC_AC_OP_READ);
 	if (e == NULL || e->method == SC_AC_NEVER)
 		return 10;
-	bufsize = file->size;
+	bufsize = MIN(file->size, sizeof buf);
 	sc_file_free(file);
 	r = sc_read_binary(card, 0, buf, bufsize, 0);
 	if (r < 0) {

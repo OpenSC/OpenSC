@@ -1408,13 +1408,15 @@ static int entersafe_gen_key(sc_card_t *card, sc_entersafe_gen_key_data *data)
 
 	data->modulus = malloc(len);
 	if (!data->modulus)
-		 SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,SC_ERROR_OUT_OF_MEMORY);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_OUT_OF_MEMORY);
 
 	p=rbuf;
-	assert(*p=='E');
+	if (*p!='E')
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_DATA);
 	p+=2+p[1];
 	/* N */
-	assert(*p=='N');
+	if (*p!='N')
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_DATA);
 	++p;
 	if(*p++>0x80)
 	{

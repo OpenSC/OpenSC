@@ -149,7 +149,8 @@ static struct df_info_s *get_df_info(sc_card_t * card)
 	struct mcrd_priv_data *priv = DRVDATA(card);
 	struct df_info_s *dfi;
 
-	assert(!priv->is_ef);
+	if(!(!priv->is_ef))
+		return NULL;
 
 	if (!priv->curpathlen) {
 		sc_log(ctx, "no current path to find the df_info\n");
@@ -202,7 +203,8 @@ static int mcrd_delete_ref_to_authkey(sc_card_t * card)
 	int r;
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 
-	assert(card != NULL);
+	if(!(card != NULL))
+		return SC_ERROR_INTERNAL;
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0x41, 0xA4);
 
 	sbuf[0] = 0x83;
@@ -220,7 +222,8 @@ static int mcrd_delete_ref_to_signkey(sc_card_t * card)
 	sc_apdu_t apdu;
 	int r;
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
-	assert(card != NULL);
+	if(!(card != NULL))
+		return SC_ERROR_INTERNAL;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0x41, 0xB6);
 
@@ -242,7 +245,8 @@ static int mcrd_set_decipher_key_ref(sc_card_t * card, int key_reference)
 	int r;
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 keyref_data[SC_ESTEID_KEYREF_FILE_RECLEN];
-	assert(card != NULL);
+	if(!(card != NULL))
+		return SC_ERROR_INTERNAL;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0x41, 0xB8);
 	/* track the active keypair  */
@@ -956,7 +960,8 @@ select_file_by_path(sc_card_t * card, unsigned short *pathptr,
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	assert(!priv->curpathlen || priv->curpath[0] == MFID);
+	if (!(!priv->curpathlen || priv->curpath[0] == MFID))
+		return SC_ERROR_INTERNAL;
 
 	if (pathlen && *pathptr == 0x3FFF) {
 		pathlen--;
@@ -997,7 +1002,8 @@ select_file_by_path(sc_card_t * card, unsigned short *pathptr,
 				/* This EF or DF was already selected, but
 				   we need to get the FCI, so we have
 				   to select again. */
-				assert(priv->curpathlen > 1);
+				if (!(priv->curpathlen > 1))
+					return SC_ERROR_INTERNAL;
 				priv->curpathlen--;
 				priv->is_ef = 0;
 				r = select_down(card, pathptr + pathlen - 1, 1,
@@ -1022,7 +1028,8 @@ select_file_by_path(sc_card_t * card, unsigned short *pathptr,
 			priv->is_ef = 0;
 		}
 		if (priv->is_ef) {
-			assert(priv->curpathlen > 1);
+			if(!(priv->curpathlen > 1))
+				return SC_ERROR_INTERNAL;
 			priv->curpathlen--;
 			priv->is_ef = 0;
 		}
@@ -1040,7 +1047,8 @@ select_file_by_fid(sc_card_t * card, unsigned short *pathptr,
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	assert(!priv->curpathlen || priv->curpath[0] == MFID);
+	if (!(!priv->curpathlen || priv->curpath[0] == MFID))
+		return SC_ERROR_INTERNAL;
 
 	if (pathlen > 1)
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -1056,7 +1064,8 @@ select_file_by_fid(sc_card_t * card, unsigned short *pathptr,
 			/* There is no current file. */
 			r = SC_ERROR_INTERNAL;
 		} else {
-			assert(priv->curpathlen > 1);
+			if (!(priv->curpathlen > 1))
+				return SC_ERROR_INTERNAL;
 			priv->curpathlen--;
 			priv->is_ef = 0;
 			r = select_down(card, pathptr, 1, 0, file);
@@ -1081,7 +1090,8 @@ select_file_by_fid(sc_card_t * card, unsigned short *pathptr,
 			priv->is_ef = 0;
 		}
 		if (priv->is_ef) {
-			assert(priv->curpathlen > 1);
+			if (!(priv->curpathlen > 1))
+				return SC_ERROR_INTERNAL;
 			priv->curpathlen--;
 			priv->is_ef = 0;
 		}
@@ -1209,7 +1219,8 @@ static int mcrd_set_security_env(sc_card_t * card,
 	u8 *p;
 	int r, locked = 0;
 
-	assert(card != NULL && env != NULL);
+	if (!(card != NULL && env != NULL))
+		return SC_ERROR_INTERNAL;
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
 
 	/* special environment handling for esteid, stolen from openpgp */

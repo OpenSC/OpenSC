@@ -409,6 +409,9 @@ gpk_parse_fileinfo(sc_card_t *card,
 		if (sp[0] == 0x85) {
 			unsigned int	ac[3], n;
 
+			if (sp + 11 + 2*3 >= end)
+				break;
+
 			file->id = (sp[4] << 8) | sp[5];
 			file->size = (sp[8] << 8) | sp[9];
 			file->record_length = sp[7];

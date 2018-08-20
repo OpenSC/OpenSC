@@ -65,15 +65,17 @@ int sc_asn1_read_tag(const u8 ** buf, size_t buflen, unsigned int *cla_out,
 	size_t left = buflen, len;
 	unsigned int cla, tag, i;
 
-	if (left < 2)
-		return SC_ERROR_INVALID_ASN1_OBJECT;
 	*buf = NULL;
+
+	if (left == 0)
+		return SC_ERROR_INVALID_ASN1_OBJECT;
 	if (*p == 0xff || *p == 0) {
 		/* end of data reached */
 		*taglen = 0;
 		*tag_out = SC_ASN1_TAG_EOC;
 		return SC_SUCCESS;
 	}
+
 	/* parse tag byte(s)
 	 * Resulted tag is presented by integer that has not to be
 	 * confused with the 'tag number' part of ASN.1 tag.
@@ -86,30 +88,35 @@ int sc_asn1_read_tag(const u8 ** buf, size_t buflen, unsigned int *cla_out,
 		/* high tag number */
 		size_t n = SC_ASN1_TAGNUM_SIZE - 1;
 		/* search the last tag octet */
-		while (left-- != 0 && n != 0) {
+		do {
+			if (left == 0 || n == 0)
+				/* either an invalid tag or it doesn't fit in
+				 * unsigned int */
+				return SC_ERROR_INVALID_ASN1_OBJECT;
 			tag <<= 8;
 			tag |= *p;
-			if ((*p++ & 0x80) == 0)
-				break;
+			p++;
+			left--;
 			n--;
-		}
-		if (left == 0 || n == 0)
-			/* either an invalid tag or it doesn't fit in
-			 * unsigned int */
-			return SC_ERROR_INVALID_ASN1_OBJECT;
+		} while (tag & 0x80);
 	}
 
 	/* parse length byte(s) */
-	len = *p & 0x7f;
-	if (*p++ & 0x80) {
+	if (left == 0)
+		return SC_ERROR_INVALID_ASN1_OBJECT;
+	len = *p;
+	p++;
+	left--;
+	if (len & 0x80) {
+		len &= 0x7f;
 		unsigned int a = 0;
-		if (len > 4 || len > left)
+		if (len > sizeof a || len > left)
 			return SC_ERROR_INVALID_ASN1_OBJECT;
-		left -= len;
 		for (i = 0; i < len; i++) {
 			a <<= 8;
 			a |= *p;
 			p++;
+			left--;
 		}
 		len = a;
 	}

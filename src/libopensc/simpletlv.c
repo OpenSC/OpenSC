@@ -74,27 +74,38 @@ sc_simpletlv_put_tag(u8 tag, size_t datalen, u8 *out, size_t outlen, u8 **ptr)
 int
 sc_simpletlv_read_tag(u8 **buf, size_t buflen, u8 *tag_out, size_t *taglen)
 {
-	size_t len;
+	u8 tag;
+	size_t left = buflen, len;
 	u8 *p = *buf;
 
-	if (buflen < 2) {
-		*buf = p+buflen;
-		return SC_ERROR_INVALID_ARGUMENTS;
-	}
+	*buf = NULL;
 
-	*tag_out = *p++;
-	len = *p++;
+	if (left < 2) {
+		return SC_ERROR_INVALID_TLV_OBJECT;
+	}
+	tag = *p;
+	p++;
+	len = *p;
+	p++;
+	left -= 2;
+
 	if (len == 0xff) {
 		/* don't crash on bad data */
-		if (buflen < 4) {
-			*taglen = 0;
-			return SC_ERROR_INVALID_ARGUMENTS;
+		if (left < 2) {
+			return SC_ERROR_INVALID_TLV_OBJECT;
 		}
 		/* skip two bytes (the size) */
 		len = lebytes2ushort(p);
-		p+=2;
+		p += 2;
+		left -= 2;
 	}
+
+	*tag_out = tag;
 	*taglen = len;
 	*buf = p;
+
+	if (len > left)
+		return SC_ERROR_TLV_END_OF_CONTENTS;
+
 	return SC_SUCCESS;
 }

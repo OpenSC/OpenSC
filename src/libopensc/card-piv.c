@@ -147,7 +147,6 @@ enum {
 };
 
 typedef struct piv_private_data {
-	sc_file_t *aid_file;
 	int enumtag;
 	int  selected_obj; /* The index into the piv_objects last selected */
 	int  return_only_cert; /* return the cert from the object */
@@ -573,7 +572,7 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 		 * the buffer is bigger, so it will not produce "ASN1.tag too long!" */
 
 		body = rbuf;
-		if (sc_asn1_read_tag(&body, 0xffff, &cla_out, &tag_out, &bodylen) !=  SC_SUCCESS
+		if (sc_asn1_read_tag(&body, rbuflen, &cla_out, &tag_out, &bodylen) !=  SC_SUCCESS
 				|| body == NULL)  {
 			/* only early beta cards had this problem */
 			sc_log(card->ctx, "***** received buffer tag MISSING ");
@@ -758,10 +757,9 @@ static int piv_select_aid(sc_card_t* card, u8* aid, size_t aidlen, u8* response,
 
 /* find the PIV AID on the card. If card->type already filled in,
  * then look for specific AID only
- * Assumes that priv may not be present
  */
 
-static int piv_find_aid(sc_card_t * card, sc_file_t *aid_file)
+static int piv_find_aid(sc_card_t * card)
 {
 	sc_apdu_t apdu;
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
@@ -841,8 +839,6 @@ static int piv_find_aid(sc_card_t * card, sc_file_t *aid_file)
 
 		if (apdu.resp[0] != 0x6f || apdu.resp[1] > apdu.resplen - 2 )
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_NO_CARD_SUPPORT);
-
-		card->ops->process_fci(card, aid_file, apdu.resp+2, apdu.resp[1]);
 
 		LOG_FUNC_RETURN(card->ctx, i);
 	}
@@ -2373,15 +2369,15 @@ static int piv_validate_general_authentication(sc_card_t *card,
 	r = piv_general_io(card, 0x87, real_alg_id, priv->key_ref,
 			sbuf, p - sbuf, &rbuf, &rbuflen);
 
-	if ( r >= 0) {
-	 	body = sc_asn1_find_tag(card->ctx, rbuf, rbuflen, 0x7c, &bodylen);
-
+	if (r >= 0) {
+		body = sc_asn1_find_tag(card->ctx, rbuf, rbuflen, 0x7c, &bodylen);
 		if (body) {
 			tag = sc_asn1_find_tag(card->ctx, body,  bodylen, 0x82, &taglen);
 			if (tag) {
 				memcpy(out, tag, taglen);
 				r = taglen;
-			}
+			} else
+				r = SC_ERROR_INVALID_DATA;
 		} else
 			r = SC_ERROR_INVALID_DATA;
 	}
@@ -2924,7 +2920,6 @@ piv_finish(sc_card_t *card)
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (priv) {
-		sc_file_free(priv->aid_file);
 		if (priv->w_buf)
 			free(priv->w_buf);
 		if (priv->offCardCertURL)
@@ -3033,12 +3028,13 @@ static int piv_match_card_continued(sc_card_t *card)
 			 *   73 66 74 65 20 63 64 31 34 34
 			 * will check for 73 66 74 65
 			 */
-			else if (card->reader->atr_info.hist_bytes_len >= 4 &&
-					!(memcmp(card->reader->atr_info.hist_bytes, "sfte", 4))) {
+			else if (card->reader->atr_info.hist_bytes_len >= 4
+					&& !(memcmp(card->reader->atr_info.hist_bytes, "sfte", 4))) {
 				type = SC_CARD_TYPE_PIV_II_GI_DE;
 			}
 
-			else if (card->reader->atr_info.hist_bytes[0] == 0x80u) { /* compact TLV */
+			else if (card->reader->atr_info.hist_bytes_len > 0
+					&& card->reader->atr_info.hist_bytes[0] == 0x80u) { /* compact TLV */
 				size_t datalen;
 				const u8 *data = sc_compacttlv_find_tag(card->reader->atr_info.hist_bytes + 1,
 									card->reader->atr_info.hist_bytes_len - 1,
@@ -3072,7 +3068,6 @@ static int piv_match_card_continued(sc_card_t *card)
 		card->type = type;
 
 	card->drv_data = priv; /* will free if no match, or pass on to piv_init */
-	priv->aid_file = sc_file_new();
 	priv->selected_obj = -1;
 	priv->pin_preference = 0x80; /* 800-73-3 part 1, table 3 */
 	priv->logged_in = SC_PIN_STATE_UNKNOWN;
@@ -3099,9 +3094,7 @@ static int piv_match_card_continued(sc_card_t *card)
 
 	if (i < 0) {
 		/* Detect by selecting applet */
-		sc_file_t aidfile;
-
-		i = piv_find_aid(card, &aidfile);
+		i = piv_find_aid(card);
 	}
 
 	if (i >= 0) {
@@ -3487,7 +3480,7 @@ piv_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 	/* if access to applet is know to be reset by other driver  we select_aid and try again */
 	if ( priv->card_issues & CI_OTHER_AID_LOSE_STATE && priv->pin_cmd_verify_sw1 == 0x6DU) {
 		sc_log(card->ctx, "AID may be lost doing piv_find_aid and retry pin_cmd");
-		piv_find_aid(card, priv->aid_file); /* return not tested */
+		piv_find_aid(card);
 
 		priv->pin_cmd_verify = 1; /* tell piv_check_sw its a verify to save sw1, sw2 */
 		r = iso_drv->ops->pin_cmd(card, data, tries_left);
