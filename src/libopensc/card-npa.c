@@ -31,6 +31,10 @@
 #include "sm/sm-eac.h"
 #include <string.h>
 
+#ifdef ENABLE_OPENSSL
+#include <openssl/evp.h>
+#endif
+
 static int fread_to_eof(const char *file, unsigned char **buf, size_t *buflen);
 #include "../tools/fread_to_eof.c"
 
@@ -603,10 +607,6 @@ static int npa_standard_pin_cmd(struct sc_card *card,
 	return r;
 }
 
-#ifdef ENABLE_OPENSSL
-#include <openssl/evp.h>
-#endif
-
 int
 npa_reset_retry_counter(sc_card_t *card, enum s_type pin_id,
 		int ask_for_secret, const char *new, size_t new_len)
@@ -617,7 +617,7 @@ npa_reset_retry_counter(sc_card_t *card, enum s_type pin_id,
 
 	if (ask_for_secret && (!new || !new_len)) {
 		if (!(SC_READER_CAP_PIN_PAD & card->reader->capabilities)) {
-#if OPENSSL_VERSION_NUMBER >= 0x10000000L
+#ifdef ENABLE_OPENSSL
 			p = malloc(EAC_MAX_PIN_LEN+1);
 			if (!p) {
 				sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Not enough memory for new PIN.\n");

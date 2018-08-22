@@ -35,10 +35,8 @@
 
 #include <openssl/opensslv.h>
 #include "libopensc/sc-ossl-compat.h"
-#if OPENSSL_VERSION_NUMBER >= 0x10000000L
 #include <openssl/opensslconf.h>
 #include <openssl/crypto.h>
-#endif
 #include <openssl/conf.h>
 
 #include <openssl/evp.h>
