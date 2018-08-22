@@ -1070,7 +1070,7 @@ sc_algorithm_info_t * sc_card_find_gostr3410_alg(sc_card_t *card,
 	return sc_card_find_alg(card, SC_ALGORITHM_GOSTR3410, key_length, NULL);
 }
 
-static int match_atr_table(sc_context_t *ctx, struct sc_atr_table *table, struct sc_atr *atr)
+static int match_atr_table(sc_context_t *ctx, const struct sc_atr_table *table, struct sc_atr *atr)
 {
 	u8 *card_atr_bin;
 	size_t card_atr_bin_len;
@@ -1133,7 +1133,7 @@ static int match_atr_table(sc_context_t *ctx, struct sc_atr_table *table, struct
 	return -1;
 }
 
-int _sc_match_atr(sc_card_t *card, struct sc_atr_table *table, int *type_out)
+int _sc_match_atr(sc_card_t *card, const struct sc_atr_table *table, int *type_out)
 {
 	int res;
 
