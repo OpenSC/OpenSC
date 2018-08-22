@@ -612,21 +612,19 @@ fi
 
 PKG_CHECK_MODULES(
 	[OPENSSL],
-	[libcrypto >= openssl_minimum_version],
+	[
+		libcrypto >= openssl_minimum_version
+		openssl >= openssl_minimum_version
+	],
 	[have_openssl="yes"],
-	[PKG_CHECK_MODULES(
-		[OPENSSL],
-		[openssl >= openssl_minimum_version],
-		[have_openssl="yes"],
-		[AC_CHECK_LIB(
-			[crypto],
-			[RSA_version],
-			[
-				have_openssl="yes"
-				OPENSSL_LIBS="-lcrypto"
-			],
-			[have_openssl="no"]
-		)]
+	[AC_CHECK_LIB(
+		[crypto],
+		[RSA_version],
+		[
+			have_openssl="yes"
+			OPENSSL_LIBS="-lcrypto"
+		],
+		[have_openssl="no"]
 	)]
 )
 
