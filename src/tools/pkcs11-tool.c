@@ -41,16 +41,14 @@
 #include <openssl/opensslconf.h>
 #include <openssl/crypto.h>
 #endif
-#if OPENSSL_VERSION_NUMBER >= 0x00907000L
 #include <openssl/conf.h>
-#endif
 #include <openssl/evp.h>
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 #include <openssl/asn1t.h>
 #include <openssl/rsa.h>
 #include <openssl/pem.h>
-#if OPENSSL_VERSION_NUMBER >= 0x00908000L && !defined(OPENSSL_NO_EC) && !defined(OPENSSL_NO_ECDSA)
+#if !defined(OPENSSL_NO_EC) && !defined(OPENSSL_NO_ECDSA)
 #include <openssl/ec.h>
 #include <openssl/ecdsa.h>
 #endif
@@ -570,7 +568,7 @@ int main(int argc, char * argv[])
 #endif
 
 #ifdef ENABLE_OPENSSL
-#if (OPENSSL_VERSION_NUMBER >= 0x00907000L && OPENSSL_VERSION_NUMBER < 0x10100000L) || defined(LIBRESSL_VERSION_NUMBER)
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
 	OPENSSL_config(NULL);
 #endif
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
@@ -3310,7 +3308,7 @@ static void show_object(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 static CK_OBJECT_HANDLE
 derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE mech_mech)
 {
-#if defined(ENABLE_OPENSSL) && OPENSSL_VERSION_NUMBER >= 0x00908000L && !defined(OPENSSL_NO_EC) && !defined(OPENSSL_NO_ECDSA)
+#if defined(ENABLE_OPENSSL) && !defined(OPENSSL_NO_EC) && !defined(OPENSSL_NO_ECDSA)
 	CK_MECHANISM mech;
 	CK_OBJECT_CLASS newkey_class= CKO_SECRET_KEY;
 	CK_KEY_TYPE newkey_type = CKK_GENERIC_SECRET;
@@ -4412,9 +4410,7 @@ static int sign_verify_openssl(CK_SESSION_HANDLE session,
 		EVP_sha1(),
 		EVP_md5(),
 		EVP_ripemd160(),
-#if OPENSSL_VERSION_NUMBER >= 0x00908000L
 		EVP_sha256(),
-#endif
 	};
 #endif
 
@@ -4497,9 +4493,7 @@ static int test_signature(CK_SESSION_HANDLE sess)
 		CKM_SHA1_RSA_PKCS,
 		CKM_MD5_RSA_PKCS,
 		CKM_RIPEMD160_RSA_PKCS,
-#if OPENSSL_VERSION_NUMBER >= 0x00908000L
 		CKM_SHA256_RSA_PKCS,
-#endif
 		0xffffff
 	};
 	size_t mechTypes_num = sizeof(mechTypes)/sizeof(CK_MECHANISM_TYPE);
@@ -5110,11 +5104,7 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 		EVP_PKEY_free(pkey);
 		return 0;
 	}
-#if OPENSSL_VERSION_NUMBER >= 0x00909000L
 	encrypted_len = EVP_PKEY_encrypt_old(encrypted, orig_data, sizeof(orig_data), pkey);
-#else
-	encrypted_len = EVP_PKEY_encrypt(encrypted, orig_data, sizeof(orig_data), pkey);
-#endif
 	EVP_PKEY_free(pkey);
 	if (((int) encrypted_len) <= 0) {
 		printf("Encryption failed, returning\n");

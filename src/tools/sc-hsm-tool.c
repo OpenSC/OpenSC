@@ -161,12 +161,7 @@ static int generatePrime(BIGNUM *prime, const BIGNUM *s, const int bits, unsigne
 
 	do {
 		// Generate random prime
-#if OPENSSL_VERSION_NUMBER  >= 0x00908000L /* last parm is BN_GENCB which is null in our case */
 		BN_generate_prime_ex(prime, bits, 1, NULL, NULL, NULL);
-#else
-		BN_generate_prime(prime, bits, 1, NULL, NULL, NULL, NULL );
-#endif
-
 	} while ((BN_ucmp(prime, s) == -1) && (max_rounds-- > 0));	// If prime < s or not reached 1000 tries
 
 	if (max_rounds > 0)

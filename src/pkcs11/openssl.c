@@ -68,7 +68,6 @@ static sc_pkcs11_mechanism_type_t openssl_sha1_mech = {
 	NULL,			/* free_mech_data */
 };
 
-#if OPENSSL_VERSION_NUMBER >= 0x00908000L
 static sc_pkcs11_mechanism_type_t openssl_sha256_mech = {
 	CKM_SHA256,
 	{ 0, 0, CKF_DIGEST },
@@ -119,7 +118,6 @@ static sc_pkcs11_mechanism_type_t openssl_sha512_mech = {
 	NULL,			/* mech_data */
 	NULL,			/* free_mech_data */
 };
-#endif
 
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L
 static sc_pkcs11_mechanism_type_t openssl_gostr3411_mech = {
@@ -233,14 +231,12 @@ sc_pkcs11_register_openssl_mechanisms(struct sc_pkcs11_card *p11card)
 
 	openssl_sha1_mech.mech_data = EVP_sha1();
 	sc_pkcs11_register_mechanism(p11card, dup_mem(&openssl_sha1_mech, sizeof openssl_sha1_mech));
-#if OPENSSL_VERSION_NUMBER >= 0x00908000L
 	openssl_sha256_mech.mech_data = EVP_sha256();
 	sc_pkcs11_register_mechanism(p11card, dup_mem(&openssl_sha256_mech, sizeof openssl_sha256_mech));
 	openssl_sha384_mech.mech_data = EVP_sha384();
 	sc_pkcs11_register_mechanism(p11card, dup_mem(&openssl_sha384_mech, sizeof openssl_sha384_mech));
 	openssl_sha512_mech.mech_data = EVP_sha512();
 	sc_pkcs11_register_mechanism(p11card, dup_mem(&openssl_sha512_mech, sizeof openssl_sha512_mech));
-#endif
 	openssl_md5_mech.mech_data = EVP_md5();
 	sc_pkcs11_register_mechanism(p11card, dup_mem(&openssl_md5_mech, sizeof openssl_md5_mech));
 	openssl_ripemd160_mech.mech_data = EVP_ripemd160();

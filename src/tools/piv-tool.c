@@ -38,12 +38,10 @@
 #include <openssl/opensslconf.h>
 #include <openssl/crypto.h>
 #endif
-#if OPENSSL_VERSION_NUMBER >= 0x00907000L
 #include <openssl/conf.h>
-#endif
 
 #include <openssl/rsa.h>
-#if OPENSSL_VERSION_NUMBER >= 0x00908000L && !defined(OPENSSL_NO_EC) && !defined(OPENSSL_NO_ECDSA)
+#if !defined(OPENSSL_NO_EC) && !defined(OPENSSL_NO_ECDSA)
 #include <openssl/ec.h>
 #include <openssl/ecdsa.h>
 #endif
@@ -292,7 +290,7 @@ static int gen_key(const char * key_info)
 		keydata = {0, 0, 0, 0, NULL, 0, NULL, 0, NULL, 0};
 	unsigned long expl;
 	u8 expc[4];
-#if OPENSSL_VERSION_NUMBER >= 0x00908000L && !defined(OPENSSL_NO_EC)
+#if !defined(OPENSSL_NO_EC)
 	int nid = -1;
 #endif
 	sc_hex_to_bin(key_info, buf, &buflen);
@@ -316,7 +314,7 @@ static int gen_key(const char * key_info)
 		case 0x05: keydata.key_bits = 3072; break;
 		case 0x06: keydata.key_bits = 1024; break;
 		case 0x07: keydata.key_bits = 2048; break;
-#if OPENSSL_VERSION_NUMBER >= 0x00908000L && !defined(OPENSSL_NO_EC)
+#if !defined(OPENSSL_NO_EC)
 		case 0x11: keydata.key_bits = 0;
 			nid = NID_X9_62_prime256v1; /* We only support one curve per algid */
 			break;
@@ -368,7 +366,7 @@ static int gen_key(const char * key_info)
 		EVP_PKEY_assign_RSA(evpkey, newkey);
 
 	} else { /* EC key */
-#if OPENSSL_VERSION_NUMBER >= 0x00908000L && !defined(OPENSSL_NO_EC)
+#if !defined(OPENSSL_NO_EC)
 		int i;
 		BIGNUM *x;
 		BIGNUM *y;
@@ -558,7 +556,7 @@ int main(int argc, char *argv[])
 		util_print_usage_and_die(app_name, options, option_help, NULL);
 
 
-//#if (OPENSSL_VERSION_NUMBER >= 0x00907000L && OPENSSL_VERSION_NUMBER < 0x10100000L) || defined(LIBRESSL_VERSION_NUMBER)
+//#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
 //	OPENSSL_config(NULL);
 //#endif
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)

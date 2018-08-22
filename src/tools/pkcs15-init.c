@@ -40,9 +40,7 @@
 #endif
 #include <openssl/opensslv.h>
 #include "libopensc/sc-ossl-compat.h"
-#if OPENSSL_VERSION_NUMBER >= 0x00907000L
 #include <openssl/conf.h>
-#endif
 #include <openssl/evp.h>
 #include <openssl/pem.h>
 #include <openssl/err.h>
@@ -453,7 +451,7 @@ main(int argc, char **argv)
 	unsigned int		n;
 	int			r = 0;
 
-#if OPENSSL_VERSION_NUMBER >= 0x00907000L && OPENSSL_VERSION_NUMBER < 0x10100000L
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 	OPENSSL_config(NULL);
 #endif
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && !(defined LIBRESSL_VERSION_NUMBER)

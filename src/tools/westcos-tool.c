@@ -589,7 +589,6 @@ int main(int argc, char *argv[])
 
 		printf("Generate key of length %d.\n", keylen);
 
-#if OPENSSL_VERSION_NUMBER>=0x00908000L
 		rsa = RSA_new();
 		bn = BN_new();
 		mem = BIO_new(BIO_s_mem());
@@ -602,18 +601,6 @@ int main(int argc, char *argv[])
 
 		if(!BN_set_word(bn, RSA_F4) ||
 			!RSA_generate_key_ex(rsa, keylen, bn, NULL))
-#else
-		rsa = RSA_generate_key(keylen, RSA_F4, NULL, NULL);
-		mem = BIO_new(BIO_s_mem());
-
-		if(mem == NULL)
-		{
-			printf("Not enough memory.\n");
-			goto out;
-		}
-
-		if (!rsa)
-#endif
 		{
 			printf("RSA_generate_key_ex return %ld\n", ERR_get_error());
 			goto out;
