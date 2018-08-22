@@ -29,7 +29,6 @@
 #include <openssl/rsa.h>
 #include <openssl/opensslv.h>
 #include <openssl/x509.h>
-#if OPENSSL_VERSION_NUMBER >= 0x10000000L
 #include <openssl/conf.h>
 #include <openssl/opensslconf.h> /* for OPENSSL_NO_* */
 #include "libopensc/sc-ossl-compat.h"
@@ -41,7 +40,6 @@
 #endif /* OPENSSL_NO_ENGINE */
 #include <openssl/asn1.h>
 #include <openssl/crypto.h>
-#endif /* OPENSSL_VERSION_NUMBER >= 0x10000000L */
 
 #include "sc-pkcs11.h"
 
@@ -147,7 +145,6 @@ static sc_pkcs11_mechanism_type_t openssl_sha512_mech = {
 	NULL,			/* free_mech_data */
 };
 
-#if OPENSSL_VERSION_NUMBER >= 0x10000000L
 static sc_pkcs11_mechanism_type_t openssl_gostr3411_mech = {
 	CKM_GOSTR3411,
 	{ 0, 0, CKF_DIGEST },
@@ -166,7 +163,6 @@ static sc_pkcs11_mechanism_type_t openssl_gostr3411_mech = {
 	NULL,			/* mech_data */
 	NULL,			/* free_mech_data */
 };
-#endif
 
 static sc_pkcs11_mechanism_type_t openssl_md5_mech = {
 	CKM_MD5,
@@ -217,7 +213,7 @@ static void * dup_mem(void *in, size_t in_len)
 void
 sc_pkcs11_register_openssl_mechanisms(struct sc_pkcs11_card *p11card)
 {
-#if OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_ENGINE)
+#if !defined(OPENSSL_NO_ENGINE)
 	ENGINE *e;
 /* crypto locking removed in 1.1 */
 #if OPENSSL_VERSION_NUMBER  < 0x10100000L
@@ -261,7 +257,7 @@ sc_pkcs11_register_openssl_mechanisms(struct sc_pkcs11_card *p11card)
 	if (locking_cb)
 		CRYPTO_set_locking_callback(locking_cb);
 #endif
-#endif /* OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_ENGINE) */
+#endif /* !defined(OPENSSL_NO_ENGINE) */
 
 	openssl_sha1_mech.mech_data = EVP_sha1();
 	sc_pkcs11_register_mechanism(p11card, dup_mem(&openssl_sha1_mech, sizeof openssl_sha1_mech));
@@ -277,10 +273,8 @@ sc_pkcs11_register_openssl_mechanisms(struct sc_pkcs11_card *p11card)
 	sc_pkcs11_register_mechanism(p11card, dup_mem(&openssl_md5_mech, sizeof openssl_md5_mech));
 	openssl_ripemd160_mech.mech_data = EVP_ripemd160();
 	sc_pkcs11_register_mechanism(p11card, dup_mem(&openssl_ripemd160_mech, sizeof openssl_ripemd160_mech));
-#if OPENSSL_VERSION_NUMBER >= 0x10000000L
 	openssl_gostr3411_mech.mech_data = EVP_get_digestbynid(NID_id_GostR3411_94);
 	sc_pkcs11_register_mechanism(p11card, dup_mem(&openssl_gostr3411_mech, sizeof openssl_gostr3411_mech));
-#endif
 }
 
 
@@ -349,7 +343,7 @@ static void sc_pkcs11_openssl_md_release(sc_pkcs11_operation_t *op)
 	}
 }
 
-#if OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC)
+#if !defined(OPENSSL_NO_EC)
 
 static void reverse(unsigned char *buf, size_t len)
 {
@@ -434,7 +428,7 @@ static CK_RV gostr3410_verify_data(const unsigned char *pubkey, unsigned int pub
 		return CKR_GENERAL_ERROR;
 	return ret_vrf == 1 ? CKR_OK : CKR_SIGNATURE_INVALID;
 }
-#endif /* OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC) */
+#endif /* !defined(OPENSSL_NO_EC) */
 
 /* If no hash function was used, finish with RSA_public_decrypt().
  * If a hash function was used, we can make a big shortcut by
@@ -453,7 +447,7 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, unsigned int pubkey_len
 
 	if (mech->mechanism == CKM_GOSTR3410)
 	{
-#if OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC)
+#if !defined(OPENSSL_NO_EC)
 		return gostr3410_verify_data(pubkey, pubkey_len,
 				pubkey_params, pubkey_params_len,
 				data, data_len, signat, signat_len);
