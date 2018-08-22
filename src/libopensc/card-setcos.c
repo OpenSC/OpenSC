@@ -33,7 +33,7 @@
 
 #define _FINEID_BROKEN_SELECT_FLAG 1
 
-static struct sc_atr_table setcos_atrs[] = {
+static const struct sc_atr_table setcos_atrs[] = {
 	/* some Nokia branded SC */
 	{ "3B:1F:11:00:67:80:42:46:49:53:45:10:52:66:FF:81:90:00", NULL, NULL, SC_CARD_TYPE_SETCOS_GENERIC, 0, NULL },
 	/* RSA SecurID 3100 */

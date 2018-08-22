@@ -31,7 +31,7 @@
 #define FLAG_KEYGEN		0x80000000
 #define IS_CYBERFLEX(card)	(card->type == SC_CARD_TYPE_FLEX_CYBER)
 
-static struct sc_atr_table flex_atrs[] = {
+static const struct sc_atr_table flex_atrs[] = {
 	/* Cryptoflex */
 	/* 8k win2000 */
 	{ "3b:95:15:40:20:68:01:02:00:00", NULL, "Cryptoflex 8K", SC_CARD_TYPE_FLEX_CRYPTO, 0, NULL },

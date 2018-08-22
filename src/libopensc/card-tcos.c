@@ -33,7 +33,7 @@
 #include "asn1.h"
 #include "cardctl.h"
 
-static struct sc_atr_table tcos_atrs[] = {
+static const struct sc_atr_table tcos_atrs[] = {
 	/* Infineon SLE44 */
 	{ "3B:BA:13:00:81:31:86:5D:00:64:05:0A:02:01:31:80:90:00:8B", NULL, NULL, SC_CARD_TYPE_TCOS_V2, 0, NULL },
 	/* Infineon SLE66S */

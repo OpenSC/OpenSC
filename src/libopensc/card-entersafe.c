@@ -30,7 +30,7 @@
 #include "asn1.h"
 #include "cardctl.h"
 
-static struct sc_atr_table entersafe_atrs[] = {
+static const struct sc_atr_table entersafe_atrs[] = {
 	{ 
 		 "3b:0f:00:65:46:53:05:19:05:71:df:00:00:00:00:00:00", 
 		 "ff:ff:ff:ff:ff:ff:ff:00:ff:ff:ff:00:00:00:00:00:00", 

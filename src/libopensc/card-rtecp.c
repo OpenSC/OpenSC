@@ -41,7 +41,7 @@ static struct sc_card_driver rtecp_drv = {
 	NULL, 0, NULL
 };
 
-static struct sc_atr_table rtecp_atrs[] = {
+static const struct sc_atr_table rtecp_atrs[] = {
 	/* Rutoken ECP */
 	{ "3B:8B:01:52:75:74:6F:6B:65:6E:20:45:43:50:A0",
 		NULL, "Rutoken ECP", SC_CARD_TYPE_GENERIC_BASE, 0, NULL },

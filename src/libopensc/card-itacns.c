@@ -51,7 +51,7 @@ static struct sc_card_driver itacns_drv = {
 
 
 /* List of ATR's for "hard" matching. */
-static struct sc_atr_table itacns_atrs[] = {
+static const struct sc_atr_table itacns_atrs[] = {
 	{ "3b:f4:18:00:ff:81:31:80:55:00:31:80:00:c7", NULL, NULL,
 		SC_CARD_TYPE_ITACNS_CIE_V1, 0, NULL},
 	{ NULL, NULL, NULL, 0, 0, NULL}

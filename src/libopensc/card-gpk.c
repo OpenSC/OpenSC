@@ -86,7 +86,7 @@ static int	gpk_get_info(sc_card_t *, int, int, u8 *, size_t);
 /*
  * ATRs of GPK4000 cards courtesy of libscez
  */
-static struct sc_atr_table gpk_atrs[] = {
+static const struct sc_atr_table gpk_atrs[] = {
 	{ "3B:27:00:80:65:A2:04:01:01:37", NULL, "GPK 4K", SC_CARD_TYPE_GPK_GPK4000_s, 0, NULL },
 	{ "3B:27:00:80:65:A2:05:01:01:37", NULL, "GPK 4K", SC_CARD_TYPE_GPK_GPK4000_sp, 0, NULL },
 	{ "3B:27:00:80:65:A2:0C:01:01:37", NULL, "GPK 4K", SC_CARD_TYPE_GPK_GPK4000_su256, 0, NULL },

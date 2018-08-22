@@ -70,7 +70,7 @@ static struct sc_card_driver iasecc_drv = {
 	NULL, 0, NULL
 };
 
-static struct sc_atr_table iasecc_known_atrs[] = {
+static const struct sc_atr_table iasecc_known_atrs[] = {
 	{ "3B:7F:96:00:00:00:31:B8:64:40:70:14:10:73:94:01:80:82:90:00",
 	  "FF:FF:FF:FF:FF:FF:FF:FE:FF:FF:00:00:FF:FF:FF:FF:FF:FF:FF:FF",
 		"IAS/ECC Gemalto", SC_CARD_TYPE_IASECC_GEMALTO,  0, NULL },
