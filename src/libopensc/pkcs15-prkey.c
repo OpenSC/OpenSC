@@ -36,10 +36,8 @@
 #include <openssl/bn.h>
 #include <openssl/rsa.h>
 #include <openssl/dsa.h>
-#if OPENSSL_VERSION_NUMBER >= 0x10000000L
-	#ifndef OPENSSL_NO_EC
-	#include <openssl/ec.h>
-	#endif
+#ifndef OPENSSL_NO_EC
+#include <openssl/ec.h>
 #endif
 #endif
 
@@ -699,7 +697,7 @@ sc_pkcs15_convert_prkey(struct sc_pkcs15_prkey *pkcs15_key, void *evp_key)
 		DSA_free(src);
 		break;
 		}
-#if OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC)
+#if !defined(OPENSSL_NO_EC)
 	case NID_id_GostR3410_2001: {
 		struct sc_pkcs15_prkey_gostr3410 *dst = &pkcs15_key->u.gostr3410;
 		EC_KEY *src = EVP_PKEY_get0(pk);
@@ -776,7 +774,7 @@ sc_pkcs15_convert_prkey(struct sc_pkcs15_prkey *pkcs15_key, void *evp_key)
 
 		break;
 	}
-#endif /* OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC) */
+#endif /* !defined(OPENSSL_NO_EC) */
 	default:
 		return SC_ERROR_NOT_SUPPORTED;
 	}

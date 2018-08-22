@@ -56,9 +56,7 @@
 
 #ifdef ENABLE_OPENSSL
 #include <openssl/opensslv.h>
-#if OPENSSL_VERSION_NUMBER >= 0x10000000L
 #include <openssl/pem.h>
-#endif
 #endif
 
 #ifdef ENABLE_OPENPACE
@@ -2475,7 +2473,7 @@ done:
 static DWORD
 md_pkcs15_store_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, BYTE *blob, DWORD blob_size, PIN_ID PinId)
 {
-#if OPENSSL_VERSION_NUMBER >= 0x10000000L
+#ifdef ENABLE_OPENSSL
 	VENDOR_SPECIFIC *vs;
 	struct sc_card *card = NULL;
 	struct sc_profile *profile = NULL;
@@ -2610,7 +2608,7 @@ done:
 #else
 	logprintf(pCardData, 1, "MD store key not supported\n");
 	return SCARD_E_UNSUPPORTED_FEATURE;
-#endif
+#endif /* ENABLE_OPENSSL */
 }
 
 
