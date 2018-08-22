@@ -42,41 +42,6 @@ extern "C" {
  */
 
 /*
- * EVP_CIPHER_CTX functions:
- * EVP_CIPHER_CTX_new	    not in 0.9.7
- * EVP_CIPHER_CTX_free	    not in 0.9.7
- * EVP_CIPHER_CTX_init	    in 0.9.7 to 1.0.2. defined in 1.1 as EVP_CIPHER_CTX_reset
- * EVP_CIPHER_CTX_cleanup   in 0.9.7 to 1.0.2, defined in 1.1 as EVP_CIPHER_CTX_reset
- * EVP_CIPHER_CTX_reset	    only in 1.1
- *
- * EVP_CIPHER_CTX_new	    does a EVP_CIPHER_CTX_init
- * EVP_CIPHER_CTX_free	    does a EVP_CIPHER_CTX_cleanup
- * EVP_CIPHER_CTX_cleanup   does equivalent of a EVP_CIPHER_CTX_init
- * Use EVP_CIPHER_CTX_new, EVP_CIPHER_CTX_free, and  EVP_CIPHER_CTX_cleanup between operations
- */
-
-#if OPENSSL_VERSION_NUMBER  <= 0x009070dfL
-
-/* in 0.9.7  EVP_CIPHER_CTX was always allocated inline or in other structures */
-
-#define EVP_CIPHER_CTX_new() ({ \
-	EVP_CIPHER_CTX * tmp = NULL; \
-	tmp = OPENSSL_malloc(sizeof(struct evp_cipher_ctx_st)); \
-	if (tmp) { \
-	EVP_CIPHER_CTX_init(tmp); \
-	} \
-	tmp; \
-	})
-
-#define EVP_CIPHER_CTX_free(x) ({ \
-	if (x) { \
-		EVP_CIPHER_CTX_cleanup(x); \
-		OPENSSL_free(x); \
-	} \
-	})
-#endif /* OPENSSL_VERSION_NUMBER =< 0x00907000L */
-
-/*
  * 1.1 renames RSA_PKCS1_SSLeay to RSA_PKCS1_OpenSSL
  * use RSA_PKCS1_OpenSSL
  * Previous versions are missing a number of functions to access

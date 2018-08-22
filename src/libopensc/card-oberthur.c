@@ -47,14 +47,6 @@
 #define OBERTHUR_PIN_REFERENCE_SO	0x04
 #define OBERTHUR_PIN_REFERENCE_PUK	0x84
 
-/* keep OpenSSL 0.9.6 users happy ;-) */
-#if OPENSSL_VERSION_NUMBER < 0x00907000L
-#define DES_cblock			des_cblock
-#define DES_key_schedule		des_key_schedule
-#define DES_set_key_unchecked(a,b)	des_set_key_unchecked(a,*b)
-#define DES_ecb_encrypt(a,b,c,d) 	des_ecb_encrypt(a,b,*c,d)
-#endif
-
 static const struct sc_atr_table oberthur_atrs[] = {
 	{ "3B:7D:18:00:00:00:31:80:71:8E:64:77:E3:01:00:82:90:00", NULL,
 			"Oberthur 64k v4/2.1.1", SC_CARD_TYPE_OBERTHUR_64K, 0, NULL },

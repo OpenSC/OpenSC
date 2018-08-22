@@ -5017,10 +5017,6 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 		 */
 		if (!(rsa_flags & SC_ALGORITHM_RSA_HASHES)) {
 			rsa_flags |= SC_ALGORITHM_RSA_HASHES;
-#if OPENSSL_VERSION_NUMBER <  0x00908000L
-		/* turn off hashes not in openssl 0.9.8 */
-			rsa_flags &= ~(SC_ALGORITHM_RSA_HASH_SHA256 | SC_ALGORITHM_RSA_HASH_SHA384 | SC_ALGORITHM_RSA_HASH_SHA512 | SC_ALGORITHM_RSA_HASH_SHA224);
-#endif
 		}
 #endif
 
