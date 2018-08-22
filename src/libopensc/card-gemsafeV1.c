@@ -44,7 +44,7 @@ static struct sc_card_driver gemsafe_drv = {
 };
 
 /* Known ATRs */
-static struct sc_atr_table gemsafe_atrs[] = {
+static const struct sc_atr_table gemsafe_atrs[] = {
 	/* standard version */
     {"3B:7B:94:00:00:80:65:B0:83:01:01:74:83:00:90:00", NULL, NULL, SC_CARD_TYPE_GEMSAFEV1_GENERIC, 0, NULL},
     {"3B:6B:00:00:80:65:B0:83:01:01:74:83:00:90:00", NULL, NULL, SC_CARD_TYPE_GEMSAFEV1_GENERIC, 0, NULL},

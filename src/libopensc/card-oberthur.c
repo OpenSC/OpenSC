@@ -55,7 +55,7 @@
 #define DES_ecb_encrypt(a,b,c,d) 	des_ecb_encrypt(a,b,*c,d)
 #endif
 
-static struct sc_atr_table oberthur_atrs[] = {
+static const struct sc_atr_table oberthur_atrs[] = {
 	{ "3B:7D:18:00:00:00:31:80:71:8E:64:77:E3:01:00:82:90:00", NULL,
 			"Oberthur 64k v4/2.1.1", SC_CARD_TYPE_OBERTHUR_64K, 0, NULL },
 	{ "3B:7D:18:00:00:00:31:80:71:8E:64:77:E3:02:00:82:90:00", NULL,

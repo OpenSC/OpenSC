@@ -42,7 +42,7 @@ static struct sc_card_driver cardos_drv = {
 	NULL, 0, NULL
 };
 
-static struct sc_atr_table cardos_atrs[] = {
+static const struct sc_atr_table cardos_atrs[] = {
 	/* 4.0 */
 	{ "3b:e2:00:ff:c1:10:31:fe:55:c8:02:9c", NULL, NULL, SC_CARD_TYPE_CARDOS_GENERIC, 0, NULL },
 	/* Italian eID card, postecert */

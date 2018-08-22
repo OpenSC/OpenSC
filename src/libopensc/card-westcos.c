@@ -152,7 +152,7 @@ static int westcos_check_sw(sc_card_t * card, unsigned int sw1,
 	return iso_ops->check_sw(card, sw1, sw2);
 }
 
-static struct sc_atr_table westcos_atrs[] = {
+static const struct sc_atr_table westcos_atrs[] = {
 	/* westcos 2ko */
 	{ "3F:69:00:00:00:64:01:00:00:00:80:90:00", "ff:ff:ff:ff:ff:ff:ff:00:00:00:f0:ff:ff", NULL, 0x00, 0, NULL },
 	/* westcos applet */

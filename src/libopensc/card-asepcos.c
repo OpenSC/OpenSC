@@ -37,7 +37,7 @@ static struct sc_card_driver asepcos_drv = {
 	NULL, 0, NULL
 };
 
-static struct sc_atr_table asepcos_atrs[] = {
+static const struct sc_atr_table asepcos_atrs[] = {
 	{ "3b:d6:18:00:81:b1:80:7d:1f:03:80:51:00:61:10:30:8f", NULL, NULL, SC_CARD_TYPE_ASEPCOS_GENERIC, 0, NULL},
 	{ "3b:d6:18:00:81:b1:fe:7d:1f:03:41:53:45:37:35:35:01", NULL, NULL, SC_CARD_TYPE_ASEPCOS_JAVA, 0, NULL},
 	{ NULL, NULL, NULL, 0, 0, NULL }

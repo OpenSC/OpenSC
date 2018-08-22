@@ -28,7 +28,7 @@
 #include "internal.h"
 #include "jpki.h"
 
-static struct sc_atr_table jpki_atrs[] = {
+static const struct sc_atr_table jpki_atrs[] = {
 	{"3b:e0:00:ff:81:31:fe:45:14", NULL, NULL,
 	 SC_CARD_TYPE_JPKI_BASE, 0, NULL},
 	{NULL, NULL, NULL, 0, 0, NULL}

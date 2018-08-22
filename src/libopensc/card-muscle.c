@@ -42,7 +42,7 @@ static struct sc_card_driver muscle_drv = {
 	NULL, 0, NULL
 };
 
-static struct sc_atr_table muscle_atrs[] = {
+static const struct sc_atr_table muscle_atrs[] = {
 	/* Tyfone JCOP 242R2 cards */
 	{ "3b:6d:00:00:ff:54:79:66:6f:6e:65:20:32:34:32:52:32", NULL, NULL, SC_CARD_TYPE_MUSCLE_JCOP242R2_NO_EXT_APDU, 0, NULL },
 	/* Aladdin eToken PRO USB 72K Java */

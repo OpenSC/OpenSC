@@ -80,7 +80,7 @@ struct authentic_private_data {
 	struct sc_cplc cplc;
 };
 
-static struct sc_atr_table authentic_known_atrs[] = {
+static const struct sc_atr_table authentic_known_atrs[] = {
 	{ "3B:DD:18:00:81:31:FE:45:80:F9:A0:00:00:00:77:01:00:70:0A:90:00:8B", NULL,
 		"Oberthur AuthentIC 3.2.2", SC_CARD_TYPE_OBERTHUR_AUTHENTIC_3_2,  0, NULL },
 	{ NULL, NULL, NULL, 0, 0, NULL }

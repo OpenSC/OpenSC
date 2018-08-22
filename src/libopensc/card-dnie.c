@@ -78,7 +78,7 @@ extern int dnie_read_file(
  * Override APDU response error codes from iso7816.c to allow 
  * handling of SM specific error
  */
-static struct sc_card_error dnie_errors[] = {
+static const struct sc_card_error dnie_errors[] = {
 	{0x6688, SC_ERROR_SM, "Cryptographic checksum invalid"},
 	{0x6987, SC_ERROR_SM, "Expected SM Data Object missing"},
 	{0x6988, SC_ERROR_SM, "SM Data Object incorrect"},

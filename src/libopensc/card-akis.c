@@ -43,7 +43,7 @@ static struct sc_card_driver akis_drv = {
 	NULL, 0, NULL
 };
 
-static struct sc_atr_table akis_atrs[] = {
+static const struct sc_atr_table akis_atrs[] = {
 	{ "3b:ba:11:00:81:31:fe:4d:55:45:4b:41:45:20:56:31:2e:30:ae", NULL, NULL, SC_CARD_TYPE_AKIS_GENERIC, 0, NULL },
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
