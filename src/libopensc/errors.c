@@ -103,7 +103,7 @@ const char *sc_strerror(int error)
 		"Unsupported card",
 		"Unable to load external module",
 		"EF offset too large",
-		"Not implemented"
+		"Not implemented",
 		"Invalid Simple TLV object",
 		"Premature end of Simple TLV stream",
 	};
