@@ -1212,7 +1212,7 @@ static int mcrd_restore_se(sc_card_t * card, int se_num)
 static int mcrd_set_security_env(sc_card_t * card,
 				 const sc_security_env_t * env, int se_num)
 {
-	struct mcrd_priv_data *priv = DRVDATA(card);
+	struct mcrd_priv_data *priv;
 	sc_apdu_t apdu;
 	sc_path_t tmppath;
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
@@ -1222,6 +1222,7 @@ static int mcrd_set_security_env(sc_card_t * card,
 	if (!(card != NULL && env != NULL))
 		return SC_ERROR_INTERNAL;
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	priv = DRVDATA(card);
 
 	/* special environment handling for esteid, stolen from openpgp */
 	if (is_esteid_card(card)) {
