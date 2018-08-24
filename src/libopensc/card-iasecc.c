@@ -615,7 +615,7 @@ iasecc_init(struct sc_card *card)
 			LOG_TEST_RET(ctx, rv, "Select EF.ATR AID failed");
 		}
 
-		rv = iasecc_get_serialnr(card, NULL);
+		iasecc_get_serialnr(card, NULL);
 	}
 
 #ifdef ENABLE_SM
