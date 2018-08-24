@@ -132,7 +132,7 @@ osacompile -o "${imagedir}/OpenSC Uninstaller.app" "MacOSX/OpenSC_Uninstaller.ap
 # Create .dmg
 rm -f OpenSC-@PACKAGE_VERSION@.dmg
 i=0
-while ! hdiutil create -srcfolder "${imagedir}" -volname "@PACKAGE_NAME@" OpenSC-@PACKAGE_VERSION@.dmg
+while ! hdiutil create -srcfolder "${imagedir}" -volname "@PACKAGE_NAME@" -fs JHFS+ OpenSC-@PACKAGE_VERSION@.dmg
 do
 	i=$[$i+1]
 	if [ $i -gt 2 ]
