@@ -129,7 +129,7 @@ enum _ext_caps {	/* extended capabilities/features */
 	EXT_CAP_LCS                 = 0x0100,
 	EXT_CAP_CHAINING            = 0x1000,
 	EXT_CAP_APDU_EXT            = 0x2000,
-	EXT_CAP_MSE					= 0x3000
+	EXT_CAP_MSE                 = 0x3000
 };
 
 enum _card_state {
@@ -710,7 +710,7 @@ pgp_get_card_features(sc_card_t *card)
 					if ((priv->sm_algo == SM_ALGO_NONE) && (priv->ext_caps & EXT_CAP_SM))
 						priv->sm_algo = SM_ALGO_UNKNOWN;
 				}
-				if (priv->bcd_version > OPENPGP_CARD_3_3) {
+				if (priv->bcd_version >= OPENPGP_CARD_3_3) {
 					/* v3.3+: MSE for key numbers 2(DEC) and 3(AUT) supported */
 					if (blob->data[10])
 						priv->ext_caps |= EXT_CAP_MSE;
@@ -1889,7 +1889,7 @@ pgp_set_security_env(sc_card_t *card,
  * and the AUT-Key (Key.Ref 3) can be linked to the command PSO:DECIPHER also."
  *
  * key: Key-Ref to change (2 for DEC-Key or 3 for AUT-Key) 
- * command: Usage to set (2 for PSO:DECIPHER or 3 for INTERNAL AUTHENTICATE)
+ * command: Usage to set (0xb8 for PSO:DECIPHER or 0xa4 for INTERNAL AUTHENTICATE)
  **/
 static int
 pgp_set_MSE(sc_card_t *card, int key, int command)
@@ -1905,18 +1905,6 @@ pgp_set_MSE(sc_card_t *card, int key, int command)
 	// check if MSE is supported
 	if (!(priv->ext_caps & EXT_CAP_MSE))
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
-
-	// translate input 'command' into actual internal byte representation
-	switch(command){
-	case 2:
-		command = 0xb8;
-		break;
-	case 3:
-		command = 0xa4;
-		break;
-	default:
-		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS, "invalid function call");
-	}
 
 	// create apdu
 	sc_format_apdu(card, &apdu, apdu_case, 0x22, 0x41, command);
@@ -2053,11 +2041,11 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 	apdu.resp = out;
 	apdu.resplen = outlen;
 
-	/* For OpenPGP Card >v3.2, key slot 3 instead of 2 can be used for deciphering,
+	/* For OpenPGP Card >=v3.3, key slot 3 instead of 2 can be used for deciphering,
 	 * but this has to be set via MSE beforehand on every usage (slot 2 is used by default)
 	 * see section 7.2.18 of the specification of OpenPGP Card v3.3 */
-	if (priv->bcd_version > OPENPGP_CARD_3_2 && env->key_ref[0] == 0x02){
-		pgp_set_MSE(card, 3, 2);
+	if (priv->bcd_version >= OPENPGP_CARD_3_3 && env->key_ref[0] == 0x02){
+		pgp_set_MSE(card, 3, 0xb8);
 	}
 
 	r = sc_transmit_apdu(card, &apdu);
@@ -2066,6 +2054,11 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(card->ctx, r, "Card returned error");
+
+	/* For OpenPGP Card >=v3.3, use key slot 2 for deciphering again (set to default) */
+	if (priv->bcd_version >= OPENPGP_CARD_3_3 && env->key_ref[0] == 0x02){
+		pgp_set_MSE(card, 2, 0xb8);
+	}
 
 	LOG_FUNC_RETURN(card->ctx, (int)apdu.resplen);
 }
