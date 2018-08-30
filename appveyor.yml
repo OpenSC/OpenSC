@@ -107,7 +107,7 @@ build_script:
   # keep in sync with .travis.yml
   - bash -c "git config --global user.email 'no-reply@appveyor.com'"
   - bash -c "git config --global user.name 'AppVeyor'"
-  - bash -c ".github/push_artifacts.sh \"AppVeyor build ${APPVEYOR_BUILD_NUMBER}.${APPVEYOR_JOB_NUMBER}\""
+  - bash -c "if [ -z \"$APPVEYOR_PULL_REQUEST_NUMBER\" ]; then .github/push_artifacts.sh \"AppVeyor build ${APPVEYOR_BUILD_NUMBER}.${APPVEYOR_JOB_NUMBER}\"; fi"
 
 cache:
   - C:\zlib -> appveyor.yml
