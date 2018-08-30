@@ -63,7 +63,7 @@ static int	verbose = 0;
 // Some reasonable maximums
 #define MAX_CERT		4096
 #define MAX_PRKD		256
-#define MAX_KEY			1024
+#define MAX_KEY			1500
 #define MAX_WRAPPED_KEY	(MAX_CERT + MAX_PRKD + MAX_KEY)
 
 #define SEED_LENGTH 16
