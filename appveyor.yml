@@ -67,11 +67,7 @@ build_script:
           xcopy C:\zlib C:\zlib-${env:OPENSSL_PF} /e /i /y /s
           cd C:\zlib-${env:OPENSSL_PF}
           (Get-Content win32/Makefile.msc).replace('-MD', '-MT') | Set-Content win32/Makefile.msc
-          If ($env:Platform -Match "x86") {
-             nmake -f win32/Makefile.msc LOC="-DASMV -DASMINF" OBJA="inffas32.obj match686.obj" zlib.lib
-          } Else {
-             nmake -f win32/Makefile.msc AS=ml64 LOC="-DASMV -DASMINF -I." OBJA="inffasx64.obj gvmat64.obj inffas8664.obj" zlib.lib
-          }
+          nmake -f win32/Makefile.msc zlib.lib
         }
         $env:NMAKE_EXTRA="ZLIBSTATIC_DEF=/DENABLE_ZLIB_STATIC ZLIB_INCL_DIR=/IC:\zlib-${env:OPENSSL_PF} ZLIB_LIB=C:\zlib-${env:OPENSSL_PF}\zlib.lib ${env:NMAKE_EXTRA}"
         If (!(Test-Path -Path "C:\openpace-${env:OPENSSL_PF}" )) {
