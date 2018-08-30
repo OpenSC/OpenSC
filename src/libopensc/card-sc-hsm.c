@@ -64,6 +64,8 @@ static const struct sc_atr_table sc_hsm_atrs[] = {
 	/* standard version */
 	{"3B:FE:18:00:00:81:31:FE:45:80:31:81:54:48:53:4D:31:73:80:21:40:81:07:FA", NULL, NULL, SC_CARD_TYPE_SC_HSM, 0, NULL},
 	{"3B:8E:80:01:80:31:81:54:48:53:4D:31:73:80:21:40:81:07:18", NULL, NULL, SC_CARD_TYPE_SC_HSM, 0, NULL},
+	{"3B:DE:18:FF:81:91:FE:1F:C3:80:31:81:54:48:53:4D:31:73:80:21:40:81:07:1C", NULL, NULL, SC_CARD_TYPE_SC_HSM, 0, NULL},
+
 	{"3B:80:80:01:01", NULL, NULL, SC_CARD_TYPE_SC_HSM_SOC, 0, NULL},	// SoC Sample Card
 	{
 		"3B:84:80:01:47:6f:49:44:00",
@@ -1040,8 +1042,12 @@ static int sc_hsm_decode_ecdsa_signature(sc_card_t *card,
 		fieldsizebytes = 32;
 	} else if (datalen <= 90) {		// 320 bit curve = 40 * 2 + 10 byte maximum DER signature
 		fieldsizebytes = 40;
-	} else {
+	} else if (datalen <= 106) {		// 384 bit curve = 48 * 2 + 10 byte maximum DER signature
+		fieldsizebytes = 48;
+	} else if (datalen <= 138) {		// 512 bit curve = 64 * 2 + 10 byte maximum DER signature
 		fieldsizebytes = 64;
+	} else {
+		fieldsizebytes = 66;
 	}
 
 	sc_log(card->ctx,
@@ -1094,8 +1100,7 @@ static int sc_hsm_compute_signature(sc_card_t *card,
 {
 	int r;
 	sc_apdu_t apdu;
-	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
-	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
+	u8 rbuf[514];
 	sc_hsm_private_data_t *priv;
 
 	if (card == NULL || data == NULL || out == NULL) {
@@ -1107,19 +1112,13 @@ static int sc_hsm_compute_signature(sc_card_t *card,
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OBJECT_NOT_FOUND);
 	}
 
-	// check if datalen exceeds the buffer size
-	if (datalen > SC_MAX_APDU_BUFFER_SIZE) {
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
-	}
-
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_4, 0x68, priv->env->key_ref[0], priv->algorithm);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_EXT, 0x68, priv->env->key_ref[0], priv->algorithm);
 	apdu.cla = 0x80;
 	apdu.resp = rbuf;
 	apdu.resplen = sizeof(rbuf);
-	apdu.le = 256;
+	apdu.le = 512;
 
-	memcpy(sbuf, data, datalen);
-	apdu.data = sbuf;
+	apdu.data = data;
 	apdu.lc = datalen;
 	apdu.datalen = datalen;
 	r = sc_transmit_apdu(card, &apdu);
@@ -1149,7 +1148,7 @@ static int sc_hsm_decipher(sc_card_t *card, const u8 * crgram, size_t crgram_len
 	int r;
 	size_t len;
 	sc_apdu_t apdu;
-	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
+	u8 rbuf[514];
 	sc_hsm_private_data_t *priv;
 
 	if (card == NULL || crgram == NULL || out == NULL) {
@@ -1158,11 +1157,11 @@ static int sc_hsm_decipher(sc_card_t *card, const u8 * crgram, size_t crgram_len
 	LOG_FUNC_CALLED(card->ctx);
 	priv = (sc_hsm_private_data_t *) card->drv_data;
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_4, 0x62, priv->env->key_ref[0], priv->algorithm);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_EXT, 0x62, priv->env->key_ref[0], priv->algorithm);
 	apdu.cla = 0x80;
 	apdu.resp = rbuf;
 	apdu.resplen = sizeof(rbuf);
-	apdu.le = 256;
+	apdu.le = 512;
 
 	apdu.data = (u8 *)crgram;
 	apdu.lc = crgram_len;
@@ -1357,7 +1356,7 @@ static int sc_hsm_wrap_key(sc_card_t *card, sc_cardctl_sc_hsm_wrapped_key_t *par
 {
 	sc_context_t *ctx = card->ctx;
 	sc_apdu_t apdu;
-	u8 data[MAX_EXT_APDU_LENGTH];
+	u8 data[1500];
 	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
@@ -1528,7 +1527,7 @@ static int sc_hsm_init_pin(sc_card_t *card, sc_cardctl_pkcs11_init_pin_t *params
 
 static int sc_hsm_generate_keypair(sc_card_t *card, sc_cardctl_sc_hsm_keygen_info_t *keyinfo)
 {
-	u8 rbuf[1024];
+	u8 rbuf[1200];
 	int r;
 	sc_apdu_t apdu;
 
@@ -1614,6 +1613,8 @@ static int sc_hsm_init(struct sc_card *card)
 	_sc_card_add_rsa_alg(card, 1024, flags, 0);
 	_sc_card_add_rsa_alg(card, 1536, flags, 0);
 	_sc_card_add_rsa_alg(card, 2048, flags, 0);
+	_sc_card_add_rsa_alg(card, 3072, flags, 0);
+	_sc_card_add_rsa_alg(card, 4096, flags, 0);
 
 	flags = SC_ALGORITHM_ECDSA_RAW|
 		SC_ALGORITHM_ECDH_CDH_RAW|
@@ -1632,6 +1633,9 @@ static int sc_hsm_init(struct sc_card *card)
 	_sc_card_add_ec_alg(card, 224, flags, ext_flags, NULL);
 	_sc_card_add_ec_alg(card, 256, flags, ext_flags, NULL);
 	_sc_card_add_ec_alg(card, 320, flags, ext_flags, NULL);
+	_sc_card_add_ec_alg(card, 384, flags, ext_flags, NULL);
+	_sc_card_add_ec_alg(card, 512, flags, ext_flags, NULL);
+	_sc_card_add_ec_alg(card, 521, flags, ext_flags, NULL);
 
 	card->caps |= SC_CARD_CAP_RNG|SC_CARD_CAP_APDU_EXT|SC_CARD_CAP_ISO7816_PIN_INFO;
 
