@@ -522,7 +522,7 @@ if test "${enable_notify}" = "yes"; then
 fi
 
 have_cmocka="yes"
-PKG_CHECK_MODULES([CMOCKA], [cmocka >= 1.1.0],,[have_cmocka="no"])
+PKG_CHECK_MODULES([CMOCKA], [cmocka >= 1.0.1],,[have_cmocka="no"])
 AC_CHECK_HEADER([setjmp.h])
 AC_CHECK_HEADER([cmocka.h],, [have_cmocka="no"],
 [#include <stdarg.h>
