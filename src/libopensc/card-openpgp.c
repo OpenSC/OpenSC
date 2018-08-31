@@ -735,7 +735,7 @@ pgp_get_card_features(sc_card_t *card)
 
 				if (priv->bcd_version < OPENPGP_CARD_3_0) {
 					/* v2.x: SM algorithm is at byte 2: 0 == 3DES */
-					priv->sm_algo = blob->data[0];
+					priv->sm_algo = blob->data[1];
 					if ((priv->sm_algo == SM_ALGO_NONE) && (priv->ext_caps & EXT_CAP_SM))
 						priv->sm_algo = SM_ALGO_3DES;
 
@@ -745,7 +745,7 @@ pgp_get_card_features(sc_card_t *card)
 				}
 				else {
 					/* v3.0+: SM algorithm is at byte 2: 0 == UNKNOWN */
-					priv->sm_algo = blob->data[0];
+					priv->sm_algo = blob->data[1];
 					if ((priv->sm_algo == SM_ALGO_NONE) && (priv->ext_caps & EXT_CAP_SM))
 						priv->sm_algo = SM_ALGO_UNKNOWN;
 				}
