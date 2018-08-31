@@ -572,6 +572,38 @@ pgp_init(sc_card_t *card)
 	/* get card_features from ATR & DOs */
 	pgp_get_card_features(card);
 
+	/* add supported algorithms based on specification for pkcs15-init */
+	if (strcmp(card->ctx->app_name, "pkcs15-init") == 0){
+		unsigned long flags;
+		flags = SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE;
+		flags |= SC_ALGORITHM_ONBOARD_KEY_GEN; // Can be generated in card
+
+		switch (card->type) {
+			case SC_CARD_TYPE_OPENPGP_V3:
+				/* RSA 1024 was removed for v3+ */
+				_sc_card_add_rsa_alg(card, 2048, flags, 0);
+				_sc_card_add_rsa_alg(card, 3072, flags, 0);
+				_sc_card_add_rsa_alg(card, 4096, flags, 0);
+				/* TODO add ECC
+				 * v3.0+ supports: [RFC 4880 & 6637] 0x12 = ECDH, 0x13 = ECDSA */
+				break;
+			case SC_CARD_TYPE_OPENPGP_GNUK:
+				_sc_card_add_rsa_alg(card, 2048, flags, 0);
+				/* TODO add ECC for more recent Gnuk (1.2.x)
+				 * these are not include in SC_CARD_TYPE_OPENPGP_GNUK, but
+				 * are treated like SC_CARD_TYPE_OPENPGP_V2 
+				 * Gnuk supports NIST, SECG and Curve25519 from version 1.2.x on */
+				break;
+			case SC_CARD_TYPE_OPENPGP_V2:
+			default:
+				_sc_card_add_rsa_alg(card, 1024, flags, 0);
+				_sc_card_add_rsa_alg(card, 2048, flags, 0);
+				_sc_card_add_rsa_alg(card, 3072, flags, 0);
+				_sc_card_add_rsa_alg(card, 4096, flags, 0);
+				break;
+		}
+	}
+
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
@@ -727,7 +759,12 @@ pgp_get_card_features(sc_card_t *card)
 			card->max_pin_len = blob->data[1];
 		}
 
-		/* get supported algorithms & key lengths from "algorithm attributes" DOs */
+		/* get _current_ algorithms & key lengths from "algorithm attributes" DOs
+		 *
+		 * All available algorithms should be already provided by pgp_init. However, if another
+		 * algorithm is found in the "algorithm attributes" DOs, it is supported by the card as
+		 * well and therefore added 
+		 * see OpenPGP card spec 1.1 & 2.x section 4.3.3.6 / v3.x section 4.4.3.7 */
 		for (i = 0x00c1; i <= 0x00c3; i++) {
 			unsigned long flags;
 
