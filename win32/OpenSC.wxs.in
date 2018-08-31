@@ -308,7 +308,7 @@
             <Component Id="pkcs11_spy.dll" Guid="*" Win64="$(var.Win64YesNo)">
               <File Source="$(var.SOURCE_DIR)\src\pkcs11\pkcs11-spy.dll"/>
               <RegistryKey Id="Pkcs11SpyRegs" Root="HKLM" Key="Software\[Manufacturer]\PKCS11-Spy" Action="createAndRemoveOnUninstall">
-                <RegistryValue Type="string" Name="Module" Value="[INSTALLDIR_MINIDRIVER]opensc-pkcs11.dll"/>
+                <RegistryValue Type="string" Name="Module" Value="[INSTALLDIR_PKCS11]opensc-pkcs11.dll"/>
                 <RegistryValue Type="string" Name="Output" Value="%TEMP%\pkcs11-spy.log"/>
               </RegistryKey>
             </Component>
