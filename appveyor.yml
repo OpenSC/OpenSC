@@ -25,7 +25,7 @@ install:
   - set PATH=C:\cygwin\bin;%PATH%
   - set OPENPACE_VER=1.0.3
   - set ZLIB_VER_DOT=1.2.11
-  - ps: $env:PACKAGE_NAME=(git describe --tags)
+  - ps: $env:PACKAGE_NAME=(git describe --tags --abbrev=0)
   - ps: >-
       If ($env:Platform -Match "x86") {
         $env:VCVARS_PLATFORM="x86"
