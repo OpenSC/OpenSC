@@ -114,6 +114,11 @@ CK_RV sc_create_object_int(CK_SESSION_HANDLE hSession,	/* the session's handle *
 		goto out;
 	}
 
+	if (session->slot->token_info.flags & CKF_WRITE_PROTECTED) {
+		rv = CKR_TOKEN_WRITE_PROTECTED;
+		goto out;
+	}
+
 	card = session->slot->p11card;
 	if (card->framework->create_object == NULL)
 		rv = CKR_FUNCTION_NOT_SUPPORTED;
@@ -156,7 +161,7 @@ C_DestroyObject(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	struct sc_pkcs11_session *session;
 	struct sc_pkcs11_object *object;
 	CK_BBOOL is_token = FALSE;
-	CK_ATTRIBUTE token_attribure = {CKA_TOKEN, &is_token, sizeof(is_token)};
+	CK_ATTRIBUTE token_attribute = {CKA_TOKEN, &is_token, sizeof(is_token)};
 
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
@@ -167,10 +172,16 @@ C_DestroyObject(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	if (rv != CKR_OK)
 		goto out;
 
-	object->ops->get_attribute(session, object, &token_attribure);
-	if (is_token == TRUE && !(session->flags & CKF_RW_SESSION)) {
-		rv = CKR_SESSION_READ_ONLY;
-		goto out;
+	object->ops->get_attribute(session, object, &token_attribute);
+	if (is_token == TRUE) {
+		if (session->slot->token_info.flags & CKF_WRITE_PROTECTED) {
+			rv = CKR_TOKEN_WRITE_PROTECTED;
+			goto out;
+		}
+		if (!(session->flags & CKF_RW_SESSION)) {
+			rv = CKR_SESSION_READ_ONLY;
+			goto out;
+		}
 	}
 
 	if (object->ops->destroy_object == NULL)
