@@ -14,6 +14,7 @@ environment:
   matrix:
     - VSVER: 14
     - VSVER: 12
+      DO_PUSH_ARTIFACT: yes
 
 install:
   - ps: if ($env:APPVEYOR_PULL_REQUEST_NUMBER -and $env:APPVEYOR_BUILD_NUMBER -ne ((Invoke-RestMethod `
@@ -29,11 +30,11 @@ install:
       If ($env:Platform -Match "x86") {
         $env:VCVARS_PLATFORM="x86"
         $env:OPENSSL_PF="Win32"
-        $env:ARTIFACT="OpenSC-win32_vs${env:VSVER}-${env:CONFIGURATION}"
+        $env:ARTIFACT="OpenSC-win32_${env:PACKAGE_NAME}-${env:CONFIGURATION}"
       } Else {
         $env:VCVARS_PLATFORM="amd64"
         $env:OPENSSL_PF="Win64"
-        $env:ARTIFACT="OpenSC-win64_vs${env:VSVER}-${env:CONFIGURATION}"
+        $env:ARTIFACT="OpenSC-win64_${env:PACKAGE_NAME}-${env:CONFIGURATION}"
       }
   - ps: >-
       If (!($env:Configuration -Like "*Light*")) {
@@ -103,7 +104,7 @@ build_script:
   # keep in sync with .travis.yml
   - bash -c "git config --global user.email 'no-reply@appveyor.com'"
   - bash -c "git config --global user.name 'AppVeyor'"
-  - bash -c "if [ -z \"$APPVEYOR_PULL_REQUEST_NUMBER\" ]; then .github/push_artifacts.sh \"AppVeyor build ${APPVEYOR_BUILD_NUMBER}.${APPVEYOR_JOB_NUMBER}\"; fi"
+  - bash -c "if [ \"$DO_PUSH_ARTIFACT\" = yes -a -z \"$APPVEYOR_PULL_REQUEST_NUMBER\" ]; then .github/push_artifacts.sh \"AppVeyor build ${APPVEYOR_BUILD_NUMBER}.${APPVEYOR_JOB_NUMBER}\"; fi"
 
 cache:
   - C:\zlib -> appveyor.yml
