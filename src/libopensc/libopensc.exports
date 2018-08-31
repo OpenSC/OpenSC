@@ -348,6 +348,7 @@ iasecc_sdo_encode_update_field
 _sc_card_add_ec_alg
 _sc_card_add_rsa_alg
 _sc_match_atr
+_sc_match_atr_block
 _sc_log
 eac_secret_name
 get_pace_capabilities
