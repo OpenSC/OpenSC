@@ -1889,10 +1889,10 @@ pgp_set_security_env(sc_card_t *card,
  * and the AUT-Key (Key.Ref 3) can be linked to the command PSO:DECIPHER also."
  *
  * key: Key-Ref to change (2 for DEC-Key or 3 for AUT-Key) 
- * command: Usage to set (0xb8 for PSO:DECIPHER or 0xa4 for INTERNAL AUTHENTICATE)
+ * p2: Usage to set (0xb8 for PSO:DECIPHER or 0xa4 for INTERNAL AUTHENTICATE)
  **/
 static int
-pgp_set_MSE(sc_card_t *card, int key, int command)
+pgp_set_MSE(sc_card_t *card, int key, u8 p2)
 {
 	struct pgp_priv_data	*priv = DRVDATA(card);
 	sc_apdu_t	apdu;
@@ -1907,7 +1907,7 @@ pgp_set_MSE(sc_card_t *card, int key, int command)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 
 	// create apdu
-	sc_format_apdu(card, &apdu, apdu_case, 0x22, 0x41, command);
+	sc_format_apdu(card, &apdu, apdu_case, 0x22, 0x41, p2);
 	apdu.lc = 3;
 	apdu_data[0] = 0x83;
 	apdu_data[1] = 0x01;
