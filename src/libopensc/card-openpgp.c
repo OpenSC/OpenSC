@@ -710,9 +710,9 @@ pgp_get_card_features(sc_card_t *card)
 					if ((priv->sm_algo == SM_ALGO_NONE) && (priv->ext_caps & EXT_CAP_SM))
 						priv->sm_algo = SM_ALGO_UNKNOWN;
 				}
-				if (priv->bcd_version >= OPENPGP_CARD_3_3) {
+				if (priv->bcd_version >= OPENPGP_CARD_3_3 && (blob->len >= 10)) {
 					/* v3.3+: MSE for key numbers 2(DEC) and 3(AUT) supported */
-					if (blob->data[10])
+					if (blob->data[9])
 						priv->ext_caps |= EXT_CAP_MSE;
 				}
 			}
