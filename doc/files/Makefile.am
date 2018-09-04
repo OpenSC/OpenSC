@@ -1,6 +1,6 @@
 MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
 
-dist_noinst_DATA = pkcs15-profile.5.xml opensc.conf.5.xml.in
+dist_noinst_DATA = pkcs15-profile.5.xml opensc.conf.5.xml.in files.xml
 if ENABLE_DOC
 html_DATA = files.html
 endif
