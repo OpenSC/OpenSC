@@ -5,8 +5,8 @@ platform:
   - x64
 
 configuration:
-  -
-  - -Light
+  - Release
+  - Light
 
 environment:
   GH_TOKEN:
@@ -30,14 +30,16 @@ install:
       If ($env:Platform -Match "x86") {
         $env:VCVARS_PLATFORM="x86"
         $env:OPENSSL_PF="Win32"
-        $env:ARTIFACT="OpenSC-win32_${env:PACKAGE_NAME}${env:CONFIGURATION}"
+        $env:ARTIFACT="OpenSC-win32_${env:PACKAGE_NAME}"
       } Else {
         $env:VCVARS_PLATFORM="amd64"
         $env:OPENSSL_PF="Win64"
-        $env:ARTIFACT="OpenSC-win64_${env:PACKAGE_NAME}${env:CONFIGURATION}"
+        $env:ARTIFACT="OpenSC-win64_${env:PACKAGE_NAME}"
       }
   - ps: >-
-      If (!($env:Configuration -Like "*Light*")) {
+      If ($env:Configuration -Like "*Light*") {
+        $env:ARTIFACT="${env:ARTIFACT}-Light"
+      } Else {
         $env:NMAKE_EXTRA="OPENSSL_DEF=/DENABLE_OPENSSL ${env:NMAKE_EXTRA}"
         If (!(Test-Path C:\zlib )) {
           appveyor DownloadFile "https://github.com/madler/zlib/archive/v${env:ZLIB_VER_DOT}.zip" -FileName zlib.zip
