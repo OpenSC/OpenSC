@@ -1,11 +1,11 @@
 include $(top_srcdir)/win32/ltrc.inc
 
 MAINTAINERCLEANFILES = $(srcdir)/Makefile.in $(srcdir)/versioninfo.rc $(srcdir)/winconfig.h \
-		$(srcdir)/OpenSC.iss $(srcdir)/OpenSC.wxs $(srcdir)/OpenSC.ico \
-                $(srcdir)/dlgbmp.bmp $(srcdir)/bannrbmp.bmp $(srcdir)/versioninfo-customactions.rc
-EXTRA_DIST = ltrc.inc Makefile.mak Make.rules.mak \
-		versioninfo.rc.in winconfig.h.in OpenSC.iss.in OpenSC.wxs.in versioninfo-customactions.rc.in DDORes.dll_14_2302.ico
-dist_noinst_HEADERS = versioninfo.rc winconfig.h OpenSC.iss OpenSC.wxs OpenSC.ico dlgbmp.bmp bannrbmp.bmp
+		$(srcdir)/OpenSC.iss $(srcdir)/OpenSC.wxs $(srcdir)/versioninfo-customactions.rc
+EXTRA_DIST = ltrc.inc Makefile.mak Make.rules.mak versioninfo.rc.in winconfig.h.in \
+		OpenSC.iss.in OpenSC.wxs.in versioninfo-customactions.rc.in \
+		OpenSC.ico dlgbmp.bmp bannrbmp.bmp DDORes.dll_14_2302.ico
+dist_noinst_HEADERS = versioninfo.rc winconfig.h OpenSC.iss OpenSC.wxs
 
 if ENABLE_MINIDRIVER_SETUP_CUSTOMACTION
 lib_LTLIBRARIES = customactions@LIBRARY_BITNESS@.la
