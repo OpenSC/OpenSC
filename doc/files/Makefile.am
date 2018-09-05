@@ -22,7 +22,7 @@ opensc.conf.5.xml opensc.conf.5: $(srcdir)/opensc.conf.5.xml.in
 	$(XSLTPROC) --nonet --path "$(srcdir)/..:$(xslstylesheetsdir)/manpages" --xinclude -o $@ man.xsl opensc.conf.5.xml
 
 files.html: $(srcdir)/files.xml $(wildcard $(srcdir)/*.5.xml) opensc.conf.5.xml
-	$(XSLTPROC) --nonet --path "$(srcdir)/..:$(xslstylesheetsdir)/html" --xinclude -o $@ html.xsl $<
+	$(XSLTPROC) --nonet --path "$(builddir):$(srcdir)/..:$(xslstylesheetsdir)/html" --xinclude -o $@ html.xsl $<
 
 %.5: $(srcdir)/%.5.xml
 	sed -e 's|@pkgdatadir[@]|$(pkgdatadir)|g' < $< \
