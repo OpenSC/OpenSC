@@ -128,7 +128,8 @@ enum _ext_caps {	/* extended capabilities/features */
 	EXT_CAP_SM                  = 0x0080,
 	EXT_CAP_LCS                 = 0x0100,
 	EXT_CAP_CHAINING            = 0x1000,
-	EXT_CAP_APDU_EXT            = 0x2000
+	EXT_CAP_APDU_EXT            = 0x2000,
+	EXT_CAP_MSE                 = 0x3000
 };
 
 enum _card_state {
@@ -748,6 +749,11 @@ pgp_get_card_features(sc_card_t *card)
 					priv->sm_algo = blob->data[1];
 					if ((priv->sm_algo == SM_ALGO_NONE) && (priv->ext_caps & EXT_CAP_SM))
 						priv->sm_algo = SM_ALGO_UNKNOWN;
+				}
+				if (priv->bcd_version >= OPENPGP_CARD_3_3 && (blob->len >= 10)) {
+					/* v3.3+: MSE for key numbers 2(DEC) and 3(AUT) supported */
+					if (blob->data[9])
+						priv->ext_caps |= EXT_CAP_MSE;
 				}
 			}
 		}
@@ -1926,6 +1932,51 @@ pgp_set_security_env(sc_card_t *card,
 }
 
 
+/** 
+ * set MANAGE SECURITY ENVIRONMENT as documented in 7.2.18 since OpenPGP Card v3.3
+ *
+ * "This optional command (announced in Extended Capabilities) assigns a specific key to a
+ * command. The DEC-key (Key-Ref 2) can be assigned to the command INTERNAL AUTHENTICATE
+ * and the AUT-Key (Key.Ref 3) can be linked to the command PSO:DECIPHER also."
+ *
+ * key: Key-Ref to change (2 for DEC-Key or 3 for AUT-Key) 
+ * p2: Usage to set (0xb8 for PSO:DECIPHER or 0xa4 for INTERNAL AUTHENTICATE)
+ **/
+static int
+pgp_set_MSE(sc_card_t *card, int key, u8 p2)
+{
+	struct pgp_priv_data	*priv = DRVDATA(card);
+	sc_apdu_t	apdu;
+	u8	apdu_case = SC_APDU_CASE_3;
+	u8	apdu_data[3];
+	int	r;
+
+	LOG_FUNC_CALLED(card->ctx);
+
+	// check if MSE is supported
+	if (!(priv->ext_caps & EXT_CAP_MSE))
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+
+	// create apdu
+	sc_format_apdu(card, &apdu, apdu_case, 0x22, 0x41, p2);
+	apdu.lc = 3;
+	apdu_data[0] = 0x83;
+	apdu_data[1] = 0x01;
+	apdu_data[2] = key;
+	apdu.data = apdu_data;
+	apdu.datalen = 3;
+
+	// transmit apdu
+	r = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	LOG_TEST_RET(card->ctx, r, "Card returned error");
+
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+}
+
+
 /**
  * ABI: ISO 7816-8 COMPUTE DIGITAL SIGNATURE.
  */
@@ -2041,12 +2092,24 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 	apdu.resp = out;
 	apdu.resplen = outlen;
 
+	/* For OpenPGP Card >=v3.3, key slot 3 instead of 2 can be used for deciphering,
+	 * but this has to be set via MSE beforehand on every usage (slot 2 is used by default)
+	 * see section 7.2.18 of the specification of OpenPGP Card v3.3 */
+	if (priv->bcd_version >= OPENPGP_CARD_3_3 && env->key_ref[0] == 0x02){
+		pgp_set_MSE(card, 3, 0xb8);
+	}
+
 	r = sc_transmit_apdu(card, &apdu);
 	free(temp);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(card->ctx, r, "Card returned error");
+
+	/* For OpenPGP Card >=v3.3, use key slot 2 for deciphering again (set to default) */
+	if (priv->bcd_version >= OPENPGP_CARD_3_3 && env->key_ref[0] == 0x02){
+		pgp_set_MSE(card, 2, 0xb8);
+	}
 
 	LOG_FUNC_RETURN(card->ctx, (int)apdu.resplen);
 }
