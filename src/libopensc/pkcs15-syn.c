@@ -75,8 +75,6 @@ static const char *exfunc_name  = "sc_pkcs15_init_func_ex";
 int sc_pkcs15_is_emulation_only(sc_card_t *card)
 {
 	switch (card->type) {
-		case SC_CARD_TYPE_MCRD_ESTEID_V10:
-		case SC_CARD_TYPE_MCRD_ESTEID_V11:
 		case SC_CARD_TYPE_MCRD_ESTEID_V30:
 		case SC_CARD_TYPE_GEMSAFEV1_PTEID:
 		case SC_CARD_TYPE_OPENPGP_V1:
