@@ -43,14 +43,6 @@ static const struct sc_atr_table mcrd_atrs[] = {
 	  "D-Trust", SC_CARD_TYPE_MCRD_GENERIC, 0, NULL},
 	{"3b:ff:11:00:ff:80:b1:fe:45:1f:03:00:68:d2:76:00:00:28:ff:05:1e:31:80:00:90:00:a6", NULL,
 	  "D-Trust", SC_CARD_TYPE_MCRD_GENERIC, 0, NULL},
-	/* Certain pcsc-lite versions (1.5.3 for example on Ubuntu 10.04) incorrectly truncate the warm ATR to the length of the cold ATR  */
-	/* See opensc.conf for further information */
-	{"3B:FE:94:00:FF:80:B1:FA:45:1F:03:45:73:74:45:49:44:20", NULL, "Broken EstEID 1.1 warm", SC_CARD_TYPE_MCRD_ESTEID_V11, 0, NULL},
-	{"3b:fe:94:00:ff:80:b1:fa:45:1f:03:45:73:74:45:49:44:20:76:65:72:20:31:2e:30:43", NULL, "EstEID 1.0 cold", SC_CARD_TYPE_MCRD_ESTEID_V10, 0, NULL},
-	{"3b:6e:00:ff:45:73:74:45:49:44:20:76:65:72:20:31:2e:30", NULL, "EstEID 1.0 cold", SC_CARD_TYPE_MCRD_ESTEID_V10, 0, NULL},
-	{"3b:de:18:ff:c0:80:b1:fe:45:1f:03:45:73:74:45:49:44:20:76:65:72:20:31:2e:30:2b", NULL, "EstEID 1.0 cold 2006", SC_CARD_TYPE_MCRD_ESTEID_V10, 0, NULL},
-	{"3b:5e:11:ff:45:73:74:45:49:44:20:76:65:72:20:31:2e:30", NULL, "EstEID 1.0 warm 2006", SC_CARD_TYPE_MCRD_ESTEID_V10, 0, NULL},
-	{"3b:6e:00:00:45:73:74:45:49:44:20:76:65:72:20:31:2e:30", NULL, "EstEID 1.1 cold", SC_CARD_TYPE_MCRD_ESTEID_V11, 0, NULL},
 	{"3B:FE:18:00:00:80:31:FE:45:45:73:74:45:49:44:20:76:65:72:20:31:2E:30:A8", NULL, "EstEID 3.0 (dev1) cold", SC_CARD_TYPE_MCRD_ESTEID_V30, 0, NULL},
 	{"3B:FE:18:00:00:80:31:FE:45:80:31:80:66:40:90:A4:56:1B:16:83:01:90:00:86", NULL, "EstEID 3.0 (dev1) warm", SC_CARD_TYPE_MCRD_ESTEID_V30, 0, NULL},
 	{"3b:fe:18:00:00:80:31:fe:45:80:31:80:66:40:90:a4:16:2a:00:83:01:90:00:e1", NULL, "EstEID 3.0 (dev2) warm", SC_CARD_TYPE_MCRD_ESTEID_V30, 0, NULL},
@@ -66,7 +58,7 @@ static const struct sc_aid AzeDIT_v35_AID = { {0xD0, 0x31, 0x00, 0x00, 0x00, 0x4
 
 static struct sc_card_operations mcrd_ops;
 static struct sc_card_driver mcrd_drv = {
-	"MICARDO 2.1 / EstEID 1.0 - 3.5",
+	"MICARDO 2.1 / EstEID 3.0 - 3.5",
 	"mcrd",
 	&mcrd_ops,
 	NULL, 0, NULL
@@ -287,16 +279,11 @@ static int mcrd_set_decipher_key_ref(sc_card_t * card, int key_reference)
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
 
-int is_esteid_card(sc_card_t *card) {
-	switch(card->type) {
-		case SC_CARD_TYPE_MCRD_ESTEID_V10:
-		case SC_CARD_TYPE_MCRD_ESTEID_V11:
-		case SC_CARD_TYPE_MCRD_ESTEID_V30:
-			return 1;
-	}
-
-	return 0;
+int is_esteid_card(sc_card_t *card)
+{
+	return card->type == SC_CARD_TYPE_MCRD_ESTEID_V30 ? 1 : 0;
 }
+
 static int mcrd_match_card(sc_card_t * card)
 {
 	int i = 0, r = 0;
@@ -333,10 +320,6 @@ static int mcrd_init(sc_card_t * card)
 
 
 	if (is_esteid_card(card)) {
-		/* Reset the MULTOS card to get to a known state */
-		if (card->type == SC_CARD_TYPE_MCRD_ESTEID_V11)
-			sc_reset(card, 0);
-
 		/* Select the EstEID AID to get to a known state.
 		 * For some reason a reset is required as well... */
 		if (card->type == SC_CARD_TYPE_MCRD_ESTEID_V30) {

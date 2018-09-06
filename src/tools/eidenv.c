@@ -408,7 +408,7 @@ int main(int argc, char **argv)
 	}
 
 	/* Check card type */
-	if (card->type == SC_CARD_TYPE_MCRD_ESTEID_V10 || card->type == SC_CARD_TYPE_MCRD_ESTEID_V11 || card->type == SC_CARD_TYPE_MCRD_ESTEID_V30)
+	if (card->type == SC_CARD_TYPE_MCRD_ESTEID_V30)
 		do_esteid(card);
 	else if (card->type == SC_CARD_TYPE_BELPIC_EID)
 		do_belpic(card);
