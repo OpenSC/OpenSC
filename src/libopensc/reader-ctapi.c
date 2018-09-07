@@ -239,7 +239,6 @@ static int ctapi_connect(sc_reader_t *reader)
 	char rv;
 	u8 cmd[9], rbuf[256], sad, dad;
 	unsigned short lr;
-	int r;
 
 	if (reader->ctx->flags & SC_CTX_FLAG_TERMINATE)
 		return SC_ERROR_NOT_ALLOWED;
@@ -265,7 +264,7 @@ static int ctapi_connect(sc_reader_t *reader)
 		return SC_ERROR_INTERNAL;
 	reader->atr.len = lr;
 	memcpy(reader->atr.value, rbuf, lr);
-	r = _sc_parse_atr(reader);
+	_sc_parse_atr(reader);
 
 	return 0;
 }
