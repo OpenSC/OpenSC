@@ -22,6 +22,7 @@ mkinstalldirs
 so_locations
 stamp-h*
 tags
+test-driver
 .deps
 .libs
 .#*#
@@ -80,7 +81,9 @@ doc/tools/egk-tool
 doc/tools/npa-tool
 doc/tools/opensc-asn1
 doc/tools/opensc-notify
+doc/tools/tools.html
 doc/files/opensc.conf.5.xml
+doc/files/files.html
 
 etc/opensc.conf.example
 src/common/compat_getopt_main
@@ -120,6 +123,7 @@ win32/OpenSC.wixpdb
 
 MacOSX/build-package
 MacOSX/Distribution.xml
+MacOSX/resources/Welcome.html
 
 *.dmg
 *.pkg
