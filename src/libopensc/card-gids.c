@@ -1133,7 +1133,7 @@ gids_select_key_reference(sc_card_t *card, sc_pkcs15_prkey_info_t* key_info) {
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
 		}
 	}
-	snprintf(ch_tmp, sizeof(ch_tmp), "3FFFB0%02X", key_info->key_reference);
+	snprintf(ch_tmp, sizeof(ch_tmp), "3FFFB0%02X", (u8) (0xFF & key_info->key_reference));
 	sc_format_path(ch_tmp, &(key_info->path));
 	return SC_SUCCESS;
 }
@@ -1477,7 +1477,7 @@ static int gids_delete_key_file(sc_card_t *card, int containernum) {
 	int r;
 	char ch_tmp[10];
 	sc_path_t cpath;
-	snprintf(ch_tmp, sizeof(ch_tmp), "3FFFB0%02X",containernum + GIDS_FIRST_KEY_IDENTIFIER);
+	snprintf(ch_tmp, sizeof(ch_tmp), "3FFFB0%02X", (u8) (0xFF & (containernum + GIDS_FIRST_KEY_IDENTIFIER)));
 	sc_format_path(ch_tmp, &cpath);
 	r = gids_select_file(card, &cpath, NULL);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to select the key file");
