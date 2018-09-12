@@ -1489,7 +1489,7 @@ static int mcrd_pin_cmd(sc_card_t * card, struct sc_pin_cmd_data *data,
 		return SC_SUCCESS;
 	}
 
-	if (SC_CARD_TYPE_MCRD_GENERIC) {
+	if (card->type == SC_CARD_TYPE_MCRD_GENERIC) {
 		sc_log(card->ctx, "modify pin reference for D-Trust\n");
 		if (data->pin_reference == 0x02)
 			data->pin_reference = data->pin_reference | 0x80;
