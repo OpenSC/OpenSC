@@ -1,5 +1,94 @@
 NEWS for OpenSC -- History of user visible changes
 
+# New in 0.19.0; 2018-09-12
+## General Improvements
+* fixed multiple security problems (out of bound writes/reads, #1447):
+    * CVE-2018-16391
+    * CVE-2018-16392
+    * CVE-2018-16393
+    * CVE-2018-16418
+    * CVE-2018-16419
+    * CVE-2018-16420
+    * CVE-2018-16421
+    * CVE-2018-16422
+    * CVE-2018-16423
+    * CVE-2018-16424
+    * CVE-2018-16425
+    * CVE-2018-16426
+    * CVE-2018-16427
+* Improved documentation:
+    * New manual page for opensc.conf(5)
+    * Added several missing switches in manual pages and fixed formatting
+* Win32 installer:
+    * automatically start SCardSvr
+    * added newer OpenPGP ATRs
+* macOS installer: use HFS+ for backward compatibility
+* Remove outdated solaris files
+* PC/SC driver:
+    * Workaround OMNIKEY 3x21 and 6121 Smart Card Readers wrongly identified as pinpad readers in macOS
+* Workaround cards returning short signatures without leading zeroes
+* bash completion
+    * make location directory configurable
+    * Use a new correct path by default
+* build: support for libressl-2.7+
+* Configuration
+    * Distribute minimal opensc.conf
+    * `pkcs11_enable_InitToken made` global configuration option
+    * Modify behavior of `OPENSC_DRIVER` environment variable to restrict driver list instead of forcing one driver and skipping vital parts of configuration
+    * Removed configuration options `zero_ckaid_for_ca_certs`, `force_card_driver`, `reopen_debug_file`, `paranoid-memory`
+    * Generalized configuration option `ignored_readers`
+* If card initialization fails, continue card detection with other card drivers (#1251)
+* Fixed long term card operations on Windows 8 and later (#1043)
+* reader-pcsc: allow fixing the length of a PIN
+* fixed multithreading issue on Window with OpenPACE OIDs
+## PKCS#11
+* fixed crash during `C_WaitForSlotEvent` (#1335)
+## Minidriver
+* Allow cancelling the PIN pad prompt before starting the reader transaction. Whether to start the transaction immediately or not is user-configurable for each application
+## OpenSC tools
+* `opensc-notify`
+    * add Exit button to tray icon
+    * User better description (GenericName) and a generic application icon
+    * Do not display in the application list
+* `pkcs15-tool`
+    * added support for reading ECDSA ssh keys
+* `p11test`
+    *  Filter certificates other than `CKC_X_509`
+* `opengpg-tool`
+    * allow calling -d multiple times
+    * clarify usage text
+## sc-hsm
+* Implement RSA PSS
+* Add support for SmartCard-HSM 4K (V3.0)
+## CAC
+* Remove support for CAC1 cards
+* Ignore unknown tags in properties buffer
+* Use GET PROPERTIES to recognize buffer formats
+* Unbreak encoding last tag-len-value in the data objects
+* Support HID Alt tokens without CCC
+    * They present certificates in OIDs of first AID and use other undocumented applets
+    * Inspect the tokens through the ACA applet and GET ACR APDU
+## Coolkey
+* Unbreak Get Challenge functionality
+* Make uninitialized cards working as expected with ESC
+## OpenPGP
+* add serial number to card name
+* include detailed version into card name
+* define & set LCS (lifecycle support) as extended capability
+* extend manufacturer list in pkcs15-openpgp.c
+* correctly parse hist_bytes
+* Make deciphering with AUT-key possible for OpenPGP Card >v3.2 (fixes #1352)
+* Add supported algorithms for OpenPGP Card (Fixes #1432)
+## Starcos
+* added support for 2nd generation eGK (#1451)
+## CardOS
+* create PIN in MF (`pkcs15init`)
+##  German ID card
+* fixed identifying unknown card as German ID card (#1360)
+## PIV
+* Context Specific Login Using Pin Pad Reader Fix
+* Better Handling of Reset using Discovery Object
+
 # New in 0.18.0; 2018-05-16
 ## General Improvements
 * PKCS#15
@@ -42,7 +131,7 @@ NEWS for OpenSC -- History of user visible changes
     * fixed overwriting digestinfo + hash for RSA-PKCS Signature
     * Enable support for RSA-PSS signatures in pkcs11-tool
     * Add support for RSA-OAEP
-    * Fixed #1286 
+    * Fixed #1286
     * Add missing pkcs11-tool options to man page
     * allow mechanism to be specified in hexadecimal
     * fixed default module path on Windows to use opensc-pkcs11.dll
@@ -295,7 +384,7 @@ New in 0.16.0; 2016-05-15
   first support for Gids smart card
 * dnie
 * Feitian PKI card
-  new ATRs 
+  new ATRs
 * IsoApplet
   (fixes)
 * starcos
@@ -438,7 +527,7 @@ New in 0.14.0; 2014-05-31
         ECC public key encoding
         ECC ecpointQ
 * pkcs15init
-    introduce 'max-unblocks' PIN init parameter 
+    introduce 'max-unblocks' PIN init parameter
     keep cert. blob in cert-info data
     file 'content' and 'prop-attrs' in the card profile
     in profile more AC operations are parsed
@@ -460,7 +549,7 @@ New in 0.14.0; 2014-05-31
     documentation for --list-token-slots
 * default driver
     do not send possibly arbitrary APDU-s to an unknown card.
-    by default 'default' card driver is disabled 
+    by default 'default' card driver is disabled
 * sc-hsm
     Added support for
         persistent EC public keys generated from certificate signing requests
@@ -498,7 +587,7 @@ New in 0.14.0; 2014-05-31
 * myeid
     fixed file-id in myeid.profile
 * entersafe
-    fix a bug when writing public key  
+    fix a bug when writing public key
 * EstEID
     match card only based on presence of application.
 * pteid
@@ -613,7 +702,7 @@ New in 0.12.0; 2010-12-22
   certificate for card label.
 * Possibility to change the default behavior for card resets via
   opensc.conf.
- 
+
 New in 0.11.12; 2009-12-18; Andreas Jellinghaus
 * Document integer problem in OpenSC and implement workaround
 * Improve entersafe profile to support private data objects
@@ -644,12 +733,12 @@ New in 0.11.7; 2009-02-26; Andreas Jellinghaus
 New in 0.11.6; 2008-08-27; Andreas Jellinghaus
 * Improved security fix: don't match for "OpenSC" in the card label.
 * New support for Feitian ePass3000 by Weitao Sun.
-* GemSafeV1 improved to handle key_ref other than 3 by Douglas E. Engert 
+* GemSafeV1 improved to handle key_ref other than 3 by Douglas E. Engert
 
 New in 0.11.5; 2008-07-31; Andreas Jellinghaus
 * Apply security fix for cardos driver and extend pkcs15-tool to
   test cards for the security vulnerability and update them.
-* Build system rewritten (NOTICE: configure options was modified). 
+* Build system rewritten (NOTICE: configure options was modified).
   The build system can produce outputs for *NIX, cygwin and native
   windows (using mingw).
 * ruToken now supported.
