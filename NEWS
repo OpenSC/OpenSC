@@ -1,6 +1,6 @@
 NEWS for OpenSC -- History of user visible changes
 
-# New in 0.19.0; 2018-09-12
+# New in 0.19.0; 2018-09-13
 ## General Improvements
 * fixed multiple security problems (out of bound writes/reads, #1447):
     * CVE-2018-16391
