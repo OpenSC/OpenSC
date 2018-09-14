@@ -30,11 +30,11 @@ install:
       If ($env:Platform -Match "x86") {
         $env:VCVARS_PLATFORM="x86"
         $env:OPENSSL_PF="Win32"
-        $env:ARTIFACT="OpenSC-win32_${env:PACKAGE_NAME}"
+        $env:ARTIFACT="OpenSC-${env:PACKAGE_NAME}_win32"
       } Else {
         $env:VCVARS_PLATFORM="amd64"
         $env:OPENSSL_PF="Win64"
-        $env:ARTIFACT="OpenSC-win64_${env:PACKAGE_NAME}"
+        $env:ARTIFACT="OpenSC-${env:PACKAGE_NAME}_win64"
       }
   - ps: >-
       If ($env:Configuration -Like "*Light*") {
