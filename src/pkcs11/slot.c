@@ -374,10 +374,10 @@ again:
 
 fail:
 	if (free_p11card) {
-		if (p11card->card != NULL)
-			sc_disconnect_card(p11card->card);
 		if (p11card->framework)
 			p11card->framework->unbind(p11card);
+		if (p11card->card != NULL)
+			sc_disconnect_card(p11card->card);
 		free(p11card);
 	}
 
