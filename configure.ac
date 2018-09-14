@@ -21,7 +21,7 @@ define([VS_FF_PRODUCT_URL], [https://github.com/OpenSC/OpenSC])
 
 m4_sinclude(version.m4.ci)
 
-m4_define([openssl_minimum_version], [1.0.1])
+m4_define([openssl_minimum_version], [1.0.2])
 
 AC_INIT([PRODUCT_NAME],[PACKAGE_VERSION_MAJOR.PACKAGE_VERSION_MINOR.PACKAGE_VERSION_FIX[]PACKAGE_SUFFIX],[PRODUCT_BUGREPORT],[PRODUCT_TARNAME],[PRODUCT_URL])
 AC_CONFIG_AUX_DIR([.])
