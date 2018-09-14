@@ -32,6 +32,7 @@
 #include "internal.h"
 #include "pkcs15.h"
 #include "log.h"
+#include "card-openpgp.h"
 
 static int sc_pkcs15emu_openpgp_add_data(sc_pkcs15_card_t *);
 
@@ -44,6 +45,7 @@ static int sc_pkcs15emu_openpgp_add_data(sc_pkcs15_card_t *);
 				| SC_PKCS15_PIN_FLAG_SO_PIN)
 
 #define PGP_NUM_PRIVDO       4
+#define PGP_MAX_NUM_CERTS    3
 
 typedef struct _pgp_pin_cfg {
 	const char	*label;
@@ -93,12 +95,25 @@ typedef	struct _pgp_key_cfg {
 	int		pubkey_usage;
 } pgp_key_cfg_t;
 
+typedef struct cdata_st {
+	const char *label;
+	int	    authority;
+	const char *path;
+	const char *id;
+	int         obj_flags;
+} cdata;
+
 static const pgp_key_cfg_t key_cfg[3] = {
 	{ "Signature key",      "B601", 1, PGP_SIG_PRKEY_USAGE,  PGP_SIG_PUBKEY_USAGE  },
 	{ "Encryption key",     "B801", 2, PGP_ENC_PRKEY_USAGE,  PGP_ENC_PUBKEY_USAGE  },
 	{ "Authentication key", "A401", 2, PGP_AUTH_PRKEY_USAGE | PGP_ENC_PRKEY_USAGE, PGP_AUTH_PUBKEY_USAGE | PGP_ENC_PUBKEY_USAGE }
 };
 
+static const cdata certs[PGP_MAX_NUM_CERTS] = {
+	{"AUT certificate", 0, "3F007F21", "3", SC_PKCS15_CO_FLAG_MODIFIABLE},
+	{"DEC certificate", 0, "3F007F21", "2", SC_PKCS15_CO_FLAG_MODIFIABLE},
+	{"SIG certificate", 0, "3F007F21", "1", SC_PKCS15_CO_FLAG_MODIFIABLE}
+};
 
 typedef struct _pgp_manuf_map {
 	unsigned short		id;
@@ -529,26 +544,63 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 	if (r < 0)
 		goto failed;
 
-	/* If DO 7F21 holds data, we declare a cert object for pkcs15 */
-	if (file->size > 0) {
+	for(u8 i=0; i<PGP_MAX_NUM_CERTS; i++) {
 		struct sc_pkcs15_cert_info cert_info;
 		struct sc_pkcs15_object    cert_obj;
+		u8* buffer = malloc(MAX_OPENPGP_DO_SIZE);
+		int resp_len = 0;
+
+		if (buffer == NULL)
+			goto failed;
 
 		memset(&cert_info, 0, sizeof(cert_info));
 		memset(&cert_obj,  0, sizeof(cert_obj));
 
+		/* only try to SELECT DATA for OpenPGP >= v3 */
+		if (card->type >= SC_CARD_TYPE_OPENPGP_V3) {
+			r = sc_card_ctl(card, SC_CARDCTL_OPENPGP_SELECT_DATA, &i);
+			if (r < 0) {
+				free(buffer);
+				LOG_TEST_RET(card->ctx, r, "Failed OpenPGP - select data");
+			}
+		}
+		sc_format_path(certs[i].path, &cert_info.path);
+
 		/* Certificate ID. We use the same ID as the authentication key */
-		cert_info.id.value[0] = 3;
-		cert_info.id.len = 1;
-		/* Authority, flag is zero */
-		/* The path following which PKCS15 will find the content of the object */
-		sc_format_path("3F007F21", &cert_info.path);
+		sc_pkcs15_format_id(certs[i].id, &cert_info.id);
+
+		resp_len = sc_get_data(card, 0x7F21, buffer, MAX_OPENPGP_DO_SIZE);
+
+		/* Response length => free buffer and continue with next id */
+		if (resp_len == 0) {
+			free(buffer);
+			continue;
+		}
+
+		/* Catch error during sc_get_data */
+		if (resp_len < 0) {
+			free(buffer);
+			goto failed;
+		}
+
+		/* Assemble certificate info struct, based on `certs` array */
+		cert_info.value.len = resp_len;
+		cert_info.value.value = buffer;
+		cert_info.authority = certs[i].authority;
+		cert_obj.flags = certs[i].obj_flags;
+
 		/* Object label */
-		strlcpy(cert_obj.label, "Cardholder certificate", sizeof(cert_obj.label));
+		strlcpy(cert_obj.label, certs[i].label, sizeof(cert_obj.label));
 
 		r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
-		if (r < 0)
+		if (r < 0) {
+			free(buffer);
 			goto failed;
+		}
+
+		/* only iterate, for OpenPGP >= v3, thus break on < v3 */
+		if (card->type < SC_CARD_TYPE_OPENPGP_V3)
+			break;
 	}
 
 	/* Add PKCS#15 DATA objects from other OpenPGP card DOs. The return
