@@ -1702,8 +1702,7 @@ static int do_random(int argc, char **argv)
 		if (written < (size_t) count)
 			perror(filename);
 		if (outf == stdout) {
-			fwrite("\n", 1, 1, outf);
-			printf("Total of %"SC_FORMAT_LEN_SIZE_T"u random bytes written\n", written);
+			printf("\nTotal of %"SC_FORMAT_LEN_SIZE_T"u random bytes written\n", written);
 		}
 		else
 			printf("Total of %"SC_FORMAT_LEN_SIZE_T"u random bytes written to %s\n",
