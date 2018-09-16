@@ -28,9 +28,17 @@
 		<title>Description</title>
 		<para>
 			The <command>opensc-explorer</command> utility can be
-			used interactively to perform miscellaneous operations
+			used to perform miscellaneous operations
 			such as exploring the contents of or sending arbitrary
 			APDU commands to a smart card or similar security token.
+		</para>
+		<para>
+			If a <replaceable class="parameter">SCRIPT</replaceable> is given,
+			<command>opensc-explorer</command> runs in non-interactive mode,
+			reading the commands from <replaceable class="parameter">SCRIPT</replaceable>,
+			one command per line.
+			If no script is given, <command>opensc-explorer</command>
+			runs in interactive mode, reading commands from standard input.
 		</para>
 	</refsect1>
 
