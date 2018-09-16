@@ -63,6 +63,7 @@ static sc_file_t *current_file = NULL;
 static sc_path_t current_path;
 static sc_context_t *ctx = NULL;
 static sc_card_t *card = NULL;
+static int interactive = 1;
 
 static const struct option options[] = {
 	{ "reader",		1, NULL, 'r' },
@@ -2051,19 +2052,14 @@ static char *read_cmdline(FILE *script, char *prompt)
 {
 	static char buf[SC_MAX_EXT_APDU_BUFFER_SIZE];
 	static int initialized;
-	static int interactive;
-
-	if (!initialized) {
-		initialized = 1;
-		interactive = isatty(fileno(script));
-#ifdef ENABLE_READLINE
-		if (interactive)
-			using_history();
-#endif
-	}
 
 	if (interactive) {
 #ifdef ENABLE_READLINE
+		if (!initialized) {
+			initialized = 1;
+			using_history();
+		}
+
 		char *line = readline(prompt);
 
 		/* add line to history if longer than 2 characters */
@@ -2196,9 +2192,11 @@ int main(int argc, char *argv[])
 		util_print_usage_and_die(app_name, options, option_help, "[SCRIPT]");
 		break;
 	case 0:
+		interactive = 1;
 		script = stdin;
 		break;
 	case 1:
+		interactive = 0;
 		if (strcmp(argv[optind], "-") == 0) {
 			script = stdin;
 		}
