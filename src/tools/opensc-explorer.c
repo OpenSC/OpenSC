@@ -92,6 +92,7 @@ static int do_info(int argc, char **argv);
 static int do_create(int argc, char **argv);
 static int do_mkdir(int argc, char **argv);
 static int do_delete(int argc, char **argv);
+static int do_pininfo(int argc, char **argv);
 static int do_verify(int argc, char **argv);
 static int do_change(int argc, char **argv);
 static int do_unblock(int argc, char **argv);
@@ -120,16 +121,16 @@ struct command {
 
 static struct command	cmds[] = {
 	{ do_echo,
-		"echo",	"[<string> ..]",
+		"echo",	"[<string> ...]",
 		"display arguments"			},
 	{ do_ls,
-		"ls",	"[<pattern> ..]",
+		"ls",	"[<pattern> ...]",
 		"list files in the current DF"		},
 	{ do_find,
 		"find",	"[<start id> [<end id>]]",
 		"find all files in the current DF"	},
 	{ do_find_tags,
-		"find_tags",	"[<start tag> [<end tag>]]",
+		"tag_find",	"[<start tag> [<end tag>]]",
 		"find all tags of data objects in the current context"	},
 	{ do_cd,
 		"cd",	"{.. | <file id> | aid:<DF name>}",
@@ -152,6 +153,9 @@ static struct command	cmds[] = {
 	{ do_delete,
 		"rm",	"<file id>",
 		"remove an EF/DF"			},
+	{ do_pininfo,
+		"pin_info",	"{CHV|KEY|AUT|PRO}<key ref>",
+		"get information on PIN or key from the card"	},
 	{ do_verify,
 		"verify",	"{CHV|KEY|AUT|PRO}<key ref> [<pin>]",
 		"present a PIN or key to the card"	},
@@ -177,7 +181,7 @@ static struct command	cmds[] = {
 		"erase",	"",
 		"erase card"				},
 	{ do_random,
-		"random",	"<count>",
+		"random",	"<count> [<output file>]",
 		"obtain <count> random bytes from card"	},
 	{ do_update_record,
 		"update_record", "<file id> <rec no> <rec offs> <data>",
@@ -186,13 +190,13 @@ static struct command	cmds[] = {
 		"update_binary", "<file id> <offs> <data>",
 		"update binary"				},
 	{ do_apdu,
-		"apdu",	"<data>+",
+		"apdu",	"<data> ...",
 		"send a custom apdu command"		},
 	{ do_asn1,
 		"asn1",	"[<file id>]",
 		"decode an ASN.1 file"			},
 	{ do_sm,
-		"sm",	"open|close",
+		"sm",	"{open|close}",
 		"call SM 'open' or 'close' handlers, if available"},
 	{ do_debug,
 		"debug",	"[<value>]",
@@ -1083,6 +1087,60 @@ static int do_delete(int argc, char **argv)
 	return 0;
 }
 
+static int do_pininfo(int argc, char **argv)
+{
+	const id2str_t typeNames[] = {
+		{ SC_AC_CHV,	"CHV"	},
+		{ SC_AC_AUT,	"KEY"	},
+		{ SC_AC_AUT,	"AUT"	},
+		{ SC_AC_PRO,	"PRO"	},
+		{ SC_AC_NONE,	NULL, 	}
+	};
+	int r, tries_left = -1;
+	size_t i;
+	struct sc_pin_cmd_data data;
+	int prefix_len = 0;
+
+	if (argc != 1)
+		return usage(do_pininfo);
+
+	memset(&data, 0, sizeof(data));
+	data.cmd = SC_PIN_CMD_GET_INFO;
+
+	data.pin_type = SC_AC_NONE;
+	for (i = 0; typeNames[i].str; i++) {
+		prefix_len = strlen(typeNames[i].str);
+		if (strncasecmp(argv[0], typeNames[i].str, prefix_len) == 0) {
+			data.pin_type = typeNames[i].id;
+			break;
+		}
+	}
+	if (data.pin_type == SC_AC_NONE) {
+		printf("Invalid type.\n");
+		return usage(do_pininfo);
+	}
+	if (sscanf(argv[0] + prefix_len, "%d", &data.pin_reference) != 1) {
+		printf("Invalid key reference.\n");
+		return usage(do_pininfo);
+	}
+
+	r = sc_lock(card);
+	if (r == SC_SUCCESS)
+		r = sc_pin_cmd(card, &data, &tries_left);
+	sc_unlock(card);
+
+	if (r) {
+		printf("Unable to get PIN info: %s\n", sc_strerror(r));
+		return -1;
+	}
+	if (tries_left > 0)
+		printf("Logged %s, %d tries left.\n",
+			(data.pin1.logged_in) ? "in" : "out", tries_left);
+	else
+		printf("Logged %s\n.", (data.pin1.logged_in) ? "in" : "out");
+	return 0;
+}
+
 static int do_verify(int argc, char **argv)
 {
 	const id2str_t typeNames[] = {
@@ -1506,7 +1564,7 @@ static int do_put(int argc, char **argv)
 	sc_path_t path;
 	sc_file_t *file = NULL;
 	const char *filename;
-	FILE *outf = NULL;
+	FILE *inf = NULL;
 
 	if (argc < 1 || argc > 2)
 		return usage(do_put);
@@ -1514,8 +1572,8 @@ static int do_put(int argc, char **argv)
 		return usage(do_put);
 
 	filename = (argc == 2) ? argv[1] : path_to_filename(&path, '_');
-	outf = fopen(filename, "rb");
-	if (outf == NULL) {
+	inf = fopen(filename, "rb");
+	if (inf == NULL) {
 		perror(filename);
 		goto err;
 	}
@@ -1531,7 +1589,7 @@ static int do_put(int argc, char **argv)
 	while (count) {
 		int c = count > sizeof(buf) ? sizeof(buf) : count;
 
-		r = fread(buf, 1, c, outf);
+		r = fread(buf, 1, c, inf);
 		if (r < 0) {
 			perror("fread");
 			goto err;
@@ -1558,8 +1616,8 @@ static int do_put(int argc, char **argv)
 	err = 0;
 err:
 	sc_file_free(file);
-	if (outf)
-		fclose(outf);
+	if (inf)
+		fclose(inf);
 	select_current_path_or_die();
 	return -err;
 }
@@ -1605,8 +1663,10 @@ static int do_random(int argc, char **argv)
 {
 	unsigned char buffer[SC_MAX_EXT_APDU_BUFFER_SIZE];
 	int r, count;
+	const char *filename = NULL;
+	FILE *outf = NULL;
 
-	if (argc != 1)
+	if (argc < 1 || argc > 2)
 		return usage(do_random);
 
 	count = atoi(argv[0]);
@@ -1614,6 +1674,18 @@ static int do_random(int argc, char **argv)
 		printf("Number must be in range 0..%"SC_FORMAT_LEN_SIZE_T"u\n",
 			   	sizeof buffer);
 		return -1;
+	}
+
+	if (argc == 2) {
+		filename = argv[1];
+
+		outf = (strcmp(filename, "-") == 0)
+			? stdout
+			: fopen(filename, "wb");
+		if (outf == NULL) {
+			perror(filename);
+			return -1;
+		}
 	}
 
 	r = sc_lock(card);
@@ -1625,7 +1697,27 @@ static int do_random(int argc, char **argv)
 		return -1;
 	}
 
-	util_hex_dump_asc(stdout, buffer, count, 0);
+	if (argc == 2) {
+		/* outf is guaranteed to be non-NULL */
+		size_t written = fwrite(buffer, 1, count, outf);
+
+		if (written < (size_t) count)
+			perror(filename);
+		if (outf == stdout) {
+			printf("\nTotal of %"SC_FORMAT_LEN_SIZE_T"u random bytes written\n", written);
+		}
+		else
+			printf("Total of %"SC_FORMAT_LEN_SIZE_T"u random bytes written to %s\n",
+				written, filename);
+
+		fclose(outf);
+		
+		if (written < (size_t) count)
+			return -1;
+	}
+	else {
+		util_hex_dump_asc(stdout, buffer, count, 0);
+	}
 	return 0;
 }
 
@@ -1672,8 +1764,8 @@ static int do_get_data(int argc, char **argv)
 static int do_put_data(int argc, char **argv)
 {
 	unsigned int tag;
-	u8 buf[8192];
-	size_t buflen = sizeof(buf);
+	u8 buf[SC_MAX_EXT_APDU_BUFFER_SIZE];
+	size_t len = sizeof(buf);
 	int r;
 
 	if (argc != 2)
@@ -1683,17 +1775,15 @@ static int do_put_data(int argc, char **argv)
 	tag = strtoul(argv[0], NULL, 16);
 
 	/* Extract the new content */
-	/* buflen is the max length of reception buffer */
-	r = parse_string_or_hexdata(argv[1], buf, &buflen);
-	if (r < 0) {
-		printf("unable to parse data\n");
-		return -1;
+	if ((r = parse_string_or_hexdata(argv[1], buf, &len)) < 0) {
+		fprintf(stderr, "error parsing %s: %s\n", argv[1], sc_strerror(r));
+		return r;
 	}
 
 	/* Call OpenSC to do put data */
 	r = sc_lock(card);
 	if (r == SC_SUCCESS)
-		r = sc_put_data(card, tag, buf, buflen);
+		r = sc_put_data(card, tag, buf, len);
 	sc_unlock(card);
 	if (r < 0) {
 		printf("Cannot put data to %04X; return %i\n", tag, r);
@@ -1708,7 +1798,7 @@ static int do_put_data(int argc, char **argv)
 static int do_apdu(int argc, char **argv)
 {
 	sc_apdu_t apdu;
-	u8 buf[SC_MAX_EXT_APDU_BUFFER_SIZE * 2];
+	u8 buf[SC_MAX_EXT_APDU_BUFFER_SIZE];
 	u8 rbuf[SC_MAX_EXT_APDU_BUFFER_SIZE];
 	size_t len, i;
 	int r;
@@ -1716,8 +1806,9 @@ static int do_apdu(int argc, char **argv)
 	if (argc < 1)
 		return usage(do_apdu);
 
-	for (i = 0, len = 0; i < (unsigned) argc; i++)   {
-		size_t len0 = strlen(argv[i]);
+	/* loop over the args and parse them, making sure the result fits into buf[] */
+	for (i = 1, len = 0; i < (unsigned) argc && len < sizeof(buf); i++)   {
+		size_t len0 = sizeof(buf) - len;
 
 		if ((r = parse_string_or_hexdata(argv[i], buf + len, &len0)) < 0) {
 			fprintf(stderr, "error parsing %s: %s\n", argv[i], sc_strerror(r));
@@ -1962,9 +2053,6 @@ static char *read_cmdline(FILE *script, char *prompt)
 int main(int argc, char *argv[])
 {
 	int r, c, long_optind = 0, err = 0;
-	char *line;
-	int cargc;
-	char *cargv[260];
 	sc_context_param_t ctx_param;
 	int lcycle = SC_CARDCTRL_LIFECYCLE_ADMIN;
 	FILE *script = stdin;
@@ -2028,15 +2116,19 @@ int main(int argc, char *argv[])
 
 	if (opt_startfile) {
 		if(*opt_startfile) {
-			char startpath[1024];
+			char startpath[SC_MAX_PATH_STRING_SIZE * 2];
 			char *args[] = { startpath };
 
-			strncpy(startpath, opt_startfile, sizeof(startpath)-1);
+			if (strlcpy(startpath, opt_startfile, sizeof(startpath)) >= sizeof(startpath)) {
+				fprintf(stderr, "unable to select file %s: name too long\n",
+					opt_startfile);
+				die(1);
+			}
 			r = do_cd(1, args);
 			if (r) {
-				printf("unable to select file %s: %s\n",
+				fprintf(stderr, "unable to select file %s: %s\n",
 					opt_startfile, sc_strerror(r));
-				return -1;
+				die(1);
 			}
 		}
 	} else {
@@ -2046,8 +2138,8 @@ int main(int argc, char *argv[])
 			r = sc_select_file(card, &current_path, &current_file);
 		sc_unlock(card);
 		if (r) {
-			printf("unable to select MF: %s\n", sc_strerror(r));
-			return 1;
+			fprintf(stderr, "unable to select MF: %s\n", sc_strerror(r));
+			die(1);
 		}
 	}
 
@@ -2076,6 +2168,9 @@ int main(int argc, char *argv[])
 	}
 
 	while (!feof(script)) {
+		char *line;
+		int cargc;
+		char *cargv[260];
 		struct command *cmd;
 		char prompt[3*SC_MAX_PATH_STRING_SIZE];
 
