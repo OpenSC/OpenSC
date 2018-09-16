@@ -1764,7 +1764,7 @@ static int do_put_data(int argc, char **argv)
 {
 	unsigned int tag;
 	u8 buf[SC_MAX_EXT_APDU_BUFFER_SIZE];
-	size_t len;
+	size_t len = sizeof(buf);
 	int r;
 
 	if (argc != 2)
