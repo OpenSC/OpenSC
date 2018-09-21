@@ -151,6 +151,20 @@ enum _sm_algo {
 	SM_ALGO_UNKNOWN = 257	/* 3.x: coded as 0 in DO C0 */
 };
 
+static struct pgp_supported_ec_curves {
+		struct sc_object_id oid;
+		size_t size;
+} ec_curves[] = {
+	{{{1, 2, 840, 10045, 3, 1, 7, -1}},      256}, /* ansiX9p256r1 */
+	{{{1, 3, 132, 0, 34, -1}},			     384}, /* ansiX9p384r1 */
+	{{{1, 3, 132, 0, 35, -1}},				 512}, /* ansiX9p512r1 */
+	{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 7, -1}},  256}, /* brainpoolP256r1 */
+	{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 11, -1}}, 384}, /* brainpoolP384r1 */
+	{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 13, -1}}, 512}, /* brainpoolP512r1 */
+	{{{-1}}, 0} /* This entry must not be touched. */
+
+};
+
 typedef struct pgp_blob {
 	struct pgp_blob *	next;	/* pointer to next sibling */
 	struct pgp_blob *	parent;	/* pointer to parent */
@@ -457,7 +471,7 @@ pgp_init(sc_card_t *card)
 	sc_path_t	path;
 	sc_file_t	*file = NULL;
 	struct do_info	*info;
-	int		r;
+	int		r, i;
 
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -579,21 +593,34 @@ pgp_init(sc_card_t *card)
 
 	/* add supported algorithms based on specification for pkcs15-init */
 	if (strcmp(card->ctx->app_name, "pkcs15-init") == 0){
-		unsigned long flags;
-		flags = SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE;
-		flags |= SC_ALGORITHM_ONBOARD_KEY_GEN; // Can be generated in card
+		unsigned long flags_rsa, flags_ecc, ext_flags;
+
+		flags_rsa = SC_ALGORITHM_RSA_PAD_PKCS1|
+			SC_ALGORITHM_RSA_HASH_NONE|
+			SC_ALGORITHM_ONBOARD_KEY_GEN;
+		flags_ecc = SC_ALGORITHM_ECDSA_RAW|
+			SC_ALGORITHM_ECDH_CDH_RAW|
+			SC_ALGORITHM_ECDSA_HASH_NONE|
+			SC_ALGORITHM_ONBOARD_KEY_GEN;
+		/* TODO copied from isoApplet; is this correct? */
+		ext_flags = SC_ALGORITHM_EXT_EC_UNCOMPRESES|
+			SC_ALGORITHM_EXT_EC_NAMEDCURVE|
+			SC_ALGORITHM_EXT_EC_F_P;
 
 		switch (card->type) {
 			case SC_CARD_TYPE_OPENPGP_V3:
 				/* RSA 1024 was removed for v3+ */
-				_sc_card_add_rsa_alg(card, 2048, flags, 0);
-				_sc_card_add_rsa_alg(card, 3072, flags, 0);
-				_sc_card_add_rsa_alg(card, 4096, flags, 0);
-				/* TODO add ECC
-				 * v3.0+ supports: [RFC 4880 & 6637] 0x12 = ECDH, 0x13 = ECDSA */
+				_sc_card_add_rsa_alg(card, 2048, flags_rsa, 0);
+				_sc_card_add_rsa_alg(card, 3072, flags_rsa, 0);
+				_sc_card_add_rsa_alg(card, 4096, flags_rsa, 0);
+				/* v3.0+ supports: [RFC 4880 & 6637] 0x12 = ECDH, 0x13 = ECDSA */
+				for (i=0; ec_curves[i].oid.value[0] >= 0; i++)
+				{
+					_sc_card_add_ec_alg(card, ec_curves[i].size, flags_ecc, ext_flags, &ec_curves[i].oid);
+				}
 				break;
 			case SC_CARD_TYPE_OPENPGP_GNUK:
-				_sc_card_add_rsa_alg(card, 2048, flags, 0);
+				_sc_card_add_rsa_alg(card, 2048, flags_rsa, 0);
 				/* TODO add ECC for more recent Gnuk (1.2.x)
 				 * these are not include in SC_CARD_TYPE_OPENPGP_GNUK, but
 				 * are treated like SC_CARD_TYPE_OPENPGP_V2 
@@ -601,10 +628,10 @@ pgp_init(sc_card_t *card)
 				break;
 			case SC_CARD_TYPE_OPENPGP_V2:
 			default:
-				_sc_card_add_rsa_alg(card, 1024, flags, 0);
-				_sc_card_add_rsa_alg(card, 2048, flags, 0);
-				_sc_card_add_rsa_alg(card, 3072, flags, 0);
-				_sc_card_add_rsa_alg(card, 4096, flags, 0);
+				_sc_card_add_rsa_alg(card, 1024, flags_rsa, 0);
+				_sc_card_add_rsa_alg(card, 2048, flags_rsa, 0);
+				_sc_card_add_rsa_alg(card, 3072, flags_rsa, 0);
+				_sc_card_add_rsa_alg(card, 4096, flags_rsa, 0);
 				break;
 		}
 	}
