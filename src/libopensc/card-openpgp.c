@@ -820,6 +820,7 @@ pgp_get_card_features(sc_card_t *card)
 					_sc_card_add_rsa_alg(card, keybits, flags, 0);
 				}
 				/* v3.0+: [RFC 4880 & 6637] 0x12 = ECDH, 0x13 = ECDSA */
+				// TODO ECC: add detection
 			}
 		}
 
@@ -1560,6 +1561,7 @@ pgp_get_pubkey_pem(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 		|| (r = pgp_read_blob(card, exp_blob)) < 0)
 		LOG_TEST_RET(card->ctx, r, "error getting elements");
 
+	// TODO ECC: has to be adapted...
 	memset(&pubkey, 0, sizeof(pubkey));
 	pubkey.algorithm = SC_ALGORITHM_RSA;
 	pubkey.u.rsa.modulus.data  = mod_blob->data;
@@ -1921,6 +1923,7 @@ pgp_set_security_env(sc_card_t *card,
 
 	LOG_FUNC_CALLED(card->ctx);
 
+	/* TODO ECC: not true anymore, check what's to do here */
 	if ((env->flags & SC_SEC_ENV_ALG_PRESENT) && (env->algorithm != SC_ALGORITHM_RSA))
 		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
 				"only RSA algorithm supported");
@@ -2035,6 +2038,7 @@ pgp_compute_signature(sc_card_t *card, const u8 *data,
 		break;
 	case 0x02: /* authentication key */
 		/* INTERNAL AUTHENTICATE */
+		// TODO ECC: check for needed changes. See 7.2.13, data has to be Hash Value for curves
 		sc_format_apdu(card, &apdu, apdu_case, 0x88, 0, 0);
 		break;
 	case 0x01:
@@ -2084,7 +2088,7 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 	if (!(temp = malloc(inlen + 1)))
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 	/* padding byte: 0x00 = RSA; 0x02 = AES [v2.1+ only] */
-	temp[0] = 0x00;
+	temp[0] = 0x00; // TODO ECC: padding byte is A6, see 7.2.11
 	memcpy(temp + 1, in, inlen);
 	in = temp;
 	inlen += 1;
@@ -2253,6 +2257,7 @@ pgp_store_creationtime(sc_card_t *card, u8 key_id, time_t *outtime)
  * modulus and exponent are passed separately from key_info
  * because key_info->exponent may be null.
  **/
+// TODO ECC: has to be adapted...
 static int
 pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
                                     u8* modulus, u8* exponent,
@@ -2381,6 +2386,7 @@ pgp_update_pubkey_blob(sc_card_t *card, u8* modulus, size_t modulus_len,
 	LOG_TEST_RET(card->ctx, r, "Cannot get the blob.");
 
 	/* encode pubkey */
+	// TODO ECC: has to be adapted...
 	memset(&pubkey, 0, sizeof(pubkey));
 	pubkey.algorithm = SC_ALGORITHM_RSA;
 	pubkey.u.rsa.modulus.data  = modulus;
@@ -2455,6 +2461,9 @@ pgp_parse_and_set_pubkey_output(sc_card_t *card, u8* data, size_t data_len,
 			/* remember the exponent to calculate fingerprint later */
 			exponent = part;
 		}
+		else if (tag == 0x0086) {
+			// TODO ECC support 7.2.14
+		}
 
 		/* go to next part to parse */
 		/* This will be different from pgp_enumerate_blob() a bit */
@@ -2463,10 +2472,12 @@ pgp_parse_and_set_pubkey_output(sc_card_t *card, u8* data, size_t data_len,
 
 	/* calculate and store fingerprint */
 	sc_log(card->ctx, "Calculate and store fingerprint");
+	// TODO ECC: has to be adapted...
 	r = pgp_calculate_and_store_fingerprint(card, ctime, modulus, exponent, key_info);
 	LOG_TEST_RET(card->ctx, r, "Cannot store fingerprint.");
 	/* update pubkey blobs (B601,B801, A401) */
 	sc_log(card->ctx, "Update blobs holding pubkey info.");
+	// TODO ECC: has to be adapted...
 	r = pgp_update_pubkey_blob(card, modulus, key_info->modulus_len,
 	                           exponent, key_info->exponent_len, key_info->keytype);
 	LOG_FUNC_RETURN(card->ctx, r);
