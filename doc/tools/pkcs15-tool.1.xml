@@ -144,6 +144,14 @@
 
 				<varlistentry>
 					<term>
+						<option>--list-public-key</option> <replaceable>id</replaceable>
+					</term>
+					<listitem><para>List public key identified by id stored on the token,
+                                        including key name, id, algorithm and length information.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
 						<option>--list-public-keys</option>
 					</term>
 					<listitem><para>List all public keys stored on the token, including
