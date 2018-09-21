@@ -90,6 +90,7 @@ enum {
 	OPT_NO_CACHE,
 	OPT_CLEAR_CACHE,
 	OPT_LIST_PUB,
+	OPT_LIST_PUBS,
 	OPT_READ_PUB,
 #if defined(ENABLE_OPENSSL) && (defined(_WIN32) || defined(HAVE_INTTYPES_H))
 	OPT_READ_SSH,
@@ -129,7 +130,8 @@ static const struct option options[] = {
 	{ "unblock-pin",	no_argument, NULL,		'u' },
 	{ "change-pin",		no_argument, NULL,		OPT_CHANGE_PIN },
 	{ "list-keys",		no_argument, NULL,		'k' },
-	{ "list-public-keys",	no_argument, NULL,		OPT_LIST_PUB },
+	{ "list-public-key",	required_argument, NULL,	OPT_LIST_PUB },
+	{ "list-public-keys",	no_argument, NULL,		OPT_LIST_PUBS },
 	{ "read-public-key",	required_argument, NULL,	OPT_READ_PUB },
 #if defined(ENABLE_OPENSSL) && (defined(_WIN32) || defined(HAVE_INTTYPES_H))
 	{ "read-ssh-key",	required_argument, NULL,	OPT_READ_SSH },
@@ -171,6 +173,7 @@ static const char *option_help[] = {
 	"Unblock PIN code",
 	"Change PIN or PUK code",
 	"List private keys",
+	"List public key with ID <arg>",
 	"List public keys",
 	"Reads public key with ID <arg>",
 #if defined(ENABLE_OPENSSL) && (defined(_WIN32) || defined(HAVE_INTTYPES_H))
@@ -742,6 +745,35 @@ static void print_pubkey_info(const struct sc_pkcs15_object *obj)
 	printf("\tID             : %s\n", sc_pkcs15_print_id(&pubkey->id));
 	if (!have_path || obj->content.len)
 		printf("\tDirectValue    : <%s>\n", obj->content.len ? "present" : "absent");
+}
+
+static int list_public_key(void)
+{
+	int r;
+	struct sc_pkcs15_id id;
+	struct sc_pkcs15_object *obj;
+
+	id.len = SC_PKCS15_MAX_ID_SIZE;
+	sc_pkcs15_hex_string_to_id(opt_pubkey, &id);
+
+	r = sc_pkcs15_find_pubkey_by_id(p15card, &id, &obj);
+	if (r == SC_ERROR_OBJECT_NOT_FOUND) {
+		/* No pubkey - try if there's a certificate */
+		r = sc_pkcs15_find_cert_by_id(p15card, &id, &obj);
+		if (r == SC_ERROR_OBJECT_NOT_FOUND) {
+			fprintf(stderr, "Public key with ID '%s' not found.\n",
+			    opt_pubkey);
+			return 2;
+		}
+	}
+	if (r < 0) {
+		fprintf(stderr, "Public key search failed: %s\n",
+		    sc_strerror(r));
+		return 1;
+	}
+
+	print_pubkey_info(obj);
+	return 0;
 }
 
 static int list_public_keys(void)
@@ -2109,6 +2141,7 @@ int main(int argc, char *argv[])
 	int do_list_apps = 0;
 	int do_dump = 0;
 	int do_list_prkeys = 0;
+	int do_list_pubkey = 0;
 	int do_list_pubkeys = 0;
 	int do_read_pubkey = 0;
 #if defined(ENABLE_OPENSSL) && (defined(_WIN32) || defined(HAVE_INTTYPES_H))
@@ -2192,6 +2225,11 @@ int main(int argc, char *argv[])
 			action_count++;
 			break;
 		case OPT_LIST_PUB:
+			opt_pubkey = optarg;
+			do_list_pubkey = 1;
+			action_count++;
+			break;
+		case OPT_LIST_PUBS:
 			do_list_pubkeys = 1;
 			action_count++;
 			break;
@@ -2364,6 +2402,11 @@ int main(int argc, char *argv[])
 	}
 	if (do_list_prkeys) {
 		if ((err = list_private_keys()))
+			goto end;
+		action_count--;
+	}
+	if (do_list_pubkey) {
+		if ((err = list_public_key()))
 			goto end;
 		action_count--;
 	}
