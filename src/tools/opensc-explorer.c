@@ -2051,10 +2051,11 @@ static int parse_cmdline(char *in, char **argv, int argvsize)
 static char *read_cmdline(FILE *script, char *prompt)
 {
 	static char buf[SC_MAX_EXT_APDU_BUFFER_SIZE];
-	static int initialized;
 
 	if (interactive) {
 #ifdef ENABLE_READLINE
+		static int initialized;
+
 		if (!initialized) {
 			initialized = 1;
 			using_history();
