@@ -144,9 +144,7 @@ int starcos_find_algorithm_flags_3_2(sc_card_t *card, const sc_security_env_t *e
 				//symmetric
 				if(env->flags & SC_SEC_ENV_KEY_REF_SYMMETRIC){
 					/* For now, signature sometimes runs into this case -> return 0, not -1 to continue signature procedures
-					* Not supported yet
-					* TODO: check one-sided symmetric
-					*		double-sided symmetric */
+					* Not supported yet. */
 					return 0;
 				} else {
 					/*according to manual implemented using client-server authentication?*/
@@ -158,8 +156,7 @@ int starcos_find_algorithm_flags_3_2(sc_card_t *card, const sc_security_env_t *e
 						*p++= 0x13;// client-server with RSA (standard)a
 						return 4;
 					} else {
-						/*TODO: NOT supported yet: client-server with with ECC
-						if(ecc -> 2324)	*/
+						/*TODO: NOT supported yet: client-server with with ECC*/
 						return SC_ERROR_NOT_SUPPORTED;
 					}
 				}
@@ -356,6 +353,7 @@ static int process_fci(sc_context_t *ctx, sc_file_t *file,
 	return SC_SUCCESS;
 }
 
+/* Processing of given FCI. Implementation for Starcos card versions 3.2, 3.4, 3.5*/
 static int process_fci_v3(sc_context_t *ctx, sc_file_t *file,
 		       const u8 *buf, size_t buflen)
 {
@@ -392,6 +390,7 @@ static int process_fci_v3(sc_context_t *ctx, sc_file_t *file,
 	return SC_SUCCESS;
 }
 
+/* Processing of given FCP. Implementation for Starcos card versions 3.2, 3.4, 3.5*/
 static int process_fcp_v3(sc_context_t *ctx, sc_file_t *file,
 		       const u8 *buf, size_t buflen)
 {
@@ -1508,10 +1507,7 @@ static int starcos_set_security_env(sc_card_t *card,
 				ex_data->sec_ops = SC_SEC_OPERATION_DECIPHER;
 				break;
 			case SC_SEC_OPERATION_SIGN:
-				/*TODO: for now: use internal authenticate to perform this operation
-				* (only works for RSA ?)
-				* not adequate setting found yet, no function to compare given,
-				* additional information missing */
+				/*TODO: for now: use internal authenticate to perform this operation (only works for RSA ?) */
 			case SC_SEC_OPERATION_AUTHENTICATE:
 				//see ref manual "internal authenticate"
 				sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0x41, 0xA4);
@@ -1522,11 +1518,10 @@ static int starcos_set_security_env(sc_card_t *card,
 		}
 		//TODO not entirely correct but no appropriate flags ?
 		if (env->flags & SC_SEC_ENV_KEY_REF_SYMMETRIC){
-			//0x83: secret or public key for EXTERNAL AUTHENTICATE
-			//			or secret key for MUTUAL AUTHENTICATE
+			//tag: secret or public key for EXTERNAL AUTHENTICATE or secret key for MUTUAL AUTHENTICATE
 			*p++ = 0x83;
 		}else{
-			//0x84 tag: private key for INTERNAL AUTHENTICATE
+			//tag: private key for INTERNAL AUTHENTICATE
 			*p++ = 0x84;
 		}
 
@@ -1716,32 +1711,6 @@ static int starcos_compute_signature(sc_card_t *card,
 		} else if(card->type == SC_CARD_TYPE_STARCOS_V3_2) {
 			//TODO: for now: not supported (Internal authenticate used instead)
 			return SC_ERROR_NOT_SUPPORTED;
-			#if 0
-			/*Following code for starcos 3.2. not working*/
-			/*Set hash first*/
-			sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2A, 0x90, 0xA0);
-			sbuf[0] = 0x90; // == hash tag
-			sbuf[1] = datalen; // == hash len
-			memcpy(&sbuf[2], data, datalen); //hash value
-			apdu.data = sbuf;
-			apdu.lc = datalen + 2;
-			apdu.datalen = datalen + 2;
-			apdu.resp = 0;
-			apdu.resplen = 0;
-			apdu.le = 0;
-			/*Send first APDU*/
-			r = sc_transmit_apdu(card, &apdu);
-			SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
-			if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
-				SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,
-						   sc_check_sw(card, apdu.sw1, apdu.sw2));
-			/*Second APDU: Sign command*/
-			sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0x2A,
-					   0X9E, 0x9A);
-			apdu.resp = rbuf;
-			apdu.resplen = sizeof(rbuf);
-			apdu.le = 256;
-			#endif
 		} else { //other strarcos versions
 			/* set the hash value     */
 			sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2A,
