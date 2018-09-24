@@ -1581,7 +1581,7 @@ static int
 pgp_get_pubkey_pem(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 {
 	struct pgp_priv_data *priv = DRVDATA(card);
-	pgp_blob_t	*blob, *mod_blob, *exp_blob;
+	pgp_blob_t	*blob, *mod_blob, *exp_blob, *pubkey_blob;
 	sc_pkcs15_pubkey_t pubkey;
 	u8		*data;
 	size_t		len;
@@ -1590,20 +1590,36 @@ pgp_get_pubkey_pem(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 	sc_log(card->ctx, "called, tag=%04x\n", tag);
 
 	if ((r = pgp_get_blob(card, priv->mf, tag & 0xFFFE, &blob)) < 0
-		|| (r = pgp_get_blob(card, blob, 0x7F49, &blob)) < 0
-		|| (r = pgp_get_blob(card, blob, 0x0081, &mod_blob)) < 0
-		|| (r = pgp_get_blob(card, blob, 0x0082, &exp_blob)) < 0
-		|| (r = pgp_read_blob(card, mod_blob)) < 0
-		|| (r = pgp_read_blob(card, exp_blob)) < 0)
+		|| (r = pgp_get_blob(card, blob, 0x7F49, &blob)) < 0)
 		LOG_TEST_RET(card->ctx, r, "error getting elements");
 
-	// TODO ECC: has to be adapted...
-	memset(&pubkey, 0, sizeof(pubkey));
-	pubkey.algorithm = SC_ALGORITHM_RSA;
-	pubkey.u.rsa.modulus.data  = mod_blob->data;
-	pubkey.u.rsa.modulus.len   = mod_blob->len;
-	pubkey.u.rsa.exponent.data = exp_blob->data;
-	pubkey.u.rsa.exponent.len  = exp_blob->len;
+	/* RSA */
+	if ((r = pgp_get_blob(card, blob, 0x0081, &mod_blob)) == 0
+		&& (r = pgp_get_blob(card, blob, 0x0082, &exp_blob)) == 0
+		&& (r = pgp_read_blob(card, mod_blob)) == 0
+		&& (r = pgp_read_blob(card, exp_blob)) == 0) {
+
+		memset(&pubkey, 0, sizeof(pubkey));
+
+		pubkey.algorithm = SC_ALGORITHM_RSA;
+		pubkey.u.rsa.modulus.data  = mod_blob->data;
+		pubkey.u.rsa.modulus.len   = mod_blob->len;
+		pubkey.u.rsa.exponent.data = exp_blob->data;
+		pubkey.u.rsa.exponent.len  = exp_blob->len;
+	}
+	/* ECC */
+	else if ((r = pgp_get_blob(card, blob, 0x0086, &pubkey_blob)) == 0
+			 && (r = pgp_read_blob(card, pubkey_blob)) == 0) {
+		memset(&pubkey, 0, sizeof(pubkey));
+
+		pubkey.algorithm = SC_ALGORITHM_EC;
+		// TODO ECC: not sure if this is sufficient nor if it is correct
+		// pubkey.u.ec.params =;
+		pubkey.u.ec.ecpointQ.value = pubkey_blob->data;
+		pubkey.u.ec.ecpointQ.len = pubkey_blob->len;
+	}
+	else
+		LOG_TEST_RET(card->ctx, r, "error getting elements");
 
 	r = sc_pkcs15_encode_pubkey(card->ctx, &pubkey, &data, &len);
 	LOG_TEST_RET(card->ctx, r, "public key encoding failed");
