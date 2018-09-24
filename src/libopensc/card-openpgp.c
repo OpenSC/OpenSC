@@ -154,15 +154,21 @@ enum _sm_algo {
 static struct pgp_supported_ec_curves {
 		struct sc_object_id oid;
 		size_t size;
+		struct sc_object_id oid_binary;
 } ec_curves[] = {
-	{{{1, 2, 840, 10045, 3, 1, 7, -1}},      256}, /* ansiX9p256r1 */
-	{{{1, 3, 132, 0, 34, -1}},			     384}, /* ansiX9p384r1 */
-	{{{1, 3, 132, 0, 35, -1}},				 512}, /* ansiX9p512r1 */
-	{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 7, -1}},  256}, /* brainpoolP256r1 */
-	{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 11, -1}}, 384}, /* brainpoolP384r1 */
-	{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 13, -1}}, 512}, /* brainpoolP512r1 */
-	{{{-1}}, 0} /* This entry must not be touched. */
-
+	{{{1, 2, 840, 10045, 3, 1, 7, -1}}, 256, 
+		{{0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07, -1}}}, /* ansiX9p256r1 */
+	{{{1, 3, 132, 0, 34, -1}}, 384,
+		{{0x2b, 0x81, 0x04, 0x00, 0x22, -1}}}, /* ansiX9p384r1 */
+	{{{1, 3, 132, 0, 35, -1}}, 512,
+		{{0x2b, 0x81, 0x04, 0x00, 0x23, -1}}}, /* ansiX9p512r1 */
+	{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 7, -1}}, 256,
+		{{0x2b, 0x24, 0x03, 0x03, 0x02, 0x08, 0x01, 0x01, 0x07, -1}}}, /* brainpoolP256r1 */
+	{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 11, -1}}, 384,
+		{{0x2b, 0x24, 0x03, 0x03, 0x02, 0x08, 0x01, 0x01, 0x0b, -1}}}, /* brainpoolP384r1 */
+	{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 13, -1}}, 512,
+		{{0x2b, 0x24, 0x03, 0x03, 0x02, 0x08, 0x01, 0x01, 0x0d, -1}}}, /* brainpoolP512r1 */
+	{{{-1}}, 0, {{0x0}}} /* This entry must not be touched. */
 };
 
 typedef struct pgp_blob {
@@ -680,6 +686,7 @@ pgp_get_card_features(sc_card_t *card)
 	u8 *hist_bytes = card->reader->atr_info.hist_bytes;
 	size_t hist_bytes_len = card->reader->atr_info.hist_bytes_len;
 	size_t i;
+	unsigned int j;
 	pgp_blob_t *blob, *blob6e, *blob73;
 
 	/* parse card capabilities from historical bytes in ATR */
@@ -803,24 +810,53 @@ pgp_get_card_features(sc_card_t *card)
 		 * well and therefore added 
 		 * see OpenPGP card spec 1.1 & 2.x section 4.3.3.6 / v3.x section 4.4.3.7 */
 		for (i = 0x00c1; i <= 0x00c3; i++) {
-			unsigned long flags;
-
-			/* Is this correct? */
-			/* OpenPGP card spec 1.1 & 2.x, section 7.2.9 & 7.2.10 / v3.x section 7.2.11 & 7.2.12 */
-			flags = SC_ALGORITHM_RSA_PAD_PKCS1;
-			flags |= SC_ALGORITHM_RSA_HASH_NONE;
-			/* Can be generated in card */
-			flags |= SC_ALGORITHM_ONBOARD_KEY_GEN;
-
-			/* OpenPGP card spec 1.1 & 2.x section 4.3.3.6 / v3.x section 4.4.3.7 */
 			if ((pgp_get_blob(card, blob73, i, &blob) >= 0) && (blob->data != NULL)) {
-				if (blob->len >= 3 && blob->data[0] == 0x01) {	/* RSA [RFC 4880] */
-					unsigned int keybits = bebytes2ushort(blob->data + 1);
+				/* RSA [RFC 4880] */
+				if (blob->len >= 3 && blob->data[0] == 0x01) {
+					unsigned int keybits;
+					unsigned long flags;
+
+					flags = SC_ALGORITHM_RSA_PAD_PKCS1;
+					flags |= SC_ALGORITHM_RSA_HASH_NONE;
+					flags |= SC_ALGORITHM_ONBOARD_KEY_GEN;
+					keybits = bebytes2ushort(blob->data + 1);
 
 					_sc_card_add_rsa_alg(card, keybits, flags, 0);
 				}
-				/* v3.0+: [RFC 4880 & 6637] 0x12 = ECDH, 0x13 = ECDSA */
-				// TODO ECC: add detection
+				/* v3.0+: ECC [RFC 4880 & 6637] */
+				if (blob->data[0] == 0x12 || blob->data[0] == 0x13){
+					unsigned long flags, ext_flags;
+					struct sc_object_id oid;
+
+					if (blob->data[0] == 0x12)
+						flags = SC_ALGORITHM_ECDH_CDH_RAW;
+					if (blob->data[0] == 0x13)
+						flags = SC_ALGORITHM_ECDSA_RAW;
+
+					flags |= SC_ALGORITHM_ECDSA_HASH_NONE;
+					flags |= SC_ALGORITHM_ONBOARD_KEY_GEN;
+
+					/* TODO copied from isoApplet; is this correct? */
+					ext_flags = SC_ALGORITHM_EXT_EC_UNCOMPRESES;
+					ext_flags |=  SC_ALGORITHM_EXT_EC_NAMEDCURVE;
+					ext_flags |= SC_ALGORITHM_EXT_EC_F_P;
+
+					/* Create copy of oid from blob */
+					for (j=0; j < (blob->len-1); j++) {
+						oid.value[j] = blob->data[j+1]; /* ignore first byte of blob (algo ID) */
+						if (j == blob->len-2)
+							oid.value[j+1] = -1;
+					}
+
+					/* compare with list of supported ec_curves */
+					for (j=0; ec_curves[j].oid.value[0] >= 0; j++){
+						if (sc_compare_oid(&ec_curves[j].oid_binary, &oid)){
+							_sc_card_add_ec_alg(card, 
+									ec_curves[j].size, flags, ext_flags, &ec_curves[j].oid);
+							break;
+						}
+					}
+				}
 			}
 		}
 
