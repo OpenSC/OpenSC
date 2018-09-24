@@ -2600,11 +2600,6 @@ pkcs15_create_data(struct sc_pkcs11_slot *slot, struct sc_profile *profile,
 		}
 	}
 
-	if (args.der_encoded.len == 0) {
-		rv = CKR_TEMPLATE_INCOMPLETE;
-		goto out;
-	}
-
 	rc = sc_pkcs15init_store_data_object(fw_data->p15_card, profile, &args, &data_obj);
 	if (rc < 0) {
 		rv = sc_to_cryptoki_error(rc, "C_CreateObject");
@@ -3264,6 +3259,14 @@ pkcs15_set_attrib(struct sc_pkcs11_session *session, struct sc_pkcs15_object *p1
 		break;
 	case CKA_SUBJECT:
 		rv = SC_SUCCESS;
+		break;
+	case CKA_VALUE:
+		if ((p15_object->type & SC_PKCS15_TYPE_CLASS_MASK) != SC_PKCS15_TYPE_DATA_OBJECT) {
+			ck_rv = CKR_ATTRIBUTE_READ_ONLY;
+			goto set_attr_done;
+		}
+		rv = sc_pkcs15init_change_attrib(fw_data->p15_card, profile, p15_object, 
+				P15_ATTR_TYPE_VALUE, attr->pValue, attr->ulValueLen);
 		break;
 	default:
 		ck_rv = CKR_ATTRIBUTE_READ_ONLY;
@@ -4353,6 +4356,13 @@ pkcs15_dobj_get_value(struct sc_pkcs11_session *session,
 
 	if (!out_data)
 		return SC_ERROR_INVALID_ARGUMENTS;
+	if (dobj->info->data.len == 0)
+	/* CKA_VALUE is empty */
+	{
+		*out_data = NULL;
+		return sc_to_cryptoki_error(SC_SUCCESS, "C_GetAttributeValue");
+	}
+
 	fw_data = (struct pkcs15_fw_data *) p11card->fws_data[session->slot->fw_data_idx];
 	if (!fw_data)
 		return sc_to_cryptoki_error(SC_ERROR_INTERNAL, "C_GetAttributeValue");
@@ -4454,9 +4464,17 @@ pkcs15_dobj_get_attribute(struct sc_pkcs11_session *session, void *object, CK_AT
 		free(buf);
 		break;
 	case CKA_VALUE:
+		/* if CKA_VALUE is empty, sets data to NULL */
 		rv = pkcs15_dobj_get_value(session, dobj, &data);
-		if (rv == CKR_OK)
-			rv = data_value_to_attr(attr, data);
+		if (rv == CKR_OK) {
+			if (data) {
+				rv = data_value_to_attr(attr, data);
+			}
+			else {
+				attr->ulValueLen = 0;
+				attr->pValue = NULL_PTR;
+			}
+		}
 		if (data) {
 			free(data->data);
 			free(data);
