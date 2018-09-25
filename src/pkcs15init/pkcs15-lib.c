@@ -3333,7 +3333,7 @@ sc_pkcs15init_change_attrib(struct sc_pkcs15_card *p15card, struct sc_profile *p
 			
 			/* delete old data file from token */
 			r = sc_pkcs15init_delete_by_path(profile, p15card, &old_data_path);
-
+			LOG_TEST_RET(ctx, r, "Failed to delete old data");
 			break;
 		}
 		default:
