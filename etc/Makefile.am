@@ -30,6 +30,17 @@ opensc.conf.example: opensc.conf.example.in force
 		-e 's|@PROFILE_DIR_DEFAULT[@]|$(PROFILE_DIR_DEFAULT)|g' \
 		< $< > $@
 
+install-exec-hook: opensc.conf
+	$(MKDIR_P) "$(DESTDIR)$(sysconfdir)"
+	if [ -f "$(DESTDIR)$(sysconfdir)/opensc.conf" ]; then \
+		$(INSTALL_DATA) "$(srcdir)/opensc.conf" "$(DESTDIR)$(sysconfdir)/opensc.conf.new"; \
+	else \
+		$(INSTALL_DATA) "$(srcdir)/opensc.conf" "$(DESTDIR)$(sysconfdir)/opensc.conf"; \
+	fi
+
+uninstall-hook: opensc.conf
+	rm -f "$(DESTDIR)$(sysconfdir)/opensc.conf.new" "$(DESTDIR)$(sysconfdir)/opensc.conf"
+
 install-exec-hook: opensc.conf.example
 	$(MKDIR_P) "$(DESTDIR)$(sysconfdir)"
 	if [ -f "$(DESTDIR)$(sysconfdir)/opensc.conf" ]; then \
