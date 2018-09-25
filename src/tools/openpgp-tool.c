@@ -458,10 +458,10 @@ int do_genkey(sc_card_t *card, u8 key_id, unsigned int key_len)
 	}
 	memset(&key_info, 0, sizeof(sc_cardctl_openpgp_keygen_info_t));
 	key_info.keytype = key_id;
-	key_info.modulus_len = key_len;
-	key_info.modulus = malloc(key_len/8);
+	key_info.u.rsa.modulus_len = key_len;
+	key_info.u.rsa.modulus = malloc(key_len/8);
 	r = sc_card_ctl(card, SC_CARDCTL_OPENPGP_GENERATE_KEY, &key_info);
-	free(key_info.modulus);
+	free(key_info.u.rsa.modulus);
 	if (r < 0) {
 		printf("Failed to generate key. Error %s.\n", sc_strerror(r));
 		return 1;

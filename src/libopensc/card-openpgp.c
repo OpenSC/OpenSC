@@ -2226,33 +2226,33 @@ pgp_update_new_algo_attr(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_
 	old_modulus_len = bebytes2ushort(algo_blob->data + 1);  /* modulus length is coded in byte 2 & 3 */
 	sc_log(card->ctx,
 	       "Old modulus length %d, new %"SC_FORMAT_LEN_SIZE_T"u.",
-	       old_modulus_len, key_info->modulus_len);
+	       old_modulus_len, key_info->u.rsa.modulus_len);
 	old_exponent_len = bebytes2ushort(algo_blob->data + 3);  /* exponent length is coded in byte 3 & 4 */
 	sc_log(card->ctx,
 	       "Old exponent length %d, new %"SC_FORMAT_LEN_SIZE_T"u.",
-	       old_exponent_len, key_info->exponent_len);
+	       old_exponent_len, key_info->u.rsa.exponent_len);
 
 	/* Modulus */
 	/* If passed modulus_len is zero, it means using old key size */
-	if (key_info->modulus_len == 0) {
+	if (key_info->u.rsa.modulus_len == 0) {
 		sc_log(card->ctx, "Use old modulus length (%d).", old_modulus_len);
-		key_info->modulus_len = old_modulus_len;
+		key_info->u.rsa.modulus_len = old_modulus_len;
 	}
 	/* To generate key with new key size */
-	else if (old_modulus_len != key_info->modulus_len) {
-		algo_blob->data[1] = (unsigned char)(key_info->modulus_len >> 8);
-		algo_blob->data[2] = (unsigned char)key_info->modulus_len;
+	else if (old_modulus_len != key_info->u.rsa.modulus_len) {
+		algo_blob->data[1] = (unsigned char)(key_info->u.rsa.modulus_len >> 8);
+		algo_blob->data[2] = (unsigned char)key_info->u.rsa.modulus_len;
 		changed = 1;
 	}
 
 	/* Exponent */
-	if (key_info->exponent_len == 0) {
+	if (key_info->u.rsa.exponent_len == 0) {
 		sc_log(card->ctx, "Use old exponent length (%d).", old_exponent_len);
-		key_info->exponent_len = old_exponent_len;
+		key_info->u.rsa.exponent_len = old_exponent_len;
 	}
-	else if (old_exponent_len != key_info->exponent_len) {
-		algo_blob->data[3] = (unsigned char)(key_info->exponent_len >> 8);
-		algo_blob->data[4] = (unsigned char)key_info->exponent_len;
+	else if (old_exponent_len != key_info->u.rsa.exponent_len) {
+		algo_blob->data[3] = (unsigned char)(key_info->u.rsa.exponent_len >> 8);
+		algo_blob->data[4] = (unsigned char)key_info->u.rsa.exponent_len;
 		changed = 1;
 	}
 
@@ -2309,7 +2309,7 @@ pgp_store_creationtime(sc_card_t *card, u8 key_id, time_t *outtime)
  * Internal: calculate PGP fingerprints.
  * Reference: GnuPG, app-openpgp.c.
  * modulus and exponent are passed separately from key_info
- * because key_info->exponent may be null.
+ * because key_info->u.rsa.exponent may be null.
  **/
 // TODO ECC: has to be adapted...
 static int
@@ -2318,8 +2318,8 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
                                     sc_cardctl_openpgp_keygen_info_t *key_info)
 {
 	u8 fingerprint[SHA_DIGEST_LENGTH];
-	size_t mlen = key_info->modulus_len >> 3;  /* 1/8 */
-	size_t elen = key_info->exponent_len >> 3;  /* 1/8 */
+	size_t mlen = key_info->u.rsa.modulus_len >> 3;  /* 1/8 */
+	size_t elen = key_info->u.rsa.exponent_len >> 3;  /* 1/8 */
 	u8 *fp_buffer = NULL;  /* fingerprint buffer, not hashed */
 	size_t fp_buffer_len;
 	u8 *p; /* use this pointer to set fp_buffer content */
@@ -2360,11 +2360,11 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 	p += 4;
 	*p = 1;        /* RSA */
 	/* algorithm-specific fields */
-	ushort2bebytes(++p, (unsigned short)key_info->modulus_len);
+	ushort2bebytes(++p, (unsigned short)key_info->u.rsa.modulus_len);
 	p += 2;
 	memcpy(p, modulus, mlen);
 	p += mlen;
-	ushort2bebytes(++p, (unsigned short)key_info->exponent_len);
+	ushort2bebytes(++p, (unsigned short)key_info->u.rsa.exponent_len);
 	p += 2;
 	memcpy(p, exponent, elen);
 	p = NULL;
@@ -2497,21 +2497,21 @@ pgp_parse_and_set_pubkey_output(sc_card_t *card, u8* data, size_t data_len,
 
 		if (tag == 0x0081) {
 			/* set the output data */
-			if (key_info->modulus) {
-				memcpy(key_info->modulus, part, len);
+			if (key_info->u.rsa.modulus) {
+				memcpy(key_info->u.rsa.modulus, part, len);
 			}
 			/* always set output for modulus_len */
-			key_info->modulus_len = len*8;
+			key_info->u.rsa.modulus_len = len*8;
 			/* remember the modulus to calculate fingerprint later */
 			modulus = part;
 		}
 		else if (tag == 0x0082) {
 			/* set the output data */
-			if (key_info->exponent) {
-				memcpy(key_info->exponent, part, len);
+			if (key_info->u.rsa.exponent) {
+				memcpy(key_info->u.rsa.exponent, part, len);
 			}
 			/* always set output for exponent_len */
-			key_info->exponent_len = len*8;
+			key_info->u.rsa.exponent_len = len*8;
 			/* remember the exponent to calculate fingerprint later */
 			exponent = part;
 		}
@@ -2532,8 +2532,8 @@ pgp_parse_and_set_pubkey_output(sc_card_t *card, u8* data, size_t data_len,
 	/* update pubkey blobs (B601,B801, A401) */
 	sc_log(card->ctx, "Update blobs holding pubkey info.");
 	// TODO ECC: has to be adapted...
-	r = pgp_update_pubkey_blob(card, modulus, key_info->modulus_len,
-	                           exponent, key_info->exponent_len, key_info->keytype);
+	r = pgp_update_pubkey_blob(card, modulus, key_info->u.rsa.modulus_len,
+	                           exponent, key_info->u.rsa.exponent_len, key_info->keytype);
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
@@ -2559,16 +2559,16 @@ pgp_update_card_algorithms(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *ke
 	/* get the algorithm corresponding to the key ID */
 	algo = card->algorithms + (id - 1);
 	/* update new key length attribute */
-	algo->key_length = (unsigned int)key_info->modulus_len;
+	algo->key_length = (unsigned int)key_info->u.rsa.modulus_len;
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
 
 /**
  * ABI (card ctl): GENERATE ASYMMETRIC KEY PAIR
- * Set key_info->modulus_len to zero if want to use old key size.
+ * Set key_info->u.rsa.modulus_len to zero if want to use old key size.
  * Similarly for exponent length.
- * key_info->modulus_len and key_info->exponent_len will be returned with new values.
+ * key_info->u.rsa.modulus_len and key_info->u.rsa.exponent_len will be returned with new values.
  **/
 static int
 pgp_gen_key(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_info)
@@ -2598,7 +2598,7 @@ pgp_gen_key(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_info)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 
-	if (card->type == SC_CARD_TYPE_OPENPGP_GNUK && key_info->modulus_len != 2048) {
+	if (card->type == SC_CARD_TYPE_OPENPGP_GNUK && key_info->u.rsa.modulus_len != 2048) {
 		sc_log(card->ctx, "Gnuk does not support other key length than 2048.");
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
@@ -2611,7 +2611,7 @@ pgp_gen_key(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_info)
 	 * arbitrary modulus length which for sure fits into a short APDU.
 	 * This idea is borrowed from GnuPG code.  */
 	if (card->caps & SC_CARD_CAP_APDU_EXT
-		&& key_info->modulus_len > 1900
+		&& key_info->u.rsa.modulus_len > 1900
 		&& card->type != SC_CARD_TYPE_OPENPGP_GNUK) {
 		/* We won't store to apdu variable yet, because it will be reset in
 		 * sc_format_apdu() */
@@ -2903,7 +2903,7 @@ out:
 /**
  * ABI (card ctl): store key
  **/
-static int
+static int /* TODO ECC */
 pgp_store_key(sc_card_t *card, sc_cardctl_openpgp_keystore_info_t *key_info)
 {
 	sc_context_t *ctx = card->ctx;
@@ -2945,8 +2945,8 @@ pgp_store_key(sc_card_t *card, sc_cardctl_openpgp_keystore_info_t *key_info)
 	memset(&pubkey, 0, sizeof(pubkey));
 	pubkey.keytype = key_info->keytype;
 	if (key_info->n && key_info->n_len) {
-		pubkey.modulus = key_info->n;
-		pubkey.modulus_len = 8*key_info->n_len;
+		pubkey.u.rsa.modulus = key_info->n;
+		pubkey.u.rsa.modulus_len = 8*key_info->n_len;
 		/* We won't update exponent length, because smaller exponent length
 		 * will be padded later */
 	}
