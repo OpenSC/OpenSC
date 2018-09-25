@@ -3320,6 +3320,9 @@ sc_pkcs15init_change_attrib(struct sc_pkcs15_card *p15card, struct sc_profile *p
 			LOG_TEST_RET(ctx, r, "Failed to store new data");
 
 			nv = (u8 *) malloc (new_len * sizeof(u8));
+			if (!nv) {
+				LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+			}
 			memcpy(nv, new_value, new_len * sizeof(u8));
 			free(info->data.value);
 			/*  set object members to represent new CKA_VALUE value,
