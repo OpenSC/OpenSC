@@ -1975,8 +1975,9 @@ pgp_set_security_env(sc_card_t *card,
 
 	LOG_FUNC_CALLED(card->ctx);
 
-	/* TODO ECC: not true anymore, check what's to do here */
-	if ((env->flags & SC_SEC_ENV_ALG_PRESENT) && (env->algorithm != SC_ALGORITHM_RSA))
+	if ((env->flags & SC_SEC_ENV_ALG_PRESENT)
+		&& (env->algorithm != SC_ALGORITHM_RSA)
+		&& (priv->bcd_version < OPENPGP_CARD_3_0))
 		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
 				"only RSA algorithm supported");
 
@@ -2090,7 +2091,6 @@ pgp_compute_signature(sc_card_t *card, const u8 *data,
 		break;
 	case 0x02: /* authentication key */
 		/* INTERNAL AUTHENTICATE */
-		// TODO ECC: check for needed changes. See 7.2.13, data has to be Hash Value for curves
 		sc_format_apdu(card, &apdu, apdu_case, 0x88, 0, 0);
 		break;
 	case 0x01:
@@ -2139,8 +2139,10 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 	/* padding according to OpenPGP card spec 1.1 & 2.x section 7.2.9 / 3.x section 7.2.11 */
 	if (!(temp = malloc(inlen + 1)))
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
-	/* padding byte: 0x00 = RSA; 0x02 = AES [v2.1+ only] */
-	temp[0] = 0x00; // TODO ECC: padding byte is A6, see 7.2.11
+	if (env->algorithm == SC_ALGORITHM_EC)
+		temp[0] = 0xa6; /* padding byte: 0xa6 = ECC */
+	else
+		temp[0] = 0x00; /* padding byte: 0x00 = RSA; 0x02 = AES [v2.1+ only] */
 	memcpy(temp + 1, in, inlen);
 	in = temp;
 	inlen += 1;
