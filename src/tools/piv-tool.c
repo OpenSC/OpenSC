@@ -477,6 +477,7 @@ int main(int argc, char *argv[])
 	const char *key_info = NULL;
 	const char *admin_info = NULL;
 	sc_context_param_t ctx_param;
+	char **old_apdus = NULL;
 
 	setbuf(stderr, NULL);
 	setbuf(stdout, NULL);
@@ -493,9 +494,11 @@ int main(int argc, char *argv[])
 			action_count++;
 			break;
 		case 's':
+			old_apdus = opt_apdus;
 			opt_apdus = (char **) realloc(opt_apdus,
 					(opt_apdu_count + 1) * sizeof(char *));
 			if (!opt_apdus) {
+				free(old_apdus);
 				err = 1;
 				goto end;
 			}
