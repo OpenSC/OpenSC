@@ -336,7 +336,7 @@ static int gen_key(const char * key_info)
 		return r;
 	}
 
-		evpkey = EVP_PKEY_new();
+	evpkey = EVP_PKEY_new();
 
 	if (keydata.key_bits > 0) { /* RSA key */
 		RSA * newkey = NULL;
@@ -385,7 +385,15 @@ static int gen_key(const char * key_info)
 		r = EC_POINT_set_affine_coordinates_GFp(ecgroup, ecpoint, x, y, NULL);
 		eckey = EC_KEY_new();
 		r = EC_KEY_set_group(eckey, ecgroup);
+		if (r == 0) {
+			fprintf(stderr, "EC_KEY_set_group failed\n");
+			return -1;
+		}
 		r = EC_KEY_set_public_key(eckey, ecpoint);
+		if (r == 0) {
+			fprintf(stderr, "EC_KEY_set_public_key failed\n");
+			return -1;
+		}
 
 		if (verbose)
 			EC_KEY_print_fp(stdout, eckey, 0);
