@@ -1613,8 +1613,6 @@ pgp_get_pubkey_pem(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 		memset(&pubkey, 0, sizeof(pubkey));
 
 		pubkey.algorithm = SC_ALGORITHM_EC;
-		// TODO ECC: not sure if this is sufficient nor if it is correct
-		// pubkey.u.ec.params =;
 		pubkey.u.ec.ecpointQ.value = pubkey_blob->data;
 		pubkey.u.ec.ecpointQ.len = pubkey_blob->len;
 	}

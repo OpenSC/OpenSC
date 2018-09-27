@@ -1083,6 +1083,8 @@ sc_pkcs15_dup_pubkey(struct sc_context *ctx, struct sc_pkcs15_pubkey *key, struc
 	u8* alg;
 	size_t alglen;
 
+	sc_log(ctx, "Called");
+
 	if (!key || !out) {
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
@@ -1141,9 +1143,15 @@ sc_pkcs15_dup_pubkey(struct sc_context *ctx, struct sc_pkcs15_pubkey *key, struc
 		memcpy(pubkey->u.ec.params.der.value, key->u.ec.params.der.value, key->u.ec.params.der.len);
 		pubkey->u.ec.params.der.len = key->u.ec.params.der.len;
 
-		pubkey->u.ec.params.named_curve = strdup(key->u.ec.params.named_curve);
-		if (!pubkey->u.ec.params.named_curve)
-			rv = SC_ERROR_OUT_OF_MEMORY;
+		if (key->u.ec.params.named_curve){
+			pubkey->u.ec.params.named_curve = strdup(key->u.ec.params.named_curve);
+			if (!pubkey->u.ec.params.named_curve)
+				rv = SC_ERROR_OUT_OF_MEMORY;
+		}
+		else {
+			sc_log(ctx, "named_curve parameter missing");
+			rv = SC_ERROR_NOT_SUPPORTED;
+		}
 
 		break;
 	default:
