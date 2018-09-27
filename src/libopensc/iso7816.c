@@ -841,13 +841,18 @@ iso7816_set_security_env(struct sc_card *card,
 	if (env->flags & SC_SEC_ENV_FILE_REF_PRESENT) {
 		if (env->file_ref.len > 0xFF)
 			return SC_ERROR_INVALID_ARGUMENTS;
+		if (sizeof(sbuf) - (p - sbuf) < env->file_ref.len + 2)
+			return SC_ERROR_OFFSET_TOO_LARGE;
+
 		*p++ = 0x81;
 		*p++ = (u8) env->file_ref.len;
-		assert(sizeof(sbuf) - (p - sbuf) >= env->file_ref.len);
 		memcpy(p, env->file_ref.value, env->file_ref.len);
 		p += env->file_ref.len;
 	}
 	if (env->flags & SC_SEC_ENV_KEY_REF_PRESENT) {
+		if (sizeof(sbuf) - (p - sbuf) < env->key_ref_len + 2)
+			return SC_ERROR_OFFSET_TOO_LARGE;
+
 		if (env->flags & SC_SEC_ENV_KEY_REF_SYMMETRIC)
 			*p++ = 0x83;
 		else
@@ -855,7 +860,6 @@ iso7816_set_security_env(struct sc_card *card,
 		if (env->key_ref_len > 0xFF)
 			return SC_ERROR_INVALID_ARGUMENTS;
 		*p++ = env->key_ref_len & 0xFF;
-		assert(sizeof(sbuf) - (p - sbuf) >= env->key_ref_len);
 		memcpy(p, env->key_ref, env->key_ref_len);
 		p += env->key_ref_len;
 	}
