@@ -1399,7 +1399,7 @@ static int do_get(int argc, char **argv)
 	if (r == SC_SUCCESS)
 		r = sc_select_file(card, &path, &file);
 	sc_unlock(card);
-	if (r) {
+	if (r || file == NULL) {
 		check_ret(r, SC_AC_OP_SELECT, "unable to select file", current_file);
 		goto err;
 	}
@@ -1594,7 +1594,7 @@ static int do_put(int argc, char **argv)
 	if (r == SC_SUCCESS)
 		r = sc_select_file(card, &path, &file);
 	sc_unlock(card);
-	if (r) {
+	if (r || file == NULL) {
 		check_ret(r, SC_AC_OP_SELECT, "unable to select file", current_file);
 		goto err;
 	}
