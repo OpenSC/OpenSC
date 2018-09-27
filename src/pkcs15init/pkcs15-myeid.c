@@ -434,7 +434,11 @@ _add_supported_algo(struct sc_profile *profile, struct sc_pkcs15_card *p15card, 
 		    unsigned operations, unsigned mechanism, const struct sc_object_id *oid)
 {
 	struct sc_supported_algo_info *algo;
+	struct sc_context *ctx = p15card->card->ctx;
 	algo = sc_pkcs15_get_supported_algo(p15card, operations, mechanism);
+	int rv;
+
+	LOG_FUNC_CALLED(ctx);
 	if (!algo) {
 		unsigned ref = 1, ii;
 
@@ -452,7 +456,10 @@ _add_supported_algo(struct sc_profile *profile, struct sc_pkcs15_card *p15card, 
 		}
 
 	}
-	sc_pkcs15_add_supported_algo_ref(object, algo);
+	rv = sc_pkcs15_add_supported_algo_ref(object, algo);
+	if (rv != SC_SUCCESS) {
+		sc_log(ctx, "Failed to add algorithms refs");
+	}
 }
 
 static void
