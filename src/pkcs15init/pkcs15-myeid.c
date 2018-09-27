@@ -750,7 +750,6 @@ myeid_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 			break;
 		default:
 			LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Unsupported key type");
-			break;
 	}
 
 	sc_log(ctx, "Generate key with ID:%s and path:%s",

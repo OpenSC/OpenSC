@@ -1846,11 +1846,6 @@ epass2003_process_fci(struct sc_card *card, sc_file_t * file, const u8 * buf, si
 				case 0x04:
 					file->ef_structure = SC_FILE_EF_LINEAR_FIXED;
 					break;
-				case 0x03:
-				case 0x05:
-				case 0x06:
-				case 0x07:
-					break;
 				default:
 					break;
 				}
