@@ -10,7 +10,7 @@ cardinfo {
 option default {
 	macros {
 		so-pin-flags	= initialized, needs-padding, soPin;
-		isf_acl		= WRITE=$SOPIN;
+		isf_acl		= WRITE=$SOPIN, CREATE=$SOPIN;
 		df_acl		= *=$SOPIN;
 	}
 }

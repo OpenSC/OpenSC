@@ -787,7 +787,7 @@ static int infocamere_detect_card(sc_pkcs15_card_t * p15card)
 	sc_card_t *card = p15card->card;
 
 	/* check if we have the correct card OS */
-	if (strcmp(card->name, "STARCOS SPK 2.3")
+	if (strcmp(card->name, "STARCOS")
 			&& strcmp(card->name, "CardOS M4"))
 		return SC_ERROR_WRONG_CARD;
 	return SC_SUCCESS;

@@ -3893,7 +3893,7 @@ do_select_parent(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		r = sc_select_file(p15card->card, &path, NULL);
 		LOG_TEST_RET(ctx, r, "Cannot select parent DF");
 	}
-	else if (r == SC_SUCCESS && !strcmp(p15card->card->name, "STARCOS SPK 2.3")) {
+	else if (r == SC_SUCCESS && !strcmp(p15card->card->name, "STARCOS")) {
 		/* in case of starcos spk 2.3 SELECT FILE does not
 		 * give us the ACLs => ask the profile */
 		sc_file_free(*parent);
