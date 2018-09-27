@@ -509,6 +509,7 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, int pubkey_len,
 
 		rsa_outlen = RSA_public_decrypt(signat_len, signat, rsa_out, rsa, pad);
 		if (rsa_outlen <= 0) {
+			RSA_free(rsa);
 			free(rsa_out);
 			sc_log(context, "RSA_public_decrypt() returned %d\n", rsa_outlen);
 			return CKR_GENERAL_ERROR;
@@ -528,6 +529,8 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, int pubkey_len,
 			unsigned char digest[EVP_MAX_MD_SIZE];
 
 			if (mech->pParameter == NULL) {
+				RSA_free(rsa);
+				free(rsa_out);
 				sc_log(context, "PSS mechanism requires parameter");
 				return CKR_MECHANISM_PARAM_INVALID;
 			}
@@ -550,6 +553,8 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, int pubkey_len,
 				mgf_md = EVP_sha512();
 				break;
 			default:
+				RSA_free(rsa);
+				free(rsa_out);
 				return CKR_MECHANISM_PARAM_INVALID;
 			}
 
@@ -570,6 +575,8 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, int pubkey_len,
 				pss_md = EVP_sha512();
 				break;
 			default:
+				RSA_free(rsa);
+				free(rsa_out);
 				return CKR_MECHANISM_PARAM_INVALID;
 			}
 
@@ -592,6 +599,7 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, int pubkey_len,
 			        rsa_out, EVP_MD_size(pss_md)/*sLen*/) == 1)
 				rv = CKR_OK;
 			RSA_free(rsa);
+			free(rsa_out);
 			sc_log(context, "Returning %lu", rv);
 			return rv;
 		}
