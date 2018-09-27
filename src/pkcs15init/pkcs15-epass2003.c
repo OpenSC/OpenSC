@@ -640,7 +640,7 @@ static int epass2003_pkcs15_generate_key(struct sc_profile *profile,
 		    "generate RSA key pair failed");
 
 	/* get the modulus */
-	if (pubkey) {
+	if (pubkey && obj->type == SC_PKCS15_TYPE_PRKEY_RSA) {
 		u8 *buf;
 		struct sc_pkcs15_pubkey_rsa *rsa = &pubkey->u.rsa;
 		/* set the modulus */
@@ -659,7 +659,27 @@ static int epass2003_pkcs15_generate_key(struct sc_profile *profile,
 		rsa->exponent.len = 3;
 
 		pubkey->algorithm = SC_ALGORITHM_RSA;
-	} else
+	}
+	else if(pubkey && obj->type == SC_PKCS15_TYPE_PRKEY_EC)
+	{
+		struct sc_ec_parameters *ecparams = (struct sc_ec_parameters *)key_info->params.data;
+		pubkey->algorithm = SC_ALGORITHM_EC;
+		pubkey->u.ec.ecpointQ.value = malloc(65);
+		memcpy(pubkey->u.ec.ecpointQ.value, gendat.modulus, 65);
+		pubkey->u.ec.ecpointQ.len = 65;
+
+		if (pubkey->u.ec.params.named_curve)
+			free(pubkey->u.ec.params.named_curve);
+		pubkey->u.ec.params.named_curve = NULL;
+
+		if (pubkey->u.ec.params.der.value)
+			free(pubkey->u.ec.params.der.value);
+		pubkey->u.ec.params.der.value = NULL;
+		pubkey->u.ec.params.der.len = 0;
+		pubkey->u.ec.params.named_curve = strdup(ecparams->named_curve);
+		sc_pkcs15_fix_ec_parameters(card->ctx, &pubkey->u.ec.params);
+	}
+	else
 		/* free public key */
 		free(gendat.modulus);
 
