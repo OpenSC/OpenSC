@@ -555,7 +555,10 @@ authentic_pkcs15_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p
 		| SC_PKCS15_PRKEY_ACCESS_SENSITIVE;
 
 	rv = authentic_sdo_allocate_prvkey(profile, card, key_info, &sdo);
-	LOG_TEST_RET(ctx, rv, "IasEcc: init SDO private key failed");
+	if (rv != SC_SUCCESS || sdo == NULL) {
+		sc_log(ctx, "IasEcc: init SDO private key failed");
+		LOG_FUNC_RETURN(ctx, rv);
+	}
 
 	rv = sc_card_ctl(card, SC_CARDCTL_AUTHENTIC_SDO_CREATE, sdo);
 	if (rv == SC_ERROR_FILE_ALREADY_EXISTS)   {
