@@ -1503,12 +1503,12 @@ static int unwrap_key(sc_card_t *card, int keyid, const char *inf, const char *p
 		return -1;
 	}
 
-	if ((keybloblen = fread(keyblob, 1, sizeof(keyblob), in)) < 0) {
+	keybloblen = fread(keyblob, 1, sizeof(keyblob), in);
+	fclose(in);
+	if (keybloblen < 0) {
 		perror(inf);
 		return -1;
 	}
-
-	fclose(in);
 
 	ptr = keyblob;
 	if ((sc_asn1_read_tag(&ptr, keybloblen, &cla, &tag, &len) != SC_SUCCESS)
