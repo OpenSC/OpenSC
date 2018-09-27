@@ -232,6 +232,7 @@ myeid_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df
 		for (ii = 0; create_dfs[ii]; ii++) {
 			sc_log(ctx, "Create '%s'", create_dfs[ii]);
 
+			file = NULL;
 			r = sc_profile_get_file(profile, create_dfs[ii], &file);
 			sc_file_free(file);
 			if (r) {
