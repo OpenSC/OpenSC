@@ -106,7 +106,7 @@ static int starcert_detect_card(sc_pkcs15_card_t *p15card)
 	sc_card_t *card = p15card->card;
 
 	/* check if we have the correct card OS */
-	if (strcmp(card->name, "STARCOS SPK 2.3"))
+	if (strcmp(card->name, "STARCOS"))
 		return SC_ERROR_WRONG_CARD;
 	/* read EF_Info file */
 	sc_format_path("3F00FE13", &path);
