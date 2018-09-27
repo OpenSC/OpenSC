@@ -922,7 +922,11 @@ piv_get_data(sc_card_t * card, int enumtag, u8 **buf, size_t *buf_len)
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	sc_log(card->ctx, "#%d", enumtag);
 
-	sc_lock(card); /* do check len and get data in same transaction */
+	r = sc_lock(card); /* do check len and get data in same transaction */
+	if (r != SC_SUCCESS) {
+		sc_log(card->ctx, "sc_lock failed");
+		return r;
+	}
 
 	/* assert(enumtag >= 0 && enumtag < PIV_OBJ_LAST_ENUM); */
 
@@ -2982,7 +2986,7 @@ static int piv_match_card(sc_card_t *card)
 
 static int piv_match_card_continued(sc_card_t *card)
 {
-	int i;
+	int i, r;
 	int type  = -1;
 	piv_private_data_t *priv = NULL;
 	int saved_type = card->type;
@@ -3081,7 +3085,13 @@ static int piv_match_card_continued(sc_card_t *card)
 		if(piv_objects[i].flags & PIV_OBJECT_NOT_PRESENT)
 			priv->obj_cache[i].flags |= PIV_OBJ_CACHE_NOT_PRESENT;
 
-	sc_lock(card);
+	r = sc_lock(card);
+	if (r != SC_SUCCESS) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "sc_lock failed\n");
+		piv_finish(card);
+		card->type = saved_type;
+		return 0;
+	}
 
 	/*
 	 * detect if active AID is PIV. NIST 800-73 says Only one PIV application per card
@@ -3465,7 +3475,11 @@ piv_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 	if (data->cmd == SC_PIN_CMD_VERIFY && data->pin_type == SC_AC_CONTEXT_SPECIFIC) {
 		priv->context_specific = 1;
 		sc_log(card->ctx,"Starting CONTEXT_SPECIFIC verify");
-		sc_lock(card);
+		r = sc_lock(card);
+		if (r != SC_SUCCESS) {
+			sc_log(card->ctx, "sc_lock failed");
+			return r;
+		}
 	}
 
 	priv->pin_cmd_verify = 1; /* tell piv_check_sw its a verify to save sw1, sw2 */
