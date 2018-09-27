@@ -455,6 +455,7 @@ static int _listFile(mscfs_file_t *file, int reset, void *udata)
 static int muscle_init(sc_card_t *card)
 {
 	muscle_private_t *priv;
+	int r;
 
 	card->name = "MuscleApplet";
 	card->drv_data = malloc(sizeof(muscle_private_t));
@@ -478,7 +479,10 @@ static int muscle_init(sc_card_t *card)
 	card->caps |= SC_CARD_CAP_RNG;
 
 	/* Card type detection */
-	_sc_match_atr(card, muscle_atrs, &card->type);
+	r = _sc_match_atr(card, muscle_atrs, &card->type);
+	if (r < 0) {
+		sc_log(card->ctx, "Failed to match the ATRs");
+	}
 	if(card->type == SC_CARD_TYPE_MUSCLE_ETOKEN_72K) {
 		card->caps |= SC_CARD_CAP_APDU_EXT;
 	}
