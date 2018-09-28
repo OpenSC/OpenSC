@@ -535,16 +535,9 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 		 apdu.resplen = 0;
 	}
 
-	sc_log(card->ctx,
-	       "calling sc_transmit_apdu flags=%lx le=%"SC_FORMAT_LEN_SIZE_T"u, resplen=%"SC_FORMAT_LEN_SIZE_T"u, resp=%p",
-	       apdu.flags, apdu.le, apdu.resplen, apdu.resp);
-
 	/* with new adpu.c and chaining, this actually reads the whole object */
 	r = sc_transmit_apdu(card, &apdu);
 
-	sc_log(card->ctx,
-	       "DEE r=%d apdu.resplen=%"SC_FORMAT_LEN_SIZE_T"u sw1=%02x sw2=%02x",
-	       r, apdu.resplen, apdu.sw1, apdu.sw2);
 	if (r < 0) {
 		sc_log(card->ctx, "Transmit failed");
 		goto err;
@@ -731,9 +724,6 @@ static int piv_select_aid(sc_card_t* card, u8* aid, size_t aidlen, u8* response,
 	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
-	sc_log(card->ctx,
-	       "Got args: aid=%p, aidlen=%"SC_FORMAT_LEN_SIZE_T"u, response=%p, responselen=%"SC_FORMAT_LEN_SIZE_T"u",
-	       aid, aidlen, response, responselen ? *responselen : 0);
 
 	sc_format_apdu(card, &apdu,
 		response == NULL ? SC_APDU_CASE_3_SHORT : SC_APDU_CASE_4_SHORT, 0xA4, 0x04, 0x00);
@@ -1197,9 +1187,6 @@ piv_read_binary(sc_card_t *card, unsigned int idx, unsigned char *buf, size_t co
 				r = SC_ERROR_FILE_NOT_FOUND;
 				goto err;
 			}
-			sc_log(card->ctx,
-			       "DEE rbuf=%p,rbuflen=%"SC_FORMAT_LEN_SIZE_T"u,",
-			       rbuf, rbuflen);
 			body = sc_asn1_find_tag(card->ctx, rbuf, rbuflen, rbuf[0], &bodylen);
 			if (body == NULL) {
 				/* if missing, assume its the body */
@@ -1298,7 +1285,6 @@ piv_write_certificate(sc_card_t *card, const u8* buf, size_t count, unsigned lon
 	size_t sbuflen;
 	size_t taglen;
 
-	sc_log(card->ctx, "DEE cert len=%"SC_FORMAT_LEN_SIZE_T"u", count);
 	taglen = put_tag_and_len(0x70, count, NULL)
 		+ put_tag_and_len(0x71, 1, NULL)
 		+ put_tag_and_len(0xFE, 0, NULL);
@@ -1318,9 +1304,6 @@ piv_write_certificate(sc_card_t *card, const u8* buf, size_t count, unsigned lon
 	/* Use 01 as per NIST 800-73-3 */
 	*p++ = (flags)? 0x01:0x00; /* certinfo, i.e. gzipped? */
 	put_tag_and_len(0xFE,0,&p); /* LRC tag */
-
-	sc_log(card->ctx, "DEE buf %p len %"SC_FORMAT_LEN_PTRDIFF_T"u %"SC_FORMAT_LEN_SIZE_T"u",
-	       sbuf, p - sbuf, sbuflen);
 
 	enumtag = piv_objects[priv->selected_obj].enumtag;
 	r = piv_put_data(card, enumtag, sbuf, sbuflen);
@@ -2194,7 +2177,6 @@ static int piv_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 	u8 * opts; /*  A or M, key_ref, alg_id */
 
 	LOG_FUNC_CALLED(card->ctx);
-	sc_log(card->ctx, "cmd=%ld ptr=%p", cmd, ptr);
 
 	if (priv == NULL) {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
@@ -2603,14 +2585,12 @@ static int piv_parse_discovery(sc_card_t *card, u8 * rbuf, size_t rbuflen, int a
 			goto err;
 		}
 
-	sc_log(card->ctx,
-	       "Discovery 0x%2.2x 0x%2.2x %p:%"SC_FORMAT_LEN_SIZE_T"u",
-	       cla_out, tag_out, body, bodylen);
-	if ( cla_out+tag_out == 0x7E && body != NULL && bodylen != 0) {
-		aidlen = 0;
-		aid = sc_asn1_find_tag(card->ctx, body, bodylen, 0x4F, &aidlen);
-		sc_log(card->ctx, "Discovery aid=%p:%"SC_FORMAT_LEN_SIZE_T"u",
-		       aid, aidlen);
+		sc_log(card->ctx,
+				"Discovery 0x%2.2x 0x%2.2x %p:%"SC_FORMAT_LEN_SIZE_T"u",
+				cla_out, tag_out, body, bodylen);
+		if ( cla_out+tag_out == 0x7E && body != NULL && bodylen != 0) {
+			aidlen = 0;
+			aid = sc_asn1_find_tag(card->ctx, body, bodylen, 0x4F, &aidlen);
 			if (aid == NULL || aidlen < piv_aids[0].len_short ||
 				memcmp(aid,piv_aids[0].value,piv_aids[0].len_short) != 0) { /*TODO look at long */
 				sc_log(card->ctx, "Discovery object not PIV");
@@ -2619,9 +2599,6 @@ static int piv_parse_discovery(sc_card_t *card, u8 * rbuf, size_t rbuflen, int a
 			}
 			if (aid_only == 0) {
 				pinp = sc_asn1_find_tag(card->ctx, body, bodylen, 0x5F2F, &pinplen);
-				sc_log(card->ctx,
-				       "Discovery pinp=%p:%"SC_FORMAT_LEN_SIZE_T"u",
-				       pinp, pinplen);
 				if (pinp && pinplen == 2) {
 					sc_log(card->ctx, "Discovery pinp flags=0x%2.2x 0x%2.2x",*pinp, *(pinp+1));
 					r = SC_SUCCESS;
@@ -2651,8 +2628,6 @@ static int piv_process_discovery(sc_card_t *card)
 	if (r < 0)
 		goto err;
 
-	sc_log(card->ctx, "Discovery = %p:%"SC_FORMAT_LEN_SIZE_T"u", rbuf,
-	       rbuflen);
 	/* the object is now cached, see what we have */
 	r = piv_parse_discovery(card, rbuf, rbuflen, 0);
 
@@ -2933,13 +2908,6 @@ piv_finish(sc_card_t *card)
 		if (priv->offCardCertURL)
 			free(priv->offCardCertURL);
 		for (i = 0; i < PIV_OBJ_LAST_ENUM - 1; i++) {
-			sc_log(card->ctx,
-			       "DEE freeing #%d, 0x%02x %p:%"SC_FORMAT_LEN_SIZE_T"u %p:%"SC_FORMAT_LEN_SIZE_T"u",
-			       i, priv->obj_cache[i].flags,
-			       priv->obj_cache[i].obj_data,
-			       priv->obj_cache[i].obj_len,
-			       priv->obj_cache[i].internal_obj_data,
-			       priv->obj_cache[i].internal_obj_len);
 			if (priv->obj_cache[i].obj_data)
 				free(priv->obj_cache[i].obj_data);
 			if (priv->obj_cache[i].internal_obj_data)
