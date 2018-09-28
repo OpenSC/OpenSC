@@ -143,17 +143,15 @@ static int openpgp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 }
 
 /**
- * Generates a new (RSA) key pair using an existing key file.
- * @param  profile  IN profile information for this card
+ * Generates a new RSA key pair using an existing key file.
  * @param  card     IN sc_card_t object to use
  * @param  obj      IN sc_pkcs15_object_t object with pkcs15 information
  * @param  pukkey   OUT the newly created public key
  * @return SC_SUCCESS on success and an error code otherwise
  **/
-static int openpgp_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
-	sc_pkcs15_object_t *obj, sc_pkcs15_pubkey_t *pubkey)
+static int openpgp_generate_key_rsa(sc_card_t *card, sc_pkcs15_object_t *obj,
+									sc_pkcs15_pubkey_t *pubkey)
 {
-	sc_card_t *card = p15card->card;
 	sc_context_t *ctx = card->ctx;
 	sc_cardctl_openpgp_keygen_info_t key_info;
 	sc_pkcs15_prkey_info_t *required = (sc_pkcs15_prkey_info_t *)obj->data;
@@ -162,6 +160,7 @@ static int openpgp_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 
 	LOG_FUNC_CALLED(ctx);
 	memset(&key_info, 0, sizeof(key_info));
+
 	sc_log(ctx, "Key ID to be generated: %s", sc_dump_hex(kid->value, kid->len));
 
 	/* Accept KeyID = 45, which is default value set by pkcs15init */
@@ -178,6 +177,9 @@ static int openpgp_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 
 	if (!key_info.keytype)
 		key_info.keytype = kid->value[0];
+
+
+	key_info.algorithm_id = 0x01; /* RSA */
 
 	/* Prepare buffer */
 	key_info.u.rsa.modulus_len = required->modulus_length;
@@ -216,6 +218,130 @@ out:
 		free(key_info.u.rsa.modulus);
 	if (key_info.u.rsa.exponent)
 		free(key_info.u.rsa.exponent);
+	LOG_FUNC_RETURN(ctx, r);
+}
+
+
+/**
+ * Generates a new ECC key pair using an existing key file.
+ * @param  card     IN sc_card_t object to use
+ * @param  obj      IN sc_pkcs15_object_t object with pkcs15 information
+ * @param  pukkey   OUT the newly created public key
+ * @return SC_SUCCESS on success and an error code otherwise
+ **/
+static int openpgp_generate_key_ec(sc_card_t *card, sc_pkcs15_object_t *obj,
+									sc_pkcs15_pubkey_t *pubkey)
+{
+	sc_context_t *ctx = card->ctx;
+	sc_cardctl_openpgp_keygen_info_t key_info;
+	sc_pkcs15_prkey_info_t *required = (sc_pkcs15_prkey_info_t *)obj->data;
+	sc_pkcs15_id_t *kid = &(required->id);
+	const struct sc_ec_parameters *info_ec =
+	    (struct sc_ec_parameters *) required->params.data;
+	unsigned int i;
+	int r;
+
+	LOG_FUNC_CALLED(ctx);
+	memset(&key_info, 0, sizeof(key_info));
+
+	sc_log(ctx, "Key ID to be generated: %s", sc_dump_hex(kid->value, kid->len));
+
+	/* Accept KeyID = 45, which is default value set by pkcs15init */
+	if (kid->len == 1 && kid->value[0] == 0x45) {
+		/* Default key is authentication key. We choose this because the common use
+		 * is to generate from PKCS#11 (Firefox/Thunderbird) */
+		sc_log(ctx, "Authentication key is to be generated.");
+		key_info.keytype = 3;
+	}
+	if (!key_info.keytype && (kid->len > 1 || kid->value[0] > 3)) {
+		sc_log(ctx, "Key ID must be 1, 2 or 3!");
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+	}
+
+	if (!key_info.keytype)
+		key_info.keytype = kid->value[0];
+
+
+	/* set algorithm id based on key reference */
+	if (key_info.keytype == 2){
+		key_info.algorithm_id = 0x12; /* ECDH for slot 2 only */
+	}
+	else {
+		key_info.algorithm_id = 0x13; /* ECDSA for slot 1 and 3 */
+	}
+
+	/* extract oid the way we need to import it to OpenPGP Card */
+	if (info_ec->der.len > 2)
+		key_info.u.ec.oid_len = info_ec->der.value[1];
+	else
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+
+	for (i=0; (i < key_info.u.ec.oid_len) && (i+2 < info_ec->der.len); i++){
+		key_info.u.ec.oid.value[i] = info_ec->der.value[i+2];
+	}
+	key_info.u.ec.oid.value[key_info.u.ec.oid_len] = -1;
+
+	/* Prepare buffer */
+	key_info.u.ec.ecpoint_len = (required->field_length>>2) + 1;
+	key_info.u.ec.ecpoint = malloc((required->field_length>>2) + 1);
+	if (key_info.u.ec.ecpoint == NULL)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
+
+
+	/* generate key on card */
+	r = sc_card_ctl(card, SC_CARDCTL_OPENPGP_GENERATE_KEY, &key_info);
+
+	if (r<0)
+		goto out;
+
+	/* set pubkey according to response of card */
+	sc_log(ctx, "Set output ecpoint info");
+	pubkey->u.ec.ecpointQ.len = key_info.u.ec.ecpoint_len;
+	pubkey->u.ec.ecpointQ.value = malloc(key_info.u.ec.ecpoint_len);
+	if (pubkey->u.ec.ecpointQ.value == NULL)
+		goto out;
+	memcpy(pubkey->u.ec.ecpointQ.value, key_info.u.ec.ecpoint, key_info.u.ec.ecpoint_len);
+
+out:
+	if (key_info.u.ec.ecpoint)
+		free(key_info.u.ec.ecpoint);
+
+	LOG_FUNC_RETURN(ctx, r);
+}
+
+
+/**
+ * Generates a new key pair using an existing key file.
+ * @param  profile  IN profile information for this card
+ * @param  card     IN sc_card_t object to use
+ * @param  obj      IN sc_pkcs15_object_t object with pkcs15 information
+ * @param  pukkey   OUT the newly created public key
+ * @return SC_SUCCESS on success and an error code otherwise
+ **/
+static int openpgp_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
+	sc_pkcs15_object_t *obj, sc_pkcs15_pubkey_t *pubkey)
+{
+	sc_card_t *card = p15card->card;
+	sc_context_t *ctx = card->ctx;
+	int r;
+
+	LOG_FUNC_CALLED(ctx);
+
+	switch(obj->type)
+	{
+	case SC_PKCS15_TYPE_PRKEY_RSA:
+		r = openpgp_generate_key_rsa(card, obj, pubkey);
+		break;
+
+	case SC_PKCS15_TYPE_PRKEY_EC:
+		r = openpgp_generate_key_ec(card, obj, pubkey);
+		break;
+
+	default:
+		r = SC_ERROR_NOT_SUPPORTED;
+		sc_log(card->ctx, "%s: Key generation failed: Unknown/unsupported key type.", strerror(r));
+	}
+
 	LOG_FUNC_RETURN(ctx, r);
 }
 

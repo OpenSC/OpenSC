@@ -1610,6 +1610,7 @@ pgp_get_pubkey_pem(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 	/* ECC */
 	else if ((r = pgp_get_blob(card, blob, 0x0086, &pubkey_blob)) == 0
 			 && (r = pgp_read_blob(card, pubkey_blob)) == 0) {
+
 		memset(&pubkey, 0, sizeof(pubkey));
 
 		pubkey.algorithm = SC_ALGORITHM_EC;
@@ -2211,56 +2212,59 @@ pgp_update_new_algo_attr(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_
 {
 	struct pgp_priv_data *priv = DRVDATA(card);
 	pgp_blob_t *algo_blob;
-	unsigned int old_modulus_len;     /* measured in bits */
-	unsigned int old_exponent_len;
 	const unsigned int tag = 0x00C0 | key_info->keytype;
-	u8 changed = 0;
+	u8 *data;
+	int data_len;
+	unsigned int i;
 	int r = SC_SUCCESS;
 
 	LOG_FUNC_CALLED(card->ctx);
-	/* get old algorithm attributes */
+
 	r = pgp_seek_blob(card, priv->mf, (0x00C0 | key_info->keytype), &algo_blob);
 	LOG_TEST_RET(card->ctx, r, "Cannot get old algorithm attributes");
-	old_modulus_len = bebytes2ushort(algo_blob->data + 1);  /* modulus length is coded in byte 2 & 3 */
-	sc_log(card->ctx,
-	       "Old modulus length %d, new %"SC_FORMAT_LEN_SIZE_T"u.",
-	       old_modulus_len, key_info->u.rsa.modulus_len);
-	old_exponent_len = bebytes2ushort(algo_blob->data + 3);  /* exponent length is coded in byte 3 & 4 */
-	sc_log(card->ctx,
-	       "Old exponent length %d, new %"SC_FORMAT_LEN_SIZE_T"u.",
-	       old_exponent_len, key_info->u.rsa.exponent_len);
 
-	/* Modulus */
-	/* If passed modulus_len is zero, it means using old key size */
-	if (key_info->u.rsa.modulus_len == 0) {
-		sc_log(card->ctx, "Use old modulus length (%d).", old_modulus_len);
-		key_info->u.rsa.modulus_len = old_modulus_len;
-	}
-	/* To generate key with new key size */
-	else if (old_modulus_len != key_info->u.rsa.modulus_len) {
-		algo_blob->data[1] = (unsigned char)(key_info->u.rsa.modulus_len >> 8);
-		algo_blob->data[2] = (unsigned char)key_info->u.rsa.modulus_len;
-		changed = 1;
+	/* ECDSA and ECDH */
+	if (key_info->algorithm_id == 0x12 || key_info->algorithm_id == 0x13){
+		data_len = key_info->u.ec.oid_len+1;
+		data = malloc(data_len);
+		if (!data)
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
+
+		data[0] = key_info->algorithm_id;
+		for (i=0; i < key_info->u.ec.oid_len; i++){
+			data[i+1] = key_info->u.ec.oid.value[i];
+		}
 	}
 
-	/* Exponent */
-	if (key_info->u.rsa.exponent_len == 0) {
-		sc_log(card->ctx, "Use old exponent length (%d).", old_exponent_len);
-		key_info->u.rsa.exponent_len = old_exponent_len;
+	/* RSA */
+	else if (key_info->algorithm_id == 0x01){
+
+		/* We can not rely on previous key attributes anymore, as it might be ECC */
+		if (key_info->u.rsa.exponent_len == 0 || key_info->u.rsa.modulus_len == 0)
+			LOG_FUNC_RETURN(card->ctx,SC_ERROR_INVALID_ARGUMENTS); 
+
+		data_len = 6;
+		data = malloc(data_len);
+		if (!data)
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
+
+		data[0] = key_info->algorithm_id;
+		data[1] = (unsigned char)(key_info->u.rsa.modulus_len >> 8);
+		data[2] = (unsigned char)key_info->u.rsa.modulus_len;
+		data[3] = (unsigned char)(key_info->u.rsa.exponent_len >> 8);
+		data[4] = (unsigned char)key_info->u.rsa.exponent_len;
+		data[5] = 0x00; /* Import-Format of private key (e,p,q) */
 	}
-	else if (old_exponent_len != key_info->u.rsa.exponent_len) {
-		algo_blob->data[3] = (unsigned char)(key_info->u.rsa.exponent_len >> 8);
-		algo_blob->data[4] = (unsigned char)key_info->u.rsa.exponent_len;
-		changed = 1;
+	else {
+		LOG_TEST_RET(card->ctx, SC_ERROR_NOT_SUPPORTED,
+			"Unknown algorithm id");
 	}
 
-	/* If the key to-be-generated has different size,
-	 * set this new value for GENERATE ASYMMETRIC KEY PAIR to work */
-	if (changed) {
-		r = pgp_put_data(card, tag, algo_blob->data, 6);
-		/* Note: Don't use pgp_set_blob to set data, because it won't touch the real DO */
-		LOG_TEST_RET(card->ctx, r, "Cannot set new algorithm attributes");
-	}
+	pgp_set_blob(algo_blob, data, data_len);
+	free(data);
+	r = pgp_put_data(card, tag, algo_blob->data, data_len);
+	/* Note: Don't use pgp_set_blob to set data, because it won't touch the real DO */
+	LOG_TEST_RET(card->ctx, r, "Cannot set new algorithm attributes");
 
 	LOG_FUNC_RETURN(card->ctx, r);
 }
@@ -2498,23 +2502,31 @@ pgp_parse_and_set_pubkey_output(sc_card_t *card, u8* data, size_t data_len,
 			if (key_info->u.rsa.modulus) {
 				memcpy(key_info->u.rsa.modulus, part, len);
 			}
+			else {
+				sc_log(card->ctx, "Error: key_info->u.rsa.modulus is NULL");
+			}
 			/* always set output for modulus_len */
 			key_info->u.rsa.modulus_len = len*8;
-			/* remember the modulus to calculate fingerprint later */
-			modulus = part;
 		}
 		else if (tag == 0x0082) {
 			/* set the output data */
 			if (key_info->u.rsa.exponent) {
 				memcpy(key_info->u.rsa.exponent, part, len);
 			}
+			else {
+				sc_log(card->ctx, "Error: key_info->u.rsa.exponent is NULL");
+			}
 			/* always set output for exponent_len */
 			key_info->u.rsa.exponent_len = len*8;
-			/* remember the exponent to calculate fingerprint later */
-			exponent = part;
 		}
 		else if (tag == 0x0086) {
-			// TODO ECC support 7.2.14
+			/* set the output data */
+			if (key_info->u.ec.ecpoint && key_info->u.ec.ecpoint_len == len) {
+				memcpy(key_info->u.ec.ecpoint, part, len);
+			}
+			else {
+				sc_log(card->ctx, "Error: key_info->u.ec.ecpoint is NULL or len is incorrect.");
+			}
 		}
 
 		/* go to next part to parse */

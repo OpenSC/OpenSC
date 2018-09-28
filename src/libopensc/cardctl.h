@@ -951,13 +951,6 @@ typedef struct sc_cardctl_piv_genkey_info_st {
 #define SC_OPENPGP_ALG_ID_ECDH		0x12
 #define SC_OPENPGP_ALG_ID_ECDSA	0x13
 
-#define SC_OPENPGP_EC_ANSIX_256 0 /* based on pgp_supported_ec_curves in card-openpgp.c */
-#define SC_OPENPGP_EC_ANSIX_384 1
-#define SC_OPENPGP_EC_ANSIX_512 2
-#define SC_OPENPGP_EC_BRAINP_256 3
-#define SC_OPENPGP_EC_BRAINP_384 4
-#define SC_OPENPGP_EC_BRAINP_512 5
-
 typedef struct sc_cardctl_openpgp_keygen_info {
 	u8 keytype;			/* SC_OPENPGP_KEY_ */
 	u8 algorithm_id;	/* Algorithm id sent to card */
@@ -971,7 +964,10 @@ typedef struct sc_cardctl_openpgp_keygen_info {
 		} rsa;
 		struct
 		{
-			u8 type; /* SC_OPENPGP_EC_ */
+			u8 *ecpoint;
+			size_t ecpoint_len;
+			struct sc_object_id oid;
+			unsigned int oid_len;
 		} ec;
 	} u;
 } sc_cardctl_openpgp_keygen_info_t;
