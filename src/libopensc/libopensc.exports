@@ -131,6 +131,8 @@ sc_lock
 sc_logout
 sc_make_cache_dir
 sc_mem_clear
+sc_mem_secure_alloc
+sc_mem_secure_free
 sc_mem_reverse
 sc_match_atr_block
 sc_path_print
