@@ -128,7 +128,7 @@ static int openpgp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	}
 
 	memset(&key_info, 0, sizeof(sc_cardctl_openpgp_keystore_info_t));
-	key_info.keytype = kinfo->id.value[0];
+	key_info.key_id = kinfo->id.value[0];
 	key_info.e = rsa->exponent.data;
 	key_info.e_len = rsa->exponent.len;
 	key_info.p = rsa->p.data;
@@ -169,15 +169,15 @@ static int openpgp_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 		/* Default key is authentication key. We choose this because the common use
 		 * is to generate from PKCS#11 (Firefox/Thunderbird) */
 		sc_log(ctx, "Authentication key is to be generated.");
-		key_info.keytype = 3;
+		key_info.key_id = 3;
 	}
-	if (!key_info.keytype && (kid->len > 1 || kid->value[0] > 3)) {
+	if (!key_info.key_id && (kid->len > 1 || kid->value[0] > 3)) {
 		sc_log(ctx, "Key ID must be 1, 2 or 3!");
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 
-	if (!key_info.keytype)
-		key_info.keytype = kid->value[0];
+	if (!key_info.key_id)
+		key_info.key_id = kid->value[0];
 
 	/* Prepare buffer */
 	key_info.modulus_len = required->modulus_length;
