@@ -129,14 +129,14 @@ static int openpgp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 
 	memset(&key_info, 0, sizeof(sc_cardctl_openpgp_keystore_info_t));
 	key_info.key_id = kinfo->id.value[0];
-	key_info.e = rsa->exponent.data;
-	key_info.e_len = rsa->exponent.len;
-	key_info.p = rsa->p.data;
-	key_info.p_len = rsa->p.len;
-	key_info.q = rsa->q.data;
-	key_info.q_len = rsa->q.len;
-	key_info.n = rsa->modulus.data;
-	key_info.n_len = rsa->modulus.len;
+	key_info.rsa.e = rsa->exponent.data;
+	key_info.rsa.e_len = rsa->exponent.len;
+	key_info.rsa.p = rsa->p.data;
+	key_info.rsa.p_len = rsa->p.len;
+	key_info.rsa.q = rsa->q.data;
+	key_info.rsa.q_len = rsa->q.len;
+	key_info.rsa.n = rsa->modulus.data;
+	key_info.rsa.n_len = rsa->modulus.len;
 	r = sc_card_ctl(card, SC_CARDCTL_OPENPGP_STORE_KEY, &key_info);
 
 	LOG_FUNC_RETURN(card->ctx, r);
@@ -180,16 +180,16 @@ static int openpgp_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 		key_info.key_id = kid->value[0];
 
 	/* Prepare buffer */
-	key_info.modulus_len = required->modulus_length;
-	key_info.modulus = calloc(required->modulus_length >> 3, 1);
-	if (key_info.modulus == NULL)
+	key_info.rsa.modulus_len = required->modulus_length;
+	key_info.rsa.modulus = calloc(required->modulus_length >> 3, 1);
+	if (key_info.rsa.modulus == NULL)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
 
 	/* The OpenPGP supports only 32-bit exponent. */
-	key_info.exponent_len = 32;
-	key_info.exponent = calloc(key_info.exponent_len>>3, 1); /* 1/8 */
-	if (key_info.exponent == NULL) {
-		free(key_info.modulus);
+	key_info.rsa.exponent_len = 32;
+	key_info.rsa.exponent = calloc(key_info.rsa.exponent_len>>3, 1); /* 1/8 */
+	if (key_info.rsa.exponent == NULL) {
+		free(key_info.rsa.modulus);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
 	}
 
@@ -198,24 +198,24 @@ static int openpgp_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 		goto out;
 
 	sc_log(ctx, "Set output modulus info");
-	pubkey->u.rsa.modulus.len = key_info.modulus_len;
-	pubkey->u.rsa.modulus.data = calloc(key_info.modulus_len, 1);
+	pubkey->u.rsa.modulus.len = key_info.rsa.modulus_len;
+	pubkey->u.rsa.modulus.data = calloc(key_info.rsa.modulus_len, 1);
 	if (pubkey->u.rsa.modulus.data == NULL)
 		goto out;
-	memcpy(pubkey->u.rsa.modulus.data, key_info.modulus, key_info.modulus_len);
+	memcpy(pubkey->u.rsa.modulus.data, key_info.rsa.modulus, key_info.rsa.modulus_len);
 
 	sc_log(ctx, "Set output exponent info");
-	pubkey->u.rsa.exponent.len = key_info.exponent_len;
-	pubkey->u.rsa.exponent.data = calloc(key_info.exponent_len>>3, 1); /* 1/8 */
+	pubkey->u.rsa.exponent.len = key_info.rsa.exponent_len;
+	pubkey->u.rsa.exponent.data = calloc(key_info.rsa.exponent_len>>3, 1); /* 1/8 */
 	if (pubkey->u.rsa.exponent.data == NULL)
 		goto out;
-	memcpy(pubkey->u.rsa.exponent.data, key_info.exponent, key_info.exponent_len>>3); /* 1/8 */
+	memcpy(pubkey->u.rsa.exponent.data, key_info.rsa.exponent, key_info.rsa.exponent_len>>3); /* 1/8 */
 
 out:
-	if (key_info.modulus)
-		free(key_info.modulus);
-	if (key_info.exponent)
-		free(key_info.exponent);
+	if (key_info.rsa.modulus)
+		free(key_info.rsa.modulus);
+	if (key_info.rsa.exponent)
+		free(key_info.rsa.exponent);
 	LOG_FUNC_RETURN(ctx, r);
 }
 
