@@ -952,24 +952,41 @@ typedef struct sc_cardctl_piv_genkey_info_st {
 typedef struct sc_cardctl_openpgp_keygen_info {
 	u8 key_id;		/* SC_OPENPGP_KEY_... */
 	u8 algorithm;		/* SC_OPENPGP_KEYALGO_... */
-	u8 *modulus;		/* New-generated pubkey info responded from the card */
-	size_t modulus_len;	/* Length of modulus in bit */
-	u8 *exponent;
-	size_t exponent_len;
+	union {			/* anonymous union */
+		struct {
+			u8 *modulus;		/* New-generated pubkey info responded from the card */
+			size_t modulus_len;	/* Length of modulus in bit */
+			u8 *exponent;
+			size_t exponent_len;
+			u8 keyformat;	/* SC_OPENPGP_KEYFORMAT_RSA_... */
+		} rsa;
+		struct {
+			u8 dummy;	/* placeholder */
+			// TODO: replace placeholder with real attributes
+		} ec;
+	};
 } sc_cardctl_openpgp_keygen_info_t;
 
 typedef struct sc_cardctl_openpgp_keystore_info {
 	u8 key_id;		/* SC_OPENPGP_KEY_... */
 	u8 algorithm;		/* SC_OPENPGP_KEYALGO_... */
-	u8 keyformat;
-	u8 *e;
-	size_t e_len;
-	u8 *p;
-	size_t p_len;
-	u8 *q;
-	size_t q_len;
-	u8 *n;
-	size_t n_len;
+	union {			/* anonymous union */
+		struct {
+			u8 keyformat;	/* SC_OPENPGP_KEYFORMAT_RSA_... */
+			u8 *e;
+			size_t e_len;
+			u8 *p;
+			size_t p_len;
+			u8 *q;
+			size_t q_len;
+			u8 *n;
+			size_t n_len;
+		} rsa;
+		struct {
+			u8 dummy;	/* placeholder */
+			// TODO: replace placeholder with real attributes
+		} ec;
+	};
 	time_t creationtime;
 } sc_cardctl_openpgp_keystore_info_t;
 
