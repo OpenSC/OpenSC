@@ -2134,6 +2134,11 @@ pgp_update_new_algo_attr(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_
 	int r = SC_SUCCESS;
 
 	LOG_FUNC_CALLED(card->ctx);
+
+	/* temporary workaround: protect v3 cards against non-RSA */
+	if (key_info->algorithm != SC_OPENPGP_KEYALGO_RSA)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+
 	/* get old algorithm attributes */
 	r = pgp_seek_blob(card, priv->mf, tag, &algo_blob);
 	LOG_TEST_RET(card->ctx, r, "Cannot get old algorithm attributes");
@@ -2243,6 +2248,10 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
+
+	/* temporary workaround: protect v3 cards against non-RSA */
+	if (key_info->algorithm != SC_OPENPGP_KEYALGO_RSA)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 
 	if (modulus == NULL || exponent == NULL || mlen == 0 || elen == 0) {
 		sc_log(card->ctx, "Null data (modulus or exponent)");
@@ -2455,6 +2464,10 @@ pgp_update_card_algorithms(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *ke
 
 	LOG_FUNC_CALLED(card->ctx);
 
+	/* temporary workaround: protect v3 cards against non-RSA */
+	if (key_info->algorithm != SC_OPENPGP_KEYALGO_RSA)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+
 	if (id > card->algorithm_count) {
 		sc_log(card->ctx,
 		       "This key ID %u is out of the card's algorithm list.",
@@ -2488,6 +2501,10 @@ pgp_gen_key(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_info)
 	int r = SC_SUCCESS;
 
 	LOG_FUNC_CALLED(card->ctx);
+
+	/* temporary workaround: protect v3 cards against non-RSA */
+	if (key_info->algorithm != SC_OPENPGP_KEYALGO_RSA)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 
 	/* FIXME the compilers don't assure that the buffers set here as
 	 * apdu_data are present until the end of the function */
@@ -2691,6 +2708,10 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_keystore_info
 
 	LOG_FUNC_CALLED(ctx);
 
+	/* temporary workaround: protect v3 cards against non-RSA */
+	if (key_info->algorithm != SC_OPENPGP_KEYALGO_RSA)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
+
 	if (key_info->rsa.keyformat == SC_OPENPGP_KEYFORMAT_RSA_STDN
 		|| key_info->rsa.keyformat == SC_OPENPGP_KEYFORMAT_RSA_CRTN)
 		comp_to_add = 4;
@@ -2820,6 +2841,10 @@ pgp_store_key(sc_card_t *card, sc_cardctl_openpgp_keystore_info_t *key_info)
 	int r;
 
 	LOG_FUNC_CALLED(ctx);
+
+	/* temporary workaround: protect v3 cards against non-RSA */
+	if (key_info->algorithm != SC_OPENPGP_KEYALGO_RSA)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 
 	/* Validate */
 	if (key_info->key_id < 1 || key_info->key_id > 3) {
