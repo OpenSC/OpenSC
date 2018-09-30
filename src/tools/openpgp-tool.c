@@ -455,6 +455,7 @@ int do_genkey(sc_card_t *card, u8 key_id, unsigned int key_len)
 	}
 	memset(&key_info, 0, sizeof(sc_cardctl_openpgp_keygen_info_t));
 	key_info.key_id = key_id;
+	key_info.algorithm = SC_OPENPGP_KEYALGO_RSA;
 	key_info.rsa.modulus_len = key_len;
 	key_info.rsa.modulus = malloc(key_len/8);
 	r = sc_card_ctl(card, SC_CARDCTL_OPENPGP_GENERATE_KEY, &key_info);
