@@ -776,14 +776,10 @@ pgp_get_card_features(sc_card_t *card)
 		 * well and therefore added 
 		 * see OpenPGP card spec 1.1 & 2.x section 4.3.3.6 / v3.x section 4.4.3.7 */
 		for (i = 0x00c1; i <= 0x00c3; i++) {
-			unsigned long flags;
-
-			/* Is this correct? */
 			/* OpenPGP card spec 1.1 & 2.x, section 7.2.9 & 7.2.10 / v3.x section 7.2.11 & 7.2.12 */
-			flags = SC_ALGORITHM_RSA_PAD_PKCS1;
-			flags |= SC_ALGORITHM_RSA_HASH_NONE;
-			/* Can be generated in card */
-			flags |= SC_ALGORITHM_ONBOARD_KEY_GEN;
+			unsigned long flags = SC_ALGORITHM_RSA_PAD_PKCS1 |
+					      SC_ALGORITHM_RSA_HASH_NONE |
+					      SC_ALGORITHM_ONBOARD_KEY_GEN;	/* key gen on card */
 
 			/* OpenPGP card spec 1.1 & 2.x section 4.3.3.6 / v3.x section 4.4.3.7 */
 			if ((pgp_get_blob(card, blob73, i, &blob) >= 0) && (blob->data != NULL)) {
@@ -2136,7 +2132,7 @@ pgp_update_new_algo_attr(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_
 
 	LOG_FUNC_CALLED(card->ctx);
 	/* get old algorithm attributes */
-	r = pgp_seek_blob(card, priv->mf, (0x00C0 | key_info->keytype), &algo_blob);
+	r = pgp_seek_blob(card, priv->mf, tag, &algo_blob);
 	LOG_TEST_RET(card->ctx, r, "Cannot get old algorithm attributes");
 	old_modulus_len = bebytes2ushort(algo_blob->data + 1);  /* modulus length is coded in byte 2 & 3 */
 	sc_log(card->ctx,
@@ -2238,7 +2234,7 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 	size_t fp_buffer_len;
 	u8 *p; /* use this pointer to set fp_buffer content */
 	size_t pk_packet_len;
-	unsigned int tag;
+	unsigned int tag = 0x00C6 + key_info->key_id;
 	pgp_blob_t *fpseq_blob;
 	u8 *newdata;
 	int r;
@@ -2288,22 +2284,21 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 	free(fp_buffer);
 
 	/* store to DO */
-	tag = 0x00C6 + key_info->keytype;
-	sc_log(card->ctx, "Write to DO %04X.", tag);
-	r = pgp_put_data(card, 0x00C6 + key_info->keytype, fingerprint, SHA_DIGEST_LENGTH);
+	sc_log(card->ctx, "Writing to DO %04X.", tag);
+	r = pgp_put_data(card, tag, fingerprint, SHA_DIGEST_LENGTH);
 	LOG_TEST_RET(card->ctx, r, "Cannot write to DO.");
 
 	/* update the blob containing fingerprints (00C5) */
-	sc_log(card->ctx, "Update the blob containing fingerprints (00C5)");
+	sc_log(card->ctx, "Updating fingerprint blob 00C5.");
 	fpseq_blob = pgp_find_blob(card, 0x00C5);
 	if (!fpseq_blob) {
-		sc_log(card->ctx, "Not found 00C5");
+		sc_log(card->ctx, "Cannot find blob 00C5.");
 		goto exit;
 	}
 	/* save the fingerprints sequence */
 	newdata = malloc(fpseq_blob->len);
 	if (!newdata) {
-		sc_log(card->ctx, "Not enough memory to update fingerprints blob.");
+		sc_log(card->ctx, "Not enough memory to update fingerprint blob 00C5.");
 		goto exit;
 	}
 	memcpy(newdata, fpseq_blob->data, fpseq_blob->len);
@@ -2349,7 +2344,7 @@ pgp_update_pubkey_blob(sc_card_t *card, u8* modulus, size_t modulus_len,
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 
-	sc_log(card->ctx, "Get the blob %X.", blob_id);
+	sc_log(card->ctx, "Retrieving blob %04X.", blob_id);
 	r = pgp_get_blob(card, priv->mf, blob_id, &pk_blob);
 	LOG_TEST_RET(card->ctx, r, "Cannot get the blob.");
 
@@ -2364,7 +2359,7 @@ pgp_update_pubkey_blob(sc_card_t *card, u8* modulus, size_t modulus_len,
 	r = sc_pkcs15_encode_pubkey(card->ctx, &pubkey, &data, &len);
 	LOG_TEST_RET(card->ctx, r, "Cannot encode pubkey.");
 
-	sc_log(card->ctx, "Update blob content.");
+	sc_log(card->ctx, "Updating blob %04X's content.", blob_id);
 	r = pgp_set_blob(pk_blob, data, len);
 	LOG_TEST_RET(card->ctx, r, "Cannot update blob content.");
 	LOG_FUNC_RETURN(card->ctx, r);
