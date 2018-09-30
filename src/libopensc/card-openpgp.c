@@ -577,11 +577,14 @@ pgp_init(sc_card_t *card)
 	/* get card_features from ATR & DOs */
 	pgp_get_card_features(card);
 
-	/* add supported algorithms based on specification for pkcs15-init */
-	if (strcmp(card->ctx->app_name, "pkcs15-init") == 0){
-		unsigned long flags;
-		flags = SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE;
-		flags |= SC_ALGORITHM_ONBOARD_KEY_GEN; // Can be generated in card
+	/* if algorithm attributes can be changed,
+         * add supported algorithms based on specification for pkcs15-init */
+	if ((priv->ext_caps & EXT_CAP_ALG_ATTR_CHANGEABLE) &&
+	    (strcmp(card->ctx->app_name, "pkcs15-init") == 0)) {
+		/* OpenPGP card spec 1.1 & 2.x, section 7.2.9 & 7.2.10 / v3.x section 7.2.11 & 7.2.12 */
+		unsigned long flags = SC_ALGORITHM_RSA_PAD_PKCS1 |
+				      SC_ALGORITHM_RSA_HASH_NONE |
+				      SC_ALGORITHM_ONBOARD_KEY_GEN;	/* key gen. on card */
 
 		switch (card->type) {
 			case SC_CARD_TYPE_OPENPGP_V3:
