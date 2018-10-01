@@ -83,6 +83,8 @@ static sc_pkcs11_mechanism_type_t openssl_sha224_mech = {
 	NULL, NULL, NULL,	/* verif_* */
 	NULL, NULL,		/* decrypt_* */
 	NULL,			/* derive */
+	NULL,			/* wrap */
+	NULL,			/* unwrap */
 	NULL,			/* mech_data */
 	NULL,			/* free_mech_data */
 };

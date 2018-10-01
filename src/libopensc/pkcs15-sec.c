@@ -53,22 +53,24 @@ static int sec_env_add_param(sc_security_env_t* se, const sc_sec_env_param_t* p)
 }
 
 
-static sc_path_t get_file_path(const struct sc_pkcs15_object* obj)
+static int get_file_path(const struct sc_pkcs15_object* obj, sc_path_t* path)
 {
-	sc_path_t path;
+	if (!path)
+		return SC_ERROR_INCORRECT_PARAMETERS;
+
 	const struct sc_pkcs15_prkey_info *prkey = (const struct sc_pkcs15_prkey_info *) obj->data;
 	const struct sc_pkcs15_skey_info *skey = (const struct sc_pkcs15_skey_info *) obj->data;
 
-	memset (&path, 0, sizeof(path));
-
 	if ((obj->type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_PRKEY) {
-		path = prkey->path;
+		*path = prkey->path;
 	}
 	else if ((obj->type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_SKEY) {
-		path = skey->path;
+		*path = skey->path;
 	}
+	else
+		return SC_ERROR_INCORRECT_PARAMETERS;
 
-	return path;
+	return SC_SUCCESS;
 }
 
 
@@ -83,7 +85,7 @@ static int select_key_file(struct sc_pkcs15_card *p15card,
 
 	LOG_FUNC_CALLED(ctx);
 
-	orig_path = get_file_path(key);
+	LOG_TEST_RET(ctx, get_file_path(key, &orig_path), "Could not get key file path.");
 	memset(&path, 0, sizeof(sc_path_t));
 	memset(&file_id, 0, sizeof(sc_path_t));
 
@@ -131,7 +133,8 @@ static int use_key(struct sc_pkcs15_card *p15card,
 {
 	int r = SC_SUCCESS;
 	int revalidated_cached_pin = 0;
-	sc_path_t path = get_file_path(obj);
+	sc_path_t path;
+	LOG_TEST_RET(p15card->card->ctx, get_file_path(obj, &path), "Failed to get key file path.");
 
 	r = sc_lock(p15card->card);
 	LOG_TEST_RET(p15card->card->ctx, r, "sc_lock() failed");
@@ -419,7 +422,7 @@ int sc_pkcs15_unwrap(struct sc_pkcs15_card *p15card,
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "invalid unwrapping target key path");
 	}
 
-	senv_param = (sc_sec_env_param_t) { SC_SEC_ENV_PARAM_TARGET_FILE, (u8*) &target_file_id, sizeof(target_file_id)};
+	senv_param = (sc_sec_env_param_t) { SC_SEC_ENV_PARAM_TARGET_FILE, &target_file_id, sizeof(target_file_id)};
 	LOG_TEST_RET(ctx, sec_env_add_param(&senv, &senv_param), "failed to add target file path to security environment");
 
 	r = sc_get_encoding_flags(ctx, flags, alg_info->flags, &pad_flags, &sec_flags);
@@ -427,7 +430,7 @@ int sc_pkcs15_unwrap(struct sc_pkcs15_card *p15card,
 	senv.algorithm_flags = sec_flags;
 
 	if ((sec_flags & (SC_ALGORITHM_AES_CBC | SC_ALGORITHM_AES_CBC_PAD)) > 0) {
-	    senv_param = (sc_sec_env_param_t) { SC_SEC_ENV_PARAM_IV, (u8*) param, paramlen };
+	    senv_param = (sc_sec_env_param_t) { SC_SEC_ENV_PARAM_IV, (void*) param, paramlen };
 	    LOG_TEST_RET(ctx, sec_env_add_param(&senv, &senv_param), "failed to add IV to security environment");
 	}
 
@@ -498,11 +501,11 @@ int sc_pkcs15_wrap(struct sc_pkcs15_card *p15card,
 
 	switch (target_key->type) {
 		case SC_PKCS15_TYPE_PRKEY_RSA:
-		tkey_path = target_prkey->path;
-		break;
-	default: /* we already know it is a secret key */
-		tkey_path = target_skey->path;
-		break;
+			tkey_path = target_prkey->path;
+			break;
+		default: /* we already know it is a secret key */
+			tkey_path = target_skey->path;
+			break;
 	}
 
 	if (!tkey_path.len && tkey_path.aid.len) {
@@ -523,7 +526,7 @@ int sc_pkcs15_wrap(struct sc_pkcs15_card *p15card,
 	else {
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "invalid unwrapping target key path");
 	}
-	senv_param = (sc_sec_env_param_t) { SC_SEC_ENV_PARAM_TARGET_FILE, (u8*) &target_file_id, sizeof(target_file_id)};
+	senv_param = (sc_sec_env_param_t) { SC_SEC_ENV_PARAM_TARGET_FILE, &target_file_id, sizeof(target_file_id)};
 	LOG_TEST_RET(ctx, sec_env_add_param(&senv, &senv_param), "failed to add target file path to security environment");
 
 	r = sc_get_encoding_flags(ctx, flags, alg_info->flags, &pad_flags, &sec_flags);
@@ -531,7 +534,7 @@ int sc_pkcs15_wrap(struct sc_pkcs15_card *p15card,
 	senv.algorithm_flags = sec_flags;
 
 	if ((sec_flags & (SC_ALGORITHM_AES_CBC | SC_ALGORITHM_AES_CBC_PAD)) > 0) {
-	    senv_param = (sc_sec_env_param_t) { SC_SEC_ENV_PARAM_IV, (u8*) param, paramlen };
+	    senv_param = (sc_sec_env_param_t) { SC_SEC_ENV_PARAM_IV, (void*) param, paramlen };
 	    LOG_TEST_RET(ctx, sec_env_add_param(&senv, &senv_param), "failed to add IV to security environment");
 	}
 

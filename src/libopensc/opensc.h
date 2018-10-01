@@ -227,7 +227,7 @@ struct sc_supported_algo_info {
 
 typedef struct sc_sec_env_param {
 	unsigned int param_type;
-	unsigned char* value;
+	void* value;
 	unsigned int value_len;
 } sc_sec_env_param_t;
 

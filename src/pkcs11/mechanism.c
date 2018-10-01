@@ -1097,6 +1097,9 @@ sc_pkcs11_wrap_operation(sc_pkcs11_operation_t *operation,
 	    struct sc_pkcs11_object *targetKey,
 	    CK_BYTE_PTR pWrappedData, CK_ULONG_PTR ulWrappedDataLen)
 {
+	if (!operation || !wrappingKey || !wrappingKey->ops || !wrappingKey->ops->wrap_key)
+		return CKR_ARGUMENTS_BAD;
+
     return wrappingKey->ops->wrap_key(operation->session,
 		    wrappingKey,
 		    &operation->mechanism,
@@ -1110,6 +1113,9 @@ sc_pkcs11_unwrap_operation(sc_pkcs11_operation_t *operation,
 	    CK_BYTE_PTR pWrappedKey, CK_ULONG ulWrappedKeyLen,
 	    struct sc_pkcs11_object *targetKey)
 {
+	if (!operation || !unwrappingKey || !unwrappingKey->ops || !unwrappingKey->ops->unwrap_key)
+		return CKR_ARGUMENTS_BAD;
+
     return unwrappingKey->ops->unwrap_key(operation->session,
 		    unwrappingKey,
 		    &operation->mechanism,

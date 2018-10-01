@@ -164,10 +164,10 @@ sc_pkcs15_decode_skdf_entry(struct sc_pkcs15_card *p15card, struct sc_pkcs15_obj
 				    temp_oid.value[8] = -1; /* strip off AES subtype octet*/
 
 				    if (sc_compare_oid(&id_aes, &temp_oid))
-					if (info.key_type == 0)	{
-					    info.key_type = CKK_AES;
-					    break;
-					}
+						if (info.key_type == 0)	{
+							info.key_type = CKK_AES;
+							break;
+						}
 				}
 			}
 		}

@@ -2353,7 +2353,7 @@ pkcs15_create_secret_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 	    skey_info->key_type = key_type; /* PKCS#11 CKK_* */
 	    skey_info->data.value = args.key.data;
 	    skey_info->data.len = args.key.data_len;
-	    skey_info->value_len = args.value_len; /* callers preferred length */
+	    skey_info->value_len = args.value_len * 8; /* key length comes in number of bytes, use length in bits in PKCS#15. */
 	    args.key.data = NULL;
 		key_obj->session_object = 1;
 	}
@@ -2361,7 +2361,8 @@ pkcs15_create_secret_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 	    if(_token == FALSE)
 			args.session_object = 1;	/* store the object on card for duration of the session. */
 
-	    rc = sc_pkcs15init_store_secret_key(fw_data->p15_card, profile, &args, &key_obj);
+	    args.value_len = args.value_len * 8; /* CKA_VALUE_LEN is number of bytes, PKCS#15 needs key length in bits */
+		rc = sc_pkcs15init_store_secret_key(fw_data->p15_card, profile, &args, &key_obj);
 	    if (rc < 0) {
 		    rv = sc_to_cryptoki_error(rc, "C_CreateObject");
 		    goto out;
@@ -3521,7 +3522,7 @@ struct sc_pkcs11_object_ops pkcs15_cert_ops = {
 	NULL,	/* decrypt */
 	NULL,	/* derive */
 	NULL,	/* can_do */
-	NULL	/* init_params */
+	NULL,	/* init_params */
 	NULL	/* wrap_key */
 };
 
@@ -3971,11 +3972,10 @@ pkcs15_prkey_unwrap(struct sc_pkcs11_session *session, void *obj,
 	if (!fw_data)
 		return sc_to_cryptoki_error(SC_ERROR_INTERNAL, "C_UnwrapKey");
 
-	sc_log(context, "unwrapping %p %p %p %p %lu %p", session, obj,
-	       pMechanism, pWrappedKey, ulWrappedKeyLen, targetKeyObj);
-
-	if (pMechanism == NULL || pWrappedKey == NULL || ulWrappedKeyLen == 0 || targetKeyObj == NULL)
+	if (pMechanism == NULL || pWrappedKey == NULL || ulWrappedKeyLen == 0 || targetKeyObj == NULL) {
+		sc_log(context, "One or more of mandatory arguments were NULL.");
 	    return CKR_ARGUMENTS_BAD;
+	}
 
 	/* See which of the alternative keys supports unwrap */
 	while (prkey && !(prkey->prv_info->usage & SC_PKCS15_PRKEY_USAGE_UNWRAP))
@@ -3983,6 +3983,8 @@ pkcs15_prkey_unwrap(struct sc_pkcs11_session *session, void *obj,
 
 	if (prkey == NULL)
 		return CKR_KEY_FUNCTION_NOT_PERMITTED;
+
+	sc_log(context, "Using mechanism %lx.", pMechanism->mechanism);
 
 	/* Select the proper padding mechanism */
 	switch (pMechanism->mechanism) {
@@ -4529,7 +4531,7 @@ struct sc_pkcs11_object_ops pkcs15_pubkey_ops = {
 	NULL,	/* decrypt */
 	NULL,	/* derive */
 	NULL,	/* can_do */
-	NULL	/* init_params */
+	NULL,	/* init_params */
 	NULL	/* wrap_key */
 };
 
@@ -4709,7 +4711,7 @@ struct sc_pkcs11_object_ops pkcs15_dobj_ops = {
 	NULL,	/* decrypt */
 	NULL,	/* derive */
 	NULL,	/* can_do */
-	NULL	/* init_params */
+	NULL,	/* init_params */
 	NULL	/* wrap_key */
 };
 
@@ -4847,11 +4849,10 @@ pkcs15_skey_unwrap(struct sc_pkcs11_session *session, void *obj,
 	if (!fw_data)
 		return sc_to_cryptoki_error(SC_ERROR_INTERNAL, "C_UnwrapKey");
 
-	sc_log(context, "unwrapping %p %p %p %p %lu %p", session, obj,
-	       pMechanism, pWrappedKey, ulWrappedKeyLen, targetKeyObj);
-
-	if (pMechanism == NULL || pWrappedKey == NULL || ulWrappedKeyLen == 0 || targetKeyObj == NULL)
-	    return CKR_ARGUMENTS_BAD;
+	if (pMechanism == NULL || pWrappedKey == NULL || ulWrappedKeyLen == 0 || targetKeyObj == NULL) {
+		sc_log(context, "One or more of mandatory arguments were NULL.");
+		return CKR_ARGUMENTS_BAD;
+	}
 
 	/* Check whether this key supports unwrap */
 	if (skey && !(skey->info->usage & SC_PKCS15_PRKEY_USAGE_UNWRAP))
@@ -4863,6 +4864,7 @@ pkcs15_skey_unwrap(struct sc_pkcs11_session *session, void *obj,
 	if (skey == NULL)
 		return CKR_KEY_FUNCTION_NOT_PERMITTED;
 
+	sc_log(context, "Using mechanism %lx.", pMechanism->mechanism);
 	/* Select the proper padding mechanism */
 	switch (pMechanism->mechanism) {
 	case CKM_AES_ECB:
@@ -4920,20 +4922,20 @@ pkcs15_skey_wrap(struct sc_pkcs11_session *session, void *obj,
 	if (!fw_data)
 		return sc_to_cryptoki_error(SC_ERROR_INTERNAL, "C_WrapKey");
 
-	sc_log(context, "wrapping %p %p %p %p %p %p, %lu", session, obj,
-	       pMechanism, targetKey, pData, pulDataLen, pulDataLen == NULL ? 0 : *pulDataLen);
-
-	if (session == NULL || pMechanism == NULL || obj == NULL || targetKey == NULL)
-	    return CKR_ARGUMENTS_BAD;
+	if (session == NULL || pMechanism == NULL || obj == NULL || targetKey == NULL) {
+		sc_log(context, "One or more of mandatory arguments were NULL.");
+		return CKR_ARGUMENTS_BAD;
+	}
 
 	/* Verify that the key supports wrapping */
 	if (skey && !(skey->info->usage & SC_PKCS15_PRKEY_USAGE_WRAP))
 	    skey = NULL;
 	/* TODO: browse for a key that supports, like other similar funcs */
 
-
 	if (skey == NULL)
 		return CKR_KEY_FUNCTION_NOT_PERMITTED;
+
+	sc_log(context, "Using mechanism %lx.", pMechanism->mechanism);
 
 	/* Select the proper padding mechanism */
 	switch (pMechanism->mechanism) {
@@ -4983,7 +4985,7 @@ struct sc_pkcs11_object_ops pkcs15_skey_ops = {
 	NULL,	/* decrypt */
 	NULL,	/* derive */
 	NULL,	/* can_do */
-	NULL	/* init_params */
+	NULL,	/* init_params */
 	pkcs15_skey_wrap /* wrap_key */
 };
 
