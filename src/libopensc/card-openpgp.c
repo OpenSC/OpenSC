@@ -2308,20 +2308,14 @@ pgp_store_creationtime(sc_card_t *card, u8 key_id, time_t *outtime)
 
 
 /**
- * Internal: calculate PGP fingerprints.
+ * Internal: calculate and store PGP fingerprints.
  * Reference: GnuPG, app-openpgp.c.
- * modulus and exponent are passed separately from key_info
- * because key_info->u.rsa.exponent may be null.
  **/
-// TODO ECC: has to be adapted...
 static int
 pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
-                                    u8* modulus, u8* exponent,
                                     sc_cardctl_openpgp_keygen_info_t *key_info)
 {
 	u8 fingerprint[SHA_DIGEST_LENGTH];
-	size_t mlen = key_info->u.rsa.modulus_len >> 3;  /* 1/8 */
-	size_t elen = key_info->u.rsa.exponent_len >> 3;  /* 1/8 */
 	u8 *fp_buffer = NULL;  /* fingerprint buffer, not hashed */
 	size_t fp_buffer_len;
 	u8 *p; /* use this pointer to set fp_buffer content */
@@ -2333,19 +2327,53 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 
 	LOG_FUNC_CALLED(card->ctx);
 
-	if (modulus == NULL || exponent == NULL || mlen == 0 || elen == 0) {
-		sc_log(card->ctx, "Null data (modulus or exponent)");
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
-	}
+	/* constructing public-key packet length */
+	/* RSA */
+	if (key_info->algorithm_id == 0x01) {
 
-	/* http://tools.ietf.org/html/rfc4880  page 41, 72 */
-	pk_packet_len =   1   /* version number */
-	                + 4   /* creation time */
-	                + 1   /* algorithm */
-	                + 2   /* algorithm-specific fields: RSA modulus+exponent */
-	                + mlen
-	                + 2
-	                + elen;
+		if (key_info->u.rsa.modulus == NULL 
+			|| key_info->u.rsa.exponent == NULL
+			|| (key_info->u.rsa.modulus_len >> 3) == 0
+			|| (key_info->u.rsa.exponent_len >> 3) == 0) {
+			sc_log(card->ctx, "Null data (modulus or exponent)");
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+		}
+
+		/* https://tools.ietf.org/html/rfc4880  page 41, 72 */
+		pk_packet_len =   1   /* version number */
+						+ 4   /* creation time */
+						+ 1   /* algorithm */
+						+ 2   /* algorithm-specific fields: RSA modulus+exponent */
+						+ (key_info->u.rsa.modulus_len >> 3)
+						+ 2
+						+ (key_info->u.rsa.exponent_len >> 3);
+
+	}
+	/* ECC */
+	else if (key_info->algorithm_id == 0x12 || key_info->algorithm_id == 0x13) {
+		if (key_info->u.ec.ecpoint == NULL || (key_info->u.ec.ecpoint_len) == 0) {
+			sc_log(card->ctx, "Null data (modulus or exponent)");
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+		}
+
+		/* https://tools.ietf.org/html/rfc4880  page 41, 72 
+		 * and https://tools.ietf.org/html/rfc6637 section 9 (page 8 and 9) */
+		pk_packet_len =   1   /* version number */
+						+ 4   /* creation time */
+						+ 1   /* algorithm */
+						+ 1   /* oid len */
+						+ (key_info->u.ec.oid_len) /* oid */
+						+ (key_info->u.ec.ecpoint_len); /* ecpoint */
+
+		if (key_info->algorithm_id == 0x12) {
+			/* TODO KDF parameters */
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+		}
+		
+	}
+	else
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+	sc_log(card->ctx, "pk_packet_len is %lu", pk_packet_len);
 
 	fp_buffer_len = 3 + pk_packet_len;
 	p = fp_buffer = calloc(fp_buffer_len, 1);
@@ -2353,6 +2381,7 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
 	}
 
+	/* constructing public-key packet */
 	p[0] = 0x99;   /* http://tools.ietf.org/html/rfc4880  page 71 */
 	ushort2bebytes(++p, (unsigned short)pk_packet_len);
 	/* start pk_packet */
@@ -2360,15 +2389,38 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 	*p = 4;        /* Version 4 key */
 	ulong2bebytes(++p, (unsigned long)ctime);    /* Creation time */
 	p += 4;
-	*p = 1;        /* RSA */
-	/* algorithm-specific fields */
-	ushort2bebytes(++p, (unsigned short)key_info->u.rsa.modulus_len);
-	p += 2;
-	memcpy(p, modulus, mlen);
-	p += mlen;
-	ushort2bebytes(++p, (unsigned short)key_info->u.rsa.exponent_len);
-	p += 2;
-	memcpy(p, exponent, elen);
+
+	/* RSA */
+	if (key_info->algorithm_id == 0x01) {
+		*p = 1; /* Algorithm ID, RSA */
+		p += 1;
+		ushort2bebytes(p, (unsigned short)key_info->u.rsa.modulus_len);
+		p += 2;
+		memcpy(p, key_info->u.rsa.modulus, (key_info->u.rsa.modulus_len >> 3));
+		p += (key_info->u.rsa.modulus_len >> 3);
+		ushort2bebytes(++p, (unsigned short)key_info->u.rsa.exponent_len);
+		p += 2;
+		memcpy(p, key_info->u.rsa.exponent, (key_info->u.rsa.exponent_len >> 3));
+	}
+	/* ECC */
+	else if (key_info->algorithm_id == 0x12 || key_info->algorithm_id == 0x13) {
+		/* Algorithm ID, see https://tools.ietf.org/html/rfc6637#section-5 */
+		*p = key_info->algorithm_id + 6;
+		p += 1;
+		*p = key_info->u.ec.oid_len;
+		p += 1;
+		memcpy(p, key_info->u.ec.oid.value, key_info->u.ec.oid_len);
+		p += key_info->u.ec.oid_len;
+		memcpy(p, key_info->u.ec.ecpoint, key_info->u.ec.ecpoint_len);
+
+		if (key_info->algorithm_id == 0x12) {
+			/* TODO KDF parameters */
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+		}
+	}
+	else
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+
 	p = NULL;
 
 	/* hash with SHA-1 */
@@ -2536,10 +2588,9 @@ pgp_parse_and_set_pubkey_output(sc_card_t *card, u8* data, size_t data_len,
 
 	/* calculate and store fingerprint */
 	sc_log(card->ctx, "Calculate and store fingerprint");
-	// TODO ECC: has to be adapted...
-	r = pgp_calculate_and_store_fingerprint(card, ctime, modulus, exponent, key_info);
+	r = pgp_calculate_and_store_fingerprint(card, ctime, key_info);
 	LOG_TEST_RET(card->ctx, r, "Cannot store fingerprint.");
-	/* update pubkey blobs (B601,B801, A401) */
+	/* update pubkey blobs (B601, B801, A401) */
 	sc_log(card->ctx, "Update blobs holding pubkey info.");
 	// TODO ECC: has to be adapted...
 	r = pgp_update_pubkey_blob(card, modulus, key_info->u.rsa.modulus_len,
@@ -2984,7 +3035,7 @@ pgp_store_key(sc_card_t *card, sc_cardctl_openpgp_keystore_info_t *key_info)
 
 	/* Calculate and store fingerprint */
 	sc_log(card->ctx, "Calculate and store fingerprint");
-	r = pgp_calculate_and_store_fingerprint(card, key_info->creationtime, key_info->n, key_info->e, &pubkey);
+	r = pgp_calculate_and_store_fingerprint(card, key_info->creationtime, &pubkey);
 	LOG_TEST_RET(card->ctx, r, "Cannot store fingerprint.");
 	/* update pubkey blobs (B601,B801, A401) */
 	sc_log(card->ctx, "Update blobs holding pubkey info.");

@@ -967,7 +967,7 @@ typedef struct sc_cardctl_openpgp_keygen_info {
 			u8 *ecpoint;
 			size_t ecpoint_len;
 			struct sc_object_id oid;
-			unsigned int oid_len;
+			u8 oid_len;
 		} ec;
 	} u;
 } sc_cardctl_openpgp_keygen_info_t;
