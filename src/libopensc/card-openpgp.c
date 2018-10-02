@@ -2465,8 +2465,7 @@ exit:
  * Note that modulus_len, exponent_len is measured in bit.
  **/
 static int
-pgp_update_pubkey_blob(sc_card_t *card, u8* modulus, size_t modulus_len,
-                       u8* exponent, size_t exponent_len, u8 key_id)
+pgp_update_pubkey_blob(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_info)
 {
 	struct pgp_priv_data *priv = DRVDATA(card);
 	pgp_blob_t *pk_blob;
@@ -2478,14 +2477,14 @@ pgp_update_pubkey_blob(sc_card_t *card, u8* modulus, size_t modulus_len,
 
 	LOG_FUNC_CALLED(card->ctx);
 
-	if (key_id == SC_OPENPGP_KEY_SIGN)
+	if (key_info->keytype == SC_OPENPGP_KEY_SIGN)
 		blob_id = DO_SIGN_SYM;
-	else if (key_id == SC_OPENPGP_KEY_ENCR)
+	else if (key_info->keytype == SC_OPENPGP_KEY_ENCR)
 		blob_id = DO_ENCR_SYM;
-	else if (key_id == SC_OPENPGP_KEY_AUTH)
+	else if (key_info->keytype == SC_OPENPGP_KEY_AUTH)
 		blob_id = DO_AUTH_SYM;
 	else {
-		sc_log(card->ctx, "Unknown key id %X.", key_id);
+		sc_log(card->ctx, "Unknown key_id %X.", key_info->keytype);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 
@@ -2494,13 +2493,24 @@ pgp_update_pubkey_blob(sc_card_t *card, u8* modulus, size_t modulus_len,
 	LOG_TEST_RET(card->ctx, r, "Cannot get the blob.");
 
 	/* encode pubkey */
-	// TODO ECC: has to be adapted...
-	memset(&pubkey, 0, sizeof(pubkey));
-	pubkey.algorithm = SC_ALGORITHM_RSA;
-	pubkey.u.rsa.modulus.data  = modulus;
-	pubkey.u.rsa.modulus.len   = modulus_len >> 3;  /* 1/8 */
-	pubkey.u.rsa.exponent.data = exponent;
-	pubkey.u.rsa.exponent.len  = exponent_len >> 3;
+	/* RSA */
+	if (key_info->algorithm_id == 0x01){
+		memset(&pubkey, 0, sizeof(pubkey));
+		pubkey.algorithm = SC_ALGORITHM_RSA;
+		pubkey.u.rsa.modulus.data  = key_info->u.rsa.modulus;
+		pubkey.u.rsa.modulus.len   = key_info->u.rsa.modulus_len >> 3;  /* 1/8 */
+		pubkey.u.rsa.exponent.data = key_info->u.rsa.exponent;
+		pubkey.u.rsa.exponent.len  = key_info->u.rsa.exponent_len >> 3;
+	}
+	/* ECC */
+	else if (key_info->algorithm_id == 0x12 || key_info->algorithm_id == 0x13){
+		memset(&pubkey, 0, sizeof(pubkey));
+		pubkey.algorithm = SC_ALGORITHM_EC;
+		pubkey.u.ec.ecpointQ.value = key_info->u.ec.ecpoint;
+		pubkey.u.ec.ecpointQ.len = key_info->u.ec.ecpoint_len;
+	}
+	else
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	r = sc_pkcs15_encode_pubkey(card->ctx, &pubkey, &data, &len);
 	LOG_TEST_RET(card->ctx, r, "Cannot encode pubkey.");
@@ -2521,8 +2531,6 @@ pgp_parse_and_set_pubkey_output(sc_card_t *card, u8* data, size_t data_len,
 {
 	time_t ctime = 0;
 	u8 *in = data;
-	u8 *modulus = NULL;
-	u8 *exponent = NULL;
 	int r;
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -2592,9 +2600,7 @@ pgp_parse_and_set_pubkey_output(sc_card_t *card, u8* data, size_t data_len,
 	LOG_TEST_RET(card->ctx, r, "Cannot store fingerprint.");
 	/* update pubkey blobs (B601, B801, A401) */
 	sc_log(card->ctx, "Update blobs holding pubkey info.");
-	// TODO ECC: has to be adapted...
-	r = pgp_update_pubkey_blob(card, modulus, key_info->u.rsa.modulus_len,
-	                           exponent, key_info->u.rsa.exponent_len, key_info->keytype);
+	r = pgp_update_pubkey_blob(card, key_info);
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
@@ -2619,8 +2625,18 @@ pgp_update_card_algorithms(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *ke
 
 	/* get the algorithm corresponding to the key ID */
 	algo = card->algorithms + (id - 1);
-	/* update new key length attribute */
-	algo->key_length = (unsigned int)key_info->u.rsa.modulus_len;
+	/* update new key attribute */
+	if (key_info->algorithm_id == 0x01) {
+		algo->algorithm = SC_ALGORITHM_RSA;
+		algo->key_length = (unsigned int)key_info->u.rsa.modulus_len;
+	}
+	else if (key_info->algorithm_id == 0x12 || key_info->algorithm_id == 0x13) {
+		algo->algorithm = SC_ALGORITHM_EC;
+		algo->key_length = (unsigned int)(key_info->u.ec.ecpoint_len -1)<<2; /* *4 */
+	}
+	else
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
@@ -3005,6 +3021,7 @@ pgp_store_key(sc_card_t *card, sc_cardctl_openpgp_keystore_info_t *key_info)
 	/* set algorithm attributes */
 	memset(&pubkey, 0, sizeof(pubkey));
 	pubkey.keytype = key_info->keytype;
+	pubkey.algorithm_id = key_info->algorithm_id;
 	if (key_info->n && key_info->n_len) {
 		pubkey.u.rsa.modulus = key_info->n;
 		pubkey.u.rsa.modulus_len = 8*key_info->n_len;
@@ -3039,8 +3056,7 @@ pgp_store_key(sc_card_t *card, sc_cardctl_openpgp_keystore_info_t *key_info)
 	LOG_TEST_RET(card->ctx, r, "Cannot store fingerprint.");
 	/* update pubkey blobs (B601,B801, A401) */
 	sc_log(card->ctx, "Update blobs holding pubkey info.");
-	r = pgp_update_pubkey_blob(card, key_info->n, 8*key_info->n_len,
-	                           key_info->e, 8*key_info->e_len, key_info->keytype);
+	r = pgp_update_pubkey_blob(card, &pubkey);
 
 	sc_log(ctx, "Update card algorithms.");
 	pgp_update_card_algorithms(card, &pubkey);

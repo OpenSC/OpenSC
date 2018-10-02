@@ -974,6 +974,7 @@ typedef struct sc_cardctl_openpgp_keygen_info {
 
 typedef struct sc_cardctl_openpgp_keystore_info {
 	u8 keytype;
+	u8 algorithm_id;	/* Algorithm id sent to card */
 	u8 keyformat;
 	u8 *e;
 	size_t e_len;

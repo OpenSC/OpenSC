@@ -199,6 +199,7 @@ static int openpgp_generate_key_rsa(sc_card_t *card, sc_pkcs15_object_t *obj,
 	if (r < 0)
 		goto out;
 
+	pubkey->algorithm = SC_ALGORITHM_RSA;
 	sc_log(ctx, "Set output modulus info");
 	pubkey->u.rsa.modulus.len = key_info.u.rsa.modulus_len;
 	pubkey->u.rsa.modulus.data = calloc(key_info.u.rsa.modulus_len, 1);
@@ -287,7 +288,6 @@ static int openpgp_generate_key_ec(sc_card_t *card, sc_pkcs15_object_t *obj,
 	if (key_info.u.ec.ecpoint == NULL)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
 
-
 	/* generate key on card */
 	r = sc_card_ctl(card, SC_CARDCTL_OPENPGP_GENERATE_KEY, &key_info);
 
@@ -296,6 +296,7 @@ static int openpgp_generate_key_ec(sc_card_t *card, sc_pkcs15_object_t *obj,
 
 	/* set pubkey according to response of card */
 	sc_log(ctx, "Set output ecpoint info");
+	pubkey->algorithm = SC_ALGORITHM_EC;
 	pubkey->u.ec.ecpointQ.len = key_info.u.ec.ecpoint_len;
 	pubkey->u.ec.ecpointQ.value = malloc(key_info.u.ec.ecpoint_len);
 	if (pubkey->u.ec.ecpointQ.value == NULL)
