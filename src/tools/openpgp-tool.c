@@ -79,7 +79,6 @@ static int opt_userinfo = 0;
 static int opt_cardinfo = 0;
 static char *exec_program = NULL;
 static int opt_genkey = 0;
-static int opt_keylen = 0;
 static u8 key_id = 0;
 static unsigned int key_len = 2048;
 static int opt_verify = 0;
@@ -291,9 +290,7 @@ static int decode_options(int argc, char **argv)
 			actions++;
 			break;
 		case 'L':
-			opt_keylen++;
 			key_len = atoi(optarg);
-			actions++;
 			break;
 		case 'h':
 			util_print_usage_and_die(app_name, options, option_help, NULL);
