@@ -97,7 +97,7 @@ static int opt_keyinfo = 0;
 static char *exec_program = NULL;
 static int opt_genkey = 0;
 static u8 key_id = 0;
-static unsigned int key_len = 2048;
+static char *keytype = NULL;
 static int opt_verify = 0;
 static char *verifytype = NULL;
 static int opt_pin = 0;
@@ -119,7 +119,7 @@ static const struct option options[] = {
 	{ "user-info", no_argument,       NULL, 'U'        },
 	{ "key-info",  no_argument,       NULL, 'K'        },
 	{ "gen-key",   required_argument, NULL, 'G'        },
-	{ "key-length",required_argument, NULL, 'L'        },
+	{ "key-type",  required_argument, NULL, 't'        },
 	{ "help",      no_argument,       NULL, 'h'        },
 	{ "verbose",   no_argument,       NULL, 'v'        },
 	{ "version",   no_argument,       NULL, 'V'        },
@@ -141,7 +141,7 @@ static const char *option_help[] = {
 /* U */	"Show card holder information",
 /* K */	"Show key information",
 /* G */ "Generate key",
-/* L */ "Key length (default 2048)",
+/* t */ "Key type (default: rsa2048)",
 /* h */	"Print this help message",
 /* v */	"Verbose operation. Use several times to enable debug output.",
 /* V */	"Show version number",
@@ -461,7 +461,7 @@ static int decode_options(int argc, char **argv)
 	char *endptr;
 	unsigned long val;
 
-	while ((c = getopt_long(argc, argv,"r:x:CUG:KL:EhwvVd:", options, (int *) 0)) != EOF) {
+	while ((c = getopt_long(argc, argv,"r:x:CUG:KEht:wvVd:", options, (int *) 0)) != EOF) {
 		switch (c) {
 		case 'r':
 			opt_reader = optarg;
@@ -505,8 +505,10 @@ static int decode_options(int argc, char **argv)
 			key_id = optarg[0] - '0';
 			actions++;
 			break;
-		case 'L':
-			key_len = atoi(optarg);
+		case 't':
+			if (keytype)
+				free(keytype);
+			keytype = strdup(optarg);
 			break;
 		case 'h':
 			util_print_usage_and_die(app_name, options, option_help, NULL);
@@ -662,7 +664,7 @@ static int do_dump_do(sc_card_t *card, unsigned int tag)
 	return EXIT_SUCCESS;
 }
 
-int do_genkey(sc_card_t *card, u8 key_id, unsigned int key_len)
+int do_genkey(sc_card_t *card, u8 key_id, const char *keytype)
 {
 	int r;
 	sc_cardctl_openpgp_keygen_info_t key_info;
@@ -670,21 +672,54 @@ int do_genkey(sc_card_t *card, u8 key_id, unsigned int key_len)
 	sc_path_t path;
 	sc_file_t *file;
 
+	/* validate key_id */
 	if (key_id < 1 || key_id > 3) {
 		util_error("unknown key ID %d", key_id);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
+
+	/* fack back to RSA 2048 if keytype is not given */
+	if (!keytype)
+		keytype = "RSA2048";
+
 	memset(&key_info, 0, sizeof(sc_cardctl_openpgp_keygen_info_t));
-	key_info.key_id = key_id;
-	key_info.algorithm = SC_OPENPGP_KEYALGO_RSA;
-	key_info.rsa.modulus_len = key_len;
-	key_info.rsa.modulus = malloc(key_len/8);
-	r = sc_card_ctl(card, SC_CARDCTL_OPENPGP_GENERATE_KEY, &key_info);
-	free(key_info.rsa.modulus);
-	if (r < 0) {
-		util_error("failed to generate key: %s", sc_strerror(r));
+
+	/* generate key depending on keytype passed */
+	if (strncasecmp("RSA", keytype, strlen("RSA")) == 0) {
+		size_t keylen = 2048;	/* default length for RSA keys */
+		const char *keylen_ptr = keytype + strlen("RSA");
+
+		/* try to get key length from keytype, e.g. "rsa3072" -> 3072 */
+		if (strlen(keylen_ptr) > 0) {
+			if (strspn(keylen_ptr, "0123456789") == strlen(keylen_ptr) &&
+			    atol(keylen_ptr) >= 1024 && atol(keylen_ptr) <= 4096) {
+				keylen = atol(keylen_ptr);
+			}
+			else {
+				util_error("illegal key type: %s", keytype);
+				return EXIT_FAILURE;
+			}
+		}
+
+		/* set key_info */
+		key_info.key_id = key_id;
+		key_info.algorithm = SC_OPENPGP_KEYALGO_RSA;
+		key_info.rsa.modulus_len = keylen;
+		key_info.rsa.modulus = malloc((keylen + 7) / 8);
+
+		r = sc_card_ctl(card, SC_CARDCTL_OPENPGP_GENERATE_KEY, &key_info);
+		free(key_info.rsa.modulus);
+		if (r < 0) {
+			util_error("failed to generate key: %s", sc_strerror(r));
+			return EXIT_FAILURE;
+		}
+	}
+	else {
+		//TODO: deal with EC keys
+		util_error("Generating non-RSA keys is not yet implemented");
 		return EXIT_FAILURE;
 	}
+
 	sc_format_path("006E007300C5", &path);
 	r = sc_select_file(card, &path, &file);
 	if (r < 0) {
@@ -697,6 +732,7 @@ int do_genkey(sc_card_t *card, u8 key_id, unsigned int key_len)
 		return EXIT_FAILURE;
 	}
 	printf("Fingerprint:\n%s\n", (char *)sc_dump_hex(fingerprints + 20*(key_id - 1), 20));
+
 	return EXIT_SUCCESS;
 }
 
@@ -890,7 +926,7 @@ int main(int argc, char **argv)
 	}
 
 	if (opt_genkey)
-		exit_status |= do_genkey(card, key_id, key_len);
+		exit_status |= do_genkey(card, key_id, keytype);
 
 	if (exec_program) {
 		char *const largv[] = {exec_program, NULL};
