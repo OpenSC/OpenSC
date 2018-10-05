@@ -116,28 +116,50 @@ static int openpgp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 {
 	sc_card_t *card = p15card->card;
 	sc_pkcs15_prkey_info_t *kinfo = (sc_pkcs15_prkey_info_t *) obj->data;
-	struct sc_pkcs15_prkey_rsa *rsa = &(key->u.rsa);
 	sc_cardctl_openpgp_keystore_info_t key_info;
 	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
 
-	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "only RSA is currently supported");
-		return SC_ERROR_NOT_SUPPORTED;
+	switch(obj->type)
+	{
+	case SC_PKCS15_TYPE_PRKEY_RSA:
+		memset(&key_info, 0, sizeof(sc_cardctl_openpgp_keystore_info_t));
+		key_info.algorithm_id = SC_OPENPGP_ALG_ID_RSA;
+		key_info.keytype = kinfo->id.value[0];
+		key_info.u.rsa.e = key->u.rsa.exponent.data;
+		key_info.u.rsa.e_len = key->u.rsa.exponent.len;
+		key_info.u.rsa.p = key->u.rsa.p.data;
+		key_info.u.rsa.p_len = key->u.rsa.p.len;
+		key_info.u.rsa.q = key->u.rsa.q.data;
+		key_info.u.rsa.q_len = key->u.rsa.q.len;
+		key_info.u.rsa.n = key->u.rsa.modulus.data;
+		key_info.u.rsa.n_len = key->u.rsa.modulus.len;
+		r = sc_card_ctl(card, SC_CARDCTL_OPENPGP_STORE_KEY, &key_info);
+		break;
+	case SC_PKCS15_TYPE_PRKEY_EC:
+		if (card->type < SC_CARD_TYPE_OPENPGP_V3) {
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "only RSA is supported on this card");
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+		}
+		memset(&key_info, 0, sizeof(sc_cardctl_openpgp_keystore_info_t));
+		if (kinfo->id.value[0] == 2){
+			key_info.algorithm_id = SC_OPENPGP_ALG_ID_ECDH; /* ECDH for slot 2 only */
+		}
+		else {
+			key_info.algorithm_id = SC_OPENPGP_ALG_ID_ECDSA; /* ECDSA for slot 1 and 3 */
+		}
+		key_info.keytype = kinfo->id.value[0];
+		key_info.u.ec.privateD = key->u.ec.privateD.data;
+		key_info.u.ec.privateD_len = key->u.ec.privateD.len;
+		key_info.u.ec.ecpoint = key->u.ec.ecpointQ.value;
+		key_info.u.ec.ecpoint_len = key->u.ec.ecpointQ.len;
+		r = sc_card_ctl(card, SC_CARDCTL_OPENPGP_STORE_KEY, &key_info);
+		break;
+	default:
+		r = SC_ERROR_NOT_SUPPORTED;
+		sc_log(card->ctx, "%s: Key generation failed: Unknown/unsupported key type.", strerror(r));
 	}
-
-	memset(&key_info, 0, sizeof(sc_cardctl_openpgp_keystore_info_t));
-	key_info.keytype = kinfo->id.value[0];
-	key_info.e = rsa->exponent.data;
-	key_info.e_len = rsa->exponent.len;
-	key_info.p = rsa->p.data;
-	key_info.p_len = rsa->p.len;
-	key_info.q = rsa->q.data;
-	key_info.q_len = rsa->q.len;
-	key_info.n = rsa->modulus.data;
-	key_info.n_len = rsa->modulus.len;
-	r = sc_card_ctl(card, SC_CARDCTL_OPENPGP_STORE_KEY, &key_info);
 
 	LOG_FUNC_RETURN(card->ctx, r);
 }
@@ -333,11 +355,13 @@ static int openpgp_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 	case SC_PKCS15_TYPE_PRKEY_RSA:
 		r = openpgp_generate_key_rsa(card, obj, pubkey);
 		break;
-
 	case SC_PKCS15_TYPE_PRKEY_EC:
+		if (card->type < SC_CARD_TYPE_OPENPGP_V3) {
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "only RSA is supported on this card");
+			return SC_ERROR_NOT_SUPPORTED;
+		}
 		r = openpgp_generate_key_ec(card, obj, pubkey);
 		break;
-
 	default:
 		r = SC_ERROR_NOT_SUPPORTED;
 		sc_log(card->ctx, "%s: Key generation failed: Unknown/unsupported key type.", strerror(r));

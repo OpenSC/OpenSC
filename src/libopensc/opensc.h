@@ -217,6 +217,7 @@ struct sc_ec_parameters {
 	struct sc_lv_data der;
 
 	int type;
+	/* TODO What is the difference to 'key_length' of sc_algorithm_info? */
 	size_t field_length;
 };
 

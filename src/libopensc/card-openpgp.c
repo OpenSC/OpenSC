@@ -2251,8 +2251,11 @@ pgp_update_new_algo_attr(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_
 		data[0] = key_info->algorithm_id;
 		data[1] = (unsigned char)(key_info->u.rsa.modulus_len >> 8);
 		data[2] = (unsigned char)key_info->u.rsa.modulus_len;
-		data[3] = (unsigned char)(key_info->u.rsa.exponent_len >> 8);
-		data[4] = (unsigned char)key_info->u.rsa.exponent_len;
+		/* OpenPGP Card only accepts 32bit as exponent lenght field,
+		 * although you can import keys with smaller exponent;
+		 * thus we don't change rsa.exponent_len, but ignore it here */
+		data[3] = 0x00;
+		data[4] = 0x20;
 		data[5] = 0x00; /* Import-Format of private key (e,p,q) */
 	}
 	else {
@@ -2424,7 +2427,7 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 			p += key_info->u.ec.ecpoint_len;
 			*p = 0x03; /* number of bytes following */
 			p += 1;
-			*p = 0x01 /* version of this format */
+			*p = 0x01; /* version of this format */
 			p += 1;
 			if ((key_info->u.ec.ecpoint_len - 1)<<2 <= 256){       /* ec bit size <= 256 */
 				*p = 0x08;	/* KDF algo */
@@ -2836,7 +2839,7 @@ set_taglength_tlv(u8 *buffer, unsigned int tag, size_t length)
 
 
 /**
- * Internal: build Extended Header list (sec 4.3.3.7 - OpenPGP card spec v.2)
+ * Internal: build Extended Header list (sec 4.3.3.9 - OpenPGP card spec v.3)
  **/
 static int
 pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_keystore_info_t *key_info,
@@ -2864,8 +2867,10 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_keystore_info
 	u8 *data = NULL;
 	size_t len = 0;
 	u8 *p = NULL;
-	u8 *components[] = {key_info->e, key_info->p, key_info->q, key_info->n};
-	size_t componentlens[] = {key_info->e_len, key_info->p_len, key_info->q_len, key_info->n_len};
+	u8 *components[] = {key_info->u.rsa.e, key_info->u.rsa.p,
+			    key_info->u.rsa.q, key_info->u.rsa.n};
+	size_t componentlens[] = {key_info->u.rsa.e_len, key_info->u.rsa.p_len,
+				  key_info->u.rsa.q_len, key_info->u.rsa.n_len};
 	unsigned int componenttags[] = {0x91, 0x92, 0x93, 0x97};
 	char *componentnames[] = {
 		"public exponent",
@@ -2874,50 +2879,73 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_keystore_info
 		"modulus"
 	};
 	size_t comp_to_add = 3;
-	size_t req_e_len = 0;     /* The exponent length specified in Algorithm Attributes */
-	pgp_blob_t *alat_blob;
+	/* The maximum exponent length is 32 bit, as set on card
+	 * we use this variable to check against actual exponent_len */
+	size_t max_e_len = 0x20>>3;
 	u8 i;
 	int r;
 
 	LOG_FUNC_CALLED(ctx);
 
-	if (key_info->keyformat == SC_OPENPGP_KEYFORMAT_STDN
-		|| key_info->keyformat == SC_OPENPGP_KEYFORMAT_CRTN)
-		comp_to_add = 4;
+	/* RSA */
+	if (key_info->algorithm_id == SC_OPENPGP_ALG_ID_RSA){
 
-	/* validate */
-	if (comp_to_add == 4 && (key_info->n == NULL || key_info->n_len == 0)){
-		sc_log(ctx, "Error: Modulus required!");
-		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+		if (key_info->keyformat == SC_OPENPGP_KEYFORMAT_STDN
+			|| key_info->keyformat == SC_OPENPGP_KEYFORMAT_CRTN)
+			comp_to_add = 4;
+
+		/* validate */
+		if (comp_to_add == 4 && (key_info->u.rsa.n == NULL || key_info->u.rsa.n_len == 0)){
+			sc_log(ctx, "Error: Modulus required!");
+			LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+		}
+
+		/* Cardholder private key template's data part */
+		memset(pritemplate, 0, max_prtem_len);
+
+		/* maximum 32 bit exponent length allowed on OpenPGP Card */
+		assert(key_info->u.rsa.e_len <= max_e_len);
+
+		/* We need to right justify the exponent with allowed exponent length,
+		 * e.g. from '01 00 01' to '00 01 00 01' */
+		if (key_info->u.rsa.e_len < max_e_len) {
+			/* create new buffer */
+			p = calloc(max_e_len, 1);
+			if (!p)
+				LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
+			memcpy(p + max_e_len - key_info->u.rsa.e_len, key_info->u.rsa.e, key_info->u.rsa.e_len);
+			key_info->u.rsa.e_len = max_e_len;
+			/* set key_info->u.rsa.e to new buffer */
+			free(key_info->u.rsa.e);
+			key_info->u.rsa.e = p;
+			components[0] = p;
+			componentlens[0] = max_e_len;
+		}
 	}
+	/* ECC */
+	else if (key_info->algorithm_id == SC_OPENPGP_ALG_ID_ECDH
+			 || key_info->algorithm_id == SC_OPENPGP_ALG_ID_ECDSA){
+		/* as we are not storing a RSA key, we need to adapt some values,
+		 * but every array and data is already be big enough */
 
-	/* Cardholder private key template's data part */
-	memset(pritemplate, 0, max_prtem_len);
+		/* validate */
+		if ((key_info->u.ec.ecpoint == NULL || key_info->u.ec.ecpoint_len == 0)){
+			sc_log(ctx, "Error: ecpoint required!");
+			LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+		}
 
-	/* get required exponent length */
-	alat_blob = pgp_find_blob(card, 0x00C0 | key_info->keytype);
-	if (!alat_blob) {
-		sc_log(ctx, "Cannot read Algorithm Attributes.");
-		LOG_FUNC_RETURN(ctx, SC_ERROR_OBJECT_NOT_FOUND);
+		/* Cardholder private key template's data part */
+		memset(pritemplate, 0, max_prtem_len);
+
+		/* TODO ECC import with public key if possible */
+		components[0] = key_info->u.ec.privateD;
+		componentlens[0] = key_info->u.ec.privateD_len;
+		componenttags[0] = 0x92;
+		componentnames[0] = "private key";
+		comp_to_add = 1;
 	}
-	req_e_len = bebytes2ushort(alat_blob->data + 3) >> 3;   /* 1/8 */
-	assert(key_info->e_len <= req_e_len);
-
-	/* We need to right justify the exponent with required length,
-	 * e.g. from '01 00 01' to '00 01 00 01' */
-	if (key_info->e_len < req_e_len) {
-		/* create new buffer */
-		p = calloc(req_e_len, 1);
-		if (!p)
-			LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
-		memcpy(p + req_e_len - key_info->e_len, key_info->e, key_info->e_len);
-		key_info->e_len = req_e_len;
-		/* set key_info->e to new buffer */
-		free(key_info->e);
-		key_info->e = p;
-		components[0] = p;
-		componentlens[0] = req_e_len;
-	}
+	else
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 
 	/* start from beginning of pritemplate */
 	p = pritemplate;
@@ -3000,7 +3028,7 @@ out:
 /**
  * ABI (card ctl): store key
  **/
-static int /* TODO ECC */
+static int
 pgp_store_key(sc_card_t *card, sc_cardctl_openpgp_keystore_info_t *key_info)
 {
 	sc_context_t *ctx = card->ctx;
@@ -3030,26 +3058,49 @@ pgp_store_key(sc_card_t *card, sc_cardctl_openpgp_keystore_info_t *key_info)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 
-	/* we only support exponent of maximum 32 bits */
-	if (key_info->e_len > 4) {
-		sc_log(card->ctx,
-		       "Exponent %"SC_FORMAT_LEN_SIZE_T"u-bit (>32) is not supported.",
-		       key_info->e_len * 8);
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
-	}
-
 	/* set algorithm attributes */
-	memset(&pubkey, 0, sizeof(pubkey));
-	pubkey.keytype = key_info->keytype;
-	pubkey.algorithm_id = key_info->algorithm_id;
-	if (key_info->n && key_info->n_len) {
-		pubkey.u.rsa.modulus = key_info->n;
-		pubkey.u.rsa.modulus_len = 8*key_info->n_len;
-		/* We won't update exponent length, because smaller exponent length
-		 * will be padded later */
+	/* RSA */
+	if (key_info->algorithm_id == SC_OPENPGP_ALG_ID_RSA){
+		/* we only support exponent of maximum 32 bits */
+		if (key_info->u.rsa.e_len > 4) {
+			sc_log(card->ctx,
+				   "Exponent %"SC_FORMAT_LEN_SIZE_T"u-bit (>32) is not supported.",
+				   key_info->u.rsa.e_len * 8);
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+		}
+
+		memset(&pubkey, 0, sizeof(pubkey));
+		pubkey.keytype = key_info->keytype;
+		pubkey.algorithm_id = key_info->algorithm_id;
+		if (key_info->u.rsa.n && key_info->u.rsa.n_len
+			&& key_info->u.rsa.e && key_info->u.rsa.e_len) {
+			pubkey.u.rsa.modulus = key_info->u.rsa.n;
+			pubkey.u.rsa.modulus_len = 8*key_info->u.rsa.n_len;
+			pubkey.u.rsa.exponent = key_info->u.rsa.e;
+			pubkey.u.rsa.exponent_len = 8*key_info->u.rsa.e_len;
+		}
+		else
+			LOG_FUNC_RETURN(card->ctx,SC_ERROR_INVALID_ARGUMENTS); 
 	}
+	/* ECC */
+	else if (key_info->algorithm_id == SC_OPENPGP_ALG_ID_ECDH
+		|| key_info->algorithm_id == SC_OPENPGP_ALG_ID_ECDSA){
+		memset(&pubkey, 0, sizeof(pubkey));
+		pubkey.keytype = key_info->keytype;
+		pubkey.algorithm_id = key_info->algorithm_id;
+		if (key_info->u.ec.ecpoint && key_info->u.ec.ecpoint_len){
+			pubkey.u.ec.ecpoint = key_info->u.ec.ecpoint;
+			pubkey.u.ec.ecpoint_len = key_info->u.ec.ecpoint_len;
+		}
+		else
+			LOG_FUNC_RETURN(card->ctx,SC_ERROR_INVALID_ARGUMENTS); 
+	}
+	else
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
 	r = pgp_update_new_algo_attr(card, &pubkey);
 	LOG_TEST_RET(card->ctx, r, "Failed to update new algorithm attributes");
+
 	/* build Extended Header list */
 	r = pgp_build_extended_header_list(card, key_info, &data, &len);
 	if (r < 0) {

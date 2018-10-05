@@ -976,14 +976,26 @@ typedef struct sc_cardctl_openpgp_keystore_info {
 	u8 keytype;
 	u8 algorithm_id;	/* Algorithm id sent to card */
 	u8 keyformat;
-	u8 *e;
-	size_t e_len;
-	u8 *p;
-	size_t p_len;
-	u8 *q;
-	size_t q_len;
-	u8 *n;
-	size_t n_len;
+	union {
+		struct
+		{
+			u8 *e;
+			size_t e_len;
+			u8 *p;
+			size_t p_len;
+			u8 *q;
+			size_t q_len;
+			u8 *n;
+			size_t n_len;
+		} rsa;
+		struct
+		{
+			u8 *privateD;
+			size_t privateD_len;
+			u8 *ecpoint;
+			size_t ecpoint_len;
+		} ec;
+	} u;
 	time_t creationtime;
 } sc_cardctl_openpgp_keystore_info_t;
 
