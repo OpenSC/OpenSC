@@ -2365,9 +2365,13 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 						+ (key_info->u.ec.oid_len) /* oid */
 						+ (key_info->u.ec.ecpoint_len); /* ecpoint */
 
+		/* KDF parameters for ECDH */
 		if (key_info->algorithm_id == 0x12) {
-			/* TODO KDF parameters */
-			LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+			/* https://tools.ietf.org/html/rfc6637#section-8 */
+			pk_packet_len +=   1	/* number of bytes */
+					 + 1	/* version number */
+					 + 1	/* KDF algo */
+					 + 1;	/* KEK algo */
 		}
 		
 	}
@@ -2413,9 +2417,28 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 		p += key_info->u.ec.oid_len;
 		memcpy(p, key_info->u.ec.ecpoint, key_info->u.ec.ecpoint_len);
 
+		/* KDF parameters for ECDH */
 		if (key_info->algorithm_id == 0x12) {
-			/* TODO KDF parameters */
-			LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+			/* https://tools.ietf.org/html/rfc6637#section-8 
+			 * This is copied from GnuPG's ecdh_params() function in app-openpgp.c */
+			p += key_info->u.ec.ecpoint_len;
+			*p = 0x03; /* number of bytes following */
+			p += 1;
+			*p = 0x01 /* version of this format */
+			p += 1;
+			if ((key_info->u.ec.ecpoint_len - 1)<<2 <= 256){       /* ec bit size <= 256 */
+				*p = 0x08;	/* KDF algo */
+				*(p+1) = 0x07;	/* KEK algo */
+			}
+			else if ((key_info->u.ec.ecpoint_len - 1)<<2 <= 384) { /* ec bit size <= 384 */
+				*p = 0x09;	/* KDF algo */
+				*(p+1) = 0x08;	/* KEK algo */
+			}
+			else {					       /* ec bit size = 512 */
+				*p = 0x0a;	/* KDF algo */
+				*(p+1) = 0x09;	/* KEK algo */
+			}
+
 		}
 	}
 	else
@@ -2643,9 +2666,6 @@ pgp_update_card_algorithms(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *ke
 
 /**
  * ABI (card ctl): GENERATE ASYMMETRIC KEY PAIR
- * Set key_info->u.rsa.modulus_len to zero if want to use old key size.
- * Similarly for exponent length.
- * key_info->u.rsa.modulus_len and key_info->u.rsa.exponent_len will be returned with new values.
  **/
 static int
 pgp_gen_key(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_info)
