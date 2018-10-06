@@ -647,6 +647,39 @@ pgp_parse_hist_bytes(sc_card_t *card, u8 *ctlv, size_t ctlv_len)
 
 
 /**
+ * Internal: parse an algorithm attributes DO
+ **/
+static int
+pgp_parse_algo_attr_blob(const pgp_blob_t *blob, sc_cardctl_openpgp_keygen_info_t *key_info)
+{
+	if (blob == NULL || blob->data == NULL || blob->len == 0 ||
+	    blob->id < 0x00c1 || blob->id > 0x00c3 || key_info == NULL)
+		return SC_ERROR_INCORRECT_PARAMETERS;
+
+	key_info->key_id = blob->id - 0x00c0;	/* attribute algorithm blobs are C1 - C3 */
+
+	switch (blob->data[0]) {
+		case SC_OPENPGP_KEYALGO_RSA:
+			if (blob->len < 5)
+				return SC_ERROR_INCORRECT_PARAMETERS;
+
+			key_info->algorithm = SC_OPENPGP_KEYALGO_RSA;
+			key_info->rsa.modulus_len = bebytes2ushort(blob->data + 1);
+			key_info->rsa.exponent_len = bebytes2ushort(blob->data + 3);
+
+			key_info->rsa.keyformat = (blob->len > 5)
+						  ? blob->data[5]
+						  : SC_OPENPGP_KEYFORMAT_RSA_STD;
+			break;
+		default:
+			return SC_ERROR_NOT_IMPLEMENTED;
+	}
+
+	return SC_SUCCESS;
+}
+
+
+/**
  * Internal: get features of the card: capabilities, ...
  */
 static int
