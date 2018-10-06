@@ -812,19 +812,20 @@ pgp_get_card_features(sc_card_t *card)
 		 * well and therefore added 
 		 * see OpenPGP card spec 1.1 & 2.x section 4.3.3.6 / v3.x section 4.4.3.7 */
 		for (i = 0x00c1; i <= 0x00c3; i++) {
+			sc_cardctl_openpgp_keygen_info_t key_info;
 			/* OpenPGP card spec 1.1 & 2.x, section 7.2.9 & 7.2.10 / v3.x section 7.2.11 & 7.2.12 */
 			unsigned long flags = SC_ALGORITHM_RSA_PAD_PKCS1 |
 					      SC_ALGORITHM_RSA_HASH_NONE |
 					      SC_ALGORITHM_ONBOARD_KEY_GEN;	/* key gen on card */
 
 			/* OpenPGP card spec 1.1 & 2.x section 4.3.3.6 / v3.x section 4.4.3.7 */
-			if ((pgp_get_blob(card, blob73, i, &blob) >= 0) && (blob->data != NULL)) {
-				if (blob->len >= 3 && blob->data[0] == SC_OPENPGP_KEYALGO_RSA) {
-					unsigned int keybits = bebytes2ushort(blob->data + 1);
+			if ((pgp_get_blob(card, blob73, i, &blob) >= 0) &&
+			    (pgp_parse_algo_attr_blob(blob, &key_info) >= 0)) {
 
-					_sc_card_add_rsa_alg(card, keybits, flags, 0);
-				}
-				/* v3.0+: [RFC 4880 & 6637] 0x12 = ECDH, 0x13 = ECDSA */
+				if (key_info.algorithm == SC_OPENPGP_KEYALGO_RSA)	/* RFC 4880: RSA */
+					_sc_card_add_rsa_alg(card, key_info.rsa.modulus_len, flags, 0);
+		
+				/* TODO v3.0+: [RFC 4880 & 6637] 0x12 = ECDH, 0x13 = ECDSA */
 			}
 		}
 
