@@ -18,7 +18,7 @@ option default {
 option onepin {
 	macros {
 		so-pin-flags    = initialized, needs-padding;
-		isf_acl		= WRITE=$PIN;
+		isf_acl		= WRITE=$PIN, CREATE=$PIN;
 		df_acl		= *=$PIN;
 	}
 }
