@@ -1647,7 +1647,6 @@ static int starcos_decipher(struct sc_card *card,
 	size_t reader_max_send_size = card->reader->max_send_size;
 	size_t card_max_recv_size = card->max_recv_size;
 	size_t reader_max_recv_size = card->reader->max_recv_size;
-	int caps = card->caps;
 
 	if (sc_get_max_send_size(card) < crgram_len + 1) {
 		/* Starcos doesn't support chaining for PSO:DEC, so we just _hope_
@@ -1655,7 +1654,6 @@ static int starcos_decipher(struct sc_card *card,
 		 * (data is prefixed with 1 byte padding content indicator) */
 		card->max_send_size = crgram_len + 1;
 		card->reader->max_send_size = crgram_len + 1;
-		card->caps |= SC_CARD_CAP_APDU_EXT;
 	}
 
 	if (sc_get_max_recv_size(card) < outlen) {
@@ -1664,7 +1662,6 @@ static int starcos_decipher(struct sc_card *card,
 		 */
 		card->max_recv_size = outlen;
 		card->reader->max_recv_size = outlen;
-		card->caps |= SC_CARD_CAP_APDU_EXT;
 	}
 
 	if (card->type == SC_CARD_TYPE_STARCOS_V3_4
@@ -1706,7 +1703,6 @@ static int starcos_decipher(struct sc_card *card,
 	card->reader->max_send_size = reader_max_send_size;
 	card->max_recv_size = card_max_recv_size;
 	card->reader->max_recv_size = reader_max_recv_size;
-	card->caps = caps;
 
 	LOG_FUNC_RETURN(card->ctx, r);
 }
