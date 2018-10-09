@@ -129,6 +129,7 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 
 /* Here should be placed drivers that need some APDU transactions in the
  * driver's `match_card()` function. */
+	{ "coolkey",	(void *(*)(void)) sc_get_coolkey_driver },
 	/* MUSCLE card applet returns 9000 on whatever AID is selected, see
 	 * https://github.com/JavaCardOS/MuscleCard-Applet/blob/master/musclecard/src/com/musclecard/CardEdge/CardEdge.java#L326
 	 * put the muscle driver first to cope with this bug. */
@@ -145,7 +146,6 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 #endif
 	{ "openpgp",	(void *(*)(void)) sc_get_openpgp_driver },
 	{ "jpki",	(void *(*)(void)) sc_get_jpki_driver },
-	{ "coolkey",	(void *(*)(void)) sc_get_coolkey_driver },
 	{ "npa",	(void *(*)(void)) sc_get_npa_driver },
 	/* The default driver should be last, as it handles all the
 	 * unrecognized cards. */
