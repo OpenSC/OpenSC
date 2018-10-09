@@ -211,7 +211,7 @@ typedef struct cac_private_data {
 
 #define CAC_DATA(card) ((cac_private_data_t*)card->drv_data)
 
-int cac_list_compare_path(const void *a, const void *b)
+static int cac_list_compare_path(const void *a, const void *b)
 {
 	if (a == NULL || b == NULL)
 		return 1;
@@ -220,7 +220,7 @@ int cac_list_compare_path(const void *a, const void *b)
 }
 
 /* For SimCList autocopy, we need to know the size of the data elements */
-size_t cac_list_meter(const void *el) {
+static size_t cac_list_meter(const void *el) {
 	return sizeof(cac_object_t);
 }
 
