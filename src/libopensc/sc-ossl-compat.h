@@ -267,7 +267,7 @@ static sc_ossl_inline int ECDSA_SIG_set0(ECDSA_SIG *sig, BIGNUM *r, BIGNUM *s)
 
 static sc_ossl_inline int CRYPTO_secure_malloc_init(size_t size, int minsize)
 {
-    return 1;
+    return 0;
 }
 
 static sc_ossl_inline int CRYPTO_secure_malloc_initialized()
