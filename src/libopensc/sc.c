@@ -34,6 +34,7 @@
 #include <openssl/crypto.h>     /* for OPENSSL_cleanse */
 #endif
 
+
 #include "internal.h"
 
 #ifdef PACKAGE_VERSION
@@ -41,6 +42,19 @@ static const char *sc_version = PACKAGE_VERSION;
 #else
 static const char *sc_version = "(undef)";
 #endif
+
+#ifdef _WIN32
+#include <windows.h>
+#define PAGESIZE 0
+#else
+#include <sys/mman.h>
+#include <limits.h>
+#include <unistd.h>
+#ifndef PAGESIZE
+#define PAGESIZE 0
+#endif
+#endif
+static size_t page_size = PAGESIZE;
 
 const char *sc_get_version(void)
 {
@@ -824,6 +838,52 @@ int _sc_parse_atr(sc_reader_t *reader)
 	reader->atr_info.hist_bytes_len = n_hist;
 	reader->atr_info.hist_bytes = p;
 	return SC_SUCCESS;
+}
+
+static void init_page_size()
+{
+	if (page_size == 0) {
+#ifdef _WIN32
+		SYSTEM_INFO system_info;
+		GetSystemInfo(&system_info);
+		page_size = system_info.dwPageSize;
+#else
+		page_size = sysconf(_SC_PAGESIZE);
+		if ((long) page_size < 0) {
+			page_size = 0;
+		}
+#endif
+	}
+}
+
+void *sc_mem_secure_alloc(size_t len)
+{
+	void *p;
+
+	init_page_size();
+	if (page_size > 0) {
+		size_t pages = (len + page_size - 1) / page_size;
+		len = pages * page_size;
+	}
+
+	p = malloc(len);
+#ifdef _WIN32
+	VirtualLock(p, len);
+#else
+	mlock(p, len);
+#endif
+
+	return p;
+}
+
+void sc_mem_secure_free(void *ptr, size_t len)
+{
+#ifdef _WIN32
+	VirtualUnlock(ptr, len);
+#else
+	munlock(ptr, len);
+#endif
+	free(ptr);
 }
 
 void sc_mem_clear(void *ptr, size_t len)

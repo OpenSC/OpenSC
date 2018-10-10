@@ -187,7 +187,7 @@ CK_RV push_login_state(struct sc_pkcs11_slot *slot,
 	}
 
 	if (pPin && ulPinLen) {
-		login->pPin = calloc((sizeof *pPin), ulPinLen);
+		login->pPin = sc_mem_secure_alloc((sizeof *pPin)*ulPinLen);
 		if (login->pPin == NULL) {
 			goto err;
 		}
@@ -207,7 +207,7 @@ err:
 	if (login) {
 		if (login->pPin) {
 			sc_mem_clear(login->pPin, login->ulPinLen);
-			free(login->pPin);
+			sc_mem_secure_free(login->pPin, login->ulPinLen);
 		}
 		free(login);
 	}
@@ -223,7 +223,7 @@ void pop_login_state(struct sc_pkcs11_slot *slot)
 			struct sc_pkcs11_login *login = list_get_at(&slot->logins, size-1);
 			if (login) {
 				sc_mem_clear(login->pPin, login->ulPinLen);
-				free(login->pPin);
+				sc_mem_secure_free(login->pPin, login->ulPinLen);
 				free(login);
 			}
 			if (0 > list_delete_at(&slot->logins, size-1))
@@ -238,7 +238,7 @@ void pop_all_login_states(struct sc_pkcs11_slot *slot)
 		struct sc_pkcs11_login *login = list_fetch(&slot->logins);
 		while (login) {
 			sc_mem_clear(login->pPin, login->ulPinLen);
-			free(login->pPin);
+			sc_mem_secure_free(login->pPin, login->ulPinLen);
 			free(login);
 			login = list_fetch(&slot->logins);
 		}

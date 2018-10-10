@@ -38,6 +38,7 @@
 
 #include "common/libscdl.h"
 #include "internal.h"
+#include "sc-ossl-compat.h"
 
 static int ignored_reader(sc_context_t *ctx, sc_reader_t *reader)
 {
@@ -830,6 +831,13 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 		sc_release_context(ctx);
 		return r;
 	}
+
+#ifdef ENABLE_OPENSSL
+	if (!CRYPTO_secure_malloc_initialized()) {
+		/* XXX What's a reasonable amount of secure heap? */
+		CRYPTO_secure_malloc_init(4096, 32);
+	}
+#endif
 
 	process_config_file(ctx, &opts);
 	sc_log(ctx, "==================================="); /* first thing in the log */

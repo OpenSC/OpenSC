@@ -230,6 +230,19 @@ static sc_ossl_inline int ECDSA_SIG_set0(ECDSA_SIG *sig, BIGNUM *r, BIGNUM *s)
 }
 #endif /* OPENSSL_NO_EC */
 
+static sc_ossl_inline int CRYPTO_secure_malloc_init(size_t size, int minsize)
+{
+    return 0;
+}
+
+static sc_ossl_inline int CRYPTO_secure_malloc_initialized()
+{
+    return 0;
+}
+
+#else
+
+#include <openssl/crypto.h>
 
 #endif /* OPENSSL_VERSION_NUMBER < 0x10100000L */
 
