@@ -1660,8 +1660,14 @@ static int starcos_decipher(struct sc_card *card,
 		/* Starcos doesn't support get response for PSO:DEC, so we just _hope_
 		 * that both, the reader and the card are able to receive enough data.
 		 */
-		card->max_recv_size = outlen;
-		card->reader->max_recv_size = outlen;
+		if (0 == (card->caps & SC_CARD_CAP_APDU_EXT)
+				&& outlen > 256) {
+			card->max_recv_size = 256;
+			card->reader->max_recv_size = 256;
+		} else {
+			card->max_recv_size = outlen;
+			card->reader->max_recv_size = outlen;
+		}
 	}
 
 	if (card->type == SC_CARD_TYPE_STARCOS_V3_4
