@@ -1642,12 +1642,36 @@ static int starcos_decipher(struct sc_card *card,
 		const u8 * crgram, size_t crgram_len,
 		u8 * out, size_t outlen)
 {
+	int r;
+	size_t card_max_send_size = card->max_send_size;
+	size_t reader_max_send_size = card->reader->max_send_size;
+	size_t card_max_recv_size = card->max_recv_size;
+	size_t reader_max_recv_size = card->reader->max_recv_size;
+
+	if (sc_get_max_send_size(card) < crgram_len + 1) {
+		/* Starcos doesn't support chaining for PSO:DEC, so we just _hope_
+		 * that both, the reader and the card are able to send enough data.
+		 * (data is prefixed with 1 byte padding content indicator) */
+		card->max_send_size = crgram_len + 1;
+		card->reader->max_send_size = crgram_len + 1;
+	}
+
+	if (sc_get_max_recv_size(card) < outlen) {
+		/* Starcos doesn't support get response for PSO:DEC, so we just _hope_
+		 * that both, the reader and the card are able to receive enough data.
+		 */
+		if (0 == (card->caps & SC_CARD_CAP_APDU_EXT)
+				&& outlen > 256) {
+			card->max_recv_size = 256;
+			card->reader->max_recv_size = 256;
+		} else {
+			card->max_recv_size = outlen;
+			card->reader->max_recv_size = outlen;
+		}
+	}
+
 	if (card->type == SC_CARD_TYPE_STARCOS_V3_4
 			|| card->type == SC_CARD_TYPE_STARCOS_V3_5) {
-		int r;
-		size_t card_max_send_size = card->max_send_size;
-		size_t reader_max_send_size = card->reader->max_send_size;
-		int caps = card->caps;
 		sc_apdu_t apdu;
 
 		u8 *sbuf = malloc(crgram_len + 1);
@@ -1665,34 +1689,28 @@ static int starcos_decipher(struct sc_card *card,
 		apdu.lc = crgram_len + 1;
 		apdu.datalen = crgram_len + 1;
 
-		if (sc_get_max_send_size(card) < crgram_len + 1) {
-			/* Starcos doesn't support chaining for PSO:DEC, so we just _hope_
-			 * that both, the reader and the card are able to send enough data.
-			 * (data is prefixed with 1 byte padding content indicator) */
-			card->max_send_size = crgram_len + 1;
-			card->reader->max_send_size = crgram_len + 1;
-			card->caps |= SC_CARD_CAP_APDU_EXT;
-		}
-
 		r = sc_transmit_apdu(card, &apdu);
 		sc_mem_clear(sbuf, crgram_len + 1);
-
-		/* reset whatever we've modified above */
-		card->max_send_size = card_max_send_size;
-		card->reader->max_send_size = reader_max_send_size;
-		card->caps = caps;
 
 		free(sbuf);
 
 		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 		if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
-			LOG_FUNC_RETURN(card->ctx, apdu.resplen);
+			r = apdu.resplen;
 		else
-			LOG_FUNC_RETURN(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2));
+			r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	} else {
-		return iso_ops->decipher(card, crgram, crgram_len, out, outlen);
+		r = iso_ops->decipher(card, crgram, crgram_len, out, outlen);
 	}
+
+	/* reset whatever we've modified above */
+	card->max_send_size = card_max_send_size;
+	card->reader->max_send_size = reader_max_send_size;
+	card->max_recv_size = card_max_recv_size;
+	card->reader->max_recv_size = reader_max_recv_size;
+
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 static int starcos_check_sw(sc_card_t *card, unsigned int sw1, unsigned int sw2)
