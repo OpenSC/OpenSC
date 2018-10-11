@@ -412,7 +412,7 @@ int sc_pkcs1_encode(sc_context_t *ctx, unsigned long flags,
 	pad_algo  = flags & SC_ALGORITHM_RSA_PADS;
 	sc_log(ctx, "hash algorithm 0x%X, pad algorithm 0x%X", hash_algo, pad_algo);
 
-	if ((pad_algo == SC_ALGORITHM_RSA_PAD_PKCS1 || !pad_algo) &&
+	if ((pad_algo == SC_ALGORITHM_RSA_PAD_PKCS1 || pad_algo == SC_ALGORITHM_RSA_PAD_NONE) &&
 	    hash_algo != SC_ALGORITHM_RSA_HASH_NONE) {
 		i = sc_pkcs1_add_digest_info_prefix(hash_algo, in, in_len, out, &tmp_len);
 		if (i != SC_SUCCESS) {

@@ -4728,6 +4728,7 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 			goto err;
 		}
 	}
+	opt_hash_flags |= SC_ALGORITHM_RSA_PAD_NONE;
 	
 	if (pInfo->dwSigningFlags & CARD_PADDING_NONE)
 	{
