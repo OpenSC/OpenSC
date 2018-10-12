@@ -587,6 +587,8 @@ const char *get_mechanism_name(int mech_id)
 			return "RSA_PKCS_PSS";
 		case CKM_SHA1_RSA_PKCS_PSS:
 			return "SHA1_RSA_PKCS_PSS";
+		case CKM_SHA224_RSA_PKCS_PSS:
+			return "SHA224_RSA_PKCS_PSS";
 		case CKM_SHA256_RSA_PKCS_PSS:
 			return "SHA256_RSA_PKCS_PSS";
 		case CKM_SHA384_RSA_PKCS_PSS:

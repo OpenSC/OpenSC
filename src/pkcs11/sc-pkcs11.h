@@ -119,6 +119,9 @@ struct sc_pkcs11_object_ops {
 	/* Check compatibility of PKCS#15 object usage and an asked PKCS#11 mechanism. */
 	CK_RV (*can_do)(struct sc_pkcs11_session *, void *, CK_MECHANISM_TYPE, unsigned int);
 
+	/* General validation of mechanism parameters (sign, encrypt, etc) */
+	CK_RV (*init_params)(struct sc_pkcs11_session *, CK_MECHANISM_PTR);
+
 	/* Others to be added when implemented */
 };
 
@@ -290,6 +293,10 @@ typedef struct sc_pkcs11_mechanism_type sc_pkcs11_mechanism_type_t;
 struct sc_pkcs11_operation {
 	sc_pkcs11_mechanism_type_t *type;
 	CK_MECHANISM	  mechanism;
+	union {
+		CK_RSA_PKCS_PSS_PARAMS pss;
+		CK_RSA_PKCS_OAEP_PARAMS oaep;
+	} mechanism_params;
 	struct sc_pkcs11_session *session;
 	void *		  priv_data;
 };
@@ -434,7 +441,7 @@ CK_RV sc_pkcs11_register_sign_and_hash_mechanism(struct sc_pkcs11_card *,
 #ifdef ENABLE_OPENSSL
 CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, int pubkey_len,
 	const unsigned char *pubkey_params, int pubkey_params_len,
-	CK_MECHANISM_TYPE mech, sc_pkcs11_operation_t *md,
+	CK_MECHANISM_PTR mech, sc_pkcs11_operation_t *md,
 	unsigned char *inp, int inp_len,
 	unsigned char *signat, int signat_len);
 #endif

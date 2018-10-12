@@ -483,6 +483,13 @@
 
 				<varlistentry>
 					<term>
+						<option>--verify</option>,
+					</term>
+					<listitem><para>Verify signature of some data.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
 						<option>--read-object</option>,
 						<option>-r</option>
 					</term>
@@ -532,6 +539,13 @@
 
 				<varlistentry>
 					<term>
+						<option>--signature-file</option> <replaceable>filename</replaceable>
+					</term>
+					<listitem><para>The path to the signature file for signature verification</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
 						<option>--signature-format</option> <replaceable>format</replaceable>
 					</term>
 					<listitem><para>Format for ECDSA signature: 'rs' (default),
@@ -568,7 +582,7 @@
 
 			To read the certificate with ID <replaceable>KEY_ID</replaceable>
 			in DER format from smart card:
-				<programlisting>pkcs11-tool --read-object  --id KEY_ID --type cert --outfile cert.der</programlisting>
+				<programlisting>pkcs11-tool --read-object  --id KEY_ID --type cert --output-file cert.der</programlisting>
 
 			To convert the certificate in DER format to PEM format, use OpenSSL
 			tools:

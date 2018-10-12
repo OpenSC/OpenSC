@@ -38,6 +38,7 @@
 
 #include "common/libscdl.h"
 #include "internal.h"
+#include "sc-ossl-compat.h"
 
 static int ignored_reader(sc_context_t *ctx, sc_reader_t *reader)
 {
@@ -452,6 +453,10 @@ static void *load_dynamic_driver(sc_context_t *ctx, void **dll, const char *name
 	const char *(*modversion)(void) = NULL;
 	const char *(**tmodv)(void) = &modversion;
 
+	if (dll == NULL) {
+		sc_log(ctx, "No dll parameter specified");
+		return NULL;
+	}
 	if (name == NULL) { /* should not occur, but... */
 		sc_log(ctx, "No module specified");
 		return NULL;
@@ -481,8 +486,8 @@ static void *load_dynamic_driver(sc_context_t *ctx, void **dll, const char *name
 		sc_dlclose(handle);
 		return NULL;
 	}
-	if (dll)
-		*dll = handle;
+
+	*dll = handle;
 	sc_log(ctx, "successfully loaded card driver '%s'", name);
 	return modinit(name);
 }
@@ -826,6 +831,13 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 		sc_release_context(ctx);
 		return r;
 	}
+
+#ifdef ENABLE_OPENSSL
+	if (!CRYPTO_secure_malloc_initialized()) {
+		/* XXX What's a reasonable amount of secure heap? */
+		CRYPTO_secure_malloc_init(4096, 32);
+	}
+#endif
 
 	process_config_file(ctx, &opts);
 	sc_log(ctx, "==================================="); /* first thing in the log */

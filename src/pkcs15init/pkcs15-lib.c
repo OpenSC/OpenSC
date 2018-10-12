@@ -3303,8 +3303,45 @@ sc_pkcs15init_change_attrib(struct sc_pkcs15_card *p15card, struct sc_profile *p
 			LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Cannot change ID attribute");
 		}
 		break;
+	case P15_ATTR_TYPE_VALUE:
+		switch(df_type) {
+		case SC_PKCS15_DODF: {
+			u8 *nv;
+			struct sc_pkcs15_data_info *info = (struct sc_pkcs15_data_info *) object->data;
+			struct sc_path old_data_path = info->path;
+			struct sc_path new_data_path;
+			struct sc_pkcs15_der new_data;
+			new_data.len = new_len;
+			new_data.value = (u8 *) new_value;
+			
+			/* save new data as a new data file on token */
+			r = sc_pkcs15init_store_data(p15card, profile, object, &new_data, &new_data_path);
+			profile->dirty = 1;
+			LOG_TEST_RET(ctx, r, "Failed to store new data");
+
+			nv = (u8 *) malloc (new_len * sizeof(u8));
+			if (!nv) {
+				LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+			}
+			memcpy(nv, new_value, new_len * sizeof(u8));
+			free(info->data.value);
+			/*  set object members to represent new CKA_VALUE value,
+				new path will be written to DODF later in this function*/
+			info->data.len = new_len;
+			info->data.value = nv;
+			info->path = new_data_path;
+			
+			/* delete old data file from token */
+			r = sc_pkcs15init_delete_by_path(profile, p15card, &old_data_path);
+			LOG_TEST_RET(ctx, r, "Failed to delete old data");
+			break;
+		}
+		default:
+			LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Cannot change value attribute");
+		}
+		break;
 	default:
-		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Only 'LABEL' or 'ID' attributes can be changed");
+		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Only 'LABEL' or 'ID' or 'VALUE'(for data objects) attributes can be changed");
 	}
 
 	if (profile->ops->emu_update_any_df)   {
@@ -3856,7 +3893,7 @@ do_select_parent(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		r = sc_select_file(p15card->card, &path, NULL);
 		LOG_TEST_RET(ctx, r, "Cannot select parent DF");
 	}
-	else if (r == SC_SUCCESS && !strcmp(p15card->card->name, "STARCOS SPK 2.3")) {
+	else if (r == SC_SUCCESS && !strcmp(p15card->card->name, "STARCOS")) {
 		/* in case of starcos spk 2.3 SELECT FILE does not
 		 * give us the ACLs => ask the profile */
 		sc_file_free(*parent);

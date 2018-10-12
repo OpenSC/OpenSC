@@ -355,7 +355,6 @@ authentic_sdo_allocate_prvkey(struct sc_profile *profile, struct sc_card *card,
 		sc_file_free(file);
 		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate 'sc_authentic_sdo'");
 	}
-	*out = sdo;
 
 	sdo->magic = AUTHENTIC_SDO_MAGIC;
 	sdo->docp.id = key_info->key_reference &  ~AUTHENTIC_OBJECT_REF_FLAG_LOCAL;
@@ -364,11 +363,16 @@ authentic_sdo_allocate_prvkey(struct sc_profile *profile, struct sc_card *card,
 	rv = authentic_docp_set_acls(card, file, authentic_v3_rsa_ac_ops,
 			sizeof(authentic_v3_rsa_ac_ops)/sizeof(authentic_v3_rsa_ac_ops[0]), &sdo->docp);
 	sc_file_free(file);
-	LOG_TEST_RET(ctx, rv, "Cannot set key ACLs from file");
+	if (rv != SC_SUCCESS) {
+		free(sdo);
+		sc_log(ctx, "Cannot set key ACLs from file");
+		LOG_FUNC_RETURN(ctx, rv);
+	}
 
 	sc_log(ctx, "sdo(mech:%X,id:%X,acls:%s)", sdo->docp.mech, sdo->docp.id,
 			sc_dump_hex(sdo->docp.acl_data, sdo->docp.acl_data_len));
 
+	*out = sdo;
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
@@ -551,7 +555,10 @@ authentic_pkcs15_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p
 		| SC_PKCS15_PRKEY_ACCESS_SENSITIVE;
 
 	rv = authentic_sdo_allocate_prvkey(profile, card, key_info, &sdo);
-	LOG_TEST_RET(ctx, rv, "IasEcc: init SDO private key failed");
+	if (rv != SC_SUCCESS || sdo == NULL) {
+		sc_log(ctx, "IasEcc: init SDO private key failed");
+		LOG_FUNC_RETURN(ctx, rv);
+	}
 
 	rv = sc_card_ctl(card, SC_CARDCTL_AUTHENTIC_SDO_CREATE, sdo);
 	if (rv == SC_ERROR_FILE_ALREADY_EXISTS)   {

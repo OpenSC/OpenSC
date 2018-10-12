@@ -28,9 +28,17 @@
 		<title>Description</title>
 		<para>
 			The <command>opensc-explorer</command> utility can be
-			used interactively to perform miscellaneous operations
+			used to perform miscellaneous operations
 			such as exploring the contents of or sending arbitrary
 			APDU commands to a smart card or similar security token.
+		</para>
+		<para>
+			If a <replaceable class="parameter">SCRIPT</replaceable> is given,
+			<command>opensc-explorer</command> runs in non-interactive mode,
+			reading the commands from <replaceable class="parameter">SCRIPT</replaceable>,
+			one command per line.
+			If no script is given, <command>opensc-explorer</command>
+			runs in interactive mode, reading commands from standard input.
 		</para>
 	</refsect1>
 
@@ -56,12 +64,15 @@
 						<option>--mf</option> <replaceable>path</replaceable>,
 						<option>-m</option> <replaceable>path</replaceable>
 					</term>
-					<listitem><para>
-						Select the file referenced by the given path on
-						startup.  The default is the path to the standard master file,
-						3F00. If <replaceable>path</replaceable> is empty (e.g. <command>opensc-explorer
-						--mf ""</command>), then no file is explicitly selected.
-					</para></listitem>
+					<listitem>
+						<para>
+							Select the file referenced by the given path on startup.
+							The default is the path to the standard master file,
+							<literal>3F00</literal>. If <replaceable>path</replaceable>
+							is empty (e.g. <command>opensc-explorer --mf ""</command>),
+							then no file is explicitly selected.
+						</para>
+					</listitem>
 				</varlistentry>
 				<varlistentry>
 					<term>
@@ -81,17 +92,23 @@
 					<term>
 						<option>--verbose</option>, <option>-v</option>
 					</term>
-					<listitem><para>
-						Causes <command>opensc-explorer</command> to be more
-						verbose. Specify this flag several times to enable
-						debug output in the opensc library.
-					</para></listitem>
+					<listitem>
+						<para>
+							Cause <command>opensc-explorer</command> to be more
+							verbose. Specify this flag several times to enable
+							debug output in the opensc library.
+						</para>
+					</listitem>
 				</varlistentry>
 				<varlistentry>
 					<term>
 						<option>--wait</option>, <option>-w</option>
 					</term>
-					<listitem><para>Wait for a card to be inserted</para></listitem>
+					<listitem>
+						<para>
+							Wait for a card to be inserted.
+						</para>
+					</listitem>
 				</varlistentry>
 			</variablelist>
 		</para>
@@ -100,17 +117,45 @@
 	<refsect1>
 		<title>Commands</title>
 		<para>
-			The following commands are supported at <command>opensc-explorer</command>'s
-			interactive prompt or in script files passed via the command line parameter
-			<replaceable class="parameter">SCRIPT</replaceable>.
+			<command>opensc-explorer</command> supports commands with arguments
+			at its interactive prompt or in script files passed via the command line
+			parameter <replaceable class="parameter">SCRIPT</replaceable>.
+		</para>
+		<para>
+			Similar to a command shell like e.g. <code>bash</code>,
+			each input line is split into white-space separated words.
+			Of these words, the first one is used as the command,
+			while the remaining ones are treated as arguments to that command.
+		</para>
+		<para>
+			The following commands are supported:
 			<variablelist>
 				<varlistentry>
 					<term>
-						<command>apdu</command>
-						<replaceable>hex-data</replaceable>
+						<command>#</command>
+						<arg choice="plain" rep="repeat"><replaceable></replaceable></arg>
 					</term>
 					<listitem>
-						<para>Send a custom APDU command <replaceable>hex-data</replaceable>.</para>
+						<para>
+							Treat line as a comment.
+							Ignore anything until the end of the line introduced by
+							<literal>#</literal>.
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<command>apdu</command>
+						<arg choice="plain" rep="repeat"><replaceable>data</replaceable></arg>
+					</term>
+					<listitem>
+						<para>
+							Send a custom APDU command to the card.
+							<replaceable>data</replaceable> is a series of
+							sequences of hexadecimal values and strings enclosed
+							in double quotes (<literal>"..."</literal>).
+						</para>
 					</listitem>
 				</varlistentry>
 
@@ -119,8 +164,12 @@
 						<command>asn1</command>
 						<replaceable>file-id</replaceable>
 					</term>
-					<listitem><para>Parse and print the ASN.1 encoded content of the file specified by
-							<replaceable>file-id</replaceable>.</para></listitem>
+					<listitem>
+						<para>
+							Parse and print the ASN.1 encoded content of the working EF
+							specified by <replaceable>file-id</replaceable>.
+						</para>
+					</listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -131,10 +180,15 @@
 							<arg choice="plain"><literal>sfi:</literal><replaceable>short-id</replaceable></arg>
 						</group>
 					</term>
-					<listitem><para>Print the contents of the currently selected EF or the contents
-							of a file specified by <replaceable>file-id</replaceable> or the short file id
+					<listitem>
+						<para>
+							Print the contents of the working EF specified by
+							<replaceable>file-id</replaceable> or the short file id
 							<replaceable>short-id</replaceable>.
-					</para></listitem>
+							If no argument is given, print the the contents
+							of the currently selected EF.
+						</para>
+					</listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -146,18 +200,20 @@
 							<arg choice="plain"><literal>aid:</literal><replaceable>DF-name</replaceable></arg>
 						</group>
 					</term>
-					<listitem><para>
+					<listitem>
+						<para>
 							Change to another DF specified by the argument passed.
 							If the argument given is <literal>..</literal>,
 							then move up one level in the file system hierarchy.
-							If it is <replaceable>file-id</replaceable>,
+							If it is a <replaceable>file-id</replaceable>,
 							which must be a DF directly
 							beneath the current DF, then change to that DF.
 							If it is an application identifier given as
 							<literal>aid:</literal><replaceable>DF-name</replaceable>,
 							then jump to the MF of the application denoted by
 							<replaceable>DF-name</replaceable>.
-					</para></listitem>
+						</para>
+					</listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -170,7 +226,19 @@
 						</arg>
 					</term>
 					<listitem>
-						<para>Change a PIN, where <replaceable>pin-ref</replaceable> is the PIN reference.</para>
+						<para>
+							Change the PIN specified by <replaceable>pin-ref</replaceable>
+							from the value given by <replaceable>old-pin</replaceable> and
+							change its value to <replaceable>new-pin</replaceable>.
+						</para>
+						<para>
+							<replaceable>old-pin</replaceable> and
+							<replaceable>new-pin</replaceable> can be
+							sequences of hexadecimal values,
+							strings enclosed in double quotes (<literal>"..."</literal>),
+							empty (<literal>""</literal>), or absent.
+							If absent, the values are read from the card reader's pin pad.
+						</para>
 						<para>
 							Examples:
 							<variablelist>
@@ -206,9 +274,13 @@
 						<replaceable>file-id</replaceable>
 						<replaceable>size</replaceable>
 					</term>
-					<listitem><para>Create a new EF.  <replaceable>file-id</replaceable> specifies the
-							id number and <replaceable>size</replaceable> is the size of the new file.
-					</para></listitem>
+					<listitem>
+						<para>
+							Create a new EF.
+							<replaceable>file-id</replaceable> specifies the numeric id, and
+							<replaceable>size</replaceable> the size of the EF to create.
+						</para>
+					</listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -217,8 +289,13 @@
 						<arg choice="opt"><replaceable>level</replaceable></arg>
 					</term>
 					<listitem>
-						<para>Set OpenSC debug level to <replaceable>level</replaceable>.</para>
-						<para>If <replaceable>level</replaceable> is omitted the current debug level will be shown.</para>
+						<para>
+							Set OpenSC debug level to <replaceable>level</replaceable>.
+						</para>
+						<para>
+							If <replaceable>level</replaceable> is omitted,
+							show the current debug level.
+						</para>
 					</listitem>
 				</varlistentry>
 
@@ -227,7 +304,12 @@
 						<command>delete</command>
 						<replaceable>file-id</replaceable>
 					</term>
-					<listitem><para>Remove the EF or DF specified by <replaceable>file-id</replaceable></para></listitem>
+					<listitem>
+						<para>
+							Remove the EF or DF specified by
+							<replaceable>file-id</replaceable>.
+						</para>
+					</listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -237,13 +319,17 @@
 						<arg choice="opt"><replaceable>output</replaceable></arg>
 					</term>
 					<listitem>
-						<para>Copy the internal card's 'tagged' data into the local file.</para>
-						<para>The local file is specified by <replaceable>output</replaceable> while the tag of
-							the card's data is specified by <replaceable>hex-tag</replaceable>.
+						<para>
+							Copy the contents of the card's data object
+							(<acronym>DO</acronym>)
+							specified by <replaceable>hex-tag</replaceable>
+							to the local host computer's file named
+							<replaceable>output</replaceable>.
 						</para>
 						<para>
-							If <replaceable>output</replaceable> is omitted, the name of the output file will be
-							derived from <replaceable>hex-tag</replaceable>.
+							If <replaceable>output</replaceable> is not given,
+							the contents of <replaceable>hex-tag</replaceable>
+							will be displayed as hex-dump.
 						</para>
 					</listitem>
 				</varlistentry>
@@ -252,13 +338,19 @@
 					<term>
 						<command>do_put</command>
 						<replaceable>hex-tag</replaceable>
-						<replaceable>input</replaceable>
+						<replaceable>data</replaceable>
 					</term>
 					<listitem>
-						<para>Update internal card's 'tagged' data. </para>
-						<para><replaceable>hex-tag</replaceable> is the tag of the card's data.
-							<replaceable>input</replaceable> is the filename of the source file or the literal data presented as
-							a sequence of hexadecimal values or <literal>"</literal> enclosed string.
+						<para>
+							Change the contents of the card's data object
+							(<acronym>DO</acronym>)
+							specified by <replaceable>hex-tag</replaceable>
+							to <replaceable>data</replaceable>.
+						</para>
+						<para>
+							<replaceable>data</replaceable> is either a
+							sequence of hexadecimal values or a string enclosed
+							in double quotes (<literal>"..."</literal>).
 						</para>
 					</listitem>
 				</varlistentry>
@@ -269,7 +361,9 @@
 						<arg choice="plain" rep="repeat"><replaceable>string</replaceable></arg>
 					</term>
 					<listitem>
-						<para>Print the <replaceable>string</replaceable>s given.</para>
+						<para>
+							Print the <replaceable>string</replaceable>s given.
+						</para>
 					</listitem>
 				</varlistentry>
 
@@ -277,7 +371,11 @@
 					<term>
 						<command>erase</command>
 					</term>
-					<listitem><para>Erase the card, if the card supports it.</para></listitem>
+					<listitem>
+						<para>
+							Erase the card, if the card supports it.
+						</para>
+					</listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -287,12 +385,33 @@
 						<arg choice="opt"><replaceable>output</replaceable></arg>
 					</term>
 					<listitem>
-						<para>Copy an EF to a local file. The local file is specified
-							by <replaceable>output</replaceable> while the card file is specified by <replaceable>file-id</replaceable>.
+						<para>
+							Copy an EF to a local file.
+							The local file is specified by
+							<replaceable>output</replaceable>
+							while the card file is specified by
+							<replaceable>file-id</replaceable>.
 						</para>
 						<para>
-							If <replaceable>output</replaceable> is omitted, the name of the output file will be
-							derived from the full card path to <replaceable>file-id</replaceable>.
+							If <replaceable>output</replaceable> is omitted,
+							the name of the output file will be derived from the
+							full card path to <replaceable>file-id</replaceable>.
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<command>help</command>
+						<arg choice="opt"><replaceable>pattern</replaceable></arg>
+					</term>
+					<listitem>
+						<para>
+							Display the list of available commands, their options
+							and parameters together with a short help text.
+							If <replaceable>pattern</replaceable> is given,
+							the commands shown are limited to those matching
+							<replaceable>pattern</replaceable>.
 						</para>
 					</listitem>
 				</varlistentry>
@@ -302,9 +421,14 @@
 						<command>info</command>
 						<arg choice="opt"><replaceable>file-id</replaceable></arg>
 					</term>
-					<listitem><para>Display attributes of a file specified by <replaceable>file-id</replaceable>.
+					<listitem>
+						<para>
+							Display attributes of a file specified by
+							<replaceable>file-id</replaceable>.
 							If <replaceable>file-id</replaceable> is not supplied,
-							the attributes of the current file are printed.</para></listitem>
+							the attributes of the current file are displayed.
+						</para>
+					</listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -312,10 +436,16 @@
 						<command>ls</command>
 						<arg choice="opt" rep="repeat"><replaceable>pattern</replaceable></arg>
 					</term>
-					<listitem><para>List files in the current DF.
-							If no <replaceable>pattern</replaceable> is given, then all files are listed.
-							If one ore more <replaceable>pattern</replaceable>s are given, only files matching
-							at least one <replaceable>pattern</replaceable> are listed.</para></listitem>
+					<listitem>
+						<para>
+							List files in the current DF.
+							If no <replaceable>pattern</replaceable> is given,
+							then all files are listed.
+							If one ore more <replaceable>pattern</replaceable>s are given,
+							only files matching at least one
+							<replaceable>pattern</replaceable> are listed.
+						</para>
+					</listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -326,8 +456,20 @@
 							<arg choice="opt"><replaceable>end-id</replaceable></arg>
 						</arg>
 					</term>
-					<listitem><para>Find all files in the current DF.
-							Files are found by selecting all file identifiers in the range from <replaceable>start-fid</replaceable> to <replaceable>end-fid</replaceable> (by default from 0000 to FFFF).</para></listitem>
+					<listitem>
+						<para>
+							Find all files in the current DF.
+							Files are found by selecting all file identifiers in the range
+							from <replaceable>start-fid</replaceable>
+							to <replaceable>end-fid</replaceable>.
+						</para>
+						<para>
+							If not given, the default value for
+							<replaceable>start-fid</replaceable> is <literal>0000</literal>,
+							while the default for <replaceable>end-fid</replaceable> is
+							<literal>FFFF</literal>.
+						</para>
+					</listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -338,8 +480,20 @@
 							<arg choice="opt"><replaceable>end-tag</replaceable></arg>
 						</arg>
 					</term>
-					<listitem><para>Find all tags of data objects in the current context.
-							Tags are found by using GET DATA in the range from <replaceable>start-tag</replaceable> to <replaceable>end-tag</replaceable> (by default from 0000 to FFFF).</para></listitem>
+					<listitem>
+						<para>
+							Find all tags of data objects in the current context.
+							Tags are found by using GET DATA in the range from
+							from <replaceable>start-tag</replaceable>
+							to <replaceable>end-tag</replaceable>.
+						</para>
+						<para>
+							If not given, the default value for
+							<replaceable>start-tag</replaceable> is <literal>0000</literal>,
+							while the default for <replaceable>end-tag</replaceable> is
+							<literal>FFFF</literal>.
+						</para>
+					</listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -348,8 +502,30 @@
 						<replaceable>file-id</replaceable>
 						<replaceable>size</replaceable>
 					</term>
-					<listitem><para>Create a DF. <replaceable>file-id</replaceable> specifies the id number
-							and <replaceable>size</replaceable> is the size of the new file.</para></listitem>
+					<listitem>
+						<para>
+							Create a DF.
+							<replaceable>file-id</replaceable> specifies the numeric id,
+							and <replaceable>size</replaceable> the size of the DF to create.
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<command>pin_info</command>
+						<replaceable>key-type</replaceable><replaceable>key-id</replaceable>
+					</term>
+					<listitem>
+						<para>
+							Get information on a PIN or key from the card, where
+							<replaceable>key-type</replaceable> can be one of
+							<literal>CHV</literal>, <literal>KEY</literal>,
+							<literal>AUT</literal> or <literal>PRO</literal>.
+							<replaceable>key-id</replaceable> is a number
+							representing the key or PIN reference.
+						</para>
+					</listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -358,9 +534,14 @@
 						<replaceable>file-id</replaceable>
 						<replaceable>input</replaceable>
 					</term>
-					<listitem><para>Copy a local file to the card. The local file is specified
-							by <replaceable>input</replaceable> while the card file is specified by <replaceable>file-id</replaceable>.
-					</para></listitem>
+					<listitem>
+						<para>
+							Copy a local file to the card.
+							The local file is specified by <replaceable>input</replaceable>
+							while the card file is specified by
+							<replaceable>file-id</replaceable>.
+						</para>
+					</listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -374,9 +555,16 @@
 					<term>
 						<command>random</command>
 						<replaceable>count</replaceable>
+						<arg choice="opt"><replaceable>output-file</replaceable></arg>
 					</term>
 					<listitem>
-						<para>Generate random sequence of <replaceable>count</replaceable> bytes.</para>
+						<para>
+							Generate <replaceable>count</replaceable> bytes
+							of random data.
+							If <replaceable>output-file</replaceable> is given,
+							write the data to the host computer's file denoted
+							by it, otherwise show the data as hex dump.
+						</para>
 					</listitem>
 				</varlistentry>
 
@@ -385,7 +573,12 @@
 						<command>rm</command>
 						<replaceable>file-id</replaceable>
 					</term>
-					<listitem><para>Remove the EF or DF specified by <replaceable>file-id</replaceable></para></listitem>
+					<listitem>
+						<para>
+							Remove the EF or DF specified by
+							<replaceable>file-id</replaceable>.
+						</para>
+					</listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -400,14 +593,16 @@
 					<listitem>
 						<para>
 							Unblock the PIN denoted by <replaceable>pin-ref</replaceable>
-							using the PUK <replaceable>puk</replaceable>, and set potentially
+							using the PUK <replaceable>puk</replaceable>, and potentially
 							change its value to <replaceable>new-pin</replaceable>.
 						</para>
 						<para>
-							PUK and PIN values can be a sequence of hexadecimal values,
-							<literal>"</literal>-enclosed strings, empty (<literal>""</literal>),
-							or absent.
-							If they are absent, the values are read from the card reader's pin pad.
+							<replaceable>puk</replaceable> and
+							<replaceable>new-pin</replaceable> can be
+							sequences of hexadecimal values,
+							strings enclosed in double quotes (<literal>"..."</literal>),
+							empty (<literal>""</literal>), or absent.
+							If absent, the values are read from the card reader's pin pad.
 						</para>
 						<para>
 							Examples:
@@ -469,12 +664,17 @@
 						<replaceable>data</replaceable>
 					</term>
 					<listitem>
-						<para>Binary update of the file specified by
+						<para>
+							Binary update of the file specified by
 							<replaceable>file-id</replaceable> with the literal data
 							<replaceable>data</replaceable> starting from offset specified
-							by <replaceable>offs</replaceable>.</para>
-						<para><replaceable>data</replaceable> can be supplied as a sequencer
-							of the hex values or as a <literal>"</literal> enclosed string. </para>
+							by <replaceable>offs</replaceable>.
+						</para>
+						<para>
+							<replaceable>data</replaceable> can be supplied as a sequence
+							of hexadecimal values or as a string enclosed in double quotes
+							(<literal>"..."</literal>).
+						</para>
 					</listitem>
 				</varlistentry>
 
@@ -487,12 +687,18 @@
 						<replaceable>data</replaceable>
 					</term>
 					<listitem>
-						<para>Update record specified by <replaceable>rec-nr</replaceable> of the file
-							specified by <replaceable>file-id</replaceable> with the literal data
-							<replaceable>data</replaceable> starting from offset specified by
-							<replaceable>rec-offs</replaceable>.</para>
-						<para><replaceable>data</replaceable> can be supplied as a sequence of the hex values or
-							as a <literal>"</literal> enclosed string. </para>
+						<para>
+							Update record specified by <replaceable>rec-nr</replaceable>
+							of the file specified by <replaceable>file-id</replaceable>
+							with the literal data <replaceable>data</replaceable>
+							starting from offset specified by
+							<replaceable>rec-offs</replaceable>.
+						</para>
+						<para>
+							<replaceable>data</replaceable> can be supplied as a sequence
+							of hexadecimal values or as a string enclosed in double quotes
+							(<literal>"..."</literal>).
+						</para>
 					</listitem>
 				</varlistentry>
 
@@ -502,25 +708,31 @@
 						<replaceable>key-type</replaceable><replaceable>key-id</replaceable>
 						<arg choice="opt"><replaceable>key</replaceable></arg>
 					</term>
-					<listitem><para>Present a PIN or key to the card, where
-							<replaceable>key-type</replaceable> can be one of <literal>CHV</literal>,
-							<literal>KEY</literal>, <literal>AUT</literal> or <literal>PRO</literal>.
-							<replaceable>key-id</replaceable> is a number representing the key or PIN reference.
-							<replaceable>key</replaceable> is the key or PIN to be verified, formatted as a
-							colon-separated list of hex values or a <literal>"</literal> enclosed string.
+					<listitem>
+						<para>
+							Present a PIN or key to the card, where
+							<replaceable>key-type</replaceable> can be one of
+							<literal>CHV</literal>,	<literal>KEY</literal>,
+							<literal>AUT</literal> or <literal>PRO</literal>.
+							<replaceable>key-id</replaceable> is a number representing
+							the key or PIN reference.
+							<replaceable>key</replaceable> is the key or PIN to be verified,
+							formatted as a colon-separated sequence of hexadecimal values
+							or a string enclosed in double quotes (<literal>"..."</literal>).
 						</para>
 						<para>
-							If <replaceable>key</replaceable> is omitted, the exact action depends on the
-							card reader's features: if the card readers supports PIN input via a pin pad,
+							If <replaceable>key</replaceable> is omitted, the exact action
+							depends on the card reader's features:
+							if the card readers supports PIN input via a pin pad,
 							then the PIN will be verified using the card reader's pin pad.
-							If the card reader does not support PIN input, then the PIN will be asked
-							interactively.
+							If the card reader does not support PIN input,
+							then the PIN will be asked interactively.
 						</para>
 						<para>
 							Examples:
 							<variablelist>
 								<varlistentry>
-									<term><code>verify CHV0 31:32:33:34:00:00:00:00</code></term>
+									<term><code>verify CHV2 31:32:33:34:00:00:00:00</code></term>
 									<listitem><para>
 											Verify <literal>CHV2</literal> using the hex value
 											<literal>31:32:33:34:00:00:00:00</literal>
@@ -554,7 +766,10 @@
 						</group>
 					</term>
 					<listitem>
-						<para>Calls the card's <literal>open</literal> or <literal>close</literal> Secure Messaging handler.</para>
+						<para>
+							Call the card's <literal>open</literal> or
+							<literal>close</literal> Secure Messaging handler.
+						</para>
 					</listitem>
 				</varlistentry>
 

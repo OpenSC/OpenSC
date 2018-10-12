@@ -206,8 +206,10 @@ sc_oberthur_get_certificate_authority(struct sc_pkcs15_der *der, int *out_author
 	buf_mem.max = buf_mem.length = der->len;
 
 	bio = BIO_new(BIO_s_mem());
-	if(!bio)
+	if (!bio) {
+		free(buf_mem.data);
 		return SC_ERROR_OUT_OF_MEMORY;
+	}
 
 	BIO_set_mem_buf(bio, &buf_mem, BIO_NOCLOSE);
 	x = d2i_X509_bio(bio, 0);

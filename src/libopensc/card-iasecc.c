@@ -2406,7 +2406,11 @@ iasecc_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_
 		sc_format_path("3F00", &path);
 		path.type = SC_PATH_TYPE_FILE_ID;
 		rv = iasecc_select_file(card, &path, NULL);
-		LOG_TEST_RET(ctx, rv, "Unable to select MF");
+		if (rv != SC_SUCCESS) {
+			sc_file_free(save_current);
+			sc_log(ctx, "Unable to select MF");
+			LOG_FUNC_RETURN(ctx, rv);
+		}
 	}
 
 	memset(&sdo, 0, sizeof(sdo));
@@ -3478,9 +3482,12 @@ iasecc_get_free_reference(struct sc_card *card, struct iasecc_ctl_get_free_refer
 
 			sc_log(ctx, "found empty key slot %i", idx);
 			break;
+		} else if (rv != SC_SUCCESS) {
+			iasecc_sdo_free(card, sdo);
+
+			sc_log(ctx, "get new key reference failed");
+			LOG_FUNC_RETURN(ctx, rv);
 		}
-		else
-			LOG_TEST_RET(ctx, rv, "get new key reference failed");
 
 		sz = *(sdo->docp.size.value + 0) * 0x100 + *(sdo->docp.size.value + 1);
 		sc_log(ctx,

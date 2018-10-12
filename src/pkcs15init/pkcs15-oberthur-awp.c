@@ -284,9 +284,10 @@ awp_create_container_record (struct sc_pkcs15_card *p15card, struct sc_profile *
 	memset(buff, 0, list_file->record_length);
 
 	rv = awp_new_container_entry(p15card, buff, list_file->record_length);
-	if (rv < 0)   {
+	if (rv < 0) {
 		free(buff);
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Cannot create container");
+		sc_log(ctx, "Cannot create container");
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, rv);
 	}
 
 	*(buff + 0) = (acc->pubkey_id >> 8) & 0xFF;

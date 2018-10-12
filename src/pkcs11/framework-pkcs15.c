@@ -365,7 +365,7 @@ pkcs15_unbind(struct sc_pkcs11_card *p11card)
 
 		unlock_card(fw_data);
 
-		if (fw_data->p15_card) {
+		if (fw_data->p15_card && fw_data->p15_card->card) {
 			if (idx == 0) {
 				int rc = sc_detect_card_presence(fw_data->p15_card->card->reader);
 				if (rc <= 0 || rc & SC_READER_CARD_CHANGED) {
@@ -2600,11 +2600,6 @@ pkcs15_create_data(struct sc_pkcs11_slot *slot, struct sc_profile *profile,
 		}
 	}
 
-	if (args.der_encoded.len == 0) {
-		rv = CKR_TEMPLATE_INCOMPLETE;
-		goto out;
-	}
-
 	rc = sc_pkcs15init_store_data_object(fw_data->p15_card, profile, &args, &data_obj);
 	if (rc < 0) {
 		rv = sc_to_cryptoki_error(rc, "C_CreateObject");
@@ -3265,6 +3260,14 @@ pkcs15_set_attrib(struct sc_pkcs11_session *session, struct sc_pkcs15_object *p1
 	case CKA_SUBJECT:
 		rv = SC_SUCCESS;
 		break;
+	case CKA_VALUE:
+		if ((p15_object->type & SC_PKCS15_TYPE_CLASS_MASK) != SC_PKCS15_TYPE_DATA_OBJECT) {
+			ck_rv = CKR_ATTRIBUTE_READ_ONLY;
+			goto set_attr_done;
+		}
+		rv = sc_pkcs15init_change_attrib(fw_data->p15_card, profile, p15_object, 
+				P15_ATTR_TYPE_VALUE, attr->pValue, attr->ulValueLen);
+		break;
 	default:
 		ck_rv = CKR_ATTRIBUTE_READ_ONLY;
 		goto set_attr_done;
@@ -3475,7 +3478,8 @@ struct sc_pkcs11_object_ops pkcs15_cert_ops = {
 	NULL,	/* unwrap_key */
 	NULL,	/* decrypt */
 	NULL,	/* derive */
-	NULL	/* can_do */
+	NULL,	/* can_do */
+	NULL	/* init_params */
 };
 
 /*
@@ -3700,51 +3704,42 @@ static CK_RV
 pkcs15_prkey_check_pss_param(CK_MECHANISM_PTR pMechanism, CK_ULONG hlen)
 {
 	CK_RSA_PKCS_PSS_PARAMS *pss_param;
-
-	if (pMechanism->pParameter == NULL)
-		return CKR_OK;				// Support applications that don't provide CK_RSA_PKCS_PSS_PARAMS
-
-	if (pMechanism->ulParameterLen != sizeof(CK_RSA_PKCS_PSS_PARAMS))
-		return CKR_MECHANISM_PARAM_INVALID;
+	int i;
+	const unsigned int hash_lens[5] = { 160, 256, 385, 512, 224 };
+	const unsigned int hashes[5] = { CKM_SHA_1, CKM_SHA256,
+		CKM_SHA384, CKM_SHA512, CKM_SHA224 };
 
 	pss_param = (CK_RSA_PKCS_PSS_PARAMS *)pMechanism->pParameter;
 
-	// Hash parameter must match mechanisms or length of data supplied for CKM_RSA_PKCS_PSS
-	switch(pss_param->hashAlg) {
-	case CKM_SHA_1:
-		if (hlen != 20)
+	// Hash parameter must match length of data supplied for CKM_RSA_PKCS_PSS
+	for (i = 0; i < 5; i++) {
+		if (pss_param->hashAlg == hashes[i]
+		    && hlen != hash_lens[i]/8)
 			return CKR_MECHANISM_PARAM_INVALID;
-		break;
-	case CKM_SHA256:
-		if (hlen != 32)
-			return CKR_MECHANISM_PARAM_INVALID;
-		break;
-	default:
-		return CKR_MECHANISM_PARAM_INVALID;
 	}
-
-	// SmartCards typically only support MGFs based on the same hash as the
-	// message digest
-	switch(pss_param->mgf) {
-	case CKG_MGF1_SHA1:
-		if (hlen != 20)
-			return CKR_MECHANISM_PARAM_INVALID;
-		break;
-	case CKG_MGF1_SHA256:
-		if (hlen != 32)
-			return CKR_MECHANISM_PARAM_INVALID;
-		break;
-	default:
-		return CKR_MECHANISM_PARAM_INVALID;
-	}
-
-	// SmartCards typically support only a salt length equal to the hash length
-	if (pss_param->sLen != hlen)
-		return CKR_MECHANISM_PARAM_INVALID;
+	/* other aspects of pss params were already verified during SignInit */
 
 	return CKR_OK;
 }
 
+static int mgf2flags(CK_RSA_PKCS_MGF_TYPE mgf)
+{
+	switch (mgf) {
+	case CKG_MGF1_SHA224:
+		return SC_ALGORITHM_MGF1_SHA224;
+		break;
+	case CKG_MGF1_SHA256:
+		return SC_ALGORITHM_MGF1_SHA256;
+	case CKG_MGF1_SHA384:
+		return SC_ALGORITHM_MGF1_SHA384;
+	case CKG_MGF1_SHA512:
+		return SC_ALGORITHM_MGF1_SHA512;
+	case CKG_MGF1_SHA1:
+		return SC_ALGORITHM_MGF1_SHA1;
+	default:
+		return -1;
+	}
+}
 
 
 static CK_RV
@@ -3795,35 +3790,74 @@ pkcs15_prkey_sign(struct sc_pkcs11_session *session, void *obj,
 	case CKM_SHA512_RSA_PKCS:
 		flags = SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_SHA512;
 		break;
-	case CKM_RSA_PKCS_PSS:
-		rv = pkcs15_prkey_check_pss_param(pMechanism, (int)ulDataLen);
-
-		if (rv != CKR_OK)
-			return rv;
-
-		flags = SC_ALGORITHM_RSA_PAD_PSS | SC_ALGORITHM_RSA_HASH_NONE;
-		break;
-	case CKM_SHA1_RSA_PKCS_PSS:
-		rv = pkcs15_prkey_check_pss_param(pMechanism, 20);
-
-		if (rv != CKR_OK)
-			return rv;
-
-		flags = SC_ALGORITHM_RSA_PAD_PSS | SC_ALGORITHM_RSA_HASH_SHA1;
-		break;
-	case CKM_SHA256_RSA_PKCS_PSS:
-		rv = pkcs15_prkey_check_pss_param(pMechanism, 32);
-
-		if (rv != CKR_OK)
-			return rv;
-
-		flags = SC_ALGORITHM_RSA_PAD_PSS | SC_ALGORITHM_RSA_HASH_SHA256;
-		break;
 	case CKM_RIPEMD160_RSA_PKCS:
 		flags = SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_RIPEMD160;
 		break;
 	case CKM_RSA_X_509:
 		flags = SC_ALGORITHM_RSA_RAW;
+		break;
+	case CKM_RSA_PKCS_PSS:
+		flags = SC_ALGORITHM_RSA_PAD_PSS;
+		/* The hash was done ouside of the module */
+		flags |= SC_ALGORITHM_RSA_HASH_NONE;
+		/* Omited parameter can use MGF1-SHA1 ? */
+		if (pMechanism->pParameter == NULL) {
+			flags |= SC_ALGORITHM_MGF1_SHA1;
+			if (ulDataLen != SHA_DIGEST_LENGTH)
+				return CKR_MECHANISM_PARAM_INVALID;
+			break;
+		}
+
+		/* Check the data length matches the selected hash */
+		rv = pkcs15_prkey_check_pss_param(pMechanism, (int)ulDataLen);
+		if (rv != CKR_OK) {
+			sc_log(context, "Invalid data lenght for the selected "
+			    "PSS parameters");
+			return rv;
+		}
+
+		/* The MGF parameter was already verified in SignInit() */
+		flags |=  mgf2flags(((CK_RSA_PKCS_PSS_PARAMS*)pMechanism->pParameter)->mgf);
+
+		/* Assuming salt is the size of hash */
+		break;
+	case CKM_SHA1_RSA_PKCS_PSS:
+	case CKM_SHA224_RSA_PKCS_PSS:
+	case CKM_SHA256_RSA_PKCS_PSS:
+	case CKM_SHA384_RSA_PKCS_PSS:
+	case CKM_SHA512_RSA_PKCS_PSS:
+		flags = SC_ALGORITHM_RSA_PAD_PSS;
+		/* Omited parameter can use MGF1-SHA1 and SHA1 hash ? */
+		if (pMechanism->pParameter == NULL) {
+			flags |= SC_ALGORITHM_RSA_HASH_SHA1;
+			flags |= SC_ALGORITHM_MGF1_SHA1;
+			break;
+		}
+
+		switch (((CK_RSA_PKCS_PSS_PARAMS*)pMechanism->pParameter)->hashAlg) {
+		case CKM_SHA_1:
+			flags |= SC_ALGORITHM_RSA_HASH_SHA1;
+			break;
+		case CKM_SHA224:
+			flags |= SC_ALGORITHM_RSA_HASH_SHA224;
+			break;
+		case CKM_SHA256:
+			flags |= SC_ALGORITHM_RSA_HASH_SHA256;
+			break;
+		case CKM_SHA384:
+			flags |= SC_ALGORITHM_RSA_HASH_SHA384;
+			break;
+		case CKM_SHA512:
+			flags |= SC_ALGORITHM_RSA_HASH_SHA512;
+			break;
+		default:
+			return CKR_MECHANISM_PARAM_INVALID;
+		}
+
+		/* The MGF parameter was already verified in SignInit() */
+		flags |= mgf2flags(((CK_RSA_PKCS_PSS_PARAMS*)pMechanism->pParameter)->mgf);
+
+		/* Assuming salt is the size of hash */
 		break;
 	case CKM_GOSTR3410:
 		flags = SC_ALGORITHM_GOSTR3410_HASH_NONE;
@@ -4071,6 +4105,76 @@ pkcs15_prkey_can_do(struct sc_pkcs11_session *session, void *obj,
 }
 
 
+static CK_RV
+pkcs15_prkey_init_params(struct sc_pkcs11_session *session,
+			CK_MECHANISM_PTR pMechanism)
+{
+	const CK_RSA_PKCS_PSS_PARAMS *pss_params;
+	unsigned int expected_hash = 0, i;
+	unsigned int expected_salt_len = 0;
+	const unsigned int salt_lens[5] = { 160, 256, 384, 512, 224 };
+	const unsigned int hashes[5] = { CKM_SHA_1, CKM_SHA256,
+		CKM_SHA384, CKM_SHA512, CKM_SHA224 };
+
+	switch (pMechanism->mechanism) {
+	case CKM_RSA_PKCS_PSS:
+	case CKM_SHA1_RSA_PKCS_PSS:
+	case CKM_SHA224_RSA_PKCS_PSS:
+	case CKM_SHA256_RSA_PKCS_PSS:
+	case CKM_SHA384_RSA_PKCS_PSS:
+	case CKM_SHA512_RSA_PKCS_PSS:
+		if (!pMechanism->pParameter ||
+		    pMechanism->ulParameterLen != sizeof(CK_RSA_PKCS_PSS_PARAMS))
+			return CKR_MECHANISM_PARAM_INVALID;
+
+		pss_params = (CK_RSA_PKCS_PSS_PARAMS*)pMechanism->pParameter;
+		if (pss_params->mgf < CKG_MGF1_SHA1 || pss_params->mgf > CKG_MGF1_SHA224)
+			return CKR_MECHANISM_PARAM_INVALID;
+
+		/* The hashAlg field can have any value for CKM_RSA_PKCS_PSS and must be
+		 * used again in the PSS padding; for the other mechanisms it strictly
+		 * must match the padding declared in the mechanism.
+		 */
+		if (pMechanism->mechanism == CKM_SHA1_RSA_PKCS_PSS) {
+			expected_hash = CKM_SHA_1;
+			expected_salt_len = 160;
+		} else if (pMechanism->mechanism == CKM_SHA224_RSA_PKCS_PSS) {
+			expected_hash = CKM_SHA224;
+			expected_salt_len = 224;
+		} else if (pMechanism->mechanism == CKM_SHA256_RSA_PKCS_PSS) {
+			expected_hash = CKM_SHA256;
+			expected_salt_len = 256;
+		} else if (pMechanism->mechanism == CKM_SHA384_RSA_PKCS_PSS) {
+			expected_hash = CKM_SHA384;
+			expected_salt_len = 384;
+		} else if (pMechanism->mechanism == CKM_SHA512_RSA_PKCS_PSS) {
+			expected_hash = CKM_SHA512;
+			expected_salt_len = 512;
+		} else if (pMechanism->mechanism == CKM_RSA_PKCS_PSS) {
+			for (i = 0; i < 5; ++i) {
+			        if (hashes[i] == pss_params->hashAlg) {
+			                expected_hash = hashes[i];
+			                expected_salt_len = salt_lens[i];
+				}
+			}
+		}
+
+		if (expected_hash != pss_params->hashAlg)
+			return CKR_MECHANISM_PARAM_INVALID;
+
+		/* We're strict, and only do PSS signatures with a salt length that
+		 * matches the digest length (any shorter is rubbish, any longer
+		 * is useless). */
+		if (pss_params->sLen != expected_salt_len / 8)
+			return CKR_MECHANISM_PARAM_INVALID;
+
+		/* TODO support different salt lengths */
+		break;
+	}
+	return CKR_OK;
+}
+
+
 struct sc_pkcs11_object_ops pkcs15_prkey_ops = {
 	pkcs15_prkey_release,
 	pkcs15_prkey_set_attribute,
@@ -4081,8 +4185,9 @@ struct sc_pkcs11_object_ops pkcs15_prkey_ops = {
 	pkcs15_prkey_sign,
 	NULL,	/* unwrap */
 	pkcs15_prkey_decrypt,
-        pkcs15_prkey_derive,
-        pkcs15_prkey_can_do
+	pkcs15_prkey_derive,
+	pkcs15_prkey_can_do,
+	pkcs15_prkey_init_params,
 };
 
 /*
@@ -4319,7 +4424,8 @@ struct sc_pkcs11_object_ops pkcs15_pubkey_ops = {
 	NULL,	/* unwrap_key */
 	NULL,	/* decrypt */
 	NULL,	/* derive */
-	NULL	/* can_do */
+	NULL,	/* can_do */
+	NULL	/* init_params */
 };
 
 
@@ -4353,6 +4459,13 @@ pkcs15_dobj_get_value(struct sc_pkcs11_session *session,
 
 	if (!out_data)
 		return SC_ERROR_INVALID_ARGUMENTS;
+	if (dobj->info->data.len == 0)
+	/* CKA_VALUE is empty */
+	{
+		*out_data = NULL;
+		return sc_to_cryptoki_error(SC_SUCCESS, "C_GetAttributeValue");
+	}
+
 	fw_data = (struct pkcs15_fw_data *) p11card->fws_data[session->slot->fw_data_idx];
 	if (!fw_data)
 		return sc_to_cryptoki_error(SC_ERROR_INTERNAL, "C_GetAttributeValue");
@@ -4454,9 +4567,17 @@ pkcs15_dobj_get_attribute(struct sc_pkcs11_session *session, void *object, CK_AT
 		free(buf);
 		break;
 	case CKA_VALUE:
+		/* if CKA_VALUE is empty, sets data to NULL */
 		rv = pkcs15_dobj_get_value(session, dobj, &data);
-		if (rv == CKR_OK)
-			rv = data_value_to_attr(attr, data);
+		if (rv == CKR_OK) {
+			if (data) {
+				rv = data_value_to_attr(attr, data);
+			}
+			else {
+				attr->ulValueLen = 0;
+				attr->pValue = NULL_PTR;
+			}
+		}
 		if (data) {
 			free(data->data);
 			free(data);
@@ -4482,7 +4603,8 @@ struct sc_pkcs11_object_ops pkcs15_dobj_ops = {
 	NULL,	/* unwrap_key */
 	NULL,	/* decrypt */
 	NULL,	/* derive */
-	NULL	/* can_do */
+	NULL,	/* can_do */
+	NULL	/* init_params */
 };
 
 
@@ -4611,7 +4733,8 @@ struct sc_pkcs11_object_ops pkcs15_skey_ops = {
 	NULL,	/* unwrap_key */
 	NULL,	/* decrypt */
 	NULL,	/* derive */
-	NULL	/* can_do */
+	NULL,	/* can_do */
+	NULL	/* init_params */
 };
 
 /*
@@ -5022,6 +5145,17 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 		/* We support PKCS1 padding in software */
 		/* either the card supports it or OpenSC does */
 		rsa_flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
+#ifdef ENABLE_OPENSSL
+		rsa_flags |= SC_ALGORITHM_RSA_PAD_PSS;
+#endif
+	}
+
+	if (rsa_flags & SC_ALGORITHM_RSA_PAD_ISO9796) {
+		/* Supported in hardware only, if the card driver declares it. */
+		mt = sc_pkcs11_new_fw_mechanism(CKM_RSA_9796, &mech_info, CKK_RSA, NULL, NULL);
+		rc = sc_pkcs11_register_mechanism(p11card, mt);
+		if (rc != CKR_OK)
+			return rc;
 	}
 
 #ifdef ENABLE_OPENSSL
@@ -5080,23 +5214,40 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 #endif /* ENABLE_OPENSSL */
 	}
 
-	/* TODO support other padding mechanisms */
-
 	if (rsa_flags & SC_ALGORITHM_RSA_PAD_PSS) {
-		mech_info.flags &= ~(CKF_DECRYPT|CKF_VERIFY);
-
+		mech_info.flags &= ~(CKF_DECRYPT|CKF_ENCRYPT);
 		mt = sc_pkcs11_new_fw_mechanism(CKM_RSA_PKCS_PSS, &mech_info, CKK_RSA, NULL, NULL);
 		rc = sc_pkcs11_register_mechanism(p11card, mt);
 		if (rc != CKR_OK)
 			return rc;
 
 		if (rsa_flags & SC_ALGORITHM_RSA_HASH_SHA1) {
-			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card, CKM_SHA1_RSA_PKCS_PSS, CKM_SHA_1, mt);
+			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card,
+			    CKM_SHA1_RSA_PKCS_PSS, CKM_SHA_1, mt);
+			if (rc != CKR_OK)
+				return rc;
+		}
+		if (rsa_flags & SC_ALGORITHM_RSA_HASH_SHA224) {
+			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card,
+			    CKM_SHA224_RSA_PKCS_PSS, CKM_SHA224, mt);
 			if (rc != CKR_OK)
 				return rc;
 		}
 		if (rsa_flags & SC_ALGORITHM_RSA_HASH_SHA256) {
-			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card, CKM_SHA256_RSA_PKCS_PSS, CKM_SHA256, mt);
+			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card,
+			    CKM_SHA256_RSA_PKCS_PSS, CKM_SHA256, mt);
+			if (rc != CKR_OK)
+				return rc;
+		}
+		if (rsa_flags & SC_ALGORITHM_RSA_HASH_SHA384) {
+			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card,
+			    CKM_SHA384_RSA_PKCS_PSS, CKM_SHA384, mt);
+			if (rc != CKR_OK)
+				return rc;
+		}
+		if (rsa_flags & SC_ALGORITHM_RSA_HASH_SHA512) {
+			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card,
+			    CKM_SHA512_RSA_PKCS_PSS, CKM_SHA512, mt);
 			if (rc != CKR_OK)
 				return rc;
 		}

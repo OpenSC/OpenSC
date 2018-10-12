@@ -2496,8 +2496,15 @@ sc_pkcs15_make_absolute_path(const struct sc_path *parent, struct sc_path *child
 void sc_pkcs15_free_object_content(struct sc_pkcs15_object *obj)
 {
 	if (obj->content.value && obj->content.len)   {
-		sc_mem_clear(obj->content.value, obj->content.len);
-		free(obj->content.value);
+		if (SC_PKCS15_TYPE_AUTH & obj->type
+			|| SC_PKCS15_TYPE_SKEY & obj->type
+			|| SC_PKCS15_TYPE_PRKEY & obj->type) {
+			/* clean everything that potentially contains a secret */
+			sc_mem_clear(obj->content.value, obj->content.len);
+			sc_mem_secure_free(obj->content.value, obj->content.len);
+		} else {
+			free(obj->content.value);
+		}
 	}
 	obj->content.value = NULL;
 	obj->content.len = 0;
@@ -2521,7 +2528,13 @@ sc_pkcs15_allocate_object_content(struct sc_context *ctx, struct sc_pkcs15_objec
 	/* Need to pass by temporary variable,
 	 * because 'value' and 'content.value' pointers can be the sames.
 	 */
-	tmp_buf = calloc(sizeof *tmp_buf, len);
+	if (SC_PKCS15_TYPE_AUTH & obj->type
+			|| SC_PKCS15_TYPE_SKEY & obj->type
+			|| SC_PKCS15_TYPE_PRKEY & obj->type) {
+		tmp_buf = sc_mem_secure_alloc(len);
+	} else {
+		tmp_buf = malloc(len);
+	}
 	if (!tmp_buf)
 		return SC_ERROR_OUT_OF_MEMORY;
 

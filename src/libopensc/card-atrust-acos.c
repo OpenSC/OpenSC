@@ -722,7 +722,7 @@ static int atrust_acos_compute_signature(struct sc_card *card,
 				flags = SC_ALGORITHM_RSA_HASH_NONE;
 			tmp_len = sizeof(sbuf);
 			r = sc_pkcs1_encode(card->ctx, flags, data, datalen,
-					sbuf, &tmp_len, sizeof(sbuf));
+					sbuf, &tmp_len, sizeof(sbuf)*8);
 			if (r < 0)
 				return r;
 		} else {

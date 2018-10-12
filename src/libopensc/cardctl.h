@@ -942,18 +942,18 @@ typedef struct sc_cardctl_piv_genkey_info_st {
 #define SC_OPENPGP_KEY_ENCR		2
 #define SC_OPENPGP_KEY_AUTH		3
 
-#define SC_OPENPGP_KEYFORMAT_STD	0    /* See 4.3.3.6 Algorithm Attributes */
-#define SC_OPENPGP_KEYFORMAT_STDN	1    /* OpenPGP card spec v2 */
-#define SC_OPENPGP_KEYFORMAT_CRT	2
-#define SC_OPENPGP_KEYFORMAT_CRTN	3
+#define	SC_OPENPGP_KEYALGO_RSA		0x01
+#define	SC_OPENPGP_KEYALGO_ECDH		0x12
+#define	SC_OPENPGP_KEYALGO_ECDSA	0x13
 
-#define SC_OPENPGP_ALG_ID_RSA		0x01
-#define SC_OPENPGP_ALG_ID_ECDH		0x12
-#define SC_OPENPGP_ALG_ID_ECDSA	0x13
+#define SC_OPENPGP_KEYFORMAT_RSA_STD	0    /* See 4.3.3.6 Algorithm Attributes */
+#define SC_OPENPGP_KEYFORMAT_RSA_STDN	1    /* OpenPGP card spec v2 */
+#define SC_OPENPGP_KEYFORMAT_RSA_CRT	2
+#define SC_OPENPGP_KEYFORMAT_RSA_CRTN	3
 
 typedef struct sc_cardctl_openpgp_keygen_info {
-	u8 keytype;			/* SC_OPENPGP_KEY_ */
-	u8 algorithm_id;	/* Algorithm id sent to card */
+	u8 key_id;			/* SC_OPENPGP_KEY_ */
+	u8 algorithm;	/* Algorithm id sent to card */
 	union {
 		struct
 		{
@@ -961,6 +961,7 @@ typedef struct sc_cardctl_openpgp_keygen_info {
 			size_t modulus_len;   /* Length of modulus in bit */
 			u8 *exponent;
 			size_t exponent_len;
+			u8 keyformat;
 		} rsa;
 		struct
 		{
@@ -968,13 +969,14 @@ typedef struct sc_cardctl_openpgp_keygen_info {
 			size_t ecpoint_len;
 			struct sc_object_id oid;
 			u8 oid_len;
+			unsigned int key_length;
 		} ec;
 	} u;
 } sc_cardctl_openpgp_keygen_info_t;
 
 typedef struct sc_cardctl_openpgp_keystore_info {
-	u8 keytype;
-	u8 algorithm_id;	/* Algorithm id sent to card */
+	u8 key_id;
+	u8 algorithm;	/* Algorithm id sent to card */
 	u8 keyformat;
 	union {
 		struct
