@@ -172,7 +172,7 @@ static int openpgp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
  * @return SC_SUCCESS on success and an error code otherwise
  **/
 static int openpgp_generate_key_rsa(sc_card_t *card, sc_pkcs15_object_t *obj,
-									sc_pkcs15_pubkey_t *pubkey)
+				     sc_pkcs15_pubkey_t *pubkey)
 {
 	sc_context_t *ctx = card->ctx;
 	sc_cardctl_openpgp_keygen_info_t key_info;
@@ -182,7 +182,6 @@ static int openpgp_generate_key_rsa(sc_card_t *card, sc_pkcs15_object_t *obj,
 
 	LOG_FUNC_CALLED(ctx);
 	memset(&key_info, 0, sizeof(key_info));
-
 	sc_log(ctx, "Key ID to be generated: %s", sc_dump_hex(kid->value, kid->len));
 
 	/* Accept KeyID = 45, which is default value set by pkcs15init */

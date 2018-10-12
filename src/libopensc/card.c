@@ -1010,7 +1010,6 @@ int  _sc_card_add_ec_alg(sc_card_t *card, unsigned int key_length,
 	info.flags = flags;
 
 	info.u._ec.ext_flags = ext_flags;
-	
 	if (curve_oid)
 		info.u._ec.params.id = *curve_oid;
 

@@ -952,19 +952,17 @@ typedef struct sc_cardctl_piv_genkey_info_st {
 #define SC_OPENPGP_KEYFORMAT_RSA_CRTN	3
 
 typedef struct sc_cardctl_openpgp_keygen_info {
-	u8 key_id;			/* SC_OPENPGP_KEY_ */
-	u8 algorithm;	/* Algorithm id sent to card */
+	u8 key_id;		/* SC_OPENPGP_KEY_ */
+	u8 algorithm;		/* SC_OPENPGP_KEYALGO_... */
 	union {
-		struct
-		{
+		struct {
 			u8 *modulus;          /* New-generated pubkey info responded from the card */
 			size_t modulus_len;   /* Length of modulus in bit */
 			u8 *exponent;
 			size_t exponent_len;
 			u8 keyformat;	/* SC_OPENPGP_KEYFORMAT_RSA_... */
 		} rsa;
-		struct
-		{
+		struct {
 			u8 *ecpoint;
 			size_t ecpoint_len;
 			struct sc_object_id oid;
@@ -975,11 +973,10 @@ typedef struct sc_cardctl_openpgp_keygen_info {
 } sc_cardctl_openpgp_keygen_info_t;
 
 typedef struct sc_cardctl_openpgp_keystore_info {
-	u8 key_id;
-	u8 algorithm;	/* Algorithm id sent to card */
+	u8 key_id;		/* SC_OPENPGP_KEY_ */
+	u8 algorithm;		/* SC_OPENPGP_KEYALGO_... */
 	union {
-		struct
-		{
+		struct {
 			u8 keyformat;	/* SC_OPENPGP_KEYFORMAT_RSA_... */
 			u8 *e;
 			size_t e_len;
@@ -990,8 +987,7 @@ typedef struct sc_cardctl_openpgp_keystore_info {
 			u8 *n;
 			size_t n_len;
 		} rsa;
-		struct
-		{
+		struct {
 			u8 *privateD;
 			size_t privateD_len;
 			u8 *ecpoint;
