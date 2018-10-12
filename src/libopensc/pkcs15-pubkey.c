@@ -1574,9 +1574,8 @@ sc_pkcs15_fix_ec_parameters(struct sc_context *ctx, struct sc_ec_parameters *ecp
 			LOG_TEST_RET(ctx, rv, "Cannot encode object ID");
 		}
 	}
-	else if (sc_valid_oid(&ecparams->id))  {
+	else
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_IMPLEMENTED, "EC parameters has to be presented as a named curve or explicit data");
-	}
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
