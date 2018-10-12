@@ -1,0 +1,2348 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1"><title>OpenSC Manual Pages: Section 1</title><meta name="generator" content="DocBook XSL Stylesheets V1.79.1"><style type="text/css"><!--
+			body {
+  font-family: Verdana, Arial;
+  font-size: 0.9em;
+}
+
+.title {
+  font-size: 1.5em; 
+  text-align: center;
+}
+
+.toc b {
+  font-size: 1.2em;
+  border-bottom: dashed 1px black;
+}
+
+a {
+  color: blue;
+  text-decoration: none;
+}
+
+a:visited {
+  color: blue;
+  text-decoration: none;
+}
+
+pre.programlisting {
+  font-size: 1.1em;
+  background-color: #EEEEEE ;
+  border: 1px solid #006600 ;
+  padding: 1em;
+}
+
+span.symbol {
+  font-weight: bold;
+}
+
+span.errorname {
+  font-weight: bold;
+}
+
+span.errortext {
+  font-style: italic;
+}
+
+		--></style></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="book"><div class="titlepage"><div><div><h1 class="title"><a name="idm1"></a>OpenSC Manual Pages: Section 1</h1></div></div><hr></div><div class="toc"><p><b>Table of Contents</b></p><dl class="toc"><dt><span class="refentrytitle"><a href="#cardos-tool">cardos-tool</a></span><span class="refpurpose"> &#8212; displays information about Card OS-based security tokens or format them
+		</span></dt><dt><span class="refentrytitle"><a href="#cryptoflex-tool">cryptoflex-tool</a></span><span class="refpurpose"> &#8212; utility for manipulating Schlumberger Cryptoflex data structures</span></dt><dt><span class="refentrytitle"><a href="#dnie-tool">dnie-tool</a></span><span class="refpurpose"> &#8212; displays information about DNIe based security tokens</span></dt><dt><span class="refentrytitle"><a href="#egk-tool">egk-tool</a></span><span class="refpurpose"> &#8212; displays information on the German electronic health card (elektronische Gesundheitskarte, <abbr class="abbrev">eGK</abbr>)
+		</span></dt><dt><span class="refentrytitle"><a href="#eidenv">eidenv</a></span><span class="refpurpose"> &#8212; utility for accessing visible data from
+		electronic identity cards</span></dt><dt><span class="refentrytitle"><a href="#gids-tool">gids-tool</a></span><span class="refpurpose"> &#8212; smart card utility for GIDS cards</span></dt><dt><span class="refentrytitle"><a href="#cardos-tool">iasecc-tool</a></span><span class="refpurpose"> &#8212; displays information about IAS/ECC card
+		</span></dt><dt><span class="refentrytitle"><a href="#netkey-tool">netkey-tool</a></span><span class="refpurpose"> &#8212; administrative utility for Netkey E4 cards</span></dt><dt><span class="refentrytitle"><a href="#npa-tool">npa-tool</a></span><span class="refpurpose"> &#8212; displays information on the German eID card (neuer Personalausweis, <abbr class="abbrev">nPA</abbr>).
+		</span></dt><dt><span class="refentrytitle"><a href="#openpgp-tool">openpgp-tool</a></span><span class="refpurpose"> &#8212; utility for accessing visible data OpenPGP smart cards
+		and compatible tokens</span></dt><dt><span class="refentrytitle"><a href="#opensc-asn1">opensc-asn1</a></span><span class="refpurpose"> &#8212; parse ASN.1 data
+		</span></dt><dt><span class="refentrytitle"><a href="#opensc-explorer">opensc-explorer</a></span><span class="refpurpose"> &#8212; 
+			generic interactive utility for accessing smart card
+			and similar security token functions
+		</span></dt><dt><span class="refentrytitle"><a href="#opensc-notify">opensc-notify</a></span><span class="refpurpose"> &#8212;  monitor smart card events and send notifications
+		</span></dt><dt><span class="refentrytitle"><a href="#opensc-tool">opensc-tool</a></span><span class="refpurpose"> &#8212; generic smart card utility</span></dt><dt><span class="refentrytitle"><a href="#piv-tool">piv-tool</a></span><span class="refpurpose"> &#8212; smart card utility for HSPD-12 PIV cards</span></dt><dt><span class="refentrytitle"><a href="#pkcs11-tool">pkcs11-tool</a></span><span class="refpurpose"> &#8212; utility for managing and using PKCS #11 security tokens</span></dt><dt><span class="refentrytitle"><a href="#pkcs15-crypt">pkcs15-crypt</a></span><span class="refpurpose"> &#8212; perform crypto operations using PKCS#15 smart cards</span></dt><dt><span class="refentrytitle"><a href="#pkcs15-init">pkcs15-init</a></span><span class="refpurpose"> &#8212; smart card personalization utility</span></dt><dt><span class="refentrytitle"><a href="#pkcs15-tool">pkcs15-tool</a></span><span class="refpurpose"> &#8212; utility for manipulating PKCS #15 data structures
+		on smart cards and similar security tokens</span></dt><dt><span class="refentrytitle"><a href="#sc-hsm-tool">sc-hsm-tool</a></span><span class="refpurpose"> &#8212; smart card utility for SmartCard-HSM</span></dt><dt><span class="refentrytitle"><a href="#westcos-tool">westcos-tool</a></span><span class="refpurpose"> &#8212; utility for manipulating data structures
+			on westcos smart cards</span></dt></dl></div><div class="refentry"><a name="cardos-tool"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>cardos-tool &#8212; displays information about Card OS-based security tokens or format them
+		</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">cardos-tool</code>  [<em class="replaceable"><code>OPTIONS</code></em>]</p></div></div><div class="refsect1"><a name="idm18"></a><h2>Description</h2><p>
+			The <span class="command"><strong>cardos-tool</strong></span> utility is used to display information about
+smart cards and similar security tokens based on Siemens Card/OS M4.
+		</p></div><div class="refsect1"><a name="idm22"></a><h2>Options</h2><p>
+			</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+						<code class="option">--card-driver</code> <em class="replaceable"><code>name</code></em>,
+						<code class="option">-c</code> <em class="replaceable"><code>name</code></em></span></dt><dd><p>Use the card driver specified by <em class="replaceable"><code>name</code></em>.
+					The default is to auto-detect the correct card driver.</p></dd><dt><span class="term">
+						<code class="option">--format</code>,
+						<code class="option">-f</code>
+					</span></dt><dd><p>Format the card or token.</p></dd><dt><span class="term">
+						<code class="option">--help</code>,
+						<code class="option">-h</code>
+					</span></dt><dd><p>Print help message on screen.</p></dd><dt><span class="term">
+						<code class="option">--info</code>,
+						<code class="option">-i</code>
+					</span></dt><dd><p>Display information about the card or token.</p></dd><dt><span class="term">
+						<code class="option">--reader</code> <em class="replaceable"><code>num</code></em>,
+						<code class="option">-r</code> <em class="replaceable"><code>num</code></em>
+					</span></dt><dd><p>
+							Specify the reader to use. By default, the first
+							reader with a present card is used. If
+							<em class="replaceable"><code>num</code></em> is an ATR, the
+							reader with a matching card will be chosen.
+						</p></dd><dt><span class="term">
+						<code class="option">--startkey</code> <em class="replaceable"><code>arg</code></em>,
+						<code class="option">-s</code> <em class="replaceable"><code>arg</code></em>
+					</span></dt><dd><p>Specify startkey for format.</p></dd><dt><span class="term">
+						<code class="option">--change-startkey</code> <em class="replaceable"><code>arg</code></em>,
+						<code class="option">-S</code> <em class="replaceable"><code>arg</code></em>
+					</span></dt><dd><p>Change Startkey with given APDU command.</p></dd><dt><span class="term">
+						<code class="option">--verbose</code>,
+						<code class="option">-v</code>
+					</span></dt><dd><p>Causes <span class="command"><strong>cardos-tool</strong></span> to be more verbose.
+					Specify this flag several times to enable debug output in the opensc library.</p></dd><dt><span class="term">
+						<code class="option">--wait</code>,
+						<code class="option">-w</code>
+					</span></dt><dd><p>Causes <span class="command"><strong>cardos-tool</strong></span> to wait for the token
+					to be inserted into reader.</p></dd></dl></div><p>
+		</p></div><div class="refsect1"><a name="idm92"></a><h2>Authors</h2><p><span class="command"><strong>cardos-tool</strong></span> was written by
+		Andreas Jellinghaus <code class="email">&lt;<a class="email" href="mailto:aj@dungeon.inka.de">aj@dungeon.inka.de</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="cryptoflex-tool"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>cryptoflex-tool &#8212; utility for manipulating Schlumberger Cryptoflex data structures</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">cryptoflex-tool</code>  [<em class="replaceable"><code>OPTIONS</code></em>]</p></div></div><div class="refsect1"><a name="idm112"></a><h2>Description</h2><p>
+			<span class="command"><strong>cryptoflex-tool</strong></span> is used to manipulate PKCS
+			data structures on Schlumberger Cryptoflex smart cards. Users
+			can create, list and read PINs and keys stored on the smart card.
+			User PIN authentication is performed for those operations that require it.
+		</p></div><div class="refsect1"><a name="idm116"></a><h2>Options</h2><p>
+			</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+						<code class="option">--app-df</code> <em class="replaceable"><code>num</code></em>,
+						<code class="option">-a</code> <em class="replaceable"><code>num</code></em>
+					</span></dt><dd><p>Specifies the DF to operate in</p></dd><dt><span class="term">
+						<code class="option">--create-key-files</code> <em class="replaceable"><code>arg</code></em>,
+						<code class="option">-c</code> <em class="replaceable"><code>arg</code></em>
+					</span></dt><dd><p>Creates new RSA key files for <em class="replaceable"><code>arg</code></em> keys</p></dd><dt><span class="term">
+						<code class="option">--create-pin-files</code> <em class="replaceable"><code>id</code></em>,
+						<code class="option">-P</code> <em class="replaceable"><code>id</code></em>
+					</span></dt><dd><p>Creates new PIN file for CHV<em class="replaceable"><code>id</code></em></p></dd><dt><span class="term">
+						<code class="option">--exponent</code> <em class="replaceable"><code>exp</code></em>,
+						<code class="option">-e</code> <em class="replaceable"><code>exp</code></em>
+					</span></dt><dd><p>Specifies the RSA exponent, <em class="replaceable"><code>exp</code></em>,
+					to use in key generation. The default value is 3.</p></dd><dt><span class="term">
+						<code class="option">--generate-key</code>,
+						<code class="option">-g</code>
+					</span></dt><dd><p>Generate a new RSA key pair</p></dd><dt><span class="term">
+						<code class="option">--key-num</code> <em class="replaceable"><code>num</code></em>,
+						<code class="option">-k</code> <em class="replaceable"><code>num</code></em>
+					</span></dt><dd><p>Specifies the key number to operate on.  The default is
+					key number 1.</p></dd><dt><span class="term">
+						<code class="option">--list-keys</code>,
+						<code class="option">-l</code>
+					</span></dt><dd><p>Lists all keys stored in a public key file</p></dd><dt><span class="term">
+						<code class="option">--modulus-length</code> <em class="replaceable"><code>length</code></em>,
+						<code class="option">-m</code> <em class="replaceable"><code>length</code></em>
+					</span></dt><dd><p>Specifies the modulus <em class="replaceable"><code>length</code></em> to use
+					in key generation. The default value is 1024.</p></dd><dt><span class="term">
+						<code class="option">--prkey-file</code> <em class="replaceable"><code>id</code></em>,
+						<code class="option">-p</code> <em class="replaceable"><code>id</code></em>
+					</span></dt><dd><p>Specifies the private key file id, <em class="replaceable"><code>id</code></em>,
+					to use</p></dd><dt><span class="term">
+						<code class="option">--pubkey-file</code> <em class="replaceable"><code>id</code></em>,
+						<code class="option">-u</code> <em class="replaceable"><code>id</code></em>
+					</span></dt><dd><p>Specifies the public key file id, <em class="replaceable"><code>id</code></em>,
+					to use</p></dd><dt><span class="term">
+						<code class="option">--read-key</code>,
+						<code class="option">-R</code>
+					</span></dt><dd><p>Reads a public key from the card, allowing the user to
+					extract and store or use the public key
+					</p></dd><dt><span class="term">
+						<code class="option">--reader</code> <em class="replaceable"><code>num</code></em>,
+						<code class="option">-r</code> <em class="replaceable"><code>num</code></em>
+					</span></dt><dd><p>
+							Specify the reader to use. By default, the first
+							reader with a present card is used. If
+							<em class="replaceable"><code>num</code></em> is an ATR, the
+							reader with a matching card will be chosen.
+						</p></dd><dt><span class="term">
+						<code class="option">--verbose</code>,
+						<code class="option">-v</code>
+					</span></dt><dd><p>Causes <span class="command"><strong>cryptoflex-tool</strong></span> to be more
+					verbose. Specify this flag several times to enable debug output in
+					the opensc library.</p></dd><dt><span class="term">
+						<code class="option">--verify-pin</code>,
+						<code class="option">-V</code>
+					</span></dt><dd><p>Verifies CHV1 before issuing commands</p></dd><dt><span class="term">
+						<code class="option">--wait</code>,
+						<code class="option">-w</code>
+					</span></dt><dd><p>Causes <span class="command"><strong>cryptoflex-tool</strong></span> to
+					wait for a card insertion.</p></dd></dl></div><p>
+		</p></div><div class="refsect1"><a name="idm237"></a><h2>See also</h2><p>
+			<span class="citerefentry"><span class="refentrytitle">pkcs15-tool</span>(1)</span>
+		</p></div><div class="refsect1"><a name="idm243"></a><h2>Authors</h2><p><span class="command"><strong>cryptoflex-tool</strong></span> was written by
+		Juha Yrjölä <code class="email">&lt;<a class="email" href="mailto:juha.yrjola@iki.fi">juha.yrjola@iki.fi</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="dnie-tool"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>dnie-tool &#8212; displays information about DNIe based security tokens</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">dnie-tool</code>  [<em class="replaceable"><code>OPTIONS</code></em>]</p></div></div><div class="refsect1"><a name="idm263"></a><h2>Description</h2><p>
+			The <span class="command"><strong>dnie-tool</strong></span> utility is used to display additional information about DNIe, the Spanish National eID card.
+		</p></div><div class="refsect1"><a name="idm267"></a><h2>Options</h2><p>
+			</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+						<code class="option">--idesp</code>,
+						<code class="option">-i</code>
+					</span></dt><dd><p>Show the DNIe IDESP value.</p></dd><dt><span class="term">
+						<code class="option">--data</code>,
+						<code class="option">-d</code>
+					</span></dt><dd><p>Show DNIe personal information.
+					Reads and print DNIe number and User Name and SurName</p></dd><dt><span class="term">
+						<code class="option">--all</code>,
+						<code class="option">-a</code>
+					</span></dt><dd><p>Displays every available information.
+					This command is equivalent to -d -i -s</p></dd><dt><span class="term">
+						<code class="option">--serial</code>,
+						<code class="option">-s</code>
+					</span></dt><dd><p>Displays DNIe Serial Number
+					</p></dd><dt><span class="term">
+						<code class="option">--version</code>,
+						<code class="option">-V</code>
+					</span></dt><dd><p>Show DNIe sw version.
+					Displays software version for in-card DNIe OS</p></dd><dt><span class="term">
+						<code class="option">--pin</code> <em class="replaceable"><code>pin</code></em>,
+						<code class="option">-p</code> <em class="replaceable"><code>pin</code></em>
+					</span></dt><dd><p>Specify the user pin <em class="replaceable"><code>pin</code></em> to use.
+					If set to env:<em class="replaceable"><code>VARIABLE</code></em>, the
+					value of the environment variable
+					<em class="replaceable"><code>VARIABLE</code></em> is used.
+					The default is do not enter pin</p></dd><dt><span class="term">
+						<code class="option">--reader</code> <em class="replaceable"><code>num</code></em>,
+						<code class="option">-r</code> <em class="replaceable"><code>num</code></em>
+					</span></dt><dd><p>
+							Specify the reader to use. By default, the first
+							reader with a present card is used. If
+							<em class="replaceable"><code>num</code></em> is an ATR, the
+							reader with a matching card will be chosen.
+						</p></dd><dt><span class="term">
+						<code class="option">--driver</code> <em class="replaceable"><code>driver</code></em>,
+						<code class="option">-c</code> <em class="replaceable"><code>driver</code></em>
+					</span></dt><dd><p>Specify the card driver <em class="replaceable"><code>driver</code></em> to use.
+					Default is use driver from configuration file, or auto-detect if absent</p></dd><dt><span class="term">
+						<code class="option">--wait</code>, 
+						<code class="option">-w</code>
+					</span></dt><dd><p>Causes <span class="command"><strong>dnie-tool</strong></span> to wait for the token to be inserted into reader.</p></dd><dt><span class="term">
+						<code class="option">--verbose</code>,
+						<code class="option">-v</code>
+					</span></dt><dd><p>Causes <span class="command"><strong>dnie-tool</strong></span> to be more verbose. 
+					Specify this flag several times
+to enable debug output in the opensc library.</p></dd></dl></div><p>
+		</p></div><div class="refsect1"><a name="idm344"></a><h2>Authors</h2><p><span class="command"><strong>dnie-tool</strong></span> was written by
+		Juan Antonio Martinez <code class="email">&lt;<a class="email" href="mailto:jonsito@terra.es">jonsito@terra.es</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="egk-tool"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>egk-tool &#8212; displays information on the German electronic health card (elektronische Gesundheitskarte, <abbr class="abbrev">eGK</abbr>)
+		</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">egk-tool</code>  [<em class="replaceable"><code>OPTIONS</code></em>]</p></div></div><div class="refsect1"><a name="idm365"></a><h2>Description</h2><p>
+			The <span class="command"><strong>egk-tool</strong></span> utility is used to display information stored on the German elektronic health card (elektronische Gesundheitskarte, <abbr class="abbrev">eGK</abbr>).
+		</p></div><div class="refsect1"><a name="idm370"></a><h2>Options</h2><p>
+			</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+						<code class="option">--help</code>,
+						<code class="option">-h</code></span></dt><dd><p>Print help and exit.</p></dd><dt><span class="term">
+						<code class="option">--version</code>,
+						<code class="option">-V</code></span></dt><dd><p>Print version and exit.</p></dd><dt><span class="term">
+						<code class="option">--reader</code> <em class="replaceable"><code>arg</code></em>,
+						<code class="option">-r</code> <em class="replaceable"><code>arg</code></em>
+					</span></dt><dd><p>
+						Specify the reader to use.
+						Use <code class="literal">-1</code> as <em class="replaceable"><code>arg</code></em>
+						to automatically detect the reader to use.
+						By default, the first reader with a present card is used.
+					</p></dd><dt><span class="term">
+						<code class="option">--verbose</code>,
+						<code class="option">-v</code>
+					</span></dt><dd><p>
+						Causes <span class="command"><strong>egk-tool</strong></span> to be more verbose.
+						Specify this flag several times to be more verbose.
+					</p></dd></dl></div><p>
+		</p><div class="refsect2"><a name="idm403"></a><h3>Health Care Application (<abbr class="abbrev">HCA</abbr>)</h3><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="option">--pd</code></span></dt><dd><p>
+						Show 'Persönliche Versicherungsdaten' (XML).
+					</p></dd><dt><span class="term"><code class="option">--vd</code></span></dt><dd><p>
+						Show 'Allgemeine Versicherungsdaten' (XML).
+					</p></dd><dt><span class="term"><code class="option">--gvd</code></span></dt><dd><p>
+						Show 'Geschützte Versicherungsdaten' (XML).
+					</p></dd><dt><span class="term"><code class="option">--vsd-status</code></span></dt><dd><p>
+						Show 'Versichertenstammdaten-Status'.
+					</p></dd></dl></div></div></div><div class="refsect1"><a name="idm427"></a><h2>Authors</h2><p><span class="command"><strong>egk-tool</strong></span> was written by
+		Frank Morgner <code class="email">&lt;<a class="email" href="mailto:frankmorgner@gmail.com">frankmorgner@gmail.com</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="eidenv"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>eidenv &#8212; utility for accessing visible data from
+		electronic identity cards</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">eidenv</code>  [<em class="replaceable"><code>OPTIONS</code></em>]</p></div></div><div class="refsect1"><a name="idm447"></a><h2>Description</h2><p>
+			The <span class="command"><strong>eidenv</strong></span> utility is used for
+			accessing data from electronic identity cards (like
+			national eID cards) which might not be present in
+			PKCS#15 objects but available in custom files on the
+			card. The data can be printed on screen or used by
+			other programs via environment variables.
+		</p></div><div class="refsect1"><a name="idm451"></a><h2>Options</h2><p>
+			</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+						<code class="option">--exec</code> <em class="replaceable"><code>prog</code></em>,
+						<code class="option">-x</code> <em class="replaceable"><code>prog</code></em>
+					</span></dt><dd><p>Executes the given program with
+					data in environment variables.</p></dd><dt><span class="term">
+						<code class="option">--help</code>,
+						<code class="option">-h</code>
+					</span></dt><dd><p>Print help message on screen.</p></dd><dt><span class="term">
+						<code class="option">--print</code>,
+						<code class="option">-p</code>
+					</span></dt><dd><p>Prints all data
+					fields from the card, like validity
+					period, document number etc.</p></dd><dt><span class="term">
+						<code class="option">--reader</code> <em class="replaceable"><code>num</code></em>,
+						<code class="option">-r</code> <em class="replaceable"><code>num</code></em>
+					</span></dt><dd><p>
+							Specify the reader to use. By default, the first
+							reader with a present card is used. If
+							<em class="replaceable"><code>num</code></em> is an ATR, the
+							reader with a matching card will be chosen.
+						</p></dd><dt><span class="term">
+						<code class="option">--stats</code>,
+						<code class="option">-t</code>
+					</span></dt><dd><p>Prints key usage statistics
+					(only for Estonian ID card).</p></dd><dt><span class="term">
+						<code class="option">--version</code>,
+						<code class="option">-v</code>
+					</span></dt><dd><p>Prints the version
+					of the utility and exits.</p></dd><dt><span class="term">
+						<code class="option">--wait</code>,
+						<code class="option">-w</code>
+					</span></dt><dd><p>Wait for a card to be inserted</p></dd></dl></div><p>
+		</p></div><div class="refsect1"><a name="idm502"></a><h2>Authors</h2><p><span class="command"><strong>eidenv</strong></span> utility was written by
+		Stef Hoeben and Martin Paljak <code class="email">&lt;<a class="email" href="mailto:martin@martinpaljak.net">martin@martinpaljak.net</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="gids-tool"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>gids-tool &#8212; smart card utility for GIDS cards</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">gids-tool</code>  [<em class="replaceable"><code>OPTIONS</code></em>]</p></div></div><div class="refsect1"><a name="idm522"></a><p>
+			The <span class="command"><strong>gids-tool</strong></span> utility can be used from the command line to perform
+			miscellaneous smart card operations on a GIDS smart card.
+		</p></div><div class="refsect1"><a name="idm525"></a><h2>Options</h2><p>
+			</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+						<code class="option">-X</code>,
+						<code class="option">--initialize</code>
+					</span></dt><dd><p>Initialize token.</p></dd><dt><span class="term">
+						<code class="option">--admin-key</code> <em class="replaceable"><code>argument</code></em>
+					</span></dt><dd><p>Define the administrator key</p></dd><dt><span class="term">
+						<code class="option">--pin</code> <em class="replaceable"><code>argument</code></em>
+					</span></dt><dd><p>Define user PIN.</p></dd><dt><span class="term">
+						<code class="option">--serial-number</code> <em class="replaceable"><code>argument</code></em>
+					</span></dt><dd><p>Define serial number.</p></dd><dt><span class="term">
+						<code class="option">-U</code>,
+						<code class="option">--unblock</code>
+					</span></dt><dd><p>Unblock the user PIN after an administrator
+					authentication.</p></dd><dt><span class="term">
+						<code class="option">-C</code>,
+						<code class="option">--change-admin-key</code>
+					</span></dt><dd><p>Change the administrator key.</p></dd><dt><span class="term">
+						<code class="option">--new-admin-key</code> <em class="replaceable"><code>argument</code></em>
+					</span></dt><dd><p>Define the new administrator key.</p></dd><dt><span class="term">
+						<code class="option">--reader</code> <em class="replaceable"><code>argument</code></em>,
+						<code class="option">-r</code> <em class="replaceable"><code>argument</code></em>
+					</span></dt><dd><p>
+							Specify the reader to use. By default, the first
+							reader with a present card is used. If
+							<em class="replaceable"><code>num</code></em> is an ATR, the
+							reader with a matching card will be chosen.
+						</p></dd><dt><span class="term">
+						<code class="option">-w</code>,
+						<code class="option">--wait</code>
+					</span></dt><dd><p>Wait for a card to be inserted.</p></dd><dt><span class="term">
+						<code class="option">-v</code>,
+						<code class="option">--verbose</code>
+					</span></dt><dd><p>Verbose operation. Use several times to
+					enable debug output.</p></dd></dl></div><p>
+		</p></div><div class="refsect1"><a name="idm592"></a><h2>See also</h2><p>
+			<span class="citerefentry"><span class="refentrytitle">opensc-tool</span>(1)</span>
+		</p></div><div class="refsect1"><a name="idm598"></a><h2>Authors</h2><p><span class="command"><strong>gids-tool</strong></span> was written by
+		Vincent Le Toux <code class="email">&lt;<a class="email" href="mailto:vincent.letoux@mysmartlogon.com">vincent.letoux@mysmartlogon.com</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="cardos-tool"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>iasecc-tool &#8212; displays information about IAS/ECC card
+		</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">iasecc-tool</code>  [<em class="replaceable"><code>OPTIONS</code></em>]</p></div></div><div class="refsect1"><a name="idm618"></a><h2>Description</h2><p>
+			The <span class="command"><strong>iasecc-tool</strong></span> utility is used to display information about IAS/ECC v1.0.1 smart cards.
+		</p></div><div class="refsect1"><a name="idm622"></a><h2>Options</h2><p>
+			</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+						<code class="option">--reader</code> <em class="replaceable"><code>num</code></em>,
+					</span></dt><dd><p>
+							Specify the reader to use. By default, the first
+							reader with a present card is used. If
+							<em class="replaceable"><code>num</code></em> is an ATR, the
+							reader with a matching card will be chosen.
+						</p></dd><dt><span class="term">
+						<code class="option">--list-applications</code>,
+					</span></dt><dd><p>Get list of the on-card applications.</p></dd><dt><span class="term">
+						<code class="option">--aid</code> <em class="replaceable"><code>hex-aid</code></em>,
+					</span></dt><dd><p>Select <em class="replaceable"><code>hex-aid</code></em> before processing.</p></dd><dt><span class="term">
+						<code class="option">--list-sdos</code> <em class="replaceable"><code>sdo-type</code></em>,
+					</span></dt><dd><p>List SDOs of the given <em class="replaceable"><code>sdo-type</code></em>,
+                                        present in default or selected application.</p></dd><dt><span class="term">
+						<code class="option">--verbose</code>,
+						<code class="option">-v</code>
+					</span></dt><dd><p>Causes <span class="command"><strong>cardos-tool</strong></span> to be more verbose.
+					Specify this flag several times to enable debug output in the opensc library.</p></dd><dt><span class="term">
+						<code class="option">--wait</code>,
+						<code class="option">-w</code>
+					</span></dt><dd><p>Causes <span class="command"><strong>iasecc-tool</strong></span> to wait for the token
+					to be inserted into reader.</p></dd></dl></div><p>
+		</p></div><div class="refsect1"><a name="idm666"></a><h2>Authors</h2><p><span class="command"><strong>iasecc-tool</strong></span> was written by
+		Viktor Tarasov <code class="email">&lt;<a class="email" href="mailto:viktor.tarasov@gmail.com">viktor.tarasov@gmail.com</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="netkey-tool"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>netkey-tool &#8212; administrative utility for Netkey E4 cards</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">netkey-tool</code>  [<em class="replaceable"><code>OPTIONS</code></em>] [<em class="replaceable"><code>COMMAND</code></em>]</p></div></div><div class="refsect1"><a name="idm688"></a><h2>Description</h2><p>The <span class="command"><strong>netkey-tool</strong></span> utility can be used from the
+    command line to perform some smart card operations with NetKey E4 cards
+    that cannot be done easily with other OpenSC-tools, such as changing local
+    PINs, storing certificates into empty NetKey E4 cert-files or displaying
+    the initial PUK-value.</p></div><div class="refsect1"><a name="idm692"></a><h2>Options</h2><p>
+      </p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+            <code class="option">--help</code>,
+            <code class="option">-h</code>
+          </span></dt><dd><p>Displays a short help message.</p></dd><dt><span class="term">
+            <code class="option">--pin</code> <em class="replaceable"><code>pin-value</code></em>,
+            <code class="option">-p</code> <em class="replaceable"><code>pin-value</code></em>
+          </span></dt><dd><p>Specifies the current value of the global PIN.</p></dd><dt><span class="term">
+            <code class="option">--puk</code> <em class="replaceable"><code>pin-value</code></em>,
+            <code class="option">-u</code> <em class="replaceable"><code>pin-value</code></em>
+          </span></dt><dd><p>Specifies the current value of the global PUK.</p></dd><dt><span class="term">
+            <code class="option">--pin0</code> <em class="replaceable"><code>pin-value</code></em>,
+            <code class="option">-0</code> <em class="replaceable"><code>pin-value</code></em>
+          </span></dt><dd><p>Specifies the current value of the local PIN0 (aka local PIN).</p></dd><dt><span class="term">
+            <code class="option">--pin1</code> <em class="replaceable"><code>pin-value</code></em>,
+            <code class="option">-1</code> <em class="replaceable"><code>pin-value</code></em>
+          </span></dt><dd><p>Specifies the current value of the local PIN1 (aka local PUK).</p></dd><dt><span class="term">
+            <code class="option">--reader</code> <em class="replaceable"><code>num</code></em>,
+            <code class="option">-r</code> <em class="replaceable"><code>num</code></em>
+          </span></dt><dd><p>
+              Specify the reader to use. By default, the first
+              reader with a present card is used. If
+              <em class="replaceable"><code>num</code></em> is an ATR, the
+              reader with a matching card will be chosen.
+            </p></dd><dt><span class="term">
+            <code class="option">-v</code>
+          </span></dt><dd><p>Causes <span class="command"><strong>netkey-tool</strong></span> to be more verbose. This
+          options may be specified multiple times to increase verbosity.</p></dd></dl></div><p>
+    </p></div><div class="refsect1"><a name="idm749"></a><h2>PIN format</h2><p>With the <code class="option">-p</code>, <code class="option">-u</code>, <code class="option">-0</code> or the <code class="option">-1</code>
+    one of the cards pins may be specified. You may use plain ascii-strings (i.e. 123456) or a hex-string
+    (i.e. 31:32:33:34:35:36). A hex-string must consist of exactly n 2-digit hexnumbers separated by n-1 colons.
+    Otherwise it will be interpreted as an ascii string. For example :12:34: and 1:2:3:4 are both pins of
+    length 7, while 12:34 and 01:02:03:04 are pins of length 2 and 4.</p></div><div class="refsect1"><a name="idm756"></a><h2>Commands</h2><p>When used without any options or commands, <span class="command"><strong>netkey-tool</strong></span> will
+    display information about the smart cards pins and certificates. This will not change
+    your card in any aspect (assumed there are no bugs in <span class="command"><strong>netkey-tool</strong></span>).
+    In particular the tries-left counters of the pins are investigated without doing
+    actual pin-verifications.</p><p>If you specify the global PIN via the <code class="option">--pin</code> option,
+    <span class="command"><strong>netkey-tool</strong></span> will also display the initial value of the cards
+    global PUK. If your global PUK was changed <span class="command"><strong>netkey-tool</strong></span> will still
+    display its initial value. There's no way to recover a lost global PUK once it was changed.
+    There's also no way to display the initial value of your global PUK without knowing the
+    current value of your global PIN. </p><p>For most of the commands that <span class="command"><strong>netkey-tool</strong></span> can execute, you have
+    to specify one pin. One notable exception is the <span class="command"><strong>nullpin</strong></span> command, but
+    this command can only be executed once in the lifetime of a NetKey E4 card.</p><p>
+      </p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+            <span class="command"><strong>cert</strong></span> <em class="replaceable"><code>number</code></em> <em class="replaceable"><code>filename</code></em>
+          </span></dt><dd><p>This command will read one of your cards certificates (as specified by
+          <em class="replaceable"><code>number</code></em>) and save this certificate into file <em class="replaceable"><code>filename</code></em>
+          in PEM-format.  Certificates on a NetKey E4 card are readable without a pin, so you don't
+          have to specify one.</p></dd><dt><span class="term">
+            <span class="command"><strong>cert</strong></span> <em class="replaceable"><code>filename</code></em> <em class="replaceable"><code>number</code></em>
+          </span></dt><dd><p>This command will read the first PEM-encoded certificate from file
+          <em class="replaceable"><code>filename</code></em> and store this into your smart cards certificate file
+          <em class="replaceable"><code>number</code></em>. Some of your smart cards certificate files might be readonly, so
+          this will not work with all values of <em class="replaceable"><code>number</code></em>. If a certificate file is
+          writable you must specify a pin in order to change it. If you try to use this command
+          without specifying a pin, <span class="command"><strong>netkey-tool</strong></span> will tell you which one is
+          needed.</p></dd><dt><span class="term">
+            <span class="command"><strong>change</strong></span>
+             { pin  |   puk  |   pin0  |   pin1 }
+            <em class="replaceable"><code>new-pin</code></em>
+          </span></dt><dd><p>This changes the value of the specified pin to the given new value.
+          You must specify either the current value of the pin or another pin to be able to do
+          this and if you don't specify a correct one, <span class="command"><strong>netkey-tool</strong></span> will tell
+          you which one is needed.</p></dd><dt><span class="term">
+            <span class="command"><strong>nullpin</strong></span> <em class="replaceable"><code>initial-pin</code></em>
+          </span></dt><dd><p>This command can be executed only if the global PIN of your card is
+          in nullpin-state. There's no way to return back to nullpin-state once you have changed
+          your global PIN. You don't need a pin to execute the nullpin-command. After a successful
+          nullpin-command <span class="command"><strong>netkey-tool</strong></span> will display your cards initial
+          PUK-value.</p></dd><dt><span class="term">
+            <span class="command"><strong>unblock</strong></span>
+             { pin  |   pin0  |   pin1 }
+          </span></dt><dd><p>This unblocks the specified pin. You must specify another pin
+          to be able to do this and if you don't specify a correct one,
+          <span class="command"><strong>netkey-tool</strong></span> will tell you which one is needed.</p></dd></dl></div><p>
+    </p></div><div class="refsect1"><a name="idm819"></a><h2>See also</h2><p>
+      <span class="citerefentry"><span class="refentrytitle">opensc-explorer</span>(1)</span>
+    </p></div><div class="refsect1"><a name="idm825"></a><h2>Authors</h2><p><span class="command"><strong>netkey-tool</strong></span> was written by
+    Peter Koch <code class="email">&lt;<a class="email" href="mailto:pk_opensc@web.de">pk_opensc@web.de</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="npa-tool"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>npa-tool &#8212; displays information on the German eID card (neuer Personalausweis, <abbr class="abbrev">nPA</abbr>).
+		</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">npa-tool</code>  [<em class="replaceable"><code>OPTIONS</code></em>]</p></div></div><div class="refsect1"><a name="idm846"></a><h2>Description</h2><p>
+			The <span class="command"><strong>npa-tool</strong></span> utility is used to display information
+			stored on the German eID card (neuer Personalausweis, <abbr class="abbrev">nPA</abbr>),
+			and to perform some write and verification operations.
+		</p></div><div class="refsect1"><a name="idm851"></a><h2>Options</h2><p>
+			</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+						<code class="option">--help</code>,
+						<code class="option">-h</code></span></dt><dd><p>Print help and exit.</p></dd><dt><span class="term">
+						<code class="option">--version</code>,
+						<code class="option">-V</code></span></dt><dd><p>Print version and exit.</p></dd><dt><span class="term">
+						<code class="option">--reader</code> <em class="replaceable"><code>arg</code></em>,
+						<code class="option">-r</code> <em class="replaceable"><code>arg</code></em>
+					</span></dt><dd><p>
+						Specify the reader to use.
+						Use <code class="literal">-1</code> as <em class="replaceable"><code>arg</code></em>
+						to automatically detect the reader to use.
+						By default, the first reader with a present card is used.
+					</p></dd><dt><span class="term">
+						<code class="option">--verbose</code>,
+						<code class="option">-v</code>
+					</span></dt><dd><p>
+						Causes <span class="command"><strong>npa-tool</strong></span> to be more verbose.
+						Specify this flag several times to be more verbose.
+					</p></dd></dl></div><p>
+		</p><div class="refsect2"><a name="idm884"></a><h3>Password Authenticated Connection Establishment (<abbr class="abbrev">PACE</abbr>)</h3><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+						<code class="option">--pin</code>  [<em class="replaceable"><code>STRING</code></em>],
+						<code class="option">-p</code>  [<em class="replaceable"><code>STRING</code></em>]
+					</span></dt><dd><p>
+						Run <abbr class="abbrev">PACE</abbr> with (transport) eID-PIN.
+					</p></dd><dt><span class="term">
+						<code class="option">--puk</code>  [<em class="replaceable"><code>STRING</code></em>],
+						<code class="option">-u</code>  [<em class="replaceable"><code>STRING</code></em>]
+					</span></dt><dd><p>
+						Run <abbr class="abbrev">PACE</abbr> with PUK.
+					</p></dd><dt><span class="term">
+						<code class="option">--can</code>  [<em class="replaceable"><code>STRING</code></em>],
+						<code class="option">-c</code>  [<em class="replaceable"><code>STRING</code></em>]
+					</span></dt><dd><p>
+						Run <abbr class="abbrev">PACE</abbr> with Card Access Number (<abbr class="abbrev">CAN</abbr>).
+					</p></dd><dt><span class="term">
+						<code class="option">--mrz</code>  [<em class="replaceable"><code>STRING</code></em>],
+						<code class="option">-m</code>  [<em class="replaceable"><code>STRING</code></em>]
+					</span></dt><dd><p>
+						Run <abbr class="abbrev">PACE</abbr> with Machine Readable Zone (<abbr class="abbrev">MRZ</abbr>).
+						Enter the <abbr class="abbrev">MRZ</abbr> without newlines.
+					</p></dd><dt><span class="term"><code class="option">--env</code></span></dt><dd><p>
+						Specify whether to use environment variables <code class="envar">PIN</code>,
+						<code class="envar">PUK</code>, <code class="envar">CAN</code>, <code class="envar">MRZ</code>,
+						and <code class="envar">NEWPIN</code>.
+						You may want to clean your environment before enabling this.
+						(default=off)
+					</p></dd></dl></div></div><div class="refsect2"><a name="idm945"></a><h3>PIN management</h3><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+						<code class="option">--new-pin</code>  [<em class="replaceable"><code>STRING</code></em>],
+						<code class="option">-N</code>  [<em class="replaceable"><code>STRING</code></em>]
+					</span></dt><dd><p>
+						Install a new PIN.
+					</p></dd><dt><span class="term">
+						<code class="option">--resume</code>,
+						<code class="option">-R</code>
+					</span></dt><dd><p>
+						Resume eID-PIN (uses <abbr class="abbrev">CAN</abbr> to activate last retry).
+						(default=off)
+					</p></dd><dt><span class="term">
+						<code class="option">--unblock</code>,
+						<code class="option">-U</code>
+					</span></dt><dd><p>
+						Unblock PIN (uses PUK to activate three more retries).
+						(default=off)
+					</p></dd></dl></div></div><div class="refsect2"><a name="idm971"></a><h3>Terminal Authentication (<abbr class="abbrev">TA</abbr>) and Chip Authentication (<abbr class="abbrev">CA</abbr>)</h3><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+						<code class="option">--cv-certificate</code> <em class="replaceable"><code>FILENAME</code></em>,
+						<code class="option">-C</code> <em class="replaceable"><code>FILENAME</code></em>
+					</span></dt><dd><p>
+						Specify Card Verifiable (<abbr class="abbrev">CV</abbr>) certificate
+						to create a certificate chain.
+						The option can be given multiple times, in which case the
+						order is important.
+					</p></dd><dt><span class="term"><code class="option">--cert-desc</code> <em class="replaceable"><code>HEX_STRING</code></em></span></dt><dd><p>
+						Certificate description to show for Terminal Authentication.
+					</p></dd><dt><span class="term"><code class="option">--chat</code> <em class="replaceable"><code>HEX_STRING</code></em></span></dt><dd><p>
+						Specify the Card Holder Authorization Template
+						(<abbr class="abbrev">CHAT</abbr>) to use.
+						If not given, it defaults to the terminal's CHAT.
+						Use <code class="literal">7F4C0E060904007F000703010203530103</code>
+						to trigger EAC on the CAT-C (Komfortleser).
+					</p></dd><dt><span class="term">
+						<code class="option">--auxiliary-data</code> <em class="replaceable"><code>HEX_STRING</code></em>,
+						<code class="option">-A</code> <em class="replaceable"><code>HEX_STRING</code></em>
+					</span></dt><dd><p>
+						Specify the terminal's auxiliary data.
+						If not given, the default is determined by verification
+						of validity, age and community ID.
+					</p></dd><dt><span class="term">
+						<code class="option">--private-key</code> <em class="replaceable"><code>FILENAME</code></em>,
+						<code class="option">-P</code> <em class="replaceable"><code>FILENAME</code></em>
+					</span></dt><dd><p>
+						Specify the terminal's private key.
+					</p></dd><dt><span class="term"><code class="option">--cvc-dir</code> <em class="replaceable"><code>DIRECTORY</code></em></span></dt><dd><p>
+						Specify where to look for the certificate of the 
+						Country Verifying Certification Authority
+						(<abbr class="abbrev">CVCA</abbr>).
+						If not given, it defaults to
+						<code class="filename">/home/fm/.local/etc/eac/cvc</code>.
+					</p></dd><dt><span class="term">
+					<code class="option">--x509-dir</code> <em class="replaceable"><code>DIRECTORY</code></em></span></dt><dd><p>
+						Specify where to look for the X.509 certificate.
+						If not given, it defaults to
+						<code class="filename">/home/fm/.local/etc/eac/x509</code>.
+					</p></dd><dt><span class="term"><code class="option">--disable-ta-checks</code></span></dt><dd><p>
+						Disable checking the validity period of CV certificates.
+						(default=off)
+					</p></dd><dt><span class="term"><code class="option">--disable-ca-checks</code></span></dt><dd><p>
+						Disable passive authentication. (default=off)
+					</p></dd></dl></div></div><div class="refsect2"><a name="idm1040"></a><h3>Read and write data groups</h3><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="option">--read-dg1</code></span></dt><dd><p>Read data group 1: Document Type.</p></dd><dt><span class="term"><code class="option">--read-dg2</code></span></dt><dd><p>Read data group 2: Issuing State.</p></dd><dt><span class="term"><code class="option">--read-dg3</code></span></dt><dd><p>Read data group 3: Date of Expiry.</p></dd><dt><span class="term"><code class="option">--read-dg4</code></span></dt><dd><p>Read data group 4: Given Name(s).</p></dd><dt><span class="term"><code class="option">--read-dg5</code></span></dt><dd><p>Read data group 5: Family Name.</p></dd><dt><span class="term"><code class="option">--read-dg6</code></span></dt><dd><p>Read data group 6: Religious/Artistic Name.</p></dd><dt><span class="term"><code class="option">--read-dg7</code></span></dt><dd><p>Read data group 7: Academic Title.</p></dd><dt><span class="term"><code class="option">--read-dg8</code></span></dt><dd><p>Read data group 8: Date of Birth.</p></dd><dt><span class="term"><code class="option">--read-dg9</code></span></dt><dd><p>Read data group 9: Place of Birth.</p></dd><dt><span class="term"><code class="option">--read-dg10</code></span></dt><dd><p>Read data group 10: Nationality.</p></dd><dt><span class="term"><code class="option">--read-dg11</code></span></dt><dd><p>Read data group 11: Sex.</p></dd><dt><span class="term"><code class="option">--read-dg12</code></span></dt><dd><p>Read data group 12: Optional Data.</p></dd><dt><span class="term"><code class="option">--read-dg13</code></span></dt><dd><p>Read data group 13: Birth Name.</p></dd><dt><span class="term"><code class="option">--read-dg14</code></span></dt><dd><p>Read data group 14.</p></dd><dt><span class="term"><code class="option">--read-dg15</code></span></dt><dd><p>Read data group 15.</p></dd><dt><span class="term"><code class="option">--read-dg16</code></span></dt><dd><p>Read data group 16.</p></dd><dt><span class="term"><code class="option">--read-dg17</code></span></dt><dd><p>Read data group 17: Normal Place of Residence.</p></dd><dt><span class="term"><code class="option">--read-dg18</code></span></dt><dd><p>Read data group 18: Community ID.</p></dd><dt><span class="term"><code class="option">--read-dg19</code></span></dt><dd><p>Read data group 19: Residence Permit I.</p></dd><dt><span class="term"><code class="option">--read-dg20</code></span></dt><dd><p>Read data group 20: Residence Permit II.</p></dd><dt><span class="term"><code class="option">--read-dg21</code></span></dt><dd><p>Read data group 21: Optional Data.</p></dd><dt><span class="term">
+					<code class="option">--write-dg17</code> <em class="replaceable"><code>HEX_STRING</code></em></span></dt><dd><p>Write data group 17: Normal Place of Residence.</p></dd><dt><span class="term">
+					<code class="option">--write-dg18</code> <em class="replaceable"><code>HEX_STRING</code></em></span></dt><dd><p>Write data group 18: Community ID.</p></dd><dt><span class="term">
+					<code class="option">--write-dg19</code> <em class="replaceable"><code>HEX_STRING</code></em></span></dt><dd><p>Write data group 19: Residence Permit I.</p></dd><dt><span class="term">
+					<code class="option">--write-dg20</code> <em class="replaceable"><code>HEX_STRING</code></em></span></dt><dd><p>Write data group 20: Residence Permit II.</p></dd><dt><span class="term"><code class="option">--write-dg21</code> <em class="replaceable"><code>HEX_STRING</code></em></span></dt><dd><p>Write data group 21: Optional Data.</p></dd></dl></div></div><div class="refsect2"><a name="idm1178"></a><h3>Verification of validity, age and community ID</h3><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="option">--verify-validity</code> <em class="replaceable"><code>YYYYMMDD</code></em></span></dt><dd><p>
+						Verify chip's validity with a reference date.
+					</p></dd><dt><span class="term"><code class="option">--older-than</code> <em class="replaceable"><code>YYYYMMDD</code></em></span></dt><dd><p>
+						Verify age with a reference date.
+					</p></dd><dt><span class="term"><code class="option">--verify-community</code> <em class="replaceable"><code>HEX_STRING</code></em></span></dt><dd><p>
+						Verify community ID with a reference ID.
+					</p></dd></dl></div></div><div class="refsect2"><a name="idm1199"></a><h3>Special options, not always useful</h3><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+						<code class="option">--break</code>,
+						<code class="option">-b</code>
+					</span></dt><dd><p>
+						Brute force PIN, CAN or PUK.
+						Use together with options <code class="option">-p</code>,
+						<code class="option">-a</code>, or <code class="option">-u</code>.
+						(default=off)
+					</p></dd><dt><span class="term">
+						<code class="option">--translate</code> <em class="replaceable"><code>FILENAME</code></em>,
+						<code class="option">-t</code> <em class="replaceable"><code>FILENAME</code></em>
+					</span></dt><dd><p>
+						Specify the file with APDUs of HEX_STRINGs to send
+						through the secure channel.
+						(default=`stdin')
+					</p></dd><dt><span class="term"><code class="option">--tr-03110v201</code></span></dt><dd><p>
+						Force compliance to BSI TR-03110 version 2.01. (default=off)
+					</p></dd><dt><span class="term"><code class="option">--disable-all-checks</code></span></dt><dd><p>
+						 Disable all checking of fly-by-data. (default=off)
+					</p></dd></dl></div></div></div><div class="refsect1"><a name="idm1229"></a><h2>Authors</h2><p><span class="command"><strong>npa-tool</strong></span> was written by
+		Frank Morgner <code class="email">&lt;<a class="email" href="mailto:frankmorgner@gmail.com">frankmorgner@gmail.com</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="openpgp-tool"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>openpgp-tool &#8212; utility for accessing visible data OpenPGP smart cards
+		and compatible tokens</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">openpgp-tool</code>  [<em class="replaceable"><code>OPTIONS</code></em>]</p></div></div><div class="refsect1"><a name="idm1249"></a><h2>Description</h2><p>
+			The <span class="command"><strong>openpgp-tool</strong></span> utility is used for
+			accessing data from the OpenPGP v1.1 and v2.0 smart cards
+			and compatible tokens like e.g. GPF CryptoStick v1.x,
+			which might not be present in
+			PKCS#15 objects but available in custom files on the
+			card. The data can be printed on screen or used by
+			other programs via environment variables.
+		</p></div><div class="refsect1"><a name="idm1253"></a><h2>Options</h2><p>
+			</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+						<code class="option">--del-key</code> <em class="replaceable"><code>arg</code></em>
+					</span></dt><dd><p>
+						Delete key indicated by <em class="replaceable"><code>arg</code></em>.
+						<em class="replaceable"><code>arg</code></em> can be <code class="literal">1</code>,
+						<code class="literal">2</code>, <code class="literal">3</code>, or
+						<code class="literal">all</code>.
+					</p></dd><dt><span class="term">
+						<code class="option">--do</code> <em class="replaceable"><code>arg</code></em>,
+						<code class="option">-d</code> <em class="replaceable"><code>arg</code></em>
+					</span></dt><dd><p>
+						Dump private data object (<abbr class="abbrev">DO</abbr>)
+						indicated by <em class="replaceable"><code>arg</code></em>.
+						<em class="replaceable"><code>arg</code></em> can be in the form
+						<em class="replaceable"><code>x</code></em>,
+						<code class="literal">10</code><em class="replaceable"><code>x</code></em>, or
+						<code class="literal">010</code><em class="replaceable"><code>x</code></em>
+						to access <code class="literal">DO 010</code><em class="replaceable"><code>x</code></em>,
+						where <em class="replaceable"><code>x</code></em> is <code class="literal">1</code>,
+						<code class="literal">2</code>, <code class="literal">3</code>, or
+						<code class="literal">4</code>.
+					</p></dd><dt><span class="term">
+						<code class="option">--erase</code>,
+						<code class="option">-E</code>
+					</span></dt><dd><p>
+						Erase (i.e. reset) the card.
+					</p></dd><dt><span class="term">
+						<code class="option">--exec</code> <em class="replaceable"><code>prog</code></em>,
+						<code class="option">-x</code> <em class="replaceable"><code>prog</code></em>
+					</span></dt><dd><p>
+						Execute the given program with data in environment variables.
+					</p></dd><dt><span class="term">
+						<code class="option">--gen-key</code> <em class="replaceable"><code>arg</code></em>,
+						<code class="option">-G</code> <em class="replaceable"><code>arg</code></em>
+					</span></dt><dd><p>
+						Generate key with the ID given as <em class="replaceable"><code>arg</code></em>.
+						<em class="replaceable"><code>arg</code></em> can be one of <code class="literal">1</code>,
+						<code class="literal">2</code>, or <code class="literal">3</code>.
+					</p></dd><dt><span class="term">
+						<code class="option">--help</code>,
+						<code class="option">-h</code>
+					</span></dt><dd><p>
+						Print help message on screen.
+					</p></dd><dt><span class="term">
+						<code class="option">--key-length</code> <em class="replaceable"><code>bitlength</code></em>,
+						<code class="option">-L</code> <em class="replaceable"><code>bitlength</code></em>
+					</span></dt><dd><p>
+						Specify the length of the key to be generated.
+						If not given, it defaults to 2048 bit.
+					</p></dd><dt><span class="term">
+						<code class="option">--pin</code> <em class="replaceable"><code>string</code></em>
+					</span></dt><dd><p>
+						The PIN text to verify. If set to
+						env:<em class="replaceable"><code>VARIABLE</code></em>, the value of
+						the environment variable
+						<em class="replaceable"><code>VARIABLE</code></em> is used.
+					</p></dd><dt><span class="term">
+						<code class="option">--pretty</code>
+					</span></dt><dd><p>
+						Print values in pretty format.
+					</p></dd><dt><span class="term">
+						<code class="option">--raw</code>
+					</span></dt><dd><p>
+						Print values in raw format, as they are stored on the card.
+					</p></dd><dt><span class="term">
+						<code class="option">--reader</code> <em class="replaceable"><code>num</code></em>,
+						<code class="option">-r</code> <em class="replaceable"><code>num</code></em>
+					</span></dt><dd><p>
+						Specify the reader to use. By default, the first
+						reader with a present card is used. If
+						<em class="replaceable"><code>num</code></em> is an ATR, the
+						reader with a matching card will be chosen.
+					</p></dd><dt><span class="term">
+						<code class="option">--user-info</code>,
+						<code class="option">-U</code>
+					</span></dt><dd><p>
+						Show card holder information.
+					</p></dd><dt><span class="term">
+						<code class="option">--verify</code> <em class="replaceable"><code>pintype</code></em>
+					</span></dt><dd><p>
+						Verify PIN (CHV1, CHV2 or CHV3).
+					</p></dd><dt><span class="term">
+						<code class="option">--version</code>,
+						<code class="option">-V</code>
+					</span></dt><dd><p>
+						Print the version of the utility and exit.
+					</p></dd><dt><span class="term">
+						<code class="option">--verbose</code>,
+						<code class="option">-v</code>
+					</span></dt><dd><p>
+						Verbose operation. Use several times to enable debug output.
+					</p></dd><dt><span class="term">
+						<code class="option">--wait</code>,
+						<code class="option">-w</code>
+					</span></dt><dd><p>
+						Wait for a card to be inserted.
+					</p></dd></dl></div><p>
+		</p></div><div class="refsect1"><a name="idm1390"></a><h2>Authors</h2><p><span class="command"><strong>openpgp-tool</strong></span> utility was written by
+		Peter Marschall <code class="email">&lt;<a class="email" href="mailto:peter@adpm.de">peter@adpm.de</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="opensc-asn1"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>opensc-asn1 &#8212; parse ASN.1 data
+		</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">opensc-asn1</code>  [<em class="replaceable"><code>OPTIONS</code></em>] [<em class="replaceable"><code>FILES</code></em>]</p></div></div><div class="refsect1"><a name="idm1412"></a><h2>Description</h2><p>
+			The <span class="command"><strong>opensc-asn1</strong></span> utility is used to parse ASN.1 data.
+		</p></div><div class="refsect1"><a name="idm1416"></a><h2>Options</h2><p>
+			</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+						<code class="option">--help</code>,
+						<code class="option">-h</code></span></dt><dd><p>Print help and exit.</p></dd><dt><span class="term">
+						<code class="option">--version</code>,
+						<code class="option">-V</code></span></dt><dd><p>Print version and exit.</p></dd></dl></div><p>
+		</p></div><div class="refsect1"><a name="idm1432"></a><h2>Authors</h2><p><span class="command"><strong>opensc-asn1</strong></span> was written by
+		Frank Morgner <code class="email">&lt;<a class="email" href="mailto:frankmorgner@gmail.com">frankmorgner@gmail.com</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="opensc-explorer"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>opensc-explorer &#8212; 
+			generic interactive utility for accessing smart card
+			and similar security token functions
+		</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">opensc-explorer</code>  [<em class="replaceable"><code>OPTIONS</code></em>] [<em class="replaceable"><code>SCRIPT</code></em>]</p></div></div><div class="refsect1"><a name="idm1454"></a><h2>Description</h2><p>
+			The <span class="command"><strong>opensc-explorer</strong></span> utility can be
+			used interactively to perform miscellaneous operations
+			such as exploring the contents of or sending arbitrary
+			APDU commands to a smart card or similar security token.
+		</p></div><div class="refsect1"><a name="idm1458"></a><h2>Options</h2><p>
+			The following are the command-line options for
+			<span class="command"><strong>opensc-explorer</strong></span>.  There are additional
+			interactive commands available once it is running.
+			</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+						<code class="option">--card-driver</code> <em class="replaceable"><code>driver</code></em>,
+						<code class="option">-c</code> <em class="replaceable"><code>driver</code></em>
+					</span></dt><dd><p>
+						Use the given card driver.  The default is
+						auto-detected.
+					</p></dd><dt><span class="term">
+						<code class="option">--mf</code> <em class="replaceable"><code>path</code></em>,
+						<code class="option">-m</code> <em class="replaceable"><code>path</code></em>
+					</span></dt><dd><p>
+						Select the file referenced by the given path on
+						startup.  The default is the path to the standard master file,
+						3F00. If <em class="replaceable"><code>path</code></em> is empty (e.g. <span class="command"><strong>opensc-explorer
+						--mf ""</strong></span>), then no file is explicitly selected.
+					</p></dd><dt><span class="term">
+						<code class="option">--reader</code> <em class="replaceable"><code>num</code></em>,
+						<code class="option">-r</code> <em class="replaceable"><code>num</code></em>
+					</span></dt><dd><p>
+							Specify the reader to use. By default, the first
+							reader with a present card is used. If
+							<em class="replaceable"><code>num</code></em> is an ATR, the
+							reader with a matching card will be chosen.
+						</p></dd><dt><span class="term">
+						<code class="option">--verbose</code>, <code class="option">-v</code>
+					</span></dt><dd><p>
+						Causes <span class="command"><strong>opensc-explorer</strong></span> to be more
+						verbose. Specify this flag several times to enable
+						debug output in the opensc library.
+					</p></dd><dt><span class="term">
+						<code class="option">--wait</code>, <code class="option">-w</code>
+					</span></dt><dd><p>Wait for a card to be inserted</p></dd></dl></div><p>
+		</p></div><div class="refsect1"><a name="idm1503"></a><h2>Commands</h2><p>
+			The following commands are supported at <span class="command"><strong>opensc-explorer</strong></span>'s
+			interactive prompt or in script files passed via the command line parameter
+			<em class="replaceable"><code>SCRIPT</code></em>.
+			</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+						<span class="command"><strong>apdu</strong></span>
+						<em class="replaceable"><code>hex-data</code></em>
+					</span></dt><dd><p>Send a custom APDU command <em class="replaceable"><code>hex-data</code></em>.</p></dd><dt><span class="term">
+						<span class="command"><strong>asn1</strong></span>
+						<em class="replaceable"><code>file-id</code></em>
+					</span></dt><dd><p>Parse and print the ASN.1 encoded content of the file specified by
+							<em class="replaceable"><code>file-id</code></em>.</p></dd><dt><span class="term">
+						<span class="command"><strong>cat</strong></span>
+						 [ <em class="replaceable"><code>file-id</code></em>  |   <code class="literal">sfi:</code><em class="replaceable"><code>short-id</code></em> ]
+					</span></dt><dd><p>Print the contents of the currently selected EF or the contents
+							of a file specified by <em class="replaceable"><code>file-id</code></em> or the short file id
+							<em class="replaceable"><code>short-id</code></em>.
+					</p></dd><dt><span class="term">
+						<span class="command"><strong>cd</strong></span>
+						 { <code class="literal">..</code>  |   <em class="replaceable"><code>file-id</code></em>  |   <code class="literal">aid:</code><em class="replaceable"><code>DF-name</code></em> }
+					</span></dt><dd><p>
+							Change to another DF specified by the argument passed.
+							If the argument given is <code class="literal">..</code>,
+							then move up one level in the file system hierarchy.
+							If it is <em class="replaceable"><code>file-id</code></em>,
+							which must be a DF directly
+							beneath the current DF, then change to that DF.
+							If it is an application identifier given as
+							<code class="literal">aid:</code><em class="replaceable"><code>DF-name</code></em>,
+							then jump to the MF of the application denoted by
+							<em class="replaceable"><code>DF-name</code></em>.
+					</p></dd><dt><span class="term">
+						<span class="command"><strong>change</strong></span>
+						  <code class="literal">CHV</code><em class="replaceable"><code>pin-ref</code></em> 
+						 [
+							[<em class="replaceable"><code>old-pin</code></em>]
+							<em class="replaceable"><code>new-pin</code></em>
+						]
+					</span></dt><dd><p>Change a PIN, where <em class="replaceable"><code>pin-ref</code></em> is the PIN reference.</p><p>
+							Examples:
+							</p><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="code">change CHV2 00:00:00:00:00:00 "foobar"</code></span></dt><dd><p>
+											Change PIN <code class="literal">CHV2</code>
+											to the new value <code class="literal">foobar</code>,
+											giving the old value <code class="literal">00:00:00:00:00:00</code>.
+									</p></dd><dt><span class="term"><code class="code">change CHV2 "foobar"</code></span></dt><dd><p>
+											Set PIN <code class="literal">CHV2</code>
+											to the new value <code class="literal">foobar</code>.
+									</p></dd><dt><span class="term"><code class="code">change CHV2</code></span></dt><dd><p>
+											Change PIN <code class="literal">CHV2</code> using the card reader's pinpad.
+									</p></dd></dl></div><p>
+						</p></dd><dt><span class="term">
+						<span class="command"><strong>create</strong></span>
+						<em class="replaceable"><code>file-id</code></em>
+						<em class="replaceable"><code>size</code></em>
+					</span></dt><dd><p>Create a new EF.  <em class="replaceable"><code>file-id</code></em> specifies the
+							id number and <em class="replaceable"><code>size</code></em> is the size of the new file.
+					</p></dd><dt><span class="term">
+						<span class="command"><strong>debug</strong></span>
+						 [<em class="replaceable"><code>level</code></em>]
+					</span></dt><dd><p>Set OpenSC debug level to <em class="replaceable"><code>level</code></em>.</p><p>If <em class="replaceable"><code>level</code></em> is omitted the current debug level will be shown.</p></dd><dt><span class="term">
+						<span class="command"><strong>delete</strong></span>
+						<em class="replaceable"><code>file-id</code></em>
+					</span></dt><dd><p>Remove the EF or DF specified by <em class="replaceable"><code>file-id</code></em></p></dd><dt><span class="term">
+						<span class="command"><strong>do_get</strong></span>
+						<em class="replaceable"><code>hex-tag</code></em>
+						 [<em class="replaceable"><code>output</code></em>]
+					</span></dt><dd><p>Copy the internal card's 'tagged' data into the local file.</p><p>The local file is specified by <em class="replaceable"><code>output</code></em> while the tag of
+							the card's data is specified by <em class="replaceable"><code>hex-tag</code></em>.
+						</p><p>
+							If <em class="replaceable"><code>output</code></em> is omitted, the name of the output file will be
+							derived from <em class="replaceable"><code>hex-tag</code></em>.
+						</p></dd><dt><span class="term">
+						<span class="command"><strong>do_put</strong></span>
+						<em class="replaceable"><code>hex-tag</code></em>
+						<em class="replaceable"><code>input</code></em>
+					</span></dt><dd><p>Update internal card's 'tagged' data. </p><p><em class="replaceable"><code>hex-tag</code></em> is the tag of the card's data.
+							<em class="replaceable"><code>input</code></em> is the filename of the source file or the literal data presented as
+							a sequence of hexadecimal values or <code class="literal">"</code> enclosed string.
+						</p></dd><dt><span class="term">
+						<span class="command"><strong>echo</strong></span>
+						  <em class="replaceable"><code>string</code></em>... 
+					</span></dt><dd><p>Print the <em class="replaceable"><code>string</code></em>s given.</p></dd><dt><span class="term">
+						<span class="command"><strong>erase</strong></span>
+					</span></dt><dd><p>Erase the card, if the card supports it.</p></dd><dt><span class="term">
+						<span class="command"><strong>get</strong></span>
+						<em class="replaceable"><code>file-id</code></em>
+						 [<em class="replaceable"><code>output</code></em>]
+					</span></dt><dd><p>Copy an EF to a local file. The local file is specified
+							by <em class="replaceable"><code>output</code></em> while the card file is specified by <em class="replaceable"><code>file-id</code></em>.
+						</p><p>
+							If <em class="replaceable"><code>output</code></em> is omitted, the name of the output file will be
+							derived from the full card path to <em class="replaceable"><code>file-id</code></em>.
+						</p></dd><dt><span class="term">
+						<span class="command"><strong>info</strong></span>
+						 [<em class="replaceable"><code>file-id</code></em>]
+					</span></dt><dd><p>Display attributes of a file specified by <em class="replaceable"><code>file-id</code></em>.
+							If <em class="replaceable"><code>file-id</code></em> is not supplied,
+							the attributes of the current file are printed.</p></dd><dt><span class="term">
+						<span class="command"><strong>ls</strong></span>
+						 [<em class="replaceable"><code>pattern</code></em>...]
+					</span></dt><dd><p>List files in the current DF.
+							If no <em class="replaceable"><code>pattern</code></em> is given, then all files are listed.
+							If one ore more <em class="replaceable"><code>pattern</code></em>s are given, only files matching
+							at least one <em class="replaceable"><code>pattern</code></em> are listed.</p></dd><dt><span class="term">
+						<span class="command"><strong>find</strong></span>
+						 [
+							<em class="replaceable"><code>start-id</code></em>
+							 [<em class="replaceable"><code>end-id</code></em>]
+						]
+					</span></dt><dd><p>Find all files in the current DF.
+							Files are found by selecting all file identifiers in the range from <em class="replaceable"><code>start-fid</code></em> to <em class="replaceable"><code>end-fid</code></em> (by default from 0000 to FFFF).</p></dd><dt><span class="term">
+						<span class="command"><strong>find_tags</strong></span>
+						 [
+							<em class="replaceable"><code>start-tag</code></em>
+							 [<em class="replaceable"><code>end-tag</code></em>]
+						]
+					</span></dt><dd><p>Find all tags of data objects in the current context.
+							Tags are found by using GET DATA in the range from <em class="replaceable"><code>start-tag</code></em> to <em class="replaceable"><code>end-tag</code></em> (by default from 0000 to FFFF).</p></dd><dt><span class="term">
+						<span class="command"><strong>mkdir</strong></span>
+						<em class="replaceable"><code>file-id</code></em>
+						<em class="replaceable"><code>size</code></em>
+					</span></dt><dd><p>Create a DF. <em class="replaceable"><code>file-id</code></em> specifies the id number
+							and <em class="replaceable"><code>size</code></em> is the size of the new file.</p></dd><dt><span class="term">
+						<span class="command"><strong>put</strong></span>
+						<em class="replaceable"><code>file-id</code></em>
+						<em class="replaceable"><code>input</code></em>
+					</span></dt><dd><p>Copy a local file to the card. The local file is specified
+							by <em class="replaceable"><code>input</code></em> while the card file is specified by <em class="replaceable"><code>file-id</code></em>.
+					</p></dd><dt><span class="term">
+						<span class="command"><strong>quit</strong></span>
+					</span></dt><dd><p>Exit the program.</p></dd><dt><span class="term">
+						<span class="command"><strong>random</strong></span>
+						<em class="replaceable"><code>count</code></em>
+					</span></dt><dd><p>Generate random sequence of <em class="replaceable"><code>count</code></em> bytes.</p></dd><dt><span class="term">
+						<span class="command"><strong>rm</strong></span>
+						<em class="replaceable"><code>file-id</code></em>
+					</span></dt><dd><p>Remove the EF or DF specified by <em class="replaceable"><code>file-id</code></em></p></dd><dt><span class="term">
+						<span class="command"><strong>unblock</strong></span>
+						<code class="literal">CHV</code><em class="replaceable"><code>pin-ref</code></em>
+						 [
+							<em class="replaceable"><code>puk</code></em>
+							 [<em class="replaceable"><code>new-pin</code></em>]
+						]
+					</span></dt><dd><p>
+							Unblock the PIN denoted by <em class="replaceable"><code>pin-ref</code></em>
+							using the PUK <em class="replaceable"><code>puk</code></em>, and set potentially
+							change its value to <em class="replaceable"><code>new-pin</code></em>.
+						</p><p>
+							PUK and PIN values can be a sequence of hexadecimal values,
+							<code class="literal">"</code>-enclosed strings, empty (<code class="literal">""</code>),
+							or absent.
+							If they are absent, the values are read from the card reader's pin pad.
+						</p><p>
+							Examples:
+							</p><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="code">unblock CHV2 00:00:00:00:00:00 "foobar"</code></span></dt><dd><p>
+											Unblock PIN <code class="literal">CHV2</code> using PUK
+											<code class="literal">00:00:00:00:00:00</code>
+											and set it to the new value <code class="literal">foobar</code>.
+									</p></dd><dt><span class="term"><code class="code">unblock CHV2 00:00:00:00:00:00 ""</code></span></dt><dd><p>
+											Unblock PIN <code class="literal">CHV2</code> using PUK
+											<code class="literal">00:00:00:00:00:00</code> keeping the old value.
+									</p></dd><dt><span class="term"><code class="code">unblock CHV2 "" "foobar"</code></span></dt><dd><p>
+											Set new value of PIN <code class="literal">CHV2</code>
+											to <code class="literal">foobar</code>.
+									</p></dd><dt><span class="term"><code class="code">unblock CHV2 00:00:00:00:00:00</code></span></dt><dd><p>
+											Unblock PIN <code class="literal">CHV2</code> using PUK
+											<code class="literal">00:00:00:00:00:00</code>.
+											The new PIN value is prompted by pinpad.
+									</p></dd><dt><span class="term"><code class="code">unblock CHV2 ""</code></span></dt><dd><p>
+											Set PIN <code class="literal">CHV2</code>.
+											The new PIN value is prompted by pinpad.
+									</p></dd><dt><span class="term"><code class="code">unblock CHV2</code></span></dt><dd><p>
+											Unblock PIN <code class="literal">CHV2</code>.
+											The unblock code and new PIN value are prompted by pinpad.
+									</p></dd></dl></div><p>
+						</p></dd><dt><span class="term">
+						<span class="command"><strong>update_binary</strong></span>
+						<em class="replaceable"><code>file-id</code></em>
+						<em class="replaceable"><code>offs</code></em>
+						<em class="replaceable"><code>data</code></em>
+					</span></dt><dd><p>Binary update of the file specified by
+							<em class="replaceable"><code>file-id</code></em> with the literal data
+							<em class="replaceable"><code>data</code></em> starting from offset specified
+							by <em class="replaceable"><code>offs</code></em>.</p><p><em class="replaceable"><code>data</code></em> can be supplied as a sequencer
+							of the hex values or as a <code class="literal">"</code> enclosed string. </p></dd><dt><span class="term">
+						<span class="command"><strong>update_record</strong></span>
+						<em class="replaceable"><code>file-id</code></em>
+						<em class="replaceable"><code>rec-nr</code></em>
+						<em class="replaceable"><code>rec-offs</code></em>
+						<em class="replaceable"><code>data</code></em>
+					</span></dt><dd><p>Update record specified by <em class="replaceable"><code>rec-nr</code></em> of the file
+							specified by <em class="replaceable"><code>file-id</code></em> with the literal data
+							<em class="replaceable"><code>data</code></em> starting from offset specified by
+							<em class="replaceable"><code>rec-offs</code></em>.</p><p><em class="replaceable"><code>data</code></em> can be supplied as a sequence of the hex values or
+							as a <code class="literal">"</code> enclosed string. </p></dd><dt><span class="term">
+						<span class="command"><strong>verify</strong></span>
+						<em class="replaceable"><code>key-type</code></em><em class="replaceable"><code>key-id</code></em>
+						 [<em class="replaceable"><code>key</code></em>]
+					</span></dt><dd><p>Present a PIN or key to the card, where
+							<em class="replaceable"><code>key-type</code></em> can be one of <code class="literal">CHV</code>,
+							<code class="literal">KEY</code>, <code class="literal">AUT</code> or <code class="literal">PRO</code>.
+							<em class="replaceable"><code>key-id</code></em> is a number representing the key or PIN reference.
+							<em class="replaceable"><code>key</code></em> is the key or PIN to be verified, formatted as a
+							colon-separated list of hex values or a <code class="literal">"</code> enclosed string.
+						</p><p>
+							If <em class="replaceable"><code>key</code></em> is omitted, the exact action depends on the
+							card reader's features: if the card readers supports PIN input via a pin pad,
+							then the PIN will be verified using the card reader's pin pad.
+							If the card reader does not support PIN input, then the PIN will be asked
+							interactively.
+						</p><p>
+							Examples:
+							</p><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="code">verify CHV0 31:32:33:34:00:00:00:00</code></span></dt><dd><p>
+											Verify <code class="literal">CHV2</code> using the hex value
+											<code class="literal">31:32:33:34:00:00:00:00</code>
+									</p></dd><dt><span class="term"><code class="code">verify CHV1 "secret"</code></span></dt><dd><p>
+											Verify <code class="literal">CHV1</code>
+											using the string value <code class="literal">secret</code>.
+									</p></dd><dt><span class="term"><code class="code">verify KEY2</code></span></dt><dd><p>
+											Verify <code class="literal">KEY2</code>,
+											get the value from the card reader's pin pad.
+									</p></dd></dl></div><p>
+						</p></dd><dt><span class="term">
+						<span class="command"><strong>sm</strong></span>
+						 { <code class="literal">open</code>  |   <code class="literal">close</code> }
+					</span></dt><dd><p>Calls the card's <code class="literal">open</code> or <code class="literal">close</code> Secure Messaging handler.</p></dd></dl></div><p>
+		</p></div><div class="refsect1"><a name="idm1888"></a><h2>See also</h2><p>
+			<span class="citerefentry"><span class="refentrytitle">opensc-tool</span>(1)</span>
+		</p></div><div class="refsect1"><a name="idm1894"></a><h2>Authors</h2><p><span class="command"><strong>opensc-explorer</strong></span> was written by
+		Juha Yrjölä <code class="email">&lt;<a class="email" href="mailto:juha.yrjola@iki.fi">juha.yrjola@iki.fi</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="opensc-notify"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>opensc-notify &#8212;  monitor smart card events and send notifications
+		</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">opensc-notify</code>  [<em class="replaceable"><code>OPTIONS</code></em>]</p></div></div><div class="refsect1"><a name="idm1914"></a><h2>Description</h2><p>
+			The <span class="command"><strong>opensc-notify</strong></span> utility is used to
+			monitor smart card events and send the appropriate notification.
+		</p></div><div class="refsect1"><a name="idm1918"></a><h2>Options</h2><p>
+			</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+						<code class="option">--help</code>,
+						<code class="option">-h</code></span></dt><dd><p>Print help and exit.</p></dd><dt><span class="term">
+						<code class="option">--version</code>,
+						<code class="option">-V</code></span></dt><dd><p>Print version and exit.</p></dd></dl></div><p>
+		</p><div class="refsect2"><a name="idm1934"></a><h3>Mode: customized</h3><p>
+				Send customized notifications.
+			</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+						<code class="option">--title</code>  [<em class="replaceable"><code>STRING</code></em>],
+						<code class="option">-t</code>  [<em class="replaceable"><code>STRING</code></em>]
+					</span></dt><dd><p>
+						Specify the title of the notification.
+					</p></dd><dt><span class="term">
+						<code class="option">--message</code>  [<em class="replaceable"><code>STRING</code></em>],
+						<code class="option">-m</code>  [<em class="replaceable"><code>STRING</code></em>]
+					</span></dt><dd><p>
+						Specify the main text of the notification.
+					</p></dd></dl></div></div><div class="refsect2"><a name="idm1958"></a><h3>Mode: standard</h3><p>
+				Manually send standard notifications.
+			</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+						<code class="option">--notify-card-inserted</code>,
+						<code class="option">-I</code></span></dt><dd><p>
+						See <em class="parameter"><code>notify_card_inserted</code></em>
+						in <code class="filename">opensc.conf</code> (default=off).
+					</p></dd><dt><span class="term">
+						<code class="option">--notify-card-removed</code>,
+						<code class="option">-R</code></span></dt><dd><p>
+						See <em class="parameter"><code>notify_card_removed</code></em>
+						in <code class="filename">opensc.conf</code> (default=off).
+					</p></dd><dt><span class="term">
+						<code class="option">--notify-pin-good</code>,
+						<code class="option">-G</code></span></dt><dd><p>
+						See <em class="parameter"><code>notify_pin_good</code></em>
+						in <code class="filename">opensc.conf</code> (default=off).
+					</p></dd><dt><span class="term">
+						<code class="option">--notify-pin-bad</code>,
+						<code class="option">-B</code></span></dt><dd><p>
+						See <em class="parameter"><code>notify_pin_bad</code></em>
+						in <code class="filename">opensc.conf</code> (default=off).
+					</p></dd></dl></div></div></div><div class="refsect1"><a name="idm1994"></a><h2>Authors</h2><p><span class="command"><strong>opensc-notify</strong></span> was written by
+		Frank Morgner <code class="email">&lt;<a class="email" href="mailto:frankmorgner@gmail.com">frankmorgner@gmail.com</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="opensc-tool"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>opensc-tool &#8212; generic smart card utility</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">opensc-tool</code>  [<em class="replaceable"><code>OPTIONS</code></em>]</p></div></div><div class="refsect1"><a name="idm2014"></a><h2>Description</h2><p>
+			The <span class="command"><strong>opensc-tool</strong></span> utility can be used from the command line to perform
+			miscellaneous smart card operations such as getting the card ATR or
+			sending arbitrary APDU commands to a card.
+		</p></div><div class="refsect1"><a name="idm2018"></a><h2>Options</h2><p>
+			</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+						<code class="option">--version</code>,
+					</span></dt><dd><p>Print the OpenSC package release version.</p></dd><dt><span class="term">
+						<code class="option">--atr</code>,
+						<code class="option">-a</code>
+					</span></dt><dd><p>Print the Answer To Reset (ATR) of the card.
+					Output is in hex byte format</p></dd><dt><span class="term">
+						<code class="option">--card-driver</code> <em class="replaceable"><code>driver</code></em>,
+						<code class="option">-c</code> <em class="replaceable"><code>driver</code></em>
+					</span></dt><dd><p>Use the given card driver.
+					The default is auto-detected.</p></dd><dt><span class="term">
+						<code class="option">--list-algorithms</code>,
+					</span></dt><dd><p>Lists algorithms supported by card</p></dd><dt><span class="term">
+						<code class="option">--info</code>,
+						<code class="option">-i</code>
+					</span></dt><dd><p>Print information about OpenSC, such as version and enabled components.</p></dd><dt><span class="term">
+						<code class="option">--list-drivers</code>,
+						<code class="option">-D</code>
+					</span></dt><dd><p>List all installed card drivers.</p></dd><dt><span class="term">
+						<code class="option">--list-files</code>,
+						<code class="option">-f</code>
+					</span></dt><dd><p>Recursively list all files stored on card.</p></dd><dt><span class="term">
+						<code class="option">--list-readers</code>,
+						<code class="option">-l</code>
+					</span></dt><dd><p>List all configured readers.</p></dd><dt><span class="term">
+						<code class="option">--name</code>,
+						<code class="option">-n</code>
+					</span></dt><dd><p>Print the name of the inserted card (driver).</p></dd><dt><span class="term">
+						<code class="option">--get-conf-entry</code> <em class="replaceable"><code>conf</code></em>,
+						<code class="option">-G</code> <em class="replaceable"><code>conf</code></em>
+					</span></dt><dd><p>Get configuration key, format: section:name:key</p></dd><dt><span class="term">
+						<code class="option">--set-conf-entry</code> <em class="replaceable"><code>conf</code></em>,
+						<code class="option">-S</code> <em class="replaceable"><code>conf</code></em>
+					</span></dt><dd><p>Get configuration key, format: section:name:key:value</p></dd><dt><span class="term">
+						<code class="option">--reader</code> <em class="replaceable"><code>num</code></em>,
+						<code class="option">-r</code> <em class="replaceable"><code>num</code></em>
+					</span></dt><dd><p>
+							Specify the reader to use. By default, the first
+							reader with a present card is used. If
+							<em class="replaceable"><code>num</code></em> is an ATR, the
+							reader with a matching card will be chosen.
+						</p></dd><dt><span class="term">
+						<code class="option">--reset</code>  [<em class="replaceable"><code>type</code></em>],
+					</span></dt><dd><p>Resets the card in reader.
+					The default reset type is <code class="literal">cold</code>,
+					but <code class="literal">warm</code> reset is also possible.</p></dd><dt><span class="term">
+						<code class="option">--send-apdu</code> <em class="replaceable"><code>apdu</code></em>,
+						<code class="option">-s</code> <em class="replaceable"><code>apdu</code></em>
+					</span></dt><dd><p>Sends an arbitrary APDU to the card in the format
+					<code class="code">AA:BB:CC:DD:EE:FF...</code>.</p></dd><dt><span class="term">
+						<code class="option">--serial</code>
+					</span></dt><dd><p>Print the card serial number (normally the ICCSN).
+					Output is in hex byte format</p></dd><dt><span class="term">
+						<code class="option">--verbose</code>,
+						<code class="option">-v</code>
+					</span></dt><dd><p>Causes <span class="command"><strong>opensc-tool</strong></span> to be more verbose.
+					Specify this flag several times to enable debug output in the opensc library.</p></dd><dt><span class="term">
+						<code class="option">--wait</code>,
+						<code class="option">-w</code>
+					</span></dt><dd><p>Wait for a card to be inserted.</p></dd></dl></div><p>
+		</p></div><div class="refsect1"><a name="idm2137"></a><h2>See also</h2><p>
+			<span class="citerefentry"><span class="refentrytitle">opensc-explorer</span>(1)</span>
+		</p></div><div class="refsect1"><a name="idm2143"></a><h2>Authors</h2><p><span class="command"><strong>opensc-tool</strong></span> was written by
+		Juha Yrjölä <code class="email">&lt;<a class="email" href="mailto:juha.yrjola@iki.fi">juha.yrjola@iki.fi</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="piv-tool"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>piv-tool &#8212; smart card utility for HSPD-12 PIV cards</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">piv-tool</code>  [<em class="replaceable"><code>OPTIONS</code></em>]</p></div></div><div class="refsect1"><a name="idm2163"></a><p>
+			The <span class="command"><strong>piv-tool</strong></span> utility can be used from the command line to perform
+			miscellaneous smart card operations on a HSPD-12 PIV smart card as defined in NIST 800-73-3.
+			It is intended for use with test cards only. It can be used to load objects, and generate
+			key pairs, as well as send arbitrary APDU commands to a card after having authenticated
+			to the card using the card key provided by the card vendor.
+		</p></div><div class="refsect1"><a name="idm2166"></a><h2>Options</h2><p>
+			</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+						<code class="option">--serial</code>
+					</span></dt><dd><p>Print the card serial number derived from the CHUID object,
+					if any. Output is in hex byte format.</p></dd><dt><span class="term">
+						<code class="option">--name</code>,
+						<code class="option">-n</code>
+					</span></dt><dd><p>Print the name of the inserted card (driver)</p></dd><dt><span class="term">
+						<code class="option">--admin</code> <em class="replaceable"><code>argument</code></em>,
+						<code class="option">-A</code> <em class="replaceable"><code>argument</code></em>
+					</span></dt><dd><p>Authenticate to the card using a 2DES or 3DES key.
+					The <em class="replaceable"><code>argument</code></em> of the form
+					</p><pre class="synopsis"> {<code class="literal">A</code>|<code class="literal">M</code>}<code class="literal">:</code><em class="replaceable"><code>ref</code></em><code class="literal">:</code><em class="replaceable"><code>alg</code></em></pre><p>
+					is required, were <code class="literal">A</code> uses "EXTERNAL AUTHENTICATION"
+					and <code class="literal">M</code> uses "MUTUAL AUTHENTICATION".
+					<em class="replaceable"><code>ref</code></em> is normally <code class="literal">9B</code>,
+					and <em class="replaceable"><code>alg</code></em> is <code class="literal">03</code> for 3DES.
+					The key is provided by the card vendor, and the environment variable
+					<code class="varname">PIV_EXT_AUTH_KEY</code> must point to a text file containing
+					the key in the format:
+					<code class="code">XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX</code>
+					</p></dd><dt><span class="term">
+						<code class="option">--genkey</code> <em class="replaceable"><code>argument</code></em>,
+						<code class="option">-G</code> <em class="replaceable"><code>argument</code></em>
+					</span></dt><dd><p>Generate a key pair on the card and output the public key.
+					The <em class="replaceable"><code>argument</code></em> of the form
+					</p><pre class="synopsis"><em class="replaceable"><code>ref</code></em>:<em class="replaceable"><code>alg</code></em></pre><p>
+					is required, where <em class="replaceable"><code>ref</code></em> is <code class="literal">9A</code>,
+					<code class="literal">9C</code>, <code class="literal">9D</code> or <code class="literal">9E</code> and
+					<em class="replaceable"><code>alg</code></em> is <code class="literal">06</code>,
+					<code class="literal">07</code>, <code class="literal">11</code> or <code class="literal">14</code>
+					for RSA 1024, RSA 2048,	ECC 256 or ECC 384 respectively. </p></dd><dt><span class="term">
+						<code class="option">--object</code> <em class="replaceable"><code>ContainerID</code></em>,
+						<code class="option">-O</code> <em class="replaceable"><code>ContainerID</code></em>
+					</span></dt><dd><p>Load an object onto the card.
+					The <em class="replaceable"><code>ContainerID</code></em> is as defined in NIST 800-73-n
+					without leading <code class="literal">0x</code>. Example: CHUID object is 3000
+					</p></dd><dt><span class="term">
+						<code class="option">--cert</code> <em class="replaceable"><code>ref</code></em>,
+						<code class="option">-C</code> <em class="replaceable"><code>ref</code></em>
+					</span></dt><dd><p>Load a certificate onto the card.
+					<em class="replaceable"><code>ref</code></em> is <code class="literal">9A</code>,
+					<code class="literal">9C</code>, <code class="literal">9D</code> or
+					<code class="literal">9E</code></p></dd><dt><span class="term">
+						<code class="option">--compresscert</code> <em class="replaceable"><code>ref</code></em>,
+						<code class="option">-Z</code> <em class="replaceable"><code>ref</code></em>
+					</span></dt><dd><p>Load a certificate that has been gzipped onto the card.
+					<em class="replaceable"><code>ref</code></em> is <code class="literal">9A</code>,
+					<code class="literal">9C</code>, <code class="literal">9D</code> or
+					 <code class="literal">9E</code></p></dd><dt><span class="term">
+						<code class="option">--out</code> <em class="replaceable"><code>file</code></em>,
+						<code class="option">-o</code> <em class="replaceable"><code>file</code></em>
+					</span></dt><dd><p>Output file for any operation that produces output.
+					</p></dd><dt><span class="term">
+						<code class="option">--in</code> <em class="replaceable"><code>file</code></em>,
+						<code class="option">-i</code> <em class="replaceable"><code>file</code></em>
+					</span></dt><dd><p>Input file for any operation that requires an input file.
+					</p></dd><dt><span class="term">
+						<code class="option">--key-slots-discovery</code> <em class="replaceable"><code>file</code></em>
+					</span></dt><dd><p>Print properties of the key slots. Needs 'admin' authentication.
+					</p></dd><dt><span class="term">
+						<code class="option">--send-apdu</code> <em class="replaceable"><code>apdu</code></em>,
+						<code class="option">-s</code> <em class="replaceable"><code>apdu</code></em>
+					</span></dt><dd><p>Sends an arbitrary APDU to the card in the format
+					<code class="code">AA:BB:CC:DD:EE:FF...</code>.
+					This option may be repeated.</p></dd><dt><span class="term">
+						<code class="option">--reader</code> <em class="replaceable"><code>num</code></em>,
+						<code class="option">-r</code> <em class="replaceable"><code>num</code></em>
+					</span></dt><dd><p>
+							Specify the reader to use. By default, the first
+							reader with a present card is used. If
+							<em class="replaceable"><code>num</code></em> is an ATR, the
+							reader with a matching card will be chosen.
+						</p></dd><dt><span class="term">
+						<code class="option">--card-driver</code> <em class="replaceable"><code>driver</code></em>,
+						<code class="option">-c</code> <em class="replaceable"><code>driver</code></em>
+					</span></dt><dd><p>Use the given card driver.
+					The default is auto-detected.</p></dd><dt><span class="term">
+						<code class="option">--wait</code>,
+						<code class="option">-w</code>
+					</span></dt><dd><p>Wait for a card to be inserted</p></dd><dt><span class="term">
+						<code class="option">--verbose</code>,
+						<code class="option">-v</code>
+					</span></dt><dd><p>Causes <span class="command"><strong>piv-tool</strong></span> to be more verbose.
+					Specify this flag several times to enable debug output in the opensc
+					library.</p></dd></dl></div><p>
+		</p></div><div class="refsect1"><a name="idm2324"></a><h2>See also</h2><p>
+			<span class="citerefentry"><span class="refentrytitle">opensc-tool</span>(1)</span>
+		</p></div><div class="refsect1"><a name="idm2330"></a><h2>Authors</h2><p><span class="command"><strong>piv-tool</strong></span> was written by
+		Douglas E. Engert <code class="email">&lt;<a class="email" href="mailto:deengert@gmail.com">deengert@gmail.com</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="pkcs11-tool"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>pkcs11-tool &#8212; utility for managing and using PKCS #11 security tokens</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">pkcs11-tool</code>  [<em class="replaceable"><code>OPTIONS</code></em>]</p></div></div><div class="refsect1"><a name="idm2350"></a><h2>Description</h2><p>
+			The <span class="command"><strong>pkcs11-tool</strong></span> utility is used to manage the
+			data objects on smart cards and similar PKCS #11 security tokens.
+			Users can list and read PINs, keys and certificates stored on the
+			token. User PIN authentication is performed for those operations
+			that require it.
+		</p></div><div class="refsect1"><a name="idm2354"></a><h2>Options</h2><p>
+			</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+						<code class="option">--attr-from</code> <em class="replaceable"><code>filename</code></em>
+					</span></dt><dd><p>Extract information from <em class="replaceable"><code>filename</code></em>
+					(DER-encoded certificate file) and create the corresponding
+					attributes when writing an object to the token. Example: the
+					certificate subject name is used to create the CKA_SUBJECT
+					attribute.</p></dd><dt><span class="term">
+						<code class="option">--change-pin</code>,
+						<code class="option">-c</code>
+					</span></dt><dd><p>Change the user PIN on the token</p></dd><dt><span class="term">
+						<code class="option">--unlock-pin</code>
+					</span></dt><dd><p>Unlock User PIN (without <code class="option">--login</code>
+					unlock in logged in session; otherwise <code class="option">--login-type</code>
+					has to be 'context-specific').</p></dd><dt><span class="term">
+						<code class="option">--hash</code>,
+						<code class="option">-h</code>
+					</span></dt><dd><p>Hash some data.</p></dd><dt><span class="term">
+						<code class="option">--hash-algorithm</code> <em class="replaceable"><code>mechanism</code></em>
+					</span></dt><dd><p>
+		  					Specify hash algorithm used with RSA-PKCS-PSS signature or RSA-OAEP decryption.
+          					Allowed values are "SHA-1", "SHA256", "SHA384", "SHA512", and some tokens may 
+          					also allow "SHA224". Default is "SHA-1".
+						</p><p> 
+							Note that the input to RSA-PKCS-PSS has to be of the size equal to
+							the specified hash algorithm. E.g., for SHA256 the signature input must
+							be exactly 32 bytes long (for mechanisms SHA256-RSA-PKCS-PSS there is no
+							such restriction). For RSA-OAEP, the plaintext input size mLen must be
+							at most keyLen - 2 - 2*hashLen. For example, for RSA 3072-bit key and
+							SHA384, the longest plaintext to encrypt with RSA-OAEP is (with all
+							sizes in bytes): 384 - 2 - 2*48 = 286, aka 286 bytes. 
+						</p></dd><dt><span class="term">
+						<code class="option">--id</code> <em class="replaceable"><code>id</code></em>,
+						<code class="option">-d</code> <em class="replaceable"><code>id</code></em>
+					</span></dt><dd><p>Specify the id of the object to operate on.</p></dd><dt><span class="term">
+						<code class="option">--init-pin</code>
+					</span></dt><dd><p>Initializes the user PIN. This option
+					differs from <code class="option">--change-pin</code> in that it sets the user PIN
+					for the first time. Once set, the user PIN can be changed
+					using <code class="option">--change-pin</code>.</p></dd><dt><span class="term">
+						<code class="option">--init-token</code>
+					</span></dt><dd><p>Initialize a token: set the token label as
+					well as a Security Officer PIN (the label must be specified
+					using <code class="option">--label</code>).</p></dd><dt><span class="term">
+						<code class="option">--input-file</code> <em class="replaceable"><code>filename</code></em>,
+						<code class="option">-i</code> <em class="replaceable"><code>filename</code></em>
+					</span></dt><dd><p>Specify the path to a file for input.</p></dd><dt><span class="term">
+						<code class="option">--keypairgen</code>,
+						<code class="option">-k</code>
+					</span></dt><dd><p>Generate a new key pair (public and private pair.)</p></dd><dt><span class="term">
+						<code class="option">--keygen</code>
+					</span></dt><dd><p>Generate a new key.</p></dd><dt><span class="term">
+						<code class="option">--key-type</code> <em class="replaceable"><code>specification</code></em>
+					</span></dt><dd><p>Specify the type and length of the key to create, for example rsa:1024 or EC:prime256v1.</p></dd><dt><span class="term">
+						<code class="option">--usage-sign</code>
+					</span></dt><dd><p>Specify 'sign' key usage flag (sets SIGN in privkey, sets VERIFY in pubkey).</p></dd><dt><span class="term">
+						<code class="option">--usage-decrypt</code>
+					</span></dt><dd><p>Specify 'decrypt' key usage flag (RSA only, set DECRYPT privkey, ENCRYPT in pubkey).</p></dd><dt><span class="term">
+						<code class="option">--usage-derive</code>
+					</span></dt><dd><p>Specify 'derive' key usage flag (EC only).</p></dd><dt><span class="term">
+						<code class="option">--label</code> <em class="replaceable"><code>name</code></em>,
+						<code class="option">-a</code> <em class="replaceable"><code>name</code></em>
+					</span></dt><dd><p>Specify the name of the object to operate on
+					(or the token label when <code class="option">--init-token</code>
+					is used).</p></dd><dt><span class="term">
+						<code class="option">--list-mechanisms</code>,
+						<code class="option">-M</code>
+					</span></dt><dd><p>Display a list of mechanisms supported by the token.</p></dd><dt><span class="term">
+						<code class="option">--list-objects</code>,
+						<code class="option">-O</code>
+					</span></dt><dd><p>Display a list of objects.</p></dd><dt><span class="term">
+						<code class="option">--list-slots</code>,
+						<code class="option">-L</code>
+					</span></dt><dd><p>Display a list of available slots on the token.</p></dd><dt><span class="term">
+						<code class="option">--list-token-slots</code>,
+						<code class="option">-T</code>
+					</span></dt><dd><p>List slots with tokens.</p></dd><dt><span class="term">
+						<code class="option">--login</code>,
+						<code class="option">-l</code>
+					</span></dt><dd><p>Authenticate to the token before performing
+					other operations. This option is not needed if a PIN is
+					provided on the command line.</p></dd><dt><span class="term">
+						<code class="option">--login-type</code>
+					</span></dt><dd><p>Specify login type ('so', 'user', 'context-specific';
+					default:'user').</p></dd><dt><span class="term">
+						<code class="option">--mechanism</code> <em class="replaceable"><code>mechanism</code></em>,
+						<code class="option">-m</code> <em class="replaceable"><code>mechanism</code></em>
+					</span></dt><dd><p>Use the specified <em class="replaceable"><code>mechanism</code></em>
+					for token operations. See <code class="option">-M</code> for a list
+					of mechanisms supported by your token. The mechanism can also be specified in
+					hexadecimal, e.g., <em class="replaceable"><code>0x80001234</code></em>.</p></dd><dt><span class="term">
+						<code class="option">--mgf</code> <em class="replaceable"><code>function</code></em>
+					</span></dt><dd><p>Use the specified Message Generation
+					Function (MGF) <em class="replaceable"><code>function</code></em>
+					for RSA-PKCS-PSS signatures or RSA-OAEP decryptions. Supported arguments are MGF1-SHA1
+					to MGF1-SHA512 if supported by the driver.
+					The default is based on the hash selection.
+					</p></dd><dt><span class="term">
+						<code class="option">--module</code> <em class="replaceable"><code>mod</code></em>
+					</span></dt><dd><p>Specify a PKCS#11 module (or library) to
+					load.</p></dd><dt><span class="term">
+						<code class="option">--moz-cert</code> <em class="replaceable"><code>filename</code></em>,
+						<code class="option">-z</code> <em class="replaceable"><code>filename</code></em>
+					</span></dt><dd><p>Test a Mozilla-like keypair generation
+					and certificate request. Specify the <em class="replaceable"><code>filename</code></em>
+					to the certificate file.</p></dd><dt><span class="term">
+						<code class="option">--output-file</code> <em class="replaceable"><code>filename</code></em>,
+						<code class="option">-o</code> <em class="replaceable"><code>filename</code></em>
+					</span></dt><dd><p>Specify the path to a file for output.</p></dd><dt><span class="term">
+						<code class="option">--pin</code> <em class="replaceable"><code>pin</code></em>,
+						<code class="option">-p</code> <em class="replaceable"><code>pin</code></em>
+					</span></dt><dd><p>Use the given <em class="replaceable"><code>pin</code></em> for
+					token operations. If set to
+					env:<em class="replaceable"><code>VARIABLE</code></em>, the value of the
+					environment variable <em class="replaceable"><code>VARIABLE</code></em> is
+					used. WARNING: Be careful using this option
+					as other users may be able to read the command line from
+					the system or if it is embedded in a script. If set to
+					env:<em class="replaceable"><code>VARIABLE</code></em>, the value of the
+					environment variable <em class="replaceable"><code>VARIABLE</code></em> is
+					used.</p><p>This option will also set
+					the <code class="option">--login</code> option.</p></dd><dt><span class="term">
+						<code class="option">--puk</code> <em class="replaceable"><code>puk</code></em>
+					</span></dt><dd><p>Supply User PUK on the command line.</p></dd><dt><span class="term">
+						<code class="option">--new-pin</code> <em class="replaceable"><code>pin</code></em>
+					</span></dt><dd><p>Supply new User PIN on the command line.</p></dd><dt><span class="term">
+						<code class="option">--sensitive</code>
+					</span></dt><dd><p>Set the CKA_SENSITIVE attribute (object cannot be revealed in plaintext).</p></dd><dt><span class="term">
+						<code class="option">--set-id</code> <em class="replaceable"><code>id</code></em>,
+						<code class="option">-e</code> <em class="replaceable"><code>id</code></em>
+					</span></dt><dd><p>Set the CKA_ID of the object.</p></dd><dt><span class="term">
+						<code class="option">--show-info</code>,
+						<code class="option">-I</code>
+					</span></dt><dd><p>Display general token information.</p></dd><dt><span class="term">
+						<code class="option">--sign</code>,
+						<code class="option">-s</code>
+					</span></dt><dd><p>Sign some data.</p></dd><dt><span class="term">
+						<code class="option">--decrypt</code>,
+					</span></dt><dd><p>Decrypt some data.</p></dd><dt><span class="term">
+						<code class="option">--derive</code>,
+					</span></dt><dd><p>Derive a secret key using another key and some data.</p></dd><dt><span class="term">
+						<code class="option">--derive-pass-der</code>,
+					</span></dt><dd><p>Derive ECDHpass DER encoded pubkey for compatibility with some PKCS#11 implementations</p></dd><dt><span class="term">
+						<code class="option">--salt-len</code> <em class="replaceable"><code>bytes</code></em>
+					</span></dt><dd><p>Specify how many bytes of salt should
+					be used in RSA-PSS signatures. Accepts two special values:
+					"-1" means salt length equals to digest length,
+					"-2" means use maximum permissible length.
+					Default is digest length (-1).</p></dd><dt><span class="term">
+						<code class="option">--slot</code> <em class="replaceable"><code>id</code></em>
+					</span></dt><dd><p>Specify the id of the slot to use.</p></dd><dt><span class="term">
+						<code class="option">--slot-description</code> <em class="replaceable"><code>description</code></em>
+					</span></dt><dd><p>Specify the description of the slot to use.</p></dd><dt><span class="term">
+						<code class="option">--slot-index</code> <em class="replaceable"><code>index</code></em>
+					</span></dt><dd><p>Specify the index of the slot to use.</p></dd><dt><span class="term">
+						<code class="option">--token-label</code> <em class="replaceable"><code>label</code></em>
+					</span></dt><dd><p>Specify the label of token.
+					Will be used the first slot, that has the inserted token with this
+					label.</p></dd><dt><span class="term">
+						<code class="option">--so-pin</code> <em class="replaceable"><code>pin</code></em>
+					</span></dt><dd><p>Use the given <em class="replaceable"><code>pin</code></em> as the
+					Security Officer PIN for some token operations (token
+					initialization, user PIN initialization, etc). If set to
+					env:<em class="replaceable"><code>VARIABLE</code></em>, the value of the
+					environment variable <em class="replaceable"><code>VARIABLE</code></em> is
+					used. The same warning as <code class="option">--pin</code> also
+					applies here.</p></dd><dt><span class="term">
+						<code class="option">--test</code>,
+						<code class="option">-t</code>
+					</span></dt><dd><p>Perform some tests on the token. This
+					option is most useful when used with either <code class="option">--login</code>
+					or <code class="option">--pin</code>.</p></dd><dt><span class="term">
+						<code class="option">--test-hotplug</code>
+					</span></dt><dd><p>Test hotplug capabilities (C_GetSlotList +
+					C_WaitForSlotEvent).</p></dd><dt><span class="term">
+						<code class="option">--private</code>
+					</span></dt><dd><p>Set the CKA_PRIVATE attribute (object is only
+					viewable after a login).</p></dd><dt><span class="term">
+						<code class="option">--test-ec</code>
+					</span></dt><dd><p>Test EC (best used with the <code class="option">--login</code>
+					or <code class="option">--pin</code> option).</p></dd><dt><span class="term">
+						<code class="option">--test-fork</code>
+					</span></dt><dd><p>Test forking and calling C_Initialize() in the
+					child.</p></dd><dt><span class="term">
+						<code class="option">--type</code> <em class="replaceable"><code>type</code></em>,
+						<code class="option">-y</code> <em class="replaceable"><code>type</code></em>
+					</span></dt><dd><p>Specify the type of object to operate on.
+					Examples are <code class="literal">cert</code>, <code class="literal">privkey</code>
+					and <code class="literal">pubkey</code>.</p></dd><dt><span class="term">
+						<code class="option">--verbose</code>, <code class="option">-v</code>
+					</span></dt><dd><p>Cause <span class="command"><strong>pkcs11-tool</strong></span> to be
+					more verbose.</p><p>NB! This does not affect
+					OpenSC debugging level! To set OpenSC PKCS#11 module into debug
+					mode, set the <code class="varname">OPENSC_DEBUG</code> environment variable to a
+					non-zero number.</p></dd><dt><span class="term">
+						<code class="option">--read-object</code>,
+						<code class="option">-r</code>
+					</span></dt><dd><p>Get object's CKA_VALUE attribute (use with
+					<code class="option">--type</code>).</p></dd><dt><span class="term">
+						<code class="option">--delete-object</code>,
+						<code class="option">-b</code>
+					</span></dt><dd><p>Delete an object.</p></dd><dt><span class="term">
+						<code class="option">--application-label</code> <em class="replaceable"><code>label</code></em>
+					</span></dt><dd><p>Specify the application label of the data object (use with
+					<code class="option">--type</code> data).</p></dd><dt><span class="term">
+						<code class="option">--application-id</code> <em class="replaceable"><code>id</code></em>
+					</span></dt><dd><p>Specify the application ID of the data object (use with
+					<code class="option">--type</code> data).</p></dd><dt><span class="term">
+						<code class="option">--issuer</code> <em class="replaceable"><code>data</code></em>
+					</span></dt><dd><p>Specify the issuer in hexadecimal format (use with
+					<code class="option">--type</code> cert).</p></dd><dt><span class="term">
+						<code class="option">--subject</code> <em class="replaceable"><code>data</code></em>
+					</span></dt><dd><p>Specify the subject in hexadecimal format (use with
+					<code class="option">--type</code> cert/privkey/pubkey).</p></dd><dt><span class="term">
+						<code class="option">--signature-format</code> <em class="replaceable"><code>format</code></em>
+					</span></dt><dd><p>Format for ECDSA signature: 'rs' (default),
+					'sequence', 'openssl'.</p></dd><dt><span class="term">
+						<code class="option">--write-object</code> <em class="replaceable"><code>filename</code></em>,
+						<code class="option">-w</code> <em class="replaceable"><code>filename</code></em>
+					</span></dt><dd><p>Write a key or certificate object to the token.
+					<em class="replaceable"><code>filename</code></em> points to the DER-encoded certificate or key file.
+                                        </p></dd><dt><span class="term">
+						<code class="option">--generate-random</code> <em class="replaceable"><code>num</code></em>
+					</span></dt><dd><p>Get <em class="replaceable"><code>num</code></em> bytes of random data.
+                                        </p></dd></dl></div><p>
+		</p></div><div class="refsect1"><a name="idm2757"></a><h2>Examples</h2><p>
+			To list all certificates on the smart card:
+				</p><pre class="programlisting">pkcs11-tool --list-objects --type cert</pre><p>
+
+			To read the certificate with ID <em class="replaceable"><code>KEY_ID</code></em>
+			in DER format from smart card:
+				</p><pre class="programlisting">pkcs11-tool --read-object  --id KEY_ID --type cert --outfile cert.der</pre><p>
+
+			To convert the certificate in DER format to PEM format, use OpenSSL
+			tools:
+				</p><pre class="programlisting">openssl x509 -inform DER -in cert.der -outform PEM &gt; cert.pem</pre><p>
+
+			To sign some data stored in file <em class="replaceable"><code>data</code></em>
+			using the private key with ID <em class="replaceable"><code>ID</code></em> and
+			using the RSA-PKCS mechanism:
+				</p><pre class="programlisting">pkcs11-tool --sign --id ID --mechanism RSA-PKCS --input-file data --output-file data.sig</pre><p>
+		</p></div><div class="refsect1"><a name="idm2767"></a><h2>Authors</h2><p><span class="command"><strong>pkcs11-tool</strong></span> was written by
+		Olaf Kirch <code class="email">&lt;<a class="email" href="mailto:okir@suse.de">okir@suse.de</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="pkcs15-crypt"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>pkcs15-crypt &#8212; perform crypto operations using PKCS#15 smart cards</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">pkcs15-crypt</code>  [<em class="replaceable"><code>OPTIONS</code></em>]</p></div></div><div class="refsect1"><a name="idm2787"></a><h2>Description</h2><p>
+			The <span class="command"><strong>pkcs15-crypt</strong></span> utility can be used from the
+			command line to perform cryptographic operations such as computing
+			digital signatures or decrypting data, using keys stored on a PKCS#15
+			compliant smart card.
+		</p></div><div class="refsect1"><a name="idm2791"></a><h2>Options</h2><p>
+			</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+                                                <code class="option">--version</code>,
+                                        </span></dt><dd><p>Print the OpenSC package release version.</p></dd><dt><span class="term">
+						<code class="option">--aid</code> <em class="replaceable"><code>aid</code></em>
+					</span></dt><dd><p>Specify the AID of the on-card PKCS#15 application
+					to bind to. The <em class="replaceable"><code>aid</code></em> must be in hexadecimal
+					form.</p></dd><dt><span class="term">
+						<code class="option">--decipher</code>,
+						<code class="option">-c</code>
+					</span></dt><dd><p>Decrypt the contents of the file specified by
+					the <code class="option">--input</code> option. The result of the
+					decryption operation is written to the file specified by the
+					<code class="option">--output</code> option. If this option is not given,
+					the decrypted data is printed to standard output, displaying
+					non-printable characters using their hex notation xNN (see also
+					<code class="option">--raw</code>).</p></dd><dt><span class="term">
+						<code class="option">--input</code> <em class="replaceable"><code>file</code></em>,
+						<code class="option">-i</code> <em class="replaceable"><code>file</code></em>
+					</span></dt><dd><p>Specifies the input file to use. Defaults to stdin if
+					not specified.</p></dd><dt><span class="term">
+						<code class="option">--key</code> <em class="replaceable"><code>id</code></em>,
+						<code class="option">-k</code> <em class="replaceable"><code>id</code></em>
+					</span></dt><dd><p>Selects the ID of the key to use.</p></dd><dt><span class="term">
+						<code class="option">--output</code> <em class="replaceable"><code>file</code></em>,
+						<code class="option">-o</code> <em class="replaceable"><code>file</code></em>
+					</span></dt><dd><p>Any output will be sent to the specified file. Defaults
+					to stdout if not specified.</p></dd><dt><span class="term">
+						<code class="option">--pin</code> <em class="replaceable"><code>pin</code></em>,
+						<code class="option">-p</code> <em class="replaceable"><code>pin</code></em>
+					</span></dt><dd><p>When the cryptographic operation requires a
+					PIN to access the key, <span class="command"><strong>pkcs15-crypt</strong></span> will
+					prompt the user for the PIN on the terminal. Using this option
+					allows you to specify the PIN on the command line.</p><p>Note that on most operating systems, the command line of
+					a process can be displayed by any user using the ps(1)
+					command. It is therefore a security risk to specify
+					secret information such as PINs on the command line.
+					If you specify '-' as PIN, it will be read from STDIN.</p></dd><dt><span class="term">
+						<code class="option">--pkcs1</code>
+					</span></dt><dd><p>By default, <span class="command"><strong>pkcs15-crypt</strong></span>
+					assumes that input data has been padded to the correct length
+					(i.e. when computing an RSA signature using a 1024 bit key,
+					the input must be padded to 128 bytes to match the modulus
+					length). When giving the <code class="option">--pkcs1</code> option,
+					however, <span class="command"><strong>pkcs15-crypt</strong></span> will perform the
+					required padding using the algorithm outlined in the
+					PKCS #1 standard version 1.5.</p></dd><dt><span class="term">
+						<code class="option">--raw</code>,
+						<code class="option">-R</code>
+					</span></dt><dd><p>Outputs raw 8 bit data.</p></dd><dt><span class="term">
+						<code class="option">--reader</code> <em class="replaceable"><code>N</code></em>,
+						<code class="option">-r</code> <em class="replaceable"><code>N</code></em>
+					</span></dt><dd><p>
+							Specify the reader to use. By default, the first
+							reader with a present card is used. If
+							<em class="replaceable"><code>num</code></em> is an ATR, the
+							reader with a matching card will be chosen.
+						</p></dd><dt><span class="term">
+						<code class="option">--md5</code>
+						<code class="option">--sha-1</code>
+						<code class="option">--sha-224</code>
+						<code class="option">--sha-256</code>
+						<code class="option">--sha-384</code>
+						<code class="option">--sha-512</code>
+					</span></dt><dd><p>These options tell <span class="command"><strong>pkcs15-crypt</strong></span>
+					that the input file is the result of the specified hash operation.
+					By default, an MD5 hash is expected. Again, the data must be in binary
+					representation.</p></dd><dt><span class="term">
+						<code class="option">--sign</code>,
+						<code class="option">-s</code>
+					</span></dt><dd><p>Perform digital signature operation on
+					the data read from a file specified using the <code class="option">--input</code>
+					option. By default, the contents of the file are assumed to
+					be the result of an MD5 hash operation.
+					Note that <span class="command"><strong>pkcs15-crypt</strong></span>
+					expects the data in binary representation, not ASCII.</p><p>The digital signature is stored, in binary representation,
+					in the file specified by the <code class="option">--output</code> option. If
+					this option is not given, the signature is printed on standard
+					output, displaying non-printable characters using their hex notation
+					<code class="literal">x</code><em class="replaceable"><code>NN</code></em>
+					(see also <code class="option">--raw</code>).</p></dd><dt><span class="term">
+						<code class="option">--signature-format</code>,
+						<code class="option">--f</code>
+					</span></dt><dd><p>When signing with ECDSA key this option indicates
+					to <span class="command"><strong>pkcs15-crypt</strong></span> the signature output format.
+					Possible values are 'rs'(default) -- two concatenated
+					integers (PKCS#11), 'sequence' or 'openssl' -- DER encoded sequence
+					of two integers (OpenSSL).</p></dd><dt><span class="term">
+						<code class="option">--wait</code>,
+						<code class="option">-w</code>
+					</span></dt><dd><p>Causes <span class="command"><strong>pkcs15-crypt</strong></span> to
+					wait for a card insertion.</p></dd><dt><span class="term">
+						<code class="option">--verbose</code>,
+						<code class="option">-v</code>
+					</span></dt><dd><p>Causes <span class="command"><strong>pkcs15-crypt</strong></span> to be more
+					verbose. Specify this flag several times to enable debug output
+					in the OpenSC library.</p></dd></dl></div><p>
+		</p></div><div class="refsect1"><a name="idm2918"></a><h2>See also</h2><p>
+			<span class="citerefentry"><span class="refentrytitle">pkcs15-init</span>(1)</span>,
+			<span class="citerefentry"><span class="refentrytitle">pkcs15-tool</span>(1)</span>
+		</p></div><div class="refsect1"><a name="idm2927"></a><h2>Authors</h2><p><span class="command"><strong>pkcs15-crypt</strong></span> was written by
+		Juha Yrjölä <code class="email">&lt;<a class="email" href="mailto:juha.yrjola@iki.fi">juha.yrjola@iki.fi</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="pkcs15-init"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>pkcs15-init &#8212; smart card personalization utility</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">pkcs15-init</code>  [<em class="replaceable"><code>OPTIONS</code></em>]</p></div></div><div class="refsect1"><a name="idm2953"></a><h2>Description</h2><p>
+			The <span class="command"><strong>pkcs15-init</strong></span> utility can be used to create a PKCS #15
+			structure on a smart card, and add key or certificate objects. Details of the
+			structure that will be created are controlled via profiles.
+		</p><p>
+			The profile used by default is <span class="command"><strong>pkcs15</strong></span>. Alternative
+			profiles can be specified via the <code class="option">-p</code> switch.
+		</p></div><div class="refsect1"><a name="idm2960"></a><h2>PIN Usage</h2><p>
+			<span class="command"><strong>pkcs15-init</strong></span> can be used to create a PKCS #15 structure on
+			your smart card, create PINs, and install keys and certificates on the card.
+			This process is also called <em class="replaceable"><code>personalization</code></em>.
+		</p><p>
+			An OpenSC card can have one security officer PIN, and zero or more user PINs.
+			PIN stands for Personal Identification Number, and is a secret code you need
+			to present to the card before being allowed to perform certain operations,
+			such as using one of the stored RSA keys to sign a document, or modifying
+			the card itself.
+		</p><p>
+			Usually, PINs are a sequence of decimal digits, but some cards will accept
+			arbitrary ASCII characters. Be aware however that using characters other
+			than digits will make the card unusable with PIN pad readers, because those
+			usually have keys for entering digits only.
+		</p><p>
+			The security officer (SO) PIN is special; it is used to protect meta data
+			information on the card, such as the PKCS #15 structure itself. Setting
+			the SO PIN is optional, because the worst that can usually happen is that
+			someone finding your card can mess it up. To extract any of your secret
+			keys stored on the card, an attacker will still need your user PIN, at
+			least for the default OpenSC profiles. However, it is possible to create
+			card profiles that will allow the security officer to override user PINs.
+		</p><p>
+			For each PIN, you can specify a PUK (also called <em class="replaceable"><code>unblock PIN</code></em>).
+			The PUK can be used to overwrite or unlock a PIN if too many incorrect values
+			have been entered in a row.
+		</p><p>
+			For some cards that use the PKCS#15 emulation, the attributes of private objects
+			are protected and cannot be parsed without authentication (usually with User PIN).
+			This authentication need to be done immediately after the card binding.
+			In such cases <code class="option">--verify-pin</code> has to be used.
+		</p></div><div class="refsect1"><a name="idm2972"></a><h2>Modes of operation</h2><div class="refsect2"><a name="idm2974"></a><h3>Initialization</h3><p>This is the first step during card personalization, and will create the
+				basic files on the card. To create the initial PKCS #15 structure, invoke the
+				utility as
+			</p><p>
+				<span class="command"><strong>pkcs15-init --create-pkcs15</strong></span></p><p>
+				You will then be asked for the security officer PIN and PUK. Simply
+				pressing return at the SO PIN prompt will skip installation of an SO PIN.
+			</p><p>
+				If the card supports it, you should erase the contents of the card with
+				<span class="command"><strong>pkcs15-init --erase-card</strong></span> before creating the PKCS#15 structure.
+			</p></div><div class="refsect2"><a name="idm2982"></a><h3>User PIN Installation</h3><p>
+				Before installing any user objects such as private keys, you need at least one
+				PIN to protect these objects. you can do this using
+			</p><p>
+				<span class="command"><strong>pkcs15-init --store-pin --id " nn</strong></span>
+			</p><p>
+				where <em class="replaceable"><code>nn</code></em> is a PKCS #15 ID in hexadecimal notation. Common
+				values are 01, 02, etc.
+			</p><p>
+				Entering the command above will ask you for the user's PIN and PUK. If you do
+				not wish to install an unblock PIN, simply press return at the PUK prompt.
+			</p><p>
+				To set a label for this PIN object (which can be used by applications to display
+				a meaningful prompt to the user), use the <code class="option">--label</code> command line option.
+			</p></div><div class="refsect2"><a name="idm2992"></a><h3>Key generation</h3><p>
+				<span class="command"><strong>pkcs15-init</strong></span> lets you generate a new key and store it on the card.
+				You can do this using:
+			</p><p>
+				<span class="command"><strong>pkcs15-init --generate-key " keyspec " --auth-id " nn</strong></span>
+			</p><p>
+				where <em class="replaceable"><code>keyspec</code></em> describes the algorithm and length of the
+				key to be created, such as <code class="literal">rsa/512</code>. This will create a 512 bit
+				RSA key. Currently, only RSA key generation is supported. Note that cards
+				usually support just a few different key lengths. Almost all cards will support
+				512 and 1024 bit keys, some will support 768 or 2048 as well.
+			</p><p>
+				<em class="replaceable"><code>nn</code></em> is the ID of a user PIN installed previously,
+				e.g. <code class="literal">01</code>.
+			</p><p>
+				In addition to storing the private portion of the key on the card,
+				<span class="command"><strong>pkcs15-init</strong></span> will also store the the public portion of the
+				key as a PKCS #15 public key object.
+			</p></div><div class="refsect2"><a name="idm3006"></a><h3>Private Key Upload</h3><p>
+				You can use a private key generated by other means and upload it to the card.
+				For instance, to upload a private key contained in a file named
+				<code class="filename">okir.pem</code>, which is in PEM format, you would use
+			</p><p>
+				<span class="command"><strong>pkcs15-init --store-private-key okir.pem --id 45 --auth-id 01</strong></span>
+			</p><p>
+				In addition to storing the private portion of the key on the card,
+				<span class="command"><strong>pkcs15-init</strong></span> will also store the the public portion of the
+				key as a PKCS #15 public key object.
+			</p><p>
+				Note that usage of <code class="option">--id</code> option in the <span class="command"><strong>pkcs15-init</strong></span>
+				commands to generate or to import a new key is deprecated.
+				Better practice is to let the middleware to derive the identifier from the key material.
+				(SHA1(modulus) for RSA, SHA1(pub) for DSA, ...).
+				This allows easily set up relation between 'related' objects
+				(private/public keys and certificates).
+			</p><p>
+				In addition to the PEM key file format, <span class="command"><strong>pkcs15-init</strong></span> also
+				supports DER encoded keys, and PKCS #12 files. The latter is the file format
+				used by Netscape Navigator (among others) when exporting certificates to
+				a file. A PKCS #12 file usually contains the X.509 certificate corresponding
+				to the private key. If that is the case, <span class="command"><strong>pkcs15-init</strong></span> will
+				store the certificate instead of the public key portion.
+			</p></div><div class="refsect2"><a name="idm3020"></a><h3>Public Key Upload</h3><p>
+				You can also upload individual public keys to the card using the
+				<code class="option">--store-public-key</code> option, which takes a filename as an
+				argument. This file is supposed to contain the public key. If you don't
+				specify a key file format using the <code class="option">--format</code> option,
+				<span class="command"><strong>pkcs15-init</strong></span> will assume PEM format. The only other
+				supported public key file format is DER.
+			</p><p>
+				Since the corresponding public keys are always uploaded automatically
+				when generating a new key, or when uploading a private key, you will
+				probably use this option only very rarely.
+			</p></div><div class="refsect2"><a name="idm3027"></a><h3>Certificate Upload</h3><p>
+				You can upload certificates to the card using the
+				<code class="option">--store-certificate</code> option, which takes a filename as
+				an argument. This file is supposed to contain the PEM encoded X.509
+				certificate.
+			</p></div><div class="refsect2"><a name="idm3031"></a><h3>Uploading PKCS #12 bags</h3><p>
+				Most browsers nowadays use PKCS #12 format files when you ask them to
+				export your key and certificate to a file. <span class="command"><strong>pkcs15-init</strong></span>
+				is capable of parsing these files, and storing their contents on the
+				card in a single operation. This works just like storing a private key,
+				except that you need to specify the file format:
+			</p><p>
+				<span class="command"><strong>pkcs15-init --store-private-key okir.p12 --format pkcs12 --auth-id
+				01</strong></span>
+			</p><p>
+				This will install the private key contained in the file <code class="filename">okir.p12</code>,
+				and protect it with the PIN referenced by authentication ID <code class="literal">01</code>.
+				It will also store any X.509 certificates contained in the file, which is
+				usually the user certificate that goes with the key, as well as the CA certificate.
+			</p></div><div class="refsect2"><a name="idm3040"></a><h3>Secret Key Upload</h3><p>
+				You can use a secret key generated by other means and upload it to the card.
+				For instance, to upload an AES-secret key generated by the system random generator
+				you would use
+			</p><p>
+				<span class="command"><strong>pkcs15-init --store-secret-key /dev/urandom --secret-key-algorithm aes/256 --auth-id 01</strong></span>
+			</p><p>
+				By default a random ID is generated for the secret key. You may specify an ID
+				with the <code class="option">--id</code> if needed.
+			</p></div></div><div class="refsect1"><a name="idm3047"></a><h2>Options</h2><p>
+			</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+						<code class="option">--version</code>,
+					</span></dt><dd><p>Print the OpenSC package release version.</p></dd><dt><span class="term">
+						<code class="option">--card-profile</code> <em class="replaceable"><code>name</code></em>,
+						<code class="option">-c</code> <em class="replaceable"><code>name</code></em>
+					</span></dt><dd><p>
+							Tells <span class="command"><strong>pkcs15-init</strong></span> to load the specified card
+							profile option. You will rarely need this option.
+						</p></dd><dt><span class="term">
+						<code class="option">--create-pkcs15</code>,
+						<code class="option">-C</code>
+					</span></dt><dd><p>
+							This tells <span class="command"><strong>pkcs15-init</strong></span> to create a PKCS #15
+							structure on the card, and initialize any PINs.
+						</p></dd><dt><span class="term">
+						<code class="option">--serial</code> <em class="replaceable"><code>SERIAL</code></em>
+					</span></dt><dd><p>
+							Specify the serial number of the card.
+						</p></dd><dt><span class="term">
+						<code class="option">--erase-card</code>,
+						<code class="option">-E</code>
+					</span></dt><dd><p>
+							This will erase the card prior to creating the PKCS #15 structure,
+							if the card supports it. If the card does not support erasing,
+							<span class="command"><strong>pkcs15-init</strong></span> will fail.
+						</p></dd><dt><span class="term">
+						<code class="option">--erase-application</code> <em class="replaceable"><code>AID</code></em>
+					</span></dt><dd><p>
+							This will erase the application with the application identifier
+							<em class="replaceable"><code>AID</code></em>.
+						</p></dd><dt><span class="term">
+						<code class="option">--generate-key</code> <em class="replaceable"><code>keyspec</code></em>,
+						<code class="option">-G</code> <em class="replaceable"><code>keyspec</code></em>
+					</span></dt><dd><p>
+							Tells the card to generate new key and store it on the card.
+							<em class="replaceable"><code>keyspec</code></em> consists of an algorithm name
+							(currently, the only supported name is <code class="option">RSA</code>),
+							optionally followed by a slash and the length of the key in bits.
+							It is a good idea to specify the key ID along with this command,
+							using the <code class="option">id</code> option, otherwise an intrinsic ID
+							will be calculated from the key material. Look the description of
+							the 'pkcs15-id-style' attribute in the 'pkcs15.profile' for the details
+							about the algorithm used to calculate intrinsic ID.
+							For the multi-application cards the target PKCS#15 application can be
+							specified by the hexadecimal AID value of the <code class="option">aid</code> option.
+						</p></dd><dt><span class="term">
+						<code class="option">--options-file</code> <em class="replaceable"><code>filename</code></em>
+					</span></dt><dd><p>
+							Tells <span class="command"><strong>pkcs15-init</strong></span> to read additional options
+							from <em class="replaceable"><code>filename</code></em>. The file is supposed to
+							contain one long option per line, without the leading dashes,
+							for instance:
+							</p><pre class="programlisting">
+pin		1234
+puk		87654321
+							</pre><p>
+						</p><p>
+							You can specify <code class="option">--options-file</code> several times.
+						</p></dd><dt><span class="term">
+						<code class="option">--pin</code>,
+						<code class="option">--puk</code>
+						<code class="option">--so-pin</code>,
+						<code class="option">--so-puk</code>,
+					</span></dt><dd><p>
+							These options can be used to specify PIN/PUK values
+							on the command line. If set to
+							env:<em class="replaceable"><code>VARIABLE</code></em>, the value
+							of the environment variable
+							<em class="replaceable"><code>VARIABLE</code></em> is used. Note
+							that on most operation systems, any user can
+							display the command line of any process on the
+							system using utilities such as
+							<span class="command"><strong>ps(1)</strong></span>. Therefore, you should use
+							these options only on a secured system, or in an
+							options file specified with
+							<code class="option">--options-file</code>.
+						</p></dd><dt><span class="term">
+						<code class="option">--no-so-pin</code>,
+					</span></dt><dd><p>
+							Do not install a SO PIN, and do not prompt for it.
+						</p></dd><dt><span class="term">
+						<code class="option">--profile</code> <em class="replaceable"><code>name</code></em>,
+						<code class="option">-p</code> <em class="replaceable"><code>name</code></em>
+					</span></dt><dd><p>
+							Tells <span class="command"><strong>pkcs15-init</strong></span> to load the specified general
+							profile. Currently, the only application profile defined is
+							<code class="literal">pkcs15</code>, but you can write your own profiles and
+							specify them using this option.
+						</p><p>
+							The profile name can be combined with one or more profile
+							options, which slightly modify the profile's behavior.
+							For instance, the default OpenSC profile supports the
+							<code class="option">openpin</code> option, which installs a single PIN during
+							card initialization. This PIN is then used both as the SO PIN as
+							well as the user PIN for all keys stored on the card.
+						</p><p>
+							Profile name and options are separated by a <code class="literal">+</code>
+							character, as in <code class="literal">pkcs15+onepin</code>.
+						</p></dd><dt><span class="term">
+						<code class="option">--secret-key-algorithm</code> <em class="replaceable"><code>keyspec</code></em>,
+					</span></dt><dd><p>
+							<em class="replaceable"><code>keyspec</code></em> describes the algorithm and length of the
+							key to be created or downloaded, such as <code class="literal">aes/256</code>.
+							This will create a 256 bit AES key.
+						</p></dd><dt><span class="term">
+						<code class="option">--store-certificate</code> <em class="replaceable"><code>filename</code></em>,
+						<code class="option">-X</code> <em class="replaceable"><code>filename</code></em>
+					</span></dt><dd><p>
+							Tells <span class="command"><strong>pkcs15-init</strong></span> to store the certificate given
+							in <code class="option">filename</code> on the card, creating a certificate
+							object with the ID specified via the <code class="option">--id</code> option.
+							Without supplied ID an intrinsic ID will be calculated from the
+							certificate's public key. Look the description of the 'pkcs15-id-style'
+							attribute in the 'pkcs15.profile' for the details
+							about the algorithm used to calculate intrinsic ID.
+							The file is assumed to contain the PEM encoded certificate.
+							For the multi-application cards the target application can be specified
+							by the hexadecimal AID value of the <code class="option">aid</code> option.
+						</p></dd><dt><span class="term">
+						<code class="option">--store-pin</code>,
+						<code class="option">-P</code>
+					</span></dt><dd><p>
+							Store a new PIN/PUK on the card.
+						</p></dd><dt><span class="term">
+						<code class="option">--store-public-key</code> <em class="replaceable"><code>filename</code></em>
+					</span></dt><dd><p>
+							Tells <span class="command"><strong>pkcs15-init</strong></span> to download the specified
+							public key to the card and create a public key object with the
+							key ID specified via the <code class="option">--id</code>. By default,
+							the file is assumed to contain the key in PEM format. Alternative
+							formats can be specified using <code class="option">--format</code>.
+						</p></dd><dt><span class="term">
+						<code class="option">--store-private-key</code> <em class="replaceable"><code>filename</code></em>,
+						<code class="option">-S</code> <em class="replaceable"><code>filename</code></em>
+					</span></dt><dd><p>
+							Tells <span class="command"><strong>pkcs15-init</strong></span> to download the specified
+							private key to the card. This command will also create a public
+							key object containing the public key portion. By default, the
+							file is assumed to contain the key in PEM format. Alternative
+							formats can be specified using <code class="option">--format</code>.
+							It is a good idea to specify the key ID along with this command,
+							using the <code class="option">--id</code> option, otherwise an intrinsic ID
+							will be calculated from the key material. Look the description of
+							the 'pkcs15-id-style' attribute in the 'pkcs15.profile' for the details
+							about the algorithm used to calculate intrinsic ID.
+							For the multi-application cards the target PKCS#15 application can be
+							specified by the hexadecimal AID value of the <code class="option">aid</code> option.
+						</p></dd><dt><span class="term">
+						<code class="option">--store-secret-key</code> <em class="replaceable"><code>filename</code></em>,
+					</span></dt><dd><p>
+							Tells <span class="command"><strong>pkcs15-init</strong></span> to download the specified
+							secret key to the card. The file is assumed to contain the raw key.
+							They key type should be specified with <code class="option">--secret-key-algorithm</code>
+							option.
+						</p><p>
+							You may additionally specify the key ID along with this command,
+							using the <code class="option">--id</code> option, otherwise a random ID is generated.
+							For the multi-application cards the target PKCS#15 application can be
+							specified by the hexadecimal AID value of the <code class="option">aid</code> option.
+						</p></dd><dt><span class="term">
+						<code class="option">--store-data</code> <em class="replaceable"><code>filename</code></em>,
+						<code class="option">-W</code> <em class="replaceable"><code>filename</code></em>
+					</span></dt><dd><p>
+							Store a data object.
+						</p></dd><dt><span class="term">
+						<code class="option">--update-certificate</code> <em class="replaceable"><code>filename</code></em>,
+						<code class="option">-U</code> <em class="replaceable"><code>filename</code></em>
+					</span></dt><dd><p>
+							Tells <span class="command"><strong>pkcs15-init</strong></span> to update the certificate
+							object with the ID specified via the <code class="option">--id</code> option
+							with the certificate in <em class="replaceable"><code>filename</code></em>.
+							The file is assumed to contain a PEM encoded certificate.
+						</p><p>Pay extra attention when updating mail decryption certificates, as
+							missing certificates can render e-mail messages unreadable!
+						</p></dd><dt><span class="term">
+						<code class="option">--delete-objects</code> <em class="replaceable"><code>arg</code></em>,
+						<code class="option">-D</code> <em class="replaceable"><code>arg</code></em>
+					</span></dt><dd><p>
+							Tells <span class="command"><strong>pkcs15-init</strong></span> to delete the
+							specified object.  <em class="replaceable"><code>arg</code></em>
+							is comma-separated list containing any of
+							<code class="literal">privkey</code>, <code class="literal">pubkey</code>,
+							<code class="literal">secrkey</code>, <code class="literal">cert</code>,
+							<code class="literal">chain</code> or <code class="literal">data</code>.
+						</p><p>
+							When <code class="literal">data</code> is specified, an
+							-<code class="option">--application-id</code> must also be
+							specified, in the other cases an
+							<code class="option">--id</code> must also be specified
+						</p><p>
+							When <code class="literal">chain</code> is specified, the
+							certificate chain starting with the cert with
+							specified ID will be deleted, until there's a CA
+							certificate that certifies another cert on the card
+						</p></dd><dt><span class="term">
+						<code class="option">--change-attributes</code> <em class="replaceable"><code>arg</code></em>,
+						<code class="option">-A</code> <em class="replaceable"><code>arg</code></em>
+					</span></dt><dd><p>
+							Tells <span class="command"><strong>pkcs15-init</strong></span> to change the
+							specified attribute. <em class="replaceable"><code>arg</code></em>
+							is either <code class="literal">privkey</code>,
+							<code class="literal">pubkey</code>, <code class="literal">secrkey</code>,
+							<code class="literal">cert</code> or <code class="literal">data</code>.
+							You also have to specify the <code class="option">--id</code>
+							of the object.
+							For now, you can only change the <code class="option">--label</code>, e.g:
+							</p><pre class="programlisting">
+								pkcs15-init -A cert --id 45 -a 1 --label Jim
+							</pre><p>
+						</p></dd><dt><span class="term">
+						<code class="option">--use-default-transport-keys</code>,
+						<code class="option">-T</code>
+					</span></dt><dd><p>
+							Tells <span class="command"><strong>pkcs15-init</strong></span> to not ask for the transport
+							keys and use default keys, as known by the card driver.
+						</p></dd><dt><span class="term">
+						<code class="option">--sanity-check</code>,
+						<code class="option">-T</code>
+					</span></dt><dd><p>
+							Tells <span class="command"><strong>pkcs15-init</strong></span> to perform a
+							card specific sanity check and possibly update
+							procedure.
+						</p></dd><dt><span class="term">
+						<code class="option">--reader</code> <em class="replaceable"><code>num</code></em>,
+						<code class="option">-r</code> <em class="replaceable"><code>num</code></em>
+					</span></dt><dd><p>
+							Specify the reader to use. By default, the first
+							reader with a present card is used. If
+							<em class="replaceable"><code>num</code></em> is an ATR, the
+							reader with a matching card will be chosen.
+						</p></dd><dt><span class="term">
+						<code class="option">--verbose</code>,
+						<code class="option">-v</code>
+					</span></dt><dd><p>
+							Causes <span class="command"><strong>pkcs15-init</strong></span> to be more verbose. Specify this
+							flag several times to enable debug output in the OpenSC library.
+						</p></dd><dt><span class="term">
+						<code class="option">--wait</code>,
+						<code class="option">-w</code>
+					</span></dt><dd><p>Causes <span class="command"><strong>pkcs15-init</strong></span> to
+							wait for a card insertion.</p></dd><dt><span class="term">
+						<code class="option">--use-pinpad</code>
+					</span></dt><dd><p>Do not prompt the user; if no PINs supplied, pinpad will be used.</p></dd><dt><span class="term">
+						<code class="option">--puk-id</code> <em class="replaceable"><code>ID</code></em>
+					</span></dt><dd><p>
+							Specify ID of PUK to use/create
+						</p></dd><dt><span class="term">
+						<code class="option">--puk-label</code> <em class="replaceable"><code>LABEL</code></em>
+					</span></dt><dd><p>
+							Specify label of PUK
+						</p></dd><dt><span class="term">
+						<code class="option">--public-key-label</code> <em class="replaceable"><code>LABEL</code></em>
+					</span></dt><dd><p>
+							Specify public key label (use with <code class="option">--generate-key</code>)
+						</p></dd><dt><span class="term">
+						<code class="option">--cert-label</code> <em class="replaceable"><code>LABEL</code></em>
+					</span></dt><dd><p>
+							Specify user cert label (use with <code class="option">--store-private-key</code>)
+						</p></dd><dt><span class="term">
+						<code class="option">--application-name</code> <em class="replaceable"><code>arg</code></em>
+					</span></dt><dd><p>
+							Specify application name of data object (use with <code class="option">--store-data-object</code>)
+						</p></dd><dt><span class="term">
+						<code class="option">--aid</code> <em class="replaceable"><code>AID</code></em>
+					</span></dt><dd><p>
+							Specify AID of the on-card PKCS#15 application to be binded to (in hexadecimal form)
+						</p></dd><dt><span class="term">
+						<code class="option">--output-file</code> <em class="replaceable"><code>filename</code></em>
+						<code class="option">-o</code> <em class="replaceable"><code>filename</code></em>,
+					</span></dt><dd><p>
+							Output public portion of generated key to file
+						</p></dd><dt><span class="term">
+						<code class="option">--passphrase</code> <em class="replaceable"><code>PASSPHRASE</code></em>
+					</span></dt><dd><p>
+							Specify passphrase for unlocking secret key
+						</p></dd><dt><span class="term">
+						<code class="option">--authority</code>
+					</span></dt><dd><p>
+							Mark certificate as a CA certificate
+						</p></dd><dt><span class="term">
+						<code class="option">--key-usage</code> <em class="replaceable"><code>arg</code></em>
+						<code class="option">-u</code> <em class="replaceable"><code>arg</code></em>,
+					</span></dt><dd><p>
+							Specifies the X.509 key usage.
+							<em class="replaceable"><code>arg</code></em> is comma-separated
+							list containing any of
+							<code class="literal">digitalSignature</code>,
+							<code class="literal">nonRepudiation</code>,
+							<code class="literal">keyEncipherment</code>,
+							<code class="literal">dataEncipherment</code>,
+							<code class="literal">keyAgreement</code>,
+							<code class="literal">keyCertSign</code>,
+							<code class="literal">cRLSign</code>. Abbreviated names are
+							allowed if unique (e.g.
+							<code class="literal">dataEnc</code>).
+						</p><p>
+							The alias <code class="literal">sign</code> is equivalent to
+							<code class="literal">digitalSignature,keyCertSign,cRLSign</code>
+						</p><p>
+							The alias <code class="literal">decrypt</code> is equivalent to
+							<code class="literal">keyEncipherment,dataEncipherment</code>
+						</p></dd><dt><span class="term">
+						<code class="option">--finalize</code>
+						<code class="option">-F</code>,
+					</span></dt><dd><p>
+							Finish initialization phase of the smart card
+						</p></dd><dt><span class="term">
+						<code class="option">--update-last-update</code>
+					</span></dt><dd><p>
+							Update 'lastUpdate' attribute of tokenInfo
+						</p></dd><dt><span class="term">
+						<code class="option">--ignore-ca-certificates</code>
+					</span></dt><dd><p>
+							When storing PKCS#12 ignore CA certificates
+						</p></dd><dt><span class="term">
+						<code class="option">--update-existing</code>
+					</span></dt><dd><p>
+							Store or update existing certificate
+						</p></dd><dt><span class="term">
+						<code class="option">--extractable</code>
+					</span></dt><dd><p>
+							Private key stored as an extractable key
+						</p></dd><dt><span class="term">
+						<code class="option">--insecure</code>
+					</span></dt><dd><p>
+							Insecure mode: do not require a PIN for private key
+						</p></dd><dt><span class="term">
+						<code class="option">--md-container-guid</code> <em class="replaceable"><code>GUID</code></em>
+					</span></dt><dd><p>
+							For a new key specify GUID for a MD container
+						</p></dd><dt><span class="term">
+						<code class="option">--help</code>
+						<code class="option">-h</code>,
+					</span></dt><dd><p>
+							Display help message
+						</p></dd></dl></div><p>
+		</p></div><div class="refsect1"><a name="idm3431"></a><h2>See also</h2><p>
+			<span class="citerefentry"><span class="refentrytitle">pkcs15-profile</span>(5)</span>
+		</p></div><div class="refsect1"><a name="idm3437"></a><h2>Authors</h2><p><span class="command"><strong>pkcs15-init</strong></span> was written by
+		Olaf Kirch <code class="email">&lt;<a class="email" href="mailto:okir@suse.de">okir@suse.de</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="pkcs15-tool"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>pkcs15-tool &#8212; utility for manipulating PKCS #15 data structures
+		on smart cards and similar security tokens</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">pkcs15-tool</code>  [<em class="replaceable"><code>OPTIONS</code></em>]</p></div></div><div class="refsect1"><a name="idm3457"></a><h2>Description</h2><p>
+			The <span class="command"><strong>pkcs15-tool</strong></span> utility is used to manipulate
+			the PKCS #15 data structures on smart cards and similar security
+			tokens. Users can list and read PINs, keys and certificates stored
+			on the token. User PIN authentication is performed for those
+			operations that require it.
+		</p></div><div class="refsect1"><a name="idm3461"></a><h2>Options</h2><p>
+			</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+                                                <code class="option">--version</code>,
+                                        </span></dt><dd><p>Print the OpenSC package release version.</p></dd><dt><span class="term">
+						<code class="option">--aid</code> <em class="replaceable"><code>aid</code></em>
+					</span></dt><dd><p>Specify in a hexadecimal form the AID of the on-card PKCS#15
+                                        application to bind to.</p></dd><dt><span class="term">
+						<code class="option">--auth-id</code> <em class="replaceable"><code>pin</code></em>,
+						<code class="option">-a</code> <em class="replaceable"><code>pin</code></em>
+					</span></dt><dd><p>Specifies the auth id of the PIN to use for the
+					operation. This is useful with the --change-pin operation.</p></dd><dt><span class="term">
+						<code class="option">--change-pin</code>
+					</span></dt><dd><p>Changes a PIN or PUK stored on the token. User authentication
+					is required for this operation.</p></dd><dt><span class="term">
+						<code class="option">--dump</code>,
+						<code class="option">-D</code>
+					</span></dt><dd><p>List all card objects.</p></dd><dt><span class="term">
+						<code class="option">--list-info</code>
+					</span></dt><dd><p>List card objects.</p></dd><dt><span class="term">
+						<code class="option">--list-applications</code>
+					</span></dt><dd><p>List the on-card PKCS#15 applications.</p></dd><dt><span class="term">
+						<code class="option">--list-certificates</code>,
+						<code class="option">-c</code>
+					</span></dt><dd><p>List all certificates stored on the token.</p></dd><dt><span class="term">
+						<code class="option">--list-data-objects</code>,
+						<code class="option">-C</code>
+					</span></dt><dd><p>List all data objects stored on the token.
+					For some cards the PKCS#15 attributes of the private data objects are
+					protected for reading and need the authentication with the User PIN.
+					In such a case the <code class="option">--verify-pin</code> option has to be used.
+					</p></dd><dt><span class="term">
+						<code class="option">--list-keys</code>,
+						<code class="option">-k</code>
+					</span></dt><dd><p>List all private keys stored on the token. General
+					information about each private key is listed (eg. key name, id and
+					algorithm). Actual private key values are not displayed.
+					For some cards the PKCS#15 attributes of the private keys are protected for reading
+					and need the authentication with the User PIN.
+					In such a case the <code class="option">--verify-pin</code> option has to be used.</p></dd><dt><span class="term">
+						<code class="option">--list-secret-keys</code>
+					</span></dt><dd><p>List all secret (symmetric) keys stored on the token. General
+					information about each secret key is listed (eg. key name, id and
+					algorithm). Actual secret key values are not displayed.
+					For some cards the PKCS#15 attributes of the private keys are protected for reading
+					and need the authentication with the User PIN.
+					In such a case the <code class="option">--verify-pin</code> option has to be used.</p></dd><dt><span class="term">
+						<code class="option">--list-pins</code>
+					</span></dt><dd><p>List all PINs stored on the token. General information
+					about each PIN is listed (eg. PIN name). Actual PIN values are not shown.</p></dd><dt><span class="term">
+						<code class="option">--list-public-keys</code>
+					</span></dt><dd><p>List all public keys stored on the token, including
+					key name, id, algorithm and length information.</p></dd><dt><span class="term">
+						<code class="option">--short</code>
+						<code class="option">-s</code>
+					</span></dt><dd><p>Output lists in compact format.</p></dd><dt><span class="term">
+						<code class="option">--no-cache</code>
+					</span></dt><dd><p>Disables token data caching.</p></dd><dt><span class="term">
+						<code class="option">--clear-cache</code>
+					</span></dt><dd><p>Removes the user's cache directory. On
+					Windows, this option additionally removes the system's
+					caching directory (requires administrator
+					privileges).</p></dd><dt><span class="term">
+						<code class="option">--clear-cache</code>
+					</span></dt><dd><p>Removes the user's cache directory. On
+					Windows, this option additionally removes the system's
+					caching directory (requires administrator
+					privileges).</p></dd><dt><span class="term">
+						<code class="option">--output</code> <em class="replaceable"><code>filename</code></em>,
+						<code class="option">-o</code> <em class="replaceable"><code>filename</code></em>
+					</span></dt><dd><p>Specifies where key output should be written.
+					If <em class="replaceable"><code>filename</code></em> already exists, it will be overwritten.
+					If this option is not given, keys will be printed to standard output.</p></dd><dt><span class="term">
+						<code class="option">--raw</code>
+					</span></dt><dd><p>Changes how <code class="option">--read-data-object</code> prints the content
+					to standard output. By default, when <code class="option">--raw</code> is not given, it will
+					print the content in hex notation. If <code class="option">--raw</code> is set, it will print
+					the binary data directly. This does not affect the output that is written to the
+					file specified by the <code class="option">--output</code> option. Data written to a file will
+					always be in raw binary.</p></dd><dt><span class="term">
+						<code class="option">--read-certificate</code> <em class="replaceable"><code>cert</code></em>,
+						<code class="option">-r</code> <em class="replaceable"><code>cert</code></em>
+					</span></dt><dd><p>Reads the certificate with the given id.</p></dd><dt><span class="term">
+						<code class="option">--read-data-object</code> <em class="replaceable"><code>cert</code></em>,
+						<code class="option">-R</code> <em class="replaceable"><code>data</code></em>
+					</span></dt><dd><p>Reads data object with OID, applicationName or label.
+					The content is printed to standard output in hex notation, unless
+					the <code class="option">--raw</code> option is given.
+					If an output file is given with the <code class="option">--output</code> option,
+					the content is additionally written to the file.
+					Output to the file is always written in raw binary mode, the
+					<code class="option">--raw</code> only affects standard output behavior.</p></dd><dt><span class="term">
+						<code class="option">--read-public-key</code> <em class="replaceable"><code>id</code></em>
+					</span></dt><dd><p>Reads the public key with id <em class="replaceable"><code>id</code></em>,
+					allowing the user to extract and store or use the public key.</p></dd><dt><span class="term">
+						<code class="option">--read-ssh-key</code> <em class="replaceable"><code>id</code></em>
+					</span></dt><dd><p>Reads the public key with id <em class="replaceable"><code>id</code></em>,
+					writing the output in format suitable for
+					<code class="filename">$HOME/.ssh/authorized_keys</code>.</p><p>The key label, if any will be shown in the 'Comment' field.</p><dt><span class="term">
+							<code class="option">--rfc4716</code>
+						</span></dt><dd><p>When used in conjunction with option <code class="option">--read-ssh-key</code> the
+						output format of the public key follows rfc4716.</p></dd><p></p><p> The default output format is a single line (openssh).</p></dd><dt><span class="term">
+						<code class="option">--test-update</code>,
+						<code class="option">-T</code>,
+					</span></dt><dd><p>Test if the card needs a security update</p></dd><dt><span class="term">
+						<code class="option">--update</code>,
+						<code class="option">-U</code>,
+					</span></dt><dd><p>Update the card with a security update</p></dd><dt><span class="term">
+						<code class="option">--reader</code> <em class="replaceable"><code>num</code></em>
+					</span></dt><dd><p>
+							Specify the reader to use. By default, the first
+							reader with a present card is used. If
+							<em class="replaceable"><code>num</code></em> is an ATR, the
+							reader with a matching card will be chosen.
+						</p></dd><dt><span class="term">
+						<code class="option">--unblock-pin</code>,
+						<code class="option">-u</code>
+					</span></dt><dd><p>Unblocks a PIN stored on the token. Knowledge of the
+					Pin Unblock Key (PUK) is required for this operation.</p></dd><dt><span class="term">
+						<code class="option">--verbose</code>,
+						<code class="option">-v</code>
+					</span></dt><dd><p>Causes <span class="command"><strong>pkcs15-tool</strong></span> to be more
+					verbose. Specify this flag several times to enable debug output
+					in the OpenSC library.</p></dd><dt><span class="term">
+						<code class="option">--pin</code> <em class="replaceable"><code>PIN</code></em>
+					</span></dt><dd><p>Specify PIN</p></dd><dt><span class="term">
+						<code class="option">--puk</code> <em class="replaceable"><code>PUK</code></em>
+					</span></dt><dd><p>Specify Unblock PIN</p></dd><dt><span class="term">
+						<code class="option">--new-pin</code> <em class="replaceable"><code>PIN</code></em>
+					</span></dt><dd><p>Specify New PIN (when changing or unblocking)</p></dd><dt><span class="term">
+						<code class="option">--verify-pin</code>
+					</span></dt><dd><p>Verify PIN after card binding and before issuing any command
+                                        (without 'auth-id' the first non-SO, non-Unblock PIN will be verified)</p></dd><dt><span class="term">
+						<code class="option">--test-session-pin</code>
+					</span></dt><dd><p>Equivalent to <code class="option">--verify-pin</code>
+					with additional session PIN generation</p></dd><dt><span class="term">
+						<code class="option">--wait</code>,
+						<code class="option">-w</code>
+					</span></dt><dd><p>Causes <span class="command"><strong>pkcs15-tool</strong></span> to
+					wait for a card insertion.</p></dd><dt><span class="term">
+						<code class="option">--use-pinpad</code>
+					</span></dt><dd><p>Do not prompt the user; if no PINs supplied, pinpad will be used.</p></dd></dl></div><p>
+		</p></div><div class="refsect1"><a name="idm3696"></a><h2>See also</h2><p>
+			<span class="citerefentry"><span class="refentrytitle">pkcs15-init</span>(1)</span>,
+			<span class="citerefentry"><span class="refentrytitle">pkcs15-crypt</span>(1)</span>
+		</p></div><div class="refsect1"><a name="idm3705"></a><h2>Authors</h2><p><span class="command"><strong>pkcs15-tool</strong></span> was written by
+		Juha Yrjölä <code class="email">&lt;<a class="email" href="mailto:juha.yrjola@iki.fi">juha.yrjola@iki.fi</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="sc-hsm-tool"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>sc-hsm-tool &#8212; smart card utility for SmartCard-HSM</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">sc-hsm-tool</code>  [<em class="replaceable"><code>OPTIONS</code></em>]</p></div></div><div class="refsect1"><a name="idm3725"></a><p>
+			The <span class="command"><strong>sc-hsm-tool</strong></span> utility can be used from the command line to perform
+			extended maintenance tasks not available via PKCS#11 or other tools in the OpenSC package.
+			It can be used to query the status of a SmartCard-HSM, initialize a device, generate and import
+			Device Key Encryption Key (DKEK) shares and to wrap and unwrap keys.
+		</p></div><div class="refsect1"><a name="idm3728"></a><h2>Options</h2><p>
+			</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+						<code class="option">--initialize</code>,
+						<code class="option">-X</code>
+					</span></dt><dd><p>Initialize token, removing all existing keys, certificates and files.</p><p>Use <code class="option">--so-pin</code> to define SO-PIN for first initialization or to verify in subsequent
+					          initializations.</p><p>Use <code class="option">--pin</code> to define the initial user pin value.</p><p>Use <code class="option">--pin-retry</code> to define the maximum number of wrong user PIN presentations.</p><p>Use with <code class="option">--dkek-shares</code> to enable key wrap / unwrap.</p><p>Use with <code class="option">--label</code> to define a token label</p></dd><dt><span class="term">
+						<code class="option">--create-dkek-share</code> <em class="replaceable"><code>filename</code></em>,
+						<code class="option">-C</code> <em class="replaceable"><code>filename</code></em>
+					</span></dt><dd><p>Create a DKEK share encrypted under a password and save it to the file
+						      given as parameter.</p><p>Use <code class="option">--password</code> to provide a password for encryption rather than prompting for one.</p><p>Use <code class="option">--pwd-shares-threshold</code> and <code class="option">--pwd-shares-total</code> to randomly generate a password and split is using a (t, n) threshold scheme.</p></dd><dt><span class="term">
+						<code class="option">--import-dkek-share</code> <em class="replaceable"><code>filename</code></em>, 
+						<code class="option">-I</code> <em class="replaceable"><code>filename</code></em>
+					</span></dt><dd><p>Prompt for user password, read and decrypt DKEK share and import into SmartCard-HSM.</p><p>Use <code class="option">--password</code> to provide a password for decryption rather than prompting for one.</p><p>Use <code class="option">--pwd-shares-total</code> to specify the number of shares that should be entered to reconstruct the password.</p></dd><dt><span class="term">
+						<code class="option">--wrap-key</code> <em class="replaceable"><code>filename</code></em>, 
+						<code class="option">-W</code> <em class="replaceable"><code>filename</code></em>
+					</span></dt><dd><p>Wrap the key referenced in <code class="option">--key-reference</code> and save with it together with the key description
+						and certificate to the given file.</p><p>Use <code class="option">--pin</code> to provide the user PIN on the command line.</p></dd><dt><span class="term">
+						<code class="option">--unwrap-key</code> <em class="replaceable"><code>filename</code></em>, 
+						<code class="option">-U</code> <em class="replaceable"><code>filename</code></em>
+					</span></dt><dd><p>Read wrapped key, description and certificate from file and import into SmartCard-HSM
+						     under the key reference given in <code class="option">--key-reference</code>.</p><p>Determine the key reference using the output of <span class="command"><strong>pkcs15-tool -D</strong></span>.</p><p>Use <code class="option">--pin</code> to provide a user PIN on the command line.</p><p>Use <code class="option">--force</code> to remove any key, key description or certificate in the way.</p></dd><dt><span class="term">
+						<code class="option">--dkek-shares</code> <em class="replaceable"><code>number-of-shares</code></em>, 
+						<code class="option">-s</code> <em class="replaceable"><code>number-of-shares</code></em>
+					</span></dt><dd><p>Define the number of DKEK shares to use for recreating the DKEK.</p><p>This is an optional parameter. Using <code class="option">--initialize</code> without 
+						      <code class="option">--dkek-shares</code> will disable the DKEK completely.</p><p>Using <code class="option">--dkek-shares</code> with 0 shares requests the SmartCard-HSM to
+						      generate a random DKEK. Keys wrapped with this DKEK can only be unwrapped in the
+						      same SmartCard-HSM.</p><p>After using <code class="option">--initialize</code> with one or more DKEK shares, the
+						      SmartCard-HSM will remain in the initialized state until all DKEK shares have
+						      been imported. During this phase no new keys can be generated or imported.</p></dd><dt><span class="term">
+						<code class="option">--so-pin</code> <em class="replaceable"><code>value</code></em>
+					</span></dt><dd><p>Define SO-PIN for initialization. If set to
+						env:<em class="replaceable"><code>VARIABLE</code></em>, the value of
+						the environment variable
+						<em class="replaceable"><code>VARIABLE</code></em> is used.</p></dd><dt><span class="term">
+						<code class="option">--pin</code> <em class="replaceable"><code>value</code></em>
+					</span></dt><dd><p>Define user PIN for initialization, wrap or
+						unwrap operation. If set to
+						env:<em class="replaceable"><code>VARIABLE</code></em>, the value of
+						the environment variable
+						<em class="replaceable"><code>VARIABLE</code></em> is used.</p></dd><dt><span class="term">
+						<code class="option">--pin-retry</code> <em class="replaceable"><code>value</code></em>
+					</span></dt><dd><p>Define number of PIN retries for user PIN during initialization. Default is 3.</p></dd><dt><span class="term">
+						<code class="option">--password</code> <em class="replaceable"><code>value</code></em>
+					</span></dt><dd><p>Define password for DKEK share encryption. If set to
+						env:<em class="replaceable"><code>VARIABLE</code></em>, the value of
+						the environment variable
+						<em class="replaceable"><code>VARIABLE</code></em> is used.</p></dd><dt><span class="term">
+						<code class="option">--pwd-shares-threshold</code> <em class="replaceable"><code>value</code></em>
+					</span></dt><dd><p>Define threshold for number of password shares required for reconstruction.</p></dd><dt><span class="term">
+						<code class="option">--pwd-shares-total</code> <em class="replaceable"><code>value</code></em>
+					</span></dt><dd><p>Define number of password shares.</p></dd><dt><span class="term">
+						<code class="option">--force</code>
+					</span></dt><dd><p>Force removal of existing key, description and certificate.</p></dd><dt><span class="term">
+						<code class="option">--label</code> <em class="replaceable"><code>label</code></em>,
+						<code class="option">-l</code> <em class="replaceable"><code>label</code></em>
+					</span></dt><dd><p>Define the token label to be used in --initialize.</p></dd><dt><span class="term">
+						<code class="option">--reader</code> <em class="replaceable"><code>num</code></em>,
+						<code class="option">-r</code> <em class="replaceable"><code>num</code></em>
+					</span></dt><dd><p>
+							Specify the reader to use. By default, the first
+							reader with a present card is used. If
+							<em class="replaceable"><code>num</code></em> is an ATR, the
+							reader with a matching card will be chosen.
+						</p></dd><dt><span class="term">
+						<code class="option">--wait</code>,
+						<code class="option">-w</code>
+					</span></dt><dd><p>Wait for a card to be inserted</p></dd><dt><span class="term">
+						<code class="option">--verbose</code>,
+						<code class="option">-v</code>
+					</span></dt><dd><p>Causes <span class="command"><strong>sc-hsm-tool</strong></span> to be more verbose.
+					Specify this flag several times to enable debug output in the opensc
+					library.</p></dd></dl></div><p>
+		</p></div><div class="refsect1"><a name="idm3891"></a><h2>Examples</h2><p>Create a DKEK share:</p><p><span class="command"><strong>sc-hsm-tool --create-dkek-share dkek-share-1.pbe</strong></span></p><p>Create a DKEK share with random password split up using a (3, 5) threshold scheme:</p><p><span class="command"><strong>sc-hsm-tool --create-dkek-share dkek-share-1.pbe --pwd-shares-threshold 3 --pwd-shares-total 5</strong></span></p><p>Initialize SmartCard-HSM to use a single DKEK share:</p><p><span class="command"><strong>sc-hsm-tool --initialize --so-pin 3537363231383830 --pin 648219 --dkek-shares 1 --label mytoken</strong></span></p><p>Import DKEK share:</p><p><span class="command"><strong>sc-hsm-tool --import-dkek-share dkek-share-1.pbe</strong></span></p><p>Import DKEK share using a password split up using a (3, 5) threshold scheme for encryption:</p><p><span class="command"><strong>sc-hsm-tool --import-dkek-share dkek-share-1.pbe  --pwd-shares-total 3</strong></span></p><p>Wrap referenced key, description and certificate:</p><p><span class="command"><strong>sc-hsm-tool --wrap-key wrap-key.bin --key-reference 1 --pin 648219</strong></span></p><p>Unwrap key into same or in different SmartCard-HSM with the same DKEK:</p><p><span class="command"><strong>sc-hsm-tool --unwrap-key wrap-key.bin --key-reference 10 --pin 648219 --force</strong></span></p></div><div class="refsect1"><a name="idm3914"></a><h2>See also</h2><p>
+			<span class="citerefentry"><span class="refentrytitle">opensc-tool</span>(1)</span>
+		</p></div><div class="refsect1"><a name="idm3920"></a><h2>Authors</h2><p><span class="command"><strong>sc-hsm-tool</strong></span> was written by
+		Andreas Schwier <code class="email">&lt;<a class="email" href="mailto:andreas.schwier@cardcontact.de">andreas.schwier@cardcontact.de</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="westcos-tool"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>westcos-tool &#8212; utility for manipulating data structures
+			on westcos smart cards</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">westcos-tool</code>  [<em class="replaceable"><code>OPTIONS</code></em>]</p></div></div><div class="refsect1"><a name="idm3940"></a><h2>Description</h2><p>
+			The <span class="command"><strong>westcos-tool</strong></span> utility is used to manipulate
+			the westcos data structures on 2 Ko smart cards / tokens. Users can create PINs,
+			keys and certificates stored on the card / token. User PIN authentication is
+			performed for those operations that require it.
+		</p></div><div class="refsect1"><a name="idm3944"></a><h2>Options</h2><p>
+			</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+						<code class="option">--change-pin</code>,
+						<code class="option">-n</code>
+					</span></dt><dd><p>Changes a PIN stored on the card.
+					User authentication is required for this operation.</p></dd><dt><span class="term">
+						<code class="option">--certificate</code> <em class="replaceable"><code>file</code></em>,
+						<code class="option">-t</code> <em class="replaceable"><code>file</code></em>
+					</span></dt><dd><p>Write certificate file <em class="replaceable"><code>file</code></em>
+					in PEM format to the card.
+					User authentication is required for this operation.</p></dd><dt><span class="term">
+						<code class="option">--finalize</code>,
+						<code class="option">-f</code>
+					</span></dt><dd><p>Finalize the card. Once finalized the default key is
+					invalidated, so PIN and PUK cannot be changed anymore without user
+					authentication.</p><p>Warning, un-finalized cards are insecure because the PIN can be
+					changed without user authentication (knowledge of default key
+					is enough).</p></dd><dt><span class="term">
+						<code class="option">--generate-key</code>,
+						<code class="option">-g</code>
+					</span></dt><dd><p>Generate a private key on the card. The card must not have
+					been finalized and a PIN must be installed (i.e. the file for the PIN must
+					have been created, see option <code class="option">-i</code>).
+					By default the key length is 1536 bits. User authentication is required for
+					this operation. </p></dd><dt><span class="term">
+						<code class="option">--help</code>,
+						<code class="option">-h</code>
+					</span></dt><dd><p>Print help message on screen.</p></dd><dt><span class="term">
+						<code class="option">--install-pin</code>,
+						<code class="option">-i</code>
+					</span></dt><dd><p>Install PIN file in on the card.
+					You must provide a PIN value with <code class="option">-x</code>.</p></dd><dt><span class="term">
+						<code class="option">--key-length</code> <em class="replaceable"><code>length</code></em>,
+						<code class="option">-l</code> <em class="replaceable"><code>length</code></em>
+					</span></dt><dd><p>Change the length of private key.
+					Use with <code class="option">-g</code>.</p></dd><dt><span class="term">
+						<code class="option">--overwrite-key</code>,
+						<code class="option">-o</code>
+					</span></dt><dd><p>Overwrite the key if there is already a key on the card.</p></dd><dt><span class="term">
+						<code class="option">--pin-value</code> <em class="replaceable"><code>value</code></em>,
+						<code class="option">-x</code> <em class="replaceable"><code>value</code></em>
+					</span></dt><dd><p>Set value of PIN. If set to
+					env:<em class="replaceable"><code>VARIABLE</code></em>, the value of
+					the environment variable
+					<em class="replaceable"><code>VARIABLE</code></em> is used.</p></dd><dt><span class="term">
+						<code class="option">--puk-value</code> <em class="replaceable"><code>value</code></em>,
+						<code class="option">-y</code> <em class="replaceable"><code>value</code></em>
+					</span></dt><dd><p>set value of PUK (or value of new PIN for change PIN
+					command see <code class="option">-n</code>). If set to
+					env:<em class="replaceable"><code>VARIABLE</code></em>, the value of
+					the environment variable
+					<em class="replaceable"><code>VARIABLE</code></em> is used.</p></dd><dt><span class="term">
+						<code class="option">--read-file</code> <em class="replaceable"><code>filename</code></em>,
+						<code class="option">-j</code> <em class="replaceable"><code>filename</code></em>
+					</span></dt><dd><p>Read the file <em class="replaceable"><code>filename</code></em> from the card.
+					The file is written on disk with name <em class="replaceable"><code>filename</code></em>.
+					User authentication is required for this operation.</p></dd><dt><span class="term">
+						<code class="option">--reader</code> <em class="replaceable"><code>num</code></em>,
+						<code class="option">-r</code> <em class="replaceable"><code>num</code></em>
+					</span></dt><dd><p>
+							Specify the reader to use. By default, the first
+							reader with a present card is used. If
+							<em class="replaceable"><code>num</code></em> is an ATR, the
+							reader with a matching card will be chosen.
+						</p></dd><dt><span class="term">
+						<code class="option">--unblock-pin</code>,
+						<code class="option">-u</code>
+					</span></dt><dd><p>Unblocks a PIN stored on the card. Knowledge of the
+					PIN Unblock Key (PUK) is required for this operation.</p></dd><dt><span class="term">
+						<code class="option">--verbose</code>
+						<code class="option">-v</code>
+					</span></dt><dd><p>Causes <span class="command"><strong>westcos-tool</strong></span> to be more
+					verbose. Specify this flag several times to enable debug output
+					in the OpenSC library.</p></dd><dt><span class="term">
+						<code class="option">--wait</code>,
+						<code class="option">-w</code>
+					</span></dt><dd><p>Wait for a card to be inserted.</p></dd><dt><span class="term">
+						<code class="option">--write-file</code> <em class="replaceable"><code>filename</code></em>,
+						<code class="option">-k</code> <em class="replaceable"><code>filename</code></em>
+					</span></dt><dd><p>Put the file with name <em class="replaceable"><code>filename</code></em>
+					from disk to card.
+					On the card the file is written in <em class="replaceable"><code>filename</code></em>.
+					User authentication is required for this operation.</p></dd></dl></div><p>
+		</p></div><div class="refsect1"><a name="idm4074"></a><h2>Authors</h2><p><span class="command"><strong>westcos-tool</strong></span> was written by
+		Francois Leblanc <code class="email">&lt;<a class="email" href="mailto:francois.leblanc@cev-sa.com">francois.leblanc@cev-sa.com</a>&gt;</code>.</p></div></div></div></body></html>

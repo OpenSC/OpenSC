@@ -2945,8 +2945,8 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_keystore_info
 	/* RSA */
 	if (key_info->algorithm == SC_OPENPGP_KEYALGO_RSA){
 
-		if (key_info->keyformat == SC_OPENPGP_KEYFORMAT_RSA_STDN
-			|| key_info->keyformat == SC_OPENPGP_KEYFORMAT_RSA_CRTN)
+		if (key_info->u.rsa.keyformat == SC_OPENPGP_KEYFORMAT_RSA_STDN
+			|| key_info->u.rsa.keyformat == SC_OPENPGP_KEYFORMAT_RSA_CRTN)
 			comp_to_add = 4;
 
 		/* validate */
@@ -3104,7 +3104,7 @@ pgp_store_key(sc_card_t *card, sc_cardctl_openpgp_keystore_info_t *key_info)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	/* we just support standard key format */
-	switch (key_info->keyformat) {
+	switch (key_info->u.rsa.keyformat) {
 	case SC_OPENPGP_KEYFORMAT_RSA_STD:
 	case SC_OPENPGP_KEYFORMAT_RSA_STDN:
 		break;

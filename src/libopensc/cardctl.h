@@ -961,7 +961,7 @@ typedef struct sc_cardctl_openpgp_keygen_info {
 			size_t modulus_len;   /* Length of modulus in bit */
 			u8 *exponent;
 			size_t exponent_len;
-			u8 keyformat;
+			u8 keyformat;	/* SC_OPENPGP_KEYFORMAT_RSA_... */
 		} rsa;
 		struct
 		{
@@ -977,10 +977,10 @@ typedef struct sc_cardctl_openpgp_keygen_info {
 typedef struct sc_cardctl_openpgp_keystore_info {
 	u8 key_id;
 	u8 algorithm;	/* Algorithm id sent to card */
-	u8 keyformat;
 	union {
 		struct
 		{
+			u8 keyformat;	/* SC_OPENPGP_KEYFORMAT_RSA_... */
 			u8 *e;
 			size_t e_len;
 			u8 *p;
