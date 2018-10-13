@@ -1107,7 +1107,7 @@ pgp_read_blob(sc_card_t *card, pgp_blob_t *blob)
 		     blob->id == DO_AUTH_SYM ||
 		     blob->id == DO_SIGN_SYM ||
 		     blob->id == DO_ENCR_SYM)) {
-			buf_len = MAXLEN_RESP_PUBKEY_GNUK;
+			buf_len = MIN(MAXLEN_RESP_PUBKEY_GNUK, sizeof(buffer));
 		}
 
 		r = blob->info->get_fn(card, blob->id, buffer, buf_len);
@@ -1606,12 +1606,18 @@ pgp_get_data(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 
-	/* For Gnuk card, if there is no certificate, it returns error instead of empty data.
+	/* Gnuk returns an error instead of empty data if there is no certificate or private DO.
 	 * So, for this case, we ignore error and consider success */
-	if (r == SC_ERROR_DATA_OBJECT_NOT_FOUND && card->type == SC_CARD_TYPE_OPENPGP_GNUK
-        && (tag == DO_CERT || tag == DO_PRIV1 || tag == DO_PRIV2 || tag == DO_PRIV3 || tag == DO_PRIV4)) {
-		r = SC_SUCCESS;
-		apdu.resplen = 0;
+	if (card->type == SC_CARD_TYPE_OPENPGP_GNUK &&
+	    (tag == DO_CERT  ||
+	     tag == DO_PRIV1 ||
+	     tag == DO_PRIV2 ||
+	     tag == DO_PRIV3 ||
+	     tag == DO_PRIV4)) {
+		if (r == SC_ERROR_DATA_OBJECT_NOT_FOUND) {
+			r = SC_SUCCESS;
+			apdu.resplen = 0;
+		}
 	}
 	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
