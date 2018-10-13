@@ -251,7 +251,7 @@ static char *prettify_date(u8 *data, size_t length)
 		static char result[64];	/* large enough */
 
 		tp = gmtime(&time);
-		strftime(result, sizeof(result), "%Y-%m-%d %T", tp);
+		strftime(result, sizeof(result), "%Y-%m-%d %H:%M:%S", tp);
 		return result;
 	}
 	return NULL;
