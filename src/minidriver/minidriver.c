@@ -4706,19 +4706,19 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 					logprintf(pCardData, 3, "Using CALG_SSL3_SHAMD5  hashAlg\n");
 					opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_MD5_SHA1;
 				} else {
-					if (wcscmp(pinf->pszAlgId, L"MD5") == 0)
+					if (wcscmp(pinf->pszAlgId, BCRYPT_MD5_ALGORITHM) == 0)
 						opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_MD5;
-					else if (wcscmp(pinf->pszAlgId, L"SHA1") == 0)
+					else if (wcscmp(pinf->pszAlgId, BCRYPT_SHA1_ALGORITHM) == 0)
 						opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA1;
 					else if (wcscmp(pinf->pszAlgId, L"SHAMD5") == 0)
 						opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_MD5_SHA1;
 					else if (wcscmp(pinf->pszAlgId, L"SHA224") == 0)
 						opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA224;
-					else if (wcscmp(pinf->pszAlgId, L"SHA256") == 0)
+					else if (wcscmp(pinf->pszAlgId, BCRYPT_SHA256_ALGORITHM) == 0)
 						opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA256;
-					else if (wcscmp(pinf->pszAlgId, L"SHA384") == 0)
+					else if (wcscmp(pinf->pszAlgId, BCRYPT_SHA384_ALGORITHM) == 0)
 						opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA384;
-					else if (wcscmp(pinf->pszAlgId, L"SHA512") == 0)
+					else if (wcscmp(pinf->pszAlgId, BCRYPT_SHA512_ALGORITHM) == 0)
 						opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA512;
 					else if (wcscmp(pinf->pszAlgId, L"RIPEMD160") == 0)
 						opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_RIPEMD160;
