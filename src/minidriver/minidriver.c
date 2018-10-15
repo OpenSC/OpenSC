@@ -4699,34 +4699,66 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 
 			case CARD_PADDING_PKCS1:
 				opt_crypt_flags = SC_ALGORITHM_RSA_PAD_PKCS1;
-				BCRYPT_PKCS1_PADDING_INFO *pinf = (BCRYPT_PKCS1_PADDING_INFO *)pInfo->pPaddingInfo;
+				BCRYPT_PKCS1_PADDING_INFO *pkcs1_pinf = (BCRYPT_PKCS1_PADDING_INFO *)pInfo->pPaddingInfo;
 
-				if (!pinf->pszAlgId) {
+				if (!pkcs1_pinf->pszAlgId || wcscmp(pkcs1_pinf->pszAlgId, L"SHAMD5") == 0) {
 					/* hashAlg = CALG_SSL3_SHAMD5; */
 					logprintf(pCardData, 3, "Using CALG_SSL3_SHAMD5  hashAlg\n");
 					opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_MD5_SHA1;
+				} else if (wcscmp(pkcs1_pinf->pszAlgId, BCRYPT_MD5_ALGORITHM) == 0)
+					opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_MD5;
+				else if (wcscmp(pkcs1_pinf->pszAlgId, BCRYPT_SHA1_ALGORITHM) == 0)
+					opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA1;
+				else if (wcscmp(pkcs1_pinf->pszAlgId, L"SHA224") == 0)
+					opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA224;
+				else if (wcscmp(pkcs1_pinf->pszAlgId, BCRYPT_SHA256_ALGORITHM) == 0)
+					opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA256;
+				else if (wcscmp(pkcs1_pinf->pszAlgId, BCRYPT_SHA384_ALGORITHM) == 0)
+					opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA384;
+				else if (wcscmp(pkcs1_pinf->pszAlgId, BCRYPT_SHA512_ALGORITHM) == 0)
+					opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA512;
+				else if (wcscmp(pkcs1_pinf->pszAlgId, L"RIPEMD160") == 0)
+					opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_RIPEMD160;
+				else {
+					logprintf(pCardData, 0,"unknown AlgId %S\n",NULLWSTR(pkcs1_pinf->pszAlgId));
+					dwret = SCARD_E_UNSUPPORTED_FEATURE;
+					goto err;
+				}
+				break;
+
+			case CARD_PADDING_PSS:
+				opt_crypt_flags = SC_ALGORITHM_RSA_PAD_PSS;
+				BCRYPT_PSS_PADDING_INFO *pss_pinf = (BCRYPT_PSS_PADDING_INFO *)pInfo->pPaddingInfo;
+				ULONG expected_salt_len;
+
+				if (!pss_pinf->pszAlgId || wcscmp(pss_pinf->pszAlgId, BCRYPT_SHA1_ALGORITHM) == 0) {
+					/* hashAlg = CALG_SHA1; */
+					logprintf(pCardData, 3, "Using CALG_SHA1  hashAlg\n");
+					opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA1;
+					expected_salt_len = 160;
+				} else if (wcscmp(pss_pinf->pszAlgId, L"SHA224") == 0) {
+					opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA224;
+					expected_salt_len = 224;
+				} else if (wcscmp(pss_pinf->pszAlgId, BCRYPT_SHA256_ALGORITHM) == 0) {
+					opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA256;
+					expected_salt_len = 256;
+				} else if (wcscmp(pss_pinf->pszAlgId, BCRYPT_SHA384_ALGORITHM) == 0) {
+					opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA384;
+					expected_salt_len = 384;
+				} else if (wcscmp(pss_pinf->pszAlgId, BCRYPT_SHA512_ALGORITHM) == 0) {
+					opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA512;
+					expected_salt_len = 512;
 				} else {
-					if (wcscmp(pinf->pszAlgId, BCRYPT_MD5_ALGORITHM) == 0)
-						opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_MD5;
-					else if (wcscmp(pinf->pszAlgId, BCRYPT_SHA1_ALGORITHM) == 0)
-						opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA1;
-					else if (wcscmp(pinf->pszAlgId, L"SHAMD5") == 0)
-						opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_MD5_SHA1;
-					else if (wcscmp(pinf->pszAlgId, L"SHA224") == 0)
-						opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA224;
-					else if (wcscmp(pinf->pszAlgId, BCRYPT_SHA256_ALGORITHM) == 0)
-						opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA256;
-					else if (wcscmp(pinf->pszAlgId, BCRYPT_SHA384_ALGORITHM) == 0)
-						opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA384;
-					else if (wcscmp(pinf->pszAlgId, BCRYPT_SHA512_ALGORITHM) == 0)
-						opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA512;
-					else if (wcscmp(pinf->pszAlgId, L"RIPEMD160") == 0)
-						opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_RIPEMD160;
-					else {
-						logprintf(pCardData, 0,"unknown AlgId %S\n",NULLWSTR(pinf->pszAlgId));
-						dwret = SCARD_E_UNSUPPORTED_FEATURE;
-						goto err;
-					}
+					logprintf(pCardData, 0,"unknown AlgId %S\n",NULLWSTR(pss_pinf->pszAlgId));
+					dwret = SCARD_E_UNSUPPORTED_FEATURE;
+					goto err;
+				}
+				/* We're strict, and only do PSS signatures with a salt length that
+				 * matches the digest length (any shorter is rubbish, any longer
+				 * is useless). */
+				if (pss_pinf->cbSalt != expected_salt_len / 8) {
+					dwret = SCARD_E_INVALID_PARAMETER;
+					goto err;
 				}
 				break;
 
