@@ -605,12 +605,12 @@ pgp_init(sc_card_t *card)
 
 		/* OpenPGP card spec 1.1 & 2.x, section 7.2.9 & 7.2.10 / v3.x section 7.2.11 & 7.2.12 */
 		flags_rsa = SC_ALGORITHM_RSA_PAD_PKCS1|
-			SC_ALGORITHM_RSA_HASH_NONE|
-			SC_ALGORITHM_ONBOARD_KEY_GEN;
+			    SC_ALGORITHM_RSA_HASH_NONE|
+			    SC_ALGORITHM_ONBOARD_KEY_GEN;
 		flags_ecc = SC_ALGORITHM_ECDSA_RAW|
-			SC_ALGORITHM_ECDH_CDH_RAW|
-			SC_ALGORITHM_ECDSA_HASH_NONE|
-			SC_ALGORITHM_ONBOARD_KEY_GEN;
+			    SC_ALGORITHM_ECDH_CDH_RAW|
+			    SC_ALGORITHM_ECDSA_HASH_NONE|
+			    SC_ALGORITHM_ONBOARD_KEY_GEN;
 		ext_flags = SC_ALGORITHM_EXT_EC_NAMEDCURVE;
 
 		switch (card->type) {
@@ -878,13 +878,13 @@ pgp_get_card_features(sc_card_t *card)
 					/* OpenPGP card spec 1.1 & 2.x, section 7.2.9 & 7.2.10 /
 					 * v3.x section 7.2.11 & 7.2.12 */
 					unsigned long flags = SC_ALGORITHM_RSA_PAD_PKCS1 |
-								  SC_ALGORITHM_RSA_HASH_NONE |
-								  SC_ALGORITHM_ONBOARD_KEY_GEN;	/* key gen on card */
+						  SC_ALGORITHM_RSA_HASH_NONE |
+						  SC_ALGORITHM_ONBOARD_KEY_GEN;	/* key gen on card */
 					_sc_card_add_rsa_alg(card, key_info.u.rsa.modulus_len, flags, 0);
 				}
 				/* v3.0+: ECC [RFC 4880 & 6637] */
 				else if (key_info.algorithm == SC_OPENPGP_KEYALGO_ECDH
-						|| key_info.algorithm == SC_OPENPGP_KEYALGO_ECDSA) {
+					|| key_info.algorithm == SC_OPENPGP_KEYALGO_ECDSA) {
 
 					unsigned long flags, ext_flags;
 
@@ -2378,26 +2378,26 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 	if (key_info->algorithm == SC_OPENPGP_KEYALGO_RSA) {
 
 		if (key_info->u.rsa.modulus == NULL 
-			|| key_info->u.rsa.exponent == NULL
-			|| (key_info->u.rsa.modulus_len >> 3) == 0
-			|| (key_info->u.rsa.exponent_len >> 3) == 0) {
+		   || key_info->u.rsa.exponent == NULL
+		   || (key_info->u.rsa.modulus_len >> 3) == 0
+		   || (key_info->u.rsa.exponent_len >> 3) == 0) {
 			sc_log(card->ctx, "Null data (modulus or exponent)");
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 		}
 
 		/* https://tools.ietf.org/html/rfc4880  page 41, 72 */
 		pk_packet_len =   1   /* version number */
-						+ 4   /* creation time */
-						+ 1   /* algorithm */
-						+ 2   /* algorithm-specific fields: RSA modulus+exponent */
-						+ (key_info->u.rsa.modulus_len >> 3)
-						+ 2
-						+ (key_info->u.rsa.exponent_len >> 3);
+				+ 4   /* creation time */
+				+ 1   /* algorithm */
+				+ 2   /* algorithm-specific fields: RSA modulus+exponent */
+				+ (key_info->u.rsa.modulus_len >> 3)
+				+ 2
+				+ (key_info->u.rsa.exponent_len >> 3);
 
 	}
 	/* ECC */
 	else if (key_info->algorithm == SC_OPENPGP_KEYALGO_ECDH
-			|| key_info->algorithm == SC_OPENPGP_KEYALGO_ECDSA) {
+		|| key_info->algorithm == SC_OPENPGP_KEYALGO_ECDSA) {
 		if (key_info->u.ec.ecpoint == NULL || (key_info->u.ec.ecpoint_len) == 0) {
 			sc_log(card->ctx, "Null data (modulus or exponent)");
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
@@ -2406,11 +2406,11 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 		/* https://tools.ietf.org/html/rfc4880  page 41, 72 
 		 * and https://tools.ietf.org/html/rfc6637 section 9 (page 8 and 9) */
 		pk_packet_len =   1   /* version number */
-						+ 4   /* creation time */
-						+ 1   /* algorithm */
-						+ 1   /* oid len */
-						+ (key_info->u.ec.oid_len) /* oid */
-						+ (key_info->u.ec.ecpoint_len); /* ecpoint */
+				+ 4   /* creation time */
+				+ 1   /* algorithm */
+				+ 1   /* oid len */
+				+ (key_info->u.ec.oid_len) /* oid */
+				+ (key_info->u.ec.ecpoint_len); /* ecpoint */
 
 		/* KDF parameters for ECDH */
 		if (key_info->algorithm == 0x12) {
@@ -2420,7 +2420,6 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 					 + 1	/* KDF algo */
 					 + 1;	/* KEK algo */
 		}
-		
 	}
 	else
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
@@ -2455,7 +2454,7 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 	}
 	/* ECC */
 	else if (key_info->algorithm == SC_OPENPGP_KEYALGO_ECDH
-			|| key_info->algorithm == SC_OPENPGP_KEYALGO_ECDSA) {
+		|| key_info->algorithm == SC_OPENPGP_KEYALGO_ECDSA) {
 		/* Algorithm ID, see https://tools.ietf.org/html/rfc6637#section-5 */
 		*p = key_info->algorithm + 6;
 		p += 1;
@@ -2486,7 +2485,6 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 				*p = 0x0a;	/* KDF algo */
 				*(p+1) = 0x09;	/* KEK algo */
 			}
-
 		}
 	}
 	else
@@ -2706,7 +2704,7 @@ pgp_update_card_algorithms(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *ke
 		algo->key_length = (unsigned int)key_info->u.rsa.modulus_len;
 	}
 	else if (key_info->algorithm == SC_OPENPGP_KEYALGO_ECDH
-			|| key_info->algorithm == SC_OPENPGP_KEYALGO_ECDSA) {
+		|| key_info->algorithm == SC_OPENPGP_KEYALGO_ECDSA) {
 		algo->algorithm = SC_ALGORITHM_EC;
 		algo->key_length = (unsigned int)(key_info->u.ec.ecpoint_len -1)<<2; /* *4 */
 	}
@@ -2734,8 +2732,8 @@ pgp_gen_key(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_info)
 	LOG_FUNC_CALLED(card->ctx);
 
 	/* temporary workaround: protect v3 cards against non-RSA */
-	if (key_info->algorithm != SC_OPENPGP_KEYALGO_RSA &&
-			card->type < SC_CARD_TYPE_OPENPGP_V3)
+	if (key_info->algorithm != SC_OPENPGP_KEYALGO_RSA
+	   && card->type < SC_CARD_TYPE_OPENPGP_V3)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 
 	/* FIXME the compilers don't assure that the buffers set here as
@@ -2946,7 +2944,7 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_keystore_info
 	if (key_info->algorithm == SC_OPENPGP_KEYALGO_RSA){
 
 		if (key_info->u.rsa.keyformat == SC_OPENPGP_KEYFORMAT_RSA_STDN
-			|| key_info->u.rsa.keyformat == SC_OPENPGP_KEYFORMAT_RSA_CRTN)
+		   || key_info->u.rsa.keyformat == SC_OPENPGP_KEYFORMAT_RSA_CRTN)
 			comp_to_add = 4;
 
 		/* validate */
@@ -2979,7 +2977,7 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_keystore_info
 	}
 	/* ECC */
 	else if (key_info->algorithm == SC_OPENPGP_KEYALGO_ECDH
-			 || key_info->algorithm == SC_OPENPGP_KEYALGO_ECDSA){
+		|| key_info->algorithm == SC_OPENPGP_KEYALGO_ECDSA){
 		/* as we are not storing a RSA key, we need to adapt some values,
 		 * but every array and data is already be big enough */
 
