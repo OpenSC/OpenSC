@@ -2300,8 +2300,8 @@ pgp_update_new_algo_attr(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_
 		data[5] = 0x00; /* Import-Format of private key (e,p,q) */
 	}
 	else {
-		LOG_TEST_RET(card->ctx, SC_ERROR_NOT_SUPPORTED,
-			"Unknown algorithm id");
+		sc_log(card->ctx, "Unknown algorithm id");
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 	}
 
 	pgp_set_blob(algo_blob, data, data_len);
