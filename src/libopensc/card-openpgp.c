@@ -2180,10 +2180,8 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 	/* padding according to OpenPGP card spec 1.1 & 2.x section 7.2.9 / 3.x section 7.2.11 */
 	if (!(temp = malloc(inlen + 1)))
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
-	if (env->algorithm == SC_ALGORITHM_EC)
-		temp[0] = 0xa6; /* padding byte: 0xa6 = ECC */
-	else
-		temp[0] = 0x00; /* padding byte: 0x00 = RSA; 0x02 = AES [v2.1+ only] */
+	/* padding byte: 0xa6 = ECC; 0x00 = RSA; 0x02 = AES */
+	(env->algorithm == SC_ALGORITHM_EC) ? (temp[0] = 0xa6) : (temp[0] = 0x00);
 	memcpy(temp + 1, in, inlen);
 	in = temp;
 	inlen += 1;
@@ -2262,7 +2260,7 @@ pgp_update_new_algo_attr(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_
 
 	LOG_FUNC_CALLED(card->ctx);
 
-	r = pgp_seek_blob(card, priv->mf, (0x00C0 | key_info->key_id), &algo_blob);
+	r = pgp_seek_blob(card, priv->mf, tag, &algo_blob);
 	LOG_TEST_RET(card->ctx, r, "Cannot get old algorithm attributes");
 
 	/* ECDSA and ECDH */
@@ -2413,7 +2411,7 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 				+ (key_info->u.ec.ecpoint_len); /* ecpoint */
 
 		/* KDF parameters for ECDH */
-		if (key_info->algorithm == 0x12) {
+		if (key_info->algorithm == SC_OPENPGP_KEYALGO_ECDH) {
 			/* https://tools.ietf.org/html/rfc6637#section-8 */
 			pk_packet_len +=   1	/* number of bytes */
 					 + 1	/* version number */

@@ -298,11 +298,12 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 			prkey_obj.auth_id.len      = 1;
 			prkey_obj.auth_id.value[0] = key_cfg[i].prkey_pin;
 
-			if (cxdata[0] == 0x01) { /* RSA */
+			if (cxdata[0] == SC_OPENPGP_KEYALGO_RSA) {
 				prkey_info.modulus_length = bebytes2ushort(cxdata + 1);
 				r = sc_pkcs15emu_add_rsa_prkey(p15card, &prkey_obj, &prkey_info);
 			}
-			if (cxdata[0] == 0x12 || cxdata[0] == 0x13) { /* ECDSA or ECDH */
+			if (cxdata[0] == SC_OPENPGP_KEYALGO_ECDH
+			   || cxdata[0] == SC_OPENPGP_KEYALGO_ECDSA) {
 				r = sc_pkcs15emu_add_ec_prkey(p15card, &prkey_obj, &prkey_info);
 			}
 
@@ -342,11 +343,12 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 			pubkey_obj.flags = SC_PKCS15_CO_FLAG_MODIFIABLE;
 
 
-			if (cxdata[0] == 0x01) { /* RSA */
+			if (cxdata[0] == SC_OPENPGP_KEYALGO_RSA) {
 				pubkey_info.modulus_length = bebytes2ushort(cxdata + 1);
 				r = sc_pkcs15emu_add_rsa_pubkey(p15card, &pubkey_obj, &pubkey_info);
 			}
-			if (cxdata[0] == 0x12 || cxdata[0] == 0x13) { /* ECDSA or ECDH */
+			if (cxdata[0] == SC_OPENPGP_KEYALGO_ECDH
+			   || cxdata[0] == SC_OPENPGP_KEYALGO_ECDSA) {
 				r = sc_pkcs15emu_add_ec_pubkey(p15card, &pubkey_obj, &pubkey_info);
 			}
 

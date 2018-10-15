@@ -143,12 +143,9 @@ static int openpgp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 		}
 		memset(&key_info, 0, sizeof(sc_cardctl_openpgp_keystore_info_t));
-		if (kinfo->id.value[0] == 2){
-			key_info.algorithm = SC_OPENPGP_KEYALGO_ECDH; /* ECDH for slot 2 only */
-		}
-		else {
-			key_info.algorithm = SC_OPENPGP_KEYALGO_ECDSA; /* ECDSA for slot 1 and 3 */
-		}
+		key_info.algorithm = (kinfo->id.value[0] == SC_OPENPGP_KEY_ENCR)
+				   ? SC_OPENPGP_KEYALGO_ECDH /* ECDH for slot 2 only */
+				   : SC_OPENPGP_KEYALGO_ECDSA; /* ECDSA for slot 1 and 3 */
 		key_info.key_id = kinfo->id.value[0];
 		key_info.u.ec.privateD = key->u.ec.privateD.data;
 		key_info.u.ec.privateD_len = key->u.ec.privateD.len;
@@ -172,7 +169,7 @@ static int openpgp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
  * @return SC_SUCCESS on success and an error code otherwise
  **/
 static int openpgp_generate_key_rsa(sc_card_t *card, sc_pkcs15_object_t *obj,
-				     sc_pkcs15_pubkey_t *pubkey)
+	sc_pkcs15_pubkey_t *pubkey)
 {
 	sc_context_t *ctx = card->ctx;
 	sc_cardctl_openpgp_keygen_info_t key_info;
@@ -222,25 +219,24 @@ static int openpgp_generate_key_rsa(sc_card_t *card, sc_pkcs15_object_t *obj,
 	}
 
 	r = sc_card_ctl(card, SC_CARDCTL_OPENPGP_GENERATE_KEY, &key_info);
-	if (r < 0)
-		goto out;
+	LOG_TEST_GOTO_ERR(card->ctx, r, "on-card EC key generation failed");
 
 	pubkey->algorithm = SC_ALGORITHM_RSA;
 	sc_log(ctx, "Set output modulus info");
 	pubkey->u.rsa.modulus.len = key_info.u.rsa.modulus_len;
 	pubkey->u.rsa.modulus.data = calloc(key_info.u.rsa.modulus_len, 1);
 	if (pubkey->u.rsa.modulus.data == NULL)
-		goto out;
+		goto err;
 	memcpy(pubkey->u.rsa.modulus.data, key_info.u.rsa.modulus, key_info.u.rsa.modulus_len);
 
 	sc_log(ctx, "Set output exponent info");
 	pubkey->u.rsa.exponent.len = key_info.u.rsa.exponent_len;
 	pubkey->u.rsa.exponent.data = calloc(key_info.u.rsa.exponent_len>>3, 1); /* 1/8 */
 	if (pubkey->u.rsa.exponent.data == NULL)
-		goto out;
+		goto err;
 	memcpy(pubkey->u.rsa.exponent.data, key_info.u.rsa.exponent, key_info.u.rsa.exponent_len>>3); /* 1/8 */
 
-out:
+err:
 	if (key_info.u.rsa.modulus)
 		free(key_info.u.rsa.modulus);
 	if (key_info.u.rsa.exponent)
@@ -290,12 +286,9 @@ static int openpgp_generate_key_ec(sc_card_t *card, sc_pkcs15_object_t *obj,
 
 
 	/* set algorithm id based on key reference */
-	if (key_info.key_id == 2){
-		key_info.algorithm = SC_OPENPGP_KEYALGO_ECDH; /* ECDH for slot 2 only */
-	}
-	else {
-		key_info.algorithm = SC_OPENPGP_KEYALGO_ECDSA; /* ECDSA for slot 1 and 3 */
-	}
+	key_info.algorithm = (key_info.key_id == SC_OPENPGP_KEY_ENCR)
+			   ? SC_OPENPGP_KEYALGO_ECDH /* ECDH for slot 2 only */
+			   : SC_OPENPGP_KEYALGO_ECDSA; /* ECDSA for slot 1 and 3 */
 
 	/* extract oid the way we need to import it to OpenPGP Card */
 	if (info_ec->der.len > 2)
@@ -316,9 +309,7 @@ static int openpgp_generate_key_ec(sc_card_t *card, sc_pkcs15_object_t *obj,
 
 	/* generate key on card */
 	r = sc_card_ctl(card, SC_CARDCTL_OPENPGP_GENERATE_KEY, &key_info);
-
-	if (r<0)
-		goto out;
+	LOG_TEST_GOTO_ERR(card->ctx, r, "on-card EC key generation failed");
 
 	/* set pubkey according to response of card */
 	sc_log(ctx, "Set output ecpoint info");
@@ -326,10 +317,10 @@ static int openpgp_generate_key_ec(sc_card_t *card, sc_pkcs15_object_t *obj,
 	pubkey->u.ec.ecpointQ.len = key_info.u.ec.ecpoint_len;
 	pubkey->u.ec.ecpointQ.value = malloc(key_info.u.ec.ecpoint_len);
 	if (pubkey->u.ec.ecpointQ.value == NULL)
-		goto out;
+		goto err;
 	memcpy(pubkey->u.ec.ecpointQ.value, key_info.u.ec.ecpoint, key_info.u.ec.ecpoint_len);
 
-out:
+err:
 	if (key_info.u.ec.ecpoint)
 		free(key_info.u.ec.ecpoint);
 
