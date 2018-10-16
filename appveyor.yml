@@ -95,13 +95,15 @@ build_script:
   - nmake /f Makefile.mak %NMAKE_EXTRA%
   - cd win32 && nmake /f Makefile.mak %NMAKE_EXTRA% VSVER=%VSVER% OpenSC.msi && cd ..
   - move win32\OpenSC.msi %ARTIFACT%.msi
-  - appveyor PushArtifact %ARTIFACT%.msi
   # put all pdb files for dump analysis, but this consumes approx 100 MB per build
   - md %ARTIFACT%-Debug
   - ps: >-
       Get-ChildItem -recurse C:\projects\OpenSC -exclude vc*.pdb *.pdb | % {
         7z a -tzip ${env:ARTIFACT}-Debug.zip $_.FullName
       }
+
+deploy_script:
+  - appveyor PushArtifact %ARTIFACT%.msi
   - appveyor PushArtifact %ARTIFACT%-Debug.zip
 
   # keep in sync with .travis.yml
