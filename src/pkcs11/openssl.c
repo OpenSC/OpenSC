@@ -449,6 +449,8 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, int pubkey_len,
 		return CKR_GENERAL_ERROR;
 
 	if (md != NULL && (mech->mechanism == CKM_SHA1_RSA_PKCS
+		|| mech->mechanism == CKM_MD5_RSA_PKCS
+		|| mech->mechanism == CKM_RIPEMD160_RSA_PKCS
 		|| mech->mechanism == CKM_SHA224_RSA_PKCS
 		|| mech->mechanism == CKM_SHA256_RSA_PKCS
 		|| mech->mechanism == CKM_SHA384_RSA_PKCS
@@ -478,6 +480,8 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, int pubkey_len,
 		sc_log(context, "Trying to verify using low-level API");
 		switch (mech->mechanism) {
 		case CKM_RSA_PKCS:
+		case CKM_MD5_RSA_PKCS:
+		case CKM_RIPEMD160_RSA_PKCS:
 		 	pad = RSA_PKCS1_PADDING;
 		 	break;
 		case CKM_RSA_X_509:
