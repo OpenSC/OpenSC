@@ -639,6 +639,11 @@ static int epass2003_pkcs15_generate_key(struct sc_profile *profile,
 	SC_TEST_GOTO_ERR(card->ctx, SC_LOG_DEBUG_NORMAL, r,
 		    "generate RSA key pair failed");
 
+	if (!gendat.modulus) {
+		r = SC_ERROR_OUT_OF_MEMORY;
+		goto err;
+	}
+	
 	/* get the modulus */
 	if (pubkey && obj->type == SC_PKCS15_TYPE_PRKEY_RSA) {
 		u8 *buf;
