@@ -131,11 +131,10 @@ struct pkcs15_skey_object {
 	struct sc_pkcs15_skey *valueXXXX;
 };
 
-#define is_secret_key(obj) ((__p15_type(obj) & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_SKEY)
+#define is_skey(obj) ((__p15_type(obj) & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_SKEY)
 
 #define skey_flags	base.base.flags
 #define skey_p15obj	base.p15_object
-#define is_skey(obj)	((__p15_type(obj) & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_SKEY_OBJECT)
 
 extern struct sc_pkcs11_object_ops pkcs15_cert_ops;
 extern struct sc_pkcs11_object_ops pkcs15_prkey_ops;
@@ -1346,7 +1345,7 @@ _add_pin_related_objects(struct sc_pkcs11_slot *slot, struct sc_pkcs15_object *p
 			sc_log(context, "Slot:%p Adding cert object %d to PIN '%.*s'", slot, i, (int) sizeof pin_obj->label, pin_obj->label);
 			pkcs15_add_object(slot, obj, NULL);
 		}
-		else if (is_secret_key(obj)) {
+		else if (is_skey(obj)) {
 			sc_log(context, "Slot:%p Adding secret key object %d to PIN '%.*s'", slot, i, (int) sizeof pin_obj->label, pin_obj->label);
 			pkcs15_add_object(slot, obj, NULL);
 		}
@@ -2361,7 +2360,7 @@ pkcs15_create_secret_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 	    if(_token == FALSE)
 			args.session_object = 1;	/* store the object on card for duration of the session. */
 
-	    args.value_len = args.value_len * 8; /* CKA_VALUE_LEN is number of bytes, PKCS#15 needs key length in bits */
+		args.value_len = args.value_len * 8; /* CKA_VALUE_LEN is number of bytes, PKCS#15 needs key length in bits */
 		rc = sc_pkcs15init_store_secret_key(fw_data->p15_card, profile, &args, &key_obj);
 	    if (rc < 0) {
 		    rv = sc_to_cryptoki_error(rc, "C_CreateObject");
@@ -4768,15 +4767,15 @@ pkcs15_skey_get_attribute(struct sc_pkcs11_session *session,
 		break;
 	case CKA_TOKEN:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
-		*(CK_BBOOL*)attr->pValue = skey->base.p15_object->session_object == 0;
+		*(CK_BBOOL*)attr->pValue = skey->base.p15_object->session_object == 0 ? CK_TRUE : CK_FALSE;
 		break;
 	case CKA_PRIVATE:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
-		*(CK_BBOOL*)attr->pValue = (skey->base.p15_object->flags & SC_PKCS15_CO_FLAG_PRIVATE) != 0;
+		*(CK_BBOOL*)attr->pValue = (skey->base.p15_object->flags & SC_PKCS15_CO_FLAG_PRIVATE) != 0 ? CK_TRUE : CK_FALSE;
 		break;
 	case CKA_MODIFIABLE:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
-		*(CK_BBOOL*)attr->pValue = (skey->base.p15_object->flags & 0x02) != 0;
+		*(CK_BBOOL*)attr->pValue = (skey->base.p15_object->flags & 0x02) != 0 ? CK_TRUE : CK_FALSE;
 		/*TODO Why no definition of the flag */
 		break;
 	case CKA_LABEL:
@@ -4814,7 +4813,7 @@ pkcs15_skey_get_attribute(struct sc_pkcs11_session *session,
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
 		*(CK_BBOOL*)attr->pValue = (((skey->base.p15_object->flags & SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE) == SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE)
 					&& (skey->base.p15_object->flags & SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE) == 0
-					&& (skey->base.p15_object->flags & SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE) == 0);
+					&& (skey->base.p15_object->flags & SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE) == 0) ? CK_TRUE : CK_FALSE;
 		break;
 	case CKA_VALUE_LEN:
 		check_attribute_buffer(attr, sizeof(CK_ULONG));

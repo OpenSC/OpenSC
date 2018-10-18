@@ -844,8 +844,7 @@ sc_pkcs11_wrap(struct sc_pkcs11_session *session,
 	sc_pkcs11_mechanism_type_t *mt;
 	CK_RV rv;
 
-	if (!session || !session->slot
-	 || !(p11card = session->slot->p11card))
+	if (!session || !session->slot || !(p11card = session->slot->p11card))
 		return CKR_ARGUMENTS_BAD;
 
 	/* See if we support this mechanism type */
@@ -891,8 +890,7 @@ sc_pkcs11_unwrap(struct sc_pkcs11_session *session,
 
 	CK_RV rv;
 
-	if (!session || !session->slot
-	 || !(p11card = session->slot->p11card))
+	if (!session || !session->slot || !(p11card = session->slot->p11card))
 		return CKR_ARGUMENTS_BAD;
 
 	/* See if we support this mechanism type */

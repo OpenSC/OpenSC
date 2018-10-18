@@ -1215,7 +1215,6 @@ sc_pkcs15init_init_prkdf(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 
 	if (keyargs->access_flags & SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE) {
 		key_info->access_flags &= ~SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE;
-		key_info->native = 0;
 	}
 
 	/* Select a Key ID if the user didn't specify one,
@@ -1348,10 +1347,6 @@ sc_pkcs15init_init_skdf(struct sc_pkcs15_card *p15card, struct sc_profile *profi
 
 	if (keyargs->access_flags & SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE) {
 		key_info->access_flags &= ~SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE;
-		/* The following commented out. I interpret PKCS#15 so that native only means that a key
-		 * can be used in on card crypto. Such key can be extractable (can be wrapped), so IMO this
-		 logic is not correct. */
-		/* key_info->native = 0; */
 	}
 
 	if (keyargs->session_object > 0)
@@ -1461,7 +1456,7 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 
 	if (check_key_compatibility(p15card, keygen_args->prkey_args.key.algorithm,
 			&keygen_args->prkey_args.key, keygen_args->prkey_args.x509_usage,
-			keybits, SC_ALGORITHM_ONBOARD_KEY_GEN))
+			keybits, SC_ALGORITHM_ONBOARD_KEY_GEN) != SC_SUCCESS)
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Cannot generate key with the given parameters");
 
 	if (profile->ops->generate_key == NULL)
@@ -1585,7 +1580,7 @@ sc_pkcs15init_generate_secret_key(struct sc_pkcs15_card *p15card, struct sc_prof
 	LOG_TEST_RET(ctx, r, "Invalid key size");
 
 	if (check_key_compatibility(p15card, skey_args->algorithm, NULL, 0,
-			keybits, SC_ALGORITHM_ONBOARD_KEY_GEN))
+			keybits, SC_ALGORITHM_ONBOARD_KEY_GEN) != SC_SUCCESS)
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Cannot generate key with the given parameters");
 
 	if (profile->ops->generate_key == NULL)
@@ -1654,11 +1649,11 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card, struct sc_profil
 	LOG_TEST_RET(ctx, keybits, "Invalid private key size");
 
 	/* Now check whether the card is able to handle this key */
-	if (check_key_compatibility(p15card, key.algorithm, &key, keyargs->x509_usage, keybits, 0)) {
+	if (check_key_compatibility(p15card, key.algorithm, &key, keyargs->x509_usage, keybits, 0) != SC_SUCCESS) {
 		/* Make sure the caller explicitly tells us to store
 		 * the key as extractable. */
 		if (!(keyargs->access_flags & SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE))
-			LOG_TEST_RET(ctx, SC_ERROR_INCOMPATIBLE_KEY, "Card does not support this key.");
+			LOG_TEST_RET(ctx, SC_ERROR_INCOMPATIBLE_KEY, "Card does not support this key for crypto. Cannot store it as non extractable.");
 	}
 
 	/* Select a intrinsic Key ID if user didn't specify one */
@@ -1887,12 +1882,11 @@ sc_pkcs15init_store_secret_key(struct sc_pkcs15_card *p15card, struct sc_profile
 	LOG_FUNC_CALLED(ctx);
 
 	/* Now check whether the card is able to handle this key */
-	if (check_key_compatibility(p15card, keyargs->algorithm, NULL, 0, keyargs->key.data_len * 8, 0)) {
+	if (check_key_compatibility(p15card, keyargs->algorithm, NULL, 0, keyargs->key.data_len * 8, 0) != SC_SUCCESS) {
 		/* Make sure the caller explicitly tells us to store
 		 * the key as extractable. */
-		/* Commented out. I don't understand why one couldn't store a key as non extractable. -HH */
-/*		if (!(keyargs->access_flags & SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE))
-			LOG_TEST_RET(ctx, SC_ERROR_INCOMPATIBLE_KEY, "Card does not support this key.");*/
+		if (!(keyargs->access_flags & SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE))
+			LOG_TEST_RET(ctx, SC_ERROR_INCOMPATIBLE_KEY, "Card does not support this key for crypto. Cannot store it as non extractable.");
 	}
 
 #ifdef ENABLE_OPENSSL

@@ -1041,7 +1041,7 @@ CK_RV C_WrapKey(CK_SESSION_HANDLE hSession,	/* the session's handle */
 {				/* receives byte size of wrapped key */
 	CK_RV rv;
 	CK_BBOOL can_wrap,
-		 can_be_wrapped;
+			 can_be_wrapped;
 	CK_KEY_TYPE key_type;
 	CK_ATTRIBUTE wrap_attribute = { CKA_WRAP, &can_wrap, sizeof(can_wrap) };
 	CK_ATTRIBUTE extractable_attribute = { CKA_EXTRACTABLE, &can_be_wrapped, sizeof(can_be_wrapped) };

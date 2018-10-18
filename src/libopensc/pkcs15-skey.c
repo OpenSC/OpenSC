@@ -152,10 +152,8 @@ sc_pkcs15_decode_skdf_entry(struct sc_pkcs15_card *p15card, struct sc_pkcs15_obj
 	if (asn1_skey_choice[0].flags & SC_ASN1_PRESENT) {
 		obj->type = SC_PKCS15_TYPE_SKEY_GENERIC;
 
-		/* info.key_type = CKK_AES;*/	/* defaults to CKK_AES. TODO: implement choice 15 and GenericKeyAttributes like defined in ISO7816-15 and set key type accordingly. */
-
-	/* Check key type. framework-pkcs15 recognizes one type per key, and AES is the only algorithm supported for
-	 * SKEY_GENERIC type keys, so just check if this key is AES compatible. */
+		/* Check key type. framework-pkcs15 recognizes one type per key, and AES is the only algorithm supported for
+		* SKEY_GENERIC type keys, so just check if this key is AES compatible. */
 
 		for (i = 0; i < SC_MAX_SUPPORTED_ALGORITHMS && info.algo_refs[i] != 0; i++) {
 			for (ii = 0; ii < SC_MAX_SUPPORTED_ALGORITHMS && p15card->tokeninfo != 0; ii++) {

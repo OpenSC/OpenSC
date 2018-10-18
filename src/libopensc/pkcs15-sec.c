@@ -534,8 +534,8 @@ int sc_pkcs15_wrap(struct sc_pkcs15_card *p15card,
 	senv.algorithm_flags = sec_flags;
 
 	if ((sec_flags & (SC_ALGORITHM_AES_CBC | SC_ALGORITHM_AES_CBC_PAD)) > 0) {
-	    senv_param = (sc_sec_env_param_t) { SC_SEC_ENV_PARAM_IV, (void*) param, paramlen };
-	    LOG_TEST_RET(ctx, sec_env_add_param(&senv, &senv_param), "failed to add IV to security environment");
+		senv_param = (sc_sec_env_param_t) { SC_SEC_ENV_PARAM_IV, (void*) param, paramlen };
+		LOG_TEST_RET(ctx, sec_env_add_param(&senv, &senv_param), "failed to add IV to security environment");
 	}
 
 	out = cryptogram;
@@ -544,14 +544,13 @@ int sc_pkcs15_wrap(struct sc_pkcs15_card *p15card,
 			*poutlen);
 
 	if (r > -1) {
-            if (*crgram_len < (unsigned) r) {
-					*poutlen = r;
-					if (out != NULL) /* if NULL, return success and required buffer length by PKCS#11 convention */
-						LOG_TEST_RET(ctx, SC_ERROR_BUFFER_TOO_SMALL, "Buffer too small to hold the wrapped key.");
-			}
-
-            *poutlen = r;
-        }
+		if (*crgram_len < (unsigned) r) {
+			*poutlen = r;
+			if (out != NULL) /* if NULL, return success and required buffer length by PKCS#11 convention */
+				LOG_TEST_RET(ctx, SC_ERROR_BUFFER_TOO_SMALL, "Buffer too small to hold the wrapped key.");
+		}
+		*poutlen = r;
+	}
 
 	LOG_FUNC_RETURN(ctx, r);
 }

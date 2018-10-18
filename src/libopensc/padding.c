@@ -505,7 +505,7 @@ int sc_get_encoding_flags(sc_context_t *ctx,
 		*sflags = SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE;
 		*pflags = iflags & SC_ALGORITHM_RSA_HASHES;
 
- 	} else if ((iflags & SC_ALGORITHM_AES) == SC_ALGORITHM_AES) { /* TODO: seems like this constant does not belong to the same set of flags used form asymmetric algos. Fix this! */
+	} else if ((iflags & SC_ALGORITHM_AES) == SC_ALGORITHM_AES) { /* TODO: seems like this constant does not belong to the same set of flags used form asymmetric algos. Fix this! */
 		*sflags = 0;
 		*pflags = 0;
 

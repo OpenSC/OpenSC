@@ -1358,7 +1358,7 @@ static int myeid_unwrap_key(struct sc_card *card, const u8 *crgram, size_t crgra
 	}
 	else
 	{
-		if (crgram_len > MYEID_MAX_APDU_DATA_LEN)
+		if (crgram_len >= MYEID_MAX_APDU_DATA_LEN)
 		{
 			/* padding indicator byte, 0x81 = first half of 2048 bit cryptogram */
 			sbuf[0] = 0x81;
@@ -1380,7 +1380,7 @@ static int myeid_unwrap_key(struct sc_card *card, const u8 *crgram, size_t crgra
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
 	{
-		if (crgram_len > MYEID_MAX_APDU_DATA_LEN)
+		if (crgram_len >= MYEID_MAX_APDU_DATA_LEN)
 		{
 			sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT,
 				0x2A, 0x00, p2);
