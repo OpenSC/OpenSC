@@ -678,7 +678,7 @@ int do_genkey(sc_card_t *card, u8 key_id, const char *keytype)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
-	/* fack back to RSA 2048 if keytype is not given */
+	/* fall back to RSA 2048 if keytype is not given */
 	if (!keytype)
 		keytype = "RSA2048";
 
