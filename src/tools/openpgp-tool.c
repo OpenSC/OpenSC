@@ -204,15 +204,8 @@ static char *prettify_hex(u8 *data, size_t length, char *buffer, size_t buflen)
 	if (data != NULL) {
 		int r = sc_bin_to_hex(data, length, buffer, buflen, ':');
 
-		if (r == SC_SUCCESS) {
-			char *ptr;
-
-			/* upper-case the hex-ified string */
-			for (ptr = buffer; *ptr != '\0'; ptr++)
-				*ptr = toupper(*ptr);
-
+		if (r == SC_SUCCESS)
 			return buffer;
-		}
 	}
 	return NULL;
 }
