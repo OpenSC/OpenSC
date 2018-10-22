@@ -274,6 +274,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 
 		memset(&prkey_info, 0, sizeof(prkey_info));
 		memset(&prkey_obj,  0, sizeof(prkey_obj));
+		memset(&cxdata, 0, sizeof(cxdata));
 
 		path_template[13] = '1' + i; /* The needed tags are C1 C2 and C3 */
 		if ((r = read_file(card, path_template, cxdata, sizeof(cxdata))) < 0)
@@ -298,7 +299,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 			prkey_obj.auth_id.len      = 1;
 			prkey_obj.auth_id.value[0] = key_cfg[i].prkey_pin;
 
-			if (cxdata[0] == SC_OPENPGP_KEYALGO_RSA) {
+			if (cxdata[0] == SC_OPENPGP_KEYALGO_RSA && r >= 3) {
 				prkey_info.modulus_length = bebytes2ushort(cxdata + 1);
 				r = sc_pkcs15emu_add_rsa_prkey(p15card, &prkey_obj, &prkey_info);
 			}
@@ -321,6 +322,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 
 		memset(&pubkey_info, 0, sizeof(pubkey_info));
 		memset(&pubkey_obj,  0, sizeof(pubkey_obj));
+		memset(&cxdata, 0, sizeof(cxdata));
 
 		path_template[13] = '1' + i; /* The needed tags are C1 C2 and C3 */
 		if ((r = read_file(card, path_template, cxdata, sizeof(cxdata))) < 0)
@@ -342,8 +344,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 			strlcpy(pubkey_obj.label, key_cfg[i].label, sizeof(pubkey_obj.label));
 			pubkey_obj.flags = SC_PKCS15_CO_FLAG_MODIFIABLE;
 
-
-			if (cxdata[0] == SC_OPENPGP_KEYALGO_RSA) {
+			if (cxdata[0] == SC_OPENPGP_KEYALGO_RSA && r >= 3) {
 				pubkey_info.modulus_length = bebytes2ushort(cxdata + 1);
 				r = sc_pkcs15emu_add_rsa_pubkey(p15card, &pubkey_obj, &pubkey_info);
 			}
