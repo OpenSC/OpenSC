@@ -150,11 +150,9 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
 		 "clearing cache idx=%d count=%"SC_FORMAT_LEN_SIZE_T"u",
 		 idx, count);
-	if (priv->cache_buf) {
-		free(priv->cache_buf);
-		priv->cache_buf = NULL;
-		priv->cache_buf_len = 0;
-	}
+	free(priv->cache_buf);
+	priv->cache_buf = NULL;
+	priv->cache_buf_len = 0;
 
 	r = cac_cac1_get_certificate(card, &val, &val_len);
 	if (r < 0)
