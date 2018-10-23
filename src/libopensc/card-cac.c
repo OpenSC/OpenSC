@@ -1081,9 +1081,11 @@ static int cac_select_file_by_type(sc_card_t *card, const sc_path_t *in_path, sc
 	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "file_out=%p index=%d count=%d\n",
 	    file_out, in_path->index, in_path->count);
 
-	/* Sigh, sc_key_select expects paths to keys to have specific formats. There is no override.
-	 * we have to add some bytes to the path to make it happy. A better fix would be to give sc_key_file
-	 * a flag that says 'no, really this path is fine'.  We only need to do this for private keys */
+	/* Sigh, iso7816_select_file expects paths to keys to have specific
+	 * formats. There is no override. We have to add some bytes to the
+	 * path to make it happy.
+	 * We only need to do this for private keys.
+	 */
 	if ((pathlen > 2) && (pathlen <= 4) && memcmp(path, "\x3F\x00", 2) == 0) {
 		if (pathlen > 2) {
 			path += 2;
