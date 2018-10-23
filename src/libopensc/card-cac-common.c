@@ -82,7 +82,6 @@ static size_t cac_list_meter(const void *el) {
 cac_private_data_t *cac_new_private_data(void)
 {
 	cac_private_data_t *priv;
-	int rv;
 
 	priv = calloc(1, sizeof(cac_private_data_t));
 	if (priv == NULL)
