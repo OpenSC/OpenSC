@@ -1074,15 +1074,12 @@ static int cac_select_file_by_type(sc_card_t *card, const sc_path_t *in_path, sc
 	pathtype = in_path->type;
 
 	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
-		 "path->aid=%x %x %x %x %x %x %x  len=%"SC_FORMAT_LEN_SIZE_T"u, path->value = %x %x %x %x len=%"SC_FORMAT_LEN_SIZE_T"u path->type=%d (%x)",
-		 in_path->aid.value[0], in_path->aid.value[1],
-		 in_path->aid.value[2], in_path->aid.value[3],
-		 in_path->aid.value[4], in_path->aid.value[5],
-		 in_path->aid.value[6], in_path->aid.len, in_path->value[0],
-		 in_path->value[1], in_path->value[2], in_path->value[3],
-		 in_path->len, in_path->type, in_path->type);
+	    "path=%s, path->value=%s path->type=%d (%x)",
+	    sc_print_path(in_path),
+	    sc_dump_hex(in_path->value, in_path->len),
+	    in_path->type, in_path->type);
 	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "file_out=%p index=%d count=%d\n",
-		 file_out, in_path->index, in_path->count);
+	    file_out, in_path->index, in_path->count);
 
 	/* Sigh, sc_key_select expects paths to keys to have specific formats. There is no override.
 	 * we have to add some bytes to the path to make it happy. A better fix would be to give sc_key_file
