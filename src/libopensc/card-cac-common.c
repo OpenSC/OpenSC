@@ -82,16 +82,27 @@ static size_t cac_list_meter(const void *el) {
 cac_private_data_t *cac_new_private_data(void)
 {
 	cac_private_data_t *priv;
+	int rv;
+
 	priv = calloc(1, sizeof(cac_private_data_t));
-	if (!priv)
+	if (priv == NULL)
 		return NULL;
-	list_init(&priv->pki_list);
-	list_attributes_comparator(&priv->pki_list, cac_list_compare_path);
-	list_attributes_copy(&priv->pki_list, cac_list_meter, 1);
-	list_init(&priv->general_list);
-	list_attributes_comparator(&priv->general_list, cac_list_compare_path);
-	list_attributes_copy(&priv->general_list, cac_list_meter, 1);
-	/* set other fields as appropriate */
+
+	/* Initialize PKI Applets list */
+	if (list_init(&priv->pki_list) != 0 ||
+	    list_attributes_comparator(&priv->pki_list, cac_list_compare_path) != 0 ||
+	    list_attributes_copy(&priv->pki_list, cac_list_meter, 1) != 0) {
+		cac_free_private_data(priv);
+		return NULL;
+	}
+
+	/* Initialize General Applets List */
+	if (list_init(&priv->general_list) != 0 ||
+	    list_attributes_comparator(&priv->general_list, cac_list_compare_path) != 0 ||
+	    list_attributes_copy(&priv->general_list, cac_list_meter, 1) != 0) {
+		cac_free_private_data(priv);
+		return NULL;
+	}
 
 	return priv;
 }
