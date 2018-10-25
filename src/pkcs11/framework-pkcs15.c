@@ -30,6 +30,10 @@
 
 #ifdef ENABLE_OPENSSL
 #include <openssl/opensslv.h>
+#else
+#ifndef SHA_DIGEST_LENGTH
+#define SHA_DIGEST_LENGTH	20
+#endif
 #endif
 
 #include "sc-pkcs11.h"
