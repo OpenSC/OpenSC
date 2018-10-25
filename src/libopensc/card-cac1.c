@@ -92,7 +92,7 @@ static int cac_cac1_get_certificate(sc_card_t *card, u8 **out_buf, size_t *out_l
 			break;
 		}
 		/* in the old CAC-1, 0x63 means 'more data' in addition to 'pin failed' */
-		if (apdu.sw1 != 0x63)  {
+		if (apdu.sw1 != 0x63 || apdu.sw2 < 1)  {
 			/* we've either finished reading, or hit an error, break */
 			r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 			left -= len;
