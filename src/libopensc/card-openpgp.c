@@ -1882,6 +1882,28 @@ pgp_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
 					 "key-id should be 1, 2, 3.");
 	}
+
+	/* emulate SC_PIN_CMD_GET_INFO command for cards not supporting it */
+	if (data->cmd == SC_PIN_CMD_GET_INFO && (card->caps & SC_CARD_CAP_ISO7816_PIN_INFO) == 0) {
+		u8 c4data[10];
+		int r;
+
+		r = sc_get_data(card, 0x00c4, c4data, sizeof(c4data));
+		LOG_TEST_RET(card->ctx, r, "reading CHV status bytes failed");
+
+		if (r != 7)
+			LOG_TEST_RET(card->ctx, SC_ERROR_OBJECT_NOT_VALID,
+				"CHV status bytes have unexpected length");
+
+                data->pin1.tries_left = c4data[4 + (data->pin_reference & 0x0F)];
+                data->pin1.max_tries = 3;
+                data->pin1.logged_in = SC_PIN_STATE_UNKNOWN;
+		if (tries_left != NULL)
+			*tries_left = data->pin1.tries_left;
+
+                LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+	}
+
 	LOG_FUNC_RETURN(card->ctx, iso_ops->pin_cmd(card, data, tries_left));
 }
 
