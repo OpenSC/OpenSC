@@ -2281,8 +2281,8 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 	u8 *p; /* use this pointer to set fp_buffer content */
 	size_t pk_packet_len;
 	unsigned int tag = 0x00C6 + key_info->key_id;
-	pgp_blob_t *fpseq_blob;
-	u8 *newdata;
+	pgp_blob_t *fpseq_blob = NULL;
+	u8 *newdata = NULL;
 	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
@@ -2307,9 +2307,8 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 
 	fp_buffer_len = 3 + pk_packet_len;
 	p = fp_buffer = calloc(fp_buffer_len, 1);
-	if (!p) {
+	if (p == NULL)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
-	}
 
 	p[0] = 0x99;   /* http://tools.ietf.org/html/rfc4880  page 71 */
 	ushort2bebytes(++p, (unsigned short)pk_packet_len);
@@ -2341,16 +2340,15 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 	/* update the blob containing fingerprints (00C5) */
 	sc_log(card->ctx, "Updating fingerprint blob 00C5.");
 	fpseq_blob = pgp_find_blob(card, 0x00C5);
-	if (!fpseq_blob) {
-		sc_log(card->ctx, "Cannot find blob 00C5.");
-		goto exit;
-	}
+	if (fpseq_blob == NULL)
+		LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot find blob 00C5");
+
 	/* save the fingerprints sequence */
 	newdata = malloc(fpseq_blob->len);
-	if (!newdata) {
-		sc_log(card->ctx, "Not enough memory to update fingerprint blob 00C5.");
-		goto exit;
-	}
+	if (newdata == NULL)
+		LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_OUT_OF_MEMORY,
+			"Not enough memory to update fingerprint blob 00C5");
+
 	memcpy(newdata, fpseq_blob->data, fpseq_blob->len);
 	/* move p to the portion holding the fingerprint of the current key */
 	p = newdata + 20 * (key_info->key_id - 1);
@@ -2360,7 +2358,7 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 	pgp_set_blob(fpseq_blob, newdata, fpseq_blob->len);
 	free(newdata);
 
-exit:
+err:
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
