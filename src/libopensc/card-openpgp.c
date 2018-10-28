@@ -1729,9 +1729,7 @@ pgp_put_data_plain(sc_card_t *card, unsigned int tag, const u8 *buf, size_t buf_
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	/* check response */
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-
-	if (r < 0)
-		LOG_FUNC_RETURN(card->ctx, r);
+	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
 	LOG_FUNC_RETURN(card->ctx, (int)buf_len);
 }
