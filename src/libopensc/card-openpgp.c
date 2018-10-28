@@ -2812,20 +2812,15 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_keystore_info
 	LOG_TEST_RET(ctx, r, "Failed to build TLV for 7F48.");
 	tlv_7f48[0] |= 0x7F;
 	r = pgp_build_tlv(ctx, 0x5f48, kdata, kdata_len, &tlv_5f48, &tlvlen_5f48);
-	if (r < 0) {
-		sc_log(ctx, "Failed to build TLV for 5F48.");
-		goto out;
-	}
+	LOG_TEST_GOTO_ERR(ctx, r, "Failed to build TLV for 5F48");
 
 	/* data part's length for Extended Header list */
 	len = 2 + tlvlen_7f48 + tlvlen_5f48;
 	/* set data part content */
 	data = calloc(len, 1);
-	if (data == NULL) {
-		sc_log(ctx, "Not enough memory.");
-		r = SC_ERROR_NOT_ENOUGH_MEMORY;
-		goto out;
-	}
+	if (data == NULL)
+		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_NOT_ENOUGH_MEMORY, "Not enough memory.");
+
 	switch (key_info->key_id) {
 	case SC_OPENPGP_KEY_SIGN:
 		data[0] = 0xB6;
@@ -2839,15 +2834,13 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_keystore_info
 	default:
 		sc_log(ctx, "Unknown key type %d.", key_info->key_id);
 		r = SC_ERROR_INVALID_ARGUMENTS;
-		goto out;
+		goto err;
 	}
 	memcpy(data + 2, tlv_7f48, tlvlen_7f48);
 	memcpy(data + 2 + tlvlen_7f48, tlv_5f48, tlvlen_5f48);
 	r = pgp_build_tlv(ctx, 0x4D, data, len, &tlvblock, &tlvlen);
-	if (r < 0) {
-		sc_log(ctx, "Cannot build TLV for Extended Header list.");
-		goto out;
-	}
+	LOG_TEST_GOTO_ERR(ctx, r, "Cannot build TLV for Extended Header list");
+
 	/* set output */
 	if (result != NULL) {
 		*result = tlvblock;
@@ -2856,7 +2849,7 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_keystore_info
 		free(tlvblock);
 	}
 
-out:
+err:
 	free(data);
 	free(tlv_5f48);
 	free(tlv_7f48);
