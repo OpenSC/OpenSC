@@ -2606,24 +2606,22 @@ pgp_gen_key(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_info)
 	sc_log(card->ctx, "Waiting for the card to generate key...");
 	r = sc_transmit_apdu(card, &apdu);
 	sc_log(card->ctx, "Card has done key generation.");
-	if (r < 0) {
-		sc_log(card->ctx, "APDU transmit failed. Error %s.", sc_strerror(r));
-		goto finish;
-	}
+	LOG_TEST_GOTO_ERR(card->ctx, r, "APDU transmit failed");
 
 	/* check response */
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	/* instruct more in case of error */
 	if (r == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Please verify PIN first.");
-		goto finish;
+		goto err;
 	}
+	LOG_TEST_GOTO_ERR(card->ctx, r, "Card returned error");
 
 	/* parse response data and set output */
 	pgp_parse_and_set_pubkey_output(card, apdu.resp, apdu.resplen, key_info);
 	pgp_update_card_algorithms(card, key_info);
 
-finish:
+err:
 	free(apdu.resp);
 	LOG_FUNC_RETURN(card->ctx, r);
 }
