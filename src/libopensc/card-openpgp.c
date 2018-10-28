@@ -2870,22 +2870,21 @@ out:
 static int
 pgp_store_key(sc_card_t *card, sc_cardctl_openpgp_keystore_info_t *key_info)
 {
-	sc_context_t *ctx = card->ctx;
 	sc_cardctl_openpgp_keygen_info_t pubkey;
 	u8 *data = NULL;
 	size_t len = 0;
 	int r;
 
-	LOG_FUNC_CALLED(ctx);
+	LOG_FUNC_CALLED(card->ctx);
 
 	/* temporary workaround: protect v3 cards against non-RSA */
 	if (key_info->algorithm != SC_OPENPGP_KEYALGO_RSA)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 
 	/* Validate */
 	if (key_info->key_id < 1 || key_info->key_id > 3) {
-		sc_log(ctx, "Unknown key type %d.", key_info->key_id);
-		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+		sc_log(card->ctx, "Unknown key type %d.", key_info->key_id);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	/* we just support standard key format */
 	switch (key_info->rsa.keyformat) {
@@ -2920,27 +2919,20 @@ pgp_store_key(sc_card_t *card, sc_cardctl_openpgp_keystore_info_t *key_info)
 	}
 	r = pgp_update_new_algo_attr(card, &pubkey);
 	LOG_TEST_RET(card->ctx, r, "Failed to update new algorithm attributes");
+
 	/* build Extended Header list */
 	r = pgp_build_extended_header_list(card, key_info, &data, &len);
-	if (r < 0) {
-		sc_log(ctx, "Failed to build Extended Header list.");
-		goto out;
-	}
+	LOG_TEST_GOTO_ERR(card->ctx, r, "Failed to build Extended Header list");
+
 	/* write to DO */
 	r = pgp_put_data(card, 0x4D, data, len);
-	if (r < 0) {
-		sc_log(ctx, "Failed to write to DO.");
-		goto out;
-	}
-
-	free(data);
-	data = NULL;
+	LOG_TEST_GOTO_ERR(card->ctx, r, "Failed to write to DO 004D");
 
 	/* store creation time */
 	r = pgp_store_creationtime(card, key_info->key_id, &key_info->creationtime);
 	LOG_TEST_RET(card->ctx, r, "Cannot store creation time");
 
-	/* Calculate and store fingerprint */
+	/* calculate and store fingerprint */
 	sc_log(card->ctx, "Calculate and store fingerprint");
 	r = pgp_calculate_and_store_fingerprint(card, key_info->creationtime,
 						key_info->rsa.n, key_info->rsa.e, &pubkey);
@@ -2950,15 +2942,13 @@ pgp_store_key(sc_card_t *card, sc_cardctl_openpgp_keystore_info_t *key_info)
 	r = pgp_update_pubkey_blob(card, key_info->rsa.n, 8*key_info->rsa.n_len,
 	                           key_info->rsa.e, 8*key_info->rsa.e_len, key_info->key_id);
 
-	sc_log(ctx, "Update card algorithms.");
+	sc_log(card->ctx, "Update card algorithms.");
 	pgp_update_card_algorithms(card, &pubkey);
 
-out:
-	if (data) {
+err:
+	if (data != NULL)
 		free(data);
-		data = NULL;
-	}
-	LOG_FUNC_RETURN(ctx, r);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 #endif /* ENABLE_OPENSSL */
