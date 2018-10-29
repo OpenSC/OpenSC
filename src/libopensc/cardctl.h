@@ -951,6 +951,8 @@ typedef struct sc_cardctl_piv_genkey_info_st {
 #define SC_OPENPGP_KEYFORMAT_RSA_CRT	2
 #define SC_OPENPGP_KEYFORMAT_RSA_CRTN	3
 
+#define SC_OPENPGP_MAX_EXP_BITS		0x20 /* maximum exponent length supported in bits */
+
 typedef struct sc_cardctl_openpgp_keygen_info {
 	u8 key_id;		/* SC_OPENPGP_KEY_... */
 	u8 algorithm;		/* SC_OPENPGP_KEYALGO_... */
@@ -959,8 +961,8 @@ typedef struct sc_cardctl_openpgp_keygen_info {
 			u8 *modulus;		/* New-generated pubkey info responded from the card */
 			size_t modulus_len;	/* Length of modulus in bit */
 			u8 *exponent;
-			size_t exponent_len;
-			u8 keyformat;	/* SC_OPENPGP_KEYFORMAT_RSA_... */
+			size_t exponent_len;	/* Length of exponent in bit */
+			u8 keyformat;		/* SC_OPENPGP_KEYFORMAT_RSA_... */
 		} rsa;
 		struct {
 			u8 *ecpoint;
@@ -979,7 +981,7 @@ typedef struct sc_cardctl_openpgp_keystore_info {
 		struct {
 			u8 keyformat;	/* SC_OPENPGP_KEYFORMAT_RSA_... */
 			u8 *e;
-			size_t e_len;
+			size_t e_len;	/* Length of exponent in bit */
 			u8 *p;
 			size_t p_len;
 			u8 *q;

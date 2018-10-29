@@ -2296,7 +2296,7 @@ pgp_update_new_algo_attr(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_
 		 * although you can import keys with smaller exponent;
 		 * thus we don't change rsa.exponent_len, but ignore it here */
 		data[3] = 0x00;
-		data[4] = 0x20;
+		data[4] = SC_OPENPGP_MAX_EXP_BITS;
 		data[5] = 0x00; /* Import-Format of private key (e,p,q) */
 	}
 	else {
@@ -2376,9 +2376,10 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 	if (key_info->algorithm == SC_OPENPGP_KEYALGO_RSA) {
 
 		if (key_info->u.rsa.modulus == NULL 
-		   || key_info->u.rsa.exponent == NULL
-		   || (key_info->u.rsa.modulus_len >> 3) == 0
-		   || (key_info->u.rsa.exponent_len >> 3) == 0) {
+			|| key_info->u.rsa.exponent == NULL
+			|| (key_info->u.rsa.modulus_len >> 3) == 0
+			|| (key_info->u.rsa.exponent_len >> 3) == 0) {
+
 			sc_log(card->ctx, "Null data (modulus or exponent)");
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 		}
@@ -2930,9 +2931,6 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_keystore_info
 		"modulus"
 	};
 	size_t comp_to_add = 3;
-	/* The maximum exponent length is 32 bit, as set on card
-	 * we use this variable to check against actual exponent_len */
-	size_t max_e_len = 0x20>>3;
 	u8 i;
 	int r;
 
@@ -2941,8 +2939,13 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_keystore_info
 	/* RSA */
 	if (key_info->algorithm == SC_OPENPGP_KEYALGO_RSA){
 
+		/* The maximum exponent length is 32 bit, as set on card
+		 * we use this variable to check against actual exponent_len */
+		size_t max_e_len_bytes = SC_OPENPGP_MAX_EXP_BITS / 8;
+		size_t e_len_bytes = key_info->u.rsa.e_len / 8;
+
 		if (key_info->u.rsa.keyformat == SC_OPENPGP_KEYFORMAT_RSA_STDN
-		   || key_info->u.rsa.keyformat == SC_OPENPGP_KEYFORMAT_RSA_CRTN)
+			|| key_info->u.rsa.keyformat == SC_OPENPGP_KEYFORMAT_RSA_CRTN)
 			comp_to_add = 4;
 
 		/* validate */
@@ -2955,22 +2958,23 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_keystore_info
 		memset(pritemplate, 0, max_prtem_len);
 
 		/* maximum 32 bit exponent length allowed on OpenPGP Card */
-		assert(key_info->u.rsa.e_len <= max_e_len);
+		assert(key_info->u.rsa.e_len <= SC_OPENPGP_MAX_EXP_BITS);
 
 		/* We need to right justify the exponent with allowed exponent length,
 		 * e.g. from '01 00 01' to '00 01 00 01' */
-		if (key_info->u.rsa.e_len < max_e_len) {
+		if (key_info->u.rsa.e_len < SC_OPENPGP_MAX_EXP_BITS) {
 			/* create new buffer */
-			p = calloc(max_e_len, 1);
+			p = calloc(max_e_len_bytes, 1);
 			if (!p)
 				LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
-			memcpy(p + max_e_len - key_info->u.rsa.e_len, key_info->u.rsa.e, key_info->u.rsa.e_len);
-			key_info->u.rsa.e_len = max_e_len;
+
+			memcpy(p + (max_e_len_bytes - e_len_bytes), key_info->u.rsa.e, e_len_bytes);
 			/* set key_info->u.rsa.e to new buffer */
 			free(key_info->u.rsa.e);
 			key_info->u.rsa.e = p;
 			components[0] = p;
-			componentlens[0] = max_e_len;
+			key_info->u.rsa.e_len = SC_OPENPGP_MAX_EXP_BITS; /* we store info in bits */
+			componentlens[0] = max_e_len_bytes; /* ... but in bytes for header list */
 		}
 	}
 	/* ECC */
@@ -3117,10 +3121,10 @@ pgp_store_key(sc_card_t *card, sc_cardctl_openpgp_keystore_info_t *key_info)
 	/* RSA */
 	if (key_info->algorithm == SC_OPENPGP_KEYALGO_RSA){
 		/* we only support exponent of maximum 32 bits */
-		if (key_info->u.rsa.e_len > 4) {
+		if (key_info->u.rsa.e_len > SC_OPENPGP_MAX_EXP_BITS) {
 			sc_log(card->ctx,
 				   "Exponent %"SC_FORMAT_LEN_SIZE_T"u-bit (>32) is not supported.",
-				   key_info->u.rsa.e_len * 8);
+				   key_info->u.rsa.e_len);
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 		}
 
@@ -3130,9 +3134,9 @@ pgp_store_key(sc_card_t *card, sc_cardctl_openpgp_keystore_info_t *key_info)
 		if (key_info->u.rsa.n && key_info->u.rsa.n_len
 			&& key_info->u.rsa.e && key_info->u.rsa.e_len) {
 			pubkey.u.rsa.modulus = key_info->u.rsa.n;
-			pubkey.u.rsa.modulus_len = 8*key_info->u.rsa.n_len;
+			pubkey.u.rsa.modulus_len = key_info->u.rsa.n_len;
 			pubkey.u.rsa.exponent = key_info->u.rsa.e;
-			pubkey.u.rsa.exponent_len = 8*key_info->u.rsa.e_len;
+			pubkey.u.rsa.exponent_len = key_info->u.rsa.e_len;
 		}
 		else
 			LOG_FUNC_RETURN(card->ctx,SC_ERROR_INVALID_ARGUMENTS); 

@@ -128,13 +128,13 @@ static int openpgp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		key_info.algorithm = SC_OPENPGP_KEYALGO_RSA;
 		key_info.key_id = kinfo->id.value[0];
 		key_info.u.rsa.e = key->u.rsa.exponent.data;
-		key_info.u.rsa.e_len = key->u.rsa.exponent.len;
+		key_info.u.rsa.e_len = key->u.rsa.exponent.len * 8; /* use bits instead of bytes */
 		key_info.u.rsa.p = key->u.rsa.p.data;
 		key_info.u.rsa.p_len = key->u.rsa.p.len;
 		key_info.u.rsa.q = key->u.rsa.q.data;
 		key_info.u.rsa.q_len = key->u.rsa.q.len;
 		key_info.u.rsa.n = key->u.rsa.modulus.data;
-		key_info.u.rsa.n_len = key->u.rsa.modulus.len;
+		key_info.u.rsa.n_len = key->u.rsa.modulus.len * 8; /* use bits instead of bytes */
 		r = sc_card_ctl(card, SC_CARDCTL_OPENPGP_STORE_KEY, &key_info);
 		break;
 	case SC_PKCS15_TYPE_PRKEY_EC:
