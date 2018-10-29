@@ -1083,7 +1083,7 @@ sc_pkcs15_dup_pubkey(struct sc_context *ctx, struct sc_pkcs15_pubkey *key, struc
 	u8* alg;
 	size_t alglen;
 
-	sc_log(ctx, "Called");
+	LOG_FUNC_CALLED(ctx);
 
 	if (!key || !out) {
 		return SC_ERROR_INVALID_ARGUMENTS;

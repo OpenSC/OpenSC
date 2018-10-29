@@ -1651,7 +1651,7 @@ pgp_get_pubkey_pem(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 	}
 	/* ECC */
 	else if ((r = pgp_get_blob(card, blob, 0x0086, &pubkey_blob)) == 0
-			 && (r = pgp_read_blob(card, pubkey_blob)) == 0) {
+		&& (r = pgp_read_blob(card, pubkey_blob)) == 0) {
 
 		memset(&pubkey, 0, sizeof(pubkey));
 
@@ -2265,7 +2265,7 @@ pgp_update_new_algo_attr(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_
 
 	/* ECDSA and ECDH */
 	if (key_info->algorithm == SC_OPENPGP_KEYALGO_ECDH
-			|| key_info->algorithm == SC_OPENPGP_KEYALGO_ECDSA){
+		|| key_info->algorithm == SC_OPENPGP_KEYALGO_ECDSA){
 		data_len = key_info->u.ec.oid_len+1;
 		data = malloc(data_len);
 		if (!data)
@@ -2377,8 +2377,8 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 
 		if (key_info->u.rsa.modulus == NULL 
 			|| key_info->u.rsa.exponent == NULL
-			|| (key_info->u.rsa.modulus_len >> 3) == 0
-			|| (key_info->u.rsa.exponent_len >> 3) == 0) {
+			|| (key_info->u.rsa.modulus_len) == 0
+			|| (key_info->u.rsa.exponent_len) == 0) {
 
 			sc_log(card->ctx, "Null data (modulus or exponent)");
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
@@ -2613,9 +2613,7 @@ pgp_parse_and_set_pubkey_output(sc_card_t *card, u8* data, size_t data_len,
 		u8	*part = in;
 
 		/* parse TLV structure */
-		r = sc_asn1_read_tag((const u8**)&part,
-							 data_len - (in - data),
-							 &cla, &tag, &len);
+		r = sc_asn1_read_tag((const u8**)&part, data_len - (in - data), &cla, &tag, &len);
 		if (part == NULL)
 			r = SC_ERROR_ASN1_OBJECT_NOT_FOUND;
 		LOG_TEST_RET(card->ctx, r, "Unexpected end of contents.");
@@ -2625,36 +2623,49 @@ pgp_parse_and_set_pubkey_output(sc_card_t *card, u8* data, size_t data_len,
 		}
 		tag |= cla;
 
+		/* RSA modulus */
 		if (tag == 0x0081) {
-			/* set the output data */
-			if (key_info->u.rsa.modulus) {
-				memcpy(key_info->u.rsa.modulus, part, len);
+			if (key_info->u.rsa.modulus_len != (len * 8)  /* modulus_len is in bits */
+				|| key_info->u.rsa.modulus == NULL) {
+
+				free(key_info->u.rsa.modulus);
+				key_info->u.rsa.modulus = malloc(len);
+				if (key_info->u.rsa.modulus == NULL)
+					LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
+				key_info->u.rsa.modulus_len = len * 8; /* store length in bits */
 			}
-			else {
-				sc_log(card->ctx, "Error: key_info->u.rsa.modulus is NULL");
-			}
-			/* always set output for modulus_len */
-			key_info->u.rsa.modulus_len = len*8;
+
+			/* set values */
+			memcpy(key_info->u.rsa.modulus, part, len);
 		}
+		/* RSA public exponent */
 		else if (tag == 0x0082) {
-			/* set the output data */
-			if (key_info->u.rsa.exponent) {
-				memcpy(key_info->u.rsa.exponent, part, len);
+			if (key_info->u.rsa.exponent_len != (len * 8) /* modulus_len is in bits */
+				|| key_info->u.rsa.exponent == NULL) {
+
+				free(key_info->u.rsa.exponent);
+				key_info->u.rsa.exponent = malloc(len);
+				if (key_info->u.rsa.exponent == NULL)
+					LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
+				key_info->u.rsa.exponent_len = len * 8; /* store length in bits */
 			}
-			else {
-				sc_log(card->ctx, "Error: key_info->u.rsa.exponent is NULL");
-			}
-			/* always set output for exponent_len */
-			key_info->u.rsa.exponent_len = len*8;
+
+			/* set values */
+			memcpy(key_info->u.rsa.exponent, part, len);
 		}
+		/* ECC public key */
 		else if (tag == 0x0086) {
 			/* set the output data */
-			if (key_info->u.ec.ecpoint && key_info->u.ec.ecpoint_len == len) {
-				memcpy(key_info->u.ec.ecpoint, part, len);
+			if (key_info->u.ec.ecpoint_len != len
+				|| key_info->u.ec.ecpoint == NULL) {
+				free(key_info->u.ec.ecpoint);
+				key_info->u.ec.ecpoint = malloc(len);
+				if (key_info->u.ec.ecpoint == NULL)
+					LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
+				key_info->u.rsa.exponent_len = len;
+
 			}
-			else {
-				sc_log(card->ctx, "Error: key_info->u.ec.ecpoint is NULL or len is incorrect.");
-			}
+			memcpy(key_info->u.ec.ecpoint, part, len);
 		}
 
 		/* go to next part to parse */
@@ -2732,7 +2743,7 @@ pgp_gen_key(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_info)
 
 	/* temporary workaround: protect v3 cards against non-RSA */
 	if (key_info->algorithm != SC_OPENPGP_KEYALGO_RSA
-	   && card->type < SC_CARD_TYPE_OPENPGP_V3)
+		&& card->type < SC_CARD_TYPE_OPENPGP_V3)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 
 	/* FIXME the compilers don't assure that the buffers set here as
