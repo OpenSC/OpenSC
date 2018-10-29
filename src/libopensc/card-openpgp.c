@@ -710,11 +710,10 @@ pgp_parse_algo_attr_blob(const pgp_blob_t *blob, sc_cardctl_openpgp_keygen_info_
 			/* SC_OPENPGP_KEYALGO_ECDH || SC_OPENPGP_KEYALGO_ECDSA */
 			key_info->algorithm = blob->data[0];
 
+			sc_init_oid(&oid);
 			/* Create copy of oid from blob */
 			for (j=0; j < (blob->len-1); j++) {
 				oid.value[j] = blob->data[j+1]; /* ignore first byte of blob (algo ID) */
-				if (j == blob->len-2)
-					oid.value[j+1] = -1;
 			}
 
 			/* compare with list of supported ec_curves */
