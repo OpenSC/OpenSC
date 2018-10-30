@@ -108,7 +108,7 @@ static int cac_cac1_get_certificate(sc_card_t *card, u8 **out_buf, size_t *out_l
 		*out_buf = malloc(r);
 		if (*out_buf == NULL) {
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,
-			    SC_ERROR_OUT_OF_MEMORY);
+				SC_ERROR_OUT_OF_MEMORY);
 		}
 		memcpy(*out_buf, buf, r);
 	}
@@ -137,8 +137,8 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 	/* if we didn't return it all last time, return the remainder */
 	if (priv->cached) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
-			 "returning cached value idx=%d count=%"SC_FORMAT_LEN_SIZE_T"u",
-			 idx, count);
+			"returning cached value idx=%d count=%"SC_FORMAT_LEN_SIZE_T"u",
+			idx, count);
 		if (idx > priv->cache_buf_len) {
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_FILE_END_REACHED);
 		}
@@ -148,8 +148,8 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 	}
 
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
-		 "clearing cache idx=%d count=%"SC_FORMAT_LEN_SIZE_T"u",
-		 idx, count);
+		"clearing cache idx=%d count=%"SC_FORMAT_LEN_SIZE_T"u",
+		idx, count);
 	free(priv->cache_buf);
 	priv->cache_buf = NULL;
 	priv->cache_buf_len = 0;
@@ -223,12 +223,12 @@ static int cac_select_file_by_type(sc_card_t *card, const sc_path_t *in_path, sc
 	pathtype = in_path->type;
 
 	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
-	    "path=%s, path->value=%s path->type=%d (%x)",
-	    sc_print_path(in_path),
-	    sc_dump_hex(in_path->value, in_path->len),
-	    in_path->type, in_path->type);
+		"path=%s, path->value=%s path->type=%d (%x)",
+		sc_print_path(in_path),
+		sc_dump_hex(in_path->value, in_path->len),
+		in_path->type, in_path->type);
 	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "file_out=%p index=%d count=%d\n",
-	    file_out, in_path->index, in_path->count);
+		file_out, in_path->index, in_path->count);
 
 	/* Sigh, iso7816_select_file expects paths to keys to have specific
 	 * formats. There is no override. We have to add some bytes to the
@@ -379,7 +379,7 @@ static int cac_find_first_pki_applet(sc_card_t *card, int *index_out)
 			 * make sure it is not just malfunctioning card
 			 */
 			sc_format_apdu(card, &apdu, SC_APDU_CASE_2,
-			    CAC_INS_GET_CERTIFICATE, 0x00, 0x00);
+				CAC_INS_GET_CERTIFICATE, 0x00, 0x00);
 			apdu.le = 0x02;
 			apdu.resplen = 2;
 			apdu.resp = data;
@@ -409,7 +409,8 @@ static int cac_populate_cac1(sc_card_t *card, int index, cac_private_data_t *pri
 		if (r == SC_SUCCESS) {
 			pki_obj.name = get_cac_label(i);
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
-			    "CAC: pki_object found, cert_next=%d (%s),", i, pki_obj.name);
+				"CAC: pki_object found, cert_next=%d (%s)",
+				i, pki_obj.name);
 			pki_obj.path.aid.value[pki_obj.path.aid.len-1] = i;
 			pki_obj.fd = i+1; /* don't use id of zero */
 			cac_add_object_to_list(&priv->pki_list, &pki_obj);
@@ -438,7 +439,7 @@ static int cac_populate_cac1(sc_card_t *card, int index, cac_private_data_t *pri
 		SHA1(val, val_len, priv->cac_id);
 		priv->cac_id_len = 20;
 		sc_debug_hex(card->ctx, SC_LOG_DEBUG_VERBOSE,
-		    "cuid", priv->cac_id, priv->cac_id_len);
+			"cuid", priv->cac_id, priv->cac_id_len);
 #else
 		sc_log(card->ctx, "OpenSSL Required");
 		return SC_ERROR_NOT_SUPPORTED;
