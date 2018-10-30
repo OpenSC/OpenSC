@@ -1351,10 +1351,8 @@ static int myeid_unwrap_key(struct sc_card *card, const u8 *crgram, size_t crgra
 	if (symmetric_operation)
 	{
 		/* symmetric crypto, no padding indicator byte */
-		{
-			memcpy(sbuf, crgram, crgram_len);
-			apdu.lc = crgram_len;
-		}
+		memcpy(sbuf, crgram, crgram_len);
+		apdu.lc = crgram_len;
 	}
 	else
 	{
