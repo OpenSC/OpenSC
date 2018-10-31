@@ -867,6 +867,9 @@ void *sc_mem_secure_alloc(size_t len)
 	}
 
 	p = malloc(len);
+	if (p == NULL) {
+		return NULL;
+	}
 #ifdef _WIN32
 	VirtualLock(p, len);
 #else
