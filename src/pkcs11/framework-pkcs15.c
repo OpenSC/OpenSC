@@ -5159,14 +5159,14 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 	}
 
 #ifdef ENABLE_OPENSSL
-		/* all our software hashes are in OpenSSL */
-		/* Only if card did not list the hashes, will we
-		 * help it a little, by adding all the OpenSSL hashes
-		 * that have PKCS#11 mechanisms.
-		 */
-		if (!(rsa_flags & SC_ALGORITHM_RSA_HASHES)) {
-			rsa_flags |= SC_ALGORITHM_RSA_HASHES;
-		}
+	/* all our software hashes are in OpenSSL */
+	/* Only if card did not list the hashes, will we
+	 * help it a little, by adding all the OpenSSL hashes
+	 * that have PKCS#11 mechanisms.
+	 */
+	if (!(rsa_flags & SC_ALGORITHM_RSA_HASHES)) {
+		rsa_flags |= SC_ALGORITHM_RSA_HASHES;
+	}
 #endif
 
 	/* No need to Check for PKCS1  We support it in software and turned it on above so always added it */
@@ -5182,32 +5182,44 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 		 * Either the card set the hashes or we helped it above */
 
 		if (rsa_flags & SC_ALGORITHM_RSA_HASH_SHA1) {
-			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card, CKM_SHA1_RSA_PKCS, CKM_SHA_1, mt);
+			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card,
+				CKM_SHA1_RSA_PKCS, CKM_SHA_1, mt);
+			if (rc != CKR_OK)
+				return rc;
+		}
+		if (rsa_flags & SC_ALGORITHM_RSA_HASH_SHA224) {
+			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card,
+				CKM_SHA224_RSA_PKCS, CKM_SHA224, mt);
 			if (rc != CKR_OK)
 				return rc;
 		}
 		if (rsa_flags & SC_ALGORITHM_RSA_HASH_SHA256) {
-			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card, CKM_SHA256_RSA_PKCS, CKM_SHA256, mt);
+			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card,
+				CKM_SHA256_RSA_PKCS, CKM_SHA256, mt);
 			if (rc != CKR_OK)
 				return rc;
 		}
 		if (rsa_flags & SC_ALGORITHM_RSA_HASH_SHA384) {
-			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card, CKM_SHA384_RSA_PKCS, CKM_SHA384, mt);
+			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card,
+				CKM_SHA384_RSA_PKCS, CKM_SHA384, mt);
 			if (rc != CKR_OK)
 				return rc;
 		}
 		if (rsa_flags & SC_ALGORITHM_RSA_HASH_SHA512) {
-			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card, CKM_SHA512_RSA_PKCS, CKM_SHA512, mt);
+			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card,
+				CKM_SHA512_RSA_PKCS, CKM_SHA512, mt);
 			if (rc != CKR_OK)
 				return rc;
 		}
 		if (rsa_flags & SC_ALGORITHM_RSA_HASH_MD5) {
-			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card, CKM_MD5_RSA_PKCS, CKM_MD5, mt);
+			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card,
+				CKM_MD5_RSA_PKCS, CKM_MD5, mt);
 			if (rc != CKR_OK)
 				return rc;
 		}
 		if (rsa_flags & SC_ALGORITHM_RSA_HASH_RIPEMD160) {
-			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card, CKM_RIPEMD160_RSA_PKCS, CKM_RIPEMD160, mt);
+			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card,
+				CKM_RIPEMD160_RSA_PKCS, CKM_RIPEMD160, mt);
 			if (rc != CKR_OK)
 				return rc;
 		}
