@@ -5164,7 +5164,7 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 	 * help it a little, by adding all the OpenSSL hashes
 	 * that have PKCS#11 mechanisms.
 	 */
-	if (!(rsa_flags & SC_ALGORITHM_RSA_HASHES)) {
+	if (!(rsa_flags & (SC_ALGORITHM_RSA_HASHES & ~SC_ALGORITHM_RSA_HASH_NONE))) {
 		rsa_flags |= SC_ALGORITHM_RSA_HASHES;
 	}
 #endif
