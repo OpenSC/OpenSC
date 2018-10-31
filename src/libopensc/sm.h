@@ -362,7 +362,7 @@ int sc_sm_single_transmit(struct sc_card *, struct sc_apdu *);
  * Calls \a card->sm_ctx.ops.close() if available and \c card->sm_ctx.sm_mode
  * is \c SM_MODE_TRANSMIT
  *
- * @param[in] card
+ * @param[in] card card
  *
  * @return \c SC_SUCCESS or error code if an error occurred
  */

@@ -767,7 +767,7 @@ typedef struct sc_context {
  *  @param  apdu  sc_apdu_t object of the APDU to be send
  *  @return SC_SUCCESS on success and an error code otherwise
  */
-int sc_transmit_apdu(struct sc_card *, struct sc_apdu *);
+int sc_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu);
 
 void sc_format_apdu(struct sc_card *, struct sc_apdu *, int, int, int, int);
 
@@ -1040,7 +1040,7 @@ size_t sc_get_max_recv_size(const sc_card_t *card);
  * Takes card limitations into account such as extended length support as well
  * as the reader's limitation for data transfer.
  *
- * @param card
+ * @param card card
  *
  * @return maximum Nc
  */
@@ -1449,7 +1449,7 @@ extern sc_card_driver_t *sc_get_iso7816_driver(void);
 /** 
  * @brief Read a complete EF by short file identifier.
  *
- * @param[in]     card
+ * @param[in]     card   card
  * @param[in]     sfid   Short file identifier
  * @param[in,out] ef     Where to safe the file. the buffer will be allocated
  *                       using \c realloc() and should be set to NULL, if
@@ -1464,7 +1464,7 @@ int iso7816_read_binary_sfid(sc_card_t *card, unsigned char sfid,
 /**
  * @brief Write a complete EF by short file identifier.
  *
- * @param[in] card
+ * @param[in] card   card
  * @param[in] sfid   Short file identifier
  * @param[in] ef     Date to write
  * @param[in] ef_len Length of \a ef
@@ -1477,7 +1477,7 @@ int iso7816_write_binary_sfid(sc_card_t *card, unsigned char sfid,
 /**
  * @brief Set verification status of a specific PIN to “not verified”
  *
- * @param[in] card
+ * @param[in] card           card
  * @param[in] pin_reference  PIN reference written to P2
  *
  * @note The appropriate directory must be selected before calling this function.

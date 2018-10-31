@@ -163,7 +163,7 @@ typedef list_hash_t (*element_hash_computer)(const void *el);
  * @param serialize_buffer  reference to fill with the length of the buffer
  * @return                  reference to the buffer with the serialized data
  */
-typedef void *(*element_serializer)(const void *simclist_restrict el, uint32_t *simclist_restrict serializ_len);
+typedef void *(*element_serializer)(const void *simclist_restrict el, uint32_t *simclist_restrict serialize_buffer);
 
 /**
  * a function for un-serializing an element.
