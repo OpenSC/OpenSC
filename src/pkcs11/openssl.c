@@ -336,10 +336,10 @@ static void reverse(unsigned char *buf, size_t len)
 	}
 }
 
-static CK_RV gostr3410_verify_data(const unsigned char *pubkey, int pubkey_len,
-		const unsigned char *params, int params_len,
-		unsigned char *data, int data_len,
-		unsigned char *signat, int signat_len)
+static CK_RV gostr3410_verify_data(const unsigned char *pubkey, unsigned int pubkey_len,
+		const unsigned char *params, unsigned int params_len,
+		unsigned char *data, unsigned int data_len,
+		unsigned char *signat, unsigned int signat_len)
 {
 	EVP_PKEY *pkey;
 	EVP_PKEY_CTX *pkey_ctx = NULL;
@@ -413,11 +413,11 @@ static CK_RV gostr3410_verify_data(const unsigned char *pubkey, int pubkey_len,
  * If a hash function was used, we can make a big shortcut by
  *   finishing with EVP_VerifyFinal().
  */
-CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, int pubkey_len,
-			const unsigned char *pubkey_params, int pubkey_params_len,
+CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, unsigned int pubkey_len,
+			const unsigned char *pubkey_params, unsigned int pubkey_params_len,
 			CK_MECHANISM_PTR mech, sc_pkcs11_operation_t *md,
-			unsigned char *data, int data_len,
-			unsigned char *signat, int signat_len)
+			unsigned char *data, unsigned int data_len,
+			unsigned char *signat, unsigned int signat_len)
 {
 	int res;
 	CK_RV rv = CKR_GENERAL_ERROR;
@@ -598,9 +598,9 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, int pubkey_len,
 				data_len = tmp_len;
 			}
 			rv = CKR_SIGNATURE_INVALID;
-			if (data_len == EVP_MD_size(pss_md) &&
-			    RSA_verify_PKCS1_PSS_mgf1(rsa, data, pss_md, mgf_md,
-			        rsa_out, EVP_MD_size(pss_md)/*sLen*/) == 1)
+			if (data_len == (unsigned int) EVP_MD_size(pss_md)
+					&& RSA_verify_PKCS1_PSS_mgf1(rsa, data, pss_md, mgf_md,
+						rsa_out, EVP_MD_size(pss_md)/*sLen*/) == 1)
 				rv = CKR_OK;
 			RSA_free(rsa);
 			free(rsa_out);
@@ -609,7 +609,7 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, int pubkey_len,
 		}
 		RSA_free(rsa);
 
-		if (rsa_outlen == data_len && memcmp(rsa_out, data, data_len) == 0)
+		if ((unsigned int) rsa_outlen == data_len && memcmp(rsa_out, data, data_len) == 0)
 			rv = CKR_OK;
 		else
 			rv = CKR_SIGNATURE_INVALID;

@@ -55,7 +55,7 @@ static CK_RV
 init_spy(void)
 {
 	const char *output, *module;
-	int rv = CKR_OK;
+	CK_RV rv = CKR_OK;
 #ifdef _WIN32
         char temp_path[PATH_MAX], expanded_path[PATH_MAX];
         DWORD temp_len, expanded_len;

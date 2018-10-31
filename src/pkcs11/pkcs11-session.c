@@ -313,7 +313,7 @@ CK_RV C_Login(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		if (rv == CKR_OK)
 			rv = push_login_state(slot, userType, pPin, ulPinLen);
 		if (rv == CKR_OK) {
-			slot->login_user = userType;
+			slot->login_user = (int) userType;
 		}
 		rv = reset_login_state(slot, rv);
 	}

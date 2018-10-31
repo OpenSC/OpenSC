@@ -40,7 +40,7 @@ struct signature_data {
 	struct hash_signature_info *info;
 	sc_pkcs11_operation_t *	md;
 	CK_BYTE			buffer[4096/8];
-	unsigned int		buffer_len;
+	unsigned int	buffer_len;
 };
 
 /*
@@ -95,7 +95,7 @@ sc_pkcs11_get_mechanism_list(struct sc_pkcs11_card *p11card,
 {
 	sc_pkcs11_mechanism_type_t *mt;
 	unsigned int n, count = 0;
-	int rv;
+	CK_RV rv;
 
 	if (!p11card)
 		return CKR_TOKEN_NOT_PRESENT;
@@ -166,7 +166,7 @@ sc_pkcs11_md_init(struct sc_pkcs11_session *session,
 	struct sc_pkcs11_card *p11card;
 	sc_pkcs11_operation_t *operation;
 	sc_pkcs11_mechanism_type_t *mt;
-	int rv;
+	CK_RV rv;
 
 	LOG_FUNC_CALLED(context);
 	if (!session || !session->slot || !(p11card = session->slot->p11card))
@@ -179,7 +179,7 @@ sc_pkcs11_md_init(struct sc_pkcs11_session *session,
 
 	rv = session_start_operation(session, SC_PKCS11_OPERATION_DIGEST, mt, &operation);
 	if (rv != CKR_OK)
-		LOG_FUNC_RETURN(context, rv);
+		LOG_FUNC_RETURN(context, (int) rv);
 
 	memcpy(&operation->mechanism, pMechanism, sizeof(CK_MECHANISM));
 
@@ -188,7 +188,7 @@ sc_pkcs11_md_init(struct sc_pkcs11_session *session,
 	if (rv != CKR_OK)
 		session_stop_operation(session, SC_PKCS11_OPERATION_DIGEST);
 
-	LOG_FUNC_RETURN(context, rv);
+	LOG_FUNC_RETURN(context, (int) rv);
 }
 
 CK_RV
@@ -196,7 +196,7 @@ sc_pkcs11_md_update(struct sc_pkcs11_session *session,
 			CK_BYTE_PTR pData, CK_ULONG ulDataLen)
 {
 	sc_pkcs11_operation_t *op;
-	int rv;
+	CK_RV rv;
 
 	rv = session_get_operation(session, SC_PKCS11_OPERATION_DIGEST, &op);
 	if (rv != CKR_OK)
@@ -208,7 +208,7 @@ done:
 	if (rv != CKR_OK)
 		session_stop_operation(session, SC_PKCS11_OPERATION_DIGEST);
 
-	LOG_FUNC_RETURN(context, rv);
+	LOG_FUNC_RETURN(context, (int) rv);
 }
 
 CK_RV
@@ -220,7 +220,7 @@ sc_pkcs11_md_final(struct sc_pkcs11_session *session,
 
 	rv = session_get_operation(session, SC_PKCS11_OPERATION_DIGEST, &op);
 	if (rv != CKR_OK)
-		LOG_FUNC_RETURN(context, rv);
+		LOG_FUNC_RETURN(context, (int) rv);
 
 	/* This is a request for the digest length */
 	if (pData == NULL)
@@ -231,7 +231,7 @@ sc_pkcs11_md_final(struct sc_pkcs11_session *session,
 		LOG_FUNC_RETURN(context,  pData == NULL ? CKR_OK : CKR_BUFFER_TOO_SMALL);
 
 	session_stop_operation(session, SC_PKCS11_OPERATION_DIGEST);
-	LOG_FUNC_RETURN(context, rv);
+	LOG_FUNC_RETURN(context, (int) rv);
 }
 
 /*
@@ -245,7 +245,7 @@ sc_pkcs11_sign_init(struct sc_pkcs11_session *session, CK_MECHANISM_PTR pMechani
 	struct sc_pkcs11_card *p11card;
 	sc_pkcs11_operation_t *operation;
 	sc_pkcs11_mechanism_type_t *mt;
-	int rv;
+	CK_RV rv;
 
 	LOG_FUNC_CALLED(context);
 	if (!session || !session->slot || !(p11card = session->slot->p11card))
@@ -268,7 +268,7 @@ sc_pkcs11_sign_init(struct sc_pkcs11_session *session, CK_MECHANISM_PTR pMechani
 
 	rv = session_start_operation(session, SC_PKCS11_OPERATION_SIGN, mt, &operation);
 	if (rv != CKR_OK)
-		LOG_FUNC_RETURN(context, rv);
+		LOG_FUNC_RETURN(context, (int) rv);
 
 	memcpy(&operation->mechanism, pMechanism, sizeof(CK_MECHANISM));
 	if (pMechanism->pParameter) {
@@ -280,7 +280,7 @@ sc_pkcs11_sign_init(struct sc_pkcs11_session *session, CK_MECHANISM_PTR pMechani
 	if (rv != CKR_OK)
 		session_stop_operation(session, SC_PKCS11_OPERATION_SIGN);
 
-	LOG_FUNC_RETURN(context, rv);
+	LOG_FUNC_RETURN(context, (int) rv);
 }
 
 CK_RV
@@ -288,12 +288,12 @@ sc_pkcs11_sign_update(struct sc_pkcs11_session *session,
 		      CK_BYTE_PTR pData, CK_ULONG ulDataLen)
 {
 	sc_pkcs11_operation_t *op;
-	int rv;
+	CK_RV rv;
 
 	LOG_FUNC_CALLED(context);
 	rv = session_get_operation(session, SC_PKCS11_OPERATION_SIGN, &op);
 	if (rv != CKR_OK)
-		LOG_FUNC_RETURN(context, rv);
+		LOG_FUNC_RETURN(context, (int) rv);
 
 	if (op->type->sign_update == NULL) {
 		rv = CKR_KEY_TYPE_INCONSISTENT;
@@ -306,7 +306,7 @@ done:
 	if (rv != CKR_OK)
 		session_stop_operation(session, SC_PKCS11_OPERATION_SIGN);
 
-	LOG_FUNC_RETURN(context, rv);
+	LOG_FUNC_RETURN(context, (int) rv);
 }
 
 CK_RV
@@ -314,12 +314,12 @@ sc_pkcs11_sign_final(struct sc_pkcs11_session *session,
 		     CK_BYTE_PTR pSignature, CK_ULONG_PTR pulSignatureLen)
 {
 	sc_pkcs11_operation_t *op;
-	int rv;
+	CK_RV rv;
 
 	LOG_FUNC_CALLED(context);
 	rv = session_get_operation(session, SC_PKCS11_OPERATION_SIGN, &op);
 	if (rv != CKR_OK)
-		LOG_FUNC_RETURN(context, rv);
+		LOG_FUNC_RETURN(context, (int) rv);
 
 	/* Bail out for signature mechanisms that don't do hashing */
 	if (op->type->sign_final == NULL) {
@@ -333,18 +333,18 @@ done:
 	if (rv != CKR_BUFFER_TOO_SMALL && pSignature != NULL)
 		session_stop_operation(session, SC_PKCS11_OPERATION_SIGN);
 
-	LOG_FUNC_RETURN(context, rv);
+	LOG_FUNC_RETURN(context, (int) rv);
 }
 
 CK_RV
 sc_pkcs11_sign_size(struct sc_pkcs11_session *session, CK_ULONG_PTR pLength)
 {
 	sc_pkcs11_operation_t *op;
-	int rv;
+	CK_RV rv;
 
 	rv = session_get_operation(session, SC_PKCS11_OPERATION_SIGN, &op);
 	if (rv != CKR_OK)
-		LOG_FUNC_RETURN(context, rv);
+		LOG_FUNC_RETURN(context, (int) rv);
 
 	/* Bail out for signature mechanisms that don't do hashing */
 	if (op->type->sign_size == NULL) {
@@ -358,7 +358,7 @@ done:
 	if (rv != CKR_OK)
 		session_stop_operation(session, SC_PKCS11_OPERATION_SIGN);
 
-	LOG_FUNC_RETURN(context, rv);
+	LOG_FUNC_RETURN(context, (int) rv);
 }
 
 /*
@@ -392,7 +392,7 @@ sc_pkcs11_signature_init(sc_pkcs11_operation_t *operation,
 		else  {
 			/* Mechanism recognised but cannot be performed by pkcs#15 card, or some general error. */
 			free(data);
-			LOG_FUNC_RETURN(context, rv);
+			LOG_FUNC_RETURN(context, (int) rv);
 		}
 	}
 
@@ -402,7 +402,7 @@ sc_pkcs11_signature_init(sc_pkcs11_operation_t *operation,
 		if (rv != CKR_OK) {
 			/* Probably bad arguments */
 			free(data);
-			LOG_FUNC_RETURN(context, rv);
+			LOG_FUNC_RETURN(context, (int) rv);
 		}
 	}
 
@@ -421,7 +421,7 @@ sc_pkcs11_signature_init(sc_pkcs11_operation_t *operation,
 		if (rv != CKR_OK) {
 			sc_pkcs11_release_operation(&data->md);
 			free(data);
-			LOG_FUNC_RETURN(context, rv);
+			LOG_FUNC_RETURN(context, (int) rv);
 		}
 		data->info = info;
 	}
@@ -441,7 +441,7 @@ sc_pkcs11_signature_update(sc_pkcs11_operation_t *operation,
 	data = (struct signature_data *) operation->priv_data;
 	if (data->md) {
 		CK_RV rv = data->md->type->md_update(data->md, pPart, ulPartLen);
-		LOG_FUNC_RETURN(context, rv);
+		LOG_FUNC_RETURN(context, (int) rv);
 	}
 
 	/* This signature mechanism operates on the raw data */
@@ -449,7 +449,6 @@ sc_pkcs11_signature_update(sc_pkcs11_operation_t *operation,
 		LOG_FUNC_RETURN(context, CKR_DATA_LEN_RANGE);
 	memcpy(data->buffer + data->buffer_len, pPart, ulPartLen);
 	data->buffer_len += ulPartLen;
-	sc_log(context, "data length %u", data->buffer_len);
 	LOG_FUNC_RETURN(context, CKR_OK);
 }
 
@@ -462,7 +461,6 @@ sc_pkcs11_signature_final(sc_pkcs11_operation_t *operation,
 
 	LOG_FUNC_CALLED(context);
 	data = (struct signature_data *) operation->priv_data;
-	sc_log(context, "data length %u", data->buffer_len);
 	if (data->md) {
 		sc_pkcs11_operation_t	*md = data->md;
 		CK_ULONG len = sizeof(data->buffer);
@@ -471,14 +469,13 @@ sc_pkcs11_signature_final(sc_pkcs11_operation_t *operation,
 		if (rv == CKR_BUFFER_TOO_SMALL)
 			rv = CKR_FUNCTION_FAILED;
 		if (rv != CKR_OK)
-			LOG_FUNC_RETURN(context, rv);
-		data->buffer_len = len;
+			LOG_FUNC_RETURN(context, (int) rv);
+		data->buffer_len = (unsigned int) len;
 	}
 
-	sc_log(context, "%u bytes to sign", data->buffer_len);
 	rv = data->key->ops->sign(operation->session, data->key, &operation->mechanism,
 			data->buffer, data->buffer_len, pSignature, pulSignatureLen);
-	LOG_FUNC_RETURN(context, rv);
+	LOG_FUNC_RETURN(context, (int) rv);
 }
 
 static CK_RV
@@ -521,7 +518,7 @@ sc_pkcs11_signature_size(sc_pkcs11_operation_t *operation, CK_ULONG_PTR pLength)
 		}
 	}
 
-	LOG_FUNC_RETURN(context, rv);
+	LOG_FUNC_RETURN(context, (int) rv);
 }
 
 static void
@@ -549,7 +546,7 @@ sc_pkcs11_verif_init(struct sc_pkcs11_session *session, CK_MECHANISM_PTR pMechan
 	struct sc_pkcs11_card *p11card;
 	sc_pkcs11_operation_t *operation;
 	sc_pkcs11_mechanism_type_t *mt;
-	int rv;
+	CK_RV rv;
 
 	if (!session || !session->slot
 	 || !(p11card = session->slot->p11card))
@@ -583,7 +580,7 @@ sc_pkcs11_verif_update(struct sc_pkcs11_session *session,
 		      CK_BYTE_PTR pData, CK_ULONG ulDataLen)
 {
 	sc_pkcs11_operation_t *op;
-	int rv;
+	CK_RV rv;
 
 	rv = session_get_operation(session, SC_PKCS11_OPERATION_VERIFY, &op);
 	if (rv != CKR_OK)
@@ -608,7 +605,7 @@ sc_pkcs11_verif_final(struct sc_pkcs11_session *session,
 		     CK_BYTE_PTR pSignature, CK_ULONG ulSignatureLen)
 {
 	sc_pkcs11_operation_t *op;
-	int rv;
+	CK_RV rv;
 
 	rv = session_get_operation(session, SC_PKCS11_OPERATION_VERIFY, &op);
 	if (rv != CKR_OK)
@@ -635,7 +632,7 @@ sc_pkcs11_verify_init(sc_pkcs11_operation_t *operation,
 {
 	struct hash_signature_info *info;
 	struct signature_data *data;
-	int rv;
+	CK_RV rv;
 
 	if (!(data = calloc(1, sizeof(*data))))
 		return CKR_HOST_MEMORY;
@@ -651,7 +648,7 @@ sc_pkcs11_verify_init(sc_pkcs11_operation_t *operation,
 		else {
 			/* Mechanism cannot be performed by pkcs#15 card, or some general error. */
 			free(data);
-			LOG_FUNC_RETURN(context, rv);
+			LOG_FUNC_RETURN(context, (int) rv);
 		}
 	}
 
@@ -661,7 +658,7 @@ sc_pkcs11_verify_init(sc_pkcs11_operation_t *operation,
 		if (rv != CKR_OK) {
 			/* Probably bad arguments */
 			free(data);
-			LOG_FUNC_RETURN(context, rv);
+			LOG_FUNC_RETURN(context, (int) rv);
 		}
 	}
 
@@ -721,7 +718,7 @@ sc_pkcs11_verify_final(sc_pkcs11_operation_t *operation,
 	CK_ATTRIBUTE attr = {CKA_VALUE, NULL, 0};
 	CK_ATTRIBUTE attr_key_type = {CKA_KEY_TYPE, &key_type, sizeof(key_type)};
 	CK_ATTRIBUTE attr_key_params = {CKA_GOSTR3410_PARAMS, &params, sizeof(params)};
-	int rv;
+	CK_RV rv;
 
 	data = (struct signature_data *) operation->priv_data;
 
@@ -756,10 +753,10 @@ sc_pkcs11_verify_final(sc_pkcs11_operation_t *operation,
 			goto done;
 	}
 
-	rv = sc_pkcs11_verify_data(pubkey_value, attr.ulValueLen,
+	rv = sc_pkcs11_verify_data(pubkey_value, (unsigned int) attr.ulValueLen,
 		params, sizeof(params),
 		&operation->mechanism, data->md,
-		data->buffer, data->buffer_len, pSignature, ulSignatureLen);
+		data->buffer, data->buffer_len, pSignature, (unsigned int) ulSignatureLen);
 
 done:
 	free(pubkey_value);
@@ -815,7 +812,7 @@ sc_pkcs11_decr(struct sc_pkcs11_session *session,
 		CK_BYTE_PTR pData, CK_ULONG_PTR pulDataLen)
 {
 	sc_pkcs11_operation_t *op;
-	int rv;
+	CK_RV rv;
 
 	rv = session_get_operation(session, SC_PKCS11_OPERATION_DECRYPT, &op);
 	if (rv != CKR_OK)
@@ -951,7 +948,7 @@ sc_pkcs11_decrypt_init(sc_pkcs11_operation_t *operation,
 		else {
 			/* Mechanism cannot be performed by pkcs#15 card, or some general error. */
 			free(data);
-			LOG_FUNC_RETURN(context, rv);
+			LOG_FUNC_RETURN(context, (int) rv);
 		}
 	}
 

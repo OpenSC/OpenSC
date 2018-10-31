@@ -91,7 +91,7 @@ struct sc_pkcs11_object_ops {
 	/* Management methods */
 	CK_RV (*set_attribute)(struct sc_pkcs11_session *, void *, CK_ATTRIBUTE_PTR);
 	CK_RV (*get_attribute)(struct sc_pkcs11_session *, void *, CK_ATTRIBUTE_PTR);
-	int   (*cmp_attribute)(struct sc_pkcs11_session *, void *, CK_ATTRIBUTE_PTR);
+	CK_RV (*cmp_attribute)(struct sc_pkcs11_session *, void *, CK_ATTRIBUTE_PTR);
 
 	CK_RV (*destroy_object)(struct sc_pkcs11_session *, void *);
 	CK_RV (*get_size)(struct sc_pkcs11_session *, void *);
@@ -382,7 +382,7 @@ CK_RV sc_pkcs11_create_secret_key(struct sc_pkcs11_session *,
 			CK_ATTRIBUTE_PTR, CK_ULONG,
 			struct sc_pkcs11_object **);
 /* Generic object handling */
-int sc_pkcs11_any_cmp_attribute(struct sc_pkcs11_session *,
+CK_RV sc_pkcs11_any_cmp_attribute(struct sc_pkcs11_session *,
 			void *, CK_ATTRIBUTE_PTR);
 
 /* Get attributes from template (misc.c) */
@@ -439,11 +439,11 @@ CK_RV sc_pkcs11_register_sign_and_hash_mechanism(struct sc_pkcs11_card *,
 				sc_pkcs11_mechanism_type_t *);
 
 #ifdef ENABLE_OPENSSL
-CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, int pubkey_len,
-	const unsigned char *pubkey_params, int pubkey_params_len,
+CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, unsigned int pubkey_len,
+	const unsigned char *pubkey_params, unsigned int pubkey_params_len,
 	CK_MECHANISM_PTR mech, sc_pkcs11_operation_t *md,
-	unsigned char *inp, int inp_len,
-	unsigned char *signat, int signat_len);
+	unsigned char *inp, unsigned int inp_len,
+	unsigned char *signat, unsigned int signat_len);
 #endif
 
 /* Load configuration defaults */
