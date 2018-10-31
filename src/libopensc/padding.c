@@ -345,7 +345,7 @@ static int sc_pkcs1_add_pss_padding(unsigned int hash, unsigned int mgf1_hash,
 		if (EVP_DigestInit_ex(ctx, mgf1_md, NULL) != 1 ||
 		    EVP_DigestUpdate(ctx, out + dblen, hlen) != 1 || /* H (Z parameter of MGF1) */
 		    EVP_DigestUpdate(ctx, buf, 4) != 1 || /* C */
-		    EVP_DigestFinal_ex(ctx, mask, NULL)) {
+		    EVP_DigestFinal_ex(ctx, mask, NULL) != 1) {
 			goto done;
 		}
 		/* this is no longer part of the MGF1, but actually
