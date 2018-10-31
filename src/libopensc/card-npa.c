@@ -31,6 +31,7 @@
 #include "sm/sm-eac.h"
 #include <string.h>
 
+static int fread_to_eof(const char *file, unsigned char **buf, size_t *buflen);
 #include "../tools/fread_to_eof.c"
 
 struct npa_drv_data {
