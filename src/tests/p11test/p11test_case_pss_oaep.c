@@ -815,6 +815,10 @@ void pss_oaep_test(void **state) {
 	for (i = 0; i < objects.count; i++) {
 		test_cert_t *o = &objects.data[i];
 
+		/* Do not go through incomplete pairs */
+		if (o->private_handle == CK_INVALID_HANDLE)
+			continue;
+
 		/* Do not list non-RSA keys here */
 		if (o->type != EVP_PK_RSA)
 			continue;
