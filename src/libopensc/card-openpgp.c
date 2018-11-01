@@ -2620,33 +2620,33 @@ pgp_parse_and_set_pubkey_output(sc_card_t *card, u8* data, size_t data_len,
 
 		/* RSA modulus */
 		if (tag == 0x0081) {
-			if (key_info->u.rsa.modulus_len != (len * 8)  /* modulus_len is in bits */
+			if (((key_info->u.rsa.modulus_len + 7) / 8 < len)  /* modulus_len is in bits */
 				|| key_info->u.rsa.modulus == NULL) {
 
 				free(key_info->u.rsa.modulus);
 				key_info->u.rsa.modulus = malloc(len);
 				if (key_info->u.rsa.modulus == NULL)
 					LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
-				key_info->u.rsa.modulus_len = len * 8; /* store length in bits */
 			}
 
 			/* set values */
 			memcpy(key_info->u.rsa.modulus, part, len);
+			key_info->u.rsa.modulus_len = len * 8; /* store length in bits */
 		}
 		/* RSA public exponent */
 		else if (tag == 0x0082) {
-			if (key_info->u.rsa.exponent_len != (len * 8) /* modulus_len is in bits */
+			if (((key_info->u.rsa.exponent_len + 7) / 8 < len)  /* exponent_len is in bits */
 				|| key_info->u.rsa.exponent == NULL) {
 
 				free(key_info->u.rsa.exponent);
 				key_info->u.rsa.exponent = malloc(len);
 				if (key_info->u.rsa.exponent == NULL)
 					LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
-				key_info->u.rsa.exponent_len = len * 8; /* store length in bits */
 			}
 
 			/* set values */
 			memcpy(key_info->u.rsa.exponent, part, len);
+			key_info->u.rsa.exponent_len = len * 8; /* store length in bits */
 		}
 		/* ECC public key */
 		else if (tag == 0x0086) {
@@ -2657,8 +2657,6 @@ pgp_parse_and_set_pubkey_output(sc_card_t *card, u8* data, size_t data_len,
 				key_info->u.ec.ecpoint = malloc(len);
 				if (key_info->u.ec.ecpoint == NULL)
 					LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
-				key_info->u.rsa.exponent_len = len;
-
 			}
 			memcpy(key_info->u.ec.ecpoint, part, len);
 		}
