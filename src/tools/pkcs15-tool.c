@@ -253,7 +253,7 @@ static void print_common_flags(const struct sc_pkcs15_object *obj)
 {
 	const char *common_flags[] = {"private", "modifiable"};
 	unsigned int i;
-	printf("\tObject Flags   : [0x%X]", obj->flags);
+	printf("\tObject Flags   : [0x%02X]", obj->flags);
 	for (i = 0; i < NELEMENTS(common_flags); i++) {
 		if (obj->flags & (1 << i)) {
 			printf(", %s", common_flags[i]);
@@ -620,7 +620,7 @@ static void print_prkey_info(const struct sc_pkcs15_object *obj)
 		printf("  Ref:0x%02X", prkey->key_reference);
 		if (obj->auth_id.len != 0)
 			printf("  AuthID:%s", sc_pkcs15_print_id(&obj->auth_id));
-		printf("\n\t     %-16.*s [0x%X", 16, obj->label, prkey->usage);
+		printf("\n\t     %-18.*s [0x%02X", (int) sizeof obj->label, obj->label, prkey->usage);
 		print_key_usages(prkey->usage);
 		printf("]");
 		return;
@@ -628,10 +628,10 @@ static void print_prkey_info(const struct sc_pkcs15_object *obj)
 
 	printf("Private %s Key [%.*s]\n", key_types[7 & obj->type], (int) sizeof obj->label, obj->label);
 	print_common_flags(obj);
-	printf("\tUsage          : [0x%X]", prkey->usage);
+	printf("\tUsage          : [0x%02X]", prkey->usage);
 	print_key_usages(prkey->usage);
 	printf("\n");
-	printf("\tAccess Flags   : [0x%X]", prkey->access_flags);
+	printf("\tAccess Flags   : [0x%02X]", prkey->access_flags);
 	print_key_access_flags(prkey->access_flags);
 	printf("\n");
 
@@ -641,7 +641,7 @@ static void print_prkey_info(const struct sc_pkcs15_object *obj)
 		printf("\tModLength      : %lu\n", (unsigned long)prkey->modulus_length);
 	else
 		printf("\tFieldLength    : %lu\n", (unsigned long)prkey->field_length);
-	printf("\tKey ref        : %d (0x%X)\n", prkey->key_reference, prkey->key_reference);
+	printf("\tKey ref        : %d (0x%02X)\n", prkey->key_reference, prkey->key_reference);
 	printf("\tNative         : %s\n", prkey->native ? "yes" : "no");
 	if (prkey->path.len || prkey->path.aid.len)
 		printf("\tPath           : %s\n", sc_print_path(&prkey->path));
@@ -701,7 +701,7 @@ static void print_pubkey_info(const struct sc_pkcs15_object *obj)
 		printf("  Ref:0x%02X", pubkey->key_reference);
 		if (obj->auth_id.len != 0)
 			printf("  AuthID:%s", sc_pkcs15_print_id(&obj->auth_id));
-		printf("  %15.*s [0x%X", (int) sizeof obj->label, obj->label, pubkey->usage);
+		printf("  %-18.*s [0x%02X", (int) sizeof obj->label, obj->label, pubkey->usage);
 		print_key_usages(pubkey->usage);
 		printf("]");
 		return;
@@ -709,11 +709,11 @@ static void print_pubkey_info(const struct sc_pkcs15_object *obj)
 
 	printf("Public %s Key [%.*s]\n", key_types[7 & obj->type], (int) sizeof obj->label, obj->label);
 	print_common_flags(obj);
-	printf("\tUsage          : [0x%X]", pubkey->usage);
+	printf("\tUsage          : [0x%02X]", pubkey->usage);
 	print_key_usages(pubkey->usage);
 	printf("\n");
 
-	printf("\tAccess Flags   : [0x%X]", pubkey->access_flags);
+	printf("\tAccess Flags   : [0x%02X]", pubkey->access_flags);
 	print_key_access_flags(pubkey->access_flags);
 	printf("\n");
 
@@ -733,7 +733,7 @@ static void print_pubkey_info(const struct sc_pkcs15_object *obj)
 		}
 	}
 
-	printf("\tKey ref        : %d (0x%X)\n", pubkey->key_reference,  pubkey->key_reference);
+	printf("\tKey ref        : %d (0x%02X)\n", pubkey->key_reference,  pubkey->key_reference);
 	printf("\tNative         : %s\n", pubkey->native ? "yes" : "no");
 	if (have_path)
 		printf("\tPath           : %s\n", sc_print_path(&pubkey->path));
@@ -840,11 +840,11 @@ static void print_skey_info(const struct sc_pkcs15_object *obj)
 
 	printf("Secret %s Key [%.*s]\n", skey_types[7 & obj->type], (int) sizeof obj->label, obj->label);
 	print_common_flags(obj);
-	printf("\tUsage          : [0x%X]", skey->usage);
+	printf("\tUsage          : [0x%02X]", skey->usage);
 	print_key_usages(skey->usage);
 	printf("\n");
 
-	printf("\tAccess Flags   : [0x%X]", skey->access_flags);
+	printf("\tAccess Flags   : [0x%02X]", skey->access_flags);
 	print_key_access_flags(skey->access_flags);
 	printf("\n");
 
@@ -853,7 +853,7 @@ static void print_skey_info(const struct sc_pkcs15_object *obj)
 	printf("\tSize           : %lu bits\n", (unsigned long)skey->value_len);
 	printf("\tID             : %s\n", sc_pkcs15_print_id(&skey->id));
 	printf("\tNative         : %s\n", skey->native ? "yes" : "no");
-	printf("\tKey ref        : %d (0x%X)\n", skey->key_reference, skey->key_reference);
+	printf("\tKey ref        : %d (0x%02X)\n", skey->key_reference, skey->key_reference);
 
 	if (skey->path.len || skey->path.aid.len)
 		printf("\tPath           : %s\n", sc_print_path(&skey->path));
