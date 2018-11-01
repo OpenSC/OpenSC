@@ -332,7 +332,7 @@ static char *prettify_name(u8 *data, size_t length)
 			*dst = *src++;
 			length--;
 			if (*dst == '<') {
-				if (*src == '<') {
+				if (length > 0 && *src == '<') {
 					src++;
 					length--;
 				}
