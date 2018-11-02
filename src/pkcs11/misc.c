@@ -305,7 +305,7 @@ CK_RV session_stop_operation(struct sc_pkcs11_session * session, int type)
 
 CK_RV attr_extract(CK_ATTRIBUTE_PTR pAttr, void *ptr, size_t * sizep)
 {
-	unsigned int size;
+	size_t size;
 
 	if (sizep) {
 		size = *sizep;

@@ -130,7 +130,8 @@ CK_RV sc_create_object_int(CK_SESSION_HANDLE hSession,	/* the session's handle *
 out:
 	if (use_lock)
 		sc_pkcs11_unlock();
-	LOG_FUNC_RETURN(context, rv);
+
+	return rv;
 }
 
 
@@ -212,7 +213,7 @@ C_GetAttributeValue(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		CK_ATTRIBUTE_PTR pTemplate,	/* specifies attributes, gets values */
 		CK_ULONG ulCount)		/* attributes in template */
 {
-	static int precedence[] = {
+	static CK_RV precedence[] = {
 		CKR_OK,
 		CKR_BUFFER_TOO_SMALL,
 		CKR_ATTRIBUTE_TYPE_INVALID,
@@ -220,11 +221,12 @@ C_GetAttributeValue(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		-1
 	};
 	char object_name[64];
-	int j;
+	CK_RV j;
 	CK_RV rv;
 	struct sc_pkcs11_session *session;
 	struct sc_pkcs11_object *object;
-	int res, res_type;
+	CK_RV res;
+	CK_RV res_type;
 	unsigned int i;
 
 	if (pTemplate == NULL_PTR || ulCount == 0)
@@ -258,7 +260,7 @@ C_GetAttributeValue(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		 * should be handled - we give them highest
 		 * precedence
 		 */
-		for (j = 0; precedence[j] != -1; j++) {
+		for (j = 0; precedence[j] != (CK_RV) -1; j++) {
 			if (precedence[j] == res)
 				break;
 		}
@@ -1451,14 +1453,13 @@ CK_RV C_VerifyRecover(CK_SESSION_HANDLE hSession,	/* the session's handle */
 /*
  * Helper function to compare attributes on any sort of object
  */
-int sc_pkcs11_any_cmp_attribute(struct sc_pkcs11_session *session, void *ptr, CK_ATTRIBUTE_PTR attr)
+CK_RV sc_pkcs11_any_cmp_attribute(struct sc_pkcs11_session *session, void *ptr, CK_ATTRIBUTE_PTR attr)
 {
-	int rv;
+	CK_RV rv;
 	struct sc_pkcs11_object *object;
 	u8 temp1[1024];
 	u8 *temp2 = NULL;	/* dynamic allocation for large attributes */
 	CK_ATTRIBUTE temp_attr;
-	int res;
 
 	object = (struct sc_pkcs11_object *)ptr;
 	temp_attr.type = attr->type;
@@ -1482,7 +1483,7 @@ int sc_pkcs11_any_cmp_attribute(struct sc_pkcs11_session *session, void *ptr, CK
 	/* Get the attribute */
 	rv = object->ops->get_attribute(session, object, &temp_attr);
 	if (rv != CKR_OK) {
-		res = 0;
+		rv = 0;
 		goto done;
 	}
 #ifdef DEBUG
@@ -1493,12 +1494,12 @@ int sc_pkcs11_any_cmp_attribute(struct sc_pkcs11_session *session, void *ptr, CK
 		dump_template(SC_LOG_DEBUG_NORMAL, foo, &temp_attr, 1);
 	}
 #endif
-	res = temp_attr.ulValueLen == attr->ulValueLen
+	rv = temp_attr.ulValueLen == attr->ulValueLen
 	    && !memcmp(temp_attr.pValue, attr->pValue, attr->ulValueLen);
 
       done:
 	if (temp2 != NULL)
 		free(temp2);
 
-	return res;
+	return rv;
 }

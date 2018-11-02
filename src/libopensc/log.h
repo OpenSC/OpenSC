@@ -93,7 +93,7 @@ void _sc_log(struct sc_context *ctx, const char *format, ...);
  * @brief Log binary data
  *
  * @param[in] ctx   Context for logging
- * @param[in] type  Debug level
+ * @param[in] level Debug level
  * @param[in] file  File name to be prepended
  * @param[in] line  Line to be prepended
  * @param[in] func  Function to be prepended
