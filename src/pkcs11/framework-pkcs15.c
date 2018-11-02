@@ -2225,7 +2225,8 @@ pkcs15_create_secret_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 	struct sc_pkcs15_skey_info *skey_info;
 	CK_KEY_TYPE key_type;
 	CK_BBOOL _token = FALSE;
-	int rv, rc;
+	CK_RV rv;
+	int rc;
 	char label[SC_PKCS15_MAX_LABEL_SIZE];
 	CK_BBOOL temp_object = FALSE;
 
