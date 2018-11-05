@@ -41,6 +41,7 @@ install:
         $env:ARTIFACT="${env:ARTIFACT}-Light"
       } Else {
         $env:NMAKE_EXTRA="OPENSSL_DEF=/DENABLE_OPENSSL ${env:NMAKE_EXTRA}"
+        $env:NMAKE_EXTRA="OPENSSL_EXTRA_CFLAGS=/DOPENSSL_SECURE_MALLOC_SIZE=65536 ${env:NMAKE_EXTRA}"
         If (!(Test-Path C:\zlib )) {
           appveyor DownloadFile "https://github.com/madler/zlib/archive/v${env:ZLIB_VER_DOT}.zip" -FileName zlib.zip
           7z x zlib.zip -oC:\

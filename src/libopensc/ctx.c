@@ -833,10 +833,9 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 		return r;
 	}
 
-#ifdef ENABLE_OPENSSL
+#if defined(ENABLE_OPENSSL) && defined(OPENSSL_SECURE_MALLOC_SIZE)
 	if (!CRYPTO_secure_malloc_initialized()) {
-		/* XXX What's a reasonable amount of secure heap? */
-		CRYPTO_secure_malloc_init(4096, 32);
+		CRYPTO_secure_malloc_init(OPENSSL_SECURE_MALLOC_SIZE, OPENSSL_SECURE_MALLOC_SIZE/8);
 	}
 #endif
 
