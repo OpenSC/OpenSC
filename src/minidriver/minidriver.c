@@ -6999,6 +6999,9 @@ BOOL APIENTRY DllMain( HINSTANCE hinstDLL,
 		break;
 	case DLL_PROCESS_DETACH:
 		sc_notify_close();
+#if defined(ENABLE_OPENSSL) && defined(OPENSSL_SECURE_MALLOC_SIZE)
+		CRYPTO_secure_malloc_done();
+#endif
 		break;
 	}
 	return TRUE;
