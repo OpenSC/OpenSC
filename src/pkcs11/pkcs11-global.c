@@ -210,7 +210,37 @@ static int slot_list_seeker(const void *el, const void *key) {
 	return 0;
 }
 
+#if defined(_WIN32)
 
+#include "libopensc/sc-ossl-compat.h"
+#ifdef ENABLE_OPENPACE
+#include <eac/eac.h>
+#endif
+
+BOOL APIENTRY DllMain( HINSTANCE hinstDLL,
+	DWORD  ul_reason_for_call,
+	LPVOID lpReserved
+)
+{
+	switch (ul_reason_for_call)
+	{
+	case DLL_PROCESS_ATTACH:
+		sc_notify_init();
+	case DLL_PROCESS_DETACH:
+		sc_notify_close();
+		if (lpReserved == NULL) {
+#if defined(ENABLE_OPENSSL) && defined(OPENSSL_SECURE_MALLOC_SIZE)
+			CRYPTO_secure_malloc_done();
+#endif
+#ifdef ENABLE_OPENPACE
+			EAC_cleanup();
+#endif
+		}
+		break;
+	}
+	return TRUE;
+}
+#endif
 
 CK_RV C_Initialize(CK_VOID_PTR pInitArgs)
 {
@@ -238,7 +268,9 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs)
 		return CKR_CRYPTOKI_ALREADY_INITIALIZED;
 	}
 
+#if !defined(_WIN32)
 	sc_notify_init();
+#endif
 
 	rv = sc_pkcs11_init_lock((CK_C_INITIALIZE_ARGS_PTR) pInitArgs);
 	if (rv != CKR_OK)
@@ -303,7 +335,9 @@ CK_RV C_Finalize(CK_VOID_PTR pReserved)
 	if (pReserved != NULL_PTR)
 		return CKR_ARGUMENTS_BAD;
 
+#if !defined(_WIN32)
 	sc_notify_close();
+#endif
 
 	if (context == NULL)
 		return CKR_CRYPTOKI_NOT_INITIALIZED;
