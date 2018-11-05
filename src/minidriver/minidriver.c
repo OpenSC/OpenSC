@@ -48,6 +48,7 @@
 #include "libopensc/log.h"
 #include "libopensc/internal.h"
 #include "libopensc/aux-data.h"
+#include "libopensc/sc-ossl-compat.h"
 #include "ui/notify.h"
 #include "ui/strings.h"
 #include "ui/wchar_from_char_str.h"
@@ -58,6 +59,10 @@
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L
 #include <openssl/pem.h>
 #endif
+#endif
+
+#ifdef ENABLE_OPENPACE
+#include <eac/eac.h>
 #endif
 
 #if defined(__MINGW32__)
@@ -6999,9 +7004,14 @@ BOOL APIENTRY DllMain( HINSTANCE hinstDLL,
 		break;
 	case DLL_PROCESS_DETACH:
 		sc_notify_close();
+		if (lpReserved == NULL) {
 #if defined(ENABLE_OPENSSL) && defined(OPENSSL_SECURE_MALLOC_SIZE)
-		CRYPTO_secure_malloc_done();
+			CRYPTO_secure_malloc_done();
 #endif
+#ifdef ENABLE_OPENPACE
+			EAC_cleanup();
+#endif
+		}
 		break;
 	}
 	return TRUE;
