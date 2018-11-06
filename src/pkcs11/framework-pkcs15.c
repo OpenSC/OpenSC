@@ -4923,7 +4923,7 @@ pkcs15_skey_wrap(struct sc_pkcs11_session *session, void *obj,
 			CK_BYTE_PTR pData, CK_ULONG_PTR pulDataLen)
 
 {
-	struct	sc_pkcs11_card *p11card = session->slot->p11card;
+	struct	sc_pkcs11_card *p11card;
 	struct	pkcs15_fw_data *fw_data = NULL;
 	struct	pkcs15_skey_object *skey = (struct pkcs15_skey_object *) obj;
 	struct	pkcs15_skey_object *targetKeyObj = (struct pkcs15_skey_object *) targetKey;
@@ -4931,15 +4931,16 @@ pkcs15_skey_wrap(struct sc_pkcs11_session *session, void *obj,
 
 	sc_log(context, "Initializing wrapping with a secret key.");
 
-	fw_data = (struct pkcs15_fw_data *) p11card->fws_data[session->slot->fw_data_idx];
-
-	if (!fw_data)
-		return sc_to_cryptoki_error(SC_ERROR_INTERNAL, "C_WrapKey");
-
 	if (session == NULL || pMechanism == NULL || obj == NULL || targetKey == NULL) {
 		sc_log(context, "One or more of mandatory arguments were NULL.");
 		return CKR_ARGUMENTS_BAD;
 	}
+
+	p11card = session->slot->p11card;
+	fw_data = (struct pkcs15_fw_data *) p11card->fws_data[session->slot->fw_data_idx];
+
+	if (!fw_data)
+		return sc_to_cryptoki_error(SC_ERROR_INTERNAL, "C_WrapKey");
 
 	/* Verify that the key supports wrapping */
 	if (skey && !(skey->info->usage & SC_PKCS15_PRKEY_USAGE_WRAP))
