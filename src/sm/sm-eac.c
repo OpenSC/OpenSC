@@ -32,6 +32,8 @@
 
 #ifdef ENABLE_OPENSSL
 #include <openssl/evp.h>
+#else
+#define ssl_error(a)
 #endif
 
 char eac_default_flags = 0;

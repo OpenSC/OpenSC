@@ -35,12 +35,6 @@ extern "C" {
 #include <libopensc/types.h>
 #include <common/libscdl.h>
 
-#ifndef SHA_DIGEST_LENGTH
-#define SHA_DIGEST_LENGTH	20
-#define SHA1_DIGEST_LENGTH	20
-#define SHA256_DIGEST_LENGTH	32
-#endif
-
 #define SM_TYPE_GP_SCP01	0x100
 #define SM_TYPE_CWA14890	0x400
 #define SM_TYPE_DH_RSA		0x500

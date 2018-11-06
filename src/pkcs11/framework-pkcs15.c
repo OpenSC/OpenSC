@@ -27,9 +27,10 @@
 #include "libopensc/cardctl.h"
 #include "ui/notify.h"
 #include "common/compat_strnlen.h"
-
 #ifdef ENABLE_OPENSSL
-#include <openssl/opensslv.h>
+#include <openssl/sha.h>
+#else
+#define SHA_DIGEST_LENGTH	20
 #endif
 
 #include "sc-pkcs11.h"
