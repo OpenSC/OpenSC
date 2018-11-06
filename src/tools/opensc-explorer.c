@@ -1712,6 +1712,9 @@ static int do_random(int argc, char **argv)
 	sc_unlock(card);
 	if (r < 0) {
 		fprintf(stderr, "Failed to get random bytes: %s\n", sc_strerror(r));
+		if (argc == 2) {
+			fclose(outf);
+		}
 		return -1;
 	}
 
