@@ -274,7 +274,8 @@ struct sc_pkcs15init_skeyargs {
 	unsigned int		access_flags;
 	unsigned long		algorithm; /* User requested algorithm */
 	unsigned long		value_len; /* User requested length */
-
+	int			session_object;	 /* If nonzero. this is a session object, which will
+						be cleared from card when the session is closed.*/
 	struct sc_pkcs15_skey	key;
 };
 
@@ -417,6 +418,12 @@ extern int	sc_pkcs15init_sanity_check(struct sc_pkcs15_card *, struct sc_profile
 
 extern int	sc_pkcs15init_finalize_profile(struct sc_card *card, struct sc_profile *profile,
 		                struct sc_aid *aid);
+
+extern int	sc_pkcs15init_unwrap_key(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
+		struct sc_pkcs15_object *key, u8* wrapped_key, size_t wrapped_key_len,
+		struct sc_pkcs15init_skeyargs *keyargs, struct sc_pkcs15_object **res_obj);
+
+
 
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_gpk_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_miocos_ops(void);

@@ -1835,6 +1835,14 @@ static int init_skeyargs(struct sc_pkcs15init_skeyargs *args)
 	}
 	args->label = opt_label;
 
+	if ((opt_x509_usage & SC_PKCS15INIT_X509_DATA_ENCIPHERMENT) == SC_PKCS15INIT_X509_DATA_ENCIPHERMENT) {
+	    args->usage |= SC_PKCS15_PRKEY_USAGE_ENCRYPT | SC_PKCS15_PRKEY_USAGE_DECRYPT;
+	}
+
+	if ((opt_x509_usage & SC_PKCS15INIT_X509_KEY_ENCIPHERMENT) == SC_PKCS15INIT_X509_KEY_ENCIPHERMENT) {
+	    args->usage |= SC_PKCS15_PRKEY_USAGE_WRAP | SC_PKCS15_PRKEY_USAGE_UNWRAP;
+	}
+
 	return 0;
 }
 

@@ -493,6 +493,8 @@ struct sc_pkcs15_object {
 	struct sc_pkcs15_object *next, *prev; /* used only internally */
 
 	struct sc_pkcs15_der content;
+
+	int session_object;	/* used internally. if nonzero, object is a session object. */
 };
 typedef struct sc_pkcs15_object sc_pkcs15_object_t;
 
@@ -659,6 +661,20 @@ int sc_pkcs15_derive(struct sc_pkcs15_card *p15card,
 		       const struct sc_pkcs15_object *prkey_obj,
 		       unsigned long flags,
 		       const u8 *in, size_t inlen, u8 *out, unsigned long *poutlen);
+
+int sc_pkcs15_unwrap(struct sc_pkcs15_card *p15card,
+		const struct sc_pkcs15_object *key,
+		struct sc_pkcs15_object *target_key,
+		unsigned long flags,
+		const u8 * in, size_t inlen,
+		const u8 * param, size_t paramlen);
+
+int sc_pkcs15_wrap(struct sc_pkcs15_card *p15card,
+		const struct sc_pkcs15_object *key,
+		struct sc_pkcs15_object *target_key,
+		unsigned long flags,
+		u8 * cryptogram, unsigned long* crgram_len,
+		const u8 * param, size_t paramlen);
 
 int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 				const struct sc_pkcs15_object *prkey_obj,

@@ -1016,7 +1016,7 @@ int  _sc_card_add_ec_alg(sc_card_t *card, unsigned int key_length,
 	return _sc_card_add_algorithm(card, &info);
 }
 
-static sc_algorithm_info_t * sc_card_find_alg(sc_card_t *card,
+sc_algorithm_info_t * sc_card_find_alg(sc_card_t *card,
 		unsigned int algorithm, unsigned int key_length, void *param)
 {
 	int i;

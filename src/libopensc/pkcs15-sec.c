@@ -32,17 +32,60 @@
 
 #include "internal.h"
 #include "pkcs15.h"
+#include "pkcs11/pkcs11.h"
+
+static int sec_env_add_param(sc_security_env_t* se, const sc_sec_env_param_t* p)
+{
+	size_t i;
+
+	if (!se || !p)
+	    return SC_ERROR_INCORRECT_PARAMETERS;
+
+	for (i = 0; i < SC_SEC_ENV_MAX_PARAMS; i++) {
+	    if (se->params[i].value == NULL) {
+		se->params[i] = *p;
+
+		return SC_SUCCESS;
+	    }
+	}
+
+	return SC_ERROR_TOO_MANY_OBJECTS;
+}
+
+
+static int get_file_path(const struct sc_pkcs15_object* obj, sc_path_t* path)
+{
+	if (!path)
+		return SC_ERROR_INCORRECT_PARAMETERS;
+
+	const struct sc_pkcs15_prkey_info *prkey = (const struct sc_pkcs15_prkey_info *) obj->data;
+	const struct sc_pkcs15_skey_info *skey = (const struct sc_pkcs15_skey_info *) obj->data;
+
+	if ((obj->type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_PRKEY) {
+		*path = prkey->path;
+	}
+	else if ((obj->type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_SKEY) {
+		*path = skey->path;
+	}
+	else
+		return SC_ERROR_INCORRECT_PARAMETERS;
+
+	return SC_SUCCESS;
+}
+
 
 static int select_key_file(struct sc_pkcs15_card *p15card,
-		const struct sc_pkcs15_prkey_info *prkey,
+		const struct sc_pkcs15_object *key,
 		sc_security_env_t *senv)
 {
 	sc_context_t *ctx = p15card->card->ctx;
+	sc_path_t orig_path;
 	sc_path_t path, file_id;
 	int r;
 
 	LOG_FUNC_CALLED(ctx);
 
+	LOG_TEST_RET(ctx, get_file_path(key, &orig_path), "Could not get key file path.");
 	memset(&path, 0, sizeof(sc_path_t));
 	memset(&file_id, 0, sizeof(sc_path_t));
 
@@ -50,21 +93,21 @@ static int select_key_file(struct sc_pkcs15_card *p15card,
 	 * Check validity of the following assumption. */
 	/* For pkcs15-emulated cards, the file_app may be NULL,
 	 * in that case we always assume an absolute path */
-	if (!prkey->path.len && prkey->path.aid.len) {
+	if (!orig_path.len && orig_path.aid.len) {
 		/* Private key is a SDO allocated in application DF */
-		path = prkey->path;
+		path = orig_path;
 	}
-	else if (prkey->path.len == 2 && p15card->file_app != NULL) {
+	else if (orig_path.len == 2 && p15card->file_app != NULL) {
 		/* Path is relative to app. DF */
 		path = p15card->file_app->path;
-		file_id = prkey->path;
+		file_id = orig_path;
 		sc_append_path(&path, &file_id);
 		senv->file_ref = file_id;
 		senv->flags |= SC_SEC_ENV_FILE_REF_PRESENT;
 	}
-	else if (prkey->path.len > 2) {
-		path = prkey->path;
-		memcpy(file_id.value, prkey->path.value + prkey->path.len - 2, 2);
+	else if (orig_path.len > 2) {
+		path = orig_path;
+		memcpy(file_id.value, orig_path.value + orig_path.len - 2, 2);
 		file_id.len = 2;
 		file_id.type = SC_PATH_TYPE_FILE_ID;
 		senv->file_ref = file_id;
@@ -90,14 +133,15 @@ static int use_key(struct sc_pkcs15_card *p15card,
 {
 	int r = SC_SUCCESS;
 	int revalidated_cached_pin = 0;
-	const struct sc_pkcs15_prkey_info *prkey = (const struct sc_pkcs15_prkey_info *) obj->data;
+	sc_path_t path;
+	LOG_TEST_RET(p15card->card->ctx, get_file_path(obj, &path), "Failed to get key file path.");
 
 	r = sc_lock(p15card->card);
 	LOG_TEST_RET(p15card->card->ctx, r, "sc_lock() failed");
 
 	do {
-		if (prkey->path.len != 0 || prkey->path.aid.len != 0) {
-			r = select_key_file(p15card, prkey, senv);
+		if (path.len != 0 || path.aid.len != 0) {
+			r = select_key_file(p15card, obj, senv);
 			if (r < 0) {
 				sc_log(p15card->card->ctx,
 						"Unable to select private key file");
@@ -131,6 +175,7 @@ static int format_senv(struct sc_pkcs15_card *p15card,
 {
 	sc_context_t *ctx = p15card->card->ctx;
 	const struct sc_pkcs15_prkey_info *prkey = (const struct sc_pkcs15_prkey_info *) obj->data;
+	const struct sc_pkcs15_skey_info *skey = (const struct sc_pkcs15_skey_info *) obj->data;
 
 	memset(senv_out, 0, sizeof(*senv_out));
 
@@ -138,8 +183,8 @@ static int format_senv(struct sc_pkcs15_card *p15card,
 	 * it can get value of card specific 'AlgorithmInfo::algRef'. */
 	memcpy(senv_out->supported_algos, &p15card->tokeninfo->supported_algos, sizeof(senv_out->supported_algos));
 
-	if ((obj->type & SC_PKCS15_TYPE_CLASS_MASK) != SC_PKCS15_TYPE_PRKEY)
-		LOG_TEST_RET(ctx, SC_ERROR_NOT_ALLOWED, "This is not a private key");
+	if (!((obj->type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_PRKEY || (obj->type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_SKEY))
+		LOG_TEST_RET(ctx, SC_ERROR_NOT_ALLOWED, "This is not a private or secret key");
 
 	/* If the key is not native, we can't operate with it. */
 	if (!prkey->native)
@@ -181,6 +226,19 @@ static int format_senv(struct sc_pkcs15_card *p15card,
 			senv_out->flags |= SC_SEC_ENV_ALG_REF_PRESENT;
 			senv_out->algorithm_ref = prkey->field_length;
 			break;
+		case SC_PKCS15_TYPE_SKEY_GENERIC:
+			if (obj->type == SC_PKCS15_TYPE_SKEY_GENERIC && skey->key_type != CKK_AES)
+				LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Key type not supported");
+			*alg_info_out = sc_card_find_alg(p15card->card, SC_ALGORITHM_AES,
+			skey->value_len, NULL);
+			if (*alg_info_out == NULL) {
+				sc_log(ctx,
+				"Card does not support AES with key length %"SC_FORMAT_LEN_SIZE_T"u",
+				skey->value_len);
+				LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
+			}
+			senv_out->algorithm = SC_ALGORITHM_AES;
+			break;
 			/* add other crypto types here */
 		default:
 			LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Key type not supported");
@@ -196,7 +254,7 @@ static int format_senv(struct sc_pkcs15_card *p15card,
 
 	return SC_SUCCESS;
 }
- 
+
 int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 		const struct sc_pkcs15_object *obj,
 		unsigned long flags,
@@ -210,7 +268,7 @@ int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 	unsigned long pad_flags = 0, sec_flags = 0;
 
 	LOG_FUNC_CALLED(ctx);
-	
+
 	if (!(prkey->usage & (SC_PKCS15_PRKEY_USAGE_DECRYPT|SC_PKCS15_PRKEY_USAGE_UNWRAP)))
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_ALLOWED, "This key cannot be used for decryption");
 
@@ -297,6 +355,207 @@ int sc_pkcs15_derive(struct sc_pkcs15_card *p15card,
 	LOG_FUNC_RETURN(ctx, r);
 }
 
+/*
+ * Unwrap a key into a key object on card.
+ * in holds the wrapped key data
+ * the target file that target_key points to must be created before calling this function
+ * Use pkcs15init to peform the complete unwrapping operation and create the pkcs#15 object for the new key.
+ */
+int sc_pkcs15_unwrap(struct sc_pkcs15_card *p15card,
+		const struct sc_pkcs15_object *key,
+		struct sc_pkcs15_object *target_key,
+		unsigned long flags,
+		const u8 * in, size_t inlen,
+		const u8 * param, size_t paramlen)
+{
+	sc_context_t *ctx = p15card->card->ctx;
+	int r;
+	sc_algorithm_info_t *alg_info = NULL;
+	sc_security_env_t senv;
+	const struct sc_pkcs15_prkey_info *src_prkey = (const struct sc_pkcs15_prkey_info *) key->data;
+	const struct sc_pkcs15_skey_info *src_skey = (const struct sc_pkcs15_skey_info *) key->data;
+	const struct sc_pkcs15_skey_info *tkey = (const struct sc_pkcs15_skey_info *) target_key->data;
+	unsigned long pad_flags = 0, sec_flags = 0;
+	u8 *out = 0;
+	size_t poutlen = 0;
+	sc_path_t path, target_file_id;
+	sc_sec_env_param_t senv_param;
+
+	LOG_FUNC_CALLED(ctx);
+
+	if (key->type == SC_PKCS15_TYPE_PRKEY_RSA) {
+		if (!(src_prkey->usage & (SC_PKCS15_PRKEY_USAGE_UNWRAP)))
+			LOG_TEST_RET(ctx, SC_ERROR_NOT_ALLOWED, "This key cannot be used for unwrapping");
+	}
+	else if ((key->type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_SKEY) {
+		if (!(src_skey->usage & (SC_PKCS15_PRKEY_USAGE_UNWRAP)))
+			LOG_TEST_RET(ctx, SC_ERROR_NOT_ALLOWED, "This key cannot be used for unwrapping");
+	}
+	else
+		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Key type not supported");
+
+	r = format_senv(p15card, key, &senv, &alg_info);
+	LOG_TEST_RET(ctx, r, "Could not initialize security environment");
+	senv.operation = SC_SEC_OPERATION_UNWRAP;
+
+	memset(&path, 0, sizeof(sc_path_t));
+	memset(&target_file_id, 0, sizeof(sc_path_t));
+
+	if (!tkey->path.len && tkey->path.aid.len) {
+		/* Target key is a SDO allocated in application DF */
+		target_file_id = tkey->path;
+	}
+	else if (tkey->path.len == 2 && p15card->file_app != NULL) {
+		/* Path is relative to app. DF */
+		path = p15card->file_app->path;
+		target_file_id = tkey->path;
+		sc_append_path(&path, &target_file_id);
+		target_file_id = path;
+	}
+	else if (tkey->path.len > 2) {
+		path = tkey->path;
+		memcpy(target_file_id.value, tkey->path.value + tkey->path.len - 2, 2);
+		target_file_id.len = 2;
+		target_file_id.type = SC_PATH_TYPE_FILE_ID;
+	}
+	else {
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "invalid unwrapping target key path");
+	}
+
+	senv_param = (sc_sec_env_param_t) { SC_SEC_ENV_PARAM_TARGET_FILE, &target_file_id, sizeof(target_file_id)};
+	LOG_TEST_RET(ctx, sec_env_add_param(&senv, &senv_param), "failed to add target file path to security environment");
+
+	r = sc_get_encoding_flags(ctx, flags, alg_info->flags, &pad_flags, &sec_flags);
+	LOG_TEST_RET(ctx, r, "cannot encode security operation flags");
+	senv.algorithm_flags = sec_flags;
+
+	if ((sec_flags & (SC_ALGORITHM_AES_CBC | SC_ALGORITHM_AES_CBC_PAD)) > 0) {
+	    senv_param = (sc_sec_env_param_t) { SC_SEC_ENV_PARAM_IV, (void*) param, paramlen };
+	    LOG_TEST_RET(ctx, sec_env_add_param(&senv, &senv_param), "failed to add IV to security environment");
+	}
+
+	r = use_key(p15card, key, &senv, sc_unwrap, in, inlen, out,
+		    poutlen);
+	LOG_TEST_RET(ctx, r, "use_key() failed");
+
+	LOG_FUNC_RETURN(ctx, r);
+}
+
+/*
+ * Wrap a key and return a cryptogram
+ * <key> is the wrapping key
+ * <target_key> is the key to be wrapped
+ * wrapped data is returned in <cryptogram>
+ */
+int sc_pkcs15_wrap(struct sc_pkcs15_card *p15card,
+		const struct sc_pkcs15_object *key,
+		struct sc_pkcs15_object *target_key,
+		unsigned long flags,
+		u8 * cryptogram, unsigned long* crgram_len,
+		const u8 * param, size_t paramlen) {
+	sc_context_t *ctx = p15card->card->ctx;
+	int r;
+	sc_algorithm_info_t *alg_info = NULL;
+	sc_security_env_t senv;
+	const struct sc_pkcs15_prkey_info *src_prkey = (const struct sc_pkcs15_prkey_info *) key->data;
+	const struct sc_pkcs15_skey_info *src_skey = (const struct sc_pkcs15_skey_info *) key->data;
+	const struct sc_pkcs15_prkey_info *target_prkey = (const struct sc_pkcs15_prkey_info *) target_key->data;
+	const struct sc_pkcs15_skey_info *target_skey = (const struct sc_pkcs15_skey_info *) target_key->data;
+	unsigned long pad_flags = 0, sec_flags = 0;
+	sc_path_t tkey_path;
+	u8 *in = 0;
+	u8 *out = 0;
+	unsigned long *poutlen = 0;
+	size_t inlen = 0;
+	sc_path_t path, target_file_id;
+	sc_sec_env_param_t senv_param;
+
+	LOG_FUNC_CALLED(ctx);
+
+	switch (key->type) {
+		case SC_PKCS15_TYPE_PRKEY_RSA:
+			if (!(src_prkey->usage & (SC_PKCS15_PRKEY_USAGE_WRAP)))
+				LOG_TEST_RET(ctx, SC_ERROR_NOT_ALLOWED, "This key cannot be used for wrapping");
+			break;
+		case SC_PKCS15_TYPE_SKEY_DES:
+		case SC_PKCS15_TYPE_SKEY_3DES:
+		case SC_PKCS15_TYPE_SKEY_GENERIC:
+			if (!(src_skey->usage & (SC_PKCS15_PRKEY_USAGE_WRAP)))
+			LOG_TEST_RET(ctx, SC_ERROR_NOT_ALLOWED, "This key cannot be used for wrapping");
+			break;
+		default:
+			LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Wrapping key type not supported");
+	}
+
+	if (!(target_key->type == SC_PKCS15_TYPE_PRKEY_RSA ||
+			(target_key->type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_SKEY)) {
+		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Target key type not supported");
+	}
+
+	r = format_senv(p15card, key, &senv, &alg_info);
+	LOG_TEST_RET(ctx, r, "Could not initialize security environment");
+	senv.operation = SC_SEC_OPERATION_WRAP;
+
+	memset(&path, 0, sizeof (sc_path_t));
+	memset(&target_file_id, 0, sizeof (sc_path_t));
+
+	switch (target_key->type) {
+		case SC_PKCS15_TYPE_PRKEY_RSA:
+			tkey_path = target_prkey->path;
+			break;
+		default: /* we already know it is a secret key */
+			tkey_path = target_skey->path;
+			break;
+	}
+
+	if (!tkey_path.len && tkey_path.aid.len) {
+		/* Target key is a SDO allocated in application DF */
+		target_file_id = tkey_path;
+	} else if (tkey_path.len == 2 && p15card->file_app != NULL) {
+		/* Path is relative to app. DF */
+		path = p15card->file_app->path;
+		target_file_id = tkey_path;
+		sc_append_path(&path, &target_file_id);
+		target_file_id  = path;
+	} else if (tkey_path.len > 2) {
+		/*path = tkey_path;*/
+		memcpy(target_file_id.value, tkey_path.value + tkey_path.len - 2, 2);
+		target_file_id.len = 2;
+		target_file_id.type = SC_PATH_TYPE_FILE_ID;
+	}
+	else {
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "invalid unwrapping target key path");
+	}
+	senv_param = (sc_sec_env_param_t) { SC_SEC_ENV_PARAM_TARGET_FILE, &target_file_id, sizeof(target_file_id)};
+	LOG_TEST_RET(ctx, sec_env_add_param(&senv, &senv_param), "failed to add target file path to security environment");
+
+	r = sc_get_encoding_flags(ctx, flags, alg_info->flags, &pad_flags, &sec_flags);
+	LOG_TEST_RET(ctx, r, "cannot encode security operation flags");
+	senv.algorithm_flags = sec_flags;
+
+	if ((sec_flags & (SC_ALGORITHM_AES_CBC | SC_ALGORITHM_AES_CBC_PAD)) > 0) {
+		senv_param = (sc_sec_env_param_t) { SC_SEC_ENV_PARAM_IV, (void*) param, paramlen };
+		LOG_TEST_RET(ctx, sec_env_add_param(&senv, &senv_param), "failed to add IV to security environment");
+	}
+
+	out = cryptogram;
+	poutlen = crgram_len;
+	r = use_key(p15card, key, &senv, sc_wrap, in, inlen, out,
+			*poutlen);
+
+	if (r > -1) {
+		if (*crgram_len < (unsigned) r) {
+			*poutlen = r;
+			if (out != NULL) /* if NULL, return success and required buffer length by PKCS#11 convention */
+				LOG_TEST_RET(ctx, SC_ERROR_BUFFER_TOO_SMALL, "Buffer too small to hold the wrapped key.");
+		}
+		*poutlen = r;
+	}
+
+	LOG_FUNC_RETURN(ctx, r);
+}
+
+
 /* copied from pkcs15-cardos.c */
 #define USAGE_ANY_SIGN          (SC_PKCS15_PRKEY_USAGE_SIGN|\
                                  SC_PKCS15_PRKEY_USAGE_NONREPUDIATION)
@@ -350,7 +609,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	/* revert data to sign when signing with the GOST key.
 	 * TODO: can it be confirmed by the GOST standard?
 	 * TODO: tested with RuTokenECP, has to be validated for RuToken. */
-	if (obj->type == SC_PKCS15_TYPE_PRKEY_GOSTR3410)   {
+	if (obj->type == SC_PKCS15_TYPE_PRKEY_GOSTR3410) {
 		r = sc_mem_reverse(buf, inlen);
 		LOG_TEST_RET(ctx, r, "Reverse memory error");
 	}
@@ -371,7 +630,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 		(prkey->usage & USAGE_ANY_DECIPHER)) ) {
 		size_t tmplen = sizeof(buf);
 		if (flags & SC_ALGORITHM_RSA_RAW) {
-			r = sc_pkcs15_decipher(p15card, obj,flags, in, inlen, out, outlen);
+			r = sc_pkcs15_decipher(p15card, obj, flags, in, inlen, out, outlen);
 			LOG_FUNC_RETURN(ctx, r);
 		}
 		if (modlen > tmplen)
@@ -387,7 +646,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 
 		LOG_TEST_RET(ctx, r, "Unable to add padding");
 
-		r = sc_pkcs15_decipher(p15card, obj,flags, buf, modlen, out, outlen);
+		r = sc_pkcs15_decipher(p15card, obj, flags, buf, modlen, out, outlen);
 		LOG_FUNC_RETURN(ctx, r);
 	}
 

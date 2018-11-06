@@ -237,6 +237,8 @@ sc_pkcs15_remove_unusedspace
 sc_pkcs15_search_objects
 sc_pkcs15_unbind
 sc_pkcs15_unblock_pin
+sc_pkcs15_unwrap
+sc_pkcs15_wrap
 sc_pkcs15_verify_pin
 sc_pkcs15_get_pin_info
 sc_pkcs15_verify_pin_with_session_pin

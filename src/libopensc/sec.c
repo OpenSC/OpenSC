@@ -63,6 +63,36 @@ int sc_compute_signature(sc_card_t *card,
         SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
 
+int sc_unwrap(sc_card_t *card,
+		const u8 * crgram, size_t crgram_len, u8 * out, size_t outlen)
+{
+	int r;
+
+	if (card == NULL || crgram == NULL) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	if (card->ops->unwrap == NULL)
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_NOT_SUPPORTED);
+	r = card->ops->unwrap(card, crgram, crgram_len);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
+}
+
+int sc_wrap(sc_card_t *card,
+		const u8 * crgram, size_t crgram_len, u8 * out, size_t outlen)
+{
+	int r;
+
+	if (card == NULL) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	if (card->ops->wrap == NULL)
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_NOT_SUPPORTED);
+	r = card->ops->wrap(card, out, outlen);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
+}
+
 int sc_set_security_env(sc_card_t *card,
 			const sc_security_env_t *env,
 			int se_num)
