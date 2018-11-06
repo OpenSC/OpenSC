@@ -157,6 +157,10 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 	r = cac_cac1_get_certificate(card, &val, &val_len);
 	if (r < 0)
 		goto done;
+	if (val_len < 1) {
+		r = SC_ERROR_INVALID_DATA;
+		goto done;
+	}
 
 	cert_type = val[0];
 	cert_ptr = val + 1;
