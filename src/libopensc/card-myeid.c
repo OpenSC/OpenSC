@@ -1302,12 +1302,12 @@ static int myeid_unwrap_key(struct sc_card *card, const u8 *crgram, size_t crgra
 	myeid_private_data_t* priv;
 	int symmetric_operation = 0;
 
+	if (card == NULL || crgram == NULL) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+
 	LOG_FUNC_CALLED(card->ctx);
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
-
-	if (card == NULL || crgram == NULL) {
-		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS, "One or more of required arguments was null.\n");
-	}
 
 	if (crgram_len > MYEID_MAX_RSA_KEY_LEN / 8)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
