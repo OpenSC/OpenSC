@@ -1191,13 +1191,6 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 		}
 	}
 
-	/* max send/receive sizes: with default values only short APDU supported */
-	reader->max_send_size = priv->gpriv->force_max_send_size ?
-		priv->gpriv->force_max_send_size :
-		SC_READER_SHORT_APDU_MAX_SEND_SIZE;
-	reader->max_recv_size = priv->gpriv->force_max_recv_size ?
-		priv->gpriv->force_max_recv_size :
-		SC_READER_SHORT_APDU_MAX_RECV_SIZE;
 	if (priv->get_tlv_properties) {
 		/* Try to set reader max_send_size and max_recv_size based on
 		 * detected max_data */
@@ -1206,7 +1199,7 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 		if (max_data > 0) {
 			sc_log(ctx, "Reader supports transceiving %d bytes of data",
 					max_data);
-			if (priv->gpriv->force_max_send_size)
+			if (!priv->gpriv->force_max_send_size)
 				reader->max_send_size = max_data;
 			else
 				sc_log(ctx, "Sending is limited to %"SC_FORMAT_LEN_SIZE_T"u bytes of data"
@@ -1275,6 +1268,14 @@ int pcsc_add_reader(sc_context_t *ctx,
 		ret = SC_ERROR_OUT_OF_MEMORY;
 		goto err1;
 	}
+
+	/* max send/receive sizes: with default values only short APDU supported */
+	reader->max_send_size = priv->gpriv->force_max_send_size ?
+		priv->gpriv->force_max_send_size :
+		SC_READER_SHORT_APDU_MAX_SEND_SIZE;
+	reader->max_recv_size = priv->gpriv->force_max_recv_size ?
+		priv->gpriv->force_max_recv_size :
+		SC_READER_SHORT_APDU_MAX_RECV_SIZE;
 
 	ret = _sc_add_reader(ctx, reader);
 
