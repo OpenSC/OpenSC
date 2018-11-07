@@ -1882,7 +1882,7 @@ sc_pkcs15init_store_secret_key(struct sc_pkcs15_card *p15card, struct sc_profile
 	LOG_FUNC_CALLED(ctx);
 
 	/* Now check whether the card is able to handle this key */
-	if (check_key_compatibility(p15card, keyargs->algorithm, NULL, 0, keyargs->key.data_len * 8, 0) != SC_SUCCESS) {
+	if (check_key_compatibility(p15card, keyargs->algorithm, NULL, 0, keyargs->value_len, 0) != SC_SUCCESS) {
 		/* Make sure the caller explicitly tells us to store
 		 * the key as extractable. */
 		if (!(keyargs->access_flags & SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE))
