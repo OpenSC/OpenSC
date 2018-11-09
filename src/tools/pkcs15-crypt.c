@@ -330,7 +330,7 @@ static int get_key(unsigned int usage, sc_pkcs15_object_t **result)
 		}
 
 		/* Pin already verified previously */
-		if (pin == prev_pin)
+		if (pin == prev_pin && key->user_consent == 0)
 			return 0;
 
 		pincode = get_pin(pin);
@@ -339,8 +339,25 @@ static int get_key(unsigned int usage, sc_pkcs15_object_t **result)
 			free(pincode);
 			return 5;
 		}
+		
+		/*
+		 * Do what PKCS#11 would do for keys requiring CKA_ALWAYS_AUTHENTICATE
+		 * and CKU_CONTEXT_SPECIFIC login to let driver know this verify will be followed by 
+		 * a crypto operation.  Card drivers can test for SC_AC_CONTEXT_SPECIFIC
+		 * to do any special handling. 
+		 */
+		if (key->user_consent) {
+			int auth_meth_saved;
+			struct sc_pkcs15_auth_info *pinfo = (struct sc_pkcs15_auth_info *) pin->data;
 
-		r = sc_pkcs15_verify_pin(p15card, pin, (const u8 *)pincode, pincode ? strlen(pincode) : 0);
+			auth_meth_saved = pinfo->auth_method;
+
+			pinfo->auth_method = SC_AC_CONTEXT_SPECIFIC;
+			r = sc_pkcs15_verify_pin(p15card, pin, (const u8 *)pincode, pincode ? strlen(pincode) : 0);
+			pinfo->auth_method = auth_meth_saved;
+		} else
+			r = sc_pkcs15_verify_pin(p15card, pin, (const u8 *)pincode, pincode ? strlen(pincode) : 0);
+
 		free(pincode);
 		if (r) {
 			fprintf(stderr, "PIN code verification failed: %s\n", sc_strerror(r));
