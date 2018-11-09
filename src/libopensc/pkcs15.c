@@ -2574,6 +2574,31 @@ sc_pkcs15_get_supported_algo(struct sc_pkcs15_card *p15card, unsigned operation,
 	return info;
 }
 
+struct sc_supported_algo_info *
+sc_pkcs15_get_specific_supported_algo(struct sc_pkcs15_card *p15card, unsigned operation, unsigned mechanism, const struct sc_object_id *algo_oid)
+{
+	struct sc_context *ctx = p15card->card->ctx;
+	struct sc_supported_algo_info *info = NULL;
+	int ii;
+
+	if (algo_oid == NULL)
+		return NULL;
+
+	for (ii=0;ii<SC_MAX_SUPPORTED_ALGORITHMS && p15card->tokeninfo->supported_algos[ii].reference; ii++)
+		if ((p15card->tokeninfo->supported_algos[ii].operations & operation)
+				&& (p15card->tokeninfo->supported_algos[ii].mechanism == mechanism)
+				&& sc_compare_oid(algo_oid, &p15card->tokeninfo->supported_algos[ii].algo_id))
+			break;
+
+	if (ii < SC_MAX_SUPPORTED_ALGORITHMS && p15card->tokeninfo->supported_algos[ii].reference)   {
+		info = &p15card->tokeninfo->supported_algos[ii];
+		sc_log(ctx, "found supported algorithm (ref:%X,mech:%X,ops:%X,algo_ref:%X)",
+				info->reference, info->mechanism, info->operations, info->algo_ref);
+	}
+
+	return info;
+}
+
 int
 sc_pkcs15_get_generalized_time(struct sc_context *ctx, char **out)
 {

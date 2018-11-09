@@ -46,6 +46,15 @@ unsigned char MYEID_DEFAULT_PUBKEY[] = {0x01, 0x00, 0x01};
 #define MYEID_PROP_INFO_1_WRAP_WITH_TRUSTED		0x08;
 #define MYEID_PROP_INFO_2_SESSION_OBJECT		0x01;
 
+static const struct sc_object_id id_aes128_ecb = { { 2, 16, 840, 1, 101, 3, 4, 1, 1, -1 } };
+static const struct sc_object_id id_aes128_cbc = { { 2, 16, 840, 1, 101, 3, 4, 1, 2, -1 } };
+static const struct sc_object_id id_aes256_ecb = { { 2, 16, 840, 1, 101, 3, 4, 1, 41, -1 } };
+static const struct sc_object_id id_aes256_cbc = { { 2, 16, 840, 1, 101, 3, 4, 1, 42, -1 } };
+
+static void
+_add_supported_algo(struct sc_profile *profile, struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *object,
+		    unsigned operations, unsigned mechanism, const struct sc_object_id *oid);
+
 /* For Myeid, all objects are files that can be deleted in any order */
 static int
 myeid_delete_object(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
@@ -178,17 +187,22 @@ myeid_init_card(sc_profile_t *profile,
 		sc_pkcs15_card_t *p15card) {
 	struct sc_path path;
 	struct sc_file *file = NULL;
-        u8 rbuf[256];
+	u8 rbuf[256];
 	int r;
 
 	LOG_FUNC_CALLED(p15card->card->ctx);
 
 	p15card->tokeninfo->flags = SC_PKCS15_TOKEN_PRN_GENERATION | SC_PKCS15_TOKEN_EID_COMPLIANT;
 
-        r = sc_card_ctl(p15card->card, SC_CARDCTL_GET_SERIALNR, &rbuf);
+	_add_supported_algo(profile, p15card, NULL, SC_PKCS15_ALGO_OP_DECIPHER|SC_PKCS15_ALGO_OP_ENCIPHER, CKM_AES_ECB, &id_aes128_ecb);
+	_add_supported_algo(profile, p15card, NULL, SC_PKCS15_ALGO_OP_DECIPHER|SC_PKCS15_ALGO_OP_ENCIPHER, CKM_AES_CBC, &id_aes128_cbc);
+	_add_supported_algo(profile, p15card, NULL, SC_PKCS15_ALGO_OP_DECIPHER|SC_PKCS15_ALGO_OP_ENCIPHER, CKM_AES_ECB, &id_aes256_ecb);
+	_add_supported_algo(profile, p15card, NULL, SC_PKCS15_ALGO_OP_DECIPHER|SC_PKCS15_ALGO_OP_ENCIPHER, CKM_AES_CBC, &id_aes256_cbc);
+
+	r = sc_card_ctl(p15card->card, SC_CARDCTL_GET_SERIALNR, &rbuf);
 	LOG_TEST_RET(p15card->card->ctx, r,  "Get applet info failed");
 
-        sc_format_path("3F00", &path);
+	sc_format_path("3F00", &path);
 	r = sc_select_file(p15card->card, &path, &file);
 
 	sc_file_free(file);
@@ -433,6 +447,8 @@ myeid_encode_public_key(sc_profile_t *profile, sc_card_t *card,
 }
 
 /*
+ * Add AlgorithmInfo of a supported algorithm to supportedAlgorithms field in tokenInfo. If object != NULL,
+ * add reference to the algorithmInfo to the passed object.
  */
 static void
 _add_supported_algo(struct sc_profile *profile, struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *object,
@@ -440,7 +456,11 @@ _add_supported_algo(struct sc_profile *profile, struct sc_pkcs15_card *p15card, 
 {
 	struct sc_supported_algo_info *algo;
 	struct sc_context *ctx = p15card->card->ctx;
-	algo = sc_pkcs15_get_supported_algo(p15card, operations, mechanism);
+	if (oid == NULL) {
+		sc_log(ctx, "Failed to add algorithms refs - invalid arguments.");
+		return;
+	}
+	algo = sc_pkcs15_get_specific_supported_algo(p15card, operations, mechanism, oid);
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
@@ -461,7 +481,11 @@ _add_supported_algo(struct sc_profile *profile, struct sc_pkcs15_card *p15card, 
 		}
 
 	}
-	rv = sc_pkcs15_add_supported_algo_ref(object, algo);
+	if (object != NULL)
+		rv = sc_pkcs15_add_supported_algo_ref(object, algo);
+	else
+		rv = SC_SUCCESS;
+
 	if (rv != SC_SUCCESS) {
 		sc_log(ctx, "Failed to add algorithms refs");
 	}
@@ -470,10 +494,6 @@ _add_supported_algo(struct sc_profile *profile, struct sc_pkcs15_card *p15card, 
 static void
 myeid_fixup_supported_algos(struct sc_profile *profile, struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *object)
 {
-	static const struct sc_object_id id_aes128_ecb = { { 2, 16, 840, 1, 101, 3, 4, 1, 1, -1 } };
-	static const struct sc_object_id id_aes128_cbc = { { 2, 16, 840, 1, 101, 3, 4, 1, 2, -1 } };
-	static const struct sc_object_id id_aes256_ecb = { { 2, 16, 840, 1, 101, 3, 4, 1, 41, -1 } };
-	static const struct sc_object_id id_aes256_cbc = { { 2, 16, 840, 1, 101, 3, 4, 1, 42, -1 } };
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_skey_info *skey_info = (struct sc_pkcs15_skey_info *) object->data;
 

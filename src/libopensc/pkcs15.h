@@ -952,8 +952,14 @@ void sc_pkcs15_free_object_content(struct sc_pkcs15_object *);
 int sc_pkcs15_allocate_object_content(struct sc_context *, struct sc_pkcs15_object *,
 		const unsigned char *, size_t);
 
+/* find algorithm from card's supported algorithms by operation and mechanism */
 struct sc_supported_algo_info *sc_pkcs15_get_supported_algo(struct sc_pkcs15_card *,
-		unsigned, unsigned);
+		unsigned operation, unsigned mechanism);
+
+/* find algorithm from card's supported algorithms by operation, mechanism and object_id */
+struct sc_supported_algo_info *sc_pkcs15_get_specific_supported_algo(struct sc_pkcs15_card *,
+		unsigned operation, unsigned mechanism, const struct sc_object_id *algo_oid);
+
 int sc_pkcs15_add_supported_algo_ref(struct sc_pkcs15_object *,
 		struct sc_supported_algo_info *);
 
