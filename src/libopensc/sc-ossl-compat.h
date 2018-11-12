@@ -240,6 +240,10 @@ static sc_ossl_inline int CRYPTO_secure_malloc_initialized()
     return 0;
 }
 
+static sc_ossl_inline void CRYPTO_secure_malloc_done()
+{
+}
+
 #else
 
 #include <openssl/crypto.h>
