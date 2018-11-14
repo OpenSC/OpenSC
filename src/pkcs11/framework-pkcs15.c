@@ -565,8 +565,8 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo)
 	slot->token_info.flags &= ~(CKF_USER_PIN_COUNT_LOW|CKF_USER_PIN_FINAL_TRY|CKF_USER_PIN_LOCKED);
 	auth = slot_data_auth(slot->fw_data);
 	sc_log(context,
-		   "C_GetTokenInfo() auth. object %p, token-info flags 0x%lX", auth,
-		   slot->token_info.flags);
+		"C_GetTokenInfo() auth. object %p, token-info flags 0x%lX", auth,
+		slot->token_info.flags);
 	if (auth) {
 		pin_info = (struct sc_pkcs15_auth_info*) auth->data;
 
@@ -1980,7 +1980,7 @@ pkcs15_init_pin(struct sc_pkcs11_slot *slot, CK_CHAR_PTR pPin, CK_ULONG ulPinLen
 	}
 
 	sc_log(context, "Init PIN: pin %p:%lu; unblock style %i", pPin,
-		   ulPinLen, sc_pkcs11_conf.pin_unblock_style);
+		ulPinLen, sc_pkcs11_conf.pin_unblock_style);
 
 	fw_data = (struct pkcs15_fw_data *) p11card->fws_data[slot->fw_data_idx];
 	if (!fw_data)
@@ -2782,8 +2782,8 @@ get_X509_usage_privk(CK_ATTRIBUTE_PTR pTempl, CK_ULONG ulCount, unsigned long *x
 			*x509_usage |= SC_PKCS15INIT_X509_NON_REPUDIATION;
 		if (typ == CKA_VERIFY || typ == CKA_WRAP || typ == CKA_ENCRYPT) {
 			sc_log(context,
-				   "get_X509_usage_privk(): invalid typ = 0x%0lx",
-				   typ);
+				"get_X509_usage_privk(): invalid typ = 0x%0lx",
+				typ);
 			return CKR_ATTRIBUTE_TYPE_INVALID;
 		}
 	}
@@ -2810,8 +2810,8 @@ get_X509_usage_pubk(CK_ATTRIBUTE_PTR pTempl, CK_ULONG ulCount, unsigned long *x5
 			*x509_usage |= SC_PKCS15INIT_X509_KEY_AGREEMENT;
 		if (typ == CKA_SIGN || typ == CKA_UNWRAP || typ == CKA_DECRYPT) {
 			sc_log(context,
-				   "get_X509_usage_pubk(): invalid typ = 0x%0lx",
-				   typ);
+				"get_X509_usage_pubk(): invalid typ = 0x%0lx",
+				typ);
 			return CKR_ATTRIBUTE_TYPE_INVALID;
 		}
 	}
