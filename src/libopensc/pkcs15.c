@@ -2587,7 +2587,7 @@ sc_pkcs15_get_specific_supported_algo(struct sc_pkcs15_card *p15card, unsigned o
 	for (ii=0;ii<SC_MAX_SUPPORTED_ALGORITHMS && p15card->tokeninfo->supported_algos[ii].reference; ii++)
 		if ((p15card->tokeninfo->supported_algos[ii].operations & operation)
 				&& (p15card->tokeninfo->supported_algos[ii].mechanism == mechanism)
-				&& sc_compare_oid(algo_oid, &p15card->tokeninfo->supported_algos[ii].algo_id))
+				&& sc_compare_oid(algo_oid, &p15card->tokeninfo->supported_algos[ii].algo_id) == 1)
 			break;
 
 	if (ii < SC_MAX_SUPPORTED_ALGORITHMS && p15card->tokeninfo->supported_algos[ii].reference)   {
