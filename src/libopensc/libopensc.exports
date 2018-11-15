@@ -89,6 +89,7 @@ sc_der_copy
 sc_detect_card_presence
 sc_disconnect_card
 sc_do_log
+sc_do_log_color
 sc_do_log_noframe
 _sc_debug
 _sc_debug_hex
@@ -373,3 +374,4 @@ sc_notify_init
 sc_notify_close
 sc_notify
 sc_notify_id
+sc_color_fprintf
