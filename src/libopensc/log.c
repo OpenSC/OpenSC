@@ -187,7 +187,7 @@ int sc_color_fprintf(int colors, struct sc_context *ctx, FILE * stream, const ch
 	va_list ap;
 	int r;
 #ifdef _WIN32
-	WORD old_attr;
+	WORD old_attr = 0;
 	int fd = stream ? fileno(stream) : -1;
 	HANDLE handle = fd >= 0 ? (HANDLE) _get_osfhandle(fd) : INVALID_HANDLE_VALUE;
 #endif
