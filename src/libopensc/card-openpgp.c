@@ -222,6 +222,12 @@ static int		pgp_get_pubkey_pem(sc_card_t *, unsigned int,
 /* Gnuk only supports 1 key length (2048 bit) */
 #define MAXLEN_RESP_PUBKEY_GNUK  271
 
+/* Maximal size of a DO:
+ * v2.0+: max. certificate size it at bytes 5-6 of Extended Capabilities DO 00C0
+ * v3.0+: max. special DO size is at bytes 7-8 of Extended Capabilities DO 00C0
+ * Theoretically we should have the 64k, but we currently limit to 8k. */
+#define	MAX_OPENPGP_DO_SIZE	8192
+
 static struct do_info		pgp1x_objects[] = {	/* OpenPGP card spec 1.1 */
 	{ 0x004f, SIMPLE,      READ_ALWAYS | WRITE_NEVER, NULL,               NULL        },
 	{ 0x005b, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  NULL,               sc_put_data },
@@ -1089,7 +1095,7 @@ pgp_read_blob(sc_card_t *card, pgp_blob_t *blob)
 		return blob->status;
 
 	if (blob->info->get_fn) {	/* readable, top-level DO */
-		u8 	buffer[2048];
+		u8 	buffer[MAX_OPENPGP_DO_SIZE];
 		size_t	buf_len = sizeof(buffer);
 		int r = SC_SUCCESS;
 
