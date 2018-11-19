@@ -1487,12 +1487,19 @@ static int cac_parse_CCC(sc_card_t *card, cac_private_data_t *priv, u8 *tl,
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"TAG: PKCS15 = 0x%02x", *val);
 			break;
 		case CAC_TAG_DATA_MODEL:
+			if (len != 1) {
+				sc_log(card->ctx, "TAG: Registered Data Model Number: "
+				    "Invalid length %"SC_FORMAT_LEN_SIZE_T"u", len);
+				break;
+			}
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"TAG: Registered Data Model Number (0x%02x)", *val);
+			break;
 		case CAC_TAG_CARD_APDU:
 		case CAC_TAG_CAPABILITY_TUPLES:
 		case CAC_TAG_STATUS_TUPLES:
 		case CAC_TAG_REDIRECTION:
 		case CAC_TAG_ERROR_CODES:
-			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"TAG:FSSpecific(0x%02x)", tag);
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"TAG: FSSpecific(0x%02x)", tag);
 			break;
 		case CAC_TAG_ACCESS_CONTROL:
 			/* TODO handle access control later */
