@@ -35,8 +35,8 @@ enum {
 	SC_LOG_DEBUG_NORMAL,		/* helps developers */
 	SC_LOG_DEBUG_RFU1,		/* RFU */
 	SC_LOG_DEBUG_RFU2,		/* RFU */
-	SC_LOG_DEBUG_ASN1,		/* asn1.c only */
-	SC_LOG_DEBUG_MATCH,		/* card matching only */
+	SC_LOG_DEBUG_ASN1,		/* asn1.c */
+	SC_LOG_DEBUG_MATCH,		/* card matching */
 };
 
 /* You can't do #ifndef __FUNCTION__ */

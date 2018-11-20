@@ -1085,7 +1085,7 @@ static int match_atr_table(sc_context_t *ctx, const struct sc_atr_table *table, 
 	sc_bin_to_hex(card_atr_bin, card_atr_bin_len, card_atr_hex, sizeof(card_atr_hex), ':');
 	card_atr_hex_len = strlen(card_atr_hex);
 
-	sc_log(ctx, "ATR     : %s", card_atr_hex);
+	sc_debug(ctx, SC_LOG_DEBUG_MATCH, "ATR     : %s", card_atr_hex);
 
 	for (i = 0; table[i].atr != NULL; i++) {
 		const char *tatr = table[i].atr;
@@ -1096,14 +1096,14 @@ static int match_atr_table(sc_context_t *ctx, const struct sc_atr_table *table, 
 		size_t fix_hex_len = card_atr_hex_len;
 		size_t fix_bin_len = card_atr_bin_len;
 
-		sc_log(ctx, "ATR try : %s", tatr);
+		sc_debug(ctx, SC_LOG_DEBUG_MATCH, "ATR try : %s", tatr);
 
 		if (tatr_len != fix_hex_len) {
-			sc_log(ctx, "ignored - wrong length");
+			sc_debug(ctx, SC_LOG_DEBUG_MATCH, "ignored - wrong length");
 			continue;
 		}
 		if (matr != NULL) {
-			sc_log(ctx, "ATR mask: %s", matr);
+			sc_debug(ctx, SC_LOG_DEBUG_MATCH, "ATR mask: %s", matr);
 
 			matr_len = strlen(matr);
 			if (tatr_len != matr_len)
@@ -1113,7 +1113,7 @@ static int match_atr_table(sc_context_t *ctx, const struct sc_atr_table *table, 
 			mbin_len = sizeof(mbin);
 			sc_hex_to_bin(matr, mbin, &mbin_len);
 			if (mbin_len != fix_bin_len) {
-				sc_log(ctx, "length of atr and atr mask do not match - ignored: %s - %s", tatr, matr);
+				sc_debug(ctx, SC_LOG_DEBUG_MATCH, "length of atr and atr mask do not match - ignored: %s - %s", tatr, matr);
 				continue;
 			}
 			for (s = 0; s < tbin_len; s++) {
@@ -1381,7 +1381,7 @@ sc_card_sm_load(struct sc_card *card, const char *module_path, const char *in_mo
 	if (0 < expanded_len && expanded_len < sizeof expanded_val)
 		module_path = expanded_val;
 #endif
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "SM module '%s' located in '%s'", in_module, module_path);
+	sc_debug(ctx, SC_LOG_DEBUG_VERBOSE, "SM module '%s' located in '%s'", in_module, module_path);
 	if (module_path && strlen(module_path) > 0)   {
 		int sz = strlen(in_module) + strlen(module_path) + 3;
 		module = malloc(sz);
