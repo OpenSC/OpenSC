@@ -661,6 +661,10 @@ static int iso_add_sm(struct iso_sm_ctx *sctx, sc_card_t *card,
 static int iso_rm_sm(struct iso_sm_ctx *sctx, sc_card_t *card,
 		sc_apdu_t *sm_apdu, sc_apdu_t *apdu)
 {
+	if (!sctx)
+		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS,
+			"Invalid SM context. No SM processing performed.");
+
 	if (sctx->post_transmit)
 		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, sctx->post_transmit(card, sctx, sm_apdu),
 				"Could not complete SM specific post transmit routine");
