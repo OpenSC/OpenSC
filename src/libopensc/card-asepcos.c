@@ -313,7 +313,7 @@ static int asepcos_select_file(sc_card_t *card, const sc_path_t *in_path,
 		if (r != SC_SUCCESS) 
 			sc_log(card->ctx,  "error parsing security attributes");
 	}
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 static int asepcos_set_security_env(sc_card_t *card,

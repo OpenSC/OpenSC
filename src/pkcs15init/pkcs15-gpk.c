@@ -154,7 +154,7 @@ gpk_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df)
 		*/
 	}
 
-	SC_FUNC_RETURN(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(p15card->card->ctx, r);
 }
 
 /*
@@ -190,7 +190,7 @@ gpk_select_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	if (current > preferred)
 		return SC_ERROR_TOO_MANY_OBJECTS;
 	auth_info->attrs.pin.reference = preferred;
-	SC_FUNC_RETURN(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, 0);
+	LOG_FUNC_RETURN(p15card->card->ctx, 0);
 }
 
 /*
@@ -263,7 +263,7 @@ gpk_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df,
 	if (r < 0)
 		return r;
 
-	SC_FUNC_RETURN(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(p15card->card->ctx, r);
 }
 
 
@@ -307,7 +307,7 @@ gpk_lock_pinfile(struct sc_profile *profile, sc_pkcs15_card_t *p15card,
 		r = gpk_lock(p15card->card, pinfile, SC_AC_OP_WRITE);
 
 	sc_file_free(parent);
-	SC_FUNC_RETURN(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(p15card->card->ctx, r);
 }
 
 /*
@@ -386,7 +386,7 @@ gpk_init_pinfile(struct sc_profile *profile, sc_pkcs15_card_t *p15card,
 		r = gpk_lock_pinfile(profile, p15card, pinfile);
 
 out:	sc_file_free(pinfile);
-	SC_FUNC_RETURN(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(p15card->card->ctx, r);
 }
 
 /*

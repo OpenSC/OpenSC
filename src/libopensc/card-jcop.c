@@ -610,7 +610,7 @@ static int jcop_set_security_env(sc_card_t *card,
 
         assert(card != NULL && env != NULL);
 	if (se_num) 
-	     SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
+	     LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	if (drvdata->selected == SELECT_MF || 
 	    drvdata->selected == SELECT_EFDIR) {
 	     drvdata->invalid_senv=1;

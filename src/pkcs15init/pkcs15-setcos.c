@@ -138,7 +138,7 @@ setcos_init_card(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 	sc_file_free(pinfile);
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Select pinfile failed");
 
-	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(ctx, r);
 }
 
 /*
@@ -158,7 +158,7 @@ setcos_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *d
 	r = sc_create_file(p15card->card, df);
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "SetCOS create file failed");
 
-	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(ctx, r);
 }
 
 
@@ -242,7 +242,7 @@ setcos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 
 	sc_file_free(pinfile);
 
-	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(ctx, r);
 }
 
 /*
@@ -367,7 +367,7 @@ setcos_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Cannot create private key file");
 
 	sc_file_free(file);
-	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(ctx, r);
 }
 
 
@@ -419,7 +419,7 @@ setcos_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 
 	sc_file_free(file);
 
-	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(ctx, r);
 }
 
 

@@ -1003,7 +1003,7 @@ static int setcos_putdata(struct sc_card *card, struct sc_cardctl_setcos_data_ob
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "PUT_DATA returned error");
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 /* Read internal data, e.g. get RSA public key */
@@ -1039,7 +1039,7 @@ static int setcos_getdata(struct sc_card *card, struct sc_cardctl_setcos_data_ob
 	else
 		data_obj->DataLen = apdu.resplen;
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 /* Generate or store a key */
@@ -1090,7 +1090,7 @@ static int setcos_generate_store_key(sc_card_t *card,
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "STORE/GENERATE_KEY returned error");
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 static int setcos_activate_file(sc_card_t *card)
@@ -1108,7 +1108,7 @@ static int setcos_activate_file(sc_card_t *card)
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "ACTIVATE_FILE returned error");
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 static int setcos_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)

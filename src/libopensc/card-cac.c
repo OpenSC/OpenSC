@@ -336,7 +336,7 @@ static int cac_apdu_io(sc_card_t *card, int ins, int p1, int p2,
 	}
 
 err:
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 /*
@@ -469,11 +469,11 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 			 "returning cached value idx=%d count=%"SC_FORMAT_LEN_SIZE_T"u",
 			 idx, count);
 		if (idx > priv->cache_buf_len) {
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_FILE_END_REACHED);
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_FILE_END_REACHED);
 		}
 		len = MIN(count, priv->cache_buf_len-idx);
 		memcpy(buf, &priv->cache_buf[idx], len);
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, len);
+		LOG_FUNC_RETURN(card->ctx, len);
 	}
 
 	sc_log(card->ctx, 
@@ -487,7 +487,7 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 
 
 	if (priv->object_type <= 0)
-		 SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL);
+		 LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 
 	r = cac_read_file(card, CAC_FILE_TAG, &tl, &tl_len);
 	if (r < 0)  {
@@ -617,7 +617,7 @@ done:
 		free(tl);
 	if (val)
 		free(val);
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 /* CAC driver is read only */
@@ -626,7 +626,7 @@ static int cac_write_binary(sc_card_t *card, unsigned int idx,
 {
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED);
+	LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 }
 
 /* initialize getting a list and return the number of elements in the list */
@@ -670,14 +670,14 @@ static int cac_get_serial_nr_from_CUID(sc_card_t* card, sc_serial_number_t* seri
 	LOG_FUNC_CALLED(card->ctx);
         if (card->serialnr.len)   {
                 *serial = card->serialnr;
-                SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
+                LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
         }
 	if (priv->cac_id_len) {
 		serial->len = MIN(priv->cac_id_len, SC_MAX_SERIALNR);
 		memcpy(serial->value, priv->cac_id, serial->len);
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
+		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 	}
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_FILE_NOT_FOUND);
+	LOG_FUNC_RETURN(card->ctx, SC_ERROR_FILE_NOT_FOUND);
 }
 
 static int cac_get_ACA_path(sc_card_t *card, sc_path_t *path)
@@ -688,7 +688,7 @@ static int cac_get_ACA_path(sc_card_t *card, sc_path_t *path)
 	if (priv->aca_path) {
 		*path = *priv->aca_path;
 	}
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
 static int cac_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
@@ -741,7 +741,7 @@ static int cac_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 	}
 	memcpy(rnd, rbuf, out_len);
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, (int) out_len);
+	LOG_FUNC_RETURN(card->ctx, (int) out_len);
 }
 
 static int cac_set_security_env(sc_card_t *card, const sc_security_env_t *env, int se_num)
@@ -769,7 +769,7 @@ static int cac_restore_security_env(sc_card_t *card, int se_num)
 {
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
 
@@ -795,7 +795,7 @@ static int cac_rsa_op(sc_card_t *card,
 	 * different sets of APDU's that need to be called), so this call is really a little bit of paranoia */
 	r = sc_lock(card);
 	if (r != SC_SUCCESS)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+		LOG_FUNC_RETURN(card->ctx, r);
 
 
 	rbuf = NULL;
@@ -844,7 +844,7 @@ err:
 		free(rbuf);
 	}
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 static int cac_compute_signature(sc_card_t *card,
@@ -1225,7 +1225,7 @@ static int cac_select_file_by_type(sc_card_t *card, const sc_path_t *in_path, sc
 	file->size = CAC_MAX_SIZE; /* we don't know how big, just give a large size until we can read the file */
 
 	*file_out = file;
-	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 
 }
 
@@ -1742,7 +1742,7 @@ static int cac_process_ACA(sc_card_t *card, cac_private_data_t *priv)
 done:
 	if (val)
 		free(val);
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 /*
@@ -1847,7 +1847,7 @@ static int cac_init(sc_card_t *card)
 
 	r = cac_find_and_initialize(card, 1);
 	if (r < 0) {
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_CARD);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_CARD);
 	}
 	flags = SC_ALGORITHM_RSA_RAW;
 
@@ -1857,7 +1857,7 @@ static int cac_init(sc_card_t *card)
 
 	card->caps |= SC_CARD_CAP_RNG | SC_CARD_CAP_ISO7816_PIN_INFO;
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
 static int cac_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)

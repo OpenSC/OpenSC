@@ -263,7 +263,7 @@ static int atrust_acos_select_aid(struct sc_card *card,
 	if (file_out) {
 		sc_file_t *file = sc_file_new();
 		if (!file)
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 		file->type = SC_FILE_TYPE_DF;
 		file->ef_structure = SC_FILE_EF_UNKNOWN;
 		file->path.len = 0;
@@ -348,7 +348,7 @@ static int atrust_acos_select_fid(struct sc_card *card,
 	if (file_out) {
 		sc_file_t *file = sc_file_new();
 		if (!file)
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 		file->id   = (id_hi << 8) + id_lo;
 		file->path = card->cache.current_path;
 
@@ -494,7 +494,7 @@ static int atrust_acos_select_file(struct sc_card *card,
 				if (file_out) {
 					sc_file_t *file = sc_file_new();
 					if (!file)
-						SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+						LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 					file->id = (path[pathlen-2] << 8) +
 						   path[pathlen-1];
 					file->path = card->cache.current_path;

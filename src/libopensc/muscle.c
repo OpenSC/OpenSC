@@ -302,11 +302,11 @@ int msc_verify_pin(sc_card_t *card, int pinNumber, const u8 *pinValue, int pinLe
 	} else if(apdu.sw1 == 0x63) { /* Invalid auth */
 		if(tries)
 			*tries = apdu.sw2 & 0x0F;
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL,  SC_ERROR_PIN_CODE_INCORRECT);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_PIN_CODE_INCORRECT);
 	} else if(apdu.sw1 == 0x9C && apdu.sw2 == 0x02) {
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL,  SC_ERROR_PIN_CODE_INCORRECT);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_PIN_CODE_INCORRECT);
 	} else if(apdu.sw1 == 0x69 && apdu.sw2 == 0x83) {
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_AUTH_METHOD_BLOCKED);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_AUTH_METHOD_BLOCKED);
 	}
 	
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,  SC_ERROR_PIN_CODE_INCORRECT);
@@ -347,11 +347,11 @@ int msc_unblock_pin(sc_card_t *card, int pinNumber, const u8 *pukValue, int pukL
 	} else if(apdu.sw1 == 0x63) { /* Invalid auth */
 		if(tries)
 			*tries = apdu.sw2 & 0x0F;
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL,  SC_ERROR_PIN_CODE_INCORRECT);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_PIN_CODE_INCORRECT);
 	} else if(apdu.sw1 == 0x9C && apdu.sw2 == 0x02) {
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL,  SC_ERROR_PIN_CODE_INCORRECT);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_PIN_CODE_INCORRECT);
 	} else if(apdu.sw1 == 0x69 && apdu.sw2 == 0x83) {
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_AUTH_METHOD_BLOCKED);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_AUTH_METHOD_BLOCKED);
 	}
 	
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,  SC_ERROR_PIN_CODE_INCORRECT);
@@ -389,11 +389,11 @@ int msc_change_pin(sc_card_t *card, int pinNumber, const u8 *pinValue, int pinLe
 	} else if(apdu.sw1 == 0x63) { /* Invalid auth */
 		if(tries)
 			*tries = apdu.sw2 & 0x0F;
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL,  SC_ERROR_PIN_CODE_INCORRECT);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_PIN_CODE_INCORRECT);
 	} else if(apdu.sw1 == 0x9C && apdu.sw2 == 0x02) {
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL,  SC_ERROR_PIN_CODE_INCORRECT);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_PIN_CODE_INCORRECT);
 	} else if(apdu.sw1 == 0x69 && apdu.sw2 == 0x83) {
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_AUTH_METHOD_BLOCKED);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_AUTH_METHOD_BLOCKED);
 	}
 	
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,  SC_ERROR_PIN_CODE_INCORRECT);
@@ -441,7 +441,7 @@ int msc_get_challenge(sc_card_t *card, unsigned short dataLength, unsigned short
 	assert(dataLength < MSC_MAX_READ - 9); /* Output buffer doesn't seem to operate as desired.... nobody can read/delete */
 	
 	buffer = malloc(len);
-	if(!buffer) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+	if(!buffer) LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 	ptr = buffer;
 	ushort2bebytes(ptr, dataLength);
 	ptr+=2;
@@ -457,7 +457,7 @@ int msc_get_challenge(sc_card_t *card, unsigned short dataLength, unsigned short
 	
 	if(location == 1) {
 		u8* outputBuffer = malloc(dataLength + 2);
-		if(outputBuffer == NULL) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+		if(outputBuffer == NULL) LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 		apdu.le = dataLength + 2;
 		apdu.resp = outputBuffer;
 		apdu.resplen = dataLength + 2;
@@ -479,9 +479,9 @@ int msc_get_challenge(sc_card_t *card, unsigned short dataLength, unsigned short
 					sc_log(card->ctx,  "got strange SWs: 0x%02X 0x%02X\n",
 					     apdu.sw1, apdu.sw2);
 				}
-				SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+				LOG_FUNC_RETURN(card->ctx, r);
 			}
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_CARD_CMD_FAILED);
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_CARD_CMD_FAILED);
 		}
 	} else {
 		if(apdu.sw1 != 0x90 || apdu.sw2 != 0x00) {
@@ -491,15 +491,15 @@ int msc_get_challenge(sc_card_t *card, unsigned short dataLength, unsigned short
 					sc_log(card->ctx,  "got strange SWs: 0x%02X 0x%02X\n",
 					     apdu.sw1, apdu.sw2);
 				}
-				SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+				LOG_FUNC_RETURN(card->ctx, r);
 			}
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_CARD_CMD_FAILED);
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_CARD_CMD_FAILED);
 		}
 		r = msc_read_object(card, inputId, 2, outputData, dataLength);
 		if(r < 0)
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+			LOG_FUNC_RETURN(card->ctx, r);
 		msc_delete_object(card, inputId,0);
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+		LOG_FUNC_RETURN(card->ctx, r);
 	}
 }
 
@@ -552,9 +552,9 @@ int msc_generate_keypair(sc_card_t *card, int privateKey, int publicKey, int alg
 			sc_log(card->ctx,  "got strange SWs: 0x%02X 0x%02X\n",
 			     apdu.sw1, apdu.sw2);
 		}
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+		LOG_FUNC_RETURN(card->ctx, r);
 	}
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_CARD_CMD_FAILED);
+	LOG_FUNC_RETURN(card->ctx, SC_ERROR_CARD_CMD_FAILED);
 }
 
 int msc_extract_key(sc_card_t *card, 
@@ -579,9 +579,9 @@ int msc_extract_key(sc_card_t *card,
 			sc_log(card->ctx,  "got strange SWs: 0x%02X 0x%02X\n",
 			     apdu.sw1, apdu.sw2);
 		}
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+		LOG_FUNC_RETURN(card->ctx, r);
 	}
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_CARD_CMD_FAILED);
+	LOG_FUNC_RETURN(card->ctx, SC_ERROR_CARD_CMD_FAILED);
 }
 
 int msc_extract_rsa_public_key(sc_card_t *card, 
@@ -596,25 +596,25 @@ int msc_extract_rsa_public_key(sc_card_t *card,
 	int fileLocation = 1;
 
 	r = msc_extract_key(card, keyLocation);
-	if(r < 0) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	if(r < 0) LOG_FUNC_RETURN(card->ctx, r);
 	
 	/* Read keyType, keySize, and what should be the modulus size */
 	r = msc_read_object(card, inputId, fileLocation, buffer, 5);
 	fileLocation += 5;
-	if(r < 0) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	if(r < 0) LOG_FUNC_RETURN(card->ctx, r);
 	
-	if(buffer[0] != MSC_RSA_PUBLIC) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_UNKNOWN_DATA_RECEIVED);
+	if(buffer[0] != MSC_RSA_PUBLIC) LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
 	*modLength = (buffer[3] << 8) | buffer[4];
 	/* Read the modulus and the exponent length */
 
 	if (*modLength + 2 > sizeof buffer)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 	r = msc_read_object(card, inputId, fileLocation, buffer, *modLength + 2);
 	fileLocation += *modLength + 2;
-	if(r < 0) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	if(r < 0) LOG_FUNC_RETURN(card->ctx, r);
 	
 	*modulus = malloc(*modLength);
-	if(!*modulus) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+	if(!*modulus) LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 	memcpy(*modulus, buffer, *modLength);
 	*expLength = (buffer[*modLength] << 8) | buffer[*modLength + 1];
 	if (*expLength > sizeof buffer)
@@ -622,12 +622,12 @@ int msc_extract_rsa_public_key(sc_card_t *card,
 	r = msc_read_object(card, inputId, fileLocation, buffer, *expLength);
 	if(r < 0) {
 		free(*modulus); *modulus = NULL;
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+		LOG_FUNC_RETURN(card->ctx, r);
 	}
 	*exponent = malloc(*expLength);
 	if(!*exponent) {
 		free(*modulus);
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 	}
 	memcpy(*exponent, buffer, *expLength);
 	return 0;
@@ -685,9 +685,9 @@ int msc_compute_crypt_init(sc_card_t *card,
 			sc_log(card->ctx,  "init: got strange SWs: 0x%02X 0x%02X\n",
 			     apdu.sw1, apdu.sw2);
 		}
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+		LOG_FUNC_RETURN(card->ctx, r);
 	}
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_CARD_CMD_FAILED);
+	LOG_FUNC_RETURN(card->ctx, SC_ERROR_CARD_CMD_FAILED);
 }
 
 int msc_compute_crypt_final(
@@ -735,9 +735,9 @@ int msc_compute_crypt_final(
 			sc_log(card->ctx,  "final: got strange SWs: 0x%02X 0x%02X\n",
 			     apdu.sw1, apdu.sw2);
 		}
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+		LOG_FUNC_RETURN(card->ctx, r);
 	}
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_CARD_CMD_FAILED);
+	LOG_FUNC_RETURN(card->ctx, SC_ERROR_CARD_CMD_FAILED);
 }
 
 /* Stream data to the card through file IO */
@@ -808,7 +808,7 @@ static int msc_compute_crypt_final_object(
 	/* this is last ditch cleanup */	
 	msc_delete_object(card, outputId, 0);
 	
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 int msc_compute_crypt(sc_card_t *card, 
@@ -839,7 +839,7 @@ int msc_compute_crypt(sc_card_t *card,
 		outPtr, 
 		toSend,
 		&received);
-	if(r < 0) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	if(r < 0) LOG_FUNC_RETURN(card->ctx, r);
 	left -= toSend;
 	inPtr += toSend;
 	outPtr += received;
@@ -854,7 +854,7 @@ int msc_compute_crypt(sc_card_t *card,
 			outPtr,
 			toSend,
 			&received);
-		if(r < 0) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+		if(r < 0) LOG_FUNC_RETURN(card->ctx, r);
 	} else { /* Data is too big: use objects */
 		r = msc_compute_crypt_final_object(card,
 			keyLocation,
@@ -862,7 +862,7 @@ int msc_compute_crypt(sc_card_t *card,
 			outPtr,
 			toSend,
 			&received);
-		if(r < 0) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+		if(r < 0) LOG_FUNC_RETURN(card->ctx, r);
 	}	
 	outPtr += received;
 
@@ -912,7 +912,7 @@ int msc_import_key(sc_card_t *card,
 			+ data->dp1Length + data->dq1Length;
 	}
 	buffer = malloc(bufferSize);
-	if(!buffer) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+	if(!buffer) LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 	p = buffer;
 	*p = 0x00; p++; /* Encoding plain */
 	*p = data->keyType; p++; /* RSA_PRIVATE */
@@ -972,11 +972,11 @@ int msc_import_key(sc_card_t *card,
 		}
 		/* this is last ditch cleanup */
 		msc_delete_object(card, outputId, 0);
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+		LOG_FUNC_RETURN(card->ctx, r);
 	}
 	/* this is last ditch cleanup */
 	msc_delete_object(card, outputId, 0);
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_CARD_CMD_FAILED);
+	LOG_FUNC_RETURN(card->ctx, SC_ERROR_CARD_CMD_FAILED);
 }
 #undef CPYVAL

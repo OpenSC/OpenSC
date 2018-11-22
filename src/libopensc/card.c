@@ -834,13 +834,13 @@ int sc_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 
 	r = sc_lock(card);
 	if (r != SC_SUCCESS)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+		LOG_FUNC_RETURN(card->ctx, r);
 
 	while (len > 0 && retry > 0) {
 		r = card->ops->get_challenge(card, rnd, len);
 		if (r < 0) {
 			sc_unlock(card);
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+			LOG_FUNC_RETURN(card->ctx, r);
 		}
 
 		if (r > 0) {

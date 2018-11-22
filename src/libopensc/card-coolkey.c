@@ -1041,7 +1041,7 @@ static int coolkey_apdu_io(sc_card_t *card, int cla, int ins, int p1, int p2,
 	}
 
 err:
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 /*
@@ -1211,7 +1211,7 @@ static int coolkey_read_binary(sc_card_t *card, unsigned int idx,
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (idx > priv->obj->length) {
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_FILE_END_REACHED);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_FILE_END_REACHED);
 	}
 
 	/* if we've already read the data, just return it */
@@ -1221,7 +1221,7 @@ static int coolkey_read_binary(sc_card_t *card, unsigned int idx,
 			 idx, count);
 		len = MIN(count, priv->obj->length-idx);
 		memcpy(buf, &priv->obj->data[idx], len);
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, len);
+		LOG_FUNC_RETURN(card->ctx, len);
 	}
 
 	sc_log(card->ctx, 
@@ -1256,7 +1256,7 @@ static int coolkey_read_binary(sc_card_t *card, unsigned int idx,
 done:
 	if (data)
 		free(data);
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 /* COOLKEY driver is read only. NOTE: The applet supports w/r operations, so it's perfectly
@@ -1267,7 +1267,7 @@ static int coolkey_write_binary(sc_card_t *card, unsigned int idx,
 {
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED);
+	LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 }
 
 /* initialize getting a list and return the number of elements in the list */
@@ -1383,7 +1383,7 @@ static int coolkey_get_serial_nr_from_CUID(sc_card_t* card, sc_serial_number_t* 
 	LOG_FUNC_CALLED(card->ctx);
 	memcpy(serial->value, &priv->cuid, sizeof(priv->cuid));
 	serial->len = sizeof(priv->cuid);
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
 int
@@ -1631,7 +1631,7 @@ static int coolkey_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 				NULL, 0, &rnd, &len,  NULL, 0),
 			"Could not get challenge");
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, (int) len);
+	LOG_FUNC_RETURN(card->ctx, (int) len);
 }
 
 static int coolkey_set_security_env(sc_card_t *card, const sc_security_env_t *env, int se_num)
@@ -1661,7 +1661,7 @@ static int coolkey_restore_security_env(sc_card_t *card, int se_num)
 {
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
 #define MAX_COMPUTE_BUF 200
@@ -1930,7 +1930,7 @@ static int coolkey_select_file(sc_card_t *card, const sc_path_t *in_path, sc_fil
 	if (file_out) {
 		file = sc_file_new();
 		if (file == NULL)
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 		file->path = *in_path;
 		/* this could be like the FCI */
 		file->type =  SC_PATH_TYPE_FILE_ID;
@@ -2276,7 +2276,7 @@ static int coolkey_init(sc_card_t *card)
 
 	r = coolkey_initialize(card);
 	if (r < 0) {
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_CARD);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_CARD);
 	}
 
 	card->type = SC_CARD_TYPE_COOLKEY_GENERIC;
@@ -2301,7 +2301,7 @@ static int coolkey_init(sc_card_t *card)
 		card->caps |= SC_CARD_CAP_ISO7816_PIN_INFO;
 	}
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
 

@@ -140,11 +140,11 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 			"returning cached value idx=%d count=%"SC_FORMAT_LEN_SIZE_T"u",
 			idx, count);
 		if (idx > priv->cache_buf_len) {
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_FILE_END_REACHED);
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_FILE_END_REACHED);
 		}
 		len = MIN(count, priv->cache_buf_len-idx);
 		memcpy(buf, &priv->cache_buf[idx], len);
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, len);
+		LOG_FUNC_RETURN(card->ctx, len);
 	}
 
 	sc_log(card->ctx, 
@@ -196,7 +196,7 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 done:
 	if (val)
 		free(val);
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 /*
@@ -337,7 +337,7 @@ static int cac_select_file_by_type(sc_card_t *card, const sc_path_t *in_path, sc
 	file->size = CAC_MAX_SIZE; /* we don't know how big, just give a large size until we can read the file */
 
 	*file_out = file;
-	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 
 }
 
@@ -515,7 +515,7 @@ static int cac_init(sc_card_t *card)
 
 	r = cac_find_and_initialize(card, 1);
 	if (r < 0) {
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_CARD);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_CARD);
 	}
 	flags = SC_ALGORITHM_RSA_RAW;
 
@@ -525,7 +525,7 @@ static int cac_init(sc_card_t *card)
 
 	card->caps |= SC_CARD_CAP_RNG | SC_CARD_CAP_ISO7816_PIN_INFO;
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
 static struct sc_card_operations cac_ops;

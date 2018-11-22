@@ -187,7 +187,7 @@ miocos_create_pin(struct sc_profile *profile, sc_pkcs15_card_t *p15card, struct 
 	r = sc_card_ctl(p15card->card, SC_CARDCTL_MIOCOS_CREATE_AC, &ac_info);
         SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Miocos create AC failed");
 
-	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
 
@@ -223,7 +223,7 @@ miocos_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	r = sc_pkcs15init_create_file(profile, p15card, file);
 	sc_file_free(file);
 
-	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(ctx, r);
 }
 
 
@@ -261,7 +261,7 @@ miocos_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 
 	r = miocos_update_private_key(profile, p15card->card, rsa);
 
-	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(ctx, r);
 }
 
 static struct sc_pkcs15init_operations sc_pkcs15init_miocos_operations = {
