@@ -70,7 +70,7 @@ cosm_write_tokeninfo (struct sc_pkcs15_card *p15card, struct sc_profile *profile
 	ctx = p15card->card->ctx;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "cosm_write_tokeninfo() label '%s'; flags 0x%X", label, flags);
+	sc_log(ctx,  "cosm_write_tokeninfo() label '%s'; flags 0x%X", label, flags);
 	if (sc_profile_get_file(profile, COSM_TITLE"-token-info", &file)) {
 		rv = SC_ERROR_INCONSISTENT_PROFILE;
 		SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_NORMAL, rv, "Cannot find "COSM_TITLE"-token-info");
@@ -100,7 +100,7 @@ cosm_write_tokeninfo (struct sc_pkcs15_card *p15card, struct sc_profile *profile
 	if (sz < file->size - 4)
 		memset(buffer + sz, ' ', file->size - sz);
 
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "cosm_write_tokeninfo() token label '%s'; oberthur flags 0x%X", buffer, flags);
+	sc_log(ctx,  "cosm_write_tokeninfo() token label '%s'; oberthur flags 0x%X", buffer, flags);
 
 	memset(buffer + file->size - 4, 0, 4);
 	*(buffer + file->size - 1) = flags & 0xFF;
@@ -127,7 +127,7 @@ cosm_delete_file(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 	int rv = 0;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "id %04X", df->id);
+	sc_log(ctx,  "id %04X", df->id);
 	if (df->type==SC_FILE_TYPE_DF)   {
 		rv = sc_pkcs15init_authenticate(profile, p15card, df, SC_AC_OP_DELETE);
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Cannot authenticate SC_AC_OP_DELETE");
@@ -174,20 +174,20 @@ cosm_erase_card(struct sc_profile *profile, struct sc_pkcs15_card *p15card)
 	 * it *after* the DF.
 	 * */
 	if (sc_profile_get_file(profile, "DIR", &dir) >= 0) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "erase file dir %04X",dir->id);
+		sc_log(ctx,  "erase file dir %04X",dir->id);
 		rv = cosm_delete_file(p15card, profile, dir);
 		sc_file_free(dir);
 		if (rv < 0 && rv != SC_ERROR_FILE_NOT_FOUND)
 			goto done;
 	}
 
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "erase file ddf %04X",df->id);
+	sc_log(ctx,  "erase file ddf %04X",df->id);
 	rv = cosm_delete_file(p15card, profile, df);
 	if (rv < 0 && rv != SC_ERROR_FILE_NOT_FOUND)
 		goto done;
 
 	if (sc_profile_get_file(profile, "private-DF", &dir) >= 0) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "erase file dir %04X",dir->id);
+		sc_log(ctx,  "erase file dir %04X",dir->id);
 		rv = cosm_delete_file(p15card, profile, dir);
 		sc_file_free(dir);
 		if (rv < 0 && rv != SC_ERROR_FILE_NOT_FOUND)
@@ -195,7 +195,7 @@ cosm_erase_card(struct sc_profile *profile, struct sc_pkcs15_card *p15card)
 	}
 
 	if (sc_profile_get_file(profile, "public-DF", &dir) >= 0) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "erase file dir %04X",dir->id);
+		sc_log(ctx,  "erase file dir %04X",dir->id);
 		rv = cosm_delete_file(p15card, profile, dir);
 		sc_file_free(dir);
 		if (rv < 0 && rv != SC_ERROR_FILE_NOT_FOUND)
@@ -204,7 +204,7 @@ cosm_erase_card(struct sc_profile *profile, struct sc_pkcs15_card *p15card)
 
 	rv = sc_profile_get_file(profile, COSM_TITLE"-AppDF", &dir);
 	if (!rv) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "delete %s; r %i", COSM_TITLE"-AppDF", rv);
+		sc_log(ctx,  "delete %s; r %i", COSM_TITLE"-AppDF", rv);
 		rv = cosm_delete_file(p15card, profile, dir);
 		sc_file_free(dir);
 	}
@@ -244,7 +244,7 @@ cosm_create_dir(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	/* Create private objects DF */
 	for (ii = 0; create_dfs[ii]; ii++)   {
 		if (sc_profile_get_file(profile, create_dfs[ii], &file))   {
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Inconsistent profile: cannot find %s", create_dfs[ii]);
+			sc_log(ctx,  "Inconsistent profile: cannot find %s", create_dfs[ii]);
 			SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INCONSISTENT_PROFILE, "Profile do not contains Oberthur AWP file");
 		}
 
@@ -278,7 +278,7 @@ cosm_create_reference_data(struct sc_profile *profile, struct sc_pkcs15_card *p1
 	};
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(ctx, 
 		 "pin lens %"SC_FORMAT_LEN_SIZE_T"u/%"SC_FORMAT_LEN_SIZE_T"u",
 		 pin_len, puk_len);
 	if (!pin || pin_len>0x40)
@@ -347,12 +347,12 @@ cosm_update_pin(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	if (ainfo->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
 		return SC_ERROR_OBJECT_NOT_VALID;
 
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "ref %i; flags 0x%X", ainfo->attrs.pin.reference, ainfo->attrs.pin.flags);
+	sc_log(ctx,  "ref %i; flags 0x%X", ainfo->attrs.pin.reference, ainfo->attrs.pin.flags);
 
 	if (ainfo->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN)   {
 		if (ainfo->attrs.pin.reference != 4)
 			SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_PIN_REFERENCE, "cosm_update_pin() invalid SOPIN reference");
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Update SOPIN ignored");
+		sc_log(ctx,  "Update SOPIN ignored");
 		rv = SC_SUCCESS;
 	}
 	else   {
@@ -385,9 +385,9 @@ cosm_select_pin_reference(struct sc_profile *profile, struct sc_pkcs15_card *p15
 
 	pin_attrs = &auth_info->attrs.pin;
 
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "ref %i; flags %X", pin_attrs->reference, pin_attrs->flags);
+	sc_log(ctx,  "ref %i; flags %X", pin_attrs->reference, pin_attrs->flags);
 	if (sc_profile_get_file(profile, COSM_TITLE "-AppDF", &pinfile) < 0) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Profile doesn't define \"%s\"", COSM_TITLE "-AppDF");
+		sc_log(ctx,  "Profile doesn't define \"%s\"", COSM_TITLE "-AppDF");
 		return SC_ERROR_INCONSISTENT_PROFILE;
 	}
 
@@ -433,7 +433,7 @@ cosm_create_pin(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 
 	pin_attrs = &auth_info->attrs.pin;
 
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "create '%.*s'; ref 0x%X; flags %X", (int) sizeof pin_obj->label, pin_obj->label, pin_attrs->reference, pin_attrs->flags);
+	sc_log(ctx,  "create '%.*s'; ref 0x%X; flags %X", (int) sizeof pin_obj->label, pin_obj->label, pin_attrs->reference, pin_attrs->flags);
 	if (sc_profile_get_file(profile, COSM_TITLE "-AppDF", &pin_file) < 0)
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INCONSISTENT_PROFILE, "\""COSM_TITLE"-AppDF\" not defined");
 
@@ -483,7 +483,7 @@ cosm_new_file(struct sc_profile *profile, struct sc_card *card,
 	unsigned int structure = 0xFFFFFFFF;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "cosm_new_file() type %X; num %i",type, num);
+	sc_log(card->ctx,  "cosm_new_file() type %X; num %i",type, num);
 	while (1) {
 		switch (type) {
 		case SC_PKCS15_TYPE_PRKEY_RSA:
@@ -518,16 +518,16 @@ cosm_new_file(struct sc_profile *profile, struct sc_card *card,
 		 * the generic class (SC_PKCS15_TYPE_CERT)
 		 */
 		if (!(type & ~SC_PKCS15_TYPE_CLASS_MASK)) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "File type %X not supported by card driver",
+			sc_log(card->ctx,  "File type %X not supported by card driver",
 				type);
 			return SC_ERROR_INVALID_ARGUMENTS;
 		}
 		type &= SC_PKCS15_TYPE_CLASS_MASK;
 	}
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "cosm_new_file() template %s; num %i",_template, num);
+	sc_log(card->ctx,  "cosm_new_file() template %s; num %i",_template, num);
 	if (sc_profile_get_file(profile, _template, &file) < 0) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Profile doesn't define %s template '%s'",
+		sc_log(card->ctx,  "Profile doesn't define %s template '%s'",
 				desc, _template);
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED);
 	}
@@ -538,7 +538,7 @@ cosm_new_file(struct sc_profile *profile, struct sc_card *card,
 		file->ef_structure = structure;
 	}
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(card->ctx, 
 		 "cosm_new_file() file size %"SC_FORMAT_LEN_SIZE_T"u; ef type %i/%i; id %04X",
 		 file->size, file->type, file->ef_structure, file->id);
 	*out = file;
@@ -663,7 +663,7 @@ cosm_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	key_info->key_reference = prkf->path.value[prkf->path.len - 1] & 0xFF;
 	key_info->path = prkf->path;
 
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "cosm_generate_key() now delete temporary public key");
+	sc_log(ctx,  "cosm_generate_key() now delete temporary public key");
 	rv =  cosm_delete_file(p15card, profile, tmpf);
 
 	sc_file_free(tmpf);
@@ -689,7 +689,7 @@ cosm_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	if (object->type != SC_PKCS15_TYPE_PRKEY_RSA)
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED, "Create key failed: RSA only supported");
 
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "create private key ID:%s",  sc_pkcs15_print_id(&key_info->id));
+	sc_log(ctx,  "create private key ID:%s",  sc_pkcs15_print_id(&key_info->id));
 	/* Here, the path of private key file should be defined.
 	 * Nevertheless, we need to instantiate private key to get the ACLs. */
 	rv = cosm_new_file(profile, p15card->card, SC_PKCS15_TYPE_PRKEY_RSA, key_info->key_reference, &file);
@@ -700,7 +700,7 @@ cosm_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	file->id = file->path.value[file->path.len - 2] * 0x100
 				+ file->path.value[file->path.len - 1];
 
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Path of private key file to create %s", sc_print_path(&file->path));
+	sc_log(ctx,  "Path of private key file to create %s", sc_print_path(&file->path));
 
 	rv = sc_select_file(p15card->card, &file->path, NULL);
 	if (rv == 0)   {
@@ -741,7 +741,7 @@ cosm_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	if (object->type != SC_PKCS15_TYPE_PRKEY_RSA || prkey->algorithm != SC_ALGORITHM_RSA)
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED, "Store key failed: RSA only supported");
 
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "store key with ID:%s and path:%s", sc_pkcs15_print_id(&key_info->id),
+	sc_log(ctx,  "store key with ID:%s and path:%s", sc_pkcs15_print_id(&key_info->id),
 		       	sc_print_path(&key_info->path));
 
 	rv = sc_select_file(p15card->card, &key_info->path, &file);
@@ -790,11 +790,11 @@ cosm_emu_update_any_df(struct sc_profile *profile, struct sc_pkcs15_card *p15car
 	SC_FUNC_CALLED(ctx, 1);
 	switch(op)   {
 	case SC_AC_OP_ERASE:
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Update DF; erase object('%.*s',type:%X)", (int) sizeof object->label, object->label, object->type);
+		sc_log(ctx,  "Update DF; erase object('%.*s',type:%X)", (int) sizeof object->label, object->label, object->type);
 		rv = awp_update_df_delete(p15card, profile, object);
 		break;
 	case SC_AC_OP_CREATE:
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Update DF; create object('%.*s',type:%X)", (int) sizeof object->label, object->label, object->type);
+		sc_log(ctx,  "Update DF; create object('%.*s',type:%X)", (int) sizeof object->label, object->label, object->type);
 		rv = awp_update_df_create(p15card, profile, object);
 		break;
 	}
@@ -838,7 +838,7 @@ cosm_emu_update_tokeninfo(struct sc_profile *profile, struct sc_pkcs15_card *p15
 	*(buf + file->size - 1) = flags % 0x100;
 	*(buf + file->size - 2) = (flags % 0x10000) / 0x100;
 
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Update token info (label:'%s',flags:%X,p15card->flags:%X)", buf, flags, p15card->flags);
+	sc_log(ctx,  "Update token info (label:'%s',flags:%X,p15card->flags:%X)", buf, flags, p15card->flags);
 	rv = sc_pkcs15init_update_file(profile, p15card, file, buf, file->size);
 	free(buf);
 	sc_file_free(file);

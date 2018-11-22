@@ -237,7 +237,7 @@ static int westcos_detect_card(sc_pkcs15_card_t * p15card)
 	sc_card_t *card = p15card->card;
 	sc_context_t *ctx = card->ctx;
 	const char *name = "WESTCOS";
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(ctx, 
 		"westcos_detect_card (%s)", card->name);
 	if (strncmp(card->name, name, strlen(name)))
 		return SC_ERROR_WRONG_CARD;
@@ -251,7 +251,7 @@ int sc_pkcs15emu_westcos_init_ex(sc_pkcs15_card_t * p15card,
 	int r;
 	sc_card_t *card = p15card->card;
 	sc_context_t *ctx = card->ctx;
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(ctx, 
 		"sc_pkcs15_init_func_ex westcos\n");
 	if (opts && opts->flags & SC_PKCS15EMU_FLAGS_NO_CHECK)
 		return sc_pkcs15emu_westcos_init(p15card);

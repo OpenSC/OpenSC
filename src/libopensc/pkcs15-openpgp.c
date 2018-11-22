@@ -211,7 +211,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 	if ((r = read_file(card, "006E:0073:00C4", c4data, sizeof(c4data))) < 0)
 		goto failed;
 	if (r != 7) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(ctx, 
 			"CHV status bytes have unexpected length (expected 7, got %d)\n", r);
 		return SC_ERROR_OBJECT_NOT_VALID;
 	}
@@ -259,7 +259,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 	if ((r = read_file(card, "006E:0073:00C5", c5data, sizeof(c5data))) < 0)
 		goto failed;
 	if (r != 60) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(ctx, 
 			"finger print bytes have unexpected length (expected 60, got %d)\n", r);
 		return SC_ERROR_OBJECT_NOT_VALID;
 	}
@@ -279,7 +279,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 		if ((r = read_file(card, path_template, cxdata, sizeof(cxdata))) < 0)
 			goto failed;
 		if (r != 6) {
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Key info bytes have unexpected length (expected 6, got %d)\n", r);
+			sc_log(ctx,  "Key info bytes have unexpected length (expected 6, got %d)\n", r);
 			return SC_ERROR_INTERNAL;
 		}
 
@@ -323,7 +323,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 		if ((r = read_file(card, path_template, cxdata, sizeof(cxdata))) < 0)
 			goto failed;
 		if (r != 6) {
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Key info bytes have unexpected length (expected 6, got %d)\n", r);
+			sc_log(ctx,  "Key info bytes have unexpected length (expected 6, got %d)\n", r);
 			return SC_ERROR_INTERNAL;
 		}
 
@@ -385,7 +385,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 
 failed:
 	if (r < 0) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(card->ctx, 
 				"Failed to initialize OpenPGP emulation: %s\n",
 				sc_strerror(r));
 	}

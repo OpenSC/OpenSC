@@ -96,7 +96,7 @@ static int cardos_match_card(sc_card_t *card)
 			return 0;
 		/* get the os version using GET DATA and compare it with
 		 * version in the ATR */
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "checking cardos version ...");
+		sc_log(card->ctx,  "checking cardos version ...");
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xca, 0x01, 0x82);
 		apdu.resp = rbuf;
 		apdu.resplen = sizeof(rbuf);
@@ -111,19 +111,19 @@ static int cardos_match_card(sc_card_t *card)
 			/* version mismatch */
 			return 0;
 		if (atr[11] <= 0x04) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "found cardos m4.01");
+			sc_log(card->ctx,  "found cardos m4.01");
 			card->type = SC_CARD_TYPE_CARDOS_M4_01;
 		} else if (atr[11] == 0x08) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "found cardos v4.3b");
+			sc_log(card->ctx,  "found cardos v4.3b");
 			card->type = SC_CARD_TYPE_CARDOS_M4_3;
 		} else if (atr[11] == 0x09) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "found cardos v4.2b");
+			sc_log(card->ctx,  "found cardos v4.2b");
 			card->type = SC_CARD_TYPE_CARDOS_M4_2B;
 		} else if (atr[11] >= 0x0B) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "found cardos v4.2c or higher");
+			sc_log(card->ctx,  "found cardos v4.2c or higher");
 			card->type = SC_CARD_TYPE_CARDOS_M4_2C;
 		} else {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "found cardos m4.2");
+			sc_log(card->ctx,  "found cardos m4.2");
 		}
 	}
 	return 1;
@@ -315,13 +315,13 @@ static int cardos_check_sw(sc_card_t *card, unsigned int sw1, unsigned int sw2)
 	for (i = 0; i < err_count; i++) {
 		if (cardos_errors[i].SWs == ((sw1 << 8) | sw2)) {
 			if ( cardos_errors[i].errorstr ) 
-				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "%s\n",
+				sc_log(card->ctx,  "%s\n",
 				 	cardos_errors[i].errorstr);
 			return cardos_errors[i].errorno;
 		}
 	}
 
-        sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Unknown SWs; SW1=%02X, SW2=%02X\n", sw1, sw2);
+        sc_log(card->ctx,  "Unknown SWs; SW1=%02X, SW2=%02X\n", sw1, sw2);
 	return SC_ERROR_CARD_CMD_FAILED;
 }
 
@@ -351,7 +351,7 @@ get_next_part:
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "DIRECTORY command returned error");
 
 	if (apdu.resplen > 256) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "directory listing > 256 bytes, cutting");
+		sc_log(card->ctx,  "directory listing > 256 bytes, cutting");
 	}
 
 	len = apdu.resplen;
@@ -360,7 +360,7 @@ get_next_part:
 		/* is there a file information block (0x6f) ? */
 		p = sc_asn1_find_tag(card->ctx, p, len, 0x6f, &tlen);
 		if (p == NULL) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "directory tag missing");
+			sc_log(card->ctx,  "directory tag missing");
 			return SC_ERROR_INTERNAL;
 		}
 		if (tlen == 0)
@@ -368,7 +368,7 @@ get_next_part:
 			break;
 		q = sc_asn1_find_tag(card->ctx, p, tlen, 0x86, &ilen);
 		if (q == NULL || ilen != 2) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "error parsing file id TLV object");
+			sc_log(card->ctx,  "error parsing file id TLV object");
 			return SC_ERROR_INTERNAL;
 		}
 		/* put file id in buf */
@@ -510,7 +510,7 @@ static int cardos_acl_to_bytes(sc_card_t *card, const sc_file_t *file,
 		else
 			byte = acl_to_byte(sc_file_get_acl_entry(file, idx[i]));
 		if (byte < 0) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Invalid ACL\n");
+			sc_log(card->ctx,  "Invalid ACL\n");
 			return SC_ERROR_INVALID_ARGUMENTS;
 		}
 		buf[i] = byte;
@@ -643,7 +643,7 @@ static int cardos_construct_fcp(sc_card_t *card, const sc_file_t *file,
 			buf[4] |= (u8) file->record_count;
 			break;
 		default:
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "unknown EF type: %u", file->type);
+			sc_log(card->ctx,  "unknown EF type: %u", file->type);
 			return SC_ERROR_INVALID_ARGUMENTS;
 		}
 		if (file->ef_structure == SC_FILE_EF_CYCLIC ||
@@ -720,7 +720,7 @@ static int cardos_create_file(sc_card_t *card, sc_file_t *file)
 
 		r = cardos_construct_fcp(card, file, sbuf, &len);
 		if (r < 0) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "unable to create FCP");
+			sc_log(card->ctx,  "unable to create FCP");
 			return r;
 		}
 	
@@ -1045,7 +1045,7 @@ cardos_lifecycle_get(sc_card_t *card, int *mode)
 		*mode = SC_CARDCTRL_LIFECYCLE_OTHER;
 		break;
 	default:
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Unknown lifecycle byte %d", rbuf[0]);
+		sc_log(card->ctx,  "Unknown lifecycle byte %d", rbuf[0]);
 		r = SC_ERROR_INTERNAL;
 	}
 
@@ -1191,7 +1191,7 @@ static int cardos_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 	if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
 		return SC_ERROR_INTERNAL;
 	if (apdu.resplen != 32) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "unexpected response to GET DATA serial"
+		sc_log(card->ctx,  "unexpected response to GET DATA serial"
 				" number\n");
 		return SC_ERROR_INTERNAL;
 	}

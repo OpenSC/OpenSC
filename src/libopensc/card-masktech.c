@@ -72,7 +72,7 @@ static int masktech_init(sc_card_t * card)
 	unsigned long flags;
 	struct masktech_private_data *data;
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "masktech_init()\n");
+	sc_log(card->ctx,  "masktech_init()\n");
 
 	/* private data kept during the live of the driver */
 	if (!(data = (struct masktech_private_data *) malloc(sizeof(*data))))
@@ -104,7 +104,7 @@ static int masktech_set_security_env(sc_card_t *card,
                                      int se_num)
 {
 	struct masktech_private_data *private_data;
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "masktech_set_security_env(), keyRef = 0x%0x, algo = 0x%0x\n",
+	sc_log(card->ctx,  "masktech_set_security_env(), keyRef = 0x%0x, algo = 0x%0x\n",
 		 *env->key_ref, env->algorithm_flags);
 
 	private_data = (struct masktech_private_data *) card->drv_data;
@@ -114,7 +114,7 @@ static int masktech_set_security_env(sc_card_t *card,
 	/* save the key reference */
 	if (env->flags & SC_SEC_ENV_KEY_REF_PRESENT) {
 		if (env->key_ref_len != 1) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Invalid key reference supplied.\n");
+			sc_log(card->ctx,  "Invalid key reference supplied.\n");
 			return SC_ERROR_NOT_SUPPORTED;
 		}
 		private_data->rsa_key_ref = env->key_ref[0];
@@ -137,7 +137,7 @@ static int masktech_compute_signature(sc_card_t *card,
 		0x03, 0x04, 0x02, 0x01, 0x05, 0x00, 0x04, 0x20
 	};
 	assert(card != NULL && data != NULL && out != NULL);
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "masktech_compute_signature()\n");
+	sc_log(card->ctx,  "masktech_compute_signature()\n");
 
 	/* retrieve the key reference */
 	private_data = (struct masktech_private_data *) card->drv_data;
@@ -150,7 +150,7 @@ static int masktech_compute_signature(sc_card_t *card,
 		/* check that it is a SHA256 with digest info*/
 		if ((datalen != sizeof(hdr_sha256) + 32) || (memcmp(hdr_sha256, data, sizeof(hdr_sha256)) != 0))
 		{
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "It is not a SHA256 with digestinfo\n");
+			sc_log(card->ctx,  "It is not a SHA256 with digestinfo\n");
 			return SC_ERROR_NOT_SUPPORTED;
 		}
 		/* extract the SHA-256 hash */
@@ -176,7 +176,7 @@ static int masktech_decipher(sc_card_t *card,
 	u8 rbuf[SC_MAX_EXT_APDU_BUFFER_SIZE];
 
 	assert(card != NULL && crgram != NULL && out != NULL);
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "masktech_decipher()\n");
+	sc_log(card->ctx,  "masktech_decipher()\n");
 
 	if (crgram_len > SC_MAX_EXT_APDU_BUFFER_SIZE) {
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
@@ -343,7 +343,7 @@ static int masktech_get_serialnr(sc_card_t * card, sc_serial_number_t * serial)
 
 static int masktech_card_ctl(sc_card_t * card, unsigned long cmd, void *ptr)
 {
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "masktech_card_ctl()\n");
+	sc_log(card->ctx,  "masktech_card_ctl()\n");
 	switch (cmd) {
 		case SC_CARDCTL_GET_SERIALNR:
 			return masktech_get_serialnr(card, (sc_serial_number_t *) ptr);

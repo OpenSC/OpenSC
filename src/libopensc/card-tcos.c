@@ -309,7 +309,7 @@ static void parse_sec_attr(sc_card_t *card,
                         op = map_operations (buf[0]);
                         if (op == (unsigned int)-1)
                         {
-                                sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+                                sc_log(card->ctx, 
                                        "Unknown security command byte %02x\n",
                                        buf[0]);
                                 continue;
@@ -397,7 +397,7 @@ static int tcos_select_file(sc_card_t *card,
 	if (r || file_out == NULL) SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, r);
 
 	if (apdu.resplen < 1 || apdu.resp[0] != 0x62){
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "received invalid template %02X\n", apdu.resp[0]);
+		sc_log(ctx,  "received invalid template %02X\n", apdu.resp[0]);
 		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_UNKNOWN_DATA_RECEIVED);
 	}
 
@@ -436,7 +436,7 @@ static int tcos_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "List Dir failed");
 		if (apdu.resplen > buflen) return SC_ERROR_BUFFER_TOO_SMALL;
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(ctx, 
 			 "got %"SC_FORMAT_LEN_SIZE_T"u %s-FileIDs\n",
 			 apdu.resplen / 2, p1 == 1 ? "DF" : "EF");
 
@@ -457,7 +457,7 @@ static int tcos_delete_file(sc_card_t *card, const sc_path_t *path)
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (path->type != SC_PATH_TYPE_FILE_ID && path->len != 2) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "File type has to be SC_PATH_TYPE_FILE_ID\n");
+		sc_log(card->ctx,  "File type has to be SC_PATH_TYPE_FILE_ID\n");
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	sbuf[0] = path->value[0];
@@ -491,15 +491,15 @@ static int tcos_set_security_env(sc_card_t *card, const sc_security_env_t *env, 
 		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	if(!(env->flags & SC_SEC_ENV_KEY_REF_PRESENT))
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(ctx, 
 			"No Key-Reference in SecEnvironment\n");
 	else
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(ctx, 
 			 "Key-Reference %02X (len=%"SC_FORMAT_LEN_SIZE_T"u)\n",
 			 env->key_ref[0], env->key_ref_len);
 	/* Key-Reference 0x80 ?? */
 	default_key= !(env->flags & SC_SEC_ENV_KEY_REF_PRESENT) || (env->key_ref_len==1 && env->key_ref[0]==0x80);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(ctx, 
 		"TCOS3:%d PKCS1:%d\n", tcos3,
 		!!(env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1));
 
@@ -520,12 +520,12 @@ static int tcos_set_security_env(sc_card_t *card, const sc_security_env_t *env, 
 
 	r=sc_transmit_apdu(card, &apdu);
 	if (r) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(ctx, 
 			"%s: APDU transmit failed", sc_strerror(r));
 		return r;
 	}
 	if (apdu.sw1==0x6A && (apdu.sw2==0x81 || apdu.sw2==0x88)) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(ctx, 
 			"Detected Signature-Only key\n");
 		if (env->operation==SC_SEC_OPERATION_SIGN && default_key) return SC_SUCCESS;
 	}
@@ -554,7 +554,7 @@ static int tcos_compute_signature(sc_card_t *card, const u8 * data, size_t datal
 
 	if(((tcos_data *)card->drv_data)->next_sign){
 		if(datalen>48){
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Data to be signed is too long (TCOS supports max. 48 bytes)\n");
+			sc_log(card->ctx,  "Data to be signed is too long (TCOS supports max. 48 bytes)\n");
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
 		}
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x9E, 0x9A);
@@ -616,7 +616,7 @@ static int tcos_decipher(sc_card_t *card, const u8 * crgram, size_t crgram_len, 
 	data=(tcos_data *)card->drv_data;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(ctx, 
 		"TCOS3:%d PKCS1:%d\n",tcos3,
 		!!(data->pad_flags & SC_ALGORITHM_RSA_PAD_PKCS1));
 

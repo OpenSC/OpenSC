@@ -894,7 +894,7 @@ coolkey_number_of_error_codes = sizeof(coolkey_error_codes)/sizeof(coolkey_error
 
 static int coolkey_check_sw(sc_card_t *card, unsigned int sw1, unsigned int sw2)
 {
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(card->ctx, 
 		"sw1 = 0x%02x, sw2 = 0x%02x\n", sw1, sw2);
 
 	if (sw1 == 0x90)
@@ -941,7 +941,7 @@ static int coolkey_apdu_io(sc_card_t *card, int cla, int ins, int p1, int p2,
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(card->ctx, 
 		 "%02x %02x %02x %"SC_FORMAT_LEN_SIZE_T"u : %"SC_FORMAT_LEN_SIZE_T"u %"SC_FORMAT_LEN_SIZE_T"u\n",
 		 ins, p1, p2, sendbuflen, card->max_send_size,
 		 card->max_recv_size);
@@ -1006,24 +1006,24 @@ static int coolkey_apdu_io(sc_card_t *card, int cla, int ins, int p1, int p2,
 		 apdu.resplen = 0;
 	}
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(card->ctx, 
 		 "calling sc_transmit_apdu flags=%lx le=%"SC_FORMAT_LEN_SIZE_T"u, resplen=%"SC_FORMAT_LEN_SIZE_T"u, resp=%p",
 		 apdu.flags, apdu.le, apdu.resplen, apdu.resp);
 
 	/* with new adpu.c and chaining, this actually reads the whole object */
 	r = sc_transmit_apdu(card, &apdu);
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(card->ctx, 
 		 "result r=%d apdu.resplen=%"SC_FORMAT_LEN_SIZE_T"u sw1=%02x sw2=%02x",
 		 r, apdu.resplen, apdu.sw1, apdu.sw2);
 
 	if (r < 0) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"Transmit failed");
+		sc_log(card->ctx, "Transmit failed");
 		goto err;
 	}
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	if (r < 0) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"Transmit failed");
+		sc_log(card->ctx, "Transmit failed");
 		goto err;
 	}
 
@@ -1216,7 +1216,7 @@ static int coolkey_read_binary(sc_card_t *card, unsigned int idx,
 
 	/* if we've already read the data, just return it */
 	if (priv->obj->data) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(card->ctx, 
 			 "returning cached value idx=%u count=%"SC_FORMAT_LEN_SIZE_T"u",
 			 idx, count);
 		len = MIN(count, priv->obj->length-idx);
@@ -1224,7 +1224,7 @@ static int coolkey_read_binary(sc_card_t *card, unsigned int idx,
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, len);
 	}
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(card->ctx, 
 		 "clearing cache idx=%u count=%"SC_FORMAT_LEN_SIZE_T"u",
 		 idx, count);
 
@@ -1641,7 +1641,7 @@ static int coolkey_set_security_env(sc_card_t *card, const sc_security_env_t *en
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(card->ctx, 
 		 "flags=%08lx op=%d alg=%d algf=%08x algr=%08x kr0=%02x, krfl=%"SC_FORMAT_LEN_SIZE_T"u\n",
 		 env->flags, env->operation, env->algorithm,
 		 env->algorithm_flags, env->algorithm_ref, env->key_ref[0],
@@ -1700,7 +1700,7 @@ static int coolkey_rsa_op(sc_card_t *card,
 	u8 *buf_out;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(card->ctx, 
 		 "datalen=%"SC_FORMAT_LEN_SIZE_T"u outlen=%"SC_FORMAT_LEN_SIZE_T"u\n",
 		 datalen, max_out_len);
 
@@ -1803,7 +1803,7 @@ static int coolkey_ecc_op(sc_card_t *card,
 	u8 key_number;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(card->ctx, 
 		 "datalen=%"SC_FORMAT_LEN_SIZE_T"u outlen=%"SC_FORMAT_LEN_SIZE_T"u\n",
 		 datalen, outlen);
 

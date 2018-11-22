@@ -277,7 +277,7 @@ static int muscle_delete_mscfs_file(sc_card_t *card, mscfs_file_t *file_data)
 		/* Delete children */
 		mscfs_check_cache(fs);
 
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(card->ctx, 
 			"DELETING Children of: %02X%02X%02X%02X\n",
 			oid[0],oid[1],oid[2],oid[3]);
 		for(x = 0; x < fs->cache.size; x++) {
@@ -286,7 +286,7 @@ static int muscle_delete_mscfs_file(sc_card_t *card, mscfs_file_t *file_data)
 			objectId = childFile->objectId;
 
 			if(0 == memcmp(oid + 2, objectId.id, 2)) {
-				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+				sc_log(card->ctx, 
 					"DELETING: %02X%02X%02X%02X\n",
 					objectId.id[0],objectId.id[1],
 					objectId.id[2],objectId.id[3]);
@@ -525,7 +525,7 @@ static int muscle_list_files(sc_card_t *card, u8 *buf, size_t bufLen)
 		u8* oid = fs->cache.array[x].objectId.id;
 		if (bufLen < 2)
 			break;
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(card->ctx, 
 			"FILE: %02X%02X%02X%02X\n",
 			oid[0],oid[1],oid[2],oid[3]);
 		if(0 == memcmp(fs->currentPath, oid, 2)) {
@@ -565,7 +565,7 @@ static int muscle_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *cmd,
 		case SC_AC_AUT:
 		case SC_AC_NONE:
 		default:
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Unsupported authentication method\n");
+			sc_log(card->ctx,  "Unsupported authentication method\n");
 			return SC_ERROR_NOT_SUPPORTED;
 		}
 	case SC_PIN_CMD_CHANGE:
@@ -581,7 +581,7 @@ static int muscle_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *cmd,
 		case SC_AC_AUT:
 		case SC_AC_NONE:
 		default:
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Unsupported authentication method\n");
+			sc_log(card->ctx,  "Unsupported authentication method\n");
 			return SC_ERROR_NOT_SUPPORTED;
 		}
 	case SC_PIN_CMD_UNBLOCK:
@@ -597,11 +597,11 @@ static int muscle_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *cmd,
 		case SC_AC_AUT:
 		case SC_AC_NONE:
 		default:
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Unsupported authentication method\n");
+			sc_log(card->ctx,  "Unsupported authentication method\n");
 			return SC_ERROR_NOT_SUPPORTED;
 		}
 	default:
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Unsupported command\n");
+		sc_log(card->ctx,  "Unsupported command\n");
 		return SC_ERROR_NOT_SUPPORTED;
 
 	}
@@ -678,34 +678,34 @@ static int muscle_set_security_env(sc_card_t *card,
 
 	if (env->operation != SC_SEC_OPERATION_SIGN &&
 	    env->operation != SC_SEC_OPERATION_DECIPHER) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Invalid crypto operation supplied.\n");
+		sc_log(card->ctx,  "Invalid crypto operation supplied.\n");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	if (env->algorithm != SC_ALGORITHM_RSA) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Invalid crypto algorithm supplied.\n");
+		sc_log(card->ctx,  "Invalid crypto algorithm supplied.\n");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	/* ADJUST FOR PKCS1 padding support for decryption only */
 	if ((env->algorithm_flags & SC_ALGORITHM_RSA_PADS) ||
 	    (env->algorithm_flags & SC_ALGORITHM_RSA_HASHES)) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Card supports only raw RSA.\n");
+		sc_log(card->ctx,  "Card supports only raw RSA.\n");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	if (env->flags & SC_SEC_ENV_KEY_REF_PRESENT) {
 		if (env->key_ref_len != 1 ||
 		    (env->key_ref[0] > 0x0F)) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Invalid key reference supplied.\n");
+			sc_log(card->ctx,  "Invalid key reference supplied.\n");
 			return SC_ERROR_NOT_SUPPORTED;
 		}
 		priv->rsa_key_ref = env->key_ref[0];
 	}
 	if (env->flags & SC_SEC_ENV_ALG_REF_PRESENT) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Algorithm reference not supported.\n");
+		sc_log(card->ctx,  "Algorithm reference not supported.\n");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	/* if (env->flags & SC_SEC_ENV_FILE_REF_PRESENT)
 		if (memcmp(env->file_ref.value, "\x00\x12", 2) != 0) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "File reference is not 0012.\n");
+			sc_log(card->ctx,  "File reference is not 0012.\n");
 			return SC_ERROR_NOT_SUPPORTED;
 		} */
 	priv->env = *env;
@@ -736,7 +736,7 @@ static int muscle_decipher(sc_card_t * card,
 	key_id = priv->rsa_key_ref * 2; /* Private key */
 
 	if (out_len < crgram_len) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Output buffer too small");
+		sc_log(card->ctx,  "Output buffer too small");
 		return SC_ERROR_BUFFER_TOO_SMALL;
 	}
 
@@ -762,7 +762,7 @@ static int muscle_compute_signature(sc_card_t *card, const u8 *data,
 	key_id = priv->rsa_key_ref * 2; /* Private key */
 
 	if (outlen < data_len) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Output buffer too small");
+		sc_log(card->ctx,  "Output buffer too small");
 		return SC_ERROR_BUFFER_TOO_SMALL;
 	}
 

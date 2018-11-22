@@ -170,7 +170,7 @@ akis_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 
 	while (left > 19) {
 		if (p[0] != 0x2f && p[0] != 0x3d) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Malformatted list reply %02x", p[0]);
+			sc_log(card->ctx,  "Malformatted list reply %02x", p[0]);
 			return SC_ERROR_INTERNAL;
 		}
 		if (buflen >= 2) {
@@ -204,7 +204,7 @@ akis_process_fci(sc_card_t *card, sc_file_t *file,
 	 */
 	p = sc_asn1_find_tag(card->ctx, buf, buflen, 0x90, &len);
 	if (p == NULL) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Security tag missing");
+		sc_log(card->ctx,  "Security tag missing");
 		return SC_ERROR_INTERNAL;
 	}
 	perms = p[0];
@@ -274,7 +274,7 @@ akis_create_file(sc_card_t *card, sc_file_t *file)
 				type = 0x45;
 				break;
 			default:
-				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "This EF structure is not supported yet");
+				sc_log(card->ctx,  "This EF structure is not supported yet");
 				return SC_ERROR_NOT_SUPPORTED;
 		}
 		apdu.p1 = type;
@@ -286,7 +286,7 @@ akis_create_file(sc_card_t *card, sc_file_t *file)
 	} else if (file->type == SC_FILE_TYPE_DF) {
 		apdu.ins = 0x10;
 	} else {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Unknown file type");
+		sc_log(card->ctx,  "Unknown file type");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
@@ -319,7 +319,7 @@ akis_delete_file(sc_card_t *card, const sc_path_t *path)
 			type = 0x08;
 			break;
 		default:
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "File type has to be FID or PATH");
+			sc_log(card->ctx,  "File type has to be FID or PATH");
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x16, type, 0x00);
@@ -373,7 +373,7 @@ akis_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left
 		return r;
 	}
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Other pin cmds not supported yet");
+	sc_log(card->ctx,  "Other pin cmds not supported yet");
 	return SC_ERROR_NOT_SUPPORTED;
 }
 

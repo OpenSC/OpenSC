@@ -230,7 +230,7 @@ static int parse_EF_CardInfo(sc_pkcs15_card_t *p15card)
 		| (((unsigned int) info1[info1_len-2]) << 8)
 	   	| (((unsigned int) info1[info1_len-3]) << 16)
 	   	| (((unsigned int) info1[info1_len-4]) << 24);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(ctx, 
 		"found %d private keys\n", (int)key_num);
 	/* set p1 to the address of the first key descriptor */
 	offset = info1_len - 4 - key_num * 2;

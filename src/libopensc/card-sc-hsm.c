@@ -725,12 +725,12 @@ static int sc_hsm_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 			u8 recvbuf[SC_MAX_APDU_BUFFER_SIZE];
 #ifdef ENABLE_SM
 			if (card->sm_ctx.sm_mode != SM_MODE_TRANSMIT) {
-				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+				sc_log(card->ctx, 
 						"Session PIN generation only supported in SM");
 				LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 			}
 #else
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+			sc_log(card->ctx, 
 					"Session PIN generation only supported in SM");
 			LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 #endif
@@ -741,7 +741,7 @@ static int sc_hsm_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 			apdu.le = 0;
 			if (sc_transmit_apdu(card, &apdu) != SC_SUCCESS
 					|| sc_check_sw(card, apdu.sw1, apdu.sw2) != SC_SUCCESS) {
-				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+				sc_log(card->ctx, 
 						"Generating session PIN failed");
 				LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 			}
@@ -751,12 +751,12 @@ static int sc_hsm_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 							apdu.resplen);
 					data->pin2.len = apdu.resplen;
 				} else {
-					sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+					sc_log(card->ctx, 
 							"Buffer too small for session PIN");
 				}
 			}
 		} else {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+			sc_log(card->ctx, 
 					"Session PIN not supported for this PIN (0x%02X)",
 					data->pin_reference);
 		}
@@ -792,7 +792,7 @@ static int sc_hsm_read_binary(sc_card_t *card,
 	int r;
 
 	if (idx > 0xffff) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "invalid EF offset: 0x%X > 0xFFFF", idx);
+		sc_log(ctx,  "invalid EF offset: 0x%X > 0xFFFF", idx);
 		return SC_ERROR_OFFSET_TOO_LARGE;
 	}
 
@@ -834,7 +834,7 @@ static int sc_hsm_write_ef(sc_card_t *card,
 	int r;
 
 	if (idx > 0xffff) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "invalid EF offset: 0x%X > 0xFFFF", idx);
+		sc_log(ctx,  "invalid EF offset: 0x%X > 0xFFFF", idx);
 		return SC_ERROR_OFFSET_TOO_LARGE;
 	}
 
@@ -946,7 +946,7 @@ static int sc_hsm_delete_file(sc_card_t *card, const sc_path_t *path)
 	int r;
 
 	if ((path->type != SC_PATH_TYPE_FILE_ID) || (path->len != 2)) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "File type has to be SC_PATH_TYPE_FILE_ID");
+		sc_log(card->ctx,  "File type has to be SC_PATH_TYPE_FILE_ID");
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 

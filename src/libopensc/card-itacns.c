@@ -108,7 +108,7 @@ static int itacns_match_cns_card(sc_card_t *card, unsigned int i)
 	if(atr[i] != 0x10) {
 		char version[8];
 		snprintf(version, sizeof(version), "%d.%d", (atr[i] >> 4) & 0x0f, atr[i] & 0x0f);
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "CNS card version %s; no official specifications "
+		sc_log(card->ctx, "CNS card version %s; no official specifications "
 			"are published. Proceeding anyway.\n", version);
 	}
 	i++;
@@ -292,7 +292,7 @@ static int itacns_set_security_env(sc_card_t *card,
 
 	if (!(env->flags & SC_SEC_ENV_KEY_REF_PRESENT)
 	 || env->key_ref_len != 1) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(card->ctx,
 			"No or invalid key reference\n");
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
@@ -497,7 +497,7 @@ static int itacns_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 		return SC_SUCCESS;
 	}
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Reading EF_IDCarta.\n");
+	sc_log(card->ctx, "Reading EF_IDCarta.\n");
 
 	sc_format_path("3F0010001003", &path);
 
@@ -512,7 +512,7 @@ static int itacns_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 	//do not return FCI/FCP templates that include the file size.
 	//Notify abnormal length anyway.
 	if (len != 16) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, 
+		sc_log(card->ctx, 
 				"Unexpected file length of EF_IDCarta (%lu)\n",
 				(unsigned long) len);
 	}

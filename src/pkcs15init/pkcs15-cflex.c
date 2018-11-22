@@ -273,7 +273,7 @@ cflex_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_pkcs15_obj
 	int		r;
 
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
-		sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "Cryptoflex supports only RSA keys.");
+		sc_log(p15card->card->ctx,  "Cryptoflex supports only RSA keys.");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
@@ -289,7 +289,7 @@ cflex_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_pkcs15_obj
 	case 1024: size = 326; break;
 	case 2048: size = 646; break;
 	default:
-		sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(p15card->card->ctx, 
 			 "Unsupported key size %"SC_FORMAT_LEN_SIZE_T"u\n",
 			 key_info->modulus_length);
 		r = SC_ERROR_INVALID_ARGUMENTS;
@@ -331,7 +331,7 @@ cflex_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	int		r;
 
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Cryptoflex supports only RSA keys.");
+		sc_log(card->ctx,  "Cryptoflex supports only RSA keys.");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	/* Get the public and private key file */
@@ -391,7 +391,7 @@ cflex_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	int		r;
 
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Cryptoflex supports only RSA keys.");
+		sc_log(card->ctx,  "Cryptoflex supports only RSA keys.");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	/* Get the public and private key file */
@@ -654,7 +654,7 @@ static int cflex_get_keyfiles(sc_profile_t *profile, sc_card_t *card,
 		if (r != SC_SUCCESS)
 			pbuf[0] = '\0';
 
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Cannot find private key file info "
+		sc_log(card->ctx,  "Cannot find private key file info "
 				"in profile (path=%s).", pbuf);
 		return r;
 	}
@@ -664,7 +664,7 @@ static int cflex_get_keyfiles(sc_profile_t *profile, sc_card_t *card,
 	sc_append_file_id(&path, 0x1012);
 	r = sc_profile_get_file_by_path(profile, &path, pukf);
 	if (r < 0) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Cannot find public key file info in profile.");
+		sc_log(card->ctx,  "Cannot find public key file info in profile.");
 		sc_file_free(*prkf);
 		return r;
 	}

@@ -911,7 +911,7 @@ static int starcos_finalize_card(sc_card_t *card)
 	tfile.id   = 0x3f00;
 	r = sc_card_ctl(card, SC_CARDCTL_STARCOS_CREATE_END, &tfile);
 	if (r < 0)
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "failed to call CREATE END for the MF\n");
+		sc_log(card->ctx,  "failed to call CREATE END for the MF\n");
 	/* call CREATE END for the apps (pkcs15) DF */
 	tfile.type = SC_FILE_TYPE_DF;
 	tfile.id   = 0x5015;

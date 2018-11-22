@@ -139,7 +139,7 @@ static int encode_file_structure(sc_card_t *card, const sc_file_t *file,
 			*p++ = 0x43;
 			break;
 		default:
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Invalid EF structure\n");
+			sc_log(card->ctx,  "Invalid EF structure\n");
 			return SC_ERROR_INVALID_ARGUMENTS;
 		}
 		ops = ef_ops;
@@ -149,7 +149,7 @@ static int encode_file_structure(sc_card_t *card, const sc_file_t *file,
 		ops = key_ops;
 		break;
 	default:
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Unknown file type\n");
+		sc_log(card->ctx,  "Unknown file type\n");
                 return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	if (file->type == SC_FILE_TYPE_DF) {
@@ -170,7 +170,7 @@ static int encode_file_structure(sc_card_t *card, const sc_file_t *file,
 		else {
 			int byte = acl_to_byte(sc_file_get_acl_entry(file, ops[i]));
 			if (byte < 0) {
-				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Invalid ACL\n");
+				sc_log(card->ctx,  "Invalid ACL\n");
 				return SC_ERROR_INVALID_ARGUMENTS;
 			}
 			nibble = byte;
@@ -237,7 +237,7 @@ static int miocos_set_security_env(sc_card_t *card,
 		tmp.flags &= ~SC_SEC_ENV_ALG_PRESENT;
 		tmp.flags |= SC_SEC_ENV_ALG_REF_PRESENT;
 		if (tmp.algorithm != SC_ALGORITHM_RSA) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Only RSA algorithm supported.\n");
+			sc_log(card->ctx,  "Only RSA algorithm supported.\n");
 			return SC_ERROR_NOT_SUPPORTED;
 		}
 		tmp.algorithm_ref = 0x00;
@@ -414,7 +414,7 @@ static int miocos_delete_file(sc_card_t *card, const sc_path_t *path)
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (path->type != SC_PATH_TYPE_FILE_ID && path->len != 2) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "File type has to be SC_PATH_TYPE_FILE_ID\n");
+		sc_log(card->ctx,  "File type has to be SC_PATH_TYPE_FILE_ID\n");
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	r = sc_select_file(card, path, NULL);
@@ -452,7 +452,7 @@ static int miocos_create_ac(sc_card_t *card,
 		sendsize = 20;
 		break;
 	default:
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "AC type %d not supported\n", ac->type);
+		sc_log(card->ctx,  "AC type %d not supported\n", ac->type);
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x1E, miocos_type,
@@ -472,7 +472,7 @@ static int miocos_card_ctl(sc_card_t *card, unsigned long cmd,
 	case SC_CARDCTL_MIOCOS_CREATE_AC:
 		return miocos_create_ac(card, (struct sc_cardctl_miocos_ac_info *) arg);
 	}
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "card_ctl command 0x%lX not supported\n", cmd);
+	sc_log(card->ctx,  "card_ctl command 0x%lX not supported\n", cmd);
 	return SC_ERROR_NOT_SUPPORTED;
 }
 

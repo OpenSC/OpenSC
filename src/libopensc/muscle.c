@@ -58,7 +58,7 @@ int msc_list_objects(sc_card_t* card, u8 next, mscfs_file_t* file) {
 	if(apdu.resplen == 0) /* No more left */
 		return 0;
 	if (apdu.resplen != 14) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(card->ctx, 
 			 "expected 14 bytes, got %"SC_FORMAT_LEN_SIZE_T"u.\n",
 			 apdu.resplen);
 		return SC_ERROR_UNKNOWN_DATA_RECEIVED;
@@ -80,7 +80,7 @@ int msc_partial_read_object(sc_card_t *card, msc_id objectId, int offset, u8 *da
 	
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x56, 0x00, 0x00);
 	
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(card->ctx, 
 		"READ: Offset: %x\tLength: %"SC_FORMAT_LEN_SIZE_T"u\n", offset,
 		 dataLength);
 	memcpy(buffer, objectId.id, 4);
@@ -106,7 +106,7 @@ int msc_partial_read_object(sc_card_t *card, msc_id objectId, int offset, u8 *da
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
 		}
 	}
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(card->ctx, 
 		"got strange SWs: 0x%02X 0x%02X\n", apdu.sw1, apdu.sw2);
 	return dataLength;
 	
@@ -169,7 +169,7 @@ int msc_create_object(sc_card_t *card, msc_id objectId, size_t objectSize, unsig
 		}
 	}
 	if (card->ctx->debug >= 2) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "got strange SWs: 0x%02X 0x%02X\n",
+		sc_log(card->ctx,  "got strange SWs: 0x%02X 0x%02X\n",
 		     apdu.sw1, apdu.sw2);
 	}
 	msc_zero_object(card, objectId, objectSize);
@@ -186,7 +186,7 @@ int msc_partial_update_object(sc_card_t *card, msc_id objectId, int offset, cons
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x54, 0x00, 0x00);
 	apdu.lc = dataLength + 9;
 	if (card->ctx->debug >= 2)
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(card->ctx, 
 			 "WRITE: Offset: %x\tLength: %"SC_FORMAT_LEN_SIZE_T"u\n",
 			 offset, dataLength);
 	
@@ -211,7 +211,7 @@ int msc_partial_update_object(sc_card_t *card, msc_id objectId, int offset, cons
 		}
 	}
 	if (card->ctx->debug >= 2) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "got strange SWs: 0x%02X 0x%02X\n",
+		sc_log(card->ctx,  "got strange SWs: 0x%02X 0x%02X\n",
 		     apdu.sw1, apdu.sw2);
 	}
 	return dataLength;
@@ -250,7 +250,7 @@ int msc_delete_object(sc_card_t *card, msc_id objectId, int zero)
 		}
 	}
 	if (card->ctx->debug >= 2) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "got strange SWs: 0x%02X 0x%02X\n",
+		sc_log(card->ctx,  "got strange SWs: 0x%02X 0x%02X\n",
 		     apdu.sw1, apdu.sw2);
 	}
 	return 0;
@@ -476,7 +476,7 @@ int msc_get_challenge(sc_card_t *card, unsigned short dataLength, unsigned short
 			r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 			if (r) {
 				if (card->ctx->debug >= 2) {
-					sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "got strange SWs: 0x%02X 0x%02X\n",
+					sc_log(card->ctx,  "got strange SWs: 0x%02X 0x%02X\n",
 					     apdu.sw1, apdu.sw2);
 				}
 				SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
@@ -488,7 +488,7 @@ int msc_get_challenge(sc_card_t *card, unsigned short dataLength, unsigned short
 			r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 			if (r) {
 				if (card->ctx->debug >= 2) {
-					sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "got strange SWs: 0x%02X 0x%02X\n",
+					sc_log(card->ctx,  "got strange SWs: 0x%02X 0x%02X\n",
 					     apdu.sw1, apdu.sw2);
 				}
 				SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
@@ -549,7 +549,7 @@ int msc_generate_keypair(sc_card_t *card, int privateKey, int publicKey, int alg
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	if (r) {
 		if (card->ctx->debug >= 2) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "got strange SWs: 0x%02X 0x%02X\n",
+			sc_log(card->ctx,  "got strange SWs: 0x%02X 0x%02X\n",
 			     apdu.sw1, apdu.sw2);
 		}
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
@@ -576,7 +576,7 @@ int msc_extract_key(sc_card_t *card,
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	if (r) {
 		if (card->ctx->debug >= 2) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "got strange SWs: 0x%02X 0x%02X\n",
+			sc_log(card->ctx,  "got strange SWs: 0x%02X 0x%02X\n",
 			     apdu.sw1, apdu.sw2);
 		}
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
@@ -682,7 +682,7 @@ int msc_compute_crypt_init(sc_card_t *card,
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	if (r) {
 		if (card->ctx->debug >= 2) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "init: got strange SWs: 0x%02X 0x%02X\n",
+			sc_log(card->ctx,  "init: got strange SWs: 0x%02X 0x%02X\n",
 			     apdu.sw1, apdu.sw2);
 		}
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
@@ -732,7 +732,7 @@ int msc_compute_crypt_final(
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	if (r) {
 		if (card->ctx->debug >= 2) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "final: got strange SWs: 0x%02X 0x%02X\n",
+			sc_log(card->ctx,  "final: got strange SWs: 0x%02X 0x%02X\n",
 			     apdu.sw1, apdu.sw2);
 		}
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
@@ -799,7 +799,7 @@ static int msc_compute_crypt_final_object(
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	if (r) {
 		if (card->ctx->debug >= 2) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "final: got strange SWs: 0x%02X 0x%02X\n",
+			sc_log(card->ctx,  "final: got strange SWs: 0x%02X 0x%02X\n",
 			     apdu.sw1, apdu.sw2);
 		}
 	} else {
@@ -967,7 +967,7 @@ int msc_import_key(sc_card_t *card,
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	if (r) {
 		if (card->ctx->debug >= 2) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "keyimport: got strange SWs: 0x%02X 0x%02X\n",
+			sc_log(card->ctx,  "keyimport: got strange SWs: 0x%02X 0x%02X\n",
 			     apdu.sw1, apdu.sw2);
 		}
 		/* this is last ditch cleanup */

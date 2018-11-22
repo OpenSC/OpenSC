@@ -565,7 +565,7 @@ static int sc_hsm_emu_update_any_df(struct sc_profile *profile, struct sc_pkcs15
 	SC_FUNC_CALLED(ctx, 1);
 	switch(op)   {
 	case SC_AC_OP_ERASE:
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Update DF; erase object('%s',type:%X)", object->label, object->type);
+		sc_log(ctx, "Update DF; erase object('%s',type:%X)", object->label, object->type);
 		switch(object->type & SC_PKCS15_TYPE_CLASS_MASK) {
 		case SC_PKCS15_TYPE_PRKEY:
 			rv = sc_hsm_delete_ef(p15card, PRKD_PREFIX, ((struct sc_pkcs15_prkey_info *)object->data)->key_reference);
@@ -583,7 +583,7 @@ static int sc_hsm_emu_update_any_df(struct sc_profile *profile, struct sc_pkcs15
 		break;
 	case SC_AC_OP_UPDATE:
 	case SC_AC_OP_CREATE:
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Update DF; create object('%s',type:%X)", object->label, object->type);
+		sc_log(ctx, "Update DF; create object('%s',type:%X)", object->label, object->type);
 		switch(object->type & SC_PKCS15_TYPE_CLASS_MASK) {
 		case SC_PKCS15_TYPE_PUBKEY:
 			rv = SC_SUCCESS;

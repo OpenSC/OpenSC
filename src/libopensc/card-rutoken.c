@@ -103,7 +103,7 @@ static int rutoken_match_card(sc_card_t *card)
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (_sc_match_atr(card, rutoken_atrs, &card->type) >= 0)
 	{
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "ATR recognized as Rutoken\n");
+		sc_log(card->ctx,  "ATR recognized as Rutoken\n");
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, 1);
 	}
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, 0);
@@ -202,12 +202,12 @@ static int rutoken_check_sw(sc_card_t *card, unsigned int sw1, unsigned int sw2)
 	for (i = 0; i < sizeof(rutoken_errors)/sizeof(rutoken_errors[0]); ++i) {
 		if (rutoken_errors[i].SWs == ((sw1 << 8) | sw2)) {
 			if ( rutoken_errors[i].errorstr )
-				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "%s\n", rutoken_errors[i].errorstr);
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "sw1 = %x, sw2 = %x", sw1, sw2);
+				sc_log(card->ctx,  "%s\n", rutoken_errors[i].errorstr);
+			sc_log(card->ctx,  "sw1 = %x, sw2 = %x", sw1, sw2);
 			return rutoken_errors[i].errorno;
 		}
 	}
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Unknown SWs; SW1=%02X, SW2=%02X\n", sw1, sw2);
+	sc_log(card->ctx,  "Unknown SWs; SW1=%02X, SW2=%02X\n", sw1, sw2);
 	return SC_ERROR_CARD_CMD_FAILED;
 }
 
@@ -312,7 +312,7 @@ static void set_acl_from_sec_attr(sc_card_t *card, sc_file_t *file)
 				SC_AC_NONE, SC_AC_KEY_REF_NONE);
 		if (file->sec_attr[0] & 0x40) /* if AccessMode.6 */
 		{
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "SC_AC_OP_DELETE %i %i",
+			sc_log(card->ctx,  "SC_AC_OP_DELETE %i %i",
 					(int)(*(int8_t*)&file->sec_attr[1 +6]),
 					file->sec_attr[1+7 +6*4]);
 			sc_file_add_acl_entry(file, SC_AC_OP_DELETE,
@@ -321,7 +321,7 @@ static void set_acl_from_sec_attr(sc_card_t *card, sc_file_t *file)
 		}
 		if (file->sec_attr[0] & 0x01) /* if AccessMode.0 */
 		{
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, (file->type == SC_FILE_TYPE_DF) ?
+			sc_log(card->ctx,  (file->type == SC_FILE_TYPE_DF) ?
 					"SC_AC_OP_CREATE %i %i" : "SC_AC_OP_READ %i %i",
 					(int)(*(int8_t*)&file->sec_attr[1 +0]),
 					file->sec_attr[1+7 +0*4]);
@@ -339,13 +339,13 @@ static void set_acl_from_sec_attr(sc_card_t *card, sc_file_t *file)
 		else
 			if (file->sec_attr[0] & 0x02) /* if AccessMode.1 */
 			{
-				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "SC_AC_OP_UPDATE %i %i",
+				sc_log(card->ctx,  "SC_AC_OP_UPDATE %i %i",
 						(int)(*(int8_t*)&file->sec_attr[1 +1]),
 						file->sec_attr[1+7 +1*4]);
 				sc_file_add_acl_entry(file, SC_AC_OP_UPDATE,
 						(int)(*(int8_t*)&file->sec_attr[1 +1]),
 						file->sec_attr[1+7 +1*4]);
-				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "SC_AC_OP_WRITE %i %i",
+				sc_log(card->ctx,  "SC_AC_OP_WRITE %i %i",
 						(int)(*(int8_t*)&file->sec_attr[1 +1]),
 						file->sec_attr[1+7 +1*4]);
 				sc_file_add_acl_entry(file, SC_AC_OP_WRITE,
@@ -460,14 +460,14 @@ static int rutoken_process_fci(struct sc_card *card, sc_file_t *file,
 		/* Rutoken S returns buffers in little-endian. */
 		/* Set correct file id. */
 		file->id = ((file->id & 0xFF) << 8) | ((file->id >> 8) & 0xFF);
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "  file identifier: 0x%04X", file->id);
+		sc_log(card->ctx,  "  file identifier: 0x%04X", file->id);
 		/* Determine file size. */
 		tag = sc_asn1_find_tag(card->ctx, buf, buflen, 0x80, &taglen);
 		/* Rutoken S always returns 2 bytes. */
 		if (tag != NULL && taglen == 2)
 		{
 			file->size = (tag[1] << 8) | tag[0];
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "  bytes in file: %"SC_FORMAT_LEN_SIZE_T"u", file->size);
+			sc_log(card->ctx,  "  bytes in file: %"SC_FORMAT_LEN_SIZE_T"u", file->size);
 		}
 	}
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, ret);
@@ -560,7 +560,7 @@ static int set_sec_attr_from_acl(sc_card_t *card, sc_file_t *file)
 		conv_attr = arr_convert_attr_ef;
 		n_conv_attr = sizeof(arr_convert_attr_ef)/sizeof(arr_convert_attr_ef[0]);
 	}
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "file->type = %i", file->type);
+	sc_log(card->ctx,  "file->type = %i", file->type);
 
 	for (i = 0; i < n_conv_attr; ++i)
 	{
@@ -571,20 +571,20 @@ static int set_sec_attr_from_acl(sc_card_t *card, sc_file_t *file)
 		{
 			/* AccessMode.[conv_attr[i].sec_attr_pos] */
 			attr[0] |= 1 << conv_attr[i].sec_attr_pos;
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+			sc_log(card->ctx, 
 				 "AccessMode.%"SC_FORMAT_LEN_SIZE_T"u, attr[0]=0x%x",
 				 conv_attr[i].sec_attr_pos, attr[0]);
 			attr[1 + conv_attr[i].sec_attr_pos] = (u8)entry->method;
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "method %u", (u8)entry->method);
+			sc_log(card->ctx,  "method %u", (u8)entry->method);
 			if (entry->method == SC_AC_CHV)
 			{
 				attr[1+7 + conv_attr[i].sec_attr_pos*4] = (u8)entry->key_ref;
-				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "key_ref %u", (u8)entry->key_ref);
+				sc_log(card->ctx,  "key_ref %u", (u8)entry->key_ref);
 			}
 		}
 		else
 		{
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "ACL (%u) not set, set default sec_attr",
+			sc_log(card->ctx,  "ACL (%u) not set, set default sec_attr",
 					conv_attr[i].ac_op);
 			memcpy(attr, default_sec_attr, sizeof(attr));
 			break;
@@ -620,7 +620,7 @@ static int rutoken_delete_file(sc_card_t *card, const sc_path_t *path)
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (!path || path->type != SC_PATH_TYPE_FILE_ID || (path->len != 0 && path->len != 2)) 
 	{
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "File type has to be SC_PATH_TYPE_FILE_ID\n");
+		sc_log(card->ctx,  "File type has to be SC_PATH_TYPE_FILE_ID\n");
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	if (path->len == sizeof(sbuf)) 
@@ -739,7 +739,7 @@ static int rutoken_reset_retry_counter(sc_card_t *card, unsigned int type,
 	if (puk && puklen)
 	{
 		ret = rutoken_verify(card, type, ref_qualifier, puk, puklen, &left);
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Tries left: %i\n", left);
+		sc_log(card->ctx,  "Tries left: %i\n", left);
 		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "Invalid 'puk' pass");
 	}
 #endif
@@ -784,7 +784,7 @@ static int rutoken_set_security_env(sc_card_t *card,
 	senv->algorithm = SC_ALGORITHM_GOST;
 	if (env->key_ref_len != 1)
 	{
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "No or invalid key reference\n");
+		sc_log(card->ctx,  "No or invalid key reference\n");
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	data[2] = env->key_ref[0];
@@ -1002,7 +1002,7 @@ static int rutoken_cipher_p(sc_card_t *card, const u8 * crgram, size_t crgram_le
 	sc_apdu_t apdu;
 
 	LOG_FUNC_CALLED(card->ctx);
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(card->ctx, 
 		 ": crgram_len %"SC_FORMAT_LEN_SIZE_T"u; outlen %"SC_FORMAT_LEN_SIZE_T"u",
 		 crgram_len, outlen);
 
@@ -1047,7 +1047,7 @@ static int rutoken_cipher_p(sc_card_t *card, const u8 * crgram, size_t crgram_le
 			}
 		}
 	} while (ret == SC_SUCCESS  &&  crgram_len != 0);
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(card->ctx, 
 		 "len out cipher %"SC_FORMAT_LEN_SIZE_T"u\n",
 		 outlen - outlen_tail);
 	if (ret == SC_SUCCESS)
@@ -1259,7 +1259,7 @@ static int rutoken_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 			ret = rutoken_format(card, 0x7b); /* APDU: FORMAT END */
 			break;
 		default:
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "cmd = %lu", cmd);
+			sc_log(card->ctx,  "cmd = %lu", cmd);
 			ret = SC_ERROR_NOT_SUPPORTED;
 			break;
 		}

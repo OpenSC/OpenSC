@@ -618,7 +618,7 @@ static int sm_decrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 		goto err;
 	}
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Decrypted APDU sw1=%02x sw2=%02x",
+	sc_log(card->ctx,  "Decrypted APDU sw1=%02x sw2=%02x",
 			apdu->sw1, apdu->sw2);
 	sc_debug_hex(card->ctx, SC_LOG_DEBUG_NORMAL, "Decrypted APDU response data",
 			apdu->resp, apdu->resplen);

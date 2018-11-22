@@ -664,7 +664,7 @@ static int escape_perform_verify(struct sc_reader *reader,
 	r = escape_pin_cmd_to_buf(reader->ctx, data,
 			(unsigned char **) &apdu.data, &apdu.datalen);
 	if (r < 0) {
-		sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(reader->ctx, 
 				"Error encoding PC_to_RDR_Secure");
 		goto err;
 	}
@@ -672,13 +672,13 @@ static int escape_perform_verify(struct sc_reader *reader,
 
 	r = reader->ops->transmit(reader, &apdu);
 	if (r < 0) {
-		sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(reader->ctx, 
 				"Error performing PC_to_RDR_Secure");
 		goto err;
 	}
 
 	if (apdu.sw1 != 0x90 && apdu.sw2 != 0x00) {
-		sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(reader->ctx, 
 				"Error decoding PC_to_RDR_Secure");
 		r = SC_ERROR_NOT_SUPPORTED;
 		goto err;
@@ -723,7 +723,7 @@ static int escape_perform_pace(struct sc_reader *reader,
 	r = escape_pace_input_to_buf(reader->ctx, input,
 			(unsigned char **) &apdu.data, &apdu.datalen);
 	if (r < 0) {
-		sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(reader->ctx, 
 				"Error encoding EstablishPACEChannel");
 		goto err;
 	}
@@ -731,13 +731,13 @@ static int escape_perform_pace(struct sc_reader *reader,
 
 	r = reader->ops->transmit(reader, &apdu);
 	if (r < 0) {
-		sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(reader->ctx, 
 				"Error performing EstablishPACEChannel");
 		goto err;
 	}
 
 	if (apdu.sw1 != 0x90 && apdu.sw2 != 0x00) {
-		sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(reader->ctx, 
 				"Error decoding EstablishPACEChannel");
 		r = SC_ERROR_NOT_SUPPORTED;
 		goto err;
@@ -945,7 +945,7 @@ void sc_detect_escape_cmds(sc_reader_t *reader)
 					&& !(reader->capabilities & SC_READER_CAP_PIN_PAD)) {
 				((struct sc_reader_operations *) reader->ops)->perform_verify =
 					escape_perform_verify;
-				sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL,
+				sc_log(reader->ctx, 
 						"Added escape command wrappers for PIN verification/modification to '%s'", reader->name);
 			}
 
@@ -953,14 +953,14 @@ void sc_detect_escape_cmds(sc_reader_t *reader)
 					&& !(reader->capabilities & SC_READER_CAP_PACE_GENERIC)) {
 				((struct sc_reader_operations *) reader->ops)->perform_pace =
 					escape_perform_pace;
-				sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL,
+				sc_log(reader->ctx, 
 						"Added escape command wrappers for PACE to '%s'", reader->name);
 			}
 
 			reader->capabilities |= capabilities;
 		} else {
 			error++;
-			sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL,
+			sc_log(reader->ctx, 
 					"%s does not support escape commands", reader->name);
 		}
 
@@ -997,7 +997,7 @@ void sc_detect_escape_cmds(sc_reader_t *reader)
 	}
 
 	if (error && reader) {
-		sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(reader->ctx, 
 				"%d escape command%s failed, need to reset the card",
 				error, error == 1 ? "" : "s");
 		if (reader->ops && reader->ops->transmit) {
