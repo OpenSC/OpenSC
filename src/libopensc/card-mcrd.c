@@ -1169,7 +1169,7 @@ static int mcrd_set_security_env(sc_card_t * card,
 
 	if (!(card != NULL && env != NULL))
 		return SC_ERROR_INTERNAL;
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(card->ctx);
 	priv = DRVDATA(card);
 
 	/* special environment handling for esteid, stolen from openpgp */
@@ -1341,7 +1341,7 @@ static int mcrd_compute_signature(sc_card_t * card,
 		return SC_ERROR_INVALID_ARGUMENTS;
 	env = &priv->sec_env;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(card->ctx);
 	if (env->operation != SC_SEC_OPERATION_SIGN)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	if (datalen > 255)
@@ -1437,7 +1437,7 @@ static int mcrd_pin_cmd(sc_card_t * card, struct sc_pin_cmd_data *data,
 			int *tries_left)
 {
 	int r;
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(card->ctx);
 	data->pin1.offset = 5;
 	data->pin1.length_offset = 4;
 	data->pin2.offset = 5;

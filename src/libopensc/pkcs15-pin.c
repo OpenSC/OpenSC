@@ -835,7 +835,7 @@ void sc_pkcs15_pincache_clear(struct sc_pkcs15_card *p15card)
 	struct sc_pkcs15_object *objs[32];
 	int i, r;
 
-	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(p15card->card->ctx);
 	r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH_PIN, objs, 32);
 	for (i = 0; i < r; i++)
 		sc_pkcs15_free_object_content(objs[i]);

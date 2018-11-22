@@ -267,7 +267,7 @@ static int asepcos_select_file(sc_card_t *card, const sc_path_t *in_path,
 	int       r;
 	sc_path_t npath = *in_path;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(card->ctx);
 
 	if (in_path->type == SC_PATH_TYPE_PATH) {
 		/* check the current DF to avoid unnecessary re-selection of
@@ -436,7 +436,7 @@ static int asepcos_decipher(sc_card_t *card, const u8 * crgram, size_t crgram_le
 	int       r;
 	sc_apdu_t apdu;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(card->ctx);
 
 	/* call RSA ENCRYPT DECRYPT for the decipher operation */
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4, 0x14, 0x01, 0x00);
@@ -469,7 +469,7 @@ static int asepcos_compute_signature(sc_card_t *card, const u8 *data, size_t dat
 	u8  rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	sc_apdu_t apdu;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(card->ctx);
 
 	if (datalen >= 256)
 		atype = SC_APDU_CASE_4_EXT;

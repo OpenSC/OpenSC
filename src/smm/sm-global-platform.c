@@ -63,9 +63,9 @@ sm_gp_initialize(struct sc_context *ctx, struct sm_info *sm_info,  struct sc_rem
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "SM GP initialize: serial:%s", sc_dump_hex(sn.value, sn.len));
-	sc_log(ctx, "SM GP initialize: current_df_path %s", sc_print_path(&sm_info->current_path_df));
-	sc_log(ctx, "SM GP initialize: KMC length %i", gp_keyset->kmc_len);
+	sc_debug(ctx, SC_LOG_DEBUG_SM, "SM GP initialize: serial:%s", sc_dump_hex(sn.value, sn.len));
+	sc_debug(ctx, SC_LOG_DEBUG_SM, "SM GP initialize: current_df_path %s", sc_print_path(&sm_info->current_path_df));
+	sc_debug(ctx, SC_LOG_DEBUG_SM, "SM GP initialize: KMC length %i", gp_keyset->kmc_len);
 
 	if (!rdata || !rdata->alloc)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
@@ -107,13 +107,13 @@ sc_gp_get_session_key(struct sc_context *ctx, struct sm_gp_session *gp_session,
 
 	if (sm_encrypt_des_ecb3(key, deriv, 16, &out, &out_len))   {
 		if (ctx)
-			sc_log(ctx, "SM GP get session key: des_ecb3 encryption error");
+			sc_debug(ctx, SC_LOG_DEBUG_VERBOSE, "SM GP get session key: des_ecb3 encryption error");
 		free(out);
 		return NULL;
 	}
 	else if (out==NULL  || out_len!=16)   {
 		if (ctx)
-			sc_log(ctx, "SM GP get session key: des_ecb3 encryption error: out(%p,len:%i)", out, out_len);
+			sc_debug(ctx, SC_LOG_DEBUG_VERBOSE, "SM GP get session key: des_ecb3 encryption error: out(%p,len:%i)", out, out_len);
 		if (out)
 			free(out);
 		return NULL;
@@ -211,7 +211,7 @@ sm_gp_init_session(struct sc_context *ctx, struct sm_gp_session *gp_session,
 	if (!adata || adata_len < 8)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-	sc_log(ctx, "SM GP init session: auth.data %s", sc_dump_hex(adata, 8));
+	sc_debug(ctx, SC_LOG_DEBUG_SM, "SM GP init session: auth.data %s", sc_dump_hex(adata, 8));
 
 	gp_session->session_enc = sc_gp_get_session_key(ctx, gp_session, gp_keyset->enc);
 	gp_session->session_mac = sc_gp_get_session_key(ctx, gp_session, gp_keyset->mac);
@@ -220,19 +220,19 @@ sm_gp_init_session(struct sc_context *ctx, struct sm_gp_session *gp_session,
 		LOG_TEST_RET(ctx, SC_ERROR_SM_NO_SESSION_KEYS, "SM GP init session: get session keys error");
 	memcpy(gp_session->session_kek, gp_keyset->kek, 16);
 
-	sc_log(ctx, "SM GP init session: session ENC: %s", sc_dump_hex(gp_session->session_enc, 16));
-	sc_log(ctx, "SM GP init session: session MAC: %s", sc_dump_hex(gp_session->session_mac, 16));
-	sc_log(ctx, "SM GP init session: session KEK: %s", sc_dump_hex(gp_session->session_kek, 16));
+	sc_debug(ctx, SC_LOG_DEBUG_SM, "SM GP init session: session ENC: %s", sc_dump_hex(gp_session->session_enc, 16));
+	sc_debug(ctx, SC_LOG_DEBUG_SM, "SM GP init session: session MAC: %s", sc_dump_hex(gp_session->session_mac, 16));
+	sc_debug(ctx, SC_LOG_DEBUG_SM, "SM GP init session: session KEK: %s", sc_dump_hex(gp_session->session_kek, 16));
 
 	memset(cksum, 0, sizeof(cksum));
 	rv = sm_gp_get_cryptogram(gp_session->session_enc, gp_session->host_challenge, gp_session->card_challenge, cksum, sizeof(cksum));
 	LOG_TEST_RET(ctx, rv, "SM GP init session: cannot get cryptogram");
 
-	sc_log(ctx, "SM GP init session: cryptogram: %s", sc_dump_hex(cksum, 8));
+	sc_debug(ctx, SC_LOG_DEBUG_SM, "SM GP init session: cryptogram: %s", sc_dump_hex(cksum, 8));
 	if (memcmp(cksum, adata, adata_len))
 		LOG_FUNC_RETURN(ctx, SC_ERROR_SM_AUTHENTICATION_FAILED);
 
-	sc_log(ctx, "SM GP init session: card authenticated");
+	sc_debug(ctx, SC_LOG_DEBUG_SM, "SM GP init session: card authenticated");
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
@@ -283,7 +283,7 @@ sm_gp_external_authentication(struct sc_context *ctx, struct sm_info *sm_info,
 			host_cryptogram, sizeof(host_cryptogram));
 	LOG_TEST_RET(ctx, rv, "SM GP authentication: get host cryptogram error");
 
-	sc_log(ctx, "SM GP authentication: host_cryptogram:%s", sc_dump_hex(host_cryptogram, 8));
+	sc_debug(ctx, SC_LOG_DEBUG_SM, "SM GP authentication: host_cryptogram:%s", sc_dump_hex(host_cryptogram, 8));
 
 	rv = rdata->alloc(rdata, &new_rapdu);
 	LOG_TEST_RET(ctx, rv, "SM GP authentication: cannot allocate remote APDU");
@@ -321,7 +321,7 @@ sm_gp_encrypt_command_data(struct sc_context *ctx, unsigned char *session_key,
 	if (!out || !out_len)
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "SM GP encrypt command data error");
 
-	sc_log(ctx,
+	sc_debug(ctx, SC_LOG_DEBUG_SM,
 	       "SM GP encrypt command data(len:%"SC_FORMAT_LEN_SIZE_T"u,%p)",
 	       in_len, in);
 	if (in==NULL || in_len==0)   {
@@ -365,7 +365,7 @@ sm_gp_securize_apdu(struct sc_context *ctx, struct sm_info *sm_info,
 	LOG_FUNC_CALLED(ctx);
 
 	apdu_data = (unsigned char *)apdu->data;
-	sc_log(ctx,
+	sc_debug(ctx, SC_LOG_DEBUG_SM,
 	       "SM GP securize APDU(cse:%X,cla:%X,ins:%X,data(len:%"SC_FORMAT_LEN_SIZE_T"u,%p),lc:%"SC_FORMAT_LEN_SIZE_T"u,GP level:%X,GP index:%X",
 	       apdu->cse, apdu->cla, apdu->ins, apdu->datalen, apdu->data,
 	       apdu->lc, gp_level, gp_index);
@@ -387,7 +387,7 @@ sm_gp_securize_apdu(struct sc_context *ctx, struct sm_info *sm_info,
 		if (encrypted_len + 8 > SC_MAX_APDU_BUFFER_SIZE)
 			LOG_TEST_RET(ctx, SC_ERROR_BUFFER_TOO_SMALL, "SM GP securize APDU: not enough place for encrypted data");
 
-		sc_log(ctx,
+		sc_debug(ctx, SC_LOG_DEBUG_SM,
 		       "SM GP securize APDU: encrypted length %"SC_FORMAT_LEN_SIZE_T"u",
 		       encrypted_len);
 	}

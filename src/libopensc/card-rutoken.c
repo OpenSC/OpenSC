@@ -111,7 +111,7 @@ static int rutoken_match_card(sc_card_t *card)
 
 static int token_init(sc_card_t *card, const char *card_name)
 {
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(card->ctx);
 
 	card->name = card_name;
 	card->caps |= SC_CARD_CAP_RNG;
@@ -479,7 +479,7 @@ static int rutoken_construct_fci(sc_card_t *card, const sc_file_t *file,
 	u8 buf[64], *p = out;
 
 	assert(card && card->ctx);
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(card->ctx);
 
 	assert(file && out && outlen);
 	assert(*outlen  >=  (size_t)(p - out) + 2);
@@ -548,7 +548,7 @@ static int set_sec_attr_from_acl(sc_card_t *card, sc_file_t *file)
 	sc_SecAttrV2_t attr = { 0 };
 	int ret = SC_SUCCESS;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(card->ctx);
 
 	if (file->type == SC_FILE_TYPE_DF)
 	{
@@ -850,7 +850,7 @@ static int rutoken_key_gen(sc_card_t *card, sc_DOHdrV2_t *pHdr)
 	sc_apdu_t apdu;
 	int ret;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(card->ctx);
 	if (
 	     (pHdr->wDOBodyLen != SC_RUTOKEN_DEF_LEN_DO_GOST) ||
 	     (pHdr->OTID.byObjectType != SC_RUTOKEN_TYPE_KEY) ||
@@ -883,7 +883,7 @@ static int rutoken_create_do(sc_card_t *card, sc_DO_V2_t * pDO)
 	sc_apdu_t apdu;
 	int ret;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(card->ctx);
 	if (
 	     ((pDO->HDR.OTID.byObjectType & SC_RUTOKEN_TYPE_CHV) &&
 	      (pDO->HDR.OTID.byObjectID != SC_RUTOKEN_DEF_ID_GCHV_USER) &&
@@ -925,7 +925,7 @@ static int rutoken_get_do_info(sc_card_t *card, sc_DO_INFO_t * pInfo)
 	sc_apdu_t apdu;
 	int ret;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(card->ctx);
 	if ((pInfo->SelType != select_first) &&
 	    ((pInfo->DoId < SC_RUTOKEN_DO_ALL_MIN_ID) || 
 	     (pInfo->DoId > SC_RUTOKEN_DO_NOCHV_MAX_ID_V2)))
@@ -971,7 +971,7 @@ static int rutoken_delete_do(sc_card_t *card, u8 *pId)
 	sc_apdu_t apdu;
 	int ret;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(card->ctx);
 	if ((*pId < SC_RUTOKEN_DO_ALL_MIN_ID) || 
 	    (*pId > SC_RUTOKEN_DO_NOCHV_MAX_ID_V2))
 	{
@@ -1001,7 +1001,7 @@ static int rutoken_cipher_p(sc_card_t *card, const u8 * crgram, size_t crgram_le
 	int ret;
 	sc_apdu_t apdu;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(card->ctx);
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
 		 ": crgram_len %"SC_FORMAT_LEN_SIZE_T"u; outlen %"SC_FORMAT_LEN_SIZE_T"u",
 		 crgram_len, outlen);
@@ -1088,7 +1088,7 @@ static int rutoken_compute_mac_gost(sc_card_t *card,
 	int ret;
 	sc_apdu_t apdu;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(card->ctx);
 	if (!in || !out || olen != 4 || ilen == 0)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
 	do
@@ -1163,7 +1163,7 @@ static int rutoken_get_serial(sc_card_t *card, sc_serial_number_t *serial)
 	sc_apdu_t apdu;
 	int ret;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(card->ctx);
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xCA, 0x01, 0x81);
 	apdu.resp = serial->value;
 	apdu.resplen = sizeof(serial->value);
@@ -1182,7 +1182,7 @@ static int rutoken_get_info(sc_card_t *card, void *buff)
 	u8 rbuf[8];
 	int ret;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(card->ctx);
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xCA, 0x01, 0x89);
 	apdu.resp = rbuf;
 	apdu.resplen = sizeof(rbuf);
@@ -1200,7 +1200,7 @@ static int rutoken_format(sc_card_t *card, int apdu_ins)
 	int ret;
 	sc_apdu_t apdu;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(card->ctx);
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, apdu_ins, 0x00, 0x00);
 	apdu.cla = 0x80;
 	ret = sc_transmit_apdu(card, &apdu);

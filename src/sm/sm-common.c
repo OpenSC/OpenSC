@@ -315,7 +315,7 @@ sm_encrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
 	size_t data_len, st;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx,
+	sc_debug(ctx, SC_LOG_DEBUG_SM,
 	       "SM encrypt_des_cbc3: not_force_pad:%i,in_len:%"SC_FORMAT_LEN_SIZE_T"u",
 	       not_force_pad, in_len);
 	if (!out || !out_len)
@@ -337,7 +337,7 @@ sm_encrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
 	memcpy(data + in_len, "\x80\0\0\0\0\0\0\0", 8);
 	data_len = in_len + (not_force_pad ? 7 : 8);
 	data_len -= (data_len%8);
-	sc_log(ctx,
+	sc_debug(ctx, SC_LOG_DEBUG_SM,
 	       "SM encrypt_des_cbc3: data to encrypt (len:%"SC_FORMAT_LEN_SIZE_T"u,%s)",
 	       data_len, sc_dump_hex(data, data_len));
 

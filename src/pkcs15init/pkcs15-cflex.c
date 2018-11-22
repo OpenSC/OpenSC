@@ -86,7 +86,7 @@ static int cflex_erase_card(struct sc_profile *profile, sc_pkcs15_card_t *p15car
 	sc_file_t  *df = profile->df_info->file, *dir, *userpinfile = NULL;
 	int             r;
 
-	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(ctx);
 	/* Delete EF(DIR). This may not be very nice
          * against other applications that use this file, but
          * extremely useful for testing :)
@@ -225,7 +225,7 @@ cflex_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df
 	int		ndummies, pin_type, puk_type, r;
 	sc_file_t       *file = NULL;
 
-	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(ctx);
 
 	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
 		return SC_ERROR_OBJECT_NOT_VALID;
@@ -439,7 +439,7 @@ cflex_create_dummy_chvs(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	const sc_acl_entry_t *acl;
 	int		r = 0, ndummies = 0;
 
-	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(ctx);
 	/* See if the DF is supposed to be PIN protected, and if
 	 * it is, whether that CHV file actually exists. If it doesn't,
 	 * create it.
@@ -530,7 +530,7 @@ cflex_create_pin_file(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_file_t	*dummies[2], *file;
 	int		r, ndummies;
 
-	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(ctx);
 	if (file_ret)
 		*file_ret = NULL;
 
@@ -623,7 +623,7 @@ cflex_create_empty_pin_file(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 {
 	int		r;
 
-	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(p15card->card->ctx);
 	*file_ret = NULL;
 	r = cflex_create_pin_file(profile, p15card, path, ref,
 			dummy_pin_value, sizeof(dummy_pin_value), 8,

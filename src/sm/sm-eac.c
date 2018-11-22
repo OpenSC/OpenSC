@@ -482,7 +482,7 @@ static int format_mse_cdata(struct sc_context *ctx, int protocol,
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
-	sc_debug_hex(ctx, SC_LOG_DEBUG_NORMAL, "MSE command data", data_no_sequence, length);
+	sc_debug_hex(ctx, SC_LOG_DEBUG_SM, "MSE command data", data_no_sequence, length);
 
 
 	p = realloc(*cdata, length);
@@ -639,7 +639,7 @@ static int eac_gen_auth_1_encrypted_nonce(sc_card_t *card,
 	apdu.datalen = r;
 	apdu.lc = r;
 
-	sc_debug_hex(card->ctx, SC_LOG_DEBUG_NORMAL, "General authenticate (Encrypted Nonce) command data", apdu.data, apdu.datalen);
+	sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "General authenticate (Encrypted Nonce) command data", apdu.data, apdu.datalen);
 
 	apdu.resplen = sizeof resp;
 	apdu.resp = resp;
@@ -651,7 +651,7 @@ static int eac_gen_auth_1_encrypted_nonce(sc_card_t *card,
 	if (r < 0)
 		goto err;
 
-	sc_debug_hex(card->ctx, SC_LOG_DEBUG_NORMAL, "General authenticate (Encrypted Nonce) response data", apdu.resp, apdu.resplen);
+	sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "General authenticate (Encrypted Nonce) response data", apdu.resp, apdu.resplen);
 
 	if (!d2i_EAC_GEN_AUTH_PACE_R(&r_data,
 				(const unsigned char **) &apdu.resp, apdu.resplen)) {
@@ -731,7 +731,7 @@ static int eac_gen_auth_2_map_nonce(sc_card_t *card,
 	apdu.datalen = r;
 	apdu.lc = r;
 
-	sc_debug_hex(card->ctx, SC_LOG_DEBUG_NORMAL, "General authenticate (Map Nonce) command data", apdu.data, apdu.datalen);
+	sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "General authenticate (Map Nonce) command data", apdu.data, apdu.datalen);
 
 	apdu.resplen = sizeof resp;
 	apdu.resp = resp;
@@ -743,7 +743,7 @@ static int eac_gen_auth_2_map_nonce(sc_card_t *card,
 	if (r < 0)
 		goto err;
 
-	sc_debug_hex(card->ctx, SC_LOG_DEBUG_NORMAL, "General authenticate (Map Nonce) response data", apdu.resp, apdu.resplen);
+	sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "General authenticate (Map Nonce) response data", apdu.resp, apdu.resplen);
 
 	if (!d2i_EAC_GEN_AUTH_PACE_R(&r_data,
 				(const unsigned char **) &apdu.resp, apdu.resplen)) {
@@ -823,7 +823,7 @@ static int eac_gen_auth_3_perform_key_agreement(sc_card_t *card,
 	apdu.datalen = r;
 	apdu.lc = r;
 
-	sc_debug_hex(card->ctx, SC_LOG_DEBUG_NORMAL, "General authenticate (Perform Key Agreement) command data", apdu.data, apdu.datalen);
+	sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "General authenticate (Perform Key Agreement) command data", apdu.data, apdu.datalen);
 
 	apdu.resplen = sizeof resp;
 	apdu.resp = resp;
@@ -835,7 +835,7 @@ static int eac_gen_auth_3_perform_key_agreement(sc_card_t *card,
 	if (r < 0)
 		goto err;
 
-	sc_debug_hex(card->ctx, SC_LOG_DEBUG_NORMAL, "General authenticate (Perform Key Agreement) response data", apdu.resp, apdu.resplen);
+	sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "General authenticate (Perform Key Agreement) response data", apdu.resp, apdu.resplen);
 
 	if (!d2i_EAC_GEN_AUTH_PACE_R(&r_data,
 				(const unsigned char **) &apdu.resp, apdu.resplen)) {
@@ -916,7 +916,7 @@ static int eac_gen_auth_4_mutual_authentication(sc_card_t *card,
 	apdu.datalen = r;
 	apdu.lc = r;
 
-	sc_debug_hex(card->ctx, SC_LOG_DEBUG_NORMAL, "General authenticate (Perform Key Agreement) command data", apdu.data, apdu.datalen);
+	sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "General authenticate (Perform Key Agreement) command data", apdu.data, apdu.datalen);
 
 	apdu.resplen = sizeof resp;
 	apdu.resp = resp;
@@ -928,7 +928,7 @@ static int eac_gen_auth_4_mutual_authentication(sc_card_t *card,
 	if (r < 0)
 		goto err;
 
-	sc_debug_hex(card->ctx, SC_LOG_DEBUG_NORMAL, "General authenticate (Perform Key Agreement) response data", apdu.resp, apdu.resplen);
+	sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "General authenticate (Perform Key Agreement) response data", apdu.resp, apdu.resplen);
 
 	if (!d2i_EAC_GEN_AUTH_PACE_R(&r_data,
 				(const unsigned char **) &apdu.resp, apdu.resplen)) {
@@ -950,7 +950,7 @@ static int eac_gen_auth_4_mutual_authentication(sc_card_t *card,
 	p = r_data->auth_token->data;
 	l = r_data->auth_token->length;
 	if (r_data->cur_car) {
-		sc_debug_hex(card->ctx, SC_LOG_DEBUG_NORMAL, "Most recent Certificate Authority Reference",
+		sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "Most recent Certificate Authority Reference",
 				r_data->cur_car->data, r_data->cur_car->length);
 		*recent_car = malloc(r_data->cur_car->length);
 		if (!*recent_car) {
@@ -963,7 +963,7 @@ static int eac_gen_auth_4_mutual_authentication(sc_card_t *card,
 	} else
 		*recent_car_len = 0;
 	if (r_data->prev_car) {
-		sc_debug_hex(card->ctx, SC_LOG_DEBUG_NORMAL, "Previous Certificate Authority Reference",
+		sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "Previous Certificate Authority Reference",
 				r_data->prev_car->data, r_data->prev_car->length);
 		*prev_car = malloc(r_data->prev_car->length);
 		if (!*prev_car) {
@@ -1161,7 +1161,7 @@ int perform_pace(sc_card_t *card,
 			}
 		}
 
-		sc_debug_hex(card->ctx, SC_LOG_DEBUG_NORMAL, "EF.CardAccess", pace_output->ef_cardaccess,
+		sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "EF.CardAccess", pace_output->ef_cardaccess,
 				pace_output->ef_cardaccess_length);
 
 		/* XXX Card capabilities should be determined by the OpenSC card driver. We
@@ -1205,7 +1205,7 @@ int perform_pace(sc_card_t *card,
 					"(General Authenticate step 1 failed).");
 			goto err;
 		}
-		sc_debug_hex(card->ctx, SC_LOG_DEBUG_NORMAL, "Encrypted nonce from MRTD", (u8 *)enc_nonce->data, enc_nonce->length);
+		sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "Encrypted nonce from MRTD", (u8 *)enc_nonce->data, enc_nonce->length);
 		enc_nonce->max = enc_nonce->length;
 
 		sec = get_psec(card, (char *) pace_input.pin, pace_input.pin_length,
@@ -1240,7 +1240,7 @@ int perform_pace(sc_card_t *card,
 			goto err;
 		}
 		mdata_opp->max = mdata_opp->length;
-		sc_debug_hex(card->ctx, SC_LOG_DEBUG_NORMAL, "Mapping data from MRTD", (u8 *) mdata_opp->data, mdata_opp->length);
+		sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "Mapping data from MRTD", (u8 *) mdata_opp->data, mdata_opp->length);
 
 		if (!PACE_STEP3A_map_generator(eac_ctx, mdata_opp)) {
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not map generator.");
@@ -1266,7 +1266,7 @@ int perform_pace(sc_card_t *card,
 			goto err;
 		}
 		pub_opp->max = pub_opp->length;
-		sc_debug_hex(card->ctx, SC_LOG_DEBUG_NORMAL, "Ephemeral public key from MRTD", (u8 *) pub_opp->data, pub_opp->length);
+		sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "Ephemeral public key from MRTD", (u8 *) pub_opp->data, pub_opp->length);
 
 
 		if (!PACE_STEP3B_compute_shared_secret(eac_ctx, pub_opp)
@@ -1331,7 +1331,7 @@ int perform_pace(sc_card_t *card,
 		pace_output->id_icc_length = comp_pub_opp->length;
 		/* Flawfinder: ignore */
 		memcpy(pace_output->id_icc, comp_pub_opp->data, comp_pub_opp->length);
-		sc_debug_hex(card->ctx, SC_LOG_DEBUG_NORMAL, "ID ICC", pace_output->id_icc,
+		sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "ID ICC", pace_output->id_icc,
 				pace_output->id_icc_length);
 		p = realloc(pace_output->id_pcd, comp_pub->length);
 		if (!p) {
@@ -1343,7 +1343,7 @@ int perform_pace(sc_card_t *card,
 		pace_output->id_pcd_length = comp_pub->length;
 		/* Flawfinder: ignore */
 		memcpy(pace_output->id_pcd, comp_pub->data, comp_pub->length);
-		sc_debug_hex(card->ctx, SC_LOG_DEBUG_NORMAL, "ID PCD", pace_output->id_pcd,
+		sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "ID PCD", pace_output->id_pcd,
 				pace_output->id_pcd_length);
 
 		r = eac_sm_start(card, eac_ctx, pace_input.certificate_description,
@@ -1527,7 +1527,7 @@ int perform_terminal_authentication(sc_card_t *card,
 			goto err;
 		}
 
-		sc_debug_hex(card->ctx, SC_LOG_DEBUG_NORMAL, "EF.CardAccess", ef_cardaccess,
+		sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "EF.CardAccess", ef_cardaccess,
 				ef_cardaccess_length);
 
 		/* XXX Card capabilities should be determined by the OpenSC card driver. We
@@ -1706,7 +1706,7 @@ static int eac_gen_auth_ca(sc_card_t *card, const BUF_MEM *eph_pub_key,
 	apdu.datalen = r;
 	apdu.lc = r;
 
-	sc_debug_hex(card->ctx, SC_LOG_DEBUG_NORMAL, "General authenticate (Perform Key Agreement) command data", apdu.data, apdu.datalen);
+	sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "General authenticate (Perform Key Agreement) command data", apdu.data, apdu.datalen);
 
 	apdu.resplen = sizeof resp;
 	apdu.resp = resp;
@@ -1718,7 +1718,7 @@ static int eac_gen_auth_ca(sc_card_t *card, const BUF_MEM *eph_pub_key,
 	if (r < 0)
 		goto err;
 
-	sc_debug_hex(card->ctx, SC_LOG_DEBUG_NORMAL, "General authenticate (Perform Key Agreement) response data", apdu.resp, apdu.resplen);
+	sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "General authenticate (Perform Key Agreement) response data", apdu.resp, apdu.resplen);
 
 	if (!d2i_EAC_GEN_AUTH_CA_R(&r_data,
 				(const unsigned char **) &apdu.resp, apdu.resplen)) {
@@ -2079,7 +2079,7 @@ eac_sm_verify_authentication(sc_card_t *card, const struct iso_sm_ctx *ctx,
 		goto err;
 	}
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Authentication data verified");
+	sc_debug(card->ctx, SC_LOG_DEBUG_SM, "Authentication data verified");
 
 	r = SC_SUCCESS;
 

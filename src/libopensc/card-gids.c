@@ -745,7 +745,7 @@ static int gids_set_security_env(sc_card_t *card,
 
 	assert(card != NULL && env != NULL);
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(card->ctx);
 	memset(sbuf, 0, sizeof(sbuf));
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, INS_MANAGE_SECURITY_ENVIRONMENT, P1_DECIPHERMENT_INTERNAL_AUTHENTICATE_KEY_AGREEMENT, 0);
@@ -827,7 +827,7 @@ static int gids_logout(sc_card_t *card)
 	int r;
 	assert(card && card->ctx);
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(card->ctx);
 
 	// use the special PIN to deauthenticate
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, INS_VERIFY, 0x00, P2_PIN_DEAUTHENTICATE);
@@ -917,7 +917,7 @@ static int gids_select_file(sc_card_t *card, const struct sc_path *in_path,
 	struct sc_context *ctx = card->ctx;
 	struct gids_private_data *data = (struct gids_private_data *) card->drv_data;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(card->ctx);
 
 	data->state = GIDS_STATE_NONE;
 	data->currentDO = 0;
@@ -985,7 +985,7 @@ static int gids_read_binary(sc_card_t *card, unsigned int offset,
 	int r;
 	int size;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(card->ctx);
 
 	if (! data->currentDO || ! data->currentEFID) {
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
@@ -2016,7 +2016,7 @@ static int gids_authenticate_admin(sc_card_t *card, u8* key) {
 
 static int gids_card_ctl(sc_card_t * card, unsigned long cmd, void *ptr)
 {
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(card->ctx);
 	switch (cmd) {
 		case SC_CARDCTL_GET_SERIALNR:
 			return gids_get_serialnr(card, (sc_serial_number_t *) ptr);

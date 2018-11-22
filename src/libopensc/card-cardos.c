@@ -595,7 +595,7 @@ static int cardos_construct_fcp(sc_card_t *card, const sc_file_t *file,
 	size_t inlen = *outlen, len;
 	int    r;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(card->ctx);
 
 	if (out == NULL || inlen < 64)
 		return SC_ERROR_INVALID_ARGUMENTS;

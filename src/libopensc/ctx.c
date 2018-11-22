@@ -906,7 +906,7 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 /* Used by minidriver to pass in provided handles to reader-pcsc */
 int sc_ctx_use_reader(sc_context_t *ctx, void *pcsc_context_handle, void *pcsc_card_handle)
 {
-	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(ctx);
 	if (ctx->reader_driver->ops->use_reader != NULL)
 		return ctx->reader_driver->ops->use_reader(ctx, pcsc_context_handle, pcsc_card_handle);
 
@@ -916,7 +916,7 @@ int sc_ctx_use_reader(sc_context_t *ctx, void *pcsc_context_handle, void *pcsc_c
 /* Following two are only implemented with internal PC/SC and don't consume a reader object */
 int sc_cancel(sc_context_t *ctx)
 {
-	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(ctx);
 	if (ctx->reader_driver->ops->cancel != NULL)
 		return ctx->reader_driver->ops->cancel(ctx);
 
@@ -926,7 +926,7 @@ int sc_cancel(sc_context_t *ctx)
 
 int sc_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_reader_t **event_reader, unsigned int *event, int timeout, void **reader_states)
 {
-	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(ctx);
 	if (ctx->reader_driver->ops->wait_for_event != NULL)
 		return ctx->reader_driver->ops->wait_for_event(ctx, event_mask, event_reader, event, timeout, reader_states);
 

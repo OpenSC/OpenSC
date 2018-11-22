@@ -34,7 +34,7 @@ enum {
 	SC_LOG_DEBUG_VERBOSE,		/* helps users */
 	SC_LOG_DEBUG_NORMAL,		/* helps developers */
 	SC_LOG_DEBUG_RFU1,		/* RFU */
-	SC_LOG_DEBUG_RFU2,		/* RFU */
+	SC_LOG_DEBUG_SM,		/* secure messaging */
 	SC_LOG_DEBUG_ASN1,		/* asn1.c */
 	SC_LOG_DEBUG_MATCH,		/* card matching */
 };

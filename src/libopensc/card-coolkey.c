@@ -1359,7 +1359,7 @@ static int coolkey_get_token_info(sc_card_t *card, sc_pkcs15_tokeninfo_t * token
 	char *manufacturer_id = NULL;
 	char *serial_number = NULL;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(card->ctx);
 	label = strdup((char *)priv->token_name);
 	manufacturer_id = coolkey_get_manufacturer(&priv->cuid);
 	serial_number = coolkey_cuid_to_string(&priv->cuid);
@@ -1380,7 +1380,7 @@ static int coolkey_get_serial_nr_from_CUID(sc_card_t* card, sc_serial_number_t* 
 {
 	coolkey_private_data_t * priv = COOLKEY_DATA(card);
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(card->ctx);
 	memcpy(serial->value, &priv->cuid, sizeof(priv->cuid));
 	serial->len = sizeof(priv->cuid);
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
