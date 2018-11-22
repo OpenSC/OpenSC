@@ -1172,7 +1172,6 @@ static int myeid_decipher(struct sc_card *card, const u8 * crgram,
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 
 	LOG_FUNC_CALLED(card->ctx);
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
 
 	assert(card != NULL && crgram != NULL && out != NULL);
 
@@ -1307,7 +1306,7 @@ static int myeid_unwrap_key(struct sc_card *card, const u8 *crgram, size_t crgra
 	}
 
 	LOG_FUNC_CALLED(card->ctx);
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(card->ctx);
 
 	if (crgram_len > MYEID_MAX_RSA_KEY_LEN / 8)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);

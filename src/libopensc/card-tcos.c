@@ -615,7 +615,7 @@ static int tcos_decipher(sc_card_t *card, const u8 * crgram, size_t crgram_len, 
 	tcos3=(card->type==SC_CARD_TYPE_TCOS_V3);
 	data=(tcos_data *)card->drv_data;
 
-	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(ctx);
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
 		"TCOS3:%d PKCS1:%d\n",tcos3,
 		!!(data->pad_flags & SC_ALGORITHM_RSA_PAD_PKCS1));

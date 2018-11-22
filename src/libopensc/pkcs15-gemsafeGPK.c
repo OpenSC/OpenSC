@@ -106,7 +106,7 @@ static int my_pin_cmd(sc_card_t * card, struct sc_pin_cmd_data * data,
 	int saved_len = 0;
 	u8  newpin[8];
 	
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(card->ctx);
 
 	memset(newpin, 0xff, sizeof(newpin));
 

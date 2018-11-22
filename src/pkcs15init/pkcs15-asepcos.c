@@ -136,7 +136,7 @@ static int asepcos_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_file_t *tfile;
 	sc_context_t *ctx = p15card->card->ctx;
 
-	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(ctx);
 	/* Check whether a transport exists and verify it if present */
 	r = asepcos_check_verify_tpin(profile, p15card);
 	if (r != SC_SUCCESS)
@@ -350,7 +350,7 @@ static int asepcos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_file_t *tfile = NULL;
 	sc_context_t *ctx = p15card->card->ctx;
 
-	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(ctx);
 	if (!pin || !pin_len)
 		return SC_ERROR_INVALID_ARGUMENTS;
 

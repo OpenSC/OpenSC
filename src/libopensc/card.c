@@ -1362,7 +1362,7 @@ sc_card_sm_load(struct sc_card *card, const char *module_path, const char *in_mo
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	ctx = card->ctx;
-	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(ctx);
 	if (!in_module)
 		return sc_card_sm_unload(card);
 
@@ -1459,7 +1459,7 @@ sc_card_sm_check(struct sc_card *card)
 	scconf_block *atrblock = NULL, *sm_conf_block = NULL;
 	int rv, ii;
 
-	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "card->sm_ctx.ops.open %p", card->sm_ctx.ops.open);
 
 	/* get the name of card specific SM configuration section */

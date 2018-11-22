@@ -66,7 +66,7 @@ sm_oberthur_diversify_keyset(struct sc_context *ctx, struct sm_info *sm_info,
 	else if (gp_keyset->kmc_len == 16 || gp_keyset->kmc_len == 0)   {
 		if (gp_keyset->kmc_len == 16)
 			memcpy(master_key, gp_keyset->kmc, 16);
-		sc_log(ctx, "KMC: %s", sc_dump_hex(master_key, sizeof(master_key)));
+		sc_debug(ctx, SC_LOG_DEBUG_SM, "KMC: %s", sc_dump_hex(master_key, sizeof(master_key)));
 		for (ii=0; ii<3; ii++)   {
 			key_buff[0] = key_buff[8] = 0;
 			key_buff[1] = key_buff[9] = 0;
@@ -77,7 +77,7 @@ sm_oberthur_diversify_keyset(struct sc_context *ctx, struct sm_info *sm_info,
 			key_buff[6] = 0xF0,  key_buff[14] = 0x0F;
 			key_buff[7] = key_buff[15] = ii+1;
 
-			sc_log(ctx, "key_buf:%s", sc_dump_hex(key_buff, 16));
+			sc_debug(ctx, SC_LOG_DEBUG_SM, "key_buf:%s", sc_dump_hex(key_buff, 16));
 
 			rv = sm_encrypt_des_ecb3(master_key, key_buff, sizeof(key_buff), &tmp, &tmp_len);
 			LOG_TEST_RET(ctx, rv, "GP init session: cannot derive key");
@@ -91,11 +91,11 @@ sm_oberthur_diversify_keyset(struct sc_context *ctx, struct sm_info *sm_info,
 	}
 
 	if (!rv && ctx)   {
-		sc_log_hex(ctx, "Card challenge", gp_session->card_challenge, sizeof(gp_session->card_challenge));
-		sc_log_hex(ctx, "Host challenge", gp_session->host_challenge, sizeof(gp_session->host_challenge));
-		sc_log_hex(ctx, "ENC", gp_keyset->enc, sizeof(gp_keyset->enc));
-		sc_log_hex(ctx, "MAC", gp_keyset->mac, sizeof(gp_keyset->mac));
-		sc_log_hex(ctx, "KEK", gp_keyset->kek, sizeof(gp_keyset->kek));
+		sc_debug_hex(ctx, SC_LOG_DEBUG_SM, "Card challenge", gp_session->card_challenge, sizeof(gp_session->card_challenge));
+		sc_debug_hex(ctx, SC_LOG_DEBUG_SM, "Host challenge", gp_session->host_challenge, sizeof(gp_session->host_challenge));
+		sc_debug_hex(ctx, SC_LOG_DEBUG_SM, "ENC", gp_keyset->enc, sizeof(gp_keyset->enc));
+		sc_debug_hex(ctx, SC_LOG_DEBUG_SM, "MAC", gp_keyset->mac, sizeof(gp_keyset->mac));
+		sc_debug_hex(ctx, SC_LOG_DEBUG_SM, "KEK", gp_keyset->kek, sizeof(gp_keyset->kek));
 	}
 
 	return rv;
@@ -110,7 +110,7 @@ sm_authentic_encode_apdu(struct sc_context *ctx, struct sm_info *sm_info)
 	int rv = SC_ERROR_INVALID_ARGUMENTS;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "SM encode APDU: offset:");
+	sc_debug(ctx, SC_LOG_DEBUG_SM, "SM encode APDU: offset:");
 
 	rv = sm_gp_securize_apdu(ctx, sm_info, NULL, apdu);
 	LOG_TEST_RET(ctx, rv, "SM encode APDU: securize error");
@@ -130,9 +130,9 @@ sm_authentic_get_apdus(struct sc_context *ctx, struct sm_info *sm_info,
 	if (!sm_info)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-	sc_log(ctx, "SM get APDUs: rdata:%p, init_len:%"SC_FORMAT_LEN_SIZE_T"u",
+	sc_debug(ctx, SC_LOG_DEBUG_SM, "SM get APDUs: rdata:%p, init_len:%"SC_FORMAT_LEN_SIZE_T"u",
 	       rdata, init_len);
-	sc_log(ctx, "SM get APDUs: serial %s", sc_dump_hex(sm_info->serialnr.value, sm_info->serialnr.len));
+	sc_debug(ctx, SC_LOG_DEBUG_SM, "SM get APDUs: serial %s", sc_dump_hex(sm_info->serialnr.value, sm_info->serialnr.len));
 
 	if (init_data)   {
 		rv = sm_gp_external_authentication(ctx, sm_info, init_data, init_len, rdata, sm_oberthur_diversify_keyset);

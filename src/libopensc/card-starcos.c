@@ -1854,7 +1854,7 @@ static int starcos_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 {
 	int r;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(card->ctx);
 	switch (card->type) {
 		case SC_CARD_TYPE_STARCOS_V3_4:
 		case SC_CARD_TYPE_STARCOS_V3_5:

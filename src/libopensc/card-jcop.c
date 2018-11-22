@@ -756,7 +756,7 @@ static int jcop_decipher(sc_card_t *card,
 	struct jcop_private_data *drvdata=DRVDATA(card);
 
         assert(card != NULL && crgram != NULL && out != NULL);
-        SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+        LOG_FUNC_CALLED(card->ctx);
         if (crgram_len > 256)
                 SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
 	if (drvdata->invalid_senv)
