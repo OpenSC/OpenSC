@@ -402,7 +402,7 @@ static int tcos_select_file(sc_card_t *card,
 	}
 
 	file = sc_file_new();
-	if (file == NULL) SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+	if (file == NULL) LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 	*file_out = file;
 	file->path = *in_path;
 
@@ -458,7 +458,7 @@ static int tcos_delete_file(sc_card_t *card, const sc_path_t *path)
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (path->type != SC_PATH_TYPE_FILE_ID && path->len != 2) {
 		sc_log(card->ctx,  "File type has to be SC_PATH_TYPE_FILE_ID\n");
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	sbuf[0] = path->value[0];
 	sbuf[1] = path->value[1];
@@ -488,7 +488,7 @@ static int tcos_set_security_env(sc_card_t *card, const sc_security_env_t *env, 
 	data=(tcos_data *)card->drv_data;
 
         if (se_num || (env->operation!=SC_SEC_OPERATION_DECIPHER && env->operation!=SC_SEC_OPERATION_SIGN)){
-		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	if(!(env->flags & SC_SEC_ENV_KEY_REF_PRESENT))
 		sc_log(ctx, 

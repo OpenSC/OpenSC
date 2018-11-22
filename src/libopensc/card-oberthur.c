@@ -1348,7 +1348,7 @@ auth_update_component(struct sc_card *card, struct auth_update_component_info *a
 
 		ctx = EVP_CIPHER_CTX_new();
 		if (ctx == NULL) 
-		    SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL,SC_ERROR_OUT_OF_MEMORY);
+		    LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 
 		p2 = 0;
 		if (args->len == 24)

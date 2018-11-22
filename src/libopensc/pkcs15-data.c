@@ -133,7 +133,7 @@ int sc_pkcs15_decode_dodf_entry(struct sc_pkcs15_card *p15card,
 	obj->type = SC_PKCS15_TYPE_DATA_OBJECT;
 	obj->data = malloc(sizeof(info));
 	if (obj->data == NULL)
-		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 	memcpy(obj->data, &info, sizeof(info));
 
 	return SC_SUCCESS;

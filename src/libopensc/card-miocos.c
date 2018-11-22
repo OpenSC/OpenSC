@@ -337,7 +337,7 @@ static int miocos_get_acl(sc_card_t *card, sc_file_t *file)
 	seq = sc_asn1_skip_tag(card->ctx, &seq, &left,
 			       SC_ASN1_SEQUENCE | SC_ASN1_CONS, &left);
 	if (seq == NULL)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_UNKNOWN_DATA_RECEIVED);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Unable to process reply");
 	for (i = 1; i < 15; i++) {
 		int j;
@@ -415,7 +415,7 @@ static int miocos_delete_file(sc_card_t *card, const sc_path_t *path)
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (path->type != SC_PATH_TYPE_FILE_ID && path->len != 2) {
 		sc_log(card->ctx,  "File type has to be SC_PATH_TYPE_FILE_ID\n");
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	r = sc_select_file(card, path, NULL);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Unable to select file to be deleted");
@@ -437,11 +437,11 @@ static int miocos_create_ac(sc_card_t *card,
 	size_t sendsize;
 	
 	if (ac->max_tries > 15)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	switch (ac->type) {
 	case SC_CARDCTL_MIOCOS_AC_PIN:
 		if (ac->max_unblock_tries > 15)
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 		miocos_type = 0x01;
 		sbuf[0] = (ac->max_tries << 4) | ac->max_tries;
 		sbuf[1] = 0xFF; /* FIXME... */

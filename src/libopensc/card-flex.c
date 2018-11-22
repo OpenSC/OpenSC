@@ -547,7 +547,7 @@ static int select_file_id(sc_card_t *card, const u8 *buf, size_t buflen,
 	}
 	file = sc_file_new();
 	if (file == NULL)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 
 	/* We abuse process_fci here even though it's not the real FCI. */
 	r = card->ops->process_fci(card, file, apdu.resp, apdu.resplen);
@@ -699,7 +699,7 @@ static int flex_delete_file(sc_card_t *card, const sc_path_t *path)
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (path->type != SC_PATH_TYPE_FILE_ID && path->len != 2) {
 		sc_log(card->ctx,  "File type has to be SC_PATH_TYPE_FILE_ID\n");
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xE4, 0x00, 0x00);
 	if (!IS_CYBERFLEX(card))
@@ -1301,7 +1301,7 @@ static int flex_logout(sc_card_t *card)
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 

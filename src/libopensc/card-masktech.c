@@ -309,7 +309,7 @@ static int masktech_get_serialnr(sc_card_t * card, sc_serial_number_t * serial)
 	int rv;
 
 	if (!serial)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	/* Get smart card serial number */
 	card->cla = 0x80;
@@ -327,7 +327,7 @@ static int masktech_get_serialnr(sc_card_t * card, sc_serial_number_t * serial)
 
 	if (SC_MAX_SERIALNR < apdu.resplen)
 	{
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 	}
 	/* cache serial number */
 	card->serialnr.len = apdu.resplen;
@@ -337,7 +337,7 @@ static int masktech_get_serialnr(sc_card_t * card, sc_serial_number_t * serial)
 	if (serial)
 		memcpy(serial, &card->serialnr, sizeof(*serial));
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
 

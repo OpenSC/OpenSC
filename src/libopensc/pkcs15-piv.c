@@ -676,7 +676,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		r = sc_pkcs15emu_object_add(p15card, SC_PKCS15_TYPE_DATA_OBJECT, 
 			&obj_obj, &obj_info); 
 		if (r < 0)
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+			LOG_FUNC_RETURN(card->ctx, r);
 /* TODO
  * PIV key 9C requires the pin verify be done just before any
  * crypto operation using the key. 
@@ -969,7 +969,7 @@ sc_log(card->ctx,  "DEE Adding pin %d label=%s",i, label);
 
 		r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
 		if (r < 0)
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+			LOG_FUNC_RETURN(card->ctx, r);
 	}
 
 
@@ -1095,7 +1095,7 @@ sc_log(card->ctx,  "DEE Adding pin %d label=%s",i, label);
 
 				r = sc_pkcs15emu_add_rsa_pubkey(p15card, &pubkey_obj, &pubkey_info);
 				if (r < 0)
-					SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r); /* should not fail */
+					LOG_FUNC_RETURN(card->ctx, r); /* should not fail */
 
 				ckis[i].pubkey_found = 1;
 				break;
@@ -1111,7 +1111,7 @@ sc_log(card->ctx,  "DEE Adding pin %d label=%s",i, label);
 
 				r = sc_pkcs15emu_add_ec_pubkey(p15card, &pubkey_obj, &pubkey_info);
 				if (r < 0) 
-					SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r); /* should not fail */
+					LOG_FUNC_RETURN(card->ctx, r); /* should not fail */
 				ckis[i].pubkey_found = 1;
 				break;
 			default:
@@ -1196,12 +1196,12 @@ sc_log(card->ctx,  "DEE Adding pin %d label=%s",i, label);
 		}
 		sc_log(card->ctx, "USAGE: cert_keyUsage_present:%d usage:0x%8.8x", ckis[i].cert_keyUsage_present ,prkey_info.usage);
 		if (r < 0)
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+			LOG_FUNC_RETURN(card->ctx, r);
 	}
 
 	p15card->ops.get_guid = piv_get_guid;
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
 int sc_pkcs15emu_piv_init_ex(sc_pkcs15_card_t *p15card,

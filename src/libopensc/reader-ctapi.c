@@ -258,7 +258,7 @@ static int ctapi_connect(sc_reader_t *reader)
 		return SC_ERROR_TRANSMIT_FAILED;
 	}
 	if (lr < 2)
-		SC_FUNC_RETURN(reader->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL);
+		LOG_FUNC_RETURN(reader->ctx, SC_ERROR_INTERNAL);
 	lr -= 2;
 	if (lr > SC_MAX_ATR_SIZE)
 		return SC_ERROR_INTERNAL;

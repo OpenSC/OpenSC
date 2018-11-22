@@ -534,7 +534,7 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 
 		r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
 		if (r < 0)
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+			LOG_FUNC_RETURN(card->ctx, r);
 	}
 
 	/* set other objects */
@@ -556,7 +556,7 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 
 		r = (card->ops->card_ctl)(card, SC_CARDCTL_COOLKEY_GET_NEXT_OBJECT, &coolkey_obj);
 		if (r < 0)
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+			LOG_FUNC_RETURN(card->ctx, r);
 
 
 		memset(&obj_obj, 0, sizeof(obj_obj));

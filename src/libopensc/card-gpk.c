@@ -1572,7 +1572,7 @@ gpk_pkfile_load(sc_card_t *card, struct sc_cardctl_gpk_pkload *args)
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 /*

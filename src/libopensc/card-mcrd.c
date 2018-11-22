@@ -409,7 +409,7 @@ static int load_special_files(sc_card_t * card)
 		return 0;	/* yes. */
 	clear_special_files(dfi);
 	if (!dfi)
-		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL);
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
 
 	/* Read rule file. Note that we bypass our cache here. */
 	r = select_part(card, MCRD_SEL_EF, EF_Rule, NULL);
@@ -427,7 +427,7 @@ static int load_special_files(sc_card_t * card)
 		} else {
 			rule = malloc(sizeof *rule + r);
 			if (!rule)
-				SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+				LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 			rule->recno = recno;
 			rule->datalen = r;
 			memcpy(rule->data, recbuf, r);
@@ -458,7 +458,7 @@ static int load_special_files(sc_card_t * card)
 		} else {
 			keyd = malloc(sizeof *keyd + r);
 			if (!keyd)
-				SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+				LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 			keyd->recno = recno;
 			keyd->datalen = r;
 			memcpy(keyd->data, recbuf, r);
@@ -794,7 +794,7 @@ do_select(sc_card_t * card, u8 kind,
 		if (file) {
 			*file = sc_file_new();
 			if (!*file)
-				SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 			(*file)->type = SC_FILE_TYPE_DF;
 			return SC_SUCCESS;
 		}
@@ -803,7 +803,7 @@ do_select(sc_card_t * card, u8 kind,
 	if (p2 == 0x04 && apdu.resp[0] == 0x62) {
 		*file = sc_file_new();
 		if (!*file)
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 		/* EstEID v3.0 cards are buggy and sometimes return a double 0x62 tag */
 		if (card->type == SC_CARD_TYPE_MCRD_ESTEID_V30 && apdu.resp[2] == 0x62)
 			process_fcp(card, *file, apdu.resp + 4, apdu.resp[3]);
@@ -815,7 +815,7 @@ do_select(sc_card_t * card, u8 kind,
 	if (p2 != 0x0C && apdu.resp[0] == 0x6F) {
 		*file = sc_file_new();
 		if (!*file)
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 		if (apdu.resp[1] <= apdu.resplen)
 		process_fcp(card, *file, apdu.resp + 2, apdu.resp[1]);
 		return SC_SUCCESS;

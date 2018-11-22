@@ -478,7 +478,7 @@ static int itacns_select_file(sc_card_t *card,
 		parse_sec_attr((*file), (*file)->sec_attr,
 			(*file)->sec_attr_len);
 	}
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 static int itacns_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)

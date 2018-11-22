@@ -188,10 +188,10 @@ static int entersafe_gen_random(sc_card_t *card,u8 *buff,size_t size)
 	 SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "entersafe gen random failed");
 
 	 if(apdu.resplen!=size)
-		  SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL,SC_ERROR_INTERNAL);
+		  LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 	 memcpy(buff,rbuf,size);
 
-	 SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL,r);
+	 LOG_FUNC_RETURN(card->ctx, r);
 }
 
 static int entersafe_cipher_apdu(sc_card_t *card, sc_apdu_t *apdu,
@@ -217,7 +217,7 @@ static int entersafe_cipher_apdu(sc_card_t *card, sc_apdu_t *apdu,
 
 	 ctx = EVP_CIPHER_CTX_new();
 	 if (ctx == NULL)
-		 SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+		 LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 	 EVP_CIPHER_CTX_set_padding(ctx,0);
 
 	 if(keylen == 8)
@@ -225,12 +225,12 @@ static int entersafe_cipher_apdu(sc_card_t *card, sc_apdu_t *apdu,
 	 else if (keylen == 16) 
 		  EVP_EncryptInit_ex(ctx, EVP_des_ede(), NULL, key, iv);
 	 else
-		  SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL);
+		  LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 	 
 	 len = apdu->lc;
 	 if(!EVP_EncryptUpdate(ctx, buff, &len, buff, buffsize)){
 		  sc_log(card->ctx,  "entersafe encryption error.");
-		  SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL);
+		  LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 	 }
 	 apdu->lc = len;
 
@@ -544,7 +544,7 @@ static int entersafe_select_aid(sc_card_t *card,
 		 {
 			  *file_out = sc_file_new();
 			  if(!file_out)
-				   SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+				   LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 		 }
 	}
 	else
@@ -649,7 +649,7 @@ static int entersafe_select_path(sc_card_t *card,
 			   if (file_out) {
 					sc_file_t *file = sc_file_new();
 					if (!file)
-						 SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+						 LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 					file->id = (path[pathlen-2] << 8) +
 						 path[pathlen-1];
 					file->path = card->cache.current_path;

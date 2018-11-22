@@ -205,7 +205,7 @@ static int muscle_read_binary(sc_card_t *card, unsigned int idx, u8* buf, size_t
 	mscfs_file_t *file;
 
 	r = mscfs_check_selection(fs, -1);
-	if(r < 0) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	if(r < 0) LOG_FUNC_RETURN(card->ctx, r);
 	file = &fs->cache.array[fs->currentFileIndex];
 	objectId = file->objectId;
 	/* memcpy(objectId.id, file->objectId.id, 4); */
@@ -215,7 +215,7 @@ static int muscle_read_binary(sc_card_t *card, unsigned int idx, u8* buf, size_t
 		oid[2] = oid[3] = 0;
 	}
 	r = msc_read_object(card, objectId, idx, buf, count);
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 static int muscle_update_binary(sc_card_t *card, unsigned int idx, const u8* buf, size_t count, unsigned long flags)
@@ -227,7 +227,7 @@ static int muscle_update_binary(sc_card_t *card, unsigned int idx, const u8* buf
 	u8* oid = objectId.id;
 
 	r = mscfs_check_selection(fs, -1);
-	if(r < 0) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	if(r < 0) LOG_FUNC_RETURN(card->ctx, r);
 	file = &fs->cache.array[fs->currentFileIndex];
 
 	objectId = file->objectId;
@@ -240,7 +240,7 @@ static int muscle_update_binary(sc_card_t *card, unsigned int idx, const u8* buf
 	if(file->size < idx + count) {
 		int newFileSize = idx + count;
 		u8* buffer = malloc(newFileSize);
-		if(buffer == NULL) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+		if(buffer == NULL) LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 
 		r = msc_read_object(card, objectId, 0, buffer, file->size);
 		/* TODO: RETRIEVE ACLS */
@@ -255,7 +255,7 @@ static int muscle_update_binary(sc_card_t *card, unsigned int idx, const u8* buf
 		file->size = newFileSize;
 update_bin_free_buffer:
 		free(buffer);
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+		LOG_FUNC_RETURN(card->ctx, r);
 	} else {
 		r = msc_update_object(card, objectId, idx, buf, count);
 	}
@@ -378,7 +378,7 @@ static int select_item(sc_card_t *card, const sc_path_t *path_in, sc_file_t ** f
 
 	/* Check if its the right type */
 	if(requiredType >= 0 && requiredType != file_data->ef) {
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	oid = file_data->objectId.id;
 	/* Is it a file or directory */
@@ -460,7 +460,7 @@ static int muscle_init(sc_card_t *card)
 	card->name = "MuscleApplet";
 	card->drv_data = malloc(sizeof(muscle_private_t));
 	if(!card->drv_data) {
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 	}
 	memset(card->drv_data, 0, sizeof(muscle_private_t));
 	priv = MUSCLE_DATA(card);
@@ -468,7 +468,7 @@ static int muscle_init(sc_card_t *card)
 	priv->fs = mscfs_new();
 	if(!priv->fs) {
 		free(card->drv_data);
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 	}
 	priv->fs->udata = card;
 	priv->fs->listFile = _listFile;

@@ -392,7 +392,7 @@ get_next_part:
 
 	r = fids;
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 static void add_acl_entry(sc_file_t *file, int op, u8 byte)
@@ -491,7 +491,7 @@ static int cardos_select_file(sc_card_t *card,
 	r = iso_ops->select_file(card, in_path, file);
 	if (r >= 0 && file)
 		parse_sec_attr((*file), (*file)->sec_attr, (*file)->sec_attr_len);
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 static int cardos_acl_to_bytes(sc_card_t *card, const sc_file_t *file,
@@ -757,7 +757,7 @@ cardos_restore_security_env(sc_card_t *card, int se_num)
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 /*
@@ -1049,7 +1049,7 @@ cardos_lifecycle_get(sc_card_t *card, int *mode)
 		r = SC_ERROR_INTERNAL;
 	}
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 static int
@@ -1085,7 +1085,7 @@ cardos_lifecycle_set(sc_card_t *card, int *mode)
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 static int
@@ -1113,7 +1113,7 @@ cardos_put_data_oci(sc_card_t *card,
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 static int

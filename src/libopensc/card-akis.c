@@ -102,7 +102,7 @@ select_file(sc_card_t *card, sc_apdu_t *apdu, const sc_path_t *path,
 
 	file = sc_file_new();
 	if (file == NULL)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 
 	r = card->ops->process_fci(card, file, apdu->resp + 2, apdu->resp[1]);
 	if (r) {
@@ -185,7 +185,7 @@ akis_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 	}
 
 	r = fids;
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 static int
@@ -320,7 +320,7 @@ akis_delete_file(sc_card_t *card, const sc_path_t *path)
 			break;
 		default:
 			sc_log(card->ctx,  "File type has to be FID or PATH");
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x16, type, 0x00);
         apdu.cla = 0x80;
