@@ -1381,7 +1381,7 @@ sc_card_sm_load(struct sc_card *card, const char *module_path, const char *in_mo
 	if (0 < expanded_len && expanded_len < sizeof expanded_val)
 		module_path = expanded_val;
 #endif
-	sc_debug(ctx, SC_LOG_DEBUG_VERBOSE, "SM module '%s' located in '%s'", in_module, module_path);
+	sc_log(ctx, "SM module '%s' located in '%s'", in_module, module_path);
 	if (module_path && strlen(module_path) > 0)   {
 		int sz = strlen(in_module) + strlen(module_path) + 3;
 		module = malloc(sz);

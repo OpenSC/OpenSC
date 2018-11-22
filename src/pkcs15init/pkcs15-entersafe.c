@@ -214,7 +214,7 @@ static int entersafe_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 
 		 for(i = 0; create_efs[i]; ++i)   {
 			  if (sc_profile_get_file(profile, create_efs[i], &file))   {
-				   sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Inconsistent profile: cannot find %s", create_efs[i]);
+				   sc_log(card->ctx,  "Inconsistent profile: cannot find %s", create_efs[i]);
 				   SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,SC_ERROR_INCONSISTENT_PROFILE);
 			  }
 
@@ -476,7 +476,7 @@ static int entersafe_sanity_check(sc_profile_t *profile, sc_pkcs15_card_t *p15ca
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Check and if needed update PinFlags");
+	sc_log(ctx,  "Check and if needed update PinFlags");
 	rv = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH_PIN, objs, 32);
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Failed to get PINs");
 	nn = rv;
@@ -493,7 +493,7 @@ static int entersafe_sanity_check(sc_profile_t *profile, sc_pkcs15_card_t *p15ca
 
 		if (pin_attrs->reference == profile_auth.attrs.pin.reference
 				&& pin_attrs->flags != profile_auth.attrs.pin.flags)   {
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Set flags of '%s'(flags:%X,ref:%i,id:%s) to %X", objs[ii]->label,
+			sc_log(ctx,  "Set flags of '%s'(flags:%X,ref:%i,id:%s) to %X", objs[ii]->label,
 					pin_attrs->flags, pin_attrs->reference, sc_pkcs15_print_id(&ainfo->auth_id),
 					profile_auth.attrs.pin.flags);
 			pin_attrs->flags = profile_auth.attrs.pin.flags;

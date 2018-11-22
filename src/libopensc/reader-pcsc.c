@@ -528,7 +528,7 @@ static void initialize_uid(sc_reader_t *reader)
 			sc_debug_hex(reader->ctx, SC_LOG_DEBUG_NORMAL, "UID",
 					reader->uid.value, reader->uid.len);
 		} else {
-			sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "unable to get UID");
+			sc_log(reader->ctx,  "unable to get UID");
 		}
 	}
 }

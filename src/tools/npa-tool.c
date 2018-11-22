@@ -132,7 +132,7 @@ static int initialize(int reader_id, int verbose,
 	reader_count = sc_ctx_get_reader_count(*ctx);
 
 	if (reader_count == 0) {
-		sc_debug(*ctx, SC_LOG_DEBUG_NORMAL, "No reader not found.\n");
+		sc_log(*ctx, "No reader not found.\n");
 		return SC_ERROR_NO_READERS_FOUND;
 	}
 
@@ -142,19 +142,19 @@ static int initialize(int reader_id, int verbose,
 			*reader = sc_ctx_get_reader(*ctx, i);
 			if (sc_detect_card_presence(*reader) & SC_READER_CARD_PRESENT) {
 				reader_id = i;
-				sc_debug(*ctx, SC_LOG_DEBUG_NORMAL, "Using the first reader"
+				sc_log(*ctx, "Using the first reader"
 						" with a card: %s", (*reader)->name);
 				break;
 			}
 		}
 		if ((unsigned int) reader_id >= reader_count) {
-			sc_debug(*ctx, SC_LOG_DEBUG_NORMAL, "No card found, using the first reader.");
+			sc_log(*ctx, "No card found, using the first reader.");
 			reader_id = 0;
 		}
 	}
 
 	if ((unsigned int) reader_id >= reader_count) {
-		sc_debug(*ctx, SC_LOG_DEBUG_NORMAL, "Invalid reader number "
+		sc_log(*ctx, "Invalid reader number "
 				"(%d), only %d available.\n", reader_id, reader_count);
 		return SC_ERROR_NO_READERS_FOUND;
 	}

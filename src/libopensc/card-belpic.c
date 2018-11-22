@@ -174,7 +174,7 @@ static int get_carddata(sc_card_t *card, u8* carddata_loc, unsigned int carddata
 
 	r = sc_bytes2apdu(card->ctx, carddata_cmd, sizeof(carddata_cmd), &apdu);
 	if(r) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "bytes to APDU conversion failed: %d\n", r);
+		sc_log(card->ctx,  "bytes to APDU conversion failed: %d\n", r);
 		return r;
 	}
 
@@ -183,17 +183,17 @@ static int get_carddata(sc_card_t *card, u8* carddata_loc, unsigned int carddata
 
 	r = sc_transmit_apdu(card, &apdu);
 	if(r) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "GetCardData command failed: %d\n", r);
+		sc_log(card->ctx,  "GetCardData command failed: %d\n", r);
 		return r;
 	}
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	if(r) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "GetCardData: card returned %d\n", r);
+		sc_log(card->ctx,  "GetCardData: card returned %d\n", r);
 		return r;
 	}
 	if(apdu.resplen < carddataloc_len) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(card->ctx, 
 			 "GetCardData: card returned %"SC_FORMAT_LEN_SIZE_T"u bytes rather than expected %d\n",
 			 apdu.resplen, carddataloc_len);
 		return SC_ERROR_WRONG_LENGTH;
@@ -217,7 +217,7 @@ static int belpic_init(sc_card_t *card)
 	int key_size = 1024;
 	int r;
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Belpic V%s\n", BELPIC_VERSION);
+	sc_log(card->ctx,  "Belpic V%s\n", BELPIC_VERSION);
 
 	if (card->type < 0)
 		card->type = SC_CARD_TYPE_BELPIC_EID;	/* Unknown card: assume it's the Belpic Card */
@@ -339,7 +339,7 @@ static int belpic_set_security_env(sc_card_t *card,
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	int r;
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "belpic_set_security_env(), keyRef = 0x%0x, algo = 0x%0x\n",
+	sc_log(card->ctx,  "belpic_set_security_env(), keyRef = 0x%0x, algo = 0x%0x\n",
 		 *env->key_ref, env->algorithm_flags);
 
 	assert(card != NULL && env != NULL);
@@ -357,7 +357,7 @@ static int belpic_set_security_env(sc_card_t *card,
 		else if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_MD5)
 			sbuf[2] = 0x04;
 		else {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Set Sec Env: unsupported algo 0X%0X\n",
+			sc_log(card->ctx,  "Set Sec Env: unsupported algo 0X%0X\n",
 				 env->algorithm_flags);
 			return SC_ERROR_INVALID_ARGUMENTS;
 		}
@@ -390,7 +390,7 @@ static int belpic_set_security_env(sc_card_t *card,
 	 * the next function to be executed will be the compute_signature function.
 	 */
 	if (*env->key_ref == BELPIC_KEY_REF_NONREP) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "No GUI for NonRep key present, signature cancelled\n");
+		sc_log(card->ctx,  "No GUI for NonRep key present, signature cancelled\n");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 

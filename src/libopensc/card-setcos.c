@@ -130,7 +130,7 @@ static int setcos_match_card(sc_card_t *card)
 				card->type = SC_CARD_TYPE_SETCOS_EID_V2_1;
 			else {
 				buf[sizeof(buf) - 1] = '\0';
-				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "SetCOS EID applet %s is not supported", (char *) buf);
+				sc_log(card->ctx,  "SetCOS EID applet %s is not supported", (char *) buf);
 				return 0;
 			}
 			return 1;
@@ -473,7 +473,7 @@ static int setcos_create_file_44(sc_card_t *card, sc_file_t *file)
 				break;
 			case SC_AC_CHV:				/* pin */
 				if ((bNumber & 0x7F) == 0 || (bNumber & 0x7F) > 7) {
-					sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "SetCOS 4.4 PIN refs can only be 1..7\n");
+					sc_log(card->ctx,  "SetCOS 4.4 PIN refs can only be 1..7\n");
 					return SC_ERROR_INVALID_ARGUMENTS;
 				}
 				bCommands_pin[setcos_pin_index_44(pins, sizeof(pins), (int) bNumber)] |= 1 << i;
@@ -575,11 +575,11 @@ static int setcos_set_security_env2(sc_card_t *card,
 	    card->type == SC_CARD_TYPE_SETCOS_NIDEL ||
 	    SETCOS_IS_EID_APPLET(card)) {
 		if (env->flags & SC_SEC_ENV_KEY_REF_SYMMETRIC) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "symmetric keyref not supported.\n");
+			sc_log(card->ctx,  "symmetric keyref not supported.\n");
 			return SC_ERROR_NOT_SUPPORTED;
 		}
 		if (se_num > 0) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "restore security environment not supported.\n");
+			sc_log(card->ctx,  "restore security environment not supported.\n");
 			return SC_ERROR_NOT_SUPPORTED;
 		}
 	}
@@ -640,13 +640,13 @@ static int setcos_set_security_env2(sc_card_t *card,
 	if (apdu.datalen != 0) {
 		r = sc_transmit_apdu(card, &apdu);
 		if (r) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+			sc_log(card->ctx, 
 				"%s: APDU transmit failed", sc_strerror(r));
 			goto err;
 		}
 		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 		if (r) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+			sc_log(card->ctx, 
 				"%s: Card returned error", sc_strerror(r));
 			goto err;
 		}
@@ -674,7 +674,7 @@ static int setcos_set_security_env(sc_card_t *card,
 		tmp.flags &= ~SC_SEC_ENV_ALG_PRESENT;
 		tmp.flags |= SC_SEC_ENV_ALG_REF_PRESENT;
 		if (tmp.algorithm != SC_ALGORITHM_RSA) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Only RSA algorithm supported.\n");
+			sc_log(card->ctx,  "Only RSA algorithm supported.\n");
 			return SC_ERROR_NOT_SUPPORTED;
 		}
 		switch (card->type) {
@@ -687,7 +687,7 @@ static int setcos_set_security_env(sc_card_t *card,
 		case SC_CARD_TYPE_SETCOS_EID_V2_1:
 			break;
 		default:
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Card does not support RSA.\n");
+			sc_log(card->ctx,  "Card does not support RSA.\n");
 			return SC_ERROR_NOT_SUPPORTED;
 			break;
 		}

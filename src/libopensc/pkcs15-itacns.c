@@ -212,7 +212,7 @@ static int itacns_add_cert(sc_pkcs15_card_t *p15card,
 	SC_FUNC_CALLED(p15card->card->ctx, 1);
 	
 	if(type != SC_PKCS15_TYPE_CERT_X509) {
-		sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(p15card->card->ctx, 
 			"Cannot add a certificate of a type other than X.509");
 		return 1;
 	}
@@ -314,7 +314,7 @@ static int itacns_add_prkey(sc_pkcs15_card_t *p15card,
 	SC_FUNC_CALLED(p15card->card->ctx, 1);
 
 	if(type != SC_PKCS15_TYPE_PRKEY_RSA) {
-		sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(p15card->card->ctx, 
 			"Cannot add a private key of a type other than RSA");
 		return 1;
 	}
@@ -527,7 +527,7 @@ static int itacns_add_data_files(sc_pkcs15_card_t *p15card)
 	rv = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_DATA_OBJECT,
 		objs, 32);
 	if(rv < 0) {
-		sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(p15card->card->ctx, 
 			"Data enumeration failed");
 		return SC_SUCCESS;
 	}
@@ -539,7 +539,7 @@ static int itacns_add_data_files(sc_pkcs15_card_t *p15card)
 	}
 
 	if(i>=32) {
-		sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(p15card->card->ctx, 
 			"Could not find EF_DatiPersonali: "
 			"keeping generic card name");
 		return SC_SUCCESS;
@@ -547,7 +547,7 @@ static int itacns_add_data_files(sc_pkcs15_card_t *p15card)
 
 	rv = sc_pkcs15_read_data_object(p15card, cinfo, &p15_personaldata);
 	if (rv) {
-		sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(p15card->card->ctx, 
 			"Could not read EF_DatiPersonali: "
 			"keeping generic card name");
 		return SC_SUCCESS;
@@ -557,7 +557,7 @@ static int itacns_add_data_files(sc_pkcs15_card_t *p15card)
 		char fullname[160];
 		if(get_name_from_EF_DatiPersonali(p15_personaldata->data,
 			fullname, sizeof(fullname))) {
-			sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL,
+			sc_log(p15card->card->ctx, 
 				"Could not parse EF_DatiPersonali: "
 				"keeping generic card name");
 			sc_pkcs15_free_data_object(p15_personaldata);
@@ -663,7 +663,7 @@ static int itacns_check_and_add_keyset(sc_pkcs15_card_t *p15card,
 
 	/* Certificate */
 	if (!cert_path) {
-		sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(p15card->card->ctx, 
 			"We cannot use keys without a matching certificate");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
@@ -673,7 +673,7 @@ static int itacns_check_and_add_keyset(sc_pkcs15_card_t *p15card,
 	if (r == SC_ERROR_FILE_NOT_FOUND)
 		return 0;
 	if (r != SC_SUCCESS) {
-		sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(p15card->card->ctx, 
 			"Could not find certificate for %s", label);
 		return r;
 	}
@@ -725,7 +725,7 @@ static int itacns_check_and_add_keyset(sc_pkcs15_card_t *p15card,
 			prkey_usage_flags |= SC_PKCS15_PRKEY_USAGE_DECRYPT;
 		}
 #else /* ENABLE_OPENSSL */
-		sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(p15card->card->ctx, 
 			"Extended certificate info retrieved without OpenSSL. "
 			"How is this possible?");
 		return SC_ERROR_INTERNAL;

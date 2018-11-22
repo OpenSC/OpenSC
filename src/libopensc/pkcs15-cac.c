@@ -216,7 +216,7 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 	 */
 	r = sc_card_ctl(card, SC_CARDCTL_GET_SERIALNR, &serial);
 	if (r < 0) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"sc_card_ctl rc=%d",r);
+		sc_log(card->ctx, "sc_card_ctl rc=%d",r);
 		p15card->tokeninfo->serial_number = strdup("00000000");
 	} else {
 		sc_bin_to_hex(serial.value, serial.len, buf, sizeof(buf), 0);
@@ -227,7 +227,7 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 	/* TODO we should not create PIN objects if it is not initialized
 	 * (opensc-tool -s 0020000000 returns 0x6A 0x88)
 	 */
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "CAC adding pins...");
+	sc_log(card->ctx,  "CAC adding pins...");
 	for (i = 0; pins[i].id; i++) {
 		struct sc_pkcs15_auth_info pin_info;
 		struct sc_pkcs15_object   pin_obj;
@@ -249,7 +249,7 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 		pin_info.tries_left    = -1;
 
 		label = pins[i].label;
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "CAC Adding pin %d label=%s",i, label);
+		sc_log(card->ctx,  "CAC Adding pin %d label=%s",i, label);
 		strncpy(pin_obj.label, label, SC_PKCS15_MAX_LABEL_SIZE - 1);
 		pin_obj.flags = pins[i].obj_flags;
 
@@ -292,7 +292,7 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 	 * We need to read the cert, get modulus and keylen
 	 * We use those for the pubkey, and priv key objects.
 	 */
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "CAC adding certs, pub and priv keys...");
+	sc_log(card->ctx,  "CAC adding certs, pub and priv keys...");
 	r = (card->ops->card_ctl)(card, SC_CARDCTL_CAC_INIT_GET_CERT_OBJECTS, &count);
 	LOG_TEST_RET(card->ctx, r, "Can not initiate cert objects.");
 
@@ -345,12 +345,12 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 		r = sc_pkcs15_read_file(p15card, &cert_info.path, &cert_der.value, &cert_der.len);
 
 		if (r) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "No cert found,i=%d", i);
+			sc_log(card->ctx,  "No cert found,i=%d", i);
 			continue;
 		}
 		cert_info.path.count = cert_der.len;
 
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(card->ctx, 
 			 "cert len=%"SC_FORMAT_LEN_SIZE_T"u, cert_info.path.count=%d r=%d\n",
 			 cert_der.len, cert_info.path.count, r);
 		sc_debug_hex(card->ctx, SC_LOG_DEBUG_NORMAL, "cert", cert_der.value, cert_der.len);
@@ -366,7 +366,7 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 		/* following will find the cached cert in cert_info */
 		r =  sc_pkcs15_read_certificate(p15card, &cert_info, &cert_out);
 		if (r < 0 || cert_out->key == NULL) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Failed to read/parse the certificate r=%d",r);
+			sc_log(card->ctx,  "Failed to read/parse the certificate r=%d",r);
 			if (cert_out != NULL)
 				sc_pkcs15_free_certificate(cert_out);
 			continue;
@@ -374,7 +374,7 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 
 		r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
 		if (r < 0) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, " Failed to add cert obj r=%d",r);
+			sc_log(card->ctx,  " Failed to add cert obj r=%d",r);
 			sc_pkcs15_free_certificate(cert_out);
 			continue;
 		}
@@ -411,22 +411,22 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 			usage = 0xd9ULL; /* basic default usage */
 		}
 		cac_map_usage(usage, cert_out->key->algorithm, &pubkey_info.usage, &prkey_info.usage, 1);
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,  "cert %s: cert_usage=0x%x, pub_usage=0x%x priv_usage=0x%x\n",
+		sc_log(card->ctx,   "cert %s: cert_usage=0x%x, pub_usage=0x%x priv_usage=0x%x\n",
 				sc_dump_hex(cert_info.id.value, cert_info.id.len),
 				 usage, pubkey_info.usage, prkey_info.usage);
 		if (cert_out->key->algorithm != SC_ALGORITHM_RSA) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"unsupported key.algorithm %d", cert_out->key->algorithm);
+			sc_log(card->ctx, "unsupported key.algorithm %d", cert_out->key->algorithm);
 			sc_pkcs15_free_certificate(cert_out);
 			continue;
 		} else {
 			pubkey_info.modulus_length = cert_out->key->u.rsa.modulus.len * 8;
 			prkey_info.modulus_length = cert_out->key->u.rsa.modulus.len * 8;
 			r = sc_pkcs15emu_add_rsa_pubkey(p15card, &pubkey_obj, &pubkey_info);
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "adding rsa public key r=%d usage=%x",r, pubkey_info.usage);
+			sc_log(card->ctx,  "adding rsa public key r=%d usage=%x",r, pubkey_info.usage);
 			if (r < 0)
 				goto fail;
 			r = sc_pkcs15emu_add_rsa_prkey(p15card, &prkey_obj, &prkey_info);
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "adding rsa private key r=%d usage=%x",r, prkey_info.usage);
+			sc_log(card->ctx,  "adding rsa private key r=%d usage=%x",r, prkey_info.usage);
 		}
 
 		cert_out->key = NULL;

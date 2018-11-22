@@ -152,13 +152,13 @@ static int incrypto34_check_sw(sc_card_t *card, unsigned int sw1, unsigned int s
 	for (i = 0; i < err_count; i++) {
 		if (incrypto34_errors[i].SWs == ((sw1 << 8) | sw2)) {
 			if ( incrypto34_errors[i].errorstr )
-				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "%s\n",
+				sc_log(card->ctx,  "%s\n",
 				 	incrypto34_errors[i].errorstr);
 			return incrypto34_errors[i].errorno;
 		}
 	}
 
-        sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Unknown SWs; SW1=%02X, SW2=%02X\n", sw1, sw2);
+        sc_log(card->ctx,  "Unknown SWs; SW1=%02X, SW2=%02X\n", sw1, sw2);
 	return SC_ERROR_CARD_CMD_FAILED;
 }
 
@@ -327,7 +327,7 @@ static int incrypto34_create_file(sc_card_t *card, sc_file_t *file)
 			"%02X", file->path.value[n]);
 	}
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "incrypto34_create_file(%s)\n", pbuf);
+	sc_log(card->ctx,  "incrypto34_create_file(%s)\n", pbuf);
 
 	if (file->type_attr_len == 0) {
 		memset(type, 0, sizeof(type));
@@ -388,7 +388,7 @@ static int incrypto34_create_file(sc_card_t *card, sc_file_t *file)
 				byte = acl_to_byte(
 				    sc_file_get_acl_entry(file, idx[i]));
                         if (byte < 0) {
-                                sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Invalid ACL\n");
+                                sc_log(card->ctx,  "Invalid ACL\n");
                                 r = SC_ERROR_INVALID_ARGUMENTS;
 				goto out;
                         }
@@ -448,7 +448,7 @@ static int incrypto34_set_security_env(sc_card_t *card,
 
 	if (!(env->flags & SC_SEC_ENV_KEY_REF_PRESENT)
 	 || env->key_ref_len != 1) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "No or invalid key reference\n");
+		sc_log(card->ctx,  "No or invalid key reference\n");
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	key_id = env->key_ref[0];
@@ -546,12 +546,12 @@ incrypto34_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 	 * succeeds (this is not really beautiful, but currently the
 	 * only way I see) -- Nils
 	 */
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(ctx, 
 		"trying RSA_PURE_SIG (padded DigestInfo)\n");
 	r = do_compute_signature(card, data, datalen, out, outlen);
 	if (r >= SC_SUCCESS)
 		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, r);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(ctx, 
 		"trying RSA_SIG (just the DigestInfo)\n");
 	/* remove padding: first try pkcs1 bt01 padding */
 	r = sc_pkcs1_strip_01_padding(ctx, data, datalen, buf, &tmp_len);
@@ -570,7 +570,7 @@ incrypto34_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 	r = do_compute_signature(card, buf, tmp_len, out, outlen);
 	if (r >= SC_SUCCESS)
 		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, r);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(ctx, 
 		"trying to sign raw hash value\n");
 	r = sc_pkcs1_strip_digest_info_prefix(NULL,buf,tmp_len,buf,&buf_len);
 	if (r != SC_SUCCESS)
@@ -615,7 +615,7 @@ incrypto34_lifecycle_get(sc_card_t *card, int *mode)
 		*mode = SC_CARDCTRL_LIFECYCLE_OTHER;
 		break;
 	default:
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Unknown lifecycle byte %d", rbuf[0]);
+		sc_log(card->ctx,  "Unknown lifecycle byte %d", rbuf[0]);
 		r = SC_ERROR_INTERNAL;
 	}
 

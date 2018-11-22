@@ -123,7 +123,7 @@ static int openpgp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	LOG_FUNC_CALLED(card->ctx);
 
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "only RSA is currently supported");
+		sc_log(card->ctx,  "only RSA is currently supported");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
@@ -181,7 +181,7 @@ static int openpgp_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 		key_info.key_id = kid->value[0];
 
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "only RSA is currently supported");
+		sc_log(card->ctx,  "only RSA is currently supported");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 

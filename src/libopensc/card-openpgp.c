@@ -1155,7 +1155,7 @@ pgp_enumerate_blob(sc_card_t *card, pgp_blob_t *blob)
 		r = sc_asn1_read_tag(&data, blob->len - (in - blob->data),
 					&cla, &tag, &len);
 		if (r < 0 || data == NULL) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+			sc_log(card->ctx, 
 				 "Unexpected end of contents\n");
 			return SC_ERROR_OBJECT_NOT_VALID;
 		}

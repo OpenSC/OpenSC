@@ -99,7 +99,7 @@ rutoken_select_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	pin_ref = auth_info->attrs.pin.reference;
 	so_pin_flag = auth_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN;
 
-	sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "PIN reference %i%s\n",
+	sc_log(p15card->card->ctx,  "PIN reference %i%s\n",
 			pin_ref, so_pin_flag ? " SO PIN flag" : "");
 
 	if ((pin_ref == SC_RUTOKEN_DEF_ID_GCHV_ADMIN && so_pin_flag)
@@ -133,7 +133,7 @@ rutoken_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 
 	if (puk_len != 0)
 	{
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(ctx, 
 				"Do not enter User unblocking PIN (PUK): %s\n",
 				sc_strerror(SC_ERROR_NOT_SUPPORTED));
 		return SC_ERROR_NOT_SUPPORTED;
@@ -152,11 +152,11 @@ rutoken_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 				return SC_SUCCESS;
 			else
 			{
-				sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Incorrect PIN\n");
+				sc_log(ctx,  "Incorrect PIN\n");
 				break;
 			}
 		}
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(ctx, 
 			"PIN reference %i not found in standard (Rutoken) PINs\n",
 			auth_info->attrs.pin.reference);
 	return SC_ERROR_NOT_SUPPORTED;
@@ -292,7 +292,7 @@ rutoken_erase(struct sc_profile *profile, sc_pkcs15_card_t *p15card)
 	{
 		ret = create_typical_fs(card);
 		if (ret != SC_SUCCESS)
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+			sc_log(card->ctx, 
 					"Failed to create typical fs: %s\n",
 					sc_strerror(ret));
 		ret_end = sc_card_ctl(card, SC_CARDCTL_RUTOKEN_FORMAT_END, NULL);
@@ -300,7 +300,7 @@ rutoken_erase(struct sc_profile *profile, sc_pkcs15_card_t *p15card)
 			ret = ret_end;
 	}
 	if (ret != SC_SUCCESS)
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(card->ctx, 
 				"Failed to erase: %s\n", sc_strerror(ret));
 	else
 		sc_free_apps(card);

@@ -75,7 +75,7 @@ static int create_sysdf(sc_profile_t *profile, sc_card_t *card, const char *name
 			r = sc_create_file(card, file);
 		sc_file_free(file);
 	}
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(card->ctx, 
 		"Create %s failed: %s\n", name, sc_strerror(r));
 	return r;
 }
@@ -186,7 +186,7 @@ static int rtecp_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 
 	if (puk_len != 0)
 	{
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Do not enter User unblocking PIN (PUK): %s\n",
+		sc_log(ctx,  "Do not enter User unblocking PIN (PUK): %s\n",
 				sc_strerror(SC_ERROR_NOT_SUPPORTED));
 		return SC_ERROR_NOT_SUPPORTED;
 	}
@@ -198,7 +198,7 @@ static int rtecp_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	if (auth_info->attrs.pin.reference != RTECP_SO_PIN_REF
 			&& auth_info->attrs.pin.reference != RTECP_USER_PIN_REF)
 	{
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "PIN reference %i not found in standard"
+		sc_log(ctx,  "PIN reference %i not found in standard"
 				" (Rutoken ECP) PINs\n", auth_info->attrs.pin.reference);
 		return SC_ERROR_NOT_SUPPORTED;
 	}
@@ -216,7 +216,7 @@ static int rtecp_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 
 			acl = sc_file_get_acl_entry(file, SC_AC_OP_PIN_RESET);
 			if (acl && acl->method == SC_AC_CHV && acl->key_ref == RTECP_SO_PIN_REF)   {
-				sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Allow reset of User PIN with SoPIN\n");
+				sc_log(ctx,  "Allow reset of User PIN with SoPIN\n");
 				reset_by_sopin = 1;
 			}
 			sc_file_free(file);
@@ -321,7 +321,7 @@ static int rtecp_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 				&& key_info->modulus_length
 				!= SC_PKCS15_GOSTR3410_KEYSIZE))
 	{
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(ctx, 
 			 "Unsupported key size %"SC_FORMAT_LEN_SIZE_T"u\n",
 			 key_info->modulus_length);
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -522,7 +522,7 @@ static int rtecp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 			sc_file_free(pukey_df);
 		}
 		else if (card->ctx->debug >= 2)
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "%s\n", "Get PuKey-DF info failed");
+			sc_log(card->ctx,  "%s\n", "Get PuKey-DF info failed");
 	}
 	if (r == SC_SUCCESS)
 	{
@@ -531,7 +531,7 @@ static int rtecp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 			r = sc_change_reference_data(card, 0, 0, NULL, 0,
 					buf, key_len, NULL);
 		if (r && card->ctx->debug >= 2)
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "%s\n", "Store public key failed");
+			sc_log(card->ctx,  "%s\n", "Store public key failed");
 	}
 end:
 	assert(buf);

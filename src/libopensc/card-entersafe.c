@@ -229,7 +229,7 @@ static int entersafe_cipher_apdu(sc_card_t *card, sc_apdu_t *apdu,
 	 
 	 len = apdu->lc;
 	 if(!EVP_EncryptUpdate(ctx, buff, &len, buff, buffsize)){
-		  sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "entersafe encryption error.");
+		  sc_log(card->ctx,  "entersafe encryption error.");
 		  SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL);
 	 }
 	 apdu->lc = len;
@@ -238,7 +238,7 @@ static int entersafe_cipher_apdu(sc_card_t *card, sc_apdu_t *apdu,
 
 	 if(apdu->lc!=buffsize)
 	 {
-		  sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "entersafe build cipher apdu failed.");
+		  sc_log(card->ctx,  "entersafe build cipher apdu failed.");
 		  SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INTERNAL);
 	 }
 
@@ -643,7 +643,7 @@ static int entersafe_select_path(sc_card_t *card,
 		  {
 			   /* done: we are already in the
 				* requested directory */
-			   sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+			   sc_log(card->ctx, 
 				"cache hit\n");
 			   /* copy file info (if necessary) */
 			   if (file_out) {
@@ -691,7 +691,7 @@ static int entersafe_select_file(sc_card_t *card,
 	  if (r != SC_SUCCESS)
 		 pbuf[0] = '\0';
 
-	  sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	  sc_log(card->ctx, 
 		   "current path (%s, %s): %s (len: %"SC_FORMAT_LEN_SIZE_T"u)\n",
 		   card->cache.current_path.type == SC_PATH_TYPE_DF_NAME ?
 		   "aid" : "path",
@@ -1008,7 +1008,7 @@ static int entersafe_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 	 if(data->cmd!=SC_PIN_CMD_UNBLOCK)
 	 {
 		  r = iso_ops->pin_cmd(card,data,tries_left);
-		  sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Verify rv:%i", r);
+		  sc_log(card->ctx,  "Verify rv:%i", r);
 	 }
 	 else
 	 {

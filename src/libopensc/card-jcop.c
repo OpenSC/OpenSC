@@ -624,11 +624,11 @@ static int jcop_set_security_env(sc_card_t *card,
                 tmp.flags &= ~SC_SEC_ENV_ALG_PRESENT;
                 tmp.flags |= SC_SEC_ENV_ALG_REF_PRESENT;
                 if (tmp.algorithm != SC_ALGORITHM_RSA) {
-                        sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Only RSA algorithm supported.\n");
+                        sc_log(card->ctx,  "Only RSA algorithm supported.\n");
                         return SC_ERROR_NOT_SUPPORTED;
                 }
                 if (!(env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1)){
-                        sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Card requires RSA padding\n");
+                        sc_log(card->ctx,  "Card requires RSA padding\n");
                         return SC_ERROR_NOT_SUPPORTED;
                 }
                 tmp.algorithm_ref = 0x02;
@@ -681,13 +681,13 @@ static int jcop_set_security_env(sc_card_t *card,
         apdu.resplen = 0;
 	r = sc_transmit_apdu(card, &apdu);
 	if (r) {
-	     sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	     sc_log(card->ctx, 
 		"%s: APDU transmit failed", sc_strerror(r));
 	     return r;
 	}
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	if (r) {
-	     sc_debug(card->ctx,  SC_LOG_DEBUG_NORMAL,
+	     sc_log(card->ctx,  
 		"%s: Card returned error", sc_strerror(r));
 	     return r;
 	}
@@ -811,7 +811,7 @@ static int jcop_generate_key(sc_card_t *card, struct sc_cardctl_jcop_genkey *a) 
      if (a->exponent == 0x10001) {
 	  is_f4=1;
      } else if (a->exponent != 3) {
-	  sc_debug(card->ctx,  SC_LOG_DEBUG_NORMAL,
+	  sc_log(card->ctx,  
 		"%s: Invalid exponent", sc_strerror(SC_ERROR_NOT_SUPPORTED));
 	  return SC_ERROR_NOT_SUPPORTED;
      }
@@ -841,13 +841,13 @@ static int jcop_generate_key(sc_card_t *card, struct sc_cardctl_jcop_genkey *a) 
      apdu.resplen = 0;
      r = sc_transmit_apdu(card, &apdu);
      if (r) {
-	  sc_debug(card->ctx,  SC_LOG_DEBUG_NORMAL,
+	  sc_log(card->ctx,  
 		"%s: APDU transmit failed", sc_strerror(r));
 	  return r;
      }
      r = sc_check_sw(card, apdu.sw1, apdu.sw2);
      if (r) {
-	  sc_debug(card->ctx,  SC_LOG_DEBUG_NORMAL,
+	  sc_log(card->ctx,  
 	  	"%s: Card returned error", sc_strerror(r));
 	  return r;
      }
@@ -860,13 +860,13 @@ static int jcop_generate_key(sc_card_t *card, struct sc_cardctl_jcop_genkey *a) 
      
      r = sc_transmit_apdu(card, &apdu);
      if (r) {
-	  sc_debug(card->ctx,  SC_LOG_DEBUG_NORMAL,
+	  sc_log(card->ctx,  
 		"%s: APDU transmit failed", sc_strerror(r));
 	  return r;
      }
      r = sc_check_sw(card, apdu.sw1, apdu.sw2);
      if (r) {
-	  sc_debug(card->ctx,  SC_LOG_DEBUG_NORMAL,
+	  sc_log(card->ctx,  
 		"%s: Card returned error", sc_strerror(r));
 	  return r;
      }

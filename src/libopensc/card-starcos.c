@@ -84,7 +84,7 @@ typedef struct starcos_ex_data_st {
 #define CHECK_NOT_SUPPORTED_V3_4(card) \
 	do { \
 		if ((card)->type == SC_CARD_TYPE_STARCOS_V3_4) { \
-			sc_debug((card)->ctx, SC_LOG_DEBUG_NORMAL, \
+			sc_log((card)->ctx,  \
 				"not supported for STARCOS 3.4 cards"); \
 			return SC_ERROR_NOT_SUPPORTED; \
 		} \
@@ -189,7 +189,7 @@ static int process_fci(sc_context_t *ctx, sc_file_t *file,
 	size_t taglen, len = buflen;
 	const u8 *tag = NULL, *p;
   
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "processing FCI bytes\n");
+	sc_log(ctx,  "processing FCI bytes\n");
 
 	if (buflen < 2)
 		return SC_ERROR_INTERNAL;
@@ -210,7 +210,7 @@ static int process_fci(sc_context_t *ctx, sc_file_t *file,
 	tag = sc_asn1_find_tag(ctx, p, len, 0x80, &taglen);
 	if (tag != NULL && taglen >= 2) {
 		int bytes = (tag[0] << 8) + tag[1];
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(ctx, 
 			"  bytes in file: %d\n", bytes);
 		file->size = bytes;
 	}
@@ -259,9 +259,9 @@ static int process_fci(sc_context_t *ctx, sc_file_t *file,
 			}
 		}
 
- 		sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+ 		sc_log(ctx, 
 			"  type: %s\n", type);
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(ctx, 
 			"  EF structure: %s\n", structure);
 	}
 	file->magic = SC_FILE_MAGIC;
@@ -275,7 +275,7 @@ static int process_fci_v3_4(sc_context_t *ctx, sc_file_t *file,
 	size_t taglen, len = buflen;
 	const u8 *tag = NULL, *p;
 
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(ctx, 
 		 "processing %"SC_FORMAT_LEN_SIZE_T"u FCI bytes\n", buflen);
 
 	if (buflen < 2)
@@ -299,7 +299,7 @@ static int process_fci_v3_4(sc_context_t *ctx, sc_file_t *file,
 	if (tag != NULL && taglen > 0 && taglen <= 16) {
 		memcpy(file->name, tag, taglen);
 		file->namelen = taglen;
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "filename %s",
+		sc_log(ctx,  "filename %s",
 			sc_dump_hex(file->name, file->namelen));
 	}
 	return SC_SUCCESS;
@@ -311,7 +311,7 @@ static int process_fcp_v3_4(sc_context_t *ctx, sc_file_t *file,
 	size_t taglen, len = buflen;
 	const u8 *tag = NULL, *p;
 
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(ctx, 
 		 "processing %"SC_FORMAT_LEN_SIZE_T"u FCP bytes\n", buflen);
 
 	if (buflen < 2)
@@ -326,7 +326,7 @@ static int process_fcp_v3_4(sc_context_t *ctx, sc_file_t *file,
 	tag = sc_asn1_find_tag(ctx, p, len, 0x80, &taglen);
 	if (tag != NULL && taglen >= 2) {
 		int bytes = (tag[0] << 8) + tag[1];
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(ctx, 
 			"  bytes in file: %d\n", bytes);
 		file->size = bytes;
 	}
@@ -334,7 +334,7 @@ static int process_fcp_v3_4(sc_context_t *ctx, sc_file_t *file,
 	tag = sc_asn1_find_tag(ctx, p, len, 0xc5, &taglen);
 	if (tag != NULL && taglen >= 2) {
 		int bytes = (tag[0] << 8) + tag[1];
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(ctx, 
 			"  bytes in file 2: %d\n", bytes);
 		file->size = bytes;
 	}
@@ -388,9 +388,9 @@ static int process_fcp_v3_4(sc_context_t *ctx, sc_file_t *file,
 				break;
 			}
 		}
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(ctx, 
 			"  type: %s\n", type);
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(ctx, 
 			"  EF structure: %s\n", structure);
 		if (taglen >= 2) {
 			if (tag[1] != 0x41 || taglen != 5) {
@@ -399,7 +399,7 @@ static int process_fcp_v3_4(sc_context_t *ctx, sc_file_t *file,
 			/* formatted EF */
 			file->record_length = (tag[2] << 8) + tag[3];
 			file->record_count = tag[4];
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+			sc_log(ctx, 
 				"  rec_len: %d  rec_cnt: %d\n\n",
 				file->record_length, file->record_count);
 		}
@@ -408,7 +408,7 @@ static int process_fcp_v3_4(sc_context_t *ctx, sc_file_t *file,
 	tag = sc_asn1_find_tag(ctx, p, len, 0x83, &taglen);
 	if (tag != NULL && taglen >= 2) {
 		file->id = (tag[0] << 8) | tag[1];
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "  file identifier: 0x%02X%02X\n",
+		sc_log(ctx,  "  file identifier: 0x%02X%02X\n",
 			tag[0], tag[1]);
 	}
 
@@ -416,7 +416,7 @@ static int process_fcp_v3_4(sc_context_t *ctx, sc_file_t *file,
 	if (tag != NULL && taglen > 0 && taglen <= 16) {
 		memcpy(file->name, tag, taglen);
 		file->namelen = taglen;
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "  filename %s",
+		sc_log(ctx,  "  filename %s",
 			sc_dump_hex(file->name, file->namelen));
 	}
 
@@ -440,7 +440,7 @@ static int process_fcp_v3_4(sc_context_t *ctx, sc_file_t *file,
 		default:
 			break;
 		}
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "  file status: %s\n", status);
+		sc_log(ctx,  "  file status: %s\n", status);
 	}
 
 	file->magic = SC_FILE_MAGIC;
@@ -648,7 +648,7 @@ static int starcos_select_file(sc_card_t *card,
 	if (r != SC_SUCCESS)
 		pbuf[0] = '\0';
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(card->ctx, 
 		 "current path (%s, %s): %s (len: %"SC_FORMAT_LEN_SIZE_T"u)\n",
 		 card->cache.current_path.type == SC_PATH_TYPE_DF_NAME ?
 		 "aid" : "path",
@@ -673,7 +673,7 @@ static int starcos_select_file(sc_card_t *card,
 		    && card->cache.current_path.len == pathlen
 		    && memcmp(card->cache.current_path.value, pathbuf, pathlen) == 0 )
 		{
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "cache hit\n");
+			sc_log(card->ctx,  "cache hit\n");
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
 		}
 		else
@@ -757,7 +757,7 @@ static int starcos_select_file(sc_card_t *card,
 			{
 				/* done: we are already in the
 				 * requested directory */
-				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+				sc_log(card->ctx, 
 					"cache hit\n");
 				/* copy file info (if necessary) */
 				if (file_out) {
@@ -984,7 +984,7 @@ static int starcos_create_mf(sc_card_t *card, sc_starcos_create_data *data)
 
 	CHECK_NOT_SUPPORTED_V3_4(card);
 
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "creating MF \n");
+	sc_log(ctx,  "creating MF \n");
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xE0, 0x00, 0x00);
 	apdu.cla |= 0x80;
 	apdu.lc   = 19;
@@ -1015,9 +1015,9 @@ static int starcos_create_df(sc_card_t *card, sc_starcos_create_data *data)
 
 	CHECK_NOT_SUPPORTED_V3_4(card);
 
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "creating DF\n");
+	sc_log(ctx,  "creating DF\n");
 	/* first step: REGISTER DF */
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "calling REGISTER DF\n");
+	sc_log(ctx,  "calling REGISTER DF\n");
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x52,
 		       data->data.df.size[0], data->data.df.size[1]);
@@ -1030,7 +1030,7 @@ static int starcos_create_df(sc_card_t *card, sc_starcos_create_data *data)
 	r = sc_transmit_apdu(card, &apdu);
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
 	/* second step: CREATE DF */
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "calling CREATE DF\n");
+	sc_log(ctx,  "calling CREATE DF\n");
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xE0, 0x01, 0x00);
 	apdu.cla |= 0x80;
@@ -1060,7 +1060,7 @@ static int starcos_create_ef(sc_card_t *card, sc_starcos_create_data *data)
 
 	CHECK_NOT_SUPPORTED_V3_4(card);
 
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "creating EF\n");
+	sc_log(ctx,  "creating EF\n");
 
 	sc_format_apdu(card,&apdu,SC_APDU_CASE_3_SHORT,0xE0,0x03,0x00);
 	apdu.cla |= 0x80;
@@ -1378,7 +1378,7 @@ static int starcos_set_security_env(sc_card_t *card,
 				break;
 
 			default:
-				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+				sc_log(card->ctx, 
 						"not supported for STARCOS 3.4 cards");
 				return SC_ERROR_NOT_SUPPORTED;
 		}
@@ -1718,14 +1718,14 @@ static int starcos_check_sw(sc_card_t *card, unsigned int sw1, unsigned int sw2)
 	const int err_count = sizeof(starcos_errors)/sizeof(starcos_errors[0]);
 	int i;
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(card->ctx, 
 		"sw1 = 0x%02x, sw2 = 0x%02x\n", sw1, sw2);
   
 	if (sw1 == 0x90)
 		return SC_SUCCESS;
 	if (sw1 == 0x63 && (sw2 & ~0x0fU) == 0xc0 )
 	{
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Verification failed (remaining tries: %d)\n",
+		sc_log(card->ctx,  "Verification failed (remaining tries: %d)\n",
 		(sw2 & 0x0f));
 		return SC_ERROR_PIN_CODE_INCORRECT;
 	}
@@ -1734,7 +1734,7 @@ static int starcos_check_sw(sc_card_t *card, unsigned int sw1, unsigned int sw2)
 	for (i = 0; i < err_count; i++)
 		if (starcos_errors[i].SWs == ((sw1 << 8) | sw2))
 		{
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "%s\n", starcos_errors[i].errorstr);
+			sc_log(card->ctx,  "%s\n", starcos_errors[i].errorstr);
 			return starcos_errors[i].errorno;
 		}
   

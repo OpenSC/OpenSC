@@ -172,7 +172,7 @@ static int epass2003_pkcs15_create_dir(struct sc_profile *profile,
 
 		for (i = 0; create_efs[i]; ++i) {
 			if (sc_profile_get_file(profile, create_efs[i], &file)) {
-				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+				sc_log(card->ctx, 
 					 "Inconsistent profile: cannot find %s",
 					 create_efs[i]);
 				SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,
@@ -312,7 +312,7 @@ cosm_new_file(struct sc_profile *profile, struct sc_card *card,
 	unsigned int structure = 0xFFFFFFFF;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "type %X; num %i\n", type,
+	sc_log(card->ctx,  "type %X; num %i\n", type,
 		 num);
 	while (1) {
 		switch (type) {
@@ -360,7 +360,7 @@ cosm_new_file(struct sc_profile *profile, struct sc_card *card,
 		 * the generic class (SC_PKCS15_TYPE_CERT)
 		 */
 		if (!(type & ~SC_PKCS15_TYPE_CLASS_MASK)) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+			sc_log(card->ctx, 
 				 "File type %X not supported by card driver",
 				 type);
 			return SC_ERROR_INVALID_ARGUMENTS;
@@ -368,10 +368,10 @@ cosm_new_file(struct sc_profile *profile, struct sc_card *card,
 		type &= SC_PKCS15_TYPE_CLASS_MASK;
 	}
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "template %s; num %i\n",
+	sc_log(card->ctx,  "template %s; num %i\n",
 		 _template, num);
 	if (sc_profile_get_file(profile, _template, &file) < 0) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(card->ctx, 
 			 "Profile doesn't define %s template '%s'\n", desc,
 			 _template);
 		return SC_ERROR_NOT_SUPPORTED;
@@ -384,11 +384,11 @@ cosm_new_file(struct sc_profile *profile, struct sc_card *card,
 	file->type = SC_FILE_TYPE_INTERNAL_EF;
 	file->ef_structure = structure;
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(card->ctx, 
 		 "file size %"SC_FORMAT_LEN_SIZE_T"u; ef type %i/%i; id %04X, path_len %"SC_FORMAT_LEN_SIZE_T"u\n",
 		 file->size, file->type, file->ef_structure, file->id,
 		 file->path.len);
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "file path: %s",
+	sc_log(card->ctx,  "file path: %s",
 		 sc_print_path(&(file->path)));
 	*out = file;
 
@@ -424,7 +424,7 @@ static int epass2003_pkcs15_store_key(struct sc_profile *profile,
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(card->ctx, 
 		 "index %"SC_FORMAT_LEN_SIZE_T"u; id %s\n", idx,
 		 sc_pkcs15_print_id(&key_info->id));
 	if (key->algorithm != SC_ALGORITHM_RSA
@@ -433,7 +433,7 @@ static int epass2003_pkcs15_store_key(struct sc_profile *profile,
 			    SC_ERROR_NOT_SUPPORTED,
 			    "store key: only support RSA");
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(card->ctx, 
 		 "store key: with ID:%s and path:%s",
 		 sc_pkcs15_print_id(&key_info->id),
 		 sc_print_path(&key_info->path));
@@ -444,9 +444,9 @@ static int epass2003_pkcs15_store_key(struct sc_profile *profile,
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r,
 		    "create key: failed to allocate new key object");
 	file->size = keybits;
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "private key path: %s",
+	sc_log(card->ctx,  "private key path: %s",
 		 sc_print_path(&(file->path)));
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "private key_info path: %s",
+	sc_log(card->ctx,  "private key_info path: %s",
 		 sc_print_path(&(key_info->path)));
 	sc_delete_file(p15card->card, &file->path);
 	/* create */
@@ -454,7 +454,7 @@ static int epass2003_pkcs15_store_key(struct sc_profile *profile,
 	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r,
 		    "create key: failed to create key file");
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(card->ctx, 
 		 "index %"SC_FORMAT_LEN_SIZE_T"u; keybits %"SC_FORMAT_LEN_SIZE_T"u\n",
 		 idx, keybits);
 	if (keybits < 1024 || keybits > 2048 || (keybits % 0x20)) {
@@ -522,9 +522,9 @@ static int epass2003_pkcs15_generate_key(struct sc_profile *profile,
 	SC_TEST_GOTO_ERR(card->ctx, SC_LOG_DEBUG_NORMAL, r,
 		    "create key: failed to allocate new key object");
 	file->size = keybits;
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "private key path: %s",
+	sc_log(card->ctx,  "private key path: %s",
 		 sc_print_path(&file->path));
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "private key_info path: %s",
+	sc_log(card->ctx,  "private key_info path: %s",
 		 sc_print_path(&(key_info->path)));
 
 	r = sc_pkcs15init_authenticate(profile, p15card, file,
@@ -538,7 +538,7 @@ static int epass2003_pkcs15_generate_key(struct sc_profile *profile,
 	SC_TEST_GOTO_ERR(card->ctx, SC_LOG_DEBUG_NORMAL, r,
 		    "create key: failed to create key file");
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(card->ctx, 
 		 "index %"SC_FORMAT_LEN_SIZE_T"u; keybits %"SC_FORMAT_LEN_SIZE_T"u\n",
 		 idx, keybits);
 	if (keybits < 1024 || keybits > 2048 || (keybits % 0x20)) {
@@ -585,7 +585,7 @@ static int epass2003_pkcs15_generate_key(struct sc_profile *profile,
 	}
 
 	if (r < 0) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(card->ctx, 
 			 "generate key: create temporary pukf failed\n");
 		goto err;
 	}
@@ -594,7 +594,7 @@ static int epass2003_pkcs15_generate_key(struct sc_profile *profile,
 	pukf->id = pukf->path.value[pukf->path.len - 2] * 0x100
 	    + pukf->path.value[pukf->path.len - 1];
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(card->ctx, 
 		 "public key size %"SC_FORMAT_LEN_SIZE_T"u; ef type %i/%i; id %04X; path: %s",
 		 pukf->size, pukf->type, pukf->ef_structure, pukf->id,
 		 sc_print_path(&pukf->path));
@@ -609,7 +609,7 @@ static int epass2003_pkcs15_generate_key(struct sc_profile *profile,
 
 		r = sc_pkcs15init_delete_by_path(profile, p15card, &pukf->path);
 		if (r != SC_SUCCESS) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+			sc_log(card->ctx, 
 				 "generate key: failed to delete existing key file\n");
 			goto err;
 		}
@@ -617,7 +617,7 @@ static int epass2003_pkcs15_generate_key(struct sc_profile *profile,
 	/* create */
 	r = sc_pkcs15init_create_file(profile, p15card, pukf);
 	if (r != SC_SUCCESS) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(card->ctx, 
 			 "generate key: pukf create file failed\n");
 		goto err;
 	}
@@ -690,7 +690,7 @@ static int epass2003_pkcs15_sanity_check(sc_profile_t * profile,
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(ctx, 
 		 "Check and if needed update PinFlags");
 	rv = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH_PIN, objs, 32);
 	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Failed to get PINs");
@@ -709,7 +709,7 @@ static int epass2003_pkcs15_sanity_check(sc_profile_t * profile,
 
 		if (pin_attrs->reference == profile_auth.attrs.pin.reference
 		    && pin_attrs->flags != profile_auth.attrs.pin.flags) {
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+			sc_log(ctx, 
 				 "Set flags of '%s'(flags:%X,ref:%i,id:%s) to %X",
 				 objs[ii]->label, pin_attrs->flags,
 				 pin_attrs->reference,

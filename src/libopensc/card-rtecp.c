@@ -149,7 +149,7 @@ static void set_acl_from_sec_attr(sc_card_t *card, sc_file_t *file)
 	{
 		method = sec_attr_to_method(file->sec_attr[1 + 6]);
 		key_ref = sec_attr_to_key_ref(file->sec_attr[1 + 6]);
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(card->ctx, 
 			"SC_AC_OP_DELETE %i %lu\n",
 			(int)method, key_ref);
 		sc_file_add_acl_entry(file, SC_AC_OP_DELETE, method, key_ref);
@@ -158,7 +158,7 @@ static void set_acl_from_sec_attr(sc_card_t *card, sc_file_t *file)
 	{
 		method = sec_attr_to_method(file->sec_attr[1 + 0]);
 		key_ref = sec_attr_to_key_ref(file->sec_attr[1 + 0]);
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(card->ctx, 
 			(file->type == SC_FILE_TYPE_DF) ?
 				"SC_AC_OP_CREATE %i %lu\n"
 				: "SC_AC_OP_READ %i %lu\n",
@@ -176,11 +176,11 @@ static void set_acl_from_sec_attr(sc_card_t *card, sc_file_t *file)
 		{
 			method = sec_attr_to_method(file->sec_attr[1 + 1]);
 			key_ref = sec_attr_to_key_ref(file->sec_attr[1 + 1]);
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+			sc_log(card->ctx, 
 				"SC_AC_OP_UPDATE %i %lu\n",
 				(int)method, key_ref);
 			sc_file_add_acl_entry(file, SC_AC_OP_UPDATE, method, key_ref);
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+			sc_log(card->ctx, 
 				"SC_AC_OP_WRITE %i %lu\n",
 				(int)method, key_ref);
 			sc_file_add_acl_entry(file, SC_AC_OP_WRITE, method, key_ref);
@@ -379,7 +379,7 @@ static int rtecp_cipher(sc_card_t *card, const u8 *data, size_t data_len,
 	assert(buf);
 	free(buf);
 	if (r)
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "APDU transmit failed: %s\n", sc_strerror(r));
+		sc_log(card->ctx,  "APDU transmit failed: %s\n", sc_strerror(r));
 	else
 	{
 		if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
@@ -435,7 +435,7 @@ static int rtecp_change_reference_data(sc_card_t *card, unsigned int type,
 	int transmits_num, r;
 
 	assert(card && card->ctx && newref);
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(card->ctx, 
 		 "newlen = %"SC_FORMAT_LEN_SIZE_T"u\n", newlen);
 	if (newlen > 0xFFFF)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
@@ -649,12 +649,12 @@ static int rtecp_card_ctl(sc_card_t *card, unsigned long request, void *data)
 		apdu.le = 256;
 		break;
 	case SC_CARDCTL_LIFECYCLE_SET:
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "%s\n",
+		sc_log(card->ctx,  "%s\n",
 				"SC_CARDCTL_LIFECYCLE_SET not supported");
 		/* no call sc_debug (SC_FUNC_RETURN) */
 		return SC_ERROR_NOT_SUPPORTED;
 	default:
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(card->ctx, 
 			"request = 0x%lx\n", request);
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED);
 	}

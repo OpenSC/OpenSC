@@ -170,12 +170,12 @@ static int gids_get_identifiers(sc_card_t* card, u8* masterfile, size_t masterfi
 		if (strcmp(directory, records[i].directory) == 0 && strcmp(filename, records[i].filename) == 0) {
 			*fileIdentifier = records[i].fileIdentifier;
 			*dataObjectIdentifier = records[i].dataObjectIdentifier;
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+			sc_log(card->ctx, 
 		"Identifiers of %s %s is fileIdentifier=%x, dataObjectIdentifier=%x\n", directory, filename, *fileIdentifier, *dataObjectIdentifier);
 			return 0;
 		}
 	}
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "file %s %s not found\n", directory, filename);
+	sc_log(card->ctx,  "file %s %s not found\n", directory, filename);
 	return SC_ERROR_FILE_NOT_FOUND;
 }
 
@@ -214,7 +214,7 @@ static int gids_get_DO(sc_card_t* card, int fileIdentifier, int dataObjectIdenti
 	u8 buffer[MAX_GIDS_FILE_SIZE];
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(card->ctx, 
 		 "Got args: fileIdentifier=%x, dataObjectIdentifier=%x, response=%p, responselen=%"SC_FORMAT_LEN_SIZE_T"u\n",
 		 fileIdentifier, dataObjectIdentifier, response,
 		 responselen ? *responselen : 0);
@@ -251,7 +251,7 @@ static int gids_put_DO(sc_card_t* card, int fileIdentifier, int dataObjectIdenti
 	u8 buffer[SC_MAX_EXT_APDU_BUFFER_SIZE];
 	u8* p = buffer;
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(card->ctx, 
 		 "Got args: fileIdentifier=%x, dataObjectIdentifier=%x, data=%p, datalen=%"SC_FORMAT_LEN_SIZE_T"u\n",
 		 fileIdentifier, dataObjectIdentifier, data, datalen);
 
@@ -279,7 +279,7 @@ static int gids_select_aid(sc_card_t* card, u8* aid, size_t aidlen, u8* response
 	int r;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(card->ctx, 
 		 "Got args: aid=%p, aidlen=%"SC_FORMAT_LEN_SIZE_T"u, response=%p, responselen=%"SC_FORMAT_LEN_SIZE_T"u\n",
 		 aid, aidlen, response, responselen ? *responselen : 0);
 
@@ -552,7 +552,7 @@ static int gids_get_pin_status(sc_card_t *card, int pinreference, int *tries_lef
 			*max_tries = p[0];
 	}
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(card->ctx, 
 		"Pin information for PIN 0x%x: triesleft=%d trieslimit=%d\n", pinreference, (tries_left?*tries_left:-1), (max_tries?*max_tries:-1));
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
 }
@@ -579,7 +579,7 @@ static int gids_match_card(sc_card_t * card)
 		if (tag != NULL) {
 			aid = sc_asn1_find_tag(card->ctx, tag, taglen, GIDS_APPLICATION_AID_TAG, &aidlen);
 			if (aid != NULL ) {
-				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"found AID");
+				sc_log(card->ctx, "found AID");
 				for (i = 0; gids_aids[i].len_long != 0; i++) {
 					if ( aidlen > gids_aids[i].len_long && memcmp(aid, gids_aids[i].value,
 									gids_aids[i].len_long) == 0) {
@@ -856,7 +856,7 @@ static int gids_read_public_key (struct sc_card *card , unsigned int algorithm,
 	size_t buffersize = sizeof(buffer);
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(card->ctx, 
 		 "Got args: key_reference=%x, response=%p, responselen=%"SC_FORMAT_LEN_SIZE_T"u\n",
 		 key_reference, response, responselen ? *responselen : 0);
 
@@ -876,7 +876,7 @@ static int gids_read_public_key (struct sc_card *card , unsigned int algorithm,
 
 	keytemplate = sc_asn1_find_tag(card->ctx, buffer, buffersize, GIDS_PUBKEY_TAG, &tlen);
 	if (keytemplate == NULL) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "invalid public key data: missing tag");
+		sc_log(card->ctx,  "invalid public key data: missing tag");
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 	}
 
@@ -900,7 +900,7 @@ static int gids_read_public_key (struct sc_card *card , unsigned int algorithm,
 		r = sc_pkcs15_encode_pubkey_rsa(card->ctx, &rsa_key, response, responselen);
 		LOG_TEST_RET(card->ctx, r, "failed to read public key: cannot encode RSA public key");
 	} else {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "it is not a known public key");
+		sc_log(card->ctx,  "it is not a known public key");
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 	}
 
@@ -1004,17 +1004,17 @@ static int gids_read_binary(sc_card_t *card, unsigned int offset,
 			data->buffersize = sizeof(data->buffer);
 			r = sc_decompress(data->buffer, &(data->buffersize), buffer+4, buffersize-4, COMPRESSION_ZLIB);
 			if (r != SC_SUCCESS) {
-				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Zlib error: %d", r);
+				sc_log(card->ctx,  "Zlib error: %d", r);
 				SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
 			}
 			if (data->buffersize != expectedsize) {
-				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+				sc_log(card->ctx, 
 					 "expected size: %"SC_FORMAT_LEN_SIZE_T"u real size: %"SC_FORMAT_LEN_SIZE_T"u",
 					 expectedsize, data->buffersize);
 				SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_DATA);
 			}
 		} else {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "unknown compression method %d", buffer[0] + (buffer[1] <<8));
+			sc_log(card->ctx,  "unknown compression method %d", buffer[0] + (buffer[1] <<8));
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_DATA);
 		}
 		data->state = GIDS_STATE_READ_DATA_PRESENT;
@@ -1123,11 +1123,11 @@ gids_select_key_reference(sc_card_t *card, sc_pkcs15_prkey_info_t* key_info) {
 		// key was specified. Search if the key can be used
 		size_t i = key_info->key_reference - GIDS_FIRST_KEY_IDENTIFIER;
 		if (i > GIDS_MAX_CONTAINER) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "invalid key ref %d", key_info->key_reference);
+			sc_log(card->ctx,  "invalid key ref %d", key_info->key_reference);
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
 		}
 		if (i > recordsnum) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+			sc_log(card->ctx, 
 				 "container num is not allowed %"SC_FORMAT_LEN_SIZE_T"u %"SC_FORMAT_LEN_SIZE_T"u",
 				 i, recordsnum);
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
@@ -1266,8 +1266,8 @@ static int gids_create_keyfile(sc_card_t *card, sc_pkcs15_object_t *object) {
 	} else {
 		keymaprecordnum = (keymapbuffersize - 1) / sizeof(struct gids_keymap_record);
 		if (keymaprecordnum != recordnum) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL , "Error: Unable to create the key file because the keymap and cmapfile are inconsistent");
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL ,
+			sc_log(card->ctx , "Error: Unable to create the key file because the keymap and cmapfile are inconsistent");
+			sc_log(card->ctx ,
 				 "keymaprecordnum = %"SC_FORMAT_LEN_SIZE_T"u recordnum = %"SC_FORMAT_LEN_SIZE_T"u",
 				 keymaprecordnum, recordnum);
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL);
@@ -1435,11 +1435,11 @@ static int gids_import_key(sc_card_t *card, sc_pkcs15_object_t *object, sc_pkcs1
 	assert((object->type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_PRKEY);
 
 	if (object->type != SC_PKCS15_TYPE_PRKEY_RSA || key->algorithm != SC_ALGORITHM_RSA) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "GIDS supports RSA keys only (but may support ECC one day).");
+		sc_log(card->ctx,  "GIDS supports RSA keys only (but may support ECC one day).");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	if (!key->u.rsa.dmp1.len || !key->u.rsa.dmq1.len || !key->u.rsa.iqmp.len) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "GIDS needs dmp1 & dmq1 & iqmp");
+		sc_log(card->ctx,  "GIDS needs dmp1 & dmq1 & iqmp");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	sc_format_asn1_entry(asn1_rsa_priv_coefficients_gids + 0, &version, NULL, 1);
@@ -1971,7 +1971,7 @@ static int gids_authenticate_admin(sc_card_t *card, u8* key) {
 	
 	if (apdu.resplen != 44)
 	{
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Expecting a response len of 44 - found %d",(int) apdu.resplen);
+		sc_log(card->ctx,  "Expecting a response len of 44 - found %d",(int) apdu.resplen);
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL);
 	}
 	// init crypto
@@ -1985,26 +1985,26 @@ static int gids_authenticate_admin(sc_card_t *card, u8* key) {
 	}
 	EVP_CIPHER_CTX_set_padding(ctx,0);
 	if (!EVP_DecryptUpdate(ctx, buffer3, &buffer3size, apdu.resp + 4, apdu.resplen - 4)) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "unable to decrypt data");
+		sc_log(card->ctx,  "unable to decrypt data");
 		EVP_CIPHER_CTX_free(ctx);
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_PIN_CODE_INCORRECT);
 	}
 	if(!EVP_DecryptFinal(ctx, buffer3+buffer3size, &buffer3size)) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "unable to decrypt final data");
+		sc_log(card->ctx,  "unable to decrypt final data");
 		EVP_CIPHER_CTX_free(ctx);
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_PIN_CODE_INCORRECT);
 	}
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "data has been decrypted using the key");
+	sc_log(card->ctx,  "data has been decrypted using the key");
 	if (memcmp(buffer3, randomR1, 16) != 0) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "R1 doesn't match");
+		sc_log(card->ctx,  "R1 doesn't match");
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_PIN_CODE_INCORRECT);
 	}
 	if (memcmp(buffer3 + 16, randomR2, 16) != 0) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "R2 doesn't match");
+		sc_log(card->ctx,  "R2 doesn't match");
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_PIN_CODE_INCORRECT);
 	}
 	if (buffer[39] != 0x80) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Padding not found");
+		sc_log(card->ctx,  "Padding not found");
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_PIN_CODE_INCORRECT);
 	}
 	EVP_CIPHER_CTX_free(ctx);

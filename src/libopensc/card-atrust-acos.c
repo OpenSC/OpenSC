@@ -153,7 +153,7 @@ static int process_fci(struct sc_context *ctx, struct sc_file *file,
 	size_t taglen, len = buflen;
 	const u8 *tag = NULL, *p;
   
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "processing FCI bytes\n");
+	sc_log(ctx,  "processing FCI bytes\n");
 
 	if (buflen < 2)
 		return SC_ERROR_INTERNAL;
@@ -175,7 +175,7 @@ static int process_fci(struct sc_context *ctx, struct sc_file *file,
 	tag = sc_asn1_find_tag(ctx, p, len, 0x80, &taglen);
 	if (tag != NULL && taglen >= 2) {
 		int bytes = (tag[0] << 8) + tag[1];
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "  bytes in file: %d\n", bytes);
+		sc_log(ctx,  "  bytes in file: %d\n", bytes);
 		file->size = bytes;
 	}
 
@@ -224,8 +224,8 @@ static int process_fci(struct sc_context *ctx, struct sc_file *file,
 			}
 		}
 
-	 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "  type: %s\n", type);
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "  EF structure: %s\n", structure);
+	 	sc_log(ctx,  "  type: %s\n", type);
+		sc_log(ctx,  "  EF structure: %s\n", structure);
 	}
 	file->magic = SC_FILE_MAGIC;
 
@@ -392,7 +392,7 @@ static int atrust_acos_select_file(struct sc_card *card,
 	if (r != SC_SUCCESS)
 		pbuf[0] = '\0';
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(card->ctx, 
 		 "current path (%s, %s): %s (len: %"SC_FORMAT_LEN_SIZE_T"u)\n",
 		 card->cache.current_path.type == SC_PATH_TYPE_DF_NAME ?
 		 "aid" : "path",
@@ -417,7 +417,7 @@ static int atrust_acos_select_file(struct sc_card *card,
 		    && card->cache.current_path.len == pathlen
 		    && memcmp(card->cache.current_path.value, pathbuf, pathlen) == 0 )
 		{
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "cache hit\n");
+			sc_log(card->ctx,  "cache hit\n");
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
 		}
 		else
@@ -489,7 +489,7 @@ static int atrust_acos_select_file(struct sc_card *card,
 			{
 				/* done: we are already in the
 				 * requested directory */
-				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "cache hit\n");
+				sc_log(card->ctx,  "cache hit\n");
 				/* copy file info (if necessary) */
 				if (file_out) {
 					sc_file_t *file = sc_file_new();
@@ -802,13 +802,13 @@ static int atrust_acos_check_sw(struct sc_card *card, unsigned int sw1,
 	unsigned int sw2)
 {
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "sw1 = 0x%02x, sw2 = 0x%02x\n", sw1, sw2);
+	sc_log(card->ctx,  "sw1 = 0x%02x, sw2 = 0x%02x\n", sw1, sw2);
   
 	if (sw1 == 0x90)
 		return SC_SUCCESS;
 	if (sw1 == 0x63 && (sw2 & ~0x0fU) == 0xc0 )
 	{
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Verification failed (remaining tries: %d)\n",
+		sc_log(card->ctx,  "Verification failed (remaining tries: %d)\n",
 		(sw2 & 0x0f));
 		return SC_ERROR_PIN_CODE_INCORRECT;
 	}

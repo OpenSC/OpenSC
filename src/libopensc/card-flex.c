@@ -304,7 +304,7 @@ cryptoflex_process_file_attrs(sc_card_t *card, sc_file_t *file,
 		file->type = SC_FILE_TYPE_DF;
 		break;
 	default:
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "invalid file type: 0x%02X\n", *p);
+		sc_log(ctx,  "invalid file type: 0x%02X\n", *p);
 		return SC_ERROR_UNKNOWN_DATA_RECEIVED;
 	}
 	p += 2;
@@ -368,7 +368,7 @@ cyberflex_process_file_attrs(sc_card_t *card, sc_file_t *file,
 		file->type = SC_FILE_TYPE_WORKING_EF;
 		break;
 	default:
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "invalid file type: 0x%02X\n", *p);
+		sc_log(ctx,  "invalid file type: 0x%02X\n", *p);
 		return SC_ERROR_UNKNOWN_DATA_RECEIVED;
 	}
 
@@ -415,7 +415,7 @@ cyberflex_process_file_attrs(sc_card_t *card, sc_file_t *file,
 		case  0x04:
 			break;
 		default:
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "invalid file type: 0x%02X\n", *p);
+			sc_log(ctx,  "invalid file type: 0x%02X\n", *p);
 			return SC_ERROR_UNKNOWN_DATA_RECEIVED;
 		}
 		switch (file->ef_structure) {
@@ -515,7 +515,7 @@ static int select_file_id(sc_card_t *card, const u8 *buf, size_t buflen,
         u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
         sc_file_t *file;
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "called, p1=%u\n", p1);
+	sc_log(card->ctx,  "called, p1=%u\n", p1);
 	sc_debug_hex(card->ctx, SC_LOG_DEBUG_NORMAL, "path", buf, buflen);
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xA4, p1, 0);
@@ -542,7 +542,7 @@ static int select_file_id(sc_card_t *card, const u8 *buf, size_t buflen,
 	if (apdu.resplen < 14)
 		return SC_ERROR_UNKNOWN_DATA_RECEIVED;
 	if (apdu.resp[0] == 0x6F) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "unsupported: card returned FCI\n");
+		sc_log(card->ctx,  "unsupported: card returned FCI\n");
 		return SC_ERROR_UNKNOWN_DATA_RECEIVED; /* FIXME */
 	}
 	file = sc_file_new();
@@ -575,7 +575,7 @@ static int flex_select_file(sc_card_t *card, const sc_path_t *path,
 	if (r != SC_SUCCESS)
 		pbuf[0] = '\0';
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "called, cached path=%s\n", pbuf);
+	sc_log(card->ctx,  "called, cached path=%s\n", pbuf);
 
 	switch (path->type) {
 	case SC_PATH_TYPE_PATH:
@@ -641,7 +641,7 @@ static int cryptoflex_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 		if (r)
 			return r;
 		if (apdu.resplen != 4) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+			sc_log(card->ctx, 
 				 "expected 4 bytes, got %"SC_FORMAT_LEN_SIZE_T"u.\n",
 				 apdu.resplen);
 			return SC_ERROR_UNKNOWN_DATA_RECEIVED;
@@ -678,7 +678,7 @@ static int cyberflex_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 		if (r)
 			return r;
 		if (apdu.resplen != 6) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+			sc_log(card->ctx, 
 				 "expected 6 bytes, got %"SC_FORMAT_LEN_SIZE_T"u.\n",
 				 apdu.resplen);
 			return SC_ERROR_UNKNOWN_DATA_RECEIVED;
@@ -698,7 +698,7 @@ static int flex_delete_file(sc_card_t *card, const sc_path_t *path)
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (path->type != SC_PATH_TYPE_FILE_ID && path->len != 2) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "File type has to be SC_PATH_TYPE_FILE_ID\n");
+		sc_log(card->ctx,  "File type has to be SC_PATH_TYPE_FILE_ID\n");
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xE4, 0x00, 0x00);
@@ -783,7 +783,7 @@ cryptoflex_construct_file_attrs(sc_card_t *card, const sc_file_t *file,
 			p[6] = 0x06;
 			break;
 		default:
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Invalid EF structure\n");
+			sc_log(card->ctx,  "Invalid EF structure\n");
 			return -1;
 		}
 	p[7] = 0xFF;	/* allow Decrease and Increase */
@@ -849,7 +849,7 @@ cyberflex_construct_file_attrs(sc_card_t *card, const sc_file_t *file,
 		break;
 	}
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(card->ctx, 
 		 "Creating %02x:%02x, size %"SC_FORMAT_LEN_SIZE_T"u %02"SC_FORMAT_LEN_SIZE_T"x:%02"SC_FORMAT_LEN_SIZE_T"x\n",
 		 file->id >> 8,
 		 file->id & 0xFF,
@@ -878,7 +878,7 @@ cyberflex_construct_file_attrs(sc_card_t *card, const sc_file_t *file,
 			p[4] = 0x1D;
 			break;
 		default:
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Invalid EF structure\n");
+			sc_log(card->ctx,  "Invalid EF structure\n");
 			return -1;
 		}
 	p[5] = 0x01;	/* status?? */
@@ -903,7 +903,7 @@ static int flex_create_file(sc_card_t *card, sc_file_t *file)
 	 * abstracting the Cryptoflex/Cyberflex differences */
 	r = card->ops->construct_fci(card, file, sbuf, &sendlen);
 	if (r) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "File structure encoding failed.\n");
+		sc_log(card->ctx,  "File structure encoding failed.\n");
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	if (file->type != SC_FILE_TYPE_DF && file->ef_structure != SC_FILE_EF_TRANSPARENT)
@@ -940,33 +940,33 @@ static int flex_set_security_env(sc_card_t *card,
 
 	if (env->operation != SC_SEC_OPERATION_SIGN &&
 	    env->operation != SC_SEC_OPERATION_DECIPHER) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Invalid crypto operation supplied.\n");
+		sc_log(card->ctx,  "Invalid crypto operation supplied.\n");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	if (env->algorithm != SC_ALGORITHM_RSA) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Invalid crypto algorithm supplied.\n");
+		sc_log(card->ctx,  "Invalid crypto algorithm supplied.\n");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	if ((env->algorithm_flags & SC_ALGORITHM_RSA_PADS) ||
 	    (env->algorithm_flags & SC_ALGORITHM_RSA_HASHES)) {
-	    	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Card supports only raw RSA.\n");
+	    	sc_log(card->ctx,  "Card supports only raw RSA.\n");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	if (env->flags & SC_SEC_ENV_KEY_REF_PRESENT) {
 		if (env->key_ref_len != 1 ||
 		    (env->key_ref[0] != 0 && env->key_ref[0] != 1)) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Invalid key reference supplied.\n");
+			sc_log(card->ctx,  "Invalid key reference supplied.\n");
 			return SC_ERROR_NOT_SUPPORTED;
 		}
 		prv->rsa_key_ref = env->key_ref[0];
 	}
 	if (env->flags & SC_SEC_ENV_ALG_REF_PRESENT) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Algorithm reference not supported.\n");
+		sc_log(card->ctx,  "Algorithm reference not supported.\n");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	if (env->flags & SC_SEC_ENV_FILE_REF_PRESENT)
 		if (memcmp(env->file_ref.value, "\x00\x12", 2) != 0) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "File reference is not 0012.\n");
+			sc_log(card->ctx,  "File reference is not 0012.\n");
 			return SC_ERROR_NOT_SUPPORTED;
 		}
 	return 0;
@@ -988,13 +988,13 @@ cryptoflex_compute_signature(sc_card_t *card, const u8 *data,
 	size_t i, i2;
 	
 	if (data_len != 64 && data_len != 96 && data_len != 128  && data_len != 256) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(card->ctx, 
 			 "Illegal input length: %"SC_FORMAT_LEN_SIZE_T"u\n",
 			 data_len);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	if (outlen < data_len) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Output buffer too small.\n");
+		sc_log(card->ctx,  "Output buffer too small.\n");
 		return SC_ERROR_BUFFER_TOO_SMALL;
 	}
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x88, 0x00, prv->rsa_key_ref);
@@ -1049,7 +1049,7 @@ cyberflex_compute_signature(sc_card_t *card, const u8 *data,
 	case 96:  alg_id = 0xC6; break;
 	case 128: alg_id = 0xC8; break;
 	default:
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(card->ctx, 
 			 "Illegal input length: %"SC_FORMAT_LEN_SIZE_T"u\n",
 			 data_len);
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -1057,7 +1057,7 @@ cyberflex_compute_signature(sc_card_t *card, const u8 *data,
 	key_id = prv->rsa_key_ref + 1; /* Why? */
 
 	if (outlen < data_len) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Output buffer too small.\n");
+		sc_log(card->ctx,  "Output buffer too small.\n");
 		return SC_ERROR_BUFFER_TOO_SMALL;
 	}
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x88, alg_id, key_id);
@@ -1123,7 +1123,7 @@ static int flex_generate_key(sc_card_t *card, struct sc_cardctl_cryptoflex_genke
 	case 1024:	p2 = 0x80; break;
 	case 2048:	p2 = 0x00; break;
 	default:
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Illegal key length: %d\n", data->key_bits);
+		sc_log(card->ctx,  "Illegal key length: %d\n", data->key_bits);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
@@ -1175,7 +1175,7 @@ static int flex_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 	len = tfile->size;
 	sc_file_free(tfile);
 	if (len != 8) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "unexpected file length of EF_ICCSN (%lu)\n",
+		sc_log(card->ctx,  "unexpected file length of EF_ICCSN (%lu)\n",
 			(unsigned long) len);
 		return SC_ERROR_INTERNAL;
 	}
