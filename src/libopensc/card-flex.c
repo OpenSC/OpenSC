@@ -516,7 +516,7 @@ static int select_file_id(sc_card_t *card, const u8 *buf, size_t buflen,
         sc_file_t *file;
 
 	sc_log(card->ctx,  "called, p1=%u\n", p1);
-	sc_debug_hex(card->ctx, SC_LOG_DEBUG_NORMAL, "path", buf, buflen);
+	sc_log_hex(card->ctx, "path", buf, buflen);
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xA4, p1, 0);
 	apdu.resp = rbuf;

@@ -525,7 +525,7 @@ static void initialize_uid(sc_reader_t *reader)
 				&& apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 			reader->uid.len = apdu.resplen;
 			memcpy(reader->uid.value, apdu.resp, reader->uid.len);
-			sc_debug_hex(reader->ctx, SC_LOG_DEBUG_NORMAL, "UID",
+			sc_log_hex(reader->ctx, "UID",
 					reader->uid.value, reader->uid.len);
 		} else {
 			sc_log(reader->ctx,  "unable to get UID");
@@ -2023,7 +2023,7 @@ pcsc_pin_cmd(sc_reader_t *reader, struct sc_pin_cmd_data *data)
 	/* If PIN block building failed, we fail too */
 	LOG_TEST_RET(reader->ctx, r, "PC/SC v2 pinpad block building failed!");
 	/* If not, debug it, just for fun */
-	sc_debug_hex(reader->ctx, SC_LOG_DEBUG_NORMAL, "PC/SC v2 pinpad block", sbuf, scount);
+	sc_log_hex(reader->ctx, "PC/SC v2 pinpad block", sbuf, scount);
 
 	r = pcsc_internal_transmit(reader, sbuf, scount, rbuf, &rcount, ioctl);
 

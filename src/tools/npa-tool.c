@@ -261,7 +261,7 @@ int npa_translate_apdus(sc_card_t *card, FILE *input)
 
 		r = sc_bytes2apdu(card->ctx, buf, apdulen, &apdu);
 		if (r < 0) {
-			sc_debug_hex(card->ctx, SC_LOG_DEBUG_NORMAL, "Invalid C-APDU", buf, apdulen);
+			sc_log_hex(card->ctx, "Invalid C-APDU", buf, apdulen);
 			continue;
 		}
 

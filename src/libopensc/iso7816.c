@@ -412,7 +412,7 @@ iso7816_process_fci(struct sc_card *card, struct sc_file *file,
 					memcpy(file->name, p, length);
 					file->namelen = length;
 
-					sc_debug_hex(ctx, SC_LOG_DEBUG_NORMAL, "  File name:", file->name, file->namelen);
+					sc_log_hex(ctx, "  File name:", file->name, file->namelen);
 					if (!file->type)
 						file->type = SC_FILE_TYPE_DF;
 				}
