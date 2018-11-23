@@ -1507,7 +1507,7 @@ sc_card_sm_check(struct sc_card *card)
 		sc_log(ctx, "module_data '%s'", module_data);
 
 		rv = card->sm_ctx.module.ops.module_init(ctx, module_data);
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Cannot initialize SM module");
+		LOG_TEST_RET(ctx, rv, "Cannot initialize SM module");
 	}
 
 	/* initialize SM session in the case of 'APDU TRANSMIT' SM mode */

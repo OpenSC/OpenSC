@@ -462,7 +462,7 @@ static int starcos_select_aid(sc_card_t *card,
 	apdu.resplen = 0;
 	apdu.le = 0;
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	/* check return value */
 	if (!(apdu.sw1 == 0x90 && apdu.sw2 == 0x00) && apdu.sw1 != 0x61 )
@@ -531,7 +531,7 @@ static int starcos_select_fid(sc_card_t *card,
 	}
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	if (apdu.p2 == 0x00 && apdu.sw1 == 0x62 && apdu.sw2 == 0x84 ) {
 		/* no FCI => we have a DF (see comment in process_fci()) */
@@ -541,7 +541,7 @@ static int starcos_select_fid(sc_card_t *card,
 		apdu.resplen = 0;
 		apdu.le = 0;
 		r = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU re-transmit failed");
+		LOG_TEST_RET(card->ctx, r, "APDU re-transmit failed");
 	} else if ((card->type == SC_CARD_TYPE_STARCOS_V3_4
 				|| card->type == SC_CARD_TYPE_STARCOS_V3_5)
 			&& apdu.p2 == 0x4 && apdu.sw1 == 0x6a && apdu.sw2 == 0x82) {
@@ -553,7 +553,7 @@ static int starcos_select_fid(sc_card_t *card,
 		apdu.le = 256;
 		apdu.lc = 2;
 		r = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU re-transmit failed");
+		LOG_TEST_RET(card->ctx, r, "APDU re-transmit failed");
 	} else if (apdu.sw1 == 0x61 || (apdu.sw1 == 0x90 && apdu.sw2 == 0x00 && !isMF)) {
 		/* SELECT returned some data (possible FCI) =>
 		 * try a READ BINARY to see if a EF is selected */
@@ -565,7 +565,7 @@ static int starcos_select_fid(sc_card_t *card,
 		apdu2.le = 1;
 		apdu2.lc = 0;
 		r = sc_transmit_apdu(card, &apdu2);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 		if (apdu2.sw1 == 0x69 && apdu2.sw2 == 0x86) {
 			/* no current EF is selected => we have a DF */
 			bIsDF = 1;
@@ -744,7 +744,7 @@ static int starcos_select_file(sc_card_t *card,
 	
 				/* first step: change directory */
 				r = starcos_select_fid(card, path[bMatch], path[bMatch+1], NULL, 0);
-				SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "SELECT FILE (DF-ID) failed");
+				LOG_TEST_RET(card->ctx, r, "SELECT FILE (DF-ID) failed");
 	
 				memset(&new_path, 0, sizeof(sc_path_t));	
 				new_path.type = SC_PATH_TYPE_PATH;
@@ -784,7 +784,7 @@ static int starcos_select_file(sc_card_t *card,
 			for ( i=0; i<pathlen-2; i+=2 )
 			{
 				r = starcos_select_fid(card, path[i], path[i+1], NULL, 0);
-				SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "SELECT FILE (DF-ID) failed");
+				LOG_TEST_RET(card->ctx, r, "SELECT FILE (DF-ID) failed");
 			}
 			return starcos_select_fid(card, path[pathlen-2], path[pathlen-1], file_out, 1);
 		}
@@ -992,7 +992,7 @@ static int starcos_create_mf(sc_card_t *card, sc_starcos_create_data *data)
 	apdu.data = (u8 *) data->data.mf.header;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(ctx, r, "APDU transmit failed");
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);	
 }
 
@@ -1028,7 +1028,7 @@ static int starcos_create_df(sc_card_t *card, sc_starcos_create_data *data)
 	apdu.data = data->data.df.header;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(ctx, r, "APDU transmit failed");
 	/* second step: CREATE DF */
 	sc_log(ctx,  "calling CREATE DF\n");
 
@@ -1039,7 +1039,7 @@ static int starcos_create_df(sc_card_t *card, sc_starcos_create_data *data)
 	apdu.data = data->data.df.header;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(ctx, r, "APDU transmit failed");
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }
 
@@ -1069,7 +1069,7 @@ static int starcos_create_ef(sc_card_t *card, sc_starcos_create_data *data)
 	apdu.data = (u8 *) data->data.ef.header;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }
 
@@ -1101,7 +1101,7 @@ static int starcos_create_end(sc_card_t *card, sc_file_t *file)
 	apdu.datalen = 2;
 	apdu.data = fid;
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }
 
@@ -1168,7 +1168,7 @@ static int starcos_erase_card(sc_card_t *card)
 	apdu.data = sbuf;
 	
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	sc_invalidate_cache(card);
 	if (apdu.sw1 == 0x69 && apdu.sw2 == 0x85)
 		/* no MF to delete, ignore error */
@@ -1211,7 +1211,7 @@ static int starcos_write_key(sc_card_t *card, sc_starcos_wkey_data *data)
 		apdu.data = sbuf;
 
 		r = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 		if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
 			return sc_check_sw(card, apdu.sw1, apdu.sw2);
 		if (data->key == NULL)
@@ -1241,7 +1241,7 @@ static int starcos_write_key(sc_card_t *card, sc_starcos_wkey_data *data)
 		apdu.data    = sbuf;
 
 		r = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 		if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
 			return sc_check_sw(card, apdu.sw1, apdu.sw2);
 		offset += clen;
@@ -1280,7 +1280,7 @@ static int starcos_gen_key(sc_card_t *card, sc_starcos_gen_key_data *data)
 	apdu.lc      = 2;
 	apdu.datalen = 2;
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
 		return sc_check_sw(card, apdu.sw1, apdu.sw2);
 	/* read public key via READ PUBLIC KEY */
@@ -1294,7 +1294,7 @@ static int starcos_gen_key(sc_card_t *card, sc_starcos_gen_key_data *data)
 	apdu.resplen = sizeof(rbuf);
 	apdu.le      = 256;
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
 		return sc_check_sw(card, apdu.sw1, apdu.sw2);
 
@@ -1388,7 +1388,7 @@ static int starcos_set_security_env(sc_card_t *card,
 		apdu.lc      = p - sbuf;
 		apdu.le      = 0;
 		r = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 		if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 
@@ -1427,7 +1427,7 @@ static int starcos_set_security_env(sc_card_t *card,
 		apdu.lc      = p - sbuf;
 		apdu.le      = 0;
 		r = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 		if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 		return SC_SUCCESS;
@@ -1477,7 +1477,7 @@ static int starcos_set_security_env(sc_card_t *card,
 		/* we don't know whether to use 
 		 * COMPUTE SIGNATURE or INTERNAL AUTHENTICATE */
 		r = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 		if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 			ex_data->fix_digestInfo = 0;
 			ex_data->sec_ops        = SC_SEC_OPERATION_SIGN;
@@ -1502,7 +1502,7 @@ try_authenticate:
 		apdu.lc      = p - sbuf;
 		apdu.le      = 0;
 		r = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 		if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 		ex_data->fix_digestInfo = env->algorithm_flags;
@@ -1546,7 +1546,7 @@ static int starcos_compute_signature(sc_card_t *card,
 				}
 				tmp_len = sizeof(sbuf);
 				r = sc_pkcs1_encode(card->ctx, flags, data, datalen, sbuf, &tmp_len, sizeof(sbuf)*8);
-				SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "sc_pkcs1_encode failed");
+				LOG_TEST_RET(card->ctx, r, "sc_pkcs1_encode failed");
 			} else {
 				memcpy(sbuf, data, datalen);
 				tmp_len = datalen;
@@ -1559,7 +1559,7 @@ static int starcos_compute_signature(sc_card_t *card,
 			apdu.resplen = sizeof(rbuf);
 			apdu.le = 0;
 			r = sc_transmit_apdu(card, &apdu);
-			SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+			LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 		} else {
 			/* set the hash value     */
 			sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2A,
@@ -1572,7 +1572,7 @@ static int starcos_compute_signature(sc_card_t *card,
 			apdu.lc = datalen;
 			apdu.datalen = datalen;
 			r = sc_transmit_apdu(card, &apdu);
-			SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+			LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 			if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
 				SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,
 						   sc_check_sw(card, apdu.sw1, apdu.sw2));
@@ -1587,7 +1587,7 @@ static int starcos_compute_signature(sc_card_t *card,
 			apdu.lc = 0;
 			apdu.datalen = 0;
 			r = sc_transmit_apdu(card, &apdu);
-			SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+			LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 		}
 		if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 			size_t len = apdu.resplen > outlen ? outlen : apdu.resplen;
@@ -1621,7 +1621,7 @@ static int starcos_compute_signature(sc_card_t *card,
 		apdu.resplen = sizeof(rbuf);
 		apdu.le = 256;
 		r = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 		if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 			size_t len = apdu.resplen > outlen ? outlen : apdu.resplen;
 
@@ -1778,7 +1778,7 @@ static int starcos_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 			apdu.lc   = 0;
 			apdu.datalen = 0;
 			r = sc_transmit_apdu(card, &apdu);
-			SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+			LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 			if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
 				return SC_ERROR_INTERNAL;
 			/* cache serial number */
@@ -1838,7 +1838,7 @@ static int starcos_logout(sc_card_t *card)
 	apdu.resplen = 0;
 	
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU re-transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU re-transmit failed");
 
 	if (apdu.sw1 == 0x69 && apdu.sw2 == 0x85)
 		/* the only possible reason for this error here is, afaik,

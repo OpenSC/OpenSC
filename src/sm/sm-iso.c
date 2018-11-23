@@ -644,15 +644,15 @@ static int iso_add_sm(struct iso_sm_ctx *sctx, sc_card_t *card,
 
 	if ((apdu->cla & 0x0C) == 0x0C) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Given APDU is already protected with some secure messaging. Closing own SM context.");
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, sc_sm_stop(card),
+		LOG_TEST_RET(card->ctx, sc_sm_stop(card),
 				"Could not close ISO SM session");
 		return SC_ERROR_SM_NOT_APPLIED;
 	}
 
 	if (sctx->pre_transmit)
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, sctx->pre_transmit(card, sctx, apdu),
+		LOG_TEST_RET(card->ctx, sctx->pre_transmit(card, sctx, apdu),
 				"Could not complete SM specific pre transmit routine");
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, sm_encrypt(sctx, card, apdu, sm_apdu),
+	LOG_TEST_RET(card->ctx, sm_encrypt(sctx, card, apdu, sm_apdu),
 			"Could not encrypt APDU");
 
 	return SC_SUCCESS;
@@ -662,16 +662,16 @@ static int iso_rm_sm(struct iso_sm_ctx *sctx, sc_card_t *card,
 		sc_apdu_t *sm_apdu, sc_apdu_t *apdu)
 {
 	if (!sctx)
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS,
+		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
 			"Invalid SM context. No SM processing performed.");
 
 	if (sctx->post_transmit)
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, sctx->post_transmit(card, sctx, sm_apdu),
+		LOG_TEST_RET(card->ctx, sctx->post_transmit(card, sctx, sm_apdu),
 				"Could not complete SM specific post transmit routine");
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, sm_decrypt(sctx, card, sm_apdu, apdu),
+	LOG_TEST_RET(card->ctx, sm_decrypt(sctx, card, sm_apdu, apdu),
 			"Could not decrypt APDU");
 	if (sctx->finish)
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, sctx->finish(card, sctx, apdu),
+		LOG_TEST_RET(card->ctx, sctx->finish(card, sctx, apdu),
 				"Could not complete SM specific post transmit routine");
 
 	return SC_SUCCESS;

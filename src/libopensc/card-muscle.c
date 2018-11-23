@@ -748,7 +748,7 @@ static int muscle_decipher(sc_card_t * card,
 		out,
 		crgram_len,
 		out_len);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card signature failed");
+	LOG_TEST_RET(card->ctx, r, "Card signature failed");
 	return r;
 }
 
@@ -774,7 +774,7 @@ static int muscle_compute_signature(sc_card_t *card, const u8 *data,
 		out,
 		data_len,
 		outlen);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card signature failed");
+	LOG_TEST_RET(card->ctx, r, "Card signature failed");
 	return r;
 }
 
@@ -783,7 +783,7 @@ static int muscle_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 	if (len == 0)
 		return SC_SUCCESS;
 	else {
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL,
+		LOG_TEST_RET(card->ctx,
 				msc_get_challenge(card, len, 0, NULL, rnd),
 				"GET CHALLENGE cmd failed");
 		return (int) len;

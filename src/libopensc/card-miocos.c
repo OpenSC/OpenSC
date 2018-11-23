@@ -217,11 +217,11 @@ static int miocos_create_file(sc_card_t *card, sc_file_t *file)
 	apdu.lc = buflen;
 
 	r = sc_transmit_apdu(card, &apdu);
-        SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+        LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
         if (apdu.sw1 == 0x6A && apdu.sw2 == 0x89)
         	return SC_ERROR_FILE_ALREADY_EXISTS;
         r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-        SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
+        LOG_TEST_RET(card->ctx, r, "Card returned error");
 
 	return 0;
 }
@@ -330,7 +330,7 @@ static int miocos_get_acl(sc_card_t *card, sc_file_t *file)
 	apdu.resplen = sizeof(rbuf);
 	apdu.le = sizeof(rbuf);
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.resplen == 0)
 		return sc_check_sw(card, apdu.sw1, apdu.sw2);
 	left = apdu.resplen;
@@ -338,7 +338,7 @@ static int miocos_get_acl(sc_card_t *card, sc_file_t *file)
 			       SC_ASN1_SEQUENCE | SC_ASN1_CONS, &left);
 	if (seq == NULL)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Unable to process reply");
+	LOG_TEST_RET(card->ctx, r, "Unable to process reply");
 	for (i = 1; i < 15; i++) {
 		int j;
 		const u8 *tag;
@@ -401,7 +401,7 @@ static int miocos_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 	apdu.resplen = buflen;
 	apdu.le = buflen > 256 ? 256 : buflen;
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.resplen == 0)
 		return sc_check_sw(card, apdu.sw1, apdu.sw2);
 	return apdu.resplen;
@@ -418,13 +418,13 @@ static int miocos_delete_file(sc_card_t *card, const sc_path_t *path)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	r = sc_select_file(card, path, NULL);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Unable to select file to be deleted");
+	LOG_TEST_RET(card->ctx, r, "Unable to select file to be deleted");
 	
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0xE4, 0x00, 0x00);
 	apdu.cla = 0xA0;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }
 
@@ -461,7 +461,7 @@ static int miocos_create_ac(sc_card_t *card,
 	apdu.datalen = sendsize;
 	apdu.data = sbuf;
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }
 

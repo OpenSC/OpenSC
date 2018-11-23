@@ -301,11 +301,11 @@ static int rtecp_verify(sc_card_t *card, unsigned int type, int ref_qualifier,
 		apdu.data = data;
 		apdu.datalen = data_len;
 		r = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 		if (send_logout++ == 0 && apdu.sw1 == 0x6F && apdu.sw2 == 0x86)
 		{
 			 r = sc_logout(card);
-			 SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Logout failed");
+			 LOG_TEST_RET(card->ctx, r, "Logout failed");
 		}
 		else
 			break;
@@ -315,7 +315,7 @@ static int rtecp_verify(sc_card_t *card, unsigned int type, int ref_qualifier,
 		/* Verification failed */
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x20, 0, ref_qualifier);
 		r = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	}
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	if (r == SC_ERROR_PIN_CODE_INCORRECT && tries_left)
@@ -332,7 +332,7 @@ static int rtecp_logout(sc_card_t *card)
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x40, 0, 0);
 	apdu.cla = 0x80;
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
@@ -442,7 +442,7 @@ static int rtecp_change_reference_data(sc_card_t *card, unsigned int type,
 	if (type == SC_AC_CHV && old && oldlen != 0)
 	{
 		r = sc_verify(card, type, ref_qualifier, old, oldlen, tries_left);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Verify old pin failed");
+		LOG_TEST_RET(card->ctx, r, "Verify old pin failed");
 	}
 	
 	max_transmit_length = sc_get_max_send_size(card);
@@ -491,7 +491,7 @@ static int rtecp_change_reference_data(sc_card_t *card, unsigned int type,
 	r = sc_transmit_apdu(card, &apdu);
 	sc_mem_clear(buf, buf_length);
 	free(buf);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
@@ -508,9 +508,9 @@ static int rtecp_reset_retry_counter(sc_card_t *card, unsigned int type,
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x2C, 0x03, ref_qualifier);
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Unblock card failed");
+	LOG_TEST_RET(card->ctx, r, "Unblock card failed");
 	
 	if (newref && newlen)   {
         	u8 tmp[2], buf[SC_MAX_APDU_BUFFER_SIZE];
@@ -520,7 +520,7 @@ static int rtecp_reset_retry_counter(sc_card_t *card, unsigned int type,
 		tmp[1] = newlen & 0xFF;
 		sc_asn1_put_tag(0x80, tmp, sizeof(tmp), p, sizeof(buf) - (p - buf), &p);
 		r = sc_asn1_put_tag(0xA5, newref, newlen, p, sizeof(buf) - (p - buf), &p);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Invalid new PIN length");
+		LOG_TEST_RET(card->ctx, r, "Invalid new PIN length");
 
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x24, 0x01, ref_qualifier);
 		apdu.lc = p - buf;
@@ -528,9 +528,9 @@ static int rtecp_reset_retry_counter(sc_card_t *card, unsigned int type,
 		apdu.datalen = p - buf;
 
 		r = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Set PIN failed");
+		LOG_TEST_RET(card->ctx, r, "Set PIN failed");
 	}
 
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
@@ -544,7 +544,7 @@ static int rtecp_create_file(sc_card_t *card, sc_file_t *file)
 	if (file->sec_attr_len == 0)
 	{
 		r = set_sec_attr_from_acl(card, file);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Set sec_attr from ACL failed");
+		LOG_TEST_RET(card->ctx, r, "Set sec_attr from ACL failed");
 	}
 	assert(iso_ops && iso_ops->create_file);
 	r = iso_ops->create_file(card, file);
@@ -567,12 +567,12 @@ static int rtecp_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 		apdu.resplen = sizeof(rbuf);
 		apdu.le = 256;
 		r = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 		if (apdu.sw1 == 0x6A  &&  apdu.sw2 == 0x82)
 			break; /* Next file not found */
 
 		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "");
+		LOG_TEST_RET(card->ctx, r, "");
 
 		if (apdu.resplen <= 2)
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_WRONG_LENGTH);
@@ -599,9 +599,9 @@ static int rtecp_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 			/* Select parent DF of the current DF */
 			sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0xA4, 0x03, 0);
 			r = sc_transmit_apdu(card, &apdu);
-			SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+			LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 			r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-			SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "");
+			LOG_TEST_RET(card->ctx, r, "");
 		}
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xA4, 0, 0x02);
 		apdu.lc = sizeof(previd);
@@ -659,7 +659,7 @@ static int rtecp_card_ctl(sc_card_t *card, unsigned long request, void *data)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 	}
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	if (!r && request == SC_CARDCTL_RTECP_GENERATE_KEY)
 	{

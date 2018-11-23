@@ -859,7 +859,7 @@ static int cardos_have_verifyrc_package(sc_card_t *card)
 	apdu.lc = 0;
 	apdu.le = 256;
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	if ((len = apdu.resplen) == 0)
 		/* looks like no package has been installed  */

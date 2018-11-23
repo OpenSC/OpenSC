@@ -136,7 +136,7 @@ static int acos5_get_serialnr(sc_card_t * card, sc_serial_number_t * serial)
 	apdu.resplen = sizeof(rbuf);
 	apdu.le = 6;
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
 		return SC_ERROR_INTERNAL;
 
@@ -186,7 +186,7 @@ static int acos5_list_files(sc_card_t * card, u8 * buf, size_t buflen)
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x14, 0x01, 0x00);
 	apdu.cla |= 0x80;
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.sw1 != 0x90)
 		return SC_ERROR_INTERNAL;
 	count = apdu.sw2;
@@ -207,7 +207,7 @@ static int acos5_list_files(sc_card_t * card, u8 * buf, size_t buflen)
 		apdu.resplen = sizeof(info);
 		apdu.le = sizeof(info);
 		r = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 		if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
 			return SC_ERROR_INTERNAL;
 

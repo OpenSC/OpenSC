@@ -257,12 +257,12 @@ static int rutoken_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 		apdu.resplen = sizeof(rbuf);
 		apdu.le = 256;
 		ret = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "APDU transmit failed");
+		LOG_TEST_RET(card->ctx, ret, "APDU transmit failed");
 		if (apdu.sw1 == 0x6A  &&  apdu.sw2 == 0x82)
 			break; /* Next file not found */
 
 		ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "");
+		LOG_TEST_RET(card->ctx, ret, "");
 
 		if (apdu.resplen <= 2)
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_WRONG_LENGTH);
@@ -292,9 +292,9 @@ static int rutoken_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 			apdu.resplen = sizeof(rbuf);
 			apdu.le = 256;
 			ret = sc_transmit_apdu(card, &apdu);
-			SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "APDU transmit failed");
+			LOG_TEST_RET(card->ctx, ret, "APDU transmit failed");
 			ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
-			SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "");
+			LOG_TEST_RET(card->ctx, ret, "");
 		}
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xA4, 0, 0x02);
 		apdu.lc = sizeof(previd);
@@ -406,7 +406,7 @@ static int rutoken_select_file(sc_card_t *card,
 	apdu.le = 256;
 
 	ret = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, ret, "APDU transmit failed");
 	if (file_out == NULL)
 	{
 		if (apdu.sw1 == 0x61)
@@ -414,7 +414,7 @@ static int rutoken_select_file(sc_card_t *card,
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 	}
 	ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "");
+	LOG_TEST_RET(card->ctx, ret, "");
 
 	if (apdu.resplen > 0 && apdu.resp[0] != 0x62) /* Tag 0x62 - FCP */
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
@@ -605,7 +605,7 @@ static int rutoken_create_file(sc_card_t *card, sc_file_t *file)
 	if (file->sec_attr_len == 0)
 	{
 		ret = set_sec_attr_from_acl(card, file);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "Set sec_attr from ACL failed");
+		LOG_TEST_RET(card->ctx, ret, "Set sec_attr from ACL failed");
 	}
 	assert(iso_ops && iso_ops->create_file);
 	ret = iso_ops->create_file(card, file);
@@ -634,7 +634,7 @@ static int rutoken_delete_file(sc_card_t *card, const sc_path_t *path)
 	}
 	else /* No file ID given: means currently selected file */
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0xE4, 0x00, 0x00);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, sc_transmit_apdu(card, &apdu), "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, sc_transmit_apdu(card, &apdu), "APDU transmit failed");
 	LOG_FUNC_RETURN(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
 
@@ -658,9 +658,9 @@ static int rutoken_verify(sc_card_t *card, unsigned int type, int ref_qualifier,
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x40, 0x00, 0x00);
 		apdu.cla = 0x80;
 		ret = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "APDU transmit failed");
+		LOG_TEST_RET(card->ctx, ret, "APDU transmit failed");
 		ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "Reset access rights failed");
+		LOG_TEST_RET(card->ctx, ret, "Reset access rights failed");
 	}
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x20, 0x00, ref_qualifier);
@@ -668,13 +668,13 @@ static int rutoken_verify(sc_card_t *card, unsigned int type, int ref_qualifier,
 	apdu.datalen = data_len;
 	apdu.data = data;
 	ret = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, ret, "APDU transmit failed");
 	ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	if (ret == SC_ERROR_PIN_CODE_INCORRECT  &&  tries_left)
 	{
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x20, 0x00, ref_qualifier);
 		ret = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "APDU transmit failed");
+		LOG_TEST_RET(card->ctx, ret, "APDU transmit failed");
 		ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
 		if (ret == SC_ERROR_PIN_CODE_INCORRECT)
 			*tries_left = (int)(apdu.sw2 & 0x0f);
@@ -691,12 +691,12 @@ static int rutoken_logout(sc_card_t *card)
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	sc_format_path("3F00", &path);
 	ret = rutoken_select_file(card, &path, NULL);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "Select MF failed");
+	LOG_TEST_RET(card->ctx, ret, "Select MF failed");
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x40, 0x00, 0x00);
 	apdu.cla = 0x80;
 	ret = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, ret, "APDU transmit failed");
 	ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_FUNC_RETURN(card->ctx, ret);
 }
@@ -712,14 +712,14 @@ static int rutoken_change_reference_data(sc_card_t *card, unsigned int type,
 	if (old && oldlen)
 	{
 		ret = rutoken_verify(card, type, ref_qualifier, old, oldlen, tries_left);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "Invalid 'old' pass");
+		LOG_TEST_RET(card->ctx, ret, "Invalid 'old' pass");
 	}
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x24, 0x01, ref_qualifier);
 	apdu.lc = newlen;
 	apdu.datalen = newlen;
 	apdu.data = newref;
 	ret = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, ret, "APDU transmit failed");
 	ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_FUNC_RETURN(card->ctx, ret);
 }
@@ -740,12 +740,12 @@ static int rutoken_reset_retry_counter(sc_card_t *card, unsigned int type,
 	{
 		ret = rutoken_verify(card, type, ref_qualifier, puk, puklen, &left);
 		sc_log(card->ctx,  "Tries left: %i\n", left);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "Invalid 'puk' pass");
+		LOG_TEST_RET(card->ctx, ret, "Invalid 'puk' pass");
 	}
 #endif
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x2c, 0x03, ref_qualifier);
 	ret = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, ret, "APDU transmit failed");
 	ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_FUNC_RETURN(card->ctx, ret);
 }
@@ -758,7 +758,7 @@ static int rutoken_restore_security_env(sc_card_t *card, int se_num)
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x22, 3, se_num);
 	ret = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, ret, "APDU transmit failed");
 	ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_FUNC_RETURN(card->ctx, ret);
 }
@@ -808,7 +808,7 @@ static int rutoken_set_security_env(sc_card_t *card,
 	}
 	/*  set SE  */
 	ret = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, ret, "APDU transmit failed");
 	ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_FUNC_RETURN(card->ctx, ret);
 }
@@ -870,7 +870,7 @@ static int rutoken_key_gen(sc_card_t *card, sc_DOHdrV2_t *pHdr)
 		apdu.data = data;
 		apdu.datalen = apdu.lc = data_len;
 		ret = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "APDU transmit failed");
+		LOG_TEST_RET(card->ctx, ret, "APDU transmit failed");
 		ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	}
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, ret);
@@ -913,7 +913,7 @@ static int rutoken_create_do(sc_card_t *card, sc_DO_V2_t * pDO)
 		apdu.data = data;
 		apdu.datalen = apdu.lc = data_len;
 		ret = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "APDU transmit failed");
+		LOG_TEST_RET(card->ctx, ret, "APDU transmit failed");
 		ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	}
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, ret);
@@ -959,7 +959,7 @@ static int rutoken_get_do_info(sc_card_t *card, sc_DO_INFO_t * pInfo)
 			break;
 		}
 		ret = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "APDU transmit failed");
+		LOG_TEST_RET(card->ctx, ret, "APDU transmit failed");
 		ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	}
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, ret);
@@ -985,7 +985,7 @@ static int rutoken_delete_do(sc_card_t *card, u8 *pId)
 		apdu.datalen = sizeof(data);
 		apdu.lc = sizeof(data);
 		ret = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "APDU transmit failed");
+		LOG_TEST_RET(card->ctx, ret, "APDU transmit failed");
 		ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	}
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, ret);
@@ -1027,7 +1027,7 @@ static int rutoken_cipher_p(sc_card_t *card, const u8 * crgram, size_t crgram_le
 		apdu.resp = buf;
 
 		ret = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "APDU transmit failed");
+		LOG_TEST_RET(card->ctx, ret, "APDU transmit failed");
 		ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
 		if (ret == SC_SUCCESS)
 		{
@@ -1113,7 +1113,7 @@ static int rutoken_compute_mac_gost(sc_card_t *card,
 		else
 			apdu.cla = 0x10;
 		ret = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "APDU transmit failed");
+		LOG_TEST_RET(card->ctx, ret, "APDU transmit failed");
 		ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	} while (ret == SC_SUCCESS  &&  ilen != 0);
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, ret);
@@ -1169,7 +1169,7 @@ static int rutoken_get_serial(sc_card_t *card, sc_serial_number_t *serial)
 	apdu.resplen = sizeof(serial->value);
 	apdu.le = 4;
 	ret = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, ret, "APDU transmit failed");
 	ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	serial->len = apdu.resplen;
 	swap_four(serial->value, serial->len);
@@ -1188,7 +1188,7 @@ static int rutoken_get_info(sc_card_t *card, void *buff)
 	apdu.resplen = sizeof(rbuf);
 	apdu.le = sizeof(rbuf);
 	ret = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, ret, "APDU transmit failed");
 	ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	if (ret == SC_SUCCESS)
 		memcpy(buff, apdu.resp, apdu.resplen);
@@ -1204,7 +1204,7 @@ static int rutoken_format(sc_card_t *card, int apdu_ins)
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, apdu_ins, 0x00, 0x00);
 	apdu.cla = 0x80;
 	ret = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, ret, "APDU transmit failed");
 	ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, ret);
 }

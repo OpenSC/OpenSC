@@ -268,7 +268,7 @@ static int belpic_select_file(sc_card_t *card,
 
 	r = sc_transmit_apdu(card, &apdu);
 
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Select File APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "Select File APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	if (r)
@@ -374,10 +374,10 @@ static int belpic_set_security_env(sc_card_t *card,
 	apdu.resplen = 0;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Set Security Env APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "Set Security Env APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card's Set Security Env command returned error");
+	LOG_TEST_RET(card->ctx, r, "Card's Set Security Env command returned error");
 
 	/* If a NonRep signature will be done, ask to enter a PIN. It would be more
 	 * logical to put the code below into the compute signature function because

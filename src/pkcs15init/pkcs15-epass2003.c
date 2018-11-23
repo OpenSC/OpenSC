@@ -57,19 +57,19 @@ static int epass2003_pkcs15_init_card(struct sc_profile *profile,
 		struct sc_file *skey_file;
 
 		ret = sc_profile_get_file(profile, "MF", &mf_file);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret,
+		LOG_TEST_RET(card->ctx, ret,
 			    "Get MF info failed");
 		ret = sc_create_file(card, mf_file);
 		sc_file_free(mf_file);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret,
+		LOG_TEST_RET(card->ctx, ret,
 			    "Create MF failed");
 
 		ret = sc_profile_get_file(profile, "SKey-MF", &skey_file);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret,
+		LOG_TEST_RET(card->ctx, ret,
 			    "Get SKey info failed");
 		ret = sc_create_file(card, skey_file);
 		sc_file_free(skey_file);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret,
+		LOG_TEST_RET(card->ctx, ret,
 			    "Create SKey failed");
 
 	}
@@ -79,11 +79,11 @@ static int epass2003_pkcs15_init_card(struct sc_profile *profile,
 
 		/* get dir profile */
 		ret = sc_profile_get_file(profile, "DIR", &dir_file);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret,
+		LOG_TEST_RET(card->ctx, ret,
 			    "Get EF(DIR) info failed");
 		ret = sc_create_file(card, dir_file);
 		sc_file_free(dir_file);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret,
+		LOG_TEST_RET(card->ctx, ret,
 			    "Create EF(DIR) failed");
 
 		sc_free_apps(card);
@@ -110,38 +110,38 @@ static int epass2003_pkcs15_create_dir(struct sc_profile *profile,
 		u8 so_maxtries = 0;
 
 		ret = sc_profile_get_file(profile, "PKCS15-AppDF", &df_file);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret,
+		LOG_TEST_RET(card->ctx, ret,
 			    "Get PKCS15-AppDF info failed");
 		ret = sc_create_file(card, df_file);
 		sc_file_free(df_file);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret,
+		LOG_TEST_RET(card->ctx, ret,
 			    "Create PKCS15-AppDF failed");
 
 		ret = sc_profile_get_file(profile, "SKey-AppDF", &skey_file);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret,
+		LOG_TEST_RET(card->ctx, ret,
 			    "Get SKey info failed");
 		ret = sc_create_file(card, skey_file);
 		sc_file_free(skey_file);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret,
+		LOG_TEST_RET(card->ctx, ret,
 			    "Create SKey info failed");
 
 		ret = sc_profile_get_file(profile, "MAXPIN", &ef_file);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret,
+		LOG_TEST_RET(card->ctx, ret,
 			    "Get MAXPIN info failed");
 		ret = sc_create_file(card, ef_file);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret,
+		LOG_TEST_RET(card->ctx, ret,
 			    "Create MAXPIN failed");
 		ret = sc_select_file(card, &(ef_file->path), &ef_file);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret,
+		LOG_TEST_RET(card->ctx, ret,
 			    "Select MAXPIN failed");
 
 		ret = sc_profile_get_pin_id(profile, 2, &id);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret,
+		LOG_TEST_RET(card->ctx, ret,
 			    "Get User PIN id error!");
 		user_maxtries = (u8) sc_profile_get_pin_retries(profile, id);
 
 		ret = sc_profile_get_pin_id(profile, 1, &id);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret,
+		LOG_TEST_RET(card->ctx, ret,
 			    "Get User PIN id error!");
 		so_maxtries = (u8) sc_profile_get_pin_retries(profile, id);
 
@@ -150,7 +150,7 @@ static int epass2003_pkcs15_create_dir(struct sc_profile *profile,
 
 		ret = sc_update_binary(card, 0, max_counter, 2, 0);
 
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret,
+		LOG_TEST_RET(card->ctx, ret,
 			    "Update MAXPIN failed");
 		sc_file_free(ef_file);
 	}
@@ -180,7 +180,7 @@ static int epass2003_pkcs15_create_dir(struct sc_profile *profile,
 			}
 			ret = sc_create_file(card, file);
 			sc_file_free(file);
-			SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret,
+			LOG_TEST_RET(card->ctx, ret,
 				    "Create pkcs15 file failed");
 		}
 	}
@@ -240,7 +240,7 @@ static int epass2003_pkcs15_create_pin(struct sc_profile *profile,
 		    EPASS2003_AC_MAC_NOLESS | EPASS2003_AC_USER;
 
 		r = sc_profile_get_pin_id(profile, 2, &id);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r,
+		LOG_TEST_RET(card->ctx, r,
 			    "Get User PIN id error!");
 		data.key_data.es_secret.EC =
 		    sc_profile_get_pin_retries(profile, id);
@@ -276,7 +276,7 @@ static int epass2003_pkcs15_create_pin(struct sc_profile *profile,
 		    EPASS2003_AC_MAC_EQUAL | EPASS2003_AC_SO;
 
 		r = sc_profile_get_pin_id(profile, 1, &id);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r,
+		LOG_TEST_RET(card->ctx, r,
 			    "Get User PIN id error!");
 		data.key_data.es_secret.EC =
 		    sc_profile_get_pin_retries(profile, id);
@@ -429,7 +429,7 @@ static int epass2003_pkcs15_store_key(struct sc_profile *profile,
 		 sc_pkcs15_print_id(&key_info->id));
 	if (key->algorithm != SC_ALGORITHM_RSA
 	    || key->algorithm != SC_ALGORITHM_RSA)
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL,
+		LOG_TEST_RET(card->ctx,
 			    SC_ERROR_NOT_SUPPORTED,
 			    "store key: only support RSA");
 
@@ -441,7 +441,7 @@ static int epass2003_pkcs15_store_key(struct sc_profile *profile,
 	/* allocate key object */
 	r = cosm_new_file(profile, card, SC_PKCS15_TYPE_PRKEY_RSA,
 			  key_info->key_reference, &file);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r,
+	LOG_TEST_RET(card->ctx, r,
 		    "create key: failed to allocate new key object");
 	file->size = keybits;
 	sc_log(card->ctx,  "private key path: %s",
@@ -451,7 +451,7 @@ static int epass2003_pkcs15_store_key(struct sc_profile *profile,
 	sc_delete_file(p15card->card, &file->path);
 	/* create */
 	r = sc_pkcs15init_create_file(profile, p15card, file);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r,
+	LOG_TEST_RET(card->ctx, r,
 		    "create key: failed to create key file");
 
 	sc_log(card->ctx, 
@@ -468,11 +468,11 @@ static int epass2003_pkcs15_store_key(struct sc_profile *profile,
 	path.len -= 2;
 
 	r = sc_select_file(card, &path, &tfile);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r,
+	LOG_TEST_RET(card->ctx, r,
 		    "generate key: no private object DF");
 
 	r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_UPDATE);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r,
+	LOG_TEST_RET(card->ctx, r,
 		    "No authorisation to store private key");
 
 	sc_file_free(tfile);
@@ -484,7 +484,7 @@ static int epass2003_pkcs15_store_key(struct sc_profile *profile,
 	data.key_data.es_key.rsa = (void *)&key->u.rsa;
 
 	r = sc_card_ctl(p15card->card, SC_CARDCTL_ENTERSAFE_WRITE_KEY, &data);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r,
+	LOG_TEST_RET(card->ctx, r,
 		    "store key: cannot update private key");
 
 	sc_file_free(file);
@@ -693,11 +693,11 @@ static int epass2003_pkcs15_sanity_check(sc_profile_t * profile,
 	sc_log(ctx, 
 		 "Check and if needed update PinFlags");
 	rv = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH_PIN, objs, 32);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Failed to get PINs");
+	LOG_TEST_RET(ctx, rv, "Failed to get PINs");
 	nn = rv;
 
 	sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PIN, &profile_auth);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Failed to get PIN info");
+	LOG_TEST_RET(ctx, rv, "Failed to get PIN info");
 
 	for (ii = 0; ii < nn; ii++) {
 		struct sc_pkcs15_auth_info *ainfo =
@@ -725,11 +725,11 @@ static int epass2003_pkcs15_sanity_check(sc_profile_t * profile,
 		while (df != NULL && df->type != SC_PKCS15_AODF)
 			df = df->next;
 		if (!df)
-			SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL,
+			LOG_TEST_RET(ctx,
 				    SC_ERROR_OBJECT_NOT_FOUND,
 				    "Cannot find AODF");
 		rv = sc_pkcs15init_update_any_df(p15card, profile, df, 0);
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Update AODF error");
+		LOG_TEST_RET(ctx, rv, "Update AODF error");
 	}
 
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, rv);

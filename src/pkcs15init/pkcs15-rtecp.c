@@ -95,18 +95,18 @@ static int rtecp_init(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 	card = p15card->card;
 
 	r = sc_profile_get_file(profile, "MF", &file);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Get MF info failed");
+	LOG_TEST_RET(card->ctx, r, "Get MF info failed");
 	assert(file);
 	r = sc_create_file(card, file);
 	sc_file_free(file);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Create MF failed");
+	LOG_TEST_RET(card->ctx, r, "Create MF failed");
 
 	r = sc_profile_get_file(profile, "DIR", &file);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Get DIR file info failed");
+	LOG_TEST_RET(card->ctx, r, "Get DIR file info failed");
 	assert(file);
 	r = sc_create_file(card, file);
 	sc_file_free(file);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Create DIR file failed");
+	LOG_TEST_RET(card->ctx, r, "Create DIR file failed");
 
 	create_sysdf(profile, card, "Sys-DF");
 	create_sysdf(profile, card, "SysKey-DF");
@@ -212,7 +212,7 @@ static int rtecp_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 			r = sc_pkcs15init_fixup_file(profile, p15card, file);
 			if (r < 0)
 				sc_file_free(file);
-			SC_TEST_RET(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, r, "Cannot fixup the ACLs of PIN file");
+			LOG_TEST_RET(p15card->card->ctx, r, "Cannot fixup the ACLs of PIN file");
 
 			acl = sc_file_get_acl_entry(file, SC_AC_OP_PIN_RESET);
 			if (acl && acl->method == SC_AC_CHV && acl->key_ref == RTECP_SO_PIN_REF)   {
@@ -269,7 +269,7 @@ static int rtecp_select_key_reference(sc_profile_t *profile,
 		return SC_ERROR_TOO_MANY_OBJECTS;
 
 	r = sc_profile_get_file(profile, "PrKey-DF", &df);
-	SC_TEST_RET(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, r, "Get PrKey-DF info failed");
+	LOG_TEST_RET(p15card->card->ctx, r, "Get PrKey-DF info failed");
 	assert(df);
 	key_info->path = df->path;
 	sc_file_free(df);
@@ -341,12 +341,12 @@ static int rtecp_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	}
 
 	r = sc_profile_get_file(profile, "PKCS15-AppDF", &file);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Get PKCS15-AppDF info failed");
+	LOG_TEST_RET(ctx, r, "Get PKCS15-AppDF info failed");
 	r = sc_file_add_acl_entry(file, SC_AC_OP_CREATE, SC_AC_CHV, auth_id);
 	if (r == SC_SUCCESS)
 		r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_CREATE);
 	sc_file_free(file);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Authenticate failed");
+	LOG_TEST_RET(ctx, r, "Authenticate failed");
 
 	file = sc_file_new();
 	if (!file)

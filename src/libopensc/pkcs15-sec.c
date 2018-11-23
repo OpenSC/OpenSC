@@ -690,7 +690,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 		/* XXX Assuming RSA key here */
 		r = sc_pkcs1_encode(ctx, pad_flags, tmp, inlen, tmp, &tmplen,
 		    prkey->modulus_length);
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Unable to add padding");
+		LOG_TEST_RET(ctx, r, "Unable to add padding");
 		inlen = tmplen;
 	}
 	else if ( senv.algorithm == SC_ALGORITHM_RSA &&

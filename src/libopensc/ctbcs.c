@@ -222,7 +222,7 @@ ctbcs_pin_cmd(sc_reader_t *reader, struct sc_pin_cmd_data *data)
 		sc_log(reader->ctx,  "unable to destroy mutex\n");
 		return s;
 	}
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	
 	/* Check CTBCS status word */
 	switch (((unsigned int) apdu.sw1 << 8) | apdu.sw2) {
@@ -245,7 +245,7 @@ ctbcs_pin_cmd(sc_reader_t *reader, struct sc_pin_cmd_data *data)
 		r = SC_ERROR_CARD_CMD_FAILED;
 		break;
 	}
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "PIN command failed");
+	LOG_TEST_RET(card->ctx, r, "PIN command failed");
 
 	/* Calling Function may expect SW1/SW2 in data-apdu set... */
 	if (data->apdu) {

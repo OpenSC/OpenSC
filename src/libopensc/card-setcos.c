@@ -634,7 +634,7 @@ static int setcos_set_security_env2(sc_card_t *card,
 	apdu.resplen = 0;
 	if (se_num > 0) {
 		r = sc_lock(card);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "sc_lock() failed");
+		LOG_TEST_RET(card->ctx, r, "sc_lock() failed");
 		locked = 1;
 	}
 	if (apdu.datalen != 0) {
@@ -656,7 +656,7 @@ static int setcos_set_security_env2(sc_card_t *card,
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0xF2, se_num);
 	r = sc_transmit_apdu(card, &apdu);
 	sc_unlock(card);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 err:
 	if (locked)
@@ -952,7 +952,7 @@ static int setcos_list_files(sc_card_t *card, u8 * buf, size_t buflen)
 	apdu.resplen = buflen;
 	apdu.le = buflen > 256 ? 256 : buflen;
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (card->type == SC_CARD_TYPE_SETCOS_44 && apdu.sw1 == 0x6A && apdu.sw2 == 0x82)
 		return 0; /* no files found */
 	if (apdu.resplen == 0)
@@ -998,10 +998,10 @@ static int setcos_putdata(struct sc_card *card, struct sc_cardctl_setcos_data_ob
 	apdu.data    = data_obj->Data;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "PUT_DATA returned error");
+	LOG_TEST_RET(card->ctx, r, "PUT_DATA returned error");
 
 	LOG_FUNC_RETURN(card->ctx, r);
 }
@@ -1029,10 +1029,10 @@ static int setcos_getdata(struct sc_card *card, struct sc_cardctl_setcos_data_ob
 	apdu.resplen = data_obj->DataLen;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "GET_DATA returned error");
+	LOG_TEST_RET(card->ctx, r, "GET_DATA returned error");
 
 	if (apdu.resplen > data_obj->DataLen)
 		r = SC_ERROR_WRONG_LENGTH;
@@ -1085,10 +1085,10 @@ static int setcos_generate_store_key(sc_card_t *card,
 	apdu.lc	= len;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "STORE/GENERATE_KEY returned error");
+	LOG_TEST_RET(card->ctx, r, "STORE/GENERATE_KEY returned error");
 
 	LOG_FUNC_RETURN(card->ctx, r);
 }
@@ -1103,10 +1103,10 @@ static int setcos_activate_file(sc_card_t *card)
 	apdu.data = sbuf;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "ACTIVATE_FILE returned error");
+	LOG_TEST_RET(card->ctx, r, "ACTIVATE_FILE returned error");
 
 	LOG_FUNC_RETURN(card->ctx, r);
 }

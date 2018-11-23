@@ -185,7 +185,7 @@ miocos_create_pin(struct sc_profile *profile, sc_pkcs15_card_t *p15card, struct 
 		puk_len = 8;
 	strncpy((char *) ac_info.unblock_value, (const char *) puk, puk_len);
 	r = sc_card_ctl(p15card->card, SC_CARDCTL_MIOCOS_CREATE_AC, &ac_info);
-        SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Miocos create AC failed");
+        LOG_TEST_RET(ctx, r, "Miocos create AC failed");
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
@@ -205,14 +205,14 @@ miocos_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 	if (object->type != SC_PKCS15_TYPE_PRKEY_RSA)
-        	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED, "MioCOS supports only 1024-bit RSA keys.");
+        	LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "MioCOS supports only 1024-bit RSA keys.");
 
 	if (key_info->modulus_length != 1024)
-        	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED, "MioCOS supports only 1024-bit RSA keys.");
+        	LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "MioCOS supports only 1024-bit RSA keys.");
 
         sc_log(ctx,  "create private key ID:%s\n",  sc_pkcs15_print_id(&key_info->id));
 	r = miocos_new_file(profile, p15card->card, SC_PKCS15_TYPE_PRKEY_RSA, key_info->key_reference, &file);
-        SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Cannot create key: failed to allocate new key object");
+        LOG_TEST_RET(ctx, r, "Cannot create key: failed to allocate new key object");
 
         memcpy(&file->path, &key_info->path, sizeof(file->path));
         file->id = file->path.value[file->path.len - 2] * 0x100
@@ -244,20 +244,20 @@ miocos_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 	if (object->type != SC_PKCS15_TYPE_PRKEY_RSA
 			|| key->algorithm != SC_ALGORITHM_RSA)
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED, "MioCOS supports only 1024-bit RSA keys.");
+		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "MioCOS supports only 1024-bit RSA keys.");
 
 	rsa = &key->u.rsa;
 	if (rsa->modulus.len != 128)
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED, "MioCOS supports only 1024-bit RSA keys.");
+		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "MioCOS supports only 1024-bit RSA keys.");
 
         sc_log(ctx,  "store key with ID:%s and path:%s\n", sc_pkcs15_print_id(&key_info->id),
 			sc_print_path(&key_info->path));
 
 	r = sc_select_file(p15card->card, &key_info->path, &file);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Cannot store key: select key file failed");
+	LOG_TEST_RET(ctx, r, "Cannot store key: select key file failed");
 
 	r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_UPDATE);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "No authorisation to store private key");
+	LOG_TEST_RET(ctx, r, "No authorisation to store private key");
 
 	r = miocos_update_private_key(profile, p15card->card, rsa);
 
