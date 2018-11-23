@@ -239,7 +239,7 @@ static char *prettify_algorithm(u8 *data, size_t length)
 static char *prettify_date(u8 *data, size_t length)
 {
 	if (data != NULL && length == 4) {
-		time_t time = (data[0] << 24) + (data[1] << 16) + (data[2] << 8) + data[3];
+		time_t time = (time_t) (data[0] << 24 | data[1] << 16 | data[2] << 8 | data[3]);
 		struct tm *tp;
 		static char result[64];	/* large enough */
 
@@ -312,9 +312,9 @@ static char *prettify_serialnumber(u8 *data, size_t length)
 {
 	if (data != NULL && length >= 4) {
 		static char result[15];	/* large enough for even 2*3 digits + separator */
-		unsigned int serial = (data[0] << 24) + (data[1] << 16) + (data[2] << 8) + data[3];
+		unsigned long serial = (unsigned long) (data[0] << 24 | data[1] << 16 | data[2] << 8 | data[3]);
 
-		sprintf(result, "%08X", serial);
+		sprintf(result, "%08lX", serial);
 		return result;
 	}
 	return NULL;
