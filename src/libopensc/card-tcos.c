@@ -221,7 +221,7 @@ static int tcos_create_file(sc_card_t *card, sc_file_t *file)
 
 	len = SC_MAX_APDU_BUFFER_SIZE;
 	r = tcos_construct_fci(file, sbuf, &len);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "tcos_construct_fci() failed");
+	LOG_TEST_RET(card->ctx, r, "tcos_construct_fci() failed");
 	
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xE0, 0x00, 0x00);
         apdu.cla |= 0x80;  /* this is an proprietary extension */
@@ -230,7 +230,7 @@ static int tcos_create_file(sc_card_t *card, sc_file_t *file)
 	apdu.data = sbuf;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }
 
@@ -392,7 +392,7 @@ static int tcos_select_file(sc_card_t *card,
 	}
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	if (r || file_out == NULL) SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, r);
 
@@ -431,10 +431,10 @@ static int tcos_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 		apdu.resplen = sizeof(rbuf);
 		apdu.le = 256;
 		r = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+		LOG_TEST_RET(ctx, r, "APDU transmit failed");
 		if (apdu.sw1==0x6A && (apdu.sw2==0x82 || apdu.sw2==0x88)) continue;
 		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "List Dir failed");
+		LOG_TEST_RET(ctx, r, "List Dir failed");
 		if (apdu.resplen > buflen) return SC_ERROR_BUFFER_TOO_SMALL;
 		sc_log(ctx, 
 			 "got %"SC_FORMAT_LEN_SIZE_T"u %s-FileIDs\n",
@@ -469,7 +469,7 @@ static int tcos_delete_file(sc_card_t *card, const sc_path_t *path)
 	apdu.data = sbuf;
 	
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }
 
@@ -575,7 +575,7 @@ static int tcos_compute_signature(sc_card_t *card, const u8 * data, size_t datal
 	apdu.lc = apdu.datalen = dlen;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (tcos3 && apdu.p1==0x80 && apdu.sw1==0x6A && apdu.sw2==0x87) {
 		int keylen=128;
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A,0x80,0x86);
@@ -590,7 +590,7 @@ static int tcos_compute_signature(sc_card_t *card, const u8 * data, size_t datal
 		apdu.data = sbuf;
 		apdu.lc = apdu.datalen = dlen;
 		r = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	}
 	if (apdu.sw1==0x90 && apdu.sw2==0x00) {
 		size_t len = apdu.resplen>outlen ? outlen : apdu.resplen;
@@ -631,7 +631,7 @@ static int tcos_decipher(sc_card_t *card, const u8 * crgram, size_t crgram_len, 
 	memcpy(sbuf+1, crgram, crgram_len);
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	if (apdu.sw1==0x90 && apdu.sw2==0x00) {
 		size_t len= (apdu.resplen>outlen) ? outlen : apdu.resplen;
@@ -663,7 +663,7 @@ static int tcos_setperm(sc_card_t *card, int enable_nullpin)
 	apdu.data = NULL;
 	
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }
 

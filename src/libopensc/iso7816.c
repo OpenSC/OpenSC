@@ -1207,10 +1207,10 @@ static int iso7816_get_data(struct sc_card *card, unsigned int tag,  u8 *buf, si
 	apdu.resp = buf;
 	apdu.resplen = len;
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "GET_DATA returned error");
+	LOG_TEST_RET(card->ctx, r, "GET_DATA returned error");
 
 	if (apdu.resplen > len)
 		r = SC_ERROR_WRONG_LENGTH;

@@ -733,7 +733,7 @@ static int jcop_compute_signature(sc_card_t *card,
 
         apdu.data = sbuf;
         r = sc_transmit_apdu(card, &apdu);
-        SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+        LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
         if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
                 int len = apdu.resplen > outlen ? outlen : apdu.resplen;
 
@@ -784,7 +784,7 @@ static int jcop_decipher(sc_card_t *card,
 	
         apdu.data = sbuf;
         r = sc_transmit_apdu(card, &apdu);
-        SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+        LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
         if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
                 int len = apdu.resplen > outlen ? outlen : apdu.resplen;
 

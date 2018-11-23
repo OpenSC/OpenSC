@@ -93,7 +93,7 @@ int msc_partial_read_object(sc_card_t *card, msc_id objectId, int offset, u8 *da
 	apdu.resplen = dataLength;
 	apdu.resp = data; 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if(apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
 		return dataLength;
 	if(apdu.sw1 == 0x9C) {
@@ -120,7 +120,7 @@ int msc_read_object(sc_card_t *card, msc_id objectId, int offset, u8 *data, size
 
 	for(i = 0; i < dataLength; i += max_read_unit) {
 		r = msc_partial_read_object(card, objectId, offset + i, data + i, MIN(dataLength - i, max_read_unit));
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Error in partial object read");
+		LOG_TEST_RET(card->ctx, r, "Error in partial object read");
 	}
 	return dataLength;
 }
@@ -134,7 +134,7 @@ int msc_zero_object(sc_card_t *card, msc_id objectId, size_t dataLength)
 	memset(zeroBuffer, 0, max_write_unit);
 	for(i = 0; i < dataLength; i += max_write_unit) {
 		int r = msc_partial_update_object(card, objectId, i, zeroBuffer, MIN(dataLength - i, max_write_unit));
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Error in zeroing file update");
+		LOG_TEST_RET(card->ctx, r, "Error in zeroing file update");
 	}
 	return 0;
 }
@@ -156,7 +156,7 @@ int msc_create_object(sc_card_t *card, msc_id objectId, size_t objectSize, unsig
 	ushort2bebytes(buffer + 10, writeAcl);
 	ushort2bebytes(buffer + 12, deleteAcl);
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if(apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
 		return objectSize;
 	if(apdu.sw1 == 0x9C) {
@@ -197,7 +197,7 @@ int msc_partial_update_object(sc_card_t *card, msc_id objectId, int offset, cons
 	apdu.data = buffer;
 	apdu.datalen = apdu.lc;
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if(apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
 		return dataLength;
 	if(apdu.sw1 == 0x9C) {
@@ -224,7 +224,7 @@ int msc_update_object(sc_card_t *card, msc_id objectId, int offset, const u8 *da
 	size_t max_write_unit = MSC_MAX_SEND - 9;
 	for(i = 0; i < dataLength; i += max_write_unit) {
 		r = msc_partial_update_object(card, objectId, offset + i, data + i, MIN(dataLength - i, max_write_unit));
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Error in partial object update");
+		LOG_TEST_RET(card->ctx, r, "Error in partial object update");
 	}
 	return dataLength;
 }
@@ -239,7 +239,7 @@ int msc_delete_object(sc_card_t *card, msc_id objectId, int zero)
 	apdu.data = objectId.id;
 	apdu.datalen = 4;
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if(apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
 		return 0;
 	if(apdu.sw1 == 0x9C) {
@@ -269,7 +269,7 @@ int msc_select_applet(sc_card_t *card, u8 *appletId, size_t appletIdLength)
 	apdu.le = 0;
 	
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if(apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
 		return 1;
 	
@@ -296,7 +296,7 @@ int msc_verify_pin(sc_card_t *card, int pinNumber, const u8 *pinValue, int pinLe
 	if(tries)
 		*tries = -1;
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if(apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 		return 0;
 	} else if(apdu.sw1 == 0x63) { /* Invalid auth */
@@ -341,7 +341,7 @@ int msc_unblock_pin(sc_card_t *card, int pinNumber, const u8 *pukValue, int pukL
 	if(tries)
 		*tries = -1;
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if(apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 		return 0;
 	} else if(apdu.sw1 == 0x63) { /* Invalid auth */
@@ -383,7 +383,7 @@ int msc_change_pin(sc_card_t *card, int pinNumber, const u8 *pinValue, int pinLe
 	if(tries)
 		*tries = -1;
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if(apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 		return 0;
 	} else if(apdu.sw1 == 0x63) { /* Invalid auth */
@@ -468,7 +468,7 @@ int msc_get_challenge(sc_card_t *card, unsigned short dataLength, unsigned short
 		free(apdu.resp);
 	}
 	free(buffer);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if(location == 1) {
 		if(apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 			return SC_SUCCESS;
@@ -542,7 +542,7 @@ int msc_generate_keypair(sc_card_t *card, int privateKey, int publicKey, int alg
 	apdu.lc = 16;
 	
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if(apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 		return 0;
 	}
@@ -569,7 +569,7 @@ int msc_extract_key(sc_card_t *card,
 	apdu.datalen = 1;
 	apdu.lc = 1;
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if(apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 		return 0;
 	}
@@ -670,7 +670,7 @@ int msc_compute_crypt_init(sc_card_t *card,
 	memcpy(ptr, initData, dataLength);
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if(apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 		short receivedData = outputBuffer[0] << 8 | outputBuffer[1];
 		*outputDataLength = receivedData;
@@ -721,7 +721,7 @@ int msc_compute_crypt_final(
 	memcpy(ptr, inputData, dataLength);
 	
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if(apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 		short receivedData = outputBuffer[0] << 8 | outputBuffer[1];
 		*outputDataLength = receivedData;
@@ -787,7 +787,7 @@ static int msc_compute_crypt_final_object(
 	if(r < 0) return r; 
 	
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if(apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 		r = msc_read_object(card, inputId, 2, outputData, dataLength);
 		if (r >= 0)
@@ -959,7 +959,7 @@ int msc_import_key(sc_card_t *card,
 	ushort2bebytes(p, writeAcl); p+=2;
 	ushort2bebytes(p, use); 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if(apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 		msc_delete_object(card, outputId, 0);
 		return 0;

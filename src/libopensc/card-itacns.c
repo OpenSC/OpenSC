@@ -260,10 +260,10 @@ static int itacns_restore_security_env(sc_card_t *card, int se_num)
 	apdu.le = 0;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
+	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
 	SC_FUNC_RETURN(card->ctx, 1, r);
 }
@@ -302,7 +302,7 @@ static int itacns_set_security_env(sc_card_t *card,
 	   so far want 0x03. */
 	r = itacns_restore_security_env(card,
 		(card->type == SC_CARD_TYPE_ITACNS_CIE_V1 ? 0x30 : 0x03));
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0xF1, 0);
 	switch (env->operation) {
@@ -329,10 +329,10 @@ static int itacns_set_security_env(sc_card_t *card,
 	apdu.data = data;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
+	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
 	SC_FUNC_RETURN(card->ctx, 1, r);
 }

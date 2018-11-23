@@ -143,7 +143,7 @@ sc_pkcs15_decode_aodf_entry(struct sc_pkcs15_card *p15card, struct sc_pkcs15_obj
 	r = sc_asn1_decode(ctx, asn1_auth_type, *buf, *buflen, buf, buflen);
 	if (r == SC_ERROR_ASN1_END_OF_CONTENTS)
 		return r;
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "ASN.1 decoding failed");
+	LOG_TEST_RET(ctx, r, "ASN.1 decoding failed");
 
 	if (asn1_auth_type_choice[0].flags & SC_ASN1_PRESENT)   {
 		sc_log(ctx, "AuthType: PIN");
@@ -183,7 +183,7 @@ sc_pkcs15_decode_aodf_entry(struct sc_pkcs15_card *p15card, struct sc_pkcs15_obj
 		sc_debug(ctx, SC_LOG_DEBUG_ASN1, "decoded PIN(ref:%X,path:%s)", info.attrs.pin.reference, sc_print_path(&info.path));
 	}
 	else if (asn1_auth_type_choice[1].flags & SC_ASN1_PRESENT)   {
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED, "BIO authentication object not yet supported");
+		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "BIO authentication object not yet supported");
 	}
 	else if (asn1_auth_type_choice[2].flags & SC_ASN1_PRESENT)   {
 		sc_log(ctx, "AuthType: AuthKey");
@@ -194,7 +194,7 @@ sc_pkcs15_decode_aodf_entry(struct sc_pkcs15_card *p15card, struct sc_pkcs15_obj
 			info.attrs.authkey.derived = 1;
 	}
 	else   {
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED, "unknown authentication type");
+		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "unknown authentication type");
 	}
 
 	obj->data = malloc(sizeof(info));

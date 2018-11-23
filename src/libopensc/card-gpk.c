@@ -504,9 +504,9 @@ gpk_select(sc_card_t *card, int kind,
 	}
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
+	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
 	/* Nothing we can say about it... invalidate
 	 * path cache */
@@ -623,7 +623,7 @@ try_again:
 	} else {
 		if (!locked++) {
 			r = sc_lock(card);
-			SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "sc_lock() failed");
+			LOG_TEST_RET(card->ctx, r, "sc_lock() failed");
 		}
 
 		/* Do we need to select the MF first? */
@@ -631,7 +631,7 @@ try_again:
 			r = gpk_select_id(card, GPK_SEL_MF, GPK_FID_MF, NULL);
 			if (r)
 				sc_unlock(card);
-			SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Unable to select MF");
+			LOG_TEST_RET(card->ctx, r, "Unable to select MF");
 
 			/* Consume the MF FID if it's there */
 			if (pathptr[0] == GPK_FID_MF) {
@@ -649,7 +649,7 @@ try_again:
 			r = gpk_select_id(card, GPK_SEL_DF, pathptr[0], NULL);
 			if (r)
 				sc_unlock(card);
-			SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Unable to select DF");
+			LOG_TEST_RET(card->ctx, r, "Unable to select DF");
 			pathptr++;
 			pathlen--;
 		}
@@ -870,9 +870,9 @@ gpk_create_file(sc_card_t *card, sc_file_t *file)
 	}
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
+	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
 	/* verify secure messaging response */
 	if (priv->key_set)
@@ -967,9 +967,9 @@ gpk_select_key(sc_card_t *card, int key_sfi, const u8 *buf, size_t buflen)
 	apdu.le = 12;
 	
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
+	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
 	if (apdu.resplen != 12) {
 		r = SC_ERROR_UNKNOWN_DATA_RECEIVED;
@@ -1086,12 +1086,12 @@ gpk_set_security_env(sc_card_t *card,
 	/* Select the PK file. The caller has already selected
 	 * the DF. */
 	r = gpk_select_id(card, GPK_SEL_EF, file_id, NULL);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Failed to select PK file");
+	LOG_TEST_RET(card->ctx, r, "Failed to select PK file");
 
 	/* Read the sys record of the PK file to find out the key length */
 	r = sc_read_record(card, 1, sysrec, sizeof(sysrec),
 			SC_RECORD_BY_REC_NR);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Failed to read PK sysrec");
+	LOG_TEST_RET(card->ctx, r, "Failed to read PK sysrec");
 	if (r != 7 || sysrec[0] != 0) {
 		sc_log(card->ctx,  "First record of file is not the sysrec");
 		return SC_ERROR_OBJECT_NOT_VALID;
@@ -1118,9 +1118,9 @@ gpk_set_security_env(sc_card_t *card,
 	apdu.p2  = context;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
+	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
 	return r;
 }
@@ -1184,9 +1184,9 @@ gpk_hash(sc_card_t *card, const u8 *data, size_t datalen)
 		apdu.datalen = len + 2;
 
 		r = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
+		LOG_TEST_RET(card->ctx, r, "Card returned error");
 		chain = 0;
 	}
 
@@ -1205,7 +1205,7 @@ gpk_init_hashed(sc_card_t *card, const u8 *digest, unsigned int len)
 	int		r;
 
 	r = reverse(tsegid, sizeof(tsegid), digest, len);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Failed to reverse buffer");
+	LOG_TEST_RET(card->ctx, r, "Failed to reverse buffer");
 
 	memset(&apdu, 0, sizeof(apdu));
 	apdu.cse = SC_APDU_CASE_3_SHORT;
@@ -1216,9 +1216,9 @@ gpk_init_hashed(sc_card_t *card, const u8 *digest, unsigned int len)
 	apdu.datalen = len;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
+	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
 	return r;
 }
@@ -1246,7 +1246,7 @@ gpk_compute_signature(sc_card_t *card, const u8 *data,
 		return SC_ERROR_BUFFER_TOO_SMALL;
 
 	r = gpk_init_hashed(card, data, data_len);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Failed to send hash to card");
+	LOG_TEST_RET(card->ctx, r, "Failed to send hash to card");
 
 	/* Now sign the hash.
 	 * The GPK has Internal Authenticate and PK_Sign. I am not
@@ -1261,14 +1261,14 @@ gpk_compute_signature(sc_card_t *card, const u8 *data,
 	apdu.le  = priv->sec_mod_len;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
+	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
 	/* The GPK returns the signature as little endian numbers.
 	 * Need to revert these */
 	r = reverse(out, outlen, cardsig, apdu.resplen);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Failed to reverse signature");
+	LOG_TEST_RET(card->ctx, r, "Failed to reverse signature");
 
 	return r;
 }
@@ -1299,7 +1299,7 @@ gpk_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 
 	/* First revert the cryptogram */
 	r = reverse(buffer, sizeof(buffer), in, inlen);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Cryptogram too large");
+	LOG_TEST_RET(card->ctx, r, "Cryptogram too large");
 	in = buffer;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x1C, 0x00, 0x00);
@@ -1312,13 +1312,13 @@ gpk_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 	apdu.resplen = sizeof(buffer);
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
+	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
 	/* Reverse the data we got back */
 	r = reverse(out, outlen, buffer, apdu.resplen);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Failed to reverse buffer");
+	LOG_TEST_RET(card->ctx, r, "Failed to reverse buffer");
 
 	return r;
 }
@@ -1363,9 +1363,9 @@ gpk_erase_card(sc_card_t *card)
 	apdu.p2  = offset;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
+	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
 	priv->key_set = 0;
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
@@ -1426,9 +1426,9 @@ gpk_lock(sc_card_t *card, struct sc_cardctl_gpk_lock *args)
 	}
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
+	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
 	if (priv->key_set)
 		r = gpk_verify_crycks(card, &apdu, crycks);
@@ -1456,9 +1456,9 @@ gpk_pkfile_init(sc_card_t *card, struct sc_cardctl_gpk_pkinit *args)
 	apdu.p2  = args->privlen / 4;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
+	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
 	return r;
 }
@@ -1493,16 +1493,16 @@ gpk_generate_key(sc_card_t *card, struct sc_cardctl_gpk_genkey *args)
 	apdu.resplen = 256;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
+	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
 	/* Return the public key, inverted.
 	 * The first two bytes must be stripped off. */
 	if (args->pubkey_len && apdu.resplen > 2) {
 		r = reverse(args->pubkey, args->pubkey_len,
 				buffer + 2, apdu.resplen - 2);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Failed to reverse buffer");
+		LOG_TEST_RET(card->ctx, r, "Failed to reverse buffer");
 		args->pubkey_len = r;
 	}
 
@@ -1568,9 +1568,9 @@ gpk_pkfile_load(sc_card_t *card, struct sc_cardctl_gpk_pkload *args)
 	priv->key_set = 0;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
+	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
 	LOG_FUNC_RETURN(card->ctx, r);
 }
@@ -1610,7 +1610,7 @@ static int gpk_get_info(sc_card_t *card, int p1, int p2, u8 *buf,
 	 * without collecting the response :)
 	 */
 	r = sc_lock(card);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "sc_lock() failed");
+	LOG_TEST_RET(card->ctx, r, "sc_lock() failed");
 
 	do {
 		memset(&apdu, 0, sizeof(apdu));
@@ -1633,7 +1633,7 @@ static int gpk_get_info(sc_card_t *card, int p1, int p2, u8 *buf,
 	sc_unlock(card);
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
+	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
 	return r;
 }
@@ -1663,7 +1663,7 @@ static int gpk_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 	apdu.lc   = 0;
 	apdu.datalen = 0;
         r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
 		return SC_ERROR_INTERNAL;
 	/* cache serial number */

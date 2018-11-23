@@ -185,7 +185,7 @@ static int entersafe_gen_random(sc_card_t *card,u8 *buff,size_t size)
 	 apdu.resplen=sizeof(rbuf);
 
 	 r=sc_transmit_apdu(card,&apdu);
-	 SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "entersafe gen random failed");
+	 LOG_TEST_RET(card->ctx, r, "entersafe gen random failed");
 
 	 if(apdu.resplen!=size)
 		  LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
@@ -272,7 +272,7 @@ static int entersafe_mac_apdu(sc_card_t *card, sc_apdu_t *apdu,
 		  return SC_ERROR_INTERNAL;
 
 	 r=entersafe_gen_random(card,iv,sizeof(iv));
-	 SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL,r,"entersafe gen random failed");
+	 LOG_TEST_RET(card->ctx,r,"entersafe gen random failed");
 
 	 /* encode the APDU in the buffer */
 	 if ((r=sc_apdu_get_octets(card->ctx, apdu, &tmp, &tmpsize,SC_PROTO_RAW)) != SC_SUCCESS)
@@ -428,7 +428,7 @@ static int entersafe_read_binary(sc_card_t *card,
 	apdu.resp = recvbuf;
 
 	r = entersafe_transmit_apdu(card, &apdu,0,0,0,0);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.resplen == 0)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 	memcpy(buf, recvbuf, apdu.resplen);
@@ -455,8 +455,8 @@ static int entersafe_update_binary(sc_card_t *card,
 	apdu.data = buf;
 
 	r = entersafe_transmit_apdu(card, &apdu,0,0,0,0);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, sc_check_sw(card, apdu.sw1, apdu.sw2),
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2),
 		    "Card returned error");
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, count);
 }
@@ -471,7 +471,7 @@ static int entersafe_process_fci(struct sc_card *card, struct sc_file *file,
 	 SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	 r = iso_ops->process_fci(card,file,buf,buflen);
-	 SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Process fci failed");
+	 LOG_TEST_RET(card->ctx, r, "Process fci failed");
 
 	 if(file->namelen)
 	 {
@@ -505,7 +505,7 @@ static int entersafe_select_fid(sc_card_t *card,
 	r = iso_ops->select_file(card,&path,&file);
 	if (r < 0)
 		sc_file_free(file);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	/* update cache */
 	if (file->type == SC_FILE_TYPE_DF) {
@@ -550,7 +550,7 @@ static int entersafe_select_aid(sc_card_t *card,
 	else
 	{
 		 r = iso_ops->select_file(card,in_path,file_out);
-		 SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+		 LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 		 /* update cache */
 		 card->cache.current_path.type = SC_PATH_TYPE_DF_NAME;
@@ -629,7 +629,7 @@ static int entersafe_select_path(sc_card_t *card,
 	
 			   /* first step: change directory */
 			   r = entersafe_select_fid(card, path[bMatch], path[bMatch+1], NULL);
-			   SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "SELECT FILE (DF-ID) failed");
+			   LOG_TEST_RET(card->ctx, r, "SELECT FILE (DF-ID) failed");
 	
 		   	   memset(&new_path, 0, sizeof(sc_path_t));
 
@@ -670,7 +670,7 @@ static int entersafe_select_path(sc_card_t *card,
 		  for ( i=0; i<pathlen-2; i+=2 )
 		  {
 			   r = entersafe_select_fid(card, path[i], path[i+1], NULL);
-			   SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "SELECT FILE (DF-ID) failed");
+			   LOG_TEST_RET(card->ctx, r, "SELECT FILE (DF-ID) failed");
 		  }
 		  return entersafe_select_fid(card, path[pathlen-2], path[pathlen-1], file_out);
 	 }
@@ -750,7 +750,7 @@ static int entersafe_create_mf(sc_card_t *card, sc_entersafe_create_data * data)
 	}break;
 	}
 
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }
 static int entersafe_create_df(sc_card_t *card, sc_entersafe_create_data * data)
@@ -768,7 +768,7 @@ static int entersafe_create_df(sc_card_t *card, sc_entersafe_create_data * data)
 	apdu.lc=apdu.datalen=sizeof(data->data.df);
 
 	r = entersafe_transmit_apdu(card, &apdu,init_key,sizeof(init_key),0,1);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }
 
@@ -785,7 +785,7 @@ static int entersafe_create_ef(sc_card_t *card, sc_entersafe_create_data * data)
 	apdu.lc = apdu.datalen = sizeof(data->data.ef);
 
 	r = entersafe_transmit_apdu(card, &apdu,init_key,sizeof(init_key),0,1);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }
 
@@ -889,7 +889,7 @@ static int entersafe_internal_set_security_env(sc_card_t *card,
 	apdu.resplen = 0;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }
 
@@ -949,7 +949,7 @@ static int entersafe_compute_with_prkey(sc_card_t *card,
 		 SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,SC_ERROR_INTERNAL);
 
 	r = entersafe_internal_set_security_env(card,card->drv_data,&p,&size);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "internal set security env failed");
+	LOG_TEST_RET(card->ctx, r, "internal set security env failed");
    
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x86,0x80);
 	apdu.data=p;
@@ -960,7 +960,7 @@ static int entersafe_compute_with_prkey(sc_card_t *card,
 	apdu.le = 256;
 
 	r = entersafe_transmit_apdu(card, &apdu,0,0,0,0);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 		size_t len = apdu.resplen > outlen ? outlen : apdu.resplen;
@@ -1022,7 +1022,7 @@ static int entersafe_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 			   apdu.data = sbuf;
 
 			   r = entersafe_transmit_apdu(card, &apdu,0,0,0,0);
-			   SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+			   LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 		  }
 
 		  {/*change*/
@@ -1038,7 +1038,7 @@ static int entersafe_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 			   apdu.data = sbuf;
 
 			   r = entersafe_transmit_apdu(card, &apdu,key_maintain,sizeof(key_maintain),1,1);
-			   SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+			   LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 		  }
 	 }
 	 SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
@@ -1060,7 +1060,7 @@ static int entersafe_erase_card(sc_card_t *card)
 	apdu.data = sbuf;
 	
 	r = entersafe_transmit_apdu(card, &apdu,0,0,0,0);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	sc_invalidate_cache(card);
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xEE, 0x00, 0x00);
@@ -1092,7 +1092,7 @@ static int entersafe_erase_card(sc_card_t *card)
 	}break;
 	}
 
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
 
@@ -1149,8 +1149,8 @@ static int entersafe_write_small_rsa_key(sc_card_t *card,u8 key_id,struct sc_pkc
 		  apdu.lc=apdu.datalen=p-sbuff;
 
 		  r=entersafe_transmit_apdu(card,&apdu,key_maintain,sizeof(key_maintain),1,1);
-		  SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
-		  SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, sc_check_sw(card, apdu.sw1, apdu.sw2),"Write prkey failed");
+		  LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+		  LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2),"Write prkey failed");
 	 }
 
 	 p=sbuff;
@@ -1166,8 +1166,8 @@ static int entersafe_write_small_rsa_key(sc_card_t *card,u8 key_id,struct sc_pkc
 		  apdu.lc=apdu.datalen=p-sbuff;
 
 		  r=entersafe_transmit_apdu(card,&apdu,key_maintain,sizeof(key_maintain),1,1);
-		  SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
-		  SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, sc_check_sw(card, apdu.sw1, apdu.sw2),"Write pukey failed");
+		  LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+		  LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2),"Write pukey failed");
 	 }
 
 	 SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,SC_SUCCESS);
@@ -1195,8 +1195,8 @@ static int entersafe_write_rsa_key_factor(sc_card_t *card,
 		 apdu.lc=apdu.datalen=4;
 		 
 		 r=entersafe_transmit_apdu(card,&apdu,0,0,0,0);
-		 SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
-		 SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, sc_check_sw(card, apdu.sw1, apdu.sw2),"Write prkey factor failed(MSE)");
+		 LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+		 LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2),"Write prkey factor failed(MSE)");
 	}
 
 	{/* Write 'x'; */
@@ -1238,8 +1238,8 @@ static int entersafe_write_rsa_key_factor(sc_card_t *card,
 		 apdu.lc=apdu.datalen=data.len;
 
 		 r = entersafe_transmit_apdu(card,&apdu,0,0,0,0);
-		 SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
-		 SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, sc_check_sw(card, apdu.sw1, apdu.sw2),"Write prkey factor failed");
+		 LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+		 LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2),"Write prkey factor failed");
 	}
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,SC_SUCCESS);
 }
@@ -1252,15 +1252,15 @@ static int entersafe_write_large_rsa_key(sc_card_t *card,u8 key_id,struct sc_pkc
 
 	 {/* write prkey */
 		  r = entersafe_write_rsa_key_factor(card,key_id,0x22,0x01,rsa->p);
-		  SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "write p failed");
+		  LOG_TEST_RET(card->ctx, r, "write p failed");
 		  r = entersafe_write_rsa_key_factor(card,key_id,0x22,0x02,rsa->q);
-		  SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "write q failed");
+		  LOG_TEST_RET(card->ctx, r, "write q failed");
 		  r = entersafe_write_rsa_key_factor(card,key_id,0x22,0x03,rsa->dmp1);
-		  SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "write dmp1 failed");
+		  LOG_TEST_RET(card->ctx, r, "write dmp1 failed");
 		  r = entersafe_write_rsa_key_factor(card,key_id,0x22,0x04,rsa->dmq1);
-		  SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "write dmq1 failed");
+		  LOG_TEST_RET(card->ctx, r, "write dmq1 failed");
 		  r = entersafe_write_rsa_key_factor(card,key_id,0x22,0x05,rsa->iqmp);
-		  SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "write iqmp failed");
+		  LOG_TEST_RET(card->ctx, r, "write iqmp failed");
 	 }
 
 	 {/* write pukey */
@@ -1281,8 +1281,8 @@ static int entersafe_write_large_rsa_key(sc_card_t *card,u8 key_id,struct sc_pkc
 		  apdu.lc=apdu.datalen=0x46;
 
 		  r=entersafe_transmit_apdu(card,&apdu,0,0,0,0);
-		  SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
-		  SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, sc_check_sw(card, apdu.sw1, apdu.sw2),"Write pukey N(1) failed");
+		  LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+		  LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2),"Write pukey N(1) failed");
 
 		  /* left 192(0xC0) bytes of N */
 		  sc_format_apdu(card,&apdu,SC_APDU_CASE_3_SHORT,0x46,0x0B,0x00);
@@ -1290,12 +1290,12 @@ static int entersafe_write_large_rsa_key(sc_card_t *card,u8 key_id,struct sc_pkc
 		  apdu.lc=apdu.datalen=0xC0;
 
 		  r=entersafe_transmit_apdu(card,&apdu,0,0,0,0);
-		  SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
-		  SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, sc_check_sw(card, apdu.sw1, apdu.sw2),"Write pukey N(2) failed");
+		  LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+		  LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2),"Write pukey N(2) failed");
 
 		  /* E */
 		  r = entersafe_write_rsa_key_factor(card,key_id,0x2A,0x0D,rsa->exponent);
-		  SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "write exponent failed");
+		  LOG_TEST_RET(card->ctx, r, "write exponent failed");
 	 }
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,SC_SUCCESS);
 }
@@ -1324,8 +1324,8 @@ static int entersafe_write_symmetric_key(sc_card_t *card,
 	 apdu.lc=apdu.datalen=len+2;
 
 	 r=entersafe_transmit_apdu(card,&apdu,key_maintain,sizeof(key_maintain),1,1);
-	 SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
-	 SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, sc_check_sw(card, apdu.sw1, apdu.sw2),"Write prkey failed");
+	 LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+	 LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2),"Write prkey failed");
 	 SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,r);
 }
 
@@ -1380,8 +1380,8 @@ static int entersafe_gen_key(sc_card_t *card, sc_entersafe_gen_key_data *data)
 	apdu.le=0;
 
 	r=entersafe_transmit_apdu(card, &apdu, 0,0,0,0);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, sc_check_sw(card,apdu.sw1,apdu.sw2),"EnterSafe set MSE failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, sc_check_sw(card,apdu.sw1,apdu.sw2),"EnterSafe set MSE failed");
 
 	/* generate key */
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x46,  0x00, 0x00);
@@ -1393,8 +1393,8 @@ static int entersafe_gen_key(sc_card_t *card, sc_entersafe_gen_key_data *data)
 	apdu.datalen = 2;
 
 	r = entersafe_transmit_apdu(card, &apdu,0,0,0,0);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, sc_check_sw(card,apdu.sw1,apdu.sw2),"EnterSafe generate keypair failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, sc_check_sw(card,apdu.sw1,apdu.sw2),"EnterSafe generate keypair failed");
 
 	/* read public key via READ PUBLIC KEY */
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xE6,  0x2A, data->key_id);
@@ -1403,8 +1403,8 @@ static int entersafe_gen_key(sc_card_t *card, sc_entersafe_gen_key_data *data)
 	apdu.resplen = sizeof(rbuf);
 	apdu.le      = 256;
 	r = entersafe_transmit_apdu(card, &apdu,0,0,0,0);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, sc_check_sw(card,apdu.sw1,apdu.sw2),"EnterSafe get pukey failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, sc_check_sw(card,apdu.sw1,apdu.sw2),"EnterSafe get pukey failed");
 
 	data->modulus = malloc(len);
 	if (!data->modulus)
@@ -1452,8 +1452,8 @@ static int entersafe_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 	apdu.le=0x08;
 
 	r=entersafe_transmit_apdu(card, &apdu,0,0,0,0);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, sc_check_sw(card,apdu.sw1,apdu.sw2),"EnterSafe get SN failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, sc_check_sw(card,apdu.sw1,apdu.sw2),"EnterSafe get SN failed");
 
 	card->serialnr.len=serial->len=8;
 	memcpy(card->serialnr.value,rbuf,8);
@@ -1496,7 +1496,7 @@ static int entersafe_preinstall_rsa_2048(sc_card_t *card,u8 key_id)
 	apdu.lc=apdu.datalen=9 + sizeof(rsa_key_e) + 4;
 
 	ret = entersafe_transmit_apdu(card,&apdu,init_key,sizeof(init_key),0,1);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "Preinstall rsa failed");
+	LOG_TEST_RET(card->ctx, ret, "Preinstall rsa failed");
 
 	/*  create rsa item in PKF */
 	sbuf[0] = 0x01;	/* key len extern */
@@ -1520,7 +1520,7 @@ static int entersafe_preinstall_rsa_2048(sc_card_t *card,u8 key_id)
 	apdu.lc=apdu.datalen=9 + sizeof(rsa_key_e) + 4;
 
 	ret=entersafe_transmit_apdu(card,&apdu,init_key,sizeof(init_key),0,1);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "Preinstall rsa failed");
+	LOG_TEST_RET(card->ctx, ret, "Preinstall rsa failed");
 
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,SC_SUCCESS);
 }
@@ -1540,7 +1540,7 @@ static int entersafe_preinstall_keys(sc_card_t *card,int (*install_rsa)(sc_card_
 			  ++rsa_index)
 		  {
 			   r=install_rsa(card,rsa_index);
-			   SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Preinstall rsa key failed");
+			   LOG_TEST_RET(card->ctx, r, "Preinstall rsa key failed");
 		  }
 	 }
 
@@ -1563,7 +1563,7 @@ static int entersafe_preinstall_keys(sc_card_t *card,int (*install_rsa)(sc_card_
 		  apdu.lc=apdu.datalen=0x19;
 
 		  r = entersafe_transmit_apdu(card,&apdu,init_key,sizeof(init_key),0,1);
-		  SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Preinstall key maintain failed");
+		  LOG_TEST_RET(card->ctx, r, "Preinstall key maintain failed");
 	 }
 
 	 {/* user PIN */
@@ -1584,7 +1584,7 @@ static int entersafe_preinstall_keys(sc_card_t *card,int (*install_rsa)(sc_card_
 		  apdu.lc=apdu.datalen=0x19;
 
 		  r = entersafe_transmit_apdu(card,&apdu,init_key,sizeof(init_key),0,1);
-		  SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Preinstall user PIN failed");
+		  LOG_TEST_RET(card->ctx, r, "Preinstall user PIN failed");
 	 }
 
 	 {/* user PUK */
@@ -1605,7 +1605,7 @@ static int entersafe_preinstall_keys(sc_card_t *card,int (*install_rsa)(sc_card_
 		  apdu.lc=apdu.datalen=0x19;
 
 		  r = entersafe_transmit_apdu(card,&apdu,init_key,sizeof(init_key),0,1);
-		  SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Preinstall user PUK failed");
+		  LOG_TEST_RET(card->ctx, r, "Preinstall user PUK failed");
 	 }
 
 

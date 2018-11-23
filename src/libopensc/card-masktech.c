@@ -193,7 +193,7 @@ static int masktech_decipher(sc_card_t *card,
 	apdu.datalen = crgram_len;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 		size_t len = apdu.resplen > outlen ? outlen : apdu.resplen;
 
@@ -222,7 +222,7 @@ static int masktech_pin_unblock(sc_card_t *card,
 	verify_data.pin1.prompt = data->pin1.prompt;
 
 	rv = iso_ops->pin_cmd(card, &verify_data, tries_left);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, rv, "APDU transmit failed - verify unblock PIN");
+	LOG_TEST_RET(card->ctx, rv, "APDU transmit failed - verify unblock PIN");
 
 	/* Build a SC_PIN_CMD_UNBLOCK APDU */
 	memset(&reset_data, 0, sizeof(reset_data));
@@ -236,7 +236,7 @@ static int masktech_pin_unblock(sc_card_t *card,
 	reset_data.pin2.prompt = data->pin2.prompt;
 
 	rv = iso_ops->pin_cmd(card, &reset_data, tries_left);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, rv, "APDU transmit failed - reset unblock PIN");
+	LOG_TEST_RET(card->ctx, rv, "APDU transmit failed - reset unblock PIN");
 
 	return 0;
 }
@@ -259,7 +259,7 @@ static int masktech_pin_change(sc_card_t *card,
 	verify_data.pin1.prompt = data->pin1.prompt;
 
 	rv = iso_ops->pin_cmd(card, &verify_data, tries_left);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, rv, "APDU transmit failed - verify change PIN");
+	LOG_TEST_RET(card->ctx, rv, "APDU transmit failed - verify change PIN");
 
 	/* Build a SC_PIN_CMD_CHANGE APDU */
 	memset(&change_data, 0, sizeof(change_data));
@@ -273,7 +273,7 @@ static int masktech_pin_change(sc_card_t *card,
 	change_data.pin2.prompt = data->pin2.prompt;
 
 	rv = iso_ops->pin_cmd(card, &change_data, tries_left);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, rv, "APDU transmit failed - change PIN");
+	LOG_TEST_RET(card->ctx, rv, "APDU transmit failed - change PIN");
 
 	return 0;
 }
@@ -320,7 +320,7 @@ static int masktech_get_serialnr(sc_card_t * card, sc_serial_number_t * serial)
 	rv = sc_transmit_apdu(card, &apdu);
 	card->cla = 0x00;
 
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, rv, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, rv, "APDU transmit failed");
 
 	if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
 		return SC_ERROR_INTERNAL;

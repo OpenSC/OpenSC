@@ -246,11 +246,11 @@ cflex_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df
 	/* Get file definition from the profile */
 	if (sc_profile_get_file(profile, (pin_attrs->reference == 1)? "CHV1" : "CHV2", &file) < 0
 			&& sc_profile_get_file(profile, "CHV", &file) < 0)
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_FILE_NOT_FOUND, "profile does not define pin file ACLs");
+		LOG_TEST_RET(ctx, SC_ERROR_FILE_NOT_FOUND, "profile does not define pin file ACLs");
 
 	ndummies = cflex_create_dummy_chvs(profile, p15card, file, SC_AC_OP_CREATE, dummies);
 	sc_file_free(file);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, ndummies, "Unable to create dummy CHV file");
+	LOG_TEST_RET(ctx, ndummies, "Unable to create dummy CHV file");
 
 	r = cflex_create_pin_file(profile, p15card, &df->path, pin_attrs->reference,
 			pin, pin_len, sc_profile_get_pin_retries(profile, pin_type),
@@ -548,7 +548,7 @@ cflex_create_pin_file(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	if (sc_profile_get_file_by_path(profile, &path, &file) < 0
 			&& sc_profile_get_file(profile, (ref == 1)? "CHV1" : "CHV2", &file) < 0
 			&& sc_profile_get_file(profile, "CHV", &file) < 0)
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_FILE_NOT_FOUND, "profile does not define pin file ACLs");
+		LOG_TEST_RET(ctx, SC_ERROR_FILE_NOT_FOUND, "profile does not define pin file ACLs");
 
 	file->path = path;
 	file->size = 23;
@@ -568,7 +568,7 @@ cflex_create_pin_file(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	 * necessary */
 	ndummies = cflex_create_dummy_chvs(profile, p15card,
 				file, SC_AC_OP_UPDATE, dummies);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, ndummies, "Unable to create dummy CHV file");
+	LOG_TEST_RET(ctx, ndummies, "Unable to create dummy CHV file");
 
 	if (!unprotected)   {
 		struct sc_pin_cmd_data pin_cmd;
@@ -581,7 +581,7 @@ cflex_create_pin_file(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		pin_cmd.pin1.len = sizeof(dummy_pin_value);
 
 		r = sc_pin_cmd(p15card->card, &pin_cmd, NULL);
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Cannot verify dummy PIN");
+		LOG_TEST_RET(ctx, r, "Cannot verify dummy PIN");
 
 	};
 
@@ -593,10 +593,10 @@ cflex_create_pin_file(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	}
 
 	r = sc_pkcs15init_create_file(profile, p15card, file);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Failed to create PIN file");
+	LOG_TEST_RET(ctx, r, "Failed to create PIN file");
 
 	r = sc_update_binary(p15card->card, 0, buffer, 23, 0);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Failed to update PIN file");
+	LOG_TEST_RET(ctx, r, "Failed to update PIN file");
 
 	if (r < 0 || file_ret == NULL)
 		sc_file_free(file);

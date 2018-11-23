@@ -1867,7 +1867,7 @@ authentic_manage_sdo_generate(struct sc_card *card, struct sc_authentic_sdo *sdo
 	LOG_TEST_RET(ctx, rv, "authentic_sdo_create() SDO put data error");
 
 	rv = authentic_decode_pubkey_rsa(ctx, apdu.resp, apdu.resplen, &sdo->data.prvkey);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, rv, "cannot decode public key");
+	LOG_TEST_RET(card->ctx, rv, "cannot decode public key");
 
 	free(data);
 	LOG_FUNC_RETURN(ctx, rv);

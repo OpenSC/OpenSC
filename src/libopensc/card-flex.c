@@ -532,9 +532,9 @@ static int select_file_id(sc_card_t *card, const u8 *buf, size_t buflen,
 		apdu.le = 0;
 	}
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
+	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
 	if (file_out == NULL)
 		return 0;
@@ -587,18 +587,18 @@ static int flex_select_file(sc_card_t *card, const sc_path_t *path,
 		if (pathlen != 2 || memcmp(pathptr, "\x3F\x00", 2) != 0) {
 			locked = 1;
 			r = sc_lock(card);
-			SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "sc_lock() failed");
+			LOG_TEST_RET(card->ctx, r, "sc_lock() failed");
 			if (!magic_done && memcmp(pathptr, "\x3F\x00", 2) != 0) {
 				r = select_file_id(card, (const u8 *) "\x3F\x00", 2, 0, NULL);
 				if (r)
 					sc_unlock(card);
-				SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Unable to select Master File (MF)");
+				LOG_TEST_RET(card->ctx, r, "Unable to select Master File (MF)");
 			}
 			while (pathlen > 2) {
 				r = select_file_id(card, pathptr, 2, 0, NULL);
 				if (r)
 					sc_unlock(card);
-				SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Unable to select DF");
+				LOG_TEST_RET(card->ctx, r, "Unable to select DF");
 				pathptr += 2;
 				pathlen -= 2;
 			}
@@ -709,7 +709,7 @@ static int flex_delete_file(sc_card_t *card, const sc_path_t *path)
 	apdu.datalen = 2;
 	
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }
 
@@ -809,7 +809,7 @@ cryptoflex_construct_file_attrs(sc_card_t *card, const sc_file_t *file,
 			continue;
 		entry = sc_file_get_acl_entry(file, ops[i]);
 		r = acl_to_ac_nibble(entry);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Invalid ACL value");
+		LOG_TEST_RET(card->ctx, r, "Invalid ACL value");
 		/* Do some magic to get the nibbles right */
 		p[8 + i/2] |= (r & 0x0F) << (((i+1) % 2) * 4);
 		r = acl_to_keynum_nibble(entry);
@@ -918,9 +918,9 @@ static int flex_create_file(sc_card_t *card, sc_file_t *file)
 	apdu.lc = sendlen;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
+	LOG_TEST_RET(card->ctx, r, "Card returned error");
 	if (card->cache.valid) {
 		u8 file_id[2];
 		
@@ -1010,9 +1010,9 @@ cryptoflex_compute_signature(sc_card_t *card, const u8 *data,
 		for (i2 = 0; i2 < 10; i2++)
 			sbuf[i2]=data[data_len-1-i2];
 		r = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
+		LOG_TEST_RET(card->ctx, r, "Card returned error");
 		data_len -= 10;
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x88, 0x00, prv->rsa_key_ref);
 		apdu.cla=0x0;
@@ -1027,9 +1027,9 @@ cryptoflex_compute_signature(sc_card_t *card, const u8 *data,
 	apdu.le      = apdu.resplen > 256 ? 256 : apdu.resplen;
 	apdu.resp    = sbuf;
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
+	LOG_TEST_RET(card->ctx, r, "Card returned error");
 	for (i = 0; i < apdu.resplen; i++)
 		out[i] = sbuf[apdu.resplen-1-i];
 	return apdu.resplen;
@@ -1068,9 +1068,9 @@ cyberflex_compute_signature(sc_card_t *card, const u8 *data,
 	apdu.resplen = outlen;
 	apdu.resp = out;
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
+	LOG_TEST_RET(card->ctx, r, "Card returned error");
 	return apdu.resplen;
 }
 
@@ -1143,9 +1143,9 @@ static int flex_generate_key(sc_card_t *card, struct sc_cardctl_cryptoflex_genke
 	sbuf[3] = (data->exponent >> 24) & 0xFF;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
+	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
 	data->pubkey_len = apdu.resplen;
 	return 0;
@@ -1296,10 +1296,10 @@ static int flex_logout(sc_card_t *card)
 	apdu.cla = 0xF0;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
+	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
 	LOG_FUNC_RETURN(card->ctx, r);
 }

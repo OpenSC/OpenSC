@@ -135,7 +135,7 @@ static int gp_select_applet(sc_card_t *card, const u8 *aid, size_t aid_len)
 	apdu.resplen = sizeof(buf);
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	if (r)
 		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, r);
@@ -418,7 +418,7 @@ static int gemsafe_restore_security_env(struct sc_card *card, int se_num)
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x22, 0x73, (u8) se_num);
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }
@@ -489,7 +489,7 @@ static int gemsafe_compute_signature(struct sc_card *card, const u8 * data,
 	apdu.datalen = data_len + 2;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 		if(card->type == SC_CARD_TYPE_GEMSAFEV1_PTEID ||
 		   card->type == SC_CARD_TYPE_GEMSAFEV1_SEEID) {
@@ -503,7 +503,7 @@ static int gemsafe_compute_signature(struct sc_card *card, const u8 * data,
 			  apdu.cla = 0x00;
 			}
 			r = sc_transmit_apdu(card, &apdu);
-			SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+			LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 			if(apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
 				SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 		}
@@ -537,7 +537,7 @@ static int gemsafe_decipher(struct sc_card *card, const u8 * crgram,
 	apdu.lc   = crgram_len;
 	apdu.datalen = crgram_len;
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 		int len = apdu.resplen > outlen ? outlen : apdu.resplen;
 

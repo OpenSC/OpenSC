@@ -103,7 +103,7 @@ static int cardos_match_card(sc_card_t *card)
 		apdu.le = 256;
 		apdu.lc = 0;
 		rv = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, rv, "APDU transmit failed");
+		LOG_TEST_RET(card->ctx, rv, "APDU transmit failed");
 		if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
 			return 0;
 		if (apdu.resp[0] != atr[10] ||
@@ -143,7 +143,7 @@ static int cardos_have_2048bit_package(sc_card_t *card)
 	apdu.lc = 0;
 	apdu.le = 256;
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	if ((len = apdu.resplen) == 0)
 		/* looks like no package has been installed  */
@@ -211,12 +211,12 @@ static int cardos_init(sc_card_t *card)
 	apdu.resplen = sizeof(rbuf);
 	r = sc_transmit_apdu(card, &apdu);
 	if (r < 0)
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL,
+		LOG_TEST_RET(card->ctx,
 				SC_ERROR_INVALID_CARD,
 				"APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	if (r < 0)
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL,
+		LOG_TEST_RET(card->ctx,
 				SC_ERROR_INVALID_CARD,
 				"GET DATA command returned error");
 	if (apdu.resplen != 2)
@@ -346,9 +346,9 @@ get_next_part:
 	apdu.resp = rbuf;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "DIRECTORY command returned error");
+	LOG_TEST_RET(card->ctx, r, "DIRECTORY command returned error");
 
 	if (apdu.resplen > 256) {
 		sc_log(card->ctx,  "directory listing > 256 bytes, cutting");
@@ -730,7 +730,7 @@ static int cardos_create_file(sc_card_t *card, sc_file_t *file)
 		apdu.data    = sbuf;
 
 		r = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 		return sc_check_sw(card, apdu.sw1, apdu.sw2);
 	} else
@@ -752,10 +752,10 @@ cardos_restore_security_env(sc_card_t *card, int se_num)
 	apdu.p1 = (card->type == SC_CARD_TYPE_CARDOS_CIE_V1 ? 0xF3 : 0x03);
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
+	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
 	LOG_FUNC_RETURN(card->ctx, r);
 }
@@ -812,10 +812,10 @@ cardos_set_security_env(sc_card_t *card,
 	apdu.data = data;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
+	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
 	do   {
 		const struct sc_supported_algo_info* algorithm_info = env->supported_algos;
@@ -865,7 +865,7 @@ do_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 	apdu.lc      = datalen;
 	apdu.datalen = datalen;
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, apdu.resplen);
@@ -1024,13 +1024,13 @@ cardos_lifecycle_get(sc_card_t *card, int *mode)
 	apdu.resp = rbuf;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
+	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
 	if (apdu.resplen < 1) {
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Lifecycle byte not in response");
+		LOG_TEST_RET(card->ctx, r, "Lifecycle byte not in response");
 	}
 
 	r = SC_SUCCESS;
@@ -1080,10 +1080,10 @@ cardos_lifecycle_set(sc_card_t *card, int *mode)
 	apdu.resp = NULL;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
+	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
 	LOG_FUNC_RETURN(card->ctx, r);
 }
@@ -1108,10 +1108,10 @@ cardos_put_data_oci(sc_card_t *card,
 	apdu.datalen = args->len;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
+	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
 	LOG_FUNC_RETURN(card->ctx, r);
 }
@@ -1134,10 +1134,10 @@ cardos_put_data_seci(sc_card_t *card,
 	apdu.datalen = args->len;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
+	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
 	return r;
 }
@@ -1169,9 +1169,9 @@ cardos_generate_key(sc_card_t *card,
 	apdu.datalen = apdu.lc = sizeof(data);
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "GENERATE_KEY failed");
+	LOG_TEST_RET(card->ctx, r, "GENERATE_KEY failed");
 
 	return r;
 }
@@ -1187,7 +1187,7 @@ static int cardos_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 	apdu.resplen = sizeof(rbuf);
 	apdu.le   = 256;
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r,  "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r,  "APDU transmit failed");
 	if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
 		return SC_ERROR_INTERNAL;
 	if (apdu.resplen != 32) {
@@ -1290,7 +1290,7 @@ cardos_logout(sc_card_t *card)
 		apdu.cla = 0x80;
 
 		r = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 		return sc_check_sw(card, apdu.sw1, apdu.sw2);
 	} else

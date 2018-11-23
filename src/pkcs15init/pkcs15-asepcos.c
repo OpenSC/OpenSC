@@ -80,7 +80,7 @@ static int asepcos_check_verify_tpin(sc_profile_t *profile, sc_pkcs15_card_t *p1
 		r = sc_pkcs15init_authenticate(profile, p15card, tfile, SC_AC_OP_CRYPTO);
 		p15card->card->caps |=  SC_CARD_CAP_USE_FCI_AC;
 		sc_file_free(tfile);
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "unable to authenticate for 'CRYPTO' operation");
+		LOG_TEST_RET(ctx, r, "unable to authenticate for 'CRYPTO' operation");
 	}
 	return SC_SUCCESS;
 }
@@ -780,7 +780,7 @@ static int asepcos_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 	apdu.resp    = rbuf;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00) {
 		sc_log(card->ctx,  "error creating key");
 		return SC_ERROR_INTERNAL;

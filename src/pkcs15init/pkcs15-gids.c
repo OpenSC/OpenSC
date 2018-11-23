@@ -123,7 +123,7 @@ static int gids_save_certificate(struct sc_pkcs15_card *p15card, struct sc_pkcs1
 		//TODO save the certificate in the special file
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 	}
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to find the private key associated to the certificate");
+	LOG_TEST_RET(card->ctx, r, "unable to find the private key associated to the certificate");
 
 	LOG_FUNC_RETURN(card->ctx, sc_card_ctl(card, SC_CARDCTL_GIDS_SAVE_CERT, &call));
 }

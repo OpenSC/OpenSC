@@ -229,8 +229,8 @@ static int gids_get_DO(sc_card_t* card, int fileIdentifier, int dataObjectIdenti
 	apdu.le = 256;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "gids get data failed");
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL,  sc_check_sw(card, apdu.sw1, apdu.sw2), "invalid return");
+	LOG_TEST_RET(card->ctx, r, "gids get data failed");
+	LOG_TEST_RET(card->ctx,  sc_check_sw(card, apdu.sw1, apdu.sw2), "invalid return");
 
 	p = sc_asn1_find_tag(card->ctx, buffer, sizeof(buffer), dataObjectIdentifier, &datasize);
 	if (!p) {
@@ -266,8 +266,8 @@ static int gids_put_DO(sc_card_t* card, int fileIdentifier, int dataObjectIdenti
 	apdu.flags |= SC_APDU_FLAGS_CHAINING;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "gids put data failed");
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL,  sc_check_sw(card, apdu.sw1, apdu.sw2), "invalid return");
+	LOG_TEST_RET(card->ctx, r, "gids put data failed");
+	LOG_TEST_RET(card->ctx,  sc_check_sw(card, apdu.sw1, apdu.sw2), "invalid return");
 
 	return SC_SUCCESS;
 }
@@ -295,7 +295,7 @@ static int gids_select_aid(sc_card_t* card, u8* aid, size_t aidlen, u8* response
 	r = sc_transmit_apdu(card, &apdu);
 	if (responselen)
 		*responselen = apdu.resplen;
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "gids select failed");
+	LOG_TEST_RET(card->ctx, r, "gids select failed");
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,  sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
 
@@ -310,9 +310,9 @@ static int gids_read_gidsfile_without_cache(sc_card_t* card, u8* masterfile, siz
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	r = gids_get_identifiers(card, masterfile, masterfilesize, directory, filename, &fileIdentifier, &dataObjectIdentifier);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to get the identifier for the gids file");
+	LOG_TEST_RET(card->ctx, r, "unable to get the identifier for the gids file");
 	r = gids_get_DO(card, fileIdentifier, dataObjectIdentifier, response, responselen);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to get the data from the file");
+	LOG_TEST_RET(card->ctx, r, "unable to get the data from the file");
 	return r;
 }
 
@@ -328,9 +328,9 @@ static int gids_write_gidsfile_without_cache(sc_card_t* card, u8* masterfile, si
 	}
 
 	r = gids_get_identifiers(card, masterfile, masterfilesize, directory, filename, &fileIdentifier, &dataObjectIdentifier);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to get the identifier for the gids file");
+	LOG_TEST_RET(card->ctx, r, "unable to get the identifier for the gids file");
 	r = gids_put_DO(card, fileIdentifier, dataObjectIdentifier, data, datalen);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to get the data from the file");
+	LOG_TEST_RET(card->ctx, r, "unable to get the data from the file");
 	return r;
 }
 
@@ -360,7 +360,7 @@ static int gids_update_cardcf(sc_card_t* card, int file, int container) {
 	int r;
 	size_t cardcfsize = sizeof(cardcf);
 	r = gids_read_gidsfile_without_cache(card, data->masterfile, data->masterfilesize, "", "cardcf", cardcf, &cardcfsize);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to get the cardcf");
+	LOG_TEST_RET(card->ctx, r, "unable to get the cardcf");
 
 	if (file) {
 		short filefreshness = cardcf[4] + cardcf[5] * 0x100;
@@ -375,7 +375,7 @@ static int gids_update_cardcf(sc_card_t* card, int file, int container) {
 		cardcf[3] = (containerfreshness>>8) & 0xFF;
 	}
 	r = gids_write_gidsfile_without_cache(card, data->masterfile, data->masterfilesize, "", "cardcf", cardcf, 6);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to update the cardcf file");
+	LOG_TEST_RET(card->ctx, r, "unable to update the cardcf file");
 	return r;
 }
 
@@ -386,11 +386,11 @@ static int gids_read_gidsfile(sc_card_t* card, char *directory, char *filename, 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (privatedata->masterfilesize == sizeof(privatedata->masterfile)) {
 		r = gids_read_masterfile(card);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to get the masterfile");
+		LOG_TEST_RET(card->ctx, r, "unable to get the masterfile");
 	}
 	r = gids_read_gidsfile_without_cache(card, privatedata->masterfile, privatedata->masterfilesize,
 		directory, filename, response, responselen);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to read the file");
+	LOG_TEST_RET(card->ctx, r, "unable to read the file");
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,r);
 }
 
@@ -408,11 +408,11 @@ static int gids_write_gidsfile(sc_card_t* card, char *directory, char *filename,
 	int r;
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	r = gids_update_cardcf(card, 1, 0);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to update the cache file");
+	LOG_TEST_RET(card->ctx, r, "unable to update the cache file");
 
 	r = gids_write_gidsfile_without_cache(card, privatedata->masterfile, privatedata->masterfilesize,
 		directory, filename, data, datalen);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to write the file");
+	LOG_TEST_RET(card->ctx, r, "unable to write the file");
 	if (strcmp(directory, "mscp") == 0 && strcmp(filename, "cmapfile") == 0) {
 		// update the cmapfile cache
 		privatedata->cmapfilesize = datalen;
@@ -432,7 +432,7 @@ static int gids_read_cmapfile(sc_card_t* card) {
 	if (r<0) {
 		data->cmapfilesize = sizeof(data->cmapfile);
 	}
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to get the cmapfile");
+	LOG_TEST_RET(card->ctx, r, "unable to get the cmapfile");
 	return r;
 }
 
@@ -448,7 +448,7 @@ static int gids_create_file(sc_card_t *card, char* directory, char* filename) {
 	gids_mf_record_t* record;
 
 	r = gids_find_available_DO(card, privatedata->masterfile, privatedata->masterfilesize, &fileIdentifier, &dataObjectIdentifier);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to find an empty DO");
+	LOG_TEST_RET(card->ctx, r, "unable to find an empty DO");
 
 	memcpy(masterfilebuffer, privatedata->masterfile, privatedata->masterfilesize);
 	masterfilebuffersize = privatedata->masterfilesize + sizeof(gids_mf_record_t);
@@ -468,10 +468,10 @@ static int gids_create_file(sc_card_t *card, char* directory, char* filename) {
 	record->dataObjectIdentifier = dataObjectIdentifier;
 
 	r = gids_update_cardcf(card, 1, 0);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to update the cardcf");
+	LOG_TEST_RET(card->ctx, r, "unable to update the cardcf");
 
 	r = gids_put_DO(card, MF_FI, MF_DO, masterfilebuffer, masterfilebuffersize);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to update the masterfile");
+	LOG_TEST_RET(card->ctx, r, "unable to update the masterfile");
 
 	memcpy(privatedata->masterfile, masterfilebuffer, masterfilebuffersize);
 	privatedata->masterfilesize = masterfilebuffersize;
@@ -532,7 +532,7 @@ static int gids_get_pin_status(sc_card_t *card, int pinreference, int *tries_lef
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OBJECT_NOT_FOUND);
 	}
 	r = gids_get_DO(card, GIDS_APPLET_EFID, dataObjectIdentifier, buffer, &buffersize);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to update the masterfile");
+	LOG_TEST_RET(card->ctx, r, "unable to update the masterfile");
 
 	buffersize = buffersize > sizeof(buffer) ? sizeof(buffer) : buffersize;
 
@@ -606,7 +606,7 @@ static int gids_get_serialnr(sc_card_t * card, sc_serial_number_t * serial)
 
 	buffersize = sizeof(buffer);
 	r = gids_read_gidsfile(card, "", "cardid", buffer, &buffersize);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to read cardid");
+	LOG_TEST_RET(card->ctx, r, "unable to read cardid");
 
 	if (SC_MAX_SERIALNR < buffersize)
 	{
@@ -870,8 +870,8 @@ static int gids_read_public_key (struct sc_card *card , unsigned int algorithm,
 	apdu.le = 256;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "gids read public key failed");
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL,  sc_check_sw(card, apdu.sw1, apdu.sw2), "invalid return");
+	LOG_TEST_RET(card->ctx, r, "gids read public key failed");
+	LOG_TEST_RET(card->ctx,  sc_check_sw(card, apdu.sw1, apdu.sw2), "invalid return");
 	buffersize = apdu.resplen;
 
 	keytemplate = sc_asn1_find_tag(card->ctx, buffer, buffersize, GIDS_PUBKEY_TAG, &tlen);
@@ -1098,9 +1098,9 @@ gids_select_key_reference(sc_card_t *card, sc_pkcs15_prkey_info_t* key_info) {
 
 	// refresh the cached data in case some thing has been modified
 	r = gids_read_masterfile(card);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "gids read masterfile failed");
+	LOG_TEST_RET(card->ctx, r, "gids read masterfile failed");
 	r = gids_read_cmapfile(card);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "gids read cmapfile failed");
+	LOG_TEST_RET(card->ctx, r, "gids read cmapfile failed");
 
 	recordsnum = (data->cmapfilesize / sizeof(CONTAINER_MAP_RECORD));
 
@@ -1209,10 +1209,10 @@ static int gids_perform_create_keyfile(sc_card_t *card, u8 keytype, u8 kid, u8 a
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, INS_ACTIVATE_FILE, 0x00, 0x00);
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "ACTIVATE_FILE returned error");
+	LOG_TEST_RET(card->ctx, r, "ACTIVATE_FILE returned error");
 
 	LOG_FUNC_RETURN(card->ctx, r);
 }
@@ -1335,15 +1335,15 @@ static int gids_create_keyfile(sc_card_t *card, sc_pkcs15_object_t *object) {
 	keymaprecord->unknownWithFFFF = (unsigned short) (-1);
 	keymaprecord->keyref = 0xB000 + kid;
 	r = gids_perform_create_keyfile(card, keytype, kid, algid);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to create the key file");
+	LOG_TEST_RET(card->ctx, r, "unable to create the key file");
 
 	r = gids_update_cardcf(card, 0, 1);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to update the cardcf file regarding container");
+	LOG_TEST_RET(card->ctx, r, "unable to update the cardcf file regarding container");
 	r = gids_put_DO(card, KEYMAP_FI, KEYMAP_DO, keymapbuffer, keymapbuffersize);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to write the keymap file");
+	LOG_TEST_RET(card->ctx, r, "unable to write the keymap file");
 
 	r = gids_write_gidsfile(card, "mscp", "cmapfile", cmapbuffer, cmapbuffersize);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to write the cmap file after the container creation");
+	LOG_TEST_RET(card->ctx, r, "unable to write the cmap file after the container creation");
 
 	LOG_FUNC_RETURN(card->ctx, r);
 }
@@ -1376,13 +1376,13 @@ static int gids_generate_key(sc_card_t *card, sc_pkcs15_object_t *object, struct
 	apdu.data = generatekey;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "generate key returned error");
+	LOG_TEST_RET(card->ctx, r, "generate key returned error");
 
 	r = gids_read_public_key(card, 0, NULL, kid, 0, &buffer, &buffersize);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "read public key returned error");
+	LOG_TEST_RET(card->ctx, r, "read public key returned error");
 	r = sc_pkcs15_decode_pubkey(card->ctx, pubkey, buffer, buffersize);
 	if (buffer)
 		free(buffer);
@@ -1480,11 +1480,11 @@ static int gids_delete_key_file(sc_card_t *card, int containernum) {
 	snprintf(ch_tmp, sizeof(ch_tmp), "3FFFB0%02X", (u8) (0xFF & (containernum + GIDS_FIRST_KEY_IDENTIFIER)));
 	sc_format_path(ch_tmp, &cpath);
 	r = gids_select_file(card, &cpath, NULL);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to select the key file");
+	LOG_TEST_RET(card->ctx, r, "unable to select the key file");
 	// delete current selected file
 	memset(&cpath, 0, sizeof(cpath));
 	r = iso_ops->delete_file(card, &cpath);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to delete the key file");
+	LOG_TEST_RET(card->ctx, r, "unable to delete the key file");
 	return r;
 }
 
@@ -1508,7 +1508,7 @@ static int gids_encode_certificate(sc_card_t *card, u8* source, size_t sourcesiz
 	destination[3] = (sourcesize & 0xFF00) >> 8;
 	outlen = *destinationsize - 4;
 	r = sc_compress(destination + 4, &outlen, source, sourcesize, COMPRESSION_ZLIB);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to compress the certificate");
+	LOG_TEST_RET(card->ctx, r, "unable to compress the certificate");
 	*destinationsize = outlen + 4;
 	return SC_SUCCESS;
 }
@@ -1528,13 +1528,13 @@ static int gids_save_certificate(sc_card_t *card, sc_pkcs15_object_t *certobject
 
 	// refresh the cached data in case some thing has been modified
 	r = gids_read_masterfile(card);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "gids read masterfile failed");
+	LOG_TEST_RET(card->ctx, r, "gids read masterfile failed");
 	r= gids_read_cmapfile(card);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "gids read cmapfile failed");
+	LOG_TEST_RET(card->ctx, r, "gids read cmapfile failed");
 
 	// compress the certificate according to the minidriver specification
 	r = gids_encode_certificate(card, cert_info->value.value, cert_info->value.len, certbuffer, &certbuffersize);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to encode the certificate");
+	LOG_TEST_RET(card->ctx, r, "unable to encode the certificate");
 
 	// save it to a minidriver file
 	containernum = prkey_info->key_reference - GIDS_FIRST_KEY_IDENTIFIER;
@@ -1547,14 +1547,14 @@ static int gids_save_certificate(sc_card_t *card, sc_pkcs15_object_t *certobject
 	r = gids_does_file_exists(card, "mscp", filename);
 	if (r == SC_ERROR_FILE_NOT_FOUND) {
 		r = gids_create_file(card, "mscp", filename);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "gids unable to create the certificate file");
+		LOG_TEST_RET(card->ctx, r, "gids unable to create the certificate file");
 	}
 	r = gids_write_gidsfile(card, "mscp", filename, certbuffer, certbuffersize);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "gids unable to write the certificate data");
+	LOG_TEST_RET(card->ctx, r, "gids unable to write the certificate data");
 
 	// return the path to the DO
 	r = gids_build_certificate_path(card, containernum, !(prkey_info->usage & SC_PKCS15_PRKEY_USAGE_DECRYPT), path);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "gids unable to build the certificate path");
+	LOG_TEST_RET(card->ctx, r, "gids unable to build the certificate path");
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
@@ -1606,14 +1606,14 @@ static int gids_delete_container_num(sc_card_t *card, size_t containernum) {
 
 	// remove the key, update the key map & cmap file and signal the change
 	r = gids_delete_key_file(card, (int) containernum);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to delete the key file");
+	LOG_TEST_RET(card->ctx, r, "unable to delete the key file");
 	r = gids_update_cardcf(card, 0, 1);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to update the cardcf file regarding container");
+	LOG_TEST_RET(card->ctx, r, "unable to update the cardcf file regarding container");
 	r = gids_put_DO(card, KEYMAP_FI, KEYMAP_DO, keymapbuffer, keymapbuffersize);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to write the keymap file");
+	LOG_TEST_RET(card->ctx, r, "unable to write the keymap file");
 
 	r = gids_write_gidsfile(card, "mscp", "cmapfile", cmapbuffer, cmapbuffersize);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to write the cmap file after the container creation");
+	LOG_TEST_RET(card->ctx, r, "unable to write the cmap file after the container creation");
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
@@ -1634,9 +1634,9 @@ static int gids_delete_cert(sc_card_t *card, sc_pkcs15_object_t* object) {
 	assert((object->type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_CERT);
 	// refresh the cached data in case some thing has been modified
 	r = gids_read_masterfile(card);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "gids read masterfile failed");
+	LOG_TEST_RET(card->ctx, r, "gids read masterfile failed");
 	r= gids_read_cmapfile(card);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "gids read cmapfile failed");
+	LOG_TEST_RET(card->ctx, r, "gids read cmapfile failed");
 
 	// remove the file reference from the masterfile
 	if (cert_info->path.len != 4) {
@@ -1666,13 +1666,13 @@ static int gids_delete_cert(sc_card_t *card, sc_pkcs15_object_t* object) {
 
 	// remove the DO, update the masterfile, and signal the change
 	r = gids_update_cardcf(card, 1, 0);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to update the cache file");
+	LOG_TEST_RET(card->ctx, r, "unable to update the cache file");
 
 	r = gids_put_DO(card, fileIdentifier, DO, NULL, 0);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "gids unable to delete the certificate DO");
+	LOG_TEST_RET(card->ctx, r, "gids unable to delete the certificate DO");
 
 	r = gids_put_DO(card, MF_FI, MF_DO, masterfilebuffer, masterfilebuffersize);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "gids unable to update the masterfile");
+	LOG_TEST_RET(card->ctx, r, "gids unable to update the masterfile");
 
 	memcpy(privatedata->masterfile, masterfilebuffer, masterfilebuffersize);
 	privatedata->masterfilesize = masterfilebuffersize;
@@ -1688,13 +1688,13 @@ static int gids_delete_key(sc_card_t *card, sc_pkcs15_object_t* object) {
 	assert((object->type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_PRKEY);
 	// refresh the cached data in case some thing has been modified
 	r = gids_read_masterfile(card);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "gids read masterfile failed");
+	LOG_TEST_RET(card->ctx, r, "gids read masterfile failed");
 	r = gids_read_cmapfile(card);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "gids read cmapfile failed");
+	LOG_TEST_RET(card->ctx, r, "gids read cmapfile failed");
 	containernum = key_info->key_reference - GIDS_FIRST_KEY_IDENTIFIER;
 
 	r = gids_delete_container_num(card, containernum);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "gids unable to delete the container");
+	LOG_TEST_RET(card->ctx, r, "gids unable to delete the container");
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
@@ -1708,15 +1708,15 @@ static int gids_initialize_create_file(sc_card_t *card, u8* command, size_t comm
 	apdu.datalen = commandsize;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU1 transmit failed");
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL,  sc_check_sw(card, apdu.sw1, apdu.sw2), "invalid return");
+	LOG_TEST_RET(card->ctx, r, "APDU1 transmit failed");
+	LOG_TEST_RET(card->ctx,  sc_check_sw(card, apdu.sw1, apdu.sw2), "invalid return");
 
 	// activate file
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, INS_ACTIVATE_FILE, 0x00, 0x00);
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU2 transmit failed");
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL,  sc_check_sw(card, apdu.sw1, apdu.sw2), "invalid return");
+	LOG_TEST_RET(card->ctx, r, "APDU2 transmit failed");
+	LOG_TEST_RET(card->ctx,  sc_check_sw(card, apdu.sw1, apdu.sw2), "invalid return");
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
@@ -1736,7 +1736,7 @@ static int gids_set_administrator_key(sc_card_t *card, u8* key) {
 	memcpy(adminKeyData+7, key, 24);
 	r = gids_put_DO(card, GIDS_APPLET_EFID, GIDS_PUT_KEY_DO, adminKeyData, sizeof(adminKeyData));
 	sc_mem_clear(adminKeyData, sizeof(adminKeyData));
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "gids unable to set the admin key");
+	LOG_TEST_RET(card->ctx, r, "gids unable to set the admin key");
 	return SC_SUCCESS;
 }
 
@@ -1791,7 +1791,7 @@ static int gids_initialize(sc_card_t *card, sc_cardctl_gids_init_param_t* param)
 
 	// avoid multiple initialization
 	r = gids_check_that_card_is_new(card);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "card seems to have been already initialized");
+	LOG_TEST_RET(card->ctx, r, "card seems to have been already initialized");
 
 	memset(&pindata, 0, sizeof(pindata));
 	// create PIN & PUK
@@ -1802,38 +1802,38 @@ static int gids_initialize(sc_card_t *card, sc_cardctl_gids_init_param_t* param)
 	pindata.pin_reference = 0x80;
 
 	r = sc_pin_cmd(card, &pindata, NULL);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "gids set pin");
+	LOG_TEST_RET(card->ctx, r, "gids set pin");
 
 	// create file
 	r = gids_initialize_create_file(card, UserCreateDeleteDirAc, sizeof(UserCreateDeleteDirAc));
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "gids to create the file UserCreateDeleteDirAc");
+	LOG_TEST_RET(card->ctx, r, "gids to create the file UserCreateDeleteDirAc");
 	r = gids_initialize_create_file(card, EveryoneReadUserWriteAc, sizeof(EveryoneReadUserWriteAc));
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "gids to create the file EveryoneReadUserWriteAc");
+	LOG_TEST_RET(card->ctx, r, "gids to create the file EveryoneReadUserWriteAc");
 	r = gids_initialize_create_file(card, UserWriteExecuteAc, sizeof(UserWriteExecuteAc));
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "gids to create the file UserWriteExecuteAc");
+	LOG_TEST_RET(card->ctx, r, "gids to create the file UserWriteExecuteAc");
 	r = gids_initialize_create_file(card, EveryoneReadAdminWriteAc, sizeof(EveryoneReadAdminWriteAc));
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "gids to create the file EveryoneReadAdminWriteAc");
+	LOG_TEST_RET(card->ctx, r, "gids to create the file EveryoneReadAdminWriteAc");
 	r = gids_initialize_create_file(card, UserReadWriteAc, sizeof(UserReadWriteAc));
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "gids to create the file UserReadWriteAc");
+	LOG_TEST_RET(card->ctx, r, "gids to create the file UserReadWriteAc");
 	r = gids_initialize_create_file(card, AdminReadWriteAc, sizeof(AdminReadWriteAc));
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "gids to create the file AdminReadWriteAc");
+	LOG_TEST_RET(card->ctx, r, "gids to create the file AdminReadWriteAc");
 
 	//admin key
 	r = gids_initialize_create_file(card, AdminKey, sizeof(AdminKey));
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "gids to create the file AdminKey");
+	LOG_TEST_RET(card->ctx, r, "gids to create the file AdminKey");
 
 	r = gids_set_administrator_key(card, param->init_code);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "gids unable to set the admin key");
+	LOG_TEST_RET(card->ctx, r, "gids unable to set the admin key");
 
 	// create the filesystem
 	r = gids_put_DO(card, MF_FI, MF_DO, masterfile, sizeof(masterfile));
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "gids unable to save the masterfile");
+	LOG_TEST_RET(card->ctx, r, "gids unable to save the masterfile");
 	r = gids_put_DO(card, CARDAPPS_FI, CARDAPPS_DO, cardapps, sizeof(cardapps));
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "gids unable to save the cardapps");
+	LOG_TEST_RET(card->ctx, r, "gids unable to save the cardapps");
 	r = gids_put_DO(card, CARDCF_FI, CARDCF_DO, cardcf, sizeof(cardcf));
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "gids unable to save the cardcf");
+	LOG_TEST_RET(card->ctx, r, "gids unable to save the cardcf");
 	r = gids_put_DO(card, CMAP_FI, CMAP_DO, NULL, 0);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "gids unable to save the cmapfile");
+	LOG_TEST_RET(card->ctx, r, "gids unable to save the cmapfile");
 #ifdef ENABLE_OPENSSL
 	for (i = sizeof(param->cardid) -1; i >= 0; i--) {
 		if (param->cardid[i]) break;
@@ -1841,12 +1841,12 @@ static int gids_initialize(sc_card_t *card, sc_cardctl_gids_init_param_t* param)
 	if (i < 0) {
 		// set a random cardid if not set
 		r = RAND_bytes(param->cardid, sizeof(param->cardid));
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to set a random serial number");
+		LOG_TEST_RET(card->ctx, r, "unable to set a random serial number");
 
 	}
 #endif
 	r = gids_put_DO(card, CARDID_FI, CARDID_DO, param->cardid, sizeof(param->cardid));
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "gids unable to save the cardid");
+	LOG_TEST_RET(card->ctx, r, "gids unable to save the cardid");
 
 	//select applet
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3, INS_SELECT, 0x00, 0x0C);
@@ -1855,13 +1855,13 @@ static int gids_initialize(sc_card_t *card, sc_cardctl_gids_init_param_t* param)
 	apdu.datalen = 2;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL,  sc_check_sw(card, apdu.sw1, apdu.sw2), "invalid return");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx,  sc_check_sw(card, apdu.sw1, apdu.sw2), "invalid return");
 	// activate file
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, INS_ACTIVATE_FILE, 0x00, 0x00);
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL,  sc_check_sw(card, apdu.sw1, apdu.sw2), "invalid return");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx,  sc_check_sw(card, apdu.sw1, apdu.sw2), "invalid return");
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
@@ -1905,12 +1905,12 @@ static int gids_authenticate_admin(sc_card_t *card, u8* key) {
 	apdu.data = (const unsigned char *) "\x83\x01\x80";
 	apdu.datalen = 3;
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL,  sc_check_sw(card, apdu.sw1, apdu.sw2), "invalid return");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx,  sc_check_sw(card, apdu.sw1, apdu.sw2), "invalid return");
 
 	// generate a challenge
 	r = RAND_bytes(randomR1, 16);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to set computer random");
+	LOG_TEST_RET(card->ctx, r, "unable to set computer random");
 
 	// send it to the card
 	memcpy(apduSetRandom+4, randomR1, 16);
@@ -1922,12 +1922,12 @@ static int gids_authenticate_admin(sc_card_t *card, u8* key) {
 	apdu.resplen = sizeof(apduSetRandomResponse);
 	apdu.le = 256;
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL,  sc_check_sw(card, apdu.sw1, apdu.sw2), "invalid return");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx,  sc_check_sw(card, apdu.sw1, apdu.sw2), "invalid return");
 
 	// compute the half size of the mutual authentication secret
 	r = RAND_bytes(z1, 7);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to set computer random");
+	LOG_TEST_RET(card->ctx, r, "unable to set computer random");
 	// set the padding
 	z1[7] = 0x80;
 
@@ -1966,8 +1966,8 @@ static int gids_authenticate_admin(sc_card_t *card, u8* key) {
 	apdu.resplen = sizeof(apduSendResponseResponse);
 	apdu.le = 256;
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL,  sc_check_sw(card, apdu.sw1, apdu.sw2), "invalid return");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx,  sc_check_sw(card, apdu.sw1, apdu.sw2), "invalid return");
 	
 	if (apdu.resplen != 44)
 	{
