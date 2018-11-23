@@ -500,7 +500,7 @@ static int get_se_num_from_keyd(sc_card_t * card, unsigned short fid,
 		len = keyd->datalen;
 
 		sc_log(ctx, "keyd no %d", keyd->recno);
-		sc_debug_hex(ctx, SC_LOG_DEBUG_NORMAL, "", p, len);
+		sc_log_hex(ctx, "", p, len);
 
 		tag = sc_asn1_find_tag(ctx, p, len, 0x83, &taglen);
 		if (!tag || taglen != 4 ||
