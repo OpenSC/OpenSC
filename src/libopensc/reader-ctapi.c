@@ -199,7 +199,7 @@ static int ctapi_transmit(sc_reader_t *reader, sc_apdu_t *apdu)
 	r = sc_apdu_get_octets(reader->ctx, apdu, &sbuf, &ssize, SC_PROTO_RAW);
 	if (r != SC_SUCCESS)
 		goto out;
-	sc_apdu_log(reader->ctx, SC_LOG_DEBUG_NORMAL, sbuf, ssize, 1);
+	sc_apdu_log(reader->ctx, sbuf, ssize, 1);
 	r = ctapi_internal_transmit(reader, sbuf, ssize,
 					rbuf, &rsize, apdu->control);
 	if (r < 0) {
@@ -207,7 +207,7 @@ static int ctapi_transmit(sc_reader_t *reader, sc_apdu_t *apdu)
 		sc_log(reader->ctx, "unable to transmit");
 		goto out;
 	}
-	sc_apdu_log(reader->ctx, SC_LOG_DEBUG_NORMAL, rbuf, rsize, 0);
+	sc_apdu_log(reader->ctx, rbuf, rsize, 0);
 	/* set response */
 	r = sc_apdu_set_resp(reader->ctx, apdu, rbuf, rsize);
 out:
