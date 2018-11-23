@@ -1381,7 +1381,7 @@ err:
 	if (r < 0)
 		EAC_CTX_clear_free(eac_ctx);
 
-	LOG_FUNC_RETURN(card->ctx, r);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, r);
 }
 
 static int eac_mse_set_at_ta(sc_card_t *card, int protocol,
@@ -1658,7 +1658,7 @@ err:
 	BUF_MEM_clear_free(signature);
 
 	if (card)
-		LOG_FUNC_RETURN(card->ctx, r);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, r);
 	else
 		return r;
 }
@@ -1806,7 +1806,7 @@ err:
 	BUF_MEM_clear_free(picc_pubkey);
 
 	if (card)
-		LOG_FUNC_RETURN(card->ctx, r);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, r);
 	else
 		return r;
 }
@@ -1891,7 +1891,7 @@ err:
 	BUF_MEM_clear_free(eph_pub_key);
 
 	if (card)
-		LOG_FUNC_RETURN(card->ctx, r);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, r);
 	else
 		return r;
 }
@@ -2310,14 +2310,14 @@ err:
 	if (msesetat)
 		EAC_MSE_C_free(msesetat);
 
-	LOG_FUNC_RETURN(card->ctx, r);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, r);
 }
 
 static int
 eac_sm_post_transmit(sc_card_t *card, const struct iso_sm_ctx *ctx,
 		sc_apdu_t *sm_apdu)
 {
-	LOG_FUNC_RETURN(card->ctx,  
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM,  
 			increment_ssc(ctx->priv_data));
 }
 
@@ -2329,7 +2329,7 @@ eac_sm_finish(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	if (!card)
 	   return SC_ERROR_INVALID_ARGUMENTS;
 	if(!ctx || !ctx->priv_data || !apdu)
-		LOG_FUNC_RETURN(card->ctx,  
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM,  
 				SC_ERROR_INVALID_ARGUMENTS);
 	eacsmctx = ctx->priv_data;
 
@@ -2351,13 +2351,13 @@ eac_sm_finish(sc_card_t *card, const struct iso_sm_ctx *ctx,
 
 				if (!r) {
 					ssl_error(card->ctx);
-					LOG_FUNC_RETURN(card->ctx,  SC_ERROR_INTERNAL);
+					SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM,  SC_ERROR_INTERNAL);
 				}
 			}
 		}
 	}
 
-	LOG_FUNC_RETURN(card->ctx,  SC_SUCCESS);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM,  SC_SUCCESS);
 }
 
 static void
