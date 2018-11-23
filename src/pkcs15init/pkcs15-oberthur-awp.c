@@ -1388,22 +1388,22 @@ awp_update_df_create_cert(struct sc_pkcs15_card *p15card, struct sc_profile *pro
 	sc_log(ctx, 
 		 "Cert Der(%p,%"SC_FORMAT_LEN_SIZE_T"u)", der.value, der.len);
 	rv = awp_encode_cert_info(p15card, obj, &icert);
-	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_NORMAL, rv, "'Create Cert' update DF failed: cannot encode info");
+	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_VERBOSE, rv, "'Create Cert' update DF failed: cannot encode info");
 
 	rv = awp_set_certificate_info(p15card, profile, info_file, &icert);
-	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_NORMAL, rv, "'Create Cert' update DF failed: cannot set info");
+	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_VERBOSE, rv, "'Create Cert' update DF failed: cannot set info");
 
 	rv = awp_update_object_list(p15card, profile, SC_PKCS15_TYPE_CERT_X509, obj_id & 0xFF);
-	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_NORMAL, rv, "'Create Cert' update DF failed: cannot update list");
+	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_VERBOSE, rv, "'Create Cert' update DF failed: cannot update list");
 
 	rv = awp_update_container(p15card, profile, SC_PKCS15_TYPE_CERT_X509, &icert.id, obj_id, &prvkey_id);
-	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_NORMAL, rv, "'Create Cert' update DF failed: cannot update container");
+	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_VERBOSE, rv, "'Create Cert' update DF failed: cannot update container");
 
 	sc_log(ctx,  "PrvKeyID:%04X", prvkey_id);
 
 	if (prvkey_id)
 		rv = awp_update_key_info(p15card, profile, prvkey_id, &icert);
-	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_NORMAL, rv, "'Create Cert' update DF failed: cannot update key info");
+	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_VERBOSE, rv, "'Create Cert' update DF failed: cannot update key info");
 
 	awp_free_cert_info(&icert);
 
@@ -1452,13 +1452,13 @@ awp_update_df_create_prvkey(struct sc_pkcs15_card *p15card, struct sc_profile *p
 		cc.cert_id = (path.value[path.len-1] & 0xFF) + (path.value[path.len-2] & 0xFF) * 0x100;
 
 		rv = sc_pkcs15_read_certificate(p15card, cert_info, &p15cert);
-		SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_NORMAL, rv, "AWP 'update private key' DF failed:  cannot get certificate");
+		SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_VERBOSE, rv, "AWP 'update private key' DF failed:  cannot get certificate");
 
 		rv = sc_pkcs15_allocate_object_content(ctx, cert_obj, p15cert->data.value, p15cert->data.len);
-		SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_NORMAL, rv, "AWP 'update private key' DF failed:  cannot allocate content");
+		SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_VERBOSE, rv, "AWP 'update private key' DF failed:  cannot allocate content");
 
 		rv = awp_encode_cert_info(p15card, cert_obj, &icert);
-		SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_NORMAL, rv, "AWP 'update private key' DF failed:  cannot encode cert info");
+		SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_VERBOSE, rv, "AWP 'update private key' DF failed:  cannot encode cert info");
 
 		sc_pkcs15_free_certificate(p15cert);
 		p15cert = NULL;
@@ -1471,25 +1471,25 @@ awp_update_df_create_prvkey(struct sc_pkcs15_card *p15card, struct sc_profile *p
 	}
 
 	rv = awp_new_file(p15card, profile, key_obj->type, cc.prkey_id & 0xFF, &info_file, NULL);
-	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_NORMAL, rv, "New private key info file error");
+	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_VERBOSE, rv, "New private key info file error");
 
 	pubkey.algorithm = SC_ALGORITHM_RSA;
 	sc_log(ctx, 
 		 "PrKey Der(%p,%"SC_FORMAT_LEN_SIZE_T"u)", der.value, der.len);
 	rv = sc_pkcs15_decode_pubkey(ctx, &pubkey, der.value, der.len);
-	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_NORMAL, rv, "AWP 'update private key' DF failed: decode public key error");
+	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_VERBOSE, rv, "AWP 'update private key' DF failed: decode public key error");
 
 	rv = awp_encode_key_info(p15card, key_obj, &pubkey.u.rsa, &ikey);
-	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_NORMAL, rv, "AWP 'update private key' DF failed: encode info error");
+	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_VERBOSE, rv, "AWP 'update private key' DF failed: encode info error");
 
 	rv = awp_set_key_info(p15card, profile, info_file, &ikey, cert_obj ? &icert : NULL);
-	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_NORMAL, rv, "AWP 'update private key' DF failed: set info error");
+	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_VERBOSE, rv, "AWP 'update private key' DF failed: set info error");
 
 	rv = awp_update_object_list(p15card, profile, key_obj->type, cc.prkey_id & 0xFF);
-	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_NORMAL, rv, "AWP 'update private key' DF failed: update object list error");
+	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_VERBOSE, rv, "AWP 'update private key' DF failed: update object list error");
 
 	rv = awp_create_container(p15card, profile, key_obj->type, &ikey.id, &cc);
-	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_NORMAL, rv, "AWP 'update private key' DF failed: update container error");
+	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_VERBOSE, rv, "AWP 'update private key' DF failed: update container error");
 
 err:
 	if (p15cert)
@@ -1526,25 +1526,25 @@ awp_update_df_create_pubkey(struct sc_pkcs15_card *p15card, struct sc_profile *p
 	memset(&ikey, 0, sizeof(ikey));
 
 	rv = awp_new_file(p15card, profile, obj->type, index, &info_file, NULL);
-	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_NORMAL, rv, "New public key info file error");
+	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_VERBOSE, rv, "New public key info file error");
 
 	pubkey.algorithm = SC_ALGORITHM_RSA;
 	sc_log(ctx, 
 		 "PrKey Der(%p,%"SC_FORMAT_LEN_SIZE_T"u)", der.value, der.len);
 	rv = sc_pkcs15_decode_pubkey(ctx, &pubkey, der.value, der.len);
-	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_NORMAL, rv, "AWP 'update public key' DF failed: decode public key error");
+	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_VERBOSE, rv, "AWP 'update public key' DF failed: decode public key error");
 
 	rv = awp_encode_key_info(p15card, obj, &pubkey.u.rsa, &ikey);
-	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_NORMAL, rv, "AWP 'update public key' DF failed: encode info error");
+	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_VERBOSE, rv, "AWP 'update public key' DF failed: encode info error");
 
 	rv = awp_set_key_info(p15card, profile, info_file, &ikey, NULL);
-	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_NORMAL, rv, "AWP 'update public key' DF failed: set info error");
+	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_VERBOSE, rv, "AWP 'update public key' DF failed: set info error");
 
 	rv = awp_update_object_list(p15card, profile, obj->type, index);
-	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_NORMAL, rv, "AWP 'update public key' DF failed: update object list error");
+	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_VERBOSE, rv, "AWP 'update public key' DF failed: update object list error");
 
 	rv = awp_update_container(p15card, profile, obj->type, &ikey.id, obj_id, NULL);
-	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_NORMAL, rv, "AWP 'update public key' DF failed: update container error");
+	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_VERBOSE, rv, "AWP 'update public key' DF failed: update container error");
 
 err:
 	awp_free_key_info(&ikey);

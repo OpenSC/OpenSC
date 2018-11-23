@@ -1462,10 +1462,10 @@ static int gids_import_key(sc_card_t *card, sc_pkcs15_object_t *object, sc_pkcs1
 	sc_format_asn1_entry(asn1_key_usage_template + 1, asn1_key_value_template, NULL, 1);
 
 	r = sc_asn1_encode(card->ctx, asn1_key_usage_template, &buffer, &buflen);
-	SC_TEST_GOTO_ERR(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to encode the private key");
+	SC_TEST_GOTO_ERR(card->ctx, SC_LOG_DEBUG_VERBOSE, r, "unable to encode the private key");
 
 	r = gids_put_DO(card, GIDS_APPLET_EFID, GIDS_PUT_KEY_DO, buffer, buflen);
-	SC_TEST_GOTO_ERR(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to put the private key - key greater than 2048 bits ?");
+	SC_TEST_GOTO_ERR(card->ctx, SC_LOG_DEBUG_VERBOSE, r, "unable to put the private key - key greater than 2048 bits ?");
 	r = SC_SUCCESS;
 err:
 	sc_mem_clear(buffer, buflen);
