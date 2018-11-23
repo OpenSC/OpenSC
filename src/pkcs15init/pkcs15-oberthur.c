@@ -73,18 +73,18 @@ cosm_write_tokeninfo (struct sc_pkcs15_card *p15card, struct sc_profile *profile
 	sc_log(ctx,  "cosm_write_tokeninfo() label '%s'; flags 0x%X", label, flags);
 	if (sc_profile_get_file(profile, COSM_TITLE"-token-info", &file)) {
 		rv = SC_ERROR_INCONSISTENT_PROFILE;
-		SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_NORMAL, rv, "Cannot find "COSM_TITLE"-token-info");
+		SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_VERBOSE, rv, "Cannot find "COSM_TITLE"-token-info");
 	}
 
 	if (file->size < 16) {
 		rv = SC_ERROR_INCONSISTENT_PROFILE;
-		SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_NORMAL, rv, "Insufficient size of the "COSM_TITLE"-token-info file");
+		SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_VERBOSE, rv, "Insufficient size of the "COSM_TITLE"-token-info file");
 	}
 
 	buffer = calloc(1, file->size);
 	if (!buffer) {
 		rv = SC_ERROR_OUT_OF_MEMORY;
-		SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_NORMAL, rv, "Allocation error in cosm_write_tokeninfo()");
+		SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_VERBOSE, rv, "Allocation error in cosm_write_tokeninfo()");
 	}
 
 	if (label)
@@ -705,14 +705,14 @@ cosm_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	rv = sc_select_file(p15card->card, &file->path, NULL);
 	if (rv == 0)   {
 		rv = cosm_delete_file(p15card, profile, file);
-		SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_NORMAL, rv, "Failed to delete private key file");
+		SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_VERBOSE, rv, "Failed to delete private key file");
 	}
 	else if (rv != SC_ERROR_FILE_NOT_FOUND)    {
-		SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_NORMAL, rv, "Select private key file error");
+		SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_VERBOSE, rv, "Select private key file error");
 	}
 
 	rv = sc_pkcs15init_create_file(profile, p15card, file);
-	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_NORMAL, rv, "Failed to create private key file");
+	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_VERBOSE, rv, "Failed to create private key file");
 
 	key_info->key_reference = file->path.value[file->path.len - 1];
 
