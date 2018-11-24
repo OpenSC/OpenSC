@@ -1334,7 +1334,7 @@ static int pcsc_detect_readers(sc_context_t *ctx)
 		} else {
 			rv = gpriv->SCardListReaders(gpriv->pcsc_ctx, NULL,
 					NULL, (LPDWORD) &reader_buf_size);
-			if (rv == (LONG)SCARD_E_NO_SERVICE) {
+			if ((rv == (LONG)SCARD_E_NO_SERVICE) || (rv == (LONG)SCARD_E_SERVICE_STOPPED)) {
 				gpriv->SCardReleaseContext(gpriv->pcsc_ctx);
 				gpriv->pcsc_ctx = 0;
 				gpriv->pcsc_wait_ctx = -1;
