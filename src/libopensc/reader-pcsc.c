@@ -339,6 +339,16 @@ static int refresh_attributes(sc_reader_t *reader)
 			reader->flags &= ~SC_READER_CARD_CHANGED;
 			LOG_FUNC_RETURN(reader->ctx, SC_SUCCESS);
 		}
+		
+		/* the system could not dectect any reader. It means, the prevoiusly attached reader is disconnected. */		
+		if (rv == (LONG)SCARD_E_NO_READERS_AVAILABLE || rv == (LONG)SCARD_E_SERVICE_STOPPED) {
+ 			if (old_flags & SC_READER_CARD_PRESENT) {
+ 				reader->flags |= SC_READER_CARD_CHANGED;
+ 			}
+			
+ 			SC_FUNC_RETURN(reader->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
+ 		}
+
 		PCSC_TRACE(reader, "SCardGetStatusChange failed", rv);
 		return pcsc_to_opensc_error(rv);
 	}
@@ -1324,7 +1334,7 @@ static int pcsc_detect_readers(sc_context_t *ctx)
 		} else {
 			rv = gpriv->SCardListReaders(gpriv->pcsc_ctx, NULL,
 					NULL, (LPDWORD) &reader_buf_size);
-			if (rv == (LONG)SCARD_E_NO_SERVICE) {
+			if ((rv == (LONG)SCARD_E_NO_SERVICE) || (rv == (LONG)SCARD_E_SERVICE_STOPPED)) {
 				gpriv->SCardReleaseContext(gpriv->pcsc_ctx);
 				gpriv->pcsc_ctx = 0;
 				gpriv->pcsc_wait_ctx = -1;
