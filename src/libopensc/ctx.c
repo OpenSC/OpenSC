@@ -34,6 +34,7 @@
 #include <windows.h>
 #include <winreg.h>
 #include <direct.h>
+#include <io.h>
 #endif
 
 #include "common/libscdl.h"
@@ -361,6 +362,24 @@ set_drivers(struct _sc_ctx_options *opts, const scconf_list *list)
 	}
 }
 
+static int is_a_tty(FILE *fp)
+{
+	if (fp != NULL) {
+		int fd = fileno(fp);
+		if (fd >= 0) {
+#ifdef _WIN32
+			HANDLE h = (HANDLE)_get_osfhandle(fd);
+			if (h != INVALID_HANDLE_VALUE) {
+				return GetFileType(h) == FILE_TYPE_CHAR;
+			}
+#else
+			return isatty(fd);
+#endif
+		}
+	}
+	return 0;
+}
+
 static int
 load_parameters(sc_context_t *ctx, scconf_block *block, struct _sc_ctx_options *opts)
 {
@@ -394,6 +413,10 @@ load_parameters(sc_context_t *ctx, scconf_block *block, struct _sc_ctx_options *
 	if (scconf_get_bool (block, "disable_popups",
 				ctx->flags & SC_CTX_FLAG_DISABLE_POPUPS))
 		ctx->flags |= SC_CTX_FLAG_DISABLE_POPUPS;
+
+	if (scconf_get_bool (block, "disable_colors",
+				ctx->flags & SC_CTX_FLAG_DISABLE_COLORS))
+		ctx->flags |= SC_CTX_FLAG_DISABLE_COLORS;
 
 	if (scconf_get_bool (block, "enable_default_driver",
 				ctx->flags & SC_CTX_FLAG_ENABLE_DEFAULT_DRIVER))
@@ -726,6 +749,9 @@ static void process_config_file(sc_context_t *ctx, struct _sc_ctx_options *opts)
 	 * so at least one is NULL */
 	for (i = 0; ctx->conf_blocks[i]; i++)
 		load_parameters(ctx, ctx->conf_blocks[i], opts);
+
+	if (ctx->debug_file && !is_a_tty(ctx->debug_file))
+		ctx->flags |= SC_CTX_FLAG_DISABLE_COLORS;
 }
 
 int sc_ctx_detect_readers(sc_context_t *ctx)
