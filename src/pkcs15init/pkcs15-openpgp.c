@@ -26,6 +26,7 @@
 
 #include "libopensc/opensc.h"
 #include "libopensc/cardctl.h"
+#include "libopensc/internal.h"
 #include "libopensc/log.h"
 #include "libopensc/cards.h"
 #include "libopensc/asn1.h"
@@ -212,7 +213,7 @@ static int openpgp_generate_key_rsa(sc_card_t *card, sc_pkcs15_object_t *obj,
 
 	/* The OpenPGP supports only 32-bit exponent. */
 	key_info.u.rsa.exponent_len = 32;
-	key_info.u.rsa.exponent = calloc(key_info.u.rsa.exponent_len>>3, 1); /* 1/8 */
+	key_info.u.rsa.exponent = calloc(BYTES4BITS(key_info.u.rsa.exponent_len), 1);
 	if (key_info.u.rsa.exponent == NULL) {
 		free(key_info.u.rsa.modulus);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
@@ -231,10 +232,10 @@ static int openpgp_generate_key_rsa(sc_card_t *card, sc_pkcs15_object_t *obj,
 
 	sc_log(ctx, "Set output exponent info");
 	pubkey->u.rsa.exponent.len = key_info.u.rsa.exponent_len;
-	pubkey->u.rsa.exponent.data = calloc(key_info.u.rsa.exponent_len>>3, 1); /* 1/8 */
+	pubkey->u.rsa.exponent.data = calloc(BYTES4BITS(key_info.u.rsa.exponent_len), 1);
 	if (pubkey->u.rsa.exponent.data == NULL)
 		goto err;
-	memcpy(pubkey->u.rsa.exponent.data, key_info.u.rsa.exponent, key_info.u.rsa.exponent_len>>3); /* 1/8 */
+	memcpy(pubkey->u.rsa.exponent.data, key_info.u.rsa.exponent, BYTES4BITS(key_info.u.rsa.exponent_len));
 
 err:
 	if (key_info.u.rsa.modulus)
