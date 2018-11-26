@@ -152,6 +152,7 @@ enum {
 	OPT_SALT,
 	OPT_VERIFY,
 	OPT_SIGNATURE_FILE,
+	OPT_ALWAYS_AUTH
 };
 
 static const struct option options[] = {
@@ -221,6 +222,7 @@ static const struct option options[] = {
 	{ "test-fork",		0, NULL,		OPT_TEST_FORK },
 #endif
 	{ "generate-random",	1, NULL,		OPT_GENERATE_RANDOM },
+	{ "always-auth",	0,	NULL,	OPT_ALWAYS_AUTH },
 
 	{ NULL, 0, NULL, 0 }
 };
@@ -292,6 +294,7 @@ static const char *option_help[] = {
 	"Test forking and calling C_Initialize() in the child",
 #endif
 	"Generate given amount of random data",
+	"Set the CKA_ALWAYS_AUTHENTICATE attribute to a key object (require PIN verification for each use)",
 };
 
 static const char *	app_name = "pkcs11-tool"; /* for utils.c */
@@ -340,6 +343,7 @@ static CK_MECHANISM_TYPE opt_hash_alg = 0;
 static unsigned long	opt_mgf = 0;
 static long	        opt_salt_len = 0;
 static int		opt_salt_len_given = 0; /* 0 - not given, 1 - given with input parameters */
+static int		opt_always_auth = 0;
 
 static void *module = NULL;
 static CK_FUNCTION_LIST_PTR p11 = NULL;
@@ -886,7 +890,9 @@ int main(int argc, char * argv[])
 			do_generate_random = 1;
 			action_count++;
 			break;
-
+		case OPT_ALWAYS_AUTH:
+			opt_always_auth = 1;
+			break;
 		default:
 			util_print_usage_and_die(app_name, options, option_help, NULL);
 		}
@@ -2380,6 +2386,12 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		n_pubkey_attr++;
 	}
 
+	if (opt_always_auth != 0) {
+		FILL_ATTR(privateKeyTemplate[n_privkey_attr], CKA_ALWAYS_AUTHENTICATE,
+				&_true, sizeof(_true));
+		n_privkey_attr++;
+	}
+
 	rv = p11->C_GenerateKeyPair(session, &mechanism,
 		publicKeyTemplate, n_pubkey_attr,
 		privateKeyTemplate, n_privkey_attr,
@@ -2498,6 +2510,12 @@ gen_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE *hSecretKey
 		n_attr++;
 		FILL_ATTR(keyTemplate[n_attr], CKA_VALUE_LEN, &key_length, sizeof(key_length));
 		n_attr++;
+
+		if (opt_always_auth != 0) {
+			FILL_ATTR(keyTemplate[n_attr], CKA_ALWAYS_AUTHENTICATE,
+				&_true, sizeof(_true));
+			n_attr++;
+		}
 
 		mechanism.mechanism = opt_mechanism;
 	}
@@ -2967,6 +2985,11 @@ static int write_object(CK_SESSION_HANDLE session)
 		}
 		if (opt_key_usage_derive != 0) {
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_DERIVE, &_true, sizeof(_true));
+			n_privkey_attr++;
+		}
+		if (opt_always_auth != 0) {
+			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_ALWAYS_AUTHENTICATE,
+				&_true, sizeof(_true));
 			n_privkey_attr++;
 		}
 

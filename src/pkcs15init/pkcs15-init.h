@@ -228,6 +228,7 @@ struct sc_pkcs15init_prkeyargs {
 	unsigned long		x509_usage;
 	unsigned int		flags;
 	unsigned int		access_flags;
+	int			user_consent;
 
 	union {
 		struct sc_pkcs15init_keyarg_gost_params gost;
@@ -269,13 +270,14 @@ struct sc_pkcs15init_skeyargs {
 	struct sc_pkcs15_id	id;
 	struct sc_pkcs15_id	auth_id;
 	const char *		label;
-	unsigned long           usage;
+	unsigned long		usage;
 	unsigned int		flags;
 	unsigned int		access_flags;
 	unsigned long		algorithm; /* User requested algorithm */
 	unsigned long		value_len; /* User requested length */
 	int			session_object;	 /* If nonzero. this is a session object, which will
 						be cleared from card when the session is closed.*/
+	int			user_consent;
 	struct sc_pkcs15_skey	key;
 };
 

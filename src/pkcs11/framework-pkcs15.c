@@ -2153,6 +2153,9 @@ pkcs15_create_private_key(struct sc_pkcs11_slot *slot, struct sc_profile *profil
 		case CKA_OPENSC_NON_REPUDIATION:
 			args.usage |= pkcs15_check_bool_cka(attr, SC_PKCS15_PRKEY_USAGE_NONREPUDIATION);
 			break;
+		case CKA_ALWAYS_AUTHENTICATE:
+			args.user_consent = (int) (pkcs15_check_bool_cka(attr, 1));
+			break;
 		default:
 			/* ignore unknown attrs, or flag error? */
 			continue;
@@ -2318,7 +2321,10 @@ pkcs15_create_secret_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 			break;
 		case CKA_EXTRACTABLE:
 			if (pkcs15_check_bool_cka(attr, 1))
-					args.access_flags |= SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE;
+				args.access_flags |= SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE;
+			break;
+		case CKA_ALWAYS_AUTHENTICATE:
+			args.user_consent = (int) (pkcs15_check_bool_cka(attr, 1));
 			break;
 		default:
 			/* ignore unknown attrs, or flag error? */
@@ -2931,6 +2937,7 @@ pkcs15_gen_keypair(struct sc_pkcs11_slot *slot, CK_MECHANISM_PTR pMechanism,
 	char		priv_label[SC_PKCS15_MAX_LABEL_SIZE];
 	int		rc;
 	CK_RV rv = CKR_OK;
+	CK_BBOOL always_auth = CK_FALSE;
 
 	sc_log(context, "Keypair generation, mech = 0x%0lx",
 		   pMechanism->mechanism);
@@ -3045,6 +3052,12 @@ pkcs15_gen_keypair(struct sc_pkcs11_slot *slot, CK_MECHANISM_PTR pMechanism,
 	if (rv != CKR_OK)
 		goto kpgen_done;
 	pub_args.x509_usage = keygen_args.prkey_args.x509_usage;
+
+	len = sizeof(always_auth);
+	rv = attr_find(pPrivTpl, ulPrivCnt, CKA_ALWAYS_AUTHENTICATE, &always_auth, &len);
+	if (rv == CKR_OK && always_auth == CK_TRUE) {
+		keygen_args.prkey_args.user_consent = 1;
+	}
 
 	/* 3.a Try on-card key pair generation */
 
@@ -4831,6 +4844,10 @@ pkcs15_skey_get_attribute(struct sc_pkcs11_session *session,
 		*(CK_BBOOL*)attr->pValue = (((skey->base.p15_object->flags & SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE) == SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE)
 					&& (skey->base.p15_object->flags & SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE) == 0
 					&& (skey->base.p15_object->flags & SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE) == 0) ? CK_TRUE : CK_FALSE;
+		break;
+	case CKA_ALWAYS_AUTHENTICATE:
+		check_attribute_buffer(attr, sizeof(CK_BBOOL));
+		*(CK_BBOOL*)attr->pValue = skey->base.p15_object->user_consent;
 		break;
 	case CKA_VALUE_LEN:
 		check_attribute_buffer(attr, sizeof(CK_ULONG));

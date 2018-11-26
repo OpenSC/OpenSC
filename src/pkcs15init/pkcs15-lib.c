@@ -1211,6 +1211,7 @@ sc_pkcs15init_init_prkdf(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 	key_info->key_reference = 0;
 	key_info->modulus_length = keybits;
 	key_info->access_flags = keyargs->access_flags;
+	object->user_consent = keyargs->user_consent;
 	/* Path is selected below */
 
 	if (keyargs->access_flags & SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE) {
@@ -1351,6 +1352,8 @@ sc_pkcs15init_init_skdf(struct sc_pkcs15_card *p15card, struct sc_profile *profi
 
 	if (keyargs->session_object > 0)
 	    object->session_object = 1;
+
+	object->user_consent = keyargs->user_consent;
 
 	/* Select a Key ID if the user didn't specify one,
 	 * otherwise make sure it's compatible with our intended use */
