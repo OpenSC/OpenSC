@@ -147,6 +147,7 @@ enum {
 	OPT_UPDATE_EXISTING,
 	OPT_MD_CONTAINER_GUID,
 	OPT_VERSION,
+	OPT_USER_CONSENT,
 
 	OPT_PIN1      = 0x10000,	/* don't touch these values */
 	OPT_PUK1      = 0x10001,
@@ -218,6 +219,7 @@ const struct option	options[] = {
 	{ "wait",		no_argument, NULL,		'w' },
 	{ "help",		no_argument, NULL,		'h' },
 	{ "verbose",		no_argument, NULL,		'v' },
+	{ "user-consent",	required_argument, NULL, OPT_USER_CONSENT},
 
 	/* Hidden options for testing */
 	{ "assert-pristine",	no_argument, NULL,		OPT_ASSERT_PRISTINE },
@@ -283,6 +285,7 @@ static const char *		option_help[] = {
 	"Wait for card insertion",
 	"Display this message",
 	"Verbose operation. Use several times to enable debug output.",
+	"Set userConsent. Default = 0",
 
 	NULL,
 	NULL,
@@ -394,6 +397,7 @@ static unsigned int		opt_secret_count;
 static int			opt_ignore_ca_certs = 0;
 static int			opt_update_existing = 0;
 static int			verbose = 0;
+static int			opt_user_consent = 0;
 
 static struct sc_pkcs15init_callbacks callbacks = {
 	get_pin_callback,	/* get_pin() */
@@ -1814,6 +1818,7 @@ static int init_prkeyargs(struct sc_pkcs15init_prkeyargs *args)
 		args->guid = (unsigned char *)opt_md_container_guid;
 		args->guid_len = strlen(opt_md_container_guid);
 	}
+	args->user_consent = opt_user_consent;
 
 	return 0;
 }
@@ -1842,6 +1847,7 @@ static int init_skeyargs(struct sc_pkcs15init_skeyargs *args)
 	if ((opt_x509_usage & SC_PKCS15INIT_X509_KEY_ENCIPHERMENT) == SC_PKCS15INIT_X509_KEY_ENCIPHERMENT) {
 	    args->usage |= SC_PKCS15_PRKEY_USAGE_WRAP | SC_PKCS15_PRKEY_USAGE_UNWRAP;
 	}
+	args->user_consent = opt_user_consent;
 
 	return 0;
 }
@@ -2847,6 +2853,10 @@ handle_option(const struct option *opt)
 		break;
 	case OPT_VERSION:
 		this_action = ACTION_PRINT_VERSION;
+		break;
+	case OPT_USER_CONSENT:
+		if (optarg != NULL)
+			opt_user_consent = atoi(optarg);
 		break;
 	default:
 		util_print_usage_and_die(app_name, options, option_help, NULL);
