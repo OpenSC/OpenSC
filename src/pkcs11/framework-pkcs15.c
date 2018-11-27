@@ -1091,11 +1091,18 @@ pkcs15_init_slot(struct sc_pkcs15_card *p15card, struct sc_pkcs11_slot *slot,
 			pin_info = NULL;
 		}
 		else   {
-			if (auth->label[0] && strncmp(auth->label, "PIN", 4) != 0)
+			if (auth->label[0] && strncmp(auth->label, "PIN", 4) != 0) {
+				/* Trim tokeninfo->label to make right parenthesis visible */
+				char tokeninfo_label[sizeof label];
+				int len;
+				snprintf(tokeninfo_label, sizeof(tokeninfo_label), "%s", p15card->tokeninfo->label);
+				for (len = strlen(tokeninfo_label) - 1; len >= 0 && tokeninfo_label[len] == ' '; len--) {
+					tokeninfo_label[len] = 0;
+				}
 				snprintf(label, sizeof(label), "%.*s (%s)",
 					(int) sizeof(auth->label), auth->label,
-					p15card->tokeninfo->label);
-			else
+					tokeninfo_label);
+			} else
 				/* The PIN label is empty or says just non-useful "PIN" */
 				snprintf(label, sizeof(label), "%s", p15card->tokeninfo->label);
 			slot->token_info.flags |= CKF_LOGIN_REQUIRED;
