@@ -771,7 +771,7 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 	struct sc_app_info	*app;
 	struct sc_file		*df = profile->df_info->file;
 	int			r = SC_SUCCESS;
-	int			has_so_pin = 0;
+	int			has_so_pin = args->so_pin_len != 0;
 
 	LOG_FUNC_CALLED(ctx);
 	p15card->card = card;
@@ -786,19 +786,21 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 		LOG_TEST_RET(ctx, SC_ERROR_TOO_MANY_OBJECTS, "Too many applications on this card.");
 
 	/* In case of pinpad readers check if SO PIN is defined in a profile */
-	if (!args->so_pin_len && (card->reader->capabilities & SC_READER_CAP_PIN_PAD)) {
+	if (!has_so_pin && (card->reader->capabilities & SC_READER_CAP_PIN_PAD)) {
 		sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PIN, &pin_ainfo);
 		/* If found, assume we want SO PIN */
 		has_so_pin = pin_ainfo.attrs.pin.reference != -1;
 	}
 
 	/* If the profile requires an SO PIN, check min/max length */
-	if (args->so_pin_len || has_so_pin) {
+	if (has_so_pin) {
 		const char	*pin_label;
 
-		sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PIN, &pin_ainfo);
-		r = sc_pkcs15init_qualify_pin(card, "SO PIN", args->so_pin_len, &pin_ainfo);
-		LOG_TEST_RET(ctx, r, "Failed to qualify SO PIN");
+		if (args->so_pin_len) {
+			sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PIN, &pin_ainfo);
+			r = sc_pkcs15init_qualify_pin(card, "SO PIN", args->so_pin_len, &pin_ainfo);
+			LOG_TEST_RET(ctx, r, "Failed to qualify SO PIN");
+		}
 
 		/* Path encoded only for local SO PIN */
 		if (pin_attrs->flags & SC_PKCS15_PIN_FLAG_LOCAL)
