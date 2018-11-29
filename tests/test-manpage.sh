@@ -1,5 +1,5 @@
 #!/bin/bash
-SOURCE_PATH=../../
+SOURCE_PATH=../
 
 # find all the manual pages in src/tools
 TOOLS=`find "${SOURCE_PATH}/doc/tools" -name "*.1.xml" | sed -E -e "s|.*/([a-z0-9-]*).*|\1|"`
