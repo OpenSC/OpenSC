@@ -267,10 +267,6 @@ asn1_decode_ec_params(sc_context_t *ctx, void **paramp,
 	struct sc_asn1_entry asn1_ec_params[4];
 	struct sc_ec_parameters *ecp;
 
-	sc_debug(ctx, SC_LOG_DEBUG_ASN1,
-		 "DEE - asn1_decode_ec_params %p:%"SC_FORMAT_LEN_SIZE_T"u %d",
-		 buf, buflen, depth);
-
 	memset(&curve, 0, sizeof(curve));
 
 	/* We only want to copy the parms if they are a namedCurve
