@@ -58,7 +58,6 @@ sc_find_release(sc_pkcs11_operation_t *operation)
 {
 	struct sc_pkcs11_find_operation *fop = (struct sc_pkcs11_find_operation *)operation;
 
-	sc_log(context,"freeing %d handles used %d  at %p", fop->allocated_handles, fop->num_handles, fop->handles);
 	if (fop->handles) {
 		free(fop->handles);
 		fop->handles = NULL;

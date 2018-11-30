@@ -712,7 +712,6 @@ __pkcs15_create_pubkey_object(struct pkcs15_fw_data *fw_data,
 	struct sc_pkcs15_pubkey *p15_key = NULL;
 	int rv;
 
-	sc_log(context, "__pkcs15_create_pubkey_object() called, pubkey %p, data %p", pubkey, pubkey->data);
 	/* Read public key from card */
 	/* Attempt to read pubkey from card or file.
 	 * During initialization process, the key may have been created
@@ -754,7 +753,6 @@ __pkcs15_create_pubkey_object(struct pkcs15_fw_data *fw_data,
 	if (pubkey_object != NULL)
 		*pubkey_object = (struct pkcs15_any_object *) object;
 
-	sc_log(context, "__pkcs15_create_pubkey_object() returns pubkey object %p", object);
 	return rv;
 }
 
@@ -1136,7 +1134,6 @@ pkcs15_create_slot(struct sc_pkcs11_card *p11card, struct pkcs15_fw_data *fw_dat
 	struct sc_pkcs11_slot *slot = NULL;
 	CK_RV rv;
 
-	sc_log(context, "Create slot (p11card %p, fw_data %p, auth %p, app_info %p)", p11card, fw_data, auth, app_info);
 	rv = slot_allocate(&slot, p11card);
 	if (rv != CKR_OK)
 		return rv;
@@ -1514,7 +1511,6 @@ pkcs15_create_tokens(struct sc_pkcs11_card *p11card, struct sc_app_info *app_inf
 			_add_pin_related_objects(sign_slot, auth_sign_pin, fw_data, NULL);
 		}
 
-		sc_log(context, "slot %p, sign-slot %p\n", slot, sign_slot);
 		if (!slot && sign_slot)
 			slot = sign_slot;
 	}
@@ -4147,9 +4143,6 @@ pkcs15_prkey_derive(struct sc_pkcs11_session *session, void *obj,
 	if (!fw_data)
 		return sc_to_cryptoki_error(SC_ERROR_INTERNAL, "C_DeriveKey");
 
-	sc_log(context, "derivation %p %p %p %p %lu %p %lu", session, obj,
-		   pMechanism, pParameters, ulParametersLen, pData, *pulDataLen);
-
 	/* See which of the alternative keys supports derivation */
 	while (prkey && !(prkey->prv_info->usage & SC_PKCS15_PRKEY_USAGE_DERIVE))
 		prkey = prkey->prv_next;
@@ -4637,10 +4630,6 @@ data_value_to_attr(CK_ATTRIBUTE_PTR attr, struct sc_pkcs15_data *data)
 {
 	if (!attr || !data)
 		return CKR_ATTRIBUTE_VALUE_INVALID;
-
-	sc_log(context,
-	       "data_value_to_attr(): data(%p,len:%"SC_FORMAT_LEN_SIZE_T"u)",
-	       data, data->data_len);
 
 	check_attribute_buffer(attr, data->data_len);
 	memcpy(attr->pValue, data->data, data->data_len);

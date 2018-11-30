@@ -1460,7 +1460,6 @@ sc_card_sm_check(struct sc_card *card)
 	int rv, ii;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "card->sm_ctx.ops.open %p", card->sm_ctx.ops.open);
 
 	/* get the name of card specific SM configuration section */
 	atrblock = _sc_match_atr_block(ctx, card->driver, &card->atr);
@@ -1501,10 +1500,8 @@ sc_card_sm_check(struct sc_card *card)
 	strlcpy(card->sm_ctx.config_section, sm, sizeof(card->sm_ctx.config_section));
 
 	/* allocate resources for the external SM module */
-	sc_log(ctx, "'module_init' handler %p", card->sm_ctx.module.ops.module_init);
 	if (card->sm_ctx.module.ops.module_init)   {
 		module_data = scconf_get_str(sm_conf_block, "module_data", NULL);
-		sc_log(ctx, "module_data '%s'", module_data);
 
 		rv = card->sm_ctx.module.ops.module_init(ctx, module_data);
 		LOG_TEST_RET(ctx, rv, "Cannot initialize SM module");
@@ -1512,7 +1509,6 @@ sc_card_sm_check(struct sc_card *card)
 
 	/* initialize SM session in the case of 'APDU TRANSMIT' SM mode */
 	sm_mode = scconf_get_str(sm_conf_block, "mode", NULL);
-	sc_log(ctx, "SM mode '%s'; 'open' handler %p", sm_mode, card->sm_ctx.ops.open);
 	if (sm_mode && !strcasecmp("Transmit", sm_mode))   {
 		if (!card->sm_ctx.ops.open || !card->sm_ctx.ops.get_sm_apdu || !card->sm_ctx.ops.free_sm_apdu)
 			LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "'Transmit' SM asked but not supported by card driver");
