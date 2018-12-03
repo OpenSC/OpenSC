@@ -1008,6 +1008,8 @@ typedef struct sc_cardctl_sc_hsm_init_param {
 	u8 *user_pin;				/* Initial user PIN */
 	size_t user_pin_len;		/* Length of user PIN */
 	u8 user_pin_retry_counter;	/* Retry counter default value */
+	struct sc_aid bio1;			/* AID of biometric server for template 1 */
+	struct sc_aid bio2;			/* AID of biometric server for template 2 */
 	u8 options[2];				/* Initialization options */
 	signed char dkek_shares;	/* Number of DKEK shares, 0 for card generated, -1 for none */
 	char *label;				/* Token label to be set in EF.TokenInfo (2F03) */

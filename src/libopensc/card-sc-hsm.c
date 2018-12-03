@@ -1233,7 +1233,7 @@ static int sc_hsm_initialize(sc_card_t *card, sc_cardctl_sc_hsm_init_param_t *pa
 	int r;
 	size_t tilen;
 	sc_apdu_t apdu;
-	u8 ibuff[50+0xFF], *p;
+	u8 ibuff[64+0xFF], *p;
 
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -1264,6 +1264,19 @@ static int sc_hsm_initialize(sc_card_t *card, sc_cardctl_sc_hsm_init_param_t *pa
 		*p++ = 0x92;	// Number of DKEK shares
 		*p++ = 0x01;
 		*p++ = (u8)params->dkek_shares;
+	}
+
+	if (params->bio1.len) {
+		*p++ = 0x95;
+		*p++ = params->bio1.len;
+		memcpy(p, params->bio1.value, params->bio1.len);
+		p += params->bio1.len;
+	}
+	if (params->bio2.len) {
+		*p++ = 0x96;
+		*p++ = params->bio2.len;
+		memcpy(p, params->bio2.value, params->bio2.len);
+		p += params->bio2.len;
 	}
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x50, 0x00, 0x00);
