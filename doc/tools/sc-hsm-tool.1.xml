@@ -151,7 +151,25 @@
 						<para>Define number of PIN retries for user PIN during initialization. Default is 3.</para>
 					</listitem>
 				</varlistentry>
-				
+
+				<varlistentry>
+					<term>
+						<option>--bio-server1</option> <replaceable>value</replaceable>
+					</term>
+					<listitem>
+						<para>The hexadecimal AID of of the biometric server for template 1. Switches on the use of the user PIN as session PIN.</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--bio-server2</option> <replaceable>value</replaceable>
+					</term>
+					<listitem>
+						<para>The hexadecimal AID of of the biometric server for template 2. Switches on the use of the user PIN as session PIN.</para>
+					</listitem>
+				</varlistentry>
+
 				<varlistentry>
 					<term>
 						<option>--password</option> <replaceable>value</replaceable>

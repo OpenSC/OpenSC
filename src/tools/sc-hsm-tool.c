@@ -72,6 +72,8 @@ enum {
 	OPT_SO_PIN = 0x100,
 	OPT_PIN,
 	OPT_RETRY,
+	OPT_BIO1,
+	OPT_BIO2,
 	OPT_PASSWORD,
 	OPT_PASSWORD_SHARES_THRESHOLD,
 	OPT_PASSWORD_SHARES_TOTAL
@@ -90,6 +92,8 @@ static const struct option options[] = {
 	{ "so-pin",					1, NULL,		OPT_SO_PIN },
 	{ "pin",					1, NULL,		OPT_PIN },
 	{ "pin-retry",				1, NULL,		OPT_RETRY },
+	{ "bio-server1",			1, NULL,		OPT_BIO1 },
+	{ "bio-server2",			1, NULL,		OPT_BIO2 },
 	{ "password",				1, NULL,		OPT_PASSWORD },
 	{ "pwd-shares-threshold",	1, NULL,		OPT_PASSWORD_SHARES_THRESHOLD },
 	{ "pwd-shares-total",		1, NULL,		OPT_PASSWORD_SHARES_TOTAL },
@@ -115,6 +119,8 @@ static const char *option_help[] = {
 	"Define security officer PIN (SO-PIN)",
 	"Define user PIN",
 	"Define user PIN retry counter",
+	"AID of biometric server for template 1 (hex)",
+	"AID of biometric server for template 2 (hex)",
 	"Define password for DKEK share",
 	"Define threshold for number of password shares required for reconstruction",
 	"Define number of password shares",
@@ -558,7 +564,7 @@ static void print_info(sc_card_t *card, sc_file_t *file)
 
 
 
-static int initialize(sc_card_t *card, const char *so_pin, const char *user_pin, int retry_counter, int dkek_shares, const char *label)
+static int initialize(sc_card_t *card, const char *so_pin, const char *user_pin, int retry_counter, const char *bio1, const char *bio2, int dkek_shares, const char *label)
 {
 	sc_cardctl_sc_hsm_init_param_t param;
 	size_t len;
@@ -624,8 +630,32 @@ static int initialize(sc_card_t *card, const char *so_pin, const char *user_pin,
 
 	param.user_pin_retry_counter = (u8)retry_counter;
 
+	if (bio1) {
+		param.bio1.len = sizeof(param.bio1.value);
+		r = sc_hex_to_bin(bio1, param.bio1.value, &param.bio1.len);
+		if (r < 0) {
+			fprintf(stderr, "Error decoding AID of biometric server for template 1 (%s)\n", sc_strerror(r));
+			return -1;
+		}
+	} else {
+		param.bio1.len = 0;
+	}
+	if (bio2) {
+		param.bio2.len = sizeof(param.bio2.value);
+		r = sc_hex_to_bin(bio2, param.bio2.value, &param.bio2.len);
+		if (r < 0) {
+			fprintf(stderr, "Error decoding AID of biometric server for template 2 (%s)\n", sc_strerror(r));
+			return -1;
+		}
+	} else {
+		param.bio2.len = 0;
+	}
+
 	param.options[0] = 0x00;
-	param.options[1] = 0x01;
+	param.options[1] = 0x01; /* RESET RETRY COUNTER enabled */
+	if (param.bio1.len || param.bio2.len) {
+		param.options[1] |= 0x04; /* Session-PIN enabled with clear on reset */
+	}
 
 	param.dkek_shares = (char)dkek_shares;
 	param.label = (char *)label;
@@ -1666,6 +1696,8 @@ int main(int argc, char *argv[])
 	const char *opt_pin = NULL;
 	const char *opt_filename = NULL;
 	const char *opt_password = NULL;
+	const char *opt_bio1 = NULL;
+	const char *opt_bio2 = NULL;
 	int opt_retry_counter = 3;
 	int opt_dkek_shares = -1;
 	int opt_key_reference = -1;
@@ -1725,6 +1757,12 @@ int main(int argc, char *argv[])
 			break;
 		case OPT_RETRY:
 			opt_retry_counter = atol(optarg);
+			break;
+		case OPT_BIO1:
+			opt_bio1 = optarg;
+			break;
+		case OPT_BIO2:
+			opt_bio2 = optarg;
 			break;
 		case OPT_PASSWORD_SHARES_THRESHOLD:
 			opt_password_shares_threshold = atol(optarg);
@@ -1798,7 +1836,7 @@ int main(int argc, char *argv[])
 		goto fail;
 	}
 
-	if (do_initialize && initialize(card, opt_so_pin, opt_pin, opt_retry_counter, opt_dkek_shares, opt_label))
+	if (do_initialize && initialize(card, opt_so_pin, opt_pin, opt_retry_counter, opt_bio1, opt_bio2, opt_dkek_shares, opt_label))
 		goto fail;
 
 	if (do_create_dkek_share && create_dkek_share(card, opt_filename, opt_iter, opt_password, opt_password_shares_threshold, opt_password_shares_total))
