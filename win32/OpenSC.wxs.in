@@ -151,6 +151,9 @@
               <Component Id="egk_tool.exe" Guid="*" Win64="$(var.Win64YesNo)">
                 <File Source="$(var.SOURCE_DIR)\src\tools\egk-tool.exe" Vital="yes"/>
               </Component>
+              <Component Id="goid_tool.exe" Guid="*" Win64="$(var.Win64YesNo)">
+                <File Source="$(var.SOURCE_DIR)\src\tools\goid-tool.exe" Vital="yes"/>
+              </Component>
               <Component Id="eidenv.exe" Guid="*" Win64="$(var.Win64YesNo)">
                 <File Source="$(var.SOURCE_DIR)\src\tools\eidenv.exe" Vital="yes"/>
               </Component>
@@ -362,6 +365,7 @@
         <ComponentRef Id="pkcs11_tool.exe"/>
         <ComponentRef Id="cardos_tool.exe"/>
         <ComponentRef Id="egk_tool.exe"/>
+        <ComponentRef Id="goid_tool.exe"/>
         <ComponentRef Id="eidenv.exe"/>
         <ComponentRef Id="pkcs15_tool.exe"/>
         <ComponentRef Id="pkcs15_crypt.exe"/>
