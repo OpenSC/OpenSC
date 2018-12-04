@@ -873,6 +873,20 @@ puk		87654321
 					</listitem>
 				</varlistentry>
 
+                                <varlistentry>
+					<term>
+						<option>--user-consent</option> <replaceable>arg</replaceable>
+					</term>
+					<listitem>
+						<para>
+							Specify user-consent. <replaceable>arg</replaceable> is an integer value.
+                                                        If > 0, the value specifies how many times the
+                                                        object can be accessed before a new authentication is required.
+                                                        If zero, the object does not require re-authentication.
+						</para>
+					</listitem>
+				</varlistentry>
+
 				<varlistentry>
 					<term>
 						<option>--insecure</option>

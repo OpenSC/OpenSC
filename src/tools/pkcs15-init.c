@@ -206,6 +206,7 @@ const struct option	options[] = {
 	{ "update-existing",	no_argument,       NULL,	OPT_UPDATE_EXISTING},
 
 	{ "extractable",	no_argument, NULL,		OPT_EXTRACTABLE },
+	{ "user-consent",	required_argument, NULL, OPT_USER_CONSENT},
 	{ "insecure",		no_argument, NULL,		OPT_INSECURE },
 	{ "use-default-transport-keys",
 				no_argument, NULL,		'T' },
@@ -219,7 +220,6 @@ const struct option	options[] = {
 	{ "wait",		no_argument, NULL,		'w' },
 	{ "help",		no_argument, NULL,		'h' },
 	{ "verbose",		no_argument, NULL,		'v' },
-	{ "user-consent",	required_argument, NULL, OPT_USER_CONSENT},
 
 	/* Hidden options for testing */
 	{ "assert-pristine",	no_argument, NULL,		OPT_ASSERT_PRISTINE },
@@ -273,6 +273,7 @@ static const char *		option_help[] = {
 	"Store or update existing certificate",
 
 	"Private key stored as an extractable key",
+	"Set userConsent. Default = 0",
 	"Insecure mode: do not require a PIN for private key",
 	"Do not ask for transport keys if the driver thinks it knows the key",
 	"Do not prompt the user; if no PINs supplied, pinpad will be used",
@@ -285,7 +286,6 @@ static const char *		option_help[] = {
 	"Wait for card insertion",
 	"Display this message",
 	"Verbose operation. Use several times to enable debug output.",
-	"Set userConsent. Default = 0",
 
 	NULL,
 	NULL,
