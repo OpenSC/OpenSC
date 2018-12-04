@@ -217,12 +217,12 @@ static const struct option options[] = {
 	{ "verbose",		0, NULL,		'v' },
 	{ "private",		0, NULL,		OPT_PRIVATE },
 	{ "sensitive",		0, NULL,		OPT_SENSITIVE },
+	{ "always-auth",	0, NULL,		OPT_ALWAYS_AUTH },
 	{ "test-ec",		0, NULL,		OPT_TEST_EC },
 #ifndef _WIN32
 	{ "test-fork",		0, NULL,		OPT_TEST_FORK },
 #endif
 	{ "generate-random",	1, NULL,		OPT_GENERATE_RANDOM },
-	{ "always-auth",	0,	NULL,	OPT_ALWAYS_AUTH },
 
 	{ NULL, 0, NULL, 0 }
 };
@@ -289,12 +289,12 @@ static const char *option_help[] = {
 	"Verbose operation. (Set OPENSC_DEBUG to enable OpenSC specific debugging)",
 	"Set the CKA_PRIVATE attribute (object is only viewable after a login)",
 	"Set the CKA_SENSITIVE attribute (object cannot be revealed in plaintext)",
+	"Set the CKA_ALWAYS_AUTHENTICATE attribute to a key object (require PIN verification for each use)",
 	"Test EC (best used with the --login or --pin option)",
 #ifndef _WIN32
 	"Test forking and calling C_Initialize() in the child",
 #endif
-	"Generate given amount of random data",
-	"Set the CKA_ALWAYS_AUTHENTICATE attribute to a key object (require PIN verification for each use)",
+	"Generate given amount of random data"
 };
 
 static const char *	app_name = "pkcs11-tool"; /* for utils.c */
@@ -2510,12 +2510,6 @@ gen_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE *hSecretKey
 		n_attr++;
 		FILL_ATTR(keyTemplate[n_attr], CKA_VALUE_LEN, &key_length, sizeof(key_length));
 		n_attr++;
-
-		if (opt_always_auth != 0) {
-			FILL_ATTR(keyTemplate[n_attr], CKA_ALWAYS_AUTHENTICATE,
-				&_true, sizeof(_true));
-			n_attr++;
-		}
 
 		mechanism.mechanism = opt_mechanism;
 	}
