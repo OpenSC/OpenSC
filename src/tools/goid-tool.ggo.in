@@ -1,0 +1,87 @@
+package "goid-tool"
+purpose "@PACKAGE_SUMMARY@"
+
+option "reader"         r
+    "Number of the reader to use. By default, the first reader with a present card is used. If the arguement is an ATR, the reader with a matching card will be chosen."
+    string optional
+option "verbose" v
+    "Use (several times) to be more verbose"
+    multiple optional
+
+section "SoCManager Applet"
+option "verify-pin" p
+    "Verify PIN"
+    optional
+option "verify-bio" b
+    "Verify finger print"
+    optional
+option "verify-pin-or-bio" -
+    "Verify PIN or finger print (user's choice)"
+    optional
+option "new-pin" -
+    "Change PIN"
+    optional
+option "new-bio" -
+    "Use (several times) to change one or more biometric templates"
+    multiple optional
+option "info" -
+    "Dump Information about the SoCManager's configuration"
+    optional
+
+section "PAccess Applet"
+option "certificate" c
+    "Use (several times) to pass CV certificates"
+    string multiple optional dependon="key" typestr="FILENAME"
+option "key" k
+    "Private key for the CV certificate"
+    string optional dependon="certificate" typestr="FILENAME"
+option "print-cardid" -
+    "Print the card ID"
+    optional
+option "write-cardid" -
+    "Write the specified card ID"
+    string optional typestr="CARDID"
+option "print-paccessid" -
+    "Print the PAccess ID"
+    optional
+option "write-paccessid" -
+    "Write the specified PAccess ID"
+    string optional typestr="PACCESSID"
+option "read-dg" -
+    "Read the specified data group; use several times to read out multiple files"
+    int optional multiple typestr="ID"
+option "out-file" -
+    "Write output to a file instead of printing it; use once for each use of `--read-dg'"
+    string optional multiple typestr="FILENAME"
+option "write-dg" -
+    "Write the specified data group; use several times to write multiple files"
+    int optional multiple typestr="ID"
+option "in-file" -
+    "Read input from a file; use once for each use of `--write-dg'"
+    string optional multiple typestr="FILENAME"
+option "delete-dg" -
+    "Delete the specified data group; use several times to delete multiple files"
+    int optional multiple typestr="ID"
+option "create-dg" -
+    "Create the specified data group; use several times to create multiple files"
+    int optional multiple typestr="ID"
+option "new-size" -
+    "File size of newly created DGs"
+    int optional dependon="create-dg" typestr="SIZE" default="256"
+option "new-read-ac" -
+    "Access condition for reading newly created DGs"
+    values="always","never","ta","sm" default="sm" optional dependon="create-dg" 
+option "new-read-ac-chatbit" -
+    "Required access bits in certificate's CHAT for reading newly created DGs"
+    int optional dependon="create-dg" multiple typestr="INDEX"
+option "new-write-ac" -
+    "Access condition for writing newly created DGs"
+    values="always","never","ta","sm" default="sm" optional dependon="create-dg" 
+option "new-write-ac-chatbit" -
+    "Required access bits in certificate's CHAT for reading newly created DGs"
+    int optional dependon="create-dg" multiple typestr="INDEX"
+
+text "
+Report bugs to @PACKAGE_BUGREPORT@
+
+Written by Frank Morgner <frankmorgner@gmail.com>"

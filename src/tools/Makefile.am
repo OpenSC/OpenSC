@@ -21,17 +21,18 @@ do_subst = $(SED) \
 
 EGK_TOOL_BUILT_SOURCES = egk-tool-cmdline.h egk-tool-cmdline.c
 NPA_TOOL_BUILT_SOURCES = npa-tool-cmdline.h npa-tool-cmdline.c
+GOID_TOOL_BUILT_SOURCES = goid-tool-cmdline.h goid-tool-cmdline.c
 OPENSC_NOTIFY_BUILT_SOURCES = opensc-notify-cmdline.h opensc-notify-cmdline.c
 OPENSC_ASN1_BUILT_SOURCES = opensc-asn1-cmdline.h opensc-asn1-cmdline.c
 
 MAINTAINERCLEANFILES = $(srcdir)/Makefile.in $(srcdir)/versioninfo-tools.rc $(srcdir)/versioninfo-opensc-notify.rc
-EXTRA_DIST = Makefile.mak versioninfo-tools.rc.in versioninfo-opensc-notify.rc.in npa-tool.ggo.in opensc-notify.ggo.in egk-tool.ggo.in opensc-asn1.ggo.in org.opensc.notify.desktop.in exe.manifest
+EXTRA_DIST = Makefile.mak versioninfo-tools.rc.in versioninfo-opensc-notify.rc.in goid-tool.ggo.in npa-tool.ggo.in opensc-notify.ggo.in egk-tool.ggo.in opensc-asn1.ggo.in org.opensc.notify.desktop.in exe.manifest
 
 noinst_HEADERS = util.h fread_to_eof.h
 noinst_PROGRAMS = sceac-example
 bin_PROGRAMS = opensc-tool opensc-explorer opensc-notify \
 	pkcs15-tool pkcs15-crypt pkcs11-tool \
-	cardos-tool eidenv openpgp-tool iasecc-tool egk-tool opensc-asn1
+	cardos-tool eidenv openpgp-tool iasecc-tool egk-tool opensc-asn1 goid-tool
 if ENABLE_OPENSSL
 bin_PROGRAMS += cryptoflex-tool pkcs15-init netkey-tool piv-tool \
 	westcos-tool sc-hsm-tool dnie-tool gids-tool npa-tool
@@ -139,6 +140,24 @@ $(EGK_TOOL_BUILT_SOURCES):
 $(abs_builddir)/egk-tool.ggo: egk-tool.ggo.in 
 	$(do_subst) < $(abs_srcdir)/egk-tool.ggo.in > $@
 
+goid_tool_SOURCES = goid-tool.c util.c fread_to_eof.c $(GOID_TOOL_BUILT_SOURCES)
+goid_tool_LDADD = $(top_builddir)/src/libopensc/libopensc.la $(OPENPACE_LIBS)
+goid_tool_CFLAGS = -I$(top_srcdir)/src $(OPENPACE_CFLAGS)
+goid_tool_CFLAGS += -Wno-unused-but-set-variable
+if HAVE_UNKNOWN_WARNING_OPTION
+goid_tool_CFLAGS += -Wno-unknown-warning-option
+endif
+
+goid-tool.c: $(abs_builddir)/goid-tool.ggo $(GOID_TOOL_BUILT_SOURCES)
+
+# We only want *cmdline* to be generated when they have explicitly been removed.
+$(GOID_TOOL_BUILT_SOURCES):
+	$(MAKE) $(abs_builddir)/goid-tool.ggo
+	$(GENGETOPT) --include-getopt --file-name=goid-tool-cmdline --output-dir=$(builddir) < $(abs_builddir)/goid-tool.ggo
+
+$(abs_builddir)/goid-tool.ggo: goid-tool.ggo.in 
+	$(do_subst) < $(abs_srcdir)/goid-tool.ggo.in > $@
+
 opensc_asn1_SOURCES = opensc-asn1.c fread_to_eof.c $(OPENSC_ASN1_BUILT_SOURCES)
 opensc_asn1_LDADD = $(top_builddir)/src/libopensc/libopensc.la $(OPTIONAL_ZLIB_LIBS)
 opensc_asn1_CFLAGS = -I$(top_srcdir)/src $(OPTIONAL_ZLIB_CFLAGS)
@@ -181,4 +200,4 @@ org.opensc.notify.desktop: org.opensc.notify.desktop.in
 	$(do_subst) < $(abs_srcdir)/org.opensc.notify.desktop.in > $@
 
 clean-local:
-	rm -f $(abs_builddir)/npa-tool.ggo $(abs_builddir)/opensc-notify.ggo $(abs_builddir)/opensc-asn1.ggo $(abs_builddir)/egk-tool.ggo org.opensc.notify.desktop
+	rm -f $(abs_builddir)/npa-tool.ggo $(abs_builddir)/opensc-notify.ggo $(abs_builddir)/opensc-asn1.ggo $(abs_builddir)/goid-tool.ggo $(abs_builddir)/egk-tool.ggo org.opensc.notify.desktop
