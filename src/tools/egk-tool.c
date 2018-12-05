@@ -24,6 +24,7 @@
 #include "egk-tool-cmdline.h"
 #include "libopensc/log.h"
 #include "libopensc/opensc.h"
+#include "util.h"
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
@@ -81,59 +82,7 @@ void dump_binary(void *buf, size_t buf_len)
 }
 
 const unsigned char aid_hca[] = {0xD2, 0x76, 0x00, 0x00, 0x01, 0x02};
-
-static int initialize(int reader_id, int verbose,
-		sc_context_t **ctx, sc_reader_t **reader)
-{
-	unsigned int i, reader_count;
-	int r;
-
-	if (!ctx || !reader)
-		return SC_ERROR_INVALID_ARGUMENTS;
-
-	r = sc_establish_context(ctx, "");
-	if (r < 0 || !*ctx) {
-		fprintf(stderr, "Failed to create initial context: %s", sc_strerror(r));
-		return r;
-	}
-
-	(*ctx)->debug = verbose;
-	(*ctx)->flags |= SC_CTX_FLAG_ENABLE_DEFAULT_DRIVER;
-
-	reader_count = sc_ctx_get_reader_count(*ctx);
-
-	if (reader_count == 0) {
-		sc_log(*ctx, "No reader not found.\n");
-		return SC_ERROR_NO_READERS_FOUND;
-	}
-
-	if (reader_id < 0) {
-		/* Automatically try to skip to a reader with a card if reader not specified */
-		for (i = 0; i < reader_count; i++) {
-			*reader = sc_ctx_get_reader(*ctx, i);
-			if (sc_detect_card_presence(*reader) & SC_READER_CARD_PRESENT) {
-				reader_id = i;
-				sc_log(*ctx, "Using the first reader"
-						" with a card: %s", (*reader)->name);
-				break;
-			}
-		}
-		if ((unsigned int) reader_id >= reader_count) {
-			sc_log(*ctx, "No card found, using the first reader.");
-			reader_id = 0;
-		}
-	}
-
-	if ((unsigned int) reader_id >= reader_count) {
-		sc_log(*ctx, "Invalid reader number "
-				"(%d), only %d available.\n", reader_id, reader_count);
-		return SC_ERROR_NO_READERS_FOUND;
-	}
-
-	*reader = sc_ctx_get_reader(*ctx, reader_id);
-
-	return SC_SUCCESS;
-}
+static const char *app_name = "egk-tool";
 
 int read_file(struct sc_card *card, char *str_path, unsigned char **data, size_t *data_len)
 {
@@ -196,26 +145,29 @@ main (int argc, char **argv)
 	struct gengetopt_args_info cmdline;
 	struct sc_path path;
 	struct sc_context *ctx;
-	struct sc_reader *reader = NULL;
 	struct sc_card *card;
 	unsigned char *data = NULL;
 	size_t data_len = 0;
 	int r;
+	sc_context_param_t ctx_param;
 
 	if (cmdline_parser(argc, argv, &cmdline) != 0)
 		exit(1);
 
-	r = initialize(cmdline.reader_arg, cmdline.verbose_given, &ctx, &reader);
-	if (r < 0) {
-		fprintf(stderr, "Can't initialize reader\n");
+	memset(&ctx_param, 0, sizeof(ctx_param));
+	ctx_param.ver      = 0;
+	ctx_param.app_name = app_name;
+
+	r = sc_context_create(&ctx, &ctx_param);
+	if (r) {
+		fprintf(stderr, "Failed to establish context: %s\n", sc_strerror(r));
 		exit(1);
 	}
 
-	if (sc_connect_card(reader, &card) < 0) {
-		fprintf(stderr, "Could not connect to card\n");
-		sc_release_context(ctx);
-		exit(1);
-	}
+	r = util_connect_card_ex(ctx, &card, cmdline.reader_arg, 0, 0, cmdline.verbose_given);
+	if (r)
+		goto err;
+
 
 	sc_path_set(&path, SC_PATH_TYPE_DF_NAME, aid_hca, sizeof aid_hca, 0, 0);
 	if (SC_SUCCESS != sc_select_file(card, &path, NULL))

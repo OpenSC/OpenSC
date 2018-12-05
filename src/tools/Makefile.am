@@ -84,10 +84,14 @@ dnie_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
 gids_tool_SOURCES = gids-tool.c util.c
 gids_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
 
-npa_tool_SOURCES = npa-tool.c fread_to_eof.c $(NPA_TOOL_BUILT_SOURCES)
+npa_tool_SOURCES = npa-tool.c fread_to_eof.c util.c $(NPA_TOOL_BUILT_SOURCES)
 npa_tool_LDADD = $(top_builddir)/src/libopensc/libopensc.la \
 				 $(OPENPACE_LIBS)
 npa_tool_CFLAGS = -I$(top_srcdir)/src $(OPENPACE_CFLAGS) $(OPENSSL_CFLAGS)
+npa_tool_CFLAGS += -Wno-unused-but-set-variable
+if HAVE_UNKNOWN_WARNING_OPTION
+npa_tool_CFLAGS += -Wno-unknown-warning-option
+endif
 
 npa-tool.c: $(abs_builddir)/npa-tool.ggo $(NPA_TOOL_BUILT_SOURCES)
 
@@ -117,7 +121,7 @@ $(OPENSC_NOTIFY_BUILT_SOURCES):
 $(abs_builddir)/opensc-notify.ggo: opensc-notify.ggo.in 
 	$(do_subst) < $(abs_srcdir)/opensc-notify.ggo.in > $@
 
-egk_tool_SOURCES = egk-tool.c $(EGK_TOOL_BUILT_SOURCES)
+egk_tool_SOURCES = egk-tool.c util.c $(EGK_TOOL_BUILT_SOURCES)
 egk_tool_LDADD = $(top_builddir)/src/libopensc/libopensc.la $(OPTIONAL_ZLIB_LIBS)
 egk_tool_CFLAGS = -I$(top_srcdir)/src $(OPTIONAL_ZLIB_CFLAGS)
 egk_tool_CFLAGS += -Wno-unused-but-set-variable

@@ -33,22 +33,22 @@ const char *gengetopt_args_info_versiontext = "";
 const char *gengetopt_args_info_description = "";
 
 const char *gengetopt_args_info_help[] = {
-  "  -h, --help        Print help and exit",
-  "  -V, --version     Print version and exit",
-  "  -r, --reader=INT  Number of the PC/SC reader to use (-1 for autodetect)\n                      (default=`-1')",
-  "  -v, --verbose     Use (several times) to be more verbose",
+  "  -h, --help           Print help and exit",
+  "  -V, --version        Print version and exit",
+  "  -r, --reader=STRING  Number of the reader to use. By default, the first\n                         reader with a present card is used. If the arguement\n                         is an ATR, the reader with a matching card will be\n                         chosen.",
+  "  -v, --verbose        Use (several times) to be more verbose",
   "\nHealth Care Application (HCA):",
-  "      --pd          Show 'Persönliche Versicherungsdaten' (XML)  (default=off)",
-  "      --vd          Show 'Allgemeine Versicherungsdaten' (XML)  (default=off)",
-  "      --gvd         Show 'Geschützte Versicherungsdaten' (XML)  (default=off)",
-  "      --vsd-status  Show 'Versichertenstammdaten-Status'  (default=off)",
+  "      --pd             Show 'Persönliche Versicherungsdaten' (XML)\n                         (default=off)",
+  "      --vd             Show 'Allgemeine Versicherungsdaten' (XML)\n                         (default=off)",
+  "      --gvd            Show 'Geschützte Versicherungsdaten' (XML)\n                         (default=off)",
+  "      --vsd-status     Show 'Versichertenstammdaten-Status'  (default=off)",
   "\nReport bugs to https://github.com/OpenSC/OpenSC/issues\n\nWritten by Frank Morgner <frankmorgner@gmail.com>",
     0
 };
 
 typedef enum {ARG_NO
   , ARG_FLAG
-  , ARG_INT
+  , ARG_STRING
 } cmdline_parser_arg_type;
 
 static
@@ -83,7 +83,7 @@ static
 void clear_args (struct gengetopt_args_info *args_info)
 {
   FIX_UNUSED (args_info);
-  args_info->reader_arg = -1;
+  args_info->reader_arg = NULL;
   args_info->reader_orig = NULL;
   args_info->pd_flag = 0;
   args_info->vd_flag = 0;
@@ -190,6 +190,7 @@ static void
 cmdline_parser_release (struct gengetopt_args_info *args_info)
 {
 
+  free_string_field (&(args_info->reader_arg));
   free_string_field (&(args_info->reader_orig));
   
   
@@ -1051,6 +1052,7 @@ int update_arg(void *field, char **orig_field,
   char *stop_char = 0;
   const char *val = value;
   int found;
+  char **string_field;
   FIX_UNUSED (field);
 
   stop_char = 0;
@@ -1084,24 +1086,18 @@ int update_arg(void *field, char **orig_field,
   case ARG_FLAG:
     *((int *)field) = !*((int *)field);
     break;
-  case ARG_INT:
-    if (val) *((int *)field) = strtol (val, &stop_char, 0);
+  case ARG_STRING:
+    if (val) {
+      string_field = (char **)field;
+      if (!no_free && *string_field)
+        free (*string_field); /* free previous string */
+      *string_field = gengetopt_strdup (val);
+    }
     break;
   default:
     break;
   };
 
-  /* check numeric conversion */
-  switch(arg_type) {
-  case ARG_INT:
-    if (val && !(stop_char && *stop_char == '\0')) {
-      fprintf(stderr, "%s: invalid numeric value: %s\n", package_name, val);
-      return 1; /* failure */
-    }
-    break;
-  default:
-    ;
-  };
 
   /* store the original value */
   switch(arg_type) {
@@ -1203,12 +1199,12 @@ cmdline_parser_internal (
           cmdline_parser_free (&local_args_info);
           exit (EXIT_SUCCESS);
 
-        case 'r':	/* Number of the PC/SC reader to use (-1 for autodetect).  */
+        case 'r':	/* Number of the reader to use. By default, the first reader with a present card is used. If the arguement is an ATR, the reader with a matching card will be chosen..  */
         
         
           if (update_arg( (void *)&(args_info->reader_arg), 
                &(args_info->reader_orig), &(args_info->reader_given),
-              &(local_args_info.reader_given), optarg, 0, "-1", ARG_INT,
+              &(local_args_info.reader_given), optarg, 0, 0, ARG_STRING,
               check_ambiguity, override, 0, 0,
               "reader", 'r',
               additional_error))

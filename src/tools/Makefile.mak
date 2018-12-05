@@ -27,14 +27,14 @@ opensc-notify.exe: opensc-notify-cmdline.obj versioninfo-opensc-notify.res $(LIB
 	link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj opensc-notify-cmdline.obj versioninfo-opensc-notify.res $(LIBS) gdi32.lib shell32.lib User32.lib ws2_32.lib
 	mt -manifest exe.manifest -outputresource:$@;1
 
-npa-tool.exe: npa-tool-cmdline.obj fread_to_eof.obj $(LIBS)
+npa-tool.exe: npa-tool-cmdline.obj fread_to_eof.obj util.obj $(LIBS)
 	cl $(COPTS) /c $*.c
-	link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj npa-tool-cmdline.obj fread_to_eof.obj $(LIBS) $(OPENPACE_LIB) $(OPENSSL_LIB) gdi32.lib shell32.lib User32.lib ws2_32.lib
+	link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj npa-tool-cmdline.obj fread_to_eof.obj util.obj $(LIBS) $(OPENPACE_LIB) $(OPENSSL_LIB) gdi32.lib shell32.lib User32.lib ws2_32.lib
 	mt -manifest exe.manifest -outputresource:$@;1
 
-egk-tool.exe: egk-tool-cmdline.obj $(LIBS)
+egk-tool.exe: egk-tool-cmdline.obj util.obj $(LIBS)
 	cl $(COPTS) /c $*.c
-	link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj egk-tool-cmdline.obj $(LIBS) $(ZLIB_LIB) gdi32.lib shell32.lib User32.lib ws2_32.lib
+	link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj egk-tool-cmdline.obj util.obj $(LIBS) $(ZLIB_LIB) gdi32.lib shell32.lib User32.lib ws2_32.lib
 	mt -manifest exe.manifest -outputresource:$@;1
 
 opensc-asn1.exe: opensc-asn1-cmdline.obj fread_to_eof.obj $(LIBS)

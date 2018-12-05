@@ -47,8 +47,8 @@ struct gengetopt_args_info
   const char *message_help; /**< @brief Main text of the notification help description.  */
   int notify_card_inserted_flag;	/**< @brief See notify_card_inserted in opensc.conf (default=off).  */
   const char *notify_card_inserted_help; /**< @brief See notify_card_inserted in opensc.conf help description.  */
-  int notify_card_removed_flag;	/**< @brief See notify_card_inserted in opensc.conf (default=off).  */
-  const char *notify_card_removed_help; /**< @brief See notify_card_inserted in opensc.conf help description.  */
+  int notify_card_removed_flag;	/**< @brief See notify_card_removed in opensc.conf (default=off).  */
+  const char *notify_card_removed_help; /**< @brief See notify_card_removed in opensc.conf help description.  */
   int notify_pin_good_flag;	/**< @brief See notify_pin_good in opensc.conf (default=off).  */
   const char *notify_pin_good_help; /**< @brief See notify_pin_good in opensc.conf help description.  */
   int notify_pin_bad_flag;	/**< @brief See notify_pin_bad in opensc.conf (default=off).  */
