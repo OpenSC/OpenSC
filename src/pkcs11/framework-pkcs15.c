@@ -3670,7 +3670,7 @@ pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 		break;
     case CKA_ALWAYS_AUTHENTICATE:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
-		*(CK_BBOOL*)attr->pValue = prkey->prv_p15obj->user_consent;
+		*(CK_BBOOL*)attr->pValue = prkey->prv_p15obj->user_consent >= 1 ? CK_TRUE : CK_FALSE;
 		break;
 	case CKA_PRIVATE:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
@@ -4847,7 +4847,7 @@ pkcs15_skey_get_attribute(struct sc_pkcs11_session *session,
 		break;
 	case CKA_OPENSC_ALWAYS_AUTH_ANY_OBJECT:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
-		*(CK_BBOOL*)attr->pValue = skey->base.p15_object->user_consent == 1 ? CK_TRUE : CK_FALSE;
+		*(CK_BBOOL*)attr->pValue = skey->base.p15_object->user_consent >= 1 ? CK_TRUE : CK_FALSE;
 		break;
 	case CKA_VALUE_LEN:
 		check_attribute_buffer(attr, sizeof(CK_ULONG));
