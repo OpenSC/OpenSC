@@ -2,9 +2,8 @@ package "egk-tool"
 purpose "@PACKAGE_SUMMARY@"
 
 option "reader" r
-    "Number of the PC/SC reader to use (-1 for autodetect)"
-    int
-    default="-1"
+    "Number of the reader to use. By default, the first reader with a present card is used. If the arguement is an ATR, the reader with a matching card will be chosen."
+    string
     optional
 option "verbose" v
     "Use (several times) to be more verbose"

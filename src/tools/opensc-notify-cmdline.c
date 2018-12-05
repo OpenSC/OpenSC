@@ -1176,7 +1176,7 @@ cmdline_parser_internal (
             goto failure;
         
           break;
-        case 'R':	/* See notify_card_inserted in opensc.conf.  */
+        case 'R':	/* See notify_card_removed in opensc.conf.  */
           args_info->standard_mode_counter += 1;
         
         
