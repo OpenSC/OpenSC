@@ -1140,6 +1140,11 @@ pkcs15_create_slot(struct sc_pkcs11_card *p11card, struct pkcs15_fw_data *fw_dat
 	/* Fill in the slot/token info from pkcs15 data */
 	if (fw_data)
 		pkcs15_init_slot(fw_data->p15_card, slot, auth, app_info);
+	else {
+		/* Token is not initialized, announce pinpad capability nevertheless */
+		if (slot->reader->capabilities & SC_READER_CAP_PIN_PAD)
+			slot->token_info.flags |= CKF_PROTECTED_AUTHENTICATION_PATH;
+	}
 
 	*out = slot;
 	return CKR_OK;
