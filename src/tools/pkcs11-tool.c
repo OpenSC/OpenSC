@@ -152,6 +152,7 @@ enum {
 	OPT_SALT,
 	OPT_VERIFY,
 	OPT_SIGNATURE_FILE,
+	OPT_ALWAYS_AUTH
 };
 
 static const struct option options[] = {
@@ -216,6 +217,7 @@ static const struct option options[] = {
 	{ "verbose",		0, NULL,		'v' },
 	{ "private",		0, NULL,		OPT_PRIVATE },
 	{ "sensitive",		0, NULL,		OPT_SENSITIVE },
+	{ "always-auth",	0, NULL,		OPT_ALWAYS_AUTH },
 	{ "test-ec",		0, NULL,		OPT_TEST_EC },
 #ifndef _WIN32
 	{ "test-fork",		0, NULL,		OPT_TEST_FORK },
@@ -287,11 +289,12 @@ static const char *option_help[] = {
 	"Verbose operation. (Set OPENSC_DEBUG to enable OpenSC specific debugging)",
 	"Set the CKA_PRIVATE attribute (object is only viewable after a login)",
 	"Set the CKA_SENSITIVE attribute (object cannot be revealed in plaintext)",
+	"Set the CKA_ALWAYS_AUTHENTICATE attribute to a key object (require PIN verification for each use)",
 	"Test EC (best used with the --login or --pin option)",
 #ifndef _WIN32
 	"Test forking and calling C_Initialize() in the child",
 #endif
-	"Generate given amount of random data",
+	"Generate given amount of random data"
 };
 
 static const char *	app_name = "pkcs11-tool"; /* for utils.c */
@@ -340,6 +343,7 @@ static CK_MECHANISM_TYPE opt_hash_alg = 0;
 static unsigned long	opt_mgf = 0;
 static long	        opt_salt_len = 0;
 static int		opt_salt_len_given = 0; /* 0 - not given, 1 - given with input parameters */
+static int		opt_always_auth = 0;
 
 static void *module = NULL;
 static CK_FUNCTION_LIST_PTR p11 = NULL;
@@ -886,7 +890,9 @@ int main(int argc, char * argv[])
 			do_generate_random = 1;
 			action_count++;
 			break;
-
+		case OPT_ALWAYS_AUTH:
+			opt_always_auth = 1;
+			break;
 		default:
 			util_print_usage_and_die(app_name, options, option_help, NULL);
 		}
@@ -1758,6 +1764,9 @@ parse_pss_params(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key,
 		pss_params->hashAlg = CKM_SHA512;
 		pss_params->mgf = CKG_MGF1_SHA512;
 		break;
+
+	default: /* The non-RSA-PSS algorithms do not need any parameters */
+		return 0;
 	}
 
 	/* One of RSA-PSS mechanisms above: They need parameters */
@@ -1820,8 +1829,6 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	memset(&mech, 0, sizeof(mech));
 	mech.mechanism = opt_mechanism;
 	hashlen = parse_pss_params(session, key, &mech, &pss_params);
-	if (hashlen == 0)
-		util_fatal("Invalid RSA-PSS parameters");
 
 	if (opt_input == NULL)
 		fd = 0;
@@ -1832,11 +1839,10 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	if (r < 0)
 		util_fatal("Cannot read from %s: %m", opt_input);
 
-	if (opt_mechanism == CKM_RSA_PKCS_PSS) {
-		if  ((unsigned long)r != hashlen)
-			util_fatal("For %s mechanism, message size (got %d bytes) "
-			     "must be equal to specified digest length (%lu)\n",
-			    p11_mechanism_to_name(opt_mechanism), r, hashlen);
+	if (opt_mechanism == CKM_RSA_PKCS_PSS && (unsigned long)r != hashlen) {
+		util_fatal("For %s mechanism, message size (got %d bytes) "
+			"must be equal to specified digest length (%lu)\n",
+			p11_mechanism_to_name(opt_mechanism), r, hashlen);
 	}
 
 	rv = CKR_CANCEL;
@@ -1927,8 +1933,6 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	memset(&mech, 0, sizeof(mech));
 	mech.mechanism = opt_mechanism;
 	hashlen = parse_pss_params(session, key, &mech, &pss_params);
-	if (hashlen == 0)
-		util_fatal("Invalid RSA-PSS parameters");
 
 	/* Open a signature file */
 	if (opt_signature_file == NULL)
@@ -1952,11 +1956,10 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	if (r < 0)
 		util_fatal("Cannot read from %s: %m", opt_input);
 
-	if (opt_mechanism == CKM_RSA_PKCS_PSS) {
-		if ((unsigned long)r != hashlen)
-			util_fatal("For %s mechanism, message size (got %d bytes)"
-			    " must be equal to specified digest length (%lu)\n",
-			    p11_mechanism_to_name(opt_mechanism), r, hashlen);
+	if (opt_mechanism == CKM_RSA_PKCS_PSS && (unsigned long)r != hashlen) {
+		util_fatal("For %s mechanism, message size (got %d bytes)"
+			" must be equal to specified digest length (%lu)\n",
+			p11_mechanism_to_name(opt_mechanism), r, hashlen);
 	}
 
 	rv = CKR_CANCEL;
@@ -2381,6 +2384,12 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_PRIVATE,
 			&_false, sizeof(_false));
 		n_pubkey_attr++;
+	}
+
+	if (opt_always_auth != 0) {
+		FILL_ATTR(privateKeyTemplate[n_privkey_attr], CKA_ALWAYS_AUTHENTICATE,
+				&_true, sizeof(_true));
+		n_privkey_attr++;
 	}
 
 	rv = p11->C_GenerateKeyPair(session, &mechanism,
@@ -2970,6 +2979,11 @@ static int write_object(CK_SESSION_HANDLE session)
 		}
 		if (opt_key_usage_derive != 0) {
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_DERIVE, &_true, sizeof(_true));
+			n_privkey_attr++;
+		}
+		if (opt_always_auth != 0) {
+			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_ALWAYS_AUTHENTICATE,
+				&_true, sizeof(_true));
 			n_privkey_attr++;
 		}
 

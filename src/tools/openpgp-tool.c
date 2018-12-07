@@ -35,6 +35,7 @@
 #endif
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 #include "common/compat_getopt.h"
 #include "libopensc/opensc.h"
@@ -53,22 +54,37 @@
 #define OPT_PIN     259
 #define OPT_DELKEY  260
 
+enum code_types {
+	TYPE_NULL,
+	TYPE_HEX,
+	TYPE_STRING
+};
+
 /* define structures */
 struct ef_name_map {
 	const char *name;
 	const char *env_name;
 	const char *ef;
-	char *(*prettify_value)(char *);
+	enum code_types type;
+	size_t offset;
+	size_t length;	/* exact length: 0 <=> potentially infinite */
+	char *(*prettify_value)(u8 *, size_t);
 };
 
 /* declare functions */
 static void show_version(void);
-static char *prettify_name(char *str);
-static char *prettify_language(char *str);
-static char *prettify_gender(char *str);
-static void display_data(const struct ef_name_map *mapping, char *value);
+static char *prettify_hex(u8 *data, size_t length, char *buffer, size_t buflen);
+static char *prettify_algorithm(u8 *data, size_t length);
+static char *prettify_date(u8 *data, size_t length);
+static char *prettify_version(u8 *data, size_t length);
+static char *prettify_manufacturer(u8 *data, size_t length);
+static char *prettify_serialnumber(u8 *data, size_t length);
+static char *prettify_name(u8 *data, size_t length);
+static char *prettify_language(u8 *data, size_t length);
+static char *prettify_gender(u8 *data, size_t length);
+static void display_data(const struct ef_name_map *mapping, u8 *data, size_t length);
 static int decode_options(int argc, char **argv);
-static int do_userinfo(sc_card_t *card);
+static int do_info(sc_card_t *card, const struct ef_name_map *map);
 
 /* define global variables */
 static int actions = 0;
@@ -78,10 +94,11 @@ static int opt_raw = 0;
 static int verbose = 0;
 static int opt_userinfo = 0;
 static int opt_cardinfo = 0;
+static int opt_keyinfo = 0;
 static char *exec_program = NULL;
 static int opt_genkey = 0;
 static u8 key_id = 0;
-static unsigned int key_len = 2048;
+static char *keytype = NULL;
 static int opt_verify = 0;
 static char *verifytype = NULL;
 static int opt_pin = 0;
@@ -101,8 +118,9 @@ static const struct option options[] = {
 	{ "pretty",    no_argument,       NULL, OPT_PRETTY },
 	{ "card-info", no_argument,       NULL, 'C'        },
 	{ "user-info", no_argument,       NULL, 'U'        },
+	{ "key-info",  no_argument,       NULL, 'K'        },
 	{ "gen-key",   required_argument, NULL, 'G'        },
-	{ "key-length",required_argument, NULL, 'L'        },
+	{ "key-type",  required_argument, NULL, 't'        },
 	{ "help",      no_argument,       NULL, 'h'        },
 	{ "verbose",   no_argument,       NULL, 'v'        },
 	{ "version",   no_argument,       NULL, 'V'        },
@@ -120,10 +138,11 @@ static const char *option_help[] = {
 /* x */	"Execute program <arg> with data in env vars",
 	"Print values in raw format",
 	"Print values in pretty format",
-/* C */	NULL,
+/* C */	"Show card information",
 /* U */	"Show card holder information",
+/* K */	"Show key information",
 /* G */ "Generate key",
-/* L */ "Key length (default 2048)",
+/* t */ "Key type (default: rsa2048)",
 /* h */	"Print this help message",
 /* v */	"Verbose operation. Use several times to enable debug output.",
 /* V */	"Show version number",
@@ -134,17 +153,39 @@ static const char *option_help[] = {
 /* d */ "Dump private data object number <arg> (i.e. DO <arg>)",
 };
 
-static const struct ef_name_map openpgp_data[] = {
-	{ "Account",  "OPENGPG_ACCOUNT", "3F00:005E",      NULL              },
-	{ "URL",      "OPENPGP_URL",     "3F00:5F50",      NULL              },
-	{ "Name",     "OPENPGP_NAME",    "3F00:0065:005B", prettify_name     },
-	{ "Language", "OPENPGP_LANG",    "3F00:0065:5F2D", prettify_language },
-	{ "Gender",   "OPENPGP_GENDER",  "3F00:0065:5F35", prettify_gender   },
-	{ "DO 0101",  "OPENPGP_DO0101",  "3F00:0101",      NULL              },
-	{ "DO 0102",  "OPENPGP_DO0102",  "3F00:0102",      NULL              },
-//	{ "DO 0103",  "OPENPGP_DO0103",  "3F00:0103",      NULL              },
-//	{ "DO 0104",  "OPENPGP_DO0104",  "3F00:0104",      NULL              },
-	{ NULL, NULL, NULL, NULL }
+
+static const struct ef_name_map card_data[] = {
+	{ "AID",           "OPENPGP_AID",          "3F00:004F", TYPE_HEX,  0, 16, NULL                  },
+	{ "Version",       "OPENPGP_VERSION",      "3F00:004F", TYPE_HEX,  6,  2, prettify_version      },
+	{ "Manufacturer",  "OPENPGP_MANUFACTURER", "3F00:004F", TYPE_HEX,  8,  2, prettify_manufacturer },
+	{ "Serial number", "OPENPGP_SERIALNO",     "3F00:004F", TYPE_HEX, 10,  4, prettify_serialnumber },
+	{ NULL, NULL, NULL, TYPE_NULL, 0, 0, NULL }
+};
+
+static const struct ef_name_map key_data[] = {
+	{ "Aut Algorithm",   "OPENPGP_AUT_ALGORITHM", "3F00:006E:0073:00C3", TYPE_HEX,  0,  0, prettify_algorithm },
+	{ "Aut Create Date", "OPENPGP_AUT_DATE",      "3F00:006E:0073:00CD", TYPE_HEX,  8,  4, prettify_date      },
+	{ "Aut Fingerprint", "OPENPGP_AUT_FP",        "3F00:006E:0073:00C5", TYPE_HEX, 40, 20, NULL               },
+	{ "Dec Algorithm",   "OPENPGP_DEC_ALGORITHM", "3F00:006E:0073:00C2", TYPE_HEX,  0,  0, prettify_algorithm },
+	{ "Dec Create Date", "OPENPGP_DEC_DATE",      "3F00:006E:0073:00CD", TYPE_HEX,  4,  4, prettify_date      },
+	{ "Dec Fingerprint", "OPENPGP_DEC_FP",        "3F00:006E:0073:00C5", TYPE_HEX, 20, 20, NULL               },
+	{ "Sig Algorithm",   "OPENPGP_SIG_ALGORITHM", "3F00:006E:0073:00C1", TYPE_HEX,  0,  0, prettify_algorithm },
+	{ "Sig Create Date", "OPENPGP_SIG_DATE",      "3F00:006E:0073:00CD", TYPE_HEX,  0,  4, prettify_date      },
+	{ "Sig Fingerprint", "OPENPGP_SIG_FP",        "3F00:006E:0073:00C5", TYPE_HEX,  0, 20, NULL               },
+	{ NULL, NULL, NULL, TYPE_NULL, 0, 0, NULL }
+};
+
+static const struct ef_name_map user_data[] = {
+	{ "Account",  "OPENGPG_ACCOUNT", "3F00:005E",      TYPE_STRING, 0, 0, NULL              },
+	{ "URL",      "OPENPGP_URL",     "3F00:5F50",      TYPE_STRING, 0, 0, NULL              },
+	{ "Name",     "OPENPGP_NAME",    "3F00:0065:005B", TYPE_STRING, 0, 0, prettify_name     },
+	{ "Language", "OPENPGP_LANG",    "3F00:0065:5F2D", TYPE_STRING, 0, 0, prettify_language },
+	{ "Gender",   "OPENPGP_GENDER",  "3F00:0065:5F35", TYPE_STRING, 0, 0, prettify_gender   },
+	{ "DO 0101",  "OPENPGP_DO0101",  "3F00:0101",      TYPE_STRING, 0, 0, NULL              },
+	{ "DO 0102",  "OPENPGP_DO0102",  "3F00:0102",      TYPE_STRING, 0, 0, NULL              },
+//	{ "DO 0103",  "OPENPGP_DO0103",  "3F00:0103",      TYPE_STRING, 0, 0, NULL              },
+//	{ "DO 0104",  "OPENPGP_DO0104",  "3F00:0104",      TYPE_STRING, 0, 0, NULL              },
+	{ NULL, NULL, NULL, TYPE_NULL, 0, 0, NULL }
 };
 
 
@@ -153,37 +194,166 @@ static void show_version(void)
 	fprintf(stderr,
 		"openpgp-tool - OpenPGP card utility version " PACKAGE_VERSION "\n"
 		"\n"
-		"Copyright (c) 2012 Peter Marschall <peter@adpm.de>\n"
+		"Copyright (c) 2012-18 Peter Marschall <peter@adpm.de>\n"
 		"Licensed under LGPL v2\n");
 }
 
 
-/* prettify card holder's name */
-static char *prettify_name(char *str)
+/* prettify hex */
+static char *prettify_hex(u8 *data, size_t length, char *buffer, size_t buflen)
 {
-	if (str != NULL) {
-		char *src = str;
-		char *dst = str;
+	if (data != NULL) {
+		int r = sc_bin_to_hex(data, length, buffer, buflen, ':');
 
-		while (*src != '\0') {
+		if (r == SC_SUCCESS)
+			return buffer;
+	}
+	return NULL;
+}
+
+
+/* prettify algorithm parameters */
+static char *prettify_algorithm(u8 *data, size_t length)
+{
+	if (data != NULL && length >= 1) {
+		static char result[64];	/* large enough */
+
+		if (data[0] == 0x01 && length >= 5) {		/* RSA */
+			unsigned short modulus = (data[1] << 8) + data[2];
+			snprintf(result, sizeof(result), "RSA%u", modulus);
+			return result;
+		}
+		else if (data[0] == 0x12) {			/* ECDH */
+			strcpy(result, "ECDH");
+			return result;
+		}
+		else if (data[0] == 0x13) {			/* ECDSA */
+			strcpy(result, "ECDSA");
+			return result;
+		}
+	}
+	return NULL;
+}
+
+
+/* prettify date/time */
+static char *prettify_date(u8 *data, size_t length)
+{
+	if (data != NULL && length == 4) {
+		time_t time = (data[0] << 24) + (data[1] << 16) + (data[2] << 8) + data[3];
+		struct tm *tp;
+		static char result[64];	/* large enough */
+
+		tp = gmtime(&time);
+		strftime(result, sizeof(result), "%Y-%m-%d %H:%M:%S", tp);
+		return result;
+	}
+	return NULL;
+}
+
+
+#define BCD2CHAR(x) (((((x) & 0xF0) >> 4) * 10) + ((x) & 0x0F))
+
+/* prettify OpenPGP card version */
+static char *prettify_version(u8 *data, size_t length)
+{
+	if (data != NULL && length >= 2) {
+		static char result[10];	/* large enough for even 2*3 digits + separator */
+		int major = BCD2CHAR(data[0]);
+		int minor = BCD2CHAR(data[1]);
+
+		sprintf(result, "%d.%d", major, minor);
+		return result;
+	}
+	return NULL;
+}
+
+
+/* prettify manufacturer */
+static char *prettify_manufacturer(u8 *data, size_t length)
+{
+	if (data != NULL && length >= 2) {
+		unsigned int manuf = (data[0] << 8) + data[1];
+
+		switch (manuf) {
+			case 0x0001: return "PPC Card Systems";
+			case 0x0002: return "Prism";
+			case 0x0003: return "OpenFortress";
+			case 0x0004: return "Wewid";
+			case 0x0005: return "ZeitControl";
+			case 0x0006: return "Yubico";
+			case 0x0007: return "OpenKMS";
+			case 0x0008: return "LogoEmail";
+			case 0x0009: return "Fidesmo";
+			case 0x000A: return "Dangerous Things";
+
+			case 0x002A: return "Magrathea";
+			case 0x0042: return "GnuPG e.V.";
+
+			case 0x1337: return "Warsaw Hackerspace";
+			case 0x2342: return "warpzone"; /* hackerspace Muenster.  */
+			case 0x63AF: return "Trustica";
+			case 0xBD0E: return "Paranoidlabs";
+			case 0xF517: return "FSIJ";
+
+			/* 0x0000 and 0xFFFF are defined as test cards per spec,
+			   0xFF00 to 0xFFFE are assigned for use with randomly created
+			   serial numbers.  */
+			case 0x0000:
+			case 0xffff: return "test card";
+			default: return (manuf & 0xff00) == 0xff00 ? "unmanaged S/N range" : "unknown";
+		}
+	}
+	return NULL;
+}
+
+
+/* prettify pure serial number */
+static char *prettify_serialnumber(u8 *data, size_t length)
+{
+	if (data != NULL && length >= 4) {
+		static char result[15];	/* large enough for even 2*3 digits + separator */
+		unsigned int serial = (data[0] << 24) + (data[1] << 16) + (data[2] << 8) + data[3];
+
+		sprintf(result, "%08X", serial);
+		return result;
+	}
+	return NULL;
+}
+
+
+/* prettify card holder's name */
+static char *prettify_name(u8 *data, size_t length)
+{
+	if (data != NULL && length > 0) {
+		char *src = (char *) data;
+		char *dst = (char *) data;
+
+		while (*src != '\0' && length > 0) {
 			*dst = *src++;
+			length--;
 			if (*dst == '<') {
-				if (*src == '<')
+				if (length > 0 && *src == '<') {
 					src++;
+					length--;
+				}
 				*dst = ' ';
 			}
 			dst++;
 		}
 		*dst = '\0';
+		return (char *) data;
 	}
-	return str;
+	return NULL;
 }
 
 
 /* prettify language */
-static char *prettify_language(char *str)
+static char *prettify_language(u8 *data, size_t length)
 {
-	if (str != NULL) {
+	if (data != NULL && length > 0) {
+		char *str = (char *) data;
+
 		switch (strlen(str)) {
 			case 8: memmove(str+7, str+6, 1+strlen(str+6));
 				str[6] = ',';
@@ -202,10 +372,10 @@ static char *prettify_language(char *str)
 
 
 /* convert the raw ISO-5218 SEX value to an english word */
-static char *prettify_gender(char *str)
+static char *prettify_gender(u8 *data, size_t length)
 {
-	if (str != NULL) {
-		switch (*str) {
+	if (data != NULL && length > 0) {
+		switch (*data) {
 			case '0': return "unknown";
 			case '1': return "male";
 			case '2': return "female";
@@ -216,28 +386,63 @@ static char *prettify_gender(char *str)
 }
 
 
-static void display_data(const struct ef_name_map *mapping, char *value)
+#define INDENT	16
+
+static void display_data(const struct ef_name_map *map, u8 *data, size_t length)
 {
-	if (mapping != NULL && value != NULL) {
-		if (mapping->prettify_value != NULL && !opt_raw)
-			value = mapping->prettify_value(value);
+	if (map != NULL && data != NULL) {
+		char buffer[8192];
+		char *value = NULL;
+
+		if (opt_raw) {
+			/* length-wise safe, but may cut off data (safe for OpenPGP cards 2.x) */
+			if (length > sizeof(buffer))
+				 length = sizeof(buffer);
+
+			if (map->type == TYPE_HEX) {
+				if (exec_program) {
+					value = prettify_hex(data, length, buffer, sizeof(buffer));
+				}
+				else {
+					sc_hex_dump(data, length, buffer, sizeof(buffer));
+					/* remove trailing newline */
+					if (*buffer != '\0' && buffer[strlen(buffer)-1] == '\n')
+						buffer[strlen(buffer)-1] = '\0';
+					value = buffer;
+				}
+			}
+			else {
+				value = (char *) data;
+			}
+		}
+		else {
+			if (map->prettify_value != NULL)
+				value = map->prettify_value(data, length);
+			else {
+				value = (map->type == TYPE_HEX)
+					? prettify_hex(data, length, buffer, sizeof(buffer))
+					: (char *) data;
+			}
+		}
 
 		if (value != NULL) {
 			if (exec_program) {
-				char *envvar;
+				char *envvar= malloc(strlen(map->env_name) +
+							strlen(value) + 2);
 
-				envvar = malloc(strlen(mapping->env_name) +
-						strlen(value) + 2);
 				if (envvar != NULL) {
-					strcpy(envvar, mapping->env_name);
+					strcpy(envvar, map->env_name);
 					strcat(envvar, "=");
 					strcat(envvar, value);
 					putenv(envvar);
+					/* envvar deliberately kept: see putenv(3) */
 				}
-			} else {
-				const char *label = mapping->name;
+			}
+			else {
+				const char *label = map->name;
+				int fill = (int) (INDENT - strlen(label));
 
-				printf("%s:%*s%s\n", label, (int)(10-strlen(label)), "", value);
+				printf("%s:%*s%s\n", label, fill, "", value);
 			}
 		}
 	}
@@ -250,7 +455,7 @@ static int decode_options(int argc, char **argv)
 	char *endptr;
 	unsigned long val;
 
-	while ((c = getopt_long(argc, argv,"r:x:CUG:L:EhwvVd:", options, (int *) 0)) != EOF) {
+	while ((c = getopt_long(argc, argv,"r:x:CUG:KEht:wvVd:", options, (int *) 0)) != EOF) {
 		switch (c) {
 		case 'r':
 			opt_reader = optarg;
@@ -285,13 +490,19 @@ static int decode_options(int argc, char **argv)
 			opt_userinfo++;
 			actions++;
 			break;
+		case 'K':
+			opt_keyinfo++;
+			actions++;
+			break;
 		case 'G':
 			opt_genkey++;
 			key_id = optarg[0] - '0';
 			actions++;
 			break;
-		case 'L':
-			key_len = atoi(optarg);
+		case 't':
+			if (keytype)
+				free(keytype);
+			keytype = strdup(optarg);
 			break;
 		case 'h':
 			util_print_usage_and_die(app_name, options, option_help, NULL);
@@ -340,22 +551,21 @@ static int decode_options(int argc, char **argv)
 }
 
 
-static int do_userinfo(sc_card_t *card)
+static int do_info(sc_card_t *card, const struct ef_name_map *map)
 {
 	int i;
-	/* FIXME there are no length checks on buf. */
-	unsigned char buf[2048];
+	u8 buf[2048];
 
-	for (i = 0; openpgp_data[i].ef != NULL; i++) {
+	for (i = 0; map[i].ef != NULL; i++) {
 		sc_path_t path;
 		sc_file_t *file;
 		size_t count;
 		int r;
 
-		sc_format_path(openpgp_data[i].ef, &path);
+		sc_format_path(map[i].ef, &path);
 		r = sc_select_file(card, &path, &file);
 		if (r) {
-			util_error("failed to select EF %s: %s", openpgp_data[i].ef, sc_strerror(r));
+			util_error("failed to select EF %s: %s", map[i].ef, sc_strerror(r));
 			return EXIT_FAILURE;
 		}
 
@@ -364,24 +574,30 @@ static int do_userinfo(sc_card_t *card)
 			continue;
 
 		if (count > sizeof(buf) - 1) {
-			util_error("too small buffer to read the OpenPGP data");
+			util_error("too small buffer to read the OpenPGP map");
 			return EXIT_FAILURE;
 		}
 
 		r = sc_read_binary(card, 0, buf, count, 0);
 		if (r < 0) {
-			util_error("failed to read %s: %s", openpgp_data[i].ef, sc_strerror(r));
+			util_error("failed to read %s: %s", map[i].ef, sc_strerror(r));
 			return EXIT_FAILURE;
 		}
-		if (r != (signed)count) {
+		if (r != (signed) count || (size_t) r < map[i].offset + map[i].length) {
 			util_error("%s: expecting %"SC_FORMAT_LEN_SIZE_T"d bytes, got only %d",
-				openpgp_data[i].ef, count, r);
+				map[i].ef, count, r);
 			return EXIT_FAILURE;
 		}
+		if (map[i].offset > 0) {
+			memmove(buf, buf + map[i].offset, map[i].length);
+			count -= map[i].offset;
+		}
+		if (map[i].length > 0 && count > map[i].length)
+			count = map[i].length;
+		if (map[i].type == TYPE_STRING)
+			buf[count] = '\0';
 
-		buf[count] = '\0';
-
-		display_data(openpgp_data + i, (char *) buf);
+		display_data(&map[i], buf, count);
 	}
 
 	return EXIT_SUCCESS;
@@ -442,7 +658,7 @@ static int do_dump_do(sc_card_t *card, unsigned int tag)
 	return EXIT_SUCCESS;
 }
 
-int do_genkey(sc_card_t *card, u8 key_id, unsigned int key_len)
+int do_genkey(sc_card_t *card, u8 key_id, const char *keytype)
 {
 	int r;
 	sc_cardctl_openpgp_keygen_info_t key_info;
@@ -450,21 +666,54 @@ int do_genkey(sc_card_t *card, u8 key_id, unsigned int key_len)
 	sc_path_t path;
 	sc_file_t *file;
 
+	/* validate key_id */
 	if (key_id < 1 || key_id > 3) {
 		util_error("unknown key ID %d", key_id);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
+
+	/* fall back to RSA 2048 if keytype is not given */
+	if (!keytype)
+		keytype = "RSA2048";
+
 	memset(&key_info, 0, sizeof(sc_cardctl_openpgp_keygen_info_t));
-	key_info.key_id = key_id;
-	key_info.algorithm = SC_OPENPGP_KEYALGO_RSA;
-	key_info.u.rsa.modulus_len = key_len;
-	key_info.u.rsa.modulus = malloc(BYTES4BITS(key_len));
-	r = sc_card_ctl(card, SC_CARDCTL_OPENPGP_GENERATE_KEY, &key_info);
-	free(key_info.u.rsa.modulus);
-	if (r < 0) {
-		util_error("failed to generate key: %s", sc_strerror(r));
+
+	/* generate key depending on keytype passed */
+	if (strncasecmp("RSA", keytype, strlen("RSA")) == 0) {
+		size_t keylen = 2048;	/* default length for RSA keys */
+		const char *keylen_ptr = keytype + strlen("RSA");
+
+		/* try to get key length from keytype, e.g. "rsa3072" -> 3072 */
+		if (strlen(keylen_ptr) > 0) {
+			if (strspn(keylen_ptr, "0123456789") == strlen(keylen_ptr) &&
+			    atol(keylen_ptr) >= 1024 && atol(keylen_ptr) <= 4096) {
+				keylen = atol(keylen_ptr);
+			}
+			else {
+				util_error("illegal key type: %s", keytype);
+				return EXIT_FAILURE;
+			}
+		}
+
+		/* set key_info */
+		key_info.key_id = key_id;
+		key_info.algorithm = SC_OPENPGP_KEYALGO_RSA;
+		key_info.u.rsa.modulus_len = keylen;
+		key_info.u.rsa.modulus = malloc(BYTES4BITS(keylen));
+
+		r = sc_card_ctl(card, SC_CARDCTL_OPENPGP_GENERATE_KEY, &key_info);
+		free(key_info.u.rsa.modulus);
+		if (r < 0) {
+			util_error("failed to generate key: %s", sc_strerror(r));
+			return EXIT_FAILURE;
+		}
+	}
+	else {
+		//TODO: deal with EC keys
+		util_error("Generating non-RSA keys is not yet implemented");
 		return EXIT_FAILURE;
 	}
+
 	sc_format_path("006E007300C5", &path);
 	r = sc_select_file(card, &path, &file);
 	if (r < 0) {
@@ -477,6 +726,7 @@ int do_genkey(sc_card_t *card, u8 key_id, unsigned int key_len)
 		return EXIT_FAILURE;
 	}
 	printf("Fingerprint:\n%s\n", (char *)sc_dump_hex(fingerprints + 20*(key_id - 1), 20));
+
 	return EXIT_SUCCESS;
 }
 
@@ -648,8 +898,14 @@ int main(int argc, char **argv)
 	if (!actions)
 		opt_userinfo = 1;
 
+	if (opt_cardinfo)
+		exit_status |= do_info(card, card_data);
+
 	if (opt_userinfo)
-		exit_status |= do_userinfo(card);
+		exit_status |= do_info(card, user_data);
+
+	if (opt_keyinfo)
+		exit_status |= do_info(card, key_data);
 
 	if (opt_verify && opt_pin) {
 		exit_status |= do_verify(card, verifytype, pin);
@@ -664,7 +920,7 @@ int main(int argc, char **argv)
 	}
 
 	if (opt_genkey)
-		exit_status |= do_genkey(card, key_id, key_len);
+		exit_status |= do_genkey(card, key_id, keytype);
 
 	if (exec_program) {
 		char *const largv[] = {exec_program, NULL};

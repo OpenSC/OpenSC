@@ -41,6 +41,20 @@
 unsigned char MYEID_DEFAULT_PUBKEY[] = {0x01, 0x00, 0x01};
 #define MYEID_DEFAULT_PUBKEY_LEN       sizeof(MYEID_DEFAULT_PUBKEY)
 
+#define MYEID_PROP_INFO_2_EXCTRACTABLE			0x08;
+#define MYEID_PROP_INFO_1_TRUSTED				0x04;
+#define MYEID_PROP_INFO_1_WRAP_WITH_TRUSTED		0x08;
+#define MYEID_PROP_INFO_2_SESSION_OBJECT		0x01;
+
+static const struct sc_object_id id_aes128_ecb = { { 2, 16, 840, 1, 101, 3, 4, 1, 1, -1 } };
+static const struct sc_object_id id_aes128_cbc = { { 2, 16, 840, 1, 101, 3, 4, 1, 2, -1 } };
+static const struct sc_object_id id_aes256_ecb = { { 2, 16, 840, 1, 101, 3, 4, 1, 41, -1 } };
+static const struct sc_object_id id_aes256_cbc = { { 2, 16, 840, 1, 101, 3, 4, 1, 42, -1 } };
+
+static void
+_add_supported_algo(struct sc_profile *profile, struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *object,
+		    unsigned operations, unsigned mechanism, const struct sc_object_id *oid);
+
 /* For Myeid, all objects are files that can be deleted in any order */
 static int
 myeid_delete_object(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
@@ -173,17 +187,22 @@ myeid_init_card(sc_profile_t *profile,
 		sc_pkcs15_card_t *p15card) {
 	struct sc_path path;
 	struct sc_file *file = NULL;
-        u8 rbuf[256];
+	u8 rbuf[256];
 	int r;
 
 	LOG_FUNC_CALLED(p15card->card->ctx);
 
 	p15card->tokeninfo->flags = SC_PKCS15_TOKEN_PRN_GENERATION | SC_PKCS15_TOKEN_EID_COMPLIANT;
 
-        r = sc_card_ctl(p15card->card, SC_CARDCTL_GET_SERIALNR, &rbuf);
+	_add_supported_algo(profile, p15card, NULL, SC_PKCS15_ALGO_OP_DECIPHER|SC_PKCS15_ALGO_OP_ENCIPHER, CKM_AES_ECB, &id_aes128_ecb);
+	_add_supported_algo(profile, p15card, NULL, SC_PKCS15_ALGO_OP_DECIPHER|SC_PKCS15_ALGO_OP_ENCIPHER, CKM_AES_CBC, &id_aes128_cbc);
+	_add_supported_algo(profile, p15card, NULL, SC_PKCS15_ALGO_OP_DECIPHER|SC_PKCS15_ALGO_OP_ENCIPHER, CKM_AES_ECB, &id_aes256_ecb);
+	_add_supported_algo(profile, p15card, NULL, SC_PKCS15_ALGO_OP_DECIPHER|SC_PKCS15_ALGO_OP_ENCIPHER, CKM_AES_CBC, &id_aes256_cbc);
+
+	r = sc_card_ctl(p15card->card, SC_CARDCTL_GET_SERIALNR, &rbuf);
 	LOG_TEST_RET(p15card->card->ctx, r,  "Get applet info failed");
 
-        sc_format_path("3F00", &path);
+	sc_format_path("3F00", &path);
 	r = sc_select_file(p15card->card, &path, &file);
 
 	sc_file_free(file);
@@ -428,6 +447,8 @@ myeid_encode_public_key(sc_profile_t *profile, sc_card_t *card,
 }
 
 /*
+ * Add AlgorithmInfo of a supported algorithm to supportedAlgorithms field in tokenInfo. If object != NULL,
+ * add reference to the algorithmInfo to the passed object.
  */
 static void
 _add_supported_algo(struct sc_profile *profile, struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *object,
@@ -435,7 +456,11 @@ _add_supported_algo(struct sc_profile *profile, struct sc_pkcs15_card *p15card, 
 {
 	struct sc_supported_algo_info *algo;
 	struct sc_context *ctx = p15card->card->ctx;
-	algo = sc_pkcs15_get_supported_algo(p15card, operations, mechanism);
+	if (oid == NULL) {
+		sc_log(ctx, "Failed to add algorithms refs - invalid arguments.");
+		return;
+	}
+	algo = sc_pkcs15_get_specific_supported_algo(p15card, operations, mechanism, oid);
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
@@ -456,7 +481,11 @@ _add_supported_algo(struct sc_profile *profile, struct sc_pkcs15_card *p15card, 
 		}
 
 	}
-	rv = sc_pkcs15_add_supported_algo_ref(object, algo);
+	if (object != NULL)
+		rv = sc_pkcs15_add_supported_algo_ref(object, algo);
+	else
+		rv = SC_SUCCESS;
+
 	if (rv != SC_SUCCESS) {
 		sc_log(ctx, "Failed to add algorithms refs");
 	}
@@ -465,10 +494,6 @@ _add_supported_algo(struct sc_profile *profile, struct sc_pkcs15_card *p15card, 
 static void
 myeid_fixup_supported_algos(struct sc_profile *profile, struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *object)
 {
-	static const struct sc_object_id id_aes128_ecb = { { 2, 16, 840, 1, 101, 3, 4, 1, 1, -1 } };
-	static const struct sc_object_id id_aes128_cbc = { { 2, 16, 840, 1, 101, 3, 4, 1, 2, -1 } };
-	static const struct sc_object_id id_aes256_ecb = { { 2, 16, 840, 1, 101, 3, 4, 1, 41, -1 } };
-	static const struct sc_object_id id_aes256_cbc = { { 2, 16, 840, 1, 101, 3, 4, 1, 42, -1 } };
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_skey_info *skey_info = (struct sc_pkcs15_skey_info *) object->data;
 
@@ -476,11 +501,11 @@ myeid_fixup_supported_algos(struct sc_profile *profile, struct sc_pkcs15_card *p
 	switch (object->type) {
 	case SC_PKCS15_TYPE_SKEY_GENERIC:
 		switch (skey_info->key_type | (skey_info->value_len << 16)) {
-		case CKM_AES_ECB | (128 << 16):
+		case CKK_AES | (128 << 16):
 			_add_supported_algo(profile, p15card, object, SC_PKCS15_ALGO_OP_DECIPHER|SC_PKCS15_ALGO_OP_ENCIPHER, CKM_AES_ECB, &id_aes128_ecb);
 			_add_supported_algo(profile, p15card, object, SC_PKCS15_ALGO_OP_DECIPHER|SC_PKCS15_ALGO_OP_ENCIPHER, CKM_AES_CBC, &id_aes128_cbc);
 			break;
-		case CKM_AES_ECB | (256 << 16):
+		case CKK_AES | (256 << 16):
 			_add_supported_algo(profile, p15card, object, SC_PKCS15_ALGO_OP_DECIPHER|SC_PKCS15_ALGO_OP_ENCIPHER, CKM_AES_ECB, &id_aes256_ecb);
 			_add_supported_algo(profile, p15card, object, SC_PKCS15_ALGO_OP_DECIPHER|SC_PKCS15_ALGO_OP_ENCIPHER, CKM_AES_CBC, &id_aes256_cbc);
 			break;
@@ -508,6 +533,8 @@ myeid_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	struct sc_pkcs15_auth_info *pkcs15_auth_info = NULL;
 	unsigned char sec_attrs[] = {0xFF, 0xFF, 0xFF};
 	int r, ef_structure = 0, keybits = 0, pin_reference = -1;
+	unsigned char prop_info[] = {0x00, 0x00};
+	int extractable = FALSE;
 
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -524,15 +551,23 @@ myeid_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		case SC_PKCS15_TYPE_SKEY_3DES:
 			ef_structure = SC_CARDCTL_MYEID_KEY_DES;
 			keybits = skey_info->value_len;
+			if ((skey_info->access_flags & SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE) == SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE)
+				extractable = TRUE;
 			break;
 		case SC_PKCS15_TYPE_SKEY_GENERIC:
 			keybits = skey_info->value_len;
+			if ((skey_info->access_flags & SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE) == SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE)
+				extractable = TRUE;
 			switch (skey_info->key_type) {
-			case CKM_AES_ECB:
+			case CKK_AES:
 				ef_structure = SC_CARDCTL_MYEID_KEY_AES;
 				break;
-			case CKM_DES_ECB:
+			case CKK_DES:
 				ef_structure = SC_CARDCTL_MYEID_KEY_DES;
+				break;
+			default:
+				if (object->type == SC_PKCS15_TYPE_SKEY_GENERIC)
+					ef_structure = SC_CARDCTL_MYEID_KEY_GENERIC_SECRET;
 				break;
 			}
 			break;
@@ -604,6 +639,21 @@ myeid_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		sc_file_free(file);
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Invalid AuthID value for a private key.");
 	}
+
+	/* TODO: fill all proprietary attributes here based on the object */
+
+	if (object->user_consent != 0 && pin_reference >= 1)
+	    prop_info[0] |= (pin_reference << 4);
+
+	if (extractable)
+	    prop_info[1] |= MYEID_PROP_INFO_2_EXCTRACTABLE;
+
+	if (object->session_object != 0) /* Object will be removed during next reset. */
+		prop_info[1] |= MYEID_PROP_INFO_2_SESSION_OBJECT;
+
+	/* TODO: add other flags, like CKA_TRUSTED and CKA_WRAP_WITH_TRUSTED */
+
+	r = sc_file_set_prop_attr(file, prop_info, 2);
 
 	/* Now create the key file */
 	r = sc_pkcs15init_create_file(profile, p15card, file);

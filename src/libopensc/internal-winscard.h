@@ -138,12 +138,19 @@ typedef const SCARD_IO_REQUEST *LPCSCARD_IO_REQUEST;
 
 #endif	/* HAVE_SCARD_H */
 
+#ifndef PCSC_API
 #if defined(_WIN32)
 #define PCSC_API WINAPI
 #elif defined(USE_CYGWIN)
 #define PCSC_API __stdcall
 #else
 #define PCSC_API
+#endif
+#endif
+
+#ifdef __APPLE__
+#define extern
+#define __attribute__(a)
 #endif
 
 typedef LONG (PCSC_API *SCardEstablishContext_t)(DWORD dwScope, LPCVOID pvReserved1,
@@ -173,6 +180,11 @@ typedef LONG (PCSC_API *SCardListReaders_t)(SCARDCONTEXT hContext, LPCSTR mszGro
 	LPSTR mszReaders, LPDWORD pcchReaders);
 typedef LONG (PCSC_API *SCardGetAttrib_t)(SCARDHANDLE hCard, DWORD dwAttrId,\
 	LPBYTE pbAttr, LPDWORD pcbAttrLen);
+
+#ifdef __APPLE__
+#undef extern
+#undef __attribute__
+#endif
 
 /* Copied from pcsc-lite reader.h */
 

@@ -312,11 +312,15 @@ sc_pkcs15_encode_tokeninfo(sc_context_t *ctx, sc_pkcs15_tokeninfo_t *ti,
 		sc_format_asn1_entry(asn1_algo_infos[ii] + 0, &ti->supported_algos[ii].reference, &reference_len, 1);
 		sc_format_asn1_entry(asn1_algo_infos[ii] + 1, &ti->supported_algos[ii].mechanism, &mechanism_len, 1);
 		sc_format_asn1_entry(asn1_algo_infos[ii] + 2,
-			asn1_algo_infos_parameters[ii], NULL, 0);
-		sc_format_asn1_entry(asn1_algo_infos_parameters[ii] + 0,
-			NULL, NULL, 0);
-		sc_format_asn1_entry(asn1_algo_infos_parameters[ii] + 1,
-			&ti->supported_algos[ii].parameters, &parameter_len, 0);
+			asn1_algo_infos_parameters[ii], NULL, 1);
+		if (!ti->supported_algos[ii].parameters)	{
+			sc_format_asn1_entry(asn1_algo_infos_parameters[ii] + 0,
+				NULL, NULL, 1);
+		}
+		else {
+			sc_format_asn1_entry(asn1_algo_infos_parameters[ii] + 1,
+				&ti->supported_algos[ii].parameters, &parameter_len, 0);
+		}
 		sc_format_asn1_entry(asn1_algo_infos[ii] + 3, &ti->supported_algos[ii].operations, &operations_len, 1);
 		sc_format_asn1_entry(asn1_algo_infos[ii] + 4, &ti->supported_algos[ii].algo_id, NULL, 1);
 		sc_format_asn1_entry(asn1_algo_infos[ii] + 5, &ti->supported_algos[ii].algo_ref, &algo_ref_len, 1);
@@ -2559,6 +2563,31 @@ sc_pkcs15_get_supported_algo(struct sc_pkcs15_card *p15card, unsigned operation,
 	for (ii=0;ii<SC_MAX_SUPPORTED_ALGORITHMS && p15card->tokeninfo->supported_algos[ii].reference; ii++)
 		if ((p15card->tokeninfo->supported_algos[ii].operations & operation)
 				&& (p15card->tokeninfo->supported_algos[ii].mechanism == mechanism))
+			break;
+
+	if (ii < SC_MAX_SUPPORTED_ALGORITHMS && p15card->tokeninfo->supported_algos[ii].reference)   {
+		info = &p15card->tokeninfo->supported_algos[ii];
+		sc_log(ctx, "found supported algorithm (ref:%X,mech:%X,ops:%X,algo_ref:%X)",
+				info->reference, info->mechanism, info->operations, info->algo_ref);
+	}
+
+	return info;
+}
+
+struct sc_supported_algo_info *
+sc_pkcs15_get_specific_supported_algo(struct sc_pkcs15_card *p15card, unsigned operation, unsigned mechanism, const struct sc_object_id *algo_oid)
+{
+	struct sc_context *ctx = p15card->card->ctx;
+	struct sc_supported_algo_info *info = NULL;
+	int ii;
+
+	if (algo_oid == NULL)
+		return NULL;
+
+	for (ii=0;ii<SC_MAX_SUPPORTED_ALGORITHMS && p15card->tokeninfo->supported_algos[ii].reference; ii++)
+		if ((p15card->tokeninfo->supported_algos[ii].operations & operation)
+				&& (p15card->tokeninfo->supported_algos[ii].mechanism == mechanism)
+				&& sc_compare_oid(algo_oid, &p15card->tokeninfo->supported_algos[ii].algo_id) == 1)
 			break;
 
 	if (ii < SC_MAX_SUPPORTED_ALGORITHMS && p15card->tokeninfo->supported_algos[ii].reference)   {

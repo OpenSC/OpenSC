@@ -72,7 +72,7 @@ static int masktech_init(sc_card_t * card)
 	unsigned long flags;
 	struct masktech_private_data *data;
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "masktech_init()\n");
+	sc_log(card->ctx,  "masktech_init()\n");
 
 	/* private data kept during the live of the driver */
 	if (!(data = (struct masktech_private_data *) malloc(sizeof(*data))))
@@ -104,7 +104,7 @@ static int masktech_set_security_env(sc_card_t *card,
                                      int se_num)
 {
 	struct masktech_private_data *private_data;
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "masktech_set_security_env(), keyRef = 0x%0x, algo = 0x%0x\n",
+	sc_log(card->ctx,  "masktech_set_security_env(), keyRef = 0x%0x, algo = 0x%0x\n",
 		 *env->key_ref, env->algorithm_flags);
 
 	private_data = (struct masktech_private_data *) card->drv_data;
@@ -114,7 +114,7 @@ static int masktech_set_security_env(sc_card_t *card,
 	/* save the key reference */
 	if (env->flags & SC_SEC_ENV_KEY_REF_PRESENT) {
 		if (env->key_ref_len != 1) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Invalid key reference supplied.\n");
+			sc_log(card->ctx,  "Invalid key reference supplied.\n");
 			return SC_ERROR_NOT_SUPPORTED;
 		}
 		private_data->rsa_key_ref = env->key_ref[0];
@@ -137,7 +137,7 @@ static int masktech_compute_signature(sc_card_t *card,
 		0x03, 0x04, 0x02, 0x01, 0x05, 0x00, 0x04, 0x20
 	};
 	assert(card != NULL && data != NULL && out != NULL);
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "masktech_compute_signature()\n");
+	sc_log(card->ctx,  "masktech_compute_signature()\n");
 
 	/* retrieve the key reference */
 	private_data = (struct masktech_private_data *) card->drv_data;
@@ -150,7 +150,7 @@ static int masktech_compute_signature(sc_card_t *card,
 		/* check that it is a SHA256 with digest info*/
 		if ((datalen != sizeof(hdr_sha256) + 32) || (memcmp(hdr_sha256, data, sizeof(hdr_sha256)) != 0))
 		{
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "It is not a SHA256 with digestinfo\n");
+			sc_log(card->ctx,  "It is not a SHA256 with digestinfo\n");
 			return SC_ERROR_NOT_SUPPORTED;
 		}
 		/* extract the SHA-256 hash */
@@ -176,7 +176,7 @@ static int masktech_decipher(sc_card_t *card,
 	u8 rbuf[SC_MAX_EXT_APDU_BUFFER_SIZE];
 
 	assert(card != NULL && crgram != NULL && out != NULL);
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "masktech_decipher()\n");
+	sc_log(card->ctx,  "masktech_decipher()\n");
 
 	if (crgram_len > SC_MAX_EXT_APDU_BUFFER_SIZE) {
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
@@ -193,7 +193,7 @@ static int masktech_decipher(sc_card_t *card,
 	apdu.datalen = crgram_len;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 		size_t len = apdu.resplen > outlen ? outlen : apdu.resplen;
 
@@ -222,7 +222,7 @@ static int masktech_pin_unblock(sc_card_t *card,
 	verify_data.pin1.prompt = data->pin1.prompt;
 
 	rv = iso_ops->pin_cmd(card, &verify_data, tries_left);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, rv, "APDU transmit failed - verify unblock PIN");
+	LOG_TEST_RET(card->ctx, rv, "APDU transmit failed - verify unblock PIN");
 
 	/* Build a SC_PIN_CMD_UNBLOCK APDU */
 	memset(&reset_data, 0, sizeof(reset_data));
@@ -236,7 +236,7 @@ static int masktech_pin_unblock(sc_card_t *card,
 	reset_data.pin2.prompt = data->pin2.prompt;
 
 	rv = iso_ops->pin_cmd(card, &reset_data, tries_left);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, rv, "APDU transmit failed - reset unblock PIN");
+	LOG_TEST_RET(card->ctx, rv, "APDU transmit failed - reset unblock PIN");
 
 	return 0;
 }
@@ -259,7 +259,7 @@ static int masktech_pin_change(sc_card_t *card,
 	verify_data.pin1.prompt = data->pin1.prompt;
 
 	rv = iso_ops->pin_cmd(card, &verify_data, tries_left);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, rv, "APDU transmit failed - verify change PIN");
+	LOG_TEST_RET(card->ctx, rv, "APDU transmit failed - verify change PIN");
 
 	/* Build a SC_PIN_CMD_CHANGE APDU */
 	memset(&change_data, 0, sizeof(change_data));
@@ -273,7 +273,7 @@ static int masktech_pin_change(sc_card_t *card,
 	change_data.pin2.prompt = data->pin2.prompt;
 
 	rv = iso_ops->pin_cmd(card, &change_data, tries_left);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, rv, "APDU transmit failed - change PIN");
+	LOG_TEST_RET(card->ctx, rv, "APDU transmit failed - change PIN");
 
 	return 0;
 }
@@ -309,7 +309,7 @@ static int masktech_get_serialnr(sc_card_t * card, sc_serial_number_t * serial)
 	int rv;
 
 	if (!serial)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	/* Get smart card serial number */
 	card->cla = 0x80;
@@ -320,14 +320,14 @@ static int masktech_get_serialnr(sc_card_t * card, sc_serial_number_t * serial)
 	rv = sc_transmit_apdu(card, &apdu);
 	card->cla = 0x00;
 
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, rv, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, rv, "APDU transmit failed");
 
 	if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
 		return SC_ERROR_INTERNAL;
 
 	if (SC_MAX_SERIALNR < apdu.resplen)
 	{
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 	}
 	/* cache serial number */
 	card->serialnr.len = apdu.resplen;
@@ -337,13 +337,13 @@ static int masktech_get_serialnr(sc_card_t * card, sc_serial_number_t * serial)
 	if (serial)
 		memcpy(serial, &card->serialnr, sizeof(*serial));
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
 
 static int masktech_card_ctl(sc_card_t * card, unsigned long cmd, void *ptr)
 {
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "masktech_card_ctl()\n");
+	sc_log(card->ctx,  "masktech_card_ctl()\n");
 	switch (cmd) {
 		case SC_CARDCTL_GET_SERIALNR:
 			return masktech_get_serialnr(card, (sc_serial_number_t *) ptr);

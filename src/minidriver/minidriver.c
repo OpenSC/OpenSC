@@ -48,6 +48,7 @@
 #include "libopensc/log.h"
 #include "libopensc/internal.h"
 #include "libopensc/aux-data.h"
+#include "libopensc/sc-ossl-compat.h"
 #include "ui/notify.h"
 #include "ui/strings.h"
 #include "ui/wchar_from_char_str.h"
@@ -58,6 +59,10 @@
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L
 #include <openssl/pem.h>
 #endif
+#endif
+
+#ifdef ENABLE_OPENPACE
+#include <eac/eac.h>
 #endif
 
 #if defined(__MINGW32__)
@@ -4581,7 +4586,7 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 	ALG_ID hashAlg;
 	sc_pkcs15_prkey_info_t *prkey_info;
 	BYTE dataToSign[0x200];
-	int r, opt_crypt_flags = 0, opt_hash_flags = 0;
+	int opt_crypt_flags;
 	size_t dataToSignLen = sizeof(dataToSign);
 	sc_pkcs15_object_t *pkey;
 
@@ -4663,112 +4668,118 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 	memcpy(dataToSign, pInfo->pbData, pInfo->cbData);
 	dataToSignLen = pInfo->cbData;
 
-	if (CARD_PADDING_INFO_PRESENT & pInfo->dwSigningFlags)   {
-		BCRYPT_PKCS1_PADDING_INFO *pinf = (BCRYPT_PKCS1_PADDING_INFO *)pInfo->pPaddingInfo;
-		if (CARD_PADDING_PSS == pInfo->dwPaddingType)   {
-			logprintf(pCardData, 0, "unsupported paddingtype CARD_PADDING_PSS\n");
-			dwret = SCARD_E_UNSUPPORTED_FEATURE;
-			goto err;
-		}
-		else if (CARD_PADDING_PKCS1 != pInfo->dwPaddingType)   {
-			logprintf(pCardData, 0, "unsupported paddingtype\n");
-			dwret = SCARD_E_INVALID_PARAMETER;
-			goto err;
-		}
-			
-		if (!pinf->pszAlgId)   {
-			/* hashAlg = CALG_SSL3_SHAMD5; */
-			logprintf(pCardData, 3, "Using CALG_SSL3_SHAMD5  hashAlg\n");
-			opt_hash_flags = SC_ALGORITHM_RSA_HASH_MD5_SHA1;
-		}
-		else   {
-			if (wcscmp(pinf->pszAlgId, L"MD5") == 0)
-				opt_hash_flags = SC_ALGORITHM_RSA_HASH_MD5;
-			else if (wcscmp(pinf->pszAlgId, L"SHA1") == 0)
-				opt_hash_flags = SC_ALGORITHM_RSA_HASH_SHA1;
-			else if (wcscmp(pinf->pszAlgId, L"SHAMD5") == 0)
-				opt_hash_flags = SC_ALGORITHM_RSA_HASH_MD5_SHA1;
-			else if (wcscmp(pinf->pszAlgId, L"SHA224") == 0)
-				opt_hash_flags = SC_ALGORITHM_RSA_HASH_SHA224;
-			else if (wcscmp(pinf->pszAlgId, L"SHA256") == 0)
-				opt_hash_flags = SC_ALGORITHM_RSA_HASH_SHA256;
-			else if (wcscmp(pinf->pszAlgId, L"SHA384") == 0)
-				opt_hash_flags = SC_ALGORITHM_RSA_HASH_SHA384;
-			else if (wcscmp(pinf->pszAlgId, L"SHA512") == 0)
-				opt_hash_flags = SC_ALGORITHM_RSA_HASH_SHA512;
-			else if (wcscmp(pinf->pszAlgId, L"RIPEMD160") == 0)
-				opt_hash_flags = SC_ALGORITHM_RSA_HASH_RIPEMD160;
-			else {
-				logprintf(pCardData, 0,"unknown AlgId %S\n",NULLWSTR(pinf->pszAlgId));
-				dwret = SCARD_E_UNSUPPORTED_FEATURE;
-				goto err;
-			}
-		}
-	}
-	else   {
+	if (0 == (CARD_PADDING_INFO_PRESENT & pInfo->dwSigningFlags))   {
+		/* When CARD_PADDING_INFO_PRESENT is not set in dwSigningFlags, this is
+		 * the basic version of the signing structure. (If this is not the
+		 * basic verison of the signing structure, the minidriver should return
+		 * ERROR_REVISION_MISMATCH.) The minidriver should only do PKCS1
+		 * padding and use the value in aiHashAlg. */
 		logprintf(pCardData, 3, "CARD_PADDING_INFO_PRESENT not set\n");
 
+		opt_crypt_flags = SC_ALGORITHM_RSA_PAD_PKCS1;
 		if (hashAlg == CALG_MD5)
-			opt_hash_flags = SC_ALGORITHM_RSA_HASH_MD5;
+			opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_MD5;
 		else if (hashAlg == CALG_SHA1)
-			opt_hash_flags = SC_ALGORITHM_RSA_HASH_SHA1;
+			opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA1;
 		else if (hashAlg == CALG_SSL3_SHAMD5)
-			opt_hash_flags = SC_ALGORITHM_RSA_HASH_MD5_SHA1;
+			opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_MD5_SHA1;
 		else if (hashAlg == CALG_SHA_256)
-			opt_hash_flags = SC_ALGORITHM_RSA_HASH_SHA256;
+			opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA256;
 		else if (hashAlg == CALG_SHA_384)
-			opt_hash_flags = SC_ALGORITHM_RSA_HASH_SHA384;
+			opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA384;
 		else if (hashAlg == CALG_SHA_512)
-			opt_hash_flags = SC_ALGORITHM_RSA_HASH_SHA512;
+			opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA512;
 		else if (hashAlg == (ALG_CLASS_HASH | ALG_TYPE_ANY | ALG_SID_RIPEMD160))
-			opt_hash_flags = SC_ALGORITHM_RSA_HASH_RIPEMD160;
+			opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_RIPEMD160;
 		else if (hashAlg !=0) {
 			logprintf(pCardData, 0, "bogus aiHashAlg %i\n", hashAlg);
 			dwret = SCARD_E_UNSUPPORTED_FEATURE;
 			goto err;
 		}
-	}
-	opt_hash_flags |= SC_ALGORITHM_RSA_PAD_NONE;
-	
-	if (pInfo->dwSigningFlags & CARD_PADDING_NONE)
-	{
-		/* do not add the digest info when called from CryptSignHash(CRYPT_NOHASHOID)
+	} else {
+		switch (pInfo->dwPaddingType) {
+			case CARD_PADDING_NONE:
+				opt_crypt_flags = SC_ALGORITHM_RSA_PAD_NONE;
+				break;
 
-		Note: SC_ALGORITHM_RSA_HASH_MD5_SHA1 aka CALG_SSL3_SHAMD5 do not have a digest info to be added
-		      CryptSignHash(CALG_SSL3_SHAMD5,CRYPT_NOHASHOID) is the same than CryptSignHash(CALG_SSL3_SHAMD5)
-		*/
-		opt_hash_flags = 0;
-	}
+			case CARD_PADDING_PKCS1:
+				opt_crypt_flags = SC_ALGORITHM_RSA_PAD_PKCS1;
+				BCRYPT_PKCS1_PADDING_INFO *pkcs1_pinf = (BCRYPT_PKCS1_PADDING_INFO *)pInfo->pPaddingInfo;
 
-	/* From sc-minidriver_specs_v7.docx pp.76:
-	 * 'The Base CSP/KSP performs the hashing operation on the data before passing it
-	 *	to CardSignData for signature.'
-	 * So, the SC_ALGORITHM_RSA_HASH_* flags should not be passed to pkcs15 library
-	 *	when calculating the signature .
-	 *
-	 * From sc-minidriver_specs_v7.docx pp.76:
-	 * 'If the aiHashAlg member is nonzero, it specifies the hash algorithm’s object identifier (OID)
-	 *  that is encoded in the PKCS padding.'
-	 * So, the digest info has be included into the data to be signed.
-	 * */
-	if (opt_hash_flags)   {
-		logprintf(pCardData, 2, "include digest info of the algorithm 0x%08X\n", opt_hash_flags);
-		dataToSignLen = sizeof(dataToSign);
-		r = sc_pkcs1_encode(vs->ctx, opt_hash_flags, pInfo->pbData, pInfo->cbData, dataToSign, &dataToSignLen, 0);
-		if (r)   {
-			logprintf(pCardData, 2, "PKCS#1 encode error %s\n", sc_strerror(r));
-			dwret = SCARD_E_INVALID_VALUE;
-			goto err;
+				if (!pkcs1_pinf->pszAlgId || wcscmp(pkcs1_pinf->pszAlgId, L"SHAMD5") == 0) {
+					/* hashAlg = CALG_SSL3_SHAMD5; */
+					logprintf(pCardData, 3, "Using CALG_SSL3_SHAMD5  hashAlg\n");
+					opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_MD5_SHA1;
+				} else if (wcscmp(pkcs1_pinf->pszAlgId, BCRYPT_MD5_ALGORITHM) == 0)
+					opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_MD5;
+				else if (wcscmp(pkcs1_pinf->pszAlgId, BCRYPT_SHA1_ALGORITHM) == 0)
+					opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA1;
+				else if (wcscmp(pkcs1_pinf->pszAlgId, L"SHA224") == 0)
+					opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA224;
+				else if (wcscmp(pkcs1_pinf->pszAlgId, BCRYPT_SHA256_ALGORITHM) == 0)
+					opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA256;
+				else if (wcscmp(pkcs1_pinf->pszAlgId, BCRYPT_SHA384_ALGORITHM) == 0)
+					opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA384;
+				else if (wcscmp(pkcs1_pinf->pszAlgId, BCRYPT_SHA512_ALGORITHM) == 0)
+					opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA512;
+				else if (wcscmp(pkcs1_pinf->pszAlgId, L"RIPEMD160") == 0)
+					opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_RIPEMD160;
+				else {
+					logprintf(pCardData, 0,"unknown AlgId %S\n",NULLWSTR(pkcs1_pinf->pszAlgId));
+					dwret = SCARD_E_UNSUPPORTED_FEATURE;
+					goto err;
+				}
+				break;
+
+			case CARD_PADDING_PSS:
+				opt_crypt_flags = SC_ALGORITHM_RSA_PAD_PSS;
+				BCRYPT_PSS_PADDING_INFO *pss_pinf = (BCRYPT_PSS_PADDING_INFO *)pInfo->pPaddingInfo;
+				ULONG expected_salt_len;
+
+				if (!pss_pinf->pszAlgId || wcscmp(pss_pinf->pszAlgId, BCRYPT_SHA1_ALGORITHM) == 0) {
+					/* hashAlg = CALG_SHA1; */
+					logprintf(pCardData, 3, "Using CALG_SHA1  hashAlg\n");
+					opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA1;
+					expected_salt_len = 160;
+				} else if (wcscmp(pss_pinf->pszAlgId, L"SHA224") == 0) {
+					opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA224;
+					expected_salt_len = 224;
+				} else if (wcscmp(pss_pinf->pszAlgId, BCRYPT_SHA256_ALGORITHM) == 0) {
+					opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA256;
+					expected_salt_len = 256;
+				} else if (wcscmp(pss_pinf->pszAlgId, BCRYPT_SHA384_ALGORITHM) == 0) {
+					opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA384;
+					expected_salt_len = 384;
+				} else if (wcscmp(pss_pinf->pszAlgId, BCRYPT_SHA512_ALGORITHM) == 0) {
+					opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA512;
+					expected_salt_len = 512;
+				} else {
+					logprintf(pCardData, 0,"unknown AlgId %S\n",NULLWSTR(pss_pinf->pszAlgId));
+					dwret = SCARD_E_UNSUPPORTED_FEATURE;
+					goto err;
+				}
+				/* We're strict, and only do PSS signatures with a salt length that
+				 * matches the digest length (any shorter is rubbish, any longer
+				 * is useless). */
+				if (pss_pinf->cbSalt != expected_salt_len / 8) {
+					dwret = SCARD_E_INVALID_PARAMETER;
+					goto err;
+				}
+				break;
+
+			default:
+				logprintf(pCardData, 0, "unsupported paddingtype\n");
+				dwret = SCARD_E_INVALID_PARAMETER;
+				goto err;
 		}
 	}
+	
 
 	/* Compute output size */
 	if ( prkey_info->modulus_length > 0) {
 		/* RSA */
 		pInfo->cbSignedData = (DWORD) prkey_info->modulus_length / 8;
-		opt_crypt_flags = SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE;
 	} else if ( prkey_info->field_length > 0) {
-		opt_crypt_flags = SC_ALGORITHM_ECDSA_HASH_NONE;
 		switch(prkey_info->field_length) {
 			case 256:
 				/* ECDSA_P256 */
@@ -6993,6 +7004,14 @@ BOOL APIENTRY DllMain( HINSTANCE hinstDLL,
 		break;
 	case DLL_PROCESS_DETACH:
 		sc_notify_close();
+		if (lpReserved == NULL) {
+#if defined(ENABLE_OPENSSL) && defined(OPENSSL_SECURE_MALLOC_SIZE)
+			CRYPTO_secure_malloc_done();
+#endif
+#ifdef ENABLE_OPENPACE
+			EAC_cleanup();
+#endif
+		}
 		break;
 	}
 	return TRUE;

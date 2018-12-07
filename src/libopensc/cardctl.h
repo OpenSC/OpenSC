@@ -883,7 +883,8 @@ typedef struct sc_rtecp_genkey_data {
 		SC_CARDCTL_MYEID_KEY_RSA = 0x11,
 		SC_CARDCTL_MYEID_KEY_DES = 0x19,
 		SC_CARDCTL_MYEID_KEY_EC  = 0x22,
-		SC_CARDCTL_MYEID_KEY_AES = 0x29
+		SC_CARDCTL_MYEID_KEY_AES = 0x29,
+		SC_CARDCTL_MYEID_KEY_GENERIC_SECRET = 0x41
 	};
 
 	struct sc_cardctl_myeid_data_obj {

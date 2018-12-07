@@ -345,7 +345,7 @@ static int sc_pkcs1_add_pss_padding(unsigned int hash, unsigned int mgf1_hash,
 		if (EVP_DigestInit_ex(ctx, mgf1_md, NULL) != 1 ||
 		    EVP_DigestUpdate(ctx, out + dblen, hlen) != 1 || /* H (Z parameter of MGF1) */
 		    EVP_DigestUpdate(ctx, buf, 4) != 1 || /* C */
-		    EVP_DigestFinal_ex(ctx, mask, NULL)) {
+		    EVP_DigestFinal_ex(ctx, mask, NULL) != 1) {
 			goto done;
 		}
 		/* this is no longer part of the MGF1, but actually
@@ -487,22 +487,34 @@ int sc_get_encoding_flags(sc_context_t *ctx,
 		*pflags = 0;
 
 	} else if ((caps & SC_ALGORITHM_RSA_PAD_PSS) &&
-                   (iflags & SC_ALGORITHM_RSA_PAD_PSS)) {
+			(iflags & SC_ALGORITHM_RSA_PAD_PSS)) {
 		*sflags |= SC_ALGORITHM_RSA_PAD_PSS;
 
 	} else if (((caps & SC_ALGORITHM_RSA_RAW) &&
-	            (iflags & SC_ALGORITHM_RSA_PAD_PKCS1))
-	           || iflags & SC_ALGORITHM_RSA_PAD_PSS) {
+				(iflags & SC_ALGORITHM_RSA_PAD_PKCS1))
+			|| iflags & SC_ALGORITHM_RSA_PAD_PSS
+			|| iflags & SC_ALGORITHM_RSA_PAD_NONE) {
 		/* Use the card's raw RSA capability on the padded input */
 		*sflags = SC_ALGORITHM_RSA_PAD_NONE;
 		*pflags = iflags;
 
 	} else if ((caps & (SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE)) &&
-	           (iflags & SC_ALGORITHM_RSA_PAD_PKCS1)) {
+			(iflags & SC_ALGORITHM_RSA_PAD_PKCS1)) {
 		/* A corner case - the card can partially do PKCS1, if we prepend the
 		 * DigestInfo bit it will do the rest. */
 		*sflags = SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE;
 		*pflags = iflags & SC_ALGORITHM_RSA_HASHES;
+
+	} else if ((iflags & SC_ALGORITHM_AES) == SC_ALGORITHM_AES) { /* TODO: seems like this constant does not belong to the same set of flags used form asymmetric algos. Fix this! */
+		*sflags = 0;
+		*pflags = 0;
+
+	} else if ((iflags & SC_ALGORITHM_AES_FLAGS) > 0) {
+		*sflags = iflags & SC_ALGORITHM_AES_FLAGS;
+		if (iflags & SC_ALGORITHM_AES_CBC_PAD)
+			*pflags = SC_ALGORITHM_AES_CBC_PAD;
+		else
+			*pflags = 0;
 
 	} else {
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "unsupported algorithm");

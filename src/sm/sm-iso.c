@@ -219,13 +219,13 @@ static int format_data(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	}
 	pad_data_len = r;
 
-	sc_debug_hex(card->ctx, SC_LOG_DEBUG_NORMAL, "Data to encrypt", pad_data, pad_data_len);
+	sc_log_hex(card->ctx, "Data to encrypt", pad_data, pad_data_len);
 	r = ctx->encrypt(card, ctx, pad_data, pad_data_len, formatted_data);
 	if (r < 0) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not encrypt the data");
 		goto err;
 	}
-	sc_debug_hex(card->ctx, SC_LOG_DEBUG_NORMAL, "Cryptogram", *formatted_data, r);
+	sc_log_hex(card->ctx, "Cryptogram", *formatted_data, r);
 
 	if (prepend_padding_indicator) {
 		r = prefix_buf(ctx->padding_indicator, *formatted_data, r, formatted_data);
@@ -333,7 +333,7 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 				sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not format Le of SM apdu");
 				goto err;
 			}
-			sc_debug_hex(card->ctx, SC_LOG_DEBUG_NORMAL, "Protected Le (plain)", le, le_len);
+			sc_log_hex(card->ctx, "Protected Le (plain)", le, le_len);
 			break;
 	case SC_APDU_CASE_2_EXT:
 			if (card->reader->active_protocol == SC_PROTO_T0) {
@@ -353,7 +353,7 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 					goto err;
 				}
 			}
-			sc_debug_hex(card->ctx, SC_LOG_DEBUG_NORMAL, "Protected Le (plain)", le, le_len);
+			sc_log_hex(card->ctx, "Protected Le (plain)", le, le_len);
 			break;
 		case SC_APDU_CASE_3_SHORT:
 		case SC_APDU_CASE_3_EXT:
@@ -368,7 +368,7 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 				sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not format data of SM apdu");
 				goto err;
 			}
-			sc_debug_hex(card->ctx, SC_LOG_DEBUG_NORMAL, "Padding-content indicator followed by cryptogram (plain)",
+			sc_log_hex(card->ctx, "Padding-content indicator followed by cryptogram (plain)",
 					fdata, fdata_len);
 			break;
 		case SC_APDU_CASE_4_SHORT:
@@ -380,7 +380,7 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 					sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not format Le of SM apdu");
 					goto err;
 				}
-				sc_debug_hex(card->ctx, SC_LOG_DEBUG_NORMAL, "Protected Le (plain)", le, le_len);
+				sc_log_hex(card->ctx, "Protected Le (plain)", le, le_len);
 			}
 
 			if (apdu->ins & 1) {
@@ -394,7 +394,7 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 				sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not format data of SM apdu");
 				goto err;
 			}
-			sc_debug_hex(card->ctx, SC_LOG_DEBUG_NORMAL, "Padding-content indicator followed by cryptogram (plain)",
+			sc_log_hex(card->ctx, "Padding-content indicator followed by cryptogram (plain)",
 					fdata, fdata_len);
 			break;
 		case SC_APDU_CASE_4_EXT:
@@ -411,7 +411,7 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 					sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not format Le of SM apdu");
 					goto err;
 				}
-				sc_debug_hex(card->ctx, SC_LOG_DEBUG_NORMAL, "Protected Le (plain)", le, le_len);
+				sc_log_hex(card->ctx, "Protected Le (plain)", le, le_len);
 			}
 
 			if (apdu->ins & 1) {
@@ -425,7 +425,7 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 				sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not format data of SM apdu");
 				goto err;
 			}
-			sc_debug_hex(card->ctx, SC_LOG_DEBUG_NORMAL, "Padding-content indicator followed by cryptogram (plain)",
+			sc_log_hex(card->ctx, "Padding-content indicator followed by cryptogram (plain)",
 					fdata, fdata_len);
 			break;
 		default:
@@ -455,7 +455,7 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 		}
 		mac_data_len = r;
 	}
-	sc_debug_hex(card->ctx, SC_LOG_DEBUG_NORMAL, "Data to authenticate", mac_data, mac_data_len);
+	sc_log_hex(card->ctx, "Data to authenticate", mac_data, mac_data_len);
 
 	r = ctx->authenticate(card, ctx, mac_data, mac_data_len,
 			&mac);
@@ -464,7 +464,7 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 		goto err;
 	}
 	mac_len = r;
-	sc_debug_hex(card->ctx, SC_LOG_DEBUG_NORMAL, "Cryptographic Checksum (plain)", mac, mac_len);
+	sc_log_hex(card->ctx, "Cryptographic Checksum (plain)", mac, mac_len);
 
 
 	/* format SM apdu */
@@ -497,7 +497,7 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 		goto err;
 	}
 	sm_apdu->resp = resp_data;
-	sc_debug_hex(card->ctx, SC_LOG_DEBUG_NORMAL, "ASN.1 encoded encrypted APDU data", sm_apdu->data, sm_apdu->datalen);
+	sc_log_hex(card->ctx, "ASN.1 encoded encrypted APDU data", sm_apdu->data, sm_apdu->datalen);
 
 	*psm_apdu = sm_apdu;
 
@@ -618,9 +618,9 @@ static int sm_decrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 		goto err;
 	}
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Decrypted APDU sw1=%02x sw2=%02x",
+	sc_log(card->ctx,  "Decrypted APDU sw1=%02x sw2=%02x",
 			apdu->sw1, apdu->sw2);
-	sc_debug_hex(card->ctx, SC_LOG_DEBUG_NORMAL, "Decrypted APDU response data",
+	sc_log_hex(card->ctx, "Decrypted APDU response data",
 			apdu->resp, apdu->resplen);
 
 	r = SC_SUCCESS;
@@ -644,15 +644,15 @@ static int iso_add_sm(struct iso_sm_ctx *sctx, sc_card_t *card,
 
 	if ((apdu->cla & 0x0C) == 0x0C) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Given APDU is already protected with some secure messaging. Closing own SM context.");
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, sc_sm_stop(card),
+		LOG_TEST_RET(card->ctx, sc_sm_stop(card),
 				"Could not close ISO SM session");
 		return SC_ERROR_SM_NOT_APPLIED;
 	}
 
 	if (sctx->pre_transmit)
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, sctx->pre_transmit(card, sctx, apdu),
+		LOG_TEST_RET(card->ctx, sctx->pre_transmit(card, sctx, apdu),
 				"Could not complete SM specific pre transmit routine");
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, sm_encrypt(sctx, card, apdu, sm_apdu),
+	LOG_TEST_RET(card->ctx, sm_encrypt(sctx, card, apdu, sm_apdu),
 			"Could not encrypt APDU");
 
 	return SC_SUCCESS;
@@ -661,13 +661,17 @@ static int iso_add_sm(struct iso_sm_ctx *sctx, sc_card_t *card,
 static int iso_rm_sm(struct iso_sm_ctx *sctx, sc_card_t *card,
 		sc_apdu_t *sm_apdu, sc_apdu_t *apdu)
 {
+	if (!sctx)
+		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
+			"Invalid SM context. No SM processing performed.");
+
 	if (sctx->post_transmit)
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, sctx->post_transmit(card, sctx, sm_apdu),
+		LOG_TEST_RET(card->ctx, sctx->post_transmit(card, sctx, sm_apdu),
 				"Could not complete SM specific post transmit routine");
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, sm_decrypt(sctx, card, sm_apdu, apdu),
+	LOG_TEST_RET(card->ctx, sm_decrypt(sctx, card, sm_apdu, apdu),
 			"Could not decrypt APDU");
 	if (sctx->finish)
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, sctx->finish(card, sctx, apdu),
+		LOG_TEST_RET(card->ctx, sctx->finish(card, sctx, apdu),
 				"Could not complete SM specific post transmit routine");
 
 	return SC_SUCCESS;

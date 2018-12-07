@@ -31,6 +31,7 @@
 #include "sm/sm-eac.h"
 #include <string.h>
 
+static int fread_to_eof(const char *file, unsigned char **buf, size_t *buflen);
 #include "../tools/fread_to_eof.c"
 
 struct npa_drv_data {
@@ -762,7 +763,7 @@ static int npa_pin_cmd(struct sc_card *card,
 	}
 
 err:
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 static int npa_logout(sc_card_t *card)

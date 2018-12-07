@@ -89,6 +89,7 @@ sc_der_copy
 sc_detect_card_presence
 sc_disconnect_card
 sc_do_log
+sc_do_log_color
 sc_do_log_noframe
 _sc_debug
 _sc_debug_hex
@@ -237,6 +238,8 @@ sc_pkcs15_remove_unusedspace
 sc_pkcs15_search_objects
 sc_pkcs15_unbind
 sc_pkcs15_unblock_pin
+sc_pkcs15_unwrap
+sc_pkcs15_wrap
 sc_pkcs15_verify_pin
 sc_pkcs15_get_pin_info
 sc_pkcs15_verify_pin_with_session_pin
@@ -371,3 +374,4 @@ sc_notify_init
 sc_notify_close
 sc_notify
 sc_notify_id
+sc_color_fprintf

@@ -212,7 +212,7 @@ int sc_pkcs15_cache_file(struct sc_pkcs15_card *p15card,
 	c = fwrite(buf, 1, bufsize, f);
 	fclose(f);
 	if (c != bufsize) {
-		sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(p15card->card->ctx, 
 			 "fwrite() wrote only %"SC_FORMAT_LEN_SIZE_T"u bytes",
 			 c);
 		unlink(fname);

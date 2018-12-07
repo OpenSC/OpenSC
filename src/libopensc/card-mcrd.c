@@ -206,7 +206,7 @@ static int mcrd_delete_ref_to_authkey(sc_card_t * card)
 	apdu.lc = 2;
 	apdu.datalen = 2;
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
 
@@ -226,7 +226,7 @@ static int mcrd_delete_ref_to_signkey(sc_card_t * card)
 	apdu.lc = 2;
 	apdu.datalen = 2;
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 
 }
@@ -245,10 +245,10 @@ static int mcrd_set_decipher_key_ref(sc_card_t * card, int key_reference)
 	/* track the active keypair  */
 	sc_format_path("0033", &path);
 	r = sc_select_file(card, &path, NULL);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Can't select keyref info file 0x0033");
+	LOG_TEST_RET(card->ctx, r, "Can't select keyref info file 0x0033");
 	r = sc_read_record(card, 1, keyref_data,
 			   SC_ESTEID_KEYREF_FILE_RECLEN, SC_RECORD_BY_REC_NR);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Can't read keyref info file!");
+	LOG_TEST_RET(card->ctx, r, "Can't read keyref info file!");
 
 	sc_log(card->ctx,
 		 "authkey reference 0x%02x%02x\n",
@@ -275,7 +275,7 @@ static int mcrd_set_decipher_key_ref(sc_card_t * card, int key_reference)
 	apdu.lc = 5;
 	apdu.datalen = 5;
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
 
@@ -409,11 +409,11 @@ static int load_special_files(sc_card_t * card)
 		return 0;	/* yes. */
 	clear_special_files(dfi);
 	if (!dfi)
-		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL);
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
 
 	/* Read rule file. Note that we bypass our cache here. */
 	r = select_part(card, MCRD_SEL_EF, EF_Rule, NULL);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "selecting EF_Rule failed");
+	LOG_TEST_RET(ctx, r, "selecting EF_Rule failed");
 
 	for (recno = 1;; recno++) {
 		u8 recbuf[256];
@@ -427,7 +427,7 @@ static int load_special_files(sc_card_t * card)
 		} else {
 			rule = malloc(sizeof *rule + r);
 			if (!rule)
-				SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+				LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 			rule->recno = recno;
 			rule->datalen = r;
 			memcpy(rule->data, recbuf, r);
@@ -444,7 +444,7 @@ static int load_special_files(sc_card_t * card)
 		sc_log(ctx, "no EF_KeyD file available\n");
 		return 0;	/* That is okay. */
 	}
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "selecting EF_KeyD failed");
+	LOG_TEST_RET(ctx, r, "selecting EF_KeyD failed");
 
 	for (recno = 1;; recno++) {
 		u8 recbuf[256];
@@ -458,7 +458,7 @@ static int load_special_files(sc_card_t * card)
 		} else {
 			keyd = malloc(sizeof *keyd + r);
 			if (!keyd)
-				SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+				LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 			keyd->recno = recno;
 			keyd->datalen = r;
 			memcpy(keyd->data, recbuf, r);
@@ -500,7 +500,7 @@ static int get_se_num_from_keyd(sc_card_t * card, unsigned short fid,
 		len = keyd->datalen;
 
 		sc_log(ctx, "keyd no %d", keyd->recno);
-		sc_debug_hex(ctx, SC_LOG_DEBUG_NORMAL, "", p, len);
+		sc_log_hex(ctx, "", p, len);
 
 		tag = sc_asn1_find_tag(ctx, p, len, 0x83, &taglen);
 		if (!tag || taglen != 4 ||
@@ -777,7 +777,7 @@ do_select(sc_card_t * card, u8 kind,
 	apdu.le = 256;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (!file) {
 		if (apdu.sw1 == 0x61)
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, 0);
@@ -794,7 +794,7 @@ do_select(sc_card_t * card, u8 kind,
 		if (file) {
 			*file = sc_file_new();
 			if (!*file)
-				SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 			(*file)->type = SC_FILE_TYPE_DF;
 			return SC_SUCCESS;
 		}
@@ -803,7 +803,7 @@ do_select(sc_card_t * card, u8 kind,
 	if (p2 == 0x04 && apdu.resp[0] == 0x62) {
 		*file = sc_file_new();
 		if (!*file)
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 		/* EstEID v3.0 cards are buggy and sometimes return a double 0x62 tag */
 		if (card->type == SC_CARD_TYPE_MCRD_ESTEID_V30 && apdu.resp[2] == 0x62)
 			process_fcp(card, *file, apdu.resp + 4, apdu.resp[3]);
@@ -815,7 +815,7 @@ do_select(sc_card_t * card, u8 kind,
 	if (p2 != 0x0C && apdu.resp[0] == 0x6F) {
 		*file = sc_file_new();
 		if (!*file)
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 		if (apdu.resp[1] <= apdu.resplen)
 		process_fcp(card, *file, apdu.resp + 2, apdu.resp[1]);
 		return SC_SUCCESS;
@@ -867,7 +867,7 @@ select_down(sc_card_t * card,
 
 	for (; pathlen; pathlen--, pathptr++) {
 		if (priv->curpathlen == MAX_CURPATH)
-			SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL,
+			LOG_TEST_RET(card->ctx, SC_ERROR_INTERNAL,
 				    "path too long for cache");
 		r = -1;		/* force DF select. */
 		if (pathlen == 1 && !df_only) {
@@ -880,7 +880,7 @@ select_down(sc_card_t * card,
 		if (r)
 			r = select_part(card, MCRD_SEL_DF, *pathptr,
 					pathlen == 1 ? file : NULL);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to select DF");
+		LOG_TEST_RET(card->ctx, r, "unable to select DF");
 		priv->curpath[priv->curpathlen] = *pathptr;
 		priv->curpathlen++;
 	}
@@ -922,7 +922,7 @@ select_file_by_path(sc_card_t * card, unsigned short *pathptr,
 		/* MF requested: clear the cache and select it. */
 		priv->curpathlen = 0;
 		r = select_part(card, MCRD_SEL_MF, pathptr[0], file);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to select MF");
+		LOG_TEST_RET(card->ctx, r, "unable to select MF");
 		priv->curpath[0] = pathptr[0];
 		priv->curpathlen = 1;
 		priv->is_ef = 0;
@@ -970,7 +970,7 @@ select_file_by_path(sc_card_t * card, unsigned short *pathptr,
 			/* Relative addressing without a current path. So we
 			   select the MF first. */
 			r = select_part(card, MCRD_SEL_MF, pathptr[0], file);
-			SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to select MF");
+			LOG_TEST_RET(card->ctx, r, "unable to select MF");
 			priv->curpath[0] = pathptr[0];
 			priv->curpathlen = 1;
 			priv->is_ef = 0;
@@ -1022,7 +1022,7 @@ select_file_by_fid(sc_card_t * card, unsigned short *pathptr,
 		/* MF requested: clear the cache and select it. */
 		priv->curpathlen = 0;
 		r = select_part(card, MCRD_SEL_MF, MFID, file);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to select MF");
+		LOG_TEST_RET(card->ctx, r, "unable to select MF");
 		priv->curpath[0] = MFID;
 		priv->curpathlen = 1;
 		priv->is_ef = 0;
@@ -1032,7 +1032,7 @@ select_file_by_fid(sc_card_t * card, unsigned short *pathptr,
 			/* Relative addressing without a current path. So we
 			   select the MF first. */
 			r = select_part(card, MCRD_SEL_MF, pathptr[0], file);
-			SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to select MF");
+			LOG_TEST_RET(card->ctx, r, "unable to select MF");
 			priv->curpath[0] = pathptr[0];
 			priv->curpathlen = 1;
 			priv->is_ef = 0;
@@ -1146,7 +1146,7 @@ static int mcrd_restore_se(sc_card_t * card, int se_num)
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x22, 0xF3, se_num);
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }
 
@@ -1169,7 +1169,7 @@ static int mcrd_set_security_env(sc_card_t * card,
 
 	if (!(card != NULL && env != NULL))
 		return SC_ERROR_INTERNAL;
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(card->ctx);
 	priv = DRVDATA(card);
 
 	/* special environment handling for esteid, stolen from openpgp */
@@ -1282,7 +1282,7 @@ static int mcrd_set_security_env(sc_card_t * card,
 				/* Need to restore the security environment. */
 				if (num) {
 					r = mcrd_restore_se(card, num);
-					SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r,
+					LOG_TEST_RET(card->ctx, r,
 						    "mcrd_enable_se failed");
 				}
 				p += 2;
@@ -1299,7 +1299,7 @@ static int mcrd_set_security_env(sc_card_t * card,
 	apdu.resplen = 0;
 	if (se_num > 0) {
 		r = sc_lock(card);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "sc_lock() failed");
+		LOG_TEST_RET(card->ctx, r, "sc_lock() failed");
 		locked = 1;
 	}
 	if (apdu.datalen != 0) {
@@ -1319,7 +1319,7 @@ static int mcrd_set_security_env(sc_card_t * card,
 	if (se_num <= 0)
 		return 0;
 	sc_unlock(card);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);
       err:
 	if (locked)
@@ -1341,7 +1341,7 @@ static int mcrd_compute_signature(sc_card_t * card,
 		return SC_ERROR_INVALID_ARGUMENTS;
 	env = &priv->sec_env;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(card->ctx);
 	if (env->operation != SC_SEC_OPERATION_SIGN)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	if (datalen > 255)
@@ -1369,9 +1369,9 @@ static int mcrd_compute_signature(sc_card_t * card,
 	apdu.resplen = outlen;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
+	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, apdu.resplen);
 }
@@ -1397,7 +1397,7 @@ static int mcrd_decipher(struct sc_card *card,
 	if (crgram_len > 255)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(card->ctx, 
 		 "Will derive (%d) for %"SC_FORMAT_LEN_SIZE_T"u (0x%02"SC_FORMAT_LEN_SIZE_T"x) bytes using key %d algorithm %d flags %d\n",
 		 env->operation, crgram_len, crgram_len, env->key_ref[0],
 		 env->algorithm, env->algorithm_flags);
@@ -1437,7 +1437,7 @@ static int mcrd_pin_cmd(sc_card_t * card, struct sc_pin_cmd_data *data,
 			int *tries_left)
 {
 	int r;
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(card->ctx);
 	data->pin1.offset = 5;
 	data->pin1.length_offset = 4;
 	data->pin2.offset = 5;

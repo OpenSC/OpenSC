@@ -281,12 +281,12 @@ incrypto34_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	int		algorithm, r;
 
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Incrypto34 supports RSA keys only.");
+		sc_log(card->ctx,  "Incrypto34 supports RSA keys only.");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
 	if (incrypto34_key_algorithm(key_info->usage, &algorithm) < 0) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Incrypto34 does not support keys "
+		sc_log(card->ctx,  "Incrypto34 does not support keys "
 			       "that can both sign _and_ decrypt.");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
@@ -314,25 +314,25 @@ incrypto34_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	int		algorithm, r, delete_it = 0;
 
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Incrypto34 supports only RSA keys.");
+		sc_log(card->ctx,  "Incrypto34 supports only RSA keys.");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
 	if (incrypto34_key_algorithm(key_info->usage, &algorithm) < 0) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Incrypto34 does not support keys "
+		sc_log(card->ctx,  "Incrypto34 does not support keys "
 			       "that can both sign _and_ decrypt.");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
 	keybits = key_info->modulus_length & ~7UL;
 	if (keybits > RSAKEY_MAX_BITS) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Unable to generate key, max size is %d",
+		sc_log(card->ctx,  "Unable to generate key, max size is %d",
 				RSAKEY_MAX_BITS);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
 	if (sc_profile_get_file(profile, "tempfile", &temp) < 0) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Profile doesn't define temporary file "
+		sc_log(card->ctx,  "Profile doesn't define temporary file "
 				"for key generation.");
 		return SC_ERROR_NOT_SUPPORTED;
 	}

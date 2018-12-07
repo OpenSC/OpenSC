@@ -147,6 +147,7 @@ enum {
 	OPT_UPDATE_EXISTING,
 	OPT_MD_CONTAINER_GUID,
 	OPT_VERSION,
+	OPT_USER_CONSENT,
 
 	OPT_PIN1      = 0x10000,	/* don't touch these values */
 	OPT_PUK1      = 0x10001,
@@ -205,6 +206,7 @@ const struct option	options[] = {
 	{ "update-existing",	no_argument,       NULL,	OPT_UPDATE_EXISTING},
 
 	{ "extractable",	no_argument, NULL,		OPT_EXTRACTABLE },
+	{ "user-consent",	required_argument, NULL, OPT_USER_CONSENT},
 	{ "insecure",		no_argument, NULL,		OPT_INSECURE },
 	{ "use-default-transport-keys",
 				no_argument, NULL,		'T' },
@@ -271,6 +273,7 @@ static const char *		option_help[] = {
 	"Store or update existing certificate",
 
 	"Private key stored as an extractable key",
+	"Set userConsent. Default = 0",
 	"Insecure mode: do not require a PIN for private key",
 	"Do not ask for transport keys if the driver thinks it knows the key",
 	"Do not prompt the user; if no PINs supplied, pinpad will be used",
@@ -394,6 +397,7 @@ static unsigned int		opt_secret_count;
 static int			opt_ignore_ca_certs = 0;
 static int			opt_update_existing = 0;
 static int			verbose = 0;
+static int			opt_user_consent = 0;
 
 static struct sc_pkcs15init_callbacks callbacks = {
 	get_pin_callback,	/* get_pin() */
@@ -1000,6 +1004,19 @@ failed:	fprintf(stderr, "Failed to read PIN: %s\n", sc_strerror(r));
 	return SC_ERROR_PKCS15INIT;
 }
 
+static void sc_pkcs15_inc_id(sc_pkcs15_id_t *id)
+{
+	int len;
+	for (len = id->len - 1; len >= 0; len--) {
+		if (id->value[len]++ != 0xFF)
+			break;
+	}
+	if (len < 0 && id->len < SC_PKCS15_MAX_ID_SIZE)	{
+		memmove(id->value + 1, id->value, id->len++);
+		id->value[0] = 1;
+	}
+}
+
 /*
  * Store a private key
  */
@@ -1038,12 +1055,14 @@ do_store_private_key(struct sc_profile *profile)
 
 		/* tell openssl to cache the extensions */
 		X509_check_purpose(cert[0], -1, -1);
-		usage = X509_get_extended_key_usage(cert[0]);
+		usage = X509_get_key_usage(cert[0]);
 
 		/* No certificate usage? Assume ordinary
 		 * user cert */
 		if (usage == 0)
-			usage = 0x1F;
+			usage = KU_NON_REPUDIATION
+				| KU_DIGITAL_SIGNATURE
+				| KU_KEY_ENCIPHERMENT;
 
 		/* If the user requested a specific key usage on the
 		 * command line check if it includes _more_
@@ -1061,10 +1080,7 @@ do_store_private_key(struct sc_profile *profile)
 		args.x509_usage = opt_x509_usage? opt_x509_usage : usage;
 	}
 
-	args.access_flags |=
-		  SC_PKCS15_PRKEY_ACCESS_SENSITIVE
-		| SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE
-		| SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE;
+	args.access_flags |= SC_PKCS15_PRKEY_ACCESS_SENSITIVE;
 
 	r = sc_lock(p15card->card);
 	if (r < 0)
@@ -1092,7 +1108,7 @@ do_store_private_key(struct sc_profile *profile)
 			return r;
 
 		X509_check_purpose(cert[i], -1, -1);
-		cargs.x509_usage = X509_get_extended_key_usage(cert[i]);
+		cargs.x509_usage = X509_get_key_usage(cert[i]);
 
 		cargs.label = cert_common_name(cert[i]);
 		if (!cargs.label)
@@ -1110,6 +1126,8 @@ do_store_private_key(struct sc_profile *profile)
 				printf("Certificate #%d already present, not stored.\n", i);
 				goto next_cert;
 			}
+			sc_pkcs15_inc_id(&args.id);
+			cargs.id = args.id;
 			cargs.authority = 1;
 		}
 
@@ -1234,10 +1252,7 @@ do_store_secret_key(struct sc_profile *profile)
 
 	args.algorithm = algorithm;
 	args.value_len = keybits;
-	args.access_flags |=
-		  SC_PKCS15_PRKEY_ACCESS_SENSITIVE
-		| SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE
-		| SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE;
+	args.access_flags |= SC_PKCS15_PRKEY_ACCESS_SENSITIVE;
 
 	r = sc_lock(p15card->card);
 	if (r < 0)
@@ -1814,6 +1829,7 @@ static int init_prkeyargs(struct sc_pkcs15init_prkeyargs *args)
 		args->guid = (unsigned char *)opt_md_container_guid;
 		args->guid_len = strlen(opt_md_container_guid);
 	}
+	args->user_consent = opt_user_consent;
 
 	return 0;
 }
@@ -1834,6 +1850,15 @@ static int init_skeyargs(struct sc_pkcs15init_skeyargs *args)
 		args->access_flags |= SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE;
 	}
 	args->label = opt_label;
+
+	if ((opt_x509_usage & SC_PKCS15INIT_X509_DATA_ENCIPHERMENT) == SC_PKCS15INIT_X509_DATA_ENCIPHERMENT) {
+	    args->usage |= SC_PKCS15_PRKEY_USAGE_ENCRYPT | SC_PKCS15_PRKEY_USAGE_DECRYPT;
+	}
+
+	if ((opt_x509_usage & SC_PKCS15INIT_X509_KEY_ENCIPHERMENT) == SC_PKCS15INIT_X509_KEY_ENCIPHERMENT) {
+	    args->usage |= SC_PKCS15_PRKEY_USAGE_WRAP | SC_PKCS15_PRKEY_USAGE_UNWRAP;
+	}
+	args->user_consent = opt_user_consent;
 
 	return 0;
 }
@@ -2839,6 +2864,10 @@ handle_option(const struct option *opt)
 		break;
 	case OPT_VERSION:
 		this_action = ACTION_PRINT_VERSION;
+		break;
+	case OPT_USER_CONSENT:
+		if (optarg != NULL)
+			opt_user_consent = atoi(optarg);
 		break;
 	default:
 		util_print_usage_and_die(app_name, options, option_help, NULL);

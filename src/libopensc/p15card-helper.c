@@ -61,7 +61,7 @@ int sc_pkcs15emu_initialize_objects(sc_pkcs15_card_t *p15card, p15data_items *it
 		r = sc_pkcs15emu_object_add(p15card, SC_PKCS15_TYPE_DATA_OBJECT, 
 			&obj_obj, &obj_info); 
 		if (r < 0)
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+			LOG_FUNC_RETURN(card->ctx, r);
 	}
 	return SC_SUCCESS;
 }
@@ -148,32 +148,32 @@ CERT_HANDLE_FUNCTION(default_cert_handle) {
 	int modulus_len = 0;
 	const prdata* key = get_prkey_by_cert(items, cert);
 	if(!key) {
-		sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "Error: No key for this certificate");
+		sc_log(p15card->card->ctx,  "Error: No key for this certificate");
 		return SC_ERROR_INTERNAL;
 	}
 
 	if(!d2i_X509(&cert_data, (const u8**)&data, length)) {
-		sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "Error converting certificate");
+		sc_log(p15card->card->ctx,  "Error converting certificate");
 		return SC_ERROR_INTERNAL;
 	}
 
 	pkey = X509_get_pubkey(cert_data);
 	
 	if(pkey == NULL) {
-		sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "Error: no public key associated with the certificate");
+		sc_log(p15card->card->ctx,  "Error: no public key associated with the certificate");
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
 
 	certtype = X509_certificate_type(cert_data, pkey);
 	if(! (EVP_PK_RSA & certtype)) {
-		sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "Error: certificate is not for an RSA key");
+		sc_log(p15card->card->ctx,  "Error: certificate is not for an RSA key");
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
 	rsa = EVP_PKEY_get0_RSA(pkey);
 	if( rsa == NULL) {
-		sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "Error: no modulus associated with the certificate");
+		sc_log(p15card->card->ctx,  "Error: no modulus associated with the certificate");
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
@@ -212,7 +212,7 @@ err:
 		X509_free(cert_data);
 		cert_data = NULL;
 	}
-	SC_FUNC_RETURN(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(p15card->card->ctx, r);
 }
 
 int sc_pkcs15emu_initialize_certificates(sc_pkcs15_card_t *p15card, p15data_items* items) {
@@ -307,7 +307,7 @@ int sc_pkcs15emu_initialize_pins(sc_pkcs15_card_t *p15card, p15data_items* items
 		pin_obj.flags = pins[i].obj_flags;
 
 		if(0 > (r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info)))
-			SC_FUNC_RETURN(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, r);
+			LOG_FUNC_RETURN(p15card->card->ctx, r);
 	}
 	return SC_SUCCESS;
 }
@@ -320,7 +320,7 @@ int sc_pkcs15emu_initialize_private_keys(sc_pkcs15_card_t *p15card, p15data_item
 	for (i = 0; prkeys[i].label; i++) {
 		r = add_private_key(p15card, &prkeys[i], 0, 0);
 		if (r < 0)
-			SC_FUNC_RETURN(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, r);
+			LOG_FUNC_RETURN(p15card->card->ctx, r);
 	}
 	return SC_SUCCESS;
 }
@@ -333,7 +333,7 @@ int sc_pkcs15emu_initialize_public_keys(sc_pkcs15_card_t *p15card, p15data_items
 	for (i = 0; keys[i].label; i++) {
 		r = add_public_key(p15card, &keys[i], 0, 0);
 		if (r < 0)
-			SC_FUNC_RETURN(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, r);
+			LOG_FUNC_RETURN(p15card->card->ctx, r);
 	}
 	return SC_SUCCESS;
 

@@ -5,7 +5,7 @@ set -ex -o xtrace
 BUILDPATH=${PWD}
 BRANCH="`git log --max-count=1 --date=short --abbrev=8 --pretty=format:"%cd_%h"`"
 
-git clone https://${GH_TOKEN}@github.com/OpenSC/Nightly.git > /dev/null 2>&1
+git clone --single-branch https://${GH_TOKEN}@github.com/OpenSC/Nightly.git > /dev/null 2>&1
 cd Nightly
 git checkout -b "${BRANCH}"
 

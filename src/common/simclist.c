@@ -419,7 +419,7 @@ static simclist_inline struct list_entry_s *list_findpos(const list_t *simclist_
     /* accept 1 slot overflow for fetching head and tail sentinels */
     if (posstart < -1 || posstart > (int)l->numels) return NULL;
 
-    x = (float)(posstart+1) / l->numels;
+    x = l->numels ? (float)(posstart+1) / l->numels : 0;
     if (x <= 0.25) {
         /* first quarter: get to posstart from head */
         for (i = -1, ptr = l->head_sentinel; i < posstart; ptr = ptr->next, i++);

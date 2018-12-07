@@ -198,7 +198,7 @@ static int openpgp_generate_key_rsa(sc_card_t *card, sc_pkcs15_object_t *obj,
 		key_info.key_id = kid->value[0];
 
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "only RSA is currently supported");
+		sc_log(card->ctx,  "only RSA is currently supported");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 

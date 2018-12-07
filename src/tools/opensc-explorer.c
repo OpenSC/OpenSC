@@ -40,6 +40,7 @@
 #include "libopensc/asn1.h"
 #include "libopensc/cardctl.h"
 #include "libopensc/cards.h"
+#include "libopensc/log.h"
 #include "common/compat_strlcpy.h"
 #include "common/compat_getopt.h"
 #include "util.h"
@@ -1712,6 +1713,9 @@ static int do_random(int argc, char **argv)
 	sc_unlock(card);
 	if (r < 0) {
 		fprintf(stderr, "Failed to get random bytes: %s\n", sc_strerror(r));
+		if (argc == 2) {
+			fclose(outf);
+		}
 		return -1;
 	}
 
@@ -2070,14 +2074,16 @@ static char *read_cmdline(FILE *script, char *prompt)
 		/* return in interactive case with readline */
 		return line;
 #else
-		printf("%s", prompt);
+		sc_color_fprintf(SC_COLOR_FG_BLUE|SC_COLOR_BOLD, NULL, stdout, "%s", prompt);
 #endif
 	}
 
 	/* either we don't have readline or we are not running interactively */
 	fflush(stdout);
-	if (fgets(buf, sizeof(buf), script) == NULL)
+	if (fgets(buf, sizeof(buf), script) == NULL) {
+		fputc('\n', stdout);
 		return NULL;
+	}
 	if (strlen(buf) == 0)
 		return NULL;
 	if (buf[strlen(buf)-1] == '\n')

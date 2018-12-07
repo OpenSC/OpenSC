@@ -106,7 +106,7 @@ static int my_pin_cmd(sc_card_t * card, struct sc_pin_cmd_data * data,
 	int saved_len = 0;
 	u8  newpin[8];
 	
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(card->ctx);
 
 	memset(newpin, 0xff, sizeof(newpin));
 
@@ -114,7 +114,7 @@ static int my_pin_cmd(sc_card_t * card, struct sc_pin_cmd_data * data,
 		memcpy(newpin,data->pin1.data, (size_t)data->pin1.len);
 		newpin[data->pin1.len] = 0x00;
 		
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "pin len=%d", data->pin1.len);
+		sc_log(card->ctx,  "pin len=%d", data->pin1.len);
 
 		saved_data = data->pin1.data;
 		saved_len = data->pin1.len;
@@ -253,7 +253,7 @@ static int sc_pkcs15emu_gemsafeGPK_init(sc_pkcs15_card_t *p15card)
 	sc_file_free(file);
 	file = NULL;
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "GemSafe file found, id=%d",dfpath);
+	sc_log(card->ctx,  "GemSafe file found, id=%d",dfpath);
 
 	/* There may be more then one key in the directory. */
 	/* we need to find them so we can associate them with the */
@@ -280,14 +280,14 @@ static int sc_pkcs15emu_gemsafeGPK_init(sc_pkcs15_card_t *p15card)
 			case 0x10: kinfo[num_keyinfo].modulus_len =  768 / 8; break;
 			case 0x11: kinfo[num_keyinfo].modulus_len = 1024 / 8; break;
 			default:
-				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Unsupported modulus length");
+				sc_log(card->ctx,  "Unsupported modulus length");
 				continue;
 		}
 
 		kinfo[num_keyinfo].fileid = i;
 		sc_pkcs15_format_id("", &kinfo[num_keyinfo].id); 
 
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"reading modulus");
+		sc_log(card->ctx, "reading modulus");
 		r = sc_read_record(card, 2, modulus_buf, 
 				kinfo[num_keyinfo].modulus_len+1, SC_RECORD_BY_REC_NR);
 		if (r < 0) 
@@ -381,7 +381,7 @@ static int sc_pkcs15emu_gemsafeGPK_init(sc_pkcs15_card_t *p15card)
 					idx2 = idx2 + idxlen;
 				}
 				cert_info.value.len = seq_len1 + 4;
-				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Found cert at offset %d", idx1);
+				sc_log(card->ctx,  "Found cert at offset %d", idx1);
 				cert_info.value.value = (unsigned char *) 
 						malloc(cert_info.value.len);
 				if (!cert_info.value.value) 
@@ -416,7 +416,7 @@ static int sc_pkcs15emu_gemsafeGPK_init(sc_pkcs15_card_t *p15card)
 					memcmp(cert_out->key->u.rsa.modulus.data, 
 					&kinfo[j].modulus, cert_out->key->u.rsa.modulus.len) == 0) { 
 			memcpy(&kinfo[j].id, &cert_info.id, sizeof(sc_pkcs15_id_t));
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "found match");
+			sc_log(card->ctx,  "found match");
 			}
 		}
 		sc_pkcs15_free_certificate(cert_out);
@@ -489,7 +489,7 @@ static int sc_pkcs15emu_gemsafeGPK_init(sc_pkcs15_card_t *p15card)
 	
 		for (j = 0; j < num_keyinfo; j++) {
 			if (sc_pkcs15_compare_id(&kinfo[j].id, &prkey_info.id))  {
-				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "found key in file %d for id %s",
+				sc_log(card->ctx,  "found key in file %d for id %s",
 					 kinfo[j].fileid, prkeys[i].id);
 				prkey_info.path.value[0] = kinfo[j].fileid >> 8;
 				prkey_info.path.value[1] = kinfo[j].fileid & 0xff;
@@ -515,7 +515,7 @@ int sc_pkcs15emu_gemsafeGPK_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *ai
 	sc_card_t   *card = p15card->card;
 	sc_context_t    *ctx = card->ctx;
 
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Entering %s", __FUNCTION__);
+	sc_log(ctx,  "Entering %s", __FUNCTION__);
 
 	if (opts && opts->flags & SC_PKCS15EMU_FLAGS_NO_CHECK)
 		return sc_pkcs15emu_gemsafeGPK_init(p15card);

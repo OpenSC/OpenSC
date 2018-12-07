@@ -80,7 +80,7 @@ static int asepcos_check_verify_tpin(sc_profile_t *profile, sc_pkcs15_card_t *p1
 		r = sc_pkcs15init_authenticate(profile, p15card, tfile, SC_AC_OP_CRYPTO);
 		p15card->card->caps |=  SC_CARD_CAP_USE_FCI_AC;
 		sc_file_free(tfile);
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "unable to authenticate for 'CRYPTO' operation");
+		LOG_TEST_RET(ctx, r, "unable to authenticate for 'CRYPTO' operation");
 	}
 	return SC_SUCCESS;
 }
@@ -136,7 +136,7 @@ static int asepcos_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_file_t *tfile;
 	sc_context_t *ctx = p15card->card->ctx;
 
-	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(ctx);
 	/* Check whether a transport exists and verify it if present */
 	r = asepcos_check_verify_tpin(profile, p15card);
 	if (r != SC_SUCCESS)
@@ -206,7 +206,7 @@ static int asepcos_pinid_to_akn(sc_card_t *card, int fileid, int *akn)
 	if (r != SC_SUCCESS)
 		return r;
 	if (nfile->prop_attr == NULL || nfile->prop_attr_len != 11) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "unable to determine AKN");
+		sc_log(card->ctx,  "unable to determine AKN");
 		sc_file_free(nfile);
 		return SC_ERROR_INTERNAL;
 	}
@@ -234,7 +234,7 @@ static int asepcos_do_store_pin(sc_profile_t *profile, sc_card_t *card,
 	*p++ = pinid & 0xff;
 	/* pin length */
 	if (pinlen < 4 || pinlen > 16) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "invalid PIN length");
+		sc_log(card->ctx,  "invalid PIN length");
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	*p++ = 0x00;
@@ -296,7 +296,7 @@ static int asepcos_do_store_pin(sc_profile_t *profile, sc_card_t *card,
 	r = sc_create_file(card, nfile);
 	sc_file_free(nfile);
 	if (r != SC_SUCCESS) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "unable to create PIN file");
+		sc_log(card->ctx,  "unable to create PIN file");
 		return r;
 	}
 	/* get AKN of the newly created PIN  */
@@ -350,7 +350,7 @@ static int asepcos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_file_t *tfile = NULL;
 	sc_context_t *ctx = p15card->card->ctx;
 
-	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(ctx);
 	if (!pin || !pin_len)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
@@ -367,7 +367,7 @@ static int asepcos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	r = sc_pkcs15init_authenticate(profile, p15card, tfile, SC_AC_OP_CREATE);
 	sc_file_free(tfile);
 	if (r != SC_SUCCESS) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "unable to create PIN file, insufficient rights");
+		sc_log(card->ctx,  "unable to create PIN file, insufficient rights");
 		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, r);
 	}
 
@@ -384,7 +384,7 @@ static int asepcos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		if (r == SC_SUCCESS)
 			pid += 2;
 		else if (r != SC_ERROR_FILE_NOT_FOUND) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "error selecting PIN file");
+			sc_log(card->ctx,  "error selecting PIN file");
 			SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, r);
 		}
 	} while (r != SC_ERROR_FILE_NOT_FOUND);
@@ -422,7 +422,7 @@ static int asepcos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		 * first USER PIN has been set we can tighten the ACLs of
 		 * the application DF.
 		 */
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "finalizing application DF");
+		sc_log(card->ctx,  "finalizing application DF");
 		r = sc_select_file(card, &df->path, NULL);
 		if (r != SC_SUCCESS)
 			SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, r);
@@ -432,7 +432,7 @@ static int asepcos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 			SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, r);
 		r = sc_card_ctl(card, SC_CARDCTL_ASEPCOS_SET_SATTR, df);
 		if (r != SC_SUCCESS) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "unable to change the security attributes");
+			sc_log(card->ctx,  "unable to change the security attributes");
 			SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, r);
 		}
 		/* finally activate the application DF (fix ACLs) */
@@ -445,7 +445,7 @@ static int asepcos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		st.is_ef  = 0;
 		r = sc_card_ctl(card, SC_CARDCTL_ASEPCOS_ACTIVATE_FILE, &st);
 		if (r != SC_SUCCESS) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "unable to activate DF");
+			sc_log(card->ctx,  "unable to activate DF");
 			SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, r);
 		}
 	}
@@ -477,14 +477,14 @@ static int asepcos_do_authenticate(sc_profile_t *profile, sc_pkcs15_card_t *p15c
 	sc_file_t *prkey = NULL;
 	r = sc_profile_get_file_by_path(profile, path, &prkey);
 	if (r != SC_SUCCESS) {
-		sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "unable to find file in profile");
+		sc_log(p15card->card->ctx,  "unable to find file in profile");
 		return r;
 	}
 
 	r = sc_pkcs15init_authenticate(profile, p15card, prkey, op);
 	sc_file_free(prkey);
 	if (r != SC_SUCCESS) {
-		sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "unable to authenticate");
+		sc_log(p15card->card->ctx,  "unable to authenticate");
 		return r;
 	}
 	return SC_SUCCESS;
@@ -545,7 +545,7 @@ static int asepcos_do_create_key(sc_card_t *card, size_t ksize, int fileid,
 	nfile->id   = fileid & 0xffff;
 	r = sc_file_set_prop_attr(nfile, buf, p - buf);
 	if (r != SC_SUCCESS) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "unable to set key prop. attributes");
+		sc_log(card->ctx,  "unable to set key prop. attributes");
 		sc_file_free(nfile);
 		return r;
 	}
@@ -553,7 +553,7 @@ static int asepcos_do_create_key(sc_card_t *card, size_t ksize, int fileid,
 	r = sc_create_file(card, nfile);
 	sc_file_free(nfile);
 	if (r != SC_SUCCESS) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "unable to create key file");
+		sc_log(card->ctx,  "unable to create key file");
 		return r;
 	}
 	return r;
@@ -580,7 +580,7 @@ static int asepcos_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 
 		r = sc_pkcs15_find_pin_by_auth_id(p15card, &obj->auth_id, &pin);
 		if (r != SC_SUCCESS) {
-			sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "unable to determine reference for the PIN");
+			sc_log(p15card->card->ctx,  "unable to determine reference for the PIN");
 			return r;
 		}
 
@@ -589,7 +589,7 @@ static int asepcos_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		st.akn = auth_info->attrs.pin.reference;
 		r = sc_card_ctl(p15card->card, SC_CARDCTL_ASEPCOS_AKN2FILEID, &st);
 		if (r != SC_SUCCESS) {
-			sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "unable to determine file id of the PIN");
+			sc_log(p15card->card->ctx,  "unable to determine file id of the PIN");
 			return r;
 		}
 		afileid = st.fileid;
@@ -640,7 +640,7 @@ static int asepcos_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 
 	r = asepcos_do_create_key(p15card->card, kinfo->modulus_length, fileid, buf, p - buf);
 	if (r != SC_SUCCESS) {
-		sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "unable to create private key file");
+		sc_log(p15card->card->ctx,  "unable to create private key file");
 		return r;
 	}
 
@@ -674,7 +674,7 @@ static int asepcos_do_store_rsa_key(sc_pkcs15_card_t *p15card, sc_profile_t *pro
 	tpath.value[1] = kinfo->path.value[kinfo->path.len-1];
 	r = sc_select_file(p15card->card, &tpath, NULL);
 	if (r != SC_SUCCESS) {
-		sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "unable to select rsa key file");
+		sc_log(p15card->card->ctx,  "unable to select rsa key file");
 		return r;
 	}
 
@@ -705,7 +705,7 @@ static int asepcos_do_store_rsa_key(sc_pkcs15_card_t *p15card, sc_profile_t *pro
 
 	r = sc_card_ctl(p15card->card, SC_CARDCTL_ASEPCOS_CHANGE_KEY, &ckdata);
 	if (r != SC_SUCCESS) {
-		sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "unable to change key data");
+		sc_log(p15card->card->ctx,  "unable to change key data");
 		return r;
 	}
 
@@ -725,7 +725,7 @@ static int asepcos_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_pkcs15_prkey_info_t *kinfo = (sc_pkcs15_prkey_info_t *) obj->data;
 
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
-		sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "only RSA is currently supported");
+		sc_log(p15card->card->ctx,  "only RSA is currently supported");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
@@ -763,7 +763,7 @@ static int asepcos_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 	tpath.value[1] = kinfo->path.value[kinfo->path.len-1];
 	r = sc_select_file(card, &tpath, NULL);
 	if (r != SC_SUCCESS) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "unable to select rsa key file");
+		sc_log(card->ctx,  "unable to select rsa key file");
 		return r;
 	}
 
@@ -780,9 +780,9 @@ static int asepcos_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 	apdu.resp    = rbuf;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "error creating key");
+		sc_log(card->ctx,  "error creating key");
 		return SC_ERROR_INTERNAL;
 	}
 

@@ -412,7 +412,7 @@ iso7816_process_fci(struct sc_card *card, struct sc_file *file,
 					memcpy(file->name, p, length);
 					file->namelen = length;
 
-					sc_debug_hex(ctx, SC_LOG_DEBUG_NORMAL, "  File name:", file->name, file->namelen);
+					sc_log_hex(ctx, "  File name:", file->name, file->namelen);
 					if (!file->type)
 						file->type = SC_FILE_TYPE_DF;
 				}
@@ -784,7 +784,7 @@ iso7816_delete_file(struct sc_card *card, const sc_path_t *path)
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (path->type != SC_PATH_TYPE_FILE_ID || (path->len != 0 && path->len != 2)) {
 		sc_log(card->ctx, "File type has to be SC_PATH_TYPE_FILE_ID");
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 
 	if (path->len == 2) {
@@ -1207,17 +1207,17 @@ static int iso7816_get_data(struct sc_card *card, unsigned int tag,  u8 *buf, si
 	apdu.resp = buf;
 	apdu.resplen = len;
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "GET_DATA returned error");
+	LOG_TEST_RET(card->ctx, r, "GET_DATA returned error");
 
 	if (apdu.resplen > len)
 		r = SC_ERROR_WRONG_LENGTH;
 	else
 		r = apdu.resplen;
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 
@@ -1273,7 +1273,9 @@ static struct sc_card_operations iso_ops = {
 	NULL,			/* put_data */
 	NULL,			/* delete_record */
 	NULL,			/* read_public_key */
-	NULL			/* card_reader_lock_obtained */
+	NULL,			/* card_reader_lock_obtained */
+	NULL,			/* wrap */
+	NULL			/* unwrap */
 };
 
 static struct sc_card_driver iso_driver = {

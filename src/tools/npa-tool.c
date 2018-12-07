@@ -88,14 +88,15 @@ static int getline(char **lineptr, size_t *n, FILE *stream)
 #define ASN1_APP_IMP_OPT(stname, field, type, tag) ASN1_EX_TYPE(ASN1_TFLG_IMPTAG|ASN1_TFLG_APPLICATION|ASN1_TFLG_OPTIONAL, tag, stname, field, type)
 #define ASN1_APP_IMP(stname, field, type, tag) ASN1_EX_TYPE(ASN1_TFLG_IMPTAG|ASN1_TFLG_APPLICATION, tag, stname, field, type)
 
+typedef ASN1_AUXILIARY_DATA ASN1_AUXILIARY_DATA_NPA_TOOL;
 /* 0x67
  * Auxiliary authenticated data */
-ASN1_ITEM_TEMPLATE(ASN1_AUXILIARY_DATA) = 
+ASN1_ITEM_TEMPLATE(ASN1_AUXILIARY_DATA_NPA_TOOL) = 
 	ASN1_EX_TEMPLATE_TYPE(
 			ASN1_TFLG_SEQUENCE_OF|ASN1_TFLG_IMPTAG|ASN1_TFLG_APPLICATION,
 			7, AuxiliaryAuthenticatedData, CVC_DISCRETIONARY_DATA_TEMPLATE)
-ASN1_ITEM_TEMPLATE_END(ASN1_AUXILIARY_DATA)
-IMPLEMENT_ASN1_FUNCTIONS(ASN1_AUXILIARY_DATA)
+ASN1_ITEM_TEMPLATE_END(ASN1_AUXILIARY_DATA_NPA_TOOL)
+IMPLEMENT_ASN1_FUNCTIONS(ASN1_AUXILIARY_DATA_NPA_TOOL)
 
 /** 
  * @brief Print binary data to a file stream
@@ -131,7 +132,7 @@ static int initialize(int reader_id, int verbose,
 	reader_count = sc_ctx_get_reader_count(*ctx);
 
 	if (reader_count == 0) {
-		sc_debug(*ctx, SC_LOG_DEBUG_NORMAL, "No reader not found.\n");
+		sc_log(*ctx, "No reader not found.\n");
 		return SC_ERROR_NO_READERS_FOUND;
 	}
 
@@ -141,19 +142,19 @@ static int initialize(int reader_id, int verbose,
 			*reader = sc_ctx_get_reader(*ctx, i);
 			if (sc_detect_card_presence(*reader) & SC_READER_CARD_PRESENT) {
 				reader_id = i;
-				sc_debug(*ctx, SC_LOG_DEBUG_NORMAL, "Using the first reader"
+				sc_log(*ctx, "Using the first reader"
 						" with a card: %s", (*reader)->name);
 				break;
 			}
 		}
 		if ((unsigned int) reader_id >= reader_count) {
-			sc_debug(*ctx, SC_LOG_DEBUG_NORMAL, "No card found, using the first reader.");
+			sc_log(*ctx, "No card found, using the first reader.");
 			reader_id = 0;
 		}
 	}
 
 	if ((unsigned int) reader_id >= reader_count) {
-		sc_debug(*ctx, SC_LOG_DEBUG_NORMAL, "Invalid reader number "
+		sc_log(*ctx, "Invalid reader number "
 				"(%d), only %d available.\n", reader_id, reader_count);
 		return SC_ERROR_NO_READERS_FOUND;
 	}
@@ -260,7 +261,7 @@ int npa_translate_apdus(sc_card_t *card, FILE *input)
 
 		r = sc_bytes2apdu(card->ctx, buf, apdulen, &apdu);
 		if (r < 0) {
-			sc_debug_hex(card->ctx, SC_LOG_DEBUG_NORMAL, "Invalid C-APDU", buf, apdulen);
+			sc_log_hex(card->ctx, "Invalid C-APDU", buf, apdulen);
 			continue;
 		}
 
@@ -285,8 +286,8 @@ int npa_translate_apdus(sc_card_t *card, FILE *input)
 	return r;
 }
 
-static int add_to_ASN1_AUXILIARY_DATA(
-		ASN1_AUXILIARY_DATA **auxiliary_data,
+static int add_to_ASN1_AUXILIARY_DATA_NPA_TOOL(
+		ASN1_AUXILIARY_DATA_NPA_TOOL **auxiliary_data,
 		int nid, const unsigned char *data, size_t data_len)
 {
 	int r;
@@ -298,7 +299,7 @@ static int add_to_ASN1_AUXILIARY_DATA(
 	}
 
 	if (!*auxiliary_data) {
-		*auxiliary_data = ASN1_AUXILIARY_DATA_new();
+		*auxiliary_data = ASN1_AUXILIARY_DATA_NPA_TOOL_new();
 		if (!*auxiliary_data) {
 			r = SC_ERROR_INTERNAL;
 			goto err;
@@ -372,7 +373,7 @@ main (int argc, char **argv)
 	unsigned char *certs_chat = NULL;
 	unsigned char *dg = NULL;
 	size_t dg_len = 0;
-	ASN1_AUXILIARY_DATA *templates = NULL;
+	ASN1_AUXILIARY_DATA_NPA_TOOL *templates = NULL;
 	unsigned char *ef_cardsecurity = NULL;
 	size_t ef_cardsecurity_len = 0;
 
@@ -671,7 +672,7 @@ main (int argc, char **argv)
 				}
 			} else {
 				if (cmdline.older_than_given) {
-					r = add_to_ASN1_AUXILIARY_DATA(&templates,
+					r = add_to_ASN1_AUXILIARY_DATA_NPA_TOOL(&templates,
 							NID_id_DateOfBirth,
 							(unsigned char *) cmdline.older_than_arg,
 							strlen(cmdline.older_than_arg));
@@ -679,7 +680,7 @@ main (int argc, char **argv)
 						goto err;
 				}
 				if (cmdline.verify_validity_given) {
-					r = add_to_ASN1_AUXILIARY_DATA(&templates,
+					r = add_to_ASN1_AUXILIARY_DATA_NPA_TOOL(&templates,
 							NID_id_DateOfExpiry,
 							(unsigned char *) cmdline.verify_validity_arg,
 							strlen(cmdline.verify_validity_arg));
@@ -693,7 +694,7 @@ main (int argc, char **argv)
 						fprintf(stderr, "Could not parse community ID.\n");
 						exit(2);
 					}
-					r = add_to_ASN1_AUXILIARY_DATA(&templates,
+					r = add_to_ASN1_AUXILIARY_DATA_NPA_TOOL(&templates,
 							NID_id_CommunityID,
 							community_id, community_id_len);
 					if (r < 0)
@@ -701,7 +702,7 @@ main (int argc, char **argv)
 				}
 				if (templates) {
 					unsigned char *p = NULL;
-					auxiliary_data_len = i2d_ASN1_AUXILIARY_DATA(
+					auxiliary_data_len = i2d_ASN1_AUXILIARY_DATA_NPA_TOOL(
 							templates, &p);
 					if (0 > (int) auxiliary_data_len
 							|| auxiliary_data_len > sizeof auxiliary_data) {
@@ -892,7 +893,7 @@ err:
 	free(privkey);
 	free(dg);
 	if (templates)
-		ASN1_AUXILIARY_DATA_free(templates);
+		ASN1_AUXILIARY_DATA_NPA_TOOL_free(templates);
 
 	sc_sm_stop(card);
 	sc_reset(card, 1);

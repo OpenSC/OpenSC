@@ -57,6 +57,8 @@ extern "C" {
 #define SC_SEC_OPERATION_SIGN		0x0002
 #define SC_SEC_OPERATION_AUTHENTICATE	0x0003
 #define SC_SEC_OPERATION_DERIVE         0x0004
+#define SC_SEC_OPERATION_WRAP		0x0005
+#define SC_SEC_OPERATION_UNWRAP		0x0006
 
 /* sc_security_env flags */
 #define SC_SEC_ENV_ALG_REF_PRESENT	0x0001
@@ -64,6 +66,12 @@ extern "C" {
 #define SC_SEC_ENV_KEY_REF_PRESENT	0x0004
 #define SC_SEC_ENV_KEY_REF_SYMMETRIC	0x0008
 #define SC_SEC_ENV_ALG_PRESENT		0x0010
+#define SC_SEC_ENV_TARGET_FILE_REF_PRESENT 0x0020
+
+/* sc_security_env additional parameters */
+#define SC_SEC_ENV_MAX_PARAMS		10
+#define SC_SEC_ENV_PARAM_IV		1
+#define SC_SEC_ENV_PARAM_TARGET_FILE	2
 
 /* PK algorithms */
 #define SC_ALGORITHM_RSA		0
@@ -76,6 +84,7 @@ extern "C" {
 #define SC_ALGORITHM_3DES		65
 #define SC_ALGORITHM_GOST		66
 #define SC_ALGORITHM_AES		67
+#define SC_ALGORITHM_UNDEFINED		68	/* used with CKK_GENERIC_SECRET type keys */
 
 /* Hash algorithms */
 #define SC_ALGORITHM_MD5		128
@@ -192,6 +201,13 @@ extern "C" {
 #define SC_ALGORITHM_EXT_EC_UNCOMPRESES  0x00000010
 #define SC_ALGORITHM_EXT_EC_COMPRESS     0x00000020
 
+/* symmetric algorithm flags. More algorithms to be added when implemented. */
+#define SC_ALGORITHM_AES_ECB		 0x01000000
+#define SC_ALGORITHM_AES_CBC		 0x02000000
+#define SC_ALGORITHM_AES_CBC_PAD	 0x04000000
+#define SC_ALGORITHM_AES_FLAGS		 0x0F000000
+
+
 /* Event masks for sc_wait_for_event() */
 #define SC_EVENT_CARD_INSERTED		0x0001
 #define SC_EVENT_CARD_REMOVED		0x0002
@@ -209,6 +225,13 @@ struct sc_supported_algo_info {
 	unsigned int algo_ref;
 };
 
+typedef struct sc_sec_env_param {
+	unsigned int param_type;
+	void* value;
+	unsigned int value_len;
+} sc_sec_env_param_t;
+
+
 typedef struct sc_security_env {
 	unsigned long flags;
 	int operation;
@@ -218,8 +241,11 @@ typedef struct sc_security_env {
 	struct sc_path file_ref;
 	unsigned char key_ref[8];
 	size_t key_ref_len;
+	struct sc_path target_file_ref; /* target key file in unwrap operation */
 
 	struct sc_supported_algo_info supported_algos[SC_MAX_SUPPORTED_ALGORITHMS];
+	/* optional parameters */
+	struct sc_sec_env_param params[SC_SEC_ENV_MAX_PARAMS];
 } sc_security_env_t;
 
 struct sc_algorithm_id {
@@ -525,6 +551,17 @@ struct sc_reader_operations {
 /* Card (or card driver) supports generating a session PIN */
 #define SC_CARD_CAP_SESSION_PIN	0x00000200
 
+/* Card and driver supports handling on card session objects.
+ * If a driver has this capability, the driver handles storage and operations
+ * with objects that CKA_TOKEN set to FALSE. If a driver doesn't support this,
+ * OpenSC handles them as in memory objects.*/
+#define SC_CARD_CAP_ONCARD_SESSION_OBJECTS	0x00000400
+
+/* Card (or card driver) supports key wrapping operations */
+#define SC_CARD_CAP_WRAP_KEY			0x00000800
+/* Card (or card driver) supports key unwrapping operations */
+#define SC_CARD_CAP_UNWRAP_KEY			0x00001000
+
 typedef struct sc_card {
 	struct sc_context *ctx;
 	struct sc_reader *reader;
@@ -689,6 +726,10 @@ struct sc_card_operations {
 			unsigned char **, size_t *);
 
 	int (*card_reader_lock_obtained)(struct sc_card *, int was_reset);
+
+	int (*wrap)(struct sc_card *card, u8 *out, size_t outlen);
+
+	int (*unwrap)(struct sc_card *card, const u8 *crgram, size_t crgram_len);
 };
 
 typedef struct sc_card_driver {
@@ -734,6 +775,7 @@ typedef struct {
 #define SC_CTX_FLAG_DEBUG_MEMORY			0x00000004
 #define SC_CTX_FLAG_ENABLE_DEFAULT_DRIVER	0x00000008
 #define SC_CTX_FLAG_DISABLE_POPUPS			0x00000010
+#define SC_CTX_FLAG_DISABLE_COLORS			0x00000020
 
 typedef struct sc_context {
 	scconf_context *conf;
@@ -767,7 +809,7 @@ typedef struct sc_context {
  *  @param  apdu  sc_apdu_t object of the APDU to be send
  *  @return SC_SUCCESS on success and an error code otherwise
  */
-int sc_transmit_apdu(struct sc_card *, struct sc_apdu *);
+int sc_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu);
 
 void sc_format_apdu(struct sc_card *, struct sc_apdu *, int, int, int, int);
 
@@ -1040,7 +1082,7 @@ size_t sc_get_max_recv_size(const sc_card_t *card);
  * Takes card limitations into account such as extended length support as well
  * as the reader's limitation for data transfer.
  *
- * @param card
+ * @param card card
  *
  * @return maximum Nc
  */
@@ -1244,6 +1286,13 @@ int sc_file_set_type_attr(sc_file_t *file, const u8 *type_attr,
 int sc_file_set_content(sc_file_t *file, const u8 *content,
 			  size_t content_len);
 
+/********************************************************************/
+/*               Key wrapping and unwrapping                        */
+/********************************************************************/
+int sc_unwrap(struct sc_card *card, const u8 * data,
+			 size_t data_len, u8 * out, size_t outlen);
+int sc_wrap(struct sc_card *card, const u8 * data,
+			 size_t data_len, u8 * out, size_t outlen);
 
 /********************************************************************/
 /*             sc_path_t handling functions                         */
@@ -1392,6 +1441,8 @@ struct sc_algorithm_info * sc_card_find_ec_alg(struct sc_card *card,
 		unsigned int field_length, struct sc_object_id *curve_oid);
 struct sc_algorithm_info * sc_card_find_gostr3410_alg(struct sc_card *card,
 		unsigned int key_length);
+struct sc_algorithm_info * sc_card_find_alg(sc_card_t *card,
+		unsigned int algorithm, unsigned int key_length, void *param);
 
 scconf_block *sc_match_atr_block(sc_context_t *ctx, struct sc_card_driver *driver, struct sc_atr *atr);
 /**
@@ -1449,7 +1500,7 @@ extern sc_card_driver_t *sc_get_iso7816_driver(void);
 /** 
  * @brief Read a complete EF by short file identifier.
  *
- * @param[in]     card
+ * @param[in]     card   card
  * @param[in]     sfid   Short file identifier
  * @param[in,out] ef     Where to safe the file. the buffer will be allocated
  *                       using \c realloc() and should be set to NULL, if
@@ -1464,7 +1515,7 @@ int iso7816_read_binary_sfid(sc_card_t *card, unsigned char sfid,
 /**
  * @brief Write a complete EF by short file identifier.
  *
- * @param[in] card
+ * @param[in] card   card
  * @param[in] sfid   Short file identifier
  * @param[in] ef     Date to write
  * @param[in] ef_len Length of \a ef
@@ -1477,7 +1528,7 @@ int iso7816_write_binary_sfid(sc_card_t *card, unsigned char sfid,
 /**
  * @brief Set verification status of a specific PIN to “not verified”
  *
- * @param[in] card
+ * @param[in] card           card
  * @param[in] pin_reference  PIN reference written to P2
  *
  * @note The appropriate directory must be selected before calling this function.

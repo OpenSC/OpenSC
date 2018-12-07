@@ -506,7 +506,7 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 	}
 
 	/* set pins */
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Coolkey adding pins...");
+	sc_log(card->ctx,  "Coolkey adding pins...");
 	for (i = 0; pins[i].id; i++) {
 		struct sc_pkcs15_auth_info pin_info;
 		struct sc_pkcs15_object   pin_obj;
@@ -528,13 +528,13 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 		pin_info.tries_left    = -1;
 
 		label = pins[i].label? pins[i].label : p15card->tokeninfo->label;
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Coolkey Adding pin %d label=%s",i, label);
+		sc_log(card->ctx,  "Coolkey Adding pin %d label=%s",i, label);
 		strncpy(pin_obj.label, label, SC_PKCS15_MAX_LABEL_SIZE - 1);
 		pin_obj.flags = pins[i].obj_flags;
 
 		r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
 		if (r < 0)
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+			LOG_FUNC_RETURN(card->ctx, r);
 	}
 
 	/* set other objects */
@@ -556,7 +556,7 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 
 		r = (card->ops->card_ctl)(card, SC_CARDCTL_COOLKEY_GET_NEXT_OBJECT, &coolkey_obj);
 		if (r < 0)
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+			LOG_FUNC_RETURN(card->ctx, r);
 
 
 		memset(&obj_obj, 0, sizeof(obj_obj));

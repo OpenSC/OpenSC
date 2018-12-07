@@ -58,7 +58,7 @@ int msc_list_objects(sc_card_t* card, u8 next, mscfs_file_t* file) {
 	if(apdu.resplen == 0) /* No more left */
 		return 0;
 	if (apdu.resplen != 14) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(card->ctx, 
 			 "expected 14 bytes, got %"SC_FORMAT_LEN_SIZE_T"u.\n",
 			 apdu.resplen);
 		return SC_ERROR_UNKNOWN_DATA_RECEIVED;
@@ -80,7 +80,7 @@ int msc_partial_read_object(sc_card_t *card, msc_id objectId, int offset, u8 *da
 	
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x56, 0x00, 0x00);
 	
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(card->ctx, 
 		"READ: Offset: %x\tLength: %"SC_FORMAT_LEN_SIZE_T"u\n", offset,
 		 dataLength);
 	memcpy(buffer, objectId.id, 4);
@@ -93,7 +93,7 @@ int msc_partial_read_object(sc_card_t *card, msc_id objectId, int offset, u8 *da
 	apdu.resplen = dataLength;
 	apdu.resp = data; 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if(apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
 		return dataLength;
 	if(apdu.sw1 == 0x9C) {
@@ -106,7 +106,7 @@ int msc_partial_read_object(sc_card_t *card, msc_id objectId, int offset, u8 *da
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
 		}
 	}
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(card->ctx, 
 		"got strange SWs: 0x%02X 0x%02X\n", apdu.sw1, apdu.sw2);
 	return dataLength;
 	
@@ -120,7 +120,7 @@ int msc_read_object(sc_card_t *card, msc_id objectId, int offset, u8 *data, size
 
 	for(i = 0; i < dataLength; i += max_read_unit) {
 		r = msc_partial_read_object(card, objectId, offset + i, data + i, MIN(dataLength - i, max_read_unit));
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Error in partial object read");
+		LOG_TEST_RET(card->ctx, r, "Error in partial object read");
 	}
 	return dataLength;
 }
@@ -134,7 +134,7 @@ int msc_zero_object(sc_card_t *card, msc_id objectId, size_t dataLength)
 	memset(zeroBuffer, 0, max_write_unit);
 	for(i = 0; i < dataLength; i += max_write_unit) {
 		int r = msc_partial_update_object(card, objectId, i, zeroBuffer, MIN(dataLength - i, max_write_unit));
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Error in zeroing file update");
+		LOG_TEST_RET(card->ctx, r, "Error in zeroing file update");
 	}
 	return 0;
 }
@@ -156,7 +156,7 @@ int msc_create_object(sc_card_t *card, msc_id objectId, size_t objectSize, unsig
 	ushort2bebytes(buffer + 10, writeAcl);
 	ushort2bebytes(buffer + 12, deleteAcl);
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if(apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
 		return objectSize;
 	if(apdu.sw1 == 0x9C) {
@@ -169,7 +169,7 @@ int msc_create_object(sc_card_t *card, msc_id objectId, size_t objectSize, unsig
 		}
 	}
 	if (card->ctx->debug >= 2) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "got strange SWs: 0x%02X 0x%02X\n",
+		sc_log(card->ctx,  "got strange SWs: 0x%02X 0x%02X\n",
 		     apdu.sw1, apdu.sw2);
 	}
 	msc_zero_object(card, objectId, objectSize);
@@ -186,7 +186,7 @@ int msc_partial_update_object(sc_card_t *card, msc_id objectId, int offset, cons
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x54, 0x00, 0x00);
 	apdu.lc = dataLength + 9;
 	if (card->ctx->debug >= 2)
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(card->ctx, 
 			 "WRITE: Offset: %x\tLength: %"SC_FORMAT_LEN_SIZE_T"u\n",
 			 offset, dataLength);
 	
@@ -197,7 +197,7 @@ int msc_partial_update_object(sc_card_t *card, msc_id objectId, int offset, cons
 	apdu.data = buffer;
 	apdu.datalen = apdu.lc;
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if(apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
 		return dataLength;
 	if(apdu.sw1 == 0x9C) {
@@ -211,7 +211,7 @@ int msc_partial_update_object(sc_card_t *card, msc_id objectId, int offset, cons
 		}
 	}
 	if (card->ctx->debug >= 2) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "got strange SWs: 0x%02X 0x%02X\n",
+		sc_log(card->ctx,  "got strange SWs: 0x%02X 0x%02X\n",
 		     apdu.sw1, apdu.sw2);
 	}
 	return dataLength;
@@ -224,7 +224,7 @@ int msc_update_object(sc_card_t *card, msc_id objectId, int offset, const u8 *da
 	size_t max_write_unit = MSC_MAX_SEND - 9;
 	for(i = 0; i < dataLength; i += max_write_unit) {
 		r = msc_partial_update_object(card, objectId, offset + i, data + i, MIN(dataLength - i, max_write_unit));
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Error in partial object update");
+		LOG_TEST_RET(card->ctx, r, "Error in partial object update");
 	}
 	return dataLength;
 }
@@ -239,7 +239,7 @@ int msc_delete_object(sc_card_t *card, msc_id objectId, int zero)
 	apdu.data = objectId.id;
 	apdu.datalen = 4;
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if(apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
 		return 0;
 	if(apdu.sw1 == 0x9C) {
@@ -250,7 +250,7 @@ int msc_delete_object(sc_card_t *card, msc_id objectId, int zero)
 		}
 	}
 	if (card->ctx->debug >= 2) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "got strange SWs: 0x%02X 0x%02X\n",
+		sc_log(card->ctx,  "got strange SWs: 0x%02X 0x%02X\n",
 		     apdu.sw1, apdu.sw2);
 	}
 	return 0;
@@ -269,7 +269,7 @@ int msc_select_applet(sc_card_t *card, u8 *appletId, size_t appletIdLength)
 	apdu.le = 0;
 	
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if(apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
 		return 1;
 	
@@ -296,17 +296,17 @@ int msc_verify_pin(sc_card_t *card, int pinNumber, const u8 *pinValue, int pinLe
 	if(tries)
 		*tries = -1;
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if(apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 		return 0;
 	} else if(apdu.sw1 == 0x63) { /* Invalid auth */
 		if(tries)
 			*tries = apdu.sw2 & 0x0F;
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL,  SC_ERROR_PIN_CODE_INCORRECT);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_PIN_CODE_INCORRECT);
 	} else if(apdu.sw1 == 0x9C && apdu.sw2 == 0x02) {
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL,  SC_ERROR_PIN_CODE_INCORRECT);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_PIN_CODE_INCORRECT);
 	} else if(apdu.sw1 == 0x69 && apdu.sw2 == 0x83) {
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_AUTH_METHOD_BLOCKED);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_AUTH_METHOD_BLOCKED);
 	}
 	
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,  SC_ERROR_PIN_CODE_INCORRECT);
@@ -341,17 +341,17 @@ int msc_unblock_pin(sc_card_t *card, int pinNumber, const u8 *pukValue, int pukL
 	if(tries)
 		*tries = -1;
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if(apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 		return 0;
 	} else if(apdu.sw1 == 0x63) { /* Invalid auth */
 		if(tries)
 			*tries = apdu.sw2 & 0x0F;
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL,  SC_ERROR_PIN_CODE_INCORRECT);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_PIN_CODE_INCORRECT);
 	} else if(apdu.sw1 == 0x9C && apdu.sw2 == 0x02) {
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL,  SC_ERROR_PIN_CODE_INCORRECT);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_PIN_CODE_INCORRECT);
 	} else if(apdu.sw1 == 0x69 && apdu.sw2 == 0x83) {
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_AUTH_METHOD_BLOCKED);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_AUTH_METHOD_BLOCKED);
 	}
 	
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,  SC_ERROR_PIN_CODE_INCORRECT);
@@ -383,17 +383,17 @@ int msc_change_pin(sc_card_t *card, int pinNumber, const u8 *pinValue, int pinLe
 	if(tries)
 		*tries = -1;
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if(apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 		return 0;
 	} else if(apdu.sw1 == 0x63) { /* Invalid auth */
 		if(tries)
 			*tries = apdu.sw2 & 0x0F;
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL,  SC_ERROR_PIN_CODE_INCORRECT);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_PIN_CODE_INCORRECT);
 	} else if(apdu.sw1 == 0x9C && apdu.sw2 == 0x02) {
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL,  SC_ERROR_PIN_CODE_INCORRECT);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_PIN_CODE_INCORRECT);
 	} else if(apdu.sw1 == 0x69 && apdu.sw2 == 0x83) {
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_AUTH_METHOD_BLOCKED);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_AUTH_METHOD_BLOCKED);
 	}
 	
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,  SC_ERROR_PIN_CODE_INCORRECT);
@@ -441,7 +441,7 @@ int msc_get_challenge(sc_card_t *card, unsigned short dataLength, unsigned short
 	assert(dataLength < MSC_MAX_READ - 9); /* Output buffer doesn't seem to operate as desired.... nobody can read/delete */
 	
 	buffer = malloc(len);
-	if(!buffer) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+	if(!buffer) LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 	ptr = buffer;
 	ushort2bebytes(ptr, dataLength);
 	ptr+=2;
@@ -457,7 +457,7 @@ int msc_get_challenge(sc_card_t *card, unsigned short dataLength, unsigned short
 	
 	if(location == 1) {
 		u8* outputBuffer = malloc(dataLength + 2);
-		if(outputBuffer == NULL) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+		if(outputBuffer == NULL) LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 		apdu.le = dataLength + 2;
 		apdu.resp = outputBuffer;
 		apdu.resplen = dataLength + 2;
@@ -468,7 +468,7 @@ int msc_get_challenge(sc_card_t *card, unsigned short dataLength, unsigned short
 		free(apdu.resp);
 	}
 	free(buffer);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if(location == 1) {
 		if(apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 			return SC_SUCCESS;
@@ -476,30 +476,30 @@ int msc_get_challenge(sc_card_t *card, unsigned short dataLength, unsigned short
 			r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 			if (r) {
 				if (card->ctx->debug >= 2) {
-					sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "got strange SWs: 0x%02X 0x%02X\n",
+					sc_log(card->ctx,  "got strange SWs: 0x%02X 0x%02X\n",
 					     apdu.sw1, apdu.sw2);
 				}
-				SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+				LOG_FUNC_RETURN(card->ctx, r);
 			}
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_CARD_CMD_FAILED);
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_CARD_CMD_FAILED);
 		}
 	} else {
 		if(apdu.sw1 != 0x90 || apdu.sw2 != 0x00) {
 			r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 			if (r) {
 				if (card->ctx->debug >= 2) {
-					sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "got strange SWs: 0x%02X 0x%02X\n",
+					sc_log(card->ctx,  "got strange SWs: 0x%02X 0x%02X\n",
 					     apdu.sw1, apdu.sw2);
 				}
-				SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+				LOG_FUNC_RETURN(card->ctx, r);
 			}
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_CARD_CMD_FAILED);
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_CARD_CMD_FAILED);
 		}
 		r = msc_read_object(card, inputId, 2, outputData, dataLength);
 		if(r < 0)
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+			LOG_FUNC_RETURN(card->ctx, r);
 		msc_delete_object(card, inputId,0);
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+		LOG_FUNC_RETURN(card->ctx, r);
 	}
 }
 
@@ -542,19 +542,19 @@ int msc_generate_keypair(sc_card_t *card, int privateKey, int publicKey, int alg
 	apdu.lc = 16;
 	
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if(apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 		return 0;
 	}
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	if (r) {
 		if (card->ctx->debug >= 2) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "got strange SWs: 0x%02X 0x%02X\n",
+			sc_log(card->ctx,  "got strange SWs: 0x%02X 0x%02X\n",
 			     apdu.sw1, apdu.sw2);
 		}
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+		LOG_FUNC_RETURN(card->ctx, r);
 	}
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_CARD_CMD_FAILED);
+	LOG_FUNC_RETURN(card->ctx, SC_ERROR_CARD_CMD_FAILED);
 }
 
 int msc_extract_key(sc_card_t *card, 
@@ -569,19 +569,19 @@ int msc_extract_key(sc_card_t *card,
 	apdu.datalen = 1;
 	apdu.lc = 1;
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if(apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 		return 0;
 	}
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	if (r) {
 		if (card->ctx->debug >= 2) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "got strange SWs: 0x%02X 0x%02X\n",
+			sc_log(card->ctx,  "got strange SWs: 0x%02X 0x%02X\n",
 			     apdu.sw1, apdu.sw2);
 		}
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+		LOG_FUNC_RETURN(card->ctx, r);
 	}
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_CARD_CMD_FAILED);
+	LOG_FUNC_RETURN(card->ctx, SC_ERROR_CARD_CMD_FAILED);
 }
 
 int msc_extract_rsa_public_key(sc_card_t *card, 
@@ -596,25 +596,25 @@ int msc_extract_rsa_public_key(sc_card_t *card,
 	int fileLocation = 1;
 
 	r = msc_extract_key(card, keyLocation);
-	if(r < 0) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	if(r < 0) LOG_FUNC_RETURN(card->ctx, r);
 	
 	/* Read keyType, keySize, and what should be the modulus size */
 	r = msc_read_object(card, inputId, fileLocation, buffer, 5);
 	fileLocation += 5;
-	if(r < 0) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	if(r < 0) LOG_FUNC_RETURN(card->ctx, r);
 	
-	if(buffer[0] != MSC_RSA_PUBLIC) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_UNKNOWN_DATA_RECEIVED);
+	if(buffer[0] != MSC_RSA_PUBLIC) LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
 	*modLength = (buffer[3] << 8) | buffer[4];
 	/* Read the modulus and the exponent length */
 
 	if (*modLength + 2 > sizeof buffer)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 	r = msc_read_object(card, inputId, fileLocation, buffer, *modLength + 2);
 	fileLocation += *modLength + 2;
-	if(r < 0) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	if(r < 0) LOG_FUNC_RETURN(card->ctx, r);
 	
 	*modulus = malloc(*modLength);
-	if(!*modulus) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+	if(!*modulus) LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 	memcpy(*modulus, buffer, *modLength);
 	*expLength = (buffer[*modLength] << 8) | buffer[*modLength + 1];
 	if (*expLength > sizeof buffer)
@@ -622,12 +622,12 @@ int msc_extract_rsa_public_key(sc_card_t *card,
 	r = msc_read_object(card, inputId, fileLocation, buffer, *expLength);
 	if(r < 0) {
 		free(*modulus); *modulus = NULL;
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+		LOG_FUNC_RETURN(card->ctx, r);
 	}
 	*exponent = malloc(*expLength);
 	if(!*exponent) {
 		free(*modulus);
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 	}
 	memcpy(*exponent, buffer, *expLength);
 	return 0;
@@ -670,7 +670,7 @@ int msc_compute_crypt_init(sc_card_t *card,
 	memcpy(ptr, initData, dataLength);
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if(apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 		short receivedData = outputBuffer[0] << 8 | outputBuffer[1];
 		*outputDataLength = receivedData;
@@ -682,12 +682,12 @@ int msc_compute_crypt_init(sc_card_t *card,
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	if (r) {
 		if (card->ctx->debug >= 2) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "init: got strange SWs: 0x%02X 0x%02X\n",
+			sc_log(card->ctx,  "init: got strange SWs: 0x%02X 0x%02X\n",
 			     apdu.sw1, apdu.sw2);
 		}
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+		LOG_FUNC_RETURN(card->ctx, r);
 	}
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_CARD_CMD_FAILED);
+	LOG_FUNC_RETURN(card->ctx, SC_ERROR_CARD_CMD_FAILED);
 }
 
 int msc_compute_crypt_final(
@@ -721,7 +721,7 @@ int msc_compute_crypt_final(
 	memcpy(ptr, inputData, dataLength);
 	
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if(apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 		short receivedData = outputBuffer[0] << 8 | outputBuffer[1];
 		*outputDataLength = receivedData;
@@ -732,12 +732,12 @@ int msc_compute_crypt_final(
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	if (r) {
 		if (card->ctx->debug >= 2) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "final: got strange SWs: 0x%02X 0x%02X\n",
+			sc_log(card->ctx,  "final: got strange SWs: 0x%02X 0x%02X\n",
 			     apdu.sw1, apdu.sw2);
 		}
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+		LOG_FUNC_RETURN(card->ctx, r);
 	}
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_CARD_CMD_FAILED);
+	LOG_FUNC_RETURN(card->ctx, SC_ERROR_CARD_CMD_FAILED);
 }
 
 /* Stream data to the card through file IO */
@@ -787,7 +787,7 @@ static int msc_compute_crypt_final_object(
 	if(r < 0) return r; 
 	
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if(apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 		r = msc_read_object(card, inputId, 2, outputData, dataLength);
 		if (r >= 0)
@@ -799,7 +799,7 @@ static int msc_compute_crypt_final_object(
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	if (r) {
 		if (card->ctx->debug >= 2) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "final: got strange SWs: 0x%02X 0x%02X\n",
+			sc_log(card->ctx,  "final: got strange SWs: 0x%02X 0x%02X\n",
 			     apdu.sw1, apdu.sw2);
 		}
 	} else {
@@ -808,7 +808,7 @@ static int msc_compute_crypt_final_object(
 	/* this is last ditch cleanup */	
 	msc_delete_object(card, outputId, 0);
 	
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 int msc_compute_crypt(sc_card_t *card, 
@@ -839,7 +839,7 @@ int msc_compute_crypt(sc_card_t *card,
 		outPtr, 
 		toSend,
 		&received);
-	if(r < 0) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	if(r < 0) LOG_FUNC_RETURN(card->ctx, r);
 	left -= toSend;
 	inPtr += toSend;
 	outPtr += received;
@@ -854,7 +854,7 @@ int msc_compute_crypt(sc_card_t *card,
 			outPtr,
 			toSend,
 			&received);
-		if(r < 0) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+		if(r < 0) LOG_FUNC_RETURN(card->ctx, r);
 	} else { /* Data is too big: use objects */
 		r = msc_compute_crypt_final_object(card,
 			keyLocation,
@@ -862,7 +862,7 @@ int msc_compute_crypt(sc_card_t *card,
 			outPtr,
 			toSend,
 			&received);
-		if(r < 0) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+		if(r < 0) LOG_FUNC_RETURN(card->ctx, r);
 	}	
 	outPtr += received;
 
@@ -912,7 +912,7 @@ int msc_import_key(sc_card_t *card,
 			+ data->dp1Length + data->dq1Length;
 	}
 	buffer = malloc(bufferSize);
-	if(!buffer) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+	if(!buffer) LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 	p = buffer;
 	*p = 0x00; p++; /* Encoding plain */
 	*p = data->keyType; p++; /* RSA_PRIVATE */
@@ -959,7 +959,7 @@ int msc_import_key(sc_card_t *card,
 	ushort2bebytes(p, writeAcl); p+=2;
 	ushort2bebytes(p, use); 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if(apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 		msc_delete_object(card, outputId, 0);
 		return 0;
@@ -967,16 +967,16 @@ int msc_import_key(sc_card_t *card,
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	if (r) {
 		if (card->ctx->debug >= 2) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "keyimport: got strange SWs: 0x%02X 0x%02X\n",
+			sc_log(card->ctx,  "keyimport: got strange SWs: 0x%02X 0x%02X\n",
 			     apdu.sw1, apdu.sw2);
 		}
 		/* this is last ditch cleanup */
 		msc_delete_object(card, outputId, 0);
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+		LOG_FUNC_RETURN(card->ctx, r);
 	}
 	/* this is last ditch cleanup */
 	msc_delete_object(card, outputId, 0);
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_CARD_CMD_FAILED);
+	LOG_FUNC_RETURN(card->ctx, SC_ERROR_CARD_CMD_FAILED);
 }
 #undef CPYVAL

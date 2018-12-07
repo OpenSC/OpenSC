@@ -93,16 +93,16 @@ select_file(sc_card_t *card, sc_apdu_t *apdu, const sc_path_t *path,
 	apdu->le = 256;
 
 	r = sc_transmit_apdu(card, apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu->sw1, apdu->sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
+	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
 	if (file_out == NULL)
 		return 0;
 
 	file = sc_file_new();
 	if (file == NULL)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 
 	r = card->ops->process_fci(card, file, apdu->resp + 2, apdu->resp[1]);
 	if (r) {
@@ -126,7 +126,7 @@ akis_select_file(sc_card_t *card, const sc_path_t *path,
 		*/
 		r = select_file(card, &apdu, path, path->len == 2 ? 0 : 8, file_out);
 
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Unable to select DF");
+		LOG_TEST_RET(card->ctx, r, "Unable to select DF");
 		return 0;
 	} else if (path->type == SC_PATH_TYPE_FILE_ID) {
 		/* AKIS differentiates between EF and DF files
@@ -136,7 +136,7 @@ akis_select_file(sc_card_t *card, const sc_path_t *path,
 		if (r)
 			r = select_file(card, &apdu, path, 0, file_out);
 
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Unable to select DF");
+		LOG_TEST_RET(card->ctx, r, "Unable to select DF");
 		return 0;
 	} else {
 		return iso_ops->select_file(card, path, file_out);
@@ -161,16 +161,16 @@ akis_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 	apdu.resp = rbuf;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "DIRECTORY command returned error");
+	LOG_TEST_RET(card->ctx, r, "DIRECTORY command returned error");
 
 	left = apdu.resplen;
 	p = rbuf;
 
 	while (left > 19) {
 		if (p[0] != 0x2f && p[0] != 0x3d) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Malformatted list reply %02x", p[0]);
+			sc_log(card->ctx,  "Malformatted list reply %02x", p[0]);
 			return SC_ERROR_INTERNAL;
 		}
 		if (buflen >= 2) {
@@ -185,7 +185,7 @@ akis_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 	}
 
 	r = fids;
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 static int
@@ -204,7 +204,7 @@ akis_process_fci(sc_card_t *card, sc_file_t *file,
 	 */
 	p = sc_asn1_find_tag(card->ctx, buf, buflen, 0x90, &len);
 	if (p == NULL) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Security tag missing");
+		sc_log(card->ctx,  "Security tag missing");
 		return SC_ERROR_INTERNAL;
 	}
 	perms = p[0];
@@ -274,7 +274,7 @@ akis_create_file(sc_card_t *card, sc_file_t *file)
 				type = 0x45;
 				break;
 			default:
-				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "This EF structure is not supported yet");
+				sc_log(card->ctx,  "This EF structure is not supported yet");
 				return SC_ERROR_NOT_SUPPORTED;
 		}
 		apdu.p1 = type;
@@ -286,12 +286,12 @@ akis_create_file(sc_card_t *card, sc_file_t *file)
 	} else if (file->type == SC_FILE_TYPE_DF) {
 		apdu.ins = 0x10;
 	} else {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Unknown file type");
+		sc_log(card->ctx,  "Unknown file type");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }
 
@@ -319,8 +319,8 @@ akis_delete_file(sc_card_t *card, const sc_path_t *path)
 			type = 0x08;
 			break;
 		default:
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "File type has to be FID or PATH");
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
+			sc_log(card->ctx,  "File type has to be FID or PATH");
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x16, type, 0x00);
         apdu.cla = 0x80;
@@ -329,7 +329,7 @@ akis_delete_file(sc_card_t *card, const sc_path_t *path)
 	apdu.data = buf;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }
 
@@ -368,12 +368,12 @@ akis_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left
 		apdu.lc = apdu.datalen;
 
 		r = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 		return r;
 	}
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Other pin cmds not supported yet");
+	sc_log(card->ctx,  "Other pin cmds not supported yet");
 	return SC_ERROR_NOT_SUPPORTED;
 }
 
@@ -389,7 +389,7 @@ akis_get_data(sc_card_t *card, unsigned int dataid, u8 *buf, size_t len)
 	apdu.le = len;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	return r;
 }
@@ -408,7 +408,7 @@ akis_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 
 	/* read serial number */
 	r = akis_get_data(card, 6, system_buffer, 0x4D);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "GET_DATA failed");
+	LOG_TEST_RET(card->ctx, r, "GET_DATA failed");
 
 	card->serialnr.len = 12;
 	memcpy(card->serialnr.value, system_buffer+55, 12);
@@ -425,7 +425,7 @@ akis_lifecycle_get(sc_card_t *card, int *mode)
 	u8 memory[10];
 
 	r = akis_get_data(card, 4, memory, 10);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "GET_DATA failed");
+	LOG_TEST_RET(card->ctx, r, "GET_DATA failed");
 
 	switch(memory[6]) {
 		case 0xA0:
@@ -462,7 +462,7 @@ akis_lifecycle_set(sc_card_t *card, int *mode)
 	apdu.cla = 0x80;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	return r;
 }
@@ -496,7 +496,7 @@ akis_set_security_env(sc_card_t *card,
 		ref = env->key_ref[0];
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x22, 0xC3, ref);
 		r = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 		return r;
 	}
@@ -512,7 +512,7 @@ akis_logout(sc_card_t *card)
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x1A, 0, 0);
 	apdu.cla = 0x80;
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	return r;
 }

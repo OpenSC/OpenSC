@@ -447,7 +447,7 @@ CK_RV slot_get_slot(CK_SLOT_ID id, struct sc_pkcs11_slot ** slot)
 
 CK_RV slot_get_token(CK_SLOT_ID id, struct sc_pkcs11_slot ** slot)
 {
-	int rv;
+	CK_RV rv;
 
 	sc_log(context, "Slot(id=0x%lX): get token", id);
 	rv = slot_get_slot(id, slot);
@@ -473,7 +473,8 @@ CK_RV slot_get_token(CK_SLOT_ID id, struct sc_pkcs11_slot ** slot)
 
 CK_RV slot_token_removed(CK_SLOT_ID id)
 {
-	int rv, token_was_present;
+    CK_RV rv;
+	int token_was_present;
 	struct sc_pkcs11_slot *slot;
 	struct sc_pkcs11_object *object;
 

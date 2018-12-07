@@ -282,7 +282,7 @@ static int pcsc_transmit(sc_reader_t *reader, sc_apdu_t *apdu)
 		goto out;
 	if (reader->name)
 		sc_log(reader->ctx, "reader '%s'", reader->name);
-	sc_apdu_log(reader->ctx, SC_LOG_DEBUG_NORMAL, sbuf, ssize, 1);
+	sc_apdu_log(reader->ctx, sbuf, ssize, 1);
 
 	r = pcsc_internal_transmit(reader, sbuf, ssize,
 				rbuf, &rsize, apdu->control);
@@ -291,7 +291,7 @@ static int pcsc_transmit(sc_reader_t *reader, sc_apdu_t *apdu)
 		sc_log(reader->ctx, "unable to transmit");
 		goto out;
 	}
-	sc_apdu_log(reader->ctx, SC_LOG_DEBUG_NORMAL, rbuf, rsize, 0);
+	sc_apdu_log(reader->ctx, rbuf, rsize, 0);
 	/* set response */
 	r = sc_apdu_set_resp(reader->ctx, apdu, rbuf, rsize);
 
@@ -339,6 +339,16 @@ static int refresh_attributes(sc_reader_t *reader)
 			reader->flags &= ~SC_READER_CARD_CHANGED;
 			LOG_FUNC_RETURN(reader->ctx, SC_SUCCESS);
 		}
+		
+		/* the system could not dectect any reader. It means, the prevoiusly attached reader is disconnected. */		
+		if (rv == (LONG)SCARD_E_NO_READERS_AVAILABLE || rv == (LONG)SCARD_E_SERVICE_STOPPED) {
+ 			if (old_flags & SC_READER_CARD_PRESENT) {
+ 				reader->flags |= SC_READER_CARD_CHANGED;
+ 			}
+			
+ 			SC_FUNC_RETURN(reader->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
+ 		}
+
 		PCSC_TRACE(reader, "SCardGetStatusChange failed", rv);
 		return pcsc_to_opensc_error(rv);
 	}
@@ -515,10 +525,10 @@ static void initialize_uid(sc_reader_t *reader)
 				&& apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 			reader->uid.len = apdu.resplen;
 			memcpy(reader->uid.value, apdu.resp, reader->uid.len);
-			sc_debug_hex(reader->ctx, SC_LOG_DEBUG_NORMAL, "UID",
+			sc_log_hex(reader->ctx, "UID",
 					reader->uid.value, reader->uid.len);
 		} else {
-			sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "unable to get UID");
+			sc_log(reader->ctx,  "unable to get UID");
 		}
 	}
 }
@@ -1191,13 +1201,6 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 		}
 	}
 
-	/* max send/receive sizes: with default values only short APDU supported */
-	reader->max_send_size = priv->gpriv->force_max_send_size ?
-		priv->gpriv->force_max_send_size :
-		SC_READER_SHORT_APDU_MAX_SEND_SIZE;
-	reader->max_recv_size = priv->gpriv->force_max_recv_size ?
-		priv->gpriv->force_max_recv_size :
-		SC_READER_SHORT_APDU_MAX_RECV_SIZE;
 	if (priv->get_tlv_properties) {
 		/* Try to set reader max_send_size and max_recv_size based on
 		 * detected max_data */
@@ -1206,7 +1209,7 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 		if (max_data > 0) {
 			sc_log(ctx, "Reader supports transceiving %d bytes of data",
 					max_data);
-			if (priv->gpriv->force_max_send_size)
+			if (!priv->gpriv->force_max_send_size)
 				reader->max_send_size = max_data;
 			else
 				sc_log(ctx, "Sending is limited to %"SC_FORMAT_LEN_SIZE_T"u bytes of data"
@@ -1276,6 +1279,14 @@ int pcsc_add_reader(sc_context_t *ctx,
 		goto err1;
 	}
 
+	/* max send/receive sizes: with default values only short APDU supported */
+	reader->max_send_size = priv->gpriv->force_max_send_size ?
+		priv->gpriv->force_max_send_size :
+		SC_READER_SHORT_APDU_MAX_SEND_SIZE;
+	reader->max_recv_size = priv->gpriv->force_max_recv_size ?
+		priv->gpriv->force_max_recv_size :
+		SC_READER_SHORT_APDU_MAX_RECV_SIZE;
+
 	ret = _sc_add_reader(ctx, reader);
 
 	if (ret == SC_SUCCESS) {
@@ -1323,7 +1334,7 @@ static int pcsc_detect_readers(sc_context_t *ctx)
 		} else {
 			rv = gpriv->SCardListReaders(gpriv->pcsc_ctx, NULL,
 					NULL, (LPDWORD) &reader_buf_size);
-			if (rv == (LONG)SCARD_E_NO_SERVICE) {
+			if ((rv == (LONG)SCARD_E_NO_SERVICE) || (rv == (LONG)SCARD_E_SERVICE_STOPPED)) {
 				gpriv->SCardReleaseContext(gpriv->pcsc_ctx);
 				gpriv->pcsc_ctx = 0;
 				gpriv->pcsc_wait_ctx = -1;
@@ -2012,7 +2023,7 @@ pcsc_pin_cmd(sc_reader_t *reader, struct sc_pin_cmd_data *data)
 	/* If PIN block building failed, we fail too */
 	LOG_TEST_RET(reader->ctx, r, "PC/SC v2 pinpad block building failed!");
 	/* If not, debug it, just for fun */
-	sc_debug_hex(reader->ctx, SC_LOG_DEBUG_NORMAL, "PC/SC v2 pinpad block", sbuf, scount);
+	sc_log_hex(reader->ctx, "PC/SC v2 pinpad block", sbuf, scount);
 
 	r = pcsc_internal_transmit(reader, sbuf, scount, rbuf, &rcount, ioctl);
 

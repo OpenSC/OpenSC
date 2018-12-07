@@ -101,31 +101,31 @@ setcos_init_card(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 	/* Create the MF if it doesn't exist yet */
 	r = sc_select_file(p15card->card, &mf->path, NULL);
 	if (r == SC_ERROR_FILE_NOT_FOUND) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "MF doesn't exist, creating now");
+		sc_log(ctx,  "MF doesn't exist, creating now");
 
 		/* Fix up the file's ACLs */
 		r = sc_pkcs15init_fixup_file(profile, p15card, mf);
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "MF fixup failed");
+		LOG_TEST_RET(ctx, r, "MF fixup failed");
 
 		mf->status = SC_FILE_STATUS_CREATION;
 		r = sc_create_file(p15card->card, mf);
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "MF creation failed");
+		LOG_TEST_RET(ctx, r, "MF creation failed");
 	}
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Cannot select MF");
+	LOG_TEST_RET(ctx, r, "Cannot select MF");
 
 	/* Create the global pin file if it doesn't exist yet */
 	r = sc_profile_get_file(profile, "pinfile", &pinfile);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Cannot get 'pinfile' from profile");
+	LOG_TEST_RET(ctx, r, "Cannot get 'pinfile' from profile");
 
 	r = sc_select_file(p15card->card, &pinfile->path, NULL);
 	if (r == SC_ERROR_FILE_NOT_FOUND) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Global pin file doesn't exist, creating now");
+		sc_log(ctx,  "Global pin file doesn't exist, creating now");
 
 		/* Fix up the file's ACLs */
 		r = sc_pkcs15init_fixup_file(profile, p15card, pinfile);
 		if (r < 0)
 			sc_file_free(pinfile);
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Pinfile fixup failed");
+		LOG_TEST_RET(ctx, r, "Pinfile fixup failed");
 
 		/* Set life cycle state to SC_FILE_STATUS_CREATION,
 		 * which means that all ACs are ignored. */
@@ -133,12 +133,12 @@ setcos_init_card(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 		r = sc_create_file(p15card->card, pinfile);
 		if (r < 0)
 			sc_file_free(pinfile);
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Pinfile creation failed");
+		LOG_TEST_RET(ctx, r, "Pinfile creation failed");
 	}
 	sc_file_free(pinfile);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Select pinfile failed");
+	LOG_TEST_RET(ctx, r, "Select pinfile failed");
 
-	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(ctx, r);
 }
 
 /*
@@ -153,12 +153,12 @@ setcos_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *d
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 
         r = sc_pkcs15init_fixup_file(profile, p15card, df);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "SetCOS file ACL fixup failed");
+	LOG_TEST_RET(ctx, r, "SetCOS file ACL fixup failed");
 
 	r = sc_create_file(p15card->card, df);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "SetCOS create file failed");
+	LOG_TEST_RET(ctx, r, "SetCOS create file failed");
 
-	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(ctx, r);
 }
 
 
@@ -209,13 +209,13 @@ setcos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 
         /* Create the global pin file if it doesn't exist yet */
 	r = sc_profile_get_file(profile, "pinfile", &pinfile);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "No 'pinfile' template in profile");
+	LOG_TEST_RET(ctx, r, "No 'pinfile' template in profile");
 
 	r = sc_select_file(p15card->card, &pinfile->path, &pinfile);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Cannot select 'pinfile'");
+	LOG_TEST_RET(ctx, r, "Cannot select 'pinfile'");
 
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "pinfile->status:%X", pinfile->status);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "create PIN with reference:%X, flags:%X, path:%s",
+	sc_log(ctx,  "pinfile->status:%X", pinfile->status);
+	sc_log(ctx,  "create PIN with reference:%X, flags:%X, path:%s",
 			auth_info->attrs.pin.reference, auth_info->attrs.pin.flags, sc_print_path(&auth_info->path));
 
 	if (pinfile->status == SC_FILE_STATUS_CREATION)
@@ -231,18 +231,18 @@ setcos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		sc_file_t *mf = profile->mf_info->file;
 
 		r = sc_card_ctl(p15card->card, SC_CARDCTL_SETCOS_ACTIVATE_FILE, NULL);
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Cannot set 'pinfile' into the activated state");
+		LOG_TEST_RET(ctx, r, "Cannot set 'pinfile' into the activated state");
 
 		r = sc_select_file(p15card->card, &mf->path, NULL);
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Cannot select MF");
+		LOG_TEST_RET(ctx, r, "Cannot select MF");
 
 		r = sc_card_ctl(p15card->card, SC_CARDCTL_SETCOS_ACTIVATE_FILE, NULL);
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Cannot set MF into the activated state");
+		LOG_TEST_RET(ctx, r, "Cannot set MF into the activated state");
 	}
 
 	sc_file_free(pinfile);
 
-	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(ctx, r);
 }
 
 /*
@@ -269,14 +269,14 @@ setcos_new_file(sc_profile_t *profile, sc_card_t *card,
 	else if ((type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_DATA_OBJECT)
 		tag = "data";
 	else {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Unsupported file type");
+		sc_log(card->ctx,  "Unsupported file type");
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
 	/* Get template from profile  */
 	snprintf(name, sizeof(name), "template-%s", tag);
 	if (sc_profile_get_file(profile, name, &file) < 0) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Profile doesn't define %s", name);
+		sc_log(card->ctx,  "Profile doesn't define %s", name);
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
@@ -328,17 +328,17 @@ setcos_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 	if (object->type != SC_PKCS15_TYPE_PRKEY_RSA)
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED, "Create key failed: RSA only supported");
+		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Create key failed: RSA only supported");
 
 	/* Parameter check */
 	if ( (keybits < 512) || (keybits > 1024) || (keybits & 0x7))
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS, "Invalid key length");
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Invalid key length");
 
-        sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "create private key ID:%s\n",  sc_pkcs15_print_id(&key_info->id));
+        sc_log(ctx,  "create private key ID:%s\n",  sc_pkcs15_print_id(&key_info->id));
 
 	/* Get the private key file */
 	r = setcos_new_file(profile, p15card->card, SC_PKCS15_TYPE_PRKEY_RSA, key_info->key_reference, &file);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Cannot get new private key file");
+	LOG_TEST_RET(ctx, r, "Cannot get new private key file");
 
 	/* Take enough room for a 1024 bit key */
 	if (file->size < 512)
@@ -351,23 +351,23 @@ setcos_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 
 	key_info->key_reference = file->path.value[file->path.len - 1] & 0xFF;
 
-        sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Path of private key file to create %s\n", sc_print_path(&file->path));
+        sc_log(ctx,  "Path of private key file to create %s\n", sc_print_path(&file->path));
 
         r = sc_select_file(p15card->card, &file->path, NULL);
         if (!r)   {
 		r = sc_pkcs15init_delete_by_path(profile, p15card, &file->path);
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Failed to delete private key file");
+		LOG_TEST_RET(ctx, r, "Failed to delete private key file");
 	}
         else if (r != SC_ERROR_FILE_NOT_FOUND)    {
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Select private key file error");
+		LOG_TEST_RET(ctx, r, "Select private key file error");
 	}
 
 	/* Now create the key file */
 	r = sc_pkcs15init_create_file(profile, p15card, file);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Cannot create private key file");
+	LOG_TEST_RET(ctx, r, "Cannot create private key file");
 
 	sc_file_free(file);
-	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(ctx, r);
 }
 
 
@@ -387,20 +387,20 @@ setcos_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 	if (object->type != SC_PKCS15_TYPE_PRKEY_RSA)
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED, "Store key failed: RSA only supported");
+		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Store key failed: RSA only supported");
 
 	/* Parameter check */
 	if ( (keybits < 512) || (keybits > 1024) || (keybits & 0x7))
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS, "Invalid key length");
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Invalid key length");
 
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "store key with ID:%s and path:%s\n", sc_pkcs15_print_id(&key_info->id),
+	sc_log(ctx,  "store key with ID:%s and path:%s\n", sc_pkcs15_print_id(&key_info->id),
 		       	sc_print_path(&key_info->path));
 
 	r = sc_select_file(p15card->card, &key_info->path, &file);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Cannot store key: select key file failed");
+	LOG_TEST_RET(ctx, r, "Cannot store key: select key file failed");
 
 	r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_UPDATE);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "No authorisation to store private key");
+	LOG_TEST_RET(ctx, r, "No authorisation to store private key");
 
 	/* Fill in data structure */
 	memset(&args, 0, sizeof(args));
@@ -415,11 +415,11 @@ setcos_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 
 	/* Generate/store rsa key  */
 	r = sc_card_ctl(p15card->card, SC_CARDCTL_SETCOS_GENERATE_STORE_KEY, &args);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Card control 'GENERATE_STORE_KEY' failed");
+	LOG_TEST_RET(ctx, r, "Card control 'GENERATE_STORE_KEY' failed");
 
 	sc_file_free(file);
 
-	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(ctx, r);
 }
 
 
@@ -439,18 +439,18 @@ setcos_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 	if (object->type != SC_PKCS15_TYPE_PRKEY_RSA)
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED, "Generate key failed: RSA only supported");
+		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Generate key failed: RSA only supported");
 
 	/* Parameter check */
 	if ( (keybits < 512) || (keybits > 1024) || (keybits & 0x7))
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS, "Invalid key length");
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Invalid key length");
 
 	r = sc_select_file(p15card->card, &key_info->path, &file);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Cannot store key: select key file failed");
+	LOG_TEST_RET(ctx, r, "Cannot store key: select key file failed");
 
 	/* Authenticate */
 	r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_UPDATE);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "No authorisation to store private key");
+	LOG_TEST_RET(ctx, r, "No authorisation to store private key");
 
 	/* Fill in data structure */
 	memset(&args, 0, sizeof(args));
@@ -461,7 +461,7 @@ setcos_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 
 	/* Generate/store rsa key  */
 	r = sc_card_ctl(p15card->card, SC_CARDCTL_SETCOS_GENERATE_STORE_KEY, &args);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Card control 'GENERATE_STORE_KEY' failed");
+	LOG_TEST_RET(ctx, r, "Card control 'GENERATE_STORE_KEY' failed");
 
 	/* Keypair generation -> collect public key info */
 	if (pubkey != NULL) {
@@ -474,7 +474,7 @@ setcos_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 
 		/* Get public key modulus */
 		r = sc_select_file(p15card->card, &file->path, NULL);
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Cannot get key modulus: select key file failed");
+		LOG_TEST_RET(ctx, r, "Cannot get key modulus: select key file failed");
 
 		data_obj.P1 = 0x01;
 		data_obj.P2 = 0x01;
@@ -482,14 +482,14 @@ setcos_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		data_obj.DataLen = sizeof(raw_pubkey);
 
 		r = sc_card_ctl(p15card->card, SC_CARDCTL_SETCOS_GETDATA, &data_obj);
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Cannot get key modulus: 'SETCOS_GETDATA' failed");
+		LOG_TEST_RET(ctx, r, "Cannot get key modulus: 'SETCOS_GETDATA' failed");
 
 		keybits = ((raw_pubkey[0] * 256) + raw_pubkey[1]);  /* modulus bit length */
 		if (keybits != key_info->modulus_length)  {
-			sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+			sc_log(ctx, 
 				 "key-size from card[%"SC_FORMAT_LEN_SIZE_T"u] does not match[%"SC_FORMAT_LEN_SIZE_T"u]\n",
 				 keybits, key_info->modulus_length);
-			SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_PKCS15INIT, "Failed to generate key");
+			LOG_TEST_RET(ctx, SC_ERROR_PKCS15INIT, "Failed to generate key");
 		}
 		memcpy (pubkey->u.rsa.modulus.data, &raw_pubkey[2], pubkey->u.rsa.modulus.len);
 	}

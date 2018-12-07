@@ -139,7 +139,7 @@ static int encode_file_structure(sc_card_t *card, const sc_file_t *file,
 			*p++ = 0x43;
 			break;
 		default:
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Invalid EF structure\n");
+			sc_log(card->ctx,  "Invalid EF structure\n");
 			return SC_ERROR_INVALID_ARGUMENTS;
 		}
 		ops = ef_ops;
@@ -149,7 +149,7 @@ static int encode_file_structure(sc_card_t *card, const sc_file_t *file,
 		ops = key_ops;
 		break;
 	default:
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Unknown file type\n");
+		sc_log(card->ctx,  "Unknown file type\n");
                 return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	if (file->type == SC_FILE_TYPE_DF) {
@@ -170,7 +170,7 @@ static int encode_file_structure(sc_card_t *card, const sc_file_t *file,
 		else {
 			int byte = acl_to_byte(sc_file_get_acl_entry(file, ops[i]));
 			if (byte < 0) {
-				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Invalid ACL\n");
+				sc_log(card->ctx,  "Invalid ACL\n");
 				return SC_ERROR_INVALID_ARGUMENTS;
 			}
 			nibble = byte;
@@ -217,11 +217,11 @@ static int miocos_create_file(sc_card_t *card, sc_file_t *file)
 	apdu.lc = buflen;
 
 	r = sc_transmit_apdu(card, &apdu);
-        SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+        LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
         if (apdu.sw1 == 0x6A && apdu.sw2 == 0x89)
         	return SC_ERROR_FILE_ALREADY_EXISTS;
         r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-        SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
+        LOG_TEST_RET(card->ctx, r, "Card returned error");
 
 	return 0;
 }
@@ -237,7 +237,7 @@ static int miocos_set_security_env(sc_card_t *card,
 		tmp.flags &= ~SC_SEC_ENV_ALG_PRESENT;
 		tmp.flags |= SC_SEC_ENV_ALG_REF_PRESENT;
 		if (tmp.algorithm != SC_ALGORITHM_RSA) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Only RSA algorithm supported.\n");
+			sc_log(card->ctx,  "Only RSA algorithm supported.\n");
 			return SC_ERROR_NOT_SUPPORTED;
 		}
 		tmp.algorithm_ref = 0x00;
@@ -330,15 +330,15 @@ static int miocos_get_acl(sc_card_t *card, sc_file_t *file)
 	apdu.resplen = sizeof(rbuf);
 	apdu.le = sizeof(rbuf);
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.resplen == 0)
 		return sc_check_sw(card, apdu.sw1, apdu.sw2);
 	left = apdu.resplen;
 	seq = sc_asn1_skip_tag(card->ctx, &seq, &left,
 			       SC_ASN1_SEQUENCE | SC_ASN1_CONS, &left);
 	if (seq == NULL)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_UNKNOWN_DATA_RECEIVED);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Unable to process reply");
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
+	LOG_TEST_RET(card->ctx, r, "Unable to process reply");
 	for (i = 1; i < 15; i++) {
 		int j;
 		const u8 *tag;
@@ -401,7 +401,7 @@ static int miocos_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 	apdu.resplen = buflen;
 	apdu.le = buflen > 256 ? 256 : buflen;
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.resplen == 0)
 		return sc_check_sw(card, apdu.sw1, apdu.sw2);
 	return apdu.resplen;
@@ -414,17 +414,17 @@ static int miocos_delete_file(sc_card_t *card, const sc_path_t *path)
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (path->type != SC_PATH_TYPE_FILE_ID && path->len != 2) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "File type has to be SC_PATH_TYPE_FILE_ID\n");
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
+		sc_log(card->ctx,  "File type has to be SC_PATH_TYPE_FILE_ID\n");
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	r = sc_select_file(card, path, NULL);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Unable to select file to be deleted");
+	LOG_TEST_RET(card->ctx, r, "Unable to select file to be deleted");
 	
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0xE4, 0x00, 0x00);
 	apdu.cla = 0xA0;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }
 
@@ -437,11 +437,11 @@ static int miocos_create_ac(sc_card_t *card,
 	size_t sendsize;
 	
 	if (ac->max_tries > 15)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	switch (ac->type) {
 	case SC_CARDCTL_MIOCOS_AC_PIN:
 		if (ac->max_unblock_tries > 15)
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 		miocos_type = 0x01;
 		sbuf[0] = (ac->max_tries << 4) | ac->max_tries;
 		sbuf[1] = 0xFF; /* FIXME... */
@@ -452,7 +452,7 @@ static int miocos_create_ac(sc_card_t *card,
 		sendsize = 20;
 		break;
 	default:
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "AC type %d not supported\n", ac->type);
+		sc_log(card->ctx,  "AC type %d not supported\n", ac->type);
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x1E, miocos_type,
@@ -461,7 +461,7 @@ static int miocos_create_ac(sc_card_t *card,
 	apdu.datalen = sendsize;
 	apdu.data = sbuf;
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }
 
@@ -472,7 +472,7 @@ static int miocos_card_ctl(sc_card_t *card, unsigned long cmd,
 	case SC_CARDCTL_MIOCOS_CREATE_AC:
 		return miocos_create_ac(card, (struct sc_cardctl_miocos_ac_info *) arg);
 	}
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "card_ctl command 0x%lX not supported\n", cmd);
+	sc_log(card->ctx,  "card_ctl command 0x%lX not supported\n", cmd);
 	return SC_ERROR_NOT_SUPPORTED;
 }
 

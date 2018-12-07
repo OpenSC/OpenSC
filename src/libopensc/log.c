@@ -41,30 +41,40 @@
 #ifdef HAVE_PTHREAD
 #include <pthread.h>
 #endif
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 #include "internal.h"
 
-static void sc_do_log_va(sc_context_t *ctx, int level, const char *file, int line, const char *func, const char *format, va_list args);
+static void sc_do_log_va(sc_context_t *ctx, int level, const char *file, int line, const char *func, int color, const char *format, va_list args);
 
 void sc_do_log(sc_context_t *ctx, int level, const char *file, int line, const char *func, const char *format, ...)
 {
 	va_list ap;
 
 	va_start(ap, format);
-	sc_do_log_va(ctx, level, file, line, func, format, ap);
+	sc_do_log_va(ctx, level, file, line, func, 0, format, ap);
+	va_end(ap);
+}
+
+void sc_do_log_color(sc_context_t *ctx, int level, const char *file, int line, const char *func, int color, const char *format, ...)
+{
+	va_list ap;
+
+	va_start(ap, format);
+	sc_do_log_va(ctx, level, file, line, func, color, format, ap);
 	va_end(ap);
 }
 
 void sc_do_log_noframe(sc_context_t *ctx, int level, const char *format, va_list args)
 {
-	sc_do_log_va(ctx, level, NULL, 0, NULL, format, args);
+	sc_do_log_va(ctx, level, NULL, 0, NULL, 0, format, args);
 }
 
-static void sc_do_log_va(sc_context_t *ctx, int level, const char *file, int line, const char *func, const char *format, va_list args)
+static void sc_do_log_va(sc_context_t *ctx, int level, const char *file, int line, const char *func, int color, const char *format, va_list args)
 {
-	char	buf[4096], *p;
-	int	r;
-	size_t	left;
+	char	buf[4096];
 #ifdef _WIN32
 	SYSTEMTIME st;
 #else
@@ -72,74 +82,78 @@ static void sc_do_log_va(sc_context_t *ctx, int level, const char *file, int lin
 	struct timeval tv;
 	char time_string[40];
 #endif
-	FILE		*outf = NULL;
-	int		n;
 
 	if (!ctx || ctx->debug < level)
-		return;
-
-	p = buf;
-	left = sizeof(buf);
-
-#ifdef _WIN32
-	GetLocalTime(&st);
-	r = snprintf(p, left,
-			"P:%lu; T:%lu %i-%02i-%02i %02i:%02i:%02i.%03i ",
-			(unsigned long)GetCurrentProcessId(),
-			(unsigned long)GetCurrentThreadId(),
-			st.wYear, st.wMonth, st.wDay,
-			st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
-#else
-	gettimeofday (&tv, NULL);
-	tm = localtime (&tv.tv_sec);
-	strftime (time_string, sizeof(time_string), "%H:%M:%S", tm);
-	r = snprintf(p, left, "0x%lx %s.%03ld ", (unsigned long)pthread_self(), time_string, (long)tv.tv_usec / 1000);
-#endif
-	p += r;
-	left -= r;
-
-	if (file != NULL) {
-		r = snprintf(p, left, "[%s] %s:%d:%s: ",
-			ctx->app_name, file, line, func ? func : "");
-		if (r < 0 || (unsigned int)r > sizeof(buf))
-			return;
-	}
-	else {
-		r = 0;
-	}
-	p += r;
-	left -= r;
-
-	r = vsnprintf(p, left, format, args);
-	if (r < 0)
 		return;
 
 #ifdef _WIN32
 	/* In Windows, file handles can not be shared between DLL-s, each DLL has a
 	 * separate file handle table. Make sure we always have a valid file
 	 * descriptor. */
-	r = sc_ctx_log_to_file(ctx, ctx->debug_filename);
-	if (r < 0)
+	if (sc_ctx_log_to_file(ctx, ctx->debug_filename) < 0)
 		return;
 #endif
-
-	outf = ctx->debug_file;
-	if (outf == NULL)
+	if (ctx->debug_file == NULL)
 		return;
 
-	fprintf(outf, "%s", buf);
-	n = strlen(buf);
-	if (n == 0 || buf[n-1] != '\n')
-		fprintf(outf, "\n");
-	fflush(outf);
+#ifdef _WIN32
+	GetLocalTime(&st);
+	sc_color_fprintf(SC_COLOR_FG_GREEN|SC_COLOR_BOLD,
+			ctx, ctx->debug_file,
+			"P:%lu; T:%lu",
+			(unsigned long)GetCurrentProcessId(),
+			(unsigned long)GetCurrentThreadId());
+	sc_color_fprintf(SC_COLOR_FG_GREEN,
+			ctx, ctx->debug_file,
+			" %i-%02i-%02i %02i:%02i:%02i.%03i",
+			st.wYear, st.wMonth, st.wDay,
+			st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
+#else
+	sc_color_fprintf(SC_COLOR_FG_GREEN|SC_COLOR_BOLD,
+			ctx, ctx->debug_file,
+			"P:%lu; T:0x%lu",
+			(unsigned long)getpid(),
+			(unsigned long)pthread_self());
+	gettimeofday (&tv, NULL);
+	tm = localtime (&tv.tv_sec);
+	strftime (time_string, sizeof(time_string), "%H:%M:%S", tm);
+	sc_color_fprintf(SC_COLOR_FG_GREEN,
+			ctx, ctx->debug_file,
+			" %s.%03ld",
+			time_string,
+			(long)tv.tv_usec / 1000);
+#endif
+
+	sc_color_fprintf(SC_COLOR_FG_YELLOW,
+			ctx, ctx->debug_file,
+			" [");
+	sc_color_fprintf(SC_COLOR_FG_YELLOW|SC_COLOR_BOLD,
+			ctx, ctx->debug_file,
+			"%s",
+			ctx->app_name);
+	sc_color_fprintf(SC_COLOR_FG_YELLOW,
+			ctx, ctx->debug_file,
+			"] ");
+
+	if (file != NULL) {
+		sc_color_fprintf(SC_COLOR_FG_YELLOW,
+				ctx, ctx->debug_file,
+				"%s:%d:%s: ",
+				file, line, func ? func : "");
+	}
+
+	if (vsnprintf(buf, sizeof buf, format, args) >= 0) {
+		sc_color_fprintf(color, ctx, ctx->debug_file, "%s", buf);
+		if (strlen(buf) == 0 || buf[strlen(buf)-1] != '\n')
+			sc_color_fprintf(color, ctx, ctx->debug_file, "\n");
+	}
+	fflush(ctx->debug_file);
 
 #ifdef _WIN32
 	if (ctx->debug_file && (ctx->debug_file != stderr && ctx->debug_file != stdout))
 		fclose(ctx->debug_file);
 	ctx->debug_file = NULL;
 #endif
-
-	return;
 }
 
 void _sc_debug(struct sc_context *ctx, int level, const char *format, ...)
@@ -147,7 +161,7 @@ void _sc_debug(struct sc_context *ctx, int level, const char *format, ...)
 	va_list ap;
 
 	va_start(ap, format);
-	sc_do_log_va(ctx, level, NULL, 0, NULL, format, ap);
+	sc_do_log_va(ctx, level, NULL, 0, NULL, 0, format, ap);
 	va_end(ap);
 }
 
@@ -156,8 +170,92 @@ void _sc_log(struct sc_context *ctx, const char *format, ...)
 	va_list ap;
 
 	va_start(ap, format);
-	sc_do_log_va(ctx, SC_LOG_DEBUG_NORMAL, NULL, 0, NULL, format, ap);
+	sc_do_log_va(ctx, SC_LOG_DEBUG_NORMAL, NULL, 0, NULL, 0, format, ap);
 	va_end(ap);
+}
+
+#ifdef _WIN32
+#define set_color(sc_color, win_color, vt100_color) \
+	do { if (colors & sc_color) { attr |= win_color; } } while (0)
+#else
+#define set_color(sc_color, win_color, vt100_color) \
+	do { if (colors & sc_color) { fprintf(stream, vt100_color); } } while (0)
+#endif
+
+int sc_color_fprintf(int colors, struct sc_context *ctx, FILE * stream, const char * format, ...)
+{
+	va_list ap;
+	int r;
+#ifdef _WIN32
+	WORD old_attr = 0;
+	int fd = stream ? fileno(stream) : -1;
+	HANDLE handle = fd >= 0 ? (HANDLE) _get_osfhandle(fd) : INVALID_HANDLE_VALUE;
+#endif
+
+	if (colors && (!ctx || (!(ctx->flags & SC_CTX_FLAG_DISABLE_COLORS)))) {
+#ifdef _WIN32
+		WORD attr = 0;
+		CONSOLE_SCREEN_BUFFER_INFO csbi;
+		GetConsoleScreenBufferInfo(handle, &csbi);
+		old_attr = csbi.wAttributes;
+#endif
+		set_color(SC_COLOR_FG_RED,
+				FOREGROUND_RED,
+				"\x1b[31m");
+		set_color(SC_COLOR_FG_GREEN,
+				FOREGROUND_GREEN,
+				"\x1b[32m");
+		set_color(SC_COLOR_FG_YELLOW,
+				FOREGROUND_GREEN|FOREGROUND_RED,
+				"\x1b[33m");
+		set_color(SC_COLOR_FG_BLUE,
+				FOREGROUND_BLUE,
+				"\x1b[34m");
+		set_color(SC_COLOR_FG_MAGENTA,
+				FOREGROUND_BLUE|FOREGROUND_RED,
+				"\x1b[35m");
+		set_color(SC_COLOR_FG_CYAN,
+				FOREGROUND_BLUE|FOREGROUND_GREEN,
+				"\x1b[36m");
+		set_color(SC_COLOR_BG_RED,
+				FOREGROUND_RED,
+				"\x1b[41m");
+		set_color(SC_COLOR_BG_GREEN,
+				BACKGROUND_GREEN,
+				"\x1b[42m");
+		set_color(SC_COLOR_BG_YELLOW,
+				BACKGROUND_GREEN|BACKGROUND_RED,
+				"\x1b[43m");
+		set_color(SC_COLOR_BG_BLUE,
+				BACKGROUND_BLUE,
+				"\x1b[44m");
+		set_color(SC_COLOR_BG_MAGENTA,
+				BACKGROUND_BLUE|BACKGROUND_RED,
+				"\x1b[45m");
+		set_color(SC_COLOR_BG_CYAN,
+				BACKGROUND_BLUE|BACKGROUND_GREEN,
+				"\x1b[46m");
+		set_color(SC_COLOR_BOLD,
+				FOREGROUND_INTENSITY,
+				"\x1b[1m");
+#ifdef _WIN32
+		SetConsoleTextAttribute(handle, attr);
+#endif
+	}
+
+	va_start(ap, format);
+	r = vfprintf(stream, format, ap);
+	va_end(ap);
+
+	if (colors && (!ctx || (!(ctx->flags & SC_CTX_FLAG_DISABLE_COLORS)))) {
+#ifdef _WIN32
+		SetConsoleTextAttribute(handle, old_attr);
+#else
+		fprintf(stream, "\x1b[0m");
+#endif
+	}
+
+	return r;
 }
 
 void _sc_debug_hex(sc_context_t *ctx, int type, const char *file, int line,

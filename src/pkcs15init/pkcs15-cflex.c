@@ -86,7 +86,7 @@ static int cflex_erase_card(struct sc_profile *profile, sc_pkcs15_card_t *p15car
 	sc_file_t  *df = profile->df_info->file, *dir, *userpinfile = NULL;
 	int             r;
 
-	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(ctx);
 	/* Delete EF(DIR). This may not be very nice
          * against other applications that use this file, but
          * extremely useful for testing :)
@@ -225,7 +225,7 @@ cflex_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df
 	int		ndummies, pin_type, puk_type, r;
 	sc_file_t       *file = NULL;
 
-	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(ctx);
 
 	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
 		return SC_ERROR_OBJECT_NOT_VALID;
@@ -246,11 +246,11 @@ cflex_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df
 	/* Get file definition from the profile */
 	if (sc_profile_get_file(profile, (pin_attrs->reference == 1)? "CHV1" : "CHV2", &file) < 0
 			&& sc_profile_get_file(profile, "CHV", &file) < 0)
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_FILE_NOT_FOUND, "profile does not define pin file ACLs");
+		LOG_TEST_RET(ctx, SC_ERROR_FILE_NOT_FOUND, "profile does not define pin file ACLs");
 
 	ndummies = cflex_create_dummy_chvs(profile, p15card, file, SC_AC_OP_CREATE, dummies);
 	sc_file_free(file);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, ndummies, "Unable to create dummy CHV file");
+	LOG_TEST_RET(ctx, ndummies, "Unable to create dummy CHV file");
 
 	r = cflex_create_pin_file(profile, p15card, &df->path, pin_attrs->reference,
 			pin, pin_len, sc_profile_get_pin_retries(profile, pin_type),
@@ -273,7 +273,7 @@ cflex_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_pkcs15_obj
 	int		r;
 
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
-		sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL, "Cryptoflex supports only RSA keys.");
+		sc_log(p15card->card->ctx,  "Cryptoflex supports only RSA keys.");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
@@ -289,7 +289,7 @@ cflex_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_pkcs15_obj
 	case 1024: size = 326; break;
 	case 2048: size = 646; break;
 	default:
-		sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(p15card->card->ctx, 
 			 "Unsupported key size %"SC_FORMAT_LEN_SIZE_T"u\n",
 			 key_info->modulus_length);
 		r = SC_ERROR_INVALID_ARGUMENTS;
@@ -331,7 +331,7 @@ cflex_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	int		r;
 
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Cryptoflex supports only RSA keys.");
+		sc_log(card->ctx,  "Cryptoflex supports only RSA keys.");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	/* Get the public and private key file */
@@ -391,7 +391,7 @@ cflex_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	int		r;
 
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Cryptoflex supports only RSA keys.");
+		sc_log(card->ctx,  "Cryptoflex supports only RSA keys.");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	/* Get the public and private key file */
@@ -439,7 +439,7 @@ cflex_create_dummy_chvs(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	const sc_acl_entry_t *acl;
 	int		r = 0, ndummies = 0;
 
-	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(ctx);
 	/* See if the DF is supposed to be PIN protected, and if
 	 * it is, whether that CHV file actually exists. If it doesn't,
 	 * create it.
@@ -530,7 +530,7 @@ cflex_create_pin_file(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_file_t	*dummies[2], *file;
 	int		r, ndummies;
 
-	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(ctx);
 	if (file_ret)
 		*file_ret = NULL;
 
@@ -548,7 +548,7 @@ cflex_create_pin_file(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	if (sc_profile_get_file_by_path(profile, &path, &file) < 0
 			&& sc_profile_get_file(profile, (ref == 1)? "CHV1" : "CHV2", &file) < 0
 			&& sc_profile_get_file(profile, "CHV", &file) < 0)
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_FILE_NOT_FOUND, "profile does not define pin file ACLs");
+		LOG_TEST_RET(ctx, SC_ERROR_FILE_NOT_FOUND, "profile does not define pin file ACLs");
 
 	file->path = path;
 	file->size = 23;
@@ -568,7 +568,7 @@ cflex_create_pin_file(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	 * necessary */
 	ndummies = cflex_create_dummy_chvs(profile, p15card,
 				file, SC_AC_OP_UPDATE, dummies);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, ndummies, "Unable to create dummy CHV file");
+	LOG_TEST_RET(ctx, ndummies, "Unable to create dummy CHV file");
 
 	if (!unprotected)   {
 		struct sc_pin_cmd_data pin_cmd;
@@ -581,7 +581,7 @@ cflex_create_pin_file(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		pin_cmd.pin1.len = sizeof(dummy_pin_value);
 
 		r = sc_pin_cmd(p15card->card, &pin_cmd, NULL);
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Cannot verify dummy PIN");
+		LOG_TEST_RET(ctx, r, "Cannot verify dummy PIN");
 
 	};
 
@@ -593,10 +593,10 @@ cflex_create_pin_file(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	}
 
 	r = sc_pkcs15init_create_file(profile, p15card, file);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Failed to create PIN file");
+	LOG_TEST_RET(ctx, r, "Failed to create PIN file");
 
 	r = sc_update_binary(p15card->card, 0, buffer, 23, 0);
-	SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, r, "Failed to update PIN file");
+	LOG_TEST_RET(ctx, r, "Failed to update PIN file");
 
 	if (r < 0 || file_ret == NULL)
 		sc_file_free(file);
@@ -623,7 +623,7 @@ cflex_create_empty_pin_file(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 {
 	int		r;
 
-	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(p15card->card->ctx);
 	*file_ret = NULL;
 	r = cflex_create_pin_file(profile, p15card, path, ref,
 			dummy_pin_value, sizeof(dummy_pin_value), 8,
@@ -654,7 +654,7 @@ static int cflex_get_keyfiles(sc_profile_t *profile, sc_card_t *card,
 		if (r != SC_SUCCESS)
 			pbuf[0] = '\0';
 
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Cannot find private key file info "
+		sc_log(card->ctx,  "Cannot find private key file info "
 				"in profile (path=%s).", pbuf);
 		return r;
 	}
@@ -664,7 +664,7 @@ static int cflex_get_keyfiles(sc_profile_t *profile, sc_card_t *card,
 	sc_append_file_id(&path, 0x1012);
 	r = sc_profile_get_file_by_path(profile, &path, pukf);
 	if (r < 0) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Cannot find public key file info in profile.");
+		sc_log(card->ctx,  "Cannot find public key file info in profile.");
 		sc_file_free(*prkf);
 		return r;
 	}

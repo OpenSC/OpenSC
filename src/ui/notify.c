@@ -442,9 +442,10 @@ static GApplication *application = NULL;
 
 void sc_notify_init(void)
 {
-	sc_notify_close();
-	application = g_application_new("org.opensc.notify", G_APPLICATION_NON_UNIQUE);
-	if (application) {
+	if (!application) {
+		application = g_application_new("org.opensc.notify", G_APPLICATION_NON_UNIQUE);
+	}
+	if (application && FALSE == g_application_get_is_registered(application)) {
 		g_application_register(application, NULL, NULL);
 	}
 }

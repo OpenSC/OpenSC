@@ -168,6 +168,16 @@ app <replaceable>application</replaceable> {
 			</varlistentry>
 			<varlistentry>
 				<term>
+					<option>disable_colors = <replaceable>bool</replaceable>;</option>
+				</term>
+				<listitem><para>
+						Disable colors of log messages (Default:
+						<literal>false</literal> if attached to a console,
+						<literal>true</literal> otherwise).
+				</para></listitem>
+			</varlistentry>
+			<varlistentry>
+				<term>
 					<option>disable_popups = <replaceable>bool</replaceable>;</option>
 				</term>
 				<listitem><para>

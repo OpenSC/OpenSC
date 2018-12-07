@@ -784,18 +784,25 @@ size_t coolkey_list_meter(const void *el) {
 	return sizeof(sc_cardctl_coolkey_object_t);
 }
 
+static void coolkey_free_private_data(coolkey_private_data_t *priv);
+
 static coolkey_private_data_t *coolkey_new_private_data(void)
 {
 	coolkey_private_data_t *priv;
+
 	/* allocate priv and zero all the fields */
 	priv = calloc(1, sizeof(coolkey_private_data_t));
 	if (!priv)
 		return NULL;
+
 	/* set other fields as appropriate */
 	priv->key_id = COOLKEY_INVALID_KEY;
-	list_init(&priv->objects_list);
-	list_attributes_comparator(&priv->objects_list, coolkey_compare_id);
-	list_attributes_copy(&priv->objects_list, coolkey_list_meter, 1);
+	if (list_init(&priv->objects_list) != 0 ||
+	    list_attributes_comparator(&priv->objects_list, coolkey_compare_id) != 0 ||
+	    list_attributes_copy(&priv->objects_list, coolkey_list_meter, 1) != 0) {
+		coolkey_free_private_data(priv);
+		return NULL;
+	}
 
 	return priv;
 }
@@ -887,7 +894,7 @@ coolkey_number_of_error_codes = sizeof(coolkey_error_codes)/sizeof(coolkey_error
 
 static int coolkey_check_sw(sc_card_t *card, unsigned int sw1, unsigned int sw2)
 {
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(card->ctx, 
 		"sw1 = 0x%02x, sw2 = 0x%02x\n", sw1, sw2);
 
 	if (sw1 == 0x90)
@@ -934,7 +941,7 @@ static int coolkey_apdu_io(sc_card_t *card, int cla, int ins, int p1, int p2,
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(card->ctx, 
 		 "%02x %02x %02x %"SC_FORMAT_LEN_SIZE_T"u : %"SC_FORMAT_LEN_SIZE_T"u %"SC_FORMAT_LEN_SIZE_T"u\n",
 		 ins, p1, p2, sendbuflen, card->max_send_size,
 		 card->max_recv_size);
@@ -999,24 +1006,24 @@ static int coolkey_apdu_io(sc_card_t *card, int cla, int ins, int p1, int p2,
 		 apdu.resplen = 0;
 	}
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(card->ctx, 
 		 "calling sc_transmit_apdu flags=%lx le=%"SC_FORMAT_LEN_SIZE_T"u, resplen=%"SC_FORMAT_LEN_SIZE_T"u, resp=%p",
 		 apdu.flags, apdu.le, apdu.resplen, apdu.resp);
 
 	/* with new adpu.c and chaining, this actually reads the whole object */
 	r = sc_transmit_apdu(card, &apdu);
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(card->ctx, 
 		 "result r=%d apdu.resplen=%"SC_FORMAT_LEN_SIZE_T"u sw1=%02x sw2=%02x",
 		 r, apdu.resplen, apdu.sw1, apdu.sw2);
 
 	if (r < 0) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"Transmit failed");
+		sc_log(card->ctx, "Transmit failed");
 		goto err;
 	}
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	if (r < 0) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"Transmit failed");
+		sc_log(card->ctx, "Transmit failed");
 		goto err;
 	}
 
@@ -1034,7 +1041,7 @@ static int coolkey_apdu_io(sc_card_t *card, int cla, int ins, int p1, int p2,
 	}
 
 err:
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 /*
@@ -1161,12 +1168,16 @@ static int coolkey_write_object(sc_card_t *card, unsigned long object_id,
 	size_t operation_len;
 	size_t left = buf_len;
 	int r;
+	size_t max_operation_len;
+
+	/* set limit for the card's maximum send size and short write */
+	max_operation_len = MIN(COOLKEY_MAX_CHUNK_SIZE, (card->max_send_size - sizeof(coolkey_read_object_param_t) - nonce_size));
 
 	ulong2bebytes(&params.head.object_id[0], object_id);
 
 	do {
 		ulong2bebytes(&params.head.offset[0], offset);
-		operation_len = MIN(left, COOLKEY_MAX_CHUNK_SIZE);
+		operation_len = MIN(left, max_operation_len);
 		params.head.length = operation_len;
 		memcpy(params.buf, buf, operation_len);
 		r = coolkey_apdu_io(card, COOLKEY_CLASS, COOLKEY_INS_WRITE_OBJECT, 0, 0,
@@ -1200,20 +1211,20 @@ static int coolkey_read_binary(sc_card_t *card, unsigned int idx,
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (idx > priv->obj->length) {
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_FILE_END_REACHED);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_FILE_END_REACHED);
 	}
 
 	/* if we've already read the data, just return it */
 	if (priv->obj->data) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(card->ctx, 
 			 "returning cached value idx=%u count=%"SC_FORMAT_LEN_SIZE_T"u",
 			 idx, count);
 		len = MIN(count, priv->obj->length-idx);
 		memcpy(buf, &priv->obj->data[idx], len);
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, len);
+		LOG_FUNC_RETURN(card->ctx, len);
 	}
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(card->ctx, 
 		 "clearing cache idx=%u count=%"SC_FORMAT_LEN_SIZE_T"u",
 		 idx, count);
 
@@ -1245,7 +1256,7 @@ static int coolkey_read_binary(sc_card_t *card, unsigned int idx,
 done:
 	if (data)
 		free(data);
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 /* COOLKEY driver is read only. NOTE: The applet supports w/r operations, so it's perfectly
@@ -1256,7 +1267,7 @@ static int coolkey_write_binary(sc_card_t *card, unsigned int idx,
 {
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED);
+	LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 }
 
 /* initialize getting a list and return the number of elements in the list */
@@ -1348,7 +1359,7 @@ static int coolkey_get_token_info(sc_card_t *card, sc_pkcs15_tokeninfo_t * token
 	char *manufacturer_id = NULL;
 	char *serial_number = NULL;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(card->ctx);
 	label = strdup((char *)priv->token_name);
 	manufacturer_id = coolkey_get_manufacturer(&priv->cuid);
 	serial_number = coolkey_cuid_to_string(&priv->cuid);
@@ -1369,10 +1380,10 @@ static int coolkey_get_serial_nr_from_CUID(sc_card_t* card, sc_serial_number_t* 
 {
 	coolkey_private_data_t * priv = COOLKEY_DATA(card);
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(card->ctx);
 	memcpy(serial->value, &priv->cuid, sizeof(priv->cuid));
 	serial->len = sizeof(priv->cuid);
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
 int
@@ -1620,7 +1631,7 @@ static int coolkey_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 				NULL, 0, &rnd, &len,  NULL, 0),
 			"Could not get challenge");
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, (int) len);
+	LOG_FUNC_RETURN(card->ctx, (int) len);
 }
 
 static int coolkey_set_security_env(sc_card_t *card, const sc_security_env_t *env, int se_num)
@@ -1630,7 +1641,7 @@ static int coolkey_set_security_env(sc_card_t *card, const sc_security_env_t *en
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(card->ctx, 
 		 "flags=%08lx op=%d alg=%d algf=%08x algr=%08x kr0=%02x, krfl=%"SC_FORMAT_LEN_SIZE_T"u\n",
 		 env->flags, env->operation, env->algorithm,
 		 env->algorithm_flags, env->algorithm_ref, env->key_ref[0],
@@ -1650,7 +1661,7 @@ static int coolkey_restore_security_env(sc_card_t *card, int se_num)
 {
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
 #define MAX_COMPUTE_BUF 200
@@ -1689,7 +1700,7 @@ static int coolkey_rsa_op(sc_card_t *card,
 	u8 *buf_out;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(card->ctx, 
 		 "datalen=%"SC_FORMAT_LEN_SIZE_T"u outlen=%"SC_FORMAT_LEN_SIZE_T"u\n",
 		 datalen, max_out_len);
 
@@ -1792,7 +1803,7 @@ static int coolkey_ecc_op(sc_card_t *card,
 	u8 key_number;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(card->ctx, 
 		 "datalen=%"SC_FORMAT_LEN_SIZE_T"u outlen=%"SC_FORMAT_LEN_SIZE_T"u\n",
 		 datalen, outlen);
 
@@ -1919,7 +1930,7 @@ static int coolkey_select_file(sc_card_t *card, const sc_path_t *in_path, sc_fil
 	if (file_out) {
 		file = sc_file_new();
 		if (file == NULL)
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 		file->path = *in_path;
 		/* this could be like the FCI */
 		file->type =  SC_PATH_TYPE_FILE_ID;
@@ -2225,13 +2236,32 @@ cleanup:
 static int coolkey_match_card(sc_card_t *card)
 {
 	int r;
+
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	/* Since we send an APDU, the card's logout function may be called...
 	 * however it may be in dirty memory */
 	card->ops->logout = NULL;
 
 	r = coolkey_select_applet(card);
-	return (r >= SC_SUCCESS);
+	if (r == SC_SUCCESS) {
+		sc_apdu_t apdu;
+
+		/* The GET STATUS INS with P1 = 1 returns invalid instruction (0x6D00)
+		 * on Coolkey applet (reserved for GetMemory function),
+		 * while incorrect P1 (0x9C10) on Muscle applets
+		 */
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, COOLKEY_INS_GET_STATUS, 0x01, 0x00);
+		apdu.cla = COOLKEY_CLASS;
+		apdu.le = 0x00;
+		apdu.resplen = 0;
+		apdu.resp = NULL;
+		r = sc_transmit_apdu(card, &apdu);
+		if (r == SC_SUCCESS && apdu.sw1 == 0x6d && apdu.sw2 == 0x00) {
+			return 1;
+		}
+		return 0;
+	}
+	return 0;
 }
 
 
@@ -2246,7 +2276,7 @@ static int coolkey_init(sc_card_t *card)
 
 	r = coolkey_initialize(card);
 	if (r < 0) {
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_CARD);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_CARD);
 	}
 
 	card->type = SC_CARD_TYPE_COOLKEY_GENERIC;
@@ -2271,7 +2301,7 @@ static int coolkey_init(sc_card_t *card)
 		card->caps |= SC_CARD_CAP_ISO7816_PIN_INFO;
 	}
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
 

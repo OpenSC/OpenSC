@@ -153,7 +153,7 @@ static int process_fci(struct sc_context *ctx, struct sc_file *file,
 	size_t taglen, len = buflen;
 	const u8 *tag = NULL, *p;
   
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "processing FCI bytes\n");
+	sc_log(ctx,  "processing FCI bytes\n");
 
 	if (buflen < 2)
 		return SC_ERROR_INTERNAL;
@@ -175,7 +175,7 @@ static int process_fci(struct sc_context *ctx, struct sc_file *file,
 	tag = sc_asn1_find_tag(ctx, p, len, 0x80, &taglen);
 	if (tag != NULL && taglen >= 2) {
 		int bytes = (tag[0] << 8) + tag[1];
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "  bytes in file: %d\n", bytes);
+		sc_log(ctx,  "  bytes in file: %d\n", bytes);
 		file->size = bytes;
 	}
 
@@ -224,8 +224,8 @@ static int process_fci(struct sc_context *ctx, struct sc_file *file,
 			}
 		}
 
-	 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "  type: %s\n", type);
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "  EF structure: %s\n", structure);
+	 	sc_log(ctx,  "  type: %s\n", type);
+		sc_log(ctx,  "  EF structure: %s\n", structure);
 	}
 	file->magic = SC_FILE_MAGIC;
 
@@ -249,7 +249,7 @@ static int atrust_acos_select_aid(struct sc_card *card,
 	apdu.resplen = 0;
 	apdu.le = 0;
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	/* check return value */
 	if (!(apdu.sw1 == 0x90 && apdu.sw2 == 0x00) && apdu.sw1 != 0x61 )
@@ -263,7 +263,7 @@ static int atrust_acos_select_aid(struct sc_card *card,
 	if (file_out) {
 		sc_file_t *file = sc_file_new();
 		if (!file)
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 		file->type = SC_FILE_TYPE_DF;
 		file->ef_structure = SC_FILE_EF_UNKNOWN;
 		file->path.len = 0;
@@ -300,7 +300,7 @@ static int atrust_acos_select_fid(struct sc_card *card,
 	apdu.datalen = 2;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	if (apdu.p2 == 0x00 && apdu.sw1 == 0x62 && apdu.sw2 == 0x84 ) {
 		/* no FCI => we have a DF (see comment in process_fci()) */
@@ -310,7 +310,7 @@ static int atrust_acos_select_fid(struct sc_card *card,
 		apdu.resplen = 0;
 		apdu.le = 0;
 		r = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU re-transmit failed");
+		LOG_TEST_RET(card->ctx, r, "APDU re-transmit failed");
     	} else if (apdu.sw1 == 0x61 || (apdu.sw1 == 0x90 && apdu.sw2 == 0x00)) {
 		/* SELECT returned some data (possible FCI) =>
 		 * try a READ BINARY to see if a EF is selected */
@@ -322,7 +322,7 @@ static int atrust_acos_select_fid(struct sc_card *card,
 		apdu2.le = 1;
 		apdu2.lc = 0;
 		r = sc_transmit_apdu(card, &apdu2);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 		if (apdu2.sw1 == 0x69 && apdu2.sw2 == 0x86)
 			/* no current EF is selected => we have a DF */
 			bIsDF = 1;
@@ -348,7 +348,7 @@ static int atrust_acos_select_fid(struct sc_card *card,
 	if (file_out) {
 		sc_file_t *file = sc_file_new();
 		if (!file)
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 		file->id   = (id_hi << 8) + id_lo;
 		file->path = card->cache.current_path;
 
@@ -392,7 +392,7 @@ static int atrust_acos_select_file(struct sc_card *card,
 	if (r != SC_SUCCESS)
 		pbuf[0] = '\0';
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(card->ctx, 
 		 "current path (%s, %s): %s (len: %"SC_FORMAT_LEN_SIZE_T"u)\n",
 		 card->cache.current_path.type == SC_PATH_TYPE_DF_NAME ?
 		 "aid" : "path",
@@ -417,7 +417,7 @@ static int atrust_acos_select_file(struct sc_card *card,
 		    && card->cache.current_path.len == pathlen
 		    && memcmp(card->cache.current_path.value, pathbuf, pathlen) == 0 )
 		{
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "cache hit\n");
+			sc_log(card->ctx,  "cache hit\n");
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
 		}
 		else
@@ -476,7 +476,7 @@ static int atrust_acos_select_file(struct sc_card *card,
 	
 				/* first step: change directory */
 				r = atrust_acos_select_fid(card, path[bMatch], path[bMatch+1], NULL);
-				SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "SELECT FILE (DF-ID) failed");
+				LOG_TEST_RET(card->ctx, r, "SELECT FILE (DF-ID) failed");
 	
 				memset(&new_path, 0, sizeof(sc_path_t));	
 				new_path.type = SC_PATH_TYPE_PATH;
@@ -489,12 +489,12 @@ static int atrust_acos_select_file(struct sc_card *card,
 			{
 				/* done: we are already in the
 				 * requested directory */
-				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "cache hit\n");
+				sc_log(card->ctx,  "cache hit\n");
 				/* copy file info (if necessary) */
 				if (file_out) {
 					sc_file_t *file = sc_file_new();
 					if (!file)
-						SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+						LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 					file->id = (path[pathlen-2] << 8) +
 						   path[pathlen-1];
 					file->path = card->cache.current_path;
@@ -515,7 +515,7 @@ static int atrust_acos_select_file(struct sc_card *card,
 			for ( i=0; i<pathlen-2; i+=2 )
 			{
 				r = atrust_acos_select_fid(card, path[i], path[i+1], NULL);
-				SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "SELECT FILE (DF-ID) failed");
+				LOG_TEST_RET(card->ctx, r, "SELECT FILE (DF-ID) failed");
 			}
 			return atrust_acos_select_fid(card, path[pathlen-2], path[pathlen-1], file_out);
 		}
@@ -574,7 +574,7 @@ static int atrust_acos_set_security_env(struct sc_card *card,
 		apdu.lc      = p - sbuf;
 		apdu.le      = 0;
 		r = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 		if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 		return SC_SUCCESS;
@@ -624,7 +624,7 @@ static int atrust_acos_set_security_env(struct sc_card *card,
 		/* we don't know whether to use 
 		 * COMPUTE SIGNATURE or INTERNAL AUTHENTICATE */
 		r = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 		if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 			ex_data->fix_digestInfo = 0;
 			ex_data->sec_ops        = SC_SEC_OPERATION_SIGN;
@@ -649,7 +649,7 @@ try_authenticate:
 		apdu.lc      = p - sbuf;
 		apdu.le      = 0;
 		r = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 		if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 		ex_data->fix_digestInfo = env->algorithm_flags;
@@ -689,7 +689,7 @@ static int atrust_acos_compute_signature(struct sc_card *card,
 		apdu.lc = datalen;
 		apdu.datalen = datalen;
 		r = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 		if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, 
 				       sc_check_sw(card, apdu.sw1, apdu.sw2));
@@ -704,7 +704,7 @@ static int atrust_acos_compute_signature(struct sc_card *card,
 		apdu.lc = 0;
 		apdu.datalen = 0;
 		r = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 		if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 			size_t len = apdu.resplen > outlen ? outlen : apdu.resplen;
 			memcpy(out, apdu.resp, len);
@@ -736,7 +736,7 @@ static int atrust_acos_compute_signature(struct sc_card *card,
 		apdu.resplen = sizeof(rbuf);
 		apdu.le = 256;
 		r = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 		if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 		{
@@ -767,7 +767,7 @@ static int atrust_acos_decipher(struct sc_card *card,
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 
 	assert(card != NULL && crgram != NULL && out != NULL);
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(card->ctx);
 	if (crgram_len > 255)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
 
@@ -785,7 +785,7 @@ static int atrust_acos_decipher(struct sc_card *card,
 	apdu.datalen = crgram_len + 1;
 	apdu.le = 256;
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 		size_t len = apdu.resplen > outlen ? outlen : apdu.resplen;
 
@@ -802,13 +802,13 @@ static int atrust_acos_check_sw(struct sc_card *card, unsigned int sw1,
 	unsigned int sw2)
 {
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "sw1 = 0x%02x, sw2 = 0x%02x\n", sw1, sw2);
+	sc_log(card->ctx,  "sw1 = 0x%02x, sw2 = 0x%02x\n", sw1, sw2);
   
 	if (sw1 == 0x90)
 		return SC_SUCCESS;
 	if (sw1 == 0x63 && (sw2 & ~0x0fU) == 0xc0 )
 	{
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Verification failed (remaining tries: %d)\n",
+		sc_log(card->ctx,  "Verification failed (remaining tries: %d)\n",
 		(sw2 & 0x0f));
 		return SC_ERROR_PIN_CODE_INCORRECT;
 	}
@@ -841,7 +841,7 @@ static int acos_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 	apdu.lc   = 0;
 	apdu.datalen = 0;
         r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
 		return SC_ERROR_INTERNAL;
 	/* cache serial number */
@@ -882,7 +882,7 @@ static int atrust_acos_logout(struct sc_card *card)
 	apdu.resplen = 0;
 	
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU re-transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU re-transmit failed");
 
 	if (apdu.sw1 == 0x69 && apdu.sw2 == 0x85)
 		/* the only possible reason for this error here is, afaik,

@@ -12,7 +12,8 @@ noinst_HEADERS = cards.h ctbcs.h internal.h esteid.h muscle.h muscle-filesystem.
 	errors.h types.h compression.h itacns.h iso7816.h \
 	authentic.h iasecc.h iasecc-sdo.h sm.h card-sc-hsm.h \
 	pace.h cwa14890.h cwa-dnie.h card-gids.h aux-data.h \
-	jpki.h sc-ossl-compat.h card-npa.h ccid-types.h reader-tr03119.h
+	jpki.h sc-ossl-compat.h card-npa.h ccid-types.h reader-tr03119.h \
+	card-cac-common.h
 
 AM_CPPFLAGS = -D'OPENSC_CONF_PATH="$(sysconfdir)/opensc.conf"' \
      -D'DEFAULT_SM_MODULE_PATH="$(DEFAULT_SM_MODULE_PATH)"' \
@@ -40,7 +41,8 @@ libopensc_la_SOURCES_BASE = \
 	card-mcrd.c card-starcos.c card-openpgp.c card-jcop.c \
 	card-oberthur.c card-belpic.c card-atrust-acos.c \
 	card-entersafe.c card-epass2003.c card-coolkey.c card-incrypto34.c \
-	card-piv.c card-cac.c card-muscle.c card-acos5.c \
+	card-piv.c card-cac-common.c card-cac.c card-cac1.c \
+	card-muscle.c card-acos5.c \
 	card-asepcos.c card-akis.c card-gemsafeV1.c card-rutoken.c \
 	card-rtecp.c card-westcos.c card-myeid.c \
 	card-itacns.c card-authentic.c \

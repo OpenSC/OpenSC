@@ -444,6 +444,15 @@
 					viewable after a login).</para></listitem>
 				</varlistentry>
 
+                                <varlistentry>
+					<term>
+						<option>--always-auth</option>
+					</term>
+					<listitem><para>Set the CKA_ALWAYS_AUTHENTICATE attribute to a private key object.
+                                        If set, the user has to supply the PIN for each use (sign or decrypt) with the key.</para>
+                                        </listitem>
+				</varlistentry>
+
 				<varlistentry>
 					<term>
 						<option>--test-ec</option>

@@ -152,13 +152,13 @@ static int incrypto34_check_sw(sc_card_t *card, unsigned int sw1, unsigned int s
 	for (i = 0; i < err_count; i++) {
 		if (incrypto34_errors[i].SWs == ((sw1 << 8) | sw2)) {
 			if ( incrypto34_errors[i].errorstr )
-				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "%s\n",
+				sc_log(card->ctx,  "%s\n",
 				 	incrypto34_errors[i].errorstr);
 			return incrypto34_errors[i].errorno;
 		}
 	}
 
-        sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Unknown SWs; SW1=%02X, SW2=%02X\n", sw1, sw2);
+        sc_log(card->ctx,  "Unknown SWs; SW1=%02X, SW2=%02X\n", sw1, sw2);
 	return SC_ERROR_CARD_CMD_FAILED;
 }
 
@@ -191,12 +191,12 @@ get_next_part:
 	apdu.resp = rbuf;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.sw1 == 0x6a && apdu.sw2 == 0x82)
 		goto end; /* no more files */
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "DIRECTORY command returned error");
+	LOG_TEST_RET(card->ctx, r, "DIRECTORY command returned error");
 
 	if (apdu.resplen >= 3
 		&& ((rbuf[0] >= 0x01 && rbuf[0] <= 0x07) || 0x38 == rbuf[0])
@@ -212,7 +212,7 @@ get_next_part:
 end:
 	r = fids;
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 static void add_acl_entry(sc_file_t *file, int op, u8 byte)
@@ -311,7 +311,7 @@ static int incrypto34_select_file(sc_card_t *card,
 	r = iso_ops->select_file(card, in_path, file);
 	if (r >= 0 && file)
 		parse_sec_attr((*file), (*file)->sec_attr, (*file)->sec_attr_len);
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 static int incrypto34_create_file(sc_card_t *card, sc_file_t *file)
@@ -327,7 +327,7 @@ static int incrypto34_create_file(sc_card_t *card, sc_file_t *file)
 			"%02X", file->path.value[n]);
 	}
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "incrypto34_create_file(%s)\n", pbuf);
+	sc_log(card->ctx,  "incrypto34_create_file(%s)\n", pbuf);
 
 	if (file->type_attr_len == 0) {
 		memset(type, 0, sizeof(type));
@@ -388,7 +388,7 @@ static int incrypto34_create_file(sc_card_t *card, sc_file_t *file)
 				byte = acl_to_byte(
 				    sc_file_get_acl_entry(file, idx[i]));
                         if (byte < 0) {
-                                sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Invalid ACL\n");
+                                sc_log(card->ctx,  "Invalid ACL\n");
                                 r = SC_ERROR_INVALID_ARGUMENTS;
 				goto out;
                         }
@@ -403,7 +403,7 @@ static int incrypto34_create_file(sc_card_t *card, sc_file_t *file)
 	/* FIXME: if this is a DF and there's an AID, set it here
 	 * using PUT_DATA_FCI */
 
-out:	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+out:	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 /*
@@ -419,12 +419,12 @@ static int incrypto34_restore_security_env(sc_card_t *card, int se_num)
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x22, 0xF3, se_num);
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
+	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 /*
@@ -448,13 +448,13 @@ static int incrypto34_set_security_env(sc_card_t *card,
 
 	if (!(env->flags & SC_SEC_ENV_KEY_REF_PRESENT)
 	 || env->key_ref_len != 1) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "No or invalid key reference\n");
+		sc_log(card->ctx,  "No or invalid key reference\n");
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	key_id = env->key_ref[0];
 
 	r = incrypto34_restore_security_env(card, 1);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0xF1, 0);
 	switch (env->operation) {
@@ -475,12 +475,12 @@ static int incrypto34_set_security_env(sc_card_t *card,
 	apdu.data = data;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
+	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 /*
@@ -513,7 +513,7 @@ static int do_compute_signature(sc_card_t *card,
 	apdu.lc = datalen;
 	apdu.datalen = datalen;
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 		memcpy(out, rbuf, outlen);
@@ -546,12 +546,12 @@ incrypto34_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 	 * succeeds (this is not really beautiful, but currently the
 	 * only way I see) -- Nils
 	 */
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(ctx, 
 		"trying RSA_PURE_SIG (padded DigestInfo)\n");
 	r = do_compute_signature(card, data, datalen, out, outlen);
 	if (r >= SC_SUCCESS)
 		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, r);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(ctx, 
 		"trying RSA_SIG (just the DigestInfo)\n");
 	/* remove padding: first try pkcs1 bt01 padding */
 	r = sc_pkcs1_strip_01_padding(ctx, data, datalen, buf, &tmp_len);
@@ -570,7 +570,7 @@ incrypto34_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 	r = do_compute_signature(card, buf, tmp_len, out, outlen);
 	if (r >= SC_SUCCESS)
 		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, r);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(ctx, 
 		"trying to sign raw hash value\n");
 	r = sc_pkcs1_strip_digest_info_prefix(NULL,buf,tmp_len,buf,&buf_len);
 	if (r != SC_SUCCESS)
@@ -594,13 +594,13 @@ incrypto34_lifecycle_get(sc_card_t *card, int *mode)
 	apdu.resp = rbuf;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
+	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
 	if (apdu.resplen < 1) {
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Lifecycle byte not in response");
+		LOG_TEST_RET(card->ctx, r, "Lifecycle byte not in response");
 	}
 
 	r = SC_SUCCESS;
@@ -615,11 +615,11 @@ incrypto34_lifecycle_get(sc_card_t *card, int *mode)
 		*mode = SC_CARDCTRL_LIFECYCLE_OTHER;
 		break;
 	default:
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Unknown lifecycle byte %d", rbuf[0]);
+		sc_log(card->ctx,  "Unknown lifecycle byte %d", rbuf[0]);
 		r = SC_ERROR_INTERNAL;
 	}
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 static int
@@ -642,12 +642,12 @@ incrypto34_put_data_oci(sc_card_t *card,
 	apdu.datalen = args->len;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
+	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 static int
@@ -668,10 +668,10 @@ incrypto34_change_key_data(struct sc_card *card,
 	apdu.datalen = args->len;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
+	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
 	return r;
 }
@@ -694,10 +694,10 @@ incrypto34_put_data_seci(sc_card_t *card,
 	apdu.datalen = args->len;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error");
+	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
 	return r;
 }
@@ -730,9 +730,9 @@ incrypto34_generate_key(sc_card_t *card,
 	apdu.datalen = apdu.lc = sizeof(data);
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "GENERATE_KEY failed");
+	LOG_TEST_RET(card->ctx, r, "GENERATE_KEY failed");
 
 	return r;
 }
@@ -766,10 +766,10 @@ incrypto34_erase_files(sc_card_t *card)
 	apdu.cla = 0xb0;
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error Erasing Filesystem");
+	LOG_TEST_RET(card->ctx, r, "Card returned error Erasing Filesystem");
 
 	/* Creating ATR file*/
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xe0, 0, 0);
@@ -777,10 +777,10 @@ incrypto34_erase_files(sc_card_t *card)
 	apdu.datalen = apdu.lc = sizeof(pCreateAtrFile);
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error Creating ATR file");
+	LOG_TEST_RET(card->ctx, r, "Card returned error Creating ATR file");
 
 	/* Filling ATR file*/
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xd6, 0, 0);
@@ -788,10 +788,10 @@ incrypto34_erase_files(sc_card_t *card)
 	apdu.datalen = apdu.lc = sizeof(pWriteAtr);
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error Filling ATR file");
+	LOG_TEST_RET(card->ctx, r, "Card returned error Filling ATR file");
 
 	/* Creating DIR-ADO file*/
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xe0, 0, 0);
@@ -799,10 +799,10 @@ incrypto34_erase_files(sc_card_t *card)
 	apdu.datalen = apdu.lc = sizeof(pCreateEF_DIR_ADOFile);
 
 	r = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Card returned error Creating DIR-ADO file");
+	LOG_TEST_RET(card->ctx, r, "Card returned error Creating DIR-ADO file");
 
 	return r;
 

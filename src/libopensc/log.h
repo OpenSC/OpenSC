@@ -34,10 +34,24 @@ enum {
 	SC_LOG_DEBUG_VERBOSE,		/* helps users */
 	SC_LOG_DEBUG_NORMAL,		/* helps developers */
 	SC_LOG_DEBUG_RFU1,		/* RFU */
-	SC_LOG_DEBUG_RFU2,		/* RFU */
-	SC_LOG_DEBUG_ASN1,		/* asn1.c only */
-	SC_LOG_DEBUG_MATCH,		/* card matching only */
+	SC_LOG_DEBUG_SM,		/* secure messaging */
+	SC_LOG_DEBUG_ASN1,		/* asn1.c */
+	SC_LOG_DEBUG_MATCH,		/* card matching */
 };
+
+#define SC_COLOR_FG_RED			0x0001
+#define SC_COLOR_FG_GREEN		0x0002
+#define SC_COLOR_FG_YELLOW		0x0004
+#define SC_COLOR_FG_BLUE		0x0008
+#define SC_COLOR_FG_MAGENTA		0x0010
+#define SC_COLOR_FG_CYAN   		0x0020
+#define SC_COLOR_BG_RED			0x0100
+#define SC_COLOR_BG_GREEN		0x0200
+#define SC_COLOR_BG_YELLOW		0x0400
+#define SC_COLOR_BG_BLUE		0x0800
+#define SC_COLOR_BG_MAGENTA		0x1000
+#define SC_COLOR_BG_CYAN		0x2000
+#define SC_COLOR_BOLD			0x8080
 
 /* You can't do #ifndef __FUNCTION__ */
 #if !defined(__GNUC__) && !defined(__IBMC__) && !(defined(_MSC_VER) && (_MSC_VER >= 1300))
@@ -63,18 +77,26 @@ enum {
 void sc_do_log(struct sc_context *ctx, int level, const char *file, int line,
 	       const char *func, const char *format, ...)
 	__attribute__ ((format (SC_PRINTF_FORMAT, 6, 7)));
+void sc_do_log_color(struct sc_context *ctx, int level, const char *file, int line,
+	       const char *func, int color, const char *format, ...)
+	__attribute__ ((format (SC_PRINTF_FORMAT, 7, 8)));
 void sc_do_log_noframe(sc_context_t *ctx, int level, const char *format,
 		       va_list args) __attribute__ ((format (SC_PRINTF_FORMAT, 3, 0)));
 void _sc_debug(struct sc_context *ctx, int level, const char *format, ...)
 	__attribute__ ((format (SC_PRINTF_FORMAT, 3, 4)));
 void _sc_log(struct sc_context *ctx, const char *format, ...)
 	__attribute__ ((format (SC_PRINTF_FORMAT, 2, 3)));
+int sc_color_fprintf(int colors, struct sc_context *ctx, FILE * stream, const char * format, ...)
+	__attribute__ ((format (SC_PRINTF_FORMAT, 4, 5)));
 #else
 void sc_do_log(struct sc_context *ctx, int level, const char *file, int line, const char *func,
+		const char *format, ...);
+void sc_do_log_color(struct sc_context *ctx, int level, const char *file, int line, const char *func, int color,
 		const char *format, ...);
 void sc_do_log_noframe(sc_context_t *ctx, int level, const char *format, va_list args);
 void _sc_debug(struct sc_context *ctx, int level, const char *format, ...);
 void _sc_log(struct sc_context *ctx, const char *format, ...);
+int sc_color_fprintf(int colors, struct sc_context *ctx, FILE * stream, const char * format, ...);
 #endif
 /** 
  * @brief Log binary data to a sc context
@@ -93,7 +115,7 @@ void _sc_log(struct sc_context *ctx, const char *format, ...);
  * @brief Log binary data
  *
  * @param[in] ctx   Context for logging
- * @param[in] type  Debug level
+ * @param[in] level Debug level
  * @param[in] file  File name to be prepended
  * @param[in] line  Line to be prepended
  * @param[in] func  Function to be prepended
@@ -115,7 +137,7 @@ const char * sc_dump_oid(const struct sc_object_id *oid);
 #define SC_FUNC_RETURN(ctx, level, r) do { \
 	int _ret = r; \
 	if (_ret <= 0) { \
-		sc_do_log(ctx, level, __FILE__, __LINE__, __FUNCTION__, \
+		sc_do_log_color(ctx, level, __FILE__, __LINE__, __FUNCTION__, _ret ? SC_COLOR_FG_RED : 0, \
 			"returning with: %d (%s)\n", _ret, sc_strerror(_ret)); \
 	} else { \
 		sc_do_log(ctx, level, __FILE__, __LINE__, __FUNCTION__, \
@@ -128,7 +150,7 @@ const char * sc_dump_oid(const struct sc_object_id *oid);
 #define SC_TEST_RET(ctx, level, r, text) do { \
 	int _ret = (r); \
 	if (_ret < 0) { \
-		sc_do_log(ctx, level, __FILE__, __LINE__, __FUNCTION__, \
+		sc_do_log_color(ctx, level, __FILE__, __LINE__, __FUNCTION__, SC_COLOR_FG_RED, \
 			"%s: %d (%s)\n", (text), _ret, sc_strerror(_ret)); \
 		return _ret; \
 	} \
@@ -138,7 +160,7 @@ const char * sc_dump_oid(const struct sc_object_id *oid);
 #define SC_TEST_GOTO_ERR(ctx, level, r, text) do { \
 	int _ret = (r); \
 	if (_ret < 0) { \
-		sc_do_log(ctx, level, __FILE__, __LINE__, __FUNCTION__, \
+		sc_do_log_color(ctx, level, __FILE__, __LINE__, __FUNCTION__, SC_COLOR_FG_RED, \
 			"%s: %d (%s)\n", (text), _ret, sc_strerror(_ret)); \
 		goto err; \
 	} \

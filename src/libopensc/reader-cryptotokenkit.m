@@ -265,7 +265,7 @@ static int cryptotokenkit_transmit(sc_reader_t *reader, sc_apdu_t *apdu)
 
 	if (reader->name)
 		sc_log(reader->ctx, "reader '%s'", reader->name);
-	sc_apdu_log(reader->ctx, SC_LOG_DEBUG_NORMAL, sbuf, ssize, 1);
+	sc_apdu_log(reader->ctx, sbuf, ssize, 1);
 
 	[priv->tksmartcard transmitRequest:
 			[NSData dataWithBytes: sbuf length: ssize]
@@ -288,7 +288,7 @@ static int cryptotokenkit_transmit(sc_reader_t *reader, sc_apdu_t *apdu)
 	if (r != SC_SUCCESS)
 		goto err;
 
-	sc_apdu_log(reader->ctx, SC_LOG_DEBUG_NORMAL, rbuf, rsize, 0);
+	sc_apdu_log(reader->ctx, rbuf, rsize, 0);
 	r = sc_apdu_set_resp(reader->ctx, apdu, rbuf, rsize);
 
 err:

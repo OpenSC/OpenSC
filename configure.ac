@@ -172,10 +172,17 @@ AC_ARG_ENABLE(
 
 AC_ARG_ENABLE(
 	[openssl],
-	[AS_HELP_STRING([--enable-openssl],[enable openssl linkage @<:@detect@:>@])],
+	[AS_HELP_STRING([--enable-openssl],[enable OpenSSL linkage @<:@detect@:>@])],
 	,
 	[enable_openssl="detect"]
 )
+
+AC_ARG_ENABLE([openssl-secure-malloc],
+    [AC_HELP_STRING([--openssl-secure-malloc=<SIZE_IN_BYTES>],
+        [Enable OpenSSL secure memory by specifying its size in bytes, must be a power of 2 @<:@disabled@:>@])],
+    [], [enable_openssl_secure_malloc=no])
+AS_IF([test $enable_openssl_secure_malloc != no],
+	[AC_DEFINE_UNQUOTED([OPENSSL_SECURE_MALLOC_SIZE],[$enable_openssl_secure_malloc],[Size of OpenSSL secure memory in bytes, must be a power of 2])])
 
 AC_ARG_ENABLE(
 	[openpace],
@@ -1052,6 +1059,7 @@ AC_CONFIG_FILES([
 	doc/tools/Makefile
 	doc/files/Makefile
 	etc/Makefile
+	tests/Makefile
 	src/Makefile
 	src/common/Makefile
 	src/ui/Makefile
@@ -1115,6 +1123,7 @@ thread locking support:  ${enable_thread_locking}
 zlib support:            ${enable_zlib}
 readline support:        ${enable_readline}
 OpenSSL support:         ${enable_openssl}
+OpenSSL secure memory:   ${enable_openssl_secure_malloc}
 PC/SC support:           ${enable_pcsc}
 CryptoTokenKit support:  ${enable_cryptotokenkit}
 OpenCT support:          ${enable_openct}

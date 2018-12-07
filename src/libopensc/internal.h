@@ -157,7 +157,7 @@ int sc_pkcs1_strip_digest_info_prefix(unsigned int *algorithm,
  * @param  inlen   IN  length of the input
  * @param  out     OUT output buffer (in == out is allowed)
  * @param  outlen  OUT length of the output buffer
- * @param  modlen  IN  length of the modulus in bytes
+ * @param  mod_bits IN  length of the modulus in bits
  * @return SC_SUCCESS on success and an error code otherwise
  */
 int sc_pkcs1_encode(sc_context_t *ctx, unsigned long flags,
@@ -249,13 +249,12 @@ int sc_apdu_set_resp(sc_context_t *ctx, sc_apdu_t *apdu, const u8 *buf,
 /**
  * Logs APDU
  * @param  ctx          sc_context_t object
- * @param  level	log if ctx->debug >= level
  * @param  buf          buffer with the APDU data
  * @param  len          length of the APDU
  * @param  is_outgoing  != 0 if the data is send to the card
  */
-#define sc_apdu_log(ctx, level, data, len, is_outgoing) \
-	sc_debug_hex(ctx, level, is_outgoing != 0 ? "Outgoing APDU" : "Incoming APDU", data, len)
+#define sc_apdu_log(ctx, data, len, is_outgoing) \
+	sc_debug_hex(ctx, SC_LOG_DEBUG_NORMAL, is_outgoing != 0 ? "Outgoing APDU" : "Incoming APDU", data, len)
 
 extern struct sc_reader_driver *sc_get_pcsc_driver(void);
 extern struct sc_reader_driver *sc_get_ctapi_driver(void);

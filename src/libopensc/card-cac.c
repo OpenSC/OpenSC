@@ -43,12 +43,7 @@
 #endif
 
 #ifdef ENABLE_OPENSSL
-	/* openssl only needed for card administration */
-#include <openssl/evp.h>
-#include <openssl/bio.h>
-#include <openssl/pem.h>
-#include <openssl/rand.h>
-#include <openssl/rsa.h>
+#include <openssl/sha.h>
 #endif /* ENABLE_OPENSSL */
 
 #include "internal.h"
@@ -58,8 +53,8 @@
 #include "compression.h"
 #endif
 #include "iso7816.h"
+#include "card-cac-common.h"
 
-#define CAC_MAX_SIZE 4096		/* arbitrary, just needs to be 'large enough' */
 /*
  *  CAC hardware and APDU constants
  */
@@ -147,20 +142,6 @@ typedef struct cac_card_url {
 	u8 keyCryptoAlgorithm;               /* not used for VM cards */
 } cac_card_url_t;
 
-typedef struct cac_cuid {
-	u8 gsc_rid[5];
-	u8 manufacturer_id;
-	u8 card_type;
-	u8 card_id;
-} cac_cuid_t;
-
-/* data structures to store meta data about CAC objects */
-typedef struct cac_object {
-	const char *name;
-	int fd;
-	sc_path_t path;
-} cac_object_t;
-
 #define CAC_MAX_OBJECTS 16
 
 typedef struct {
@@ -191,81 +172,9 @@ typedef struct {
 #define CAC_OBJECT_TYPE_GENERIC		5
 
 /*
- * CAC private data per card state
- */
-typedef struct cac_private_data {
-	int object_type;		/* select set this so we know how to read the file */
-	int cert_next;			/* index number for the next certificate found in the list */
-	u8 *cache_buf;			/* cached version of the currently selected file */
-	size_t cache_buf_len;		/* length of the cached selected file */
-	int cached;			/* is the cached selected file valid */
-	cac_cuid_t cuid;                /* card unique ID from the CCC */
-	u8 *cac_id;                     /* card serial number */
-	size_t cac_id_len;              /* card serial number len */
-	list_t pki_list;                /* list of pki containers */
-	cac_object_t *pki_current;      /* current pki object _ctl function */
-	list_t general_list;            /* list of general containers */
-	cac_object_t *general_current;  /* current object for _ctl function */
-	sc_path_t *aca_path;		/* ACA path to be selected before pin verification */
-} cac_private_data_t;
-
-#define CAC_DATA(card) ((cac_private_data_t*)card->drv_data)
-
-int cac_list_compare_path(const void *a, const void *b)
-{
-	if (a == NULL || b == NULL)
-		return 1;
-	return memcmp( &((cac_object_t *) a)->path,
-		&((cac_object_t *) b)->path, sizeof(sc_path_t));
-}
-
-/* For SimCList autocopy, we need to know the size of the data elements */
-size_t cac_list_meter(const void *el) {
-	return sizeof(cac_object_t);
-}
-
-static cac_private_data_t *cac_new_private_data(void)
-{
-	cac_private_data_t *priv;
-	priv = calloc(1, sizeof(cac_private_data_t));
-	if (!priv)
-		return NULL;
-	list_init(&priv->pki_list);
-	list_attributes_comparator(&priv->pki_list, cac_list_compare_path);
-	list_attributes_copy(&priv->pki_list, cac_list_meter, 1);
-	list_init(&priv->general_list);
-	list_attributes_comparator(&priv->general_list, cac_list_compare_path);
-	list_attributes_copy(&priv->general_list, cac_list_meter, 1);
-	/* set other fields as appropriate */
-
-	return priv;
-}
-
-static void cac_free_private_data(cac_private_data_t *priv)
-{
-	free(priv->cac_id);
-	free(priv->cache_buf);
-	free(priv->aca_path);
-	list_destroy(&priv->pki_list);
-	list_destroy(&priv->general_list);
-	free(priv);
-	return;
-}
-
-static int cac_add_object_to_list(list_t *list, const cac_object_t *object)
-{
-	if (list_append(list, object) < 0)
-		return SC_ERROR_UNKNOWN;
-	return SC_SUCCESS;
-}
-
-/*
  * Set up the normal CAC paths
  */
-#define CAC_TO_AID(x) x, sizeof(x)-1
-
 #define CAC_2_RID "\xA0\x00\x00\x01\x16"
-#define CAC_1_RID "\xA0\x00\x00\x00\x79"
 
 static const sc_path_t cac_ACA_Path = {
 	"", 0,
@@ -277,39 +186,6 @@ static const sc_path_t cac_CCC_Path = {
 	"", 0,
 	0,0,SC_PATH_TYPE_DF_NAME,
 	{ CAC_TO_AID(CAC_2_RID "\xDB\x00") }
-};
-
-#define MAX_CAC_SLOTS 16		/* Maximum number of slots is 16 now */
-/* default certificate labels for the CAC card */
-static const char *cac_labels[MAX_CAC_SLOTS] = {
-	"CAC ID Certificate",
-	"CAC Email Signature Certificate",
-	"CAC Email Encryption Certificate",
-	"CAC Cert 4",
-	"CAC Cert 5",
-	"CAC Cert 6",
-	"CAC Cert 7",
-	"CAC Cert 8",
-	"CAC Cert 9",
-	"CAC Cert 10",
-	"CAC Cert 11",
-	"CAC Cert 12",
-	"CAC Cert 13",
-	"CAC Cert 14",
-	"CAC Cert 15",
-	"CAC Cert 16"
-};
-
-/* template for a CAC pki object */
-static const cac_object_t cac_cac_pki_obj = {
-	"CAC Certificate", 0x0, { { 0 }, 0, 0, 0, SC_PATH_TYPE_DF_NAME,
-	{ CAC_TO_AID(CAC_1_RID "\x01\x00") } }
-};
-
-/* template for emulated cuid */
-static const cac_cuid_t cac_cac_cuid = {
-	{ 0xa0, 0x00, 0x00, 0x00, 0x79 },
-	2, 2, 0
 };
 
 /*
@@ -385,7 +261,7 @@ static int cac_apdu_io(sc_card_t *card, int ins, int p1, int p2,
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(card->ctx, 
 		 "%02x %02x %02x %"SC_FORMAT_LEN_SIZE_T"u : %"SC_FORMAT_LEN_SIZE_T"u %"SC_FORMAT_LEN_SIZE_T"u\n",
 		 ins, p1, p2, sendbuflen, card->max_send_size,
 		 card->max_recv_size);
@@ -424,25 +300,25 @@ static int cac_apdu_io(sc_card_t *card, int ins, int p1, int p2,
 		 apdu.resplen = 0;
 	}
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(card->ctx, 
 		 "calling sc_transmit_apdu flags=%lx le=%"SC_FORMAT_LEN_SIZE_T"u, resplen=%"SC_FORMAT_LEN_SIZE_T"u, resp=%p",
 		 apdu.flags, apdu.le, apdu.resplen, apdu.resp);
 
 	/* with new adpu.c and chaining, this actually reads the whole object */
 	r = sc_transmit_apdu(card, &apdu);
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(card->ctx, 
 		 "result r=%d apdu.resplen=%"SC_FORMAT_LEN_SIZE_T"u sw1=%02x sw2=%02x",
 		 r, apdu.resplen, apdu.sw1, apdu.sw2);
 	if (r < 0) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,"Transmit failed");
+		sc_log(card->ctx, "Transmit failed");
 		goto err;
 	}
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 
 	if (r < 0) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Card returned error ");
+		sc_log(card->ctx,  "Card returned error ");
 		goto err;
 	}
 
@@ -460,7 +336,7 @@ static int cac_apdu_io(sc_card_t *card, int ins, int p1, int p2,
 	}
 
 err:
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 /*
@@ -589,18 +465,18 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 
 	/* if we didn't return it all last time, return the remainder */
 	if (priv->cached) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(card->ctx, 
 			 "returning cached value idx=%d count=%"SC_FORMAT_LEN_SIZE_T"u",
 			 idx, count);
 		if (idx > priv->cache_buf_len) {
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_FILE_END_REACHED);
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_FILE_END_REACHED);
 		}
 		len = MIN(count, priv->cache_buf_len-idx);
 		memcpy(buf, &priv->cache_buf[idx], len);
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, len);
+		LOG_FUNC_RETURN(card->ctx, len);
 	}
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(card->ctx, 
 		 "clearing cache idx=%d count=%"SC_FORMAT_LEN_SIZE_T"u",
 		 idx, count);
 	if (priv->cache_buf) {
@@ -611,7 +487,7 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 
 
 	if (priv->object_type <= 0)
-		 SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL);
+		 LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 
 	r = cac_read_file(card, CAC_FILE_TAG, &tl, &tl_len);
 	if (r < 0)  {
@@ -661,7 +537,7 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 
 	case CAC_OBJECT_TYPE_CERT:
 		/* read file */
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(card->ctx, 
 			 " obj= cert_file, val_len=%"SC_FORMAT_LEN_SIZE_T"u (0x%04"SC_FORMAT_LEN_SIZE_T"x)",
 			 val_len, val_len);
 		cert_len = 0;
@@ -741,7 +617,7 @@ done:
 		free(tl);
 	if (val)
 		free(val);
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 /* CAC driver is read only */
@@ -750,7 +626,7 @@ static int cac_write_binary(sc_card_t *card, unsigned int idx,
 {
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED);
+	LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 }
 
 /* initialize getting a list and return the number of elements in the list */
@@ -791,28 +667,28 @@ static int cac_get_serial_nr_from_CUID(sc_card_t* card, sc_serial_number_t* seri
 {
 	cac_private_data_t * priv = CAC_DATA(card);
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(card->ctx);
         if (card->serialnr.len)   {
                 *serial = card->serialnr;
-                SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
+                LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
         }
 	if (priv->cac_id_len) {
 		serial->len = MIN(priv->cac_id_len, SC_MAX_SERIALNR);
 		memcpy(serial->value, priv->cac_id, serial->len);
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
+		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 	}
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_FILE_NOT_FOUND);
+	LOG_FUNC_RETURN(card->ctx, SC_ERROR_FILE_NOT_FOUND);
 }
 
 static int cac_get_ACA_path(sc_card_t *card, sc_path_t *path)
 {
 	cac_private_data_t * priv = CAC_DATA(card);
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(card->ctx);
 	if (priv->aca_path) {
 		*path = *priv->aca_path;
 	}
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
 static int cac_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
@@ -865,7 +741,7 @@ static int cac_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 	}
 	memcpy(rnd, rbuf, out_len);
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, (int) out_len);
+	LOG_FUNC_RETURN(card->ctx, (int) out_len);
 }
 
 static int cac_set_security_env(sc_card_t *card, const sc_security_env_t *env, int se_num)
@@ -874,7 +750,7 @@ static int cac_set_security_env(sc_card_t *card, const sc_security_env_t *env, i
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(card->ctx, 
 		 "flags=%08lx op=%d alg=%d algf=%08x algr=%08x kr0=%02x, krfl=%"SC_FORMAT_LEN_SIZE_T"u\n",
 		 env->flags, env->operation, env->algorithm,
 		 env->algorithm_flags, env->algorithm_ref, env->key_ref[0],
@@ -893,7 +769,7 @@ static int cac_restore_security_env(sc_card_t *card, int se_num)
 {
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
 
@@ -906,7 +782,7 @@ static int cac_rsa_op(sc_card_t *card,
 	size_t rbuflen, outplen;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(card->ctx, 
 		 "datalen=%"SC_FORMAT_LEN_SIZE_T"u outlen=%"SC_FORMAT_LEN_SIZE_T"u\n",
 		 datalen, outlen);
 
@@ -919,7 +795,7 @@ static int cac_rsa_op(sc_card_t *card,
 	 * different sets of APDU's that need to be called), so this call is really a little bit of paranoia */
 	r = sc_lock(card);
 	if (r != SC_SUCCESS)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+		LOG_FUNC_RETURN(card->ctx, r);
 
 
 	rbuf = NULL;
@@ -968,7 +844,7 @@ err:
 		free(rbuf);
 	}
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 static int cac_compute_signature(sc_card_t *card,
@@ -1178,7 +1054,7 @@ static int cac_get_properties(sc_card_t *card, cac_properties_t *prop)
  *
  * The rest is just copied from iso7816_select_file
  */
-static int cac_select_file_by_type(sc_card_t *card, const sc_path_t *in_path, sc_file_t **file_out, int type)
+static int cac_select_file_by_type(sc_card_t *card, const sc_path_t *in_path, sc_file_t **file_out)
 {
 	struct sc_context *ctx;
 	struct sc_apdu apdu;
@@ -1198,19 +1074,18 @@ static int cac_select_file_by_type(sc_card_t *card, const sc_path_t *in_path, sc
 	pathtype = in_path->type;
 
 	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
-		 "path->aid=%x %x %x %x %x %x %x  len=%"SC_FORMAT_LEN_SIZE_T"u, path->value = %x %x %x %x len=%"SC_FORMAT_LEN_SIZE_T"u path->type=%d (%x)",
-		 in_path->aid.value[0], in_path->aid.value[1],
-		 in_path->aid.value[2], in_path->aid.value[3],
-		 in_path->aid.value[4], in_path->aid.value[5],
-		 in_path->aid.value[6], in_path->aid.len, in_path->value[0],
-		 in_path->value[1], in_path->value[2], in_path->value[3],
-		 in_path->len, in_path->type, in_path->type);
+	    "path=%s, path->value=%s path->type=%d (%x)",
+	    sc_print_path(in_path),
+	    sc_dump_hex(in_path->value, in_path->len),
+	    in_path->type, in_path->type);
 	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "file_out=%p index=%d count=%d\n",
-		 file_out, in_path->index, in_path->count);
+	    file_out, in_path->index, in_path->count);
 
-	/* Sigh, sc_key_select expects paths to keys to have specific formats. There is no override.
-	 * we have to add some bytes to the path to make it happy. A better fix would be to give sc_key_file
-	 * a flag that says 'no, really this path is fine'.  We only need to do this for private keys */
+	/* Sigh, iso7816_select_file expects paths to keys to have specific
+	 * formats. There is no override. We have to add some bytes to the
+	 * path to make it happy.
+	 * We only need to do this for private keys.
+	 */
 	if ((pathlen > 2) && (pathlen <= 4) && memcmp(path, "\x3F\x00", 2) == 0) {
 		if (pathlen > 2) {
 			path += 2;
@@ -1350,13 +1225,13 @@ static int cac_select_file_by_type(sc_card_t *card, const sc_path_t *in_path, sc
 	file->size = CAC_MAX_SIZE; /* we don't know how big, just give a large size until we can read the file */
 
 	*file_out = file;
-	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 
 }
 
 static int cac_select_file(sc_card_t *card, const sc_path_t *in_path, sc_file_t **file_out)
 {
-	return cac_select_file_by_type(card, in_path, file_out, card->type);
+	return cac_select_file_by_type(card, in_path, file_out);
 }
 
 static int cac_finish(sc_card_t *card)
@@ -1374,13 +1249,13 @@ static int cac_finish(sc_card_t *card)
 /* select the Card Capabilities Container on CAC-2 */
 static int cac_select_CCC(sc_card_t *card)
 {
-	return cac_select_file_by_type(card, &cac_CCC_Path, NULL, SC_CARD_TYPE_CAC_II);
+	return cac_select_file_by_type(card, &cac_CCC_Path, NULL);
 }
 
 /* Select ACA in non-standard location */
 static int cac_select_ACA(sc_card_t *card)
 {
-	return cac_select_file_by_type(card, &cac_ACA_Path, NULL, SC_CARD_TYPE_CAC_II);
+	return cac_select_file_by_type(card, &cac_ACA_Path, NULL);
 }
 
 static int cac_path_from_cardurl(sc_card_t *card, sc_path_t *path, cac_card_url_t *val, int len)
@@ -1432,7 +1307,7 @@ static int cac_parse_aid(sc_card_t *card, cac_private_data_t *priv, u8 *aid, int
 	/* Call without OID set will just select the AID without subseqent
 	 * OID selection, which we need to figure out just now
 	 */
-	cac_select_file_by_type(card, &new_object.path, NULL, SC_CARD_TYPE_CAC_II);
+	cac_select_file_by_type(card, &new_object.path, NULL);
 	r = cac_get_properties(card, &prop);
 	if (r < 0)
 		return SC_ERROR_INTERNAL;
@@ -1444,7 +1319,7 @@ static int cac_parse_aid(sc_card_t *card, cac_private_data_t *priv, u8 *aid, int
 
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
 		    "ACA: pki_object found, cert_next=%d (%s), privkey=%d",
-		    priv->cert_next, cac_labels[priv->cert_next],
+		    priv->cert_next, get_cac_label(priv->cert_next),
 		    prop.objects[i].privatekey);
 
 		/* If the private key is not initialized, we can safely
@@ -1460,7 +1335,7 @@ static int cac_parse_aid(sc_card_t *card, cac_private_data_t *priv, u8 *aid, int
 		memcpy(new_object.path.value, &prop.objects[i].oid, 2);
 		new_object.path.len = 2;
 		new_object.path.type = SC_PATH_TYPE_FILE_ID;
-		new_object.name = cac_labels[priv->cert_next];
+		new_object.name = get_cac_label(priv->cert_next);
 		new_object.fd = priv->cert_next+1;
 		cac_add_object_to_list(&priv->pki_list, &new_object);
 		priv->cert_next++;
@@ -1488,7 +1363,7 @@ static int cac_parse_cardurl(sc_card_t *card, cac_private_data_t *priv, cac_card
 		 */
 		if (priv->cert_next >= MAX_CAC_SLOTS)
 			break; /* don't fail just because we have more certs than we can support */
-		new_object.name = cac_labels[priv->cert_next];
+		new_object.name = get_cac_label(priv->cert_next);
 		new_object.fd = priv->cert_next+1;
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"CARDURL: pki_object found, cert_next=%d (%s),", priv->cert_next, new_object.name);
 		cac_add_object_to_list(&priv->pki_list, &new_object);
@@ -1612,12 +1487,19 @@ static int cac_parse_CCC(sc_card_t *card, cac_private_data_t *priv, u8 *tl,
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"TAG: PKCS15 = 0x%02x", *val);
 			break;
 		case CAC_TAG_DATA_MODEL:
+			if (len != 1) {
+				sc_log(card->ctx, "TAG: Registered Data Model Number: "
+				    "Invalid length %"SC_FORMAT_LEN_SIZE_T"u", len);
+				break;
+			}
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"TAG: Registered Data Model Number (0x%02x)", *val);
+			break;
 		case CAC_TAG_CARD_APDU:
 		case CAC_TAG_CAPABILITY_TUPLES:
 		case CAC_TAG_STATUS_TUPLES:
 		case CAC_TAG_REDIRECTION:
 		case CAC_TAG_ERROR_CODES:
-			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"TAG:FSSpecific(0x%02x)", tag);
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"TAG: FSSpecific(0x%02x)", tag);
 			break;
 		case CAC_TAG_ACCESS_CONTROL:
 			/* TODO handle access control later */
@@ -1629,7 +1511,7 @@ static int cac_parse_CCC(sc_card_t *card, cac_private_data_t *priv, u8 *tl,
 			if (r < 0)
 				return r;
 
-			r = cac_select_file_by_type(card, &new_path, NULL, SC_CARD_TYPE_CAC_II);
+			r = cac_select_file_by_type(card, &new_path, NULL);
 			if (r < 0)
 				return r;
 
@@ -1740,7 +1622,7 @@ static int cac_select_pki_applet(sc_card_t *card, int index)
 {
 	sc_path_t applet_path = cac_cac_pki_obj.path;
 	applet_path.aid.value[applet_path.aid.len-1] = index;
-	return cac_select_file_by_type(card, &applet_path, NULL, SC_CARD_TYPE_CAC_II);
+	return cac_select_file_by_type(card, &applet_path, NULL);
 }
 
 /*
@@ -1785,7 +1667,7 @@ static int cac_populate_cac_alt(sc_card_t *card, int index, cac_private_data_t *
 	for (i = index; i < MAX_CAC_SLOTS; i++) {
 		r = cac_select_pki_applet(card, i);
 		if (r == SC_SUCCESS) {
-			pki_obj.name = cac_labels[i];
+			pki_obj.name = get_cac_label(i);
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
 			    "CAC: pki_object found, cert_next=%d (%s),", i, pki_obj.name);
 			pki_obj.path.aid.value[pki_obj.path.aid.len-1] = i;
@@ -1796,8 +1678,7 @@ static int cac_populate_cac_alt(sc_card_t *card, int index, cac_private_data_t *
 
 	/* populate non-PKI objects */
 	for (i=0; i < cac_object_count; i++) {
-		r = cac_select_file_by_type(card, &cac_objects[i].path, NULL,
-		    SC_CARD_TYPE_CAC_II);
+		r = cac_select_file_by_type(card, &cac_objects[i].path, NULL);
 		if (r == SC_SUCCESS) {
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
 			    "CAC: obj_object found, cert_next=%d (%s),",
@@ -1861,7 +1742,7 @@ static int cac_process_ACA(sc_card_t *card, cac_private_data_t *priv)
 done:
 	if (val)
 		free(val);
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 /*
@@ -1966,7 +1847,7 @@ static int cac_init(sc_card_t *card)
 
 	r = cac_find_and_initialize(card, 1);
 	if (r < 0) {
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_CARD);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_CARD);
 	}
 	flags = SC_ALGORITHM_RSA_RAW;
 
@@ -1976,7 +1857,7 @@ static int cac_init(sc_card_t *card)
 
 	card->caps |= SC_CARD_CAP_RNG | SC_CARD_CAP_ISO7816_PIN_INFO;
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
 static int cac_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)

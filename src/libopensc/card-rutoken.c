@@ -95,7 +95,7 @@ static int rutoken_finish(sc_card_t *card)
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	assert(card->drv_data);
 	free(card->drv_data);
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_SUCCESS);
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
 static int rutoken_match_card(sc_card_t *card)
@@ -103,15 +103,15 @@ static int rutoken_match_card(sc_card_t *card)
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (_sc_match_atr(card, rutoken_atrs, &card->type) >= 0)
 	{
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "ATR recognized as Rutoken\n");
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, 1);
+		sc_log(card->ctx,  "ATR recognized as Rutoken\n");
+		LOG_FUNC_RETURN(card->ctx, 1);
 	}
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, 0);
+	LOG_FUNC_RETURN(card->ctx, 0);
 }
 
 static int token_init(sc_card_t *card, const char *card_name)
 {
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(card->ctx);
 
 	card->name = card_name;
 	card->caps |= SC_CARD_CAP_RNG;
@@ -136,7 +136,7 @@ static int rutoken_init(sc_card_t *card)
 	if (ret != SC_SUCCESS) {
 		ret = SC_ERROR_INVALID_CARD;
 	}
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, ret);
+	LOG_FUNC_RETURN(card->ctx, ret);
 }
 
 static const struct sc_card_error rutoken_errors[] = {
@@ -202,12 +202,12 @@ static int rutoken_check_sw(sc_card_t *card, unsigned int sw1, unsigned int sw2)
 	for (i = 0; i < sizeof(rutoken_errors)/sizeof(rutoken_errors[0]); ++i) {
 		if (rutoken_errors[i].SWs == ((sw1 << 8) | sw2)) {
 			if ( rutoken_errors[i].errorstr )
-				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "%s\n", rutoken_errors[i].errorstr);
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "sw1 = %x, sw2 = %x", sw1, sw2);
+				sc_log(card->ctx,  "%s\n", rutoken_errors[i].errorstr);
+			sc_log(card->ctx,  "sw1 = %x, sw2 = %x", sw1, sw2);
 			return rutoken_errors[i].errorno;
 		}
 	}
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Unknown SWs; SW1=%02X, SW2=%02X\n", sw1, sw2);
+	sc_log(card->ctx,  "Unknown SWs; SW1=%02X, SW2=%02X\n", sw1, sw2);
 	return SC_ERROR_CARD_CMD_FAILED;
 }
 
@@ -257,21 +257,21 @@ static int rutoken_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 		apdu.resplen = sizeof(rbuf);
 		apdu.le = 256;
 		ret = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "APDU transmit failed");
+		LOG_TEST_RET(card->ctx, ret, "APDU transmit failed");
 		if (apdu.sw1 == 0x6A  &&  apdu.sw2 == 0x82)
 			break; /* Next file not found */
 
 		ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "");
+		LOG_TEST_RET(card->ctx, ret, "");
 
 		if (apdu.resplen <= 2)
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_WRONG_LENGTH);
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_WRONG_LENGTH);
 
 		/* save first file(dir) ID */
 		tag = sc_asn1_find_tag(card->ctx, apdu.resp + 2, apdu.resplen - 2,
 				0x83, &taglen);
 		if (!tag || taglen != sizeof(previd))
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_UNKNOWN_DATA_RECEIVED);
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
 		memcpy(previd, tag, sizeof(previd));
 
 		if (len + sizeof(previd) <= buflen)
@@ -283,7 +283,7 @@ static int rutoken_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 		tag = sc_asn1_find_tag(card->ctx, apdu.resp + 2, apdu.resplen - 2,
 				0x82, &taglen);
 		if (!tag || taglen != 2)
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_UNKNOWN_DATA_RECEIVED);
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
 		if (tag[0] == 0x38)
 		{
 			/* Select parent DF of the current DF */
@@ -292,16 +292,16 @@ static int rutoken_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 			apdu.resplen = sizeof(rbuf);
 			apdu.le = 256;
 			ret = sc_transmit_apdu(card, &apdu);
-			SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "APDU transmit failed");
+			LOG_TEST_RET(card->ctx, ret, "APDU transmit failed");
 			ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
-			SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "");
+			LOG_TEST_RET(card->ctx, ret, "");
 		}
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xA4, 0, 0x02);
 		apdu.lc = sizeof(previd);
 		apdu.data = previd;
 		apdu.datalen = sizeof(previd);
 	}
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, len);
+	LOG_FUNC_RETURN(card->ctx, len);
 }
 
 static void set_acl_from_sec_attr(sc_card_t *card, sc_file_t *file)
@@ -312,7 +312,7 @@ static void set_acl_from_sec_attr(sc_card_t *card, sc_file_t *file)
 				SC_AC_NONE, SC_AC_KEY_REF_NONE);
 		if (file->sec_attr[0] & 0x40) /* if AccessMode.6 */
 		{
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "SC_AC_OP_DELETE %i %i",
+			sc_log(card->ctx,  "SC_AC_OP_DELETE %i %i",
 					(int)(*(int8_t*)&file->sec_attr[1 +6]),
 					file->sec_attr[1+7 +6*4]);
 			sc_file_add_acl_entry(file, SC_AC_OP_DELETE,
@@ -321,7 +321,7 @@ static void set_acl_from_sec_attr(sc_card_t *card, sc_file_t *file)
 		}
 		if (file->sec_attr[0] & 0x01) /* if AccessMode.0 */
 		{
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, (file->type == SC_FILE_TYPE_DF) ?
+			sc_log(card->ctx,  (file->type == SC_FILE_TYPE_DF) ?
 					"SC_AC_OP_CREATE %i %i" : "SC_AC_OP_READ %i %i",
 					(int)(*(int8_t*)&file->sec_attr[1 +0]),
 					file->sec_attr[1+7 +0*4]);
@@ -339,13 +339,13 @@ static void set_acl_from_sec_attr(sc_card_t *card, sc_file_t *file)
 		else
 			if (file->sec_attr[0] & 0x02) /* if AccessMode.1 */
 			{
-				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "SC_AC_OP_UPDATE %i %i",
+				sc_log(card->ctx,  "SC_AC_OP_UPDATE %i %i",
 						(int)(*(int8_t*)&file->sec_attr[1 +1]),
 						file->sec_attr[1+7 +1*4]);
 				sc_file_add_acl_entry(file, SC_AC_OP_UPDATE,
 						(int)(*(int8_t*)&file->sec_attr[1 +1]),
 						file->sec_attr[1+7 +1*4]);
-				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "SC_AC_OP_WRITE %i %i",
+				sc_log(card->ctx,  "SC_AC_OP_WRITE %i %i",
 						(int)(*(int8_t*)&file->sec_attr[1 +1]),
 						file->sec_attr[1+7 +1*4]);
 				sc_file_add_acl_entry(file, SC_AC_OP_WRITE,
@@ -377,7 +377,7 @@ static int rutoken_select_file(sc_card_t *card,
 	{
 	case SC_PATH_TYPE_FILE_ID:
 		if (pathlen != 2)
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 		break;
 	case SC_PATH_TYPE_PATH:
 		if (pathlen >= 2 && memcmp(path, "\x3F\x00", 2) == 0)
@@ -392,9 +392,9 @@ static int rutoken_select_file(sc_card_t *card,
 	case SC_PATH_TYPE_DF_NAME:
 	case SC_PATH_TYPE_FROM_CURRENT:
 	case SC_PATH_TYPE_PARENT:
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 	default:
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	swap_pair(path, pathlen);
 	apdu.lc = pathlen;
@@ -406,7 +406,7 @@ static int rutoken_select_file(sc_card_t *card,
 	apdu.le = 256;
 
 	ret = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, ret, "APDU transmit failed");
 	if (file_out == NULL)
 	{
 		if (apdu.sw1 == 0x61)
@@ -414,19 +414,19 @@ static int rutoken_select_file(sc_card_t *card,
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 	}
 	ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "");
+	LOG_TEST_RET(card->ctx, ret, "");
 
 	if (apdu.resplen > 0 && apdu.resp[0] != 0x62) /* Tag 0x62 - FCP */
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_UNKNOWN_DATA_RECEIVED);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
 
 	file = sc_file_new();
 	if (file == NULL)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_OUT_OF_MEMORY);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 	file->path = *in_path;
 	if (card->ops->process_fci == NULL)
 	{
 		sc_file_free(file);
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 	}
 	if (apdu.resplen > 1  &&  apdu.resplen >= (size_t)apdu.resp[1] + 2)
 	{
@@ -443,7 +443,7 @@ static int rutoken_select_file(sc_card_t *card,
 		assert(file_out);
 		*file_out = file;
 	}
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, ret);
+	LOG_FUNC_RETURN(card->ctx, ret);
 }
 
 static int rutoken_process_fci(struct sc_card *card, sc_file_t *file,
@@ -460,17 +460,17 @@ static int rutoken_process_fci(struct sc_card *card, sc_file_t *file,
 		/* Rutoken S returns buffers in little-endian. */
 		/* Set correct file id. */
 		file->id = ((file->id & 0xFF) << 8) | ((file->id >> 8) & 0xFF);
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "  file identifier: 0x%04X", file->id);
+		sc_log(card->ctx,  "  file identifier: 0x%04X", file->id);
 		/* Determine file size. */
 		tag = sc_asn1_find_tag(card->ctx, buf, buflen, 0x80, &taglen);
 		/* Rutoken S always returns 2 bytes. */
 		if (tag != NULL && taglen == 2)
 		{
 			file->size = (tag[1] << 8) | tag[0];
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "  bytes in file: %"SC_FORMAT_LEN_SIZE_T"u", file->size);
+			sc_log(card->ctx,  "  bytes in file: %"SC_FORMAT_LEN_SIZE_T"u", file->size);
 		}
 	}
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, ret);
+	LOG_FUNC_RETURN(card->ctx, ret);
 }
 
 static int rutoken_construct_fci(sc_card_t *card, const sc_file_t *file,
@@ -479,7 +479,7 @@ static int rutoken_construct_fci(sc_card_t *card, const sc_file_t *file,
 	u8 buf[64], *p = out;
 
 	assert(card && card->ctx);
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(card->ctx);
 
 	assert(file && out && outlen);
 	assert(*outlen  >=  (size_t)(p - out) + 2);
@@ -511,7 +511,7 @@ static int rutoken_construct_fci(sc_card_t *card, const sc_file_t *file,
 			break;
 		case SC_FILE_TYPE_INTERNAL_EF:
 		default:
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED);
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 		}
 		buf[1] = 0;
 		sc_asn1_put_tag(0x82, buf, 2, p, *outlen - (p - out), &p);
@@ -548,7 +548,7 @@ static int set_sec_attr_from_acl(sc_card_t *card, sc_file_t *file)
 	sc_SecAttrV2_t attr = { 0 };
 	int ret = SC_SUCCESS;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(card->ctx);
 
 	if (file->type == SC_FILE_TYPE_DF)
 	{
@@ -560,7 +560,7 @@ static int set_sec_attr_from_acl(sc_card_t *card, sc_file_t *file)
 		conv_attr = arr_convert_attr_ef;
 		n_conv_attr = sizeof(arr_convert_attr_ef)/sizeof(arr_convert_attr_ef[0]);
 	}
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "file->type = %i", file->type);
+	sc_log(card->ctx,  "file->type = %i", file->type);
 
 	for (i = 0; i < n_conv_attr; ++i)
 	{
@@ -571,20 +571,20 @@ static int set_sec_attr_from_acl(sc_card_t *card, sc_file_t *file)
 		{
 			/* AccessMode.[conv_attr[i].sec_attr_pos] */
 			attr[0] |= 1 << conv_attr[i].sec_attr_pos;
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+			sc_log(card->ctx, 
 				 "AccessMode.%"SC_FORMAT_LEN_SIZE_T"u, attr[0]=0x%x",
 				 conv_attr[i].sec_attr_pos, attr[0]);
 			attr[1 + conv_attr[i].sec_attr_pos] = (u8)entry->method;
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "method %u", (u8)entry->method);
+			sc_log(card->ctx,  "method %u", (u8)entry->method);
 			if (entry->method == SC_AC_CHV)
 			{
 				attr[1+7 + conv_attr[i].sec_attr_pos*4] = (u8)entry->key_ref;
-				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "key_ref %u", (u8)entry->key_ref);
+				sc_log(card->ctx,  "key_ref %u", (u8)entry->key_ref);
 			}
 		}
 		else
 		{
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "ACL (%u) not set, set default sec_attr",
+			sc_log(card->ctx,  "ACL (%u) not set, set default sec_attr",
 					conv_attr[i].ac_op);
 			memcpy(attr, default_sec_attr, sizeof(attr));
 			break;
@@ -605,11 +605,11 @@ static int rutoken_create_file(sc_card_t *card, sc_file_t *file)
 	if (file->sec_attr_len == 0)
 	{
 		ret = set_sec_attr_from_acl(card, file);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "Set sec_attr from ACL failed");
+		LOG_TEST_RET(card->ctx, ret, "Set sec_attr from ACL failed");
 	}
 	assert(iso_ops && iso_ops->create_file);
 	ret = iso_ops->create_file(card, file);
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, ret);
+	LOG_FUNC_RETURN(card->ctx, ret);
 }
 
 static int rutoken_delete_file(sc_card_t *card, const sc_path_t *path)
@@ -620,8 +620,8 @@ static int rutoken_delete_file(sc_card_t *card, const sc_path_t *path)
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (!path || path->type != SC_PATH_TYPE_FILE_ID || (path->len != 0 && path->len != 2)) 
 	{
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "File type has to be SC_PATH_TYPE_FILE_ID\n");
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
+		sc_log(card->ctx,  "File type has to be SC_PATH_TYPE_FILE_ID\n");
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	if (path->len == sizeof(sbuf)) 
 	{
@@ -634,8 +634,8 @@ static int rutoken_delete_file(sc_card_t *card, const sc_path_t *path)
 	}
 	else /* No file ID given: means currently selected file */
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0xE4, 0x00, 0x00);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, sc_transmit_apdu(card, &apdu), "APDU transmit failed");
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, sc_check_sw(card, apdu.sw1, apdu.sw2));
+	LOG_TEST_RET(card->ctx, sc_transmit_apdu(card, &apdu), "APDU transmit failed");
+	LOG_FUNC_RETURN(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
 
 static int rutoken_verify(sc_card_t *card, unsigned int type, int ref_qualifier,
@@ -658,9 +658,9 @@ static int rutoken_verify(sc_card_t *card, unsigned int type, int ref_qualifier,
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x40, 0x00, 0x00);
 		apdu.cla = 0x80;
 		ret = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "APDU transmit failed");
+		LOG_TEST_RET(card->ctx, ret, "APDU transmit failed");
 		ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "Reset access rights failed");
+		LOG_TEST_RET(card->ctx, ret, "Reset access rights failed");
 	}
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x20, 0x00, ref_qualifier);
@@ -668,18 +668,18 @@ static int rutoken_verify(sc_card_t *card, unsigned int type, int ref_qualifier,
 	apdu.datalen = data_len;
 	apdu.data = data;
 	ret = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, ret, "APDU transmit failed");
 	ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	if (ret == SC_ERROR_PIN_CODE_INCORRECT  &&  tries_left)
 	{
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x20, 0x00, ref_qualifier);
 		ret = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "APDU transmit failed");
+		LOG_TEST_RET(card->ctx, ret, "APDU transmit failed");
 		ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
 		if (ret == SC_ERROR_PIN_CODE_INCORRECT)
 			*tries_left = (int)(apdu.sw2 & 0x0f);
 	}
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, ret);
+	LOG_FUNC_RETURN(card->ctx, ret);
 }
 
 static int rutoken_logout(sc_card_t *card)
@@ -691,14 +691,14 @@ static int rutoken_logout(sc_card_t *card)
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	sc_format_path("3F00", &path);
 	ret = rutoken_select_file(card, &path, NULL);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "Select MF failed");
+	LOG_TEST_RET(card->ctx, ret, "Select MF failed");
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x40, 0x00, 0x00);
 	apdu.cla = 0x80;
 	ret = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, ret, "APDU transmit failed");
 	ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, ret);
+	LOG_FUNC_RETURN(card->ctx, ret);
 }
 
 static int rutoken_change_reference_data(sc_card_t *card, unsigned int type,
@@ -712,16 +712,16 @@ static int rutoken_change_reference_data(sc_card_t *card, unsigned int type,
 	if (old && oldlen)
 	{
 		ret = rutoken_verify(card, type, ref_qualifier, old, oldlen, tries_left);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "Invalid 'old' pass");
+		LOG_TEST_RET(card->ctx, ret, "Invalid 'old' pass");
 	}
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x24, 0x01, ref_qualifier);
 	apdu.lc = newlen;
 	apdu.datalen = newlen;
 	apdu.data = newref;
 	ret = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, ret, "APDU transmit failed");
 	ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, ret);
+	LOG_FUNC_RETURN(card->ctx, ret);
 }
 
 static int rutoken_reset_retry_counter(sc_card_t *card, unsigned int type,
@@ -739,15 +739,15 @@ static int rutoken_reset_retry_counter(sc_card_t *card, unsigned int type,
 	if (puk && puklen)
 	{
 		ret = rutoken_verify(card, type, ref_qualifier, puk, puklen, &left);
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Tries left: %i\n", left);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "Invalid 'puk' pass");
+		sc_log(card->ctx,  "Tries left: %i\n", left);
+		LOG_TEST_RET(card->ctx, ret, "Invalid 'puk' pass");
 	}
 #endif
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x2c, 0x03, ref_qualifier);
 	ret = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, ret, "APDU transmit failed");
 	ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, ret);
+	LOG_FUNC_RETURN(card->ctx, ret);
 }
 
 static int rutoken_restore_security_env(sc_card_t *card, int se_num)
@@ -758,9 +758,9 @@ static int rutoken_restore_security_env(sc_card_t *card, int se_num)
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x22, 3, se_num);
 	ret = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, ret, "APDU transmit failed");
 	ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, ret);
+	LOG_FUNC_RETURN(card->ctx, ret);
 }
 
 static int rutoken_set_security_env(sc_card_t *card, 
@@ -774,18 +774,18 @@ static int rutoken_set_security_env(sc_card_t *card,
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (!env)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	senv = (auth_senv_t*)card->drv_data;
 	if (!senv)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 	if (env->algorithm != SC_ALGORITHM_GOST)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_NOT_SUPPORTED);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 
 	senv->algorithm = SC_ALGORITHM_GOST;
 	if (env->key_ref_len != 1)
 	{
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "No or invalid key reference\n");
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
+		sc_log(card->ctx,  "No or invalid key reference\n");
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	data[2] = env->key_ref[0];
 	/*  select component  */
@@ -804,13 +804,13 @@ static int rutoken_set_security_env(sc_card_t *card,
 			apdu.p2 = 0xAA;
 			break;
 		default:
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INVALID_ARGUMENTS);
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	/*  set SE  */
 	ret = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, ret, "APDU transmit failed");
 	ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, ret);
+	LOG_FUNC_RETURN(card->ctx, ret);
 }
 
 static void rutoken_set_do_hdr(u8 *data, size_t *data_len, sc_DOHdrV2_t *hdr)
@@ -850,7 +850,7 @@ static int rutoken_key_gen(sc_card_t *card, sc_DOHdrV2_t *pHdr)
 	sc_apdu_t apdu;
 	int ret;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(card->ctx);
 	if (
 	     (pHdr->wDOBodyLen != SC_RUTOKEN_DEF_LEN_DO_GOST) ||
 	     (pHdr->OTID.byObjectType != SC_RUTOKEN_TYPE_KEY) ||
@@ -870,7 +870,7 @@ static int rutoken_key_gen(sc_card_t *card, sc_DOHdrV2_t *pHdr)
 		apdu.data = data;
 		apdu.datalen = apdu.lc = data_len;
 		ret = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "APDU transmit failed");
+		LOG_TEST_RET(card->ctx, ret, "APDU transmit failed");
 		ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	}
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, ret);
@@ -883,7 +883,7 @@ static int rutoken_create_do(sc_card_t *card, sc_DO_V2_t * pDO)
 	sc_apdu_t apdu;
 	int ret;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(card->ctx);
 	if (
 	     ((pDO->HDR.OTID.byObjectType & SC_RUTOKEN_TYPE_CHV) &&
 	      (pDO->HDR.OTID.byObjectID != SC_RUTOKEN_DEF_ID_GCHV_USER) &&
@@ -913,7 +913,7 @@ static int rutoken_create_do(sc_card_t *card, sc_DO_V2_t * pDO)
 		apdu.data = data;
 		apdu.datalen = apdu.lc = data_len;
 		ret = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "APDU transmit failed");
+		LOG_TEST_RET(card->ctx, ret, "APDU transmit failed");
 		ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	}
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, ret);
@@ -925,7 +925,7 @@ static int rutoken_get_do_info(sc_card_t *card, sc_DO_INFO_t * pInfo)
 	sc_apdu_t apdu;
 	int ret;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(card->ctx);
 	if ((pInfo->SelType != select_first) &&
 	    ((pInfo->DoId < SC_RUTOKEN_DO_ALL_MIN_ID) || 
 	     (pInfo->DoId > SC_RUTOKEN_DO_NOCHV_MAX_ID_V2)))
@@ -959,7 +959,7 @@ static int rutoken_get_do_info(sc_card_t *card, sc_DO_INFO_t * pInfo)
 			break;
 		}
 		ret = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "APDU transmit failed");
+		LOG_TEST_RET(card->ctx, ret, "APDU transmit failed");
 		ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	}
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, ret);
@@ -971,7 +971,7 @@ static int rutoken_delete_do(sc_card_t *card, u8 *pId)
 	sc_apdu_t apdu;
 	int ret;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(card->ctx);
 	if ((*pId < SC_RUTOKEN_DO_ALL_MIN_ID) || 
 	    (*pId > SC_RUTOKEN_DO_NOCHV_MAX_ID_V2))
 	{
@@ -985,7 +985,7 @@ static int rutoken_delete_do(sc_card_t *card, u8 *pId)
 		apdu.datalen = sizeof(data);
 		apdu.lc = sizeof(data);
 		ret = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "APDU transmit failed");
+		LOG_TEST_RET(card->ctx, ret, "APDU transmit failed");
 		ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	}
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, ret);
@@ -1001,8 +1001,8 @@ static int rutoken_cipher_p(sc_card_t *card, const u8 * crgram, size_t crgram_le
 	int ret;
 	sc_apdu_t apdu;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	LOG_FUNC_CALLED(card->ctx);
+	sc_log(card->ctx, 
 		 ": crgram_len %"SC_FORMAT_LEN_SIZE_T"u; outlen %"SC_FORMAT_LEN_SIZE_T"u",
 		 crgram_len, outlen);
 
@@ -1027,7 +1027,7 @@ static int rutoken_cipher_p(sc_card_t *card, const u8 * crgram, size_t crgram_le
 		apdu.resp = buf;
 
 		ret = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "APDU transmit failed");
+		LOG_TEST_RET(card->ctx, ret, "APDU transmit failed");
 		ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
 		if (ret == SC_SUCCESS)
 		{
@@ -1047,7 +1047,7 @@ static int rutoken_cipher_p(sc_card_t *card, const u8 * crgram, size_t crgram_le
 			}
 		}
 	} while (ret == SC_SUCCESS  &&  crgram_len != 0);
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(card->ctx, 
 		 "len out cipher %"SC_FORMAT_LEN_SIZE_T"u\n",
 		 outlen - outlen_tail);
 	if (ret == SC_SUCCESS)
@@ -1088,7 +1088,7 @@ static int rutoken_compute_mac_gost(sc_card_t *card,
 	int ret;
 	sc_apdu_t apdu;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(card->ctx);
 	if (!in || !out || olen != 4 || ilen == 0)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
 	do
@@ -1113,7 +1113,7 @@ static int rutoken_compute_mac_gost(sc_card_t *card,
 		else
 			apdu.cla = 0x10;
 		ret = sc_transmit_apdu(card, &apdu);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "APDU transmit failed");
+		LOG_TEST_RET(card->ctx, ret, "APDU transmit failed");
 		ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	} while (ret == SC_SUCCESS  &&  ilen != 0);
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, ret);
@@ -1128,13 +1128,13 @@ static int rutoken_compute_signature(struct sc_card *card,
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (!senv)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_INTERNAL);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 
 	if (senv->algorithm == SC_ALGORITHM_GOST)
 		ret = rutoken_compute_mac_gost(card, data, datalen, out, outlen);
 	else
 		ret = SC_ERROR_NOT_SUPPORTED;
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, ret);
+	LOG_FUNC_RETURN(card->ctx, ret);
 }
 
 static int rutoken_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
@@ -1163,13 +1163,13 @@ static int rutoken_get_serial(sc_card_t *card, sc_serial_number_t *serial)
 	sc_apdu_t apdu;
 	int ret;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(card->ctx);
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xCA, 0x01, 0x81);
 	apdu.resp = serial->value;
 	apdu.resplen = sizeof(serial->value);
 	apdu.le = 4;
 	ret = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, ret, "APDU transmit failed");
 	ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	serial->len = apdu.resplen;
 	swap_four(serial->value, serial->len);
@@ -1182,13 +1182,13 @@ static int rutoken_get_info(sc_card_t *card, void *buff)
 	u8 rbuf[8];
 	int ret;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(card->ctx);
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xCA, 0x01, 0x89);
 	apdu.resp = rbuf;
 	apdu.resplen = sizeof(rbuf);
 	apdu.le = sizeof(rbuf);
 	ret = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, ret, "APDU transmit failed");
 	ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	if (ret == SC_SUCCESS)
 		memcpy(buff, apdu.resp, apdu.resplen);
@@ -1200,11 +1200,11 @@ static int rutoken_format(sc_card_t *card, int apdu_ins)
 	int ret;
 	sc_apdu_t apdu;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(card->ctx);
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, apdu_ins, 0x00, 0x00);
 	apdu.cla = 0x80;
 	ret = sc_transmit_apdu(card, &apdu);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, ret, "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, ret, "APDU transmit failed");
 	ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, ret);
 }
@@ -1259,12 +1259,12 @@ static int rutoken_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 			ret = rutoken_format(card, 0x7b); /* APDU: FORMAT END */
 			break;
 		default:
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "cmd = %lu", cmd);
+			sc_log(card->ctx,  "cmd = %lu", cmd);
 			ret = SC_ERROR_NOT_SUPPORTED;
 			break;
 		}
 	}
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, ret);
+	LOG_FUNC_RETURN(card->ctx, ret);
 }
 
 static struct sc_card_driver* get_rutoken_driver(void)

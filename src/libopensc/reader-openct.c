@@ -229,21 +229,21 @@ openct_reader_connect(sc_reader_t *reader)
 		ct_reader_disconnect(data->h);
 
 	if (!(data->h = ct_reader_connect(data->num))) {
-		sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "ct_reader_connect socket failed\n");
+		sc_log(reader->ctx,  "ct_reader_connect socket failed\n");
 		return SC_ERROR_CARD_NOT_PRESENT;
 	}
 
 	rc = ct_card_request(data->h, data->slot, 0, NULL,
 				reader->atr.value, sizeof(reader->atr.value));
 	if (rc < 0) {
-		sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL,
+		sc_log(reader->ctx, 
 				"openct_reader_connect read failed: %s\n",
 				ct_strerror(rc));
 		return SC_ERROR_CARD_NOT_PRESENT;
 	}
 
 	if (rc == 0) {
-		sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "openct_reader_connect received no data\n");
+		sc_log(reader->ctx,  "openct_reader_connect received no data\n");
 		return SC_ERROR_READER;
 	}
 
@@ -323,15 +323,15 @@ static int openct_reader_transmit(sc_reader_t *reader, sc_apdu_t *apdu)
 	r = sc_apdu_get_octets(reader->ctx, apdu, &sbuf, &ssize, SC_PROTO_RAW);
 	if (r != SC_SUCCESS)
 		goto out;
-	sc_apdu_log(reader->ctx, SC_LOG_DEBUG_NORMAL, sbuf, ssize, 1);
+	sc_apdu_log(reader->ctx, sbuf, ssize, 1);
 	r = openct_reader_internal_transmit(reader, sbuf, ssize,
 				rbuf, &rsize, apdu->control);
 	if (r < 0) {
 		/* unable to transmit ... most likely a reader problem */
-		sc_debug(reader->ctx, SC_LOG_DEBUG_NORMAL, "unable to transmit");
+		sc_log(reader->ctx,  "unable to transmit");
 		goto out;
 	}
-	sc_apdu_log(reader->ctx, SC_LOG_DEBUG_NORMAL, rbuf, rsize, 0);
+	sc_apdu_log(reader->ctx, rbuf, rsize, 0);
 	/* set response */
 	r = sc_apdu_set_resp(reader->ctx, apdu, rbuf, rsize);
 out:

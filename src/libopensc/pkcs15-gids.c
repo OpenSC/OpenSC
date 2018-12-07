@@ -50,7 +50,7 @@ static int sc_pkcs15emu_gids_add_prkey(sc_pkcs15_card_t * p15card, sc_cardctl_gi
 	sc_pkcs15_object_t cert_obj;
 	int r;
 	char ch_tmp[10];
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(card->ctx, 
 		"Got args: containerIndex=%"SC_FORMAT_LEN_SIZE_T"x\n",
 		 container->containernum);
 
@@ -70,7 +70,7 @@ static int sc_pkcs15emu_gids_add_prkey(sc_pkcs15_card_t * p15card, sc_cardctl_gi
 	prkey_obj.auth_id.value[0] = 0x80;
 
 	r = sc_pkcs15emu_add_rsa_prkey(p15card, &prkey_obj, &prkey_info);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to sc_pkcs15emu_add_rsa_prkey");
+	LOG_TEST_RET(card->ctx, r, "unable to sc_pkcs15emu_add_rsa_prkey");
 
 	memset(&pubkey_info, 0, sizeof(pubkey_info));
 	memset(&pubkey_obj,  0, sizeof(pubkey_obj));
@@ -86,7 +86,7 @@ static int sc_pkcs15emu_gids_add_prkey(sc_pkcs15_card_t * p15card, sc_cardctl_gi
 	pubkey_info.id = prkey_info.id;
 
 	r = sc_pkcs15emu_add_rsa_pubkey(p15card, &pubkey_obj, &pubkey_info);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to sc_pkcs15emu_add_rsa_pubkey");
+	LOG_TEST_RET(card->ctx, r, "unable to sc_pkcs15emu_add_rsa_pubkey");
 
 	if (container->certificatepath.len > 0) {
 		memset(&cert_info, 0, sizeof(cert_info));
@@ -100,7 +100,7 @@ static int sc_pkcs15emu_gids_add_prkey(sc_pkcs15_card_t * p15card, sc_cardctl_gi
 		r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
 		LOG_TEST_RET(card->ctx, r, "Could not add certificate");
 	} else {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "No certificate found");
+		sc_log(card->ctx,  "No certificate found");
 	}
 
 	return SC_SUCCESS;
@@ -122,10 +122,10 @@ static int sc_pkcs15emu_gids_init (sc_pkcs15_card_t * p15card)
 	int has_puk;
 
 	r = sc_card_ctl(card, SC_CARDCTL_GIDS_GET_ALL_CONTAINERS, &recordsnum);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to get the containers. Uninitialized card ?");
+	LOG_TEST_RET(card->ctx, r, "unable to get the containers. Uninitialized card ?");
 
 	r = sc_card_ctl(card, SC_CARDCTL_GET_SERIALNR, NULL);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to get the serial number. Uninitialized card ?");
+	LOG_TEST_RET(card->ctx, r, "unable to get the serial number. Uninitialized card ?");
 
 	p15card->tokeninfo->serial_number = (char*) malloc(card->serialnr.len *2 +1);
 	if (!p15card->tokeninfo->serial_number) {
@@ -197,7 +197,7 @@ static int sc_pkcs15emu_gids_init (sc_pkcs15_card_t * p15card)
 	}
 
 	r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to sc_pkcs15emu_add_pin_obj");
+	LOG_TEST_RET(card->ctx, r, "unable to sc_pkcs15emu_add_pin_obj");
 
 	if (has_puk) {
 		pin_info.auth_id.value[0] = 0x81;
@@ -208,11 +208,11 @@ static int sc_pkcs15emu_gids_init (sc_pkcs15_card_t * p15card)
 		strlcpy(pin_obj.label, "PUK", sizeof(pin_obj.label));
 		pin_obj.auth_id.len = 0;
 		r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
-		SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "unable to sc_pkcs15emu_add_pin_obj with PUK");
+		LOG_TEST_RET(card->ctx, r, "unable to sc_pkcs15emu_add_pin_obj with PUK");
 	}
 
 	r = sc_card_ctl(card, SC_CARDCTL_GIDS_GET_ALL_CONTAINERS, &recordsnum);
-	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "sc_card_ctl SC_CARDCTL_GIDS_GET_ALL_CONTAINERS");
+	LOG_TEST_RET(card->ctx, r, "sc_card_ctl SC_CARDCTL_GIDS_GET_ALL_CONTAINERS");
 
 	for (i = 0; i < recordsnum; i++) {
 		sc_cardctl_gids_get_container_t container;

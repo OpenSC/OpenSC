@@ -493,6 +493,8 @@ struct sc_pkcs15_object {
 	struct sc_pkcs15_object *next, *prev; /* used only internally */
 
 	struct sc_pkcs15_der content;
+
+	int session_object;	/* used internally. if nonzero, object is a session object. */
 };
 typedef struct sc_pkcs15_object sc_pkcs15_object_t;
 
@@ -659,6 +661,20 @@ int sc_pkcs15_derive(struct sc_pkcs15_card *p15card,
 		       const struct sc_pkcs15_object *prkey_obj,
 		       unsigned long flags,
 		       const u8 *in, size_t inlen, u8 *out, unsigned long *poutlen);
+
+int sc_pkcs15_unwrap(struct sc_pkcs15_card *p15card,
+		const struct sc_pkcs15_object *key,
+		struct sc_pkcs15_object *target_key,
+		unsigned long flags,
+		const u8 * in, size_t inlen,
+		const u8 * param, size_t paramlen);
+
+int sc_pkcs15_wrap(struct sc_pkcs15_card *p15card,
+		const struct sc_pkcs15_object *key,
+		struct sc_pkcs15_object *target_key,
+		unsigned long flags,
+		u8 * cryptogram, unsigned long* crgram_len,
+		const u8 * param, size_t paramlen);
 
 int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 				const struct sc_pkcs15_object *prkey_obj,
@@ -936,8 +952,14 @@ void sc_pkcs15_free_object_content(struct sc_pkcs15_object *);
 int sc_pkcs15_allocate_object_content(struct sc_context *, struct sc_pkcs15_object *,
 		const unsigned char *, size_t);
 
+/* find algorithm from card's supported algorithms by operation and mechanism */
 struct sc_supported_algo_info *sc_pkcs15_get_supported_algo(struct sc_pkcs15_card *,
-		unsigned, unsigned);
+		unsigned operation, unsigned mechanism);
+
+/* find algorithm from card's supported algorithms by operation, mechanism and object_id */
+struct sc_supported_algo_info *sc_pkcs15_get_specific_supported_algo(struct sc_pkcs15_card *,
+		unsigned operation, unsigned mechanism, const struct sc_object_id *algo_oid);
+
 int sc_pkcs15_add_supported_algo_ref(struct sc_pkcs15_object *,
 		struct sc_supported_algo_info *);
 

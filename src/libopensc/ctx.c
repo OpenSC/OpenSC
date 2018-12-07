@@ -34,6 +34,7 @@
 #include <windows.h>
 #include <winreg.h>
 #include <direct.h>
+#include <io.h>
 #endif
 
 #include "common/libscdl.h"
@@ -129,6 +130,7 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 
 /* Here should be placed drivers that need some APDU transactions in the
  * driver's `match_card()` function. */
+	{ "coolkey",	(void *(*)(void)) sc_get_coolkey_driver },
 	/* MUSCLE card applet returns 9000 on whatever AID is selected, see
 	 * https://github.com/JavaCardOS/MuscleCard-Applet/blob/master/musclecard/src/com/musclecard/CardEdge/CardEdge.java#L326
 	 * put the muscle driver first to cope with this bug. */
@@ -145,8 +147,8 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 #endif
 	{ "openpgp",	(void *(*)(void)) sc_get_openpgp_driver },
 	{ "jpki",	(void *(*)(void)) sc_get_jpki_driver },
-	{ "coolkey",	(void *(*)(void)) sc_get_coolkey_driver },
 	{ "npa",	(void *(*)(void)) sc_get_npa_driver },
+	{ "cac1",	(void *(*)(void)) sc_get_cac1_driver },
 	/* The default driver should be last, as it handles all the
 	 * unrecognized cards. */
 	{ "default",	(void *(*)(void)) sc_get_default_driver },
@@ -360,6 +362,24 @@ set_drivers(struct _sc_ctx_options *opts, const scconf_list *list)
 	}
 }
 
+static int is_a_tty(FILE *fp)
+{
+	if (fp != NULL) {
+		int fd = fileno(fp);
+		if (fd >= 0) {
+#ifdef _WIN32
+			HANDLE h = (HANDLE)_get_osfhandle(fd);
+			if (h != INVALID_HANDLE_VALUE) {
+				return GetFileType(h) == FILE_TYPE_CHAR;
+			}
+#else
+			return isatty(fd);
+#endif
+		}
+	}
+	return 0;
+}
+
 static int
 load_parameters(sc_context_t *ctx, scconf_block *block, struct _sc_ctx_options *opts)
 {
@@ -393,6 +413,10 @@ load_parameters(sc_context_t *ctx, scconf_block *block, struct _sc_ctx_options *
 	if (scconf_get_bool (block, "disable_popups",
 				ctx->flags & SC_CTX_FLAG_DISABLE_POPUPS))
 		ctx->flags |= SC_CTX_FLAG_DISABLE_POPUPS;
+
+	if (scconf_get_bool (block, "disable_colors",
+				ctx->flags & SC_CTX_FLAG_DISABLE_COLORS))
+		ctx->flags |= SC_CTX_FLAG_DISABLE_COLORS;
 
 	if (scconf_get_bool (block, "enable_default_driver",
 				ctx->flags & SC_CTX_FLAG_ENABLE_DEFAULT_DRIVER))
@@ -725,6 +749,9 @@ static void process_config_file(sc_context_t *ctx, struct _sc_ctx_options *opts)
 	 * so at least one is NULL */
 	for (i = 0; ctx->conf_blocks[i]; i++)
 		load_parameters(ctx, ctx->conf_blocks[i], opts);
+
+	if (ctx->debug_file && !is_a_tty(ctx->debug_file))
+		ctx->flags |= SC_CTX_FLAG_DISABLE_COLORS;
 }
 
 int sc_ctx_detect_readers(sc_context_t *ctx)
@@ -832,10 +859,9 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 		return r;
 	}
 
-#ifdef ENABLE_OPENSSL
+#if defined(ENABLE_OPENSSL) && defined(OPENSSL_SECURE_MALLOC_SIZE)
 	if (!CRYPTO_secure_malloc_initialized()) {
-		/* XXX What's a reasonable amount of secure heap? */
-		CRYPTO_secure_malloc_init(4096, 32);
+		CRYPTO_secure_malloc_init(OPENSSL_SECURE_MALLOC_SIZE, OPENSSL_SECURE_MALLOC_SIZE/8);
 	}
 #endif
 
@@ -880,7 +906,7 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 /* Used by minidriver to pass in provided handles to reader-pcsc */
 int sc_ctx_use_reader(sc_context_t *ctx, void *pcsc_context_handle, void *pcsc_card_handle)
 {
-	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(ctx);
 	if (ctx->reader_driver->ops->use_reader != NULL)
 		return ctx->reader_driver->ops->use_reader(ctx, pcsc_context_handle, pcsc_card_handle);
 
@@ -890,7 +916,7 @@ int sc_ctx_use_reader(sc_context_t *ctx, void *pcsc_context_handle, void *pcsc_c
 /* Following two are only implemented with internal PC/SC and don't consume a reader object */
 int sc_cancel(sc_context_t *ctx)
 {
-	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(ctx);
 	if (ctx->reader_driver->ops->cancel != NULL)
 		return ctx->reader_driver->ops->cancel(ctx);
 
@@ -900,7 +926,7 @@ int sc_cancel(sc_context_t *ctx)
 
 int sc_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_reader_t **event_reader, unsigned int *event, int timeout, void **reader_states)
 {
-	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(ctx);
 	if (ctx->reader_driver->ops->wait_for_event != NULL)
 		return ctx->reader_driver->ops->wait_for_event(ctx, event_mask, event_reader, event, timeout, reader_states);
 

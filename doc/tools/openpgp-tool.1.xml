@@ -40,6 +40,16 @@
 			<variablelist>
 				<varlistentry>
 					<term>
+						<option>--card-info</option>,
+						<option>-C</option>
+					</term>
+					<listitem><para>
+						Show card information.
+					</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
 						<option>--del-key</option> <replaceable>arg</replaceable>
 					</term>
 					<listitem><para>
@@ -113,12 +123,27 @@
 
 				<varlistentry>
 					<term>
-						<option>--key-length</option> <replaceable>bitlength</replaceable>,
-						<option>-L</option> <replaceable>bitlength</replaceable>
+						<option>--key-info</option>,
+						<option>-K</option>
 					</term>
 					<listitem><para>
-						Specify the length of the key to be generated.
-						If not given, it defaults to 2048 bit.
+						Show information of keys on the card.
+					</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--key-type</option> <replaceable>keytype</replaceable>,
+						<option>-t</option> <replaceable>keytype</replaceable>
+					</term>
+					<listitem><para>
+						Specify the type of the key to be generated.
+						Supported values for <replaceable>keytype</replaceable> are
+						<literal>rsa</literal> for RSA with 2048 bits,
+						<literal>rsa</literal><replaceable>LENGTH</replaceable>
+						for RSA with a bit length of <replaceable>LENGTH</replaceable>.
+
+						If not given, it defaults to <literal>rsa2048</literal>.
 					</para></listitem>
 				</varlistentry>
 

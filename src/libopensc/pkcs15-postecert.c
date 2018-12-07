@@ -338,7 +338,7 @@ static int sc_pkcs15emu_postecert_init(sc_pkcs15_card_t * p15card)
 	return 0;
 
 failed:
-	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+	sc_log(card->ctx, 
 		 "Failed to initialize Postecert and Cnipa emulation: %s\n",
 		 sc_strerror(r));
 	return r;

@@ -1,7 +1,7 @@
 /*
  * pkcs15-skey.c: PKCS #15 secret key functions
  *
- * Copyright (C) 2002  Juha Yrjölä <juha.yrjola@iki.fi>
+ * Copyright (C) 2002  Juha YrjÃ¶lÃ¤ <juha.yrjola@iki.fi>
  * Copyright (C) 2011  Viktor Tarasov <viktor.tarasov@opentrust.com>
  *
  * This library is free software; you can redistribute it and/or
@@ -20,6 +20,7 @@
  */
 #include "internal.h"
 #include "pkcs15.h"
+#include "pkcs11/pkcs11.h"
 #include "asn1.h"
 #include <stdlib.h>
 #include <string.h>
@@ -93,7 +94,7 @@ sc_pkcs15_decode_skdf_entry(struct sc_pkcs15_card *p15card, struct sc_pkcs15_obj
 {
         struct sc_context *ctx = p15card->card->ctx;
         struct sc_pkcs15_skey_info info;
-	int r, i;
+	int r, i, ii;
 	size_t usage_len = sizeof(info.usage);
 	size_t af_len = sizeof(info.access_flags);
 	struct sc_asn1_entry asn1_com_key_attr[C_ASN1_COM_KEY_ATTR_SIZE];
@@ -106,6 +107,8 @@ sc_pkcs15_decode_skdf_entry(struct sc_pkcs15_card *p15card, struct sc_pkcs15_obj
 	struct sc_asn1_pkcs15_object skey_des_obj = {
 		obj, asn1_com_key_attr, asn1_com_skey_attr, asn1_generic_skey_attr
 	};
+	static const struct sc_object_id id_aes = { { 2, 16, 840, 1, 101, 3, 4, 1, -1 } };
+	struct sc_object_id temp_oid;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_ASN1);
 
@@ -140,13 +143,34 @@ sc_pkcs15_decode_skdf_entry(struct sc_pkcs15_card *p15card, struct sc_pkcs15_obj
 
         /* Fill in defaults */
 	memset(&info, 0, sizeof(info));
+	info.native = 1;
 
 	r = sc_asn1_decode(ctx, asn1_skey, *buf, *buflen, buf, buflen);
 	if (r == SC_ERROR_ASN1_END_OF_CONTENTS)
 		return r;
 	LOG_TEST_RET(ctx, r, "ASN.1 decoding failed");
-	if (asn1_skey_choice[0].flags & SC_ASN1_PRESENT)
+	if (asn1_skey_choice[0].flags & SC_ASN1_PRESENT) {
 		obj->type = SC_PKCS15_TYPE_SKEY_GENERIC;
+
+		/* Check key type. framework-pkcs15 recognizes one type per key, and AES is the only algorithm supported for
+		* SKEY_GENERIC type keys, so just check if this key is AES compatible. */
+
+		for (i = 0; i < SC_MAX_SUPPORTED_ALGORITHMS && info.algo_refs[i] != 0; i++) {
+			for (ii = 0; ii < SC_MAX_SUPPORTED_ALGORITHMS && p15card->tokeninfo != 0; ii++) {
+				if (info.algo_refs[i] == p15card->tokeninfo->supported_algos[ii].reference) {
+				    temp_oid = p15card->tokeninfo->supported_algos[ii].algo_id;
+				    temp_oid.value[8] = -1; /* strip off AES subtype octet*/
+
+				    if (sc_compare_oid(&id_aes, &temp_oid))
+						if (info.key_type == 0)	{
+							info.key_type = CKK_AES;
+							break;
+						}
+				}
+			}
+		}
+
+	}
 	else if (asn1_skey_choice[1].flags & SC_ASN1_PRESENT)
 		obj->type = SC_PKCS15_TYPE_SKEY_DES;
 	else if (asn1_skey_choice[2].flags & SC_ASN1_PRESENT)

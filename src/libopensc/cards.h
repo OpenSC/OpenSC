@@ -286,6 +286,7 @@ extern sc_card_driver_t *sc_get_gids_driver(void);
 extern sc_card_driver_t *sc_get_jpki_driver(void);
 extern sc_card_driver_t *sc_get_coolkey_driver(void);
 extern sc_card_driver_t *sc_get_cac_driver(void);
+extern sc_card_driver_t *sc_get_cac1_driver(void);
 extern sc_card_driver_t *sc_get_npa_driver(void);
 
 #ifdef __cplusplus

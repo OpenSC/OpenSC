@@ -55,13 +55,13 @@ sm_cwa_get_mac(struct sc_context *ctx, unsigned char *key, DES_cblock *icv,
 	unsigned char *buf;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "sm_cwa_get_mac() data length %i", in_len);
+	sc_debug(ctx, SC_LOG_DEBUG_SM, "sm_cwa_get_mac() data length %i", in_len);
 
 	buf = malloc(in_len + 8);
 	if (!buf)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 
-	sc_log(ctx, "sm_cwa_get_mac() in_data(%i) %s", in_len, sc_dump_hex(in, in_len));
+	sc_debug(ctx, SC_LOG_DEBUG_SM, "sm_cwa_get_mac() in_data(%i) %s", in_len, sc_dump_hex(in, in_len));
 	memcpy(buf, in, in_len);
 	memcpy(buf + in_len, padding, 8);
 
@@ -70,8 +70,8 @@ sm_cwa_get_mac(struct sc_context *ctx, unsigned char *key, DES_cblock *icv,
 	else
 		in_len = ((in_len + 7) / 8) * 8;
 
-	sc_log(ctx, "sm_cwa_get_mac() data to MAC(%i) %s", in_len, sc_dump_hex(buf, in_len));
-	sc_log(ctx, "sm_cwa_get_mac() ICV %s", sc_dump_hex((unsigned char *)icv, 8));
+	sc_debug(ctx, SC_LOG_DEBUG_SM, "sm_cwa_get_mac() data to MAC(%i) %s", in_len, sc_dump_hex(buf, in_len));
+	sc_debug(ctx, SC_LOG_DEBUG_SM, "sm_cwa_get_mac() ICV %s", sc_dump_hex((unsigned char *)icv, 8));
 
 	memcpy(&kk, key, 8);
 	memcpy(&k2, key + 8, 8);
@@ -91,8 +91,8 @@ sm_cwa_encode_external_auth_data(struct sc_context *ctx, struct sm_cwa_session *
 	if (out_len < 16)
 		return SC_ERROR_BUFFER_TOO_SMALL;
 
-	sc_log(ctx, "IFD.RND %s", sc_dump_hex(session_data->ifd.rnd, 8));
-	sc_log(ctx, "IFD.SN  %s", sc_dump_hex(session_data->ifd.sn, 8));
+	sc_debug(ctx, SC_LOG_DEBUG_SM, "IFD.RND %s", sc_dump_hex(session_data->ifd.rnd, 8));
+	sc_debug(ctx, SC_LOG_DEBUG_SM, "IFD.SN  %s", sc_dump_hex(session_data->ifd.sn, 8));
 
 	memcpy(out + 0, session_data->icc.rnd, 8);
 	memcpy(out + 8, session_data->icc.sn, 8);
@@ -108,11 +108,11 @@ sm_cwa_encode_mutual_auth_data(struct sc_context *ctx, struct sm_cwa_session *se
 	if (out_len < 64)
 		return SC_ERROR_BUFFER_TOO_SMALL;
 
-	sc_log(ctx, "IFD.RND %s", sc_dump_hex(session_data->ifd.rnd, 8));
-	sc_log(ctx, "IFD.SN  %s", sc_dump_hex(session_data->ifd.sn, 8));
-	sc_log(ctx, "IFD.K   %s", sc_dump_hex(session_data->ifd.k, 32));
-	sc_log(ctx, "ICC.RND %s", sc_dump_hex(session_data->icc.rnd, 8));
-	sc_log(ctx, "ICC.SN  %s", sc_dump_hex(session_data->icc.sn, 8));
+	sc_debug(ctx, SC_LOG_DEBUG_SM, "IFD.RND %s", sc_dump_hex(session_data->ifd.rnd, 8));
+	sc_debug(ctx, SC_LOG_DEBUG_SM, "IFD.SN  %s", sc_dump_hex(session_data->ifd.sn, 8));
+	sc_debug(ctx, SC_LOG_DEBUG_SM, "IFD.K   %s", sc_dump_hex(session_data->ifd.k, 32));
+	sc_debug(ctx, SC_LOG_DEBUG_SM, "ICC.RND %s", sc_dump_hex(session_data->icc.rnd, 8));
+	sc_debug(ctx, SC_LOG_DEBUG_SM, "ICC.SN  %s", sc_dump_hex(session_data->icc.sn, 8));
 
 	memcpy(out + 0, session_data->ifd.rnd, 8);
 	memcpy(out + 8, session_data->ifd.sn, 8);
@@ -139,7 +139,7 @@ sm_cwa_decode_authentication_data(struct sc_context *ctx, struct sm_cwa_keyset *
 	memset(icv, 0, sizeof(icv));
 	rv = sm_cwa_get_mac(ctx, keyset->mac, &icv, session_data->mdata, 0x40, &cblock, 1);
 	LOG_TEST_RET(ctx, rv, "Decode authentication data:  sm_ecc_get_mac failed");
-	sc_log(ctx, "MAC:%s", sc_dump_hex(cblock, sizeof(cblock)));
+	sc_debug(ctx, SC_LOG_DEBUG_SM, "MAC:%s", sc_dump_hex(cblock, sizeof(cblock)));
 
 	if(memcmp(session_data->mdata + 0x40, cblock, 8))
 		LOG_FUNC_RETURN(ctx, SC_ERROR_SM_AUTHENTICATION_FAILED);
@@ -147,7 +147,7 @@ sm_cwa_decode_authentication_data(struct sc_context *ctx, struct sm_cwa_keyset *
 	rv = sm_decrypt_des_cbc3(ctx, keyset->enc, session_data->mdata, session_data->mdata_len, &decrypted, &decrypted_len);
 	LOG_TEST_RET(ctx, rv, "sm_ecc_decode_auth_data() DES CBC3 decrypt error");
 
-	sc_log(ctx,
+	sc_debug(ctx, SC_LOG_DEBUG_SM,
 	       "sm_ecc_decode_auth_data() decrypted(%"SC_FORMAT_LEN_SIZE_T"u) %s",
 	       decrypted_len, sc_dump_hex(decrypted, decrypted_len));
 
@@ -191,17 +191,17 @@ sm_cwa_init_session_keys(struct sc_context *ctx, struct sm_cwa_session *session_
 	for (ii=0; ii<32; ii++)
 		xored[ii] = session_data->ifd.k[ii] ^ session_data->icc.k[ii];
 
-	sc_log(ctx, "K_IFD %s", sc_dump_hex(session_data->ifd.k, 32));
-	sc_log(ctx, "K_ICC %s", sc_dump_hex(session_data->icc.k, 32));
+	sc_debug(ctx, SC_LOG_DEBUG_SM, "K_IFD %s", sc_dump_hex(session_data->ifd.k, 32));
+	sc_debug(ctx, SC_LOG_DEBUG_SM, "K_ICC %s", sc_dump_hex(session_data->icc.k, 32));
 
 	if (mechanism == IASECC_ALGORITHM_SYMMETRIC_SHA1)   {
 		xored[35] = 0x01;
-		sc_log(ctx, "XOR for SkEnc %s", sc_dump_hex(xored, 36));
+		sc_debug(ctx, SC_LOG_DEBUG_SM, "XOR for SkEnc %s", sc_dump_hex(xored, 36));
 		SHA1(xored, 36, buff);
 		memcpy(&session_data->session_enc[0], buff, sizeof(session_data->session_enc));
 
 		xored[35] = 0x02;
-		sc_log(ctx, "XOR for SkMac %s", sc_dump_hex(xored, 36));
+		sc_debug(ctx, SC_LOG_DEBUG_SM, "XOR for SkMac %s", sc_dump_hex(xored, 36));
 		SHA1(xored, 36, buff);
 		memcpy(&session_data->session_mac[0], buff, sizeof(session_data->session_mac));
 	}
@@ -240,10 +240,10 @@ sm_cwa_initialize(struct sc_context *ctx, struct sm_info *sm_info, struct sc_rem
 	int rv, offs;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "SM IAS/ECC initialize: serial %s", sc_dump_hex(sm_info->serialnr.value, sm_info->serialnr.len));
-	sc_log(ctx, "SM IAS/ECC initialize: card challenge %s", sc_dump_hex(cwa_session->card_challenge, 8));
-	sc_log(ctx, "SM IAS/ECC initialize: current_df_path %s", sc_print_path(&sm_info->current_path_df));
-	sc_log(ctx, "SM IAS/ECC initialize: CRT_AT reference 0x%X", cwa_session->params.crt_at.refs[0]);
+	sc_debug(ctx, SC_LOG_DEBUG_SM, "SM IAS/ECC initialize: serial %s", sc_dump_hex(sm_info->serialnr.value, sm_info->serialnr.len));
+	sc_debug(ctx, SC_LOG_DEBUG_SM, "SM IAS/ECC initialize: card challenge %s", sc_dump_hex(cwa_session->card_challenge, 8));
+	sc_debug(ctx, SC_LOG_DEBUG_SM, "SM IAS/ECC initialize: current_df_path %s", sc_print_path(&sm_info->current_path_df));
+	sc_debug(ctx, SC_LOG_DEBUG_SM, "SM IAS/ECC initialize: CRT_AT reference 0x%X", cwa_session->params.crt_at.refs[0]);
 
 	if (!rdata || !rdata->alloc)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
@@ -270,12 +270,12 @@ sm_cwa_initialize(struct sc_context *ctx, struct sm_info *sm_info, struct sc_rem
 			LOG_FUNC_RETURN(ctx, offs);
 	}
 
-	sc_log(ctx, "S(%i) %s", offs, sc_dump_hex(buf, offs));
+	sc_debug(ctx, SC_LOG_DEBUG_SM, "S(%i) %s", offs, sc_dump_hex(buf, offs));
 
 	rv = sm_encrypt_des_cbc3(ctx, cwa_keyset->enc, buf, offs, &encrypted, &encrypted_len, 1);
 	LOG_TEST_RET(ctx, rv, "_encrypt_des_cbc3() failed");
 
-	sc_log(ctx, "ENCed(%"SC_FORMAT_LEN_SIZE_T"u) %s", encrypted_len,
+	sc_debug(ctx, SC_LOG_DEBUG_SM, "ENCed(%"SC_FORMAT_LEN_SIZE_T"u) %s", encrypted_len,
 	       sc_dump_hex(encrypted, encrypted_len));
 
 	memcpy(buf, encrypted, encrypted_len);
@@ -283,7 +283,7 @@ sm_cwa_initialize(struct sc_context *ctx, struct sm_info *sm_info, struct sc_rem
 
 	rv = sm_cwa_get_mac(ctx, cwa_keyset->mac, &icv, buf, offs, &cblock, 1);
 	LOG_TEST_RET(ctx, rv, "sm_ecc_get_mac() failed");
-	sc_log(ctx, "MACed(%"SC_FORMAT_LEN_SIZE_T"u) %s", sizeof(cblock),
+	sc_debug(ctx, SC_LOG_DEBUG_SM, "MACed(%"SC_FORMAT_LEN_SIZE_T"u) %s", sizeof(cblock),
 	       sc_dump_hex(cblock, sizeof(cblock)));
 
 	apdu->cse = SC_APDU_CASE_4_SHORT;
@@ -314,7 +314,7 @@ sm_cwa_securize_apdu(struct sc_context *ctx, struct sm_info *sm_info, struct sc_
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx,
+	sc_debug(ctx, SC_LOG_DEBUG_SM,
 	       "securize APDU (cla:%X,ins:%X,p1:%X,p2:%X,data(%"SC_FORMAT_LEN_SIZE_T"u):%p)",
 	       apdu->cla, apdu->ins, apdu->p1, apdu->p2, apdu->datalen,
 	       apdu->data);
@@ -323,7 +323,7 @@ sm_cwa_securize_apdu(struct sc_context *ctx, struct sm_info *sm_info, struct sc_
 
 	rv = sm_encrypt_des_cbc3(ctx, session_data->session_enc, apdu->data, apdu->datalen, &encrypted, &encrypted_len, 0);
 	LOG_TEST_RET(ctx, rv, "securize APDU: DES CBC3 encryption failed");
-	sc_log(ctx, "encrypted data (len:%"SC_FORMAT_LEN_SIZE_T"u, %s)",
+	sc_debug(ctx, SC_LOG_DEBUG_SM, "encrypted data (len:%"SC_FORMAT_LEN_SIZE_T"u, %s)",
 	       encrypted_len, sc_dump_hex(encrypted, encrypted_len));
 
 	offs = 0;
@@ -343,7 +343,7 @@ sm_cwa_securize_apdu(struct sc_context *ctx, struct sm_info *sm_info, struct sc_
 	memcpy(edfb_data + offs, encrypted, encrypted_len);
 	offs += encrypted_len;
 	edfb_len = offs;
-	sc_log(ctx, "securize APDU: EDFB(len:%"SC_FORMAT_LEN_SIZE_T"u,%s)",
+	sc_debug(ctx, SC_LOG_DEBUG_SM, "securize APDU: EDFB(len:%"SC_FORMAT_LEN_SIZE_T"u,%s)",
 	       edfb_len, sc_dump_hex(edfb_data, edfb_len));
 
 	free(encrypted);
@@ -371,13 +371,13 @@ sm_cwa_securize_apdu(struct sc_context *ctx, struct sm_info *sm_info, struct sc_
 	/* } */
 
 	mac_len = offs;
-	sc_log(ctx, "securize APDU: MAC data(len:%"SC_FORMAT_LEN_SIZE_T"u,%s)",
+	sc_debug(ctx, SC_LOG_DEBUG_SM, "securize APDU: MAC data(len:%"SC_FORMAT_LEN_SIZE_T"u,%s)",
 	       mac_len, sc_dump_hex(mac_data, mac_len));
 
 	memset(icv, 0, sizeof(icv));
 	rv = sm_cwa_get_mac(ctx, session_data->session_mac, &icv, mac_data, mac_len, &cblock, 0);
 	LOG_TEST_RET(ctx, rv, "securize APDU: MAC calculation error");
-	sc_log(ctx, "securize APDU: MAC:%s", sc_dump_hex(cblock, sizeof(cblock)));
+	sc_debug(ctx, SC_LOG_DEBUG_SM, "securize APDU: MAC:%s", sc_dump_hex(cblock, sizeof(cblock)));
 
 	offs = 0;
 	if (edfb_len)   {
@@ -395,7 +395,7 @@ sm_cwa_securize_apdu(struct sc_context *ctx, struct sm_info *sm_info, struct sc_
 	sbuf[offs++] = 8;
 	memcpy(sbuf + offs, cblock, 8);
 	offs += 8;
-	sc_log(ctx, "securize APDU: SM data(len:%"SC_FORMAT_LEN_SIZE_T"u,%s)",
+	sc_debug(ctx, SC_LOG_DEBUG_SM, "securize APDU: SM data(len:%"SC_FORMAT_LEN_SIZE_T"u,%s)",
 	       offs, sc_dump_hex(sbuf, offs));
 
 	if (offs > sizeof(rapdu->sbuf))

@@ -834,13 +834,13 @@ int sc_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 
 	r = sc_lock(card);
 	if (r != SC_SUCCESS)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+		LOG_FUNC_RETURN(card->ctx, r);
 
 	while (len > 0 && retry > 0) {
 		r = card->ops->get_challenge(card, rnd, len);
 		if (r < 0) {
 			sc_unlock(card);
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, r);
+			LOG_FUNC_RETURN(card->ctx, r);
 		}
 
 		if (r > 0) {
@@ -1016,7 +1016,7 @@ int  _sc_card_add_ec_alg(sc_card_t *card, unsigned int key_length,
 	return _sc_card_add_algorithm(card, &info);
 }
 
-static sc_algorithm_info_t * sc_card_find_alg(sc_card_t *card,
+sc_algorithm_info_t * sc_card_find_alg(sc_card_t *card,
 		unsigned int algorithm, unsigned int key_length, void *param)
 {
 	int i;
@@ -1085,7 +1085,7 @@ static int match_atr_table(sc_context_t *ctx, const struct sc_atr_table *table, 
 	sc_bin_to_hex(card_atr_bin, card_atr_bin_len, card_atr_hex, sizeof(card_atr_hex), ':');
 	card_atr_hex_len = strlen(card_atr_hex);
 
-	sc_log(ctx, "ATR     : %s", card_atr_hex);
+	sc_debug(ctx, SC_LOG_DEBUG_MATCH, "ATR     : %s", card_atr_hex);
 
 	for (i = 0; table[i].atr != NULL; i++) {
 		const char *tatr = table[i].atr;
@@ -1096,14 +1096,14 @@ static int match_atr_table(sc_context_t *ctx, const struct sc_atr_table *table, 
 		size_t fix_hex_len = card_atr_hex_len;
 		size_t fix_bin_len = card_atr_bin_len;
 
-		sc_log(ctx, "ATR try : %s", tatr);
+		sc_debug(ctx, SC_LOG_DEBUG_MATCH, "ATR try : %s", tatr);
 
 		if (tatr_len != fix_hex_len) {
-			sc_log(ctx, "ignored - wrong length");
+			sc_debug(ctx, SC_LOG_DEBUG_MATCH, "ignored - wrong length");
 			continue;
 		}
 		if (matr != NULL) {
-			sc_log(ctx, "ATR mask: %s", matr);
+			sc_debug(ctx, SC_LOG_DEBUG_MATCH, "ATR mask: %s", matr);
 
 			matr_len = strlen(matr);
 			if (tatr_len != matr_len)
@@ -1113,7 +1113,7 @@ static int match_atr_table(sc_context_t *ctx, const struct sc_atr_table *table, 
 			mbin_len = sizeof(mbin);
 			sc_hex_to_bin(matr, mbin, &mbin_len);
 			if (mbin_len != fix_bin_len) {
-				sc_log(ctx, "length of atr and atr mask do not match - ignored: %s - %s", tatr, matr);
+				sc_debug(ctx, SC_LOG_DEBUG_MATCH, "length of atr and atr mask do not match - ignored: %s - %s", tatr, matr);
 				continue;
 			}
 			for (s = 0; s < tbin_len; s++) {
@@ -1362,7 +1362,7 @@ sc_card_sm_load(struct sc_card *card, const char *module_path, const char *in_mo
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	ctx = card->ctx;
-	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
+	LOG_FUNC_CALLED(ctx);
 	if (!in_module)
 		return sc_card_sm_unload(card);
 
@@ -1381,7 +1381,7 @@ sc_card_sm_load(struct sc_card *card, const char *module_path, const char *in_mo
 	if (0 < expanded_len && expanded_len < sizeof expanded_val)
 		module_path = expanded_val;
 #endif
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "SM module '%s' located in '%s'", in_module, module_path);
+	sc_log(ctx, "SM module '%s' located in '%s'", in_module, module_path);
 	if (module_path && strlen(module_path) > 0)   {
 		int sz = strlen(in_module) + strlen(module_path) + 3;
 		module = malloc(sz);
@@ -1459,8 +1459,7 @@ sc_card_sm_check(struct sc_card *card)
 	scconf_block *atrblock = NULL, *sm_conf_block = NULL;
 	int rv, ii;
 
-	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
-	sc_log(ctx, "card->sm_ctx.ops.open %p", card->sm_ctx.ops.open);
+	LOG_FUNC_CALLED(ctx);
 
 	/* get the name of card specific SM configuration section */
 	atrblock = _sc_match_atr_block(ctx, card->driver, &card->atr);
@@ -1501,18 +1500,15 @@ sc_card_sm_check(struct sc_card *card)
 	strlcpy(card->sm_ctx.config_section, sm, sizeof(card->sm_ctx.config_section));
 
 	/* allocate resources for the external SM module */
-	sc_log(ctx, "'module_init' handler %p", card->sm_ctx.module.ops.module_init);
 	if (card->sm_ctx.module.ops.module_init)   {
 		module_data = scconf_get_str(sm_conf_block, "module_data", NULL);
-		sc_log(ctx, "module_data '%s'", module_data);
 
 		rv = card->sm_ctx.module.ops.module_init(ctx, module_data);
-		SC_TEST_RET(ctx, SC_LOG_DEBUG_NORMAL, rv, "Cannot initialize SM module");
+		LOG_TEST_RET(ctx, rv, "Cannot initialize SM module");
 	}
 
 	/* initialize SM session in the case of 'APDU TRANSMIT' SM mode */
 	sm_mode = scconf_get_str(sm_conf_block, "mode", NULL);
-	sc_log(ctx, "SM mode '%s'; 'open' handler %p", sm_mode, card->sm_ctx.ops.open);
 	if (sm_mode && !strcasecmp("Transmit", sm_mode))   {
 		if (!card->sm_ctx.ops.open || !card->sm_ctx.ops.get_sm_apdu || !card->sm_ctx.ops.free_sm_apdu)
 			LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "'Transmit' SM asked but not supported by card driver");

@@ -57,7 +57,7 @@ pkcs15init_create_tokens(struct sc_pkcs11_card *p11card, struct sc_app_info *app
 {
 	struct sc_profile	*profile;
 	struct sc_pkcs11_slot	*slot;
-	int rc;
+	CK_RV rc;
 
 	profile = (struct sc_profile *) p11card->fws_data[0];
 
@@ -130,7 +130,8 @@ pkcs15init_initialize(struct sc_pkcs11_slot *pslot, void *ptr,
 	struct sc_profile *profile = (struct sc_profile *) p11card->fws_data[0];
 	struct sc_pkcs15init_initargs args;
 	struct sc_pkcs11_slot *slot;
-	int		rc, rv, id;
+    CK_RV rv;
+	int		rc, id;
 
 	memset(&args, 0, sizeof(args));
 	args.so_pin = pPin;
