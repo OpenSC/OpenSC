@@ -2929,18 +2929,11 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_keystore_info
 	u8 *data = NULL;
 	size_t len = 0;
 	u8 *p = NULL;
-	u8 *components[] = {key_info->u.rsa.e, key_info->u.rsa.p,
-			    key_info->u.rsa.q, key_info->u.rsa.n};
-	size_t componentlens[] = {key_info->u.rsa.e_len, key_info->u.rsa.p_len,
-				  key_info->u.rsa.q_len, key_info->u.rsa.n_len};
-	unsigned int componenttags[] = {0x91, 0x92, 0x93, 0x97};
-	char *componentnames[] = {
-		"public exponent",
-		"prime p",
-		"prime q",
-		"modulus"
-	};
-	size_t comp_to_add = 3;
+	u8 *components[4];
+	size_t componentlens[4];
+	unsigned int componenttags[4];
+	char *componentnames[4];
+	size_t comp_to_add;
 	u8 i;
 	int r;
 
@@ -2949,14 +2942,33 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_keystore_info
 	/* RSA */
 	if (key_info->algorithm == SC_OPENPGP_KEYALGO_RSA){
 
+		components[0] = key_info->u.rsa.e;
+		components[1] = key_info->u.rsa.p;
+		components[2] = key_info->u.rsa.q;
+		componentlens[0] = key_info->u.rsa.e_len;
+		componentlens[1] = key_info->u.rsa.p_len;
+		componentlens[2] = key_info->u.rsa.q_len;
+		componenttags[0] = 0x91;
+		componenttags[1] = 0x92;
+		componenttags[2] = 0x93;
+		componentnames[0] = "public exponent";
+		componentnames[1] = "prime p";
+		componentnames[2] = "prime q";
+		comp_to_add = 3;
+		
 		/* The maximum exponent length is 32 bit, as set on card
 		 * we use this variable to check against actual exponent_len */
 		size_t max_e_len_bytes = BYTES4BITS(SC_OPENPGP_MAX_EXP_BITS);
 		size_t e_len_bytes = BYTES4BITS(key_info->u.rsa.e_len);
 
 		if (key_info->u.rsa.keyformat == SC_OPENPGP_KEYFORMAT_RSA_STDN
-			|| key_info->u.rsa.keyformat == SC_OPENPGP_KEYFORMAT_RSA_CRTN)
+			|| key_info->u.rsa.keyformat == SC_OPENPGP_KEYFORMAT_RSA_CRTN){
+			components[3] = key_info->u.rsa.n;
+			componentlens[3] = key_info->u.rsa.n_len;
+			componenttags[3] = 0x97;
+			componentnames[3] = "modulus";
 			comp_to_add = 4;
+		}
 
 		/* validate */
 		if (comp_to_add == 4 && (key_info->u.rsa.n == NULL || key_info->u.rsa.n_len == 0)){
@@ -2990,8 +3002,13 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_keystore_info
 	/* ECC */
 	else if (key_info->algorithm == SC_OPENPGP_KEYALGO_ECDH
 		|| key_info->algorithm == SC_OPENPGP_KEYALGO_ECDSA){
-		/* as we are not storing a RSA key, we need to adapt some values,
-		 * but every array and data is already be big enough */
+		components[0] = key_info->u.ec.privateD;
+		componentlens[0] = key_info->u.ec.privateD_len;
+		componenttags[0] = 0x92;
+		componentnames[0] = "private key";
+		comp_to_add = 1;
+
+		/* TODO ECC import with public key, if possible */
 
 		/* validate */
 		if ((key_info->u.ec.ecpoint == NULL || key_info->u.ec.ecpoint_len == 0)){
@@ -3001,13 +3018,6 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_keystore_info
 
 		/* Cardholder private key template's data part */
 		memset(pritemplate, 0, max_prtem_len);
-
-		/* TODO ECC import with public key if possible */
-		components[0] = key_info->u.ec.privateD;
-		componentlens[0] = key_info->u.ec.privateD_len;
-		componenttags[0] = 0x92;
-		componentnames[0] = "private key";
-		comp_to_add = 1;
 	}
 	else
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
