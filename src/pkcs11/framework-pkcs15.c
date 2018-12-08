@@ -21,6 +21,7 @@
 #include "config.h"
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include "libopensc/log.h"
 #include "libopensc/internal.h"
 #include "libopensc/asn1.h"
@@ -1047,7 +1048,7 @@ pkcs15_init_slot(struct sc_pkcs15_card *p15card, struct sc_pkcs11_slot *slot,
 {
 	struct pkcs15_slot_data *fw_data;
 	struct sc_pkcs15_auth_info *pin_info = NULL;
-	char label[(sizeof auth->label) + 10];
+	char label[sizeof(auth->label) + sizeof(p15card->tokeninfo->label) + 10];
 	int write_protected;
 	scconf_block *atrblock;
 
@@ -1091,10 +1092,11 @@ pkcs15_init_slot(struct sc_pkcs15_card *p15card, struct sc_pkcs11_slot *slot,
 		else   {
 			if (auth->label[0] && strncmp(auth->label, "PIN", 4) != 0) {
 				/* Trim tokeninfo->label to make right parenthesis visible */
-				char tokeninfo_label[sizeof label];
+				char tokeninfo_label[sizeof(p15card->tokeninfo->label)+1];
 				int len;
 				snprintf(tokeninfo_label, sizeof(tokeninfo_label), "%s", p15card->tokeninfo->label);
-				for (len = strlen(tokeninfo_label) - 1; len >= 0 && tokeninfo_label[len] == ' '; len--) {
+				tokeninfo_label[sizeof(tokeninfo_label)-1] = '\0';
+				for (len = strlen(tokeninfo_label) - 1; len >= 0 && isspace(tokeninfo_label[len]); len--) {
 					tokeninfo_label[len] = 0;
 				}
 				snprintf(label, sizeof(label), "%.*s (%s)",
