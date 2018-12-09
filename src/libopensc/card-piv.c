@@ -2277,6 +2277,22 @@ static int piv_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 
 	/* NIST 800-73-3 says use 9B, previous verisons used 00 */
 	r = piv_general_io(card, 0x87, 0x00, 0x9B, sbuf, sizeof sbuf, &rbuf, &rbuf_len);
+	/*
+	 * piv_get_challenge is called in a loop. 
+	 * some cards may allow 1 challenge expecting it to be part of 
+	 * NIST 800-73-3 part 2 "Authentication of PIV Card Application Administrator"
+	 * and return "6A 80" if last command was a get_challenge.
+	 * Now that the card returned error, we can try one more time.
+	 */
+	 if (r == SC_ERROR_INCORRECT_PARAMETERS) {
+		if (rbuf)
+			free(rbuf);
+		rbuf_len = 0;
+		r = piv_general_io(card, 0x87, 0x00, 0x9B, sbuf, sizeof sbuf, &rbuf, &rbuf_len);
+		if (r == SC_ERROR_INCORRECT_PARAMETERS) {
+			r = SC_ERROR_NOT_SUPPORTED;
+		}
+	}
 	LOG_TEST_GOTO_ERR(card->ctx, r, "GENERAL AUTHENTICATE failed");
 
 	p = rbuf;
