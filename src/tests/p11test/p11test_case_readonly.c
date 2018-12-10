@@ -669,6 +669,9 @@ void readonly_tests(void **state) {
 			printf("  no usable attributes found ... ignored\n");
 			continue;
 		}
+		if (objects.data[i].private_handle == CK_INVALID_HANDLE) {
+			continue;
+		}
 		for (j = 0; j < o->num_mechs; j++) {
 			test_mech_t *mech = &o->mechs[j];
 			if ((mech->usage_flags & CKF_SIGN) == 0) {
