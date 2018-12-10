@@ -34,7 +34,7 @@ void multipart_tests(void **state) {
 	P11TEST_START(info);
 	search_for_all_objects(&objects, info);
 
-	debug_print("\nCheck functionality of Multipart Sign&Verify and/or Encrypt&Decrypt");
+	debug_print("\nCheck functionality of Multipart Sign&Verify");
 	for (i = 0; i < objects.count; i++) {
 		if (objects.data[i].type == EVP_PK_EC) {
 			debug_print(" [ SKIP %s ] EC keys do not support multi-part operations",
@@ -42,7 +42,7 @@ void multipart_tests(void **state) {
 			continue;
 		}
 		used = 0;
-		/* do the Sign&Verify and/or Encrypt&Decrypt */
+		/* do the Sign&Verify */
 		/* XXX some keys do not have appropriate flags, but we can use them
 		 * or vice versa */
 		//if (objects.data[i].sign && objects.data[i].verify)
