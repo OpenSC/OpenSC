@@ -2937,8 +2937,7 @@ pgp_store_key(sc_card_t *card, sc_cardctl_openpgp_keystore_info_t *key_info)
 	pgp_update_card_algorithms(card, &pubkey);
 
 err:
-	if (data != NULL)
-		free(data);
+	free(data);
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
