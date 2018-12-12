@@ -3315,7 +3315,7 @@ static int piv_match_card_continued(sc_card_t *card)
 		int i7e = piv_find_discovery(card);
 
 		sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d i7e:%d CI:%08x r:%d\n", card->type, i7e, priv->card_issues, r);
-		if (i7e != 0) {
+		if (i7e < 0) {
 			priv->card_issues |= CI_DISCOVERY_USELESS;
 			priv->obj_cache[PIV_OBJ_DISCOVERY].flags |= PIV_OBJ_CACHE_NOT_PRESENT;
 		}
