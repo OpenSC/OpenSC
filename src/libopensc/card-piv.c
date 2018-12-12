@@ -2278,8 +2278,8 @@ static int piv_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 	/* NIST 800-73-3 says use 9B, previous verisons used 00 */
 	r = piv_general_io(card, 0x87, 0x00, 0x9B, sbuf, sizeof sbuf, &rbuf, &rbuf_len);
 	/*
-	 * piv_get_challenge is called in a loop. 
-	 * some cards may allow 1 challenge expecting it to be part of 
+	 * piv_get_challenge is called in a loop.
+	 * some cards may allow 1 challenge expecting it to be part of
 	 * NIST 800-73-3 part 2 "Authentication of PIV Card Application Administrator"
 	 * and return "6A 80" if last command was a get_challenge.
 	 * Now that the card returned error, we can try one more time.
@@ -2738,9 +2738,7 @@ err:
 
 	/* CCC  entries are simple tlv */
 	end = body + bodylen;
-	
 	for(; (body < end); body += len) {
-	
 		r = sc_simpletlv_read_tag((u8**)&body, end - body , &tag, &len);
 		if (r < 0)
 			goto err;
@@ -3188,8 +3186,8 @@ static int piv_match_card_continued(sc_card_t *card)
 		if (type == -1) {
 			/* use known ATRs  */
 			i = _sc_match_atr(card, piv_atrs, &type);
-			if (type == -1)
-				type = SC_CARD_TYPE_PIV_II_GENERIC; /* may  still be CAC with PIV Endpoint */
+			if (i < 0)
+				type = SC_CARD_TYPE_PIV_II_GENERIC; /* may still be CAC with PIV Endpoint */
 		}
 	}
 
@@ -3207,7 +3205,7 @@ static int piv_match_card_continued(sc_card_t *card)
 	card->drv_data = priv; /* will free if no match, or pass on to piv_init */
 	priv->selected_obj = -1;
 	priv->pin_preference = 0x80; /* 800-73-3 part 1, table 3 */
-	/* TODO Dual CAC/PIV are bases on 800-73-1 were priv->pin_preference = 0. need to check later */
+	/* TODO Dual CAC/PIV are bases on 800-73-1 where priv->pin_preference = 0. need to check later */
 	priv->logged_in = SC_PIN_STATE_UNKNOWN;
 	priv->tries_left = 10; /* will assume OK at start */
 	priv->pstate = PIV_STATE_MATCH;
