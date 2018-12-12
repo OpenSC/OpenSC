@@ -491,7 +491,7 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 		sm_apdu->resplen = SC_MAX_APDU_BUFFER_SIZE;
 #endif
 	}
-	resp_data = malloc(sm_apdu->resplen);
+	resp_data = calloc(sm_apdu->resplen);
 	if (!resp_data) {
 		r = SC_ERROR_OUT_OF_MEMORY;
 		goto err;
