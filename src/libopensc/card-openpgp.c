@@ -710,6 +710,17 @@ pgp_get_card_features(sc_card_t *card)
 					pgp_parse_hist_bytes(card, hist_bytes+2, hist_bytes_len-2);
 				}
 				break;
+			default:
+				/* Something else is non-standard according to
+				 * ISO7816-4 section 8 - Historical bytes,
+				 * but used by Yubico, which should have all
+				 * the needed capabilities*/
+				if (hist_bytes_len >= 7 &&
+					memcmp(hist_bytes, "Yubikey", 7) == 0) {
+					card->caps |= SC_CARD_CAP_APDU_EXT;
+					priv->ext_caps |= EXT_CAP_APDU_EXT
+						| EXT_CAP_CHAINING;
+				}
 		}
 	}
 
