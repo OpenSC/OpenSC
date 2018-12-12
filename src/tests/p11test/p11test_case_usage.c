@@ -93,6 +93,11 @@ void usage_test(void **state) {
 		printf("\n[%-6s] [%s]\n",
 			objects.data[i].id_str,
 			objects.data[i].label);
+
+		/* Ignore if there is missing private key */
+		if (objects.data[i].private_handle == CK_INVALID_HANDLE)
+			continue;
+
 		printf("[ %s ] [%6lu] [ %s ] [%s%s] [%s%s] [%s %s] [%s%s] [    %s   ]\n",
 			objects.data[i].key_type == CKK_RSA ? "RSA " :
 				objects.data[i].key_type == CKK_EC ? " EC " : " ?? ",
