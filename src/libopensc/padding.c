@@ -492,10 +492,10 @@ int sc_get_encoding_flags(sc_context_t *ctx,
 			(iflags & SC_ALGORITHM_RSA_PAD_PSS)) {
 		*sflags |= SC_ALGORITHM_RSA_PAD_PSS;
 
-	} else if (((caps & SC_ALGORITHM_RSA_RAW) &&
-				(iflags & SC_ALGORITHM_RSA_PAD_PKCS1))
-			|| iflags & SC_ALGORITHM_RSA_PAD_PSS
-			|| iflags & SC_ALGORITHM_RSA_PAD_NONE) {
+	} else if ((caps & SC_ALGORITHM_RSA_RAW) &&
+				(iflags & SC_ALGORITHM_RSA_PAD_PKCS1
+				|| iflags & SC_ALGORITHM_RSA_PAD_PSS
+				|| iflags & SC_ALGORITHM_RSA_PAD_NONE)) {
 		/* Use the card's raw RSA capability on the padded input */
 		*sflags = SC_ALGORITHM_RSA_PAD_NONE;
 		*pflags = iflags;
