@@ -375,3 +375,4 @@ sc_notify_close
 sc_notify
 sc_notify_id
 sc_color_fprintf
+iso7816_update_binary_sfid

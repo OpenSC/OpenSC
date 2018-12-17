@@ -1428,6 +1428,74 @@ err:
 	return r;
 }
 
+#define ISO_UPDATE_BINARY  0xD6
+int iso7816_update_binary_sfid(sc_card_t *card, unsigned char sfid,
+		u8 *ef, size_t ef_len)
+{
+	int r;
+	size_t write = MAX_SM_APDU_DATA_SIZE, wrote = 0;
+	sc_apdu_t apdu;
+#ifdef ENABLE_SM
+	struct iso_sm_ctx *iso_sm_ctx;
+#endif
+
+	if (!card) {
+		r = SC_ERROR_INVALID_ARGUMENTS;
+		goto err;
+	}
+
+#ifdef ENABLE_SM
+	iso_sm_ctx = card->sm_ctx.info.cmd_data;
+	if (write > SC_MAX_APDU_BUFFER_SIZE-2
+			|| (card->sm_ctx.sm_mode == SM_MODE_TRANSMIT
+				&& write > (((SC_MAX_APDU_BUFFER_SIZE-2
+					/* for encrypted APDUs we usually get authenticated status
+					 * bytes (4B), a MAC (11B) and a cryptogram with padding
+					 * indicator (3B without data).  The cryptogram is always
+					 * padded to the block size. */
+					-18) / iso_sm_ctx->block_length)
+					* iso_sm_ctx->block_length - 1)))
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_EXT,
+				ISO_UPDATE_BINARY, ISO_P1_FLAG_SFID|sfid, 0);
+	else
+#endif
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT,
+				ISO_UPDATE_BINARY, ISO_P1_FLAG_SFID|sfid, 0);
+
+	if (write > ef_len) {
+		apdu.datalen = ef_len;
+		apdu.lc = ef_len;
+	} else {
+		apdu.datalen = write;
+		apdu.lc = write;
+	}
+	apdu.data = ef;
+
+
+	r = sc_transmit_apdu(card, &apdu);
+	/* emulate the behaviour of sc_write_binary */
+	if (r >= 0)
+		r = apdu.datalen;
+
+	while (1) {
+		if (r < 0 || ((size_t) r) > ef_len) {
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not update EF.");
+			goto err;
+		}
+		wrote += r;
+		apdu.data += r;
+		if (wrote >= ef_len)
+			break;
+
+		r = sc_update_binary(card, wrote, ef, write, 0);
+	}
+
+	r = SC_SUCCESS;
+
+err:
+	return r;
+}
+
 int iso7816_logout(sc_card_t *card, unsigned char pin_reference)
 {
 	int r;

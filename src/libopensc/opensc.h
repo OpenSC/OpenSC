@@ -1517,12 +1517,25 @@ int iso7816_read_binary_sfid(sc_card_t *card, unsigned char sfid,
  *
  * @param[in] card   card
  * @param[in] sfid   Short file identifier
- * @param[in] ef     Date to write
+ * @param[in] ef     Data to write
  * @param[in] ef_len Length of \a ef
  *
  * @note The appropriate directory must be selected before calling this function.
  * */
 int iso7816_write_binary_sfid(sc_card_t *card, unsigned char sfid,
+		u8 *ef, size_t ef_len);
+
+/**
+ * @brief Update a EF by short file identifier.
+ *
+ * @param[in] card   card
+ * @param[in] sfid   Short file identifier
+ * @param[in] ef     Data to write
+ * @param[in] ef_len Length of \a ef
+ *
+ * @note The appropriate directory must be selected before calling this function.
+ * */
+int iso7816_update_binary_sfid(sc_card_t *card, unsigned char sfid,
 		u8 *ef, size_t ef_len);
 
 /**
