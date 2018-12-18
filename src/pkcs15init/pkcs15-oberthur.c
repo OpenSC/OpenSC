@@ -70,7 +70,6 @@ cosm_write_tokeninfo (struct sc_pkcs15_card *p15card, struct sc_profile *profile
 	ctx = p15card->card->ctx;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
-	sc_log(ctx,  "cosm_write_tokeninfo() label '%s'; flags 0x%X", label, flags);
 	if (sc_profile_get_file(profile, COSM_TITLE"-token-info", &file)) {
 		rv = SC_ERROR_INCONSISTENT_PROFILE;
 		SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_VERBOSE, rv, "Cannot find "COSM_TITLE"-token-info");
