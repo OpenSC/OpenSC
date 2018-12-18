@@ -224,6 +224,8 @@ static const struct sc_atr_table piv_atrs[] = {
 
 	/* Oberthur Card System (PIV Endpoint)  2 entries*/
 	{ "3B:DB:96:00:80:1F:03:00:31:C0:64:B0:F3:10:00:07:90:00:80", NULL, NULL, SC_CARD_TYPE_PIV_II_OBERTHUR, 0, NULL },
+	/* Oberthur Card System  with LCS 0F - Some VA cards have Terminated state */
+	{ "3B:DB:96:00:80:1F:03:00:31:C0:64:B0:F3:10:00:0F:90:00:88", NULL, NULL, SC_CARD_TYPE_PIV_II_OBERTHUR, 0, NULL },
 
 	/* Giesecke & Devrient (PIV Endpoint)  2 entries */
 	{ "3B:7A:18:00:00:73:66:74:65:20:63:64:31:34:34", NULL, NULL, SC_CARD_TYPE_PIV_II_GI_DE_DUAL_CAC, 0, NULL },
