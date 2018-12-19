@@ -371,7 +371,7 @@ int callback_public_keys(test_certs_t *objects,
 			o->key.ec = EC_KEY_new_by_curve_name(nid);
 			EC_KEY_set_public_key(o->key.ec, ecpoint);
 			EC_KEY_set_group(o->key.ec, ecgroup);
-			o->bits = EC_GROUP_order_bits(ecgroup);
+			o->bits = EC_GROUP_get_degree(ecgroup);
 		}
 	} else {
 		debug_print(" [WARN %s ] non-RSA, non-EC key. Key type: %02lX",
