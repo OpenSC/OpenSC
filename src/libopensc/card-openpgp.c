@@ -633,8 +633,7 @@ pgp_parse_hist_bytes(sc_card_t *card, u8 *ctlv, size_t ctlv_len)
 			priv->ext_caps |= EXT_CAP_APDU_EXT;
 		}
 		/* bit 0x80 in byte 3 of TL 0x73 means "Command chaining" */
-		if ((ptr[2] & 0x80) &&
-		    (priv->bcd_version >= OPENPGP_CARD_3_0)) {
+		if (ptr[2] & 0x80) {
 			priv->ext_caps |= EXT_CAP_CHAINING;
 		}
 	}
