@@ -123,7 +123,7 @@ enum _access {		/* access flags for the respective DO/file */
 	WRITE_MASK   = 0x1F00
 };
 
-enum _ext_caps {	/* extended capabilities/features */
+enum _ext_caps {	/* extended capabilities/features: bit flags */
 	EXT_CAP_ALG_ATTR_CHANGEABLE = 0x0004,
 	EXT_CAP_PRIVATE_DO          = 0x0008,
 	EXT_CAP_C4_CHANGEABLE       = 0x0010,
@@ -133,7 +133,7 @@ enum _ext_caps {	/* extended capabilities/features */
 	EXT_CAP_LCS                 = 0x0100,
 	EXT_CAP_CHAINING            = 0x1000,
 	EXT_CAP_APDU_EXT            = 0x2000,
-	EXT_CAP_MSE                 = 0x3000
+	EXT_CAP_MSE                 = 0x4000
 };
 
 enum _card_state {
