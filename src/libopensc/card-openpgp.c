@@ -720,8 +720,8 @@ pgp_get_card_features(sc_card_t *card)
 		if ((pgp_get_blob(card, priv->mf, 0x5f52, &blob) >= 0) &&
 		    (blob->data != NULL) && (blob->data[0] == 0x00)) {
 
-			if (hist_bytes_len > 4) {
-				pgp_parse_hist_bytes(card, hist_bytes+1, hist_bytes_len-4);
+			if (blob->len > 4) {
+				pgp_parse_hist_bytes(card, blob->data+1, blob->len-4);
 			}
 
 			/* get card status from historical bytes status indicator */
