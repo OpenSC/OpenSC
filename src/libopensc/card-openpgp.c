@@ -1884,10 +1884,9 @@ pgp_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 				"new PIN must be provided for unblock operation");
 
 	/* ensure pin_reference is 81, 82, 83 */
-	if (!(data->pin_reference == 0x81 || data->pin_reference == 0x82 || data->pin_reference == 0x83)) {
+	if (data->pin_reference < 0x81 || data->pin_reference > 0x83)
 		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
-				"key-id should be 1, 2, 3");
-	}
+				"Invalid key ID; must be 1, 2, or 3");
 
 	/* emulate SC_PIN_CMD_GET_INFO command for cards not supporting it */
 	if (data->cmd == SC_PIN_CMD_GET_INFO && (card->caps & SC_CARD_CAP_ISO7816_PIN_INFO) == 0) {
@@ -2268,10 +2267,10 @@ pgp_store_creationtime(sc_card_t *card, u8 key_id, time_t *outtime)
 	u8 buf[4];
 
 	LOG_FUNC_CALLED(card->ctx);
-	if (key_id == 0 || key_id > 3) {
-		sc_log(card->ctx, "Invalid key ID %d.", key_id);
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_DATA);
-	}
+
+	if (key_id < 1 || key_id > 3)
+		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
+				"Invalid key ID; must be 1, 2, or 3");
 
 	if (outtime != NULL && *outtime != 0)
 		createtime = *outtime;
@@ -2400,7 +2399,7 @@ pgp_update_pubkey_blob(sc_card_t *card, u8* modulus, size_t modulus_len,
 {
 	struct pgp_priv_data *priv = DRVDATA(card);
 	pgp_blob_t *pk_blob;
-	unsigned int blob_id;
+	unsigned int blob_id = 0;
 	sc_pkcs15_pubkey_t pubkey;
 	u8 *data = NULL;
 	size_t len;
@@ -2415,8 +2414,8 @@ pgp_update_pubkey_blob(sc_card_t *card, u8* modulus, size_t modulus_len,
 	else if (key_id == SC_OPENPGP_KEY_AUTH)
 		blob_id = DO_AUTH_SYM;
 	else {
-		sc_log(card->ctx, "Unknown key id %X.", key_id);
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
+				"Invalid key ID; must be 1, 2, or 3");
 	}
 
 	sc_log(card->ctx, "Retrieving blob %04X.", blob_id);
@@ -2577,8 +2576,8 @@ pgp_gen_key(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_info)
 	else if (key_info->key_id == SC_OPENPGP_KEY_AUTH)
 		ushort2bebytes(apdu_data, DO_AUTH);
 	else {
-		sc_log(card->ctx, "Unknown key id %X.", key_info->key_id);
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
+				"Invalid key ID; must be 1, 2, or 3");
 	}
 
 	if (card->type == SC_CARD_TYPE_OPENPGP_GNUK && key_info->rsa.modulus_len != 2048)
@@ -2851,8 +2850,8 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_keystore_info
 			ushort2bebytes(data, DO_AUTH);
 			break;
 		default:
-			sc_log(ctx, "Unknown key id %d.", key_info->key_id);
-			LOG_TEST_GOTO_ERR(ctx, SC_ERROR_INVALID_ARGUMENTS, "Invalid key id");
+			LOG_TEST_GOTO_ERR(ctx, SC_ERROR_INVALID_ARGUMENTS,
+						"Invalid key ID; must be 1, 2, or 3");
 	}
 	memcpy(data + 2,               tlv_7f48, tlvlen_7f48);
 	memcpy(data + 2 + tlvlen_7f48, tlv_5f48, tlvlen_5f48);
@@ -2893,10 +2892,10 @@ pgp_store_key(sc_card_t *card, sc_cardctl_openpgp_keystore_info_t *key_info)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 
 	/* Validate */
-	if (key_info->key_id < 1 || key_info->key_id > 3) {
-		sc_log(card->ctx, "Unknown key type %d.", key_info->key_id);
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
-	}
+	if (key_info->key_id < 1 || key_info->key_id > 3)
+		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
+				"Invalid key ID; must be 1, 2, or 3");
+
 	/* we just support standard key format */
 	switch (key_info->rsa.keyformat) {
 	case SC_OPENPGP_KEYFORMAT_RSA_STD:
@@ -3091,10 +3090,9 @@ gnuk_delete_key(sc_card_t *card, u8 key_id)
 
 	LOG_FUNC_CALLED(ctx);
 
-	if (key_id < 1 || key_id > 3) {
-		sc_log(ctx, "Key ID %d is invalid. Should be 1, 2 or 3.", key_id);
-		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
-	}
+	if (key_id < 1 || key_id > 3)
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS,
+				"Invalid key ID; must be 1, 2, or 3");
 
 	/* delete fingerprint */
 	sc_log(ctx, "Delete fingerprints");
