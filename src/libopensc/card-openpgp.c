@@ -2530,7 +2530,7 @@ pgp_gen_key(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_info)
 	sc_apdu_t apdu;
 	/* temporary variables to hold APDU params */
 	u8 apdu_case;
-	u8 *apdu_data;
+	u8 apdu_data[2] = { 0x00, 0x00 };
 	size_t apdu_le;
 	size_t resplen = 0;
 	int r = SC_SUCCESS;
@@ -2541,18 +2541,15 @@ pgp_gen_key(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_info)
 	if (key_info->algorithm != SC_OPENPGP_KEYALGO_RSA)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 
-	/* FIXME the compilers don't assure that the buffers set here as
-	 * apdu_data are present until the end of the function */
 	/* set Control Reference Template for key */
 	if (key_info->key_id == SC_OPENPGP_KEY_SIGN)
-		apdu_data = (unsigned char *) "\xb6";
-		/* as a string, apdu_data will end with '\0' (B6 00) */
+		ushort2bebytes(apdu_data, DO_SIGN);
 	else if (key_info->key_id == SC_OPENPGP_KEY_ENCR)
-		apdu_data = (unsigned char *) "\xb8";
+		ushort2bebytes(apdu_data, DO_ENCR);
 	else if (key_info->key_id == SC_OPENPGP_KEY_AUTH)
-		apdu_data = (unsigned char *) "\xa4";
+		ushort2bebytes(apdu_data, DO_AUTH);
 	else {
-		sc_log(card->ctx, "Unknown key type %X.", key_info->key_id);
+		sc_log(card->ctx, "Unknown key id %X.", key_info->key_id);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 
@@ -2588,8 +2585,8 @@ pgp_gen_key(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_info)
 	/* prepare APDU */
 	sc_format_apdu(card, &apdu, apdu_case, 0x47, 0x80, 0);
 	apdu.data = apdu_data;
-	apdu.datalen = 2;  /* Data = B600 */
-	apdu.lc = 2;
+	apdu.datalen = sizeof(apdu_data);
+	apdu.lc = sizeof(apdu_data);
 	apdu.le = apdu_le;
 
 	/* buffer to receive response */
