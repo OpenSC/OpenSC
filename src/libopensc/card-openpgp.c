@@ -1861,7 +1861,7 @@ pgp_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 				if (data->pin1.len == 0 &&
 				    !(data->flags & SC_PIN_CMD_USE_PINPAD))
 					LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
-						     "v2 cards don't support implicit old PIN for PIN change.");
+							"v2 cards don't support implicit old PIN for PIN change");
 
 				data->flags &= ~SC_PIN_CMD_IMPLICIT_CHANGE;
 			}
@@ -1881,12 +1881,12 @@ pgp_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 	if (data->cmd == SC_PIN_CMD_UNBLOCK && data->pin2.len == 0 &&
 	    !(data->flags & SC_PIN_CMD_USE_PINPAD))
 		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
-			     "new PIN must be provided for unblock operation.");
+				"new PIN must be provided for unblock operation");
 
 	/* ensure pin_reference is 81, 82, 83 */
 	if (!(data->pin_reference == 0x81 || data->pin_reference == 0x82 || data->pin_reference == 0x83)) {
 		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
-					 "key-id should be 1, 2, 3.");
+				"key-id should be 1, 2, 3");
 	}
 
 	/* emulate SC_PIN_CMD_GET_INFO command for cards not supporting it */
@@ -2362,7 +2362,7 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 	/* store to DO */
 	sc_log(card->ctx, "Writing to DO %04X.", tag);
 	r = pgp_put_data(card, tag, fingerprint, SHA_DIGEST_LENGTH);
-	LOG_TEST_RET(card->ctx, r, "Cannot write to DO.");
+	LOG_TEST_RET(card->ctx, r, "Cannot write to DO");
 
 	/* update the blob containing fingerprints (00C5) */
 	sc_log(card->ctx, "Updating fingerprint blob 00C5.");
@@ -2421,7 +2421,7 @@ pgp_update_pubkey_blob(sc_card_t *card, u8* modulus, size_t modulus_len,
 
 	sc_log(card->ctx, "Retrieving blob %04X.", blob_id);
 	r = pgp_get_blob(card, priv->mf, blob_id, &pk_blob);
-	LOG_TEST_RET(card->ctx, r, "Cannot get the blob.");
+	LOG_TEST_RET(card->ctx, r, "Cannot get the blob");
 
 	/* encode pubkey */
 	memset(&pubkey, 0, sizeof(pubkey));
@@ -2432,11 +2432,11 @@ pgp_update_pubkey_blob(sc_card_t *card, u8* modulus, size_t modulus_len,
 	pubkey.u.rsa.exponent.len  = exponent_len >> 3;
 
 	r = sc_pkcs15_encode_pubkey(card->ctx, &pubkey, &data, &len);
-	LOG_TEST_RET(card->ctx, r, "Cannot encode pubkey.");
+	LOG_TEST_RET(card->ctx, r, "Cannot encode pubkey");
 
 	sc_log(card->ctx, "Updating blob %04X's content.", blob_id);
 	r = pgp_set_blob(pk_blob, data, len);
-	LOG_TEST_RET(card->ctx, r, "Cannot update blob content.");
+	LOG_TEST_RET(card->ctx, r, "Cannot update blob content");
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
@@ -2471,7 +2471,7 @@ pgp_parse_and_set_pubkey_output(sc_card_t *card, u8* data, size_t data_len,
 							 &cla, &tag, &len);
 		if (part == NULL)
 			r = SC_ERROR_ASN1_OBJECT_NOT_FOUND;
-		LOG_TEST_RET(card->ctx, r, "Unexpected end of contents.");
+		LOG_TEST_RET(card->ctx, r, "Unexpected end of contents");
 		/* undo ASN1's split of tag & class */
 		for (tmptag = tag; tmptag > 0x0FF; tmptag >>= 8) {
 			cla <<= 8;
@@ -2507,7 +2507,7 @@ pgp_parse_and_set_pubkey_output(sc_card_t *card, u8* data, size_t data_len,
 	/* calculate and store fingerprint */
 	sc_log(card->ctx, "Calculate and store fingerprint");
 	r = pgp_calculate_and_store_fingerprint(card, ctime, modulus, exponent, key_info);
-	LOG_TEST_RET(card->ctx, r, "Cannot store fingerprint.");
+	LOG_TEST_RET(card->ctx, r, "Cannot store fingerprint");
 	/* update pubkey blobs (B601,B801, A401) */
 	sc_log(card->ctx, "Update blobs holding pubkey info.");
 	r = pgp_update_pubkey_blob(card, modulus, key_info->rsa.modulus_len,
@@ -2831,7 +2831,7 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_keystore_info
 
 	/* TLV block for 7F48 */
 	r = pgp_build_tlv(ctx, 0x7F48, pritemplate, tpl_len, &tlv_7f48, &tlvlen_7f48);
-	LOG_TEST_RET(ctx, r, "Failed to build TLV for 7F48.");
+	LOG_TEST_RET(ctx, r, "Failed to build TLV for 7F48");
 	tlv_7f48[0] |= 0x7F;
 	r = pgp_build_tlv(ctx, 0x5f48, kdata, kdata_len, &tlv_5f48, &tlvlen_5f48);
 	LOG_TEST_GOTO_ERR(ctx, r, "Failed to build TLV for 5F48");
@@ -2841,7 +2841,7 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_keystore_info
 	/* set data part content */
 	data = calloc(len, 1);
 	if (data == NULL)
-		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_NOT_ENOUGH_MEMORY, "Not enough memory.");
+		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_NOT_ENOUGH_MEMORY, "Not enough memory");
 
 	switch (key_info->key_id) {
 		case SC_OPENPGP_KEY_SIGN:
@@ -2950,7 +2950,7 @@ pgp_store_key(sc_card_t *card, sc_cardctl_openpgp_keystore_info_t *key_info)
 	sc_log(card->ctx, "Calculate and store fingerprint");
 	r = pgp_calculate_and_store_fingerprint(card, key_info->creationtime,
 						key_info->rsa.n, key_info->rsa.e, &pubkey);
-	LOG_TEST_RET(card->ctx, r, "Cannot store fingerprint.");
+	LOG_TEST_RET(card->ctx, r, "Cannot store fingerprint");
 	/* update pubkey blobs (B601,B801, A401) */
 	sc_log(card->ctx, "Update blobs holding pubkey info.");
 	r = pgp_update_pubkey_blob(card, key_info->rsa.n, 8*key_info->rsa.n_len,
@@ -3140,7 +3140,7 @@ pgp_delete_file(sc_card_t *card, const sc_path_t *path)
 
 	/* sc_pkcs15init_delete_by_path() sets the path type to SC_PATH_TYPE_FILE_ID */
 	r = pgp_select_file(card, path, &file);
-	LOG_TEST_RET(card->ctx, r, "Cannot select file.");
+	LOG_TEST_RET(card->ctx, r, "Cannot select file");
 
 	/* save "current" blob */
 	blob = priv->current;
