@@ -3066,7 +3066,7 @@ gnuk_delete_key(sc_card_t *card, u8 key_id)
 {
 	sc_context_t *ctx = card->ctx;
 	int r = SC_SUCCESS;
-	char *data = NULL;
+	u8 data[4] = { 0x4D, 0x02, 0x00, 0x00 };
 
 	LOG_FUNC_CALLED(ctx);
 
@@ -3087,14 +3087,14 @@ gnuk_delete_key(sc_card_t *card, u8 key_id)
 	/* rewrite Extended Header List */
 	sc_log(ctx, "Rewrite Extended Header List");
 
-	if (key_id == 1)
-		data = "\x4D\x02\xB6";
-	else if (key_id == 2)
-		data = "\x4D\x02\xB8";
-	else if (key_id == 3)
-		data = "\x4D\x02\xA4";
+	if (key_id == SC_OPENPGP_KEY_SIGN)
+		ushort2bebytes(data+2, DO_SIGN);
+	else if (key_id == SC_OPENPGP_KEY_ENCR)
+		ushort2bebytes(data+2, DO_ENCR);
+	else if (key_id == SC_OPENPGP_KEY_AUTH)
+		ushort2bebytes(data+2, DO_AUTH);
 
-	r = pgp_put_data(card, 0x4D, (const u8 *)data, strlen((const char *)data) + 1);
+	r = pgp_put_data(card, 0x4D, data, sizeof(data));
 
 	LOG_FUNC_RETURN(ctx, r);
 }
