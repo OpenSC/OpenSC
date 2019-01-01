@@ -2312,10 +2312,10 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 	if (key_info->algorithm != SC_OPENPGP_KEYALGO_RSA)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 
-	if (modulus == NULL || exponent == NULL || mlen == 0 || elen == 0) {
-		sc_log(card->ctx, "Null data (modulus or exponent)");
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
-	}
+	if (modulus == NULL || mlen == 0)
+		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS, "Modulus missing");
+	if (exponent == NULL || elen == 0)
+		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS, "Exponent missing");
 
 	/* http://tools.ietf.org/html/rfc4880  page 41, 72 */
 	pk_packet_len =   1   /* version number */
@@ -2575,10 +2575,9 @@ pgp_gen_key(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_info)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 
-	if (card->type == SC_CARD_TYPE_OPENPGP_GNUK && key_info->rsa.modulus_len != 2048) {
-		sc_log(card->ctx, "Gnuk does not support other key length than 2048.");
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
-	}
+	if (card->type == SC_CARD_TYPE_OPENPGP_GNUK && key_info->rsa.modulus_len != 2048)
+		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
+				"Gnuk only supports generating keys up to 2048-bit");
 
 	/* set attributes for new-generated key */
 	r = pgp_update_new_algo_attr(card, key_info);
@@ -2769,20 +2768,18 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_keystore_info
 		comp_to_add = 4;
 
 	/* validate */
-	if (comp_to_add == 4 && (key_info->rsa.n == NULL || key_info->rsa.n_len == 0)){
-		sc_log(ctx, "Error: Modulus required!");
-		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
-	}
+	if (comp_to_add == 4 && (key_info->rsa.n == NULL || key_info->rsa.n_len == 0))
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Modulus required");
 
 	/* Cardholder private key template's data part */
 	memset(pritemplate, 0, max_prtem_len);
 
 	/* get required exponent length */
 	alat_blob = pgp_find_blob(card, 0x00C0 | key_info->key_id);
-	if (!alat_blob) {
-		sc_log(ctx, "Cannot read Algorithm Attributes.");
-		LOG_FUNC_RETURN(ctx, SC_ERROR_OBJECT_NOT_FOUND);
-	}
+	if (alat_blob == NULL)
+		LOG_TEST_RET(ctx, SC_ERROR_OBJECT_NOT_FOUND,
+				"Cannot read Algorithm Attributes");
+
 	req_e_len = bebytes2ushort(alat_blob->data + 3) >> 3;   /* 1/8 */
 	assert(key_info->rsa.e_len <= req_e_len);
 
@@ -2791,7 +2788,7 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_keystore_info
 	if (key_info->rsa.e_len < req_e_len) {
 		/* create new buffer */
 		p = calloc(req_e_len, 1);
-		if (!p)
+		if (p == NULL)
 			LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
 		memcpy(p + req_e_len - key_info->rsa.e_len, key_info->rsa.e, key_info->rsa.e_len);
 		key_info->rsa.e_len = req_e_len;
@@ -3012,10 +3009,9 @@ pgp_erase_card(sc_card_t *card)
 
 				/* build APDU from binary array */
 				r = sc_bytes2apdu(card->ctx, apdu_bin, apdu_bin_len, &apdu);
-				if (r) {
-					sc_log(card->ctx, "Failed to build APDU");
-					LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
-				}
+				if (r)
+					LOG_TEST_RET(card->ctx, SC_ERROR_INTERNAL,
+							"Failed to build APDU");
 
 				apdu.resp = rbuf;
 				apdu.resplen = sizeof(rbuf);
