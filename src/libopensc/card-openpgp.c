@@ -2819,21 +2819,20 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_keystore_info
 		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_NOT_ENOUGH_MEMORY, "Not enough memory.");
 
 	switch (key_info->key_id) {
-	case SC_OPENPGP_KEY_SIGN:
-		data[0] = 0xB6;
-		break;
-	case SC_OPENPGP_KEY_ENCR:
-		data[0] = 0xB8;
-		break;
-	case SC_OPENPGP_KEY_AUTH:
-		data[0] = 0xA4;
-		break;
-	default:
-		sc_log(ctx, "Unknown key type %d.", key_info->key_id);
-		r = SC_ERROR_INVALID_ARGUMENTS;
-		goto err;
+		case SC_OPENPGP_KEY_SIGN:
+			ushort2bebytes(data, DO_SIGN);
+			break;
+		case SC_OPENPGP_KEY_ENCR:
+			ushort2bebytes(data, DO_ENCR);
+			break;
+		case SC_OPENPGP_KEY_AUTH:
+			ushort2bebytes(data, DO_AUTH);
+			break;
+		default:
+			sc_log(ctx, "Unknown key id %d.", key_info->key_id);
+			LOG_TEST_GOTO_ERR(ctx, SC_ERROR_INVALID_ARGUMENTS, "Invalid key id");
 	}
-	memcpy(data + 2, tlv_7f48, tlvlen_7f48);
+	memcpy(data + 2,               tlv_7f48, tlvlen_7f48);
 	memcpy(data + 2 + tlvlen_7f48, tlv_5f48, tlvlen_5f48);
 	r = pgp_build_tlv(ctx, 0x4D, data, len, &tlvblock, &tlvlen);
 	LOG_TEST_GOTO_ERR(ctx, r, "Cannot build TLV for Extended Header list");
