@@ -13,6 +13,9 @@ addons:
     - xsltproc
     - gengetopt
     - libcmocka-dev
+    - help2man
+    - pcscd
+    - check
 
 env:
   global:
@@ -41,7 +44,8 @@ matrix:
       env: ENABLE_DOC=--enable-doc
     - compiler: gcc
       os: linux
-      env: ENABLE_DOC=--enable-doc
+      env: DO_SIMULATION=yes
+      sudo: true
     - os: linux
       env:
         - HOST=x86_64-w64-mingw32
@@ -58,7 +62,8 @@ before_install:
         brew update;
         brew uninstall libtool;
         brew install libtool;
-        brew install gengetopt help2man cmocka;
+        brew install gengetopt help2man cmocka ccache;
+        export PATH="/usr/local/opt/ccache/libexec:$PATH";
     fi
 
 before_script:
@@ -69,7 +74,7 @@ before_script:
       if [ ! -f "$(winepath 'C:/Program Files (x86)/Inno Setup 5/ISCC.exe')" ]; then
         /sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_99.pid --make-pidfile --background --exec /usr/bin/Xvfb -- :99 -ac -screen 0 1280x1024x16;
         export DISPLAY=:99.0;
-        wget http://files.jrsoftware.org/is/5/isetup-5.5.6.exe;
+        [ -f isetup-5.5.6.exe ] || wget http://files.jrsoftware.org/is/5/isetup-5.5.6.exe;
         wine isetup-5.5.6.exe /SILENT /VERYSILENT /SP- /SUPPRESSMSGBOXES /NORESTART;
       fi;
       unset CC;
@@ -80,12 +85,65 @@ before_script:
   # On error (propably quota is exhausted), just continue
   - if [ "${DO_COVERITY_SCAN}" = "yes" ]; then curl -s 'https://scan.coverity.com/scripts/travisci_build_coverity_scan.sh' | bash || true; fi
 
+  - if [ "${DO_SIMULATION}" = "yes" ]; then
+      git clone https://github.com/frankmorgner/vsmartcard.git;
+      cd vsmartcard/virtualsmartcard;
+      autoreconf -vis && ./configure && sudo make install;
+      cd $TRAVIS_BUILD_DIR;
+      sudo /etc/init.d/pcscd restart;
+
+      git clone https://github.com/martinpaljak/oracle_javacard_sdks.git;
+      export JC_HOME=$PWD/oracle_javacard_sdks/jc222_kit;
+      export JC_CLASSIC_HOME=$PWD/oracle_javacard_sdks/jc305u3_kit;
+
+      git clone https://github.com/arekinath/jcardsim.git;
+      cd jcardsim;
+      mvn initialize && mvn clean install;
+      cd $TRAVIS_BUILD_DIR;
+
+      git clone https://github.com/philipWendland/IsoApplet.git;
+      javac -classpath jcardsim/target/jcardsim-3.0.5-SNAPSHOT.jar IsoApplet/src/net/pwendland/javacard/pki/isoapplet/*.java;
+      echo "com.licel.jcardsim.card.applet.0.AID=F276A288BCFBA69D34F31001" > isoapplet_jcardsim.cfg;
+      echo "com.licel.jcardsim.card.applet.0.Class=net.pwendland.javacard.pki.isoapplet.IsoApplet" >> isoapplet_jcardsim.cfg;
+      echo "com.licel.jcardsim.card.ATR=3B80800101" >> isoapplet_jcardsim.cfg;
+      echo "com.licel.jcardsim.vsmartcard.host=localhost" >> isoapplet_jcardsim.cfg;
+      echo "com.licel.jcardsim.vsmartcard.port=35963" >> isoapplet_jcardsim.cfg;
+
+      git clone https://github.com/vletoux/GidsApplet.git;
+      javac -classpath jcardsim/target/jcardsim-3.0.5-SNAPSHOT.jar GidsApplet/src/com/mysmartlogon/gidsApplet/*.java;
+      echo "com.licel.jcardsim.card.applet.0.AID=A000000397425446590201" > gids_jcardsim.cfg;
+      echo "com.licel.jcardsim.card.applet.0.Class=com.mysmartlogon.gidsApplet.GidsApplet" >> gids_jcardsim.cfg;
+      echo "com.licel.jcardsim.card.ATR=3B80800101" >> gids_jcardsim.cfg;
+      echo "com.licel.jcardsim.vsmartcard.host=localhost" >> gids_jcardsim.cfg;
+      echo "com.licel.jcardsim.vsmartcard.port=35963" >> gids_jcardsim.cfg;
+
+      git clone --recursive https://github.com/Yubico/ykneo-openpgp.git;
+      cd ykneo-openpgp;
+      ant -DJAVACARD_HOME=${JC_HOME};
+      cd $TRAVIS_BUILD_DIR;
+      echo "com.licel.jcardsim.card.applet.0.AID=D2760001240102000000000000010000" > openpgp_jcardsim.cfg;
+      echo "com.licel.jcardsim.card.applet.0.Class=openpgpcard.OpenPGPApplet" >> openpgp_jcardsim.cfg;
+      echo "com.licel.jcardsim.card.ATR=3B80800101" >> openpgp_jcardsim.cfg;
+      echo "com.licel.jcardsim.vsmartcard.host=localhost" >> openpgp_jcardsim.cfg;
+      echo "com.licel.jcardsim.vsmartcard.port=35963" >> openpgp_jcardsim.cfg;
+
+      git clone --recursive https://github.com/arekinath/PivApplet.git;
+      cd PivApplet;
+      ant dist;
+      cd $TRAVIS_BUILD_DIR;
+
+      git clone https://github.com/Yubico/yubico-piv-tool.git;
+      cd yubico-piv-tool;
+      autoreconf -vis && ./configure && sudo make install;
+      cd $TRAVIS_BUILD_DIR;
+    fi
+
 script:
   - if [ "${DO_COVERITY_SCAN}" != "yes" ]; then
       if [ $TRAVIS_OS_NAME == osx ]; then
         ./MacOSX/build;
       else
-        make;
+        make -j 4;
       fi;
     fi
   - if [ -z "$HOST" -a "${DO_COVERITY_SCAN}" != "yes" ]; then
@@ -94,6 +152,43 @@ script:
   - if [ ! -z "$HOST" -a "${DO_COVERITY_SCAN}" != "yes" ]; then
       make install;
       wine "C:/Program Files (x86)/Inno Setup 5/ISCC.exe" win32/OpenSC.iss;
+    fi
+
+  - if [ "${DO_SIMULATION}" = "yes" ]; then
+      set -ex;
+      sudo make install;
+      export LD_LIBRARY_PATH=/usr/local/lib;
+
+      java -noverify -cp IsoApplet/src/:jcardsim/target/jcardsim-3.0.5-SNAPSHOT.jar com.licel.jcardsim.remote.VSmartCard isoapplet_jcardsim.cfg >/dev/null &
+      sleep 5;
+      opensc-tool --card-driver default --send-apdu 80b800001a0cf276a288bcfba69d34f310010cf276a288bcfba69d34f3100100;
+      opensc-tool -n;
+      killall java;
+
+      java -noverify -cp GidsApplet/src/:jcardsim/target/jcardsim-3.0.5-SNAPSHOT.jar com.licel.jcardsim.remote.VSmartCard gids_jcardsim.cfg >/dev/null &
+      sleep 5;
+      opensc-tool --card-driver default --send-apdu 80b80000190bA0000003974254465902010bA00000039742544659020100;
+      opensc-tool -n;
+      gids-tool --initialize --pin 123456 --admin-key 000000000000000000000000000000000000000000000000 --serial 00000000000000000000000000000000;
+      killall java;
+
+      java -noverify -cp ykneo-openpgp/applet/bin:jcardsim/target/jcardsim-3.0.5-SNAPSHOT.jar com.licel.jcardsim.remote.VSmartCard openpgp_jcardsim.cfg >/dev/null &
+      sleep 5;
+      opensc-tool --card-driver default --send-apdu 80b800002210D276000124010200000000000001000010D276000124010200000000000001000000;
+      opensc-tool -n;
+      pkcs11-tool -l -t -p 123456;
+      killall java;
+
+      java -noverify -cp PivApplet/bin/:jcardsim/target/jcardsim-3.0.5-SNAPSHOT.jar com.licel.jcardsim.remote.VSmartCard PivApplet/test/jcardsim.cfg >/dev/null &
+      sleep 5;
+      opensc-tool --card-driver default --send-apdu 80b80000120ba000000308000010000100050000020F0F7f;
+      opensc-tool -n;
+      yubico-piv-tool -r 'Virtual PCD 00 00' -P 123456 -s 9e -a generate > pubkey-9e.pem;
+      yubico-piv-tool -r 'Virtual PCD 00 00' -P 123456 -s 9e -a selfsign-certificate -S '/CN=test' < pubkey-9e.pem > cert-9e.pem;
+      yubico-piv-tool -r 'Virtual PCD 00 00' -P 123456 -s 9e -a import-certificate < cert-9e.pem;
+      pkcs11-tool -l -t -p 123456;
+      killall java;
+      set +ex;
     fi
 
 after_script:
@@ -110,4 +205,16 @@ after_script:
       .github/push_artifacts.sh "Travis CI build ${TRAVIS_JOB_NUMBER}";
     fi
 
-cache: ccache
+cache:
+  apt: true
+  ccache: true
+  directories:
+     - $HOME/.m2/
+     - $HOME/Library/Caches/Homebrew
+     - openssl_bin
+     - openpace_bin
+  files:
+     - isetup-5.5.6.exe
+
+before_cache:
+    - brew cleanup
