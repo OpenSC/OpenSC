@@ -1094,7 +1094,8 @@ pkcs15_init_slot(struct sc_pkcs15_card *p15card, struct sc_pkcs11_slot *slot,
 				/* Trim tokeninfo->label to make right parenthesis visible */
 				char tokeninfo_label[sizeof(p15card->tokeninfo->label)+1];
 				int len;
-				snprintf(tokeninfo_label, sizeof(tokeninfo_label), "%s", p15card->tokeninfo->label);
+				snprintf(tokeninfo_label, sizeof(tokeninfo_label), "%s",
+						p15card->tokeninfo ? p15card->tokeninfo->label : "");
 				tokeninfo_label[sizeof(tokeninfo_label)-1] = '\0';
 				for (len = strlen(tokeninfo_label) - 1; len >= 0 && isspace(tokeninfo_label[len]); len--) {
 					tokeninfo_label[len] = 0;
@@ -1104,12 +1105,14 @@ pkcs15_init_slot(struct sc_pkcs15_card *p15card, struct sc_pkcs11_slot *slot,
 					tokeninfo_label);
 			} else
 				/* The PIN label is empty or says just non-useful "PIN" */
-				snprintf(label, sizeof(label), "%s", p15card->tokeninfo->label);
+				snprintf(label, sizeof(label), "%s",
+						p15card->tokeninfo ? p15card->tokeninfo->label : "");
 			slot->token_info.flags |= CKF_LOGIN_REQUIRED;
 		}
 	}
 	else   {
-		snprintf(label, sizeof(label), "%s", p15card->tokeninfo->label);
+		snprintf(label, sizeof(label), "%s",
+				p15card->tokeninfo ? p15card->tokeninfo->label : "");
 	}
 	strcpy_bp(slot->token_info.label, label, 32);
 
