@@ -56,7 +56,15 @@ util_connect_card_ex(sc_context_t *ctx, sc_card_t **cardp,
 	struct sc_card *card = NULL;
 	int r;
 
+	setbuf(stderr, NULL);
+	setbuf(stdout, NULL);
+
 	sc_notify_init();
+
+	if (verbose) {
+		ctx->debug = verbose;
+		sc_ctx_log_to_file(ctx, "stderr");
+	}
 
 	if (do_wait) {
 		unsigned int event;

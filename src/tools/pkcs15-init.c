@@ -667,11 +667,6 @@ open_reader_and_card(char *reader)
 		return 0;
 	}
 
-	if (verbose > 1) {
-		ctx->debug = verbose;
-		sc_ctx_log_to_file(ctx, "stderr");
-	}
-
 	if (util_connect_card_ex(ctx, &card, reader, opt_wait, 0, verbose))
 		return 0;
 

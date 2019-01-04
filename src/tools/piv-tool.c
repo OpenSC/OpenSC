@@ -487,9 +487,6 @@ int main(int argc, char *argv[])
 	sc_context_param_t ctx_param;
 	char **old_apdus = NULL;
 
-	setbuf(stderr, NULL);
-	setbuf(stdout, NULL);
-
 	while (1) {
 		c = getopt_long(argc, argv, "nA:G:O:Z:C:i:o:fvs:c:w", options, &long_optind);
 		if (c == -1)
@@ -599,12 +596,6 @@ int main(int argc, char *argv[])
 	if (r != SC_SUCCESS) {
 		fprintf(stderr, "Failed to establish context: %s\n", sc_strerror(r));
 		return 1;
-	}
-
-	/* Only change if not in opensc.conf */
-	if (verbose > 1 && ctx->debug == 0) {
-		ctx->debug = verbose;
-		sc_ctx_log_to_file(ctx, "stderr");
 	}
 
 	if (action_count <= 0)

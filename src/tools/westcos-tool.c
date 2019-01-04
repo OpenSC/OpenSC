@@ -443,11 +443,6 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	if (verbose > 1) {
-		ctx->debug = verbose;
-		sc_ctx_log_to_file(ctx, "stderr");
-	}
-
 	if (opt_driver != NULL)
 	{
 		r = sc_set_card_driver(ctx, opt_driver);
