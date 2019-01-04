@@ -174,6 +174,24 @@ void _sc_log(struct sc_context *ctx, const char *format, ...)
 	va_end(ap);
 }
 
+static int is_a_tty(FILE *fp)
+{
+	if (fp != NULL) {
+		int fd = fileno(fp);
+		if (fd >= 0) {
+#ifdef _WIN32
+			HANDLE h = (HANDLE)_get_osfhandle(fd);
+			if (h != INVALID_HANDLE_VALUE) {
+				return GetFileType(h) == FILE_TYPE_CHAR;
+			}
+#else
+			return isatty(fd);
+#endif
+		}
+	}
+	return 0;
+}
+
 #ifdef _WIN32
 #define set_color(sc_color, win_color, vt100_color) \
 	do { if (colors & sc_color) { attr |= win_color; } } while (0)
@@ -191,6 +209,9 @@ int sc_color_fprintf(int colors, struct sc_context *ctx, FILE * stream, const ch
 	int fd = stream ? fileno(stream) : -1;
 	HANDLE handle = fd >= 0 ? (HANDLE) _get_osfhandle(fd) : INVALID_HANDLE_VALUE;
 #endif
+
+	if (!is_a_tty(stream))
+		colors = 0;
 
 	if (colors && (!ctx || (!(ctx->flags & SC_CTX_FLAG_DISABLE_COLORS)))) {
 #ifdef _WIN32
