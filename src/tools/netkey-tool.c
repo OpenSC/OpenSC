@@ -533,10 +533,6 @@ int main(
 		fprintf(stderr,"Establish-Context failed: %s\n", sc_strerror(r));
 		exit(1);
 	}
-	if (debug > 1) {
-		ctx->debug = debug;
-		sc_ctx_log_to_file(ctx, "stderr");
-	}
 	if(ctx->debug>0)
 		printf("Context for application \"%s\" created, Debug=%d\n", ctx->app_name, ctx->debug);
 

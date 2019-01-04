@@ -149,11 +149,6 @@ int main(int argc, char* argv[])
 		goto dnie_tool_end;
 	}
 
-	if (verbose > 1) {
-		ctx->debug = verbose;
-		sc_ctx_log_to_file(ctx,"stderr");
-	}
-
 	if (opt_driver != NULL) {
 		err = sc_set_card_driver(ctx, opt_driver);
 		if (err) {

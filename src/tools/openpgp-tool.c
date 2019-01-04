@@ -867,11 +867,6 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
-	if (verbose > 1) {
-		ctx->debug = verbose;
-		sc_ctx_log_to_file(ctx, "stderr");
-	}
-
 	r = util_connect_card(ctx, &card, opt_reader, opt_wait, verbose);
 	if (r) {
 		util_fatal("failed to connect to card: %s", sc_strerror(r));

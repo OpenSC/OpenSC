@@ -1073,11 +1073,6 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	if (verbose > 1) {
-		ctx->debug = verbose;
-		sc_ctx_log_to_file(ctx, "stderr");
-	}
-
 	err = util_connect_card(ctx, &card, opt_reader, opt_wait, verbose);
 	printf("Using card driver: %s\n", card->driver->name);
 

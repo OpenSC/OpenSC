@@ -475,11 +475,6 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	if (verbose > 1) {
-		ctx->debug = verbose;
-		sc_ctx_log_to_file(ctx, "stderr");
-	}
-
 	err = util_connect_card_ex(ctx, &card, opt_reader, opt_wait, 0, verbose);
 	if (err)
 		goto end;
