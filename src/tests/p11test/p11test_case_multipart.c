@@ -34,15 +34,20 @@ void multipart_tests(void **state) {
 	P11TEST_START(info);
 	search_for_all_objects(&objects, info);
 
-	debug_print("\nCheck functionality of Multipart Sign&Verify and/or Encrypt&Decrypt");
+	debug_print("\nCheck functionality of Multipart Sign&Verify");
 	for (i = 0; i < objects.count; i++) {
+		if (objects.data[i].private_handle == CK_INVALID_HANDLE) {
+			debug_print(" [ SKIP %s ] Skip missing private key",
+			objects.data[i].id_str);
+			continue;
+		}
 		if (objects.data[i].type == EVP_PK_EC) {
 			debug_print(" [ SKIP %s ] EC keys do not support multi-part operations",
 			objects.data[i].id_str);
 			continue;
 		}
 		used = 0;
-		/* do the Sign&Verify and/or Encrypt&Decrypt */
+		/* do the Sign&Verify */
 		/* XXX some keys do not have appropriate flags, but we can use them
 		 * or vice versa */
 		//if (objects.data[i].sign && objects.data[i].verify)
@@ -79,6 +84,9 @@ void multipart_tests(void **state) {
 			objects.data[i].sign ? "[./] " : "[  ] ",
 			objects.data[i].verify ? " [./] " : " [  ] ",
 			objects.data[i].label);
+		if (objects.data[i].private_handle == CK_INVALID_HANDLE) {
+			continue;
+		}
 		for (j = 0; j < objects.data[i].num_mechs; j++) {
 			test_mech_t *mech = &objects.data[i].mechs[j];
 			if ((mech->usage_flags & CKF_SIGN) == 0) {

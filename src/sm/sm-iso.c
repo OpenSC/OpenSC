@@ -279,7 +279,7 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 	u8 *p, *le = NULL, *sm_data = NULL, *fdata = NULL, *mac_data = NULL,
 	   *asn1 = NULL, *mac = NULL, *resp_data = NULL;
 	size_t sm_data_len, fdata_len, mac_data_len, asn1_len, mac_len, le_len;
-	int r, cse;
+	int r;
 	sc_apdu_t *sm_apdu = NULL;
 
 	if (!apdu || !ctx || !card || !card->reader || !psm_apdu) {
@@ -313,17 +313,7 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 	}
 	mac_data_len = r;
 
-	/* get le and data depending on the case of the insecure command */
-	cse = apdu->cse;
-	if ((apdu->le/ctx->block_length + 1)*ctx->block_length + 18 > 0xff+1)
-		/* for encrypted APDUs we usually get authenticated status bytes (4B),
-		 * a MAC (11B) and a cryptogram with padding indicator (3B without
-		 * data).  The cryptogram is always padded to the block size. */
-		/*cse |= SC_APDU_EXT;*/
-		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
-				"Response data may be truncated, because it doesn't fit into a short length APDU.");
-
-	switch (cse) {
+	switch (apdu->cse) {
 		case SC_APDU_CASE_1:
 			break;
 	case SC_APDU_CASE_2_SHORT:
@@ -476,22 +466,17 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 	sm_apdu->datalen = sm_data_len;
 	sm_apdu->lc = sm_data_len;
 	sm_apdu->le = 0;
-	if (cse & SC_APDU_EXT) {
+	if (apdu->cse & SC_APDU_EXT) {
 		sm_apdu->cse = SC_APDU_CASE_4_EXT;
-#if OPENSC_NOT_BOGUS_ANYMORE
-		sm_apdu->resplen = 0xffff+1;
-#else
-		sm_apdu->resplen = SC_MAX_EXT_APDU_BUFFER_SIZE;
-#endif
 	} else {
 		sm_apdu->cse = SC_APDU_CASE_4_SHORT;
-#if OPENSC_NOT_BOGUS_ANYMORE
-		sm_apdu->resplen = 0xff+1;
-#else
-		sm_apdu->resplen = SC_MAX_APDU_BUFFER_SIZE;
-#endif
 	}
-	resp_data = malloc(sm_apdu->resplen);
+	/* for encrypted APDUs we usually get authenticated status bytes
+	 * (4B), a MAC (2B without data) and a cryptogram with padding
+	 * indicator (3B without data). The cryptogram is always padded to
+	 * the block size. */
+	sm_apdu->resplen = 9 + mac_len + (apdu->resplen/ctx->block_length + 1)*ctx->block_length;
+	resp_data = calloc(sm_apdu->resplen, 1);
 	if (!resp_data) {
 		r = SC_ERROR_OUT_OF_MEMORY;
 		goto err;

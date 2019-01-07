@@ -3,7 +3,7 @@
  * card-default.c: Support for cards with no driver
  *
  * Copyright (C) 2001, 2002  Juha Yrjölä <juha.yrjola@iki.fi>
- * Copyright (C) 2005-2016  Douglas E. Engert <deengert@gmail.com>
+ * Copyright (C) 2005-2018  Douglas E. Engert <deengert@gmail.com>
  * Copyright (C) 2006, Identity Alliance, Thomas Harning <thomas.harning@identityalliance.com>
  * Copyright (C) 2007, EMC, Russell Larner <rlarner@rsa.com>
  *
@@ -53,6 +53,7 @@
 #ifdef ENABLE_ZLIB
 #include "compression.h"
 #endif
+#include "simpletlv.h"
 
 enum {
 	PIV_OBJ_CCC = 0,
@@ -146,6 +147,16 @@ enum {
 	PIV_STATE_INIT
 };
 
+/* ccc_flags */
+#define PIV_CCC_FOUND		0x00000001
+#define PIV_CCC_F0_PIV		0x00000002
+#define PIV_CCC_F0_CAC		0x00000004
+#define PIV_CCC_F0_JAVA		0x00000008
+#define PIV_CCC_F3_CAC_PKI	0x00000010
+
+#define PIV_CCC_TAG_F0		0xF0
+#define PIV_CCC_TAG_F3		0xF3
+
 typedef struct piv_private_data {
 	int enumtag;
 	int  selected_obj; /* The index into the piv_objects last selected */
@@ -174,6 +185,7 @@ typedef struct piv_private_data {
 	unsigned int card_issues; /* card_issues flags for this card */
 	int object_test_verify; /* Can test this object to set verification state of card */
 	int yubico_version; /* 3 byte version number of NEO or Yubikey4  as integer */
+	unsigned int ccc_flags;	    /* From  CCC indicate if CAC card */
 } piv_private_data_t;
 
 #define PIV_DATA(card) ((piv_private_data_t*)card->drv_data)
@@ -198,6 +210,39 @@ struct piv_aid {
  * These can be discovered by trying GET DATA
  */
 
+/* ATRs of cards known to have PIV applet. But must still be tested for a PIV applet */
+static const struct sc_atr_table piv_atrs[] = {
+	/* CAC cards with PIV from: CAC-utilziation-and-variation-matrix-v2.03-20May2016.doc */
+	/* Oberthur Card Systems (PIV Endpoint) with PIV endpoint applet and PIV auth cert OBSOLETE */
+	{ "3B:DB:96:00:80:1F:03:00:31:C0:64:77:E3:03:00:82:90.00:C1", NULL, NULL, SC_CARD_TYPE_PIV_II_OBERTHUR, 0, NULL },
+
+	/* Gemalto (PIV Endpoint) with PIV endpoint applet and PIV auth cert OBSOLETE */
+	{ "3B 7D 96 00 00 80 31 80 65 B0 83 11 13 AC 83 00 90 00", NULL, NULL, SC_CARD_TYPE_PIV_II_GEMALTO, 0, NULL },
+
+	/* Gemalto (PIV Endpoint) 2 entries */
+	{ "3B:7D:96:00:00:80:31:80:65:B0:83:11:17:D6:83:00:90:00", NULL, NULL, SC_CARD_TYPE_PIV_II_GEMALTO, 0, NULL },
+
+	/* Oberthur Card System (PIV Endpoint)  2 entries*/
+	{ "3B:DB:96:00:80:1F:03:00:31:C0:64:B0:F3:10:00:07:90:00:80", NULL, NULL, SC_CARD_TYPE_PIV_II_OBERTHUR, 0, NULL },
+	/* Oberthur Card System  with LCS 0F - Some VA cards have Terminated state */
+	{ "3B:DB:96:00:80:1F:03:00:31:C0:64:B0:F3:10:00:0F:90:00:88", NULL, NULL, SC_CARD_TYPE_PIV_II_OBERTHUR, 0, NULL },
+
+	/* Giesecke & Devrient (PIV Endpoint)  2 entries */
+	{ "3B:7A:18:00:00:73:66:74:65:20:63:64:31:34:34", NULL, NULL, SC_CARD_TYPE_PIV_II_GI_DE_DUAL_CAC, 0, NULL },
+
+	/* PIVKEY from Taligo */
+	/* PIVKEY T600 token and T800  on Feitian eJAVA */
+	{ "3B:FC:18:00:00:81:31:80:45:90:67:46:4A:00:64:2D:70:C1:72:FE:E0:FE", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
+
+	/* PIVKEY C910 */
+	{ "3b:fc:18:00:00:81:31:80:45:90:67:46:4a:00:64:16:06:f2:72:7e:00:e0", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
+
+	/* PIVKEY C980 */
+	{ "3B:f9:96:00:00:81:31:fe:45:53:50:49:56:4b:45:59:37:30:28", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
+
+	{ NULL, NULL, NULL, 0, 0, NULL }
+};
+
 /* all have same AID */
 static struct piv_aid piv_aids[] = {
 	{SC_CARD_TYPE_PIV_II_GENERIC, /* TODO not really card type but what PIV AID is supported */
@@ -209,9 +254,10 @@ static struct piv_aid piv_aids[] = {
 #define CI_VERIFY_630X			    0x00000001U /* VERIFY tries left returns 630X rather then 63CX */
 #define CI_VERIFY_LC0_FAIL		    0x00000002U /* VERIFY Lc=0 never returns 90 00 if PIN not needed */
 							/* will also test after first PIN verify if protected object can be used instead */
+#define CI_NO_RANDOM			    0x00000004U /* can not use Challenge to get random data or no 9B key */
 #define CI_CANT_USE_GETDATA_FOR_STATE	    0x00000008U /* No object to test verification inplace of VERIFY Lc=0 */
 #define CI_LEAKS_FILE_NOT_FOUND		    0x00000010U /* GET DATA of empty object returns 6A 82 even if PIN not verified */
-#define CI_DISCOVERY_USELESS		    0x00000020U /* Discovery can not be used to query active AID */
+#define CI_DISCOVERY_USELESS		    0x00000020U /* Discovery can not be used to query active AID invalid or no data returned */
 #define CI_PIV_AID_LOSE_STATE		    0x00000040U /* PIV AID can lose the login state run with out it*/
 
 #define CI_OTHER_AID_LOSE_STATE		    0x00000100U /* Other drivers match routines may reset our security state and lose AID!!! */
@@ -219,7 +265,7 @@ static struct piv_aid piv_aids[] = {
 
 #define CI_NO_RSA2048			    0x00010000U /* does not have RSA 2048 */
 #define CI_NO_EC384			    0x00020000U /* does not have EC 384 */
-
+#define CI_NO_EC			    0x00040000U /* No EC at all */
 
 /*
  * Flags in the piv_object:
@@ -2222,11 +2268,33 @@ static int piv_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 	size_t rbuf_len = 0, out_len = 0;
 	int r;
 	unsigned int tag, cla;
+	piv_private_data_t * priv = PIV_DATA(card);
 
 	LOG_FUNC_CALLED(card->ctx);
 
+	if (priv->card_issues & CI_NO_RANDOM) {
+		r = SC_ERROR_NOT_SUPPORTED;
+		LOG_TEST_GOTO_ERR(card->ctx, r, "No support for random data");
+	}
+
 	/* NIST 800-73-3 says use 9B, previous verisons used 00 */
 	r = piv_general_io(card, 0x87, 0x00, 0x9B, sbuf, sizeof sbuf, &rbuf, &rbuf_len);
+	/*
+	 * piv_get_challenge is called in a loop.
+	 * some cards may allow 1 challenge expecting it to be part of
+	 * NIST 800-73-3 part 2 "Authentication of PIV Card Application Administrator"
+	 * and return "6A 80" if last command was a get_challenge.
+	 * Now that the card returned error, we can try one more time.
+	 */
+	 if (r == SC_ERROR_INCORRECT_PARAMETERS) {
+		if (rbuf)
+			free(rbuf);
+		rbuf_len = 0;
+		r = piv_general_io(card, 0x87, 0x00, 0x9B, sbuf, sizeof sbuf, &rbuf, &rbuf_len);
+		if (r == SC_ERROR_INCORRECT_PARAMETERS) {
+			r = SC_ERROR_NOT_SUPPORTED;
+		}
+	}
 	LOG_TEST_GOTO_ERR(card->ctx, r, "GENERAL AUTHENTICATE failed");
 
 	p = rbuf;
@@ -2635,6 +2703,89 @@ err:
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
+/*
+ * parse a CCC to test  if this is a Dual CAC/PIV
+ * We read teh CCC using the PIV API.
+ * Look for CAC RID=A0 00 00 00 79
+ */
+ static int piv_parse_ccc(sc_card_t *card, u8* rbuf, size_t rbuflen)
+{
+	int r = 0;
+	const u8 * body;
+	size_t bodylen;
+	unsigned int cla_out, tag_out;
+
+	u8  tag;
+	const u8 * end;
+	size_t len;
+
+	piv_private_data_t * priv = PIV_DATA(card);
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	if (rbuf == NULL || rbuflen == 0) {
+		r = SC_ERROR_WRONG_LENGTH;
+		goto  err;
+	}
+
+	/* Outer layer is a DER tlv */
+	body = rbuf;
+	if ((r = sc_asn1_read_tag(&body, rbuflen, &cla_out, &tag_out,  &bodylen)) != SC_SUCCESS) {
+		sc_log(card->ctx, "DER problem %d",r);
+		r = SC_ERROR_INVALID_ASN1_OBJECT;
+		goto err;
+	}
+
+	priv->ccc_flags |= PIV_CCC_FOUND;
+
+	/* CCC  entries are simple tlv */
+	end = body + bodylen;
+	for(; (body < end); body += len) {
+		r = sc_simpletlv_read_tag((u8**)&body, end - body , &tag, &len);
+		if (r < 0)
+			goto err;
+		switch (tag) {
+			case PIV_CCC_TAG_F0:
+				if (len == 0x15) {
+					if (memcmp(body ,"\xA0\x00\x00\x03\08", 5) == 0)
+						priv->ccc_flags |= PIV_CCC_F0_PIV;
+					else if (memcmp(body ,"\xA0\x00\x00\x00\x79", 5) == 0)
+						priv->ccc_flags |= PIV_CCC_F0_CAC;
+					if (*(body + 6) == 0x02)
+						priv->ccc_flags |= PIV_CCC_F0_JAVA;
+				}
+				break;
+			case PIV_CCC_TAG_F3:
+				if (len == 0x10) {
+					if (memcmp(body ,"\xA0\x00\x00\x00\x79\x04", 6) == 0)
+						priv->ccc_flags |= PIV_CCC_F3_CAC_PKI;
+				}
+				break;
+		}
+	}
+
+err:
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+
+static int piv_process_ccc(sc_card_t *card)
+{
+	int r = 0;
+	u8 * rbuf = NULL;
+	size_t rbuflen = 0;
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+	r = piv_get_cached_data(card, PIV_OBJ_CCC, &rbuf, &rbuflen);
+
+	if (r < 0)
+		goto err;
+
+	/* the object is now cached, see what we have */
+	r = piv_parse_ccc(card, rbuf, rbuflen);
+err:
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+
 
 static int piv_find_discovery(sc_card_t *card)
 {
@@ -2922,7 +3073,8 @@ piv_finish(sc_card_t *card)
 static int piv_match_card(sc_card_t *card)
 {
 	int r = 0;
-
+	
+	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d\n", card->type);
 	/* piv_match_card may be called with card->type, set by opensc.conf */
 	/* user provide card type must be one we know */
 	switch (card->type) {
@@ -2931,7 +3083,13 @@ static int piv_match_card(sc_card_t *card)
 		case SC_CARD_TYPE_PIV_II_HIST:
 		case SC_CARD_TYPE_PIV_II_NEO:
 		case SC_CARD_TYPE_PIV_II_YUBIKEY4:
+		case SC_CARD_TYPE_PIV_II_GI_DE_DUAL_CAC:
 		case SC_CARD_TYPE_PIV_II_GI_DE:
+		case SC_CARD_TYPE_PIV_II_GEMALTO_DUAL_CAC:
+		case SC_CARD_TYPE_PIV_II_GEMALTO:
+		case SC_CARD_TYPE_PIV_II_OBERTHUR_DUAL_CAC:
+		case SC_CARD_TYPE_PIV_II_OBERTHUR:
+		case SC_CARD_TYPE_PIV_II_PIVKEY:
 			break;
 		default:
 			return 0; /* can not handle the card */
@@ -2950,13 +3108,14 @@ static int piv_match_card(sc_card_t *card)
 		piv_finish(card);
 	}
 
+	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d r:%d\n", card->type,r);
 	return r;
 }
 
 
 static int piv_match_card_continued(sc_card_t *card)
 {
-	int i, r;
+	int i, r = 0;
 	int type  = -1;
 	piv_private_data_t *priv = NULL;
 	int saved_type = card->type;
@@ -2973,12 +3132,19 @@ static int piv_match_card_continued(sc_card_t *card)
 		case SC_CARD_TYPE_PIV_II_HIST:
 		case SC_CARD_TYPE_PIV_II_NEO:
 		case SC_CARD_TYPE_PIV_II_YUBIKEY4:
+		case SC_CARD_TYPE_PIV_II_GI_DE_DUAL_CAC:
 		case SC_CARD_TYPE_PIV_II_GI_DE:
+		case SC_CARD_TYPE_PIV_II_GEMALTO_DUAL_CAC:
+		case SC_CARD_TYPE_PIV_II_GEMALTO:
+		case SC_CARD_TYPE_PIV_II_OBERTHUR_DUAL_CAC:
+		case SC_CARD_TYPE_PIV_II_OBERTHUR:
+		case SC_CARD_TYPE_PIV_II_PIVKEY:
 			type = card->type;
 			break;
 		default:
 			return 0; /* can not handle the card */
 	}
+	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d type:%d r:%d\n", card->type, type, r);
 	if (type == -1) {
 
 		/*
@@ -2997,18 +3163,6 @@ static int piv_match_card_continued(sc_card_t *card)
 					!(memcmp(card->reader->atr_info.hist_bytes, "Yubikey", 7))) {
 				type = SC_CARD_TYPE_PIV_II_NEO;
 			}
-			/*
-			 * https://csrc.nist.gov/csrc/media/projects/cryptographic-module-validation-program/documents/security-policies/140sp1239.pdf
-			 * lists 2 ATRS with historical bytes:
-			 *   73 66 74 65 2D 63 64 30 38 30
-			 *   73 66 74 65 20 63 64 31 34 34
-			 * will check for 73 66 74 65
-			 */
-			else if (card->reader->atr_info.hist_bytes_len >= 4
-					&& !(memcmp(card->reader->atr_info.hist_bytes, "sfte", 4))) {
-				type = SC_CARD_TYPE_PIV_II_GI_DE;
-			}
-
 			else if (card->reader->atr_info.hist_bytes_len > 0
 					&& card->reader->atr_info.hist_bytes[0] == 0x80u) { /* compact TLV */
 				size_t datalen;
@@ -3029,10 +3183,17 @@ static int piv_match_card_continued(sc_card_t *card)
 				}
 			}
 		}
-		if (type == -1)
-			type = SC_CARD_TYPE_PIV_II_GENERIC;
+		sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d type:%d r:%d\n", card->type, type, r);
+
+		if (type == -1) {
+			/* use known ATRs  */
+			i = _sc_match_atr(card, piv_atrs, &type);
+			if (i < 0)
+				type = SC_CARD_TYPE_PIV_II_GENERIC; /* may still be CAC with PIV Endpoint */
+		}
 	}
 
+	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d type:%d r:%d\n", card->type, type, r);
 	/* allocate and init basic fields */
 
 	priv = calloc(1, sizeof(piv_private_data_t));
@@ -3046,6 +3207,7 @@ static int piv_match_card_continued(sc_card_t *card)
 	card->drv_data = priv; /* will free if no match, or pass on to piv_init */
 	priv->selected_obj = -1;
 	priv->pin_preference = 0x80; /* 800-73-3 part 1, table 3 */
+	/* TODO Dual CAC/PIV are bases on 800-73-1 where priv->pin_preference = 0. need to check later */
 	priv->logged_in = SC_PIN_STATE_UNKNOWN;
 	priv->tries_left = 10; /* will assume OK at start */
 	priv->pstate = PIV_STATE_MATCH;
@@ -3064,38 +3226,104 @@ static int piv_match_card_continued(sc_card_t *card)
 	}
 
 	/*
-	 * detect if active AID is PIV. NIST 800-73 says Only one PIV application per card
-	 * and PIV must be the default application
-	 * This can avoid doing doing a select_aid and losing the login state on some cards
+	 * Detect if active AID is PIV. NIST 800-73 says only one PIV application per card
+	 * and PIV must be the default application.
+	 * Try to avoid doing a select_aid and losing the login state on some cards.
 	 * We may get interference on some cards by other drivers trying SELECT_AID before
-	 * we get to see if PIV application is still active.
+	 * we get to see if PIV application is still active
 	 * putting PIV driver first might help. 
-	 * This may fail if the wrong AID is active
+	 * This may fail if the wrong AID is active.
+	 * Discovery Object introduced in 800-73-3 so will return 0 if found and PIV applet active.
+	 * Will fail with SC_ERROR_FILE_NOT_FOUND if 800-73-3 and no Discovery object.
+	 * But some other card could also return SC_ERROR_FILE_NOT_FOUND.
+	 * Will fail for other reasons if wrong applet is selected, or bad PIV implimentation. 
 	 */
-	i = piv_find_discovery(card);
+	
+	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d CI:%08x r:%d\n", card->type,  priv->card_issues, r);
+	if (priv->card_issues & CI_DISCOVERY_USELESS) /* TODO may be in wrong place */
+		i = -1;
+	else
+		i = piv_find_discovery(card);
 
+	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d i:%d CI:%08x r:%d\n", card->type, i, priv->card_issues, r);
 	if (i < 0) {
 		/* Detect by selecting applet */
 		i = piv_find_aid(card);
 	}
 
+	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d i:%d CI:%08x r:%d\n", card->type, i, priv->card_issues, r);
 	if (i >= 0) {
+		int iccc = 0;
+		 /* We now know PIV AID is active, test CCC object  800-73-* say CCC is required */
+		switch (card->type)  {
+			/*
+			 * For cards that may also be CAC, try and read the CCC
+			 * CCC is required and all Dual PIV/CAC will have a CCC
+			 * Currently Dual PIV/CAC are based on NIST 800-73-1 which does not have Discovery or History
+			 */
+			case SC_CARD_TYPE_PIV_II_GENERIC: /* i.e. really dont know what this is */
+			case SC_CARD_TYPE_PIV_II_HIST:
+			case SC_CARD_TYPE_PIV_II_GI_DE:
+			case SC_CARD_TYPE_PIV_II_GEMALTO:
+			case SC_CARD_TYPE_PIV_II_OBERTHUR:
+				iccc = piv_process_ccc(card);
+				sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d iccc:%d ccc_flags:%08x CI:%08x r:%d\n",
+						card->type, iccc, priv->ccc_flags, priv->card_issues, r);
+				/* ignore an error? */
+				/* if CCC says it has CAC with PKI on card set to one of the SC_CARD_TYPE_PIV_II_*_DUAL_CAC */
+				if (priv->ccc_flags & PIV_CCC_F3_CAC_PKI) {
+					switch (card->type)  {
+						case SC_CARD_TYPE_PIV_II_GENERIC:
+						case SC_CARD_TYPE_PIV_II_HIST:
+						case SC_CARD_TYPE_PIV_II_GI_DE:
+						    card->type = SC_CARD_TYPE_PIV_II_GI_DE_DUAL_CAC;
+						    priv->card_issues |= CI_DISCOVERY_USELESS;
+						    priv->obj_cache[PIV_OBJ_DISCOVERY].flags |= PIV_OBJ_CACHE_NOT_PRESENT;
+						    break;
+						case SC_CARD_TYPE_PIV_II_GEMALTO_DUAL_CAC:
+						case SC_CARD_TYPE_PIV_II_GEMALTO:
+							card->type = SC_CARD_TYPE_PIV_II_GEMALTO_DUAL_CAC;
+							priv->card_issues |= CI_DISCOVERY_USELESS;
+							priv->obj_cache[PIV_OBJ_DISCOVERY].flags |= PIV_OBJ_CACHE_NOT_PRESENT;
+							break;
+						case SC_CARD_TYPE_PIV_II_OBERTHUR_DUAL_CAC:
+						case SC_CARD_TYPE_PIV_II_OBERTHUR:
+							card->type =  SC_CARD_TYPE_PIV_II_OBERTHUR_DUAL_CAC;
+							priv->card_issues |= CI_DISCOVERY_USELESS;
+							priv->obj_cache[PIV_OBJ_DISCOVERY].flags |= PIV_OBJ_CACHE_NOT_PRESENT;
+							break;
+					}
+				}
+				break;
+
+				/* if user forced it to be one of the CAC types, assume it is CAC */
+			case SC_CARD_TYPE_PIV_II_GI_DE_DUAL_CAC:
+			case SC_CARD_TYPE_PIV_II_GEMALTO_DUAL_CAC:
+			case SC_CARD_TYPE_PIV_II_OBERTHUR_DUAL_CAC:
+				priv->card_issues |= CI_DISCOVERY_USELESS;
+				priv->obj_cache[PIV_OBJ_DISCOVERY].flags |= PIV_OBJ_CACHE_NOT_PRESENT;
+				break;
+			}
+		}
+	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d i:%d CI:%08x r:%d\n", card->type, i, priv->card_issues, r);
+	if (i >= 0 && (priv->card_issues & CI_DISCOVERY_USELESS) == 0) {
 		/*
-		 * We now know PIV AID is active, test DISCOVERY object 
-		 * Some CAC cards with PIV don't support DISCOVERY and return 
-		 * SC_ERROR_INCORRECT_PARAMETERS. Any error other then 
-		 * SC_ERROR_FILE_NOT_FOUND means we cannot use discovery 
+		 * We now know PIV AID is active, test DISCOVERY object again 
+		 * Some PIV don't support DISCOVERY and return 
+		 * SC_ERROR_INCORRECT_PARAMETERS. Any error 
+		 * including SC_ERROR_FILE_NOT_FOUND means we cannot use discovery 
 		 * to test for active AID.
 		 */
 		int i7e = piv_find_discovery(card);
 
-		if (i7e != 0 && i7e !=  SC_ERROR_FILE_NOT_FOUND) {
+		sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d i7e:%d CI:%08x r:%d\n", card->type, i7e, priv->card_issues, r);
+		if (i7e < 0) {
 			priv->card_issues |= CI_DISCOVERY_USELESS;
 			priv->obj_cache[PIV_OBJ_DISCOVERY].flags |= PIV_OBJ_CACHE_NOT_PRESENT;
 		}
 	}
 
-
+	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d i:%d CI:%08x r:%d\n", card->type, i, priv->card_issues, r);
 	if (i < 0) {
 		/* don't match. Does not have a PIV applet. */
 		sc_unlock(card);
@@ -3104,6 +3332,7 @@ static int piv_match_card_continued(sc_card_t *card)
 		return 0;
 	}
 
+	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d i:%d CI:%08x r:%d\n", card->type, i, priv->card_issues, r);
 	/* Matched, caller will use or free priv and sc_lock as needed */
 	priv->pstate=PIV_STATE_INIT;
 	return 1; /* match */
@@ -3124,7 +3353,7 @@ static int piv_init(sc_card_t *card)
 	/* continue the matching get a lock and the priv */
 	r = piv_match_card_continued(card);
 	if (r != 1)  {
-		sc_log(card->ctx,"piv_match_card_continued failed");
+		sc_log(card->ctx,"piv_match_card_continued failed card->type:%d", card->type);
 		piv_finish(card);
 		/* tell sc_connect_card to try other drivers */
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_CARD);
@@ -3147,6 +3376,7 @@ static int piv_init(sc_card_t *card)
 	 * Set card_issues based on card type either set by piv_match_card or by opensc.conf
 	 */
 
+	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d CI:%08x r:%d\n", card->type, priv->card_issues, r);
 	switch(card->type) {
 		case SC_CARD_TYPE_PIV_II_NEO:
 		case SC_CARD_TYPE_PIV_II_YUBIKEY4:
@@ -3178,6 +3408,7 @@ static int piv_init(sc_card_t *card)
 	 * may be set earlier or later then in the following code. 
 	 */
 
+	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d CI:%08x r:%d\n", card->type, priv->card_issues, r);
 	switch(card->type) {
 		case SC_CARD_TYPE_PIV_II_NEO:
 			priv->card_issues |= CI_NO_EC384
@@ -3196,16 +3427,26 @@ static int piv_init(sc_card_t *card)
 				priv->card_issues |= CI_VERIFY_LC0_FAIL;
 			break;
 
-		case SC_CARD_TYPE_PIV_II_HIST:
-			priv->card_issues |= 0;
+		case SC_CARD_TYPE_PIV_II_GI_DE:
+		case SC_CARD_TYPE_PIV_II_OBERTHUR:
+		case SC_CARD_TYPE_PIV_II_GEMALTO:
+			priv->card_issues |= 0; /* could add others here */
 			break;
 
-		case SC_CARD_TYPE_PIV_II_GI_DE:
+		case SC_CARD_TYPE_PIV_II_HIST:
+			priv->card_issues |= 0; /* could add others here */
+			break;
+
+		case SC_CARD_TYPE_PIV_II_GI_DE_DUAL_CAC:
+		case SC_CARD_TYPE_PIV_II_GEMALTO_DUAL_CAC:
+		case SC_CARD_TYPE_PIV_II_OBERTHUR_DUAL_CAC:
 			priv->card_issues |= CI_VERIFY_LC0_FAIL
 				| CI_PIV_AID_LOSE_STATE
-				| CI_OTHER_AID_LOSE_STATE;;
+				| CI_NO_RANDOM
+				| CI_OTHER_AID_LOSE_STATE;
 			/* TODO may need more research */
 			break;
+
 
 		case SC_CARD_TYPE_PIV_II_GENERIC:
 			priv->card_issues |= CI_VERIFY_LC0_FAIL
@@ -3213,12 +3454,25 @@ static int piv_init(sc_card_t *card)
 			/* TODO may need more research */
 			break;
 
+		case SC_CARD_TYPE_PIV_II_PIVKEY:
+			priv->card_issues |= CI_VERIFY_LC0_FAIL
+				| CI_PIV_AID_LOSE_STATE /* be conservative */
+				| CI_NO_EC384 | CI_NO_EC
+				| CI_NO_RANDOM; /* does not have 9B key */
+				/* Discovery object returns 6A 82 so is not on card by default */
+				/*  TODO may need more research */
+			break;
+
 		default:
-		     priv->card_issues = 0; /* opensc.conf may have it wrong, continue anyway */
-		     sc_log(card->ctx, "Unknown PIV card->type %d", card->type);
-		     card->type = SC_CARD_TYPE_PIV_II_BASE;
+			priv->card_issues |= CI_VERIFY_LC0_FAIL
+				| CI_OTHER_AID_LOSE_STATE;
+			/* opensc.conf may have it wrong, continue anyway */
+			sc_log(card->ctx, "Unknown PIV card->type %d", card->type);
+			card->type = SC_CARD_TYPE_PIV_II_GENERIC;
 	}
 	sc_log(card->ctx, "PIV card-type=%d card_issues=0x%08x", card->type, priv->card_issues);
+
+	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d CI:%08x r:%d\n", card->type, priv->card_issues, r);
 
 	priv->enumtag = piv_aids[0].enumtag;
 
@@ -3233,15 +3487,20 @@ static int piv_init(sc_card_t *card)
 	_sc_card_add_rsa_alg(card, 2048, flags, 0); /* optional */
 	_sc_card_add_rsa_alg(card, 3072, flags, 0); /* optional */
 
-	flags = SC_ALGORITHM_ECDSA_RAW | SC_ALGORITHM_ECDH_CDH_RAW | SC_ALGORITHM_ECDSA_HASH_NONE;
-	ext_flags = SC_ALGORITHM_EXT_EC_NAMEDCURVE | SC_ALGORITHM_EXT_EC_UNCOMPRESES;
+	if (!(priv->card_issues & CI_NO_EC)) {
+		flags = SC_ALGORITHM_ECDSA_RAW | SC_ALGORITHM_ECDH_CDH_RAW | SC_ALGORITHM_ECDSA_HASH_NONE;
+		ext_flags = SC_ALGORITHM_EXT_EC_NAMEDCURVE | SC_ALGORITHM_EXT_EC_UNCOMPRESES;
 
-	_sc_card_add_ec_alg(card, 256, flags, ext_flags, NULL);
-	if (!(priv->card_issues & CI_NO_EC384))
-		_sc_card_add_ec_alg(card, 384, flags, ext_flags, NULL);
+		_sc_card_add_ec_alg(card, 256, flags, ext_flags, NULL);
+		if (!(priv->card_issues & CI_NO_EC384))
+			_sc_card_add_ec_alg(card, 384, flags, ext_flags, NULL);
+	}
 
-	/* TODO may turn off SC_CARD_CAP_ISO7816_PIN_INFO later */
-	card->caps |= SC_CARD_CAP_RNG | SC_CARD_CAP_ISO7816_PIN_INFO;
+	if (!(priv->card_issues & CI_NO_RANDOM))
+		card->caps |= SC_CARD_CAP_RNG;
+
+	/* May turn off SC_CARD_CAP_ISO7816_PIN_INFO later */
+	card->caps |=  SC_CARD_CAP_ISO7816_PIN_INFO;
 
 	/*
 	 * 800-73-3 cards may have a history object and/or a discovery object
@@ -3565,11 +3824,13 @@ static int piv_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 	    r =  SC_ERROR_NO_CARD_SUPPORT;
 	} else {
 	    r = piv_find_discovery(card);
+	    sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH piv_find_discovery card->type:%d r:%d\n", card->type, r);
 	}
 
 	if (r < 0) {
 		if (was_reset > 0 || !(priv->card_issues & CI_PIV_AID_LOSE_STATE)) {
 			r = piv_select_aid(card, piv_aids[0].value, piv_aids[0].len_short, temp, &templen);
+			sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH piv_select_aid card->type:%d r:%d\n", card->type, r);
 		} else {
 			r = 0; /* cant do anything with this card, hope there was no interference */
 		}

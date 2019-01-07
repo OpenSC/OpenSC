@@ -22,15 +22,16 @@
 #endif
 
 #ifdef ENABLE_OPENPACE
-#include "npa-tool-cmdline.h"
 #include "fread_to_eof.h"
-#include "sm/sslutil.h"
+#include "npa-tool-cmdline.h"
 #include "sm/sm-eac.h"
+#include "sm/sslutil.h"
+#include "util.h"
 #include <eac/pace.h>
+#include <libopensc/card-npa.h>
 #include <libopensc/log.h>
 #include <libopensc/opensc.h>
 #include <libopensc/sm.h>
-#include <libopensc/card-npa.h>
 #include <sm/sm-eac.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -111,59 +112,7 @@ IMPLEMENT_ASN1_FUNCTIONS(ASN1_AUXILIARY_DATA_NPA_TOOL)
 			label, (unsigned int) len, len==1?"":"s", len==0?"":":\n", sc_dump_hex(data, len)); \
 	}
 
-static int initialize(int reader_id, int verbose,
-		sc_context_t **ctx, sc_reader_t **reader)
-{
-	unsigned int i, reader_count;
-	int r;
-
-	if (!ctx || !reader)
-		return SC_ERROR_INVALID_ARGUMENTS;
-
-	r = sc_establish_context(ctx, "");
-	if (r < 0 || !*ctx) {
-		fprintf(stderr, "Failed to create initial context: %s", sc_strerror(r));
-		return r;
-	}
-
-	(*ctx)->debug = verbose;
-	(*ctx)->flags |= SC_CTX_FLAG_ENABLE_DEFAULT_DRIVER;
-
-	reader_count = sc_ctx_get_reader_count(*ctx);
-
-	if (reader_count == 0) {
-		sc_log(*ctx, "No reader not found.\n");
-		return SC_ERROR_NO_READERS_FOUND;
-	}
-
-	if (reader_id < 0) {
-		/* Automatically try to skip to a reader with a card if reader not specified */
-		for (i = 0; i < reader_count; i++) {
-			*reader = sc_ctx_get_reader(*ctx, i);
-			if (sc_detect_card_presence(*reader) & SC_READER_CARD_PRESENT) {
-				reader_id = i;
-				sc_log(*ctx, "Using the first reader"
-						" with a card: %s", (*reader)->name);
-				break;
-			}
-		}
-		if ((unsigned int) reader_id >= reader_count) {
-			sc_log(*ctx, "No card found, using the first reader.");
-			reader_id = 0;
-		}
-	}
-
-	if ((unsigned int) reader_id >= reader_count) {
-		sc_log(*ctx, "Invalid reader number "
-				"(%d), only %d available.\n", reader_id, reader_count);
-		return SC_ERROR_NO_READERS_FOUND;
-	}
-
-	*reader = sc_ctx_get_reader(*ctx, reader_id);
-
-	return SC_SUCCESS;
-}
-
+static const char *app_name = "npa-tool";
 
 static void read_dg(sc_card_t *card, unsigned char sfid, const char *dg_str,
 		unsigned char **dg, size_t *dg_len)
@@ -361,7 +310,7 @@ main (int argc, char **argv)
 
 	sc_context_t *ctx = NULL;
 	sc_card_t *card = NULL;
-	sc_reader_t *reader = NULL;
+	sc_context_param_t ctx_param;
 
 	int r, tr_version = EAC_TR_VERSION_2_02;
 	struct establish_pace_channel_input pace_input;
@@ -428,17 +377,19 @@ main (int argc, char **argv)
 		eac_default_flags |= EAC_FLAG_DISABLE_CHECK_CA;
 
 
-	r = initialize(cmdline.reader_arg, cmdline.verbose_given, &ctx, &reader);
-	if (r < 0) {
-		fprintf(stderr, "Can't initialize reader\n");
+	memset(&ctx_param, 0, sizeof(ctx_param));
+	ctx_param.ver      = 0;
+	ctx_param.app_name = app_name;
+
+	r = sc_context_create(&ctx, &ctx_param);
+	if (r) {
+		fprintf(stderr, "Failed to establish context: %s\n", sc_strerror(r));
 		exit(1);
 	}
 
-	if (sc_connect_card(reader, &card) < 0) {
-		fprintf(stderr, "Could not connect to card\n");
-		sc_release_context(ctx);
-		exit(1);
-	}
+	r = util_connect_card_ex(ctx, &card, cmdline.reader_arg, 0, 0, cmdline.verbose_given);
+	if (r)
+		goto err;
 
 	EAC_init();
 	if (cmdline.cvc_dir_given)

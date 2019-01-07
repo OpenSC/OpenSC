@@ -35,7 +35,7 @@ const char *gengetopt_args_info_description = "";
 const char *gengetopt_args_info_help[] = {
   "  -h, --help                    Print help and exit",
   "  -V, --version                 Print version and exit",
-  "  -r, --reader=INT              Number of the PC/SC reader to use (-1 for\n                                  autodetect)  (default=`-1')",
+  "  -r, --reader=STRING           Number of the reader to use. By default, the\n                                  first reader with a present card is used. If\n                                  the arguement is an ATR, the reader with a\n                                  matching card will be chosen.",
   "  -v, --verbose                 Use (several times) to be more verbose",
   "\nPassword Authenticated Connection Establishment (PACE):",
   "  -p, --pin[=STRING]            Run PACE with (transport) eID-PIN",
@@ -100,7 +100,6 @@ const char *gengetopt_args_info_help[] = {
 typedef enum {ARG_NO
   , ARG_FLAG
   , ARG_STRING
-  , ARG_INT
 } cmdline_parser_arg_type;
 
 static
@@ -181,7 +180,7 @@ static
 void clear_args (struct gengetopt_args_info *args_info)
 {
   FIX_UNUSED (args_info);
-  args_info->reader_arg = -1;
+  args_info->reader_arg = NULL;
   args_info->reader_orig = NULL;
   args_info->pin_arg = NULL;
   args_info->pin_orig = NULL;
@@ -400,7 +399,6 @@ free_string_field (char **s)
 
 /** @brief generic value variable */
 union generic_value {
-    int int_arg;
     char *string_arg;
     const char *default_string_arg;
 };
@@ -448,6 +446,7 @@ static void
 cmdline_parser_release (struct gengetopt_args_info *args_info)
 {
 
+  free_string_field (&(args_info->reader_arg));
   free_string_field (&(args_info->reader_orig));
   free_string_field (&(args_info->pin_arg));
   free_string_field (&(args_info->pin_orig));
@@ -1558,9 +1557,6 @@ int update_arg(void *field, char **orig_field,
   case ARG_FLAG:
     *((int *)field) = !*((int *)field);
     break;
-  case ARG_INT:
-    if (val) *((int *)field) = strtol (val, &stop_char, 0);
-    break;
   case ARG_STRING:
     if (val) {
       string_field = (char **)field;
@@ -1573,17 +1569,6 @@ int update_arg(void *field, char **orig_field,
     break;
   };
 
-  /* check numeric conversion */
-  switch(arg_type) {
-  case ARG_INT:
-    if (val && !(stop_char && *stop_char == '\0')) {
-      fprintf(stderr, "%s: invalid numeric value: %s\n", package_name, val);
-      return 1; /* failure */
-    }
-    break;
-  default:
-    ;
-  };
 
   /* store the original value */
   switch(arg_type) {
@@ -1688,8 +1673,6 @@ void update_multiple_arg(void *field, char ***orig_field,
     *orig_field = (char **) realloc (*orig_field, (field_given + prev_given) * sizeof (char *));
 
     switch(arg_type) {
-    case ARG_INT:
-      *((int **)field) = (int *)realloc (*((int **)field), (field_given + prev_given) * sizeof (int)); break;
     case ARG_STRING:
       *((char ***)field) = (char **)realloc (*((char ***)field), (field_given + prev_given) * sizeof (char *)); break;
     default:
@@ -1701,8 +1684,6 @@ void update_multiple_arg(void *field, char ***orig_field,
         tmp = list;
         
         switch(arg_type) {
-        case ARG_INT:
-          (*((int **)field))[i + field_given] = tmp->arg.int_arg; break;
         case ARG_STRING:
           (*((char ***)field))[i + field_given] = tmp->arg.string_arg; break;
         default:
@@ -1715,12 +1696,6 @@ void update_multiple_arg(void *field, char ***orig_field,
   } else { /* set the default value */
     if (default_value && ! field_given) {
       switch(arg_type) {
-      case ARG_INT:
-        if (! *((int **)field)) {
-          *((int **)field) = (int *)malloc (sizeof (int));
-          (*((int **)field))[0] = default_value->int_arg; 
-        }
-        break;
       case ARG_STRING:
         if (! *((char ***)field)) {
           *((char ***)field) = (char **)malloc (sizeof (char *));
@@ -1863,12 +1838,12 @@ cmdline_parser_internal (
           cmdline_parser_free (&local_args_info);
           exit (EXIT_SUCCESS);
 
-        case 'r':	/* Number of the PC/SC reader to use (-1 for autodetect).  */
+        case 'r':	/* Number of the reader to use. By default, the first reader with a present card is used. If the arguement is an ATR, the reader with a matching card will be chosen..  */
         
         
           if (update_arg( (void *)&(args_info->reader_arg), 
                &(args_info->reader_orig), &(args_info->reader_given),
-              &(local_args_info.reader_given), optarg, 0, "-1", ARG_INT,
+              &(local_args_info.reader_given), optarg, 0, 0, ARG_STRING,
               check_ambiguity, override, 0, 0,
               "reader", 'r',
               additional_error))
