@@ -105,7 +105,7 @@ static int openpgp_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 }
 
 /**
- * Stores an external (RSA) on the card.
+ * Stores an external key on the card.
  * @param  profile  profile information for this card
  * @param  card     sc_card_t object to use
  * @param  obj      sc_pkcs15_object_t object with pkcs15 information
@@ -163,7 +163,7 @@ static int openpgp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 }
 
 /**
- * Generates a new RSA key pair using an existing key file.
+ * Generates a new RSA key pair on card.
  * @param  card     IN sc_card_t object to use
  * @param  obj      IN sc_pkcs15_object_t object with pkcs15 information
  * @param  pukkey   OUT the newly created public key
@@ -238,16 +238,14 @@ static int openpgp_generate_key_rsa(sc_card_t *card, sc_pkcs15_object_t *obj,
 	memcpy(pubkey->u.rsa.exponent.data, key_info.u.rsa.exponent, BYTES4BITS(key_info.u.rsa.exponent_len));
 
 err:
-	if (key_info.u.rsa.modulus)
-		free(key_info.u.rsa.modulus);
-	if (key_info.u.rsa.exponent)
-		free(key_info.u.rsa.exponent);
+	free(key_info.u.rsa.modulus);
+	free(key_info.u.rsa.exponent);
 	LOG_FUNC_RETURN(ctx, r);
 }
 
 
 /**
- * Generates a new ECC key pair using an existing key file.
+ * Generates a new ECC key pair on card.
  * @param  card     IN sc_card_t object to use
  * @param  obj      IN sc_pkcs15_object_t object with pkcs15 information
  * @param  pukkey   OUT the newly created public key

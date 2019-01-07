@@ -2620,7 +2620,7 @@ pgp_parse_and_set_pubkey_output(sc_card_t *card, u8* data, size_t data_len,
 
 		/* RSA modulus */
 		if (tag == 0x0081) {
-			if (((key_info->u.rsa.modulus_len + 7) / 8 < len)  /* modulus_len is in bits */
+			if ((BYTES4BITS(key_info->u.rsa.modulus_len) < len)  /* modulus_len is in bits */
 				|| key_info->u.rsa.modulus == NULL) {
 
 				free(key_info->u.rsa.modulus);
@@ -2635,7 +2635,7 @@ pgp_parse_and_set_pubkey_output(sc_card_t *card, u8* data, size_t data_len,
 		}
 		/* RSA public exponent */
 		else if (tag == 0x0082) {
-			if (((key_info->u.rsa.exponent_len + 7) / 8 < len)  /* exponent_len is in bits */
+			if ((BYTES4BITS(key_info->u.rsa.exponent_len) < len)  /* exponent_len is in bits */
 				|| key_info->u.rsa.exponent == NULL) {
 
 				free(key_info->u.rsa.exponent);
@@ -2688,8 +2688,9 @@ pgp_update_card_algorithms(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *ke
 
 	LOG_FUNC_CALLED(card->ctx);
 
-	/* temporary workaround: protect v3 cards against non-RSA */
-	if (key_info->algorithm != SC_OPENPGP_KEYALGO_RSA)
+	/* protect older cards against non-RSA */
+	if (key_info->algorithm != SC_OPENPGP_KEYALGO_RSA
+		&& card->type < SC_CARD_TYPE_OPENPGP_V3)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 
 	if (id > card->algorithm_count) {
@@ -2734,7 +2735,7 @@ pgp_gen_key(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_info)
 
 	LOG_FUNC_CALLED(card->ctx);
 
-	/* temporary workaround: protect v3 cards against non-RSA */
+	/* protect older cards against non-RSA */
 	if (key_info->algorithm != SC_OPENPGP_KEYALGO_RSA
 		&& card->type < SC_CARD_TYPE_OPENPGP_V3)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
@@ -3002,7 +3003,7 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_keystore_info
 		componentnames[0] = "private key";
 		comp_to_add = 1;
 
-		/* TODO ECC import with public key, if possible */
+		/* TODO ECC import with public key, if necessary as denoted in algorithm caps*/
 
 		/* validate */
 		if ((key_info->u.ec.ecpoint == NULL || key_info->u.ec.ecpoint_len == 0)){
@@ -3108,9 +3109,10 @@ pgp_store_key(sc_card_t *card, sc_cardctl_openpgp_keystore_info_t *key_info)
 
 	LOG_FUNC_CALLED(ctx);
 
-	/* temporary workaround: protect v3 cards against non-RSA */
-	if (key_info->algorithm != SC_OPENPGP_KEYALGO_RSA)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
+	/* protect older cards against non-RSA */
+	if (key_info->algorithm != SC_OPENPGP_KEYALGO_RSA
+		&& card->type < SC_CARD_TYPE_OPENPGP_V3)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 
 	/* Validate */
 	if (key_info->key_id < 1 || key_info->key_id > 3) {
