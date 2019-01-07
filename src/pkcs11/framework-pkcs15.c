@@ -58,7 +58,7 @@ struct pkcs15_slot_data {
 	}                                       \
 	attr->ulValueLen = size;
 
-#define MAX_OBJECTS	64
+#define MAX_OBJECTS	128
 struct pkcs15_fw_data {
 	struct sc_pkcs15_card *		p15_card;
 	struct pkcs15_any_object *	objects[MAX_OBJECTS];
@@ -773,7 +773,7 @@ __pkcs15_create_prkey_object(struct pkcs15_fw_data *fw_data,
 	if (prkey_object != NULL)
 		*prkey_object = (struct pkcs15_any_object *) object;
 
-	return 0;
+	return rv;
 }
 
 
@@ -794,7 +794,7 @@ __pkcs15_create_data_object(struct pkcs15_fw_data *fw_data,
 	if (data_object != NULL)
 		*data_object = (struct pkcs15_any_object *) dobj;
 
-	return 0;
+	return rv;
 }
 
 
@@ -813,7 +813,7 @@ __pkcs15_create_secret_key_object(struct pkcs15_fw_data *fw_data,
 	if (skey_object != NULL)
 		*skey_object = (struct pkcs15_any_object *) skey;
 
-	return 0;
+	return rv;
 }
 
 
@@ -4606,10 +4606,9 @@ pkcs15_dobj_get_value(struct sc_pkcs11_session *session,
 	if (!out_data)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	if (dobj->info->data.len == 0)
-	/* CKA_VALUE is empty */
+	/* CKA_VALUE is empty we may need to read it */
 	{
 		*out_data = NULL;
-		return sc_to_cryptoki_error(SC_SUCCESS, "C_GetAttributeValue");
 	}
 
 	fw_data = (struct pkcs15_fw_data *) p11card->fws_data[session->slot->fw_data_idx];
