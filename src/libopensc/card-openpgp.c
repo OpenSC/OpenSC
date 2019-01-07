@@ -2427,7 +2427,7 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 	else if (key_info->algorithm == SC_OPENPGP_KEYALGO_ECDH
 		|| key_info->algorithm == SC_OPENPGP_KEYALGO_ECDSA) {
 		if (key_info->u.ec.ecpoint == NULL || (key_info->u.ec.ecpoint_len) == 0) {
-			sc_log(card->ctx, "Null data (modulus or exponent)");
+			sc_log(card->ctx, "Error: ecpoint required!");
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 		}
 
@@ -2500,11 +2500,11 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 			p += 1;
 			*p = 0x01; /* version of this format */
 			p += 1;
-			if ((key_info->u.ec.ecpoint_len - 1)<<2 <= 256){       /* ec bit size <= 256 */
+			if (key_info->u.ec.ecpoint_len <= 256){       /* ec bit size <= 256 */
 				*p = 0x08;	/* KDF algo */
 				*(p+1) = 0x07;	/* KEK algo */
 			}
-			else if ((key_info->u.ec.ecpoint_len - 1)<<2 <= 384) { /* ec bit size <= 384 */
+			else if (key_info->u.ec.ecpoint_len <= 384) { /* ec bit size <= 384 */
 				*p = 0x09;	/* KDF algo */
 				*(p+1) = 0x08;	/* KEK algo */
 			}
@@ -2683,14 +2683,16 @@ pgp_parse_and_set_pubkey_output(sc_card_t *card, u8* data, size_t data_len,
 		/* ECC public key */
 		else if (tag == 0x0086) {
 			/* set the output data */
-			if (key_info->u.ec.ecpoint_len != len
+			/* len is ecpoint length + format byte
+			 * see section 7.2.14 of 3.3.1 specs */
+			if ((key_info->u.ec.ecpoint_len) != (len - 1)
 				|| key_info->u.ec.ecpoint == NULL) {
 				free(key_info->u.ec.ecpoint);
 				key_info->u.ec.ecpoint = malloc(len);
 				if (key_info->u.ec.ecpoint == NULL)
 					LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
 			}
-			memcpy(key_info->u.ec.ecpoint, part, len);
+			memcpy(key_info->u.ec.ecpoint, part + 1, len - 1);
 		}
 
 		/* go to next part to parse */
@@ -2742,7 +2744,7 @@ pgp_update_card_algorithms(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *ke
 	else if (key_info->algorithm == SC_OPENPGP_KEYALGO_ECDH
 		|| key_info->algorithm == SC_OPENPGP_KEYALGO_ECDSA) {
 		algo->algorithm = SC_ALGORITHM_EC;
-		algo->key_length = (unsigned int)((key_info->u.ec.ecpoint_len -1) * 4);
+		algo->key_length = (unsigned int)((key_info->u.ec.ecpoint_len));
 	}
 	else
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);

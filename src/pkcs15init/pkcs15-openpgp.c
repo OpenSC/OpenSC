@@ -301,8 +301,8 @@ static int openpgp_generate_key_ec(sc_card_t *card, sc_pkcs15_object_t *obj,
 	key_info.u.ec.oid.value[key_info.u.ec.oid_len] = -1;
 
 	/* Prepare buffer */
-	key_info.u.ec.ecpoint_len = (required->field_length>>2) + 1;
-	key_info.u.ec.ecpoint = malloc((required->field_length>>2) + 1);
+	key_info.u.ec.ecpoint_len = required->field_length;
+	key_info.u.ec.ecpoint = malloc(key_info.u.ec.ecpoint_len);
 	if (key_info.u.ec.ecpoint == NULL)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
 
