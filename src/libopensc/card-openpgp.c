@@ -2285,6 +2285,7 @@ pgp_update_new_algo_attr(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_
 	u8 *data;
 	int data_len;
 	int r = SC_SUCCESS;
+	unsigned int i;
 
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -2300,7 +2301,10 @@ pgp_update_new_algo_attr(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
 
 		data[0] = key_info->algorithm;
-		memcpy(data+1, key_info->u.ec.oid.value, key_info->u.ec.oid_len);
+		/* oid.value is type int, therefore we need to loop over the values */
+		for (i=0; i < key_info->u.ec.oid_len; i++){
+			data[i+1] = key_info->u.ec.oid.value[i];
+		}
 	}
 
 	/* RSA */
@@ -2636,9 +2640,7 @@ pgp_parse_and_set_pubkey_output(sc_card_t *card, u8* data, size_t data_len,
 		u8	*part = in;
 
 		/* parse TLV structure */
-		r = sc_asn1_read_tag((const u8**)&part,
-							 data_len - (in - data),
-							 &cla, &tag, &len);
+		r = sc_asn1_read_tag((const u8**)&part, data_len - (in - data), &cla, &tag, &len);
 		if (part == NULL)
 			r = SC_ERROR_ASN1_OBJECT_NOT_FOUND;
 		LOG_TEST_RET(card->ctx, r, "Unexpected end of contents");
