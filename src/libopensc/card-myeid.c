@@ -146,13 +146,48 @@ static int myeid_match_card(struct sc_card *card)
 	return 1;
 }
 
+static int
+myeid_select_aid(struct sc_card *card, struct sc_aid *aid, unsigned char *out, size_t *out_len)
+{
+	struct sc_apdu apdu;
+	unsigned char apdu_resp[SC_MAX_APDU_BUFFER_SIZE];
+	int rv;
+
+	/* Select application (deselect previously selected application) */
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xA4, 0x04, 0x00);
+	apdu.lc = aid->len;
+	apdu.data = aid->value;
+	apdu.datalen = aid->len;
+	apdu.resplen = sizeof(apdu_resp);
+	apdu.resp = apdu_resp;
+
+	rv = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_RET(card->ctx, rv, "APDU transmit failed");
+	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	LOG_TEST_RET(card->ctx, rv, "Cannot select AID");
+
+	if (*out_len > 0) {
+		if (*out_len < apdu.resplen)
+			LOG_TEST_RET(card->ctx, SC_ERROR_BUFFER_TOO_SMALL, "Cannot select AID - response buffer too small.");
+		if (out == NULL)
+			LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS, "Cannot select AID - invalid arguments.");
+		memcpy(out, apdu.resp, apdu.resplen);
+		*out_len = apdu.resplen;
+	}
+
+	return SC_SUCCESS;
+}
+
 static int myeid_init(struct sc_card *card)
 {
 	unsigned long flags = 0, ext_flags = 0;
 	myeid_private_data_t *priv;
 	u8 appletInfo[20];
 	size_t appletInfoLen;
-	myeid_card_caps_t card_caps;
+	myeid_card_caps_t card_caps;	
+	size_t resp_len = 0;
+	static struct sc_aid myeid_aid = { "\xA0\x00\x00\x00\x63\x50\x4B\x43\x53\x2D\x31\x35", 0x0C };
+	int rv = 0;
 
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -165,6 +200,10 @@ static int myeid_init(struct sc_card *card)
 
 	priv->card_state = SC_FILE_STATUS_CREATION;
 	card->drv_data = priv;
+
+	/* Ensure that the MyEID applet is selected. */	
+	rv = myeid_select_aid(card, &myeid_aid, NULL, &resp_len);
+	LOG_TEST_RET(card->ctx, rv, "Failed to select MyEID applet.");
 
 	/* find out MyEID version */
 
