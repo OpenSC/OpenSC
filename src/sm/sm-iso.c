@@ -475,7 +475,7 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 	 * (4B), a MAC (2B without data) and a cryptogram with padding
 	 * indicator (3B without data). The cryptogram is always padded to
 	 * the block size. */
-	sm_apdu->resplen = 9 + mac_len + (apdu->resplen/ctx->block_length + 1)*ctx->block_length;
+	sm_apdu->resplen = 4 + 2 + mac_len + 3 + ((apdu->resplen+1)/ctx->block_length+1)*ctx->block_length;
 	resp_data = calloc(sm_apdu->resplen, 1);
 	if (!resp_data) {
 		r = SC_ERROR_OUT_OF_MEMORY;
