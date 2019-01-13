@@ -119,7 +119,9 @@ enum {
 	SC_CARD_TYPE_OBERTHUR_32K_BIO,
 	SC_CARD_TYPE_OBERTHUR_64K,
 	/* Oberthur 'COSMO v7' with applet 'AuthentIC v3.2' */
-        SC_CARD_TYPE_OBERTHUR_AUTHENTIC_3_2 = 11100,
+	SC_CARD_TYPE_OBERTHUR_AUTHENTIC_3_2 = 11100,
+	/* Oberthur with applet 'FINeID' */
+	SC_CARD_TYPE_OBERTHUR_FINEID_3 = 11200,
 
 	/* belpic driver */
 	SC_CARD_TYPE_BELPIC_BASE = 12000,
@@ -294,6 +296,7 @@ extern sc_card_driver_t *sc_get_coolkey_driver(void);
 extern sc_card_driver_t *sc_get_cac_driver(void);
 extern sc_card_driver_t *sc_get_cac1_driver(void);
 extern sc_card_driver_t *sc_get_npa_driver(void);
+extern sc_card_driver_t *sc_get_fineid_driver(void);
 
 #ifdef __cplusplus
 }

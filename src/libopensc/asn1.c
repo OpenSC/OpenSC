@@ -538,14 +538,17 @@ const u8 *sc_asn1_skip_tag(sc_context_t *ctx, const u8 ** buf, size_t *buflen,
 			return NULL;
 		break;
 	}
-	if (cla & SC_ASN1_TAG_CONSTRUCTED) {
-		if ((tag_in & SC_ASN1_CONS) == 0)
+	if(tag_in != SC_ASN1_TAG_SEQUENCE_2) {
+		if (cla & SC_ASN1_TAG_CONSTRUCTED) {
+			if ((tag_in & SC_ASN1_CONS) == 0)
+				return NULL;
+		} else {
+			if (tag_in & SC_ASN1_CONS)
+				return NULL;
+		}
+		if ((tag_in & SC_ASN1_TAG_MASK) != tag)
 			return NULL;
-	} else
-		if (tag_in & SC_ASN1_CONS)
-			return NULL;
-	if ((tag_in & SC_ASN1_TAG_MASK) != tag)
-		return NULL;
+	}
 	len -= (p - *buf);	/* header size */
 	if (taglen > len) {
 		sc_debug(ctx, SC_LOG_DEBUG_ASN1,
@@ -1649,8 +1652,21 @@ decode_ok:
 		if (choice)
 			break;
  	}
- 	if (choice && asn1[idx].name == NULL) /* No match */
+	if (choice && asn1[idx].name == NULL) { /* No match */
+		sc_debug(ctx, SC_LOG_DEBUG_ASN1, "Reached the end of possible choices, none chosen\n");
+		if (left) {
+			u8 line[128], *linep = line;
+			size_t i;
+
+			line[0] = 0;
+			for (i = 0; i < 10 && i < left; i++) {
+				sprintf((char *) linep, "%02X ", p[i]);
+				linep += 3;
+			}
+			sc_debug(ctx, SC_LOG_DEBUG_ASN1, "next tag: %s\n", line);
+		}
 		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_ASN1, SC_ERROR_ASN1_OBJECT_NOT_FOUND);
+	}
  	if (newp != NULL)
 		*newp = p;
  	if (len_left != NULL)
