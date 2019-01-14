@@ -33,7 +33,6 @@
 #include "internal.h"
 #include "asn1.h"
 #include "cardctl.h"
-#include "esteid.h"
 #include "gp.h"
 
 static const struct sc_atr_table mcrd_atrs[] = {
@@ -77,6 +76,7 @@ enum {
 #define MFID 0x3F00
 #define EF_KeyD 0x0013		/* File with extra key information. */
 #define EF_Rule 0x0030		/* Default ACL file. */
+#define SC_ESTEID_KEYREF_FILE_RECLEN 21
 
 #define MAX_CURPATH 10
 
@@ -1351,15 +1351,11 @@ static int mcrd_compute_signature(sc_card_t * card,
 		 env->operation, datalen, datalen, env->key_ref[0],
 		 env->algorithm, env->algorithm_flags);
 
-	switch (env->key_ref[0]) {
-	case SC_ESTEID_AUTH:	/* authentication key */
+	if (env->key_ref[0] == 1) /* authentication key */
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x88, 0, 0);
-		break;
-	default:
+	else
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT,
 			       0x2A, 0x9E, 0x9A);
-
-	}
 	apdu.lc = datalen;
 	apdu.data = data;
 	apdu.datalen = datalen;

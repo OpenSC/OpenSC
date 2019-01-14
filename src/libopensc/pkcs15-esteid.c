@@ -35,7 +35,6 @@
 #include "internal.h"
 #include "opensc.h"
 #include "pkcs15.h"
-#include "esteid.h"
 
 static void
 set_string (char **strp, const char *value)
@@ -49,6 +48,7 @@ set_string (char **strp, const char *value)
 static int
 sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 {
+	const size_t SC_ESTEID_PD_DOCUMENT_NR = 8;
 	sc_card_t *card = p15card->card;
 	unsigned char buff[128];
 	int r, i;
