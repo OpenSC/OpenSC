@@ -33,7 +33,6 @@
 #include "libopensc/opensc.h"
 #include "libopensc/asn1.h"
 #include "libopensc/cards.h"
-#include "libopensc/esteid.h"
 #include "util.h"
 
 static char *opt_reader = NULL;
