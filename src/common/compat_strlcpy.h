@@ -28,10 +28,19 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /**
  * @file
- * @brief prototypes of strlcpy()/strlcat() imported from OpenBSD
+ * @brief prototypes of strlcpy() imported from OpenBSD
  */
+
+#ifndef __COMPAT_STRLCPY_H
+#define __COMPAT_STRLCPY_H
+
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 
 #ifndef HAVE_STRLCPY
 #include <stddef.h>
 size_t strlcpy(char *dst, const char *src, size_t siz);
+#endif
+
 #endif
