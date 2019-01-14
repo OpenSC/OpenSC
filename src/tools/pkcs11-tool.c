@@ -3995,9 +3995,9 @@ get_mechanisms(CK_SLOT_ID slot, CK_MECHANISM_TYPE_PTR *pList, CK_FLAGS flags)
 }
 
 #ifdef ENABLE_OPENSSL
-unsigned char *BIO_copy_data(BIO *out, int *data_lenp) {
+unsigned char *BIO_copy_data(BIO *out, long *data_lenp) {
     unsigned char *data, *tdata;
-    int data_len;
+    long data_len;
 
     data_len = BIO_get_mem_data(out, &tdata);
     data = malloc(data_len+1);
@@ -4104,7 +4104,7 @@ static int read_object(CK_SESSION_HANDLE session)
 	}
 	if (clazz == CKO_PUBLIC_KEY) {
 #ifdef ENABLE_OPENSSL
-		int derlen;
+		long derlen;
 		BIO *pout = BIO_new(BIO_s_mem());
 		if (!pout)
 			util_fatal("out of memory");
