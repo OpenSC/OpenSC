@@ -5,7 +5,7 @@ MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
 EXTRA_DIST = Makefile.mak opensc.dll.manifest
 
 lib_LTLIBRARIES = libopensc.la
-noinst_HEADERS = cards.h ctbcs.h internal.h esteid.h muscle.h muscle-filesystem.h \
+noinst_HEADERS = cards.h ctbcs.h internal.h muscle.h muscle-filesystem.h \
 	internal-winscard.h p15card-helper.h pkcs15-syn.h \
 	opensc.h pkcs15.h gp.h \
 	cardctl.h asn1.h log.h simpletlv.h \
