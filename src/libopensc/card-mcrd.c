@@ -284,6 +284,16 @@ static int is_esteid_card(sc_card_t *card)
 	return card->type == SC_CARD_TYPE_MCRD_ESTEID_V30 ? 1 : 0;
 }
 
+static int select_esteid_df(sc_card_t * card)
+{
+	int r;
+	sc_path_t tmppath;
+	sc_format_path ("3F00EEEE", &tmppath);
+	r = sc_select_file (card, &tmppath, NULL);
+	LOG_TEST_RET(card->ctx, r, "esteid select DF failed");
+	return r;
+}
+
 static int mcrd_match_card(sc_card_t * card)
 {
 	int i = 0, r = 0;

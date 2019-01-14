@@ -46,17 +46,6 @@ set_string (char **strp, const char *value)
 }
 
 
-int
-select_esteid_df (sc_card_t * card)
-{
-	int r;
-	sc_path_t tmppath;
-	sc_format_path ("3F00EEEE", &tmppath);
-	r = sc_select_file (card, &tmppath, NULL);
-	LOG_TEST_RET(card->ctx, r, "esteid select DF failed");
-	return r;
-}
-
 static int
 sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 {

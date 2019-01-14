@@ -28,5 +28,4 @@ enum {
 
 #define SC_ESTEID_KEYREF_FILE_RECLEN	21
 
-int select_esteid_df(sc_card_t * card);
 #endif
