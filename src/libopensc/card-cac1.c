@@ -240,10 +240,8 @@ static int cac_select_file_by_type(sc_card_t *card, const sc_path_t *in_path, sc
 	 * We only need to do this for private keys.
 	 */
 	if ((pathlen > 2) && (pathlen <= 4) && memcmp(path, "\x3F\x00", 2) == 0) {
-		if (pathlen > 2) {
-			path += 2;
-			pathlen -= 2;
-		}
+		path += 2;
+		pathlen -= 2;
 	}
 
 
