@@ -118,24 +118,22 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 				field_length = cert->key->u.ec.params.field_length;
 			else
 				modulus_length = cert->key->u.rsa.modulus.len * 8;
-			if (r == SC_SUCCESS) {
-				static const struct sc_object_id cn_oid = {{ 2, 5, 4, 3, -1 }};
-				u8 *cn_name = NULL;
-				size_t cn_len = 0;
-				sc_pkcs15_get_name_from_dn(card->ctx, cert->subject,
-					cert->subject_len, &cn_oid, &cn_name, &cn_len);
-				if (cn_len > 0) {
-					char *token_name = malloc(cn_len+1);
-					if (token_name) {
-						memcpy(token_name, cn_name, cn_len);
-						token_name[cn_len] = '\0';
-						set_string(&p15card->tokeninfo->label, (const char*)token_name);
-						free(token_name);
-					}
+			static const struct sc_object_id cn_oid = {{ 2, 5, 4, 3, -1 }};
+			u8 *cn_name = NULL;
+			size_t cn_len = 0;
+			sc_pkcs15_get_name_from_dn(card->ctx, cert->subject,
+				cert->subject_len, &cn_oid, &cn_name, &cn_len);
+			if (cn_len > 0) {
+				char *token_name = malloc(cn_len+1);
+				if (token_name) {
+					memcpy(token_name, cn_name, cn_len);
+					token_name[cn_len] = '\0';
+					set_string(&p15card->tokeninfo->label, (const char*)token_name);
+					free(token_name);
 				}
-				free(cn_name);
-				sc_pkcs15_free_certificate(cert);
 			}
+			free(cn_name);
+			sc_pkcs15_free_certificate(cert);
 		}
 	}
 
