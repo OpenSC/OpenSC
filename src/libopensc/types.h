@@ -237,8 +237,8 @@ typedef struct sc_file {
 	int sid;	/* short EF identifier (1 byte) */
 	struct sc_acl_entry *acl[SC_MAX_AC_OPS]; /* Access Control List */
 
-	int record_length; /* In case of fixed-length or cyclic EF */
-	int record_count;  /* Valid, if not transparent EF or DF */
+	size_t record_length; /* In case of fixed-length or cyclic EF */
+	size_t record_count;  /* Valid, if not transparent EF or DF */
 
 	unsigned char *sec_attr;	/* security data in proprietary format. tag '86' */
 	size_t sec_attr_len;

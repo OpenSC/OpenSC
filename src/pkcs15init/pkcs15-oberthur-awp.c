@@ -171,7 +171,7 @@ awp_new_file(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 			}
 
 			sc_log(ctx, 
-				 "info_file(id:%04X,size:%"SC_FORMAT_LEN_SIZE_T"u,rlen:%i)",
+				 "info_file(id:%04X,size:%"SC_FORMAT_LEN_SIZE_T"u,rlen:%"SC_FORMAT_LEN_SIZE_T"u)",
 				 ifile->id, ifile->size, ifile->record_length);
 			*info_out = ifile;
 		}
@@ -236,7 +236,7 @@ awp_update_blob(struct sc_context *ctx,
 
 
 static int
-awp_new_container_entry(struct sc_pkcs15_card *p15card, unsigned char *buff, int len)
+awp_new_container_entry(struct sc_pkcs15_card *p15card, unsigned char *buff, size_t len)
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	int mm, rv = 0;
@@ -274,7 +274,7 @@ awp_create_container_record (struct sc_pkcs15_card *p15card, struct sc_profile *
 	unsigned char *buff = NULL;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx,  "container file(file-id:%X,rlen:%i,rcount:%i)",
+	sc_log(ctx,  "container file(file-id:%X,rlen:%"SC_FORMAT_LEN_SIZE_T"u,rcount:%"SC_FORMAT_LEN_SIZE_T"u)",
 			list_file->id, list_file->record_length, list_file->record_count);
 
 	buff = malloc(list_file->record_length);
@@ -322,14 +322,14 @@ awp_create_container(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 
 	rv = awp_new_file(p15card, profile, COSM_CONTAINER_LIST, 0, &clist, NULL);
 	LOG_TEST_RET(ctx, rv, "Create container failed");
-	sc_log(ctx,  "contaner cfile(rcount:%i,rlength:%i)", clist->record_count, clist->record_length);
+	sc_log(ctx,  "contaner cfile(rcount:%"SC_FORMAT_LEN_SIZE_T"u,rlength:%"SC_FORMAT_LEN_SIZE_T"u)", clist->record_count, clist->record_length);
 
 	rv = sc_select_file(p15card->card, &clist->path, &file);
 	LOG_TEST_RET(ctx, rv, "Create container failed: cannot select container's list");
 	file->record_length = clist->record_length;
 
-	sc_log(ctx,  "contaner file(rcount:%i,rlength:%i)", file->record_count, file->record_length);
-	sc_log(ctx,  "Append new record %i for private key", file->record_count + 1);
+	sc_log(ctx,  "contaner file(rcount:%"SC_FORMAT_LEN_SIZE_T"u,rlength:%"SC_FORMAT_LEN_SIZE_T"u)", file->record_count, file->record_length);
+	sc_log(ctx,  "Append new record %"SC_FORMAT_LEN_SIZE_T"u for private key", file->record_count + 1);
 
 	rv = awp_create_container_record(p15card, profile, file, acc);
 
@@ -343,7 +343,7 @@ awp_create_container(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 static int
 awp_update_container_entry (struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 		struct sc_file *list_file,  int type, int file_id,
-		int rec, int offs)
+		size_t rec, int offs)
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	int rv;
@@ -351,9 +351,9 @@ awp_update_container_entry (struct sc_pkcs15_card *p15card, struct sc_profile *p
 
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, 
-		 "update container entry(type:%X,id %i,rec %i,offs %i",
+		 "update container entry(type:%X,id %i,rec %"SC_FORMAT_LEN_SIZE_T"u,offs %i",
 		 type, file_id, rec, offs);
-	sc_log(ctx,  "container file(file-id:%X,rlen:%i,rcount:%i)",
+	sc_log(ctx,  "container file(file-id:%X,rlen:%"SC_FORMAT_LEN_SIZE_T"u,rcount:%"SC_FORMAT_LEN_SIZE_T"u)",
 			list_file->id, list_file->record_length, list_file->record_count);
 
 	buff = malloc(list_file->record_length);
@@ -427,7 +427,8 @@ awp_update_container(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_file *clist = NULL, *file = NULL;
 	struct sc_path  private_path;
-	int rv = 0, rec, rec_offs;
+	int rv = 0;
+	size_t rec, rec_offs;
 	unsigned char *list = NULL;
 
 	LOG_FUNC_CALLED(ctx);
@@ -484,7 +485,7 @@ awp_update_container(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 		for (rec_offs=0; !rv && rec_offs<12; rec_offs+=6)   {
 			int offs;
 
-			sc_log(ctx,  "rec %i; rec_offs %i", rec, rec_offs);
+			sc_log(ctx,  "rec %"SC_FORMAT_LEN_SIZE_T"u; rec_offs %"SC_FORMAT_LEN_SIZE_T"u", rec, rec_offs);
 			offs = rec*AWP_CONTAINER_RECORD_LEN + rec_offs;
 			if (*(list + offs + 2))   {
 				unsigned char *buff = NULL;
