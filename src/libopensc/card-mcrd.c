@@ -279,7 +279,7 @@ static int mcrd_set_decipher_key_ref(sc_card_t * card, int key_reference)
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
 
-int is_esteid_card(sc_card_t *card)
+static int is_esteid_card(sc_card_t *card)
 {
 	return card->type == SC_CARD_TYPE_MCRD_ESTEID_V30 ? 1 : 0;
 }
