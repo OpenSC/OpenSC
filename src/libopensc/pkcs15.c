@@ -2605,7 +2605,7 @@ sc_pkcs15_get_generalized_time(struct sc_context *ctx, char **out)
 #ifdef HAVE_GETTIMEOFDAY
 	struct timeval tv;
 #endif
-	struct tm *tm_time;
+	struct tm tm;
 	time_t t;
 
 	if (!ctx || !out)
@@ -2618,16 +2618,21 @@ sc_pkcs15_get_generalized_time(struct sc_context *ctx, char **out)
 #else
 	t = time(NULL);
 #endif
-	tm_time = gmtime(&t);
-	if (!tm_time)
-		LOG_TEST_RET(ctx, SC_ERROR_INTERNAL, "gmtime failed");
+
+#ifdef _WIN32
+	if (0 != gmtime_s(&tm, &t))
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
+#else
+	if (NULL == gmtime_r(&t, &tm))
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
+#endif
 
 	*out = calloc(1, 16);
 	if (*out == NULL)
 		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "memory failure");
 
 	/* print time in generalized time format */
-	if (!strftime(*out, 16, "%Y%m%d%H%M%SZ", tm_time)) {
+	if (!strftime(*out, 16, "%Y%m%d%H%M%SZ", &tm)) {
 		free(*out);
 		LOG_TEST_RET(ctx, SC_ERROR_INTERNAL, "strftime failed");
 	}
