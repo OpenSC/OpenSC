@@ -92,9 +92,6 @@ static const char *option_help[] = {
 	"Verbose operation. Use several times to enable debug output.",
 };
 
-static sc_context_t *ctx = NULL;
-static sc_card_t *card = NULL;
-
 static int initialize(sc_card_t *card, const char *so_pin, const char *user_pin, const char* serial)
 {
 	sc_cardctl_gids_init_param_t param;
@@ -479,6 +476,8 @@ int main(int argc, char * argv[])
 	const char *opt_serial_number = NULL;
 	const char *opt_new_key = NULL;
 	sc_context_param_t ctx_param;
+	sc_context_t *ctx = NULL;
+	sc_card_t *card = NULL;
 
 	while (1) {
 		c = getopt_long(argc, argv, "XUCr:wv", options, &long_optind);

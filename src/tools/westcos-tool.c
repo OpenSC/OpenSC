@@ -292,13 +292,13 @@ static int unlock_pin(sc_card_t *card,
 	return 0;
 }
 
-static int cert2der(X509 *cert, u8 **value)
+static int cert2der(X509 *in_cert, u8 **value)
 {
 	int len;
 	u8 *p;
-	len = i2d_X509(cert, NULL);
+	len = i2d_X509(in_cert, NULL);
 	p = *value = malloc(len);
-	i2d_X509(cert, &p);
+	i2d_X509(in_cert, &p);
 	return len;
 }
 
