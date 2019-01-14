@@ -2487,36 +2487,34 @@ piv_compute_signature(sc_card_t *card, const u8 * data, size_t datalen,
 		if (r < 0)
 			goto err;
 
-		if ( r >= 0) {
-			body = sc_asn1_find_tag(card->ctx, rbuf, rbuflen, 0x30, &bodylen);
+		body = sc_asn1_find_tag(card->ctx, rbuf, rbuflen, 0x30, &bodylen);
 
-			for (i = 0; i<2; i++) {
-				if (body) {
-					tag = sc_asn1_find_tag(card->ctx, body,  bodylen, 0x02, &taglen);
-					if (tag) {
-						bodylen -= taglen - (tag - body);
-						body = tag + taglen;
+		for (i = 0; i<2; i++) {
+			if (body) {
+				tag = sc_asn1_find_tag(card->ctx, body,  bodylen, 0x02, &taglen);
+				if (tag) {
+					bodylen -= taglen - (tag - body);
+					body = tag + taglen;
 
-						if (taglen > nLen) { /* drop leading 00 if present */
-							if (*tag != 0x00) {
-								r = SC_ERROR_INVALID_DATA;
-								goto err;
-							}
-							tag++;
-							taglen--;
+					if (taglen > nLen) { /* drop leading 00 if present */
+						if (*tag != 0x00) {
+							r = SC_ERROR_INVALID_DATA;
+							goto err;
 						}
-						memcpy(out + nLen*i + nLen - taglen , tag, taglen);
-					} else {
-						r = SC_ERROR_INVALID_DATA;
-						goto err;
+						tag++;
+						taglen--;
 					}
-				} else  {
+					memcpy(out + nLen*i + nLen - taglen , tag, taglen);
+				} else {
 					r = SC_ERROR_INVALID_DATA;
 					goto err;
 				}
+			} else  {
+				r = SC_ERROR_INVALID_DATA;
+				goto err;
 			}
-			r = 2 * nLen;
 		}
+		r = 2 * nLen;
 	} else { /* RSA is all set */
 		r = piv_validate_general_authentication(card, data, datalen, out, outlen);
 	}
