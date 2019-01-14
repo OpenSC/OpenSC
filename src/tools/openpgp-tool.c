@@ -663,7 +663,7 @@ static int do_dump_do(sc_card_t *card, unsigned int tag)
 	return EXIT_SUCCESS;
 }
 
-int do_genkey(sc_card_t *card, u8 key_id, const char *keytype)
+int do_genkey(sc_card_t *card, u8 in_key_id, const char *keytype)
 {
 	int r;
 	sc_cardctl_openpgp_keygen_info_t key_info;
@@ -671,9 +671,9 @@ int do_genkey(sc_card_t *card, u8 key_id, const char *keytype)
 	sc_path_t path;
 	sc_file_t *file;
 
-	/* validate key_id */
-	if (key_id < 1 || key_id > 3) {
-		util_error("unknown key ID %d", key_id);
+	/* validate in_key_id */
+	if (in_key_id < 1 || in_key_id > 3) {
+		util_error("unknown key ID %d", in_key_id);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
@@ -701,7 +701,7 @@ int do_genkey(sc_card_t *card, u8 key_id, const char *keytype)
 		}
 
 		/* set key_info */
-		key_info.key_id = key_id;
+		key_info.key_id = in_key_id;
 		key_info.algorithm = SC_OPENPGP_KEYALGO_RSA;
 		key_info.rsa.modulus_len = keylen;
 		key_info.rsa.modulus = malloc((keylen + 7) / 8);
@@ -730,17 +730,17 @@ int do_genkey(sc_card_t *card, u8 key_id, const char *keytype)
 		util_error("failed to retrieve fingerprints: %s", sc_strerror(r));
 		return EXIT_FAILURE;
 	}
-	printf("Fingerprint:\n%s\n", (char *)sc_dump_hex(fingerprints + 20*(key_id - 1), 20));
+	printf("Fingerprint:\n%s\n", (char *)sc_dump_hex(fingerprints + 20*(in_key_id - 1), 20));
 
 	return EXIT_SUCCESS;
 }
 
-int do_verify(sc_card_t *card, char *type, const char *pin)
+int do_verify(sc_card_t *card, char *type, const char *in_pin)
 {
 	struct sc_pin_cmd_data data;
 	int tries_left;
 	int r;
-	if (!type || !pin)
+	if (!type || !in_pin)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	if (strncasecmp("CHV", type, 3) != 0) {
@@ -757,8 +757,8 @@ int do_verify(sc_card_t *card, char *type, const char *pin)
 	data.cmd = SC_PIN_CMD_VERIFY;
 	data.pin_type = SC_AC_CHV;
 	data.pin_reference = type[3] - '0';
-	data.pin1.data = (unsigned char *) pin;
-	data.pin1.len = (int)strlen(pin);
+	data.pin1.data = (unsigned char *) in_pin;
+	data.pin1.len = (int)strlen(in_pin);
 	r = sc_pin_cmd(card, &data, &tries_left);
 	return r;
 }
@@ -767,7 +767,7 @@ int do_verify(sc_card_t *card, char *type, const char *pin)
  * Delete key, for OpenPGP card.
  * This function is not complete and is reserved for future version (> 2) of OpenPGP card.
  **/
-int delete_key_openpgp(sc_card_t *card, u8 key_id)
+int delete_key_openpgp(sc_card_t *card, u8 in_key_id)
 {
 	char *del_fingerprint = "00:DA:00:C6:14:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00";
 	char *del_creationtime = "00:DA:00:CD:04:00:00:00:00";
@@ -790,7 +790,7 @@ int delete_key_openpgp(sc_card_t *card, u8 key_id)
 		sc_hex_to_bin(apdustring, buf, &len0);
 
 		/* Replace DO tag, subject to key ID */
-		buf[3] = buf[3] + key_id;
+		buf[3] = buf[3] + in_key_id;
 
 		/* Build APDU from binary array */
 		r = sc_bytes2apdu(card->ctx, buf, len0, &apdu);
@@ -813,7 +813,7 @@ int delete_key_openpgp(sc_card_t *card, u8 key_id)
 	return r;
 }
 
-int do_delete_key(sc_card_t *card, u8 key_id)
+int do_delete_key(sc_card_t *card, u8 in_key_id)
 {
 	sc_path_t path;
 	int r = SC_SUCCESS;
@@ -824,20 +824,20 @@ int do_delete_key(sc_card_t *card, u8 key_id)
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
-	if (key_id < 1 || (key_id > 3 && key_id != 'a')) {
-		util_error("invalid key id %d", key_id);
+	if (in_key_id < 1 || (in_key_id > 3 && in_key_id != 'a')) {
+		util_error("invalid key id %d", in_key_id);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
-	if (key_id == 1 || key_id == 'a') {
+	if (in_key_id == 1 || in_key_id == 'a') {
 		sc_format_path("B601", &path);
 		r |= sc_delete_file(card, &path);
 	}
-	if (key_id == 2 || key_id == 'a') {
+	if (in_key_id == 2 || in_key_id == 'a') {
 		sc_format_path("B801", &path);
 		r |= sc_delete_file(card, &path);
 	}
-	if (key_id == 3 || key_id == 'a') {
+	if (in_key_id == 3 || in_key_id == 'a') {
 		sc_format_path("A401", &path);
 		r |= sc_delete_file(card, &path);
 	}
