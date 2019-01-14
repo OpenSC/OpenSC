@@ -240,11 +240,17 @@ static char *prettify_date(u8 *data, size_t length)
 {
 	if (data != NULL && length == 4) {
 		time_t time = (time_t) (data[0] << 24 | data[1] << 16 | data[2] << 8 | data[3]);
-		struct tm *tp;
+		struct tm tm;
 		static char result[64];	/* large enough */
 
-		tp = gmtime(&time);
-		strftime(result, sizeof(result), "%Y-%m-%d %H:%M:%S", tp);
+#ifdef _WIN32
+		if (0 != gmtime_s(&tm, &time))
+			return NULL;
+#else
+		if (NULL == gmtime_r(&time, &tm))
+			return NULL;
+#endif
+		strftime(result, sizeof(result), "%Y-%m-%d %H:%M:%S", &tm);
 		return result;
 	}
 	return NULL;

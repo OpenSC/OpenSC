@@ -2265,6 +2265,7 @@ pgp_store_creationtime(sc_card_t *card, u8 key_id, time_t *outtime)
 	const size_t timestrlen = 64;
 	char timestring[65];
 	u8 buf[4];
+	struct tm tm;
 
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -2278,7 +2279,14 @@ pgp_store_creationtime(sc_card_t *card, u8 key_id, time_t *outtime)
 		/* set output */
 		*outtime = createtime = time(NULL);
 
-	strftime(timestring, timestrlen, "%c %Z", gmtime(&createtime));
+#ifdef _WIN32
+	if (0 != gmtime_s(&tm, &createtime))
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
+#else
+	if (NULL == gmtime_r(&createtime, &tm))
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
+#endif
+	strftime(timestring, timestrlen, "%c %Z", &tm);
 	sc_log(card->ctx, "Creation time %s.", timestring);
 	/* Code borrowed from GnuPG */
 	ulong2bebytes(buf, (unsigned long)createtime);
