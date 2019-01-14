@@ -37,8 +37,6 @@
 #include "pkcs15.h"
 #include "esteid.h"
 
-int sc_pkcs15emu_esteid_init_ex(sc_pkcs15_card_t *, struct sc_aid *, sc_pkcs15emu_opt_t *);
-
 static void
 set_string (char **strp, const char *value)
 {
@@ -240,25 +238,13 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 	return SC_SUCCESS;
 }
 
-static int esteid_detect_card(sc_pkcs15_card_t *p15card)
-{
-	if (is_esteid_card(p15card->card))
-		return SC_SUCCESS;
-	else
-		return SC_ERROR_WRONG_CARD;
-}
-
 int sc_pkcs15emu_esteid_init_ex(sc_pkcs15_card_t *p15card,
 				struct sc_aid *aid,
 				sc_pkcs15emu_opt_t *opts)
 {
-
 	if (opts && opts->flags & SC_PKCS15EMU_FLAGS_NO_CHECK)
 		return sc_pkcs15emu_esteid_init(p15card);
-	else {
-		int r = esteid_detect_card(p15card);
-		if (r)
-			return SC_ERROR_WRONG_CARD;
+	if (p15card->card->type == SC_CARD_TYPE_MCRD_ESTEID_V30)
 		return sc_pkcs15emu_esteid_init(p15card);
-	}
+	return SC_ERROR_WRONG_CARD;
 }
