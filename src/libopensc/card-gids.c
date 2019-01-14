@@ -1315,7 +1315,7 @@ static int gids_create_keyfile(sc_card_t *card, sc_pkcs15_object_t *object) {
 	if (strcmp(DEFAULT_PRIVATE_KEY_LABEL, object->label) == 0 && strlen(DEFAULT_PRIVATE_KEY_LABEL) + 3 < MAX_CONTAINER_NAME_LEN) {
 		char addition[4] = " 00";
 		addition[1] += containernum % 10;
-		addition[2] += (containernum < 0xFF) / 10;
+		addition[2] += (containernum & 0xFF) / 10;
 		strcat(object->label, addition);
 	}
 
