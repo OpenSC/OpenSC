@@ -30,20 +30,10 @@
 #include <stdio.h>
 
 #include "common/compat_strlcpy.h"
-#include "common/compat_strlcat.h"
 
 #include "internal.h"
 #include "opensc.h"
 #include "pkcs15.h"
-
-static void
-set_string (char **strp, const char *value)
-{
-	if (*strp)
-		free (*strp);
-	*strp = value ? strdup (value) : NULL;
-}
-
 
 static int
 sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
@@ -55,8 +45,8 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 	size_t field_length = 0, modulus_length = 0;
 	sc_path_t tmppath;
 
-	set_string (&p15card->tokeninfo->label, "ID-kaart");
-	set_string (&p15card->tokeninfo->manufacturer_id, "AS Sertifitseerimiskeskus");
+	p15card->tokeninfo->label = strdup("ID-kaart");
+	p15card->tokeninfo->manufacturer_id = strdup("AS Sertifitseerimiskeskus");
 
 	/* Select application directory */
 	sc_format_path ("3f00eeee5044", &tmppath);
@@ -67,7 +57,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 	r = sc_read_record (card, SC_ESTEID_PD_DOCUMENT_NR, buff, sizeof(buff), SC_RECORD_BY_REC_NR);
 	LOG_TEST_RET(card->ctx, r, "read document number failed");
 	buff[MIN((size_t) r, (sizeof buff)-1)] = '\0';
-	set_string (&p15card->tokeninfo->serial_number, (const char *) buff);
+	p15card->tokeninfo->serial_number = strdup((const char *)buff);
 
 	p15card->tokeninfo->flags = SC_PKCS15_TOKEN_PRN_GENERATION
 				  | SC_PKCS15_TOKEN_EID_COMPLIANT
@@ -81,7 +71,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 		static char const *esteid_cert_paths[2] = {
 			"3f00eeeeaace",
 			"3f00eeeeddce"};
-		static int esteid_cert_ids[2] = {1, 2};
+		static u8 esteid_cert_ids[2] = {1, 2};
 
 		struct sc_pkcs15_cert_info cert_info;
 		struct sc_pkcs15_object cert_obj;
@@ -113,15 +103,11 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 		sc_pkcs15_get_name_from_dn(card->ctx, cert->subject,
 			cert->subject_len, &cn_oid, &cn_name, &cn_len);
 		if (cn_len > 0) {
-			char *token_name = malloc(cn_len+1);
-			if (token_name) {
-				memcpy(token_name, cn_name, cn_len);
-				token_name[cn_len] = '\0';
-				set_string(&p15card->tokeninfo->label, (const char*)token_name);
-				free(token_name);
-			}
+			cn_name = realloc(cn_name, cn_len + 1);
+			cn_name[cn_len] = 0;
+			free(p15card->tokeninfo->label);
+			p15card->tokeninfo->label = (char*) cn_name;
 		}
-		free(cn_name);
 		sc_pkcs15_free_certificate(cert);
 	}
 
@@ -133,16 +119,15 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 
 	/* add pins */
 	for (i = 0; i < 3; i++) {
-		unsigned char tries_left;
 		static const char *esteid_pin_names[3] = {
 			"PIN1",
 			"PIN2",
 			"PUK" };
 			
-		static const int esteid_pin_min[3] = {4, 5, 8};
+		static const unsigned int esteid_pin_min[3] = {4, 5, 8};
 		static const int esteid_pin_ref[3] = {1, 2, 0};
-		static const int esteid_pin_authid[3] = {1, 2, 3};
-		static const int esteid_pin_flags[3] = {0, 0, SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN};
+		static const u8 esteid_pin_authid[3] = {1, 2, 3};
+		static const unsigned int esteid_pin_flags[3] = {0, 0, SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN};
 		
 		struct sc_pkcs15_auth_info pin_info;
 		struct sc_pkcs15_object pin_obj;
@@ -151,10 +136,9 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 		memset(&pin_obj, 0, sizeof(pin_obj));
 
 		/* read the number of tries left for the PIN */
-		r = sc_read_record (card, i + 1, buff, sizeof(buff), SC_RECORD_BY_REC_NR);
-		if (r < 0)
+		r = sc_read_record (card, (unsigned int) i + 1, buff, sizeof(buff), SC_RECORD_BY_REC_NR);
+		if (r < 6)
 			return SC_ERROR_INTERNAL;
-		tries_left = buff[5];
 
 		pin_info.auth_id.len = 1;
 		pin_info.auth_id.value[0] = esteid_pin_authid[i];
@@ -166,7 +150,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 		pin_info.attrs.pin.stored_length = 12;
 		pin_info.attrs.pin.max_length = 12;
 		pin_info.attrs.pin.pad_char = '\0';
-		pin_info.tries_left = (int)tries_left;
+		pin_info.tries_left = buff[5];
 		pin_info.max_tries = 3;
 
 		strlcpy(pin_obj.label, esteid_pin_names[i], sizeof(pin_obj.label));
@@ -185,7 +169,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 
 	/* add private keys */
 	for (i = 0; i < 2; i++) {
-		static int prkey_pin[2] = {1, 2};
+		static u8 prkey_pin[2] = {1, 2};
 
 		static const char *prkey_name[2] = {
 			"Isikutuvastus",
