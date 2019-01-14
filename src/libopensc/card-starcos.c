@@ -400,7 +400,7 @@ static int process_fcp_v3_4(sc_context_t *ctx, sc_file_t *file,
 			file->record_length = (tag[2] << 8) + tag[3];
 			file->record_count = tag[4];
 			sc_log(ctx, 
-				"  rec_len: %d  rec_cnt: %d\n\n",
+				"  rec_len: %"SC_FORMAT_LEN_SIZE_T"u  rec_cnt: %"SC_FORMAT_LEN_SIZE_T"u\n\n",
 				file->record_length, file->record_count);
 		}
 	}

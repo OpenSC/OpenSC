@@ -438,10 +438,10 @@ static int print_file(sc_card_t *in_card, const sc_file_t *file,
 		free(buf);
 	} else {
 		unsigned char buf[256];
-		int i;
+		size_t i;
 
 		for (i=0; i < file->record_count; i++) {
-			printf("Record %d\n", i);
+			printf("Record %"SC_FORMAT_LEN_SIZE_T"u\n", i);
 			r = sc_lock(card);
 			if (r == SC_SUCCESS)
 				r = sc_read_record(in_card, i, buf, 256, 0);

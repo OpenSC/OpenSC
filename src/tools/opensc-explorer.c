@@ -1514,7 +1514,7 @@ static int do_update_record(int argc, char **argv)
 	u8 buf[240];
 	size_t buflen;
 	int r, i, err = 1;
-	int rec, offs;
+	size_t rec, offs;
 	sc_path_t path;
 	sc_file_t *file;
 
@@ -1525,7 +1525,7 @@ static int do_update_record(int argc, char **argv)
 	rec  = strtol(argv[1],NULL,10);
 	offs = strtol(argv[2],NULL,10);
 
-	printf("in: %i; %i; %s\n", rec, offs, argv[3]);
+	printf("in: %"SC_FORMAT_LEN_SIZE_T"u; %"SC_FORMAT_LEN_SIZE_T"u; %s\n", rec, offs, argv[3]);
 
 	r = sc_lock(card);
 	if (r == SC_SUCCESS)
@@ -1540,13 +1540,13 @@ static int do_update_record(int argc, char **argv)
 		fprintf(stderr, "EF structure should be SC_FILE_EF_LINEAR_VARIABLE\n");
 		goto err;
 	} else if (rec < 1 || rec > file->record_count)   {
-		fprintf(stderr, "Invalid record number %i\n", rec);
+		fprintf(stderr, "Invalid record number %"SC_FORMAT_LEN_SIZE_T"u\n", rec);
 		goto err;
 	}
 
 	r = sc_read_record(card, rec, buf, sizeof(buf), SC_RECORD_BY_REC_NR);
 	if (r<0)   {
-		fprintf(stderr, "Cannot read record %i; return %i\n", rec, r);
+		fprintf(stderr, "Cannot read record %"SC_FORMAT_LEN_SIZE_T"u; return %i\n", rec, r);
 		goto err;;
 	}
 
@@ -1562,11 +1562,11 @@ static int do_update_record(int argc, char **argv)
 		r = sc_update_record(card, rec, buf, r, SC_RECORD_BY_REC_NR);
 	sc_unlock(card);
 	if (r<0)   {
-		fprintf(stderr, "Cannot update record %i; return %i\n", rec, r);
+		fprintf(stderr, "Cannot update record %"SC_FORMAT_LEN_SIZE_T"u; return %i\n", rec, r);
 		goto err;
 	}
 
-	printf("Total of %d bytes written to record %i at %i offset.\n",
+	printf("Total of %d bytes written to record %"SC_FORMAT_LEN_SIZE_T"u at %"SC_FORMAT_LEN_SIZE_T"u offset.\n",
 	       i, rec, offs);
 
 	err = 0;
