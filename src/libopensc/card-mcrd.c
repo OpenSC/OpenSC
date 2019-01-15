@@ -367,8 +367,11 @@ static int mcrd_init(sc_card_t * card)
 
 	sc_format_path ("3f00", &tmppath);
 	r = sc_select_file (card, &tmppath, NULL);
-	if (r < 0)
+	if (r < 0) {
+		free(card->drv_data);
+		card->drv_data = NULL;
 		r = SC_ERROR_INVALID_CARD;
+	}
 
 	/* Not needed for the fixed EstEID profile */
 	if (!is_esteid_card(card))
