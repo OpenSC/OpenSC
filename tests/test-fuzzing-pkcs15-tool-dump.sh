@@ -21,7 +21,13 @@ fi
 ./configure CC=afl-gcc CFLAGS="-O0" LDFLAGS="-ldl" --disable-shared --disable-notify --with-pcsc-provider=$PWD/x41-smartcard-fuzzing/scard_override/libsccard_override.so
 make
 
-mkdir -p tests/fuzzing-testcases
-echo -ne "$(printf '\\x90\\x00')" > tests/fuzzing-testcases/9000
+if [ ! -d tests/fuzzing-testcases ]
+then
+    mkdir -p tests/fuzzing-testcases
+    echo -ne "$(printf '\\x90\\x00')" > tests/fuzzing-testcases/9000
+    IN=tests/fuzzing-testcases
+else
+    IN=-
+fi
 
-FUZZ_FILE=input.apdu  afl-fuzz -i tests/fuzzing-testcases -o out -f input.apdu src/tools/pkcs15-tool -D
+FUZZ_FILE=input.apdu  afl-fuzz -i $IN -o out -f input.apdu src/tools/pkcs15-tool -D
