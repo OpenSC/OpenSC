@@ -49,6 +49,6 @@ int sc_simpletlv_put_tag(u8 tag, size_t datalen, u8 *out, size_t outlen, u8 **pt
  * @param  taglen    The length of the V record
  * @return           SC_SUCCESS on valid input
  */
-int sc_simpletlv_read_tag(u8 **buf, size_t buflen, u8 *tag_out, size_t *taglen);
+int sc_simpletlv_read_tag(const u8 **buf, size_t buflen, u8 *tag_out, size_t *taglen);
 
 #endif

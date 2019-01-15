@@ -455,8 +455,9 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 	cac_private_data_t * priv = CAC_DATA(card);
 	int r = 0;
 	u8 *tl = NULL, *val = NULL;
-	u8 *tl_ptr, *val_ptr, *tlv_ptr, *tl_start;
-	u8 *cert_ptr;
+	const u8 *tl_ptr, *val_ptr, *tl_start;
+	u8 *tlv_ptr;
+	const u8 *cert_ptr;
 	size_t tl_len, val_len, tlv_len;
 	size_t len, tl_head_len, cert_len;
 	u8 cert_type, tag;
@@ -866,10 +867,11 @@ static int cac_decipher(sc_card_t *card,
 }
 
 static int cac_parse_properties_object(sc_card_t *card, u8 type,
-    u8 *data, size_t data_len, cac_properties_object_t *object)
+    const u8 *data, size_t data_len, cac_properties_object_t *object)
 {
 	size_t len;
-	u8 *val, *val_end, tag;
+	const u8 *val, *val_end;
+	u8 tag;
 	int parsed = 0;
 
 	if (data_len < 11)
@@ -947,7 +949,8 @@ static int cac_get_properties(sc_card_t *card, cac_properties_t *prop)
 {
 	u8 *rbuf = NULL;
 	size_t rbuflen = 0, len;
-	u8 *val, *val_end, tag;
+	const u8 *val, *val_end;
+	u8 tag;
 	size_t i = 0;
 	int r;
 	prop->num_objects = 0;
@@ -1286,7 +1289,7 @@ static int cac_path_from_cardurl(sc_card_t *card, sc_path_t *path, cac_card_url_
 	return SC_SUCCESS;
 }
 
-static int cac_parse_aid(sc_card_t *card, cac_private_data_t *priv, u8 *aid, int aid_len)
+static int cac_parse_aid(sc_card_t *card, cac_private_data_t *priv, const u8 *aid, int aid_len)
 {
 	cac_object_t new_object;
 	cac_properties_t prop;
@@ -1417,12 +1420,12 @@ static int cac_parse_cuid(sc_card_t *card, cac_private_data_t *priv, cac_cuid_t 
 }
 static int cac_process_CCC(sc_card_t *card, cac_private_data_t *priv);
 
-static int cac_parse_CCC(sc_card_t *card, cac_private_data_t *priv, u8 *tl,
+static int cac_parse_CCC(sc_card_t *card, cac_private_data_t *priv, const u8 *tl,
 						 size_t tl_len, u8 *val, size_t val_len)
 {
 	size_t len = 0;
-	u8 *tl_end = tl + tl_len;
-	u8 *val_end = val + val_len;
+	const u8 *tl_end = tl + tl_len;
+	const u8 *val_end = val + val_len;
 	sc_path_t new_path;
 	int r;
 
@@ -1556,10 +1559,10 @@ done:
  * card, which is a good start if we don't have CCC
  */
 static int cac_parse_ACA_service(sc_card_t *card, cac_private_data_t *priv,
-    u8 *val, size_t val_len)
+    const u8 *val, size_t val_len)
 {
 	size_t len = 0;
-	u8 *val_end = val + val_len;
+	const u8 *val_end = val + val_len;
 	int r;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
@@ -1601,9 +1604,9 @@ static int cac_parse_ACA_service(sc_card_t *card, cac_private_data_t *priv,
 				break;
 			}
 			sc_debug_hex(card->ctx, SC_LOG_DEBUG_VERBOSE,
-			    "TAG: Applet Entry: AID", &val[3], val[2]);
+			    "TAG: Applet Entry: AID", val + 3, val[2]);
 			/* This is SimpleTLV prefixed with applet ID (1B) */
-			r = cac_parse_aid(card, priv, &val[3], val[2]);
+			r = cac_parse_aid(card, priv, val + 3, val[2]);
 			if (r < 0)
 				return r;
 			break;

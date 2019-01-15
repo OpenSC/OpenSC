@@ -2742,7 +2742,7 @@ err:
 	/* CCC  entries are simple tlv */
 	end = body + bodylen;
 	for(; (body < end); body += len) {
-		r = sc_simpletlv_read_tag((u8**)&body, end - body , &tag, &len);
+		r = sc_simpletlv_read_tag(&body, end - body , &tag, &len);
 		if (r < 0)
 			goto err;
 		switch (tag) {

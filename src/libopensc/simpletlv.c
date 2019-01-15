@@ -72,11 +72,11 @@ sc_simpletlv_put_tag(u8 tag, size_t datalen, u8 *out, size_t outlen, u8 **ptr)
  * content.
  */
 int
-sc_simpletlv_read_tag(u8 **buf, size_t buflen, u8 *tag_out, size_t *taglen)
+sc_simpletlv_read_tag(const u8 **buf, size_t buflen, u8 *tag_out, size_t *taglen)
 {
 	u8 tag;
 	size_t left = buflen, len;
-	u8 *p = *buf;
+	const u8 *p = *buf;
 
 	*buf = NULL;
 
