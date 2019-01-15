@@ -269,7 +269,7 @@ static const char *option_help[] = {
 	"Specify the application ID of the data object (use with --type data)",
 	"Specify the issuer in hexadecimal format (use with --type cert)",
 	"Specify the subject in hexadecimal format (use with --type cert/privkey/pubkey)",
-	"Specify the type of object (e.g. cert, privkey, pubkey, data)",
+	"Specify the type of object (e.g. cert, privkey, pubkey, secrkey, data)",
 	"Specify the ID of the object",
 	"Specify the label of the object",
 	"Specify the ID of the slot to use",

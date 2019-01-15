@@ -475,8 +475,9 @@
 						<option>-y</option> <replaceable>type</replaceable>
 					</term>
 					<listitem><para>Specify the type of object to operate on.
-					Examples are <literal>cert</literal>, <literal>privkey</literal>
-					and <literal>pubkey</literal>.</para></listitem>
+					Valid value are <literal>cert</literal>, <literal>privkey</literal>,
+					<literal>pubkey</literal>, <literal>secrkey</literal> 
+					and <literal>data</literal>.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
