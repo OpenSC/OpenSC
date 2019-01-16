@@ -156,11 +156,8 @@ static void verify(sc_card_t *card, const char *verify_str,
 	sc_apdu_t apdu;
 	int r;
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, ISO_VERIFY, 0x80, 0);
+	sc_format_apdu_ex(card, &apdu, ISO_VERIFY, 0x80, 0, data, data_len, NULL, 0);
 	apdu.cla = 0x80;
-	apdu.data = data;
-	apdu.datalen = data_len;
-	apdu.lc = data_len;
 
 	r = sc_transmit_apdu(card, &apdu);
 	if (r < 0)

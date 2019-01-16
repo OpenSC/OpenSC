@@ -109,6 +109,7 @@ sc_file_set_type_attr
 sc_file_set_content
 sc_file_valid
 sc_format_apdu
+sc_format_apdu_ex
 sc_bytes2apdu
 sc_format_asn1_entry
 sc_format_oid

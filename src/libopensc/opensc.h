@@ -813,6 +813,10 @@ int sc_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu);
 
 void sc_format_apdu(struct sc_card *, struct sc_apdu *, int, int, int, int);
 
+void sc_format_apdu_ex(struct sc_card *card, struct sc_apdu *apdu,
+		u8 ins, u8 p1, u8 p2,
+	   	u8 *data, size_t datalen, u8 *resp, size_t resplen);
+
 int sc_check_apdu(struct sc_card *, const struct sc_apdu *);
 
 /** Transforms an APDU from binary to its @c sc_apdu_t representation
