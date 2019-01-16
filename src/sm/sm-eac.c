@@ -249,8 +249,6 @@ IMPLEMENT_ASN1_FUNCTIONS(EAC_GEN_AUTH_CA_R)
 
 
 
-#define maxresp SC_MAX_APDU_BUFFER_SIZE - 2
-
 /** @brief NPA secure messaging context */
 struct eac_sm_ctx {
 	/** @brief EAC context */
@@ -521,8 +519,6 @@ static int eac_mse(sc_card_t *card,
 		r = SC_ERROR_INVALID_ARGUMENTS;
 		goto err;
 	}
-
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, ISO_MSE, p1, p2);
 	
 	r = format_mse_cdata(card->ctx, protocol, key_reference1,
 			key_reference1_len, key_reference2, key_reference2_len,
@@ -530,10 +526,8 @@ static int eac_mse(sc_card_t *card,
 			chat, &d);
 	if (r < 0)
 		goto err;
-	apdu.data = d;
-	apdu.datalen = r;
-	apdu.lc = r;
-
+	sc_format_apdu_ex(card, &apdu, ISO_MSE, p1, p2,
+			d, r, NULL, 0);
 
 	r = sc_transmit_apdu(card, &apdu);
 	if (r < 0)
@@ -618,11 +612,7 @@ static int eac_gen_auth_1_encrypted_nonce(sc_card_t *card,
 	EAC_GEN_AUTH_PACE_R *r_data = NULL;
 	unsigned char *d = NULL, *p;
 	int r, l;
-	unsigned char resp[maxresp];
-
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, ISO_GENERAL_AUTHENTICATE,
-			0x00, 0x00);
-	apdu.cla = ISO_COMMAND_CHAINING;
+	unsigned char resp[SC_MAX_EXT_APDU_RESP_SIZE];
 
 	c_data = EAC_GEN_AUTH_PACE_C_new();
 	if (!c_data) {
@@ -635,14 +625,13 @@ static int eac_gen_auth_1_encrypted_nonce(sc_card_t *card,
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
-	apdu.data = d;
-	apdu.datalen = r;
-	apdu.lc = r;
+
+	sc_format_apdu_ex(card, &apdu, ISO_GENERAL_AUTHENTICATE, 0x00, 0x00,
+			d, r, resp, sizeof resp);
+	apdu.cla = ISO_COMMAND_CHAINING;
 
 	sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "General authenticate (Encrypted Nonce) command data", apdu.data, apdu.datalen);
 
-	apdu.resplen = sizeof resp;
-	apdu.resp = resp;
 	r = sc_transmit_apdu(card, &apdu);
 	if (r < 0)
 		goto err;
@@ -702,11 +691,7 @@ static int eac_gen_auth_2_map_nonce(sc_card_t *card,
 	EAC_GEN_AUTH_PACE_R *r_data = NULL;
 	unsigned char *d = NULL, *p;
 	int r, l;
-	unsigned char resp[maxresp];
-
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, ISO_GENERAL_AUTHENTICATE,
-			0x00, 0x00);
-	apdu.cla = ISO_COMMAND_CHAINING;
+	unsigned char resp[SC_MAX_EXT_APDU_RESP_SIZE];
 
 	c_data = EAC_GEN_AUTH_PACE_C_new();
 	if (!c_data) {
@@ -727,14 +712,12 @@ static int eac_gen_auth_2_map_nonce(sc_card_t *card,
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
-	apdu.data = d;
-	apdu.datalen = r;
-	apdu.lc = r;
+	sc_format_apdu_ex(card, &apdu, ISO_GENERAL_AUTHENTICATE, 0x00, 0x00,
+		   	d, r, resp, sizeof resp);
+	apdu.cla = ISO_COMMAND_CHAINING;
 
 	sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "General authenticate (Map Nonce) command data", apdu.data, apdu.datalen);
 
-	apdu.resplen = sizeof resp;
-	apdu.resp = resp;
 	r = sc_transmit_apdu(card, &apdu);
 	if (r < 0)
 		goto err;
@@ -794,11 +777,7 @@ static int eac_gen_auth_3_perform_key_agreement(sc_card_t *card,
 	EAC_GEN_AUTH_PACE_R *r_data = NULL;
 	unsigned char *d = NULL, *p;
 	int r, l;
-	unsigned char resp[maxresp];
-
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, ISO_GENERAL_AUTHENTICATE,
-			0x00, 0x00);
-	apdu.cla = ISO_COMMAND_CHAINING;
+	unsigned char resp[SC_MAX_EXT_APDU_RESP_SIZE];
 
 	c_data = EAC_GEN_AUTH_PACE_C_new();
 	if (!c_data) {
@@ -819,14 +798,12 @@ static int eac_gen_auth_3_perform_key_agreement(sc_card_t *card,
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
-	apdu.data = d;
-	apdu.datalen = r;
-	apdu.lc = r;
+	sc_format_apdu_ex(card, &apdu, ISO_GENERAL_AUTHENTICATE, 0x00, 0x00,
+			d, r, resp, sizeof resp);
+	apdu.cla = ISO_COMMAND_CHAINING;
 
 	sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "General authenticate (Perform Key Agreement) command data", apdu.data, apdu.datalen);
 
-	apdu.resplen = sizeof resp;
-	apdu.resp = resp;
 	r = sc_transmit_apdu(card, &apdu);
 	if (r < 0)
 		goto err;
@@ -888,10 +865,7 @@ static int eac_gen_auth_4_mutual_authentication(sc_card_t *card,
 	EAC_GEN_AUTH_PACE_R *r_data = NULL;
 	unsigned char *d = NULL, *p;
 	int r, l;
-	unsigned char resp[maxresp];
-
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, ISO_GENERAL_AUTHENTICATE,
-			0x00, 0x00);
+	unsigned char resp[SC_MAX_EXT_APDU_RESP_SIZE];
 
 	c_data = EAC_GEN_AUTH_PACE_C_new();
 	if (!c_data) {
@@ -912,14 +886,12 @@ static int eac_gen_auth_4_mutual_authentication(sc_card_t *card,
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
-	apdu.data = d;
-	apdu.datalen = r;
-	apdu.lc = r;
+
+	sc_format_apdu_ex(card, &apdu, ISO_GENERAL_AUTHENTICATE, 0x00, 0x00,
+			d, r, resp, sizeof resp);
 
 	sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "General authenticate (Perform Key Agreement) command data", apdu.data, apdu.datalen);
 
-	apdu.resplen = sizeof resp;
-	apdu.resp = resp;
 	r = sc_transmit_apdu(card, &apdu);
 	if (r < 0)
 		goto err;
@@ -1420,10 +1392,7 @@ static int eac_get_challenge(sc_card_t *card,
 		goto err;
 	}
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0x84, 0x00, 0x00);
-	apdu.le = len;
-	apdu.resplen = len;
-	apdu.resp = challenge;
+	sc_format_apdu_ex(card, &apdu, 0x84, 0x00, 0x00, NULL, 0, challenge, len);
 
 	r = sc_transmit_apdu(card, &apdu);
 	if (r < 0)
@@ -1449,17 +1418,14 @@ static int eac_verify(sc_card_t *card,
 		goto err;
 	}
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_EXT, 0x2A, 0x00, 0xbe);
-
-	apdu.data = cert;
-	if (0x80 & ASN1_get_object(&apdu.data, &length, &tag, &class, cert_len)) {
+	if (0x80 & ASN1_get_object(&cert, &length, &tag, &class, cert_len)) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Error decoding Certificate");
 		ssl_error(card->ctx);
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
-	apdu.datalen = length;
-	apdu.lc = length;
+
+	sc_format_apdu_ex(card, &apdu, 0x2A, 0x00, 0xbe, (unsigned char *) cert, length, NULL, 0);
 
 	r = sc_transmit_apdu(card, &apdu);
 	if (r < 0)
@@ -1483,11 +1449,7 @@ static int eac_external_authenticate(sc_card_t *card,
 		goto err;
 	}
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x82, 0x00, 0x00);
-
-	apdu.data = signature;
-	apdu.datalen = signature_len;
-	apdu.lc = signature_len;
+	sc_format_apdu_ex(card, &apdu, 0x82, 0x00, 0x00, signature, signature_len, NULL, 0);
 
 	r = sc_transmit_apdu(card, &apdu);
 	if (r < 0)
@@ -1702,10 +1664,7 @@ static int eac_gen_auth_ca(sc_card_t *card, const BUF_MEM *eph_pub_key,
 	EAC_GEN_AUTH_CA_R *r_data = NULL;
 	unsigned char *d = NULL;
 	int r;
-	unsigned char resp[maxresp];
-
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, ISO_GENERAL_AUTHENTICATE,
-			0, 0);
+	unsigned char resp[SC_MAX_EXT_APDU_RESP_SIZE];
 
 	c_data = EAC_GEN_AUTH_CA_C_new();
 	if (!c_data) {
@@ -1727,14 +1686,10 @@ static int eac_gen_auth_ca(sc_card_t *card, const BUF_MEM *eph_pub_key,
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
-	apdu.data = d;
-	apdu.datalen = r;
-	apdu.lc = r;
+	sc_format_apdu_ex(card, &apdu, ISO_GENERAL_AUTHENTICATE, 0, 0, d, r, resp, sizeof resp);
 
 	sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "General authenticate (Perform Key Agreement) command data", apdu.data, apdu.datalen);
 
-	apdu.resplen = sizeof resp;
-	apdu.resp = resp;
 	r = sc_transmit_apdu(card, &apdu);
 	if (r < 0)
 		goto err;
@@ -2476,7 +2431,7 @@ int eac_pace_get_tries_left(sc_card_t *card,
 		r = eac_mse_set_at_pace(card, 0, pin_id, 0, &sw1, &sw2);
 #else
 		sc_apdu_t apdu;
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, ISO_MSE, 0xC1, 0xA4);
+		sc_format_apdu_ex(card, &apdu, ISO_MSE, 0xC1, 0xA4, NULL, 0, NULL, 0);
 		r = sc_transmit_apdu(card, &apdu);
 		sw1 = apdu.sw1;
 		sw2 = apdu.sw2;

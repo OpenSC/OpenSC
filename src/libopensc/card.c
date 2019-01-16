@@ -63,6 +63,63 @@ void sc_format_apdu(sc_card_t *card, sc_apdu_t *apdu,
 	apdu->p2 = (u8) p2;
 }
 
+void sc_format_apdu_cse_lc_le(struct sc_apdu *apdu)
+{
+	/* TODO calculating the APDU case, Lc and Le should actually only be
+	 * done in sc_apdu2bytes, but to gradually change OpenSC we start here. */
+
+	if (!apdu)
+		return;
+	if (apdu->datalen > SC_MAX_APDU_DATA_SIZE
+			|| apdu->resplen > SC_MAX_APDU_RESP_SIZE) {
+		/* extended length */
+		if (apdu->datalen < SC_MAX_EXT_APDU_DATA_SIZE)
+			apdu->lc = apdu->datalen;
+		if (apdu->resplen < SC_MAX_EXT_APDU_RESP_SIZE)
+			apdu->le = apdu->resplen;
+		if (apdu->resplen && !apdu->datalen)
+			apdu->cse = SC_APDU_CASE_2_EXT;
+		if (!apdu->resplen && apdu->datalen)
+			apdu->cse = SC_APDU_CASE_3_EXT;
+		if (apdu->resplen && apdu->datalen)
+			apdu->cse = SC_APDU_CASE_4_EXT;
+	} else {
+		/* short length */
+		if (apdu->datalen < SC_MAX_APDU_DATA_SIZE)
+			apdu->lc = apdu->datalen;
+		if (apdu->resplen < SC_MAX_APDU_RESP_SIZE)
+			apdu->le = apdu->resplen;
+		if (!apdu->resplen && !apdu->datalen)
+			apdu->cse = SC_APDU_CASE_1;
+		if (apdu->resplen && !apdu->datalen)
+			apdu->cse = SC_APDU_CASE_2_SHORT;
+		if (!apdu->resplen && apdu->datalen)
+			apdu->cse = SC_APDU_CASE_3_SHORT;
+		if (apdu->resplen && apdu->datalen)
+			apdu->cse = SC_APDU_CASE_4_SHORT;
+	}
+}
+
+void sc_format_apdu_ex(struct sc_card *card, struct sc_apdu *apdu,
+		u8 ins, u8 p1, u8 p2, u8 *data, size_t datalen, u8 *resp, size_t resplen)
+{
+	if (!apdu) {
+		return;
+	}
+
+	memset(apdu, 0, sizeof(*apdu));
+	if (card)
+		apdu->cla = (u8) card->cla;
+	apdu->ins = ins;
+	apdu->p1 = p1;
+	apdu->p2 = p2;
+	apdu->resp = resp;
+	apdu->resplen = resplen;
+	apdu->data = data;
+	apdu->datalen = datalen;
+	sc_format_apdu_cse_lc_le(apdu);
+}
+
 static sc_card_t * sc_card_new(sc_context_t *ctx)
 {
 	sc_card_t *card;

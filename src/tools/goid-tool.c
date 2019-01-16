@@ -114,11 +114,8 @@ soc_info(sc_context_t *ctx, sc_card_t *card)
         { NULL , 0 , 0 , 0 , NULL , NULL }
     };
 
-    sc_format_apdu(card, &apdu, SC_APDU_CASE_2, 0x61, 0x00, 0x00);
-
+    sc_format_apdu_ex(card, &apdu, 0x61, 0x00, 0x00, NULL, 0, rbuf, sizeof rbuf);
     apdu.cla = 0x80;
-    apdu.resp = rbuf;
-    apdu.resplen = sizeof rbuf;
 
     if (sc_transmit_apdu(card, &apdu) != SC_SUCCESS) {
         return;
@@ -239,7 +236,7 @@ soc_verify(sc_card_t *card, unsigned char p2)
 {
     int ok = 0;
     sc_apdu_t apdu;
-    sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x20, 0x00, p2);
+    sc_format_apdu_ex(card, &apdu, 0x20, 0x00, p2, NULL, 0, NULL, 0);
     SC_TEST_GOTO_ERR(card->ctx, SC_LOG_DEBUG_VERBOSE_TOOL,
             sc_transmit_apdu(card, &apdu),
             "Verification failed");
@@ -275,7 +272,7 @@ soc_change(sc_card_t *card, unsigned char p1, unsigned char p2)
 {
     int ok = 0;
     sc_apdu_t apdu;
-    sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x24, p1, p2);
+    sc_format_apdu_ex(card, &apdu, 0x24, p1, p2, NULL, 0, NULL, 0);
     SC_TEST_GOTO_ERR(card->ctx, SC_LOG_DEBUG_VERBOSE_TOOL,
             sc_transmit_apdu(card, &apdu),
             "Changing secret failed");
