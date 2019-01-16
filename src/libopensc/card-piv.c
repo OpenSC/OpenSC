@@ -147,6 +147,10 @@ enum {
 	PIV_STATE_INIT
 };
 
+/* piv_get_data and piv_general_io flags */
+#define PIV_IO_GET_LENGTH	0x00000001
+#define PIV_IO_STATUS_ONLY	0x00000002
+
 /* ccc_flags */
 #define PIV_CCC_FOUND		0x00000001
 #define PIV_CCC_F0_PIV		0x00000002
@@ -510,6 +514,40 @@ put_tag_and_len(unsigned int tag, size_t len, u8 **ptr)
 }
 
 /*
+ * Check data read from card for valid outer TLV
+ * Peek at an ASN1 TLV to get the L or error
+ * SC_ERROR_ASN1_END_OF_CONTENTS meant T and L are valid
+ * but we don't have all the data to contain V
+ * caller can check by comparing rbuflen and r
+ * if needed.
+ * r=0 or 1 are never be returned
+ */
+
+static int
+piv_asn1_peek_tag(sc_card_t * card, unsigned char * rbuf, size_t rbuflen)
+{
+	int r = 0;
+	size_t bodylen;
+	const u8 *body;
+	unsigned int cla_out, tag_out;
+
+	body = rbuf;
+	r = sc_asn1_read_tag(&body, rbuflen, &cla_out, &tag_out, &bodylen);
+
+	if (r == SC_SUCCESS || r == SC_ERROR_ASN1_END_OF_CONTENTS) {
+		if (bodylen == 0)
+			r = SC_ERROR_OBJECT_NOT_FOUND; /* or body is empty */
+		else if (bodylen > 65536)
+			r = SC_ERROR_OBJECT_NOT_VALID; /* PIV objects are less then 65K */
+		else 
+		r = body - rbuf + bodylen; /* expected size of object including TLV */
+	}
+
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+
+
+/*
  * Send a command and receive data. There is always something to send.
  * Used by  GET DATA, PUT DATA, GENERAL AUTHENTICATE
  * and GENERATE ASYMMETRIC KEY PAIR.
@@ -522,27 +560,21 @@ put_tag_and_len(unsigned int tag, size_t len, u8 **ptr)
 
 static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 	const u8 * sendbuf, size_t sendbuflen, u8 ** recvbuf,
-	size_t * recvbuflen)
+	size_t * recvbuflen, unsigned int flags)
 {
 	int r;
-	int r_tag ;
 	sc_apdu_t apdu;
 	u8 rbufinitbuf[4096];
 	u8 *rbuf;
 	size_t rbuflen;
-	unsigned int cla_out, tag_out;
-	const u8 *body;
-	size_t bodylen;
-	int find_len = 0;
-	piv_private_data_t * priv = PIV_DATA(card);
 
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	sc_log(card->ctx,
-	       "%02x %02x %02x %"SC_FORMAT_LEN_SIZE_T"u : %"SC_FORMAT_LEN_SIZE_T"u %"SC_FORMAT_LEN_SIZE_T"u",
+	       "%02x %02x %02x %"SC_FORMAT_LEN_SIZE_T"u : %"SC_FORMAT_LEN_SIZE_T"u %"SC_FORMAT_LEN_SIZE_T"u %02x",
 	       ins, p1, p2, sendbuflen, card->max_send_size,
-	       card->max_recv_size);
+	       card->max_recv_size, flags);
 
 	rbuf = rbufinitbuf;
 	rbuflen = sizeof(rbufinitbuf);
@@ -561,10 +593,9 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 			recvbuf ? SC_APDU_CASE_4_SHORT: SC_APDU_CASE_3_SHORT,
 			ins, p1, p2);
 	apdu.flags |= SC_APDU_FLAGS_CHAINING;
-	/* if looking for length of object, dont try and read the rest of buffer here */
-	if (rbuflen == 8 && card->reader->active_protocol == SC_PROTO_T1) {
+	/* if looking for length of object, dont try and read the rest of object here */
+	if (flags & PIV_IO_GET_LENGTH  && card->reader->active_protocol == SC_PROTO_T1) {
 		apdu.flags |= SC_APDU_FLAGS_NO_GET_RESP;
-		find_len = 1;
 	}
 
 	apdu.lc = sendbuflen;
@@ -589,41 +620,46 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 		goto err;
 	}
 
-	if (!(find_len && apdu.sw1 == 0x61))
-	    r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	/* APDU was sucessful */
 
-/* TODO: - DEE look later at tag vs size read too */
+	if (flags & PIV_IO_GET_LENGTH && apdu.sw1 == 0x61)
+		r = 0; /* treat like 90 00 */
+	else
+		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+
 	if (r < 0) {
 		sc_log(card->ctx, "Card returned error ");
 		goto err;
 	}
 
+	if (flags & PIV_IO_STATUS_ONLY) {
+		r = 0; /* say the length is 0 */
+		goto ok;
+	}
+
 	/*
+	 * The caller who set PIV_IO_GET_LENGTH  will check the TLV
+	 * For others check the TLV is valid and containd in what was read
 	 * See how much we read and make sure it is asn1
 	 * if not, return 0 indicating no data found
+	 * We want to return size of the object includes the tag and length
+	 * More data may have been.    
 	 */
 
-
-	rbuflen = 0;  /* in case rseplen < 3  i.e. not parseable */
-	/* we may only be using get data to test the security status of the card, so zero length is OK */
-	if ( recvbuflen && recvbuf && apdu.resplen > 3 && priv->pin_cmd_noparse != 1) {
-		*recvbuflen = 0;
-		/* we should have all the tag data, so we have to tell sc_asn1_find_tag
-		 * the buffer is bigger, so it will not produce "ASN1.tag too long!" */
-
-		body = rbuf;
-		r_tag = sc_asn1_read_tag(&body, apdu.resplen, &cla_out, &tag_out, &bodylen);
-		sc_log(card->ctx, "r_tag:%d body:%p", r_tag, body);
-		if ( (r_tag != SC_SUCCESS && r_tag != SC_ERROR_ASN1_END_OF_CONTENTS)
-				|| body == NULL)  {
-			body = rbuf;
-			bodylen = apdu.resplen;
+	if (recvbuflen && recvbuf) {
+		/* peek at the TLV */
+		r = piv_asn1_peek_tag(card, rbuf, apdu.resplen);
+		sc_log(card->ctx, "r:%d body:%p", r, rbuf);
+		if (r <= 0)
+		    goto err;
+		if (flags & PIV_IO_GET_LENGTH) {
+			rbuflen = apdu.resplen;
+		} else {
+			rbuflen = r;
 		}
 
-		rbuflen = body - rbuf + bodylen;
-
 		/* if using internal buffer, alloc new one */
-		if (rbuf == rbufinitbuf) {
+		if (rbuf == rbufinitbuf && rbuflen) {
 			*recvbuf = malloc(rbuflen);
 			if (*recvbuf == NULL) {
 				r = SC_ERROR_OUT_OF_MEMORY;
@@ -631,14 +667,11 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 			}
 
 			memcpy(*recvbuf, rbuf, rbuflen); /* copy tag too */
+		*recvbuflen =  rbuflen;
+
 		}
 	}
-
-	if (recvbuflen) {
-		*recvbuflen =  rbuflen;
-		r = *recvbuflen;
-	}
-
+ok:
 err:
 	sc_unlock(card);
 	LOG_FUNC_RETURN(card->ctx, r);
@@ -702,7 +735,7 @@ static int piv_generate_key(sc_card_t *card,
 	p+=out_len;
 
 	r = piv_general_io(card, 0x47, 0x00, keydata->key_num,
-			tagbuf, p - tagbuf, &rbuf, &rbuflen);
+			tagbuf, p - tagbuf, &rbuf, &rbuflen, 0);
 
 	if (r >= 0) {
 		const u8 *cp;
@@ -948,15 +981,18 @@ err:
 
 /* the tag is the PIV_OBJ_*  */
 static int
-piv_get_data(sc_card_t * card, int enumtag, u8 **buf, size_t *buf_len)
+piv_get_data(sc_card_t * card, int enumtag, u8 **buf, size_t *buf_len, unsigned int flags)
 {
 	u8 *p;
 	int r = 0;
 	u8 tagbuf[8];
 	size_t tag_len;
+	u8 *rbuf;  /* if reading length */
+	size_t rbuflen; /* if reading length */
+	u8 rbufinitbuf[8]; /* tag of 53 with 82 xx xx  will fit in 4 */
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	sc_log(card->ctx, "#%d", enumtag);
+	sc_log(card->ctx, "#%d %p:%"SC_FORMAT_LEN_SIZE_T"u flags:%02x", enumtag, *buf, *buf_len, flags);
 
 	r = sc_lock(card); /* do check len and get data in same transaction */
 	if (r != SC_SUCCESS) {
@@ -973,40 +1009,22 @@ piv_get_data(sc_card_t * card, int enumtag, u8 **buf, size_t *buf_len)
 	memcpy(p, piv_objects[enumtag].tag_value, tag_len);
 	p += tag_len;
 
-	if (*buf_len == 1 && *buf == NULL) { /* we need to get the length */
-		u8 rbufinitbuf[8]; /* tag of 53 with 82 xx xx  will fit in 4 */
-		u8 *rbuf;
-		size_t rbuflen;
-		size_t bodylen;
-		unsigned int cla_out, tag_out;
-		const u8 *body;
-
+	if (flags & PIV_IO_GET_LENGTH) { /* we need to get the length */
 		sc_log(card->ctx, "get len of #%d", enumtag);
 		rbuf = rbufinitbuf;
 		rbuflen = sizeof(rbufinitbuf);
-		r = piv_general_io(card, 0xCB, 0x3F, 0xFF, tagbuf,  p - tagbuf, &rbuf, &rbuflen);
-		if (r > 0) {
-			int r_tag;
-			body = rbuf;
-			r_tag = sc_asn1_read_tag(&body, rbuflen, &cla_out, &tag_out, &bodylen);
-			if ((r_tag != SC_SUCCESS && r_tag != SC_ERROR_ASN1_END_OF_CONTENTS)
-					|| body == NULL) {
-				sc_log(card->ctx, "r_tag:%d body:%p", r_tag, body);
-				r = SC_ERROR_FILE_NOT_FOUND;
-				goto err;
-			}
-		    *buf_len = r;
-		} else if ( r == 0 ) {
-			r = SC_ERROR_FILE_NOT_FOUND;
-			goto err;
-		} else {
-			goto err;
-		}
+		r = piv_general_io(card, 0xCB, 0x3F, 0xFF, tagbuf,  p - tagbuf, &rbuf, &rbuflen, PIV_IO_GET_LENGTH);
+		/* OK got the length, and TLV is valid */
+		if (r <= 0)
+
+
+goto err;
+		*buf_len = r;
 	}
 
 	sc_log(card->ctx,
-	       "buffer for #%d *buf=0x%p len=%"SC_FORMAT_LEN_SIZE_T"u",
-	       enumtag, *buf, *buf_len);
+	       "buffer for #%d *buf=0x%p len=%"SC_FORMAT_LEN_SIZE_T"u %02x",
+	       enumtag, *buf, *buf_len, flags);
 	if (*buf == NULL && *buf_len > 0) {
 		*buf = malloc(*buf_len);
 		if (*buf == NULL ) {
@@ -1015,7 +1033,17 @@ piv_get_data(sc_card_t * card, int enumtag, u8 **buf, size_t *buf_len)
 		}
 	}
 
-	r = piv_general_io(card, 0xCB, 0x3F, 0xFF, tagbuf,  p - tagbuf, buf, buf_len);
+	r = piv_general_io(card, 0xCB, 0x3F, 0xFF, tagbuf,  p - tagbuf, buf, buf_len, 0);
+	if (r <= 0)
+		goto err;
+
+	if ( r > 0 && flags & PIV_IO_GET_LENGTH) {
+	    /* make sure what we read for get length is same as what we just read */
+		if (rbuflen > (unsigned int)r || (memcmp(rbuf, *buf, rbuflen) != 0)) {
+			sc_log(card->ctx, "r:%d rbuflen:%"SC_FORMAT_LEN_SIZE_T"u", r, rbuflen);
+			r = SC_ERROR_WRONG_LENGTH;
+		}
+	}
 
 err:
 	sc_unlock(card);
@@ -1030,7 +1058,7 @@ piv_get_cached_data(sc_card_t * card, int enumtag, u8 **buf, size_t *buf_len)
 	piv_private_data_t * priv = PIV_DATA(card);
 	int r;
 	u8 *rbuf = NULL;
-	size_t rbuflen;
+	size_t rbuflen = 0;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	sc_log(card->ctx, "#%d", enumtag);
@@ -1074,8 +1102,7 @@ piv_get_cached_data(sc_card_t * card, int enumtag, u8 **buf, size_t *buf_len)
 
 	/* Not cached, try to get it, piv_get_data will allocate a buf */
 	sc_log(card->ctx, "get #%d",  enumtag);
-	rbuflen = 1;
-	r = piv_get_data(card, enumtag, &rbuf, &rbuflen);
+	r = piv_get_data(card, enumtag, &rbuf, &rbuflen, PIV_IO_GET_LENGTH);
 	if (r > 0) {
 		priv->obj_cache[enumtag].flags |= PIV_OBJ_CACHE_VALID;
 		priv->obj_cache[enumtag].obj_len = r;
@@ -1312,7 +1339,7 @@ piv_put_data(sc_card_t *card, int tag, const u8 *buf, size_t buf_len)
 	memcpy(p, buf, buf_len);
 	p += buf_len;
 
-	r = piv_general_io(card, 0xDB, 0x3F, 0xFF, sbuf, p - sbuf, NULL, NULL);
+	r = piv_general_io(card, 0xDB, 0x3F, 0xFF, sbuf, p - sbuf, NULL, NULL, 0);
 
 	if (sbuf)
 		free(sbuf);
@@ -1687,7 +1714,7 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 	*p++ = 0x00;
 
 	/* get the encrypted nonce */
-	r = piv_general_io(card, 0x87, alg_id, key_ref, sbuf, p - sbuf, &rbuf, &rbuflen);
+	r = piv_general_io(card, 0x87, alg_id, key_ref, sbuf, p - sbuf, &rbuf, &rbuflen, 0);
 
  	if (r < 0) goto err;
 
@@ -1812,7 +1839,7 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 	rbuf = NULL;
 
 	/* Send constructed data */
-	r = piv_general_io(card, 0x87, alg_id, key_ref, built,built_len, &rbuf, &rbuflen);
+	r = piv_general_io(card, 0x87, alg_id, key_ref, built,built_len, &rbuf, &rbuflen, 0);
  	if (r < 0) goto err;
 
 	/* Remove the encompassing outer TLV of 0x7C and get the data */
@@ -1967,7 +1994,7 @@ static int piv_general_external_authenticate(sc_card_t *card,
 	*p++ = 0x00;
 
 	/* get a challenge */
-	r = piv_general_io(card, 0x87, alg_id, key_ref, sbuf, p - sbuf, &rbuf, &rbuflen);
+	r = piv_general_io(card, 0x87, alg_id, key_ref, sbuf, p - sbuf, &rbuf, &rbuflen, 0);
 	if (r < 0) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Error getting Challenge\n");
 		goto err;
@@ -2079,7 +2106,7 @@ static int piv_general_external_authenticate(sc_card_t *card,
 		goto err;
 	}
 
-	r = piv_general_io(card, 0x87, alg_id, key_ref, output_buf, output_len, NULL, NULL);
+	r = piv_general_io(card, 0x87, alg_id, key_ref, output_buf, output_len, NULL, NULL, 0);
 	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Got response  challenge\n");
 
 err:
@@ -2278,7 +2305,7 @@ static int piv_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 	}
 
 	/* NIST 800-73-3 says use 9B, previous verisons used 00 */
-	r = piv_general_io(card, 0x87, 0x00, 0x9B, sbuf, sizeof sbuf, &rbuf, &rbuf_len);
+	r = piv_general_io(card, 0x87, 0x00, 0x9B, sbuf, sizeof sbuf, &rbuf, &rbuf_len, 0);
 	/*
 	 * piv_get_challenge is called in a loop.
 	 * some cards may allow 1 challenge expecting it to be part of
@@ -2290,7 +2317,7 @@ static int piv_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 		if (rbuf)
 			free(rbuf);
 		rbuf_len = 0;
-		r = piv_general_io(card, 0x87, 0x00, 0x9B, sbuf, sizeof sbuf, &rbuf, &rbuf_len);
+		r = piv_general_io(card, 0x87, 0x00, 0x9B, sbuf, sizeof sbuf, &rbuf, &rbuf_len, 0);
 		if (r == SC_ERROR_INCORRECT_PARAMETERS) {
 			r = SC_ERROR_NOT_SUPPORTED;
 		}
@@ -2425,7 +2452,7 @@ static int piv_validate_general_authentication(sc_card_t *card,
 	/* EC alg_id was already set */
 
 	r = piv_general_io(card, 0x87, real_alg_id, priv->key_ref,
-			sbuf, p - sbuf, &rbuf, &rbuflen);
+			sbuf, p - sbuf, &rbuf, &rbuflen, 0);
 
 	if (r >= 0) {
 		body = sc_asn1_find_tag(card->ctx, rbuf, rbuflen, 0x7c, &bodylen);
@@ -2808,7 +2835,7 @@ static int piv_find_discovery(sc_card_t *card)
 		r = piv_process_discovery(card);
 	} else {
 		/* if already in cache,force read */
-		r = piv_get_data(card, PIV_OBJ_DISCOVERY, &arbuf, &rbuflen);
+		r = piv_get_data(card, PIV_OBJ_DISCOVERY, &arbuf, &rbuflen, 0);
 		if (r >= 0)
 			/* make sure it is PIV AID */
 			r = piv_parse_discovery(card, rbuf, rbuflen, 1);
@@ -3598,10 +3625,8 @@ piv_check_protected_objects(sc_card_t *card)
 	if (priv->object_test_verify == 0) {
 		for (i = 0; i < (int)(sizeof(protected_objects)/sizeof(int)); i++) {
 			buf_len = sizeof(buf);
-			priv->pin_cmd_noparse = 1; /* tell piv_general_io dont need to parse at all. */
 			rbuf = buf;
-			r = piv_get_data(card, protected_objects[i], &rbuf, &buf_len);
-			priv->pin_cmd_noparse = 0;
+			r = piv_get_data(card, protected_objects[i], &rbuf, &buf_len, PIV_IO_STATUS_ONLY);
 			/* TODO may need to check sw1 and sw2 to see what really happened */
 			if (r >= 0 || r == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED) {
 
@@ -3621,10 +3646,8 @@ piv_check_protected_objects(sc_card_t *card)
 	} else {
 		/* use the one object we found earlier. Test is security status has changed */
 		buf_len = sizeof(buf);
-		priv->pin_cmd_noparse = 1; /* tell piv_general_io dont need to parse at all. */
 		rbuf = buf;
-		r = piv_get_data(card, priv->object_test_verify, &rbuf, &buf_len);
-		priv->pin_cmd_noparse = 0;
+		r = piv_get_data(card, priv->object_test_verify, &rbuf, &buf_len, PIV_IO_STATUS_ONLY);
 	}
 	if (r == SC_ERROR_FILE_NOT_FOUND)
 		r = SC_ERROR_PIN_CODE_INCORRECT;
