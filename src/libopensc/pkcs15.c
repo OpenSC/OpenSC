@@ -1983,6 +1983,8 @@ sc_pkcs15_encode_df(struct sc_context *ctx, struct sc_pkcs15_card *p15card, stru
 			free(buf);
 			return r;
 		}
+		if (!tmpsize)
+			continue;
 		p = (u8 *) realloc(buf, bufsize + tmpsize);
 		if (!p) {
 			free(tmp);

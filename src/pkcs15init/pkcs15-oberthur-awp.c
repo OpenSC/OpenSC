@@ -219,6 +219,8 @@ awp_update_blob(struct sc_context *ctx,
 		*blob_size += 1 + lv->len;
 		break;
 	case TLV_TYPE_V :
+		if (0 == *blob_size + lv->len)
+			return SC_ERROR_INVALID_DATA;
 		if (!(pp = realloc(*blob, *blob_size + lv->len)))
 			return SC_ERROR_OUT_OF_MEMORY;
 		memcpy(pp + *blob_size, lv->value, lv->len);

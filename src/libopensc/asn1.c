@@ -1225,6 +1225,8 @@ static int asn1_encode_se_info(sc_context_t *ctx,
 		if (ret != SC_SUCCESS)
 			goto err;
 
+		if (!ptrlen)
+			continue;
 		p = (unsigned char *) realloc(out, outlen + ptrlen);
 		if (!p)   {
 			ret = SC_ERROR_OUT_OF_MEMORY;

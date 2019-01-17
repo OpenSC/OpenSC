@@ -520,6 +520,10 @@ static int sc_hsm_perform_chip_authentication(sc_card_t *card)
 		r = sc_read_binary(card, 0, all_certs, all_certs_len, 0);
 		if (r < 0)
 			goto err;
+		if (r == 0) {
+			r = SC_ERROR_FILE_NOT_FOUND;
+			goto err;
+		}
 
 		all_certs_len = r;
 

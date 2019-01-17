@@ -478,7 +478,7 @@ static int format_mse_cdata(struct sc_context *ctx, int protocol,
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
-	if (length < 0) {
+	if (length <= 0) {
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
@@ -1321,6 +1321,10 @@ int perform_pace(sc_card_t *card,
 			r = SC_ERROR_INTERNAL;
 			goto err;
 		}
+		if (comp_pub_opp->length == 0) {
+			r = SC_ERROR_INTERNAL;
+			goto err;
+		}
 		p = realloc(pace_output->id_icc, comp_pub_opp->length);
 		if (!p) {
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Not enough memory for ID ICC.\n");
@@ -1333,6 +1337,10 @@ int perform_pace(sc_card_t *card,
 		memcpy(pace_output->id_icc, comp_pub_opp->data, comp_pub_opp->length);
 		sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "ID ICC", pace_output->id_icc,
 				pace_output->id_icc_length);
+		if (comp_pub->length == 0) {
+			r = SC_ERROR_INTERNAL;
+			goto err;
+		}
 		p = realloc(pace_output->id_pcd, comp_pub->length);
 		if (!p) {
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Not enough memory for ID PCD.\n");
@@ -1927,7 +1935,7 @@ eac_sm_encrypt(sc_card_t *card, const struct iso_sm_ctx *ctx,
 
 	databuf = BUF_MEM_create_init(data, datalen);
 	encbuf = EAC_encrypt(eacsmctx->ctx, databuf);
-	if (!databuf || !encbuf) {
+	if (!databuf || !encbuf || !encbuf->length) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not encrypt data.");
 		ssl_error(card->ctx);
 		r = SC_ERROR_INTERNAL;
@@ -1969,7 +1977,7 @@ eac_sm_decrypt(sc_card_t *card, const struct iso_sm_ctx *ctx,
 
 	encbuf = BUF_MEM_create_init(enc, enclen);
 	databuf = EAC_decrypt(eacsmctx->ctx, encbuf);
-	if (!encbuf || !databuf) {
+	if (!encbuf || !databuf || !databuf->length) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not decrypt data.");
 		ssl_error(card->ctx);
 		r = SC_ERROR_INTERNAL;
@@ -2016,7 +2024,7 @@ eac_sm_authenticate(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	}
 
 	macbuf = EAC_authenticate(eacsmctx->ctx, inbuf);
-	if (!macbuf) {
+	if (!macbuf || !macbuf->length) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
 				"Could not compute message authentication code (MAC).");
 		ssl_error(card->ctx);
@@ -2105,7 +2113,7 @@ add_tag(unsigned char **asn1new, int constructed, int tag,
 		return -1;
 
 	newlen = ASN1_object_size(constructed, len, tag);
-	if (newlen < 0)
+	if (newlen <= 0)
 		return newlen;
 
 	p = OPENSSL_realloc(*asn1new, newlen);
