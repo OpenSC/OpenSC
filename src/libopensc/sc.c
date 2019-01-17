@@ -672,7 +672,7 @@ int sc_file_set_prop_attr(sc_file_t *file, const u8 *prop_attr,
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
-	if (prop_attr == NULL) {
+	if (prop_attr == NULL || prop_attr_len == 0) {
 		if (file->prop_attr != NULL)
 			free(file->prop_attr);
 		file->prop_attr = NULL;
@@ -702,7 +702,7 @@ int sc_file_set_type_attr(sc_file_t *file, const u8 *type_attr,
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
-	if (type_attr == NULL) {
+	if (type_attr == NULL || type_attr_len == 0) {
 		if (file->type_attr != NULL)
 			free(file->type_attr);
 		file->type_attr = NULL;
@@ -733,7 +733,7 @@ int sc_file_set_content(sc_file_t *file, const u8 *content,
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
-	if (content == NULL) {
+	if (content == NULL || content_len == 0) {
 		if (file->encoded_content != NULL)
 			free(file->encoded_content);
 		file->encoded_content = NULL;

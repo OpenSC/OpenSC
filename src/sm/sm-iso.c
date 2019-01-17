@@ -92,7 +92,12 @@ add_padding(const struct iso_sm_ctx *ctx, const u8 *data, size_t datalen,
 	switch (ctx->padding_indicator) {
 		case SM_NO_PADDING:
 			if (*padded != data) {
-				p = realloc(*padded, datalen);
+				if (datalen == 0) {
+					free(*padded);
+					p = malloc(datalen);
+				} else {
+					p = realloc(*padded, datalen);
+				}
 				if (!p)
 					return SC_ERROR_OUT_OF_MEMORY;
 				*padded = p;
@@ -146,7 +151,7 @@ static int format_le(size_t le, struct sc_asn1_entry *le_entry,
 {
 	u8 *p;
 
-	if (!lebuf || !le_len)
+	if (!lebuf || !le_len || !*le_len)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	p = realloc(*lebuf, *le_len);

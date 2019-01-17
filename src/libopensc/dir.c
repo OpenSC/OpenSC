@@ -307,6 +307,8 @@ static int update_transparent(sc_card_t *card, sc_file_t *file)
 				free(buf);
 			return r;
 		}
+		if (!rec_size)
+			continue;
 		tmp = (u8 *) realloc(buf, buf_size + rec_size);
 		if (!tmp) {
 			if (rec)
