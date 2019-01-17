@@ -37,12 +37,10 @@
 struct sc_pkcs15_emulator_handler builtin_emulators[] = {
 	{ "westcos",	sc_pkcs15emu_westcos_init_ex	},
 	{ "openpgp",	sc_pkcs15emu_openpgp_init_ex	},
-	{ "infocamere",	sc_pkcs15emu_infocamere_init_ex	},
 	{ "starcert",	sc_pkcs15emu_starcert_init_ex	},
 	{ "tcos",	sc_pkcs15emu_tcos_init_ex	},
 	{ "esteid",	sc_pkcs15emu_esteid_init_ex	},
 	{ "itacns",	sc_pkcs15emu_itacns_init_ex	},
-	{ "postecert",	sc_pkcs15emu_postecert_init_ex  },
 	{ "PIV-II",     sc_pkcs15emu_piv_init_ex	},
 	{ "cac",        sc_pkcs15emu_cac_init_ex	},
 	{ "gemsafeGPK",	sc_pkcs15emu_gemsafeGPK_init_ex	},

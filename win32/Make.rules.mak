@@ -79,7 +79,7 @@ CANDLEFLAGS = -dOpenSSL="$(OPENSSL_DIR)" $(CANDLEFLAGS)
 !ENDIF
 
 
-# If you want support for zlib (Used for PIV, infocamere and actalis):
+# If you want support for zlib (Used for PIV and actalis):
 # - Download zlib-dll and
 # - uncomment the line starting with ZLIB_DEF 
 # - set the ZLIB_INCL_DIR below to the zlib include lib proceeded by "/I"

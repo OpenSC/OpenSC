@@ -1178,8 +1178,8 @@ app <replaceable>application</replaceable> {
 					</term>
 					<listitem><para>
 							List of the builtin pkcs15 emulators to test
-							(Default: <literal>westcos, openpgp, infocamere,
-								starcert, tcos, esteid, itacns, postecert,
+							(Default: <literal>westcos, openpgp, 
+								starcert, tcos, esteid, itacns, 
 								PIV-II, cac, gemsafeGPK, gemsafeV1, actalis,
 								atrust-acos, tccardos, entersafe, pteid,
 								oberthur, sc-hsm, dnie, gids, iasecc, jpki,
