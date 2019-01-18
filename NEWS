@@ -836,6 +836,9 @@ New in 0.10.0; 2005-10-31; Andreas Jellinghaus
   via TeleTrust compatible PC/SC interface.
 * Fixed OpenSSL behaviour in the configure
   script.
+* PKCS#15 emulation layer improvements and
+  a new driver for the Italian postecert
+  card.
 * New API documentation and generic documentation
   structure renovation to base future work on.
   Many thanks to Bert Vermeulen <bert@biot.com>

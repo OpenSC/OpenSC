@@ -1617,9 +1617,9 @@ sc_pkcs15_convert_pubkey(struct sc_pkcs15_pubkey *pkcs15_key, void *evp_key)
 			return SC_ERROR_INTERNAL;
 		X = BN_new();
 		Y = BN_new();
-//		if (X && Y && EC_KEY_get0_group(eckey))
-//			r = EC_POINT_get_affine_coordinates_GFp(EC_KEY_get0_group(eckey),
-//					point, X, Y, NULL);
+		if (X && Y && EC_KEY_get0_group(eckey))
+			r = EC_POINT_get_affine_coordinates_GFp(EC_KEY_get0_group(eckey),
+					point, X, Y, NULL);
 		if (r == 1) {
 			dst->xy.len = BN_num_bytes(X) + BN_num_bytes(Y);
 			dst->xy.data = malloc(dst->xy.len);
