@@ -71,6 +71,9 @@
 
 extern void *C_LoadModule(const char *name, CK_FUNCTION_LIST_PTR_PTR);
 extern CK_RV C_UnloadModule(void *module);
+#ifndef ENABLE_SHARED
+extern CK_FUNCTION_LIST pkcs11_function_list;
+#endif
 
 #define NEED_SESSION_RO	0x01
 #define NEED_SESSION_RW	0x02
@@ -911,9 +914,16 @@ int main(int argc, char * argv[])
 		opt_module = expanded_val;
 #endif
 
-	module = C_LoadModule(opt_module, &p11);
-	if (module == NULL)
-		util_fatal("Failed to load pkcs11 module");
+#ifndef ENABLE_SHARED
+	if (strcmp(opt_module, DEFAULT_PKCS11_PROVIDER) == 0)
+		p11 = &pkcs11_function_list;
+	else
+#endif
+	{
+		module = C_LoadModule(opt_module, &p11);
+		if (module == NULL)
+			util_fatal("Failed to load pkcs11 module");
+	}
 
 	rv = p11->C_Initialize(NULL);
 	if (rv == CKR_CRYPTOKI_ALREADY_INITIALIZED)
