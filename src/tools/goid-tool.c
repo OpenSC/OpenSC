@@ -230,28 +230,38 @@ soc_info(sc_context_t *ctx, sc_card_t *card)
     }
 }
 
-void
+int
 soc_verify(sc_card_t *card, unsigned char p2)
 {
+    int ok = 0;
     sc_apdu_t apdu;
-
     sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x20, 0x00, p2);
-
-    if (sc_transmit_apdu(card, &apdu) != SC_SUCCESS) {
-        return;
-    }
+    SC_TEST_GOTO_ERR(card->ctx, SC_LOG_DEBUG_VERBOSE_TOOL,
+            sc_transmit_apdu(card, &apdu),
+            "Verification failed");
+    SC_TEST_GOTO_ERR(card->ctx, SC_LOG_DEBUG_VERBOSE_TOOL,
+            sc_check_sw(card, apdu.sw1, apdu.sw2),
+            "Verification failed");
+    ok = 1;
+err:
+    return ok;
 }
 
-void
+int
 soc_change(sc_card_t *card, unsigned char p1, unsigned char p2)
 {
+    int ok = 0;
     sc_apdu_t apdu;
-
     sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x24, 0x00, p2);
-
-    if (sc_transmit_apdu(card, &apdu) != SC_SUCCESS) {
-        return;
-    }
+    SC_TEST_GOTO_ERR(card->ctx, SC_LOG_DEBUG_VERBOSE_TOOL,
+            sc_transmit_apdu(card, &apdu),
+            "Changing secret failed");
+    SC_TEST_GOTO_ERR(card->ctx, SC_LOG_DEBUG_VERBOSE_TOOL,
+            sc_check_sw(card, apdu.sw1, apdu.sw2),
+            "Verification failed");
+    ok = 1;
+err:
+    return ok;
 }
 
 int soc_main(struct sc_context *ctx, sc_card_t *card, struct gengetopt_args_info *cmdline)
@@ -292,23 +302,27 @@ int soc_main(struct sc_context *ctx, sc_card_t *card, struct gengetopt_args_info
     if (cmdline->verify_pin_given) {
         sc_debug(ctx, SC_LOG_DEBUG_VERBOSE_TOOL,
                 "Verify finger print or PIN on the card.");
-        soc_verify(card, 0x80);
+        if (!soc_verify(card, 0x80))
+            goto err;
     }
     if (cmdline->verify_bio_given) {
         sc_debug(ctx, SC_LOG_DEBUG_VERBOSE_TOOL,
                 "Verify finger print on the card.");
-        soc_verify(card, 0x40);
+        if (!soc_verify(card, 0x40))
+            goto err;
     }
     if (cmdline->verify_pin_or_bio_given) {
         sc_debug(ctx, SC_LOG_DEBUG_VERBOSE_TOOL,
                 "Verify finger print or PIN on the card.");
-        soc_verify(card, 0xC0);
+        if (!soc_verify(card, 0xC0))
+            goto err;
     }
 
     if (cmdline->new_pin_given) {
         sc_debug(ctx, SC_LOG_DEBUG_VERBOSE_TOOL,
                 "Initialize the PIN on the card.");
-        soc_change(card, 0x00, 0x80);
+        if (!soc_change(card, 0x00, 0x80))
+            goto err;
     }
     if (cmdline->new_bio_given) {
         size_t i = 0;
@@ -316,7 +330,8 @@ int soc_main(struct sc_context *ctx, sc_card_t *card, struct gengetopt_args_info
             sc_debug(ctx, SC_LOG_DEBUG_VERBOSE_TOOL,
                     "Initialize finger print template %u on the card.",
                     (unsigned char) i);
-            soc_change(card, (unsigned char) i, 0x40);
+            if (!soc_change(card, (unsigned char) i, 0x40))
+                goto err;
             i++;
         }
     }
