@@ -53,7 +53,8 @@
 #define DEFAULT_PCSC_PROVIDER "@DEFAULT_PCSC_PROVIDER@"
 #endif
 
-#define ENABLE_NOTIFY
+#define ENABLE_SHARED 1
+#define ENABLE_NOTIFY 1
 
 #define SC_PKCS15_PROFILE_DIRECTORY "C:\\Program Files\\OpenSC Project\\OpenSC\\profiles"
 

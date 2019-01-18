@@ -4,6 +4,10 @@ MAINTAINERCLEANFILES = $(srcdir)/Makefile.in $(srcdir)/versioninfo-pkcs11.rc $(s
 EXTRA_DIST = Makefile.mak versioninfo-pkcs11.rc.in versioninfo-pkcs11-spy.rc.in opensc-pkcs11.pc.in opensc-pkcs11.dll.manifest onepin-opensc-pkcs11.dll.manifest
 
 lib_LTLIBRARIES = opensc-pkcs11.la pkcs11-spy.la onepin-opensc-pkcs11.la
+if ENABLE_SHARED
+else
+noinst_LTLIBRARIES = libopensc-pkcs11.la
+endif
 
 AM_CPPFLAGS = -I$(top_srcdir)/src
 
@@ -30,6 +34,11 @@ opensc_pkcs11_la_LIBADD = $(OPENSC_PKCS11_LIBS)
 opensc_pkcs11_la_LDFLAGS = $(AM_LDFLAGS) \
 	-export-symbols "$(srcdir)/pkcs11.exports" \
 	-module -shared -avoid-version -no-undefined
+
+libopensc_pkcs11_la_SOURCES = $(OPENSC_PKCS11_SRC) $(OPENSC_PKCS11_INC)
+libopensc_pkcs11_la_CFLAGS = $(OPENSC_PKCS11_CFLAGS)
+libopensc_pkcs11_la_LIBADD = $(OPENSC_PKCS11_LIBS)
+libopensc_pkcs11_la_LDFLAGS = $(AM_LDFLAGS)
 
 onepin_opensc_pkcs11_la_SOURCES = $(OPENSC_PKCS11_SRC) $(OPENSC_PKCS11_INC)
 onepin_opensc_pkcs11_la_CFLAGS = -DMODULE_APP_NAME=\"onepin-opensc-pkcs11\" $(OPENSC_PKCS11_CFLAGS)
