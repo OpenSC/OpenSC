@@ -814,6 +814,7 @@ New in 0.10.1; 2006-01-08; Andreas Jellinghaus
 * add incrypto34 driver by ST Incard, Giuseppe Amato
 * improved TCOS driver by Peter Koch
 * better PINPAD handling
+* updated infocamere driver
 * updated opensc.conf with new default values
 * fix firefox problems (no real fix, only ugly workaround)
 * add cardos M4.2 support
