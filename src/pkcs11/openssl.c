@@ -401,8 +401,13 @@ static CK_RV gostr3410_verify_data(const unsigned char *pubkey, unsigned int pub
 			ASN1_OCTET_STRING_free(octet);
 			P = EC_POINT_new(group);
 			if (P && X && Y)
-				r = EC_POINT_set_affine_coordinates(group,
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+						r = EC_POINT_set_affine_coordinates(group,
 						P, X, Y, NULL);
+#else
+						r = EC_POINT_set_affine_coordinates_GFp(group,
+						P, X, Y, NULL);
+#endif
 			BN_free(X);
 			BN_free(Y);
 			if (r == 1 && EVP_PKEY_get0(pkey) && P)

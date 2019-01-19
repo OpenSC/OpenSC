@@ -1618,8 +1618,13 @@ sc_pkcs15_convert_pubkey(struct sc_pkcs15_pubkey *pkcs15_key, void *evp_key)
 		X = BN_new();
 		Y = BN_new();
 		if (X && Y && EC_KEY_get0_group(eckey))
-			r = EC_POINT_get_affine_coordinates(EC_KEY_get0_group(eckey),
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+					r = EC_POINT_get_affine_coordinates(EC_KEY_get0_group(eckey),
 					point, X, Y, NULL);
+#else
+					r = EC_POINT_get_affine_coordinates_GFp(EC_KEY_get0_group(eckey),
+					point, X, Y, NULL);
+#endif
 		if (r == 1) {
 			dst->xy.len = BN_num_bytes(X) + BN_num_bytes(Y);
 			dst->xy.data = malloc(dst->xy.len);
