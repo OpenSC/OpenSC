@@ -382,7 +382,7 @@ static int gen_key(const char * key_info)
 		i = (keydata.ecpoint_len - 1)/2;
 		x = BN_bin2bn(keydata.ecpoint + 1, i, NULL);
 		y = BN_bin2bn(keydata.ecpoint + 1 + i, i, NULL) ;
-		r = EC_POINT_set_affine_coordinates_GFp(ecgroup, ecpoint, x, y, NULL);
+		r = EC_POINT_set_affine_coordinates(ecgroup, ecpoint, x, y, NULL);
 		eckey = EC_KEY_new();
 		r = EC_KEY_set_group(eckey, ecgroup);
 		if (r == 0) {

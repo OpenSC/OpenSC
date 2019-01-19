@@ -2724,7 +2724,7 @@ parse_gost_pkey(EVP_PKEY *pkey, int private, struct gostkey_info *gost)
 		point = EC_KEY_get0_public_key(src);
 		rv = -1;
 		if (X && Y && point && EC_KEY_get0_group(src))
-			rv = EC_POINT_get_affine_coordinates_GFp(EC_KEY_get0_group(src),
+			rv = EC_POINT_get_affine_coordinates(EC_KEY_get0_group(src),
 					point, X, Y, NULL);
 		if (rv == 1) {
 			gost->public.len = BN_num_bytes(X) + BN_num_bytes(Y);
