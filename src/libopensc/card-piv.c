@@ -990,6 +990,7 @@ piv_get_data(sc_card_t * card, int enumtag, u8 **buf, size_t *buf_len, unsigned 
 	u8 *rbuf;  /* if reading length */
 	size_t rbuflen; /* if reading length */
 	u8 rbufinitbuf[8]; /* tag of 53 with 82 xx xx  will fit in 4 */
+	int buf_allocated = 0;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	sc_log(card->ctx, "#%d %p:%"SC_FORMAT_LEN_SIZE_T"u flags:%02x", enumtag, *buf, *buf_len, flags);
@@ -1031,6 +1032,7 @@ goto err;
 			r = SC_ERROR_OUT_OF_MEMORY;
 			goto err;
 		}
+		buf_allocated = 1; /* may need to free on error */
 	}
 
 	r = piv_general_io(card, 0xCB, 0x3F, 0xFF, tagbuf,  p - tagbuf, buf, buf_len, 0);
@@ -1042,10 +1044,18 @@ goto err;
 		if (rbuflen > (unsigned int)r || (memcmp(rbuf, *buf, rbuflen) != 0)) {
 			sc_log(card->ctx, "r:%d rbuflen:%"SC_FORMAT_LEN_SIZE_T"u", r, rbuflen);
 			r = SC_ERROR_WRONG_LENGTH;
+			goto err;
 		}
 	}
 
+	buf_allocated = 0; /* dont free *buf */
+
 err:
+	if (buf_allocated) {
+		free(*buf);
+		*buf = NULL;
+	}
+
 	sc_unlock(card);
 	LOG_FUNC_RETURN(card->ctx, r);
 }
