@@ -33,7 +33,6 @@
 
 /* Module only built if OPENSSL is enabled */
 #include <openssl/opensslv.h>
-#include "libopensc/sc-ossl-compat.h"
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L
 #include <openssl/opensslconf.h>
 #include <openssl/crypto.h>
@@ -57,6 +56,7 @@
 #include "libopensc/cardctl.h"
 #include "libopensc/asn1.h"
 #include "util.h"
+#include "libopensc/sc-ossl-compat.h"
 
 static const char *app_name = "piv-tool";
 
@@ -382,11 +382,7 @@ static int gen_key(const char * key_info)
 		i = (keydata.ecpoint_len - 1)/2;
 		x = BN_bin2bn(keydata.ecpoint + 1, i, NULL);
 		y = BN_bin2bn(keydata.ecpoint + 1 + i, i, NULL) ;
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
-		r = EC_POINT_set_affine_coordinates(ecgroup, ecpoint, x, y, NULL);
-#else
 		r = EC_POINT_set_affine_coordinates_GFp(ecgroup, ecpoint, x, y, NULL);
-#endif
 		eckey = EC_KEY_new();
 		r = EC_KEY_set_group(eckey, ecgroup);
 		if (r == 0) {

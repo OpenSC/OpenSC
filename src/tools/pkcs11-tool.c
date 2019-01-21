@@ -36,7 +36,6 @@
 
 #ifdef ENABLE_OPENSSL
 #include <openssl/opensslv.h>
-#include "libopensc/sc-ossl-compat.h"
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L
 #include <openssl/opensslconf.h>
 #include <openssl/crypto.h>
@@ -62,6 +61,7 @@
 #include "common/compat_strlcat.h"
 #include "common/compat_strlcpy.h"
 #include "util.h"
+#include "libopensc/sc-ossl-compat.h"
 
 #ifdef _WIN32
 #ifndef STDOUT_FILENO
@@ -2724,13 +2724,8 @@ parse_gost_pkey(EVP_PKEY *pkey, int private, struct gostkey_info *gost)
 		point = EC_KEY_get0_public_key(src);
 		rv = -1;
 		if (X && Y && point && EC_KEY_get0_group(src))
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
-			rv = EC_POINT_get_affine_coordinates(EC_KEY_get0_group(src),
-					point, X, Y, NULL);
-#else
 			rv = EC_POINT_get_affine_coordinates_GFp(EC_KEY_get0_group(src),
 					point, X, Y, NULL);
-#endif
 		if (rv == 1) {
 			gost->public.len = BN_num_bytes(X) + BN_num_bytes(Y);
 			gost->public.value = malloc(gost->public.len);
