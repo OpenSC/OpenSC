@@ -304,6 +304,9 @@
                 <Component Id="DESRCACC100001" Guid="*" Win64="$(var.Win64YesNo)">
                   <File Source="$(var.SOURCE_DIR)\etc\DESRCACC100001"/>
                 </Component>
+                <Component Id="DESCHSMCVCA00001" Guid="*" Win64="$(var.Win64YesNo)">
+                  <File Source="$(var.SOURCE_DIR)\etc\DESCHSMCVCA00001"/>
+                </Component>
               </Directory>
             <?endif ?>
           </Directory>
@@ -342,6 +345,7 @@
         <?endif ?>
         <?ifdef OpenPACE ?>
           <ComponentRef Id="DESRCACC100001"/>
+          <ComponentRef Id="DESCHSMCVCA00001"/>
         <?endif ?>
       </Feature>
       <Feature Id="OpenSC_pkcs11" Level="1" Title="OpenSC PKCS#11 module" Description="PKCS#11 module usd by most open source and cross-platform software (like Firefox, Putty, TrueCrypt, OpenVPN etc)" TypicalDefault="install">
