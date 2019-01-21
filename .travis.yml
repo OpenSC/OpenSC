@@ -60,7 +60,18 @@ before_install:
     fi
 
 before_script:
-  - ./bootstrap
+  - if [ "$TRAVIS_BRANCH" == "master" -a "$TRAVIS_PULL_REQUEST" == "false" ]; then
+      ./bootstrap;
+    fi
+  - if [ "$TRAVIS_BRANCH" == "master" -a "$TRAVIS_PULL_REQUEST" != "false" ]; then
+      ./bootstrap.ci -s "-pr$TRAVIS_PULL_REQUEST";
+    fi
+  - if [ "$TRAVIS_BRANCH" != "master" -a "$TRAVIS_PULL_REQUEST" == "false" ]; then
+      ./bootstrap.ci -s "-$TRAVIS_BRANCH";
+    fi
+  - if [ "$TRAVIS_BRANCH" != "master" -a "$TRAVIS_PULL_REQUEST" != "false" ]; then
+      ./bootstrap.ci -s "-$TRAVIS_BRANCH-pr$TRAVIS_PULL_REQUEST";
+    fi
   - if [ -z "$HOST" ]; then
       CFLAGS="-Werror" ./configure $ENABLE_DOC --enable-dnie-ui;
     else

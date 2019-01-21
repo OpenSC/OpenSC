@@ -87,7 +87,10 @@ build_script:
         }
         $env:NMAKE_EXTRA="OPENPACE_DEF=/DENABLE_OPENPACE OPENPACE_DIR=C:\openpace-${env:OPENSSL_PF} ${env:NMAKE_EXTRA}"
       }
-  - bash -c "exec 0</dev/null && ./bootstrap"
+  - bash -c "exec 0</dev/null && if [ \"$APPVEYOR_REPO_BRANCH\" == \"master\" -a -z \"$APPVEYOR_PULL_REQUEST_NUMBER\" ]; then ./bootstrap; fi"
+  - bash -c "exec 0</dev/null && if [ \"$APPVEYOR_REPO_BRANCH\" == \"master\" -a -n \"$APPVEYOR_PULL_REQUEST_NUMBER\" ]; then ./bootstrap.ci -s \"-pr$APPVEYOR_PULL_REQUEST_NUMBER\"; fi"
+  - bash -c "exec 0</dev/null && if [ \"$APPVEYOR_REPO_BRANCH\" != \"master\" -a -z \"$APPVEYOR_PULL_REQUEST_NUMBER\" ]; then ./bootstrap.ci -s \"-$APPVEYOR_REPO_BRANCH\"; fi"
+  - bash -c "exec 0</dev/null && if [ \"$APPVEYOR_REPO_BRANCH\" != \"master\" -a -n \"$APPVEYOR_PULL_REQUEST_NUMBER\" ]; then ./bootstrap.ci -s \"-$APPVEYOR_REPO_BRANCH-prAPPVEYOR_PULL_REQUEST_NUMBER\"; fi"
   # disable features to speed up the script
   - bash -c "exec 0</dev/null && ./configure --with-cygwin-native --disable-openssl --disable-readline --disable-zlib || cat config.log"
   - bash -c "make -C etc opensc.conf"
