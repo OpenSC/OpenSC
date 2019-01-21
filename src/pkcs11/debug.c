@@ -34,9 +34,6 @@ struct fmap {
 	struct fmap *	map;
 };
 
-#define NELE(x)		(sizeof(x)/sizeof((x)[0]))
-#define STR(x)		#x
-#define __(x)		(x), #x
 #define _(x)		{ (x), #x, NULL, NULL }
 #define ul(x)		{ (x), #x, sc_pkcs11_print_ulong, NULL }
 #define ulm(x)		{ (x), #x, sc_pkcs11_print_ulong, map_##x }
