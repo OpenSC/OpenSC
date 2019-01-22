@@ -495,8 +495,8 @@ CK_RV slot_token_removed(CK_SLOT_ID id)
 
 	/* Release framework stuff */
 	if (slot->p11card != NULL) {
-		if (slot->fw_data != NULL &&
-				slot->p11card->framework != NULL && slot->p11card->framework->release_token != NULL) {
+		if (slot->fw_data != NULL && slot->p11card->framework != NULL
+				&& slot->p11card->framework->release_token != NULL) {
 			slot->p11card->framework->release_token(slot->p11card, slot->fw_data);
 			slot->fw_data = NULL;
 		}
