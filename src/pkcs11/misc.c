@@ -140,7 +140,7 @@ CK_RV restore_login_state(struct sc_pkcs11_slot *slot)
 	if (sc_pkcs11_conf.atomic && slot) {
 		if (list_iterator_start(&slot->logins)) {
 			struct sc_pkcs11_login *login = list_iterator_next(&slot->logins);
-			while (login) {
+			while (login && slot->p11card && slot->p11card->framework) {
 				r = slot->p11card->framework->login(slot, login->userType,
 						login->pPin, login->ulPinLen);
 				if (r != CKR_OK)
