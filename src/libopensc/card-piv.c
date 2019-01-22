@@ -178,7 +178,6 @@ typedef struct piv_private_data {
 	int pstate;
 	int pin_cmd_verify;
 	int context_specific;
-	int pin_cmd_noparse;
 	unsigned int pin_cmd_verify_sw1;
 	unsigned int pin_cmd_verify_sw2;
 	int tries_left; /* SC_PIN_CMD_GET_INFO tries_left from last */
@@ -525,24 +524,13 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 	size_t * recvbuflen)
 {
 	int r;
-	int r_tag ;
 	sc_apdu_t apdu;
 	u8 rbufinitbuf[4096];
 	u8 *rbuf;
 	size_t rbuflen;
-	unsigned int cla_out, tag_out;
-	const u8 *body;
-	size_t bodylen;
-	int find_len = 0;
-	piv_private_data_t * priv = PIV_DATA(card);
 
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-
-	sc_log(card->ctx,
-	       "%02x %02x %02x %"SC_FORMAT_LEN_SIZE_T"u : %"SC_FORMAT_LEN_SIZE_T"u %"SC_FORMAT_LEN_SIZE_T"u",
-	       ins, p1, p2, sendbuflen, card->max_send_size,
-	       card->max_recv_size);
 
 	rbuf = rbufinitbuf;
 	rbuflen = sizeof(rbufinitbuf);
@@ -561,12 +549,6 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 			recvbuf ? SC_APDU_CASE_4_SHORT: SC_APDU_CASE_3_SHORT,
 			ins, p1, p2);
 	apdu.flags |= SC_APDU_FLAGS_CHAINING;
-	/* if looking for length of object, dont try and read the rest of buffer here */
-	if (rbuflen == 8 && card->reader->active_protocol == SC_PROTO_T1) {
-		apdu.flags |= SC_APDU_FLAGS_NO_GET_RESP;
-		find_len = 1;
-	}
-
 	apdu.lc = sendbuflen;
 	apdu.datalen = sendbuflen;
 	apdu.data = sendbuf;
@@ -589,53 +571,23 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 		goto err;
 	}
 
-	if (!(find_len && apdu.sw1 == 0x61))
-	    r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 
-/* TODO: - DEE look later at tag vs size read too */
 	if (r < 0) {
-		sc_log(card->ctx, "Card returned error ");
+		sc_log(card->ctx,  "Card returned error ");
 		goto err;
 	}
 
-	/*
-	 * See how much we read and make sure it is asn1
-	 * if not, return 0 indicating no data found
-	 */
-
-
-	rbuflen = 0;  /* in case rseplen < 3  i.e. not parseable */
-	/* we may only be using get data to test the security status of the card, so zero length is OK */
-	if ( recvbuflen && recvbuf && apdu.resplen > 3 && priv->pin_cmd_noparse != 1) {
-		*recvbuflen = 0;
-		/* we should have all the tag data, so we have to tell sc_asn1_find_tag
-		 * the buffer is bigger, so it will not produce "ASN1.tag too long!" */
-
-		body = rbuf;
-		r_tag = sc_asn1_read_tag(&body, apdu.resplen, &cla_out, &tag_out, &bodylen);
-		sc_log(card->ctx, "r_tag:%d body:%p", r_tag, body);
-		if ( (r_tag != SC_SUCCESS && r_tag != SC_ERROR_ASN1_END_OF_CONTENTS)
-				|| body == NULL)  {
-			body = rbuf;
-			bodylen = apdu.resplen;
-		}
-
-		rbuflen = body - rbuf + bodylen;
-
-		/* if using internal buffer, alloc new one */
-		if (rbuf == rbufinitbuf) {
-			*recvbuf = malloc(rbuflen);
+	if (recvbuflen) {
+		if (recvbuf && *recvbuf == NULL) {
+			*recvbuf =  malloc(apdu.resplen);
 			if (*recvbuf == NULL) {
 				r = SC_ERROR_OUT_OF_MEMORY;
 				goto err;
 			}
-
-			memcpy(*recvbuf, rbuf, rbuflen); /* copy tag too */
+			memcpy(*recvbuf, rbuf, apdu.resplen); /* copy tag too */
 		}
-	}
-
-	if (recvbuflen) {
-		*recvbuflen =  rbuflen;
+		*recvbuflen =  apdu.resplen;
 		r = *recvbuflen;
 	}
 
@@ -995,7 +947,7 @@ piv_get_data(sc_card_t * card, int enumtag, u8 **buf, size_t *buf_len)
 				r = SC_ERROR_FILE_NOT_FOUND;
 				goto err;
 			}
-		    *buf_len = r;
+		    *buf_len = (body - rbuf) + bodylen;
 		} else if ( r == 0 ) {
 			r = SC_ERROR_FILE_NOT_FOUND;
 			goto err;
@@ -3599,10 +3551,8 @@ piv_check_protected_objects(sc_card_t *card)
 	if (priv->object_test_verify == 0) {
 		for (i = 0; i < (int)(sizeof(protected_objects)/sizeof(int)); i++) {
 			buf_len = sizeof(buf);
-			priv->pin_cmd_noparse = 1; /* tell piv_general_io dont need to parse at all. */
 			rbuf = buf;
 			r = piv_get_data(card, protected_objects[i], &rbuf, &buf_len);
-			priv->pin_cmd_noparse = 0;
 			/* TODO may need to check sw1 and sw2 to see what really happened */
 			if (r >= 0 || r == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED) {
 
@@ -3622,10 +3572,8 @@ piv_check_protected_objects(sc_card_t *card)
 	} else {
 		/* use the one object we found earlier. Test is security status has changed */
 		buf_len = sizeof(buf);
-		priv->pin_cmd_noparse = 1; /* tell piv_general_io dont need to parse at all. */
 		rbuf = buf;
 		r = piv_get_data(card, priv->object_test_verify, &rbuf, &buf_len);
-		priv->pin_cmd_noparse = 0;
 	}
 	if (r == SC_ERROR_FILE_NOT_FOUND)
 		r = SC_ERROR_PIN_CODE_INCORRECT;
