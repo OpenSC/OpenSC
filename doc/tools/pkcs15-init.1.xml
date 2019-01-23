@@ -148,7 +148,7 @@
 			</para>
 			<para>
 				In addition to storing the private portion of the key on the card,
-				<command>pkcs15-init</command> will also store the the public portion of the
+				<command>pkcs15-init</command> will also store the public portion of the
 				key as a PKCS #15 public key object.
 			</para>
 		</refsect2>
@@ -165,7 +165,7 @@
 			</para>
 			<para>
 				In addition to storing the private portion of the key on the card,
-				<command>pkcs15-init</command> will also store the the public portion of the
+				<command>pkcs15-init</command> will also store the public portion of the
 				key as a PKCS #15 public key object.
 			</para>
 			<para>

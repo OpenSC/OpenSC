@@ -215,7 +215,7 @@ app <replaceable>application</replaceable> {
 					</para>
 					<para>
 						If an unknown (i.e. not internal or old) driver is
-						supplied, a separate configuration configuration
+						supplied, a separate configuration
 						block has to be written for the driver. A special
 						value <literal>old</literal> will load all
 						statically linked drivers that may be removed in
