@@ -3801,7 +3801,7 @@ sc_pkcs15init_verify_secret(struct sc_profile *profile, struct sc_pkcs15_card *p
 
 found:
 	if (pin_obj)   {
-		r = sc_pkcs15_verify_pin(p15card, pin_obj, use_pinpad ? NULL : pinbuf, use_pinpad ? 0 : pinsize);
+		r = sc_pkcs15_verify_pin(p15card, pin_obj, use_pinpad || pinsize == 0 ? NULL : pinbuf, use_pinpad ? 0 : pinsize);
 		LOG_TEST_RET(ctx, r, "Cannot validate pkcs15 PIN");
 	}
 
