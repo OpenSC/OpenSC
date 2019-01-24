@@ -857,8 +857,6 @@ static int dnie_init(struct sc_card *card)
 	card->sm_ctx.ops.free_sm_apdu = dnie_sm_free_wrapped_apdu;
 	card->sm_ctx.sm_mode = SM_MODE_NONE;
 
-	init_flags(card);
-
 	res=cwa_create_secure_channel(card,provider,CWA_SM_OFF);
 	LOG_TEST_RET(card->ctx, res, "Failure creating CWA secure channel.");
 
@@ -875,6 +873,8 @@ static int dnie_init(struct sc_card *card)
 		LOG_TEST_RET(card->ctx, res, "Failure reading DNIe environment.");
 	}
 #endif
+
+	init_flags(card);
 
 	GET_DNIE_PRIV_DATA(card)->cwa_provider = provider;
 

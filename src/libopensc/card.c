@@ -970,10 +970,6 @@ int _sc_card_add_algorithm(sc_card_t *card, const sc_algorithm_info_t *info)
 	}
 	p = (sc_algorithm_info_t *) realloc(card->algorithms, (card->algorithm_count + 1) * sizeof(*info));
 	if (!p) {
-		if (card->algorithms)
-			free(card->algorithms);
-		card->algorithms = NULL;
-		card->algorithm_count = 0;
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
 	card->algorithms = p;

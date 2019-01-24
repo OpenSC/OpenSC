@@ -184,10 +184,6 @@ static int cardos_init(sc_card_t *card)
 	if (card->type != SC_CARD_TYPE_CARDOS_V5_0)
 		flags |= SC_ALGORITHM_NEED_USAGE;
 
-	_sc_card_add_rsa_alg(card,  512, flags, 0);
-	_sc_card_add_rsa_alg(card,  768, flags, 0);
-	_sc_card_add_rsa_alg(card, 1024, flags, 0);
-
 	if (card->type == SC_CARD_TYPE_CARDOS_M4_2) {
 		r = cardos_have_2048bit_package(card);
 		if (r < 0)
@@ -231,6 +227,9 @@ static int cardos_init(sc_card_t *card)
 	/* strip the length of SW bytes */
 	card->max_recv_size = data_field_length - 2;
 
+	_sc_card_add_rsa_alg(card,  512, flags, 0);
+	_sc_card_add_rsa_alg(card,  768, flags, 0);
+	_sc_card_add_rsa_alg(card, 1024, flags, 0);
 	if (rsa_2048 == 1) {
 		_sc_card_add_rsa_alg(card, 1280, flags, 0);
 		_sc_card_add_rsa_alg(card, 1536, flags, 0);
