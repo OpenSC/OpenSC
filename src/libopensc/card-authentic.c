@@ -436,9 +436,6 @@ authentic_init_oberthur_authentic_3_2(struct sc_card *card)
 
 	flags = AUTHENTIC_CARD_DEFAULT_FLAGS;
 
-	_sc_card_add_rsa_alg(card, 1024, flags, 0x10001);
-	_sc_card_add_rsa_alg(card, 2048, flags, 0x10001);
-
 	card->caps = SC_CARD_CAP_RNG;
 	card->caps |= SC_CARD_CAP_APDU_EXT;
 	card->caps |= SC_CARD_CAP_USE_FCI_AC;
@@ -454,6 +451,9 @@ authentic_init_oberthur_authentic_3_2(struct sc_card *card)
 
 	rv = authentic_select_mf(card, NULL);
 	LOG_TEST_RET(ctx, rv, "MF selection error");
+
+	_sc_card_add_rsa_alg(card, 1024, flags, 0x10001);
+	_sc_card_add_rsa_alg(card, 2048, flags, 0x10001);
 
 	LOG_FUNC_RETURN(ctx, rv);
 }

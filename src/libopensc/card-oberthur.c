@@ -226,19 +226,26 @@ auth_init(struct sc_card *card)
 
 	if (auth_select_aid(card))   {
 		sc_log(card->ctx, "Failed to initialize %s", card->name);
-		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_CARD, "Failed to initialize");
+		rv = SC_ERROR_INVALID_CARD;
+		LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_INVALID_CARD, "Failed to initialize");
 	}
-
-	flags = SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_PAD_ISO9796;
-	flags |= SC_ALGORITHM_RSA_HASH_NONE;
-	flags |= SC_ALGORITHM_ONBOARD_KEY_GEN;
-
-	_sc_card_add_rsa_alg(card, 512, flags, 0);
-	_sc_card_add_rsa_alg(card, 1024, flags, 0);
-	_sc_card_add_rsa_alg(card, 2048, flags, 0);
 
 	sc_format_path("3F00", &path);
 	rv = auth_select_file(card, &path, NULL);
+
+err:
+	if (rv == SC_SUCCESS) {
+		flags = SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_PAD_ISO9796;
+		flags |= SC_ALGORITHM_RSA_HASH_NONE;
+		flags |= SC_ALGORITHM_ONBOARD_KEY_GEN;
+
+		_sc_card_add_rsa_alg(card, 512, flags, 0);
+		_sc_card_add_rsa_alg(card, 1024, flags, 0);
+		_sc_card_add_rsa_alg(card, 2048, flags, 0);
+	} else {
+		free(card->drv_data);
+		card->drv_data = NULL;
+	}
 
 	LOG_FUNC_RETURN(card->ctx, rv);
 }

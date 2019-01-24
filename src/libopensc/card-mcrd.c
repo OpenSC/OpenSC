@@ -309,7 +309,6 @@ static int mcrd_init(sc_card_t * card)
 	unsigned long flags, ext_flags;
 	struct mcrd_priv_data *priv;
 	int r;
-	sc_path_t tmppath;
 
 	priv = calloc(1, sizeof *priv);
 	if (!priv)
@@ -323,13 +322,6 @@ static int mcrd_init(sc_card_t * card)
 		/* Select the EstEID AID to get to a known state.
 		 * For some reason a reset is required as well... */
 		if (card->type == SC_CARD_TYPE_MCRD_ESTEID_V30) {
-			flags = SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_HASH_SHA1 | SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_SHA256;
-			/* EstEID v3.0 has 2048 bit keys */
-			_sc_card_add_rsa_alg(card, 2048, flags, 0);
-
-			flags = SC_ALGORITHM_ECDSA_RAW | SC_ALGORITHM_ECDH_CDH_RAW | SC_ALGORITHM_ECDSA_HASH_NONE;
-			ext_flags = SC_ALGORITHM_EXT_EC_NAMEDCURVE | SC_ALGORITHM_EXT_EC_UNCOMPRESES;
-			_sc_card_add_ec_alg(card, 384, flags, ext_flags, NULL);
 			sc_reset(card, 0);
 
 			r = gp_select_aid(card, &EstEID_v3_AID);
@@ -350,6 +342,13 @@ static int mcrd_init(sc_card_t * card)
 					}
 				}
 			}
+			flags = SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_HASH_SHA1 | SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_SHA256;
+			/* EstEID v3.0 has 2048 bit keys */
+			_sc_card_add_rsa_alg(card, 2048, flags, 0);
+
+			flags = SC_ALGORITHM_ECDSA_RAW | SC_ALGORITHM_ECDH_CDH_RAW | SC_ALGORITHM_ECDSA_HASH_NONE;
+			ext_flags = SC_ALGORITHM_EXT_EC_NAMEDCURVE | SC_ALGORITHM_EXT_EC_UNCOMPRESES;
+			_sc_card_add_ec_alg(card, 384, flags, ext_flags, NULL);
 		} else {
 			/* EstEID v1.0 and 1.1 have 1024 bit keys */
 			flags = SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_SHA1;
@@ -365,19 +364,13 @@ static int mcrd_init(sc_card_t * card)
 	priv->curpath[0] = MFID;
 	priv->curpathlen = 1;
 
-	sc_format_path ("3f00", &tmppath);
-	r = sc_select_file (card, &tmppath, NULL);
-	if (r < 0) {
-		free(card->drv_data);
-		card->drv_data = NULL;
-		r = SC_ERROR_INVALID_CARD;
-	}
+	sc_select_file (card, sc_get_mf_path(), NULL);
 
 	/* Not needed for the fixed EstEID profile */
 	if (!is_esteid_card(card))
 		load_special_files(card);
 
-	return r;
+	return SC_SUCCESS;
 }
 
 static int mcrd_finish(sc_card_t * card)
@@ -1165,7 +1158,6 @@ static int mcrd_set_security_env(sc_card_t * card,
 {
 	struct mcrd_priv_data *priv;
 	sc_apdu_t apdu;
-	sc_path_t tmppath;
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 *p;
 	int r, locked = 0;
@@ -1187,8 +1179,7 @@ static int mcrd_set_security_env(sc_card_t * card,
 			return SC_ERROR_INVALID_ARGUMENTS;
 
 		/* Make sure we always start from MF */
-		sc_format_path ("3f00", &tmppath);
-		r = sc_select_file (card, &tmppath, NULL);
+		r = sc_select_file (card, sc_get_mf_path(), NULL);
 		if (r < 0)
 			return r;
 		/* We now know that cache is not valid */
@@ -1453,8 +1444,7 @@ static int mcrd_pin_cmd(sc_card_t * card, struct sc_pin_cmd_data *data,
 
 		/* the file with key pin info (tries left) 4.5 EF_PwdC */
 		/* XXX: cheat the file path cache by always starting fresh from MF */
-		sc_format_path ("3f00", &tmppath);
-		r = sc_select_file (card, &tmppath, NULL);
+		r = sc_select_file (card, sc_get_mf_path(), NULL);
 		if (r < 0)
 			return SC_ERROR_INTERNAL;
 
