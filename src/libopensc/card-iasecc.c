@@ -416,7 +416,7 @@ iasecc_init_gemalto(struct sc_card *card)
 	card->caps |= SC_CARD_CAP_USE_FCI_AC;
 
 	sc_format_path("3F00", &path);
-	rv = sc_select_file(card, &path, NULL);
+	sc_select_file(card, &path, NULL);
 	/* Result ignored*/
 
 	rv = iasecc_parse_ef_atr(card);

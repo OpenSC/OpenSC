@@ -654,6 +654,7 @@ myeid_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	/* TODO: add other flags, like CKA_TRUSTED and CKA_WRAP_WITH_TRUSTED */
 
 	r = sc_file_set_prop_attr(file, prop_info, 2);
+	LOG_TEST_RET(ctx, r, "Cannot create MyEID key file");
 
 	/* Now create the key file */
 	r = sc_pkcs15init_create_file(profile, p15card, file);

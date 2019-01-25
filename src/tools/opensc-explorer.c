@@ -2104,7 +2104,7 @@ int main(int argc, char *argv[])
 	int r, c, long_optind = 0, err = 0;
 	sc_context_param_t ctx_param;
 	int lcycle = SC_CARDCTRL_LIFECYCLE_ADMIN;
-	FILE *script = stdin;
+	FILE *script;
 
 	printf("OpenSC Explorer version %s\n", sc_get_version());
 
