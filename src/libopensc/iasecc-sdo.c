@@ -840,7 +840,7 @@ iasecc_update_blob(struct sc_context *ctx, struct iasecc_extended_tlv *tlv,
 		unsigned char **blob, size_t *blob_size)
 {
 	unsigned char *pp = NULL;
-	int offs = 0, sz = tlv->size + 2;
+	int offs = 0, sz;
 
 	if (tlv->size == 0)
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
