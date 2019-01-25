@@ -289,81 +289,56 @@ add_acl_entry(struct sc_card *card, struct sc_file *file, unsigned int op,
 
 
 static int
-tlv_get(const unsigned char *msg, int len, unsigned char tag,
-		unsigned char *ret, int *ret_len)
-{
-	int cur = 0;
-
-	while (cur < len)  {
-		if (*(msg+cur)==tag)  {
-			int ii, ln = *(msg+cur+1);
-
-			if (ln > *ret_len)
-				return SC_ERROR_WRONG_LENGTH;
-
-			for (ii=0; ii<ln; ii++)
-				*(ret + ii) = *(msg+cur+2+ii);
-			*ret_len = ln;
-
-			return SC_SUCCESS;
-		}
-
-		cur += 2 + *(msg+cur+1);
-	}
-
-	return SC_ERROR_INCORRECT_PARAMETERS;
-}
-
-
-static int
 auth_process_fci(struct sc_card *card, struct sc_file *file,
             const unsigned char *buf, size_t buflen)
 {
-	unsigned char type, attr[SC_OBERTHUR_MAX_ATTR_SIZE];
-	int attr_len = sizeof(attr);
+	unsigned char type;
+	const unsigned char *attr;
+	size_t attr_len = 0;
 
 	LOG_FUNC_CALLED(card->ctx);
-	attr_len = sizeof(attr);
-	if (tlv_get(buf, buflen, 0x82, attr, &attr_len))
+	attr = sc_asn1_find_tag(card->ctx, buf, buflen, 0x82, &attr_len);
+	if (!attr || attr_len < 1)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
 	type = attr[0];
 
-	attr_len = sizeof(attr);
-	if (tlv_get(buf, buflen, 0x83, attr, &attr_len))
+	attr = sc_asn1_find_tag(card->ctx, buf, buflen, 0x83, &attr_len);
+	if (!attr || attr_len < 2)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
 	file->id = attr[0]*0x100 + attr[1];
 
-	attr_len = sizeof(attr);
-	if (tlv_get(buf, buflen, type==0x01 ? 0x80 : 0x85, attr, &attr_len))
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
-	if (attr_len<2 && type != 0x04)
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
-
+	attr = sc_asn1_find_tag(card->ctx, buf, buflen, type==0x01 ? 0x80 : 0x85, &attr_len);
 	switch (type) {
 	case 0x01:
+		if (!attr || attr_len < 2)
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
 		file->type = SC_FILE_TYPE_WORKING_EF;
 		file->ef_structure = SC_FILE_EF_TRANSPARENT;
 		file->size = attr[0]*0x100 + attr[1];
 		break;
 	case 0x04:
+		if (!attr || attr_len < 1)
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
 		file->type = SC_FILE_TYPE_WORKING_EF;
 		file->ef_structure = SC_FILE_EF_LINEAR_VARIABLE;
 		file->size = attr[0];
-		attr_len = sizeof(attr);
-		if (tlv_get(buf, buflen, 0x82, attr, &attr_len))
-			LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
-		if (attr_len!=5)
+		attr = sc_asn1_find_tag(card->ctx, buf, buflen, 0x82, &attr_len);
+		if (!attr || attr_len < 5)
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
 		file->record_length = attr[2]*0x100+attr[3];
 		file->record_count = attr[4];
 		break;
 	case 0x11:
+		if (!attr || attr_len < 2)
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
 		file->type = SC_FILE_TYPE_INTERNAL_EF;
 		file->ef_structure = SC_CARDCTL_OBERTHUR_KEY_DES;
 		file->size = attr[0]*0x100 + attr[1];
 		file->size /= 8;
 		break;
 	case 0x12:
+		if (!attr || attr_len < 2)
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
 		file->type = SC_FILE_TYPE_INTERNAL_EF;
 		file->ef_structure = SC_CARDCTL_OBERTHUR_KEY_RSA_PUBLIC;
 
@@ -382,11 +357,15 @@ auth_process_fci(struct sc_card *card, struct sc_file *file,
 		}
 		break;
 	case 0x14:
+		if (!attr || attr_len < 2)
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
 		file->type = SC_FILE_TYPE_INTERNAL_EF;
 		file->ef_structure = SC_CARDCTL_OBERTHUR_KEY_RSA_CRT;
 		file->size = attr[0]*0x100 + attr[1];
 		break;
 	case 0x38:
+		if (!attr || attr_len < 1)
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
 		file->type = SC_FILE_TYPE_DF;
 		file->size = attr[0];
 		if (SC_SUCCESS != sc_file_set_type_attr(file,attr,attr_len))
@@ -396,10 +375,8 @@ auth_process_fci(struct sc_card *card, struct sc_file *file,
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
 	}
 
-	attr_len = sizeof(attr);
-	if (tlv_get(buf, buflen, 0x86, attr, &attr_len))
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
-	if (attr_len<8)
+	attr = sc_asn1_find_tag(card->ctx, buf, buflen, 0x86, &attr_len);
+	if (!attr || attr_len < 8)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
 
 	if (file->type == SC_FILE_TYPE_DF) {
