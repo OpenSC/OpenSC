@@ -288,7 +288,7 @@ sc_pkcs11_register_openssl_mechanisms(struct sc_pkcs11_card *p11card)
  * Handle OpenSSL digest functions
  */
 #define DIGEST_CTX(op) \
-	((EVP_MD_CTX *) (op)->priv_data)
+	(op ? (EVP_MD_CTX *) (op)->priv_data : NULL)
 
 static CK_RV sc_pkcs11_openssl_md_init(sc_pkcs11_operation_t *op)
 {
@@ -301,7 +301,10 @@ static CK_RV sc_pkcs11_openssl_md_init(sc_pkcs11_operation_t *op)
 
 	if (!(md_ctx = EVP_MD_CTX_create()))
 		return CKR_HOST_MEMORY;
-	EVP_DigestInit(md_ctx, md);
+	if (!EVP_DigestInit(md_ctx, md)) {
+		EVP_MD_CTX_destroy(md_ctx);
+		return CKR_GENERAL_ERROR;
+	}
 	op->priv_data = md_ctx;
 	return CKR_OK;
 }
@@ -309,7 +312,11 @@ static CK_RV sc_pkcs11_openssl_md_init(sc_pkcs11_operation_t *op)
 static CK_RV sc_pkcs11_openssl_md_update(sc_pkcs11_operation_t *op,
 				CK_BYTE_PTR pData, CK_ULONG pDataLen)
 {
-	EVP_DigestUpdate(DIGEST_CTX(op), pData, pDataLen);
+	EVP_MD_CTX *md_ctx = DIGEST_CTX(op);
+	if (!md_ctx)
+		return CKR_ARGUMENTS_BAD;
+	if (!EVP_DigestUpdate(md_ctx, pData, pDataLen))
+		return CKR_GENERAL_ERROR;
 	return CKR_OK;
 }
 
@@ -318,25 +325,28 @@ static CK_RV sc_pkcs11_openssl_md_final(sc_pkcs11_operation_t *op,
 {
 	EVP_MD_CTX *md_ctx = DIGEST_CTX(op);
 
+	if (!md_ctx)
+		return CKR_ARGUMENTS_BAD;
 	if (*pulDigestLen < (unsigned) EVP_MD_CTX_size(md_ctx)) {
 		sc_log(context, "Provided buffer too small: %lu < %d",
 		       *pulDigestLen, EVP_MD_CTX_size(md_ctx));
 		*pulDigestLen = EVP_MD_CTX_size(md_ctx);
 		return CKR_BUFFER_TOO_SMALL;
 	}
-
-	EVP_DigestFinal(md_ctx, pDigest, (unsigned *) pulDigestLen);
+	if (!EVP_DigestFinal(md_ctx, pDigest, (unsigned *) pulDigestLen))
+		return CKR_GENERAL_ERROR;
 
 	return CKR_OK;
 }
 
 static void sc_pkcs11_openssl_md_release(sc_pkcs11_operation_t *op)
 {
-	EVP_MD_CTX	*md_ctx = DIGEST_CTX(op);
-
-	if (md_ctx)
-		EVP_MD_CTX_destroy(md_ctx);
-	op->priv_data = NULL;
+	if (op) {
+		EVP_MD_CTX	*md_ctx = DIGEST_CTX(op);
+		if (md_ctx)
+			EVP_MD_CTX_destroy(md_ctx);
+		op->priv_data = NULL;
+	}
 }
 
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC)
@@ -478,7 +488,11 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, unsigned int pubkey_len
 		 * are already collected in the md_ctx
 		 */
 		sc_log(context, "Trying to verify using EVP");
-		res = EVP_VerifyFinal(md_ctx, signat, signat_len, pkey);
+		if (md_ctx) {
+			res = EVP_VerifyFinal(md_ctx, signat, signat_len, pkey);
+		} else {
+			res = -1;
+		}
 		EVP_PKEY_free(pkey);
 		if (res == 1)
 			return CKR_OK;
@@ -610,7 +624,11 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, unsigned int pubkey_len
 				unsigned char *tmp = digest;
 				unsigned int tmp_len;
 
-				EVP_DigestFinal(md_ctx, tmp, &tmp_len);
+				if (!md_ctx || !EVP_DigestFinal(md_ctx, tmp, &tmp_len)) {
+					RSA_free(rsa);
+					free(rsa_out);
+					return CKR_GENERAL_ERROR;
+				}
 				data = tmp;
 				data_len = tmp_len;
 			}
