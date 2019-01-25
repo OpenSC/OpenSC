@@ -792,7 +792,6 @@ static void parse_sec_attr_44(sc_file_t *file, const u8 *buf, size_t len)
 		if (iACLen > len)
 			break;
 
-		iPinCount = -1;			/* default no pin required */
 		iMethod = SC_AC_NONE;		/* default no authentication required */
 
 		if (buf[iOffset] & 0X80) { /* AC in adaptive coding */

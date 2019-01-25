@@ -162,7 +162,6 @@ DES_cbc_cksum_3des_emv96(const unsigned char *in, DES_cblock *output,
 	tin0^=tout0; tin[0]=tin0;
 	tin1^=tout1; tin[1]=tin1;
 	DES_encrypt3((DES_LONG *)tin,schedule,schedule2,schedule);
-	tout0=tin[0];
 	tout1=tin[1];
 
 	if (out != NULL)
@@ -170,7 +169,6 @@ DES_cbc_cksum_3des_emv96(const unsigned char *in, DES_cblock *output,
 		l2c(tout0,out);
 		l2c(tout1,out);
 		}
-	tout0=tin0=tin1=tin[0]=tin[1]=0;
 	/*
 	  Transform the data in tout1 so that it will
 	  match the return value that the MIT Kerberos
@@ -220,7 +218,6 @@ DES_cbc_cksum_3des(const unsigned char *in, DES_cblock *output,
 		l2c(tout0,out);
 		l2c(tout1,out);
 		}
-	tout0=tin0=tin1=tin[0]=tin[1]=0;
 	/*
 	  Transform the data in tout1 so that it will
 	  match the return value that the MIT Kerberos

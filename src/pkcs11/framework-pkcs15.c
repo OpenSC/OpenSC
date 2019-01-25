@@ -5705,6 +5705,8 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 
 	if (aes_max_key_size > 0) {
 		rc = sc_pkcs11_register_aes_mechanisms(p11card, aes_flags, aes_min_key_size, aes_max_key_size);
+		if (rc != CKR_OK)
+			return rc;
 	}
 
 

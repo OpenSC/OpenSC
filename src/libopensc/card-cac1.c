@@ -177,7 +177,6 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 #endif
 		if (r)
 			goto done;
-		cert_ptr = val;
 	} else if (cert_len > 0) {
 		priv->cache_buf = malloc(cert_len);
 		if (priv->cache_buf == NULL) {
