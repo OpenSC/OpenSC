@@ -346,7 +346,7 @@ static int get_key(unsigned int usage, sc_pkcs15_object_t **result)
 		 * a crypto operation.  Card drivers can test for SC_AC_CONTEXT_SPECIFIC
 		 * to do any special handling. 
 		 */
-		if (key->user_consent) {
+		if (key->user_consent && pin && pin->data) {
 			int auth_meth_saved;
 			struct sc_pkcs15_auth_info *pinfo = (struct sc_pkcs15_auth_info *) pin->data;
 

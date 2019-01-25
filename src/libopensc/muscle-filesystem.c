@@ -216,14 +216,17 @@ int mscfs_loadFileInfo(mscfs_t* fs, const u8 *path, int pathlen, mscfs_file_t **
 	mscfs_check_cache(fs);
 	if(idx) *idx = -1;
 	for(x = 0; x < fs->cache.size; x++) {
-		msc_id objectId;
 		*file_data = &fs->cache.array[x];
-		objectId = (*file_data)->objectId;
-		if(0 == memcmp(objectId.id, fullPath.id, 4)) {
-			if(idx) *idx = x;
-			break;
+		if (*file_data) {
+			msc_id objectId;
+			objectId = (*file_data)->objectId;
+			if(0 == memcmp(objectId.id, fullPath.id, 4)) {
+				if (idx)
+					*idx = x;
+				break;
+			}
+			*file_data = NULL;
 		}
-		*file_data = NULL;
 	}
 	if(*file_data == NULL && (0 == memcmp("\x3F\x00\x00\x00", fullPath.id, 4) || 0 == memcmp("\x3F\x00\x50\x15", fullPath.id, 4 ) || 0 == memcmp("\x3F\x00\x3F\x00", fullPath.id, 4))) {
 		static mscfs_file_t ROOT_FILE;

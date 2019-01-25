@@ -548,7 +548,7 @@ static int gids_get_pin_status(sc_card_t *card, int pinreference, int *tries_lef
 	}
 	p = sc_asn1_find_tag(card->ctx, buffer, buffersize , GIDS_TRY_LIMIT_TAG, &datasize);
 	if (p && datasize == 1) {
-		if (tries_left)
+		if (max_tries)
 			*max_tries = p[0];
 	}
 
@@ -928,14 +928,16 @@ static int gids_select_file(sc_card_t *card, const struct sc_path *in_path,
 		data->currentEFID = in_path->value[1] + (in_path->value[0]<<8);
 		data->currentDO = in_path->value[3] + (in_path->value[2]<<8);
 
-		file = sc_file_new();
-		if (file == NULL)
-			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
-		file->path = *in_path;
-		file->type = SC_FILE_TYPE_WORKING_EF;
-		file->ef_structure = SC_FILE_EF_TRANSPARENT;
-		file->size = SC_MAX_EXT_APDU_BUFFER_SIZE;
-		*file_out = file;
+		if (file_out) {
+			file = sc_file_new();
+			if (file == NULL)
+				LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+			file->path = *in_path;
+			file->type = SC_FILE_TYPE_WORKING_EF;
+			file->ef_structure = SC_FILE_EF_TRANSPARENT;
+			file->size = SC_MAX_EXT_APDU_BUFFER_SIZE;
+			*file_out = file;
+		}
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 	} else if (in_path->len == 4 && in_path->value[0] == 0x3F && in_path->value[1] == 0xFF &&  in_path->type == SC_PATH_TYPE_PATH) {
 		// GIDS does not allow a select with a path containing a DF
