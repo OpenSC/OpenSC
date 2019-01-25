@@ -302,8 +302,6 @@ static int parse_private_key(const u8 *key, size_t keysize, RSA *rsa)
 	if (dmq1 == NULL)
 		return -1;
 	cf2bn(p, base, dmq1);
-	p += base;
-
 	
 	if (RSA_set0_factors(rsa, bn_p, q) != 1)
 		return -1;
@@ -784,6 +782,10 @@ static int encode_public_key(RSA *rsa, u8 *key, size_t *keysize)
 	memcpy(p, bnbuf, 2*base);
 	p += 2*base;
 	r = bn2cf(rsa_e, bnbuf);
+	if (r != 4) {
+		fprintf(stderr, "Invalid exponent value.\n");
+		return 2;
+	}
 	memcpy(p, bnbuf, 4);
 	p += 4;
 

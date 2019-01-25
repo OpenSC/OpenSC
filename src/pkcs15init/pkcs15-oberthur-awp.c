@@ -1563,7 +1563,6 @@ awp_update_df_create_data(struct sc_pkcs15_card *p15card, struct sc_profile *pro
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_file *info_file=NULL, *obj_file=NULL;
 	struct awp_data_info idata;
-	struct sc_pkcs15_der der;
 	struct sc_path path;
 	unsigned obj_id, obj_type = obj->auth_id.len ? COSM_TYPE_PRIVDATA_OBJECT : SC_PKCS15_TYPE_DATA_OBJECT;
 	int rv;
@@ -1571,7 +1570,6 @@ awp_update_df_create_data(struct sc_pkcs15_card *p15card, struct sc_profile *pro
 	LOG_FUNC_CALLED(ctx);
 	memset(&idata, 0, sizeof(idata));
 
-	der = obj->content;
 	path = ((struct sc_pkcs15_data_info *)obj->data)->path;
 	obj_id = (path.value[path.len-1] & 0xFF) + (path.value[path.len-2] & 0xFF) * 0x100;
 

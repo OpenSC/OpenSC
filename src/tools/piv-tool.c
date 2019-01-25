@@ -383,6 +383,10 @@ static int gen_key(const char * key_info)
 		x = BN_bin2bn(keydata.ecpoint + 1, i, NULL);
 		y = BN_bin2bn(keydata.ecpoint + 1 + i, i, NULL) ;
 		r = EC_POINT_set_affine_coordinates_GFp(ecgroup, ecpoint, x, y, NULL);
+		if (r == 0) {
+			fprintf(stderr, "EC_POINT_set_affine_coordinates_GFp failed\n");
+			return -1;
+		}
 		eckey = EC_KEY_new();
 		r = EC_KEY_set_group(eckey, ecgroup);
 		if (r == 0) {
