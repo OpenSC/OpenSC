@@ -479,6 +479,9 @@ int list_insert_at(list_t *simclist_restrict l, const void *data, unsigned int p
         size_t datalen = l->attrs.meter(data);
         lent->data = (struct list_entry_s *)malloc(datalen);
         if (lent->data == NULL) {
+            if (!(l->spareelsnum > 0)) {
+                free(lent);
+            }
             return -1;
         }
         memcpy(lent->data, data, datalen);

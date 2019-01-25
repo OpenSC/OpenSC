@@ -99,9 +99,7 @@ static scconf_item *scconf_item_add_internal(scconf_parser * parser, int type)
 		/* if item with same key already exists, use it */
 		item = scconf_item_find(parser);
 		if (item) {
-			if (parser->key) {
-				free(parser->key);
-			}
+			free(parser->key);
 			parser->key = NULL;
 			parser->current_item = item;
 			return item;
@@ -147,8 +145,7 @@ scconf_item *scconf_item_add(scconf_context * config, scconf_block * block, scco
 		scconf_block_copy((const scconf_block *) data, &dst);
 		scconf_list_copy(dst->name, &parser.name);
 	}
-	scconf_item_add_internal(&parser, type);
-	if (parser.current_item) {
+	if (scconf_item_add_internal(&parser, type)) {
 		switch (parser.current_item->type) {
 			case SCCONF_ITEM_TYPE_COMMENT:
 				parser.current_item->value.comment = strdup((const char *) data);
@@ -167,6 +164,7 @@ scconf_item *scconf_item_add(scconf_context * config, scconf_block * block, scco
 	} else {
 		/* FIXME is it an error if item is NULL? */
 		free(parser.key);
+		parser.key = NULL;
 	}
 	return parser.current_item;
 }

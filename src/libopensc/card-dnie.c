@@ -1007,7 +1007,7 @@ static int dnie_fill_cache(sc_card_t * card)
 	size_t count = 0;
 	size_t len = 0;
 	u8 *buffer = NULL;
-	u8 *pt = NULL;
+	u8 *pt = NULL, *p;
 	sc_context_t *ctx = NULL;
 
 	if (!card || !card->ctx)
@@ -1056,19 +1056,22 @@ static int dnie_fill_cache(sc_card_t * card)
 			}
 			if (r == SC_ERROR_INCORRECT_PARAMETERS)
 				goto read_done;
+			free(buffer);
 			if (apdu.resp != tmp)
 				free(apdu.resp);
 			LOG_FUNC_RETURN(ctx, r);	/* arriving here means response error */
 		}
 		/* copy received data into buffer. realloc() if not enough space */
 		count = apdu.resplen;
-		buffer = realloc(buffer, len + count);
-		if (!buffer) {
+		p = realloc(buffer, len + count);
+		if (!p) {
+			free(buffer);
 			free((void *)apdu.data);
 			if (apdu.resp != tmp)
 				free(apdu.resp);
 			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 		}
+		buffer = p;
 		memcpy(buffer + len, apdu.resp, count);
 		if (apdu.resp != tmp) {
 			free(apdu.resp);

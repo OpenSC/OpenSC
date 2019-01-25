@@ -1110,7 +1110,13 @@ static int generate_pwd_shares(sc_card_t *card, char **pwd, int *pwdlen, int pas
 	// Allocate data buffer for the generated shares
 	shares = malloc(password_shares_total * sizeof(secret_share_t));
 
-	createShares(secret, password_shares_threshold, password_shares_total, prime, shares);
+	if (!shares || 0 > createShares(secret, password_shares_threshold, password_shares_total, prime, shares)) {
+		printf("Error generating Shares. Please try again.");
+		OPENSSL_cleanse(*pwd, *pwdlen);
+		free(*pwd);
+		free(shares);
+		return -1;
+	}
 
 	sp = shares;
 	for (i = 0; i < password_shares_total; i++) {

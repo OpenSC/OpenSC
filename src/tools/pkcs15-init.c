@@ -1092,6 +1092,7 @@ do_store_private_key(struct sc_profile *profile)
 	for (i = 0; i < ncerts && r >= 0; i++) {
 		struct sc_pkcs15init_certargs cargs;
 		char	namebuf[SC_PKCS15_MAX_LABEL_SIZE-1];
+		int cargs_label_needs_free = 0;
 
 		if (i && opt_ignore_ca_certs)
 			break;
@@ -1108,14 +1109,20 @@ do_store_private_key(struct sc_profile *profile)
 		cargs.label = cert_common_name(cert[i]);
 		if (!cargs.label)
 			cargs.label = X509_NAME_oneline(X509_get_subject_name(cert[i]), namebuf, sizeof(namebuf));
+		else
+			cargs_label_needs_free = 1;
 
 		/* Just the first certificate gets the same ID
 		 * as the private key. All others get
 		 * an ID of their own */
 		if (i == 0) {
 			cargs.id = args.id;
-			if (opt_cert_label != 0)
+			if (opt_cert_label != 0) {
+				if (cargs_label_needs_free)
+					free((char *) cargs.label);
 				cargs.label = opt_cert_label;
+				cargs_label_needs_free = 0;
+			}
 		} else {
 			if (is_cacert_already_present(&cargs)) {
 				printf("Certificate #%d already present, not stored.\n", i);
@@ -1128,6 +1135,8 @@ do_store_private_key(struct sc_profile *profile)
 
 		r = sc_pkcs15init_store_certificate(g_p15card, profile, &cargs, NULL);
 next_cert:
+		if (cargs_label_needs_free)
+			free((char *) cargs.label);
 		free(cargs.der_encoded.value);
 	}
 
@@ -1242,18 +1251,23 @@ do_store_secret_key(struct sc_profile *profile)
 	}
 
 	r = do_read_data_object(opt_infile, &args.key.data, &args.key.data_len, (keybits+7) / 8);
-	if (r < 0)
+	if (r < 0) {
+		free(args.key.data);
 		return r;
+	}
 
 	args.algorithm = algorithm;
 	args.value_len = keybits;
 	args.access_flags |= SC_PKCS15_PRKEY_ACCESS_SENSITIVE;
 
 	r = sc_lock(g_p15card->card);
-	if (r < 0)
+	if (r < 0) {
+		free(args.key.data);
 		return r;
+	}
 	r = sc_pkcs15init_store_secret_key(g_p15card, profile, &args, NULL);
 	sc_unlock(g_p15card->card);
+	free(args.key.data);
 	return r;
 }
 
@@ -1455,8 +1469,7 @@ do_store_data_object(struct sc_profile *profile)
 		sc_unlock(g_p15card->card);
 	}
 
-	if (data)
-		free(data);
+	free(data);
 	return r;
 }
 
@@ -2485,17 +2498,17 @@ do_read_data_object(const char *name, u8 **out, size_t *outlen, size_t expected)
         inf = fopen(name, "rb");
         if (inf == NULL) {
                 fprintf(stderr, "Unable to open '%s' for reading.\n", name);
-                return -1;
+                return SC_ERROR_FILE_NOT_FOUND;
         }
         c = fread(*out, 1, filesize, inf);
         fclose(inf);
         if (c < 0) {
                 perror("read");
-                return -1;
+                return SC_ERROR_FILE_NOT_FOUND;
         }
 
 	*outlen = filesize;
-	return 0;
+	return SC_SUCCESS;
 }
 
 static char *
@@ -3161,25 +3174,25 @@ static int verify_pin(struct sc_pkcs15_card *p15card, char *auth_id_str)
 		pin = (char *) opt_pins[0];
 	}
 	else   {
-		sc_ui_hints_t   hints;
+		sc_ui_hints_t hints;
 
-                if (opt_use_pinpad)
+		if (opt_use_pinpad)
 			return SC_ERROR_OBJECT_NOT_FOUND;
 
 		if (pin_obj->label[0])
 			snprintf(pin_label, sizeof(pin_label), "User PIN [%.*s]",
-				(int) sizeof pin_obj->label, pin_obj->label);
+					(int) sizeof pin_obj->label, pin_obj->label);
 		else
 			snprintf(pin_label, sizeof(pin_label), "User PIN");
-                memset(&hints, 0, sizeof(hints));
-                hints.dialog_name = "pkcs15init.get_pin";
-                hints.prompt    = "User PIN required";
-                hints.obj_label = pin_label;
-                hints.usage     = SC_UI_USAGE_OTHER;
-                hints.card      = g_card;
-                hints.p15card   = p15card;
+		memset(&hints, 0, sizeof(hints));
+		hints.dialog_name = "pkcs15init.get_pin";
+		hints.prompt    = "User PIN required";
+		hints.obj_label = pin_label;
+		hints.usage     = SC_UI_USAGE_OTHER;
+		hints.card      = g_card;
+		hints.p15card   = p15card;
 
-        	get_pin(&hints, &pin);
+		get_pin(&hints, &pin);
 	}
 
 	r = sc_pkcs15_verify_pin(p15card, pin_obj, (unsigned char *)pin, pin ? strlen((char *) pin) : 0);
