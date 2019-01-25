@@ -1569,28 +1569,26 @@ awp_update_df_create_data(struct sc_pkcs15_card *p15card, struct sc_profile *pro
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
+	memset(&idata, 0, sizeof(idata));
 
 	der = obj->content;
 	path = ((struct sc_pkcs15_data_info *)obj->data)->path;
 	obj_id = (path.value[path.len-1] & 0xFF) + (path.value[path.len-2] & 0xFF) * 0x100;
 
 	rv = awp_new_file(p15card, profile, obj_type, obj_id & 0xFF, &info_file, &obj_file);
-	LOG_TEST_RET(ctx, rv, "COSM new file error");
+	LOG_TEST_GOTO_ERR(ctx, rv, "COSM new file error");
 
-	memset(&idata, 0, sizeof(idata));
-	sc_log(ctx, 
-		 "Data Der(%p,%"SC_FORMAT_LEN_SIZE_T"u)", der.value, der.len);
 	rv = awp_encode_data_info(p15card, obj, &idata);
-	LOG_TEST_RET(ctx, rv, "'Create Data' update DF failed: cannot encode info");
+	LOG_TEST_GOTO_ERR(ctx, rv, "'Create Data' update DF failed: cannot encode info");
 
 	rv = awp_set_data_info(p15card, profile, info_file, &idata);
-	LOG_TEST_RET(ctx, rv, "'Create Data' update DF failed: cannot set info");
+	LOG_TEST_GOTO_ERR(ctx, rv, "'Create Data' update DF failed: cannot set info");
 
 	rv = awp_update_object_list(p15card, profile, obj_type, obj_id & 0xFF);
-	LOG_TEST_RET(ctx, rv, "'Create Data' update DF failed: cannot update list");
+	LOG_TEST_GOTO_ERR(ctx, rv, "'Create Data' update DF failed: cannot update list");
 
+err:
 	awp_free_data_info(&idata);
-
 	sc_file_free(info_file);
 	sc_file_free(obj_file);
 

@@ -3406,12 +3406,13 @@ iasecc_read_public_key(struct sc_card *card, unsigned type,
 
 	sc_log(ctx, "read public kay(ref:%i;size:%i)", ref, size);
 
+	memset(&bn, 0, sizeof bn);
 	memset(&sdo, 0, sizeof(sdo));
 	sdo.sdo_class = IASECC_SDO_CLASS_RSA_PUBLIC;
 	sdo.sdo_ref  = ref & ~IASECC_OBJECT_REF_LOCAL;
 
 	rv = iasecc_sdo_get_data(card, &sdo);
-	LOG_TEST_RET(ctx, rv, "failed to read public key: cannot get RSA SDO data");
+	LOG_TEST_GOTO_ERR(ctx, rv, "failed to read public key: cannot get RSA SDO data");
 
 	if (out)
 		*out = NULL;
@@ -3420,13 +3421,13 @@ iasecc_read_public_key(struct sc_card *card, unsigned type,
 
 	bn[0].data = (unsigned char *) malloc(sdo.data.pub_key.n.size);
 	if (!bn[0].data)
-		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "failed to read public key: cannot allocate modulus");
+		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_OUT_OF_MEMORY, "failed to read public key: cannot allocate modulus");
 	bn[0].len = sdo.data.pub_key.n.size;
 	memcpy(bn[0].data, sdo.data.pub_key.n.value, sdo.data.pub_key.n.size);
 
 	bn[1].data = (unsigned char *) malloc(sdo.data.pub_key.e.size);
 	if (!bn[1].data)
-		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "failed to read public key: cannot allocate exponent");
+		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_OUT_OF_MEMORY, "failed to read public key: cannot allocate exponent");
 	bn[1].len = sdo.data.pub_key.e.size;
 	memcpy(bn[1].data, sdo.data.pub_key.e.value, sdo.data.pub_key.e.size);
 
@@ -3434,11 +3435,12 @@ iasecc_read_public_key(struct sc_card *card, unsigned type,
 	rsa_key.exponent = bn[1];
 
 	rv = sc_pkcs15_encode_pubkey_rsa(ctx, &rsa_key, out, out_len);
-	LOG_TEST_RET(ctx, rv, "failed to read public key: cannot encode RSA public key");
+	LOG_TEST_GOTO_ERR(ctx, rv, "failed to read public key: cannot encode RSA public key");
 
 	if (out && out_len)
 		sc_log(ctx, "encoded public key: %s", sc_dump_hex(*out, *out_len));
 
+err:
 	if (bn[0].data)
 		free(bn[0].data);
 	if (bn[1].data)

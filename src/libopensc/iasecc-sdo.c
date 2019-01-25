@@ -558,8 +558,10 @@ iasecc_parse_keyset(struct sc_card *card, unsigned char *data, size_t data_len, 
 
 		if (tlv.tag == IASECC_SDO_KEYSET_TAG_COMPULSORY)
 			keyset->compulsory = tlv;
-		else
+		else {
+			free(tlv.value);
 			LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "parse error: non KeySet SDO tag");
+		}
 
 		offs += rv;
 	}
@@ -668,43 +670,48 @@ iasecc_sdo_parse_data(struct sc_card *card, unsigned char *data, struct iasecc_s
 		sdo->docp.tries_remaining = tlv;
 	}
 	else if (tlv.tag == IASECC_SDO_CHV_TAG)   {
-		if (sdo->sdo_class != IASECC_SDO_CLASS_CHV)
+		if (sdo->sdo_class != IASECC_SDO_CLASS_CHV) {
+			free(tlv.value);
 			LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "parse error: IASECC_SDO_CHV_TAG tag in non User CHV SDO");
+		}
 
 		rv = iasecc_parse_chv(card, tlv.value, tlv.size, &sdo->data.chv);
-		LOG_TEST_RET(ctx, rv, "parse error: cannot parse SDO CHV data");
-
 		free(tlv.value);
+		LOG_TEST_RET(ctx, rv, "parse error: cannot parse SDO CHV data");
 	}
 	else if (tlv.tag == IASECC_SDO_PUBKEY_TAG)   {
-		if (sdo->sdo_class != IASECC_SDO_CLASS_RSA_PUBLIC)
+		if (sdo->sdo_class != IASECC_SDO_CLASS_RSA_PUBLIC) {
+			free(tlv.value);
 			LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "parse error: SDO_PUBLIC_KEY tag in non PUBLIC_KEY SDO");
+		}
 
 		rv = iasecc_parse_pubkey(card, tlv.value, tlv.size, &sdo->data.pub_key);
-		LOG_TEST_RET(ctx, rv, "parse error: cannot parse SDO PUBLIC KEY data");
-
 		free(tlv.value);
+		LOG_TEST_RET(ctx, rv, "parse error: cannot parse SDO PUBLIC KEY data");
 	}
 	else if (tlv.tag == IASECC_SDO_PRVKEY_TAG)   {
-		if (sdo->sdo_class != IASECC_SDO_CLASS_RSA_PRIVATE)
+		if (sdo->sdo_class != IASECC_SDO_CLASS_RSA_PRIVATE) {
+			free(tlv.value);
 			LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "parse error: SDO_PRIVATE_KEY tag in non PRIVATE_KEY SDO");
+		}
 
 		rv = iasecc_parse_prvkey(card, tlv.value, tlv.size, &sdo->data.prv_key);
-		LOG_TEST_RET(ctx, rv, "parse error: cannot parse SDO PRIVATE KEY data");
-
 		free(tlv.value);
+		LOG_TEST_RET(ctx, rv, "parse error: cannot parse SDO PRIVATE KEY data");
 	}
 	else if (tlv.tag == IASECC_SDO_KEYSET_TAG)   {
-		if (sdo->sdo_class != IASECC_SDO_CLASS_KEYSET)
+		if (sdo->sdo_class != IASECC_SDO_CLASS_KEYSET) {
+			free(tlv.value);
 			LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "parse error: SDO_KEYSET tag in non KEYSET SDO");
+		}
 
 		rv = iasecc_parse_keyset(card, tlv.value, tlv.size, &sdo->data.keyset);
-		LOG_TEST_RET(ctx, rv, "parse error: cannot parse SDO KEYSET data");
-
 		free(tlv.value);
+		LOG_TEST_RET(ctx, rv, "parse error: cannot parse SDO KEYSET data");
 	}
 	else   {
 		sc_log(ctx, "iasecc_sdo_parse_data() non supported tag 0x%X", tlv.tag);
+		free(tlv.value);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 	}
 
@@ -878,7 +885,7 @@ static int
 iasecc_encode_docp(struct sc_context *ctx, struct iasecc_sdo_docp *docp, unsigned char **out, size_t *out_len)
 {
 	struct iasecc_extended_tlv tlv, tlv_st;
-	unsigned char *st_blob, *tmp_blob, *docp_blob;
+	unsigned char *st_blob = NULL, *tmp_blob = NULL, *docp_blob = NULL;
 	size_t blob_size;
 	int rv;
 
@@ -889,62 +896,63 @@ iasecc_encode_docp(struct sc_context *ctx, struct iasecc_sdo_docp *docp, unsigne
 	memset(&tlv, 0, sizeof(tlv));
 	memset(&tlv_st, 0, sizeof(tlv_st));
 
-	st_blob = NULL;
 	blob_size = 0;
 	rv = iasecc_update_blob(ctx, &docp->acls_contact, &st_blob, &blob_size);
-	LOG_TEST_RET(ctx, rv, "ECC: cannot add contact ACLs to blob");
+	LOG_TEST_GOTO_ERR(ctx, rv, "ECC: cannot add contact ACLs to blob");
 
 	rv = iasecc_update_blob(ctx, &docp->acls_contactless, &st_blob, &blob_size);
-	LOG_TEST_RET(ctx, rv, "ECC: cannot add contactless ACLs to blob");
+	LOG_TEST_GOTO_ERR(ctx, rv, "ECC: cannot add contactless ACLs to blob");
 
 	tlv.tag = IASECC_DOCP_TAG_ACLS;
 	tlv.size = blob_size;
 	tlv.value = st_blob;
 
-	tmp_blob = NULL;
 	blob_size = 0;
 	rv = iasecc_update_blob(ctx, &tlv, &tmp_blob, &blob_size);
-	LOG_TEST_RET(ctx, rv, "ECC: cannot add ACLs template to blob");
+	LOG_TEST_GOTO_ERR(ctx, rv, "ECC: cannot add ACLs template to blob");
 
 	rv = iasecc_update_blob(ctx, &docp->name, &tmp_blob, &blob_size);
-	LOG_TEST_RET(ctx, rv, "ECC: cannot add NAME to blob");
+	LOG_TEST_GOTO_ERR(ctx, rv, "ECC: cannot add NAME to blob");
 
 	rv = iasecc_update_blob(ctx, &docp->tries_maximum, &tmp_blob, &blob_size);
-	LOG_TEST_RET(ctx, rv, "ECC: cannot add TRIES MAXIMUM to blob");
+	LOG_TEST_GOTO_ERR(ctx, rv, "ECC: cannot add TRIES MAXIMUM to blob");
 
 	rv = iasecc_update_blob(ctx, &docp->tries_remaining, &tmp_blob, &blob_size);
-	LOG_TEST_RET(ctx, rv, "ECC: cannot add TRIES REMAINING to blob");
+	LOG_TEST_GOTO_ERR(ctx, rv, "ECC: cannot add TRIES REMAINING to blob");
 
 	rv = iasecc_update_blob(ctx, &docp->usage_maximum, &tmp_blob, &blob_size);
-	LOG_TEST_RET(ctx, rv, "ECC: cannot add USAGE MAXIMUM to blob");
+	LOG_TEST_GOTO_ERR(ctx, rv, "ECC: cannot add USAGE MAXIMUM to blob");
 
 	rv = iasecc_update_blob(ctx, &docp->usage_remaining, &tmp_blob, &blob_size);
-	LOG_TEST_RET(ctx, rv, "ECC: cannot add USAGE REMAINING to blob");
+	LOG_TEST_GOTO_ERR(ctx, rv, "ECC: cannot add USAGE REMAINING to blob");
 
 	rv = iasecc_update_blob(ctx, &docp->non_repudiation, &tmp_blob, &blob_size);
-	LOG_TEST_RET(ctx, rv, "ECC: cannot add NON REPUDIATION to blob");
+	LOG_TEST_GOTO_ERR(ctx, rv, "ECC: cannot add NON REPUDIATION to blob");
 
 	rv = iasecc_update_blob(ctx, &docp->size, &tmp_blob, &blob_size);
-	LOG_TEST_RET(ctx, rv, "ECC: cannot add SIZE to blob");
+	LOG_TEST_GOTO_ERR(ctx, rv, "ECC: cannot add SIZE to blob");
 
 	rv = iasecc_update_blob(ctx, &docp->issuer_data, &tmp_blob, &blob_size);
-	LOG_TEST_RET(ctx, rv, "ECC: cannot add IDATA to blob");
+	LOG_TEST_GOTO_ERR(ctx, rv, "ECC: cannot add IDATA to blob");
 
 	tlv.tag = IASECC_DOCP_TAG;
 	tlv.size = blob_size;
 	tlv.value = tmp_blob;
 
-	docp_blob = NULL;
 	blob_size = 0;
 	rv = iasecc_update_blob(ctx, &tlv, &docp_blob, &blob_size);
-	LOG_TEST_RET(ctx, rv, "ECC: cannot add ACLs to blob");
-
-	free(tmp_blob);
+	LOG_TEST_GOTO_ERR(ctx, rv, "ECC: cannot add ACLs to blob");
 
 	if (out && out_len)   {
 		*out = docp_blob;
 		*out_len = blob_size;
+		docp_blob = NULL;
 	}
+
+err:
+	free(docp_blob);
+	free(tmp_blob);
+	free(st_blob);
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }

@@ -233,9 +233,11 @@ static int sc_pkcs15emu_actalis_init(sc_pkcs15_card_t * p15card)
 
 			sc_read_binary(card, 4, compCert, compLen, 0);
 
-			if (uncompress(cert, &len,
-				compCert, compLen) != Z_OK)
+			if (uncompress(cert, &len, compCert, compLen) != Z_OK) {
+				free(cert);
+				free(compCert);
 				return SC_ERROR_INTERNAL;
+			}
 			cpath.index = 0;
 			cpath.count = len;
 
@@ -251,6 +253,9 @@ static int sc_pkcs15emu_actalis_init(sc_pkcs15_card_t * p15card)
 			j++;
 			cert_obj.flags = SC_PKCS15_CO_FLAG_MODIFIABLE;
 			sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
+
+			free(cert);
+			free(compCert);
 		}
 	}
 #endif

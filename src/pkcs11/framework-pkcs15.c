@@ -2348,9 +2348,10 @@ pkcs15_create_secret_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 			break;
 		case CKA_VALUE:
 			if (attr->pValue) {
+				free(args.key.data);
 				args.key.data = calloc(1,attr->ulValueLen);
 				if (!args.key.data)
-				return CKR_HOST_MEMORY;
+					return CKR_HOST_MEMORY;
 				memcpy(args.key.data, attr->pValue, attr->ulValueLen);
 				args.key.data_len = attr->ulValueLen;
 			}
