@@ -1272,35 +1272,20 @@ static size_t determineLength(const u8 *tlv, size_t buflen)
  */
 static int wrap_with_tag(u8 tag, u8 *indata, size_t inlen, u8 **outdata, size_t *outlen)
 {
-	int nlc = 0;
-	u8 *ptr;
+	int r = sc_asn1_put_tag(tag, indata, inlen, NULL, 0, NULL);
+	if (r < 0)
+		return r;
+	if (r == 0)
+		return SC_ERROR_INVALID_ASN1_OBJECT;
 
-	if (inlen > 127) {
-		do	{
-			nlc++;
-		} while (inlen >= (unsigned)(1 << ((unsigned)nlc << 3)));
-	}
-
-	*outlen = 2 + nlc + inlen;
-	ptr = malloc(*outlen);
+	u8 *ptr = calloc(r, sizeof *ptr);
 	if (ptr == NULL) {
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
-
 	*outdata = ptr;
-	*ptr++ = tag;
+	*outlen = r;
 
-	if (nlc) {
-		*ptr++ = 0x80 | nlc;
-		while (nlc--) {
-			*ptr++ = (inlen >> (nlc << 3)) & 0xFF;
-		}
-	} else {
-		*ptr++ = inlen & 0x7F;
-	}
-
-	memcpy(ptr, indata, inlen);
-	return SC_SUCCESS;
+	return sc_asn1_put_tag(tag, indata, inlen, *outdata, *outlen, NULL);
 }
 
 
