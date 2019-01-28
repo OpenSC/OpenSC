@@ -273,6 +273,7 @@ static int asepcos_select_file(sc_card_t *card, const sc_path_t *in_path,
 		/* check the current DF to avoid unnecessary re-selection of
 		 * the MF (as this might invalidate a security status) */
 		sc_path_t tpath;
+		memset(&tpath, 0, sizeof tpath);
 
 		r = asepcos_get_current_df_path(card, &tpath);
 		/* workaround: as opensc can't handle paths with file id

@@ -685,9 +685,12 @@ static int itacns_check_and_add_keyset(sc_pkcs15_card_t *p15card,
 	 */
 	if (cert_offset) {
 		u8 certlen[3];
+		memset(certlen, 0, sizeof certlen);
 		r = loadFile(p15card, &path, certlen, sizeof(certlen));
 		LOG_TEST_RET(p15card->card->ctx, r,
 			"Could not read certificate file");
+		if (r < 3)
+			return SC_ERROR_INVALID_DATA;
 		path.index = cert_offset;
 		path.count = (certlen[1] << 8) + certlen[2];
 		/* If those bytes are 00, then we are probably dealing with an

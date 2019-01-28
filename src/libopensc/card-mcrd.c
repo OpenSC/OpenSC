@@ -1093,6 +1093,7 @@ mcrd_select_file(sc_card_t * card, const sc_path_t * path, sc_file_t ** file)
 		if ((path->len & 1) || path->len > sizeof(pathtmp))
 			return SC_ERROR_INVALID_ARGUMENTS;
 
+		memset(pathtmp, 0, sizeof pathtmp);
 		pathptr = pathtmp;
 		for (n = 0; n < path->len; n += 2)
 			pathptr[n >> 1] =
