@@ -853,6 +853,11 @@ static int cardos_change_startkey(const char *change_startkey_apdu)
 	u8 rbuf[256];
 	int r;
 
+	if (!change_startkey_apdu) {
+		printf("Missing change StartKey, aborting\n");
+		return 1;
+	}
+
 	if (verbose)	{
 		printf ("Change StartKey APDU:\n");
 		util_hex_dump_asc(stdout, (unsigned char *)change_startkey_apdu,

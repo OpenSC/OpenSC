@@ -262,7 +262,7 @@ static int admin_mode(const char* admin_info)
 	size_t buflen = 2;
 
 
-	if (strlen(admin_info) == 7 &&
+	if (admin_info && strlen(admin_info) == 7 &&
 			(admin_info[0] == 'A' || admin_info[0] == 'M') &&
 			admin_info[1] == ':' &&
 			(sc_hex_to_bin(admin_info+2, opts+1, &buflen) == 0) &&
