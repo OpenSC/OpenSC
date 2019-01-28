@@ -284,8 +284,10 @@ sc_pkcs15_get_extension(struct sc_context *ctx, struct sc_pkcs15_cert *cert,
 			}
 			else {
 				*ext_val_len = MIN(*ext_val_len, val_len);
-				memcpy(*ext_val, val, *ext_val_len);
-				free(val);
+				if (val) {
+					memcpy(*ext_val, val, *ext_val_len);
+					free(val);
+				}
 			}
 
 			if (is_critical)
