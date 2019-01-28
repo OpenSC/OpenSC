@@ -596,6 +596,7 @@ try_again:
 	if ((path->len & 1) || path->len > sizeof(pathtmp))
 		return SC_ERROR_INVALID_ARGUMENTS;
 	pathptr = pathtmp;
+	memset(pathtmp, 0, sizeof pathtmp);
 	for (n = 0; n < path->len; n += 2)
 		pathptr[n>>1] = (path->value[n] << 8)|path->value[n+1];
 	pathlen = path->len >> 1;

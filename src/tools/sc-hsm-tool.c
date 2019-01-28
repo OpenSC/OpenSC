@@ -1278,7 +1278,7 @@ static int wrap_with_tag(u8 tag, u8 *indata, size_t inlen, u8 **outdata, size_t 
 	if (inlen > 127) {
 		do	{
 			nlc++;
-		} while (inlen >= (unsigned)(1 << (nlc << 3)));
+		} while (inlen >= (unsigned)(1 << ((unsigned)nlc << 3)));
 	}
 
 	*outlen = 2 + nlc + inlen;
