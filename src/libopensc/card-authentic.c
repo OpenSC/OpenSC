@@ -819,7 +819,7 @@ authentic_read_binary(struct sc_card *card, unsigned int idx,
 	struct sc_context *ctx = card->ctx;
 	struct sc_apdu apdu;
 	size_t sz, rest, ret_count = 0;
-	int rv = SC_SUCCESS;
+	int rv = SC_ERROR_INVALID_ARGUMENTS;
 
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx,
@@ -865,7 +865,7 @@ authentic_write_binary(struct sc_card *card, unsigned int idx,
 	struct sc_context *ctx = card->ctx;
 	struct sc_apdu apdu;
 	size_t sz, rest;
-	int rv = SC_SUCCESS;
+	int rv = SC_ERROR_INVALID_ARGUMENTS;
 
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx,
@@ -908,7 +908,7 @@ authentic_update_binary(struct sc_card *card, unsigned int idx,
 	struct sc_context *ctx = card->ctx;
 	struct sc_apdu apdu;
 	size_t sz, rest;
-	int rv = SC_SUCCESS;
+	int rv = SC_ERROR_INVALID_ARGUMENTS;
 
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx,

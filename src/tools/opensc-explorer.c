@@ -490,6 +490,7 @@ static int do_ls(int argc, char **argv)
 	u8 buf[256], *cur = buf;
 	int r, count;
 
+	memset(buf, 0, sizeof buf);
 	r = sc_lock(card);
 	if (r == SC_SUCCESS)
 		r = sc_list_files(card, buf, sizeof(buf));
