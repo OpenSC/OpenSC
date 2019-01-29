@@ -1736,7 +1736,7 @@ gnuk_write_certificate(sc_card_t *card, const u8 *buf, size_t length)
 		r = sc_transmit_apdu(card, &apdu);
 		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 		/* Check response */
-		LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2), "Certificate writing failed");
+		LOG_FUNC_RETURN(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2));
 	}
 
 	/* Ref: gnuk_put_binary_libusb.py and gnuk_token.py in Gnuk source tree */
