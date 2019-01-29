@@ -2120,6 +2120,8 @@ auth_read_binary(struct sc_card *card, unsigned int offset,
 		for (jj=0; jj<rv && *(resp+jj)==0; jj++)
 			;
 
+		if (rv - jj == 0)
+			return SC_ERROR_INVALID_DATA;
 		bn[0].data = calloc(1, rv - jj);
 		if (!bn[0].data) {
 			rv = SC_ERROR_OUT_OF_MEMORY;
