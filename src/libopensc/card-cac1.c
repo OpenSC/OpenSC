@@ -190,7 +190,8 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 	/* OK we've read the data, now copy the required portion out to the callers buffer */
 	priv->cached = 1;
 	len = MIN(count, priv->cache_buf_len-idx);
-	memcpy(buf, &priv->cache_buf[idx], len);
+	if (len && priv->cache_buf)
+		memcpy(buf, &priv->cache_buf[idx], len);
 	r = len;
 done:
 	if (val)
