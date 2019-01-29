@@ -252,10 +252,25 @@ soc_change(sc_card_t *card, unsigned char p1, unsigned char p2)
 {
     int ok = 0;
     sc_apdu_t apdu;
-    sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x24, 0x00, p2);
+    sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x24, p1, p2);
     SC_TEST_GOTO_ERR(card->ctx, SC_LOG_DEBUG_VERBOSE_TOOL,
             sc_transmit_apdu(card, &apdu),
             "Changing secret failed");
+    while (apdu.sw1 == 0x91 && apdu.sw2 == 0x00) {
+        switch (p2) {
+            case 0x80:
+                sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE_TOOL,
+                        "Verify your PIN on the card using the same position.");
+                break;
+            case 0x40:
+                sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE_TOOL,
+                        "Verify your finger print on the card using the same position.");
+                break;
+        }
+        SC_TEST_GOTO_ERR(card->ctx, SC_LOG_DEBUG_VERBOSE_TOOL,
+                sc_transmit_apdu(card, &apdu),
+                "Changing secret failed");
+    }
     SC_TEST_GOTO_ERR(card->ctx, SC_LOG_DEBUG_VERBOSE_TOOL,
             sc_check_sw(card, apdu.sw1, apdu.sw2),
             "Verification failed");
