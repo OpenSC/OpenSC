@@ -43,19 +43,23 @@ static const unsigned char paccess_aid[] = {
 };
 static const char *app_name = "goid-tool";
 
+#define SOCM_AUTHOBJECT_PIN 0x80
+#define SOCM_AUTHOBJECT_BIO 0x40
+#define SOCM_AUTHOBJECT_GP  0x20
+
 void
 print_permissions(u8 permissions)
 {
     size_t perms_printed = 0;
-    if (permissions & 0x80) {
+    if (permissions & SOCM_AUTHOBJECT_PIN) {
         printf("%s PIN", perms_printed ? " or" : "verification of");
         perms_printed++;
     }
-    if (permissions & 0x40) {
+    if (permissions & SOCM_AUTHOBJECT_BIO) {
         printf("%s BIO", perms_printed ? " or" : "verification of");
         perms_printed++;
     }
-    if (permissions & 0x20) {
+    if (permissions & SOCM_AUTHOBJECT_GP) {
         printf("%s GP key", perms_printed ? " or" : "verification of");
         perms_printed++;
     }
@@ -248,6 +252,25 @@ err:
 }
 
 int
+soc_reset(sc_card_t *card, unsigned char p2)
+{
+    int ok = 0;
+    sc_apdu_t apdu;
+    sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x20, 0xFF, p2);
+    SC_TEST_GOTO_ERR(card->ctx, SC_LOG_DEBUG_VERBOSE_TOOL,
+            sc_transmit_apdu(card, &apdu),
+            "Reset failed");
+    if (apdu.sw1 != 0x63) {
+        SC_TEST_GOTO_ERR(card->ctx, SC_LOG_DEBUG_VERBOSE_TOOL,
+                sc_check_sw(card, apdu.sw1, apdu.sw2),
+                "Reset failed");
+    }
+    ok = 1;
+err:
+    return ok;
+}
+
+int
 soc_change(sc_card_t *card, unsigned char p1, unsigned char p2)
 {
     int ok = 0;
@@ -258,11 +281,11 @@ soc_change(sc_card_t *card, unsigned char p1, unsigned char p2)
             "Changing secret failed");
     while (apdu.sw1 == 0x91 && apdu.sw2 == 0x00) {
         switch (p2) {
-            case 0x80:
+            case SOCM_AUTHOBJECT_PIN:
                 sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE_TOOL,
                         "Verify your PIN on the card using the same position.");
                 break;
-            case 0x40:
+            case SOCM_AUTHOBJECT_BIO:
                 sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE_TOOL,
                         "Verify your finger print on the card using the same position.");
                 break;
@@ -286,6 +309,7 @@ int soc_main(struct sc_context *ctx, sc_card_t *card, struct gengetopt_args_info
     struct sc_path path;
     unsigned char soc_manager_minor = 0;
     unsigned char soc_manager_major = 0;
+    unsigned char soc_reset_authobject = 0;
 
     sc_path_set(&path, SC_PATH_TYPE_DF_NAME, aid_soc_manager, sizeof aid_soc_manager, 0, 0);
     SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_VERBOSE_TOOL,
@@ -317,26 +341,29 @@ int soc_main(struct sc_context *ctx, sc_card_t *card, struct gengetopt_args_info
     if (cmdline->verify_pin_given) {
         sc_debug(ctx, SC_LOG_DEBUG_VERBOSE_TOOL,
                 "Verify finger print or PIN on the card.");
-        if (!soc_verify(card, 0x80))
+        if (!soc_verify(card, SOCM_AUTHOBJECT_PIN))
             goto err;
+        soc_reset_authobject |= SOCM_AUTHOBJECT_PIN;
     }
     if (cmdline->verify_bio_given) {
         sc_debug(ctx, SC_LOG_DEBUG_VERBOSE_TOOL,
                 "Verify finger print on the card.");
-        if (!soc_verify(card, 0x40))
+        if (!soc_verify(card, SOCM_AUTHOBJECT_BIO))
             goto err;
+        soc_reset_authobject |= SOCM_AUTHOBJECT_BIO;
     }
     if (cmdline->verify_pin_or_bio_given) {
         sc_debug(ctx, SC_LOG_DEBUG_VERBOSE_TOOL,
                 "Verify finger print or PIN on the card.");
-        if (!soc_verify(card, 0xC0))
+        if (!soc_verify(card, SOCM_AUTHOBJECT_PIN|SOCM_AUTHOBJECT_BIO))
             goto err;
+        soc_reset_authobject |= SOCM_AUTHOBJECT_PIN|SOCM_AUTHOBJECT_BIO;
     }
 
     if (cmdline->new_pin_given) {
         sc_debug(ctx, SC_LOG_DEBUG_VERBOSE_TOOL,
                 "Initialize the PIN on the card.");
-        if (!soc_change(card, 0x00, 0x80))
+        if (!soc_change(card, 0x00, SOCM_AUTHOBJECT_BIO))
             goto err;
     }
     if (cmdline->new_bio_given) {
@@ -345,7 +372,7 @@ int soc_main(struct sc_context *ctx, sc_card_t *card, struct gengetopt_args_info
             sc_debug(ctx, SC_LOG_DEBUG_VERBOSE_TOOL,
                     "Initialize finger print template %u on the card.",
                     (unsigned char) i);
-            if (!soc_change(card, (unsigned char) i, 0x40))
+            if (!soc_change(card, (unsigned char) i, SOCM_AUTHOBJECT_BIO))
                 goto err;
             i++;
         }
@@ -354,6 +381,9 @@ int soc_main(struct sc_context *ctx, sc_card_t *card, struct gengetopt_args_info
     ok = 1;
 
 err:
+    if (soc_reset_authobject)
+        soc_reset(card, soc_reset_authobject);
+
     return ok;
 }
 
