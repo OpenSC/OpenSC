@@ -268,20 +268,17 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 	for (i = 0; i < 3; i++) {
 		sc_pkcs15_prkey_info_t prkey_info;
 		sc_pkcs15_object_t     prkey_obj;
-		u8 cxdata[10];
+		u8 cxdata[12];
 		char path_template[] = "006E:0073:00Cx";
 		int j;
 
 		memset(&prkey_info, 0, sizeof(prkey_info));
 		memset(&prkey_obj,  0, sizeof(prkey_obj));
+		memset(&cxdata, 0, sizeof(cxdata));
 
 		path_template[13] = '1' + i; /* The needed tags are C1 C2 and C3 */
 		if ((r = read_file(card, path_template, cxdata, sizeof(cxdata))) < 0)
 			goto failed;
-		if (r != 6) {
-			sc_log(ctx,  "Key info bytes have unexpected length (expected 6, got %d)\n", r);
-			return SC_ERROR_INTERNAL;
-		}
 
 		/* check validity using finger prints */
 		for (j = 19; j >= 0; j--) {
@@ -296,14 +293,21 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 			prkey_info.usage          = key_cfg[i].prkey_usage;
 			prkey_info.native         = 1;
 			prkey_info.key_reference  = i;
-			prkey_info.modulus_length = bebytes2ushort(cxdata + 1);
 
 			strlcpy(prkey_obj.label, key_cfg[i].label, sizeof(prkey_obj.label));
 			prkey_obj.flags = SC_PKCS15_CO_FLAG_PRIVATE | SC_PKCS15_CO_FLAG_MODIFIABLE;
 			prkey_obj.auth_id.len      = 1;
 			prkey_obj.auth_id.value[0] = key_cfg[i].prkey_pin;
 
-			r = sc_pkcs15emu_add_rsa_prkey(p15card, &prkey_obj, &prkey_info);
+			if (cxdata[0] == SC_OPENPGP_KEYALGO_RSA && r >= 3) {
+				prkey_info.modulus_length = bebytes2ushort(cxdata + 1);
+				r = sc_pkcs15emu_add_rsa_prkey(p15card, &prkey_obj, &prkey_info);
+			}
+			if (cxdata[0] == SC_OPENPGP_KEYALGO_ECDH
+			   || cxdata[0] == SC_OPENPGP_KEYALGO_ECDSA) {
+				r = sc_pkcs15emu_add_ec_prkey(p15card, &prkey_obj, &prkey_info);
+			}
+
 			if (r < 0)
 				return SC_ERROR_INTERNAL;
 		}
@@ -318,14 +322,11 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 
 		memset(&pubkey_info, 0, sizeof(pubkey_info));
 		memset(&pubkey_obj,  0, sizeof(pubkey_obj));
+		memset(&cxdata, 0, sizeof(cxdata));
 
 		path_template[13] = '1' + i; /* The needed tags are C1 C2 and C3 */
 		if ((r = read_file(card, path_template, cxdata, sizeof(cxdata))) < 0)
 			goto failed;
-		if (r != 6) {
-			sc_log(ctx,  "Key info bytes have unexpected length (expected 6, got %d)\n", r);
-			return SC_ERROR_INTERNAL;
-		}
 
 		/* check validity using finger prints */
 		for (j = 19; j >= 0; j--) {
@@ -337,14 +338,21 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 		if (j >= 0 && cxdata[0] != 0) {
 			pubkey_info.id.len         = 1;
 			pubkey_info.id.value[0]    = i + 1;
-			pubkey_info.modulus_length = bebytes2ushort(cxdata + 1);
 			pubkey_info.usage          = key_cfg[i].pubkey_usage;
 			sc_format_path(key_cfg[i].pubkey_path, &pubkey_info.path);
 
 			strlcpy(pubkey_obj.label, key_cfg[i].label, sizeof(pubkey_obj.label));
 			pubkey_obj.flags = SC_PKCS15_CO_FLAG_MODIFIABLE;
 
-			r = sc_pkcs15emu_add_rsa_pubkey(p15card, &pubkey_obj, &pubkey_info);
+			if (cxdata[0] == SC_OPENPGP_KEYALGO_RSA && r >= 3) {
+				pubkey_info.modulus_length = bebytes2ushort(cxdata + 1);
+				r = sc_pkcs15emu_add_rsa_pubkey(p15card, &pubkey_obj, &pubkey_info);
+			}
+			if (cxdata[0] == SC_OPENPGP_KEYALGO_ECDH
+			   || cxdata[0] == SC_OPENPGP_KEYALGO_ECDSA) {
+				r = sc_pkcs15emu_add_ec_pubkey(p15card, &pubkey_obj, &pubkey_info);
+			}
+
 			if (r < 0)
 				return SC_ERROR_INTERNAL;
 		}

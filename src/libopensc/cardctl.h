@@ -944,38 +944,45 @@ typedef struct sc_cardctl_piv_genkey_info_st {
 #define SC_OPENPGP_KEY_AUTH		3
 
 #define	SC_OPENPGP_KEYALGO_RSA		0x01
+#define	SC_OPENPGP_KEYALGO_ECDH		0x12
+#define	SC_OPENPGP_KEYALGO_ECDSA	0x13
 
 #define SC_OPENPGP_KEYFORMAT_RSA_STD	0    /* See 4.3.3.6 Algorithm Attributes */
 #define SC_OPENPGP_KEYFORMAT_RSA_STDN	1    /* OpenPGP card spec v2 */
 #define SC_OPENPGP_KEYFORMAT_RSA_CRT	2
 #define SC_OPENPGP_KEYFORMAT_RSA_CRTN	3
 
+#define SC_OPENPGP_MAX_EXP_BITS		0x20 /* maximum exponent length supported in bits */
+
 typedef struct sc_cardctl_openpgp_keygen_info {
 	u8 key_id;		/* SC_OPENPGP_KEY_... */
 	u8 algorithm;		/* SC_OPENPGP_KEYALGO_... */
-	union {			/* anonymous union */
+	union {
 		struct {
 			u8 *modulus;		/* New-generated pubkey info responded from the card */
 			size_t modulus_len;	/* Length of modulus in bit */
 			u8 *exponent;
-			size_t exponent_len;
-			u8 keyformat;	/* SC_OPENPGP_KEYFORMAT_RSA_... */
+			size_t exponent_len;	/* Length of exponent in bit */
+			u8 keyformat;		/* SC_OPENPGP_KEYFORMAT_RSA_... */
 		} rsa;
 		struct {
-			u8 dummy;	/* placeholder */
-			// TODO: replace placeholder with real attributes
+			u8 *ecpoint;
+			size_t ecpoint_len;
+			struct sc_object_id oid;
+			u8 oid_len;
+			unsigned int key_length;
 		} ec;
-	};
+	} u;
 } sc_cardctl_openpgp_keygen_info_t;
 
 typedef struct sc_cardctl_openpgp_keystore_info {
 	u8 key_id;		/* SC_OPENPGP_KEY_... */
 	u8 algorithm;		/* SC_OPENPGP_KEYALGO_... */
-	union {			/* anonymous union */
+	union {
 		struct {
 			u8 keyformat;	/* SC_OPENPGP_KEYFORMAT_RSA_... */
 			u8 *e;
-			size_t e_len;
+			size_t e_len;	/* Length of exponent in bit */
 			u8 *p;
 			size_t p_len;
 			u8 *q;
@@ -984,10 +991,12 @@ typedef struct sc_cardctl_openpgp_keystore_info {
 			size_t n_len;
 		} rsa;
 		struct {
-			u8 dummy;	/* placeholder */
-			// TODO: replace placeholder with real attributes
+			u8 *privateD;
+			size_t privateD_len;
+			u8 *ecpoint;
+			size_t ecpoint_len;
 		} ec;
-	};
+	} u;
 	time_t creationtime;
 } sc_cardctl_openpgp_keystore_info_t;
 

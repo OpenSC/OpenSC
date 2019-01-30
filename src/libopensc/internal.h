@@ -118,6 +118,8 @@ unsigned short bebytes2ushort(const u8 *buf);
  */
 unsigned short lebytes2ushort(const u8 *buf);
 
+#define BYTES4BITS(num)  (((num) + 7) / 8)    /* number of bytes necessary to hold 'num' bits */
+
 /* Returns an scconf_block entry with matching ATR/ATRmask to the ATR specified,
  * NULL otherwise. Additionally, if card driver is not specified, search through
  * all card drivers user configured ATRs. */

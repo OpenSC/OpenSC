@@ -41,6 +41,7 @@
 #include "libopensc/opensc.h"
 #include "libopensc/asn1.h"
 #include "libopensc/cards.h"
+#include "libopensc/internal.h"
 #include "libopensc/cardctl.h"
 #include "libopensc/log.h"
 #include "libopensc/errors.h"
@@ -703,11 +704,11 @@ int do_genkey(sc_card_t *card, u8 in_key_id, const char *keytype)
 		/* set key_info */
 		key_info.key_id = in_key_id;
 		key_info.algorithm = SC_OPENPGP_KEYALGO_RSA;
-		key_info.rsa.modulus_len = keylen;
-		key_info.rsa.modulus = malloc((keylen + 7) / 8);
+		key_info.u.rsa.modulus_len = keylen;
+		key_info.u.rsa.modulus = malloc(BYTES4BITS(keylen));
 
 		r = sc_card_ctl(card, SC_CARDCTL_OPENPGP_GENERATE_KEY, &key_info);
-		free(key_info.rsa.modulus);
+		free(key_info.u.rsa.modulus);
 		if (r < 0) {
 			util_error("failed to generate key: %s", sc_strerror(r));
 			return EXIT_FAILURE;

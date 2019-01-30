@@ -1074,6 +1074,8 @@ sc_pkcs15_dup_pubkey(struct sc_context *ctx, struct sc_pkcs15_pubkey *key, struc
 	u8* alg;
 	size_t alglen;
 
+	LOG_FUNC_CALLED(ctx);
+
 	if (!key || !out) {
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
@@ -1132,9 +1134,15 @@ sc_pkcs15_dup_pubkey(struct sc_context *ctx, struct sc_pkcs15_pubkey *key, struc
 		memcpy(pubkey->u.ec.params.der.value, key->u.ec.params.der.value, key->u.ec.params.der.len);
 		pubkey->u.ec.params.der.len = key->u.ec.params.der.len;
 
-		pubkey->u.ec.params.named_curve = strdup(key->u.ec.params.named_curve);
-		if (!pubkey->u.ec.params.named_curve)
-			rv = SC_ERROR_OUT_OF_MEMORY;
+		if (key->u.ec.params.named_curve){
+			pubkey->u.ec.params.named_curve = strdup(key->u.ec.params.named_curve);
+			if (!pubkey->u.ec.params.named_curve)
+				rv = SC_ERROR_OUT_OF_MEMORY;
+		}
+		else {
+			sc_log(ctx, "named_curve parameter missing");
+			rv = SC_ERROR_NOT_SUPPORTED;
+		}
 
 		break;
 	default:
@@ -1557,9 +1565,8 @@ sc_pkcs15_fix_ec_parameters(struct sc_context *ctx, struct sc_ec_parameters *ecp
 			LOG_TEST_RET(ctx, rv, "Cannot encode object ID");
 		}
 	}
-	else if (sc_valid_oid(&ecparams->id))  {
+	else
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_IMPLEMENTED, "EC parameters has to be presented as a named curve or explicit data");
-	}
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
