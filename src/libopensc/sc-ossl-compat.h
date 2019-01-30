@@ -77,6 +77,11 @@ extern "C" {
 #define OPENSSL_malloc_init()
 #endif
 
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+#define EC_POINT_get_affine_coordinates_GFp     EC_POINT_get_affine_coordinates
+#define EC_POINT_set_affine_coordinates_GFp     EC_POINT_set_affine_coordinates
+#endif
+
 /*
  * OpenSSL-1.1.0-pre5 has hidden the RSA and DSA structures
  * One can no longer use statements like rsa->n = ...

@@ -36,7 +36,6 @@
 
 #ifdef ENABLE_OPENSSL
 #include <openssl/opensslv.h>
-#include "libopensc/sc-ossl-compat.h"
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L
 #include <openssl/opensslconf.h>
 #include <openssl/crypto.h>
@@ -62,6 +61,7 @@
 #include "common/compat_strlcat.h"
 #include "common/compat_strlcpy.h"
 #include "util.h"
+#include "libopensc/sc-ossl-compat.h"
 
 #ifdef _WIN32
 #ifndef STDOUT_FILENO

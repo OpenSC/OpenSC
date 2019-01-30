@@ -51,8 +51,8 @@ libopensc_la_SOURCES_BASE = \
 	card-isoApplet.c card-masktech.c card-gids.c card-jpki.c \
 	card-npa.c \
 	\
-	pkcs15-openpgp.c pkcs15-infocamere.c pkcs15-starcert.c \
-	pkcs15-tcos.c pkcs15-esteid.c pkcs15-postecert.c pkcs15-gemsafeGPK.c \
+	pkcs15-openpgp.c pkcs15-starcert.c \
+	pkcs15-tcos.c pkcs15-esteid.c pkcs15-gemsafeGPK.c \
 	pkcs15-actalis.c pkcs15-atrust-acos.c pkcs15-tccardos.c pkcs15-piv.c \
 	pkcs15-cac.c pkcs15-esinit.c pkcs15-westcos.c pkcs15-pteid.c \
 	pkcs15-oberthur.c pkcs15-itacns.c pkcs15-gemsafeV1.c pkcs15-sc-hsm.c \

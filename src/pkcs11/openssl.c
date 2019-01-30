@@ -32,6 +32,7 @@
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L
 #include <openssl/conf.h>
 #include <openssl/opensslconf.h> /* for OPENSSL_NO_* */
+#include "libopensc/sc-ossl-compat.h"
 #ifndef OPENSSL_NO_EC
 #include <openssl/ec.h>
 #endif /* OPENSSL_NO_EC */
@@ -401,7 +402,7 @@ static CK_RV gostr3410_verify_data(const unsigned char *pubkey, unsigned int pub
 			ASN1_OCTET_STRING_free(octet);
 			P = EC_POINT_new(group);
 			if (P && X && Y)
-				r = EC_POINT_set_affine_coordinates_GFp(group,
+						r = EC_POINT_set_affine_coordinates_GFp(group,
 						P, X, Y, NULL);
 			BN_free(X);
 			BN_free(Y);

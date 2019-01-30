@@ -33,7 +33,6 @@
 
 /* Module only built if OPENSSL is enabled */
 #include <openssl/opensslv.h>
-#include "libopensc/sc-ossl-compat.h"
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L
 #include <openssl/opensslconf.h>
 #include <openssl/crypto.h>
@@ -57,6 +56,7 @@
 #include "libopensc/cardctl.h"
 #include "libopensc/asn1.h"
 #include "util.h"
+#include "libopensc/sc-ossl-compat.h"
 
 static const char *app_name = "piv-tool";
 
