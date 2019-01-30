@@ -810,7 +810,9 @@ main(int argc, char **argv)
     SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_VERBOSE_TOOL, r,
             "Error connecting to card.");
 
-    if (!soc_main(ctx, card, &cmdline) || !paccess_main(ctx, card, &cmdline))
+	if (cmdline.soc_mode_counter && !soc_main(ctx, card, &cmdline))
+        goto err;
+    if (cmdline.pxs_mode_counter && !paccess_main(ctx, card, &cmdline))
         goto err;
 
     fail = 0;

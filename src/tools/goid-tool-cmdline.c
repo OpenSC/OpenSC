@@ -37,14 +37,15 @@ const char *gengetopt_args_info_help[] = {
   "  -V, --version                 Print version and exit",
   "  -r, --reader=STRING           Number of the reader to use. By default, the\n                                  first reader with a present card is used. If\n                                  the arguement is an ATR, the reader with a\n                                  matching card will be chosen.",
   "  -v, --verbose                 Use (several times) to be more verbose",
-  "\nSoCManager Applet:",
+  "\nReport bugs to https://github.com/OpenSC/OpenSC/issues\n\nWritten by Frank Morgner <frankmorgner@gmail.com>",
+  "\n Mode: soc\n  Options for SoCManager Applet",
   "  -p, --verify-pin              Verify PIN",
   "  -b, --verify-bio              Verify finger print",
   "      --verify-pin-or-bio       Verify PIN or finger print (user's choice)",
   "      --new-pin                 Change PIN",
   "      --new-bio                 Use (several times) to change one or more\n                                  biometric templates",
   "      --info                    Dump Information about the SoCManager's\n                                  configuration",
-  "\nPAccess Applet:",
+  "\n Mode: pxs\n  Options for PAccess Applet",
   "  -c, --certificate=FILENAME    Use (several times) to pass CV certificates",
   "  -k, --key=FILENAME            Private key for the CV certificate",
   "      --print-cardid            Print the card ID",
@@ -62,7 +63,6 @@ const char *gengetopt_args_info_help[] = {
   "      --new-read-ac-chatbit=INDEX\n                                Required access bits in certificate's CHAT for\n                                  reading newly created DGs",
   "      --new-write-ac=STRING     Access condition for writing newly created DGs\n                                  (possible values=\"always\", \"never\",\n                                  \"ta\", \"sm\" default=`sm')",
   "      --new-write-ac-chatbit=INDEX\n                                Required access bits in certificate's CHAT for\n                                  reading newly created DGs",
-  "\nReport bugs to https://github.com/OpenSC/OpenSC/issues\n\nWritten by Frank Morgner <frankmorgner@gmail.com>",
     0
 };
 
@@ -119,6 +119,8 @@ void clear_given (struct gengetopt_args_info *args_info)
   args_info->new_read_ac_chatbit_given = 0 ;
   args_info->new_write_ac_given = 0 ;
   args_info->new_write_ac_chatbit_given = 0 ;
+  args_info->pxs_mode_counter = 0 ;
+  args_info->soc_mode_counter = 0 ;
 }
 
 static
@@ -171,47 +173,47 @@ void init_args_info(struct gengetopt_args_info *args_info)
   args_info->verbose_help = gengetopt_args_info_help[3] ;
   args_info->verbose_min = 0;
   args_info->verbose_max = 0;
-  args_info->verify_pin_help = gengetopt_args_info_help[5] ;
-  args_info->verify_bio_help = gengetopt_args_info_help[6] ;
-  args_info->verify_pin_or_bio_help = gengetopt_args_info_help[7] ;
-  args_info->new_pin_help = gengetopt_args_info_help[8] ;
-  args_info->new_bio_help = gengetopt_args_info_help[9] ;
+  args_info->verify_pin_help = gengetopt_args_info_help[6] ;
+  args_info->verify_bio_help = gengetopt_args_info_help[7] ;
+  args_info->verify_pin_or_bio_help = gengetopt_args_info_help[8] ;
+  args_info->new_pin_help = gengetopt_args_info_help[9] ;
+  args_info->new_bio_help = gengetopt_args_info_help[10] ;
   args_info->new_bio_min = 0;
   args_info->new_bio_max = 0;
-  args_info->info_help = gengetopt_args_info_help[10] ;
-  args_info->certificate_help = gengetopt_args_info_help[12] ;
+  args_info->info_help = gengetopt_args_info_help[11] ;
+  args_info->certificate_help = gengetopt_args_info_help[13] ;
   args_info->certificate_min = 0;
   args_info->certificate_max = 0;
-  args_info->key_help = gengetopt_args_info_help[13] ;
-  args_info->print_cardid_help = gengetopt_args_info_help[14] ;
-  args_info->write_cardid_help = gengetopt_args_info_help[15] ;
-  args_info->print_paccessid_help = gengetopt_args_info_help[16] ;
-  args_info->write_paccessid_help = gengetopt_args_info_help[17] ;
-  args_info->read_dg_help = gengetopt_args_info_help[18] ;
+  args_info->key_help = gengetopt_args_info_help[14] ;
+  args_info->print_cardid_help = gengetopt_args_info_help[15] ;
+  args_info->write_cardid_help = gengetopt_args_info_help[16] ;
+  args_info->print_paccessid_help = gengetopt_args_info_help[17] ;
+  args_info->write_paccessid_help = gengetopt_args_info_help[18] ;
+  args_info->read_dg_help = gengetopt_args_info_help[19] ;
   args_info->read_dg_min = 0;
   args_info->read_dg_max = 0;
-  args_info->out_file_help = gengetopt_args_info_help[19] ;
+  args_info->out_file_help = gengetopt_args_info_help[20] ;
   args_info->out_file_min = 0;
   args_info->out_file_max = 0;
-  args_info->write_dg_help = gengetopt_args_info_help[20] ;
+  args_info->write_dg_help = gengetopt_args_info_help[21] ;
   args_info->write_dg_min = 0;
   args_info->write_dg_max = 0;
-  args_info->in_file_help = gengetopt_args_info_help[21] ;
+  args_info->in_file_help = gengetopt_args_info_help[22] ;
   args_info->in_file_min = 0;
   args_info->in_file_max = 0;
-  args_info->delete_dg_help = gengetopt_args_info_help[22] ;
+  args_info->delete_dg_help = gengetopt_args_info_help[23] ;
   args_info->delete_dg_min = 0;
   args_info->delete_dg_max = 0;
-  args_info->create_dg_help = gengetopt_args_info_help[23] ;
+  args_info->create_dg_help = gengetopt_args_info_help[24] ;
   args_info->create_dg_min = 0;
   args_info->create_dg_max = 0;
-  args_info->new_size_help = gengetopt_args_info_help[24] ;
-  args_info->new_read_ac_help = gengetopt_args_info_help[25] ;
-  args_info->new_read_ac_chatbit_help = gengetopt_args_info_help[26] ;
+  args_info->new_size_help = gengetopt_args_info_help[25] ;
+  args_info->new_read_ac_help = gengetopt_args_info_help[26] ;
+  args_info->new_read_ac_chatbit_help = gengetopt_args_info_help[27] ;
   args_info->new_read_ac_chatbit_min = 0;
   args_info->new_read_ac_chatbit_max = 0;
-  args_info->new_write_ac_help = gengetopt_args_info_help[27] ;
-  args_info->new_write_ac_chatbit_help = gengetopt_args_info_help[28] ;
+  args_info->new_write_ac_help = gengetopt_args_info_help[28] ;
+  args_info->new_write_ac_chatbit_help = gengetopt_args_info_help[29] ;
   args_info->new_write_ac_chatbit_min = 0;
   args_info->new_write_ac_chatbit_max = 0;
   
@@ -764,34 +766,34 @@ cmdline_parser_required2 (struct gengetopt_args_info *args_info, const char *pro
   if (check_multiple_option_occurrences(prog_name, args_info->verbose_given, args_info->verbose_min, args_info->verbose_max, "'--verbose' ('-v')"))
      error_occurred = 1;
   
-  if (check_multiple_option_occurrences(prog_name, args_info->new_bio_given, args_info->new_bio_min, args_info->new_bio_max, "'--new-bio'"))
+  if (args_info->soc_mode_counter && check_multiple_option_occurrences(prog_name, args_info->new_bio_given, args_info->new_bio_min, args_info->new_bio_max, "'--new-bio'"))
      error_occurred = 1;
   
-  if (check_multiple_option_occurrences(prog_name, args_info->certificate_given, args_info->certificate_min, args_info->certificate_max, "'--certificate' ('-c')"))
+  if (args_info->pxs_mode_counter && check_multiple_option_occurrences(prog_name, args_info->certificate_given, args_info->certificate_min, args_info->certificate_max, "'--certificate' ('-c')"))
      error_occurred = 1;
   
-  if (check_multiple_option_occurrences(prog_name, args_info->read_dg_given, args_info->read_dg_min, args_info->read_dg_max, "'--read-dg'"))
+  if (args_info->pxs_mode_counter && check_multiple_option_occurrences(prog_name, args_info->read_dg_given, args_info->read_dg_min, args_info->read_dg_max, "'--read-dg'"))
      error_occurred = 1;
   
-  if (check_multiple_option_occurrences(prog_name, args_info->out_file_given, args_info->out_file_min, args_info->out_file_max, "'--out-file'"))
+  if (args_info->pxs_mode_counter && check_multiple_option_occurrences(prog_name, args_info->out_file_given, args_info->out_file_min, args_info->out_file_max, "'--out-file'"))
      error_occurred = 1;
   
-  if (check_multiple_option_occurrences(prog_name, args_info->write_dg_given, args_info->write_dg_min, args_info->write_dg_max, "'--write-dg'"))
+  if (args_info->pxs_mode_counter && check_multiple_option_occurrences(prog_name, args_info->write_dg_given, args_info->write_dg_min, args_info->write_dg_max, "'--write-dg'"))
      error_occurred = 1;
   
-  if (check_multiple_option_occurrences(prog_name, args_info->in_file_given, args_info->in_file_min, args_info->in_file_max, "'--in-file'"))
+  if (args_info->pxs_mode_counter && check_multiple_option_occurrences(prog_name, args_info->in_file_given, args_info->in_file_min, args_info->in_file_max, "'--in-file'"))
      error_occurred = 1;
   
-  if (check_multiple_option_occurrences(prog_name, args_info->delete_dg_given, args_info->delete_dg_min, args_info->delete_dg_max, "'--delete-dg'"))
+  if (args_info->pxs_mode_counter && check_multiple_option_occurrences(prog_name, args_info->delete_dg_given, args_info->delete_dg_min, args_info->delete_dg_max, "'--delete-dg'"))
      error_occurred = 1;
   
-  if (check_multiple_option_occurrences(prog_name, args_info->create_dg_given, args_info->create_dg_min, args_info->create_dg_max, "'--create-dg'"))
+  if (args_info->pxs_mode_counter && check_multiple_option_occurrences(prog_name, args_info->create_dg_given, args_info->create_dg_min, args_info->create_dg_max, "'--create-dg'"))
      error_occurred = 1;
   
-  if (check_multiple_option_occurrences(prog_name, args_info->new_read_ac_chatbit_given, args_info->new_read_ac_chatbit_min, args_info->new_read_ac_chatbit_max, "'--new-read-ac-chatbit'"))
+  if (args_info->pxs_mode_counter && check_multiple_option_occurrences(prog_name, args_info->new_read_ac_chatbit_given, args_info->new_read_ac_chatbit_min, args_info->new_read_ac_chatbit_max, "'--new-read-ac-chatbit'"))
      error_occurred = 1;
   
-  if (check_multiple_option_occurrences(prog_name, args_info->new_write_ac_chatbit_given, args_info->new_write_ac_chatbit_min, args_info->new_write_ac_chatbit_max, "'--new-write-ac-chatbit'"))
+  if (args_info->pxs_mode_counter && check_multiple_option_occurrences(prog_name, args_info->new_write_ac_chatbit_given, args_info->new_write_ac_chatbit_min, args_info->new_write_ac_chatbit_max, "'--new-write-ac-chatbit'"))
      error_occurred = 1;
   
   
@@ -1682,6 +1684,29 @@ void update_multiple_arg(void *field, char ***orig_field,
   }
 }
 
+static int check_modes(
+  int given1[], const char *options1[],
+                       int given2[], const char *options2[])
+{
+  int i = 0, j = 0, errors = 0;
+  
+  while (given1[i] >= 0) {
+    if (given1[i]) {
+      while (given2[j] >= 0) {
+        if (given2[j]) {
+          ++errors;
+          fprintf(stderr, "%s: option %s conflicts with option %s\n",
+                  package_name, options1[i], options2[j]);
+        }
+        ++j;
+      }
+    }
+    ++i;
+  }
+  
+  return errors;
+}
+
 int
 cmdline_parser_internal (
   int argc, char **argv, struct gengetopt_args_info *args_info,
@@ -1807,6 +1832,7 @@ cmdline_parser_internal (
         
           break;
         case 'p':	/* Verify PIN.  */
+          args_info->soc_mode_counter += 1;
         
         
           if (update_arg( 0 , 
@@ -1819,6 +1845,7 @@ cmdline_parser_internal (
         
           break;
         case 'b':	/* Verify finger print.  */
+          args_info->soc_mode_counter += 1;
         
         
           if (update_arg( 0 , 
@@ -1831,6 +1858,7 @@ cmdline_parser_internal (
         
           break;
         case 'c':	/* Use (several times) to pass CV certificates.  */
+          args_info->pxs_mode_counter += 1;
         
           if (update_multiple_arg_temp(&certificate_list, 
               &(local_args_info.certificate_given), optarg, 0, 0, ARG_STRING,
@@ -1840,6 +1868,7 @@ cmdline_parser_internal (
         
           break;
         case 'k':	/* Private key for the CV certificate.  */
+          args_info->pxs_mode_counter += 1;
         
         
           if (update_arg( (void *)&(args_info->key_arg), 
@@ -1856,6 +1885,7 @@ cmdline_parser_internal (
           /* Verify PIN or finger print (user's choice).  */
           if (strcmp (long_options[option_index].name, "verify-pin-or-bio") == 0)
           {
+            args_info->soc_mode_counter += 1;
           
           
             if (update_arg( 0 , 
@@ -1870,6 +1900,7 @@ cmdline_parser_internal (
           /* Change PIN.  */
           else if (strcmp (long_options[option_index].name, "new-pin") == 0)
           {
+            args_info->soc_mode_counter += 1;
           
           
             if (update_arg( 0 , 
@@ -1884,6 +1915,7 @@ cmdline_parser_internal (
           /* Use (several times) to change one or more biometric templates.  */
           else if (strcmp (long_options[option_index].name, "new-bio") == 0)
           {
+            args_info->soc_mode_counter += 1;
           
             local_args_info.new_bio_given++;
           
@@ -1891,6 +1923,7 @@ cmdline_parser_internal (
           /* Dump Information about the SoCManager's configuration.  */
           else if (strcmp (long_options[option_index].name, "info") == 0)
           {
+            args_info->soc_mode_counter += 1;
           
           
             if (update_arg( 0 , 
@@ -1905,6 +1938,7 @@ cmdline_parser_internal (
           /* Print the card ID.  */
           else if (strcmp (long_options[option_index].name, "print-cardid") == 0)
           {
+            args_info->pxs_mode_counter += 1;
           
           
             if (update_arg( 0 , 
@@ -1919,6 +1953,7 @@ cmdline_parser_internal (
           /* Write the specified card ID.  */
           else if (strcmp (long_options[option_index].name, "write-cardid") == 0)
           {
+            args_info->pxs_mode_counter += 1;
           
           
             if (update_arg( (void *)&(args_info->write_cardid_arg), 
@@ -1933,6 +1968,7 @@ cmdline_parser_internal (
           /* Print the PAccess ID.  */
           else if (strcmp (long_options[option_index].name, "print-paccessid") == 0)
           {
+            args_info->pxs_mode_counter += 1;
           
           
             if (update_arg( 0 , 
@@ -1947,6 +1983,7 @@ cmdline_parser_internal (
           /* Write the specified PAccess ID.  */
           else if (strcmp (long_options[option_index].name, "write-paccessid") == 0)
           {
+            args_info->pxs_mode_counter += 1;
           
           
             if (update_arg( (void *)&(args_info->write_paccessid_arg), 
@@ -1961,6 +1998,7 @@ cmdline_parser_internal (
           /* Read the specified data group; use several times to read out multiple files.  */
           else if (strcmp (long_options[option_index].name, "read-dg") == 0)
           {
+            args_info->pxs_mode_counter += 1;
           
             if (update_multiple_arg_temp(&read_dg_list, 
                 &(local_args_info.read_dg_given), optarg, 0, 0, ARG_INT,
@@ -1972,6 +2010,7 @@ cmdline_parser_internal (
           /* Write output to a file instead of printing it; use once for each use of `--read-dg'.  */
           else if (strcmp (long_options[option_index].name, "out-file") == 0)
           {
+            args_info->pxs_mode_counter += 1;
           
             if (update_multiple_arg_temp(&out_file_list, 
                 &(local_args_info.out_file_given), optarg, 0, 0, ARG_STRING,
@@ -1983,6 +2022,7 @@ cmdline_parser_internal (
           /* Write the specified data group; use several times to write multiple files.  */
           else if (strcmp (long_options[option_index].name, "write-dg") == 0)
           {
+            args_info->pxs_mode_counter += 1;
           
             if (update_multiple_arg_temp(&write_dg_list, 
                 &(local_args_info.write_dg_given), optarg, 0, 0, ARG_INT,
@@ -1994,6 +2034,7 @@ cmdline_parser_internal (
           /* Read input from a file; use once for each use of `--write-dg'.  */
           else if (strcmp (long_options[option_index].name, "in-file") == 0)
           {
+            args_info->pxs_mode_counter += 1;
           
             if (update_multiple_arg_temp(&in_file_list, 
                 &(local_args_info.in_file_given), optarg, 0, 0, ARG_STRING,
@@ -2005,6 +2046,7 @@ cmdline_parser_internal (
           /* Delete the specified data group; use several times to delete multiple files.  */
           else if (strcmp (long_options[option_index].name, "delete-dg") == 0)
           {
+            args_info->pxs_mode_counter += 1;
           
             if (update_multiple_arg_temp(&delete_dg_list, 
                 &(local_args_info.delete_dg_given), optarg, 0, 0, ARG_INT,
@@ -2016,6 +2058,7 @@ cmdline_parser_internal (
           /* Create the specified data group; use several times to create multiple files.  */
           else if (strcmp (long_options[option_index].name, "create-dg") == 0)
           {
+            args_info->pxs_mode_counter += 1;
           
             if (update_multiple_arg_temp(&create_dg_list, 
                 &(local_args_info.create_dg_given), optarg, 0, 0, ARG_INT,
@@ -2027,6 +2070,7 @@ cmdline_parser_internal (
           /* File size of newly created DGs.  */
           else if (strcmp (long_options[option_index].name, "new-size") == 0)
           {
+            args_info->pxs_mode_counter += 1;
           
           
             if (update_arg( (void *)&(args_info->new_size_arg), 
@@ -2041,6 +2085,7 @@ cmdline_parser_internal (
           /* Access condition for reading newly created DGs.  */
           else if (strcmp (long_options[option_index].name, "new-read-ac") == 0)
           {
+            args_info->pxs_mode_counter += 1;
           
           
             if (update_arg( (void *)&(args_info->new_read_ac_arg), 
@@ -2055,6 +2100,7 @@ cmdline_parser_internal (
           /* Required access bits in certificate's CHAT for reading newly created DGs.  */
           else if (strcmp (long_options[option_index].name, "new-read-ac-chatbit") == 0)
           {
+            args_info->pxs_mode_counter += 1;
           
             if (update_multiple_arg_temp(&new_read_ac_chatbit_list, 
                 &(local_args_info.new_read_ac_chatbit_given), optarg, 0, 0, ARG_INT,
@@ -2066,6 +2112,7 @@ cmdline_parser_internal (
           /* Access condition for writing newly created DGs.  */
           else if (strcmp (long_options[option_index].name, "new-write-ac") == 0)
           {
+            args_info->pxs_mode_counter += 1;
           
           
             if (update_arg( (void *)&(args_info->new_write_ac_arg), 
@@ -2080,6 +2127,7 @@ cmdline_parser_internal (
           /* Required access bits in certificate's CHAT for reading newly created DGs.  */
           else if (strcmp (long_options[option_index].name, "new-write-ac-chatbit") == 0)
           {
+            args_info->pxs_mode_counter += 1;
           
             if (update_multiple_arg_temp(&new_write_ac_chatbit_list, 
                 &(local_args_info.new_write_ac_chatbit_given), optarg, 0, 0, ARG_INT,
@@ -2160,6 +2208,14 @@ cmdline_parser_internal (
   local_args_info.new_read_ac_chatbit_given = 0;
   args_info->new_write_ac_chatbit_given += local_args_info.new_write_ac_chatbit_given;
   local_args_info.new_write_ac_chatbit_given = 0;
+  
+  if (args_info->pxs_mode_counter && args_info->soc_mode_counter) {
+    int pxs_given[] = {args_info->certificate_given, args_info->key_given, args_info->print_cardid_given, args_info->write_cardid_given, args_info->print_paccessid_given, args_info->write_paccessid_given, args_info->read_dg_given, args_info->out_file_given, args_info->write_dg_given, args_info->in_file_given, args_info->delete_dg_given, args_info->create_dg_given, args_info->new_size_given, args_info->new_read_ac_given, args_info->new_read_ac_chatbit_given, args_info->new_write_ac_given, args_info->new_write_ac_chatbit_given,  -1};
+    const char *pxs_desc[] = {"--certificate", "--key", "--print-cardid", "--write-cardid", "--print-paccessid", "--write-paccessid", "--read-dg", "--out-file", "--write-dg", "--in-file", "--delete-dg", "--create-dg", "--new-size", "--new-read-ac", "--new-read-ac-chatbit", "--new-write-ac", "--new-write-ac-chatbit",  0};
+    int soc_given[] = {args_info->verify_pin_given, args_info->verify_bio_given, args_info->verify_pin_or_bio_given, args_info->new_pin_given, args_info->new_bio_given, args_info->info_given,  -1};
+    const char *soc_desc[] = {"--verify-pin", "--verify-bio", "--verify-pin-or-bio", "--new-pin", "--new-bio", "--info",  0};
+    error_occurred += check_modes(pxs_given, pxs_desc, soc_given, soc_desc);
+  }
   
   if (check_required)
     {

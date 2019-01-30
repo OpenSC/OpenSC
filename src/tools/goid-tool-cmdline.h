@@ -147,6 +147,8 @@ struct gengetopt_args_info
   unsigned int new_write_ac_given ;	/**< @brief Whether new-write-ac was given.  */
   unsigned int new_write_ac_chatbit_given ;	/**< @brief Whether new-write-ac-chatbit was given.  */
 
+  int pxs_mode_counter; /**< @brief Counter for mode pxs */
+  int soc_mode_counter; /**< @brief Counter for mode soc */
 } ;
 
 /** @brief The additional parameters to pass to parser functions */
