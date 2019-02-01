@@ -5340,7 +5340,7 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 		mech.ulParameterLen = 0;
 		break;
 	default:
-		util_fatal("Mechanism %s illegal or not supported\n", p11_mechanism_to_name(opt_mechanism));
+		util_fatal("Mechanism %s illegal or not supported\n", p11_mechanism_to_name(mech_type));
 	}
 
 
