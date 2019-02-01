@@ -5461,6 +5461,17 @@ static int test_decrypt(CK_SESSION_HANDLE sess)
 		printf("No OpenSSL support, unable to validate decryption\n");
 #else
 		for (n = 0; n < num_mechs; n++) {
+			switch (mechs[n]) {
+			case CKM_RSA_PKCS:
+			case CKM_RSA_PKCS_OAEP:
+			case CKM_RSA_X_509:
+			//case CKM_RSA_PKCS_TPM_1_1:
+			//case CKM_RSA_PKCS_OAEP_TPM_1_1:
+				break;
+			default:
+				printf(" -- mechanism can't be used to decrypt, skipping\n");
+				continue;
+			}
 
 			errors += encrypt_decrypt(sess, mechs[n], privKeyObject);
 		}
