@@ -5334,18 +5334,6 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 			oaep_params.mgf = CKG_MGF1_SHA1;
 			break;
 		}
-		break;
-	case CKM_RSA_PKCS:
-		mech.pParameter = NULL;
-		mech.ulParameterLen = 0;
-		break;
-	default:
-		util_fatal("Mechanism %s illegal or not supported\n", p11_mechanism_to_name(mech_type));
-	}
-
-
-	/* If an RSA-OAEP mechanism, it needs parameters */
-	if (oaep_params.hashAlg) {
 		if (opt_mgf != 0)
 			oaep_params.mgf = opt_mgf;
 
@@ -5354,6 +5342,7 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 		oaep_params.pSourceData = NULL; /* PKCS#11 standard: this must be NULLPTR */
 		oaep_params.ulSourceDataLen = 0; /* PKCS#11 standard: this must be 0 */
 
+		/* If an RSA-OAEP mechanism, it needs parameters */
 		mech.pParameter = &oaep_params;
 		mech.ulParameterLen = sizeof(oaep_params);
 
@@ -5363,9 +5352,14 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 			oaep_params.source,
 			oaep_params.pSourceData,
 			oaep_params.ulSourceDataLen);
-
+		break;
+	case CKM_RSA_PKCS:
+		mech.pParameter = NULL;
+		mech.ulParameterLen = 0;
+		break;
+	default:
+		util_fatal("Mechanism %s illegal or not supported\n", p11_mechanism_to_name(mech_type));
 	}
-
 
 	mech.mechanism = mech_type;
 	rv = p11->C_DecryptInit(session, &mech, privKeyObject);
