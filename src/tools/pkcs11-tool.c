@@ -1985,7 +1985,7 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			r = read(fd, in_buffer, sizeof(in_buffer));
 		} while (r > 0);
 
-		sig_len = sizeof(sig_buffer);
+		sig_len = r2;
 		rv = p11->C_VerifyFinal(session, sig_buffer, sig_len);
 		if (rv != CKR_OK)
 			p11_fatal("C_VerifyFinal", rv);
