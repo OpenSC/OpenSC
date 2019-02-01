@@ -1782,7 +1782,7 @@ parse_pss_params(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key,
 				util_fatal("Salt length must be greater or equal "
 				    "to zero, or equal to -1 (meaning: use digest size) "
 				    "or to -2 (meaning: use maximum permissible size");
-		  
+
 			modlen = (get_private_key_length(session, key) + 7) / 8;
 			switch (opt_salt_len) {
 			case -1: /* salt size equals to digest size */
@@ -2024,7 +2024,7 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 
 	if (opt_hash_alg != 0 && opt_mechanism != CKM_RSA_PKCS_OAEP)
 		util_fatal("The hash-algorithm is applicable only to "
-               "RSA-PKCS-OAEP mechanism"); 
+               "RSA-PKCS-OAEP mechanism");
 
 	if (opt_input == NULL)
 		fd = 0;
@@ -2053,7 +2053,7 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		case CKM_SHA512:
 			oaep_params.mgf = CKG_MGF1_SHA512;
 			break;
-		default: 
+		default:
 			oaep_params.hashAlg = CKM_SHA_1;
 			/* fall through */
 		case CKM_SHA_1:
@@ -2090,7 +2090,7 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			oaep_params.pSourceData,
 			oaep_params.ulSourceDataLen);
 
-	} 
+	}
 
 	rv = p11->C_DecryptInit(session, &mech, key);
 	if (rv != CKR_OK)
@@ -5270,45 +5270,45 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 		return 0;
 	}
 	if (mech_type == CKM_RSA_PKCS_OAEP) {
-	    EVP_PKEY_CTX *ctx;
-	    ctx = EVP_PKEY_CTX_new(pkey, NULL);
-	    if (!ctx) {
-            EVP_PKEY_free(pkey);
-            printf("EVP_PKEY_CTX_new failed, returning\n");
-            return 0;
-        }
-        if (EVP_PKEY_encrypt_init(ctx) <= 0) {
-            EVP_PKEY_CTX_free(ctx);
-            EVP_PKEY_free(pkey);
-            printf("EVP_PKEY_encrypt_init failed, returning\n");
-            return 0;
-        }
+		EVP_PKEY_CTX *ctx;
+		ctx = EVP_PKEY_CTX_new(pkey, NULL);
+		if (!ctx) {
+			EVP_PKEY_free(pkey);
+			printf("EVP_PKEY_CTX_new failed, returning\n");
+			return 0;
+		}
+		if (EVP_PKEY_encrypt_init(ctx) <= 0) {
+			EVP_PKEY_CTX_free(ctx);
+			EVP_PKEY_free(pkey);
+			printf("EVP_PKEY_encrypt_init failed, returning\n");
+			return 0;
+		}
 
-	    if (EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_OAEP_PADDING) <= 0) {
-            EVP_PKEY_CTX_free(ctx);
-            EVP_PKEY_free(pkey);
-            printf("set OAEP padding failed, returning\n");
-            return 0;
-        }
-        size_t outlen = sizeof(encrypted);
-        if (EVP_PKEY_encrypt(ctx, encrypted, &outlen, orig_data, sizeof(orig_data)) <= 0) {
-            EVP_PKEY_CTX_free(ctx);
-            EVP_PKEY_free(pkey);
-            printf("Encryption failed, returning\n");
-            return 0;
-        }
-        EVP_PKEY_CTX_free(ctx);
-        EVP_PKEY_free(pkey);
-        encrypted_len = outlen;
+		if (EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_OAEP_PADDING) <= 0) {
+			EVP_PKEY_CTX_free(ctx);
+			EVP_PKEY_free(pkey);
+			printf("set OAEP padding failed, returning\n");
+			return 0;
+		}
+		size_t outlen = sizeof(encrypted);
+		if (EVP_PKEY_encrypt(ctx, encrypted, &outlen, orig_data, sizeof(orig_data)) <= 0) {
+			EVP_PKEY_CTX_free(ctx);
+			EVP_PKEY_free(pkey);
+			printf("Encryption failed, returning\n");
+			return 0;
+		}
+		EVP_PKEY_CTX_free(ctx);
+		EVP_PKEY_free(pkey);
+		encrypted_len = outlen;
 
-    } else {
-        encrypted_len = EVP_PKEY_encrypt_old(encrypted, orig_data, sizeof(orig_data), pkey);
-        EVP_PKEY_free(pkey);
-        if (((int) encrypted_len) <= 0) {
-            printf("Encryption failed, returning\n");
-            return 0;
-        }
-    }
+	} else {
+		encrypted_len = EVP_PKEY_encrypt_old(encrypted, orig_data, sizeof(orig_data), pkey);
+		EVP_PKEY_free(pkey);
+		if (((int) encrypted_len) <= 0) {
+			printf("Encryption failed, returning\n");
+			return 0;
+		}
+	}
 
 	/* set "default" MGF and hash algorithms. We can overwrite MGF later */
 	switch (mech_type) {
@@ -5461,6 +5461,7 @@ static int test_decrypt(CK_SESSION_HANDLE sess)
 		printf("No OpenSSL support, unable to validate decryption\n");
 #else
 		for (n = 0; n < num_mechs; n++) {
+
 			errors += encrypt_decrypt(sess, mechs[n], privKeyObject);
 		}
 #endif
