@@ -156,7 +156,7 @@ static struct pgp_supported_ec_curves {
 		size_t size;
 		struct sc_object_id oid_binary;
 } ec_curves[] = {
-	{{{1, 2, 840, 10045, 3, 1, 7, -1}}, 256, 
+	{{{1, 2, 840, 10045, 3, 1, 7, -1}}, 256,
 		{{0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07, -1}}}, /* ansiX9p256r1 */
 	{{{1, 3, 132, 0, 34, -1}}, 384,
 		{{0x2b, 0x81, 0x04, 0x00, 0x22, -1}}}, /* ansiX9p384r1 */
@@ -635,7 +635,7 @@ pgp_init(sc_card_t *card)
 				_sc_card_add_rsa_alg(card, 2048, flags_rsa, 0);
 				/* TODO add ECC for more recent Gnuk (1.2.x)
 				 * these are not include in SC_CARD_TYPE_OPENPGP_GNUK, but
-				 * are treated like SC_CARD_TYPE_OPENPGP_V2 
+				 * are treated like SC_CARD_TYPE_OPENPGP_V2
 				 * Gnuk supports NIST, SECG and Curve25519 from version 1.2.x on */
 				break;
 			case SC_CARD_TYPE_OPENPGP_V2:
@@ -868,7 +868,7 @@ pgp_get_card_features(sc_card_t *card)
 		 *
 		 * All available algorithms should be already provided by pgp_init. However, if another
 		 * algorithm is found in the "algorithm attributes" DOs, it is supported by the card as
-		 * well and therefore added 
+		 * well and therefore added
 		 * see OpenPGP card spec 1.1 & 2.x section 4.3.3.6 / v3.x section 4.4.3.7 */
 		for (i = 0x00c1; i <= 0x00c3; i++) {
 			sc_cardctl_openpgp_keygen_info_t key_info;
@@ -899,8 +899,8 @@ pgp_get_card_features(sc_card_t *card)
 					flags |= SC_ALGORITHM_ECDSA_HASH_NONE;
 					flags |= SC_ALGORITHM_ONBOARD_KEY_GEN;
 					ext_flags =  SC_ALGORITHM_EXT_EC_NAMEDCURVE;
-		
-					_sc_card_add_ec_alg(card, key_info.u.ec.key_length, flags, ext_flags, 
+
+					_sc_card_add_ec_alg(card, key_info.u.ec.key_length, flags, ext_flags,
 							&key_info.u.ec.oid);
 				}
 			}
@@ -1232,7 +1232,7 @@ pgp_enumerate_blob(sc_card_t *card, pgp_blob_t *blob)
 		r = sc_asn1_read_tag(&data, blob->len - (in - blob->data),
 					&cla, &tag, &len);
 		if (r < 0 || data == NULL) {
-			sc_log(card->ctx, 
+			sc_log(card->ctx,
 				 "Unexpected end of contents\n");
 			return SC_ERROR_OBJECT_NOT_VALID;
 		}
@@ -2089,14 +2089,14 @@ pgp_set_security_env(sc_card_t *card,
 }
 
 
-/** 
+/**
  * set MANAGE SECURITY ENVIRONMENT as documented in 7.2.18 since OpenPGP Card v3.3
  *
  * "This optional command (announced in Extended Capabilities) assigns a specific key to a
  * command. The DEC-key (Key-Ref 2) can be assigned to the command INTERNAL AUTHENTICATE
  * and the AUT-Key (Key.Ref 3) can be linked to the command PSO:DECIPHER also."
  *
- * key: Key-Ref to change (2 for DEC-Key or 3 for AUT-Key) 
+ * key: Key-Ref to change (2 for DEC-Key or 3 for AUT-Key)
  * p2: Usage to set (0xb8 for PSO:DECIPHER or 0xa4 for INTERNAL AUTHENTICATE)
  **/
 static int
@@ -2312,7 +2312,7 @@ pgp_update_new_algo_attr(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_
 
 		/* We can not rely on previous key attributes anymore, as it might be ECC */
 		if (key_info->u.rsa.exponent_len == 0 || key_info->u.rsa.modulus_len == 0)
-			LOG_FUNC_RETURN(card->ctx,SC_ERROR_INVALID_ARGUMENTS); 
+			LOG_FUNC_RETURN(card->ctx,SC_ERROR_INVALID_ARGUMENTS);
 
 		data_len = 6;
 		data = malloc(data_len);
@@ -2412,7 +2412,7 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 	/* RSA */
 	if (key_info->algorithm == SC_OPENPGP_KEYALGO_RSA) {
 
-		if (key_info->u.rsa.modulus == NULL 
+		if (key_info->u.rsa.modulus == NULL
 			|| key_info->u.rsa.exponent == NULL
 			|| (key_info->u.rsa.modulus_len) == 0
 			|| (key_info->u.rsa.exponent_len) == 0) {
@@ -2439,7 +2439,7 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 		}
 
-		/* https://tools.ietf.org/html/rfc4880  page 41, 72 
+		/* https://tools.ietf.org/html/rfc4880  page 41, 72
 		 * and https://tools.ietf.org/html/rfc6637 section 9 (page 8 and 9) */
 		pk_packet_len =   1   /* version number */
 				+ 4   /* creation time */
@@ -2501,7 +2501,7 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 
 		/* KDF parameters for ECDH */
 		if (key_info->algorithm == SC_OPENPGP_KEYALGO_ECDH) {
-			/* https://tools.ietf.org/html/rfc6637#section-8 
+			/* https://tools.ietf.org/html/rfc6637#section-8
 			 * This is copied from GnuPG's ecdh_params() function in app-openpgp.c */
 			p += key_info->u.ec.ecpoint_len;
 			*p = 0x03; /* number of bytes following */
@@ -2986,7 +2986,7 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_keystore_info
 		componentnames[1] = "prime p";
 		componentnames[2] = "prime q";
 		comp_to_add = 3;
-		
+
 		/* The maximum exponent length is 32 bit, as set on card
 		 * we use this variable to check against actual exponent_len */
 		size_t max_e_len_bytes = BYTES4BITS(SC_OPENPGP_MAX_EXP_BITS);
@@ -3182,7 +3182,7 @@ pgp_store_key(sc_card_t *card, sc_cardctl_openpgp_keystore_info_t *key_info)
 			pubkey.u.rsa.exponent_len = key_info->u.rsa.e_len;
 		}
 		else
-			LOG_FUNC_RETURN(card->ctx,SC_ERROR_INVALID_ARGUMENTS); 
+			LOG_FUNC_RETURN(card->ctx,SC_ERROR_INVALID_ARGUMENTS);
 	}
 	/* ECC */
 	else if (key_info->algorithm == SC_OPENPGP_KEYALGO_ECDH
@@ -3195,7 +3195,7 @@ pgp_store_key(sc_card_t *card, sc_cardctl_openpgp_keystore_info_t *key_info)
 			pubkey.u.ec.ecpoint_len = key_info->u.ec.ecpoint_len;
 		}
 		else
-			LOG_FUNC_RETURN(card->ctx,SC_ERROR_INVALID_ARGUMENTS); 
+			LOG_FUNC_RETURN(card->ctx,SC_ERROR_INVALID_ARGUMENTS);
 	}
 	else
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
