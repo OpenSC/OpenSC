@@ -2061,6 +2061,7 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			break;
 		}
 		break;
+	case CKM_RSA_X_509:
 	case CKM_RSA_PKCS:
 		mech.pParameter = NULL;
 		mech.ulParameterLen = 0;
@@ -5353,6 +5354,7 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 			oaep_params.pSourceData,
 			oaep_params.ulSourceDataLen);
 		break;
+	case CKM_RSA_X_509:
 	case CKM_RSA_PKCS:
 		mech.pParameter = NULL;
 		mech.ulParameterLen = 0;
