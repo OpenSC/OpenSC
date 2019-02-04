@@ -4653,9 +4653,9 @@ static int test_signature(CK_SESSION_HANDLE sess)
 		CKM_RSA_PKCS,
 		CKM_SHA1_RSA_PKCS,
 		CKM_MD5_RSA_PKCS,
-		#ifndef OPENSSL_NO_RIPEMD
+#ifndef OPENSSL_NO_RIPEMD
 		CKM_RIPEMD160_RSA_PKCS,
-		#endif
+#endif
 		CKM_SHA256_RSA_PKCS,
 		0xffffff
 	};
@@ -5236,9 +5236,9 @@ static int test_unwrap(CK_SESSION_HANDLE sess)
 		errors += wrap_unwrap(sess, EVP_des_cbc(), privKeyObject);
 		errors += wrap_unwrap(sess, EVP_des_ede3_cbc(), privKeyObject);
 		errors += wrap_unwrap(sess, EVP_bf_cbc(), privKeyObject);
-		#ifndef OPENSSL_NO_CAST
+#ifndef OPENSSL_NO_CAST
 		errors += wrap_unwrap(sess, EVP_cast5_cfb(), privKeyObject);
-		#endif
+#endif
 #endif
 	}
 
