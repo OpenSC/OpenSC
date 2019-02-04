@@ -37,11 +37,11 @@ const char *gengetopt_args_info_help[] = {
   "  -V, --version                 Print version and exit",
   "  -r, --reader=STRING           Number of the reader to use. By default, the\n                                  first reader with a present card is used. If\n                                  the arguement is an ATR, the reader with a\n                                  matching card will be chosen.",
   "  -v, --verbose                 Use (several times) to be more verbose",
-  "\nReport bugs to https://github.com/OpenSC/OpenSC/issues\n\nWritten by Frank Morgner <frankmorgner@gmail.com>",
-  "\n Mode: soc\n  Options for SoCManager Applet",
   "  -p, --verify-pin              Verify PIN",
   "  -b, --verify-bio              Verify finger print",
   "      --verify-pin-or-bio       Verify PIN or finger print (user's choice)",
+  "\nReport bugs to https://github.com/OpenSC/OpenSC/issues\n\nWritten by Frank Morgner <frankmorgner@gmail.com>",
+  "\n Mode: soc\n  Options for SoCManager Applet",
   "      --new-pin                 Change PIN",
   "      --new-bio                 Use (several times) to change one or more\n                                  biometric templates",
   "      --info                    Dump Information about the SoCManager's\n                                  configuration",
@@ -173,9 +173,9 @@ void init_args_info(struct gengetopt_args_info *args_info)
   args_info->verbose_help = gengetopt_args_info_help[3] ;
   args_info->verbose_min = 0;
   args_info->verbose_max = 0;
-  args_info->verify_pin_help = gengetopt_args_info_help[6] ;
-  args_info->verify_bio_help = gengetopt_args_info_help[7] ;
-  args_info->verify_pin_or_bio_help = gengetopt_args_info_help[8] ;
+  args_info->verify_pin_help = gengetopt_args_info_help[4] ;
+  args_info->verify_bio_help = gengetopt_args_info_help[5] ;
+  args_info->verify_pin_or_bio_help = gengetopt_args_info_help[6] ;
   args_info->new_pin_help = gengetopt_args_info_help[9] ;
   args_info->new_bio_help = gengetopt_args_info_help[10] ;
   args_info->new_bio_min = 0;
@@ -1832,7 +1832,6 @@ cmdline_parser_internal (
         
           break;
         case 'p':	/* Verify PIN.  */
-          args_info->soc_mode_counter += 1;
         
         
           if (update_arg( 0 , 
@@ -1845,7 +1844,6 @@ cmdline_parser_internal (
         
           break;
         case 'b':	/* Verify finger print.  */
-          args_info->soc_mode_counter += 1;
         
         
           if (update_arg( 0 , 
@@ -1885,7 +1883,6 @@ cmdline_parser_internal (
           /* Verify PIN or finger print (user's choice).  */
           if (strcmp (long_options[option_index].name, "verify-pin-or-bio") == 0)
           {
-            args_info->soc_mode_counter += 1;
           
           
             if (update_arg( 0 , 
@@ -2212,8 +2209,8 @@ cmdline_parser_internal (
   if (args_info->pxs_mode_counter && args_info->soc_mode_counter) {
     int pxs_given[] = {args_info->certificate_given, args_info->key_given, args_info->print_cardid_given, args_info->write_cardid_given, args_info->print_paccessid_given, args_info->write_paccessid_given, args_info->read_dg_given, args_info->out_file_given, args_info->write_dg_given, args_info->in_file_given, args_info->delete_dg_given, args_info->create_dg_given, args_info->new_size_given, args_info->new_read_ac_given, args_info->new_read_ac_chatbit_given, args_info->new_write_ac_given, args_info->new_write_ac_chatbit_given,  -1};
     const char *pxs_desc[] = {"--certificate", "--key", "--print-cardid", "--write-cardid", "--print-paccessid", "--write-paccessid", "--read-dg", "--out-file", "--write-dg", "--in-file", "--delete-dg", "--create-dg", "--new-size", "--new-read-ac", "--new-read-ac-chatbit", "--new-write-ac", "--new-write-ac-chatbit",  0};
-    int soc_given[] = {args_info->verify_pin_given, args_info->verify_bio_given, args_info->verify_pin_or_bio_given, args_info->new_pin_given, args_info->new_bio_given, args_info->info_given,  -1};
-    const char *soc_desc[] = {"--verify-pin", "--verify-bio", "--verify-pin-or-bio", "--new-pin", "--new-bio", "--info",  0};
+    int soc_given[] = {args_info->new_pin_given, args_info->new_bio_given, args_info->info_given,  -1};
+    const char *soc_desc[] = {"--new-pin", "--new-bio", "--info",  0};
     error_occurred += check_modes(pxs_given, pxs_desc, soc_given, soc_desc);
   }
   

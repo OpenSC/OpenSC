@@ -340,7 +340,7 @@ int soc_main(struct sc_context *ctx, sc_card_t *card, struct gengetopt_args_info
     }
     if (cmdline->verify_pin_given) {
         sc_debug(ctx, SC_LOG_DEBUG_VERBOSE_TOOL,
-                "Verify finger print or PIN on the card.");
+                "Verify PIN on the card.");
         if (!soc_verify(card, SOCM_AUTHOBJECT_PIN))
             goto err;
         soc_reset_authobject |= SOCM_AUTHOBJECT_PIN;
@@ -493,6 +493,26 @@ err:
     return ok;
 }
 
+#define PXS_AUTHOBJECT_PIN 0x80
+#define PXS_AUTHOBJECT_BIO 0x40
+
+int
+paccess_verify(sc_card_t *card, unsigned char p2)
+{
+    int ok = 0;
+    sc_apdu_t apdu;
+    sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x2E, 0x24, p2);
+    SC_TEST_GOTO_ERR(card->ctx, SC_LOG_DEBUG_VERBOSE_TOOL,
+            sc_transmit_apdu(card, &apdu),
+            "Verification failed");
+    SC_TEST_GOTO_ERR(card->ctx, SC_LOG_DEBUG_VERBOSE_TOOL,
+            sc_check_sw(card, apdu.sw1, apdu.sw2),
+            "Verification failed");
+    ok = 1;
+err:
+    return ok;
+}
+
 int paccess_main(struct sc_context *ctx, sc_card_t *card, struct gengetopt_args_info *cmdline)
 {
     int ok = 0, r;
@@ -504,6 +524,7 @@ int paccess_main(struct sc_context *ctx, sc_card_t *card, struct gengetopt_args_
     unsigned char auxiliary_data[] = {0x67, 0x00};
     unsigned char paccess_minor = 0;
     unsigned char paccess_major = 0;
+    int pxs_reset_authobjects = 0;
 
     sc_path_set(&path, SC_PATH_TYPE_DF_NAME, paccess_aid, sizeof paccess_aid, 0, 0);
     SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_VERBOSE_TOOL,
@@ -598,6 +619,28 @@ int paccess_main(struct sc_context *ctx, sc_card_t *card, struct gengetopt_args_
                 perform_chip_authentication(card,
                     &ef_cardsecurity, &ef_cardsecurity_len),
                 "Chip authentication failed.");
+    }
+
+    if (cmdline->verify_pin_given) {
+        sc_debug(ctx, SC_LOG_DEBUG_VERBOSE_TOOL,
+                "Verify PIN on the card.");
+        if (!paccess_verify(card, PXS_AUTHOBJECT_PIN))
+            goto err;
+        pxs_reset_authobjects++;
+    }
+    if (cmdline->verify_bio_given) {
+        sc_debug(ctx, SC_LOG_DEBUG_VERBOSE_TOOL,
+                "Verify finger print on the card.");
+        if (!paccess_verify(card, PXS_AUTHOBJECT_BIO))
+            goto err;
+        pxs_reset_authobjects++;
+    }
+    if (cmdline->verify_pin_or_bio_given) {
+        sc_debug(ctx, SC_LOG_DEBUG_VERBOSE_TOOL,
+                "Verify finger print or PIN on the card.");
+        if (!paccess_verify(card, PXS_AUTHOBJECT_PIN|PXS_AUTHOBJECT_BIO))
+            goto err;
+        pxs_reset_authobjects++;
     }
 
     for (i = 0; i < cmdline->delete_dg_given; i++) {
@@ -791,6 +834,8 @@ int paccess_main(struct sc_context *ctx, sc_card_t *card, struct gengetopt_args_
     ok = 1;
 
 err:
+    if (pxs_reset_authobjects)
+        sc_reset(card, 0);
     if (certs) {
         for (i = 0; certs[i]; i++) {
             free((unsigned char *) certs[i]);
@@ -843,6 +888,12 @@ main(int argc, char **argv)
 	if (cmdline.soc_mode_counter && !soc_main(ctx, card, &cmdline))
         goto err;
     if (cmdline.pxs_mode_counter && !paccess_main(ctx, card, &cmdline))
+        goto err;
+    if (cmdline.soc_mode_counter == 0 && cmdline.pxs_mode_counter == 0
+            && (cmdline.verify_pin_given
+                || cmdline.verify_bio_given
+                || cmdline.verify_pin_or_bio_given)
+            && !soc_main(ctx, card, &cmdline))
         goto err;
 
     fail = 0;

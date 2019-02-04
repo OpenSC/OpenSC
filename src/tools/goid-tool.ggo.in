@@ -7,17 +7,17 @@ option "reader"         r
 option "verbose" v
     "Use (several times) to be more verbose"
     multiple optional
+option "verify-pin" p
+    "Verify PIN"
+    optional
+option "verify-bio" b
+    "Verify finger print"
+    optional
+option "verify-pin-or-bio" -
+    "Verify PIN or finger print (user's choice)"
+    optional
 
 defmode "soc" modedesc="Options for SoCManager Applet"
-modeoption "verify-pin" p
-    "Verify PIN"
-    mode="soc" optional
-modeoption "verify-bio" b
-    "Verify finger print"
-    mode="soc" optional
-modeoption "verify-pin-or-bio" -
-    "Verify PIN or finger print (user's choice)"
-    mode="soc" optional
 modeoption "new-pin" -
     "Change PIN"
     mode="soc" optional
