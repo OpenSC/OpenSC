@@ -331,39 +331,33 @@ static int mcrd_init(sc_card_t * card)
 	if (is_esteid_card(card)) {
 		/* Select the EstEID AID to get to a known state.
 		 * For some reason a reset is required as well... */
-		if (card->type == SC_CARD_TYPE_MCRD_ESTEID_V30) {
-			sc_reset(card, 0);
+		sc_reset(card, 0);
 
-			r = gp_select_aid(card, &EstEID_v3_AID);
-			if (r < 0)
-			{
-				r = gp_select_aid(card, &EstEID_v35_AID);
-				if (r >= 0) {
-					// Force EstEID 3.5 card recv size 255 with T=0 to avoid recursive read binary
-					// sc_read_binary cannot handle recursive 61 00 calls
-					if (card->reader && card->reader->active_protocol == SC_PROTO_T0)
-						card->max_recv_size = 255;
-				} else {
-					r = gp_select_aid(card, &AzeDIT_v35_AID);
-					if (r < 0) {
-						free(card->drv_data);
-						card->drv_data = NULL;
-						SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_CARD);
-					}
+		r = gp_select_aid(card, &EstEID_v3_AID);
+		if (r < 0)
+		{
+			r = gp_select_aid(card, &EstEID_v35_AID);
+			if (r >= 0) {
+				// Force EstEID 3.5 card recv size 255 with T=0 to avoid recursive read binary
+				// sc_read_binary cannot handle recursive 61 00 calls
+				if (card->reader && card->reader->active_protocol == SC_PROTO_T0)
+					card->max_recv_size = 255;
+			} else {
+				r = gp_select_aid(card, &AzeDIT_v35_AID);
+				if (r < 0) {
+					free(card->drv_data);
+					card->drv_data = NULL;
+					SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_CARD);
 				}
 			}
-			flags = SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_HASH_SHA1 | SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_SHA256;
-			/* EstEID v3.0 has 2048 bit keys */
-			_sc_card_add_rsa_alg(card, 2048, flags, 0);
-
-			flags = SC_ALGORITHM_ECDSA_RAW | SC_ALGORITHM_ECDH_CDH_RAW | SC_ALGORITHM_ECDSA_HASH_NONE;
-			ext_flags = SC_ALGORITHM_EXT_EC_NAMEDCURVE | SC_ALGORITHM_EXT_EC_UNCOMPRESES;
-			_sc_card_add_ec_alg(card, 384, flags, ext_flags, NULL);
-		} else {
-			/* EstEID v1.0 and 1.1 have 1024 bit keys */
-			flags = SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_SHA1;
-			_sc_card_add_rsa_alg(card, 1024, flags, 0);
 		}
+		flags = SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_HASH_SHA1 | SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_SHA256;
+		/* EstEID v3.0 has 2048 bit keys */
+		_sc_card_add_rsa_alg(card, 2048, flags, 0);
+
+		flags = SC_ALGORITHM_ECDSA_RAW | SC_ALGORITHM_ECDH_CDH_RAW | SC_ALGORITHM_ECDSA_HASH_NONE;
+		ext_flags = SC_ALGORITHM_EXT_EC_NAMEDCURVE | SC_ALGORITHM_EXT_EC_UNCOMPRESES;
+		_sc_card_add_ec_alg(card, 384, flags, ext_flags, NULL);
 	} else {
 		flags = SC_ALGORITHM_RSA_RAW |SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE;
 		_sc_card_add_rsa_alg(card, 512, flags, 0);
