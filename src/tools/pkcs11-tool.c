@@ -5251,15 +5251,28 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 		CK_OBJECT_HANDLE privKeyObject)
 {
 	EVP_PKEY       *pkey;
-	unsigned char	orig_data[] = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', '\0'};
+	unsigned char	orig_data[512] = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', '\0'};
 	unsigned char	encrypted[512], data[512];
 	CK_MECHANISM	mech;
 	CK_ULONG	encrypted_len, data_len;
 	int             failed;
 	CK_RV           rv;
+	int             pad;
+	CK_MECHANISM_TYPE hash_alg = CKM_SHA_1;
 	CK_RSA_PKCS_OAEP_PARAMS oaep_params;
 
 	printf("    %s: ", p11_mechanism_to_name(mech_type));
+
+	if ((mech_type == CKM_RSA_PKCS) || (mech_type == CKM_RSA_PKCS_OAEP)) {
+		if (opt_hash_alg == 0) {
+			hash_alg = CKM_SHA_1;
+		} else if (opt_hash_alg != CKM_SHA_1) {
+			printf("Only CKM_SHA_1 supported\n");
+			return 0;
+		} else {
+			hash_alg = opt_hash_alg;
+		}
+	}
 
 	pkey = get_public_key(session, privKeyObject);
 	if (pkey == NULL)
@@ -5270,52 +5283,71 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 		EVP_PKEY_free(pkey);
 		return 0;
 	}
-	if (mech_type == CKM_RSA_PKCS_OAEP) {
-		EVP_PKEY_CTX *ctx;
-		ctx = EVP_PKEY_CTX_new(pkey, NULL);
-		if (!ctx) {
-			EVP_PKEY_free(pkey);
-			printf("EVP_PKEY_CTX_new failed, returning\n");
+	size_t in_len;
+	CK_ULONG mod_len = (get_private_key_length(session, privKeyObject) + 7) / 8;
+	switch (mech_type) {
+	case CKM_RSA_PKCS:
+		pad = RSA_PKCS1_PADDING;
+		/* Limit the input length to <= mod_len-11 */
+		in_len = mod_len-11;
+		break;
+	case CKM_RSA_PKCS_OAEP: {
+		pad = RSA_PKCS1_OAEP_PADDING;
+		/* Limit the input length to <= mod_len-2-2*hlen */
+		size_t len = 2+2*hash_length(hash_alg);
+		if (len >= mod_len) {
+			printf("Incompatible mechanism and key size\n");
 			return 0;
 		}
-		if (EVP_PKEY_encrypt_init(ctx) <= 0) {
-			EVP_PKEY_CTX_free(ctx);
-			EVP_PKEY_free(pkey);
-			printf("EVP_PKEY_encrypt_init failed, returning\n");
-			return 0;
-		}
+		in_len = mod_len-len;
+		break;
+	}
+	case CKM_RSA_X_509:
+		pad = RSA_NO_PADDING;
+		/* Limit the input length to the modulus length */
+		in_len = mod_len;
+		break;
+	default:
+		printf("Unsupported mechanism, returning\n");
+		return 0;
+	}
 
-		if (EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_OAEP_PADDING) <= 0) {
-			EVP_PKEY_CTX_free(ctx);
-			EVP_PKEY_free(pkey);
-			printf("set OAEP padding failed, returning\n");
-			return 0;
-		}
-		size_t outlen = sizeof(encrypted);
-		if (EVP_PKEY_encrypt(ctx, encrypted, &outlen, orig_data, sizeof(orig_data)) <= 0) {
-			EVP_PKEY_CTX_free(ctx);
-			EVP_PKEY_free(pkey);
-			printf("Encryption failed, returning\n");
-			return 0;
-		}
+	EVP_PKEY_CTX *ctx;
+	ctx = EVP_PKEY_CTX_new(pkey, NULL);
+	if (!ctx) {
+		EVP_PKEY_free(pkey);
+		printf("EVP_PKEY_CTX_new failed, returning\n");
+		return 0;
+	}
+	if (EVP_PKEY_encrypt_init(ctx) <= 0) {
 		EVP_PKEY_CTX_free(ctx);
 		EVP_PKEY_free(pkey);
-		encrypted_len = outlen;
-
-	} else {
-		encrypted_len = EVP_PKEY_encrypt_old(encrypted, orig_data, sizeof(orig_data), pkey);
-		EVP_PKEY_free(pkey);
-		if (((int) encrypted_len) <= 0) {
-			printf("Encryption failed, returning\n");
-			return 0;
-		}
+		printf("EVP_PKEY_encrypt_init failed, returning\n");
+		return 0;
 	}
+	if (EVP_PKEY_CTX_set_rsa_padding(ctx, pad) <= 0) {
+		EVP_PKEY_CTX_free(ctx);
+		EVP_PKEY_free(pkey);
+		printf("set OAEP padding failed, returning\n");
+		return 0;
+	}
+
+	size_t out_len = sizeof(encrypted);
+	if (EVP_PKEY_encrypt(ctx, encrypted, &out_len, orig_data, in_len) <= 0) {
+		EVP_PKEY_CTX_free(ctx);
+		EVP_PKEY_free(pkey);
+		printf("Encryption failed, returning\n");
+		return 0;
+	}
+	EVP_PKEY_CTX_free(ctx);
+	EVP_PKEY_free(pkey);
+	encrypted_len = out_len;
 
 	/* set "default" MGF and hash algorithms. We can overwrite MGF later */
 	switch (mech_type) {
 	case CKM_RSA_PKCS_OAEP:
-		oaep_params.hashAlg = opt_hash_alg;
-		switch (opt_hash_alg) {
+		oaep_params.hashAlg = hash_alg;
+		switch (oaep_params.hashAlg) {
 		case CKM_SHA224:
 			oaep_params.mgf = CKG_MGF1_SHA224;
 			break;
@@ -5379,18 +5411,14 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 	if (rv != CKR_OK)
 		p11_fatal("C_Decrypt", rv);
 
-	if (mech_type == CKM_RSA_X_509)
-		failed = (data[0] != 0) || (data[1] != 2) || (data_len <= sizeof(orig_data) - 2) ||
-		    memcmp(orig_data, data + data_len - sizeof(orig_data), sizeof(orig_data));
-	else
-		failed = data_len != sizeof(orig_data) || memcmp(orig_data, data, data_len);
+	failed = data_len != in_len || memcmp(orig_data, data, data_len);
 
 	if (failed) {
 		CK_ULONG n;
 
 		printf("resulting cleartext doesn't match input\n");
 		printf("    Original:");
-		for (n = 0; n < sizeof(orig_data); n++)
+		for (n = 0; n < in_len; n++)
 			printf(" %02x", orig_data[n]);
 		printf("\n");
 		printf("    Decrypted:");
