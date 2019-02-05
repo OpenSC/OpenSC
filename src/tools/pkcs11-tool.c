@@ -5258,21 +5258,10 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 	int             failed;
 	CK_RV           rv;
 	int             pad;
-	CK_MECHANISM_TYPE hash_alg = CKM_SHA_1;
+	CK_MECHANISM_TYPE hash_alg;
 	CK_RSA_PKCS_OAEP_PARAMS oaep_params;
 
 	printf("    %s: ", p11_mechanism_to_name(mech_type));
-
-	if ((mech_type == CKM_RSA_PKCS) || (mech_type == CKM_RSA_PKCS_OAEP)) {
-		if (opt_hash_alg == 0) {
-			hash_alg = CKM_SHA_1;
-		} else if (opt_hash_alg != CKM_SHA_1) {
-			printf("Only CKM_SHA_1 supported\n");
-			return 0;
-		} else {
-			hash_alg = opt_hash_alg;
-		}
-	}
 
 	pkey = get_public_key(session, privKeyObject);
 	if (pkey == NULL)
@@ -5292,6 +5281,14 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 		in_len = mod_len-11;
 		break;
 	case CKM_RSA_PKCS_OAEP: {
+		if (opt_hash_alg == 0) {
+			hash_alg = CKM_SHA_1;
+		} else if (opt_hash_alg != CKM_SHA_1) {
+			printf("Only CKM_RSA_PKCS_OAEP with CKM_SHA_1 supported\n");
+			return 0;
+		} else {
+			hash_alg = opt_hash_alg;
+		}
 		pad = RSA_PKCS1_OAEP_PADDING;
 		/* Limit the input length to <= mod_len-2-2*hlen */
 		size_t len = 2+2*hash_length(hash_alg);
