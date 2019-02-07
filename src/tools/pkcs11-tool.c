@@ -5258,7 +5258,8 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 	int             failed;
 	CK_RV           rv;
 	int             pad;
-	CK_MECHANISM_TYPE hash_alg;
+	CK_MECHANISM_TYPE hash_alg = CKM_SHA256;
+	CK_RSA_PKCS_MGF_TYPE mgf;
 	CK_RSA_PKCS_OAEP_PARAMS oaep_params;
 
 	printf("    %s: ", p11_mechanism_to_name(mech_type));
@@ -5281,14 +5282,35 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 		in_len = mod_len-11;
 		break;
 	case CKM_RSA_PKCS_OAEP: {
-		if (opt_hash_alg == 0) {
-			hash_alg = CKM_SHA_1;
-		} else if (opt_hash_alg != CKM_SHA_1) {
-			printf("Only CKM_RSA_PKCS_OAEP with CKM_SHA_1 supported\n");
-			return 0;
-		} else {
+		if (opt_hash_alg != 0) {
 			hash_alg = opt_hash_alg;
 		}
+		switch (hash_alg) {
+		case CKM_SHA_1:
+			mgf = CKG_MGF1_SHA1;
+			break;
+		case CKM_SHA224:
+			mgf = CKG_MGF1_SHA224;
+			break;
+		default:
+			printf("hash-algorithm %s unknown, defaulting to CKM_SHA256\n", p11_mechanism_to_name(hash_alg));
+			/* fall through */
+		case CKM_SHA256:
+			mgf = CKG_MGF1_SHA256;
+			break;
+		case CKM_SHA384:
+			mgf = CKG_MGF1_SHA384;
+			break;
+		case CKM_SHA512:
+			mgf = CKG_MGF1_SHA512;
+			break;
+		}
+		if (opt_mgf != 0) {
+			mgf = opt_mgf;
+		} else {
+			printf("mgf not set, defaulting to %s\n", p11_mgf_to_name(mgf));
+		}
+
 		pad = RSA_PKCS1_OAEP_PADDING;
 		/* Limit the input length to <= mod_len-2-2*hlen */
 		size_t len = 2+2*hash_length(hash_alg);
@@ -5305,7 +5327,7 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 		in_len = mod_len;
 		break;
 	default:
-		printf("Unsupported mechanism, returning\n");
+		printf("Unsupported mechanism %s, returning\n", p11_mechanism_to_name(mech_type));
 		return 0;
 	}
 
@@ -5325,8 +5347,63 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 	if (EVP_PKEY_CTX_set_rsa_padding(ctx, pad) <= 0) {
 		EVP_PKEY_CTX_free(ctx);
 		EVP_PKEY_free(pkey);
-		printf("set OAEP padding failed, returning\n");
+		printf("set padding failed, returning\n");
 		return 0;
+	}
+	if (mech_type == CKM_RSA_PKCS_OAEP) {
+		const EVP_MD *md;
+		switch (hash_alg) {
+		case CKM_SHA_1:
+			md = EVP_sha1();
+			break;
+		case CKM_SHA224:
+			md = EVP_sha224();
+			break;
+		default: /* it should not happen, hash_alg is checked earlier */
+			/* fall through */
+		case CKM_SHA256:
+			md = EVP_sha256();
+			break;
+		case CKM_SHA384:
+			md = EVP_sha384();
+			break;
+		case CKM_SHA512:
+			md = EVP_sha512();
+			break;
+		}
+		if (EVP_PKEY_CTX_set_rsa_oaep_md(ctx, md) <= 0) {
+			EVP_PKEY_CTX_free(ctx);
+			EVP_PKEY_free(pkey);
+			printf("set md failed, returning\n");
+			return 0;
+		}
+		switch (mgf) {
+		case CKG_MGF1_SHA1:
+			md = EVP_sha1();
+			break;
+		case CKG_MGF1_SHA224:
+			md = EVP_sha224();
+			break;
+		default:
+			printf("mgf %s unknown, defaulting to CKG_MGF1_SHA256\n", p11_mgf_to_name(mgf));
+			mgf = CKG_MGF1_SHA256;
+			/* fall through */
+		case CKG_MGF1_SHA256:
+			md = EVP_sha256();
+			break;
+		case CKG_MGF1_SHA384:
+			md = EVP_sha384();
+			break;
+		case CKG_MGF1_SHA512:
+			md = EVP_sha512();
+			break;
+		}
+		if (EVP_PKEY_CTX_set_rsa_mgf1_md(ctx, md) <= 0) {
+			EVP_PKEY_CTX_free(ctx);
+			EVP_PKEY_free(pkey);
+			printf("set mgf1 md failed, returning\n");
+			return 0;
+		}
 	}
 
 	size_t out_len = sizeof(encrypted);
@@ -5344,28 +5421,7 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 	switch (mech_type) {
 	case CKM_RSA_PKCS_OAEP:
 		oaep_params.hashAlg = hash_alg;
-		switch (oaep_params.hashAlg) {
-		case CKM_SHA224:
-			oaep_params.mgf = CKG_MGF1_SHA224;
-			break;
-		case CKM_SHA256:
-			oaep_params.mgf = CKG_MGF1_SHA256;
-			break;
-		case CKM_SHA384:
-			oaep_params.mgf = CKG_MGF1_SHA384;
-			break;
-		case CKM_SHA512:
-			oaep_params.mgf = CKG_MGF1_SHA512;
-			break;
-		default:
-			oaep_params.hashAlg = CKM_SHA_1;
-			/* fall through */
-		case CKM_SHA_1:
-			oaep_params.mgf = CKG_MGF1_SHA1;
-			break;
-		}
-		if (opt_mgf != 0)
-			oaep_params.mgf = opt_mgf;
+		oaep_params.mgf = mgf;
 
 		/* These settings are compatible with OpenSSL 1.0.2L and 1.1.0+ */
 		oaep_params.source = 0UL;  /* empty encoding parameter (label) */
