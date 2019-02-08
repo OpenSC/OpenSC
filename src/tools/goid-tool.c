@@ -461,9 +461,9 @@ paccess_get_security_attributes(struct sc_context *ctx, const char *ac, int* cha
     int ok = 0;
     memset(sec_attr, 0, 2);
     if (!ac || 0 == strcmp(ac, "never")) {
-        /* nothing else to do */
-    } else if (0 == strcmp(ac, "always")) {
         sec_attr[0] |= 0xFF;
+    } else if (0 == strcmp(ac, "always")) {
+        /* nothing else to do */
     } else {
         size_t i;
         if (0 == strcmp(ac, "ta")) {
