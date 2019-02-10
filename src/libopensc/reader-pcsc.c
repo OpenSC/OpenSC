@@ -726,7 +726,7 @@ static int pcsc_cancel(sc_context_t *ctx)
 		return SC_ERROR_NOT_ALLOWED;
 
 #ifndef _WIN32
-	if (gpriv->pcsc_wait_ctx != -1) {
+	if (gpriv->pcsc_wait_ctx != (SCARDCONTEXT)-1) {
 		rv = gpriv->SCardCancel(gpriv->pcsc_wait_ctx);
 		if (rv == SCARD_S_SUCCESS) {
 			 /* Also close and clear the waiting context */
@@ -1509,7 +1509,7 @@ static int pcsc_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_re
 	}
 #ifndef _WIN32
 	/* Establish a new context, assuming that it is called from a different thread with pcsc-lite */
-	if (gpriv->pcsc_wait_ctx == -1) {
+	if (gpriv->pcsc_wait_ctx == (SCARDCONTEXT)-1) {
 		rv = gpriv->SCardEstablishContext(SCARD_SCOPE_USER, NULL, NULL, &gpriv->pcsc_wait_ctx);
 		if (rv != SCARD_S_SUCCESS) {
 			PCSC_LOG(ctx, "SCardEstablishContext(wait) failed", rv);
