@@ -1499,6 +1499,16 @@ err:
 	return r;
 }
 
+static void eac_sm_clear_free_without_ctx(const struct iso_sm_ctx *ctx)
+{
+	if (ctx) {
+		struct eac_sm_ctx *eacsmctx = ctx->priv_data;
+		if (eacsmctx)
+			eacsmctx->ctx = NULL;
+		eac_sm_clear_free(ctx);
+	}
+}
+
 #define TA_NONCE_LENGTH 8
 int perform_terminal_authentication(sc_card_t *card,
 		const unsigned char **certs, const size_t *certs_lens,
@@ -1521,6 +1531,7 @@ int perform_terminal_authentication(sc_card_t *card,
 	}
 	if (!card->sm_ctx.info.cmd_data) {
 		card->sm_ctx.info.cmd_data = iso_sm_ctx_create();
+		card->sm_ctx.ops.close = iso_sm_close;
 	}
 	if (!card->sm_ctx.info.cmd_data) {
 		r = SC_ERROR_INTERNAL;
@@ -1559,6 +1570,10 @@ int perform_terminal_authentication(sc_card_t *card,
 			r = SC_ERROR_INTERNAL;
 			goto err;
 		}
+		/* when iso_sm_ctx_clear_free is called, we want everything to be freed
+		 * except the EAC_CTX, because it is needed for performing SM *after*
+		 * iso_sm_start was called. */
+		isosmctx->clear_free = eac_sm_clear_free_without_ctx;
 		eac_ctx = NULL;
 	}
 	eacsmctx = isosmctx->priv_data;

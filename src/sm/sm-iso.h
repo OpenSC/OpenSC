@@ -119,6 +119,8 @@ struct iso_sm_ctx *iso_sm_ctx_create(void);
  */
 int iso_sm_start(struct sc_card *card, struct iso_sm_ctx *sctx);
 
+int iso_sm_close(struct sc_card *card);
+
 #ifdef  __cplusplus
 }
 #endif
