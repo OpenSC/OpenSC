@@ -2459,7 +2459,7 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 	}
 	else
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
-	sc_log(card->ctx, "pk_packet_len is %lu", pk_packet_len);
+	sc_log(card->ctx, "pk_packet_len is %"SC_FORMAT_LEN_SIZE_T"u", pk_packet_len);
 
 	fp_buffer_len = 3 + pk_packet_len;
 	p = fp_buffer = calloc(fp_buffer_len, 1);
