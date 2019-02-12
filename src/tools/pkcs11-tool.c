@@ -5371,12 +5371,19 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 			md = EVP_sha512();
 			break;
 		}
+#if defined(EVP_PKEY_CTX_set_rsa_oaep_md)
 		if (EVP_PKEY_CTX_set_rsa_oaep_md(ctx, md) <= 0) {
 			EVP_PKEY_CTX_free(ctx);
 			EVP_PKEY_free(pkey);
 			printf("set md failed, returning\n");
 			return 0;
 		}
+#else
+        if (hash_alg != CKM_SHA_1) {
+            printf("This version of OpenSsl only supports SHA1 for OAEP, returning\n");
+			return 0;
+        }
+#endif
 		switch (mgf) {
 		case CKG_MGF1_SHA1:
 			md = EVP_sha1();
