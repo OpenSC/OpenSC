@@ -1946,6 +1946,42 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 
 	close(fd2);
 
+	if (opt_mechanism == CKM_ECDSA || opt_mechanism == CKM_ECDSA_SHA1 ||
+		opt_mechanism == CKM_ECDSA_SHA256 || opt_mechanism == CKM_ECDSA_SHA384 ||
+		opt_mechanism == CKM_ECDSA_SHA512 || opt_mechanism == CKM_ECDSA_SHA224) {
+		if (opt_sig_format && (!strcmp(opt_sig_format, "openssl") ||
+							   !strcmp(opt_sig_format, "sequence"))) {
+
+			CK_BYTE* bytes;
+			CK_ULONG len;
+			size_t rs_len = 0;
+			unsigned char rs_buffer[512];
+			bytes = getEC_POINT(session, key, &len);
+			free(bytes);
+			/*
+			 * (We only support uncompressed for now)
+			 * Uncompressed EC_POINT is DER OCTET STRING of "04||x||y"
+			 * So a "256" bit key has x and y of 32 bytes each
+			 * something like: "04 41 04||x||y"
+			 * Do simple size calculation based on DER encoding
+			 */
+			if ((len - 2) <= 127)
+				rs_len = len - 3;
+			else if ((len - 3) <= 255)
+				rs_len = len - 4;
+			else
+				util_fatal("Key not supported");
+
+			if (sc_asn1_sig_value_sequence_to_rs(NULL, sig_buffer, r2,
+				rs_buffer, rs_len)) {
+				util_fatal("Failed to convert ASN.1 signature");
+			}
+
+			memcpy(sig_buffer, rs_buffer, rs_len);
+			r2 = rs_len;
+		}
+	}
+
 	/* Open the data file */
 	if (opt_input == NULL)
 		fd = 0;
