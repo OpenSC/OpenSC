@@ -403,6 +403,7 @@ int main(int argc, char **argv)
 	r = util_connect_card(ctx, &card, opt_reader, opt_wait, 0);
 	if (r) {
 		fprintf(stderr, "Failed to connect to card: %s\n", sc_strerror(r));
+		sc_release_context(ctx);
 		return 1;
 	}
 
