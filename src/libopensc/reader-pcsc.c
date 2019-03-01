@@ -342,7 +342,12 @@ static int refresh_attributes(sc_reader_t *reader)
 		}
 		
 		/* the system could not detect the reader. It means, the prevoiusly attached reader is disconnected. */
-		if (rv == (LONG)SCARD_E_UNKNOWN_READER || rv == (LONG)SCARD_E_NO_READERS_AVAILABLE || rv == (LONG)SCARD_E_SERVICE_STOPPED) {
+		if (
+#ifdef SCARD_E_NO_READERS_AVAILABLE
+			(rv == (LONG)SCARD_E_NO_READERS_AVAILABLE) ||
+#endif
+			(rv == (LONG)SCARD_E_UNKNOWN_READER) || (rv == (LONG)SCARD_E_SERVICE_STOPPED)) {
+
  			if (old_flags & SC_READER_CARD_PRESENT) {
  				reader->flags |= SC_READER_CARD_CHANGED;
  			}
