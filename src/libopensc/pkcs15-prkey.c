@@ -713,8 +713,11 @@ sc_pkcs15_convert_prkey(struct sc_pkcs15_prkey *pkcs15_key, void *evp_key)
 
 		/* get curve name */
 		nid = EC_GROUP_get_curve_name(grp);
-		if(nid != 0)
-			dst->params.named_curve = strdup(OBJ_nid2sn(nid));
+		if(nid != 0) {
+			const char *sn = OBJ_nid2sn(nid);
+			if (sn)
+				dst->params.named_curve = strdup(sn);
+		}
 
 		/* Decode EC_POINT from a octet string */
 		buflen = EC_POINT_point2oct(grp, (const EC_POINT *) EC_KEY_get0_public_key(src),
