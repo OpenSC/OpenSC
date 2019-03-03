@@ -511,9 +511,9 @@ int sc_pkcs15emu_tcos_init_ex(
 		sc_log(ctx,  "unable to get ICCSN\n");
 		return SC_ERROR_WRONG_CARD;
 	}
-        sc_bin_to_hex(serialnr.value, serialnr.len , serial, sizeof(serial), 0);
+	sc_bin_to_hex(serialnr.value, serialnr.len , serial, sizeof(serial), 0);
 	serial[19] = '\0';
-        p15card->tokeninfo->serial_number = strdup(serial);
+	p15card->tokeninfo->serial_number = strdup(serial);
 
 	if(!detect_netkey(p15card)) return SC_SUCCESS;
 	if(!detect_idkey(p15card)) return SC_SUCCESS;
