@@ -65,12 +65,13 @@ parse_dir_record(sc_card_t *card, u8 ** buf, size_t *buflen, int rec_nr)
 	sc_app_info_t *app = NULL;
 	struct sc_aid aid;
 	u8 label[128], path[128], ddo[128];
-	size_t label_len = sizeof(label), path_len = sizeof(path), ddo_len = sizeof(ddo);
+	size_t label_len = sizeof(label) - 1, path_len = sizeof(path), ddo_len = sizeof(ddo);
 	int r;
 
 	LOG_FUNC_CALLED(ctx);
 	aid.len = sizeof(aid.value);
 
+	memset(label, 0, sizeof(label));
 	sc_copy_asn1_entry(c_asn1_dirrecord, asn1_dirrecord);
 	sc_copy_asn1_entry(c_asn1_dir, asn1_dir);
 	sc_format_asn1_entry(asn1_dir + 0, asn1_dirrecord, NULL, 0);
