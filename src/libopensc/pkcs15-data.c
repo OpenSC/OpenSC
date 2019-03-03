@@ -100,8 +100,10 @@ int sc_pkcs15_decode_dodf_entry(struct sc_pkcs15_card *p15card,
 				asn1_data[2];
 	struct sc_asn1_pkcs15_object data_obj = { obj, asn1_com_data_attr, NULL,
 					     asn1_type_data_attr };
-	size_t label_len = sizeof(info.app_label);
+	size_t label_len = sizeof(info.app_label) - 1;
 	int r;
+
+	memset(info.app_label, 0, sizeof(info.app_label));
 
 	sc_copy_asn1_entry(c_asn1_com_data_attr, asn1_com_data_attr);
 	sc_copy_asn1_entry(c_asn1_type_data_attr, asn1_type_data_attr);

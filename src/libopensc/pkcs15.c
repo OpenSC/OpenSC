@@ -131,9 +131,9 @@ int sc_pkcs15_parse_tokeninfo(sc_context_t *ctx,
 	u8 serial[128];
 	size_t serial_len = sizeof(serial);
 	u8 mnfid[SC_PKCS15_MAX_LABEL_SIZE];
-	size_t mnfid_len  = sizeof(mnfid);
+	size_t mnfid_len  = sizeof(mnfid) - 1;
 	u8 label[SC_PKCS15_MAX_LABEL_SIZE];
-	size_t label_len = sizeof(label);
+	size_t label_len = sizeof(label) - 1;
 	u8 last_update[32], profile_indication[SC_PKCS15_MAX_LABEL_SIZE];
 	size_t lupdate_len = sizeof(last_update) - 1, pi_len = sizeof(profile_indication) - 1;
 	size_t flags_len   = sizeof(ti->flags);
@@ -153,6 +153,10 @@ int sc_pkcs15_parse_tokeninfo(sc_context_t *ctx,
 	struct sc_asn1_entry asn1_toki_attrs[C_ASN1_TOKI_ATTRS_SIZE], asn1_tokeninfo[3], asn1_twlabel[3];
 
 	memset(last_update, 0, sizeof(last_update));
+	memset(label, 0, sizeof(label));
+	memset(profile_indication, 0, sizeof(profile_indication));
+	memset(mnfid, 0, sizeof(mnfid));
+
 	sc_copy_asn1_entry(c_asn1_twlabel, asn1_twlabel);
 	sc_copy_asn1_entry(c_asn1_toki_attrs, asn1_toki_attrs);
 	sc_copy_asn1_entry(c_asn1_tokeninfo, asn1_tokeninfo);
