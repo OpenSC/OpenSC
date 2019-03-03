@@ -1672,7 +1672,7 @@ sc_pkcs15_convert_pubkey(struct sc_pkcs15_pubkey *pkcs15_key, void *evp_key)
 		nid = EC_GROUP_get_curve_name(grp);
 		if(nid != 0) {
 			const char *name = OBJ_nid2sn(nid);
-			if(sizeof(name) > 0)
+			if (name)
 				dst->params.named_curve = strdup(name);
 		}
 
