@@ -224,13 +224,13 @@ static int sc_pkcs15emu_gemsafeGPK_init(sc_pkcs15_card_t *p15card)
 	p15card->tokeninfo->label = strdup("GemSAFE");
 	p15card->tokeninfo->manufacturer_id = strdup(MANU_ID);
 	/* get serial number */
-        r = sc_card_ctl(card, SC_CARDCTL_GET_SERIALNR, &serial);
-		if (r != SC_SUCCESS)
-			return SC_ERROR_INTERNAL;
-        r = sc_bin_to_hex(serial.value, serial.len, buf, sizeof(buf), 0);
-		if (r != SC_SUCCESS)
-			return SC_ERROR_INTERNAL;
-        p15card->tokeninfo->serial_number = strdup(buf);
+	r = sc_card_ctl(card, SC_CARDCTL_GET_SERIALNR, &serial);
+	if (r != SC_SUCCESS)
+		return SC_ERROR_INTERNAL;
+	r = sc_bin_to_hex(serial.value, serial.len, buf, sizeof(buf), 0);
+	if (r != SC_SUCCESS)
+		return SC_ERROR_INTERNAL;
+	p15card->tokeninfo->serial_number = strdup(buf);
 
 	/* test if we have a gemsafe app df */
 	memset(&path, 0, sizeof(path));

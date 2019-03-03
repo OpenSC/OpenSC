@@ -182,7 +182,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 		unsigned short manuf_id = bebytes2ushort(card->serialnr.value);
 		int j;
 
-		sc_bin_to_hex(card->serialnr.value, card->serialnr.len, string, sizeof(string)-1, 0);
+		sc_bin_to_hex(card->serialnr.value, card->serialnr.len, string, sizeof(string), 0);
 		set_string(&p15card->tokeninfo->serial_number, string);
 
 		for (j = 0; manuf_map[j].name != NULL; j++) {
