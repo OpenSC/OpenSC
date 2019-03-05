@@ -909,10 +909,7 @@ int main(int argc, char *argv[])
 		action_count--;
 	}
 end:
-	if (card) {
-		sc_disconnect_card(card);
-	}
-	if (ctx)
-		sc_release_context(ctx);
+	sc_disconnect_card(card);
+	sc_release_context(ctx);
 	return err;
 }

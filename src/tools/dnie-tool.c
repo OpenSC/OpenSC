@@ -232,8 +232,7 @@ dnie_tool_end:
 		sc_unlock(card);
 		sc_disconnect_card(card);
 	}
-	if (ctx)
-		sc_release_context(ctx);
+	sc_release_context(ctx);
 	return err;
 }
 

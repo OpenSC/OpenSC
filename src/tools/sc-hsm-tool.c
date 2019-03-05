@@ -1844,11 +1844,8 @@ int main(int argc, char *argv[])
 fail:
 	err = 1;
 end:
-	if (card) {
-		sc_disconnect_card(card);
-	}
-	if (ctx)
-		sc_release_context(ctx);
+	sc_disconnect_card(card);
+	sc_release_context(ctx);
 
 	ERR_print_errors_fp(stderr);
 	return err;

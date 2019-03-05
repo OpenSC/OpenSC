@@ -2427,11 +2427,8 @@ int main(int argc, char *argv[])
 		action_count--;
 	}
 end:
-	if (p15card)
-		sc_pkcs15_unbind(p15card);
-	if (card)
-		sc_disconnect_card(card);
-	if (ctx)
-		sc_release_context(ctx);
+	sc_pkcs15_unbind(p15card);
+	sc_disconnect_card(card);
+	sc_release_context(ctx);
 	return err;
 }
