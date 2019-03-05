@@ -1640,10 +1640,10 @@ pgp_get_pubkey_pem(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 		LOG_TEST_RET(card->ctx, r, "error getting elements");
 
 	/* RSA */
-	if ((r = pgp_get_blob(card, blob, 0x0081, &mod_blob)) == 0
-		&& (r = pgp_get_blob(card, blob, 0x0082, &exp_blob)) == 0
-		&& (r = pgp_read_blob(card, mod_blob)) == 0
-		&& (r = pgp_read_blob(card, exp_blob)) == 0) {
+	if ((r = pgp_get_blob(card, blob, 0x0081, &mod_blob)) >= 0
+		&& (r = pgp_get_blob(card, blob, 0x0082, &exp_blob)) >= 0
+		&& (r = pgp_read_blob(card, mod_blob)) >= 0
+		&& (r = pgp_read_blob(card, exp_blob)) >= 0) {
 
 		memset(&pubkey, 0, sizeof(pubkey));
 
@@ -1654,8 +1654,8 @@ pgp_get_pubkey_pem(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 		pubkey.u.rsa.exponent.len  = exp_blob->len;
 	}
 	/* ECC */
-	else if ((r = pgp_get_blob(card, blob, 0x0086, &pubkey_blob)) == 0
-		&& (r = pgp_read_blob(card, pubkey_blob)) == 0) {
+	else if ((r = pgp_get_blob(card, blob, 0x0086, &pubkey_blob)) >= 0
+		&& (r = pgp_read_blob(card, pubkey_blob)) >= 0) {
 
 		memset(&pubkey, 0, sizeof(pubkey));
 
