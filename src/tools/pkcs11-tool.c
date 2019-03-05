@@ -4615,9 +4615,12 @@ static int sign_verify_openssl(CK_SESSION_HANDLE session,
 	if (!md_ctx)
 		err = -1;
 	else {
-		EVP_VerifyInit(md_ctx, evp_mds[evp_md_index]);
-		EVP_VerifyUpdate(md_ctx, verifyData, verifyDataLen);
-		err = EVP_VerifyFinal(md_ctx, sig1, sigLen1, pkey);
+		if (EVP_VerifyInit(md_ctx, evp_mds[evp_md_index])
+				&& EVP_VerifyUpdate(md_ctx, verifyData, verifyDataLen)) {
+			err = EVP_VerifyFinal(md_ctx, sig1, sigLen1, pkey);
+		} else {
+			err = -1;
+		}
 		EVP_MD_CTX_destroy(md_ctx);
 		EVP_PKEY_free(pkey);
 	}
