@@ -52,7 +52,7 @@ print_permissions(u8 permissions)
 {
     size_t perms_printed = 0;
     if (permissions & SOCM_AUTHOBJECT_PIN) {
-        printf("%s PIN", perms_printed ? " or" : "verification of");
+        printf("verification of PIN");
         perms_printed++;
     }
     if (permissions & SOCM_AUTHOBJECT_BIO) {
@@ -175,7 +175,7 @@ soc_info(sc_context_t *ctx, sc_card_t *card)
                     /* i now counts the number of flags that were printed */
                     i = 0;
                     if (tag & 0x02) {
-                        printf("%sdefault selected", i ? ", " : "");
+                        printf("default selected");
                         i++;
                     }
                     if (tag & 0x01) {
