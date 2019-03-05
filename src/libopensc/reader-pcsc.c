@@ -39,6 +39,7 @@
 #include "common/libscdl.h"
 #include "internal.h"
 #include "internal-winscard.h"
+#include "card-sc-hsm.h"
 
 #include "pace.h"
 
@@ -430,7 +431,7 @@ static int pcsc_detect_card_presence(sc_reader_t *reader)
 static int check_forced_protocol(sc_reader_t *reader, DWORD *protocol)
 {
 	scconf_block *atrblock = NULL;
-	int ok = 0;
+	int forced = 0;
 
 	atrblock = _sc_match_atr_block(reader->ctx, NULL, &reader->atr);
 	if (atrblock != NULL) {
@@ -439,26 +440,37 @@ static int check_forced_protocol(sc_reader_t *reader, DWORD *protocol)
 		forcestr = scconf_get_str(atrblock, "force_protocol", "unknown");
 		if (!strcmp(forcestr, "t0")) {
 			*protocol = SCARD_PROTOCOL_T0;
-			ok = 1;
+			forced = 1;
 		} else if (!strcmp(forcestr, "t1")) {
 			*protocol = SCARD_PROTOCOL_T1;
-			ok = 1;
+			forced = 1;
 		} else if (!strcmp(forcestr, "raw")) {
 			*protocol = SCARD_PROTOCOL_RAW;
-			ok = 1;
+			forced = 1;
 		}
-		if (ok)
+		if (forced)
 			sc_log(reader->ctx, "force_protocol: %s", forcestr);
 	}
 
-	if (!ok && reader->uid.len) {
+	if (!forced && reader->uid.len) {
 		/* We identify contactless cards by their UID. Communication
 		 * defined by ISO/IEC 14443 is identical to T=1. */
 		*protocol = SCARD_PROTOCOL_T1;
-		ok = 1;
+		forced = 1;
 	}
 
-	return ok;
+	if (!forced) {
+		sc_card_t card;
+		memset(&card, 0, sizeof card);
+		card.ctx = reader->ctx;
+		card.atr = reader->atr;
+		if (0 <= _sc_match_atr(&card, sc_hsm_atrs, NULL)) {
+			*protocol = SCARD_PROTOCOL_T1;
+			forced = 1;
+		}
+	}
+
+	return forced;
 }
 
 

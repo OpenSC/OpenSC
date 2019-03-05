@@ -60,7 +60,7 @@ struct sc_aid sc_hsm_aid = { { 0xE8,0x2B,0x06,0x01,0x04,0x01,0x81,0xC3,0x1F,0x02
 
 
 /* Known ATRs for SmartCard-HSMs */
-static const struct sc_atr_table sc_hsm_atrs[] = {
+const struct sc_atr_table sc_hsm_atrs[] = {
 	/* standard version */
 	{"3B:FE:18:00:00:81:31:FE:45:80:31:81:54:48:53:4D:31:73:80:21:40:81:07:FA", NULL, NULL, SC_CARD_TYPE_SC_HSM, 0, NULL},
 	{"3B:8E:80:01:80:31:81:54:48:53:4D:31:73:80:21:40:81:07:18", NULL, NULL, SC_CARD_TYPE_SC_HSM, 0, NULL},

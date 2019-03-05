@@ -21,6 +21,9 @@
 #ifndef SC_HSM_H_
 #define SC_HSM_H_
 
+#include "pkcs15.h"
+#include "internal.h"
+
 #define MAX_EXT_APDU_LENGTH 1014
 
 #define PRKD_PREFIX				0xC4		/* Hi byte in file identifier for PKCS#15 PRKD objects */
@@ -125,4 +128,6 @@ void sc_pkcs15emu_sc_hsm_free_cvc(sc_cvc_t *cvc);
 int sc_pkcs15emu_sc_hsm_get_curve(struct ec_curve **curve, u8 *oid, size_t oidlen);
 int sc_pkcs15emu_sc_hsm_get_public_key(struct sc_context *ctx, sc_cvc_t *cvc, struct sc_pkcs15_pubkey *pubkey);
 
+/* Known ATRs for SmartCard-HSMs */
+extern const struct sc_atr_table sc_hsm_atrs[];
 #endif /* SC_HSM_H_ */
