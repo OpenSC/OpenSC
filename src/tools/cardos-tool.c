@@ -1127,7 +1127,7 @@ int main(int argc, char *argv[])
 		}
 		action_count--;
 	}
-      end:
+end:
 	if (card) {
 		sc_unlock(card);
 		sc_disconnect_card(card);

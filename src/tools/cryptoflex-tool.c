@@ -1076,6 +1076,8 @@ int main(int argc, char *argv[])
 	}
 
 	err = util_connect_card(ctx, &card, opt_reader, opt_wait, verbose);
+	if (err)
+		goto end;
 	printf("Using card driver: %s\n", card->driver->name);
 
 	if (do_create_pin_file) {
