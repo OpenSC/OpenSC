@@ -1453,9 +1453,11 @@ pkcs15_create_tokens(struct sc_pkcs11_card *p11card, struct sc_app_info *app_inf
 
 	/* Find out framework data corresponding to the given application */
 	fw_data = get_fw_data(p11card, app_info, &idx);
-	if (!fw_data && p11card)   {
-		sc_log(context, "Create slot for the non-binded card");
-		pkcs15_create_slot(p11card, NULL, NULL, app_info, &slot);
+	if (!fw_data)   {
+		if (p11card) {
+			sc_log(context, "Create slot for the non-binded card");
+			pkcs15_create_slot(p11card, NULL, NULL, app_info, &slot);
+		}
 		return CKR_OK;
 	}
 	sc_log(context, "Use FW data with index %i; fw_data->p15_card %p", idx, fw_data->p15_card);
