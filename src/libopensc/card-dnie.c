@@ -1520,11 +1520,6 @@ static int dnie_set_security_env(struct sc_card *card,
 		apdu.p1 = 0x41;	/* SET; internal operation */
 		apdu.p2 = 0xB6;	/* Template for Digital Signature */
 		break;
-	case SC_SEC_OPERATION_AUTHENTICATE:
-		/* TODO: _set_security_env() study diffs on internal/external auth */
-		apdu.p1 = 0x41;	/* SET; internal operation */
-		apdu.p2 = 0xA4;	/* Template for Authenticate */
-		break;
 	default:
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
