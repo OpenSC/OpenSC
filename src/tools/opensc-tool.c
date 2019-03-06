@@ -712,6 +712,7 @@ int main(int argc, char *argv[])
 	const char *opt_conf_entry = NULL;
 	const char *opt_reset_type = NULL;
 	char **p;
+	struct sc_reader *reader = NULL;
 	sc_context_param_t ctx_param;
 
 	while (1) {
@@ -846,6 +847,24 @@ int main(int argc, char *argv[])
 			goto end;
 		action_count--;
 	}
+
+	err = util_connect_reader(ctx, &reader, opt_reader, opt_wait, verbose);
+	if (err) {
+		fprintf(stderr, "Failed to connect to reader: %s\n", sc_strerror(err));
+		err = 1;
+		goto end;
+	}
+	if (do_print_atr) {
+		if (verbose) {
+			printf("Card ATR:\n");
+			util_hex_dump_asc(stdout, reader->atr.value, reader->atr.len, -1);
+		} else {
+			char tmp[SC_MAX_ATR_SIZE*3];
+			sc_bin_to_hex(reader->atr.value, reader->atr.len, tmp, sizeof(tmp) - 1, ':');
+			fprintf(stdout,"%s\n",tmp);
+		}
+		action_count--;
+	}
 	if (action_count <= 0)
 		goto end;
 
@@ -858,21 +877,19 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	err = util_connect_card_ex(ctx, &card, opt_reader, opt_wait, 0, verbose);
-	if (err)
-		goto end;
+	if (verbose)
+		printf("Connecting to card in reader %s...\n", reader->name);
 
-	if (do_print_atr) {
-		if (verbose) {
-			printf("Card ATR:\n");
-			util_hex_dump_asc(stdout, card->atr.value, card->atr.len, -1);
-		} else {
-			char tmp[SC_MAX_ATR_SIZE*3];
-			sc_bin_to_hex(card->atr.value, card->atr.len, tmp, sizeof(tmp) - 1, ':');
-			fprintf(stdout,"%s\n",tmp);
-		}
-		action_count--;
+	err = sc_connect_card(reader, &card);
+	if (err < 0) {
+		fprintf(stderr, "Failed to connect to card: %s\n", sc_strerror(err));
+		err = 1;
+		goto end;
 	}
+
+	if (verbose)
+                printf("Using card driver %s.\n", card->driver->name);
+
 	if (do_print_serial) {
 		if (verbose)
 			printf("Card serial number:");
