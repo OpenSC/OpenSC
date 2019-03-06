@@ -5418,7 +5418,7 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 		}
 #else
 		if (hash_alg != CKM_SHA_1) {
-			printf("This version of OpenSsl only supports SHA1 for OAEP, returning\n");
+			printf("This version of OpenSSL only supports SHA1 for OAEP, returning\n");
 			return 0;
 		}
 #endif
