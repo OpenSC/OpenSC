@@ -21,7 +21,6 @@ OBJECTS			= \
 	card-entersafe.obj card-epass2003.obj card-coolkey.obj \
 	card-incrypto34.obj card-cac.obj card-cac1.obj card-cac-common.obj \
 	card-piv.obj card-muscle.obj \
-	card-acos5.obj \
 	card-asepcos.obj card-akis.obj card-gemsafeV1.obj card-rutoken.obj \
 	card-rtecp.obj card-westcos.obj card-myeid.obj \
 	card-itacns.obj card-authentic.obj \
