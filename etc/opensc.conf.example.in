@@ -873,7 +873,7 @@ app default {
 		# (with certificate check)  where $HOME is not set
 		# Default: path in user home
 		# file_cache_dir = /var/lib/opensc/cache
-                #
+
 		# Use PIN caching?
 		# Default: true
 		# use_pin_caching = false;
@@ -886,7 +886,12 @@ app default {
 		# may need to set this to get signatures to work with some cards.
 		# Default: false
 		# pin_cache_ignore_user_consent = true;
-		#
+
+		# How to handle a PIN-protected certificate
+		# Valid values: protect, declassify, ignore.
+		# Default: ignore in tokend, protect otherwise
+		# private_certificate = declassify;
+
 		# Enable pkcs15 emulation.
 		# Default: yes
 		# enable_pkcs15_emulation = no;

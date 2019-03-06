@@ -1144,6 +1144,30 @@ app <replaceable>application</replaceable> {
 				</varlistentry>
 				<varlistentry>
 					<term>
+						<option>private_certificate = <replaceable>value</replaceable>;</option>
+					</term>
+					<listitem><para>
+							How to handle a PIN-protected certificate. Known
+							parameters:
+							<itemizedlist>
+								<listitem><para>
+										<literal>protect</literal>: The certificate stays PIN-protected.
+								</para></listitem>
+								<listitem><para>
+										<literal>declassify</literal>: Allow
+										reading the certificate without
+										enforcing verification of the PIN.
+								</para></listitem>
+								<listitem><para>
+										<literal>ignore</literal>: Ignore PIN-protected certificates.
+								</para></listitem>
+							</itemizedlist>
+							(Default: <literal>ignore</literal> in Tokend,
+							<literal>protect</literal> otherwise).
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
 						<option>enable_pkcs15_emulation = <replaceable>bool</replaceable>;</option>
 					</term>
 					<listitem><para>
@@ -1309,17 +1333,6 @@ app <replaceable>application</replaceable> {
 							Score for <application>OpenSC.tokend</application>
 							(Default: <literal>300</literal>).  The tokend with
 							the highest score shall be used.
-					</para></listitem>
-				</varlistentry>
-				<varlistentry>
-					<term>
-						<option>ignore_private_certificate = <replaceable>bool</replaceable>;</option>
-					</term>
-					<listitem><para>
-							Tokend ignore to read PIN protected certificate
-							that is set
-							<literal>SC_PKCS15_CO_FLAG_PRIVATE</literal> flag
-							(Default: <literal>true</literal>).
 					</para></listitem>
 				</varlistentry>
 			</variablelist>

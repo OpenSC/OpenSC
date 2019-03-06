@@ -1188,6 +1188,7 @@ sc_pkcs15_bind(struct sc_card *card, struct sc_aid *aid,
 	struct sc_context *ctx = card->ctx;
 	scconf_block *conf_block = NULL;
 	int r, emu_first, enable_emu;
+	const char *private_certificate;
 
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "application(aid:'%s')", aid ? sc_dump_hex(aid->value, aid->len) : "empty");
@@ -1204,19 +1205,33 @@ sc_pkcs15_bind(struct sc_card *card, struct sc_aid *aid,
 	p15card->opts.use_pin_cache = 1;
 	p15card->opts.pin_cache_counter = 10;
 	p15card->opts.pin_cache_ignore_user_consent = 0;
+	if(0 == strcmp(ctx->app_name, "tokend")) {
+		private_certificate = "ignore";
+		p15card->opts.private_certificate = SC_PKCS15_CARD_OPTS_PRIV_CERT_IGNORE;
+	} else {
+		private_certificate = "protect";
+		p15card->opts.private_certificate = SC_PKCS15_CARD_OPTS_PRIV_CERT_PROTECT;
+	}
 
 	conf_block = sc_get_conf_block(ctx, "framework", "pkcs15", 1);
-
 	if (conf_block) {
 		p15card->opts.use_file_cache = scconf_get_bool(conf_block, "use_file_caching", p15card->opts.use_file_cache);
 		p15card->opts.use_pin_cache = scconf_get_bool(conf_block, "use_pin_caching", p15card->opts.use_pin_cache);
 		p15card->opts.pin_cache_counter = scconf_get_int(conf_block, "pin_cache_counter", p15card->opts.pin_cache_counter);
-		p15card->opts.pin_cache_ignore_user_consent =  scconf_get_bool(conf_block, "pin_cache_ignore_user_consent",
+		p15card->opts.pin_cache_ignore_user_consent = scconf_get_bool(conf_block, "pin_cache_ignore_user_consent",
 				p15card->opts.pin_cache_ignore_user_consent);
+		private_certificate = scconf_get_str(conf_block, "private_certificate", private_certificate);
 	}
-	sc_log(ctx, "PKCS#15 options: use_file_cache=%d use_pin_cache=%d pin_cache_counter=%d pin_cache_ignore_user_consent=%d",
+	if (0 == strcmp(private_certificate, "protect")) {
+		p15card->opts.private_certificate = SC_PKCS15_CARD_OPTS_PRIV_CERT_PROTECT;
+	} else if (0 == strcmp(private_certificate, "ignore")) {
+		p15card->opts.private_certificate = SC_PKCS15_CARD_OPTS_PRIV_CERT_IGNORE;
+	} else if (0 == strcmp(private_certificate, "declassify")) {
+		p15card->opts.private_certificate = SC_PKCS15_CARD_OPTS_PRIV_CERT_DECLASSIFY;
+	}
+	sc_log(ctx, "PKCS#15 options: use_file_cache=%d use_pin_cache=%d pin_cache_counter=%d pin_cache_ignore_user_consent=%d private_certificate=%d",
 			p15card->opts.use_file_cache, p15card->opts.use_pin_cache,p15card->opts.pin_cache_counter,
-			p15card->opts.pin_cache_ignore_user_consent);
+			p15card->opts.pin_cache_ignore_user_consent, p15card->opts.private_certificate);
 
 	r = sc_lock(card);
 	if (r) {

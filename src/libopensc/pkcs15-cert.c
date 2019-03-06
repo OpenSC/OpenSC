@@ -488,6 +488,16 @@ sc_pkcs15_decode_cdf_entry(struct sc_pkcs15_card *p15card, struct sc_pkcs15_obje
 	}
 	sc_log(ctx, "Certificate path '%s'", sc_print_path(&info.path));
 
+	switch (p15card->opts.private_certificate) {
+		case SC_PKCS15_CARD_OPTS_PRIV_CERT_DECLASSIFY:
+			sc_log(ctx, "Declassifying certificate");
+			obj->flags &= ~SC_PKCS15_CO_FLAG_PRIVATE;
+			break;
+		case SC_PKCS15_CARD_OPTS_PRIV_CERT_IGNORE:
+			sc_log(ctx, "Ignoring certificate");
+			return 0;
+	}
+
 	obj->type = SC_PKCS15_TYPE_CERT_X509;
 	obj->data = malloc(sizeof(info));
 	if (obj->data == NULL)
