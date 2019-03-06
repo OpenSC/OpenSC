@@ -53,14 +53,13 @@ function card_setup() {
 	# Generate 2048b RSA Key pair
 	generate_key "RSA:2048" "02" "RSA2048"
 	# Generate 256b ECC Key pair
-	# generate_key "EC:secp256r1" "03" "ECC_auth"
+	generate_key "EC:secp256r1" "03" "ECC_auth"
 	# Generate 521b ECC Key pair
-	# generate_key "EC:secp521r1" "04" "ECC521"
-	# TODO ECDSA keys tests
+	generate_key "EC:secp521r1" "04" "ECC521"
 }
 
 function card_cleanup() {
 	rm .softhsm2.conf
 	rm -rf ".tokens"
-	rm 0{1,2}.pub
+	rm 0{1,2,3,4}.pub
 }
