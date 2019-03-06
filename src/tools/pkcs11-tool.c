@@ -5287,7 +5287,7 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 		CK_OBJECT_HANDLE privKeyObject)
 {
 	EVP_PKEY       *pkey;
-	unsigned char	orig_data[512] = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', '\0'};
+	unsigned char	orig_data[512];
 	unsigned char	encrypted[512], data[512];
 	CK_MECHANISM	mech;
 	CK_ULONG	encrypted_len, data_len;
@@ -5299,6 +5299,8 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 	CK_RSA_PKCS_OAEP_PARAMS oaep_params;
 
 	printf("    %s: ", p11_mechanism_to_name(mech_type));
+
+	pseudo_randomize(orig_data, sizeof(orig_data));
 
 	pkey = get_public_key(session, privKeyObject);
 	if (pkey == NULL)
