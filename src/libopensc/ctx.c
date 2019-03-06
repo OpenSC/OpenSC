@@ -110,7 +110,6 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 #endif
 	{ "belpic",	(void *(*)(void)) sc_get_belpic_driver },
 	{ "incrypto34", (void *(*)(void)) sc_get_incrypto34_driver },
-	{ "acos5",	(void *(*)(void)) sc_get_acos5_driver },
 	{ "akis",	(void *(*)(void)) sc_get_akis_driver },
 #ifdef ENABLE_OPENSSL
 	{ "entersafe",(void *(*)(void)) sc_get_entersafe_driver },
