@@ -876,6 +876,7 @@ int main(int argc, char **argv)
 
 	r = util_connect_card(ctx, &card, opt_reader, opt_wait, verbose);
 	if (r) {
+		sc_release_context(ctx);
 		util_fatal("failed to connect to card: %s", sc_strerror(r));
 		return EXIT_FAILURE;
 	}
