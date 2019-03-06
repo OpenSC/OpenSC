@@ -312,9 +312,6 @@ static int itacns_set_security_env(sc_card_t *card,
 	case SC_SEC_OPERATION_SIGN:
 		apdu.p2 = 0xB6;
 		break;
-	case SC_SEC_OPERATION_AUTHENTICATE:
-		apdu.p2 = 0xA4;
-		break;
 	default:
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
