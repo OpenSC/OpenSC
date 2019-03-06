@@ -48,12 +48,10 @@ is_string_valid_atr(const char *atr_str)
 	return 1;
 }
 
-int
-util_connect_card_ex(sc_context_t *ctx, sc_card_t **cardp,
-		 const char *reader_id, int do_wait, int do_lock, int verbose)
+int util_connect_reader (sc_context_t *ctx, sc_reader_t **reader,
+	const char *reader_id, int do_wait, int verbose)
 {
-	struct sc_reader *reader = NULL, *found = NULL;
-	struct sc_card *card = NULL;
+	struct sc_reader *found = NULL;
 	int r;
 
 	setbuf(stderr, NULL);
@@ -88,7 +86,7 @@ util_connect_card_ex(sc_context_t *ctx, sc_card_t **cardp,
 			fprintf(stderr, "Error while waiting for a card: %s\n", sc_strerror(r));
 			return 3;
 		}
-		reader = found;
+		*reader = found;
 	}
 	else if (sc_ctx_get_reader_count(ctx) == 0) {
 		fprintf(stderr, "No smart card readers found.\n");
@@ -99,14 +97,14 @@ util_connect_card_ex(sc_context_t *ctx, sc_card_t **cardp,
 			unsigned int i;
 			/* Automatically try to skip to a reader with a card if reader not specified */
 			for (i = 0; i < sc_ctx_get_reader_count(ctx); i++) {
-				reader = sc_ctx_get_reader(ctx, i);
-				if (sc_detect_card_presence(reader) & SC_READER_CARD_PRESENT) {
-					fprintf(stderr, "Using reader with a card: %s\n", reader->name);
+				*reader = sc_ctx_get_reader(ctx, i);
+				if (sc_detect_card_presence(*reader) & SC_READER_CARD_PRESENT) {
+					fprintf(stderr, "Using reader with a card: %s\n", (*reader)->name);
 					goto autofound;
 				}
 			}
 			/* If no reader had a card, default to the first reader */
-			reader = sc_ctx_get_reader(ctx, 0);
+			*reader = sc_ctx_get_reader(ctx, 0);
 		}
 		else {
 			/* If the reader identifier looks like an ATR, try to find the reader with that card */
@@ -128,7 +126,7 @@ util_connect_card_ex(sc_context_t *ctx, sc_card_t **cardp,
 						continue;
 
 					fprintf(stderr, "Matched ATR in reader: %s\n", rdr->name);
-					reader = rdr;
+					*reader = rdr;
 					goto autofound;
 				}
 			}
@@ -139,24 +137,36 @@ util_connect_card_ex(sc_context_t *ctx, sc_card_t **cardp,
 				errno = 0;
 				num = strtol(reader_id, &endptr, 0);
 				if (!errno && endptr && *endptr == '\0')
-					reader = sc_ctx_get_reader(ctx, num);
+					*reader = sc_ctx_get_reader(ctx, num);
 				else
-					reader = sc_ctx_get_reader_by_name(ctx, reader_id);
+					*reader = sc_ctx_get_reader_by_name(ctx, reader_id);
 			}
 		}
 autofound:
-		if (!reader) {
+		if (!(*reader)) {
 			fprintf(stderr, "Reader \"%s\" not found (%d reader(s) detected)\n",
 					reader_id, sc_ctx_get_reader_count(ctx));
 			return 1;
 		}
 
-		if (sc_detect_card_presence(reader) <= 0) {
+		if (sc_detect_card_presence(*reader) <= 0) {
 			fprintf(stderr, "Card not present.\n");
 			return 3;
 		}
 	}
+	return 0;
+}
+int
+util_connect_card_ex(sc_context_t *ctx, sc_card_t **cardp,
+		 const char *reader_id, int do_wait, int do_lock, int verbose)
+{
+	struct sc_reader *reader = NULL;
+	struct sc_card *card = NULL;
+	int r;
 
+	r = util_connect_reader(ctx, &reader, reader_id, do_wait, verbose);
+	if(r)
+		return r;
 	if (verbose)
 		printf("Connecting to card in reader %s...\n", reader->name);
 	r = sc_connect_card(reader, &card);
