@@ -12,9 +12,8 @@ fi
 card_setup
 echo "data to sign (max 100 bytes)" > data
 
-
 echo "======================================================="
-echo "Test"
+echo "Test RSA keys"
 echo "======================================================="
 for HASH in "" "SHA1" "SHA224" "SHA256" "SHA384" "SHA512"; do
     for SIGN_KEY in "01" "02"; do
@@ -55,7 +54,7 @@ for HASH in "" "SHA1" "SHA224" "SHA256" "SHA384" "SHA512"; do
         echo "$METHOD: Sign & Verify (KEY $SIGN_KEY)"
         echo "======================================================="
         if [[ -z $HASH ]]; then
-            # hashing is done outside of the module. We chouse here SHA256
+            # hashing is done outside of the module. We choose here SHA256
             openssl dgst -binary -sha256 data > data.hash
             HASH_ALGORITM="--hash-algorithm=SHA256"
             VERIFY_DGEST="-sha256"
@@ -108,6 +107,37 @@ for HASH in "" "SHA1" "SHA224" "SHA256" "SHA384" "SHA512"; do
 
         # TODO pkcs11-tool encryption not supported
     done
+done
+
+echo "======================================================="
+echo "Test ECDSA keys"
+echo "======================================================="
+for SIGN_KEY in "03" "04"; do
+    METHOD="ECDSA"
+
+    echo
+    echo "======================================================="
+    echo "$METHOD: Sign & Verify (KEY $SIGN_KEY)"
+    echo "======================================================="
+    openssl dgst -binary -sha256 data > data.hash
+    $PKCS11_TOOL --id $SIGN_KEY -s -p $PIN -m $METHOD --module $P11LIB \
+        --input-file data.hash --output-file data.sig
+    assert $? "Failed to Sign data"
+    $PKCS11_TOOL --id $SIGN_KEY -s -p $PIN -m $METHOD --module $P11LIB \
+        --input-file data.hash --output-file data.sig.openssl \
+        --signature-format openssl
+    assert $? "Failed to Sign data into OpenSSL format"
+
+    # OpenSSL verification
+    openssl dgst -keyform PEM -verify $SIGN_KEY.pub -sha256 \
+               -signature data.sig.openssl data
+    assert $? "Failed to Verify signature using OpenSSL"
+
+    # pkcs11-tool verification
+    $PKCS11_TOOL --id $SIGN_KEY --verify -m $METHOD --module $P11LIB \
+           --input-file data.hash --signature-file data.sig
+    assert $? "Failed to Verify signature using pkcs11-tool"
+    rm data.sig{,.openssl} data.hash
 done
 
 echo "======================================================="
