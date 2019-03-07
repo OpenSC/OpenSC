@@ -37,6 +37,11 @@
 #include "sc-pkcs11.h"
 #include "ui/notify.h"
 
+#include "libopensc/sc-ossl-compat.h"
+#ifdef ENABLE_OPENPACE
+#include <eac/eac.h>
+#endif
+
 #ifndef MODULE_APP_NAME
 #define MODULE_APP_NAME "opensc-pkcs11"
 #endif
@@ -210,13 +215,31 @@ static int slot_list_seeker(const void *el, const void *key) {
 	return 0;
 }
 
-#if defined(_WIN32)
-
-#include "libopensc/sc-ossl-compat.h"
-#ifdef ENABLE_OPENPACE
-#include <eac/eac.h>
+#ifndef _WIN32
+__attribute__((constructor))
 #endif
+int module_init()
+{
+	sc_notify_init();
+	return 1;
+}
 
+#ifndef _WIN32
+__attribute__((destructor))
+#endif
+int module_close()
+{
+	sc_notify_close();
+#if defined(ENABLE_OPENSSL) && defined(OPENSSL_SECURE_MALLOC_SIZE)
+	CRYPTO_secure_malloc_done();
+#endif
+#ifdef ENABLE_OPENPACE
+	EAC_cleanup();
+#endif
+	return 1;
+}
+
+#ifdef _WIN32
 BOOL APIENTRY DllMain( HINSTANCE hinstDLL,
 	DWORD  ul_reason_for_call,
 	LPVOID lpReserved
@@ -225,16 +248,13 @@ BOOL APIENTRY DllMain( HINSTANCE hinstDLL,
 	switch (ul_reason_for_call)
 	{
 	case DLL_PROCESS_ATTACH:
-		sc_notify_init();
+		if (!module_init())
+			return FALSE;
+		break;
 	case DLL_PROCESS_DETACH:
-		sc_notify_close();
 		if (lpReserved == NULL) {
-#if defined(ENABLE_OPENSSL) && defined(OPENSSL_SECURE_MALLOC_SIZE)
-			CRYPTO_secure_malloc_done();
-#endif
-#ifdef ENABLE_OPENPACE
-			EAC_cleanup();
-#endif
+			if (!module_close())
+				return FALSE;
 		}
 		break;
 	}

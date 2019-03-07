@@ -17,12 +17,12 @@ OPENSC_PKCS11_SRC = pkcs11-global.c pkcs11-session.c pkcs11-object.c misc.c slot
 	framework-pkcs15init.c debug.c pkcs11.exports \
 	pkcs11-display.c pkcs11-display.h
 OPENSC_PKCS11_CFLAGS = \
-	$(OPTIONAL_OPENSSL_CFLAGS) $(OPENSC_PKCS11_PTHREAD_CFLAGS)
+	$(OPENPACE_CFLAGS) $(OPTIONAL_OPENSSL_CFLAGS) $(OPENSC_PKCS11_PTHREAD_CFLAGS)
 OPENSC_PKCS11_LIBS = \
 	$(top_builddir)/src/libopensc/libopensc.la \
 	$(top_builddir)/src/common/libscdl.la \
 	$(top_builddir)/src/common/libcompat.la \
-	$(OPTIONAL_OPENSSL_LIBS) $(PTHREAD_LIBS)
+	$(OPENPACE_LIBS) $(OPTIONAL_OPENSSL_LIBS) $(PTHREAD_LIBS)
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = opensc-pkcs11.pc
