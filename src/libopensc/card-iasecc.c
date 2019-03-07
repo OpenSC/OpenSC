@@ -74,8 +74,10 @@ static const struct sc_atr_table iasecc_known_atrs[] = {
 	{ "3B:7F:96:00:00:00:31:B8:64:40:70:14:10:73:94:01:80:82:90:00",
 	  "FF:FF:FF:FF:FF:FF:FF:FE:FF:FF:00:00:FF:FF:FF:FF:FF:FF:FF:FF",
 		"IAS/ECC Gemalto", SC_CARD_TYPE_IASECC_GEMALTO,  0, NULL },
-        { "3B:DD:18:00:81:31:FE:45:80:F9:A0:00:00:00:77:01:08:00:07:90:00:FE", NULL,
+	{ "3B:DD:18:00:81:31:FE:45:80:F9:A0:00:00:00:77:01:08:00:07:90:00:FE", NULL,
 		"IAS/ECC v1.0.1 Oberthur", SC_CARD_TYPE_IASECC_OBERTHUR,  0, NULL },
+	{ "3B:DD:18:00:81:31:FE:45:90:4C:41:54:56:49:41:2D:65:49:44:90:00:8C", NULL,
+		"IAS/ECC v1.0.1 Latvia eID", SC_CARD_TYPE_IASECC_LATVIA_EID, 0, NULL },
 	{ "3B:7D:13:00:00:4D:44:57:2D:49:41:53:2D:43:41:52:44:32", NULL,
 		"IAS/ECC v1.0.1 Sagem MDW-IAS-CARD2", SC_CARD_TYPE_IASECC_SAGEM,  0, NULL },
 	{ "3B:7F:18:00:00:00:31:B8:64:50:23:EC:C1:73:94:01:80:82:90:00", NULL,
@@ -445,16 +447,24 @@ iasecc_oberthur_match(struct sc_card *card)
 {
 	struct sc_context *ctx = card->ctx;
 	unsigned char *hist = card->reader->atr_info.hist_bytes;
+	size_t hist_bytes_len = card->reader->atr_info.hist_bytes_len;
 
 	LOG_FUNC_CALLED(ctx);
 
-	if (*hist != 0x80 || ((*(hist+1)&0xF0) != 0xF0))
+	if (hist_bytes_len >= 2 && *hist == 0x80 && ((*(hist + 1) & 0xF0) == 0xF0)) {
+		size_t aid_len = *(hist + 1) & 0x0F;
+
+		sc_log_hex(ctx, "AID in historical_bytes", hist + 2, aid_len);
+
+		if (hist_bytes_len - 2 >= aid_len && memcmp(hist + 2, OberthurIASECC_AID.value, aid_len))
+			LOG_FUNC_RETURN(ctx, SC_ERROR_RECORD_NOT_FOUND);
+	}
+	else if (hist_bytes_len >= 1 && *hist == 0x90) {
+		sc_log_hex(ctx, "Proprietary data in historical_bytes", hist + 1, hist_bytes_len - 1);
+	}
+	else {
 		LOG_FUNC_RETURN(ctx, SC_ERROR_OBJECT_NOT_FOUND);
-
-	sc_log_hex(ctx, "AID in historical_bytes", hist + 2, *(hist+1) & 0x0F);
-
-	if (memcmp(hist + 2, OberthurIASECC_AID.value, *(hist+1) & 0x0F))
-		LOG_FUNC_RETURN(ctx, SC_ERROR_RECORD_NOT_FOUND);
+	}
 
 	if (!card->ef_atr)
 		card->ef_atr = calloc(1, sizeof(struct sc_ef_atr));
@@ -590,6 +600,8 @@ iasecc_init(struct sc_card *card)
 	if (card->type == SC_CARD_TYPE_IASECC_GEMALTO)
 		rv = iasecc_init_gemalto(card);
 	else if (card->type == SC_CARD_TYPE_IASECC_OBERTHUR)
+		rv = iasecc_init_oberthur(card);
+	else if (card->type == SC_CARD_TYPE_IASECC_LATVIA_EID)
 		rv = iasecc_init_oberthur(card);
 	else if (card->type == SC_CARD_TYPE_IASECC_SAGEM)
 		rv = iasecc_init_amos_or_sagem(card);
@@ -898,6 +910,7 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 
 		if (card->type != SC_CARD_TYPE_IASECC_GEMALTO
 				&& card->type != SC_CARD_TYPE_IASECC_OBERTHUR
+				&& card->type != SC_CARD_TYPE_IASECC_LATVIA_EID
 				&& card->type != SC_CARD_TYPE_IASECC_SAGEM
 				&& card->type != SC_CARD_TYPE_IASECC_AMOS
 				&& card->type != SC_CARD_TYPE_IASECC_MI
@@ -907,6 +920,10 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 		if (lpath.type == SC_PATH_TYPE_FILE_ID)   {
 			apdu.p1 = 0x02;
 			if (card->type == SC_CARD_TYPE_IASECC_OBERTHUR)   {
+				apdu.p1 = 0x01;
+				apdu.p2 = 0x04;
+			}
+			if (card->type == SC_CARD_TYPE_IASECC_LATVIA_EID)   {
 				apdu.p1 = 0x01;
 				apdu.p2 = 0x04;
 			}
@@ -920,6 +937,8 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 		else if (lpath.type == SC_PATH_TYPE_FROM_CURRENT)  {
 			apdu.p1 = 0x09;
 			if (card->type == SC_CARD_TYPE_IASECC_OBERTHUR)
+				apdu.p2 = 0x04;
+			if (card->type == SC_CARD_TYPE_IASECC_LATVIA_EID)
 				apdu.p2 = 0x04;
 			if (card->type == SC_CARD_TYPE_IASECC_AMOS)
 				apdu.p2 = 0x04;
