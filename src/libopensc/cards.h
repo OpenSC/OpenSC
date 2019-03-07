@@ -247,6 +247,10 @@ enum {
 	SC_CARD_TYPE_NPA = 34000,
 	SC_CARD_TYPE_NPA_TEST,
 	SC_CARD_TYPE_NPA_ONLINE,
+
+	/* EstEID cards */
+	SC_CARD_TYPE_ESTEID = 35000,
+	SC_CARD_TYPE_ESTEID_2018,
 };
 
 extern sc_card_driver_t *sc_get_default_driver(void);
@@ -289,6 +293,7 @@ extern sc_card_driver_t *sc_get_coolkey_driver(void);
 extern sc_card_driver_t *sc_get_cac_driver(void);
 extern sc_card_driver_t *sc_get_cac1_driver(void);
 extern sc_card_driver_t *sc_get_npa_driver(void);
+extern sc_card_driver_t *sc_get_esteid2018_driver(void);
 
 #ifdef __cplusplus
 }

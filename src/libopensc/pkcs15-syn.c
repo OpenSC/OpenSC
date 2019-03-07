@@ -58,6 +58,8 @@ struct sc_pkcs15_emulator_handler builtin_emulators[] = {
 	{ "jpki",	sc_pkcs15emu_jpki_init_ex },
 	{ "coolkey",    sc_pkcs15emu_coolkey_init_ex	},
 	{ "din66291",    sc_pkcs15emu_din_66291_init_ex	},
+	{ "esteid2018",    sc_pkcs15emu_esteid2018_init_ex	},
+
 	{ NULL, NULL }
 };
 
