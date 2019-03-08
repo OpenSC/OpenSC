@@ -155,7 +155,8 @@ enum {
 	OPT_SALT,
 	OPT_VERIFY,
 	OPT_SIGNATURE_FILE,
-	OPT_ALWAYS_AUTH
+	OPT_ALWAYS_AUTH,
+	OPT_ALLOWED_MECHANISMS
 };
 
 static const struct option options[] = {
@@ -213,6 +214,7 @@ static const struct option options[] = {
 	{ "signature-file",	1, NULL,		OPT_SIGNATURE_FILE },
 	{ "output-file",	1, NULL,		'o' },
 	{ "signature-format",	1, NULL,		'f' },
+	{ "allowed-mechanisms",	1, NULL,		OPT_ALLOWED_MECHANISMS },
 
 	{ "test",		0, NULL,		't' },
 	{ "test-hotplug",	0, NULL,		OPT_TEST_HOTPLUG },
@@ -285,6 +287,7 @@ static const char *option_help[] = {
 	"Specify the file with signature for verification",
 	"Specify the output file",
 	"Format for ECDSA signature <arg>: 'rs' (default), 'sequence', 'openssl'",
+	"Specify the comma-separated list of allowed mechanisms when creating an object.",
 
 	"Test (best used with the --login or --pin option)",
 	"Test hotplug capabilities (C_GetSlotList + C_WaitForSlotEvent)",
@@ -332,6 +335,9 @@ static char *		opt_issuer = NULL;
 static char *		opt_subject = NULL;
 static char *		opt_key_type = NULL;
 static char *		opt_sig_format = NULL;
+#define MAX_ALLOWED_MECHANISMS 20
+static CK_MECHANISM_TYPE opt_allowed_mechanisms[MAX_ALLOWED_MECHANISMS];
+static size_t		opt_allowed_mechanisms_len = 0;
 static int		opt_is_private = 0;
 static int		opt_is_sensitive = 0;
 static int		opt_test_hotplug = 0;
@@ -496,7 +502,7 @@ get##ATTR(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj, CK_ULONG_PTR pulCount) \
 		}						\
 		if (pulCount)					\
 			*pulCount = attr.ulValueLen / sizeof(TYPE);	\
-	} else {						\
+	} else if (rv != CKR_ATTRIBUTE_TYPE_INVALID) {		\
 		p11_warn("C_GetAttributeValue(" #ATTR ")", rv);	\
 	}							\
 	return (TYPE *) attr.pValue;				\
@@ -534,6 +540,7 @@ VARATTR_METHOD(VALUE, unsigned char);			/* getVALUE */
 VARATTR_METHOD(GOSTR3410_PARAMS, unsigned char);	/* getGOSTR3410_PARAMS */
 VARATTR_METHOD(EC_POINT, unsigned char);		/* getEC_POINT */
 VARATTR_METHOD(EC_PARAMS, unsigned char);		/* getEC_PARAMS */
+VARATTR_METHOD(ALLOWED_MECHANISMS, CK_MECHANISM_TYPE);	/* getALLOWED_MECHANISMS */
 
 
 int main(int argc, char * argv[])
@@ -571,6 +578,7 @@ int main(int argc, char * argv[])
 	int do_unlock_pin = 0;
 	int action_count = 0;
 	int do_generate_random = 0;
+	char *s = NULL;
 	CK_RV rv;
 
 #ifdef _WIN32
@@ -895,6 +903,22 @@ int main(int argc, char * argv[])
 			break;
 		case OPT_ALWAYS_AUTH:
 			opt_always_auth = 1;
+			break;
+		case OPT_ALLOWED_MECHANISMS:
+			/* Parse the mechanism list and fail early */
+			s = strtok(optarg, ",");
+			while (s != NULL) {
+				if (opt_allowed_mechanisms_len > MAX_ALLOWED_MECHANISMS) {
+					fprintf(stderr, "Too many mechanisms provided"
+						" (max %d). Skipping the rest.", MAX_ALLOWED_MECHANISMS);
+					break;
+				}
+
+				opt_allowed_mechanisms[opt_allowed_mechanisms_len] =
+					p11_name_to_mechanism(s);
+				opt_allowed_mechanisms_len++;
+				s = strtok(NULL, ",");
+			}
 			break;
 		default:
 			util_print_usage_and_die(app_name, options, option_help, NULL);
@@ -2186,6 +2210,7 @@ static void hash_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 
 #define FILL_ATTR(attr, typ, val, len) {(attr).type=(typ); (attr).pValue=(val); (attr).ulValueLen=len;}
 
+/* Generate asymmetric key pair */
 static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	CK_OBJECT_HANDLE *hPublicKey, CK_OBJECT_HANDLE *hPrivateKey, const char *type)
 {
@@ -2402,6 +2427,13 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		n_privkey_attr++;
 	}
 
+	if (opt_allowed_mechanisms_len > 0) {
+		FILL_ATTR(privateKeyTemplate[n_privkey_attr],
+			CKA_ALLOWED_MECHANISMS, opt_allowed_mechanisms,
+			sizeof(CK_MECHANISM_TYPE) * opt_allowed_mechanisms_len);
+		n_privkey_attr++;
+	}
+
 	rv = p11->C_GenerateKeyPair(session, &mechanism,
 		publicKeyTemplate, n_pubkey_attr,
 		privateKeyTemplate, n_privkey_attr,
@@ -2419,6 +2451,7 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	return 1;
 }
 
+/* generate symmetric key */
 static int
 gen_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE *hSecretKey,
 	const char *type, char *label)
@@ -2535,6 +2568,13 @@ gen_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE *hSecretKey
 
 	if (opt_object_id_len != 0) {
 		FILL_ATTR(keyTemplate[n_attr], CKA_ID, opt_object_id, opt_object_id_len);
+		n_attr++;
+	}
+
+	if (opt_allowed_mechanisms_len > 0) {
+		FILL_ATTR(keyTemplate[n_attr],
+			CKA_ALLOWED_MECHANISMS, opt_allowed_mechanisms,
+			sizeof(CK_MECHANISM_TYPE) * opt_allowed_mechanisms_len);
 		n_attr++;
 	}
 
@@ -2996,6 +3036,13 @@ static int write_object(CK_SESSION_HANDLE session)
 				&_true, sizeof(_true));
 			n_privkey_attr++;
 		}
+		if (opt_allowed_mechanisms_len > 0) {
+			FILL_ATTR(privkey_templ[n_privkey_attr],
+				CKA_ALLOWED_MECHANISMS, opt_allowed_mechanisms,
+				sizeof(CK_MECHANISM_TYPE) * opt_allowed_mechanisms_len);
+			n_privkey_attr++;
+		}
+
 
 #ifdef ENABLE_OPENSSL
 		if (cert.subject_len != 0) {
@@ -3533,6 +3580,13 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 	FILL_ATTR(newkey_template[n_attrs], CKA_VALUE_LEN, &key_len, sizeof(key_len));
 	n_attrs++;
 
+	if (opt_allowed_mechanisms_len > 0) {
+		FILL_ATTR(newkey_template[n_attrs],
+			CKA_ALLOWED_MECHANISMS, opt_allowed_mechanisms,
+			sizeof(CK_MECHANISM_TYPE) * opt_allowed_mechanisms_len);
+		n_attrs++;
+	}
+
 	buf_size = EC_POINT_point2oct(ecgroup, ecpoint, POINT_CONVERSION_UNCOMPRESSED, NULL,	    0, NULL);
 	buf = (unsigned char *)malloc(buf_size);
 	if (buf == NULL)
@@ -3631,6 +3685,7 @@ derive_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
 static void
 show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 {
+	CK_MECHANISM_TYPE_PTR mechs = NULL;
 	CK_KEY_TYPE	key_type = getKEY_TYPE(sess, obj);
 	CK_ULONG	size = 0;
 	unsigned char	*id, *oid, *value;
@@ -3836,6 +3891,21 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 
 	if (!pub && getALWAYS_AUTHENTICATE(sess, obj))
 		printf("  Access:     always authenticate\n");
+
+	if (!pub) {
+		mechs = getALLOWED_MECHANISMS(sess, obj, &size);
+		if (mechs && size) {
+			unsigned int n;
+
+			printf("  Allowed mechanisms: ");
+			for (n = 0; n < size; n++) {
+				printf("%s%s", (n != 0 ? "," : ""),
+					p11_mechanism_to_name(mechs[n]));
+			}
+			printf("\n");
+		}
+	}
+
 	suppress_warn = 0;
 }
 
