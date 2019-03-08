@@ -41,12 +41,16 @@ function generate_key() {
 	rm $ID.der
 }
 
-function card_setup() {
+function softhsm_initialize() {
 	echo "directories.tokendir = .tokens/" > .softhsm2.conf
 	mkdir ".tokens"
 	export SOFTHSM2_CONF=".softhsm2.conf"
 	# Init token
 	softhsm2-util --init-token --slot 0 --label "SC test" --so-pin="$SOPIN" --pin="$PIN"
+}
+
+function card_setup() {
+	softhsm_initialize
 
 	# Generate 1024b RSA Key pair
 	generate_key "RSA:1024" "01" "RSA_auth"
@@ -58,8 +62,12 @@ function card_setup() {
 	generate_key "EC:secp521r1" "04" "ECC521"
 }
 
-function card_cleanup() {
+function softhsm_cleanup() {
 	rm .softhsm2.conf
 	rm -rf ".tokens"
+}
+
+function card_cleanup() {
+	softhsm_cleanup
 	rm 0{1,2,3,4}.pub
 }
