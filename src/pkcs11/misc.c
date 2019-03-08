@@ -43,16 +43,26 @@ static struct sc_to_cryptoki_error_conversion sc_to_cryptoki_error_map[]  = {
 
 void strcpy_bp(u8 * dst, const char *src, size_t dstsize)
 {
-	size_t c;
-
-	if (!dst || !src || !dstsize)
+	if (!dst || !dstsize)
 		return;
 
 	memset((char *)dst, ' ', dstsize);
 
-	c = strlen(src) > dstsize ? dstsize : strlen(src);
+	if (src) {
+		size_t src_len = strlen(src);
 
-	memcpy((char *)dst, src, c);
+		if (src_len > dstsize) {
+			/* string will be truncated */
+			memcpy((char *)dst, src, dstsize);
+			if (dstsize > 3) {
+				/* show truncation with '...' */
+				/* FIXME avoid breaking an UTF-8 character on multiple bytes */
+				memset((char *)dst + dstsize - 3, '.', 3);
+			}
+		} else {
+			memcpy((char *)dst, src, src_len);
+		}
+	}
 }
 
 
