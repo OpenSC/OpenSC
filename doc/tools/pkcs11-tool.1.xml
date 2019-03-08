@@ -453,6 +453,17 @@
                                         </listitem>
 				</varlistentry>
 
+                                <varlistentry>
+					<term>
+						<option>--allowed-mechanisms</option> <replaceable>mechanisms</replaceable>
+					</term>
+					<listitem><para>Sets the CKA_ALLOWED_MECHANISMS attribute
+					to a key objects when importing an object or generating
+					a keys. The argument accepts comma-separated list of
+					algorithmsm, that can be used with the given key.</para>
+					</listitem>
+				</varlistentry>
+
 				<varlistentry>
 					<term>
 						<option>--test-ec</option>
