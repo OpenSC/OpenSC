@@ -1052,13 +1052,128 @@ pkcs15_add_object(struct sc_pkcs11_slot *slot, struct pkcs15_any_object *obj,
 }
 
 
+static char *
+trim_whitespace(const char *str)
+{
+	const char *start;
+	const char *end;
+	size_t new_len;
+	char *retval;
+
+	if (str == NULL || *str == '\0')
+		return NULL;
+
+	start = str;
+	while(isspace((unsigned char) *start))
+		start++;
+
+	if (*start == '\0')
+		return NULL;
+
+	end = start + strlen(start) - 1;
+	while(end > start && isspace((unsigned char)*end))
+		end--;
+
+	new_len = end - start + 1;
+
+	retval = malloc(new_len + 1);
+	if (retval == NULL)
+		return NULL;
+
+	memcpy(retval, start, new_len);
+	retval[new_len] = '\0';
+
+	return retval;
+}
+
+
+static char *
+truncate_string(const char *string, size_t max_len)
+{
+	size_t len = strlen(string);
+	char *retval;
+
+	if (len <= max_len)
+		return strdup(string);
+
+	retval = malloc(max_len + 1);
+	memcpy(retval, string, max_len);
+	retval[max_len] = '\0';
+
+	return retval;
+}
+
+#define MIN_TOKEN_LEN 4
+#define EXTRA_SPACE 3
+
+static char *
+generate_token_label(const char *token_label, const char *pin_label, size_t max_len)
+{
+	char *token;
+	size_t token_len;
+	char *pin;
+	size_t pin_len;
+	char *retval;
+	size_t retval_len;
+
+	token = trim_whitespace(token_label);
+	token_len = token ? strlen(token) : 0;
+
+	pin = trim_whitespace(pin_label);
+	pin_len = pin ? strlen(pin) : 0;
+
+	if (token == NULL && pin == NULL) {
+		return strdup("");
+	}
+	else if (token == NULL || pin_len > max_len - MIN_TOKEN_LEN - EXTRA_SPACE) {
+		/* Token label is not available or there is no space for it */
+		retval = truncate_string (pin, max_len);
+		free (token);
+		free (pin);
+
+		return retval;
+	}
+	else if (pin == NULL || strncmp(pin, "PIN", 4) == 0) {
+		/* The PIN label is not available or says just non-useful "PIN" */
+		retval = truncate_string (token, max_len);
+		free (token);
+		free (pin);
+
+		return retval;
+	}
+
+	if (token_len + pin_len + EXTRA_SPACE > max_len) {
+		size_t new_token_len;
+		char *new_token;
+
+		new_token_len = max_len - pin_len - EXTRA_SPACE;
+		new_token = truncate_string (token, new_token_len);
+		free (token);
+
+		token = new_token;
+	}
+
+	retval_len = strlen(token) + pin_len + EXTRA_SPACE + 1;
+	retval = malloc(retval_len);
+
+	snprintf(retval, retval_len , "%s (%s)", token, pin);
+
+	free(token);
+	free(pin);
+
+	return retval;
+}
+
+
 static void
 pkcs15_init_slot(struct sc_pkcs15_card *p15card, struct sc_pkcs11_slot *slot,
 		struct sc_pkcs15_object *auth, struct sc_app_info *app_info)
 {
 	struct pkcs15_slot_data *fw_data;
 	struct sc_pkcs15_auth_info *pin_info = NULL;
-	char label[sizeof(auth->label) + sizeof(p15card->tokeninfo->label) + 10];
+	const char *token_label = NULL;
+	const char *pin_label = NULL;
+	char *label = NULL;
 	int write_protected;
 	scconf_block *atrblock;
 
@@ -1093,6 +1208,8 @@ pkcs15_init_slot(struct sc_pkcs15_card *p15card, struct sc_pkcs11_slot *slot,
 	}
 	fw_data->auth_obj = auth;
 
+	token_label = p15card->tokeninfo ? p15card->tokeninfo->label : NULL;
+
 	if (auth != NULL) {
 		pin_info = (struct sc_pkcs15_auth_info*) auth->data;
 
@@ -1100,31 +1217,14 @@ pkcs15_init_slot(struct sc_pkcs15_card *p15card, struct sc_pkcs11_slot *slot,
 			pin_info = NULL;
 		}
 		else   {
-			if (auth->label[0] && strncmp(auth->label, "PIN", 4) != 0) {
-				/* Trim tokeninfo->label to make right parenthesis visible */
-				char tokeninfo_label[sizeof(p15card->tokeninfo->label)+1];
-				int len;
-				snprintf(tokeninfo_label, sizeof(tokeninfo_label), "%s",
-						p15card->tokeninfo ? p15card->tokeninfo->label : "");
-				tokeninfo_label[sizeof(tokeninfo_label)-1] = '\0';
-				for (len = strlen(tokeninfo_label) - 1; len >= 0 && isspace(tokeninfo_label[len]); len--) {
-					tokeninfo_label[len] = 0;
-				}
-				snprintf(label, sizeof(label), "%.*s (%s)",
-					(int) sizeof(auth->label), auth->label,
-					tokeninfo_label);
-			} else
-				/* The PIN label is empty or says just non-useful "PIN" */
-				snprintf(label, sizeof(label), "%s",
-						p15card->tokeninfo ? p15card->tokeninfo->label : "");
+			pin_label = auth->label;
 			slot->token_info.flags |= CKF_LOGIN_REQUIRED;
 		}
 	}
-	else   {
-		snprintf(label, sizeof(label), "%s",
-				p15card->tokeninfo ? p15card->tokeninfo->label : "");
-	}
+
+	label = generate_token_label (token_label, pin_label, 32);
 	strcpy_bp(slot->token_info.label, label, 32);
+	free(label);
 
 	if (pin_info) {
 		slot->token_info.ulMaxPinLen = pin_info->attrs.pin.max_length;
