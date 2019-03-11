@@ -1099,23 +1099,24 @@ pkcs15_init_slot(struct sc_pkcs15_card *p15card, struct sc_pkcs11_slot *slot,
 			pin_info = NULL;
 		}
 		else   {
-			size_t tokeninfo_len = 0;
-			if (p15card->tokeninfo)
-				tokeninfo_len = strlen(p15card->tokeninfo->label);
 			size_t pin_len = 0;
 			if (auth->label[0] && strncmp(auth->label, "PIN", 4) != 0)
 				pin_len = strlen(auth->label);
 
 			if (pin_len) {
+				size_t tokeninfo_len = 0;
+				if (p15card->tokeninfo)
+					tokeninfo_len = strlen(p15card->tokeninfo->label);
 				/* Print the possibly truncated token label with at least 4
 				 * characters followed by the PIN label in paranthesis */
-				size_t max_tokeninfo_len = 32 - pin_len - strlen("L... ()");
-				if (!tokeninfo_len
+				if (tokeninfo_len == 0
 						|| pin_len + strlen("L... ()") > 32) {
-					/* Token label it doesn't fit,
+					/* There is no token label or it doesn't fit,
 					 * print only PIN label */
 					strcpy_bp(slot->token_info.label, auth->label, 32);
 				} else {
+					size_t max_tokeninfo_len = MIN(tokeninfo_len,
+							32 - pin_len - strlen(" ()"));
 					strcpy_bp(slot->token_info.label,
 							p15card->tokeninfo->label,
 							max_tokeninfo_len);
@@ -1135,11 +1136,6 @@ pkcs15_init_slot(struct sc_pkcs15_card *p15card, struct sc_pkcs11_slot *slot,
 			slot->token_info.flags |= CKF_LOGIN_REQUIRED;
 		}
 	}
-	else   {
-		strcpy_bp(slot->token_info.label,
-				p15card->tokeninfo ? p15card->tokeninfo->label : "",
-				32);
-	}
 
 	if (pin_info) {
 		slot->token_info.ulMaxPinLen = pin_info->attrs.pin.max_length;
@@ -1149,6 +1145,9 @@ pkcs15_init_slot(struct sc_pkcs15_card *p15card, struct sc_pkcs11_slot *slot,
 		/* choose reasonable defaults */
 		slot->token_info.ulMaxPinLen = 8;
 		slot->token_info.ulMinPinLen = 4;
+		strcpy_bp(slot->token_info.label,
+				p15card->tokeninfo ? p15card->tokeninfo->label : "",
+				32);
 	}
 
 	slot->app_info = app_info;
