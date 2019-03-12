@@ -583,14 +583,6 @@ int main(int argc, char * argv[])
 #ifdef ENABLE_OPENSSL
 #if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
 	OPENSSL_config(NULL);
-#endif
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
-	OPENSSL_init_crypto(OPENSSL_INIT_LOAD_CRYPTO_STRINGS
-		| OPENSSL_INIT_ADD_ALL_CIPHERS
-		| OPENSSL_INIT_ADD_ALL_DIGESTS
-		| OPENSSL_INIT_LOAD_CONFIG,
-		NULL);
-#else
 	/* OpenSSL magic */
 	OpenSSL_add_all_algorithms();
 	OPENSSL_malloc_init();
