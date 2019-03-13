@@ -104,8 +104,8 @@ struct df_info_s {
 
 struct mcrd_priv_data {
 	unsigned short curpath[MAX_CURPATH];	/* The currently selected path. */
-	size_t curpathlen;	/* Length of this path or 0 if unknown. */
 	int is_ef;		/* True if the path points to an EF. */
+	size_t curpathlen;	/* Length of this path or 0 if unknown. */
 	struct df_info_s *df_infos;
 	sc_security_env_t sec_env;	/* current security environment */
 };
@@ -917,7 +917,7 @@ select_file_by_path(sc_card_t * card, unsigned short *pathptr,
 
 static int
 select_file_by_fid(sc_card_t * card, unsigned short *pathptr,
-		   size_t pathlen, sc_file_t ** file)
+			size_t pathlen, sc_file_t ** file)
 {
 	struct mcrd_priv_data *priv = DRVDATA(card);
 	int r;
@@ -998,7 +998,7 @@ mcrd_select_file(sc_card_t * card, const sc_path_t * path, sc_file_t ** file)
 			sprintf(linep, "%04X", priv->curpath[i]);
 			linep += 4;
 		}
-		strcpy(linep, "\n");
+		strlcpy(linep, "\n", 1);
 		sc_log(card->ctx, "%s", line);
 	}
 
@@ -1020,7 +1020,7 @@ mcrd_select_file(sc_card_t * card, const sc_path_t * path, sc_file_t ** file)
 		pathptr = pathtmp;
 		for (n = 0; n < path->len; n += 2)
 			pathptr[n >> 1] =
-			    (path->value[n] << 8) | path->value[n + 1];
+				(unsigned short)((path->value[n] << 8) | path->value[n + 1]);
 		pathlen = path->len >> 1;
 
 		if (pathlen == priv->curpathlen && priv->is_ef != 2) {
@@ -1047,7 +1047,7 @@ mcrd_select_file(sc_card_t * card, const sc_path_t * path, sc_file_t ** file)
 							file);
 			else {	/* SC_PATH_TYPE_FILEID */
 				r = select_file_by_fid(card, pathptr, pathlen,
-						       file);
+								file);
 			}
 		}
 	}
@@ -1056,13 +1056,13 @@ mcrd_select_file(sc_card_t * card, const sc_path_t * path, sc_file_t ** file)
 		char line[256], *linep = line;
 		size_t i;
 		linep +=
-		    sprintf(linep, "  result=%d, ef=%d, curpath=", r,
-			    priv->is_ef);
+			sprintf(linep, "  result=%d, ef=%d, curpath=", r,
+				priv->is_ef);
 		for (i = 0; i < priv->curpathlen; i++) {
 			sprintf(linep, "%04X", priv->curpath[i]);
 			linep += 4;
 		}
-		strcpy(linep, "\n");
+		strlcpy(linep, "\n", 1);
 		sc_log(card->ctx, "%s", line);
 	}
 	return r;
@@ -1357,9 +1357,20 @@ static int mcrd_pin_cmd(sc_card_t * card, struct sc_pin_cmd_data *data,
 			return SC_ERROR_INTERNAL;
 		if (buf[0] != 0x80 || buf[3] != 0x90)
 			return SC_ERROR_INTERNAL;
-		data->pin1.tries_left = buf[5];
-		data->pin1.max_tries = buf[2];
-		data->pin1.logged_in = SC_PIN_STATE_UNKNOWN;
+		switch(data->pin_reference)
+		{
+		case 1:  /* authentication pin */
+			data->pin1.tries_left = buf[5];
+			data->pin1.max_tries = buf[2];
+			data->pin1.logged_in = SC_PIN_STATE_UNKNOWN;
+			break;
+		case 2: /* signing pin */
+			data->pin2.tries_left = buf[5];
+			data->pin2.max_tries = buf[2];
+			data->pin2.logged_in = SC_PIN_STATE_UNKNOWN;
+			break;
+		default: break;
+		}
 		return SC_SUCCESS;
 	}
 
