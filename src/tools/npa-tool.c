@@ -384,6 +384,10 @@ main (int argc, char **argv)
 		exit(1);
 	}
 
+    r = sc_set_card_driver(ctx, "default");
+	if (r)
+		goto err;
+
 	r = util_connect_card_ex(ctx, &card, cmdline.reader_arg, 0, 0, cmdline.verbose_given);
 	if (r)
 		goto err;
