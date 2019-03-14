@@ -37,7 +37,7 @@
 #include <string.h>
 #include <ctype.h>
 
-#include "common/compat_getopt.h"
+#include <getopt.h>
 #include "libopensc/opensc.h"
 #include "libopensc/asn1.h"
 #include "libopensc/cards.h"

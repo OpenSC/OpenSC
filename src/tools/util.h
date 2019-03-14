@@ -16,7 +16,7 @@
 #endif
 #include <sys/stat.h>
 
-#include "common/compat_getopt.h"
+#include <getopt.h>
 #include "libopensc/opensc.h"
 
 #ifdef __cplusplus

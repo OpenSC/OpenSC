@@ -383,7 +383,7 @@ AC_HEADER_ASSERT
 AC_CHECK_HEADERS([ \
 	errno.h fcntl.h stdlib.h \
 	inttypes.h string.h strings.h \
-	sys/time.h unistd.h getopt.h sys/mman.h
+	sys/time.h unistd.h sys/mman.h
 ])
 
 dnl Checks for typedefs, structures, and compiler characteristics.
@@ -398,7 +398,7 @@ AC_FUNC_STAT
 AC_FUNC_VPRINTF
 AC_CHECK_FUNCS([ \
 	getpass gettimeofday getline memset mkdir \
-	strdup strerror getopt_long getopt_long_only \
+	strdup strerror \
 	strlcpy strlcat strnlen sigaction
 ])
 AC_CHECK_SIZEOF(void *)
@@ -922,6 +922,9 @@ fi
 AC_ARG_VAR([GENGETOPT],
            [absolute path to gengetopt used for command line parsing of npa-tool])
 AC_PATH_PROG(GENGETOPT, gengetopt, not found)
+
+AX_FUNC_GETOPT_LONG
+#AH_BOTTOM([#include "common/compat_getopt.h"])
 
 OPENSC_FEATURES=""
 if test "${enable_thread_locking}" = "yes"; then
