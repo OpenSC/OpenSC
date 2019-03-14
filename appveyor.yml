@@ -93,8 +93,7 @@ build_script:
   - bash -c "exec 0</dev/null && if [ \"$APPVEYOR_REPO_BRANCH\" != \"master\" -a -n \"$APPVEYOR_PULL_REQUEST_NUMBER\" ]; then ./bootstrap.ci -s \"-$APPVEYOR_REPO_BRANCH-prAPPVEYOR_PULL_REQUEST_NUMBER\"; fi"
   # disable features to speed up the script
   - bash -c "exec 0</dev/null && ./configure --with-cygwin-native --disable-openssl --disable-readline --disable-zlib || cat config.log"
-  - bash -c "make -C etc opensc.conf"
-  - cp win32/winconfig.h config.h
+  - bash -c "exec 0</dev/null && rm src/getopt.h"
   - nmake /f Makefile.mak %NMAKE_EXTRA%
   - cd win32 && nmake /f Makefile.mak %NMAKE_EXTRA% VSVER=%VSVER% OpenSC.msi && cd ..
   - move win32\OpenSC.msi %ARTIFACT%.msi

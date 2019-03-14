@@ -42,7 +42,7 @@
 #include "libopensc/cards.h"
 #include "libopensc/log.h"
 #include "common/compat_strlcpy.h"
-#include "common/compat_getopt.h"
+#include <getopt.h>
 #include "util.h"
 
 #define DIM(v) (sizeof(v)/sizeof((v)[0]))
