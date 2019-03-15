@@ -19,16 +19,12 @@ do_subst = $(SED) \
 	   -e 's,[@]VDFORMAT[@],$(VDFORMAT),g' \
 	   -e 's,[@]X509DIR[@],$(X509DIR),g'
 
-EGK_TOOL_BUILT_SOURCES = egk-tool-cmdline.h egk-tool-cmdline.c
-NPA_TOOL_BUILT_SOURCES = npa-tool-cmdline.h npa-tool-cmdline.c
-GOID_TOOL_BUILT_SOURCES = goid-tool-cmdline.h goid-tool-cmdline.c
-OPENSC_NOTIFY_BUILT_SOURCES = opensc-notify-cmdline.h opensc-notify-cmdline.c
-OPENSC_ASN1_BUILT_SOURCES = opensc-asn1-cmdline.h opensc-asn1-cmdline.c
-
 MAINTAINERCLEANFILES = $(srcdir)/Makefile.in $(srcdir)/versioninfo-tools.rc $(srcdir)/versioninfo-opensc-notify.rc
 EXTRA_DIST = Makefile.mak versioninfo-tools.rc.in versioninfo-opensc-notify.rc.in goid-tool.ggo.in npa-tool.ggo.in opensc-notify.ggo.in egk-tool.ggo.in opensc-asn1.ggo.in org.opensc.notify.desktop.in exe.manifest
 
-noinst_HEADERS = util.h fread_to_eof.h
+noinst_HEADERS = util.h fread_to_eof.h \
+	egk-tool-cmdline.h goid-tool-cmdline.h npa-tool-cmdline.h \
+	opensc-asn1-cmdline.h opensc-notify-cmdline.h
 noinst_PROGRAMS = sceac-example
 bin_PROGRAMS = opensc-tool opensc-explorer opensc-notify \
 	pkcs15-tool pkcs15-crypt pkcs11-tool \
@@ -90,7 +86,7 @@ dnie_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
 gids_tool_SOURCES = gids-tool.c util.c
 gids_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
 
-npa_tool_SOURCES = npa-tool.c fread_to_eof.c util.c $(NPA_TOOL_BUILT_SOURCES)
+npa_tool_SOURCES = npa-tool.c fread_to_eof.c util.c npa-tool-cmdline.c
 npa_tool_LDADD = $(top_builddir)/src/libopensc/libopensc.la \
 				 $(OPENPACE_LIBS)
 npa_tool_CFLAGS = -I$(top_srcdir)/src $(OPENPACE_CFLAGS) $(OPENSSL_CFLAGS)
@@ -99,17 +95,7 @@ if HAVE_UNKNOWN_WARNING_OPTION
 npa_tool_CFLAGS += -Wno-unknown-warning-option
 endif
 
-npa-tool.c: $(abs_builddir)/npa-tool.ggo $(NPA_TOOL_BUILT_SOURCES)
-
-# We only want *cmdline* to be generated when they have explicitly been removed.
-$(NPA_TOOL_BUILT_SOURCES):
-	$(MAKE) $(abs_builddir)/npa-tool.ggo
-	$(GENGETOPT) --file-name=npa-tool-cmdline --output-dir=$(builddir) < $(abs_builddir)/npa-tool.ggo
-
-$(abs_builddir)/npa-tool.ggo: npa-tool.ggo.in 
-	$(do_subst) < $(abs_srcdir)/npa-tool.ggo.in > $@
-
-opensc_notify_SOURCES = opensc-notify.c $(OPENSC_NOTIFY_BUILT_SOURCES)
+opensc_notify_SOURCES = opensc-notify.c opensc-notify-cmdline.c
 opensc_notify_LDADD = $(top_builddir)/src/libopensc/libopensc.la $(OPTIONAL_NOTIFY_LIBS)
 opensc_notify_CFLAGS = -I$(top_srcdir)/src $(OPTIONAL_NOTIFY_CFLAGS)
 opensc_notify_CFLAGS += -Wno-unused-but-set-variable
@@ -117,17 +103,7 @@ if HAVE_UNKNOWN_WARNING_OPTION
 opensc_notify_CFLAGS += -Wno-unknown-warning-option
 endif
 
-opensc-notify.c: $(abs_builddir)/opensc-notify.ggo $(OPENSC_NOTIFY_BUILT_SOURCES)
-
-# We only want *cmdline* to be generated when they have explicitly been removed.
-$(OPENSC_NOTIFY_BUILT_SOURCES):
-	$(MAKE) $(abs_builddir)/opensc-notify.ggo
-	$(GENGETOPT) --file-name=opensc-notify-cmdline --output-dir=$(builddir) < $(abs_builddir)/opensc-notify.ggo
-
-$(abs_builddir)/opensc-notify.ggo: opensc-notify.ggo.in 
-	$(do_subst) < $(abs_srcdir)/opensc-notify.ggo.in > $@
-
-egk_tool_SOURCES = egk-tool.c util.c $(EGK_TOOL_BUILT_SOURCES)
+egk_tool_SOURCES = egk-tool.c util.c egk-tool-cmdline.c
 egk_tool_LDADD = $(top_builddir)/src/libopensc/libopensc.la $(OPTIONAL_ZLIB_LIBS)
 egk_tool_CFLAGS = -I$(top_srcdir)/src $(OPTIONAL_ZLIB_CFLAGS)
 egk_tool_CFLAGS += -Wno-unused-but-set-variable
@@ -135,17 +111,7 @@ if HAVE_UNKNOWN_WARNING_OPTION
 egk_tool_CFLAGS += -Wno-unknown-warning-option
 endif
 
-egk-tool.c: $(abs_builddir)/egk-tool.ggo $(EGK_TOOL_BUILT_SOURCES)
-
-# We only want *cmdline* to be generated when they have explicitly been removed.
-$(EGK_TOOL_BUILT_SOURCES):
-	$(MAKE) $(abs_builddir)/egk-tool.ggo
-	$(GENGETOPT) --file-name=egk-tool-cmdline --output-dir=$(builddir) < $(abs_builddir)/egk-tool.ggo
-
-$(abs_builddir)/egk-tool.ggo: egk-tool.ggo.in 
-	$(do_subst) < $(abs_srcdir)/egk-tool.ggo.in > $@
-
-goid_tool_SOURCES = goid-tool.c util.c fread_to_eof.c $(GOID_TOOL_BUILT_SOURCES)
+goid_tool_SOURCES = goid-tool.c util.c fread_to_eof.c goid-tool-cmdline.c
 goid_tool_LDADD = $(top_builddir)/src/libopensc/libopensc.la $(OPENPACE_LIBS)
 goid_tool_CFLAGS = -I$(top_srcdir)/src $(OPENPACE_CFLAGS)
 goid_tool_CFLAGS += -Wno-unused-but-set-variable
@@ -153,30 +119,19 @@ if HAVE_UNKNOWN_WARNING_OPTION
 goid_tool_CFLAGS += -Wno-unknown-warning-option
 endif
 
-goid-tool.c: $(abs_builddir)/goid-tool.ggo $(GOID_TOOL_BUILT_SOURCES)
-
-# We only want *cmdline* to be generated when they have explicitly been removed.
-$(GOID_TOOL_BUILT_SOURCES):
-	$(MAKE) $(abs_builddir)/goid-tool.ggo
-	$(GENGETOPT) --file-name=goid-tool-cmdline --output-dir=$(builddir) < $(abs_builddir)/goid-tool.ggo
-
-$(abs_builddir)/goid-tool.ggo: goid-tool.ggo.in 
-	$(do_subst) < $(abs_srcdir)/goid-tool.ggo.in > $@
-
-opensc_asn1_SOURCES = opensc-asn1.c fread_to_eof.c $(OPENSC_ASN1_BUILT_SOURCES)
+opensc_asn1_SOURCES = opensc-asn1.c fread_to_eof.c opensc-asn1-cmdline.c
 opensc_asn1_LDADD = $(top_builddir)/src/libopensc/libopensc.la $(OPTIONAL_ZLIB_LIBS)
 opensc_asn1_CFLAGS = -I$(top_srcdir)/src $(OPTIONAL_ZLIB_CFLAGS)
-opensc_asn1_CFLAGS += -Wno-unused-but-set-variable -Wno-unknown-warning-option
+opensc_asn1_CFLAGS += -Wno-unused-but-set-variable
+if HAVE_UNKNOWN_WARNING_OPTION
+opensc_asn1_CFLAGS += -Wno-unknown-warning-option
+endif
 
-opensc-asn1.c: $(abs_builddir)/opensc-asn1.ggo $(OPENSC_ASN1_BUILT_SOURCES)
-
-# We only want *cmdline* to be generated when they have explicitly been removed.
-$(OPENSC_ASN1_BUILT_SOURCES):
-	$(MAKE) $(abs_builddir)/opensc-asn1.ggo
-	$(GENGETOPT) --file-name=opensc-asn1-cmdline --output-dir=$(builddir) < $(abs_builddir)/opensc-asn1.ggo --unamed-opts
-
-$(abs_builddir)/opensc-asn1.ggo: opensc-asn1.ggo.in 
-	$(do_subst) < $(abs_srcdir)/opensc-asn1.ggo.in > $@
+.PHONY: cmdline
+cmdline:
+	for f in *.ggo.in; do $(do_subst) < "$$f" > "$${f%.in}"; done
+	for f in *.ggo;    do $(GENGETOPT) --file-name="$${f%.ggo}-cmdline" --output-dir=$(builddir) < "$$f"; done
+	$(GENGETOPT) --file-name=opensc-asn1-cmdline --output-dir=$(builddir) < opensc-asn1.ggo --unamed-opts
 
 if WIN32
 opensc_tool_SOURCES += versioninfo-tools.rc
