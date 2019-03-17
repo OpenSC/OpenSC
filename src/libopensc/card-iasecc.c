@@ -2481,6 +2481,94 @@ iasecc_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_
 }
 
 
+#define PADDED_PIN_MAX_SIZE SC_MAX_PIN_SIZE
+
+
+// function checks: is pin data suitable for pin padding CONSIDERATION (should we continue or abort?):
+// - pin data is not corrupt
+// - pin data do not have data which is not compatible with pin padding hack
+static int
+is_pin_data_valid (const struct sc_pin_cmd_pin *pin)
+{
+	if (pin == NULL)
+		return 0;
+
+	if (pin->data)   {
+		// unknown value (corrupt?)
+		if (pin->len < -1)
+			return 0;
+
+		// pad length bad or not defined (corrupt?)
+		if (pin->pad_length < 1)
+			return 0;
+
+		// data incorrect (corrupt?)
+		if ((size_t)pin->len > pin->pad_length)
+			return 0;
+
+		// our temp buffers are too small for this HUGE pin (incompatible)
+		if (pin->len > PADDED_PIN_MAX_SIZE)
+			return 0;
+
+		// our temp buffers are too small for this HUGE pin padding (incompatible)
+		if (pin->pad_length > PADDED_PIN_MAX_SIZE)
+			return 0;
+
+		// not compatible with pin padding hack (incompatible)
+		if (pin->pad_length != pin->max_length)
+			return 0;
+	}
+
+	return 1;
+}
+
+
+// function checks: should we pad pin data?
+// - pin data is not corrupt
+// - data buffer is provided
+// - pin data do not have data which is not compatible with padding hack
+// - pin data really need padding (len < pad_length)
+static int
+is_pin_paddable (const struct sc_pin_cmd_pin *pin)
+{
+	if (pin == NULL)
+		return 0;
+
+	// no data buffer - no padding
+	if (pin->data == NULL)
+		return 0;
+
+	// do not accept -1 (-1 mean  - pin must be entered from pin pad)
+	// Hmmm... We have data buffer but not its length? Is it bug?
+	if (pin->len < 0)
+		return 0;
+
+	// no pad length - no padding (corrupt?)
+	if (pin->pad_length < 1)
+		return 0;
+
+	// data incorrect (corrupt?)
+	if ((size_t)pin->len >= pin->pad_length)
+		return 0;
+
+	// our temp buffers are too small for this HUGE pin (incompatible)
+	if (pin->len > PADDED_PIN_MAX_SIZE)
+		return 0;
+
+	// our temp buffers are too small for this HUGE pin padding (incompatible)
+	if (pin->pad_length > PADDED_PIN_MAX_SIZE)
+		return 0;
+
+	// not compatible with pin padding hack (incompatible)
+	if (pin->pad_length != pin->max_length)
+		return 0;
+
+	return 1;
+}
+
+
+#define PADDED2COUNT ((padded & (1<<0)) + ((padded & (1<<1)) >> 1))
+
 static int
 iasecc_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left)
 {
@@ -2491,6 +2579,44 @@ iasecc_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_le
 	sc_log(ctx, "iasecc_pin_cmd() cmd 0x%X, PIN type 0x%X, PIN reference %i, PIN-1 %p:%i, PIN-2 %p:%i",
 			data->cmd, data->pin_type, data->pin_reference,
 			data->pin1.data, data->pin1.len, data->pin2.data, data->pin2.len);
+
+	// Pin padding support hack. Pre-fix. <<<
+	struct sc_pin_cmd_data olddata;
+	unsigned char pin1_padded[PADDED_PIN_MAX_SIZE];
+	unsigned char pin2_padded[PADDED_PIN_MAX_SIZE];
+	int padded = 0;
+
+	if (data->flags & SC_PIN_CMD_NEED_PADDING)   {
+		if (is_pin_data_valid(&data->pin1) && is_pin_data_valid(&data->pin2))   {
+			memcpy(&olddata, data, sizeof(olddata));
+
+			if (is_pin_paddable (&data->pin1))   {
+				sc_build_pin(pin1_padded, sizeof(pin1_padded), &data->pin1, 1);
+
+				data->pin1.len = data->pin1.pad_length;
+				data->pin1.data = pin1_padded;
+
+				padded |= (1<<0); // first PIN forcibly padded
+			}
+
+			if (is_pin_paddable (&data->pin2))   {
+				sc_build_pin(pin2_padded, sizeof(pin2_padded), &data->pin2, 1);
+
+				data->pin2.len = data->pin2.pad_length;
+				data->pin2.data = pin2_padded;
+
+				padded |= (1<<1); // second PIN forcibly padded
+			}
+		}
+		else
+			LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
+	}
+
+	if (padded)
+		sc_log(ctx, "iasecc_pin_cmd() forced PIN padding WAS required (pins padded: %i)", PADDED2COUNT);
+	else
+		sc_log(ctx, "iasecc_pin_cmd() forced PIN padding was NOT required");
+	// >>>
 
 	switch (data->cmd)   {
 	case SC_PIN_CMD_VERIFY:
@@ -2513,8 +2639,30 @@ iasecc_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_le
 		rv = SC_ERROR_NOT_SUPPORTED;
 	}
 
+	// Pin padding support hack. Post-fix. <<<
+	if (padded) {
+		if (padded & (1<<0)) {
+			data->pin1.data = olddata.pin1.data;
+			data->pin1.len = olddata.pin1.len;
+			sc_mem_clear(pin1_padded, sizeof(pin1_padded));
+		}
+
+		if (padded & (1<<1)) {
+			data->pin2.data = olddata.pin2.data;
+			data->pin2.len = olddata.pin2.len;
+			sc_mem_clear(pin2_padded, sizeof(pin2_padded));
+		}
+
+		sc_log(ctx, "iasecc_pin_cmd() PIN un-padded (pins un-padded: %i)", PADDED2COUNT);
+	} else {
+		sc_log(ctx, "iasecc_pin_cmd() PIN un-padding was NOT required");
+	}
+	// >>>
+
 	LOG_FUNC_RETURN(ctx, rv);
 }
+#undef PADDED2COUNT
+#undef PADDED_PIN_MAX_SIZE
 
 
 static int
