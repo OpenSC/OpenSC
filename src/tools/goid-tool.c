@@ -70,8 +70,8 @@ void
 soc_info(sc_context_t *ctx, sc_card_t *card)
 {
     sc_apdu_t apdu;
-    unsigned char rbuf[SC_MAX_APDU_BUFFER_SIZE];
-    u8 information_applets[SC_MAX_APDU_BUFFER_SIZE];
+    unsigned char rbuf[SC_MAX_APDU_RESP_SIZE];
+    u8 information_applets[SC_MAX_APDU_RESP_SIZE];
     size_t information_applets_len = sizeof information_applets;
     int pin_initialized = 0, bio_initialized = 0;
     int pin_max_retries = 0, pin_cur_retries = 0, bio_max_retries = 0, bio_cur_retries = 0;
