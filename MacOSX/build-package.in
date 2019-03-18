@@ -122,9 +122,14 @@ imagedir=$(mktemp -d)
 mkdir -p ${BUILDPATH}/target/usr/local/bin
 cp MacOSX/opensc-uninstall ${BUILDPATH}/target/usr/local/bin
 
+# Prepare startup root
+mkdir -p ${BUILDPATH}/target_startup/Library/LaunchAgents
+cp src/tools/pkcs11-register.plist ${BUILDPATH}/target_startup/Library/LaunchAgents
+
 # Build package
 pkgbuild --root ${BUILDPATH}/target --scripts MacOSX/scripts --identifier org.opensc-project.mac --version @PACKAGE_VERSION@ --install-location / OpenSC.pkg
 pkgbuild --root ${BUILDPATH}/target_tokend --identifier org.opensc-project.tokend --version @PACKAGE_VERSION@ --install-location / OpenSC-tokend.pkg
+pkgbuild --root ${BUILDPATH}/target_startup --identifier org.opensc-project.startup --version @PACKAGE_VERSION@ --install-location / OpenSC-startup.pkg
 # Build product
 productbuild --distribution MacOSX/Distribution.xml --package-path . --resources MacOSX/resources "${imagedir}/OpenSC @PACKAGE_VERSION@.pkg"
 

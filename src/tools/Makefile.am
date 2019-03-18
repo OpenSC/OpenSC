@@ -16,18 +16,19 @@ do_subst = $(SED) \
 	   -e 's,[@]PACKAGE_URL[@],$(PACKAGE_URL),g' \
 	   -e 's,[@]PACKAGE_SUMMARY[@],$(PACKAGE_SUMMARY),g' \
 	   -e 's,[@]PACKAGE_VERSION[@],"$(PACKAGE_VERSION)",g' \
+	   -e 's,[@]DEFAULT_PKCS11_PROVIDER[@],"$(DEFAULT_PKCS11_PROVIDER)",g' \
 	   -e 's,[@]VDFORMAT[@],$(VDFORMAT),g' \
 	   -e 's,[@]X509DIR[@],$(X509DIR),g'
 
 MAINTAINERCLEANFILES = $(srcdir)/Makefile.in $(srcdir)/versioninfo-tools.rc $(srcdir)/versioninfo-opensc-notify.rc
-EXTRA_DIST = Makefile.mak versioninfo-tools.rc.in versioninfo-opensc-notify.rc.in goid-tool.ggo.in npa-tool.ggo.in opensc-notify.ggo.in egk-tool.ggo.in opensc-asn1.ggo.in org.opensc.notify.desktop.in exe.manifest
+EXTRA_DIST = Makefile.mak versioninfo-tools.rc.in versioninfo-opensc-notify.rc.in goid-tool.ggo.in npa-tool.ggo.in opensc-notify.ggo.in egk-tool.ggo.in opensc-asn1.ggo.in org.opensc.notify.desktop.in exe.manifest pkcs11-register.desktop.in pkcs11-register.plist.in
 
 noinst_HEADERS = util.h fread_to_eof.h \
 	egk-tool-cmdline.h goid-tool-cmdline.h npa-tool-cmdline.h \
 	opensc-asn1-cmdline.h opensc-notify-cmdline.h
 noinst_PROGRAMS = sceac-example
 bin_PROGRAMS = opensc-tool opensc-explorer opensc-notify \
-	pkcs15-tool pkcs15-crypt pkcs11-tool \
+	pkcs15-tool pkcs15-crypt pkcs11-tool pkcs11-register \
 	cardos-tool eidenv openpgp-tool iasecc-tool egk-tool opensc-asn1 goid-tool
 if ENABLE_OPENSSL
 bin_PROGRAMS += cryptoflex-tool pkcs15-init netkey-tool piv-tool \
@@ -36,7 +37,7 @@ endif
 
 # compile with $(PTHREAD_CFLAGS) to allow debugging with gdb
 AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(OPTIONAL_READLINE_CFLAGS) $(PTHREAD_CFLAGS)
-AM_CPPFLAGS = -I$(top_srcdir)/src -D'DEFAULT_PKCS11_PROVIDER="$(DEFAULT_PKCS11_PROVIDER)"'
+AM_CPPFLAGS = -I$(top_srcdir)/src -D'DEFAULT_PKCS11_PROVIDER="$(DEFAULT_PKCS11_PROVIDER)"' -D'DEFAULT_ONEPIN_PKCS11_PROVIDER="$(DEFAULT_ONEPIN_PKCS11_PROVIDER)"'
 LIBS = \
 	$(top_builddir)/src/libopensc/libopensc.la \
 	$(top_builddir)/src/common/libscdl.la \
@@ -127,6 +128,15 @@ if HAVE_UNKNOWN_WARNING_OPTION
 opensc_asn1_CFLAGS += -Wno-unknown-warning-option
 endif
 
+pkcs11_register_SOURCES = pkcs11-register.c fread_to_eof.c pkcs11-register-cmdline.c
+pkcs11_register_CFLAGS = -I$(top_srcdir)/src
+pkcs11_register_CFLAGS += -Wno-unused-but-set-variable -Wno-unused-function
+pkcs11_register_LDADD = \
+	$(top_builddir)/src/common/libpkcs11.la
+if HAVE_UNKNOWN_WARNING_OPTION
+pkcs11_register_CFLAGS += -Wno-unknown-warning-option
+endif
+
 .PHONY: cmdline
 cmdline:
 	for f in *.ggo.in; do $(do_subst) < "$$f" > "$${f%.in}"; done
@@ -139,6 +149,7 @@ piv_tool_SOURCES += versioninfo-tools.rc
 opensc_explorer_SOURCES += versioninfo-tools.rc
 pkcs15_tool_SOURCES += versioninfo-tools.rc
 pkcs11_tool_SOURCES += versioninfo-tools.rc
+pkcs11_register_SOURCES += versioninfo-tools.rc
 pkcs15_crypt_SOURCES += versioninfo-tools.rc
 cryptoflex_tool_SOURCES += versioninfo-tools.rc
 pkcs15_init_SOURCES += versioninfo-tools.rc
@@ -156,8 +167,18 @@ endif
 applicationsdir = $(datadir)/applications
 applications_DATA = org.opensc.notify.desktop
 
-org.opensc.notify.desktop: org.opensc.notify.desktop.in
-	$(do_subst) < $(abs_srcdir)/org.opensc.notify.desktop.in > $@
+if ENABLE_AUTOSTART
+xdg_autostartdir = $(sysconfdir)/xdg/autostart
+xdg_autostart_DATA = pkcs11-register.desktop
+endif
+
+%.desktop: %.desktop.in
+	$(do_subst) < $< > $@
+
+noinst_DATA = pkcs11-register.plist
+
+%.plist: %.plist.in
+	$(do_subst) < $< > $@
 
 clean-local:
-	rm -f $(abs_builddir)/npa-tool.ggo $(abs_builddir)/opensc-notify.ggo $(abs_builddir)/opensc-asn1.ggo $(abs_builddir)/goid-tool.ggo $(abs_builddir)/egk-tool.ggo org.opensc.notify.desktop
+	rm -f $(abs_builddir)/npa-tool.ggo $(abs_builddir)/opensc-notify.ggo $(abs_builddir)/opensc-asn1.ggo $(abs_builddir)/goid-tool.ggo $(abs_builddir)/egk-tool.ggo org.opensc.notify.desktop pkcs11-register.desktop

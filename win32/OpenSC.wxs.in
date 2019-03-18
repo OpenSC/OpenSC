@@ -52,6 +52,7 @@
     <Binary Id="customactions" SourceFile="$(var.SOURCE_DIR)\win32\customactions.dll" />
     <CustomAction Id="RemoveSmartCardConfiguration" BinaryKey="customactions" DllEntry="RemoveSmartCardConfiguration" Execute="deferred" Impersonate="no"/>
     <CustomAction Id="AddSmartCardConfiguration" BinaryKey="customactions" DllEntry="AddSmartCardConfiguration" Execute="commit" Impersonate="no"/>
+    <CustomAction Id="Start_pkcs11_register.exe" Execute="immediate" Impersonate="yes" Return="asyncNoWait" FileKey="pkcs11_register.exe" ExeCommand="" />
 
     <Media Id="1" Cabinet="OpenSC.cab" EmbedCab="yes" CompressionLevel="high"/>
     <MajorUpgrade DowngradeErrorMessage="Can't downgrade." AllowSameVersionUpgrades="yes"/>
@@ -145,6 +146,9 @@
               <Component Id="pkcs11_tool.exe" Guid="*" Win64="$(var.Win64YesNo)">
                 <File Source="$(var.SOURCE_DIR)\src\tools\pkcs11-tool.exe" Vital="yes"/>
               </Component>
+              <Component Id="pkcs11_register.exe" Guid="*" Win64="$(var.Win64YesNo)">
+                <File Source="$(var.SOURCE_DIR)\src\tools\pkcs11-register.exe" Vital="yes"/>
+              </Component>
               <Component Id="cardos_tool.exe" Guid="*" Win64="$(var.Win64YesNo)">
                 <File Source="$(var.SOURCE_DIR)\src\tools\cardos-tool.exe" Vital="yes"/>
               </Component>
@@ -201,6 +205,11 @@
                   <File Source="$(var.SOURCE_DIR)\src\tools\npa-tool.exe" Vital="yes"/>
                 </Component>
               <?endif ?>
+              <Component Id="Autostart_tools" Guid="*">
+                <RegistryKey Root="HKMU" Key="Software\Microsoft\Windows\CurrentVersion\Run" Action="createAndRemoveOnUninstall">
+                  <RegistryValue Type="string" Name="pkcs11-register.exe" Value="[INSTALLDIR_TOOLS]pkcs11-register.exe" />
+                </RegistryKey>
+              </Component>
             </Directory>
             <?ifdef OpenSSL ?>
               <Directory Id="INSTALLDIR_PROFILES" Name="profiles">
@@ -367,6 +376,7 @@
         <ComponentRef Id="opensc_tool.exe"/>
         <ComponentRef Id="opensc_notify.exe"/>
         <ComponentRef Id="pkcs11_tool.exe"/>
+        <ComponentRef Id="pkcs11_register.exe"/>
         <ComponentRef Id="cardos_tool.exe"/>
         <ComponentRef Id="egk_tool.exe"/>
         <ComponentRef Id="goid_tool.exe"/>
@@ -421,6 +431,9 @@
       <Feature Id="OpenSC_menu" Level="1" Title="Start menu entries" Description="Start menu entries: link to documentation">
         <ComponentRef Id="ProgramMenuDir"/>
       </Feature>
+      <Feature Id="OpenSC_autostart" Level="1" Title="Autostart entries" Description="Run pkcs11-register.exe after login">
+        <ComponentRef Id="Autostart_tools"/>
+      </Feature>
     </Feature>
     <UI Id='Mondo'>
       <UIRef Id="WixUI_Mondo"/>
@@ -441,6 +454,11 @@
       <!-- add the smart card registration (only at install of the feature OpenSC_minidriver) -->
       <Custom Action='AddSmartCardConfiguration' Before="RemoveSmartCardConfiguration">
         <![CDATA[ (NOT (REMOVE="ALL")) AND (NOT UPGRADINGPRODUCTCODE) AND (&OpenSC_minidriver=3) AND (!OpenSC_minidriver=2) ]]>
+      </Custom>
+
+      <!-- smart pkcs11-register.exe (only at install of the feature OpenSC_autostart) -->
+      <Custom Action="Start_pkcs11_register.exe" After="InstallFinalize">
+        <![CDATA[ (NOT (REMOVE="ALL")) AND (NOT UPGRADINGPRODUCTCODE) AND (&OpenSC_autostart=3) AND (!OpenSC_autostart=2) ]]>
       </Custom>
 
     </InstallExecuteSequence>

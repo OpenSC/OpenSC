@@ -20,4 +20,7 @@ https://developer.apple.com/library/mac/documentation/DeveloperTools/Reference/D
     <choice id="tokend" title="OpenSC tokend">
         <pkg-ref id="org.opensc-project.tokend">OpenSC-tokend.pkg</pkg-ref>
     </choice>
+    <choice id="startup" title="OpenSC startup icons">
+        <pkg-ref id="org.opensc-project.startup">OpenSC-startup.pkg</pkg-ref>
+    </choice>
 </installer-gui-script>

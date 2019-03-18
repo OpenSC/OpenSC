@@ -261,6 +261,13 @@ AC_ARG_ENABLE(
 )
 
 AC_ARG_ENABLE(
+	[autostart-items],
+	[AS_HELP_STRING([--enable-autostart-items],[enable autostart items @<:@enabled@:>@])],
+	,
+	[enable_autostart="yes"]
+)
+
+AC_ARG_ENABLE(
 	[tests],
 	[AS_HELP_STRING([--enable-tests],[Build tests in src/tests/ directory @<:@detect@:>@])],
 	,
@@ -894,11 +901,14 @@ fi
 if test "${with_pkcs11_provider}" = "detect"; then
 	if test "${WIN32}" != "yes"; then
 		DEFAULT_PKCS11_PROVIDER="${libdir}/opensc-pkcs11${DYN_LIB_EXT}"
+		DEFAULT_ONEPIN_PKCS11_PROVIDER="${libdir}/onepin-opensc-pkcs11${DYN_LIB_EXT}"
 	else
 		DEFAULT_PKCS11_PROVIDER="%PROGRAMFILES%\\\OpenSC Project\\\OpenSC\\\pkcs11\\\opensc-pkcs11.dll"
+		DEFAULT_ONEPIN_PKCS11_PROVIDER="%PROGRAMFILES%\\\OpenSC Project\\\OpenSC\\\pkcs11\\\onepin-opensc-pkcs11.dll"
 	fi
 else
 	DEFAULT_PKCS11_PROVIDER="${with_pkcs11_provider}"
+	DEFAULT_ONEPIN_PKCS11_PROVIDER="${with_pkcs11_provider}"
 fi
 
 if test "${enable_man}" = "detect"; then
@@ -1010,6 +1020,7 @@ AC_SUBST([OPENSC_LT_OLDEST])
 AC_SUBST([WIN_LIBPREFIX])
 AC_SUBST([DEFAULT_PCSC_PROVIDER])
 AC_SUBST([DEFAULT_PKCS11_PROVIDER])
+AC_SUBST([DEFAULT_ONEPIN_PKCS11_PROVIDER])
 AC_SUBST([OPTIONAL_ZLIB_CFLAGS])
 AC_SUBST([OPTIONAL_ZLIB_LIBS])
 AC_SUBST([OPTIONAL_READLINE_CFLAGS])
@@ -1044,6 +1055,7 @@ AM_CONDITIONAL([ENABLE_MINIDRIVER_SETUP_CUSTOMACTION], [test "${enable_minidrive
 AM_CONDITIONAL([ENABLE_SM], [test "${enable_sm}" = "yes"])
 AM_CONDITIONAL([ENABLE_DNIE_UI], [test "${enable_dnie_ui}" = "yes"])
 AM_CONDITIONAL([ENABLE_NPATOOL], [test "${ENABLE_NPATOOL}" = "yes"])
+AM_CONDITIONAL([ENABLE_AUTOSTART], [test "${enable_autostart}" = "yes"])
 AM_CONDITIONAL([ENABLE_TESTS], [test "${enable_tests}" = "yes"])
 AM_CONDITIONAL([GIT_CHECKOUT], [test "${GIT_CHECKOUT}" = "yes"])
 
@@ -1143,6 +1155,7 @@ Build tests:             ${enable_tests}
 
 PC/SC default provider:  ${DEFAULT_PCSC_PROVIDER}
 PKCS11 default provider: $(eval eval eval echo "${DEFAULT_PKCS11_PROVIDER}")
+PKCS11 onepin provider:  $(eval eval eval echo "${DEFAULT_ONEPIN_PKCS11_PROVIDER}")
 
 Host:                    ${host}
 Compiler:                ${CC}
