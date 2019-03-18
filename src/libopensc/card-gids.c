@@ -1915,7 +1915,6 @@ static int gids_authenticate_admin(sc_card_t *card, u8* key) {
 	LOG_TEST_RET(card->ctx, r, "unable to set computer random");
 
 	// send it to the card
-	memcpy(apduSetRandom+4, randomR1, 16);
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4, INS_GENERAL_AUTHENTICATE, 0x00, 0x00);
 	apdu.lc = sizeof(apduSetRandom);
 	apdu.data = apduSetRandom;
