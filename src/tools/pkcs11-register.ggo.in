@@ -1,0 +1,28 @@
+package "pkcs11-register"
+purpose "@PACKAGE_SUMMARY@"
+description "Install a PKCS#11 module to known applications."
+
+option "module" m
+    "Specify the module to load"
+    string optional default="OpenSC's PKCS#11 module" typestr="FILENAME"
+
+option "skip-chrome" -
+    "Don't install module to Chrome"
+    flag off
+
+option "skip-firefox" -
+    "Don't install module to Firefox"
+    flag off
+
+option "skip-thunderbird" -
+    "Don't install module to Thunderbird"
+    flag off
+
+option "skip-seamonkey" -
+    "Don't install module to SeaMonkey"
+    flag off
+
+text "
+Report bugs to @PACKAGE_BUGREPORT@
+
+Written by Frank Morgner <frankmorgner@gmail.com>"
