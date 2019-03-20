@@ -47,9 +47,6 @@ extern "C" {
 
 #define SC_PKCS11_SLOT_FOR_PINS		(SC_PKCS11_SLOT_FOR_PIN_USER | SC_PKCS11_SLOT_FOR_PIN_SIGN)
 
-extern void *C_LoadModule(const char *name, CK_FUNCTION_LIST_PTR_PTR);
-extern CK_RV C_UnloadModule(void *module);
-
 #ifdef __cplusplus
 }
 #endif

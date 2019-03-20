@@ -33,11 +33,9 @@
 
 #define CRYPTOKI_EXPORTS
 #include "pkcs11-display.h"
+#include "common/libpkcs11.h"
 
 #define __PASTE(x,y)      x##y
-
-extern void *C_LoadModule(const char *name, CK_FUNCTION_LIST_PTR_PTR);
-extern CK_RV C_UnloadModule(void *module);
 
 /* Declare all spy_* Cryptoki function */
 
