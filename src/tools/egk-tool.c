@@ -164,6 +164,11 @@ main (int argc, char **argv)
 		exit(1);
 	}
 
+	if (cmdline.verbose_given > 1) {
+		ctx->debug = cmdline.verbose_given;
+		sc_ctx_log_to_file(ctx, "stderr");
+	}
+
 	r = util_connect_card_ex(ctx, &card, cmdline.reader_arg, 0, 0, cmdline.verbose_given);
 	if (r)
 		goto err;
