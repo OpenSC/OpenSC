@@ -521,6 +521,11 @@ ATTR_METHOD(VERIFY, CK_BBOOL);				/* getVERIFY */
 ATTR_METHOD(WRAP, CK_BBOOL);				/* getWRAP */
 ATTR_METHOD(UNWRAP, CK_BBOOL);				/* getUNWRAP */
 ATTR_METHOD(DERIVE, CK_BBOOL);				/* getDERIVE */
+ATTR_METHOD(SENSITIVE, CK_BBOOL);			/* getSENSITIVE */
+ATTR_METHOD(ALWAYS_SENSITIVE, CK_BBOOL);		/* getALWAYS_SENSITIVE */
+ATTR_METHOD(EXTRACTABLE, CK_BBOOL);			/* getEXTRACTABLE */
+ATTR_METHOD(NEVER_EXTRACTABLE, CK_BBOOL);		/* getNEVER_EXTRACTABLE */
+ATTR_METHOD(LOCAL, CK_BBOOL);				/* getLOCAL */
 ATTR_METHOD(OPENSC_NON_REPUDIATION, CK_BBOOL);		/* getOPENSC_NON_REPUDIATION */
 ATTR_METHOD(KEY_TYPE, CK_KEY_TYPE);			/* getKEY_TYPE */
 ATTR_METHOD(CERTIFICATE_TYPE, CK_CERTIFICATE_TYPE);	/* getCERTIFICATE_TYPE */
@@ -3888,8 +3893,37 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 		printf("none");
 	printf("\n");
 
-	if (!pub && getALWAYS_AUTHENTICATE(sess, obj))
-		printf("  Access:     always authenticate\n");
+	printf("  Access:     ");
+	sepa = "";
+	if (!pub && getALWAYS_AUTHENTICATE(sess, obj)) {
+		printf("%salways authenticate", sepa);
+		sepa = ", ";
+	}
+	if (!pub || sec) {
+		if (getSENSITIVE(sess, obj)) {
+			printf("%ssensitive", sepa);
+			sepa = ", ";
+		}
+		if (getALWAYS_SENSITIVE(sess, obj)) {
+			printf("%salways sensitive", sepa);
+			sepa = ", ";
+		}
+		if (getEXTRACTABLE(sess, obj)) {
+			printf("%sextractable", sepa);
+			sepa = ", ";
+		}
+		if (getNEVER_EXTRACTABLE(sess, obj)) {
+			printf("%snever extractable", sepa);
+			sepa = ", ";
+		}
+	}
+	if (getLOCAL(sess, obj)) {
+		printf("%slocal", sepa);
+		sepa = ", ";
+	}
+	if (!*sepa)
+		printf("none");
+	printf("\n");
 
 	if (!pub) {
 		mechs = getALLOWED_MECHANISMS(sess, obj, &size);
