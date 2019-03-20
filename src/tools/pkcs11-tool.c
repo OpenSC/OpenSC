@@ -60,6 +60,7 @@
 #include "libopensc/asn1.h"
 #include "common/compat_strlcat.h"
 #include "common/compat_strlcpy.h"
+#include "common/libpkcs11.h"
 #include "util.h"
 #include "libopensc/sc-ossl-compat.h"
 
@@ -69,8 +70,6 @@
 #endif
 #endif
 
-extern void *C_LoadModule(const char *name, CK_FUNCTION_LIST_PTR_PTR);
-extern CK_RV C_UnloadModule(void *module);
 #ifndef ENABLE_SHARED
 extern CK_FUNCTION_LIST pkcs11_function_list;
 #endif
