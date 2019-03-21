@@ -203,7 +203,7 @@ after_script:
     fi
 
   # keep in sync with appveyor.yml
-  - if [ "${DO_PUSH_ARTIFACT}" = "yes" -a "$TRAVIS_PULL_REQUEST" = "false" ]; then
+  - if [ "${DO_PUSH_ARTIFACT}" = "yes" -a "$TRAVIS_PULL_REQUEST" = "false" -a "$TRAVIS_REPO_SLUG" = "OpenSC/OpenSC" ]; then
       git config --global user.email "builds@travis-ci.org";
       git config --global user.name "Travis CI";
       .github/push_artifacts.sh "Travis CI build ${TRAVIS_JOB_NUMBER}";
