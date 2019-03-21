@@ -1,0 +1,42 @@
+BasedOnStyle: LLVM
+# defaults from LLVM
+# BreakBeforeBraces: Attach
+# AllowShortIfStatementsOnASingleLine: Never
+# IndentCaseLabels: false
+# AlignAfterOpenBracket: Align
+# AlignTrailingComments: true
+# MaxEmptyLinesToKeep: 1
+# ReflowComments: falsedefault
+# SortIncludes: true
+# BreakBeforeBinaryOperators: None
+# BraceWrapping:
+#   AfterClass:      false
+#   AfterControlStatement: false
+#   AfterFunction:   false
+#   AfterNamespace:  false
+#   BeforeCatch:     false
+#   BeforeElse:      false
+#   IndentBraces:    false
+
+# OpenSC modifications
+TabWidth: 8
+IndentWidth: 8
+ContinuationIndentWidth: 16
+AlignAfterOpenBracket: DontAlign
+UseTab: Always
+AlignConsecutiveMacros: true
+AlignEscapedNewlines: DontAlign
+AllowShortFunctionsOnASingleLine: None
+AlwaysBreakAfterReturnType: AllDefinitions
+## This prevents reflowing intentionally short lines but
+##  it can be allowed only after we will have some baseline
+ColumnLimit: 0
+#ColumnLimit: 110
+IndentCaseBlocks: false
+AlignArrayOfStructures: Left
+
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterObjCDeclaration: true
+  AfterUnion:      true
+  AfterFunction:   true
