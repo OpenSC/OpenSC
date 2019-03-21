@@ -111,7 +111,7 @@ deploy_script:
   # keep in sync with .travis.yml
   - bash -c "git config --global user.email 'no-reply@appveyor.com'"
   - bash -c "git config --global user.name 'AppVeyor'"
-  - bash -c "if [ \"$DO_PUSH_ARTIFACT\" = yes -a -z \"$APPVEYOR_PULL_REQUEST_NUMBER\" ]; then .github/push_artifacts.sh \"AppVeyor build ${APPVEYOR_BUILD_NUMBER}.${APPVEYOR_JOB_NUMBER}\"; fi"
+  - bash -c "if [ \"$DO_PUSH_ARTIFACT\" = yes -a -z \"$APPVEYOR_PULL_REQUEST_NUMBER\" -a \"$APPVEYOR_REPO_NAME\" = \"OpenSC/OpenSC\" ]; then .github/push_artifacts.sh \"AppVeyor build ${APPVEYOR_BUILD_NUMBER}.${APPVEYOR_JOB_NUMBER}\"; fi"
 
 cache:
   - C:\zlib -> appveyor.yml
