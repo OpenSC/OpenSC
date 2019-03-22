@@ -15,8 +15,18 @@ else
 	mv /Library/OpenSC/etc/opensc.conf.orig /Library/OpenSC/etc/opensc.conf
 	md5 -r /Library/OpenSC/etc/opensc.conf  > /Library/OpenSC/etc/opensc.conf.md5
 fi
+
 for f in /Library/OpenSC/bin/*
 do
 	ln -sf $f /usr/local/bin
 done
+
+for f in /Library/LaunchAgents/pkcs11-register.plist /Library/LaunchAgents/pkcs11-register.plist
+do
+	if [ -e "$f" ]
+	then
+		/bin/launchctl asuser $(id -u "${USER}") /bin/launchctl load "$f"
+	fi
+done
+
 exit 0

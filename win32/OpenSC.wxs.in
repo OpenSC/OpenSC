@@ -205,9 +205,19 @@
                   <File Source="$(var.SOURCE_DIR)\src\tools\npa-tool.exe" Vital="yes"/>
                 </Component>
               <?endif ?>
-              <Component Id="Autostart_tools" Guid="*">
+              <Component Id="Autostart_tools" Guid="*" Win64="$(var.Win64YesNo)">
                 <RegistryKey Root="HKMU" Key="Software\Microsoft\Windows\CurrentVersion\Run" Action="createAndRemoveOnUninstall">
                   <RegistryValue Type="string" Name="pkcs11-register.exe" Value="[INSTALLDIR_TOOLS]pkcs11-register.exe" />
+                </RegistryKey>
+              </Component>
+              <Component Id="Autostart_native_tools" Guid="*" Win64="$(var.Win64YesNo)">
+                <?if $(var.Platform) = "x86"?>
+                <Condition>
+                  <![CDATA[NOT Msix64]]>
+                </Condition>
+                <?endif?>
+                <RegistryKey Root="HKMU" Key="Software\Microsoft\Windows\CurrentVersion\Run" Action="createAndRemoveOnUninstall">
+                  <RegistryValue Type="string" Name="opensc-notify.exe" Value="[INSTALLDIR_TOOLS]opensc-notify.exe" />
                 </RegistryKey>
               </Component>
             </Directory>
@@ -431,8 +441,9 @@
       <Feature Id="OpenSC_menu" Level="1" Title="Start menu entries" Description="Start menu entries: link to documentation">
         <ComponentRef Id="ProgramMenuDir"/>
       </Feature>
-      <Feature Id="OpenSC_autostart" Level="1" Title="Autostart entries" Description="Run pkcs11-register.exe after login">
+      <Feature Id="OpenSC_autostart" Level="1" Title="Autostart entries" Description="Run pkcs11-register.exe and opensc-notify.exe after login">
         <ComponentRef Id="Autostart_tools"/>
+        <ComponentRef Id="Autostart_native_tools"/>
       </Feature>
     </Feature>
     <UI Id='Mondo'>
