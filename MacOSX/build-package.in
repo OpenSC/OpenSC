@@ -125,6 +125,7 @@ cp MacOSX/opensc-uninstall ${BUILDPATH}/target/usr/local/bin
 # Prepare startup root
 mkdir -p ${BUILDPATH}/target_startup/Library/LaunchAgents
 cp src/tools/pkcs11-register.plist ${BUILDPATH}/target_startup/Library/LaunchAgents
+cp src/tools/opensc-notify.plist ${BUILDPATH}/target_startup/Library/LaunchAgents
 
 # Build package
 pkgbuild --root ${BUILDPATH}/target --scripts MacOSX/scripts --identifier org.opensc-project.mac --version @PACKAGE_VERSION@ --install-location / OpenSC.pkg

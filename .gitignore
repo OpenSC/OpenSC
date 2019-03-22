@@ -79,8 +79,10 @@ src/tools/opensc-explorer
 src/tools/cardos-info
 src/tools/sceac-example
 src/tools/opensc-notify
+src/tools/opensc-notify.plist
 src/tools/org.opensc.notify.desktop
 src/tools/pkcs11-register
+src/tools/pkcs11-register.plist
 src/tools/pkcs11-register.desktop
 src/tools/opensc-asn1
 
