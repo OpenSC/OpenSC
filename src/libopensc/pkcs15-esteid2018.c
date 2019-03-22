@@ -54,7 +54,7 @@ static int sc_pkcs15emu_esteid2018_init(sc_pkcs15_card_t *p15card) {
 	LOG_TEST_RET(card->ctx, sc_select_file(card, &tmppath, NULL), "SELECT docnr");
 	r = sc_read_binary(card, 0, buff, 11, 0);
 	LOG_TEST_RET(card->ctx, r, "read docnr failed");
-	const unsigned char *tag = sc_asn1_find_tag(card->ctx, buff, r, 0x04, &taglen);
+	const unsigned char *tag = sc_asn1_find_tag(card->ctx, buff, (size_t)r, 0x04, &taglen);
 	if (tag == NULL)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 
@@ -72,7 +72,7 @@ static int sc_pkcs15emu_esteid2018_init(sc_pkcs15_card_t *p15card) {
 	for (i = 0; i < 2; i++) {
 		const char *esteid_cert_names[2] = {"Isikutuvastus", "Allkirjastamine"};
 		const char *esteid_cert_paths[2] = {"3f00:adf1:3401", "3f00:adf2:341f"};
-		const int esteid_cert_ids[2] = {1, 2};
+		const u8 esteid_cert_ids[2] = {1, 2};
 
 		struct sc_pkcs15_cert_info cert_info;
 		struct sc_pkcs15_object cert_obj;
@@ -118,13 +118,13 @@ static int sc_pkcs15emu_esteid2018_init(sc_pkcs15_card_t *p15card) {
 
 	/* add pins */
 	for (i = 0; i < 3; i++) {
-		static const char *esteid_pin_names[3] = {"PIN1", "PIN2", "PUK"};
-		static const int esteid_pin_min[3] = {4, 5, 8};
-		static const int esteid_pin_ref[3] = {0x01, 0x85, 0x02};
-		static const int esteid_pin_authid[3] = {1, 2, 3};
-		static const char *esteid_pin_path[3] = {"3F00", "3F00ADF2", "3F00"};
+		const char *esteid_pin_names[3] = {"PIN1", "PIN2", "PUK"};
+		const size_t esteid_pin_min[3] = {4, 5, 8};
+		const int esteid_pin_ref[3] = {0x01, 0x85, 0x02};
+		const u8 esteid_pin_authid[3] = {1, 2, 3};
+		const char *esteid_pin_path[3] = {"3F00", "3F00ADF2", "3F00"};
 
-		static const int esteid_pin_flags[3] = {
+		const unsigned int esteid_pin_flags[3] = {
 		    SC_PKCS15_PIN_FLAG_NEEDS_PADDING | SC_PKCS15_PIN_FLAG_INITIALIZED,
 		    SC_PKCS15_PIN_FLAG_NEEDS_PADDING | SC_PKCS15_PIN_FLAG_INITIALIZED | SC_PKCS15_PIN_FLAG_LOCAL,
 		    SC_PKCS15_PIN_FLAG_NEEDS_PADDING | SC_PKCS15_PIN_FLAG_INITIALIZED | SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN};
@@ -163,15 +163,12 @@ static int sc_pkcs15emu_esteid2018_init(sc_pkcs15_card_t *p15card) {
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 	}
 
+	// trigger PIN counter refresh via pin_cmd
 	struct sc_pkcs15_object *objs[3];
 	r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH, objs, 3);
-
 	if (r != 3) {
-
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 	}
-
-	// trigger PIN counter refresh via pin_cmd
 	for (i = 0; i < r; i++) {
 		r = sc_pkcs15_get_pin_info(p15card, objs[i]);
 		if (r < 0)
@@ -180,12 +177,12 @@ static int sc_pkcs15emu_esteid2018_init(sc_pkcs15_card_t *p15card) {
 
 	/* add private keys */
 	for (i = 0; i < 2; i++) {
-		int prkey_pin[2] = {1, 2};
+		const u8 prkey_pin[2] = {1, 2};
 
 		const char *prkey_name[2] = {"Isikutuvastus", "Allkirjastamine"};
 		const char *prkey_path[2] = {"3F00:ADF1", "3F00:ADF2"};
-		const int prkey_usage[2] = {SC_PKCS15_PRKEY_USAGE_SIGN | SC_PKCS15_PRKEY_USAGE_DERIVE,
-		                            SC_PKCS15_PRKEY_USAGE_NONREPUDIATION};
+		const unsigned int prkey_usage[2] = {SC_PKCS15_PRKEY_USAGE_SIGN | SC_PKCS15_PRKEY_USAGE_DERIVE,
+		                                     SC_PKCS15_PRKEY_USAGE_NONREPUDIATION};
 		const int prkey_consent[2] = {0, 1};
 
 		struct sc_pkcs15_prkey_info prkey_info;

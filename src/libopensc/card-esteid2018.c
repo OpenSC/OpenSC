@@ -53,6 +53,12 @@ struct esteid_priv_data {
 
 #define DRVDATA(card) ((struct esteid_priv_data *)((card)->drv_data))
 
+#define SC_TRANSMIT_TEST_RET(card, apdu, text)                                                                                                      \
+	do {                                                                                                                               \
+		LOG_TEST_RET(card->ctx, sc_transmit_apdu(card, &apdu), "APDU transmit failed");                                            \
+		LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2), text);                                                      \
+	} while (0)
+
 static int esteid_match_card(sc_card_t *card) {
 	int i = 0;
 	int r = 0;
@@ -91,12 +97,10 @@ static int esteid_select(struct sc_card *card, unsigned char p1, unsigned char i
 		apdu.data = sbuf;
 		apdu.datalen = 2;
 	}
-	apdu.le = 0x00;
+	apdu.le = 0;
 	apdu.resplen = 0;
 
-	LOG_TEST_RET(card->ctx, sc_transmit_apdu(card, &apdu), "APDU transmit failed");
-	LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2), "SELECT failed");
-
+	SC_TRANSMIT_TEST_RET(card, apdu, "SELECT failed");
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
@@ -142,8 +146,8 @@ static int esteid_select_file(struct sc_card *card, const struct sc_path *in_pat
 // temporary hack, overload 6B00 SW processing
 static int esteid_read_binary(struct sc_card *card, unsigned int idx, u8 *buf, size_t count, unsigned long flags) {
 	int r;
+	int (*saved)(struct sc_card *, unsigned int, unsigned int) = card->ops->check_sw;
 	LOG_FUNC_CALLED(card->ctx);
-	void *saved = card->ops->check_sw;
 	card->ops->check_sw = esteid_check_sw;
 	r = iso_ops->read_binary(card, idx, buf, count, flags);
 	card->ops->check_sw = saved;
@@ -154,9 +158,10 @@ static int esteid_set_security_env(sc_card_t *card, const sc_security_env_t *env
 	struct esteid_priv_data *priv;
 	struct sc_apdu apdu;
 
-	const unsigned char cse_crt_aut[] = {0x80, 0x04, 0xFF, 0x20, 0x08, 0x00, 0x84, 0x01, 0x81};
-	const unsigned char cse_crt_sig[] = {0x80, 0x04, 0xFF, 0x15, 0x08, 0x00, 0x84, 0x01, 0x9F};
-	const unsigned char cse_crt_dec[] = {0x80, 0x04, 0xFF, 0x30, 0x04, 0x00, 0x84, 0x01, 0x81};
+	// XXX: could be const
+	unsigned char cse_crt_aut[] = {0x80, 0x04, 0xFF, 0x20, 0x08, 0x00, 0x84, 0x01, 0x81};
+	unsigned char cse_crt_sig[] = {0x80, 0x04, 0xFF, 0x15, 0x08, 0x00, 0x84, 0x01, 0x9F};
+	unsigned char cse_crt_dec[] = {0x80, 0x04, 0xFF, 0x30, 0x04, 0x00, 0x84, 0x01, 0x81};
 
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -166,26 +171,15 @@ static int esteid_set_security_env(sc_card_t *card, const sc_security_env_t *env
 	sc_log(card->ctx, "algo: %d operation: %d keyref: %d", env->algorithm, env->operation, env->key_ref[0]);
 
 	if (env->algorithm == SC_ALGORITHM_EC && env->operation == SC_SEC_OPERATION_SIGN && env->key_ref[0] == 1) {
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0x41, 0xA4);
-		apdu.data = cse_crt_aut;
-		apdu.datalen = sizeof(cse_crt_aut);
-		apdu.lc = sizeof(cse_crt_aut);
+		sc_format_apdu_ex(card, &apdu, 0x22, 0x41, 0xA4, cse_crt_aut, sizeof(cse_crt_aut), NULL, 0);
 	} else if (env->algorithm == SC_ALGORITHM_EC && env->operation == SC_SEC_OPERATION_SIGN && env->key_ref[0] == 2) {
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0x41, 0xB6);
-		apdu.data = cse_crt_sig;
-		apdu.datalen = sizeof(cse_crt_sig);
-		apdu.lc = sizeof(cse_crt_sig);
+		sc_format_apdu_ex(card, &apdu, 0x22, 0x41, 0xB6, cse_crt_sig, sizeof(cse_crt_sig), NULL, 0);
 	} else if (env->algorithm == SC_ALGORITHM_EC && env->operation == SC_SEC_OPERATION_DERIVE && env->key_ref[0] == 1) {
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0x41, 0xB8);
-		apdu.data = cse_crt_dec;
-		apdu.datalen = sizeof(cse_crt_dec);
-		apdu.lc = sizeof(cse_crt_dec);
+		sc_format_apdu_ex(card, &apdu, 0x22, 0x41, 0xB8, cse_crt_dec, sizeof(cse_crt_dec), NULL, 0);
 	} else {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 	}
-
-	LOG_TEST_RET(card->ctx, sc_transmit_apdu(card, &apdu), "APDU transmit failed");
-	LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2), "SET SECURITY ENV failed");
+	SC_TRANSMIT_TEST_RET(card, apdu, "SET SECURITY ENV failed");
 
 	priv = DRVDATA(card);
 	priv->sec_env = *env;
@@ -210,20 +204,13 @@ static int esteid_compute_signature(sc_card_t *card, const u8 *data, size_t data
 
 	switch (env->key_ref[0]) {
 	case 1: /* authentication key */
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x88, 0, 0);
+		sc_format_apdu_ex(card, &apdu, 0x88, 0, 0, sbuf, datalen, out, MIN(256, outlen));
 		break;
 	default:
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x9E, 0x9A);
+		sc_format_apdu_ex(card, &apdu, 0x2A, 0x9E, 0x9A, sbuf, datalen, out, MIN(256, outlen));
 	}
-	apdu.lc = datalen;
-	apdu.data = sbuf;
-	apdu.datalen = datalen;
-	apdu.le = MIN(256, outlen);
-	apdu.resp = out;
-	apdu.resplen = outlen;
 
-	LOG_TEST_RET(card->ctx, sc_transmit_apdu(card, &apdu), "APDU transmit failed");
-	LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2), "PSO CDS/INTERNAL AUTHENTICATE failed");
+	SC_TRANSMIT_TEST_RET(card, apdu, "PSO CDS/INTERNAL AUTHENTICATE failed");
 
 	LOG_FUNC_RETURN(card->ctx, apdu.resplen);
 }
@@ -244,17 +231,10 @@ static int esteid_get_pin_remaining_tries(sc_card_t *card, int pin_reference) {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 	}
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xCB, 0x3F, 0xFF);
 	get_pin_info[6] = pin_reference & 0x0F; // mask out local/global
-	apdu.lc = sizeof(get_pin_info);
-	apdu.data = get_pin_info;
-	apdu.datalen = sizeof(get_pin_info);
-	apdu.resplen = sizeof(apdu_resp);
-	apdu.resp = apdu_resp;
-	apdu.le = 256;
-
-	LOG_TEST_RET(card->ctx, sc_transmit_apdu(card, &apdu), "APDU transmit failed");
-	LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2), "GET DATA(pin info) failed");
+	// XXX: handling of default Le of 0x00 could be easier
+	sc_format_apdu_ex(card, &apdu, 0xCB, 0x3F, 0xFF, get_pin_info, sizeof(get_pin_info), apdu_resp, MIN(256, sizeof(apdu_resp)));
+	SC_TRANSMIT_TEST_RET(card, apdu, "GET DATA(pin info) failed");
 
 	// XXX: sc_asn1_find_tag with the following payload (to get to tag 0x9B):
 	// https://lapo.it/asn1js/#cB6_gQEaoBiaAQObAQOhEIwG8wAAc0MAnAbzAABzQwA
