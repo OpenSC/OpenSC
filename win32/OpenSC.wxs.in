@@ -25,7 +25,7 @@
            UpgradeCode="$(var.PlatformUpgradeCode)"
            Language="1033"
            Codepage="1252"
-           Version="@OPENSC_VERSION_MAJOR@.@OPENSC_VERSION_MINOR@.@OPENSC_VERSION_FIX@.0"
+           Version="@OPENSC_VERSION_MAJOR@.@OPENSC_VERSION_MINOR@.@OPENSC_VERSION_FIX@.@OPENSC_VERSION_REVISION@"
            Manufacturer="@OPENSC_VS_FF_COMPANY_NAME@">
     <Package Platform="$(var.Platform)"
              Description="@VS_FF_PRODUCT_NAME@ Installer"
@@ -55,7 +55,6 @@
     <CustomAction Id="Start_pkcs11_register.exe" Execute="immediate" Impersonate="yes" Return="asyncNoWait" FileKey="pkcs11_register.exe" ExeCommand="" />
 
     <Media Id="1" Cabinet="OpenSC.cab" EmbedCab="yes" CompressionLevel="high"/>
-    <MajorUpgrade DowngradeErrorMessage="Can't downgrade." AllowSameVersionUpgrades="yes"/>
     <Directory Id="TARGETDIR" Name="SourceDir">
       <Component Id="SCardSvr" Guid="*" Win64="$(var.Win64YesNo)" Permanent="yes">
         <!-- Start SCardSvr Service during startup -->
