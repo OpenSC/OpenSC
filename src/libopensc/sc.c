@@ -121,12 +121,16 @@ int sc_bin_to_hex(const u8 *in, size_t in_len, char *out, size_t out_len,
 	unsigned int	n, sep_len;
 	char		*pos, *end, sep;
 
+	if (out == NULL || out_len == 0 ||
+		(in == NULL && in_len > 0))
+		return SC_ERROR_INVALID_ARGUMENTS;
 	sep = (char)in_sep;
-	sep_len = sep > 0 ? 1 : 0;
+	sep_len = sep > 31 ? 1 : 0;
 	pos = out;
+	/* end: position one-past allowed to write to */
 	end = out + out_len;
 	for (n = 0; n < in_len; n++) {
-		if (pos + 3 + sep_len >= end)
+		if (pos + 3 + (n && sep_len ? sep_len : 0) > end)
 			return SC_ERROR_BUFFER_TOO_SMALL;
 		if (n && sep_len)
 			*pos++ = sep;
