@@ -351,7 +351,7 @@
     </Directory>
     <!-- Set up the features  -->
     <Feature Id="Complete" Level="1" Title="OpenSC software suite" Display="expand">
-      <Feature Id="OpenSC_core" Level="1" Title="OpenSC core library" Description="Core DLL and configuration file used by all other components." Absent="disallow">
+      <Feature Id="OpenSC_core" Level="1" Title="Core components" Description="Core Libraries and configuration files used by all other components." Absent="disallow">
         <ComponentRef Id="SCardSvr"/>
         <?ifdef zlib ?>
           <ComponentRef Id="zlib1.dll"/>
@@ -365,20 +365,20 @@
           <ComponentRef Id="DESCHSMCVCA00001"/>
         <?endif ?>
       </Feature>
-      <Feature Id="OpenSC_pkcs11" Level="1" Title="OpenSC PKCS#11 module" Description="PKCS#11 module usd by most open source and cross-platform software (like Firefox, Putty, TrueCrypt, OpenVPN etc)" TypicalDefault="install">
+      <Feature Id="OpenSC_pkcs11" Level="1" Title="PKCS#11 module" Description="Security module that can be used by most cross-platform software, for example Firefox, Thunderbird, OpenVPN, etc." TypicalDefault="install">
         <ComponentRef Id="opensc_pkcs11.dll"/>
         <ComponentRef Id="onepin_opensc_pkcs11.dll"/>
       </Feature>
-      <Feature Id="PKCS11_spy" Level="1" Title="PKCS#11 Spy module" Description="Module of the PKCS#11 spy." Absent="allow">
+      <Feature Id="PKCS11_spy" Level="1" Title="PKCS#11 Spy module" Description="PKCS#11 module for debugging library invocations.">
         <ComponentRef Id="pkcs11_spy.dll"/>
       </Feature>
-      <Feature Id="OpenSC_minidriver" Level="1" Title="OpenSC minidriver" Description="OpenSC minidriver for using smart cards with native Windows CSP applications (like Internet Explorer)" Absent="allow">
+      <Feature Id="OpenSC_minidriver" Level="1" Title="Smart card minidriver" Description="Security module that can be used by native Windows applications, for example Edge, Chrome, Microsoft Office, Acrobat Reader, etc.">
         <ComponentRef Id="opensc_minidriver.dll"/>
         <ComponentRef Id="openscBaseCSP"/>
         <ComponentRef Id="CertPropSvc"/>
       </Feature>
       <!-- Tools and profiles are for personalization -->
-      <Feature Id="OpenSC_tools" Level="1" Title="Tools and profiles" Description="Tools for debugging and personalization. Includes profiles needed for running pkcs15-init.exe">
+      <Feature Id="OpenSC_tools" Level="1" Title="Command line tools" Description="OpenSC tools for debugging and smart card personalization.">
         <ComponentRef Id="opensc.dll"/>
         <ComponentRef Id="opensc_asn1.exe"/>
         <ComponentRef Id="opensc_explorer.exe"/>
@@ -437,10 +437,10 @@
           <ComponentRef Id="gids.profile"/>
         <?endif ?>
       </Feature>
-      <Feature Id="OpenSC_menu" Level="1" Title="Start menu entries" Description="Start menu entries: link to documentation">
+      <Feature Id="OpenSC_menu" Level="1" Title="Start menu entries" Description="Add documentation links to the start menu.">
         <ComponentRef Id="ProgramMenuDir"/>
       </Feature>
-      <Feature Id="OpenSC_autostart" Level="1" Title="Autostart entries" Description="Run pkcs11-register.exe and opensc-notify.exe after login">
+      <Feature Id="OpenSC_autostart" Level="1" Title="Autostart entries" Description="After login, automatically register the PKCS#11 module and start smart card notifications.">
         <ComponentRef Id="Autostart_tools"/>
         <ComponentRef Id="Autostart_native_tools"/>
       </Feature>
