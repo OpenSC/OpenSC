@@ -106,7 +106,6 @@ case "${host}" in
 			WIN32="yes"
 		else
 			AC_MSG_RESULT([Using cygwin])
-			CPPFLAGS="${CPPFLAGS} -DCRYPTOKI_FORCE_WIN32"
 			WIN_LIBPREFIX="cyg"
 			AC_DEFINE([USE_CYGWIN], [1], [Define if you are on Cygwin])
 		fi
