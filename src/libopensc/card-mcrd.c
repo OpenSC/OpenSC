@@ -473,60 +473,6 @@ static int load_special_files(sc_card_t * card)
 	return 0;
 }
 
-/* Return the SE number from the keyD for the FID.  If ref_data is not
-   NULL the reference data is returned; this should be an array of at
-   least 2 bytes.  Returns -1 on error.  */
-static int get_se_num_from_keyd(sc_card_t * card, unsigned short fid,
-				u8 * ref_data)
-{
-	sc_context_t *ctx = card->ctx;
-	struct df_info_s *dfi;
-	struct keyd_record_s *keyd;
-	size_t len, taglen;
-	const u8 *p, *tag;
-	u8 fidbuf[2];
-
-	fidbuf[0] = (fid >> 8) & 0xFF;
-	fidbuf[1] = fid & 0xFF;
-
-	dfi = get_df_info(card);
-	if (!dfi || !dfi->keyd_file) {
-		sc_log(ctx, "EF_keyD not loaded\n");
-		return -1;
-	}
-
-	for (keyd = dfi->keyd_file; keyd; keyd = keyd->next) {
-		p = keyd->data;
-		len = keyd->datalen;
-
-		sc_log(ctx, "keyd no %d", keyd->recno);
-		sc_log_hex(ctx, "", p, len);
-
-		tag = sc_asn1_find_tag(ctx, p, len, 0x83, &taglen);
-		if (!tag || taglen != 4 ||
-		    !(tag[2] == fidbuf[0] && tag[3] == fidbuf[1]))
-			continue;
-		/* Found a matching record. */
-		if (ref_data) {
-			ref_data[0] = tag[0];
-			ref_data[1] = tag[1];
-		}
-		/* Look for the SE-DO */
-		tag = sc_asn1_find_tag(ctx, p, len, 0x7B, &taglen);
-		if (!tag || !taglen)
-			continue;
-		p = tag;
-		len = taglen;
-		/* And now look for the referenced SE. */
-		tag = sc_asn1_find_tag(ctx, p, len, 0x80, &taglen);
-		if (!tag || taglen != 1)
-			continue;
-		return *tag;	/* found. */
-	}
-	sc_log(ctx, "EF_keyD for %04hx not found\n", fid);
-	return -1;
-}
-
 /* Process an ARR (7816-9/8.5.4) and setup the ACL. */
 static void process_arr(sc_card_t * card, sc_file_t * file,
 			const u8 * buf, size_t buflen)
@@ -1212,34 +1158,32 @@ static int mcrd_set_security_env(sc_card_t * card,
 		return 0;
 	}
 
-	if (card->type == SC_CARD_TYPE_MCRD_GENERIC) {
-		/* some sanity checks */
-		if (env->flags & SC_SEC_ENV_ALG_PRESENT) {
-			if (env->algorithm != SC_ALGORITHM_RSA)
-				return SC_ERROR_INVALID_ARGUMENTS;
-		}
-		if (!(env->flags & SC_SEC_ENV_KEY_REF_PRESENT)
-		    || env->key_ref_len != 1)
+	/* some sanity checks */
+	if (env->flags & SC_SEC_ENV_ALG_PRESENT) {
+		if (env->algorithm != SC_ALGORITHM_RSA)
 			return SC_ERROR_INVALID_ARGUMENTS;
-
-		switch (env->operation) {
-		case SC_SEC_OPERATION_DECIPHER:
-			sc_log(card->ctx,
-				 "Using keyref %d to decipher\n",
-				 env->key_ref[0]);
-			mcrd_delete_ref_to_authkey(card);
-			mcrd_delete_ref_to_signkey(card);
-			mcrd_set_decipher_key_ref(card, env->key_ref[0]);
-			break;
-		case SC_SEC_OPERATION_SIGN:
-			sc_log(card->ctx, "Using keyref %d to sign\n",
-				 env->key_ref[0]);
-			break;
-		default:
-			return SC_ERROR_INVALID_ARGUMENTS;
-		}
-		priv->sec_env = *env;
 	}
+	if (!(env->flags & SC_SEC_ENV_KEY_REF_PRESENT)
+		|| env->key_ref_len != 1)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	switch (env->operation) {
+	case SC_SEC_OPERATION_DECIPHER:
+		sc_log(card->ctx,
+			 "Using keyref %d to decipher\n",
+			 env->key_ref[0]);
+		mcrd_delete_ref_to_authkey(card);
+		mcrd_delete_ref_to_signkey(card);
+		mcrd_set_decipher_key_ref(card, env->key_ref[0]);
+		break;
+	case SC_SEC_OPERATION_SIGN:
+		sc_log(card->ctx, "Using keyref %d to sign\n",
+			 env->key_ref[0]);
+		break;
+	default:
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+	priv->sec_env = *env;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0, 0);
 	apdu.le = 0;
@@ -1259,37 +1203,8 @@ static int mcrd_set_security_env(sc_card_t * card,
 	*p++ = 0x83;
 	*p++ = 0x03;
 	*p++ = 0x80;
-
-	if (card->type == SC_CARD_TYPE_MCRD_GENERIC) {
-		unsigned char fid;
-
-		fid = env->key_ref[0];
-		*p = fid;
-		p++;
-		*p = 0;
-		p++;
-	} else if (is_esteid_card(card)) {
-		if ((env->flags & SC_SEC_ENV_FILE_REF_PRESENT)
-		    && env->file_ref.len > 1) {
-			unsigned short fid;
-			int num;
-
-			fid = env->file_ref.value[env->file_ref.len - 2] << 8;
-			fid |= env->file_ref.value[env->file_ref.len - 1];
-			num = get_se_num_from_keyd(card, fid, p);
-			if (num != -1) {
-				/* Need to restore the security environment. */
-				if (num) {
-					r = mcrd_restore_se(card, num);
-					LOG_TEST_RET(card->ctx, r,
-						    "mcrd_enable_se failed");
-				}
-				p += 2;
-			}
-		}
-	} else {
-		return SC_ERROR_INVALID_ARGUMENTS;
-	}
+	*p++ = env->key_ref[0];
+	*p++ = 0;
 
 	r = p - sbuf;
 	apdu.lc = r;
