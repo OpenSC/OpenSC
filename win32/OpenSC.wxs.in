@@ -365,7 +365,7 @@
           <ComponentRef Id="DESCHSMCVCA00001"/>
         <?endif ?>
       </Feature>
-      <Feature Id="OpenSC_pkcs11" Level="1" Title="PKCS#11 module" Description="Security module that can be used by most cross-platform software, for example Firefox, Thunderbird, OpenVPN, etc." TypicalDefault="install">
+      <Feature Id="OpenSC_pkcs11" Level="1" Title="PKCS#11 module" Description="Security module that can be used by most cross-platform software, for example Firefox, Thunderbird, OpenVPN, etc.">
         <ComponentRef Id="opensc_pkcs11.dll"/>
         <ComponentRef Id="onepin_opensc_pkcs11.dll"/>
       </Feature>
@@ -436,13 +436,13 @@
           <ComponentRef Id="isoApplet.profile"/>
           <ComponentRef Id="gids.profile"/>
         <?endif ?>
+        <Feature Id="OpenSC_autostart" Level="1" Title="Autostart entries" Description="After login, automatically register the PKCS#11 module and start smart card notifications.">
+          <ComponentRef Id="Autostart_tools"/>
+          <ComponentRef Id="Autostart_native_tools"/>
+        </Feature>
       </Feature>
       <Feature Id="OpenSC_menu" Level="1" Title="Start menu entries" Description="Add documentation links to the start menu.">
         <ComponentRef Id="ProgramMenuDir"/>
-      </Feature>
-      <Feature Id="OpenSC_autostart" Level="1" Title="Autostart entries" Description="After login, automatically register the PKCS#11 module and start smart card notifications.">
-        <ComponentRef Id="Autostart_tools"/>
-        <ComponentRef Id="Autostart_native_tools"/>
       </Feature>
     </Feature>
     <UI Id='Mondo'>
