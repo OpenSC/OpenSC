@@ -353,7 +353,6 @@
     <Feature Id="Complete" Level="1" Title="OpenSC software suite" Display="expand">
       <Feature Id="OpenSC_core" Level="1" Title="OpenSC core library" Description="Core DLL and configuration file used by all other components." Absent="disallow">
         <ComponentRef Id="SCardSvr"/>
-        <ComponentRef Id="opensc.dll"/>
         <?ifdef zlib ?>
           <ComponentRef Id="zlib1.dll"/>
         <?endif ?>
@@ -380,6 +379,7 @@
       </Feature>
       <!-- Tools and profiles are for personalization -->
       <Feature Id="OpenSC_tools" Level="1" Title="Tools and profiles" Description="Tools for debugging and personalization. Includes profiles needed for running pkcs15-init.exe">
+        <ComponentRef Id="opensc.dll"/>
         <ComponentRef Id="opensc_asn1.exe"/>
         <ComponentRef Id="opensc_explorer.exe"/>
         <ComponentRef Id="opensc_tool.exe"/>
