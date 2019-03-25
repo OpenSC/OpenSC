@@ -117,6 +117,10 @@ static struct ec_curve_info {
 	{NULL, NULL, NULL, 0},
 };
 
+static const struct sc_aid GOST_HASH2001_PARAMSET_OID = { { 0x06, 0x07, 0x2a, 0x85, 0x03, 0x02, 0x02, 0x1e, 0x01 }, 9 };
+static const struct sc_aid GOST_HASH2012_256_PARAMSET_OID = { { 0x06, 0x08, 0x2A, 0x85, 0x03, 0x07, 0x01, 0x01, 0x02, 0x02 }, 10 };
+static const struct sc_aid GOST_HASH2012_512_PARAMSET_OID = { { 0x06, 0x08, 0x2A, 0x85, 0x03, 0x07, 0x01, 0x01, 0x02, 0x03 }, 10 };
+
 enum {
 	OPT_MODULE = 0x100,
 	OPT_SLOT,
@@ -547,6 +551,7 @@ VARATTR_METHOD(PUBLIC_EXPONENT, CK_BYTE);		/* getPUBLIC_EXPONENT */
 #endif
 VARATTR_METHOD(VALUE, unsigned char);			/* getVALUE */
 VARATTR_METHOD(GOSTR3410_PARAMS, unsigned char);	/* getGOSTR3410_PARAMS */
+VARATTR_METHOD(GOSTR3411_PARAMS, unsigned char);	/* getGOSTR3411_PARAMS */
 VARATTR_METHOD(EC_POINT, unsigned char);		/* getEC_POINT */
 VARATTR_METHOD(EC_PARAMS, unsigned char);		/* getEC_PARAMS */
 VARATTR_METHOD(ALLOWED_MECHANISMS, CK_MECHANISM_TYPE);	/* getALLOWED_MECHANISMS */
@@ -2344,9 +2349,6 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			const struct sc_aid GOST2012_512_PARAMSET_A_OID = { { 0x06, 0x09, 0x2A, 0x85, 0x03, 0x07, 0x01, 0x02, 0x01, 0x02, 0x01 }, 11 };
 			const struct sc_aid GOST2012_512_PARAMSET_B_OID = { { 0x06, 0x09, 0x2A, 0x85, 0x03, 0x07, 0x01, 0x02, 0x01, 0x02, 0x02 }, 11 };
 			const struct sc_aid GOST2012_512_PARAMSET_C_OID = { { 0x06, 0x09, 0x2A, 0x85, 0x03, 0x07, 0x01, 0x02, 0x01, 0x02, 0x03 }, 11 };
-			const struct sc_aid GOST_HASH2001_PARAMSET_OID = { { 0x06, 0x07, 0x2a, 0x85, 0x03, 0x02, 0x02, 0x1e, 0x01 }, 9 };
-			const struct sc_aid GOST_HASH2012_256_PARAMSET_OID = { { 0x06, 0x08, 0x2A, 0x85, 0x03, 0x07, 0x01, 0x01, 0x02, 0x02 }, 10 };
-			const struct sc_aid GOST_HASH2012_512_PARAMSET_OID = { { 0x06, 0x08, 0x2A, 0x85, 0x03, 0x07, 0x01, 0x01, 0x02, 0x03 }, 10 };
 			struct sc_aid key_paramset_encoded_oid;
 			struct sc_aid hash_paramset_encoded_oid;
 			unsigned long int gost_key_type = -1;
@@ -3843,7 +3845,22 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 			printf("; RSA \n");
 		break;
 	case CKK_GOSTR3410:
-		printf("; GOSTR3410 \n");
+	case CKK_GOSTR3410_512:
+		oid = getGOSTR3411_PARAMS(sess, obj, &size);
+		if (oid) {
+			if (size == GOST_HASH2001_PARAMSET_OID.len && !memcmp(oid, GOST_HASH2001_PARAMSET_OID.value, size))
+				printf("; GOSTR3410\n");
+			else if (size == GOST_HASH2012_256_PARAMSET_OID.len && !memcmp(oid, GOST_HASH2012_256_PARAMSET_OID.value, size))
+				printf("; GOSTR3410-2012-256\n");
+			else if (size == GOST_HASH2012_512_PARAMSET_OID.len && !memcmp(oid, GOST_HASH2012_512_PARAMSET_OID.value, size))
+				printf("; GOSTR3410-2012-512\n");
+			else
+				printf("; unknown GOSTR3410 algorithm\n");
+			free(oid);
+		} else {
+			printf("; unknown GOSTR3410 algorithm\n");
+		}
+
 		oid = getGOSTR3410_PARAMS(sess, obj, &size);
 		if (oid) {
 			unsigned int	n;
