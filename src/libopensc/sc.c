@@ -123,24 +123,31 @@ err:
 }
 
 int sc_bin_to_hex(const u8 *in, size_t in_len, char *out, size_t out_len,
-		  int in_sep)
+				  int in_sep)
 {
-	unsigned int	n, sep_len;
-	char		*pos, *end, sep;
-
-	sep = (char)in_sep;
-	sep_len = sep > 0 ? 1 : 0;
-	pos = out;
-	end = out + out_len;
-	for (n = 0; n < in_len; n++) {
-		if (pos + 3 + sep_len >= end)
-			return SC_ERROR_BUFFER_TOO_SMALL;
-		if (n && sep_len)
-			*pos++ = sep;
-		sprintf(pos, "%02x", in[n]);
-		pos += 2;
+	if (in == NULL || out == NULL) {
+		return SC_ERROR_INVALID_ARGUMENTS;
 	}
-	*pos = '\0';
+
+	if (in_sep > 0) {
+		if (out_len < in_len*3 || out_len < 1)
+			return SC_ERROR_BUFFER_TOO_SMALL;
+	} else {
+		if (out_len < in_len*2 + 1)
+			return SC_ERROR_BUFFER_TOO_SMALL;
+	}
+
+	const char hex[] = "0123456789abcdef";
+	while (in_len) {
+		unsigned char value = *in++;
+		*out++ = hex[(value >> 4) & 0xF];
+		*out++ = hex[ value       & 0xF];
+		in_len--;
+		if (in_len && in_sep > 0)
+			*out++ = (char)in_sep;
+	}
+	*out = '\0';
+
 	return SC_SUCCESS;
 }
 
