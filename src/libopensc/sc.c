@@ -72,11 +72,11 @@ int sc_hex_to_bin(const char *in, u8 *out, size_t *outlen)
 	int byte_needs_nibble = 0;
 	int r = SC_SUCCESS;
 	size_t left = *outlen;
-	u8 byte;
+	u8 byte = 0;
 	while (*in != '\0' && 0 != left) {
 		char c = *in++;
 		u8 nibble;
-		if ('0' <= c && c <= '9')
+		if      ('0' <= c && c <= '9')
 			nibble = c - '0';
 		else if ('a' <= c && c <= 'f')
 			nibble = c - 'a' + 10;
