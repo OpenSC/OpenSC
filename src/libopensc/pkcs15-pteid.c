@@ -346,9 +346,6 @@ int sc_pkcs15emu_pteid_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid, sc
 	sc_context_t *ctx = p15card->card->ctx;
 	LOG_FUNC_CALLED(ctx);
 
-	/* if no check flag execute unconditionally */
-	if (opts && opts->flags & SC_PKCS15EMU_FLAGS_NO_CHECK)
-		LOG_FUNC_RETURN(ctx, sc_pkcs15emu_pteid_init(p15card));
 	/* check for proper card */
 	r = pteid_detect_card(p15card->card);
 	if (r == SC_ERROR_WRONG_CARD)

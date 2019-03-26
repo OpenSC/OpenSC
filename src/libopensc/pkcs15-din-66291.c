@@ -267,10 +267,8 @@ int sc_pkcs15emu_din_66291_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid
     SC_FUNC_CALLED(p15card->card->ctx, 1);
 
     /* Check card */
-    if (!(opts && opts->flags & SC_PKCS15EMU_FLAGS_NO_CHECK)) {
-        if (!din_66291_match_p15card(p15card, aid))
-            return SC_ERROR_WRONG_CARD;
-    }
+	if (!din_66291_match_p15card(p15card, aid))
+		return SC_ERROR_WRONG_CARD;
 
     /* Init card */
     return sc_pkcs15emu_din_66291_init(p15card);

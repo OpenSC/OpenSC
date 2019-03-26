@@ -282,9 +282,6 @@ int sc_pkcs15emu_dnie_init_ex(sc_pkcs15_card_t * p15card,
 	LOG_FUNC_CALLED(ctx);
 
 #if defined(ENABLE_OPENSSL) && defined(ENABLE_SM)
-	/* if no check flag execute unconditionally */
-	if (opts && opts->flags & SC_PKCS15EMU_FLAGS_NO_CHECK)
-		LOG_FUNC_RETURN(ctx, sc_pkcs15emu_dnie_init(p15card));
 	/* check for proper card */
 	r = dnie_match_card(p15card->card);
 	if (r == 0)
