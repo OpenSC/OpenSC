@@ -1377,6 +1377,7 @@ const sc_path_t *sc_get_mf_path(void);
 /*             miscellaneous functions                              */
 /********************************************************************/
 
+extern char *sc_hex_to_bin_seperators;
 int sc_hex_to_bin(const char *in, u8 *out, size_t *outlen);
 int sc_bin_to_hex(const u8 *, size_t, char *, size_t, int separator);
 size_t sc_right_trim(u8 *buf, size_t len);
