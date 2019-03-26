@@ -92,8 +92,6 @@ static int sc_pkcs15emu_oberthur_add_pubkey(struct sc_pkcs15_card *, unsigned, u
 static int sc_pkcs15emu_oberthur_add_cert(struct sc_pkcs15_card *, unsigned);
 static int sc_pkcs15emu_oberthur_add_data(struct sc_pkcs15_card *, unsigned, unsigned, int);
 
-int sc_pkcs15emu_oberthur_init_ex(struct sc_pkcs15_card *, struct sc_aid *, struct sc_pkcs15emu_opt *);
-
 static int sc_oberthur_parse_tokeninfo (struct sc_pkcs15_card *, unsigned char *, size_t, int);
 static int sc_oberthur_parse_containers (struct sc_pkcs15_card *, unsigned char *, size_t, int);
 static int sc_oberthur_parse_publicinfo (struct sc_pkcs15_card *, unsigned char *, size_t, int);
@@ -1049,8 +1047,7 @@ oberthur_detect_card(struct sc_pkcs15_card * p15card)
 
 
 int
-sc_pkcs15emu_oberthur_init_ex(struct sc_pkcs15_card * p15card, struct sc_aid *aid,
-				   struct sc_pkcs15emu_opt * opts)
+sc_pkcs15emu_oberthur_init_ex(struct sc_pkcs15_card * p15card, struct sc_aid *aid)
 {
 	int rv;
 

@@ -31,8 +31,6 @@
 #include "cardctl.h"
 #include "common/compat_strlcpy.h"
 
-int sc_pkcs15emu_westcos_init_ex(sc_pkcs15_card_t *, struct sc_aid *, sc_pkcs15emu_opt_t *);
-
 static int sc_pkcs15emu_westcos_init(sc_pkcs15_card_t * p15card)
 {
 	int i, r;
@@ -245,8 +243,7 @@ static int westcos_detect_card(sc_pkcs15_card_t * p15card)
 }
 
 int sc_pkcs15emu_westcos_init_ex(sc_pkcs15_card_t * p15card,
-				 struct sc_aid *aid,
-				 sc_pkcs15emu_opt_t * opts)
+				 struct sc_aid *aid)
 {
 	int r;
 	sc_card_t *card = p15card->card;

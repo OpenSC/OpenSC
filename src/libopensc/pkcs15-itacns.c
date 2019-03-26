@@ -52,8 +52,6 @@
 #include <openssl/x509v3.h>
 #endif
 
-int sc_pkcs15emu_itacns_init_ex(sc_pkcs15_card_t *, struct sc_aid *, sc_pkcs15emu_opt_t *);
-
 static const char path_serial[] = "10001003";
 
 /* Manufacturers */
@@ -862,8 +860,7 @@ static int itacns_init(sc_pkcs15_card_t *p15card)
 	return r;
 }
 
-int sc_pkcs15emu_itacns_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid,
-		sc_pkcs15emu_opt_t *opts)
+int sc_pkcs15emu_itacns_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
 {
 	sc_card_t *card = p15card->card;
 	SC_FUNC_CALLED(card->ctx, 1);

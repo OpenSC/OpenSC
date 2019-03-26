@@ -103,11 +103,9 @@ sc_pkcs15_bind_synthetic(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
 {
 	sc_context_t		*ctx = p15card->card->ctx;
 	scconf_block		*conf_block, **blocks, *blk;
-	sc_pkcs15emu_opt_t	opts;
 	int			i, r = SC_ERROR_WRONG_CARD;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
-	memset(&opts, 0, sizeof(opts));
 	conf_block = NULL;
 
 	conf_block = sc_get_conf_block(ctx, "framework", "pkcs15", 1);
@@ -117,7 +115,7 @@ sc_pkcs15_bind_synthetic(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
 		sc_log(ctx, "no conf file (or section), trying all builtin emulators");
 		for (i = 0; builtin_emulators[i].name; i++) {
 			sc_log(ctx, "trying %s", builtin_emulators[i].name);
-			r = builtin_emulators[i].handler(p15card, aid, &opts);
+			r = builtin_emulators[i].handler(p15card, aid);
 			if (r == SC_SUCCESS)
 				/* we got a hit */
 				goto out;
@@ -139,7 +137,7 @@ sc_pkcs15_bind_synthetic(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
 				sc_log(ctx, "trying %s", name);
 				for (i = 0; builtin_emulators[i].name; i++)
 					if (!strcmp(builtin_emulators[i].name, name)) {
-						r = builtin_emulators[i].handler(p15card, aid, &opts);
+						r = builtin_emulators[i].handler(p15card, aid);
 						if (r == SC_SUCCESS)
 							/* we got a hit */
 							goto out;
@@ -150,7 +148,7 @@ sc_pkcs15_bind_synthetic(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
 			sc_log(ctx, "no emulator list in config file, trying all builtin emulators");
 			for (i = 0; builtin_emulators[i].name; i++) {
 				sc_log(ctx, "trying %s", builtin_emulators[i].name);
-				r = builtin_emulators[i].handler(p15card, aid, &opts);
+				r = builtin_emulators[i].handler(p15card, aid);
 				if (r == SC_SUCCESS)
 					/* we got a hit */
 					goto out;
@@ -191,10 +189,9 @@ static int parse_emu_block(sc_pkcs15_card_t *p15card, struct sc_aid *aid, scconf
 {
 	sc_card_t	*card = p15card->card;
 	sc_context_t	*ctx = card->ctx;
-	sc_pkcs15emu_opt_t opts;
 	void *handle = NULL;
 	int		(*init_func)(sc_pkcs15_card_t *);
-	int		(*init_func_ex)(sc_pkcs15_card_t *, struct sc_aid *, sc_pkcs15emu_opt_t *);
+	int		(*init_func_ex)(sc_pkcs15_card_t *, struct sc_aid *);
 	int		r;
 	const char	*driver, *module_name;
 
@@ -202,9 +199,6 @@ static int parse_emu_block(sc_pkcs15_card_t *p15card, struct sc_aid *aid, scconf
 
 	init_func    = NULL;
 	init_func_ex = NULL;
-
-	memset(&opts, 0, sizeof(opts));
-	opts.blk     = conf;
 
 	module_name = scconf_get_str(conf, "module", builtin_name);
 	if (!strcmp(module_name, "builtin")) {
@@ -260,12 +254,12 @@ static int parse_emu_block(sc_pkcs15_card_t *p15card, struct sc_aid *aid, scconf
 
 			address = sc_dlsym(handle, name);
 			if (address)
-				init_func_ex = (int (*)(sc_pkcs15_card_t *, struct sc_aid *, sc_pkcs15emu_opt_t *)) address;
+				init_func_ex = (int (*)(sc_pkcs15_card_t *, struct sc_aid *)) address;
 		}
 	}
 	/* try to initialize the pkcs15 structures */
 	if (init_func_ex)
-		r = init_func_ex(p15card, aid, &opts);
+		r = init_func_ex(p15card, aid);
 	else if (init_func)
 		r = init_func(p15card);
 	else

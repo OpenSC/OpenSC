@@ -202,7 +202,7 @@ sc_pkcs15emu_iasecc_init (struct sc_pkcs15_card *p15card, struct sc_aid *aid)
 
 
 int
-sc_pkcs15emu_iasecc_init_ex(struct sc_pkcs15_card *p15card, struct sc_aid *aid, struct sc_pkcs15emu_opt *opts)
+sc_pkcs15emu_iasecc_init_ex(struct sc_pkcs15_card *p15card, struct sc_aid *aid)
 {
 	if (iasecc_pkcs15emu_detect_card(p15card))
 		return SC_ERROR_WRONG_CARD;

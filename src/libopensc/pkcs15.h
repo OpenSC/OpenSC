@@ -1003,12 +1003,6 @@ typedef struct sc_pkcs15_search_key {
 int sc_pkcs15_search_objects(struct sc_pkcs15_card *, sc_pkcs15_search_key_t *,
 			struct sc_pkcs15_object **, size_t);
 
-/* This structure is passed to the new sc_pkcs15emu_*_init functions */
-typedef struct sc_pkcs15emu_opt {
-	scconf_block *blk;
-	unsigned int flags;
-} sc_pkcs15emu_opt_t;
-
 extern int sc_pkcs15_bind_synthetic(struct sc_pkcs15_card *, struct sc_aid *);
 extern int sc_pkcs15_is_emulation_only(sc_card_t *);
 

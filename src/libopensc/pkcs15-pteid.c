@@ -49,7 +49,6 @@
 #include "pkcs15.h"
 
 static int pteid_detect_card(struct sc_card *card);
-int sc_pkcs15emu_pteid_init_ex(sc_pkcs15_card_t *, struct sc_aid *, sc_pkcs15emu_opt_t *);
 
 static
 int dump_ef(sc_card_t * card, const char *path, u8 * buf, size_t * buf_len)
@@ -340,7 +339,7 @@ static int pteid_detect_card(struct sc_card *card)
 	return SC_ERROR_WRONG_CARD;
 }
 
-int sc_pkcs15emu_pteid_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid, sc_pkcs15emu_opt_t *opts)
+int sc_pkcs15emu_pteid_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
 {
 	int r=SC_SUCCESS;
 	sc_context_t *ctx = p15card->card->ctx;
