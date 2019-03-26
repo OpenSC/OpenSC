@@ -13,6 +13,7 @@ https://developer.apple.com/library/mac/documentation/DeveloperTools/Reference/D
     <choices-outline>
         <line choice="default" />
         <line choice="tokend" />
+        <line choice="startup" />
     </choices-outline>
     <choice id="default" title="OpenSC PKCS11 and tools" enabled="false">
         <pkg-ref id="org.opensc-project.mac">OpenSC.pkg</pkg-ref>
