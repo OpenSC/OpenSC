@@ -21,7 +21,7 @@ do
 	ln -sf $f /usr/local/bin
 done
 
-for f in /Library/LaunchAgents/pkcs11-register.plist /Library/LaunchAgents/pkcs11-register.plist
+for f in /Library/LaunchAgents/pkcs11-register.plist /Library/LaunchAgents/opensc-notify.plist
 do
 	if [ -e "$f" ]
 	then
