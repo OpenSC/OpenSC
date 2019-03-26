@@ -33,9 +33,6 @@
 #include "pkcs15.h"
 #include "jpki.h"
 
-int sc_pkcs15emu_jpki_init_ex(sc_pkcs15_card_t *, struct sc_aid *,
-		sc_pkcs15emu_opt_t *);
-
 static int
 sc_pkcs15emu_jpki_init(sc_pkcs15_card_t * p15card)
 {
@@ -224,7 +221,7 @@ sc_pkcs15emu_jpki_init(sc_pkcs15_card_t * p15card)
 
 int
 sc_pkcs15emu_jpki_init_ex(sc_pkcs15_card_t * p15card,
-			  struct sc_aid *aid, sc_pkcs15emu_opt_t * opts)
+			  struct sc_aid *aid)
 {
 	if (p15card->card->type != SC_CARD_TYPE_JPKI_BASE)
 		return SC_ERROR_WRONG_CARD;

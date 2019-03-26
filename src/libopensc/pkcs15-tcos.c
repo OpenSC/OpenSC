@@ -33,11 +33,6 @@
 #include "cardctl.h"
 #include "log.h"
 
-int sc_pkcs15emu_tcos_init_ex(
-	sc_pkcs15_card_t   *p15card,
-	struct sc_aid *,
-	sc_pkcs15emu_opt_t *opts);
-
 static int insert_cert(
 	sc_pkcs15_card_t *p15card,
 	const char       *path,
@@ -492,8 +487,7 @@ static int detect_unicard(
 
 int sc_pkcs15emu_tcos_init_ex(
 	sc_pkcs15_card_t   *p15card,
-	struct sc_aid *aid,
-	sc_pkcs15emu_opt_t *opts
+	struct sc_aid *aid
 ){
 	sc_card_t         *card = p15card->card;
 	sc_context_t      *ctx = p15card->card->ctx;

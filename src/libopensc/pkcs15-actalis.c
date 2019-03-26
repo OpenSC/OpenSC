@@ -37,8 +37,6 @@
 #include "libopensc/pkcs15.h"
 #include "libopensc/log.h"
 
-int sc_pkcs15emu_actalis_init_ex(sc_pkcs15_card_t *, struct sc_aid *, sc_pkcs15emu_opt_t *);
-
 static int (*set_security_env) (sc_card_t *, const sc_security_env_t *, int);
 
 static int set_sec_env(sc_card_t * card, const sc_security_env_t *env,
@@ -317,8 +315,7 @@ static int actalis_detect_card(sc_pkcs15_card_t * p15card)
 }
 
 int sc_pkcs15emu_actalis_init_ex(sc_pkcs15_card_t * p15card,
-				 struct sc_aid *aid,
-				 sc_pkcs15emu_opt_t * opts)
+				 struct sc_aid *aid)
 {
 	if (actalis_detect_card(p15card))
 		return SC_ERROR_WRONG_CARD;

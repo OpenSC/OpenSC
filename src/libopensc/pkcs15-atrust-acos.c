@@ -34,8 +34,6 @@
 #define MANU_ID		"A-Trust"
 #define CARD_LABEL	"a.sign Premium a"
 
-int sc_pkcs15emu_atrust_acos_init_ex(sc_pkcs15_card_t *, struct sc_aid *aid, sc_pkcs15emu_opt_t *);
-
 typedef struct cdata_st {
 	const char *label;
 	int	    authority;
@@ -266,8 +264,7 @@ static int sc_pkcs15emu_atrust_acos_init(sc_pkcs15_card_t *p15card)
 }
 
 int sc_pkcs15emu_atrust_acos_init_ex(sc_pkcs15_card_t *p15card,
-				  struct sc_aid *aid,
-				  sc_pkcs15emu_opt_t *opts)
+				  struct sc_aid *aid)
 {
 	if (acos_detect_card(p15card))
 		return SC_ERROR_WRONG_CARD;

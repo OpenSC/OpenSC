@@ -211,9 +211,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 	return SC_SUCCESS;
 }
 
-int sc_pkcs15emu_esteid_init_ex(sc_pkcs15_card_t *p15card,
-				struct sc_aid *aid,
-				sc_pkcs15emu_opt_t *opts)
+int sc_pkcs15emu_esteid_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
 {
 	if (p15card->card->type == SC_CARD_TYPE_MCRD_ESTEID_V30)
 		return sc_pkcs15emu_esteid_init(p15card);

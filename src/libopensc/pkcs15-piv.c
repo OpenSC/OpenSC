@@ -40,8 +40,6 @@
 
 #define MANU_ID		"piv_II "
 
-int sc_pkcs15emu_piv_init_ex(sc_pkcs15_card_t *, struct sc_aid *aid, sc_pkcs15emu_opt_t *);
-
 typedef struct objdata_st {
 	const char *id;
 	const char *label;
@@ -1205,7 +1203,7 @@ sc_log(card->ctx,  "DEE Adding pin %d label=%s",i, label);
 }
 
 int sc_pkcs15emu_piv_init_ex(sc_pkcs15_card_t *p15card,
-		struct sc_aid *aid, sc_pkcs15emu_opt_t *opts)
+		struct sc_aid *aid)
 {
 	sc_card_t   *card = p15card->card;
 	sc_context_t    *ctx = card->ctx;

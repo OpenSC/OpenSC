@@ -41,9 +41,6 @@
 #include "pkcs15.h"
 #include "../pkcs11/pkcs11.h"
 
-int sc_pkcs15emu_coolkey_init_ex(sc_pkcs15_card_t *, struct sc_aid *, sc_pkcs15emu_opt_t *);
-
-
 typedef struct pdata_st {
 	const char *id;
 	const char *label;
@@ -716,7 +713,7 @@ fail:
 
 int
 sc_pkcs15emu_coolkey_init_ex(sc_pkcs15_card_t *p15card,
-		struct sc_aid *aid, sc_pkcs15emu_opt_t *opts)
+		struct sc_aid *aid)
 {
 	sc_card_t      *card = p15card->card;
 	sc_context_t    *ctx = card->ctx;

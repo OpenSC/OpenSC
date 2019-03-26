@@ -230,8 +230,7 @@ static int sc_pkcs15emu_gids_init (sc_pkcs15_card_t * p15card)
 }
 
 int sc_pkcs15emu_gids_init_ex(sc_pkcs15_card_t *p15card,
-				struct sc_aid *aid,
-				sc_pkcs15emu_opt_t *opts)
+				struct sc_aid *aid)
 {
 	if (p15card->card->type != SC_CARD_TYPE_GIDS_GENERIC && p15card->card->type != SC_CARD_TYPE_GIDS_V1 && p15card->card->type != SC_CARD_TYPE_GIDS_V2) {
 		return SC_ERROR_WRONG_CARD;
@@ -242,8 +241,7 @@ int sc_pkcs15emu_gids_init_ex(sc_pkcs15_card_t *p15card,
 #else
 
 int sc_pkcs15emu_gids_init_ex(sc_pkcs15_card_t *p15card,
-				struct sc_aid *aid,
-				sc_pkcs15emu_opt_t *opts)
+				struct sc_aid *aid)
 {
 	return SC_ERROR_WRONG_CARD;
 }

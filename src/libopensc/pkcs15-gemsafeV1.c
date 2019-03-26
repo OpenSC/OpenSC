@@ -40,8 +40,6 @@
 #define GEMSAFE_READ_QUANTUM    248
 #define GEMSAFE_MAX_OBJLEN      28672
 
-int sc_pkcs15emu_gemsafeV1_init_ex(sc_pkcs15_card_t *, struct sc_aid *,sc_pkcs15emu_opt_t *);
-
 static int
 sc_pkcs15emu_add_cert(sc_pkcs15_card_t *p15card,
 	int type, int authority,
@@ -438,8 +436,7 @@ static int sc_pkcs15emu_gemsafeV1_init( sc_pkcs15_card_t *p15card)
 }
 
 int sc_pkcs15emu_gemsafeV1_init_ex( sc_pkcs15_card_t *p15card,
-			struct sc_aid *aid,
-			sc_pkcs15emu_opt_t *opts)
+			struct sc_aid *aid)
 {
 	if (gemsafe_detect_card(p15card))
 		return SC_ERROR_WRONG_CARD;

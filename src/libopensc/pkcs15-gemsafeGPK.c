@@ -35,8 +35,6 @@
 
 #define MANU_ID		"GemSAFE on GPK16000"
 
-int sc_pkcs15emu_gemsafeGPK_init_ex(sc_pkcs15_card_t *, struct sc_aid *, sc_pkcs15emu_opt_t *);
-
 static int (*pin_cmd_save)(struct sc_card *, struct sc_pin_cmd_data *, 
 		int *tries_left);
 
@@ -509,8 +507,7 @@ static int sc_pkcs15emu_gemsafeGPK_init(sc_pkcs15_card_t *p15card)
 	return SC_SUCCESS;
 }
 
-int sc_pkcs15emu_gemsafeGPK_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid,
-				  sc_pkcs15emu_opt_t *opts)
+int sc_pkcs15emu_gemsafeGPK_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
 {
 	sc_card_t   *card = p15card->card;
 	sc_context_t    *ctx = card->ctx;
