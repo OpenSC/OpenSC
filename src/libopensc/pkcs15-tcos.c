@@ -499,11 +499,10 @@ int sc_pkcs15emu_tcos_init_ex(
 	sc_context_t      *ctx = p15card->card->ctx;
 	sc_serial_number_t serialnr;
 	char               serial[30];
-	int i, r;
+	int r;
 
 	/* check if we have the correct card OS unless SC_PKCS15EMU_FLAGS_NO_CHECK */
-	i=(opts && (opts->flags & SC_PKCS15EMU_FLAGS_NO_CHECK));
-	if (!i && card->type!=SC_CARD_TYPE_TCOS_V2 && card->type!=SC_CARD_TYPE_TCOS_V3) return SC_ERROR_WRONG_CARD;
+	if (card->type!=SC_CARD_TYPE_TCOS_V2 && card->type!=SC_CARD_TYPE_TCOS_V3) return SC_ERROR_WRONG_CARD;
 
 	/* get the card serial number */
 	r = sc_card_ctl(card, SC_CARDCTL_GET_SERIALNR, &serialnr);

@@ -1055,14 +1055,9 @@ sc_pkcs15emu_oberthur_init_ex(struct sc_pkcs15_card * p15card, struct sc_aid *ai
 	int rv;
 
 	LOG_FUNC_CALLED(p15card->card->ctx);
-	if (opts && opts->flags & SC_PKCS15EMU_FLAGS_NO_CHECK)   {
+	rv = oberthur_detect_card(p15card);
+	if (!rv)
 		rv = sc_pkcs15emu_oberthur_init(p15card);
-	}
-	else {
-		rv = oberthur_detect_card(p15card);
-		if (!rv)
-			rv = sc_pkcs15emu_oberthur_init(p15card);
-	}
 
 	LOG_FUNC_RETURN(p15card->card->ctx, rv);
 }

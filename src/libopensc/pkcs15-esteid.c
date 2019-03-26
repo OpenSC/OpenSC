@@ -215,8 +215,6 @@ int sc_pkcs15emu_esteid_init_ex(sc_pkcs15_card_t *p15card,
 				struct sc_aid *aid,
 				sc_pkcs15emu_opt_t *opts)
 {
-	if (opts && opts->flags & SC_PKCS15EMU_FLAGS_NO_CHECK)
-		return sc_pkcs15emu_esteid_init(p15card);
 	if (p15card->card->type == SC_CARD_TYPE_MCRD_ESTEID_V30)
 		return sc_pkcs15emu_esteid_init(p15card);
 	return SC_ERROR_WRONG_CARD;

@@ -253,8 +253,6 @@ int sc_pkcs15emu_westcos_init_ex(sc_pkcs15_card_t * p15card,
 	sc_context_t *ctx = card->ctx;
 	sc_log(ctx, 
 		"sc_pkcs15_init_func_ex westcos\n");
-	if (opts && opts->flags & SC_PKCS15EMU_FLAGS_NO_CHECK)
-		return sc_pkcs15emu_westcos_init(p15card);
 	r = westcos_detect_card(p15card);
 	if (r)
 		return SC_ERROR_WRONG_CARD;

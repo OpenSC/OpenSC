@@ -724,14 +724,10 @@ sc_pkcs15emu_coolkey_init_ex(sc_pkcs15_card_t *p15card,
 
 	LOG_FUNC_CALLED(ctx);
 
-	if (opts && opts->flags & SC_PKCS15EMU_FLAGS_NO_CHECK)
-		rv = sc_pkcs15emu_coolkey_init(p15card);
-	else {
-		rv = coolkey_detect_card(p15card);
-		if (rv)
-			LOG_FUNC_RETURN(ctx, SC_ERROR_WRONG_CARD);
-		rv = sc_pkcs15emu_coolkey_init(p15card);
-	}
+	rv = coolkey_detect_card(p15card);
+	if (rv)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_WRONG_CARD);
+	rv = sc_pkcs15emu_coolkey_init(p15card);
 
 	LOG_FUNC_RETURN(ctx, rv);
 }

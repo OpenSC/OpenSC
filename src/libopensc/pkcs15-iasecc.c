@@ -204,9 +204,6 @@ sc_pkcs15emu_iasecc_init (struct sc_pkcs15_card *p15card, struct sc_aid *aid)
 int
 sc_pkcs15emu_iasecc_init_ex(struct sc_pkcs15_card *p15card, struct sc_aid *aid, struct sc_pkcs15emu_opt *opts)
 {
-	if (opts && opts->flags & SC_PKCS15EMU_FLAGS_NO_CHECK)
-		return sc_pkcs15emu_iasecc_init(p15card, aid);
-
 	if (iasecc_pkcs15emu_detect_card(p15card))
 		return SC_ERROR_WRONG_CARD;
 
