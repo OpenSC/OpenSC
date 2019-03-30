@@ -1,7 +1,7 @@
 /*
  * card-myeid.c
  *
- * Copyright (C) 2008-2009 Aventra Ltd.
+ * Copyright (C) 2008-2019 Aventra Ltd.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -60,7 +60,9 @@
 #define MYEID_CARD_CAP_PIV_EMU		0x20
 
 #define MYEID_MAX_APDU_DATA_LEN		0xFF
-#define MYEID_MAX_RSA_KEY_LEN		2048
+#define MYEID_MAX_RSA_KEY_LEN		4096
+
+#define MYEID_MAX_EXT_APDU_BUFFER_SIZE	(MYEID_MAX_RSA_KEY_LEN/8+16)
 
 static const char *myeid_card_name = "MyEID";
 static char card_name_buf[MYEID_CARD_NAME_MAX_LEN];
@@ -79,6 +81,7 @@ typedef struct myeid_private_data {
 	int card_state;
 
 	unsigned short change_counter;
+	unsigned char cap_chaining;
 	/* the driver sets sec_env pointer in myeid_set_security_env and
 	 it is used immediately in myeid_decipher to differentiate between RSA decryption and
 	 ECDH key agreement. Note that this pointer is usually not valid
@@ -161,7 +164,7 @@ static int myeid_init(struct sc_card *card)
 	myeid_private_data_t *priv;
 	u8 appletInfo[20];
 	size_t appletInfoLen;
-	myeid_card_caps_t card_caps;	
+	myeid_card_caps_t card_caps;
 	size_t resp_len = 0;
 	static struct sc_aid myeid_aid = { "\xA0\x00\x00\x00\x63\x50\x4B\x43\x53\x2D\x31\x35", 0x0C };
 	int rv = 0;
@@ -191,15 +194,6 @@ static int myeid_init(struct sc_card *card)
 
 	priv->change_counter = appletInfo[19] | appletInfo[18] << 8;
 
-	flags = SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_ONBOARD_KEY_GEN;
-	flags |= SC_ALGORITHM_RSA_HASH_NONE | SC_ALGORITHM_RSA_HASH_SHA1;
-
-	_sc_card_add_rsa_alg(card,  512, flags, 0);
-	_sc_card_add_rsa_alg(card,  768, flags, 0);
-	_sc_card_add_rsa_alg(card, 1024, flags, 0);
-	_sc_card_add_rsa_alg(card, 1536, flags, 0);
-	_sc_card_add_rsa_alg(card, 2048, flags, 0);
-	
 	memset(&card_caps, 0, sizeof(myeid_card_caps_t));
 	card_caps.max_ecc_key_length = 256;
 	card_caps.max_rsa_key_length = 2048;
@@ -210,6 +204,22 @@ static int myeid_init(struct sc_card *card)
 	    if (myeid_get_card_caps(card, &card_caps) != SC_SUCCESS) {
 			sc_log(card->ctx, "Failed to get card capabilities. Using default max ECC key length 256.");
 	    }
+	}
+
+	flags = SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_ONBOARD_KEY_GEN;
+	flags |= SC_ALGORITHM_RSA_HASH_NONE | SC_ALGORITHM_RSA_HASH_SHA1;
+
+	_sc_card_add_rsa_alg(card,  512, flags, 0);
+	_sc_card_add_rsa_alg(card,  768, flags, 0);
+	_sc_card_add_rsa_alg(card, 1024, flags, 0);
+	_sc_card_add_rsa_alg(card, 1536, flags, 0);
+	_sc_card_add_rsa_alg(card, 2048, flags, 0);
+
+	if (card_caps.card_supported_features & MYEID_CARD_CAP_RSA) {
+		if (card_caps.max_rsa_key_length >= 3072)
+			_sc_card_add_rsa_alg(card, 3072, flags, 0);
+		if (card_caps.max_rsa_key_length >= 4096)
+			_sc_card_add_rsa_alg(card, 4096, flags, 0);
 	}
 
 	/* show ECC algorithms if the applet version of the inserted card supports them */
@@ -251,7 +261,10 @@ static int myeid_init(struct sc_card *card)
 		card->caps |= SC_CARD_CAP_WRAP_KEY | SC_CARD_CAP_UNWRAP_KEY
 			   | SC_CARD_CAP_ONCARD_SESSION_OBJECTS;
 
-	card->max_recv_size = 255;
+	if (card->version.fw_major >= 45)
+		priv->cap_chaining = 1;
+
+	card->max_recv_size = 256;
 	card->max_send_size = 255;
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
@@ -969,12 +982,10 @@ myeid_convert_ec_signature(struct sc_context *ctx, size_t s_len, unsigned char *
 	free(buf);
 	return buflen;
 }
-/*
-  MyEID does not support RAW RSA signature for 2048 bit key.
-  (Source:  MyEID reference manual 2.1.4)
-
-  This function uses decipher operation for calculating RAW 2048 bit signature.
-*/
+/* MyEID cards before version 4.5 do not support RAW RSA signature for 2048 bit RSA keys.
+ * (Source: MyEID reference manual 2.1.4)
+ *
+ * This function uses decipher operation for calculating RAW 2048 bit signature. */
 static int
 myeid_compute_raw_2048_signature(struct sc_card *card, const u8 * data, size_t datalen,
 		u8 * out, size_t outlen)
@@ -1044,8 +1055,8 @@ myeid_compute_signature(struct sc_card *card, const u8 * data, size_t datalen,
 {
 	struct sc_context *ctx;
 	struct sc_apdu apdu;
-	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
-	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
+	u8 rbuf[MYEID_MAX_EXT_APDU_BUFFER_SIZE];
+	u8 sbuf[MYEID_MAX_EXT_APDU_BUFFER_SIZE];
 	struct myeid_private_data* priv;
 	int r;
 	size_t field_length = 0;
@@ -1071,16 +1082,17 @@ myeid_compute_signature(struct sc_card *card, const u8 * data, size_t datalen,
 		}
 	}
 
-	if ((datalen + pad_chars) > 256)
+	if ((datalen + pad_chars) > sizeof(sbuf))
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-	if (datalen == 256 && priv->sec_env->algorithm == SC_ALGORITHM_RSA)
+	if (priv->sec_env->algorithm == SC_ALGORITHM_RSA && datalen == 256 && !priv->cap_chaining)
 		return myeid_compute_raw_2048_signature(card, data, datalen, out, outlen);
 
 	/* INS: 0x2A  PERFORM SECURITY OPERATION
 		* P1:  0x9E  Resp: Digital Signature
 		* P2:  0x9A  Cmd: Input for Digital Signature */
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x9E, 0x9A);
+	apdu.flags |= SC_APDU_FLAGS_CHAINING;
 	apdu.resp = rbuf;
 	apdu.resplen = sizeof(rbuf);
 	apdu.le = 256;
@@ -1094,7 +1106,7 @@ myeid_compute_signature(struct sc_card *card, const u8 * data, size_t datalen,
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(ctx, r, "compute_signature failed");
 
-	if (priv->sec_env->algorithm == SC_ALGORITHM_EC)   {
+	if (priv->sec_env->algorithm == SC_ALGORITHM_EC) {
 		r = myeid_convert_ec_signature(ctx, priv->sec_env->algorithm_ref, apdu.resp, apdu.resplen);
 		LOG_TEST_RET(ctx, r, "compute_signature convert signature failed");
 		apdu.resplen = r;
@@ -1177,15 +1189,101 @@ int myeid_ecdh_derive(struct sc_card *card, const u8* pubkey, size_t pubkey_len,
 	LOG_FUNC_RETURN(card->ctx, apdu.resplen);
 }
 
+static int myeid_transmit_decipher_pi_split(struct sc_card *card, struct sc_apdu *apdu, u8 *sbuf)
+{
+	/* MyEID before 4.5.x does not support APDU chaining. The payload
+	 * is split to two regular APDUs and Padding Indicator field is used to
+	 * describe which slice it is. */
+	size_t crgram_len = apdu->lc - 1;
+	size_t crgram_half = crgram_len / 2;
+	size_t resplen = apdu->resplen;
+	unsigned char *resp = apdu->resp;
+	int r;
+
+	LOG_FUNC_CALLED(card->ctx);
+
+	/* Send 1st part, no response */
+	apdu->cse = SC_APDU_CASE_3_SHORT;
+	apdu->data = &sbuf[0];
+	apdu->datalen = apdu->lc = crgram_half + 1;
+	apdu->resp = 0;
+	apdu->resplen = 0;
+	apdu->le = 0;
+	sbuf[0] = 0x81;			/* Padding Indicator, 0x81 = First half */
+
+	r = sc_transmit_apdu(card, apdu);
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+	if (apdu->sw1 != 0x90 || apdu->sw2 != 0x00)
+		return 0;
+
+	/* Send 2nd part, expect response */
+	apdu->cse = resplen ? SC_APDU_CASE_4_SHORT : SC_APDU_CASE_3_SHORT;
+	apdu->data = &sbuf[crgram_half];
+	apdu->datalen = apdu->lc = crgram_len - crgram_half + 1;
+	apdu->resp = resp;
+	apdu->resplen = resplen;
+	apdu->le = resplen ? MIN(card->max_recv_size, crgram_len) : 0;
+	sbuf[crgram_half] = 0x82;	/* Padding Indicator, 0x82 = Second half */
+
+	r = sc_transmit_apdu(card, apdu);
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+
+static int myeid_transmit_decipher(struct sc_card *card, u8 p1, u8 p2,
+		const u8 * crgram, size_t crgram_len, u8 * out, size_t outlen)
+{
+	myeid_private_data_t *priv = card->drv_data;
+	struct sc_apdu apdu;
+	u8 rbuf[SC_MAX_EXT_APDU_BUFFER_SIZE];
+	u8 sbuf[SC_MAX_EXT_APDU_BUFFER_SIZE];
+	int r;
+
+	LOG_FUNC_CALLED(card->ctx);
+
+	/* INS: 0x2A  PERFORM SECURITY OPERATION
+	 * P1:  0x00  Resp: No response (unwrapping)
+	 * P1:  0x80  Resp: Plain value
+	 * P2:  0x84  Cmd: Cryptogram (no padding byte)
+	 * P2:  0x86  Cmd: Padding indicator byte followed by cryptogram */
+	sc_format_apdu(card, &apdu, p1 ? SC_APDU_CASE_4_SHORT : SC_APDU_CASE_3_SHORT, 0x2A, p1, p2);
+	if (p2 == 0x86) {
+		if (crgram_len+1 > sizeof(sbuf))
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+		sbuf[0] = 0; /* Padding indicator: 0x00 = No further indication */
+		memcpy(sbuf + 1, crgram, crgram_len);
+		apdu.data = sbuf;
+		apdu.datalen = apdu.lc = crgram_len + 1;
+	} else {
+		apdu.data = crgram;
+		apdu.datalen = apdu.lc = crgram_len;
+	}
+	if (p1 != 0x00) {
+		apdu.resp = rbuf;
+		apdu.resplen = sizeof(rbuf);
+		apdu.le = MIN(card->max_recv_size, crgram_len);
+	}
+
+	if (p2 == 0x86 && crgram_len == 256 && !priv->cap_chaining) {
+		r = myeid_transmit_decipher_pi_split(card, &apdu, sbuf);
+	} else {
+		apdu.flags |= SC_APDU_FLAGS_CHAINING;
+		r = sc_transmit_apdu(card, &apdu);
+	}
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	LOG_TEST_RET(card->ctx, r, "DECIPHER returned error");
+
+	outlen = MIN(apdu.resplen, outlen);
+	memcpy(out, apdu.resp, outlen);
+	LOG_FUNC_RETURN(card->ctx, outlen);
+}
 
 static int myeid_decipher(struct sc_card *card, const u8 * crgram,
 		size_t crgram_len, u8 * out, size_t outlen)
 {
 	int r;
 	myeid_private_data_t* priv;
-	struct sc_apdu apdu;
-	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
-	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -1202,77 +1300,8 @@ static int myeid_decipher(struct sc_card *card, const u8 * crgram,
 		LOG_FUNC_RETURN(card->ctx, r);
 	}
 
-	if (crgram_len > 256)
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
-
-	/* INS: 0x2A  PERFORM SECURITY OPERATION
-	    * P1:  0x80  Resp: Plain value
-	    * P2:  0x86  Cmd: Padding indicator byte followed by cryptogram */
-	sc_format_apdu(card, &apdu,
-		(crgram_len < 256) ? SC_APDU_CASE_4_SHORT : SC_APDU_CASE_3_SHORT,
-		0x2A, 0x80, 0x86);
-
-	apdu.resp = rbuf;
-	apdu.resplen = sizeof(rbuf);
-	apdu.le = crgram_len;
-
-	if (crgram_len == 256)
-	{
-		apdu.le = 0;
-		/* padding indicator byte, 0x81 = first half of 2048 bit cryptogram */
-		sbuf[0] = 0x81;
-		memcpy(sbuf + 1, crgram, crgram_len / 2);
-		apdu.lc = crgram_len / 2 + 1;
-	}
-	else
-	{
-		sbuf[0] = 0; /* padding indicator byte, 0x00 = No further indication */
-		memcpy(sbuf + 1, crgram, crgram_len);
-		apdu.lc = crgram_len + 1;
-	}
-
-	apdu.datalen = apdu.lc;
-	apdu.data = sbuf;
-
-	r = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
-	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
-	{
-		if (crgram_len == 256)
-		{
-			sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT,
-				0x2A, 0x80, 0x86);
-			apdu.resp = rbuf;
-			apdu.resplen = sizeof(rbuf);
-			apdu.le = crgram_len;
-			/* padding indicator byte,
-			    * 0x82 = Second half of 2048 bit cryptogram */
-			sbuf[0] = 0x82;
-			memcpy(sbuf + 1, crgram + crgram_len / 2, crgram_len / 2);
-			apdu.lc = crgram_len / 2 + 1;
-			apdu.datalen = apdu.lc;
-			apdu.data = sbuf;
-
-			r = sc_transmit_apdu(card, &apdu);
-
-			LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
-
-			if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
-			{
-				int len = apdu.resplen > outlen ? outlen : apdu.resplen;
-				memcpy(out, apdu.resp, len);
-				LOG_FUNC_RETURN(card->ctx, len);
-			}
-		}
-		else
-		{
-			int len = apdu.resplen > outlen ? outlen : apdu.resplen;
-
-			memcpy(out, apdu.resp, len);
-			LOG_FUNC_RETURN(card->ctx, len);
-		}
-	}
-	LOG_FUNC_RETURN(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2));
+	r = myeid_transmit_decipher(card, 0x80, 0x86, crgram, crgram_len, out, outlen);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 
@@ -1309,111 +1338,35 @@ static int myeid_wrap_key(struct sc_card *card, u8 *out, size_t outlen)
 
 static int myeid_unwrap_key(struct sc_card *card, const u8 *crgram, size_t crgram_len)
 {
-	int r;
-	struct sc_apdu apdu;
-	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
-	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
+	myeid_private_data_t* priv = card->drv_data;
 	u8 p2 = 0x86; /* init P2 for asymmetric crypto by default.*/
-	myeid_private_data_t* priv;
-	int symmetric_operation = 0;
+	int r;
 
-	if (card == NULL || crgram == NULL) {
+	if (card == NULL || crgram == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
-	}
 
-	LOG_FUNC_CALLED(card->ctx);
 	LOG_FUNC_CALLED(card->ctx);
 
 	if (crgram_len > MYEID_MAX_RSA_KEY_LEN / 8)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-	if (card->drv_data)
+	if (priv && priv->sec_env)
 	{
-		priv = (myeid_private_data_t*) card->drv_data;
-
-		if (priv->sec_env)
-		{
-			if (priv->sec_env->algorithm == SC_ALGORITHM_AES ||
-				priv->sec_env->algorithm == SC_ALGORITHM_3DES ||
-				priv->sec_env->algorithm == SC_ALGORITHM_DES)
-					symmetric_operation = 1;
-		}
+		if (priv->sec_env->algorithm == SC_ALGORITHM_AES ||
+			priv->sec_env->algorithm == SC_ALGORITHM_3DES ||
+			priv->sec_env->algorithm == SC_ALGORITHM_DES)
+				p2 = 0x84;
 	}
 
-	if (symmetric_operation)
-	{
-		p2 = 0x84;		/* Set correct P2 for symmetric crypto */
-		if (crgram_len > MYEID_MAX_APDU_DATA_LEN)
-		{
-			LOG_TEST_RET(card->ctx, SC_ERROR_WRONG_LENGTH, "Unwrapping symmetric data longer that 255 bytes is not supported\n");
-		}
-	}
+	if (p2 == 0x84 && crgram_len > MYEID_MAX_APDU_DATA_LEN)
+		LOG_TEST_RET(card->ctx, SC_ERROR_WRONG_LENGTH, "Unwrapping symmetric data longer that 255 bytes is not supported\n");
 
 	/* INS: 0x2A  PERFORM SECURITY OPERATION
-	    * P1:  0x00  Do not expect response - the deciphered data will be placed into the target key EF.
-	    * P2:  0x86  Cmd: Padding indicator byte followed by cryptogram
-		* P2:  0x84  Cmd: AES/3DES Cryptogram (plain value encoded in BER-TLV DO, but not including SM DOs)
-		If crgram_len == 256 (2048 bit RSA), we split the cryptogram in two and send two APDUs.
-	 */
-	sc_format_apdu(card, &apdu,
-		SC_APDU_CASE_3_SHORT,
-		0x2A, 0x00, p2);
-
-	apdu.resp = rbuf;
-	apdu.resplen = sizeof(rbuf);
-	apdu.le = 0;
-
-	if (symmetric_operation)
-	{
-		/* symmetric crypto, no padding indicator byte */
-		memcpy(sbuf, crgram, crgram_len);
-		apdu.lc = crgram_len;
-	}
-	else
-	{
-		if (crgram_len >= MYEID_MAX_APDU_DATA_LEN)
-		{
-			/* padding indicator byte, 0x81 = first half of 2048 bit cryptogram */
-			sbuf[0] = 0x81;
-			memcpy(sbuf + 1, crgram, crgram_len / 2);
-			apdu.lc = crgram_len / 2 + 1;
-		}
-		else
-		{
-			sbuf[0] = 0; /* padding indicator byte, 0x00 = No further indication */
-			memcpy(sbuf + 1, crgram, crgram_len);
-			apdu.lc = crgram_len + 1;
-		}
-	}
-
-	apdu.datalen = apdu.lc;
-	apdu.data = sbuf;
-
-	r = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
-	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
-	{
-		if (crgram_len >= MYEID_MAX_APDU_DATA_LEN)
-		{
-			sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT,
-				0x2A, 0x00, p2);
-			apdu.resp = rbuf;
-			apdu.resplen = sizeof(rbuf);
-			apdu.le = 0;
-			/* padding indicator byte,
-			 * 0x82 = Second half of 2048 bit cryptogram */
-			sbuf[0] = 0x82;
-			memcpy(sbuf + 1, crgram + crgram_len / 2, crgram_len / 2);
-			apdu.lc = crgram_len / 2 + 1;
-			apdu.datalen = apdu.lc;
-			apdu.data = sbuf;
-
-			r = sc_transmit_apdu(card, &apdu);
-
-			LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
-		}
-	}
-	LOG_FUNC_RETURN(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2));
+	 * P1:  0x00  Do not expect response - the deciphered data will be placed into the target key EF.
+	 * P2:  0x86  Cmd: Padding indicator byte followed by cryptogram
+	 * P2:  0x84  Cmd: AES/3DES Cryptogram (plain value encoded in BER-TLV DO, but not including SM DOs) */
+	r = myeid_transmit_decipher(card, 0x00, p2, crgram, crgram_len, 0, 0);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 
@@ -1482,22 +1435,22 @@ static int myeid_getdata(struct sc_card *card, struct sc_cardctl_myeid_data_obj*
 
 static int myeid_loadkey(sc_card_t *card, int mode, u8* value, int value_len)
 {
+	myeid_private_data_t *priv = (myeid_private_data_t *) card->drv_data;
 	sc_apdu_t apdu;
-	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
+	u8 sbuf[MYEID_MAX_EXT_APDU_BUFFER_SIZE];
 	int r, len;
 
 	LOG_FUNC_CALLED(card->ctx);
 	len = 0;
-	if(value_len == 0 || value == NULL)
+	if (value_len == 0 || value == NULL)
 		return 0;
 
-	if(value    != NULL &&
-	   value[0] != 0x0 &&
-	   mode     != LOAD_KEY_PUBLIC_EXPONENT &&
-	   mode     != LOAD_KEY_SYMMETRIC)
+	if (value[0] != 0x0 &&
+	    mode     != LOAD_KEY_PUBLIC_EXPONENT &&
+	    mode     != LOAD_KEY_SYMMETRIC)
 		sbuf[len++] = 0x0;
 
-	if(mode == LOAD_KEY_MODULUS && value_len >= 256)
+	if(mode == LOAD_KEY_MODULUS && value_len == 256 && !priv->cap_chaining)
 	{
 		if((value_len % 2) > 0 && value[0] == 0x00)
 		{
@@ -1517,11 +1470,10 @@ static int myeid_loadkey(sc_card_t *card, int mode, u8* value, int value_len)
 		apdu.lc	     = len;
 
 		r = sc_transmit_apdu(card, &apdu);
-		if(r < 0)
-			return r;
+		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+
 		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-		if(r < 0)
-			return r;
+		LOG_TEST_RET(card->ctx, r, "LOAD KEY returned error");
 
 		mode = 0x89;
 		len  = value_len - 128;
@@ -1546,7 +1498,7 @@ static int myeid_loadkey(sc_card_t *card, int mode, u8* value, int value_len)
 
 	memset(&apdu, 0, sizeof(apdu));
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xDA, 0x01, mode);
-
+	apdu.flags   = SC_APDU_FLAGS_CHAINING;
 	apdu.cla     = 0x00;
 	apdu.data    = sbuf;
 	apdu.datalen = len;
@@ -1824,6 +1776,7 @@ static struct sc_card_driver * sc_get_driver(void)
 	myeid_ops.append_record		= NULL;
 	myeid_ops.update_record		= NULL;
 	myeid_ops.select_file		= myeid_select_file;
+	myeid_ops.get_response		= iso_ops->get_response;
 	myeid_ops.create_file		= myeid_create_file;
 	myeid_ops.delete_file		= myeid_delete_file;
 	myeid_ops.list_files		= myeid_list_files;
