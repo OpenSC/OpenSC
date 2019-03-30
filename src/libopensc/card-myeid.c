@@ -30,23 +30,21 @@
 #include "cardctl.h"
 #include "types.h"
 
-#define LOAD_KEY_MODULUS		0x80
-#define LOAD_KEY_PUBLIC_EXPONENT	0x81
-#define LOAD_KEY_PRIME_P		0x83
-#define LOAD_KEY_PRIME_Q		0x84
-#define LOAD_KEY_DP1			0x85
-#define LOAD_KEY_DQ1			0x86
-#define LOAD_KEY_INVQ			0x87
-#define LOAD_KEY_MODE_EC_PRIV		0x87
-#define LOAD_KEY_MODE_EC_PUB		0x86
+/* Low byte is the MyEID card's key type specific component ID. High byte is used
+ * internally for key type, so myeid_loadkey() is aware of the exact component. */
+#define LOAD_KEY_MODULUS		0x0080
+#define LOAD_KEY_PUBLIC_EXPONENT	0x0081
+#define LOAD_KEY_PRIME_P		0x0083
+#define LOAD_KEY_PRIME_Q		0x0084
+#define LOAD_KEY_DP1			0x0085
+#define LOAD_KEY_DQ1			0x0086
+#define LOAD_KEY_INVQ			0x0087
+#define LOAD_KEY_EC_PUBLIC		0x1086
+#define LOAD_KEY_EC_PRIVATE		0x1087
+#define LOAD_KEY_SYMMETRIC		0x20a0
 
-#define LOAD_KEY_EC_PRIVATE	0x97
-#define LOAD_KEY_EC_PUBLIC	0x96
-
-#define LOAD_KEY_SYMMETRIC	0xa0
-
-#define MYEID_STATE_CREATION	0x01
-#define MYEID_STATE_ACTIVATED	0x07
+#define MYEID_STATE_CREATION		0x01
+#define MYEID_STATE_ACTIVATED		0x07
 
 #define MYEID_CARD_NAME_MAX_LEN		100
 
@@ -1433,7 +1431,7 @@ static int myeid_getdata(struct sc_card *card, struct sc_cardctl_myeid_data_obj*
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
-static int myeid_loadkey(sc_card_t *card, int mode, u8* value, int value_len)
+static int myeid_loadkey(sc_card_t *card, unsigned mode, u8* value, int value_len)
 {
 	myeid_private_data_t *priv = (myeid_private_data_t *) card->drv_data;
 	sc_apdu_t apdu;
@@ -1450,9 +1448,9 @@ static int myeid_loadkey(sc_card_t *card, int mode, u8* value, int value_len)
 	    mode     != LOAD_KEY_SYMMETRIC)
 		sbuf[len++] = 0x0;
 
-	if(mode == LOAD_KEY_MODULUS && value_len == 256 && !priv->cap_chaining)
+	if (mode == LOAD_KEY_MODULUS && value_len == 256 && !priv->cap_chaining)
 	{
-		if((value_len % 2) > 0 && value[0] == 0x00)
+		if ((value_len % 2) > 0 && value[0] == 0x00)
 		{
 			value_len--;
 			memmove(value, value + 1, value_len);
@@ -1480,16 +1478,6 @@ static int myeid_loadkey(sc_card_t *card, int mode, u8* value, int value_len)
 		memset(&sbuf, 0, SC_MAX_APDU_BUFFER_SIZE);
 		memcpy(sbuf,value + 128, value_len - 128);
 	}
-	else  if(mode == LOAD_KEY_EC_PRIVATE) {
-		memcpy(sbuf, value, value_len);
-		len = value_len;
-		mode = LOAD_KEY_MODE_EC_PRIV;
-	}
-	else if(mode == LOAD_KEY_EC_PUBLIC) {
-		memcpy(sbuf, value, value_len);
-		len = value_len;
-		mode = LOAD_KEY_MODE_EC_PUB;
-	}
 	else
 	{
 		memcpy(sbuf + len, value, value_len);
@@ -1497,7 +1485,7 @@ static int myeid_loadkey(sc_card_t *card, int mode, u8* value, int value_len)
 	}
 
 	memset(&apdu, 0, sizeof(apdu));
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xDA, 0x01, mode);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xDA, 0x01, mode & 0xFF);
 	apdu.flags   = SC_APDU_FLAGS_CHAINING;
 	apdu.cla     = 0x00;
 	apdu.data    = sbuf;
