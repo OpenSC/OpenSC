@@ -77,9 +77,9 @@
 					</term>
 					<listitem>
 						<para>
-		  					Specify hash algorithm used with RSA-PKCS-PSS signature or RSA-OAEP decryption.
-          					Allowed values are "SHA-1", "SHA256", "SHA384", "SHA512", and some tokens may 
-          					also allow "SHA224". Default is "SHA-1".
+							Specify hash algorithm used with RSA-PKCS-PSS signature or RSA-OAEP decryption.
+							Allowed values are "SHA-1", "SHA256", "SHA384", "SHA512", and some tokens may 
+							also allow "SHA224". Default is "SHA-1".
 						</para>
 						<para> 
 							Note that the input to RSA-PKCS-PSS has to be of the size equal to
@@ -398,6 +398,13 @@
 
 				<varlistentry>
 					<term>
+						<option>--object-index</option> <replaceable>index</replaceable>
+					</term>
+					<listitem><para>Specify the index of the object to use.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
 						<option>--token-label</option> <replaceable>label</replaceable>
 					</term>
 					<listitem><para>Specify the label of token.
@@ -444,13 +451,13 @@
 					viewable after a login).</para></listitem>
 				</varlistentry>
 
-                                <varlistentry>
+				<varlistentry>
 					<term>
 						<option>--always-auth</option>
 					</term>
 					<listitem><para>Set the CKA_ALWAYS_AUTHENTICATE attribute to a private key object.
-                                        If set, the user has to supply the PIN for each use (sign or decrypt) with the key.</para>
-                                        </listitem>
+					If set, the user has to supply the PIN for each use (sign or decrypt) with the key.</para>
+					</listitem>
 				</varlistentry>
 
                                 <varlistentry>
@@ -580,7 +587,7 @@
 					</term>
 					<listitem><para>Write a key or certificate object to the token.
 					<replaceable>filename</replaceable> points to the DER-encoded certificate or key file.
-                                        </para></listitem>
+					</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -588,7 +595,7 @@
 						<option>--generate-random</option> <replaceable>num</replaceable>
 					</term>
 					<listitem><para>Get <replaceable>num</replaceable> bytes of random data.
-                                        </para></listitem>
+					</para></listitem>
 				</varlistentry>
 
 			</variablelist>
@@ -603,7 +610,7 @@
 
 			To read the certificate with ID <replaceable>KEY_ID</replaceable>
 			in DER format from smart card:
-				<programlisting>pkcs11-tool --read-object  --id KEY_ID --type cert --output-file cert.der</programlisting>
+				<programlisting>pkcs11-tool --read-object --id KEY_ID --type cert --output-file cert.der</programlisting>
 
 			To convert the certificate in DER format to PEM format, use OpenSSL
 			tools:

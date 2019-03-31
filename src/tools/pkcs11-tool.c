@@ -155,7 +155,8 @@ enum {
 	OPT_VERIFY,
 	OPT_SIGNATURE_FILE,
 	OPT_ALWAYS_AUTH,
-	OPT_ALLOWED_MECHANISMS
+	OPT_ALLOWED_MECHANISMS,
+	OPT_OBJECT_INDEX
 };
 
 static const struct option options[] = {
@@ -206,6 +207,7 @@ static const struct option options[] = {
 	{ "slot",		1, NULL,		OPT_SLOT },
 	{ "slot-description",	1, NULL,		OPT_SLOT_DESCRIPTION },
 	{ "slot-index",		1, NULL,		OPT_SLOT_INDEX },
+	{ "object-index",		1, NULL,		OPT_OBJECT_INDEX },
 	{ "token-label",	1, NULL,		OPT_TOKEN_LABEL },
 	{ "set-id",		1, NULL,		'e' },
 	{ "attr-from",		1, NULL,		OPT_ATTR_FROM },
@@ -279,6 +281,7 @@ static const char *option_help[] = {
 	"Specify the ID of the slot to use",
 	"Specify the description of the slot to use",
 	"Specify the index of the slot to use",
+	"Specify the index of the object to use",
 	"Specify the token label of the slot to use",
 	"Set the CKA_ID of an object, <args>= the (new) CKA_ID",
 	"Use <arg> to create some attributes when writing an object",
@@ -315,6 +318,8 @@ static const char *	opt_slot_description = NULL;
 static const char *	opt_token_label = NULL;
 static CK_ULONG		opt_slot_index = 0;
 static int		opt_slot_index_set = 0;
+static CK_ULONG		opt_object_index = 0;
+static int		opt_object_index_set = 0;
 static CK_MECHANISM_TYPE opt_mechanism = 0;
 static int		opt_mechanism_used = 0;
 static const char *	opt_file_to_write = NULL;
@@ -799,6 +804,10 @@ int main(int argc, char * argv[])
 			opt_slot_index = (CK_ULONG) strtoul(optarg, NULL, 0);
 			opt_slot_index_set = 1;
 			break;
+		case OPT_OBJECT_INDEX:
+			opt_object_index = (CK_ULONG) strtoul(optarg, NULL, 0);
+			opt_object_index_set = 1;
+			break;
 		case OPT_TOKEN_LABEL:
 			if (opt_slot_set || opt_slot_description || opt_slot_index_set) {
 				fprintf(stderr, "Error: Only one of --slot, --slot-label, --slot-index or --token-label can be used\n");
@@ -1153,9 +1162,10 @@ int main(int argc, char * argv[])
 		if (opt_object_class_str == NULL)
 			util_fatal("You should specify type of the object to delete");
 		if (opt_object_id_len == 0 && opt_object_label == NULL &&
-				opt_application_label == NULL && opt_application_id == NULL)
+				opt_application_label == NULL && opt_application_id == NULL &&
+				opt_object_index_set == 0)
 			 util_fatal("You should specify at least one of the "
-					 "object ID, object label, application label or application ID");
+					 "object ID, object label, application label, application ID or object index");
 		delete_object(session);
 	}
 
@@ -4398,7 +4408,7 @@ static int delete_object(CK_SESSION_HANDLE session)
 		nn_attrs++;
 	}
 
-	rv = find_object_with_attributes(session, &obj, attrs, nn_attrs, 0);
+	rv = find_object_with_attributes(session, &obj, attrs, nn_attrs, opt_object_index);
 	if (rv != CKR_OK)
 		p11_fatal("find_object_with_attributes()", rv);
 	else if (obj==CK_INVALID_HANDLE)
