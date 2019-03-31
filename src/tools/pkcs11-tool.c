@@ -2469,7 +2469,7 @@ gen_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE *hSecretKey
 	CK_RV rv;
 
 	if (type != NULL) {
-		if (strncmp(type, "AES:", strlen("AES:")) == 0 || strncmp(type, "aes:", strlen("aes:")) == 0) {
+		if (strncasecmp(type, "AES:", strlen("AES:")) == 0) {
 			CK_MECHANISM_TYPE mtypes[] = {CKM_AES_KEY_GEN};
 			size_t mtypes_num = sizeof(mtypes)/sizeof(mtypes[0]);
 			const char *size = type + strlen("AES:");
@@ -2489,7 +2489,7 @@ gen_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE *hSecretKey
 			FILL_ATTR(keyTemplate[n_attr], CKA_KEY_TYPE, &key_type, sizeof(key_type));
 			n_attr++;
 		}
-		else if (strncmp(type, "DES:", strlen("DES:")) == 0 || strncmp(type, "des:", strlen("des:")) == 0) {
+		else if (strncasecmp(type, "DES:", strlen("DES:")) == 0) {
 			CK_MECHANISM_TYPE mtypes[] = {CKM_DES_KEY_GEN};
 			size_t mtypes_num = sizeof(mtypes)/sizeof(mtypes[0]);
 			const char *size = type + strlen("DES:");
@@ -2509,7 +2509,7 @@ gen_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE *hSecretKey
 			FILL_ATTR(keyTemplate[n_attr], CKA_KEY_TYPE, &key_type, sizeof(key_type));
 			n_attr++;
 		}
-		else if (strncmp(type, "DES3:", strlen("DES3:")) == 0 || strncmp(type, "des3:", strlen("des3:")) == 0) {
+		else if (strncasecmp(type, "DES3:", strlen("DES3:")) == 0) {
 			CK_MECHANISM_TYPE mtypes[] = {CKM_DES3_KEY_GEN};
 			size_t mtypes_num = sizeof(mtypes)/sizeof(mtypes[0]);
 			const char *size = type + strlen("DES3:");
@@ -2858,17 +2858,17 @@ static int write_object(CK_SESSION_HANDLE session)
 	unsigned char certdata[MAX_OBJECT_SIZE];
 	int certdata_len = 0;
 	FILE *f;
-	CK_OBJECT_HANDLE cert_obj, privkey_obj, pubkey_obj, data_obj;
-	CK_ATTRIBUTE cert_templ[20], privkey_templ[20], pubkey_templ[20], data_templ[20];
-	int n_cert_attr = 0, n_privkey_attr = 0, n_pubkey_attr = 0, n_data_attr = 0;
+	CK_OBJECT_HANDLE cert_obj, privkey_obj, pubkey_obj, seckey_obj, data_obj;
+	CK_ATTRIBUTE cert_templ[20], privkey_templ[20], pubkey_templ[20], seckey_templ[20], data_templ[20];
+	int n_cert_attr = 0, n_privkey_attr = 0, n_pubkey_attr = 0, n_seckey_attr = 0, n_data_attr = 0;
 	struct sc_object_id oid;
 	CK_RV rv;
 	int need_to_parse_certdata = 0;
 	unsigned char *oid_buf = NULL;
 	CK_OBJECT_CLASS clazz;
 	CK_CERTIFICATE_TYPE cert_type;
-#ifdef ENABLE_OPENSSL
 	CK_KEY_TYPE type = CKK_RSA;
+#ifdef ENABLE_OPENSSL
 	struct x509cert_info cert;
 	struct rsakey_info rsa;
 	struct gostkey_info gost;
@@ -2967,7 +2967,9 @@ static int write_object(CK_SESSION_HANDLE session)
 #endif
 	}
 
-	if (opt_object_class == CKO_CERTIFICATE) {
+	switch(opt_object_class)
+	{
+	case CKO_CERTIFICATE:
 		clazz = CKO_CERTIFICATE;
 		cert_type = CKC_X_509;
 
@@ -2995,9 +2997,8 @@ static int write_object(CK_SESSION_HANDLE session)
 		FILL_ATTR(cert_templ[n_cert_attr], CKA_SERIAL_NUMBER, cert.serialnum, cert.serialnum_len);
 		n_cert_attr++;
 #endif
-	}
-	else
-	if (opt_object_class == CKO_PRIVATE_KEY) {
+		break;
+	case CKO_PRIVATE_KEY:
 		clazz = CKO_PRIVATE_KEY;
 
 		n_privkey_attr = 0;
@@ -3099,9 +3100,8 @@ static int write_object(CK_SESSION_HANDLE session)
 
 #endif
 #endif
-	}
-	else
-	if (opt_object_class == CKO_PUBLIC_KEY) {
+		break;
+	case CKO_PUBLIC_KEY:
 		clazz = CKO_PUBLIC_KEY;
 #ifdef ENABLE_OPENSSL
 		pk_type = EVP_PKEY_base_id(evp_key);
@@ -3199,9 +3199,54 @@ static int write_object(CK_SESSION_HANDLE session)
 		}
 #endif
 #endif
-	}
-	else
-	if (opt_object_class == CKO_DATA) {
+		break;
+	case CKO_SECRET_KEY:
+		clazz = CKO_SECRET_KEY;
+		type = CKK_AES;
+
+		if (opt_key_type != 0) {
+			if (strncasecmp(opt_key_type, "AES:", strlen("AES:")) == 0)
+				type = CKK_AES;
+			else if (strncasecmp(opt_key_type, "DES3:", strlen("DES3:")) == 0)
+				type = CKK_DES3;
+			else
+				util_fatal("Unknown key type %s", type);
+		}
+
+		FILL_ATTR(seckey_templ[0], CKA_CLASS, &clazz, sizeof(clazz));
+		FILL_ATTR(seckey_templ[1], CKA_KEY_TYPE, &type, sizeof(type));
+		FILL_ATTR(seckey_templ[2], CKA_TOKEN, &_true, sizeof(_true));
+		FILL_ATTR(seckey_templ[3], CKA_VALUE, &contents, contents_len);
+		n_seckey_attr = 4;
+
+		if (opt_is_private != 0) {
+			FILL_ATTR(seckey_templ[n_seckey_attr], CKA_PRIVATE, &_true, sizeof(_true));
+			n_seckey_attr++;
+		}
+		else {
+			FILL_ATTR(seckey_templ[n_seckey_attr], CKA_PRIVATE, &_false, sizeof(_false));
+			n_seckey_attr++;
+		}
+
+		if (opt_is_sensitive != 0) {
+			FILL_ATTR(seckey_templ[n_seckey_attr], CKA_SENSITIVE, &_true, sizeof(_true));
+			n_seckey_attr++;
+		}
+		else {
+			FILL_ATTR(seckey_templ[n_seckey_attr], CKA_SENSITIVE, &_false, sizeof(_false));
+			n_seckey_attr++;
+		}
+
+		if (opt_object_label != NULL) {
+			FILL_ATTR(seckey_templ[n_seckey_attr], CKA_LABEL, opt_object_label, strlen(opt_object_label));
+			n_seckey_attr++;
+		}
+		if (opt_object_id_len != 0)  {
+			FILL_ATTR(seckey_templ[n_seckey_attr], CKA_ID, opt_object_id, opt_object_id_len);
+			n_seckey_attr++;
+		}
+		break;
+	case CKO_DATA:
 		clazz = CKO_DATA;
 		FILL_ATTR(data_templ[0], CKA_CLASS, &clazz, sizeof(clazz));
 		FILL_ATTR(data_templ[1], CKA_TOKEN, &_true, sizeof(_true));
@@ -3241,10 +3286,11 @@ static int write_object(CK_SESSION_HANDLE session)
 			FILL_ATTR(data_templ[n_data_attr], CKA_LABEL, opt_object_label, strlen(opt_object_label));
 			n_data_attr++;
 		}
-
-	}
-	else
+		break;
+	default:
 		util_fatal("Writing of a \"%s\" type not (yet) supported", opt_object_class_str);
+		break;
+	}
 
 	if (n_data_attr) {
 		rv = p11->C_CreateObject(session, data_templ, n_data_attr, &data_obj);
@@ -3279,6 +3325,15 @@ static int write_object(CK_SESSION_HANDLE session)
 
 		printf("Created private key:\n");
 		show_object(session, privkey_obj);
+	}
+
+	if (n_seckey_attr) {
+		rv = p11->C_CreateObject(session, seckey_templ, n_seckey_attr, &seckey_obj);
+		if (rv != CKR_OK)
+			p11_fatal("C_CreateObject", rv);
+
+		printf("Created secret key:\n");
+		show_object(session, seckey_obj);
 	}
 
 	if (oid_buf)
