@@ -21,7 +21,6 @@ define([VS_FF_PRODUCT_URL], [https://github.com/OpenSC/OpenSC])
 
 m4_sinclude(version.m4.ci)
 
-m4_define([openssl_minimum_version], [0.9.8])
 
 AC_INIT([PRODUCT_NAME],[PACKAGE_VERSION_MAJOR.PACKAGE_VERSION_MINOR.PACKAGE_VERSION_FIX[]PACKAGE_SUFFIX],[PRODUCT_BUGREPORT],[PRODUCT_TARNAME],[PRODUCT_URL])
 AC_CONFIG_AUX_DIR([.])
@@ -171,8 +170,8 @@ AC_ARG_ENABLE(
 
 AC_ARG_ENABLE(
 	[openssl],
-	[AS_HELP_STRING([--enable-openssl],[enable OpenSSL linkage @<:@detect@:>@])],
-	,
+	[AS_HELP_STRING([--enable-openssl[[=DIR]]],[enable OpenSSL linkage [installed at prefix DIR] @<:@detect@:>@])],
+	[OPENSSL_CFLAGS="-I${enableval}/include" OPENSSL_LIBS="-L${enableval}/lib -lcrypto"],
 	[enable_openssl="detect"]
 )
 
@@ -625,10 +624,7 @@ fi
 
 PKG_CHECK_MODULES(
 	[OPENSSL],
-	[
-		libcrypto >= openssl_minimum_version
-		openssl >= openssl_minimum_version
-	],
+	[libcrypto >= 0.9.8],
 	[have_openssl="yes"],
 	[AC_CHECK_LIB(
 		[crypto],
@@ -655,6 +651,9 @@ case "${enable_openssl}" in
 		else
 			enable_openssl="no"
 		fi
+	;;
+	*)
+		enable_openssl="yes"
 	;;
 esac
 

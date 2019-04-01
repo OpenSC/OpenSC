@@ -61,6 +61,7 @@ if ! test -e ${BUILDPATH}/target/$PREFIX/lib/pkgconfig; then
 		--sysconfdir=$PREFIX/etc \
 		--enable-cvcdir=$PREFIX/etc/cvc \
 		--enable-x509dir=$PREFIX/etc/x509 \
+		--enable-openssl=$BUILDPATH/openssl_bin/$PREFIX \
 		--enable-openssl-secure-malloc=65536 \
 		--disable-dependency-tracking \
 		--enable-shared \
