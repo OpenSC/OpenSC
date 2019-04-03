@@ -1377,11 +1377,6 @@ const sc_path_t *sc_get_mf_path(void);
 /*             miscellaneous functions                              */
 /********************************************************************/
 
-/**
- * NUL terminated string containing all characters that are ignored
- * in the input of `sc_hex_to_bin()`.
- */
-extern char *sc_hex_to_bin_seperators;
 int sc_hex_to_bin(const char *in, u8 *out, size_t *outlen);
 /**
  * Converts an u8 array to a string representing the input as hexadecimal,

@@ -61,10 +61,9 @@ const char *sc_get_version(void)
     return sc_version;
 }
 
-char *sc_hex_to_bin_seperators = " :";
-
 int sc_hex_to_bin(const char *in, u8 *out, size_t *outlen)
 {
+	const char *sc_hex_to_bin_separators = " :";
 	if (in == NULL || out == NULL || outlen == NULL) {
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
@@ -83,7 +82,7 @@ int sc_hex_to_bin(const char *in, u8 *out, size_t *outlen)
 		else if ('A' <= c && c <= 'F')
 			nibble = c - 'A' + 10;
 		else {
-			if (strchr(sc_hex_to_bin_seperators, (int) c))
+			if (strchr(sc_hex_to_bin_separators, (int) c))
 				continue;
 			r = SC_ERROR_INVALID_ARGUMENTS;
 			goto err;
@@ -106,9 +105,9 @@ int sc_hex_to_bin(const char *in, u8 *out, size_t *outlen)
 		goto err;
 	}
 
-	/* skip all trailing seperators to see if we missed something */
+	/* skip all trailing separators to see if we missed something */
 	while (*in != '\0') {
-		if (NULL == strchr(sc_hex_to_bin_seperators, (int) *in))
+		if (NULL == strchr(sc_hex_to_bin_separators, (int) *in))
 			break;
 		in++;
 	}
