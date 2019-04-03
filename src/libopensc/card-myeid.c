@@ -75,16 +75,6 @@ static struct sc_card_driver myeid_drv = {
 	NULL
 };
 
-static const char *myeid_atrs[] = {
-	"3B:F5:18:00:FF:81:31:FE:45:4D:79:45:49:44:65",
-	"3B:F5:18:00:00:81:31:FE:45:4D:79:45:49:44:9A",
-	"3B:85:80:01:4D:79:45:49:44:78",
-	"3B:89:80:01:09:38:33:B1:4D:79:45:49:44:4C",
-	"3B:F5:96:00:00:80:31:FE:45:4D:79:45:49:44:15", /* Infineon's chip */
-	"3B:F5:96:00:00:81:31:FE:45:4D:79:45:49:44:14",
-	NULL
-};
-
 typedef struct myeid_private_data {
 	int card_state;
 
@@ -123,27 +113,14 @@ static int myeid_get_card_caps(struct sc_card *card, myeid_card_caps_t* card_cap
 
 static int myeid_match_card(struct sc_card *card)
 {
-	int i, match = -1;
-
-	for (i = 0; myeid_atrs[i] != NULL; i++)
-	{
-		u8 defatr[SC_MAX_ATR_SIZE];
-		size_t len = sizeof(defatr);
-		const char *atrp = myeid_atrs[i];
-
-		if (sc_hex_to_bin(atrp, defatr, &len))
-			continue;
-		if (len != card->atr.len)
-			continue;
-		if (memcmp(card->atr.value, defatr, len) != 0)
-			continue;
-		match = i;
-		break;
+	/* Normally the historical bytes are exactly "MyEID", but there might
+	 * be some historic units which have a small prefix byte sequence. */
+	if (card->reader->atr_info.hist_bytes_len >= 5 &&
+	    !memcmp(&card->reader->atr_info.hist_bytes[card->reader->atr_info.hist_bytes_len - 5], "MyEID", 5)) {
+		card->type = SC_CARD_TYPE_MYEID_GENERIC;
+		return 1;
 	}
-	if (match == -1)
-		return 0;
-
-	return 1;
+	return 0;
 }
 
 static int
