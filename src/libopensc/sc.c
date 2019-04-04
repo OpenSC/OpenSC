@@ -63,77 +63,90 @@ const char *sc_get_version(void)
 
 int sc_hex_to_bin(const char *in, u8 *out, size_t *outlen)
 {
-	int err = SC_SUCCESS;
-	size_t left, count = 0, in_len;
-
+	const char *sc_hex_to_bin_separators = " :";
 	if (in == NULL || out == NULL || outlen == NULL) {
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
-	left = *outlen;
-	in_len = strlen(in);
 
-	while (*in != '\0') {
-		int byte = 0, nybbles = 2;
-
-		while (nybbles-- && *in && *in != ':' && *in != ' ') {
-			char c;
-			byte <<= 4;
-			c = *in++;
-			if ('0' <= c && c <= '9')
-				c -= '0';
-			else
-			if ('a' <= c && c <= 'f')
-				c = c - 'a' + 10;
-			else
-			if ('A' <= c && c <= 'F')
-				c = c - 'A' + 10;
-			else {
-				err = SC_ERROR_INVALID_ARGUMENTS;
-				goto out;
-			}
-			byte |= c;
+	int byte_needs_nibble = 0;
+	int r = SC_SUCCESS;
+	size_t left = *outlen;
+	u8 byte = 0;
+	while (*in != '\0' && 0 != left) {
+		char c = *in++;
+		u8 nibble;
+		if      ('0' <= c && c <= '9')
+			nibble = c - '0';
+		else if ('a' <= c && c <= 'f')
+			nibble = c - 'a' + 10;
+		else if ('A' <= c && c <= 'F')
+			nibble = c - 'A' + 10;
+		else {
+			if (strchr(sc_hex_to_bin_separators, (int) c))
+				continue;
+			r = SC_ERROR_INVALID_ARGUMENTS;
+			goto err;
 		}
 
-		/* Detect premature end of string before byte is complete */
-		if (in_len > 1 && *in == '\0' && nybbles >= 0) {
-			err = SC_ERROR_INVALID_ARGUMENTS;
-			break;
+		if (byte_needs_nibble) {
+			byte |= nibble;
+			*out++ = (u8) byte;
+			left--;
+			byte_needs_nibble = 0;
+		} else {
+			byte  = nibble << 4;
+			byte_needs_nibble = 1;
 		}
-
-		if (*in == ':' || *in == ' ')
-			in++;
-		if (left <= 0) {
-			err = SC_ERROR_BUFFER_TOO_SMALL;
-			break;
-		}
-		out[count++] = (u8) byte;
-		left--;
 	}
 
-out:
-	*outlen = count;
-	return err;
+	/* for ease of implementation we only accept completely hexed bytes. */
+	if (byte_needs_nibble) {
+		r = SC_ERROR_INVALID_ARGUMENTS;
+		goto err;
+	}
+
+	/* skip all trailing separators to see if we missed something */
+	while (*in != '\0') {
+		if (NULL == strchr(sc_hex_to_bin_separators, (int) *in))
+			break;
+		in++;
+	}
+	if (*in != '\0') {
+		r = SC_ERROR_BUFFER_TOO_SMALL;
+		goto err;
+	}
+
+err:
+	*outlen -= left;
+	return r;
 }
 
 int sc_bin_to_hex(const u8 *in, size_t in_len, char *out, size_t out_len,
-		  int in_sep)
+				  int in_sep)
 {
-	unsigned int	n, sep_len;
-	char		*pos, *end, sep;
-
-	sep = (char)in_sep;
-	sep_len = sep > 0 ? 1 : 0;
-	pos = out;
-	end = out + out_len;
-	for (n = 0; n < in_len; n++) {
-		if (pos + 3 + sep_len >= end)
-			return SC_ERROR_BUFFER_TOO_SMALL;
-		if (n && sep_len)
-			*pos++ = sep;
-		sprintf(pos, "%02x", in[n]);
-		pos += 2;
+	if (in == NULL || out == NULL) {
+		return SC_ERROR_INVALID_ARGUMENTS;
 	}
-	*pos = '\0';
+
+	if (in_sep > 0) {
+		if (out_len < in_len*3 || out_len < 1)
+			return SC_ERROR_BUFFER_TOO_SMALL;
+	} else {
+		if (out_len < in_len*2 + 1)
+			return SC_ERROR_BUFFER_TOO_SMALL;
+	}
+
+	const char hex[] = "0123456789abcdef";
+	while (in_len) {
+		unsigned char value = *in++;
+		*out++ = hex[(value >> 4) & 0xF];
+		*out++ = hex[ value       & 0xF];
+		in_len--;
+		if (in_len && in_sep > 0)
+			*out++ = (char)in_sep;
+	}
+	*out = '\0';
+
 	return SC_SUCCESS;
 }
 

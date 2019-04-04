@@ -1379,6 +1379,25 @@ const sc_path_t *sc_get_mf_path(void);
 /********************************************************************/
 
 int sc_hex_to_bin(const char *in, u8 *out, size_t *outlen);
+/**
+ * Converts an u8 array to a string representing the input as hexadecimal,
+ * human-readable/printable form. It's the inverse function of sc_hex_to_bin.
+ *
+ * @param in The u8 array input to be interpreted, may be NULL iff in_len==0
+ * @param in_len Less or equal to the amount of bytes available from in
+ * @param out output buffer offered for the string representation, *MUST NOT*
+ *             be NULL and *MUST* be sufficiently sized, see out_len
+ * @param out_len *MUST* be at least 1 and state the maximum of bytes available
+ *                 within out to be written, including the \0 termination byte
+ *                 that will be written unconditionally
+ * @param separator The character to be used to separate the u8 string
+ *                   representations. `0` will suppress separation.
+ *
+ * Example: input [0x3f], in_len=1, requiring an out_len>=3, will write to out:
+ * [0x33, 0x66, 0x00] which reads as "3f"
+ * Example: input [0x3f, 0x01], in_len=2, separator=':', req. an out_len>=6,
+ * writes to out: [0x33, 0x66, 0x3A, 0x30, 0x31, 0x00] which reads as "3f:01"
+ */
 int sc_bin_to_hex(const u8 *, size_t, char *, size_t, int separator);
 size_t sc_right_trim(u8 *buf, size_t len);
 scconf_block *sc_get_conf_block(sc_context_t *ctx, const char *name1, const char *name2, int priority);
