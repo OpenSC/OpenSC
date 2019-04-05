@@ -5361,7 +5361,7 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 		return 0;
 	}
 
-	if (in_len >= sizeof(orig_data)) {
+	if (in_len > sizeof(orig_data)) {
 		printf("Private key size is too long\n");
 		return 0;
 	}
