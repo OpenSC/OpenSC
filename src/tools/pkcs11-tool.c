@@ -5361,6 +5361,11 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 		return 0;
 	}
 
+	if (in_len >= sizeof(orig_data)) {
+		printf("Private key size is too long\n");
+		return 0;
+	}
+
 	EVP_PKEY_CTX *ctx;
 	ctx = EVP_PKEY_CTX_new(pkey, NULL);
 	if (!ctx) {
