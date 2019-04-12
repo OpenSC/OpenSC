@@ -167,6 +167,12 @@ script:
       sleep 5;
       opensc-tool --card-driver default --send-apdu 80b800001a0cf276a288bcfba69d34f310010cf276a288bcfba69d34f3100100;
       opensc-tool -n;
+      pkcs15-init --create-pkcs15 --so-pin 123456 --so-puk 0123456789abcdef;
+      pkcs15-init --generate-key rsa/2048     --id 1 --key-usage decrypt,sign --auth-id FF --pin 123456;
+      pkcs15-init --generate-key rsa/2048     --id 2 --key-usage decrypt      --auth-id FF --pin 123456;
+      pkcs15-init --generate-key ec/secp256r1 --id 3 --key-usage sign         --auth-id FF --pin 123456;
+      pkcs15-tool -D;
+      pkcs11-tool -l -t -p 123456;
       killall java;
 
       java -noverify -cp GidsApplet/src/:jcardsim/target/jcardsim-3.0.5-SNAPSHOT.jar com.licel.jcardsim.remote.VSmartCard gids_jcardsim.cfg >/dev/null &
@@ -187,9 +193,8 @@ script:
       sleep 5;
       opensc-tool --card-driver default --send-apdu 80b80000120ba000000308000010000100050000020F0F7f;
       opensc-tool -n;
-      yubico-piv-tool -r 'Virtual PCD 00 00' -P 123456 -s 9e -a generate > pubkey-9e.pem;
-      yubico-piv-tool -r 'Virtual PCD 00 00' -P 123456 -s 9e -a selfsign-certificate -S '/CN=test' < pubkey-9e.pem > cert-9e.pem;
-      yubico-piv-tool -r 'Virtual PCD 00 00' -P 123456 -s 9e -a import-certificate < cert-9e.pem;
+      yubico-piv-tool -r 'Virtual PCD 00 00' -P 123456 -s 9a -a generate -A ECCP256;
+      yubico-piv-tool -r 'Virtual PCD 00 00' -P 123456 -s 9e -a generate -A RSA2048;
       pkcs11-tool -l -t -p 123456;
       killall java;
       set +ex;

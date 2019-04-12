@@ -8,7 +8,11 @@ Please take a look at the documentation before trying to use OpenSC.
 
 Build and test status of specific cards:
 
-| Cards                 | Status |
-|-----------------------|--------|
-| CAC                   | [![CAC](https://gitlab.com/redhat-crypto/OpenSC/badges/cac/build.svg)](https://gitlab.com/redhat-crypto/OpenSC/pipelines) |
-| Coolkey               | [![Coolkey](https://gitlab.com/redhat-crypto/OpenSC/badges/coolkey/build.svg)](https://gitlab.com/redhat-crypto/OpenSC/pipelines) |
+| Cards                                                               | Status                                                                                                                            |
+|---------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------|
+| CAC                                                                 | [![CAC](https://gitlab.com/redhat-crypto/OpenSC/badges/cac/build.svg)](https://gitlab.com/redhat-crypto/OpenSC/pipelines)         |
+| [Coolkey](https://github.com/dogtagpki/coolkey/tree/master/applet)  | [![Coolkey](https://gitlab.com/redhat-crypto/OpenSC/badges/coolkey/build.svg)](https://gitlab.com/redhat-crypto/OpenSC/pipelines) |
+| [PivApplet](https://github.com/arekinath/PivApplet)                 | [![PIV](https://travis-ci.org/OpenSC/OpenSC.svg)](https://travis-ci.org/OpenSC/OpenSC/branches)                                   |
+| [OpenPGP Applet](https://github.com/Yubico/ykneo-openpgp/)          | [![OpenPGP](https://travis-ci.org/OpenSC/OpenSC.svg)](https://travis-ci.org/OpenSC/OpenSC/branches)                               |
+| [GidsApplet](https://github.com/vletoux/GidsApplet/)                | [![GIDS](https://travis-ci.org/OpenSC/OpenSC.svg)](https://travis-ci.org/OpenSC/OpenSC/branches)                                  |
+| [IsoApplet](https://github.com/philipWendland/IsoApplet/)           | [![IsoApplet](https://travis-ci.org/OpenSC/OpenSC.svg)](https://travis-ci.org/OpenSC/OpenSC/branches)                             |
