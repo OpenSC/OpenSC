@@ -21,8 +21,6 @@ define([VS_FF_PRODUCT_URL], [https://github.com/OpenSC/OpenSC])
 
 m4_sinclude(version.m4.ci)
 
-m4_define([openssl_minimum_version], [0.9.8])
-
 AC_INIT([PRODUCT_NAME],[PACKAGE_VERSION_MAJOR.PACKAGE_VERSION_MINOR.PACKAGE_VERSION_FIX[]PACKAGE_SUFFIX],[PRODUCT_BUGREPORT],[PRODUCT_TARNAME],[PRODUCT_URL])
 AC_CONFIG_AUX_DIR([.])
 AC_CONFIG_HEADERS([config.h])
@@ -625,10 +623,7 @@ fi
 
 PKG_CHECK_MODULES(
 	[OPENSSL],
-	[
-		libcrypto >= openssl_minimum_version
-		openssl >= openssl_minimum_version
-	],
+	[libcrypto >= 0.9.8],
 	[have_openssl="yes"],
 	[AC_CHECK_LIB(
 		[crypto],
