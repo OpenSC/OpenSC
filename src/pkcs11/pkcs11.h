@@ -815,6 +815,14 @@ typedef struct CK_RSA_PKCS_PSS_PARAMS {
 
 #define CKZ_DATA_SPECIFIED	(0x00000001UL)
 
+typedef struct CK_GCM_PARAMS {
+	void * pIv;
+	unsigned long ulIvLen;
+	void * pAAD;
+	unsigned long ulAADLen;
+	unsigned long ulTagBits;
+} CK_GCM_PARAMS;
+
 typedef unsigned long ck_rv_t;
 
 
