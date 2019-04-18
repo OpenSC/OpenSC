@@ -204,10 +204,10 @@ static int esteid_compute_signature(sc_card_t *card, const u8 *data, size_t data
 
 	switch (env->key_ref[0]) {
 	case 1: /* authentication key */
-		sc_format_apdu_ex(card, &apdu, 0x88, 0, 0, sbuf, datalen, out, MIN(256, outlen));
+		sc_format_apdu_ex(card, &apdu, 0x88, 0, 0, sbuf, datalen, out, MIN(256, MIN(SIGNATURE_PAYLOAD_SIZE * 2, outlen)));
 		break;
 	default:
-		sc_format_apdu_ex(card, &apdu, 0x2A, 0x9E, 0x9A, sbuf, datalen, out, MIN(256, outlen));
+		sc_format_apdu_ex(card, &apdu, 0x2A, 0x9E, 0x9A, sbuf, datalen, out, MIN(256, MIN(SIGNATURE_PAYLOAD_SIZE * 2, outlen)));
 	}
 
 	SC_TRANSMIT_TEST_RET(card, apdu, "PSO CDS/INTERNAL AUTHENTICATE failed");
