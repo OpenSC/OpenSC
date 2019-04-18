@@ -784,6 +784,7 @@ C_EncryptInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT
 	enter("C_EncryptInit");
 	spy_dump_ulong_in("hSession", hSession);
 	fprintf(spy_output, "pMechanism->type=%s\n", lookup_enum(MEC_T, pMechanism->mechanism));
+	spy_dump_string_in("pParameter[ulParameterLen]", pMechanism->pParameter, pMechanism->ulParameterLen);
 	spy_dump_ulong_in("hKey", hKey);
 	rv = po->C_EncryptInit(hSession, pMechanism, hKey);
 	return retne(rv);
@@ -860,6 +861,7 @@ C_DecryptInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT
 		}
 		break;
 	default:
+		spy_dump_string_in("pParameter[ulParameterLen]", pMechanism->pParameter, pMechanism->ulParameterLen);
 		break;
 	}
 	spy_dump_ulong_in("hKey", hKey);
