@@ -784,7 +784,25 @@ C_EncryptInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT
 	enter("C_EncryptInit");
 	spy_dump_ulong_in("hSession", hSession);
 	fprintf(spy_output, "pMechanism->type=%s\n", lookup_enum(MEC_T, pMechanism->mechanism));
-	spy_dump_string_in("pParameter[ulParameterLen]", pMechanism->pParameter, pMechanism->ulParameterLen);
+	switch (pMechanism->mechanism) {
+	case CKM_AES_GCM:
+		if (pMechanism->pParameter != NULL) {
+			CK_GCM_PARAMS *param =
+				(CK_GCM_PARAMS *) pMechanism->pParameter;
+			spy_dump_string_in("pIv[ulIvLen]",
+				param->pIv, param->ulIvLen);
+			spy_dump_string_in("pAAD[ulAADLen]",
+				param->pAAD, param->ulAADLen);
+			fprintf(spy_output, "pMechanism->pParameter->ulTagBits=%lu\n", param->ulTagBits);
+		} else {
+			fprintf(spy_output, "Parameters block for %s is empty...\n",
+				lookup_enum(MEC_T, pMechanism->mechanism));
+		}
+		break;
+	default:
+		spy_dump_string_in("pParameter[ulParameterLen]", pMechanism->pParameter, pMechanism->ulParameterLen);
+		break;
+	}
 	spy_dump_ulong_in("hKey", hKey);
 	rv = po->C_EncryptInit(hSession, pMechanism, hKey);
 	return retne(rv);
