@@ -41,7 +41,7 @@ static void set_string(char **strp, const char *value) {
 
 static int sc_pkcs15emu_esteid2018_init(sc_pkcs15_card_t *p15card) {
 	sc_card_t *card = p15card->card;
-	u8 buff[128];
+	u8 buff[11];
 	int r, i;
 	size_t field_length = 0, taglen, j;
 	sc_path_t tmppath;
@@ -49,11 +49,11 @@ static int sc_pkcs15emu_esteid2018_init(sc_pkcs15_card_t *p15card) {
 	set_string(&p15card->tokeninfo->label, "ID-kaart");
 	set_string(&p15card->tokeninfo->manufacturer_id, "IDEMIA");
 
-	/* Read docnr */
+	/* Read documber number to be used as serial */
 	sc_format_path("3F00D003", &tmppath);
 	LOG_TEST_RET(card->ctx, sc_select_file(card, &tmppath, NULL), "SELECT docnr");
 	r = sc_read_binary(card, 0, buff, 11, 0);
-	LOG_TEST_RET(card->ctx, r, "read docnr failed");
+	LOG_TEST_RET(card->ctx, r, "read document number failed");
 	const unsigned char *tag = sc_asn1_find_tag(card->ctx, buff, (size_t)r, 0x04, &taglen);
 	if (tag == NULL)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
@@ -99,7 +99,7 @@ static int sc_pkcs15emu_esteid2018_init(sc_pkcs15_card_t *p15card) {
 		if (cert->key->algorithm == SC_ALGORITHM_EC)
 			field_length = cert->key->u.ec.params.field_length;
 
-		static const struct sc_object_id cn_oid = {{2, 5, 4, 3, -1}};
+		const struct sc_object_id cn_oid = {{2, 5, 4, 3, -1}};
 		u8 *cn_name = NULL;
 		size_t cn_len = 0;
 		sc_pkcs15_get_name_from_dn(card->ctx, cert->subject, cert->subject_len, &cn_oid, &cn_name, &cn_len);
