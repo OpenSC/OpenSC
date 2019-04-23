@@ -82,14 +82,14 @@ enum {
 
 struct rule_record_s {
 	struct rule_record_s *next;
-	int recno;
+	unsigned int recno;
 	size_t datalen;
 	u8 data[1];
 };
 
 struct keyd_record_s {
 	struct keyd_record_s *next;
-	int recno;
+	unsigned int recno;
 	size_t datalen;
 	u8 data[1];
 };
@@ -307,58 +307,46 @@ static int mcrd_match_card(sc_card_t * card)
 	LOG_FUNC_CALLED(card->ctx);
 	r = gp_select_aid(card, &EstEID_v35_AID);
 	if (r >= 0) {
-	        sc_log(card->ctx, "AID found");
-	        card->type = SC_CARD_TYPE_MCRD_ESTEID_V30;
-	        return 1;
+		sc_log(card->ctx, "AID found");
+		card->type = SC_CARD_TYPE_MCRD_ESTEID_V30;
+		return 1;
 	}
 	return 0;
 }
 
 static int mcrd_init(sc_card_t * card)
 {
-	unsigned long flags, ext_flags;
-	struct mcrd_priv_data *priv;
-	int r;
-
-	priv = calloc(1, sizeof *priv);
+	unsigned long flags = SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE, ext_flags;
+	struct mcrd_priv_data *priv = calloc(1, sizeof *priv);
 	if (!priv)
 		return SC_ERROR_OUT_OF_MEMORY;
 	card->drv_data = priv;
 	card->cla = 0x00;
 	card->caps = SC_CARD_CAP_RNG;
 
-
-	if (is_esteid_card(card)) {
-		/* Select the EstEID AID to get to a known state.
-		 * For some reason a reset is required as well... */
-		sc_reset(card, 0);
-
-		flags = SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_HASH_SHA1 | SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_SHA256;
-		if ((r = gp_select_aid(card, &EstEID_v3_AID)) >= 0) {
-			/* EstEID v3.0 has 2048 bit keys */
-			_sc_card_add_rsa_alg(card, 2048, flags, 0);
-		} else if ((r = gp_select_aid(card, &EstEID_v35_AID)) >= 0) {
-			/* EstEID v3.5 has 2048 bit keys or EC 384 */
-			_sc_card_add_rsa_alg(card, 2048, flags, 0);
-			flags = SC_ALGORITHM_ECDSA_RAW | SC_ALGORITHM_ECDH_CDH_RAW | SC_ALGORITHM_ECDSA_HASH_NONE;
-			ext_flags = SC_ALGORITHM_EXT_EC_NAMEDCURVE | SC_ALGORITHM_EXT_EC_UNCOMPRESES;
-			_sc_card_add_ec_alg(card, 384, flags, ext_flags, NULL);
-			// Force EstEID 3.5 card recv size 255 with T=0 to avoid recursive read binary
-			// sc_read_binary cannot handle recursive 61 00 calls
-			if (card->reader && card->reader->active_protocol == SC_PROTO_T0)
-				card->max_recv_size = 255;
-		} else if ((r = gp_select_aid(card, &AzeDIT_v35_AID)) >= 0) {
-			_sc_card_add_rsa_alg(card, 2048, flags, 0);
-		} else {
-			free(card->drv_data);
-			card->drv_data = NULL;
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_CARD);
-		}
-	} else {
-		flags = SC_ALGORITHM_RSA_RAW |SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE;
+	if (!is_esteid_card(card)) {
 		_sc_card_add_rsa_alg(card, 512, flags, 0);
 		_sc_card_add_rsa_alg(card, 768, flags, 0);
 		_sc_card_add_rsa_alg(card, 1024, flags, 0);
+	} else if (gp_select_aid(card, &EstEID_v3_AID) >= 0) {
+		/* EstEID v3.0 has 2048 bit keys */
+		_sc_card_add_rsa_alg(card, 2048, flags, 0);
+	} else if (gp_select_aid(card, &EstEID_v35_AID) >= 0) {
+		/* EstEID v3.5 has 2048 bit keys or EC 384 */
+		_sc_card_add_rsa_alg(card, 2048, flags, 0);
+		flags = SC_ALGORITHM_ECDSA_RAW | SC_ALGORITHM_ECDH_CDH_RAW | SC_ALGORITHM_ECDSA_HASH_NONE;
+		ext_flags = SC_ALGORITHM_EXT_EC_NAMEDCURVE | SC_ALGORITHM_EXT_EC_UNCOMPRESES;
+		_sc_card_add_ec_alg(card, 384, flags, ext_flags, NULL);
+		// Force EstEID 3.5 card recv size 255 with T=0 to avoid recursive read binary
+		// sc_read_binary cannot handle recursive 61 00 calls
+		if (card->reader && card->reader->active_protocol == SC_PROTO_T0)
+			card->max_recv_size = 255;
+	} else if (gp_select_aid(card, &AzeDIT_v35_AID) >= 0) {
+		_sc_card_add_rsa_alg(card, 2048, flags, 0);
+	} else {
+		free(card->drv_data);
+		card->drv_data = NULL;
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_CARD);
 	}
 
 	priv->curpath[0] = MFID;
@@ -394,7 +382,8 @@ static int mcrd_finish(sc_card_t * card)
 static int load_special_files(sc_card_t * card)
 {
 	sc_context_t *ctx = card->ctx;
-	int r, recno;
+	int r;
+	unsigned int recno;
 	struct df_info_s *dfi;
 	struct rule_record_s *rule;
 	struct keyd_record_s *keyd;
@@ -759,7 +748,7 @@ do_select(sc_card_t * card, u8 kind,
 		if (!*file)
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 		if (apdu.resp[1] <= apdu.resplen)
-		process_fcp(card, *file, apdu.resp + 2, apdu.resp[1]);
+			process_fcp(card, *file, apdu.resp + 2, apdu.resp[1]);
 		return SC_SUCCESS;
 	}
 	return SC_SUCCESS;
@@ -1231,7 +1220,7 @@ static int mcrd_set_security_env(sc_card_t * card,
 	sc_unlock(card);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);
-      err:
+err:
 	if (locked)
 		sc_unlock(card);
 	return r;
