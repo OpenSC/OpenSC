@@ -1664,7 +1664,6 @@ static int cac_populate_cac_alt(sc_card_t *card, int index, cac_private_data_t *
 	cac_object_t pki_obj = cac_cac_pki_obj;
 	u8 buf[100];
 	u8 *val;
-	size_t val_len;
 
 	/* populate PKI objects */
 	for (i = index; i < MAX_CAC_SLOTS; i++) {
@@ -1701,13 +1700,14 @@ static int cac_populate_cac_alt(sc_card_t *card, int index, cac_private_data_t *
 		return r; /* shouldn't happen unless the card has been removed or is malfunctioning */
 	}
 	val = buf;
-	val_len = cac_read_binary(card, 0, val, sizeof(buf), 0);
-	if (val_len > 0) {
+	r = cac_read_binary(card, 0, val, sizeof(buf), 0);
+	if (r > 0) {
+#ifdef ENABLE_OPENSSL
+		size_t val_len = r;
 		priv->cac_id = malloc(20);
 		if (priv->cac_id == NULL) {
 			return SC_ERROR_OUT_OF_MEMORY;
 		}
-#ifdef ENABLE_OPENSSL
 		SHA1(val, val_len, priv->cac_id);
 		priv->cac_id_len = 20;
 		sc_debug_hex(card->ctx, SC_LOG_DEBUG_VERBOSE,
