@@ -5287,7 +5287,7 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 	CK_RV           rv;
 	int             pad;
 	CK_MECHANISM_TYPE hash_alg = CKM_SHA256;
-	CK_RSA_PKCS_MGF_TYPE mgf;
+	CK_RSA_PKCS_MGF_TYPE mgf = CKG_MGF1_SHA256;
 	CK_RSA_PKCS_OAEP_PARAMS oaep_params;
 
 	printf("    %s: ", p11_mechanism_to_name(mech_type));
