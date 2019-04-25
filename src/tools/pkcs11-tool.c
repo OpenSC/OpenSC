@@ -608,14 +608,6 @@ int main(int argc, char * argv[])
 #ifdef ENABLE_OPENSSL
 #if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
 	OPENSSL_config(NULL);
-#endif
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
-	OPENSSL_init_crypto(OPENSSL_INIT_LOAD_CRYPTO_STRINGS
-		| OPENSSL_INIT_ADD_ALL_CIPHERS
-		| OPENSSL_INIT_ADD_ALL_DIGESTS
-		| OPENSSL_INIT_LOAD_CONFIG,
-		NULL);
-#else
 	/* OpenSSL magic */
 	OpenSSL_add_all_algorithms();
 	OPENSSL_malloc_init();
@@ -1835,7 +1827,7 @@ parse_pss_params(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key,
 				util_fatal("Salt length must be greater or equal "
 				    "to zero, or equal to -1 (meaning: use digest size) "
 				    "or to -2 (meaning: use maximum permissible size");
-		  
+
 			modlen = (get_private_key_length(session, key) + 7) / 8;
 			switch (opt_salt_len) {
 			case -1: /* salt size equals to digest size */
@@ -1999,6 +1991,42 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 
 	close(fd2);
 
+	if (opt_mechanism == CKM_ECDSA || opt_mechanism == CKM_ECDSA_SHA1 ||
+		opt_mechanism == CKM_ECDSA_SHA256 || opt_mechanism == CKM_ECDSA_SHA384 ||
+		opt_mechanism == CKM_ECDSA_SHA512 || opt_mechanism == CKM_ECDSA_SHA224) {
+		if (opt_sig_format && (!strcmp(opt_sig_format, "openssl") ||
+							   !strcmp(opt_sig_format, "sequence"))) {
+
+			CK_BYTE* bytes;
+			CK_ULONG len;
+			size_t rs_len = 0;
+			unsigned char rs_buffer[512];
+			bytes = getEC_POINT(session, key, &len);
+			free(bytes);
+			/*
+			 * (We only support uncompressed for now)
+			 * Uncompressed EC_POINT is DER OCTET STRING of "04||x||y"
+			 * So a "256" bit key has x and y of 32 bytes each
+			 * something like: "04 41 04||x||y"
+			 * Do simple size calculation based on DER encoding
+			 */
+			if ((len - 2) <= 127)
+				rs_len = len - 3;
+			else if ((len - 3) <= 255)
+				rs_len = len - 4;
+			else
+				util_fatal("Key not supported");
+
+			if (sc_asn1_sig_value_sequence_to_rs(NULL, sig_buffer, r2,
+				rs_buffer, rs_len)) {
+				util_fatal("Failed to convert ASN.1 signature");
+			}
+
+			memcpy(sig_buffer, rs_buffer, rs_len);
+			r2 = rs_len;
+		}
+	}
+
 	/* Open the data file */
 	if (opt_input == NULL)
 		fd = 0;
@@ -2038,7 +2066,7 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			r = read(fd, in_buffer, sizeof(in_buffer));
 		} while (r > 0);
 
-		sig_len = sizeof(sig_buffer);
+		sig_len = r2;
 		rv = p11->C_VerifyFinal(session, sig_buffer, sig_len);
 		if (rv != CKR_OK)
 			p11_fatal("C_VerifyFinal", rv);
@@ -2077,7 +2105,7 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 
 	if (opt_hash_alg != 0 && opt_mechanism != CKM_RSA_PKCS_OAEP)
 		util_fatal("The hash-algorithm is applicable only to "
-               "RSA-PKCS-OAEP mechanism"); 
+               "RSA-PKCS-OAEP mechanism");
 
 	if (opt_input == NULL)
 		fd = 0;
@@ -2106,7 +2134,7 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		case CKM_SHA512:
 			oaep_params.mgf = CKG_MGF1_SHA512;
 			break;
-		default: 
+		default:
 			oaep_params.hashAlg = CKM_SHA_1;
 			/* fall through */
 		case CKM_SHA_1:
@@ -2114,6 +2142,7 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			break;
 		}
 		break;
+	case CKM_RSA_X_509:
 	case CKM_RSA_PKCS:
 		mech.pParameter = NULL;
 		mech.ulParameterLen = 0;
@@ -2143,7 +2172,7 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			oaep_params.pSourceData,
 			oaep_params.ulSourceDataLen);
 
-	} 
+	}
 
 	rv = p11->C_DecryptInit(session, &mech, key);
 	if (rv != CKR_OK)
@@ -4816,7 +4845,9 @@ static int sign_verify_openssl(CK_SESSION_HANDLE session,
 		EVP_sha1(),
 		EVP_sha1(),
 		EVP_md5(),
+#ifndef OPENSSL_NO_RIPEMD
 		EVP_ripemd160(),
+#endif
 		EVP_sha256(),
 	};
 #endif
@@ -4902,7 +4933,9 @@ static int test_signature(CK_SESSION_HANDLE sess)
 		CKM_RSA_PKCS,
 		CKM_SHA1_RSA_PKCS,
 		CKM_MD5_RSA_PKCS,
+#ifndef OPENSSL_NO_RIPEMD
 		CKM_RIPEMD160_RSA_PKCS,
+#endif
 		CKM_SHA256_RSA_PKCS,
 		0xffffff
 	};
@@ -5483,7 +5516,9 @@ static int test_unwrap(CK_SESSION_HANDLE sess)
 		errors += wrap_unwrap(sess, EVP_des_cbc(), privKeyObject);
 		errors += wrap_unwrap(sess, EVP_des_ede3_cbc(), privKeyObject);
 		errors += wrap_unwrap(sess, EVP_bf_cbc(), privKeyObject);
+#ifndef OPENSSL_NO_CAST
 		errors += wrap_unwrap(sess, EVP_cast5_cfb(), privKeyObject);
+#endif
 #endif
 	}
 
@@ -5496,14 +5531,20 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 		CK_OBJECT_HANDLE privKeyObject)
 {
 	EVP_PKEY       *pkey;
-	unsigned char	orig_data[] = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', '\0'};
+	unsigned char	orig_data[512];
 	unsigned char	encrypted[512], data[512];
 	CK_MECHANISM	mech;
 	CK_ULONG	encrypted_len, data_len;
 	int             failed;
 	CK_RV           rv;
+	int             pad;
+	CK_MECHANISM_TYPE hash_alg = CKM_SHA256;
+	CK_RSA_PKCS_MGF_TYPE mgf = CKG_MGF1_SHA256;
+	CK_RSA_PKCS_OAEP_PARAMS oaep_params;
 
 	printf("    %s: ", p11_mechanism_to_name(mech_type));
+
+	pseudo_randomize(orig_data, sizeof(orig_data));
 
 	pkey = get_public_key(session, privKeyObject);
 	if (pkey == NULL)
@@ -5514,11 +5555,191 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 		EVP_PKEY_free(pkey);
 		return 0;
 	}
-	encrypted_len = EVP_PKEY_encrypt_old(encrypted, orig_data, sizeof(orig_data), pkey);
-	EVP_PKEY_free(pkey);
-	if (((int) encrypted_len) <= 0) {
+	size_t in_len;
+	CK_ULONG mod_len = (get_private_key_length(session, privKeyObject) + 7) / 8;
+	switch (mech_type) {
+	case CKM_RSA_PKCS:
+		pad = RSA_PKCS1_PADDING;
+		/* Limit the input length to <= mod_len-11 */
+		in_len = mod_len-11;
+		break;
+	case CKM_RSA_PKCS_OAEP: {
+		if (opt_hash_alg != 0) {
+			hash_alg = opt_hash_alg;
+		}
+		switch (hash_alg) {
+		case CKM_SHA_1:
+			mgf = CKG_MGF1_SHA1;
+			break;
+		case CKM_SHA224:
+			mgf = CKG_MGF1_SHA224;
+			break;
+		default:
+			printf("hash-algorithm %s unknown, defaulting to CKM_SHA256\n", p11_mechanism_to_name(hash_alg));
+			/* fall through */
+		case CKM_SHA256:
+			mgf = CKG_MGF1_SHA256;
+			break;
+		case CKM_SHA384:
+			mgf = CKG_MGF1_SHA384;
+			break;
+		case CKM_SHA512:
+			mgf = CKG_MGF1_SHA512;
+			break;
+		}
+		if (opt_mgf != 0) {
+			mgf = opt_mgf;
+		} else {
+			printf("mgf not set, defaulting to %s\n", p11_mgf_to_name(mgf));
+		}
+
+		pad = RSA_PKCS1_OAEP_PADDING;
+		/* Limit the input length to <= mod_len-2-2*hlen */
+		size_t len = 2+2*hash_length(hash_alg);
+		if (len >= mod_len) {
+			printf("Incompatible mechanism and key size\n");
+			return 0;
+		}
+		in_len = mod_len-len;
+		break;
+	}
+	case CKM_RSA_X_509:
+		pad = RSA_NO_PADDING;
+		/* Limit the input length to the modulus length */
+		in_len = mod_len;
+		break;
+	default:
+		printf("Unsupported mechanism %s, returning\n", p11_mechanism_to_name(mech_type));
+		return 0;
+	}
+
+	if (in_len > sizeof(orig_data)) {
+		printf("Private key size is too long\n");
+		return 0;
+	}
+
+	EVP_PKEY_CTX *ctx;
+	ctx = EVP_PKEY_CTX_new(pkey, NULL);
+	if (!ctx) {
+		EVP_PKEY_free(pkey);
+		printf("EVP_PKEY_CTX_new failed, returning\n");
+		return 0;
+	}
+	if (EVP_PKEY_encrypt_init(ctx) <= 0) {
+		EVP_PKEY_CTX_free(ctx);
+		EVP_PKEY_free(pkey);
+		printf("EVP_PKEY_encrypt_init failed, returning\n");
+		return 0;
+	}
+	if (EVP_PKEY_CTX_set_rsa_padding(ctx, pad) <= 0) {
+		EVP_PKEY_CTX_free(ctx);
+		EVP_PKEY_free(pkey);
+		printf("set padding failed, returning\n");
+		return 0;
+	}
+	if (mech_type == CKM_RSA_PKCS_OAEP) {
+		const EVP_MD *md;
+		switch (hash_alg) {
+		case CKM_SHA_1:
+			md = EVP_sha1();
+			break;
+		case CKM_SHA224:
+			md = EVP_sha224();
+			break;
+		default: /* it should not happen, hash_alg is checked earlier */
+			/* fall through */
+		case CKM_SHA256:
+			md = EVP_sha256();
+			break;
+		case CKM_SHA384:
+			md = EVP_sha384();
+			break;
+		case CKM_SHA512:
+			md = EVP_sha512();
+			break;
+		}
+#if defined(EVP_PKEY_CTX_set_rsa_oaep_md)
+		if (EVP_PKEY_CTX_set_rsa_oaep_md(ctx, md) <= 0) {
+			EVP_PKEY_CTX_free(ctx);
+			EVP_PKEY_free(pkey);
+			printf("set md failed, returning\n");
+			return 0;
+		}
+#else
+		if (hash_alg != CKM_SHA_1) {
+			printf("This version of OpenSSL only supports SHA1 for OAEP, returning\n");
+			return 0;
+		}
+#endif
+		switch (mgf) {
+		case CKG_MGF1_SHA1:
+			md = EVP_sha1();
+			break;
+		case CKG_MGF1_SHA224:
+			md = EVP_sha224();
+			break;
+		default:
+			printf("mgf %s unknown, defaulting to CKG_MGF1_SHA256\n", p11_mgf_to_name(mgf));
+			mgf = CKG_MGF1_SHA256;
+			/* fall through */
+		case CKG_MGF1_SHA256:
+			md = EVP_sha256();
+			break;
+		case CKG_MGF1_SHA384:
+			md = EVP_sha384();
+			break;
+		case CKG_MGF1_SHA512:
+			md = EVP_sha512();
+			break;
+		}
+		if (EVP_PKEY_CTX_set_rsa_mgf1_md(ctx, md) <= 0) {
+			EVP_PKEY_CTX_free(ctx);
+			EVP_PKEY_free(pkey);
+			printf("set mgf1 md failed, returning\n");
+			return 0;
+		}
+	}
+
+	size_t out_len = sizeof(encrypted);
+	if (EVP_PKEY_encrypt(ctx, encrypted, &out_len, orig_data, in_len) <= 0) {
+		EVP_PKEY_CTX_free(ctx);
+		EVP_PKEY_free(pkey);
 		printf("Encryption failed, returning\n");
 		return 0;
+	}
+	EVP_PKEY_CTX_free(ctx);
+	EVP_PKEY_free(pkey);
+	encrypted_len = out_len;
+
+	/* set "default" MGF and hash algorithms. We can overwrite MGF later */
+	switch (mech_type) {
+	case CKM_RSA_PKCS_OAEP:
+		oaep_params.hashAlg = hash_alg;
+		oaep_params.mgf = mgf;
+
+		/* These settings are compatible with OpenSSL 1.0.2L and 1.1.0+ */
+		oaep_params.source = 0UL;  /* empty encoding parameter (label) */
+		oaep_params.pSourceData = NULL; /* PKCS#11 standard: this must be NULLPTR */
+		oaep_params.ulSourceDataLen = 0; /* PKCS#11 standard: this must be 0 */
+
+		/* If an RSA-OAEP mechanism, it needs parameters */
+		mech.pParameter = &oaep_params;
+		mech.ulParameterLen = sizeof(oaep_params);
+
+		fprintf(stderr, "OAEP parameters: hashAlg=%s, mgf=%s, source_type=%lu, source_ptr=%p, source_len=%lu\n",
+			p11_mechanism_to_name(oaep_params.hashAlg),
+			p11_mgf_to_name(oaep_params.mgf),
+			oaep_params.source,
+			oaep_params.pSourceData,
+			oaep_params.ulSourceDataLen);
+		break;
+	case CKM_RSA_X_509:
+	case CKM_RSA_PKCS:
+		mech.pParameter = NULL;
+		mech.ulParameterLen = 0;
+		break;
+	default:
+		util_fatal("Mechanism %s illegal or not supported\n", p11_mechanism_to_name(mech_type));
 	}
 
 	mech.mechanism = mech_type;
@@ -5537,18 +5758,14 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 	if (rv != CKR_OK)
 		p11_fatal("C_Decrypt", rv);
 
-	if (mech_type == CKM_RSA_X_509)
-		failed = (data[0] != 0) || (data[1] != 2) || (data_len <= sizeof(orig_data) - 2) ||
-		    memcmp(orig_data, data + data_len - sizeof(orig_data), sizeof(orig_data));
-	else
-		failed = data_len != sizeof(orig_data) || memcmp(orig_data, data, data_len);
+	failed = data_len != in_len || memcmp(orig_data, data, data_len);
 
 	if (failed) {
 		CK_ULONG n;
 
 		printf("resulting cleartext doesn't match input\n");
 		printf("    Original:");
-		for (n = 0; n < sizeof(orig_data); n++)
+		for (n = 0; n < in_len; n++)
 			printf(" %02x", orig_data[n]);
 		printf("\n");
 		printf("    Decrypted:");
@@ -5615,6 +5832,16 @@ static int test_decrypt(CK_SESSION_HANDLE sess)
 		printf("No OpenSSL support, unable to validate decryption\n");
 #else
 		for (n = 0; n < num_mechs; n++) {
+			switch (mechs[n]) {
+			case CKM_RSA_PKCS:
+			case CKM_RSA_PKCS_OAEP:
+			case CKM_RSA_X_509:
+				break;
+			default:
+				printf(" -- mechanism can't be used to decrypt, skipping\n");
+				continue;
+			}
+
 			errors += encrypt_decrypt(sess, mechs[n], privKeyObject);
 		}
 #endif
