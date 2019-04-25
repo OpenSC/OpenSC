@@ -220,7 +220,8 @@ static int sc_pkcs15emu_actalis_init(sc_pkcs15_card_t * p15card)
 			memset(&cert_info, 0, sizeof(cert_info));
 			memset(&cert_obj, 0, sizeof(cert_obj));
 
-			sc_read_binary(card, 2, size, 2, 0);
+			if (SC_SUCCESS != sc_read_binary(card, 2, size, 2, 0))
+				continue;
 			compLen = (size[0] << 8) + size[1];
 			compCert = malloc(compLen * sizeof(unsigned char));
 			len = 3 * compLen;	/*Approximation of the uncompressed size */
@@ -231,12 +232,11 @@ static int sc_pkcs15emu_actalis_init(sc_pkcs15_card_t * p15card)
 				return SC_ERROR_OUT_OF_MEMORY;
 			}
 
-			sc_read_binary(card, 4, compCert, compLen, 0);
-
-			if (uncompress(cert, &len, compCert, compLen) != Z_OK) {
+			if (sc_read_binary(card, 4, compCert, compLen, 0) != SC_SUCCESS
+					|| uncompress(cert, &len, compCert, compLen) != Z_OK) {
 				free(cert);
 				free(compCert);
-				return SC_ERROR_INTERNAL;
+				continue;
 			}
 			cpath.index = 0;
 			cpath.count = len;
