@@ -98,7 +98,7 @@ static int opt_keyinfo = 0;
 static char *exec_program = NULL;
 static int opt_genkey = 0;
 static u8 key_id = 0;
-static char *keytype = NULL;
+static char *opt_keytype = NULL;
 static int opt_verify = 0;
 static char *verifytype = NULL;
 static int opt_pin = 0;
@@ -506,9 +506,9 @@ static int decode_options(int argc, char **argv)
 			actions++;
 			break;
 		case 't':
-			if (keytype)
-				free(keytype);
-			keytype = strdup(optarg);
+			if (opt_keytype)
+				free(opt_keytype);
+			opt_keytype = strdup(optarg);
 			break;
 		case 'h':
 			util_print_usage_and_die(app_name, options, option_help, NULL);
@@ -922,7 +922,7 @@ int main(int argc, char **argv)
 	}
 
 	if (opt_genkey)
-		exit_status |= do_genkey(card, key_id, keytype);
+		exit_status |= do_genkey(card, key_id, opt_keytype);
 
 	if (exec_program) {
 		char *const largv[] = {exec_program, NULL};
