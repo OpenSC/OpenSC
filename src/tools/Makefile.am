@@ -25,7 +25,7 @@ EXTRA_DIST = Makefile.mak versioninfo-tools.rc.in versioninfo-opensc-notify.rc.i
 
 noinst_HEADERS = util.h fread_to_eof.h \
 	egk-tool-cmdline.h goid-tool-cmdline.h npa-tool-cmdline.h \
-	opensc-asn1-cmdline.h opensc-notify-cmdline.h
+	opensc-asn1-cmdline.h opensc-notify-cmdline.h pkcs11-register-cmdline.h
 noinst_PROGRAMS = sceac-example
 bin_PROGRAMS = opensc-tool opensc-explorer opensc-notify \
 	pkcs15-tool pkcs15-crypt pkcs11-tool pkcs11-register \
