@@ -6,9 +6,17 @@ if [ "$(id -u)" != "0" ]; then
    exit 1
 fi
 
-# Remove symlinks to commands
-for file in /Library/OpenSC/bin/*; do
-	test -L "/usr/local/bin/$(basename $file)" && rm -f "/usr/local/bin/$(basename $file)"
+for f in \
+	/Library/OpenSC/bin/* \
+	/Library/OpenSC/etc/bash_completion.d/* \
+	/Library/OpenSC/share/doc/opensc \
+	/Library/OpenSC/share/man/man1/* \
+	/Library/OpenSC/share/man/man5/*
+do
+	a=/Library/OpenSC
+	b=/usr/local
+	l="${f/$a/$b}"
+	test -L "$l" && rm -f "$l"
 done
 
 # Remove pkcs11 libraries
