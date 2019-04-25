@@ -280,7 +280,7 @@ static int list_readers(void)
 		      reader->capabilities & SC_READER_CAP_PIN_PAD ? "PIN pad":"",
 		      reader->name);
 		if (state & SC_READER_CARD_PRESENT && verbose) {
-			struct sc_card *card;
+			struct sc_card *c;
 			int r;
 			char tmp[SC_MAX_ATR_SIZE*3];
 			sc_bin_to_hex(reader->atr.value, reader->atr.len, tmp, sizeof(tmp) - 1, ':');
@@ -288,11 +288,11 @@ static int list_readers(void)
 			if (state & SC_READER_CARD_EXCLUSIVE)
 				printf("     %s [EXCLUSIVE]\n", tmp);
 			else {
-				if ((r = sc_connect_card(reader, &card)) != SC_SUCCESS) {
+				if ((r = sc_connect_card(reader, &c)) != SC_SUCCESS) {
 					fprintf(stderr, "     failed: %s\n", sc_strerror(r));
 				} else {
-					printf("     %s %s %s\n", tmp, card->name ? card->name : "", state & SC_READER_CARD_INUSE ? "[IN USE]" : "");
-					sc_disconnect_card(card);
+					printf("     %s %s %s\n", tmp, c->name ? c->name : "", state & SC_READER_CARD_INUSE ? "[IN USE]" : "");
+					sc_disconnect_card(c);
 				}
 			}
 		}
