@@ -2959,7 +2959,7 @@ static int write_object(CK_SESSION_HANDLE session)
 	int certdata_len = 0;
 	FILE *f;
 	CK_OBJECT_HANDLE cert_obj, privkey_obj, pubkey_obj, seckey_obj, data_obj;
-	CK_ATTRIBUTE cert_templ[20], privkey_templ[20], pubkey_templ[20], seckey_templ[20], data_templ[20];
+	CK_ATTRIBUTE cert_templ[20], privkey_templ[30], pubkey_templ[20], seckey_templ[20], data_templ[20];
 	int n_cert_attr = 0, n_privkey_attr = 0, n_pubkey_attr = 0, n_seckey_attr = 0, n_data_attr = 0;
 	struct sc_object_id oid;
 	CK_RV rv;
