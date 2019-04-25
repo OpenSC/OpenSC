@@ -3310,7 +3310,7 @@ static int write_object(CK_SESSION_HANDLE session)
 			else if (strncasecmp(opt_key_type, "DES3:", strlen("DES3:")) == 0)
 				type = CKK_DES3;
 			else
-				util_fatal("Unknown key type %s", type);
+				util_fatal("Unknown key type: 0x%X", type);
 		}
 
 		FILL_ATTR(seckey_templ[0], CKA_CLASS, &clazz, sizeof(clazz));
