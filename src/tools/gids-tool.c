@@ -419,7 +419,7 @@ static int print_info(sc_card_t *card) {
 				}
 				for (i = 0; i < cmaprecordnum; i++) {
 					printf("   container:                  %d\n", i);
-					wprintf(L"      guid:                    %s\n", cmaprecords[i].wszGuid);
+					wprintf(L"      guid:                    %ls\n", cmaprecords[i].wszGuid);
 					printf("      bFlags:                  ");
 					if (cmaprecords[i].bFlags & CONTAINER_MAP_VALID_CONTAINER) {
 						printf("Valid container");
