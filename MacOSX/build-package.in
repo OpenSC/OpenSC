@@ -45,7 +45,7 @@ fi
 
 if ! test -e $BUILDPATH/openpace_bin/$PREFIX/lib/pkgconfig; then
 	if ! test -e openpace; then
-		git clone --depth=1 https://github.com/frankmorgner/openpace.git
+		git clone --depth=1 https://github.com/frankmorgner/openpace.git -b 1.1.0
 	fi
 	cd openpace
 	autoreconf -vis
