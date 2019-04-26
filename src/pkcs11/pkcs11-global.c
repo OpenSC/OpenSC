@@ -288,10 +288,6 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs)
 		return CKR_CRYPTOKI_ALREADY_INITIALIZED;
 	}
 
-#if !defined(_WIN32)
-	sc_notify_init();
-#endif
-
 	rv = sc_pkcs11_init_lock((CK_C_INITIALIZE_ARGS_PTR) pInitArgs);
 	if (rv != CKR_OK)
 		goto out;
