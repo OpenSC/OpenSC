@@ -197,7 +197,7 @@ main (int argc, char **argv)
 	}
 
 	if ((cmdline.vd_flag || cmdline.gvd_flag)
-			&& read_file(card, "D001", &data, &data_len)
+			&& read_file(card, "D002", &data, &data_len)
 			&& data_len >= 8) {
 		size_t off_vd  = (data[0] << 8) | data[1];
 		size_t end_vd  = (data[2] << 8) | data[3];
