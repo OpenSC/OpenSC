@@ -180,7 +180,9 @@ static int sc_pkcs15emu_actalis_init(sc_pkcs15_card_t * p15card)
 	if (r != SC_SUCCESS)
 		return SC_ERROR_WRONG_CARD;
 
-	sc_read_binary(card, 0xC3, serial_buf, 12, 0);
+	r = sc_read_binary(card, 0xC3, serial_buf, 12, 0);
+	if (r != SC_SUCCESS)
+		return SC_ERROR_WRONG_CARD;
 	serial = serial_buf;
 
 	/*
