@@ -1336,12 +1336,13 @@ static int myeid_wrap_key(struct sc_card *card, u8 *out, size_t outlen)
 
 static int myeid_unwrap_key(struct sc_card *card, const u8 *crgram, size_t crgram_len)
 {
-	myeid_private_data_t* priv = card->drv_data;
+	myeid_private_data_t* priv;
 	u8 p2 = 0x86; /* init P2 for asymmetric crypto by default.*/
 	int r;
 
 	if (card == NULL || crgram == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
+	priv = card->drv_data;
 
 	LOG_FUNC_CALLED(card->ctx);
 
