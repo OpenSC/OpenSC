@@ -5638,6 +5638,7 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 		return 0;
 	}
 	if (mech_type == CKM_RSA_PKCS_OAEP) {
+#if defined(EVP_PKEY_CTX_set_rsa_oaep_md)
 		const EVP_MD *md;
 		switch (hash_alg) {
 		case CKM_SHA_1:
@@ -5658,7 +5659,6 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 			md = EVP_sha512();
 			break;
 		}
-#if defined(EVP_PKEY_CTX_set_rsa_oaep_md)
 		if (EVP_PKEY_CTX_set_rsa_oaep_md(ctx, md) <= 0) {
 			EVP_PKEY_CTX_free(ctx);
 			EVP_PKEY_free(pkey);
