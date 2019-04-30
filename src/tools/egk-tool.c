@@ -145,7 +145,7 @@ main (int argc, char **argv)
 	struct gengetopt_args_info cmdline;
 	struct sc_path path;
 	struct sc_context *ctx;
-	struct sc_card *card;
+	struct sc_card *card = NULL;
 	unsigned char *data = NULL;
 	size_t data_len = 0;
 	int r;
