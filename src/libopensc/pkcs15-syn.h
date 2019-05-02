@@ -34,6 +34,7 @@ int sc_pkcs15emu_openpgp_init_ex(sc_pkcs15_card_t *,	struct sc_aid *);
 int sc_pkcs15emu_starcert_init_ex(sc_pkcs15_card_t *,	struct sc_aid *);
 int sc_pkcs15emu_tcos_init_ex(sc_pkcs15_card_t *,	struct sc_aid *);
 int sc_pkcs15emu_esteid_init_ex(sc_pkcs15_card_t *,	struct sc_aid *);
+int sc_pkcs15emu_esteid2018_init_ex(sc_pkcs15_card_t *,	struct sc_aid *);
 int sc_pkcs15emu_piv_init_ex(sc_pkcs15_card_t *p15card,	struct sc_aid *);
 int sc_pkcs15emu_cac_init_ex(sc_pkcs15_card_t *p15card,	struct sc_aid *);
 int sc_pkcs15emu_gemsafeGPK_init_ex(sc_pkcs15_card_t *p15card,	struct sc_aid *);

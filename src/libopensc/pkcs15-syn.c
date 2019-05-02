@@ -58,6 +58,8 @@ struct sc_pkcs15_emulator_handler builtin_emulators[] = {
 	{ "jpki",	sc_pkcs15emu_jpki_init_ex },
 	{ "coolkey",    sc_pkcs15emu_coolkey_init_ex	},
 	{ "din66291",    sc_pkcs15emu_din_66291_init_ex	},
+	{ "esteid2018",    sc_pkcs15emu_esteid2018_init_ex	},
+
 	{ NULL, NULL }
 };
 
@@ -69,7 +71,7 @@ static const char *builtin_name = "builtin";
 static const char *func_name    = "sc_pkcs15_init_func";
 static const char *exfunc_name  = "sc_pkcs15_init_func_ex";
 
-
+// FIXME: have a flag in card->flags to indicate the same
 int sc_pkcs15_is_emulation_only(sc_card_t *card)
 {
 	switch (card->type) {
@@ -91,6 +93,7 @@ int sc_pkcs15_is_emulation_only(sc_card_t *card)
 		case SC_CARD_TYPE_PIV_II_HIST:
 		case SC_CARD_TYPE_PIV_II_NEO:
 		case SC_CARD_TYPE_PIV_II_YUBIKEY4:
+		case SC_CARD_TYPE_ESTEID_2018:
 
 			return 1;
 		default:
