@@ -51,12 +51,13 @@ addons:
     - check
 
 before_install:
+  # brew install gengetopt help2man cmocka ccache llvm;
+  # export PATH="/usr/local/opt/ccache/libexec:/usr/local/opt/llvm/bin:$PATH";
   - if [ "$TRAVIS_OS_NAME" == "osx" ]; then
         brew update;
         brew uninstall libtool;
         brew install libtool;
         brew install gengetopt help2man cmocka ccache;
-        export PATH="/usr/local/opt/ccache/libexec:$PATH";
     fi
 
 before_script:

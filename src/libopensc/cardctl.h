@@ -569,19 +569,19 @@ typedef struct sc_cardctl_muscle_key_info {
 	u8* 	modValue;
 	size_t 	expLength;
 	u8* 	expValue;
-	int 	pLength;
+	size_t 	pLength;
 	u8* 	pValue;
-	int 	qLength;
+	size_t 	qLength;
 	u8* 	qValue;
-	int 	pqLength;
+	size_t 	pqLength;
 	u8* 	pqValue;
-	int 	dp1Length;
+	size_t 	dp1Length;
 	u8* 	dp1Value;
-	int 	dq1Length;
+	size_t 	dq1Length;
 	u8* 	dq1Value;
-	int 	gLength;
+	size_t 	gLength;
 	u8* 	gValue;
-	int 	yLength;
+	size_t 	yLength;
 	u8* 	yValue;
 } sc_cardctl_muscle_key_info_t;
 
@@ -898,25 +898,25 @@ typedef struct sc_rtecp_genkey_data {
 	struct sc_cardctl_myeid_gen_store_key_info {
 		int             op_type;
 		unsigned int	key_type;			/* value of SC_CARDCTL_MYEID_KEY_TYPE */ 
-		unsigned int    key_len_bits;   
+		size_t    key_len_bits;   
 		unsigned char  *mod;
-		unsigned int    pubexp_len;  
+		size_t    pubexp_len;  
 		unsigned char  *pubexp;
-		unsigned int    primep_len;  
+		size_t    primep_len;  
 		unsigned char  *primep;
-		unsigned int    primeq_len;  
+		size_t    primeq_len;  
 		unsigned char  *primeq;
-		unsigned int    dp1_len;  
+		size_t    dp1_len;  
 		unsigned char  *dp1;
-		unsigned int    dq1_len;  
+		size_t    dq1_len;  
 		unsigned char  *dq1;
-		unsigned int    invq_len;  
+		size_t    invq_len;  
 		unsigned char  *invq;
 		/* new for MyEID > 3.6.0 */
 		unsigned char  *d;                  /* EC private key / Symmetric key */
-		unsigned int    d_len;              /* EC / Symmetric */
+		size_t    d_len;              /* EC / Symmetric */
 		unsigned char  *ecpublic_point;     /* EC public key */
-		unsigned int    ecpublic_point_len; /* EC */
+		size_t    ecpublic_point_len; /* EC */
     };
 
 /*

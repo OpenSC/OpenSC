@@ -151,7 +151,7 @@ sc_aux_data_get_md_guid(struct sc_context *ctx, struct sc_auxiliary_data *aux_da
 
 	*guid = '\0';
 	if (!flags)
-		strcpy(guid, "{");
+		strncpy(guid, "{", sizeof guid);
 	strlcat(guid, (char *)cmap_record->guid, sizeof(guid)-1);
 	if (!flags)
 		strlcat(guid, "}", sizeof(guid));
