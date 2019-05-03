@@ -104,13 +104,13 @@ struct df_info_s {
 
 struct mcrd_priv_data {
 	unsigned short curpath[MAX_CURPATH];	/* The currently selected path. */
-	size_t curpathlen;	/* Length of this path or 0 if unknown. */
 	int is_ef;		/* True if the path points to an EF. */
+	size_t curpathlen;	/* Length of this path or 0 if unknown. */
 	struct df_info_s *df_infos;
 	sc_security_env_t sec_env;	/* current security environment */
 };
 
-#define DRVDATA(card)        ((struct mcrd_priv_data *) ((card)->drv_data))
+#define DRVDATA(card) ((struct mcrd_priv_data *) ((card)->drv_data))
 
 // Control Reference Template Tag for Key Agreement (ISO 7816-4:2013 Table 54)
 static const struct sc_asn1_entry c_asn1_control[] = {
@@ -403,18 +403,18 @@ static int load_special_files(sc_card_t * card)
 	for (recno = 1;; recno++) {
 		u8 recbuf[256];
 		r = sc_read_record(card, recno, recbuf, sizeof(recbuf),
-				   SC_RECORD_BY_REC_NR);
+					SC_RECORD_BY_REC_NR);
 
 		if (r == SC_ERROR_RECORD_NOT_FOUND)
 			break;
-		else if (r < 0) {
+		if (r < 0) {
 			SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, r);
 		} else {
-			rule = malloc(sizeof *rule + r);
+			rule = malloc(sizeof *rule + (size_t)r);
 			if (!rule)
 				LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 			rule->recno = recno;
-			rule->datalen = r;
+			rule->datalen = (size_t)r;
 			memcpy(rule->data, recbuf, r);
 			rule->next = dfi->rule_file;
 			dfi->rule_file = rule;
@@ -434,18 +434,18 @@ static int load_special_files(sc_card_t * card)
 	for (recno = 1;; recno++) {
 		u8 recbuf[256];
 		r = sc_read_record(card, recno, recbuf, sizeof(recbuf),
-				   SC_RECORD_BY_REC_NR);
+					SC_RECORD_BY_REC_NR);
 
 		if (r == SC_ERROR_RECORD_NOT_FOUND)
 			break;
-		else if (r < 0) {
+		if (r < 0) {
 			SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, r);
 		} else {
-			keyd = malloc(sizeof *keyd + r);
+			keyd = malloc(sizeof *keyd + (size_t)r);
 			if (!keyd)
 				LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 			keyd->recno = recno;
-			keyd->datalen = r;
+			keyd->datalen = (size_t) r;
 			memcpy(keyd->data, recbuf, r);
 			keyd->next = dfi->keyd_file;
 			dfi->keyd_file = keyd;
@@ -459,8 +459,7 @@ static int load_special_files(sc_card_t * card)
 }
 
 /* Process an ARR (7816-9/8.5.4) and setup the ACL. */
-static void process_arr(sc_card_t * card, sc_file_t * file,
-			const u8 * buf, size_t buflen)
+static void process_arr(sc_card_t * card, const u8 * buf, size_t buflen)
 {
 	sc_context_t *ctx = card->ctx;
 	struct df_info_s *dfi;
@@ -479,7 +478,7 @@ static void process_arr(sc_card_t * card, sc_file_t * file,
 
 	dfi = get_df_info(card);
 	for (rule = dfi ? dfi->rule_file : NULL; rule && rule->recno != *buf;
-	     rule = rule->next) ;
+		rule = rule->next) ;
 	if (!rule) {
 		sc_log(ctx, "referenced EF_rule record %d not found\n", *buf);
 		return;
@@ -497,7 +496,7 @@ static void process_arr(sc_card_t * card, sc_file_t * file,
 		if (sc_asn1_read_tag(&p, left, &cla, &tag, &taglen) != SC_SUCCESS
 				|| p == NULL)
 			break;
-		left -= (p - buf);
+		left -= (size_t)(p - buf);
 		tag |= cla;
 
 		if (tag == 0x80 && taglen != 1) {
@@ -582,7 +581,7 @@ static void process_fcp(sc_card_t * card, sc_file_t * file,
 		int bytes = (tag[0] << 8) + tag[1];
 		sc_log(ctx,
 			"  bytes in file: %d\n", bytes);
-		file->size = bytes;
+		file->size = (size_t)bytes;
 	}
 	if (tag == NULL) {
 		tag = sc_asn1_find_tag(ctx, p, len, 0x80, &taglen);
@@ -590,7 +589,7 @@ static void process_fcp(sc_card_t * card, sc_file_t * file,
 			int bytes = (tag[0] << 8) + tag[1];
 			sc_log(ctx,
 				"  bytes in file: %d\n", bytes);
-			file->size = bytes;
+			file->size = (size_t)bytes;
 		}
 	}
 
@@ -641,9 +640,8 @@ static void process_fcp(sc_card_t * card, sc_file_t * file,
 		file->namelen = taglen;
 
 		for (i = 0; i < taglen; i++) {
-			if (isalnum(tag[i]) || ispunct(tag[i])
-			    || isspace(tag[i]))
-				name[i] = tag[i];
+			if (isalnum(tag[i]) || ispunct(tag[i]) || isspace(tag[i]))
+				name[i] = (const char)tag[i];
 			else
 				name[i] = '?';
 		}
@@ -673,14 +671,14 @@ static void process_fcp(sc_card_t * card, sc_file_t * file,
 	/* Security attributes, reference to expanded format. */
 	tag = sc_asn1_find_tag(ctx, p, len, 0x8B, &taglen);
 	if (tag && taglen && !is_esteid_card(card)) {
-		process_arr(card, file, tag, taglen);
+		process_arr(card, tag, taglen);
 	} else if ((tag = sc_asn1_find_tag(ctx, p, len, 0xA1, &taglen))
-		   && taglen) {
+			&& taglen) {
 		/* Not found, but there is a Security Attribute
 		   Template for interface mode. */
 		tag = sc_asn1_find_tag(ctx, tag, taglen, 0x8B, &taglen);
 		if (tag && taglen)
-			process_arr(card, file, tag, taglen);
+			process_arr(card, tag, taglen);
 	}
 
 	file->magic = SC_FILE_MAGIC;
@@ -1000,7 +998,7 @@ mcrd_select_file(sc_card_t * card, const sc_path_t * path, sc_file_t ** file)
 			sprintf(linep, "%04X", priv->curpath[i]);
 			linep += 4;
 		}
-		strcpy(linep, "\n");
+		strlcpy(linep, "\n", 1);
 		sc_log(card->ctx, "%s", line);
 	}
 
@@ -1022,7 +1020,7 @@ mcrd_select_file(sc_card_t * card, const sc_path_t * path, sc_file_t ** file)
 		pathptr = pathtmp;
 		for (n = 0; n < path->len; n += 2)
 			pathptr[n >> 1] =
-			    (path->value[n] << 8) | path->value[n + 1];
+				(unsigned short)((path->value[n] << 8) | path->value[n + 1]);
 		pathlen = path->len >> 1;
 
 		if (pathlen == priv->curpathlen && priv->is_ef != 2) {
@@ -1064,7 +1062,7 @@ mcrd_select_file(sc_card_t * card, const sc_path_t * path, sc_file_t ** file)
 			sprintf(linep, "%04X", priv->curpath[i]);
 			linep += 4;
 		}
-		strcpy(linep, "\n");
+		strlcpy(linep, "\n", 1);
 		sc_log(card->ctx, "%s", line);
 	}
 	return r;
@@ -1191,9 +1189,9 @@ static int mcrd_set_security_env(sc_card_t * card,
 	*p++ = env->key_ref[0];
 	*p++ = 0;
 
-	r = p - sbuf;
-	apdu.lc = r;
-	apdu.datalen = r;
+	r = (int)(p - sbuf);
+	apdu.lc = (size_t)r;
+	apdu.datalen = (size_t)r;
 	apdu.data = sbuf;
 	apdu.resplen = 0;
 	if (se_num > 0) {
@@ -1254,8 +1252,7 @@ static int mcrd_compute_signature(sc_card_t * card,
 	if (env->key_ref[0] == 1) /* authentication key */
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x88, 0, 0);
 	else
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT,
-			       0x2A, 0x9E, 0x9A);
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x9E, 0x9A);
 	apdu.lc = datalen;
 	apdu.data = data;
 	apdu.datalen = datalen;
@@ -1268,7 +1265,7 @@ static int mcrd_compute_signature(sc_card_t * card,
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, apdu.resplen);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, (int)apdu.resplen);
 }
 
 static int mcrd_decipher(struct sc_card *card,
@@ -1324,7 +1321,7 @@ static int mcrd_decipher(struct sc_card *card,
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, apdu.resplen);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, (int)apdu.resplen);
 }
 
 /* added by -mp, to give pin information in the card driver (pkcs15emu->driver needed) */
@@ -1341,7 +1338,7 @@ static int mcrd_pin_cmd(sc_card_t * card, struct sc_pin_cmd_data *data,
 	if (is_esteid_card(card) && data->cmd == SC_PIN_CMD_GET_INFO) {
 		sc_path_t tmppath;
 		u8 buf[16];
-		int ref_to_record[] = {3,1,2};
+		unsigned int ref_to_record[] = {3,1,2};
 
 		/* the file with key pin info (tries left) 4.5 EF_PwdC */
 		/* XXX: cheat the file path cache by always starting fresh from MF */
