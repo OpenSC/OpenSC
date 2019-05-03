@@ -104,3 +104,7 @@ if ENABLE_MINIDRIVER
 noinst_LTLIBRARIES = libopensc_static.la
 endif
 endif
+
+TIDY_FLAGS = $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
+check-local:
+	if [ -x "$(CLANGTIDY)" ]; then clang-tidy -config='' -header-filter=.* $(SOURCES) -- $(TIDY_FLAGS); fi

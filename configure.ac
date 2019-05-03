@@ -926,6 +926,9 @@ fi
 AC_ARG_VAR([GENGETOPT],
            [absolute path to gengetopt used for command line parsing of npa-tool])
 AC_PATH_PROG(GENGETOPT, gengetopt, not found)
+AC_ARG_VAR([CLANGTIDY],
+           [absolute path to clang-tidy used for static code analysis])
+AC_PATH_PROG(CLANGTIDY, clang-tidy, not found)
 
 AX_FUNC_GETOPT_LONG
 #AH_BOTTOM([#include "common/compat_getopt.h"])
