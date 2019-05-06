@@ -395,7 +395,7 @@ static void print_tags_recursive(const u8 * buf0, const u8 * buf,
 		} else {
 			printf(" %s %-2u",
 					classes[cla >> 6],
-					i == 1 ? tag & SC_ASN1_TAG_PRIMITIVE : tag & (((unsigned int) ~0) >> (i + 1) * 8));
+					i == 1 ? tag & SC_ASN1_TAG_PRIMITIVE : tag & (((unsigned int) ~0) >> (i-1)*8));
 		}
 		if (!((cla & SC_ASN1_TAG_CLASS) == SC_ASN1_TAG_UNIVERSAL
 					&& tag == SC_ASN1_TAG_NULL && len == 0)) {
