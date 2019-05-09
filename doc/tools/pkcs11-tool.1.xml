@@ -321,6 +321,13 @@
 
 				<varlistentry>
 					<term>
+						<option>--extractable</option>
+					</term>
+					<listitem><para>Set the CKA_EXTRACTABLE attribute (object can be extracted)</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
 						<option>--set-id</option> <replaceable>id</replaceable>,
 						<option>-e</option> <replaceable>id</replaceable>
 					</term>
@@ -460,7 +467,7 @@
 					</listitem>
 				</varlistentry>
 
-                                <varlistentry>
+				<varlistentry>
 					<term>
 						<option>--allowed-mechanisms</option> <replaceable>mechanisms</replaceable>
 					</term>

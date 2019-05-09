@@ -141,6 +141,7 @@ enum {
 	OPT_KEY_USAGE_DERIVE,
 	OPT_PRIVATE,
 	OPT_SENSITIVE,
+	OPT_EXTRACTABLE,
 	OPT_TEST_HOTPLUG,
 	OPT_UNLOCK_PIN,
 	OPT_PUK,
@@ -227,6 +228,7 @@ static const struct option options[] = {
 	{ "verbose",		0, NULL,		'v' },
 	{ "private",		0, NULL,		OPT_PRIVATE },
 	{ "sensitive",		0, NULL,		OPT_SENSITIVE },
+	{ "extractable",	0, NULL,		OPT_EXTRACTABLE },
 	{ "always-auth",	0, NULL,		OPT_ALWAYS_AUTH },
 	{ "test-ec",		0, NULL,		OPT_TEST_EC },
 #ifndef _WIN32
@@ -301,6 +303,7 @@ static const char *option_help[] = {
 	"Verbose operation. (Set OPENSC_DEBUG to enable OpenSC specific debugging)",
 	"Set the CKA_PRIVATE attribute (object is only viewable after a login)",
 	"Set the CKA_SENSITIVE attribute (object cannot be revealed in plaintext)",
+	"Set the CKA_EXTRACTABLE attribute (object can be extracted)",
 	"Set the CKA_ALWAYS_AUTHENTICATE attribute to a key object (require PIN verification for each use)",
 	"Test EC (best used with the --login or --pin option)",
 #ifndef _WIN32
@@ -348,6 +351,7 @@ static CK_MECHANISM_TYPE opt_allowed_mechanisms[MAX_ALLOWED_MECHANISMS];
 static size_t		opt_allowed_mechanisms_len = 0;
 static int		opt_is_private = 0;
 static int		opt_is_sensitive = 0;
+static int		opt_is_extractable = 0;
 static int		opt_test_hotplug = 0;
 static int		opt_login_type = -1;
 static int		opt_key_usage_sign = 0;
@@ -882,6 +886,9 @@ int main(int argc, char * argv[])
 			break;
 		case OPT_SENSITIVE:
 			opt_is_sensitive = 1;
+			break;
+		case OPT_EXTRACTABLE:
+			opt_is_extractable = 1;
 			break;
 		case OPT_TEST_HOTPLUG:
 			opt_test_hotplug = 1;
@@ -3136,6 +3143,10 @@ static int write_object(CK_SESSION_HANDLE session)
 				&_true, sizeof(_true));
 			n_privkey_attr++;
 		}
+		if (opt_is_extractable != 0) {
+			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_EXTRACTABLE, &_true, sizeof(_true));
+			n_privkey_attr++;
+		}
 		if (opt_allowed_mechanisms_len > 0) {
 			FILL_ATTR(privkey_templ[n_privkey_attr],
 				CKA_ALLOWED_MECHANISMS, opt_allowed_mechanisms,
@@ -3302,7 +3313,7 @@ static int write_object(CK_SESSION_HANDLE session)
 		break;
 	case CKO_SECRET_KEY:
 		clazz = CKO_SECRET_KEY;
-		type = CKK_AES;
+		type = CKK_GENERIC_SECRET;
 
 		if (opt_key_type != 0) {
 			if (strncasecmp(opt_key_type, "AES:", strlen("AES:")) == 0)
@@ -3334,6 +3345,14 @@ static int write_object(CK_SESSION_HANDLE session)
 		}
 		else {
 			FILL_ATTR(seckey_templ[n_seckey_attr], CKA_SENSITIVE, &_false, sizeof(_false));
+			n_seckey_attr++;
+		}
+		if (opt_is_extractable != 0) {
+			FILL_ATTR(seckey_templ[n_seckey_attr], CKA_EXTRACTABLE, &_true, sizeof(_true));
+			n_seckey_attr++;
+		}
+		else {
+			FILL_ATTR(seckey_templ[n_seckey_attr], CKA_EXTRACTABLE, &_false, sizeof(_false));
 			n_seckey_attr++;
 		}
 
