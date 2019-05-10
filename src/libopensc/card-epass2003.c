@@ -1463,9 +1463,7 @@ epass2003_select_path(struct sc_card *card, const u8 pathbuf[16], const size_t l
 	if (path[0] != 0x3f || path[1] != 0x00) {
 		n_pathbuf[0] = 0x3f;
 		n_pathbuf[1] = 0x00;
-
-		for (i = 0; i < pathlen; i++)
-			n_pathbuf[i + 2] = pathbuf[i];
+		memcpy(n_pathbuf+2, path, pathlen);
 		path = n_pathbuf;
 		pathlen += 2;
 	}

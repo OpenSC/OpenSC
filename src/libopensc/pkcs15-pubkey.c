@@ -200,8 +200,8 @@ sc_pkcs15_decode_pubkey_direct_value(struct sc_pkcs15_card *p15card, struct sc_p
 		LOG_TEST_RET(ctx, rv, "Failed to decode 'SPKI' direct value");
 
 		rv = sc_pkcs15_encode_pubkey(ctx, pubkey, &info->direct.raw.value, &info->direct.raw.len);
-		LOG_TEST_RET(ctx, rv, "Failed to encode 'RAW' direct value");
 		sc_pkcs15_free_pubkey(pubkey);
+		LOG_TEST_RET(ctx, rv, "Failed to encode 'RAW' direct value");
 	}
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
@@ -1428,9 +1428,10 @@ sc_pkcs15_pubkey_from_spki_sequence(struct sc_context *ctx, const unsigned char 
 	r = sc_asn1_decode(ctx, asn1_spki, buf, buflen, NULL, NULL);
 	LOG_TEST_RET(ctx, r, "ASN.1 cannot parse subjectPublicKeyInfo");
 
-	if(outpubkey)
+	if(outpubkey) {
+		free(*outpubkey);
 		*outpubkey = pubkey;
-	else
+	} else
 		free(pubkey);
 
 	LOG_FUNC_RETURN(ctx, r);

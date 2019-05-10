@@ -623,8 +623,9 @@ iasecc_init(struct sc_card *card)
 	card->sm_ctx.ops.update_binary = _iasecc_sm_update_binary;
 #endif
 
-	if (!rv)
+	if (!rv && card->ef_atr && card->ef_atr->aid.len)   {
 		sc_log(ctx, "EF.ATR(aid:'%s')", sc_dump_hex(card->ef_atr->aid.value, card->ef_atr->aid.len));
+	}
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
