@@ -2097,6 +2097,10 @@ get_pin_callback(struct sc_profile *profile,
 		hints.p15card	= g_p15card;
 
 		if ((r = get_pin(&hints, &secret)) < 0) {
+			if (secret) {
+				sc_mem_clear(secret, strlen(secret));
+				free(secret);
+			}
 			fprintf(stderr,
 				"Failed to read PIN from user: %s\n",
 				sc_strerror(r));
@@ -3171,7 +3175,7 @@ static int verify_pin(struct sc_pkcs15_card *p15card, char *auth_id_str)
 	}
 
 	if (opt_pins[0] != NULL)   {
-		pin = (char *) opt_pins[0];
+		pin = strdup(opt_pins[0]);
 	}
 	else   {
 		sc_ui_hints_t hints;
@@ -3192,15 +3196,26 @@ static int verify_pin(struct sc_pkcs15_card *p15card, char *auth_id_str)
 		hints.card      = g_card;
 		hints.p15card   = p15card;
 
-		get_pin(&hints, &pin);
+		if ((r = get_pin(&hints, &pin)) < 0) {
+			if (pin) {
+				sc_mem_clear(pin, strlen(pin));
+				free(pin);
+			}
+			fprintf(stderr,
+				"Failed to read PIN from user: %s\n",
+				sc_strerror(r));
+			return r;
+		}
 	}
 
-	r = sc_pkcs15_verify_pin(p15card, pin_obj, (unsigned char *)pin, pin ? strlen((char *) pin) : 0);
+	r = sc_pkcs15_verify_pin(p15card, pin_obj, (unsigned char *)pin, pin ? strlen(pin) : 0);
 	if (r < 0)
 		fprintf(stderr, "Operation failed: %s\n", sc_strerror(r));
 
-	if (NULL == opt_pins[0])
+	if (pin) {
+		sc_mem_clear(pin, strlen(pin));
 		free(pin);
+	}
 
 	return r;
 }

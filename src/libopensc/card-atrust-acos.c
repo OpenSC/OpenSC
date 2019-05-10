@@ -445,8 +445,7 @@ static int atrust_acos_select_file(struct sc_card *card,
 		{
 			n_pathbuf[0] = 0x3f;
 			n_pathbuf[1] = 0x00;
-			for (i=0; i< pathlen; i++)
-				n_pathbuf[i+2] = pathbuf[i];
+			memcpy(n_pathbuf+2, path, pathlen);
 			path = n_pathbuf;
 			pathlen += 2; 
 		}

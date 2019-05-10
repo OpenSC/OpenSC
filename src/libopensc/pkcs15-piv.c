@@ -981,7 +981,7 @@ sc_log(card->ctx,  "DEE Adding pin %d label=%s",i, label);
 	for (i = 0; i < PIV_NUM_CERTS_AND_KEYS; i++) {
 		struct sc_pkcs15_pubkey_info pubkey_info;
 		struct sc_pkcs15_object     pubkey_obj;
-		struct sc_pkcs15_pubkey *p15_key;
+		struct sc_pkcs15_pubkey *p15_key = NULL;
 
 		memset(&pubkey_info, 0, sizeof(pubkey_info));
 		memset(&pubkey_obj,  0, sizeof(pubkey_obj));
@@ -1035,8 +1035,10 @@ sc_log(card->ctx,  "DEE Adding pin %d label=%s",i, label);
 			sc_log(card->ctx, "Adding pubkey from file %s",filename);
 
 			r = sc_pkcs15_pubkey_from_spki_file(card->ctx,  filename, &p15_key);
-			if (r < 0) 
+			if (r < 0) {
+				free(p15_key);
 				continue;
+			}
 
 			/* Lets also try another method. */
 			r = sc_pkcs15_encode_pubkey_as_spki(card->ctx, p15_key, &pubkey_info.direct.spki.value, &pubkey_info.direct.spki.len);

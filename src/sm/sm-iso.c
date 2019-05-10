@@ -92,17 +92,15 @@ add_padding(const struct iso_sm_ctx *ctx, const u8 *data, size_t datalen,
 	switch (ctx->padding_indicator) {
 		case SM_NO_PADDING:
 			if (*padded != data) {
-				if (datalen == 0) {
-					free(*padded);
-					p = malloc(datalen);
-				} else {
+				if (datalen != 0) {
 					p = realloc(*padded, datalen);
+					if (!p)
+						return SC_ERROR_OUT_OF_MEMORY;
+					*padded = p;
+					memcpy(*padded, data, datalen);
+				} else {
+					*padded = NULL;
 				}
-				if (!p)
-					return SC_ERROR_OUT_OF_MEMORY;
-				*padded = p;
-				/* Flawfinder: ignore */
-				memcpy(*padded, data, datalen);
 			}
 			return datalen;
 		case SM_ISO_PADDING:

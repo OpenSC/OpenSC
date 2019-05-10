@@ -596,8 +596,7 @@ static int entersafe_select_path(sc_card_t *card,
 	 {
 		  n_pathbuf[0] = 0x3f;
 		  n_pathbuf[1] = 0x00;
-		  for (i=0; i< pathlen; i++)
-			   n_pathbuf[i+2] = pathbuf[i];
+		  memcpy(n_pathbuf+2, path, pathlen);
 		  path = n_pathbuf;
 		  pathlen += 2; 
 	 }

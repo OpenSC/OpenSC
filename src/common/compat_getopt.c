@@ -143,7 +143,7 @@ int _my_getopt_internal(int argc, char * argv[], const char *shortopts,
                      const struct option *longopts, int *longind,
                      int long_only)
 {
-  char mode, colon_mode = *shortopts;
+  char mode, colon_mode;
   int shortoff = 0, opt = -1;
 
   if(getenv("POSIXLY_CORRECT")) colon_mode = mode = '+';
@@ -230,7 +230,8 @@ int _my_getopt_internal(int argc, char * argv[], const char *shortopts,
                              argv[0], longopts[found].name);
         } else {
           my_optarg = argv[my_optind] + ++charind;
-          charind = 0;
+          /* charind not read again
+           * charind = 0;*/
         }
       } else if(longopts[found].has_arg == 1) {
         if(++my_optind >= argc) {

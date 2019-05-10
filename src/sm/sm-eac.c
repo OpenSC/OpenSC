@@ -1486,6 +1486,8 @@ int perform_terminal_authentication(sc_card_t *card,
 	struct eac_sm_ctx *eacsmctx = NULL;
 	unsigned char *ef_cardaccess = NULL;
 	EAC_CTX *eac_ctx = NULL;
+	const unsigned char *chr = NULL;
+	size_t chr_len = 0;
 
 	if (!card || !certs_lens || !certs) {
 		r = SC_ERROR_INVALID_ARGUMENTS;
@@ -1566,6 +1568,9 @@ int perform_terminal_authentication(sc_card_t *card,
 		if (r < 0)
 			goto err;
 
+		chr = cvc_cert->body->certificate_holder_reference->data;
+		chr_len = cvc_cert->body->certificate_holder_reference->length;
+
 		certs++;
 		certs_lens++;
 	}
@@ -1590,9 +1595,7 @@ int perform_terminal_authentication(sc_card_t *card,
 	}
 
 
-	r = eac_mse_set_at_ta(card, eacsmctx->ctx->ta_ctx->protocol,
-			cvc_cert->body->certificate_holder_reference->data,
-			cvc_cert->body->certificate_holder_reference->length,
+	r = eac_mse_set_at_ta(card, eacsmctx->ctx->ta_ctx->protocol, chr, chr_len,
 			(unsigned char *) eacsmctx->eph_pub_key->data, eacsmctx->eph_pub_key->length,
 			auxiliary_data, auxiliary_data_len);
 	if (r < 0) {
@@ -2345,16 +2348,18 @@ eac_sm_clear_free(const struct iso_sm_ctx *ctx)
 {
 	if (ctx) {
 		struct eac_sm_ctx *eacsmctx = ctx->priv_data;
-		EAC_CTX_clear_free(eacsmctx->ctx);
-		if (eacsmctx->certificate_description)
-			BUF_MEM_free(eacsmctx->certificate_description);
-		if (eacsmctx->id_icc)
-			BUF_MEM_free(eacsmctx->id_icc);
-		if (eacsmctx->eph_pub_key)
-			BUF_MEM_free(eacsmctx->eph_pub_key);
-		if (eacsmctx->auxiliary_data)
-			BUF_MEM_free(eacsmctx->auxiliary_data);
-		free(eacsmctx);
+		if (eacsmctx) {
+			EAC_CTX_clear_free(eacsmctx->ctx);
+			if (eacsmctx->certificate_description)
+				BUF_MEM_free(eacsmctx->certificate_description);
+			if (eacsmctx->id_icc)
+				BUF_MEM_free(eacsmctx->id_icc);
+			if (eacsmctx->eph_pub_key)
+				BUF_MEM_free(eacsmctx->eph_pub_key);
+			if (eacsmctx->auxiliary_data)
+				BUF_MEM_free(eacsmctx->auxiliary_data);
+			free(eacsmctx);
+		}
 	}
 }
 
