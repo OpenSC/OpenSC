@@ -5638,7 +5638,7 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 		return 0;
 	}
 	if (mech_type == CKM_RSA_PKCS_OAEP) {
-#if defined(EVP_PKEY_CTX_set_rsa_oaep_md)
+#if defined(EVP_PKEY_CTX_set_rsa_oaep_md) && defined(EVP_PKEY_CTX_set_rsa_mgf1_md)
 		const EVP_MD *md;
 		switch (hash_alg) {
 		case CKM_SHA_1:
@@ -5665,12 +5665,6 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 			printf("set md failed, returning\n");
 			return 0;
 		}
-#else
-		if (hash_alg != CKM_SHA_1) {
-			printf("This version of OpenSSL only supports SHA1 for OAEP, returning\n");
-			return 0;
-		}
-#endif
 		switch (mgf) {
 		case CKG_MGF1_SHA1:
 			md = EVP_sha1();
@@ -5698,6 +5692,12 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 			printf("set mgf1 md failed, returning\n");
 			return 0;
 		}
+#else
+		if (hash_alg != CKM_SHA_1) {
+			printf("This version of OpenSSL only supports SHA1 for OAEP, returning\n");
+			return 0;
+		}
+#endif
 	}
 
 	size_t out_len = sizeof(encrypted);
