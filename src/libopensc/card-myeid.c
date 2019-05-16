@@ -1295,7 +1295,7 @@ static int myeid_decipher(struct sc_card *card, const u8 * crgram,
 
 	if (priv->sec_env && priv->sec_env->algorithm == SC_ALGORITHM_EC
 		&& priv->sec_env->operation == SC_SEC_OPERATION_DERIVE
-		&& priv->sec_env->algorithm_flags & SC_ALGORITHM_ECDSA_RAW)
+		&& priv->sec_env->algorithm_flags & SC_ALGORITHM_ECDH_CDH_RAW)
 	{
 		r = myeid_ecdh_derive(card, crgram, crgram_len, out, outlen);
 		priv->sec_env = NULL; /* clear after operation */

@@ -1009,7 +1009,7 @@ static int sc_hsm_set_security_env(sc_card_t *card,
 			priv->algorithm = ALGO_EC_SHA224;
 		} else if (env->algorithm_flags & SC_ALGORITHM_ECDSA_HASH_SHA256) {
 			priv->algorithm = ALGO_EC_SHA256;
-		} else if (env->algorithm_flags & SC_ALGORITHM_ECDSA_RAW) {
+		} else if (env->algorithm_flags & SC_ALGORITHM_ECDH_CDH_RAW) {
 			if (env->operation == SC_SEC_OPERATION_DERIVE) {
 				priv->algorithm = ALGO_EC_DH;
 			} else {
