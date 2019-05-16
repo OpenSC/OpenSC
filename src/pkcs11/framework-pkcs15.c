@@ -4263,6 +4263,7 @@ pkcs15_prkey_derive(struct sc_pkcs11_session *session, void *obj,
 			CK_ECDH1_DERIVE_PARAMS * ecdh_params = (CK_ECDH1_DERIVE_PARAMS *) pParameters;
 			ulSeedDataLen = ecdh_params->ulPublicDataLen;
 			pSeedData = ecdh_params->pPublicData;
+			flags = SC_ALGORITHM_ECDH_CDH_RAW;
 		}
 		break;
 	}
