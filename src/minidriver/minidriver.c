@@ -4877,7 +4877,7 @@ DWORD WINAPI CardConstructDHAgreement(__in PCARD_DATA pCardData,
 	DWORD dwret;
 	VENDOR_SPECIFIC *vs;
 	struct sc_pkcs15_object *pkey = NULL;
-	int r, opt_derive_flags = 0;
+	int r, opt_derive_flags = SC_ALGORITHM_ECDH_CDH_RAW;
 	u8* out = 0;
 	unsigned long outlen = 0;
 	PBYTE pbPublicKey = NULL;
