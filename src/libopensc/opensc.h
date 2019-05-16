@@ -191,6 +191,7 @@ extern "C" {
 /* define mask of all algorithms that can do raw */
 #define SC_ALGORITHM_RAW_MASK (SC_ALGORITHM_RSA_RAW | \
                                SC_ALGORITHM_GOSTR3410_RAW | \
+                               SC_ALGORITHM_ECDH_CDH_RAW | \
                                SC_ALGORITHM_ECDSA_RAW)
 
 /* extended algorithm bits for selected mechs */
