@@ -59,6 +59,7 @@ enum ck_type{
   MGF_T,
   USR_T,
   STA_T,
+  CKD_T,
   RV_T
 };
 

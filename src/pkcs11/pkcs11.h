@@ -780,7 +780,12 @@ struct ck_mechanism_info
 #define CKF_DONT_BLOCK				(1UL)
 
 /* Flags for Key derivation */
-#define CKD_NULL			(1UL << 0)
+#define CKD_NULL			(0x1UL)
+#define CKD_SHA1_KDF			(0x2UL)
+#define CKD_SHA224_KDF			(0x5UL)
+#define CKD_SHA256_KDF			(0x6UL)
+#define CKD_SHA384_KDF			(0x7UL)
+#define CKD_SHA512_KDF			(0x8UL)
 
 typedef struct CK_ECDH1_DERIVE_PARAMS {
 	unsigned long  kdf;
@@ -789,6 +794,19 @@ typedef struct CK_ECDH1_DERIVE_PARAMS {
 	unsigned long  ulPublicDataLen;
 	unsigned char *  pPublicData;
 } CK_ECDH1_DERIVE_PARAMS;
+
+typedef struct CK_ECMQV_DERIVE_PARAMS {
+	unsigned long kdf;
+	unsigned long ulSharedDataLen;
+	unsigned char * pSharedData;
+	unsigned long ulPublicDataLen;
+	unsigned char * pPublicData;
+	unsigned long ulPrivateDataLen;
+	CK_OBJECT_HANDLE hPrivateData;
+	unsigned long ulPublicDataLen2;
+	unsigned char * pPublicData2;
+	CK_OBJECT_HANDLE publicKey;
+} CK_ECMQV_DERIVE_PARAMS;
 
 typedef unsigned long ck_rsa_pkcs_mgf_type_t;
 typedef unsigned long CK_RSA_PKCS_OAEP_SOURCE_TYPE;
