@@ -644,6 +644,15 @@ static enum_specs ck_sta_s[] = {
   { CKS_RW_SO_FUNCTIONS,   "CKS_RW_SO_FUNCTIONS" }
 };
 
+static enum_specs ck_ckd_s[] = {
+  { CKD_NULL, "CKD_NULL" },
+  { CKD_SHA1_KDF, "CKD_SHA1_KDF" },
+  { CKD_SHA224_KDF, "CKD_SHA224_KDF" },
+  { CKD_SHA256_KDF, "CKD_SHA256_KDF" },
+  { CKD_SHA384_KDF, "CKD_SHA384_KDF" },
+  { CKD_SHA512_KDF, "CKD_SHA512_KDF" },
+};
+
 #define SZ_SPECS sizeof(enum_specs)
 
 enum_spec ck_types[] = {
@@ -654,6 +663,7 @@ enum_spec ck_types[] = {
   { MGF_T, ck_mgf_s, sizeof(ck_mgf_s) / SZ_SPECS, "CK_RSA_PKCS_MGF_TYPE"},
   { USR_T, ck_usr_s, sizeof(ck_usr_s) / SZ_SPECS, "CK_USER_TYPE"        },
   { STA_T, ck_sta_s, sizeof(ck_sta_s) / SZ_SPECS, "CK_STATE"        },
+  { CKD_T, ck_ckd_s, sizeof(ck_ckd_s) / SZ_SPECS, "CK_EC_KDF_TYPE"      },
   { RV_T,  ck_err_s, sizeof(ck_err_s) / SZ_SPECS, "CK_RV"               },
 };
 
