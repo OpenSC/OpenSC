@@ -342,13 +342,6 @@ int sc_pkcs15_derive(struct sc_pkcs15_card *p15card,
 			*poutlen);
 	LOG_TEST_RET(ctx, r, "use_key() failed");
 
-	/* Strip any padding */
-	if (pad_flags & SC_ALGORITHM_RSA_PAD_PKCS1) {
-		size_t s = r;
-		r = sc_pkcs1_strip_02_padding(ctx, out, s, out, &s);
-		LOG_TEST_RET(ctx, r, "Invalid PKCS#1 padding");
-	}
-
 	/* If card stores derived key on card, then no data is returned
 	 * and the key must be used on the card. */
 	*poutlen = r;
