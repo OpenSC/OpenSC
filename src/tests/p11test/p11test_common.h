@@ -46,6 +46,7 @@
 #define FLAGS_DECRYPT		0x04
 #define FLAGS_DECRYPT_OPENSSL	0x08
 #define FLAGS_DECRYPT_ANY	( FLAGS_DECRYPT | FLAGS_DECRYPT_OPENSSL )
+#define FLAGS_DERIVE		0x10
 
 typedef struct {
 	char *outfile;

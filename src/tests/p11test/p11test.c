@@ -26,6 +26,7 @@
 #include "p11test_case_readonly.h"
 #include "p11test_case_multipart.h"
 #include "p11test_case_ec_sign.h"
+#include "p11test_case_ec_derive.h"
 #include "p11test_case_usage.h"
 #include "p11test_case_mechs.h"
 #include "p11test_case_wait.h"
@@ -76,6 +77,10 @@ int main(int argc, char** argv) {
 
 		/* Verify that RSA-PSS and RSA-OAEP functions if supported */
 		cmocka_unit_test_setup_teardown(pss_oaep_test,
+			user_login_setup, after_test_cleanup),
+
+		/* Verify that ECDH key derivation works */
+		cmocka_unit_test_setup_teardown(derive_tests,
 			user_login_setup, after_test_cleanup),
 	};
 
