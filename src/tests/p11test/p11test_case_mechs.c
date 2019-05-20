@@ -89,7 +89,11 @@ void supported_mechanisms_test(void **state) {
 					|| mechanism_list[i] == CKM_ECDSA_SHA1
 					|| mechanism_list[i] == CKM_ECDSA_SHA256
 					|| mechanism_list[i] == CKM_ECDSA_SHA384
-					|| mechanism_list[i] == CKM_ECDSA_SHA512) {
+					|| mechanism_list[i] == CKM_ECDSA_SHA512
+					/* Including derive mechanisms */
+					|| mechanism_list[i] == CKM_ECDH1_DERIVE
+					|| mechanism_list[i] == CKM_ECDH1_COFACTOR_DERIVE
+					|| mechanism_list[i] == CKM_ECMQV_DERIVE) {
 				if (token.num_ec_mechs < MAX_MECHS) {
 					mech = &token.ec_mechs[token.num_ec_mechs++];
 					mech->mech = mechanism_list[i];
@@ -97,6 +101,7 @@ void supported_mechanisms_test(void **state) {
 				} else
 					P11TEST_FAIL(info, "Too many EC mechanisms (%d)", MAX_MECHS);
 			}
+
 			if ((mechanism_info[i].flags & CKF_GENERATE_KEY_PAIR) != 0) {
 				if (token.num_keygen_mechs < MAX_MECHS) {
 					mech = &token.keygen_mechs[token.num_keygen_mechs++];

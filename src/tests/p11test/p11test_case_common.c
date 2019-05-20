@@ -315,7 +315,7 @@ int callback_public_keys(test_certs_t *objects,
 		const unsigned char *pub, *p;
 		BIGNUM *bn = NULL;
 		EC_POINT *ecpoint;
-		EC_GROUP *ecgroup;
+		EC_GROUP *ecgroup = NULL;
 		int nid, pub_len;
 
 		/* Parse the nid out of the EC_PARAMS */
