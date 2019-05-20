@@ -597,6 +597,8 @@ const char *get_mechanism_name(int mech_id)
 			return "SHA384_RSA_PKCS_PSS";
 		case CKM_SHA512_RSA_PKCS_PSS:
 			return "SHA512_RSA_PKCS_PSS";
+		case CKM_MD5_HMAC:
+			return "MD5_HMAC";
 		case CKM_SHA_1_HMAC:
 			return "SHA_1_HMAC";
 		case CKM_SHA256_HMAC:
@@ -607,6 +609,8 @@ const char *get_mechanism_name(int mech_id)
 			return "SHA512_HMAC";
 		case CKM_RSA_PKCS_OAEP:
 			return "RSA_PKCS_OAEP";
+		case CKM_MD5:
+			return "MD5";
 		case CKM_SHA_1:
 			return "SHA_1";
 		case CKM_SHA224:
