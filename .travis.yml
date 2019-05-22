@@ -8,8 +8,13 @@ matrix:
     - compiler: gcc
       os: linux
       env:
-        - DO_SIMULATION=yes
+        - DO_SIMULATION=javacard
         - ENABLE_DOC=--enable-doc
+      sudo: true
+    - compiler: gcc
+      os: linux
+      env:
+        - DO_SIMULATION=oseid
       sudo: true
     - env:
         - HOST=x86_64-w64-mingw32
@@ -48,12 +53,13 @@ addons:
     - libcmocka-dev
     - help2man
     - pcscd
+    - pcsc-tools
     - check
 
 before_install:
   # brew install gengetopt help2man cmocka ccache llvm;
   # export PATH="/usr/local/opt/ccache/libexec:/usr/local/opt/llvm/bin:$PATH";
-  - if [ "$TRAVIS_OS_NAME" == "osx" ]; then
+  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then
         brew update;
         brew uninstall libtool;
         brew install libtool;
@@ -62,13 +68,13 @@ before_install:
     fi
 
 before_script:
-  - if [ "$TRAVIS_BRANCH" == "master" -a "$TRAVIS_PULL_REQUEST" == "false" ]; then
+  - if [ "$TRAVIS_BRANCH" = "master" -a "$TRAVIS_PULL_REQUEST" = "false" ]; then
       ./bootstrap;
     fi
-  - if [ "$TRAVIS_BRANCH" == "master" -a "$TRAVIS_PULL_REQUEST" != "false" ]; then
+  - if [ "$TRAVIS_BRANCH" = "master" -a "$TRAVIS_PULL_REQUEST" != "false" ]; then
       ./bootstrap.ci -s "-pr$TRAVIS_PULL_REQUEST";
     fi
-  - if [ "$TRAVIS_BRANCH" != "master" -a "$TRAVIS_PULL_REQUEST" == "false" ]; then
+  - if [ "$TRAVIS_BRANCH" != "master" -a "$TRAVIS_PULL_REQUEST" = "false" ]; then
       ./bootstrap.ci -s "-$TRAVIS_BRANCH";
     fi
   - if [ "$TRAVIS_BRANCH" != "master" -a "$TRAVIS_PULL_REQUEST" != "false" ]; then
@@ -91,7 +97,7 @@ before_script:
   # On error (propably quota is exhausted), just continue
   - if [ "${DO_COVERITY_SCAN}" = "yes" ]; then curl -s 'https://scan.coverity.com/scripts/travisci_build_coverity_scan.sh' | bash || true; fi
 
-  - if [ "${DO_SIMULATION}" = "yes" ]; then
+  - if [ "${DO_SIMULATION}" = "javacard" ]; then
       git clone https://github.com/frankmorgner/vsmartcard.git;
       cd vsmartcard/virtualsmartcard;
       autoreconf -vis && ./configure && sudo make install;
@@ -144,15 +150,34 @@ before_script:
       cd $TRAVIS_BUILD_DIR;
     fi
 
+  - if [ "${DO_SIMULATION}" = "oseid" ]; then
+      git clone https://github.com/popovec/oseid;
+      cd oseid/src/;
+      make -f Makefile.console;
+      mkdir tmp;
+      socat -d -d pty,link=tmp/OsEIDsim.socket,raw,echo=0 "exec:build/console/console ...,pty,raw,echo=0" &
+      sleep 1;
+      echo "# OsEIDsim" > tmp/reader.conf;
+      echo 'FRIENDLYNAME      "OsEIDsim"' >> tmp/reader.conf;
+      echo "DEVICENAME        ${TRAVIS_BUILD_DIR}/oseid/src/tmp/OsEIDsim.socket" >> tmp/reader.conf;
+      echo "LIBPATH           ${TRAVIS_BUILD_DIR}/oseid/src/build/console/libOsEIDsim.so.0.0.1" >> tmp/reader.conf;
+      echo "CHANNELID         1" >> tmp/reader.conf;
+      sudo mv tmp/reader.conf /etc/reader.conf.d/reader.conf;
+      cat /etc/reader.conf.d/reader.conf;
+      cd $TRAVIS_BUILD_DIR;
+
+      sudo /etc/init.d/pcscd restart;
+    fi
+
 script:
   - if [ "${DO_COVERITY_SCAN}" != "yes" ]; then
-      if [ $TRAVIS_OS_NAME == osx ]; then
+      if [ "${TRAVIS_OS_NAME}" = "osx" ]; then
         ./MacOSX/build;
       else
         make -j 4;
       fi;
     fi
-  - if [ -z "$HOST" -a "${DO_COVERITY_SCAN}" != "yes" ]; then
+  - if [ -z "$HOST" -a "${DO_COVERITY_SCAN}" != "yes" -a -z "$DO_SIMULATION" ]; then
       make check && make dist;
     fi
   - if [ ! -z "$HOST" -a "${DO_COVERITY_SCAN}" != "yes" ]; then
@@ -160,7 +185,7 @@ script:
       wine "C:/Program Files (x86)/Inno Setup 5/ISCC.exe" win32/OpenSC.iss;
     fi
 
-  - if [ "${DO_SIMULATION}" = "yes" ]; then
+  - if [ "${DO_SIMULATION}" = "javacard" ]; then
       set -ex;
       sudo make install;
       export LD_LIBRARY_PATH=/usr/local/lib;
@@ -199,6 +224,26 @@ script:
       yubico-piv-tool -r 'Virtual PCD 00 00' -P 123456 -s 9e -a generate -A RSA2048;
       pkcs11-tool -l -t -p 123456;
       killall java;
+
+      set +ex;
+    fi
+
+  - if [ "${DO_SIMULATION}" = "oseid" ]; then
+      set -ex;
+      sudo make install;
+      export LD_LIBRARY_PATH=/usr/local/lib;
+
+      cd oseid/tools;
+      echo | ./OsEID-tool INIT;
+      ./OsEID-tool RSA-CREATE-KEYS;
+      ./OsEID-tool RSA-UPLOAD-KEYS;
+      ./OsEID-tool RSA-DECRYPT-TEST;
+      ./OsEID-tool EC-CREATE-KEYS;
+      ./OsEID-tool EC-UPLOAD-KEYS;
+      ./OsEID-tool EC-SIGN-TEST;
+      ./OsEID-tool EC-ECDH-TEST;
+      killall socat;
+
       set +ex;
     fi
 
