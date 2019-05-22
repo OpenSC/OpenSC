@@ -160,8 +160,8 @@ static struct pgp_supported_ec_curves {
 		{{0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07, -1}}}, /* ansiX9p256r1 */
 	{{{1, 3, 132, 0, 34, -1}}, 384,
 		{{0x2b, 0x81, 0x04, 0x00, 0x22, -1}}}, /* ansiX9p384r1 */
-	{{{1, 3, 132, 0, 35, -1}}, 512,
-		{{0x2b, 0x81, 0x04, 0x00, 0x23, -1}}}, /* ansiX9p512r1 */
+	{{{1, 3, 132, 0, 35, -1}}, 521,
+		{{0x2b, 0x81, 0x04, 0x00, 0x23, -1}}}, /* ansiX9p521r1 */
 	{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 7, -1}}, 256,
 		{{0x2b, 0x24, 0x03, 0x03, 0x02, 0x08, 0x01, 0x01, 0x07, -1}}}, /* brainpoolP256r1 */
 	{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 11, -1}}, 384,
@@ -2516,7 +2516,7 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 				*p = 0x09;	/* KDF algo */
 				*(p+1) = 0x08;	/* KEK algo */
 			}
-			else {					       /* ec bit size = 512 */
+			else {					       /* ec bit size = 512 or 521*/
 				*p = 0x0a;	/* KDF algo */
 				*(p+1) = 0x09;	/* KEK algo */
 			}
