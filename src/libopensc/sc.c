@@ -99,6 +99,14 @@ int sc_hex_to_bin(const char *in, u8 *out, size_t *outlen)
 		}
 	}
 
+	if (left == *outlen && 1 == byte_needs_nibble && 0 != left) {
+		/* no output written so far, but we have a valid nibble in the upper
+		 * bits. Allow this special case. */
+		*out = (u8) byte>>4;
+		left--;
+		byte_needs_nibble = 0;
+	}
+
 	/* for ease of implementation we only accept completely hexed bytes. */
 	if (byte_needs_nibble) {
 		r = SC_ERROR_INVALID_ARGUMENTS;
