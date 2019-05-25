@@ -199,36 +199,33 @@ static int gemsafe_init(struct sc_card *card)
 	card->lock_count--;
 
 	/* set the supported algorithm */
-	r = gemsafe_match_card(card);
-	if (r > 0) {
-		unsigned long flags;
+	unsigned long flags;
 
-		flags  = SC_ALGORITHM_RSA_PAD_PKCS1;
-		flags |= SC_ALGORITHM_RSA_PAD_ISO9796;
-		flags |= SC_ALGORITHM_ONBOARD_KEY_GEN;
-		flags |= SC_ALGORITHM_RSA_HASH_NONE;
+	flags  = SC_ALGORITHM_RSA_PAD_PKCS1;
+	flags |= SC_ALGORITHM_RSA_PAD_ISO9796;
+	flags |= SC_ALGORITHM_ONBOARD_KEY_GEN;
+	flags |= SC_ALGORITHM_RSA_HASH_NONE;
 
-		/* GemSAFE V3 cards support SHA256 */
-		if (card->type == SC_CARD_TYPE_GEMSAFEV1_PTEID ||
-		    card->type == SC_CARD_TYPE_GEMSAFEV1_SEEID)
-			flags |= SC_ALGORITHM_RSA_HASH_SHA256;
+	/* GemSAFE V3 cards support SHA256 */
+	if (card->type == SC_CARD_TYPE_GEMSAFEV1_PTEID ||
+	    card->type == SC_CARD_TYPE_GEMSAFEV1_SEEID)
+		flags |= SC_ALGORITHM_RSA_HASH_SHA256;
+
+	_sc_card_add_rsa_alg(card,  512, flags, 0);
+	_sc_card_add_rsa_alg(card,  768, flags, 0);
+	_sc_card_add_rsa_alg(card, 1024, flags, 0);
+	_sc_card_add_rsa_alg(card, 2048, flags, 0);
+
+	/* fake algorithm to persuade register_mechanisms()
+	 * to register these hashes */
+	if (card->type == SC_CARD_TYPE_GEMSAFEV1_PTEID ||
+	    card->type == SC_CARD_TYPE_GEMSAFEV1_SEEID) {
+		flags  = SC_ALGORITHM_RSA_HASH_SHA1;
+		flags |= SC_ALGORITHM_RSA_HASH_MD5;
+		flags |= SC_ALGORITHM_RSA_HASH_MD5_SHA1;
+		flags |= SC_ALGORITHM_RSA_HASH_RIPEMD160;
 
 		_sc_card_add_rsa_alg(card,  512, flags, 0);
-		_sc_card_add_rsa_alg(card,  768, flags, 0);
-		_sc_card_add_rsa_alg(card, 1024, flags, 0);
-		_sc_card_add_rsa_alg(card, 2048, flags, 0);
-
-		/* fake algorithm to persuade register_mechanisms()
-		 * to register these hashes */
-		if (card->type == SC_CARD_TYPE_GEMSAFEV1_PTEID ||
-		    card->type == SC_CARD_TYPE_GEMSAFEV1_SEEID) {
-			flags  = SC_ALGORITHM_RSA_HASH_SHA1;
-			flags |= SC_ALGORITHM_RSA_HASH_MD5;
-			flags |= SC_ALGORITHM_RSA_HASH_MD5_SHA1;
-			flags |= SC_ALGORITHM_RSA_HASH_RIPEMD160;
-
-			_sc_card_add_rsa_alg(card,  512, flags, 0);
-		}
 	}
 
 	card->caps |= SC_CARD_CAP_ISO7816_PIN_INFO;
