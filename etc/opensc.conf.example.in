@@ -462,6 +462,15 @@ app default {
 		md_guid_as_label = true;
 	}
 
+	# SmartCard-HSM 4k with contact-based interface or USB-Stick
+	card_atr 3b:de:18:ff:81:91:fe:1f:c3:80:31:81:54:48:53:4d:31:73:80:21:40:81:07:1c {
+		driver = "sc-hsm";
+		read_only = false;
+		md_supports_X509_enrollment = true;
+		md_supports_container_key_gen = true;
+		md_guid_as_label = true;
+	}
+
 	# SmartCard-HSM with fingerprint sensor and PIN pad
 	card_atr 3B:80:80:01:01 {
 		force_protocol = "t1";
