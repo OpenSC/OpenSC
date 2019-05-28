@@ -35,6 +35,7 @@
 
 #include "internal.h"
 #include "pkcs15.h"
+#include "common/compat_strlcpy.h"
 
 #define RANDOM_UID_INDICATOR 0x08
 static int generate_cache_filename(struct sc_pkcs15_card *p15card,
@@ -94,9 +95,9 @@ static int generate_cache_filename(struct sc_pkcs15_card *p15card,
 					"%02X",  path->value[u + offs]);
 	}
 
-	if (!buf || bufsize < strlen(dir))
+	if (!buf)
 		return SC_ERROR_BUFFER_TOO_SMALL;
-	strcpy(buf, dir);
+	strlcpy(buf, dir, bufsize);
 
 	return SC_SUCCESS;
 }

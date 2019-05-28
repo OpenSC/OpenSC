@@ -306,17 +306,15 @@ static int sc_pkcs15emu_gemsafeV1_init( sc_pkcs15_card_t *p15card)
 
 	if (p15card->tokeninfo->label)
 		free(p15card->tokeninfo->label);
-	p15card->tokeninfo->label = malloc(strlen(APPLET_NAME) + 1);
+	p15card->tokeninfo->label = strdup(APPLET_NAME);
 	if (!p15card->tokeninfo->label)
 		return SC_ERROR_INTERNAL;
-	strcpy(p15card->tokeninfo->label, APPLET_NAME);
 
 	if (p15card->tokeninfo->serial_number)
 		free(p15card->tokeninfo->serial_number);
-	p15card->tokeninfo->serial_number = malloc(strlen(DRIVER_SERIAL_NUMBER) + 1);
+	p15card->tokeninfo->serial_number = strdup(DRIVER_SERIAL_NUMBER);
 	if (!p15card->tokeninfo->serial_number)
 		return SC_ERROR_INTERNAL;
-	strcpy(p15card->tokeninfo->serial_number, DRIVER_SERIAL_NUMBER);
 
 	/* the GemSAFE applet version number */
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xca, 0xdf, 0x03);
@@ -338,10 +336,9 @@ static int sc_pkcs15emu_gemsafeV1_init( sc_pkcs15_card_t *p15card)
 	/* the manufacturer ID, in this case GemPlus */
 	if (p15card->tokeninfo->manufacturer_id)
 		free(p15card->tokeninfo->manufacturer_id);
-	p15card->tokeninfo->manufacturer_id = malloc(strlen(MANU_ID) + 1);
+	p15card->tokeninfo->manufacturer_id = strdup(MANU_ID);
 	if (!p15card->tokeninfo->manufacturer_id)
 		return SC_ERROR_INTERNAL;
-	strcpy(p15card->tokeninfo->manufacturer_id, MANU_ID);
 
 	/* determine allocated key containers and length of certificates */
 	r = gemsafe_get_cert_len(card);

@@ -631,8 +631,10 @@ npa_reset_retry_counter(sc_card_t *card, enum s_type pin_id,
 				return SC_ERROR_INTERNAL;
 			}
 			new_len = strlen(p);
-			if (new_len > EAC_MAX_PIN_LEN)
+			if (new_len > EAC_MAX_PIN_LEN) {
+				free(p);
 				return SC_ERROR_INVALID_PIN_LENGTH;
+			}
 			new = p;
 #else
 			return SC_ERROR_NOT_SUPPORTED;
