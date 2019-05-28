@@ -987,21 +987,6 @@ mcrd_select_file(sc_card_t * card, const sc_path_t * path, sc_file_t ** file)
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	{
-		char line[256], *linep;
-		size_t i;
-
-		linep = line;
-		linep += sprintf(linep, "ef=%d, curpath=", priv->is_ef);
-
-		for (i = 0; i < priv->curpathlen; i++) {
-			sprintf(linep, "%04X", priv->curpath[i]);
-			linep += 4;
-		}
-		strcpy(linep, "\n");
-		sc_log(card->ctx, "%s", line);
-	}
-
 	if (path->type == SC_PATH_TYPE_DF_NAME) {
 		if (path->len > 16)
 			return SC_ERROR_INVALID_ARGUMENTS;
@@ -1052,19 +1037,6 @@ mcrd_select_file(sc_card_t * card, const sc_path_t * path, sc_file_t ** file)
 		}
 	}
 
-	{
-		char line[256], *linep = line;
-		size_t i;
-		linep +=
-		    sprintf(linep, "  result=%d, ef=%d, curpath=", r,
-			    priv->is_ef);
-		for (i = 0; i < priv->curpathlen; i++) {
-			sprintf(linep, "%04X", priv->curpath[i]);
-			linep += 4;
-		}
-		strcpy(linep, "\n");
-		sc_log(card->ctx, "%s", line);
-	}
 	return r;
 }
 

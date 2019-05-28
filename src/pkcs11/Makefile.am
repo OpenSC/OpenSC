@@ -79,3 +79,12 @@ install-exec-hook:
 	done
 
 endif
+
+TIDY_FLAGS = $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) $(OPENSC_PKCS11_CFLAGS)
+TIDY_FILES = \
+			 pkcs11-global.c pkcs11-session.c pkcs11-object.c slot.c \
+			 mechanism.c openssl.c framework-pkcs15.c \
+			 framework-pkcs15init.c debug.c
+
+check-local:
+	if [ -x "$(CLANGTIDY)" ]; then clang-tidy -config='' -header-filter=.* $(TIDY_FILES) -- $(TIDY_FLAGS); fi

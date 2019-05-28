@@ -60,18 +60,16 @@ static int sc_pkcs15emu_entersafe_init( sc_pkcs15_card_t *p15card)
 		return SC_ERROR_INTERNAL;
 	if (p15card->tokeninfo->serial_number)
 		free(p15card->tokeninfo->serial_number);
-	p15card->tokeninfo->serial_number = malloc(strlen(buf) + 1);
+	p15card->tokeninfo->serial_number = strdup(buf);
 	if (!p15card->tokeninfo->serial_number)
 		return SC_ERROR_INTERNAL;
-	strcpy(p15card->tokeninfo->serial_number, buf);
 
 	/* the manufacturer ID, in this case Giesecke & Devrient GmbH */
 	if (p15card->tokeninfo->manufacturer_id)
 		free(p15card->tokeninfo->manufacturer_id);
-	p15card->tokeninfo->manufacturer_id = malloc(strlen(MANU_ID) + 1);
+	p15card->tokeninfo->manufacturer_id = strdup(MANU_ID);
 	if (!p15card->tokeninfo->manufacturer_id)
 		return SC_ERROR_INTERNAL;
-	strcpy(p15card->tokeninfo->manufacturer_id, MANU_ID);
 
 	return SC_SUCCESS;
 }

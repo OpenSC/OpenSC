@@ -215,14 +215,7 @@ int sc_pkcs15_parse_tokeninfo(sc_context_t *ctx,
 		ti->serial_number = malloc(serial_len * 2 + 1);
 		if (ti->serial_number == NULL)
 			return SC_ERROR_OUT_OF_MEMORY;
-
-		ti->serial_number[0] = 0;
-		for (ii = 0; ii < serial_len; ii++) {
-			char byte[3];
-
-			sprintf(byte, "%02X", serial[ii]);
-			strcat(ti->serial_number, byte);
-		}
+		sc_bin_to_hex(serial, serial_len, ti->serial_number, serial_len * 2 + 1, 0);
 		sc_log(ctx, "TokenInfo.serialNunmber '%s'", ti->serial_number);
 	}
 

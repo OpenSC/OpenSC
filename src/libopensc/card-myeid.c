@@ -1261,7 +1261,7 @@ static int myeid_transmit_decipher(struct sc_card *card, u8 p1, u8 p2,
 		apdu.le = MIN(card->max_recv_size, crgram_len);
 	}
 
-	if (p2 == 0x86 && crgram_len == 256 && !priv->cap_chaining) {
+	if (p2 == 0x86 && crgram_len == 256 && priv && !priv->cap_chaining) {
 		r = myeid_transmit_decipher_pi_split(card, &apdu, sbuf);
 	} else {
 		apdu.flags |= SC_APDU_FLAGS_CHAINING;
@@ -1272,8 +1272,12 @@ static int myeid_transmit_decipher(struct sc_card *card, u8 p1, u8 p2,
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(card->ctx, r, "DECIPHER returned error");
 
-	outlen = MIN(apdu.resplen, outlen);
-	memcpy(out, apdu.resp, outlen);
+	if (out && outlen) {
+		outlen = MIN(apdu.resplen, outlen);
+		memcpy(out, apdu.resp, outlen);
+	} else {
+		outlen = 0;
+	}
 	LOG_FUNC_RETURN(card->ctx, outlen);
 }
 

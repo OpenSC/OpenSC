@@ -106,5 +106,43 @@ endif
 endif
 
 TIDY_FLAGS = $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
+TIDY_FILES = \
+	sc.c ctx.c errors.c \
+	asn1.c base64.c sec.c card.c iso7816.c dir.c ef-atr.c \
+	ef-gdo.c padding.c apdu.c simpletlv.c gp.c \
+	\
+	pkcs15-cert.c pkcs15-data.c pkcs15-pin.c \
+	pkcs15-prkey.c pkcs15-pubkey.c pkcs15-skey.c \
+	pkcs15-sec.c pkcs15-algo.c pkcs15-cache.c pkcs15-syn.c \
+	\
+	muscle.c muscle-filesystem.c \
+	\
+	ctbcs.c reader-ctapi.c reader-pcsc.c reader-openct.c reader-tr03119.c \
+	\
+	card-setcos.c card-miocos.c card-flex.c card-gpk.c \
+	card-cardos.c card-tcos.c card-default.c \
+	card-mcrd.c card-starcos.c card-jcop.c \
+	card-oberthur.c card-belpic.c card-atrust-acos.c \
+	card-entersafe.c card-epass2003.c card-coolkey.c card-incrypto34.c \
+	card-cac-common.c card-cac.c card-cac1.c \
+	card-muscle.c card-asepcos.c card-akis.c card-gemsafeV1.c card-rutoken.c \
+	card-rtecp.c card-westcos.c card-myeid.c \
+	card-itacns.c card-authentic.c \
+	card-iasecc.c iasecc-sdo.c iasecc-sm.c card-sc-hsm.c \
+	cwa14890.c cwa-dnie.c \
+	card-isoApplet.c card-masktech.c card-jpki.c \
+	card-npa.c card-esteid2018.c \
+	\
+	pkcs15-openpgp.c \
+	pkcs15-tcos.c pkcs15-esteid.c \
+	pkcs15-actalis.c pkcs15-atrust-acos.c pkcs15-tccardos.c \
+	pkcs15-cac.c pkcs15-esinit.c pkcs15-westcos.c pkcs15-pteid.c \
+	pkcs15-oberthur.c pkcs15-itacns.c pkcs15-sc-hsm.c \
+	pkcs15-coolkey.c pkcs15-din-66291.c \
+	pkcs15-dnie.c pkcs15-gids.c pkcs15-iasecc.c pkcs15-jpki.c pkcs15-esteid2018.c \
+	compression.c p15card-helper.c sm.c \
+	aux-data.c \
+	#$(SOURCES)
+
 check-local:
-	if [ -x "$(CLANGTIDY)" ]; then clang-tidy -config='' -header-filter=.* $(SOURCES) -- $(TIDY_FLAGS); fi
+	if [ -x "$(CLANGTIDY)" ]; then clang-tidy -config='' -header-filter=.* $(TIDY_FILES) -- $(TIDY_FLAGS); fi

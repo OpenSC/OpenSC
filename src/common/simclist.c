@@ -764,12 +764,12 @@ int list_concat(const list_t *l1, const list_t *l2, list_t *simclist_restrict de
 
     /* fix mid pointer */
     err = l2->numels - l1->numels;
-    if (dest->mid && (err+1)/2 > 0) {        /* correct pos RIGHT (err-1)/2 moves */
+    if ((err+1)/2 > 0) {        /* correct pos RIGHT (err-1)/2 moves */
         err = (err+1)/2;
-        for (cnt = 0; cnt < (unsigned int)err; cnt++) dest->mid = dest->mid->next;
-    } else if (dest->mid && err/2 < 0) { /* correct pos LEFT (err/2)-1 moves */
+        for (cnt = 0; dest->mid && cnt < (unsigned int)err; cnt++) dest->mid = dest->mid->next;
+    } else if (err/2 < 0) { /* correct pos LEFT (err/2)-1 moves */
         err = -err/2;
-        for (cnt = 0; cnt < (unsigned int)err; cnt++) dest->mid = dest->mid->prev;
+        for (cnt = 0; dest->mid && cnt < (unsigned int)err; cnt++) dest->mid = dest->mid->prev;
     }
 
     assert(!(list_repOk(l1) && list_repOk(l2)) || list_repOk(dest));
