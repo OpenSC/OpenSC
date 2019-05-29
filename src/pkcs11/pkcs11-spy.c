@@ -791,6 +791,7 @@ C_EncryptInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT
 				(CK_GCM_PARAMS *) pMechanism->pParameter;
 			spy_dump_string_in("pIv[ulIvLen]",
 				param->pIv, param->ulIvLen);
+			spy_dump_ulong_in("ulIvBits", param->ulIvBits);
 			spy_dump_string_in("pAAD[ulAADLen]",
 				param->pAAD, param->ulAADLen);
 			fprintf(spy_output, "pMechanism->pParameter->ulTagBits=%lu\n", param->ulTagBits);
