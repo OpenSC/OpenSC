@@ -103,11 +103,10 @@ build_script:
       Get-ChildItem -recurse C:\projects\OpenSC -exclude vc*.pdb *.pdb | % {
         7z a -tzip ${env:ARTIFACT}-Debug.zip $_.FullName
       }
-
-deploy_script:
   - appveyor PushArtifact %ARTIFACT%.msi
   - appveyor PushArtifact %ARTIFACT%-Debug.zip
 
+deploy_script:
   # keep in sync with .travis.yml
   - bash -c "git config --global user.email 'no-reply@appveyor.com'"
   - bash -c "git config --global user.name 'AppVeyor'"
