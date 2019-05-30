@@ -5545,6 +5545,7 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 	printf("    %s: ", p11_mechanism_to_name(mech_type));
 
 	pseudo_randomize(orig_data, sizeof(orig_data));
+	orig_data[0] = 0; /* Make sure it is less then modulus */
 
 	pkey = get_public_key(session, privKeyObject);
 	if (pkey == NULL)
