@@ -108,7 +108,7 @@
 						<option>--set-conf-entry</option> <replaceable>conf</replaceable>,
 						<option>-S</option> <replaceable>conf</replaceable>
 					</term>
-					<listitem><para>Get configuration key, format: section:name:key:value</para></listitem>
+					<listitem><para>Set configuration key, format: section:name:key:value</para></listitem>
 				</varlistentry>
 				<varlistentry>
 					<term>
