@@ -818,6 +818,7 @@ typedef struct CK_RSA_PKCS_PSS_PARAMS {
 typedef struct CK_GCM_PARAMS {
 	void * pIv;
 	unsigned long ulIvLen;
+	unsigned long ulIvBits;
 	void * pAAD;
 	unsigned long ulAADLen;
 	unsigned long ulTagBits;
