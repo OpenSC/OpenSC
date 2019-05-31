@@ -508,15 +508,67 @@ put_tag_and_len(unsigned int tag, size_t len, u8 **ptr)
 	return i;
 }
 
+
+/** Realloc the APDU resp buffer based on ASN.1 tag of object
+ *  NIST PIV cards use this convension.
+ *  The tag is considered part of the returned data
+ *  @param  ctx     sc_context_t object (used for logging)
+ *  @param  apdu    APDU where resp may need to be reallocated based on tag
+ *  @param  buf     location of the tag to be parsed may not be in resp
+ *  @param  len     size of buf that must be big enough to hold tag
+ *  @return SC_SUCCESS on success and an error code otherwise
+ */
+
+static
+int piv_apdu_realloc_resp(sc_context_t *ctx, sc_apdu_t *apdu, const u8 *buf, size_t len)
+{
+	u8 * new = NULL;
+	const u8 * body = buf;
+	size_t bodylen = 0;
+	size_t newlen;
+	int r = SC_SUCCESS;
+	unsigned int cla_out, tag_out;
+	int r_tag;
+
+	LOG_FUNC_CALLED(ctx);
+
+	r_tag = sc_asn1_read_tag(&body, len, &cla_out, &tag_out, &bodylen);
+	if (body == NULL || ((apdu->sw1 == 0x90 && r_tag != SC_SUCCESS)
+			|| (r_tag != SC_SUCCESS && r_tag != SC_ERROR_ASN1_END_OF_CONTENTS))) {
+			r = SC_ERROR_INVALID_ASN1_OBJECT; /* full tag not read */
+			LOG_TEST_GOTO_ERR(ctx, r, "Unable to parse length");
+	}
+	newlen = (body - buf) + bodylen;
+	/* Test max limit of 1M based on ISO 7816-4 */
+	if (newlen > 1048576) {
+		r = SC_ERROR_OBJECT_NOT_VALID;
+		LOG_TEST_GOTO_ERR(ctx, r, "Object larger then 1M");
+	}
+	if (apdu->resplen != newlen){
+		new = (u8 *)realloc(apdu->resp, newlen);
+		sc_log(ctx, "DYNAMIC realloc %s apdu->resplen:%"SC_FORMAT_LEN_SIZE_T"u newlen:%"SC_FORMAT_LEN_SIZE_T"u ",
+			(new == apdu->resp)? "inplace":"", apdu->resplen, newlen);
+		if (new == NULL) {
+			r = SC_ERROR_OUT_OF_MEMORY;
+			LOG_TEST_GOTO_ERR(ctx, r, "realloc failed"); 
+			}
+		apdu->resp = new;
+	}
+	r = newlen;
+
+err:
+	LOG_FUNC_RETURN(ctx, r);
+}
+
 /*
  * Send a command and receive data. There is always something to send.
  * Used by  GET DATA, PUT DATA, GENERAL AUTHENTICATE
  * and GENERATE ASYMMETRIC KEY PAIR.
- * GET DATA may call to get the first 128 bytes to get the length from the tag.
  *
- * A caller may provide a buffer, and length to read. If not provided,
- * an internal 4096 byte buffer is used, and a copy is returned to the
- * caller. that need to be freed by the caller.
+ * A caller may provide a buffer and length to read. If not provided,
+ * do DYNAMIC allocation of buffer. Start with a 256 byte
+ * and once the BER-TLV tag is read reallocate to mach size of the
+ * tag + V return the buffer and length to caller.
  */
 
 static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
@@ -525,21 +577,27 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 {
 	int r;
 	sc_apdu_t apdu;
-	u8 rbufinitbuf[4096];
-	u8 *rbuf;
-	size_t rbuflen;
-
+	sc_apdu_t tapdu;  /*get response */
+	u8 *rbuf = NULL;
+	size_t rbuflen; /* Size of current buffer */
+	size_t rbufused = 0; /* size currently used */
+	int dynamic = 0;
+	int found_tag = 0;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-
-	rbuf = rbufinitbuf;
-	rbuflen = sizeof(rbufinitbuf);
 
 	/* if caller provided a buffer and length */
 	if (recvbuf && *recvbuf && recvbuflen && *recvbuflen) {
 		rbuf = *recvbuf;
 		rbuflen = *recvbuflen;
-	}
+	} else if(recvbuf && recvbuflen) { /* caller wants a response */
+		rbuf = (u8 *)malloc(256);
+		if (rbuf == NULL) {
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+		}
+		dynamic = 1;
+		rbuflen = 256;
+	}  /* rbuf = NULL;  i.e. no response */
 
 	r = sc_lock(card);
 	if (r != SC_SUCCESS)
@@ -557,41 +615,99 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 		apdu.resp = rbuf;
 		apdu.le = (rbuflen > 256) ? 256 : rbuflen;
 		apdu.resplen = rbuflen;
+		if (dynamic)
+		    apdu.flags |= SC_APDU_FLAGS_NO_GET_RESP; /* want control back after first apdu */
 	} else {
-		 apdu.resp =  rbuf;
+		 apdu.resp = rbuf;
 		 apdu.le = 0;
 		 apdu.resplen = 0;
 	}
 
-	/* with new adpu.c and chaining, this actually reads the whole object */
+	/* with new apdu.c and chaining, this actually reads the whole object */
 	r = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_GOTO_ERR(card->ctx, r, "Transmit failed");
 
-	if (r < 0) {
-		sc_log(card->ctx, "Transmit failed");
-		goto err;
-	}
-
+	if (apdu.sw1 != 0x61 && !(apdu.sw1 == 0x90 && apdu.sw2 == 0x00)) {
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-
-	if (r < 0) {
-		sc_log(card->ctx,  "Card returned error ");
-		goto err;
+		LOG_TEST_GOTO_ERR(card->ctx, r, "Card returned error");
 	}
 
-	if (recvbuflen) {
-		if (recvbuf && *recvbuf == NULL) {
-			*recvbuf =  malloc(apdu.resplen);
-			if (*recvbuf == NULL) {
-				r = SC_ERROR_OUT_OF_MEMORY;
-				goto err;
+	/* If not dynamic, the above sc_transmit_apdu would have read all the data */
+	if (dynamic) {
+		/* With T=1 first original APDU will return first part of buffer */
+		if (apdu.resplen > 0) { /*doing dynamic and received first part */
+			r = piv_apdu_realloc_resp(card->ctx, &apdu, apdu.resp, apdu.resplen);
+			LOG_TEST_GOTO_ERR(card->ctx, r, "Transmit failed");
+			found_tag = 1;
+			rbuf = apdu.resp;
+			rbuflen = r;
+			rbufused = apdu.resplen;
+		}
+
+		/* With T=0 the first data is read by first get_response so do a get_response*/
+		if (found_tag == 0 && apdu.sw1 == 0x61) {
+
+			sc_format_apdu(card, &tapdu, SC_APDU_CASE_2_SHORT, 0xC0, 0x00, 0x00);
+			tapdu.resp = rbuf + rbufused;
+			tapdu.resplen = rbuflen - rbufused;
+			tapdu.le = (apdu.sw2 == 0) ? 256 : apdu.sw2;
+			tapdu.flags |= SC_APDU_FLAGS_NO_GET_RESP;
+
+			r = sc_transmit_apdu(card, &tapdu);
+			LOG_TEST_GOTO_ERR(card->ctx, r, "Transmit failed");
+
+			if (tapdu.sw1 != 0x61 && !(tapdu.sw1 == 0x90 && tapdu.sw2 == 0x00)) {
+			r = sc_check_sw(card, tapdu.sw1, tapdu.sw2);
+				LOG_TEST_GOTO_ERR(card->ctx, r, "Card returned error ");
 			}
-			memcpy(*recvbuf, rbuf, apdu.resplen); /* copy tag too */
+
+			rbufused += tapdu.resplen;
+			apdu.resplen += tapdu.resplen;
+
+			r = piv_apdu_realloc_resp(card->ctx, &apdu, tapdu.resp, tapdu.resplen);
+			LOG_TEST_GOTO_ERR(card->ctx, r, "get response failed");
+
+			rbuf = apdu.resp; /* may have been reallocated */
+			rbuflen = r;
+			apdu.sw1 = tapdu.sw1;
+			apdu.sw2 = tapdu.sw2;
+			found_tag = 1;
+		}
+
+		/* read the rest of data using standard get_response if needed */
+		if (apdu.sw1 == 0x61) {
+			sc_format_apdu(card, &tapdu, SC_APDU_CASE_2_SHORT, 0xC0, 0x00, 0x00);
+			tapdu.resp = rbuf + rbufused;
+			tapdu.resplen = rbuflen - rbufused;
+			tapdu.le = (apdu.sw2 == 0x00) ? 256 : apdu.sw2;
+
+			r = sc_transmit_apdu(card, &tapdu);
+			 LOG_TEST_GOTO_ERR(card->ctx, r, "Transmit failed");
+
+			r = sc_check_sw(card, tapdu.sw1, tapdu.sw2);
+			LOG_TEST_GOTO_ERR(card->ctx, r, "Card returned error ");
+
+			apdu.resplen = rbufused + tapdu.resplen;
+		}
+	}
+
+	/* caller will check the TAG and resplen again */
+	if (recvbuflen) {  /* expects a response */
+		if (recvbuf && *recvbuf == NULL) { /* wants dynamic buffer */
+			if (dynamic) {
+				*recvbuf = rbuf;
+			}
 		}
 		*recvbuflen =  apdu.resplen;
 		r = *recvbuflen;
-	}
+	} else
+		r = 0;
+	sc_unlock(card);
+	LOG_FUNC_RETURN(card->ctx, r);
 
 err:
+	if (dynamic)
+		free(rbuf);
 	sc_unlock(card);
 	LOG_FUNC_RETURN(card->ctx, r);
 }
@@ -661,7 +777,7 @@ static int piv_generate_key(sc_card_t *card,
 		keydata->exponent = 0;
 
 		/* expected tag is 7f49.  */
-		/* we will whatever tag is present */
+		/* we accept whatever tag is present */
 
 		cp = rbuf;
 		in_len = rbuflen;
@@ -925,51 +1041,8 @@ piv_get_data(sc_card_t * card, int enumtag, u8 **buf, size_t *buf_len)
 	memcpy(p, piv_objects[enumtag].tag_value, tag_len);
 	p += tag_len;
 
-	if (*buf_len == 1 && *buf == NULL) { /* we need to get the length */
-		u8 rbufinitbuf[8]; /* tag of 53 with 82 xx xx  will fit in 4 */
-		u8 *rbuf;
-		size_t rbuflen;
-		size_t bodylen;
-		unsigned int cla_out, tag_out;
-		const u8 *body;
-
-		sc_log(card->ctx, "get len of #%d", enumtag);
-		rbuf = rbufinitbuf;
-		rbuflen = sizeof(rbufinitbuf);
-		r = piv_general_io(card, 0xCB, 0x3F, 0xFF, tagbuf,  p - tagbuf, &rbuf, &rbuflen);
-		if (r > 0) {
-			int r_tag;
-			body = rbuf;
-			r_tag = sc_asn1_read_tag(&body, rbuflen, &cla_out, &tag_out, &bodylen);
-			if ((r_tag != SC_SUCCESS && r_tag != SC_ERROR_ASN1_END_OF_CONTENTS)
-					|| body == NULL) {
-				sc_log(card->ctx, "r_tag:%d body:%p", r_tag, body);
-				r = SC_ERROR_FILE_NOT_FOUND;
-				goto err;
-			}
-		    *buf_len = (body - rbuf) + bodylen;
-		} else if ( r == 0 ) {
-			r = SC_ERROR_FILE_NOT_FOUND;
-			goto err;
-		} else {
-			goto err;
-		}
-	}
-
-	sc_log(card->ctx,
-	       "buffer for #%d *buf=0x%p len=%"SC_FORMAT_LEN_SIZE_T"u",
-	       enumtag, *buf, *buf_len);
-	if (*buf == NULL && *buf_len > 0) {
-		*buf = malloc(*buf_len);
-		if (*buf == NULL ) {
-			r = SC_ERROR_OUT_OF_MEMORY;
-			goto err;
-		}
-	}
-
 	r = piv_general_io(card, 0xCB, 0x3F, 0xFF, tagbuf,  p - tagbuf, buf, buf_len);
 
-err:
 	sc_unlock(card);
 	LOG_FUNC_RETURN(card->ctx, r);
 }
@@ -1582,7 +1655,7 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 	int N;
 	int locked = 0;
 	u8  *rbuf = NULL;
-	size_t rbuflen;
+	size_t rbuflen = 0;
 	u8 *nonce = NULL;
 	size_t nonce_len;
 	u8 *p;
@@ -1875,7 +1948,7 @@ static int piv_general_external_authenticate(sc_card_t *card,
 	u8 *output_buf = NULL;
 	const u8 *body = NULL;
 	const u8 *challenge_data = NULL;
-	size_t rbuflen;
+	size_t rbuflen = 0;
 	size_t body_len;
 	size_t output_len;
 	size_t challenge_len;
