@@ -1305,12 +1305,13 @@ __sc_pkcs15_search_objects(struct sc_pkcs15_card *p15card, unsigned int class_ma
 
 	/* Make sure the class mask we have makes sense */
 	if (class_mask == 0
-	 || (class_mask & ~(SC_PKCS15_SEARCH_CLASS_PRKEY |
-			    SC_PKCS15_SEARCH_CLASS_PUBKEY |
-			    SC_PKCS15_SEARCH_CLASS_SKEY |
-			    SC_PKCS15_SEARCH_CLASS_CERT |
-			    SC_PKCS15_SEARCH_CLASS_DATA |
-			    SC_PKCS15_SEARCH_CLASS_AUTH))) {
+			|| (class_mask & ~(
+					SC_PKCS15_SEARCH_CLASS_PRKEY |
+					SC_PKCS15_SEARCH_CLASS_PUBKEY |
+					SC_PKCS15_SEARCH_CLASS_SKEY |
+					SC_PKCS15_SEARCH_CLASS_CERT |
+					SC_PKCS15_SEARCH_CLASS_DATA |
+					SC_PKCS15_SEARCH_CLASS_AUTH))) {
 		LOG_FUNC_RETURN(p15card->card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 

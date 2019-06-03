@@ -3,7 +3,12 @@ include $(top_srcdir)/win32/ltrc.inc
 MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
 EXTRA_DIST = Makefile.mak
 
+if ENABLE_OPENSSL
+if ENABLE_CMOCKA
 noinst_PROGRAMS = p11test
+endif
+endif
+
 noinst_HEADERS = p11test_loader.h p11test_case_common.h \
 	p11test_case_readonly.h p11test_case_multipart.h \
 	p11test_case_mechs.h p11test_case_ec_sign.h \

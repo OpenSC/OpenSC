@@ -150,6 +150,8 @@ sc_pkcs15_cache_file
 sc_pkcs15_card_clear
 sc_pkcs15_card_free
 sc_pkcs15_card_new
+sc_pkcs15_tokeninfo_new
+sc_pkcs15_free_tokeninfo
 sc_pkcs15_change_pin
 sc_pkcs15_compare_id
 sc_pkcs15_compute_signature
