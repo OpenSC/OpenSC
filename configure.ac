@@ -129,8 +129,15 @@ case "${host}" in
 	;;
 esac
 
-AX_CHECK_COMPILE_FLAG(-Wunknown-warning-option, [have_unknown_warning_option="yes"], [have_unknown_warning_option="no"], [-Werror])
+AX_CHECK_COMPILE_FLAG([-Wunknown-warning-option], [have_unknown_warning_option="yes"], [have_unknown_warning_option="no"], [-Werror])
 AM_CONDITIONAL([HAVE_UNKNOWN_WARNING_OPTION], [test "${have_unknown_warning_option}" = "yes"])
+
+AC_ARG_ENABLE(
+	[fuzzing],
+	[AS_HELP_STRING([--enable-fuzzing],[enable compile of fuzzing tests @<:@disabled@:>@, note that CFLAGS should be set accoringly, e.g. to something like "-fsanitize=address,fuzzer"])],
+	,
+	[enable_fuzzing="no"]
+)
 
 AC_ARG_ENABLE(
 	[strict],
@@ -266,10 +273,10 @@ AC_ARG_ENABLE(
 )
 
 AC_ARG_ENABLE(
-	[tests],
-	[AS_HELP_STRING([--enable-tests],[Build tests in src/tests/ directory @<:@detect@:>@])],
+	[cmocka],
+	[AS_HELP_STRING([--enable-cmocka],[Build tests in src/tests/p11test directory @<:@detect@:>@])],
 	,
-	[enable_tests="detect"]
+	[enable_cmocka="detect"]
 )
 
 AC_ARG_WITH(
@@ -664,20 +671,17 @@ else
 	OPENSSL_LIBS=""
 fi
 
-if test "${enable_tests}" = "detect"; then
+if test "${enable_cmocka}" = "detect"; then
 	if test "${have_cmocka}" = "yes" -a "${have_openssl}" = "yes"; then
-		enable_tests="yes"
+		enable_cmocka="yes"
 	else
-		enable_tests="no"
+		enable_cmocka="no"
 	fi
 fi
 
-if test "${enable_tests}" = "yes"; then
+if test "${enable_cmocka}" = "yes"; then
 	if test "${have_cmocka}" != "yes"; then
 		AC_MSG_ERROR([Tests required, but cmocka is not available])
-	fi
-	if test "${have_openssl}" != "yes"; then
-		AC_MSG_ERROR([Tests required, but openssl is not available])
 	fi
 fi
 
@@ -1054,9 +1058,9 @@ AM_CONDITIONAL([ENABLE_SM], [test "${enable_sm}" = "yes"])
 AM_CONDITIONAL([ENABLE_DNIE_UI], [test "${enable_dnie_ui}" = "yes"])
 AM_CONDITIONAL([ENABLE_NPATOOL], [test "${ENABLE_NPATOOL}" = "yes"])
 AM_CONDITIONAL([ENABLE_AUTOSTART], [test "${enable_autostart}" = "yes"])
-AM_CONDITIONAL([ENABLE_TESTS], [test "${enable_tests}" = "yes"])
+AM_CONDITIONAL([ENABLE_CMOCKA], [test "${enable_cmocka}" = "yes"])
 AM_CONDITIONAL([GIT_CHECKOUT], [test "${GIT_CHECKOUT}" = "yes"])
-
+AM_CONDITIONAL([ENABLE_FUZZING], [test "${enable_fuzzing}" = "yes"])
 AM_CONDITIONAL([ENABLE_SHARED], [test "${enable_shared}" = "yes"])
 AS_IF([test "${enable_shared}" = "yes"], [AC_DEFINE([ENABLE_SHARED], [1], [Enable shared libraries])])
 
@@ -1089,6 +1093,7 @@ AC_CONFIG_FILES([
 	src/tests/Makefile
 	src/tests/regression/Makefile
 	src/tests/p11test/Makefile
+	src/tests/fuzzing/Makefile
 	src/tools/Makefile
 	src/tools/versioninfo-tools.rc
 	src/tools/versioninfo-opensc-notify.rc
@@ -1149,7 +1154,6 @@ SM default module:       ${DEFAULT_SM_MODULE}
 SM default path:         $(eval eval eval echo "${DEFAULT_SM_MODULE_PATH}")
 DNIe UI support:         ${enable_dnie_ui}
 Notification support:    ${enable_notify}
-Build tests:             ${enable_tests}
 
 PC/SC default provider:  ${DEFAULT_PCSC_PROVIDER}
 PKCS11 default provider: $(eval eval eval echo "${DEFAULT_PKCS11_PROVIDER}")
