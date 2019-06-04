@@ -124,7 +124,7 @@ int sc_asn1_sig_value_rs_to_sequence(struct sc_context *ctx,
 		unsigned char *in, size_t inlen,
                 unsigned char **buf, size_t *buflen);
 int sc_asn1_sig_value_sequence_to_rs(struct sc_context *ctx,
-		unsigned char *in, size_t inlen,
+		const unsigned char *in, size_t inlen,
                 unsigned char *buf, size_t buflen);
 
 #define SC_ASN1_CLASS_MASK		0x30000000
