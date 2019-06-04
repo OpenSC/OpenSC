@@ -2036,12 +2036,12 @@ sc_asn1_sig_value_rs_to_sequence(struct sc_context *ctx, unsigned char *in, size
 
 
 int
-sc_asn1_sig_value_sequence_to_rs(struct sc_context *ctx, unsigned char *in, size_t inlen,
+sc_asn1_sig_value_sequence_to_rs(struct sc_context *ctx, const unsigned char *in, size_t inlen,
 		unsigned char *buf, size_t buflen)
 {
 	struct sc_asn1_entry asn1_sig_value[C_ASN1_SIG_VALUE_SIZE];
 	struct sc_asn1_entry asn1_sig_value_coefficients[C_ASN1_SIG_VALUE_COEFFICIENTS_SIZE];
-	unsigned char *r, *s;
+	unsigned char *r = NULL, *s = NULL;
 	size_t r_len, s_len, halflen = buflen/2;
 	int rv;
 
@@ -2057,11 +2057,11 @@ sc_asn1_sig_value_sequence_to_rs(struct sc_context *ctx, unsigned char *in, size
 	sc_format_asn1_entry(asn1_sig_value_coefficients + 1, &s, &s_len, 0);
 
 	rv = sc_asn1_decode(ctx, asn1_sig_value, in, inlen, NULL, NULL);
-	LOG_TEST_RET(ctx, rv, "ASN.1 decoding ECDSA-Sig-Value failed");
+	LOG_TEST_GOTO_ERR(ctx, rv, "ASN.1 decoding ECDSA-Sig-Value failed");
 
 	if (halflen < r_len || halflen < s_len)   {
 		rv = SC_ERROR_BUFFER_TOO_SMALL;
-		goto done;
+		goto err;
 	}
 
 	memset(buf, 0, buflen);
@@ -2074,7 +2074,7 @@ sc_asn1_sig_value_sequence_to_rs(struct sc_context *ctx, unsigned char *in, size
 	       sc_dump_hex(buf + halflen, halflen));
 
 	rv = SC_SUCCESS;
-done:
+err:
 	free(r);
 	free(s);
 
