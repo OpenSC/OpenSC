@@ -885,13 +885,6 @@ int sc_pkcs15_decode_skdf_entry(struct sc_pkcs15_card *p15card,
 				 struct sc_pkcs15_object *obj,
 				 const u8 **buf, size_t *bufsize);
 
-int sc_pkcs15_decode_enveloped_data(struct sc_context *ctx,
-				    struct sc_pkcs15_enveloped_data *result,
-				    const u8 *buf, size_t buflen);
-int sc_pkcs15_encode_enveloped_data(struct sc_context *ctx,
-				    struct sc_pkcs15_enveloped_data *data,
-				    u8 **buf, size_t *buflen);
-
 int sc_pkcs15_add_object(struct sc_pkcs15_card *p15card,
 			 struct sc_pkcs15_object *obj);
 void sc_pkcs15_remove_object(struct sc_pkcs15_card *p15card,
