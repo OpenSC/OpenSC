@@ -872,11 +872,7 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 		sc_pkcs15_free_object(pin_obj);
 	LOG_TEST_RET(ctx, r, "Card specific create application DF failed");
 
-	/* Store the PKCS15 information on the card
-	 * We cannot use sc_pkcs15_create() because it makes
-	 * all sorts of assumptions about DF and EF names, and
-	 * doesn't work if secure messaging is required for the
-	 * MF (which is the case with the GPK) */
+	/* Store the PKCS15 information on the card */
 	app = (struct sc_app_info *)calloc(1, sizeof(*app));
 	if (app == NULL)
 		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Failed to allocate application info");
