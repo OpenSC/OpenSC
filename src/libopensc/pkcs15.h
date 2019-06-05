@@ -770,7 +770,6 @@ int sc_pkcs15_get_bitstring_extension(struct sc_context *ctx,
 int sc_pkcs15_create_cdf(struct sc_pkcs15_card *card,
 			 struct sc_file *file,
 			 const struct sc_pkcs15_cert_info **certs);
-int sc_pkcs15_create(struct sc_pkcs15_card *p15card, struct sc_card *card);
 
 int sc_pkcs15_find_prkey_by_id(struct sc_pkcs15_card *card,
 			       const struct sc_pkcs15_id *id,
