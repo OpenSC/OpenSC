@@ -63,6 +63,7 @@
 #define MYEID_MAX_EXT_APDU_BUFFER_SIZE	(MYEID_MAX_RSA_KEY_LEN/8+16)
 
 static const char *myeid_card_name = "MyEID";
+static const char *oseid_card_name = "OsEID";
 static char card_name_buf[MYEID_CARD_NAME_MAX_LEN];
 
 static struct sc_card_operations myeid_ops;
@@ -114,12 +115,21 @@ static int myeid_get_card_caps(struct sc_card *card, myeid_card_caps_t* card_cap
 
 static int myeid_match_card(struct sc_card *card)
 {
+	size_t len = card->reader->atr_info.hist_bytes_len;
 	/* Normally the historical bytes are exactly "MyEID", but there might
 	 * be some historic units which have a small prefix byte sequence. */
-	if (card->reader->atr_info.hist_bytes_len >= 5 &&
-	    !memcmp(&card->reader->atr_info.hist_bytes[card->reader->atr_info.hist_bytes_len - 5], "MyEID", 5)) {
-		card->type = SC_CARD_TYPE_MYEID_GENERIC;
-		return 1;
+	if (len >= 5) {
+		if (!memcmp(&card->reader->atr_info.hist_bytes[len - 5], "MyEID", 5)) {
+			sc_log(card->ctx, "Matched MyEID card");
+			card->type = SC_CARD_TYPE_MYEID_GENERIC;
+			return 1;
+		}
+		/* The software implementation of MyEID is identified by OsEID bytes */
+		if (!memcmp(&card->reader->atr_info.hist_bytes[len - 5], "OsEID", 5)) {
+			sc_log(card->ctx, "Matched OsEID card");
+			card->type = SC_CARD_TYPE_MYEID_OSEID;
+			return 1;
+		}
 	}
 	return 0;
 }
@@ -169,7 +179,16 @@ static int myeid_init(struct sc_card *card)
 
 	LOG_FUNC_CALLED(card->ctx);
 
-	card->name = myeid_card_name;
+	switch (card->type) {
+	case SC_CARD_TYPE_MYEID_OSEID:
+		card->name = oseid_card_name;
+		break;
+	case SC_CARD_TYPE_MYEID_GENERIC:
+		card->name = myeid_card_name;
+		break;
+	default:
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_CARD);
+	}
 
 	priv = calloc(1, sizeof(myeid_private_data_t));
 
