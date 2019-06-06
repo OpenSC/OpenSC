@@ -16,3 +16,4 @@ Build and test status of specific cards:
 | [OpenPGP Applet](https://github.com/Yubico/ykneo-openpgp/)          | [![OpenPGP](https://travis-ci.org/OpenSC/OpenSC.svg)](https://travis-ci.org/OpenSC/OpenSC/branches)                               |
 | [GidsApplet](https://github.com/vletoux/GidsApplet/)                | [![GIDS](https://travis-ci.org/OpenSC/OpenSC.svg)](https://travis-ci.org/OpenSC/OpenSC/branches)                                  |
 | [IsoApplet](https://github.com/philipWendland/IsoApplet/)           | [![IsoApplet](https://travis-ci.org/OpenSC/OpenSC.svg)](https://travis-ci.org/OpenSC/OpenSC/branches)                             |
+| [OsEID (MyEID)](https://sourceforge.net/projects/oseid/)            | [![OsEID (MyEID)](https://travis-ci.org/OpenSC/OpenSC.svg)](https://travis-ci.org/OpenSC/OpenSC/branches)                         |
