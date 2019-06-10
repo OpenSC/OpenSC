@@ -1460,36 +1460,27 @@ static int myeid_loadkey(sc_card_t *card, unsigned mode, u8* value, int value_le
 	myeid_private_data_t *priv = (myeid_private_data_t *) card->drv_data;
 	sc_apdu_t apdu;
 	u8 sbuf[MYEID_MAX_EXT_APDU_BUFFER_SIZE];
-	int r, len;
+	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
-	len = 0;
 	if (value_len == 0 || value == NULL)
 		return 0;
-
-	if (value[0] != 0x0 &&
-	    mode     != LOAD_KEY_PUBLIC_EXPONENT &&
-	    mode     != LOAD_KEY_SYMMETRIC)
-		sbuf[len++] = 0x0;
 
 	if (mode == LOAD_KEY_MODULUS && value_len == 256 && !priv->cap_chaining)
 	{
 		if ((value_len % 2) > 0 && value[0] == 0x00)
 		{
 			value_len--;
-			memmove(value, value + 1, value_len);
+			value++;
 		}
-		mode   = 0x88;
-		len    = 128;
-		memcpy(sbuf,value, 128);
-
+		mode = 0x88;
 		memset(&apdu, 0, sizeof(apdu));
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xDA, 0x01, mode);
 
 		apdu.cla     = 0x00;
-		apdu.data    = sbuf;
-		apdu.datalen = len;
-		apdu.lc	     = len;
+		apdu.data    = value;
+		apdu.datalen = 128;
+		apdu.lc	     = 128;
 
 		r = sc_transmit_apdu(card, &apdu);
 		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
@@ -1498,23 +1489,26 @@ static int myeid_loadkey(sc_card_t *card, unsigned mode, u8* value, int value_le
 		LOG_TEST_RET(card->ctx, r, "LOAD KEY returned error");
 
 		mode = 0x89;
-		len  = value_len - 128;
-		memset(&sbuf, 0, SC_MAX_APDU_BUFFER_SIZE);
-		memcpy(sbuf,value + 128, value_len - 128);
+		value += 128;
+		value_len -= 128;
 	}
-	else
+	else if ((mode & 0xff00) == 0 && mode != LOAD_KEY_PUBLIC_EXPONENT &&
+		 value[0] != 0x00)
 	{
-		memcpy(sbuf + len, value, value_len);
-		len += value_len;
+		/* RSA components needing leading zero byte */
+		sbuf[0] = 0x0;
+		memcpy(&sbuf[1], value, value_len);
+		value = sbuf;
+		value_len ++;
 	}
 
 	memset(&apdu, 0, sizeof(apdu));
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xDA, 0x01, mode & 0xFF);
 	apdu.flags   = SC_APDU_FLAGS_CHAINING;
 	apdu.cla     = 0x00;
-	apdu.data    = sbuf;
-	apdu.datalen = len;
-	apdu.lc	     = len;
+	apdu.data    = value;
+	apdu.datalen = value_len;
+	apdu.lc	     = value_len;
 
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
