@@ -2,7 +2,7 @@
  * cardctl.h: card_ctl command numbers
  *
  * Copyright (C) 2003  Olaf Kirch <okir@lse.de>
- * Copyright (C) 2018 GSMK - Gesellschaft für Sichere Mobile Kommunikation mbH
+ * Copyright (C) 2018-2019 GSMK - Gesellschaft für Sichere Mobile Kommunikation mbH
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -275,6 +275,7 @@ enum {
 	SC_CARDCTL_SC_HSM_WRAP_KEY,
 	SC_CARDCTL_SC_HSM_UNWRAP_KEY,
 	SC_CARDCTL_SC_HSM_REGISTER_PUBLIC_KEY,
+	SC_CARDCTL_SC_HSM_PUBLIC_KEY_AUTH_STATUS,
 
 	/*
 	 * DNIe specific calls
