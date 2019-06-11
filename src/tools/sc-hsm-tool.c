@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
  * Copyright (C) 2012 www.CardContact.de, Andreas Schwier, Minden, Germany
- * Copyright (C) 2018 GSMK - Gesellschaft für Sichere Mobile Kommunikation mbH
+ * Copyright (C) 2018-2019 GSMK - Gesellschaft für Sichere Mobile Kommunikation mbH
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -93,6 +93,7 @@ static const struct option options[] = {
 	{ "required-pub-keys",		1, NULL,        'n' },
 	{ "export-for-pub-key-auth",1, NULL,        'e' },
 	{ "register-public-key",    1, NULL,        'g' },
+	{ "public-key-auth-status", 0, NULL,		'S' },
 	{ "dkek-shares",			1, NULL,		's' },
 	{ "so-pin",					1, NULL,		OPT_SO_PIN },
 	{ "pin",					1, NULL,		OPT_PIN },
@@ -124,6 +125,7 @@ static const char *option_help[] = {
 	"Number of public keys required for authentication [1]",
 	"Export key for public key authentication",
 	"Register public key for public key authentication (PKA file)",
+	"Show status of public key authentication",
 	"Number of DKEK shares [No DKEK]",
 	"Define security officer PIN (SO-PIN)",
 	"Define user PIN",
@@ -1872,6 +1874,7 @@ static int register_public_key_with_card(sc_context_t *ctx, sc_card_t *card, con
 		fprintf(stderr, "sc_card_ctl(*, SC_CARDCTL_SC_HSM_REGISTER_PUBLIC_KEY, *) failed with %s\n", sc_strerror(r));
 		return -1;
 	}
+	fprintf(stderr, "Done.\n");
 	return 0;
 }
 
@@ -1967,6 +1970,22 @@ static int register_public_key(sc_context_t *ctx, sc_card_t *card, const char *i
 
 
 
+static int public_key_auth_status(sc_context_t *ctx, sc_card_t *card)
+{
+	int r;
+	r = sc_card_ctl(card, SC_CARDCTL_SC_HSM_PUBLIC_KEY_AUTH_STATUS, NULL);
+	if (r == SC_ERROR_INS_NOT_SUPPORTED) { /* Not supported or not initialized for public key registration */
+		fprintf(stderr, "Card not initialized for public key registration\n");
+		return -1;
+	}
+	if (r < 0) {
+		fprintf(stderr, "sc_card_ctl(*, SC_CARDCTL_SC_HSM_PUBLIC_KEY_AUTH_STATUS, *) failed with %s\n", sc_strerror(r));
+		return -1;
+	}
+	return 0;
+}
+
+
 int main(int argc, char *argv[])
 {
 	int err = 0, r, c, long_optind = 0;
@@ -1979,6 +1998,7 @@ int main(int argc, char *argv[])
 	int do_unwrap_key = 0;
 	int do_export_key = 0;
 	int do_register_public_key = 0;
+	int do_public_key_auth_status = 0;
 	sc_path_t path;
 	sc_file_t *file = NULL;
 	const char *opt_so_pin = NULL;
@@ -2001,7 +2021,7 @@ int main(int argc, char *argv[])
 	sc_card_t *card = NULL;
 
 	while (1) {
-		c = getopt_long(argc, argv, "XC:I:P:W:U:K:n:e:g:s:i:fr:wv", options, &long_optind);
+		c = getopt_long(argc, argv, "XC:I:P:W:U:K:n:e:g:Ss:i:fr:wv", options, &long_optind);
 		if (c == -1)
 			break;
 		if (c == '?')
@@ -2050,6 +2070,10 @@ int main(int argc, char *argv[])
 		case 'g':
 			do_register_public_key = 1;
 			opt_filename = optarg;
+			action_count++;
+			break;
+		case 'S':
+			do_public_key_auth_status = 1;
 			action_count++;
 			break;
 		case OPT_PASSWORD:
@@ -2140,6 +2164,26 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "Option -g (--register-public-key) excludes option -e\n");
 		exit(1);
 	}
+	if (do_initialize && do_public_key_auth_status) {
+		fprintf(stderr, "Option -S (--public-key-auth-status) excludes option -X\n");
+		exit(1);
+	}
+	if (do_wrap_key && do_public_key_auth_status) {
+		fprintf(stderr, "Option -S (--public-key-auth-status) excludes option -W\n");
+		exit(1);
+	}
+	if (do_unwrap_key && do_public_key_auth_status) {
+		fprintf(stderr, "Option -S (--public-key-auth-status) excludes option -U\n");
+		exit(1);
+	}
+	if (do_export_key && do_public_key_auth_status) {
+		fprintf(stderr, "Option -S (--public-key-auth-status) excludes option -e\n");
+		exit(1);
+	}
+	if (do_register_public_key && do_public_key_auth_status) {
+		fprintf(stderr, "Option -S (--public-key-auth-status) excludes option -g\n");
+		exit(1);
+	}
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L || (defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER >= 0x20700000L)
 	OPENSSL_init_crypto(OPENSSL_INIT_LOAD_CRYPTO_STRINGS
@@ -2199,6 +2243,9 @@ int main(int argc, char *argv[])
 		goto fail;
 
 	if (do_register_public_key && register_public_key(ctx, card, opt_filename))
+		goto fail;
+
+	if (do_public_key_auth_status && public_key_auth_status(ctx, card))
 		goto fail;
 
 	if (action_count == 0) {
