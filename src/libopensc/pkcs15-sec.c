@@ -304,7 +304,7 @@ int sc_pkcs15_derive(struct sc_pkcs15_card *p15card,
 		const struct sc_pkcs15_object *obj,
 		unsigned long flags,
 		const u8 * in, size_t inlen, u8 *out,
-		unsigned long *poutlen)
+		size_t *poutlen)
 {
 	sc_context_t *ctx = p15card->card->ctx;
 	int r;
@@ -444,8 +444,8 @@ int sc_pkcs15_wrap(struct sc_pkcs15_card *p15card,
 		const struct sc_pkcs15_object *key,
 		struct sc_pkcs15_object *target_key,
 		unsigned long flags,
-		u8 * cryptogram, unsigned long* crgram_len,
-		const u8 * param, size_t paramlen) {
+		u8 *cryptogram, size_t *crgram_len,
+		const u8 *param, size_t paramlen) {
 	sc_context_t *ctx = p15card->card->ctx;
 	int r;
 	sc_algorithm_info_t *alg_info = NULL;
@@ -456,10 +456,6 @@ int sc_pkcs15_wrap(struct sc_pkcs15_card *p15card,
 	const struct sc_pkcs15_skey_info *target_skey = (const struct sc_pkcs15_skey_info *) target_key->data;
 	unsigned long pad_flags = 0, sec_flags = 0;
 	sc_path_t tkey_path;
-	u8 *in = 0;
-	u8 *out = 0;
-	unsigned long *poutlen = 0;
-	size_t inlen = 0;
 	sc_path_t path, target_file_id;
 	sc_sec_env_param_t senv_param;
 
@@ -531,18 +527,15 @@ int sc_pkcs15_wrap(struct sc_pkcs15_card *p15card,
 		LOG_TEST_RET(ctx, sec_env_add_param(&senv, &senv_param), "failed to add IV to security environment");
 	}
 
-	out = cryptogram;
-	poutlen = crgram_len;
-	r = use_key(p15card, key, &senv, sc_wrap, in, inlen, out,
-			*poutlen);
+	r = use_key(p15card, key, &senv, sc_wrap, NULL, 0, cryptogram, crgram_len ? *crgram_len : 0);
 
-	if (r > -1) {
-		if (*crgram_len < (unsigned) r) {
-			*poutlen = r;
-			if (out != NULL) /* if NULL, return success and required buffer length by PKCS#11 convention */
+	if (r > -1 && crgram_len) {
+		if (*crgram_len < (size_t) r) {
+			*crgram_len = r;
+			if (cryptogram != NULL) /* if NULL, return success and required buffer length by PKCS#11 convention */
 				LOG_TEST_RET(ctx, SC_ERROR_BUFFER_TOO_SMALL, "Buffer too small to hold the wrapped key.");
 		}
-		*poutlen = r;
+		*crgram_len = r;
 	}
 
 	LOG_FUNC_RETURN(ctx, r);
