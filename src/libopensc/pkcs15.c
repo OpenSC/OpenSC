@@ -1182,17 +1182,19 @@ sc_pkcs15_bind(struct sc_card *card, struct sc_aid *aid,
 		struct sc_pkcs15_card **p15card_out)
 {
 	struct sc_pkcs15_card *p15card = NULL;
-	struct sc_context *ctx = card->ctx;
+	struct sc_context *ctx;
 	scconf_block *conf_block = NULL;
 	int r, emu_first, enable_emu;
 	const char *private_certificate;
 
+	if (card == NULL || p15card_out == NULL) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+	ctx = card->ctx;
+
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "application(aid:'%s')", aid ? sc_dump_hex(aid->value, aid->len) : "empty");
 
-	if (p15card_out == NULL) {
-		return SC_ERROR_INVALID_ARGUMENTS;
-	}
 	p15card = sc_pkcs15_card_new();
 	if (p15card == NULL)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
