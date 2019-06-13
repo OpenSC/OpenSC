@@ -4879,9 +4879,9 @@ DWORD WINAPI CardConstructDHAgreement(__in PCARD_DATA pCardData,
 	struct sc_pkcs15_object *pkey = NULL;
 	int r, opt_derive_flags = SC_ALGORITHM_ECDH_CDH_RAW;
 	u8* out = 0;
-	unsigned long outlen = 0;
+	size_t outlen = 0;
 	PBYTE pbPublicKey = NULL;
-	DWORD dwPublicKeySize = 0;
+	size_t publicKeySize = 0;
 	struct md_dh_agreement* dh_agreement = NULL;
 	struct md_dh_agreement* temp = NULL;
 	BYTE i;
@@ -4936,18 +4936,18 @@ DWORD WINAPI CardConstructDHAgreement(__in PCARD_DATA pCardData,
 	}
 
 	/* convert the Windows public key into an OpenSC public key */
-	dwPublicKeySize = pAgreementInfo->dwPublicKey - sizeof(BCRYPT_ECCKEY_BLOB) + 1;
-	pbPublicKey = (PBYTE) pCardData->pfnCspAlloc(dwPublicKeySize);
+	publicKeySize = pAgreementInfo->dwPublicKey - sizeof(BCRYPT_ECCKEY_BLOB) + 1;
+	pbPublicKey = (PBYTE) pCardData->pfnCspAlloc(publicKeySize);
 	if (!pbPublicKey) {
 		dwret = ERROR_OUTOFMEMORY;
 		goto err;
 	}
 
 	pbPublicKey[0] = 4;
-	memcpy(pbPublicKey+1, pAgreementInfo->pbPublicKey +  sizeof(BCRYPT_ECCKEY_BLOB), dwPublicKeySize-1);
+	memcpy(pbPublicKey+1, pAgreementInfo->pbPublicKey +  sizeof(BCRYPT_ECCKEY_BLOB), publicKeySize-1);
 
 	/* derive the key using the OpenSC functions */
-	r = sc_pkcs15_derive(vs->p15card, pkey, opt_derive_flags, pbPublicKey, dwPublicKeySize, out, &outlen );
+	r = sc_pkcs15_derive(vs->p15card, pkey, opt_derive_flags, pbPublicKey, publicKeySize, out, &outlen );
 	logprintf(pCardData, 2, "sc_pkcs15_derive returned %d\n", r);
 
 	if ( r < 0)   {
@@ -4964,7 +4964,7 @@ DWORD WINAPI CardConstructDHAgreement(__in PCARD_DATA pCardData,
 		goto err;
 	}
 
-	r = sc_pkcs15_derive(vs->p15card, pkey, opt_derive_flags, pbPublicKey, dwPublicKeySize, out, &outlen );
+	r = sc_pkcs15_derive(vs->p15card, pkey, opt_derive_flags, pbPublicKey, publicKeySize, out, &outlen );
 	logprintf(pCardData, 2, "sc_pkcs15_derive returned %d\n", r);
 
 	pCardData->pfnCspFree(pbPublicKey);

@@ -4268,12 +4268,14 @@ pkcs15_prkey_derive(struct sc_pkcs11_session *session, void *obj,
 		break;
 	}
 
+	size_t len = *pulDataLen;
 	rv = sc_pkcs15_derive(fw_data->p15_card, prkey->prv_p15obj, flags,
-			pSeedData, ulSeedDataLen, pData, pulDataLen);
+			pSeedData, ulSeedDataLen, pData, &len);
 	if (rv < 0 && !sc_pkcs11_conf.lock_login && !prkey_has_path && need_unlock)
 		if (reselect_app_df(fw_data->p15_card) == SC_SUCCESS)
 			rv = sc_pkcs15_derive(fw_data->p15_card, prkey->prv_p15obj, flags,
-					pSeedData, ulSeedDataLen, pData, pulDataLen);
+					pSeedData, ulSeedDataLen, pData, &len);
+	*pulDataLen = len;
 
 	/* this may have been a request for size */
 
@@ -5049,6 +5051,7 @@ pkcs15_skey_wrap(struct sc_pkcs11_session *session, void *obj,
 	struct	pkcs15_fw_data *fw_data = NULL;
 	struct	pkcs15_skey_object *skey = (struct pkcs15_skey_object *) obj;
 	struct	pkcs15_skey_object *targetKeyObj = (struct pkcs15_skey_object *) targetKey;
+	size_t len = pulDataLen ? *pulDataLen : 0;
 	int rv, flags = 0;
 
 	sc_log(context, "Initializing wrapping with a secret key.");
@@ -5098,7 +5101,11 @@ pkcs15_skey_wrap(struct sc_pkcs11_session *session, void *obj,
 
 	/* Call the card to do the wrapping operation */
 	rv = sc_pkcs15_wrap(fw_data->p15_card, skey->prv_p15obj, targetKeyObj->prv_p15obj, flags,
-		pData, pulDataLen, pMechanism->pParameter, pMechanism->ulParameterLen);
+		pData, &len, pMechanism->pParameter, pMechanism->ulParameterLen);
+
+	if (pulDataLen) {
+		*pulDataLen = len;
+	}
 
 	sc_unlock(p11card->card);
 
