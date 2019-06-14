@@ -451,8 +451,13 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 			pSlotList==NULL_PTR? "plug-n-play":"refresh");
 
 	/* Slot list can only change in v2.20 */
-	if (pSlotList == NULL_PTR)
+	if (pSlotList == NULL_PTR) {
 		sc_ctx_detect_readers(context);
+		for (i=0; i<list_size(&virtual_slots); i++) {
+			slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, i);
+			slot->flags &= ~SC_PKCS11_SLOT_FLAG_SEEN;
+		}
+	}
 
 	card_detect_all();
 
@@ -481,6 +486,21 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 			slot->flags |= SC_PKCS11_SLOT_FLAG_SEEN;
 		}
 		prev_reader = slot->reader;
+	}
+
+	/* Slot list can only change in v2.20 */
+	if (pSlotList == NULL_PTR) {
+		/* slot->id is derived from its location in the list virtual_slots.
+		 * When the slot list changes, so does slot->id, so we reindex the
+		 * slots here the same way it is done in `create_slot()`
+		 *
+		 * TODO use a persistent CK_SLOT_ID, e.g. by using something like
+		 * `slot->id = sc_crc32(slot, sizeof *slot);` (this example, however,
+		 * is currently not thread safe).  */
+		for (i=0; i<list_size(&virtual_slots); i++) {
+			slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, i);
+			slot->id = (CK_SLOT_ID) list_locate(&virtual_slots, slot);
+		}
 	}
 
 	if (pSlotList == NULL_PTR) {
