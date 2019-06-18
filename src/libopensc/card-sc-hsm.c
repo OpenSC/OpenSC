@@ -1645,6 +1645,7 @@ static int sc_hsm_public_key_auth_status(sc_card_t *card)
 }
 
 
+
 static int sc_hsm_init_token(sc_card_t *card, sc_cardctl_pkcs11_init_token_t *params)
 {
 	sc_context_t *ctx = card->ctx;

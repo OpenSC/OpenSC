@@ -90,10 +90,10 @@ static const struct option options[] = {
 	{ "wrap-key",				1, NULL,		'W' },
 	{ "unwrap-key",				1, NULL,		'U' },
 	{ "public-key-auth",		1, NULL,		'K' },
-	{ "required-pub-keys",		1, NULL,        'n' },
-	{ "export-for-pub-key-auth",1, NULL,        'e' },
-	{ "register-public-key",    1, NULL,        'g' },
-	{ "public-key-auth-status", 0, NULL,		'S' },
+	{ "required-pub-keys",		1, NULL,		'n' },
+	{ "export-for-pub-key-auth",1, NULL,		'e' },
+	{ "register-public-key",	1, NULL,		'g' },
+	{ "public-key-auth-status",	0, NULL,		'S' },
 	{ "dkek-shares",			1, NULL,		's' },
 	{ "so-pin",					1, NULL,		OPT_SO_PIN },
 	{ "pin",					1, NULL,		OPT_PIN },
@@ -1829,8 +1829,8 @@ static void get_CHR(char *chrstr, int is_cvc, sc_context_t *ctx, const u8 *buf, 
 		strcpy(chrstr, "(Certificate Body not found)");
 		return;
 	}
-    buf = cb;
-    buflen = taglen;
+	buf = cb;
+	buflen = taglen;
 
     /* find embedded Certification Holder Reference (CHR) */
 	if (!(chr = sc_asn1_find_tag(ctx, buf, buflen, 0x5F20, &taglen))) {
@@ -1838,8 +1838,8 @@ static void get_CHR(char *chrstr, int is_cvc, sc_context_t *ctx, const u8 *buf, 
 		return;
 	}
 
-    /* return CHR */
-    strncpy(chrstr, (const char*) chr, taglen);
+	/* return CHR */
+	strncpy(chrstr, (const char*) chr, taglen);
 }
 
 
@@ -1963,7 +1963,7 @@ static int register_public_key(sc_context_t *ctx, sc_card_t *card, const char *i
 	dicacert = buf;
 	dicacert_len = taglen;
 
-    r = register_public_key_with_card(ctx, card, pk, pk_len, devcert, devcert_len, dicacert, dicacert_len);
+	r = register_public_key_with_card(ctx, card, pk, pk_len, devcert, devcert_len, dicacert, dicacert_len);
 	free(pka);
 	return r;
 }
