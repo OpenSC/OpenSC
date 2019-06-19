@@ -39,6 +39,7 @@
 #include "../libopensc/pkcs15.h"
 
 #include "common/compat_strlcpy.h"
+#include "common/compat_strlcat.h"
 
 #include "pkcs15-init.h"
 #include "profile.h"
@@ -247,6 +248,7 @@ static int sc_hsm_generate_key(struct sc_profile *profile, struct sc_pkcs15_card
 															struct sc_pkcs15_pubkey *pubkey)
 {
 	struct sc_card *card = p15card->card;
+	sc_hsm_private_data_t *priv = (sc_hsm_private_data_t *) card->drv_data;
 	struct sc_pkcs15_prkey_info *key_info = (struct sc_pkcs15_prkey_info *)object->data;
 	sc_cardctl_sc_hsm_keygen_info_t sc_hsm_keyinfo;
 	sc_cvc_t cvc;
@@ -263,7 +265,8 @@ static int sc_hsm_generate_key(struct sc_profile *profile, struct sc_pkcs15_card
 	memset(&cvc, 0, sizeof(cvc));
 
 	strlcpy(cvc.car, "UTCA00001", sizeof cvc.car);
-	strlcpy(cvc.chr, "UTTM00001", sizeof cvc.chr);
+	strlcpy(cvc.chr, priv->serialno, sizeof cvc.chr);
+	strlcat(cvc.chr, "00001", sizeof cvc.chr);
 
 	switch(object->type) {
 	case SC_PKCS15_TYPE_PRKEY_RSA:
