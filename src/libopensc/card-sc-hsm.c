@@ -1501,7 +1501,7 @@ static int verify_certificate(sc_card_t *card, const u8 *cert, size_t cert_len, 
 	/* select public key for verification */
 	r = get_CAR(car, card->ctx, cert, cert_len);
 	LOG_TEST_RET(card->ctx, r, "cannot parse CAR");
-	car_len = strlen((const char*) car);
+	car_len = strnlen((const char*) car, sizeof car);
 
 	if ((r = sc_asn1_put_tag(tag, car, car_len, pukref, sizeof(pukref), &ptr)) < 0) {
 		fprintf(stderr, "Error formatting ASN.1 sequence: %s\n", sc_strerror(r));
