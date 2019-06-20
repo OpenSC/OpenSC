@@ -1839,7 +1839,7 @@ static void get_CHR(char *chrstr, int is_cvc, sc_context_t *ctx, const u8 *buf, 
 	}
 
 	/* return CHR */
-	strncpy(chrstr, (const char*) chr, taglen);
+	memcpy(chrstr, chr, taglen);
 }
 
 
