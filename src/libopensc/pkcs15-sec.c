@@ -652,7 +652,8 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	 * block from PKCS1 padding. */
 	if ((flags == (SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE)) &&
 	    !(alg_info->flags & SC_ALGORITHM_RSA_RAW) &&
-	    !(alg_info->flags & (SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE))) {
+	    !(alg_info->flags & SC_ALGORITHM_RSA_HASH_NONE) &&
+	    (alg_info->flags & SC_ALGORITHM_RSA_PAD_PKCS1)) {
 		unsigned int algo;
 		size_t tmplen = sizeof(buf);
 
