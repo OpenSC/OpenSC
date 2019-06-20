@@ -1482,11 +1482,7 @@ static int verify_certificate(sc_card_t *card, const u8 *cert, size_t cert_len, 
 	}
 	pukref_len = ptr - pukref;
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3, 0x22, 0x81, 0xB6);
-	apdu.cla = 0x00;
-	apdu.lc = pukref_len;
-	apdu.data = pukref;
-	apdu.datalen = pukref_len;
+	sc_format_apdu_ex(card, &apdu, 0x22, 0x81, 0xB6, pukref, pukref_len, NULL, 0);
 
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
@@ -1511,11 +1507,7 @@ static int verify_certificate(sc_card_t *card, const u8 *cert, size_t cert_len, 
 	}
 	pukref_len = ptr - pukref;
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3, 0x22, 0x81, 0xB6);
-	apdu.cla = 0x00;
-	apdu.lc = pukref_len;
-	apdu.data = pukref;
-	apdu.datalen = pukref_len;
+	sc_format_apdu_ex(card, &apdu, 0x22, 0x81, 0xB6, pukref, pukref_len, NULL, 0);
 
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
@@ -1523,11 +1515,7 @@ static int verify_certificate(sc_card_t *card, const u8 *cert, size_t cert_len, 
 	LOG_TEST_RET(card->ctx, r, "Check SW error");
 
 	/* verify certificate */
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3, 0x2A, 0x00, 0xBE);
-	apdu.cla = 0x00;
-	apdu.lc = cert_len;
-	apdu.data = cert;
-	apdu.datalen = cert_len;
+	sc_format_apdu_ex(card, &apdu, 0x2A, 0x00, 0xBE, cert, cert_len, NULL, 0);
 
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
@@ -1582,11 +1570,7 @@ static int sc_hsm_register_public_key(sc_card_t *card, sc_cardctl_sc_hsm_public_
 	}
 	pukref_len = ptr - pukref;
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3, 0x22, 0x81, 0xB6);
-	apdu.cla = 0x00;
-	apdu.lc = pukref_len;
-	apdu.data = pukref;
-	apdu.datalen = pukref_len;
+	sc_format_apdu_ex(card, &apdu, 0x22, 0x81, 0xB6, pukref, pukref_len, NULL, 0);
 
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
@@ -1594,14 +1578,8 @@ static int sc_hsm_register_public_key(sc_card_t *card, sc_cardctl_sc_hsm_public_
 	LOG_TEST_RET(card->ctx, r, "Check SW error");
 
 	/* manage public key authentication */
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_4, 0x54, 0x00, 0x00);
+	sc_format_apdu_ex(card, &apdu, 0x54, 0x00, 0x00, params->pk, params->pk_length, recvbuf, sizeof recvbuf);
 	apdu.cla = 0x80;
-	apdu.lc = params->pk_length;
-	apdu.data = params->pk;
-	apdu.datalen = params->pk_length;
-	apdu.resp = recvbuf;
-	apdu.resplen = sizeof(recvbuf);
-	apdu.le = 4;
 
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(ctx, r, "APDU transmit failed");
@@ -1625,11 +1603,8 @@ static int sc_hsm_public_key_auth_status(sc_card_t *card)
 	LOG_FUNC_CALLED(card->ctx);
 
 	/* get status */
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_EXT, 0x54, 0x00, 0x00);
+	sc_format_apdu_ex(card, &apdu, 0x54, 0x00, 0x00, NULL, 0, recvbuf, sizeof recvbuf);
 	apdu.cla = 0x80;
-	apdu.resp = recvbuf;
-	apdu.resplen = sizeof(recvbuf);
-	apdu.le = 4;
 
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(ctx, r, "APDU transmit failed");
