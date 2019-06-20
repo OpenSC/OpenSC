@@ -1943,6 +1943,11 @@ static int register_public_key(sc_context_t *ctx, sc_card_t *card, const char *i
 		r = -1;
 		goto err;
 	}
+	if (tag_out != 0x7) {
+		fprintf(stderr, "Wrong tag when reading public key: got %x, expected %x\n", tag_out, 0x7);
+		r = -1;
+		goto err;
+	}
 	pk = buf;
 	pk_len = taglen;
 	buf += taglen;
@@ -1953,6 +1958,11 @@ static int register_public_key(sc_context_t *ctx, sc_card_t *card, const char *i
 		r = -1;
 		goto err;
 	}
+	if (tag_out != 0x1f21) {
+		fprintf(stderr, "Wrong tag when reading device certificate: got %x, expected %x\n", tag_out, 0x1f21);
+		r = -1;
+		goto err;
+	}
 	devcert = buf;
 	devcert_len = taglen;
 	buf += taglen;
@@ -1960,6 +1970,11 @@ static int register_public_key(sc_context_t *ctx, sc_card_t *card, const char *i
 	/* read device CA */
 	if ((r = sc_asn1_read_tag(&buf, sb.st_size, &cla_out, &tag_out, &taglen)) < 0) {
 		fprintf(stderr, "Error reading ASN.1 sequence: %s\n", sc_strerror(r));
+		r = -1;
+		goto err;
+	}
+	if (tag_out != 0x1f21) {
+		fprintf(stderr, "Wrong tag when reading device CA: got %x, expected %x\n", tag_out, 0x1f21);
 		r = -1;
 		goto err;
 	}
