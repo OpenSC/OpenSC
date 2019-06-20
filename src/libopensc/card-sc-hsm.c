@@ -1559,7 +1559,7 @@ static int sc_hsm_register_public_key(sc_card_t *card, sc_cardctl_sc_hsm_public_
 
 	/* verify devcert */
 	r = verify_certificate(card, params->devcert, params->devcert_length, params->devcert_chr, params->devcert_chr_length);
-	LOG_TEST_RET(ctx, r, "device issuer certificate verification failed");
+	LOG_TEST_RET(ctx, r, "device certificate verification failed");
 
 	/* manage SE */
 	if (!(outer_car = sc_asn1_find_tag(ctx, params->pk, params->pk_length, 0x42, &outer_car_len))) {
