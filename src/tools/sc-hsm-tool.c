@@ -579,12 +579,12 @@ static int initialize(sc_card_t *card, const char *so_pin, const char *user_pin,
 	char *_so_pin = NULL, *_user_pin = NULL;
 	int r;
 
-	if (num_of_pub_keys != -1 && num_of_pub_keys < 1) {
-		fprintf(stderr, "Total number of public keys for authentication must be > 0\n");
+	if (num_of_pub_keys != -1 && (num_of_pub_keys < 1 || num_of_pub_keys > 90)) {
+		fprintf(stderr, "Total number of public keys for authentication must be between 1 and 90\n");
 		return -1;
 	}
-	if (required_pub_keys < 1) {
-		fprintf(stderr, "Number of public keys required for authentication must be > 0\n");
+	if (required_pub_keys < 1 || required_pub_keys > 90) {
+		fprintf(stderr, "Number of public keys required for authentication must be between 1 and 90\n");
 		return -1;
 	}
 	if (num_of_pub_keys != -1 && required_pub_keys > num_of_pub_keys) {
@@ -679,8 +679,8 @@ static int initialize(sc_card_t *card, const char *so_pin, const char *user_pin,
 	}
 
 	param.dkek_shares = (char)dkek_shares;
-	param.num_of_pub_keys = num_of_pub_keys;
-	param.required_pub_keys = required_pub_keys;
+	param.num_of_pub_keys = (signed char)num_of_pub_keys; /* guaranteed in [-1,90] */
+	param.required_pub_keys = (u8)required_pub_keys; /* guaranteed in [1,90] */
 	param.label = (char *)label;
 
 	r = sc_card_ctl(card, SC_CARDCTL_SC_HSM_INITIALIZE, (void *)&param);
@@ -2016,8 +2016,6 @@ int main(int argc, char *argv[])
 	int opt_password_shares_total = -1;
 	int opt_force = 0;
 	int opt_iter = 10000000;
-	signed char num_of_pub_keys = -1;
-	u8 required_pub_keys = 1;
 	sc_context_param_t ctx_param;
 	sc_context_t *ctx = NULL;
 	sc_card_t *card = NULL;
@@ -2134,18 +2132,6 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "Option -n (--required-pub-keys) requires option -X\n");
 		exit(1);
 	}
-	if (opt_num_of_pub_keys != -1) {
-		if (opt_num_of_pub_keys < 1 || opt_num_of_pub_keys > 90) {
-			fprintf(stderr, "Argument to option -K (--public-key-auth) must be between 1 and 90 \n");
-			exit(1);
-		}
-		if (opt_required_pub_keys < 1 || opt_required_pub_keys > opt_num_of_pub_keys) {
-			fprintf(stderr, "Argument to option -n (--required-pub-keys) must be between 1 and %d\n", opt_num_of_pub_keys);
-			exit(1);
-		}
-		num_of_pub_keys = (signed char)opt_num_of_pub_keys;
-		required_pub_keys = (u8)opt_required_pub_keys;
-	}
 	if (do_initialize && do_export_key) {
 		fprintf(stderr, "Option -e (--export-for-pub-key-auth) excludes option -X\n");
 		exit(1);
@@ -2235,7 +2221,7 @@ int main(int argc, char *argv[])
 		goto fail;
 	}
 
-	if (do_initialize && initialize(card, opt_so_pin, opt_pin, opt_retry_counter, opt_bio1, opt_bio2, opt_dkek_shares, num_of_pub_keys, required_pub_keys, opt_label))
+	if (do_initialize && initialize(card, opt_so_pin, opt_pin, opt_retry_counter, opt_bio1, opt_bio2, opt_dkek_shares, opt_num_of_pub_keys, opt_required_pub_keys, opt_label))
 		goto fail;
 
 	if (do_create_dkek_share && create_dkek_share(card, opt_filename, opt_iter, opt_password, opt_password_shares_threshold, opt_password_shares_total))
