@@ -1840,7 +1840,7 @@ static int do_apdu(int argc, char **argv)
 		return usage(do_apdu);
 
 	/* loop over the args and parse them, making sure the result fits into buf[] */
-	for (i = 1, len = 0; i < (unsigned) argc && len < sizeof(buf); i++)   {
+	for (i = 0, len = 0; i < (unsigned) argc && len < sizeof(buf); i++)   {
 		size_t len0 = sizeof(buf) - len;
 
 		if ((r = parse_string_or_hexdata(argv[i], buf + len, &len0)) < 0) {
