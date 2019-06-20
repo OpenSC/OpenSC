@@ -1458,7 +1458,7 @@ static int get_CAR(u8 *carstr, sc_context_t *ctx, const u8 *buf, size_t buflen)
 	}
 
 	/* return CAR */
-	strncpy((char*) carstr, (const char*) car, taglen);
+	memcpy(carstr, car, taglen);
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
