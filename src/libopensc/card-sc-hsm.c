@@ -1553,7 +1553,7 @@ static int sc_hsm_register_public_key(sc_card_t *card, sc_cardctl_sc_hsm_public_
 {
 	u8 tag = SC_ASN1_TAG_CONTEXT | SC_ASN1_TAG_BIT_STRING; /* 0x83 */
 	size_t outer_car_len, pukref_len;
-	u8 recvbuf[MAX_EXT_APDU_LENGTH];
+	u8 recvbuf[4];
 	sc_context_t *ctx = card->ctx;
 	const u8 *outer_car = NULL;
 	u8 pukref[BUFSIZ];
@@ -1617,7 +1617,7 @@ static int sc_hsm_register_public_key(sc_card_t *card, sc_cardctl_sc_hsm_public_
 
 static int sc_hsm_public_key_auth_status(sc_card_t *card)
 {
-	u8 recvbuf[MAX_EXT_APDU_LENGTH];
+	u8 recvbuf[4];
 	sc_context_t *ctx = card->ctx;
 	sc_apdu_t apdu;
 	int r;
