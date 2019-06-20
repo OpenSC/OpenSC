@@ -48,6 +48,7 @@
 #include "libopensc/asn1.h"
 #include "libopensc/log.h"
 #include "libopensc/card-sc-hsm.h"
+#include "fread_to_eof.h"
 #include "util.h"
 
 static const char *app_name = "sc-hsm-tool";
@@ -1882,8 +1883,6 @@ static int register_public_key_with_card(sc_context_t *ctx, sc_card_t *card, con
 
 static int register_public_key(sc_context_t *ctx, sc_card_t *card, const char *inf)
 {
-	FILE *in;
-	struct stat sb;
 	u8 *pka;
 	u8 tag = SC_ASN1_TAG_CONSTRUCTED | SC_ASN1_TAG_SEQUENCE; /* 0x30 */
 	unsigned int cla_out, tag_out;
@@ -1891,35 +1890,18 @@ static int register_public_key(sc_context_t *ctx, sc_card_t *card, const char *i
 	const u8 *pk;
 	const u8 *devcert;
 	const u8 *dicacert;
-	size_t taglen, pk_len, devcert_len, dicacert_len;
+	size_t pkalen, taglen, pk_len, devcert_len, dicacert_len;
 	int r;
 
-	if (!(in = fopen(inf, "rb"))) {
-		perror(inf);
+	/* read .pka file */
+	if (fread_to_eof(inf, &pka, &pkalen)) {
 		return -1;
 	}
-	if (fstat(fileno(in), &sb)) {
-		perror("cannot fstat");
-		fclose(in);
-		return -1;
-	}
-	if (sb.st_size == 0) {
+	if (pkalen == 0) {
 		fprintf(stderr, "File is empty\n");
-		fclose(in);
-		return -1;
-	}
-	if (!(pka = malloc(sb.st_size))) {
-		fprintf(stderr, "Malloc failed\n");
-		fclose(in);
-		return -1;
-	}
-	if (fread(pka, 1, sb.st_size, in) != (size_t)sb.st_size) {
-		perror(inf);
 		free(pka);
-		fclose(in);
 		return -1;
 	}
-	fclose(in);
 	if (pka[0] != tag) {
 		fprintf(stderr, "File does not contain a public key with certificates\n");
 		free(pka);
@@ -1928,14 +1910,14 @@ static int register_public_key(sc_context_t *ctx, sc_card_t *card, const char *i
 
 	/* read ASN.1 sequence */
 	buf = pka;
-	if ((r = sc_asn1_read_tag(&buf, sb.st_size, &cla_out, &tag_out, &taglen)) < 0) {
+	if ((r = sc_asn1_read_tag(&buf, pkalen, &cla_out, &tag_out, &taglen)) < 0) {
 		fprintf(stderr, "Error reading ASN.1 sequence: %s\n", sc_strerror(r));
 		free(pka);
 		return -1;
 	}
 
 	/* read public key */
-	if ((r = sc_asn1_read_tag(&buf, sb.st_size, &cla_out, &tag_out, &taglen)) < 0) {
+	if ((r = sc_asn1_read_tag(&buf, pkalen, &cla_out, &tag_out, &taglen)) < 0) {
 		fprintf(stderr, "Error reading ASN.1 sequence: %s\n", sc_strerror(r));
 		free(pka);
 		return -1;
@@ -1945,7 +1927,7 @@ static int register_public_key(sc_context_t *ctx, sc_card_t *card, const char *i
 	buf += taglen;
 
 	/* read device certificate */
-	if ((r = sc_asn1_read_tag(&buf, sb.st_size, &cla_out, &tag_out, &taglen)) < 0) {
+	if ((r = sc_asn1_read_tag(&buf, pkalen, &cla_out, &tag_out, &taglen)) < 0) {
 		fprintf(stderr, "Error reading ASN.1 sequence: %s\n", sc_strerror(r));
 		free(pka);
 		return -1;
@@ -1955,7 +1937,7 @@ static int register_public_key(sc_context_t *ctx, sc_card_t *card, const char *i
 	buf += taglen;
 
 	/* read device CA */
-	if ((r = sc_asn1_read_tag(&buf, sb.st_size, &cla_out, &tag_out, &taglen)) < 0) {
+	if ((r = sc_asn1_read_tag(&buf, pkalen, &cla_out, &tag_out, &taglen)) < 0) {
 		fprintf(stderr, "Error reading ASN.1 sequence: %s\n", sc_strerror(r));
 		free(pka);
 		return -1;
