@@ -1287,7 +1287,9 @@ static int sc_hsm_initialize(sc_card_t *card, sc_cardctl_sc_hsm_init_param_t *pa
 		*p++ = params->bio2.len;
 		memcpy(p, params->bio2.value, params->bio2.len);
 		p += params->bio2.len;
-  } sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x50, 0x00, 0x00);
+	}
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x50, 0x00, 0x00);
 	apdu.cla = 0x80;
 	apdu.data = ibuff;
 	apdu.datalen = p - ibuff;
