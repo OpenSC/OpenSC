@@ -1287,9 +1287,7 @@ static int sc_hsm_initialize(sc_card_t *card, sc_cardctl_sc_hsm_init_param_t *pa
 		*p++ = params->bio2.len;
 		memcpy(p, params->bio2.value, params->bio2.len);
 		p += params->bio2.len;
-  }
-
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x50, 0x00, 0x00);
+  } sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x50, 0x00, 0x00);
 	apdu.cla = 0x80;
 	apdu.data = ibuff;
 	apdu.datalen = p - ibuff;
@@ -1451,16 +1449,16 @@ static int get_CAR(u8 *carstr, sc_context_t *ctx, const u8 *buf, size_t buflen)
 	if (!(cb = sc_asn1_find_tag(ctx, buf, buflen, 0x7F4E, &taglen))) {
 		LOG_FUNC_RETURN(ctx, SC_ERROR_UNKNOWN);
 	}
-    buf = cb;
-    buflen = taglen;
+	buf = cb;
+	buflen = taglen;
 
-    /* find embedded Certification Authority Reference (CAR) */
+	/* find embedded Certification Authority Reference (CAR) */
 	if (!(car = sc_asn1_find_tag(ctx, buf, buflen, 0x42, &taglen))) {
 		LOG_FUNC_RETURN(ctx, SC_ERROR_UNKNOWN);
 	}
 
-    /* return CAR */
-    strncpy((char*) carstr, (const char*) car, taglen);
+	/* return CAR */
+	strncpy((char*) carstr, (const char*) car, taglen);
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 

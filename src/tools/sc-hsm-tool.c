@@ -1832,7 +1832,7 @@ static void get_CHR(char *chrstr, int is_cvc, sc_context_t *ctx, const u8 *buf, 
 	buf = cb;
 	buflen = taglen;
 
-    /* find embedded Certification Holder Reference (CHR) */
+	/* find embedded Certification Holder Reference (CHR) */
 	if (!(chr = sc_asn1_find_tag(ctx, buf, buflen, 0x5F20, &taglen))) {
 		strcpy(chrstr, "(CHR not found)");
 		return;
