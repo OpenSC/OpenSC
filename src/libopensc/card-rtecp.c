@@ -567,7 +567,7 @@ static int rtecp_create_file(sc_card_t *card, sc_file_t *file)
 static int rtecp_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 {
 	sc_apdu_t apdu;
-	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE], previd[2];
+	u8 rbuf[SC_MAX_APDU_RESP_SIZE], previd[2];
 	const u8 *tag;
 	size_t taglen, len = 0;
 	int r;
@@ -578,7 +578,7 @@ static int rtecp_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 	{
 		apdu.resp = rbuf;
 		apdu.resplen = sizeof(rbuf);
-		apdu.le = 256;
+		apdu.le = sizeof(rbuf);
 		r = sc_transmit_apdu(card, &apdu);
 		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 		if (apdu.sw1 == 0x6A  &&  apdu.sw2 == 0x82)
@@ -610,7 +610,11 @@ static int rtecp_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 		if (tag[0] == 0x38)
 		{
 			/* Select parent DF of the current DF */
-			sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0xA4, 0x03, 0);
+			sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xA4, 0x03, 0);
+			/* We should set le and resp buf to actually call Get Response for card on T0. */
+			apdu.resp = rbuf;
+			apdu.resplen = sizeof(rbuf);
+			apdu.le = sizeof(rbuf);
 			r = sc_transmit_apdu(card, &apdu);
 			LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 			r = sc_check_sw(card, apdu.sw1, apdu.sw2);
