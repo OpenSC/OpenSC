@@ -282,6 +282,9 @@
                 <Component Id="rutoken_ecp.profile" Guid="*" Win64="$(var.Win64YesNo)">
                   <File Source="$(var.SOURCE_DIR)\src\pkcs15init\rutoken_ecp.profile"/>
                 </Component>
+                <Component Id="rutoken_lite.profile" Guid="*" Win64="$(var.Win64YesNo)">
+                  <File Source="$(var.SOURCE_DIR)\src\pkcs15init\rutoken_lite.profile"/>
+                </Component>
                 <Component Id="ias_adele_admin1.profile" Guid="*" Win64="$(var.Win64YesNo)">
                   <File Source="$(var.SOURCE_DIR)\src\pkcs15init\ias_adele_admin1.profile"/>
                 </Component>
@@ -424,6 +427,7 @@
           <ComponentRef Id="authentic.profile"/>
           <ComponentRef Id="rutoken.profile"/>
           <ComponentRef Id="rutoken_ecp.profile"/>
+          <ComponentRef Id="rutoken_lite.profile"/>
           <ComponentRef Id="ias_adele_admin1.profile"/>
           <ComponentRef Id="ias_adele_admin2.profile"/>
           <ComponentRef Id="ias_adele_common.profile"/>

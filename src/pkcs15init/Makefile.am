@@ -23,6 +23,7 @@ dist_pkgdata_DATA = \
 	entersafe.profile \
 	epass2003.profile \
 	rutoken_ecp.profile \
+	rutoken_lite.profile \
 	westcos.profile \
 	myeid.profile \
 	authentic.profile \

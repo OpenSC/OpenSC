@@ -1,5 +1,5 @@
 /*
- * card-rtecp.c: Support for Rutoken ECP cards
+ * card-rtecp.c: Support for Rutoken ECP and Rutoken Lite cards
  *
  * Copyright (C) 2009  Aleksey Samsonov <samsonov@guardant.ru>
  *
@@ -32,12 +32,19 @@
 #include "cardctl.h"
 
 static const struct sc_card_operations *iso_ops = NULL;
-static struct sc_card_operations rtecp_ops;
+static struct sc_card_operations rtecp_ops, rtlite_ops;
 
 static struct sc_card_driver rtecp_drv = {
 	"Rutoken ECP driver",
 	"rutoken_ecp",
 	&rtecp_ops,
+	NULL, 0, NULL
+};
+
+static struct sc_card_driver rtlite_drv = {
+	"Rutoken Lite driver",
+	"rutoken_lite",
+	&rtlite_ops,
 	NULL, 0, NULL
 };
 
@@ -59,12 +66,34 @@ static const struct sc_atr_table rtecp_atrs[] = {
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
+static const struct sc_atr_table rtlite_atrs[] = {
+	/* Rutoken Lite */
+	{ "3B:8B:01:52:75:74:6F:6B:65:6E:6C:69:74:65:C2",
+		NULL, "Rutoken Lite", SC_CARD_TYPE_GENERIC_BASE, 0, NULL },
+	/* Rutoken Lite SC*/
+	{ "3B:9E:96:00:52:75:74:6F:6B:65:6E:4C:69:74:65:53:43:32",
+		"00:00:00:00:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF",
+		"Rutoken Lite SC", SC_CARD_TYPE_GENERIC_BASE, 0, NULL },
+	{ NULL, NULL, NULL, 0, 0, NULL }
+};
+
 static int rtecp_match_card(sc_card_t *card)
 {
 	int i = -1;
 	i = _sc_match_atr(card, rtecp_atrs, &card->type);
 	if (i >= 0) {
 		card->name = rtecp_atrs[i].name;
+		LOG_FUNC_RETURN(card->ctx, 1);
+	}
+	LOG_FUNC_RETURN(card->ctx, 0);
+}
+
+static int rtlite_match_card(sc_card_t *card)
+{
+	int i = -1;
+	i = _sc_match_atr(card, rtlite_atrs, &card->type);
+	if (i >= 0) {
+		card->name = rtlite_atrs[i].name;
 		LOG_FUNC_RETURN(card->ctx, 1);
 	}
 	LOG_FUNC_RETURN(card->ctx, 0);
@@ -97,6 +126,18 @@ static int rtecp_init(sc_card_t *card)
 	info.flags = SC_ALGORITHM_GOSTR3410_RAW | SC_ALGORITHM_ONBOARD_KEY_GEN
 		| SC_ALGORITHM_GOSTR3410_HASH_NONE;
 	_sc_card_add_algorithm(card, &info);
+
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, 0);
+}
+
+static int rtlite_init(sc_card_t *card)
+{
+	if (!card || !card->ctx)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	card->cla = 0;
 
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, 0);
 }
@@ -811,7 +852,41 @@ struct sc_card_driver * sc_get_rtecp_driver(void)
 	/* process_fci */
 	rtecp_ops.construct_fci = rtecp_construct_fci;
 	rtecp_ops.pin_cmd = NULL;
-
 	return &rtecp_drv;
 }
 
+struct sc_card_driver *sc_get_rtlite_driver(void)
+{
+	rtlite_ops = *sc_get_iso7816_driver()->ops;
+
+	rtlite_ops.match_card = rtlite_match_card;
+	rtlite_ops.init = rtlite_init;
+	/* read_binary */
+	rtlite_ops.write_binary = NULL;
+	/* update_binary */
+	rtlite_ops.read_record = NULL;
+	rtlite_ops.write_record = NULL;
+	rtlite_ops.append_record = NULL;
+	rtlite_ops.update_record = NULL;
+	rtlite_ops.select_file = rtecp_select_file;
+	/* get_response */
+	/* get_challenge */
+	rtlite_ops.verify = rtecp_verify;
+	rtlite_ops.logout = rtecp_logout;
+	/* restore_security_env */
+	/* set_security_env */
+	rtlite_ops.decipher = NULL;
+	rtlite_ops.compute_signature = NULL;
+	rtlite_ops.change_reference_data = rtecp_change_reference_data;
+	rtlite_ops.reset_retry_counter = rtecp_reset_retry_counter;
+	rtlite_ops.create_file = rtecp_create_file;
+	/* delete_file */
+	rtlite_ops.list_files = rtecp_list_files;
+	/* check_sw */
+	rtlite_ops.card_ctl = rtecp_card_ctl;
+	/* process_fci */
+	rtlite_ops.construct_fci = rtecp_construct_fci;
+	rtlite_ops.pin_cmd = NULL;
+
+	return &rtlite_drv;
+}
