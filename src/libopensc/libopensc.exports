@@ -212,6 +212,7 @@ sc_pkcs15_free_prkey
 sc_pkcs15_free_prkey_info
 sc_pkcs15_free_pubkey
 sc_pkcs15_free_pubkey_info
+sc_pkcs15_free_tokeninfo
 sc_pkcs15_get_application_by_type
 sc_pkcs15_get_name_from_dn
 sc_pkcs15_get_object_guid
@@ -239,6 +240,7 @@ sc_pkcs15_pubkey_from_cert
 sc_pkcs15_remove_object
 sc_pkcs15_remove_unusedspace
 sc_pkcs15_search_objects
+sc_pkcs15_tokeninfo_new
 sc_pkcs15_unbind
 sc_pkcs15_unblock_pin
 sc_pkcs15_unwrap
