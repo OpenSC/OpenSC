@@ -254,7 +254,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
             sc_pkcs15_unblock_pin(p15card, obj, in, in_len, param, param_len);
             sc_pkcs15_get_pin_info(p15card, obj);
         }
-        sc_pkcs15_unbind(p15card);
+        sc_pkcs15_card_free(p15card);
     }
 
     sc_disconnect_card(card);
