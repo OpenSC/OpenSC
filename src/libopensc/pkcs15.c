@@ -472,6 +472,8 @@ parse_ddo(struct sc_pkcs15_card *p15card, const u8 * buf, size_t buflen)
 		p15card->file_odf->path = odf_path;
 	}
 	if (asn1_ddo[2].flags & SC_ASN1_PRESENT) {
+		if (p15card->file_tokeninfo)
+			sc_file_free(p15card->file_tokeninfo);
 		p15card->file_tokeninfo = sc_file_new();
 		if (p15card->file_tokeninfo == NULL)
 			goto mem_err;
