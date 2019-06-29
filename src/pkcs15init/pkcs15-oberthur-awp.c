@@ -37,6 +37,7 @@
 #include "libopensc/asn1.h"
 
 #ifdef ENABLE_OPENSSL
+#include "libopensc/sc-ossl-compat.h"
 
 struct awp_lv zero_lv = { 0, NULL };
 struct awp_lv x30_lv = { 0x10, (unsigned char *)"0000000000000000" };
