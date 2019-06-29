@@ -42,6 +42,22 @@ extern "C" {
  */
 
 /*
+ * 1.1.0 depracated ERR_load_crypto_strings(), SSL_load_error_strings(), ERR_free_strings()
+ * and ENGINE_load_dynamic.EVP_CIPHER_CTX_cleanup and EVP_CIPHER_CTX_init are replaced
+ * by EVP_CIPHER_CTX_reset.
+ * But for compatability with LibreSSL and older OpenSSL. OpenSC uses the older functions
+ */
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L  && !defined(LIBRESSL_VERSION_NUMBER)
+#define ERR_load_crypto_strings(x) {}
+#define SSL_load_error_strings(x)  {}
+#define ERR_free_strings(x)        {}
+#define ENGINE_load_dynamic(x)     {}
+#define EVP_CIPHER_CTX_cleanup(x) EVP_CIPHER_CTX_reset(x)
+#define EVP_CIPHER_CTX_init(x) EVP_CIPHER_CTX_reset(x)
+#endif
+
+ 
+/*
  * 1.1 renames RSA_PKCS1_SSLeay to RSA_PKCS1_OpenSSL
  * use RSA_PKCS1_OpenSSL
  * Previous versions are missing a number of functions to access
