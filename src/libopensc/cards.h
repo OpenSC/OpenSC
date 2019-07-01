@@ -252,6 +252,11 @@ enum {
 	/* EstEID cards */
 	SC_CARD_TYPE_ESTEID = 35000,
 	SC_CARD_TYPE_ESTEID_2018,
+
+	/* Rutoken cards */
+	SC_CARD_TYPE_RUTOKENS = 36000,
+	SC_CARD_TYPE_RUTOKEN_ECP,
+	SC_CARD_TYPE_RUTOKEN_ECP_SC,
 };
 
 extern sc_card_driver_t *sc_get_default_driver(void);

@@ -44,18 +44,18 @@ static struct sc_card_driver rtecp_drv = {
 static const struct sc_atr_table rtecp_atrs[] = {
 	/* Rutoken ECP */
 	{ "3B:8B:01:52:75:74:6F:6B:65:6E:20:45:43:50:A0",
-		NULL, "Rutoken ECP", SC_CARD_TYPE_GENERIC_BASE, 0, NULL },
+		NULL, "Rutoken ECP", SC_CARD_TYPE_RUTOKEN_ECP, 0, NULL },
 	/* Rutoken ECP (DS) */
 	{ "3B:8B:01:52:75:74:6F:6B:65:6E:20:44:53:20:C1",
-		NULL, "Rutoken ECP (DS)", SC_CARD_TYPE_GENERIC_BASE, 0, NULL },
+		NULL, "Rutoken ECP (DS)", SC_CARD_TYPE_RUTOKEN_ECP, 0, NULL },
 	/* Rutoken ECP SC T0 */
 	{ "3B:9C:96:00:52:75:74:6F:6B:65:6E:45:43:50:73:63",
 		"00:00:00:00:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF",
-		"Rutoken ECP SC", SC_CARD_TYPE_GENERIC_BASE, 0, NULL },
+		"Rutoken ECP SC", SC_CARD_TYPE_RUTOKEN_ECP_SC, 0, NULL },
 	/* Rutoken ECP SC T1 */
 	{ "3B:9C:94:80:11:40:52:75:74:6F:6B:65:6E:45:43:50:73:63:C3",
 		"00:00:00:00:00:00:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:00",
-		"Rutoken ECP SC", SC_CARD_TYPE_GENERIC_BASE, 0, NULL },
+		"Rutoken ECP SC", SC_CARD_TYPE_RUTOKEN_ECP_SC, 0, NULL },
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
