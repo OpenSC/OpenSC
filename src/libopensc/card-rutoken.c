@@ -85,8 +85,8 @@ static struct sc_card_driver rutoken_drv = {
 };
 
 static const struct sc_atr_table rutoken_atrs[] = {
-	{ "3b:6f:00:ff:00:56:72:75:54:6f:6b:6e:73:30:20:00:00:90:00", NULL, NULL, SC_CARD_TYPE_GENERIC_BASE, 0, NULL }, /* Aktiv Rutoken S */
-	{ "3b:6f:00:ff:00:56:75:61:54:6f:6b:6e:73:30:20:00:00:90:00", NULL, NULL, SC_CARD_TYPE_GENERIC_BASE, 0, NULL }, /* Aktiv uaToken S */
+	{ "3b:6f:00:ff:00:56:72:75:54:6f:6b:6e:73:30:20:00:00:90:00", NULL, NULL, SC_CARD_TYPE_RUTOKENS, 0, NULL }, /* Aktiv Rutoken S */
+	{ "3b:6f:00:ff:00:56:75:61:54:6f:6b:6e:73:30:20:00:00:90:00", NULL, NULL, SC_CARD_TYPE_RUTOKENS, 0, NULL }, /* Aktiv uaToken S */
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
