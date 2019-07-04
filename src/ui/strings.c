@@ -157,7 +157,7 @@ const char *ui_get_str(struct sc_context *ctx, struct sc_atr *atr,
 			|| !find_lang_str(p15card->tokeninfo->preferred_language, &lang)) {
 #ifdef _WIN32
 		LANGID langid = GetUserDefaultUILanguage();
-		if (langid & LANG_GERMAN) {
+		if (langid == LANG_GERMAN) {
 			lang = DE;
 		}
 #else
