@@ -257,6 +257,8 @@ enum {
 	SC_CARD_TYPE_RUTOKENS = 36000,
 	SC_CARD_TYPE_RUTOKEN_ECP,
 	SC_CARD_TYPE_RUTOKEN_ECP_SC,
+	SC_CARD_TYPE_RUTOKEN_LITE,
+	SC_CARD_TYPE_RUTOKEN_LITE_SC,
 };
 
 extern sc_card_driver_t *sc_get_default_driver(void);
@@ -283,7 +285,6 @@ extern sc_card_driver_t *sc_get_akis_driver(void);
 extern sc_card_driver_t *sc_get_entersafe_driver(void);
 extern sc_card_driver_t *sc_get_rutoken_driver(void);
 extern sc_card_driver_t *sc_get_rtecp_driver(void);
-extern sc_card_driver_t *sc_get_rtlite_driver(void);
 extern sc_card_driver_t *sc_get_westcos_driver(void);
 extern sc_card_driver_t *sc_get_myeid_driver(void);
 extern sc_card_driver_t *sc_get_sc_hsm_driver(void);
