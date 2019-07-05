@@ -633,6 +633,7 @@ static int pcsc_lock(sc_reader_t *reader)
 	LONG rv;
 	int r;
 	struct pcsc_private_data *priv = reader->drv_data;
+	unsigned int retry;
 
 	if (priv->gpriv->cardmod)
 		return SC_SUCCESS;
@@ -643,6 +644,16 @@ static int pcsc_lock(sc_reader_t *reader)
 		return SC_ERROR_NOT_ALLOWED;
 
 	rv = priv->gpriv->SCardBeginTransaction(priv->pcsc_card);
+	for (retry = 1; retry <= 3; retry++) {
+		if (rv != SCARD_E_SHARING_VIOLATION)
+			break;
+		/* Wait 1 second, 2 seconds and 3 seconds if the card becomes
+		 * available. The total waiting time (6 seconds) is above Windows'
+		 * default limit of 5 seconds for a single transaction. */
+		sc_log(reader->ctx, "Card locked by a different application, retrying in %u seconds", retry);
+		sleep(retry);
+		rv = priv->gpriv->SCardBeginTransaction(priv->pcsc_card);
+	}
 
 
 	if (rv != SCARD_S_SUCCESS)
