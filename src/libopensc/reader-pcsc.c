@@ -645,7 +645,7 @@ static int pcsc_lock(sc_reader_t *reader)
 
 	rv = priv->gpriv->SCardBeginTransaction(priv->pcsc_card);
 	for (retry = 1; retry <= 3; retry++) {
-		if (rv != SCARD_E_SHARING_VIOLATION)
+		if (rv != (LONG)SCARD_E_SHARING_VIOLATION)
 			break;
 		/* Wait 1 second, 2 seconds and 3 seconds if the card becomes
 		 * available. The total waiting time (6 seconds) is above Windows'
