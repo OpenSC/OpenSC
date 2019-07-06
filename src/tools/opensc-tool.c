@@ -582,6 +582,7 @@ static int list_algorithms(void)
 		{ SC_ALGORITHM_GOSTR3411, "gostr3411" },
 		{ SC_ALGORITHM_PBKDF2,    "pbkdf2"    },
 		{ SC_ALGORITHM_PBES2,     "pbes2"     },
+		{ SC_ALGORITHM_AES,       "aes"       },
 		{ 0, NULL }
 	};
 	const id2str_t alg_flag_names[] = {
