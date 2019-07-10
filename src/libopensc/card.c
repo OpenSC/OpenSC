@@ -67,27 +67,28 @@ void sc_format_apdu_cse_lc_le(struct sc_apdu *apdu)
 {
 	/* TODO calculating the APDU case, Lc and Le should actually only be
 	 * done in sc_apdu2bytes, but to gradually change OpenSC we start here. */
+	/* Let sc_detect_apdu_cse set short or extended  and test for chaining */
 
 	if (!apdu)
 		return;
 	if (apdu->datalen > SC_MAX_APDU_DATA_SIZE
 			|| apdu->resplen > SC_MAX_APDU_RESP_SIZE) {
-		/* extended length */
-		if (apdu->datalen < SC_MAX_EXT_APDU_DATA_SIZE)
+		/* extended length  or data chaining and/or get response */
+		if (apdu->datalen <= SC_MAX_EXT_APDU_DATA_SIZE)
 			apdu->lc = apdu->datalen;
-		if (apdu->resplen < SC_MAX_EXT_APDU_RESP_SIZE)
+		if (apdu->resplen <= SC_MAX_EXT_APDU_RESP_SIZE)
 			apdu->le = apdu->resplen;
 		if (apdu->resplen && !apdu->datalen)
-			apdu->cse = SC_APDU_CASE_2_EXT;
+			apdu->cse = SC_APDU_CASE_2;
 		if (!apdu->resplen && apdu->datalen)
-			apdu->cse = SC_APDU_CASE_3_EXT;
+			apdu->cse = SC_APDU_CASE_3;
 		if (apdu->resplen && apdu->datalen)
-			apdu->cse = SC_APDU_CASE_4_EXT;
+			apdu->cse = SC_APDU_CASE_4;
 	} else {
 		/* short length */
-		if (apdu->datalen < SC_MAX_APDU_DATA_SIZE)
+		if (apdu->datalen <= SC_MAX_APDU_DATA_SIZE)
 			apdu->lc = apdu->datalen;
-		if (apdu->resplen < SC_MAX_APDU_RESP_SIZE)
+		if (apdu->resplen <= SC_MAX_APDU_RESP_SIZE)
 			apdu->le = apdu->resplen;
 		if (!apdu->resplen && !apdu->datalen)
 			apdu->cse = SC_APDU_CASE_1;
