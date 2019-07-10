@@ -209,8 +209,7 @@
 
 				<varlistentry>
 					<term>
-						<option>--read-certificate</option> <replaceable>cert</replaceable>,
-						<option>-r</option> <replaceable>cert</replaceable>
+						<option>--read-certificate</option> <replaceable>cert</replaceable>
 					</term>
 					<listitem><para>Reads the certificate with the given id.</para></listitem>
 				</varlistentry>

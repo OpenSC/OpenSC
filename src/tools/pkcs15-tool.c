@@ -107,6 +107,7 @@ enum {
 	OPT_RAW,
 	OPT_PRINT_VERSION,
 	OPT_LIST_INFO,
+	OPT_READ_CERT,
 };
 
 #define NELEMENTS(x)	(sizeof(x)/sizeof((x)[0]))
@@ -117,7 +118,7 @@ static const struct option options[] = {
 	{ "version",		0, NULL,			OPT_PRINT_VERSION },
 	{ "list-info",	no_argument, NULL,		OPT_LIST_INFO },
 	{ "list-applications",	no_argument, NULL,		OPT_LIST_APPLICATIONS },
-	{ "read-certificate",	required_argument, NULL,	'r' },
+	{ "read-certificate",	required_argument, NULL,	OPT_READ_CERT },
 	{ "list-certificates",	no_argument, NULL,		'c' },
 	{ "read-data-object",	required_argument, NULL,	'R' },
 	{ "raw",		no_argument, NULL,		OPT_RAW },
@@ -2134,6 +2135,53 @@ int main(int argc, char *argv[])
 		if (c == '?')
 			util_print_usage_and_die(app_name, options, option_help, NULL);
 		switch (c) {
+		case 'r':
+
+#if OPENSC_MAJOR == 0 &&  OPENSC_VERSION_MINOR == 19
+			fprintf(stderr, "\nWarning, option -r is reserved to specify card reader in future versions\n");
+			fprintf (stderr, "Using -r option for read-certificate operation\n\n");
+			opt_cert = optarg;
+			do_read_cert = 1;
+			action_count++;
+			break;
+#elif OPENSC_MAJOR == 0 &&  OPENSC_VERSION_MINOR == 20
+
+			memset(&ctx_param, 0, sizeof(ctx_param));
+			ctx_param.ver      = 0;
+			ctx_param.app_name = app_name;
+
+			if (SC_SUCCESS == sc_context_create(&ctx, &ctx_param)) {
+				/* attempt to connect reader, on error, -r is used for read-certificate operation */
+				struct sc_reader *reader = NULL;
+
+				err = util_connect_reader(ctx, &reader, optarg, 0, 0);
+				sc_release_context(ctx);
+				ctx = NULL;
+
+				if (err != SC_SUCCESS ) {
+#if 1
+					fprintf (stderr,
+						"Error, option -r is reserved to specify card reader, no reader \"%s\" found\n", optarg);
+					exit (1);
+#else
+					fprintf (stderr,
+						"\nWarning, option -r is reserved to specify card reader, no reader \"%s\" found\n", optarg);
+					fprintf (stderr, "Using -r option for read-certificate operation\n\n");
+					opt_cert = optarg;
+					do_read_cert = 1;
+					action_count++;
+					break;
+#endif
+				}
+			}
+			opt_reader = optarg;
+			break;
+#elif (OPENSC_MAJOR > 0) || (OPENSC_MAJOR == 0 && OPENSC_VERSION_MINOR > 20)
+
+			opt_reader = optarg;
+			break;
+#endif
+
 		case OPT_PRINT_VERSION:
 			do_print_version = 1;
 			action_count++;
@@ -2142,7 +2190,7 @@ int main(int argc, char *argv[])
 			do_list_info = 1;
 			action_count++;
 			break;
-		case 'r':
+		case OPT_READ_CERT:
 			opt_cert = optarg;
 			do_read_cert = 1;
 			action_count++;
