@@ -55,6 +55,10 @@
 #endif
 #include "simpletlv.h"
 
+#define PIV_DYNAMIC_TAG_SIZE	10 /* bytes to be read before looking for tag */
+#define PIV_DYNAMIC_BUF_SIZE   (SC_MAX_APDU_RESP_SIZE + PIV_DYNAMIC_TAG_SIZE)
+#define PIV_DYNAMIC_TRIES	SC_MAX_APDU_RESP_SIZE /* i.e. 1 byte per read */
+
 enum {
 	PIV_OBJ_CCC = 0,
 	PIV_OBJ_CHUI,
@@ -520,10 +524,11 @@ put_tag_and_len(unsigned int tag, size_t len, u8 **ptr)
  */
 
 static
-int piv_apdu_realloc_resp(sc_context_t *ctx, sc_apdu_t *apdu, const u8 *buf, size_t len)
+int piv_apdu_realloc_resp(sc_context_t *ctx, sc_apdu_t *apdu, int *found_tag)
 {
 	u8 * new = NULL;
-	const u8 * body = buf;
+	const u8 * body = apdu->resp;
+	u8 * buf = apdu->resp;
 	size_t bodylen = 0;
 	size_t newlen;
 	int r = SC_SUCCESS;
@@ -532,12 +537,17 @@ int piv_apdu_realloc_resp(sc_context_t *ctx, sc_apdu_t *apdu, const u8 *buf, siz
 
 	LOG_FUNC_CALLED(ctx);
 
-	r_tag = sc_asn1_read_tag(&body, len, &cla_out, &tag_out, &bodylen);
-	if (body == NULL || ((apdu->sw1 == 0x90 && r_tag != SC_SUCCESS)
-			|| (r_tag != SC_SUCCESS && r_tag != SC_ERROR_ASN1_END_OF_CONTENTS))) {
-			r = SC_ERROR_INVALID_ASN1_OBJECT; /* full tag not read */
-			LOG_TEST_GOTO_ERR(ctx, r, "Unable to parse length");
+	r_tag = sc_asn1_read_tag(&body, apdu->resplen, &cla_out, &tag_out, &bodylen);
+	/* check if full object read with tag  was read */
+	if (apdu->sw1 == 0x90 && r_tag != SC_SUCCESS) {
+		r = SC_ERROR_INVALID_ASN1_OBJECT; /* full tag not read */
+		LOG_TEST_GOTO_ERR(ctx, r, "Unable to parse length");
 	}
+	if (body == NULL) {
+		r = SC_ERROR_INVALID_ASN1_OBJECT; /* full tag not read */
+		LOG_TEST_GOTO_ERR(ctx, r, "Unable to parse length");
+	}
+
 	newlen = (body - buf) + bodylen;
 	/* Test max limit of 1M based on ISO 7816-4 */
 	if (newlen > 1048576) {
@@ -554,6 +564,7 @@ int piv_apdu_realloc_resp(sc_context_t *ctx, sc_apdu_t *apdu, const u8 *buf, siz
 			}
 		apdu->resp = new;
 	}
+	*found_tag = 1;
 	r = newlen;
 
 err:
@@ -583,6 +594,7 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 	size_t rbufused = 0; /* size currently used */
 	int dynamic = 0;
 	int found_tag = 0;
+	int tries = PIV_DYNAMIC_TRIES;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -591,12 +603,12 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 		rbuf = *recvbuf;
 		rbuflen = *recvbuflen;
 	} else if(recvbuf && recvbuflen) { /* caller wants a response */
-		rbuf = (u8 *)malloc(256);
+		rbuf = (u8 *)malloc(PIV_DYNAMIC_BUF_SIZE);
 		if (rbuf == NULL) {
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 		}
 		dynamic = 1;
-		rbuflen = 256;
+		rbuflen = PIV_DYNAMIC_BUF_SIZE;
 	}  /* rbuf = NULL;  i.e. no response */
 
 	r = sc_lock(card);
@@ -623,34 +635,37 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 		 apdu.resplen = 0;
 	}
 
-	/* with new apdu.c and chaining, this actually reads the whole object */
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_GOTO_ERR(card->ctx, r, "Transmit failed");
 
 	if (apdu.sw1 != 0x61 && !(apdu.sw1 == 0x90 && apdu.sw2 == 0x00)) {
-	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 		LOG_TEST_GOTO_ERR(card->ctx, r, "Card returned error");
 	}
 
 	/* If not dynamic, the above sc_transmit_apdu would have read all the data */
 	if (dynamic) {
-		/* With T=1 first original APDU will return first part of buffer */
-		if (apdu.resplen > 0) { /*doing dynamic and received first part */
-			r = piv_apdu_realloc_resp(card->ctx, &apdu, apdu.resp, apdu.resplen);
-			LOG_TEST_GOTO_ERR(card->ctx, r, "Transmit failed");
-			found_tag = 1;
-			rbuf = apdu.resp;
-			rbuflen = r;
-			rbufused = apdu.resplen;
+		rbufused = apdu.resplen; /* amount read */
+
+		/* With T=1 original APDU will return first 256 bytes */
+	    /* accept for Yubkey that may only return as few as 1 byte */
+		if (apdu.resplen >= PIV_DYNAMIC_TAG_SIZE ||  apdu.sw1 == 0x90) { /*received  all or enough for the tag */
+			r = piv_apdu_realloc_resp(card->ctx, &apdu, &found_tag);
+			LOG_TEST_GOTO_ERR(card->ctx, r, "Card returned error");
+			rbuf = apdu.resp; /* if reallocated */
+			rbuflen = r; /* if size changed */
 		}
 
 		/* With T=0 the first data is read by first get_response so do a get_response*/
-		if (found_tag == 0 && apdu.sw1 == 0x61) {
+		/* or with T=1 the first data does not conatin a full tag */
+		while(found_tag == 0 && apdu.sw1 == 0x61 && tries) {
 
 			sc_format_apdu(card, &tapdu, SC_APDU_CASE_2_SHORT, 0xC0, 0x00, 0x00);
 			tapdu.resp = rbuf + rbufused;
 			tapdu.resplen = rbuflen - rbufused;
-			tapdu.le = (apdu.sw2 == 0) ? 256 : apdu.sw2;
+			sc_log(card->ctx, "rbuf:%p, rbuflen:%"SC_FORMAT_LEN_SIZE_T"u rbufused:%"SC_FORMAT_LEN_SIZE_T"u",
+					rbuf, rbuflen, rbufused);
+			tapdu.le = MIN(tapdu.resplen, (apdu.sw2 == 0x00) ? 256 : apdu.sw2);
 			tapdu.flags |= SC_APDU_FLAGS_NO_GET_RESP;
 
 			r = sc_transmit_apdu(card, &tapdu);
@@ -664,22 +679,32 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 			rbufused += tapdu.resplen;
 			apdu.resplen += tapdu.resplen;
 
-			r = piv_apdu_realloc_resp(card->ctx, &apdu, tapdu.resp, tapdu.resplen);
+			r = piv_apdu_realloc_resp(card->ctx, &apdu, &found_tag);
 			LOG_TEST_GOTO_ERR(card->ctx, r, "get response failed");
 
 			rbuf = apdu.resp; /* may have been reallocated */
 			rbuflen = r;
 			apdu.sw1 = tapdu.sw1;
 			apdu.sw2 = tapdu.sw2;
-			found_tag = 1;
+			tries--; /* keeps card going in loop without returning any data */
+		}
+
+		if (found_tag == 0) {
+			r = SC_ERROR_OBJECT_NOT_VALID; /* full tag not read */
+			LOG_TEST_GOTO_ERR(card->ctx, r," no resonable tag found");
 		}
 
 		/* read the rest of data using standard get_response if needed */
 		if (apdu.sw1 == 0x61) {
+			if (rbuflen <= rbufused) {
+				r = SC_ERROR_OBJECT_NOT_VALID;
+				LOG_TEST_GOTO_ERR(card->ctx, r," no resonable tag found");
+			}
+
 			sc_format_apdu(card, &tapdu, SC_APDU_CASE_2_SHORT, 0xC0, 0x00, 0x00);
 			tapdu.resp = rbuf + rbufused;
 			tapdu.resplen = rbuflen - rbufused;
-			tapdu.le = (apdu.sw2 == 0x00) ? 256 : apdu.sw2;
+			tapdu.le = MIN(tapdu.resplen, (apdu.sw2 == 0x00) ? 256 : apdu.sw2);
 
 			r = sc_transmit_apdu(card, &tapdu);
 			 LOG_TEST_GOTO_ERR(card->ctx, r, "Transmit failed");
