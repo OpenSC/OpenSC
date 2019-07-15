@@ -181,9 +181,9 @@ sc_ctx_win32_get_config_value(const char *name_env,
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	if (name_env)   {
-		char *value = value = getenv(name_env);
+		char *value = getenv(name_env);
 		if (value) {
-			if (strlen(value) < *out_len)
+			if (strlen(value) > *out_len)
 				return SC_ERROR_NOT_ENOUGH_MEMORY;
 			memcpy(out, value, strlen(value));
 			*out_len = strlen(value);
