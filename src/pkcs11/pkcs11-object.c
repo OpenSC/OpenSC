@@ -96,6 +96,7 @@ CK_RV sc_create_object_int(CK_SESSION_HANDLE hSession,	/* the session's handle *
 	CK_RV rv = CKR_OK;
 	struct sc_pkcs11_session *session;
 	struct sc_pkcs11_card *card;
+	CK_BBOOL is_token = FALSE;
 
 	LOG_FUNC_CALLED(context);
 	if (pTemplate == NULL_PTR || ulCount == 0)
@@ -115,9 +116,20 @@ CK_RV sc_create_object_int(CK_SESSION_HANDLE hSession,	/* the session's handle *
 		goto out;
 	}
 
-	if (session->slot->token_info.flags & CKF_WRITE_PROTECTED) {
-		rv = CKR_TOKEN_WRITE_PROTECTED;
+	rv = attr_find(pTemplate, ulCount, CKA_TOKEN, &is_token, NULL);
+	if (rv != CKR_TEMPLATE_INCOMPLETE && rv != CKR_OK) {
 		goto out;
+	}
+
+	if (is_token == TRUE) {
+		if (session->slot->token_info.flags & CKF_WRITE_PROTECTED) {
+			rv = CKR_TOKEN_WRITE_PROTECTED;
+			goto out;
+		}
+		if (!(session->flags & CKF_RW_SESSION)) {
+			rv = CKR_SESSION_READ_ONLY;
+			goto out;
+		}
 	}
 
 	card = session->slot->p11card;
