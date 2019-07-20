@@ -928,6 +928,10 @@ isoApplet_put_data_prkey_ec(sc_card_t *card, sc_cardctl_isoApplet_import_key_t *
 	apdu.lc = p - sbuf;
 	apdu.datalen = p - sbuf;
 	apdu.data = sbuf;
+	if ((apdu.datalen > 255) && !(card->caps & SC_CARD_CAP_APDU_EXT))
+	{
+		apdu.flags |= SC_APDU_FLAGS_CHAINING;
+	}
 	r = sc_transmit_apdu(card, &apdu);
 	if(r < 0)
 	{
