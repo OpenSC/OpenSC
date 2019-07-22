@@ -157,6 +157,7 @@ static struct profile_operations {
 	{ "entersafe",(void*) sc_pkcs15init_get_entersafe_ops },
 	{ "epass2003",(void*) sc_pkcs15init_get_epass2003_ops },
 	{ "rutoken_ecp", (void *) sc_pkcs15init_get_rtecp_ops },
+	{ "rutoken_lite", (void *) sc_pkcs15init_get_rtecp_ops },
 	{ "westcos", (void *) sc_pkcs15init_get_westcos_ops },
 	{ "myeid", (void *) sc_pkcs15init_get_myeid_ops },
 	{ "sc-hsm", (void *) sc_pkcs15init_get_sc_hsm_ops },
