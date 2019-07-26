@@ -23,7 +23,9 @@
 #include "p11test_helpers.h"
 #include "p11test_loader.h"
 
-int open_session(token_info_t *info) {
+int
+open_session(token_info_t *info)
+{
 	CK_FUNCTION_LIST_PTR function_pointer = info->function_pointer;
 	CK_RV rv;
 
@@ -31,56 +33,65 @@ int open_session(token_info_t *info) {
 		CKF_SERIAL_SESSION | CKF_RW_SESSION, NULL_PTR, NULL_PTR,
 		&info->session_handle);
 
-	if(rv != CKR_OK)
+	if (rv != CKR_OK) {
 		return 1;
+	}
 
 	debug_print("Session was successfully created");
 	return 0;
 }
 
-int initialize_cryptoki(token_info_t *info) {
-
+int
+initialize_cryptoki(token_info_t *info)
+{
 	CK_FUNCTION_LIST_PTR function_pointer = info->function_pointer;
 	CK_RV rv;
 
 	rv = function_pointer->C_Initialize(NULL_PTR);
-	if(rv != CKR_OK){
-		fprintf(stderr,"Could not initialize CRYPTOKI!\n");
+	if (rv != CKR_OK) {
+		fprintf(stderr, "Could not initialize CRYPTOKI!\n");
 		return 1;
 	}
 
-	if(get_slot_with_card(info)) {
+	if (get_slot_with_card(info)) {
 		function_pointer->C_Finalize(NULL_PTR);
-		fprintf(stderr,"There is no card present in reader.\n");
+		fprintf(stderr, "There is no card present in reader.\n");
 		return 1;
 	}
 
 	return 0;
 }
 
-int token_initialize(void **state) {
+int token_initialize(void **state)
+{
 	token_info_t *info = (token_info_t *) *state;
-	if(initialize_cryptoki(info)) {
+	if (initialize_cryptoki(info)) {
 		debug_print("CRYPTOKI couldn't be initialized");
 		return 1;
 	}
 	return 0;
 }
 
-void logfile_init(token_info_t *info) {
-	if (token.log.outfile == NULL)
+void logfile_init(token_info_t *info)
+{
+	if (token.log.outfile == NULL) {
 		return;
+	}
 
-    if ((info->log.fd = fopen(token.log.outfile, "w")) == NULL)
+	if ((info->log.fd = fopen(token.log.outfile, "w")) == NULL) {
 		fail_msg("Couldn't open file for test results.");
+		exit(1);
+	}
 	fprintf(info->log.fd, "{\n\"time\": 0,\n\"results\": [");
 	info->log.in_test = 0;
 	info->log.first = 1;
 }
 
-void logfile_finalize(token_info_t *info) {
-	if (info == NULL || info->log.fd == NULL)
+void logfile_finalize(token_info_t *info)
+{
+	if (info == NULL || info->log.fd == NULL) {
 		return;
+	}
 
 	/* Make sure the JSON object for test is closed */
 	if (info->log.in_test) {
@@ -94,7 +105,6 @@ void logfile_finalize(token_info_t *info) {
 
 int group_setup(void **state)
 {
-
 	token_info_t * info = calloc(sizeof(token_info_t), 1);
 
 	assert_non_null(info);
@@ -107,6 +117,7 @@ int group_setup(void **state)
 	if (load_pkcs11_module(info, token.library_path)) {
 		free(info);
 		fail_msg("Could not load module!\n");
+		exit(1);
 	}
 
 	logfile_init(info);
@@ -115,8 +126,8 @@ int group_setup(void **state)
 	return 0;
 }
 
-int group_teardown(void **state) {
-
+int group_teardown(void **state)
+{
 	token_info_t *info = (token_info_t *) *state;
 	debug_print("Clearing state after group tests!");
 	// XXX do not finalize already Finalized
@@ -134,13 +145,14 @@ int group_teardown(void **state) {
 	return 0;
 }
 
-int prepare_token(token_info_t *info) {
-	if(initialize_cryptoki(info)) {
+int prepare_token(token_info_t *info)
+{
+	if (initialize_cryptoki(info)) {
 		debug_print("CRYPTOKI couldn't be initialized");
 		return 1;
 	}
 
-	if(open_session(info)) {
+	if (open_session(info)) {
 		debug_print("Could not open session to token!");
 		return 1;
 	}
@@ -148,7 +160,8 @@ int prepare_token(token_info_t *info) {
 	return 0;
 }
 
-int finalize_token(token_info_t *info) {
+int finalize_token(token_info_t *info)
+{
 	CK_FUNCTION_LIST_PTR function_pointer = info->function_pointer;
 
 	info->session_handle = 0;
@@ -159,26 +172,31 @@ int finalize_token(token_info_t *info) {
 	return 0;
 }
 
-int user_login_setup(void **state) {
+int user_login_setup(void **state)
+{
 	token_info_t *info = (token_info_t *) *state;
 	CK_FUNCTION_LIST_PTR function_pointer = info->function_pointer;
 	CK_RV rv;
 
-	if (prepare_token(info))
+	if (prepare_token(info)) {
 		fail_msg("Could not prepare token.\n");
+		exit(1);
+	}
 
 	debug_print("Logging in to the token!");
 	rv = function_pointer->C_Login(info->session_handle, CKU_USER,
 		token.pin, token.pin_length);
 
-	if(rv != CKR_OK)
+	if (rv != CKR_OK) {
 		fail_msg("Could not login to token with user PIN '%s'\n", token.pin);
+		exit(1);
+	}
 
 	return 0;
 }
 
-int after_test_cleanup(void **state) {
-
+int after_test_cleanup(void **state)
+{
 	token_info_t *info = (token_info_t *) *state;
 	CK_FUNCTION_LIST_PTR function_pointer = info->function_pointer;
 
@@ -189,16 +207,20 @@ int after_test_cleanup(void **state) {
 	return 0;
 }
 
-int token_setup(void **state) {
+int token_setup(void **state)
+{
 	token_info_t *info = (token_info_t *) *state;
 
-	if(prepare_token(info))
+	if (prepare_token(info)) {
 		fail_msg("Could not prepare token.\n");
+		exit(1);
+	}
 
 	return 0;
 }
 
-int token_cleanup(void **state) {
+int token_cleanup(void **state)
+{
 	token_info_t *info = (token_info_t *) *state;
 
 	finalize_token(info);

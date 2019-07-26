@@ -30,13 +30,15 @@ char flag_buffer[11];
 void always_authenticate(test_cert_t *o, token_info_t *info)
 {
 	CK_RV rv;
-	if (!o->always_auth)
+	if (!o->always_auth) {
 		return;
+	}
 
 	rv = info->function_pointer->C_Login(info->session_handle,
 		CKU_CONTEXT_SPECIFIC, info->pin, info->pin_length);
 	if (rv != CKR_OK) {
 		fail_msg(" [ SKIP %s ] Re-authentication failed", o->id_str);
+		exit(1);
 	}
 }
 
@@ -153,7 +155,7 @@ int callback_certificates(test_certs_t *objects,
 	CK_ATTRIBUTE template[], unsigned int template_size, CK_OBJECT_HANDLE object_handle)
 {
 	EVP_PKEY *evp = NULL;
-	const u_char *cp;
+	const u_char *cp = NULL;
 	test_cert_t *o = NULL;
 
 	if (*(CK_CERTIFICATE_TYPE *)template[3].pValue != CKC_X_509)
@@ -166,23 +168,29 @@ int callback_certificates(test_certs_t *objects,
 	cp = template[1].pValue;
 	if (d2i_X509(&(o->x509), &cp, template[1].ulValueLen) == NULL) {
 		fail_msg("d2i_X509");
+		return -1;
 	} else if ((evp = X509_get_pubkey(o->x509)) == NULL) {
 		fail_msg("X509_get_pubkey failed.");
+		return -1;
 	}
 
 	if (EVP_PKEY_base_id(evp) == EVP_PKEY_RSA) {
 		/* Extract public RSA key */
 		RSA *rsa = EVP_PKEY_get0_RSA(evp);
-		if ((o->key.rsa = RSAPublicKey_dup(rsa)) == NULL)
+		if ((o->key.rsa = RSAPublicKey_dup(rsa)) == NULL) {
 			fail_msg("RSAPublicKey_dup failed");
+			return -1;
+		}
 		o->type = EVP_PK_RSA;
 		o->bits = EVP_PKEY_bits(evp);
 
 	} else if (EVP_PKEY_base_id(evp) == EVP_PKEY_EC) {
 		/* Extract public EC key */
 		EC_KEY *ec = EVP_PKEY_get0_EC_KEY(evp);
-		if ((o->key.ec = EC_KEY_dup(ec)) == NULL)
+		if ((o->key.ec = EC_KEY_dup(ec)) == NULL) {
 			fail_msg("EC_KEY_dup failed");
+			return -1;
+		}
 		o->type = EVP_PK_EC;
 		o->bits = EVP_PKEY_bits(evp);
 
@@ -434,8 +442,10 @@ int search_objects(test_certs_t *objects, token_info_t *info,
 		if (i >= objects_length) {
 			objects_length += 4; // do not realloc after each row
 			object_handles = realloc(object_handles, objects_length * sizeof(CK_OBJECT_HANDLE_PTR));
-			if (object_handles == NULL)
+			if (object_handles == NULL) {
 		 		fail_msg("Realloc failed. Need to store object handles.\n");
+				return -1;
+			}
 		}
 		object_handles[i++] = object_handle;
 	}
@@ -445,6 +455,7 @@ int search_objects(test_certs_t *objects, token_info_t *info,
 	if (rv != CKR_OK) {
 		fprintf(stderr, "C_FindObjectsFinal: rv = 0x%.8lX\n", rv);
  		fail_msg("Could not find certificate.\n");
+		return -1;
 	}
 
 	for (i = 0; i < objects_length; i++) {
@@ -457,24 +468,30 @@ int search_objects(test_certs_t *objects, token_info_t *info,
 
 			rv = fp->C_GetAttributeValue(info->session_handle, object_handles[i],
 				&(template[j]), 1);
-			if (rv == CKR_ATTRIBUTE_TYPE_INVALID)
+			if (rv == CKR_ATTRIBUTE_TYPE_INVALID) {
 				continue;
-			else if (rv != CKR_OK)
+			} else if (rv != CKR_OK) {
 				fail_msg("C_GetAttributeValue: rv = 0x%.8lX\n", rv);
+				return -1;
+			}
 
 			/* Allocate memory to hold the data we want */
 			if (template[j].ulValueLen == 0) {
 				continue;
 			} else {
 				template[j].pValue = malloc(template[j].ulValueLen);
-				if (template[j].pValue == NULL)
+				if (template[j].pValue == NULL) {
 					fail_msg("malloc failed");
+					return -1;
+				}
 			}
 			/* Call again to get actual attribute */
 			rv = fp->C_GetAttributeValue(info->session_handle, object_handles[i],
 				&(template[j]), 1);
-			if (rv != CKR_OK)
+			if (rv != CKR_OK) {
 				fail_msg("C_GetAttributeValue: rv = 0x%.8lX\n", rv);
+				return -1;
+			}
 		}
 
 		callback(objects, template, template_size, object_handles[i]);

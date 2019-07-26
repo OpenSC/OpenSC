@@ -103,16 +103,19 @@ int is_pss_mechanism(CK_MECHANISM_TYPE mech);
 #define P11TEST_PASS(info) do { _P11TEST_FINALIZE(info, "pass") } while(0);
 
 #define P11TEST_FAIL(info, msg, ...) do { \
-	if (info->log.fd && info->log.in_test) { \
-		fprintf(info->log.fd, ",\n\t\"fail_reason\": \"" msg "\"", ##__VA_ARGS__); \
-	} \
-	_P11TEST_FINALIZE(info, "fail") \
-	fail_msg(msg, ##__VA_ARGS__); \
+		if (info->log.fd && info->log.in_test) { \
+			fprintf(info->log.fd, ",\n\t\"fail_reason\": \"" msg "\"", ##__VA_ARGS__); \
+		} \
+		_P11TEST_FINALIZE(info, "fail") \
+		fail_msg(msg, ##__VA_ARGS__); \
+		exit(1); \
 	} while (0);
 
 #define P11TEST_DATA_ROW(info, cols, ...) if (info->log.fd) { \
-	if (info->log.in_test == 0) \
+	if (info->log.in_test == 0) {\
 		fail_msg("Can't add data outside of the test");\
+		exit(1); \
+	} \
 	if (info->log.in_data == 0) {\
 		fprintf(info->log.fd, ",\n\t\"data\": [");\
 		info->log.in_data = 1;\
