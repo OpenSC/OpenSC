@@ -2364,7 +2364,7 @@ static int piv_validate_general_authentication(sc_card_t *card,
 	 * alg_id=06 is a place holder for all RSA keys.
 	 * Derive the real alg_id based on the size of the
 	 * the data, as we are always using raw mode.
-	 * Non RSA keys needs some work in thia area.
+	 * Non RSA keys needs some work in this area.
 	 */
 
 	real_alg_id = priv->alg_id;
