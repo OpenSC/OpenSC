@@ -312,7 +312,10 @@ int callback_public_keys(test_certs_t *objects,
 		} else { /* store the public key for future use */
 			o->type = EVP_PK_RSA;
 			o->key.rsa = RSA_new();
-			RSA_set0_key(o->key.rsa, n, e, NULL);
+			if (RSA_set0_key(o->key.rsa, n, e, NULL) != 1) {
+				fail_msg("Unable to set key params");
+				return -1;
+			}
 			o->bits = RSA_bits(o->key.rsa);
 			n = NULL;
 			e = NULL;
