@@ -132,6 +132,8 @@ struct pcsc_private_data {
 };
 
 static int pcsc_detect_card_presence(sc_reader_t *reader);
+static int pcsc_reconnect(sc_reader_t * reader, DWORD action);
+static int pcsc_connect(sc_reader_t *reader);
 
 static DWORD pcsc_reset_action(const char *str)
 {
@@ -244,6 +246,15 @@ static int pcsc_internal_transmit(sc_reader_t *reader,
 		switch (rv) {
 		case SCARD_W_REMOVED_CARD:
 			return SC_ERROR_CARD_REMOVED;
+		case SCARD_E_INVALID_HANDLE:
+		case SCARD_E_READER_UNAVAILABLE:
+			pcsc_connect(reader);
+			/* return failure so that upper layers will be notified */
+			return SC_ERROR_READER_REATTACHED;
+		case SCARD_W_RESET_CARD:
+			pcsc_reconnect(reader, SCARD_LEAVE_CARD);
+			/* return failure so that upper layers will be notified */
+			return SC_ERROR_CARD_RESET;
 		default:
 			/* Translate strange errors from card removal to a proper return code */
 			pcsc_detect_card_presence(reader);
