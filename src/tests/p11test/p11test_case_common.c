@@ -444,7 +444,7 @@ int search_objects(test_certs_t *objects, token_info_t *info,
 		/* store handle */
 		if (i >= objects_length) {
 			objects_length += 4; // do not realloc after each row
-			object_handles = realloc(object_handles, objects_length * sizeof(CK_OBJECT_HANDLE_PTR));
+			object_handles = realloc(object_handles, objects_length * sizeof(CK_OBJECT_HANDLE));
 			if (object_handles == NULL) {
 		 		fail_msg("Realloc failed. Need to store object handles.\n");
 				return -1;
