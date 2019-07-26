@@ -619,9 +619,18 @@ int sc_transmit_apdu(sc_card_t *card, sc_apdu_t *apdu)
 			len -= plen;
 			buf += plen;
 		}
-	} else
+	} else {
 		/* transmit single APDU */
 		r = sc_transmit(card, apdu);
+	}
+
+	if (r == SC_ERROR_CARD_RESET || r == SC_ERROR_READER_REATTACHED) {
+		sc_invalidate_cache(card);
+		/* give card driver a chance to react on resets */
+		if (card->ops->card_reader_lock_obtained)
+			card->ops->card_reader_lock_obtained(card, 1);
+	}
+
 	/* all done => release lock */
 	if (sc_unlock(card) != SC_SUCCESS)
 		sc_log(card->ctx, "sc_unlock failed");
