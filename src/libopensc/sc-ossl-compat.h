@@ -48,12 +48,14 @@ extern "C" {
  * But for compatability with LibreSSL and older OpenSSL. OpenSC uses the older functions
  */
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L  && !defined(LIBRESSL_VERSION_NUMBER)
+# if defined(OPENSSL_API_COMPAT) && OPENSSL_API_COMPAT >= 0x10100000L
 #define ERR_load_crypto_strings(x) {}
 #define SSL_load_error_strings(x)  {}
 #define ERR_free_strings(x)        {}
 #define ENGINE_load_dynamic(x)     {}
 #define EVP_CIPHER_CTX_cleanup(x) EVP_CIPHER_CTX_reset(x)
 #define EVP_CIPHER_CTX_init(x) EVP_CIPHER_CTX_reset(x)
+# endif
 #endif
 
  
