@@ -29,3 +29,7 @@ p15dump_SOURCES += $(top_builddir)/win32/versioninfo.rc
 pintest_SOURCES += $(top_builddir)/win32/versioninfo.rc
 prngtest_SOURCES += $(top_builddir)/win32/versioninfo.rc
 endif
+
+if ENABLE_VIRT_CACARD
+SUBDIRS += virt_cacard
+endif

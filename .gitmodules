@@ -1,0 +1,3 @@
+[submodule "src/tests/virt_cacard"]
+	path = src/tests/virt_cacard
+	url = https://github.com/PL4typus/virt_cacard.git
