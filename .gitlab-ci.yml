@@ -4,7 +4,7 @@ before_script:
   # enable debug messages in the testsuite
   - sed -e "s/^p11test_CFLAGS/#p11test_CFLAGS/g" -i src/tests/p11test/Makefile.am
   - ./bootstrap
-  - ./configure --enable-virt_cacard --disable-strict 
+  - ./configure --enable-virt_cacard
   - make -j4
   - make check
   - make install
@@ -38,215 +38,90 @@ variables:
     paths:
       - src/tests/p11test/*.json
 
+.virt_cacard: &virt_cacard
+  only:
+    - virt_cacard
+  script:
+    - cd src/tests/virt_cacard
+    - ./setup-softhsm2.sh 
+    - cd ../p11test/
+    - pcscd -x  
+    - ./p11test -s 0 -p 12345678 -o cac.json -i | tee cac.log &
+    - sleep 5
+    - cd ../virt_cacard 
+    - ./virt_cacard & 
+    - cd ../p11test/
+    - wait $(ps aux | grep '[p]11test'| awk '{print $2}')
+    - kill -9 $(ps aux | grep '[v]irt_cacard'| awk '{print $2}')
+    - if [[ -f cac_old.json ]]; then diff -u3 cac_old.json cac.json; fi
+    - cp cac.json cac_old.json
+    # cache the results for the next run
+  tags:
+    - shared
+
+.virt_cacard_valgrind: &virt_cacard_valgrind
+  only:
+    - virt_cacard
+  script:
+    - cd src/tests/virt_cacard
+    - ./setup-softhsm2.sh 
+    - cd ../p11test/
+    # remove the dlcose() calls to have reasonable traces
+    - sed '/if(pkcs11_so)/I {N;d;}' -i p11test_loader.c
+    - make
+    - pcscd -x  
+    - valgrind --leak-check=full --trace-children=yes --suppressions=p11test.supp ./p11test -s 0 -p 12345678 -i 2>&1| tee cac.log &
+    - sleep 5
+    - cd ../virt_cacard 
+    - ./virt_cacard &
+    - wait $(ps aux | grep '[v]algrind'| awk '{print $2}')
+    - kill -9 $(ps aux | grep '[v]irt_cacard'| awk '{print $2}')
+    - cd ../p11test/
+    - grep "definitely lost:.*0 bytes in 0 blocks" cac.log
+  tags:
+    - shared
+
 ################################
 ##      Virtual CACard        ##
 ################################
-1/4 Build and Test virt_cacard:
+
+Fedora29 Build and Test virt_cacard:
   <<: *functional_test
   image: $CI_REGISTRY/$CNTNR_REGISTRY/$FEDORA29_BUILD:latest
-  only:
-    - virt_cacard
-  script:
-    - cd src/tests/virt_cacard
-    - ./setup-softhsm2.sh 
-    - cd ../p11test/
-    - pcscd -x  
-    - ./p11test -s 0 -p 12345678 -o cac.json -i | tee cac.log &
-    - sleep 5
-    - cd ../virt_cacard 
-    - ./virt_cacard & 
-    - cd ../p11test/
-    - wait $(ps aux | grep '[p]11test'| awk '{print $2}')
-    - kill -9 $(ps aux | grep '[v]irt_cacard'| awk '{print $2}')
-    - if [[ -f cac_old.json ]]; then diff -u3 cac_old.json cac.json; fi
-    - cp cac.json cac_old.json
-    # cache the results for the next run
-  tags:
-    - shared
+  <<: *virt_cacard
 
-2/4 Build and Test virt_cacard:
+Fedora30 Build and Test virt_cacard:
   <<: *functional_test
   image: $CI_REGISTRY/$CNTNR_REGISTRY/$FEDORA30_BUILD:latest
-  only:
-    - virt_cacard
-  script:
-    - cd src/tests/virt_cacard
-    - ./setup-softhsm2.sh 
-    - cd ../p11test/
-    - pcscd -x  
-    - ./p11test -s 0 -p 12345678 -o cac.json -i | tee cac.log &
-    - sleep 5
-    - cd ../virt_cacard 
-    - ./virt_cacard & 
-    - cd ../p11test/
-    - wait $(ps aux | grep '[p]11test'| awk '{print $2}')
-    - kill -9 $(ps aux | grep '[v]irt_cacard'| awk '{print $2}')
-    - if [[ -f cac_old.json ]]; then diff -u3 cac_old.json cac.json; fi
-    - cp cac.json cac_old.json
-    # cache the results for the next run
-  tags:
-    - shared
+  <<: *virt_cacard
 
-3/4 Build and Test virt_cacard:
+Ubuntu18.04 Build and Test virt_cacard:
   <<: *functional_test
   image: $CI_REGISTRY/$CNTNR_REGISTRY/$UBUNTU_BUILD:latest
-  only:
-    - virt_cacard
-  script:
-    - cd src/tests/virt_cacard
-    # Change the library location for ubuntu
-    - sed 's:P11LIB=/usr/lib64/pkcs11/libsofthsm2.so:#&:' -i setup-softhsm2.sh
-    - sed 's:#P11LIB=/usr/lib/softhsm/libsofthsm2.so:P11LIB=/usr/lib/softhsm/libsofthsm2.so:' -i setup-softhsm2.sh
-    # Manually add nss module 
-    - sed 's/#	modutil -add "SoftHSM PKCS#11" -dbdir "sql:$NSSDB" -libfile "$P11LIB" -force/	modutil -add "SoftHSM PKCS#11" -dbdir "sql:$NSSDB" -libfile "$P11LIB" -force/' -i setup-softhsm2.sh
-    - ./setup-softhsm2.sh 
-    - cd ../p11test/
-    - pcscd -x  
-    - ./p11test -s 0 -p 12345678 -o cac.json -i | tee cac.log &
-    - sleep 5
-    - cd ../virt_cacard 
-    - ./virt_cacard & 
-    - cd ../p11test/
-    - wait $(ps aux | grep '[p]11test'| awk '{print $2}')
-    - kill -9 $(ps aux | grep '[v]irt_cacard'| awk '{print $2}')
-    - if [[ -f cac_old.json ]]; then diff -u3 cac_old.json cac.json; fi
-    - cp cac.json cac_old.json
-    # cache the results for the next run
-  tags:
-    - shared
+  <<: *virt_cacard
 
-4/4 Build and Test virt_cacard:
+Debian-testing Build and Test virt_cacard:
   <<: *functional_test
   image: $CI_REGISTRY/$CNTNR_REGISTRY/$DEBIAN_BUILD:latest
-  only:
-    - virt_cacard
-  script:
-    - cd src/tests/virt_cacard
-    # Change the library location for debian
-    - sed 's:P11LIB=/usr/lib64/pkcs11/libsofthsm2.so:#&:' -i setup-softhsm2.sh
-    - sed 's:#P11LIB=/usr/lib/softhsm/libsofthsm2.so:P11LIB=/usr/lib/softhsm/libsofthsm2.so:' -i setup-softhsm2.sh
-    # Manually add nss module 
-    - sed 's/#	modutil -add "SoftHSM PKCS#11" -dbdir "sql:$NSSDB" -libfile "$P11LIB" -force/	modutil -add "SoftHSM PKCS#11" -dbdir "sql:$NSSDB" -libfile "$P11LIB" -force/' -i setup-softhsm2.sh
-    - ./setup-softhsm2.sh 
-    - cd ../p11test/
-    - pcscd -x  
-    - ./p11test -s 0 -p 12345678 -o cac.json -i | tee cac.log &
-    - sleep 5
-    - cd ../virt_cacard 
-    - ./virt_cacard & 
-    - cd ../p11test/
-    - wait $(ps aux | grep '[p]11test'| awk '{print $2}')
-    - kill -9 $(ps aux | grep '[v]irt_cacard'| awk '{print $2}')
-    - if [[ -f cac_old.json ]]; then diff -u3 cac_old.json cac.json; fi
-    - cp cac.json cac_old.json
-    # cache the results for the next run
-  tags:
-    - shared
+  <<: *virt_cacard
 
-
-1/4 Build and Test virt_cacard with valgrind:
+Fedora29 Build and Test virt_cacard with valgrind:
   <<: *base_job
   image: $CI_REGISTRY/$CNTNR_REGISTRY/$FEDORA29_BUILD:latest
-  only:
-    - virt_cacard
-  script:
-    - cd src/tests/virt_cacard
-    - ./setup-softhsm2.sh 
-    - cd ../p11test/
-    # remove the dlcose() calls to have reasonable traces
-    - sed '/if(pkcs11_so)/I {N;d;}' -i p11test_loader.c
-    - make
-    - pcscd -x  
-    - valgrind --leak-check=full --trace-children=yes --suppressions=p11test.supp ./p11test -s 0 -p 12345678 -i 2>&1| tee cac.log &
-    - sleep 5
-    - cd ../virt_cacard 
-    - ./virt_cacard &
-    - wait $(ps aux | grep '[v]algrind'| awk '{print $2}')
-    - kill -9 $(ps aux | grep '[v]irt_cacard'| awk '{print $2}')
-    - cd ../p11test/
-    - grep "definitely lost:.*0 bytes in 0 blocks" cac.log
-  tags:
-    - shared
+  <<: *virt_cacard_valgrind
 
-2/4 Build and Test virt_cacard with valgrind:
+Fedora30 Build and Test virt_cacard with valgrind:
   <<: *base_job
   image: $CI_REGISTRY/$CNTNR_REGISTRY/$FEDORA30_BUILD:latest
-  only:
-    - virt_cacard
-  script:
-    - cd src/tests/virt_cacard
-    - ./setup-softhsm2.sh 
-    - cd ../p11test/
-    # remove the dlcose() calls to have reasonable traces
-    - sed '/if(pkcs11_so)/I {N;d;}' -i p11test_loader.c
-    - make
-    - pcscd -x  
-    - valgrind --leak-check=full --trace-children=yes --suppressions=p11test.supp ./p11test -s 0 -p 12345678 -i 2>&1| tee cac.log &
-    - sleep 5
-    - cd ../virt_cacard 
-    - ./virt_cacard &
-    - wait $(ps aux | grep '[v]algrind'| awk '{print $2}')
-    - kill -9 $(ps aux | grep '[v]irt_cacard'| awk '{print $2}')
-    - cd ../p11test/
-    - grep "definitely lost:.*0 bytes in 0 blocks" cac.log
-  tags:
-    - shared
+  <<: *virt_cacard_valgrind
 
-3/4 Build and Test virt_cacard with valgrind:
+Ubuntu18.04 Build and Test virt_cacard with valgrind:
   <<: *base_job
   image: $CI_REGISTRY/$CNTNR_REGISTRY/$UBUNTU_BUILD:latest
-  only:
-    - virt_cacard
-  script:
-    - cd src/tests/virt_cacard
-    # Change the library location for ubuntu
-    - sed 's:P11LIB=/usr/lib64/pkcs11/libsofthsm2.so:#&:' -i setup-softhsm2.sh
-    - sed 's:#P11LIB=/usr/lib/softhsm/libsofthsm2.so:P11LIB=/usr/lib/softhsm/libsofthsm2.so:' -i setup-softhsm2.sh
-    # Manually add nss module 
-    - sed 's/#	modutil -add "SoftHSM PKCS#11" -dbdir "sql:$NSSDB" -libfile "$P11LIB" -force/	modutil -add "SoftHSM PKCS#11" -dbdir "sql:$NSSDB" -libfile "$P11LIB" -force/' -i setup-softhsm2.sh
-    - ./setup-softhsm2.sh 
-    - cd ../p11test/
-    # remove the dlcose() calls to have reasonable traces
-    - sed '/if(pkcs11_so)/I {N;d;}' -i p11test_loader.c
-    - make
-    - pcscd -x  
-    - valgrind --leak-check=full --trace-children=yes --suppressions=p11test.supp ./p11test -s 0 -p 12345678 -i 2>&1| tee cac.log &
-    - sleep 5
-    - cd ../virt_cacard 
-    - ./virt_cacard &
-    - wait $(ps aux | grep '[v]algrind'| awk '{print $2}')
-    - kill -9 $(ps aux | grep '[v]irt_cacard'| awk '{print $2}')
-    - cd ../p11test/
-    - grep "definitely lost:.*0 bytes in 0 blocks" cac.log
-  tags:
-    - shared
+  <<: *virt_cacard_valgrind
 
-4/4 Build and Test virt_cacard with valgrind:
+Debian-testing Build and Test virt_cacard with valgrind:
   <<: *base_job
   image: $CI_REGISTRY/$CNTNR_REGISTRY/$DEBIAN_BUILD:latest
-  only:
-    - virt_cacard
-  script:
-    - cd src/tests/virt_cacard
-    # Change the library location for debian
-    - sed 's:P11LIB=/usr/lib64/pkcs11/libsofthsm2.so:#&:' -i setup-softhsm2.sh
-    - sed 's:#P11LIB=/usr/lib/softhsm/libsofthsm2.so:P11LIB=/usr/lib/softhsm/libsofthsm2.so:' -i setup-softhsm2.sh
-    # Manually add nss module 
-    - sed 's/#	modutil -add "SoftHSM PKCS#11" -dbdir "sql:$NSSDB" -libfile "$P11LIB" -force/	modutil -add "SoftHSM PKCS#11" -dbdir "sql:$NSSDB" -libfile "$P11LIB" -force/' -i setup-softhsm2.sh
-    - ./setup-softhsm2.sh 
-    - cd ../p11test/
-    # remove the dlcose() calls to have reasonable traces
-    - sed '/if(pkcs11_so)/I {N;d;}' -i p11test_loader.c
-    - make
-    - pcscd -x  
-    - valgrind --leak-check=full --trace-children=yes --suppressions=p11test.supp ./p11test -s 0 -p 12345678 -i 2>&1| tee cac.log &
-    - sleep 5
-    - cd ../virt_cacard 
-    - ./virt_cacard &
-    - wait $(ps aux | grep '[v]algrind'| awk '{print $2}')
-    - kill -9 $(ps aux | grep '[v]irt_cacard'| awk '{print $2}')
-    - cd ../p11test/
-    - grep "definitely lost:.*0 bytes in 0 blocks" cac.log
-  tags:
-    - shared
+  <<: *virt_cacard_valgrind
 
