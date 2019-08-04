@@ -147,7 +147,10 @@ iso7816_read_binary(struct sc_card *card, unsigned int idx, u8 *buf, size_t coun
 		return SC_ERROR_OFFSET_TOO_LARGE;
 	}
 
-	sc_format_apdu_ex(card, &apdu, 0xB0, (idx >> 8) & 0x7F, idx & 0xFF, NULL, 0, buf, count);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_2, 0xB0, (idx >> 8) & 0x7F, idx & 0xFF);
+	apdu.le = count;
+	apdu.resplen = count;
+	apdu.resp = buf;
 
 	fixup_transceive_length(card, &apdu);
 	r = sc_transmit_apdu(card, &apdu);
@@ -1496,7 +1499,7 @@ int iso7816_logout(sc_card_t *card, unsigned char pin_reference)
 	int r;
 	sc_apdu_t apdu;
 
-	sc_format_apdu_ex(card, &apdu, 0x20, 0xFF, pin_reference, NULL, 0, NULL, 0);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x20, 0xFF, pin_reference);
 
 	r = sc_transmit_apdu(card, &apdu);
 	if (r < 0)
