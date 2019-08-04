@@ -49,10 +49,10 @@ extern "C" {
  */
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L  && !defined(LIBRESSL_VERSION_NUMBER)
 # if defined(OPENSSL_API_COMPAT) && OPENSSL_API_COMPAT >= 0x10100000L
-#define ERR_load_crypto_strings(x) {}
-#define SSL_load_error_strings(x)  {}
-#define ERR_free_strings(x)        {}
-#define ENGINE_load_dynamic(x)     {}
+#define ERR_load_crypto_strings(x) while (0) continue
+#define SSL_load_error_strings(x)  while (0) continue
+#define ERR_free_strings(x)        while (0) continue
+#define ENGINE_load_dynamic(x)     while (0) continue
 #define EVP_CIPHER_CTX_cleanup(x) EVP_CIPHER_CTX_reset(x)
 #define EVP_CIPHER_CTX_init(x) EVP_CIPHER_CTX_reset(x)
 # endif
