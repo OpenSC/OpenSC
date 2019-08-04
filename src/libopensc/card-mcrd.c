@@ -104,8 +104,8 @@ struct df_info_s {
 
 struct mcrd_priv_data {
 	unsigned short curpath[MAX_CURPATH];	/* The currently selected path. */
-	size_t curpathlen;	/* Length of this path or 0 if unknown. */
 	int is_ef;		/* True if the path points to an EF. */
+	size_t curpathlen;	/* Length of this path or 0 if unknown. */
 	struct df_info_s *df_infos;
 	sc_security_env_t sec_env;	/* current security environment */
 };
@@ -131,8 +131,7 @@ static const struct sc_asn1_entry c_asn1_public[] = {
 };
 
 static int load_special_files(sc_card_t * card);
-static int select_part(sc_card_t * card, u8 kind, unsigned short int fid,
-		       sc_file_t ** file);
+static int select_part(sc_card_t * card, u8 kind, unsigned short int fid, sc_file_t ** file);
 
 /* Return the DF_info for the current path.  If does not yet exist,
    create it.  Returns NULL on error. */
@@ -152,8 +151,8 @@ static struct df_info_s *get_df_info(sc_card_t * card)
 
 	for (dfi = priv->df_infos; dfi; dfi = dfi->next) {
 		if (dfi->pathlen == priv->curpathlen
-		    && !memcmp(dfi->path, priv->curpath,
-			       dfi->pathlen * sizeof *dfi->path))
+			&& !memcmp(dfi->path, priv->curpath,
+					dfi->pathlen * sizeof *dfi->path))
 			return dfi;
 	}
 	/* Not found, create it. */
@@ -194,17 +193,10 @@ static int mcrd_delete_ref_to_authkey(sc_card_t * card)
 {
 	sc_apdu_t apdu;
 	int r;
-	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
-
-	if(!(card != NULL))
+	u8 sbuf[2] = { 0x83, 0x00 };
+	if(card == NULL)
 		return SC_ERROR_INTERNAL;
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0x41, 0xA4);
-
-	sbuf[0] = 0x83;
-	sbuf[1] = 0x00;
-	apdu.data = sbuf;
-	apdu.lc = 2;
-	apdu.datalen = 2;
+	sc_format_apdu_ex(card, &apdu, 0x22, 0x41, 0xA4, sbuf, 2, NULL, 0);
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
@@ -214,66 +206,10 @@ static int mcrd_delete_ref_to_signkey(sc_card_t * card)
 {
 	sc_apdu_t apdu;
 	int r;
-	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
-	if(!(card != NULL))
+	u8 sbuf[2] = { 0x83, 0x00 };
+	if(card == NULL)
 		return SC_ERROR_INTERNAL;
-
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0x41, 0xB6);
-
-	sbuf[0] = 0x83;
-	sbuf[1] = 0x00;
-	apdu.data = sbuf;
-	apdu.lc = 2;
-	apdu.datalen = 2;
-	r = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
-
-}
-
-static int mcrd_set_decipher_key_ref(sc_card_t * card, int key_reference)
-{
-	sc_apdu_t apdu;
-	sc_path_t path;
-	int r;
-	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
-	u8 keyref_data[SC_ESTEID_KEYREF_FILE_RECLEN];
-	if(!(card != NULL))
-		return SC_ERROR_INTERNAL;
-
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0x41, 0xB8);
-	/* track the active keypair  */
-	sc_format_path("0033", &path);
-	r = sc_select_file(card, &path, NULL);
-	LOG_TEST_RET(card->ctx, r, "Can't select keyref info file 0x0033");
-	r = sc_read_record(card, 1, keyref_data,
-			   SC_ESTEID_KEYREF_FILE_RECLEN, SC_RECORD_BY_REC_NR);
-	LOG_TEST_RET(card->ctx, r, "Can't read keyref info file!");
-
-	sc_log(card->ctx,
-		 "authkey reference 0x%02x%02x\n",
-		 keyref_data[9], keyref_data[10]);
-
-	sc_log(card->ctx,
-		 "signkey reference 0x%02x%02x\n",
-		 keyref_data[19], keyref_data[20]);
-
-	sbuf[0] = 0x83;
-	sbuf[1] = 0x03;
-	sbuf[2] = 0x80;
-	switch (key_reference) {
-	case 1:
-		sbuf[3] = keyref_data[9];
-		sbuf[4] = keyref_data[10];
-		break;
-	case 2:
-		sbuf[3] = keyref_data[19];
-		sbuf[4] = keyref_data[20];
-		break;
-	}
-	apdu.data = sbuf;
-	apdu.lc = 5;
-	apdu.datalen = 5;
+	sc_format_apdu_ex(card, &apdu, 0x22, 0x41, 0xB6, sbuf, 2, NULL, 0);
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
@@ -282,16 +218,6 @@ static int mcrd_set_decipher_key_ref(sc_card_t * card, int key_reference)
 static int is_esteid_card(sc_card_t *card)
 {
 	return card->type == SC_CARD_TYPE_MCRD_ESTEID_V30 ? 1 : 0;
-}
-
-static int select_esteid_df(sc_card_t * card)
-{
-	int r;
-	sc_path_t tmppath;
-	sc_format_path ("3F00EEEE", &tmppath);
-	r = sc_select_file (card, &tmppath, NULL);
-	LOG_TEST_RET(card->ctx, r, "esteid select DF failed");
-	return r;
 }
 
 static int mcrd_match_card(sc_card_t * card)
@@ -496,7 +422,7 @@ static void process_arr(sc_card_t * card, const u8 * buf, size_t buflen)
 		if (sc_asn1_read_tag(&p, left, &cla, &tag, &taglen) != SC_SUCCESS
 				|| p == NULL)
 			break;
-		left -= (p - buf);
+		left -= (size_t)(p - buf);
 		tag |= cla;
 
 		if (tag == 0x80 && taglen != 1) {
@@ -641,7 +567,7 @@ static void process_fcp(sc_card_t * card, sc_file_t * file,
 
 		for (i = 0; i < taglen; i++) {
 			if (isalnum(tag[i]) || ispunct(tag[i]) || isspace(tag[i]))
-				name[i] = tag[i];
+				name[i] = (const char)tag[i];
 			else
 				name[i] = '?';
 		}
@@ -1005,7 +931,7 @@ mcrd_select_file(sc_card_t * card, const sc_path_t * path, sc_file_t ** file)
 		pathptr = pathtmp;
 		for (n = 0; n < path->len; n += 2)
 			pathptr[n >> 1] =
-			    (path->value[n] << 8) | path->value[n + 1];
+				(unsigned short)((path->value[n] << 8) | path->value[n + 1]);
 		pathlen = path->len >> 1;
 
 		if (pathlen == priv->curpathlen && priv->is_ef != 2) {
@@ -1040,19 +966,6 @@ mcrd_select_file(sc_card_t * card, const sc_path_t * path, sc_file_t ** file)
 	return r;
 }
 
-/* Crypto operations */
-static int mcrd_restore_se(sc_card_t * card, int se_num)
-{
-	sc_apdu_t apdu;
-	int r;
-
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x22, 0xF3, se_num);
-	r = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
-	return sc_check_sw(card, apdu.sw1, apdu.sw2);
-}
-
-
 /* It seems that MICARDO does not fully comply with ISO, so I use
    values gathered from peeking actual signing operations using a
    different system.
@@ -1064,58 +977,19 @@ static int mcrd_set_security_env(sc_card_t * card,
 {
 	struct mcrd_priv_data *priv;
 	sc_apdu_t apdu;
-	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
+	u8 sbuf[5];
 	u8 *p;
-	int r, locked = 0;
+	int r = 0, locked = 0;
 
-	if (!(card != NULL && env != NULL))
+	if (card == NULL || env == NULL)
 		return SC_ERROR_INTERNAL;
 	LOG_FUNC_CALLED(card->ctx);
 	priv = DRVDATA(card);
 
-	/* special environment handling for esteid, stolen from openpgp */
-	if (is_esteid_card(card)) {
-		/* some sanity checks */
-		if (env->flags & SC_SEC_ENV_ALG_PRESENT) {
-			if (env->algorithm != SC_ALGORITHM_RSA && env->algorithm != SC_ALGORITHM_EC)
-				return SC_ERROR_INVALID_ARGUMENTS;
-		}
-		if (!(env->flags & SC_SEC_ENV_KEY_REF_PRESENT)
-		    || env->key_ref_len != 1)
-			return SC_ERROR_INVALID_ARGUMENTS;
-
-		/* Make sure we always start from MF */
-		r = sc_select_file (card, sc_get_mf_path(), NULL);
-		if (r < 0)
-			return r;
-		/* We now know that cache is not valid */
-		select_esteid_df(card);
-		switch (env->operation) {
-		case SC_SEC_OPERATION_DECIPHER:
-		case SC_SEC_OPERATION_DERIVE:
-			sc_log(card->ctx,
-				 "Using keyref %d to decipher\n",
-				 env->key_ref[0]);
-			mcrd_restore_se(card, 6);
-			mcrd_delete_ref_to_authkey(card);
-			mcrd_delete_ref_to_signkey(card);
-			mcrd_set_decipher_key_ref(card, env->key_ref[0]);
-			break;
-		case SC_SEC_OPERATION_SIGN:
-			sc_log(card->ctx, "Using keyref %d to sign\n",
-				 env->key_ref[0]);
-			mcrd_restore_se(card, 1);
-			break;
-		default:
-			return SC_ERROR_INVALID_ARGUMENTS;
-		}
-		priv->sec_env = *env;
-		return 0;
-	}
-
 	/* some sanity checks */
 	if (env->flags & SC_SEC_ENV_ALG_PRESENT) {
-		if (env->algorithm != SC_ALGORITHM_RSA)
+		if (env->algorithm != SC_ALGORITHM_RSA &&
+			(is_esteid_card(card) && env->algorithm != SC_ALGORITHM_EC))
 			return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	if (!(env->flags & SC_SEC_ENV_KEY_REF_PRESENT)
@@ -1124,48 +998,40 @@ static int mcrd_set_security_env(sc_card_t * card,
 
 	switch (env->operation) {
 	case SC_SEC_OPERATION_DECIPHER:
-		sc_log(card->ctx,
-			 "Using keyref %d to decipher\n",
-			 env->key_ref[0]);
+	case SC_SEC_OPERATION_DERIVE:
+		sc_log(card->ctx, "Using keyref %d to decipher\n", env->key_ref[0]);
 		mcrd_delete_ref_to_authkey(card);
 		mcrd_delete_ref_to_signkey(card);
-		mcrd_set_decipher_key_ref(card, env->key_ref[0]);
 		break;
 	case SC_SEC_OPERATION_SIGN:
-		sc_log(card->ctx, "Using keyref %d to sign\n",
-			 env->key_ref[0]);
+		sc_log(card->ctx, "Using keyref %d to sign\n", env->key_ref[0]);
 		break;
 	default:
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	priv->sec_env = *env;
-
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0, 0);
-	apdu.le = 0;
-	p = sbuf;
-	switch (env->operation) {
-	case SC_SEC_OPERATION_DECIPHER:
-		apdu.p1 = 0x41;
-		apdu.p2 = 0xB8;
-		break;
-	case SC_SEC_OPERATION_SIGN:
-		apdu.p1 = 0x41;
-		apdu.p2 = 0xB6;
-		break;
-	default:
-		return SC_ERROR_INVALID_ARGUMENTS;
+	if (is_esteid_card(card)) {
+		return 0;
 	}
+
+	p = sbuf;
 	*p++ = 0x83;
 	*p++ = 0x03;
 	*p++ = 0x80;
 	*p++ = env->key_ref[0];
 	*p++ = 0;
+	switch (env->operation) {
+	case SC_SEC_OPERATION_DECIPHER:
+	case SC_SEC_OPERATION_DERIVE:
+		sc_format_apdu_ex(card, &apdu, 0x22, 0x41, 0xB8, sbuf, 5, NULL, 0);
+		break;
+	case SC_SEC_OPERATION_SIGN:
+		sc_format_apdu_ex(card, &apdu, 0x22, 0x41, 0xB6, sbuf, 5, NULL, 0);
+		break;
+	default:
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 
-	r = p - sbuf;
-	apdu.lc = r;
-	apdu.datalen = r;
-	apdu.data = sbuf;
-	apdu.resplen = 0;
 	if (se_num > 0) {
 		r = sc_lock(card);
 		LOG_TEST_RET(card->ctx, r, "sc_lock() failed");
