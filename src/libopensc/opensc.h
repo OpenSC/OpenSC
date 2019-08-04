@@ -815,6 +815,12 @@ int sc_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu);
 void sc_format_apdu(struct sc_card *card, struct sc_apdu *apdu,
 		int cse, int ins, int p1, int p2);
 
+/** Format an APDU based on the data to be sent and received.
+ *
+ * Calls \a sc_transmit_apdu() by determining the APDU case based on \a datalen
+ * and \a resplen. As result, no chaining or GET RESPONSE will be performed in
+ * sc_format_apdu().
+ */
 void sc_format_apdu_ex(struct sc_card *card, struct sc_apdu *apdu,
 		u8 ins, u8 p1, u8 p2,
 		const u8 *data, size_t datalen, u8 *resp, size_t resplen);
