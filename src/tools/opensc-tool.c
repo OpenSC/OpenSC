@@ -848,6 +848,8 @@ int main(int argc, char *argv[])
 			goto end;
 		action_count--;
 	}
+	if (action_count <= 0)
+		goto end;
 
 	err = util_connect_reader(ctx, &reader, opt_reader, opt_wait, verbose);
 	if (err) {
