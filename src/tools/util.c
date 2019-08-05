@@ -72,25 +72,25 @@ int util_connect_reader (sc_context_t *ctx, sc_reader_t **reader,
 			r = sc_wait_for_event(ctx, SC_EVENT_READER_ATTACHED, &found, &event, -1, NULL);
 			if (r < 0) {
 				fprintf(stderr, "Error while waiting for a reader: %s\n", sc_strerror(r));
-				return 3;
+				return r;
 			}
 			r = sc_ctx_detect_readers(ctx);
 			if (r < 0) {
 				fprintf(stderr, "Error while refreshing readers: %s\n", sc_strerror(r));
-				return 3;
+				return r;
 			}
 		}
 		fprintf(stderr, "Waiting for a card to be inserted...\n");
 		r = sc_wait_for_event(ctx, SC_EVENT_CARD_INSERTED, &found, &event, -1, NULL);
 		if (r < 0) {
 			fprintf(stderr, "Error while waiting for a card: %s\n", sc_strerror(r));
-			return 3;
+			return r;
 		}
 		*reader = found;
 	}
 	else if (sc_ctx_get_reader_count(ctx) == 0) {
 		fprintf(stderr, "No smart card readers found.\n");
-		return 1;
+		return SC_ERROR_NO_READERS_FOUND;
 	}
 	else   {
 		if (!reader_id) {
@@ -146,15 +146,15 @@ autofound:
 		if (!(*reader)) {
 			fprintf(stderr, "Reader \"%s\" not found (%d reader(s) detected)\n",
 					reader_id, sc_ctx_get_reader_count(ctx));
-			return 1;
+			return SC_ERROR_READER;
 		}
 
 		if (sc_detect_card_presence(*reader) <= 0) {
 			fprintf(stderr, "Card not present.\n");
-			return 3;
+			return SC_ERROR_CARD_NOT_PRESENT;
 		}
 	}
-	return 0;
+	return SC_SUCCESS;
 }
 int
 util_connect_card_ex(sc_context_t *ctx, sc_card_t **cardp,
@@ -172,7 +172,7 @@ util_connect_card_ex(sc_context_t *ctx, sc_card_t **cardp,
 	r = sc_connect_card(reader, &card);
 	if (r < 0) {
 		fprintf(stderr, "Failed to connect to card: %s\n", sc_strerror(r));
-		return 1;
+		return r;
 	}
 
 	if (verbose)
@@ -183,12 +183,12 @@ util_connect_card_ex(sc_context_t *ctx, sc_card_t **cardp,
 		if (r < 0) {
 			fprintf(stderr, "Failed to lock card: %s\n", sc_strerror(r));
 			sc_disconnect_card(card);
-			return 1;
+			return r;
 		}
 	}
 
 	*cardp = card;
-	return 0;
+	return SC_SUCCESS;
 }
 
 int
