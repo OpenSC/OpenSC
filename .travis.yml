@@ -24,6 +24,14 @@ matrix:
         - HOST=i686-w64-mingw32
         - DO_PUSH_ARTIFACT=yes
     - env: DO_COVERITY_SCAN=yes
+    - compiler: gcc
+      os: linux
+      dist: bionic
+      git:
+        - submodules: true
+      env:
+        - DO_SIMULATION=cac
+        - ENABLE_VIRT_CACARD=--enable-virt_cacard
 
 env:
   global:
@@ -69,6 +77,10 @@ before_install:
         brew install gengetopt help2man cmocka ccache;
         export PATH="/usr/local/opt/ccache/libexec:$PATH";
     fi
+  - if [ "${DO_SIMULATION}" = "cac" ]; then
+        apt-get install -y libglib2.0-dev libnss3-dev  pkgconf libtool make autoconf autoconf-archive automake libsofthsm2-dev softhsm2 softhsm2-common help2man gnutls-bin libcmocka-dev libusb-dev libudev-dev flex libnss3-tools libssl-dev libpcsclite1;
+        export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig;
+    fi
 
 before_script:
   - if [ "$TRAVIS_BRANCH" = "master" -a "$TRAVIS_PULL_REQUEST" = "false" ]; then
@@ -84,7 +96,7 @@ before_script:
       ./bootstrap.ci -s "-$TRAVIS_BRANCH-pr$TRAVIS_PULL_REQUEST";
     fi
   - if [ -z "$HOST" ]; then
-      CFLAGS="-Werror" ./configure $ENABLE_DOC --enable-dnie-ui;
+      CFLAGS="-Werror" ./configure $ENABLE_DOC --enable-dnie-ui $ENABLE_VIRT_CACARD;
     else
       if [ ! -f "$(winepath 'C:/Program Files (x86)/Inno Setup 5/ISCC.exe')" ]; then
         /sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_99.pid --make-pidfile --background --exec /usr/bin/Xvfb -- :99 -ac -screen 0 1280x1024x16;
@@ -171,6 +183,21 @@ before_script:
 
       sudo /etc/init.d/pcscd restart;
     fi
+  - if [ "{$DO_SIMULATION}" = "cac" ]; then
+      # installing VPCD
+      git clone https://github.com/frankmorgner/vsmartcard.git; 
+      cd vsmartcard/virtualsmartcard; 
+      autoreconf -vis && ./configure && make -j4 && make install;
+
+      cd $TRAVIS_BUILD_DIR;
+      # Installing libcacard
+      git clone https://gitlab.freedesktop.org/spice/libcacard.git; 
+      cd libcacard && ./autogen.sh --prefix=/usr && make -j4 && make install;
+      # Setup softhsm 
+      cd $TRAVIS_BUILD_DIR/src/tests/virt_cacard;
+      ./setup-softhsm2.sh;
+      sudo /etc/init.d/pcscd restart;
+    fi
 
 script:
   - if [ "${DO_COVERITY_SCAN}" != "yes" ]; then
@@ -248,6 +275,16 @@ script:
       killall socat;
 
       set +ex;
+    fi
+  - if [ "${DO_SIMULATION}" = "cac" ]; then
+      cd $TRAVIS_BUILD_DIR/p11test/;
+      ./p11test -s 0 -p 12345678 -o &;
+      sleep 5;
+      cd ../virt_cacard; 
+      ./virt_cacard &;
+      cd ../p11test/;
+      wait $(ps aux | grep '[p]11test'| awk '{print $2}');
+      kill -9 $(ps aux | grep '[v]irt_cacard'| awk '{print $2}');
     fi
 
 after_script:
