@@ -821,9 +821,10 @@ void sc_format_apdu(struct sc_card *card, struct sc_apdu *apdu,
  * and \a resplen. As result, no chaining or GET RESPONSE will be performed in
  * sc_format_apdu().
  */
-void sc_format_apdu_ex(struct sc_card *card, struct sc_apdu *apdu,
-		u8 ins, u8 p1, u8 p2,
-		const u8 *data, size_t datalen, u8 *resp, size_t resplen);
+void sc_format_apdu_ex(struct sc_apdu *apdu,
+		u8 cla, u8 ins, u8 p1, u8 p2,
+		const u8 *data, size_t datalen,
+		u8 *resp, size_t resplen);
 
 int sc_check_apdu(struct sc_card *, const struct sc_apdu *);
 

@@ -100,16 +100,17 @@ void sc_format_apdu_cse_lc_le(struct sc_apdu *apdu)
 	}
 }
 
-void sc_format_apdu_ex(struct sc_card *card, struct sc_apdu *apdu,
-		u8 ins, u8 p1, u8 p2, const u8 *data, size_t datalen, u8 *resp, size_t resplen)
+void sc_format_apdu_ex(struct sc_apdu *apdu,
+		u8 cla, u8 ins, u8 p1, u8 p2,
+		const u8 *data, size_t datalen,
+		u8 *resp, size_t resplen)
 {
 	if (!apdu) {
 		return;
 	}
 
 	memset(apdu, 0, sizeof(*apdu));
-	if (card)
-		apdu->cla = (u8) card->cla;
+	apdu->cla = cla;
 	apdu->ins = ins;
 	apdu->p1 = p1;
 	apdu->p2 = p2;
