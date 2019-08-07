@@ -1119,7 +1119,6 @@ AC_CONFIG_FILES([
 	src/tests/regression/Makefile
 	src/tests/p11test/Makefile
 	src/tests/fuzzing/Makefile
-        src/tests/virt_cacard/Makefile
 	src/tools/Makefile
 	src/tools/versioninfo-tools.rc
 	src/tools/versioninfo-opensc-notify.rc
@@ -1138,6 +1137,9 @@ AC_CONFIG_FILES([
 	MacOSX/Distribution.xml
 	MacOSX/resources/Welcome.html
 ])
+AM_COND_IF([ENABLE_VIRT_CACARD],
+           [AC_CONFIG_FILES([src/tests/virt_cacard/Makefile])])
+
 AC_OUTPUT
 
 cat <<EOF

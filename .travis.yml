@@ -183,17 +183,16 @@ before_script:
 
       sudo /etc/init.d/pcscd restart;
     fi
+
   - if [ "{$DO_SIMULATION}" = "cac" ]; then
-      # installing VPCD
-      git clone https://github.com/frankmorgner/vsmartcard.git; 
-      cd vsmartcard/virtualsmartcard; 
+      git clone https://github.com/frankmorgner/vsmartcard.git;
+      cd vsmartcard/virtualsmartcard;
       autoreconf -vis && ./configure && make -j4 && make install;
 
       cd $TRAVIS_BUILD_DIR;
-      # Installing libcacard
-      git clone https://gitlab.freedesktop.org/spice/libcacard.git; 
+      git clone https://gitlab.freedesktop.org/spice/libcacard.git;
       cd libcacard && ./autogen.sh --prefix=/usr && make -j4 && make install;
-      # Setup softhsm 
+
       cd $TRAVIS_BUILD_DIR/src/tests/virt_cacard;
       ./setup-softhsm2.sh;
       sudo /etc/init.d/pcscd restart;
@@ -280,7 +279,7 @@ script:
       cd $TRAVIS_BUILD_DIR/p11test/;
       ./p11test -s 0 -p 12345678 -o &;
       sleep 5;
-      cd ../virt_cacard; 
+      cd ../virt_cacard;
       ./virt_cacard &;
       cd ../p11test/;
       wait $(ps aux | grep '[p]11test'| awk '{print $2}');
@@ -302,15 +301,15 @@ after_script:
     fi
 
 before_cache:
-    - brew cleanup
+  - brew cleanup
 
 cache:
   apt: true
   ccache: true
   directories:
-     - $HOME/.m2/
-     - $HOME/Library/Caches/Homebrew
-     - openssl_bin
-     - openpace_bin
+    - $HOME/.m2/
+    - $HOME/Library/Caches/Homebrew
+    - openssl_bin
+    - openpace_bin
   files:
-     - isetup-5.5.6.exe
+    - isetup-5.5.6.exe
