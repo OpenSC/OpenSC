@@ -526,7 +526,7 @@ static int eac_mse(sc_card_t *card,
 			chat, &d);
 	if (r < 0)
 		goto err;
-	sc_format_apdu_ex(card, &apdu, ISO_MSE, p1, p2,
+	sc_format_apdu_ex(&apdu, 0x00, ISO_MSE, p1, p2,
 			d, r, NULL, 0);
 
 	r = sc_transmit_apdu(card, &apdu);
@@ -626,7 +626,7 @@ static int eac_gen_auth_1_encrypted_nonce(sc_card_t *card,
 		goto err;
 	}
 
-	sc_format_apdu_ex(card, &apdu, ISO_GENERAL_AUTHENTICATE, 0x00, 0x00,
+	sc_format_apdu_ex(&apdu, 0x00, ISO_GENERAL_AUTHENTICATE, 0x00, 0x00,
 			d, r, resp, sizeof resp);
 	apdu.cla = ISO_COMMAND_CHAINING;
 
@@ -712,7 +712,7 @@ static int eac_gen_auth_2_map_nonce(sc_card_t *card,
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
-	sc_format_apdu_ex(card, &apdu, ISO_GENERAL_AUTHENTICATE, 0x00, 0x00,
+	sc_format_apdu_ex(&apdu, 0x00, ISO_GENERAL_AUTHENTICATE, 0x00, 0x00,
 		   	d, r, resp, sizeof resp);
 	apdu.cla = ISO_COMMAND_CHAINING;
 
@@ -798,7 +798,7 @@ static int eac_gen_auth_3_perform_key_agreement(sc_card_t *card,
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
-	sc_format_apdu_ex(card, &apdu, ISO_GENERAL_AUTHENTICATE, 0x00, 0x00,
+	sc_format_apdu_ex(&apdu, 0x00, ISO_GENERAL_AUTHENTICATE, 0x00, 0x00,
 			d, r, resp, sizeof resp);
 	apdu.cla = ISO_COMMAND_CHAINING;
 
@@ -887,7 +887,7 @@ static int eac_gen_auth_4_mutual_authentication(sc_card_t *card,
 		goto err;
 	}
 
-	sc_format_apdu_ex(card, &apdu, ISO_GENERAL_AUTHENTICATE, 0x00, 0x00,
+	sc_format_apdu_ex(&apdu, 0x00, ISO_GENERAL_AUTHENTICATE, 0x00, 0x00,
 			d, r, resp, sizeof resp);
 
 	sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "General authenticate (Perform Key Agreement) command data", apdu.data, apdu.datalen);
@@ -1392,7 +1392,7 @@ static int eac_get_challenge(sc_card_t *card,
 		goto err;
 	}
 
-	sc_format_apdu_ex(card, &apdu, 0x84, 0x00, 0x00, NULL, 0, challenge, len);
+	sc_format_apdu_ex(&apdu, 0x00, 0x84, 0x00, 0x00, NULL, 0, challenge, len);
 
 	r = sc_transmit_apdu(card, &apdu);
 	if (r < 0)
@@ -1425,7 +1425,7 @@ static int eac_verify(sc_card_t *card,
 		goto err;
 	}
 
-	sc_format_apdu_ex(card, &apdu, 0x2A, 0x00, 0xbe, (unsigned char *) cert, length, NULL, 0);
+	sc_format_apdu_ex(&apdu, 0x00, 0x2A, 0x00, 0xbe, (unsigned char *) cert, length, NULL, 0);
 
 	r = sc_transmit_apdu(card, &apdu);
 	if (r < 0)
@@ -1449,7 +1449,7 @@ static int eac_external_authenticate(sc_card_t *card,
 		goto err;
 	}
 
-	sc_format_apdu_ex(card, &apdu, 0x82, 0x00, 0x00, signature, signature_len, NULL, 0);
+	sc_format_apdu_ex(&apdu, 0x00, 0x82, 0x00, 0x00, signature, signature_len, NULL, 0);
 
 	r = sc_transmit_apdu(card, &apdu);
 	if (r < 0)
@@ -1689,7 +1689,7 @@ static int eac_gen_auth_ca(sc_card_t *card, const BUF_MEM *eph_pub_key,
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
-	sc_format_apdu_ex(card, &apdu, ISO_GENERAL_AUTHENTICATE, 0, 0, d, r, resp, sizeof resp);
+	sc_format_apdu_ex(&apdu, 0x00, ISO_GENERAL_AUTHENTICATE, 0, 0, d, r, resp, sizeof resp);
 
 	sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "General authenticate (Perform Key Agreement) command data", apdu.data, apdu.datalen);
 
@@ -2436,7 +2436,7 @@ int eac_pace_get_tries_left(sc_card_t *card,
 		r = eac_mse_set_at_pace(card, 0, pin_id, 0, &sw1, &sw2);
 #else
 		sc_apdu_t apdu;
-		sc_format_apdu_ex(card, &apdu, ISO_MSE, 0xC1, 0xA4, NULL, 0, NULL, 0);
+		sc_format_apdu_ex(&apdu, 0x00, ISO_MSE, 0xC1, 0xA4, NULL, 0, NULL, 0);
 		r = sc_transmit_apdu(card, &apdu);
 		sw1 = apdu.sw1;
 		sw2 = apdu.sw2;

@@ -170,11 +170,11 @@ static int esteid_set_security_env(sc_card_t *card, const sc_security_env_t *env
 	sc_log(card->ctx, "algo: %d operation: %d keyref: %d", env->algorithm, env->operation, env->key_ref[0]);
 
 	if (env->algorithm == SC_ALGORITHM_EC && env->operation == SC_SEC_OPERATION_SIGN && env->key_ref[0] == 1) {
-		sc_format_apdu_ex(card, &apdu, 0x22, 0x41, 0xA4, cse_crt_aut, sizeof(cse_crt_aut), NULL, 0);
+		sc_format_apdu_ex(&apdu, 0x00, 0x22, 0x41, 0xA4, cse_crt_aut, sizeof(cse_crt_aut), NULL, 0);
 	} else if (env->algorithm == SC_ALGORITHM_EC && env->operation == SC_SEC_OPERATION_SIGN && env->key_ref[0] == 2) {
-		sc_format_apdu_ex(card, &apdu, 0x22, 0x41, 0xB6, cse_crt_sig, sizeof(cse_crt_sig), NULL, 0);
+		sc_format_apdu_ex(&apdu, 0x00, 0x22, 0x41, 0xB6, cse_crt_sig, sizeof(cse_crt_sig), NULL, 0);
 	} else if (env->algorithm == SC_ALGORITHM_EC && env->operation == SC_SEC_OPERATION_DERIVE && env->key_ref[0] == 1) {
-		sc_format_apdu_ex(card, &apdu, 0x22, 0x41, 0xB8, cse_crt_dec, sizeof(cse_crt_dec), NULL, 0);
+		sc_format_apdu_ex(&apdu, 0x00, 0x22, 0x41, 0xB8, cse_crt_dec, sizeof(cse_crt_dec), NULL, 0);
 	} else {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 	}
@@ -204,10 +204,10 @@ static int esteid_compute_signature(sc_card_t *card, const u8 *data, size_t data
 
 	switch (env->key_ref[0]) {
 	case 1: /* authentication key */
-		sc_format_apdu_ex(card, &apdu, 0x88, 0, 0, sbuf, datalen, out, le);
+		sc_format_apdu_ex(&apdu, 0x00, 0x88, 0, 0, sbuf, datalen, out, le);
 		break;
 	default:
-		sc_format_apdu_ex(card, &apdu, 0x2A, 0x9E, 0x9A, sbuf, datalen, out, le);
+		sc_format_apdu_ex(&apdu, 0x00, 0x2A, 0x9E, 0x9A, sbuf, datalen, out, le);
 	}
 
 	SC_TRANSMIT_TEST_RET(card, apdu, "PSO CDS/INTERNAL AUTHENTICATE failed");
@@ -232,7 +232,7 @@ static int esteid_get_pin_remaining_tries(sc_card_t *card, int pin_reference) {
 	}
 
 	get_pin_info[6] = pin_reference & 0x0F; // mask out local/global
-	sc_format_apdu_ex(card, &apdu, 0xCB, 0x3F, 0xFF, get_pin_info, sizeof(get_pin_info), apdu_resp, sizeof(apdu_resp));
+	sc_format_apdu_ex(&apdu, 0x00, 0xCB, 0x3F, 0xFF, get_pin_info, sizeof(get_pin_info), apdu_resp, sizeof(apdu_resp));
 	SC_TRANSMIT_TEST_RET(card, apdu, "GET DATA(pin info) failed");
 	if (apdu.resplen < 32) {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
