@@ -273,13 +273,6 @@ AC_ARG_ENABLE(
 )
 
 AC_ARG_ENABLE(
-	[virt_cacard],
-	[AS_HELP_STRING([--enable-virt_cacard],[Run tests on virt_cacard @<:@no@:>@])],
-	,
-	[enable_virt_cacard="no"]
-)
-
-AC_ARG_ENABLE(
 	[cmocka],
 	[AS_HELP_STRING([--enable-cmocka],[Build tests in src/tests/p11test directory @<:@detect@:>@])],
 	,
@@ -678,23 +671,6 @@ else
 	OPENSSL_LIBS=""
 fi
 
-if test "${enable_virt_cacard}" = "yes"; then
-        PKG_CHECK_MODULES([CACARD], [libcacard])
-        AC_SUBST(CACARD_CFLAGS)
-        AC_SUBST(CACARD_LIBS)
-        PKG_CHECK_MODULES([GLIB], [glib-2.0 >= 2.22])
-        AC_SUBST(GLIB_CFLAGS)
-        AC_SUBST(GLIB_LIBS)
-        AC_CHECK_HEADERS([arpa/inet.h netdb.h netinet/in.h stdint.h sys/socket.h ],
-                         [],
-                         [AC_MSG_ERROR([unable to find all required headers for virt_cacard])
-        ])
-        AC_TYPE_UINT16_T
-        AC_TYPE_UINT8_T
-        AC_CHECK_FUNCS([socket])
-        enable_cmocka="yes"
-fi
-
 if test "${enable_cmocka}" = "detect"; then
 	if test "${have_cmocka}" = "yes" -a "${have_openssl}" = "yes"; then
 		enable_cmocka="yes"
@@ -1086,7 +1062,6 @@ AM_CONDITIONAL([ENABLE_CMOCKA], [test "${enable_cmocka}" = "yes"])
 AM_CONDITIONAL([GIT_CHECKOUT], [test "${GIT_CHECKOUT}" = "yes"])
 AM_CONDITIONAL([ENABLE_FUZZING], [test "${enable_fuzzing}" = "yes"])
 AM_CONDITIONAL([ENABLE_SHARED], [test "${enable_shared}" = "yes"])
-AM_CONDITIONAL([ENABLE_VIRT_CACARD], [test "${enable_virt_cacard}" = "yes"])
 AS_IF([test "${enable_shared}" = "yes"], [AC_DEFINE([ENABLE_SHARED], [1], [Enable shared libraries])])
 
 if test "${enable_pedantic}" = "yes"; then
@@ -1137,8 +1112,6 @@ AC_CONFIG_FILES([
 	MacOSX/Distribution.xml
 	MacOSX/resources/Welcome.html
 ])
-AM_COND_IF([ENABLE_VIRT_CACARD],
-           [AC_CONFIG_FILES([src/tests/virt_cacard/Makefile])])
 
 AC_OUTPUT
 
@@ -1182,7 +1155,6 @@ SM default module:       ${DEFAULT_SM_MODULE}
 SM default path:         $(eval eval eval echo "${DEFAULT_SM_MODULE_PATH}")
 DNIe UI support:         ${enable_dnie_ui}
 Notification support:    ${enable_notify}
-Virt_CACard support:     ${enable_virt_cacard}
 
 PC/SC default provider:  ${DEFAULT_PCSC_PROVIDER}
 PKCS11 default provider: $(eval eval eval echo "${DEFAULT_PKCS11_PROVIDER}")

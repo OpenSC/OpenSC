@@ -4,14 +4,16 @@ before_script:
   # enable debug messages in the testsuite
   - sed -e "s/^p11test_CFLAGS/#p11test_CFLAGS/g" -i src/tests/p11test/Makefile.am
   - ./bootstrap
-  - ./configure --enable-virt_cacard
+  - ./configure
   - make -j4
   - make check
   - make install
   - ldconfig /usr/local/lib
+  - cd ..
+  - git clone https://github.com/PL4typus/virt_cacard.git
+  - cd virt_cacard && ./autogen.sh && ./configure && make
 variables:
-  SOFTHSM2_CONF: softhsm2.conf
-  GIT_SUBMODULE_STRATEGY: normal
+  SOFTHSM2_CONF: /cicd/virt_cacard/softhsm2.conf
   CNTNR_REGISTRY: pl4typus/opensc-images
   FEDORA29_BUILD: fedora-29
   FEDORA30_BUILD: fedora-30
@@ -42,15 +44,15 @@ variables:
   only:
     - virt_cacard
   script:
-    - cd src/tests/virt_cacard
+    - cd /cicd/virt_cacard
     - ./setup-softhsm2.sh 
-    - cd ../p11test/
+    - cd /cicd/OpenSC/src/tests/p11test/
     - pcscd -x  
     - ./p11test -s 0 -p 12345678 -o cac.json -i | tee cac.log &
     - sleep 5
-    - cd ../virt_cacard 
+    - cd cicd/virt_cacard 
     - ./virt_cacard & 
-    - cd ../p11test/
+    - cd /cicd/OpenSC/src/tests/p11test/
     - wait $(ps aux | grep '[p]11test'| awk '{print $2}')
     - kill -9 $(ps aux | grep '[v]irt_cacard'| awk '{print $2}')
     - if [[ -f cac_old.json ]]; then diff -u3 cac_old.json cac.json; fi
@@ -63,20 +65,20 @@ variables:
   only:
     - virt_cacard
   script:
-    - cd src/tests/virt_cacard
+    - cd /cicd/virt_cacard
     - ./setup-softhsm2.sh 
-    - cd ../p11test/
+    - cd /cicd/OpenSC/src/tests/p11test/
     # remove the dlcose() calls to have reasonable traces
     - sed '/if(pkcs11_so)/I {N;d;}' -i p11test_loader.c
     - make
     - pcscd -x  
     - valgrind --leak-check=full --trace-children=yes --suppressions=p11test.supp ./p11test -s 0 -p 12345678 -i 2>&1| tee cac.log &
     - sleep 5
-    - cd ../virt_cacard 
+    - cd /cicd/virt_cacard
     - ./virt_cacard &
     - wait $(ps aux | grep '[v]algrind'| awk '{print $2}')
     - kill -9 $(ps aux | grep '[v]irt_cacard'| awk '{print $2}')
-    - cd ../p11test/
+    - cd /cicd/OpenSC/src/tests/p11test/
     - grep "definitely lost:.*0 bytes in 0 blocks" cac.log
   tags:
     - shared
