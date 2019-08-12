@@ -54,6 +54,7 @@
 #endif
 #include "iso7816.h"
 #include "card-cac-common.h"
+#include "pkcs15.h"
 
 /*
  *  CAC hardware and APDU constants
