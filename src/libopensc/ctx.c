@@ -128,6 +128,7 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "atrust-acos",(void *(*)(void)) sc_get_atrust_acos_driver },
 	{ "westcos",	(void *(*)(void)) sc_get_westcos_driver },
 	{ "esteid2018",	(void *(*)(void)) sc_get_esteid2018_driver },
+	{ "idprime",	(void *(*)(void)) sc_get_idprime_driver },
 
 /* Here should be placed drivers that need some APDU transactions in the
  * driver's `match_card()` function. */
