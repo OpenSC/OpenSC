@@ -811,6 +811,15 @@ sc_pkcs11_decr_init(struct sc_pkcs11_session *session,
 	}
 	rv = mt->decrypt_init(operation, key);
 
+	/* Validate the mechanism parameters */
+	if (key->ops->init_params) {
+		rv = key->ops->init_params(operation->session, &operation->mechanism);
+		if (rv != CKR_OK) {
+			/* Probably bad arguments */
+			LOG_FUNC_RETURN(context, (int) rv);
+		}
+	}
+
 	if (rv != CKR_OK)
 		session_stop_operation(session, SC_PKCS11_OPERATION_DECRYPT);
 
