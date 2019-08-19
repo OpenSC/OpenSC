@@ -134,10 +134,12 @@ AM_CONDITIONAL([HAVE_UNKNOWN_WARNING_OPTION], [test "${have_unknown_warning_opti
 
 AC_ARG_ENABLE(
 	[fuzzing],
-	[AS_HELP_STRING([--enable-fuzzing],[enable compile of fuzzing tests @<:@disabled@:>@, note that CFLAGS should be set accoringly, e.g. to something like "-fsanitize=address,fuzzer"])],
+	[AS_HELP_STRING([--enable-fuzzing],[enable compile of fuzzing tests @<:@disabled@:>@, note that CFLAGS and FUZZING_LIBS should be set accoringly, e.g. to something like CFLAGS="-fsanitize=address,fuzzer" FUZZING_LIBS="-fsanitize=fuzzer"])],
 	,
 	[enable_fuzzing="no"]
 )
+
+AC_ARG_VAR([FUZZING_LIBS], [linker flags for fuzzing])
 
 AC_ARG_ENABLE(
 	[strict],
@@ -1180,6 +1182,7 @@ PCSC_CFLAGS:             ${PCSC_CFLAGS}
 CRYPTOTOKENKIT_CFLAGS:   ${CRYPTOTOKENKIT_CFLAGS}
 GIO2_CFLAGS:             ${GIO2_CFLAGS}
 GIO2_LIBS:               ${GIO2_LIBS}
+FUZZING_LIBS:            ${FUZZING_LIBS}
 
 EOF
 

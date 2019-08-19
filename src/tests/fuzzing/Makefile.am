@@ -1,6 +1,6 @@
 AM_CPPFLAGS = -I$(top_srcdir)/src
 AM_CFLAGS = -g -O0 $(OPTIONAL_OPENSSL_CFLAGS) $(OPTIONAL_READLINE_CFLAGS) $(PTHREAD_CFLAGS)
-LIBS = \
+LIBS = $(FUZZING_LIBS) \
 	$(top_builddir)/src/libopensc/libopensc.la \
 	$(top_builddir)/src/common/libscdl.la \
 	$(top_builddir)/src/common/libcompat.la
