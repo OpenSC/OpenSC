@@ -11,6 +11,7 @@ Build and test status of specific cards:
 | Cards                                                               | Status                                                                                                                            |
 |---------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------|
 | CAC                                                                 | [![CAC](https://gitlab.com/redhat-crypto/OpenSC/badges/cac/build.svg)](https://gitlab.com/redhat-crypto/OpenSC/pipelines)         |
+| [virt_CACard](https://github.com/OpenSC/OpenSC/tree/virt_cacard)                                                         | [![virt_CACard](https://travis-ci.org/OpenSC/OpenSC.svg)](https://travis-ci.org/OpenSC/OpenSC/branches)        |
 | [Coolkey](https://github.com/dogtagpki/coolkey/tree/master/applet)  | [![Coolkey](https://gitlab.com/redhat-crypto/OpenSC/badges/coolkey/build.svg)](https://gitlab.com/redhat-crypto/OpenSC/pipelines) |
 | [PivApplet](https://github.com/arekinath/PivApplet)                 | [![PIV](https://travis-ci.org/OpenSC/OpenSC.svg)](https://travis-ci.org/OpenSC/OpenSC/branches)                                   |
 | [OpenPGP Applet](https://github.com/Yubico/ykneo-openpgp/)          | [![OpenPGP](https://travis-ci.org/OpenSC/OpenSC.svg)](https://travis-ci.org/OpenSC/OpenSC/branches)                               |

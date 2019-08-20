@@ -1,0 +1,126 @@
+before_script:
+  # Avoid picking up PIV endpoint in CAC cards
+  - sed -e "/PIV-II/d" -i src/libopensc/ctx.c
+  # enable debug messages in the testsuite
+  - sed -e "s/^p11test_CFLAGS/#p11test_CFLAGS/g" -i src/tests/p11test/Makefile.am
+  - ./bootstrap
+  - ./configure
+  - make -j4
+  - make check
+  - make install
+  - ldconfig /usr/local/lib
+  - git clone https://github.com/PL4typus/virt_cacard.git
+  - cd virt_cacard && export CACARD_DIR=$PWD && ./autogen.sh && ./configure && make
+variables:
+  SOFTHSM2_CONF: softhsm2.conf
+  CNTNR_REGISTRY: pl4typus/opensc-images
+  FEDORA29_BUILD: fedora-29
+  FEDORA30_BUILD: fedora-30
+  UBUNTU_BUILD: ubuntu-18.04
+  DEBIAN_BUILD: debian-testing
+
+.job_base: &base_job
+  artifacts:
+    expire_in: '1 week'
+    when: on_failure
+    paths:
+      - src/tests/p11test/*.log
+
+.job_template: &functional_test
+  <<: *base_job
+  artifacts:
+    expire_in: '1 week'
+    when: on_failure
+    paths:
+      - src/tests/p11test/*.log
+      - src/tests/p11test/*.json
+      - tests/test-suite.log
+  cache:
+    paths:
+      - src/tests/p11test/*.json
+
+.virt_cacard: &virt_cacard
+  only:
+    - virt_cacard
+  script:
+    - ./setup-softhsm2.sh 
+    - cd ../src/tests/p11test/
+    - pcscd -x  
+    - ./p11test -s 0 -p 12345678 -o cac.json -i | tee cac.log &
+    - sleep 5
+    - cd $CACARD_DIR 
+    - ./virt_cacard & 
+    - cd ../src/tests/p11test/
+    - wait $(ps aux | grep '[p]11test'| awk '{print $2}')
+    - kill -9 $(ps aux | grep '[v]irt_cacard'| awk '{print $2}')
+    - if [[ -f cac_old.json ]]; then diff -u3 cac_old.json cac.json; fi
+    - cp cac.json cac_old.json
+    # cache the results for the next run
+  tags:
+    - shared
+
+.virt_cacard_valgrind: &virt_cacard_valgrind
+  only:
+    - virt_cacard
+  script:
+    - ./setup-softhsm2.sh 
+    - cd ../src/tests/p11test/
+    # remove the dlcose() calls to have reasonable traces
+    - sed '/if(pkcs11_so)/I {N;d;}' -i p11test_loader.c
+    - make
+    - pcscd -x  
+    - valgrind --leak-check=full --trace-children=yes --suppressions=p11test.supp ./p11test -s 0 -p 12345678 -i 2>&1| tee cac.log &
+    - sleep 5
+    - cd $CACARD_DIR
+    - ./virt_cacard &
+    - wait $(ps aux | grep '[v]algrind'| awk '{print $2}')
+    - kill -9 $(ps aux | grep '[v]irt_cacard'| awk '{print $2}')
+    - cd ../src/tests/p11test/
+    - grep "definitely lost:.*0 bytes in 0 blocks" cac.log
+  tags:
+    - shared
+
+################################
+##      Virtual CACard        ##
+################################
+
+Fedora29 Build and Test virt_cacard:
+  <<: *functional_test
+  image: $CI_REGISTRY/$CNTNR_REGISTRY/$FEDORA29_BUILD:latest
+  <<: *virt_cacard
+
+Fedora30 Build and Test virt_cacard:
+  <<: *functional_test
+  image: $CI_REGISTRY/$CNTNR_REGISTRY/$FEDORA30_BUILD:latest
+  <<: *virt_cacard
+
+Ubuntu18.04 Build and Test virt_cacard:
+  <<: *functional_test
+  image: $CI_REGISTRY/$CNTNR_REGISTRY/$UBUNTU_BUILD:latest
+  <<: *virt_cacard
+
+Debian-testing Build and Test virt_cacard:
+  <<: *functional_test
+  image: $CI_REGISTRY/$CNTNR_REGISTRY/$DEBIAN_BUILD:latest
+  <<: *virt_cacard
+
+Fedora29 Build and Test virt_cacard with valgrind:
+  <<: *base_job
+  image: $CI_REGISTRY/$CNTNR_REGISTRY/$FEDORA29_BUILD:latest
+  <<: *virt_cacard_valgrind
+
+Fedora30 Build and Test virt_cacard with valgrind:
+  <<: *base_job
+  image: $CI_REGISTRY/$CNTNR_REGISTRY/$FEDORA30_BUILD:latest
+  <<: *virt_cacard_valgrind
+
+Ubuntu18.04 Build and Test virt_cacard with valgrind:
+  <<: *base_job
+  image: $CI_REGISTRY/$CNTNR_REGISTRY/$UBUNTU_BUILD:latest
+  <<: *virt_cacard_valgrind
+
+Debian-testing Build and Test virt_cacard with valgrind:
+  <<: *base_job
+  image: $CI_REGISTRY/$CNTNR_REGISTRY/$DEBIAN_BUILD:latest
+  <<: *virt_cacard_valgrind
+

@@ -24,6 +24,12 @@ matrix:
         - HOST=i686-w64-mingw32
         - DO_PUSH_ARTIFACT=yes
     - env: DO_COVERITY_SCAN=yes
+    - compiler: gcc
+      os: linux
+      dist: bionic
+      env:
+        - DO_SIMULATION=cac
+      sudo: true
 
 env:
   global:
@@ -48,7 +54,6 @@ addons:
     - gcc-mingw-w64-x86-64
     - libpcsclite-dev
     - mingw-w64
-    - wine
     - xsltproc
     - gengetopt
     - libcmocka-dev
@@ -68,6 +73,13 @@ before_install:
         brew install libtool;
         brew install gengetopt help2man cmocka ccache;
         export PATH="/usr/local/opt/ccache/libexec:$PATH";
+    fi
+  - if [ "${DO_SIMULATION}" = "cac" ]; then
+        sudo apt-get install -y libglib2.0-dev libnss3-dev  pkgconf libtool make autoconf autoconf-archive automake libsofthsm2-dev softhsm2 softhsm2-common help2man gnutls-bin libcmocka-dev libusb-dev libudev-dev flex libnss3-tools libssl-dev libpcsclite1;
+        export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig;
+    fi
+  - if [ -n "${HOST}" ]; then
+        sudo apt-get install -y wine;
     fi
 
 before_script:
@@ -172,6 +184,23 @@ before_script:
       sudo /etc/init.d/pcscd restart;
     fi
 
+  - if [ "${DO_SIMULATION}" = "cac" ]; then
+      git clone https://github.com/frankmorgner/vsmartcard.git;
+      cd vsmartcard/virtualsmartcard;
+      autoreconf -vis && ./configure && make -j4 && sudo make install;
+
+      cd $TRAVIS_BUILD_DIR;
+      git clone https://gitlab.freedesktop.org/spice/libcacard.git;
+      cd libcacard && ./autogen.sh --prefix=/usr && make -j4 && sudo make install;
+
+      cd $TRAVIS_BUILD_DIR;
+      git clone https://github.com/PL4typus/virt_cacard.git;
+      cd virt_cacard && ./autogen.sh && ./configure && make;
+
+      cd $TRAVIS_BUILD_DIR;
+      sudo /etc/init.d/pcscd restart;
+    fi
+
 script:
   - if [ "${DO_COVERITY_SCAN}" != "yes" ]; then
       if [ "${TRAVIS_OS_NAME}" = "osx" ]; then
@@ -249,6 +278,20 @@ script:
 
       set +ex;
     fi
+  - if [ "${DO_SIMULATION}" = "cac" ]; then
+      cd $TRAVIS_BUILD_DIR;
+      make check && sudo make install;
+      export LD_LIBRARY_PATH=/usr/local/lib;
+      cd src/tests/p11test/;
+      ./p11test -s 0 -p 12345678 -i &
+      sleep 5;
+      cd $TRAVIS_BUILD_DIR/virt_cacard;
+      ./setup-softhsm2.sh;
+      export SOFTHSM2_CONF=$PWD/softhsm2.conf;
+      ./virt_cacard &
+      wait $(ps aux | grep '[p]11test'| awk '{print $2}');
+      kill -9 $(ps aux | grep '[v]irt_cacard'| awk '{print $2}');
+    fi
 
 after_script:
   # kill process started during compilation to finish the build, see
@@ -265,15 +308,15 @@ after_script:
     fi
 
 before_cache:
-    - brew cleanup
+  - brew cleanup
 
 cache:
   apt: true
   ccache: true
   directories:
-     - $HOME/.m2/
-     - $HOME/Library/Caches/Homebrew
-     - openssl_bin
-     - openpace_bin
+    - $HOME/.m2/
+    - $HOME/Library/Caches/Homebrew
+    - openssl_bin
+    - openpace_bin
   files:
-     - isetup-5.5.6.exe
+    - isetup-5.5.6.exe
