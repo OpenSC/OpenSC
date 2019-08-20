@@ -196,7 +196,7 @@ static int mcrd_delete_ref_to_authkey(sc_card_t * card)
 	u8 sbuf[2] = { 0x83, 0x00 };
 	if(card == NULL)
 		return SC_ERROR_INTERNAL;
-	sc_format_apdu_ex(card, &apdu, 0x22, 0x41, 0xA4, sbuf, 2, NULL, 0);
+	sc_format_apdu_ex(&apdu, 0x00, 0x22, 0x41, 0xA4, sbuf, 2, NULL, 0);
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
@@ -209,7 +209,7 @@ static int mcrd_delete_ref_to_signkey(sc_card_t * card)
 	u8 sbuf[2] = { 0x83, 0x00 };
 	if(card == NULL)
 		return SC_ERROR_INTERNAL;
-	sc_format_apdu_ex(card, &apdu, 0x22, 0x41, 0xB6, sbuf, 2, NULL, 0);
+	sc_format_apdu_ex(&apdu, 0x00, 0x22, 0x41, 0xB6, sbuf, 2, NULL, 0);
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
@@ -1023,10 +1023,10 @@ static int mcrd_set_security_env(sc_card_t * card,
 	switch (env->operation) {
 	case SC_SEC_OPERATION_DECIPHER:
 	case SC_SEC_OPERATION_DERIVE:
-		sc_format_apdu_ex(card, &apdu, 0x22, 0x41, 0xB8, sbuf, 5, NULL, 0);
+		sc_format_apdu_ex(&apdu, 0x00, 0x22, 0x41, 0xB8, sbuf, 5, NULL, 0);
 		break;
 	case SC_SEC_OPERATION_SIGN:
-		sc_format_apdu_ex(card, &apdu, 0x22, 0x41, 0xB6, sbuf, 5, NULL, 0);
+		sc_format_apdu_ex(&apdu, 0x00, 0x22, 0x41, 0xB6, sbuf, 5, NULL, 0);
 		break;
 	default:
 		return SC_ERROR_INVALID_ARGUMENTS;
