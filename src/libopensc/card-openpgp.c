@@ -2292,52 +2292,62 @@ pgp_update_new_algo_attr(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_
 	r = pgp_seek_blob(card, priv->mf, tag, &algo_blob);
 	LOG_TEST_RET(card->ctx, r, "Cannot get old algorithm attributes");
 
-	/* ECDSA and ECDH */
-	if (key_info->algorithm == SC_OPENPGP_KEYALGO_ECDH
-		|| key_info->algorithm == SC_OPENPGP_KEYALGO_ECDSA){
-		data_len = key_info->u.ec.oid_len+1;
-		data = malloc(data_len);
-		if (!data)
-			LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
+	if (priv->ext_caps & EXT_CAP_ALG_ATTR_CHANGEABLE) {
+		/* ECDSA and ECDH */
+		if (key_info->algorithm == SC_OPENPGP_KEYALGO_ECDH
+				|| key_info->algorithm == SC_OPENPGP_KEYALGO_ECDSA){
+			data_len = key_info->u.ec.oid_len+1;
+			data = malloc(data_len);
+			if (!data)
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
 
-		data[0] = key_info->algorithm;
-		/* oid.value is type int, therefore we need to loop over the values */
-		for (i=0; i < key_info->u.ec.oid_len; i++){
-			data[i+1] = key_info->u.ec.oid.value[i];
+			data[0] = key_info->algorithm;
+			/* oid.value is type int, therefore we need to loop over the values */
+			for (i=0; i < key_info->u.ec.oid_len; i++){
+				data[i+1] = key_info->u.ec.oid.value[i];
+			}
 		}
+
+		/* RSA */
+		else if (key_info->algorithm == SC_OPENPGP_KEYALGO_RSA){
+
+			/* We can not rely on previous key attributes anymore, as it might be ECC */
+			if (key_info->u.rsa.exponent_len == 0 || key_info->u.rsa.modulus_len == 0)
+				LOG_FUNC_RETURN(card->ctx,SC_ERROR_INVALID_ARGUMENTS);
+
+			data_len = 6;
+			data = malloc(data_len);
+			if (!data)
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
+
+			data[0] = key_info->algorithm;
+			ushort2bebytes(data+1, key_info->u.rsa.modulus_len);
+			/* OpenPGP Card only accepts 32bit as exponent lenght field,
+			 * although you can import keys with smaller exponent;
+			 * thus we don't change rsa.exponent_len, but ignore it here */
+			ushort2bebytes(data+3, SC_OPENPGP_MAX_EXP_BITS);
+			/* Import-Format of private key (e,p,q) */
+			data[5] = SC_OPENPGP_KEYFORMAT_RSA_STD;
+		}
+		else {
+			sc_log(card->ctx, "Unknown algorithm id");
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+		}
+
+		pgp_set_blob(algo_blob, data, data_len);
+		free(data);
+		r = pgp_put_data(card, tag, algo_blob->data, data_len);
+		/* Note: Don't use pgp_set_blob to set data, because it won't touch the real DO */
+		LOG_TEST_RET(card->ctx, r, "Cannot set new algorithm attributes");
+	} else {
+		sc_cardctl_openpgp_keygen_info_t old_key_info;
+
+		if (pgp_parse_algo_attr_blob(algo_blob, &old_key_info) != SC_SUCCESS
+				|| old_key_info.algorithm != key_info->algorithm)
+			LOG_TEST_RET(card->ctx, SC_ERROR_NO_CARD_SUPPORT,
+					"Requested algorithm not supported");
+		/* FIXME check whether the static parameters match the requested ones. */
 	}
-
-	/* RSA */
-	else if (key_info->algorithm == SC_OPENPGP_KEYALGO_RSA){
-
-		/* We can not rely on previous key attributes anymore, as it might be ECC */
-		if (key_info->u.rsa.exponent_len == 0 || key_info->u.rsa.modulus_len == 0)
-			LOG_FUNC_RETURN(card->ctx,SC_ERROR_INVALID_ARGUMENTS);
-
-		data_len = 6;
-		data = malloc(data_len);
-		if (!data)
-			LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
-
-		data[0] = key_info->algorithm;
-		ushort2bebytes(data+1, key_info->u.rsa.modulus_len);
-		/* OpenPGP Card only accepts 32bit as exponent lenght field,
-		 * although you can import keys with smaller exponent;
-		 * thus we don't change rsa.exponent_len, but ignore it here */
-		ushort2bebytes(data+3, SC_OPENPGP_MAX_EXP_BITS);
-		/* Import-Format of private key (e,p,q) */
-		data[5] = SC_OPENPGP_KEYFORMAT_RSA_STD;
-	}
-	else {
-		sc_log(card->ctx, "Unknown algorithm id");
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
-	}
-
-	pgp_set_blob(algo_blob, data, data_len);
-	free(data);
-	r = pgp_put_data(card, tag, algo_blob->data, data_len);
-	/* Note: Don't use pgp_set_blob to set data, because it won't touch the real DO */
-	LOG_TEST_RET(card->ctx, r, "Cannot set new algorithm attributes");
 
 	LOG_FUNC_RETURN(card->ctx, r);
 }

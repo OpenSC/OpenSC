@@ -705,10 +705,14 @@ int do_genkey(sc_card_t *card, u8 in_key_id, const char *keytype)
 		key_info.key_id = in_key_id;
 		key_info.algorithm = SC_OPENPGP_KEYALGO_RSA;
 		key_info.u.rsa.modulus_len = keylen;
-		key_info.u.rsa.modulus = malloc(BYTES4BITS(keylen));
+		key_info.u.rsa.modulus = calloc(BYTES4BITS(keylen), 1);
+		/* The OpenPGP supports only 32-bit exponent. */
+		key_info.u.rsa.exponent_len = 32;
+		key_info.u.rsa.exponent = calloc(BYTES4BITS(key_info.u.rsa.exponent_len), 1);
 
 		r = sc_card_ctl(card, SC_CARDCTL_OPENPGP_GENERATE_KEY, &key_info);
 		free(key_info.u.rsa.modulus);
+		free(key_info.u.rsa.exponent);
 		if (r < 0) {
 			util_error("failed to generate key: %s", sc_strerror(r));
 			return EXIT_FAILURE;
