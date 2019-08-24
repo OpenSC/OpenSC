@@ -31,6 +31,7 @@
 
 #define ISOAPPLET_ALG_REF_ECDSA 0x21
 #define ISOAPPLET_ALG_REF_RSA_PAD_PKCS1 0x11
+#define ISOAPPLET_ALG_REF_RSA_NOPAD 0x12
 
 #define ISOAPPLET_API_VERSION_MAJOR 0x00
 #define ISOAPPLET_API_VERSION_MINOR 0x06
@@ -249,6 +250,7 @@ isoApplet_init(sc_card_t *card)
 	flags = 0;
 	/* Padding schemes: */
 	flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
+	flags |= SC_ALGORITHM_RSA_RAW;
 	/* Hashes are to be done by the host for RSA */
 	flags |= SC_ALGORITHM_RSA_HASH_NONE;
 	/* Key-generation: */
@@ -1106,6 +1108,10 @@ isoApplet_set_security_env(sc_card_t *card,
 			if( env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1 )
 			{
 				drvdata->sec_env_alg_ref = ISOAPPLET_ALG_REF_RSA_PAD_PKCS1;
+			}
+		   	else if( env->algorithm_flags & SC_ALGORITHM_RSA_RAW )
+			{
+				drvdata->sec_env_alg_ref = ISOAPPLET_ALG_REF_RSA_NOPAD;
 			}
 			else
 			{
