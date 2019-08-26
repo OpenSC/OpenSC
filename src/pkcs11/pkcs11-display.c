@@ -96,7 +96,7 @@ buf_spec(CK_VOID_PTR buf_addr, CK_ULONG buf_len)
 #if !defined(_MSC_VER) || _MSC_VER >= 1800
 	const size_t prwidth = sizeof(CK_VOID_PTR) * 2;
 
-	sprintf(ret, "%0*"PRIxPTR" / %lu", (int) prwidth, (uintptr_t) buf_addr,
+	sprintf(ret, "%0*"PRIxPTR" / %ld", (int) prwidth, (uintptr_t) buf_addr,
 		buf_len);
 #else
 	if (sizeof(CK_VOID_PTR) == 4)
