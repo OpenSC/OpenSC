@@ -621,6 +621,7 @@ iasecc_parse_docp(struct sc_card *card, unsigned char *data, size_t data_len, st
 			sdo->docp.tries_remaining = tlv;
 		}
 		else   {
+			free(tlv.value);
 			LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "iasecc_parse_get_tlv() parse error: non DOCP tag");
 		}
 
