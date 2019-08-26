@@ -539,7 +539,9 @@ static int jcop_create_file(sc_card_t *card, sc_file_t *file) {
 	  
 	  entry = sc_file_get_acl_entry(file, ops[i]);
 	  r = acl_to_ac_nibble(entry);
-	  sec_attr_data[i/2] |= r << ((i % 2) ? 0 : 4);
+	  if (r >= 0) {
+		sec_attr_data[i/2] |= r << ((i % 2) ? 0 : 4);
+	  }
      }
 
      sc_file_set_sec_attr(file, sec_attr_data, 3);
