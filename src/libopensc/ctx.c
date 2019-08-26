@@ -826,6 +826,7 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 	set_defaults(ctx, &opts);
 
 	if (0 != list_init(&ctx->readers)) {
+		del_drvs(&opts);
 		sc_release_context(ctx);
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
@@ -835,6 +836,7 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 		ctx->thread_ctx = parm->thread_ctx;
 	r = sc_mutex_create(ctx, &ctx->mutex);
 	if (r != SC_SUCCESS) {
+		del_drvs(&opts);
 		sc_release_context(ctx);
 		return r;
 	}
@@ -861,6 +863,7 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 
 	r = ctx->reader_driver->ops->init(ctx);
 	if (r != SC_SUCCESS)   {
+		del_drvs(&opts);
 		sc_release_context(ctx);
 		return r;
 	}
