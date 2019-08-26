@@ -447,8 +447,12 @@ static int sc_pkcs15emu_sc_hsm_get_rsa_public_key(struct sc_context *ctx, sc_cvc
 	pubkey->u.rsa.modulus.data	= malloc(pubkey->u.rsa.modulus.len);
 	pubkey->u.rsa.exponent.len	= cvc->coefficientAorExponentlen;
 	pubkey->u.rsa.exponent.data	= malloc(pubkey->u.rsa.exponent.len);
-	if (!pubkey->u.rsa.modulus.data || !pubkey->u.rsa.exponent.data)
+	if (!pubkey->u.rsa.modulus.data || !pubkey->u.rsa.exponent.data) {
+		free(pubkey->u.rsa.modulus.data);
+		free(pubkey->u.rsa.exponent.data);
+		free(pubkey->alg_id);
 		return SC_ERROR_OUT_OF_MEMORY;
+	}
 
 	memcpy(pubkey->u.rsa.exponent.data, cvc->coefficientAorExponent, pubkey->u.rsa.exponent.len);
 	memcpy(pubkey->u.rsa.modulus.data, cvc->primeOrModulus, pubkey->u.rsa.modulus.len);
