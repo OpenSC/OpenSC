@@ -501,14 +501,23 @@ static int sc_pkcs15emu_sc_hsm_get_ec_public_key(struct sc_context *ctx, sc_cvc_
 	pubkey->alg_id->params = ecp;
 
 	pubkey->u.ec.ecpointQ.value = malloc(cvc->publicPointlen);
-	if (!pubkey->u.ec.ecpointQ.value)
+	if (!pubkey->u.ec.ecpointQ.value) {
+		free(pubkey->alg_id);
+		free(ecp->der.value);
+		free(ecp);
 		return SC_ERROR_OUT_OF_MEMORY;
+	}
 	memcpy(pubkey->u.ec.ecpointQ.value, cvc->publicPoint, cvc->publicPointlen);
 	pubkey->u.ec.ecpointQ.len = cvc->publicPointlen;
 
 	pubkey->u.ec.params.der.value = malloc(ecp->der.len);
-	if (!pubkey->u.ec.params.der.value)
+	if (!pubkey->u.ec.params.der.value) {
+		free(pubkey->u.ec.ecpointQ.value);
+		free(pubkey->alg_id);
+		free(ecp->der.value);
+		free(ecp);
 		return SC_ERROR_OUT_OF_MEMORY;
+	}
 	memcpy(pubkey->u.ec.params.der.value, ecp->der.value, ecp->der.len);
 	pubkey->u.ec.params.der.len = ecp->der.len;
 
