@@ -4,7 +4,22 @@
 SOPIN="12345678"
 PIN="123456"
 PKCS11_TOOL="../src/tools/pkcs11-tool"
-P11LIB="/usr/lib64/pkcs11/libsofthsm2.so"
+
+softhsm_paths="/usr/local/lib/softhsm/libsofthsm2.so \
+	/usr/lib64/pkcs11/libsofthsm2.so \
+	/usr/lib/x86_64-linux-gnu/softhsm/libsofthsm2.so"
+
+for LIB in $softhsm_paths; do
+	echo "Testing $LIB"
+	if [[ -f $LIB ]]; then
+		P11LIB=$LIB
+		echo "Setting P11LIB=$LIB"
+		break
+	fi
+done
+if [[ -z "$P11LIB" ]]; then
+	echo "Warning: Could not find the softhsm pkcs11 module"
+fi
 
 ERRORS=0
 function assert() {
