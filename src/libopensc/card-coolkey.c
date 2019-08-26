@@ -1448,6 +1448,9 @@ coolkey_find_attribute(sc_card_t *card, sc_cardctl_coolkey_attribute_t *attribut
 			return r;
 		}
 		obj = attribute->object->data;
+		if (obj == NULL) {
+			return SC_ERROR_INTERNAL;
+		}
 	}
 
 	/* should be a static assert so we catch this at compile time */
