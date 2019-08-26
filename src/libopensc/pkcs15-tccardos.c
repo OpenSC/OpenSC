@@ -215,7 +215,7 @@ static int parse_EF_CardInfo(sc_pkcs15_card_t *p15card)
 
 	/* read EF_CardInfo1 */
 	r = read_file(p15card->card, "3F001003b200", info1, &info1_len);
-	if (r != SC_SUCCESS)
+	if (r != SC_SUCCESS || info1_len < 4)
 		return SC_ERROR_WRONG_CARD;
 	/* read EF_CardInfo2 */
 	r = read_file(p15card->card, "3F001003b201", info2, &info2_len);
