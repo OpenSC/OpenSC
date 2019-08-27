@@ -570,16 +570,20 @@ static int decode_bit_string(const u8 * inbuf, size_t inlen, void *outbuf,
 {
 	const u8 *in = inbuf;
 	u8 *out = (u8 *) outbuf;
-	int zero_bits = *in & 0x07;
-	size_t octets_left = inlen - 1;
 	int i, count = 0;
+	int zero_bits;
+	size_t octets_left;
 
-	memset(outbuf, 0, outlen);
-	in++;
 	if (outlen < octets_left)
 		return SC_ERROR_BUFFER_TOO_SMALL;
 	if (inlen < 1)
 		return SC_ERROR_INVALID_ASN1_OBJECT;
+
+	zero_bits = *in & 0x07;
+	octets_left = inlen - 1;
+	in++;
+	memset(outbuf, 0, outlen);
+
 	while (octets_left) {
 		/* 1st octet of input:  ABCDEFGH, where A is the MSB */
 		/* 1st octet of output: HGFEDCBA, where A is the LSB */
