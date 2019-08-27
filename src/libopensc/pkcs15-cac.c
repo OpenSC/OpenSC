@@ -324,7 +324,7 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 
 		r = sc_pkcs15_get_bitstring_extension(card->ctx, cert_out, &usage_type, &usage, NULL);
 		if (r < 0) {
-			usage = 0xd9ULL; /* basic default usage */
+			usage = SC_X509_DATA_ENCIPHERMENT|SC_X509_DIGITAL_SIGNATURE; /* basic default usage */
 		}
 		sc_pkcs15_map_usage(usage, cert_out->key->algorithm, &pubkey_info.usage, &prkey_info.usage, 1);
 		sc_log(card->ctx,   "cert %s: cert_usage=0x%x, pub_usage=0x%x priv_usage=0x%x\n",
