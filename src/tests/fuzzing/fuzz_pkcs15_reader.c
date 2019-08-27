@@ -210,7 +210,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
             int decipher_flags[] = {SC_ALGORITHM_RSA_RAW,
                 SC_ALGORITHM_RSA_PAD_PKCS1, SC_ALGORITHM_RSA_PAD_ANSI,
                 SC_ALGORITHM_RSA_PAD_ISO9796};
-            for (i = 0; i < sizeof decipher_flags; i++) {
+            for (i = 0; i < sizeof decipher_flags/sizeof *decipher_flags; i++) {
                 sc_pkcs15_decipher(p15card, obj, decipher_flags[i],
                         in, in_len, buf, sizeof buf);
             }
@@ -221,7 +221,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
 
             int wrap_flags[] = {0, SC_ALGORITHM_AES_ECB, SC_ALGORITHM_AES_CBC_PAD,
                 SC_ALGORITHM_AES_CBC};
-            for (i = 0; i < sizeof wrap_flags; i++) {
+            for (i = 0; i < sizeof wrap_flags/sizeof *wrap_flags; i++) {
                 struct sc_pkcs15_object target_key;
                 sc_pkcs15_unwrap(p15card, obj, &target_key, wrap_flags[i],
                         in, in_len, param, param_len);
@@ -244,7 +244,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
                 SC_ALGORITHM_GOSTR3410_RAW, SC_ALGORITHM_GOSTR3410_HASH_GOSTR3411,
                 SC_ALGORITHM_GOSTR3410_HASHES,
             };
-            for (i = 0; i < sizeof signature_flags; i++) {
+            for (i = 0; i < sizeof signature_flags/sizeof *signature_flags; i++) {
                 sc_pkcs15_compute_signature(p15card, obj, signature_flags[i],
                         in, in_len, buf, sizeof buf);
             }
