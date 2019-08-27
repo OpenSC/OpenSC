@@ -211,6 +211,8 @@ isoApplet_init(sc_card_t *card)
 
 	/* Obtain applet version and specific features */
 	if (0 > isoApplet_select_applet(card, isoApplet_aid, ISOAPPLET_AID_LEN, rbuf, &rlen)) {
+		free(card->drv_data);
+		card->drv_data = NULL;
 		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_CARD, "Error obtaining applet version.");
 	}
 	if(rlen < 3)
