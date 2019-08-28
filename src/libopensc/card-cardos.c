@@ -27,6 +27,7 @@
 
 #include <ctype.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include "internal.h"
 #include "asn1.h"
