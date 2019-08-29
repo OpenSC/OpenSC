@@ -205,21 +205,26 @@ unsigned long bebytes2ulong(const u8 *buf)
 {
 	if (buf == NULL)
 		return 0UL;
-	return (unsigned long) (buf[0] << 24 | buf[1] << 16 | buf[2] << 8 | buf[3]);
+	return (unsigned long)buf[0] << 24
+		| (unsigned long)buf[1] << 16
+		| (unsigned long)buf[2] << 8
+		| (unsigned long)buf[3];
 }
 
 unsigned short bebytes2ushort(const u8 *buf)
 {
 	if (buf == NULL)
 		return 0U;
-	return (unsigned short) (buf[0] << 8 | buf[1]);
+	return (unsigned short)buf[0] << 8
+		| (unsigned short)buf[1];
 }
 
 unsigned short lebytes2ushort(const u8 *buf)
 {
 	if (buf == NULL)
 		return 0U;
-	return (unsigned short)buf[1] << 8 | (unsigned short)buf[0];
+	return (unsigned short)buf[1] << 8
+		| (unsigned short)buf[0];
 }
 
 void sc_init_oid(struct sc_object_id *oid)
