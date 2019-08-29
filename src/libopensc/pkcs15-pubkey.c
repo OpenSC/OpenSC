@@ -307,7 +307,7 @@ int sc_pkcs15_decode_pukdf_entry(struct sc_pkcs15_card *p15card,
 	r = sc_asn1_decode(ctx, asn1_pubkey, *buf, *buflen, buf, buflen);
 	if (r == SC_ERROR_ASN1_END_OF_CONTENTS)
 		return r;
-	LOG_TEST_RET(ctx, r, "ASN.1 decoding failed");
+	LOG_TEST_GOTO_ERR(ctx, r, "ASN.1 decoding failed");
 	if (asn1_pubkey_choice[0].flags & SC_ASN1_PRESENT) {
 		obj->type = SC_PKCS15_TYPE_PUBKEY_RSA;
 	} else if (asn1_pubkey_choice[2].flags & SC_ASN1_PRESENT) {
@@ -317,8 +317,10 @@ int sc_pkcs15_decode_pukdf_entry(struct sc_pkcs15_card *p15card,
 		assert(info.params.len == 0);
 		info.params.len = sizeof(struct sc_pkcs15_keyinfo_gostparams);
 		info.params.data = malloc(info.params.len);
-		if (info.params.data == NULL)
-			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+		if (info.params.data == NULL) {
+			r = SC_ERROR_OUT_OF_MEMORY;
+			goto err;
+		}
 		assert(sizeof(*keyinfo_gostparams) == info.params.len);
 		keyinfo_gostparams = info.params.data;
 		keyinfo_gostparams->gostr3410 = (unsigned int)gostr3410_params[0];
@@ -335,8 +337,7 @@ int sc_pkcs15_decode_pukdf_entry(struct sc_pkcs15_card *p15card,
 	if (!p15card->app || !p15card->app->ddo.aid.len)   {
 		r = sc_pkcs15_make_absolute_path(&p15card->file_app->path, &info.path);
 		if (r < 0) {
-			sc_pkcs15_free_key_params(&info.params);
-			return r;
+			goto err;
 		}
 	}
 	else   {
@@ -352,15 +353,24 @@ int sc_pkcs15_decode_pukdf_entry(struct sc_pkcs15_card *p15card,
 
 	obj->data = malloc(sizeof(info));
 	if (obj->data == NULL) {
-		sc_pkcs15_free_key_params(&info.params);
-		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+		r = SC_ERROR_OUT_OF_MEMORY;
+		goto err;
 	}
 	memcpy(obj->data, &info, sizeof(info));
 
 	r = sc_pkcs15_decode_pubkey_direct_value(p15card, obj);
-	LOG_TEST_RET(ctx, r, "Decode public key direct value failed");
+	if (r < 0) {
+		free(obj->data);
+		obj->data = NULL;
+	}
+	LOG_TEST_GOTO_ERR(ctx, r, "Decode public key direct value failed");
 
-	return 0;
+err:
+	if (r < 0) {
+		sc_pkcs15_free_pubkey_info(&info);
+	}
+
+	LOG_FUNC_RETURN(ctx, r);
 }
 
 
@@ -1217,12 +1227,9 @@ sc_pkcs15_free_pubkey(struct sc_pkcs15_pubkey *key)
 void
 sc_pkcs15_free_pubkey_info(sc_pkcs15_pubkey_info_t *info)
 {
-	if (info->subject.value)
-		free(info->subject.value);
-	if (info->direct.spki.value)
-		free(info->direct.spki.value);
-	if (info->direct.raw.value)
-		free(info->direct.raw.value);
+	free(info->subject.value);
+	free(info->direct.spki.value);
+	free(info->direct.raw.value);
 	sc_pkcs15_free_key_params(&info->params);
 	free(info);
 }
