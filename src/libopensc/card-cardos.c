@@ -27,6 +27,7 @@
 
 #include <ctype.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include "internal.h"
 #include "asn1.h"
@@ -233,6 +234,8 @@ static int cardos_init(sc_card_t *card)
 	if (card->type == SC_CARD_TYPE_CARDOS_V5_0) {
 		/* Starting with CardOS 5, the card supports PIN query commands */
 		card->caps |= SC_CARD_CAP_ISO7816_PIN_INFO;
+		_sc_card_add_rsa_alg(card, 3072, flags, 0);
+		_sc_card_add_rsa_alg(card, 4096, flags, 0);
 	}
 
 	return 0;
@@ -870,8 +873,6 @@ cardos_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 			 u8 *out, size_t outlen)
 {
 	int    r;
-	u8     buf[SC_MAX_APDU_BUFFER_SIZE];
-	size_t buf_len = sizeof(buf), tmp_len = buf_len;
 	sc_context_t *ctx;
 	int do_rsa_pure_sig = 0;
 	int do_rsa_sig = 0;
@@ -880,12 +881,6 @@ cardos_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 	assert(card != NULL && data != NULL && out != NULL);
 	ctx = card->ctx;
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
-
-	if (datalen > SC_MAX_APDU_BUFFER_SIZE)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
-	if (outlen < datalen)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_BUFFER_TOO_SMALL);
-	outlen = datalen;
 
 	/* There are two ways to create a signature, depending on the way,
 	 * the key was created: RSA_SIG and RSA_PURE_SIG.
@@ -939,36 +934,49 @@ cardos_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 	}
 
 	if(do_rsa_sig == 1){
+		u8 *buf = malloc(datalen);
+		u8 *stripped_data = buf;
+		size_t stripped_datalen = datalen;
+		if (!buf)
+			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+		memcpy(buf, data, datalen);
+		data = buf;
+
 		sc_log(ctx, "trying RSA_SIG (just the DigestInfo)");
+
 		/* remove padding: first try pkcs1 bt01 padding */
-		r = sc_pkcs1_strip_01_padding(ctx, data, datalen, buf, &tmp_len);
+		r = sc_pkcs1_strip_01_padding(ctx, data, datalen, stripped_data, &stripped_datalen);
 		if (r != SC_SUCCESS) {
-			const u8 *p = data;
 			/* no pkcs1 bt01 padding => let's try zero padding
 			 * This can only work if the data tbs doesn't have a
 			 * leading 0 byte.  */
-			tmp_len = buf_len;
-			while (*p == 0 && tmp_len != 0) {
-				++p;
-				--tmp_len;
+			while (*stripped_data == 0 && stripped_datalen != 0) {
+				++stripped_data;
+				--stripped_datalen;
 			}
-			memcpy(buf, p, tmp_len);
 		}
 		if (!(card->caps & (SC_CARD_CAP_ONLY_RAW_HASH_STRIPPED | SC_CARD_CAP_ONLY_RAW_HASH)) || card->caps & SC_CARD_CAP_ONLY_RAW_HASH ) {
 			sc_log(ctx, "trying to sign raw hash value with prefix");
-			r = do_compute_signature(card, buf, tmp_len, out, outlen);
-			if (r >= SC_SUCCESS)
+			r = do_compute_signature(card, stripped_data, stripped_datalen, out, outlen);
+			if (r >= SC_SUCCESS) {
+				free(buf);
 				LOG_FUNC_RETURN(ctx, r);
+			}
 		}
 		if (card->caps & SC_CARD_CAP_ONLY_RAW_HASH) {
 			sc_log(ctx, "Failed to sign raw hash value with prefix when forcing");
+			free(buf);
 			LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 		}
 		sc_log(ctx, "trying to sign stripped raw hash value (card is responsible for prefix)");
-		r = sc_pkcs1_strip_digest_info_prefix(NULL,buf,tmp_len,buf,&buf_len);
-		if (r != SC_SUCCESS)
+		r = sc_pkcs1_strip_digest_info_prefix(NULL, stripped_data, stripped_datalen, stripped_data, &stripped_datalen);
+		if (r != SC_SUCCESS) {
+			free(buf);
 			LOG_FUNC_RETURN(ctx, r);
-		return do_compute_signature(card, buf, buf_len, out, outlen);
+		}
+		r = do_compute_signature(card, stripped_data, stripped_datalen, out, outlen);
+		free(buf);
+		LOG_FUNC_RETURN(ctx, r);
 	}
 
 	LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
