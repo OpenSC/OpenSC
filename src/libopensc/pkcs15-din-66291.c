@@ -260,7 +260,7 @@ sc_pkcs15emu_din_66291_init(sc_pkcs15_card_t *p15card)
 
 int sc_pkcs15emu_din_66291_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
 {
-    int r;
+    int r = SC_ERROR_WRONG_CARD;
 
     if (!p15card || ! p15card->card)
         return SC_ERROR_INVALID_ARGUMENTS;
@@ -268,12 +268,13 @@ int sc_pkcs15emu_din_66291_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid
     SC_FUNC_CALLED(p15card->card->ctx, 1);
 
     /* Check card */
-    if (!din_66291_match_p15card(p15card, aid))
-        return SC_ERROR_WRONG_CARD;
+    if (1 == din_66291_match_p15card(p15card, aid)) {
+        /* Init card */
+        r = sc_pkcs15emu_din_66291_init(p15card);
+    }
 
-    /* Init card */
-    r = sc_pkcs15emu_din_66291_init(p15card);
     if (r != SC_SUCCESS) {
+        /* reset input data to default values */
         sc_pkcs15_free_tokeninfo(p15card->tokeninfo);
         sc_file_free(p15card->file_tokeninfo);
         p15card->tokeninfo = NULL;
