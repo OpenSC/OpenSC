@@ -246,7 +246,6 @@ script:
       sleep 5;
       opensc-tool --card-driver default --send-apdu 80b800002210D276000124010200000000000001000010D276000124010200000000000001000000;
       opensc-tool -n;
-      # FIXME decryption with key 3 currently fails
       openpgp-tool --verify CHV3 --pin 12345678 --gen-key 2;
       pkcs15-init --verify --auth-id 3 --pin 12345678 --delete-objects privkey,pubkey --id 2 --generate-key rsa/2048;
       pkcs11-tool -l -t -p 123456;
