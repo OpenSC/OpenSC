@@ -1023,7 +1023,7 @@ static int read_ssh_key(void)
 		buf[1] = 0;
 		buf[2] = 0;
 		len = snprintf((char *) buf+4, 20, "ecdsa-sha2-nistp%d", n);
-		strncpy(alg, (char *) buf+4, 19);
+		memcpy(alg, buf+4, 20);
 		buf[3] = len;
 
 		len += 4;
