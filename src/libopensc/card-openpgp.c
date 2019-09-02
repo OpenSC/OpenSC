@@ -498,6 +498,7 @@ pgp_init(sc_card_t *card)
 	sc_format_path("D276:0001:2401", &path);
 	path.type = SC_PATH_TYPE_DF_NAME;
 	if ((r = iso_ops->select_file(card, &path, &file)) < 0) {
+		sc_file_free(file);
 		pgp_finish(card);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_CARD);
 	}
