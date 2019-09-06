@@ -777,7 +777,7 @@ int main(int argc, char * argv[])
 			opt_sig_format = optarg;
 			break;
 		case 't':
-			need_session |= NEED_SESSION_RO;
+			need_session |= NEED_SESSION_RW;
 			do_test = 1;
 			action_count++;
 			break;
