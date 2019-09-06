@@ -34,68 +34,7 @@ static const unsigned char aid_CIA[] = {0xE8, 0x28, 0xBD, 0x08, 0x0F,
 static const unsigned char aid_ESIGN[] = {0xA0, 0x00, 0x00, 0x01, 0x67,
     0x45, 0x53, 0x49, 0x47, 0x4E};
 
-int din_66291_match_p15card(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
-{
-    int ok = 0, r;
-    sc_path_t path;
-    unsigned char *tokeninfo_content = NULL;
-    struct sc_file *file_tokeninfo = NULL;
-    struct sc_pkcs15_tokeninfo *tokeninfo = sc_pkcs15_tokeninfo_new();
-
-    if (!p15card || !tokeninfo
-            || (aid && (aid->len != sizeof aid_CIA
-                    || 0 != memcmp(aid->value, aid_CIA, sizeof aid_CIA))))
-        goto err;
-
-    if (p15card->tokeninfo
-            && p15card->tokeninfo->profile_indication.name
-            && 0 == strcmp("DIN V 66291",
-                p15card->tokeninfo->profile_indication.name)) {
-        ok = 1;
-        goto err;
-    }
-
-    /* it is possible that p15card->tokeninfo has not been touched yet */
-    sc_path_set(&path, SC_PATH_TYPE_DF_NAME, aid_CIA, sizeof aid_CIA, 0, 0);
-    if (SC_SUCCESS != sc_select_file(p15card->card, &path, NULL))
-        goto err;
-
-    sc_format_path("5032", &path);
-    if (SC_SUCCESS != sc_select_file(p15card->card, &path, &file_tokeninfo))
-        goto err;
-
-    tokeninfo_content = malloc(file_tokeninfo->size);
-    if (!tokeninfo_content)
-        goto err;
-    r = sc_read_binary(p15card->card, 0, tokeninfo_content, file_tokeninfo->size, 0);
-    if (r < 0)
-        goto err;
-    r = sc_pkcs15_parse_tokeninfo(p15card->card->ctx, tokeninfo, tokeninfo_content, r);
-    if (r != SC_SUCCESS)
-        goto err;
-
-    if (tokeninfo->profile_indication.name
-            && 0 == strcmp("DIN V 66291",
-                tokeninfo->profile_indication.name)) {
-        ok = 1;
-        /* save tokeninfo and file_tokeninfo */
-        sc_pkcs15_free_tokeninfo(p15card->tokeninfo);
-        sc_file_free(p15card->file_tokeninfo);
-        p15card->tokeninfo = tokeninfo;
-        p15card->file_tokeninfo = file_tokeninfo;
-        tokeninfo = NULL;
-        file_tokeninfo = NULL;
-    }
-
-err:
-    sc_pkcs15_free_tokeninfo(tokeninfo);
-    sc_file_free(file_tokeninfo);
-    free(tokeninfo_content);
-
-    return ok;
-}
-
-    static int
+static int
 sc_pkcs15emu_din_66291_init(sc_pkcs15_card_t *p15card)
 {
     /*  EF.C.CH.AUT
@@ -116,7 +55,6 @@ sc_pkcs15emu_din_66291_init(sc_pkcs15_card_t *p15card)
     size_t i;
     struct sc_pin_cmd_data data;
     const unsigned char user_pin_ref = 0x02;
-	sc_serial_number_t serial;
 
     sc_path_set(&path, SC_PATH_TYPE_DF_NAME, aid_ESIGN, sizeof aid_ESIGN, 0, 0);
     if (SC_SUCCESS != sc_select_file(p15card->card, &path, NULL))
@@ -247,6 +185,69 @@ sc_pkcs15emu_din_66291_init(sc_pkcs15_card_t *p15card)
         }
     }
 
+    return SC_SUCCESS;
+}
+
+int sc_pkcs15emu_din_66291_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
+{
+    int r = SC_ERROR_WRONG_CARD;
+    sc_path_t path;
+    unsigned char *tokeninfo_content = NULL;
+    struct sc_file *file_tokeninfo = NULL;
+    struct sc_pkcs15_tokeninfo *tokeninfo = sc_pkcs15_tokeninfo_new();
+	sc_serial_number_t serial;
+
+    if (!p15card || ! p15card->card)
+        return SC_ERROR_INVALID_ARGUMENTS;
+
+    SC_FUNC_CALLED(p15card->card->ctx, 1);
+
+    if (!p15card || !tokeninfo
+            || (aid && (aid->len != sizeof aid_CIA
+                    || 0 != memcmp(aid->value, aid_CIA, sizeof aid_CIA))))
+        goto err;
+
+    if (!p15card->tokeninfo
+            || !p15card->tokeninfo->profile_indication.name
+            || 0 != strcmp("DIN V 66291",
+                p15card->tokeninfo->profile_indication.name)) {
+        /* it is possible that p15card->tokeninfo has not been touched yet */
+        sc_path_set(&path, SC_PATH_TYPE_DF_NAME, aid_CIA, sizeof aid_CIA, 0, 0);
+        if (SC_SUCCESS != sc_select_file(p15card->card, &path, NULL))
+            goto err;
+
+        sc_format_path("5032", &path);
+        if (SC_SUCCESS != sc_select_file(p15card->card, &path, &file_tokeninfo))
+            goto err;
+
+        tokeninfo_content = malloc(file_tokeninfo->size);
+        if (!tokeninfo_content)
+            goto err;
+        r = sc_read_binary(p15card->card, 0, tokeninfo_content, file_tokeninfo->size, 0);
+        if (r < 0)
+            goto err;
+        r = sc_pkcs15_parse_tokeninfo(p15card->card->ctx, tokeninfo, tokeninfo_content, r);
+        if (r != SC_SUCCESS)
+            goto err;
+
+        if (!tokeninfo->profile_indication.name
+                || 0 != strcmp("DIN V 66291",
+                    tokeninfo->profile_indication.name)) {
+            goto err;
+        }
+    }
+
+    if (SC_SUCCESS != sc_pkcs15emu_din_66291_init(p15card))
+        goto err;
+
+    /* save tokeninfo and file_tokeninfo */
+    sc_pkcs15_free_tokeninfo(p15card->tokeninfo);
+    sc_file_free(p15card->file_tokeninfo);
+    p15card->tokeninfo = tokeninfo;
+    p15card->file_tokeninfo = file_tokeninfo;
+    tokeninfo = NULL;
+    file_tokeninfo = NULL;
+
 	/* get the card serial number */
 	if (!p15card->tokeninfo->serial_number
             && SC_SUCCESS == sc_card_ctl(p15card->card, SC_CARDCTL_GET_SERIALNR, &serial)) {
@@ -255,31 +256,12 @@ sc_pkcs15emu_din_66291_init(sc_pkcs15_card_t *p15card)
         p15card->tokeninfo->serial_number = strdup(serial_hex);
     }
 
-    return SC_SUCCESS;
-}
+    r = SC_SUCCESS;
 
-int sc_pkcs15emu_din_66291_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
-{
-    int r = SC_ERROR_WRONG_CARD;
-
-    if (!p15card || ! p15card->card)
-        return SC_ERROR_INVALID_ARGUMENTS;
-
-    SC_FUNC_CALLED(p15card->card->ctx, 1);
-
-    /* Check card */
-    if (1 == din_66291_match_p15card(p15card, aid)) {
-        /* Init card */
-        r = sc_pkcs15emu_din_66291_init(p15card);
-    }
-
-    if (r != SC_SUCCESS) {
-        /* reset input data to default values */
-        sc_pkcs15_free_tokeninfo(p15card->tokeninfo);
-        sc_file_free(p15card->file_tokeninfo);
-        p15card->tokeninfo = NULL;
-        p15card->file_tokeninfo = NULL;
-    }
+err:
+    sc_pkcs15_free_tokeninfo(tokeninfo);
+    sc_file_free(file_tokeninfo);
+    free(tokeninfo_content);
 
     return r;
 }
