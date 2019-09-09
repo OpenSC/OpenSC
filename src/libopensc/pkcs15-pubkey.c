@@ -312,7 +312,7 @@ int sc_pkcs15_decode_pukdf_entry(struct sc_pkcs15_card *p15card,
 
 	r = sc_asn1_decode(ctx, asn1_pubkey, *buf, *buflen, buf, buflen);
 	if (r == SC_ERROR_ASN1_END_OF_CONTENTS)
-		return r;
+		goto err;
 	LOG_TEST_GOTO_ERR(ctx, r, "ASN.1 decoding failed");
 	if (asn1_pubkey_choice[0].flags & SC_ASN1_PRESENT) {
 		obj->type = SC_PKCS15_TYPE_PUBKEY_RSA;
