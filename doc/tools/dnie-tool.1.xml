@@ -52,7 +52,7 @@
 						<option>-a</option>
 					</term>
 					<listitem><para>Displays every available information.
-					This command is equivalent to -d -i -s</para></listitem>
+					This command is equivalent to -d -i -V -s</para></listitem>
 				</varlistentry>
 				<varlistentry>
 					<term>
