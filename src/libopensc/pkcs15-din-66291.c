@@ -248,8 +248,8 @@ int sc_pkcs15emu_din_66291_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid
     tokeninfo = NULL;
     file_tokeninfo = NULL;
 
-	/* get the card serial number */
-	if (!p15card->tokeninfo->serial_number
+    /* get the card serial number */
+    if (!p15card->tokeninfo->serial_number
             && SC_SUCCESS == sc_card_ctl(p15card->card, SC_CARDCTL_GET_SERIALNR, &serial)) {
         char serial_hex[SC_MAX_SERIALNR*2+2];
         sc_bin_to_hex(serial.value, serial.len , serial_hex, sizeof serial_hex, 0);
