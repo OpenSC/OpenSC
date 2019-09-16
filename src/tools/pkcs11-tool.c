@@ -5576,12 +5576,14 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 		return 0;
 	}
 	size_t in_len;
+	size_t max_in_len;
 	CK_ULONG mod_len = (get_private_key_length(session, privKeyObject) + 7) / 8;
 	switch (mech_type) {
 	case CKM_RSA_PKCS:
 		pad = RSA_PKCS1_PADDING;
-		/* Limit the input length to <= mod_len-11 */
-		in_len = mod_len-11;
+		/* input length <= mod_len-11 */
+		max_in_len = mod_len-11;
+		in_len = 10;
 		break;
 	case CKM_RSA_PKCS_OAEP: {
 		if (opt_hash_alg != 0) {
@@ -5614,18 +5616,20 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 		}
 
 		pad = RSA_PKCS1_OAEP_PADDING;
-		/* Limit the input length to <= mod_len-2-2*hlen */
 		size_t len = 2+2*hash_length(hash_alg);
 		if (len >= mod_len) {
 			printf("Incompatible mechanism and key size\n");
 			return 0;
 		}
-		in_len = mod_len-len;
+		/* input length <= mod_len-2-2*hlen */
+		max_in_len = mod_len-len;
+		in_len = 10;
 		break;
 	}
 	case CKM_RSA_X_509:
 		pad = RSA_NO_PADDING;
-		/* Limit the input length to the modulus length */
+		/* input length equals modulus length */
+		max_in_len = mod_len;
 		in_len = mod_len;
 		break;
 	default:
@@ -5634,7 +5638,11 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 	}
 
 	if (in_len > sizeof(orig_data)) {
-		printf("Private key size is too long\n");
+		printf("Input data is too large\n");
+		return 0;
+	}
+	if (in_len > max_in_len) {
+		printf("Input data is too large for this key\n");
 		return 0;
 	}
 
