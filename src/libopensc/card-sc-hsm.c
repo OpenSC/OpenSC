@@ -1686,7 +1686,13 @@ static int sc_hsm_init(struct sc_card *card)
 	}
 	sc_file_free(file);
 
-	card->max_send_size = 1431;		// 1439 buffer size - 8 byte TLV because of odd ins in UPDATE BINARY
+	// APDU Buffer limits
+	//   JCOP 2.4.1r3    1462
+	//   JCOP 2.4.2r3    1454
+	//   JCOP 3          1232
+	//   Reiner SCT      1014
+
+	card->max_send_size = 1217;		// 1232 buffer size - 15 byte header and TLV because of odd ins in UPDATE BINARY
 	if (card->type == SC_CARD_TYPE_SC_HSM_SOC
 			|| card->type == SC_CARD_TYPE_SC_HSM_GOID) {
 		card->max_recv_size = 0x0630;	// SoC Proxy forces this limit
