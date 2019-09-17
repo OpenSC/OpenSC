@@ -513,33 +513,16 @@ put_tag_and_len(unsigned int tag, size_t len, u8 **ptr)
  * Used by  GET DATA, PUT DATA, GENERAL AUTHENTICATE
  * and GENERATE ASYMMETRIC KEY PAIR.
  * GET DATA may call to get the first 128 bytes to get the length from the tag.
- *
- * A caller may provide a buffer, and length to read. If not provided,
- * an internal 4096 byte buffer is used, and a copy is returned to the
- * caller. that need to be freed by the caller.
  */
 
 static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
-	const u8 * sendbuf, size_t sendbuflen, u8 ** recvbuf,
-	size_t * recvbuflen)
+	const u8 * sendbuf, size_t sendbuflen, u8 *recvbuf,
+	size_t recvbuflen)
 {
 	int r;
 	sc_apdu_t apdu;
-	u8 rbufinitbuf[4096];
-	u8 *rbuf;
-	size_t rbuflen;
-
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-
-	rbuf = rbufinitbuf;
-	rbuflen = sizeof(rbufinitbuf);
-
-	/* if caller provided a buffer and length */
-	if (recvbuf && *recvbuf && recvbuflen && *recvbuflen) {
-		rbuf = *recvbuf;
-		rbuflen = *recvbuflen;
-	}
 
 	r = sc_lock(card);
 	if (r != SC_SUCCESS)
@@ -553,15 +536,14 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 	apdu.datalen = sendbuflen;
 	apdu.data = sendbuf;
 
-	if (recvbuf) {
-		apdu.resp = rbuf;
-		apdu.le = (rbuflen > 256) ? 256 : rbuflen;
-		apdu.resplen = rbuflen;
+	if (recvbuf && recvbuflen) {
+		apdu.le = (recvbuflen > 256) ? 256 : recvbuflen;
+		apdu.resplen = recvbuflen;
 	} else {
-		 apdu.resp =  rbuf;
 		 apdu.le = 0;
 		 apdu.resplen = 0;
 	}
+	apdu.resp =  recvbuf;
 
 	/* with new adpu.c and chaining, this actually reads the whole object */
 	r = sc_transmit_apdu(card, &apdu);
@@ -578,18 +560,7 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 		goto err;
 	}
 
-	if (recvbuflen) {
-		if (recvbuf && *recvbuf == NULL) {
-			*recvbuf =  malloc(apdu.resplen);
-			if (*recvbuf == NULL) {
-				r = SC_ERROR_OUT_OF_MEMORY;
-				goto err;
-			}
-			memcpy(*recvbuf, rbuf, apdu.resplen); /* copy tag too */
-		}
-		*recvbuflen =  apdu.resplen;
-		r = *recvbuflen;
-	}
+	r = apdu.resplen;
 
 err:
 	sc_unlock(card);
@@ -604,8 +575,7 @@ static int piv_generate_key(sc_card_t *card,
 		sc_cardctl_piv_genkey_info_t *keydata)
 {
 	int r;
-	u8 *rbuf = NULL;
-	size_t rbuflen = 0;
+	u8 rbuf[4096];
 	u8 *p;
 	const u8 *tag;
 	u8 tagbuf[16];
@@ -654,7 +624,7 @@ static int piv_generate_key(sc_card_t *card,
 	p+=out_len;
 
 	r = piv_general_io(card, 0x47, 0x00, keydata->key_num,
-			tagbuf, p - tagbuf, &rbuf, &rbuflen);
+			tagbuf, p - tagbuf, rbuf, sizeof rbuf);
 
 	if (r >= 0) {
 		const u8 *cp;
@@ -664,9 +634,9 @@ static int piv_generate_key(sc_card_t *card,
 		/* we will whatever tag is present */
 
 		cp = rbuf;
-		in_len = rbuflen;
+		in_len = r;
 
-		r = sc_asn1_read_tag(&cp, rbuflen, &cla_out, &tag_out, &in_len);
+		r = sc_asn1_read_tag(&cp, in_len, &cla_out, &tag_out, &in_len);
 		if (cp == NULL) {
 			r = SC_ERROR_ASN1_OBJECT_NOT_FOUND;
 		}
@@ -710,8 +680,6 @@ static int piv_generate_key(sc_card_t *card,
 	}
 
 err:
-	if (rbuf)
-		free(rbuf);
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
@@ -927,27 +895,23 @@ piv_get_data(sc_card_t * card, int enumtag, u8 **buf, size_t *buf_len)
 
 	if (*buf_len == 1 && *buf == NULL) { /* we need to get the length */
 		u8 rbufinitbuf[8]; /* tag of 53 with 82 xx xx  will fit in 4 */
-		u8 *rbuf;
-		size_t rbuflen;
 		size_t bodylen;
 		unsigned int cla_out, tag_out;
 		const u8 *body;
 
 		sc_log(card->ctx, "get len of #%d", enumtag);
-		rbuf = rbufinitbuf;
-		rbuflen = sizeof(rbufinitbuf);
-		r = piv_general_io(card, 0xCB, 0x3F, 0xFF, tagbuf,  p - tagbuf, &rbuf, &rbuflen);
+		r = piv_general_io(card, 0xCB, 0x3F, 0xFF, tagbuf,  p - tagbuf, rbufinitbuf, sizeof rbufinitbuf);
 		if (r > 0) {
 			int r_tag;
-			body = rbuf;
-			r_tag = sc_asn1_read_tag(&body, rbuflen, &cla_out, &tag_out, &bodylen);
+			body = rbufinitbuf;
+			r_tag = sc_asn1_read_tag(&body, r, &cla_out, &tag_out, &bodylen);
 			if ((r_tag != SC_SUCCESS && r_tag != SC_ERROR_ASN1_END_OF_CONTENTS)
 					|| body == NULL) {
 				sc_log(card->ctx, "r_tag:%d body:%p", r_tag, body);
 				r = SC_ERROR_FILE_NOT_FOUND;
 				goto err;
 			}
-			*buf_len = (body - rbuf) + bodylen;
+		    *buf_len = (body - rbufinitbuf) + bodylen;
 		} else if ( r == 0 ) {
 			r = SC_ERROR_FILE_NOT_FOUND;
 			goto err;
@@ -970,7 +934,7 @@ piv_get_data(sc_card_t * card, int enumtag, u8 **buf, size_t *buf_len)
 		}
 	}
 
-	r = piv_general_io(card, 0xCB, 0x3F, 0xFF, tagbuf,  p - tagbuf, buf, buf_len);
+	r = piv_general_io(card, 0xCB, 0x3F, 0xFF, tagbuf,  p - tagbuf, *buf, *buf_len);
 
 err:
 	sc_unlock(card);
@@ -1270,7 +1234,7 @@ piv_put_data(sc_card_t *card, int tag, const u8 *buf, size_t buf_len)
 	memcpy(p, buf, buf_len);
 	p += buf_len;
 
-	r = piv_general_io(card, 0xDB, 0x3F, 0xFF, sbuf, p - sbuf, NULL, NULL);
+	r = piv_general_io(card, 0xDB, 0x3F, 0xFF, sbuf, p - sbuf, NULL, 0);
 
 	if (sbuf)
 		free(sbuf);
@@ -1584,8 +1548,7 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 #ifdef ENABLE_OPENSSL
 	int N;
 	int locked = 0;
-	u8  *rbuf = NULL;
-	size_t rbuflen;
+	u8 rbuf[4096];
 	u8 *nonce = NULL;
 	size_t nonce_len;
 	u8 *p;
@@ -1645,7 +1608,7 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 	*p++ = 0x00;
 
 	/* get the encrypted nonce */
-	r = piv_general_io(card, 0x87, alg_id, key_ref, sbuf, p - sbuf, &rbuf, &rbuflen);
+	r = piv_general_io(card, 0x87, alg_id, key_ref, sbuf, p - sbuf, rbuf, sizeof rbuf);
 
  	if (r < 0) goto err;
 
@@ -1765,12 +1728,8 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 	put_tag_and_len(0x81, witness_len, &p);
 	memcpy(p, nonce, witness_len);
 
-	/* Don't leak rbuf from above */
-	free(rbuf);
-	rbuf = NULL;
-
 	/* Send constructed data */
-	r = piv_general_io(card, 0x87, alg_id, key_ref, built,built_len, &rbuf, &rbuflen);
+	r = piv_general_io(card, 0x87, alg_id, key_ref, built,built_len, rbuf, sizeof rbuf);
  	if (r < 0) goto err;
 
 	/* Remove the encompassing outer TLV of 0x7C and get the data */
@@ -1840,8 +1799,6 @@ err:
 		EVP_CIPHER_CTX_free(ctx);
 	if (locked)
 		sc_unlock(card);
-	if (rbuf)
-		free(rbuf);
 	if (decrypted_reponse)
 		free(decrypted_reponse);
 	if (built)
@@ -1872,13 +1829,12 @@ static int piv_general_external_authenticate(sc_card_t *card,
 	int outlen;
 	int locked = 0;
 	u8 *p;
-	u8 *rbuf = NULL;
+	u8 rbuf[4096];
 	u8 *key = NULL;
 	u8 *cypher_text = NULL;
 	u8 *output_buf = NULL;
 	const u8 *body = NULL;
 	const u8 *challenge_data = NULL;
-	size_t rbuflen;
 	size_t body_len;
 	size_t output_len;
 	size_t challenge_len;
@@ -1925,7 +1881,7 @@ static int piv_general_external_authenticate(sc_card_t *card,
 	*p++ = 0x00;
 
 	/* get a challenge */
-	r = piv_general_io(card, 0x87, alg_id, key_ref, sbuf, p - sbuf, &rbuf, &rbuflen);
+	r = piv_general_io(card, 0x87, alg_id, key_ref, sbuf, p - sbuf, rbuf, sizeof rbuf);
 	if (r < 0) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Error getting Challenge\n");
 		goto err;
@@ -2037,7 +1993,7 @@ static int piv_general_external_authenticate(sc_card_t *card,
 		goto err;
 	}
 
-	r = piv_general_io(card, 0x87, alg_id, key_ref, output_buf, output_len, NULL, NULL);
+	r = piv_general_io(card, 0x87, alg_id, key_ref, output_buf, output_len, NULL, 0);
 	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Got response  challenge\n");
 
 err:
@@ -2051,9 +2007,6 @@ err:
 		sc_mem_clear(key, keylen);
 		free(key);
 	}
-
-	if (rbuf)
-		free(rbuf);
 
 	if (cypher_text)
 		free(cypher_text);
@@ -2221,9 +2174,9 @@ static int piv_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 {
 	/* Dynamic Authentication Template (Challenge) */
 	u8 sbuf[] = {0x7c, 0x02, 0x81, 0x00};
-	u8 *rbuf = NULL;
+	u8 rbuf[4096];
 	const u8 *p;
-	size_t rbuf_len = 0, out_len = 0;
+	size_t out_len = 0;
 	int r;
 	unsigned int tag, cla;
 	piv_private_data_t * priv = PIV_DATA(card);
@@ -2236,7 +2189,7 @@ static int piv_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 	}
 
 	/* NIST 800-73-3 says use 9B, previous verisons used 00 */
-	r = piv_general_io(card, 0x87, 0x00, 0x9B, sbuf, sizeof sbuf, &rbuf, &rbuf_len);
+	r = piv_general_io(card, 0x87, 0x00, 0x9B, sbuf, sizeof sbuf, rbuf, sizeof rbuf);
 	/*
 	 * piv_get_challenge is called in a loop.
 	 * some cards may allow 1 challenge expecting it to be part of
@@ -2245,10 +2198,7 @@ static int piv_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 	 * Now that the card returned error, we can try one more time.
 	 */
 	 if (r == SC_ERROR_INCORRECT_PARAMETERS) {
-		if (rbuf)
-			free(rbuf);
-		rbuf_len = 0;
-		r = piv_general_io(card, 0x87, 0x00, 0x9B, sbuf, sizeof sbuf, &rbuf, &rbuf_len);
+		r = piv_general_io(card, 0x87, 0x00, 0x9B, sbuf, sizeof sbuf, rbuf, sizeof rbuf);
 		if (r == SC_ERROR_INCORRECT_PARAMETERS) {
 			r = SC_ERROR_NOT_SUPPORTED;
 		}
@@ -2256,13 +2206,12 @@ static int piv_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 	LOG_TEST_GOTO_ERR(card->ctx, r, "GENERAL AUTHENTICATE failed");
 
 	p = rbuf;
-	r = sc_asn1_read_tag(&p, rbuf_len, &cla, &tag, &out_len);
+	r = sc_asn1_read_tag(&p, r, &cla, &tag, &out_len);
 	if (r < 0 || (cla|tag) != 0x7C) {
 		LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_INVALID_DATA, "Can't find Dynamic Authentication Template");
 	}
 
-	rbuf_len = out_len;
-	r = sc_asn1_read_tag(&p, rbuf_len, &cla, &tag, &out_len);
+	r = sc_asn1_read_tag(&p, out_len, &cla, &tag, &out_len);
 	if (r < 0 || (cla|tag) != 0x81) {
 		LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_INVALID_DATA, "Can't find Challenge");
 	}
@@ -2275,8 +2224,6 @@ static int piv_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 	r = (int) out_len;
 
 err:
-	free(rbuf);
-
 	LOG_FUNC_RETURN(card->ctx, r);
 
 }
@@ -2345,8 +2292,7 @@ static int piv_validate_general_authentication(sc_card_t *card,
 	unsigned int real_alg_id;
 
 	u8 sbuf[4096]; /* needs work. for 3072 keys, needs 384+10 or so */
-	u8 *rbuf = NULL;
-	size_t rbuflen = 0;
+	u8 rbuf[4096];
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -2383,10 +2329,10 @@ static int piv_validate_general_authentication(sc_card_t *card,
 	/* EC alg_id was already set */
 
 	r = piv_general_io(card, 0x87, real_alg_id, priv->key_ref,
-			sbuf, p - sbuf, &rbuf, &rbuflen);
+			sbuf, p - sbuf, rbuf, sizeof rbuf);
 
 	if (r >= 0) {
-		body = sc_asn1_find_tag(card->ctx, rbuf, rbuflen, 0x7c, &bodylen);
+		body = sc_asn1_find_tag(card->ctx, rbuf, r, 0x7c, &bodylen);
 		if (body) {
 			tag = sc_asn1_find_tag(card->ctx, body,  bodylen, 0x82, &taglen);
 			if (tag) {
@@ -2397,9 +2343,6 @@ static int piv_validate_general_authentication(sc_card_t *card,
 		} else
 			r = SC_ERROR_INVALID_DATA;
 	}
-
-	if (rbuf)
-		free(rbuf);
 
 	LOG_FUNC_RETURN(card->ctx, r);
 }
@@ -2414,7 +2357,6 @@ piv_compute_signature(sc_card_t *card, const u8 * data, size_t datalen,
 	int i;
 	size_t nLen;
 	u8 rbuf[128]; /* For EC conversions  384 will fit */
-	size_t rbuflen = sizeof(rbuf);
 	const u8 * body;
 	size_t bodylen;
 	const u8 * tag;
@@ -2441,11 +2383,11 @@ piv_compute_signature(sc_card_t *card, const u8 * data, size_t datalen,
 		}
 		memset(out, 0, outlen);
 
-		r = piv_validate_general_authentication(card, data, datalen, rbuf, rbuflen);
+		r = piv_validate_general_authentication(card, data, datalen, rbuf, sizeof rbuf);
 		if (r < 0)
 			goto err;
 
-		body = sc_asn1_find_tag(card->ctx, rbuf, rbuflen, 0x30, &bodylen);
+		body = sc_asn1_find_tag(card->ctx, rbuf, r, 0x30, &bodylen);
 
 		for (i = 0; i<2; i++) {
 			if (body) {
