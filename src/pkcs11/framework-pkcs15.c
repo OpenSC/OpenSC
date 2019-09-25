@@ -4950,7 +4950,7 @@ pkcs15_skey_get_attribute(struct sc_pkcs11_session *session,
 		break;
 	case CKA_ALWAYS_SENSITIVE:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
-		*(CK_BBOOL*)attr->pValue = ((skey->info->access_flags & SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE) != 0;
+		*(CK_BBOOL*)attr->pValue = (skey->info->access_flags & SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE) != 0;
 		break;
 	case CKA_NEVER_EXTRACTABLE:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
