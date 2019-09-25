@@ -3886,11 +3886,16 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 
 	switch (key_type) {
 	case CKK_RSA:
-		if (pub)
-			printf("; RSA %lu bits\n",
-				(unsigned long) getMODULUS_BITS(sess, obj));
-		else
-			printf("; RSA \n");
+		if (sec) {
+			/* uninitialized secret key (type 0) */
+			printf("\n");
+		} else {
+			if (pub)
+				printf("; RSA %lu bits\n",
+						(unsigned long) getMODULUS_BITS(sess, obj));
+			else
+				printf("; RSA \n");
+		}
 		break;
 	case CKK_GOSTR3410:
 	case CKK_GOSTR3410_512:
