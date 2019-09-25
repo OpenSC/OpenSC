@@ -5370,6 +5370,8 @@ static int test_verify(CK_SESSION_HANDLE sess)
 	return errors;
 }
 
+#if OPENSC_VERSION_MAJOR == 0 && OPENSC_VERSION_MINOR <= 20
+#else
 #ifdef ENABLE_OPENSSL
 static int wrap_unwrap(CK_SESSION_HANDLE session,
 	    const EVP_CIPHER *algo, CK_OBJECT_HANDLE privKeyObject)
@@ -5483,6 +5485,7 @@ static int wrap_unwrap(CK_SESSION_HANDLE session,
 	printf("OK\n");
 	return 0;
 }
+#endif
 #endif
 
 
