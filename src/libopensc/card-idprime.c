@@ -77,6 +77,8 @@ typedef struct idprime_private_data {
 	size_t file_size;		/* this is real file size since IDPrime is quite strict about lengths */
 	list_t pki_list;		/* list of pki containers */
 	idprime_object_t *pki_current;	/* current pki object _ctl function */
+	int tinfo_present;		/* Token Info Label object is present*/
+	u8 tinfo_df[2];			/* DF of object with Token Info Label */
 } idprime_private_data_t;
 
 /* For SimCList autocopy, we need to know the size of the data elements */
@@ -192,6 +194,12 @@ static int idprime_process_index(sc_card_t *card, idprime_private_data_t *priv, 
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Found certificate with fd=%d",
 				new_object.fd);
 			idprime_add_object_to_list(&priv->pki_list, &new_object);
+
+		/* This looks like non-standard extension listing pkcs11 token info label in my card */
+		} else if ((memcmp(&start[4], "tinfo", 6) == 0) && (memcmp(&start[12], "p11", 4) == 0)) {
+			memcpy(priv->tinfo_df, new_object.df, sizeof(priv->tinfo_df));
+			priv->tinfo_present = 1;
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Found p11/tinfo object");
 		}
 	}
 	r = SC_SUCCESS;
@@ -343,6 +351,56 @@ static int idprime_get_serial(sc_card_t* card, sc_serial_number_t* serial)
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
+static int idprime_get_token_name(sc_card_t* card, char** tname)
+{
+	idprime_private_data_t * priv = card->drv_data;
+	sc_path_t tinfo_path = {"\x00\x00", 2, 0, 0, SC_PATH_TYPE_PATH, {"", 0}};
+	sc_file_t *file = NULL;
+	u8 buf[2];
+	int r;
+
+	LOG_FUNC_CALLED(card->ctx);
+
+	if (tname == NULL) {
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+	}
+
+	if (!priv->tinfo_present) {
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+	}
+
+	memcpy(tinfo_path.value, priv->tinfo_df, 2);
+	r = iso_ops->select_file(card, &tinfo_path, &file);
+	if (r != SC_SUCCESS || file->size == 0) {
+		sc_file_free(file);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+	}
+
+	/* First two bytes lists 0x01, the second indicates length */
+	r = iso_ops->read_binary(card, 0, buf, 2, 0);
+	if (r < 2 || buf[1] > file->size) { /* make sure we do not overrun */
+		sc_file_free(file);
+		LOG_FUNC_RETURN(card->ctx, r);
+	}
+	sc_file_free(file);
+
+	*tname = malloc(buf[1]);
+	if (*tname == NULL) {
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+	}
+
+	r = iso_ops->read_binary(card, 2, (unsigned char *)*tname, buf[1], 0);
+	if (r < 1) {
+		free(*tname);
+		LOG_FUNC_RETURN(card->ctx, r);
+	}
+
+	if ((*tname)[r-1] != '\0') {
+		(*tname)[r-1] = '\0';
+	}
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+}
+
 static int idprime_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 {
 	idprime_private_data_t * priv = card->drv_data;
@@ -356,6 +414,8 @@ static int idprime_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 	switch (cmd) {
 		case SC_CARDCTL_GET_SERIALNR:
 			return idprime_get_serial(card, (sc_serial_number_t *) ptr);
+		case SC_CARDCTL_IDPRIME_GET_TOKEN_NAME:
+			return idprime_get_token_name(card, (char **) ptr);
 		case SC_CARDCTL_IDPRIME_INIT_GET_OBJECTS:
 			return idprime_get_init_and_get_count(&priv->pki_list, &priv->pki_current,
 				(int *)ptr);

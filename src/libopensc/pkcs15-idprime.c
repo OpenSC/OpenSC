@@ -107,6 +107,18 @@ static int sc_pkcs15emu_idprime_init(sc_pkcs15_card_t *p15card)
 		LOG_FUNC_RETURN(card->ctx, r);
 
 	/*
+	 * get token name if provided
+	 */
+	r = sc_card_ctl(card, SC_CARDCTL_IDPRIME_GET_TOKEN_NAME, &token_name);
+	if (r < 0) {
+		/* On failure we will get the token name from certificates later */
+		sc_log(card->ctx, "sc_card_ctl rc=%d", r);
+	} else {
+		free(p15card->tokeninfo->label);
+		p15card->tokeninfo->label = token_name;
+		sc_log(card->ctx,  "IDPrime setting token label = %s", token_name);
+	}
+	/*
 	 * certs, pubkeys and priv keys are related and we assume
 	 * they are in order
 	 * We need to read the cert, get modulus and keylen
