@@ -192,10 +192,15 @@ static int idprime_process_index(sc_card_t *card, idprime_private_data_t *priv, 
 		if (((memcmp(&start[4], "ksc", 3) == 0) || memcmp(&start[4], "kxc", 3) == 0)
 			&& (memcmp(&start[12], "mscp", 5) == 0)) {
 			new_object.fd++;
-			/* The key reference is one bigger than the value found here for some reason */
-			new_object.key_reference = start[8] + 1;
-			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Found certificate with fd=%d",
-				new_object.fd);
+			if (card->type == SC_CARD_TYPE_IDPRIME_V2) {
+				/* The key reference starts from 0x11 */
+				new_object.key_reference = 0x10 + new_object.fd;
+			} else {
+				/* The key reference is one bigger than the value found here for some reason */
+				new_object.key_reference = start[8] + 1;
+			}
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Found certificate with fd=%d, key_ref=%d",
+				new_object.fd, new_object.key_reference);
 			idprime_add_object_to_list(&priv->pki_list, &new_object);
 
 		/* This looks like non-standard extension listing pkcs11 token info label in my card */
@@ -211,12 +216,46 @@ done:
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
+/* CPLC has 42 bytes, but we get it with 3B header */
+#define CPLC_LENGTH 45
 static int idprime_init(sc_card_t *card)
 {
 	int r;
 	unsigned long flags;
 	idprime_private_data_t *priv = NULL;
+	struct sc_apdu apdu;
+	u8 rbuf[CPLC_LENGTH];
+	size_t rbuflen = sizeof(rbuf);
 
+	/* We need to differentiate the OS version since they behave slightly differently */
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_2, 0xCA, 0x9F, 0x7F);
+	apdu.resp = rbuf;
+	apdu.resplen = rbuflen;
+	apdu.le = rbuflen;
+	r = sc_transmit_apdu(card, &apdu);
+	card->type = SC_CARD_TYPE_IDPRIME_GENERIC;
+	if (r == SC_SUCCESS && apdu.resplen == CPLC_LENGTH) {
+		/* We are interested in the OS release level here */
+		switch (rbuf[11]) {
+		case 0x01:
+			card->type = SC_CARD_TYPE_IDPRIME_V1;
+			sc_log(card->ctx, "Detected IDPrime applet version 1");
+			break;
+		case 0x02:
+			card->type = SC_CARD_TYPE_IDPRIME_V2;
+			sc_log(card->ctx, "Detected IDPrime applet version 2");
+			break;
+		default:
+			sc_log(card->ctx, "Unknown OS version received: %d", rbuf[11]);
+			break;
+		}
+	} else {
+		sc_log(card->ctx, "Failed to get CPLC data or invalid length returned, "
+			"err=%d, len=%"SC_FORMAT_LEN_SIZE_T"u",
+			r, apdu.resplen);
+	}
+
+	/* Now, select and process the index file */
 	r = idprime_select_index(card);
 	if (r <= 0) {
 		LOG_FUNC_RETURN(card->ctx, r);
@@ -228,12 +267,13 @@ static int idprime_init(sc_card_t *card)
 	if (!priv) {
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
+
 	r = idprime_process_index(card, priv, r);
 	if (r != SC_SUCCESS) {
 		idprime_free_private_data(priv);
 		LOG_FUNC_RETURN(card->ctx, r);
 	}
-	card->type = SC_CARD_TYPE_IDPRIME_GENERIC;
+
 	card->drv_data = priv;
 
 	card->name = "Gemalto IDPrime";
