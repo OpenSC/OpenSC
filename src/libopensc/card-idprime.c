@@ -65,6 +65,7 @@ typedef struct idprime_object {
 	int fd;
 	unsigned char key_reference;
 	u8 df[2];
+	unsigned short length;
 } idprime_object_t;
 
 /*
@@ -183,11 +184,13 @@ static int idprime_process_index(sc_card_t *card, idprime_private_data_t *priv, 
 		/* First two bytes specify the object DF */
 		new_object.df[0] = start[0];
 		new_object.df[1] = start[1];
-		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "df=%s",
-			sc_dump_hex(new_object.df, sizeof(new_object.df)));
-		/* I assume this is some identification of certificate */
-		if (start[4] == 0x6B && start[5] == 0x78 && start[6] == 0x63
-				&& start[7] == 0x30) {
+		/* Second two bytes refer to the object size */
+		new_object.length = bebytes2ushort(&start[2]);
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "df=%s, len=%u",
+			sc_dump_hex(new_object.df, sizeof(new_object.df)), new_object.length);
+		/* in minidriver, mscp/kxcNN or kscNN lists certificates */
+		if (((memcmp(&start[4], "ksc", 3) == 0) || memcmp(&start[4], "kxc", 3) == 0)
+			&& (memcmp(&start[12], "mscp", 5) == 0)) {
 			new_object.fd++;
 			/* The key reference is one bigger than the value found here for some reason */
 			new_object.key_reference = start[8] + 1;
