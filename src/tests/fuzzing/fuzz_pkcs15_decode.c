@@ -56,6 +56,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
         obj = calloc(1, sizeof *obj);
         while (SC_SUCCESS == decode_entries[i](p15card, obj, &p, &len)) {
             sc_pkcs15_free_object(obj);
+            obj = calloc(1, sizeof *obj);
         }
         sc_pkcs15_free_object(obj);
     }
