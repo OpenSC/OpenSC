@@ -513,6 +513,7 @@ pgp_init(sc_card_t *card)
 		/* explicitly get the full aid */
 		r = get_full_pgp_aid(card, file);
 		if (r < 0) {
+			sc_file_free(file);
 			pgp_finish(card);
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_CARD);
 		}
@@ -577,8 +578,10 @@ pgp_init(sc_card_t *card)
 	sc_format_path("3f00", &file->path);
 
 	/* set up the root of our fake file tree */
+	/* Transfers ownership of the file to the priv->mf structure */
 	priv->mf = pgp_new_blob(card, NULL, 0x3f00, file);
 	if (!priv->mf) {
+		sc_file_free(file);
 		pgp_finish(card);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 	}
