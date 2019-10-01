@@ -29,6 +29,8 @@
 #include "internal.h"
 #include "asn1.h"
 
+#define MAX_FILE_SIZE 65535
+
 struct app_entry {
 	const u8 *aid;
 	size_t aid_len;
@@ -185,6 +187,8 @@ int sc_enum_apps(sc_card_t *card)
 		file_size = card->ef_dir->size;
 		if (file_size == 0)
 			LOG_FUNC_RETURN(ctx, 0);
+		if (file_size > MAX_FILE_SIZE)
+			LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
 
 		buf = malloc(file_size);
 		if (buf == NULL)
