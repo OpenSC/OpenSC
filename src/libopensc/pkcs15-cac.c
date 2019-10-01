@@ -366,6 +366,7 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 			sc_log(card->ctx,  "Failed to read/parse the certificate r=%d",r);
 			if (cert_out != NULL)
 				sc_pkcs15_free_certificate(cert_out);
+			free(cert_info.value.value);
 			continue;
 		}
 
@@ -373,6 +374,7 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 		if (r < 0) {
 			sc_log(card->ctx,  " Failed to add cert obj r=%d",r);
 			sc_pkcs15_free_certificate(cert_out);
+			free(cert_info.value.value);
 			continue;
 		}
 		/* set the token name to the name of the CN of the first certificate */
