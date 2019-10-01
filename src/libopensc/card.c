@@ -28,6 +28,7 @@
 #include <unistd.h>
 #endif
 #include <string.h>
+#include <limits.h>
 
 #include "reader-tr03119.h"
 #include "internal.h"
@@ -655,6 +656,11 @@ int sc_read_binary(sc_card_t *card, unsigned int idx,
 				LOG_TEST_RET(card->ctx, r, "sc_read_binary() failed");
 			}
 			p += r;
+			if ((bytes_read > INT_MAX - r) || idx > UINT_MAX - r) {
+				/* `bytes_read + r` or `idx + r` would overflow */
+				sc_unlock(card);
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_OFFSET_TOO_LARGE);
+			}
 			idx += r;
 			bytes_read += r;
 			count -= r;
