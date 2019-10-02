@@ -374,7 +374,7 @@ static void print_tags_recursive(const u8 * buf0, const u8 * buf,
 		size_t len;
 
 		r = sc_asn1_read_tag(&tagp, bytesleft, &cla, &tag, &len);
-		if (r != SC_SUCCESS || tagp == NULL) {
+		if (r != SC_SUCCESS || (tagp == NULL && tag != SC_ASN1_TAG_EOC)) {
 			printf("Error in decoding.\n");
 			return;
 		}
