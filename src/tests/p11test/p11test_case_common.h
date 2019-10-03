@@ -80,7 +80,7 @@ int is_pss_mechanism(CK_MECHANISM_TYPE mech);
 
 #define P11TEST_START(info) if (info->log.fd) { \
 	if (info->log.in_test) \
-		fprintf(info->log.fd, "\n\t\"result\": \"unknown\"\n}"); \
+		fprintf(info->log.fd, ",\n\t\"result\": \"unknown\"\n}"); \
 	fprintf(info->log.fd, "%s\n{\n\t\"test_id\": \"%s\"", \
 			info->log.first ? "" : ",", __func__); \
 	info->log.in_test = 1; \
@@ -92,7 +92,7 @@ int is_pss_mechanism(CK_MECHANISM_TYPE mech);
 	if (info->log.in_data) {\
 		fprintf(info->log.fd, "]"); \
 	} \
-	if (info->log.fd && info->log.in_test) { \
+	if (info->log.in_test) { \
 		fprintf(info->log.fd, ",\n\t\"result\": \"" result "\"\n}"); \
 		info->log.in_test = 0; \
 	} \
