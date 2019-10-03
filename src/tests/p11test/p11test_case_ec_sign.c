@@ -28,7 +28,7 @@ void ec_sign_size_test(void **state) {
 	P11TEST_START(info);
 	if (token.num_ec_mechs == 0 ) {
 		fprintf(stderr, "Token does not support any ECC mechanisms. Skipping.\n");
-		skip();
+		P11TEST_SKIP(info);
 	}
 
 	test_certs_t objects;
