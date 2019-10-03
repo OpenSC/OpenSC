@@ -423,6 +423,15 @@ check_card_reader_status(PCARD_DATA pCardData, const char *name)
 		logprintf(pCardData, 1, "HANDLES CHANGED from 0x%08X 0x%08X\n",
 			  (unsigned int)vs->hSCardCtx,
 			  (unsigned int)vs->hScard);
+		if (pCardData->hSCardCtx == vs->hSCardCtx) {
+			/*  only hScard changed, set the provided reader and card handles into ctx */
+			vs->hScard = pCardData->hScard;
+			r = sc_ctx_use_reader(vs->ctx, &vs->hSCardCtx, &vs->hScard);
+			if (r != SC_SUCCESS) {
+				logprintf(pCardData, 0, "sc_ctx_use_reader() failed with %d\n", r);
+				return SCARD_E_COMM_DATA_LOST;
+			}
+		} else
 		return reinit_card_for(pCardData, name);
 	}
 
