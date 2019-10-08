@@ -3160,23 +3160,23 @@ pgp_store_key(sc_card_t *card, sc_cardctl_openpgp_keystore_info_t *key_info)
 		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
 				"Invalid key ID; must be 1, 2, or 3");
 
-	/* we just support standard key format */
-	switch (key_info->u.rsa.keyformat) {
-	case SC_OPENPGP_KEYFORMAT_RSA_STD:
-	case SC_OPENPGP_KEYFORMAT_RSA_STDN:
-		break;
-
-	case SC_OPENPGP_KEYFORMAT_RSA_CRT:
-	case SC_OPENPGP_KEYFORMAT_RSA_CRTN:
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
-
-	default:
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
-	}
-
 	/* set algorithm attributes */
 	/* RSA */
 	if (key_info->algorithm == SC_OPENPGP_KEYALGO_RSA){
+		/* we just support standard key format */
+		switch (key_info->u.rsa.keyformat) {
+		case SC_OPENPGP_KEYFORMAT_RSA_STD:
+		case SC_OPENPGP_KEYFORMAT_RSA_STDN:
+			break;
+
+		case SC_OPENPGP_KEYFORMAT_RSA_CRT:
+		case SC_OPENPGP_KEYFORMAT_RSA_CRTN:
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+
+		default:
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+		}
+
 		/* we only support exponent of maximum 32 bits */
 		if (key_info->u.rsa.e_len > SC_OPENPGP_MAX_EXP_BITS) {
 			sc_log(card->ctx,
