@@ -995,6 +995,8 @@ typedef struct sc_cardctl_openpgp_keystore_info {
 			size_t privateD_len;
 			u8 *ecpoint;
 			size_t ecpoint_len;
+			struct sc_object_id oid;
+			u8 oid_len;
 		} ec;
 	} u;
 	time_t creationtime;

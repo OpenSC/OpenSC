@@ -3207,6 +3207,8 @@ pgp_store_key(sc_card_t *card, sc_cardctl_openpgp_keystore_info_t *key_info)
 		if (key_info->u.ec.ecpoint && key_info->u.ec.ecpoint_len){
 			pubkey.u.ec.ecpoint = key_info->u.ec.ecpoint;
 			pubkey.u.ec.ecpoint_len = key_info->u.ec.ecpoint_len;
+			pubkey.u.ec.oid = key_info->u.ec.oid;
+			pubkey.u.ec.oid_len = key_info->u.ec.oid_len;
 		}
 		else
 			LOG_FUNC_RETURN(card->ctx,SC_ERROR_INVALID_ARGUMENTS);
