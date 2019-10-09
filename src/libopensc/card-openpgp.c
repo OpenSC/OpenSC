@@ -719,10 +719,20 @@ pgp_parse_algo_attr_blob(const pgp_blob_t *blob, sc_cardctl_openpgp_keygen_info_
 			/* SC_OPENPGP_KEYALGO_ECDH || SC_OPENPGP_KEYALGO_ECDSA */
 			key_info->algorithm = blob->data[0];
 
+			/* last byte is only set if pubkey import is supported, empty otherwise*/
+			if (blob->data[blob->len] == SC_OPENPGP_KEYFORMAT_EC_STDPUB){
+				key_info->u.ec.oid_len = blob->len - 2;
+				key_info->u.ec.keyformat = SC_OPENPGP_KEYFORMAT_EC_STDPUB;
+			}
+			else {
+				key_info->u.ec.oid_len = blob->len - 1;
+				key_info->u.ec.keyformat = SC_OPENPGP_KEYFORMAT_EC_STD;
+			}
+
 			sc_init_oid(&oid);
 			/* Create copy of oid from blob */
-			for (j=0; j < (blob->len-1); j++) {
-				oid.value[j] = blob->data[j+1]; /* ignore first byte of blob (algo ID) */
+			for (j=0; j < key_info->u.ec.oid_len; j++) {
+				oid.value[j] = blob->data[j+1]; /* ignore first byte (algo ID) */
 			}
 
 			/* compare with list of supported ec_curves */
@@ -733,6 +743,7 @@ pgp_parse_algo_attr_blob(const pgp_blob_t *blob, sc_cardctl_openpgp_keygen_info_
 					break;
 				}
 			}
+
 			break;
 		default:
 			return SC_ERROR_NOT_IMPLEMENTED;
@@ -3053,7 +3064,14 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_keystore_info
 		componentnames[0] = "private key";
 		comp_to_add = 1;
 
-		/* TODO ECC import with public key, if necessary as denoted in algorithm caps*/
+		/* import public key as well */
+		if (key_info->u.ec.keyformat == SC_OPENPGP_KEYFORMAT_EC_STDPUB){
+			components[1] = key_info->u.ec.ecpointQ;
+			componentlens[1] = key_info->u.ec.ecpointQ_len;
+			componenttags[1] = 0x99;
+			componentnames[1] = "public key";
+			comp_to_add = 2;
+		}
 
 		/* validate */
 		if ((key_info->u.ec.ecpointQ == NULL || key_info->u.ec.ecpointQ_len == 0)){
