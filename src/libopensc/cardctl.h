@@ -993,8 +993,8 @@ typedef struct sc_cardctl_openpgp_keystore_info {
 		struct {
 			u8 *privateD;
 			size_t privateD_len;
-			u8 *ecpoint;
-			size_t ecpoint_len;
+			u8 *ecpointQ;
+			size_t ecpointQ_len;
 			struct sc_object_id oid;
 			u8 oid_len;
 		} ec;

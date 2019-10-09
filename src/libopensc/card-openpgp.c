@@ -3056,8 +3056,8 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_keystore_info
 		/* TODO ECC import with public key, if necessary as denoted in algorithm caps*/
 
 		/* validate */
-		if ((key_info->u.ec.ecpoint == NULL || key_info->u.ec.ecpoint_len == 0)){
-			sc_log(ctx, "Error: ecpoint required!");
+		if ((key_info->u.ec.ecpointQ == NULL || key_info->u.ec.ecpointQ_len == 0)){
+			sc_log(ctx, "Error: ecpointQ required!");
 			LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 		}
 
@@ -3204,9 +3204,9 @@ pgp_store_key(sc_card_t *card, sc_cardctl_openpgp_keystore_info_t *key_info)
 		memset(&pubkey, 0, sizeof(pubkey));
 		pubkey.key_id = key_info->key_id;
 		pubkey.algorithm = key_info->algorithm;
-		if (key_info->u.ec.ecpoint && key_info->u.ec.ecpoint_len){
-			pubkey.u.ec.ecpoint = key_info->u.ec.ecpoint;
-			pubkey.u.ec.ecpoint_len = key_info->u.ec.ecpoint_len;
+		if (key_info->u.ec.ecpointQ && key_info->u.ec.ecpointQ_len){
+			pubkey.u.ec.ecpoint = key_info->u.ec.ecpointQ;
+			pubkey.u.ec.ecpoint_len = key_info->u.ec.ecpointQ_len;
 			pubkey.u.ec.oid = key_info->u.ec.oid;
 			pubkey.u.ec.oid_len = key_info->u.ec.oid_len;
 		}
