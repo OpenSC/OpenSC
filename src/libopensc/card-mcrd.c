@@ -51,9 +51,7 @@ static const struct sc_atr_table mcrd_atrs[] = {
 	{NULL, NULL, NULL, 0, 0, NULL}
 };
 
-static const struct sc_aid EstEID_v3_AID = { {0xF0, 0x45, 0x73, 0x74, 0x45, 0x49, 0x44, 0x20, 0x76, 0x65, 0x72, 0x20, 0x31, 0x2E, 0x30}, 15 };
 static const struct sc_aid EstEID_v35_AID = { {0xD2, 0x33, 0x00, 0x00, 0x00, 0x45, 0x73, 0x74, 0x45, 0x49, 0x44, 0x20, 0x76, 0x33, 0x35}, 15 };
-static const struct sc_aid AzeDIT_v35_AID = { {0xD0, 0x31, 0x00, 0x00, 0x00, 0x44, 0x69, 0x67, 0x69, 0x49, 0x44}, 11 };
 
 static struct sc_card_operations mcrd_ops;
 static struct sc_card_driver mcrd_drv = {
@@ -246,19 +244,13 @@ static int mcrd_init(sc_card_t * card)
 	struct mcrd_priv_data *priv = calloc(1, sizeof *priv);
 	if (!priv)
 		return SC_ERROR_OUT_OF_MEMORY;
+	priv->curpath[0] = MFID;
+	priv->curpathlen = 1;
 	card->drv_data = priv;
 	card->cla = 0x00;
 	card->caps = SC_CARD_CAP_RNG;
 
-	if (!is_esteid_card(card)) {
-		_sc_card_add_rsa_alg(card, 512, flags, 0);
-		_sc_card_add_rsa_alg(card, 768, flags, 0);
-		_sc_card_add_rsa_alg(card, 1024, flags, 0);
-	} else if (gp_select_aid(card, &EstEID_v3_AID) >= 0) {
-		/* EstEID v3.0 has 2048 bit keys */
-		_sc_card_add_rsa_alg(card, 2048, flags, 0);
-	} else if (gp_select_aid(card, &EstEID_v35_AID) >= 0) {
-		/* EstEID v3.5 has 2048 bit keys or EC 384 */
+	if (is_esteid_card(card)) {
 		_sc_card_add_rsa_alg(card, 2048, flags, 0);
 		flags = SC_ALGORITHM_ECDSA_RAW | SC_ALGORITHM_ECDH_CDH_RAW | SC_ALGORITHM_ECDSA_HASH_NONE;
 		ext_flags = SC_ALGORITHM_EXT_EC_NAMEDCURVE | SC_ALGORITHM_EXT_EC_UNCOMPRESES;
@@ -267,16 +259,11 @@ static int mcrd_init(sc_card_t * card)
 		// sc_read_binary cannot handle recursive 61 00 calls
 		if (card->reader && card->reader->active_protocol == SC_PROTO_T0)
 			card->max_recv_size = 255;
-	} else if (gp_select_aid(card, &AzeDIT_v35_AID) >= 0) {
-		_sc_card_add_rsa_alg(card, 2048, flags, 0);
 	} else {
-		free(card->drv_data);
-		card->drv_data = NULL;
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_CARD);
+		_sc_card_add_rsa_alg(card, 512, flags, 0);
+		_sc_card_add_rsa_alg(card, 768, flags, 0);
+		_sc_card_add_rsa_alg(card, 1024, flags, 0);
 	}
-
-	priv->curpath[0] = MFID;
-	priv->curpathlen = 1;
 
 	if (SC_SUCCESS != sc_select_file (card, sc_get_mf_path(), NULL))
 		sc_log(card->ctx, "Warning: select MF failed");
@@ -625,14 +612,7 @@ do_select(sc_card_t * card, u8 kind,
 	if (kind == MCRD_SEL_EF) p2 = 0x04;
 	if (kind == MCRD_SEL_DF) p2 = 0x0C;
 
-	sc_format_apdu(card, &apdu, buflen?SC_APDU_CASE_4_SHORT:SC_APDU_CASE_2_SHORT, 0xA4, kind, p2);
-	apdu.data = buf;
-	apdu.datalen = buflen;
-	apdu.lc = apdu.datalen;
-	apdu.resp = resbuf;
-	apdu.resplen = sizeof(resbuf);
-	apdu.le = 256;
-
+	sc_format_apdu_ex(&apdu, 0x00, 0xA4, kind, p2, buf, buflen, resbuf, 256);
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (!file) {
@@ -684,7 +664,7 @@ do_select(sc_card_t * card, u8 kind,
    required. */
 static int
 select_part(sc_card_t * card, u8 kind, unsigned short int fid,
-	    sc_file_t ** file)
+		sc_file_t ** file)
 {
 	u8 fbuf[2];
 	unsigned int len;
@@ -712,8 +692,8 @@ select_part(sc_card_t * card, u8 kind, unsigned short int fid,
    to figure out whether the last path item is a DF or EF. */
 static int
 select_down(sc_card_t * card,
-	    unsigned short *pathptr, size_t pathlen,
-	    int df_only, sc_file_t ** file)
+		unsigned short *pathptr, size_t pathlen,
+		int df_only, sc_file_t ** file)
 {
 	struct mcrd_priv_data *priv = DRVDATA(card);
 	int r;
@@ -725,7 +705,7 @@ select_down(sc_card_t * card,
 	for (; pathlen; pathlen--, pathptr++) {
 		if (priv->curpathlen == MAX_CURPATH)
 			LOG_TEST_RET(card->ctx, SC_ERROR_INTERNAL,
-				    "path too long for cache");
+					"path too long for cache");
 		r = -1;		/* force DF select. */
 		if (pathlen == 1 && !df_only) {
 			/* first try to select an EF and retry an DF
@@ -757,7 +737,7 @@ select_down(sc_card_t * card,
 
 static int
 select_file_by_path(sc_card_t * card, unsigned short *pathptr,
-		    size_t pathlen, sc_file_t ** file)
+			size_t pathlen, sc_file_t ** file)
 {
 	struct mcrd_priv_data *priv = DRVDATA(card);
 	int r;
@@ -787,7 +767,7 @@ select_file_by_path(sc_card_t * card, unsigned short *pathptr,
 		/* Absolute addressing, check cache to avoid
 		   unnecessary selects. */
 		for (i = 0; (i < pathlen && i < priv->curpathlen
-			     && pathptr[i] == priv->curpath[i]); i++) ;
+				&& pathptr[i] == priv->curpath[i]); i++) ;
 		if (!priv->curpathlen) {
 			/* Need to do all selects starting at the root. */
 			priv->curpathlen = 0;
@@ -850,7 +830,7 @@ select_file_by_path(sc_card_t * card, unsigned short *pathptr,
 
 static int
 select_file_by_fid(sc_card_t * card, unsigned short *pathptr,
-		   size_t pathlen, sc_file_t ** file)
+			size_t pathlen, sc_file_t ** file)
 {
 	struct mcrd_priv_data *priv = DRVDATA(card);
 	int r;
@@ -961,11 +941,9 @@ mcrd_select_file(sc_card_t * card, const sc_path_t * path, sc_file_t ** file)
 
 		if (samepath != 1 || priv->is_ef == 0 || priv->is_ef == 1) {
 			if (path->type == SC_PATH_TYPE_PATH)
-				r = select_file_by_path(card, pathptr, pathlen,
-							file);
+				r = select_file_by_path(card, pathptr, pathlen, file);
 			else {	/* SC_PATH_TYPE_FILEID */
-				r = select_file_by_fid(card, pathptr, pathlen,
-						       file);
+				r = select_file_by_fid(card, pathptr, pathlen, file);
 			}
 		}
 	}
@@ -1071,8 +1049,8 @@ err:
 
 /* heavily modified by -mp */
 static int mcrd_compute_signature(sc_card_t * card,
-				  const u8 * data, size_t datalen,
-				  u8 * out, size_t outlen)
+					const u8 * data, size_t datalen,
+					u8 * out, size_t outlen)
 {
 	struct mcrd_priv_data *priv = DRVDATA(card);
 	sc_security_env_t *env = NULL;
@@ -1095,16 +1073,9 @@ static int mcrd_compute_signature(sc_card_t * card,
 		 env->algorithm, env->algorithm_flags);
 
 	if (env->key_ref[0] == 1) /* authentication key */
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x88, 0, 0);
+		sc_format_apdu_ex(&apdu, 0x00, 0x88, 0, 0, data, datalen, out, MIN(0x80U, outlen));
 	else
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x9E, 0x9A);
-	apdu.lc = datalen;
-	apdu.data = data;
-	apdu.datalen = datalen;
-	apdu.le = MIN(0x80u, outlen);
-	apdu.resp = out;
-	apdu.resplen = outlen;
-
+		sc_format_apdu_ex(&apdu, 0x00, 0x2A, 0x9E, 0x9A, data, datalen, out, MIN(0x80U, outlen));
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
@@ -1150,14 +1121,7 @@ static int mcrd_decipher(struct sc_card *card,
 	LOG_TEST_RET(card->ctx, r, "Error encoding TLV.");
 
 	// Create APDU
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_4, 0x2A, 0x80, 0x86);
-	apdu.lc = sbuf_len;
-	apdu.data = sbuf;
-	apdu.datalen = sbuf_len;
-	apdu.le = MIN(0x80u, outlen);
-	apdu.resp = out;
-	apdu.resplen = outlen;
-
+	sc_format_apdu_ex(&apdu, 0x00, 0x2A, 0x80, 0x86, sbuf, sbuf_len, out, MIN(0x80U, outlen));
 	r = sc_transmit_apdu(card, &apdu);
 	sc_mem_clear(sbuf, sbuf_len);
 	free(sbuf);
