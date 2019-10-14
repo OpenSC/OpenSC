@@ -1413,8 +1413,8 @@ static int do_get(int argc, char **argv)
 		check_ret(r, SC_AC_OP_SELECT, "unable to select file", current_file);
 		goto err;
 	}
-	if (file->type != SC_FILE_TYPE_WORKING_EF) {
-		fprintf(stderr, "only working EFs may be read\n");
+	if (file->type != SC_FILE_TYPE_WORKING_EF || file->ef_structure != SC_FILE_EF_TRANSPARENT) {
+		fprintf(stderr, "only transparent working EFs may be read\n");
 		goto err;
 	}
 	count = file->size;
