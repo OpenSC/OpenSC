@@ -286,6 +286,12 @@ add_module_chrome(const char *module_path, const char *module_name, const char *
 #else
 	char profile_path[PATH_MAX];
 	const char *home = getenv("HOME");
+
+	if (0 == strcmp(module_path, default_pkcs11_provider)) {
+		module_path = default_onepin_pkcs11_provider;
+		exclude_module_path = default_pkcs11_provider;
+	}
+
 	if (home && 0 <= snprintf(profile_path, sizeof profile_path,
 				"%s%c%s", home, path_sep, ".pki/nssdb")) {
 		add_module_pkcs11_txt(profile_path, module_path, module_name, exclude_module_path);
