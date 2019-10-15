@@ -115,5 +115,8 @@ src/tests/p11test/p11test
 
 tests/*.log
 tests/*.trs
+src/tests/unittests/*.log
+src/tests/unittests/*.trs
+src/tests/unittests/asn1
 
 version.m4.ci

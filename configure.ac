@@ -1098,6 +1098,7 @@ AC_CONFIG_FILES([
 	src/tests/regression/Makefile
 	src/tests/p11test/Makefile
 	src/tests/fuzzing/Makefile
+	src/tests/unittests/Makefile
 	src/tools/Makefile
 	src/tools/versioninfo-tools.rc
 	src/tools/versioninfo-opensc-notify.rc
