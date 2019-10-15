@@ -566,6 +566,12 @@ sc_pkcs11_verif_init(struct sc_pkcs11_session *session, CK_MECHANISM_PTR pMechan
 		return rv;
 
 	memcpy(&operation->mechanism, pMechanism, sizeof(CK_MECHANISM));
+	if (pMechanism->pParameter) {
+		memcpy(&operation->mechanism_params, pMechanism->pParameter,
+			pMechanism->ulParameterLen);
+		operation->mechanism.pParameter = &operation->mechanism_params;
+	}
+
 	rv = mt->verif_init(operation, key);
 
 	if (rv != CKR_OK)
@@ -798,6 +804,11 @@ sc_pkcs11_decr_init(struct sc_pkcs11_session *session,
 		return rv;
 
 	memcpy(&operation->mechanism, pMechanism, sizeof(CK_MECHANISM));
+	if (pMechanism->pParameter) {
+		memcpy(&operation->mechanism_params, pMechanism->pParameter,
+		       pMechanism->ulParameterLen);
+		operation->mechanism.pParameter = &operation->mechanism_params;
+	}
 	rv = mt->decrypt_init(operation, key);
 
 	if (rv != CKR_OK)
