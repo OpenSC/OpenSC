@@ -137,7 +137,7 @@ add_module_pkcs11_txt(const char *profile_dir,
 	pkcs11_txt = p;
 
 	if (!strstr(pkcs11_txt, module_path)
-			&& (exclude_module_path && !strstr(pkcs11_txt, exclude_module_path))) {
+			&& (!exclude_module_path || !strstr(pkcs11_txt, exclude_module_path))) {
 		/* module is not yet present */
 		FILE *f = fopen(pkcs11_txt_path, "a");
 		if (f) {
