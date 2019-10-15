@@ -28,6 +28,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
 
 #include "internal.h"
 #include "asn1.h"
@@ -816,6 +817,11 @@ sc_asn1_decode_object_id(const u8 *inbuf, size_t inlen, struct sc_object_id *id)
 		a = *p & 0x7F;
 		inlen--;
 		while (inlen && *p & 0x80) {
+			/* Limit the OID values to int size and do not overflow */
+			if (a > (INT_MAX>>7)) {
+				sc_init_oid(id);
+				return SC_ERROR_NOT_SUPPORTED;
+			}
 			p++;
 			a <<= 7;
 			a |= *p & 0x7F;
