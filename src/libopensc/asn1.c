@@ -708,18 +708,30 @@ static int encode_bit_field(const u8 *inbuf, size_t inlen,
 int sc_asn1_decode_integer(const u8 * inbuf, size_t inlen, int *out)
 {
 	int    a = 0, is_negative = 0;
-	size_t i;
+	size_t i = 0;
 
 	if (inlen > sizeof(int) || inlen == 0)
 		return SC_ERROR_INVALID_ASN1_OBJECT;
-	if (inbuf[0] & 0x80)
+	if (inbuf[0] & 0x80) {
 		is_negative = 1;
-	for (i = 0; i < inlen; i++) {
-		a <<= 8;
-		a |= *inbuf++;
+		a |= 0xff^(*inbuf++);
+		i = 1;
 	}
-	if (is_negative)
-		a *= -1;
+	for (; i < inlen; i++) {
+		if (a > (INT_MAX >> 8) || a < (INT_MIN + (1<<8))) {
+			return SC_ERROR_NOT_SUPPORTED;
+		}
+		a <<= 8;
+		if (is_negative) {
+			a |= 0xff^(*inbuf++);
+		} else {
+			a |= *inbuf++;
+		}
+	}
+	if (is_negative) {
+		/* Calculate Two's complement from previously positive number */
+		a = -1 * (a + 1);
+	}
 	*out = a;
 	return 0;
 }
