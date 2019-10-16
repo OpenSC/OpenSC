@@ -47,6 +47,61 @@ static void torture_large_oid(void **state)
 	assert_int_equal(rv, SC_ERROR_NOT_SUPPORTED);
 }
 
+static void torture_oid(void **state)
+{
+	/* (without the tag and length {0x06, 0x06}) */
+	/* Small OIDs */
+	u8 small[] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06};
+	/* Limit what we can fit into the first byte */
+	u8 limit[] = {0x7F};
+	/* The second octet already oveflows to the second byte */
+	u8 two_byte[] = {0x81, 0x00};
+	/* Missing second byte, even though indicated with the first bit */
+	u8 missing[] = {0x81};
+	/* Missing second byte, even though indicated with the first bit */
+	u8 ecpubkey[] = {0x2A, 0x86, 0x48, 0xCE, 0x3D, 0x02, 0x01};
+	struct sc_object_id oid;
+	int rv = 0;
+
+	rv = sc_asn1_decode_object_id(small, sizeof(small), &oid);
+	assert_int_equal(rv, SC_SUCCESS);
+	assert_int_equal(oid.value[0], 0);
+	assert_int_equal(oid.value[1], 1);
+	assert_int_equal(oid.value[2], 2);
+	assert_int_equal(oid.value[3], 3);
+	assert_int_equal(oid.value[4], 4);
+	assert_int_equal(oid.value[5], 5);
+	assert_int_equal(oid.value[6], 6);
+	assert_int_equal(oid.value[7], -1);
+
+	rv = sc_asn1_decode_object_id(limit, sizeof(limit), &oid);
+	assert_int_equal(rv, SC_SUCCESS);
+	assert_int_equal(oid.value[0], 2);
+	assert_int_equal(oid.value[1], 47);
+	assert_int_equal(oid.value[2], -1);
+
+	rv = sc_asn1_decode_object_id(two_byte, sizeof(two_byte), &oid);
+	assert_int_equal(rv, SC_SUCCESS);
+	assert_int_equal(oid.value[0], 2);
+	assert_int_equal(oid.value[1], 48);
+	assert_int_equal(oid.value[2], -1);
+
+	rv = sc_asn1_decode_object_id(missing, sizeof(missing), &oid);
+	assert_int_equal(rv, SC_ERROR_INVALID_ASN1_OBJECT);
+
+	rv = sc_asn1_decode_object_id(ecpubkey, sizeof(ecpubkey), &oid);
+	assert_int_equal(rv, SC_SUCCESS);
+	assert_int_equal(oid.value[0], 1);
+	assert_int_equal(oid.value[1], 2);
+	assert_int_equal(oid.value[2], 840);
+	assert_int_equal(oid.value[3], 10045);
+	assert_int_equal(oid.value[4], 2);
+	assert_int_equal(oid.value[5], 1);
+	assert_int_equal(oid.value[6], -1);
+
+	/* TODO SC_MAX_OBJECT_ID_OCTETS */
+}
+
 static void torture_integer(void **state)
 {
 	/* Without the Tag and Length {0x02, 0x01} */
@@ -132,6 +187,8 @@ int main(void)
 		cmocka_unit_test(torture_large_oid),
 		cmocka_unit_test(torture_integer),
 		cmocka_unit_test(torture_negative_int),
+		cmocka_unit_test(torture_oid),
+		/* TODO Test and adjust the ANS1 generators */
 	};
 
 	rc = cmocka_run_group_tests(tests, NULL, NULL);
