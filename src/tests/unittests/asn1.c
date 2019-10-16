@@ -47,12 +47,91 @@ static void torture_large_oid(void **state)
 	assert_int_equal(rv, SC_ERROR_NOT_SUPPORTED);
 }
 
+static void torture_integer(void **state)
+{
+	/* Without the Tag and Length {0x02, 0x01} */
+	u8 zero[] = {0x00};
+	u8 one[] = {0x01};
+	u8 minus_one[] = {0xFF};
+	u8 max2[] = {0x7F, 0xFF};
+	u8 min2[] = {0x80, 0x00};
+	u8 max4[] = {0x7F, 0xFF, 0xFF, 0xFF};
+	u8 min4[] = {0x80, 0x00, 0x00, 0x00};
+	u8 over[] = {0x7F, 0xFF, 0xFF, 0xFF, 0xFF};
+	int value;
+	int rv = 0;
+
+	rv = sc_asn1_decode_integer(zero, sizeof(zero), &value);
+	assert_int_equal(rv, SC_SUCCESS);
+	assert_int_equal(value, 0);
+
+	rv = sc_asn1_decode_integer(one, sizeof(one), &value);
+	assert_int_equal(rv, SC_SUCCESS);
+	assert_int_equal(value, 1);
+
+	rv = sc_asn1_decode_integer(minus_one, sizeof(minus_one), &value);
+	assert_int_equal(rv, SC_SUCCESS);
+	assert_int_equal(value, (int)-1);
+
+	rv = sc_asn1_decode_integer(max2, sizeof(max2), &value);
+	assert_int_equal(rv, SC_SUCCESS);
+	assert_int_equal(value, 32767);
+
+	rv = sc_asn1_decode_integer(min2, sizeof(min2), &value);
+	assert_int_equal(rv, SC_SUCCESS);
+	assert_int_equal(value, -32768);
+
+	if (sizeof(int*) == 8) {
+		/* For 64 bit builds */
+		rv = sc_asn1_decode_integer(max4, sizeof(max4), &value);
+		assert_int_equal(rv, SC_SUCCESS);
+		assert_int_equal(value, 2147483647);
+
+		rv = sc_asn1_decode_integer(min4, sizeof(min4), &value);
+		assert_int_equal(rv, SC_SUCCESS);
+		assert_int_equal(value, -2147483648);
+
+		rv = sc_asn1_decode_integer(over, sizeof(over), &value);
+		assert_int_equal(rv, SC_ERROR_INVALID_ASN1_OBJECT);
+	} else {
+		/* On 32 bit builds, this will fail */
+		rv = sc_asn1_decode_integer(max4, sizeof(max4), &value);
+		assert_int_equal(rv, SC_ERROR_INVALID_ASN1_OBJECT);
+
+		rv = sc_asn1_decode_integer(min4, sizeof(min4), &value);
+		assert_int_equal(rv, SC_ERROR_INVALID_ASN1_OBJECT);
+	}
+}
+
+/*
+ * Test undefined behavior of negative INTEGERS handling.
+ * https://oss-fuzz.com/testcase-detail/5125815506829312
+ *
+ * The issue was not actually the size of the integers, but that first
+ * negative value wrote ones to the whole integer and it was not possible
+ * to shift values afterward.
+ */
+static void torture_negative_int(void **state)
+{
+	/* Without the Tag and Length {0x80, 0x04} */
+	/* u8 data1[] = {0xff, 0x20, 0x20, 0x20}; original data */
+	u8 data1[] = {0xff, 0x20}; /* Shortened also for 32 builds */
+	int value;
+	int rv = 0;
+
+	rv = sc_asn1_decode_integer(data1, sizeof(data1), &value);
+	assert_int_equal(rv, SC_SUCCESS);
+	assert_int_equal(value, -224);
+}
+
 
 int main(void)
 {
 	int rc;
 	struct CMUnitTest tests[] = {
 		cmocka_unit_test(torture_large_oid),
+		cmocka_unit_test(torture_integer),
+		cmocka_unit_test(torture_negative_int),
 	};
 
 	rc = cmocka_run_group_tests(tests, NULL, NULL);
