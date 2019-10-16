@@ -949,7 +949,7 @@ piv_get_data(sc_card_t * card, int enumtag, u8 **buf, size_t *buf_len)
 				r = SC_ERROR_FILE_NOT_FOUND;
 				goto err;
 			}
-		    *buf_len = (body - rbuf) + bodylen;
+			*buf_len = (body - rbuf) + bodylen;
 		} else if ( r == 0 ) {
 			r = SC_ERROR_FILE_NOT_FOUND;
 			goto err;
