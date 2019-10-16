@@ -807,10 +807,37 @@ sc_asn1_decode_object_id(const u8 *inbuf, size_t inlen, struct sc_object_id *id)
 	sc_init_oid(id);
 	octet = id->value;
 
-	a = *p;
-	*octet++ = a / 40;
-	*octet++ = a % 40;
-	inlen--;
+	/* The first octet can be 0, 1 or 2 and is derived from the first byte */
+	a = MIN(*p / 40, 2);
+	*octet++ = a;
+
+	/* The second octet fits here if the previous was 0 or 1 and second one is smaller than 40.
+	 * for the value 2 we can go up to 47. Otherwise the first bit needs to be set
+	 * and we continue reading further */
+	if ((*p & 0x80) == 0) {
+		*octet++ = *p - (a * 40);
+		inlen--;
+	} else {
+		a = (*p & 0x7F);
+		inlen--;
+		if (!inlen) {
+			sc_init_oid(id);
+			return SC_ERROR_INVALID_ASN1_OBJECT;
+		}
+		do {
+			/* Limit the OID values to int size and do not overflow */
+			if (a > (INT_MAX>>7)) {
+				sc_init_oid(id);
+				return SC_ERROR_NOT_SUPPORTED;
+			}
+			p++;
+			a <<= 7;
+			a |= *p & 0x7F;
+			inlen--;
+		} while (inlen && *p & 0x80);
+		/* In this case, the first octet was 2 */
+		*octet++ = a - (2 * 40);
+	}
 
 	while (inlen) {
 		p++;
