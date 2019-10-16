@@ -118,7 +118,7 @@ get_next_profile_path(const char **profiles_ini, const char *home, const char *b
 
 void
 add_module_pkcs11_txt(const char *profile_dir,
-		const char *module_path, const char *module_name)
+		const char *module_path, const char *module_name, const char *exclude_module_path)
 {
 	char pkcs11_txt_path[PATH_MAX];
 	char *pkcs11_txt = NULL;
@@ -136,7 +136,8 @@ add_module_pkcs11_txt(const char *profile_dir,
 	p[pkcs11_txt_len] = '\0';
 	pkcs11_txt = p;
 
-	if (!strstr(pkcs11_txt, module_path)) {
+	if (!strstr(pkcs11_txt, module_path)
+			&& (!exclude_module_path || !strstr(pkcs11_txt, exclude_module_path))) {
 		/* module is not yet present */
 		FILE *f = fopen(pkcs11_txt_path, "a");
 		if (f) {
@@ -160,7 +161,7 @@ struct location {
 
 void
 add_module_mozilla(const struct location *locations, size_t locations_len,
-		const char *module_path, const char *module_name)
+		const char *module_path, const char *module_name, const char *exclude_module_path)
 {
 	size_t i;
 
@@ -177,7 +178,7 @@ add_module_mozilla(const struct location *locations, size_t locations_len,
 				const char *profile_path = get_next_profile_path(&p, home, locations[i].dir);
 				if (!profile_path)
 					break;
-				add_module_pkcs11_txt(profile_path, module_path, module_name);
+				add_module_pkcs11_txt(profile_path, module_path, module_name, exclude_module_path);
 			}
 		}
 		free(profiles_ini);
@@ -218,7 +219,7 @@ get_module_name(const char *module_path)
 }
 
 void
-add_module_firefox(const char *module_path, const char *module_name)
+add_module_firefox(const char *module_path, const char *module_name, const char *exclude_module_path)
 {
 	struct location locations[] = {
 #if   defined(__APPLE__)
@@ -231,15 +232,17 @@ add_module_firefox(const char *module_path, const char *module_name)
 #endif
 	};
 
-	if (0 == strcmp(module_path, default_pkcs11_provider))
+	if (0 == strcmp(module_path, default_pkcs11_provider)) {
 		module_path = default_onepin_pkcs11_provider;
+		exclude_module_path = default_pkcs11_provider;
+	}
 
 	add_module_mozilla(locations, sizeof locations/sizeof *locations,
-			module_path, module_name);
+			module_path, module_name, exclude_module_path);
 }
 
 void
-add_module_thunderbird(const char *module_path, const char *module_name)
+add_module_thunderbird(const char *module_path, const char *module_name, const char *exclude_module_path)
 {
 	struct location locations[] = {
 #if   defined(__APPLE__)
@@ -254,11 +257,11 @@ add_module_thunderbird(const char *module_path, const char *module_name)
 	};
 
 	add_module_mozilla(locations, sizeof locations/sizeof *locations,
-			module_path, module_name);
+			module_path, module_name, exclude_module_path);
 }
 
 void
-add_module_seamonkey(const char *module_path, const char *module_name)
+add_module_seamonkey(const char *module_path, const char *module_name, const char *exclude_module_path)
 {
 	struct location locations[] = {
 #if   defined(__APPLE__)
@@ -272,20 +275,26 @@ add_module_seamonkey(const char *module_path, const char *module_name)
 	};
 
 	add_module_mozilla(locations, sizeof locations/sizeof *locations,
-			module_path, module_name);
+			module_path, module_name, exclude_module_path);
 }
 
 void
-add_module_chrome(const char *module_path, const char *module_name)
+add_module_chrome(const char *module_path, const char *module_name, const char *exclude_module_path)
 {
 #if defined(__APPLE__) || defined(_WIN32)
 	/* OS specific framework will be used by Chrome instead of PKCS#11 */
 #else
 	char profile_path[PATH_MAX];
 	const char *home = getenv("HOME");
+
+	if (0 == strcmp(module_path, default_pkcs11_provider)) {
+		module_path = default_onepin_pkcs11_provider;
+		exclude_module_path = default_pkcs11_provider;
+	}
+
 	if (home && 0 <= snprintf(profile_path, sizeof profile_path,
 				"%s%c%s", home, path_sep, ".pki/nssdb")) {
-		add_module_pkcs11_txt(profile_path, module_path, module_name);
+		add_module_pkcs11_txt(profile_path, module_path, module_name, exclude_module_path);
 	}
 #endif
 }
@@ -300,13 +309,16 @@ int
 main(int argc, char **argv)
 {
 	struct gengetopt_args_info cmdline;
+	const char *exclude_module_path = NULL;
 
 	if (cmdline_parser(argc, argv, &cmdline) != 0)
 		return 1;
 
 	const char *module_path = cmdline.module_arg;
-	if (!cmdline.module_given)
+	if (!cmdline.module_given) {
 		module_path = default_pkcs11_provider;
+		exclude_module_path = default_onepin_pkcs11_provider;
+	}
 #ifdef _WIN32
 	DWORD expanded_len;
 	char module_path_expanded[PATH_MAX], default_expanded[PATH_MAX], onepin_expanded[PATH_MAX];
@@ -322,13 +334,13 @@ main(int argc, char **argv)
 	}
 
 	if (!cmdline.skip_chrome_flag)
-		add_module_chrome(module_path, module_name);
+		add_module_chrome(module_path, module_name, exclude_module_path);
 	if (!cmdline.skip_firefox_flag)
-		add_module_firefox(module_path, module_name);
+		add_module_firefox(module_path, module_name, exclude_module_path);
 	if (!cmdline.skip_thunderbird_flag)
-		add_module_thunderbird(module_path, module_name);
+		add_module_thunderbird(module_path, module_name, exclude_module_path);
 	if (!cmdline.skip_seamonkey_flag)
-		add_module_seamonkey(module_path, module_name);
+		add_module_seamonkey(module_path, module_name, exclude_module_path);
 
 	cmdline_parser_free (&cmdline);
 
