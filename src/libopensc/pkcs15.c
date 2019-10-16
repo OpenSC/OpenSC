@@ -2257,7 +2257,7 @@ sc_pkcs15_parse_unusedspace(const unsigned char *buf, size_t buflen, struct sc_p
 	const unsigned char *p = buf;
 	size_t left = buflen;
 	int r;
-	struct sc_path path, dummy_path;
+	struct sc_path path;
 	struct sc_pkcs15_id auth_id;
 	struct sc_asn1_entry asn1_unusedspace[] = {
 		{ "UnusedSpace", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
@@ -2271,9 +2271,6 @@ sc_pkcs15_parse_unusedspace(const unsigned char *buf, size_t buflen, struct sc_p
 
 	/* Clean the list if already present */
 	sc_pkcs15_free_unusedspace(p15card);
-
-	sc_format_path("3F00", &dummy_path);
-	dummy_path.index = dummy_path.count = 0;
 
 	sc_format_asn1_entry(asn1_unusedspace, asn1_unusedspace_values, NULL, 1);
 	sc_format_asn1_entry(asn1_unusedspace_values, &path, NULL, 1);
