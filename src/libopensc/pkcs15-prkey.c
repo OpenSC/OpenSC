@@ -258,6 +258,13 @@ int sc_pkcs15_decode_prkdf_entry(struct sc_pkcs15_card *p15card,
 	memset(gostr3410_params, 0, sizeof(gostr3410_params));
 
 	r = sc_asn1_decode_choice(ctx, asn1_prkey, *buf, *buflen, buf, buflen);
+	if (r < 0) {
+		/* This might have allocated something. If so, clear it now */
+		if (asn1_com_prkey_attr->flags & SC_ASN1_PRESENT &&
+			asn1_com_prkey_attr[0].flags & SC_ASN1_PRESENT) {
+			free(asn1_com_prkey_attr[0].parm);
+		}
+	}
 	if (r == SC_ERROR_ASN1_END_OF_CONTENTS)
 		return r;
 	LOG_TEST_RET(ctx, r, "PrKey DF ASN.1 decoding failed");
