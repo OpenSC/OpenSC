@@ -20,7 +20,8 @@
  */
 
 #include "torture.h"
-#include "libopensc/asn1.h"
+#include "libopensc/log.c"
+#include "libopensc/asn1.c"
 
 /*
  * Test undefined behavior of too large parts of OID encoding
@@ -51,43 +52,50 @@ static void torture_oid(void **state)
 {
 	/* (without the tag and length {0x06, 0x06}) */
 	/* Small OIDs */
+	struct sc_object_id small_oid = {{0, 1, 2, 3, 4, 5, 6, -1}};
 	u8 small[] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06};
 	/* Limit what we can fit into the first byte */
+	struct sc_object_id limit_oid = {{2, 47, -1}};
 	u8 limit[] = {0x7F};
 	/* The second octet already oveflows to the second byte */
+	struct sc_object_id two_byte_oid = {{2, 48, -1}};
 	u8 two_byte[] = {0x81, 0x00};
+	/* Existing OID ec publickey */
+	struct sc_object_id ecpubkey_oid = {{1, 2, 840, 10045, 2, 1, -1}};
+	u8 ecpubkey[] = {0x2A, 0x86, 0x48, 0xCE, 0x3D, 0x02, 0x01};
 	/* Missing second byte, even though indicated with the first bit */
 	u8 missing[] = {0x81};
-	/* Missing second byte, even though indicated with the first bit */
-	u8 ecpubkey[] = {0x2A, 0x86, 0x48, 0xCE, 0x3D, 0x02, 0x01};
 	struct sc_object_id oid;
+	u8 *buf = NULL;
+	size_t buflen = 0;
 	int rv = 0;
 
 	rv = sc_asn1_decode_object_id(small, sizeof(small), &oid);
 	assert_int_equal(rv, SC_SUCCESS);
-	assert_int_equal(oid.value[0], 0);
-	assert_int_equal(oid.value[1], 1);
-	assert_int_equal(oid.value[2], 2);
-	assert_int_equal(oid.value[3], 3);
-	assert_int_equal(oid.value[4], 4);
-	assert_int_equal(oid.value[5], 5);
-	assert_int_equal(oid.value[6], 6);
-	assert_int_equal(oid.value[7], -1);
+	assert_int_equal(sc_compare_oid(&small_oid, &oid), 1);
+	rv = sc_asn1_encode_object_id(&buf, &buflen, &oid);
+	assert_int_equal(rv, SC_SUCCESS);
+	assert_int_equal(buflen, sizeof(small));
+	assert_memory_equal(buf, small, buflen);
+	free(buf);
 
 	rv = sc_asn1_decode_object_id(limit, sizeof(limit), &oid);
 	assert_int_equal(rv, SC_SUCCESS);
-	assert_int_equal(oid.value[0], 2);
-	assert_int_equal(oid.value[1], 47);
-	assert_int_equal(oid.value[2], -1);
+	assert_int_equal(sc_compare_oid(&limit_oid, &oid), 1);
+	rv = sc_asn1_encode_object_id(&buf, &buflen, &oid);
+	assert_int_equal(rv, SC_SUCCESS);
+	assert_int_equal(buflen, sizeof(limit));
+	assert_memory_equal(buf, limit, buflen);
+	free(buf);
 
 	rv = sc_asn1_decode_object_id(two_byte, sizeof(two_byte), &oid);
 	assert_int_equal(rv, SC_SUCCESS);
-	assert_int_equal(oid.value[0], 2);
-	assert_int_equal(oid.value[1], 48);
-	assert_int_equal(oid.value[2], -1);
-
-	rv = sc_asn1_decode_object_id(missing, sizeof(missing), &oid);
-	assert_int_equal(rv, SC_ERROR_INVALID_ASN1_OBJECT);
+	assert_int_equal(sc_compare_oid(&two_byte_oid, &oid), 1);
+	rv = sc_asn1_encode_object_id(&buf, &buflen, &oid);
+	assert_int_equal(rv, SC_SUCCESS);
+	assert_int_equal(buflen, sizeof(two_byte));
+	assert_memory_equal(buf, two_byte, buflen);
+	free(buf);
 
 	rv = sc_asn1_decode_object_id(ecpubkey, sizeof(ecpubkey), &oid);
 	assert_int_equal(rv, SC_SUCCESS);
@@ -98,6 +106,15 @@ static void torture_oid(void **state)
 	assert_int_equal(oid.value[4], 2);
 	assert_int_equal(oid.value[5], 1);
 	assert_int_equal(oid.value[6], -1);
+	assert_int_equal(sc_compare_oid(&ecpubkey_oid, &oid), 1);
+	rv = sc_asn1_encode_object_id(&buf, &buflen, &oid);
+	assert_int_equal(rv, SC_SUCCESS);
+	assert_int_equal(buflen, sizeof(ecpubkey));
+	assert_memory_equal(buf, ecpubkey, buflen);
+	free(buf);
+
+	rv = sc_asn1_decode_object_id(missing, sizeof(missing), &oid);
+	assert_int_equal(rv, SC_ERROR_INVALID_ASN1_OBJECT);
 
 	/* TODO SC_MAX_OBJECT_ID_OCTETS */
 }
@@ -114,42 +131,80 @@ static void torture_integer(void **state)
 	u8 min4[] = {0x80, 0x00, 0x00, 0x00};
 	u8 over[] = {0x7F, 0xFF, 0xFF, 0xFF, 0xFF};
 	int value;
+	u8 *buf = NULL;
+	size_t buflen = 0;
 	int rv = 0;
 
 	rv = sc_asn1_decode_integer(zero, sizeof(zero), &value);
 	assert_int_equal(rv, SC_SUCCESS);
 	assert_int_equal(value, 0);
+	rv = asn1_encode_integer(value, &buf, &buflen);
+	assert_int_equal(rv, SC_SUCCESS);
+	assert_int_equal(buflen, sizeof(zero));
+	assert_memory_equal(buf, zero, buflen);
+	free(buf);
 
 	rv = sc_asn1_decode_integer(one, sizeof(one), &value);
 	assert_int_equal(rv, SC_SUCCESS);
 	assert_int_equal(value, 1);
+	rv = asn1_encode_integer(value, &buf, &buflen);
+	assert_int_equal(rv, SC_SUCCESS);
+	assert_int_equal(buflen, sizeof(one));
+	assert_memory_equal(buf, one, buflen);
+	free(buf);
 
 	rv = sc_asn1_decode_integer(minus_one, sizeof(minus_one), &value);
 	assert_int_equal(rv, SC_SUCCESS);
-	assert_int_equal(value, (int)-1);
+	assert_int_equal(value, -1);
+	rv = asn1_encode_integer(value, &buf, &buflen);
+	assert_int_equal(rv, SC_SUCCESS);
+	assert_int_equal(buflen, sizeof(minus_one));
+	assert_memory_equal(buf, minus_one, buflen);
+	free(buf);
 
 	rv = sc_asn1_decode_integer(max2, sizeof(max2), &value);
 	assert_int_equal(rv, SC_SUCCESS);
 	assert_int_equal(value, 32767);
+	rv = asn1_encode_integer(value, &buf, &buflen);
+	assert_int_equal(rv, SC_SUCCESS);
+	assert_int_equal(buflen, sizeof(max2));
+	assert_memory_equal(buf, max2, buflen);
+	free(buf);
 
 	rv = sc_asn1_decode_integer(min2, sizeof(min2), &value);
 	assert_int_equal(rv, SC_SUCCESS);
 	assert_int_equal(value, -32768);
+	rv = asn1_encode_integer(value, &buf, &buflen);
+	assert_int_equal(rv, SC_SUCCESS);
+	assert_int_equal(buflen, sizeof(min2));
+	assert_memory_equal(buf, min2, buflen);
+	free(buf);
 
 	if (sizeof(int*) == 8) {
 		/* For 64 bit builds */
 		rv = sc_asn1_decode_integer(max4, sizeof(max4), &value);
 		assert_int_equal(rv, SC_SUCCESS);
 		assert_int_equal(value, 2147483647);
+		rv = asn1_encode_integer(value, &buf, &buflen);
+		assert_int_equal(rv, SC_SUCCESS);
+		assert_int_equal(buflen, sizeof(max4));
+		assert_memory_equal(buf, max4, buflen);
+		free(buf);
 
 		rv = sc_asn1_decode_integer(min4, sizeof(min4), &value);
 		assert_int_equal(rv, SC_SUCCESS);
 		assert_int_equal(value, -2147483648);
+		rv = asn1_encode_integer(value, &buf, &buflen);
+		assert_int_equal(rv, SC_SUCCESS);
+		assert_int_equal(buflen, sizeof(min4));
+		assert_memory_equal(buf, min4, buflen);
+		free(buf);
 
 		rv = sc_asn1_decode_integer(over, sizeof(over), &value);
 		assert_int_equal(rv, SC_ERROR_INVALID_ASN1_OBJECT);
 	} else {
-		/* On 32 bit builds, this will fail */
+		/* On 32 bit builds, this will fail,
+		 * because we can not represent this large numbers in int type */
 		rv = sc_asn1_decode_integer(max4, sizeof(max4), &value);
 		assert_int_equal(rv, SC_ERROR_INVALID_ASN1_OBJECT);
 
@@ -179,7 +234,6 @@ static void torture_negative_int(void **state)
 	assert_int_equal(value, -224);
 }
 
-
 int main(void)
 {
 	int rc;
@@ -188,7 +242,6 @@ int main(void)
 		cmocka_unit_test(torture_integer),
 		cmocka_unit_test(torture_negative_int),
 		cmocka_unit_test(torture_oid),
-		/* TODO Test and adjust the ANS1 generators */
 	};
 
 	rc = cmocka_run_group_tests(tests, NULL, NULL);
