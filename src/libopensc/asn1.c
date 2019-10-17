@@ -1029,7 +1029,9 @@ static int asn1_write_element(sc_context_t *ctx, unsigned int tag,
 	else   {
 		*p++ = datalen & 0x7F;
 	}
-	memcpy(p, data, datalen);
+	if (datalen && data) {
+		memcpy(p, data, datalen);
+	}
 
 	return SC_SUCCESS;
 }
