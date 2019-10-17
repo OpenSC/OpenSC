@@ -2047,7 +2047,7 @@ sc_asn1_sig_value_sequence_to_rs(struct sc_context *ctx, const unsigned char *in
 	struct sc_asn1_entry asn1_sig_value[C_ASN1_SIG_VALUE_SIZE];
 	struct sc_asn1_entry asn1_sig_value_coefficients[C_ASN1_SIG_VALUE_COEFFICIENTS_SIZE];
 	unsigned char *r = NULL, *s = NULL;
-	size_t r_len, s_len, halflen = buflen/2;
+	size_t r_len = 0, s_len = 0, halflen = buflen/2;
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
