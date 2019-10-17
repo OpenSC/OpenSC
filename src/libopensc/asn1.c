@@ -891,10 +891,13 @@ sc_asn1_encode_object_id(u8 **buf, size_t *buflen, const struct sc_object_id *id
 			*p = k * 40;
 			break;
 		case 1:
-			if (k > 39)
+			if (k > 39 && id->value[0] < 2) {
 				return SC_ERROR_INVALID_ARGUMENTS;
-			*p++ += k;
-			break;
+			}
+			/* We can encode larger IDs to multiple bytes
+			 * similarly as the following IDs */
+			k += *p;
+			/* fall through */
 		default:
 			shift = 28;
 			while (shift && (k >> shift) == 0)
