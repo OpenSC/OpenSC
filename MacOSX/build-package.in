@@ -95,8 +95,13 @@ fi
 # Create the symlink to OpenSC sources
 test -L OpenSC.tokend/build/opensc-src || ln -sf ${BUILDPATH}/src OpenSC.tokend/build/opensc-src
 
-# Build and copy OpenSC.tokend
-xcodebuild -target OpenSC -configuration Deployment -project OpenSC.tokend/Tokend.xcodeproj install DSTROOT=${BUILDPATH}/target_tokend
+if (( xcodebuild -version | sed -En 's/Xcode[[:space:]]+([0-9]+)\.[0-9]*/\1/p' < 10 )); then
+	# Build and copy OpenSC.tokend
+	xcodebuild -target OpenSC -configuration Deployment -project OpenSC.tokend/Tokend.xcodeproj install DSTROOT=${BUILDPATH}/target_tokend
+else
+	# https://github.com/OpenSC/OpenSC.tokend/issues/33
+	mkdir -p ${BUILDPATH}/target_tokend
+fi
 
 #if ! test -e $BUILDPATH/target/Library/Security/tokend/OpenSC.tokend/Contents/Resources/Applications/terminal-notifier.app; then
 	#if ! test -e terminal-notifier-1.7.1.zip; then
@@ -127,10 +132,42 @@ mkdir -p ${BUILDPATH}/target_startup/Library/LaunchAgents
 cp src/tools/pkcs11-register.plist ${BUILDPATH}/target_startup/Library/LaunchAgents
 cp src/tools/opensc-notify.plist ${BUILDPATH}/target_startup/Library/LaunchAgents
 
+# Build OpenSCToken if possible
+if test -e OpenSCToken; then
+	cd OpenSCToken
+	# make sure OpenSCToken builds with the same dependencies as before
+	if ! test -e OpenSC; then
+		git clone --depth=1 ../../OpenSC
+	else
+		cd OpenSC && git pull && cd ..
+	fi
+	if ! test -e openssl; then
+		git clone --depth=1 ../openssl
+	else
+		cd openssl && git pull && cd ..
+	fi
+	if ! test -e openpace; then
+		git clone --depth=1 ../openpace
+	else
+		cd openpace && git pull && cd ..
+	fi
+	BP=${BUILDPATH}
+	. ./bootstrap
+	BUILDPATH=${BP}
+	xcodebuild -target OpenSCTokenApp -configuration Debug -project OpenSCTokenApp.xcodeproj install DSTROOT=${BUILDPATH}/target_token
+	cd ..
+	xcodebuild -target NotificationProxy -configuration Release -project NotificationProxy/NotificationProxy.xcodeproj install DSTROOT=$BUILDPATH/target_token/Applications/OpenSCTokenApp.app/Contents/Resources/
+else
+	# if no OpenSCToken is checked out, then we create a dummy package
+	mkdir -p ${BUILDPATH}/target_token
+fi
+
 # Build package
 pkgbuild --root ${BUILDPATH}/target --scripts MacOSX/scripts --identifier org.opensc-project.mac --version @PACKAGE_VERSION@ --install-location / OpenSC.pkg
 pkgbuild --root ${BUILDPATH}/target_tokend --identifier org.opensc-project.tokend --version @PACKAGE_VERSION@ --install-location / OpenSC-tokend.pkg
+pkgbuild --root ${BUILDPATH}/target_token --identifier org.opensc-project.mac.opensctoken --version @PACKAGE_VERSION@ --install-location / OpenSCToken.pkg
 pkgbuild --root ${BUILDPATH}/target_startup --identifier org.opensc-project.startup --version @PACKAGE_VERSION@ --install-location / OpenSC-startup.pkg
+
 # Build product
 productbuild --distribution MacOSX/Distribution.xml --package-path . --resources MacOSX/resources "${imagedir}/OpenSC @PACKAGE_VERSION@.pkg"
 
