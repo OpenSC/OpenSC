@@ -297,6 +297,7 @@ static int mcrd_finish(sc_card_t * card)
 	while (priv->df_infos) {
 		struct df_info_s *tmp = priv->df_infos->next;
 		clear_special_files(priv->df_infos);
+		free(priv->df_infos);
 		priv->df_infos = tmp;
 	}
 	free(priv);
