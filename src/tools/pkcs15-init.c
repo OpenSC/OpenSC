@@ -725,7 +725,7 @@ struct alg_spec {
 };
 
 static const struct alg_spec alg_types_sym[] = {
-	{ "des",	SC_ALGORITHM_DES,	56 },
+	{ "des",	SC_ALGORITHM_DES,	64 },
 	{ "3des",	SC_ALGORITHM_3DES,	192 },
 	{ "aes",	SC_ALGORITHM_AES,	128 },
 	{ NULL, -1, 0 }
