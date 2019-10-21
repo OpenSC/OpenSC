@@ -256,8 +256,8 @@ static int myeid_init(struct sc_card *card)
 	/* show supported symmetric algorithms */
 	flags = 0;
 	if (card_caps.card_supported_features & MYEID_CARD_CAP_3DES) {
-		if (card_caps.max_des_key_length >= 56)
-			_sc_card_add_symmetric_alg(card, SC_ALGORITHM_DES, 56, flags);
+		if (card_caps.max_des_key_length >= 64)
+			_sc_card_add_symmetric_alg(card, SC_ALGORITHM_DES, 64, flags);
 		if (card_caps.max_des_key_length >= 128)
 			_sc_card_add_symmetric_alg(card, SC_ALGORITHM_3DES, 128, flags);
 		if (card_caps.max_des_key_length >= 192)
