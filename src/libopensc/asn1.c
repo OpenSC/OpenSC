@@ -731,7 +731,7 @@ int sc_asn1_decode_integer(const u8 * inbuf, size_t inlen, int *out)
 	}
 	if (is_negative) {
 		/* Calculate Two's complement from previously positive number */
-		a = -1 * (a + 1);
+		a = (-1 * a) - 1;
 	}
 	*out = a;
 	return 0;
