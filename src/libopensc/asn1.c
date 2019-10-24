@@ -678,7 +678,7 @@ static int decode_bit_field(const u8 * inbuf, size_t inlen, void *outbuf, size_t
 		return n;
 
 	for (i = 0; i < n; i += 8) {
-		field |= (data[i/8] << i);
+		field |= ((unsigned int) data[i/8] << i);
 	}
 	memcpy(outbuf, &field, outlen);
 	return 0;
