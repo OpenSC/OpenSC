@@ -179,7 +179,7 @@ static int loadFile(const sc_pkcs15_card_t *p15card, const sc_path_t *path,
 	u8 *buf, const size_t buflen)
 {
 	int sc_res;
-	SC_FUNC_CALLED(p15card->card->ctx, 1);
+	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_NORMAL);
 
 	sc_res = sc_select_file(p15card->card, path, NULL);
 	if(sc_res != SC_SUCCESS)
@@ -207,7 +207,7 @@ static int itacns_add_cert(sc_pkcs15_card_t *p15card,
 	sc_pkcs15_cert_t *cert;
 #endif
 
-	SC_FUNC_CALLED(p15card->card->ctx, 1);
+	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_NORMAL);
 
 	if(type != SC_PKCS15_TYPE_CERT_X509) {
 		sc_log(p15card->card->ctx,
@@ -273,7 +273,7 @@ static int itacns_add_pubkey(sc_pkcs15_card_t *p15card,
 	sc_pkcs15_pubkey_info_t info;
 	sc_pkcs15_object_t obj;
 
-	SC_FUNC_CALLED(p15card->card->ctx, 1);
+	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_NORMAL);
 
 	memset(&info, 0, sizeof(info));
 	memset(&obj,  0, sizeof(obj));
@@ -309,7 +309,7 @@ static int itacns_add_prkey(sc_pkcs15_card_t *p15card,
 	sc_pkcs15_prkey_info_t info;
 	sc_pkcs15_object_t obj;
 
-	SC_FUNC_CALLED(p15card->card->ctx, 1);
+	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_NORMAL);
 
 	if(type != SC_PKCS15_TYPE_PRKEY_RSA) {
 		sc_log(p15card->card->ctx,
@@ -348,7 +348,7 @@ static int itacns_add_pin(sc_pkcs15_card_t *p15card,
 	struct sc_pkcs15_auth_info pin_info;
 	struct sc_pkcs15_object pin_obj;
 
-	SC_FUNC_CALLED(p15card->card->ctx, 1);
+	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_NORMAL);
 
 	memset(&pin_info, 0, sizeof(pin_info));
 	pin_info.auth_type = SC_PKCS15_PIN_AUTH_TYPE_PIN;
@@ -760,7 +760,7 @@ static int itacns_init(sc_pkcs15_card_t *p15card)
 	int found_certs;
 	int card_is_cie_v1, cns0_secenv;
 
-	SC_FUNC_CALLED(p15card->card->ctx, 1);
+	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_NORMAL);
 
 	set_string(&p15card->tokeninfo->label, p15card->card->name);
 	if(p15card->card->drv_data) {
@@ -848,7 +848,7 @@ static int itacns_init(sc_pkcs15_card_t *p15card)
 
 	/* Did we find anything? */
 	if (certificate_count == 0)
-		sc_debug(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE,
+		sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL,
 			"Warning: no certificates found!");
 
 	/* Back to Master File */
@@ -863,7 +863,7 @@ static int itacns_init(sc_pkcs15_card_t *p15card)
 int sc_pkcs15emu_itacns_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
 {
 	sc_card_t *card = p15card->card;
-	SC_FUNC_CALLED(card->ctx, 1);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
 
 	/* Check card */
 	if (! (
