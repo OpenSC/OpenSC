@@ -63,7 +63,7 @@ void fuzz_get_chunk(sc_reader_t *reader, const uint8_t **chunk, uint16_t *chunk_
     }
 
     data->Size -= sizeof *chunk_size;
-    *chunk_size = (uint16_t) data->Data;
+    *chunk_size = (uint16_t) *data->Data;
     data->Data += sizeof *chunk_size;
     *chunk = data->Data;
 
