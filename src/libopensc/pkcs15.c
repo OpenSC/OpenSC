@@ -2290,7 +2290,7 @@ sc_pkcs15_parse_unusedspace(const unsigned char *buf, size_t buflen, struct sc_p
 		/* If the path length is 0, it's a dummy path then don't add it.
 		 * If the path length isn't included (-1) then it's against the standard
 		 *   but we'll just ignore it instead of returning an error. */
-		if (path.count > 0) {
+		if (path.count > 0 && p15card->file_app) {
 			r = sc_pkcs15_make_absolute_path(&p15card->file_app->path, &path);
 			if (r < 0)
 				return r;
