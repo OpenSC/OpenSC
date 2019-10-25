@@ -217,6 +217,8 @@ extern "C" {
 #define SC_EVENT_READER_DETACHED	0x0008
 #define SC_EVENT_READER_EVENTS		SC_EVENT_READER_ATTACHED|SC_EVENT_READER_DETACHED
 
+#define MAX_FILE_SIZE 65535
+
 struct sc_supported_algo_info {
 	unsigned int reference;
 	unsigned int mechanism;

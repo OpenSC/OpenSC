@@ -55,8 +55,6 @@
 #endif
 #include "simpletlv.h"
 
-#define PIV_MAX_FILE_SIZE 65535
-
 enum {
 	PIV_OBJ_CCC = 0,
 	PIV_OBJ_CHUI,
@@ -962,7 +960,7 @@ piv_get_data(sc_card_t * card, int enumtag, u8 **buf, size_t *buf_len)
 	       "buffer for #%d *buf=0x%p len=%"SC_FORMAT_LEN_SIZE_T"u",
 	       enumtag, *buf, *buf_len);
 	if (*buf == NULL && *buf_len > 0) {
-		if (*buf_len > PIV_MAX_FILE_SIZE) {
+		if (*buf_len > MAX_FILE_SIZE) {
 			goto err;
 		}
 		*buf = malloc(*buf_len);

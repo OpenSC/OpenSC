@@ -29,8 +29,6 @@
 #include "internal.h"
 #include "asn1.h"
 
-#define MAX_FILE_SIZE 65535
-
 struct app_entry {
 	const u8 *aid;
 	size_t aid_len;
