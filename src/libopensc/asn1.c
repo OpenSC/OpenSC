@@ -68,7 +68,7 @@ int sc_asn1_read_tag(const u8 ** buf, size_t buflen, unsigned int *cla_out,
 
 	*buf = NULL;
 
-	if (left == 0)
+	if (left == 0 || !p)
 		return SC_ERROR_INVALID_ASN1_OBJECT;
 	if (*p == 0xff || *p == 0) {
 		/* end of data reached */
