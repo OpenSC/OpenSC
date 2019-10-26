@@ -249,10 +249,12 @@ int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
                         in, in_len, buf, sizeof buf);
             }
 
-            sc_pkcs15_verify_pin(p15card, obj, in, in_len);
-            sc_pkcs15_change_pin(p15card, obj, in, in_len, param, param_len);
-            sc_pkcs15_unblock_pin(p15card, obj, in, in_len, param, param_len);
-            sc_pkcs15_get_pin_info(p15card, obj);
+            if (obj->type == SC_PKCS15_TYPE_AUTH_PIN) {
+                sc_pkcs15_verify_pin(p15card, obj, in, in_len);
+                sc_pkcs15_change_pin(p15card, obj, in, in_len, param, param_len);
+                sc_pkcs15_unblock_pin(p15card, obj, in, in_len, param, param_len);
+                sc_pkcs15_get_pin_info(p15card, obj);
+            }
         }
         sc_pkcs15_card_free(p15card);
     }
