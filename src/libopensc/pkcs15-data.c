@@ -123,7 +123,7 @@ int sc_pkcs15_decode_dodf_entry(struct sc_pkcs15_card *p15card,
 		return r;
 	LOG_TEST_RET(ctx, r, "ASN.1 decoding failed");
 
-	if (!p15card->app || !p15card->app->ddo.aid.len)   {
+	if ((!p15card->app || !p15card->app->ddo.aid.len) && p15card->file_app)   {
 		r = sc_pkcs15_make_absolute_path(&p15card->file_app->path, &info.path);
 		if (r < 0)
 			return r;

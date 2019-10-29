@@ -176,7 +176,7 @@ sc_pkcs15_decode_aodf_entry(struct sc_pkcs15_card *p15card, struct sc_pkcs15_obj
 				/* Give priority to AID defined in the application DDO */
 				if (p15card->app && p15card->app->ddo.aid.len)
 					info.path.aid = p15card->app->ddo.aid;
-				else if (p15card->file_app->path.len)
+				else if (p15card->file_app && p15card->file_app->path.len)
 					info.path = p15card->file_app->path;
 			}
 		}

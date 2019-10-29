@@ -479,7 +479,7 @@ sc_pkcs15_decode_cdf_entry(struct sc_pkcs15_card *p15card, struct sc_pkcs15_obje
 		return r;
 	LOG_TEST_RET(ctx, r, "ASN.1 decoding failed");
 
-	if (!p15card->app || !p15card->app->ddo.aid.len)   {
+	if ((!p15card->app || !p15card->app->ddo.aid.len) && p15card->file_app) {
 		r = sc_pkcs15_make_absolute_path(&p15card->file_app->path, &info.path);
 		LOG_TEST_RET(ctx, r, "Cannot make absolute path");
 	}

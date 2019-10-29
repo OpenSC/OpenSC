@@ -340,7 +340,7 @@ int sc_pkcs15_decode_pukdf_entry(struct sc_pkcs15_card *p15card,
 		obj->type = SC_PKCS15_TYPE_PUBKEY_DSA;
 	}
 
-	if (!p15card->app || !p15card->app->ddo.aid.len)   {
+	if ((!p15card->app || !p15card->app->ddo.aid.len) && p15card->file_app) {
 		r = sc_pkcs15_make_absolute_path(&p15card->file_app->path, &info->path);
 		if (r < 0) {
 			goto err;
