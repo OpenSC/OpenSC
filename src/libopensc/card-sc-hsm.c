@@ -1440,7 +1440,7 @@ static int sc_hsm_unwrap_key(sc_card_t *card, sc_cardctl_sc_hsm_wrapped_key_t *p
 
 
 
-static int get_CAR(u8 *carstr, sc_context_t *ctx, const u8 *buf, size_t buflen)
+static int get_CAR(u8 *carstr, size_t carstr_len, sc_context_t *ctx, const u8 *buf, size_t buflen)
 {
 	const u8 *cb = NULL, *car = NULL;
 	size_t taglen;
@@ -1460,6 +1460,10 @@ static int get_CAR(u8 *carstr, sc_context_t *ctx, const u8 *buf, size_t buflen)
 	}
 
 	/* return CAR */
+	if (taglen > carstr_len) {
+		fprintf(stderr, "Output buffer too small.\n");
+		LOG_FUNC_RETURN(ctx, SC_ERROR_BUFFER_TOO_SMALL);
+	}
 	memcpy(carstr, car, taglen);
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
@@ -1499,7 +1503,7 @@ static int verify_certificate(sc_card_t *card, const u8 *cert, size_t cert_len, 
 	}
 
 	/* select public key for verification */
-	r = get_CAR(car, card->ctx, cert, cert_len);
+	r = get_CAR(car, sizeof car, card->ctx, cert, cert_len);
 	LOG_TEST_RET(card->ctx, r, "cannot parse CAR");
 	car_len = strnlen((const char*) car, sizeof car);
 
