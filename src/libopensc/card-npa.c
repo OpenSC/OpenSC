@@ -136,7 +136,7 @@ static int npa_match_card(sc_card_t * card)
 {
 	int r = 0;
 
-	if (0 == r && SC_SUCCESS == sc_enum_apps(card)) {
+	if (SC_SUCCESS == sc_enum_apps(card)) {
 		unsigned char esign_aid_0[] = {
 			0xE8, 0x28, 0xBD, 0x08, 0x0F, 0xA0, 0x00, 0x00, 0x01, 0x67, 0x45, 0x53, 0x49, 0x47, 0x4E,
 		}, esign_aid_1[] = {
