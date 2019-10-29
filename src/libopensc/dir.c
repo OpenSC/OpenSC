@@ -162,8 +162,9 @@ int sc_enum_apps(sc_card_t *card)
 	int r, ii, idx;
 
 	LOG_FUNC_CALLED(ctx);
-	if (card->app_count < 0)
-		card->app_count = 0;
+
+	sc_free_apps(card);
+	card->app_count = 0;
 
 	sc_format_path("3F002F00", &path);
 	sc_file_free(card->ef_dir);
