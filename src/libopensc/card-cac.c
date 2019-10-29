@@ -1410,6 +1410,7 @@ static int cac_parse_cuid(sc_card_t *card, cac_private_data_t *priv, cac_cuid_t 
 		 sc_dump_hex(&val->card_id, card_id_len),
 		 card_id_len);
 	priv->cuid = *val;
+	free(priv->cac_id);
 	priv->cac_id = malloc(card_id_len);
 	if (priv->cac_id == NULL) {
 		return SC_ERROR_OUT_OF_MEMORY;
@@ -1704,6 +1705,7 @@ static int cac_populate_cac_alt(sc_card_t *card, int index, cac_private_data_t *
 	if (r > 0) {
 #ifdef ENABLE_OPENSSL
 		size_t val_len = r;
+		free(priv->cac_id);
 		priv->cac_id = malloc(20);
 		if (priv->cac_id == NULL) {
 			return SC_ERROR_OUT_OF_MEMORY;
