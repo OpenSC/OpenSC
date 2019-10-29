@@ -1113,6 +1113,10 @@ sc_pkcs15_bind_internal(struct sc_pkcs15_card *p15card, struct sc_aid *aid)
 		sc_log(ctx, "EF(TokenInfo) is empty");
 		goto end;
 	}
+	if (len > MAX_FILE_SIZE) {
+		sc_log(ctx, "EF(TokenInfo) too large");
+		goto end;
+	}
 	buf = malloc(len);
 	if(buf == NULL)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
