@@ -5,6 +5,7 @@
 <xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
 	<xsl:import href="docbook.xsl"/>
 	<xsl:param name="toc.section.depth" select="0"/>
+	<xsl:param name="generate.consistent.ids" select="1"/>
 	<xsl:template name="user.head.content">
 	<style type="text/css">
 		<xsl:comment>
