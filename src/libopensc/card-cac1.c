@@ -69,7 +69,7 @@ static int cac_cac1_get_certificate(sc_card_t *card, u8 **out_buf, size_t *out_l
 	u8 *out_ptr;
 	size_t size = 0;
 	size_t left = 0;
-	size_t len, next_len;
+	size_t len;
 	sc_apdu_t apdu;
 	int r = SC_SUCCESS;
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
@@ -77,9 +77,8 @@ static int cac_cac1_get_certificate(sc_card_t *card, u8 **out_buf, size_t *out_l
 	size = left = *out_buf ? *out_len : sizeof(buf);
 	out_ptr = *out_buf ? *out_buf : buf;
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, CAC_INS_GET_CERTIFICATE, 0, 0 );
-	next_len = MIN(left, 100);
-	for (; left > 0; left -= len, out_ptr += len) {
-		len = next_len;
+	len = MIN(left, 100);
+	for (; left > 0;) { /* Increments for readability in the end of the function */
 		apdu.resp = out_ptr;
 		apdu.le = len;
 		apdu.resplen = left;
@@ -98,7 +97,10 @@ static int cac_cac1_get_certificate(sc_card_t *card, u8 **out_buf, size_t *out_l
 			left -= len;
 			break;
 		}
-		next_len = MIN(left, apdu.sw2);
+		/* Adjust the lengths */
+		left -= len;
+		out_ptr += len;
+		len = MIN(left, apdu.sw2);
 	}
 	if (r < 0) {
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
@@ -128,7 +130,7 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 	int r = 0;
 	u8 *val = NULL;
 	u8 *cert_ptr;
-	size_t val_len;
+	size_t val_len = 0;
 	size_t len, cert_len;
 	u8 cert_type;
 
