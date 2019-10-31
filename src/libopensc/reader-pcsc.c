@@ -247,6 +247,7 @@ static int pcsc_internal_transmit(sc_reader_t *reader,
 		case SCARD_W_REMOVED_CARD:
 			return SC_ERROR_CARD_REMOVED;
 		case SCARD_E_INVALID_HANDLE:
+		case SCARD_E_INVALID_VALUE:
 		case SCARD_E_READER_UNAVAILABLE:
 			pcsc_connect(reader);
 			/* return failure so that upper layers will be notified */
@@ -415,7 +416,7 @@ static int refresh_attributes(sc_reader_t *reader)
 				unsigned char atr[SC_MAX_ATR_SIZE];
 				rv = priv->gpriv->SCardStatus(priv->pcsc_card, NULL,
 						&readers_len, &cstate, &prot, atr, &atr_len);
-				if (rv == (LONG)SCARD_W_REMOVED_CARD)
+				if (rv == (LONG)SCARD_W_REMOVED_CARD || rv == (LONG)SCARD_E_INVALID_VALUE)
 					reader->flags |= SC_READER_CARD_CHANGED;
 			}
 		} else {
@@ -660,6 +661,8 @@ static int pcsc_lock(sc_reader_t *reader)
 		PCSC_TRACE(reader, "SCardBeginTransaction returned", rv);
 
 	switch (rv) {
+		case SCARD_E_INVALID_VALUE:
+			/* This is retuned in case of the same reader was re-attached */
 		case SCARD_E_INVALID_HANDLE:
 		case SCARD_E_READER_UNAVAILABLE:
 			r = pcsc_connect(reader);
