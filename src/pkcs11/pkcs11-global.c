@@ -584,12 +584,11 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 	}
 
 	rv = slot_get_slot(slotID, &slot);
-	sc_log(context, "C_GetSlotInfo() get slot rv %lu", rv);
-	if (rv == CKR_OK)   {
-		if (slot->reader == NULL)   {
+	sc_log(context, "C_GetSlotInfo() get slot rv %s", lookup_enum( RV_T, rv));
+	if (rv == CKR_OK) {
+		if (slot->reader == NULL) {
 			rv = CKR_TOKEN_NOT_PRESENT;
-		}
-		else {
+		} else {
 			now = get_current_time();
 			if (now >= slot->slot_state_expires || now == 0) {
 				/* Update slot status */
