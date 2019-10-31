@@ -46,6 +46,8 @@ static struct sc_reader_driver fuzz_drv = {
 void fuzz_get_chunk(sc_reader_t *reader, const uint8_t **chunk, uint16_t *chunk_size)
 {
     struct driver_data *data;
+    uint16_t c_size;
+    uint8_t *c;
 
     if (chunk)
         *chunk = NULL;
@@ -57,22 +59,31 @@ void fuzz_get_chunk(sc_reader_t *reader, const uint8_t **chunk, uint16_t *chunk_
         return;
     }
     data = reader->drv_data;
-    if (!data || !data->Data || data->Size < sizeof *chunk_size) {
+    if (!data || !data->Data || data->Size < sizeof c_size) {
         sc_debug(reader->ctx, SC_LOG_DEBUG_VERBOSE_TOOL, "Invalid Arguments");
         return;
     }
 
-    data->Size -= sizeof *chunk_size;
-    *chunk_size = (uint16_t) *data->Data;
-    data->Data += sizeof *chunk_size;
-    *chunk = data->Data;
+    /* parse the length of the returned data on two bytes */
+    c_size = *((uint16_t *) data->Data);
+    /* consume two bytes from the fuzzing data */
+    data->Size -= sizeof c_size;
+    data->Data += sizeof c_size;
 
-    if (data->Size < *chunk_size) {
-        *chunk_size = data->Size;
+    if (data->Size < c_size) {
+        c_size = data->Size;
     }
 
+    /* consume the bytes from the fuzzing data */
+    c = data->Data;
+    data->Size -= c_size;
+    data->Data += c_size;
+
     sc_debug_hex(reader->ctx, SC_LOG_DEBUG_VERBOSE_TOOL,
-        "Returning fuzzing chunk", *chunk, *chunk_size);
+        "Returning fuzzing chunk", c, c_size);
+
+    *chunk = c;
+    *chunk_size = c_size;
 }
 
 static int fuzz_reader_release(sc_reader_t *reader)
