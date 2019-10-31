@@ -178,6 +178,8 @@ sc_pkcs15_decode_aodf_entry(struct sc_pkcs15_card *p15card, struct sc_pkcs15_obj
 					info.path.aid = p15card->app->ddo.aid;
 				else if (p15card->file_app && p15card->file_app->path.len)
 					info.path = p15card->file_app->path;
+				else
+					return SC_ERROR_INTERNAL;
 			}
 		}
 		sc_debug(ctx, SC_LOG_DEBUG_ASN1, "decoded PIN(ref:%X,path:%s)", info.attrs.pin.reference, sc_print_path(&info.path));
