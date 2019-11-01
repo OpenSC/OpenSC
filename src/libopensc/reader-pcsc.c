@@ -2382,11 +2382,22 @@ int pcsc_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcsc_c
 		goto out;
 	}
 
-	/* if we already had a reader, delete it */
+	/* Only minidriver calls this and only uses one reader */
+	/* if we already have a reader, use it*/
 	if (sc_ctx_get_reader_count(ctx) > 0) {
-		sc_reader_t *oldrdr = list_extract_at(&ctx->readers, 0);
-		if (oldrdr)
-			_sc_delete_reader(ctx, oldrdr);
+		sc_log(ctx, "Reusing the reader");
+		sc_reader_t *reader = list_get_at(&ctx->readers, 0);
+
+		if (reader) {
+			struct pcsc_private_data *priv = reader->drv_data;
+			priv->pcsc_card =*(SCARDHANDLE *)pcsc_card_handle;
+			gpriv->pcsc_ctx = *(SCARDCONTEXT *)pcsc_context_handle;
+			ret = SC_SUCCESS;
+			goto out;
+		} else {
+			ret = SC_ERROR_INTERNAL;
+			goto out;
+		}
 	}
 
 	sc_log(ctx, "Probing PC/SC reader");
