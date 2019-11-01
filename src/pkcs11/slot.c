@@ -473,7 +473,7 @@ CK_RV slot_get_token(CK_SLOT_ID id, struct sc_pkcs11_slot ** slot)
 
 CK_RV slot_token_removed(CK_SLOT_ID id)
 {
-    CK_RV rv;
+	CK_RV rv;
 	int token_was_present;
 	struct sc_pkcs11_slot *slot;
 	struct sc_pkcs11_object *object;
