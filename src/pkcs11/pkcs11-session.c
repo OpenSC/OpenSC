@@ -218,6 +218,10 @@ CK_RV C_GetSessionInfo(CK_SESSION_HANDLE hSession,	/* the session's handle */
 
 	slot = session->slot;
 	logged_out = (slot_get_logged_in_state(slot) == SC_PIN_STATE_LOGGED_OUT);
+	if (logged_out && slot->login_user > -1) {
+		sc_pkcs11_close_all_sessions(session->slot->id);
+		return CKR_SESSION_HANDLE_INVALID;
+	}
 	if (slot->login_user == CKU_SO && !logged_out) {
 		pInfo->state = CKS_RW_SO_FUNCTIONS;
 	} else if ((slot->login_user == CKU_USER && !logged_out) || (!(slot->token_info.flags & CKF_LOGIN_REQUIRED))) {
