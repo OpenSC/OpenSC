@@ -868,7 +868,7 @@ static void parse_sec_attr_44(sc_file_t *file, const u8 *buf, size_t len)
 			}
 
 			/* Encryption key present ? */
-			iPinCount = iACLen - 1;		
+			iPinCount = iACLen > 0 ? iACLen - 1 : 0;
 
 			if (buf[iOffset] & 0x20) {
 				int iSC;
