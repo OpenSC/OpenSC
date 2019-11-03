@@ -761,6 +761,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 			sc_log(card->ctx,  "Failed to read/parse the certificate r=%d",r);
 			if (cert_out != NULL)
 				sc_pkcs15_free_certificate(cert_out);
+			free(cert_der.value);
 			continue;
 		}
 
