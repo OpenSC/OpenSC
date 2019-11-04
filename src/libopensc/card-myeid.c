@@ -1468,11 +1468,6 @@ static int myeid_loadkey(sc_card_t *card, unsigned mode, u8* value, int value_le
 
 	if (mode == LOAD_KEY_MODULUS && value_len == 256 && !priv->cap_chaining)
 	{
-		if ((value_len % 2) > 0 && value[0] == 0x00)
-		{
-			value_len--;
-			value++;
-		}
 		mode = 0x88;
 		memset(&apdu, 0, sizeof(apdu));
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xDA, 0x01, mode);
