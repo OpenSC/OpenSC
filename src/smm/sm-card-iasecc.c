@@ -325,7 +325,7 @@ sm_iasecc_get_apdu_sdo_update(struct sc_context *ctx, struct sm_info *sm_info, s
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	sc_debug(ctx, SC_LOG_DEBUG_SM, "SM get 'SDO UPDATE' APDU, SDO(class:0x%X,ref:%i)", update->sdo_class, update->sdo_ref);
-	for (ii=0; update->fields[ii].tag && ii < IASECC_SDO_TAGS_UPDATE_MAX; ii++)   {
+	for (ii = 0; ii < IASECC_SDO_TAGS_UPDATE_MAX && update->fields[ii].tag; ii++)   {
 		unsigned char *encoded = NULL;
 		size_t encoded_len, offs;
 
@@ -451,8 +451,8 @@ sm_iasecc_get_apdu_update_rsa(struct sc_context *ctx, struct sm_info *sm_info, s
 		sc_debug(ctx, SC_LOG_DEBUG_SM, "SM get 'UPDATE RSA' APDU: SDO(class:%X,ref:%X)", cmd_data->update_pub.sdo_class, cmd_data->update_pub.sdo_ref);
 	}
 
-	for (jj=0;jj<2 && to_update[jj];jj++)   {
-		for (ii=0; to_update[jj]->fields[ii].tag && ii < IASECC_SDO_TAGS_UPDATE_MAX; ii++)   {
+	for (jj = 0; jj < 2 && to_update[jj]; jj++)   {
+		for (ii = 0; ii < IASECC_SDO_TAGS_UPDATE_MAX && to_update[jj]->fields[ii].tag; ii++)   {
 			unsigned char *encoded = NULL;
 			size_t encoded_len, offs;
 
