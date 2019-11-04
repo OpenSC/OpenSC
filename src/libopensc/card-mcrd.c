@@ -278,7 +278,8 @@ static int mcrd_init(sc_card_t * card)
 	priv->curpath[0] = MFID;
 	priv->curpathlen = 1;
 
-	sc_select_file (card, sc_get_mf_path(), NULL);
+	if (SC_SUCCESS != sc_select_file (card, sc_get_mf_path(), NULL))
+		sc_log(card->ctx, "Warning: select MF failed");
 
 	/* Not needed for the fixed EstEID profile */
 	if (!is_esteid_card(card))
