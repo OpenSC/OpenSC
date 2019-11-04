@@ -164,7 +164,7 @@ static int esteid_set_security_env(sc_card_t *card, const sc_security_env_t *env
 
 	LOG_FUNC_CALLED(card->ctx);
 
-	if (card == NULL || env == NULL || env->key_ref_len != 1)
+	if (env == NULL || env->key_ref_len != 1)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 
 	sc_log(card->ctx, "algo: %d operation: %d keyref: %d", env->algorithm, env->operation, env->key_ref[0]);
