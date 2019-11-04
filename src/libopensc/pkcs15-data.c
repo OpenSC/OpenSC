@@ -43,7 +43,7 @@ sc_pkcs15_read_data_object(struct sc_pkcs15_card *p15card,
 		const struct sc_pkcs15_data_info *info,
 		struct sc_pkcs15_data **data_object_out)
 {
-        struct sc_context *ctx = p15card->card->ctx;
+	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_data *data_object;
 	struct sc_pkcs15_der der;
 	int r;
