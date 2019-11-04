@@ -458,6 +458,7 @@ int search_objects(test_certs_t *objects, token_info_t *info,
 	if (rv != CKR_OK) {
 		fprintf(stderr, "C_FindObjectsFinal: rv = 0x%.8lX\n", rv);
  		fail_msg("Could not find certificate.\n");
+		free(object_handles);
 		return -1;
 	}
 
@@ -475,6 +476,7 @@ int search_objects(test_certs_t *objects, token_info_t *info,
 				continue;
 			} else if (rv != CKR_OK) {
 				fail_msg("C_GetAttributeValue: rv = 0x%.8lX\n", rv);
+				free(object_handles);
 				return -1;
 			}
 
@@ -485,6 +487,7 @@ int search_objects(test_certs_t *objects, token_info_t *info,
 				template[j].pValue = malloc(template[j].ulValueLen);
 				if (template[j].pValue == NULL) {
 					fail_msg("malloc failed");
+					free(object_handles);
 					return -1;
 				}
 			}
@@ -493,6 +496,7 @@ int search_objects(test_certs_t *objects, token_info_t *info,
 				&(template[j]), 1);
 			if (rv != CKR_OK) {
 				fail_msg("C_GetAttributeValue: rv = 0x%.8lX\n", rv);
+				free(object_handles);
 				return -1;
 			}
 		}
