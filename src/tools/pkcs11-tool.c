@@ -3799,10 +3799,8 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 	if (rv != CKR_OK)
 	    p11_fatal("C_DeriveKey", rv);
 
-	if (der)
-	    OPENSSL_free(der);
-	if (buf)
-	    free(buf);
+	free(der);
+	free(buf);
 	if (octet)
 	    ASN1_OCTET_STRING_free(octet);
 
