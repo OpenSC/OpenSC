@@ -725,9 +725,16 @@ int sc_asn1_decode_integer(const u8 * inbuf, size_t inlen, int *out)
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	if (inbuf[0] & 0x80) {
+		if (inlen > 1 && inbuf[0] == 0xff && (inbuf[1] & 0x80)) {
+			return SC_ERROR_INVALID_ASN1_OBJECT;
+		}
 		is_negative = 1;
 		a |= 0xff^(*inbuf++);
 		i = 1;
+	} else {
+		if (inlen > 1 && inbuf[0] == 0x00 && (inbuf[1] & 0x80) == 0) {
+			return SC_ERROR_INVALID_ASN1_OBJECT;
+		}
 	}
 	for (; i < inlen; i++) {
 		if (a > (INT_MAX >> 8) || a < (INT_MIN + (1<<8))) {
