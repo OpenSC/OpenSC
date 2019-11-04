@@ -34,11 +34,21 @@
  */
 static void torture_large_oid(void **state)
 {
-	/* 2.5.4.18446744073709551619 (The last part is 64 bit overflow) */
-	u8 data1[] = {0x55, 0x04, 0x82, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x03};
-	/* 2.18446744073709551621.4.3 (The second part is 64 bit overflow) */
-	u8 data2[] = {0x82, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x55, 0x04, 0x03};
+	/* 2.5.4.18446744073709551616 (The last part is 64 bit overflow) */
+	u8 data1[] = {0x55, 0x04, 0x82, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x00};
+	/* 2.18446744073709551616.4.3 (The second part is 64 bit overflow) */
+	u8 data2[] = {0x82, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x50, 0x04, 0x03};
+	/* 2.5.4.2147483647 (The last part is largest 32 bit integer) */
+	u8 data3[] = {0x55, 0x04, 0x87, 0xFF, 0xFF, 0xFF, 0x7F};
+	/* 2.2147483647.4.3 (The second part is largest 32 bit integer) */
+	u8 data4[] = {0x88, 0x80, 0x80, 0x80, 0x4F, 0x04, 0x03};
+	/* 2.5.4.2147483648 (The last part is 32 bit integer overflow) */
+	u8 data5[] = {0x55, 0x04, 0x88, 0x80, 0x80, 0x80, 0x00};
+	/* 2.2147483648.4.3 (The second part is 32 bit integer overflow) */
+	u8 data6[] = {0x88, 0x80, 0x80, 0x80, 0x50, 0x04, 0x03};
 	struct sc_object_id oid;
+	u8 *buf = NULL;
+	size_t buflen = 0;
 	int rv = 0;
 
 	rv = sc_asn1_decode_object_id(data1, sizeof(data1), &oid);
@@ -46,6 +56,42 @@ static void torture_large_oid(void **state)
 
 	rv = sc_asn1_decode_object_id(data2, sizeof(data2), &oid);
 	assert_int_equal(rv, SC_ERROR_NOT_SUPPORTED);
+
+	if (sizeof(int) == 4) {
+		/* For 64 bit builds */
+		struct sc_object_id oid_3 = {{2, 5, 4, 2147483647, -1}};
+		struct sc_object_id oid_4 = {{2, 2147483647, 4, 3, -1}};
+
+		rv = sc_asn1_decode_object_id(data3, sizeof(data3), &oid);
+		assert_int_equal(rv, SC_SUCCESS);
+		assert_int_equal(sc_compare_oid(&oid_3, &oid), 1);
+		rv = sc_asn1_encode_object_id(&buf, &buflen, &oid);
+		assert_int_equal(rv, SC_SUCCESS);
+		assert_int_equal(buflen, sizeof(data3));
+		assert_memory_equal(buf, data3, buflen);
+		free(buf);
+
+		rv = sc_asn1_decode_object_id(data4, sizeof(data4), &oid);
+		assert_int_equal(rv, SC_SUCCESS);
+		assert_int_equal(sc_compare_oid(&oid_4, &oid), 1);
+		rv = sc_asn1_encode_object_id(&buf, &buflen, &oid);
+		assert_int_equal(rv, SC_SUCCESS);
+		assert_int_equal(buflen, sizeof(data4));
+		assert_memory_equal(buf, data4, buflen);
+		free(buf);
+
+		rv = sc_asn1_decode_object_id(data5, sizeof(data5), &oid);
+		assert_int_equal(rv, SC_ERROR_NOT_SUPPORTED);
+
+		rv = sc_asn1_decode_object_id(data6, sizeof(data6), &oid);
+		assert_int_equal(rv, SC_ERROR_NOT_SUPPORTED);
+	} else {
+		rv = sc_asn1_decode_object_id(data3, sizeof(data3), &oid);
+		assert_int_equal(rv, SC_ERROR_NOT_SUPPORTED);
+
+		rv = sc_asn1_decode_object_id(data4, sizeof(data4), &oid);
+		assert_int_equal(rv, SC_ERROR_NOT_SUPPORTED);
+	}
 }
 
 static void torture_oid(void **state)
@@ -65,6 +111,8 @@ static void torture_oid(void **state)
 	u8 ecpubkey[] = {0x2A, 0x86, 0x48, 0xCE, 0x3D, 0x02, 0x01};
 	/* Missing second byte, even though indicated with the first bit */
 	u8 missing[] = {0x81};
+	/* Missing second byte in later identifiers */
+	u8 missing_second[] = {0x2A, 0x48, 0x81};
 	struct sc_object_id oid;
 	u8 *buf = NULL;
 	size_t buflen = 0;
@@ -116,15 +164,24 @@ static void torture_oid(void **state)
 	rv = sc_asn1_decode_object_id(missing, sizeof(missing), &oid);
 	assert_int_equal(rv, SC_ERROR_INVALID_ASN1_OBJECT);
 
+	rv = sc_asn1_decode_object_id(missing_second, sizeof(missing_second), &oid);
+	assert_int_equal(rv, SC_ERROR_INVALID_ASN1_OBJECT);
+
 	/* TODO SC_MAX_OBJECT_ID_OCTETS */
 }
 
 static void torture_integer(void **state)
 {
 	/* Without the Tag and Length {0x02, 0x01} */
+	u8 null[] = {};
+	u8 padded_zero[] = {0x00, 0x00};
 	u8 zero[] = {0x00};
 	u8 one[] = {0x01};
+	u8 padded_one[] = {0x00, 0x01};
 	u8 minus_one[] = {0xFF};
+	u8 padded_minus_one[] = {0xFF, 0xFF};
+	u8 padded_127[] = {0x00, 0x7F};
+	u8 padded_128[] = {0x00, 0x80};
 	u8 max2[] = {0x7F, 0xFF};
 	u8 min2[] = {0x80, 0x00};
 	u8 max4[] = {0x7F, 0xFF, 0xFF, 0xFF};
@@ -134,6 +191,30 @@ static void torture_integer(void **state)
 	u8 *buf = NULL;
 	size_t buflen = 0;
 	int rv = 0;
+
+	rv = sc_asn1_decode_integer(null, sizeof(null), &value);
+	assert_int_equal(rv, SC_ERROR_INVALID_ASN1_OBJECT);
+
+	rv = sc_asn1_decode_integer(padded_zero, sizeof(padded_zero), &value);
+	assert_int_equal(rv, SC_ERROR_INVALID_ASN1_OBJECT);
+
+	rv = sc_asn1_decode_integer(padded_one, sizeof(padded_one), &value);
+	assert_int_equal(rv, SC_ERROR_INVALID_ASN1_OBJECT);
+
+	rv = sc_asn1_decode_integer(padded_minus_one, sizeof(padded_minus_one), &value);
+	assert_int_equal(rv, SC_ERROR_INVALID_ASN1_OBJECT);
+
+	rv = sc_asn1_decode_integer(padded_127, sizeof(padded_127), &value);
+	assert_int_equal(rv, SC_ERROR_INVALID_ASN1_OBJECT);
+
+	rv = sc_asn1_decode_integer(padded_128, sizeof(padded_128), &value);
+	assert_int_equal(rv, SC_SUCCESS);
+	assert_int_equal(value, 128);
+	rv = asn1_encode_integer(value, &buf, &buflen);
+	assert_int_equal(rv, SC_SUCCESS);
+	assert_int_equal(buflen, sizeof(padded_128));
+	assert_memory_equal(buf, padded_128, buflen);
+	free(buf);
 
 	rv = sc_asn1_decode_integer(zero, sizeof(zero), &value);
 	assert_int_equal(rv, SC_SUCCESS);
@@ -180,8 +261,7 @@ static void torture_integer(void **state)
 	assert_memory_equal(buf, min2, buflen);
 	free(buf);
 
-	if (sizeof(int*) == 8) {
-		/* For 64 bit builds */
+	if (sizeof(int) == 4) {
 		rv = sc_asn1_decode_integer(max4, sizeof(max4), &value);
 		assert_int_equal(rv, SC_SUCCESS);
 		assert_int_equal(value, 2147483647);
@@ -201,15 +281,14 @@ static void torture_integer(void **state)
 		free(buf);
 
 		rv = sc_asn1_decode_integer(over, sizeof(over), &value);
-		assert_int_equal(rv, SC_ERROR_INVALID_ASN1_OBJECT);
+		assert_int_equal(rv, SC_ERROR_NOT_SUPPORTED);
 	} else {
-		/* On 32 bit builds, this will fail,
-		 * because we can not represent this large numbers in int type */
+		/* On more esoteric architectures, we can have different size of int */
 		rv = sc_asn1_decode_integer(max4, sizeof(max4), &value);
-		assert_int_equal(rv, SC_ERROR_INVALID_ASN1_OBJECT);
+		assert_int_equal(rv, SC_ERROR_NOT_SUPPORTED);
 
 		rv = sc_asn1_decode_integer(min4, sizeof(min4), &value);
-		assert_int_equal(rv, SC_ERROR_INVALID_ASN1_OBJECT);
+		assert_int_equal(rv, SC_ERROR_NOT_SUPPORTED);
 	}
 }
 
@@ -225,7 +304,7 @@ static void torture_negative_int(void **state)
 {
 	/* Without the Tag and Length {0x80, 0x04} */
 	/* u8 data1[] = {0xff, 0x20, 0x20, 0x20}; original data */
-	u8 data1[] = {0xff, 0x20}; /* Shortened also for 32 builds */
+	u8 data1[] = {0xff, 0x20}; /* Shortened also for 32 bit builds */
 	int value;
 	int rv = 0;
 
@@ -250,6 +329,9 @@ static void torture_bit_field(void **state)
 	u8 data2[] = {0x00, 0xff, 0xff, 0xff, 0xff};
 	/* Without the Tag and Length {0x03, 0x06} */
 	u8 data3[] = {0x00, 0xff, 0xff, 0xff, 0xff, 0xff};
+	/* Without the Tag and Length {0x03, 0x02} */
+	u8 padding[] = {0x01, 0xfe};
+	u8 invalid_padding[] = {0x01, 0xff};
 	unsigned int value;
 	size_t value_len = sizeof(value);
 	int rv = 0;
@@ -259,7 +341,7 @@ static void torture_bit_field(void **state)
 	assert_int_equal(rv, SC_SUCCESS);
 	assert_int_equal(value, 1);
 
-	/* Too large unused bytes field */
+	/* Too large unused bits field */
 	rv = decode_bit_field(data1, sizeof(data1), (unsigned int *)&value, value_len);
 	assert_int_equal(rv, SC_ERROR_INVALID_ASN1_OBJECT);
 
@@ -272,6 +354,14 @@ static void torture_bit_field(void **state)
 	rv = decode_bit_field(data3, sizeof(data3), (unsigned int *)&value, value_len);
 	assert_int_equal(rv, SC_ERROR_BUFFER_TOO_SMALL);
 
+	/* Valid padding */
+	rv = decode_bit_field(padding, sizeof(padding), (unsigned int *)&value, value_len);
+	assert_int_equal(rv, SC_SUCCESS);
+	assert_int_equal(value, 127);
+
+	/* Invalid (non-zero bits) padding */
+	rv = decode_bit_field(invalid_padding, sizeof(invalid_padding), (unsigned int *)&value, value_len);
+	assert_int_equal(rv, SC_ERROR_INVALID_ASN1_OBJECT);
 }
 int main(void)
 {
