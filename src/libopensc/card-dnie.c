@@ -272,14 +272,6 @@ int dnie_ask_user_consent(struct sc_card * card, const char *title, const char *
 		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 	LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ALLOWED);
 #else
-	/* check that user_consent_app exists. TODO: check if executable */
-	res = stat(GET_DNIE_UI_CTX(card).user_consent_app, &st_file);
-	if (res != 0) {
-		sc_log(card->ctx, "Invalid pinentry application: %s\n",
-		       GET_DNIE_UI_CTX(card).user_consent_app);
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
-	}
-
 	/* just a simple bidirectional pipe+fork+exec implementation */
 	/* In a pipe, xx[0] is for reading, xx[1] is for writing */
 	if (pipe(srv_send) < 0) {
@@ -304,10 +296,17 @@ int dnie_ask_user_consent(struct sc_card * card, const char *title, const char *
 		close(srv_send[1]);
 		close(srv_recv[0]);
 		close(srv_recv[1]);
-		/* call exec() with proper user_consent_app from configuration */
-		/* if ok should never return */
-		execlp(GET_DNIE_UI_CTX(card).user_consent_app, GET_DNIE_UI_CTX(card).user_consent_app, (char *)NULL);
-		sc_log(card->ctx, "execlp() error");
+		/* check that user_consent_app exists. TODO: check if executable */
+		res = stat(GET_DNIE_UI_CTX(card).user_consent_app, &st_file);
+		if (res != 0) {
+			sc_log(card->ctx, "Invalid pinentry application: %s\n",
+					GET_DNIE_UI_CTX(card).user_consent_app);
+		} else {
+			/* call exec() with proper user_consent_app from configuration */
+			/* if ok should never return */
+			execlp(GET_DNIE_UI_CTX(card).user_consent_app, GET_DNIE_UI_CTX(card).user_consent_app, (char *)NULL);
+			sc_log(card->ctx, "execlp() error");
+		}
 		abort();
 	default:		/* parent */
 		/* Close the pipe ends that the child uses to read from / write to
