@@ -594,9 +594,13 @@ static int decode_bit_string(const u8 * inbuf, size_t inlen, void *outbuf,
 		int bits_to_go;
 
 		*out = 0;
-		if (octets_left == 1)
+		if (octets_left == 1 && zero_bits > 0) {
 			bits_to_go = 8 - zero_bits;
-		else
+			/* Verify the padding is zero bits */
+			if (*in & (1 << (zero_bits-1))) {
+				return SC_ERROR_INVALID_ASN1_OBJECT;
+			}
+		} else
 			bits_to_go = 8;
 		if (invert)
 			for (i = 0; i < bits_to_go; i++) {
