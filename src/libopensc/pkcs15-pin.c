@@ -298,10 +298,14 @@ sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *pi
 		const unsigned char *pincode, size_t pinlen)
 {
 	struct sc_context *ctx = p15card->card->ctx;
-	struct sc_pkcs15_auth_info *auth_info = (struct sc_pkcs15_auth_info *)pin_obj->data;
+	struct sc_pkcs15_auth_info *auth_info;
 	int r;
 
 	LOG_FUNC_CALLED(ctx);
+
+	if (!pin_obj || !pin_obj->data)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_PIN_REFERENCE);
+	auth_info = (struct sc_pkcs15_auth_info *)pin_obj->data;
 
 	/*
 	 * if pin cache is disabled, we can get here with no PIN data.
