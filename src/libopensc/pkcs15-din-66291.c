@@ -194,7 +194,7 @@ int sc_pkcs15emu_din_66291_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid
     sc_path_t path;
     unsigned char *tokeninfo_content = NULL;
     struct sc_file *file_tokeninfo = NULL;
-    struct sc_pkcs15_tokeninfo *tokeninfo = sc_pkcs15_tokeninfo_new();
+    struct sc_pkcs15_tokeninfo *tokeninfo = NULL;
 	sc_serial_number_t serial;
 
     if (!p15card || ! p15card->card)
@@ -202,6 +202,7 @@ int sc_pkcs15emu_din_66291_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid
 
     SC_FUNC_CALLED(p15card->card->ctx, 1);
 
+    tokeninfo = sc_pkcs15_tokeninfo_new();
     if (!p15card || !tokeninfo
             || (aid && (aid->len != sizeof aid_CIA
                     || 0 != memcmp(aid->value, aid_CIA, sizeof aid_CIA))))
