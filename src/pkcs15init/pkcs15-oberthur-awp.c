@@ -966,8 +966,10 @@ awp_encode_cert_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *ob
 	 * subject commonName.
 	 */
 	ptr = awp_get_commonName(x);
-	if (!ptr)
-		LOG_TEST_RET(ctx, SC_ERROR_INTERNAL, "AWP encode cert failed: cannot get CommonName");
+	if (!ptr) {
+		r = SC_ERROR_INTERNAL;
+		LOG_TEST_GOTO_ERR(ctx, r, "AWP encode cert failed: cannot get CommonName");
+	}
 	ci->cn.value = ptr;
 	ci->cn.len = strlen((char *)ptr);
 
@@ -976,12 +978,16 @@ awp_encode_cert_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *ob
 	 */
 	ptr = buff;
 	r = i2d_X509_NAME(X509_get_subject_name(x),&ptr);
-	if (r<=0)
-		LOG_TEST_RET(ctx, SC_ERROR_INTERNAL, "AWP encode cert failed: cannot get SubjectName");
+	if (r<=0) {
+		r = SC_ERROR_INTERNAL;
+		LOG_TEST_GOTO_ERR(ctx, r, "AWP encode cert failed: cannot get SubjectName");
+	}
 
 	ci->subject.value = malloc(r);
-	if (!ci->subject.value)
-		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "AWP encode cert failed: subject allocation error");
+	if (!ci->subject.value) {
+		r = SC_ERROR_OUT_OF_MEMORY;
+		LOG_TEST_GOTO_ERR(ctx, r, "AWP encode cert failed: subject allocation error");
+	}
 	memcpy(ci->subject.value, buff, r);
 	ci->subject.len = r;
 
@@ -990,12 +996,16 @@ awp_encode_cert_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *ob
 	 */
 	ptr = buff;
 	r = i2d_X509_NAME(X509_get_issuer_name(x),&ptr);
-	if (r <= 0)
-		LOG_TEST_RET(ctx, SC_ERROR_INTERNAL, "AWP encode cert failed: cannot get IssuerName");
+	if (r <= 0) {
+		r = SC_ERROR_INTERNAL;
+		LOG_TEST_GOTO_ERR(ctx, r, "AWP encode cert failed: cannot get IssuerName");
+	}
 
 	ci->issuer.value = malloc(r);
-	if (!ci->issuer.value)
-		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "AWP encode cert failed: issuer allocation error");
+	if (!ci->issuer.value) {
+		r = SC_ERROR_OUT_OF_MEMORY;
+		LOG_TEST_GOTO_ERR(ctx, r, "AWP encode cert failed: issuer allocation error");
+	}
 	memcpy(ci->issuer.value, buff, r);
 	ci->issuer.len = r;
 
@@ -1003,8 +1013,10 @@ awp_encode_cert_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *ob
 	 * ID
 	 */
 	ci->id.value = calloc(1, cert_info->id.len);
-	if (!ci->id.value)
-		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "AWP encode cert failed: ID allocation error");
+	if (!ci->id.value) {
+		r = SC_ERROR_OUT_OF_MEMORY;
+		LOG_TEST_GOTO_ERR(ctx, r, "AWP encode cert failed: ID allocation error");
+	}
 	memcpy(ci->id.value, cert_info->id.value, cert_info->id.len);
 	ci->id.len = cert_info->id.len;
 
@@ -1027,7 +1039,7 @@ awp_encode_cert_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *ob
 		if (!(ci->serial.value = malloc(ci->serial.len)))   {
 			ci->serial.len = 0;
 			r = SC_ERROR_OUT_OF_MEMORY;
-			goto done;
+			goto err;
 		}
 		ci->serial.len = i2d_ASN1_INTEGER(X509_get_serialNumber(x), &ci->serial.value);
 	}
@@ -1044,7 +1056,7 @@ awp_encode_cert_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *ob
 
 		if (!(ci->serial.value = malloc(encoded_len + 3)))   {
 			r = SC_ERROR_OUT_OF_MEMORY;
-			goto done;
+			goto err;
 		}
 
 		memcpy(ci->serial.value + 2, encoded, encoded_len);
@@ -1057,7 +1069,7 @@ awp_encode_cert_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *ob
 #endif
 
 	ci->x509 = X509_dup(x);
-done:
+err:
 	ERR_print_errors_fp(stderr);
 	ERR_clear_error();
 	ERR_free_strings();
