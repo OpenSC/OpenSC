@@ -836,25 +836,33 @@ sc_asn1_decode_object_id(const u8 *inbuf, size_t inlen, struct sc_object_id *id)
 		*octet++ = *p - (a * 40);
 		inlen--;
 	} else {
-		a = (*p & 0x7F);
+		/* Use unsigned type here so we can process the whole INT range */
+		unsigned int value = (*p & 0x7F);
 		inlen--;
-		if (!inlen) {
-			sc_init_oid(id);
-			return SC_ERROR_INVALID_ASN1_OBJECT;
-		}
-		do {
+		while (inlen && *p & 0x80) {
 			/* Limit the OID values to int size and do not overflow */
-			if (a > (INT_MAX>>7)) {
+			if (value > (UINT_MAX>>7)) {
 				sc_init_oid(id);
 				return SC_ERROR_NOT_SUPPORTED;
 			}
 			p++;
-			a <<= 7;
-			a |= *p & 0x7F;
+			value <<= 7;
+			value |= *p & 0x7F;
 			inlen--;
-		} while (inlen && *p & 0x80);
+		}
+		if (*p & 0x80) {
+			/* We dropped out from previous cycle on the end of
+			 * data while still expecting continuation of value */
+			sc_init_oid(id);
+			return SC_ERROR_INVALID_ASN1_OBJECT;
+		}
 		/* In this case, the first octet was 2 */
-		*octet++ = a - (2 * 40);
+		value -= (2 * 40);
+		if (value > INT_MAX) {
+			sc_init_oid(id);
+			return SC_ERROR_NOT_SUPPORTED;
+		}
+		*octet++ = value;
 	}
 
 	while (inlen) {
@@ -871,6 +879,12 @@ sc_asn1_decode_object_id(const u8 *inbuf, size_t inlen, struct sc_object_id *id)
 			a <<= 7;
 			a |= *p & 0x7F;
 			inlen--;
+		}
+		if (*p & 0x80) {
+			/* We dropped out from previous cycle on the end of
+			 * data while still expecting continuation of value */
+			sc_init_oid(id);
+			return SC_ERROR_INVALID_ASN1_OBJECT;
 		}
 		*octet++ = a;
 		if (octet - id->value >= SC_MAX_OBJECT_ID_OCTETS)   {
