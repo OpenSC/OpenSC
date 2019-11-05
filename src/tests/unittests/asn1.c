@@ -264,56 +264,47 @@ static void torture_negative_int(void **state)
 	assert_int_equal(value, -224);
 }
 
-/*
- * Test undefined behavior of too-large bit field (BIT STRING as an integer)
- * https://oss-fuzz.com/testcase-detail/5764460018401280
- *
- * In this example, invalid "unused bytes" value was used
- */
-static void torture_bit_field(void **state)
-{
-	/* Without the Tag and Length {0x03, 0x02} */
-	u8 data0[] = {0x07, 0x80};
-	/* Without the Tag and Length {0x03, 0x05} */
-	/* u8 data1[] = {0x20, 0x20, 0xff, 0xff, 0xff}; original data */
-	u8 data1[] = {0x20, 0xff, 0xff, 0xff, 0xff};
-	u8 data2[] = {0x00, 0xff, 0xff, 0xff, 0xff};
-	/* Without the Tag and Length {0x03, 0x06} */
-	u8 data3[] = {0x00, 0xff, 0xff, 0xff, 0xff, 0xff};
-	/* Without the Tag and Length {0x03, 0x02} */
-	u8 padding[] = {0x01, 0xfe};
-	u8 invalid_padding[] = {0x01, 0xff};
-	unsigned int value;
-	size_t value_len = sizeof(value);
-	int rv = 0;
+#define TORTURE_BIT_FIELD(name, asn1_data, int_value) \
+	static void torture_asn1_bit_field_## name (void **state) \
+	{ \
+		u8 data[] = asn1_data; \
+		size_t datalen = sizeof(data) - 1; \
+		unsigned int value = 0; \
+		size_t value_len = sizeof(value); \
+		int rv; \
+	\
+		rv = decode_bit_field(data, datalen, &value, value_len); \
+		assert_int_equal(rv, SC_SUCCESS); \
+		assert_int_equal(value, int_value); \
+	}
+#define TORTURE_BIT_FIELD_ERROR(name, asn1_data, error) \
+	static void torture_asn1_bit_field_## name (void **state) \
+	{ \
+		u8 data[] = asn1_data; \
+		size_t datalen = sizeof(data) - 1; \
+		unsigned int value = 0; \
+		size_t value_len = sizeof(value); \
+		int rv; \
+	\
+		rv = decode_bit_field(data, datalen, &value, value_len); \
+		assert_int_equal(rv, error); \
+	}
+/* Without the Tag (0x03) and Length */
+/* Simple value 1 */
+TORTURE_BIT_FIELD(one, "\x07\x80", 1)
+/* This is the last value that can be represented in the unsigned int */
+TORTURE_BIT_FIELD(uint_max, "\x00\xff\xff\xff\xff", UINT_MAX)
+/* Valid padding */
+TORTURE_BIT_FIELD(padding, "\x01\xfe", 127)
 
-	/* Simple value 1 */
-	rv = decode_bit_field(data0, sizeof(data0), (unsigned int *)&value, value_len);
-	assert_int_equal(rv, SC_SUCCESS);
-	assert_int_equal(value, 1);
+/* Negative test cases */
+/* Too large unused bits field */
+TORTURE_BIT_FIELD_ERROR(large_unused_bits, "\x20\xff\xff\xff\xff", SC_ERROR_INVALID_ASN1_OBJECT)
+/* Too large to represent in the unsigned int type */
+TORTURE_BIT_FIELD_ERROR(too_large, "\x00\xff\xff\xff\xff\xff", SC_ERROR_BUFFER_TOO_SMALL)
+/* Invalid (non-zero bits) padding */
+TORTURE_BIT_FIELD_ERROR(invalid_padding, "\x01\xff", SC_ERROR_INVALID_ASN1_OBJECT)
 
-	/* Too large unused bits field */
-	rv = decode_bit_field(data1, sizeof(data1), (unsigned int *)&value, value_len);
-	assert_int_equal(rv, SC_ERROR_INVALID_ASN1_OBJECT);
-
-	/* This is the last value that can be represented in the unsigned int */
-	rv = decode_bit_field(data2, sizeof(data2), (unsigned int *)&value, value_len);
-	assert_int_equal(rv, SC_SUCCESS);
-	assert_int_equal(value, UINT_MAX);
-
-	/* Too large to represent in the unsigned int type */
-	rv = decode_bit_field(data3, sizeof(data3), (unsigned int *)&value, value_len);
-	assert_int_equal(rv, SC_ERROR_BUFFER_TOO_SMALL);
-
-	/* Valid padding */
-	rv = decode_bit_field(padding, sizeof(padding), (unsigned int *)&value, value_len);
-	assert_int_equal(rv, SC_SUCCESS);
-	assert_int_equal(value, 127);
-
-	/* Invalid (non-zero bits) padding */
-	rv = decode_bit_field(invalid_padding, sizeof(invalid_padding), (unsigned int *)&value, value_len);
-	assert_int_equal(rv, SC_ERROR_INVALID_ASN1_OBJECT);
-}
 
 int main(void)
 {
@@ -336,7 +327,12 @@ int main(void)
 		cmocka_unit_test(torture_negative_int),
 		cmocka_unit_test(torture_large_oid),
 		cmocka_unit_test(torture_oid),
-		cmocka_unit_test(torture_bit_field),
+		cmocka_unit_test(torture_asn1_bit_field_one),
+		cmocka_unit_test(torture_asn1_bit_field_uint_max),
+		cmocka_unit_test(torture_asn1_bit_field_padding),
+		cmocka_unit_test(torture_asn1_bit_field_large_unused_bits),
+		cmocka_unit_test(torture_asn1_bit_field_too_large),
+		cmocka_unit_test(torture_asn1_bit_field_invalid_padding),
 	};
 
 	rc = cmocka_run_group_tests(tests, NULL, NULL);
