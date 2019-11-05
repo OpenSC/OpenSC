@@ -47,7 +47,7 @@ void fuzz_get_chunk(sc_reader_t *reader, const uint8_t **chunk, uint16_t *chunk_
 {
     struct driver_data *data;
     uint16_t c_size;
-    uint8_t *c;
+    const uint8_t *c;
 
     if (chunk)
         *chunk = NULL;
