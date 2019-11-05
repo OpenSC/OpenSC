@@ -170,139 +170,78 @@ static void torture_oid(void **state)
 	/* TODO SC_MAX_OBJECT_ID_OCTETS */
 }
 
-static void torture_integer(void **state)
-{
-	/* Without the Tag and Length {0x02, 0x01} */
-	u8 null[] = {};
-	u8 padded_zero[] = {0x00, 0x00};
-	u8 zero[] = {0x00};
-	u8 one[] = {0x01};
-	u8 minus_one[] = {0xFF};
-	u8 padded_one[] = {0x00, 0x01};
-	u8 padded_minus_one[] = {0xFF, 0xFF};
-	u8 padded_127[] = {0x00, 0x7F};
-	u8 padded_128[] = {0x00, 0x80};
-	u8 max2[] = {0x7F, 0xFF};
-	u8 min2[] = {0x80, 0x00};
-	u8 max4[] = {0x7F, 0xFF, 0xFF, 0xFF};
-	u8 min4[] = {0x80, 0x00, 0x00, 0x00};
-	u8 over[] = {0x7F, 0xFF, 0xFF, 0xFF, 0xFF};
-	int value;
-	u8 *buf = NULL;
-	size_t buflen = 0;
-	int rv = 0;
-
-	rv = sc_asn1_decode_integer(null, sizeof(null), &value, 1);
-	assert_int_equal(rv, SC_ERROR_INVALID_ASN1_OBJECT);
-
-	rv = sc_asn1_decode_integer(padded_zero, sizeof(padded_zero), &value, 1);
-	assert_int_equal(rv, SC_ERROR_INVALID_ASN1_OBJECT);
-
-	rv = sc_asn1_decode_integer(padded_one, sizeof(padded_one), &value, 1);
-	assert_int_equal(rv, SC_ERROR_INVALID_ASN1_OBJECT);
-	/* but we can parse them without the strict checking */
-	rv = sc_asn1_decode_integer(padded_one, sizeof(padded_one), &value, 0);
-	assert_int_equal(rv, SC_SUCCESS);
-	assert_int_equal(value, 1);
-
-	rv = sc_asn1_decode_integer(padded_minus_one, sizeof(padded_minus_one), &value, 1);
-	assert_int_equal(rv, SC_ERROR_INVALID_ASN1_OBJECT);
-	/* but we can parse them without the strict checking */
-	rv = sc_asn1_decode_integer(padded_minus_one, sizeof(padded_minus_one), &value, 0);
-	assert_int_equal(rv, SC_SUCCESS);
-	assert_int_equal(value, -1);
-
-	rv = sc_asn1_decode_integer(padded_127, sizeof(padded_127), &value, 1);
-	assert_int_equal(rv, SC_ERROR_INVALID_ASN1_OBJECT);
-	/* but we can parse them without the strict checking */
-	rv = sc_asn1_decode_integer(padded_127, sizeof(padded_127), &value, 0);
-	assert_int_equal(rv, SC_SUCCESS);
-	assert_int_equal(value, 127);
-
-	rv = sc_asn1_decode_integer(padded_128, sizeof(padded_128), &value, 1);
-	assert_int_equal(rv, SC_SUCCESS);
-	assert_int_equal(value, 128);
-	rv = asn1_encode_integer(value, &buf, &buflen);
-	assert_int_equal(rv, SC_SUCCESS);
-	assert_int_equal(buflen, sizeof(padded_128));
-	assert_memory_equal(buf, padded_128, buflen);
-	free(buf);
-
-	rv = sc_asn1_decode_integer(zero, sizeof(zero), &value, 1);
-	assert_int_equal(rv, SC_SUCCESS);
-	assert_int_equal(value, 0);
-	rv = asn1_encode_integer(value, &buf, &buflen);
-	assert_int_equal(rv, SC_SUCCESS);
-	assert_int_equal(buflen, sizeof(zero));
-	assert_memory_equal(buf, zero, buflen);
-	free(buf);
-
-	rv = sc_asn1_decode_integer(one, sizeof(one), &value, 1);
-	assert_int_equal(rv, SC_SUCCESS);
-	assert_int_equal(value, 1);
-	rv = asn1_encode_integer(value, &buf, &buflen);
-	assert_int_equal(rv, SC_SUCCESS);
-	assert_int_equal(buflen, sizeof(one));
-	assert_memory_equal(buf, one, buflen);
-	free(buf);
-
-	rv = sc_asn1_decode_integer(minus_one, sizeof(minus_one), &value, 1);
-	assert_int_equal(rv, SC_SUCCESS);
-	assert_int_equal(value, -1);
-	rv = asn1_encode_integer(value, &buf, &buflen);
-	assert_int_equal(rv, SC_SUCCESS);
-	assert_int_equal(buflen, sizeof(minus_one));
-	assert_memory_equal(buf, minus_one, buflen);
-	free(buf);
-
-	rv = sc_asn1_decode_integer(max2, sizeof(max2), &value, 1);
-	assert_int_equal(rv, SC_SUCCESS);
-	assert_int_equal(value, 32767);
-	rv = asn1_encode_integer(value, &buf, &buflen);
-	assert_int_equal(rv, SC_SUCCESS);
-	assert_int_equal(buflen, sizeof(max2));
-	assert_memory_equal(buf, max2, buflen);
-	free(buf);
-
-	rv = sc_asn1_decode_integer(min2, sizeof(min2), &value, 1);
-	assert_int_equal(rv, SC_SUCCESS);
-	assert_int_equal(value, -32768);
-	rv = asn1_encode_integer(value, &buf, &buflen);
-	assert_int_equal(rv, SC_SUCCESS);
-	assert_int_equal(buflen, sizeof(min2));
-	assert_memory_equal(buf, min2, buflen);
-	free(buf);
-
-	if (sizeof(int) == 4) {
-		rv = sc_asn1_decode_integer(max4, sizeof(max4), &value, 1);
-		assert_int_equal(rv, SC_SUCCESS);
-		assert_int_equal(value, 2147483647);
-		rv = asn1_encode_integer(value, &buf, &buflen);
-		assert_int_equal(rv, SC_SUCCESS);
-		assert_int_equal(buflen, sizeof(max4));
-		assert_memory_equal(buf, max4, buflen);
-		free(buf);
-
-		rv = sc_asn1_decode_integer(min4, sizeof(min4), &value, 1);
-		assert_int_equal(rv, SC_SUCCESS);
-		assert_int_equal(value, -2147483648);
-		rv = asn1_encode_integer(value, &buf, &buflen);
-		assert_int_equal(rv, SC_SUCCESS);
-		assert_int_equal(buflen, sizeof(min4));
-		assert_memory_equal(buf, min4, buflen);
-		free(buf);
-
-		rv = sc_asn1_decode_integer(over, sizeof(over), &value, 1);
-		assert_int_equal(rv, SC_ERROR_NOT_SUPPORTED);
-	} else {
-		/* On more esoteric architectures, we can have different size of int */
-		rv = sc_asn1_decode_integer(max4, sizeof(max4), &value, 1);
-		assert_int_equal(rv, SC_ERROR_NOT_SUPPORTED);
-
-		rv = sc_asn1_decode_integer(min4, sizeof(min4), &value, 1);
-		assert_int_equal(rv, SC_ERROR_NOT_SUPPORTED);
+#define TORTURE_INTEGER(name, asn1_data, int_value) \
+	static void torture_asn1_integer_## name (void **state) \
+	{ \
+		u8 data[] = asn1_data; \
+		size_t datalen = sizeof(data) - 1; \
+		int value = 0; \
+		int rv; \
+		u8 *buf = NULL; \
+		size_t buflen = 0; \
+	\
+		rv = sc_asn1_decode_integer(data, datalen, &value, 1); \
+		assert_int_equal(rv, SC_SUCCESS); \
+		assert_int_equal(value, int_value); \
+		rv = asn1_encode_integer(value, &buf, &buflen); \
+		assert_int_equal(rv, SC_SUCCESS); \
+		assert_int_equal(buflen, datalen); \
+		assert_memory_equal(buf, data, buflen); \
+		free(buf); \
 	}
-}
+#define TORTURE_INTEGER_ERROR(name, asn1_data, error) \
+	static void torture_asn1_integer_## name (void **state) \
+	{ \
+		u8 data[] = asn1_data; \
+		size_t datalen = sizeof(data) - 1; \
+		int value = 0; \
+		int rv; \
+	\
+		rv = sc_asn1_decode_integer(data, datalen, &value, 1); \
+		assert_int_equal(rv, error); \
+	}
+#define TORTURE_INTEGER_NONSTRICT(name, asn1_data, error, int_value) \
+	static void torture_asn1_integer_## name (void **state) \
+	{ \
+		u8 data[] = asn1_data; \
+		size_t datalen = sizeof(data) - 1; \
+		int value = 0; \
+		int rv; \
+	\
+		rv = sc_asn1_decode_integer(data, datalen, &value, 1); \
+		assert_int_equal(rv, error); \
+		/* but we can parse them without the strict checking */ \
+		rv = sc_asn1_decode_integer(data, datalen, &value, 0); \
+		assert_int_equal(rv, SC_SUCCESS); \
+		assert_int_equal(value, int_value); \
+	}
+
+/* Data are without the Tag (0x02) and Length */
+/* Positive test cases, mostly corner cases */
+TORTURE_INTEGER(zero, "\x00", 0)
+TORTURE_INTEGER(one, "\x01", 1)
+TORTURE_INTEGER(minus_one, "\xFF", -1)
+TORTURE_INTEGER(padded_128, "\x00\x80", 128)
+TORTURE_INTEGER(max2, "\x7F\xFF", 32767)
+TORTURE_INTEGER(min2, "\x80\x00", -32768)
+
+#if INT_MAX == 2147483647
+TORTURE_INTEGER(max4, "\x7F\xFF\xFF\xFF", 2147483647)
+TORTURE_INTEGER(min4, "\x80\x00\x00\x00", -2147483648)
+#else
+TORTURE_INTEGER_ERROR(max4, "\x7F\xFF\xFF\xFF", SC_ERROR_NOT_SUPPORTED)
+TORTURE_INTEGER_ERROR(min4, "\x80\x00\x00\x00", SC_ERROR_NOT_SUPPORTED)
+#endif
+
+/* Negative test cases */
+TORTURE_INTEGER_ERROR(null, "", SC_ERROR_INVALID_ASN1_OBJECT)
+TORTURE_INTEGER_ERROR(over, "\x7F\xFF\xFF\xFF\xFF", SC_ERROR_NOT_SUPPORTED)
+
+/* Tests fail in strict mode, but work otherwise */
+TORTURE_INTEGER_NONSTRICT(padded_zero, "\x00\x00", SC_ERROR_INVALID_ASN1_OBJECT, 0)
+TORTURE_INTEGER_NONSTRICT(padded_one, "\x00\x01", SC_ERROR_INVALID_ASN1_OBJECT, 1)
+TORTURE_INTEGER_NONSTRICT(padded_minus_one, "\xFF\xFF", SC_ERROR_INVALID_ASN1_OBJECT, -1)
+TORTURE_INTEGER_NONSTRICT(padded_127, "\x00\x7F", SC_ERROR_INVALID_ASN1_OBJECT, 127)
 
 /*
  * Test undefined behavior of negative INTEGERS handling.
@@ -375,13 +314,27 @@ static void torture_bit_field(void **state)
 	rv = decode_bit_field(invalid_padding, sizeof(invalid_padding), (unsigned int *)&value, value_len);
 	assert_int_equal(rv, SC_ERROR_INVALID_ASN1_OBJECT);
 }
+
 int main(void)
 {
 	int rc;
 	struct CMUnitTest tests[] = {
-		cmocka_unit_test(torture_large_oid),
-		cmocka_unit_test(torture_integer),
+		cmocka_unit_test(torture_asn1_integer_zero),
+		cmocka_unit_test(torture_asn1_integer_one),
+		cmocka_unit_test(torture_asn1_integer_minus_one),
+		cmocka_unit_test(torture_asn1_integer_padded_128),
+		cmocka_unit_test(torture_asn1_integer_max2),
+		cmocka_unit_test(torture_asn1_integer_min2),
+		cmocka_unit_test(torture_asn1_integer_max4),
+		cmocka_unit_test(torture_asn1_integer_min4),
+		cmocka_unit_test(torture_asn1_integer_null),
+		cmocka_unit_test(torture_asn1_integer_over),
+		cmocka_unit_test(torture_asn1_integer_padded_zero),
+		cmocka_unit_test(torture_asn1_integer_padded_one),
+		cmocka_unit_test(torture_asn1_integer_padded_minus_one),
+		cmocka_unit_test(torture_asn1_integer_padded_127),
 		cmocka_unit_test(torture_negative_int),
+		cmocka_unit_test(torture_large_oid),
 		cmocka_unit_test(torture_oid),
 		cmocka_unit_test(torture_bit_field),
 	};
