@@ -154,7 +154,7 @@ soc_info(sc_context_t *ctx, sc_card_t *card)
                 && cla == SC_ASN1_TAG_UNIVERSAL && tag == SC_ASN1_TAG_INTEGER) {
             int applet_count = 0;
             /* number of applets */
-            if (SC_SUCCESS == sc_asn1_decode_integer(p, length, &applet_count)) {
+            if (SC_SUCCESS == sc_asn1_decode_integer(p, length, &applet_count, 0)) {
                 printf("SoCManager knows %d applet%s%s\n", applet_count,
                         applet_count == 1 ? "" : "s", applet_count == 0 ? "" : ":");
                 /* AID of client applet #x */

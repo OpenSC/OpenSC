@@ -177,8 +177,8 @@ static void torture_integer(void **state)
 	u8 padded_zero[] = {0x00, 0x00};
 	u8 zero[] = {0x00};
 	u8 one[] = {0x01};
-	u8 padded_one[] = {0x00, 0x01};
 	u8 minus_one[] = {0xFF};
+	u8 padded_one[] = {0x00, 0x01};
 	u8 padded_minus_one[] = {0xFF, 0xFF};
 	u8 padded_127[] = {0x00, 0x7F};
 	u8 padded_128[] = {0x00, 0x80};
@@ -192,22 +192,34 @@ static void torture_integer(void **state)
 	size_t buflen = 0;
 	int rv = 0;
 
-	rv = sc_asn1_decode_integer(null, sizeof(null), &value);
+	rv = sc_asn1_decode_integer(null, sizeof(null), &value, 1);
 	assert_int_equal(rv, SC_ERROR_INVALID_ASN1_OBJECT);
 
-	rv = sc_asn1_decode_integer(padded_zero, sizeof(padded_zero), &value);
+	rv = sc_asn1_decode_integer(padded_zero, sizeof(padded_zero), &value, 1);
 	assert_int_equal(rv, SC_ERROR_INVALID_ASN1_OBJECT);
 
-	rv = sc_asn1_decode_integer(padded_one, sizeof(padded_one), &value);
+	rv = sc_asn1_decode_integer(padded_one, sizeof(padded_one), &value, 1);
 	assert_int_equal(rv, SC_ERROR_INVALID_ASN1_OBJECT);
+	/* but we can parse them without the strict checking */
+	rv = sc_asn1_decode_integer(padded_one, sizeof(padded_one), &value, 0);
+	assert_int_equal(rv, SC_SUCCESS);
+	assert_int_equal(value, 1);
 
-	rv = sc_asn1_decode_integer(padded_minus_one, sizeof(padded_minus_one), &value);
+	rv = sc_asn1_decode_integer(padded_minus_one, sizeof(padded_minus_one), &value, 1);
 	assert_int_equal(rv, SC_ERROR_INVALID_ASN1_OBJECT);
+	/* but we can parse them without the strict checking */
+	rv = sc_asn1_decode_integer(padded_minus_one, sizeof(padded_minus_one), &value, 0);
+	assert_int_equal(rv, SC_SUCCESS);
+	assert_int_equal(value, -1);
 
-	rv = sc_asn1_decode_integer(padded_127, sizeof(padded_127), &value);
+	rv = sc_asn1_decode_integer(padded_127, sizeof(padded_127), &value, 1);
 	assert_int_equal(rv, SC_ERROR_INVALID_ASN1_OBJECT);
+	/* but we can parse them without the strict checking */
+	rv = sc_asn1_decode_integer(padded_127, sizeof(padded_127), &value, 0);
+	assert_int_equal(rv, SC_SUCCESS);
+	assert_int_equal(value, 127);
 
-	rv = sc_asn1_decode_integer(padded_128, sizeof(padded_128), &value);
+	rv = sc_asn1_decode_integer(padded_128, sizeof(padded_128), &value, 1);
 	assert_int_equal(rv, SC_SUCCESS);
 	assert_int_equal(value, 128);
 	rv = asn1_encode_integer(value, &buf, &buflen);
@@ -216,7 +228,7 @@ static void torture_integer(void **state)
 	assert_memory_equal(buf, padded_128, buflen);
 	free(buf);
 
-	rv = sc_asn1_decode_integer(zero, sizeof(zero), &value);
+	rv = sc_asn1_decode_integer(zero, sizeof(zero), &value, 1);
 	assert_int_equal(rv, SC_SUCCESS);
 	assert_int_equal(value, 0);
 	rv = asn1_encode_integer(value, &buf, &buflen);
@@ -225,7 +237,7 @@ static void torture_integer(void **state)
 	assert_memory_equal(buf, zero, buflen);
 	free(buf);
 
-	rv = sc_asn1_decode_integer(one, sizeof(one), &value);
+	rv = sc_asn1_decode_integer(one, sizeof(one), &value, 1);
 	assert_int_equal(rv, SC_SUCCESS);
 	assert_int_equal(value, 1);
 	rv = asn1_encode_integer(value, &buf, &buflen);
@@ -234,7 +246,7 @@ static void torture_integer(void **state)
 	assert_memory_equal(buf, one, buflen);
 	free(buf);
 
-	rv = sc_asn1_decode_integer(minus_one, sizeof(minus_one), &value);
+	rv = sc_asn1_decode_integer(minus_one, sizeof(minus_one), &value, 1);
 	assert_int_equal(rv, SC_SUCCESS);
 	assert_int_equal(value, -1);
 	rv = asn1_encode_integer(value, &buf, &buflen);
@@ -243,7 +255,7 @@ static void torture_integer(void **state)
 	assert_memory_equal(buf, minus_one, buflen);
 	free(buf);
 
-	rv = sc_asn1_decode_integer(max2, sizeof(max2), &value);
+	rv = sc_asn1_decode_integer(max2, sizeof(max2), &value, 1);
 	assert_int_equal(rv, SC_SUCCESS);
 	assert_int_equal(value, 32767);
 	rv = asn1_encode_integer(value, &buf, &buflen);
@@ -252,7 +264,7 @@ static void torture_integer(void **state)
 	assert_memory_equal(buf, max2, buflen);
 	free(buf);
 
-	rv = sc_asn1_decode_integer(min2, sizeof(min2), &value);
+	rv = sc_asn1_decode_integer(min2, sizeof(min2), &value, 1);
 	assert_int_equal(rv, SC_SUCCESS);
 	assert_int_equal(value, -32768);
 	rv = asn1_encode_integer(value, &buf, &buflen);
@@ -262,7 +274,7 @@ static void torture_integer(void **state)
 	free(buf);
 
 	if (sizeof(int) == 4) {
-		rv = sc_asn1_decode_integer(max4, sizeof(max4), &value);
+		rv = sc_asn1_decode_integer(max4, sizeof(max4), &value, 1);
 		assert_int_equal(rv, SC_SUCCESS);
 		assert_int_equal(value, 2147483647);
 		rv = asn1_encode_integer(value, &buf, &buflen);
@@ -271,7 +283,7 @@ static void torture_integer(void **state)
 		assert_memory_equal(buf, max4, buflen);
 		free(buf);
 
-		rv = sc_asn1_decode_integer(min4, sizeof(min4), &value);
+		rv = sc_asn1_decode_integer(min4, sizeof(min4), &value, 1);
 		assert_int_equal(rv, SC_SUCCESS);
 		assert_int_equal(value, -2147483648);
 		rv = asn1_encode_integer(value, &buf, &buflen);
@@ -280,14 +292,14 @@ static void torture_integer(void **state)
 		assert_memory_equal(buf, min4, buflen);
 		free(buf);
 
-		rv = sc_asn1_decode_integer(over, sizeof(over), &value);
+		rv = sc_asn1_decode_integer(over, sizeof(over), &value, 1);
 		assert_int_equal(rv, SC_ERROR_NOT_SUPPORTED);
 	} else {
 		/* On more esoteric architectures, we can have different size of int */
-		rv = sc_asn1_decode_integer(max4, sizeof(max4), &value);
+		rv = sc_asn1_decode_integer(max4, sizeof(max4), &value, 1);
 		assert_int_equal(rv, SC_ERROR_NOT_SUPPORTED);
 
-		rv = sc_asn1_decode_integer(min4, sizeof(min4), &value);
+		rv = sc_asn1_decode_integer(min4, sizeof(min4), &value, 1);
 		assert_int_equal(rv, SC_ERROR_NOT_SUPPORTED);
 	}
 }
@@ -308,7 +320,7 @@ static void torture_negative_int(void **state)
 	int value;
 	int rv = 0;
 
-	rv = sc_asn1_decode_integer(data1, sizeof(data1), &value);
+	rv = sc_asn1_decode_integer(data1, sizeof(data1), &value, 1);
 	assert_int_equal(rv, SC_SUCCESS);
 	assert_int_equal(value, -224);
 }

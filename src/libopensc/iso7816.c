@@ -358,7 +358,7 @@ iso7816_process_fci(struct sc_card *card, struct sc_file *file,
 				/* fall through */
 			case 0x80:
 				/* determine the file size */
-				if (sc_asn1_decode_integer(p, length, &size) == 0 && size >= 0) {
+				if (sc_asn1_decode_integer(p, length, &size, 0) == 0 && size >= 0) {
 					file->size = size;
 					sc_log(ctx, "  bytes in file: %"SC_FORMAT_LEN_SIZE_T"u",
 							file->size);

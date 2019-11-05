@@ -100,7 +100,7 @@ int sc_asn1_decode_bit_string(const u8 * inbuf, size_t inlen,
 /* non-inverting version */
 int sc_asn1_decode_bit_string_ni(const u8 * inbuf, size_t inlen,
 				 void *outbuf, size_t outlen);
-int sc_asn1_decode_integer(const u8 * inbuf, size_t inlen, int *out);
+int sc_asn1_decode_integer(const u8 * inbuf, size_t inlen, int *out, int strict);
 int sc_asn1_decode_object_id(const u8 * inbuf, size_t inlen,
 			     struct sc_object_id *id);
 int sc_asn1_encode_object_id(u8 **buf, size_t *buflen,

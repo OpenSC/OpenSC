@@ -713,7 +713,7 @@ static int encode_bit_field(const u8 *inbuf, size_t inlen,
 	return encode_bit_string(data, bits, outbuf, outlen, 1);
 }
 
-int sc_asn1_decode_integer(const u8 * inbuf, size_t inlen, int *out)
+int sc_asn1_decode_integer(const u8 * inbuf, size_t inlen, int *out, int strict)
 {
 	int    a = 0, is_negative = 0;
 	size_t i = 0;
@@ -725,14 +725,14 @@ int sc_asn1_decode_integer(const u8 * inbuf, size_t inlen, int *out)
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	if (inbuf[0] & 0x80) {
-		if (inlen > 1 && inbuf[0] == 0xff && (inbuf[1] & 0x80)) {
+		if (strict && inlen > 1 && inbuf[0] == 0xff && (inbuf[1] & 0x80)) {
 			return SC_ERROR_INVALID_ASN1_OBJECT;
 		}
 		is_negative = 1;
 		a |= 0xff^(*inbuf++);
 		i = 1;
 	} else {
-		if (inlen > 1 && inbuf[0] == 0x00 && (inbuf[1] & 0x80) == 0) {
+		if (strict && inlen > 1 && inbuf[0] == 0x00 && (inbuf[1] & 0x80) == 0) {
 			return SC_ERROR_INVALID_ASN1_OBJECT;
 		}
 	}
@@ -1496,7 +1496,7 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 	case SC_ASN1_INTEGER:
 	case SC_ASN1_ENUMERATED:
 		if (parm != NULL) {
-			r = sc_asn1_decode_integer(obj, objlen, (int *) entry->parm);
+			r = sc_asn1_decode_integer(obj, objlen, (int *) entry->parm, 1);
 			sc_debug(ctx, SC_LOG_DEBUG_ASN1, "%*.*sdecoding '%s' returned %d\n", depth, depth, "",
 					entry->name, *((int *) entry->parm));
 		}
