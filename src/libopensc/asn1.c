@@ -843,6 +843,12 @@ sc_asn1_decode_object_id(const u8 *inbuf, size_t inlen, struct sc_object_id *id)
 	while (inlen) {
 		if (!large_second_octet)
 			p++;
+		/* This signalizes empty most significant bits, which means
+		 * the unsigned integer encoding is not minimal */
+		if (*p == 0x80) {
+			sc_init_oid(id);
+			return SC_ERROR_INVALID_ASN1_OBJECT;
+		}
 		/* Use unsigned type here so we can process the whole INT range.
 		 * Values can not be negative */
 		a = *p & 0x7F;
