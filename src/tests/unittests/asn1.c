@@ -212,12 +212,16 @@ TORTURE_INTEGER(negative, "\xff\x20", -224)
 		assert_int_equal(rv, error); \
 	}
 /* Without the Tag (0x03) and Length */
+/* Simple value 0 */
+TORTURE_BIT_FIELD(zero, "\x07\x00", 0)
 /* Simple value 1 */
 TORTURE_BIT_FIELD(one, "\x07\x80", 1)
 /* This is the last value that can be represented in the unsigned int */
 TORTURE_BIT_FIELD(uint_max, "\x00\xff\xff\xff\xff", UINT_MAX)
 /* Valid padding */
 TORTURE_BIT_FIELD(padding, "\x01\xfe", 127)
+/* Empty bit field needs zero padding */
+TORTURE_BIT_FIELD(zero_only, "\x00", 0)
 
 /* Negative test cases */
 /* Too large unused bits field */
@@ -226,6 +230,10 @@ TORTURE_BIT_FIELD_ERROR(large_unused_bits, "\x20\xff\xff\xff\xff", SC_ERROR_INVA
 TORTURE_BIT_FIELD_ERROR(too_large, "\x00\xff\xff\xff\xff\xff", SC_ERROR_BUFFER_TOO_SMALL)
 /* Invalid (non-zero bits) padding */
 TORTURE_BIT_FIELD_ERROR(invalid_padding, "\x01\xff", SC_ERROR_INVALID_ASN1_OBJECT)
+/* Empty bit field with non-zero zero-bits */
+TORTURE_BIT_FIELD_ERROR(zero_invalid, "\x07", SC_ERROR_INVALID_ASN1_OBJECT)
+/* Empty BIT FIELD is not valid */
+TORTURE_BIT_FIELD_ERROR(empty, "", SC_ERROR_INVALID_ASN1_OBJECT)
 
 
 int main(void)
@@ -262,12 +270,16 @@ int main(void)
 		cmocka_unit_test(torture_asn1_oid_non_minimal),
 		cmocka_unit_test(torture_asn1_oid_non_minimal_second),
 		/* BIT FIELD */
+		cmocka_unit_test(torture_asn1_bit_field_zero),
 		cmocka_unit_test(torture_asn1_bit_field_one),
 		cmocka_unit_test(torture_asn1_bit_field_uint_max),
 		cmocka_unit_test(torture_asn1_bit_field_padding),
+		cmocka_unit_test(torture_asn1_bit_field_zero_only),
 		cmocka_unit_test(torture_asn1_bit_field_large_unused_bits),
 		cmocka_unit_test(torture_asn1_bit_field_too_large),
 		cmocka_unit_test(torture_asn1_bit_field_invalid_padding),
+		cmocka_unit_test(torture_asn1_bit_field_zero_invalid),
+		cmocka_unit_test(torture_asn1_bit_field_empty),
 	};
 
 	rc = cmocka_run_group_tests(tests, NULL, NULL);
