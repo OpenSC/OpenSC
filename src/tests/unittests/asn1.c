@@ -23,6 +23,55 @@
 #include "libopensc/log.c"
 #include "libopensc/asn1.c"
 
+/* The last argument is an OID value */
+#define TORTURE_OID(name, asn1_data, ...) \
+	static void torture_asn1_oid_## name (void **state) \
+	{ \
+		u8 data[] = asn1_data; \
+		size_t datalen = sizeof(data) - 1; \
+		struct sc_object_id ref_oid = {{__VA_ARGS__}}; \
+		struct sc_object_id oid; \
+		int rv; \
+		u8 *buf = NULL; \
+		size_t buflen = 0; \
+	\
+		rv = sc_asn1_decode_object_id(data, datalen, &oid); \
+		assert_int_equal(rv, SC_SUCCESS); \
+		assert_int_equal(sc_compare_oid(&ref_oid, &oid), 1); /* XXX */ \
+		rv = sc_asn1_encode_object_id(&buf, &buflen, &oid); \
+		assert_int_equal(rv, SC_SUCCESS); \
+		assert_int_equal(buflen, datalen); \
+		assert_memory_equal(buf, data, buflen); \
+		free(buf); \
+	}
+#define TORTURE_OID_ERROR(name, asn1_data, error) \
+	static void torture_asn1_oid_## name (void **state) \
+	{ \
+		u8 data[] = asn1_data; \
+		size_t datalen = sizeof(data) - 1; \
+		struct sc_object_id oid; \
+		int rv; \
+	\
+		rv = sc_asn1_decode_object_id(data, datalen, &oid); \
+		assert_int_equal(rv, error); \
+	}
+
+/* Without the tag (0x06) and length */
+/* Small OID values */
+TORTURE_OID(small, "\x01\x02\x03\x04\x05\x06", 0, 1, 2, 3, 4, 5, 6, -1)
+/* Limit what we can fit into the first byte */
+TORTURE_OID(limit, "\x7F", 2, 47, -1)
+/* The second octet already oveflows to the second byte */
+TORTURE_OID(two_byte, "\x81\x00", 2, 48, -1)
+/* Existing OID ec publickey */
+TORTURE_OID(ecpubkey, "\x2A\x86\x48\xCE\x3D\x02\x01", 1, 2, 840, 10045, 2, 1, -1)
+
+/* Negative tests */
+/* Missing second byte, even though indicated with the first bit */
+TORTURE_OID_ERROR(missing, "\x81", SC_ERROR_INVALID_ASN1_OBJECT)
+/* Missing second byte in later identifiers */
+TORTURE_OID_ERROR(missing_second, "\x2A\x48\x81", SC_ERROR_INVALID_ASN1_OBJECT)
+
 /*
  * Test undefined behavior of too large parts of OID encoding
  *
@@ -32,143 +81,23 @@
  *
  * https://oss-fuzz.com/testcase-detail/5673497895895040
  */
-static void torture_large_oid(void **state)
-{
-	/* 2.5.4.18446744073709551616 (The last part is 64 bit overflow) */
-	u8 data1[] = {0x55, 0x04, 0x82, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x00};
-	/* 2.18446744073709551616.4.3 (The second part is 64 bit overflow) */
-	u8 data2[] = {0x82, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x50, 0x04, 0x03};
-	/* 2.5.4.2147483647 (The last part is largest 32 bit integer) */
-	u8 data3[] = {0x55, 0x04, 0x87, 0xFF, 0xFF, 0xFF, 0x7F};
-	/* 2.2147483647.4.3 (The second part is largest 32 bit integer) */
-	u8 data4[] = {0x88, 0x80, 0x80, 0x80, 0x4F, 0x04, 0x03};
-	/* 2.5.4.2147483648 (The last part is 32 bit integer overflow) */
-	u8 data5[] = {0x55, 0x04, 0x88, 0x80, 0x80, 0x80, 0x00};
-	/* 2.2147483648.4.3 (The second part is 32 bit integer overflow) */
-	u8 data6[] = {0x88, 0x80, 0x80, 0x80, 0x50, 0x04, 0x03};
-	struct sc_object_id oid;
-	u8 *buf = NULL;
-	size_t buflen = 0;
-	int rv = 0;
+#if INT_MAX == 2147483647
+/* 2.5.4.2147483647 (The last part is largest 32 bit integer) */
+TORTURE_OID(last_int_max, "\x55\x04\x87\xFF\xFF\xFF\x7F", 2, 5, 4, 2147483647, -1)
+/* 2.2147483647.4.3 (The second part is largest 32 bit integer) */
+TORTURE_OID(first_int_max, "\x88\x80\x80\x80\x4F\x04\x03", 2, 2147483647, 4, 3, -1)
+#else
+/* 2.5.4.2147483647 (The last part is largest 32 bit integer) */
+TORTURE_OID_ERROR(last_int_max, "\x55\x04\x87\xFF\xFF\xFF\x7F", SC_ERROR_NOT_SUPPORTED)
+/* 2.2147483647.4.3 (The second part is largest 32 bit integer) */
+TORTURE_OID_ERROR(first_int_max, "\x88\x80\x80\x80\x4F\x04\x03", SC_ERROR_NOT_SUPPORTED)
+#endif
 
-	rv = sc_asn1_decode_object_id(data1, sizeof(data1), &oid);
-	assert_int_equal(rv, SC_ERROR_NOT_SUPPORTED);
-
-	rv = sc_asn1_decode_object_id(data2, sizeof(data2), &oid);
-	assert_int_equal(rv, SC_ERROR_NOT_SUPPORTED);
-
-	if (sizeof(int) == 4) {
-		/* For 64 bit builds */
-		struct sc_object_id oid_3 = {{2, 5, 4, 2147483647, -1}};
-		struct sc_object_id oid_4 = {{2, 2147483647, 4, 3, -1}};
-
-		rv = sc_asn1_decode_object_id(data3, sizeof(data3), &oid);
-		assert_int_equal(rv, SC_SUCCESS);
-		assert_int_equal(sc_compare_oid(&oid_3, &oid), 1);
-		rv = sc_asn1_encode_object_id(&buf, &buflen, &oid);
-		assert_int_equal(rv, SC_SUCCESS);
-		assert_int_equal(buflen, sizeof(data3));
-		assert_memory_equal(buf, data3, buflen);
-		free(buf);
-
-		rv = sc_asn1_decode_object_id(data4, sizeof(data4), &oid);
-		assert_int_equal(rv, SC_SUCCESS);
-		assert_int_equal(sc_compare_oid(&oid_4, &oid), 1);
-		rv = sc_asn1_encode_object_id(&buf, &buflen, &oid);
-		assert_int_equal(rv, SC_SUCCESS);
-		assert_int_equal(buflen, sizeof(data4));
-		assert_memory_equal(buf, data4, buflen);
-		free(buf);
-
-		rv = sc_asn1_decode_object_id(data5, sizeof(data5), &oid);
-		assert_int_equal(rv, SC_ERROR_NOT_SUPPORTED);
-
-		rv = sc_asn1_decode_object_id(data6, sizeof(data6), &oid);
-		assert_int_equal(rv, SC_ERROR_NOT_SUPPORTED);
-	} else {
-		rv = sc_asn1_decode_object_id(data3, sizeof(data3), &oid);
-		assert_int_equal(rv, SC_ERROR_NOT_SUPPORTED);
-
-		rv = sc_asn1_decode_object_id(data4, sizeof(data4), &oid);
-		assert_int_equal(rv, SC_ERROR_NOT_SUPPORTED);
-	}
-}
-
-static void torture_oid(void **state)
-{
-	/* (without the tag and length {0x06, 0x06}) */
-	/* Small OIDs */
-	struct sc_object_id small_oid = {{0, 1, 2, 3, 4, 5, 6, -1}};
-	u8 small[] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06};
-	/* Limit what we can fit into the first byte */
-	struct sc_object_id limit_oid = {{2, 47, -1}};
-	u8 limit[] = {0x7F};
-	/* The second octet already oveflows to the second byte */
-	struct sc_object_id two_byte_oid = {{2, 48, -1}};
-	u8 two_byte[] = {0x81, 0x00};
-	/* Existing OID ec publickey */
-	struct sc_object_id ecpubkey_oid = {{1, 2, 840, 10045, 2, 1, -1}};
-	u8 ecpubkey[] = {0x2A, 0x86, 0x48, 0xCE, 0x3D, 0x02, 0x01};
-	/* Missing second byte, even though indicated with the first bit */
-	u8 missing[] = {0x81};
-	/* Missing second byte in later identifiers */
-	u8 missing_second[] = {0x2A, 0x48, 0x81};
-	struct sc_object_id oid;
-	u8 *buf = NULL;
-	size_t buflen = 0;
-	int rv = 0;
-
-	rv = sc_asn1_decode_object_id(small, sizeof(small), &oid);
-	assert_int_equal(rv, SC_SUCCESS);
-	assert_int_equal(sc_compare_oid(&small_oid, &oid), 1);
-	rv = sc_asn1_encode_object_id(&buf, &buflen, &oid);
-	assert_int_equal(rv, SC_SUCCESS);
-	assert_int_equal(buflen, sizeof(small));
-	assert_memory_equal(buf, small, buflen);
-	free(buf);
-
-	rv = sc_asn1_decode_object_id(limit, sizeof(limit), &oid);
-	assert_int_equal(rv, SC_SUCCESS);
-	assert_int_equal(sc_compare_oid(&limit_oid, &oid), 1);
-	rv = sc_asn1_encode_object_id(&buf, &buflen, &oid);
-	assert_int_equal(rv, SC_SUCCESS);
-	assert_int_equal(buflen, sizeof(limit));
-	assert_memory_equal(buf, limit, buflen);
-	free(buf);
-
-	rv = sc_asn1_decode_object_id(two_byte, sizeof(two_byte), &oid);
-	assert_int_equal(rv, SC_SUCCESS);
-	assert_int_equal(sc_compare_oid(&two_byte_oid, &oid), 1);
-	rv = sc_asn1_encode_object_id(&buf, &buflen, &oid);
-	assert_int_equal(rv, SC_SUCCESS);
-	assert_int_equal(buflen, sizeof(two_byte));
-	assert_memory_equal(buf, two_byte, buflen);
-	free(buf);
-
-	rv = sc_asn1_decode_object_id(ecpubkey, sizeof(ecpubkey), &oid);
-	assert_int_equal(rv, SC_SUCCESS);
-	assert_int_equal(oid.value[0], 1);
-	assert_int_equal(oid.value[1], 2);
-	assert_int_equal(oid.value[2], 840);
-	assert_int_equal(oid.value[3], 10045);
-	assert_int_equal(oid.value[4], 2);
-	assert_int_equal(oid.value[5], 1);
-	assert_int_equal(oid.value[6], -1);
-	assert_int_equal(sc_compare_oid(&ecpubkey_oid, &oid), 1);
-	rv = sc_asn1_encode_object_id(&buf, &buflen, &oid);
-	assert_int_equal(rv, SC_SUCCESS);
-	assert_int_equal(buflen, sizeof(ecpubkey));
-	assert_memory_equal(buf, ecpubkey, buflen);
-	free(buf);
-
-	rv = sc_asn1_decode_object_id(missing, sizeof(missing), &oid);
-	assert_int_equal(rv, SC_ERROR_INVALID_ASN1_OBJECT);
-
-	rv = sc_asn1_decode_object_id(missing_second, sizeof(missing_second), &oid);
-	assert_int_equal(rv, SC_ERROR_INVALID_ASN1_OBJECT);
-
-	/* TODO SC_MAX_OBJECT_ID_OCTETS */
-}
+/* 2.5.4.2147483648 (The last part is 32 bit integer overflow) */
+TORTURE_OID_ERROR(last_32b_overflow, "\x55\x04\x88\x80\x80\x80\x00", SC_ERROR_NOT_SUPPORTED)
+/* 2.2147483648.4.3 (The second part is 32 bit integer overflow) */
+TORTURE_OID_ERROR(first_32b_overflow, "\x88\x80\x80\x80\x50\x04\x03", SC_ERROR_NOT_SUPPORTED)
+/* TODO SC_MAX_OBJECT_ID_OCTETS */
 
 #define TORTURE_INTEGER(name, asn1_data, int_value) \
 	static void torture_asn1_integer_## name (void **state) \
@@ -251,18 +180,7 @@ TORTURE_INTEGER_NONSTRICT(padded_127, "\x00\x7F", SC_ERROR_INVALID_ASN1_OBJECT, 
  * negative value wrote ones to the whole integer and it was not possible
  * to shift values afterward.
  */
-static void torture_negative_int(void **state)
-{
-	/* Without the Tag and Length {0x80, 0x04} */
-	/* u8 data1[] = {0xff, 0x20, 0x20, 0x20}; original data */
-	u8 data1[] = {0xff, 0x20}; /* Shortened also for 32 bit builds */
-	int value;
-	int rv = 0;
-
-	rv = sc_asn1_decode_integer(data1, sizeof(data1), &value, 1);
-	assert_int_equal(rv, SC_SUCCESS);
-	assert_int_equal(value, -224);
-}
+TORTURE_INTEGER(negative, "\xff\x20", -224)
 
 #define TORTURE_BIT_FIELD(name, asn1_data, int_value) \
 	static void torture_asn1_bit_field_## name (void **state) \
@@ -310,6 +228,7 @@ int main(void)
 {
 	int rc;
 	struct CMUnitTest tests[] = {
+		/* INTEGER */
 		cmocka_unit_test(torture_asn1_integer_zero),
 		cmocka_unit_test(torture_asn1_integer_one),
 		cmocka_unit_test(torture_asn1_integer_minus_one),
@@ -324,9 +243,19 @@ int main(void)
 		cmocka_unit_test(torture_asn1_integer_padded_one),
 		cmocka_unit_test(torture_asn1_integer_padded_minus_one),
 		cmocka_unit_test(torture_asn1_integer_padded_127),
-		cmocka_unit_test(torture_negative_int),
-		cmocka_unit_test(torture_large_oid),
-		cmocka_unit_test(torture_oid),
+		cmocka_unit_test(torture_asn1_integer_negative),
+		/* OBJECT ID */
+		cmocka_unit_test(torture_asn1_oid_small),
+		cmocka_unit_test(torture_asn1_oid_limit),
+		cmocka_unit_test(torture_asn1_oid_two_byte),
+		cmocka_unit_test(torture_asn1_oid_ecpubkey),
+		cmocka_unit_test(torture_asn1_oid_missing),
+		cmocka_unit_test(torture_asn1_oid_missing_second),
+		cmocka_unit_test(torture_asn1_oid_last_int_max),
+		cmocka_unit_test(torture_asn1_oid_first_int_max),
+		cmocka_unit_test(torture_asn1_oid_last_32b_overflow),
+		cmocka_unit_test(torture_asn1_oid_first_32b_overflow),
+		/* BIT FIELD */
 		cmocka_unit_test(torture_asn1_bit_field_one),
 		cmocka_unit_test(torture_asn1_bit_field_uint_max),
 		cmocka_unit_test(torture_asn1_bit_field_padding),
