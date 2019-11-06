@@ -577,6 +577,10 @@ static int decode_bit_string(const u8 * inbuf, size_t inlen, void *outbuf,
 
 	if (inlen < 1)
 		return SC_ERROR_INVALID_ASN1_OBJECT;
+	/* 8.6.2.3 If the bitstring is empty, there shall be no subsequent octets,
+         * and the initial octet shall be zero. */
+	if (inlen == 1 && *in != 0)
+		return SC_ERROR_INVALID_ASN1_OBJECT;
 	/* ITU-T Rec. X.690 8.6.2.2: The number shall be in the range zero to seven. */
 	if ((*in & ~0x07) != 0)
 		return SC_ERROR_INVALID_ASN1_OBJECT;
