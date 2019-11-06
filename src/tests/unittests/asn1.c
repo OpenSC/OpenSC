@@ -71,6 +71,10 @@ TORTURE_OID(ecpubkey, "\x2A\x86\x48\xCE\x3D\x02\x01", 1, 2, 840, 10045, 2, 1, -1
 TORTURE_OID_ERROR(missing, "\x81", SC_ERROR_INVALID_ASN1_OBJECT)
 /* Missing second byte in later identifiers */
 TORTURE_OID_ERROR(missing_second, "\x2A\x48\x81", SC_ERROR_INVALID_ASN1_OBJECT)
+/* Non-minimal encoding of first part */
+TORTURE_OID_ERROR(non_minimal_second, "\x2A\x80\x01", SC_ERROR_INVALID_ASN1_OBJECT)
+/* Non-minimal encoding of first part */
+TORTURE_OID_ERROR(non_minimal, "\x80\x01", SC_ERROR_INVALID_ASN1_OBJECT)
 
 /*
  * Test undefined behavior of too large parts of OID encoding
@@ -255,6 +259,8 @@ int main(void)
 		cmocka_unit_test(torture_asn1_oid_first_int_max),
 		cmocka_unit_test(torture_asn1_oid_last_32b_overflow),
 		cmocka_unit_test(torture_asn1_oid_first_32b_overflow),
+		cmocka_unit_test(torture_asn1_oid_non_minimal),
+		cmocka_unit_test(torture_asn1_oid_non_minimal_second),
 		/* BIT FIELD */
 		cmocka_unit_test(torture_asn1_bit_field_one),
 		cmocka_unit_test(torture_asn1_bit_field_uint_max),
