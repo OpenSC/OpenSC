@@ -388,6 +388,9 @@ static int select_item(sc_card_t *card, const sc_path_t *path_in, sc_file_t ** f
 		fs->currentFile[0] = oid[2];
 		fs->currentFile[1] = oid[3];
 	} else {
+		if(pathlen < 2) {
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+		}
 		fs->currentPath[0] = oid[pathlen - 2];
 		fs->currentPath[1] = oid[pathlen - 1];
 		fs->currentFile[0] = 0;
