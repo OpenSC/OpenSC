@@ -235,6 +235,54 @@ TORTURE_BIT_FIELD_ERROR(zero_invalid, "\x07", SC_ERROR_INVALID_ASN1_OBJECT)
 /* Empty BIT FIELD is not valid */
 TORTURE_BIT_FIELD_ERROR(empty, "", SC_ERROR_INVALID_ASN1_OBJECT)
 
+/* Setup context */
+static int setup_sc_context(void **state)
+{
+	sc_context_t *ctx = NULL;
+	int rv;
+
+	rv = sc_establish_context(&ctx, "fuzz");
+	assert_non_null(ctx);
+	assert_int_equal(rv, SC_SUCCESS);
+
+	*state = ctx;
+
+	return 0;
+}
+
+/* Cleanup context */
+static int teardown_sc_context(void **state)
+{
+	sc_context_t *ctx = *state;
+	int rv;
+
+	rv = sc_release_context(ctx);
+	assert_int_equal(rv, SC_SUCCESS);
+
+	return 0;
+}
+
+static void torture_asn1_decode_entry_empty(void **state)
+{
+	sc_context_t *ctx = *state;
+	/* Skipped the Tag and Length (0x04, 0x00) */
+	const u8 octet_string[0] = {};
+	struct sc_asn1_entry asn1_struct[2] = {
+		{ "direct",     SC_ASN1_OCTET_STRING, SC_ASN1_CTX | SC_ASN1_CONS, SC_ASN1_ALLOC, NULL, NULL },
+		{ NULL, 0, 0, 0, NULL, NULL }
+	};
+	u8 *result = NULL;
+	size_t resultlen = 0;
+	int rv;
+
+	/* set the pointers to the expected results */
+	sc_format_asn1_entry(asn1_struct, &result, &resultlen, 0);
+	rv = asn1_decode_entry(ctx, asn1_struct, octet_string, 0, 1);
+	assert_int_equal(rv, SC_SUCCESS);
+	assert_int_equal(resultlen, 0);
+	assert_null(result);
+}
+
 
 int main(void)
 {
@@ -280,6 +328,9 @@ int main(void)
 		cmocka_unit_test(torture_asn1_bit_field_invalid_padding),
 		cmocka_unit_test(torture_asn1_bit_field_zero_invalid),
 		cmocka_unit_test(torture_asn1_bit_field_empty),
+		/* decode_entry() */
+		cmocka_unit_test_setup_teardown(torture_asn1_decode_entry_empty,
+			setup_sc_context, teardown_sc_context),
 	};
 
 	rc = cmocka_run_group_tests(tests, NULL, NULL);
