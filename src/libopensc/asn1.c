@@ -1464,10 +1464,12 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 			}
 			if (entry->flags & SC_ASN1_ALLOC) {
 				u8 **buf = (u8 **) parm;
-				*buf = malloc(objlen-1);
-				if (*buf == NULL) {
-					r = SC_ERROR_OUT_OF_MEMORY;
-					break;
+				if (objlen > 1) {
+					*buf = malloc(objlen-1);
+					if (*buf == NULL) {
+						r = SC_ERROR_OUT_OF_MEMORY;
+						break;
+					}
 				}
 				*len = objlen-1;
 				parm = *buf;
@@ -1518,10 +1520,12 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 			assert(len != NULL);
 			if (entry->flags & SC_ASN1_ALLOC) {
 				u8 **buf = (u8 **) parm;
-				*buf = malloc(objlen);
-				if (*buf == NULL) {
-					r = SC_ERROR_OUT_OF_MEMORY;
-					break;
+				if (objlen > 0) {
+					*buf = malloc(objlen);
+					if (*buf == NULL) {
+						r = SC_ERROR_OUT_OF_MEMORY;
+						break;
+					}
 				}
 				c = *len = objlen;
 				parm = *buf;
