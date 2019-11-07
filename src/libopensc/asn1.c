@@ -1500,10 +1500,12 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 			/* Allocate buffer if needed */
 			if (entry->flags & SC_ASN1_ALLOC) {
 				u8 **buf = (u8 **) parm;
-				*buf = malloc(objlen);
-				if (*buf == NULL) {
-					r = SC_ERROR_OUT_OF_MEMORY;
-					break;
+				if (objlen > 0) {
+					*buf = malloc(objlen);
+					if (*buf == NULL) {
+						r = SC_ERROR_OUT_OF_MEMORY;
+						break;
+					}
 				}
 				c = *len = objlen;
 				parm = *buf;
