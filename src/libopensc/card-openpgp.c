@@ -62,7 +62,7 @@ static const struct sc_atr_table pgp_atrs[] = {
 	{
 		"3b:da:11:ff:81:b1:fe:55:1f:03:00:31:84:73:80:01:80:00:90:00:e4",
 		"ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:00:ff:ff:00",
-		"Gnuk v1.0.x (OpenPGP v2.0)", SC_CARD_TYPE_OPENPGP_GNUK, 0, NULL
+		"Gnuk v1.x.x (OpenPGP v2.0)", SC_CARD_TYPE_OPENPGP_GNUK, 0, NULL
 	},
 	{ "3b:fc:13:00:00:81:31:fe:15:59:75:62:69:6b:65:79:4e:45:4f:72:33:e1", NULL, "Yubikey NEO (OpenPGP v2.0)", SC_CARD_TYPE_OPENPGP_V2, 0, NULL },
 	{ "3b:f8:13:00:00:81:31:fe:15:59:75:62:69:6b:65:79:34:d4", NULL, "Yubikey 4 (OpenPGP v2.1)", SC_CARD_TYPE_OPENPGP_V2, 0, NULL },
@@ -168,6 +168,22 @@ static struct pgp_supported_ec_curves {
 		{{0x2b, 0x24, 0x03, 0x03, 0x02, 0x08, 0x01, 0x01, 0x0b, -1}}}, /* brainpoolP384r1 */
 	{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 13, -1}}, 512,
 		{{0x2b, 0x24, 0x03, 0x03, 0x02, 0x08, 0x01, 0x01, 0x0d, -1}}}, /* brainpoolP512r1 */
+	{{{-1}}, 0, {{0x0}}} /* This entry must not be touched. */
+};
+
+static struct pgp_supported_ec_curves_gnuk {
+		struct sc_object_id oid;
+		size_t size;
+		struct sc_object_id oid_binary;
+} ec_curves_gnuk[] = {
+	{{{1, 2, 840, 10045, 3, 1, 7, -1}}, 256,
+		{{0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07, -1}}}, /* ansiX9p256r1 */
+	{{{1, 3, 132, 0, 10, -1}}, 256,
+		{{0x06, 0x05, 0x2B, 0x81, 0x04, 0x00, 0x0A, -1}}}, /* secp256k1 */
+	/*{{{1, 3, 6, 1, 4, 1, 3029, 1, 5, 1, -1}}, 256,
+		{{0x0A, 0x2B, 0x06, 0x01, 0x04, 0x01, 0x97, 0x55, 0x01, 0x05, 0x01, -1}}}, //cv25519
+	{{{1, 3, 6, 1, 4, 1, 11591, 15, 1, -1}}, 256,
+		{{0x09, 0x2B, 0x06, 0x01, 0x04, 0x01, 0xDA, 0x47, 0x0F, 0x01, -1}}}, // ed25519 */
 	{{{-1}}, 0, {{0x0}}} /* This entry must not be touched. */
 };
 
@@ -637,10 +653,12 @@ pgp_init(sc_card_t *card)
 				break;
 			case SC_CARD_TYPE_OPENPGP_GNUK:
 				_sc_card_add_rsa_alg(card, 2048, flags_rsa, 0);
-				/* TODO add ECC for more recent Gnuk (1.2.x)
-				 * these are not include in SC_CARD_TYPE_OPENPGP_GNUK, but
-				 * are treated like SC_CARD_TYPE_OPENPGP_V2
-				 * Gnuk supports NIST, SECG and Curve25519 from version 1.2.x on */
+				/* Gnuk supports NIST, SECG and Curve25519 since version 1.2 */
+				for (i=0; ec_curves_gnuk[i].oid.value[0] >= 0; i++)
+				{
+					_sc_card_add_ec_alg(card, ec_curves_gnuk[i].size,
+						flags_ecc, ext_flags, &ec_curves_gnuk[i].oid);
+				}
 				break;
 			case SC_CARD_TYPE_OPENPGP_V2:
 			default:
@@ -2744,9 +2762,10 @@ pgp_update_card_algorithms(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *ke
 
 	LOG_FUNC_CALLED(card->ctx);
 
-	/* protect older cards against non-RSA */
+	/* protect incompatible cards against non-RSA */
 	if (key_info->algorithm != SC_OPENPGP_KEYALGO_RSA
-		&& card->type < SC_CARD_TYPE_OPENPGP_V3)
+		&& card->type < SC_CARD_TYPE_OPENPGP_V3
+		&& card->type != SC_CARD_TYPE_OPENPGP_GNUK)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 
 	if (id > card->algorithm_count) {
@@ -2791,9 +2810,10 @@ pgp_gen_key(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_info)
 
 	LOG_FUNC_CALLED(card->ctx);
 
-	/* protect older cards against non-RSA */
+	/* protect incompatible cards against non-RSA */
 	if (key_info->algorithm != SC_OPENPGP_KEYALGO_RSA
-		&& card->type < SC_CARD_TYPE_OPENPGP_V3)
+		&& card->type < SC_CARD_TYPE_OPENPGP_V3
+		&& card->type != SC_CARD_TYPE_OPENPGP_GNUK)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 
 	/* set Control Reference Template for key */
@@ -2807,10 +2827,6 @@ pgp_gen_key(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_info)
 		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
 				"Invalid key ID; must be 1, 2, or 3");
 	}
-
-	if (card->type == SC_CARD_TYPE_OPENPGP_GNUK && key_info->u.rsa.modulus_len != 2048)
-		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
-				"Gnuk only supports generating keys up to 2048-bit");
 
 	/* set attributes for new-generated key */
 	r = pgp_update_new_algo_attr(card, key_info);
@@ -3150,9 +3166,10 @@ pgp_store_key(sc_card_t *card, sc_cardctl_openpgp_keystore_info_t *key_info)
 
 	LOG_FUNC_CALLED(card->ctx);
 
-	/* protect older cards against non-RSA */
+	/* protect incompatible cards against non-RSA */
 	if (key_info->algorithm != SC_OPENPGP_KEYALGO_RSA
-		&& card->type < SC_CARD_TYPE_OPENPGP_V3)
+		&& card->type < SC_CARD_TYPE_OPENPGP_V3
+		&& card->type != SC_CARD_TYPE_OPENPGP_GNUK)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 
 	/* Validate */
