@@ -262,7 +262,8 @@ static int teardown_sc_context(void **state)
 	return 0;
 }
 
-static void torture_asn1_decode_entry_empty(void **state)
+#define DEPTH 1
+static void torture_asn1_decode_entry_octet_string_empty(void **state)
 {
 	sc_context_t *ctx = *state;
 	/* Skipped the Tag and Length (0x04, 0x00) */
@@ -277,10 +278,165 @@ static void torture_asn1_decode_entry_empty(void **state)
 
 	/* set the pointers to the expected results */
 	sc_format_asn1_entry(asn1_struct, &result, &resultlen, 0);
-	rv = asn1_decode_entry(ctx, asn1_struct, octet_string, 0, 1);
+	rv = asn1_decode_entry(ctx, asn1_struct, octet_string, 0, DEPTH);
 	assert_int_equal(rv, SC_SUCCESS);
 	assert_int_equal(resultlen, 0);
 	assert_null(result);
+}
+
+static void torture_asn1_decode_entry_octet_string_short(void **state)
+{
+	sc_context_t *ctx = *state;
+	/* Skipped the Tag and Length (0x04, 0x01) */
+	const u8 octet_string[] = {0xbc};
+	struct sc_asn1_entry asn1_struct[2] = {
+		{ "direct",     SC_ASN1_OCTET_STRING, SC_ASN1_CTX | SC_ASN1_CONS,
+			SC_ASN1_ALLOC, NULL, NULL },
+		{ NULL, 0, 0, 0, NULL, NULL }
+	};
+	u8 *result = NULL;
+	size_t resultlen = 0;
+	int rv;
+
+	/* set the pointers to the expected results */
+	sc_format_asn1_entry(asn1_struct, &result, &resultlen, 0);
+	rv = asn1_decode_entry(ctx, asn1_struct, octet_string, sizeof(octet_string), DEPTH);
+	assert_int_equal(rv, SC_SUCCESS);
+	assert_int_equal(resultlen, sizeof(octet_string));
+	assert_memory_equal(result, octet_string, resultlen);
+}
+
+/* In case of we expect UNSIGNED value from this, the parser already takes
+ * care of removing initial zero byte, which is used to avoid mismatches with
+ * negative integers */
+static void torture_asn1_decode_entry_octet_string_unsigned(void **state)
+{
+	sc_context_t *ctx = *state;
+	/* Skipped the Tag and Length (0x04, 0x02) */
+	const u8 octet_string[] = {0x00, 0xff};
+	struct sc_asn1_entry asn1_struct[2] = {
+		{ "direct",     SC_ASN1_OCTET_STRING, SC_ASN1_CTX | SC_ASN1_CONS,
+			SC_ASN1_ALLOC | SC_ASN1_UNSIGNED, NULL, NULL },
+		{ NULL, 0, 0, 0, NULL, NULL }
+	};
+	u8 *result = NULL;
+	size_t resultlen = 0;
+	int rv;
+
+	/* set the pointers to the expected results */
+	sc_format_asn1_entry(asn1_struct, &result, &resultlen, 0);
+	rv = asn1_decode_entry(ctx, asn1_struct, octet_string, sizeof(octet_string), DEPTH);
+	assert_int_equal(rv, SC_SUCCESS);
+	assert_int_equal(resultlen, sizeof(octet_string) -1);
+	assert_memory_equal(result, octet_string + 1, resultlen);
+}
+
+static void torture_asn1_decode_entry_octet_string_pre_allocated(void **state)
+{
+	sc_context_t *ctx = *state;
+	/* Skipped the Tag and Length (0x04, 0x02) */
+	const u8 octet_string[] = {0x01, 0x02, 0x03, 0x04};
+	struct sc_asn1_entry asn1_struct[2] = {
+		{ "direct",     SC_ASN1_OCTET_STRING, SC_ASN1_CTX | SC_ASN1_CONS, 0, NULL, NULL },
+		{ NULL, 0, 0, 0, NULL, NULL }
+	};
+	u8 result[8];
+	size_t resultlen = sizeof(result);
+	int rv;
+
+	/* set the pointers to the expected results */
+	sc_format_asn1_entry(asn1_struct, &result, &resultlen, 0);
+	rv = asn1_decode_entry(ctx, asn1_struct, octet_string, sizeof(octet_string), DEPTH);
+	assert_int_equal(rv, SC_SUCCESS);
+	assert_int_equal(resultlen, sizeof(octet_string));
+	assert_memory_equal(result, octet_string, resultlen);
+}
+
+static void torture_asn1_decode_entry_octet_string_pre_allocated_truncate(void **state)
+{
+	sc_context_t *ctx = *state;
+	/* Skipped the Tag and Length (0x04, 0x02) */
+	const u8 octet_string[] = {0x01, 0x02, 0x03, 0x04};
+	struct sc_asn1_entry asn1_struct[2] = {
+		{ "direct",     SC_ASN1_OCTET_STRING, SC_ASN1_CTX | SC_ASN1_CONS, 0, NULL, NULL },
+		{ NULL, 0, 0, 0, NULL, NULL }
+	};
+	u8 result[2];
+	size_t resultlen = sizeof(result);
+	int rv;
+
+	/* set the pointers to the expected results */
+	sc_format_asn1_entry(asn1_struct, &result, &resultlen, 0);
+	rv = asn1_decode_entry(ctx, asn1_struct, octet_string, sizeof(octet_string), DEPTH);
+	assert_int_equal(rv, SC_SUCCESS);
+	assert_int_equal(resultlen, sizeof(result));
+	assert_memory_equal(result, octet_string, resultlen);
+}
+
+static void torture_asn1_decode_entry_bit_string_empty(void **state)
+{
+	sc_context_t *ctx = *state;
+	/* Skipped the Tag and Length (0x04, 0x00) */
+	const u8 bit_string[] = {0x00};
+	struct sc_asn1_entry asn1_struct[2] = {
+		{ "signatureValue", SC_ASN1_BIT_STRING, SC_ASN1_TAG_BIT_STRING, SC_ASN1_ALLOC, NULL, NULL },
+		{ NULL, 0, 0, 0, NULL, NULL }
+	};
+	u8 *result = NULL;
+	size_t resultlen = 0;
+	int rv;
+
+	/* set the pointers to the expected results */
+	sc_format_asn1_entry(asn1_struct, &result, &resultlen, 0);
+	rv = asn1_decode_entry(ctx, asn1_struct, bit_string, sizeof(bit_string), DEPTH);
+	assert_int_equal(rv, SC_SUCCESS);
+	assert_int_equal(resultlen, 0);
+	assert_null(result);
+}
+
+static void torture_asn1_decode_entry_bit_string_short(void **state)
+{
+	sc_context_t *ctx = *state;
+	/* Skipped the Tag and Length (0x04, 0x00) */
+	const u8 bit_string[] = {0x00, 0xFE};
+	/* By default, the bit string has MSB on the right. Yay */
+	const u8 exp_result[] = {0x7F};
+	struct sc_asn1_entry asn1_struct[2] = {
+		{ "signatureValue", SC_ASN1_BIT_STRING, SC_ASN1_TAG_BIT_STRING, SC_ASN1_ALLOC, NULL, NULL },
+		{ NULL, 0, 0, 0, NULL, NULL }
+	};
+	u8 *result = NULL;
+	size_t resultlen = 0;
+	int rv;
+
+	/* set the pointers to the expected results */
+	sc_format_asn1_entry(asn1_struct, &result, &resultlen, 0);
+	rv = asn1_decode_entry(ctx, asn1_struct, bit_string, sizeof(bit_string), DEPTH);
+	assert_int_equal(rv, SC_SUCCESS);
+	assert_int_equal(resultlen, 8);
+	assert_memory_equal(exp_result, result, resultlen/8);
+}
+
+/* This modification does not invert the bit order */
+static void torture_asn1_decode_entry_bit_string_ni(void **state)
+{
+	sc_context_t *ctx = *state;
+	/* Skipped the Tag and Length (0x04, 0x00) */
+	const u8 bit_string[] = {0x00, 0xFE};
+	struct sc_asn1_entry asn1_struct[2] = {
+		{ "signatureValue", SC_ASN1_BIT_STRING_NI, SC_ASN1_TAG_BIT_STRING, SC_ASN1_ALLOC, NULL, NULL },
+		{ NULL, 0, 0, 0, NULL, NULL }
+	};
+	u8 *result = NULL;
+	size_t resultlen = 0;
+	int rv;
+
+	/* set the pointers to the expected results */
+	sc_format_asn1_entry(asn1_struct, &result, &resultlen, 0);
+	rv = asn1_decode_entry(ctx, asn1_struct, bit_string, sizeof(bit_string), DEPTH);
+	assert_int_equal(rv, SC_SUCCESS);
+	assert_int_equal(resultlen, 8);
+	assert_memory_equal(bit_string + 1, result, resultlen/8);
 }
 
 
@@ -328,8 +484,23 @@ int main(void)
 		cmocka_unit_test(torture_asn1_bit_field_invalid_padding),
 		cmocka_unit_test(torture_asn1_bit_field_zero_invalid),
 		cmocka_unit_test(torture_asn1_bit_field_empty),
-		/* decode_entry() */
-		cmocka_unit_test_setup_teardown(torture_asn1_decode_entry_empty,
+		/* decode_entry(): OCTET STRING */
+		cmocka_unit_test_setup_teardown(torture_asn1_decode_entry_octet_string_empty,
+			setup_sc_context, teardown_sc_context),
+		cmocka_unit_test_setup_teardown(torture_asn1_decode_entry_octet_string_short,
+			setup_sc_context, teardown_sc_context),
+		cmocka_unit_test_setup_teardown(torture_asn1_decode_entry_octet_string_unsigned,
+			setup_sc_context, teardown_sc_context),
+		cmocka_unit_test_setup_teardown(torture_asn1_decode_entry_octet_string_pre_allocated,
+			setup_sc_context, teardown_sc_context),
+		cmocka_unit_test_setup_teardown(torture_asn1_decode_entry_octet_string_pre_allocated_truncate,
+			setup_sc_context, teardown_sc_context),
+		/* decode_entry(): BIT STRING */
+		cmocka_unit_test_setup_teardown(torture_asn1_decode_entry_bit_string_empty,
+			setup_sc_context, teardown_sc_context),
+		cmocka_unit_test_setup_teardown(torture_asn1_decode_entry_bit_string_short,
+			setup_sc_context, teardown_sc_context),
+		cmocka_unit_test_setup_teardown(torture_asn1_decode_entry_bit_string_ni,
 			setup_sc_context, teardown_sc_context),
 	};
 
