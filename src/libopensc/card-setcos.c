@@ -787,9 +787,9 @@ static void parse_sec_attr_44(sc_file_t *file, const u8 *buf, size_t len)
 	const int*	p_idx;
 
 	/* Check all sub-AC definitions within the total AC */
-	while (len > 1) {				/* minimum length = 2 */
+	while (len > 1 && (size_t)iOffset < len) {	/* minimum length = 2 */
 		size_t iACLen   = buf[iOffset] & 0x0F;
-		if (iACLen > len)
+		if (iACLen >= len)
 			break;
 
 		iMethod = SC_AC_NONE;		/* default no authentication required */
