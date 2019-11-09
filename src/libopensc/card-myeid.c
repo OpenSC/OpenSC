@@ -280,8 +280,10 @@ static int myeid_init(struct sc_card *card)
 
 	if (card->version.fw_major >= 45)
 		priv->cap_chaining = 1;
-
-	card->max_recv_size = 256;
+	if (card->version.fw_major >= 40)
+		card->max_recv_size = 256;
+	else
+		card->max_recv_size = 255;
 	card->max_send_size = 255;
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
