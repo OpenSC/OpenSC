@@ -2382,8 +2382,13 @@ int pcsc_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcsc_c
 		goto out;
 	}
 
+	if (!gpriv->cardmod) {
+		ret = SC_ERROR_INTERNAL;
+		goto out;
+	}
+
 	/* Only minidriver calls this and only uses one reader */
-	/* if we already have a reader, use it*/
+	/* if we already have a reader, update it */
 	if (sc_ctx_get_reader_count(ctx) > 0) {
 		sc_log(ctx, "Reusing the reader");
 		sc_reader_t *reader = list_get_at(&ctx->readers, 0);
