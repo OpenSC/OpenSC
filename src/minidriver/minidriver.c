@@ -70,7 +70,7 @@
 #include "cardmod.h"
 
 #define MD_FUNC_CALLED(pCardData, level) do { \
-	logprintf(pCardData, level, "MD_Function:%s:%d called\n",__func__, __LINE__); \
+	logprintf(pCardData, level, "MD_Function:%s:%d called\n",__FUNCTION__, __LINE__); \
 	} while(0)
 
 
@@ -78,13 +78,13 @@
 	logprintf(pCardData, level, "\nP:%lu T:%lu MD_Function:%s:%d called\n", \
 	(unsigned long)GetCurrentProcessId(),\
 	(unsigned long)GetCurrentThreadId(), \
-	__func__, __LINE__); \
+	__FUNCTION__, __LINE__); \
 	} while(0)
 
 #define MD_FUNC_RETURN(pCardData, level, ...) do { \
 	DWORD _ret = __VA_ARGS__; \
 	logprintf(pCardData, level,\
-		"MD_Function:%s:%d returning with: 0x%08X\n", __func__, __LINE__, _ret); \
+		"MD_Function:%s:%d returning with: 0x%08X\n", __FUNCTION__, __LINE__, _ret); \
 	return _ret; \
 	} while(0)
 
@@ -3205,11 +3205,11 @@ DWORD WINAPI CardDeleteContext(__inout PCARD_DATA  pCardData)
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 
 	logprintf(pCardData, 1,
-		  "\nP:%lu T:%lu pCardData:%p hScard=0x%08X hSCardCtx=0x%08X CardDeleteContext\n",
+		  "\nP:%lu T:%lu pCardData:%p hScard=0x%08"SC_FORMAT_LEN_SIZE_T"X hSCardCtx=0x%08"SC_FORMAT_LEN_SIZE_T"X CardDeleteContext\n",
 		  (unsigned long)GetCurrentProcessId(),
 		  (unsigned long)GetCurrentThreadId(), pCardData,
-		  (unsigned int)pCardData->hScard,
-		  (unsigned int)pCardData->hSCardCtx);
+		  (size_t)pCardData->hScard,
+		  (size_t)pCardData->hSCardCtx);
 
 	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
 	if(!vs)
@@ -4948,11 +4948,11 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 	}
 
 	logprintf(pCardData, 3,
-		  "CardSignData, dwVersion=%lu, name=%S, hScard=0x%08X, hSCardCtx=0x%08X\n",
+		  "CardSignData, dwVersion=%lu, name=%S, hScard=0x%08"SC_FORMAT_LEN_SIZE_T"X, hSCardCtx=0x%08"SC_FORMAT_LEN_SIZE_T"X\n",
 		  (unsigned long)pCardData->dwVersion,
 		  NULLWSTR(pCardData->pwszCardName),
-		  (unsigned int)pCardData->hScard,
-		  (unsigned int)pCardData->hSCardCtx);
+		  (size_t)pCardData->hScard,
+		  (size_t)pCardData->hSCardCtx);
 
 err:
 	unlock(pCardData);
@@ -6902,11 +6902,11 @@ DWORD WINAPI CardAcquireContext(__inout PCARD_DATA pCardData, __in DWORD dwFlags
 		  (unsigned long)GetCurrentProcessId(),
 		  (unsigned long)GetCurrentThreadId(), pCardData);
 	logprintf(pCardData, 1,
-		  "CardAcquireContext, dwVersion=%lu, name=%S,hScard=0x%08X, hSCardCtx=0x%08X\n",
+		  "CardAcquireContext, dwVersion=%lu, name=%S,hScard=0x%08"SC_FORMAT_LEN_SIZE_T"X, hSCardCtx=0x%08"SC_FORMAT_LEN_SIZE_T"X\n",
 		  (unsigned long)pCardData->dwVersion,
 		  NULLWSTR(pCardData->pwszCardName),
-		  (unsigned int)pCardData->hScard,
-		  (unsigned int)pCardData->hSCardCtx);
+		  (size_t)pCardData->hScard,
+		  (size_t)pCardData->hSCardCtx);
 
 	vs->hScard = pCardData->hScard;
 	vs->hSCardCtx = pCardData->hSCardCtx;
