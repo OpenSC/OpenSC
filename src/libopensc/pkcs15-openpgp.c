@@ -166,7 +166,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 	sc_context_t	*ctx = card->ctx;
 	char		string[256];
 	u8		c4data[10];
-	u8		c5data[70];
+	u8		c5data[100];
 	int		r, i;
 	const pgp_pin_cfg_t *pin_cfg = (card->type == SC_CARD_TYPE_OPENPGP_V1)
 	                               ? pin_cfg_v1 : pin_cfg_v2;
@@ -257,7 +257,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 	 */
 	if ((r = read_file(card, "006E:0073:00C5", c5data, sizeof(c5data))) < 0)
 		goto failed;
-	if (r != 60) {
+	if (r < 60) {
 		sc_log(ctx, 
 			"finger print bytes have unexpected length (expected 60, got %d)\n", r);
 		return SC_ERROR_OBJECT_NOT_VALID;
