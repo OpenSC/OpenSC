@@ -311,9 +311,6 @@ int sc_pkcs15_decode_pukdf_entry(struct sc_pkcs15_card *p15card,
 	memset(gostr3410_params, 0, sizeof(gostr3410_params));
 
 	r = sc_asn1_decode(ctx, asn1_pubkey, *buf, *buflen, buf, buflen);
-	if (r < 0) {
-		free(der->value);
-	}
 	if (r == SC_ERROR_ASN1_END_OF_CONTENTS)
 		goto err;
 	LOG_TEST_GOTO_ERR(ctx, r, "ASN.1 decoding failed");
