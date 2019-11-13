@@ -38,11 +38,12 @@ static int zerr_to_opensc(int err) {
 		return SC_SUCCESS;
 	case Z_UNKNOWN:
 		return SC_ERROR_UNKNOWN;
-	case Z_BUF_ERROR: /* XXX: something else than OOM ? */
+	case Z_DATA_ERROR:
+	case Z_BUF_ERROR:
+		return SC_ERROR_UNKNOWN_DATA_RECEIVED;
 	case Z_MEM_ERROR:
 		return SC_ERROR_OUT_OF_MEMORY;
 	case Z_VERSION_ERROR:
-	case Z_DATA_ERROR:
 	case Z_STREAM_ERROR:
 	/* case Z_NEED_DICT: */
 	default:
@@ -110,6 +111,9 @@ static int sc_decompress_gzip(u8* out, size_t* outLen, const u8* in, size_t inLe
 	*outLen = gz.total_out;
 
 	err = inflateEnd(&gz);
+	if (*outLen == 0) {
+		return SC_ERROR_UNKNOWN_DATA_RECEIVED;
+	}
 	return zerr_to_opensc(err);	
 }
 
@@ -206,7 +210,9 @@ static int sc_decompress_zlib_alloc(u8** out, size_t* outLen, const u8* in, size
 					*out = buf;
 				}
 			} else {
+				free(*out);
 				*out = NULL;
+				err = Z_DATA_ERROR;
 			}
 			break;
 		}
