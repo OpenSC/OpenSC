@@ -1,8 +1,9 @@
 TOPDIR = ..\..\..
 
-TARGETS = asn1
+TARGETS = asn1 compression
 
 OBJECTS = asn1.obj \
+	compression.obj
 	$(TOPDIR)\win32\versioninfo.res
 
 all: $(TARGETS)
