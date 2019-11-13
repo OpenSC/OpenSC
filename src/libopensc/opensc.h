@@ -580,7 +580,6 @@ typedef struct sc_card {
 
 	struct sc_app_info *app[SC_MAX_CARD_APPS];
 	int app_count;
-	struct sc_file *ef_dir;
 
 	struct sc_ef_atr *ef_atr;
 

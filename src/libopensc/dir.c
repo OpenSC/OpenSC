@@ -160,6 +160,7 @@ int sc_enum_apps(sc_card_t *card)
 	int ef_structure;
 	size_t file_size, jj;
 	int r, ii, idx;
+	struct sc_file *ef_dir = NULL;
 
 	LOG_FUNC_CALLED(ctx);
 
@@ -167,23 +168,21 @@ int sc_enum_apps(sc_card_t *card)
 	card->app_count = 0;
 
 	sc_format_path("3F002F00", &path);
-	sc_file_free(card->ef_dir);
-	card->ef_dir = NULL;
-	r = sc_select_file(card, &path, &card->ef_dir);
+	r = sc_select_file(card, &path, &ef_dir);
 	LOG_TEST_RET(ctx, r, "Cannot select EF.DIR file");
 
-	if (card->ef_dir->type != SC_FILE_TYPE_WORKING_EF) {
-		sc_file_free(card->ef_dir);
-		card->ef_dir = NULL;
+	if (ef_dir->type != SC_FILE_TYPE_WORKING_EF) {
+		sc_file_free(ef_dir);
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_CARD, "EF(DIR) is not a working EF.");
 	}
 
-	ef_structure = card->ef_dir->ef_structure;
+	ef_structure = ef_dir->ef_structure;
+	file_size = ef_dir->size;
+	sc_file_free(ef_dir);
 	if (ef_structure == SC_FILE_EF_TRANSPARENT) {
 		u8 *buf = NULL, *p;
 		size_t bufsize;
 
-		file_size = card->ef_dir->size;
 		if (file_size == 0)
 			LOG_FUNC_RETURN(ctx, 0);
 		if (file_size > MAX_FILE_SIZE)
