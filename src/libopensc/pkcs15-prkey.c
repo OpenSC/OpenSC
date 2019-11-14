@@ -299,6 +299,7 @@ int sc_pkcs15_decode_prkdf_entry(struct sc_pkcs15_card *p15card,
 
 	if (!p15card->app || !p15card->app->ddo.aid.len) {
 		if (!p15card->file_app) {
+			sc_pkcs15_free_key_params(&info.params);
 			return SC_ERROR_INTERNAL;
 		}
 		r = sc_pkcs15_make_absolute_path(&p15card->file_app->path, &info.path);
