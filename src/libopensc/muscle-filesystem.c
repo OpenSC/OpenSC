@@ -147,8 +147,8 @@ int mscfs_lookup_path(mscfs_t* fs, const u8 *path, int pathlen, msc_id* objectId
 		return MSCFS_INVALID_ARGS;
 	if(isDirectory) {
 		/* Directory must be right next to root */
-		if((0 == memcmp(path, "\x3F\x00", 2) && pathlen == 4)
-		|| (0 == memcmp(fs->currentPath, "\x3F\x00", 2) && pathlen == 2)) {
+		if ((pathlen == 4 && 0 == memcmp(path, "\x3F\x00", 2)) ||
+		    (pathlen == 2 && 0 == memcmp(fs->currentPath, "\x3F\x00", 2))) {
 			oid[0] = path[pathlen - 2];
 			oid[1] = path[pathlen - 1];
 			oid[2] = oid[3] = 0;
@@ -169,7 +169,7 @@ int mscfs_lookup_path(mscfs_t* fs, const u8 *path, int pathlen, msc_id* objectId
 	if(pathlen > 4)
 		return MSCFS_INVALID_ARGS;
 	/* Reset to root */
-	if(0 == memcmp(path, "\x3F\x00", 2) && pathlen == 2) {
+	if(pathlen == 2 && 0 == memcmp(path, "\x3F\x00", 2)) {
 		oid[0] = oid[2] = path[0];
 		oid[1] = oid[3] = path[1];
 	} else if(pathlen == 2) { /* Path preserved for current-path */
