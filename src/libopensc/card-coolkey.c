@@ -2171,7 +2171,7 @@ static int coolkey_initialize(sc_card_t *card)
 				break;
 			}
 			r = coolkey_read_object(card, COOLKEY_COMBINED_OBJECT_ID, 0, object, object_len,
-											priv->nonce, sizeof(priv->nonce));
+				priv->nonce, sizeof(priv->nonce));
 			if (r < 0) {
 				free(object);
 				break;
@@ -2216,19 +2216,19 @@ static int coolkey_initialize(sc_card_t *card)
 		coolkey_make_cuid_from_cplc(&priv->cuid, &cplc_data);
 		priv->token_name = (u8 *)strdup("COOLKEY");
 		if (priv->token_name == NULL) {
-			r= SC_ERROR_OUT_OF_MEMORY;
+			r = SC_ERROR_OUT_OF_MEMORY;
 			goto cleanup;
 		}
 		priv->token_name_length = sizeof("COOLKEY")-1;
 	}
 	card->drv_data = priv;
-	return SC_SUCCESS;
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 
 cleanup:
 	if (priv) {
 		coolkey_free_private_data(priv);
 	}
-	return r;
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 
