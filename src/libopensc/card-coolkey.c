@@ -2215,6 +2215,10 @@ static int coolkey_initialize(sc_card_t *card)
 		r = coolkey_list_object(card, COOLKEY_LIST_NEXT, &object_info);
 	}
 	if (r != SC_ERROR_FILE_END_REACHED) {
+		/* This means the card does not cooperate at all: bail out */
+		if (r >= 0) {
+			r = SC_ERROR_INVALID_CARD;
+		}
 		goto cleanup;
 	}
 	/* if we didn't pull the cuid from the combined object, then grab it now */
