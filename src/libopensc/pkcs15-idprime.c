@@ -94,8 +94,8 @@ static int sc_pkcs15emu_idprime_init(sc_pkcs15_card_t *p15card)
 	pin_info.attrs.pin.flags         = SC_PKCS15_PIN_FLAG_INITIALIZED;
 	pin_info.attrs.pin.type          = SC_PKCS15_PIN_TYPE_ASCII_NUMERIC;
 	pin_info.attrs.pin.min_length    = 4;
-	pin_info.attrs.pin.stored_length = 8;
-	pin_info.attrs.pin.max_length    = 8;
+	pin_info.attrs.pin.stored_length = 0;
+	pin_info.attrs.pin.max_length    = 16;
 	pin_info.tries_left    = -1;
 
 	sc_log(card->ctx,  "IDPrime Adding pin with label=%s", pin_label);
