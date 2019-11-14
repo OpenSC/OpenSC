@@ -481,6 +481,7 @@ sc_pkcs15_decode_cdf_entry(struct sc_pkcs15_card *p15card, struct sc_pkcs15_obje
 
 	if (!p15card->app || !p15card->app->ddo.aid.len) {
 		if (!p15card->file_app) {
+			free(der->value);
 			return SC_ERROR_INTERNAL;
 		}
 		r = sc_pkcs15_make_absolute_path(&p15card->file_app->path, &info.path);
@@ -498,6 +499,7 @@ sc_pkcs15_decode_cdf_entry(struct sc_pkcs15_card *p15card, struct sc_pkcs15_obje
 			break;
 		case SC_PKCS15_CARD_OPTS_PRIV_CERT_IGNORE:
 			sc_log(ctx, "Ignoring certificate");
+			free(der->value);
 			return 0;
 	}
 
