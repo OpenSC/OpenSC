@@ -72,12 +72,10 @@
 
 /* ISO 7816 CLA values used by COOLKEY */
 #define ISO7816_CLASS           0x00
-#define GLOBAL_PLATFORM_CLASS   0x80
 #define COOLKEY_CLASS           0xb0
 
 /* ISO 71816 INS values used by COOLKEY */
 #define ISO7816_INS_SELECT_FILE 0xa4
-#define ISO7816_INS_GET_DATA    0xca
 
 /* COOLKEY specific INS values (public) */
 #define COOLKEY_INS_GET_LIFE_CYCLE             0xf2
@@ -136,30 +134,6 @@ typedef struct coolkey_status {
 	u8 key_count;
 	u8 logged_in_identities[2];
 } coolkey_status_t;
-
-/* returned by the iso get status apdu with the global platform cplc data parameters */
-typedef struct global_platform_cplc_data {
-	u8 tag[2];
-	u8 length;
-	u8 ic_fabricator[2];
-	u8 ic_type[2];
-	u8 os_id[2];
-	u8 os_date[2];
-	u8 os_level[2];
-	u8 fabrication_data[2];
-	u8 ic_serial_number[4];
-	u8 ic_batch[2];
-	u8 module_fabricator[2];
-	u8 packing_data[2];
-	u8 icc_manufacturer[2];
-	u8 ic_embedding_data[2];
-	u8 pre_personalizer[2];
-	u8 ic_pre_personalization_data[2];
-	u8 ic_pre_personalization_id[4];
-	u8 ic_personalizaer[2];
-	u8 ic_personalization_data[2];
-	u8 ic_personalization_id[4];
-} global_platform_cplc_data_t;
 
 /* format of the coolkey_cuid, either constructed from cplc data or read from the combined object */
 typedef struct coolkey_cuid {
@@ -1087,25 +1061,6 @@ coolkey_get_life_cycle(sc_card_t *card, coolkey_life_cycle_t *life_cycle)
 	life_cycle->protocol_version_minor = status.protocol_version_minor;
 	life_cycle->pin_count = status.pin_count;
 	return SC_SUCCESS;
-}
-
-
-/* should be general global platform call */
-static int
-coolkey_get_cplc_data(sc_card_t *card, global_platform_cplc_data_t *cplc_data)
-{
-	size_t len = sizeof(global_platform_cplc_data_t);
-	u8 *receive_buf = (u8 *)cplc_data;
-	int rc;
-
-	rc = coolkey_apdu_io(card, GLOBAL_PLATFORM_CLASS, ISO7816_INS_GET_DATA, 0x9f, 0x7f,
-			NULL, 0, &receive_buf, &len,  NULL, 0);
-	/* We expect this will fill the whole structure in the argument.
-	 * If we got something else, report error */
-	if ((size_t)rc < sizeof(cplc_data)) {
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_CORRUPTED_DATA);
-	}
-	LOG_FUNC_RETURN(card->ctx, rc);
 }
 
 /* select the coolkey applet */
@@ -2240,7 +2195,7 @@ static int coolkey_initialize(sc_card_t *card)
 			goto cleanup;
 		}
 
-		r = coolkey_get_cplc_data(card, &cplc_data);
+		r = gp_get_cplc_data(card, &cplc_data);
 		if (r < 0) {
 			goto cleanup;
 		}
