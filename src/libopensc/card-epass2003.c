@@ -477,10 +477,6 @@ gen_init_key(struct sc_card *card, unsigned char *key_enc, unsigned char *key_ma
 	else
 		des3_encrypt_cbc(exdata->sk_enc, 16, iv, data, 16 + blocksize, cryptogram);
 
-	/* verify card cryptogram */
-	if (0 != memcmp(&cryptogram[16], &result[20], 8))
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_CARD_CMD_FAILED);
-
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
@@ -514,16 +510,16 @@ verify_init_key(struct sc_card *card, unsigned char *ran_key, unsigned char key_
 	/* calculate host cryptogram */
 	if (KEY_TYPE_AES == key_type) {
 		aes128_encrypt_cbc(exdata->sk_enc, 16, iv, data, 16 + blocksize,
-				   cryptogram);
+				cryptogram);
 	} else {
 		des3_encrypt_cbc(exdata->sk_enc, 16, iv, data, 16 + blocksize,
-				 cryptogram);
+				cryptogram);
 	}
 
-	memset(data, 0, sizeof(data));
-	memcpy(data, "\x84\x82\x03\x00\x10", 5);
-	memcpy(&data[5], &cryptogram[16], 8);
-	memcpy(&data[13], "\x80\x00\x00", 3);
+    memset(data, 0, sizeof(data));
+    memcpy(data, "\x84\x82\x03\x00\x10", 5);
+    memcpy(&data[5], &cryptogram[16], 8);
+    memcpy(&data[13], "\x80\x00\x00", 3);
 
 	/* calculate mac icv */
 	memset(iv, 0x00, 16);
@@ -1610,11 +1606,13 @@ epass2003_set_security_env(struct sc_card *card, const sc_security_env_t * env, 
 		exdata->currAlg = SC_ALGORITHM_EC;
 		if(env->algorithm_flags & SC_ALGORITHM_ECDSA_HASH_SHA1)
 		{
+            sc_log(card->ctx, "setenva EC sha1 Algorithm alg_flags = %0x\n",env->algorithm_flags);
 			sbuf[2] = 0x91;
 			exdata->ecAlgFlags = SC_ALGORITHM_ECDSA_HASH_SHA1;
 		}
-		else if (env->algorithm_flags & SC_ALGORITHM_ECDSA_HASH_SHA256)
+	    else if (env->algorithm_flags & (SC_ALGORITHM_ECDSA_HASH_SHA256 | SC_ALGORITHM_ECDSA_HASH_NONE | SC_ALGORITHM_ECDSA_HASH_SHA1))
 		{
+		    sc_log(card->ctx, "setenva EC sha256 Algorithm alg_flags = %0x\n",env->algorithm_flags);
 			sbuf[2] = 0x92;
 			exdata->ecAlgFlags = SC_ALGORITHM_ECDSA_HASH_SHA256;
 		}
@@ -2118,11 +2116,13 @@ epass2003_create_file(struct sc_card *card, sc_file_t * file)
 
 	r = epass2003_construct_fci(card, file, sbuf, &len);
 	LOG_TEST_RET(card->ctx, r, "construct_fci() failed");
-
+    
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xE0, 0x00, 0x00);
 	apdu.lc = len;
 	apdu.datalen = len;
 	apdu.data = sbuf;
+
+    sc_apdu_log(card->ctx, sbuf, len, 0); 
 
 	r = sc_transmit_apdu_t(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
@@ -2416,6 +2416,7 @@ epass2003_gen_key(struct sc_card *card, sc_epass2003_gen_key_data * data)
 
 	r = sc_transmit_apdu_t(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(card->ctx, r, "generate keypair failed");
 
@@ -2444,7 +2445,32 @@ epass2003_gen_key(struct sc_card *card, sc_epass2003_gen_key_data * data)
 	if (!data->modulus)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 
-	memcpy(data->modulus, rbuf, len);
+
+	if(len == 256)
+	{
+		unsigned char tmp[256] = {0};
+		int len1 = 0;
+		int len2 = 0;
+		//get x value
+		if(rbuf[0] == 0x58 )
+		{
+			len1 = rbuf[1];
+			memcpy(&tmp[0],&rbuf[2],len1);
+		}
+
+		//get y value
+		if(rbuf[2+len1] == 0x59)
+		{
+			len2 = rbuf[2+len1+1];
+			memcpy(&tmp[len1],&rbuf[2+len1+2],len2);
+		}
+
+		memcpy(data->modulus, &tmp[0], len1+len2);
+	}
+	else
+	{
+		memcpy(data->modulus, rbuf, len);
+	}
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
@@ -2671,41 +2697,55 @@ epass2003_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries
 	internal_sanitize_pin_info(&data->pin2, 1);
 	data->flags |= SC_PIN_CMD_NEED_PADDING;
 	kid = data->pin_reference;
-	/* get pin retries */
-	if (data->cmd == SC_PIN_CMD_GET_INFO) {
 
-		r = get_external_key_retries(card, 0x80 | kid, &retries);
-		if (r == SC_SUCCESS) {
-			data->pin1.tries_left = retries;
-			if (tries_left)
-				*tries_left = retries;
+    //verify pin 
+    if((unsigned char *)data->pin1.data == NULL && data->pin1.len == 0)
+    {
+        r = external_key_auth(card, kid, (unsigned char *)data->pin1.data,
+                              data->pin1.len);
+        get_external_key_retries(card, 0x80 | kid, &retries);
+        if (retries < pin_low)
+            sc_log(card->ctx, "Verification failed (remaining tries: %d)", retries);
+    }
+    else
+    {
+    	/* get pin retries */
+    	if (data->cmd == SC_PIN_CMD_GET_INFO) {
 
-			r = get_external_key_maxtries(card, &maxtries);
-			LOG_TEST_RET(card->ctx, r, "get max counter failed");
+		    r = get_external_key_retries(card, 0x80 | kid, &retries);
+		    if (r == SC_SUCCESS) {
+			    data->pin1.tries_left = retries;
+			    if (tries_left)
+				    *tries_left = retries;
 
-			data->pin1.max_tries = maxtries;
-		}
-//remove below code, because the old implement only return PIN retries, now modify the code and return PIN status
-//		return r;
-	}
-	else if (data->cmd == SC_PIN_CMD_UNBLOCK) { /* verify */
-		r = external_key_auth(card, (kid + 1), (unsigned char *)data->pin1.data,
-				data->pin1.len);
-		LOG_TEST_RET(card->ctx, r, "verify pin failed");
-	}
-	else if (data->cmd == SC_PIN_CMD_CHANGE || data->cmd == SC_PIN_CMD_UNBLOCK) { /* change */
-		r = update_secret_key(card, 0x04, kid, data->pin2.data,
-				(unsigned long)data->pin2.len);
-		LOG_TEST_RET(card->ctx, r, "verify pin failed");
-	}
-	else {
-		r = external_key_auth(card, kid, (unsigned char *)data->pin1.data,
-				data->pin1.len);
-		get_external_key_retries(card, 0x80 | kid, &retries);
-		if (retries < pin_low)
-			sc_log(card->ctx, "Verification failed (remaining tries: %d)", retries);
+			    r = get_external_key_maxtries(card, &maxtries);
+			    LOG_TEST_RET(card->ctx, r, "get max counter failed");
 
-	}
+			    data->pin1.max_tries = maxtries;
+		    }
+        //remove below code, because the old implement only return PIN retries, now modify the code and return PIN status
+        //		return r;
+	    }
+	    else if (data->cmd == SC_PIN_CMD_UNBLOCK) { /* verify */
+		    r = external_key_auth(card, (kid + 1), (unsigned char *)data->pin1.data,
+				    data->pin1.len);
+		    LOG_TEST_RET(card->ctx, r, "verify pin failed");
+	    }
+	    else if (data->cmd == SC_PIN_CMD_CHANGE || data->cmd == SC_PIN_CMD_UNBLOCK) { /* change */
+		    r = update_secret_key(card, 0x04, kid, data->pin2.data,
+			    	(unsigned long)data->pin2.len);
+		    LOG_TEST_RET(card->ctx, r, "verify pin failed");
+	    }
+	    else
+        {
+		    r = external_key_auth(card, kid, (unsigned char *)data->pin1.data,
+			    	data->pin1.len);
+		    get_external_key_retries(card, 0x80 | kid, &retries);
+		    if (retries < pin_low)
+			    sc_log(card->ctx, "Verification failed (remaining tries: %d)", retries);
+	    }
+    }
+
 	LOG_TEST_RET(card->ctx, r, "verify pin failed");
 
 	if (r == SC_SUCCESS)
