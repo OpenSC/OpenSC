@@ -538,6 +538,7 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 	r = (card->ops->card_ctl)(card, SC_CARDCTL_COOLKEY_INIT_GET_OBJECTS, &count);
 	LOG_TEST_RET(card->ctx, r, "Can not initiate objects.");
 
+	sc_log(card->ctx,  "Iterating over %d objects", count);
 	for (i = 0; i < count; i++) {
 		struct sc_cardctl_coolkey_object     coolkey_obj;
 		struct sc_pkcs15_object    obj_obj;
@@ -555,7 +556,7 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 		if (r < 0)
 			LOG_FUNC_RETURN(card->ctx, r);
 
-
+		sc_log(card->ctx, "Loading object %d", i);
 		memset(&obj_obj, 0, sizeof(obj_obj));
 		/* coolkey applets have label only on the certificates,
 		 * but we should copy it also to the keys matching the same ID */
