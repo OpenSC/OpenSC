@@ -107,7 +107,7 @@ extern "C" {
  * must support at least one of them, and exactly one of them must be selected
  * for a given operation. */
 #define SC_ALGORITHM_RSA_RAW		0x00000001
-#define SC_ALGORITHM_RSA_PADS		0x0000002F
+#define SC_ALGORITHM_RSA_PADS		0x0000003F
 #define SC_ALGORITHM_RSA_PAD_NONE	0x00000001
 #define SC_ALGORITHM_RSA_PAD_PKCS1	0x00000002 /* PKCS#1 v1.5 padding */
 #define SC_ALGORITHM_RSA_PAD_ANSI	0x00000004
