@@ -544,10 +544,6 @@ struct sc_reader_operations {
  * instead of relying on the ACL info in the profile files. */
 #define SC_CARD_CAP_USE_FCI_AC		0x00000010
 
-/* D-TRUST CardOS cards special flags */
-#define SC_CARD_CAP_ONLY_RAW_HASH		0x00000040
-#define SC_CARD_CAP_ONLY_RAW_HASH_STRIPPED	0x00000080
-
 /* Card (or card driver) supports an protected authentication mechanism */
 #define SC_CARD_CAP_PROTECTED_AUTHENTICATION_PATH	0x00000100
 
