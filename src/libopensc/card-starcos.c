@@ -129,10 +129,7 @@ static int starcos_init(sc_card_t *card)
 
 	if (card->type == SC_CARD_TYPE_STARCOS_V3_4
 			|| card->type == SC_CARD_TYPE_STARCOS_V3_5) {
-		if (card->type == SC_CARD_TYPE_STARCOS_V3_4)
-			card->name = "STARCOS 3.4";
-		else
-			card->name = "STARCOS 3.5";
+		card->caps |= SC_CARD_CAP_APDU_EXT;
 		card->caps |= SC_CARD_CAP_ISO7816_PIN_INFO;
 
 		flags |= SC_CARD_FLAG_RNG
@@ -147,6 +144,13 @@ static int starcos_init(sc_card_t *card)
 		_sc_card_add_rsa_alg(card,1728, flags, 0x10001);
 		_sc_card_add_rsa_alg(card,1976, flags, 0x10001);
 		_sc_card_add_rsa_alg(card,2048, flags, 0x10001);
+
+		if (card->type == SC_CARD_TYPE_STARCOS_V3_4) {
+			card->name = "STARCOS 3.4";
+		} else {
+			card->name = "STARCOS 3.5";
+			_sc_card_add_rsa_alg(card, 3072, flags, 0x10001);
+		}
 	} else {
 		_sc_card_add_rsa_alg(card, 512, flags, 0x10001);
 		_sc_card_add_rsa_alg(card, 768, flags, 0x10001);
