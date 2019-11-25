@@ -81,6 +81,7 @@ typedef struct starcos_ex_data_st {
 	int    sec_ops;	/* the currently selected security operation,
 			 * i.e. SC_SEC_OPERATION_AUTHENTICATE etc. */
 	unsigned int    fix_digestInfo;
+	unsigned int    disable_path_cache;
 } starcos_ex_data;
 
 #define CHECK_NOT_SUPPORTED_V3_4(card) \
@@ -103,6 +104,29 @@ static int starcos_match_card(sc_card_t *card)
 	return 1;
 }
 
+static int starcos_get_config(sc_card_t *card, const char *option, int def)
+{
+	sc_context_t *ctx = card->ctx;
+	scconf_block *conf_block, **blocks;
+	int	i;
+	int ret = def;
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
+
+	conf_block = NULL;
+	for (i = 0; ctx->conf_blocks[i] != NULL; i++) {
+		blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[i], "card_driver", "starcos");
+		if (blocks != NULL && blocks[0] != NULL) conf_block = blocks[0];
+		free(blocks);
+	}
+
+	if (conf_block) 
+	{
+		ret = scconf_get_bool(conf_block, option, def);
+	}
+
+	return ret;
+}
+
 static int starcos_init(sc_card_t *card)
 {
 	unsigned int flags;
@@ -114,6 +138,9 @@ static int starcos_init(sc_card_t *card)
 
 	card->name = "STARCOS";
 	card->cla  = 0x00;
+	
+	ex_data->disable_path_cache = starcos_get_config(card, "disable_path_cache", 0);
+
 	card->drv_data = (void *)ex_data;
 
 	flags = SC_ALGORITHM_RSA_PAD_PKCS1 
@@ -646,9 +673,15 @@ static int starcos_select_file(sc_card_t *card,
 	u8 pathbuf[SC_MAX_PATH_SIZE], *path = pathbuf;
 	int    r;
 	size_t i, pathlen;
+	int cache_valid = card->cache.valid;
+	starcos_ex_data *ex_data = (starcos_ex_data *)card->drv_data;
 	char pbuf[SC_MAX_PATH_STRING_SIZE];
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+	if (ex_data->disable_path_cache) {
+		sc_log(card->ctx, "Path caching is disabled.");
+		cache_valid = 0;
+	}
 
 	r = sc_path_print(pbuf, sizeof(pbuf), &card->cache.current_path);
 	if (r != SC_SUCCESS)
@@ -658,7 +691,7 @@ static int starcos_select_file(sc_card_t *card,
 		 "current path (%s, %s): %s (len: %"SC_FORMAT_LEN_SIZE_T"u)\n",
 		 card->cache.current_path.type == SC_PATH_TYPE_DF_NAME ?
 		 "aid" : "path",
-		 card->cache.valid ? "valid" : "invalid", pbuf,
+		 cache_valid ? "valid" : "invalid", pbuf,
 		 card->cache.current_path.len);
 
 	memcpy(path, in_path->value, in_path->len);
@@ -674,7 +707,7 @@ static int starcos_select_file(sc_card_t *card,
 	else if (in_path->type == SC_PATH_TYPE_DF_NAME)
       	{	/* SELECT DF with AID */
 		/* Select with 1-16byte Application-ID */
-		if (card->cache.valid 
+		if (cache_valid 
 		    && card->cache.current_path.type == SC_PATH_TYPE_DF_NAME
 		    && card->cache.current_path.len == pathlen
 		    && memcmp(card->cache.current_path.value, pathbuf, pathlen) == 0 )
@@ -716,7 +749,7 @@ static int starcos_select_file(sc_card_t *card,
 		}
 	
 		/* check current working directory */
-		if (card->cache.valid 
+		if (cache_valid 
 		    && card->cache.current_path.type == SC_PATH_TYPE_PATH
 		    && card->cache.current_path.len >= 2
 		    && card->cache.current_path.len <= pathlen )
@@ -736,7 +769,7 @@ static int starcos_select_file(sc_card_t *card,
 			}
 		}
 
-		if ( card->cache.valid && bMatch >= 0 )
+		if ( cache_valid && bMatch >= 0 )
 		{
 			if ( pathlen - bMatch == 2 )
 				/* we are in the right directory */
