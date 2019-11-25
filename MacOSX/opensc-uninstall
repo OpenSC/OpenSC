@@ -24,10 +24,14 @@ rm -f /usr/local/lib/opensc-pkcs11.so
 rm -f /usr/local/lib/onepin-opensc-pkcs11.so
 
 # Remove installed files
+rm -rf /Applications/OpenSCTokenApp.app
 rm -rf "/Applications/OpenSC Notify.app"
 rm -rf /Library/OpenSC
 rm -rf /Library/Security/tokend/OpenSC.tokend
+rm -f  /Library/LaunchAgents/pkcs11-register.plist
+rm -f  /Library/LaunchAgents/opensc-notify.plist
 rm -rf /System/Library/Security/tokend/OpenSC.tokend
+
 
 # delete receipts on 10.6+
 pkgutil --forget org.opensc-project.mac > /dev/null
