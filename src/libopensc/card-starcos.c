@@ -82,6 +82,7 @@ typedef struct starcos_ex_data_st {
 			 * i.e. SC_SEC_OPERATION_AUTHENTICATE etc. */
 	unsigned int    fix_digestInfo;
 	unsigned int    disable_path_cache;
+	unsigned int    disable_parse_atr;
 } starcos_ex_data;
 
 #define CHECK_NOT_SUPPORTED_V3_4(card) \
@@ -140,6 +141,7 @@ static int starcos_init(sc_card_t *card)
 	card->cla  = 0x00;
 	
 	ex_data->disable_path_cache = starcos_get_config(card, "disable_path_cache", 0);
+	ex_data->disable_parse_atr = starcos_get_config(card, "disable_parse_atr", 0);
 
 	card->drv_data = (void *)ex_data;
 
@@ -178,6 +180,11 @@ static int starcos_init(sc_card_t *card)
 			card->name = "STARCOS 3.5";
 			_sc_card_add_rsa_alg(card, 3072, flags, 0x10001);
 		}
+
+		if (ex_data->disable_parse_atr) {
+			card->max_send_size = 256;
+			card->max_recv_size = 256;
+		}
 	} else {
 		_sc_card_add_rsa_alg(card, 512, flags, 0x10001);
 		_sc_card_add_rsa_alg(card, 768, flags, 0x10001);
@@ -188,7 +195,7 @@ static int starcos_init(sc_card_t *card)
 		card->max_recv_size = 128;
 	}
 
-	if (sc_parse_ef_atr(card) == SC_SUCCESS) {
+	if (!ex_data->disable_parse_atr && sc_parse_ef_atr(card) == SC_SUCCESS) {
 		if (card->ef_atr->card_capabilities & ISO7816_CAP_EXTENDED_LENGTH) {
 			card->caps |= SC_CARD_CAP_APDU_EXT;
 		}
