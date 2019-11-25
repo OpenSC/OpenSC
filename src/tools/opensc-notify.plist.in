@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>pkcs11-register</string>
+    <string>opensc-notify</string>
     <key>ProgramArguments</key>
     <array>
         <string>@bindir@/opensc-notify</string>
