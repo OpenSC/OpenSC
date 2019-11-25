@@ -876,6 +876,7 @@ cardos_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 	sc_context_t *ctx;
 	int do_rsa_pure_sig = 0;
 	int do_rsa_sig = 0;
+	size_t i;
 
 
 	assert(card != NULL && data != NULL && out != NULL);
@@ -897,23 +898,13 @@ cardos_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 	 *   and www.crysys.hu/infsec/M40_Manual_E_2001_10.pdf)
 	 */
 
-	if (card->caps & SC_CARD_CAP_ONLY_RAW_HASH_STRIPPED){
-		sc_log(ctx, "Forcing RAW_HASH_STRIPPED");
-		do_rsa_sig = 1;
-	}
-	else if (card->caps & SC_CARD_CAP_ONLY_RAW_HASH){
-		sc_log(ctx, "Forcing RAW_HASH");
-		do_rsa_sig = 1;
-	}
-	else  {
-		/* check the the algorithmIDs from the AlgorithmInfo */
-		size_t i;
-		for(i=0; i<algorithm_ids_in_tokeninfo_count;++i){
-			unsigned int id = algorithm_ids_in_tokeninfo[i];
-			if(id == 0x86 || id == 0x88)
-				do_rsa_sig = 1;
-			else if(id == 0x8C || id == 0x8A)
-				do_rsa_pure_sig = 1;
+	/* check the the algorithmIDs from the AlgorithmInfo */
+	for (i = 0; i < algorithm_ids_in_tokeninfo_count; ++i) {
+		unsigned int id = algorithm_ids_in_tokeninfo[i];
+		if (id == 0x86 || id == 0x88) {
+			do_rsa_sig = 1;
+		} else if (id == 0x8C || id == 0x8A) {
+			do_rsa_pure_sig = 1;
 		}
 	}
 
@@ -955,18 +946,11 @@ cardos_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 				--stripped_datalen;
 			}
 		}
-		if (!(card->caps & (SC_CARD_CAP_ONLY_RAW_HASH_STRIPPED | SC_CARD_CAP_ONLY_RAW_HASH)) || card->caps & SC_CARD_CAP_ONLY_RAW_HASH ) {
-			sc_log(ctx, "trying to sign raw hash value with prefix");
-			r = do_compute_signature(card, stripped_data, stripped_datalen, out, outlen);
-			if (r >= SC_SUCCESS) {
-				free(buf);
-				LOG_FUNC_RETURN(ctx, r);
-			}
-		}
-		if (card->caps & SC_CARD_CAP_ONLY_RAW_HASH) {
-			sc_log(ctx, "Failed to sign raw hash value with prefix when forcing");
+		sc_log(ctx, "trying to sign raw hash value with prefix");
+		r = do_compute_signature(card, stripped_data, stripped_datalen, out, outlen);
+		if (r >= SC_SUCCESS) {
 			free(buf);
-			LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+			LOG_FUNC_RETURN(ctx, r);
 		}
 		sc_log(ctx, "trying to sign stripped raw hash value (card is responsible for prefix)");
 		r = sc_pkcs1_strip_digest_info_prefix(NULL, stripped_data, stripped_datalen, stripped_data, &stripped_datalen);
