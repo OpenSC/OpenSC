@@ -170,7 +170,7 @@ static int gids_get_identifiers(sc_card_t* card, u8* masterfile, size_t masterfi
 		if (strcmp(directory, records[i].directory) == 0 && strcmp(filename, records[i].filename) == 0) {
 			*fileIdentifier = records[i].fileIdentifier;
 			*dataObjectIdentifier = records[i].dataObjectIdentifier;
-			sc_log(card->ctx, 
+			sc_log(card->ctx,
 		"Identifiers of %s %s is fileIdentifier=%x, dataObjectIdentifier=%x\n", directory, filename, *fileIdentifier, *dataObjectIdentifier);
 			return 0;
 		}
@@ -214,7 +214,7 @@ static int gids_get_DO(sc_card_t* card, int fileIdentifier, int dataObjectIdenti
 	u8 buffer[MAX_GIDS_FILE_SIZE];
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	sc_log(card->ctx, 
+	sc_log(card->ctx,
 		 "Got args: fileIdentifier=%x, dataObjectIdentifier=%x, response=%p, responselen=%"SC_FORMAT_LEN_SIZE_T"u\n",
 		 fileIdentifier, dataObjectIdentifier, response,
 		 responselen ? *responselen : 0);
@@ -251,7 +251,7 @@ static int gids_put_DO(sc_card_t* card, int fileIdentifier, int dataObjectIdenti
 	u8 buffer[SC_MAX_EXT_APDU_BUFFER_SIZE];
 	u8* p = buffer;
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	sc_log(card->ctx, 
+	sc_log(card->ctx,
 		 "Got args: fileIdentifier=%x, dataObjectIdentifier=%x, data=%p, datalen=%"SC_FORMAT_LEN_SIZE_T"u\n",
 		 fileIdentifier, dataObjectIdentifier, data, datalen);
 
@@ -279,7 +279,7 @@ static int gids_select_aid(sc_card_t* card, u8* aid, size_t aidlen, u8* response
 	int r;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	sc_log(card->ctx, 
+	sc_log(card->ctx,
 		 "Got args: aid=%p, aidlen=%"SC_FORMAT_LEN_SIZE_T"u, response=%p, responselen=%"SC_FORMAT_LEN_SIZE_T"u\n",
 		 aid, aidlen, response, responselen ? *responselen : 0);
 
@@ -552,7 +552,7 @@ static int gids_get_pin_status(sc_card_t *card, int pinreference, int *tries_lef
 			*max_tries = p[0];
 	}
 
-	sc_log(card->ctx, 
+	sc_log(card->ctx,
 		"Pin information for PIN 0x%x: triesleft=%d trieslimit=%d\n", pinreference, (tries_left?*tries_left:-1), (max_tries?*max_tries:-1));
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
@@ -641,6 +641,8 @@ static int gids_init(sc_card_t * card)
 	// invalidate the master file and cmap file cache
 	data->cmapfilesize = sizeof(data->cmapfile);
 	data->masterfilesize = sizeof(data->masterfile);
+
+	card->caps = SC_CARD_CAP_APDU_EXT;
 
 	/* supported RSA keys and how padding is done */
 	flags = SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE | SC_ALGORITHM_ONBOARD_KEY_GEN | SC_ALGORITHM_RSA_RAW;
@@ -856,7 +858,7 @@ static int gids_read_public_key (struct sc_card *card , unsigned int algorithm,
 	size_t buffersize = sizeof(buffer);
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	sc_log(card->ctx, 
+	sc_log(card->ctx,
 		 "Got args: key_reference=%x, response=%p, responselen=%"SC_FORMAT_LEN_SIZE_T"u\n",
 		 key_reference, response, responselen ? *responselen : 0);
 
@@ -1010,7 +1012,7 @@ static int gids_read_binary(sc_card_t *card, unsigned int offset,
 				LOG_FUNC_RETURN(card->ctx, r);
 			}
 			if (data->buffersize != expectedsize) {
-				sc_log(card->ctx, 
+				sc_log(card->ctx,
 					 "expected size: %"SC_FORMAT_LEN_SIZE_T"u real size: %"SC_FORMAT_LEN_SIZE_T"u",
 					 expectedsize, data->buffersize);
 				LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_DATA);
@@ -1129,7 +1131,7 @@ gids_select_key_reference(sc_card_t *card, sc_pkcs15_prkey_info_t* key_info) {
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 		}
 		if (i > recordsnum) {
-			sc_log(card->ctx, 
+			sc_log(card->ctx,
 				 "container num is not allowed %"SC_FORMAT_LEN_SIZE_T"u %"SC_FORMAT_LEN_SIZE_T"u",
 				 i, recordsnum);
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
@@ -1969,7 +1971,7 @@ static int gids_authenticate_admin(sc_card_t *card, u8* key) {
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	LOG_TEST_RET(card->ctx,  sc_check_sw(card, apdu.sw1, apdu.sw2), "invalid return");
-	
+
 	if (apdu.resplen != 44)
 	{
 		sc_log(card->ctx,  "Expecting a response len of 44 - found %d",(int) apdu.resplen);
