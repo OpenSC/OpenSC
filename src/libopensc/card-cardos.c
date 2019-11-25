@@ -161,7 +161,7 @@ static int cardos_have_2048bit_package(sc_card_t *card)
 
 static int cardos_init(sc_card_t *card)
 {
-	unsigned long	flags, rsa_2048 = 0;
+	unsigned long flags = 0, rsa_2048 = 0;
 	size_t data_field_length;
 	sc_apdu_t apdu;
 	u8 rbuf[2];
@@ -171,12 +171,15 @@ static int cardos_init(sc_card_t *card)
 	card->cla = 0x00;
 
 	/* Set up algorithm info. */
-	flags = SC_ALGORITHM_RSA_RAW
-		| SC_ALGORITHM_RSA_HASH_NONE
-		| SC_ALGORITHM_ONBOARD_KEY_GEN
-		;
-	if (card->type != SC_CARD_TYPE_CARDOS_V5_0)
-		flags |= SC_ALGORITHM_NEED_USAGE;
+	flags = 0;
+	if (card->type == SC_CARD_TYPE_CARDOS_V5_0) {
+		flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
+	} else {
+		flags |= SC_ALGORITHM_RSA_RAW
+			| SC_ALGORITHM_RSA_HASH_NONE
+			| SC_ALGORITHM_NEED_USAGE
+			| SC_ALGORITHM_ONBOARD_KEY_GEN;
+	}
 
 	if (card->type == SC_CARD_TYPE_CARDOS_M4_2) {
 		r = cardos_have_2048bit_package(card);
@@ -771,7 +774,7 @@ cardos_set_security_env(sc_card_t *card,
 			    int se_num)
 {
 	sc_apdu_t apdu;
-	u8	data[3];
+	u8	data[6];
 	int	key_id, r;
 
 	assert(card != NULL && env != NULL);
@@ -800,10 +803,22 @@ cardos_set_security_env(sc_card_t *card,
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
-	data[0] = 0x83;
-	data[1] = 0x01;
-	data[2] = key_id;
-	apdu.lc = apdu.datalen = 3;
+	if (card->type == SC_CARD_TYPE_CARDOS_V5_0) {
+		/* Private key reference */
+		data[0] = 0x84;
+		data[1] = 0x01;
+		data[2] = key_id;
+		/* Usage qualifier byte */
+		data[3] = 0x95;
+		data[4] = 0x01;
+		data[5] = 0x40;
+		apdu.lc = apdu.datalen = 6;
+	} else {
+		data[0] = 0x83;
+		data[1] = 0x01;
+		data[2] = key_id;
+		apdu.lc = apdu.datalen = 3;
+	}
 	apdu.data = data;
 
 	r = sc_transmit_apdu(card, &apdu);
