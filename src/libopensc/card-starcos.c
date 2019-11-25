@@ -83,6 +83,7 @@ typedef struct starcos_ex_data_st {
 	unsigned int    fix_digestInfo;
 	unsigned int    disable_path_cache;
 	unsigned int    disable_parse_atr;
+	unsigned int    use_ascii_pin_format;
 } starcos_ex_data;
 
 #define CHECK_NOT_SUPPORTED_V3_4(card) \
@@ -142,6 +143,7 @@ static int starcos_init(sc_card_t *card)
 	
 	ex_data->disable_path_cache = starcos_get_config(card, "disable_path_cache", 0);
 	ex_data->disable_parse_atr = starcos_get_config(card, "disable_parse_atr", 0);
+	ex_data->use_ascii_pin_format = starcos_get_config(card, "pin_format_ascii", 0);
 
 	card->drv_data = (void *)ex_data;
 
@@ -1893,6 +1895,18 @@ static int starcos_logout(sc_card_t *card)
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }
 
+unsigned int starcos_get_pin_encoding(sc_card_t *card, struct sc_pin_cmd_data *data)
+{
+	unsigned int encoding = SC_PIN_ENCODING_GLP;
+
+	starcos_ex_data * ex_data = (starcos_ex_data*)card->drv_data;
+	if (ex_data->use_ascii_pin_format) {
+		encoding = SC_PIN_ENCODING_ASCII;
+	}
+
+	return encoding;
+}
+
 static int starcos_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 			    int *tries_left)
 {
@@ -1903,7 +1917,7 @@ static int starcos_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 		case SC_CARD_TYPE_STARCOS_V3_4:
 		case SC_CARD_TYPE_STARCOS_V3_5:
 			data->flags |= SC_PIN_CMD_NEED_PADDING;
-			data->pin1.encoding = SC_PIN_ENCODING_GLP;
+			data->pin1.encoding = starcos_get_pin_encoding(card, data);
 			/* fall through */
 		default:
 			r = iso_ops->pin_cmd(card, data, tries_left);
