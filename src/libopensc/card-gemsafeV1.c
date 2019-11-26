@@ -455,8 +455,8 @@ static int gemsafe_compute_signature(struct sc_card *card, const u8 * data,
 {
 	int r, len;
 	struct sc_apdu apdu;
-	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
-	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
+	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE + 257];
+	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE + 257];
 	sc_context_t *ctx = card->ctx;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
