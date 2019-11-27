@@ -350,6 +350,11 @@ static int refresh_attributes(sc_reader_t *reader)
 			/* Timeout, no change from previous recorded state. Make sure that
 			 * changed flag is not set. */
 			reader->flags &= ~SC_READER_CARD_CHANGED;
+			/* Make sure to preserve the CARD_PRESENT flag if the reader was
+			 * reattached and we called the refresh_attributes too recently */
+			if (priv->reader_state.dwEventState & SCARD_STATE_PRESENT) {
+				reader->flags |= SC_READER_CARD_PRESENT;
+			}
 			LOG_FUNC_RETURN(reader->ctx, SC_SUCCESS);
 		}
 		
