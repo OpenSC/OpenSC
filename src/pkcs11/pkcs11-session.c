@@ -218,9 +218,11 @@ CK_RV C_GetSessionInfo(CK_SESSION_HANDLE hSession,	/* the session's handle */
 
 	slot = session->slot;
 	logged_out = (slot_get_logged_in_state(slot) == SC_PIN_STATE_LOGGED_OUT);
-	if (logged_out && slot->login_user > -1) {
+	if (logged_out && slot->login_user >= 0) {
+		slot->login_user = -1;
 		sc_pkcs11_close_all_sessions(session->slot->id);
-		return CKR_SESSION_HANDLE_INVALID;
+		rv = CKR_SESSION_HANDLE_INVALID;
+		goto out;
 	}
 	if (slot->login_user == CKU_SO && !logged_out) {
 		pInfo->state = CKS_RW_SO_FUNCTIONS;
