@@ -750,7 +750,7 @@ coolkey_compare_id(const void * a, const void *b)
 	if (a == NULL || b == NULL)
 		return 1;
 	return ((sc_cardctl_coolkey_object_t *)a)->id
-	    == ((sc_cardctl_coolkey_object_t *)b)->id;
+	    != ((sc_cardctl_coolkey_object_t *)b)->id;
 }
 
 /* For SimCList autocopy, we need to know the size of the data elements */
