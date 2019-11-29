@@ -1386,6 +1386,12 @@ coolkey_fill_object(sc_card_t *card, sc_cardctl_coolkey_object_t *obj)
 		free(new_obj_data);
 		return SC_ERROR_INTERNAL; /* shouldn't happen */
 	}
+	/* Make sure we will not go over the allocated limits in the other
+	 * objects if they somehow got different lengths in matching objects */
+	if (obj_entry->length != obj->length) {
+		free(new_obj_data);
+		return SC_ERROR_INTERNAL; /* shouldn't happen */
+	}
 	obj_entry->data = new_obj_data;
 	obj->data = new_obj_data;
 	return SC_SUCCESS;
