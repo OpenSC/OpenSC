@@ -114,7 +114,7 @@ gp_get_cplc_data(struct sc_card *card, global_platform_cplc_data_t *cplc_data)
 
 	/* We expect this will fill the whole structure in the argument.
 	 * If we got something else, report error */
-	if ((size_t)apdu.resplen < sizeof(cplc_data)) {
+	if ((size_t)apdu.resplen < sizeof(global_platform_cplc_data_t)) {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_CORRUPTED_DATA);
 	}
 	LOG_FUNC_RETURN(card->ctx, apdu.resplen);
