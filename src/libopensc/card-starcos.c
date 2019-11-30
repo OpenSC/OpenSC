@@ -1895,7 +1895,7 @@ static int starcos_logout(sc_card_t *card)
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }
 
-unsigned int starcos_get_pin_encoding(sc_card_t *card, struct sc_pin_cmd_data *data)
+static unsigned int starcos_get_pin_encoding(sc_card_t *card, struct sc_pin_cmd_data *data)
 {
 	unsigned int encoding = SC_PIN_ENCODING_GLP;
 
