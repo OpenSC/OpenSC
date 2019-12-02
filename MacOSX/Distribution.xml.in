@@ -45,19 +45,18 @@ https://developer.apple.com/library/mac/documentation/DeveloperTools/Reference/D
       ]]>
     </script>
     <choices-outline>
-        <line choice="default">
-            <line choice="tokend" />
-            <line choice="startup" />
-        </line>
+        <line choice="default" />
+        <line choice="startup" />
+        <line choice="tokend" />
         <line choice="token" />
     </choices-outline>
     <choice id="default" title="PKCS#11 module and smart card tools" enabled="false">
         <pkg-ref id="org.opensc-project.mac">OpenSC.pkg</pkg-ref>
     </choice>
-    <choice id="tokend" title="TokenD-based smart card driver" selected="osx_before_catalina()">
+    <choice id="tokend" title="TokenD-based smart card driver" start_selected="osx_before_catalina()">
         <pkg-ref id="org.opensc-project.tokend">OpenSC-tokend.pkg</pkg-ref>
     </choice>
-    <choice id="token" title="CryptoTokenKit-based smart card driver" visible="osx_after_yosemite()" selected="osx_after_catalina()">
+    <choice id="token" title="CryptoTokenKit-based smart card driver" visible="osx_after_yosemite()" start_selected="osx_after_catalina()">
         <pkg-ref id="org.opensc-project.mac.opensctoken">OpenSCToken.pkg</pkg-ref>
     </choice>
     <choice id="startup" title="Automatic startup items">
