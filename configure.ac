@@ -1111,6 +1111,7 @@ AC_CONFIG_FILES([
 	win32/OpenSC.wxs
 	MacOSX/Makefile
 	MacOSX/build-package
+	MacOSX/build-package-from-ci
 	MacOSX/Distribution.xml
 	MacOSX/resources/Welcome.html
 ])
