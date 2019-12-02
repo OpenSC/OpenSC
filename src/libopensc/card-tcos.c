@@ -722,7 +722,6 @@ struct sc_card_driver * sc_get_tcos_driver(void)
 	tcos_ops.select_file          = tcos_select_file;
 	tcos_ops.list_files           = tcos_list_files;
 	tcos_ops.delete_file          = tcos_delete_file;
-	tcos_ops.set_security_env     = tcos_set_security_env;
 	tcos_ops.compute_signature    = tcos_compute_signature;
 	tcos_ops.decipher             = tcos_decipher;
 	tcos_ops.restore_security_env = tcos_restore_security_env;
