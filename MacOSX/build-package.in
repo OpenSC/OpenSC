@@ -87,6 +87,15 @@ if ! test -e ${BUILDPATH}/target/$PREFIX/lib/pkgconfig; then
 	./MacOSX/libtool-bundle ${BUILDPATH}/target/$PREFIX/lib/opensc-pkcs11.so ${BUILDPATH}/target/$PREFIX/lib
 fi
 
+
+if ! test -e NotificationProxy; then
+	git clone http://github.com/frankmorgner/NotificationProxy.git
+fi
+xcodebuild -target NotificationProxy -configuration Release -project NotificationProxy/NotificationProxy.xcodeproj install DSTROOT=$BUILDPATH/target/Library/OpenSC/
+mkdir -p "$BUILDPATH/target/Applications"
+osacompile -o "$BUILDPATH/target/Applications/OpenSC Notify.app" "MacOSX/OpenSC_Notify.applescript"
+
+
 # Check out OpenSC.tokend, if not already fetched.
 if ! test -e OpenSC.tokend; then
 	git clone http://github.com/OpenSC/OpenSC.tokend.git
@@ -113,13 +122,6 @@ fi
 	#mkdir -p $BUILDPATH/target/Library/Security/tokend/OpenSC.tokend/Contents/Resources/Applications
 	#cp -r terminal-notifier-1.7.1/terminal-notifier.app $BUILDPATH/target/Library/Security/tokend/OpenSC.tokend/Contents/Resources/Applications
 #fi
-
-if ! test -e NotificationProxy; then
-	git clone http://github.com/frankmorgner/NotificationProxy.git
-fi
-xcodebuild -target NotificationProxy -configuration Release -project NotificationProxy/NotificationProxy.xcodeproj install DSTROOT=$BUILDPATH/target_tokend/Library/Security/tokend/OpenSC.tokend/Contents/Resources/
-mkdir -p "$BUILDPATH/target/Applications"
-osacompile -o "$BUILDPATH/target/Applications/OpenSC Notify.app" "MacOSX/OpenSC_Notify.applescript"
 
 imagedir=$(mktemp -d)
 
@@ -156,7 +158,6 @@ if test -e OpenSCToken; then
 	BUILDPATH=${BP}
 	xcodebuild -target OpenSCTokenApp -configuration Debug -project OpenSCTokenApp.xcodeproj install DSTROOT=${BUILDPATH}/target_token
 	cd ..
-	xcodebuild -target NotificationProxy -configuration Release -project NotificationProxy/NotificationProxy.xcodeproj install DSTROOT=$BUILDPATH/target_token/Applications/OpenSCTokenApp.app/Contents/Resources/
 else
 	# if no OpenSCToken is checked out, then we create a dummy package
 	mkdir -p ${BUILDPATH}/target_token
