@@ -377,8 +377,9 @@ static int detect_idkey(
 	p15card->tokeninfo->label = strdup("IDKey Card");
 
 	insert_cert(p15card, "DF074331", 0x45, 1, "Signatur Zertifikat 1");
-	insert_cert(p15card, "DF074332", 0x45, 1, "Signatur Zertifikat 2");
-	insert_cert(p15card, "DF074333", 0x45, 1, "Signatur Zertifikat 3");
+	insert_cert(p15card, "DF074332", 0x46, 1, "Signatur Zertifikat 2");
+	insert_cert(p15card, "DF074333", 0x47, 1, "Signatur Zertifikat 3");
+	/* TODO should others come here too? */
 
 	insert_key(p15card, "DF074E03", 0x45, 0x84, 2048, 1, "IDKey1");
 	insert_key(p15card, "DF074E04", 0x46, 0x85, 2048, 1, "IDKey2");
