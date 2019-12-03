@@ -510,7 +510,6 @@ static int tcos_set_security_env(sc_card_t *card, const sc_security_env_t *env, 
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, tcos3 ? 0x41 : 0xC1, 0xB8);
 	p = sbuf;
-	*p++=0x80; *p++=0x01; *p++=tcos3 ? 0x0A : 0x10;
 	if (env->flags & SC_SEC_ENV_KEY_REF_PRESENT) {
 		*p++ = (env->flags & SC_SEC_ENV_KEY_REF_SYMMETRIC) ? 0x83 : 0x84;
 		*p++ = env->key_ref_len;
