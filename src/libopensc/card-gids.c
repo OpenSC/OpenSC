@@ -156,6 +156,25 @@ struct gids_private_data {
 	size_t buffersize;
 };
 
+static void fixup_transceive_length(const struct sc_card *card,
+		struct sc_apdu *apdu)
+{
+	if (card == NULL || apdu == NULL) {
+		return;
+	}
+
+	if (apdu->lc > sc_get_max_send_size(card)) {
+		/* The lower layers will automatically do chaining */
+		apdu->flags |= SC_APDU_FLAGS_CHAINING;
+	}
+
+	if (apdu->le > sc_get_max_recv_size(card)) {
+		/* The lower layers will automatically do a GET RESPONSE, if possible.
+		 * All other workarounds must be carried out by the upper layers. */
+		apdu->le = sc_get_max_recv_size(card);
+	}
+}
+
 // LOW LEVEL API
 ///////////////////////////////////////////
 
@@ -643,10 +662,12 @@ static int gids_init(sc_card_t * card)
 	data->masterfilesize = sizeof(data->masterfile);
 
 	/* supported RSA keys and how padding is done */
-	flags = SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE | SC_ALGORITHM_ONBOARD_KEY_GEN | SC_ALGORITHM_RSA_RAW;
+	flags = SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE | SC_ALGORITHM_ONBOARD_KEY_GEN;
+
 	/* fix me: add other algorithms when the gids specification will tell how to extract the algo id from the FCP */
 	_sc_card_add_rsa_alg(card, 1024, flags, 0);
 	_sc_card_add_rsa_alg(card, 2048, flags, 0);
+
 	return SC_SUCCESS;
 }
 
@@ -818,6 +839,49 @@ err:
 	if (locked)
 		sc_unlock(card);
 	return r;
+}
+
+
+static int
+gids_decipher(struct sc_card *card,
+		const u8 * crgram, size_t crgram_len,
+		u8 * out, size_t outlen)
+{
+	int r;
+	struct sc_apdu apdu;
+
+	if (card == NULL || crgram == NULL || out == NULL) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+	LOG_FUNC_CALLED(card->ctx);
+	sc_log(card->ctx,
+	       "Gids decipher: in-len %"SC_FORMAT_LEN_SIZE_T"u, out-len %"SC_FORMAT_LEN_SIZE_T"u",
+	       crgram_len, outlen);
+
+	/* INS: 0x2A  PERFORM SECURITY OPERATION
+	 * P1:  0x80  Resp: Plain value
+	 * P2:  0x86  Cmd: Padding indicator byte followed by cryptogram
+	 * Implementation by Microsoft indicates that Padding indicator
+	 * must not be sent. It may only be needed if Secure Messaging 
+	 * is used. This driver does not support SM.
+	 */
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_4, 0x2A, 0x80, 0x86);
+	apdu.resp    = out;
+	apdu.resplen = outlen;
+	apdu.le      = outlen;
+
+	apdu.data = crgram; /* Skip padding indication not needed unless SM */
+	apdu.lc = crgram_len;
+	apdu.datalen = crgram_len;
+
+	fixup_transceive_length(card, &apdu);
+	r = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+
+	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
+		LOG_FUNC_RETURN(card->ctx, apdu.resplen);
+
+	LOG_FUNC_RETURN(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
 
 // deauthenticate all pins
@@ -2090,7 +2154,7 @@ static struct sc_card_driver *sc_get_driver(void)
 	gids_ops.logout = gids_logout;
 	gids_ops.restore_security_env = NULL;
 	gids_ops.set_security_env = gids_set_security_env;
-	gids_ops.decipher = iso_ops->decipher;
+	gids_ops.decipher = gids_decipher;
 	gids_ops.compute_signature = iso_ops->compute_signature;
 	gids_ops.change_reference_data = NULL; // see pin_cmd
 	gids_ops.reset_retry_counter = NULL; // see pin_cmd
