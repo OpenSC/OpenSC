@@ -1945,6 +1945,11 @@ coolkey_add_object(coolkey_private_data_t *priv, unsigned long object_id, const 
 	new_object.id = object_id;
 	new_object.length = object_length;
 
+	/* The object ID needs to be unique */
+	if (coolkey_find_object_by_id(&priv->objects_list, object_id) != NULL) {
+		return SC_ERROR_INTERNAL;
+	}
+
 	if (object_data) {
 		new_object.data = malloc(object_length + add_v1_record);
 		if (new_object.data == NULL) {
