@@ -314,6 +314,7 @@ static int starcos_init(sc_card_t *card)
 		else
 			card->name = "STARCOS 3.5";
 		card->caps |= SC_CARD_CAP_ISO7816_PIN_INFO;
+		card->caps |= SC_CARD_CAP_APDU_EXT;
 
 		flags |= SC_CARD_FLAG_RNG
 			| SC_ALGORITHM_RSA_HASH_SHA224
