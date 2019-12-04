@@ -523,6 +523,9 @@ coolkey_v0_get_attribute_data(const u8 *attr, size_t buf_len, sc_cardctl_coolkey
 	if (r < 0) {
 		return r;
 	}
+	if (len + sizeof(coolkey_v0_attribute_header_t) > buf_len) {
+		return SC_ERROR_CORRUPTED_DATA;
+	}
 	if ((attr_type == CKA_CLASS) || (attr_type == CKA_CERTIFICATE_TYPE)
 									 || (attr_type == CKA_KEY_TYPE)) {
 		if (len != 4) {
@@ -532,7 +535,7 @@ coolkey_v0_get_attribute_data(const u8 *attr, size_t buf_len, sc_cardctl_coolkey
 	}
 	/* return the length and the data */
 	attr_out->attribute_length = len;
-	attr_out->attribute_value = attr+sizeof(coolkey_v0_attribute_header_t);
+	attr_out->attribute_value = attr + sizeof(coolkey_v0_attribute_header_t);
 	return SC_SUCCESS;
 }
 
