@@ -596,7 +596,7 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 					prkey_info.modulus_length =  key->u.rsa.modulus.len*8;
 				}
 			} else if (key_type == CKK_EC) {
-				obj_type = SC_PKCS15_TYPE_PUBKEY_EC;
+				obj_type = SC_PKCS15_TYPE_PRKEY_EC;
 				if (key) {
 					prkey_info.field_length =  key->u.ec.params.field_length;
 				}
@@ -663,7 +663,8 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 
 		default:
 			/* no other recognized types which are stored 'on card' */
-			break;
+			sc_log(card->ctx, "Unknown object type %lu, skipping", obj_class);
+			continue;
 		}
 		if (obj_info == NULL) {
 			continue;
