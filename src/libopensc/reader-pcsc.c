@@ -78,6 +78,25 @@
 #define PCSC_TRACE(reader, desc, rv) do { sc_log(reader->ctx, "%s:" desc ": 0x%08lx\n", reader->name, (unsigned long)((ULONG)rv)); } while (0)
 #define PCSC_LOG(ctx, desc, rv) do { sc_log(ctx, desc ": 0x%08lx\n", (unsigned long)((ULONG)rv)); } while (0)
 
+/* #define APDU_LOG_FILE "apdulog" */
+#ifdef APDU_LOG_FILE
+void APDU_LOG(u8 *rbuf, uint16_t rsize)
+{
+	static FILE *fd = NULL;
+	u8 *lenb = (u8*)&rsize;
+
+	if (fd == NULL) {
+		fd = fopen(APDU_LOG_FILE, "w");
+	}
+	/* First two bytes denote the length */
+	(void) fwrite(lenb, 2, 1, fd);
+	(void) fwrite(rbuf, rsize, 1, fd);
+	fflush(fd);
+}
+#else
+#define APDU_LOG(rbuf, rsize)
+#endif
+
 struct pcsc_global_private_data {
 	int cardmod;
 	SCARDCONTEXT pcsc_ctx;
@@ -305,6 +324,7 @@ static int pcsc_transmit(sc_reader_t *reader, sc_apdu_t *apdu)
 		goto out;
 	}
 	sc_apdu_log(reader->ctx, rbuf, rsize, 0);
+	APDU_LOG(rbuf, (uint16_t)rsize);
 	/* set response */
 	r = sc_apdu_set_resp(reader->ctx, apdu, rbuf, rsize);
 
@@ -402,6 +422,7 @@ static int refresh_attributes(sc_reader_t *reader)
 		if (memcmp(priv->reader_state.rgbAtr, reader->atr.value, priv->reader_state.cbAtr) != 0) {
 			reader->atr.len = priv->reader_state.cbAtr;
 			memcpy(reader->atr.value, priv->reader_state.rgbAtr, reader->atr.len);
+			APDU_LOG(reader->atr.value, (uint16_t) reader->atr.len);
 		}
 
 		/* Is the reader in use by some other application ? */
