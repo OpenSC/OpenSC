@@ -86,7 +86,7 @@ static int tcos_match_card(sc_card_t *card)
 
 static int tcos_init(sc_card_t *card)
 {
-        unsigned long flags = 0;
+        unsigned long flags;
 
 	tcos_data *data = malloc(sizeof(tcos_data));
 	if (!data) return SC_ERROR_OUT_OF_MEMORY;
@@ -95,9 +95,7 @@ static int tcos_init(sc_card_t *card)
 	card->drv_data = (void *)data;
 	card->cla = 0x00;
 
-        if (card->type != SC_CARD_TYPE_TCOS_V3) {
-                flags |= SC_ALGORITHM_RSA_RAW;
-        }
+        flags = SC_ALGORITHM_RSA_RAW;
         flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
         flags |= SC_ALGORITHM_RSA_HASH_NONE;
 
