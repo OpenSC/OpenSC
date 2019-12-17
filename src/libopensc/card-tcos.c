@@ -549,7 +549,8 @@ static int tcos_compute_signature(sc_card_t *card, const u8 * data, size_t datal
 	assert(card != NULL && data != NULL && out != NULL);
 	tcos3=(card->type==SC_CARD_TYPE_TCOS_V3);
 
-	if (datalen > 255) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
+	// We can sign (key length / 8) bytes
+	if (datalen > 256) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
 
 	if(((tcos_data *)card->drv_data)->next_sign){
 		if(datalen>48){
