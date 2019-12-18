@@ -721,7 +721,7 @@ pgp_parse_algo_attr_blob(const pgp_blob_t *blob, sc_cardctl_openpgp_keygen_info_
 
 			sc_init_oid(&oid);
 			/* Create copy of oid from blob */
-			for (j=0; j < (blob->len-1); j++) {
+			for (j=0; j < (blob->len-1) && j < SC_MAX_OBJECT_ID_OCTETS; j++) {
 				oid.value[j] = blob->data[j+1]; /* ignore first byte of blob (algo ID) */
 			}
 
