@@ -422,7 +422,7 @@ int sc_path_print(char *buf, size_t buflen, const sc_path_t *path)
 	if (buf == NULL || path == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
-	if (buflen < path->len * 2 + path->aid.len * 2 + 1)
+	if (buflen < path->len * 2 + path->aid.len * 2 + 3)
 		return SC_ERROR_BUFFER_TOO_SMALL;
 
 	buf[0] = '\0';
