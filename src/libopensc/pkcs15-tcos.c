@@ -379,6 +379,7 @@ static int detect_idkey(
 	insert_cert(p15card, "DF074331", 0x45, 1, "Signatur Zertifikat 1");
 	insert_cert(p15card, "DF074332", 0x46, 1, "Signatur Zertifikat 2");
 	insert_cert(p15card, "DF074333", 0x47, 1, "Signatur Zertifikat 3");
+	insert_cert(p15card, "DF084331", 0x4B, 1, "Verschluesselungs Zertifikat 1");
 	/* TODO should others come here too? */
 
 	insert_key(p15card, "DF074E03", 0x45, 0x84, 2048, 1, "IDKey1");
@@ -387,6 +388,7 @@ static int detect_idkey(
 	insert_key(p15card, "DF074E06", 0x48, 0x87, 2048, 1, "IDKey4");
 	insert_key(p15card, "DF074E07", 0x49, 0x88, 2048, 1, "IDKey5");
 	insert_key(p15card, "DF074E08", 0x4A, 0x89, 2048, 1, "IDKey6");
+	insert_key(p15card, "DF084E01", 0x4B, 0x81, 2048, 1, "IDKey7");
 
 	insert_pin(p15card, "5000", 1, 2, 0x00, 6, "PIN",
 		SC_PKCS15_PIN_FLAG_CASE_SENSITIVE | SC_PKCS15_PIN_FLAG_INITIALIZED
