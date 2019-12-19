@@ -5840,10 +5840,11 @@ static int test_decrypt(CK_SESSION_HANDLE sess)
 {
 	int             errors = 0;
 	CK_RV           rv;
-	CK_OBJECT_HANDLE privKeyObject;
+	unsigned char   *id;
+	CK_OBJECT_HANDLE pubKeyObject, privKeyObject;
 	CK_MECHANISM_TYPE *mechs = NULL;
 	CK_SESSION_INFO sessionInfo;
-	CK_ULONG        j, num_mechs = 0;
+	CK_ULONG        j, num_mechs = 0, id_len;
 #ifdef ENABLE_OPENSSL
 	CK_ULONG        n;
 #endif
@@ -5865,9 +5866,9 @@ static int test_decrypt(CK_SESSION_HANDLE sess)
 
 	printf("Decryption (currently only for RSA)\n");
 	for (j = 0; find_object(sess, CKO_PRIVATE_KEY, &privKeyObject, NULL, 0, j); j++) {
-		printf("  testing key %ld ", j);
+		printf("  testing key %ld", j);
 		if ((label = getLABEL(sess, privKeyObject, NULL)) != NULL) {
-			printf("(%s) ", label);
+			printf(" (%s)", label);
 			free(label);
 		}
 		if (getKEY_TYPE(sess, privKeyObject) != CKK_RSA) {
@@ -5878,6 +5879,22 @@ static int test_decrypt(CK_SESSION_HANDLE sess)
 			printf(" -- can't be used to decrypt, skipping\n");
 			continue;
 		}
+
+		if ((id = getID(sess, privKeyObject, &id_len)) != NULL) {
+			int r;
+
+			r = find_object(sess, CKO_PUBLIC_KEY, &pubKeyObject, id, id_len, 0);
+			free(id);
+			if (r == 0) {
+				printf(" -- can't find corresponding public key, skipping\n");
+				continue;
+			}
+		}
+		else {
+			printf(" -- can't get the ID for looking up the public key, skipping\n");
+			continue;
+		}
+
 		printf("\n");
 
 #ifndef ENABLE_OPENSSL
