@@ -4937,7 +4937,7 @@ static int test_signature(CK_SESSION_HANDLE sess)
 {
 	int             errors = 0;
 	CK_RV           rv;
-	CK_OBJECT_HANDLE privKeyObject;
+	CK_OBJECT_HANDLE pubKeyObject, privKeyObject;
 	CK_MECHANISM    ck_mech = { CKM_MD5, NULL, 0 };
 	CK_MECHANISM_TYPE firstMechType;
 	CK_SESSION_INFO sessionInfo;
@@ -5170,19 +5170,17 @@ static int test_signature(CK_SESSION_HANDLE sess)
 	ck_mech.mechanism = mechTypes[i];
 	j = 1;  /* j-th signature key */
 	while (find_object(sess, CKO_PRIVATE_KEY, &privKeyObject, NULL, 0, j++) != 0) {
+		unsigned char   *id;
+		CK_ULONG        idLen;
 		CK_ULONG	modLenBits;
 
-		label = getLABEL(sess, privKeyObject, NULL);
-		modLenBits = get_private_key_length(sess, privKeyObject);
-		modLenBytes = (modLenBits + 7) / 8;
-
-		printf("  testing key %d (%u bits%s%s) with 1 signature mechanism",
-				(int) (j-1),
-				(int) modLenBits,
-				label? ", label=" : "",
-				label? label : "");
-		if (label)
+		printf("  testing key %d", (int) (j-1));
+		if ((label = getLABEL(sess, privKeyObject, NULL)) != NULL) {
+			printf(" (%s)", label);
 			free(label);
+		}
+		if ((int) (j-1) != 0)
+			printf(" with 1 mechanism");
 
 		if (getKEY_TYPE(sess, privKeyObject) != CKK_RSA) {
 			printf(" -- non-RSA, skipping\n");
@@ -5192,13 +5190,28 @@ static int test_signature(CK_SESSION_HANDLE sess)
 			printf(" -- can't be used to sign/verify, skipping\n");
 			continue;
 		}
-		else if (!modLenBytes)   {
+		if ((id = getID(sess, privKeyObject, &idLen)) != NULL) {
+			int r;
+
+			r = find_object(sess, CKO_PUBLIC_KEY, &pubKeyObject, id, idLen, 0);
+			free(id);
+			if (r == 0) {
+				printf(" -- can't find corresponding public key, skipping\n");
+				continue;
+			}
+		}
+		else {
+			printf(" -- can't get the ID for looking up the public key, skipping\n");
+			continue;
+		}
+
+		modLenBits = get_private_key_length(sess, privKeyObject);
+		modLenBytes = (modLenBits + 7) / 8;
+		if (!modLenBytes)   {
 			printf(" -- can't be used to sign/verify, skipping: can't obtain modulus\n");
 			continue;
 		}
-		else   {
-			printf("\n");
-		}
+		printf("\n");
 
 		/* Fill in data[0] and dataLens[0] */
 		dataLen = modLenBytes;
