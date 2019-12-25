@@ -32,6 +32,7 @@
  * https://gnupg.org/ftp/specs/OpenPGP-smart-card-application-3.3.pdf
  * https://gnupg.org/ftp/specs/OpenPGP-smart-card-application-3.3.0.pdf
  * https://gnupg.org/ftp/specs/OpenPGP-smart-card-application-3.3.1.pdf
+ * https://gnupg.org/ftp/specs/OpenPGP-smart-card-application-3.4.pdf
  */
 
 #if HAVE_CONFIG_H
@@ -106,6 +107,7 @@ enum _version {		/* 2-byte BCD-alike encoded version number */
 	OPENPGP_CARD_3_1 = 0x0301,
 	OPENPGP_CARD_3_2 = 0x0302,
 	OPENPGP_CARD_3_3 = 0x0303,
+	OPENPGP_CARD_3_4 = 0x0304,
 };
 
 enum _access {		/* access flags for the respective DO/file */
@@ -297,9 +299,22 @@ static struct do_info		pgp1x_objects[] = {	/* OpenPGP card spec 1.1 */
 	{ 0, 0, 0, NULL, NULL },
 };
 
-static struct do_info		pgp33_objects[] = {	/* OpenPGP card spec 3.3 */
+static struct do_info		pgp34_objects[] = {	/**** OpenPGP card spec 3.4 ****/
+	{ 0x00d9, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  NULL,               sc_put_data },
+	{ 0x00da, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  NULL,               sc_put_data },
+	{ 0x00db, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  NULL,               sc_put_data },
+	{ 0x00dc, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  NULL,               sc_put_data },
+	{ 0x00de, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  NULL,               sc_put_data },
+	{ 0x00de, SIMPLE,      READ_ALWAYS | WRITE_NEVER, NULL,               NULL        },
+	/* DO FA is CONSTRUCTED in spec; we treat it as SIMPLE for the time being */
+	{ 0x00fa, SIMPLE,      READ_ALWAYS | WRITE_NEVER, NULL,               NULL        },
+	/* DO FB is CONSTRUCTED in spec; we treat it as SIMPLE for the time being */
+	{ 0x00fb, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  NULL,               sc_put_data },
+	/* DO FC is CONSTRUCTED in spec; we treat it as SIMPLE for the time being */
+	{ 0x00fc, SIMPLE,      READ_ALWAYS | WRITE_NEVER, NULL,               NULL        },
+	/**** OpenPGP card spec 3.3 ****/
 	{ 0x00f9, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  NULL,               sc_put_data },
-	/* OpenPGP card spec 3.0 - 3.2 */
+	/**** OpenPGP card spec 3.0 - 3.2 ****/
 	{ 0x00d6, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  NULL,               sc_put_data },
 	{ 0x00d7, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  NULL,               sc_put_data },
 	{ 0x00d8, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  NULL,               sc_put_data },
@@ -307,9 +322,9 @@ static struct do_info		pgp33_objects[] = {	/* OpenPGP card spec 3.3 */
 	{ 0x7f66, SIMPLE,      READ_ALWAYS | WRITE_NEVER, NULL,               sc_put_data },
 	/* DO 7F74 is CONSTRUCTED in spec; we treat it as SIMPLE for the time being */
 	{ 0x7f74, SIMPLE,      READ_ALWAYS | WRITE_NEVER, NULL,               sc_put_data },
-	/* OpenPGP card spec 2.1 & 2.2 */
+	/**** OpenPGP card spec 2.1 & 2.2 ****/
 	{ 0x00d5, SIMPLE,      READ_NEVER  | WRITE_PIN3,  NULL,               sc_put_data },
-	/* OpenPGP card spec 2.0 */
+	/**** OpenPGP card spec 2.0 ****/
 	{ 0x004d, CONSTRUCTED, READ_NEVER  | WRITE_PIN3,  NULL,               sc_put_data },
 	{ 0x004f, SIMPLE,      READ_ALWAYS | WRITE_NEVER, sc_get_data,        NULL        },
 	{ 0x005b, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  NULL,               sc_put_data },
@@ -368,9 +383,10 @@ static struct do_info		pgp33_objects[] = {	/* OpenPGP card spec 3.3 */
 	{ 0, 0, 0, NULL, NULL },
 };
 
-static struct do_info		*pgp30_objects = pgp33_objects + 1;
-static struct do_info		*pgp21_objects = pgp33_objects + 6;
-static struct do_info		*pgp20_objects = pgp33_objects + 7;
+static struct do_info		*pgp33_objects = pgp34_objects +  9;
+static struct do_info		*pgp30_objects = pgp34_objects + 10;
+static struct do_info		*pgp21_objects = pgp34_objects + 15;
+static struct do_info		*pgp20_objects = pgp34_objects + 16;
 
 
 #define DRVDATA(card)        ((struct pgp_priv_data *) ((card)->drv_data))
@@ -572,7 +588,8 @@ pgp_init(sc_card_t *card)
 			  : (priv->bcd_version < OPENPGP_CARD_2_1) ? pgp20_objects
 			  : (priv->bcd_version < OPENPGP_CARD_3_0) ? pgp21_objects
 			  : (priv->bcd_version < OPENPGP_CARD_3_3) ? pgp30_objects
-			  :					     pgp33_objects;
+			  : (priv->bcd_version < OPENPGP_CARD_3_4) ? pgp33_objects
+			  :					     pgp34_objects;
 
 	/* change file path to MF for re-use in MF */
 	sc_format_path("3f00", &file->path);
