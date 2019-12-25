@@ -76,7 +76,7 @@ static const struct option options[] = {
 };
 static const char *option_help[] = {
 	"Uses reader number <arg> [0]",
-	"Forces the use of driver <arg> [auto-detect]",
+	"Forces the use of driver <arg> [auto-detect; '?' for list]",
 	"Selects path <arg> on start-up, or none if empty [3F00]",
 	"Wait for card insertion",
 	"Verbose operation. Use several times to enable debug output.",
@@ -2152,6 +2152,12 @@ int main(int argc, char *argv[])
         }
 
 	if (opt_driver != NULL) {
+		/* special card driver value "?" means: list available drivers */
+		if (strncmp("?", opt_driver, sizeof("?")) == 0) {
+			err = util_list_card_drivers(ctx);
+			goto end;
+		}
+
 		err = sc_set_card_driver(ctx, opt_driver);
 		if (err) {
 			fprintf(stderr, "Driver '%s' not found!\n", opt_driver);
