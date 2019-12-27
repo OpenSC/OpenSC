@@ -2346,8 +2346,8 @@ do_read_private_key(const char *filename, const char *format,
 			r = util_getpass(&passphrase, &len, stdin);
 			if (r < 0 || !passphrase)
 				return SC_ERROR_INTERNAL;
- 			r = do_read_pkcs12_private_key(filename,
- 					passphrase, pk, certs, max_certs);
+			r = do_read_pkcs12_private_key(filename,
+					passphrase, pk, certs, max_certs);
 		}
 	} else {
 		util_error("Error when reading private key. "
