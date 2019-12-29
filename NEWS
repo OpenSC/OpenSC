@@ -1,5 +1,111 @@
 NEWS for OpenSC -- History of user visible changes
 
+# New in 0.20.0; 2019-12-29
+## General Improvements
+* fixed security problems
+    * CVE-2019-6502 (#1586)
+    * CVE-2019-15946 (a3fc769)
+    * CVE-2019-15945 (412a614)
+    * CVE-2019-19480 (6ce6152284c47ba9b1d4fe8ff9d2e6a3f5ee02c7)
+    * CVE-2019-19481 (b75c002cfb1fd61cd20ec938ff4937d7b1a94278)
+    * CVE-2019-19479 (c3f23b836e5a1766c36617fe1da30d22f7b63de2)
+* Support RSA-PSS signature mechanisms using RSA-RAW (#1435)
+* Added memory locking for secrets (#1491)
+* added support for terminal colors (#1534)
+* PC/SC driver: Fixed error handling in case of changing (#1537) or removing the card reader (#1615)
+* macOS installer
+    * Add installer option to deselect tokend (#1607)
+    * Make OpenSCToken available on 10.12+ and the default on 10.15+ (2017626ed237dbdd4683a4b9410fc610618200c5)
+* Configuration
+    * rename `md_read_only` to `read_only` and use it for PKCS#11 and Minidriver (#1467)
+    * allow global use of ignore_private_certificate (#1623)
+* Build Environment
+    * Bump openssl requirement to 0.9.8 (##1459)
+    * Added support for fuzzing with AFL (#1580) and libFuzzer/OSS-Fuzz (#1697)
+    * Added CI tests for simulating GIDS, OpenPGP, PIV, IsoApplet (#1568) and MyEID (#1677) and CAC (#1757)
+    * Integrate clang-tidy with `make check` (#1673)
+    * Added support for reproducible builds (#1839)
+## PKCS#11
+* Implement write protection (CKF_WRITE_PROTECTED) based on the card profile (#1467)
+* Added C_WrapKey and C_UnwrapKey implementations (#1393)
+* Handle CKA_ALWAYS_AUTHENTICATE when creating key objects. (#1539)
+* Truncate long PKCS#11 labels with ... (#1629)
+* Fixed recognition of a token when being unplugged and reinserted (#1875)
+## Minidriver
+* Register for CardOS5 cards (#1750)
+* Add support for RSA-PSS (263b945)
+## OpenSC tools
+* Harmonize the use of option `-r`/`--reader` (#1548)
+* `goid-tool`: GoID personalization with fingerprint
+* `openpgp-tool`
+    * replace the options `-L`/` --key-length` with `-t`/`--key-type` (#1508)
+    * added options `-C`/`--card-info` and `-K`/`--key-info` (#1508)
+* `opensc-explorer`
+    * add command `pin_info` (#1487)
+    * extend `random` to allow writing to a file (#1487)
+* `opensc-minidriver-test.exe`: Tests for Microsoft CryptoAPI (#1510)
+* `opensc-notify`: Autostart on Windows
+* `pkcs11-register`:
+    * Auto-configuration of applications for use of OpenSC PKCS#11 (#1644)
+    * Autostart on Windows, macOS and Linux (#1644)
+* `opensc-tool`: Show ATR also for cards not recognized by OpenSC (#1625)
+* `pkcs11-spy`:
+    * parse CKM_AES_GCM
+    * Add support for CKA_OTP_* and CKM_*_PSS values
+    * parse EC Derive parameters (#1677)
+* `pkcs11-tool`
+    * Support for signature verification via `--verify` (#1435)
+    * Add object type `secrkey` for `--type` option (#1575)
+    * Implement Secret Key write object (#1648)
+    * Add GOSTR3410-2012 support (#1654)
+    * Add support for testing CKM_RSA_PKCS_OAEP (#1600)
+    * Add extractable option to key import (#1674)
+    * list more key access flags when listing keys (#1653)
+    * Add support for `CKA_ALLOWED_MECHANISMS` when creating new objects and listing keys (#1628)
+* `pkcs15-crypt`: * Handle keys with user consent (#1529)
+## CAC1
+New separate CAC1 driver using the old CAC specification (#1502)
+## CardOS
+* Add support for 4K RSA keys in CardOS 5 (#1776)
+* Fixed decryption with CardOS 5 (#1867)
+## Coolkey
+* Enable CoolKey driver to handle 2048-bit keys. (#1532)
+## EstEID
+* adds support for a minimalistic, small and fast card profile based on IAS-ECC issued since December 2018 (#1635)
+## GIDS
+* GIDS Decipher fix (#1881)
+* Allow RSA 4K support (#1891)
+## MICARDO
+* Remove long expired EstEID 1.0/1.1 card support (#1470)
+## MyEID
+* Add support for unwrapping a secret key with an RSA key or secret key (#1393)
+* Add support for wrapping a secret key with a secret key (#1393)
+* Support for MyEID 4K RSA (#1657)
+* Support for OsEID (#1677).
+## Gemalto GemSafe
+* add new PTeID ATRs (#1683)
+* Add support for 4K RSA keys (#1863, #1872)
+## OpenPGP
+* OpenPGP Card v3 ECC support (#1506)
+## Rutoken
+* Add Rutoken ECP SC (#1652)
+* Add Rutoken Lite (#1728)
+## SC-HSM
+* Add SmartCard-HSM 4K ATR (#1681)
+* Add missing secp384r1 curve parameter (#1696)
+## Starcos
+* Fixed decipher with 2.3 (#1496)
+* Added ATR for 2nd gen. eGK (#1668)
+* Added new ATR for 3.5 (#1882)
+* Detect and allow Globalplatform PIN encoding (#1882)
+## TCOS
+* Fix TCOS IDKey support (#1880)
+* add encryption certificate for IDKey (#1892)
+## Infocamere, Postecert, Cnipa
+* Removed profiles (#1584)
+## ACS ACOS5
+* Remove incomplete acos5 driver (#1622).
+
 # New in 0.19.0; 2018-09-13
 ## General Improvements
 * fixed multiple security problems (out of bound writes/reads, #1447):
