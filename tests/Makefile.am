@@ -1,6 +1,7 @@
 MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
 
-dist_noinst_SCRIPTS = test-manpage.sh \
+dist_noinst_SCRIPTS = common.sh \
+                      test-manpage.sh \
                       test-fuzzing.sh \
                       test-pkcs11-tool-test.sh \
                       test-pkcs11-tool-sign-verify.sh \
