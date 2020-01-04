@@ -98,7 +98,7 @@ static const char *option_help[] = {
 	"Input file for cert",
 	"Sends an APDU in format AA:BB:CC:DD:EE:FF...",
 	"Uses reader number <arg> [0]",
-	"Forces the use of driver <arg> [auto-detect]",
+	"Forces the use of driver <arg> [auto-detect; '?' for list]",
 	"Wait for a card to be inserted",
 	"Verbose operation. Use several times to enable debug output.",
 };
@@ -478,6 +478,7 @@ int main(int argc, char *argv[])
 	int compress_cert = 0;
 	int do_print_serial = 0;
 	int do_print_name = 0;
+	int do_list_card_drivers = 0;
 	int action_count = 0;
 	const char *opt_driver = NULL;
 	const char *out_file = NULL;
@@ -556,12 +557,20 @@ int main(int argc, char *argv[])
 			break;
 		case 'c':
 			opt_driver = optarg;
+
+			/* special card driver value "?" means: list available drivers */
+			if (opt_driver != NULL && strncmp("?", opt_driver, sizeof("?")) == 0) {
+				opt_driver = NULL;
+				do_list_card_drivers = 1;
+				action_count++;
+			}
 			break;
 		case 'w':
 			opt_wait = 1;
 			break;
 		}
 	}
+
 	if (action_count == 0)
 		util_print_usage_and_die(app_name, options, option_help, NULL);
 
@@ -602,6 +611,11 @@ int main(int argc, char *argv[])
 
 	if (action_count <= 0)
 		goto end;
+
+	if (do_list_card_drivers) {
+		err = util_list_card_drivers(ctx);
+		goto end;
+	}
 
 	if (opt_driver != NULL) {
 		err = sc_set_card_driver(ctx, opt_driver);
