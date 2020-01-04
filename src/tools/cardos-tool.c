@@ -67,7 +67,7 @@ static const char *option_help[] = {
 	"Specify startkey for format",
 	"Change Startkey with given APDU command",
 	"Uses reader number <arg> [0]",
-	"Forces the use of driver <arg> [auto-detect]",
+	"Forces the use of driver <arg> [auto-detect; '?' for list]",
 	"Wait for a card to be inserted",
 	"Verbose operation. Use several times to enable debug output.",
 };
@@ -1038,6 +1038,7 @@ int main(int argc, char *argv[])
 	int do_info = 0;
 	int do_format = 0;
 	int do_change_startkey = 0;
+	int do_list_card_drivers = 0;
 	int action_count = 0;
 	const char *opt_driver = NULL;
 	const char *opt_startkey = NULL;
@@ -1077,6 +1078,13 @@ int main(int argc, char *argv[])
 			break;
 		case 'c':
 			opt_driver = optarg;
+
+			/* special card driver value "?" means: list available drivers */
+			if (opt_driver != NULL && strncmp("?", opt_driver, sizeof("?")) == 0) {
+				opt_driver = NULL;
+				do_list_card_drivers = 1;
+				action_count++;
+			}
 			break;
 		case 'w':
 			opt_wait = 1;
@@ -1093,6 +1101,11 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "Failed to establish context: %s\n",
 			sc_strerror(r));
 		return 1;
+	}
+
+	if (do_list_card_drivers) {
+		err = util_list_card_drivers(ctx);
+		goto end;
 	}
 
 	if (opt_driver != NULL) {
