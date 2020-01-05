@@ -54,7 +54,7 @@ static const char *app_name = "dnie-tool";
 
 static const struct option options[] = {
 	{"reader",      1, NULL, 'r'},
-	{"driver",      1, NULL, 'c'},
+	{"card-driver", 1, NULL, 'c'},
 	{"wait",	0, NULL, 'w'},
 	{"pin",		1, NULL, 'p'},
 	{"idesp",       0, NULL, 'i'},
@@ -68,7 +68,7 @@ static const struct option options[] = {
 
 static const char *option_help[] = {
 	"Uses reader number <arg> [0]",
-	"Uses card driver <arg> [auto-detect]",
+	"Uses card driver <arg> [auto-detect; '?' for list]",
 	"Wait for a card to be inserted",
 	"Specify PIN",
 	"Retrieve IDESP",
@@ -150,6 +150,12 @@ int main(int argc, char* argv[])
 	}
 
 	if (opt_driver != NULL) {
+		/* special card driver value "?" means: list available drivers */
+		if (strncmp("?", opt_driver, sizeof("?")) == 0) {
+			err = util_list_card_drivers(ctx);
+			goto dnie_tool_end;
+		}
+
 		err = sc_set_card_driver(ctx, opt_driver);
 		if (err) {
 			fprintf(stderr, "Driver '%s' not found!\n",

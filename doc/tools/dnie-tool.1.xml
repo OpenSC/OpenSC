@@ -97,11 +97,18 @@
 				</varlistentry>
 				<varlistentry>
 					<term>
-						<option>--driver</option> <replaceable>driver</replaceable>,
-						<option>-c</option> <replaceable>driver</replaceable>
+						<option>--card-driver</option> <replaceable>name</replaceable>,
+						<option>-c</option> <replaceable>name</replaceable>
 					</term>
-					<listitem><para>Specify the card driver <replaceable>driver</replaceable> to use.
-					Default is use driver from configuration file, or auto-detect if absent</para></listitem>
+					<listitem>
+						<para>
+							Use the given card driver.
+							The default is to auto-detect the correct card driver.
+							The literal value <literal>?</literal> lists
+							all available card drivers and terminates
+							<command>dnie-tool</command>.
+						</para>
+					</listitem>
 				</varlistentry>
 				<varlistentry>
 					<term>
