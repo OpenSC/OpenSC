@@ -32,10 +32,15 @@ rm -f  /Library/LaunchAgents/pkcs11-register.plist
 rm -f  /Library/LaunchAgents/opensc-notify.plist
 rm -rf /System/Library/Security/tokend/OpenSC.tokend
 
+# Unload launchagents
+launchctl remove pkcs11-register
+launchctl remove opensc-notify
 
 # delete receipts on 10.6+
 pkgutil --forget org.opensc-project.mac > /dev/null
 pkgutil --forget org.opensc-project.tokend > /dev/null
+pkgutil --forget org.opensc-project.mac.opensctoken > /dev/null
+pkgutil --forget org.opensc-project.startup > /dev/null
 
 # remove this script
 rm -f /usr/local/bin/opensc-uninstall
