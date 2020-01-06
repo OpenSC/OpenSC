@@ -233,21 +233,27 @@ int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
             int wrap_flags[] = {0, SC_ALGORITHM_AES_ECB, SC_ALGORITHM_AES_CBC_PAD,
                 SC_ALGORITHM_AES_CBC};
             for (i = 0; i < sizeof wrap_flags/sizeof *wrap_flags; i++) {
+                /* see `pkcs15_create_secret_key` in
+                 * `src/pkcs11/framework-pkc15.c` for creating a temporary
+                 * secret key for wrapping/unwrapping */
                 unsigned long l = sizeof buf;
                 struct sc_pkcs15_object target_key;
                 struct sc_pkcs15_skey_info skey_info;
+                uint16_t len;
                 memset(&target_key, 0, sizeof target_key);
                 memset(&skey_info, 0, sizeof skey_info);
                 target_key.type = SC_PKCS15_TYPE_SKEY;
                 target_key.flags = 2; /* TODO not sure what these mean */
                 target_key.session_object = 1;
-                target_key.data = skey_info;
-                skey_info.usage = (unsigned int) args.usage;
+                target_key.data = &skey_info;
+                skey_info.usage = SC_PKCS15_PRKEY_USAGE_UNWRAP | SC_PKCS15_PRKEY_USAGE_WRAP
+                    | SC_PKCS15_PRKEY_USAGE_ENCRYPT | SC_PKCS15_PRKEY_USAGE_DECRYPT;
                 skey_info.native = 0; /* card can not use this */
                 skey_info.access_flags = 0; /* looks like not needed */
                 skey_info.key_type = 0x1fUL; /* CKK_AES */
                 skey_info.value_len = 128;
-                fuzz_get_chunk(reader, &skey_info.data.value, &skey_info.data.len);
+                fuzz_get_chunk(reader, (const u8 **) &skey_info.data.value, &len);
+                skey_info.data.len = len;
 
                 sc_pkcs15_unwrap(p15card, obj, &target_key, wrap_flags[i],
                         in, in_len, param, param_len);
