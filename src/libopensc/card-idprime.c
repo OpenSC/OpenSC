@@ -144,12 +144,14 @@ static int idprime_select_index(sc_card_t *card)
 	/* Returns FCI with expected length of data */
 	sc_format_path("0101", &index_path);
 	r = iso_ops->select_file(card, &index_path, &file);
-	if (r != SC_SUCCESS) {
-		sc_file_free(file);
-		LOG_FUNC_RETURN(card->ctx, r);
+	if (r == SC_SUCCESS) {
+		r = file->size;
 	}
-	r = file->size;
 	sc_file_free(file);
+	/* Ignore too large files */
+	if (r > MAX_FILE_SIZE) {
+		r = SC_ERROR_INVALID_DATA;
+	}
 	return r;
 }
 
