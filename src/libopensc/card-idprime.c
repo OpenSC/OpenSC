@@ -278,7 +278,18 @@ static int idprime_init(sc_card_t *card)
 
 	card->drv_data = priv;
 
-	card->name = "Gemalto IDPrime";
+	switch (card->type) {
+	case SC_CARD_TYPE_IDPRIME_V1:
+		card->name = "Gemalto IDPrime (OSv1)";
+		break;
+	case SC_CARD_TYPE_IDPRIME_V2:
+		card->name = "Gemalto IDPrime (OSv2)";
+		break;
+	case SC_CARD_TYPE_IDPRIME_GENERIC:
+	default:
+		card->name = "Gemalto IDPrime (generic)";
+		break;
+	}
 	card->cla = 0x00;
 
 	/* Set up algorithm info. */
