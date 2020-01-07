@@ -123,7 +123,7 @@ static int atrust_acos_init(struct sc_card *card)
 		| SC_ALGORITHM_RSA_HASH_RIPEMD160
 		| SC_ALGORITHM_RSA_HASH_MD5_SHA1;
 
-	if (!strcmp(card->name, ACOS_EMV_A05))
+	if (card->name != NULL && !strcmp(card->name, ACOS_EMV_A05))
 		flags |= SC_ALGORITHM_RSA_HASH_SHA256;
 
 	_sc_card_add_rsa_alg(card, 1536, flags, 0x10001);
