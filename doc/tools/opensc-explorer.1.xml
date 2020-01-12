@@ -405,6 +405,31 @@
 
 				<varlistentry>
 					<term>
+						<command>get_record</command>
+						<replaceable>file-id</replaceable>
+						<replaceable>rec-no</replaceable>
+						<arg choice="opt"><replaceable>output</replaceable></arg>
+					</term>
+					<listitem>
+						<para>
+							Copy a record of a record-oriented EF to a local file.
+							The local file is specified by
+							<replaceable>output</replaceable>
+							while the card file and the record are specified by
+							<replaceable>file-id</replaceable> and
+							<replaceable>rec-no</replaceable>,
+						</para>
+						<para>
+							If <replaceable>output</replaceable> is omitted,
+							the name of the output file will be derived from the
+							full card path to <replaceable>file-id</replaceable>.
+							and the <replaceable>rec-no</replaceable>.
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
 						<command>help</command>
 						<arg choice="opt"><replaceable>pattern</replaceable></arg>
 					</term>
