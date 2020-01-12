@@ -105,7 +105,7 @@ static void decode_options(int argc, char **argv)
 {
 	int c;
 
-	while ((c = getopt_long(argc, argv,"pwtr:x:hV", options, (int *) 0)) != EOF) {
+	while ((c = getopt_long(argc, argv,"pwtr:x:hV", options, (int *) 0)) != -1) {
 
 		switch (c) {
 		case 'r':
