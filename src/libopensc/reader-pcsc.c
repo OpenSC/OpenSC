@@ -181,6 +181,9 @@ static int pcsc_to_opensc_error(LONG rv)
 		return SC_ERROR_READER_LOCKED;
 	case SCARD_E_NO_READERS_AVAILABLE:
 		return SC_ERROR_NO_READERS_FOUND;
+	case SCARD_E_UNKNOWN_READER:
+		return SC_ERROR_READER_DETACHED;
+
 	case SCARD_E_NO_SERVICE:
 		/* If the service is (auto)started, there could be readers later */
 		return SC_ERROR_NO_READERS_FOUND;
@@ -1467,8 +1470,13 @@ static int pcsc_detect_readers(sc_context_t *ctx)
 
 		for (reader_name = reader_buf; *reader_name != '\x0';
 				reader_name += strlen(reader_name) + 1) {
-			if (!strcmp(reader->name, reader_name))
+			if (!strcmp(reader->name, reader_name)) {
+				if (reader->flags & SC_READER_REMOVED) {
+					reader->flags &= ~SC_READER_REMOVED;
+					refresh_attributes(reader);
+				}
 				break;
+			}
 		}
 
 		if (*reader_name != '\x0') {
@@ -1546,7 +1554,7 @@ static int pcsc_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_re
 	LONG rv;
 	SCARD_READERSTATE *rgReaderStates;
 	size_t i;
-	unsigned int num_watch;
+	unsigned int num_watch, count;
 	int r = SC_ERROR_INTERNAL;
 	DWORD dwtimeout;
 
@@ -1565,22 +1573,30 @@ static int pcsc_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_re
 			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 
 		/* Find out the current status */
-		num_watch = sc_ctx_get_reader_count(ctx);
-		sc_log(ctx, "Trying to watch %d readers", num_watch);
-		for (i = 0; i < num_watch; i++) {
-			rgReaderStates[i].szReader = sc_ctx_get_reader(ctx, i)->name;
-			rgReaderStates[i].dwCurrentState = SCARD_STATE_UNAWARE;
-			rgReaderStates[i].dwEventState = SCARD_STATE_UNAWARE;
-		}
-#ifndef __APPLE__
-	   	/* OS X 10.6.2 - 10.12.6 do not support PnP notification */
-		if (event_mask & SC_EVENT_READER_ATTACHED) {
-			rgReaderStates[i].szReader = "\\\\?PnP?\\Notification";
-			rgReaderStates[i].dwCurrentState = SCARD_STATE_UNAWARE;
-			rgReaderStates[i].dwEventState = SCARD_STATE_UNAWARE;
+		num_watch = 0;
+		count = sc_ctx_get_reader_count(ctx);
+		for (i = 0; i < count; i++) {
+			sc_reader_t *reader = sc_ctx_get_reader(ctx, i);
+			if (reader->flags & SC_READER_REMOVED)
+				continue;
+			rgReaderStates[num_watch].szReader = reader->name;
+			rgReaderStates[num_watch].dwCurrentState = SCARD_STATE_UNAWARE;
+			rgReaderStates[num_watch].dwEventState = SCARD_STATE_UNAWARE;
 			num_watch++;
 		}
+		sc_log(ctx, "Trying to watch %d reader%s", num_watch, num_watch == 1 ? "" : "s");
+		if (event_mask & SC_EVENT_READER_ATTACHED) {
+#ifdef __APPLE__
+			/* OS X 10.6.2 - 10.12.6 do not support PnP notification */
+			sc_log(ctx, "PnP notification not supported");
+#else
+			rgReaderStates[num_watch].szReader = "\\\\?PnP?\\Notification";
+			rgReaderStates[num_watch].dwCurrentState = SCARD_STATE_UNAWARE;
+			rgReaderStates[num_watch].dwEventState = SCARD_STATE_UNAWARE;
+			num_watch++;
+			sc_log(ctx, "Trying to detect new readers");
 #endif
+		}
 	}
 	else {
 		rgReaderStates = (SCARD_READERSTATE *)(*reader_states);
@@ -1606,14 +1622,12 @@ static int pcsc_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_re
 		goto out;
 	}
 
-#ifdef __APPLE__
 	if (num_watch == 0) {
-		sc_log(ctx, "No readers available, PnP notification not supported");
+		sc_log(ctx, "No readers available to be watched");
 		*event_reader = NULL;
 		r = SC_ERROR_NO_READERS_FOUND;
 		goto out;
 	}
-#endif
 
 	rv = gpriv->SCardGetStatusChange(gpriv->pcsc_wait_ctx, 0, rgReaderStates, num_watch);
 	if (rv != SCARD_S_SUCCESS) {
