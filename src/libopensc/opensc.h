@@ -213,10 +213,10 @@ extern "C" {
 /* Event masks for sc_wait_for_event() */
 #define SC_EVENT_CARD_INSERTED		0x0001
 #define SC_EVENT_CARD_REMOVED		0x0002
-#define SC_EVENT_CARD_EVENTS		SC_EVENT_CARD_INSERTED|SC_EVENT_CARD_REMOVED
+#define SC_EVENT_CARD_EVENTS		(SC_EVENT_CARD_INSERTED|SC_EVENT_CARD_REMOVED)
 #define SC_EVENT_READER_ATTACHED	0x0004
 #define SC_EVENT_READER_DETACHED	0x0008
-#define SC_EVENT_READER_EVENTS		SC_EVENT_READER_ATTACHED|SC_EVENT_READER_DETACHED
+#define SC_EVENT_READER_EVENTS		(SC_EVENT_READER_ATTACHED|SC_EVENT_READER_DETACHED)
 
 #define MAX_FILE_SIZE 65535
 
@@ -1024,18 +1024,25 @@ int sc_disconnect_card(struct sc_card *card);
 int sc_detect_card_presence(sc_reader_t *reader);
 
 /**
- * Waits for an event on readers. Note: only the event is detected,
- * there is no update of any card or other info.
- * NOTE: Only PC/SC backend implements this.
- * @param ctx  pointer to a Context structure
- * @param event_mask The types of events to wait for; this should
- *   be ORed from one of the following
- *   	SC_EVENT_CARD_REMOVED
- *   	SC_EVENT_CARD_INSERTED
- *	SC_EVENT_READER_ATTACHED
- * @param event_reader (OUT) the reader on which the event was detected, or NULL if new reader
+ * Waits for an event on readers.
+ *
+ * In case of a reader event (attached/detached), the list of reader is
+ * adjusted accordingly. This means that a subsequent call to
+ * `sc_ctx_detect_readers()` is not needed.
+ *
+ * @note Only PC/SC backend implements this. An infinite timeout on macOS does
+ * not detect reader events (use a limited timeout instead if needed).
+ *
+ * @param ctx (IN) pointer to a Context structure
+ * @param event_mask (IN) The types of events to wait for; this should
+ *   be ORed from one of the following:
+ *   - SC_EVENT_CARD_REMOVED
+ *   - SC_EVENT_CARD_INSERTED
+ *	 - SC_EVENT_READER_ATTACHED
+ *	 - SC_EVENT_READER_DETACHED
+ * @param event_reader (OUT) the reader on which the event was detected
  * @param event (OUT) the events that occurred. This is also ORed
- *   from the SC_EVENT_CARD_* constants listed above.
+ *   from the constants listed above.
  * @param timeout Amount of millisecs to wait; -1 means forever
  * @retval < 0 if an error occurred
  * @retval = 0 if a an event happened

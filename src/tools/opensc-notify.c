@@ -49,26 +49,21 @@ void Sleep(unsigned int Milliseconds)
 }
 #endif
 
-void stop_daemon()
-{
-#ifdef PCSCLITE_GOOD
-	sc_cancel(ctx);
-#endif
-	run_daemon = 0;
-}
-
 void notify_daemon()
 {
 	int r;
-	const unsigned int event_mask = SC_EVENT_CARD_EVENTS;
+	const unsigned int event_mask = SC_EVENT_CARD_EVENTS|SC_EVENT_READER_EVENTS;
 	unsigned int event;
 	struct sc_reader *event_reader = NULL;
-	size_t error_count = 0;
+	void *reader_states = NULL;
+#ifndef __APPLE__
 	/* timeout adjusted to the maximum response time for WM_CLOSE in case
 	 * canceling doesn't work */
 	const int timeout = 20000;
-	struct sc_atr old_atr;
-	void *reader_states = NULL;
+#else
+	/* lower timeout, because Apple doesn't support hotplug events */
+	const int timeout = 2000;
+#endif
 
 	r = sc_establish_context(&ctx, "opensc-notify");
 	if (r < 0 || !ctx) {
@@ -76,50 +71,51 @@ void notify_daemon()
 		return;
 	}
 
-	while (run_daemon && error_count < 1000) {
+	while (run_daemon) {
+
 		r = sc_wait_for_event(ctx, event_mask,
 				&event_reader, &event, timeout, &reader_states);
 		if (r < 0) {
 			if (r == SC_ERROR_NO_READERS_FOUND) {
-				/* No readers available, PnP notification not supported */
-				Sleep(200);
-			} else {
-				error_count++;
+				Sleep(timeout);
+				continue;
 			}
-			continue;
 		}
 
-		error_count = 0;
-
-		if (event & SC_EVENT_CARD_REMOVED) {
-			sc_notify_id(ctx, &old_atr, NULL, NOTIFY_CARD_REMOVED);
-		}
-		if (event & SC_EVENT_CARD_INSERTED) {
-			if (event_reader) {
-				/* FIXME `pcsc_wait_for_event` has all the information that's
-				 * requested again with `pcsc_detect_card_presence`, but it
-				 * doesn't use the ATR, for example, to refresh the reader's
-				 * attributes. To get the ATR we need to call
-				 * sc_detect_card_presence. Eventually this should be fixed. */
-				sc_detect_card_presence(event_reader);
-				memcpy(old_atr.value, event_reader->atr.value,
-						event_reader->atr.len);
-				old_atr.len = event_reader->atr.len;
-			} else {
-				old_atr.len = 0;
+		if (event_reader) {
+			if (event & SC_EVENT_CARD_REMOVED
+					|| (event & SC_EVENT_READER_DETACHED
+						&& event_reader->flags & SC_READER_CARD_PRESENT)) {
+				/* sc_notify_id uses only the reader's name for displaying on
+				 * removal, so use a dummy card here to get that information
+				 * into the notification */
+				struct sc_pkcs15_card p15card;
+				sc_card_t card;
+				memset(&card, 0, sizeof card);
+				card.reader = event_reader;
+				memset(&p15card, 0, sizeof p15card);
+				p15card.card = &card;
+				sc_notify_id(ctx, &event_reader->atr, &p15card, NOTIFY_CARD_REMOVED);
+			} else if (event & SC_EVENT_CARD_INSERTED
+					|| (event & SC_EVENT_READER_ATTACHED
+						&& event_reader->flags & SC_READER_CARD_PRESENT)) {
+				/* sc_notify_id prevers the reader's name for displaying on
+				 * insertion, so use a dummy card here to get that information
+				 * into the notification */
+				struct sc_pkcs15_card p15card;
+				sc_card_t card;
+				memset(&card, 0, sizeof card);
+				card.reader = event_reader;
+				memset(&p15card, 0, sizeof p15card);
+				p15card.card = &card;
+				sc_notify_id(ctx, &event_reader->atr, &p15card, NOTIFY_CARD_INSERTED);
 			}
-			sc_notify_id(ctx, old_atr.len ? &old_atr : NULL, NULL,
-					NOTIFY_CARD_INSERTED);
 		}
 	}
 
 	if (ctx) {
-		if (error_count >= 1000) {
-			sc_log(ctx, "Too many errors; aborting.");
-		}
 		/* free `reader_states` */
 		sc_wait_for_event(ctx, 0, NULL, NULL, 0, &reader_states);
-		reader_states = NULL;
 		sc_release_context(ctx);
 		ctx = NULL;
 	}
@@ -132,7 +128,8 @@ void notify_daemon()
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	if (message == WM_CLOSE || message == WM_QUIT) {
-		stop_daemon();
+		run_daemon = 0;
+		sc_cancel(ctx);
 		return TRUE;
 	}
 
@@ -182,32 +179,54 @@ WinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPSTR lpCmdLine, int nShowC
 
 #else
 
-#ifdef HAVE_SIGACTION
+#if defined(HAVE_SIGACTION) && defined(HAVE_PTHREAD)
+#include <errno.h>
+#include <pthread.h>
 #include <signal.h>
+#include <unistd.h>
+
+static int cancellation_fd[] = {-1, -1};
 
 void sig_handler(int sig) {
-	stop_daemon();
+	run_daemon = 0;
+	write(cancellation_fd[1], &sig, sizeof sig);
 }
 
-void set_sa_handler(void)
+static void *cancellation_proc(void *arg)
 {
-	struct sigaction new_sig, old_sig;
+	(void)arg;
+	while (run_daemon) {
+		int sig;
+		if (sizeof sig == read(cancellation_fd[0], &sig, sizeof sig)) {
+			break;
+		}
+	}
+	sc_cancel(ctx);
+	return NULL;
+}
 
-	/* Register signal handlers */
+void setup_cancellation(void)
+{
+	pthread_t cancellation_thread;
+	struct sigaction new_sig, old_sig;
 	new_sig.sa_handler = sig_handler;
 	sigemptyset(&new_sig.sa_mask);
 	new_sig.sa_flags = SA_RESTART;
-	if ((sigaction(SIGINT, &new_sig, &old_sig) < 0)
-			|| (sigaction(SIGTERM, &new_sig, &old_sig) < 0)) {
-		fprintf(stderr, "Failed to create signal handler: %s", strerror(errno));
+
+	if (pipe(cancellation_fd) != 0
+			|| (errno = pthread_create(&cancellation_thread, NULL, cancellation_proc, NULL)) != 0
+			|| sigaction(SIGINT, &new_sig, &old_sig) != 0
+			|| sigaction(SIGTERM, &new_sig, &old_sig) != 0) {
+		fprintf(stderr, "Failed to setup cancellation: %s", strerror(errno));
 	}
 }
 
 #else
 
-void set_sa_handler(void)
+void setup_cancellation(void)
 {
 }
+
 #endif
 
 #include "opensc-notify-cmdline.h"
@@ -244,8 +263,8 @@ main (int argc, char **argv)
 
 	if ((!cmdline.customized_mode_counter && !cmdline.standard_mode_counter)
 			|| cmdline.daemon_mode_counter) {
-		set_sa_handler();
 		run_daemon = 1;
+		setup_cancellation();
 		notify_daemon();
 	} else {
 		/* give the notification process some time to spawn */
