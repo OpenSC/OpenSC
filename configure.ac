@@ -131,6 +131,8 @@ case "${host}" in
 	;;
 esac
 
+AX_CODE_COVERAGE()
+
 AX_CHECK_COMPILE_FLAG([-Wunknown-warning-option], [have_unknown_warning_option="yes"], [have_unknown_warning_option="no"], [-Werror])
 AM_CONDITIONAL([HAVE_UNKNOWN_WARNING_OPTION], [test "${have_unknown_warning_option}" = "yes"])
 
@@ -1098,6 +1100,7 @@ AC_CONFIG_FILES([
 	src/tests/regression/Makefile
 	src/tests/p11test/Makefile
 	src/tests/fuzzing/Makefile
+	src/tests/unittests/Makefile
 	src/tools/Makefile
 	src/tools/versioninfo-tools.rc
 	src/tools/versioninfo-opensc-notify.rc
@@ -1160,6 +1163,7 @@ SM default module:       ${DEFAULT_SM_MODULE}
 SM default path:         $(eval eval eval echo "${DEFAULT_SM_MODULE_PATH}")
 DNIe UI support:         ${enable_dnie_ui}
 Notification support:    ${enable_notify}
+Code coverage:           ${enable_code_coverage}
 
 PC/SC default provider:  ${DEFAULT_PCSC_PROVIDER}
 PKCS11 default provider: $(eval eval eval echo "${DEFAULT_PKCS11_PROVIDER}")

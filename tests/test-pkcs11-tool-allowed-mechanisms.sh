@@ -9,9 +9,10 @@ if [[ ! -f $P11LIB ]]; then
     echo "WARNINIG: The SoftHSM is not installed. Can not run this test"
     exit 77;
 fi
+# The Ubuntu has old softhsm version not supporting this feature
+grep "Ubuntu 18.04" /etc/issue && echo "WARNING: Not supported on Ubuntu 18.04" && exit 77
+
 softhsm_initialize
-# XXX This is broken in currently released SoftHSM
-# P11LIB=/home/jjelen/devel/SoftHSMv2/src/lib/.libs/libsofthsm2.so
 
 echo "======================================================="
 echo "Generate key-pair with CKA_ALLOWED_MECHANISMS"

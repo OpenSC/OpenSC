@@ -103,7 +103,7 @@ static int fuzz_reader_connect(sc_reader_t *reader)
 
     fuzz_get_chunk(reader, &chunk, &chunk_size);
 
-    if (chunk_size > reader->atr.len)
+    if (chunk_size > reader->atr.len && reader->atr.len > 0)
         chunk_size = reader->atr.len;
     else
         reader->atr.len = chunk_size;

@@ -538,6 +538,7 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 	r = (card->ops->card_ctl)(card, SC_CARDCTL_COOLKEY_INIT_GET_OBJECTS, &count);
 	LOG_TEST_RET(card->ctx, r, "Can not initiate objects.");
 
+	sc_log(card->ctx,  "Iterating over %d objects", count);
 	for (i = 0; i < count; i++) {
 		struct sc_cardctl_coolkey_object     coolkey_obj;
 		struct sc_pkcs15_object    obj_obj;
@@ -555,7 +556,7 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 		if (r < 0)
 			LOG_FUNC_RETURN(card->ctx, r);
 
-
+		sc_log(card->ctx, "Loading object %d", i);
 		memset(&obj_obj, 0, sizeof(obj_obj));
 		/* coolkey applets have label only on the certificates,
 		 * but we should copy it also to the keys matching the same ID */
@@ -571,6 +572,7 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 		}
 		switch (obj_class) {
 		case CKO_PRIVATE_KEY:
+			sc_log(card->ctx, "Processing private key object %d", i);
 			r = coolkey_get_attribute_ulong(card, &coolkey_obj, CKA_KEY_TYPE, &key_type);
 			/* default to CKK_RSA */
 			if (r == SC_ERROR_DATA_OBJECT_NOT_FOUND) {
@@ -593,12 +595,12 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 			if (key_type == CKK_RSA) {
 				obj_type = SC_PKCS15_TYPE_PRKEY_RSA;
 				if (key) {
-					prkey_info.modulus_length =  key->u.rsa.modulus.len*8;
+					prkey_info.modulus_length = key->u.rsa.modulus.len*8;
 				}
 			} else if (key_type == CKK_EC) {
 				obj_type = SC_PKCS15_TYPE_PRKEY_EC;
 				if (key) {
-					prkey_info.field_length =  key->u.ec.params.field_length;
+					prkey_info.field_length = key->u.ec.params.field_length;
 				}
 			} else {
 				goto fail;
@@ -606,6 +608,7 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 			break;
 
 		case CKO_PUBLIC_KEY:
+			sc_log(card->ctx, "Processing public key object %d", i);
 			r = coolkey_get_attribute_ulong(card, &coolkey_obj, CKA_KEY_TYPE, &key_type);
 			/* default to CKK_RSA */
 			if (r == SC_ERROR_DATA_OBJECT_NOT_FOUND) {
@@ -623,21 +626,21 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 			obj_info = &pubkey_info;
 			memset(&pubkey_info, 0, sizeof(pubkey_info));
 			r = sc_pkcs15_encode_pubkey_as_spki(card->ctx, key, &pubkey_info.direct.spki.value,
-																			&pubkey_info.direct.spki.len);
+				&pubkey_info.direct.spki.len);
 			if (r < 0)
 				goto fail;
 			coolkey_get_id(card, &coolkey_obj, &pubkey_info.id);
 			pubkey_info.path = coolkey_obj.path;
-			pubkey_info.native        = 1;
+			pubkey_info.native = 1;
 			pubkey_info.key_reference = coolkey_obj.id;
 			coolkey_get_usage(card, &coolkey_obj, &pubkey_info.usage);
 			coolkey_get_access(card, &coolkey_obj, &pubkey_info.access_flags);
 			if (key_type == CKK_RSA) {
 				obj_type = SC_PKCS15_TYPE_PUBKEY_RSA;
-				pubkey_info.modulus_length =  key->u.rsa.modulus.len*8;
+				pubkey_info.modulus_length = key->u.rsa.modulus.len*8;
 			} else if (key_type == CKK_EC) {
 				obj_type = SC_PKCS15_TYPE_PUBKEY_EC;
-				pubkey_info.field_length =  key->u.ec.params.field_length;
+				pubkey_info.field_length = key->u.ec.params.field_length;
 			} else {
 				goto fail;
 			}
@@ -647,6 +650,7 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 			break;
 
 		case CKO_CERTIFICATE:
+			sc_log(card->ctx, "Processing certificate object %d", i);
 			obj_info = &cert_info;
 			memset(&cert_info, 0, sizeof(cert_info));
 			coolkey_get_id(card, &coolkey_obj, &cert_info.id);

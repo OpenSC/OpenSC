@@ -1101,6 +1101,8 @@ static int coolkey_read_object(sc_card_t *card, unsigned long object_id, size_t 
 	size_t len;
 	int r;
 
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
 	ulong2bebytes(&params.object_id[0], object_id);
 
 	out_ptr = out_buf;
@@ -1127,7 +1129,7 @@ static int coolkey_read_object(sc_card_t *card, unsigned long object_id, size_t 
 	return out_len;
 
 fail:
-	return r;
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 /*
@@ -1208,7 +1210,7 @@ static int coolkey_read_binary(sc_card_t *card, unsigned int idx,
 
 
 	r = coolkey_read_object(card, priv->obj->id, 0, data, priv->obj->length,
-												priv->nonce, sizeof(priv->nonce));
+		priv->nonce, sizeof(priv->nonce));
 	if (r < 0)
 		goto done;
 
@@ -1367,6 +1369,8 @@ coolkey_fill_object(sc_card_t *card, sc_cardctl_coolkey_object_t *obj)
 	sc_cardctl_coolkey_object_t *obj_entry;
 	coolkey_private_data_t * priv = COOLKEY_DATA(card);
 
+	LOG_FUNC_CALLED(card->ctx);
+
 	if (obj->data != NULL) {
 		return SC_SUCCESS;
 	}
@@ -1378,7 +1382,7 @@ coolkey_fill_object(sc_card_t *card, sc_cardctl_coolkey_object_t *obj)
 				priv->nonce, sizeof(priv->nonce));
 	if (r != (int)buf_len) {
 		free(new_obj_data);
-		return SC_ERROR_CORRUPTED_DATA;
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_CORRUPTED_DATA);
 	}
 	obj_entry = coolkey_find_object_by_id(&priv->objects_list, obj->id);
 	if (obj_entry == NULL) {
@@ -1397,7 +1401,7 @@ coolkey_fill_object(sc_card_t *card, sc_cardctl_coolkey_object_t *obj)
 	}
 	obj_entry->data = new_obj_data;
 	obj->data = new_obj_data;
-	return SC_SUCCESS;
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
 /*
@@ -1418,6 +1422,8 @@ coolkey_find_attribute(sc_card_t *card, sc_cardctl_coolkey_attribute_t *attribut
 	attribute->attribute_data_type = SC_CARDCTL_COOLKEY_ATTR_TYPE_STRING;
 	attribute->attribute_length = 0;
 	attribute->attribute_value = NULL;
+
+	LOG_FUNC_CALLED(card->ctx);
 
 	if (obj == NULL) {
 		/* cast away const so we can cache the data value */
@@ -1444,7 +1450,6 @@ coolkey_find_attribute(sc_card_t *card, sc_cardctl_coolkey_attribute_t *attribut
 		return SC_ERROR_CORRUPTED_DATA;
 	}
 
-
 	/*
 	 * now loop through all the attributes in the list. first find the start of the list
 	 */
@@ -1460,7 +1465,7 @@ coolkey_find_attribute(sc_card_t *card, sc_cardctl_coolkey_attribute_t *attribut
 		size_t record_len = coolkey_get_attribute_record_len(attr, object_record_type, buf_len);
 		/* make sure we have the complete record */
 		if (buf_len < record_len || record_len < 4) {
-				return SC_ERROR_CORRUPTED_DATA;
+			return SC_ERROR_CORRUPTED_DATA;
 		}
 		/* does the attribute match the one we are looking for */
 		if (attr_type == coolkey_get_attribute_type(attr, object_record_type, record_len)) {
@@ -1477,7 +1482,7 @@ coolkey_find_attribute(sc_card_t *card, sc_cardctl_coolkey_attribute_t *attribut
 
 		return coolkey_get_attribute_data_fixed(attr_type, fixed_attributes, attribute);
 	}
-	return SC_ERROR_DATA_OBJECT_NOT_FOUND;
+	LOG_FUNC_RETURN(card->ctx, SC_ERROR_DATA_OBJECT_NOT_FOUND);
 }
 
 /*
@@ -2078,6 +2083,7 @@ coolkey_process_combined_object(sc_card_t *card, coolkey_private_data_t *priv, u
 		object_offset += current_object_len;
 
 		/* record this object */
+		sc_log(card->ctx, "Add new object id=%ld", object_id);
 		r = coolkey_add_object(priv, object_id, current_object, current_object_len, 1);
 		if (r) {
 			goto done;
@@ -2171,7 +2177,7 @@ static int coolkey_initialize(sc_card_t *card)
 				break;
 			}
 			r = coolkey_read_object(card, COOLKEY_COMBINED_OBJECT_ID, 0, object, object_len,
-											priv->nonce, sizeof(priv->nonce));
+				priv->nonce, sizeof(priv->nonce));
 			if (r < 0) {
 				free(object);
 				break;
@@ -2183,6 +2189,7 @@ static int coolkey_initialize(sc_card_t *card)
 			}
 			combined_processed = 1;
 		} else {
+			sc_log(card->ctx, "Add new object id=%ld, len=%u", object_id, object_len);
 			r = coolkey_add_object(priv, object_id, NULL, object_len, 0);
 			if (r != SC_SUCCESS)
 				sc_log(card->ctx, "coolkey_add_object() returned %d", r);
@@ -2216,19 +2223,19 @@ static int coolkey_initialize(sc_card_t *card)
 		coolkey_make_cuid_from_cplc(&priv->cuid, &cplc_data);
 		priv->token_name = (u8 *)strdup("COOLKEY");
 		if (priv->token_name == NULL) {
-			r= SC_ERROR_OUT_OF_MEMORY;
+			r = SC_ERROR_OUT_OF_MEMORY;
 			goto cleanup;
 		}
 		priv->token_name_length = sizeof("COOLKEY")-1;
 	}
 	card->drv_data = priv;
-	return SC_SUCCESS;
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 
 cleanup:
 	if (priv) {
 		coolkey_free_private_data(priv);
 	}
-	return r;
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 

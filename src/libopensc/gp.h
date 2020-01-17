@@ -32,8 +32,15 @@
 extern "C" {
 #endif
 
+#ifdef _MSC_VER
+#define PACKED
+#pragma pack(push,1)
+#elif defined(__GNUC__)
+#define PACKED __attribute__ ((__packed__))
+#endif
+
 /* returned by the iso get status apdu with the global platform cplc data parameters */
-typedef struct global_platform_cplc_data {
+typedef struct  global_platform_cplc_data {
 	u8 tag[2];
 	u8 length;
 	u8 ic_fabricator[2];
@@ -54,12 +61,19 @@ typedef struct global_platform_cplc_data {
 	u8 ic_personalizaer[2];
 	u8 ic_personalization_data[2];
 	u8 ic_personalization_id[4];
-} global_platform_cplc_data_t;
+} PACKED global_platform_cplc_data_t;
 
 int gp_select_aid(struct sc_card *card, const struct sc_aid *aid);
 int gp_select_card_manager(struct sc_card *card);
 int gp_select_isd_rid(struct sc_card *card);
 int gp_get_cplc_data(struct sc_card *card, global_platform_cplc_data_t *cplc_data);
+
+#ifdef _MSC_VER
+#undef PACKED
+#pragma pack(pop)
+#elif defined(__GNUC__)
+#undef PACKED
+#endif
 
 #ifdef __cplusplus
 }
