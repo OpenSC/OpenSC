@@ -1667,13 +1667,16 @@ static int
 pgp_get_pubkey_pem(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 {
 	struct pgp_priv_data *priv = DRVDATA(card);
-	pgp_blob_t	*blob, *mod_blob, *exp_blob, *pubkey_blob;
-	sc_pkcs15_pubkey_t pubkey;
-	u8		*data;
-	size_t		len;
+	pgp_blob_t	*blob, *mod_blob, *exp_blob, *pubkey_blob, *blob6e, *blob73, *aa_blob;
+	sc_pkcs15_pubkey_t p15pubkey;
+	sc_cardctl_openpgp_keygen_info_t key_info;
+	unsigned int	aa_tag = 0;
+	u8		*data = NULL;
+	size_t		len = 0;
 	int		r;
 
 	sc_log(card->ctx, "called, tag=%04x\n", tag);
+	memset(&p15pubkey, 0, sizeof(p15pubkey));
 
 	if ((r = pgp_get_blob(card, priv->mf, tag & 0xFFFE, &blob)) < 0
 		|| (r = pgp_get_blob(card, blob, 0x7F49, &blob)) < 0)
@@ -1685,28 +1688,61 @@ pgp_get_pubkey_pem(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 		&& (r = pgp_read_blob(card, mod_blob)) >= 0
 		&& (r = pgp_read_blob(card, exp_blob)) >= 0) {
 
-		memset(&pubkey, 0, sizeof(pubkey));
-
-		pubkey.algorithm = SC_ALGORITHM_RSA;
-		pubkey.u.rsa.modulus.data  = mod_blob->data;
-		pubkey.u.rsa.modulus.len   = mod_blob->len;
-		pubkey.u.rsa.exponent.data = exp_blob->data;
-		pubkey.u.rsa.exponent.len  = exp_blob->len;
+		p15pubkey.algorithm = SC_ALGORITHM_RSA;
+		p15pubkey.u.rsa.modulus.data  = mod_blob->data;
+		p15pubkey.u.rsa.modulus.len   = mod_blob->len;
+		p15pubkey.u.rsa.exponent.data = exp_blob->data;
+		p15pubkey.u.rsa.exponent.len  = exp_blob->len;
+		r = sc_pkcs15_encode_pubkey(card->ctx, &p15pubkey, &data, &len);
 	}
 	/* ECC */
 	else if ((r = pgp_get_blob(card, blob, 0x0086, &pubkey_blob)) >= 0
 		&& (r = pgp_read_blob(card, pubkey_blob)) >= 0) {
 
-		memset(&pubkey, 0, sizeof(pubkey));
+		p15pubkey.algorithm = SC_ALGORITHM_EC;
+		p15pubkey.u.ec.ecpointQ.value = pubkey_blob->data;
+		p15pubkey.u.ec.ecpointQ.len = pubkey_blob->len;
 
-		pubkey.algorithm = SC_ALGORITHM_EC;
-		pubkey.u.ec.ecpointQ.value = pubkey_blob->data;
-		pubkey.u.ec.ecpointQ.len = pubkey_blob->len;
+		switch(tag & 0xFFFE) {
+			case DO_SIGN: aa_tag = 0x00C1; break;
+			case DO_ENCR: aa_tag = 0x00C2; break;
+			case DO_AUTH: aa_tag = 0x00C3; break;
+			default: r = SC_ERROR_INCORRECT_PARAMETERS;
+		}
+
+		/* Get EC parameters from Algorithm Attribute if present */
+
+		if (aa_tag && ((r = pgp_get_blob(card, priv->mf, 0x006e, &blob6e)) >= 0) &&
+				((r = pgp_get_blob(card, blob6e, 0x0073, &blob73)) >= 0) &&
+				((r = pgp_get_blob(card, blob73, aa_tag, &aa_blob)) >= 0) &&
+				((r = pgp_parse_algo_attr_blob(aa_blob, &key_info)) >= 0)) {
+
+			if ((r = sc_encode_oid(card->ctx, &key_info.u.ec.oid,
+					&p15pubkey.u.ec.params.der.value,
+					&p15pubkey.u.ec.params.der.len)) == 0) {
+				p15pubkey.u.ec.params.type = 1;
+				r = sc_pkcs15_encode_pubkey_as_spki(card->ctx, &p15pubkey, &data, &len);
+			}
+		} else
+			sc_log(card->ctx, "Unable to find Algorithm Attribute for EC curve OID");
 	}
 	else
 		LOG_TEST_RET(card->ctx, r, "error getting elements");
 
-	r = sc_pkcs15_encode_pubkey(card->ctx, &pubkey, &data, &len);
+	/* clean up anything we may have set in p15pubkey that can not be freed */
+	if (p15pubkey.algorithm == SC_ALGORITHM_RSA)  {
+		p15pubkey.u.rsa.modulus.data  = NULL;
+		p15pubkey.u.rsa.modulus.len = 0;
+		p15pubkey.u.rsa.exponent.data  = NULL;
+		p15pubkey.u.rsa.exponent.len = 0;
+	} else
+	if (p15pubkey.algorithm == SC_ALGORITHM_EC)  {
+		p15pubkey.u.ec.ecpointQ.value = NULL;
+		p15pubkey.u.ec.ecpointQ.len = 0;
+		/* p15pubkey.u.ec.params.der and named_curve will be freed by sc_pkcs15_erase_pubkey */
+	}
+	sc_pkcs15_erase_pubkey(&p15pubkey);
+	
 	LOG_TEST_RET(card->ctx, r, "public key encoding failed");
 
 	if (len > buf_len)
@@ -2622,7 +2658,7 @@ pgp_update_pubkey_blob(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_in
 	struct pgp_priv_data *priv = DRVDATA(card);
 	pgp_blob_t *pk_blob;
 	unsigned int blob_id = 0;
-	sc_pkcs15_pubkey_t pubkey;
+	sc_pkcs15_pubkey_t p15pubkey;
 	u8 *data = NULL;
 	size_t len;
 	int r;
@@ -2647,25 +2683,25 @@ pgp_update_pubkey_blob(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_in
 	/* encode pubkey */
 	/* RSA */
 	if (key_info->algorithm == SC_OPENPGP_KEYALGO_RSA){
-		memset(&pubkey, 0, sizeof(pubkey));
-		pubkey.algorithm = SC_ALGORITHM_RSA;
-		pubkey.u.rsa.modulus.data  = key_info->u.rsa.modulus;
-		pubkey.u.rsa.modulus.len   = BYTES4BITS(key_info->u.rsa.modulus_len);
-		pubkey.u.rsa.exponent.data = key_info->u.rsa.exponent;
-		pubkey.u.rsa.exponent.len  = BYTES4BITS(key_info->u.rsa.exponent_len);
+		memset(&p15pubkey, 0, sizeof(p15pubkey));
+		p15pubkey.algorithm = SC_ALGORITHM_RSA;
+		p15pubkey.u.rsa.modulus.data  = key_info->u.rsa.modulus;
+		p15pubkey.u.rsa.modulus.len   = BYTES4BITS(key_info->u.rsa.modulus_len);
+		p15pubkey.u.rsa.exponent.data = key_info->u.rsa.exponent;
+		p15pubkey.u.rsa.exponent.len  = BYTES4BITS(key_info->u.rsa.exponent_len);
 	}
 	/* ECC */
 	else if (key_info->algorithm == SC_OPENPGP_KEYALGO_ECDH
 			|| key_info->algorithm == SC_OPENPGP_KEYALGO_ECDSA){
-		memset(&pubkey, 0, sizeof(pubkey));
-		pubkey.algorithm = SC_ALGORITHM_EC;
-		pubkey.u.ec.ecpointQ.value = key_info->u.ec.ecpoint;
-		pubkey.u.ec.ecpointQ.len = key_info->u.ec.ecpoint_len;
+		memset(&p15pubkey, 0, sizeof(p15pubkey));
+		p15pubkey.algorithm = SC_ALGORITHM_EC;
+		p15pubkey.u.ec.ecpointQ.value = key_info->u.ec.ecpoint;
+		p15pubkey.u.ec.ecpointQ.len = key_info->u.ec.ecpoint_len;
 	}
 	else
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-	r = sc_pkcs15_encode_pubkey(card->ctx, &pubkey, &data, &len);
+	r = sc_pkcs15_encode_pubkey(card->ctx, &p15pubkey, &data, &len);
 	LOG_TEST_RET(card->ctx, r, "Cannot encode pubkey");
 
 	sc_log(card->ctx, "Updating blob %04X's content.", blob_id);
