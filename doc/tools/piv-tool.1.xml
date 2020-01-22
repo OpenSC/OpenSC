@@ -165,14 +165,6 @@
 				</varlistentry>
 				<varlistentry>
 					<term>
-						<option>--card-driver</option> <replaceable>driver</replaceable>,
-						<option>-c</option> <replaceable>driver</replaceable>
-					</term>
-					<listitem><para>Use the given card driver.
-					The default is auto-detected.</para></listitem>
-				</varlistentry>
-				<varlistentry>
-					<term>
 						<option>--wait</option>,
 						<option>-w</option>
 					</term>

@@ -305,6 +305,26 @@ util_print_usage_and_die(const char *app_name, const struct option options[],
 	exit(2);
 }
 
+int util_list_card_drivers(const sc_context_t *ctx)
+{
+	int i;
+
+	if (ctx == NULL) {
+		fprintf(stderr, "Unable to get card drivers!\n");
+		return 1;
+	}
+	if (ctx->card_drivers[0] == NULL) {
+		fprintf(stderr, "No card drivers installed!\n");
+		return 1;
+	}
+	printf("Available card drivers:\n");
+	for (i = 0; ctx->card_drivers[i] != NULL; i++) {
+		printf("  %-16s %s\n", ctx->card_drivers[i]->short_name,
+		      ctx->card_drivers[i]->name);
+	}
+	return 0;
+}
+
 const char * util_acl_to_str(const sc_acl_entry_t *e)
 {
 	static char line[80], buf[20];

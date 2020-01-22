@@ -97,14 +97,6 @@
 				</varlistentry>
 				<varlistentry>
 					<term>
-						<option>--driver</option> <replaceable>driver</replaceable>,
-						<option>-c</option> <replaceable>driver</replaceable>
-					</term>
-					<listitem><para>Specify the card driver <replaceable>driver</replaceable> to use.
-					Default is use driver from configuration file, or auto-detect if absent</para></listitem>
-				</varlistentry>
-				<varlistentry>
-					<term>
 						<option>--wait</option>, 
 						<option>-w</option>
 					</term>

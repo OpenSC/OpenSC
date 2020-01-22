@@ -461,7 +461,7 @@ static int decode_options(int argc, char **argv)
 	char *endptr;
 	unsigned long val;
 
-	while ((c = getopt_long(argc, argv,"r:x:CUG:KEht:wvVd:", options, (int *) 0)) != EOF) {
+	while ((c = getopt_long(argc, argv,"r:x:CUG:KEht:wvVd:", options, (int *) 0)) != -1) {
 		switch (c) {
 		case 'r':
 			opt_reader = optarg;
