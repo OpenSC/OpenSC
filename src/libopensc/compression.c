@@ -206,7 +206,7 @@ static int sc_decompress_zlib_alloc(u8** out, size_t* outLen, const u8* in, size
 			bufferSize += bufferSize - num + blockSize;
 		}
 		if (err == Z_STREAM_END) {
-			if (*outLen) {
+			if (*outLen > 0) {
 				/* Shrink it down, if it fails, just use old data */
 				buf = realloc(buf, *outLen);
 				if (buf) {
