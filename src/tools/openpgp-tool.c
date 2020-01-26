@@ -47,6 +47,7 @@
 #include "libopensc/errors.h"
 #include "util.h"
 #include "libopensc/log.h"
+#include "libopensc/card-openpgp.h"
 
 #define OPT_RAW     256
 #define OPT_PRETTY  257
@@ -613,7 +614,7 @@ static int do_dump_do(sc_card_t *card, unsigned int tag)
 {
 	int r;
 	size_t length;
-	unsigned char buffer[254];	// Private DO are specified up to 254 bytes
+	unsigned char buffer[MAX_OPENPGP_DO_SIZE];
 
 	memset(buffer, '\0', sizeof(buffer));
 
