@@ -612,19 +612,25 @@ static int do_info(sc_card_t *card, const struct ef_name_map *map)
 
 static int do_dump_do(sc_card_t *card, unsigned int tag)
 {
+	struct pgp_priv_data *priv = DRVDATA(card);
 	int r;
 	size_t length;
-	unsigned char buffer[MAX_OPENPGP_DO_SIZE];
-
-	memset(buffer, '\0', sizeof(buffer));
+	unsigned char *buffer;
 
 	if (tag < 0x101 || tag > 0x104) {
 		util_error("illegal DO identifier %04X", tag);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
-	r = sc_get_data(card, tag, buffer, sizeof(buffer));
+	buffer = calloc(priv->max_specialDO_size, sizeof(unsigned char));
+	if (buffer == NULL) {
+		util_error("error allocating memory for DO %04X", tag);
+		return SC_ERROR_OUT_OF_MEMORY;
+	}
+
+	r = sc_get_data(card, tag, buffer, priv->max_specialDO_size);
 	if (r < 0) {
+		free(buffer);
 		util_error("failed to get data object DO %04X: %s", tag, sc_strerror(r));
 		if (SC_ERROR_SECURITY_STATUS_NOT_SATISFIED == r) {
 			util_error("make sure the 'verify' and 'pin' parameters are correct");
@@ -656,12 +662,15 @@ static int do_dump_do(sc_card_t *card, unsigned int tag)
 		clearerr(stdout);
 		close(tmp);
 
-		if (length != (size_t) r)	/* fail on write errors */
+		if (length != (size_t) r) {	/* fail on write errors */
+			free(buffer);
 			return EXIT_FAILURE;
+		}
 	} else {
 		util_hex_dump_asc(stdout, buffer, length, -1);
 	}
 
+	free(buffer);
 	return EXIT_SUCCESS;
 }
 
