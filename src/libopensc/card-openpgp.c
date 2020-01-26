@@ -688,6 +688,9 @@ pgp_get_card_features(sc_card_t *card)
 		card->caps |= SC_CARD_CAP_ISO7816_PIN_INFO;
 	}
 
+	/* v1.1 & v2.x: special DOs are limited to 254 bytes */
+	priv->max_specialDO_size = 254;
+
 	if ((pgp_get_blob(card, priv->mf, 0x006e, &blob6e) >= 0) &&
 	    (pgp_get_blob(card, blob6e, 0x0073, &blob73) >= 0)) {
 
@@ -738,6 +741,9 @@ pgp_get_card_features(sc_card_t *card)
 					priv->sm_algo = blob->data[1];
 					if ((priv->sm_algo == SM_ALGO_NONE) && (priv->ext_caps & EXT_CAP_SM))
 						priv->sm_algo = SM_ALGO_UNKNOWN;
+
+					/* v3.0+: max. size of special DOs is at bytes 7-8 */
+					priv->max_specialDO_size = bebytes2ushort(blob->data + 6);
 				}
 				if (priv->bcd_version >= OPENPGP_CARD_3_3 && (blob->len >= 10)) {
 					/* v3.3+: MSE for key numbers 2(DEC) and 3(AUT) supported */

@@ -183,6 +183,7 @@ struct pgp_priv_data {
 
 	size_t			max_challenge_size;
 	size_t			max_cert_size;
+	size_t			max_specialDO_size;
 
 	sc_security_env_t	sec_env;
 };
