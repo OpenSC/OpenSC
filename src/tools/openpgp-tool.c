@@ -1,7 +1,7 @@
 /*
  * openpgp-tool.c: OpenPGP card utility
  *
- * Copyright (C) 2012 Peter Marschall <peter@adpm.de>
+ * Copyright (C) 2012-2020 Peter Marschall <peter@adpm.de>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -194,7 +194,7 @@ static void show_version(void)
 	fprintf(stderr,
 		"openpgp-tool - OpenPGP card utility version " PACKAGE_VERSION "\n"
 		"\n"
-		"Copyright (c) 2012-18 Peter Marschall <peter@adpm.de>\n"
+		"Copyright (c) 2012-2020 Peter Marschall <peter@adpm.de>\n"
 		"Licensed under LGPL v2\n");
 }
 
