@@ -878,6 +878,14 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
+	/* force OpenPGP card driver */
+	r = sc_set_card_driver(ctx, "openpgp");
+	if (r) {
+		sc_release_context(ctx);
+		util_fatal("OpenPGP card driver not found!\n");
+		return EXIT_FAILURE;
+	}
+
 	r = util_connect_card(ctx, &card, opt_reader, opt_wait, verbose);
 	if (r) {
 		sc_release_context(ctx);
