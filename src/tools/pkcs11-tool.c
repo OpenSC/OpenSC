@@ -137,6 +137,7 @@ enum {
 	OPT_KEY_USAGE_SIGN,
 	OPT_KEY_USAGE_DECRYPT,
 	OPT_KEY_USAGE_DERIVE,
+	OPT_KEY_USAGE_WRAP,
 	OPT_PRIVATE,
 	OPT_SENSITIVE,
 	OPT_EXTRACTABLE,
@@ -197,6 +198,7 @@ static const struct option options[] = {
 	{ "usage-sign",		0, NULL,		OPT_KEY_USAGE_SIGN },
 	{ "usage-decrypt",	0, NULL,		OPT_KEY_USAGE_DECRYPT },
 	{ "usage-derive",	0, NULL,		OPT_KEY_USAGE_DERIVE },
+	{ "usage-wrap",	0, NULL,		OPT_KEY_USAGE_WRAP },
 	{ "write-object",	1, NULL,		'w' },
 	{ "read-object",	0, NULL,		'r' },
 	{ "delete-object",	0, NULL,		'b' },
@@ -355,6 +357,7 @@ static int		opt_login_type = -1;
 static int		opt_key_usage_sign = 0;
 static int		opt_key_usage_decrypt = 0;
 static int		opt_key_usage_derive = 0;
+static int		opt_key_usage_wrap = 0;
 static int		opt_key_usage_default = 1; /* uses defaults if no opt_key_usage options */
 static int		opt_derive_pass_der = 0;
 static unsigned long	opt_random_bytes = 0;
@@ -877,6 +880,10 @@ int main(int argc, char * argv[])
 			break;
 		case OPT_KEY_USAGE_DERIVE:
 			opt_key_usage_derive = 1;
+			opt_key_usage_default = 0;
+			break;
+		case OPT_KEY_USAGE_WRAP:
+			opt_key_usage_wrap = 1;
 			opt_key_usage_default = 0;
 			break;
 		case OPT_PRIVATE:
@@ -2326,10 +2333,12 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 				n_privkey_attr++;
 			}
 
-			FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_WRAP, &_true, sizeof(_true));
-			n_pubkey_attr++;
-			FILL_ATTR(privateKeyTemplate[n_privkey_attr], CKA_UNWRAP, &_true, sizeof(_true));
-			n_privkey_attr++;
+			if (opt_key_usage_wrap) {
+				FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_WRAP, &_true, sizeof(_true));
+				n_pubkey_attr++;
+				FILL_ATTR(privateKeyTemplate[n_privkey_attr], CKA_UNWRAP, &_true, sizeof(_true));
+				n_privkey_attr++;
+			}
 		}
 		else if (!strncmp(type, "EC:", 3))   {
 			CK_MECHANISM_TYPE mtypes[] = {CKM_EC_KEY_PAIR_GEN};
