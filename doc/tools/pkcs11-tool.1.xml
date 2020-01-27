@@ -172,6 +172,13 @@
 
 				<varlistentry>
 					<term>
+						<option>--usage-wrap</option>
+					</term>
+					<listitem><para>Specify 'wrap' key usage flag.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
 						<option>--label</option> <replaceable>name</replaceable>,
 						<option>-a</option> <replaceable>name</replaceable>
 					</term>
