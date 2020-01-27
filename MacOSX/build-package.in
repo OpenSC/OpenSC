@@ -96,15 +96,16 @@ mkdir -p "$BUILDPATH/target/Applications"
 osacompile -o "$BUILDPATH/target/Applications/OpenSC Notify.app" "MacOSX/OpenSC_Notify.applescript"
 
 
-# Check out OpenSC.tokend, if not already fetched.
-if ! test -e OpenSC.tokend; then
-	git clone http://github.com/OpenSC/OpenSC.tokend.git
-fi
-
-# Create the symlink to OpenSC sources
-test -L OpenSC.tokend/build/opensc-src || ln -sf ${BUILDPATH}/src OpenSC.tokend/build/opensc-src
-
+# Build OpenSC.tokend when XCode version < 10
 if (( xcodebuild -version | sed -En 's/Xcode[[:space:]]+([0-9]+)\.[0-9]*/\1/p' < 10 )); then
+	# Check out OpenSC.tokend, if not already fetched.
+	if ! test -e OpenSC.tokend; then
+		git clone http://github.com/OpenSC/OpenSC.tokend.git
+	fi
+
+	# Create the symlink to OpenSC sources
+	test -L OpenSC.tokend/build/opensc-src || ln -sf ${BUILDPATH}/src OpenSC.tokend/build/opensc-src
+
 	# Build and copy OpenSC.tokend
 	xcodebuild -target OpenSC -configuration Deployment -project OpenSC.tokend/Tokend.xcodeproj install DSTROOT=${BUILDPATH}/target_tokend
 else
