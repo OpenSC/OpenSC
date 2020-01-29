@@ -106,6 +106,8 @@
 #define CAC_ACR_AMP                   0x20
 #define CAC_ACR_SERVICE               0x21
 
+#define CAC_MAX_CCC_DEPTH             16
+
 /* hardware data structures (returned in the CCC) */
 /* part of the card_url */
 typedef struct cac_access_profile {
@@ -1420,10 +1422,10 @@ static int cac_parse_cuid(sc_card_t *card, cac_private_data_t *priv, cac_cuid_t 
 	priv->cac_id_len = card_id_len;
 	return SC_SUCCESS;
 }
-static int cac_process_CCC(sc_card_t *card, cac_private_data_t *priv);
+static int cac_process_CCC(sc_card_t *card, cac_private_data_t *priv, int depth);
 
 static int cac_parse_CCC(sc_card_t *card, cac_private_data_t *priv, const u8 *tl,
-						 size_t tl_len, u8 *val, size_t val_len)
+	size_t tl_len, u8 *val, size_t val_len, int depth)
 {
 	size_t len = 0;
 	const u8 *tl_end = tl + tl_len;
@@ -1520,7 +1522,8 @@ static int cac_parse_CCC(sc_card_t *card, cac_private_data_t *priv, const u8 *tl
 			if (r < 0)
 				return r;
 
-			r = cac_process_CCC(card, priv);
+			/* Increase depth to avoid infinite recursion */
+			r = cac_process_CCC(card, priv, depth + 1);
 			if (r < 0)
 				return r;
 			break;
@@ -1533,12 +1536,16 @@ static int cac_parse_CCC(sc_card_t *card, cac_private_data_t *priv, const u8 *tl
 	return SC_SUCCESS;
 }
 
-static int cac_process_CCC(sc_card_t *card, cac_private_data_t *priv)
+static int cac_process_CCC(sc_card_t *card, cac_private_data_t *priv, int depth)
 {
 	u8 *tl = NULL, *val = NULL;
 	size_t tl_len, val_len;
 	int r;
 
+	if (depth < 0) {
+		sc_log(card->ctx, "Too much recursive CCC found. Exiting");
+		return SC_ERROR_INVALID_CARD;
+	}
 
 	r = cac_read_file(card, CAC_FILE_TAG, &tl, &tl_len);
 	if (r < 0)
@@ -1548,7 +1555,7 @@ static int cac_process_CCC(sc_card_t *card, cac_private_data_t *priv)
 	if (r < 0)
 		goto done;
 
-	r = cac_parse_CCC(card, priv, tl, tl_len, val, val_len);
+	r = cac_parse_CCC(card, priv, tl, tl_len, val, val_len, depth);
 done:
 	if (tl)
 		free(tl);
@@ -1775,7 +1782,7 @@ static int cac_find_and_initialize(sc_card_t *card, int initialize)
 		priv = cac_new_private_data();
 		if (!priv)
 			return SC_ERROR_OUT_OF_MEMORY;
-		r = cac_process_CCC(card, priv);
+		r = cac_process_CCC(card, priv, CAC_MAX_CCC_DEPTH);
 		if (r == SC_SUCCESS) {
 			card->type = SC_CARD_TYPE_CAC_II;
 			card->drv_data = priv;
