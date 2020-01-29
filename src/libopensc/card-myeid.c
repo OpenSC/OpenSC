@@ -176,6 +176,7 @@ static int myeid_init(struct sc_card *card)
 	size_t resp_len = 0;
 	static struct sc_aid myeid_aid = { "\xA0\x00\x00\x00\x63\x50\x4B\x43\x53\x2D\x31\x35", 0x0C };
 	int rv = 0;
+	void *old_drv_data = card->drv_data;
 
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -200,14 +201,14 @@ static int myeid_init(struct sc_card *card)
 
 	/* Ensure that the MyEID applet is selected. */	
 	rv = myeid_select_aid(card, &myeid_aid, NULL, &resp_len);
-	LOG_TEST_RET(card->ctx, rv, "Failed to select MyEID applet.");
+	LOG_TEST_GOTO_ERR(card->ctx, rv, "Failed to select MyEID applet.");
 
 	/* find out MyEID version */
 
 	appletInfoLen = 20;
 
 	if (0 > myeid_get_info(card, appletInfo, appletInfoLen))
-		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_CARD, "Failed to get MyEID applet information.");
+		LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_INVALID_CARD, "Failed to get MyEID applet information.");
 
 	priv->change_counter = appletInfo[19] | appletInfo[18] << 8;
 
@@ -286,7 +287,15 @@ static int myeid_init(struct sc_card *card)
 		card->max_recv_size = 255;
 	card->max_send_size = 255;
 
-	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+	rv = SC_SUCCESS;
+
+err:
+	if (rv < 0) {
+		free(priv);
+		card->drv_data = old_drv_data;
+	}
+
+	LOG_FUNC_RETURN(card->ctx, rv);
 }
 
 static const struct sc_card_operations *iso_ops = NULL;
