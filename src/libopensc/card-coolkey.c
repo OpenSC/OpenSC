@@ -1382,6 +1382,9 @@ coolkey_fill_object(sc_card_t *card, sc_cardctl_coolkey_object_t *obj)
 				priv->nonce, sizeof(priv->nonce));
 	if (r != (int)buf_len) {
 		free(new_obj_data);
+		if (r < 0) {
+			LOG_FUNC_RETURN(card->ctx, r);
+		}
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_CORRUPTED_DATA);
 	}
 	obj_entry = coolkey_find_object_by_id(&priv->objects_list, obj->id);
