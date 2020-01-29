@@ -2063,12 +2063,23 @@ coolkey_process_combined_object(sc_card_t *card, coolkey_private_data_t *priv, u
 	priv->token_name_length = decompressed_header->token_name_length;
 
 
-	for (i=0; i < object_count && object_offset < decompressed_object_len; i++ ) {
-		u8 *current_object = &decompressed_object[object_offset];
-		coolkey_combined_object_header_t *object_header =
-				(coolkey_combined_object_header_t *)current_object;
-		unsigned long object_id = bebytes2ulong(object_header->object_id);
+	for (i=0; i < object_count; i++) {
+		u8 *current_object = NULL;
+		coolkey_combined_object_header_t *object_header = NULL;
+		unsigned long object_id;
 		int current_object_len;
+
+		/* Can we read the object header at all? */
+		if ((object_offset + sizeof(coolkey_combined_object_header_t)) > decompressed_object_len) {
+			r = SC_ERROR_CORRUPTED_DATA;
+			goto done;
+		}
+
+		current_object = &decompressed_object[object_offset];
+		object_header = (coolkey_combined_object_header_t *)current_object;
+
+		/* Parse object ID */
+		object_id = bebytes2ulong(object_header->object_id);
 
 		/* figure out how big it is */
 		r = coolkey_v1_get_object_length(current_object, decompressed_object_len-object_offset);
