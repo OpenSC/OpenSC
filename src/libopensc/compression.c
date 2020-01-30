@@ -162,28 +162,31 @@ static int sc_decompress_zlib_alloc(u8** out, size_t* outLen, const u8* in, size
 	z_stream gz;
 	int err;
 	int window_size = 15;
-	const int startSize = inLen < 1024 ? 2048 : inLen * 2;
-	const int blockSize = inLen < 1024 ? 512 : inLen / 2;
-	int bufferSize = startSize;
-	if(gzip)
+	const size_t startSize = inLen < 1024 ? 2048 : inLen * 2;
+	const size_t blockSize = inLen < 1024 ? 512 : inLen / 2;
+	size_t bufferSize = startSize;
+	if (gzip)
 		window_size += 0x20;
 	memset(&gz, 0, sizeof(gz));
+
+	if (!out || !outLen)
+		return SC_ERROR_INVALID_ARGUMENTS;
 	
 	gz.next_in = (u8*)in;
 	gz.avail_in = inLen;
 
 	err = inflateInit2(&gz, window_size);
-	if(err != Z_OK) return zerr_to_opensc(err);
+	if (err != Z_OK)
+		return zerr_to_opensc(err);
 
 	*outLen = 0;
 
-	while(1) {
+	while (1) {
 		/* Setup buffer... */
-		int num;
+		size_t num;
 		u8* buf = realloc(*out, bufferSize);
-		if(!buf) {
-			if(*out)
-				free(*out);
+		if (!buf) {
+			free(*out);
 			*out = NULL;
 			return SC_ERROR_OUT_OF_MEMORY;
 		}
@@ -192,21 +195,21 @@ static int sc_decompress_zlib_alloc(u8** out, size_t* outLen, const u8* in, size
 		gz.avail_out = bufferSize - *outLen;
 
 		err = inflate(&gz, Z_FULL_FLUSH);
-		if(err != Z_STREAM_END && err != Z_OK) {
-			if(*out)
-				free(*out);
+		if (err != Z_STREAM_END && err != Z_OK) {
+			free(*out);
 			*out = NULL;
 			break;
 		}
-		num = bufferSize - *outLen - gz.avail_out;
-		if(num > 0) {
-			*outLen += num;
-			bufferSize += num + blockSize;
+		num = *outLen + gz.avail_out;
+		if (bufferSize > num) {
+			*outLen += bufferSize - num;
+			bufferSize += bufferSize - num + blockSize;
 		}
-		if(err == Z_STREAM_END) {
-			if (*outLen) {
-				buf = realloc(buf, *outLen); /* Shrink it down, if it fails, just use old data */
-				if(buf) {
+		if (err == Z_STREAM_END) {
+			if (*outLen > 0) {
+				/* Shrink it down, if it fails, just use old data */
+				buf = realloc(buf, *outLen);
+				if (buf) {
 					*out = buf;
 				}
 			} else {
@@ -220,6 +223,7 @@ static int sc_decompress_zlib_alloc(u8** out, size_t* outLen, const u8* in, size
 	inflateEnd(&gz);
 	return zerr_to_opensc(err);
 }
+
 int sc_decompress_alloc(u8** out, size_t* outLen, const u8* in, size_t inLen, int method) {
 	if(method == COMPRESSION_AUTO) {
 		method = detect_method(in, inLen);
