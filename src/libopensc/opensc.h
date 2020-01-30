@@ -1122,7 +1122,10 @@ int sc_select_file(struct sc_card *card, const sc_path_t *path,
  */
 int sc_list_files(struct sc_card *card, u8 *buf, size_t buflen);
 /**
- * Read data from a binary EF
+ * @brief Read data from a binary EF
+ *
+ * If `count` exceeds the card's transmission limits, multiple commands are issued.
+ *
  * @param  card   struct sc_card object on which to issue the command
  * @param  idx    index within the file with the data to read
  * @param  buf    buffer to the read data
@@ -1133,7 +1136,10 @@ int sc_list_files(struct sc_card *card, u8 *buf, size_t buflen);
 int sc_read_binary(struct sc_card *card, unsigned int idx, u8 * buf,
 		   size_t count, unsigned long flags);
 /**
- * Write data to a binary EF
+ * @brief Write data to a binary EF
+ *
+ * If `count` exceeds the card's transmission limits, multiple commands are issued.
+ *
  * @param  card   struct sc_card object on which to issue the command
  * @param  idx    index within the file for the data to be written
  * @param  buf    buffer with the data
@@ -1144,7 +1150,10 @@ int sc_read_binary(struct sc_card *card, unsigned int idx, u8 * buf,
 int sc_write_binary(struct sc_card *card, unsigned int idx, const u8 * buf,
 		    size_t count, unsigned long flags);
 /**
- * Updates the content of a binary EF
+ * @brief Updates the content of a binary EF
+ *
+ * If `count` exceeds the card's transmission limits, multiple commands are issued.
+ *
  * @param  card   struct sc_card object on which to issue the command
  * @param  idx    index within the file for the data to be updated
  * @param  buf    buffer with the new data
