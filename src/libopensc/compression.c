@@ -51,17 +51,21 @@ static int zerr_to_opensc(int err) {
 	}
 }
 static int detect_method(const u8* in, size_t inLen) {
-	if(inLen > 2 && in[0] == 0x1f && in[1] == 0x8b) { /* GZIP */
-		return COMPRESSION_GZIP;
-	} else if(inLen > 1 /*&& (in[0] & 0x10) == Z_DEFLATED*/) {
-		/* REALLY SIMPLE ZLIB TEST -- 
-		 * Check for the compression method to be set to 8...
-		 * many things can spoof this, but this is ok for now
-		 * */
+	if (in != NULL && inLen > 1) {
+		if (inLen > 2 && in[0] == 0x1f && in[1] == 0x8b)
+			return COMPRESSION_GZIP;
+#if 0
+		if ((in[0] & 0x10) == Z_DEFLATED)
+			/* REALLY SIMPLE ZLIB TEST -- 
+			 * Check for the compression method to be set to 8...
+			 * many things can spoof this, but this is ok for now
+			 * */
+			return COMPRESSION_ZLIB;
+#else
 		return COMPRESSION_ZLIB;
-	} else {
-		return COMPRESSION_UNKNOWN;
+#endif
 	}
+	return COMPRESSION_UNKNOWN;
 }
 
 static int sc_compress_gzip(u8* out, size_t* outLen, const u8* in, size_t inLen) {
