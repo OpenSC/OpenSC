@@ -638,8 +638,7 @@ struct sc_card_operations {
 	 * @param  buf    buffer to the read data
 	 * @param  count  number of bytes to read
 	 * @param  flags  flags for the READ BINARY command (currently not used)
-	 * @return number of bytes read or an error code.
-	 *                SC_SUCCESS indicates that all requested bytes were read.
+	 * @return number of bytes read or an error code
 	 *
 	 * @see sc_read_binary()
 	 */
@@ -655,8 +654,7 @@ struct sc_card_operations {
 	 * @param  buf    buffer with the data
 	 * @param  count  number of bytes to write
 	 * @param  flags  flags for the WRITE BINARY command (currently not used)
-	 * @return number of bytes written or an error code.
-	 *                SC_SUCCESS indicates that all requested bytes were written.
+	 * @return number of bytes written or an error code
 	 *
 	 * @see sc_write_binary()
 	 */
@@ -671,8 +669,7 @@ struct sc_card_operations {
 	 * @param  buf    buffer with the new data
 	 * @param  count  number of bytes to update
 	 * @param  flags  flags for the UPDATE BINARY command (currently not used)
-	 * @return number of bytes written or an error code.
-	 *                SC_SUCCESS indicates that all requested bytes were updated.
+	 * @return number of bytes written or an error code
 	 *
 	 * @see sc_update_binary()
 	 */
@@ -687,8 +684,7 @@ struct sc_card_operations {
 	 * @param  idx    index within the file for the data to be erased
 	 * @param  count  number of bytes to erase
 	 * @param  flags  flags for the ERASE BINARY command (currently not used)
-	 * @return number of bytes erased or an error code.
-	 *                SC_SUCCESS indicates that all requested bytes were erased.
+	 * @return number of bytes erased or an error code
 	 *
 	 * @see sc_erase_binary()
 	 */

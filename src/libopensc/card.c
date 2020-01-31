@@ -650,9 +650,8 @@ int sc_read_binary(sc_card_t *card, unsigned int idx,
 		size_t chunk = todo > max_le ? max_le : todo;
 
 		r = card->ops->read_binary(card, idx, buf, chunk, flags);
-		if (r == SC_SUCCESS) {
-			r = (int) chunk;
-		}
+		if (r == 0 || r = SC_ERROR_FILE_END_REACHED)
+			break;
 		if ((idx > SIZE_MAX - (size_t) r)
 				|| (size_t) r > todo) {
 			/* `idx + r` or `todo - r` would overflow */
@@ -670,7 +669,7 @@ int sc_read_binary(sc_card_t *card, unsigned int idx,
 
 	sc_unlock(card);
 
-	LOG_FUNC_RETURN(card->ctx, count);
+	LOG_FUNC_RETURN(card->ctx, count - todo);
 }
 
 int sc_write_binary(sc_card_t *card, unsigned int idx,
@@ -699,9 +698,8 @@ int sc_write_binary(sc_card_t *card, unsigned int idx,
 		size_t chunk = todo > max_lc ? max_lc : todo;
 
 		r = card->ops->write_binary(card, idx, buf, chunk, flags);
-		if (r == SC_SUCCESS) {
-			r = (int) chunk;
-		}
+		if (r == 0 || r = SC_ERROR_FILE_END_REACHED)
+			break;
 		if ((idx > SIZE_MAX - (size_t) r)
 				|| (size_t) r > todo) {
 			/* `idx + r` or `todo - r` would overflow */
@@ -719,7 +717,7 @@ int sc_write_binary(sc_card_t *card, unsigned int idx,
 
 	sc_unlock(card);
 
-	LOG_FUNC_RETURN(card->ctx, count);
+	LOG_FUNC_RETURN(card->ctx, count - todo);
 }
 
 int sc_update_binary(sc_card_t *card, unsigned int idx,
@@ -756,9 +754,8 @@ int sc_update_binary(sc_card_t *card, unsigned int idx,
 		size_t chunk = todo > max_lc ? max_lc : todo;
 
 		r = card->ops->update_binary(card, idx, buf, chunk, flags);
-		if (r == SC_SUCCESS) {
-			r = (int) chunk;
-		}
+		if (r == 0 || r = SC_ERROR_FILE_END_REACHED)
+			break;
 		if ((idx > SIZE_MAX - (size_t) r)
 				|| (size_t) r > todo) {
 			/* `idx + r` or `todo - r` would overflow */
@@ -776,7 +773,7 @@ int sc_update_binary(sc_card_t *card, unsigned int idx,
 
 	sc_unlock(card);
 
-	LOG_FUNC_RETURN(card->ctx, count);
+	LOG_FUNC_RETURN(card->ctx, count - todo);
 }
 
 
@@ -803,8 +800,12 @@ int sc_erase_binary(struct sc_card *card, unsigned int idx, size_t count,  unsig
 
 	while (todo > 0) {
 		r = card->ops->erase_binary(card, idx, todo, flags);
-		if (r == SC_SUCCESS) {
-			r = todo;
+		if (r == 0 || r = SC_ERROR_FILE_END_REACHED)
+			break;
+		if ((idx > SIZE_MAX - (size_t) r)
+				|| (size_t) r > todo) {
+			/* `idx + r` or `todo - r` would overflow */
+			r = SC_ERROR_OFFSET_TOO_LARGE;
 		}
 		if (r < 0) {
 			sc_unlock(card);
@@ -817,7 +818,7 @@ int sc_erase_binary(struct sc_card *card, unsigned int idx, size_t count,  unsig
 
 	sc_unlock(card);
 
-	LOG_FUNC_RETURN(card->ctx, count);
+	LOG_FUNC_RETURN(card->ctx, count - todo);
 }
 
 

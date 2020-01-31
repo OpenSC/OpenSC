@@ -207,20 +207,6 @@ jpki_select_file(struct sc_card *card,
 }
 
 static int
-jpki_read_binary(sc_card_t * card, unsigned int idx,
-		 u8 * buf, size_t count, unsigned long flags)
-{
-	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
-	const struct sc_card_operations *iso_ops = iso_drv->ops;
-	int rc;
-
-	LOG_FUNC_CALLED(card->ctx);
-
-	rc = iso_ops->read_binary(card, idx, buf, count, flags);
-	LOG_FUNC_RETURN(card->ctx, rc);
-}
-
-static int
 jpki_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 {
 	int rc;
@@ -385,7 +371,6 @@ sc_get_driver(void)
 	jpki_ops.init = jpki_init;
 	jpki_ops.finish = jpki_finish;
 	jpki_ops.select_file = jpki_select_file;
-	jpki_ops.read_binary = jpki_read_binary;
 	jpki_ops.pin_cmd = jpki_pin_cmd;
 	jpki_ops.set_security_env = jpki_set_security_env;
 	jpki_ops.compute_signature = jpki_compute_signature;
