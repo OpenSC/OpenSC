@@ -476,7 +476,7 @@ static int setcos_create_file_44(sc_card_t *card, sc_file_t *file)
 					sc_log(card->ctx,  "SetCOS 4.4 PIN refs can only be 1..7\n");
 					return SC_ERROR_INVALID_ARGUMENTS;
 				}
-				bCommands_pin[setcos_pin_index_44(pins, sizeof(pins), (int) bNumber)] |= 1 << i;
+				bCommands_pin[setcos_pin_index_44(pins, sizeof(pins)/sizeof(pins[0]), (int) bNumber)] |= 1 << i;
 				break;
 			case SC_AC_TERM:			/* key */
 				bKeyNumber = bNumber;	/* There should be only 1 key */
