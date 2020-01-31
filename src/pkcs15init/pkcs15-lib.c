@@ -1871,7 +1871,7 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card, struct sc_profile
 	profile->dirty = 1;
 
 err:
-	if (object && r < 0)
+	if (r < 0)
 		sc_pkcs15init_free_object(object);
 
 	LOG_FUNC_RETURN(ctx, r);

@@ -505,7 +505,7 @@ static int idprime_select_file(sc_card_t *card, const sc_path_t *in_path, sc_fil
 	priv->cached = 0;
 
 	r = iso_ops->select_file(card, in_path, file_out);
-	if (r == SC_SUCCESS && priv && file_out != NULL) {
+	if (r == SC_SUCCESS && file_out != NULL) {
 		/* Try to read first bytes of the file to fix FCI in case of
 		 * compressed certififcate */
 		len = iso_ops->read_binary(card, 0, data, data_len, 0);
