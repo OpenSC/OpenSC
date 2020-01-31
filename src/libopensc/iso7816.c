@@ -1322,6 +1322,8 @@ int iso7816_read_binary_sfid(sc_card_t *card, unsigned char sfid,
 			*ef_len += r;
 			break;
 		}
+		if (r == 0 || r == SC_ERROR_FILE_END_REACHED)
+			break;
 		if (r < 0) {
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not read EF.");
 			goto err;
@@ -1339,7 +1341,7 @@ int iso7816_read_binary_sfid(sc_card_t *card, unsigned char sfid,
 				*ef + *ef_len, read, 0);
 	}
 
-	r = SC_SUCCESS;
+	r = *ef_len;
 
 err:
 	return r;
@@ -1399,6 +1401,8 @@ int iso7816_write_binary_sfid(sc_card_t *card, unsigned char sfid,
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not write EF.");
 			goto err;
 		}
+		if (r == 0 || r == SC_ERROR_FILE_END_REACHED)
+			break;
 		wrote += r;
 		apdu.data += r;
 		if (wrote >= ef_len)
@@ -1407,7 +1411,7 @@ int iso7816_write_binary_sfid(sc_card_t *card, unsigned char sfid,
 		r = sc_write_binary(card, wrote, ef, write, 0);
 	}
 
-	r = SC_SUCCESS;
+	r = wrote;
 
 err:
 	return r;
@@ -1467,6 +1471,8 @@ int iso7816_update_binary_sfid(sc_card_t *card, unsigned char sfid,
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not update EF.");
 			goto err;
 		}
+		if (r == 0 || r == SC_ERROR_FILE_END_REACHED)
+			break;
 		wrote += r;
 		apdu.data += r;
 		if (wrote >= ef_len)
@@ -1475,7 +1481,7 @@ int iso7816_update_binary_sfid(sc_card_t *card, unsigned char sfid,
 		r = sc_update_binary(card, wrote, ef, write, 0);
 	}
 
-	r = SC_SUCCESS;
+	r = wrote;
 
 err:
 	return r;
