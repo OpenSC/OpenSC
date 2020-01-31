@@ -63,6 +63,22 @@ u8 invalid_suffix_data[] = {
 	0xb9, 0x3b, 0x05, 0x00, 0x00, 0x00,
 	0xff, 0xff, 0xff, 0xff};
 
+/* https://github.com/madler/zlib/blob/master/test/infcover.c
+ */
+u8 zlib_good[] = {0x78, 0x9c, 0x63, 0x0, 0x0, 0x0, 0x1, 0x0, 0x1};
+
+/* Generated using
+ * $ echo "test" > /tmp/test
+ * $ pigz --zlib /tmp/test  > /tmp/test.zz
+ * $ hexdump -C /tmp/test.zz
+ */
+u8 valid_zlib_data[] = {0x78, 0x5e, 0x2b, 0x49, 0x2d, 0x2e, 0xe1, 0x02, 0x00, 0x06, 0x28, 0x01, 0xcb};
+
+/* Generated as in the previous test case with some added mess on the end
+ */
+u8 invalid_zlib_suffix_data[] = {0x78, 0x5e, 0x2b, 0x49, 0x2d, 0x2e, 0xe1, 0x02, 0x00, 0x06, 0x28, 0x01, 0xcb,
+	0xff, 0xff, 0xff, 0xff};
+
 static void torture_compression_decompress_alloc_empty(void **state)
 {
 	u8 *buf = NULL;
@@ -150,10 +166,14 @@ static void torture_compression_decompress_alloc_valid(void **state)
 {
 	u8 *buf = NULL;
 	size_t buflen = 0;
-	size_t datalen = sizeof(valid_data);
 	int rv;
 
-	rv = sc_decompress_alloc(&buf, &buflen, valid_data, datalen, COMPRESSION_AUTO);
+	rv = sc_decompress_alloc(&buf, &buflen, valid_data, sizeof(valid_data), COMPRESSION_AUTO);
+	assert_int_equal(rv, SC_SUCCESS);
+	assert_int_equal(buflen, 5);
+	assert_memory_equal(buf, "test\x0a", 5);
+
+	rv = sc_decompress_alloc(&buf, &buflen, valid_zlib_data, sizeof(valid_zlib_data), COMPRESSION_AUTO);
 	assert_int_equal(rv, SC_SUCCESS);
 	assert_int_equal(buflen, 5);
 	assert_memory_equal(buf, "test\x0a", 5);
@@ -163,10 +183,14 @@ static void torture_compression_decompress_alloc_invalid_suffix(void **state)
 {
 	u8 *buf = NULL;
 	size_t buflen = 0;
-	size_t datalen = sizeof(invalid_suffix_data);
 	int rv;
 
-	rv = sc_decompress_alloc(&buf, &buflen, invalid_suffix_data, datalen, COMPRESSION_AUTO);
+	rv = sc_decompress_alloc(&buf, &buflen, invalid_suffix_data, sizeof(invalid_suffix_data), COMPRESSION_AUTO);
+	assert_int_equal(rv, SC_SUCCESS); /* TODO Is this fine? */
+	assert_int_equal(buflen, 5);
+	assert_memory_equal(buf, "test\x0a", 5);
+
+	rv = sc_decompress_alloc(&buf, &buflen, invalid_zlib_suffix_data, sizeof(invalid_zlib_suffix_data), COMPRESSION_AUTO);
 	assert_int_equal(rv, SC_SUCCESS); /* TODO Is this fine? */
 	assert_int_equal(buflen, 5);
 	assert_memory_equal(buf, "test\x0a", 5);
@@ -185,7 +209,7 @@ static void torture_compression_decompress_empty(void **state)
 
 	rv = sc_decompress(buf, &buflen, data, datalen, COMPRESSION_AUTO);
 	assert_int_equal(rv, SC_ERROR_UNKNOWN_DATA_RECEIVED);
-	assert_int_equal(buflen, sizeof(buf)); /* Was not touched */
+	assert_int_equal(buflen, 0);
 }
 
 static void torture_compression_decompress_gzip_empty(void **state)
@@ -198,7 +222,7 @@ static void torture_compression_decompress_gzip_empty(void **state)
 
 	rv = sc_decompress(buf, &buflen, data, datalen, COMPRESSION_GZIP);
 	assert_int_equal(rv, SC_ERROR_UNKNOWN_DATA_RECEIVED);
-	assert_int_equal(buflen, sizeof(buf));
+	assert_int_equal(buflen, 0);
 }
 
 static void torture_compression_decompress_zlib_empty(void **state)
@@ -256,10 +280,14 @@ static void torture_compression_decompress_valid(void **state)
 {
 	u8 buf[1024];
 	size_t buflen = sizeof(buf);
-	size_t datalen = sizeof(valid_data);
 	int rv;
 
-	rv = sc_decompress(buf, &buflen, valid_data, datalen, COMPRESSION_AUTO);
+	rv = sc_decompress(buf, &buflen, valid_data, sizeof(valid_data), COMPRESSION_AUTO);
+	assert_int_equal(rv, SC_SUCCESS);
+	assert_int_equal(buflen, 5);
+	assert_memory_equal(buf, "test\x0a", 5);
+
+	rv = sc_decompress(buf, &buflen, valid_zlib_data, sizeof(valid_zlib_data), COMPRESSION_AUTO);
 	assert_int_equal(rv, SC_SUCCESS);
 	assert_int_equal(buflen, 5);
 	assert_memory_equal(buf, "test\x0a", 5);
@@ -269,13 +297,28 @@ static void torture_compression_decompress_invalid_suffix(void **state)
 {
 	u8 buf[1024];
 	size_t buflen = sizeof(buf);
-	size_t datalen = sizeof(invalid_suffix_data);
 	int rv;
 
-	rv = sc_decompress(buf, &buflen, invalid_suffix_data, datalen, COMPRESSION_AUTO);
+	rv = sc_decompress(buf, &buflen, invalid_suffix_data, sizeof(invalid_suffix_data), COMPRESSION_AUTO);
 	assert_int_equal(rv, SC_SUCCESS); /* TODO Is this fine? */
 	assert_int_equal(buflen, 5);
 	assert_memory_equal(buf, "test\x0a", 5);
+
+	rv = sc_decompress(buf, &buflen, invalid_zlib_suffix_data, sizeof(invalid_zlib_suffix_data), COMPRESSION_AUTO);
+	assert_int_equal(rv, SC_SUCCESS); /* TODO Is this fine? */
+	assert_int_equal(buflen, 5);
+	assert_memory_equal(buf, "test\x0a", 5);
+}
+
+static void torture_compression_decompress_zlib_good(void **state)
+{
+	u8 buf[1024];
+	size_t buflen;
+	int rv;
+
+	buflen = sizeof(buf);
+	rv = sc_decompress(buf, &buflen, zlib_good, sizeof zlib_good, COMPRESSION_AUTO);
+	assert_int_equal(rv, SC_SUCCESS);
 }
 
 
@@ -302,6 +345,7 @@ int main(void)
 		cmocka_unit_test(torture_compression_decompress_invalid),
 		cmocka_unit_test(torture_compression_decompress_invalid_suffix),
 		cmocka_unit_test(torture_compression_decompress_valid),
+		cmocka_unit_test(torture_compression_decompress_zlib_good),
 	};
 
 	rc = cmocka_run_group_tests(tests, NULL, NULL);
