@@ -749,8 +749,10 @@ gpk_compute_crycks(sc_card_t *card, sc_apdu_t *apdu,
 	block[len++] = apdu->p1;
 	block[len++] = apdu->p2;
 	block[len++] = apdu->lc + 3;
-	if ((i = apdu->datalen) + len > sizeof(block))
+	if (apdu->datalen + len > sizeof(block))
 		i = sizeof(block) - len;
+	else
+		i = apdu->datalen;
 	memcpy(block+len, apdu->data, i);
 	len += i;
 
