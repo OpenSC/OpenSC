@@ -55,7 +55,7 @@ static int read_file(struct sc_card *card, const char *file, u8 *buf,
 	if (fid->size < *len)
 		*len = fid->size;
 	r = sc_read_binary(card, 0, buf, *len, 0);
-	free(fid);
+	sc_file_free(fid);
 	if ((size_t)r < *len)
 		return SC_ERROR_INTERNAL;
 
