@@ -1122,9 +1122,10 @@ pkcs15_init_slot(struct sc_pkcs15_card *p15card, struct sc_pkcs11_slot *slot,
 							max_tokeninfo_len);
 					slot->token_info.label[max_tokeninfo_len]           = ' ';
 					slot->token_info.label[max_tokeninfo_len+1]         = '(';
-					slot->token_info.label[max_tokeninfo_len+2+pin_len] = ')';
 					strcpy_bp(slot->token_info.label+max_tokeninfo_len+2,
 							auth->label, pin_len);
+					strcpy_bp(slot->token_info.label+max_tokeninfo_len+2+pin_len,
+							")", 32 - max_tokeninfo_len-2-pin_len);
 				}
 			} else {
 				/* PIN label is empty or just says non-useful "PIN",
