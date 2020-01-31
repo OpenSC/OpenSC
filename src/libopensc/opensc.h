@@ -107,12 +107,13 @@ extern "C" {
  * must support at least one of them, and exactly one of them must be selected
  * for a given operation. */
 #define SC_ALGORITHM_RSA_RAW		0x00000001
-#define SC_ALGORITHM_RSA_PADS		0x0000001F
+#define SC_ALGORITHM_RSA_PADS		0x0000003F
 #define SC_ALGORITHM_RSA_PAD_NONE	0x00000001
 #define SC_ALGORITHM_RSA_PAD_PKCS1	0x00000002 /* PKCS#1 v1.5 padding */
 #define SC_ALGORITHM_RSA_PAD_ANSI	0x00000004
 #define SC_ALGORITHM_RSA_PAD_ISO9796	0x00000008
 #define SC_ALGORITHM_RSA_PAD_PSS	0x00000010 /* PKCS#1 v2.0 PSS */
+#define SC_ALGORITHM_RSA_PAD_OAEP	0x00000020 /* PKCS#1 v2.0 OAEP */
 
 /* If the card is willing to produce a cryptogram with the following
  * hash values, set these flags accordingly.  The interpretation of the hash

@@ -234,6 +234,7 @@ enum {
 	/* JPKI cards */
 	SC_CARD_TYPE_JPKI_BASE = 31000,
 
+	/* Coolkey cards */
 	SC_CARD_TYPE_COOLKEY_BASE = 32000,
 	SC_CARD_TYPE_COOLKEY_GENERIC,
 
@@ -258,6 +259,12 @@ enum {
 	SC_CARD_TYPE_RUTOKEN_ECP_SC,
 	SC_CARD_TYPE_RUTOKEN_LITE,
 	SC_CARD_TYPE_RUTOKEN_LITE_SC,
+
+	/* IDPrime cards */
+	SC_CARD_TYPE_IDPRIME_BASE = 37000,
+	SC_CARD_TYPE_IDPRIME_V1,
+	SC_CARD_TYPE_IDPRIME_V2,
+	SC_CARD_TYPE_IDPRIME_GENERIC,
 };
 
 extern sc_card_driver_t *sc_get_default_driver(void);
@@ -301,6 +308,7 @@ extern sc_card_driver_t *sc_get_cac_driver(void);
 extern sc_card_driver_t *sc_get_cac1_driver(void);
 extern sc_card_driver_t *sc_get_npa_driver(void);
 extern sc_card_driver_t *sc_get_esteid2018_driver(void);
+extern sc_card_driver_t *sc_get_idprime_driver(void);
 
 #ifdef __cplusplus
 }

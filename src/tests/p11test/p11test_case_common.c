@@ -422,7 +422,7 @@ int search_objects(test_certs_t *objects, token_info_t *info,
 	CK_OBJECT_HANDLE object_handle = CK_INVALID_HANDLE;
 	CK_OBJECT_HANDLE_PTR object_handles = NULL;
 	unsigned long i = 0, objects_length = 0;
-	int j;
+	int j, ret = -1;
 
 	/* FindObjects first
 	 * https://wiki.oasis-open.org/pkcs11/CommonBugs
@@ -439,16 +439,18 @@ int search_objects(test_certs_t *objects, token_info_t *info,
 			break;
 		if (rv != CKR_OK) {
 			fprintf(stderr, "C_FindObjects: rv = 0x%.8lX\n", rv);
-			return -1;
+			goto out;
 		}
 		/* store handle */
 		if (i >= objects_length) {
+			CK_OBJECT_HANDLE_PTR new_object_handles = NULL;
 			objects_length += 4; // do not realloc after each row
-			object_handles = realloc(object_handles, objects_length * sizeof(CK_OBJECT_HANDLE));
-			if (object_handles == NULL) {
+			new_object_handles = realloc(object_handles, objects_length * sizeof(CK_OBJECT_HANDLE));
+			if (new_object_handles == NULL) {
 		 		fail_msg("Realloc failed. Need to store object handles.\n");
-				return -1;
+				goto out;
 			}
+			object_handles = new_object_handles;
 		}
 		object_handles[i++] = object_handle;
 	}
@@ -458,8 +460,7 @@ int search_objects(test_certs_t *objects, token_info_t *info,
 	if (rv != CKR_OK) {
 		fprintf(stderr, "C_FindObjectsFinal: rv = 0x%.8lX\n", rv);
  		fail_msg("Could not find certificate.\n");
-		free(object_handles);
-		return -1;
+		goto out;
 	}
 
 	for (i = 0; i < objects_length; i++) {
@@ -476,8 +477,7 @@ int search_objects(test_certs_t *objects, token_info_t *info,
 				continue;
 			} else if (rv != CKR_OK) {
 				fail_msg("C_GetAttributeValue: rv = 0x%.8lX\n", rv);
-				free(object_handles);
-				return -1;
+				goto out;
 			}
 
 			/* Allocate memory to hold the data we want */
@@ -487,8 +487,7 @@ int search_objects(test_certs_t *objects, token_info_t *info,
 				template[j].pValue = malloc(template[j].ulValueLen);
 				if (template[j].pValue == NULL) {
 					fail_msg("malloc failed");
-					free(object_handles);
-					return -1;
+					goto out;
 				}
 			}
 			/* Call again to get actual attribute */
@@ -496,8 +495,7 @@ int search_objects(test_certs_t *objects, token_info_t *info,
 				&(template[j]), 1);
 			if (rv != CKR_OK) {
 				fail_msg("C_GetAttributeValue: rv = 0x%.8lX\n", rv);
-				free(object_handles);
-				return -1;
+				goto out;
 			}
 		}
 
@@ -506,8 +504,10 @@ int search_objects(test_certs_t *objects, token_info_t *info,
 		for (j = 0; j < template_size; j++)
 			free(template[j].pValue);
 	}
+	ret = 0;
+out:
 	free(object_handles);
-	return 0;
+	return ret;
 }
 
 void search_for_all_objects(test_certs_t *objects, token_info_t *info)
