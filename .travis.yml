@@ -283,7 +283,7 @@ script:
     fi
   - if [ "${DO_SIMULATION}" = "cac" ]; then
       cd $TRAVIS_BUILD_DIR;
-      make check && sudo make install || (cat tests/*log && exit);
+      make check && sudo make install || (cat tests/*log src/tests/unittests/*log && exit);
       export LD_LIBRARY_PATH=/usr/local/lib;
       cd src/tests/p11test/;
       ./p11test -s 0 -p 12345678 -i &
