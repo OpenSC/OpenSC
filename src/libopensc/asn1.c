@@ -2154,8 +2154,10 @@ sc_asn1_sig_value_sequence_to_rs(struct sc_context *ctx, const unsigned char *in
 	}
 
 	memset(buf, 0, buflen);
-	memcpy(buf + (halflen - r_len), r, r_len);
-	memcpy(buf + (buflen - s_len), s, s_len);
+	if (r_len > 0)
+		memcpy(buf + (halflen - r_len), r, r_len);
+	if (s_len > 0)
+		memcpy(buf + (buflen - s_len), s, s_len);
 
 	sc_log(ctx, "r(%"SC_FORMAT_LEN_SIZE_T"u): %s", halflen,
 	       sc_dump_hex(buf, halflen));
