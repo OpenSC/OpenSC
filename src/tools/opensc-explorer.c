@@ -653,6 +653,8 @@ static int do_find_tags(int argc, char **argv)
 		r = sc_lock(card);
 		if (r == SC_SUCCESS)
 			r = sc_get_data(card, tag, rbuf, sizeof rbuf);
+		else
+			r = SC_ERROR_READER_LOCKED;
 		sc_unlock(card);
 		if (r >= 0) {
 			printf(" %04X ", tag);
@@ -792,6 +794,8 @@ static int read_and_print_record_file(sc_file_t *file, unsigned char sfi)
 		if (r == SC_SUCCESS)
 			r = sc_read_record(card, rec, buf, sizeof(buf),
 					SC_RECORD_BY_REC_NR | sfi);
+		else
+			r = SC_ERROR_READER_LOCKED;
 		sc_unlock(card);
 		if (r == SC_ERROR_RECORD_NOT_FOUND)
 			return 0;
