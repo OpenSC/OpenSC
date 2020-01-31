@@ -604,28 +604,94 @@ typedef struct sc_card {
 } sc_card_t;
 
 struct sc_card_operations {
-	/* Called in sc_connect_card().  Must return 1, if the current
+	/** @brief Match a card with the given card driver.
+	 *
+	 * Called in sc_connect_card().  Must return 1, if the current
 	 * card can be handled with this driver, or 0 otherwise.  ATR
 	 * field of the sc_card struct is filled in before calling
-	 * this function. */
+	 * this function. It is recommended not to modify `card` during this call.
+	 * */
 	int (*match_card)(struct sc_card *card);
 
-	/* Called when ATR of the inserted card matches an entry in ATR
+	/** @brief Initialize a card.
+	 *
+	 * Called when ATR of the inserted card matches an entry in ATR
 	 * table.  May return SC_ERROR_INVALID_CARD to indicate that
-	 * the card cannot be handled with this driver. */
+	 * the card cannot be handled with this driver. drv_data may be used to
+	 * store card driver's (allocated) private data. */
 	int (*init)(struct sc_card *card);
-	/* Called when the card object is being freed.  finish() has to
+	/** @brief Deinitialize a card.
+	 *
+	 * Called when the `card` object is being freed.  finish() has to
 	 * deallocate all possible private data. */
 	int (*finish)(struct sc_card *card);
 
 	/* ISO 7816-4 functions */
 
+	/**
+	 * @brief Read data from a binary EF with a single command
+	 *
+	 * Implementation of this call back is optional and may be NULL.
+	 *
+	 * @param  card   struct sc_card object on which to issue the command
+	 * @param  idx    index within the file with the data to read
+	 * @param  buf    buffer to the read data
+	 * @param  count  number of bytes to read
+	 * @param  flags  flags for the READ BINARY command (currently not used)
+	 * @return number of bytes read or an error code.
+	 *                SC_SUCCESS indicates that all requested bytes were read.
+	 *
+	 * @see sc_read_binary()
+	 */
 	int (*read_binary)(struct sc_card *card, unsigned int idx,
 			u8 * buf, size_t count, unsigned long flags);
+	/**
+	 * @brief Write data to a binary EF with a single command
+	 *
+	 * Implementation of this call back is optional and may be NULL.
+	 *
+	 * @param  card   struct sc_card object on which to issue the command
+	 * @param  idx    index within the file for the data to be written
+	 * @param  buf    buffer with the data
+	 * @param  count  number of bytes to write
+	 * @param  flags  flags for the WRITE BINARY command (currently not used)
+	 * @return number of bytes written or an error code.
+	 *                SC_SUCCESS indicates that all requested bytes were written.
+	 *
+	 * @see sc_write_binary()
+	 */
 	int (*write_binary)(struct sc_card *card, unsigned int idx,
 				const u8 * buf, size_t count, unsigned long flags);
+	/** @brief Updates the content of a binary EF
+	 *
+	 * Implementation of this call back is optional and may be NULL.
+	 *
+	 * @param  card   struct sc_card object on which to issue the command
+	 * @param  idx    index within the file for the data to be updated
+	 * @param  buf    buffer with the new data
+	 * @param  count  number of bytes to update
+	 * @param  flags  flags for the UPDATE BINARY command (currently not used)
+	 * @return number of bytes written or an error code.
+	 *                SC_SUCCESS indicates that all requested bytes were updated.
+	 *
+	 * @see sc_update_binary()
+	 */
 	int (*update_binary)(struct sc_card *card, unsigned int idx,
 			     const u8 * buf, size_t count, unsigned long flags);
+	/**
+	 * @brief Sets (part of) the content fo an EF to its logical erased state
+	 *
+	 * Implementation of this call back is optional and may be NULL.
+	 *
+	 * @param  card   struct sc_card object on which to issue the command
+	 * @param  idx    index within the file for the data to be erased
+	 * @param  count  number of bytes to erase
+	 * @param  flags  flags for the ERASE BINARY command (currently not used)
+	 * @return number of bytes erased or an error code.
+	 *                SC_SUCCESS indicates that all requested bytes were erased.
+	 *
+	 * @see sc_erase_binary()
+	 */
 	int (*erase_binary)(struct sc_card *card, unsigned int idx,
 			    size_t count, unsigned long flags);
 
@@ -1170,7 +1236,7 @@ int sc_update_binary(struct sc_card *card, unsigned int idx, const u8 * buf,
  * @param  idx    index within the file for the data to be erased
  * @param  count  number of bytes to erase
  * @param  flags  flags for the ERASE BINARY command (currently not used)
- * @return number of bytes written or an error code
+ * @return number of bytes erased or an error code
  */
 int sc_erase_binary(struct sc_card *card, unsigned int idx,
 		    size_t count, unsigned long flags);
