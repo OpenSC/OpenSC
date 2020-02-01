@@ -1,7 +1,7 @@
 /*
  * openpgp-tool.c: OpenPGP card utility
  *
- * Copyright (C) 2012 Peter Marschall <peter@adpm.de>
+ * Copyright (C) 2012-2020 Peter Marschall <peter@adpm.de>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -47,6 +47,7 @@
 #include "libopensc/errors.h"
 #include "util.h"
 #include "libopensc/log.h"
+#include "libopensc/card-openpgp.h"
 
 #define OPT_RAW     256
 #define OPT_PRETTY  257
@@ -194,7 +195,7 @@ static void show_version(void)
 	fprintf(stderr,
 		"openpgp-tool - OpenPGP card utility version " PACKAGE_VERSION "\n"
 		"\n"
-		"Copyright (c) 2012-18 Peter Marschall <peter@adpm.de>\n"
+		"Copyright (c) 2012-2020 Peter Marschall <peter@adpm.de>\n"
 		"Licensed under LGPL v2\n");
 }
 
@@ -611,19 +612,25 @@ static int do_info(sc_card_t *card, const struct ef_name_map *map)
 
 static int do_dump_do(sc_card_t *card, unsigned int tag)
 {
+	struct pgp_priv_data *priv = DRVDATA(card);
 	int r;
 	size_t length;
-	unsigned char buffer[254];	// Private DO are specified up to 254 bytes
-
-	memset(buffer, '\0', sizeof(buffer));
+	unsigned char *buffer;
 
 	if (tag < 0x101 || tag > 0x104) {
 		util_error("illegal DO identifier %04X", tag);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
-	r = sc_get_data(card, tag, buffer, sizeof(buffer));
+	buffer = calloc(priv->max_specialDO_size, sizeof(unsigned char));
+	if (buffer == NULL) {
+		util_error("error allocating memory for DO %04X", tag);
+		return SC_ERROR_OUT_OF_MEMORY;
+	}
+
+	r = sc_get_data(card, tag, buffer, priv->max_specialDO_size);
 	if (r < 0) {
+		free(buffer);
 		util_error("failed to get data object DO %04X: %s", tag, sc_strerror(r));
 		if (SC_ERROR_SECURITY_STATUS_NOT_SATISFIED == r) {
 			util_error("make sure the 'verify' and 'pin' parameters are correct");
@@ -655,12 +662,15 @@ static int do_dump_do(sc_card_t *card, unsigned int tag)
 		clearerr(stdout);
 		close(tmp);
 
-		if (length != (size_t) r)	/* fail on write errors */
+		if (length != (size_t) r) {	/* fail on write errors */
+			free(buffer);
 			return EXIT_FAILURE;
+		}
 	} else {
 		util_hex_dump_asc(stdout, buffer, length, -1);
 	}
 
+	free(buffer);
 	return EXIT_SUCCESS;
 }
 
@@ -875,6 +885,14 @@ int main(int argc, char **argv)
 	r = sc_context_create(&ctx, &ctx_param);
 	if (r) {
 		util_fatal("failed to establish context: %s", sc_strerror(r));
+		return EXIT_FAILURE;
+	}
+
+	/* force OpenPGP card driver */
+	r = sc_set_card_driver(ctx, "openpgp");
+	if (r) {
+		sc_release_context(ctx);
+		util_fatal("OpenPGP card driver not found!\n");
 		return EXIT_FAILURE;
 	}
 
