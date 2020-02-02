@@ -217,16 +217,21 @@ static struct command	cmds[] = {
 };
 
 
-static char *path_to_filename(const sc_path_t *path, const char sep)
+static char *path_to_filename(const sc_path_t *path, const char sep, size_t rec)
 {
-	static char buf[2*SC_MAX_PATH_STRING_SIZE];
+	static char buf[2*SC_MAX_PATH_STRING_SIZE+10];
 	size_t i, j;
 
+	/* build file name from path elements */
 	for (i = 0, j = 0; path != NULL && i < path->len; i++) {
 		if (sep != '\0' && i > 0 && (i & 1) == 0)
 			j += sprintf(buf+j, "%c", sep);
 		j += sprintf(buf+j, "%02X", path->value[i]);
 	}
+	/* single record: append record-number */
+	if (rec > 0)
+		j += sprintf(buf+j, "%c%"SC_FORMAT_LEN_SIZE_T"u",
+				(sep == '-') ? '_' : '-', rec);
 	buf[j] = '\0';
 
 	return buf;
@@ -920,7 +925,7 @@ static int do_info(int argc, char **argv)
 		printf("\n%s  ID %04X", st, file->id);
 	if (file->sid)
 		printf(", SFI %02X", file->sid);
-	printf("\n\n%-25s%s\n", "File path:", path_to_filename(&path, '/'));
+	printf("\n\n%-25s%s\n", "File path:", path_to_filename(&path, '/', 0));
 	printf("%-25s%"SC_FORMAT_LEN_SIZE_T"u bytes\n", "File size:", file->size);
 
 	if (file->type == SC_FILE_TYPE_DF) {
@@ -1412,7 +1417,7 @@ static int do_get(int argc, char **argv)
 	if (arg_to_path(argv[0], &path, 0) != 0)
 		return usage(do_get);
 
-	filename = (argc == 2) ? argv[1] : path_to_filename(&path, '_');
+	filename = (argc == 2) ? argv[1] : path_to_filename(&path, '_', 0);
 	outf = (strcmp(filename, "-") == 0)
 		? stdout
 		: fopen(filename, "wb");
@@ -1616,7 +1621,7 @@ static int do_put(int argc, char **argv)
 	if (arg_to_path(argv[0], &path, 0) != 0)
 		return usage(do_put);
 
-	filename = (argc == 2) ? argv[1] : path_to_filename(&path, '_');
+	filename = (argc == 2) ? argv[1] : path_to_filename(&path, '_', 0);
 	inf = fopen(filename, "rb");
 	if (inf == NULL) {
 		perror(filename);
@@ -2260,7 +2265,7 @@ int main(int argc, char *argv[])
 		struct command *cmd;
 		char prompt[3*SC_MAX_PATH_STRING_SIZE];
 
-		sprintf(prompt, "OpenSC [%s]> ", path_to_filename(&current_path, '/'));
+		sprintf(prompt, "OpenSC [%s]> ", path_to_filename(&current_path, '/', 0));
 		line = read_cmdline(script, prompt);
 		if (line == NULL)
 			break;
