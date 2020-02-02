@@ -145,8 +145,8 @@ static struct command	cmds[] = {
 		"cd",	"{.. | <file-id> | aid:<DF-name>}",
 		"change to another DF"			},
 	{ do_cat,
-		"cat",	"[<file-id> | sfi:<sfi-id>]"
-	,	"print the contents of an EF"		},
+		"cat",	"[{<file-id> | sfi:<sfi-id>} [<rec-no>]]"
+	,	"print the contents of [a record in] an EF"		},
 	{ do_info,
 		"info",	"[<file-id>]",
 		"display attributes of card file"	},
@@ -792,12 +792,13 @@ err:
 	return ret;
 }
 
-static int read_and_print_record_file(sc_file_t *file, unsigned char sfi)
+static int read_and_print_record_file(sc_file_t *file, unsigned char sfi, unsigned int wanted)
 {
 	u8 buf[SC_MAX_EXT_APDU_RESP_SIZE];
-	int rec, r;
+	int r;
+	unsigned int rec;
 
-	for (rec = 1; ; rec++) {
+	for (rec = (wanted > 0) ? wanted : 1; wanted == 0 || wanted == rec; rec++) {
 		r = sc_lock(card);
 		if (r == SC_SUCCESS)
 			r = sc_read_record(card, rec, buf, sizeof(buf),
@@ -805,7 +806,7 @@ static int read_and_print_record_file(sc_file_t *file, unsigned char sfi)
 		else
 			r = SC_ERROR_READER_LOCKED;
 		sc_unlock(card);
-		if (r == SC_ERROR_RECORD_NOT_FOUND)
+		if (r == SC_ERROR_RECORD_NOT_FOUND && wanted == 0)
 			return 0;
 		if (r < 0) {
 			check_ret(r, SC_AC_OP_READ, "Read failed", file);
@@ -821,13 +822,17 @@ static int read_and_print_record_file(sc_file_t *file, unsigned char sfi)
 static int do_cat(int argc, char **argv)
 {
 	int r, err = 1;
+	unsigned int rec = 0;
 	sc_path_t path;
 	sc_file_t *file = NULL;
 	int not_current = 1;
 	int sfi = 0;
 
-	if (argc > 1)
+	if (argc > 2)
 		return usage(do_cat);
+
+	if (argc > 1)
+		rec = (unsigned int) strtoul(argv[1], NULL, 10);
 
 	if (!argc) {
 		path = current_path;
@@ -871,10 +876,15 @@ static int do_cat(int argc, char **argv)
 		fprintf(stderr, "only working EFs may be read\n");
 		goto err;
 	}
-	if (file->ef_structure == SC_FILE_EF_TRANSPARENT && !sfi)
+	if (file->ef_structure == SC_FILE_EF_TRANSPARENT && !sfi) {
+		if (argc > 1) {
+			fprintf(stderr, "Transparent files do not have records\n");
+			goto err;
+		}
 		read_and_print_binary_file(file);
+	}
 	else
-		read_and_print_record_file(file, sfi);
+		read_and_print_record_file(file, sfi, rec);
 
 	err = 0;
 err:

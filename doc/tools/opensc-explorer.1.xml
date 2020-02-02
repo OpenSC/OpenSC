@@ -182,12 +182,16 @@
 							<arg choice="plain"><replaceable>file-id</replaceable></arg>
 							<arg choice="plain"><literal>sfi:</literal><replaceable>short-id</replaceable></arg>
 						</group>
+						<arg choice="opt"><replaceable>rec-no</replaceable></arg>
 					</term>
 					<listitem>
 						<para>
 							Print the contents of the working EF specified by
 							<replaceable>file-id</replaceable> or the short file id
 							<replaceable>short-id</replaceable>.
+							If the optional second parameter
+							<replaceable>rec-no</replaceable> is given,
+							only print the record indicated by this parameter.
 							If no argument is given, print the the contents
 							of the currently selected EF.
 						</para>
