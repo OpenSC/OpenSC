@@ -752,35 +752,29 @@ static int do_cd(int argc, char **argv)
 	return 0;
 }
 
-static int read_and_util_print_binary_file(sc_file_t *file)
+static int read_and_print_binary_file(sc_file_t *file)
 {
-	unsigned char *buf = NULL;
+	u8 *buf;
+	size_t size = (file->size > 0) ? file->size : SC_MAX_EXT_APDU_RESP_SIZE;
 	int r, ret = -1;
-	size_t size;
 
-	if (file->size) {
-		size = file->size;
-	} else {
-		size = 1024;
-	}
-	buf = malloc(size);
-	if (!buf)
+	buf = calloc(size, 1);
+	if (buf == NULL)
 		return -1;
 
 	r = sc_lock(card);
 	if (r == SC_SUCCESS)
 		r = sc_read_binary(card, 0, buf, size, 0);
 	sc_unlock(card);
-	if (r < 0)   {
-		check_ret(r, SC_AC_OP_READ, "read failed", file);
+	if (r < 0) {
+		check_ret(r, SC_AC_OP_READ, "Read failed", file);
 		goto err;
 	}
-	if ((r == 0) && (card->type == SC_CARD_TYPE_BELPIC_EID))
-		goto err;
 
 	util_hex_dump_asc(stdout, buf, r, 0);
 
 	ret = 0;
+
 err:
 	free(buf);
 	return ret;
@@ -864,7 +858,7 @@ static int do_cat(int argc, char **argv)
 		goto err;
 	}
 	if (file->ef_structure == SC_FILE_EF_TRANSPARENT && !sfi)
-		read_and_util_print_binary_file(file);
+		read_and_print_binary_file(file);
 	else
 		read_and_print_record_file(file, sfi);
 
