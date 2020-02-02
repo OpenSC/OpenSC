@@ -707,10 +707,10 @@ static int do_cd(int argc, char **argv)
 			return -1;
 		}
 
-		if (path.type == SC_PATH_TYPE_DF_NAME)   {
+		if (path.type == SC_PATH_TYPE_DF_NAME) {
 			sc_format_path("3F00", &path);
 		}
-		else   {
+		else {
 			path.len -= 2;
 		}
 
@@ -738,7 +738,8 @@ static int do_cd(int argc, char **argv)
 		check_ret(r, SC_AC_OP_SELECT, "unable to select DF", current_file);
 		return -1;
 	}
-	if ((file->type != SC_FILE_TYPE_DF) && (card->type != SC_CARD_TYPE_BELPIC_EID)) {
+	if ((file->type != SC_FILE_TYPE_DF) && (file->type != SC_FILE_TYPE_UNKNOWN) &&
+			(card->type != SC_CARD_TYPE_BELPIC_EID)) {
 		fprintf(stderr, "Error: file is not a DF.\n");
 		sc_file_free(file);
 		select_current_path_or_die();
