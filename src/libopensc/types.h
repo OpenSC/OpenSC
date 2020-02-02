@@ -209,6 +209,7 @@ typedef struct sc_acl_entry {
 } sc_acl_entry_t;
 
 /* File types */
+#define SC_FILE_TYPE_UNKNOWN		0x00
 #define SC_FILE_TYPE_DF			0x04
 #define SC_FILE_TYPE_INTERNAL_EF	0x03
 #define SC_FILE_TYPE_WORKING_EF		0x01

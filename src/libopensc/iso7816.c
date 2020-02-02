@@ -387,13 +387,36 @@ iso7816_process_fci(struct sc_card *card, struct sc_file *file,
 							file->type = SC_FILE_TYPE_DF;
 							break;
 						default:
+							file->type = SC_FILE_TYPE_UNKNOWN;
 							type = "unknown";
 							break;
 					}
 					sc_log(ctx, "  type: %s", type);
 					sc_log(ctx, "  EF structure: %d", byte & 0x07);
 					sc_log(ctx, "  tag 0x82: 0x%02x", byte);
-					if (SC_SUCCESS != sc_file_set_type_attr(file, &byte, 1))
+
+					/* if possible, get additional information for non-DFs */
+					if (file->type != SC_FILE_TYPE_DF) {
+						/* record length for fixed size records */
+						if (length > 2 && byte & 0x02) {
+							file->record_length = (length > 3)
+								? bebytes2ushort(p+2)
+								: p[2];
+							sc_log(ctx, "  record length: %"SC_FORMAT_LEN_SIZE_T"u",
+								file->record_length);
+						}
+
+						/* number of records */
+						if (length > 4) {
+							file->record_count = (length > 5)
+								? bebytes2ushort(p+4)
+								: p[4];
+							sc_log(ctx, "  records: %"SC_FORMAT_LEN_SIZE_T"u",
+								file->record_count);
+						}
+					}
+
+					if (SC_SUCCESS != sc_file_set_type_attr(file, p, length))
 						sc_log(ctx, "Warning: Could not set file attributes");
 				}
 				break;
