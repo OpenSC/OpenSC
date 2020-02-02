@@ -904,13 +904,15 @@ static int do_info(int argc, char **argv)
 	} else
 		return usage(do_info);
 
-	if(!file->type_attr_len)
+	if (!file->type_attr_len)
 		st = "Unknown File";
 
 	switch (file->type) {
 	case SC_FILE_TYPE_WORKING_EF:
+		st = "Working Elementary File";
+		break;
 	case SC_FILE_TYPE_INTERNAL_EF:
-		st = "Elementary File";
+		st = "Internal Elementary File";
 		break;
 	case SC_FILE_TYPE_DF:
 		st = "Dedicated File";
@@ -922,8 +924,8 @@ static int do_info(int argc, char **argv)
 		printf("\n%s  ID %04X", st, file->id);
 	if (file->sid)
 		printf(", SFI %02X", file->sid);
-	printf("\n\n%-15s%s\n", "File path:", path_to_filename(&path, '/'));
-	printf("%-15s%lu bytes\n", "File size:", (unsigned long) file->size);
+	printf("\n\n%-25s%s\n", "File path:", path_to_filename(&path, '/'));
+	printf("%-25s%"SC_FORMAT_LEN_SIZE_T"u bytes\n", "File size:", file->size);
 
 	if (file->type == SC_FILE_TYPE_DF) {
 		static const id2str_t ac_ops_df[] = {
@@ -940,7 +942,7 @@ static int do_info(int argc, char **argv)
 		};
 
 		if (file->namelen) {
-			printf("%-15s", "DF name:");
+			printf("%-25s", "DF name:");
 			util_print_binary(stdout, file->name, file->namelen);
 			printf("\n");
 		}
@@ -973,7 +975,15 @@ static int do_info(int argc, char **argv)
 		for (i = 0; ef_type_name[i].str != NULL; i++)
 			if (file->ef_structure == ef_type_name[i].id)
 				ef_type = ef_type_name[i].str;
-		printf("%-15s%s\n", "EF structure:", ef_type);
+		printf("%-25s%s\n", "EF structure:", ef_type);
+
+		if (file->record_count > 0)
+			printf("%-25s%"SC_FORMAT_LEN_SIZE_T"u\n",
+				"Number of records:", file->record_count);
+
+		if (file->record_length > 0)
+			printf("%-25s%"SC_FORMAT_LEN_SIZE_T"u bytes\n",
+				"Max. record size:", file->record_length);
 
 		ac_ops = ac_ops_ef;
 	}
@@ -983,16 +993,21 @@ static int do_info(int argc, char **argv)
 
 		printf("ACL for %s:%*s %s\n",
 			ac_ops[i].str,
-			(12 > len) ? (12 - len) : 0, "",
+			(15 > len) ? (15 - len) : 0, "",
 			util_acl_to_str(sc_file_get_acl_entry(file, ac_ops[i].id)));
 	}
 
-	if (file->prop_attr_len) {
+	if (file->type_attr_len > 0) {
+		printf("%-25s", "Type attributes:");
+		util_hex_dump(stdout, file->type_attr, file->type_attr_len, " ");
+		printf("\n");
+	}
+	if (file->prop_attr_len > 0) {
 		printf("%-25s", "Proprietary attributes:");
 		util_hex_dump(stdout, file->prop_attr, file->prop_attr_len, " ");
 		printf("\n");
 	}
-	if (file->sec_attr_len) {
+	if (file->sec_attr_len > 0) {
 		printf("%-25s", "Security attributes:");
 		util_hex_dump(stdout, file->sec_attr, file->sec_attr_len, " ");
 		printf("\n");
