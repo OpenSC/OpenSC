@@ -1161,8 +1161,6 @@ static int dnie_compose_and_send_apdu(sc_card_t *card, const u8 *path, size_t pa
 	int res = 0;
 	sc_apdu_t apdu;
 	u8 rbuf[MAX_RESP_BUFFER_SIZE];
-	sc_file_t *file = NULL;
-
 	sc_context_t *ctx = NULL;
 
 	if (!card || !card->ctx)
@@ -1199,14 +1197,15 @@ static int dnie_compose_and_send_apdu(sc_card_t *card, const u8 *path, size_t pa
 		LOG_FUNC_RETURN(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
 	}
 
-	/* finally process FCI response */
-	file = sc_file_new();
-	if (file == NULL) {
-		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+	if (file_out) {
+		/* finally process FCI response */
+		sc_file_free(*file_out);
+		*file_out = sc_file_new();
+		if (*file_out == NULL) {
+			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+		}
+		res = card->ops->process_fci(card, *file_out, apdu.resp + 2, apdu.resp[1]);
 	}
-	res = card->ops->process_fci(card, file, apdu.resp + 2, apdu.resp[1]);
-	sc_file_free(*file_out);
-	*file_out = file;
 	LOG_FUNC_RETURN(ctx, res);
 }
 
