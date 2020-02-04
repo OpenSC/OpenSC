@@ -1157,6 +1157,7 @@ epass2003_init(struct sc_card *card)
 	unsigned char data[SC_MAX_APDU_BUFFER_SIZE] = { 0 };
 	size_t datalen = SC_MAX_APDU_BUFFER_SIZE;
 	epass2003_exdata *exdata = NULL;
+	void *old_drv_data = card->drv_data;
 
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -1171,8 +1172,11 @@ epass2003_init(struct sc_card *card)
 	exdata->sm = SM_SCP01;
 
 	/* decide FIPS/Non-FIPS mode */
-	if (SC_SUCCESS != get_data(card, 0x86, data, datalen))
+	if (SC_SUCCESS != get_data(card, 0x86, data, datalen)) {
+		free(exdata);
+		card->drv_data = old_drv_data;
 		return SC_ERROR_INVALID_CARD;
+	}
 
 	if (0x01 == data[2])
 		exdata->smtype = KEY_TYPE_AES;
