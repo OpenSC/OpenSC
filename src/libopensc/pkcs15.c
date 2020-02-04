@@ -966,6 +966,7 @@ sc_pkcs15_bind_internal(struct sc_pkcs15_card *p15card, struct sc_aid *aid)
 		if (err != SC_SUCCESS)
 			sc_log(ctx, "unable to enumerate apps: %s", sc_strerror(err));
 	}
+	sc_file_free(p15card->file_app);
 	p15card->file_app = sc_file_new();
 	if (p15card->file_app == NULL) {
 		err = SC_ERROR_OUT_OF_MEMORY;
