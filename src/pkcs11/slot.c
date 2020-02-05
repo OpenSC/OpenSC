@@ -160,12 +160,7 @@ CK_RV initialize_reader(sc_reader_t *reader)
 		if (rv != CKR_OK)
 			return rv;
 	}
-
-	sc_log(context, "Initialize reader '%s': detect SC card presence", reader->name);
-	if (sc_detect_card_presence(reader))   {
-		sc_log(context, "Initialize reader '%s': detect PKCS11 card presence", reader->name);
-		card_detect(reader);
-	}
+	card_detect(reader);
 
 	sc_log(context, "Reader '%s' initialized", reader->name);
 	return CKR_OK;
