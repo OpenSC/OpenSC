@@ -1072,10 +1072,10 @@ AS_IF([test "${enable_shared}" = "yes"], [AC_DEFINE([ENABLE_SHARED], [1], [Enabl
 
 if test "${enable_pedantic}" = "yes"; then
 	enable_strict="yes";
-	CFLAGS="${CFLAGS} -pedantic"
+	CFLAGS="-pedantic ${CFLAGS}"
 fi
 if test "${enable_strict}" = "yes"; then
-	CFLAGS="${CFLAGS} -Wall -Wextra -Wno-unused-parameter -Werror"
+	CFLAGS="-Wall -Wextra -Wno-unused-parameter -Werror ${CFLAGS}"
 fi
 
 AC_CONFIG_FILES([
