@@ -1602,7 +1602,7 @@ err:
 
 static int do_put(int argc, char **argv)
 {
-	u8 buf[256];
+	u8 buf[SC_MAX_EXT_APDU_DATA_SIZE];
 	int r, err = 1;
 	size_t count = 0;
 	unsigned int idx = 0;
@@ -1627,7 +1627,7 @@ static int do_put(int argc, char **argv)
 		r = sc_select_file(card, &path, &file);
 	sc_unlock(card);
 	if (r || file == NULL) {
-		check_ret(r, SC_AC_OP_SELECT, "unable to select file", current_file);
+		check_ret(r, SC_AC_OP_SELECT, "Unable to select file", current_file);
 		goto err;
 	}
 	count = file->size;
@@ -1646,17 +1646,17 @@ static int do_put(int argc, char **argv)
 			r = sc_update_binary(card, idx, buf, c, 0);
 		sc_unlock(card);
 		if (r < 0) {
-			check_ret(r, SC_AC_OP_READ, "update failed", file);
+			check_ret(r, SC_AC_OP_READ, "Update failed", file);
 			goto err;
 		}
 		if (r != c) {
-			fprintf(stderr, "expecting %d, wrote only %d bytes.\n", c, r);
+			fprintf(stderr, "Expecting %d, wrote only %d bytes.\n", c, r);
 			goto err;
 		}
 		idx += c;
 		count -= c;
 	}
-	printf("Total of %d bytes written.\n", idx);
+	printf("Total of %d bytes written to %04X.\n", idx, file->id);
 
 	err = 0;
 err:
