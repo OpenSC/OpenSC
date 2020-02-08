@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <limits.h>
 #ifdef ENABLE_READLINE
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -1395,7 +1396,7 @@ static int do_unblock(int argc, char **argv)
 
 static int do_get(int argc, char **argv)
 {
-	u8 buf[256];
+	u8 buf[SC_MAX_EXT_APDU_RESP_SIZE];
 	int r, err = 1;
 	size_t count = 0;
 	unsigned int idx = 0;
@@ -1422,11 +1423,11 @@ static int do_get(int argc, char **argv)
 		r = sc_select_file(card, &path, &file);
 	sc_unlock(card);
 	if (r || file == NULL) {
-		check_ret(r, SC_AC_OP_SELECT, "unable to select file", current_file);
+		check_ret(r, SC_AC_OP_SELECT, "Unable to select file", current_file);
 		goto err;
 	}
 	if (file->type != SC_FILE_TYPE_WORKING_EF || file->ef_structure != SC_FILE_EF_TRANSPARENT) {
-		fprintf(stderr, "only transparent working EFs may be read\n");
+		fprintf(stderr, "Only transparent working EFs may be read\n");
 		goto err;
 	}
 	count = file->size;
@@ -1436,11 +1437,11 @@ static int do_get(int argc, char **argv)
 
 		r = sc_read_binary(card, idx, buf, c, 0);
 		if (r < 0) {
-			check_ret(r, SC_AC_OP_READ, "read failed", file);
+			check_ret(r, SC_AC_OP_READ, "Read failed", file);
 			goto err;
 		}
 		if ((r != c) && (card->type != SC_CARD_TYPE_BELPIC_EID)) {
-			fprintf(stderr, "expecting %d, got only %d bytes.\n", c, r);
+			fprintf(stderr, "Expecting %d, got only %d bytes.\n", c, r);
 			goto err;
 		}
 		if ((r == 0) && (card->type == SC_CARD_TYPE_BELPIC_EID))
