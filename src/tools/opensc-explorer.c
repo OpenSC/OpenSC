@@ -780,7 +780,7 @@ err:
 
 static int read_and_print_record_file(sc_file_t *file, unsigned char sfi)
 {
-	u8 buf[256];
+	u8 buf[SC_MAX_EXT_APDU_RESP_SIZE];
 	int rec, r;
 
 	for (rec = 1; ; rec++) {
@@ -794,12 +794,14 @@ static int read_and_print_record_file(sc_file_t *file, unsigned char sfi)
 		if (r == SC_ERROR_RECORD_NOT_FOUND)
 			return 0;
 		if (r < 0) {
-			check_ret(r, SC_AC_OP_READ, "read failed", file);
+			check_ret(r, SC_AC_OP_READ, "Read failed", file);
 			return -1;
 		}
 		printf("Record %d:\n", rec);
 		util_hex_dump_asc(stdout, buf, r, 0);
 	}
+
+	return 0;
 }
 
 static int do_cat(int argc, char **argv)
