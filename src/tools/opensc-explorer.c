@@ -1469,7 +1469,7 @@ err:
 
 static int do_update_binary(int argc, char **argv)
 {
-	u8 buf[240];
+	u8 buf[SC_MAX_EXT_APDU_DATA_SIZE];
 	size_t buflen = sizeof(buf);
 	int r, err = 1;
 	int offs;
@@ -1480,13 +1480,11 @@ static int do_update_binary(int argc, char **argv)
 		return usage(do_update_binary);
 	if (arg_to_path(argv[0], &path, 0) != 0)
 		return usage(do_update_binary);
-	offs = strtol(argv[1],NULL,10);
-
-	printf("in: %i; %s\n", offs, argv[2]);
+	offs = strtol(argv[1], NULL, 10);
 
 	r = parse_string_or_hexdata(argv[2], buf, &buflen);
 	if (r < 0) {
-		fprintf(stderr, "unable to parse data\n");
+		fprintf(stderr, "Unable to parse input data: %s\n", strerror(r));
 		return -1;
 	}
 
@@ -1495,11 +1493,11 @@ static int do_update_binary(int argc, char **argv)
 		r = sc_select_file(card, &path, &file);
 	sc_unlock(card);
 	if (r) {
-		check_ret(r, SC_AC_OP_SELECT, "unable to select file", current_file);
+		check_ret(r, SC_AC_OP_SELECT, "Unable to select file", current_file);
 		return -1;
 	}
 
-	if (file->ef_structure != SC_FILE_EF_TRANSPARENT)   {
+	if (file->ef_structure != SC_FILE_EF_TRANSPARENT) {
 		fprintf(stderr, "EF structure should be SC_FILE_EF_TRANSPARENT\n");
 		goto err;
 	}
@@ -1509,11 +1507,11 @@ static int do_update_binary(int argc, char **argv)
 		r = sc_update_binary(card, offs, buf, buflen, 0);
 	sc_unlock(card);
 	if (r < 0) {
-		fprintf(stderr, "Cannot update %04X; return %i\n", file->id, r);
+		fprintf(stderr, "Cannot update %04X: %s\n", file->id, strerror(r));
 		goto err;
 	}
 
-	printf("Total of %d bytes written to %04X at %i offset.\n",
+	printf("Total of %d bytes written to %04X at offset %d.\n",
 	       r, file->id, offs);
 
 	err = 0;
