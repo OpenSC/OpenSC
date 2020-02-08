@@ -1764,35 +1764,38 @@ static int do_random(int argc, char **argv)
 
 static int do_get_data(int argc, char **argv)
 {
-	unsigned char buffer[256];
+	u8 id[2] = { 0x00, 0x00 };
 	unsigned int tag;
+	u8 buffer[SC_MAX_EXT_APDU_RESP_SIZE];
 	FILE *fp;
 	int r;
 
 	if (argc != 1 && argc != 2)
 		return usage(do_get_data);
+	if (arg_to_fid(argv[0], id) != 0)
+		return usage(do_get_data);
+	tag = id[0] << 8 | id[1];
 
-	tag = strtoul(argv[0], NULL, 16);
 	r = sc_lock(card);
 	if (r == SC_SUCCESS)
 		r = sc_get_data(card, tag, buffer, sizeof(buffer));
 	sc_unlock(card);
 	if (r < 0) {
-		fprintf(stderr, "Failed to get data object: %s\n", sc_strerror(r));
+		fprintf(stderr, "Failed to get DO %04X: %s\n", tag, sc_strerror(r));
 		return -1;
 	}
 
 	if (argc == 2) {
-		const char	*filename = argv[1];
+		const char *filename = argv[1];
 
-		if (!(fp = fopen(filename, "w"))) {
+		if (!(fp = fopen(filename, "wb"))) {
 			perror(filename);
 			return -1;
 		}
 		fwrite(buffer, r, 1, fp);
 		fclose(fp);
 	} else {
-		printf("Object %04x:\n", tag & 0xFFFF);
+		printf("Data Object %04X:\n", tag & 0xFFFF);
 		util_hex_dump_asc(stdout, buffer, r, 0);
 	}
 
