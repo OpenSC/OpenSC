@@ -553,14 +553,11 @@ static int do_ls(int argc, char **argv)
 
 static int do_find(int argc, char **argv)
 {
-	u8 fid[2], end[2];
+	u8 fid[2] = { 0x00, 0x00 };
+	u8 end[2] = { 0xFF, 0xFF };
 	sc_path_t path;
 	int r;
 
-	fid[0] = 0;
-	fid[1] = 0;
-	end[0] = 0xFF;
-	end[1] = 0xFF;
 	switch (argc) {
 	case 2:
 		if (arg_to_fid(argv[1], end) != 0)
@@ -585,10 +582,10 @@ static int do_find(int argc, char **argv)
 
 		if (current_path.type != SC_PATH_TYPE_DF_NAME) {
 			path = current_path;
-			sc_append_path_id(&path, fid, sizeof fid);
+			sc_append_path_id(&path, fid, sizeof(fid));
 		} else {
-			if (sc_path_set(&path, SC_PATH_TYPE_FILE_ID, fid, 2, 0, 0) != SC_SUCCESS) {
-				fprintf(stderr, "unable to set path.\n");
+			if (sc_path_set(&path, SC_PATH_TYPE_FILE_ID, fid, sizeof(fid), 0, 0) != SC_SUCCESS) {
+				fprintf(stderr, "Unable to set path.\n");
 				die(1);
 			}
 		}
