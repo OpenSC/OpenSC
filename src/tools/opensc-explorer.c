@@ -618,14 +618,12 @@ static int do_find(int argc, char **argv)
 
 static int do_find_tags(int argc, char **argv)
 {
-	u8 start[2], end[2], rbuf[256];
+	u8 start[2] = { 0x00, 0x00 };
+	u8 end[2]   = { 0xFF, 0xFF };
+	u8 rbuf[SC_MAX_EXT_APDU_RESP_SIZE];
 	int r;
 	unsigned int tag, tag_end;
 
-	start[0] = 0x00;
-	start[1] = 0x00;
-	end[0] = 0xFF;
-	end[1] = 0xFF;
 	switch (argc) {
 	case 2:
 		if (arg_to_fid(argv[1], end) != 0)
@@ -650,7 +648,7 @@ static int do_find_tags(int argc, char **argv)
 
 		r = sc_lock(card);
 		if (r == SC_SUCCESS)
-			r = sc_get_data(card, tag, rbuf, sizeof rbuf);
+			r = sc_get_data(card, tag, rbuf, sizeof(rbuf));
 		else
 			r = SC_ERROR_READER_LOCKED;
 		sc_unlock(card);
