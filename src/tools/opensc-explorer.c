@@ -371,7 +371,8 @@ arg_to_path(const char *arg, sc_path_t *path, int is_id)
 	} else {
 		/* file id */
 		u8 cbuf[2];
-        if (arg_to_fid(arg, cbuf) < 0)
+
+		if (arg_to_fid(arg, cbuf) < 0)
 			return -1;
 
 		if ((cbuf[0] == 0x3F && cbuf[1] == 0x00) || is_id) {
@@ -380,8 +381,8 @@ arg_to_path(const char *arg, sc_path_t *path, int is_id)
 			path->type = (is_id) ? SC_PATH_TYPE_FILE_ID : SC_PATH_TYPE_PATH;
 		} else {
 			*path = current_path;
-			if (path->type == SC_PATH_TYPE_DF_NAME)   {
-				if (path->len > sizeof(path->aid.value))   {
+			if (path->type == SC_PATH_TYPE_DF_NAME) {
+				if (path->len > sizeof(path->aid.value)) {
 					fprintf(stderr, "Invalid length of DF_NAME path\n");
 					return -1;
 				}
