@@ -1711,11 +1711,11 @@ static int do_random(int argc, char **argv)
 
 	if (argc < 1 || argc > 2)
 		return usage(do_random);
-
 	count = atoi(argv[0]);
-	if (count < 0 || (size_t) count > sizeof buffer) {
+
+	if (count < 0 || (size_t) count > sizeof(buffer)) {
 		fprintf(stderr, "Number must be in range 0..%"SC_FORMAT_LEN_SIZE_T"u\n",
-			   	sizeof buffer);
+			sizeof(buffer));
 		return -1;
 	}
 
