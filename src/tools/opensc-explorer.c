@@ -488,24 +488,22 @@ static int pattern_match(const char *pattern, const char *string)
 
 static int do_ls(int argc, char **argv)
 {
-	u8 buf[256], *cur = buf;
+	u8 buf[SC_MAX_EXT_APDU_RESP_SIZE], *cur = buf;
 	int r, count;
 
-	memset(buf, 0, sizeof buf);
+	memset(buf, 0, sizeof(buf));
 	r = sc_lock(card);
 	if (r == SC_SUCCESS)
 		r = sc_list_files(card, buf, sizeof(buf));
 	sc_unlock(card);
 	if (r < 0) {
-		check_ret(r, SC_AC_OP_LIST_FILES, "unable to receive file listing", current_file);
+		check_ret(r, SC_AC_OP_LIST_FILES, "Unable to receive file listing", current_file);
 		return -1;
 	}
 	count = r;
 	printf("FileID\tType  Size\n");
 	while (count >= 2) {
-		sc_path_t path;
-		sc_file_t *file = NULL;
-		char filename[10];
+		char filename[SC_MAX_PATH_STRING_SIZE];
 		int i = 0;
 		int matches = 0;
 
@@ -522,12 +520,15 @@ static int do_ls(int argc, char **argv)
 
 		/* if any filename pattern were given, filter only matching file names */
 		if (argc == 0 || matches) {
+			sc_path_t path;
+			sc_file_t *file = NULL;
+
 			if (current_path.type != SC_PATH_TYPE_DF_NAME) {
 				path = current_path;
 				sc_append_path_id(&path, cur, 2);
 			} else {
 				if (sc_path_set(&path, SC_PATH_TYPE_FILE_ID, cur, 2, 0, 0) != SC_SUCCESS) {
-					fprintf(stderr, "unable to set path.\n");
+					fprintf(stderr, "Unable to set path.\n");
 					die(1);
 				}
 			}
@@ -537,10 +538,11 @@ static int do_ls(int argc, char **argv)
 				r = sc_select_file(card, &path, &file);
 			sc_unlock(card);
 			if (r) {
-				fprintf(stderr, " %02X%02X unable to select file, %s\n", cur[0], cur[1], sc_strerror(r));
+				fprintf(stderr, "Unable to select file %02X%02X: %s\n",
+					 cur[0], cur[1], sc_strerror(r));
 			} else {
 				file->id = (cur[0] << 8) | cur[1];
-					print_file(file);
+				print_file(file);
 				sc_file_free(file);
 			}
 		}
