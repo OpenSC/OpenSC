@@ -1807,22 +1807,24 @@ static int do_get_data(int argc, char **argv)
  **/
 static int do_put_data(int argc, char **argv)
 {
+	u8 id[2] = { 0x00, 0x00 };
 	unsigned int tag;
-	u8 buf[SC_MAX_EXT_APDU_BUFFER_SIZE];
+	u8 buf[SC_MAX_EXT_APDU_DATA_SIZE];
 	size_t buflen = sizeof(buf);
 	int r;
 
 	if (argc != 2)
 		return usage(do_put_data);
 
-	/* Extract DO's tag */
-	tag = strtoul(argv[0], NULL, 16);
+	if (arg_to_fid(argv[0], id) != 0)
+		return usage(do_get_data);
+	tag = id[0] << 8 | id[1];
 
 	/* Extract the new content */
 	/* buflen is the max length of reception buffer */
 	r = parse_string_or_hexdata(argv[1], buf, &buflen);
 	if (r < 0) {
-		fprintf(stderr, "error parsing %s: %s\n", argv[1], sc_strerror(r));
+		fprintf(stderr, "Error parsing %s: %s\n", argv[1], sc_strerror(r));
 		return r;
 	}
 
@@ -1832,7 +1834,7 @@ static int do_put_data(int argc, char **argv)
 		r = sc_put_data(card, tag, buf, buflen);
 	sc_unlock(card);
 	if (r < 0) {
-		fprintf(stderr, "Cannot put data to %04X; return %i\n", tag, r);
+		fprintf(stderr, "Failed to put data to DO %04X: %s\n", tag, sc_strerror(r));
 		return -1;
 	}
 
