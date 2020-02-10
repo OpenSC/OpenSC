@@ -84,7 +84,7 @@ typedef struct {
 	size_t  num_keygen_mechs;
 } token_info_t;
 
-token_info_t token;
+extern token_info_t token;
 
 #endif /* P11TEST_COMMON_H */
 
