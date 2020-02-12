@@ -580,6 +580,7 @@ iasecc_init(struct sc_card *card)
 	struct sc_context *ctx = card->ctx;
 	struct iasecc_private_data *private_data = NULL;
 	int rv = SC_ERROR_NO_CARD_SUPPORT;
+	void *old_drv_data = card->drv_data;
 
 	LOG_FUNC_CALLED(ctx);
 	private_data = (struct iasecc_private_data *) calloc(1, sizeof(struct iasecc_private_data));
@@ -599,8 +600,9 @@ iasecc_init(struct sc_card *card)
 		rv = iasecc_init_amos_or_sagem(card);
 	else if (card->type == SC_CARD_TYPE_IASECC_MI)
 		rv = iasecc_init_amos_or_sagem(card);
-	else
-		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_CARD);
+	else {
+		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_INVALID_CARD, "");
+	}
 
 
 	if (!rv)   {
@@ -614,7 +616,7 @@ iasecc_init(struct sc_card *card)
 
 			rv = iasecc_select_file(card, &path, NULL);
 			sc_log(ctx, "Select ECC ROOT with the AID from EF.ATR: rv %i", rv);
-			LOG_TEST_RET(ctx, rv, "Select EF.ATR AID failed");
+			LOG_TEST_GOTO_ERR(ctx, rv, "Select EF.ATR AID failed");
 		}
 
 		iasecc_get_serialnr(card, NULL);
@@ -628,6 +630,13 @@ iasecc_init(struct sc_card *card)
 	if (!rv && card->ef_atr && card->ef_atr->aid.len)   {
 		sc_log(ctx, "EF.ATR(aid:'%s')", sc_dump_hex(card->ef_atr->aid.value, card->ef_atr->aid.len));
 	}
+
+err:
+	if (rv < 0) {
+		free(private_data);
+		card->drv_data = old_drv_data;
+	}
+
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
