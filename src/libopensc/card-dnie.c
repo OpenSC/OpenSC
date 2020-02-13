@@ -904,22 +904,6 @@ static int dnie_finish(struct sc_card *card)
 /* ISO 7816-4 functions */
 
 /**
- * Convert little-endian data into unsigned long.
- *
- * @param pt pointer to little-endian data
- * @return equivalent long
- */
-static unsigned long le2ulong(u8 * pt)
-{
-	unsigned long res = 0L;
-	if (pt==NULL) return res;
-	res = (0xff & *(pt + 0)) +
-	    ((0xff & *(pt + 1)) << 8) +
-	    ((0xff & *(pt + 2)) << 16) + ((0xff & *(pt + 3)) << 24);
-	return res;
-}
-
-/**
  * Uncompress data if in compressed format.
  *
  * @param card pointer to sc_card_t structure
@@ -944,8 +928,8 @@ static u8 *dnie_uncompress(sc_card_t * card, u8 * from, size_t *len)
 	if (*len < 8)
 		goto compress_exit;
 	/* evaluate compressed an uncompressed sizes (little endian format) */
-	uncompressed = le2ulong(from);
-	compressed = le2ulong(from + 4);
+	uncompressed = lebytes2ulong(from);
+	compressed = lebytes2ulong(from + 4);
 	/* if compressed size doesn't match data length assume not compressed */
 	if (compressed != (*len) - 8)
 		goto compress_exit;
@@ -1906,8 +1890,8 @@ static int dnie_read_header(struct sc_card *card)
 	/* check response */
 	if (apdu.resplen != 8)
 		goto header_notcompressed;
-	uncompressed = le2ulong(apdu.resp);
-	compressed = le2ulong(apdu.resp + 4);
+	uncompressed = lebytes2ulong(apdu.resp);
+	compressed = lebytes2ulong(apdu.resp + 4);
 	if (uncompressed < compressed)
 		goto header_notcompressed;
 	if (uncompressed > 32767)

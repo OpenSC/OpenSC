@@ -227,6 +227,16 @@ unsigned short lebytes2ushort(const u8 *buf)
 		| (unsigned short)buf[0];
 }
 
+unsigned long lebytes2ulong(const u8 *buf)
+{
+	if (buf == NULL)
+		return 0UL;
+	return (unsigned long)buf[3] << 24
+		| (unsigned long)buf[2] << 16
+		| (unsigned long)buf[1] << 8
+		| (unsigned long)buf[0];
+}
+
 void sc_init_oid(struct sc_object_id *oid)
 {
 	int ii;

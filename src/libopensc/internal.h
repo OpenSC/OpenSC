@@ -117,6 +117,12 @@ unsigned short bebytes2ushort(const u8 *buf);
  * @return       the converted value
  */
 unsigned short lebytes2ushort(const u8 *buf);
+/**
+ * Convert 4 bytes in little endian order into an unsigned long
+ * @param  buf   the byte array of 4 bytes
+ * @return       the converted value
+ */
+unsigned long lebytes2ulong(const u8 *buf);
 
 #define BYTES4BITS(num)  (((num) + 7) / 8)    /* number of bytes necessary to hold 'num' bits */
 
