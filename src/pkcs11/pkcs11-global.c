@@ -50,6 +50,8 @@ sc_context_t *context = NULL;
 struct sc_pkcs11_config sc_pkcs11_conf;
 list_t sessions;
 list_t virtual_slots;
+CK_SLOT_ID next_slot_id = 0;
+int slot_id_wrapped = 0;
 #if !defined(_WIN32)
 pid_t initialized_pid = (pid_t)-1;
 #endif
@@ -486,21 +488,6 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 			slot->flags |= SC_PKCS11_SLOT_FLAG_SEEN;
 		}
 		prev_reader = slot->reader;
-	}
-
-	/* Slot list can only change in v2.20 */
-	if (pSlotList == NULL_PTR) {
-		/* slot->id is derived from its location in the list virtual_slots.
-		 * When the slot list changes, so does slot->id, so we reindex the
-		 * slots here the same way it is done in `create_slot()`
-		 *
-		 * TODO use a persistent CK_SLOT_ID, e.g. by using something like
-		 * `slot->id = sc_crc32(slot, sizeof *slot);` (this example, however,
-		 * is currently not thread safe).  */
-		for (i=0; i<list_size(&virtual_slots); i++) {
-			slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, i);
-			slot->id = (CK_SLOT_ID) list_locate(&virtual_slots, slot);
-		}
 	}
 
 	if (pSlotList == NULL_PTR) {

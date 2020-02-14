@@ -1278,7 +1278,7 @@ static void list_slots(int tokens, int refresh, int print)
 
 	printf("Available slots:\n");
 	for (n = 0; n < p11_num_slots; n++) {
-		printf("Slot %lu (0x%lx): ", n, p11_slots[n]);
+		printf("Slot %lu CK_SLOT_ID 0x%lx: ", n, p11_slots[n]);
 		rv = p11->C_GetSlotInfo(p11_slots[n], &info);
 		if (rv != CKR_OK) {
 			printf("(GetSlotInfo failed, %s)\n", CKR2Str(rv));

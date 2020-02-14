@@ -44,6 +44,8 @@ static struct sc_pkcs11_slot * reader_get_slot(sc_reader_t *reader)
 	/* Locate a slot related to the reader */
 	for (i = 0; i<list_size(&virtual_slots); i++) {
 		sc_pkcs11_slot_t *slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, i);
+		if (!reader && slot->flags & SC_PKCS11_SLOT_FLAG_SEEN)
+			continue;
 		if (slot->reader == reader)
 			return slot;
 	}
@@ -114,6 +116,22 @@ CK_RV create_slot(sc_reader_t *reader)
 		slot->objects = objects;
 	}
 
+	if (slot_id_wrapped) {
+		
+		sc_log(context, "Issued more then 2^32 slot_ids");
+		/* TODO we wrapped around 2^32. slots need to add code to find next unused slotID
+		 * opensc.conf max-virtual-slots controls number of active slots ,on the order of 16
+		 * 4 readers times 4 slots-per-reader. slot->id are assigned sequentialy as readers
+		 * are inserted. a slot is is a ULONG, so is would take 2^32/4 new reader insertions.
+		 */
+	} else {
+		slot->id = next_slot_id++;
+		if (next_slot_id == 0) { /* we wrapped around  catch it on next create_slot */
+			slot_id_wrapped = 1;
+			next_slot_id = 2048; /* next time start looking for unused slot id here */
+		}
+	}
+
 	slot->login_user = -1;
 	init_slot_info(&slot->slot_info, reader);
 	sc_log(context, "Initializing slot with id 0x%lx", slot->id);
@@ -125,7 +143,6 @@ CK_RV create_slot(sc_reader_t *reader)
 		slot->slot_info.hardwareVersion.major = reader->version_major;
 		slot->slot_info.hardwareVersion.minor = reader->version_minor;
 	}
-	slot->id = (CK_SLOT_ID) list_locate(&virtual_slots, slot);
 
 	return CKR_OK;
 }

@@ -344,6 +344,8 @@ extern struct sc_pkcs11_config sc_pkcs11_conf;
 extern list_t sessions;
 extern list_t virtual_slots;
 extern list_t cards;
+extern CK_SLOT_ID next_slot_id;
+extern int slot_id_wrapped;
 
 /* Framework definitions */
 extern struct sc_pkcs11_framework_ops framework_pkcs15;
