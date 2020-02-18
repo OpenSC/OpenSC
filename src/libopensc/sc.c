@@ -902,7 +902,7 @@ void *sc_mem_secure_alloc(size_t len)
 		len = pages * page_size;
 	}
 
-	p = malloc(len);
+	p = calloc(1, len);
 	if (p == NULL) {
 		return NULL;
 	}
