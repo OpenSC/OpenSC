@@ -2062,7 +2062,7 @@ coolkey_process_combined_object(sc_card_t *card, coolkey_private_data_t *priv, u
 	}
 	memcpy(priv->token_name, &decompressed_header->token_name[0],
 							decompressed_header->token_name_length);
-	priv->token_name[decompressed_header->token_name_length] = 0;
+	priv->token_name[decompressed_header->token_name_length] = '\0';
 	priv->token_name_length = decompressed_header->token_name_length;
 
 
