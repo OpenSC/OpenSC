@@ -348,27 +348,6 @@
 
 				<varlistentry>
 					<term>
-						<option>--options-file</option> <replaceable>filename</replaceable>
-					</term>
-					<listitem>
-						<para>
-							Tells <command>pkcs15-init</command> to read additional options
-							from <replaceable>filename</replaceable>. The file is supposed to
-							contain one long option per line, without the leading dashes,
-							for instance:
-							<programlisting>
-pin		1234
-puk		87654321
-							</programlisting>
-						</para>
-						<para>
-							You can specify <option>--options-file</option> several times.
-						</para>
-					</listitem>
-				</varlistentry>
-
-				<varlistentry>
-					<term>
 						<option>--pin</option>,
 						<option>--puk</option>
 						<option>--so-pin</option>,
@@ -384,10 +363,9 @@ puk		87654321
 							that on most operation systems, any user can
 							display the command line of any process on the
 							system using utilities such as
-							<command>ps(1)</command>. Therefore, you should use
-							these options only on a secured system, or in an
-							options file specified with
-							<option>--options-file</option>.
+							<command>ps(1)</command>. Therefore, you should prefer
+							passing the values via a hidden environment variable
+							on an unsecured system.
 						</para>
 					</listitem>
 				</varlistentry>
