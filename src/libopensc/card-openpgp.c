@@ -819,9 +819,11 @@ pgp_get_card_features(sc_card_t *card)
 					/* The montgomery curve (curve25519) needs to go through
 					 * different paths, otherwise we handle it as a normal EC key */
 					if (sc_compare_oid(&key_info.u.ec.oid, &curve25519_oid)) {
+						/* CKM_XEDDSA supports both Sign and Derive, but
+						 * OpenPGP card supports only derivation using these
+						 * keys as far as I know */
 						_sc_card_add_xeddsa_alg(card, key_info.u.ec.key_length,
-							(SC_ALGORITHM_XEDDSA_RAW | SC_ALGORITHM_ECDH_CDH_RAW),
-							0, &key_info.u.ec.oid);
+							SC_ALGORITHM_ECDH_CDH_RAW, 0, &key_info.u.ec.oid);
 
 						sc_log(card->ctx, "DO %zX: Added XEDDSA algorithm (%d), mod_len = %d" ,
 							i, key_info.algorithm, key_info.u.ec.key_length);
@@ -2188,6 +2190,9 @@ pgp_compute_signature(sc_card_t *card, const u8 *data,
 		break;
 	case 0x01:
 	default:
+		/* From PKCS #11 point of view, we should be able to use
+		 * curve25519 to do digital signature, but it is not how it
+		 * is used in OpenGPG so we will not allow it here */
 		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
 			"invalid key reference");
 	}
