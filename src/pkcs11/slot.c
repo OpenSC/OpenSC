@@ -115,6 +115,7 @@ CK_RV create_slot(sc_reader_t *reader)
 	}
 
 	slot->login_user = -1;
+	slot->id = (CK_SLOT_ID) list_locate(&virtual_slots, slot);
 	init_slot_info(&slot->slot_info, reader);
 	sc_log(context, "Initializing slot with id 0x%lx", slot->id);
 
@@ -125,7 +126,6 @@ CK_RV create_slot(sc_reader_t *reader)
 		slot->slot_info.hardwareVersion.major = reader->version_major;
 		slot->slot_info.hardwareVersion.minor = reader->version_minor;
 	}
-	slot->id = (CK_SLOT_ID) list_locate(&virtual_slots, slot);
 
 	return CKR_OK;
 }
