@@ -469,8 +469,8 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 		slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, i);
 		/* the list of available slots contains:
 		 * - if present, virtual hotplug slot;
-		 * - any slot with token;
 		 * - without token(s), one empty slot per reader;
+		 * - any slot with token;
 		 * - any slot that has already been seen;
 		 */
 		if ((!tokenPresent && !slot->reader)
@@ -504,10 +504,7 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 	sc_log(context, "returned %lu slots\n", numMatches);
 
 out:
-	if (found != NULL) {
-		free (found);
-		found = NULL;
-	}
+	free (found);
 	sc_pkcs11_unlock();
 	return rv;
 }
