@@ -944,16 +944,15 @@ static u8 *dnie_uncompress(sc_card_t * card, u8 * from, size_t *len)
 		sc_log(card->ctx, "alloc() for uncompressed buffer failed");
 		return NULL;
 	}
+	*len = uncompressed;
 	res = sc_decompress(upt,	/* try to uncompress by calling sc_xx routine */
-			    (size_t *) & uncompressed,
+			    len,
 			    from + 8, (size_t) compressed, COMPRESSION_ZLIB);
-	/* TODO: check that returned uncompressed size matches expected */
 	if (res != SC_SUCCESS) {
 		sc_log(card->ctx, "Uncompress() failed or data not compressed");
 		goto compress_exit;	/* assume not need uncompression */
 	}
 	/* Done; update buffer len and return pt to uncompressed data */
-	*len = uncompressed;
 	sc_log_hex(card->ctx, "Compressed data", from + 8, compressed);
 	sc_log_hex(card->ctx, "Uncompressed data", upt, uncompressed);
  compress_exit:
