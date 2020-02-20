@@ -360,14 +360,14 @@ static int sc_pkcs15emu_gemsafeGPK_init(sc_pkcs15_card_t *p15card)
 			}
 
 			if ( gsdata[idx1] == 0x30 &&
-				is_seq(gsdata + idx1, &seq_size1, &seq_len1) &&
-			 	is_seq(gsdata + idx1 + seq_size1, &seq_size2, &seq_len2) &&
-			    gsdata[idx1 + seq_size1 + seq_size2 + 0] == 0xa0 &&
-				gsdata[idx1 + seq_size1 + seq_size2 + 1] == 0x03 &&
-				gsdata[idx1 + seq_size1 + seq_size2 + 2] == 0x02 &&
-				gsdata[idx1 + seq_size1 + seq_size2 + 3] == 0x01 &&
-				gsdata[idx1 + seq_size1 + seq_size2 + 4] == 0x02 &&
-				idx1 + 4 + seq_len1 < file->size) {
+					is_seq(gsdata + idx1, &seq_size1, &seq_len1) &&
+					is_seq(gsdata + idx1 + seq_size1, &seq_size2, &seq_len2) &&
+					gsdata[idx1 + seq_size1 + seq_size2 + 0] == 0xa0 &&
+					gsdata[idx1 + seq_size1 + seq_size2 + 1] == 0x03 &&
+					gsdata[idx1 + seq_size1 + seq_size2 + 2] == 0x02 &&
+					gsdata[idx1 + seq_size1 + seq_size2 + 3] == 0x01 &&
+					gsdata[idx1 + seq_size1 + seq_size2 + 4] == 0x02 &&
+					idx1 + 4 + seq_len1 < file->size) {
 				/* we have a cert (I hope) */
 				/* read in rest if needed */
 				idxlen = idx1 + seq_len1 + 4 - idx2; 
@@ -386,7 +386,7 @@ static int sc_pkcs15emu_gemsafeGPK_init(sc_pkcs15_card_t *p15card)
 					return SC_ERROR_OUT_OF_MEMORY;
 
 				memcpy(cert_info.value.value, gsdata + idx1, cert_info.value.len);
-			idx1 = idx1 + cert_info.value.len;
+				idx1 = idx1 + cert_info.value.len;
 				break;
 			}
 			idx1++;
