@@ -27,6 +27,32 @@
 
 #include "sc-pkcs11.h"
 
+/* Print virtual_slots list. Called by DEBUG_VSS(S, C) */
+void _debug_virtual_slots(sc_pkcs11_slot_t *p)
+{
+	int i, vs_size;
+	sc_pkcs11_slot_t * slot;
+
+	vs_size = list_size(&virtual_slots);
+	_sc_debug(context, SC_LOG_DEBUG_NORMAL,
+			"VSS size:%d", vs_size);
+	_sc_debug(context, SC_LOG_DEBUG_NORMAL,
+			"VSS  [i] id   flags LU events nsessions slot_info.flags reader p11card description");
+	for (i = 0; i < vs_size; i++) {
+		slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, i);
+		if (slot) {
+			_sc_debug(context, SC_LOG_DEBUG_NORMAL,
+				"VSS %s[%d] 0x%2.2lx 0x%4.4x %d  %d  %d %4.4lx  %p %p %.64s",
+				((slot == p) ? "*" : " "),
+				i, slot->id, slot->flags, slot->login_user, slot->events, slot->nsessions,
+				slot->slot_info.flags,
+				slot->reader, slot->p11card,
+				slot->slot_info.slotDescription);
+		}
+	}
+	_sc_debug(context, SC_LOG_DEBUG_NORMAL, "VSS END");
+}
+
 static struct sc_pkcs11_framework_ops *frameworks[] = {
 	&framework_pkcs15,
 #ifdef USE_PKCS15_INIT
@@ -50,7 +76,7 @@ static struct sc_pkcs11_slot * reader_get_slot(sc_reader_t *reader)
 	return NULL;
 }
 
-static void init_slot_info(CK_SLOT_INFO_PTR pInfo, sc_reader_t *reader)
+void init_slot_info(CK_SLOT_INFO_PTR pInfo, sc_reader_t *reader)
 {
 	if (reader) {
 		strcpy_bp(pInfo->slotDescription, reader->name, 64);
