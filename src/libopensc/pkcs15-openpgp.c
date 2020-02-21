@@ -309,6 +309,8 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 				/* TODO Store the OID from cxdata + 1 ?? */
 				/* assuming Ed25519 as it is the only supported now */
 				prkey_info.field_length = 255;
+				/* Filter out invalid usage: ED does not support anything but sign */
+				prkey_info.usage &= PGP_SIG_PRKEY_USAGE;
 				r = sc_pkcs15emu_add_eddsa_prkey(p15card, &prkey_obj, &prkey_info);
 				break;
 			case SC_OPENPGP_KEYALGO_ECDH:
@@ -320,6 +322,8 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 					oid.value[k] = cxdata[k+1]; /* ignore first byte of blob (algo ID) */
 				}
 				if (sc_compare_oid(&oid, &curve25519_binary_oid)) {
+					/* This can do only DERIVE */
+					prkey_info.usage = SC_PKCS15_PRKEY_USAGE_DERIVE;
 					prkey_info.field_length = 255;
 					r = sc_pkcs15emu_add_xeddsa_prkey(p15card, &prkey_obj, &prkey_info);
 					break;
@@ -327,6 +331,9 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 				/* fall through */
 			case SC_OPENPGP_KEYALGO_ECDSA:
 				/* TODO Store the OID from cxdata + 1 ?? */
+				/* EC keys can do derive, but not really encrypt */
+				prkey_info.usage |= SC_PKCS15_PRKEY_USAGE_DERIVE;
+				prkey_info.usage &= ~PGP_ENC_PRKEY_USAGE;
 				r = sc_pkcs15emu_add_ec_prkey(p15card, &prkey_obj, &prkey_info);
 				break;
 			case SC_OPENPGP_KEYALGO_RSA:
@@ -388,6 +395,8 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 				/* TODO Store the OID from cxdata + 1 ?? */
 				/* assuming Ed25519 as it is the only supported now */
 				pubkey_info.field_length = 255;
+				/* Filter out invalid usage: ED does not support anything but sign */
+				pubkey_info.usage &= PGP_SIG_PUBKEY_USAGE;
 				r = sc_pkcs15emu_add_eddsa_pubkey(p15card, &pubkey_obj, &pubkey_info);
 				break;
 			case SC_OPENPGP_KEYALGO_ECDH:
@@ -399,6 +408,8 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 					oid.value[k] = cxdata[k+1]; /* ignore first byte of blob (algo ID) */
 				}
 				if (sc_compare_oid(&oid, &curve25519_binary_oid)) {
+					/* XXX What can this key do? */
+					pubkey_info.usage = 0;
 					pubkey_info.field_length = 255;
 					r = sc_pkcs15emu_add_xeddsa_pubkey(p15card, &pubkey_obj, &pubkey_info);
 					break;
@@ -406,6 +417,8 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 				/* fall through */
 			case SC_OPENPGP_KEYALGO_ECDSA:
 				/* TODO Store the OID from cxdata + 1 ?? */
+				/* EC keys can not do encrypt */
+				pubkey_info.usage &= ~PGP_ENC_PUBKEY_USAGE;
 				r = sc_pkcs15emu_add_ec_pubkey(p15card, &pubkey_obj, &pubkey_info);
 				break;
 			case SC_OPENPGP_KEYALGO_RSA:

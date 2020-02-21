@@ -2194,7 +2194,7 @@ pgp_compute_signature(sc_card_t *card, const u8 *data,
 	default:
 		/* From PKCS #11 point of view, we should be able to use
 		 * curve25519 to do digital signature, but it is not how it
-		 * is used in OpenGPG so we will not allow it here */
+		 * is used in OpenPGP so we will not allow it here */
 		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
 			"invalid key reference");
 	}
