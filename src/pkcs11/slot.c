@@ -75,7 +75,8 @@ static struct sc_pkcs11_slot * reader_reclaim_slot(sc_reader_t *reader)
 	/* Locate a slot related to the reader */
 	for (i = 0; i<list_size(&virtual_slots); i++) {
 		sc_pkcs11_slot_t *slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, i);
-		if (slot->reader == reader)
+		if (slot->reader == reader) {
+			DEBUG_VSS(slot, "reader_get_slot found slot");
 			return slot;
 		if (slot->reader == NULL && reader != NULL
 				&& 0 == memcmp(slot->slot_info.slotDescription, slotDescription, 64)
@@ -83,6 +84,7 @@ static struct sc_pkcs11_slot * reader_reclaim_slot(sc_reader_t *reader)
 				&& slot->slot_info.hardwareVersion.major == reader->version_major
 				&& slot->slot_info.hardwareVersion.minor == reader->version_minor)
 			return slot;
+		}
 	}
 	return NULL;
 }
@@ -140,6 +142,7 @@ CK_RV create_slot(sc_reader_t *reader)
 		if (0 != list_init(&slot->logins)) {
 			return CKR_HOST_MEMORY;
 		}
+		DEBUG_VSS(slot, "Creating new slot");
 	} else {
 		/* reuse the old list of logins/objects since they should be empty */
 		list_t logins = slot->logins;
@@ -149,6 +152,7 @@ CK_RV create_slot(sc_reader_t *reader)
 
 		slot->logins = logins;
 		slot->objects = objects;
+		DEBUG_VSS(slot, "Reusing old slot");
 	}
 
 	slot->login_user = -1;
@@ -159,6 +163,7 @@ CK_RV create_slot(sc_reader_t *reader)
 	if (reader != NULL) {
 		slot->reader = reader;
 	}
+	DEBUG_VSS(slot, "Created this slot");
 
 	return CKR_OK;
 }
