@@ -70,8 +70,10 @@ static struct sc_pkcs11_slot * reader_get_slot(sc_reader_t *reader)
 	/* Locate a slot related to the reader */
 	for (i = 0; i<list_size(&virtual_slots); i++) {
 		sc_pkcs11_slot_t *slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, i);
-		if (slot->reader == reader)
+		if (slot->reader == reader) {
+			DEBUG_VSS(slot, "reader_get_slot found slot");
 			return slot;
+		}
 	}
 	return NULL;
 }
@@ -129,6 +131,7 @@ CK_RV create_slot(sc_reader_t *reader)
 		if (0 != list_init(&slot->logins)) {
 			return CKR_HOST_MEMORY;
 		}
+		DEBUG_VSS(slot, "Creating new slot");
 	} else {
 		/* reuse the old list of logins/objects since they should be empty */
 		list_t logins = slot->logins;
@@ -138,6 +141,7 @@ CK_RV create_slot(sc_reader_t *reader)
 
 		slot->logins = logins;
 		slot->objects = objects;
+		DEBUG_VSS(slot, "Reusing old slot");
 	}
 
 	slot->login_user = -1;
@@ -152,6 +156,7 @@ CK_RV create_slot(sc_reader_t *reader)
 		slot->slot_info.hardwareVersion.minor = reader->version_minor;
 	}
 	slot->id = (CK_SLOT_ID) list_locate(&virtual_slots, slot);
+	DEBUG_VSS(slot, "Created this slot");
 
 	return CKR_OK;
 }
@@ -165,7 +170,9 @@ void empty_slot(struct sc_pkcs11_slot *slot)
 			 * emptied. We replace the reader with a virtual hotplug slot. */
 			slot->reader = NULL;
 			init_slot_info(&slot->slot_info, NULL);
+			DEBUG_VSS(slot, "Emptied slot with SC_PKCS11_SLOT_FLAG_SEEN");
 		} else {
+			DEBUG_VSS(slot, "About to destroy, delete from VS and free slot");
 			list_destroy(&slot->objects);
 			list_destroy(&slot->logins);
 			list_delete(&virtual_slots, slot);

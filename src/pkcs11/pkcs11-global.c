@@ -449,6 +449,7 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 
 	sc_log(context, "C_GetSlotList(token=%d, %s)", tokenPresent,
 			pSlotList==NULL_PTR? "plug-n-play":"refresh");
+	DEBUG_VSS(NULL, "C_GetSlotList before ctx_detect_detect");
 
 	/* Slot list can only change in v2.20 */
 	if (pSlotList == NULL_PTR) {
@@ -459,7 +460,11 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 		}
 	}
 
+	DEBUG_VSS(NULL, "C_GetSlotList after ctx_detect_readers");
+
 	card_detect_all();
+
+	DEBUG_VSS(NULL, "C_GetSlotList after card_detect_all");
 
 	found = calloc(list_size(&virtual_slots), sizeof(CK_SLOT_ID));
 
@@ -487,6 +492,7 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 		}
 		prev_reader = slot->reader;
 	}
+	DEBUG_VSS(NULL, "C_GetSlotList after card_detect_all");
 
 	/* Slot list can only change in v2.20 */
 	if (pSlotList == NULL_PTR) {
@@ -502,6 +508,7 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 			slot->id = (CK_SLOT_ID) list_locate(&virtual_slots, slot);
 		}
 	}
+	DEBUG_VSS(NULL, "C_GetSlotList after slot->id reassigned");
 
 	if (pSlotList == NULL_PTR) {
 		sc_log(context, "was only a size inquiry (%lu)\n", numMatches);
@@ -522,6 +529,7 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 	rv = CKR_OK;
 
 	sc_log(context, "returned %lu slots\n", numMatches);
+	DEBUG_VSS(NULL, "Returning a new slot list");
 
 out:
 	if (found != NULL) {
@@ -561,7 +569,7 @@ static sc_timestamp_t get_current_time(void)
 
 CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 {
-	struct sc_pkcs11_slot *slot;
+	struct sc_pkcs11_slot *slot = NULL;
 	sc_timestamp_t now;
 	CK_RV rv;
 
@@ -584,6 +592,7 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 	}
 
 	rv = slot_get_slot(slotID, &slot);
+	DEBUG_VSS(slot, "C_GetSlotInfo found");
 	sc_log(context, "C_GetSlotInfo() get slot rv %s", lookup_enum( RV_T, rv));
 	if (rv == CKR_OK) {
 		if (slot->reader == NULL) {
