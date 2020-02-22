@@ -1178,7 +1178,7 @@ static int do_verify(int argc, char **argv)
 		{ SC_AC_NONE,	NULL, 	}
 	};
 	int r, tries_left = -1;
-	u8 buf[64];
+	u8 buf[SC_MAX_PIN_SIZE];
 	size_t buflen = sizeof(buf), i;
 	struct sc_pin_cmd_data data;
 	int prefix_len = 0;
@@ -1263,8 +1263,8 @@ static int do_verify(int argc, char **argv)
 static int do_change(int argc, char **argv)
 {
 	int ref, r, tries_left = -1;
-	u8 oldpin[64];
-	u8 newpin[64];
+	u8 oldpin[SC_MAX_PIN_SIZE];
+	u8 newpin[SC_MAX_PIN_SIZE];
 	size_t oldpinlen = 0;
 	size_t newpinlen = 0;
 	struct sc_pin_cmd_data data;
@@ -1328,8 +1328,8 @@ static int do_change(int argc, char **argv)
 static int do_unblock(int argc, char **argv)
 {
 	int ref, r;
-	u8 puk[64];
-	u8 newpin[64];
+	u8 puk[SC_MAX_PIN_SIZE];
+	u8 newpin[SC_MAX_PIN_SIZE];
 	size_t puklen = 0;
 	size_t newpinlen = 0;
 	struct sc_pin_cmd_data data;
