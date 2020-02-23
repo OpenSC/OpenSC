@@ -699,8 +699,11 @@ int do_genkey(sc_card_t *card, u8 in_key_id, const char *keytype)
 
 	/* generate key depending on keytype passed */
 	if (strncasecmp("RSA", keytype, strlen("RSA")) == 0) {
-		size_t keylen = 2048;	/* default length for RSA keys */
 		const char *keylen_ptr = keytype + strlen("RSA");
+		size_t keylen = 2048;	/* default key length for RSA keys */
+		size_t expolen = 32;	/* default exponent length for RSA keys */
+		u8 keyformat = SC_OPENPGP_KEYFORMAT_RSA_STD; /* default keyformat */
+		char pathstr[SC_MAX_PATH_STRING_SIZE];
 
 		/* try to get key length from keytype, e.g. "rsa3072" -> 3072 */
 		if (strlen(keylen_ptr) > 0) {
@@ -714,14 +717,29 @@ int do_genkey(sc_card_t *card, u8 in_key_id, const char *keytype)
 			}
 		}
 
+		/* get some algorithm attributes from respective DO - ignore errors */
+		snprintf(pathstr, sizeof(pathstr), "006E007300C%d", in_key_id);
+		sc_format_path(pathstr, &path);
+		if (sc_select_file(card, &path, &file) >= 0) {
+			u8 attrs[6];	/* algorithm attrs DO for RSA is <= 6 bytes */
+
+			r = sc_read_binary(card, 0, attrs, sizeof(attrs), 0);
+			if (r >= 5 && attrs[0] == SC_OPENPGP_KEYALGO_RSA) {
+				expolen = (unsigned short) attrs[3] << 8
+			                | (unsigned short) attrs[4];
+				if (r > 5)
+					keyformat = attrs[5];
+			}
+		}
+
 		/* set key_info */
 		key_info.key_id = in_key_id;
 		key_info.algorithm = SC_OPENPGP_KEYALGO_RSA;
 		key_info.u.rsa.modulus_len = keylen;
 		key_info.u.rsa.modulus = calloc(BYTES4BITS(keylen), 1);
-		/* The OpenPGP supports only 32-bit exponent. */
-		key_info.u.rsa.exponent_len = 32;
-		key_info.u.rsa.exponent = calloc(BYTES4BITS(key_info.u.rsa.exponent_len), 1);
+		key_info.u.rsa.exponent_len = expolen;
+		key_info.u.rsa.exponent = calloc(BYTES4BITS(expolen), 1);
+		key_info.u.rsa.keyformat = keyformat;
 
 		r = sc_card_ctl(card, SC_CARDCTL_OPENPGP_GENERATE_KEY, &key_info);
 		free(key_info.u.rsa.modulus);
