@@ -93,6 +93,7 @@ typedef unsigned __int8 uint8_t;
 #define SCARD_S_SUCCESS			0x00000000 /**< No error was encountered. */
 #define SCARD_E_CANCELLED		0x80100002 /**< The action was cancelled by an SCardCancel request. */
 #define SCARD_E_INVALID_HANDLE		0x80100003 /**< The supplied handle was invalid. */
+#define SCARD_E_UNKNOWN_READER		0x80100009 /**< The specified reader name is not recognized. */
 #define SCARD_E_TIMEOUT			0x8010000A /**< The user-specified timeout value has expired. */
 #define SCARD_E_SHARING_VIOLATION	0x8010000B /**< The smart card cannot be accessed because of other connections outstanding. */
 #define SCARD_E_NO_SMARTCARD		0x8010000C /**< The operation requires a smart card, but no smart card is currently in the device. */
