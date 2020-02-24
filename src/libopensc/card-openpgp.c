@@ -565,21 +565,26 @@ pgp_parse_hist_bytes(sc_card_t *card, u8 *ctlv, size_t ctlv_len)
  * Internal: parse an algorithm attributes DO
  **/
 static int
-pgp_parse_algo_attr_blob(const pgp_blob_t *blob, sc_cardctl_openpgp_keygen_info_t *key_info)
+pgp_parse_algo_attr_blob(sc_card_t *card, const pgp_blob_t *blob,
+	sc_cardctl_openpgp_keygen_info_t *key_info)
 {
 	struct sc_object_id oid;
 	unsigned int j, r;
 
+	LOG_FUNC_CALLED(card->ctx);
+
 	if (blob == NULL || blob->data == NULL || blob->len == 0 ||
-	    blob->id < 0x00c1 || blob->id > 0x00c3 || key_info == NULL)
-		return SC_ERROR_INCORRECT_PARAMETERS;
+	    blob->id < 0x00c1 || blob->id > 0x00c3 || key_info == NULL) {
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INCORRECT_PARAMETERS);
+	}
 
 	key_info->key_id = blob->id - 0x00c0;	/* attribute algorithm blobs are C1 - C3 */
 
 	switch (blob->data[0]) {
 		case SC_OPENPGP_KEYALGO_RSA:
-			if (blob->len < 5)
-				return SC_ERROR_INCORRECT_PARAMETERS;
+			if (blob->len < 5) {
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_INCORRECT_PARAMETERS);
+			}
 
 			key_info->algorithm = SC_OPENPGP_KEYALGO_RSA;
 			key_info->u.rsa.modulus_len = bebytes2ushort(blob->data + 1);
@@ -618,8 +623,10 @@ pgp_parse_algo_attr_blob(const pgp_blob_t *blob, sc_cardctl_openpgp_keygen_info_
 				return r;
 			}
 			/* compare with list of supported ec_curves */
-			for (j=0; ec_curves[j].oid.value[0] >= 0; j++){
-				if (sc_compare_oid(&ec_curves[j].oid, &oid)){
+			for (j = 0; ec_curves[j].oid.value[0] >= 0; j++) {
+				if (sc_compare_oid(&ec_curves[j].oid, &oid)) {
+					sc_log(card->ctx, "Matched EC oid %s (%d)",
+						sc_dump_oid(&oid), j);
 					key_info->u.ec.oid = ec_curves[j].oid;
 					key_info->u.ec.key_length = ec_curves[j].size;
 					break;
@@ -628,10 +635,10 @@ pgp_parse_algo_attr_blob(const pgp_blob_t *blob, sc_cardctl_openpgp_keygen_info_
 
 			break;
 		default:
-			return SC_ERROR_NOT_IMPLEMENTED;
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 	}
 
-	return SC_SUCCESS;
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
 
@@ -646,6 +653,8 @@ pgp_get_card_features(sc_card_t *card)
 	size_t hist_bytes_len = card->reader->atr_info.hist_bytes_len;
 	size_t i;
 	pgp_blob_t *blob, *blob6e, *blob73;
+
+	LOG_FUNC_CALLED(card->ctx);
 
 	/* parse card capabilities from historical bytes in ATR */
 	if (hist_bytes_len > 0) {
@@ -776,9 +785,11 @@ pgp_get_card_features(sc_card_t *card)
 		for (i = 0x00c1; i <= 0x00c3; i++) {
 			sc_cardctl_openpgp_keygen_info_t key_info;
 
+			sc_log(card->ctx, "Parsing algorithm attribues DO %zX" , i);
+
 			/* OpenPGP card spec 1.1 & 2.x section 4.3.3.6 / v3.x section 4.4.3.7 */
 			if ((pgp_get_blob(card, blob73, i, &blob) >= 0) &&
-			    (pgp_parse_algo_attr_blob(blob, &key_info) >= 0)) {
+			    (pgp_parse_algo_attr_blob(card, blob, &key_info) >= 0)) {
 
 				/* RSA [RFC 4880] */
 				if (key_info.algorithm == SC_OPENPGP_KEYALGO_RSA){
@@ -788,6 +799,7 @@ pgp_get_card_features(sc_card_t *card)
 						  SC_ALGORITHM_RSA_HASH_NONE |
 						  SC_ALGORITHM_ONBOARD_KEY_GEN;	/* key gen on card */
 					_sc_card_add_rsa_alg(card, key_info.u.rsa.modulus_len, flags, 0);
+					sc_log(card->ctx, "DO %zX: Added RSA algorithm, mod_len = %zu" , i, key_info.u.rsa.modulus_len);
 				}
 				/* v3.0+: ECC [RFC 4880 & 6637] */
 				else if (key_info.algorithm == SC_OPENPGP_KEYALGO_ECDH
@@ -805,6 +817,7 @@ pgp_get_card_features(sc_card_t *card)
 
 					_sc_card_add_ec_alg(card, key_info.u.ec.key_length, flags, ext_flags,
 							&key_info.u.ec.oid);
+					sc_log(card->ctx, "DO %zX: Added EC algorithm (%d), mod_len = %d" , i, key_info.algorithm, key_info.u.ec.key_length);
 				}
 			}
 		}
@@ -1567,19 +1580,22 @@ pgp_get_pubkey_pem(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 		if (aa_tag && ((r = pgp_get_blob(card, priv->mf, 0x006e, &blob6e)) >= 0) &&
 				((r = pgp_get_blob(card, blob6e, 0x0073, &blob73)) >= 0) &&
 				((r = pgp_get_blob(card, blob73, aa_tag, &aa_blob)) >= 0) &&
-				((r = pgp_parse_algo_attr_blob(aa_blob, &key_info)) >= 0)) {
+				((r = pgp_parse_algo_attr_blob(card, aa_blob, &key_info)) >= 0)) {
 
 			if ((r = sc_encode_oid(card->ctx, &key_info.u.ec.oid,
 					&p15pubkey.u.ec.params.der.value,
 					&p15pubkey.u.ec.params.der.len)) == 0) {
 				p15pubkey.u.ec.params.type = 1;
 				r = sc_pkcs15_encode_pubkey_as_spki(card->ctx, &p15pubkey, &data, &len);
+			} else {
+				sc_log(card->ctx, "Unable to encode EC curve OID from algorithm info");
 			}
-		} else
+		} else {
 			sc_log(card->ctx, "Unable to find Algorithm Attribute for EC curve OID");
-	}
-	else
+		}
+	} else {
 		LOG_TEST_RET(card->ctx, r, "error getting elements");
+	}
 
 	/* clean up anything we may have set in p15pubkey that can not be freed */
 	if (p15pubkey.algorithm == SC_ALGORITHM_RSA)  {
@@ -2270,7 +2286,7 @@ pgp_update_new_algo_attr(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_
 	} else {
 		sc_cardctl_openpgp_keygen_info_t old_key_info;
 
-		if (pgp_parse_algo_attr_blob(algo_blob, &old_key_info) != SC_SUCCESS
+		if (pgp_parse_algo_attr_blob(card, algo_blob, &old_key_info) != SC_SUCCESS
 				|| old_key_info.algorithm != key_info->algorithm)
 			LOG_TEST_RET(card->ctx, SC_ERROR_NO_CARD_SUPPORT,
 					"Requested algorithm not supported");

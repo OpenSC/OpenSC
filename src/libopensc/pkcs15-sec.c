@@ -166,7 +166,7 @@ static int use_key(struct sc_pkcs15_card *p15card,
 
 	sc_unlock(p15card->card);
 
-	return r;
+	LOG_FUNC_RETURN(p15card->card->ctx, r);
 }
 
 static int format_senv(struct sc_pkcs15_card *p15card,

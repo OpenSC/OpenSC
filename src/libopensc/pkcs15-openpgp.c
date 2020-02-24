@@ -169,6 +169,8 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 	sc_path_t path;
 	sc_file_t *file = NULL;
 
+	LOG_FUNC_CALLED(ctx);
+
 	set_string(&p15card->tokeninfo->label, "OpenPGP card");
 	set_string(&p15card->tokeninfo->manufacturer_id, "OpenPGP project");
 
@@ -203,6 +205,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 	 *  01-03:	max length of pins 1-3
 	 *  04-07:	tries left for pins 1-3
 	 */
+	sc_log(ctx, "Reading PW status bytes");
 	if ((r = read_file(card, "006E:0073:00C4", c4data, sizeof(c4data))) < 0)
 		goto failed;
 	if (r != 7) {
@@ -251,6 +254,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 	 *  20-39:	finger print for ENC key
 	 *  40-59:	finger print for AUT key
 	 */
+	sc_log(ctx, "Reading Fingerprints");
 	if ((r = read_file(card, "006E:0073:00C5", c5data, sizeof(c5data))) < 0)
 		goto failed;
 	if (r < 60) {
@@ -259,6 +263,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 		return SC_ERROR_OBJECT_NOT_VALID;
 	}
 
+	sc_log(ctx, "Adding private keys");
 	/* XXX: check if "halfkeys" can be stored with gpg2. If not, add key pairs in one loop */
 	for (i = 0; i < 3; i++) {
 		sc_pkcs15_prkey_info_t prkey_info;
@@ -307,6 +312,8 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 				return SC_ERROR_INTERNAL;
 		}
 	}
+
+	sc_log(ctx, "Adding public keys");
 	/* Add public keys */
 	for (i = 0; i < 3; i++) {
 		sc_pkcs15_pubkey_info_t pubkey_info;
@@ -394,7 +401,7 @@ failed:
 	}
 	sc_file_free(file);
 
-	return r;
+	LOG_FUNC_RETURN(ctx, r);
 }
 
 static int
