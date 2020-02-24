@@ -370,6 +370,8 @@ typedef unsigned long ck_key_type_t;
 #define CKK_GOSTR3410		(0x30UL)
 #define CKK_GOSTR3411		(0x31UL)
 #define CKK_GOST28147		(0x32UL)
+#define CKK_EC_EDWARDS		(0x40UL)
+#define CKK_EC_MONTGOMERY	(0x41UL)
 #define CKK_VENDOR_DEFINED	(1UL << 31)
 
 // A mask for new GOST algorithms.
@@ -708,6 +710,7 @@ typedef unsigned long ck_mechanism_type_t;
 #define CKM_ECDH1_DERIVE		(0x1050UL)
 #define CKM_ECDH1_COFACTOR_DERIVE	(0x1051UL)
 #define CKM_ECMQV_DERIVE		(0x1052UL)
+#define CKM_EDDSA			(0x1057UL)
 #define CKM_JUNIPER_KEY_GEN		(0x1060UL)
 #define CKM_JUNIPER_ECB128		(0x1061UL)
 #define CKM_JUNIPER_CBC128		(0x1062UL)
@@ -762,6 +765,7 @@ typedef unsigned long ck_mechanism_type_t;
 #define CKM_DH_PKCS_PARAMETER_GEN	(0x2001UL)
 #define CKM_X9_42_DH_PARAMETER_GEN	(0x2002UL)
 #define CKM_AES_KEY_WRAP		(0x2109UL)
+#define CKM_XEDDSA			(0x4029UL)
 #define CKM_VENDOR_DEFINED		(1UL << 31)
 
 
@@ -869,6 +873,22 @@ typedef struct CK_GCM_PARAMS {
 	unsigned long ulAADLen;
 	unsigned long ulTagBits;
 } CK_GCM_PARAMS;
+
+/* EDDSA */
+typedef struct CK_EDDSA_PARAMS {
+	unsigned char phFlag;
+	unsigned long ulContextDataLen;
+	unsigned char *pContextData;
+} CK_EDDSA_PARAMS;
+
+typedef CK_EDDSA_PARAMS *CK_EDDSA_PARAMS_PTR;
+
+/* XEDDSA */
+typedef struct CK_XEDDSA_PARAMS {
+	unsigned long hash;
+} CK_XEDDSA_PARAMS;
+
+typedef CK_XEDDSA_PARAMS *CK_XEDDSA_PARAMS_PTR;
 
 typedef unsigned long ck_rv_t;
 
