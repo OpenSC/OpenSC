@@ -79,6 +79,8 @@ static struct fmap	map_CKA_KEY_TYPE[] = {
 	_(CKK_DH),
 	_(CKK_ECDSA),
 	_(CKK_EC),
+	_(CKK_EC_EDWARDS),
+	_(CKK_EC_MONTGOMERY),
 	_(CKK_RC2),
 	_(CKK_RC4),
 	_(CKK_RC5),

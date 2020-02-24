@@ -153,6 +153,12 @@ int _sc_card_add_rsa_alg(struct sc_card *card, unsigned int key_length,
 int _sc_card_add_ec_alg(struct sc_card *card, unsigned int key_length,
 		unsigned long flags, unsigned long ext_flags,
 		struct sc_object_id *curve_oid);
+int _sc_card_add_eddsa_alg(struct sc_card *card, unsigned int key_length,
+		unsigned long flags, unsigned long ext_flags,
+		struct sc_object_id *curve_oid);
+int _sc_card_add_xeddsa_alg(struct sc_card *card, unsigned int key_length,
+		unsigned long flags, unsigned long ext_flags,
+		struct sc_object_id *curve_oid);
 
 /********************************************************************/
 /*                 pkcs1 padding/encoding functions                 */

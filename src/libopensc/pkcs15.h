@@ -221,10 +221,19 @@ struct sc_pkcs15_pubkey_ec {
 	struct sc_pkcs15_u8 ecpointQ; /* This is NOT DER, just value and length */
 };
 
+struct sc_pkcs15_pubkey_eddsa {
+	struct sc_pkcs15_u8 pubkey;
+};
+
 struct sc_pkcs15_prkey_ec {
 	struct sc_ec_parameters params;
 	sc_pkcs15_bignum_t	privateD; /* note this is bignum */
 	struct sc_pkcs15_u8		ecpointQ; /* This is NOT DER, just value and length */
+};
+
+struct sc_pkcs15_prkey_eddsa {
+	struct sc_pkcs15_u8 pubkey;
+	struct sc_pkcs15_u8 value;
 };
 
 struct sc_pkcs15_pubkey_gostr3410 {
@@ -246,6 +255,7 @@ struct sc_pkcs15_pubkey {
 		struct sc_pkcs15_pubkey_rsa rsa;
 		struct sc_pkcs15_pubkey_dsa dsa;
 		struct sc_pkcs15_pubkey_ec ec;
+		struct sc_pkcs15_pubkey_eddsa eddsa;
 		struct sc_pkcs15_pubkey_gostr3410 gostr3410;
 	} u;
 };
@@ -259,6 +269,7 @@ struct sc_pkcs15_prkey {
 		struct sc_pkcs15_prkey_rsa rsa;
 		struct sc_pkcs15_prkey_dsa dsa;
 		struct sc_pkcs15_prkey_ec ec;
+		struct sc_pkcs15_prkey_eddsa eddsa;
 		struct sc_pkcs15_prkey_gostr3410 gostr3410;
 		struct sc_pkcs15_skey secret;
 	} u;
@@ -440,12 +451,16 @@ typedef struct sc_pkcs15_skey_info sc_pkcs15_skey_info_t;
 #define SC_PKCS15_TYPE_PRKEY_DSA		0x102
 #define SC_PKCS15_TYPE_PRKEY_GOSTR3410		0x103
 #define SC_PKCS15_TYPE_PRKEY_EC		0x104
+#define SC_PKCS15_TYPE_PRKEY_EDDSA		0x105
+#define SC_PKCS15_TYPE_PRKEY_XEDDSA		0x106
 
 #define SC_PKCS15_TYPE_PUBKEY			0x200
 #define SC_PKCS15_TYPE_PUBKEY_RSA		0x201
 #define SC_PKCS15_TYPE_PUBKEY_DSA		0x202
 #define SC_PKCS15_TYPE_PUBKEY_GOSTR3410		0x203
 #define SC_PKCS15_TYPE_PUBKEY_EC		0x204
+#define SC_PKCS15_TYPE_PUBKEY_EDDSA		0x205
+#define SC_PKCS15_TYPE_PUBKEY_XEDDSA		0x206
 
 #define SC_PKCS15_TYPE_SKEY			0x300
 #define SC_PKCS15_TYPE_SKEY_GENERIC		0x301
@@ -705,6 +720,8 @@ int sc_pkcs15_decode_pubkey_ec(struct sc_context *,
 		struct sc_pkcs15_pubkey_ec *, const u8 *, size_t);
 int sc_pkcs15_encode_pubkey_ec(struct sc_context *,
 		struct sc_pkcs15_pubkey_ec *, u8 **, size_t *);
+int sc_pkcs15_encode_pubkey_eddsa(struct sc_context *,
+		struct sc_pkcs15_pubkey_eddsa *, u8 **, size_t *);
 int sc_pkcs15_decode_pubkey(struct sc_context *,
 		struct sc_pkcs15_pubkey *, const u8 *, size_t);
 int sc_pkcs15_encode_pubkey(struct sc_context *,
@@ -1013,6 +1030,14 @@ int sc_pkcs15emu_add_rsa_pubkey(struct sc_pkcs15_card *,
 int sc_pkcs15emu_add_ec_prkey(struct sc_pkcs15_card *,
 	const struct sc_pkcs15_object *, const sc_pkcs15_prkey_info_t *);
 int sc_pkcs15emu_add_ec_pubkey(struct sc_pkcs15_card *,
+	const struct sc_pkcs15_object *, const sc_pkcs15_pubkey_info_t *);
+int sc_pkcs15emu_add_eddsa_prkey(struct sc_pkcs15_card *,
+	const struct sc_pkcs15_object *, const sc_pkcs15_prkey_info_t *);
+int sc_pkcs15emu_add_eddsa_pubkey(struct sc_pkcs15_card *,
+	const struct sc_pkcs15_object *, const sc_pkcs15_pubkey_info_t *);
+int sc_pkcs15emu_add_xeddsa_prkey(struct sc_pkcs15_card *,
+	const struct sc_pkcs15_object *, const sc_pkcs15_prkey_info_t *);
+int sc_pkcs15emu_add_xeddsa_pubkey(struct sc_pkcs15_card *,
 	const struct sc_pkcs15_object *, const sc_pkcs15_pubkey_info_t *);
 int sc_pkcs15emu_add_x509_cert(struct sc_pkcs15_card *,
 	const struct sc_pkcs15_object *, const sc_pkcs15_cert_info_t *);
