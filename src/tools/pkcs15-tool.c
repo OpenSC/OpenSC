@@ -221,7 +221,7 @@ struct _access_rule_text {
 	{0, NULL},
 };
 
-static const char *key_types[] = { "", "RSA", "DSA", "GOSTR3410", "EC", "", "", "" };
+static const char *key_types[] = { "", "RSA", "DSA", "GOSTR3410", "EC", "EDDSA", "XEDDSA", "" };
 
 static void
 print_access_rules(const struct sc_pkcs15_accessrule *rules, int num)
@@ -739,7 +739,8 @@ static void print_pubkey_info(const struct sc_pkcs15_object *obj)
 	else if (pubkey->field_length)   {
 		printf("\tFieldLength    : %lu\n", (unsigned long)pubkey->field_length);
 	}
-	else if (obj->type == SC_PKCS15_TYPE_PUBKEY_EC && have_path)   {
+	else if ((obj->type == SC_PKCS15_TYPE_PUBKEY_EC || obj->type == SC_PKCS15_TYPE_PUBKEY_EDDSA)
+			&& have_path)   {
 		sc_pkcs15_pubkey_t *pkey = NULL;
 		if (!sc_pkcs15_read_pubkey(p15card, obj, &pkey))   {
 			printf("\tFieldLength    : %lu\n", (unsigned long)pkey->u.ec.params.field_length);
@@ -998,6 +999,39 @@ static int read_ssh_key(void)
 		return 1;
 	}
 
+	if (pubkey->algorithm == SC_ALGORITHM_EDDSA) {
+		// SSH supports only ed25519 key now
+
+		char alg[20];
+		/* Large enough to fit the following:
+		 * 2 x 4B item length headers
+		 * max 11B algorithm name, 32B key data */
+		unsigned char buf[64];
+		unsigned int len, n;
+
+		n = pubkey->u.eddsa.pubkey.len;
+		if (n != 32) {
+			fprintf(stderr, "Wrong public key length\n");
+			goto fail2;
+		}
+
+		buf[0] = 0;
+		buf[1] = 0;
+		buf[2] = 0;
+		len = snprintf((char *) buf+4, 20, "ssh-ed25519");
+		memcpy(alg, buf+4, 20);
+		buf[3] = len;
+		len += 4;
+
+		buf[len++] = 0;
+		buf[len++] = 0;
+		buf[len++] = 0;
+		buf[len++] = n & 0xff;
+		memcpy(buf + len, pubkey->u.eddsa.pubkey.value, n);
+		len += n;
+
+		print_ssh_key(outf, alg, obj, buf, len);
+	}
 	if (pubkey->algorithm == SC_ALGORITHM_EC) {
 		// support only for NIST
 		// 'ssh-keygen -t ecdsa' allow only field lengths 256/384/521
