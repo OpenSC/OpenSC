@@ -4142,6 +4142,45 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 			}
 		}
 		break;
+	case CKK_EC_EDWARDS:
+	case CKK_EC_MONTGOMERY:
+		if (key_type == CKK_EC_EDWARDS) {
+			printf("; EC_EDWARDS");
+		} else {
+			printf("; EC_MONTGOMERY");
+		}
+		if (pub) {
+			unsigned char *bytes = NULL;
+			int ksize;
+			unsigned int n;
+
+			bytes = getEC_POINT(sess, obj, &size);
+			ksize = 255; /* for now, we support only 255b curves */
+
+			printf("  EC_POINT %u bits\n", ksize);
+			if (bytes) {
+				if ((CK_LONG)size > 0) { /* Will print the point here */
+					printf("  EC_POINT:   ");
+					for (n = 0; n < size; n++)
+						printf("%02x", bytes[n]);
+					printf("\n");
+				}
+				free(bytes);
+			}
+			bytes = NULL;
+			bytes = getEC_PARAMS(sess, obj, &size);
+			if (bytes){
+				if ((CK_LONG)size > 0) {
+					printf("  EC_PARAMS:  ");
+					for (n = 0; n < size; n++)
+						printf("%02x", bytes[n]);
+					printf("\n");
+				}
+				free(bytes);
+			}
+		} else {
+			printf("\n");
+		}
 		break;
 	case CKK_EC:
 		printf("; EC");
@@ -4187,7 +4226,7 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 				free(bytes);
 			}
 		} else
-			 printf("\n");
+			printf("\n");
 		break;
 	case CKK_GENERIC_SECRET:
 	case CKK_AES:
@@ -4673,7 +4712,7 @@ static int read_object(CK_SESSION_HANDLE session)
 				const unsigned char *a = params;
 				if (!d2i_ECParameters(&ec, &a, (long)len))
 					util_fatal("cannot parse EC_PARAMS");
-				OPENSSL_free(params);
+				free(params);
 			} else
 				util_fatal("cannot obtain EC_PARAMS");
 
@@ -4696,6 +4735,55 @@ static int read_object(CK_SESSION_HANDLE session)
 			if (!i2d_EC_PUBKEY_bio(pout, ec))
 				util_fatal("cannot convert EC public key to DER");
 			EC_KEY_free(ec);
+#endif
+#ifdef EVP_PKEY_ED25519
+		} else if (type == CKK_EC_EDWARDS) {
+			EVP_PKEY *key = NULL;
+			CK_BYTE *params = NULL;
+			ASN1_PRINTABLESTRING *curve = NULL;
+			const unsigned char *a;
+			ASN1_OCTET_STRING *os;
+
+			if ((params = getEC_PARAMS(session, obj, &len))) {
+				a = params;
+				if (!d2i_ASN1_PRINTABLESTRING(&curve, &a, (long)len)) {
+					util_fatal("cannot parse curve name from EC_PARAMS");
+				}
+				free(params);
+			} else {
+				util_fatal("cannot obtain EC_PARAMS");
+			}
+
+			if (strcmp((char *)curve->data, "edwards25519")) {
+				util_fatal("Unknown curve name, expeced edwards25519, got %s",
+					curve->data);
+			}
+			ASN1_PRINTABLESTRING_free(curve);
+
+			value = getEC_POINT(session, obj, &len);
+			/* PKCS#11-compliant modules should return ASN1_OCTET_STRING */
+			a = value;
+			os = d2i_ASN1_OCTET_STRING(NULL, &a, (long)len);
+			if (!os) {
+				util_fatal("cannot decode EC_POINT");
+			}
+			if (os->length != 32) {
+				util_fatal("Invalid length of EC_POINT value");
+			}
+			key = EVP_PKEY_new_raw_public_key(EVP_PKEY_ED25519, NULL,
+				(const uint8_t *)os->data,
+				os->length);
+			ASN1_STRING_free(os);
+			if (key == NULL) {
+				util_fatal("out of memory");
+			}
+			/* Note, that we write PEM here as there is no "native"
+			 * representation of EdDSA public keys to use */
+			if (!PEM_write_bio_PUBKEY(pout, key)) {
+				util_fatal("cannot convert EdDSA public key to PEM");
+			}
+
+			EVP_PKEY_free(key);
 #endif
 		}
 		else
@@ -6970,6 +7058,8 @@ static struct mech_info	p11_mechanisms[] = {
       { CKM_ECDH1_DERIVE,	"ECDH1-DERIVE", NULL },
       { CKM_ECDH1_COFACTOR_DERIVE,"ECDH1-COFACTOR-DERIVE", NULL },
       { CKM_ECMQV_DERIVE,	"ECMQV-DERIVE", NULL },
+      { CKM_EDDSA,		"EDDSA", NULL },
+      { CKM_XEDDSA,		"XEDDSA", NULL },
       { CKM_JUNIPER_KEY_GEN,	"JUNIPER-KEY-GEN", NULL },
       { CKM_JUNIPER_ECB128,	"JUNIPER-ECB128", NULL },
       { CKM_JUNIPER_CBC128,	"JUNIPER-CBC128", NULL },
