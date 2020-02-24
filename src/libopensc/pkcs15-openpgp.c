@@ -70,6 +70,7 @@ static const pgp_pin_cfg_t	pin_cfg_v2[3] = {
 	{ "Admin PIN",      0x03, PGP_ADMIN_PIN_FLAGS, 8, 2 }
 };
 
+struct sc_object_id curve25519_binary_oid = {{0x2B, 0x06, 0x01, 0x04, 0x01, 0x97, 0x55, 0x01, 0x05, 0x01, -1}};
 
 #define PGP_SIG_PRKEY_USAGE	(SC_PKCS15_PRKEY_USAGE_SIGN \
 				| SC_PKCS15_PRKEY_USAGE_SIGNRECOVER \
@@ -269,6 +270,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 		sc_pkcs15_prkey_info_t prkey_info;
 		sc_pkcs15_object_t     prkey_obj;
 		u8 cxdata[12];
+		int cxdata_len = sizeof(cxdata);
 		char path_template[] = "006E:0073:00Cx";
 		int j;
 
@@ -277,7 +279,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 		memset(&cxdata, 0, sizeof(cxdata));
 
 		path_template[13] = '1' + i; /* The needed tags are C1 C2 and C3 */
-		if ((r = read_file(card, path_template, cxdata, sizeof(cxdata))) < 0)
+		if ((cxdata_len = read_file(card, path_template, cxdata, sizeof(cxdata))) < 1)
 			goto failed;
 
 		/* check validity using finger prints */
@@ -288,6 +290,9 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 
 		/* only add valid keys, i.e. those with a legal algorithm identifier & finger print */
 		if (j >= 0 && cxdata[0] != 0) {
+			struct sc_object_id oid;
+			int k;
+
 			prkey_info.id.len         = 1;
 			prkey_info.id.value[0]    = i + 1;
 			prkey_info.usage          = key_cfg[i].prkey_usage;
@@ -299,13 +304,41 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 			prkey_obj.auth_id.len      = 1;
 			prkey_obj.auth_id.value[0] = key_cfg[i].prkey_pin;
 
-			if (cxdata[0] == SC_OPENPGP_KEYALGO_RSA && r >= 3) {
-				prkey_info.modulus_length = bebytes2ushort(cxdata + 1);
-				r = sc_pkcs15emu_add_rsa_prkey(p15card, &prkey_obj, &prkey_info);
-			}
-			if (cxdata[0] == SC_OPENPGP_KEYALGO_ECDH
-			   || cxdata[0] == SC_OPENPGP_KEYALGO_ECDSA) {
+			switch (cxdata[0]) {
+			case SC_OPENPGP_KEYALGO_EDDSA:
+				/* TODO Store the OID from cxdata + 1 ?? */
+				/* assuming Ed25519 as it is the only supported now */
+				prkey_info.field_length = 255;
+				r = sc_pkcs15emu_add_eddsa_prkey(p15card, &prkey_obj, &prkey_info);
+				break;
+			case SC_OPENPGP_KEYALGO_ECDH:
+				/* This can result in either ECDSA key or EC_MONTGOMERY
+				 * so we need to check OID */
+				sc_init_oid(&oid);
+				/* Create copy of oid */
+				for (k = 0; k < (cxdata_len-1) && k < SC_MAX_OBJECT_ID_OCTETS; k++) {
+					oid.value[k] = cxdata[k+1]; /* ignore first byte of blob (algo ID) */
+				}
+				if (sc_compare_oid(&oid, &curve25519_binary_oid)) {
+					prkey_info.field_length = 255;
+					r = sc_pkcs15emu_add_xeddsa_prkey(p15card, &prkey_obj, &prkey_info);
+					break;
+				}
+				/* fall through */
+			case SC_OPENPGP_KEYALGO_ECDSA:
+				/* TODO Store the OID from cxdata + 1 ?? */
 				r = sc_pkcs15emu_add_ec_prkey(p15card, &prkey_obj, &prkey_info);
+				break;
+			case SC_OPENPGP_KEYALGO_RSA:
+				if (r >= 3) {
+					prkey_info.modulus_length = bebytes2ushort(cxdata + 1);
+					r = sc_pkcs15emu_add_rsa_prkey(p15card, &prkey_obj, &prkey_info);
+					break;
+				}
+				/* Fallthrough */
+			default:
+				sc_log(ctx, "Invalid algorithm identifier %x (length = %d)",
+					cxdata[0], r);
 			}
 
 			if (r < 0)
@@ -319,6 +352,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 		sc_pkcs15_pubkey_info_t pubkey_info;
 		sc_pkcs15_object_t      pubkey_obj;
 		u8 cxdata[10];
+		int cxdata_len = sizeof(cxdata);
 		char path_template[] = "006E:0073:00Cx";
 		int j;
 
@@ -327,7 +361,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 		memset(&cxdata, 0, sizeof(cxdata));
 
 		path_template[13] = '1' + i; /* The needed tags are C1 C2 and C3 */
-		if ((r = read_file(card, path_template, cxdata, sizeof(cxdata))) < 0)
+		if ((cxdata_len = read_file(card, path_template, cxdata, sizeof(cxdata))) < 1)
 			goto failed;
 
 		/* check validity using finger prints */
@@ -338,6 +372,9 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 
 		/* only add valid keys, i.e. those with a legal algorithm identifier & finger print */
 		if (j >= 0 && cxdata[0] != 0) {
+			struct sc_object_id oid;
+			int k;
+
 			pubkey_info.id.len         = 1;
 			pubkey_info.id.value[0]    = i + 1;
 			pubkey_info.usage          = key_cfg[i].pubkey_usage;
@@ -346,13 +383,41 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 			strlcpy(pubkey_obj.label, key_cfg[i].label, sizeof(pubkey_obj.label));
 			pubkey_obj.flags = SC_PKCS15_CO_FLAG_MODIFIABLE;
 
-			if (cxdata[0] == SC_OPENPGP_KEYALGO_RSA && r >= 3) {
-				pubkey_info.modulus_length = bebytes2ushort(cxdata + 1);
-				r = sc_pkcs15emu_add_rsa_pubkey(p15card, &pubkey_obj, &pubkey_info);
-			}
-			if (cxdata[0] == SC_OPENPGP_KEYALGO_ECDH
-			   || cxdata[0] == SC_OPENPGP_KEYALGO_ECDSA) {
+			switch (cxdata[0]) {
+			case SC_OPENPGP_KEYALGO_EDDSA:
+				/* TODO Store the OID from cxdata + 1 ?? */
+				/* assuming Ed25519 as it is the only supported now */
+				pubkey_info.field_length = 255;
+				r = sc_pkcs15emu_add_eddsa_pubkey(p15card, &pubkey_obj, &pubkey_info);
+				break;
+			case SC_OPENPGP_KEYALGO_ECDH:
+				/* This can result in either ECDSA key or EC_MONTGOMERY
+				 * so we need to check OID */
+				sc_init_oid(&oid);
+				/* Create copy of oid */
+				for (k = 0; k < (cxdata_len-1) && k < SC_MAX_OBJECT_ID_OCTETS; k++) {
+					oid.value[k] = cxdata[k+1]; /* ignore first byte of blob (algo ID) */
+				}
+				if (sc_compare_oid(&oid, &curve25519_binary_oid)) {
+					pubkey_info.field_length = 255;
+					r = sc_pkcs15emu_add_xeddsa_pubkey(p15card, &pubkey_obj, &pubkey_info);
+					break;
+				}
+				/* fall through */
+			case SC_OPENPGP_KEYALGO_ECDSA:
+				/* TODO Store the OID from cxdata + 1 ?? */
 				r = sc_pkcs15emu_add_ec_pubkey(p15card, &pubkey_obj, &pubkey_info);
+				break;
+			case SC_OPENPGP_KEYALGO_RSA:
+				if (r >= 3) {
+					pubkey_info.modulus_length = bebytes2ushort(cxdata + 1);
+					r = sc_pkcs15emu_add_rsa_pubkey(p15card, &pubkey_obj, &pubkey_info);
+					break;
+				}
+				/* Fallthrough */
+			default:
+				sc_log(ctx, "Invalid algorithm identifier %x (length = %d)",
+					cxdata[0], r);
 			}
 
 			if (r < 0)

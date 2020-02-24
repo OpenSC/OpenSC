@@ -165,6 +165,23 @@ static int openpgp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		key_info.u.ec.oid.value[key_info.u.ec.oid_len] = -1;
 		r = sc_card_ctl(card, SC_CARDCTL_OPENPGP_STORE_KEY, &key_info);
 		break;
+	case SC_PKCS15_TYPE_PRKEY_EDDSA:
+		if (card->type != SC_CARD_TYPE_OPENPGP_GNUK) {
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "EdDSA keys not supported on this card");
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+		}
+		memset(&key_info, 0, sizeof(sc_cardctl_openpgp_keystore_info_t));
+		key_info.algorithm = (kinfo->id.value[0] == SC_OPENPGP_KEY_ENCR)
+				   ? SC_OPENPGP_KEYALGO_ECDH /* ECDH for slot 2 only */
+				   : SC_OPENPGP_KEYALGO_EDDSA; /* EdDSA for slot 1 and 3 */
+		key_info.key_id = kinfo->id.value[0];
+		/* TODO Test -- might not work */
+		key_info.u.ec.privateD = key->u.ec.privateD.data;
+		key_info.u.ec.privateD_len = key->u.ec.privateD.len;
+		key_info.u.ec.ecpointQ = key->u.ec.ecpointQ.value;
+		key_info.u.ec.ecpointQ_len = key->u.ec.ecpointQ.len;
+		r = sc_card_ctl(card, SC_CARDCTL_OPENPGP_STORE_KEY, &key_info);
+		break;
 	default:
 		r = SC_ERROR_NOT_SUPPORTED;
 		sc_log(card->ctx, "%s: Key generation failed: Unknown/unsupported key type.", strerror(r));
@@ -363,6 +380,13 @@ static int openpgp_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 	case SC_PKCS15_TYPE_PRKEY_EC:
 		if (card->type < SC_CARD_TYPE_OPENPGP_V3) {
 			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "only RSA is supported on this card");
+			return SC_ERROR_NOT_SUPPORTED;
+		}
+		r = openpgp_generate_key_ec(card, obj, pubkey);
+		break;
+	case SC_PKCS15_TYPE_PRKEY_EDDSA:
+		if (card->type != SC_CARD_TYPE_OPENPGP_GNUK) {
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "EdDSA is not supported on this card");
 			return SC_ERROR_NOT_SUPPORTED;
 		}
 		r = openpgp_generate_key_ec(card, obj, pubkey);
