@@ -36,6 +36,7 @@ typedef struct {
 	union {
 		RSA		*rsa;
 		EC_KEY	*ec;
+		EVP_PKEY	*pkey;
 	} key;
 	CK_OBJECT_HANDLE private_handle;
 	CK_OBJECT_HANDLE public_handle;

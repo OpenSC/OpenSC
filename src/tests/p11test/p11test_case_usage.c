@@ -54,9 +54,9 @@ void usage_test(void **state) {
 			fprintf(stderr, " [ ERROR %s ] If Unwrap is set, Wrap should be set too.\n",
 			    objects.data[i].id_str);
 		}
-		if (objects.data[i].derive_pub != objects.data[i].derive_priv) {
+		if (objects.data[i].derive_pub) {
 			errors++;
-			fprintf(stderr, " [ ERROR %s ] Derive should be set on both private and public part.\n",
+			fprintf(stderr, " [ ERROR %s ] Derive should not be set on public key\n",
 			    objects.data[i].id_str);
 		}
 
@@ -99,8 +99,10 @@ void usage_test(void **state) {
 			continue;
 
 		printf("[ %s ] [%6lu] [ %s ] [%s%s] [%s%s] [%s %s] [%s%s] [    %s   ]\n",
-			objects.data[i].key_type == CKK_RSA ? "RSA " :
-				objects.data[i].key_type == CKK_EC ? " EC " : " ?? ",
+			(objects.data[i].key_type == CKK_RSA ? "RSA " :
+				objects.data[i].key_type == CKK_EC ? " EC " :
+				objects.data[i].key_type == CKK_EC_EDWARDS ? "EC_E" :
+				objects.data[i].key_type == CKK_EC_MONTGOMERY ? "EC_M" : " ?? "),
 			objects.data[i].bits,
 			objects.data[i].verify_public == 1 ? " ./ " : "    ",
 			objects.data[i].sign ? "[./] " : "[  ] ",
@@ -115,8 +117,10 @@ void usage_test(void **state) {
 		P11TEST_DATA_ROW(info, 14,
 			's', objects.data[i].id_str,
 			's', objects.data[i].label,
-			's', objects.data[i].key_type == CKK_RSA ? "RSA" :
-				objects.data[i].key_type == CKK_EC ? "EC" : "??",
+			's', (objects.data[i].key_type == CKK_RSA ? "RSA " :
+				objects.data[i].key_type == CKK_EC ? " EC " :
+				objects.data[i].key_type == CKK_EC_EDWARDS ? "EC_E" :
+				objects.data[i].key_type == CKK_EC_MONTGOMERY ? "EC_M" : " ?? "),
 			'd', objects.data[i].bits,
 			's', objects.data[i].verify_public == 1 ? "YES" : "",
 			's', objects.data[i].sign ? "YES" : "",
