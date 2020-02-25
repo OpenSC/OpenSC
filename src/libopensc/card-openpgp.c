@@ -2067,9 +2067,11 @@ pgp_set_security_env(sc_card_t *card,
 
 	LOG_FUNC_CALLED(card->ctx);
 
+	/* The SC_SEC_ENV_ALG_PRESENT is set always so let it pass for GNUK */
 	if ((env->flags & SC_SEC_ENV_ALG_PRESENT)
 		&& (env->algorithm != SC_ALGORITHM_RSA)
-		&& (priv->bcd_version < OPENPGP_CARD_3_0))
+		&& (priv->bcd_version < OPENPGP_CARD_3_0)
+		&& (card->type != SC_CARD_TYPE_OPENPGP_GNUK))
 		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
 				"only RSA algorithm supported");
 
