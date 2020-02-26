@@ -133,18 +133,8 @@ CK_RV create_slot(sc_reader_t *reader)
 void empty_slot(struct sc_pkcs11_slot *slot)
 {
 	if (slot) {
-		if (slot->flags & SC_PKCS11_SLOT_FLAG_SEEN) {
-			/* Keep the slot visible to the application. The slot's state has
-			 * already been reset by `slot_token_removed()`, lists have been
-			 * emptied. We replace the reader with a virtual hotplug slot. */
-			slot->reader = NULL;
-			init_slot_info(&slot->slot_info, NULL);
-		} else {
-			list_destroy(&slot->objects);
-			list_destroy(&slot->logins);
-			list_delete(&virtual_slots, slot);
-			free(slot);
-		}
+		list_clear(&slot->objects);
+		list_clear(&slot->logins);
 	}
 }
 
@@ -383,21 +373,38 @@ fail:
 CK_RV
 card_detect_all(void)
 {
-	unsigned int i;
+	unsigned int i, j;
 
 	sc_log(context, "Detect all cards");
 	/* Detect cards in all initialized readers */
 	for (i=0; i< sc_ctx_get_reader_count(context); i++) {
 		sc_reader_t *reader = sc_ctx_get_reader(context, i);
+		int removed = 0; /* have we called card_removed for this reader */
+
 		if (reader->flags & SC_READER_REMOVED) {
 			struct sc_pkcs11_slot *slot;
-			card_removed(reader);
-			while ((slot = reader_get_slot(reader))) {
-				empty_slot(slot);
+			/* look at all slots to call card_removed amd empty_slot */
+			for (j = 0; j<list_size(&virtual_slots); j++) {
+				slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, j);
+				if (slot->reader == reader) {
+					if (!removed) {
+						card_removed(reader);
+						removed = 1;  /* only need to call once for this reader */
+					}
+					if (slot->flags & SC_PKCS11_SLOT_FLAG_READER_REMOVED) {
+						empty_slot(slot);
+						slot->flags |= SC_PKCS11_SLOT_FLAG_READER_REMOVED;
+					}
+				}
 			}
-			_sc_delete_reader(context, reader);
-			i--;
 		} else {
+			struct sc_pkcs11_slot *slot;
+			for (j = 0; j<list_size(&virtual_slots); j++) {
+				slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, j);
+				if (slot->reader == reader)
+					slot->flags &= ~SC_PKCS11_SLOT_FLAG_READER_REMOVED;
+			}
+
 			if (!reader_get_slot(reader))
 				initialize_reader(reader);
 			else
