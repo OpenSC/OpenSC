@@ -206,6 +206,11 @@ struct sc_pkcs11_card {
  * the application calls `C_GetSlotList` with `NULL`. This flag tracks the
  * visibility to the application */
 #define SC_PKCS11_SLOT_FLAG_SEEN 1
+/* reader-pcsc.c can reuse a removed reader, as the ctx->reader list contains
+ * readers which have been removed retain removed readers.
+ * Take advantage of this feature to allow for reinsertion of a reader*/
+#define SC_PKCS11_SLOT_FLAG_READER_REMOVED 2
+
 
 struct sc_pkcs11_slot {
 	CK_SLOT_ID id;			/* ID of the slot */
