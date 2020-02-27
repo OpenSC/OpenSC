@@ -73,7 +73,7 @@
 				<varlistentry>
 					<term>
 						<option>--pin</option> <replaceable>pin</replaceable>,
-						<option>--p</option> <replaceable>pin</replaceable>
+						<option>-p</option> <replaceable>pin</replaceable>
 					</term>
 					<listitem>
 						<para>
