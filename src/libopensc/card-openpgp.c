@@ -1859,7 +1859,7 @@ pgp_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 
 	/* In general, the PIN Reference is extracted from the key-id,
 	 * for example, CHV0 -> Ref=0, CHV1 -> Ref=1.
-	 * However, in the case of OpenGPG, the PIN Ref to compose APDU
+	 * However, in the case of OpenPGP, the PIN Ref to compose APDU
 	 * must be 81, 82, 83.
 	 * So, if we receive Ref=1, Ref=2, we must convert to 81, 82...
 	 * In OpenPGP v1, the PINs are named CHV1, CHV2, CHV3.
