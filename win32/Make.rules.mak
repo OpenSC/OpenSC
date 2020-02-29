@@ -36,10 +36,12 @@ SM_DEF = /DENABLE_SM
 # - set the OPENSSL_LIB below to your openssl lib file
 #OPENSSL_DEF= /DENABLE_OPENSSL
 !IF "$(OPENSSL_DEF)" == "/DENABLE_OPENSSL"
+!IF "$(OPENSSL_DIR)" == ""
 !IF "$(PLATFORM)" == "x86"
 OPENSSL_DIR = C:\OpenSSL-Win32
 !ELSE
 OPENSSL_DIR = C:\OpenSSL-Win64
+!ENDIF
 !ENDIF
 OPENSSL_INCL_DIR = /I$(OPENSSL_DIR)\include
 
