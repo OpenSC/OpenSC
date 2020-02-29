@@ -1,5 +1,13 @@
 version: 0.20.0.{build}
 
+image:
+  # not compatible with OpenSSL 1.1.1:
+  # - Visual Studio 2013
+  # not compatible with WiX 3.11.2:
+  # - Visual Studio 2019
+  - Visual Studio 2015
+  - Visual Studio 2017
+
 platform:
   - x86
   - x64
@@ -11,10 +19,6 @@ configuration:
 environment:
   GH_TOKEN:
     secure: aLu3tFc7lRJbotnmnHLx/QruIHc5rLaGm1RttoEdy4QILlPXzVkCZ6loYMz0sfrY
-  matrix:
-    - VSVER: 14
-    - VSVER: 12
-      DO_PUSH_ARTIFACT: yes
 
 install:
   - ps: if ($env:APPVEYOR_PULL_REQUEST_NUMBER -and $env:APPVEYOR_BUILD_NUMBER -ne ((Invoke-RestMethod `
@@ -56,9 +60,19 @@ install:
       If (!(Test-Path cngsdk.msi )) {
           appveyor DownloadFile "http://download.microsoft.com/download/2/C/9/2C93059C-0532-42DF-8C24-9AEAFF00768E/cngsdk.msi"
       }
-  - ps: $env:VSCOMNTOOLS=(Get-Content ("env:VS" + "$env:VSVER" + "0COMNTOOLS"))
-  - echo "Using Visual Studio %VSVER%.0 at %VSCOMNTOOLS%"
-  - call "%VSCOMNTOOLS%\..\..\VC\vcvarsall.bat" %VCVARS_PLATFORM%
+  - ps: >-
+      If ($env:APPVEYOR_BUILD_WORKER_IMAGE -eq "Visual Studio 2019") {
+        $env:VCVARSALL="${env:ProgramFiles(x86)}\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvarsall.bat"
+      } ElseIf ($env:APPVEYOR_BUILD_WORKER_IMAGE -eq "Visual Studio 2017") {
+        $env:VCVARSALL="${env:ProgramFiles(x86)}\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat"
+      } ElseIf ($env:APPVEYOR_BUILD_WORKER_IMAGE -eq "Visual Studio 2015") {
+        $env:VCVARSALL="${env:VS140COMNTOOLS}\..\..\VC\vcvarsall.bat"
+        $env:DO_PUSH_ARTIFACT="yes"
+      } ElseIf ($env:APPVEYOR_BUILD_WORKER_IMAGE -eq "Visual Studio 2013") {
+        $env:VCVARSALL="${env:VS120COMNTOOLS}\..\..\VC\vcvarsall.bat"
+      }
+  - echo "Using %APPVEYOR_BUILD_WORKER_IMAGE% with %VCVARSALL%"
+  - call "%VCVARSALL%" %VCVARS_PLATFORM%
   - cngsdk.msi /quiet
   - uname -a
   - set
@@ -97,7 +111,7 @@ build_script:
   - bash -c "exec 0</dev/null && ./configure --with-cygwin-native --disable-openssl --disable-readline --disable-zlib || cat config.log"
   - bash -c "exec 0</dev/null && rm src/getopt.h"
   - nmake /f Makefile.mak %NMAKE_EXTRA%
-  - cd win32 && nmake /f Makefile.mak %NMAKE_EXTRA% VSVER=%VSVER% OpenSC.msi && cd ..
+  - cd win32 && nmake /f Makefile.mak %NMAKE_EXTRA% OpenSC.msi && cd ..
   - move win32\OpenSC.msi %ARTIFACT%.msi
   # put all pdb files for dump analysis, but this consumes approx 100 MB per build
   - md %ARTIFACT%-Debug
