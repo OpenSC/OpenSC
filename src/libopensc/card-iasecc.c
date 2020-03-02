@@ -635,6 +635,8 @@ err:
 	if (rv < 0) {
 		free(private_data);
 		card->drv_data = old_drv_data;
+	} else {
+		free(old_drv_data);
 	}
 
 	LOG_FUNC_RETURN(ctx, rv);
