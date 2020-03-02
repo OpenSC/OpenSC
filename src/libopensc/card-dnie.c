@@ -936,6 +936,9 @@ static u8 *dnie_uncompress(sc_card_t * card, u8 * from, size_t *len)
 	/* if compressed size greater than uncompressed, assume uncompressed data */
 	if (uncompressed < compressed)
 		goto compress_exit;
+	/* Do not try to allocate insane size if we receive bogus data */
+	if (uncompressed > MAX_FILE_SIZE)
+		goto compress_exit;
 
 	sc_log(card->ctx, "Data seems to be compressed. calling uncompress");
 	/* ok: data seems to be compressed */
