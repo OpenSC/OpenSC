@@ -150,18 +150,23 @@ int sc_compress(u8* out, size_t* outLen, const u8* in, size_t inLen, int method)
 	}
 }
 
-int sc_decompress(u8* out, size_t* outLen, const u8* in, size_t inLen, int method) {
+int sc_decompress(u8* out, size_t* outLen, const u8* in, size_t inLen, int method)
+{
 	unsigned long zlib_outlen;
 	int rc;
 
-	if(method == COMPRESSION_AUTO) {
+	if (in == NULL || out == NULL) {
+		return SC_ERROR_UNKNOWN_DATA_RECEIVED;
+	}
+
+	if (method == COMPRESSION_AUTO) {
 		method = detect_method(in, inLen);
 		if (method == COMPRESSION_UNKNOWN) {
 			*outLen = 0;
 			return SC_ERROR_UNKNOWN_DATA_RECEIVED;
 		}
 	}
-	switch(method) {
+	switch (method) {
 	case COMPRESSION_ZLIB:
 		zlib_outlen = *outLen;	
 		rc = zerr_to_opensc(uncompress(out, &zlib_outlen, in, inLen));
@@ -241,14 +246,20 @@ static int sc_decompress_zlib_alloc(u8** out, size_t* outLen, const u8* in, size
 	return zerr_to_opensc(err);
 }
 
-int sc_decompress_alloc(u8** out, size_t* outLen, const u8* in, size_t inLen, int method) {
-	if(method == COMPRESSION_AUTO) {
+int sc_decompress_alloc(u8** out, size_t* outLen, const u8* in, size_t inLen, int method)
+{
+	if (in == NULL || out == NULL) {
+		return SC_ERROR_UNKNOWN_DATA_RECEIVED;
+	}
+
+	if (method == COMPRESSION_AUTO) {
 		method = detect_method(in, inLen);
-		if(method == COMPRESSION_UNKNOWN) {
+		if (method == COMPRESSION_UNKNOWN) {
 			return SC_ERROR_UNKNOWN_DATA_RECEIVED;
 		}
 	}
-	switch(method) {
+
+	switch (method) {
 	case COMPRESSION_ZLIB:
 		return sc_decompress_zlib_alloc(out, outLen, in, inLen, 0);
 	case COMPRESSION_GZIP:
