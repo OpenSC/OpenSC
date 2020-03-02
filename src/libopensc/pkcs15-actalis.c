@@ -252,7 +252,13 @@ static int sc_pkcs15emu_actalis_init(sc_pkcs15_card_t * p15card)
 
 			j++;
 			cert_obj.flags = SC_PKCS15_CO_FLAG_MODIFIABLE;
-			sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
+			r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
+			if (r < 0) {
+				sc_log(card->ctx, "Failed to add cert obj r=%d", r);
+				free(cert);
+				free(compCert);
+				continue;
+			}
 
 			free(cert);
 			free(compCert);
