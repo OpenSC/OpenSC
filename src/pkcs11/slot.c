@@ -121,23 +121,10 @@ CK_RV create_slot(sc_reader_t *reader)
 
 	if (reader != NULL) {
 		slot->reader = reader;
-		strcpy_bp(slot->slot_info.manufacturerID, reader->vendor, 32);
-		strcpy_bp(slot->slot_info.slotDescription, reader->name, 64);
-		slot->slot_info.hardwareVersion.major = reader->version_major;
-		slot->slot_info.hardwareVersion.minor = reader->version_minor;
 	}
 
 	return CKR_OK;
 }
-
-void empty_slot(struct sc_pkcs11_slot *slot)
-{
-	if (slot) {
-		list_clear(&slot->objects);
-		list_clear(&slot->logins);
-	}
-}
-
 
 /* create slots associated with a reader, called whenever a reader is seen. */
 CK_RV initialize_reader(sc_reader_t *reader)
@@ -373,38 +360,20 @@ fail:
 CK_RV
 card_detect_all(void)
 {
-	unsigned int i, j;
+	unsigned int i;
 
 	sc_log(context, "Detect all cards");
 	/* Detect cards in all initialized readers */
 	for (i=0; i< sc_ctx_get_reader_count(context); i++) {
 		sc_reader_t *reader = sc_ctx_get_reader(context, i);
-		int removed = 0; /* have we called card_removed for this reader */
 
 		if (reader->flags & SC_READER_REMOVED) {
-			struct sc_pkcs11_slot *slot;
-			/* look at all slots to call card_removed amd empty_slot */
-			for (j = 0; j<list_size(&virtual_slots); j++) {
-				slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, j);
-				if (slot->reader == reader) {
-					if (!removed) {
-						card_removed(reader);
-						removed = 1;  /* only need to call once for this reader */
-					}
-					if (slot->flags & SC_PKCS11_SLOT_FLAG_READER_REMOVED) {
-						empty_slot(slot);
-						slot->flags |= SC_PKCS11_SLOT_FLAG_READER_REMOVED;
-					}
-				}
-			}
+			card_removed(reader);
+			/* do not remove slots related to this reader which would be
+			 * possible according to PKCS#11 2.20 and later, because NSS can't
+			 * handle a shrinking slot list
+			 * https://bugzilla.mozilla.org/show_bug.cgi?id=1613632 */
 		} else {
-			struct sc_pkcs11_slot *slot;
-			for (j = 0; j<list_size(&virtual_slots); j++) {
-				slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, j);
-				if (slot->reader == reader)
-					slot->flags &= ~SC_PKCS11_SLOT_FLAG_READER_REMOVED;
-			}
-
 			if (!reader_get_slot(reader))
 				initialize_reader(reader);
 			else
