@@ -2166,7 +2166,7 @@ static int coolkey_initialize(sc_card_t *card)
 	r = coolkey_list_object(card, COOLKEY_LIST_RESET, &object_info);
 	while (r >= 0) {
 		unsigned long object_id;
-		unsigned short object_len;
+		unsigned long object_len;
 
 		/* The card did not return what we expected: Lets try other objects */
 		if ((size_t)r < (sizeof(object_info)))
@@ -2176,6 +2176,10 @@ static int coolkey_initialize(sc_card_t *card)
 
 		object_id = bebytes2ulong(object_info.object_id);
 		object_len = bebytes2ulong(object_info.object_length);
+		/* Avoid insanely large data */
+		if (object_len > MAX_FILE_SIZE) {
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_CORRUPTED_DATA);
+		}
 
 
 		/* the combined object is a single object that can store the other objects.
@@ -2203,7 +2207,7 @@ static int coolkey_initialize(sc_card_t *card)
 			}
 			combined_processed = 1;
 		} else {
-			sc_log(card->ctx, "Add new object id=%ld, len=%u", object_id, object_len);
+			sc_log(card->ctx, "Add new object id=%ld, len=%lu", object_id, object_len);
 			r = coolkey_add_object(priv, object_id, NULL, object_len, 0);
 			if (r != SC_SUCCESS)
 				sc_log(card->ctx, "coolkey_add_object() returned %d", r);
