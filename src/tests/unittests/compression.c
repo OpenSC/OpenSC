@@ -209,7 +209,7 @@ static void torture_compression_decompress_empty(void **state)
 
 	rv = sc_decompress(buf, &buflen, data, datalen, COMPRESSION_AUTO);
 	assert_int_equal(rv, SC_ERROR_UNKNOWN_DATA_RECEIVED);
-	assert_int_equal(buflen, 0);
+	assert_int_equal(buflen, sizeof(buf)); /* not touched */
 }
 
 static void torture_compression_decompress_gzip_empty(void **state)
@@ -222,7 +222,7 @@ static void torture_compression_decompress_gzip_empty(void **state)
 
 	rv = sc_decompress(buf, &buflen, data, datalen, COMPRESSION_GZIP);
 	assert_int_equal(rv, SC_ERROR_UNKNOWN_DATA_RECEIVED);
-	assert_int_equal(buflen, 0);
+	assert_int_equal(buflen, sizeof(buf)); /* not touched */
 }
 
 static void torture_compression_decompress_zlib_empty(void **state)
@@ -235,7 +235,7 @@ static void torture_compression_decompress_zlib_empty(void **state)
 
 	rv = sc_decompress(buf, &buflen, data, datalen, COMPRESSION_ZLIB);
 	assert_int_equal(rv, SC_ERROR_UNKNOWN_DATA_RECEIVED);
-	assert_int_equal(buflen, 0);
+	assert_int_equal(buflen, sizeof(buf)); /* not touched */
 }
 
 static void torture_compression_decompress_header(void **state)
