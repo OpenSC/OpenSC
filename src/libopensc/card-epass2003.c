@@ -1369,7 +1369,7 @@ epass2003_select_fid(struct sc_card *card, unsigned int id_hi, unsigned int id_l
 		sc_file_t ** file_out)
 {
 	int r;
-	sc_file_t *file = 0;
+	sc_file_t *file = NULL;
 	sc_path_t path;
 
 	memset(&path, 0, sizeof(path));
@@ -1396,8 +1396,11 @@ epass2003_select_fid(struct sc_card *card, unsigned int id_hi, unsigned int id_l
 		}
 	}
 
-	if (file_out)
+	if (file_out) {
 		*file_out = file;
+	} else {
+		sc_file_free(file);
+	}
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
