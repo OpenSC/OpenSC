@@ -205,7 +205,7 @@ static int sc_pkcs15emu_gemsafeGPK_init(sc_pkcs15_card_t *p15card)
 
 	u8 sysrec[7];
 	int num_keyinfo = 0;
-	keyinfo kinfo[8]; /* will loook for 8 keys */
+	keyinfo kinfo[8]; /* will look for 8 keys */
 	u8 modulus_buf[ 1 + 1024 / 8]; /* tag+modulus */
 	u8 *cp;
 	char buf[256];
