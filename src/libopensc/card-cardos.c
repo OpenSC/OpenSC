@@ -381,8 +381,7 @@ get_next_part:
 		q = sc_asn1_find_tag(card->ctx, p, tlen, 0x8a, &ilen);
 		if (q != NULL && ilen == 1) {
 			offset = (u8)ilen;
-			if (offset != 0)
-				goto get_next_part;
+			goto get_next_part;
 		}
 		len -= tlen + 2;
 		p   += tlen;
