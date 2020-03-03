@@ -65,7 +65,6 @@ struct sc_pkcs11_slot;
 struct sc_pkcs11_card;
 
 struct sc_pkcs11_config {
-	unsigned int plug_and_play;
 	unsigned int max_virtual_slots;
 	unsigned int slots_per_card;
 	unsigned char lock_login;
