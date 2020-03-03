@@ -3328,7 +3328,7 @@ static int write_object(CK_SESSION_HANDLE session)
 			else if (strncasecmp(opt_key_type, "DES3:", strlen("DES3:")) == 0)
 				type = CKK_DES3;
 			else
-				util_fatal("Unknown key type: 0x%X", type);
+				util_fatal("Unknown key type: 0x%lX", type);
 		}
 
 		FILL_ATTR(seckey_templ[0], CKA_CLASS, &clazz, sizeof(clazz));
@@ -4489,7 +4489,7 @@ static int read_object(CK_SESSION_HANDLE session)
 #endif
 		}
 		else
-			util_fatal("Reading public keys of type 0x%X not (yet) supported", type);
+			util_fatal("Reading public keys of type 0x%lX not (yet) supported", type);
 		value = BIO_copy_data(pout, &derlen);
 		BIO_free(pout);
 		len = derlen;
