@@ -468,8 +468,7 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 	for (i=0; i<list_size(&virtual_slots); i++) {
 		slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, i);
 		/* the list of available slots contains:
-		 * - if present, virtual hotplug slot;
-		 * - without token(s), one empty slot per reader;
+		 * - without token(s), at least one empty slot per reader;
 		 * - any slot with token;
 		 * - any slot that has already been seen;
 		 */
@@ -550,7 +549,7 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 	sc_log(context, "C_GetSlotInfo(0x%lx)", slotID);
 
 	if (sc_pkcs11_conf.init_sloppy) {
-		/* Most likely virtual_slots only contains the hotplug slot and has not
+		/* Most likely virtual_slots is empty and has not
 		 * been initialized because the caller has *not* called C_GetSlotList
 		 * before C_GetSlotInfo, as required by PKCS#11.  Initialize
 		 * virtual_slots to make things work and hope the caller knows what

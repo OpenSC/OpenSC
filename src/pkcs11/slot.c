@@ -37,14 +37,25 @@ static struct sc_pkcs11_framework_ops *frameworks[] = {
 	NULL
 };
 
-static struct sc_pkcs11_slot * reader_get_slot(sc_reader_t *reader)
+static struct sc_pkcs11_slot * reader_reclaim_slot(sc_reader_t *reader)
 {
 	unsigned int i;
+	CK_UTF8CHAR slotDescription[64];
+	CK_UTF8CHAR manufacturerID[32];
+
+	strcpy_bp(slotDescription, reader->name, 64);
+	strcpy_bp(manufacturerID, reader->vendor, 32);
 
 	/* Locate a slot related to the reader */
 	for (i = 0; i<list_size(&virtual_slots); i++) {
 		sc_pkcs11_slot_t *slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, i);
 		if (slot->reader == reader)
+			return slot;
+		if (slot->reader == NULL && reader != NULL
+				&& 0 == memcmp(slot->slot_info.slotDescription, slotDescription, 64)
+				&& 0 == memcmp(slot->slot_info.manufacturerID, manufacturerID, 32)
+				&& slot->slot_info.hardwareVersion.major == reader->version_major
+				&& slot->slot_info.hardwareVersion.minor == reader->version_minor)
 			return slot;
 	}
 	return NULL;
@@ -82,8 +93,8 @@ static int object_list_seeker(const void *el, const void *key)
 
 CK_RV create_slot(sc_reader_t *reader)
 {
-	/* find unused virtual hotplug slots */
-	struct sc_pkcs11_slot *slot = reader_get_slot(NULL);
+	/* find unused slots previously allocated for the same reader */
+	struct sc_pkcs11_slot *slot = reader_reclaim_slot(reader);
 
 	/* create a new slot if no empty slot is available */
 	if (!slot) {
@@ -373,11 +384,32 @@ card_detect_all(void)
 			 * possible according to PKCS#11 2.20 and later, because NSS can't
 			 * handle a shrinking slot list
 			 * https://bugzilla.mozilla.org/show_bug.cgi?id=1613632 */
+
+			/* Instead, remove the releation between reader and slot */
+			for (i = 0; i<list_size(&virtual_slots); i++) {
+				sc_pkcs11_slot_t *slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, i);
+				if (slot->reader == reader) {
+					slot->reader = NULL;
+				}
+			}
 		} else {
-			if (!reader_get_slot(reader))
-				initialize_reader(reader);
-			else
-				card_detect(sc_ctx_get_reader(context, i));
+			/* Locate a slot related to the reader */
+			int found = 0;
+			for (i = 0; i<list_size(&virtual_slots); i++) {
+				sc_pkcs11_slot_t *slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, i);
+				if (slot->reader == reader) {
+					found = 1;
+					break;
+				}
+			}
+			if (!found) {
+				for (i = 0; i < sc_pkcs11_conf.slots_per_card; i++) {
+					CK_RV rv = create_slot(reader);
+					if (rv != CKR_OK)
+						return rv;
+				}
+			}
+			card_detect(reader);
 		}
 	}
 	sc_log(context, "All cards detected");
