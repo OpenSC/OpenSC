@@ -11,13 +11,11 @@ matrix:
       env:
         - DO_SIMULATION=javacard
         - ENABLE_DOC=--enable-doc
-      sudo: true
     - compiler: gcc
       os: linux
       dist: bionic
       env:
         - DO_SIMULATION=oseid
-      sudo: true
     - env:
         - HOST=x86_64-w64-mingw32
         - DO_PUSH_ARTIFACT=yes
@@ -30,7 +28,6 @@ matrix:
       dist: bionic
       env:
         - DO_SIMULATION=cac
-      sudo: true
 
 env:
   global:
