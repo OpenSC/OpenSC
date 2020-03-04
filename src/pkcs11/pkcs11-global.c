@@ -269,7 +269,6 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs)
 	pid_t current_pid = getpid();
 #endif
 	int rc;
-	unsigned int i;
 	sc_context_param_t ctx_opts;
 
 #if !defined(_WIN32)
@@ -321,9 +320,7 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs)
 	}
 	list_attributes_seeker(&virtual_slots, slot_list_seeker);
 
-	/* Create slots for readers found on initialization, only if in 2.11 mode */
-	for (i=0; i<sc_ctx_get_reader_count(context); i++)
-			initialize_reader(sc_ctx_get_reader(context, i));
+	card_detect_all();
 
 out:
 	if (context != NULL)

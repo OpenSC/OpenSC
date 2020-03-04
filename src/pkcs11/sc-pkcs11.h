@@ -363,7 +363,6 @@ CK_RV card_removed(sc_reader_t *reader);
 CK_RV card_detect_all(void);
 CK_RV create_slot(sc_reader_t *reader);
 void init_slot_info(CK_SLOT_INFO_PTR pInfo, sc_reader_t *reader);
-CK_RV initialize_reader(sc_reader_t *reader);
 CK_RV card_detect(sc_reader_t *reader);
 CK_RV slot_get_slot(CK_SLOT_ID id, struct sc_pkcs11_slot **);
 CK_RV slot_get_token(CK_SLOT_ID id, struct sc_pkcs11_slot **);

@@ -75,14 +75,11 @@ static struct sc_pkcs11_slot * reader_reclaim_slot(sc_reader_t *reader)
 	/* Locate a slot related to the reader */
 	for (i = 0; i<list_size(&virtual_slots); i++) {
 		sc_pkcs11_slot_t *slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, i);
-		if (slot->reader == reader) {
-			DEBUG_VSS(slot, "reader_get_slot found slot");
-			return slot;
 		if (slot->reader == NULL && reader != NULL
 				&& 0 == memcmp(slot->slot_info.slotDescription, slotDescription, 64)
 				&& 0 == memcmp(slot->slot_info.manufacturerID, manufacturerID, 32)
 				&& slot->slot_info.hardwareVersion.major == reader->version_major
-				&& slot->slot_info.hardwareVersion.minor == reader->version_minor)
+				&& slot->slot_info.hardwareVersion.minor == reader->version_minor) {
 			return slot;
 		}
 	}
@@ -126,6 +123,7 @@ CK_RV create_slot(sc_reader_t *reader)
 
 	/* create a new slot if no empty slot is available */
 	if (!slot) {
+		sc_log(context, "Creating new slot");
 		if (list_size(&virtual_slots) >= sc_pkcs11_conf.max_virtual_slots)
 			return CKR_FUNCTION_FAILED;
 
@@ -142,8 +140,9 @@ CK_RV create_slot(sc_reader_t *reader)
 		if (0 != list_init(&slot->logins)) {
 			return CKR_HOST_MEMORY;
 		}
-		DEBUG_VSS(slot, "Creating new slot");
 	} else {
+		DEBUG_VSS(slot, "Reusing this old slot");
+
 		/* reuse the old list of logins/objects since they should be empty */
 		list_t logins = slot->logins;
 		list_t objects = slot->objects;
@@ -152,39 +151,17 @@ CK_RV create_slot(sc_reader_t *reader)
 
 		slot->logins = logins;
 		slot->objects = objects;
-		DEBUG_VSS(slot, "Reusing old slot");
 	}
 
 	slot->login_user = -1;
 	slot->id = (CK_SLOT_ID) list_locate(&virtual_slots, slot);
 	init_slot_info(&slot->slot_info, reader);
-	sc_log(context, "Initializing slot with id 0x%lx", slot->id);
+	slot->reader = reader;
 
-	if (reader != NULL) {
-		slot->reader = reader;
-	}
-	DEBUG_VSS(slot, "Created this slot");
+	DEBUG_VSS(slot, "Finished initializing this slot");
 
 	return CKR_OK;
 }
-
-/* create slots associated with a reader, called whenever a reader is seen. */
-CK_RV initialize_reader(sc_reader_t *reader)
-{
-	unsigned int i;
-	CK_RV rv;
-
-	for (i = 0; i < sc_pkcs11_conf.slots_per_card; i++) {
-		rv = create_slot(reader);
-		if (rv != CKR_OK)
-			return rv;
-	}
-	card_detect(reader);
-
-	sc_log(context, "Reader '%s' initialized", reader->name);
-	return CKR_OK;
-}
-
 
 CK_RV card_removed(sc_reader_t * reader)
 {
