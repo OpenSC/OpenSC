@@ -474,10 +474,11 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 		 * - any slot with token;
 		 * - any slot that has already been seen;
 		 */
-		if ((!tokenPresent && !slot->reader)
-				|| (!tokenPresent && slot->reader != prev_reader)
-				|| (slot->slot_info.flags & CKF_TOKEN_PRESENT)) {
+		if ((!tokenPresent && slot->reader != prev_reader)
+				|| (slot->slot_info.flags & CKF_TOKEN_PRESENT)
+				|| (slot->flags & SC_PKCS11_SLOT_FLAG_SEEN)) {
 			found[numMatches++] = slot->id;
+			slot->flags |= SC_PKCS11_SLOT_FLAG_SEEN;
 		}
 		prev_reader = slot->reader;
 	}

@@ -379,7 +379,7 @@ fail:
 CK_RV
 card_detect_all(void)
 {
-	unsigned int i;
+	unsigned int i, j;
 
 	sc_log(context, "Detect all cards");
 	/* Detect cards in all initialized readers */
@@ -394,8 +394,8 @@ card_detect_all(void)
 			 * https://bugzilla.mozilla.org/show_bug.cgi?id=1613632 */
 
 			/* Instead, remove the releation between reader and slot */
-			for (i = 0; i<list_size(&virtual_slots); i++) {
-				sc_pkcs11_slot_t *slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, i);
+			for (j = 0; j<list_size(&virtual_slots); j++) {
+				sc_pkcs11_slot_t *slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, j);
 				if (slot->reader == reader) {
 					slot->reader = NULL;
 				}
@@ -403,15 +403,15 @@ card_detect_all(void)
 		} else {
 			/* Locate a slot related to the reader */
 			int found = 0;
-			for (i = 0; i<list_size(&virtual_slots); i++) {
-				sc_pkcs11_slot_t *slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, i);
+			for (j = 0; j<list_size(&virtual_slots); j++) {
+				sc_pkcs11_slot_t *slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, j);
 				if (slot->reader == reader) {
 					found = 1;
 					break;
 				}
 			}
 			if (!found) {
-				for (i = 0; i < sc_pkcs11_conf.slots_per_card; i++) {
+				for (j = 0; j < sc_pkcs11_conf.slots_per_card; j++) {
 					CK_RV rv = create_slot(reader);
 					if (rv != CKR_OK)
 						return rv;
