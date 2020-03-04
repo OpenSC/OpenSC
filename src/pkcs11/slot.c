@@ -34,14 +34,14 @@ void _debug_virtual_slots(sc_pkcs11_slot_t *p)
 	sc_pkcs11_slot_t * slot;
 
 	vs_size = list_size(&virtual_slots);
-	_sc_debug(context, SC_LOG_DEBUG_NORMAL,
+	_sc_debug(context, 10,
 			"VSS size:%d", vs_size);
-	_sc_debug(context, SC_LOG_DEBUG_NORMAL,
+	_sc_debug(context, 10,
 			"VSS  [i] id   flags LU events nsessions slot_info.flags reader p11card description");
 	for (i = 0; i < vs_size; i++) {
 		slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, i);
 		if (slot) {
-			_sc_debug(context, SC_LOG_DEBUG_NORMAL,
+			_sc_debug(context, 10,
 				"VSS %s[%d] 0x%2.2lx 0x%4.4x %d  %d  %d %4.4lx  %p %p %.64s",
 				((slot == p) ? "*" : " "),
 				i, slot->id, slot->flags, slot->login_user, slot->events, slot->nsessions,
@@ -50,7 +50,7 @@ void _debug_virtual_slots(sc_pkcs11_slot_t *p)
 				slot->slot_info.slotDescription);
 		}
 	}
-	_sc_debug(context, SC_LOG_DEBUG_NORMAL, "VSS END");
+	_sc_debug(context, 10, "VSS END");
 }
 
 static struct sc_pkcs11_framework_ops *frameworks[] = {
