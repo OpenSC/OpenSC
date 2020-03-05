@@ -2178,9 +2178,9 @@ static int coolkey_initialize(sc_card_t *card)
 		object_len = bebytes2ulong(object_info.object_length);
 		/* Avoid insanely large data */
 		if (object_len > MAX_FILE_SIZE) {
-			LOG_FUNC_RETURN(card->ctx, SC_ERROR_CORRUPTED_DATA);
+			r = SC_ERROR_CORRUPTED_DATA;
+			goto cleanup;
 		}
-
 
 		/* the combined object is a single object that can store the other objects.
 		 * most coolkeys provisioned by TPS has a single combined object that is
