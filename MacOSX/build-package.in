@@ -47,7 +47,7 @@ if ! test -e $BUILDPATH/openpace_bin/$PREFIX/lib/pkgconfig; then
 	fi
 	cd openpace
 	autoreconf -vis
-	./configure --disable-shared --prefix=$PREFIX CRYPTO_CFLAGS="$OPENSSL_CFLAGS" CRYPTO_LIBS="$OPENSSL_LIBS" HELP2MAN=true
+	./configure --disable-shared --prefix=$PREFIX CRYPTO_CFLAGS="$OPENSSL_CFLAGS" CRYPTO_LIBS="$OPENSSL_LIBS" HELP2MAN=/usr/bin/true
 	make DESTDIR=$BUILDPATH/openpace_bin install
 	cd ..
 fi
