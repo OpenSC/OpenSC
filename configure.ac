@@ -415,7 +415,7 @@ AC_FUNC_STAT
 AC_FUNC_VPRINTF
 AC_CHECK_FUNCS([ \
 	getpass gettimeofday getline memset mkdir \
-	strdup strerror \
+	strdup strerror memset_s explicit_bzero \
 	strlcpy strlcat strnlen sigaction
 ])
 AC_CHECK_SIZEOF(void *)

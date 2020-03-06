@@ -647,23 +647,22 @@ static int cwa_prepare_external_auth(sc_card_t * card,
 	if (bnsub)
 		BN_free(bnsub);
 	if (buf1) {
-		memset(buf1, 0, 128);
+		sc_mem_clear(buf1, 128);
 		free(buf1);
 	}
 	if (buf2) {
-		memset(buf2, 0, 128);
+		sc_mem_clear(buf2, 128);
 		free(buf2);
 	}
 	if (buf3) {
-		memset(buf3, 0, 128);
+		sc_mem_clear(buf3, 128);
 		free(buf3);
 	}
 	if (sha_buf) {
-		memset(sha_buf, 0, 74 + 32 + 8 + 1 + 7);
+		sc_mem_clear(sha_buf, 74 + 32 + 8 + 1 + 7);
 		free(sha_buf);
 	}
 	if (sha_data) {
-		memset(sha_data, 0, SHA_DIGEST_LENGTH);
 		free(sha_data);
 	}
 
@@ -770,15 +769,14 @@ static int cwa_compute_session_keys(sc_card_t * card)
 
  compute_session_keys_end:
 	if (kseed) {
-		memset(kseed, 0, 32);
+		sc_mem_clear(kseed, 32);
 		free(kseed);
 	}
 	if (data) {
-		memset(data, 0, 32 + 4);
+		sc_mem_clear(data, 32 + 4);
 		free(data);
 	}
 	if (sha_data) {
-		memset(sha_data, 0, SHA_DIGEST_LENGTH);
 		free(sha_data);
 	}
 	if (res != SC_SUCCESS)
