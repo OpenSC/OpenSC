@@ -48,6 +48,7 @@ if ! test -e $BUILDPATH/openpace_bin/$PREFIX/lib/pkgconfig; then
 	cd openpace
 	autoreconf -vis
 	./configure --disable-shared --prefix=$PREFIX CRYPTO_CFLAGS="$OPENSSL_CFLAGS" CRYPTO_LIBS="$OPENSSL_LIBS" HELP2MAN=/usr/bin/true
+	touch src/cvc-create.1 src/cvc-print.1
 	make DESTDIR=$BUILDPATH/openpace_bin install
 	cd ..
 fi
