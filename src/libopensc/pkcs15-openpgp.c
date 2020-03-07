@@ -123,8 +123,10 @@ static const pgp_manuf_map_t manuf_map[] = {
 	{ 0x4354, "Confidential Technologies"	},
 	{ 0x5443, "TIF-IT e.V."			},
 	{ 0x63AF, "Trustica"			},
+	{ 0xBA53, "c-base e.V."			},
 	{ 0xBD0E, "Paranoidlabs"		},
 	{ 0xF517, "FSIJ"			},
+	{ 0xF5EC, "F-Secure"			},
 	{ 0x0000, "test card"			},
 	{ 0xffff, "test card"			},
 	{ 0, NULL }
