@@ -303,6 +303,20 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs)
 		goto out;
 	}
 
+	/* temp debugging */
+	if (pInitArgs)
+		sc_log(context,"args:%p %p %p %p 0x%8.8lx",
+			(void*)((CK_C_INITIALIZE_ARGS_PTR)pInitArgs)->CreateMutex,
+			(void*)((CK_C_INITIALIZE_ARGS_PTR)pInitArgs)->DestroyMutex,
+			(void*)((CK_C_INITIALIZE_ARGS_PTR)pInitArgs)->LockMutex,
+			(void*)((CK_C_INITIALIZE_ARGS_PTR)pInitArgs)->UnlockMutex,
+			((CK_C_INITIALIZE_ARGS_PTR)pInitArgs)->flags);
+
+	sc_log(context,"global_lock:%p, global_locking:%s",
+		global_lock,
+		(global_locking == default_mutex_funcs) ?
+		"default_mutex_funcs" : (global_locking ? "args" : "(nil)"));
+
 	/* Load configuration */
 	load_pkcs11_parameters(&sc_pkcs11_conf, context);
 
@@ -827,6 +841,8 @@ CK_RV sc_pkcs11_lock(void)
 	if (context == NULL)
 		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
+	LOG_FUNC_CALLED(context); /* really only log if using locking  */
+
 	if (!global_lock)
 		return CKR_OK;
 	if (global_locking)  {
@@ -834,7 +850,7 @@ CK_RV sc_pkcs11_lock(void)
 			;
 	}
 
-	return CKR_OK;
+	LOG_FUNC_RETURN(context, CKR_OK);
 }
 
 static void
@@ -842,10 +858,14 @@ __sc_pkcs11_unlock(void *lock)
 {
 	if (!lock)
 		return;
+	
+	LOG_FUNC_CALLED(context); /* only log if using locking  */
+
 	if (global_locking) {
 		while (global_locking->UnlockMutex(lock) != CKR_OK)
 			;
 	}
+	sc_log(context,"unlocking");
 }
 
 void sc_pkcs11_unlock(void)
