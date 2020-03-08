@@ -26,6 +26,13 @@
 #include <sys/time.h>
 #endif
 
+/* hack - fix me */
+#ifndef PKCS11_THREAD_LOCKING
+#ifdef _WIN32
+#define PKCS11_THREAD_LOCKING
+#endif
+#endif
+
 #ifdef PKCS11_THREAD_LOCKING
 #if defined(HAVE_PTHREAD)
 #include <pthread.h>
