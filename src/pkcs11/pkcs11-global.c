@@ -304,18 +304,30 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs)
 	}
 
 	/* temp debugging */
+#ifdef _WIN32
+	sc_log(context,"has _WIN32");
+#endif
+#ifdef HAVE_OS_LOCKING
+	sc_log(context,"has HAVE_OS_LOCKING");
+#endif
+#ifdef PKCS11_THREAD_LOCKING
+	sc_log(context,"has PKCS11_THREAD_LOCKING");
+#endif
+#ifdef HAVE_PTHREAD
+	sc_log(context,"has HAVE_PTHREAD");
+#endif
+
 	if (pInitArgs)
-		sc_log(context,"args:%p %p %p %p 0x%8.8lx",
+		sc_log(context,"args:%p %p %p %p 0x%8.8lx %p",
 			(void*)((CK_C_INITIALIZE_ARGS_PTR)pInitArgs)->CreateMutex,
 			(void*)((CK_C_INITIALIZE_ARGS_PTR)pInitArgs)->DestroyMutex,
 			(void*)((CK_C_INITIALIZE_ARGS_PTR)pInitArgs)->LockMutex,
 			(void*)((CK_C_INITIALIZE_ARGS_PTR)pInitArgs)->UnlockMutex,
-			((CK_C_INITIALIZE_ARGS_PTR)pInitArgs)->flags);
+			((CK_C_INITIALIZE_ARGS_PTR)pInitArgs)->flags,
+			(void*)((CK_C_INITIALIZE_ARGS_PTR)pInitArgs)->pReserved);
 
-	sc_log(context,"global_lock:%p, global_locking:%s",
-		global_lock,
-		(global_locking == default_mutex_funcs) ?
-		"default_mutex_funcs" : (global_locking ? "args" : "(nil)"));
+	sc_log(context,"global_lock:%p, global_locking:%p default_mutex_funcs:%p",
+		global_lock, global_locking, default_mutex_funcs);
 
 	/* Load configuration */
 	load_pkcs11_parameters(&sc_pkcs11_conf, context);
@@ -798,8 +810,8 @@ sc_pkcs11_init_lock(CK_C_INITIALIZE_ARGS_PTR args)
 	if (!args)
 		return CKR_OK;
 
-	if (args->pReserved != NULL_PTR)
-		return CKR_ARGUMENTS_BAD;
+//	if (args->pReserved != NULL_PTR)
+//		return CKR_ARGUMENTS_BAD;
 
 	/* If the app tells us OS locking is okay,
 	 * use that. Otherwise use the supplied functions.
