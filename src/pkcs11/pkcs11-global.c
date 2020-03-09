@@ -458,7 +458,8 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 
 	DEBUG_VSS(NULL, "C_GetSlotList after card_detect_all");
 
-	found = calloc(list_size(&virtual_slots), sizeof(CK_SLOT_ID));
+	/* alloc 1 more, to handle case of no virtual_slots */
+	found = calloc(list_size(&virtual_slots) + 1, sizeof(CK_SLOT_ID));
 
 	if (found == NULL) {
 		rv = CKR_HOST_MEMORY;
