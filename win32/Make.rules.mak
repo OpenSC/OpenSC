@@ -1,7 +1,7 @@
 OPENSC_FEATURES = pcsc
 
 #Include support for minidriver
-MINIDRIVER_DEF = /DENABLE_MINIDRIVER
+#MINIDRIVER_DEF = /DENABLE_MINIDRIVER
 
 #Build MSI with the Windows Installer XML (WIX) toolkit, requires WIX >= 3.9
 !IF "$(WIX)" == ""
@@ -33,7 +33,7 @@ WIX_LIBS = "$(WIX)\SDK\$(WIXVSVER)\lib\$(PLATFORM)\dutil.lib" "$(WIX)\SDK\$(WIXV
 SM_DEF = /DENABLE_SM
 
 #Build with debugging support
-#DEBUG_DEF = /DDEBUG
+DEBUG_DEF = /DDEBUG
 
 # If you want support for OpenSSL (needed for pkcs15-init tool, software hashing in PKCS#11 library and verification):
 # - download and build OpenSSL

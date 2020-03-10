@@ -456,7 +456,12 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 
 	card_detect_all();
 
-	DEBUG_VSS(NULL, "C_GetSlotList after card_detect_all");
+	if (list_empty(&virtual_slots)) {
+		sc_log(context, "returned 0 slots\n");
+		*pulCount = 0;
+		rv = CKR_OK;
+		goto out;
+	}
 
 	found = calloc(list_size(&virtual_slots), sizeof(CK_SLOT_ID));
 
