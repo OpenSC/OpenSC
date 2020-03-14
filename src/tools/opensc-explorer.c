@@ -33,6 +33,11 @@
 #include <arpa/inet.h>  /* for htons() */
 #endif
 
+#ifdef _WIN32
+#include <io.h>		/* for_setmode() */
+#include <fcntl.h>	/* for _O_TEXT and _O_BINARY */
+#endif
+
 #ifdef HAVE_IO_H
 #include <io.h>
 #endif
@@ -1429,6 +1434,11 @@ static int do_get(int argc, char **argv)
 		perror(filename);
 		goto err;
 	}
+#ifdef _WIN32
+	if (outf == stdout)
+	        _setmode(fileno(stdout), _O_BINARY);
+#endif
+
 	r = sc_lock(card);
 	if (r == SC_SUCCESS)
 		r = sc_select_file(card, &path, &file);
@@ -1472,6 +1482,10 @@ static int do_get(int argc, char **argv)
 	err = 0;
 err:
 	sc_file_free(file);
+#ifdef _WIN32
+	if (outf == stdout)
+	        _setmode(fileno(stdout), _O_TEXT);
+#endif
 	if (outf != NULL && outf != stdout)
 		fclose(outf);
 	select_current_path_or_die();
@@ -1502,6 +1516,10 @@ static int do_get_record(int argc, char **argv)
 		perror(filename);
 		goto err;
 	}
+#ifdef _WIN32
+	if (outf == stdout)
+	        _setmode(fileno(stdout), _O_BINARY);
+#endif
 
 	r = sc_lock(card);
 	if (r == SC_SUCCESS)
@@ -1558,6 +1576,10 @@ static int do_get_record(int argc, char **argv)
 	err = 0;
 err:
 	sc_file_free(file);
+#ifdef _WIN32
+	if (outf == stdout)
+	        _setmode(fileno(stdout), _O_TEXT);
+#endif
 	if (outf != NULL && outf != stdout)
 		fclose(outf);
 	select_current_path_or_die();
@@ -1831,6 +1853,10 @@ static int do_random(int argc, char **argv)
 			perror(filename);
 			return -1;
 		}
+#ifdef _WIN32
+		if (outf == stdout)
+		        _setmode(fileno(stdout), _O_BINARY);
+#endif
 	}
 
 	r = sc_lock(card);
@@ -1851,7 +1877,11 @@ static int do_random(int argc, char **argv)
 
 		if (written < (size_t) count)
 			perror(filename);
+
 		if (outf == stdout) {
+#ifdef _WIN32
+			_setmode(fileno(stdout), _O_TEXT);
+#endif
 			printf("\nTotal of %"SC_FORMAT_LEN_SIZE_T"u random bytes written\n", written);
 		}
 		else
@@ -1895,12 +1925,24 @@ static int do_get_data(int argc, char **argv)
 	if (argc == 2) {
 		const char *filename = argv[1];
 
-		if (!(fp = fopen(filename, "wb"))) {
+		fp = (strcmp(filename, "-") == 0)
+			? stdout
+			: fopen(filename, "wb");
+		if (fp == NULL) {
 			perror(filename);
 			return -1;
 		}
+#ifdef _WIN32
+		if (fp == stdout)
+			_setmode(fileno(stdout), _O_BINARY);
+#endif
 		fwrite(buffer, r, 1, fp);
-		fclose(fp);
+#ifdef _WIN32
+		if (fp == stdout)
+			_setmode(fileno(stdout), _O_TEXT);
+#endif
+		if (fp != stdout)
+			fclose(fp);
 	} else {
 		printf("Data Object %04X:\n", tag & 0xFFFF);
 		util_hex_dump_asc(stdout, buffer, r, 0);
