@@ -384,8 +384,8 @@ iso7816_process_fci(struct sc_card *card, struct sc_file *file,
 
 					/* if possible, get additional information for non-DFs */
 					if (file->type != SC_FILE_TYPE_DF) {
-						/* record length for fixed size records */
-						if (length > 2 && byte & 0x02) {
+						/* max. record length for fixed- & variable-sized records */
+						if (length > 2 && byte & 0x06) {
 							file->record_length = (length > 3)
 								? bebytes2ushort(p+2)
 								: p[2];
