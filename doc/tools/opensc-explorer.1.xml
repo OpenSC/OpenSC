@@ -166,11 +166,16 @@
 					<term>
 						<command>asn1</command>
 						<replaceable>file-id</replaceable>
+						<arg choice="opt"><replaceable>rec-no</replaceable></arg>
 					</term>
 					<listitem>
 						<para>
 							Parse and print the ASN.1 encoded content of the working EF
 							specified by <replaceable>file-id</replaceable>.
+							If the optional parameter
+							<replaceable>rec-no</replaceable> is given and the file is
+							a record-oriented EF, parse and print only the record
+							indicated by this parameter.
 						</para>
 					</listitem>
 				</varlistentry>
