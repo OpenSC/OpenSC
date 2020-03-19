@@ -606,17 +606,23 @@ pgp_parse_algo_attr_blob(const pgp_blob_t *blob, sc_cardctl_openpgp_keygen_info_
 			key_info->algorithm = blob->data[0];
 
 			/* last byte is only set if pubkey import is supported, empty otherwise*/
-			if (blob->data[blob->len] == SC_OPENPGP_KEYFORMAT_EC_STDPUB){
+			if (blob->data[blob->len-1] == SC_OPENPGP_KEYFORMAT_EC_STDPUB){
+				if (blob->len < 3)
+					return SC_ERROR_INCORRECT_PARAMETERS;
 				key_info->u.ec.oid_len = blob->len - 2;
 				key_info->u.ec.keyformat = SC_OPENPGP_KEYFORMAT_EC_STDPUB;
 			}
 			else {
+				if (blob->len < 2)
+					return SC_ERROR_INCORRECT_PARAMETERS;
 				key_info->u.ec.oid_len = blob->len - 1;
 				key_info->u.ec.keyformat = SC_OPENPGP_KEYFORMAT_EC_STD;
 			}
 
-			sc_init_oid(&oid);
 			/* Create copy of oid from blob */
+			if (blob->len < 2)
+				return SC_ERROR_INCORRECT_PARAMETERS;
+			sc_init_oid(&oid);
 			for (j=0; j < (blob->len-1) && j < SC_MAX_OBJECT_ID_OCTETS; j++) {
 				oid.value[j] = blob->data[j+1]; /* ignore first byte of blob (algo ID) */
 			}
