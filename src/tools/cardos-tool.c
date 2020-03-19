@@ -39,6 +39,7 @@
 #endif
 
 #include "libopensc/opensc.h"
+#include "libopensc/cards.h"
 #include "util.h"
 
 static const char *app_name = "cardos-tool";
@@ -54,7 +55,6 @@ static const struct option options[] = {
 	{"startkey",	1, NULL, 's'},
 	{"change-startkey",	1, NULL, 'S'},
 	{"reader",	1, NULL, 'r'},
-	{"card-driver", 1, NULL, 'c'},
 	{"wait",	0, NULL, 'w'},
 	{"verbose",	0, NULL, 'v'},
 	{NULL, 0, NULL, 0}
@@ -67,7 +67,6 @@ static const char *option_help[] = {
 	"Specify startkey for format",
 	"Change Startkey with given APDU command",
 	"Uses reader number <arg> [0]",
-	"Forces the use of driver <arg> [auto-detect]",
 	"Wait for a card to be inserted",
 	"Verbose operation. Use several times to enable debug output.",
 };
@@ -1034,21 +1033,16 @@ static int cardos_change_startkey(const char *change_startkey_apdu)   {
 
 int main(int argc, char *argv[])
 {
-	int err = 0, r, c, long_optind = 0;
+	int err = 0, r, c;
 	int do_info = 0;
 	int do_format = 0;
 	int do_change_startkey = 0;
 	int action_count = 0;
-	const char *opt_driver = NULL;
 	const char *opt_startkey = NULL;
 	const char *opt_change_startkey = NULL;
 	sc_context_param_t ctx_param;
 
-	while (1) {
-		c = getopt_long(argc, argv, "hifs:r:vdc:wS:", options,
-				&long_optind);
-		if (c == -1)
-			break;
+	while ((c = getopt_long(argc, argv, "hifs:r:vdwS:", options, (int *) 0)) != -1) {
 		switch (c) {
 		case 'h':
 			printf("NB! This tool is only for Siemens CardOS based cards!\n\n");
@@ -1075,12 +1069,11 @@ int main(int argc, char *argv[])
 		case 'v':
 			verbose++;
 			break;
-		case 'c':
-			opt_driver = optarg;
-			break;
 		case 'w':
 			opt_wait = 1;
 			break;
+		default:
+			util_print_usage_and_die(app_name, options, option_help, NULL);
 		}
 	}
 
@@ -1095,19 +1088,24 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	if (opt_driver != NULL) {
-		err = sc_set_card_driver(ctx, opt_driver);
-		if (err) {
-			fprintf(stderr, "Driver '%s' not found!\n",
-				opt_driver);
-			err = 1;
-			goto end;
-		}
+	/* force CardOS card driver */
+	err = sc_set_card_driver(ctx, "cardos");
+	if (err) {
+		fprintf(stderr, "CardOS card driver not found!\n");
+		err = 1;
+		goto end;
 	}
 
 	err = util_connect_card(ctx, &card, opt_reader, opt_wait, verbose);
 	if (err)
 		goto end;
+
+	/* fail if card is not a CardOS card */
+	if (card->type < SC_CARD_TYPE_CARDOS_BASE || card->type >= SC_CARD_TYPE_CARDOS_BASE+1000) {
+		fprintf(stderr, "Card type %X: not a CardOS card\n", card->type);
+		err = 1;
+		goto end;
+	}
 
 	if (do_info) {
 		if ((err = cardos_info())) {

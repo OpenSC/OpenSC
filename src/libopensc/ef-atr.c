@@ -139,7 +139,7 @@ int sc_parse_ef_atr(struct sc_card *card)
 {
 	struct sc_context *ctx = card->ctx;
 	struct sc_path path;
-	struct sc_file *file;
+	struct sc_file *file = NULL;
 	int rv;
 	unsigned char *buf = NULL;
 	size_t size;
@@ -157,17 +157,19 @@ int sc_parse_ef_atr(struct sc_card *card)
 	}
 	buf = malloc(size);
 	if (!buf)
-		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Memory allocation error");
+		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_OUT_OF_MEMORY, "Memory allocation error");
 	rv = sc_read_binary(card, 0, buf, size, 0);
-	LOG_TEST_RET(ctx, rv, "Cannot read EF(ATR) file");
+	LOG_TEST_GOTO_ERR(ctx, rv, "Cannot read EF(ATR) file");
 	
 	rv = sc_parse_ef_atr_content(card, buf, rv);
-	LOG_TEST_RET(ctx, rv, "EF(ATR) parse error");
+	LOG_TEST_GOTO_ERR(ctx, rv, "EF(ATR) parse error");
 
-	free(buf);
+	rv = SC_SUCCESS;
+
+err:
 	sc_file_free(file);
-
-	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+	free(buf);
+	LOG_FUNC_RETURN(ctx, rv);
 }
 
 void sc_free_ef_atr(sc_card_t *card)

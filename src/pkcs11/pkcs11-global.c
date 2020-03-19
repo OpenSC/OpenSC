@@ -269,7 +269,6 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs)
 	pid_t current_pid = getpid();
 #endif
 	int rc;
-	unsigned int i;
 	sc_context_param_t ctx_opts;
 
 #if !defined(_WIN32)
@@ -321,9 +320,7 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs)
 	}
 	list_attributes_seeker(&virtual_slots, slot_list_seeker);
 
-	/* Create slots for readers found on initialization, only if in 2.11 mode */
-	for (i=0; i<sc_ctx_get_reader_count(context); i++)
-			initialize_reader(sc_ctx_get_reader(context, i));
+	card_detect_all();
 
 out:
 	if (context != NULL)
@@ -449,17 +446,22 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 
 	sc_log(context, "C_GetSlotList(token=%d, %s)", tokenPresent,
 			pSlotList==NULL_PTR? "plug-n-play":"refresh");
+	DEBUG_VSS(NULL, "C_GetSlotList before ctx_detect_detect");
 
 	/* Slot list can only change in v2.20 */
-	if (pSlotList == NULL_PTR) {
+	if (pSlotList == NULL_PTR)
 		sc_ctx_detect_readers(context);
-		for (i=0; i<list_size(&virtual_slots); i++) {
-			slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, i);
-			slot->flags &= ~SC_PKCS11_SLOT_FLAG_SEEN;
-		}
-	}
+
+	DEBUG_VSS(NULL, "C_GetSlotList after ctx_detect_readers");
 
 	card_detect_all();
+
+	if (list_empty(&virtual_slots)) {
+		sc_log(context, "returned 0 slots\n");
+		*pulCount = 0;
+		rv = CKR_OK;
+		goto out;
+	}
 
 	found = calloc(list_size(&virtual_slots), sizeof(CK_SLOT_ID));
 
@@ -473,13 +475,11 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 	for (i=0; i<list_size(&virtual_slots); i++) {
 		slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, i);
 		/* the list of available slots contains:
-		 * - if present, virtual hotplug slot;
+		 * - without token(s), at least one empty slot per reader;
 		 * - any slot with token;
-		 * - without token(s), one empty slot per reader;
 		 * - any slot that has already been seen;
 		 */
-		if ((!tokenPresent && !slot->reader)
-				|| (!tokenPresent && slot->reader != prev_reader)
+		if ((!tokenPresent && slot->reader != prev_reader)
 				|| (slot->slot_info.flags & CKF_TOKEN_PRESENT)
 				|| (slot->flags & SC_PKCS11_SLOT_FLAG_SEEN)) {
 			found[numMatches++] = slot->id;
@@ -487,21 +487,7 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 		}
 		prev_reader = slot->reader;
 	}
-
-	/* Slot list can only change in v2.20 */
-	if (pSlotList == NULL_PTR) {
-		/* slot->id is derived from its location in the list virtual_slots.
-		 * When the slot list changes, so does slot->id, so we reindex the
-		 * slots here the same way it is done in `create_slot()`
-		 *
-		 * TODO use a persistent CK_SLOT_ID, e.g. by using something like
-		 * `slot->id = sc_crc32(slot, sizeof *slot);` (this example, however,
-		 * is currently not thread safe).  */
-		for (i=0; i<list_size(&virtual_slots); i++) {
-			slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, i);
-			slot->id = (CK_SLOT_ID) list_locate(&virtual_slots, slot);
-		}
-	}
+	DEBUG_VSS(NULL, "C_GetSlotList after card_detect_all");
 
 	if (pSlotList == NULL_PTR) {
 		sc_log(context, "was only a size inquiry (%lu)\n", numMatches);
@@ -509,6 +495,7 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 		rv = CKR_OK;
 		goto out;
 	}
+	DEBUG_VSS(NULL, "C_GetSlotList after slot->id reassigned");
 
 	if (*pulCount < numMatches) {
 		sc_log(context, "buffer was too small (needed %lu)\n", numMatches);
@@ -522,12 +509,10 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 	rv = CKR_OK;
 
 	sc_log(context, "returned %lu slots\n", numMatches);
+	DEBUG_VSS(NULL, "Returning a new slot list");
 
 out:
-	if (found != NULL) {
-		free (found);
-		found = NULL;
-	}
+	free (found);
 	sc_pkcs11_unlock();
 	return rv;
 }
@@ -561,7 +546,7 @@ static sc_timestamp_t get_current_time(void)
 
 CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 {
-	struct sc_pkcs11_slot *slot;
+	struct sc_pkcs11_slot *slot = NULL;
 	sc_timestamp_t now;
 	CK_RV rv;
 
@@ -575,7 +560,7 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 	sc_log(context, "C_GetSlotInfo(0x%lx)", slotID);
 
 	if (sc_pkcs11_conf.init_sloppy) {
-		/* Most likely virtual_slots only contains the hotplug slot and has not
+		/* Most likely virtual_slots is empty and has not
 		 * been initialized because the caller has *not* called C_GetSlotList
 		 * before C_GetSlotInfo, as required by PKCS#11.  Initialize
 		 * virtual_slots to make things work and hope the caller knows what
@@ -584,12 +569,12 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 	}
 
 	rv = slot_get_slot(slotID, &slot);
-	sc_log(context, "C_GetSlotInfo() get slot rv %lu", rv);
-	if (rv == CKR_OK)   {
-		if (slot->reader == NULL)   {
+	DEBUG_VSS(slot, "C_GetSlotInfo found");
+	sc_log(context, "C_GetSlotInfo() get slot rv %s", lookup_enum( RV_T, rv));
+	if (rv == CKR_OK) {
+		if (slot->reader == NULL) {
 			rv = CKR_TOKEN_NOT_PRESENT;
-		}
-		else {
+		} else {
 			now = get_current_time();
 			if (now >= slot->slot_state_expires || now == 0) {
 				/* Update slot status */

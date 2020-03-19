@@ -49,6 +49,9 @@ for HASH in "" "SHA1" "SHA224" "SHA256" "SHA384" "SHA512"; do
             continue; # This one is broken
         fi
 
+        # Ubuntu SoftHSM version does not support RSA-PSS
+        grep "Ubuntu 18.04" /etc/issue && echo "WARNING: Not supported on Ubuntu 18.04" && continue
+
         echo
         echo "======================================================="
         echo "$METHOD: Sign & Verify (KEY $SIGN_KEY)"

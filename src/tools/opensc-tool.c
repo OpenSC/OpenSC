@@ -90,7 +90,7 @@ static const char *option_help[] = {
 	"Sends an APDU in format AA:BB:CC:DD:EE:FF...",
 	"Uses reader number <arg> [0]",
 	"Does card reset of type <cold|warm> [cold]",
-	"Forces the use of driver <arg> [auto-detect]",
+	"Forces the use of driver <arg> [auto-detect; '?' for list]",
 	"Lists algorithms supported by card",
 	"Wait for a card to be inserted",
 	"Verbose operation. Use several times to enable debug output.",
@@ -300,22 +300,6 @@ static int list_readers(void)
 	return 0;
 }
 
-static int list_drivers(void)
-{
-	int i;
-
-	if (ctx->card_drivers[0] == NULL) {
-		printf("No card drivers installed!\n");
-		return 0;
-	}
-	printf("Configured card drivers:\n");
-	for (i = 0; ctx->card_drivers[i] != NULL; i++) {
-		printf("  %-16s %s\n", ctx->card_drivers[i]->short_name,
-		      ctx->card_drivers[i]->name);
-	}
-	return 0;
-}
-
 static int print_file(sc_card_t *in_card, const sc_file_t *file,
 	const sc_path_t *path, int depth)
 {
@@ -438,13 +422,13 @@ static int print_file(sc_card_t *in_card, const sc_file_t *file,
 		free(buf);
 	} else {
 		unsigned char buf[256];
-		size_t i;
+		size_t rec_nr;
 
-		for (i=0; i < file->record_count; i++) {
-			printf("Record %"SC_FORMAT_LEN_SIZE_T"u\n", i);
+		for (rec_nr = 1; rec_nr <= file->record_count; rec_nr++) {
+			printf("Record %"SC_FORMAT_LEN_SIZE_T"u\n", rec_nr);
 			r = sc_lock(card);
 			if (r == SC_SUCCESS)
-				r = sc_read_record(in_card, i, buf, 256, 0);
+				r = sc_read_record(in_card, rec_nr, buf, sizeof(buf), SC_RECORD_BY_REC_NR);
 			sc_unlock(card);
 			if (r > 0)
 				util_hex_dump_asc(stdout, buf, r, 0);
@@ -594,6 +578,7 @@ static int list_algorithms(void)
 		{ SC_ALGORITHM_RSA_PAD_PKCS1,      "pkcs1"     },
 		{ SC_ALGORITHM_RSA_PAD_ANSI,       "ansi"      },
 		{ SC_ALGORITHM_RSA_PAD_PSS,        "pss"       },
+		{ SC_ALGORITHM_RSA_PAD_OAEP,       "oaep"      },
 		{ SC_ALGORITHM_RSA_PAD_ISO9796,    "iso9796"   },
 		{ SC_ALGORITHM_RSA_HASH_SHA1,      "sha1"      },
 		{ SC_ALGORITHM_RSA_HASH_MD5,       "MD5"       },
@@ -784,6 +769,13 @@ int main(int argc, char *argv[])
 			break;
 		case 'c':
 			opt_driver = optarg;
+
+			/* treat argument "?" as request to list drivers */
+			if (opt_driver && strncmp("?", opt_driver, sizeof("?")) == 0) {
+				opt_driver = NULL;
+				do_list_drivers = 1;
+				action_count++;
+			}
 			break;
 		case 'w':
 			opt_wait = 1;
@@ -844,7 +836,7 @@ int main(int argc, char *argv[])
 		action_count--;
 	}
 	if (do_list_drivers) {
-		if ((err = list_drivers()))
+		if ((err = util_list_card_drivers(ctx)))
 			goto end;
 		action_count--;
 	}

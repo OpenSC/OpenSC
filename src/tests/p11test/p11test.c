@@ -34,6 +34,9 @@
 
 #define DEFAULT_P11LIB	"../../pkcs11/.libs/opensc-pkcs11.so"
 
+/* Global variable keeping information about token we are using */
+token_info_t token;
+
 void display_usage() {
 	fprintf(stdout,
 		" Usage:\n"
@@ -49,7 +52,7 @@ void display_usage() {
 }
 
 int main(int argc, char** argv) {
-	char command;
+	signed char command;
 	const struct CMUnitTest readonly_tests_without_initialization[] = {
 		/* Test card events on slot */
 		cmocka_unit_test_setup_teardown(wait_test,

@@ -11,13 +11,11 @@ matrix:
       env:
         - DO_SIMULATION=javacard
         - ENABLE_DOC=--enable-doc
-      sudo: true
     - compiler: gcc
       os: linux
       dist: bionic
       env:
         - DO_SIMULATION=oseid
-      sudo: true
     - env:
         - HOST=x86_64-w64-mingw32
         - DO_PUSH_ARTIFACT=yes
@@ -30,7 +28,6 @@ matrix:
       dist: bionic
       env:
         - DO_SIMULATION=cac
-      sudo: true
 
 env:
   global:
@@ -102,8 +99,11 @@ before_script:
       if [ ! -f "$(winepath 'C:/Program Files (x86)/Inno Setup 5/ISCC.exe')" ]; then
         /sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_99.pid --make-pidfile --background --exec /usr/bin/Xvfb -- :99 -ac -screen 0 1280x1024x16;
         export DISPLAY=:99.0;
+        [ -d isetup ] || mkdir isetup;
+        pushd isetup;
         [ -f isetup-5.5.6.exe ] || wget http://files.jrsoftware.org/is/5/isetup-5.5.6.exe;
         wine isetup-5.5.6.exe /SILENT /VERYSILENT /SP- /SUPPRESSMSGBOXES /NORESTART;
+        popd;
       fi;
       unset CC;
       unset CXX;
@@ -283,7 +283,7 @@ script:
     fi
   - if [ "${DO_SIMULATION}" = "cac" ]; then
       cd $TRAVIS_BUILD_DIR;
-      make check && sudo make install;
+      make check && sudo make install || (cat tests/*log src/tests/unittests/*log && exit);
       export LD_LIBRARY_PATH=/usr/local/lib;
       cd src/tests/p11test/;
       ./p11test -s 0 -p 12345678 -i &
@@ -321,5 +321,4 @@ cache:
     - $HOME/Library/Caches/Homebrew
     - openssl_bin
     - openpace_bin
-  files:
-    - isetup-5.5.6.exe
+    - isetup

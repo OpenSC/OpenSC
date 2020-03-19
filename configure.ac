@@ -21,6 +21,8 @@ define([VS_FF_PRODUCT_URL], [https://github.com/OpenSC/OpenSC])
 
 m4_sinclude(version.m4.ci)
 
+m4_define([openssl_minimum_version], [1.0.1])
+
 AC_INIT([PRODUCT_NAME],[PACKAGE_VERSION_MAJOR.PACKAGE_VERSION_MINOR.PACKAGE_VERSION_FIX[]PACKAGE_SUFFIX],[PRODUCT_BUGREPORT],[PRODUCT_TARNAME],[PRODUCT_URL])
 AC_CONFIG_AUX_DIR([.])
 AC_CONFIG_HEADERS([config.h])
@@ -128,6 +130,8 @@ case "${host}" in
 		CPPFLAGS="${CPPFLAGS} -D__USE_MINGW_ANSI_STDIO=1"
 	;;
 esac
+
+AX_CODE_COVERAGE()
 
 AX_CHECK_COMPILE_FLAG([-Wunknown-warning-option], [have_unknown_warning_option="yes"], [have_unknown_warning_option="no"], [-Werror])
 AM_CONDITIONAL([HAVE_UNKNOWN_WARNING_OPTION], [test "${have_unknown_warning_option}" = "yes"])
@@ -411,7 +415,7 @@ AC_FUNC_STAT
 AC_FUNC_VPRINTF
 AC_CHECK_FUNCS([ \
 	getpass gettimeofday getline memset mkdir \
-	strdup strerror \
+	strdup strerror memset_s explicit_bzero \
 	strlcpy strlcat strnlen sigaction
 ])
 AC_CHECK_SIZEOF(void *)
@@ -632,7 +636,7 @@ fi
 
 PKG_CHECK_MODULES(
 	[OPENSSL],
-	[libcrypto >= 0.9.8],
+	[libcrypto >= openssl_minimum_version],
 	[have_openssl="yes"],
 	[AC_CHECK_LIB(
 		[crypto],
@@ -1068,10 +1072,10 @@ AS_IF([test "${enable_shared}" = "yes"], [AC_DEFINE([ENABLE_SHARED], [1], [Enabl
 
 if test "${enable_pedantic}" = "yes"; then
 	enable_strict="yes";
-	CFLAGS="${CFLAGS} -pedantic"
+	CFLAGS="-pedantic ${CFLAGS}"
 fi
 if test "${enable_strict}" = "yes"; then
-	CFLAGS="${CFLAGS} -Wall -Wextra -Wno-unused-parameter -Werror"
+	CFLAGS="-Wall -Wextra -Wno-unused-parameter -Werror ${CFLAGS}"
 fi
 
 AC_CONFIG_FILES([
@@ -1096,6 +1100,7 @@ AC_CONFIG_FILES([
 	src/tests/regression/Makefile
 	src/tests/p11test/Makefile
 	src/tests/fuzzing/Makefile
+	src/tests/unittests/Makefile
 	src/tools/Makefile
 	src/tools/versioninfo-tools.rc
 	src/tools/versioninfo-opensc-notify.rc
@@ -1111,6 +1116,7 @@ AC_CONFIG_FILES([
 	win32/OpenSC.wxs
 	MacOSX/Makefile
 	MacOSX/build-package
+	MacOSX/build-package-from-ci
 	MacOSX/Distribution.xml
 	MacOSX/resources/Welcome.html
 ])
@@ -1157,6 +1163,7 @@ SM default module:       ${DEFAULT_SM_MODULE}
 SM default path:         $(eval eval eval echo "${DEFAULT_SM_MODULE_PATH}")
 DNIe UI support:         ${enable_dnie_ui}
 Notification support:    ${enable_notify}
+Code coverage:           ${enable_code_coverage}
 
 PC/SC default provider:  ${DEFAULT_PCSC_PROVIDER}
 PKCS11 default provider: $(eval eval eval echo "${DEFAULT_PKCS11_PROVIDER}")

@@ -476,7 +476,7 @@ static int setcos_create_file_44(sc_card_t *card, sc_file_t *file)
 					sc_log(card->ctx,  "SetCOS 4.4 PIN refs can only be 1..7\n");
 					return SC_ERROR_INVALID_ARGUMENTS;
 				}
-				bCommands_pin[setcos_pin_index_44(pins, sizeof(pins), (int) bNumber)] |= 1 << i;
+				bCommands_pin[setcos_pin_index_44(pins, sizeof(pins)/sizeof(pins[0]), (int) bNumber)] |= 1 << i;
 				break;
 			case SC_AC_TERM:			/* key */
 				bKeyNumber = bNumber;	/* There should be only 1 key */
@@ -787,9 +787,9 @@ static void parse_sec_attr_44(sc_file_t *file, const u8 *buf, size_t len)
 	const int*	p_idx;
 
 	/* Check all sub-AC definitions within the total AC */
-	while (len > 1) {				/* minimum length = 2 */
+	while (len > 1 && (size_t)iOffset < len) {	/* minimum length = 2 */
 		size_t iACLen   = buf[iOffset] & 0x0F;
-		if (iACLen > len)
+		if (iACLen >= len)
 			break;
 
 		iMethod = SC_AC_NONE;		/* default no authentication required */
@@ -868,7 +868,7 @@ static void parse_sec_attr_44(sc_file_t *file, const u8 *buf, size_t len)
 			}
 
 			/* Encryption key present ? */
-			iPinCount = iACLen - 1;		
+			iPinCount = iACLen > 0 ? iACLen - 1 : 0;
 
 			if (buf[iOffset] & 0x20) {
 				int iSC;

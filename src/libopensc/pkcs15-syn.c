@@ -43,22 +43,23 @@ struct sc_pkcs15_emulator_handler builtin_emulators[] = {
 	{ "itacns",	sc_pkcs15emu_itacns_init_ex	},
 	{ "PIV-II",     sc_pkcs15emu_piv_init_ex	},
 	{ "cac",        sc_pkcs15emu_cac_init_ex	},
+	{ "idprime",    sc_pkcs15emu_idprime_init_ex	},
 	{ "gemsafeGPK",	sc_pkcs15emu_gemsafeGPK_init_ex	},
 	{ "gemsafeV1",	sc_pkcs15emu_gemsafeV1_init_ex	},
 	{ "actalis",	sc_pkcs15emu_actalis_init_ex	},
 	{ "atrust-acos",sc_pkcs15emu_atrust_acos_init_ex},
 	{ "tccardos",	sc_pkcs15emu_tccardos_init_ex	},
-	{ "entersafe",  sc_pkcs15emu_entersafe_init_ex  },
+	{ "entersafe",  sc_pkcs15emu_entersafe_init_ex	},
 	{ "pteid",	sc_pkcs15emu_pteid_init_ex	},
 	{ "oberthur",   sc_pkcs15emu_oberthur_init_ex	},
 	{ "sc-hsm",	sc_pkcs15emu_sc_hsm_init_ex	},
-	{ "dnie",       sc_pkcs15emu_dnie_init_ex   },
-	{ "gids",       sc_pkcs15emu_gids_init_ex   },
-	{ "iasecc",	sc_pkcs15emu_iasecc_init_ex   },
-	{ "jpki",	sc_pkcs15emu_jpki_init_ex },
+	{ "dnie",       sc_pkcs15emu_dnie_init_ex	},
+	{ "gids",       sc_pkcs15emu_gids_init_ex	},
+	{ "iasecc",	sc_pkcs15emu_iasecc_init_ex	},
+	{ "jpki",	sc_pkcs15emu_jpki_init_ex	},
 	{ "coolkey",    sc_pkcs15emu_coolkey_init_ex	},
-	{ "din66291",    sc_pkcs15emu_din_66291_init_ex	},
-	{ "esteid2018",    sc_pkcs15emu_esteid2018_init_ex	},
+	{ "din66291",   sc_pkcs15emu_din_66291_init_ex	},
+	{ "esteid2018", sc_pkcs15emu_esteid2018_init_ex	},
 
 	{ NULL, NULL }
 };
@@ -390,11 +391,15 @@ int sc_pkcs15emu_object_add(sc_pkcs15_card_t *p15card, unsigned int type,
 	unsigned int	df_type;
 	size_t		data_len;
 
+	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
+
 	obj = calloc(1, sizeof(*obj));
-	if (!obj)
-		return SC_ERROR_OUT_OF_MEMORY;
+	if (!obj) {
+		LOG_FUNC_RETURN(p15card->card->ctx, SC_ERROR_OUT_OF_MEMORY);
+	}
+
 	memcpy(obj, in_obj, sizeof(*obj));
-	obj->type  = type;
+	obj->type = type;
 
 	switch (type & SC_PKCS15_TYPE_CLASS_MASK) {
 	case SC_PKCS15_TYPE_AUTH:
@@ -420,19 +425,19 @@ int sc_pkcs15emu_object_add(sc_pkcs15_card_t *p15card, unsigned int type,
 	default:
 		sc_log(p15card->card->ctx, "Unknown PKCS15 object type %d", type);
 		free(obj);
-		return SC_ERROR_INVALID_ARGUMENTS;
+		LOG_FUNC_RETURN(p15card->card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 
 	obj->data = calloc(1, data_len);
 	if (obj->data == NULL) {
 		free(obj);
-		return SC_ERROR_OUT_OF_MEMORY;
+		LOG_FUNC_RETURN(p15card->card->ctx, SC_ERROR_OUT_OF_MEMORY);
 	}
 	memcpy(obj->data, data, data_len);
 
 	obj->df = sc_pkcs15emu_get_df(p15card, df_type);
 	sc_pkcs15_add_object(p15card, obj);
 
-	return SC_SUCCESS;
+	LOG_FUNC_RETURN(p15card->card->ctx, SC_SUCCESS);
 }
 

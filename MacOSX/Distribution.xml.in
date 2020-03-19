@@ -9,20 +9,57 @@ https://developer.apple.com/library/mac/documentation/DeveloperTools/Reference/D
     <background file="background.jpg" mime-type="image/jpeg" scaling="tofit"/>
     <welcome file="Welcome.html" mime-type="text/html"/>
     <title>@PACKAGE_STRING@</title>
-    <options customize="allow" require-scripts="false"/>
+    <options customize="allow" require-scripts="false" rootVolumeOnly="true"/>
+    <script>
+      <![CDATA[
+	function osx_before_catalina() {
+	 if((system.compareVersions(system.version.ProductVersion, '10.15')) == -1)
+	 {
+	  return true;
+	 }
+	 else
+	 {
+	  return false;
+	 }
+	}
+	function osx_after_catalina() {
+	 if((system.compareVersions(system.version.ProductVersion, '10.15')) >= 0)
+	 {
+	  return true;
+	 }
+	 else
+	 {
+	  return false;
+	 }
+	}
+	function osx_after_yosemite() {
+	 if((system.compareVersions(system.version.ProductVersion, '10.12')) >= 0)
+	 {
+	  return true;
+	 }
+	 else
+	 {
+	  return false;
+	 }
+	}
+      ]]>
+    </script>
     <choices-outline>
-        <line choice="default">
-            <line choice="tokend" />
-            <line choice="startup" />
-        </line>
+        <line choice="default" />
+        <line choice="startup" />
+        <line choice="tokend" />
+        <line choice="token" />
     </choices-outline>
-    <choice id="default" title="OpenSC PKCS11 and tools" enabled="false">
+    <choice id="default" title="PKCS#11 module and smart card tools" enabled="false">
         <pkg-ref id="org.opensc-project.mac">OpenSC.pkg</pkg-ref>
     </choice>
-    <choice id="tokend" title="OpenSC tokend">
+    <choice id="tokend" title="TokenD-based smart card driver" start_selected="osx_before_catalina()">
         <pkg-ref id="org.opensc-project.tokend">OpenSC-tokend.pkg</pkg-ref>
     </choice>
-    <choice id="startup" title="OpenSC startup icons">
+    <choice id="token" title="CryptoTokenKit-based smart card driver" visible="osx_after_yosemite()" start_selected="osx_after_catalina()">
+        <pkg-ref id="org.opensc-project.mac.opensctoken">OpenSCToken.pkg</pkg-ref>
+    </choice>
+    <choice id="startup" title="Automatic startup items">
         <pkg-ref id="org.opensc-project.startup">OpenSC-startup.pkg</pkg-ref>
     </choice>
 </installer-gui-script>

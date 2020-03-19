@@ -348,46 +348,26 @@
 
 				<varlistentry>
 					<term>
-						<option>--options-file</option> <replaceable>filename</replaceable>
+						<option>--pin</option> <replaceable>pin</replaceable>,
+						<option>--puk</option> <replaceable>puk</replaceable>,
+						<option>--so-pin</option> <replaceable>sopin</replaceable>,
+						<option>--so-puk</option> <replaceable>sopuk</replaceable>
 					</term>
 					<listitem>
 						<para>
-							Tells <command>pkcs15-init</command> to read additional options
-							from <replaceable>filename</replaceable>. The file is supposed to
-							contain one long option per line, without the leading dashes,
-							for instance:
-							<programlisting>
-pin		1234
-puk		87654321
-							</programlisting>
+							These options can be used to specify the PIN/PUK values
+							on the command line. If the value is set to
+							<literal>env:</literal><replaceable>VARIABLE</replaceable>, the value
+							of the specified environment variable is used. By default,
+							the code is prompted on the command line if needed.
 						</para>
 						<para>
-							You can specify <option>--options-file</option> several times.
-						</para>
-					</listitem>
-				</varlistentry>
-
-				<varlistentry>
-					<term>
-						<option>--pin</option>,
-						<option>--puk</option>
-						<option>--so-pin</option>,
-						<option>--so-puk</option>,
-					</term>
-					<listitem>
-						<para>
-							These options can be used to specify PIN/PUK values
-							on the command line. If set to
-							env:<replaceable>VARIABLE</replaceable>, the value
-							of the environment variable
-							<replaceable>VARIABLE</replaceable> is used. Note
-							that on most operation systems, any user can
+							Note that on most operation systems, any user can
 							display the command line of any process on the
 							system using utilities such as
-							<command>ps(1)</command>. Therefore, you should use
-							these options only on a secured system, or in an
-							options file specified with
-							<option>--options-file</option>.
+							<command>ps(1)</command>. Therefore, you should prefer
+							passing the codes via an environment variable
+							on an unsecured system.
 						</para>
 					</listitem>
 				</varlistentry>

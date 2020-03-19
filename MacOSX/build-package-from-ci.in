@@ -1,0 +1,80 @@
+#!/bin/bash
+# temporary build script until we've fixed the CI to include CTK
+
+# You need to install the following packages from homebrew or macports or fink:
+# autoconf automake libtool pkg-config help2man gengetopt
+
+export MACOSX_DEPLOYMENT_TARGET="10.10"
+
+set -ex
+test -x ./configure || ./bootstrap
+BUILDPATH=${PWD}
+
+# Locate the latest OSX SDK
+SDK_PATH=$(xcrun --sdk macosx --show-sdk-path)
+
+# Set SDK path
+export CFLAGS="$CFLAGS -isysroot $SDK_PATH -arch x86_64"
+
+# Build OpenSCToken
+if ! test -e OpenSCToken; then
+    git clone --depth=1 https://github.com/frankmorgner/OpenSCToken.git
+fi
+cd OpenSCToken
+# make sure OpenSCToken builds with the same dependencies as before
+if ! test -e OpenSC; then
+    git clone --depth=1 ../../OpenSC
+else
+    cd OpenSC && git pull && cd ..
+fi
+if ! test -e openssl; then
+    git clone --depth=1 https://github.com/openssl/openssl.git -b OpenSSL_1_0_2-stable
+else
+    cd openssl && git pull && cd ..
+fi
+if ! test -e openpace; then
+    git clone --depth=1 https://github.com/frankmorgner/openpace.git -b 1.1.0
+else
+    cd openpace && git pull && cd ..
+fi
+BP=${BUILDPATH}
+. ./bootstrap
+BUILDPATH=${BP}
+xcodebuild -target OpenSCTokenApp -configuration Debug -project OpenSCTokenApp.xcodeproj install DSTROOT=${BUILDPATH}/target_token
+cd ..
+
+imagedir=$(mktemp -d)
+
+# Get name of branch in Nightly which corresponds to the latest commit in OpenSC
+BRANCH=`git log --max-count=1 --date=short --abbrev=8 --pretty=format:"%cd_%h"`
+if ! test -e Nightly-${BRANCH}; then
+    # Download the build
+    curl -L https://github.com/OpenSC/Nightly/archive/${BRANCH}.zip > ${BRANCH}.zip
+    # Unpack the build
+    unzip ${BRANCH}.zip
+fi
+cp Nightly-${BRANCH}/OpenSC-startup.pkg .
+cp Nightly-${BRANCH}/OpenSC-tokend.pkg .
+cp Nightly-${BRANCH}/OpenSC.pkg .
+
+# Build package
+pkgbuild --root ${BUILDPATH}/target_token --identifier org.opensc-project.mac.opensctoken --version @PACKAGE_VERSION@ --install-location / OpenSCToken.pkg
+
+# Build product
+productbuild --distribution MacOSX/Distribution.xml --package-path . --resources MacOSX/resources "${imagedir}/OpenSC @PACKAGE_VERSION@.pkg"
+
+# Build "Uninstaller"
+osacompile -o "${imagedir}/OpenSC Uninstaller.app" "MacOSX/OpenSC_Uninstaller.applescript"
+
+# Create .dmg
+rm -f OpenSC-@PACKAGE_VERSION@.dmg
+i=0
+while ! hdiutil create -srcfolder "${imagedir}" -volname "@PACKAGE_NAME@" -fs JHFS+ OpenSC-@PACKAGE_VERSION@.dmg
+do
+	i=$[$i+1]
+	if [ $i -gt 2 ]
+	then
+		exit 1
+	fi
+done
+rm -rf ${imagedir}

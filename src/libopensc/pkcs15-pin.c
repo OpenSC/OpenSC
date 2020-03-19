@@ -176,8 +176,10 @@ sc_pkcs15_decode_aodf_entry(struct sc_pkcs15_card *p15card, struct sc_pkcs15_obj
 				/* Give priority to AID defined in the application DDO */
 				if (p15card->app && p15card->app->ddo.aid.len)
 					info.path.aid = p15card->app->ddo.aid;
-				else if (p15card->file_app->path.len)
+				else if (p15card->file_app && p15card->file_app->path.len)
 					info.path = p15card->file_app->path;
+				else
+					return SC_ERROR_INTERNAL;
 			}
 		}
 		sc_debug(ctx, SC_LOG_DEBUG_ASN1, "decoded PIN(ref:%X,path:%s)", info.attrs.pin.reference, sc_print_path(&info.path));
@@ -296,10 +298,14 @@ sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *pi
 		const unsigned char *pincode, size_t pinlen)
 {
 	struct sc_context *ctx = p15card->card->ctx;
-	struct sc_pkcs15_auth_info *auth_info = (struct sc_pkcs15_auth_info *)pin_obj->data;
+	struct sc_pkcs15_auth_info *auth_info;
 	int r;
 
 	LOG_FUNC_CALLED(ctx);
+
+	if (!pin_obj || !pin_obj->data)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_PIN_REFERENCE);
+	auth_info = (struct sc_pkcs15_auth_info *)pin_obj->data;
 
 	/*
 	 * if pin cache is disabled, we can get here with no PIN data.

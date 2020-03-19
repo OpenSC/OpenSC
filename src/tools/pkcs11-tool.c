@@ -36,10 +36,8 @@
 
 #ifdef ENABLE_OPENSSL
 #include <openssl/opensslv.h>
-#if OPENSSL_VERSION_NUMBER >= 0x10000000L
 #include <openssl/opensslconf.h>
 #include <openssl/crypto.h>
-#endif
 #include <openssl/conf.h>
 #include <openssl/evp.h>
 #include <openssl/x509.h>
@@ -139,6 +137,7 @@ enum {
 	OPT_KEY_USAGE_SIGN,
 	OPT_KEY_USAGE_DECRYPT,
 	OPT_KEY_USAGE_DERIVE,
+	OPT_KEY_USAGE_WRAP,
 	OPT_PRIVATE,
 	OPT_SENSITIVE,
 	OPT_EXTRACTABLE,
@@ -199,6 +198,7 @@ static const struct option options[] = {
 	{ "usage-sign",		0, NULL,		OPT_KEY_USAGE_SIGN },
 	{ "usage-decrypt",	0, NULL,		OPT_KEY_USAGE_DECRYPT },
 	{ "usage-derive",	0, NULL,		OPT_KEY_USAGE_DERIVE },
+	{ "usage-wrap",	0, NULL,		OPT_KEY_USAGE_WRAP },
 	{ "write-object",	1, NULL,		'w' },
 	{ "read-object",	0, NULL,		'r' },
 	{ "delete-object",	0, NULL,		'b' },
@@ -357,6 +357,7 @@ static int		opt_login_type = -1;
 static int		opt_key_usage_sign = 0;
 static int		opt_key_usage_decrypt = 0;
 static int		opt_key_usage_derive = 0;
+static int		opt_key_usage_wrap = 0;
 static int		opt_key_usage_default = 1; /* uses defaults if no opt_key_usage options */
 static int		opt_derive_pass_der = 0;
 static unsigned long	opt_random_bytes = 0;
@@ -777,7 +778,7 @@ int main(int argc, char * argv[])
 			opt_sig_format = optarg;
 			break;
 		case 't':
-			need_session |= NEED_SESSION_RO;
+			need_session |= NEED_SESSION_RW;
 			do_test = 1;
 			action_count++;
 			break;
@@ -879,6 +880,10 @@ int main(int argc, char * argv[])
 			break;
 		case OPT_KEY_USAGE_DERIVE:
 			opt_key_usage_derive = 1;
+			opt_key_usage_default = 0;
+			break;
+		case OPT_KEY_USAGE_WRAP:
+			opt_key_usage_wrap = 1;
 			opt_key_usage_default = 0;
 			break;
 		case OPT_PRIVATE:
@@ -2060,7 +2065,7 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		rv =  p11->C_Verify(session, in_buffer, r, sig_buffer, sig_len);
 	}
 
-	if (rv != CKR_OK) {
+	if (rv != CKR_OK && rv != CKR_SIGNATURE_INVALID) {
 		rv = p11->C_VerifyInit(session, &mech, key);
 		if (rv != CKR_OK)
 			p11_fatal("C_VerifyInit", rv);
@@ -2075,7 +2080,7 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 
 		sig_len = r2;
 		rv = p11->C_VerifyFinal(session, sig_buffer, sig_len);
-		if (rv != CKR_OK)
+		if (rv != CKR_OK && rv != CKR_SIGNATURE_INVALID)
 			p11_fatal("C_VerifyFinal", rv);
 	}
 
@@ -2129,9 +2134,15 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	case CKM_RSA_PKCS_OAEP:
 		oaep_params.hashAlg = opt_hash_alg;
 		switch (opt_hash_alg) {
+		case CKM_SHA_1:
+			oaep_params.mgf = CKG_MGF1_SHA1;
+			break;
 		case CKM_SHA224:
 			oaep_params.mgf = CKG_MGF1_SHA224;
 			break;
+		default:
+			oaep_params.hashAlg = CKM_SHA256;
+			/* fall through */
 		case CKM_SHA256:
 			oaep_params.mgf = CKG_MGF1_SHA256;
 			break;
@@ -2140,12 +2151,6 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			break;
 		case CKM_SHA512:
 			oaep_params.mgf = CKG_MGF1_SHA512;
-			break;
-		default:
-			oaep_params.hashAlg = CKM_SHA_1;
-			/* fall through */
-		case CKM_SHA_1:
-			oaep_params.mgf = CKG_MGF1_SHA1;
 			break;
 		}
 		break;
@@ -2328,10 +2333,12 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 				n_privkey_attr++;
 			}
 
-			FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_WRAP, &_true, sizeof(_true));
-			n_pubkey_attr++;
-			FILL_ATTR(privateKeyTemplate[n_privkey_attr], CKA_UNWRAP, &_true, sizeof(_true));
-			n_privkey_attr++;
+			if (opt_key_usage_wrap) {
+				FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_WRAP, &_true, sizeof(_true));
+				n_pubkey_attr++;
+				FILL_ATTR(privateKeyTemplate[n_privkey_attr], CKA_UNWRAP, &_true, sizeof(_true));
+				n_privkey_attr++;
+			}
 		}
 		else if (!strncmp(type, "EC:", 3))   {
 			CK_MECHANISM_TYPE mtypes[] = {CKM_EC_KEY_PAIR_GEN};
@@ -2838,7 +2845,7 @@ parse_rsa_pkey(EVP_PKEY *pkey, int private, struct rsakey_info *rsa)
 	return 0;
 }
 
-#if OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC)
+#if !defined(OPENSSL_NO_EC)
 static int
 parse_gost_pkey(EVP_PKEY *pkey, int private, struct gostkey_info *gost)
 {
@@ -3055,7 +3062,7 @@ static int write_object(CK_SESSION_HANDLE session)
 		if (pk_type == EVP_PKEY_RSA)   {
 			rv = parse_rsa_pkey(evp_key, is_private, &rsa);
 		}
-#if OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC)
+#if !defined(OPENSSL_NO_EC)
 		else if (pk_type == NID_id_GostR3410_2001)   {
 			rv = parse_gost_pkey(evp_key, is_private, &gost);
 			type = CKK_GOSTR3410;
@@ -3183,7 +3190,7 @@ static int write_object(CK_SESSION_HANDLE session)
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_COEFFICIENT, rsa.coefficient, rsa.coefficient_len);
 			n_privkey_attr++;
 		}
-#if OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC)
+#if !defined(OPENSSL_NO_EC)
 		else if (pk_type == EVP_PKEY_EC)   {
 			type = CKK_EC;
 
@@ -3218,7 +3225,7 @@ static int write_object(CK_SESSION_HANDLE session)
 		pk_type = EVP_PKEY_base_id(evp_key);
 		if (pk_type == EVP_PKEY_RSA)
 			type = CKK_RSA;
-#if OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC)
+#if !defined(OPENSSL_NO_EC)
 		else if (pk_type == EVP_PKEY_EC)
 			type = CKK_EC;
 		else if (pk_type == NID_id_GostR3410_2001)
@@ -3283,7 +3290,7 @@ static int write_object(CK_SESSION_HANDLE session)
 			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_PUBLIC_EXPONENT, rsa.public_exponent, rsa.public_exponent_len);
 			n_pubkey_attr++;
 		}
-#if OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC)
+#if !defined(OPENSSL_NO_EC)
 		else if (pk_type == EVP_PKEY_EC)   {
 			type = CKK_EC;
 
@@ -3321,7 +3328,7 @@ static int write_object(CK_SESSION_HANDLE session)
 			else if (strncasecmp(opt_key_type, "DES3:", strlen("DES3:")) == 0)
 				type = CKK_DES3;
 			else
-				util_fatal("Unknown key type: 0x%X", type);
+				util_fatal("Unknown key type: 0x%lX", type);
 		}
 
 		FILL_ATTR(seckey_templ[0], CKA_CLASS, &clazz, sizeof(clazz));
@@ -3799,10 +3806,8 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 	if (rv != CKR_OK)
 	    p11_fatal("C_DeriveKey", rv);
 
-	if (der)
-	    OPENSSL_free(der);
-	if (buf)
-	    free(buf);
+	free(der);
+	free(buf);
 	if (octet)
 	    ASN1_OCTET_STRING_free(octet);
 
@@ -4442,7 +4447,7 @@ static int read_object(CK_SESSION_HANDLE session)
 			if (!i2d_RSA_PUBKEY_bio(pout, rsa))
 				util_fatal("cannot convert RSA public key to DER");
 			RSA_free(rsa);
-#if OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC)
+#if !defined(OPENSSL_NO_EC)
 		} else if (type == CKK_EC) {
 			EC_KEY *ec;
 			CK_BYTE *params;
@@ -4484,7 +4489,7 @@ static int read_object(CK_SESSION_HANDLE session)
 #endif
 		}
 		else
-			util_fatal("Reading public keys of type 0x%X not (yet) supported", type);
+			util_fatal("Reading public keys of type 0x%lX not (yet) supported", type);
 		value = BIO_copy_data(pout, &derlen);
 		BIO_free(pout);
 		len = derlen;
@@ -4939,7 +4944,7 @@ static int test_signature(CK_SESSION_HANDLE sess)
 {
 	int             errors = 0;
 	CK_RV           rv;
-	CK_OBJECT_HANDLE privKeyObject;
+	CK_OBJECT_HANDLE pubKeyObject, privKeyObject;
 	CK_MECHANISM    ck_mech = { CKM_MD5, NULL, 0 };
 	CK_MECHANISM_TYPE firstMechType;
 	CK_SESSION_INFO sessionInfo;
@@ -5172,19 +5177,17 @@ static int test_signature(CK_SESSION_HANDLE sess)
 	ck_mech.mechanism = mechTypes[i];
 	j = 1;  /* j-th signature key */
 	while (find_object(sess, CKO_PRIVATE_KEY, &privKeyObject, NULL, 0, j++) != 0) {
+		unsigned char   *id;
+		CK_ULONG        idLen;
 		CK_ULONG	modLenBits;
 
-		label = getLABEL(sess, privKeyObject, NULL);
-		modLenBits = get_private_key_length(sess, privKeyObject);
-		modLenBytes = (modLenBits + 7) / 8;
-
-		printf("  testing key %d (%u bits%s%s) with 1 signature mechanism",
-				(int) (j-1),
-				(int) modLenBits,
-				label? ", label=" : "",
-				label? label : "");
-		if (label)
+		printf("  testing key %d", (int) (j-1));
+		if ((label = getLABEL(sess, privKeyObject, NULL)) != NULL) {
+			printf(" (%s)", label);
 			free(label);
+		}
+		if ((int) (j-1) != 0)
+			printf(" with 1 mechanism");
 
 		if (getKEY_TYPE(sess, privKeyObject) != CKK_RSA) {
 			printf(" -- non-RSA, skipping\n");
@@ -5194,13 +5197,28 @@ static int test_signature(CK_SESSION_HANDLE sess)
 			printf(" -- can't be used to sign/verify, skipping\n");
 			continue;
 		}
-		else if (!modLenBytes)   {
+		if ((id = getID(sess, privKeyObject, &idLen)) != NULL) {
+			int r;
+
+			r = find_object(sess, CKO_PUBLIC_KEY, &pubKeyObject, id, idLen, 0);
+			free(id);
+			if (r == 0) {
+				printf(" -- can't find corresponding public key, skipping\n");
+				continue;
+			}
+		}
+		else {
+			printf(" -- can't get the ID for looking up the public key, skipping\n");
+			continue;
+		}
+
+		modLenBits = get_private_key_length(sess, privKeyObject);
+		modLenBytes = (modLenBits + 7) / 8;
+		if (!modLenBytes)   {
 			printf(" -- can't be used to sign/verify, skipping: can't obtain modulus\n");
 			continue;
 		}
-		else   {
-			printf("\n");
-		}
+		printf("\n");
 
 		/* Fill in data[0] and dataLens[0] */
 		dataLen = modLenBytes;
@@ -5829,10 +5847,11 @@ static int test_decrypt(CK_SESSION_HANDLE sess)
 {
 	int             errors = 0;
 	CK_RV           rv;
-	CK_OBJECT_HANDLE privKeyObject;
+	unsigned char   *id;
+	CK_OBJECT_HANDLE pubKeyObject, privKeyObject;
 	CK_MECHANISM_TYPE *mechs = NULL;
 	CK_SESSION_INFO sessionInfo;
-	CK_ULONG        j, num_mechs = 0;
+	CK_ULONG        j, num_mechs = 0, id_len;
 #ifdef ENABLE_OPENSSL
 	CK_ULONG        n;
 #endif
@@ -5854,9 +5873,9 @@ static int test_decrypt(CK_SESSION_HANDLE sess)
 
 	printf("Decryption (currently only for RSA)\n");
 	for (j = 0; find_object(sess, CKO_PRIVATE_KEY, &privKeyObject, NULL, 0, j); j++) {
-		printf("  testing key %ld ", j);
+		printf("  testing key %ld", j);
 		if ((label = getLABEL(sess, privKeyObject, NULL)) != NULL) {
-			printf("(%s) ", label);
+			printf(" (%s)", label);
 			free(label);
 		}
 		if (getKEY_TYPE(sess, privKeyObject) != CKK_RSA) {
@@ -5867,6 +5886,22 @@ static int test_decrypt(CK_SESSION_HANDLE sess)
 			printf(" -- can't be used to decrypt, skipping\n");
 			continue;
 		}
+
+		if ((id = getID(sess, privKeyObject, &id_len)) != NULL) {
+			int r;
+
+			r = find_object(sess, CKO_PUBLIC_KEY, &pubKeyObject, id, id_len, 0);
+			free(id);
+			if (r == 0) {
+				printf(" -- can't find corresponding public key, skipping\n");
+				continue;
+			}
+		}
+		else {
+			printf(" -- can't get the ID for looking up the public key, skipping\n");
+			continue;
+		}
+
 		printf("\n");
 
 #ifndef ENABLE_OPENSSL

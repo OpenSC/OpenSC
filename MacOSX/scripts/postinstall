@@ -40,4 +40,8 @@ do
 	fi
 done
 
+if [ -e /Applications/OpenSCTokenApp.app/Contents/PlugIns/OpenSCToken.appex ]
+	sudo -u _securityagent pluginkit -a /Applications/OpenSCTokenApp.app/Contents/PlugIns/OpenSCToken.appex
+fi
+
 exit 0

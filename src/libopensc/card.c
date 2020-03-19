@@ -157,8 +157,6 @@ static void sc_card_free(sc_card_t *card)
 	sc_free_apps(card);
 	sc_free_ef_atr(card);
 
-	sc_file_free(card->ef_dir);
-
 	free(card->ops);
 
 	if (card->algorithms != NULL)   {

@@ -65,6 +65,7 @@ const struct sc_atr_table sc_hsm_atrs[] = {
 	{"3B:FE:18:00:00:81:31:FE:45:80:31:81:54:48:53:4D:31:73:80:21:40:81:07:FA", NULL, NULL, SC_CARD_TYPE_SC_HSM, 0, NULL},
 	{"3B:8E:80:01:80:31:81:54:48:53:4D:31:73:80:21:40:81:07:18", NULL, NULL, SC_CARD_TYPE_SC_HSM, 0, NULL},
 	{"3B:DE:18:FF:81:91:FE:1F:C3:80:31:81:54:48:53:4D:31:73:80:21:40:81:07:1C", NULL, NULL, SC_CARD_TYPE_SC_HSM, 0, NULL},
+	{"3B:DE:96:FF:81:91:FE:1F:C3:80:31:81:54:48:53:4D:31:73:80:21:40:81:07:92", NULL, NULL, SC_CARD_TYPE_SC_HSM, 0, NULL},
 
 	{"3B:80:80:01:01", NULL, NULL, SC_CARD_TYPE_SC_HSM_SOC, 0, NULL},	// SoC Sample Card
 	{
@@ -1687,13 +1688,18 @@ static int sc_hsm_init(struct sc_card *card)
 	sc_file_free(file);
 
 	// APDU Buffer limits
-	//   JCOP 2.4.1r3    1462
-	//   JCOP 2.4.2r3    1454
-	//   JCOP 3          1232
-	//   Reiner SCT      1014
+	//   JCOP 2.4.1r3           1462
+	//   JCOP 2.4.2r3           1454
+	//   JCOP 3                 1232
+	//   MicroSD with JCOP 3    478 / 506
+	//   Reiner SCT             1014
 
-	card->max_send_size = 1217;		// 1232 buffer size - 15 byte header and TLV because of odd ins in UPDATE BINARY
-	if (card->type == SC_CARD_TYPE_SC_HSM_SOC
+	card->max_send_size = 1232 - 17;	// 1232 buffer size - 17 byte header and TLV because of odd ins in UPDATE BINARY
+
+	if (!strncmp("Secure Flash Card", card->reader->name, 17)) {
+		card->max_send_size = 478 - 17;
+		card->max_recv_size = 506 - 2;
+	} else if (card->type == SC_CARD_TYPE_SC_HSM_SOC
 			|| card->type == SC_CARD_TYPE_SC_HSM_GOID) {
 		card->max_recv_size = 0x0630;	// SoC Proxy forces this limit
 	} else {

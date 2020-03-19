@@ -192,12 +192,19 @@ int sc_reset_retry_counter(sc_card_t *card, unsigned int type, int ref,
 int sc_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 		int *tries_left)
 {
-	int r;
+	int r, debug;
 
 	if (card == NULL) {
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	LOG_FUNC_CALLED(card->ctx);
+
+	debug = card->ctx->debug;
+	if (data->cmd != SC_PIN_CMD_GET_INFO
+			&& card->ctx->debug < SC_LOG_DEBUG_PIN) {
+		card->ctx->debug = 0;
+	}
+
 	if (card->ops->pin_cmd) {
 		r = card->ops->pin_cmd(card, data, tries_left);
 	} else if (!(data->flags & SC_PIN_CMD_USE_PINPAD)) {
@@ -244,6 +251,8 @@ int sc_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 		sc_log(card->ctx,  "Use of pin pad not supported by card driver");
 		r = SC_ERROR_NOT_SUPPORTED;
 	}
+	card->ctx->debug = debug;
+
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
 

@@ -591,7 +591,7 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo)
 	memcpy(pInfo, &slot->token_info, sizeof(CK_TOKEN_INFO));
 out:
 	sc_pkcs11_unlock();
-	sc_log(context, "C_GetTokenInfo(%lx) returns 0x%lX", slotID, rv);
+	sc_log(context, "C_GetTokenInfo(%lx) returns %s", slotID, lookup_enum(RV_T, rv));
 	return rv;
 }
 
@@ -1122,9 +1122,10 @@ pkcs15_init_slot(struct sc_pkcs15_card *p15card, struct sc_pkcs11_slot *slot,
 							max_tokeninfo_len);
 					slot->token_info.label[max_tokeninfo_len]           = ' ';
 					slot->token_info.label[max_tokeninfo_len+1]         = '(';
-					slot->token_info.label[max_tokeninfo_len+2+pin_len] = ')';
 					strcpy_bp(slot->token_info.label+max_tokeninfo_len+2,
 							auth->label, pin_len);
+					strcpy_bp(slot->token_info.label+max_tokeninfo_len+2+pin_len,
+							")", 32 - max_tokeninfo_len-2-pin_len);
 				}
 			} else {
 				/* PIN label is empty or just says non-useful "PIN",
@@ -3976,7 +3977,7 @@ pkcs15_prkey_sign(struct sc_pkcs11_session *session, void *obj,
 		/* Check the data length matches the selected hash */
 		rv = pkcs15_prkey_check_pss_param(pMechanism, (int)ulDataLen);
 		if (rv != CKR_OK) {
-			sc_log(context, "Invalid data lenght for the selected "
+			sc_log(context, "Invalid data length for the selected "
 			    "PSS parameters");
 			return rv;
 		}
@@ -4179,6 +4180,39 @@ pkcs15_prkey_decrypt(struct sc_pkcs11_session *session, void *obj,
 	case CKM_RSA_X_509:
 		flags |= SC_ALGORITHM_RSA_RAW;
 		break;
+	case CKM_RSA_PKCS_OAEP:
+		flags |= SC_ALGORITHM_RSA_PAD_OAEP;
+
+		/* Omited parameter can use MGF1-SHA1 and SHA1 hash ? */
+		if (pMechanism->pParameter == NULL) {
+			flags |= SC_ALGORITHM_RSA_HASH_SHA1;
+			flags |= SC_ALGORITHM_MGF1_SHA1;
+			break;
+		}
+
+		switch (((CK_RSA_PKCS_OAEP_PARAMS*)pMechanism->pParameter)->hashAlg) {
+		case CKM_SHA_1:
+			flags |= SC_ALGORITHM_RSA_HASH_SHA1;
+			break;
+		case CKM_SHA224:
+			flags |= SC_ALGORITHM_RSA_HASH_SHA224;
+			break;
+		case CKM_SHA256:
+			flags |= SC_ALGORITHM_RSA_HASH_SHA256;
+			break;
+		case CKM_SHA384:
+			flags |= SC_ALGORITHM_RSA_HASH_SHA384;
+			break;
+		case CKM_SHA512:
+			flags |= SC_ALGORITHM_RSA_HASH_SHA512;
+			break;
+		default:
+			return CKR_MECHANISM_PARAM_INVALID;
+		}
+
+		/* The MGF parameter was already verified in SignInit() */
+		flags |= mgf2flags(((CK_RSA_PKCS_OAEP_PARAMS*)pMechanism->pParameter)->mgf);
+		break;
 	default:
 		return CKR_MECHANISM_INVALID;
 	}
@@ -4352,6 +4386,7 @@ pkcs15_prkey_init_params(struct sc_pkcs11_session *session,
 	const unsigned int salt_lens[5] = { 160, 256, 384, 512, 224 };
 	const unsigned int hashes[5] = { CKM_SHA_1, CKM_SHA256,
 		CKM_SHA384, CKM_SHA512, CKM_SHA224 };
+	const CK_RSA_PKCS_OAEP_PARAMS *oaep_params;
 
 	switch (pMechanism->mechanism) {
 	case CKM_RSA_PKCS_PSS:
@@ -4406,6 +4441,26 @@ pkcs15_prkey_init_params(struct sc_pkcs11_session *session,
 			return CKR_MECHANISM_PARAM_INVALID;
 
 		/* TODO support different salt lengths */
+		break;
+	case CKM_RSA_PKCS_OAEP:
+		if (!pMechanism->pParameter ||
+			pMechanism->ulParameterLen != sizeof(CK_RSA_PKCS_OAEP_PARAMS))
+			return CKR_MECHANISM_PARAM_INVALID;
+
+		oaep_params = (CK_RSA_PKCS_OAEP_PARAMS*)pMechanism->pParameter;
+		switch (oaep_params->mgf) {
+		case CKG_MGF1_SHA1:
+		case CKG_MGF1_SHA224:
+		case CKG_MGF1_SHA256:
+		case CKG_MGF1_SHA384:
+		case CKG_MGF1_SHA512:
+			/* OK */
+			break;
+		default:
+			return CKR_MECHANISM_PARAM_INVALID;
+		}
+		/* TODO support different salt lengths */
+		/* TODO is there something more to check */
 		break;
 	}
 	return CKR_OK;
@@ -5619,6 +5674,7 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 		rsa_flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
 #ifdef ENABLE_OPENSSL
 		rsa_flags |= SC_ALGORITHM_RSA_PAD_PSS;
+		/* TODO support OAEP decryption & encryption using OpenSSL */
 #endif
 	}
 
@@ -5699,6 +5755,7 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 	}
 
 	if (rsa_flags & SC_ALGORITHM_RSA_PAD_PSS) {
+		CK_FLAGS old_flags = mech_info.flags;
 		mech_info.flags &= ~(CKF_DECRYPT|CKF_ENCRYPT);
 		mt = sc_pkcs11_new_fw_mechanism(CKM_RSA_PKCS_PSS, &mech_info, CKK_RSA, NULL, NULL);
 		rc = sc_pkcs11_register_mechanism(p11card, mt);
@@ -5735,6 +5792,18 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 			if (rc != CKR_OK)
 				return rc;
 		}
+		mech_info.flags = old_flags;
+	}
+
+	if (rsa_flags & SC_ALGORITHM_RSA_PAD_OAEP) {
+		CK_FLAGS old_flags = mech_info.flags;
+		mech_info.flags &= ~(CKF_SIGN|CKF_VERIFY|CKF_SIGN_RECOVER|CKF_VERIFY_RECOVER);
+		mt = sc_pkcs11_new_fw_mechanism(CKM_RSA_PKCS_OAEP, &mech_info, CKK_RSA, NULL, NULL);
+		rc = sc_pkcs11_register_mechanism(p11card, mt);
+		if (rc != CKR_OK) {
+			return rc;
+		}
+		mech_info.flags = old_flags;
 	}
 
 	if (rsa_flags & SC_ALGORITHM_ONBOARD_KEY_GEN) {

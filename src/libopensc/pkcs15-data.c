@@ -43,7 +43,7 @@ sc_pkcs15_read_data_object(struct sc_pkcs15_card *p15card,
 		const struct sc_pkcs15_data_info *info,
 		struct sc_pkcs15_data **data_object_out)
 {
-        struct sc_context *ctx = p15card->card->ctx;
+	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_data *data_object;
 	struct sc_pkcs15_der der;
 	int r;
@@ -123,7 +123,10 @@ int sc_pkcs15_decode_dodf_entry(struct sc_pkcs15_card *p15card,
 		return r;
 	LOG_TEST_RET(ctx, r, "ASN.1 decoding failed");
 
-	if (!p15card->app || !p15card->app->ddo.aid.len)   {
+	if (!p15card->app || !p15card->app->ddo.aid.len) {
+		if (!p15card->file_app) {
+			return SC_ERROR_INTERNAL;
+		}
 		r = sc_pkcs15_make_absolute_path(&p15card->file_app->path, &info.path);
 		if (r < 0)
 			return r;

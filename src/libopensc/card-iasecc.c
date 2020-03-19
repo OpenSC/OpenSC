@@ -416,8 +416,10 @@ iasecc_init_gemalto(struct sc_card *card)
 	card->caps |= SC_CARD_CAP_USE_FCI_AC;
 
 	sc_format_path("3F00", &path);
-	sc_select_file(card, &path, NULL);
-	/* Result ignored*/
+	if (SC_SUCCESS != sc_select_file(card, &path, NULL)) {
+		/* Result ignored*/
+		sc_log(card->ctx, "Warning, MF select failed");
+	}
 
 	rv = iasecc_parse_ef_atr(card);
 	sc_log(ctx, "rv %i", rv);
@@ -578,6 +580,7 @@ iasecc_init(struct sc_card *card)
 	struct sc_context *ctx = card->ctx;
 	struct iasecc_private_data *private_data = NULL;
 	int rv = SC_ERROR_NO_CARD_SUPPORT;
+	void *old_drv_data = card->drv_data;
 
 	LOG_FUNC_CALLED(ctx);
 	private_data = (struct iasecc_private_data *) calloc(1, sizeof(struct iasecc_private_data));
@@ -597,8 +600,9 @@ iasecc_init(struct sc_card *card)
 		rv = iasecc_init_amos_or_sagem(card);
 	else if (card->type == SC_CARD_TYPE_IASECC_MI)
 		rv = iasecc_init_amos_or_sagem(card);
-	else
-		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_CARD);
+	else {
+		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_INVALID_CARD, "");
+	}
 
 
 	if (!rv)   {
@@ -612,7 +616,7 @@ iasecc_init(struct sc_card *card)
 
 			rv = iasecc_select_file(card, &path, NULL);
 			sc_log(ctx, "Select ECC ROOT with the AID from EF.ATR: rv %i", rv);
-			LOG_TEST_RET(ctx, rv, "Select EF.ATR AID failed");
+			LOG_TEST_GOTO_ERR(ctx, rv, "Select EF.ATR AID failed");
 		}
 
 		iasecc_get_serialnr(card, NULL);
@@ -626,6 +630,15 @@ iasecc_init(struct sc_card *card)
 	if (!rv && card->ef_atr && card->ef_atr->aid.len)   {
 		sc_log(ctx, "EF.ATR(aid:'%s')", sc_dump_hex(card->ef_atr->aid.value, card->ef_atr->aid.len));
 	}
+
+err:
+	if (rv < 0) {
+		free(private_data);
+		card->drv_data = old_drv_data;
+	} else {
+		free(old_drv_data);
+	}
+
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
@@ -857,12 +870,14 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 			df_from_cache = 1;
 
 		rv = iasecc_select_file(card, &ppath, &file);
-		LOG_TEST_RET(ctx, rv, "select AID path failed");
+		LOG_TEST_GOTO_ERR(ctx, rv, "select AID path failed");
 
-		if (file_out)
+		if (file_out) {
+			sc_file_free(*file_out);
 			*file_out = file;
-		else
-		   sc_file_free(file);
+		} else {
+			sc_file_free(file);
+		}
 
 		if (lpath.type == SC_PATH_TYPE_DF_NAME)
 			lpath.type = SC_PATH_TYPE_FROM_CURRENT;
@@ -871,8 +886,13 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 	if (lpath.type == SC_PATH_TYPE_PATH)
 		lpath.type = SC_PATH_TYPE_FROM_CURRENT;
 
-	if (!lpath.len)
+	if (!lpath.len) {
+		if (file_out) {
+			sc_file_free(*file_out);
+			*file_out = NULL;
+		}
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+	}
 
 	sc_print_cache(card);
 
@@ -880,7 +900,7 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 			&& card->cache.current_df->path.len == lpath.len
 			&& !memcmp(card->cache.current_df->path.value, lpath.value, lpath.len))   {
 		sc_log(ctx, "returns current DF path %s", sc_print_path(&card->cache.current_df->path));
-		if (file_out)   {
+		if (file_out) {
 			sc_file_free(*file_out);
 			sc_file_dup(file_out, card->cache.current_df);
 		}
@@ -902,8 +922,10 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 				&& card->type != SC_CARD_TYPE_IASECC_SAGEM
 				&& card->type != SC_CARD_TYPE_IASECC_AMOS
 				&& card->type != SC_CARD_TYPE_IASECC_MI
-				&& card->type != SC_CARD_TYPE_IASECC_MI2)
-			LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Unsupported card");
+				&& card->type != SC_CARD_TYPE_IASECC_MI2) {
+			rv = SC_ERROR_NOT_SUPPORTED;
+			LOG_TEST_GOTO_ERR(ctx, rv, "Unsupported card");
+		}
 
 		if (lpath.type == SC_PATH_TYPE_FILE_ID)   {
 			apdu.p1 = 0x02;
@@ -943,7 +965,8 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 		}
 		else   {
 			sc_log(ctx, "Invalid PATH type: 0x%X", lpath.type);
-			LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "iasecc_select_file() invalid PATH type");
+			rv = SC_ERROR_NOT_SUPPORTED;
+			LOG_TEST_GOTO_ERR(ctx, rv, "iasecc_select_file() invalid PATH type");
 		}
 
 		for (ii=0; ii<2; ii++)   {
@@ -956,7 +979,7 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 			apdu.le = 256;
 
 			rv = sc_transmit_apdu(card, &apdu);
-			LOG_TEST_RET(ctx, rv, "APDU transmit failed");
+			LOG_TEST_GOTO_ERR(ctx, rv, "APDU transmit failed");
 			rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
 			if (rv == SC_ERROR_INCORRECT_PARAMETERS &&
 					lpath.type == SC_PATH_TYPE_DF_NAME && apdu.p2 == 0x00)   {
@@ -968,7 +991,7 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 				/* 'SELECT AID' do not returned FCP. Try to emulate. */
 				apdu.resplen = sizeof(rbuf);
 				rv = iasecc_emulate_fcp(ctx, &apdu);
-				LOG_TEST_RET(ctx, rv, "Failed to emulate DF FCP");
+				LOG_TEST_GOTO_ERR(ctx, rv, "Failed to emulate DF FCP");
 			}
 
 			break;
@@ -982,7 +1005,7 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 		if (rv == SC_ERROR_FILE_NOT_FOUND && cache_valid && df_from_cache)   {
 			sc_invalidate_cache(card);
 			sc_log(ctx, "iasecc_select_file() file not found, retry without cached DF");
-			if (file_out)   {
+			if (file_out) {
 				sc_file_free(*file_out);
 				*file_out = NULL;
 			}
@@ -990,7 +1013,7 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 			LOG_FUNC_RETURN(ctx, rv);
 		}
 
-		LOG_TEST_RET(ctx, rv, "iasecc_select_file() check SW failed");
+		LOG_TEST_GOTO_ERR(ctx, rv, "iasecc_select_file() check SW failed");
 
 		sc_log(ctx,
 		       "iasecc_select_file() apdu.resp %"SC_FORMAT_LEN_SIZE_T"u",
@@ -1002,15 +1025,29 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 			case 0x62:
 			case 0x6F:
 				file = sc_file_new();
-				if (file == NULL)
+				if (file == NULL) {
+					if (file_out) {
+						sc_file_free(*file_out);
+						*file_out = NULL;
+					}
 					LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+				}
 				file->path = lpath;
 
 				rv = iasecc_process_fci(card, file, apdu.resp, apdu.resplen);
-				if (rv)
+				if (rv) {
+					if (file_out) {
+						sc_file_free(*file_out);
+						*file_out = NULL;
+					}
 					LOG_FUNC_RETURN(ctx, rv);
+				}
 				break;
 			default:
+				if (file_out) {
+					sc_file_free(*file_out);
+					*file_out = NULL;
+				}
 				LOG_FUNC_RETURN(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
 			}
 
@@ -1058,6 +1095,12 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 
 	sc_print_cache(card);
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+err:
+	if (file_out) {
+		sc_file_free(*file_out);
+		*file_out = NULL;
+	}
+	return rv;
 }
 
 

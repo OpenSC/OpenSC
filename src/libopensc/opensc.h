@@ -107,12 +107,13 @@ extern "C" {
  * must support at least one of them, and exactly one of them must be selected
  * for a given operation. */
 #define SC_ALGORITHM_RSA_RAW		0x00000001
-#define SC_ALGORITHM_RSA_PADS		0x0000001F
+#define SC_ALGORITHM_RSA_PADS		0x0000003F
 #define SC_ALGORITHM_RSA_PAD_NONE	0x00000001
 #define SC_ALGORITHM_RSA_PAD_PKCS1	0x00000002 /* PKCS#1 v1.5 padding */
 #define SC_ALGORITHM_RSA_PAD_ANSI	0x00000004
 #define SC_ALGORITHM_RSA_PAD_ISO9796	0x00000008
 #define SC_ALGORITHM_RSA_PAD_PSS	0x00000010 /* PKCS#1 v2.0 PSS */
+#define SC_ALGORITHM_RSA_PAD_OAEP	0x00000020 /* PKCS#1 v2.0 OAEP */
 
 /* If the card is willing to produce a cryptogram with the following
  * hash values, set these flags accordingly.  The interpretation of the hash
@@ -216,6 +217,8 @@ extern "C" {
 #define SC_EVENT_READER_ATTACHED	0x0004
 #define SC_EVENT_READER_DETACHED	0x0008
 #define SC_EVENT_READER_EVENTS		SC_EVENT_READER_ATTACHED|SC_EVENT_READER_DETACHED
+
+#define MAX_FILE_SIZE 65535
 
 struct sc_supported_algo_info {
 	unsigned int reference;
@@ -542,10 +545,6 @@ struct sc_reader_operations {
  * instead of relying on the ACL info in the profile files. */
 #define SC_CARD_CAP_USE_FCI_AC		0x00000010
 
-/* D-TRUST CardOS cards special flags */
-#define SC_CARD_CAP_ONLY_RAW_HASH		0x00000040
-#define SC_CARD_CAP_ONLY_RAW_HASH_STRIPPED	0x00000080
-
 /* Card (or card driver) supports an protected authentication mechanism */
 #define SC_CARD_CAP_PROTECTED_AUTHENTICATION_PATH	0x00000100
 
@@ -578,7 +577,6 @@ typedef struct sc_card {
 
 	struct sc_app_info *app[SC_MAX_CARD_APPS];
 	int app_count;
-	struct sc_file *ef_dir;
 
 	struct sc_ef_atr *ef_atr;
 

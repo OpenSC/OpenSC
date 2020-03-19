@@ -155,21 +155,19 @@ sc_pkcs15_decode_skdf_entry(struct sc_pkcs15_card *p15card, struct sc_pkcs15_obj
 		/* Check key type. framework-pkcs15 recognizes one type per key, and AES is the only algorithm supported for
 		* SKEY_GENERIC type keys, so just check if this key is AES compatible. */
 
-		for (i = 0; i < SC_MAX_SUPPORTED_ALGORITHMS && info.algo_refs[i] != 0; i++) {
+		for (i = 0; i < SC_MAX_SUPPORTED_ALGORITHMS && info.algo_refs[i] != 0 && info.key_type == 0; i++) {
 			for (ii = 0; ii < SC_MAX_SUPPORTED_ALGORITHMS && p15card->tokeninfo != 0; ii++) {
 				if (info.algo_refs[i] == p15card->tokeninfo->supported_algos[ii].reference) {
-				    temp_oid = p15card->tokeninfo->supported_algos[ii].algo_id;
-				    temp_oid.value[8] = -1; /* strip off AES subtype octet*/
+					temp_oid = p15card->tokeninfo->supported_algos[ii].algo_id;
+					temp_oid.value[8] = -1; /* strip off AES subtype octet*/
 
-				    if (sc_compare_oid(&id_aes, &temp_oid))
-						if (info.key_type == 0)	{
-							info.key_type = CKK_AES;
-							break;
-						}
+					if (sc_compare_oid(&id_aes, &temp_oid)) {
+						info.key_type = CKK_AES;
+						break;
+					}
 				}
 			}
 		}
-
 	}
 	else if (asn1_skey_choice[1].flags & SC_ASN1_PRESENT)
 		obj->type = SC_PKCS15_TYPE_SKEY_DES;

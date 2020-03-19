@@ -577,6 +577,7 @@ static int cryptotokenkit_detect_readers(sc_context_t *ctx)
 		if (j < [slotNames count]) {
 			/* existing reader found; remove it from the list */
 			[slotNames removeObjectAtIndex:j];
+			reader->flags &= ~SC_READER_REMOVED;
 		} else {
 			/* existing reader not found */
 			reader->flags |= SC_READER_REMOVED;

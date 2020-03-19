@@ -607,12 +607,14 @@ parse_odf(const unsigned char * buf, size_t buflen, struct sc_pkcs15_card *p15ca
 		if (r < 0)
 			return r;
 		type = r;
-		r = sc_pkcs15_make_absolute_path(&p15card->file_app->path, &path);
-		if (r < 0)
-			return r;
-		r = sc_pkcs15_add_df(p15card, odf_indexes[type], &path);
-		if (r)
-			return r;
+		if (p15card->file_app) {
+			r = sc_pkcs15_make_absolute_path(&p15card->file_app->path, &path);
+			if (r < 0)
+				return r;
+			r = sc_pkcs15_add_df(p15card, odf_indexes[type], &path);
+			if (r)
+				return r;
+		}
 	}
 	return 0;
 }
@@ -964,6 +966,7 @@ sc_pkcs15_bind_internal(struct sc_pkcs15_card *p15card, struct sc_aid *aid)
 		if (err != SC_SUCCESS)
 			sc_log(ctx, "unable to enumerate apps: %s", sc_strerror(err));
 	}
+	sc_file_free(p15card->file_app);
 	p15card->file_app = sc_file_new();
 	if (p15card->file_app == NULL) {
 		err = SC_ERROR_OUT_OF_MEMORY;
@@ -1039,6 +1042,10 @@ sc_pkcs15_bind_internal(struct sc_pkcs15_card *p15card, struct sc_aid *aid)
 		sc_log(ctx, "EF(ODF) is empty");
 		goto end;
 	}
+	if (len > MAX_FILE_SIZE) {
+		sc_log(ctx, "EF(ODF) too large");
+		goto end;
+	}
 	buf = malloc(len);
 	if(buf == NULL)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
@@ -1105,6 +1112,10 @@ sc_pkcs15_bind_internal(struct sc_pkcs15_card *p15card, struct sc_aid *aid)
 	len = p15card->file_tokeninfo->size;
 	if (!len) {
 		sc_log(ctx, "EF(TokenInfo) is empty");
+		goto end;
+	}
+	if (len > MAX_FILE_SIZE) {
+		sc_log(ctx, "EF(TokenInfo) too large");
 		goto end;
 	}
 	buf = malloc(len);
@@ -2257,7 +2268,7 @@ sc_pkcs15_parse_unusedspace(const unsigned char *buf, size_t buflen, struct sc_p
 	const unsigned char *p = buf;
 	size_t left = buflen;
 	int r;
-	struct sc_path path, dummy_path;
+	struct sc_path path;
 	struct sc_pkcs15_id auth_id;
 	struct sc_asn1_entry asn1_unusedspace[] = {
 		{ "UnusedSpace", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
@@ -2271,9 +2282,6 @@ sc_pkcs15_parse_unusedspace(const unsigned char *buf, size_t buflen, struct sc_p
 
 	/* Clean the list if already present */
 	sc_pkcs15_free_unusedspace(p15card);
-
-	sc_format_path("3F00", &dummy_path);
-	dummy_path.index = dummy_path.count = 0;
 
 	sc_format_asn1_entry(asn1_unusedspace, asn1_unusedspace_values, NULL, 1);
 	sc_format_asn1_entry(asn1_unusedspace_values, &path, NULL, 1);
@@ -2289,7 +2297,7 @@ sc_pkcs15_parse_unusedspace(const unsigned char *buf, size_t buflen, struct sc_p
 		/* If the path length is 0, it's a dummy path then don't add it.
 		 * If the path length isn't included (-1) then it's against the standard
 		 *   but we'll just ignore it instead of returning an error. */
-		if (path.count > 0) {
+		if (path.count > 0 && p15card->file_app) {
 			r = sc_pkcs15_make_absolute_path(&p15card->file_app->path, &path);
 			if (r < 0)
 				return r;

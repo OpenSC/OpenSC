@@ -28,6 +28,10 @@ dist_noinst_DATA = README \
 	packaging/debian.templates/rules
 dist_doc_DATA = NEWS
 
+include $(top_srcdir)/aminclude_static.am
+clean-local: code-coverage-clean
+distclean-local: code-coverage-dist-clean
+
 Generate-ChangeLog:
 	rm -f ChangeLog.tmp "$(srcdir)/ChangeLog"
 	test -n "$(GIT)"

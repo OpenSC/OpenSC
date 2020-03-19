@@ -46,6 +46,8 @@ static struct sc_reader_driver fuzz_drv = {
 void fuzz_get_chunk(sc_reader_t *reader, const uint8_t **chunk, uint16_t *chunk_size)
 {
     struct driver_data *data;
+    uint16_t c_size;
+    const uint8_t *c;
 
     if (chunk)
         *chunk = NULL;
@@ -57,22 +59,31 @@ void fuzz_get_chunk(sc_reader_t *reader, const uint8_t **chunk, uint16_t *chunk_
         return;
     }
     data = reader->drv_data;
-    if (!data || !data->Data || data->Size < sizeof *chunk_size) {
+    if (!data || !data->Data || data->Size < sizeof c_size) {
         sc_debug(reader->ctx, SC_LOG_DEBUG_VERBOSE_TOOL, "Invalid Arguments");
         return;
     }
 
-    data->Size -= sizeof *chunk_size;
-    *chunk_size = (uint16_t) data->Data;
-    data->Data += sizeof *chunk_size;
-    *chunk = data->Data;
+    /* parse the length of the returned data on two bytes */
+    c_size = *((uint16_t *) data->Data);
+    /* consume two bytes from the fuzzing data */
+    data->Size -= sizeof c_size;
+    data->Data += sizeof c_size;
 
-    if (data->Size < *chunk_size) {
-        *chunk_size = data->Size;
+    if (data->Size < c_size) {
+        c_size = data->Size;
     }
 
+    /* consume the bytes from the fuzzing data */
+    c = data->Data;
+    data->Size -= c_size;
+    data->Data += c_size;
+
     sc_debug_hex(reader->ctx, SC_LOG_DEBUG_VERBOSE_TOOL,
-        "Returning fuzzing chunk", *chunk, *chunk_size);
+        "Returning fuzzing chunk", c, c_size);
+
+    *chunk = c;
+    *chunk_size = c_size;
 }
 
 static int fuzz_reader_release(sc_reader_t *reader)
@@ -92,8 +103,8 @@ static int fuzz_reader_connect(sc_reader_t *reader)
 
     fuzz_get_chunk(reader, &chunk, &chunk_size);
 
-    if (chunk_size > reader->atr.len)
-        chunk_size = reader->atr.len;
+    if (chunk_size > SC_MAX_ATR_SIZE)
+        chunk_size = SC_MAX_ATR_SIZE;
     else
         reader->atr.len = chunk_size;
 
@@ -222,10 +233,30 @@ int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
             int wrap_flags[] = {0, SC_ALGORITHM_AES_ECB, SC_ALGORITHM_AES_CBC_PAD,
                 SC_ALGORITHM_AES_CBC};
             for (i = 0; i < sizeof wrap_flags/sizeof *wrap_flags; i++) {
+                /* see `pkcs15_create_secret_key` in
+                 * `src/pkcs11/framework-pkc15.c` for creating a temporary
+                 * secret key for wrapping/unwrapping */
+                unsigned long l = sizeof buf;
                 struct sc_pkcs15_object target_key;
+                struct sc_pkcs15_skey_info skey_info;
+                uint16_t len;
+                memset(&target_key, 0, sizeof target_key);
+                memset(&skey_info, 0, sizeof skey_info);
+                target_key.type = SC_PKCS15_TYPE_SKEY;
+                target_key.flags = 2; /* TODO not sure what these mean */
+                target_key.session_object = 1;
+                target_key.data = &skey_info;
+                skey_info.usage = SC_PKCS15_PRKEY_USAGE_UNWRAP | SC_PKCS15_PRKEY_USAGE_WRAP
+                    | SC_PKCS15_PRKEY_USAGE_ENCRYPT | SC_PKCS15_PRKEY_USAGE_DECRYPT;
+                skey_info.native = 0; /* card can not use this */
+                skey_info.access_flags = 0; /* looks like not needed */
+                skey_info.key_type = 0x1fUL; /* CKK_AES */
+                skey_info.value_len = 128;
+                fuzz_get_chunk(reader, (const u8 **) &skey_info.data.value, &len);
+                skey_info.data.len = len;
+
                 sc_pkcs15_unwrap(p15card, obj, &target_key, wrap_flags[i],
                         in, in_len, param, param_len);
-                unsigned long l = sizeof buf;
                 sc_pkcs15_wrap(p15card, obj, &target_key, wrap_flags[i],
                         buf, &l, in, in_len);
             }
@@ -249,10 +280,12 @@ int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
                         in, in_len, buf, sizeof buf);
             }
 
-            sc_pkcs15_verify_pin(p15card, obj, in, in_len);
-            sc_pkcs15_change_pin(p15card, obj, in, in_len, param, param_len);
-            sc_pkcs15_unblock_pin(p15card, obj, in, in_len, param, param_len);
-            sc_pkcs15_get_pin_info(p15card, obj);
+            if (obj->type == SC_PKCS15_TYPE_AUTH_PIN) {
+                sc_pkcs15_verify_pin(p15card, obj, in, in_len);
+                sc_pkcs15_change_pin(p15card, obj, in, in_len, param, param_len);
+                sc_pkcs15_unblock_pin(p15card, obj, in, in_len, param, param_len);
+                sc_pkcs15_get_pin_info(p15card, obj);
+            }
         }
         sc_pkcs15_card_free(p15card);
     }

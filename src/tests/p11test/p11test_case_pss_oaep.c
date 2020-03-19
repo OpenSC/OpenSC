@@ -376,7 +376,7 @@ int oaep_encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *m
 	CK_BYTE *dec_message = NULL;
 	int dec_message_length = 0;
 	int message_length = 16;
-	unsigned char *enc_message;
+	unsigned char *enc_message = NULL;
 	int enc_message_length, rv;
 
 	if (o->private_handle == CK_INVALID_HANDLE) {

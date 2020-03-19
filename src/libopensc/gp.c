@@ -25,6 +25,13 @@
 #endif
 
 #include "internal.h"
+#include "gp.h"
+
+/* ISO 7816 CLA values */
+#define GLOBAL_PLATFORM_CLASS   0x80
+
+/* ISO 71816 INS values */
+#define ISO7816_INS_GET_DATA    0xca
 
 /* The AID of the Card Manager defined by Open Platform 2.0.1 specification */
 static const struct sc_aid gp_card_manager = {
@@ -50,7 +57,6 @@ gp_select_aid(struct sc_card *card, const struct sc_aid *aid)
 	apdu.datalen = aid->len;
 
 	rv = sc_transmit_apdu(card, &apdu);
-
 	if (rv < 0)
 		return rv;
 
@@ -81,4 +87,35 @@ gp_select_isd_rid(struct sc_card *card)
 	LOG_FUNC_CALLED(card->ctx);
 	rv = gp_select_aid(card, &gp_isd_rid);
 	LOG_FUNC_RETURN(card->ctx, rv);
+}
+
+/* Get Card Production Life-Cycle information */
+int
+gp_get_cplc_data(struct sc_card *card, global_platform_cplc_data_t *cplc_data)
+{
+	size_t len = sizeof(global_platform_cplc_data_t);
+	u8 *receive_buf = (u8 *)cplc_data;
+	struct sc_apdu apdu;
+	int rc;
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, ISO7816_INS_GET_DATA, 0x9f, 0x7f);
+	apdu.cla = GLOBAL_PLATFORM_CLASS;
+	apdu.resp = receive_buf;
+	apdu.resplen = len;
+	apdu.le = len;
+
+	rc = sc_transmit_apdu(card, &apdu);
+	if (rc < 0)
+		LOG_FUNC_RETURN(card->ctx, rc);
+
+	rc = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	if (rc < 0)
+		LOG_FUNC_RETURN(card->ctx, rc);
+
+	/* We expect this will fill the whole structure in the argument.
+	 * If we got something else, report error */
+	if ((size_t)apdu.resplen < sizeof(global_platform_cplc_data_t)) {
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_CORRUPTED_DATA);
+	}
+	LOG_FUNC_RETURN(card->ctx, apdu.resplen);
 }

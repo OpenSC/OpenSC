@@ -50,13 +50,11 @@
 #include <openssl/bn.h>
 #include <openssl/pkcs12.h>
 #include <openssl/x509v3.h>
-#if OPENSSL_VERSION_NUMBER >= 0x10000000L
 #include <openssl/crypto.h>
 #include <openssl/opensslconf.h> /* for OPENSSL_NO_EC */
 #ifndef OPENSSL_NO_EC
 #include <openssl/ec.h>
 #endif /* OPENSSL_NO_EC */
-#endif /* OPENSSL_VERSION_NUMBER >= 0x10000000L */
 
 #include "common/compat_strlcpy.h"
 #include "libopensc/internal.h"
@@ -117,13 +115,11 @@ static int	do_read_public_key(const char *, const char *, EVP_PKEY **);
 static int	do_read_certificate(const char *, const char *, X509 **);
 static char *	cert_common_name(X509 *x509);
 static void	parse_commandline(int argc, char **argv);
-static void	read_options_file(const char *);
 static void	ossl_print_errors(void);
 static int	verify_pin(struct sc_pkcs15_card *, char *);
 
 enum {
-	OPT_OPTIONS = 0x100,
-	OPT_PASSPHRASE,
+	OPT_PASSPHRASE = 0x100,
 	OPT_PUBKEY,
 	OPT_SECRKEY,
 	OPT_EXTRACTABLE,
@@ -215,7 +211,6 @@ const struct option	options[] = {
 
 	{ "profile",		required_argument, NULL,	'p' },
 	{ "card-profile",	required_argument, NULL,	'c' },
-	{ "options-file",	required_argument, NULL,	OPT_OPTIONS },
 	{ "md-container-guid",	required_argument, NULL,	OPT_MD_CONTAINER_GUID},
 	{ "wait",		no_argument, NULL,		'w' },
 	{ "help",		no_argument, NULL,		'h' },
@@ -281,7 +276,6 @@ static const char *		option_help[] = {
 
 	"Specify the general profile to use",
 	"Specify the card profile to use",
-	"Read additional command line options from file",
 	"For a new key specify GUID for a MD container",
 	"Wait for card insertion",
 	"Display this message",
@@ -725,7 +719,7 @@ struct alg_spec {
 };
 
 static const struct alg_spec alg_types_sym[] = {
-	{ "des",	SC_ALGORITHM_DES,	56 },
+	{ "des",	SC_ALGORITHM_DES,	64 },
 	{ "3des",	SC_ALGORITHM_3DES,	192 },
 	{ "aes",	SC_ALGORITHM_AES,	128 },
 	{ NULL, -1, 0 }
@@ -1874,7 +1868,7 @@ static int init_skeyargs(struct sc_pkcs15init_skeyargs *args)
 static void
 init_gost_params(struct sc_pkcs15init_keyarg_gost_params *params, EVP_PKEY *pkey)
 {
-#if OPENSSL_VERSION_NUMBER >= 0x10000000L && !defined(OPENSSL_NO_EC)
+#if !defined(OPENSSL_NO_EC)
 	EC_KEY *key;
 
 	assert(pkey);
@@ -2346,8 +2340,8 @@ do_read_private_key(const char *filename, const char *format,
 			r = util_getpass(&passphrase, &len, stdin);
 			if (r < 0 || !passphrase)
 				return SC_ERROR_INTERNAL;
- 			r = do_read_pkcs12_private_key(filename,
- 					passphrase, pk, certs, max_certs);
+			r = do_read_pkcs12_private_key(filename,
+					passphrase, pk, certs, max_certs);
 		}
 	} else {
 		util_error("Error when reading private key. "
@@ -2776,9 +2770,6 @@ handle_option(const struct option *opt)
 	case 'w':
 		opt_wait = 1;
 		break;
-	case OPT_OPTIONS:
-		read_options_file(optarg);
-		break;
 	case OPT_PIN1: case OPT_PUK1:
 	case OPT_PIN2: case OPT_PUK2:
 		util_get_pin(optarg, &(opt_pins[opt->val & 3]));
@@ -2955,55 +2946,6 @@ parse_commandline(int argc, char **argv)
 next: ;
 	}
 }
-
-/*
- * Read a file containing more command line options.
- * This allows you to specify PINs to pkcs15-init without
- * exposing them through ps.
- */
-static void
-read_options_file(const char *filename)
-{
-	const struct option	*o;
-	char		buffer[1024], *name;
-	FILE		*fp;
-
-	if ((fp = fopen(filename, "r")) == NULL)
-		util_fatal("Unable to open %s: %m", filename);
-	while (fgets(buffer, sizeof(buffer), fp) != NULL) {
-		buffer[strcspn(buffer, "\n")] = '\0';
-
-		name = strtok(buffer, " \t");
-		while (name) {
-			if (*name == '#')
-				break;
-			for (o = options; o->name; o++)
-				if (!strcmp(o->name, name))
-					break;
-			if (!o->name) {
-				util_error("Unknown option \"%s\"\n", name);
-				util_print_usage_and_die(app_name, options, option_help, NULL);
-			}
-			if (o->has_arg != no_argument) {
-				optarg = strtok(NULL, "");
-				if (optarg) {
-					while (isspace((int) *optarg))
-						optarg++;
-					optarg = strdup(optarg);
-				}
-			}
-			if (o->has_arg == required_argument
-			 && (!optarg || !*optarg)) {
-				util_error("Option %s: missing argument\n", name);
-				util_print_usage_and_die(app_name, options, option_help, NULL);
-			}
-			handle_option(o);
-			name = strtok(NULL, " \t");
-		}
-	}
-	fclose(fp);
-}
-
 
 /*
  * OpenSSL helpers

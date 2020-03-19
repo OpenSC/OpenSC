@@ -32,6 +32,7 @@
 #define GEMSAFEV3_ALG_REF_FREEFORM	0x02
 #define GEMSAFEV3_ALG_REF_SHA1		0x12
 #define GEMSAFEV3_ALG_REF_SHA256	0x42
+#define MAX_RESP_BUFFER_SIZE 2048
 
 static struct sc_card_operations gemsafe_ops;
 static struct sc_card_operations *iso_ops = NULL;
@@ -122,7 +123,7 @@ static int get_conf_aid(sc_card_t *card, u8 *aid, size_t *len)
 static int gp_select_applet(sc_card_t *card, const u8 *aid, size_t aid_len)
 {
 	int	r;
-	u8	buf[SC_MAX_APDU_BUFFER_SIZE];
+	u8	buf[MAX_RESP_BUFFER_SIZE];
 	struct sc_context *ctx = card->ctx;
 	struct sc_apdu    apdu;
 
@@ -215,6 +216,8 @@ static int gemsafe_init(struct sc_card *card)
 	_sc_card_add_rsa_alg(card,  768, flags, 0);
 	_sc_card_add_rsa_alg(card, 1024, flags, 0);
 	_sc_card_add_rsa_alg(card, 2048, flags, 0);
+	_sc_card_add_rsa_alg(card, 3072, flags, 0);
+	_sc_card_add_rsa_alg(card, 4096, flags, 0);
 
 	/* fake algorithm to persuade register_mechanisms()
 	 * to register these hashes */
@@ -453,8 +456,8 @@ static int gemsafe_compute_signature(struct sc_card *card, const u8 * data,
 {
 	int r, len;
 	struct sc_apdu apdu;
-	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
-	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
+	u8 rbuf[MAX_RESP_BUFFER_SIZE];
+	u8 sbuf[MAX_RESP_BUFFER_SIZE];
 	sc_context_t *ctx = card->ctx;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
@@ -519,7 +522,7 @@ static int gemsafe_decipher(struct sc_card *card, const u8 * crgram,
 {
 	int r;
 	struct sc_apdu apdu;
-	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
+	u8 rbuf[MAX_RESP_BUFFER_SIZE];
 	sc_context_t *ctx = card->ctx;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);

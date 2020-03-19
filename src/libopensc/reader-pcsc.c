@@ -78,6 +78,25 @@
 #define PCSC_TRACE(reader, desc, rv) do { sc_log(reader->ctx, "%s:" desc ": 0x%08lx\n", reader->name, (unsigned long)((ULONG)rv)); } while (0)
 #define PCSC_LOG(ctx, desc, rv) do { sc_log(ctx, desc ": 0x%08lx\n", (unsigned long)((ULONG)rv)); } while (0)
 
+/* #define APDU_LOG_FILE "apdulog" */
+#ifdef APDU_LOG_FILE
+void APDU_LOG(u8 *rbuf, uint16_t rsize)
+{
+	static FILE *fd = NULL;
+	u8 *lenb = (u8*)&rsize;
+
+	if (fd == NULL) {
+		fd = fopen(APDU_LOG_FILE, "w");
+	}
+	/* First two bytes denote the length */
+	(void) fwrite(lenb, 2, 1, fd);
+	(void) fwrite(rbuf, rsize, 1, fd);
+	fflush(fd);
+}
+#else
+#define APDU_LOG(rbuf, rsize)
+#endif
+
 struct pcsc_global_private_data {
 	int cardmod;
 	SCARDCONTEXT pcsc_ctx;
@@ -162,6 +181,9 @@ static int pcsc_to_opensc_error(LONG rv)
 		return SC_ERROR_READER_LOCKED;
 	case SCARD_E_NO_READERS_AVAILABLE:
 		return SC_ERROR_NO_READERS_FOUND;
+	case SCARD_E_UNKNOWN_READER:
+		return SC_ERROR_READER_DETACHED;
+
 	case SCARD_E_NO_SERVICE:
 		/* If the service is (auto)started, there could be readers later */
 		return SC_ERROR_NO_READERS_FOUND;
@@ -247,6 +269,7 @@ static int pcsc_internal_transmit(sc_reader_t *reader,
 		case SCARD_W_REMOVED_CARD:
 			return SC_ERROR_CARD_REMOVED;
 		case SCARD_E_INVALID_HANDLE:
+		case SCARD_E_INVALID_VALUE:
 		case SCARD_E_READER_UNAVAILABLE:
 			pcsc_connect(reader);
 			/* return failure so that upper layers will be notified */
@@ -304,6 +327,7 @@ static int pcsc_transmit(sc_reader_t *reader, sc_apdu_t *apdu)
 		goto out;
 	}
 	sc_apdu_log(reader->ctx, rbuf, rsize, 0);
+	APDU_LOG(rbuf, (uint16_t)rsize);
 	/* set response */
 	r = sc_apdu_set_resp(reader->ctx, apdu, rbuf, rsize);
 
@@ -349,6 +373,11 @@ static int refresh_attributes(sc_reader_t *reader)
 			/* Timeout, no change from previous recorded state. Make sure that
 			 * changed flag is not set. */
 			reader->flags &= ~SC_READER_CARD_CHANGED;
+			/* Make sure to preserve the CARD_PRESENT flag if the reader was
+			 * reattached and we called the refresh_attributes too recently */
+			if (priv->reader_state.dwEventState & SCARD_STATE_PRESENT) {
+				reader->flags |= SC_READER_CARD_PRESENT;
+			}
 			LOG_FUNC_RETURN(reader->ctx, SC_SUCCESS);
 		}
 		
@@ -396,6 +425,7 @@ static int refresh_attributes(sc_reader_t *reader)
 		if (memcmp(priv->reader_state.rgbAtr, reader->atr.value, priv->reader_state.cbAtr) != 0) {
 			reader->atr.len = priv->reader_state.cbAtr;
 			memcpy(reader->atr.value, priv->reader_state.rgbAtr, reader->atr.len);
+			APDU_LOG(reader->atr.value, (uint16_t) reader->atr.len);
 		}
 
 		/* Is the reader in use by some other application ? */
@@ -415,7 +445,7 @@ static int refresh_attributes(sc_reader_t *reader)
 				unsigned char atr[SC_MAX_ATR_SIZE];
 				rv = priv->gpriv->SCardStatus(priv->pcsc_card, NULL,
 						&readers_len, &cstate, &prot, atr, &atr_len);
-				if (rv == (LONG)SCARD_W_REMOVED_CARD)
+				if (rv == (LONG)SCARD_W_REMOVED_CARD || rv == (LONG)SCARD_E_INVALID_VALUE)
 					reader->flags |= SC_READER_CARD_CHANGED;
 			}
 		} else {
@@ -660,6 +690,8 @@ static int pcsc_lock(sc_reader_t *reader)
 		PCSC_TRACE(reader, "SCardBeginTransaction returned", rv);
 
 	switch (rv) {
+		case SCARD_E_INVALID_VALUE:
+			/* This is retuned in case of the same reader was re-attached */
 		case SCARD_E_INVALID_HANDLE:
 		case SCARD_E_READER_UNAVAILABLE:
 			r = pcsc_connect(reader);
@@ -1438,8 +1470,13 @@ static int pcsc_detect_readers(sc_context_t *ctx)
 
 		for (reader_name = reader_buf; *reader_name != '\x0';
 				reader_name += strlen(reader_name) + 1) {
-			if (!strcmp(reader->name, reader_name))
+			if (!strcmp(reader->name, reader_name)) {
+				if (reader->flags & SC_READER_REMOVED) {
+					reader->flags &= ~SC_READER_REMOVED;
+					refresh_attributes(reader);
+				}
 				break;
+			}
 		}
 
 		if (*reader_name != '\x0') {
@@ -1517,7 +1554,7 @@ static int pcsc_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_re
 	LONG rv;
 	SCARD_READERSTATE *rgReaderStates;
 	size_t i;
-	unsigned int num_watch;
+	unsigned int num_watch, count;
 	int r = SC_ERROR_INTERNAL;
 	DWORD dwtimeout;
 
@@ -1536,22 +1573,30 @@ static int pcsc_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_re
 			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 
 		/* Find out the current status */
-		num_watch = sc_ctx_get_reader_count(ctx);
-		sc_log(ctx, "Trying to watch %d readers", num_watch);
-		for (i = 0; i < num_watch; i++) {
-			rgReaderStates[i].szReader = sc_ctx_get_reader(ctx, i)->name;
-			rgReaderStates[i].dwCurrentState = SCARD_STATE_UNAWARE;
-			rgReaderStates[i].dwEventState = SCARD_STATE_UNAWARE;
-		}
-#ifndef __APPLE__
-	   	/* OS X 10.6.2 - 10.12.6 do not support PnP notification */
-		if (event_mask & SC_EVENT_READER_ATTACHED) {
-			rgReaderStates[i].szReader = "\\\\?PnP?\\Notification";
-			rgReaderStates[i].dwCurrentState = SCARD_STATE_UNAWARE;
-			rgReaderStates[i].dwEventState = SCARD_STATE_UNAWARE;
+		num_watch = 0;
+		count = sc_ctx_get_reader_count(ctx);
+		for (i = 0; i < count; i++) {
+			sc_reader_t *reader = sc_ctx_get_reader(ctx, i);
+			if (reader->flags & SC_READER_REMOVED)
+				continue;
+			rgReaderStates[num_watch].szReader = reader->name;
+			rgReaderStates[num_watch].dwCurrentState = SCARD_STATE_UNAWARE;
+			rgReaderStates[num_watch].dwEventState = SCARD_STATE_UNAWARE;
 			num_watch++;
 		}
+		sc_log(ctx, "Trying to watch %d reader%s", num_watch, num_watch == 1 ? "" : "s");
+		if (event_mask & SC_EVENT_READER_ATTACHED) {
+#ifdef __APPLE__
+			/* OS X 10.6.2 - 10.12.6 do not support PnP notification */
+			sc_log(ctx, "PnP notification not supported");
+#else
+			rgReaderStates[num_watch].szReader = "\\\\?PnP?\\Notification";
+			rgReaderStates[num_watch].dwCurrentState = SCARD_STATE_UNAWARE;
+			rgReaderStates[num_watch].dwEventState = SCARD_STATE_UNAWARE;
+			num_watch++;
+			sc_log(ctx, "Trying to detect new readers");
 #endif
+		}
 	}
 	else {
 		rgReaderStates = (SCARD_READERSTATE *)(*reader_states);
@@ -1577,14 +1622,12 @@ static int pcsc_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_re
 		goto out;
 	}
 
-#ifdef __APPLE__
 	if (num_watch == 0) {
-		sc_log(ctx, "No readers available, PnP notification not supported");
+		sc_log(ctx, "No readers available to be watched");
 		*event_reader = NULL;
 		r = SC_ERROR_NO_READERS_FOUND;
 		goto out;
 	}
-#endif
 
 	rv = gpriv->SCardGetStatusChange(gpriv->pcsc_wait_ctx, 0, rgReaderStates, num_watch);
 	if (rv != SCARD_S_SUCCESS) {
@@ -2382,11 +2425,27 @@ int pcsc_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcsc_c
 		goto out;
 	}
 
-	/* if we already had a reader, delete it */
+	if (!gpriv->cardmod) {
+		ret = SC_ERROR_INTERNAL;
+		goto out;
+	}
+
+	/* Only minidriver calls this and only uses one reader */
+	/* if we already have a reader, update it */
 	if (sc_ctx_get_reader_count(ctx) > 0) {
-		sc_reader_t *oldrdr = list_extract_at(&ctx->readers, 0);
-		if (oldrdr)
-			_sc_delete_reader(ctx, oldrdr);
+		sc_log(ctx, "Reusing the reader");
+		sc_reader_t *reader = list_get_at(&ctx->readers, 0);
+
+		if (reader) {
+			struct pcsc_private_data *priv = reader->drv_data;
+			priv->pcsc_card =*(SCARDHANDLE *)pcsc_card_handle;
+			gpriv->pcsc_ctx = *(SCARDCONTEXT *)pcsc_context_handle;
+			ret = SC_SUCCESS;
+			goto out;
+		} else {
+			ret = SC_ERROR_INTERNAL;
+			goto out;
+		}
 	}
 
 	sc_log(ctx, "Probing PC/SC reader");

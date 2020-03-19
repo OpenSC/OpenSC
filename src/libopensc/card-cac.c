@@ -54,6 +54,7 @@
 #endif
 #include "iso7816.h"
 #include "card-cac-common.h"
+#include "pkcs15.h"
 
 /*
  *  CAC hardware and APDU constants
@@ -104,6 +105,8 @@
 #define CAC_ACR_APPLET_OBJECT         0x10
 #define CAC_ACR_AMP                   0x20
 #define CAC_ACR_SERVICE               0x21
+
+#define CAC_MAX_CCC_DEPTH             16
 
 /* hardware data structures (returned in the CCC) */
 /* part of the card_url */
@@ -1090,10 +1093,8 @@ static int cac_select_file_by_type(sc_card_t *card, const sc_path_t *in_path, sc
 	 * We only need to do this for private keys.
 	 */
 	if ((pathlen > 2) && (pathlen <= 4) && memcmp(path, "\x3F\x00", 2) == 0) {
-		if (pathlen > 2) {
-			path += 2;
-			pathlen -= 2;
-		}
+		path += 2;
+		pathlen -= 2;
 	}
 
 
@@ -1410,6 +1411,7 @@ static int cac_parse_cuid(sc_card_t *card, cac_private_data_t *priv, cac_cuid_t 
 		 sc_dump_hex(&val->card_id, card_id_len),
 		 card_id_len);
 	priv->cuid = *val;
+	free(priv->cac_id);
 	priv->cac_id = malloc(card_id_len);
 	if (priv->cac_id == NULL) {
 		return SC_ERROR_OUT_OF_MEMORY;
@@ -1418,10 +1420,10 @@ static int cac_parse_cuid(sc_card_t *card, cac_private_data_t *priv, cac_cuid_t 
 	priv->cac_id_len = card_id_len;
 	return SC_SUCCESS;
 }
-static int cac_process_CCC(sc_card_t *card, cac_private_data_t *priv);
+static int cac_process_CCC(sc_card_t *card, cac_private_data_t *priv, int depth);
 
 static int cac_parse_CCC(sc_card_t *card, cac_private_data_t *priv, const u8 *tl,
-						 size_t tl_len, u8 *val, size_t val_len)
+	size_t tl_len, u8 *val, size_t val_len, int depth)
 {
 	size_t len = 0;
 	const u8 *tl_end = tl + tl_len;
@@ -1518,7 +1520,8 @@ static int cac_parse_CCC(sc_card_t *card, cac_private_data_t *priv, const u8 *tl
 			if (r < 0)
 				return r;
 
-			r = cac_process_CCC(card, priv);
+			/* Increase depth to avoid infinite recursion */
+			r = cac_process_CCC(card, priv, depth + 1);
 			if (r < 0)
 				return r;
 			break;
@@ -1531,12 +1534,16 @@ static int cac_parse_CCC(sc_card_t *card, cac_private_data_t *priv, const u8 *tl
 	return SC_SUCCESS;
 }
 
-static int cac_process_CCC(sc_card_t *card, cac_private_data_t *priv)
+static int cac_process_CCC(sc_card_t *card, cac_private_data_t *priv, int depth)
 {
 	u8 *tl = NULL, *val = NULL;
 	size_t tl_len, val_len;
 	int r;
 
+	if (depth > CAC_MAX_CCC_DEPTH) {
+		sc_log(card->ctx, "Too much recursive CCC found. Exiting");
+		return SC_ERROR_INVALID_CARD;
+	}
 
 	r = cac_read_file(card, CAC_FILE_TAG, &tl, &tl_len);
 	if (r < 0)
@@ -1546,7 +1553,7 @@ static int cac_process_CCC(sc_card_t *card, cac_private_data_t *priv)
 	if (r < 0)
 		goto done;
 
-	r = cac_parse_CCC(card, priv, tl, tl_len, val, val_len);
+	r = cac_parse_CCC(card, priv, tl, tl_len, val, val_len, depth);
 done:
 	if (tl)
 		free(tl);
@@ -1704,6 +1711,7 @@ static int cac_populate_cac_alt(sc_card_t *card, int index, cac_private_data_t *
 	if (r > 0) {
 #ifdef ENABLE_OPENSSL
 		size_t val_len = r;
+		free(priv->cac_id);
 		priv->cac_id = malloc(20);
 		if (priv->cac_id == NULL) {
 			return SC_ERROR_OUT_OF_MEMORY;
@@ -1772,7 +1780,7 @@ static int cac_find_and_initialize(sc_card_t *card, int initialize)
 		priv = cac_new_private_data();
 		if (!priv)
 			return SC_ERROR_OUT_OF_MEMORY;
-		r = cac_process_CCC(card, priv);
+		r = cac_process_CCC(card, priv, 0);
 		if (r == SC_SUCCESS) {
 			card->type = SC_CARD_TYPE_CAC_II;
 			card->drv_data = priv;

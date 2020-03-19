@@ -44,6 +44,7 @@ static const struct sc_atr_table starcos_atrs[] = {
 	{ "3B:DF:96:FF:81:31:FE:45:80:5B:44:45:2E:42:4E:4F:54:4B:31:30:30:81:05:A0", NULL, NULL, SC_CARD_TYPE_STARCOS_V3_5, 0, NULL },
 	{ "3B:D9:96:FF:81:31:FE:45:80:31:B8:73:86:01:E0:81:05:22", NULL, NULL, SC_CARD_TYPE_STARCOS_V3_5, 0, NULL },
 	{ "3B:D0:97:FF:81:B1:FE:45:1F:07:2B", NULL, NULL, SC_CARD_TYPE_STARCOS_V3_4, 0, NULL },
+	{ "3b:df:96:ff:81:31:fe:45:80:5b:44:45:2e:42:41:5f:53:43:33:35:32:81:05:b5", NULL, NULL, SC_CARD_TYPE_STARCOS_V3_5, 0, NULL },
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
@@ -80,7 +81,21 @@ typedef struct starcos_ex_data_st {
 	int    sec_ops;	/* the currently selected security operation,
 			 * i.e. SC_SEC_OPERATION_AUTHENTICATE etc. */
 	unsigned int    fix_digestInfo;
+	unsigned int    pin_encoding;
 } starcos_ex_data;
+
+#define PIN_ENCODING_DETERMINE	0
+#define PIN_ENCODING_DEFAULT	SC_PIN_ENCODING_GLP
+
+// known pin formats for StarCOS 3.x cards
+#define PIN_FORMAT_F1			0x11
+#define PIN_FORMAT_F2			0x12
+#define PIN_FORMAT_RSA			0x1230
+#define PIN_FORMAT_BCD			0x13
+#define PIN_FORMAT_ASCII		0x14
+#define PIN_FORMAT_PW_ASCII		0x21
+// default is the Format 2 PIN Block which is GLP in OpenSC
+#define PIN_FORMAT_DEFAULT		PIN_FORMAT_F2
 
 #define CHECK_NOT_SUPPORTED_V3_4(card) \
 	do { \
@@ -102,6 +117,171 @@ static int starcos_match_card(sc_card_t *card)
 	return 1;
 }
 
+
+typedef struct starcos_ctrl_ref_template_st {
+	unsigned int 	transmission_format;
+#if 0
+	// not relevant values for now
+	unsigned int	se_reference;
+	unsigned int	ssec_initial_value;
+#endif
+} starcos_ctrl_ref_template;
+
+// tags
+#define TAG_STARCOS35_PIN_REFERENCE					0x88
+#define TAG_STARCOS3X_SUPPORTED_SEC_MECHANISMS_tag		0x7B
+#define TAG_STARCOS3X_CTRL_REF_TEMPLATE				0xA4
+#define TAG_STARCOS3X_TRANSMISSION_FORMAT			0x89
+
+static const char * starcos_ef_pwdd = "3F000015";
+static const char * starcos_ef_keyd = "3F000013";
+
+/**
+ * Parses supported securiy mechanisms record data.
+ * It returns SC_SUCCESS and the ctrl_ref_template structure data on success
+ */
+static int starcos_parse_supported_sec_mechanisms(struct sc_card *card, const unsigned char * buf, size_t buflen, starcos_ctrl_ref_template * ctrl_ref_template)
+{
+	struct sc_context *ctx = card->ctx;
+	const unsigned char *supported_sec_mechanisms_tag = NULL;
+	size_t taglen;
+
+	LOG_FUNC_CALLED(ctx);
+
+	supported_sec_mechanisms_tag = sc_asn1_find_tag(ctx, buf, buflen, TAG_STARCOS3X_SUPPORTED_SEC_MECHANISMS_tag, &taglen);
+	if (supported_sec_mechanisms_tag != NULL && taglen >= 1)   {
+		const unsigned char *tx_fmt_tag = NULL;
+		const unsigned char *ctrl_ref_template_tag = NULL;
+		size_t supported_sec_mechanisms_taglen = taglen;
+
+		// control-reference template is either included in the supported security mechanisms tag or it can be the CRT tag itself (EF.PWDD)
+		ctrl_ref_template_tag = sc_asn1_find_tag(ctx, supported_sec_mechanisms_tag, taglen, TAG_STARCOS3X_CTRL_REF_TEMPLATE, &taglen);
+		if ( ctrl_ref_template_tag == NULL || taglen == 0 ) {
+			ctrl_ref_template_tag = supported_sec_mechanisms_tag;
+			taglen = supported_sec_mechanisms_taglen;
+		}
+
+		tx_fmt_tag = sc_asn1_find_tag(ctx, ctrl_ref_template_tag, taglen, TAG_STARCOS3X_TRANSMISSION_FORMAT, &taglen);
+		if ( tx_fmt_tag != NULL && taglen >= 1 ) {
+			ctrl_ref_template->transmission_format = *(tx_fmt_tag + 0);
+			LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+		}
+	}
+	
+	LOG_FUNC_RETURN(ctx, SC_ERROR_TEMPLATE_NOT_FOUND);
+}
+
+static int starcos_determine_pin_format34(sc_card_t *card, unsigned int * pin_format)
+{
+	struct sc_context *ctx = card->ctx;
+	struct sc_path path;
+	struct sc_file *file;
+	unsigned char buf[256];
+	int rv;
+	int retval = SC_SUCCESS;
+	int rec_no=1;
+
+	LOG_FUNC_CALLED(ctx);
+
+	sc_format_path(starcos_ef_pwdd, &path);
+	rv = sc_select_file(card, &path, &file);
+	LOG_TEST_RET(ctx, rv, "Cannot select EF.PWDD file");
+
+	if ( (rv = sc_read_record(card, rec_no, buf, sizeof(buf), SC_RECORD_BY_REC_NR)) > 0 ) {
+		starcos_ctrl_ref_template ctrl_ref_template;
+		memset((void*)&ctrl_ref_template, 0, sizeof(ctrl_ref_template));
+		rv = starcos_parse_supported_sec_mechanisms(card, buf, rv, &ctrl_ref_template);
+		if ( rv == SC_SUCCESS ) {
+			*pin_format = ctrl_ref_template.transmission_format;
+			sc_log(ctx, "Determined StarCOS 3.4 PIN format: 0x%x", *pin_format);
+		} else {
+			sc_log(ctx, "Failed to parse record %d of EF.PWD, err=%d", rec_no, rv);
+			retval = rv;
+		}
+	} else {
+		sc_log(ctx, "Failed to read record %d of EF.PWDD, err=%d", rec_no, rv);
+		retval = rv;
+	}
+
+	sc_file_free(file);
+	LOG_FUNC_RETURN(ctx, retval);
+}
+
+static int starcos_determine_pin_format35(sc_card_t *card, unsigned int * pin_format)
+{
+	struct sc_context *ctx = card->ctx;
+	struct sc_path path;
+	struct sc_file *file;
+	unsigned char buf[256];
+	int rv;
+	int retval = SC_ERROR_RECORD_NOT_FOUND;
+	int rec_no=1;
+	starcos_ctrl_ref_template ctrl_ref_template;
+
+	LOG_FUNC_CALLED(ctx);
+
+	sc_format_path(starcos_ef_keyd, &path);
+	rv = sc_select_file(card, &path, &file);
+	LOG_TEST_RET(ctx, rv, "Cannot select EF.KEYD file");
+
+	while ( (rv = sc_read_record(card, rec_no++, buf, sizeof(buf), SC_RECORD_BY_REC_NR)) > 0 ) {
+		if ( buf[0] != TAG_STARCOS35_PIN_REFERENCE ) continue;
+
+		memset((void*)&ctrl_ref_template, 0, sizeof(ctrl_ref_template));
+		rv = starcos_parse_supported_sec_mechanisms(card, buf, rv, &ctrl_ref_template);
+		if ( rv == SC_SUCCESS ) {
+			*pin_format = ctrl_ref_template.transmission_format;
+			sc_log(ctx, "Determined StarCOS 3.5 PIN format: 0x%x", *pin_format);
+			retval = rv;
+			// assuming that all PINs and PUKs have the same transmission format
+			break;
+		} else {
+			sc_log(ctx, "Failed to parse record %d of EF.KEYD, err=%d", rec_no-1, rv);
+			retval = rv;
+		}
+	}
+
+	sc_file_free(file);
+	LOG_FUNC_RETURN(ctx, retval);
+}
+
+/**
+ * Determine v3.x PIN encoding by parsing either
+ * EF.PWDD (for v3.4) or EF.KEYD (for v3.5)
+ * 
+ * It returns an OpenSC PIN encoding, using the default value on failure
+ */
+static unsigned int starcos_determine_pin_encoding(sc_card_t *card)
+{
+	unsigned int pin_format = PIN_FORMAT_DEFAULT;
+	unsigned int encoding = PIN_ENCODING_DETERMINE;
+
+	if ( card->type == SC_CARD_TYPE_STARCOS_V3_4 ) {
+		starcos_determine_pin_format34(card, &pin_format);
+	} else if ( card->type == SC_CARD_TYPE_STARCOS_V3_5 ) {
+		starcos_determine_pin_format35(card, &pin_format);
+	}
+
+	switch (pin_format) {
+	case PIN_FORMAT_PW_ASCII:
+	case PIN_FORMAT_ASCII:
+		encoding = SC_PIN_ENCODING_ASCII;
+		break;
+	case PIN_FORMAT_BCD:
+		encoding = SC_PIN_ENCODING_BCD;
+		break;
+	case PIN_FORMAT_F1:
+	case PIN_FORMAT_F2:
+		encoding = SC_PIN_ENCODING_GLP;
+		break;
+	}
+
+	sc_log(card->ctx, "Determined PIN encoding: %d", encoding);
+	return encoding;
+}
+
+
+
 static int starcos_init(sc_card_t *card)
 {
 	unsigned int flags;
@@ -114,6 +294,7 @@ static int starcos_init(sc_card_t *card)
 	card->name = "STARCOS";
 	card->cla  = 0x00;
 	card->drv_data = (void *)ex_data;
+	ex_data->pin_encoding = PIN_ENCODING_DETERMINE;
 
 	flags = SC_ALGORITHM_RSA_PAD_PKCS1 
 		| SC_ALGORITHM_ONBOARD_KEY_GEN
@@ -133,6 +314,7 @@ static int starcos_init(sc_card_t *card)
 		else
 			card->name = "STARCOS 3.5";
 		card->caps |= SC_CARD_CAP_ISO7816_PIN_INFO;
+		card->caps |= SC_CARD_CAP_APDU_EXT;
 
 		flags |= SC_CARD_FLAG_RNG
 			| SC_ALGORITHM_RSA_HASH_SHA224
@@ -166,6 +348,11 @@ static int starcos_init(sc_card_t *card)
 		if (card->ef_atr->max_command_apdu > 0) {
 			card->max_send_size = card->ef_atr->max_command_apdu;
 		}
+	}
+
+	if ( ex_data->pin_encoding == PIN_ENCODING_DETERMINE ) {
+		// about to determine PIN encoding
+		ex_data->pin_encoding = starcos_determine_pin_encoding(card);
 	}
 
 	return 0;
@@ -698,7 +885,7 @@ static int starcos_select_file(sc_card_t *card,
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
 
 		if (card->type != SC_CARD_TYPE_STARCOS_V3_4
-				|| card->type == SC_CARD_TYPE_STARCOS_V3_5) {
+				&& card->type != SC_CARD_TYPE_STARCOS_V3_5) {
 			/* unify path (the first FID should be MF) */
 			if (path[0] != 0x3f || path[1] != 0x00)
 			{
@@ -1854,11 +2041,12 @@ static int starcos_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
+	starcos_ex_data * ex_data = (starcos_ex_data*)card->drv_data;
 	switch (card->type) {
 		case SC_CARD_TYPE_STARCOS_V3_4:
 		case SC_CARD_TYPE_STARCOS_V3_5:
 			data->flags |= SC_PIN_CMD_NEED_PADDING;
-			data->pin1.encoding = SC_PIN_ENCODING_GLP;
+			data->pin1.encoding = ex_data->pin_encoding;
 			/* fall through */
 		default:
 			r = iso_ops->pin_cmd(card, data, tries_left);

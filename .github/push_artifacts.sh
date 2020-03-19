@@ -9,7 +9,7 @@ git clone --single-branch https://${GH_TOKEN}@github.com/OpenSC/Nightly.git > /d
 cd Nightly
 git checkout -b "${BRANCH}"
 
-for file in ${BUILDPATH}/win32/Output/OpenSC*.exe ${BUILDPATH}/opensc*.tar.gz ${BUILDPATH}/OpenSC*.dmg ${BUILDPATH}/OpenSC*.msi ${BUILDPATH}/OpenSC*.zip
+for file in ${BUILDPATH}/win32/Output/OpenSC*.exe ${BUILDPATH}/opensc*.tar.gz ${BUILDPATH}/OpenSC*.dmg ${BUILDPATH}/OpenSC*.msi ${BUILDPATH}/OpenSC*.zip ${BUILDPATH}/*.pkg
 do
     if [ -f ${file} ]
     then
@@ -19,9 +19,10 @@ do
 done
 
 git commit --message "$1"
-if ! git push --quiet --set-upstream origin "${BRANCH}"
-then
+i=0
+while [ $i -le 10 ] && ! git push --quiet --set-upstream origin "${BRANCH}"
+do
     sleep $[ ( $RANDOM % 32 )  + 1 ]s
     git pull --rebase origin "${BRANCH}"
-    git push --quiet --set-upstream origin "${BRANCH}"
-fi
+    i=$(( $i + 1 ))
+done

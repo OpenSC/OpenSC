@@ -55,8 +55,11 @@
 						<option>-c</option> <replaceable>driver</replaceable>
 					</term>
 					<listitem><para>
-						Use the given card driver.  The default is
-						auto-detected.
+						Use the given card driver.
+						The default is to auto-detect the correct card driver.
+						The literal value <literal>?</literal> lists
+						all available card drivers and terminates
+						<command>opensc-explorer</command>.
 					</para></listitem>
 				</varlistentry>
 				<varlistentry>

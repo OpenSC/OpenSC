@@ -29,7 +29,6 @@ extern "C" {
 #endif
 
 #include "libopensc/opensc.h"
-#include "libopensc/pkcs15.h"
 
 /*
  * Create a tag/length file in Simple TLV based on the  val_len  content length

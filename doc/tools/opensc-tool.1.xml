@@ -52,8 +52,12 @@
 						<option>--card-driver</option> <replaceable>driver</replaceable>,
 						<option>-c</option> <replaceable>driver</replaceable>
 					</term>
-					<listitem><para>Use the given card driver.
-					The default is auto-detected.</para></listitem>
+					<listitem><para>
+						Use the given card driver.
+						The default is to auto-detect the correct card driver.
+						The literal value <literal>?</literal> lists
+						all available card drivers.
+					</para></listitem>
 				</varlistentry>
 				<varlistentry>
 					<term>
