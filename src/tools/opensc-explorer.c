@@ -1486,7 +1486,7 @@ static int do_update_binary(int argc, char **argv)
 
 	r = parse_string_or_hexdata(argv[2], buf, &buflen);
 	if (r < 0) {
-		fprintf(stderr, "Unable to parse input data: %s\n", strerror(r));
+		fprintf(stderr, "Unable to parse input data: %s\n", sc_strerror(r));
 		return -1;
 	}
 
@@ -1509,7 +1509,7 @@ static int do_update_binary(int argc, char **argv)
 		r = sc_update_binary(card, offs, buf, buflen, 0);
 	sc_unlock(card);
 	if (r < 0) {
-		fprintf(stderr, "Cannot update %04X: %s\n", file->id, strerror(r));
+		fprintf(stderr, "Cannot update %04X: %s\n", file->id, sc_strerror(r));
 		goto err;
 	}
 
@@ -1561,7 +1561,7 @@ static int do_update_record(int argc, char **argv)
 	r = sc_read_record(card, rec, buf, sizeof(buf), SC_RECORD_BY_REC_NR);
 	if (r < 0) {
 		fprintf(stderr, "Cannot read record %"SC_FORMAT_LEN_SIZE_T"u of %04X: %s\n",
-			rec, file->id, strerror(r));
+			rec, file->id, sc_strerror(r));
 		goto err;
 	}
 
@@ -1574,7 +1574,7 @@ static int do_update_record(int argc, char **argv)
 	buflen = sizeof(buf) - offs;
 	r = parse_string_or_hexdata(argv[3], buf + offs, &buflen);
 	if (r < 0) {
-		fprintf(stderr, "Unable to parse input data: %s.\n", strerror(r));
+		fprintf(stderr, "Unable to parse input data: %s.\n", sc_strerror(r));
 		goto err;
 	}
 
@@ -1584,7 +1584,7 @@ static int do_update_record(int argc, char **argv)
 	sc_unlock(card);
 	if (r < 0) {
 		fprintf(stderr, "Cannot update record %"SC_FORMAT_LEN_SIZE_T"u of %04X: %s\n.",
-			rec, file->id, strerror(r));
+			rec, file->id, sc_strerror(r));
 		goto err;
 	}
 
@@ -1698,7 +1698,7 @@ static int do_erase(int argc, char **argv)
 		r = sc_card_ctl(card, SC_CARDCTL_ERASE_CARD, NULL);
 	sc_unlock(card);
 	if (r) {
-		fprintf(stderr, "Failed to erase card: %s\n", sc_strerror (r));
+		fprintf(stderr, "Failed to erase card: %s\n", sc_strerror(r));
 		return -1;
 	}
 	return 0;
