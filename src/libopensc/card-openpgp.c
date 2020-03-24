@@ -88,31 +88,21 @@ static struct sc_card_driver pgp_drv = {
 
 
 static pgp_ec_curves_t	ec_curves[] = {
-	{{{1, 2, 840, 10045, 3, 1, 7, -1}}, 256,
-		{{0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07, -1}}}, /* ansiX9p256r1 */
-	{{{1, 3, 132, 0, 34, -1}}, 384,
-		{{0x2b, 0x81, 0x04, 0x00, 0x22, -1}}}, /* ansiX9p384r1 */
-	{{{1, 3, 132, 0, 35, -1}}, 521,
-		{{0x2b, 0x81, 0x04, 0x00, 0x23, -1}}}, /* ansiX9p521r1 */
-	{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 7, -1}}, 256,
-		{{0x2b, 0x24, 0x03, 0x03, 0x02, 0x08, 0x01, 0x01, 0x07, -1}}}, /* brainpoolP256r1 */
-	{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 11, -1}}, 384,
-		{{0x2b, 0x24, 0x03, 0x03, 0x02, 0x08, 0x01, 0x01, 0x0b, -1}}}, /* brainpoolP384r1 */
-	{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 13, -1}}, 512,
-		{{0x2b, 0x24, 0x03, 0x03, 0x02, 0x08, 0x01, 0x01, 0x0d, -1}}}, /* brainpoolP512r1 */
-	{{{-1}}, 0, {{0x0}}} /* This entry must not be touched. */
+	{{{1, 2, 840, 10045, 3, 1, 7, -1}}, 256}, /* ansiX9p256r1 */
+	{{{1, 3, 132, 0, 34, -1}}, 384}, /* ansiX9p384r1 */
+	{{{1, 3, 132, 0, 35, -1}}, 521}, /* ansiX9p521r1 */
+	{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 7, -1}}, 256}, /* brainpoolP256r1 */
+	{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 11, -1}}, 384}, /* brainpoolP384r1 */
+	{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 13, -1}}, 512}, /* brainpoolP512r1 */
+	{{{-1}}, 0} /* This entry must not be touched. */
 };
 
 static pgp_ec_curves_t	ec_curves_gnuk[] = {
-	{{{1, 2, 840, 10045, 3, 1, 7, -1}}, 256,
-		{{0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07, -1}}}, /* ansiX9p256r1 */
-	{{{1, 3, 132, 0, 10, -1}}, 256,
-		{{0x06, 0x05, 0x2B, 0x81, 0x04, 0x00, 0x0A, -1}}}, /* secp256k1 */
-	/*{{{1, 3, 6, 1, 4, 1, 3029, 1, 5, 1, -1}}, 256,
-		{{0x0A, 0x2B, 0x06, 0x01, 0x04, 0x01, 0x97, 0x55, 0x01, 0x05, 0x01, -1}}}, //cv25519
-	{{{1, 3, 6, 1, 4, 1, 11591, 15, 1, -1}}, 256,
-		{{0x09, 0x2B, 0x06, 0x01, 0x04, 0x01, 0xDA, 0x47, 0x0F, 0x01, -1}}}, // ed25519 */
-	{{{-1}}, 0, {{0x0}}} /* This entry must not be touched. */
+	{{{1, 2, 840, 10045, 3, 1, 7, -1}}, 256}, /* ansiX9p256r1 */
+	{{{1, 3, 132, 0, 10, -1}}, 256}, /* secp256k1 */
+	/*{{{1, 3, 6, 1, 4, 1, 3029, 1, 5, 1, -1}}, 256}, //cv25519
+	{{{1, 3, 6, 1, 4, 1, 11591, 15, 1, -1}}, 256}, // ed25519 */
+	{{{-1}}, 0} /* This entry must not be touched. */
 };
 
 
@@ -578,7 +568,7 @@ static int
 pgp_parse_algo_attr_blob(const pgp_blob_t *blob, sc_cardctl_openpgp_keygen_info_t *key_info)
 {
 	struct sc_object_id oid;
-	unsigned int j;
+	unsigned int j, r;
 
 	if (blob == NULL || blob->data == NULL || blob->len == 0 ||
 	    blob->id < 0x00c1 || blob->id > 0x00c3 || key_info == NULL)
@@ -620,16 +610,16 @@ pgp_parse_algo_attr_blob(const pgp_blob_t *blob, sc_cardctl_openpgp_keygen_info_
 			}
 
 			/* Create copy of oid from blob */
-			if (blob->len < 2)
-				return SC_ERROR_INCORRECT_PARAMETERS;
 			sc_init_oid(&oid);
-			for (j=0; j < (blob->len-1) && j < SC_MAX_OBJECT_ID_OCTETS; j++) {
-				oid.value[j] = blob->data[j+1]; /* ignore first byte of blob (algo ID) */
-			}
+			r = sc_asn1_decode_object_id(&blob->data[1], key_info->u.ec.oid_len, &oid);
 
+			/* decoding failed, return sc_asn1_decode_object_id error code */
+			if (r > 0){
+				return r;
+			}
 			/* compare with list of supported ec_curves */
 			for (j=0; ec_curves[j].oid.value[0] >= 0; j++){
-				if (sc_compare_oid(&ec_curves[j].oid_binary, &oid)){
+				if (sc_compare_oid(&ec_curves[j].oid, &oid)){
 					key_info->u.ec.oid = ec_curves[j].oid;
 					key_info->u.ec.key_length = ec_curves[j].size;
 					break;
