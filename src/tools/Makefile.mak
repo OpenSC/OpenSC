@@ -52,6 +52,11 @@ pkcs11-register.exe: pkcs11-register-cmdline.obj fread_to_eof.obj $(LIBS)
 	link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj pkcs11-register-cmdline.obj fread_to_eof.obj versioninfo-tools.res $(LIBS) gdi32.lib shell32.lib User32.lib ws2_32.lib
 	mt -manifest exe.manifest -outputresource:$@;1
 
+pkcs15-tool.exe: pkcs15-tool.obj $(TOPDIR)\src\pkcs11\pkcs11-display.obj
+	cl $(COPTS) /c $*.c
+	link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj $(TOPDIR)\src\pkcs11\pkcs11-display.obj $(OBJECTS) $(LIBS) $(OPENSSL_LIB) gdi32.lib shell32.lib User32.lib ws2_32.lib
+	mt -manifest exe.manifest -outputresource:$@;1
+
 .c.exe:
 	cl $(COPTS) /c $<
 	link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj $(OBJECTS) $(LIBS) $(OPENSSL_LIB) gdi32.lib shell32.lib User32.lib ws2_32.lib
