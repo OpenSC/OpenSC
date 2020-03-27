@@ -1858,11 +1858,7 @@ pkcs15_change_pin(struct sc_pkcs11_slot *slot,
 		return CKR_PIN_LEN_RANGE;
 	}
 
-	if (login_user < 0) {
-		if (sc_pkcs11_conf.pin_unblock_style != SC_PKCS11_PIN_UNBLOCK_UNLOGGED_SETPIN) {
-			sc_log(context, "PIN unlock is not allowed in unlogged session");
-			return CKR_FUNCTION_NOT_SUPPORTED;
-		}
+	if (login_user < 0 && sc_pkcs11_conf.pin_unblock_style == SC_PKCS11_PIN_UNBLOCK_UNLOGGED_SETPIN) {
 		rc = sc_pkcs15_unblock_pin(fw_data->p15_card, pin_obj, pOldPin, ulOldLen, pNewPin, ulNewLen);
 	}
 	else if (login_user == CKU_CONTEXT_SPECIFIC)   {
@@ -1872,7 +1868,7 @@ pkcs15_change_pin(struct sc_pkcs11_slot *slot,
 		}
 		rc = sc_pkcs15_unblock_pin(fw_data->p15_card, pin_obj, pOldPin, ulOldLen, pNewPin, ulNewLen);
 	}
-	else if ((login_user == CKU_USER) || (login_user == CKU_SO)) {
+	else if (login_user < 0 || login_user == CKU_USER || login_user == CKU_SO) {
 		rc = sc_pkcs15_change_pin(fw_data->p15_card, pin_obj, pOldPin, ulOldLen, pNewPin, ulNewLen);
 	}
 	else {
