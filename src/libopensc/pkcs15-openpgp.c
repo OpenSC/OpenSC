@@ -316,8 +316,18 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 			}
 
 			switch (cxdata[0]) {
-			case SC_OPENPGP_KEYALGO_ECDSA:
 			case SC_OPENPGP_KEYALGO_ECDH:
+				if (sc_compare_oid(&oid, &curve25519_oid)) {
+					if ((algorithm_info = sc_card_find_xeddsa_alg(card, 0, &oid)))
+						prkey_info.field_length = algorithm_info->key_length;
+					else {
+						sc_log(ctx, "algorithm not found");
+						continue;
+					}
+					break;
+				}
+				/* Fall through */
+			case SC_OPENPGP_KEYALGO_ECDSA:
 				if((algorithm_info = sc_card_find_ec_alg(card, 0, &oid)))
 					prkey_info.field_length = algorithm_info->key_length;
 				else {
@@ -337,11 +347,11 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 
 			switch (cxdata[0]) {
 			case SC_OPENPGP_KEYALGO_EDDSA:
-				/* assuming Ed25519 as it is the only supported now */
-				/* Filter out invalid usage: ED does not support anything but sign */
+				/* Filter out invalid usage: EdDSA does not support anything but sign */
 				prkey_info.usage &= PGP_SIG_PRKEY_USAGE;
 				r = sc_pkcs15emu_add_eddsa_prkey(p15card, &prkey_obj, &prkey_info);
 				break;
+
 			case SC_OPENPGP_KEYALGO_ECDH:
 				/* This can result in either ECDSA key or EC_MONTGOMERY
 				 * so we need to check OID */
@@ -355,10 +365,12 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 				prkey_info.usage &= ~PGP_ENC_PRKEY_USAGE;
 				r = sc_pkcs15emu_add_ec_prkey(p15card, &prkey_obj, &prkey_info);
 				break;
+
 			case SC_OPENPGP_KEYALGO_ECDSA:
 				prkey_info.usage = SC_PKCS15_PRKEY_USAGE_SIGN;
 				r = sc_pkcs15emu_add_ec_prkey(p15card, &prkey_obj, &prkey_info);
 				break;
+
 			case SC_OPENPGP_KEYALGO_RSA:
 				if (cxdata_len >= 3) {
 					prkey_info.modulus_length = bebytes2ushort(cxdata + 1);
@@ -381,7 +393,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 	for (i = 0; i < 3; i++) {
 		sc_pkcs15_pubkey_info_t pubkey_info;
 		sc_pkcs15_object_t      pubkey_obj;
-		u8 cxdata[10];
+		u8 cxdata[12];
 		int cxdata_len = sizeof(cxdata);
 		char path_template[] = "006E:0073:00Cx";
 		int j;
@@ -424,8 +436,18 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 			}
 
 			switch (cxdata[0]) {
-			case SC_OPENPGP_KEYALGO_ECDSA:
 			case SC_OPENPGP_KEYALGO_ECDH:
+				if (sc_compare_oid(&oid, &curve25519_oid)) {
+					if ((algorithm_info = sc_card_find_xeddsa_alg(card, 0, &oid)))
+						pubkey_info.field_length = algorithm_info->key_length;
+					else {
+						sc_log(ctx, "algorithm not found");
+						continue;
+					}
+					break;
+				}
+				/* Fall through */
+			case SC_OPENPGP_KEYALGO_ECDSA:
 				if((algorithm_info = sc_card_find_ec_alg(card, 0, &oid)))
 					pubkey_info.field_length = algorithm_info->key_length;
 				else {
@@ -467,9 +489,12 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 				r = sc_pkcs15emu_add_ec_pubkey(p15card, &pubkey_obj, &pubkey_info);
 				break;
 			case SC_OPENPGP_KEYALGO_RSA:
-				pubkey_info.modulus_length = bebytes2ushort(cxdata + 1);
-				r = sc_pkcs15emu_add_rsa_pubkey(p15card, &pubkey_obj, &pubkey_info);
-				break;
+				if (cxdata_len >= 3) {
+					pubkey_info.modulus_length = bebytes2ushort(cxdata + 1);
+					r = sc_pkcs15emu_add_rsa_pubkey(p15card, &pubkey_obj, &pubkey_info);
+					break;
+				}
+				/* Fall through */
 			default:
 				sc_log(ctx, "Invalid algorithm identifier %x (length = %d)",
 					cxdata[0], r);

@@ -1155,8 +1155,10 @@ sc_algorithm_info_t * sc_card_find_alg(sc_card_t *card,
 		if (info->algorithm != algorithm)
 			continue;
 		if (param)   {
-			if (info->algorithm == SC_ALGORITHM_EC || info->algorithm == SC_ALGORITHM_EDDSA)
-				if(sc_compare_oid((struct sc_object_id *)param, &info->u._ec.params.id))
+			if (info->algorithm == SC_ALGORITHM_EC ||
+				info->algorithm == SC_ALGORITHM_EDDSA ||
+				info->algorithm == SC_ALGORITHM_XEDDSA)
+				if (sc_compare_oid((struct sc_object_id *)param, &info->u._ec.params.id))
 					return info;
 		}
 		if (info->key_length != key_length)
