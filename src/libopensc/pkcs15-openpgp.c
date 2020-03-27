@@ -321,16 +321,16 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 				if((algorithm_info = sc_card_find_ec_alg(card, 0, &oid)))
 					prkey_info.field_length = algorithm_info->key_length;
 				else {
-					sc_log(ctx, "algorithim not found");
-					goto failed;
+					sc_log(ctx, "algorithm not found");
+					continue;
 				}
 				break;
 			case SC_OPENPGP_KEYALGO_EDDSA:
 				if ((algorithm_info = sc_card_find_eddsa_alg(card, 0, &oid)))
 					prkey_info.field_length = algorithm_info->key_length;
 				else {
-					sc_log(ctx, "algorithim not found");
-					goto failed;
+					sc_log(ctx, "algorithm not found");
+					continue;
 				}
 				break;
 			}
@@ -429,16 +429,16 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 				if((algorithm_info = sc_card_find_ec_alg(card, 0, &oid)))
 					pubkey_info.field_length = algorithm_info->key_length;
 				else {
-					sc_log(ctx, "algorithim not found");
-					goto failed;
+					sc_log(ctx, "algorithm not found");
+					continue;
 				}
 				break;
 			case SC_OPENPGP_KEYALGO_EDDSA:
 				if ((algorithm_info = sc_card_find_eddsa_alg(card, 0, &oid)))
 					pubkey_info.field_length = algorithm_info->key_length;
 				else {
-					sc_log(ctx, "algorithim not found");
-					goto failed;
+					sc_log(ctx, "algorithm not found");
+					continue;
 				}
 				break;
 			}
