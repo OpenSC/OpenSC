@@ -306,7 +306,14 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 			prkey_obj.auth_id.value[0] = key_cfg[i].prkey_pin;
 
 			/* need to get size from algorithms using oid */
-			r = sc_asn1_decode_object_id(&cxdata[1], cxdata_len-1, &oid);
+			if (cxdata[0] == SC_OPENPGP_KEYALGO_ECDH ||
+				cxdata[0] == SC_OPENPGP_KEYALGO_ECDSA ||
+				cxdata[0] == SC_OPENPGP_KEYALGO_EDDSA) {
+				r = sc_asn1_decode_object_id(&cxdata[1], cxdata_len-1, &oid);
+				if (r != SC_SUCCESS) {
+					sc_log(ctx, "Failed to parse OID for elliptic curve algorithm");
+				}
+			}
 
 			switch (cxdata[0]) {
 			case SC_OPENPGP_KEYALGO_ECDSA:
@@ -407,7 +414,14 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 			strlcpy(pubkey_obj.label, key_cfg[i].label, sizeof(pubkey_obj.label));
 			pubkey_obj.flags = SC_PKCS15_CO_FLAG_MODIFIABLE;
 
-			r = sc_asn1_decode_object_id(&cxdata[1], cxdata_len-1, &oid);
+			if (cxdata[0] == SC_OPENPGP_KEYALGO_ECDH ||
+				cxdata[0] == SC_OPENPGP_KEYALGO_ECDSA ||
+				cxdata[0] == SC_OPENPGP_KEYALGO_EDDSA) {
+				r = sc_asn1_decode_object_id(&cxdata[1], cxdata_len-1, &oid);
+				if (r != SC_SUCCESS) {
+					sc_log(ctx, "Failed to parse OID for elliptic curve algorithm");
+				}
+			}
 
 			switch (cxdata[0]) {
 			case SC_OPENPGP_KEYALGO_ECDSA:
