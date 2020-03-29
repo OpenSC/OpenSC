@@ -5044,8 +5044,8 @@ static int test_signature(CK_SESSION_HANDLE sess)
 	}
 
 	if (firstMechType == CKM_RSA_X_509) {
-		/* make sure our data is smaller than the modulus */
-		data[0] = 0x00;
+		/* make sure our data is smaller than the modulus - 11 */
+		memset(data, 0, 11); /* in effect is zero padding */ 
 	}
 
 	ck_mech.mechanism = firstMechType;
