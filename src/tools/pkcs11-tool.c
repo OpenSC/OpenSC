@@ -1597,53 +1597,42 @@ static void init_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess)
 
 static int change_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess)
 {
-	char old_buf[21], *old_pin = NULL;
-	char new_buf[21], *new_pin = NULL;
+	char old_buf[21], *old_pin = opt_so_pin ? (char*)opt_so_pin : (char*)opt_pin;
+	char new_buf[21], *new_pin = (char *)opt_new_pin;
 	CK_TOKEN_INFO	info;
 	CK_RV rv;
 	int r;
 	size_t		len = 0;
 
 	get_token_info(slot, &info);
+	const CK_FLAGS hasReaderPinPad = info.flags & CKF_PROTECTED_AUTHENTICATION_PATH;
 
-	if (!(info.flags & CKF_PROTECTED_AUTHENTICATION_PATH)) {
-		if (!opt_pin && !opt_so_pin) {
-			printf("Please enter the current PIN: ");
-			r = util_getpass(&old_pin, &len, stdin);
-			if (r < 0)
-				return 1;
-			if (!old_pin || !*old_pin || strlen(old_pin) > 20)
-				return 1;
-			strcpy(old_buf, old_pin);
-			old_pin = old_buf;
-		}
-		else   {
-			if (opt_so_pin)
-				old_pin = (char *) opt_so_pin;
-			else
-				old_pin = (char *) opt_pin;
-		}
+	if (!hasReaderPinPad && !old_pin) {
+		printf("Please enter the current PIN: ");
+		r = util_getpass(&old_pin, &len, stdin);
+		if (r < 0)
+			return 1;
+		if (!old_pin || !*old_pin || strlen(old_pin) > 20)
+			return 1;
+		strcpy(old_buf, old_pin);
+		old_pin = old_buf;
+	}
+	if (!hasReaderPinPad && !new_pin) {
+		printf("Please enter the new PIN: ");
+		r = util_getpass(&new_pin, &len, stdin);
+		if (r < 0)
+			return 1;
+		if (!new_pin || !*new_pin || strlen(new_pin) > 20)
+			return 1;
+		strcpy(new_buf, new_pin);
 
-		if (!opt_new_pin) {
-			printf("Please enter the new PIN: ");
-			r = util_getpass(&new_pin, &len, stdin);
-			if (r < 0)
-				return 1;
-			if (!new_pin || !*new_pin || strlen(new_pin) > 20)
-				return 1;
-			strcpy(new_buf, new_pin);
-
-			printf("Please enter the new PIN again: ");
-			r = util_getpass(&new_pin, &len, stdin);
-			if (r < 0)
-				return 1;
-			if (!new_pin || !*new_pin || strcmp(new_buf, new_pin) != 0) {
-				free(new_pin);
-				return 1;
-			}
-		}
-		else   {
-			new_pin = (char *) opt_new_pin;
+		printf("Please enter the new PIN again: ");
+		r = util_getpass(&new_pin, &len, stdin);
+		if (r < 0)
+			return 1;
+		if (!new_pin || !*new_pin || strcmp(new_buf, new_pin) != 0) {
+			free(new_pin);
+			return 1;
 		}
 	}
 
