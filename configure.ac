@@ -400,7 +400,8 @@ AC_HEADER_ASSERT
 AC_CHECK_HEADERS([ \
 	errno.h fcntl.h stdlib.h \
 	inttypes.h string.h strings.h \
-	sys/time.h unistd.h sys/mman.h
+	sys/time.h unistd.h sys/mman.h \
+	sys/endian.h endian.h
 ])
 
 dnl Checks for typedefs, structures, and compiler characteristics.

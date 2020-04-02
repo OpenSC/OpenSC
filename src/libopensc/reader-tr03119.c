@@ -40,7 +40,12 @@
 #ifndef _BSD_SOURCE
 #define _BSD_SOURCE             /* See feature_test_macros(7) */
 #endif
+#ifdef HAVE_SYS_ENDIAN_H
+#include <sys/endian.h>
+#endif
+#ifdef HAVE_ENDIAN_H
 #include <endian.h>
+#endif
 #endif
 
 int get_pace_capabilities(u8 *bitmap)
