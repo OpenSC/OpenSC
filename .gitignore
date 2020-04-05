@@ -4,6 +4,7 @@ core
 archive
 acinclude.m4
 aclocal.m4
+aminclude_static.am
 autom4te.cache
 compile
 confdefs.h
@@ -22,6 +23,7 @@ mkinstalldirs
 so_locations
 stamp-h*
 tags
+test-driver
 .deps
 .libs
 .#*#
