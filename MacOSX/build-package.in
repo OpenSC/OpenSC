@@ -19,6 +19,13 @@ SDK_PATH=$(xcrun --sdk macosx --show-sdk-path)
 # Set SDK path
 export CFLAGS="$CFLAGS -isysroot $SDK_PATH -arch x86_64"
 
+# xcodebuild doesn't read the environment variables
+# transform them into parameters
+P1="${CODE_SIGN_IDENTITY:+CODE_SIGN_IDENTITY=${CODE_SIGN_IDENTITY}}"
+P2="${OTHER_CODE_SIGN_FLAGS:+OTHER_CODE_SIGN_FLAGS=${OTHER_CODE_SIGN_FLAGS}}"
+P3="${CODE_SIGN_INJECT_BASE_ENTITLEMENTS:+CODE_SIGN_INJECT_BASE_ENTITLEMENTS=${CODE_SIGN_INJECT_BASE_ENTITLEMENTS}}"
+P4="${CODE_SIGN_STYLE:+CODE_SIGN_STYLE=${CODE_SIGN_STYLE}}"
+
 export SED=/usr/bin/sed
 PREFIX=/Library/OpenSC
 export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/lib/pkgconfig
@@ -90,7 +97,7 @@ fi
 if ! test -e NotificationProxy; then
 	git clone http://github.com/frankmorgner/NotificationProxy.git
 fi
-xcodebuild -target NotificationProxy -configuration Release -project NotificationProxy/NotificationProxy.xcodeproj install DSTROOT=$BUILDPATH/target/Library/OpenSC/
+xcodebuild -target NotificationProxy -configuration Release -project NotificationProxy/NotificationProxy.xcodeproj install DSTROOT=$BUILDPATH/target/Library/OpenSC/ "$P1" "$P2" "$P3" "$P4"
 mkdir -p "$BUILDPATH/target/Applications"
 osacompile -o "$BUILDPATH/target/Applications/OpenSC Notify.app" "MacOSX/OpenSC_Notify.applescript"
 
@@ -106,7 +113,7 @@ if (( xcodebuild -version | sed -En 's/Xcode[[:space:]]+([0-9]+)\.[0-9]*/\1/p' <
 	test -L OpenSC.tokend/build/opensc-src || ln -sf ${BUILDPATH}/src OpenSC.tokend/build/opensc-src
 
 	# Build and copy OpenSC.tokend
-	xcodebuild -target OpenSC -configuration Deployment -project OpenSC.tokend/Tokend.xcodeproj install DSTROOT=${BUILDPATH}/target_tokend
+	xcodebuild -target OpenSC -configuration Deployment -project OpenSC.tokend/Tokend.xcodeproj install DSTROOT=${BUILDPATH}/target_tokend "$P1" $P2 "$P3" "$P4"
 else
 	# https://github.com/OpenSC/OpenSC.tokend/issues/33
 	mkdir -p ${BUILDPATH}/target_tokend
@@ -139,24 +146,25 @@ if test -e OpenSCToken; then
 	cd OpenSCToken
 	# make sure OpenSCToken builds with the same dependencies as before
 	if ! test -e OpenSC; then
-		git clone --depth=1 ../../OpenSC
+		git clone --depth=1 file://$PWD/../../OpenSC
 	else
 		cd OpenSC && git pull && cd ..
 	fi
-	if ! test -e openssl; then
-		git clone --depth=1 ../openssl
-	else
-		cd openssl && git pull && cd ..
+	mkdir -p build
+	if ! test -e build/openssl; then
+		# build/openssl/lib/libcrypto.a is hardcoded in OpenSCToken
+		ln -sf $BUILDPATH/openssl_bin/$PREFIX build/openssl
+		# in OpenSCToken's variant of OpenSC we still use OpenSSL flags from above
 	fi
-	if ! test -e openpace; then
-		git clone --depth=1 ../openpace
-	else
-		cd openpace && git pull && cd ..
+	if ! test -e build/openpace; then
+		# build/openpace/lib/libeac.a is hardcoded in OpenSCToken
+		ln -sf $BUILDPATH/openpace_bin/$PREFIX build/openpace
+		# in OpenSCToken's variant of OpenSC we still use OpenPACE flags from above
 	fi
 	BP=${BUILDPATH}
 	. ./bootstrap
 	BUILDPATH=${BP}
-	xcodebuild -target OpenSCTokenApp -configuration Debug -project OpenSCTokenApp.xcodeproj install DSTROOT=${BUILDPATH}/target_token
+	xcodebuild -target OpenSCTokenApp -configuration Debug -project OpenSCTokenApp.xcodeproj install DSTROOT=${BUILDPATH}/target_token  "$P1" "$P2" "$P3" "$P4"
 	cd ..
 else
 	# if no OpenSCToken is checked out, then we create a dummy package
