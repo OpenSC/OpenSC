@@ -1036,6 +1036,7 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 
 				rv = iasecc_process_fci(card, file, apdu.resp, apdu.resplen);
 				if (rv) {
+					sc_file_free(file);
 					if (file_out) {
 						sc_file_free(*file_out);
 						*file_out = NULL;
