@@ -26,7 +26,9 @@
 #include "libopensc/opensc.h"
 #include "libopensc/pace.h"
 #include "libopensc/sm.h"
+#include "libopensc/asn1.h"
 #include "sm/sm-eac.h"
+#include <eac/eac.h>
 #include <string.h>
 #include <stdlib.h>
 
@@ -77,8 +79,8 @@ static int edo_get_can(sc_card_t* card, struct establish_pace_channel_input* pac
 static int edo_unlock_esign(sc_card_t* card) {
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	struct establish_pace_channel_input pace_input={};
-	struct establish_pace_channel_output pace_output={};
+	struct establish_pace_channel_input pace_input = {};
+	struct establish_pace_channel_output pace_output = {};
 
 	sc_log(card->ctx, "Will verify CAN first for unlocking eSign application.\n");
 
@@ -96,6 +98,123 @@ static int edo_unlock_esign(sc_card_t* card) {
 }
 
 
+struct edo_buff {
+	u8 val[SC_MAX_APDU_RESP_SIZE];
+	size_t len;
+};
+
+
+static int edo_select_root(struct sc_card* card) {
+	LOG_FUNC_CALLED(card->ctx);
+	static const u8 edo_aid_root[] = {0xA0, 0x00, 0x00, 0x01, 0x67, 0x45, 0x53, 0x49, 0x47, 0x40};
+	struct sc_apdu apdu;
+	u8 buff[SC_MAX_APDU_RESP_SIZE];
+	sc_format_apdu_ex(&apdu, 00, 0xA4, 0x04, 0x00, edo_aid_root, sizeof edo_aid_root, buff, sizeof buff);
+	apdu.resplen = 255;
+	LOG_TEST_RET(card->ctx, sc_transmit_apdu(card, &apdu), "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2), "SW check failed");
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+}
+
+
+static int edo_select_mf(struct sc_card* card, struct edo_buff* buff) {
+	LOG_FUNC_CALLED(card->ctx);
+	struct sc_apdu apdu;
+	sc_format_apdu_ex(&apdu, 00, 0xA4, 0x00, 0x00, NULL, 0, buff->val, sizeof buff->val);
+	LOG_TEST_RET(card->ctx, sc_transmit_apdu(card, &apdu), "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2), "SW check failed");
+	buff->len = apdu.resplen;
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+}
+
+
+static int edo_select_df(struct sc_card* card, const u8 path[2], struct edo_buff* buff) {
+	LOG_FUNC_CALLED(card->ctx);
+	struct sc_apdu apdu;
+	sc_format_apdu_ex(&apdu, 00, 0xA4, 0x01, 0x04, path, 2, buff->val, sizeof buff->val);
+	LOG_TEST_RET(card->ctx, sc_transmit_apdu(card, &apdu), "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2), "SW check failed");
+	buff->len = apdu.resplen;
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+}
+
+
+static int edo_select_ef(struct sc_card* card, const u8 path[2], struct edo_buff* buff) {
+	LOG_FUNC_CALLED(card->ctx);
+	struct sc_apdu apdu;
+	sc_format_apdu_ex(&apdu, 00, 0xA4, 0x02, 0x04, path, 2, buff->val, sizeof buff->val);
+	LOG_TEST_RET(card->ctx, sc_transmit_apdu(card, &apdu), "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2), "SW check failed");
+	buff->len = apdu.resplen;
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+}
+
+
+static int edo_select_file(struct sc_card* card, const struct sc_path* in_path, struct sc_file** file_out) {
+	LOG_FUNC_CALLED(card->ctx);
+	const u8* path;
+	size_t pathlen;
+	struct edo_buff buff;
+
+	if (in_path->type != SC_PATH_TYPE_PATH && in_path->type != SC_PATH_TYPE_FILE_ID) {
+		LOG_FUNC_RETURN(card->ctx, sc_get_iso7816_driver()->ops->select_file(card, in_path, file_out));
+		//LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+	}
+
+	path = in_path->value;
+	pathlen = in_path->len;
+
+	while (pathlen >= 2) {
+		if (path[0] == 0x3F && path[1]  == 0x00) {
+			LOG_TEST_RET(card->ctx, edo_select_mf(card, &buff), "MF select failed");
+		} else if (path[0] == 0xAD) {
+			LOG_TEST_RET(card->ctx, edo_select_df(card, path, &buff), "DF select failed");
+		} else if (pathlen == 2) {
+			LOG_TEST_RET(card->ctx, edo_select_ef(card, path, &buff), "EF select failed");
+		}
+		path += 2;
+		pathlen -= 2;
+	}
+
+	{
+		// iso7816.c file creation
+		int r;
+		unsigned int cla, tag;
+		struct sc_file* file;
+		const u8* buffer;
+		size_t buffer_len;
+
+		if (file_out && (buff.len == 0))   {
+			/* For some cards 'SELECT' MF or DF_NAME do not return FCI. */
+
+			file = sc_file_new();
+			if (file == NULL)
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+			file->path = *in_path;
+
+			*file_out = file;
+			LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+
+		}
+
+		if (buff.len < 2)
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
+
+		file = sc_file_new();
+		if (file == NULL)
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+		file->path = *in_path;
+		buffer = buff.val;
+		r = sc_asn1_read_tag(&buffer, buff.len, &cla, &tag, &buffer_len);
+		if (r == SC_SUCCESS)
+			card->ops->process_fci(card, file, buffer, buffer_len);
+		*file_out = file;
+	}
+
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+}
+
+
 static int edo_init(sc_card_t* card) {
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -103,7 +222,10 @@ static int edo_init(sc_card_t* card) {
 
 	card->max_send_size = SC_MAX_APDU_RESP_SIZE;
 	card->max_recv_size = SC_MAX_APDU_RESP_SIZE;
+	memset(&card->sm_ctx, 0, sizeof card->sm_ctx);
 
+	LOG_TEST_RET(card->ctx, edo_select_root(card), "Select Root AID failed");
+	LOG_TEST_RET(card->ctx, sc_enum_apps(card), "Error while ennuming apps");
 
 	if (SC_SUCCESS != edo_unlock_esign(card)) {
 		sc_log(card->ctx, "Error while unlocking esign.\n");
@@ -115,11 +237,10 @@ static int edo_init(sc_card_t* card) {
 
 
 struct sc_card_driver* sc_get_edo_driver(void) {
-	struct sc_card_driver* iso_drv = sc_get_iso7816_driver();
-
-	edo_ops = *iso_drv->ops;
+	edo_ops = *sc_get_iso7816_driver()->ops;
 	edo_ops.match_card = edo_match_card;
 	edo_ops.init = edo_init;
+	edo_ops.select_file = edo_select_file;
 // 	edo_ops.finish = edo_finish;
 // 	edo_ops.set_security_env = edo_set_security_env;
 // 	edo_ops.pin_cmd = edo_pin_cmd;
