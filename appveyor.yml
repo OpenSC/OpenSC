@@ -1,13 +1,5 @@
 version: 0.20.0.{build}
 
-image:
-  # not compatible with OpenSSL 1.1.1:
-  # - Visual Studio 2013
-  # not compatible with WiX 3.11.2:
-  # - Visual Studio 2019
-  - Visual Studio 2015
-  - Visual Studio 2017
-
 platform:
   - x86
   - x64
@@ -22,6 +14,18 @@ environment:
   PATH: C:\cygwin\bin;%PATH%
   OPENPACE_VER: 1.1.0
   ZLIB_VER_DOT: 1.2.11
+  matrix:
+  # not compatible with OpenSSL 1.1.1:
+  # - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2013
+  #   VCVARSALL: "%VS120COMNTOOLS%/../../VC/vcvarsall.bat"
+  - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
+    VCVARSALL: "%VS140COMNTOOLS%/../../VC/vcvarsall.bat"
+    DO_PUSH_ARTIFACT: yes
+  - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+    VCVARSALL: "%ProgramFiles(x86)%/Microsoft Visual Studio/2017/Community/VC/Auxiliary/Build/vcvarsall.bat"
+  # not compatible with WiX 3.11.2:
+  # - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
+  #   VCVARSALL: "%ProgramFiles(x86)%/Microsoft Visual Studio/2019/Community/VC/Auxiliary/Build/vcvarsall.bat"
 
 install:
   - ps: if ($env:APPVEYOR_PULL_REQUEST_NUMBER -and $env:APPVEYOR_BUILD_NUMBER -ne ((Invoke-RestMethod `
@@ -32,11 +36,9 @@ install:
   - ps: $env:PACKAGE_NAME=(git describe --tags --abbrev=0)
   - ps: >-
       If ($env:Platform -Match "x86") {
-        $env:VCVARS_PLATFORM="x86"
         $env:OPENSSL_PF="Win32"
         $env:ARTIFACT="OpenSC-${env:PACKAGE_NAME}_win32"
       } Else {
-        $env:VCVARS_PLATFORM="amd64"
         $env:OPENSSL_PF="Win64"
         $env:ARTIFACT="OpenSC-${env:PACKAGE_NAME}_win64"
       }
@@ -60,19 +62,8 @@ install:
       If (!(Test-Path cngsdk.msi )) {
           appveyor DownloadFile "http://download.microsoft.com/download/2/C/9/2C93059C-0532-42DF-8C24-9AEAFF00768E/cngsdk.msi"
       }
-  - ps: >-
-      If ($env:APPVEYOR_BUILD_WORKER_IMAGE -eq "Visual Studio 2019") {
-        $env:VCVARSALL="${env:ProgramFiles(x86)}\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvarsall.bat"
-      } ElseIf ($env:APPVEYOR_BUILD_WORKER_IMAGE -eq "Visual Studio 2017") {
-        $env:VCVARSALL="${env:ProgramFiles(x86)}\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat"
-      } ElseIf ($env:APPVEYOR_BUILD_WORKER_IMAGE -eq "Visual Studio 2015") {
-        $env:VCVARSALL="${env:VS140COMNTOOLS}\..\..\VC\vcvarsall.bat"
-        $env:DO_PUSH_ARTIFACT="yes"
-      } ElseIf ($env:APPVEYOR_BUILD_WORKER_IMAGE -eq "Visual Studio 2013") {
-        $env:VCVARSALL="${env:VS120COMNTOOLS}\..\..\VC\vcvarsall.bat"
-      }
   - echo "Using %APPVEYOR_BUILD_WORKER_IMAGE% with %VCVARSALL%"
-  - call "%VCVARSALL%" %VCVARS_PLATFORM%
+  - call "%VCVARSALL%" %Platform%
   - cngsdk.msi /quiet
   - uname -a
   - set
