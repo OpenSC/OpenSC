@@ -150,7 +150,7 @@ static int idprime_select_index(sc_card_t *card)
 	}
 	sc_file_free(file);
 	/* Ignore too large files */
-	if (r > MAX_FILE_SIZE) {
+	if (r <= 0 ||  r > MAX_FILE_SIZE) {
 		r = SC_ERROR_INVALID_DATA;
 	}
 	return r;
