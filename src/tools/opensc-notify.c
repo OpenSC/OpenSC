@@ -189,7 +189,9 @@ static int cancellation_fd[] = {-1, -1};
 
 void sig_handler(int sig) {
 	run_daemon = 0;
-	write(cancellation_fd[1], &sig, sizeof sig);
+	if (-1 == write(cancellation_fd[1], &sig, sizeof sig)) {
+		fprintf(stderr, "Failed immediate cancellation: %s", strerror(errno));
+	}
 }
 
 static void *cancellation_proc(void *arg)
