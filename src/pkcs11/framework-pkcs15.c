@@ -1668,22 +1668,6 @@ pkcs15_login(struct sc_pkcs11_slot *slot, CK_USER_TYPE userType,
 
 	if (!p11card)
 		return CKR_TOKEN_NOT_RECOGNIZED;
-	if (p11card->card->reader->capabilities & SC_READER_CAP_PIN_PAD
-			|| (p15card->card->caps & SC_CARD_CAP_PROTECTED_AUTHENTICATION_PATH)) {
-		/* pPin should be NULL in case of a pin pad reader, but
-		 * some apps (e.g. older Netscapes) don't know about it.
-		 * So we don't require that pPin == NULL, but set it to
-		 * NULL ourselves. This way, you can supply an empty (if
-		 * possible) or fake PIN if an application asks a PIN).
-		 */
-		/* But we want to be able to specify a PIN on the command
-		 * line (e.g. for the test scripts). So we don't do anything
-		 * here - this gives the user the choice of entering
-		 * an empty pin (which makes us use the pin pad) or
-		 * a valid pin (which is processed normally). --okir */
-		if (ulPinLen == 0)
-			pPin = NULL;
-	}
 
 	/* By default, we make the reader resource manager keep other
 	 * processes from accessing the card while we're logged in.
@@ -1843,26 +1827,11 @@ pkcs15_change_pin(struct sc_pkcs11_slot *slot,
 		return CKR_USER_PIN_NOT_INITIALIZED;
 
 	sc_log(context, "Change '%.*s' (ref:%i,type:%i)", (int) sizeof pin_obj->label, pin_obj->label, auth_info->attrs.pin.reference, login_user);
-	if ((p11card->card->reader->capabilities & SC_READER_CAP_PIN_PAD)
-			|| (p15card->card->caps & SC_CARD_CAP_PROTECTED_AUTHENTICATION_PATH)) {
-		/* pPin should be NULL in case of a pin pad reader, but
-		 * some apps (e.g. older Netscapes) don't know about it.
-		 * So we don't require that pPin == NULL, but set it to
-		 * NULL ourselves. This way, you can supply an empty (if
-		 * possible) or fake PIN if an application asks a PIN).
-		 */
-		pOldPin = pNewPin = NULL;
-		ulOldLen = ulNewLen = 0;
-	}
-	else if (ulNewLen < auth_info->attrs.pin.min_length || ulNewLen > auth_info->attrs.pin.max_length)  {
+	if (pNewPin && (ulNewLen < auth_info->attrs.pin.min_length || ulNewLen > auth_info->attrs.pin.max_length)) {
 		return CKR_PIN_LEN_RANGE;
 	}
 
-	if (login_user < 0) {
-		if (sc_pkcs11_conf.pin_unblock_style != SC_PKCS11_PIN_UNBLOCK_UNLOGGED_SETPIN) {
-			sc_log(context, "PIN unlock is not allowed in unlogged session");
-			return CKR_FUNCTION_NOT_SUPPORTED;
-		}
+	if (login_user < 0 && sc_pkcs11_conf.pin_unblock_style == SC_PKCS11_PIN_UNBLOCK_UNLOGGED_SETPIN) {
 		rc = sc_pkcs15_unblock_pin(fw_data->p15_card, pin_obj, pOldPin, ulOldLen, pNewPin, ulNewLen);
 	}
 	else if (login_user == CKU_CONTEXT_SPECIFIC)   {
@@ -1872,7 +1841,7 @@ pkcs15_change_pin(struct sc_pkcs11_slot *slot,
 		}
 		rc = sc_pkcs15_unblock_pin(fw_data->p15_card, pin_obj, pOldPin, ulOldLen, pNewPin, ulNewLen);
 	}
-	else if ((login_user == CKU_USER) || (login_user == CKU_SO)) {
+	else if (login_user < 0 || login_user == CKU_USER || login_user == CKU_SO) {
 		rc = sc_pkcs15_change_pin(fw_data->p15_card, pin_obj, pOldPin, ulOldLen, pNewPin, ulNewLen);
 	}
 	else {
