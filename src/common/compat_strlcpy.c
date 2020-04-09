@@ -20,7 +20,7 @@
 #include "config.h"
 #endif
 
-#ifndef HAVE_STRLCPY	/* empty file if strlcpy is available */
+#if !defined(HAVE_DECL_STRLCPY) || !HAVE_DECL_STRLCPY
 #include <sys/types.h>
 #include <string.h>
 
