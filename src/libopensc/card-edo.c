@@ -220,17 +220,24 @@ static int edo_init(sc_card_t* card) {
 
 	EAC_init();
 
-	card->max_send_size = SC_MAX_APDU_RESP_SIZE;
-	card->max_recv_size = SC_MAX_APDU_RESP_SIZE;
 	memset(&card->sm_ctx, 0, sizeof card->sm_ctx);
 
-	LOG_TEST_RET(card->ctx, edo_select_root(card), "Select Root AID failed");
-	LOG_TEST_RET(card->ctx, sc_enum_apps(card), "Error while ennuming apps");
+	card->max_send_size = SC_MAX_APDU_RESP_SIZE;
+	card->max_recv_size = SC_MAX_APDU_RESP_SIZE;
 
-	if (SC_SUCCESS != edo_unlock_esign(card)) {
-		sc_log(card->ctx, "Error while unlocking esign.\n");
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN);
-	}
+	card->caps = SC_CARD_CAP_RNG;
+
+	LOG_TEST_RET(card->ctx, _sc_card_add_ec_alg(
+		card, 384,
+		SC_ALGORITHM_ECDSA_RAW | SC_ALGORITHM_ECDSA_HASH_NONE,
+		SC_ALGORITHM_EXT_EC_NAMEDCURVE,
+		&(struct sc_object_id) {{1, 3, 132, 0, 34, -1}}
+	), "Add ec alg failed");
+
+	LOG_TEST_RET(card->ctx, edo_select_root(card), "Select Root AID failed");
+	LOG_TEST_RET(card->ctx, sc_enum_apps(card), "Ennuming apps failed");
+
+	LOG_TEST_RET(card->ctx, edo_unlock_esign(card), "Faild to unlock esign");
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
