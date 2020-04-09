@@ -38,9 +38,11 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "config.h"
 #endif
 
-#ifndef HAVE_STRLCPY
+#if !defined(HAVE_DECL_STRLCPY) || !HAVE_DECL_STRLCPY
 #include <stddef.h>
 size_t strlcpy(char *dst, const char *src, size_t siz);
+#else
+#include <string.h>
 #endif
 
 #endif
