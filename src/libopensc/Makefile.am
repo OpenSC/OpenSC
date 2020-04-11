@@ -65,10 +65,9 @@ if ENABLE_CRYPTOTOKENKIT
 # most platforms don't support objective C the way we needed.
 # Only include it if needed
 libopensc_la_SOURCES_BASE += reader-cryptotokenkit.m
-else
+endif
 libopensc_la_LIBTOOLFLAGS = --tag CC
 libopensc_static_la_LIBTOOLFLAGS = --tag CC
-endif
 
 libopensc_la_SOURCES = $(libopensc_la_SOURCES_BASE) \
 	libopensc.exports
