@@ -155,8 +155,6 @@ static int edo_select_file(struct sc_card* card, const struct sc_path* in_path, 
 	size_t pathlen;
 	struct edo_buff buff;
 
-	sc_log_hex(card->ctx, "XXXXX\nXXXXX", in_path->value, in_path->len);
-
 	if (in_path->type != SC_PATH_TYPE_PATH && in_path->type != SC_PATH_TYPE_FILE_ID) {
 		// TODO SC_PATH_TYPE_DF_NAME
 		LOG_FUNC_RETURN(card->ctx, sc_get_iso7816_driver()->ops->select_file(card, in_path, file_out));
@@ -173,7 +171,7 @@ static int edo_select_file(struct sc_card* card, const struct sc_path* in_path, 
 	while (pathlen >= 2) {
 		if (path[0] == 0x3F && path[1]  == 0x00) {
 			LOG_TEST_RET(card->ctx, edo_select_mf(card, &buff), "MF select failed");
-		} else if (path[0] == 0xAD) {
+		} else if (path[0] == 0xDF) {
 			LOG_TEST_RET(card->ctx, edo_select_df(card, path, &buff), "DF select failed");
 		} else if (pathlen == 2) {
 			LOG_TEST_RET(card->ctx, edo_select_ef(card, path, &buff), "EF select failed");
@@ -221,6 +219,27 @@ static int edo_select_file(struct sc_card* card, const struct sc_path* in_path, 
 }
 
 
+static int edo_set_security_env(struct sc_card* card, const struct sc_security_env* env, int se_num) {
+	LOG_FUNC_CALLED(card->ctx);
+
+	struct sc_apdu apdu;
+
+	if (env->algorithm == SC_ALGORITHM_EC && env->operation == SC_SEC_OPERATION_SIGN) {
+		sc_format_apdu_ex(&apdu, 0x00, 0x22, 0x41, 0xB6, (u8[]) {
+			0x80, 0x1, 0xcc, 0x84, 0x1, 0x8a
+		}, 6, NULL, 0);
+	} else {
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+	}
+
+	LOG_TEST_RET(card->ctx, sc_select_file(card, &env->file_ref, NULL), "SELECT file failed");
+	LOG_TEST_RET(card->ctx, sc_transmit_apdu(card, &apdu), "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2), "SW check failed");
+
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+}
+
+
 static int edo_init(sc_card_t* card) {
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -234,11 +253,11 @@ static int edo_init(sc_card_t* card) {
 	card->caps = SC_CARD_CAP_RNG;
 
 	LOG_TEST_RET(card->ctx, _sc_card_add_ec_alg(
-		card, 384,
-		SC_ALGORITHM_ECDSA_RAW | SC_ALGORITHM_ECDSA_HASH_NONE,
-		SC_ALGORITHM_EXT_EC_NAMEDCURVE | SC_ALGORITHM_EXT_EC_UNCOMPRESES,
-		NULL//&(struct sc_object_id) {{1, 3, 132, 0, 34, -1}}
-	), "Add ec alg failed");
+			card, 384,
+			SC_ALGORITHM_ECDSA_RAW | SC_ALGORITHM_ECDSA_HASH_NONE,
+			SC_ALGORITHM_EXT_EC_NAMEDCURVE | SC_ALGORITHM_EXT_EC_UNCOMPRESES,
+			NULL//&(struct sc_object_id) {{1, 3, 132, 0, 34, -1}}
+		), "Add ec alg failed");
 
 	LOG_TEST_RET(card->ctx, sc_enum_apps(card), "Ennuming apps failed");
 
@@ -253,7 +272,9 @@ struct sc_card_driver* sc_get_edo_driver(void) {
 	edo_ops.match_card = edo_match_card;
 	edo_ops.init = edo_init;
 	edo_ops.select_file = edo_select_file;
+	edo_ops.set_security_env = edo_set_security_env;
 
 	return &edo_drv;
 }
+
 
