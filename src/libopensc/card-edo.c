@@ -104,18 +104,6 @@ struct edo_buff {
 };
 
 
-static int edo_select_aid(struct sc_card* card, const struct sc_aid* aid) {
-	LOG_FUNC_CALLED(card->ctx);
-	struct sc_apdu apdu;
-	u8 buff[SC_MAX_APDU_RESP_SIZE];
-	sc_format_apdu_ex(&apdu, 00, 0xA4, 0x04, 0x00, aid->value, aid->len, buff, sizeof buff);
-	apdu.resplen = 255;
-	LOG_TEST_RET(card->ctx, sc_transmit_apdu(card, &apdu), "APDU transmit failed");
-	LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2), "SW check failed");
-	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
-}
-
-
 static int edo_select_mf(struct sc_card* card, struct edo_buff* buff) {
 	LOG_FUNC_CALLED(card->ctx);
 	struct sc_apdu apdu;
@@ -149,36 +137,63 @@ static int edo_select_ef(struct sc_card* card, const u8 path[2], struct edo_buff
 }
 
 
-static int edo_select_file(struct sc_card* card, const struct sc_path* in_path, struct sc_file** file_out) {
+static int edo_select_name(struct sc_card* card, const u8* name, size_t namelen, struct edo_buff* buff) {
 	LOG_FUNC_CALLED(card->ctx);
-	const u8* path;
-	size_t pathlen;
-	struct edo_buff buff;
+	struct sc_apdu apdu;
+	sc_format_apdu_ex(&apdu, 00, 0xA4, 0x04, 0x00, name, namelen, buff->val, sizeof buff->val);
+	LOG_TEST_RET(card->ctx, sc_transmit_apdu(card, &apdu), "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2), "SW check failed");
+	buff->len = apdu.resplen;
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+}
 
-	if (in_path->type != SC_PATH_TYPE_PATH && in_path->type != SC_PATH_TYPE_FILE_ID) {
-		// TODO SC_PATH_TYPE_DF_NAME
-		LOG_FUNC_RETURN(card->ctx, sc_get_iso7816_driver()->ops->select_file(card, in_path, file_out));
-		//LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
-	}
 
-	if (in_path->aid.len) {
-		LOG_TEST_RET(card->ctx, edo_select_aid(card, &in_path->aid), "Select AID failed");
-	}
-
-	path = in_path->value;
-	pathlen = in_path->len;
-
+static int edo_select_path(struct sc_card* card, const u8* path, size_t pathlen, struct edo_buff* buff) {
+	LOG_FUNC_CALLED(card->ctx);
 	while (pathlen >= 2) {
-		if (path[0] == 0x3F && path[1]  == 0x00) {
-			LOG_TEST_RET(card->ctx, edo_select_mf(card, &buff), "MF select failed");
-		} else if (path[0] == 0xDF) {
-			LOG_TEST_RET(card->ctx, edo_select_df(card, path, &buff), "DF select failed");
-		} else if (pathlen == 2) {
-			LOG_TEST_RET(card->ctx, edo_select_ef(card, path, &buff), "EF select failed");
-		}
+		if (path[0] == 0x3F && path[1]  == 0x00)
+			LOG_TEST_RET(card->ctx, edo_select_mf(card, buff), "MF select failed");
+		else if (path[0] == 0xDF)
+			LOG_TEST_RET(card->ctx, edo_select_df(card, path, buff), "DF select failed");
+		else if (pathlen == 2)
+			LOG_TEST_RET(card->ctx, edo_select_ef(card, path, buff), "EF select failed");
+		else
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
 		path += 2;
 		pathlen -= 2;
 	}
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+}
+
+
+/*! Selects file specified by given path.
+ *
+ * Card does not support selecting file at once, thats why it have to be done in following way:
+ * 1. Select AID if provided,
+ * 2. Select MF if provided,
+ * 3. Select DF until provided,
+ * 4. Select EF if provided.
+ */
+static int edo_select_file(struct sc_card* card, const struct sc_path* in_path, struct sc_file** file_out) {
+	LOG_FUNC_CALLED(card->ctx);
+	struct edo_buff buff;
+
+	switch (in_path->type) {
+		case SC_PATH_TYPE_PATH:
+		case SC_PATH_TYPE_FILE_ID:
+			if (in_path->aid.len)
+				LOG_TEST_RET(card->ctx, edo_select_name(card, in_path->aid.value, in_path->aid.len, &buff), "Select AID failed");
+			if (in_path->len)
+				LOG_TEST_RET(card->ctx, edo_select_path(card, in_path->value, in_path->len, &buff), "Select path failed");
+			break;
+		case SC_PATH_TYPE_DF_NAME:
+			LOG_TEST_RET(card->ctx, edo_select_name(card, in_path->value, in_path->len, &buff), "Select AID failed");
+			break;
+		default:
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+	}
+
 
 	if (file_out) {
 		// iso7816.c file creation
@@ -276,5 +291,6 @@ struct sc_card_driver* sc_get_edo_driver(void) {
 
 	return &edo_drv;
 }
+
 
 
