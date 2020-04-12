@@ -235,7 +235,7 @@ static int edo_select_file(struct sc_card* card, const struct sc_path* in_path, 
 
 
 /*! Sets security envitonment
- * 
+ *
  * Card expects key file to be selected first, followed by the
  * set security env packet with: 0x80, 0x1, 0xcc, 0x84, 0x1, 0x80|x,
  * where x is the key reference byte.
@@ -247,7 +247,7 @@ static int edo_set_security_env(struct sc_card* card, const struct sc_security_e
 
 	if (env->algorithm == SC_ALGORITHM_EC && env->operation == SC_SEC_OPERATION_SIGN) {
 		sc_format_apdu_ex(&apdu, 0x00, 0x22, 0x41, 0xB6, (u8[]) {
-			0x80, 0x1, 0xcc, 0x84, 0x1, 0x8 | env->key_ref[0]
+			0x80, 0x1, 0xcc, 0x84, 0x1, 0x80 | env->key_ref[0]
 		}, 6, NULL, 0);
 	} else {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
