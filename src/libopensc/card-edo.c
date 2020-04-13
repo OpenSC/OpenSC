@@ -21,7 +21,6 @@
 #include "config.h"
 #endif
 
-#include "card-edo.h"
 #include "libopensc/internal.h"
 #include "libopensc/opensc.h"
 #include "libopensc/pace.h"
