@@ -1,5 +1,5 @@
 MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
-EXTRA_DIST = build build-package.in build-package-from-ci.in Distribution.xml.in libtool-bundle opensc-uninstall \
+EXTRA_DIST = build build-package.in Distribution.xml.in libtool-bundle opensc-uninstall \
 	resources \
 	resources/background.jpg \
 	resources/Welcome.html.in \

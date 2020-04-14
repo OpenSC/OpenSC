@@ -328,8 +328,6 @@ cache:
   directories:
     - $HOME/.m2/
     - $HOME/Library/Caches/Homebrew
-    - openssl
-    - openpace
     - openssl_bin
     - openpace_bin
     - isetup
