@@ -318,7 +318,7 @@ sc_pkcs15_encode_tokeninfo(sc_context_t *ctx, sc_pkcs15_tokeninfo_t *ti,
 		sc_format_asn1_entry(asn1_algo_infos[ii] + 1, &ti->supported_algos[ii].mechanism, &mechanism_len, 1);
 		sc_format_asn1_entry(asn1_algo_infos[ii] + 2,
 			asn1_algo_infos_parameters[ii], NULL, 1);
-		if (!ti->supported_algos[ii].parameters)	{
+		if (!sc_valid_oid(&ti->supported_algos[ii].parameters)) {
 			sc_format_asn1_entry(asn1_algo_infos_parameters[ii] + 0,
 				NULL, NULL, 1);
 		}
