@@ -83,6 +83,7 @@ enum {
 	SC_CARDCTL_CARDOS_PUT_DATA_OCI,
 	SC_CARDCTL_CARDOS_PUT_DATA_SECI,
 	SC_CARDCTL_CARDOS_GENERATE_KEY,
+	SC_CARDCTL_CARDOS_PASS_ALGO_FLAGS,
 
 	/*
 	 * Starcos SPK 2.3 specific calls
@@ -351,6 +352,14 @@ typedef struct sc_cardctl_pkcs11_init_pin {
 } sc_cardctl_pkcs11_init_pin_t;
 
 /*
+ * Generic cardctl - card driver can examine token info
+ */
+struct sc_cardctl_parsed_token_info {
+	unsigned int flags;
+	struct sc_pkcs15_tokeninfo * tokeninfo;
+};
+
+/*
  * GPK lock file.
  * Parent DF of file must be selected.
  */
@@ -417,6 +426,15 @@ struct sc_cardctl_cardos_genkey_info {
 	unsigned int	key_id;
 	unsigned int	key_bits;
 	unsigned short	fid;
+};
+
+struct sc_cardctl_cardos_pass_algo_flags {
+	unsigned int pass;
+	unsigned long card_flags; /* from card->flags i.e. user set */
+	unsigned long used_flags; /* as set by default */
+	unsigned long new_flags; /* set in pkcs15-cardos.c */
+	unsigned long ec_flags; /* for EC keys */
+	unsigned long ext_flags; /* for EC keys */
 };
 
 /*
