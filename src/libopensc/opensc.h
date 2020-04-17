@@ -223,7 +223,7 @@ extern "C" {
 struct sc_supported_algo_info {
 	unsigned int reference;
 	unsigned int mechanism;
-	struct sc_object_id *parameters; /* OID for ECC, NULL for RSA */
+	struct sc_object_id parameters; /* OID for ECC */
 	unsigned int operations;
 	struct sc_object_id algo_id;
 	unsigned int algo_ref;
