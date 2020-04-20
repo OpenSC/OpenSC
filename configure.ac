@@ -79,7 +79,7 @@ AC_ARG_WITH(
 )
 
 if test "${enable_optimization}" = "no"; then
-	CFLAGS="-O0 -g"
+	CFLAGS="${CFLAGS} -O0 -g"
 fi
 
 dnl Check for some target-specific stuff
