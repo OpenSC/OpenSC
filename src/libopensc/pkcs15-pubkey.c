@@ -851,6 +851,8 @@ sc_pkcs15_encode_pubkey_as_spki(sc_context_t *ctx, struct sc_pkcs15_pubkey *pubk
 			}
 			memcpy(ec_params->der.value, pubkey->u.ec.params.der.value, pubkey->u.ec.params.der.len);
 			ec_params->der.len = pubkey->u.ec.params.der.len;
+			/* This could have been already allocated: avoid memory leak */
+			sc_asn1_clear_algorithm_id(pubkey->alg_id);
 			pubkey->alg_id->params = ec_params;
 		}
 		break;
