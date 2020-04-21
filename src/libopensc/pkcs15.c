@@ -1895,6 +1895,11 @@ sc_pkcs15_free_object(struct sc_pkcs15_object *obj)
 		sc_pkcs15_free_prkey_info((sc_pkcs15_prkey_info_t *)obj->data);
 		break;
 	case SC_PKCS15_TYPE_PUBKEY:
+		/* This is normally passed to framework-pkcs15,
+		 * but if something fails on the way, it would not get freed */
+		if (obj->emulated) {
+			sc_pkcs15_free_pubkey(obj->emulated);
+		}
 		sc_pkcs15_free_pubkey_info((sc_pkcs15_pubkey_info_t *)obj->data);
 		break;
 	case SC_PKCS15_TYPE_CERT:
