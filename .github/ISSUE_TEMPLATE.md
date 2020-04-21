@@ -1,7 +1,9 @@
 ### Problem Description
 
 <!--
-Please read about [reporting bugs](https://github.com/OpenSC/OpenSC/wiki/How-to-report-bugs-so-that-they-can-be-fixed) before opening an issue.
+Please read about reporting bugs on the wiki before opening an issue:
+
+https://github.com/OpenSC/OpenSC/wiki/How-to-write-a-good-bug-report
 -->
 
 ### Proposed Resolution
@@ -21,7 +23,7 @@ Debug output is essential to identify the problem. You can enable debugging by e
     #debug_file = opensc-debug.log
 ```
 
-Please use [Gist](https://gist.github.com/) or a similar code paster for longer logs. Before pasting here, remove your sensitive data from your log (e.g. PIN code or certificates).
+Please use a Gist (https://gist.github.com/) or a similar code paster for longer logs. Before pasting here, remove your sensitive data from your log (e.g. PIN code or certificates).
 
 ```
 Paste Log output with less than 10 lines here (between the backticks)
