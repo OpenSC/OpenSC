@@ -182,10 +182,12 @@ auth_select_aid(struct sc_card *card)
 	LOG_TEST_RET(card->ctx, rv, "select parent failed");
 
 	sc_format_path("3F00", &tmp_path);
+	sc_file_free(auth_current_df);
 	rv = iso_ops->select_file(card, &tmp_path, &auth_current_df);
 	LOG_TEST_RET(card->ctx, rv, "select parent failed");
 
 	sc_format_path("3F00", &card->cache.current_path);
+	sc_file_free(auth_current_ef);
 	sc_file_dup(&auth_current_ef, auth_current_df);
 
 	memcpy(data->aid, aidAuthentIC_V5, lenAidAuthentIC_V5);
