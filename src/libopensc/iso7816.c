@@ -161,7 +161,7 @@ iso7816_read_binary(struct sc_card *card, unsigned int idx, u8 *buf, size_t coun
 		LOG_FUNC_RETURN(ctx, apdu.resplen);
 	LOG_TEST_RET(ctx, r, "Check SW error");
 
-	if (apdu.resplen < count)   {
+	if (apdu.resplen > 0 && apdu.resplen < count) {
 		r = iso7816_read_binary(card, idx + apdu.resplen, buf + apdu.resplen, count - apdu.resplen, flags);
 		/* Ignore all but 'corrupted data' errors */
 		if (r == SC_ERROR_CORRUPTED_DATA)
