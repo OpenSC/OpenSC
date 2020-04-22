@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<refentry id="pkcs11-register">
+	<refmeta>
+		<refentrytitle>pkcs11-register</refentrytitle>
+		<manvolnum>1</manvolnum>
+		<refmiscinfo class="productname">OpenSC</refmiscinfo>
+		<refmiscinfo class="manual">OpenSC Tools</refmiscinfo>
+		<refmiscinfo class="source">opensc</refmiscinfo>
+	</refmeta>
+
+	<refnamediv>
+		<refname>pkcs11-register</refname>
+		<refpurpose>Simple tool to install PKCS#11 modules to known applications.</refpurpose>
+	</refnamediv>
+
+	<refsynopsisdiv>
+		<cmdsynopsis>
+			<command>pkcs11-register</command>
+			<arg choice="opt"><replaceable class="option">OPTIONS</replaceable></arg>
+		</cmdsynopsis>
+	</refsynopsisdiv>
+
+	<refsect1>
+		<title>Description</title>
+		<para>
+			The <command>pkcs11-register</command> utility can be used from
+			the command line to register PKCS#11 modules to various applications
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Options</title>
+		<para>
+			<variablelist>
+				<varlistentry>
+					<term>
+						<option>--help</option>,
+						<option>-h</option>
+					</term>
+					<listitem><para>Print help message on screen.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--version</option>,
+						<option>-V</option>
+					</term>
+					<listitem><para>Print the OpenSC package release version.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--module</option> <replaceable>filename</replaceable>,
+						<option>-m</option> <replaceable>filename</replaceable>
+					</term>
+					<listitem><para>
+						Path to the PKCS#11 module to load. The default
+						is OpenSC PKCS#11 module.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--skip-chrome</option>
+					</term>
+					<listitem><para>
+						Don't install module for Chrome browser. By default,
+						the tool attempts to install the module for Chrome
+						browser.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--skip-firefox</option>
+					</term>
+					<listitem><para>
+						Don't install module for Firefox browser. By default,
+						the tool attempts to install the module for Firefox
+						browser.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--skip-thunderbird</option>
+					</term>
+					<listitem><para>
+						Don't install module for Thunderbird mail client.
+						By default, the tool attempts to install the module
+						for Thunderbird mail client.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--skip-seamonkey</option>
+					</term>
+					<listitem><para>
+						Don't install module for Seamonkey. By default,
+						the tool attempts to install the module Seamonkey.
+					</para></listitem>
+				</varlistentry>
+			</variablelist>
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>See also</title>
+		<para>
+			<citerefentry>
+				<refentrytitle>pkcs11-tool</refentrytitle>
+				<manvolnum>1</manvolnum>
+			</citerefentry>
+			<citerefentry>
+				<refentrytitle>opensc.conf</refentrytitle>
+				<manvolnum>5</manvolnum>
+			</citerefentry>
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Authors</title>
+		<para><command>pkcs11-register</command> was written by
+		Frank Morgner <email>frankmorgner@gmail.com</email>.</para>
+	</refsect1>
+
+</refentry>
+
+

@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<refentry id="goid-tool">
+	<refmeta>
+		<refentrytitle>goid-tool</refentrytitle>
+		<manvolnum>1</manvolnum>
+		<refmiscinfo class="productname">OpenSC</refmiscinfo>
+		<refmiscinfo class="manual">OpenSC Tools</refmiscinfo>
+		<refmiscinfo class="source">opensc</refmiscinfo>
+	</refmeta>
+
+	<refnamediv>
+		<refname>goid-tool</refname>
+		<refpurpose>???</refpurpose>
+	</refnamediv>
+
+	<refsynopsisdiv>
+		<cmdsynopsis>
+			<command>goid-tool</command>
+			<arg choice="opt"><replaceable class="option">OPTIONS</replaceable></arg>
+			<arg><replaceable class="option">mode</replaceable></arg>
+		</cmdsynopsis>
+	</refsynopsisdiv>
+
+	<refsect1>
+		<title>Description</title>
+		<para>
+			The <command>goid-tool</command> utility can be used from
+			the command line to ???
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Options</title>
+		<para>
+			<variablelist>
+				<varlistentry>
+					<term>
+						<option>--help</option>,
+						<option>-h</option>
+					</term>
+					<listitem><para>Print help message on screen.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--version</option>,
+						<option>-V</option>
+					</term>
+					<listitem><para>Print the OpenSC package release version.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--reader</option> <replaceable>string</replaceable>,
+						<option>-r</option> <replaceable>string</replaceable>
+					</term>
+					<listitem><para>
+						Specify the number of the reader to use. By default, the
+						first reader with present card is used. If
+						the arguement is an ATR, the reader with a
+						matching card will be chosen.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--verbose</option>,
+						<option>-v</option>
+					</term>
+					<listitem><para>
+						Cause <command>goid-tool</command> to be
+						more verbose. Use it multiple times to be even more
+						verbose.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--verify-pin</option>,
+						<option>-p</option>
+					</term>
+					<listitem><para>
+						Verify PIN.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--verify-bio</option>,
+						<option>-b</option>
+					</term>
+					<listitem><para>
+						Verify finger print.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--verify-pin-or-bio</option>
+					</term>
+					<listitem><para>
+						Verify PIN or finger print (user's choice).
+					</para></listitem>
+				</varlistentry>
+			</variablelist>
+		</para>
+	</refsect1>
+<!-- TODO modes -->
+	<refsect1>
+		<title>See also</title>
+		<para>
+			<citerefentry>
+				<refentrytitle>pkcs11-tool</refentrytitle>
+				<manvolnum>1</manvolnum>
+			</citerefentry>
+			<citerefentry>
+				<refentrytitle>opensc.conf</refentrytitle>
+				<manvolnum>5</manvolnum>
+			</citerefentry>
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Authors</title>
+		<para><command>pkcs11-register</command> was written by
+		Frank Morgner <email>frankmorgner@gmail.com</email>.</para>
+	</refsect1>
+
+</refentry>
+
+
+
