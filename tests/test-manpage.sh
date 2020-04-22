@@ -22,7 +22,7 @@ fi
 
 RES=0
 # find all tools in src/tools (files without extension)
-TOOLS=`find "${SOURCE_PATH}/src/tools" -maxdepth 1 -type f ! -name "*.*" | sed -E -e "s|.*/([a-z0-9-]*).*|\1|"`
+TOOLS=`find "${SOURCE_PATH}/src/tools" -maxdepth 1 -type f ! -name "*.*" | sed -E -e "s|.*/([a-z0-9-]*).*|\1|" | grep -v -- -example`
 for T in $TOOLS; do
 	if [[ ! -f "${SOURCE_PATH}/doc/tools/$T.1.xml" ]]; then
 		echo "Missing manual page for '$T'"
