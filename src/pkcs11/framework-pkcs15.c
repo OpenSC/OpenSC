@@ -732,7 +732,7 @@ __pkcs15_create_pubkey_object(struct pkcs15_fw_data *fw_data,
 		/* if emulation already created pubkey use it */
 		if (pubkey->emulated && (fw_data->p15_card->flags & SC_PKCS15_CARD_FLAG_EMULATED)) {
 			sc_log(context, "Use emulated pubkey");
-			p15_key = (struct sc_pkcs15_pubkey *) pubkey->emulated;
+			sc_pkcs15_dup_pubkey(context, (struct sc_pkcs15_pubkey *) pubkey->emulated, &p15_key);
 		}
 		else {
 			sc_log(context, "Get pubkey from PKCS#15 object");
