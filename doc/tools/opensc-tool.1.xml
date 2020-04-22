@@ -35,7 +35,7 @@
 			<variablelist>
 				<varlistentry>
 					<term>
-						<option>--version</option>,
+						<option>--version</option>
 					</term>
 					<listitem><para>Print the OpenSC package release version.</para></listitem>
 				</varlistentry>
