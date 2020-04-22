@@ -36,7 +36,7 @@ const char *gengetopt_args_info_description = "";
 const char *gengetopt_args_info_help[] = {
   "  -h, --help                    Print help and exit",
   "  -V, --version                 Print version and exit",
-  "  -r, --reader=STRING           Number of the reader to use. By default, the\n                                  first reader with a present card is used. If\n                                  the arguement is an ATR, the reader with a\n                                  matching card will be chosen.",
+  "  -r, --reader=STRING           Number of the reader to use. By default, the\n                                  first reader with a present card is used. If\n                                  the argument is an ATR, the reader with a\n                                  matching card will be chosen.",
   "  -v, --verbose                 Use (several times) to be more verbose",
   "  -p, --verify-pin              Verify PIN",
   "  -b, --verify-bio              Verify finger print",
@@ -1220,7 +1220,7 @@ cmdline_parser_internal (
           cmdline_parser_free (&local_args_info);
           exit (EXIT_SUCCESS);
 
-        case 'r':	/* Number of the reader to use. By default, the first reader with a present card is used. If the arguement is an ATR, the reader with a matching card will be chosen..  */
+        case 'r':	/* Number of the reader to use. By default, the first reader with a present card is used. If the argument is an ATR, the reader with a matching card will be chosen..  */
         
         
           if (update_arg( (void *)&(args_info->reader_arg), 

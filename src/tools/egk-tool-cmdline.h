@@ -39,9 +39,9 @@ struct gengetopt_args_info
 {
   const char *help_help; /**< @brief Print help and exit help description.  */
   const char *version_help; /**< @brief Print version and exit help description.  */
-  char * reader_arg;	/**< @brief Number of the reader to use. By default, the first reader with a present card is used. If the arguement is an ATR, the reader with a matching card will be chosen..  */
-  char * reader_orig;	/**< @brief Number of the reader to use. By default, the first reader with a present card is used. If the arguement is an ATR, the reader with a matching card will be chosen. original value given at command line.  */
-  const char *reader_help; /**< @brief Number of the reader to use. By default, the first reader with a present card is used. If the arguement is an ATR, the reader with a matching card will be chosen. help description.  */
+  char * reader_arg;	/**< @brief Number of the reader to use. By default, the first reader with a present card is used. If the argument is an ATR, the reader with a matching card will be chosen..  */
+  char * reader_orig;	/**< @brief Number of the reader to use. By default, the first reader with a present card is used. If the argument is an ATR, the reader with a matching card will be chosen. original value given at command line.  */
+  const char *reader_help; /**< @brief Number of the reader to use. By default, the first reader with a present card is used. If the argument is an ATR, the reader with a matching card will be chosen. help description.  */
   unsigned int verbose_min; /**< @brief Use (several times) to be more verbose's minimum occurreces */
   unsigned int verbose_max; /**< @brief Use (several times) to be more verbose's maximum occurreces */
   const char *verbose_help; /**< @brief Use (several times) to be more verbose help description.  */

@@ -2,7 +2,7 @@ package "npa-tool"
 purpose "@PACKAGE_SUMMARY@"
 
 option "reader"         r
-    "Number of the reader to use. By default, the first reader with a present card is used. If the arguement is an ATR, the reader with a matching card will be chosen."
+    "Number of the reader to use. By default, the first reader with a present card is used. If the argument is an ATR, the reader with a matching card will be chosen."
     string
     optional
 option "verbose"    v
