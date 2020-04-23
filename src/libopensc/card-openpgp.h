@@ -163,7 +163,6 @@ typedef struct pgp_blob {
 typedef struct _pgp_ec_curves {
 	struct sc_object_id oid;
 	size_t size;
-	struct sc_object_id oid_binary;
 } pgp_ec_curves_t;
 
 

@@ -88,31 +88,21 @@ static struct sc_card_driver pgp_drv = {
 
 
 static pgp_ec_curves_t	ec_curves[] = {
-	{{{1, 2, 840, 10045, 3, 1, 7, -1}}, 256,
-		{{0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07, -1}}}, /* ansiX9p256r1 */
-	{{{1, 3, 132, 0, 34, -1}}, 384,
-		{{0x2b, 0x81, 0x04, 0x00, 0x22, -1}}}, /* ansiX9p384r1 */
-	{{{1, 3, 132, 0, 35, -1}}, 521,
-		{{0x2b, 0x81, 0x04, 0x00, 0x23, -1}}}, /* ansiX9p521r1 */
-	{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 7, -1}}, 256,
-		{{0x2b, 0x24, 0x03, 0x03, 0x02, 0x08, 0x01, 0x01, 0x07, -1}}}, /* brainpoolP256r1 */
-	{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 11, -1}}, 384,
-		{{0x2b, 0x24, 0x03, 0x03, 0x02, 0x08, 0x01, 0x01, 0x0b, -1}}}, /* brainpoolP384r1 */
-	{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 13, -1}}, 512,
-		{{0x2b, 0x24, 0x03, 0x03, 0x02, 0x08, 0x01, 0x01, 0x0d, -1}}}, /* brainpoolP512r1 */
-	{{{-1}}, 0, {{0x0}}} /* This entry must not be touched. */
+	{{{1, 2, 840, 10045, 3, 1, 7, -1}}, 256}, /* ansiX9p256r1 */
+	{{{1, 3, 132, 0, 34, -1}}, 384}, /* ansiX9p384r1 */
+	{{{1, 3, 132, 0, 35, -1}}, 521}, /* ansiX9p521r1 */
+	{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 7, -1}}, 256}, /* brainpoolP256r1 */
+	{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 11, -1}}, 384}, /* brainpoolP384r1 */
+	{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 13, -1}}, 512}, /* brainpoolP512r1 */
+	{{{-1}}, 0} /* This entry must not be touched. */
 };
 
 static pgp_ec_curves_t	ec_curves_gnuk[] = {
-	{{{1, 2, 840, 10045, 3, 1, 7, -1}}, 256,
-		{{0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07, -1}}}, /* ansiX9p256r1 */
-	{{{1, 3, 132, 0, 10, -1}}, 256,
-		{{0x06, 0x05, 0x2B, 0x81, 0x04, 0x00, 0x0A, -1}}}, /* secp256k1 */
-	/*{{{1, 3, 6, 1, 4, 1, 3029, 1, 5, 1, -1}}, 256,
-		{{0x0A, 0x2B, 0x06, 0x01, 0x04, 0x01, 0x97, 0x55, 0x01, 0x05, 0x01, -1}}}, //cv25519
-	{{{1, 3, 6, 1, 4, 1, 11591, 15, 1, -1}}, 256,
-		{{0x09, 0x2B, 0x06, 0x01, 0x04, 0x01, 0xDA, 0x47, 0x0F, 0x01, -1}}}, // ed25519 */
-	{{{-1}}, 0, {{0x0}}} /* This entry must not be touched. */
+	{{{1, 2, 840, 10045, 3, 1, 7, -1}}, 256}, /* ansiX9p256r1 */
+	{{{1, 3, 132, 0, 10, -1}}, 256}, /* secp256k1 */
+	/*{{{1, 3, 6, 1, 4, 1, 3029, 1, 5, 1, -1}}, 256}, //cv25519
+	{{{1, 3, 6, 1, 4, 1, 11591, 15, 1, -1}}, 256}, // ed25519 */
+	{{{-1}}, 0} /* This entry must not be touched. */
 };
 
 
@@ -578,7 +568,7 @@ static int
 pgp_parse_algo_attr_blob(const pgp_blob_t *blob, sc_cardctl_openpgp_keygen_info_t *key_info)
 {
 	struct sc_object_id oid;
-	unsigned int j;
+	unsigned int j, r;
 
 	if (blob == NULL || blob->data == NULL || blob->len == 0 ||
 	    blob->id < 0x00c1 || blob->id > 0x00c3 || key_info == NULL)
@@ -605,20 +595,37 @@ pgp_parse_algo_attr_blob(const pgp_blob_t *blob, sc_cardctl_openpgp_keygen_info_
 			/* SC_OPENPGP_KEYALGO_ECDH || SC_OPENPGP_KEYALGO_ECDSA */
 			key_info->algorithm = blob->data[0];
 
-			sc_init_oid(&oid);
-			/* Create copy of oid from blob */
-			for (j=0; j < (blob->len-1) && j < SC_MAX_OBJECT_ID_OCTETS; j++) {
-				oid.value[j] = blob->data[j+1]; /* ignore first byte of blob (algo ID) */
+			/* last byte is only set if pubkey import is supported, empty otherwise*/
+			if (blob->data[blob->len-1] == SC_OPENPGP_KEYFORMAT_EC_STDPUB){
+				if (blob->len < 3)
+					return SC_ERROR_INCORRECT_PARAMETERS;
+				key_info->u.ec.oid_len = blob->len - 2;
+				key_info->u.ec.keyformat = SC_OPENPGP_KEYFORMAT_EC_STDPUB;
+			}
+			else {
+				if (blob->len < 2)
+					return SC_ERROR_INCORRECT_PARAMETERS;
+				key_info->u.ec.oid_len = blob->len - 1;
+				key_info->u.ec.keyformat = SC_OPENPGP_KEYFORMAT_EC_STD;
 			}
 
+			/* Create copy of oid from blob */
+			sc_init_oid(&oid);
+			r = sc_asn1_decode_object_id(&blob->data[1], key_info->u.ec.oid_len, &oid);
+
+			/* decoding failed, return sc_asn1_decode_object_id error code */
+			if (r > 0){
+				return r;
+			}
 			/* compare with list of supported ec_curves */
 			for (j=0; ec_curves[j].oid.value[0] >= 0; j++){
-				if (sc_compare_oid(&ec_curves[j].oid_binary, &oid)){
+				if (sc_compare_oid(&ec_curves[j].oid, &oid)){
 					key_info->u.ec.oid = ec_curves[j].oid;
 					key_info->u.ec.key_length = ec_curves[j].size;
 					break;
 				}
 			}
+
 			break;
 		default:
 			return SC_ERROR_NOT_IMPLEMENTED;
@@ -2979,11 +2986,18 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_keystore_info
 		componentnames[0] = "private key";
 		comp_to_add = 1;
 
-		/* TODO ECC import with public key, if necessary as denoted in algorithm caps*/
+		/* import public key as well */
+		if (key_info->u.ec.keyformat == SC_OPENPGP_KEYFORMAT_EC_STDPUB){
+			components[1] = key_info->u.ec.ecpointQ;
+			componentlens[1] = key_info->u.ec.ecpointQ_len;
+			componenttags[1] = 0x99;
+			componentnames[1] = "public key";
+			comp_to_add = 2;
+		}
 
 		/* validate */
-		if ((key_info->u.ec.ecpoint == NULL || key_info->u.ec.ecpoint_len == 0)){
-			sc_log(ctx, "Error: ecpoint required!");
+		if ((key_info->u.ec.ecpointQ == NULL || key_info->u.ec.ecpointQ_len == 0)){
+			sc_log(ctx, "Error: ecpointQ required!");
 			LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 		}
 
@@ -3087,23 +3101,23 @@ pgp_store_key(sc_card_t *card, sc_cardctl_openpgp_keystore_info_t *key_info)
 		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
 				"Invalid key ID; must be 1, 2, or 3");
 
-	/* we just support standard key format */
-	switch (key_info->u.rsa.keyformat) {
-	case SC_OPENPGP_KEYFORMAT_RSA_STD:
-	case SC_OPENPGP_KEYFORMAT_RSA_STDN:
-		break;
-
-	case SC_OPENPGP_KEYFORMAT_RSA_CRT:
-	case SC_OPENPGP_KEYFORMAT_RSA_CRTN:
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
-
-	default:
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
-	}
-
 	/* set algorithm attributes */
 	/* RSA */
 	if (key_info->algorithm == SC_OPENPGP_KEYALGO_RSA){
+		/* we just support standard key format */
+		switch (key_info->u.rsa.keyformat) {
+		case SC_OPENPGP_KEYFORMAT_RSA_STD:
+		case SC_OPENPGP_KEYFORMAT_RSA_STDN:
+			break;
+
+		case SC_OPENPGP_KEYFORMAT_RSA_CRT:
+		case SC_OPENPGP_KEYFORMAT_RSA_CRTN:
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+
+		default:
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+		}
+
 		/* we only support exponent of maximum 32 bits */
 		if (key_info->u.rsa.e_len > SC_OPENPGP_MAX_EXP_BITS) {
 			sc_log(card->ctx,
@@ -3131,9 +3145,11 @@ pgp_store_key(sc_card_t *card, sc_cardctl_openpgp_keystore_info_t *key_info)
 		memset(&pubkey, 0, sizeof(pubkey));
 		pubkey.key_id = key_info->key_id;
 		pubkey.algorithm = key_info->algorithm;
-		if (key_info->u.ec.ecpoint && key_info->u.ec.ecpoint_len){
-			pubkey.u.ec.ecpoint = key_info->u.ec.ecpoint;
-			pubkey.u.ec.ecpoint_len = key_info->u.ec.ecpoint_len;
+		if (key_info->u.ec.ecpointQ && key_info->u.ec.ecpointQ_len){
+			pubkey.u.ec.ecpoint = key_info->u.ec.ecpointQ;
+			pubkey.u.ec.ecpoint_len = key_info->u.ec.ecpointQ_len;
+			pubkey.u.ec.oid = key_info->u.ec.oid;
+			pubkey.u.ec.oid_len = key_info->u.ec.oid_len;
 		}
 		else
 			LOG_FUNC_RETURN(card->ctx,SC_ERROR_INVALID_ARGUMENTS);
