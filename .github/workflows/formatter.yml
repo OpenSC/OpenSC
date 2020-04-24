@@ -1,0 +1,20 @@
+name: Check Code Style
+
+on:
+  pull_request:
+    paths:
+      - '**.c'
+      - '**.h'
+      - .github/workflows/formatter.yml
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 100
+    - uses: yshui/git-clang-format-lint@master
+      #with:
+      #  base: origin/master
