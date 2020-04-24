@@ -2550,10 +2550,10 @@ int pcsc_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcsc_c
 			priv->pcsc_card = card_handle;
 			detect_protocol(reader, card_handle);
 			detect_reader_features(reader, card_handle);
+			gpriv->attached_reader = reader;
 		} else {
 			_sc_delete_reader(ctx, reader);
 		}
-		gpriv->attached_reader = reader;
 	}
 
 out:
