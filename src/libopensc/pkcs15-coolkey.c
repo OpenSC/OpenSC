@@ -670,9 +670,6 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 			sc_log(card->ctx, "Unknown object type %lu, skipping", obj_class);
 			continue;
 		}
-		if (obj_info == NULL) {
-			continue;
-		}
 
 		r = sc_pkcs15emu_object_add(p15card, obj_type, &obj_obj, obj_info);
 		if (r != SC_SUCCESS)
