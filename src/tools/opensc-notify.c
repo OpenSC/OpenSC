@@ -190,7 +190,7 @@ static int cancellation_fd[] = {-1, -1};
 void sig_handler(int sig) {
 	run_daemon = 0;
 #pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-variable"
+#pragma GCC diagnostic ignored "-Wunused-result"
 	(void)write(cancellation_fd[1], &sig, sizeof sig);
 #pragma GCC diagnostic pop
 }
