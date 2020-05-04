@@ -36,7 +36,7 @@ for f in \
 do
 	if [ -e "$f" ]
 	then
-		/bin/launchctl asuser $(id -u "${USER}") /bin/launchctl load "$f"
+		/bin/launchctl asuser $(id -u "${USER}") /bin/launchctl load "$f" || true
 	fi
 done
 
