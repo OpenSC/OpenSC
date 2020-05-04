@@ -233,6 +233,23 @@ static int edo_select_file(struct sc_card* card, const struct sc_path* in_path, 
 }
 
 
+/*! Computes ECDSA signature.
+ *
+ * If ECDSA was used, the ASN.1 sequence of integers R,S returned by the
+ * card needs to be converted to the raw concatenation of R,S for PKCS#11.
+ */
+static int edo_compute_signature(struct sc_card* card, const u8* data, size_t datalen, u8* out, size_t outlen) {
+	LOG_FUNC_CALLED(card->ctx);
+	struct edo_buff buff = {{}, sizeof buff.val};
+
+	LOG_TEST_RET(card->ctx, sc_get_iso7816_driver()->ops->compute_signature(card, data, datalen, buff.val, buff.len), "Proxied signature failed");
+
+	LOG_TEST_RET(card->ctx, sc_asn1_sig_value_sequence_to_rs(card->ctx, buff.val, buff.len, out, outlen), "ASN.1 unframing failed");
+
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+}
+
+
 /*! Sets security envitonment
  *
  * Card expects key file to be selected first, followed by the
@@ -293,6 +310,7 @@ struct sc_card_driver* sc_get_edo_driver(void) {
 	edo_ops.init = edo_init;
 	edo_ops.select_file = edo_select_file;
 	edo_ops.set_security_env = edo_set_security_env;
+	edo_ops.compute_signature = edo_compute_signature;
 
 	return &edo_drv;
 }
