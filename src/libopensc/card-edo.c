@@ -293,7 +293,7 @@ struct sc_card_driver* sc_get_edo_driver(void) {
 #else
 
 struct sc_card_driver* sc_get_edo_driver(void) {
-	return NULL;
+	return 0;
 }
 
 #endif
