@@ -33,6 +33,8 @@
 
 
 static struct sc_card_operations edo_ops;
+
+
 static struct sc_card_driver edo_drv = {
 	"Polish eID card (e-dowód, eDO)",
 	"edo",
@@ -166,7 +168,7 @@ static int edo_select_path(struct sc_card* card, const u8* path, size_t pathlen,
 
 /*! Selects file specified by given path.
  *
- * Card does not support selecting file at once, thats why it have to be done in following way:
+ * Card does not support selecting file at once, that's why it have to be done in following way:
  * 1. Select AID if provided,
  * 2. Select MF if provided,
  * 3. Select DF until provided,
@@ -191,40 +193,13 @@ static int edo_select_file(struct sc_card* card, const struct sc_path* in_path, 
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 	}
 
-
 	if (file_out) {
-		// iso7816.c file creation
-		int r;
-		unsigned int cla, tag;
-		struct sc_file* file;
-		const u8* buffer;
-		size_t buffer_len;
-
-		if (!buff.len)   {
-			/* For some cards 'SELECT' MF or DF_NAME do not return FCI. */
-
-			file = sc_file_new();
-			if (file == NULL)
-				LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
-			file->path = *in_path;
-
-			*file_out = file;
-			LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
-
-		}
-
 		if (buff.len < 2)
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
-
-		file = sc_file_new();
-		if (file == NULL)
+		if (!(*file_out = sc_file_new()))
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
-		file->path = *in_path;
-		buffer = buff.val;
-		r = sc_asn1_read_tag(&buffer, buff.len, &cla, &tag, &buffer_len);
-		if (r == SC_SUCCESS)
-			card->ops->process_fci(card, file, buffer, buffer_len);
-		*file_out = file;
+		(*file_out)->path = *in_path;
+		LOG_TEST_RET(card->ctx, card->ops->process_fci(card, *file_out, buff.val, buff.len), "Process FCI failed");
 	}
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
@@ -240,9 +215,9 @@ static int edo_compute_signature(struct sc_card* card, const u8* data, size_t da
 	LOG_FUNC_CALLED(card->ctx);
 	struct edo_buff buff = {{}, sizeof buff.val};
 
-	LOG_TEST_RET(card->ctx, sc_get_iso7816_driver()->ops->compute_signature(card, data, datalen, buff.val, buff.len), "Proxied signature failed");
+	LOG_TEST_RET(card->ctx, sc_get_iso7816_driver()->ops->compute_signature(card, data, datalen, buff.val, buff.len), "Internal signature failed");
 
-	LOG_TEST_RET(card->ctx, sc_asn1_sig_value_sequence_to_rs(card->ctx, buff.val, buff.len, out, outlen), "ASN.1 unframing failed");
+	LOG_TEST_RET(card->ctx, sc_asn1_sig_value_sequence_to_rs(card->ctx, buff.val, buff.len, out, outlen), "ASN.1 conversion failed");
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
@@ -256,16 +231,14 @@ static int edo_compute_signature(struct sc_card* card, const u8* data, size_t da
  */
 static int edo_set_security_env(struct sc_card* card, const struct sc_security_env* env, int se_num) {
 	LOG_FUNC_CALLED(card->ctx);
-
 	struct sc_apdu apdu;
 
-	if (env->algorithm == SC_ALGORITHM_EC && env->operation == SC_SEC_OPERATION_SIGN) {
+	if (env->algorithm == SC_ALGORITHM_EC && env->operation == SC_SEC_OPERATION_SIGN)
 		sc_format_apdu_ex(&apdu, 0x00, 0x22, 0x41, 0xB6, (u8[]) {
 			0x80, 0x1, 0xcc, 0x84, 0x1, 0x80 | env->key_ref[0]
 		}, 6, NULL, 0);
-	} else {
+	else
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
-	}
 
 	LOG_TEST_RET(card->ctx, sc_select_file(card, &env->file_ref, NULL), "SELECT file failed");
 	LOG_TEST_RET(card->ctx, sc_transmit_apdu(card, &apdu), "APDU transmit failed");
