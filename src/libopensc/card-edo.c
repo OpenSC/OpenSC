@@ -288,11 +288,3 @@ struct sc_card_driver* sc_get_edo_driver(void) {
 
 	return &edo_drv;
 }
-
-
-
-
-
-
-
-
