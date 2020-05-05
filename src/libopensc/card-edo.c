@@ -75,13 +75,11 @@ static int edo_get_can(sc_card_t* card, struct establish_pace_channel_input* pac
 }
 
 
-static int edo_unlock_esign(sc_card_t* card) {
+static int edo_unlock(sc_card_t* card) {
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	struct establish_pace_channel_input pace_input = {};
 	struct establish_pace_channel_output pace_output = {};
-
-	sc_log(card->ctx, "Will verify CAN first for unlocking eSign application.\n");
 
 	if (SC_SUCCESS != edo_get_can(card, &pace_input)) {
 		sc_log(card->ctx, "Error reading CAN.\n");
@@ -250,7 +248,7 @@ static int edo_compute_signature(struct sc_card* card, const u8* data, size_t da
 }
 
 
-/*! Sets security envitonment
+/*! Sets security environment
  *
  * Card expects key file to be selected first, followed by the
  * set security env packet with: 0x80, 0x1, 0xcc, 0x84, 0x1, 0x80|x,
@@ -277,6 +275,12 @@ static int edo_set_security_env(struct sc_card* card, const struct sc_security_e
 }
 
 
+/*! Initializes card driver.
+ *
+ * Card is known to support only short APDU-s.
+ * Preinitialized keys are on secp384r1 curve.
+ * PACE channel have to be established.
+ */
 static int edo_init(sc_card_t* card) {
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -287,18 +291,15 @@ static int edo_init(sc_card_t* card) {
 	card->max_send_size = SC_MAX_APDU_RESP_SIZE;
 	card->max_recv_size = SC_MAX_APDU_RESP_SIZE;
 
-	card->caps = SC_CARD_CAP_RNG;
-
 	LOG_TEST_RET(card->ctx, _sc_card_add_ec_alg(
-			card, 384,
-			SC_ALGORITHM_ECDSA_RAW | SC_ALGORITHM_ECDSA_HASH_NONE,
-			SC_ALGORITHM_EXT_EC_NAMEDCURVE | SC_ALGORITHM_EXT_EC_UNCOMPRESES,
-			NULL//&(struct sc_object_id) {{1, 3, 132, 0, 34, -1}}
-		), "Add ec alg failed");
+		card, 384,
+		SC_ALGORITHM_ECDSA_RAW | SC_ALGORITHM_ECDSA_HASH_NONE,
+		0, &(struct sc_object_id) {{1, 3, 132, 0, 34, -1}}
+	), "Add EC alg failed");
 
-	LOG_TEST_RET(card->ctx, sc_enum_apps(card), "Ennuming apps failed");
+	LOG_TEST_RET(card->ctx, sc_enum_apps(card), "Enumerate apps failed");
 
-	LOG_TEST_RET(card->ctx, edo_unlock_esign(card), "Faild to unlock esign");
+	LOG_TEST_RET(card->ctx, edo_unlock(card), "Unlock card failed");
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
@@ -314,6 +315,11 @@ struct sc_card_driver* sc_get_edo_driver(void) {
 
 	return &edo_drv;
 }
+
+
+
+
+
 
 
 
