@@ -21,6 +21,8 @@
 #include "config.h"
 #endif
 
+#if defined(ENABLE_SM) && defined(ENABLE_OPENPACE)
+
 #include "libopensc/internal.h"
 #include "libopensc/opensc.h"
 #include "libopensc/pace.h"
@@ -287,3 +289,11 @@ struct sc_card_driver* sc_get_edo_driver(void) {
 
 	return &edo_drv;
 }
+
+#else
+
+struct sc_card_driver* sc_get_edo_driver(void) {
+	return NULL;
+}
+
+#endif
