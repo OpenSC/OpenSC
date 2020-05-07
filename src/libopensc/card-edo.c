@@ -54,6 +54,7 @@ static struct {
 	int len;
 	struct sc_object_id oid;
 } edo_curves[] = {
+	// secp384r1
 	{384, {{1, 3, 132, 0, 34, -1}}}
 };
 
@@ -70,11 +71,22 @@ static int edo_match_card(sc_card_t* card) {
 
 static int edo_get_can(sc_card_t* card, struct establish_pace_channel_input* pace_input) {
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+	const char* can;
 
-	char* can = getenv("EDO_CAN");
+	if (!(can = getenv("EDO_CAN"))) {
+		for (size_t i = 0; card->ctx->conf_blocks[i]; ++i) {
+			scconf_block** blocks = scconf_find_blocks(card->ctx->conf, card->ctx->conf_blocks[i], "card_driver", "edo");
+			if (!blocks)
+				continue;
+			for (size_t j = 0; blocks[j]; ++j)
+				if ((can = scconf_get_str(blocks[j], "can", NULL)))
+					break;
+			free(blocks);
+		}
+	}
 
 	if (!can || 6 != strlen(can)) {
-		sc_log(card->ctx, "Missing or invalid EDO_CAN.\n");
+		sc_log(card->ctx, "Missing or invalid CAN.\n");
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN);
 	}
 
@@ -241,7 +253,7 @@ static int edo_set_security_env(struct sc_card* card, const struct sc_security_e
 	LOG_FUNC_CALLED(card->ctx);
 	struct sc_apdu apdu;
 
-	if (env->algorithm == SC_ALGORITHM_EC && env->operation == SC_SEC_OPERATION_SIGN){
+	if (env->algorithm == SC_ALGORITHM_EC && env->operation == SC_SEC_OPERATION_SIGN) {
 		u8 payload[] = {0x80, 0x01, 0xcc, 0x84, 0x01, 0x80 | env->key_ref[0]};
 		sc_format_apdu_ex(&apdu, 0x00, 0x22, 0x41, 0xB6, payload, sizeof payload, NULL, 0);
 	} else
@@ -305,4 +317,3 @@ struct sc_card_driver* sc_get_edo_driver(void) {
 }
 
 #endif
-
