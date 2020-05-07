@@ -59,6 +59,16 @@ static struct {
 };
 
 
+static void edo_eac_init() {
+	extern void EAC_init(void);
+	static int initialized = 0;
+	if (!initialized) {
+		EAC_init();
+		initialized = 1;
+	}
+}
+
+
 static int edo_match_card(sc_card_t* card) {
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (_sc_match_atr(card, edo_atrs, &card->type) >= 0) {
@@ -276,7 +286,7 @@ static int edo_set_security_env(struct sc_card* card, const struct sc_security_e
 static int edo_init(sc_card_t* card) {
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	EAC_init();
+	edo_eac_init();
 
 	memset(&card->sm_ctx, 0, sizeof card->sm_ctx);
 
