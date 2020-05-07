@@ -2,7 +2,7 @@
 SOURCE_PATH=../
 
 # find all the manual pages in doc/tools
-TOOLS=`find "${SOURCE_PATH}/doc/tools" -name "*.1.xml" | sed -E -e "s|.*/([a-z0-9-]*).*|\1|"`
+TOOLS=`find "${SOURCE_PATH}/doc/tools" -name "*.1.xml" | sed -E -e "s|.*/([a-z0-9-]*).*|\1|" | grep -v goid-tool`
 ALL=1
 
 for T in $TOOLS; do
