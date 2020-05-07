@@ -163,6 +163,8 @@ static int edo_select_path(struct sc_card* card, const u8* path, size_t pathlen,
 		path += 2;
 		pathlen -= 2;
 	}
+	if (pathlen)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INCORRECT_PARAMETERS);
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
