@@ -178,6 +178,7 @@ before_script:
       make -f Makefile.console;
       mkdir tmp;
       socat -d -d pty,link=tmp/OsEIDsim.socket,raw,echo=0 "exec:build/console/console ...,pty,raw,echo=0" &
+      PID=$!;
       sleep 1;
       echo "# OsEIDsim" > tmp/reader.conf;
       echo 'FRIENDLYNAME      "OsEIDsim"' >> tmp/reader.conf;
@@ -230,6 +231,7 @@ script:
       export LD_LIBRARY_PATH=/usr/local/lib;
 
       java -noverify -cp IsoApplet/src/:jcardsim/target/jcardsim-3.0.5-SNAPSHOT.jar com.licel.jcardsim.remote.VSmartCard isoapplet_jcardsim.cfg >/dev/null &
+      PID=$!;
       sleep 5;
       opensc-tool --card-driver default --send-apdu 80b800001a0cf276a288bcfba69d34f310010cf276a288bcfba69d34f3100100;
       opensc-tool -n;
@@ -239,32 +241,35 @@ script:
       pkcs15-init --generate-key ec/secp256r1 --id 3 --key-usage sign         --auth-id FF --pin 123456;
       pkcs15-tool -D;
       pkcs11-tool -l -t -p 123456;
-      killall java;
+      kill -9 $PID;
 
       java -noverify -cp GidsApplet/src/:jcardsim/target/jcardsim-3.0.5-SNAPSHOT.jar com.licel.jcardsim.remote.VSmartCard gids_jcardsim.cfg >/dev/null &
+      PID=$!;
       sleep 5;
       opensc-tool --card-driver default --send-apdu 80b80000190bA0000003974254465902010bA00000039742544659020100;
       opensc-tool -n;
       gids-tool --initialize --pin 123456 --admin-key 000000000000000000000000000000000000000000000000 --serial 00000000000000000000000000000000;
-      killall java;
+      kill -9 $PID;
 
       java -noverify -cp ykneo-openpgp/applet/bin:jcardsim/target/jcardsim-3.0.5-SNAPSHOT.jar com.licel.jcardsim.remote.VSmartCard openpgp_jcardsim.cfg >/dev/null &
+      PID=$!;
       sleep 5;
       opensc-tool --card-driver default --send-apdu 80b800002210D276000124010200000000000001000010D276000124010200000000000001000000;
       opensc-tool -n;
       openpgp-tool --verify CHV3 --pin 12345678 --gen-key 2;
       pkcs15-init --verify --auth-id 3 --pin 12345678 --delete-objects privkey,pubkey --id 2 --generate-key rsa/2048;
       pkcs11-tool -l -t -p 123456;
-      killall java;
+      kill -9 $PID;
 
       java -noverify -cp PivApplet/bin/:jcardsim/target/jcardsim-3.0.5-SNAPSHOT.jar com.licel.jcardsim.remote.VSmartCard PivApplet/test/jcardsim.cfg >/dev/null &
+      PID=$!;
       sleep 5;
       opensc-tool --card-driver default --send-apdu 80b80000120ba000000308000010000100050000020F0F7f;
       opensc-tool -n;
       yubico-piv-tool -r 'Virtual PCD 00 00' -P 123456 -s 9a -a generate -A ECCP256;
       yubico-piv-tool -r 'Virtual PCD 00 00' -P 123456 -s 9e -a generate -A RSA2048;
       pkcs11-tool -l -t -p 123456;
-      killall java;
+      kill -9 $PID;
 
       set +ex;
     fi
@@ -283,7 +288,7 @@ script:
       ./OsEID-tool EC-UPLOAD-KEYS;
       ./OsEID-tool EC-SIGN-TEST;
       ./OsEID-tool EC-ECDH-TEST;
-      killall socat;
+      kill -9 $PID;
 
       set +ex;
     fi
