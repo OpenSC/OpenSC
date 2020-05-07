@@ -50,6 +50,14 @@ static const struct sc_atr_table edo_atrs[] = {
 };
 
 
+static struct {
+	int len;
+	struct sc_object_id oid;
+} edo_curves[] = {
+	{384, {{1, 3, 132, 0, 34, -1}}}
+};
+
+
 static int edo_match_card(sc_card_t* card) {
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (_sc_match_atr(card, edo_atrs, &card->type) >= 0) {
@@ -226,18 +234,17 @@ static int edo_compute_signature(struct sc_card* card, const u8* data, size_t da
 /*! Sets security environment
  *
  * Card expects key file to be selected first, followed by the
- * set security env packet with: 0x80, 0x1, 0xcc, 0x84, 0x1, 0x80|x,
+ * set security env packet with: 0x80, 0x01, 0xcc, 0x84, 0x01, 0x80|x,
  * where x is the key reference byte.
  */
 static int edo_set_security_env(struct sc_card* card, const struct sc_security_env* env, int se_num) {
 	LOG_FUNC_CALLED(card->ctx);
 	struct sc_apdu apdu;
 
-	if (env->algorithm == SC_ALGORITHM_EC && env->operation == SC_SEC_OPERATION_SIGN)
-		sc_format_apdu_ex(&apdu, 0x00, 0x22, 0x41, 0xB6, (u8[]) {
-			0x80, 0x1, 0xcc, 0x84, 0x1, 0x80 | env->key_ref[0]
-		}, 6, NULL, 0);
-	else
+	if (env->algorithm == SC_ALGORITHM_EC && env->operation == SC_SEC_OPERATION_SIGN){
+		u8 payload[] = {0x80, 0x01, 0xcc, 0x84, 0x01, 0x80 | env->key_ref[0]};
+		sc_format_apdu_ex(&apdu, 0x00, 0x22, 0x41, 0xB6, payload, sizeof payload, NULL, 0);
+	} else
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 
 	LOG_TEST_RET(card->ctx, sc_select_file(card, &env->file_ref, NULL), "SELECT file failed");
@@ -264,11 +271,13 @@ static int edo_init(sc_card_t* card) {
 	card->max_send_size = SC_MAX_APDU_RESP_SIZE;
 	card->max_recv_size = SC_MAX_APDU_RESP_SIZE;
 
-	LOG_TEST_RET(card->ctx, _sc_card_add_ec_alg(
-		card, 384,
-		SC_ALGORITHM_ECDSA_RAW | SC_ALGORITHM_ECDSA_HASH_NONE,
-		0, &(struct sc_object_id) {{1, 3, 132, 0, 34, -1}}
-	), "Add EC alg failed");
+	for (size_t i = 0; i < sizeof edo_curves / sizeof * edo_curves; ++i) {
+		LOG_TEST_RET(card->ctx, _sc_card_add_ec_alg(
+			card, edo_curves[i].len,
+			SC_ALGORITHM_ECDSA_RAW | SC_ALGORITHM_ECDSA_HASH_NONE,
+			0, &edo_curves[i].oid
+		), "Add EC alg failed");
+	}
 
 	LOG_TEST_RET(card->ctx, sc_enum_apps(card), "Enumerate apps failed");
 
@@ -296,3 +305,4 @@ struct sc_card_driver* sc_get_edo_driver(void) {
 }
 
 #endif
+
