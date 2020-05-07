@@ -12,11 +12,10 @@ TESTS = asn1 simpletlv
 noinst_HEADERS = torture.h
 
 AM_CFLAGS = -I$(top_srcdir)/src/ \
-	-L$(top_srcdir)/src/libopensc/ \
 	$(CODE_COVERAGE_CFLAGS) \
 	$(CMOCKA_CFLAGS)
 AM_CPPFLAGS =$(CODE_COVERAGE_CPPFLAGS)
-LDADD = $(top_srcdir)/src/libopensc/libopensc.la \
+LDADD = $(top_builddir)/src/libopensc/libopensc.la \
 	$(CODE_COVERAGE_LIBS) \
 	$(OPTIONAL_OPENSSL_LIBS) \
 	$(CMOCKA_LIBS)
