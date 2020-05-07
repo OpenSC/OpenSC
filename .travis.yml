@@ -164,7 +164,7 @@ before_script:
 
       git clone --recursive https://github.com/arekinath/PivApplet.git;
       cd PivApplet;
-      ant dist;
+      JC_HOME=${JC_CLASSIC_HOME} ant dist;
       cd $TRAVIS_BUILD_DIR;
 
       git clone https://github.com/Yubico/yubico-piv-tool.git;
