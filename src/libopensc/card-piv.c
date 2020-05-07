@@ -1213,20 +1213,20 @@ static int
 piv_write_certificate(sc_card_t *card, const u8* buf, size_t count, unsigned long flags)
 {
 	piv_private_data_t * priv = PIV_DATA(card);
-	int enumtag;
+	int enumtag, tmplen, tmplen2, tmplen3;
 	int r = SC_SUCCESS;
 	u8 *sbuf = NULL;
 	u8 *p;
 	size_t sbuflen;
 	size_t taglen;
 
-	taglen = sc_asn1_put_tag(0x70, buf, count, NULL, 0, NULL)
-		+ sc_asn1_put_tag(0x71, NULL, 1, NULL, 0, NULL)
-		+ sc_asn1_put_tag(0xFE, NULL, 0, NULL, 0, NULL);
-	if (taglen <= 0) {
+	if ((tmplen = sc_asn1_put_tag(0x70, buf, count, NULL, 0, NULL)) <= 0 ||
+	    (tmplen2 = sc_asn1_put_tag(0x71, NULL, 1, NULL, 0, NULL)) <= 0 ||
+	    (tmplen3 = sc_asn1_put_tag(0xFE, NULL, 0, NULL, 0, NULL)) <= 0) {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 	}
 
+	taglen = tmplen + tmplen2 + tmplen3;
 	sbuflen = sc_asn1_put_tag(0x53, NULL, taglen, NULL, 0, NULL);
 	if (sbuflen <= 0) {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
