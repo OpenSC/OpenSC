@@ -8,7 +8,7 @@ matrix:
       env: DO_PUSH_ARTIFACT=yes
     - compiler: gcc
       os: linux
-      dist: trusty
+      dist: bionic
       env:
         - DO_SIMULATION=javacard
         - ENABLE_DOC=--enable-doc
