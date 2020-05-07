@@ -1136,15 +1136,6 @@ int perform_pace(sc_card_t *card,
 		sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "EF.CardAccess", pace_output->ef_cardaccess,
 				pace_output->ef_cardaccess_length);
 
-		/* XXX Card capabilities should be determined by the OpenSC card driver. We
-		 * set it here to be able to use the nPA without patching OpenSC. By
-		 * now we have read the EF.CardAccess so the assumption to have an nPA
-		 * seems valid. */
-		// invalid for 
-		// FIXME invalid for polish EDO
-		// card->caps |= SC_CARD_CAP_APDU_EXT;
-		
-
 		eac_ctx = EAC_CTX_new();
 		if (!eac_ctx
 				|| !EAC_CTX_init_ef_cardaccess(pace_output->ef_cardaccess,
