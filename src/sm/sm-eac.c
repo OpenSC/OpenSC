@@ -612,7 +612,7 @@ static int eac_gen_auth_1_encrypted_nonce(sc_card_t *card,
 	EAC_GEN_AUTH_PACE_R *r_data = NULL;
 	unsigned char *d = NULL, *p;
 	int r, l;
-	unsigned char resp[card->max_recv_size];
+	unsigned char resp[SC_MAX_APDU_RESP_SIZE];
 
 	c_data = EAC_GEN_AUTH_PACE_C_new();
 	if (!c_data) {
@@ -691,7 +691,7 @@ static int eac_gen_auth_2_map_nonce(sc_card_t *card,
 	EAC_GEN_AUTH_PACE_R *r_data = NULL;
 	unsigned char *d = NULL, *p;
 	int r, l;
-	unsigned char resp[card->max_recv_size];
+	unsigned char resp[SC_MAX_APDU_RESP_SIZE];
 
 	c_data = EAC_GEN_AUTH_PACE_C_new();
 	if (!c_data) {
@@ -777,7 +777,7 @@ static int eac_gen_auth_3_perform_key_agreement(sc_card_t *card,
 	EAC_GEN_AUTH_PACE_R *r_data = NULL;
 	unsigned char *d = NULL, *p;
 	int r, l;
-	unsigned char resp[card->max_recv_size];
+	unsigned char resp[SC_MAX_APDU_RESP_SIZE];
 
 	c_data = EAC_GEN_AUTH_PACE_C_new();
 	if (!c_data) {
@@ -865,7 +865,7 @@ static int eac_gen_auth_4_mutual_authentication(sc_card_t *card,
 	EAC_GEN_AUTH_PACE_R *r_data = NULL;
 	unsigned char *d = NULL, *p;
 	int r, l;
-	unsigned char resp[card->max_recv_size];
+	unsigned char resp[SC_MAX_APDU_RESP_SIZE];
 
 	c_data = EAC_GEN_AUTH_PACE_C_new();
 	if (!c_data) {
@@ -1670,7 +1670,7 @@ static int eac_gen_auth_ca(sc_card_t *card, const BUF_MEM *eph_pub_key,
 	EAC_GEN_AUTH_CA_R *r_data = NULL;
 	unsigned char *d = NULL;
 	int r;
-	unsigned char resp[card->max_recv_size];
+	unsigned char resp[SC_MAX_APDU_RESP_SIZE];
 
 	c_data = EAC_GEN_AUTH_CA_C_new();
 	if (!c_data) {
