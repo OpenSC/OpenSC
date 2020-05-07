@@ -101,8 +101,8 @@ static int edo_get_can(sc_card_t* card, struct establish_pace_channel_input* pac
 static int edo_unlock(sc_card_t* card) {
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	struct establish_pace_channel_input pace_input = {};
-	struct establish_pace_channel_output pace_output = {};
+	struct establish_pace_channel_input pace_input = {0};
+	struct establish_pace_channel_output pace_output = {0};
 
 	if (SC_SUCCESS != edo_get_can(card, &pace_input)) {
 		sc_log(card->ctx, "Error reading CAN.\n");
