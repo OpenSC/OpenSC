@@ -2745,7 +2745,7 @@ piv_process_history(sc_card_t *card)
 {
 	piv_private_data_t * priv = PIV_DATA(card);
 	int r;
-	int i;
+	int i, tmplen, tmplen2, tmplen3;
 	int enumtag;
 	u8 * rbuf = NULL;
 	size_t rbuflen = 0;
@@ -2913,15 +2913,20 @@ piv_process_history(sc_card_t *card)
 			enumtag = PIV_OBJ_RETIRED_X509_1 + *keyref - 0x82;
 			/* now add the cert like another object */
 
-			i2 = sc_asn1_put_tag(0x70, NULL, certlen, NULL, 0, NULL)
-				+ sc_asn1_put_tag(0x71, NULL, 1, NULL, 0, NULL)
-				+ sc_asn1_put_tag(0xFE, NULL, 0, NULL, 0, NULL);
-			certobjlen = sc_asn1_put_tag(0x53, NULL, i2, NULL, 0, NULL);
-			if (i2 <= 0 || certobjlen <= 0) {
+			if ((tmplen = sc_asn1_put_tag(0x70, NULL, certlen, NULL, 0, NULL)) <= 0 ||
+			    (tmplen2 = sc_asn1_put_tag(0x71, NULL, 1, NULL, 0, NULL)) <= 0 ||
+			    (tmplen3 = sc_asn1_put_tag(0xFE, NULL, 0, NULL, 0, NULL)) <= 0) {
+				r = SC_ERROR_INTERNAL;
+				goto err;
+			}
+			i2 = tmplen + tmplen2 + tmplen3;
+			tmplen = sc_asn1_put_tag(0x53, NULL, i2, NULL, 0, NULL);
+			if (tmplen <= 0) {
 				r = SC_ERROR_INTERNAL;
 				goto err;
 			}
 
+			certobjlen = tmplen;
 			certobj = malloc(certobjlen);
 			if (certobj == NULL) {
 				r = SC_ERROR_OUT_OF_MEMORY;
