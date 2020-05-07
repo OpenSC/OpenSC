@@ -120,6 +120,7 @@ before_script:
   - if [ "${DO_COVERITY_SCAN}" = "yes" ]; then curl -s 'https://scan.coverity.com/scripts/travisci_build_coverity_scan.sh' | bash || true; fi
 
   - if [ "${DO_SIMULATION}" = "javacard" ]; then
+      set -ex;
       git clone https://github.com/frankmorgner/vsmartcard.git;
       cd vsmartcard/virtualsmartcard;
       autoreconf -vis && ./configure && sudo make install;
@@ -170,6 +171,7 @@ before_script:
       cd yubico-piv-tool;
       autoreconf -vis && ./configure && sudo make install;
       cd $TRAVIS_BUILD_DIR;
+      set +ex;
     fi
 
   - if [ "${DO_SIMULATION}" = "oseid" ]; then
