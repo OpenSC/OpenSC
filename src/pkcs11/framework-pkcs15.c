@@ -750,7 +750,7 @@ __pkcs15_create_pubkey_object(struct pkcs15_fw_data *fw_data,
 		object->pub_data = p15_key;
 		if (p15_key && object->pub_info->modulus_length == 0 && p15_key->algorithm == SC_ALGORITHM_RSA)
 			object->pub_info->modulus_length = 8 * p15_key->u.rsa.modulus.len;
-	} else if (!(pubkey->emulated && (fw_data->p15_card->flags & SC_PKCS15_CARD_FLAG_EMULATED))) {
+	} else {
 		sc_pkcs15_free_pubkey(p15_key);
 	}
 	if (object && object->pub_data) {
