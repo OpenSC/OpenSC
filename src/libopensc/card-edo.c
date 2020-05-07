@@ -114,6 +114,9 @@ static int edo_unlock(sc_card_t* card) {
 	struct establish_pace_channel_input pace_input = {0};
 	struct establish_pace_channel_output pace_output = {0};
 
+	memset(&pace_input, 0, sizeof pace_input);
+	memset(&pace_output, 0, sizeof pace_output);
+
 	if (SC_SUCCESS != edo_get_can(card, &pace_input)) {
 		sc_log(card->ctx, "Error reading CAN.\n");
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN);
@@ -263,7 +266,7 @@ static int edo_set_security_env(struct sc_card* card, const struct sc_security_e
 	LOG_FUNC_CALLED(card->ctx);
 	struct sc_apdu apdu;
 
-	if (env->algorithm == SC_ALGORITHM_EC && env->operation == SC_SEC_OPERATION_SIGN) {
+	if (env->algorithm == SC_ALGORITHM_EC && env->operation == SC_SEC_OPERATION_SIGN && env->flags & SC_SEC_ENV_KEY_REF_PRESENT) {
 		u8 payload[] = {0x80, 0x01, 0xcc, 0x84, 0x01, 0x80 | env->key_ref[0]};
 		sc_format_apdu_ex(&apdu, 0x00, 0x22, 0x41, 0xB6, payload, sizeof payload, NULL, 0);
 	} else
