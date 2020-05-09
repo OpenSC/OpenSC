@@ -173,6 +173,7 @@ static int gemsafe_get_cert_len(sc_card_t *card)
 	r = sc_select_file(card, &path, &file);
 	if (r != SC_SUCCESS || !file)
 		return SC_ERROR_INTERNAL;
+	sc_file_free(file);
 
 	/* Initial read */
 	r = sc_read_binary(card, 0, ibuf, GEMSAFE_READ_QUANTUM, 0);
