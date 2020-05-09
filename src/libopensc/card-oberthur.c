@@ -183,11 +183,13 @@ auth_select_aid(struct sc_card *card)
 
 	sc_format_path("3F00", &tmp_path);
 	sc_file_free(auth_current_df);
+	auth_current_df = NULL;
 	rv = iso_ops->select_file(card, &tmp_path, &auth_current_df);
 	LOG_TEST_RET(card->ctx, rv, "select parent failed");
 
 	sc_format_path("3F00", &card->cache.current_path);
 	sc_file_free(auth_current_ef);
+	auth_current_ef = NULL;
 	sc_file_dup(&auth_current_ef, auth_current_df);
 
 	memcpy(data->aid, aidAuthentIC_V5, lenAidAuthentIC_V5);
@@ -480,6 +482,7 @@ auth_select_file(struct sc_card *card, const struct sc_path *in_path,
 				tmp_file->path.len -= 2;
 
 			sc_file_free(auth_current_df);
+			auth_current_df = NULL;
 			sc_file_dup(&auth_current_df, tmp_file);
 		}
 		else   {
@@ -487,10 +490,12 @@ auth_select_file(struct sc_card *card, const struct sc_path *in_path,
 				sc_concatenate_path(&tmp_file->path, &auth_current_df->path, &path);
 
 				sc_file_free(auth_current_df);
+				auth_current_df = NULL;
 				sc_file_dup(&auth_current_df, tmp_file);
 			}
 			else   {
 				sc_file_free(auth_current_ef);
+				auth_current_ef = NULL;
 
 				sc_file_dup(&auth_current_ef, tmp_file);
 				sc_concatenate_path(&auth_current_ef->path, &auth_current_df->path, &path);
@@ -972,6 +977,7 @@ auth_create_file(struct sc_card *card, struct sc_file *file)
 	}
 
 	sc_file_free(auth_current_ef);
+	auth_current_ef = NULL;
 	sc_file_dup(&auth_current_ef, file);
 
 	LOG_FUNC_RETURN(card->ctx, rv);
@@ -1845,8 +1851,15 @@ auth_pin_reset_oberthur_style(struct sc_card *card, unsigned int type,
 				"%s: PIN CMD 'VERIFY' with pinpad failed",
 				sc_strerror(rvv));
 
-	if (auth_current_ef)
-		rv = iso_ops->select_file(card, &auth_current_ef->path, &auth_current_ef);
+	if (auth_current_ef) {
+		struct sc_file *ef = NULL;
+		rv = iso_ops->select_file(card, &auth_current_ef->path, &ef);
+		if (rv == SC_SUCCESS) {
+			sc_file_free(auth_current_ef);
+			auth_current_ef = ef;
+		} else
+			sc_file_free(ef);
+	}
 
 	if (rv > 0)
 		rv = 0;
@@ -2053,6 +2066,10 @@ auth_update_binary(struct sc_card *card, unsigned int offset,
 	int rv = 0;
 
 	LOG_FUNC_CALLED(card->ctx);
+
+	if (!auth_current_ef)
+		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS, "Invalid auth_current_ef");
+
 	sc_log(card->ctx, "offset %i; count %"SC_FORMAT_LEN_SIZE_T"u", offset,
 	       count);
 	sc_log(card->ctx, "last selected : magic %X; ef %X",
