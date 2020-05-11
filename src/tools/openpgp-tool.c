@@ -1,7 +1,7 @@
 /*
  * openpgp-tool.c: OpenPGP card utility
  *
- * Copyright (C) 2012 Peter Marschall <peter@adpm.de>
+ * Copyright (C) 2012-2020 Peter Marschall <peter@adpm.de>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -47,6 +47,7 @@
 #include "libopensc/errors.h"
 #include "util.h"
 #include "libopensc/log.h"
+#include "libopensc/card-openpgp.h"
 
 #define OPT_RAW     256
 #define OPT_PRETTY  257
@@ -194,7 +195,7 @@ static void show_version(void)
 	fprintf(stderr,
 		"openpgp-tool - OpenPGP card utility version " PACKAGE_VERSION "\n"
 		"\n"
-		"Copyright (c) 2012-18 Peter Marschall <peter@adpm.de>\n"
+		"Copyright (c) 2012-2020 Peter Marschall <peter@adpm.de>\n"
 		"Licensed under LGPL v2\n");
 }
 
@@ -292,15 +293,20 @@ static char *prettify_manufacturer(u8 *data, size_t length)
 			case 0x0008: return "LogoEmail";
 			case 0x0009: return "Fidesmo";
 			case 0x000A: return "Dangerous Things";
+			case 0x000B: return "Feitian Technologies";
 
 			case 0x002A: return "Magrathea";
 			case 0x0042: return "GnuPG e.V.";
 
 			case 0x1337: return "Warsaw Hackerspace";
 			case 0x2342: return "warpzone"; /* hackerspace Muenster.  */
+			case 0x4354: return "Confidential Technologies";   /* cotech.de */
+			case 0x5443: return "TIF-IT e.V.";
 			case 0x63AF: return "Trustica";
+			case 0xBA53: return "c-base e.V.";
 			case 0xBD0E: return "Paranoidlabs";
 			case 0xF517: return "FSIJ";
+			case 0xF5EC: return "F-Secure";
 
 			/* 0x0000 and 0xFFFF are defined as test cards per spec,
 			   0xFF00 to 0xFFFE are assigned for use with randomly created
@@ -611,19 +617,25 @@ static int do_info(sc_card_t *card, const struct ef_name_map *map)
 
 static int do_dump_do(sc_card_t *card, unsigned int tag)
 {
+	struct pgp_priv_data *priv = DRVDATA(card);
 	int r;
 	size_t length;
-	unsigned char buffer[254];	// Private DO are specified up to 254 bytes
-
-	memset(buffer, '\0', sizeof(buffer));
+	unsigned char *buffer;
 
 	if (tag < 0x101 || tag > 0x104) {
 		util_error("illegal DO identifier %04X", tag);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
-	r = sc_get_data(card, tag, buffer, sizeof(buffer));
+	buffer = calloc(priv->max_specialDO_size, sizeof(unsigned char));
+	if (buffer == NULL) {
+		util_error("error allocating memory for DO %04X", tag);
+		return SC_ERROR_OUT_OF_MEMORY;
+	}
+
+	r = sc_get_data(card, tag, buffer, priv->max_specialDO_size);
 	if (r < 0) {
+		free(buffer);
 		util_error("failed to get data object DO %04X: %s", tag, sc_strerror(r));
 		if (SC_ERROR_SECURITY_STATUS_NOT_SATISFIED == r) {
 			util_error("make sure the 'verify' and 'pin' parameters are correct");
@@ -655,12 +667,15 @@ static int do_dump_do(sc_card_t *card, unsigned int tag)
 		clearerr(stdout);
 		close(tmp);
 
-		if (length != (size_t) r)	/* fail on write errors */
+		if (length != (size_t) r) {	/* fail on write errors */
+			free(buffer);
 			return EXIT_FAILURE;
+		}
 	} else {
 		util_hex_dump_asc(stdout, buffer, length, -1);
 	}
 
+	free(buffer);
 	return EXIT_SUCCESS;
 }
 
@@ -686,8 +701,11 @@ int do_genkey(sc_card_t *card, u8 in_key_id, const char *keytype)
 
 	/* generate key depending on keytype passed */
 	if (strncasecmp("RSA", keytype, strlen("RSA")) == 0) {
-		size_t keylen = 2048;	/* default length for RSA keys */
 		const char *keylen_ptr = keytype + strlen("RSA");
+		size_t keylen = 2048;	/* default key length for RSA keys */
+		size_t expolen = 32;	/* default exponent length for RSA keys */
+		u8 keyformat = SC_OPENPGP_KEYFORMAT_RSA_STD; /* default keyformat */
+		char pathstr[SC_MAX_PATH_STRING_SIZE];
 
 		/* try to get key length from keytype, e.g. "rsa3072" -> 3072 */
 		if (strlen(keylen_ptr) > 0) {
@@ -701,14 +719,29 @@ int do_genkey(sc_card_t *card, u8 in_key_id, const char *keytype)
 			}
 		}
 
+		/* get some algorithm attributes from respective DO - ignore errors */
+		snprintf(pathstr, sizeof(pathstr), "006E007300C%d", in_key_id);
+		sc_format_path(pathstr, &path);
+		if (sc_select_file(card, &path, &file) >= 0) {
+			u8 attrs[6];	/* algorithm attrs DO for RSA is <= 6 bytes */
+
+			r = sc_read_binary(card, 0, attrs, sizeof(attrs), 0);
+			if (r >= 5 && attrs[0] == SC_OPENPGP_KEYALGO_RSA) {
+				expolen = (unsigned short) attrs[3] << 8
+			                | (unsigned short) attrs[4];
+				if (r > 5)
+					keyformat = attrs[5];
+			}
+		}
+
 		/* set key_info */
 		key_info.key_id = in_key_id;
 		key_info.algorithm = SC_OPENPGP_KEYALGO_RSA;
 		key_info.u.rsa.modulus_len = keylen;
 		key_info.u.rsa.modulus = calloc(BYTES4BITS(keylen), 1);
-		/* The OpenPGP supports only 32-bit exponent. */
-		key_info.u.rsa.exponent_len = 32;
-		key_info.u.rsa.exponent = calloc(BYTES4BITS(key_info.u.rsa.exponent_len), 1);
+		key_info.u.rsa.exponent_len = expolen;
+		key_info.u.rsa.exponent = calloc(BYTES4BITS(expolen), 1);
+		key_info.u.rsa.keyformat = keyformat;
 
 		r = sc_card_ctl(card, SC_CARDCTL_OPENPGP_GENERATE_KEY, &key_info);
 		free(key_info.u.rsa.modulus);
@@ -875,6 +908,14 @@ int main(int argc, char **argv)
 	r = sc_context_create(&ctx, &ctx_param);
 	if (r) {
 		util_fatal("failed to establish context: %s", sc_strerror(r));
+		return EXIT_FAILURE;
+	}
+
+	/* force OpenPGP card driver */
+	r = sc_set_card_driver(ctx, "openpgp");
+	if (r) {
+		sc_release_context(ctx);
+		util_fatal("OpenPGP card driver not found!\n");
 		return EXIT_FAILURE;
 	}
 

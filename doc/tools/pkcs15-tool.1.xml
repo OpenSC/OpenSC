@@ -310,16 +310,27 @@
 
 				<varlistentry>
 					<term>
-						<option>--pin</option> <replaceable>PIN</replaceable>
+						<option>--pin</option> <replaceable>pin</replaceable>,
+						<option>--new-pin</option> <replaceable>newpin</replaceable>
+						<option>--puk</option> <replaceable>puk</replaceable>
 					</term>
-					<listitem><para>Specify PIN</para></listitem>
-				</varlistentry>
-
-				<varlistentry>
-					<term>
-						<option>--puk</option> <replaceable>PUK</replaceable>
-					</term>
-					<listitem><para>Specify Unblock PIN</para></listitem>
+					<listitem>
+						<para>
+							These options can be used to specify the PIN/PUK values
+							on the command line. If the value is set to
+							<literal>env:</literal><replaceable>VARIABLE</replaceable>, the value
+							of the specified environment variable is used. By default,
+							the code is prompted on the command line if needed.
+						</para>
+						<para>
+							Note that on most operation systems, any user can
+							display the command line of any process on the
+							system using utilities such as
+							<command>ps(1)</command>. Therefore, you should prefer
+							passing the codes via an environment variable
+							on an unsecured system.
+						</para>
+					</listitem>
 				</varlistentry>
 
 				<varlistentry>

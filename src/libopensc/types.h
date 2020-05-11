@@ -52,9 +52,11 @@ typedef unsigned char u8;
 
 /* When changing this value, pay attention to the initialization of the ASN1
  * static variables that use this macro, like, for example,
- * 'c_asn1_supported_algorithms' in src/libopensc/pkcs15.c
+ * 'c_asn1_supported_algorithms' in src/libopensc/pkcs15.c,
+ * src/libopensc/pkcs15-prkey.c and src/libopensc/pkcs15-skey.c
+ * `grep "src/libopensc/types.h SC_MAX_SUPPORTED_ALGORITHMS  defined as"'
  */
-#define SC_MAX_SUPPORTED_ALGORITHMS	8
+#define SC_MAX_SUPPORTED_ALGORITHMS	16
 
 struct sc_lv_data {
 	unsigned char *value;
@@ -209,6 +211,7 @@ typedef struct sc_acl_entry {
 } sc_acl_entry_t;
 
 /* File types */
+#define SC_FILE_TYPE_UNKNOWN		0x00
 #define SC_FILE_TYPE_DF			0x04
 #define SC_FILE_TYPE_INTERNAL_EF	0x03
 #define SC_FILE_TYPE_WORKING_EF		0x01

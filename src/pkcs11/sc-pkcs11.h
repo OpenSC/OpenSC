@@ -65,7 +65,6 @@ struct sc_pkcs11_slot;
 struct sc_pkcs11_card;
 
 struct sc_pkcs11_config {
-	unsigned int plug_and_play;
 	unsigned int max_virtual_slots;
 	unsigned int slots_per_card;
 	unsigned char lock_login;
@@ -227,6 +226,12 @@ struct sc_pkcs11_slot {
 };
 typedef struct sc_pkcs11_slot sc_pkcs11_slot_t;
 
+/* Debug virtual slots. S is slot to be highlighted or NULL
+ * C is a comment format string and args It will be preceeded by "VSS " */
+#define DEBUG_VSS(S, ...) do { sc_log(context,"VSS " __VA_ARGS__); _debug_virtual_slots(S); } while (0)
+
+/* called by DEBUG_VSS to print table of virtual slots */
+void  _debug_virtual_slots(sc_pkcs11_slot_t *p);
 
 /* Forward decl */
 typedef struct sc_pkcs11_operation sc_pkcs11_operation_t;
@@ -361,7 +366,7 @@ void sc_pkcs11_print_attrs(int level, const char *file, unsigned int line, const
 CK_RV card_removed(sc_reader_t *reader);
 CK_RV card_detect_all(void);
 CK_RV create_slot(sc_reader_t *reader);
-CK_RV initialize_reader(sc_reader_t *reader);
+void init_slot_info(CK_SLOT_INFO_PTR pInfo, sc_reader_t *reader);
 CK_RV card_detect(sc_reader_t *reader);
 CK_RV slot_get_slot(CK_SLOT_ID id, struct sc_pkcs11_slot **);
 CK_RV slot_get_token(CK_SLOT_ID id, struct sc_pkcs11_slot **);

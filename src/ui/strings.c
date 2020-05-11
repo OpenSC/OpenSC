@@ -34,8 +34,12 @@ static const char *get_inserted_text(struct sc_pkcs15_card *p15card, struct sc_a
 	static char text[3*SC_MAX_ATR_SIZE] = {0};
 	const char prefix[] = "ATR: ";
 
-	if (p15card && p15card->card && p15card->card->name) {
+	if (p15card && p15card->card
+			&& p15card->card->name) {
 		return p15card->card->name;
+	} else if (p15card && p15card->card
+			&& p15card->card->reader && p15card->card->reader->name) {
+		return p15card->card->reader->name;
 	}
 
 	if (!atr)
@@ -192,7 +196,7 @@ const char *ui_get_str(struct sc_context *ctx, struct sc_atr *atr,
 					str = "Dieses Fenster wird automatisch geschlossen, wenn die PIN am PIN-Pad eingegeben wurde (Timeout typischerweise nach 30 Sekunden).";
 					break;
 				case NOTIFY_CARD_INSERTED:
-					if (p15card) {
+					if (p15card && p15card->card && p15card->card->name) {
 						str = "Smartcard kann jetzt verwendet werden";
 					} else {
 						str = "Smartcard erkannt";
@@ -260,7 +264,7 @@ const char *ui_get_str(struct sc_context *ctx, struct sc_atr *atr,
 					str = "This window will be closed automatically after the PIN has been submitted on the PIN pad (timeout typically after 30 seconds).";
 					break;
 				case NOTIFY_CARD_INSERTED:
-					if (p15card) {
+					if (p15card && p15card->card && p15card->card->name) {
 						str = "Smart card is ready to use";
 					} else {
 						str = "Smart card detected";

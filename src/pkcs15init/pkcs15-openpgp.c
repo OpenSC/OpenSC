@@ -119,6 +119,7 @@ static int openpgp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_pkcs15_prkey_info_t *kinfo = (sc_pkcs15_prkey_info_t *) obj->data;
 	sc_cardctl_openpgp_keystore_info_t key_info;
 	int r;
+	unsigned int i;
 
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -150,8 +151,18 @@ static int openpgp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		key_info.key_id = kinfo->id.value[0];
 		key_info.u.ec.privateD = key->u.ec.privateD.data;
 		key_info.u.ec.privateD_len = key->u.ec.privateD.len;
-		key_info.u.ec.ecpoint = key->u.ec.ecpointQ.value;
-		key_info.u.ec.ecpoint_len = key->u.ec.ecpointQ.len;
+		key_info.u.ec.ecpointQ = key->u.ec.ecpointQ.value;
+		key_info.u.ec.ecpointQ_len = key->u.ec.ecpointQ.len;
+		/* extract oid the way we need to import it to OpenPGP Card */
+		if (key->u.ec.params.der.len > 2)
+			key_info.u.ec.oid_len = key->u.ec.params.der.value[1];
+		else
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
+		for (i=0; (i < key_info.u.ec.oid_len) && (i+2 < key->u.ec.params.der.len); i++){
+			key_info.u.ec.oid.value[i] = key->u.ec.params.der.value[i+2];
+		}
+		key_info.u.ec.oid.value[key_info.u.ec.oid_len] = -1;
 		r = sc_card_ctl(card, SC_CARDCTL_OPENPGP_STORE_KEY, &key_info);
 		break;
 	default:

@@ -171,6 +171,8 @@ int sc_enum_apps(sc_card_t *card)
 
 	sc_format_path("3F002F00", &path);
 	r = sc_select_file(card, &path, &ef_dir);
+	if (r < 0)
+		sc_file_free(ef_dir);
 	LOG_TEST_RET(ctx, r, "Cannot select EF.DIR file");
 
 	if (ef_dir->type != SC_FILE_TYPE_WORKING_EF) {

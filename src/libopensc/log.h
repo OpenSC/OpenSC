@@ -37,6 +37,7 @@ enum {
 	SC_LOG_DEBUG_SM,		/* secure messaging */
 	SC_LOG_DEBUG_ASN1,		/* asn1.c */
 	SC_LOG_DEBUG_MATCH,		/* card matching */
+	SC_LOG_DEBUG_PIN,		/* PIN commands */
 };
 
 #define SC_COLOR_FG_RED			0x0001

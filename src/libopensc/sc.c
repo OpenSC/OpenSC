@@ -227,6 +227,16 @@ unsigned short lebytes2ushort(const u8 *buf)
 		| (unsigned short)buf[0];
 }
 
+unsigned long lebytes2ulong(const u8 *buf)
+{
+	if (buf == NULL)
+		return 0UL;
+	return (unsigned long)buf[3] << 24
+		| (unsigned long)buf[2] << 16
+		| (unsigned long)buf[1] << 8
+		| (unsigned long)buf[0];
+}
+
 void sc_init_oid(struct sc_object_id *oid)
 {
 	int ii;
@@ -892,7 +902,7 @@ void *sc_mem_secure_alloc(size_t len)
 		len = pages * page_size;
 	}
 
-	p = malloc(len);
+	p = calloc(1, len);
 	if (p == NULL) {
 		return NULL;
 	}
@@ -918,7 +928,13 @@ void sc_mem_secure_free(void *ptr, size_t len)
 void sc_mem_clear(void *ptr, size_t len)
 {
 	if (len > 0)   {
-#ifdef ENABLE_OPENSSL
+#ifdef HAVE_MEMSET_S
+		memset_s(ptr, len, 0, len);
+#elif _WIN32
+		SecureZeroMemory(ptr, len);
+#elif HAVE_EXPLICIT_BZERO
+		explicit_bzero(ptr, len);
+#elif ENABLE_OPENSSL
 		OPENSSL_cleanse(ptr, len);
 #else
 		memset(ptr, 0, len);

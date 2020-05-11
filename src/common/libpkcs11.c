@@ -100,7 +100,6 @@ C_UnloadModule(void *module)
 	if (mod->handle != NULL && sc_dlclose(mod->handle) < 0)
 		return CKR_FUNCTION_FAILED;
 
-	memset(mod, 0, sizeof(*mod));
 	free(mod);
 	return CKR_OK;
 }

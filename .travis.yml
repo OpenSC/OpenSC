@@ -4,6 +4,7 @@ matrix:
   include:
     - compiler: clang
       os: osx
+      osx_image: xcode9.4
       env: DO_PUSH_ARTIFACT=yes
     - compiler: gcc
       os: linux
@@ -11,13 +12,11 @@ matrix:
       env:
         - DO_SIMULATION=javacard
         - ENABLE_DOC=--enable-doc
-      sudo: true
     - compiler: gcc
       os: linux
       dist: bionic
       env:
         - DO_SIMULATION=oseid
-      sudo: true
     - env:
         - HOST=x86_64-w64-mingw32
         - DO_PUSH_ARTIFACT=yes
@@ -30,7 +29,6 @@ matrix:
       dist: bionic
       env:
         - DO_SIMULATION=cac
-      sudo: true
 
 env:
   global:
@@ -68,12 +66,17 @@ addons:
 before_install:
   # brew install gengetopt help2man cmocka ccache llvm;
   # export PATH="/usr/local/opt/ccache/libexec:/usr/local/opt/llvm/bin:$PATH";
+  # add magic notarization flags for macOS, see https://github.com/akeru-inc/xcnotary/blob/master/README.md
   - if [ "$TRAVIS_OS_NAME" = "osx" ]; then
         brew update;
         brew uninstall libtool;
         brew install libtool;
         brew install gengetopt help2man cmocka ccache;
         export PATH="/usr/local/opt/ccache/libexec:$PATH";
+        openssl aes-256-cbc -K $encrypted_3b9f0b9d36d1_key -iv $encrypted_3b9f0b9d36d1_iv -in .github/secrets.tar.enc -out .github/secrets.tar -d;
+        .github/add_signing_key.sh;
+        export OTHER_CODE_SIGN_FLAGS=--timestamp CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO CODE_SIGN_STYLE=Manual;
+        git clone https://github.com/frankmorgner/OpenSCToken.git;
     fi
   - if [ "${DO_SIMULATION}" = "cac" ]; then
         sudo apt-get install -y libglib2.0-dev libnss3-dev  pkgconf libtool make autoconf autoconf-archive automake libsofthsm2-dev softhsm2 softhsm2-common help2man gnutls-bin libcmocka-dev libusb-dev libudev-dev flex libnss3-tools libssl-dev libpcsclite1;
@@ -102,8 +105,11 @@ before_script:
       if [ ! -f "$(winepath 'C:/Program Files (x86)/Inno Setup 5/ISCC.exe')" ]; then
         /sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_99.pid --make-pidfile --background --exec /usr/bin/Xvfb -- :99 -ac -screen 0 1280x1024x16;
         export DISPLAY=:99.0;
+        [ -d isetup ] || mkdir isetup;
+        pushd isetup;
         [ -f isetup-5.5.6.exe ] || wget http://files.jrsoftware.org/is/5/isetup-5.5.6.exe;
         wine isetup-5.5.6.exe /SILENT /VERYSILENT /SP- /SUPPRESSMSGBOXES /NORESTART;
+        popd;
       fi;
       unset CC;
       unset CXX;
@@ -283,7 +289,7 @@ script:
     fi
   - if [ "${DO_SIMULATION}" = "cac" ]; then
       cd $TRAVIS_BUILD_DIR;
-      make check && sudo make install || (cat tests/*log && exit);
+      make check && sudo make install || (cat tests/*log src/tests/unittests/*log && exit);
       export LD_LIBRARY_PATH=/usr/local/lib;
       cd src/tests/p11test/;
       ./p11test -s 0 -p 12345678 -i &
@@ -309,6 +315,10 @@ after_script:
       git config --global user.name "Travis CI";
       .github/push_artifacts.sh "Travis CI build ${TRAVIS_JOB_NUMBER}";
     fi
+  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then
+      .github/remove_signing_key.sh;
+      rm -f .github/secrets.tar;
+    fi
 
 before_cache:
   - brew cleanup
@@ -321,5 +331,4 @@ cache:
     - $HOME/Library/Caches/Homebrew
     - openssl_bin
     - openpace_bin
-  files:
-    - isetup-5.5.6.exe
+    - isetup

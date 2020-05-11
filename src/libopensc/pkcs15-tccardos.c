@@ -50,12 +50,14 @@ static int read_file(struct sc_card *card, const char *file, u8 *buf,
 
 	sc_format_path(file, &path);
 	r = sc_select_file(card, &path, &fid);
-	if (r != SC_SUCCESS || !fid)
+	if (r != SC_SUCCESS)
 		return r;
+	if (!fid)
+		return SC_ERROR_INTERNAL;
 	if (fid->size < *len)
 		*len = fid->size;
 	r = sc_read_binary(card, 0, buf, *len, 0);
-	free(fid);
+	sc_file_free(fid);
 	if ((size_t)r < *len)
 		return SC_ERROR_INTERNAL;
 
@@ -343,8 +345,7 @@ static int sc_pkcs15_tccardos_init_func(sc_pkcs15_card_t *p15card)
 	if (r != SC_SUCCESS || file == NULL)
 		return SC_ERROR_INTERNAL;
 	/* set the application DF */
-	if (p15card->file_app)
-		free(p15card->file_app);
+	sc_file_free(p15card->file_app);
 	p15card->file_app = file;
 
 	return SC_SUCCESS;

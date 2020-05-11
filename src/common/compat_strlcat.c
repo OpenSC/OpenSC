@@ -31,7 +31,7 @@
 #include "config.h"
 #endif
 
-#ifndef HAVE_STRLCAT
+#if !defined(HAVE_DECL_STRLCAT) || !HAVE_DECL_STRLCAT
 #include <sys/types.h>
 #include <string.h>
 

@@ -1104,7 +1104,7 @@ sc_log(card->ctx,  "DEE Adding pin %d label=%s",i, label);
 				if (ckis[i].cert_keyUsage_present) {
 					pubkey_info.usage = ckis[i].pub_usage;
 				} else {
-				    pubkey_info.usage = pubkeys[i].usage_ec;
+					pubkey_info.usage = pubkeys[i].usage_ec;
 				}
 
 				pubkey_info.field_length = ckis[i].pubkey_len; 

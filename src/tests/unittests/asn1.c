@@ -439,6 +439,124 @@ static void torture_asn1_decode_entry_bit_string_ni(void **state)
 	assert_memory_equal(bit_string + 1, result, resultlen/8);
 }
 
+static void torture_asn1_put_tag_short(void **state)
+{
+	unsigned int tag = 0xAC;
+	const u8 expected[] = {0xAC, 0x01, 0x02};
+	const u8 data[] = {0x02};
+	size_t data_len = 1;
+	u8 out[10];
+	size_t out_len = sizeof(out);
+	u8 *p = out;
+	int rv;
+
+	/* Without the out and out_len we are getting expected length */
+	rv = sc_asn1_put_tag(tag, data, data_len, NULL, 0, &p);
+	assert_int_equal(rv, sizeof(expected));
+	assert_ptr_equal(p, out);
+
+	/* Now we do the actual encoding */
+	rv = sc_asn1_put_tag(tag, data, data_len, out, out_len, &p);
+	assert_int_equal(rv, SC_SUCCESS);
+	assert_memory_equal(out, expected, sizeof(expected));
+	assert_ptr_equal(p, out + sizeof(expected));
+
+	/* Short buffer */
+	rv = sc_asn1_put_tag(tag, data, data_len, out, 2, &p);
+	assert_int_equal(rv, SC_ERROR_BUFFER_TOO_SMALL);
+}
+
+static void torture_asn1_put_tag_long_tag(void **state)
+{
+	/* Max supported value already encoded as ASN1 tag */
+	unsigned int tag = 0xFFFFFF7F;
+	const u8 expected[] = {0xFF, 0xFF, 0xFF, 0x7F, 0x01, 0x02};
+	const u8 data[] = {0x02};
+	size_t data_len = 1;
+	u8 out[10];
+	size_t out_len = sizeof(out);
+	u8 *p = out;
+	int rv;
+
+	/* Without the out and out_len we are getting expected length */
+	rv = sc_asn1_put_tag(tag, data, data_len, NULL, 0, &p);
+	assert_int_equal(rv, sizeof(expected));
+	assert_ptr_equal(p, out);
+
+	/* Now we do the actual encoding */
+	rv = sc_asn1_put_tag(tag, data, data_len, out, out_len, &p);
+	assert_int_equal(rv, SC_SUCCESS);
+	assert_memory_equal(out, expected, sizeof(expected));
+	assert_ptr_equal(p, out + sizeof(expected));
+
+	/* The buffer is too small */
+	rv = sc_asn1_put_tag(tag, data, data_len, out, 5, &p);
+	assert_int_equal(rv, SC_ERROR_BUFFER_TOO_SMALL);
+
+	/* the MSB of last byte needs to be 0 */
+	tag = 0xFFFFFF8F;
+	rv = sc_asn1_put_tag(tag, data, data_len, NULL, 0, NULL);
+	assert_int_equal(rv, SC_ERROR_INVALID_DATA);
+
+	/* the MSB of all byts needs to be 1 */
+	tag = 0xFFFF7F7F;
+	rv = sc_asn1_put_tag(tag, data, data_len, NULL, 0, NULL);
+	assert_int_equal(rv, SC_ERROR_INVALID_DATA);
+
+	/* Fisrt byte has bits 5-1 set to 1 */
+	tag = 0xE0FFFF7F;
+	rv = sc_asn1_put_tag(tag, data, data_len, NULL, 0, NULL);
+	assert_int_equal(rv, SC_ERROR_INVALID_DATA);
+}
+
+static void torture_asn1_put_tag_long_data(void **state)
+{
+	unsigned int tag = 0xAC;
+	const u8 expected[131] = {0xAC, 0x81, 0x80, 0x00, /* the rest is zero */};
+	const u8 data[128] = {0};
+	size_t data_len = sizeof(data);
+	u8 out[200];
+	size_t out_len = sizeof(out);
+	u8 *p = out;
+	int rv;
+
+	/* Without the out and out_len we are getting expected length */
+	rv = sc_asn1_put_tag(tag, data, data_len, NULL, 0, &p);
+	assert_int_equal(rv, sizeof(expected));
+	assert_ptr_equal(p, out);
+
+	/* Now we do the actual encoding */
+	rv = sc_asn1_put_tag(tag, data, data_len, out, out_len, &p);
+	assert_int_equal(rv, SC_SUCCESS);
+	assert_memory_equal(out, expected, sizeof(expected));
+	assert_ptr_equal(p, out + sizeof(expected));
+
+	/* The buffer is too small */
+	rv = sc_asn1_put_tag(tag, data, data_len, out, 130, &p);
+	assert_int_equal(rv, SC_ERROR_BUFFER_TOO_SMALL);
+}
+
+static void torture_asn1_put_tag_without_data(void **state)
+{
+	unsigned int tag = 0xAC;
+	const u8 expected[] = {0xAC, 0x01};
+	size_t data_len = 1;
+	u8 out[10];
+	size_t out_len = sizeof(out);
+	u8 *p = out;
+	int rv;
+
+	/* Without the out and out_len we are getting expected length */
+	rv = sc_asn1_put_tag(tag, NULL, data_len, NULL, 0, &p);
+	assert_int_equal(rv, sizeof(expected) + data_len);
+	assert_ptr_equal(p, out);
+
+	/* Now we do the actual encoding, but data field is not filled */
+	rv = sc_asn1_put_tag(tag, NULL, data_len, out, out_len, &p);
+	assert_int_equal(rv, SC_SUCCESS);
+	assert_memory_equal(out, expected, sizeof(expected));
+	assert_ptr_equal(p, out + sizeof(expected));
+}
 
 int main(void)
 {
@@ -502,6 +620,11 @@ int main(void)
 			setup_sc_context, teardown_sc_context),
 		cmocka_unit_test_setup_teardown(torture_asn1_decode_entry_bit_string_ni,
 			setup_sc_context, teardown_sc_context),
+		/* put_tag() */
+		cmocka_unit_test(torture_asn1_put_tag_short),
+		cmocka_unit_test(torture_asn1_put_tag_without_data),
+		cmocka_unit_test(torture_asn1_put_tag_long_tag),
+		cmocka_unit_test(torture_asn1_put_tag_long_data),
 	};
 
 	rc = cmocka_run_group_tests(tests, NULL, NULL);

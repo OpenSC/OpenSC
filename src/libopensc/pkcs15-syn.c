@@ -43,22 +43,24 @@ struct sc_pkcs15_emulator_handler builtin_emulators[] = {
 	{ "itacns",	sc_pkcs15emu_itacns_init_ex	},
 	{ "PIV-II",     sc_pkcs15emu_piv_init_ex	},
 	{ "cac",        sc_pkcs15emu_cac_init_ex	},
+	{ "idprime",    sc_pkcs15emu_idprime_init_ex	},
 	{ "gemsafeGPK",	sc_pkcs15emu_gemsafeGPK_init_ex	},
 	{ "gemsafeV1",	sc_pkcs15emu_gemsafeV1_init_ex	},
 	{ "actalis",	sc_pkcs15emu_actalis_init_ex	},
 	{ "atrust-acos",sc_pkcs15emu_atrust_acos_init_ex},
 	{ "tccardos",	sc_pkcs15emu_tccardos_init_ex	},
-	{ "entersafe",  sc_pkcs15emu_entersafe_init_ex  },
+	{ "entersafe",  sc_pkcs15emu_entersafe_init_ex	},
 	{ "pteid",	sc_pkcs15emu_pteid_init_ex	},
 	{ "oberthur",   sc_pkcs15emu_oberthur_init_ex	},
 	{ "sc-hsm",	sc_pkcs15emu_sc_hsm_init_ex	},
-	{ "dnie",       sc_pkcs15emu_dnie_init_ex   },
-	{ "gids",       sc_pkcs15emu_gids_init_ex   },
-	{ "iasecc",	sc_pkcs15emu_iasecc_init_ex   },
-	{ "jpki",	sc_pkcs15emu_jpki_init_ex },
+	{ "dnie",       sc_pkcs15emu_dnie_init_ex	},
+	{ "gids",       sc_pkcs15emu_gids_init_ex	},
+	{ "iasecc",	sc_pkcs15emu_iasecc_init_ex	},
+	{ "jpki",	sc_pkcs15emu_jpki_init_ex	},
 	{ "coolkey",    sc_pkcs15emu_coolkey_init_ex	},
-	{ "din66291",    sc_pkcs15emu_din_66291_init_ex	},
-	{ "esteid2018",    sc_pkcs15emu_esteid2018_init_ex	},
+	{ "din66291",   sc_pkcs15emu_din_66291_init_ex	},
+	{ "esteid2018", sc_pkcs15emu_esteid2018_init_ex	},
+	{ "cardos",     sc_pkcs15emu_cardos_init_ex	},
 
 	{ NULL, NULL }
 };
@@ -94,6 +96,8 @@ int sc_pkcs15_is_emulation_only(sc_card_t *card)
 		case SC_CARD_TYPE_PIV_II_NEO:
 		case SC_CARD_TYPE_PIV_II_YUBIKEY4:
 		case SC_CARD_TYPE_ESTEID_2018:
+		case SC_CARD_TYPE_CARDOS_V5_0:
+		case SC_CARD_TYPE_CARDOS_V5_3:
 
 			return 1;
 		default:

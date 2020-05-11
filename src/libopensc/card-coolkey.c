@@ -1382,6 +1382,9 @@ coolkey_fill_object(sc_card_t *card, sc_cardctl_coolkey_object_t *obj)
 				priv->nonce, sizeof(priv->nonce));
 	if (r != (int)buf_len) {
 		free(new_obj_data);
+		if (r < 0) {
+			LOG_FUNC_RETURN(card->ctx, r);
+		}
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_CORRUPTED_DATA);
 	}
 	obj_entry = coolkey_find_object_by_id(&priv->objects_list, obj->id);
@@ -2059,16 +2062,27 @@ coolkey_process_combined_object(sc_card_t *card, coolkey_private_data_t *priv, u
 	}
 	memcpy(priv->token_name, &decompressed_header->token_name[0],
 							decompressed_header->token_name_length);
-	priv->token_name[decompressed_header->token_name_length] = 0;
+	priv->token_name[decompressed_header->token_name_length] = '\0';
 	priv->token_name_length = decompressed_header->token_name_length;
 
 
-	for (i=0; i < object_count && object_offset < decompressed_object_len; i++ ) {
-		u8 *current_object = &decompressed_object[object_offset];
-		coolkey_combined_object_header_t *object_header =
-				(coolkey_combined_object_header_t *)current_object;
-		unsigned long object_id = bebytes2ulong(object_header->object_id);
+	for (i=0; i < object_count; i++) {
+		u8 *current_object = NULL;
+		coolkey_combined_object_header_t *object_header = NULL;
+		unsigned long object_id;
 		int current_object_len;
+
+		/* Can we read the object header at all? */
+		if ((object_offset + sizeof(coolkey_combined_object_header_t)) > decompressed_object_len) {
+			r = SC_ERROR_CORRUPTED_DATA;
+			goto done;
+		}
+
+		current_object = &decompressed_object[object_offset];
+		object_header = (coolkey_combined_object_header_t *)current_object;
+
+		/* Parse object ID */
+		object_id = bebytes2ulong(object_header->object_id);
 
 		/* figure out how big it is */
 		r = coolkey_v1_get_object_length(current_object, decompressed_object_len-object_offset);
@@ -2152,7 +2166,7 @@ static int coolkey_initialize(sc_card_t *card)
 	r = coolkey_list_object(card, COOLKEY_LIST_RESET, &object_info);
 	while (r >= 0) {
 		unsigned long object_id;
-		unsigned short object_len;
+		unsigned long object_len;
 
 		/* The card did not return what we expected: Lets try other objects */
 		if ((size_t)r < (sizeof(object_info)))
@@ -2162,7 +2176,11 @@ static int coolkey_initialize(sc_card_t *card)
 
 		object_id = bebytes2ulong(object_info.object_id);
 		object_len = bebytes2ulong(object_info.object_length);
-
+		/* Avoid insanely large data */
+		if (object_len > MAX_FILE_SIZE) {
+			r = SC_ERROR_CORRUPTED_DATA;
+			goto cleanup;
+		}
 
 		/* the combined object is a single object that can store the other objects.
 		 * most coolkeys provisioned by TPS has a single combined object that is
@@ -2189,7 +2207,7 @@ static int coolkey_initialize(sc_card_t *card)
 			}
 			combined_processed = 1;
 		} else {
-			sc_log(card->ctx, "Add new object id=%ld, len=%u", object_id, object_len);
+			sc_log(card->ctx, "Add new object id=%ld, len=%lu", object_id, object_len);
 			r = coolkey_add_object(priv, object_id, NULL, object_len, 0);
 			if (r != SC_SUCCESS)
 				sc_log(card->ctx, "coolkey_add_object() returned %d", r);

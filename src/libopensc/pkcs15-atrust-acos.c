@@ -253,8 +253,7 @@ static int sc_pkcs15emu_atrust_acos_init(sc_pkcs15_card_t *p15card)
 	if (r != SC_SUCCESS || !file)
 		return SC_ERROR_INTERNAL;
 	/* set the application DF */
-	if (p15card->file_app)
-		free(p15card->file_app);
+	sc_file_free(p15card->file_app);
 	p15card->file_app = file;
 
 	return SC_SUCCESS;

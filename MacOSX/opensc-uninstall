@@ -6,6 +6,8 @@ if [ "$(id -u)" != "0" ]; then
    exit 1
 fi
 
+pluginkit -r -i org.opensc-project.mac.opensctoken.OpenSCTokenApp.OpenSCToken
+
 for f in \
 	/Library/OpenSC/bin/* \
 	/Library/OpenSC/etc/bash_completion.d/* \

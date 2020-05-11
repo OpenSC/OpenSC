@@ -173,6 +173,7 @@ static int gemsafe_get_cert_len(sc_card_t *card)
 	r = sc_select_file(card, &path, &file);
 	if (r != SC_SUCCESS || !file)
 		return SC_ERROR_INTERNAL;
+	sc_file_free(file);
 
 	/* Initial read */
 	r = sc_read_binary(card, 0, ibuf, GEMSAFE_READ_QUANTUM, 0);
@@ -425,8 +426,7 @@ static int sc_pkcs15emu_gemsafeV1_init( sc_pkcs15_card_t *p15card)
 	if (r != SC_SUCCESS || !file)
 		return SC_ERROR_INTERNAL;
 	/* set the application DF */
-	if (p15card->file_app)
-		free(p15card->file_app);
+	sc_file_free(p15card->file_app);
 	p15card->file_app = file;
 
 	return SC_SUCCESS;

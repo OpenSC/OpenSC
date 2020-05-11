@@ -10,9 +10,11 @@
 #include "config.h"
 #endif
 
-#ifndef HAVE_STRLCAT
+#if !defined(HAVE_DECL_STRLCAT) || !HAVE_DECL_STRLCAT
 #include <stddef.h>
 size_t strlcat(char *dst, const char *src, size_t siz);
+#else
+#include <string.h>
 #endif
 
 #endif

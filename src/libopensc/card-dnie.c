@@ -904,22 +904,6 @@ static int dnie_finish(struct sc_card *card)
 /* ISO 7816-4 functions */
 
 /**
- * Convert little-endian data into unsigned long.
- *
- * @param pt pointer to little-endian data
- * @return equivalent long
- */
-static unsigned long le2ulong(u8 * pt)
-{
-	unsigned long res = 0L;
-	if (pt==NULL) return res;
-	res = (0xff & *(pt + 0)) +
-	    ((0xff & *(pt + 1)) << 8) +
-	    ((0xff & *(pt + 2)) << 16) + ((0xff & *(pt + 3)) << 24);
-	return res;
-}
-
-/**
  * Uncompress data if in compressed format.
  *
  * @param card pointer to sc_card_t structure
@@ -944,13 +928,16 @@ static u8 *dnie_uncompress(sc_card_t * card, u8 * from, size_t *len)
 	if (*len < 8)
 		goto compress_exit;
 	/* evaluate compressed an uncompressed sizes (little endian format) */
-	uncompressed = le2ulong(from);
-	compressed = le2ulong(from + 4);
+	uncompressed = lebytes2ulong(from);
+	compressed = lebytes2ulong(from + 4);
 	/* if compressed size doesn't match data length assume not compressed */
 	if (compressed != (*len) - 8)
 		goto compress_exit;
 	/* if compressed size greater than uncompressed, assume uncompressed data */
 	if (uncompressed < compressed)
+		goto compress_exit;
+	/* Do not try to allocate insane size if we receive bogus data */
+	if (uncompressed > MAX_FILE_SIZE)
 		goto compress_exit;
 
 	sc_log(card->ctx, "Data seems to be compressed. calling uncompress");
@@ -960,16 +947,15 @@ static u8 *dnie_uncompress(sc_card_t * card, u8 * from, size_t *len)
 		sc_log(card->ctx, "alloc() for uncompressed buffer failed");
 		return NULL;
 	}
+	*len = uncompressed;
 	res = sc_decompress(upt,	/* try to uncompress by calling sc_xx routine */
-			    (size_t *) & uncompressed,
+			    len,
 			    from + 8, (size_t) compressed, COMPRESSION_ZLIB);
-	/* TODO: check that returned uncompressed size matches expected */
 	if (res != SC_SUCCESS) {
 		sc_log(card->ctx, "Uncompress() failed or data not compressed");
 		goto compress_exit;	/* assume not need uncompression */
 	}
 	/* Done; update buffer len and return pt to uncompressed data */
-	*len = uncompressed;
 	sc_log_hex(card->ctx, "Compressed data", from + 8, compressed);
 	sc_log_hex(card->ctx, "Uncompressed data", upt, uncompressed);
  compress_exit:
@@ -1161,8 +1147,6 @@ static int dnie_compose_and_send_apdu(sc_card_t *card, const u8 *path, size_t pa
 	int res = 0;
 	sc_apdu_t apdu;
 	u8 rbuf[MAX_RESP_BUFFER_SIZE];
-	sc_file_t *file = NULL;
-
 	sc_context_t *ctx = NULL;
 
 	if (!card || !card->ctx)
@@ -1199,14 +1183,15 @@ static int dnie_compose_and_send_apdu(sc_card_t *card, const u8 *path, size_t pa
 		LOG_FUNC_RETURN(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
 	}
 
-	/* finally process FCI response */
-	file = sc_file_new();
-	if (file == NULL) {
-		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+	if (file_out) {
+		/* finally process FCI response */
+		sc_file_free(*file_out);
+		*file_out = sc_file_new();
+		if (*file_out == NULL) {
+			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+		}
+		res = card->ops->process_fci(card, *file_out, apdu.resp + 2, apdu.resp[1]);
 	}
-	res = card->ops->process_fci(card, file, apdu.resp + 2, apdu.resp[1]);
-	sc_file_free(*file_out);
-	*file_out = file;
 	LOG_FUNC_RETURN(ctx, res);
 }
 
@@ -1907,8 +1892,8 @@ static int dnie_read_header(struct sc_card *card)
 	/* check response */
 	if (apdu.resplen != 8)
 		goto header_notcompressed;
-	uncompressed = le2ulong(apdu.resp);
-	compressed = le2ulong(apdu.resp + 4);
+	uncompressed = lebytes2ulong(apdu.resp);
+	compressed = lebytes2ulong(apdu.resp + 4);
 	if (uncompressed < compressed)
 		goto header_notcompressed;
 	if (uncompressed > 32767)

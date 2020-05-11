@@ -64,9 +64,17 @@ static const struct sc_asn1_entry c_asn1_algorithm_info_parameters[3] = {
 };
 
 /*
- * in src/libopensc/types.h SC_MAX_SUPPORTED_ALGORITHMS  defined as 8
+ * in src/libopensc/types.h SC_MAX_SUPPORTED_ALGORITHMS  defined as 16
  */
 static const struct sc_asn1_entry c_asn1_supported_algorithms[SC_MAX_SUPPORTED_ALGORITHMS + 1] = {
+	{ "algorithmInfo", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "algorithmInfo", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "algorithmInfo", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "algorithmInfo", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "algorithmInfo", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "algorithmInfo", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "algorithmInfo", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "algorithmInfo", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL },
 	{ "algorithmInfo", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL },
 	{ "algorithmInfo", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL },
 	{ "algorithmInfo", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL },
@@ -310,7 +318,7 @@ sc_pkcs15_encode_tokeninfo(sc_context_t *ctx, sc_pkcs15_tokeninfo_t *ti,
 		sc_format_asn1_entry(asn1_algo_infos[ii] + 1, &ti->supported_algos[ii].mechanism, &mechanism_len, 1);
 		sc_format_asn1_entry(asn1_algo_infos[ii] + 2,
 			asn1_algo_infos_parameters[ii], NULL, 1);
-		if (!ti->supported_algos[ii].parameters)	{
+		if (!sc_valid_oid(&ti->supported_algos[ii].parameters)) {
 			sc_format_asn1_entry(asn1_algo_infos_parameters[ii] + 0,
 				NULL, NULL, 1);
 		}
@@ -966,6 +974,7 @@ sc_pkcs15_bind_internal(struct sc_pkcs15_card *p15card, struct sc_aid *aid)
 		if (err != SC_SUCCESS)
 			sc_log(ctx, "unable to enumerate apps: %s", sc_strerror(err));
 	}
+	sc_file_free(p15card->file_app);
 	p15card->file_app = sc_file_new();
 	if (p15card->file_app == NULL) {
 		err = SC_ERROR_OUT_OF_MEMORY;
@@ -1894,6 +1903,11 @@ sc_pkcs15_free_object(struct sc_pkcs15_object *obj)
 		sc_pkcs15_free_prkey_info((sc_pkcs15_prkey_info_t *)obj->data);
 		break;
 	case SC_PKCS15_TYPE_PUBKEY:
+		/* This is normally passed to framework-pkcs15,
+		 * but if something fails on the way, it would not get freed */
+		if (obj->emulated) {
+			sc_pkcs15_free_pubkey(obj->emulated);
+		}
 		sc_pkcs15_free_pubkey_info((sc_pkcs15_pubkey_info_t *)obj->data);
 		break;
 	case SC_PKCS15_TYPE_CERT:

@@ -132,8 +132,12 @@ static char * get_pin(struct sc_pkcs15_object *obj)
 {
 	char buf[(sizeof obj->label) + 20];
 	char *pincode;
-	struct sc_pkcs15_auth_info *pinfo = (struct sc_pkcs15_auth_info *) obj->data;
+	struct sc_pkcs15_auth_info *pinfo;
 
+	if (!obj)
+		return NULL;
+
+	pinfo = (struct sc_pkcs15_auth_info *) obj->data;
 	if (pinfo->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
 		return NULL;
 

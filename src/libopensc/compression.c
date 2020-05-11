@@ -51,17 +51,31 @@ static int zerr_to_opensc(int err) {
 	}
 }
 static int detect_method(const u8* in, size_t inLen) {
-	if(inLen > 2 && in[0] == 0x1f && in[1] == 0x8b) { /* GZIP */
-		return COMPRESSION_GZIP;
-	} else if(inLen > 1 /*&& (in[0] & 0x10) == Z_DEFLATED*/) {
-		/* REALLY SIMPLE ZLIB TEST -- 
-		 * Check for the compression method to be set to 8...
-		 * many things can spoof this, but this is ok for now
-		 * */
-		return COMPRESSION_ZLIB;
-	} else {
-		return COMPRESSION_UNKNOWN;
+	if (in != NULL && inLen > 1) {
+		if (in[0] == 0x1f && in[1] == 0x8b)
+			return COMPRESSION_GZIP;
+		/*
+		 * A zlib stream has the following structure:
+		 *   0   1
+		 * +---+---+
+		 * |CMF|FLG|   (more-->)
+		 * +---+---+
+		 *
+		 * FLG (FLaGs)
+		 * 	This flag byte is divided as follows:
+		 *
+		 * 	bits 0 to 4  FCHECK  (check bits for CMF and FLG)
+		 * 	bit  5       FDICT   (preset dictionary)
+		 * 	bits 6 to 7  FLEVEL  (compression level)
+		 *
+		 * 	The FCHECK value must be such that CMF and FLG, when viewed as
+		 * 	a 16-bit unsigned integer stored in MSB order (CMF*256 + FLG),
+		 * 	is a multiple of 31.
+		 */
+		if ((((uint16_t) in[0])*256 + in[1]) % 31 == 0)
+			return COMPRESSION_ZLIB;
 	}
+	return COMPRESSION_UNKNOWN;
 }
 
 static int sc_compress_gzip(u8* out, size_t* outLen, const u8* in, size_t inLen) {
@@ -101,8 +115,10 @@ static int sc_decompress_gzip(u8* out, size_t* outLen, const u8* in, size_t inLe
 	gz.next_out = out;
 	gz.avail_out = *outLen;
 
+	*outLen = 0;
+
 	err = inflateInit2(&gz, window_size);
-	if(err != Z_OK) return zerr_to_opensc(err);
+	if (err != Z_OK) return zerr_to_opensc(err);
 	err = inflate(&gz, Z_FINISH);
 	if(err != Z_STREAM_END) {
 		inflateEnd(&gz);
@@ -134,17 +150,23 @@ int sc_compress(u8* out, size_t* outLen, const u8* in, size_t inLen, int method)
 	}
 }
 
-int sc_decompress(u8* out, size_t* outLen, const u8* in, size_t inLen, int method) {
+int sc_decompress(u8* out, size_t* outLen, const u8* in, size_t inLen, int method)
+{
 	unsigned long zlib_outlen;
 	int rc;
 
-	if(method == COMPRESSION_AUTO) {
+	if (in == NULL || out == NULL) {
+		return SC_ERROR_UNKNOWN_DATA_RECEIVED;
+	}
+
+	if (method == COMPRESSION_AUTO) {
 		method = detect_method(in, inLen);
-		if(method == COMPRESSION_UNKNOWN) {
+		if (method == COMPRESSION_UNKNOWN) {
+			*outLen = 0;
 			return SC_ERROR_UNKNOWN_DATA_RECEIVED;
 		}
 	}
-	switch(method) {
+	switch (method) {
 	case COMPRESSION_ZLIB:
 		zlib_outlen = *outLen;	
 		rc = zerr_to_opensc(uncompress(out, &zlib_outlen, in, inLen));
@@ -224,14 +246,20 @@ static int sc_decompress_zlib_alloc(u8** out, size_t* outLen, const u8* in, size
 	return zerr_to_opensc(err);
 }
 
-int sc_decompress_alloc(u8** out, size_t* outLen, const u8* in, size_t inLen, int method) {
-	if(method == COMPRESSION_AUTO) {
+int sc_decompress_alloc(u8** out, size_t* outLen, const u8* in, size_t inLen, int method)
+{
+	if (in == NULL || out == NULL) {
+		return SC_ERROR_UNKNOWN_DATA_RECEIVED;
+	}
+
+	if (method == COMPRESSION_AUTO) {
 		method = detect_method(in, inLen);
-		if(method == COMPRESSION_UNKNOWN) {
+		if (method == COMPRESSION_UNKNOWN) {
 			return SC_ERROR_UNKNOWN_DATA_RECEIVED;
 		}
 	}
-	switch(method) {
+
+	switch (method) {
 	case COMPRESSION_ZLIB:
 		return sc_decompress_zlib_alloc(out, outLen, in, inLen, 0);
 	case COMPRESSION_GZIP:

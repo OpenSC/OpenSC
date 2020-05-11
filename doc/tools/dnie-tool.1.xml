@@ -75,11 +75,23 @@
 						<option>--pin</option> <replaceable>pin</replaceable>,
 						<option>-p</option> <replaceable>pin</replaceable>
 					</term>
-					<listitem><para>Specify the user pin <replaceable>pin</replaceable> to use.
-					If set to env:<replaceable>VARIABLE</replaceable>, the
-					value of the environment variable
-					<replaceable>VARIABLE</replaceable> is used.
-					The default is do not enter pin</para></listitem>
+					<listitem>
+						<para>
+							These options can be used to specify the PIN value
+							on the command line. If the value is set to
+							<literal>env:</literal><replaceable>VARIABLE</replaceable>, the value
+							of the specified environment variable is used. By default,
+							the code is prompted on the command line if needed.
+						</para>
+						<para>
+							Note that on most operation systems, any user can
+							display the command line of any process on the
+							system using utilities such as
+							<command>ps(1)</command>. Therefore, you should prefer
+							passing the codes via an environment variable
+							on an unsecured system.
+						</para>
+					</listitem>
 				</varlistentry>
 				<varlistentry>
 					<term>

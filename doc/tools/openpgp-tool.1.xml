@@ -149,14 +149,25 @@
 
 				<varlistentry>
 					<term>
-						<option>--pin</option> <replaceable>string</replaceable>
+						<option>--pin</option> <replaceable>pin</replaceable>
 					</term>
-					<listitem><para>
-						The PIN text to verify. If set to
-						env:<replaceable>VARIABLE</replaceable>, the value of
-						the environment variable
-						<replaceable>VARIABLE</replaceable> is used.
-					</para></listitem>
+					<listitem>
+						<para>
+							This option can be used to specify the PIN value
+							on the command line. If the value is set to
+							<literal>env:</literal><replaceable>VARIABLE</replaceable>, the value
+							of the specified environment variable is used. By default,
+							the code is prompted on the command line if needed.
+						</para>
+						<para>
+							Note that on most operation systems, any user can
+							display the command line of any process on the
+							system using utilities such as
+							<command>ps(1)</command>. Therefore, you should prefer
+							passing the codes via an environment variable
+							on an unsecured system.
+						</para>
+					</listitem>
 				</varlistentry>
 
 				<varlistentry>

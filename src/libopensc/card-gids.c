@@ -255,11 +255,13 @@ static int gids_get_DO(sc_card_t* card, int fileIdentifier, int dataObjectIdenti
 	if (!p) {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_FILE_NOT_FOUND);
 	}
-	if (datasize > *responselen) {
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_BUFFER_TOO_SMALL);
+	if (response && responselen) {
+		if (datasize > *responselen) {
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_BUFFER_TOO_SMALL);
+		}
+		memcpy(response, p, datasize);
+		*responselen = datasize;
 	}
-	memcpy(response, p, datasize);
-	*responselen = datasize;
 	return SC_SUCCESS;
 }
 

@@ -469,16 +469,17 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 	sm_apdu->datalen = sm_data_len;
 	sm_apdu->lc = sm_data_len;
 	sm_apdu->le = 0;
+	/* for encrypted APDUs we usually get authenticated status bytes (4B), a
+	 * MAC (2B without data) and a cryptogram with padding indicator (2B tag
+	 * and indicator, max. 2B/3B ASN.1 length, without data). The cryptogram is
+	 * always padded to the block size. */
 	if (apdu->cse & SC_APDU_EXT) {
 		sm_apdu->cse = SC_APDU_CASE_4_EXT;
+		sm_apdu->resplen = 4 + 2 + mac_len + 2 + 3 + ((apdu->resplen+1)/ctx->block_length+1)*ctx->block_length;
 	} else {
 		sm_apdu->cse = SC_APDU_CASE_4_SHORT;
+		sm_apdu->resplen = 4 + 2 + mac_len + 2 + 2 + ((apdu->resplen+1)/ctx->block_length+1)*ctx->block_length;
 	}
-	/* for encrypted APDUs we usually get authenticated status bytes
-	 * (4B), a MAC (2B without data) and a cryptogram with padding
-	 * indicator (3B without data). The cryptogram is always padded to
-	 * the block size. */
-	sm_apdu->resplen = 4 + 2 + mac_len + 3 + ((apdu->resplen+1)/ctx->block_length+1)*ctx->block_length;
 	resp_data = calloc(sm_apdu->resplen, 1);
 	if (!resp_data) {
 		r = SC_ERROR_OUT_OF_MEMORY;

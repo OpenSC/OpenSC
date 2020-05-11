@@ -1,8 +1,8 @@
 #!/bin/bash
 SOURCE_PATH=../
 
-# find all the manual pages in src/tools
-TOOLS=`find "${SOURCE_PATH}/doc/tools" -name "*.1.xml" | sed -E -e "s|.*/([a-z0-9-]*).*|\1|"`
+# find all the manual pages in doc/tools
+TOOLS=`find "${SOURCE_PATH}/doc/tools" -name "*.1.xml" | sed -E -e "s|.*/([a-z0-9-]*).*|\1|" | grep -v goid-tool`
 ALL=1
 
 for T in $TOOLS; do
@@ -17,5 +17,17 @@ for T in $TOOLS; do
 done
 if [ "$ALL" = 0 ]; then
 	echo "Not all the switches in help are documented in manual pages"
-	exit 1;
+	exit 1
 fi
+
+RES=0
+# find all tools in src/tools (files without extension)
+TOOLS=`find "${SOURCE_PATH}/src/tools" -maxdepth 1 -type f ! -name "*.*" | sed -E -e "s|.*/([a-z0-9-]*).*|\1|" | grep -v -- -example`
+for T in $TOOLS; do
+	if [[ ! -f "${SOURCE_PATH}/doc/tools/$T.1.xml" ]]; then
+		echo "Missing manual page for '$T'"
+		RES=1
+	fi
+done
+
+exit $RES

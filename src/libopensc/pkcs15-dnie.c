@@ -169,7 +169,10 @@ static int sc_pkcs15emu_dnie_init(sc_pkcs15_card_t * p15card)
         }
 
 	/* Set root path of this application */
+	sc_file_free(p15card->file_app);
 	p15card->file_app = sc_file_new();
+	if (NULL == p15card->file_app)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
 	sc_format_path("3F00", &p15card->file_app->path);
 
 	/* Load TokenInfo */

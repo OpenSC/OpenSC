@@ -137,6 +137,7 @@ enum {
 	OPT_KEY_USAGE_SIGN,
 	OPT_KEY_USAGE_DECRYPT,
 	OPT_KEY_USAGE_DERIVE,
+	OPT_KEY_USAGE_WRAP,
 	OPT_PRIVATE,
 	OPT_SENSITIVE,
 	OPT_EXTRACTABLE,
@@ -197,6 +198,7 @@ static const struct option options[] = {
 	{ "usage-sign",		0, NULL,		OPT_KEY_USAGE_SIGN },
 	{ "usage-decrypt",	0, NULL,		OPT_KEY_USAGE_DECRYPT },
 	{ "usage-derive",	0, NULL,		OPT_KEY_USAGE_DERIVE },
+	{ "usage-wrap",	0, NULL,		OPT_KEY_USAGE_WRAP },
 	{ "write-object",	1, NULL,		'w' },
 	{ "read-object",	0, NULL,		'r' },
 	{ "delete-object",	0, NULL,		'b' },
@@ -272,6 +274,7 @@ static const char *option_help[] = {
 	"Specify 'sign' key usage flag (sets SIGN in privkey, sets VERIFY in pubkey)",
 	"Specify 'decrypt' key usage flag (RSA only, set DECRYPT privkey, ENCRYPT in pubkey)",
 	"Specify 'derive' key usage flag (EC only)",
+	"Specify 'wrap' key usage flag",
 	"Write an object (key, cert, data) to the card",
 	"Get object's CKA_VALUE attribute (use with --type)",
 	"Delete an object (use with --type cert/data/privkey/pubkey/secrkey)",
@@ -355,6 +358,7 @@ static int		opt_login_type = -1;
 static int		opt_key_usage_sign = 0;
 static int		opt_key_usage_decrypt = 0;
 static int		opt_key_usage_derive = 0;
+static int		opt_key_usage_wrap = 0;
 static int		opt_key_usage_default = 1; /* uses defaults if no opt_key_usage options */
 static int		opt_derive_pass_der = 0;
 static unsigned long	opt_random_bytes = 0;
@@ -877,6 +881,10 @@ int main(int argc, char * argv[])
 			break;
 		case OPT_KEY_USAGE_DERIVE:
 			opt_key_usage_derive = 1;
+			opt_key_usage_default = 0;
+			break;
+		case OPT_KEY_USAGE_WRAP:
+			opt_key_usage_wrap = 1;
 			opt_key_usage_default = 0;
 			break;
 		case OPT_PRIVATE:
@@ -1590,53 +1598,42 @@ static void init_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess)
 
 static int change_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess)
 {
-	char old_buf[21], *old_pin = NULL;
-	char new_buf[21], *new_pin = NULL;
+	char old_buf[21], *old_pin = opt_so_pin ? (char*)opt_so_pin : (char*)opt_pin;
+	char new_buf[21], *new_pin = (char *)opt_new_pin;
 	CK_TOKEN_INFO	info;
 	CK_RV rv;
 	int r;
 	size_t		len = 0;
 
 	get_token_info(slot, &info);
+	const CK_FLAGS hasReaderPinPad = info.flags & CKF_PROTECTED_AUTHENTICATION_PATH;
 
-	if (!(info.flags & CKF_PROTECTED_AUTHENTICATION_PATH)) {
-		if (!opt_pin && !opt_so_pin) {
-			printf("Please enter the current PIN: ");
-			r = util_getpass(&old_pin, &len, stdin);
-			if (r < 0)
-				return 1;
-			if (!old_pin || !*old_pin || strlen(old_pin) > 20)
-				return 1;
-			strcpy(old_buf, old_pin);
-			old_pin = old_buf;
-		}
-		else   {
-			if (opt_so_pin)
-				old_pin = (char *) opt_so_pin;
-			else
-				old_pin = (char *) opt_pin;
-		}
+	if (!hasReaderPinPad && !old_pin) {
+		printf("Please enter the current PIN: ");
+		r = util_getpass(&old_pin, &len, stdin);
+		if (r < 0)
+			return 1;
+		if (!old_pin || !*old_pin || strlen(old_pin) > 20)
+			return 1;
+		strcpy(old_buf, old_pin);
+		old_pin = old_buf;
+	}
+	if (!hasReaderPinPad && !new_pin) {
+		printf("Please enter the new PIN: ");
+		r = util_getpass(&new_pin, &len, stdin);
+		if (r < 0)
+			return 1;
+		if (!new_pin || !*new_pin || strlen(new_pin) > 20)
+			return 1;
+		strcpy(new_buf, new_pin);
 
-		if (!opt_new_pin) {
-			printf("Please enter the new PIN: ");
-			r = util_getpass(&new_pin, &len, stdin);
-			if (r < 0)
-				return 1;
-			if (!new_pin || !*new_pin || strlen(new_pin) > 20)
-				return 1;
-			strcpy(new_buf, new_pin);
-
-			printf("Please enter the new PIN again: ");
-			r = util_getpass(&new_pin, &len, stdin);
-			if (r < 0)
-				return 1;
-			if (!new_pin || !*new_pin || strcmp(new_buf, new_pin) != 0) {
-				free(new_pin);
-				return 1;
-			}
-		}
-		else   {
-			new_pin = (char *) opt_new_pin;
+		printf("Please enter the new PIN again: ");
+		r = util_getpass(&new_pin, &len, stdin);
+		if (r < 0)
+			return 1;
+		if (!new_pin || !*new_pin || strcmp(new_buf, new_pin) != 0) {
+			free(new_pin);
+			return 1;
 		}
 	}
 
@@ -2058,7 +2055,7 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		rv =  p11->C_Verify(session, in_buffer, r, sig_buffer, sig_len);
 	}
 
-	if (rv != CKR_OK) {
+	if (rv != CKR_OK && rv != CKR_SIGNATURE_INVALID) {
 		rv = p11->C_VerifyInit(session, &mech, key);
 		if (rv != CKR_OK)
 			p11_fatal("C_VerifyInit", rv);
@@ -2073,7 +2070,7 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 
 		sig_len = r2;
 		rv = p11->C_VerifyFinal(session, sig_buffer, sig_len);
-		if (rv != CKR_OK)
+		if (rv != CKR_OK && rv != CKR_SIGNATURE_INVALID)
 			p11_fatal("C_VerifyFinal", rv);
 	}
 
@@ -2127,9 +2124,15 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	case CKM_RSA_PKCS_OAEP:
 		oaep_params.hashAlg = opt_hash_alg;
 		switch (opt_hash_alg) {
+		case CKM_SHA_1:
+			oaep_params.mgf = CKG_MGF1_SHA1;
+			break;
 		case CKM_SHA224:
 			oaep_params.mgf = CKG_MGF1_SHA224;
 			break;
+		default:
+			oaep_params.hashAlg = CKM_SHA256;
+			/* fall through */
 		case CKM_SHA256:
 			oaep_params.mgf = CKG_MGF1_SHA256;
 			break;
@@ -2138,12 +2141,6 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			break;
 		case CKM_SHA512:
 			oaep_params.mgf = CKG_MGF1_SHA512;
-			break;
-		default:
-			oaep_params.hashAlg = CKM_SHA_1;
-			/* fall through */
-		case CKM_SHA_1:
-			oaep_params.mgf = CKG_MGF1_SHA1;
 			break;
 		}
 		break;
@@ -2326,10 +2323,12 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 				n_privkey_attr++;
 			}
 
-			FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_WRAP, &_true, sizeof(_true));
-			n_pubkey_attr++;
-			FILL_ATTR(privateKeyTemplate[n_privkey_attr], CKA_UNWRAP, &_true, sizeof(_true));
-			n_privkey_attr++;
+			if (opt_key_usage_wrap) {
+				FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_WRAP, &_true, sizeof(_true));
+				n_pubkey_attr++;
+				FILL_ATTR(privateKeyTemplate[n_privkey_attr], CKA_UNWRAP, &_true, sizeof(_true));
+				n_privkey_attr++;
+			}
 		}
 		else if (!strncmp(type, "EC:", 3))   {
 			CK_MECHANISM_TYPE mtypes[] = {CKM_EC_KEY_PAIR_GEN};
@@ -3319,7 +3318,7 @@ static int write_object(CK_SESSION_HANDLE session)
 			else if (strncasecmp(opt_key_type, "DES3:", strlen("DES3:")) == 0)
 				type = CKK_DES3;
 			else
-				util_fatal("Unknown key type: 0x%X", type);
+				util_fatal("Unknown key type: 0x%lX", type);
 		}
 
 		FILL_ATTR(seckey_templ[0], CKA_CLASS, &clazz, sizeof(clazz));
@@ -4480,7 +4479,7 @@ static int read_object(CK_SESSION_HANDLE session)
 #endif
 		}
 		else
-			util_fatal("Reading public keys of type 0x%X not (yet) supported", type);
+			util_fatal("Reading public keys of type 0x%lX not (yet) supported", type);
 		value = BIO_copy_data(pout, &derlen);
 		BIO_free(pout);
 		len = derlen;
@@ -5045,8 +5044,8 @@ static int test_signature(CK_SESSION_HANDLE sess)
 	}
 
 	if (firstMechType == CKM_RSA_X_509) {
-		/* make sure our data is smaller than the modulus */
-		data[0] = 0x00;
+		/* make sure our data is smaller than the modulus - 11 */
+		memset(data, 0, 11); /* in effect is zero padding */ 
 	}
 
 	ck_mech.mechanism = firstMechType;

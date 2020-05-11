@@ -34,6 +34,9 @@
 
 #define DEFAULT_P11LIB	"../../pkcs11/.libs/opensc-pkcs11.so"
 
+/* Global variable keeping information about token we are using */
+token_info_t token;
+
 void display_usage() {
 	fprintf(stdout,
 		" Usage:\n"

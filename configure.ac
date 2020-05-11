@@ -27,7 +27,7 @@ AC_INIT([PRODUCT_NAME],[PACKAGE_VERSION_MAJOR.PACKAGE_VERSION_MINOR.PACKAGE_VERS
 AC_CONFIG_AUX_DIR([.])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_MACRO_DIR([m4])
-AM_INIT_AUTOMAKE(foreign 1.10)
+AM_INIT_AUTOMAKE(foreign 1.10 [subdir-objects])
 
 OPENSC_VERSION_MAJOR="PACKAGE_VERSION_MAJOR"
 OPENSC_VERSION_MINOR="PACKAGE_VERSION_MINOR"
@@ -79,7 +79,7 @@ AC_ARG_WITH(
 )
 
 if test "${enable_optimization}" = "no"; then
-	CFLAGS="-O0 -g"
+	CFLAGS="${CFLAGS} -O0 -g"
 fi
 
 dnl Check for some target-specific stuff
@@ -400,7 +400,8 @@ AC_HEADER_ASSERT
 AC_CHECK_HEADERS([ \
 	errno.h fcntl.h stdlib.h \
 	inttypes.h string.h strings.h \
-	sys/time.h unistd.h sys/mman.h
+	sys/time.h unistd.h sys/mman.h \
+	sys/endian.h endian.h
 ])
 
 dnl Checks for typedefs, structures, and compiler characteristics.
@@ -415,9 +416,10 @@ AC_FUNC_STAT
 AC_FUNC_VPRINTF
 AC_CHECK_FUNCS([ \
 	getpass gettimeofday getline memset mkdir \
-	strdup strerror \
-	strlcpy strlcat strnlen sigaction
+	strdup strerror memset_s explicit_bzero \
+	strnlen sigaction
 ])
+AC_CHECK_DECLS([strlcpy, strlcat], [], [], [[#include <string.h>]])
 AC_CHECK_SIZEOF(void *)
 if test "${ac_cv_sizeof_void_p}" = 8; then
 	LIBRARY_BITNESS="64"
@@ -1072,10 +1074,10 @@ AS_IF([test "${enable_shared}" = "yes"], [AC_DEFINE([ENABLE_SHARED], [1], [Enabl
 
 if test "${enable_pedantic}" = "yes"; then
 	enable_strict="yes";
-	CFLAGS="${CFLAGS} -pedantic"
+	CFLAGS="-pedantic ${CFLAGS}"
 fi
 if test "${enable_strict}" = "yes"; then
-	CFLAGS="${CFLAGS} -Wall -Wextra -Wno-unused-parameter -Werror"
+	CFLAGS="-Wall -Wextra -Wno-unused-parameter -Werror ${CFLAGS}"
 fi
 
 AC_CONFIG_FILES([
@@ -1116,7 +1118,6 @@ AC_CONFIG_FILES([
 	win32/OpenSC.wxs
 	MacOSX/Makefile
 	MacOSX/build-package
-	MacOSX/build-package-from-ci
 	MacOSX/Distribution.xml
 	MacOSX/resources/Welcome.html
 ])
