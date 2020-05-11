@@ -30,8 +30,8 @@
 #include <errno.h>
 
 #include "common/compat_strlcpy.h"
-#include "scconf.h"
 #include "internal.h"
+#include "scconf.h"
 
 #define STATE_NAME	0x01
 #define STATE_VALUE	0x02

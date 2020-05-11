@@ -39,6 +39,7 @@ extern "C" {
 #include "libopensc/opensc.h"
 #include "libopensc/log.h"
 #include "libopensc/cards.h"
+#include "scconf/scconf.h"
 
 #ifdef ENABLE_OPENSSL
 #include "libopensc/sc-ossl-compat.h"

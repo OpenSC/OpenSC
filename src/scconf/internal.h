@@ -22,6 +22,8 @@
 #ifndef _SCCONF_INTERNAL_H
 #define _SCCONF_INTERNAL_H
 
+#include "scconf.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
