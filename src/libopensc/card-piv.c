@@ -1670,28 +1670,30 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 	}
 
 	/* nonce for challenge */
-	tmplen = sc_asn1_put_tag(0x81, NULL, witness_len, NULL, 0, NULL);
-	if (tmplen <= 0) {
+	r = sc_asn1_put_tag(0x81, NULL, witness_len, NULL, 0, NULL);
+	if (r <= 0) {
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
+	tmplen = r;
 
 	/* plain text witness keep a length separate for the 0x7C tag */
-	tmplen2 = sc_asn1_put_tag(0x80, NULL, witness_len, NULL, 0, NULL);
-	if (tmplen2 <= 0) {
+	r = sc_asn1_put_tag(0x80, NULL, witness_len, NULL, 0, NULL);
+	if (r <= 0) {
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
-	tmplen2 += tmplen;
+	tmplen += r;
+	tmplen2 = tmplen;
 
 	/* outside 7C tag with 81:80 as innards */
-	tmplen = sc_asn1_put_tag(0x7C, NULL, tmplen, NULL, 0, NULL);
-	if (tmplen <= 0) {
+	r = sc_asn1_put_tag(0x7C, NULL, tmplen, NULL, 0, NULL);
+	if (r <= 0) {
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
 
-	built_len = tmplen;
+	built_len = r;
 
 	/* Build the response buffer */
 	p = built = malloc(built_len);
