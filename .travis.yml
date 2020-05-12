@@ -78,6 +78,14 @@ before_install:
         export OTHER_CODE_SIGN_FLAGS=--timestamp CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO CODE_SIGN_STYLE=Manual;
         git clone https://github.com/frankmorgner/OpenSCToken.git;
     fi
+  - if [ "${DO_SIMULATION}" = "javacard" ]; then
+        sudo apt-get install -y openjdk-8-jdk;
+        sudo update-java-alternatives -s java-1.8.0-openjdk-amd64;
+        sudo update-alternatives --get-selections | grep ^java;
+        export PATH="/usr/lib/jvm/java-8-openjdk-amd64/bin/:$PATH";
+        export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/;
+        env | grep -i openjdk;
+    fi
   - if [ "${DO_SIMULATION}" = "cac" ]; then
         sudo apt-get install -y libglib2.0-dev libnss3-dev  pkgconf libtool make autoconf autoconf-archive automake libsofthsm2-dev softhsm2 softhsm2-common help2man gnutls-bin libcmocka-dev libusb-dev libudev-dev flex libnss3-tools libssl-dev libpcsclite1;
         export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig;
@@ -133,6 +141,8 @@ before_script:
 
       git clone https://github.com/arekinath/jcardsim.git;
       cd jcardsim;
+      env | grep -i openjdk;
+      export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/;
       mvn initialize && mvn clean install;
       cd $TRAVIS_BUILD_DIR;
 
