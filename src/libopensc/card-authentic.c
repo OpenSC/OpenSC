@@ -515,9 +515,8 @@ authentic_erase_binary(struct sc_card *card, unsigned int offs, size_t count, un
 
 	rv = sc_update_binary(card, offs, buf_zero, count, flags);
 	free(buf_zero);
-	LOG_TEST_RET(ctx, rv, "'ERASE BINARY' failed");
 
-	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+	LOG_FUNC_RETURN(ctx, rv);
 }
 
 

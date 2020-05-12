@@ -1481,17 +1481,6 @@ pgp_read_binary(sc_card_t *card, unsigned int idx,
 
 
 /**
- * ABI: ISO 7816-4 WRITE BINARY - write data to currently selected EF.
- */
-static int
-pgp_write_binary(sc_card_t *card, unsigned int idx,
-		const u8 *buf, size_t count, unsigned long flags)
-{
-	LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
-}
-
-
-/**
  * Internal: get public key from card - as DF + sub-wEFs.
  */
 static int
@@ -3482,7 +3471,7 @@ sc_get_openpgp_driver(void)
 	pgp_ops.list_files	= pgp_list_files;
 	pgp_ops.get_challenge	= pgp_get_challenge;
 	pgp_ops.read_binary	= pgp_read_binary;
-	pgp_ops.write_binary	= pgp_write_binary;
+	pgp_ops.write_binary	= NULL;
 	pgp_ops.pin_cmd		= pgp_pin_cmd;
 	pgp_ops.logout		= pgp_logout;
 	pgp_ops.get_data	= pgp_get_data;

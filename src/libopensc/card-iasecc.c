@@ -706,7 +706,7 @@ iasecc_erase_binary(struct sc_card *card, unsigned int offs, size_t count, unsig
 
 	rv = sc_update_binary(card, offs, tmp, count, flags);
 	free(tmp);
-	LOG_TEST_RET(ctx, rv, "iasecc_erase_binary() update binary error");
+
 	LOG_FUNC_RETURN(ctx, rv);
 }
 

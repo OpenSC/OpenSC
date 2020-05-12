@@ -620,6 +620,7 @@ int sc_read_binary(sc_card_t *card, unsigned int idx,
 		   unsigned char *buf, size_t count, unsigned long flags)
 {
 	size_t max_le = sc_get_max_recv_size(card);
+	size_t todo = count;
 	int r;
 
 	if (card == NULL || card->ops == NULL || buf == NULL) {
@@ -628,7 +629,7 @@ int sc_read_binary(sc_card_t *card, unsigned int idx,
 	sc_log(card->ctx, "called; %"SC_FORMAT_LEN_SIZE_T"u bytes at index %d",
 	       count, idx);
 	if (count == 0)
-		return 0;
+		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 
 #ifdef ENABLE_SM
 	if (card->sm_ctx.ops.read_binary)   {
@@ -637,47 +638,45 @@ int sc_read_binary(sc_card_t *card, unsigned int idx,
 			LOG_FUNC_RETURN(card->ctx, r);
 	}
 #endif
+
 	if (card->ops->read_binary == NULL)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 
-	if (count > max_le) {
-		int bytes_read = 0;
-		unsigned char *p = buf;
+	/* lock the card now to avoid deselection of the file */
+	r = sc_lock(card);
+	LOG_TEST_RET(card->ctx, r, "sc_lock() failed");
 
-		r = sc_lock(card);
-		LOG_TEST_RET(card->ctx, r, "sc_lock() failed");
-		while (count > 0) {
-			size_t n = count > max_le ? max_le : count;
-			r = sc_read_binary(card, idx, p, n, flags);
-			if (r < 0) {
-				sc_unlock(card);
-				LOG_TEST_RET(card->ctx, r, "sc_read_binary() failed");
-			}
-			p += r;
-			if ((bytes_read > INT_MAX - r) || idx > UINT_MAX - r) {
-				/* `bytes_read + r` or `idx + r` would overflow */
-				sc_unlock(card);
-				LOG_FUNC_RETURN(card->ctx, SC_ERROR_OFFSET_TOO_LARGE);
-			}
-			idx += r;
-			bytes_read += r;
-			count -= r;
-			if (r == 0) {
-				sc_unlock(card);
-				LOG_FUNC_RETURN(card->ctx, bytes_read);
-			}
+	while (todo > 0) {
+		size_t chunk = todo > max_le ? max_le : todo;
+
+		r = card->ops->read_binary(card, idx, buf, chunk, flags);
+		if (r == 0 || r == SC_ERROR_FILE_END_REACHED)
+			break;
+		if ((idx > SIZE_MAX - (size_t) r)
+				|| (size_t) r > todo) {
+			/* `idx + r` or `todo - r` would overflow */
+			r = SC_ERROR_OFFSET_TOO_LARGE;
 		}
-		sc_unlock(card);
-		LOG_FUNC_RETURN(card->ctx, bytes_read);
+		if (r < 0) {
+			sc_unlock(card);
+			LOG_FUNC_RETURN(card->ctx, r);
+		}
+
+		todo -= (size_t) r;
+		buf  += (size_t) r;
+		idx  += (size_t) r;
 	}
-	r = card->ops->read_binary(card, idx, buf, count, flags);
-	LOG_FUNC_RETURN(card->ctx, r);
+
+	sc_unlock(card);
+
+	LOG_FUNC_RETURN(card->ctx, count - todo);
 }
 
 int sc_write_binary(sc_card_t *card, unsigned int idx,
 		    const u8 *buf, size_t count, unsigned long flags)
 {
 	size_t max_lc = sc_get_max_send_size(card);
+	size_t todo = count;
 	int r;
 
 	if (card == NULL || card->ops == NULL || buf == NULL) {
@@ -686,44 +685,46 @@ int sc_write_binary(sc_card_t *card, unsigned int idx,
 	sc_log(card->ctx, "called; %"SC_FORMAT_LEN_SIZE_T"u bytes at index %d",
 	       count, idx);
 	if (count == 0)
-		LOG_FUNC_RETURN(card->ctx, 0);
+		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+
 	if (card->ops->write_binary == NULL)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 
-	if (count > max_lc) {
-		int bytes_written = 0;
-		const u8 *p = buf;
+	/* lock the card now to avoid deselection of the file */
+	r = sc_lock(card);
+	LOG_TEST_RET(card->ctx, r, "sc_lock() failed");
 
-		r = sc_lock(card);
-		LOG_TEST_RET(card->ctx, r, "sc_lock() failed");
-		while (count > 0) {
-			size_t n = count > max_lc? max_lc : count;
-			r = sc_write_binary(card, idx, p, n, flags);
-			if (r < 0) {
-				sc_unlock(card);
-				LOG_TEST_RET(card->ctx, r, "sc_write_binary() failed");
-			}
-			p += r;
-			idx += r;
-			bytes_written += r;
-			count -= r;
-			if (r == 0) {
-				sc_unlock(card);
-				LOG_FUNC_RETURN(card->ctx, bytes_written);
-			}
+	while (todo > 0) {
+		size_t chunk = todo > max_lc ? max_lc : todo;
+
+		r = card->ops->write_binary(card, idx, buf, chunk, flags);
+		if (r == 0 || r == SC_ERROR_FILE_END_REACHED)
+			break;
+		if ((idx > SIZE_MAX - (size_t) r)
+				|| (size_t) r > todo) {
+			/* `idx + r` or `todo - r` would overflow */
+			r = SC_ERROR_OFFSET_TOO_LARGE;
 		}
-		sc_unlock(card);
-		LOG_FUNC_RETURN(card->ctx, bytes_written);
+		if (r < 0) {
+			sc_unlock(card);
+			LOG_FUNC_RETURN(card->ctx, r);
+		}
+
+		todo -= (size_t) r;
+		buf  += (size_t) r;
+		idx  += (size_t) r;
 	}
 
-	r = card->ops->write_binary(card, idx, buf, count, flags);
-	LOG_FUNC_RETURN(card->ctx, r);
+	sc_unlock(card);
+
+	LOG_FUNC_RETURN(card->ctx, count - todo);
 }
 
 int sc_update_binary(sc_card_t *card, unsigned int idx,
 		     const u8 *buf, size_t count, unsigned long flags)
 {
 	size_t max_lc = sc_get_max_send_size(card);
+	size_t todo = count;
 	int r;
 
 	if (card == NULL || card->ops == NULL || buf == NULL) {
@@ -732,7 +733,7 @@ int sc_update_binary(sc_card_t *card, unsigned int idx,
 	sc_log(card->ctx, "called; %"SC_FORMAT_LEN_SIZE_T"u bytes at index %d",
 	       count, idx);
 	if (count == 0)
-		return 0;
+		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 
 #ifdef ENABLE_SM
 	if (card->sm_ctx.ops.update_binary)   {
@@ -745,53 +746,79 @@ int sc_update_binary(sc_card_t *card, unsigned int idx,
 	if (card->ops->update_binary == NULL)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 
-	if (count > max_lc) {
-		int bytes_written = 0;
-		const u8 *p = buf;
+	/* lock the card now to avoid deselection of the file */
+	r = sc_lock(card);
+	LOG_TEST_RET(card->ctx, r, "sc_lock() failed");
 
-		r = sc_lock(card);
-		LOG_TEST_RET(card->ctx, r, "sc_lock() failed");
-		while (count > 0) {
-			size_t n = count > max_lc? max_lc : count;
-			r = sc_update_binary(card, idx, p, n, flags);
-			if (r < 0) {
-				sc_unlock(card);
-				LOG_TEST_RET(card->ctx, r, "sc_update_binary() failed");
-			}
-			p += r;
-			idx += r;
-			bytes_written += r;
-			count -= r;
-			if (r == 0) {
-				sc_unlock(card);
-				LOG_FUNC_RETURN(card->ctx, bytes_written);
-			}
+	while (todo > 0) {
+		size_t chunk = todo > max_lc ? max_lc : todo;
+
+		r = card->ops->update_binary(card, idx, buf, chunk, flags);
+		if (r == 0 || r == SC_ERROR_FILE_END_REACHED)
+			break;
+		if ((idx > SIZE_MAX - (size_t) r)
+				|| (size_t) r > todo) {
+			/* `idx + r` or `todo - r` would overflow */
+			r = SC_ERROR_OFFSET_TOO_LARGE;
 		}
-		sc_unlock(card);
-		LOG_FUNC_RETURN(card->ctx, bytes_written);
+		if (r < 0) {
+			sc_unlock(card);
+			LOG_FUNC_RETURN(card->ctx, r);
+		}
+
+		todo -= (size_t) r;
+		buf  += (size_t) r;
+		idx  += (size_t) r;
 	}
 
-	r = card->ops->update_binary(card, idx, buf, count, flags);
-	LOG_FUNC_RETURN(card->ctx, r);
+	sc_unlock(card);
+
+	LOG_FUNC_RETURN(card->ctx, count - todo);
 }
 
 
-int sc_erase_binary(struct sc_card *card, unsigned int offs, size_t count,  unsigned long flags)
+int sc_erase_binary(struct sc_card *card, unsigned int idx, size_t count,  unsigned long flags)
 {
 	int r;
+	size_t todo = count;
 
 	if (card == NULL || card->ops == NULL) {
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	sc_log(card->ctx,
 	       "called; erase %"SC_FORMAT_LEN_SIZE_T"u bytes from offset %d",
-	       count, offs);
+	       count, idx);
+	if (count == 0)
+		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 
 	if (card->ops->erase_binary == NULL)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 
-	r = card->ops->erase_binary(card, offs, count, flags);
-	LOG_FUNC_RETURN(card->ctx, r);
+	/* lock the card now to avoid deselection of the file */
+	r = sc_lock(card);
+	LOG_TEST_RET(card->ctx, r, "sc_lock() failed");
+
+	while (todo > 0) {
+		r = card->ops->erase_binary(card, idx, todo, flags);
+		if (r == 0 || r == SC_ERROR_FILE_END_REACHED)
+			break;
+		if ((idx > SIZE_MAX - (size_t) r)
+				|| (size_t) r > todo) {
+			/* `idx + r` or `todo - r` would overflow */
+			r = SC_ERROR_OFFSET_TOO_LARGE;
+		}
+		if (r < 0) {
+			sc_unlock(card);
+			LOG_FUNC_RETURN(card->ctx, r);
+		}
+
+		todo -= (size_t) r;
+		idx  += (size_t) r;
+	}
+
+	sc_unlock(card);
+
+	LOG_FUNC_RETURN(card->ctx, count - todo);
 }
 
 
@@ -881,7 +908,6 @@ int sc_put_data(sc_card_t *card, unsigned int tag, const u8 *buf, size_t len)
 int sc_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 {
 	int r;
-	size_t retry = 10;
 
 	if (len == 0)
 		return SC_SUCCESS;
@@ -899,19 +925,17 @@ int sc_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 	if (r != SC_SUCCESS)
 		LOG_FUNC_RETURN(card->ctx, r);
 
-	while (len > 0 && retry > 0) {
+	while (len > 0) {
 		r = card->ops->get_challenge(card, rnd, len);
+		if (r == 0)
+			r = SC_ERROR_INVALID_DATA;
 		if (r < 0) {
 			sc_unlock(card);
 			LOG_FUNC_RETURN(card->ctx, r);
 		}
 
-		if (r > 0) {
-			rnd += (size_t) r;
-			len -= (size_t) r;
-		} else {
-			retry--;
-		}
+		rnd += (size_t) r;
+		len -= (size_t) r;
 	}
 
 	sc_unlock(card);
@@ -931,7 +955,11 @@ int sc_read_record(sc_card_t *card, unsigned int rec_nr, u8 *buf,
 
 	if (card->ops->read_record == NULL)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+
 	r = card->ops->read_record(card, rec_nr, buf, count, flags);
+	if (r == SC_SUCCESS) {
+		r = count;
+	}
 
 	LOG_FUNC_RETURN(card->ctx, r);
 }
@@ -948,7 +976,11 @@ int sc_write_record(sc_card_t *card, unsigned int rec_nr, const u8 * buf,
 
 	if (card->ops->write_record == NULL)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+
 	r = card->ops->write_record(card, rec_nr, buf, count, flags);
+	if (r == SC_SUCCESS) {
+		r = count;
+	}
 
 	LOG_FUNC_RETURN(card->ctx, r);
 }
@@ -965,7 +997,11 @@ int sc_append_record(sc_card_t *card, const u8 * buf, size_t count,
 
 	if (card->ops->append_record == NULL)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+
 	r = card->ops->append_record(card, buf, count, flags);
+	if (r == SC_SUCCESS) {
+		r = count;
+	}
 
 	LOG_FUNC_RETURN(card->ctx, r);
 }
@@ -982,7 +1018,11 @@ int sc_update_record(sc_card_t *card, unsigned int rec_nr, const u8 * buf,
 
 	if (card->ops->update_record == NULL)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+
 	r = card->ops->update_record(card, rec_nr, buf, count, flags);
+	if (r == SC_SUCCESS) {
+		r = count;
+	}
 
 	LOG_FUNC_RETURN(card->ctx, r);
 }
@@ -998,6 +1038,7 @@ int sc_delete_record(sc_card_t *card, unsigned int rec_nr)
 
 	if (card->ops->delete_record == NULL)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+
 	r = card->ops->delete_record(card, rec_nr);
 
 	LOG_FUNC_RETURN(card->ctx, r);

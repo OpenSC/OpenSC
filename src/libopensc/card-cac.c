@@ -624,15 +624,6 @@ done:
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
-/* CAC driver is read only */
-static int cac_write_binary(sc_card_t *card, unsigned int idx,
-		const u8 *buf, size_t count, unsigned long flags)
-{
-
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
-}
-
 /* initialize getting a list and return the number of elements in the list */
 static int cac_get_init_and_get_count(list_t *list, cac_object_t **entry, int *countp)
 {
@@ -1916,7 +1907,8 @@ static struct sc_card_driver * sc_get_driver(void)
 	cac_ops.select_file =  cac_select_file; /* need to record object type */
 	cac_ops.get_challenge = cac_get_challenge;
 	cac_ops.read_binary = cac_read_binary;
-	cac_ops.write_binary = cac_write_binary;
+	/* CAC driver is read only */
+	cac_ops.write_binary = NULL;
 	cac_ops.set_security_env = cac_set_security_env;
 	cac_ops.restore_security_env = cac_restore_security_env;
 	cac_ops.compute_signature = cac_compute_signature;

@@ -142,7 +142,7 @@ iso7816_read_binary(struct sc_card *card, unsigned int idx, u8 *buf, size_t coun
 	struct sc_apdu apdu;
 	int r;
 
-	if (idx > 0x7fff) {
+	if (idx > 0x7FFF) {
 		sc_log(ctx, "invalid EF offset: 0x%X > 0x7FFF", idx);
 		return SC_ERROR_OFFSET_TOO_LARGE;
 	}
@@ -161,15 +161,6 @@ iso7816_read_binary(struct sc_card *card, unsigned int idx, u8 *buf, size_t coun
 		LOG_FUNC_RETURN(ctx, apdu.resplen);
 	LOG_TEST_RET(ctx, r, "Check SW error");
 
-	if (apdu.resplen > 0 && apdu.resplen < count) {
-		r = iso7816_read_binary(card, idx + apdu.resplen, buf + apdu.resplen, count - apdu.resplen, flags);
-		/* Ignore all but 'corrupted data' errors */
-		if (r == SC_ERROR_CORRUPTED_DATA)
-			LOG_FUNC_RETURN(ctx, SC_ERROR_CORRUPTED_DATA);
-		else if (r > 0)
-			apdu.resplen += r;
-	}
-
 	LOG_FUNC_RETURN(ctx, apdu.resplen);
 }
 
@@ -182,13 +173,12 @@ iso7816_read_record(struct sc_card *card,
 	int r;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2, 0xB2, rec_nr, 0);
-	apdu.p2 = (flags & SC_RECORD_EF_ID_MASK) << 3;
-	if (flags & SC_RECORD_BY_REC_NR)
-		apdu.p2 |= 0x04;
-
 	apdu.le = count;
 	apdu.resplen = count;
 	apdu.resp = buf;
+	apdu.p2 = (flags & SC_RECORD_EF_ID_MASK) << 3;
+	if (flags & SC_RECORD_BY_REC_NR)
+		apdu.p2 |= 0x04;
 
 	fixup_transceive_length(card, &apdu);
 	r = sc_transmit_apdu(card, &apdu);
@@ -208,13 +198,12 @@ iso7816_write_record(struct sc_card *card, unsigned int rec_nr,
 	int r;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3, 0xD2, rec_nr, 0);
-	apdu.p2 = (flags & SC_RECORD_EF_ID_MASK) << 3;
-	if (flags & SC_RECORD_BY_REC_NR)
-		apdu.p2 |= 0x04;
-
 	apdu.lc = count;
 	apdu.datalen = count;
 	apdu.data = buf;
+	apdu.p2 = (flags & SC_RECORD_EF_ID_MASK) << 3;
+	if (flags & SC_RECORD_BY_REC_NR)
+		apdu.p2 |= 0x04;
 
 	fixup_transceive_length(card, &apdu);
 	r = sc_transmit_apdu(card, &apdu);
@@ -234,11 +223,10 @@ iso7816_append_record(struct sc_card *card,
 	int r;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3, 0xE2, 0, 0);
-	apdu.p2 = (flags & SC_RECORD_EF_ID_MASK) << 3;
-
 	apdu.lc = count;
 	apdu.datalen = count;
 	apdu.data = buf;
+	apdu.p2 = (flags & SC_RECORD_EF_ID_MASK) << 3;
 
 	fixup_transceive_length(card, &apdu);
 	r = sc_transmit_apdu(card, &apdu);
@@ -258,13 +246,12 @@ iso7816_update_record(struct sc_card *card, unsigned int rec_nr,
 	int r;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3, 0xDC, rec_nr, 0);
-	apdu.p2 = (flags & SC_RECORD_EF_ID_MASK) << 3;
-	if (flags & SC_RECORD_BY_REC_NR)
-		apdu.p2 |= 0x04;
-
 	apdu.lc = count;
 	apdu.datalen = count;
 	apdu.data = buf;
+	apdu.p2 = (flags & SC_RECORD_EF_ID_MASK) << 3;
+	if (flags & SC_RECORD_BY_REC_NR)
+		apdu.p2 |= 0x04;
 
 	fixup_transceive_length(card, &apdu);
 	r = sc_transmit_apdu(card, &apdu);
@@ -1358,6 +1345,8 @@ int iso7816_read_binary_sfid(sc_card_t *card, unsigned char sfid,
 			*ef_len += r;
 			break;
 		}
+		if (r == 0 || r == SC_ERROR_FILE_END_REACHED)
+			break;
 		if (r < 0) {
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not read EF.");
 			goto err;
@@ -1375,7 +1364,7 @@ int iso7816_read_binary_sfid(sc_card_t *card, unsigned char sfid,
 				*ef + *ef_len, read, 0);
 	}
 
-	r = SC_SUCCESS;
+	r = *ef_len;
 
 err:
 	return r;
@@ -1435,6 +1424,8 @@ int iso7816_write_binary_sfid(sc_card_t *card, unsigned char sfid,
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not write EF.");
 			goto err;
 		}
+		if (r == 0 || r == SC_ERROR_FILE_END_REACHED)
+			break;
 		wrote += r;
 		apdu.data += r;
 		if (wrote >= ef_len)
@@ -1443,7 +1434,7 @@ int iso7816_write_binary_sfid(sc_card_t *card, unsigned char sfid,
 		r = sc_write_binary(card, wrote, ef, write, 0);
 	}
 
-	r = SC_SUCCESS;
+	r = wrote;
 
 err:
 	return r;
@@ -1503,6 +1494,8 @@ int iso7816_update_binary_sfid(sc_card_t *card, unsigned char sfid,
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not update EF.");
 			goto err;
 		}
+		if (r == 0 || r == SC_ERROR_FILE_END_REACHED)
+			break;
 		wrote += r;
 		apdu.data += r;
 		if (wrote >= ef_len)
@@ -1511,7 +1504,7 @@ int iso7816_update_binary_sfid(sc_card_t *card, unsigned char sfid,
 		r = sc_update_binary(card, wrote, ef, write, 0);
 	}
 
-	r = SC_SUCCESS;
+	r = wrote;
 
 err:
 	return r;
