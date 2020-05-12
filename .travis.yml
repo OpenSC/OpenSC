@@ -133,7 +133,7 @@ before_script:
       cd vsmartcard/virtualsmartcard;
       autoreconf -vis && ./configure && sudo make install;
       cd $TRAVIS_BUILD_DIR;
-      sudo /etc/init.d/pcscd restart;
+      sudo systemctl stop pcscd.service pcscd.socket;
 
       git clone https://github.com/martinpaljak/oracle_javacard_sdks.git;
       export JC_HOME=$PWD/oracle_javacard_sdks/jc222_kit;
@@ -242,6 +242,9 @@ script:
       sudo make install;
       export LD_LIBRARY_PATH=/usr/local/lib;
 
+      sudo /usr/sbin/pcscd -f &
+      PCSCD_PID=$!;
+
       java -noverify -cp IsoApplet/src/:jcardsim/target/jcardsim-3.0.5-SNAPSHOT.jar com.licel.jcardsim.remote.VSmartCard isoapplet_jcardsim.cfg >/dev/null &
       PID=$!;
       sleep 5;
@@ -278,10 +281,12 @@ script:
       sleep 5;
       opensc-tool --card-driver default --send-apdu 80b80000120ba000000308000010000100050000020F0F7f;
       opensc-tool -n;
-      yubico-piv-tool -r 'Virtual PCD 00 00' -P 123456 -s 9a -a generate -A ECCP256;
-      yubico-piv-tool -r 'Virtual PCD 00 00' -P 123456 -s 9e -a generate -A RSA2048;
+      yubico-piv-tool -v 9999 -r 'Virtual PCD 00 00' -P 123456 -s 9e -a generate -A RSA2048;
+      yubico-piv-tool -v 9999 -r 'Virtual PCD 00 00' -P 123456 -s 9a -a generate -A ECCP256;
       pkcs11-tool -l -t -p 123456;
       kill -9 $PID;
+
+      sudo kill -9 $PCSCD_PID;
 
       set +ex;
     fi
