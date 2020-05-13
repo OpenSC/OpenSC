@@ -325,8 +325,10 @@ struct sc_card_driver* sc_get_edo_driver(void) {
 
 #else
 
+#include "libopensc/opensc.h"
+
 struct sc_card_driver* sc_get_edo_driver(void) {
-	return 0;
+	return NULL;
 }
 
 #endif
