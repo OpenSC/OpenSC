@@ -35,6 +35,7 @@
 #include "pkcs15-syn.h"
 #include "pkcs15-emulator-filter.h"
 
+// clang-format off
 struct sc_pkcs15_emulator_handler builtin_emulators[] = {
 	{ "openpgp",	sc_pkcs15emu_openpgp_init_ex	},
 	{ "starcert",	sc_pkcs15emu_starcert_init_ex	},
@@ -71,7 +72,8 @@ struct sc_pkcs15_emulator_handler old_emulators[] = {
 	{ "actalis",	sc_pkcs15emu_actalis_init_ex	},
 	{ "tccardos",	sc_pkcs15emu_tccardos_init_ex	},
 	{ NULL, NULL }
-};	
+};
+// clang-format on
 
 static int parse_emu_block(sc_pkcs15_card_t *, struct sc_aid *, scconf_block *);
 static sc_pkcs15_df_t * sc_pkcs15emu_get_df(sc_pkcs15_card_t *p15card,

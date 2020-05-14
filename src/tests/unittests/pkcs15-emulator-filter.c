@@ -28,6 +28,7 @@ int func(sc_pkcs15_card_t *card, struct sc_aid *aid) {
 	return SC_SUCCESS;
 }
 
+// clang-format off
 struct sc_pkcs15_emulator_handler builtin[] = {
 	{ "openpgp",	&func },
 	{ "starcert",	&func },
@@ -39,6 +40,7 @@ struct sc_pkcs15_emulator_handler old[] = {
 	{ "jcop",		&func },
 	{ NULL, NULL }
 };
+// clang-format on
 
 /* add_emul */
 static void torture_null_add_emul(void **state)

@@ -55,6 +55,7 @@ enum {
 	OPT_RESET
 };
 
+// clang-format off
 static const struct option options[] = {
 	{ "version",		0, NULL,	OPT_VERSION },
 	{ "info",		0, NULL,		'i' },
@@ -75,6 +76,7 @@ static const struct option options[] = {
 	{ "verbose",		0, NULL,		'v' },
 	{ NULL, 0, NULL, 0 }
 };
+// clang-format on
 
 static const char *option_help[] = {
 	"Prints OpenSC package revision",
@@ -553,6 +555,7 @@ static int list_algorithms(void)
 	int i;
 	const char *aname = "unknown";
 
+	// clang-format off
 	const id2str_t alg_type_names[] = {
 		{ SC_ALGORITHM_RSA,       "rsa"       },
 		{ SC_ALGORITHM_EC,        "ec"        },
@@ -590,6 +593,7 @@ static int list_algorithms(void)
 		{ SC_ALGORITHM_RSA_HASH_SHA224,    "sha224"    },
 		{ 0, NULL }
 	};
+	// clang-format on
 
 	if (verbose)
 		printf("Card supports %d algorithm(s)\n\n",card->algorithm_count);
