@@ -55,6 +55,7 @@ typedef struct _pgp_pin_cfg {
 	int		do_index;
 } pgp_pin_cfg_t;
 
+// clang-format off
 /* OpenPGP cards v1:
  * "Signature PIN2 & "Encryption PIN" are two different PINs - not sync'ed by hardware
  */
@@ -71,6 +72,7 @@ static const pgp_pin_cfg_t	pin_cfg_v2[3] = {
 	{ "User PIN (sig)", 0x01, PGP_USER_PIN_FLAGS,  6, 0 },	// used for PSO:CDS
 	{ "Admin PIN",      0x03, PGP_ADMIN_PIN_FLAGS, 8, 2 }
 };
+// clang-format on
 
 static struct sc_object_id curve25519_oid = {{1, 3, 6, 1, 4, 1, 3029, 1, 5, 1, -1}};
 
@@ -103,6 +105,7 @@ typedef struct cdata_st {
 	int         obj_flags;
 } cdata;
 
+// clang-format off
 static const pgp_key_cfg_t key_cfg[3] = {
 	{ "Signature key",      "B601", 1, PGP_SIG_PRKEY_USAGE,  PGP_SIG_PUBKEY_USAGE  },
 	{ "Encryption key",     "B801", 2, PGP_ENC_PRKEY_USAGE,  PGP_ENC_PUBKEY_USAGE  },
@@ -114,12 +117,14 @@ static const cdata certs[PGP_MAX_NUM_CERTS] = {
 	{"DEC certificate", 0, "3F007F21", "2", SC_PKCS15_CO_FLAG_MODIFIABLE},
 	{"SIG certificate", 0, "3F007F21", "1", SC_PKCS15_CO_FLAG_MODIFIABLE}
 };
+// clang-format on
 
 typedef struct _pgp_manuf_map {
 	unsigned short		id;
 	const char	*name;
 } pgp_manuf_map_t;
 
+// clang-format off
 static const pgp_manuf_map_t manuf_map[] = {
 	{ 0x0001, "PPC Card Systems"		},
 	{ 0x0002, "Prism"			},
@@ -147,6 +152,7 @@ static const pgp_manuf_map_t manuf_map[] = {
 	{ 0xffff, "test card"			},
 	{ 0, NULL }
 };
+// clang-format on
 
 /*
  * This function pretty much follows what find_tlv in the GNUpg
@@ -225,8 +231,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 	if ((r = read_file(card, "006E:0073:00C4", c4data, sizeof(c4data))) < 0)
 		goto failed;
 	if (r != 7) {
-		sc_log(ctx, 
-			"CHV status bytes have unexpected length (expected 7, got %d)\n", r);
+		sc_log(ctx, "CHV status bytes have unexpected length (expected 7, got %d)\n", r);
 		r = SC_ERROR_OBJECT_NOT_VALID;
 		goto failed;
 	}

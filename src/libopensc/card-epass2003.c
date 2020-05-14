@@ -189,6 +189,7 @@ typedef struct sec_attr_to_acl_entries {
 	int op;				/* SC_AC_OP_* */
 } sec_attr_to_acl_entries_t;
 
+// clang-format off
 /* Known combinations of file type and methods. More can be added as needed */
 static const sec_attr_to_acl_entries_t sec_attr_to_acl_entry[] = {
 	{SC_FILE_TYPE_DF, 0, 0,				SC_AC_OP_LIST_FILES},
@@ -232,6 +233,7 @@ static const sec_attr_to_acl_entries_t sec_attr_to_acl_entry[] = {
 	{SC_FILE_TYPE_INTERNAL_EF, SC_CARDCTL_OBERTHUR_KEY_RSA_PUBLIC, 3, SC_AC_OP_DELETE},
 	{SC_FILE_TYPE_INTERNAL_EF, SC_CARDCTL_OBERTHUR_KEY_EC_PUBLIC,  3, SC_AC_OP_DELETE},
 };
+// clang-format on
 
 static int epass2003_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu);
 static int epass2003_select_file(struct sc_card *card, const sc_path_t * in_path, sc_file_t ** file_out);

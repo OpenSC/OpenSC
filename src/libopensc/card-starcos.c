@@ -31,6 +31,7 @@
 #include "internal.h"
 #include "iso7816.h"
 
+// clang-format off
 static const struct sc_atr_table starcos_atrs[] = {
 	{ "3B:B7:94:00:c0:24:31:fe:65:53:50:4b:32:33:90:00:b4", NULL, NULL, SC_CARD_TYPE_STARCOS_GENERIC, 0, NULL },
 	{ "3B:B7:94:00:81:31:fe:65:53:50:4b:32:33:90:00:d1", NULL, NULL, SC_CARD_TYPE_STARCOS_GENERIC, 0, NULL },
@@ -48,6 +49,7 @@ static const struct sc_atr_table starcos_atrs[] = {
 	{ "3b:df:96:ff:81:31:fe:45:80:5b:44:45:2e:42:41:5f:53:43:33:35:32:81:05:b5", NULL, NULL, SC_CARD_TYPE_STARCOS_V3_5_ESIGN, 0, NULL },
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
+// clang-format on
 
 static struct sc_card_operations starcos_ops;
 static struct sc_card_operations *iso_ops = NULL;

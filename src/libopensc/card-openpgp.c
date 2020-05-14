@@ -139,7 +139,7 @@ static int		pgp_get_pubkey(sc_card_t *, unsigned int, u8 *, size_t);
 static int		pgp_get_pubkey_pem(sc_card_t *, unsigned int, u8 *, size_t);
 static int		pgp_enumerate_blob(sc_card_t *card, pgp_blob_t *blob);
 
-
+// clang-format off
 static pgp_do_info_t	pgp1x_objects[] = {	/* OpenPGP card spec 1.1 */
 	{ 0x004f, SIMPLE,      READ_ALWAYS | WRITE_NEVER, NULL,               NULL        },
 	{ 0x005b, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  NULL,               sc_put_data },
@@ -272,6 +272,7 @@ static pgp_do_info_t	pgp34_objects[] = {	/**** OpenPGP card spec 3.4 ****/
 	{ DO_ENCR_SYM, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  pgp_get_pubkey_pem, NULL   },
 	{ 0, 0, 0, NULL, NULL },
 };
+// clang-format on
 
 static pgp_do_info_t	*pgp33_objects = pgp34_objects +  9;
 static pgp_do_info_t 	*pgp30_objects = pgp34_objects + 10;

@@ -101,6 +101,7 @@ struct _sc_driver_entry {
 	void *(*func)(void);
 };
 
+// clang-format off
 static const struct _sc_driver_entry internal_card_drivers[] = {
 	/* The card handled by skeid shares the ATR with other cards running CardOS 5.4.
 	 * In order to prevent the cardos driver from matching skeid cards, skeid driver
@@ -179,6 +180,7 @@ static const struct _sc_driver_entry old_card_drivers[] = {
 	{ "westcos",    (void *(*)(void)) sc_get_westcos_driver },
 	{ NULL, NULL }
 };
+// clang-format on
 
 struct _sc_ctx_options {
 	struct _sc_driver_entry cdrv[SC_MAX_CARD_DRIVERS];
