@@ -81,6 +81,7 @@ enum {
 	OPT_PASSWORD_SHARES_TOTAL
 };
 
+// clang-format off
 static const struct option options[] = {
 	{ "initialize",				0, NULL,		'X' },
 	{ "create-dkek-share",		1, NULL,		'C' },
@@ -112,6 +113,7 @@ static const struct option options[] = {
 	{ "verbose",				0, NULL,		'v' },
 	{ NULL, 0, NULL, 0 }
 };
+// clang-format on
 
 static const char *option_help[] = {
 	"Initialize token",

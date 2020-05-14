@@ -55,6 +55,7 @@ static CK_RV	sc_pkcs11_openssl_md_final(sc_pkcs11_operation_t *,
 					CK_BYTE_PTR, CK_ULONG_PTR);
 static void	sc_pkcs11_openssl_md_release(sc_pkcs11_operation_t *);
 
+// clang-format off
 static sc_pkcs11_mechanism_type_t openssl_sha1_mech = {
 	CKM_SHA_1,
 	{ 0, 0, CKF_DIGEST },
@@ -222,6 +223,7 @@ static sc_pkcs11_mechanism_type_t openssl_ripemd160_mech = {
 	NULL,			/* free_mech_data */
 	NULL,			/* copy_mech_data */
 };
+// clang-format on
 
 static void * dup_mem(void *in, size_t in_len)
 {
