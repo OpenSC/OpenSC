@@ -22,12 +22,12 @@
 #ifndef P11TEST_COMMON_H
 #define P11TEST_COMMON_H
 #include "config.h"
+#include <setjmp.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <setjmp.h>
+
+/* Keep this as a last one as it requires previous includes to work */
 #include <cmocka.h>
-
-
 
 #endif /* P11TEST_COMMON_H */
