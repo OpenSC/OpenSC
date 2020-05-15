@@ -20,6 +20,9 @@
 
 #ifndef __LIBPKCS11_H
 #define __LIBPKCS11_H
+
+#include "pkcs11/pkcs11.h"
+
 void *C_LoadModule(const char *name, CK_FUNCTION_LIST_PTR_PTR);
 CK_RV C_UnloadModule(void *module);
 #endif

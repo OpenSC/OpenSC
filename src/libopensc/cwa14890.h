@@ -27,6 +27,8 @@
 
 #if defined(ENABLE_OPENSSL) && defined(ENABLE_SM)
 
+#include "opensc.h"
+
 /* Flags for setting SM status */
 #define CWA_SM_OFF        0x00	/** Disable SM channel */
 #define CWA_SM_ON         0x01	/** Enable SM channel */
