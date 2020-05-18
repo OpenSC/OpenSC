@@ -157,6 +157,7 @@ static int insert_key(
 			sc_log(ctx, 
 				"Select(%s) failed\n",
 				sc_print_path(&prkey_info.path));
+			sc_file_free(f);
 			return 1;
 		}
 		if (f->prop_attr[1] & 0x04) can_crypt=1;
