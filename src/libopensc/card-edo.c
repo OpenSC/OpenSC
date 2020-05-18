@@ -72,7 +72,7 @@ static void edo_eac_init() {
 static int edo_match_card(sc_card_t* card) {
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (_sc_match_atr(card, edo_atrs, &card->type) >= 0) {
-		sc_log(card->ctx, "ATR recognized as Polish eID card\n");
+		sc_log(card->ctx, "ATR recognized as Polish eID card.");
 		LOG_FUNC_RETURN(card->ctx, 1);
 	}
 	LOG_FUNC_RETURN(card->ctx, 0);
@@ -98,7 +98,7 @@ static int edo_get_can(sc_card_t* card, struct establish_pace_channel_input* pac
 	}
 
 	if (!can || 6 != strlen(can)) {
-		sc_log(card->ctx, "Missing or invalid CAN. 6 digits required.\n");
+		sc_log(card->ctx, "Missing or invalid CAN. 6 digits required.");
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN);
 	}
 
@@ -120,12 +120,12 @@ static int edo_unlock(sc_card_t* card) {
 	memset(&pace_output, 0, sizeof pace_output);
 
 	if (SC_SUCCESS != edo_get_can(card, &pace_input)) {
-		sc_log(card->ctx, "Error reading CAN.\n");
+		sc_log(card->ctx, "Error reading CAN.");
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN);
 	}
 
 	if (SC_SUCCESS != perform_pace(card, pace_input, &pace_output, EAC_TR_VERSION_2_02)) {
-		sc_log(card->ctx, "Error verifying CAN.\n");
+		sc_log(card->ctx, "Error verifying CAN.");
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN);
 	}
 
