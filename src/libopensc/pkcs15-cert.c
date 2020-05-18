@@ -202,6 +202,8 @@ sc_pkcs15_get_name_from_dn(struct sc_context *ctx, const u8 *dn, size_t dn_len,
 
 		/* Yes, then return the name */
 		dummy = sc_asn1_skip_tag(ctx, &ava, &ava_len, ava[0] & SC_ASN1_TAG_PRIMITIVE, &dummy_len);
+		if (dummy == NULL)
+			LOG_TEST_RET(ctx, SC_ERROR_INVALID_ASN1_OBJECT, "ASN.1 decoding of AVA name");
 		if (*name == NULL) {
 			*name = malloc(dummy_len);
 			if (*name == NULL)
