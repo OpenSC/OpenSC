@@ -6,6 +6,9 @@ matrix:
       os: osx
       osx_image: xcode9.4
       env: DO_PUSH_ARTIFACT=yes
+    - compiler: clang
+      os: linux
+      dist: bionic
     - compiler: gcc
       os: linux
       dist: bionic
