@@ -271,8 +271,10 @@ static int cardos_init(sc_card_t *card)
 
 	if (card->type == SC_CARD_TYPE_CARDOS_M4_2) {
 		r = cardos_have_2048bit_package(card);
-		if (r < 0)
-			return SC_ERROR_INVALID_CARD;
+		if (r < 0) {
+			r = SC_ERROR_INVALID_CARD;
+			goto err;
+		}
 		if (r == 1)
 			priv->rsa_2048 = 1;
 		card->caps |= SC_CARD_CAP_APDU_EXT;
@@ -296,16 +298,18 @@ static int cardos_init(sc_card_t *card)
 
 	r = sc_transmit_apdu(card, &apdu);
 	if (r < 0)
-		LOG_TEST_RET(card->ctx,
+		LOG_TEST_GOTO_ERR(card->ctx,
 				SC_ERROR_INVALID_CARD,
 				"APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	if (r < 0)
-		LOG_TEST_RET(card->ctx,
+		LOG_TEST_GOTO_ERR(card->ctx,
 				SC_ERROR_INVALID_CARD,
 				"GET DATA command returned error");
-	if (apdu.resplen != 2)
-		return SC_ERROR_INVALID_CARD;
+	if (apdu.resplen != 2) {
+		r = SC_ERROR_INVALID_CARD;
+		goto err;
+	}
 	data_field_length = ((rbuf[0] << 8) | rbuf[1]);
 
 	/* TODO is this really needed? strip the length of possible Lc and Le bytes */
@@ -354,7 +358,13 @@ static int cardos_init(sc_card_t *card)
 		r = cardos_add_algs(card, flags, 0, 0);
 	}
 
-	return 0;
+err:
+	if (r != SC_SUCCESS) {
+		free(priv);
+		card->drv_data = NULL;
+	}
+
+	return r;
 }
 
 static int cardos_pass_algo_flags(sc_card_t *card, struct sc_cardctl_cardos_pass_algo_flags * ptr)
