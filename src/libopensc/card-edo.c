@@ -111,8 +111,8 @@ static int edo_get_can(sc_card_t* card, struct establish_pace_channel_input* pac
 static int edo_unlock(sc_card_t* card) {
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	struct establish_pace_channel_input pace_input = {0};
-	struct establish_pace_channel_output pace_output = {0};
+	struct establish_pace_channel_input pace_input;
+	struct establish_pace_channel_output pace_output;
 
 	memset(&pace_input, 0, sizeof pace_input);
 	memset(&pace_output, 0, sizeof pace_output);
