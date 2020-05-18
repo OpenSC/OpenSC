@@ -419,7 +419,19 @@ AC_CHECK_FUNCS([ \
 	strdup strerror memset_s explicit_bzero \
 	strnlen sigaction
 ])
-AC_CHECK_DECLS([strlcpy, strlcat], [], [], [[#include <string.h>]])
+
+# Do not check for strlcpy and strlcat in Linux because it is not implemented
+# and autotools can not detect it in AC_CHECK_DECLS because build does not fail
+# in this test.
+# https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=22192
+case "${host_os}" in
+	linux*)
+		;;
+	*)
+		AC_CHECK_DECLS([strlcpy, strlcat], [], [], [[#include <string.h>]])
+		;;
+esac
+
 AC_CHECK_SIZEOF(void *)
 if test "${ac_cv_sizeof_void_p}" = 8; then
 	LIBRARY_BITNESS="64"
