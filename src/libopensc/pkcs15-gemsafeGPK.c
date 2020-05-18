@@ -205,7 +205,7 @@ static int sc_pkcs15emu_gemsafeGPK_init(sc_pkcs15_card_t *p15card)
 
 	u8 sysrec[7];
 	int num_keyinfo = 0;
-	keyinfo kinfo[8]; /* will look for 8 keys */
+	keyinfo kinfo[9]; /* will look for 9 keys */
 	u8 modulus_buf[ 1 + 1024 / 8]; /* tag+modulus */
 	u8 *cp;
 	char buf[256];
@@ -255,9 +255,9 @@ static int sc_pkcs15emu_gemsafeGPK_init(sc_pkcs15_card_t *p15card)
 
 	/* There may be more then one key in the directory. */
 	/* we need to find them so we can associate them with the */
-	/* the certificate.  The files are 0007 to 000f */
+	/* the certificate.  The files are 0007 to 000F */
 
-	for (i = 7; i < 16; i++) {
+	for (i = 0x7; i <= 0xF; i++) {
 		path.value[0] = 0x00;
 		path.value[1] = i;
 		path.len = 2;	
@@ -297,7 +297,7 @@ static int sc_pkcs15emu_gemsafeGPK_init(sc_pkcs15_card_t *p15card)
 		while (j--) 
 			*cp++ =  modulus_buf[j + 1];
 		num_keyinfo++;
-	} 
+	}
 
 	/* Get the gemsafe data with the cert */
 	 sc_format_path("3F000200004", &path);
