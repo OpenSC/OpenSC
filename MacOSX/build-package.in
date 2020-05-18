@@ -20,11 +20,14 @@ SDK_PATH=$(xcrun --sdk macosx --show-sdk-path)
 export CFLAGS="$CFLAGS -isysroot $SDK_PATH -arch x86_64"
 
 # xcodebuild doesn't read the environment variables
-# transform them into parameters
-P1="${CODE_SIGN_IDENTITY:+CODE_SIGN_IDENTITY=${CODE_SIGN_IDENTITY}}"
-P2="${OTHER_CODE_SIGN_FLAGS:+OTHER_CODE_SIGN_FLAGS=${OTHER_CODE_SIGN_FLAGS}}"
-P3="${CODE_SIGN_INJECT_BASE_ENTITLEMENTS:+CODE_SIGN_INJECT_BASE_ENTITLEMENTS=${CODE_SIGN_INJECT_BASE_ENTITLEMENTS}}"
-P4="${CODE_SIGN_STYLE:+CODE_SIGN_STYLE=${CODE_SIGN_STYLE}}"
+# transform them into parameters only if we have the secret $CODE_SIGN_IDENTITY
+if [[ ! -z "$CODE_SIGN_IDENTITY" ]]; then
+	P1="${CODE_SIGN_IDENTITY:+CODE_SIGN_IDENTITY=${CODE_SIGN_IDENTITY}}"
+	P2="${OTHER_CODE_SIGN_FLAGS:+OTHER_CODE_SIGN_FLAGS=${OTHER_CODE_SIGN_FLAGS}}"
+	P3="${CODE_SIGN_INJECT_BASE_ENTITLEMENTS:+CODE_SIGN_INJECT_BASE_ENTITLEMENTS=${CODE_SIGN_INJECT_BASE_ENTITLEMENTS}}"
+	P4="${CODE_SIGN_STYLE:+CODE_SIGN_STYLE=${CODE_SIGN_STYLE}}"
+	SIGN_PARAMS="$P1" "$P2" "$P3" "$P4"
+fi
 
 export SED=/usr/bin/sed
 PREFIX=/Library/OpenSC
@@ -97,7 +100,7 @@ fi
 if ! test -e NotificationProxy; then
 	git clone http://github.com/frankmorgner/NotificationProxy.git
 fi
-xcodebuild -target NotificationProxy -configuration Release -project NotificationProxy/NotificationProxy.xcodeproj install DSTROOT=$BUILDPATH/target/Library/OpenSC/ "$P1" "$P2" "$P3" "$P4"
+xcodebuild -target NotificationProxy -configuration Release -project NotificationProxy/NotificationProxy.xcodeproj install DSTROOT=$BUILDPATH/target/Library/OpenSC/ $SIGN_PARAMS
 mkdir -p "$BUILDPATH/target/Applications"
 osacompile -o "$BUILDPATH/target/Applications/OpenSC Notify.app" "MacOSX/OpenSC_Notify.applescript"
 
@@ -113,7 +116,7 @@ if (( $(xcodebuild -version | sed -En 's/Xcode[[:space:]]+([0-9]+)(\.[0-9]*)*/\1
 	test -L OpenSC.tokend/build/opensc-src || ln -sf ${BUILDPATH}/src OpenSC.tokend/build/opensc-src
 
 	# Build and copy OpenSC.tokend
-	xcodebuild -target OpenSC -configuration Deployment -project OpenSC.tokend/Tokend.xcodeproj install DSTROOT=${BUILDPATH}/target_tokend "$P1" $P2 "$P3" "$P4"
+	xcodebuild -target OpenSC -configuration Deployment -project OpenSC.tokend/Tokend.xcodeproj install DSTROOT=${BUILDPATH}/target_tokend $SIGN_PARAMS
 else
 	# https://github.com/OpenSC/OpenSC.tokend/issues/33
 	mkdir -p ${BUILDPATH}/target_tokend
@@ -164,7 +167,7 @@ if test -e OpenSCToken; then
 	BP=${BUILDPATH}
 	. ./bootstrap
 	BUILDPATH=${BP}
-	xcodebuild -target OpenSCTokenApp -configuration Debug -project OpenSCTokenApp.xcodeproj install DSTROOT=${BUILDPATH}/target_token  "$P1" "$P2" "$P3" "$P4"
+	xcodebuild -target OpenSCTokenApp -configuration Debug -project OpenSCTokenApp.xcodeproj install DSTROOT=${BUILDPATH}/target_token  $SIGN_PARAMS
 	cd ..
 else
 	# if no OpenSCToken is checked out, then we create a dummy package
