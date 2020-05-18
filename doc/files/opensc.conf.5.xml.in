@@ -726,11 +726,13 @@ app <replaceable>application</replaceable> {
 						<option>can = <replaceable>value</replaceable>;</option>
 					</term>
 					<listitem><para>
-							CAN is required to establish connection
-							with the card. It might be overridden by
-							<literal>EDO_CAN</literal> environment
-							variable. Currently, it is not possible
-							to set it in any other way.
+							CAN (Card Access Number – 6 digit number
+							printed on the right bottom corner of the
+							front side of the document) is required
+							to establish connection with the card.
+							It might be overwritten by <literal>EDO_CAN</literal>
+							environment variable. Currently, it is not
+							possible to set it in any other way.
 					</para></listitem>
 				</varlistentry>
 			</variablelist>

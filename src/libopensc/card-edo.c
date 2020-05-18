@@ -83,7 +83,9 @@ static int edo_get_can(sc_card_t* card, struct establish_pace_channel_input* pac
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	const char* can;
 
-	if (!(can = getenv("EDO_CAN"))) {
+	can = getenv("EDO_CAN");
+
+	if (!can || can[0] != '\0') {
 		for (size_t i = 0; card->ctx->conf_blocks[i]; ++i) {
 			scconf_block** blocks = scconf_find_blocks(card->ctx->conf, card->ctx->conf_blocks[i], "card_driver", "edo");
 			if (!blocks)
@@ -96,7 +98,7 @@ static int edo_get_can(sc_card_t* card, struct establish_pace_channel_input* pac
 	}
 
 	if (!can || 6 != strlen(can)) {
-		sc_log(card->ctx, "Missing or invalid CAN.\n");
+		sc_log(card->ctx, "Missing or invalid CAN. 6 digits required.\n");
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN);
 	}
 
