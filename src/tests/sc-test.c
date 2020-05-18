@@ -83,18 +83,22 @@ int sc_test_init(int *argc, char *argv[])
 			if (rc < 0)
 				return rc;
 		} else {
-			for (i = rc = 0; rc != 1 && i < (int) sc_ctx_get_reader_count(ctx); i++)
+			for (i = rc = 0; !(rc & SC_READER_CARD_PRESENT) &&
+								i < (int) sc_ctx_get_reader_count(ctx); i++)
 				rc = sc_detect_card_presence(sc_ctx_get_reader(ctx, i));
-			if (rc == 1)
+			if (rc < 0)
+				return rc;
+			if (rc & SC_READER_CARD_PRESENT) {
 				opt_reader = i - 1;
+			} else {
+				rc = 0;
+			}
 		}
 
 		if (rc > 0) {
 			printf("Card detected in reader '%s'\n",sc_ctx_get_reader(ctx, opt_reader)->name);
 			break;
 		}
-		if (rc < 0)
-			return rc;
 
 		printf("Please insert a smart card. Press return to continue");
 		fflush(stdout);
