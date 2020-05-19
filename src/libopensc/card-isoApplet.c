@@ -37,6 +37,8 @@
 #define ISOAPPLET_API_FEATURE_EXT_APDU 0x01
 #define ISOAPPLET_API_FEATURE_SECURE_RANDOM 0x02
 #define ISOAPPLET_API_FEATURE_ECC 0x04
+#define ISOAPPLET_API_FEATURE_RSA_SHA256_PSS 0x08
+#define ISOAPPLET_API_FEATURE_RSA_SHA512_PSS 0x10
 
 static const u8 isoApplet_aid[] = {0xf2,0x76,0xa2,0x88,0xbc,0xfb,0xa6,0x9d,0x34,0xf3,0x10,0x01};
 
@@ -265,6 +267,14 @@ isoApplet_init(sc_card_t *card)
 
 	/* RSA */
 	flags = 0;
+	if(drvdata->isoapplet_features & ISOAPPLET_API_FEATURE_RSA_SHA256_PSS) {
+		flags |= SC_ALGORITHM_RSA_PAD_PSS;
+		flags |= SC_ALGORITHM_RSA_HASH_SHA256;
+	}
+	if(drvdata->isoapplet_features & ISOAPPLET_API_FEATURE_RSA_SHA512_PSS) {
+		flags |= SC_ALGORITHM_RSA_PAD_PSS;
+		flags |= SC_ALGORITHM_RSA_HASH_SHA512;
+	}
 	/* Padding schemes: */
 	flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
 	/* Hashes are to be done by the host for RSA */
