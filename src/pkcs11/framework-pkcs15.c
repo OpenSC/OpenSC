@@ -557,7 +557,11 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo)
 	}
 
 	if (slot->p11card == NULL) {
-		rv = CKR_TOKEN_NOT_PRESENT;
+		if (slot->slot_info.flags & CKF_TOKEN_PRESENT) {
+			rv = CKR_TOKEN_NOT_RECOGNIZED;
+		} else {
+			rv = CKR_TOKEN_NOT_PRESENT;
+		}
 		goto out;
 	}
 
