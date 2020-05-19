@@ -202,6 +202,15 @@ app default {
 		# user_consent_app = "/usr/bin/pinentry";
 	}
 
+	card_driver edo {
+		# CAN is required to establish connection
+		# with the card. It might be overridden by
+		# EDO_CAN environment variable. Currently,
+		# it is not possible to set it in any other way.
+		#
+		#can = 123456;
+	}
+
 	# In addition to the built-in list of known cards in the
 	# card driver, you can configure a new card for the driver
 	# using the card_atr block. The goal is to centralize

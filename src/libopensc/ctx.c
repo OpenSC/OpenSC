@@ -129,6 +129,9 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "westcos",	(void *(*)(void)) sc_get_westcos_driver },
 	{ "esteid2018",	(void *(*)(void)) sc_get_esteid2018_driver },
 	{ "idprime",	(void *(*)(void)) sc_get_idprime_driver },
+#if defined(ENABLE_SM) && defined(ENABLE_OPENPACE)
+	{ "edo",        (void *(*)(void)) sc_get_edo_driver },
+#endif
 
 /* Here should be placed drivers that need some APDU transactions in the
  * driver's `match_card()` function. */

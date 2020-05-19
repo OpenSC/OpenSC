@@ -612,7 +612,7 @@ static int eac_gen_auth_1_encrypted_nonce(sc_card_t *card,
 	EAC_GEN_AUTH_PACE_R *r_data = NULL;
 	unsigned char *d = NULL, *p;
 	int r, l;
-	unsigned char resp[SC_MAX_EXT_APDU_RESP_SIZE];
+	unsigned char resp[SC_MAX_APDU_RESP_SIZE];
 
 	c_data = EAC_GEN_AUTH_PACE_C_new();
 	if (!c_data) {
@@ -691,7 +691,7 @@ static int eac_gen_auth_2_map_nonce(sc_card_t *card,
 	EAC_GEN_AUTH_PACE_R *r_data = NULL;
 	unsigned char *d = NULL, *p;
 	int r, l;
-	unsigned char resp[SC_MAX_EXT_APDU_RESP_SIZE];
+	unsigned char resp[SC_MAX_APDU_RESP_SIZE];
 
 	c_data = EAC_GEN_AUTH_PACE_C_new();
 	if (!c_data) {
@@ -777,7 +777,7 @@ static int eac_gen_auth_3_perform_key_agreement(sc_card_t *card,
 	EAC_GEN_AUTH_PACE_R *r_data = NULL;
 	unsigned char *d = NULL, *p;
 	int r, l;
-	unsigned char resp[SC_MAX_EXT_APDU_RESP_SIZE];
+	unsigned char resp[SC_MAX_APDU_RESP_SIZE];
 
 	c_data = EAC_GEN_AUTH_PACE_C_new();
 	if (!c_data) {
@@ -865,7 +865,7 @@ static int eac_gen_auth_4_mutual_authentication(sc_card_t *card,
 	EAC_GEN_AUTH_PACE_R *r_data = NULL;
 	unsigned char *d = NULL, *p;
 	int r, l;
-	unsigned char resp[SC_MAX_EXT_APDU_RESP_SIZE];
+	unsigned char resp[SC_MAX_APDU_RESP_SIZE];
 
 	c_data = EAC_GEN_AUTH_PACE_C_new();
 	if (!c_data) {
@@ -1135,12 +1135,6 @@ int perform_pace(sc_card_t *card,
 
 		sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "EF.CardAccess", pace_output->ef_cardaccess,
 				pace_output->ef_cardaccess_length);
-
-		/* XXX Card capabilities should be determined by the OpenSC card driver. We
-		 * set it here to be able to use the nPA without patching OpenSC. By
-		 * now we have read the EF.CardAccess so the assumption to have an nPA
-		 * seems valid. */
-		card->caps |= SC_CARD_CAP_APDU_EXT;
 
 		eac_ctx = EAC_CTX_new();
 		if (!eac_ctx
@@ -1667,7 +1661,7 @@ static int eac_gen_auth_ca(sc_card_t *card, const BUF_MEM *eph_pub_key,
 	EAC_GEN_AUTH_CA_R *r_data = NULL;
 	unsigned char *d = NULL;
 	int r;
-	unsigned char resp[SC_MAX_EXT_APDU_RESP_SIZE];
+	unsigned char resp[SC_MAX_APDU_RESP_SIZE];
 
 	c_data = EAC_GEN_AUTH_CA_C_new();
 	if (!c_data) {

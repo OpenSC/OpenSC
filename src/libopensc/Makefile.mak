@@ -28,6 +28,7 @@ OBJECTS			= \
 	card-sc-hsm.obj card-dnie.obj card-isoApplet.obj pkcs15-coolkey.obj \
 	card-masktech.obj card-gids.obj card-jpki.obj \
 	card-npa.obj card-esteid2018.obj card-idprime.obj \
+	card-edo.obj \
 	\
 	pkcs15-openpgp.obj pkcs15-starcert.obj pkcs15-cardos.obj \
 	pkcs15-tcos.obj pkcs15-esteid.obj pkcs15-gemsafeGPK.obj \

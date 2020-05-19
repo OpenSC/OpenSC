@@ -294,6 +294,9 @@ app <replaceable>application</replaceable> {
 									<literal>dnie</literal>: See <xref linkend="dnie"/>
 							</para></listitem>
 							<listitem><para>
+									<literal>edo</literal>: See <xref linkend="edo"/>
+							</para></listitem>
+							<listitem><para>
 									Any other value: Configuration block for an externally loaded card driver
 							</para></listitem>
 						</itemizedlist>
@@ -710,6 +713,26 @@ app <replaceable>application</replaceable> {
 							<literal>/usr/bin/pinentry</literal>).
 							Only used if compiled with
 							<option>--enable-dnie-ui</option>
+					</para></listitem>
+				</varlistentry>
+			</variablelist>
+		</refsect2>
+
+		<refsect2 id="edo">
+			<title>Configuration Options for Polish eID Card</title>
+			<variablelist>
+				<varlistentry>
+					<term>
+						<option>can = <replaceable>value</replaceable>;</option>
+					</term>
+					<listitem><para>
+							CAN (Card Access Number – 6 digit number
+							printed on the right bottom corner of the
+							front side of the document) is required
+							to establish connection with the card.
+							It might be overwritten by <literal>EDO_CAN</literal>
+							environment variable. Currently, it is not
+							possible to set it in any other way.
 					</para></listitem>
 				</varlistentry>
 			</variablelist>
