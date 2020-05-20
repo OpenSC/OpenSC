@@ -1469,6 +1469,9 @@ C_WaitForSlotEvent(CK_FLAGS flags, CK_SLOT_ID_PTR pSlot, CK_VOID_PTR pRserved)
 
 	enter("C_WaitForSlotEvent");
 	spy_dump_ulong_in("flags", flags);
+	if (pSlot != NULL) {
+		spy_dump_ulong_in("pSlot", *pSlot);
+	}
 	rv = po->C_WaitForSlotEvent(flags, pSlot, pRserved);
 	return retne(rv);
 }
