@@ -167,6 +167,7 @@
 						<command>asn1</command>
 						<replaceable>file-id</replaceable>
 						<arg choice="opt"><replaceable>rec-no</replaceable></arg>
+						<arg choice="opt"><replaceable>offs</replaceable></arg>
 					</term>
 					<listitem>
 						<para>
@@ -176,6 +177,12 @@
 							<replaceable>rec-no</replaceable> is given and the file is
 							a record-oriented EF, parse and print only the record
 							indicated by this parameter.
+							If the optional parameter
+							<replaceable>offs</replaceable> is given, start parsing
+							and printing the file or record at the offset indicated
+							by the value given.
+							If this parameter is not given, the default offset is
+							<literal>0</literal>.
 						</para>
 					</listitem>
 				</varlistentry>

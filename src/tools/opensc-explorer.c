@@ -206,7 +206,7 @@ static struct command	cmds[] = {
 		"apdu",	"<data> ...",
 		"send a custom apdu command"		},
 	{ do_asn1,
-		"asn1",	"[<file-id> [<rec-no>]]",
+		"asn1",	"[<file-id> [<rec-no>] [<offs>]]",
 		"decode an ASN.1 file or record"	},
 	{ do_sm,
 		"sm",	"{open|close}",
@@ -2055,19 +2055,19 @@ static int do_apdu(int argc, char **argv)
 		fprintf(stderr, "Failure: %s\n", sc_strerror(r));
 	else
 		printf("Success!\n");
-
 	return 0;
 }
 
 static int do_asn1(int argc, char **argv)
 {
 	int r, err = 1;
+	unsigned int offs = 0;
 	sc_path_t path;
 	sc_file_t *file = NULL;
 	int not_current = 1;
 	u8 buf[SC_MAX_EXT_APDU_DATA_SIZE];
 
-	if (argc > 2)
+	if (argc > 3)
 		return usage(do_asn1);
 
 	/* select file */
@@ -2098,10 +2098,13 @@ static int do_asn1(int argc, char **argv)
 	if (file->ef_structure == SC_FILE_EF_TRANSPARENT) {
 		size_t size = (file->size > 0) ? file->size : sizeof(buf);
 
-		if (argc > 1) {
-			fprintf(stderr, "Transparent EFs do not support records\n");
+		if (argc > 2) {
+			fprintf(stderr, "Transparent EFs do not have records\n");
 			goto err;
 		}
+
+		if (argc > 1)
+			offs = (unsigned int) strtoul(argv[1], NULL, 10);
 
 		r = sc_lock(card);
 		if (r == SC_SUCCESS)
@@ -2114,9 +2117,9 @@ static int do_asn1(int argc, char **argv)
 		if ((size_t) r != file->size) {
 			fprintf(stderr, "WARNING: expecting %"SC_FORMAT_LEN_SIZE_T"u, got %d bytes.\n",
 				 file->size, r);
-			/* some cards return a bogus value for file length. As
-			 * long as the actual length is not higher than the expected
-			 * length, continue */
+			/* some cards return a bogus value for file length.
+			 * As long as the actual length is not higher
+			 * than the expected length, continue */
 			if ((size_t) r > file->size)
 				goto err;
 		}
@@ -2130,6 +2133,9 @@ static int do_asn1(int argc, char **argv)
 		}
 
 		rec = (unsigned int) strtoul(argv[1], NULL, 10);
+		if (argc > 2)
+			offs = (unsigned int) strtoul(argv[2], NULL, 10);
+
 		if (rec < 1 || rec > file->record_count) {
 			fprintf(stderr, "Invalid record number %u.\n", rec);
 			goto err;
@@ -2147,10 +2153,14 @@ static int do_asn1(int argc, char **argv)
 		}
 	}
 
-	/* asn1 dump */
-	sc_asn1_print_tags(buf, r);
+	/* if offset does not exceed the length read from file/record, ... */
+	if (offs <= (unsigned int) r) {
+		/* ... perform the ASN.1 dump */
+		sc_asn1_print_tags(buf + offs, (unsigned int) r - offs);
 
-	err = 0;
+		err = 0;
+	}
+
 err:
 	if (not_current) {
 		sc_file_free(file);
