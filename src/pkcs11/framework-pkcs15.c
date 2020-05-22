@@ -5542,7 +5542,8 @@ get_ec_pubkey_params(struct sc_pkcs15_pubkey *key, CK_ATTRIBUTE_PTR attr)
 {
 	struct sc_ec_parameters *ecp;
 	unsigned long expected_size = 0;
-	unsigned char *out = NULL;
+	char *curve_name = NULL;
+	int r;
 
 	if (key == NULL)
 		return CKR_ATTRIBUTE_TYPE_INVALID;
@@ -5551,30 +5552,28 @@ get_ec_pubkey_params(struct sc_pkcs15_pubkey *key, CK_ATTRIBUTE_PTR attr)
 
 	switch (key->algorithm) {
 	case SC_ALGORITHM_EDDSA:
-#define CURVE "edwards25519"
-		/* TODO key->alg_id->oid contains OID which we need to convert to curve name */
-		/* For now, using hardcoded curve names */
-		expected_size = strlen(CURVE) + 2;
-		check_attribute_buffer(attr, expected_size);
-		out = attr->pValue;
-		out[0] = 0x13; /* Tag PrintableString */
-		out[1] = strlen(CURVE);
-		memcpy(&out[2], CURVE, strlen(CURVE));
-		return CKR_OK;
-#undef CURVE
-
 	case SC_ALGORITHM_XEDDSA:
-#define CURVE "curve25519"
 		/* TODO key->alg_id->oid contains OID which we need to convert to curve name */
 		/* For now, using hardcoded curve names */
-		expected_size = strlen(CURVE) + 2;
+		if (key->algorithm == SC_ALGORITHM_EDDSA) {
+			curve_name = "edwards25519";
+		} else if (key->algorithm == SC_ALGORITHM_XEDDSA) {
+			curve_name = "curve25519";
+		} else {
+			return CKR_GENERAL_ERROR;
+		}
+		r = sc_asn1_put_tag(0x13, (u8 *)curve_name, strlen(curve_name), NULL, 0, NULL);
+		if (r <= 0) {
+			return CKR_GENERAL_ERROR;
+		}
+		expected_size = r;
 		check_attribute_buffer(attr, expected_size);
-		out = attr->pValue;
-		out[0] = 0x13; /* Tag PrintableString */
-		out[1] = strlen(CURVE);
-		memcpy(&out[2], CURVE, strlen(CURVE));
+		/* Tag PrintableString */
+		r = sc_asn1_put_tag(0x13, (u8 *)curve_name, strlen(curve_name), attr->pValue, expected_size, NULL);
+		if (r != SC_SUCCESS) {
+			return sc_to_cryptoki_error(r, NULL);
+		}
 		return CKR_OK;
-#undef CURVE
 
 	case SC_ALGORITHM_EC:
 		/* TODO parms should not be in two places */
