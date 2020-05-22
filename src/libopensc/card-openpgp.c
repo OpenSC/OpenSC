@@ -2231,14 +2231,16 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 	sc_security_env_t	*env = &priv->sec_env;
 	sc_apdu_t	apdu;
 	u8 apdu_case = SC_APDU_CASE_4;
-	u8		*temp = NULL;
-	int		r, extlen = 0;
+	u8		*temp = NULL, *p = NULL;
+	size_t		templen, pklen, dolen;
+	int		r;
 
 	LOG_FUNC_CALLED(card->ctx);
 
 	/* padding according to OpenPGP card spec 1.1 & 2.x section 7.2.9 / 3.x section 7.2.11
 	 * The longest possible prefix is 10 bytes for ECDH */
-	if (!(temp = malloc(inlen + 10)))
+	templen = inlen + 10;
+	if (!(temp = malloc(templen)))
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 
 	/* padding byte: 0xa6 = ECC; 0x00 = RSA; 0x02 = AES */
@@ -2248,48 +2250,64 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 		 * provided by the padding routines. But it lets put it here
 		 * to make sure it does not conflict with following indicators */
 		temp[0] = 0x00;
-		extlen = 1;
+		memcpy(temp + 1, in, inlen);
+		inlen += 1;
 		break;
+
 	case SC_ALGORITHM_EC:
 	case SC_ALGORITHM_XEDDSA:
+		/* Calculate length of External Public Key (0x86) */
+		r = sc_asn1_put_tag(0x86, NULL, inlen, NULL, 0, NULL);
+		if (r <= 0) {
+			free(temp);
+			LOG_FUNC_RETURN(card->ctx, r);
+		}
+		pklen = r;
+
+		/* Calculate lenght of Public Key DO (0x7F49) */
+		r = sc_asn1_put_tag(0x7f49, NULL, pklen, NULL, 0, NULL);
+		if (r <= 0) {
+			free(temp);
+			LOG_FUNC_RETURN(card->ctx, r);
+		}
+		dolen = r;
+
+		p = temp;
 		/* This is 0xA6 Cipher DO with associated length field */
-		temp[extlen++] = 0xa6;
-		if (inlen >= 128) {
-			temp[extlen++] = 0x81;
-			temp[extlen++] = inlen + 7;
-		} else {
-			temp[extlen++] = inlen + 5;
+		r = sc_asn1_put_tag(0xA6, NULL, dolen, p, templen - (p - temp), &p);
+		if (r != SC_SUCCESS) {
+			free(temp);
+			LOG_FUNC_RETURN(card->ctx, r);
 		}
+
 		/* Public Key DO (0x7F49) with associated length field */
-		temp[extlen++] = 0x7f;
-		temp[extlen++] = 0x49;
-		if (inlen >= 128) {
-			temp[extlen++] = 0x81;
-			temp[extlen++] = inlen + 3;
-		} else {
-			temp[extlen++] = inlen + 2;
+		r = sc_asn1_put_tag(0x7F49, NULL, pklen, p, templen - (p - temp), &p);
+		if (r != SC_SUCCESS) {
+			free(temp);
+			LOG_FUNC_RETURN(card->ctx, r);
 		}
+
 		/* External Public Key (0x86) with associated length */
-		temp[extlen++] = 0x86;
-		if (inlen >= 128) {
-			temp[extlen++] = 0x81;
+		r = sc_asn1_put_tag(0x86, in, inlen, p, templen - (p - temp), &p);
+		if (r != SC_SUCCESS) {
+			free(temp);
+			LOG_FUNC_RETURN(card->ctx, r);
 		}
-		temp[extlen++] = inlen;
+		inlen = (p - temp);
 		break;
 	case SC_ALGORITHM_AES:
 		/* not supported yet */
 		/*
 		temp[0] = 0x02;
-		extlen = 1;
+		memcpy(temp + 1, in, inlen);
+		inlen += 1;
 		*/
 		/* fall through */
 	default:
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 
-	memcpy(temp + extlen, in, inlen);
 	in = temp;
-	inlen += extlen;
 
 	if (env->operation != SC_SEC_OPERATION_DECIPHER &&
 			env->operation != SC_SEC_OPERATION_DERIVE) {
