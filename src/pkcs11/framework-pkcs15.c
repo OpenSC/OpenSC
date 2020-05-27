@@ -3773,9 +3773,13 @@ pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
 		*(CK_BBOOL*)attr->pValue = (prkey->prv_info->access_flags & SC_PKCS15_PRKEY_ACCESS_LOCAL) != 0;
 		break;
-    case CKA_ALWAYS_AUTHENTICATE:
+	case CKA_ALWAYS_AUTHENTICATE:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
-		*(CK_BBOOL*)attr->pValue = prkey->prv_p15obj->user_consent >= 1 ? CK_TRUE : CK_FALSE;
+		if (fw_data->p15_card->opts.pin_cache_ignore_user_consent) {
+			*(CK_BBOOL*)attr->pValue = CK_FALSE;
+		} else {
+			*(CK_BBOOL*)attr->pValue = prkey->prv_p15obj->user_consent >= 1 ? CK_TRUE : CK_FALSE;
+		}
 		break;
 	case CKA_PRIVATE:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
