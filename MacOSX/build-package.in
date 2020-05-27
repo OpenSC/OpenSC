@@ -97,7 +97,11 @@ fi
 if ! test -e NotificationProxy; then
 	git clone http://github.com/frankmorgner/NotificationProxy.git
 fi
-xcodebuild -target NotificationProxy -configuration Release -project NotificationProxy/NotificationProxy.xcodeproj install DSTROOT=$BUILDPATH/target/Library/OpenSC/ "$P1" "$P2" "$P3" "$P4"
+if test -n "${CODE_SIGN_IDENTITY}"; then
+	xcodebuild -target NotificationProxy -configuration Release -project NotificationProxy/NotificationProxy.xcodeproj install DSTROOT=$BUILDPATH/target/Library/OpenSC/ "$P1" "$P2" "$P3" "$P4"
+else
+	xcodebuild -target NotificationProxy -configuration Release -project NotificationProxy/NotificationProxy.xcodeproj install DSTROOT=$BUILDPATH/target/Library/OpenSC/
+fi
 mkdir -p "$BUILDPATH/target/Applications"
 osacompile -o "$BUILDPATH/target/Applications/OpenSC Notify.app" "MacOSX/OpenSC_Notify.applescript"
 
@@ -113,7 +117,11 @@ if (( $(xcodebuild -version | sed -En 's/Xcode[[:space:]]+([0-9]+)(\.[0-9]*)*/\1
 	test -L OpenSC.tokend/build/opensc-src || ln -sf ${BUILDPATH}/src OpenSC.tokend/build/opensc-src
 
 	# Build and copy OpenSC.tokend
-	xcodebuild -target OpenSC -configuration Deployment -project OpenSC.tokend/Tokend.xcodeproj install DSTROOT=${BUILDPATH}/target_tokend "$P1" $P2 "$P3" "$P4"
+	if test -n "${CODE_SIGN_IDENTITY}"; then
+		xcodebuild -target OpenSC -configuration Deployment -project OpenSC.tokend/Tokend.xcodeproj install DSTROOT=${BUILDPATH}/target_tokend "$P1" $P2 "$P3" "$P4"
+	else
+		xcodebuild -target OpenSC -configuration Deployment -project OpenSC.tokend/Tokend.xcodeproj install DSTROOT=${BUILDPATH}/target_tokend
+	fi
 else
 	# https://github.com/OpenSC/OpenSC.tokend/issues/33
 	mkdir -p ${BUILDPATH}/target_tokend
@@ -142,7 +150,7 @@ cp src/tools/pkcs11-register.plist ${BUILDPATH}/target_startup/Library/LaunchAge
 cp src/tools/opensc-notify.plist ${BUILDPATH}/target_startup/Library/LaunchAgents
 
 # Build OpenSCToken if possible
-if test -e OpenSCToken; then
+if test -e OpenSCToken -a -n "${CODE_SIGN_IDENTITY}"; then
 	cd OpenSCToken
 	# make sure OpenSCToken builds with the same dependencies as before
 	if ! test -e OpenSC; then
@@ -164,7 +172,7 @@ if test -e OpenSCToken; then
 	BP=${BUILDPATH}
 	. ./bootstrap
 	BUILDPATH=${BP}
-	xcodebuild -target OpenSCTokenApp -configuration Debug -project OpenSCTokenApp.xcodeproj install DSTROOT=${BUILDPATH}/target_token  "$P1" "$P2" "$P3" "$P4"
+	xcodebuild -target OpenSCTokenApp -configuration Debug -project OpenSCTokenApp.xcodeproj install DSTROOT=${BUILDPATH}/target_token "$P1" "$P2" "$P3" "$P4"
 	cd ..
 else
 	# if no OpenSCToken is checked out, then we create a dummy package
