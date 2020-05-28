@@ -395,7 +395,7 @@ static int cardos_finish(sc_card_t *card)
 {
 	int r = 0;
 
-	if (card)
+	if (card == NULL )
 		return 0;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
