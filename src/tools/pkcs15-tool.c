@@ -1708,7 +1708,7 @@ static void list_info(void)
 	for (i = 0; i < SC_MAX_SUPPORTED_ALGORITHMS; i++) {
 		struct sc_supported_algo_info * sa = &p15card->tokeninfo->supported_algos[i];
 
-		if (sa->reference == 0 && sa->reference == 0 && sa->mechanism == 0
+		if (sa->reference == 0 && sa->mechanism == 0
 				&& sa->operations == 0 && sa->algo_ref == 0)
 					break;
 		printf("\t\t sc_supported_algo_info[%d]:\n", i);
