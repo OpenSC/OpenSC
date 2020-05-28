@@ -73,7 +73,7 @@ static int cardos_fix_token_info(sc_pkcs15_card_t *p15card)
 
 		for (i = 0, sa = saa[0]; i < SC_MAX_SUPPORTED_ALGORITHMS; i++, sa++) {
 
-			if (sa->reference == 0 && sa->reference == 0 && sa->mechanism == 0
+			if (sa->reference == 0 && sa->mechanism == 0
 					&& sa->operations == 0 && sa->algo_ref == 0)
 				break;
 
