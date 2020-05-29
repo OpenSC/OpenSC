@@ -1603,6 +1603,9 @@ pkcs15_login(struct sc_pkcs11_slot *slot, CK_USER_TYPE userType,
 	if (!fw_data)
 		return sc_to_cryptoki_error(SC_ERROR_INTERNAL, "C_Login");
 	p15card = fw_data->p15_card;
+	if (p15card == NULL) {
+		return CKR_FUNCTION_FAILED;
+	}
 
 	sc_log(context, "pkcs15-login: userType 0x%lX, PIN length %li", userType, ulPinLen);
 	switch (userType) {
