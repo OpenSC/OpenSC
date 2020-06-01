@@ -2437,6 +2437,7 @@ epass2003_gen_key(struct sc_card *card, sc_epass2003_gen_key_data * data)
 	{
 		apdu.p1 = 0x00;
 	}
+    
 	apdu.cla = 0x80;
 	apdu.lc = apdu.datalen = 2;
 	apdu.data = &sbuf[5];
@@ -2452,6 +2453,9 @@ epass2003_gen_key(struct sc_card *card, sc_epass2003_gen_key_data * data)
 	if (len < apdu.resplen)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
+	if(rbuf == NULL)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+		
 	data->modulus = (u8 *) malloc(len);
 	if (!data->modulus)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
@@ -2464,7 +2468,8 @@ epass2003_gen_key(struct sc_card *card, sc_epass2003_gen_key_data * data)
 		//get x value
 		if(0x58 == rbuf[0]){
 			xCoordinateLen = rbuf[1];
-			memcpy(&tmp[0], &rbuf[2], xCoordinateLen);
+			if(xCoordinateLen < 255)
+				memcpy(&tmp[0], &rbuf[2], xCoordinateLen);
 		}
 		else{
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OBJECT_NOT_VALID);
@@ -2472,7 +2477,8 @@ epass2003_gen_key(struct sc_card *card, sc_epass2003_gen_key_data * data)
 		//get y value
 		if(0x59 == rbuf[2+xCoordinateLen]){
 			yCoordinateLen = rbuf[2+xCoordinateLen+1];
-			memcpy(&tmp[xCoordinateLen], &rbuf[2+xCoordinateLen+2], yCoordinateLen);
+			if(yCoordinateLen < 255)
+				memcpy(&tmp[xCoordinateLen], &rbuf[2+xCoordinateLen+2], yCoordinateLen);
 		}
 		else{
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OBJECT_NOT_VALID);
@@ -2726,6 +2732,7 @@ epass2003_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries
 
 			data->pin1.max_tries = maxtries;
 		}
+		LOG_TEST_RET(card->ctx, r, "verify pin failed");
 	}
 	else if (data->cmd == SC_PIN_CMD_UNBLOCK) { /* verify */
 		r = external_key_auth(card, (kid + 1), (unsigned char *)data->pin1.data,
@@ -2740,18 +2747,19 @@ epass2003_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries
 	else {
 		r = external_key_auth(card, kid, (unsigned char *)data->pin1.data,
 				data->pin1.len);
-		get_external_key_retries(card, 0x80 | kid, &retries);
+		LOG_TEST_RET(card->ctx, r, "verify pin failed");
+
+		r = get_external_key_retries(card, 0x80 | kid, &retries);
 		if (retries < pin_low)
 			sc_log(card->ctx, "Verification failed (remaining tries: %d)", retries);
 
+		LOG_TEST_RET(card->ctx, r, "verify pin failed");
 	}
-	LOG_TEST_RET(card->ctx, r, "verify pin failed");
 
 	if (r == SC_SUCCESS)
 	{
 		data->pin1.logged_in = SC_PIN_STATE_LOGGED_IN;
 	}
-
 	return r;
 }
 
