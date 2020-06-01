@@ -533,6 +533,7 @@ isoApplet_generate_key_ec(const sc_pkcs15_prkey_info_t *key_info, sc_card_t *car
 		goto out;
 	}
 	pubkey->alg_id->algorithm = SC_ALGORITHM_EC;
+	sc_init_oid(&pubkey->alg_id->oid);
 	pubkey->alg_id->params = alg_id_params;
 
 	/* Extract ecpointQ */
