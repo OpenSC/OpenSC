@@ -374,8 +374,8 @@ pkcs15_unbind(struct sc_pkcs11_card *p11card)
 
 		unlock_card(fw_data);
 
-		if (fw_data->p15_card && fw_data->p15_card->card) {
-			if (idx == 0) {
+		if (fw_data->p15_card) {
+			if (fw_data->p15_card->card && idx == 0) {
 				int rc = sc_detect_card_presence(fw_data->p15_card->card->reader);
 				if (rc <= 0 || rc & SC_READER_CARD_CHANGED) {
 					/* send a notification only if the card was removed/changed
