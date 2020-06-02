@@ -39,10 +39,10 @@ launchctl remove pkcs11-register
 launchctl remove opensc-notify
 
 # delete receipts on 10.6+
-pkgutil --forget org.opensc-project.mac > /dev/null
-pkgutil --forget org.opensc-project.tokend > /dev/null
-pkgutil --forget org.opensc-project.mac.opensctoken > /dev/null
-pkgutil --forget org.opensc-project.startup > /dev/null
+pkgutil --forget org.opensc-project.mac             > /dev/null 2>/dev/null
+pkgutil --forget org.opensc-project.tokend          > /dev/null 2>/dev/null
+pkgutil --forget org.opensc-project.mac.opensctoken > /dev/null 2>/dev/null
+pkgutil --forget org.opensc-project.startup         > /dev/null 2>/dev/null
 
 # remove this script
 rm -f /usr/local/bin/opensc-uninstall
