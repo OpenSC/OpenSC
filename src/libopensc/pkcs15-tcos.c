@@ -245,6 +245,7 @@ static int insert_pin(
 		if(sc_select_file(card, &pin_info.path, &f)!=SC_SUCCESS
 			   	|| !f->prop_attr || f->prop_attr_len < 4){
 			sc_log(ctx, "Select(%s) failed\n", path);
+			sc_file_free(f);
 			return 1;
 		}
 		pin_info.tries_left=f->prop_attr[3];
