@@ -209,6 +209,8 @@ isoApplet_init(sc_card_t *card)
 	card->drv_data = drvdata;
 	card->cla = 0x00;
 
+	card->caps |= SC_CARD_CAP_ENABLE_INITTOKEN;
+
 	/* Obtain applet version and specific features */
 	if (0 > isoApplet_select_applet(card, isoApplet_aid, ISOAPPLET_AID_LEN, rbuf, &rlen)) {
 		free(card->drv_data);
