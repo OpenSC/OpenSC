@@ -236,7 +236,7 @@ openssl_enc(const EVP_CIPHER * cipher, const unsigned char *key, const unsigned 
 	r = SC_SUCCESS;
 out:
 	if (ctx)
-	    EVP_CIPHER_CTX_free(ctx);
+		EVP_CIPHER_CTX_free(ctx);
 	return r;
 }
 
@@ -376,10 +376,10 @@ openssl_dig(const EVP_MD * digest, const unsigned char *input, size_t length,
 
 	ctx = EVP_MD_CTX_create();
 	if (ctx == NULL) {
-	    r = SC_ERROR_OUT_OF_MEMORY;
-	    goto err;
+		r = SC_ERROR_OUT_OF_MEMORY;
+		goto err;
 	}
-	    
+		
 	EVP_MD_CTX_init(ctx);
 	EVP_DigestInit_ex(ctx, digest, NULL);
 	if (!EVP_DigestUpdate(ctx, input, length)) {
@@ -1593,7 +1593,7 @@ epass2003_set_security_env(struct sc_card *card, const sc_security_env_t * env, 
 	exdata = (epass2003_exdata *)card->drv_data;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0x41, 0);
-    
+
 	p = sbuf;
 	*p++ = 0x80;		/* algorithm reference */
 	*p++ = 0x01;
@@ -1624,6 +1624,11 @@ epass2003_set_security_env(struct sc_card *card, const sc_security_env_t * env, 
 		{
 			sbuf[2] = 0x92;
 			exdata->ecAlgFlags = SC_ALGORITHM_ECDSA_HASH_SHA256;
+		}
+		else if (env->algorithm_flags & SC_ALGORITHM_ECDSA_HASH_NONE)
+		{
+			sbuf[2] = 0x92;
+			exdata->ecAlgFlags = SC_ALGORITHM_ECDSA_HASH_NONE;
 		}
 		else
 		{
@@ -1721,6 +1726,13 @@ static int epass2003_decipher(struct sc_card *card, const u8 * data, size_t data
 			apdu.lc = 0x20;
 			apdu.datalen = 0x20;
 		}
+		else if (exdata->ecAlgFlags & SC_ALGORITHM_ECDSA_HASH_NONE)
+		{
+			sc_format_apdu(card, &apdu, SC_APDU_CASE_3,0x2A, 0x9E, 0x9A);
+			apdu.data = data;
+			apdu.lc = 0x20;
+			apdu.datalen = 0x20;
+		}
 		else
 		{
 			return SC_ERROR_NOT_SUPPORTED;
@@ -1815,7 +1827,7 @@ epass2003_process_fci(struct sc_card *card, sc_file_t * file, const u8 * buf, si
 		if (taglen == 2)
 			file->size = (file->size << 8) + tag[1];
 		sc_log(ctx, "  bytes in file: %"SC_FORMAT_LEN_SIZE_T"u",
-		       file->size);
+			   file->size);
 	}
 
 	if (tag == NULL) {
@@ -2010,9 +2022,9 @@ epass2003_construct_fci(struct sc_card *card, const sc_file_t * file,
 	}
 	else if (file->type == SC_FILE_TYPE_INTERNAL_EF) {
 		if (file->ef_structure == SC_CARDCTL_OBERTHUR_KEY_RSA_CRT ||
-		    file->ef_structure == SC_CARDCTL_OBERTHUR_KEY_RSA_PUBLIC||
-		    file->ef_structure == SC_CARDCTL_OBERTHUR_KEY_EC_CRT||
-		    file->ef_structure == SC_CARDCTL_OBERTHUR_KEY_EC_PUBLIC) {
+			file->ef_structure == SC_CARDCTL_OBERTHUR_KEY_RSA_PUBLIC||
+			file->ef_structure == SC_CARDCTL_OBERTHUR_KEY_EC_CRT||
+			file->ef_structure == SC_CARDCTL_OBERTHUR_KEY_EC_PUBLIC) {
 			buf[0] = (file->size >> 8) & 0xFF;
 			buf[1] = file->size & 0xFF;
 			sc_asn1_put_tag(0x85, buf, 2, p, *outlen - (p - out), &p);
@@ -2432,6 +2444,7 @@ epass2003_gen_key(struct sc_card *card, sc_epass2003_gen_key_data * data)
 	{
 		apdu.p1 = 0x00;
 	}
+
 	apdu.cla = 0x80;
 	apdu.lc = apdu.datalen = 2;
 	apdu.data = &sbuf[5];
@@ -2447,12 +2460,57 @@ epass2003_gen_key(struct sc_card *card, sc_epass2003_gen_key_data * data)
 	if (len < apdu.resplen)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-	data->modulus = (u8 *) malloc(len);
-	if (!data->modulus)
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+	if(256 == len)
+	{
+		int xCoordinateLen = rbuf[1];
+		int yCoordinateLen = rbuf[2+xCoordinateLen+1];
+		unsigned char * tmp =(u8 *)malloc(xCoordinateLen + yCoordinateLen);
+		if(!tmp)
+		{
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+		}
 
-	memcpy(data->modulus, rbuf, len);
+		if(0x58 == rbuf[0])
+		{
+			memcpy(tmp, &rbuf[2], xCoordinateLen);
+		}
+		else{
+			free(tmp);
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OBJECT_NOT_VALID);
+		}
+		if(0x59 == rbuf[2+xCoordinateLen])
+		{
+			memcpy(tmp + xCoordinateLen, &rbuf[2+xCoordinateLen+2], yCoordinateLen);
+		}
+		else{
+			free(tmp);
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OBJECT_NOT_VALID);
+		}
 
+		data->modulus = (u8 *) malloc(xCoordinateLen + yCoordinateLen);
+		if (!data->modulus)
+		{
+			free(tmp);
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+		}
+		else
+		{
+			memcpy(data->modulus, tmp, xCoordinateLen+yCoordinateLen);
+			free(tmp);
+		}
+	}
+	else
+	{
+		data->modulus = (u8 *) malloc(len);
+		if (!data->modulus)
+		{
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+		}
+		else
+		{	
+			memcpy(data->modulus, rbuf, len);
+		}
+	}
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
@@ -2678,6 +2736,10 @@ epass2003_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries
 	internal_sanitize_pin_info(&data->pin2, 1);
 	data->flags |= SC_PIN_CMD_NEED_PADDING;
 	kid = data->pin_reference;
+
+	if(NULL == (unsigned char *)data->pin1.data || 0 == data->pin1.len)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_PIN_CODE_INCORRECT);
+
 	/* get pin retries */
 	if (data->cmd == SC_PIN_CMD_GET_INFO) {
 
@@ -2692,8 +2754,7 @@ epass2003_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries
 
 			data->pin1.max_tries = maxtries;
 		}
-//remove below code, because the old implement only return PIN retries, now modify the code and return PIN status
-//		return r;
+		LOG_TEST_RET(card->ctx, r, "verify pin failed");
 	}
 	else if (data->cmd == SC_PIN_CMD_UNBLOCK) { /* verify */
 		r = external_key_auth(card, (kid + 1), (unsigned char *)data->pin1.data,
@@ -2708,18 +2769,19 @@ epass2003_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries
 	else {
 		r = external_key_auth(card, kid, (unsigned char *)data->pin1.data,
 				data->pin1.len);
-		get_external_key_retries(card, 0x80 | kid, &retries);
+		LOG_TEST_RET(card->ctx, r, "verify pin failed");
+
+		r = get_external_key_retries(card, 0x80 | kid, &retries);
 		if (retries < pin_low)
 			sc_log(card->ctx, "Verification failed (remaining tries: %d)", retries);
 
+		LOG_TEST_RET(card->ctx, r, "verify pin failed");
 	}
-	LOG_TEST_RET(card->ctx, r, "verify pin failed");
 
 	if (r == SC_SUCCESS)
 	{
 		data->pin1.logged_in = SC_PIN_STATE_LOGGED_IN;
 	}
-
 	return r;
 }
 

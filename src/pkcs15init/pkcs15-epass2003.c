@@ -638,9 +638,14 @@ static int epass2003_pkcs15_generate_key(struct sc_profile *profile,
 	r = sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_GENERATE_KEY, &gendat);
 	SC_TEST_GOTO_ERR(card->ctx, SC_LOG_DEBUG_VERBOSE, r,
 		    "generate RSA key pair failed");
+	
+	if (!gendat.modulus) {
+		r = SC_ERROR_OUT_OF_MEMORY;
+		goto err;
+	}
 
 	/* get the modulus */
-	if (pubkey) {
+	if (pubkey && (obj->type == SC_PKCS15_TYPE_PRKEY_RSA)) {
 		u8 *buf;
 		struct sc_pkcs15_pubkey_rsa *rsa = &pubkey->u.rsa;
 		/* set the modulus */
@@ -659,7 +664,37 @@ static int epass2003_pkcs15_generate_key(struct sc_profile *profile,
 		rsa->exponent.len = 3;
 
 		pubkey->algorithm = SC_ALGORITHM_RSA;
-	} else
+	}
+	else if(pubkey && (obj->type == SC_PKCS15_TYPE_PRKEY_EC)){
+		struct sc_ec_parameters *ecparams = (struct	
+				sc_ec_parameters *)key_info->params.data;
+		pubkey->algorithm = SC_ALGORITHM_EC; 
+		pubkey->u.ec.ecpointQ.value = (u8 *) malloc(65);
+		if (!pubkey->u.ec.ecpointQ.value) {
+			r = SC_ERROR_OUT_OF_MEMORY;
+			goto err;
+		}
+
+		pubkey->u.ec.ecpointQ.value[0] = 0x04;
+		memcpy(&pubkey->u.ec.ecpointQ.value[1], gendat.modulus, 64);
+		pubkey->u.ec.ecpointQ.len = 65;
+
+		free(pubkey->u.ec.params.named_curve);
+		pubkey->u.ec.params.named_curve = NULL; 
+
+		free(pubkey->u.ec.params.der.value);
+		pubkey->u.ec.params.der.value = NULL;
+		pubkey->u.ec.params.der.len = 0;
+		pubkey->u.ec.params.named_curve = strdup(ecparams->named_curve); 
+
+		if (!pubkey->u.ec.params.named_curve){
+			r = SC_ERROR_OUT_OF_MEMORY;
+			goto err;
+		}
+
+		r = sc_pkcs15_fix_ec_parameters(card->ctx, &pubkey->u.ec.params);
+	}
+	else
 		/* free public key */
 		free(gendat.modulus);
 
@@ -667,6 +702,13 @@ err:
 	sc_file_free(pukf);
 	sc_file_free(file);
 	sc_file_free(tfile);
+	
+	if(r < 0 && pubkey->u.ec.ecpointQ.value)
+	{
+		free(pubkey->u.ec.ecpointQ.value);
+		pubkey->u.ec.ecpointQ.value = NULL;
+		pubkey->u.ec.ecpointQ.len = 0;
+	}
 
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
