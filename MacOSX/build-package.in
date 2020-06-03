@@ -38,7 +38,7 @@ if ! pkg-config libcrypto --atleast-version=1.0.1; then
 			git clone --depth=1 https://github.com/openssl/openssl.git -b OpenSSL_1_1_1-stable
 		fi
 		cd openssl
-		KERNEL_BITS=64 ./config --prefix=$PREFIX
+		KERNEL_BITS=64 ./config no-shared --prefix=$PREFIX
 		make clean
 		make -j 4
 		make DESTDIR=$BUILDPATH/openssl_bin install_sw
