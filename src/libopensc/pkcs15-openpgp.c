@@ -132,15 +132,6 @@ static const pgp_manuf_map_t manuf_map[] = {
 	{ 0, NULL }
 };
 
-
-static void
-set_string(char **strp, const char *value)
-{
-	if (*strp)
-		free(*strp);
-	*strp = value? strdup(value) : NULL;
-}
-
 /*
  * This function pretty much follows what find_tlv in the GNUpg
  * code does.

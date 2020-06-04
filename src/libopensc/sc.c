@@ -237,6 +237,16 @@ unsigned long lebytes2ulong(const u8 *buf)
 		| (unsigned long)buf[0];
 }
 
+void set_string(char **strp, const char *value)
+{
+	if (strp == NULL) {
+		return;
+	}
+
+	free(*strp);
+	*strp = value ? strdup(value) : NULL;
+}
+
 void sc_init_oid(struct sc_object_id *oid)
 {
 	int ii;

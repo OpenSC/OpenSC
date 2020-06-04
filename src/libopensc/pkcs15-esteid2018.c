@@ -33,12 +33,6 @@
 #include "opensc.h"
 #include "pkcs15.h"
 
-static void set_string(char **strp, const char *value) {
-	if (*strp)
-		free(*strp);
-	*strp = value ? strdup(value) : NULL;
-}
-
 static int sc_pkcs15emu_esteid2018_init(sc_pkcs15_card_t *p15card) {
 	sc_card_t *card = p15card->card;
 	u8 buff[11];
@@ -61,6 +55,7 @@ static int sc_pkcs15emu_esteid2018_init(sc_pkcs15_card_t *p15card) {
 	for (j = 0; j < taglen; j++)
 		if (!isalnum(tag[j]))
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
+	free(p15card->tokeninfo->serial_number);
 	p15card->tokeninfo->serial_number = malloc(taglen + 1);
 	if (!p15card->tokeninfo->serial_number)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);

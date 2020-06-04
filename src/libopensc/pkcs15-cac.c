@@ -122,8 +122,8 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 
 	/* could read this off card if needed */
 
-	p15card->tokeninfo->label = strdup(cac_get_name(card->type));
-	p15card->tokeninfo->manufacturer_id = strdup(MANU_ID);
+	set_string(&p15card->tokeninfo->label, cac_get_name(card->type));
+	set_string(&p15card->tokeninfo->manufacturer_id, MANU_ID);
 
 	/*
 	 * get serial number
@@ -131,10 +131,10 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 	r = sc_card_ctl(card, SC_CARDCTL_GET_SERIALNR, &serial);
 	if (r < 0) {
 		sc_log(card->ctx, "sc_card_ctl rc=%d",r);
-		p15card->tokeninfo->serial_number = strdup("00000000");
+		set_string(&p15card->tokeninfo->serial_number, "00000000");
 	} else {
 		sc_bin_to_hex(serial.value, serial.len, buf, sizeof(buf), 0);
-		p15card->tokeninfo->serial_number = strdup(buf);
+		set_string(&p15card->tokeninfo->serial_number, buf);
 	}
 
 	/* set pins */

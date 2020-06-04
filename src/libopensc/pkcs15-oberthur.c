@@ -357,8 +357,8 @@ sc_oberthur_parse_tokeninfo (struct sc_pkcs15_card *p15card,
 
 	flags = *(buff + 0x22) * 0x100 + *(buff + 0x23);
 
-	p15card->tokeninfo->label = strdup(label);
-	p15card->tokeninfo->manufacturer_id = strdup("Oberthur/OpenSC");
+	set_string(&p15card->tokeninfo->label, label);
+	set_string(&p15card->tokeninfo->manufacturer_id, "Oberthur/OpenSC");
 
 	if (flags & 0x01)
 		p15card->tokeninfo->flags |= SC_PKCS15_TOKEN_PRN_GENERATION;
@@ -919,7 +919,7 @@ sc_pkcs15emu_oberthur_init(struct sc_pkcs15_card * p15card)
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	sc_bin_to_hex(card->serialnr.value, card->serialnr.len, serial, sizeof(serial), 0);
-	p15card->tokeninfo->serial_number = strdup(serial);
+	set_string(&p15card->tokeninfo->serial_number, serial);
 
 	p15card->ops.parse_df = sc_awp_parse_df;
 	p15card->ops.clear = sc_awp_clear;

@@ -125,6 +125,15 @@ unsigned short lebytes2ushort(const u8 *buf);
  */
 unsigned long lebytes2ulong(const u8 *buf);
 
+/* Usable for setting string elements of token info, which
+ * are either initialized to NULL or we need to clean
+ * previous value.
+ *
+ * @param   strp   The pointer where to store string
+ * @param   value  The string to store (is strdupped)
+ */
+void set_string(char **strp, const char *value);
+
 #define BYTES4BITS(num)  (((num) + 7) / 8)    /* number of bytes necessary to hold 'num' bits */
 
 /* Returns an scconf_block entry with matching ATR/ATRmask to the ATR specified,

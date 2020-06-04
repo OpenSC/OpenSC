@@ -940,6 +940,7 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 	assert(len >= 8);
 	len -= 5;
 
+	free(p15card->tokeninfo->serial_number);
 	p15card->tokeninfo->serial_number = calloc(len + 1, 1);
 	if (p15card->tokeninfo->serial_number == NULL)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);

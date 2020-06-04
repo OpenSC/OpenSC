@@ -287,8 +287,8 @@ static int detect_netkey(
 	sprintf(dir,"%04X", f->id);
 	sc_file_free(f);
 
-	p15card->tokeninfo->manufacturer_id = strdup("TeleSec GmbH");
-	p15card->tokeninfo->label = strdup(card->type==SC_CARD_TYPE_TCOS_V3 ? "NetKey V3 Card" : "NetKey Card");
+	set_string(&p15card->tokeninfo->manufacturer_id, "TeleSec GmbH");
+	set_string(&p15card->tokeninfo->label, card->type==SC_CARD_TYPE_TCOS_V3 ? "NetKey V3 Card" : "NetKey Card");
 	keylen= card->type==SC_CARD_TYPE_TCOS_V3 ? 2048 : 1024;
 	c_auth= card->type==SC_CARD_TYPE_TCOS_V3 ? "C500" : "C100";
 
@@ -375,8 +375,8 @@ static int detect_idkey(
 	memcpy(p.value, "\xD2\x76\x00\x00\x03\x0C\x01", p.len=7);
 	if (sc_select_file(card,&p,NULL)!=SC_SUCCESS) return 1;
 
-	p15card->tokeninfo->manufacturer_id = strdup("TeleSec GmbH");
-	p15card->tokeninfo->label = strdup("IDKey Card");
+	set_string(&p15card->tokeninfo->manufacturer_id, "TeleSec GmbH");
+	set_string(&p15card->tokeninfo->label, "IDKey Card");
 
 	insert_cert(p15card, "DF074331", 0x45, 1, "Signatur Zertifikat 1");
 	insert_cert(p15card, "DF074332", 0x46, 1, "Signatur Zertifikat 2");
@@ -407,8 +407,8 @@ static int detect_signtrust(
 	sc_pkcs15_card_t *p15card
 ){
 	if(insert_cert(p15card,"8000DF01C000", 0x45, 1, "Signatur Zertifikat")) return 1;
-	p15card->tokeninfo->manufacturer_id = strdup("Deutsche Post");
-	p15card->tokeninfo->label = strdup("SignTrust Card");
+	set_string(&p15card->tokeninfo->manufacturer_id, "Deutsche Post");
+	set_string(&p15card->tokeninfo->label, "SignTrust Card");
 
 	insert_cert(p15card,"800082008220", 0x46, 1, "Verschluesselungs Zertifikat");
 	insert_cert(p15card,"800083008320", 0x47, 1, "Authentifizierungs Zertifikat");
@@ -437,8 +437,8 @@ static int detect_datev(
 	sc_pkcs15_card_t *p15card
 ){
 	if(insert_cert(p15card,"3000C500", 0x45, 0, "Signatur Zertifikat")) return 1;
-	p15card->tokeninfo->manufacturer_id = strdup("DATEV");
-	p15card->tokeninfo->label = strdup("DATEV Classic");
+	set_string(&p15card->tokeninfo->manufacturer_id, "DATEV");
+	set_string(&p15card->tokeninfo->label, "DATEV Classic");
 
 	insert_cert(p15card,"DF02C200", 0x46, 0, "Verschluesselungs Zertifikat");
 	insert_cert(p15card,"DF02C500", 0x47, 0, "Authentifizierungs Zertifikat");
@@ -458,8 +458,8 @@ static int detect_unicard(
 	sc_pkcs15_card_t *p15card
 ){
 	if(!insert_cert(p15card,"41004352", 0x45, 1, "Zertifikat 1")){
-		p15card->tokeninfo->manufacturer_id = strdup("JLU Giessen");
-		p15card->tokeninfo->label = strdup("JLU Giessen Card");
+		set_string(&p15card->tokeninfo->manufacturer_id, "JLU Giessen");
+		set_string(&p15card->tokeninfo->label, "JLU Giessen Card");
 
 		insert_cert(p15card,"41004353", 0x46, 1, "Zertifikat 2");
 		insert_cert(p15card,"41004354", 0x47, 1, "Zertifikat 3");
@@ -468,8 +468,8 @@ static int detect_unicard(
 		insert_key(p15card,"41005105", 0x47, 0x85, 1024, 1, "Schluessel 3");
 
 	} else if(!insert_cert(p15card,"41014352", 0x45, 1, "Zertifikat 1")){
-		p15card->tokeninfo->manufacturer_id = strdup("TU Darmstadt");
-		p15card->tokeninfo->label = strdup("TUD Card");
+		set_string(&p15card->tokeninfo->manufacturer_id, "TU Darmstadt");
+		set_string(&p15card->tokeninfo->label, "TUD Card");
 
 		insert_cert(p15card,"41014353", 0x46, 1, "Zertifikat 2");
 		insert_cert(p15card,"41014354", 0x47, 1, "Zertifikat 3");
@@ -511,7 +511,7 @@ int sc_pkcs15emu_tcos_init_ex(
 	}
 	sc_bin_to_hex(serialnr.value, serialnr.len , serial, sizeof(serial), 0);
 	serial[19] = '\0';
-	p15card->tokeninfo->serial_number = strdup(serial);
+	set_string(&p15card->tokeninfo->serial_number, serial);
 
 	if(!detect_netkey(p15card)) return SC_SUCCESS;
 	if(!detect_idkey(p15card)) return SC_SUCCESS;

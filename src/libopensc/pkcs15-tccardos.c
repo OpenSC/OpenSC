@@ -320,15 +320,11 @@ static int sc_pkcs15_tccardos_init_func(sc_pkcs15_card_t *p15card)
 	if (r != SC_SUCCESS)
 		return r;
 	/* set card label */
-	if (p15card->tokeninfo->label != NULL)
-		free(p15card->tokeninfo->label);
-	p15card->tokeninfo->label = strdup(TC_CARDOS_LABEL);
+	set_string(&p15card->tokeninfo->label, TC_CARDOS_LABEL);
 	if (p15card->tokeninfo->label == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	/* set the manufacturer ID */
-	if (p15card->tokeninfo->manufacturer_id != NULL)
-		free(p15card->tokeninfo->manufacturer_id);
-	p15card->tokeninfo->manufacturer_id = strdup(MANU_ID);
+	set_string(&p15card->tokeninfo->manufacturer_id, MANU_ID);
 	if (p15card->tokeninfo->manufacturer_id == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	/* set the serial number */
@@ -336,7 +332,7 @@ static int sc_pkcs15_tccardos_init_func(sc_pkcs15_card_t *p15card)
 	if (r != SC_SUCCESS || iccsn.len < 5+8)
 		return SC_ERROR_INTERNAL;
 	sc_bin_to_hex(iccsn.value + 5, 8, hex_buf, sizeof(hex_buf), 0);
-	p15card->tokeninfo->serial_number = strdup(hex_buf);
+	set_string(&p15card->tokeninfo->serial_number, hex_buf);
 	if (p15card->tokeninfo->serial_number == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	/* select the application DF */

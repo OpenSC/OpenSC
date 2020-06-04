@@ -168,13 +168,6 @@ static const struct {
  * Utility functions
  */
 
-static void set_string(char **strp, const char *value)
-{
-	if (*strp)
-		free(*strp);
-	*strp = value ? strdup(value) : NULL;
-}
-
 static int loadFile(const sc_pkcs15_card_t *p15card, const sc_path_t *path,
 	u8 *buf, const size_t buflen)
 {
