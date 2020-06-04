@@ -607,7 +607,9 @@ static int tcos_decipher(sc_card_t *card, const u8 * crgram, size_t crgram_len, 
 	tcos_data *data;
 	int tcos3, r;
 
-	assert(card != NULL && crgram != NULL && out != NULL);
+	if (card == NULL || crgram == NULL || out == NULL) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 	ctx = card->ctx;
 	tcos3=(card->type==SC_CARD_TYPE_TCOS_V3);
 	data=(tcos_data *)card->drv_data;
