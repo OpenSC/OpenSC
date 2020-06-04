@@ -623,6 +623,8 @@ static int tcos_decipher(sc_card_t *card, const u8 * crgram, size_t crgram_len, 
 	apdu.data = sbuf;
 	apdu.lc = apdu.datalen = crgram_len+1;
 	sbuf[0] = tcos3 ? 0x00 : ((data->pad_flags & SC_ALGORITHM_RSA_PAD_PKCS1) ? 0x81 : 0x02);
+	if (sizeof sbuf - 1 < crgram_len)
+		return SC_ERROR_INVALID_ARGUMENTS;
 	memcpy(sbuf+1, crgram, crgram_len);
 
 	r = sc_transmit_apdu(card, &apdu);
