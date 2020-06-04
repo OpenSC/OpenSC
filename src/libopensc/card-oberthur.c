@@ -2173,7 +2173,7 @@ auth_read_binary(struct sc_card *card, unsigned int offset,
 				rv = SC_ERROR_UNKNOWN_DATA_RECEIVED;
 				goto err;
 			}
-			rv  = out_len - offset > count ? count : out_len - offset;
+			rv = ((out_len - offset) > count) ? count : (out_len - offset);
 			memcpy(buf, out + offset, rv);
 
 			sc_log_hex(card->ctx, "write_publickey", buf, rv);
