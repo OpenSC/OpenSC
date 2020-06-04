@@ -2164,11 +2164,15 @@ auth_read_binary(struct sc_card *card, unsigned int offset,
 		key.exponent = bn[0];
 		key.modulus = bn[1];
 
-		if (sc_pkcs15_encode_pubkey_rsa(card->ctx, &key, &out, &out_len)) {
+		if (sc_pkcs15_encode_pubkey_rsa(card->ctx, &key, &out, &out_len) != SC_SUCCESS) {
 			rv = SC_ERROR_INVALID_ASN1_OBJECT;
 			LOG_TEST_GOTO_ERR(card->ctx, rv, "cannot encode RSA public key");
 		}
 		else {
+			if (out_len < offset) {
+				rv = SC_ERROR_UNKNOWN_DATA_RECEIVED;
+				goto err;
+			}
 			rv  = out_len - offset > count ? count : out_len - offset;
 			memcpy(buf, out + offset, rv);
 
