@@ -541,7 +541,10 @@ static int tcos_compute_signature(sc_card_t *card, const u8 * data, size_t datal
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	int tcos3, r;
 
-	assert(card != NULL && data != NULL && out != NULL);
+	if (card == NULL || data == NULL || out == NULL) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+
 	tcos3=(card->type==SC_CARD_TYPE_TCOS_V3);
 
 	// We can sign (key length / 8) bytes
