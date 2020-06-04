@@ -45,8 +45,8 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 	size_t field_length = 0, modulus_length = 0;
 	sc_path_t tmppath;
 
-	p15card->tokeninfo->label = strdup("ID-kaart");
-	p15card->tokeninfo->manufacturer_id = strdup("AS Sertifitseerimiskeskus");
+	set_string(&p15card->tokeninfo->label, "ID-kaart");
+	set_string(&p15card->tokeninfo->manufacturer_id, "AS Sertifitseerimiskeskus");
 
 	/* Select application directory */
 	sc_format_path ("3f00eeee5044", &tmppath);
@@ -57,7 +57,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 	r = sc_read_record (card, SC_ESTEID_PD_DOCUMENT_NR, buff, sizeof(buff), SC_RECORD_BY_REC_NR);
 	LOG_TEST_RET(card->ctx, r, "read document number failed");
 	buff[MIN((size_t) r, (sizeof buff)-1)] = '\0';
-	p15card->tokeninfo->serial_number = strdup((const char *)buff);
+	set_string(&p15card->tokeninfo->serial_number, (const char *)buff);
 
 	p15card->tokeninfo->flags = SC_PKCS15_TOKEN_PRN_GENERATION
 				  | SC_PKCS15_TOKEN_EID_COMPLIANT

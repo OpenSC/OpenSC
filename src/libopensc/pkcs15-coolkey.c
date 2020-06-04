@@ -497,9 +497,9 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 	r = sc_card_ctl(card, SC_CARDCTL_COOLKEY_GET_TOKEN_INFO, p15card->tokeninfo);
 	if (r < 0) {
 		/* put some defaults in if we didn't succeed */
-		p15card->tokeninfo->label = strdup("Coolkey");
-		p15card->tokeninfo->manufacturer_id = strdup("Unknown");
-		p15card->tokeninfo->serial_number = strdup("00000000");
+		set_string(&p15card->tokeninfo->label, "Coolkey");
+		set_string(&p15card->tokeninfo->manufacturer_id, "Unknown");
+		set_string(&p15card->tokeninfo->serial_number, "00000000");
 	}
 
 	/* set pins */

@@ -220,6 +220,7 @@ int sc_pkcs15_parse_tokeninfo(sc_context_t *ctx,
 	LOG_TEST_RET(ctx, r, "ASN.1 parsing of EF(TokenInfo) failed");
 
 	if (asn1_toki_attrs[1].flags & SC_ASN1_PRESENT && serial_len > 0)   {
+		free(ti->serial_number);
 		ti->serial_number = malloc(serial_len * 2 + 1);
 		if (ti->serial_number == NULL)
 			return SC_ERROR_OUT_OF_MEMORY;
@@ -732,18 +733,12 @@ sc_pkcs15_free_tokeninfo(struct sc_pkcs15_tokeninfo *tokeninfo)
 	if (!tokeninfo)
 		return;
 
-	if (tokeninfo->label != NULL)
-		free(tokeninfo->label);
-	if (tokeninfo->serial_number != NULL)
-		free(tokeninfo->serial_number);
-	if (tokeninfo->manufacturer_id != NULL)
-		free(tokeninfo->manufacturer_id);
-	if (tokeninfo->last_update.gtime != NULL)
-		free(tokeninfo->last_update.gtime);
-	if (tokeninfo->preferred_language != NULL)
-		free(tokeninfo->preferred_language);
-	if (tokeninfo->profile_indication.name != NULL)
-		free(tokeninfo->profile_indication.name);
+	free(tokeninfo->label);
+	free(tokeninfo->serial_number);
+	free(tokeninfo->manufacturer_id);
+	free(tokeninfo->last_update.gtime);
+	free(tokeninfo->preferred_language);
+	free(tokeninfo->profile_indication.name);
 	if (tokeninfo->seInfo != NULL) {
 		unsigned i;
 		for (i = 0; i < tokeninfo->num_seInfo; i++)

@@ -127,6 +127,7 @@ static int sc_pkcs15emu_gids_init (sc_pkcs15_card_t * p15card)
 	r = sc_card_ctl(card, SC_CARDCTL_GET_SERIALNR, NULL);
 	LOG_TEST_RET(card->ctx, r, "unable to get the serial number. Uninitialized card ?");
 
+	free(p15card->tokeninfo->serial_number);
 	p15card->tokeninfo->serial_number = (char*) malloc(card->serialnr.len *2 +1);
 	if (!p15card->tokeninfo->serial_number) {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);

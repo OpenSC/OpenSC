@@ -1339,8 +1339,11 @@ static int coolkey_get_token_info(sc_card_t *card, sc_pkcs15_tokeninfo_t * token
 	serial_number = coolkey_cuid_to_string(&priv->cuid);
 
 	if (label && manufacturer_id && serial_number) {
+		free(token_info->label);
 		token_info->label = label;
+		free(token_info->manufacturer_id);
 		token_info->manufacturer_id = manufacturer_id;
+		free(token_info->serial_number);
 		token_info->serial_number = serial_number;
 		return SC_SUCCESS;
 	}
