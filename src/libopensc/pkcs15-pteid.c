@@ -173,7 +173,6 @@ static int sc_pkcs15emu_pteid_init(sc_pkcs15_card_t * p15card)
 		sc_log(ctx, "Reading of EF.TOKENINFO failed: %d", rv);
 		LOG_FUNC_RETURN(ctx, rv);
 	}
-	memset(p15card->tokeninfo, 0, sizeof(*p15card->tokeninfo));
 	rv = sc_pkcs15_parse_tokeninfo(p15card->card->ctx, p15card->tokeninfo,
 				       buf, len);
 	if (rv != SC_SUCCESS) {
