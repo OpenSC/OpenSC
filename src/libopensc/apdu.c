@@ -563,6 +563,14 @@ int sc_transmit_apdu(sc_card_t *card, sc_apdu_t *apdu)
 		return r;
 	}
 
+#if ENABLE_SM
+	if (card->sm_ctx.sm_mode == SM_MODE_TRANSMIT
+			&& (apdu->flags & SC_APDU_FLAGS_CHAINING) != 0
+			&& (apdu->flags & SC_APDU_FLAGS_SM_CHAINING) != 0) {
+		sc_log(card->ctx,"Let SM do the chaining");
+		r = sc_transmit(card, apdu);
+	} else
+#endif
 	if ((apdu->flags & SC_APDU_FLAGS_CHAINING) != 0) {
 		/* divide et impera: transmit APDU in chunks with Lc <= max_send_size
 		 * bytes using command chaining */
