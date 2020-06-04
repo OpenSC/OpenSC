@@ -189,7 +189,7 @@ static int insert_pin(
 ){
 	sc_card_t *card=p15card->card;
 	sc_context_t *ctx=p15card->card->ctx;
-	sc_file_t *f;
+	sc_file_t *f = NULL;
 	struct sc_pkcs15_auth_info pin_info;
 	struct sc_pkcs15_object pin_obj;
 	int r;
@@ -242,7 +242,7 @@ static int insert_pin(
 			return 1;
 		}
 	} else {
-		if(sc_select_file(card, &pin_info.path, &f)!=SC_SUCCESS
+		if (sc_select_file(card, &pin_info.path, &f) != SC_SUCCESS
 			   	|| !f->prop_attr || f->prop_attr_len < 4){
 			sc_log(ctx, "Select(%s) failed\n", path);
 			sc_file_free(f);
