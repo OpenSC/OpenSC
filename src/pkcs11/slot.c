@@ -308,7 +308,7 @@ again:
 					"framework", "pkcs15", 1);
 
 			enable_InitToken = scconf_get_bool(conf_block,
-				"pkcs11_enable_InitToken", 0);
+				"pkcs11_enable_InitToken", p11card->card->caps & SC_CARD_CAP_ENABLE_INITTOKEN ? 1 : 0);
 
 			sc_log(context, "%s: Try to bind 'generic' token.", reader->name);
 			rv = frameworks[i]->bind(p11card, app_generic);

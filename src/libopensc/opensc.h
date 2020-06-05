@@ -562,6 +562,13 @@ struct sc_reader_operations {
 /* Card (or card driver) supports key unwrapping operations */
 #define SC_CARD_CAP_UNWRAP_KEY			0x00001000
 
+/* Card (or card driver) can be initialized using C_InitToken() */
+#define SC_CARD_CAP_ENABLE_INITTOKEN			0x00002000
+/* Card (or card driver) pin unblock options */
+#define SC_CARD_CAP_PIN_UNBLOCK_UNLOGGED_SETPIN		0x00004000
+#define SC_CARD_CAP_PIN_UNBLOCK_SCONTEXT_SETPIN		0x00008000
+#define SC_CARD_CAP_PIN_UNBLOCK_SO_LOGGED_INITPIN	0x00010000
+
 typedef struct sc_card {
 	struct sc_context *ctx;
 	struct sc_reader *reader;
