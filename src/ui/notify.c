@@ -437,6 +437,7 @@ void sc_notify_id(struct sc_context *ctx, struct sc_atr *atr,
 #elif defined(ENABLE_NOTIFY) && defined(ENABLE_GIO2)
 
 #include <gio/gio.h>
+#include "libopensc/log.h"
 
 static GApplication *application = NULL;
 
@@ -479,6 +480,14 @@ static void notify_gio(struct sc_context *ctx,
 			if (gicon) {
 				g_notification_set_icon(notification, gicon);
 			}
+		}
+
+		if (ctx) {
+			sc_log(ctx, "%s %s %s %s",
+					title ? title : "",
+					text ? text : "",
+					icon ? icon : "",
+					group ? group : "");
 		}
 
 		g_application_send_notification(application, group, notification);
