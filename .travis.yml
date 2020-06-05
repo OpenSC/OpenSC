@@ -182,7 +182,8 @@ before_script:
 
       git clone https://github.com/Yubico/yubico-piv-tool.git;
       cd yubico-piv-tool;
-      autoreconf -vis && ./configure && sudo make install;
+      mkdir build; cd build;
+      cmake .. && make && sudo make install;
       cd $TRAVIS_BUILD_DIR;
       set +ex;
     fi
