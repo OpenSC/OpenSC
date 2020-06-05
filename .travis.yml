@@ -65,6 +65,7 @@ addons:
     - check
     - ant
     - socat
+    - cmake
 
 before_install:
   # brew install gengetopt help2man cmocka ccache llvm;
