@@ -535,7 +535,7 @@ static int tcos_restore_security_env(sc_card_t *card, int se_num)
 
 static int tcos_compute_signature(sc_card_t *card, const u8 * data, size_t datalen, u8 * out, size_t outlen)
 {
-	size_t i, dlen = datalen;
+	size_t dlen = datalen;
 	sc_apdu_t apdu;
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
@@ -568,9 +568,7 @@ static int tcos_compute_signature(sc_card_t *card, const u8 * data, size_t datal
 		}
 
 		sc_format_apdu(card, &apdu, keylen > 255 ? SC_APDU_CASE_4_EXT : SC_APDU_CASE_4_SHORT, 0x2A, 0x80, 0x86);
-		for (i = 0; i < sizeof(sbuf); ++i) {
-			sbuf[i] = 0xff;
-		}
+		memset(sbuf, 0xff, sizeof(sbuf));
 		sbuf[0] = 0x02;
 		sbuf[1] = 0x00;
 		sbuf[2] = 0x01;
@@ -594,9 +592,7 @@ static int tcos_compute_signature(sc_card_t *card, const u8 * data, size_t datal
 		}
 
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x80, 0x86);
-		for (i = 0; i < sizeof(sbuf); ++i) {
-			sbuf[i] = 0xff;
-		}
+		memset(sbuf, 0xff, sizeof(sbuf));
 		sbuf[0] = 0x02;
 		sbuf[1] = 0x00;
 		sbuf[2] = 0x01;
