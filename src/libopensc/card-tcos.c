@@ -556,7 +556,7 @@ static int tcos_compute_signature(sc_card_t *card, const u8 * data, size_t datal
 		memcpy(sbuf, data, datalen);
 		dlen=datalen;
 	} else {
-		int keylen= tcos3 ? 256 : 128;
+		size_t keylen= tcos3 ? 256 : 128;
 		sc_format_apdu(card, &apdu, keylen>255 ? SC_APDU_CASE_4_EXT : SC_APDU_CASE_4_SHORT, 0x2A,0x80,0x86);
 		for(i=0; i<sizeof(sbuf);++i) sbuf[i]=0xff;
 		if (keylen < datalen)
