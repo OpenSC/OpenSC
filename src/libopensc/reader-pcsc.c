@@ -1741,6 +1741,10 @@ static int pcsc_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_re
 			}
 		}
 
+		/* if a reader was detected, we need to create a new list of readers */
+		if (detected_hotplug)
+			goto out;
+
 		/* Set the timeout if caller wants to time out */
 		if (timeout == -1) {
 			dwtimeout = INFINITE;
