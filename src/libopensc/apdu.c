@@ -322,13 +322,13 @@ sc_check_apdu(sc_card_t *card, const sc_apdu_t *apdu)
 error:
 	sc_log(card->ctx, "Invalid Case %d %s APDU:\n"
 		"cse=%02x cla=%02x ins=%02x p1=%02x p2=%02x lc=%lu le=%lu\n"
-		"resp=%p resplen=%lu data=%p datalen=%lu",
+		"resp=%p resplen=%lu data=%p datalen=%lu flags=0x%8.8lx",
 		apdu->cse & SC_APDU_SHORT_MASK,
 		(apdu->cse & SC_APDU_EXT) != 0 ? "extended" : "short",
 		apdu->cse, apdu->cla, apdu->ins, apdu->p1, apdu->p2,
 		(unsigned long) apdu->lc, (unsigned long) apdu->le,
 		apdu->resp, (unsigned long) apdu->resplen,
-		apdu->data, (unsigned long) apdu->datalen);
+		apdu->data, (unsigned long) apdu->datalen, apdu->flags);
 	return SC_ERROR_INVALID_ARGUMENTS;
 }
 
