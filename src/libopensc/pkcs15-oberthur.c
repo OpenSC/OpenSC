@@ -251,7 +251,10 @@ sc_oberthur_read_file(struct sc_pkcs15_card *p15card, const char *in_path,
 
 	sc_format_path(in_path, &path);
 	rv = sc_select_file(card, &path, &file);
-	LOG_TEST_RET(ctx, rv, "Cannot select oberthur file to read");
+	if (rv != SC_SUCCESS) {
+		sc_file_free(file);
+		LOG_TEST_RET(ctx, rv, "Cannot select oberthur file to read");
+	}
 
 	if (file->ef_structure == SC_FILE_EF_TRANSPARENT)
 		sz = file->size;
@@ -259,8 +262,10 @@ sc_oberthur_read_file(struct sc_pkcs15_card *p15card, const char *in_path,
 		sz = (file->record_length + 2) * file->record_count;
 
 	*out = calloc(sz, 1);
-	if (*out == NULL)
+	if (*out == NULL) {
+		sc_file_free(file);
 		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot read oberthur file");
+	}
 
 	if (file->ef_structure == SC_FILE_EF_TRANSPARENT)   {
 		rv = sc_read_binary(card, 0, *out, sz, 0);
@@ -298,7 +303,10 @@ sc_oberthur_read_file(struct sc_pkcs15_card *p15card, const char *in_path,
 		int ii;
 
 		rv = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH_PIN, objs, 0x10);
-		LOG_TEST_RET(ctx, rv, "Cannot read oberthur file: get AUTH objects error");
+		if (rv != SC_SUCCESS) {
+			sc_file_free(file);
+			LOG_TEST_RET(ctx, rv, "Cannot read oberthur file: get AUTH objects error");
+		}
 
 		for (ii=0; ii<rv; ii++)   {
 			struct sc_pkcs15_auth_info *auth_info = (struct sc_pkcs15_auth_info *) objs[ii]->data;
