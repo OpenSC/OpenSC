@@ -501,8 +501,10 @@ auth_select_file(struct sc_card *card, const struct sc_path *in_path,
 				sc_concatenate_path(&auth_current_ef->path, &auth_current_df->path, &path);
 			}
 		}
-		if (file_out)
+		if (file_out) {
+			sc_file_free(*file_out);
 			sc_file_dup(file_out, tmp_file);
+		}
 
 		sc_file_free(tmp_file);
 	}
