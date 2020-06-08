@@ -730,13 +730,6 @@ again:
 	sc_log(context, "C_WaitForSlotEvent() reader_states:%p", reader_states);
 	sc_pkcs11_unlock();
 	r = sc_wait_for_event(context, mask, &found, &events, -1, &reader_states);
-	if (events & SC_EVENT_READER_ATTACHED) {
-		rv = sc_pkcs11_lock();
-		if (rv != CKR_OK)
-			return rv;
-
-		goto out;
-	}
 	/* Was C_Finalize called ? */
 	if (in_finalize == 1)
 		return CKR_CRYPTOKI_NOT_INITIALIZED;
