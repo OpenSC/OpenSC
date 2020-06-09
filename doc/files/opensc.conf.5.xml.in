@@ -1163,6 +1163,11 @@ app <replaceable>application</replaceable> {
 							<literal>CKA_ALWAYS_AUTHENTICATE</literal> may
 							need to set this to get signatures to work with
 							some cards (Default: <literal>false</literal>).
+					</para>
+					<para>
+							It is recommended to enable also PIN caching using
+							<literal>use_pin_caching</literal> option for OpenSC
+							to be able to provide PIN for the card when needed.
 					</para></listitem>
 				</varlistentry>
 				<varlistentry>

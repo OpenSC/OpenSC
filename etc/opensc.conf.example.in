@@ -903,6 +903,8 @@ app default {
 		# Older PKCS#11 applications not supporting CKA_ALWAYS_AUTHENTICATE
 		# may need to set this to get signatures to work with some cards.
 		# Default: false
+		# It is recommended to enable also use_pin_caching to allow OpenSC
+		# to pass the pin to the card when needed.
 		# pin_cache_ignore_user_consent = true;
 
 		# How to handle a PIN-protected certificate
