@@ -152,22 +152,19 @@ static int sc_pkcs15emu_atrust_acos_init(sc_pkcs15_card_t *p15card)
 	r = sc_bin_to_hex(buf, 8, buf2, sizeof(buf2), 0);
 	if (r != SC_SUCCESS)
 		return SC_ERROR_INTERNAL;
-	if (p15card->tokeninfo->serial_number)
-		free(p15card->tokeninfo->serial_number);
+	free(p15card->tokeninfo->serial_number);
 	p15card->tokeninfo->serial_number = strdup(buf2);
 	if (!p15card->tokeninfo->serial_number)
 		return SC_ERROR_INTERNAL;
 
 	/* manufacturer ID */
-	if (p15card->tokeninfo->manufacturer_id)
-		free(p15card->tokeninfo->manufacturer_id);
+	free(p15card->tokeninfo->manufacturer_id);
 	p15card->tokeninfo->manufacturer_id = strdup(MANU_ID);
 	if (!p15card->tokeninfo->manufacturer_id)
 		return SC_ERROR_INTERNAL;
 
 	/* card label */
-	if (p15card->tokeninfo->label)
-		free(p15card->tokeninfo->label);
+	free(p15card->tokeninfo->label);
 	p15card->tokeninfo->label = strdup(CARD_LABEL);
 	if (!p15card->tokeninfo->label)
 		return SC_ERROR_INTERNAL;
