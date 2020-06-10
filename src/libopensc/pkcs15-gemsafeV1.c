@@ -305,14 +305,12 @@ static int sc_pkcs15emu_gemsafeV1_init( sc_pkcs15_card_t *p15card)
 
 	sc_log(p15card->card->ctx, "Setting pkcs15 parameters");
 
-	if (p15card->tokeninfo->label)
-		free(p15card->tokeninfo->label);
+	free(p15card->tokeninfo->label);
 	p15card->tokeninfo->label = strdup(APPLET_NAME);
 	if (!p15card->tokeninfo->label)
 		return SC_ERROR_INTERNAL;
 
-	if (p15card->tokeninfo->serial_number)
-		free(p15card->tokeninfo->serial_number);
+	free(p15card->tokeninfo->serial_number);
 	p15card->tokeninfo->serial_number = strdup(DRIVER_SERIAL_NUMBER);
 	if (!p15card->tokeninfo->serial_number)
 		return SC_ERROR_INTERNAL;
@@ -335,8 +333,7 @@ static int sc_pkcs15emu_gemsafeV1_init( sc_pkcs15_card_t *p15card)
 		return SC_ERROR_INTERNAL;
 
 	/* the manufacturer ID, in this case GemPlus */
-	if (p15card->tokeninfo->manufacturer_id)
-		free(p15card->tokeninfo->manufacturer_id);
+	free(p15card->tokeninfo->manufacturer_id);
 	p15card->tokeninfo->manufacturer_id = strdup(MANU_ID);
 	if (!p15card->tokeninfo->manufacturer_id)
 		return SC_ERROR_INTERNAL;
