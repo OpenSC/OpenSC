@@ -1757,6 +1757,9 @@ static int coolkey_rsa_op(sc_card_t *card,
 		u8 len_buf[2];
 		size_t out_length;
 
+		/* Free card response -- nothing useful -- result is in export object */
+		free(*crypt_out_p);
+
 		r = coolkey_read_object(card, COOLKEY_DL_OBJECT_ID, 0, len_buf, sizeof(len_buf),
 					priv->nonce, sizeof(priv->nonce));
 		if (r < 0) {
