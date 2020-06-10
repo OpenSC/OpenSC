@@ -1078,7 +1078,10 @@ sc_log(card->ctx,  "DEE Adding pin %d label=%s",i, label);
 		}
 		else if (ckis[i].pubkey_from_cert)   {
 			r = sc_pkcs15_encode_pubkey_as_spki(card->ctx, ckis[i].pubkey_from_cert, &pubkey_info.direct.spki.value, &pubkey_info.direct.spki.len);
-        		LOG_TEST_RET(card->ctx, r, "SPKI encode public key error");
+			if (r != SC_SUCCESS) {
+				sc_pkcs15_free_pubkey(ckis[i].pubkey_from_cert);
+				LOG_TEST_RET(card->ctx, r, "SPKI encode public key error");
+			}
 
 			pubkey_obj.emulated = ckis[i].pubkey_from_cert;
 		}
