@@ -31,6 +31,8 @@
 
 #define ISOAPPLET_ALG_REF_ECDSA 0x21
 #define ISOAPPLET_ALG_REF_RSA_PAD_PKCS1 0x11
+#define ISOAPPLET_ALG_REF_RSA_SHA256_PAD_PSS 0x12
+#define ISOAPPLET_ALG_REF_RSA_SHA512_PAD_PSS 0x13
 
 #define ISOAPPLET_VERSION 0x0006
 
@@ -267,18 +269,17 @@ isoApplet_init(sc_card_t *card)
 
 	/* RSA */
 	flags = 0;
+	flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
+	flags |= SC_ALGORITHM_RSA_HASH_NONE;
+	flags |= SC_ALGORITHM_RSA_HASH_SHA256;
 	if(drvdata->isoapplet_features & ISOAPPLET_API_FEATURE_RSA_SHA256_PSS) {
 		flags |= SC_ALGORITHM_RSA_PAD_PSS;
-		flags |= SC_ALGORITHM_RSA_HASH_SHA256;
+		flags |= SC_ALGORITHM_MGF1_SHA256;
 	}
 	if(drvdata->isoapplet_features & ISOAPPLET_API_FEATURE_RSA_SHA512_PSS) {
 		flags |= SC_ALGORITHM_RSA_PAD_PSS;
-		flags |= SC_ALGORITHM_RSA_HASH_SHA512;
+		flags |= SC_ALGORITHM_MGF1_SHA512;
 	}
-	/* Padding schemes: */
-	flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
-	/* Hashes are to be done by the host for RSA */
-	flags |= SC_ALGORITHM_RSA_HASH_NONE;
 	/* Key-generation: */
 	flags |= SC_ALGORITHM_ONBOARD_KEY_GEN;
 	/* Modulus lengths: */
@@ -1135,9 +1136,17 @@ isoApplet_set_security_env(sc_card_t *card,
 			{
 				drvdata->sec_env_alg_ref = ISOAPPLET_ALG_REF_RSA_PAD_PKCS1;
 			}
+			else if( env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PSS && env->algorithm_flags & SC_ALGORITHM_ECDSA_HASH_SHA256 )
+			{
+				drvdata->sec_env_alg_ref = ISOAPPLET_ALG_REF_RSA_SHA256_PAD_PSS;
+			}
+			else if( env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PSS && env->algorithm_flags & SC_ALGORITHM_ECDSA_HASH_SHA512 )
+			{
+				drvdata->sec_env_alg_ref = ISOAPPLET_ALG_REF_RSA_SHA512_PAD_PSS;
+			}
 			else
 			{
-				LOG_TEST_RET(card->ctx, SC_ERROR_NOT_SUPPORTED, "IsoApplet only supports RSA with PKCS1 padding.");
+				LOG_TEST_RET(card->ctx, SC_ERROR_NOT_SUPPORTED, "IsoApplet does not support requested padding/hash combination");
 			}
 			break;
 
