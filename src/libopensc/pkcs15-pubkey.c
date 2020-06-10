@@ -1366,7 +1366,10 @@ sc_pkcs15_pubkey_from_spki_fields(struct sc_context *ctx, struct sc_pkcs15_pubke
 	sc_format_asn1_entry(asn1_pkinfo + 1, &pk.value, &pk.len, 0);
 
 	r = sc_asn1_decode(ctx, asn1_pkinfo, tmp_buf, buflen, NULL, NULL);
-	LOG_TEST_GOTO_ERR(ctx, r, "ASN.1 parsing of subjectPubkeyInfo failed");
+	if (r != SC_SUCCESS) {
+		sc_asn1_clear_algorithm_id(&pk_alg);
+		LOG_TEST_GOTO_ERR(ctx, r, "ASN.1 parsing of subjectPubkeyInfo failed");
+	}
 
 	pubkey->alg_id = calloc(1, sizeof(struct sc_algorithm_id));
 	if (pubkey->alg_id == NULL) {
