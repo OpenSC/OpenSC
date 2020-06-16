@@ -1656,6 +1656,15 @@ int iso7816_update_binary_sfid(sc_card_t *card, unsigned char sfid,
  * */
 int iso7816_logout(sc_card_t *card, unsigned char pin_reference);
 
+/**
+ * Free a buffer returned by OpenSC.
+ * Use this instead your C libraries free() to free memory allocated by OpenSC.
+ * For more details see <https://github.com/OpenSC/OpenSC/issues/2054> 
+ *
+ * @param[in] p the buffer
+ */
+void sc_free(void *p);
+
 #ifdef __cplusplus
 }
 #endif
