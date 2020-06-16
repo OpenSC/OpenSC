@@ -1133,3 +1133,8 @@ unsigned long sc_thread_id(const sc_context_t *ctx)
 	else
 		return ctx->thread_ctx->thread_id();
 }
+
+void sc_free(void *p)
+{
+	free(p);
+}
