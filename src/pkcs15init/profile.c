@@ -2123,7 +2123,7 @@ get_authid(struct state *cur, const char *value,
 	char	temp[16];
 	size_t	n;
 
-	if (isdigit((int) *value)) {
+	if (isdigit((unsigned char) *value)) {
 		*num = 0;
 		return get_uint(cur, value, type);
 	}
@@ -2183,7 +2183,7 @@ map_str2int(struct state *cur, const char *value,
 	unsigned int	n;
 	const char	*what;
 
-	if (isdigit((int) *value))
+	if (isdigit((unsigned char) *value))
 		return get_uint(cur, value, vp);
 	for (n = 0; map[n].name; n++) {
 		if (!strcasecmp(value, map[n].name)) {
@@ -2270,17 +2270,17 @@ __expr_get(struct num_exp_ctx *ctx, int eof_okay)
 			ctx->argc--;
 		}
 
-		while (isspace(*s))
+		while (isspace((unsigned char)*s))
 			s++;
 	} while (*s == '\0');
 
-	if (isdigit(*s)) {
-		while (isdigit(*s))
+	if (isdigit((unsigned char)*s)) {
+		while (isdigit((unsigned char)*s))
 			expr_put(ctx, *s++);
 	}
 	else if (*s == '$') {
 		expr_put(ctx, *s++);
-		while (isalnum(*s) || *s == '-' || *s == '_')
+		while (isalnum((unsigned char)*s) || *s == '-' || *s == '_')
 			expr_put(ctx, *s++);
 	}
 	else if (strchr("*/+-()|&", *s)) {
@@ -2329,7 +2329,7 @@ expr_term(struct num_exp_ctx *ctx, unsigned int *vp)
 		expr_eval(ctx, vp, 1);
 		expr_expect(ctx, ')');
 	}
-	else if (isdigit(*tok)) {
+	else if (isdigit((unsigned char)*tok)) {
 		char	*ep;
 
 		*vp = strtoul(tok, &ep, 0);

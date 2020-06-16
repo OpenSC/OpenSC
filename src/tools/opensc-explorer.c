@@ -479,7 +479,7 @@ static int pattern_match(const char *pattern, const char *string)
 			int match = 0;
 
 			for (pattern++; end != NULL && pattern != end; pattern++) {
-				if (tolower(*pattern) == tolower(*string))
+				if (tolower((unsigned char) *pattern) == tolower((unsigned char) *string))
 					match++;
 			}
 			if (!match)
@@ -488,7 +488,7 @@ static int pattern_match(const char *pattern, const char *string)
 			string++;
 		}
 		/* single character comparison / wildcard matching a single character */
-		else if (tolower(*pattern) == tolower(*string) || *pattern == '?') {
+		else if (tolower((unsigned char) *pattern) == tolower((unsigned char) *string) || *pattern == '?') {
 			pattern++;
 			string++;
 		}
@@ -498,7 +498,7 @@ static int pattern_match(const char *pattern, const char *string)
 		if (*string == '\0' || *pattern == '\0')
 			break;
 	}
-	return (*pattern != '\0' || *string != '\0' || tolower(*pattern) != tolower(*string)) ? 0 : 1;
+	return (*pattern != '\0' || *string != '\0' || tolower((unsigned char) *pattern) != tolower((unsigned char) *string)) ? 0 : 1;
 }
 
 static int do_ls(int argc, char **argv)

@@ -99,7 +99,7 @@ handle(char *progname,
             {
               char rc = letters[(match - letters + rotate) % 26];
               if (isupper(c))
-                rc = toupper(rc);
+                rc = toupper((unsigned char)rc);
               c = rc;
             }
         }
