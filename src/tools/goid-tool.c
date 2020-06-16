@@ -716,7 +716,7 @@ int paccess_main(struct sc_context *ctx, sc_card_t *card, struct gengetopt_args_
                     && SC_SUCCESS == sc_asn1_read_tag(&p, ef_len,
                         &cla, &tag, &ef_len)
                     && (tag | cla) == 0x13) {
-                const char *cardid = (const char *) p;
+                const unsigned char *cardid = (const unsigned char *) p;
                 while (cardid && ef_len) {
                     if (isprint(*cardid)) {
                         printf("%c", *cardid);
@@ -750,7 +750,7 @@ int paccess_main(struct sc_context *ctx, sc_card_t *card, struct gengetopt_args_
                     && SC_SUCCESS == sc_asn1_read_tag((const u8 **) &p, ef_len,
                         &cla, &tag, &ef_len)
                     && (tag | cla) == 0x13) {
-                const char *paccessid = (const char *) p;
+                const unsigned char *paccessid = (const unsigned char *) p;
                 while (paccessid && ef_len) {
                     if (isprint(*paccessid)) {
                         printf("%c", *paccessid);

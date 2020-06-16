@@ -756,7 +756,7 @@ parse_alg_spec(const struct alg_spec *types, const char *spec, unsigned int *key
 		spec++;
 
 	if (*spec)   {
-		if (isalpha(*spec) && algorithm == SC_ALGORITHM_EC && prkey) {
+		if (isalpha((unsigned char)*spec) && algorithm == SC_ALGORITHM_EC && prkey) {
 			prkey->u.ec.params.named_curve = strdup(spec);
 		} else {
 			*keybits = strtoul(spec, &end, 10);
@@ -1923,7 +1923,7 @@ parse_secret(struct secret *secret, const char *arg)
 		else
 			goto parse_err;
 		str += 3;
-		if (!isdigit(str[3]))
+		if (!isdigit((unsigned char)str[3]))
 			goto parse_err;
 		secret->reference = strtoul(str, &str, 10);
 		if (*str != '\0')

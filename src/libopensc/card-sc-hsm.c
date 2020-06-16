@@ -284,7 +284,7 @@ static int sc_hsm_match_card(struct sc_card *card)
 static int sc_hsm_encode_sopin(const u8 *sopin, u8 *sopinbin)
 {
 	int i;
-	char digit;
+	unsigned char digit;
 
 	memset(sopinbin, 0, 8);
 	for (i = 0; i < 16; i++) {
