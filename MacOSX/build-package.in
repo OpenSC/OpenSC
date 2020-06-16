@@ -102,8 +102,8 @@ if test -n "${CODE_SIGN_IDENTITY}"; then
 else
 	xcodebuild -target NotificationProxy -configuration Release -project NotificationProxy/NotificationProxy.xcodeproj install DSTROOT=$BUILDPATH/target/Library/OpenSC/
 fi
-mkdir -p "$BUILDPATH/target/Applications"
-osacompile -o "$BUILDPATH/target/Applications/OpenSC Notify.app" "MacOSX/OpenSC_Notify.applescript"
+mkdir -p "$BUILDPATH/target/Applications/Utilities"
+osacompile -o "$BUILDPATH/target/Applications/Utilities/OpenSC Notify.app" "MacOSX/OpenSC_Notify.applescript"
 
 
 # Build OpenSC.tokend when XCode version < 10
@@ -173,6 +173,8 @@ if test -e OpenSCToken -a -n "${CODE_SIGN_IDENTITY}"; then
 	. ./bootstrap
 	BUILDPATH=${BP}
 	xcodebuild -target OpenSCTokenApp -configuration Debug -project OpenSCTokenApp.xcodeproj install DSTROOT=${BUILDPATH}/target_token "$P1" "$P2" "$P3" "$P4"
+	mkdir ${BUILDPATH}/target_token/Applications/Utilities
+	mv ${BUILDPATH}/target_token/Applications/OpenSCTokenApp.app ${BUILDPATH}/target_token/Applications/Utilities
 	cd ..
 else
 	# if no OpenSCToken is checked out, then we create a dummy package
