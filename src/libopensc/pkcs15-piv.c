@@ -1143,7 +1143,56 @@ sc_log(card->ctx,  "DEE Adding pin %d label=%s",i, label);
 
 		strncpy(prkey_obj.label, prkeys[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
 		prkey_obj.flags = prkeys[i].obj_flags;
-		prkey_obj.user_consent = prkeys[i].user_consent; /* only Sign key */
+
+		/* If Yubikey, try to get pin policy from ATTESTATION certificate */
+		/* TODO, for now, only check to turn off user_consent on Sign key */
+		/* could look at every key, to set piv and touch policy */
+
+		prkey_obj.user_consent = prkeys[i].user_consent; /* set the PIV default */
+		if (prkeys[i].user_consent) {
+			sc_cardctl_piv_yubico_attestation_cert_t attcertctl;
+
+			memset(&attcertctl, 0, sizeof(attcertctl));
+			attcertctl.key = prkeys[i].ref;
+
+			r = sc_card_ctl(card, SC_CARDCTL_PIV_YUBICO_ATTESTATION_CERT, &attcertctl);
+			if (r < 0 || attcertctl.der.value == NULL || attcertctl.der.len == 0) {
+				sc_log(card->ctx," SC_CARDCTL_PIV_YUBICO_ATTESTATION_CERT failed r=%d", r);
+			} else {
+				struct sc_object_id pp_oid = {{1, 3, 6, 1, 4, 1, 41482, 3, 8, -1}}; /* pin policy extension */
+				sc_pkcs15_cert_info_t * attcert_info = NULL;
+				sc_pkcs15_cert_t *attcert_out = NULL;
+				u8  *pp_val = NULL;
+				size_t pp_len = 0;
+				int pp_critical = 0;
+
+				attcert_info = calloc(1, sizeof(sc_pkcs15_cert_info_t));
+				if (attcert_info == NULL)
+					LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+
+				attcert_info->value.len = attcertctl.der.len;
+				attcert_info->value.value  = attcertctl.der.value;
+				attcertctl.der.value = NULL;
+
+				r = sc_pkcs15_read_certificate(p15card, attcert_info, &attcert_out);
+				if (r >= 0 && attcert_out && attcert_out->extensions) {
+					r = sc_pkcs15_get_extension(card->ctx, attcert_out,
+							&pp_oid, &pp_val, &pp_len, &pp_critical);
+					/* pp_val[0] pin policy default = 0, none = 1, session = 2, always = 3 */
+					/* pp_val[1] touch policy. TODO can we support this in some way */
+					if (r >= 0 && pp_len == 2 && pp_val) {
+						if (*pp_val != 0 && *pp_val != 3) {
+							prkey_obj.user_consent = 0; /* turn off */
+							sc_log(card->ctx, "user_consent turned off for 0x%2.2x", prkeys[i].ref);
+						}
+					}
+				}
+				free(pp_val);
+				sc_pkcs15_free_cert_info(attcert_info);
+				sc_pkcs15_free_certificate(attcert_out);
+			}
+			free(attcertctl.der.value);
+		}
 
 		if (prkeys[i].auth_id)
 			sc_pkcs15_format_id(prkeys[i].auth_id, &prkey_obj.auth_id);

@@ -2133,6 +2133,48 @@ static int piv_get_pin_preference(sc_card_t *card, int *ptr)
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
+/*
+ * Read Yubico attestation cert for a key. ( may not be present)
+ * The cert has extension for pin and touch policies for the key
+ * These affect user_consent a.k.a CKA_ALWAYS_AUTHENTICATE
+ */
+
+static int piv_yubico_attestation_cert(sc_card_t *card, sc_cardctl_piv_yubico_attestation_cert_t *ptr)
+{
+	piv_private_data_t * priv = PIV_DATA(card);
+	int r;
+	u8 rbuf[4096];
+	sc_apdu_t apdu;
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+	
+	if (priv->yubico_version < 0x00040300) /* not Yubico or too old */
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NO_CARD_SUPPORT);
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xF9, ptr->key, 0x00);
+	apdu.lc = 0;
+	apdu.datalen = 0;
+	apdu.resp = rbuf;
+	apdu.resplen = sizeof(rbuf);
+	apdu.le = 256;
+	r = sc_transmit_apdu(card, &apdu);
+
+	LOG_TEST_RET(card->ctx, r, "Transmit failed");
+
+	/* may not be present */
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	LOG_TEST_RET(card->ctx, r, "Card returned error");
+
+	ptr->der.value = malloc(apdu.resplen);
+	if (ptr == NULL)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+	ptr->der.len = apdu.resplen;
+	memcpy(ptr->der.value, rbuf, ptr->der.len);
+	r = SC_SUCCESS;
+
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+
 static int piv_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 {
 	piv_private_data_t * priv = PIV_DATA(card);
@@ -2169,6 +2211,9 @@ static int piv_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 			break;
 		case SC_CARDCTL_PIV_OBJECT_PRESENT:
 			return piv_is_object_present(card, ptr);
+			break;
+		case SC_CARDCTL_PIV_YUBICO_ATTESTATION_CERT:
+			return piv_yubico_attestation_cert(card, ptr);
 			break;
 	}
 
@@ -3015,6 +3060,7 @@ static int piv_match_card(sc_card_t *card)
 		case SC_CARD_TYPE_PIV_II_OBERTHUR_DUAL_CAC:
 		case SC_CARD_TYPE_PIV_II_OBERTHUR:
 		case SC_CARD_TYPE_PIV_II_PIVKEY:
+		case SC_CARD_TYPE_PIV_II_YUBIKEY:
 			break;
 		default:
 			return 0; /* can not handle the card */
@@ -3064,6 +3110,7 @@ static int piv_match_card_continued(sc_card_t *card)
 		case SC_CARD_TYPE_PIV_II_OBERTHUR_DUAL_CAC:
 		case SC_CARD_TYPE_PIV_II_OBERTHUR:
 		case SC_CARD_TYPE_PIV_II_PIVKEY:
+		case SC_CARD_TYPE_PIV_II_YUBIKEY:
 			type = card->type;
 			break;
 		default:
@@ -3091,11 +3138,11 @@ static int piv_match_card_continued(sc_card_t *card)
 			else if (card->reader->atr_info.hist_bytes_len > 0
 					&& card->reader->atr_info.hist_bytes[0] == 0x80u) { /* compact TLV */
 				size_t datalen;
-				const u8 *data = sc_compacttlv_find_tag(card->reader->atr_info.hist_bytes + 1,
+				const u8 *data;
+				
+				if ((data = sc_compacttlv_find_tag(card->reader->atr_info.hist_bytes + 1,
 									card->reader->atr_info.hist_bytes_len - 1,
-									0xF0, &datalen);
-
-				if (data != NULL) {
+									0xF0, &datalen)) != NULL) {
 					int k;
 
 					for (k = 0; piv_aids[k].len_long != 0; k++) {
@@ -3104,6 +3151,12 @@ static int piv_match_card_continued(sc_card_t *card)
 							type = SC_CARD_TYPE_PIV_II_HIST;
 							break;
 						}
+					}
+				} else if ((data = sc_compacttlv_find_tag(card->reader->atr_info.hist_bytes + 1,
+										card->reader->atr_info.hist_bytes_len - 1,
+										0x50, &datalen)) != NULL) {
+					if (datalen == 7  && !(memcmp(data, "YubiKey", 7))) {
+						type = SC_CARD_TYPE_PIV_II_YUBIKEY; /* YUBIKEY 5 */
 					}
 				}
 			}
@@ -3271,7 +3324,7 @@ static int piv_init(sc_card_t *card)
 	sc_apdu_t apdu;
 	unsigned long flags;
 	unsigned long ext_flags;
-	u8 yubico_version_buf[3];
+	u8 yubico_version_buf[3] = {0};
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -3305,6 +3358,7 @@ static int piv_init(sc_card_t *card)
 	switch(card->type) {
 		case SC_CARD_TYPE_PIV_II_NEO:
 		case SC_CARD_TYPE_PIV_II_YUBIKEY4:
+		case SC_CARD_TYPE_PIV_II_YUBIKEY:
 			sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xFD, 0x00, 0x00);
 			apdu.lc = 0;
 			apdu.data = NULL;
@@ -3350,6 +3404,10 @@ static int piv_init(sc_card_t *card)
 				| CI_LEAKS_FILE_NOT_FOUND;
 			if (priv->yubico_version  < 0x00040302)
 				priv->card_issues |= CI_VERIFY_LC0_FAIL;
+			break;
+
+		case SC_CARD_TYPE_PIV_II_YUBIKEY: /* tested with Yubikey 5.2.6 */
+			priv->card_issues |= 0; /* could add others here */
 			break;
 
 		case SC_CARD_TYPE_PIV_II_GI_DE:
