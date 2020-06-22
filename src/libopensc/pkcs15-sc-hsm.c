@@ -794,7 +794,9 @@ static int sc_pkcs15emu_sc_hsm_add_cd(sc_pkcs15_card_t * p15card, u8 id) {
 
 	memset(&obj, 0, sizeof(obj));
 	r = sc_pkcs15_decode_cdf_entry(p15card, &obj, &ptr, &len);
-	LOG_TEST_RET(card->ctx, r, "Skipping optional EF.CDOD");
+	if (obj.data == NULL || r != SC_SUCCESS) {
+		LOG_TEST_RET(card->ctx, r, "Skipping optional EF.CDOD");
+	}
 
 	cert_info = (sc_pkcs15_cert_info_t *)obj.data;
 
