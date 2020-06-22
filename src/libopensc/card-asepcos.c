@@ -167,7 +167,7 @@ static int asepcos_parse_sec_attr(sc_card_t *card, sc_file_t *file, const u8 *bu
 {
 	const u8 *p = buf;
 
-	while (len != 0) {
+	while (len > 0) {
 		unsigned int amode, tlen = 3;
 		if (len < 5 || p[0] != 0x80 || p[1] != 0x01) {
 			sc_log(card->ctx,  "invalid access mode encoding");
@@ -184,13 +184,13 @@ static int asepcos_parse_sec_attr(sc_card_t *card, sc_file_t *file, const u8 *bu
 			if (r != SC_SUCCESS) 
 				return r;
 			tlen += 2;
-		} else if (p[3] == 0xA0 && len >= 4U + p[4]) {
+		} else if (p[3] == 0xA0 && p[4] > 0 && len >= 4U + p[4]) {
 			/* TODO: support OR expressions */
 			int r = set_sec_attr(file, amode, p[5], SC_AC_CHV);
 			if (r != SC_SUCCESS)
 				return r;
 			tlen += 2 + p[4]; /* FIXME */
-		} else if (p[3] == 0xAF && len >= 4U + p[4]) {
+		} else if (p[3] == 0xAF && p[4] > 0 && len >= 4U + p[4]) {
 			/* TODO: support AND expressions */
 			int r = set_sec_attr(file, amode, p[5], SC_AC_CHV);
 			if (r != SC_SUCCESS)
