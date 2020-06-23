@@ -309,10 +309,6 @@ static int starcos_init(sc_card_t *card)
 
 	if (card->type == SC_CARD_TYPE_STARCOS_V3_4
 			|| card->type == SC_CARD_TYPE_STARCOS_V3_5) {
-		if (card->type == SC_CARD_TYPE_STARCOS_V3_4)
-			card->name = "STARCOS 3.4";
-		else
-			card->name = "STARCOS 3.5";
 		card->caps |= SC_CARD_CAP_ISO7816_PIN_INFO;
 		card->caps |= SC_CARD_CAP_APDU_EXT;
 
@@ -328,6 +324,12 @@ static int starcos_init(sc_card_t *card)
 		_sc_card_add_rsa_alg(card,1728, flags, 0x10001);
 		_sc_card_add_rsa_alg(card,1976, flags, 0x10001);
 		_sc_card_add_rsa_alg(card,2048, flags, 0x10001);
+		if (card->type == SC_CARD_TYPE_STARCOS_V3_4) {
+			card->name = "STARCOS 3.4";
+		} else {
+			card->name = "STARCOS 3.5";
+			_sc_card_add_rsa_alg(card,3072, flags, 0x10001);
+		}
 	} else {
 		_sc_card_add_rsa_alg(card, 512, flags, 0x10001);
 		_sc_card_add_rsa_alg(card, 768, flags, 0x10001);
@@ -1529,8 +1531,7 @@ static int starcos_set_security_env(sc_card_t *card,
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
 		}
 
-		/* don't know what these mean but doesn't matter as card seems to take
-		 * algorithm / cipher from PKCS#1 padding prefix */
+		/* Tag '84' (length 1) denotes key name or key reference */
 		*p++ = 0x84;
 		*p++ = 0x01;
 		if (env->flags & SC_SEC_ENV_FILE_REF_PRESENT) {
@@ -1544,6 +1545,7 @@ static int starcos_set_security_env(sc_card_t *card,
 				sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0x41, 0xB6);
 
 				/* algorithm / cipher selector? */
+				/* algorithm: 13.23 PKCS#1 signature with RSA (standard) */
 				*p++ = 0x89;
 				*p++ = 0x02;
 				*p++ = 0x13;
@@ -1554,6 +1556,8 @@ static int starcos_set_security_env(sc_card_t *card,
 				sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0x41, 0xB8);
 
 				/* algorithm / cipher selector? */
+				/* algorithm: 11.3  Encipherment RSA (standard) */
+				/* algorithm: 11.31 Encipherment RSA (standard) with PKCS#1 padding */
 				*p++ = 0x89;
 				*p++ = 0x02;
 				*p++ = 0x11;
@@ -1713,17 +1717,37 @@ static int starcos_compute_signature(sc_card_t *card,
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
 
 	if (ex_data->sec_ops == SC_SEC_OPERATION_SIGN) {
+		u8 rbuf_ext[SC_MAX_EXT_APDU_BUFFER_SIZE];
 		/* compute signature with the COMPUTE SIGNATURE command */
 		
 		if (card->type == SC_CARD_TYPE_STARCOS_V3_4
 				|| card->type == SC_CARD_TYPE_STARCOS_V3_5) {
 			size_t tmp_len;
+			u8 apdu_case;
+			size_t apdu_le;
+			size_t apdu_resplen;
+			u8 * apdu_resp;
 
-			sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A,
+			if (card->caps & SC_CARD_CAP_APDU_EXT
+				&& card->reader->max_recv_size > SC_MAX_APDU_BUFFER_SIZE
+				&& outlen > SC_MAX_APDU_BUFFER_SIZE ) {
+				apdu_le = MIN(card->max_recv_size, outlen);
+				apdu_case = SC_APDU_CASE_4_EXT;
+				apdu_resplen = sizeof(rbuf_ext);
+				apdu_resp = rbuf_ext;
+			}
+			else {
+				apdu_case = SC_APDU_CASE_4_SHORT;
+				apdu_le = 0;
+				apdu_resplen = sizeof(rbuf);
+				apdu_resp = rbuf;
+			}
+
+			sc_format_apdu(card, &apdu, apdu_case, 0x2A,
 					   0x9E, 0x9A);
-			apdu.resp = rbuf;
-			apdu.resplen = sizeof(rbuf);
-			apdu.le = 0;
+			apdu.resp = apdu_resp;
+			apdu.resplen = apdu_resplen;
+			apdu.le = apdu_le;
 			if (ex_data->fix_digestInfo) {
 				// need to pad data
 				unsigned int flags = ex_data->fix_digestInfo & SC_ALGORITHM_RSA_HASHES;
@@ -1741,9 +1765,7 @@ static int starcos_compute_signature(sc_card_t *card,
 			apdu.data = sbuf;
 			apdu.datalen = tmp_len;
 			apdu.lc = tmp_len;
-			apdu.resp = rbuf;
-			apdu.resplen = sizeof(rbuf);
-			apdu.le = 0;
+
 			r = sc_transmit_apdu(card, &apdu);
 			LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 		} else {
