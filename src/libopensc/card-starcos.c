@@ -638,7 +638,7 @@ static int process_fcp_v3_4(sc_context_t *ctx, sc_file_t *file,
 }
 
 static int starcos_select_aid(sc_card_t *card,
-			      u8 aid[16], size_t len,
+			      const u8 aid[16], size_t len,
 			      sc_file_t **file_out)
 {
 	sc_apdu_t apdu;
@@ -828,7 +828,7 @@ static int starcos_select_file(sc_card_t *card,
 			       sc_file_t **file_out)
 {
 	u8 pathbuf[SC_MAX_PATH_SIZE], *path = pathbuf;
-	int    r;
+	int    r, pathtype;
 	size_t i, pathlen;
 	char pbuf[SC_MAX_PATH_STRING_SIZE];
 
@@ -847,15 +847,34 @@ static int starcos_select_file(sc_card_t *card,
 
 	memcpy(path, in_path->value, in_path->len);
 	pathlen = in_path->len;
+	pathtype = in_path->type;
 
-	if (in_path->type == SC_PATH_TYPE_FILE_ID)
+	if (in_path->aid.len) {
+		if (!pathlen) {
+			memcpy(path, in_path->aid.value, in_path->aid.len);
+			pathlen = in_path->aid.len;
+			pathtype = SC_PATH_TYPE_DF_NAME;
+		} else {
+			if (!card->cache.valid 
+				|| card->cache.current_path.type != SC_PATH_TYPE_DF_NAME
+				|| card->cache.current_path.len != pathlen
+				|| memcmp(card->cache.current_path.value, in_path->aid.value, in_path->aid.len) != 0 ) {
+				r = starcos_select_aid(card, in_path->aid.value, in_path->aid.len, file_out);
+				LOG_TEST_RET(card->ctx, r, "Could not select AID!");
+			}
+
+			if (pathtype == SC_PATH_TYPE_DF_NAME) pathtype = SC_PATH_TYPE_FILE_ID;
+		}
+	}	
+
+	if (pathtype == SC_PATH_TYPE_FILE_ID)
 	{	/* SELECT EF/DF with ID */
 		/* Select with 2byte File-ID */
 		if (pathlen != 2)
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,SC_ERROR_INVALID_ARGUMENTS);
 		return starcos_select_fid(card, path[0], path[1], file_out, 1);
 	}
-	else if (in_path->type == SC_PATH_TYPE_DF_NAME)
+	else if (pathtype == SC_PATH_TYPE_DF_NAME)
       	{	/* SELECT DF with AID */
 		/* Select with 1-16byte Application-ID */
 		if (card->cache.valid 
@@ -869,7 +888,7 @@ static int starcos_select_file(sc_card_t *card,
 		else
 			return starcos_select_aid(card, pathbuf, pathlen, file_out);
 	}
-	else if (in_path->type == SC_PATH_TYPE_PATH)
+	else if (pathtype == SC_PATH_TYPE_PATH)
 	{
 		u8 n_pathbuf[SC_MAX_PATH_SIZE];
 		int bMatch = -1;

@@ -38,6 +38,8 @@ static const char name_QES[] = "QES";
 static const char name_Vendor[] = "Giesecke & Devrient";
 static const unsigned char aid_ESIGN[] = {0xA0, 0x00, 0x00, 0x02, 0x45, 0x53, 0x69, 0x67, 0x6E};
 static const unsigned char aid_QES[]   = {0xD2, 0x76, 0x00, 0x00, 0x66, 0x01};
+//static const unsigned char aid_CIA_ESIGN[] = {0xE8, 0x28, 0xBD, 0x08, 0x0F, 0xA0, 0x00, 0x00, 0x02, 0x45, 0x53, 0x69, 0x67, 0x6E};
+//static const unsigned char aid_CIA_QES[]   = {0xE8, 0x28, 0xBD, 0x08, 0x0F, 0xD2, 0x76, 0x00, 0x00, 0x66, 0x01};
 
 typedef struct cdata_st {
 	const char *label;
@@ -58,6 +60,7 @@ typedef struct pdata_st {
 	unsigned int storedlen;
 	int         flags;	
 	int         tries_left;
+	int         max_tries;
 	const char  pad_char;
 	int         obj_flags;
 } pindata, *ppindata; 
@@ -176,6 +179,7 @@ static int add_app(sc_pkcs15_card_t *p15card, const container * containers, int 
 				pin_info.attrs.pin.pad_char = containers[i].pindata->pad_char;
 				if (containers[i].pindata->path != NULL) sc_format_path(containers[i].pindata->path, &pin_info.path);
 				pin_info.tries_left = -1;
+				pin_info.max_tries = containers[i].pindata->max_tries;
 
 				strlcpy(pin_obj.label, containers[i].pindata->label, sizeof(pin_obj.label));
 				pin_obj.flags = containers[i].pindata->obj_flags;
@@ -233,11 +237,11 @@ static int starcos_add_esign_app(sc_pkcs15_card_t *p15card) {
 
 	static pindata auth_pin = { "1", "UserPIN", "3F00", 0x01, SC_PKCS15_PIN_TYPE_UTF8, 16, 6, 0,
 		SC_PKCS15_PIN_FLAG_INITIALIZED | SC_PKCS15_PIN_FLAG_CASE_SENSITIVE | SC_PKCS15_PIN_TYPE_FLAGS_PIN_GLOBAL | SC_PKCS15_PIN_AUTH_TYPE_PIN,
-		-1, 0x00, SC_PKCS15_CO_FLAG_MODIFIABLE | SC_PKCS15_CO_FLAG_PRIVATE };
+		-1, 3, 0x00, SC_PKCS15_CO_FLAG_MODIFIABLE | SC_PKCS15_CO_FLAG_PRIVATE };
 
 	static pindata auth_pin_v35 = { "1", "UserPIN", "3F00", 0x06, SC_PKCS15_PIN_TYPE_UTF8, 16, 6, 0,
 		SC_PKCS15_PIN_FLAG_INITIALIZED | SC_PKCS15_PIN_FLAG_CASE_SENSITIVE | SC_PKCS15_PIN_TYPE_FLAGS_PIN_GLOBAL | SC_PKCS15_PIN_AUTH_TYPE_PIN,
-		-1, 0x00, SC_PKCS15_CO_FLAG_MODIFIABLE | SC_PKCS15_CO_FLAG_PRIVATE };
+		-1, 3, 0x00, SC_PKCS15_CO_FLAG_MODIFIABLE | SC_PKCS15_CO_FLAG_PRIVATE };
 	
 	ppindata auth = &auth_pin;
 	if ( p15card->card->type == SC_CARD_TYPE_STARCOS_V3_5 ) {
@@ -258,7 +262,7 @@ static int starcos_add_qes_app(sc_pkcs15_card_t *p15card) {
 	static prdata sign_key_v35 = { "3", "PrK.CH.QES", 3072, SC_PKCS15_PRKEY_USAGE_SIGN | SC_PKCS15_PRKEY_USAGE_NONREPUDIATION, "3F000604", 0x84, "2", SC_PKCS15_CO_FLAG_PRIVATE };
 	static pindata sign_pin = { "2", "SignPIN", "3F000604", 0x81,  SC_PKCS15_PIN_TYPE_UTF8, 16, 6, 0,
 		SC_PKCS15_PIN_FLAG_INITIALIZED | SC_PKCS15_PIN_FLAG_CASE_SENSITIVE | SC_PKCS15_PIN_FLAG_CONFIDENTIALITY_PROTECTED | SC_PKCS15_PIN_FLAG_LOCAL,
-		-1, 0x00, SC_PKCS15_CO_FLAG_MODIFIABLE | SC_PKCS15_CO_FLAG_PRIVATE };
+		-1, 10, 0x00, SC_PKCS15_CO_FLAG_MODIFIABLE | SC_PKCS15_CO_FLAG_PRIVATE };
 
 	const container containers[] = {
 		//Note: the signature container may not be present on all cards
