@@ -491,6 +491,11 @@ authentic_init(struct sc_card *card)
 	if (rv != SC_SUCCESS)
 		rv = SC_ERROR_INVALID_CARD;
 
+	/* Free private data on error */
+	if (rv != SC_SUCCESS) {
+		free(card->drv_data);
+		card->drv_data = NULL;
+	}
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
