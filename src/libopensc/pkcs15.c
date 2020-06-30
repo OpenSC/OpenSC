@@ -817,30 +817,19 @@ sc_pkcs15_card_clear(struct sc_pkcs15_card *p15card)
 	p15card->file_odf = NULL;
 	sc_file_free(p15card->file_unusedspace);
 	p15card->file_unusedspace = NULL;
-	if (p15card->tokeninfo->label != NULL) {
-		free(p15card->tokeninfo->label);
-		p15card->tokeninfo->label = NULL;
-	}
-	if (p15card->tokeninfo->serial_number != NULL) {
-		free(p15card->tokeninfo->serial_number);
-		p15card->tokeninfo->serial_number = NULL;
-	}
-	if (p15card->tokeninfo->manufacturer_id != NULL) {
-		free(p15card->tokeninfo->manufacturer_id);
-		p15card->tokeninfo->manufacturer_id = NULL;
-	}
-	if (p15card->tokeninfo->last_update.gtime != NULL) {
-		free(p15card->tokeninfo->last_update.gtime);
-		p15card->tokeninfo->last_update.gtime = NULL;
-	}
-	if (p15card->tokeninfo->preferred_language != NULL) {
-		free(p15card->tokeninfo->preferred_language);
-		p15card->tokeninfo->preferred_language = NULL;
-	}
-	if (p15card->tokeninfo->profile_indication.name != NULL)   {
-		free(p15card->tokeninfo->profile_indication.name);
-		p15card->tokeninfo->profile_indication.name = NULL;
-	}
+
+	free(p15card->tokeninfo->label);
+	p15card->tokeninfo->label = NULL;
+	free(p15card->tokeninfo->serial_number);
+	p15card->tokeninfo->serial_number = NULL;
+	free(p15card->tokeninfo->manufacturer_id);
+	p15card->tokeninfo->manufacturer_id = NULL;
+	free(p15card->tokeninfo->last_update.gtime);
+	p15card->tokeninfo->last_update.gtime = NULL;
+	free(p15card->tokeninfo->preferred_language);
+	p15card->tokeninfo->preferred_language = NULL;
+	free(p15card->tokeninfo->profile_indication.name);
+	p15card->tokeninfo->profile_indication.name = NULL;
 	if (p15card->tokeninfo->seInfo != NULL) {
 		size_t i;
 		for (i = 0; i < p15card->tokeninfo->num_seInfo; i++)
