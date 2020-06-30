@@ -775,6 +775,7 @@ sc_pkcs15_card_free(struct sc_pkcs15_card *p15card)
 	if (p15card->md_data)
 		free(p15card->md_data);
 
+	sc_pkcs15_free_app(p15card);
 	sc_pkcs15_remove_objects(p15card);
 	sc_pkcs15_remove_dfs(p15card);
 	sc_pkcs15_free_unusedspace(p15card);
@@ -970,6 +971,7 @@ sc_pkcs15_bind_internal(struct sc_pkcs15_card *p15card, struct sc_aid *aid)
 	info = sc_find_app(card, aid);
 	if (info)   {
 		sc_log(ctx, "bind to application('%s',aid:'%s')", info->label, sc_dump_hex(info->aid.value, info->aid.len));
+		sc_pkcs15_free_app(p15card);
 		p15card->app = sc_dup_app_info(info);
 		if (!p15card->app)   {
 			err = SC_ERROR_OUT_OF_MEMORY;
