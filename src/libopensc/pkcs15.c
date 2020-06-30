@@ -1039,8 +1039,10 @@ sc_pkcs15_bind_internal(struct sc_pkcs15_card *p15card, struct sc_aid *aid)
 		goto end;
 	}
 	buf = malloc(len);
-	if(buf == NULL)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+	if(buf == NULL) {
+		err = SC_ERROR_OUT_OF_MEMORY;
+		goto end;
+	}
 
 	err = -1; /* file state: not in cache */
 	if (p15card->opts.use_file_cache) {
@@ -1111,8 +1113,10 @@ sc_pkcs15_bind_internal(struct sc_pkcs15_card *p15card, struct sc_aid *aid)
 		goto end;
 	}
 	buf = malloc(len);
-	if(buf == NULL)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+	if(buf == NULL) {
+		err = SC_ERROR_OUT_OF_MEMORY;
+		goto end;
+	}
 
 	err = -1; /* file state: not in cache */
 	if (p15card->opts.use_file_cache) {
