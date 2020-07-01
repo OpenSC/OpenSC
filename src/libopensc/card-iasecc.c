@@ -980,6 +980,8 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 				apdu.p2 = 0x04;
 			if (card->type == SC_CARD_TYPE_IASECC_MI2)
 				apdu.p2 = 0x04;
+			if (card->type == SC_CARD_TYPE_IASECC_OBERTHUR)
+				apdu.p2 = 0x04;
 		}
 		else   {
 			sc_log(ctx, "Invalid PATH type: 0x%X", lpath.type);
