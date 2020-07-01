@@ -104,8 +104,6 @@ static int get_cert_size(sc_card_t * card, sc_path_t * path, size_t * psize) {
 	*psize = file->size;
 	sc_file_free(file);
 
-	sc_log(card->ctx, "Certificate size: %ld", file->size);
-
 	return SC_SUCCESS;
 }
 
