@@ -295,7 +295,7 @@ static void starcos_pin_clear_logged_in(sc_card_t *card) {
  * Note: pin reference must be greater than 0
  */
 static int starcos_pin_set_logged_in(sc_card_t *card, unsigned char pin_reference) {
-	int i;
+	unsigned int i;
 	starcos_ex_data * ex_data = (starcos_ex_data*)card->drv_data;
 
 	// check if the pin has already been registered
@@ -318,7 +318,7 @@ static int starcos_pin_set_logged_in(sc_card_t *card, unsigned char pin_referenc
  * Otherwise returns 0
  */
 static int starcos_pin_is_logged_in(sc_card_t *card, unsigned char pin_reference) {
-	int i;
+	unsigned int i;
 	starcos_ex_data * ex_data = (starcos_ex_data*)card->drv_data;
 
 	for(i=0; i<sizeof(ex_data->pin_logged_in)/sizeof(unsigned char); i++) {
@@ -881,6 +881,12 @@ static int starcos_select_file(sc_card_t *card,
 	int    r, pathtype;
 	size_t i, pathlen;
 	char pbuf[SC_MAX_PATH_STRING_SIZE];
+	int    cache_valid = 
+#ifdef ENABLE_MINIDRIVER
+		0; // multiple windows minidriver instances may exists, path caching makes no sense
+#else
+		card->cache.valid;
+#endif
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -892,7 +898,7 @@ static int starcos_select_file(sc_card_t *card,
 		 "current path (%s, %s): %s (len: %"SC_FORMAT_LEN_SIZE_T"u)\n",
 		 card->cache.current_path.type == SC_PATH_TYPE_DF_NAME ?
 		 "aid" : "path",
-		 card->cache.valid ? "valid" : "invalid", pbuf,
+		 cache_valid ? "valid" : "invalid", pbuf,
 		 card->cache.current_path.len);
 
 	memcpy(path, in_path->value, in_path->len);
@@ -905,7 +911,7 @@ static int starcos_select_file(sc_card_t *card,
 			pathlen = in_path->aid.len;
 			pathtype = SC_PATH_TYPE_DF_NAME;
 		} else {
-			if (!card->cache.valid 
+			if (!cache_valid 
 				|| card->cache.current_path.type != SC_PATH_TYPE_DF_NAME
 				|| card->cache.current_path.len != pathlen
 				|| memcmp(card->cache.current_path.value, in_path->aid.value, in_path->aid.len) != 0 ) {
@@ -927,7 +933,7 @@ static int starcos_select_file(sc_card_t *card,
 	else if (pathtype == SC_PATH_TYPE_DF_NAME)
       	{	/* SELECT DF with AID */
 		/* Select with 1-16byte Application-ID */
-		if (card->cache.valid 
+		if (cache_valid 
 		    && card->cache.current_path.type == SC_PATH_TYPE_DF_NAME
 		    && card->cache.current_path.len == pathlen
 		    && memcmp(card->cache.current_path.value, pathbuf, pathlen) == 0 )
@@ -969,7 +975,7 @@ static int starcos_select_file(sc_card_t *card,
 		}
 	
 		/* check current working directory */
-		if (card->cache.valid 
+		if (cache_valid 
 		    && card->cache.current_path.type == SC_PATH_TYPE_PATH
 		    && card->cache.current_path.len >= 2
 		    && card->cache.current_path.len <= pathlen )
@@ -989,7 +995,7 @@ static int starcos_select_file(sc_card_t *card,
 			}
 		}
 
-		if ( card->cache.valid && bMatch >= 0 )
+		if ( cache_valid && bMatch >= 0 )
 		{
 			if ( pathlen - bMatch == 2 )
 				/* we are in the right directory */
@@ -2110,7 +2116,6 @@ static int starcos_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 static int starcos_logout_v3_x(sc_card_t *card)
 {
 	int r = SC_ERROR_NOT_SUPPORTED;
-	starcos_ex_data * ex_data = (starcos_ex_data*)card->drv_data;
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
 
 	starcos_pin_clear_logged_in(card);
