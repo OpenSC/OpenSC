@@ -116,11 +116,21 @@ struct iasecc_pin_status  {
 
 struct iasecc_pin_status *checked_pins = NULL;
 
+/* Any absent field is set to -1, except scbs, which is always present */
+struct iasecc_pin_policy {
+	int min_length;
+	int max_length;
+	int stored_length;
+	int tries_maximum;
+	int tries_remaining;
+	unsigned char scbs[IASECC_MAX_SCBS];
+};
+
 static int iasecc_select_file(struct sc_card *card, const struct sc_path *path, struct sc_file **file_out);
 static int iasecc_process_fci(struct sc_card *card, struct sc_file *file, const unsigned char *buf, size_t buflen);
 static int iasecc_get_serialnr(struct sc_card *card, struct sc_serial_number *serial);
 static int iasecc_sdo_get_data(struct sc_card *card, struct iasecc_sdo *sdo);
-static int iasecc_pin_get_policy (struct sc_card *card, struct sc_pin_cmd_data *data);
+static int iasecc_pin_get_policy (struct sc_card *card, struct sc_pin_cmd_data *data, struct iasecc_pin_policy *pin);
 static int iasecc_pin_is_verified(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd, int *tries_left);
 static int iasecc_pin_get_status(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left);
 static int iasecc_get_free_reference(struct sc_card *card, struct iasecc_ctl_get_free_reference *ctl_data);
@@ -2198,20 +2208,19 @@ iasecc_chv_set_pinpad(struct sc_card *card, unsigned char reference)
 
 
 static int
-iasecc_pin_get_policy (struct sc_card *card, struct sc_pin_cmd_data *data)
+iasecc_pin_get_policy (struct sc_card *card, struct sc_pin_cmd_data *data, struct iasecc_pin_policy *pin)
 {
 	struct sc_context *ctx = card->ctx;
 	struct sc_file *save_current_df = NULL, *save_current_ef = NULL;
 	struct iasecc_sdo sdo;
 	struct sc_path path;
-	unsigned ii;
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "iasecc_pin_get_policy(card:%p)", card);
 
 	if (data->pin_type != SC_AC_CHV)   {
-		sc_log(ctx, "To unblock PIN it's CHV reference should be presented");
+		sc_log(ctx, "PIN policy only available for CHV type");
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 
@@ -2259,74 +2268,25 @@ iasecc_pin_get_policy (struct sc_card *card, struct sc_pin_cmd_data *data)
 	sc_log(ctx,
 	       "iasecc_pin_get_policy() sdo.docp.size.size %"SC_FORMAT_LEN_SIZE_T"u",
 	       sdo.docp.size.size);
-	for (ii=0; ii<sizeof(sdo.docp.scbs); ii++)   {
-		struct iasecc_se_info se;
-		unsigned char scb = sdo.docp.scbs[ii];
-		struct sc_acl_entry *acl = &data->pin1.acls[ii];
-		int crt_num = 0;
 
-		memset(&se, 0, sizeof(se));
-		memset(&acl->crts, 0, sizeof(acl->crts));
+	memcpy(pin->scbs, sdo.docp.scbs, sizeof(pin->scbs));
 
-		sc_log(ctx, "iasecc_pin_get_policy() set info acls: SCB 0x%X", scb);
-		/* acl->raw_value = scb; */
-		acl->method = scb & IASECC_SCB_METHOD_MASK;
-		acl->key_ref = scb & IASECC_SCB_METHOD_MASK_REF;
-
-		if (scb==0 || scb==0xFF)
-			continue;
-
-		if (se.reference != (int)acl->key_ref)   {
-			memset(&se, 0, sizeof(se));
-
-			se.reference = acl->key_ref;
-
-			rv = iasecc_se_get_info(card, &se);
-			LOG_TEST_GOTO_ERR(ctx, rv, "SDO get data error");
-		}
-
-		if (scb & IASECC_SCB_METHOD_USER_AUTH)   {
-			rv = iasecc_se_get_crt_by_usage(card, &se,
-					IASECC_CRT_TAG_AT, IASECC_UQB_AT_USER_PASSWORD, &acl->crts[crt_num]);
-			LOG_TEST_GOTO_ERR(ctx, rv, "no authentication template for 'USER PASSWORD'");
-			sc_log(ctx, "iasecc_pin_get_policy() scb:0x%X; sdo_ref:[%i,%i,...]",
-					scb, acl->crts[crt_num].refs[0], acl->crts[crt_num].refs[1]);
-			crt_num++;
-		}
-
-		if (scb & (IASECC_SCB_METHOD_SM | IASECC_SCB_METHOD_EXT_AUTH))   {
-			sc_log(ctx, "'SM' and 'EXTERNAL AUTHENTICATION' protection methods are not supported: SCB:0x%X", scb);
-			/* Set to 'NEVER' if all conditions are needed or
-			 * there is no user authentication method allowed */
-			if (!crt_num || (scb & IASECC_SCB_METHOD_NEED_ALL))
-				acl->method = SC_AC_NEVER;
-			continue;
-		}
-
-		sc_file_free(se.df);
+	pin->min_length = (sdo.data.chv.size_min.value ? *sdo.data.chv.size_min.value : -1);
+	pin->max_length = (sdo.data.chv.size_max.value ? *sdo.data.chv.size_max.value : -1);
+	pin->tries_maximum = (sdo.docp.tries_maximum.value ? *sdo.docp.tries_maximum.value : -1);
+	pin->tries_remaining = (sdo.docp.tries_remaining.value ? *sdo.docp.tries_remaining.value : -1);
+	if (sdo.docp.size.value && sdo.docp.size.size <= sizeof(int)) {
+		unsigned int n = 0;
+		unsigned int i;
+		for (i=0; i<sdo.docp.size.size; i++)
+			n = (n << 8) + *(sdo.docp.size.value + i);
+		pin->stored_length = n;
+	} else {
+		pin->stored_length = -1;
 	}
 
-	if (sdo.data.chv.size_max.value)
-		data->pin1.max_length = *sdo.data.chv.size_max.value;
-	if (sdo.data.chv.size_min.value)
-		data->pin1.min_length = *sdo.data.chv.size_min.value;
-	if (sdo.docp.tries_maximum.value)
-		data->pin1.max_tries = *sdo.docp.tries_maximum.value;
-	if (sdo.docp.tries_remaining.value)
-		data->pin1.tries_left = *sdo.docp.tries_remaining.value;
-	if (sdo.docp.size.value)   {
-		for (ii=0; ii<sdo.docp.size.size; ii++)
-			data->pin1.stored_length = ((data->pin1.stored_length) << 8) + *(sdo.docp.size.value + ii);
-	}
-
-	data->pin1.encoding = SC_PIN_ENCODING_ASCII;
-	data->pin1.offset = 5;
-	data->pin1.logged_in = SC_PIN_STATE_UNKNOWN;
-
-	sc_log(ctx,
-	       "PIN policy: size max/min %"SC_FORMAT_LEN_SIZE_T"u/%"SC_FORMAT_LEN_SIZE_T"u, tries max/left %i/%i",
-	       data->pin1.max_length, data->pin1.min_length,
-	       data->pin1.max_tries, data->pin1.tries_left);
+	sc_log(ctx, "PIN policy: size max/min %i/%i, tries max/left %i/%i",
+	       pin->max_length, pin->min_length, pin->tries_maximum, pin->tries_remaining);
 	iasecc_sdo_free_fields(card, &sdo);
 
 	if (save_current_df)   {
