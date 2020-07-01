@@ -134,6 +134,11 @@ static int iasecc_pin_get_policy (struct sc_card *card, struct sc_pin_cmd_data *
 static int iasecc_pin_is_verified(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd, int *tries_left);
 static int iasecc_pin_get_status(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left);
 static int iasecc_pin_get_info(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left);
+static int iasecc_check_update_pin(struct sc_pin_cmd_data *data, struct sc_pin_cmd_pin *pin);
+static void iasecc_set_pin_padding(struct sc_pin_cmd_data *data, struct sc_pin_cmd_pin *pin,
+				   size_t pad_len);
+static int iasecc_pin_merge_policy(struct sc_card *card, struct sc_pin_cmd_data *data,
+				   struct sc_pin_cmd_pin *pin, struct iasecc_pin_policy *policy);
 static int iasecc_get_free_reference(struct sc_card *card, struct iasecc_ctl_get_free_reference *ctl_data);
 static int iasecc_sdo_put_data(struct sc_card *card, struct iasecc_sdo_update *update);
 
@@ -2344,6 +2349,83 @@ iasecc_pin_get_info(struct sc_card *card, struct sc_pin_cmd_data *data, int *tri
 
 	if (tries_left)
 		*tries_left = data->pin1.tries_left;
+
+	LOG_FUNC_RETURN(ctx, rv);
+}
+
+
+/*
+ * Check PIN and update flags. We reject empty PINs (where data is non-NULL but length is 0) due
+ * to their non-obvious meaning in verification/change/unblock. We also need to update the
+ * SC_PIN_CMD_USE_PINPAD flag depending on the PIN being available or not (where data is NULL means
+ * that PIN is not available). Unfortunately we can not rely on the flag provided by the caller due
+ * to its ambiguous use. The approach here is to assume pin-pad input when the PIN data is NULL,
+ * otherwise not.
+ */
+static int iasecc_check_update_pin(struct sc_pin_cmd_data *data, struct sc_pin_cmd_pin *pin)
+{
+	if ((!pin->data && pin->len) || (pin->data && !pin->len))
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	if (pin->data)
+		data->flags &= ~SC_PIN_CMD_USE_PINPAD;
+	else
+		data->flags |= SC_PIN_CMD_USE_PINPAD;
+
+	return SC_SUCCESS;
+}
+
+
+/* Enable PIN padding with 0xff as the padding character, unless already enabled */
+static void iasecc_set_pin_padding(struct sc_pin_cmd_data *data, struct sc_pin_cmd_pin *pin,
+				   size_t pad_len)
+{
+	if (data->flags & SC_PIN_CMD_NEED_PADDING)
+		return;
+
+	pin->pad_length = pad_len;
+	pin->pad_char = 0xff;
+	data->flags |= SC_PIN_CMD_NEED_PADDING;
+}
+
+
+/*
+ * Retrieve the PIN policy and combine it with the existing fields in an intelligent way. This is
+ * needed since we may be called with existing settings, typically from the PKCS #15 layer. We use
+ * the IAS-ECC card-level PIN settings as complementary.
+ */
+static int
+iasecc_pin_merge_policy(struct sc_card *card, struct sc_pin_cmd_data *data,
+			struct sc_pin_cmd_pin *pin, struct iasecc_pin_policy *policy)
+{
+	struct sc_context *ctx = card->ctx;
+	size_t pad_len = 0;
+	int rv;
+
+	LOG_FUNC_CALLED(ctx);
+	sc_log(ctx, "iasecc_pin_merge_policy(card:%p)", card);
+
+	rv = iasecc_check_update_pin(data, pin);
+	LOG_TEST_RET(ctx, rv, "Invalid PIN");
+
+	rv = iasecc_pin_get_policy(card, data, policy);
+	LOG_TEST_RET(ctx, rv, "Failed to get PIN policy");
+
+	/* Some cards obviously use the min/max length fields to signal PIN padding */
+	if (policy->min_length > 0 && policy->min_length == policy->max_length) {
+		pad_len = policy->min_length;
+		policy->min_length = 0;
+	}
+
+	/* Take the most limited values of min/max lengths */
+	if (policy->min_length > 0 && (size_t) policy->min_length > pin->min_length)
+		pin->min_length = policy->min_length;
+	if (policy->max_length > 0 && (!pin->max_length || (size_t) policy->max_length < pin->max_length))
+		pin->max_length = policy->max_length;
+
+	/* Set PIN padding if needed and not already set by the caller */
+	if (pad_len)
+		iasecc_set_pin_padding(data, pin, pad_len);
 
 	LOG_FUNC_RETURN(ctx, rv);
 }
