@@ -2492,17 +2492,11 @@ iasecc_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_le
 static int
 iasecc_get_serialnr(struct sc_card *card, struct sc_serial_number *serial)
 {
-#if 1
-	/* the current implementation doesn't perform any bounds check when parsing
-	 * the serial number. Hence, we disable this code until someone has time to
-	 * fix this. */
-	LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
-#else
 	struct sc_context *ctx = card->ctx;
 	struct sc_iin *iin = &card->serialnr.iin;
 	struct sc_apdu apdu;
 	unsigned char rbuf[0xC0];
-	size_t ii, offs;
+	size_t ii, offs, len;
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
@@ -2521,8 +2515,9 @@ iasecc_get_serialnr(struct sc_card *card, struct sc_serial_number *serial)
 	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(ctx, rv, "Get 'serial number' data failed");
 
-	if (rbuf[0] != ISO7812_PAN_SN_TAG)
+	if (apdu.resplen < 2 || rbuf[0] != ISO7812_PAN_SN_TAG || rbuf[1] > (apdu.resplen-2))
 		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "serial number parse error");
+	len = rbuf[1];
 
 	iin->mii = (rbuf[2] >> 4) & 0x0F;
 
@@ -2538,17 +2533,18 @@ iasecc_get_serialnr(struct sc_card *card, struct sc_serial_number *serial)
 		iin->issuer_id += (rbuf[ii/2] >> (ii & 0x01 ? 0 : 4)) & 0x0F;
 	}
 
-	offs = rbuf[1] > 8 ? rbuf[1] - 8 : 0;
+	/* Copy the serial number from the last 8 bytes (at most) */
+	offs = len > 8 ? len - 8 : 0;
 	if (card->type == SC_CARD_TYPE_IASECC_SAGEM)   {
 		/* 5A 0A 92 50 00 20 10 10 25 00 01 3F */
 		/*            00 02 01 01 02 50 00 13  */
-		for (ii=0; (ii < rbuf[1] - offs) && (ii + offs + 2 < sizeof(rbuf)); ii++)
+		for (ii=0; ii < len - offs; ii++)
 			*(card->serialnr.value + ii) = ((rbuf[ii + offs + 1] & 0x0F) << 4)
 				+ ((rbuf[ii + offs + 2] & 0xF0) >> 4) ;
 		card->serialnr.len = ii;
 	}
 	else   {
-		for (ii=0; ii < rbuf[1] - offs; ii++)
+		for (ii=0; ii < len - offs; ii++)
 			*(card->serialnr.value + ii) = rbuf[ii + offs + 2];
 		card->serialnr.len = ii;
 	}
@@ -2567,7 +2563,6 @@ end:
 		memcpy(serial, &card->serialnr, sizeof(*serial));
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
-#endif
 }
 
 
