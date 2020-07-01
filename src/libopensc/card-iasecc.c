@@ -275,13 +275,14 @@ iasecc_select_mf(struct sc_card *card, struct sc_file **file_out)
 		sc_format_path("3F00", &path);
 		path.type = SC_PATH_TYPE_FILE_ID;
 
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, 0x00, 0x00);
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, 0x00, 0x0C);
 		apdu.lc = path.len;
 		apdu.data = path.value;
 		apdu.datalen = path.len;
 		apdu.resplen = sizeof(apdu_resp);
 		apdu.resp = apdu_resp;
 
+		/* TODO: this might be obsolete now that 0x0c (no data) is default for p2 */
 		if (card->type == SC_CARD_TYPE_IASECC_MI2)
 			apdu.p2 = 0x04;
 
