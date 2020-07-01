@@ -301,16 +301,16 @@ static int starcos_esign_qes_init(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
 		if ( r == SC_SUCCESS ) apps_added++;
 	} else {
 		// aid specified: only the matching app is added
-		if (aid->len == sizeof(aid_ESIGN) && memcmp(aid->value, aid_ESIGN, sizeof(aid_ESIGN)) == 0 ) {
-			r = starcos_add_esign_app(p15card);
-			if ( r == SC_SUCCESS ) {
-				label = name_ESign;
-				apps_added++;
-			}
-		} else if (aid->len == sizeof(aid_QES) && memcmp(aid->value, aid_QES, sizeof(aid_QES)) == 0 ) {
+		if (aid->len == sizeof(aid_QES) && memcmp(aid->value, aid_QES, sizeof(aid_QES)) == 0 ) {
 			r = starcos_add_qes_app(p15card);
 			if ( r == SC_SUCCESS ) {
 				label = name_QES;
+				apps_added++;
+			}
+		} else if (aid->len == sizeof(aid_ESIGN) && memcmp(aid->value, aid_ESIGN, sizeof(aid_ESIGN)) == 0 ) {
+			r = starcos_add_esign_app(p15card);
+			if ( r == SC_SUCCESS ) {
+				label = name_ESign;
 				apps_added++;
 			}
 		}

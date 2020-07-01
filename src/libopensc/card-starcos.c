@@ -82,6 +82,7 @@ typedef struct starcos_ex_data_st {
 			 * i.e. SC_SEC_OPERATION_AUTHENTICATE etc. */
 	unsigned int    fix_digestInfo;
 	unsigned int    pin_encoding;
+	unsigned char   pin_logged_in[4];
 } starcos_ex_data;
 
 #define PIN_ENCODING_DETERMINE	0
@@ -280,6 +281,54 @@ static unsigned int starcos_determine_pin_encoding(sc_card_t *card)
 	return encoding;
 }
 
+/**
+ * Clears logged in state for all pins
+ */
+static void starcos_pin_clear_logged_in(sc_card_t *card) {
+	starcos_ex_data * ex_data = (starcos_ex_data*)card->drv_data;
+	memset(&ex_data->pin_logged_in, 0, sizeof(ex_data->pin_logged_in));
+}
+
+/**
+ * Set logged in state for the given pin reference.
+ * Returns -1 if the pin state cannot be set
+ * Note: pin reference must be greater than 0
+ */
+static int starcos_pin_set_logged_in(sc_card_t *card, unsigned char pin_reference) {
+	int i;
+	starcos_ex_data * ex_data = (starcos_ex_data*)card->drv_data;
+
+	// check if the pin has already been registered
+	for(i=0; i<sizeof(ex_data->pin_logged_in)/sizeof(unsigned char); i++) {
+		if ( ex_data->pin_logged_in[i] == pin_reference ) return i;
+	}
+	// pin not yet seen, register to the first available slot
+	for(i=0; i<sizeof(ex_data->pin_logged_in)/sizeof(unsigned char); i++) {
+		if ( ex_data->pin_logged_in[i] == 0 ) {
+			ex_data->pin_logged_in[i] = pin_reference;
+			return i;
+		}
+	}
+	// could not register pin logged in state
+	return -1;
+}
+
+/**
+ * Returns 1 if the given pin reference is logged in
+ * Otherwise returns 0
+ */
+static int starcos_pin_is_logged_in(sc_card_t *card, unsigned char pin_reference) {
+	int i;
+	starcos_ex_data * ex_data = (starcos_ex_data*)card->drv_data;
+
+	for(i=0; i<sizeof(ex_data->pin_logged_in)/sizeof(unsigned char); i++) {
+		if ( ex_data->pin_logged_in[i] == pin_reference ) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
 
 
 static int starcos_init(sc_card_t *card)
@@ -295,6 +344,7 @@ static int starcos_init(sc_card_t *card)
 	card->cla  = 0x00;
 	card->drv_data = (void *)ex_data;
 	ex_data->pin_encoding = PIN_ENCODING_DETERMINE;
+	starcos_pin_clear_logged_in(card);
 
 	flags = SC_ALGORITHM_RSA_PAD_PKCS1 
 		| SC_ALGORITHM_ONBOARD_KEY_GEN
@@ -2051,11 +2101,32 @@ static int starcos_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 	}
 }
 
+/**
+ * starcos_logout_v3_x()
+ * StarCOS 3.x cards will not clear the security status by selecting MF.
+ * Returning NOT_SUPPORTED would cause card reset, effectively invalidating 
+ * the security status.
+ */
+static int starcos_logout_v3_x(sc_card_t *card)
+{
+	int r = SC_ERROR_NOT_SUPPORTED;
+	starcos_ex_data * ex_data = (starcos_ex_data*)card->drv_data;
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
+
+	starcos_pin_clear_logged_in(card);
+
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
+}
+
 static int starcos_logout(sc_card_t *card)
 {
 	int r;
 	sc_apdu_t apdu;
 	const u8 mf_buf[2] = {0x3f, 0x00};
+
+	if (card->type == SC_CARD_TYPE_STARCOS_V3_4 || card->type == SC_CARD_TYPE_STARCOS_V3_5) {
+		return starcos_logout_v3_x(card);
+	}
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, 0x00, 0x0C);
 	apdu.le = 0;
@@ -2091,6 +2162,19 @@ static int starcos_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 			/* fall through */
 		default:
 			r = iso_ops->pin_cmd(card, data, tries_left);
+			if ( card->type == SC_CARD_TYPE_STARCOS_V3_5 ) {
+				/* StarCOS 3.5 does not report logged in state by the GET_INFO command, 
+				   but Firefox/PKCS11 relies on it. Let us handle it in the card driver */
+				switch (data->cmd)
+				{
+				case SC_PIN_CMD_VERIFY:
+					if ( r == SC_SUCCESS ) starcos_pin_set_logged_in(card, (unsigned char)data->pin_reference);
+					break;
+				case SC_PIN_CMD_GET_INFO:
+					data->pin1.logged_in = starcos_pin_is_logged_in(card, (unsigned char)data->pin_reference);
+					break;
+				}
+			}
 	}
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
