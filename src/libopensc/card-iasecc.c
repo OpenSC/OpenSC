@@ -57,6 +57,12 @@
 		| SC_ALGORITHM_RSA_HASH_SHA1		\
 		| SC_ALGORITHM_RSA_HASH_SHA256)
 
+#define IASECC_CARD_DEFAULT_CAPS ( 0 			\
+		| SC_CARD_CAP_RNG			\
+		| SC_CARD_CAP_APDU_EXT			\
+		| SC_CARD_CAP_USE_FCI_AC		\
+		| SC_CARD_CAP_ISO7816_PIN_INFO)
+
 /* generic iso 7816 operations table */
 static const struct sc_card_operations *iso_ops = NULL;
 
@@ -116,6 +122,7 @@ static int iasecc_get_serialnr(struct sc_card *card, struct sc_serial_number *se
 static int iasecc_sdo_get_data(struct sc_card *card, struct iasecc_sdo *sdo);
 static int iasecc_pin_get_policy (struct sc_card *card, struct sc_pin_cmd_data *data);
 static int iasecc_pin_is_verified(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd, int *tries_left);
+static int iasecc_pin_get_status(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left);
 static int iasecc_get_free_reference(struct sc_card *card, struct iasecc_ctl_get_free_reference *ctl_data);
 static int iasecc_sdo_put_data(struct sc_card *card, struct iasecc_sdo_update *update);
 
@@ -412,9 +419,7 @@ iasecc_init_gemalto(struct sc_card *card)
 
 	flags = IASECC_CARD_DEFAULT_FLAGS;
 
-	card->caps = SC_CARD_CAP_RNG;
-	card->caps |= SC_CARD_CAP_APDU_EXT;
-	card->caps |= SC_CARD_CAP_USE_FCI_AC;
+	card->caps = IASECC_CARD_DEFAULT_CAPS;
 
 	sc_format_path("3F00", &path);
 	if (SC_SUCCESS != sc_select_file(card, &path, NULL)) {
@@ -485,9 +490,7 @@ iasecc_init_oberthur(struct sc_card *card)
 	_sc_card_add_rsa_alg(card, 1024, flags, 0x10001);
 	_sc_card_add_rsa_alg(card, 2048, flags, 0x10001);
 
-	card->caps = SC_CARD_CAP_RNG;
-	card->caps |= SC_CARD_CAP_APDU_EXT;
-	card->caps |= SC_CARD_CAP_USE_FCI_AC;
+	card->caps = IASECC_CARD_DEFAULT_CAPS;
 
 	iasecc_parse_ef_atr(card);
 
@@ -550,9 +553,7 @@ iasecc_init_amos_or_sagem(struct sc_card *card)
 	_sc_card_add_rsa_alg(card, 1024, flags, 0x10001);
 	_sc_card_add_rsa_alg(card, 2048, flags, 0x10001);
 
-	card->caps = SC_CARD_CAP_RNG;
-	card->caps |= SC_CARD_CAP_APDU_EXT;
-	card->caps |= SC_CARD_CAP_USE_FCI_AC;
+	card->caps = IASECC_CARD_DEFAULT_CAPS;
 
 	if (card->type == SC_CARD_TYPE_IASECC_MI)   {
 		rv = iasecc_mi_match(card);
@@ -1990,6 +1991,34 @@ iasecc_pin_is_verified(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd_dat
 	pin_cmd.pin1.len = 0;
 
 	rv = iasecc_chv_verify(card, &pin_cmd, tries_left);
+
+	LOG_FUNC_RETURN(ctx, rv);
+}
+
+
+static int
+iasecc_pin_get_status(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left)
+{
+	struct sc_context *ctx = card->ctx;
+	struct sc_pin_cmd_data info;
+	int rv;
+
+	LOG_FUNC_CALLED(ctx);
+
+	if (data->pin_type != SC_AC_CHV)
+		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "PIN type is not supported for status");
+
+	memset(&info, 0, sizeof(info));
+	info.cmd = SC_PIN_CMD_GET_INFO;
+	info.pin_type = data->pin_type;
+	info.pin_reference = data->pin_reference;
+
+	rv = iso_ops->pin_cmd(card, &info, tries_left);
+	LOG_TEST_RET(ctx, rv, "Failed to get PIN info");
+
+	data->pin1.max_tries = info.pin1.max_tries;
+	data->pin1.tries_left = info.pin1.tries_left;
+	data->pin1.logged_in = info.pin1.logged_in;
 
 	LOG_FUNC_RETURN(ctx, rv);
 }
