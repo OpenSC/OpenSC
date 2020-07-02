@@ -27,7 +27,6 @@
 #include "libopensc/iasecc-sdo.h"
 
 #define ISO7812_PAN_SN_TAG	0x5A
-#define ISO7812_PAN_LENGTH	0x0C
 
 #ifndef SHA256_DIGEST_LENGTH
 	#define SHA_DIGEST_LENGTH	20
