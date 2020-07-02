@@ -581,6 +581,7 @@ int sc_pkcs15_unblock_pin(struct sc_pkcs15_card *p15card,
 	struct sc_pin_cmd_data data;
 	struct sc_pkcs15_object *puk_obj;
 	struct sc_pkcs15_auth_info *puk_info = NULL;
+	int pukref = 0;
 	struct sc_pkcs15_auth_info *auth_info = (struct sc_pkcs15_auth_info *)pin_obj->data;
 	struct sc_card *card = p15card->card;
 	int r;
@@ -602,6 +603,7 @@ int sc_pkcs15_unblock_pin(struct sc_pkcs15_card *p15card,
 	if (r >= 0 && puk_obj) {
 		/* second step:  get the pkcs15 info object of the puk */
 		puk_info = (struct sc_pkcs15_auth_info *)puk_obj->data;
+		pukref = puk_info->attrs.pin.reference;
 	}
 
 	if (!puk_info) {
@@ -627,6 +629,7 @@ int sc_pkcs15_unblock_pin(struct sc_pkcs15_card *p15card,
 	data.cmd             = SC_PIN_CMD_UNBLOCK;
 	data.pin_type        = SC_AC_CHV;
 	data.pin_reference   = auth_info->attrs.pin.reference;
+	data.puk_reference   = pukref;
 	data.pin1.data       = puk;
 	data.pin1.len        = puklen;
 	data.pin1.pad_char   = auth_info->attrs.pin.pad_char;
