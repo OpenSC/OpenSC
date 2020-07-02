@@ -460,6 +460,7 @@ struct sc_pin_cmd_data {
 
 	unsigned int pin_type;		/* usually SC_AC_CHV */
 	int pin_reference;
+	int puk_reference;		/* non-zero means that reference is available */
 
 	struct sc_pin_cmd_pin pin1, pin2;
 
