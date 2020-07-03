@@ -1883,7 +1883,13 @@ static int part10_build_verify_pin_block(struct sc_reader *reader, u8 * buf, siz
 		/* GLP PIN length is encoded in 4 bits and block size is always 8 bytes */
 		tmp |= 0x40 | 0x08;
 	} else if (data->pin1.encoding == SC_PIN_ENCODING_ASCII && data->flags & SC_PIN_CMD_NEED_PADDING) {
-		tmp |= data->pin1.pad_length;
+		/*
+		 * Use fixed-size PIN frame if pad length is below the limit. If not, leave the
+		 * PIN frame size at 0, hoping for adaptive support by the reader (which includes
+		 * both a variable-length frame when Lc is 0 or a pre-padded frame when Lc != 0).
+		 */
+		if (data->pin1.pad_length <= 15)
+			tmp |= data->pin1.pad_length;
 	}
 	pin_verify->bmPINBlockString = tmp;
 
@@ -1976,7 +1982,8 @@ static int part10_build_modify_pin_block(struct sc_reader *reader, u8 * buf, siz
 		/* GLP PIN length is encoded in 4 bits and block size is always 8 bytes */
 		tmp |= 0x40 | 0x08;
 	} else if (pin_ref->encoding == SC_PIN_ENCODING_ASCII && pin_ref->pad_length) {
-		tmp |= pin_ref->pad_length;
+		if (pin_ref->pad_length <= 15)
+			tmp |= pin_ref->pad_length;
 	}
 	pin_modify->bmPINBlockString = tmp; /* bmPINBlockString */
 
