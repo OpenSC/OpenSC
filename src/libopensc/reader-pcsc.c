@@ -2101,7 +2101,7 @@ part10_check_pin_min_max(sc_reader_t *reader, struct sc_pin_cmd_data *data)
 	struct pcsc_global_private_data *gpriv = (struct pcsc_global_private_data *) reader->ctx->reader_drv_data;
 	struct sc_pin_cmd_pin *pin_ref =
 		data->flags & SC_PIN_CMD_IMPLICIT_CHANGE ?
-		&data->pin1 : &data->pin2;
+		&data->pin2 : &data->pin1;
 
 	if (gpriv->fixed_pinlength != 0) {
 		pin_ref->min_length = gpriv->fixed_pinlength;
@@ -2131,11 +2131,11 @@ part10_check_pin_min_max(sc_reader_t *reader, struct sc_pin_cmd_data *data)
 	/* maximum pin size */
 	r = part10_find_property_by_tag(buffer, length,
 		PCSCv2_PART10_PROPERTY_bMaxPINSize);
-	if (r >= 0)
+	if (r > 0)
 	{
 		unsigned int value = r;
 
-		if (pin_ref->max_length > value)
+		if (!pin_ref->max_length || pin_ref->max_length > value)
 			pin_ref->max_length = r;
 	}
 
