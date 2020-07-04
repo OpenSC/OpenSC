@@ -1849,6 +1849,7 @@ static int part10_build_verify_pin_block(struct sc_reader *reader, u8 * buf, siz
 	sc_apdu_t *apdu = data->apdu;
 	u8 tmp;
 	unsigned int tmp16;
+	unsigned int off;
 	PIN_VERIFY_STRUCTURE *pin_verify  = (PIN_VERIFY_STRUCTURE *)buf;
 
 	/* PIN verification control message */
@@ -1860,10 +1861,13 @@ static int part10_build_verify_pin_block(struct sc_reader *reader, u8 * buf, siz
 	if (data->pin1.encoding == SC_PIN_ENCODING_ASCII) {
 		tmp |= SC_CCID_PIN_ENCODING_ASCII;
 
-		/* if the effective PIN length offset is specified, use it */
-		if (data->pin1.length_offset > 4) {
+		/* If the PIN offset is specified, use it, as long as it fits in 4 bits */
+		if (data->pin1.offset >= 5) {
+			off = data->pin1.offset - 5;
+			if (off > 15)
+				return SC_ERROR_NOT_SUPPORTED;
 			tmp |= SC_CCID_PIN_UNITS_BYTES;
-			tmp |= (data->pin1.length_offset - 5) << 3;
+			tmp |= off << 3;
 		}
 	} else if (data->pin1.encoding == SC_PIN_ENCODING_BCD) {
 		tmp |= SC_CCID_PIN_ENCODING_BCD;
@@ -1958,12 +1962,6 @@ static int part10_build_modify_pin_block(struct sc_reader *reader, u8 * buf, siz
 	tmp = 0x00;
 	if (pin_ref->encoding == SC_PIN_ENCODING_ASCII) {
 		tmp |= SC_CCID_PIN_ENCODING_ASCII;
-
-		/* if the effective PIN length offset is specified, use it */
-		if (pin_ref->length_offset > 4) {
-			tmp |= SC_CCID_PIN_UNITS_BYTES;
-			tmp |= (pin_ref->length_offset - 5) << 3;
-		}
 	} else if (pin_ref->encoding == SC_PIN_ENCODING_BCD) {
 		tmp |= SC_CCID_PIN_ENCODING_BCD;
 		tmp |= SC_CCID_PIN_UNITS_BYTES;
@@ -1995,14 +1993,9 @@ static int part10_build_modify_pin_block(struct sc_reader *reader, u8 * buf, siz
 	}
 	pin_modify->bmPINLengthFormat = tmp;	/* bmPINLengthFormat */
 
-	/* Set offsets if not Case 1 APDU */
-	if (pin_ref->length_offset != 4) {
-		pin_modify->bInsertionOffsetOld = data->pin1.offset - 5;
-		pin_modify->bInsertionOffsetNew = data->pin2.offset - 5;
-	} else {
-		pin_modify->bInsertionOffsetOld = 0x00;
-		pin_modify->bInsertionOffsetNew = 0x00;
-	}
+	/* Set offsets if available, otherwise default to 0 */
+	pin_modify->bInsertionOffsetOld = (data->pin1.offset >= 5 ? data->pin1.offset - 5 : 0);
+	pin_modify->bInsertionOffsetNew = (data->pin2.offset >= 5 ? data->pin2.offset - 5 : 0);
 
 	if (!pin_ref->min_length || !pin_ref->max_length)
 		return SC_ERROR_INVALID_ARGUMENTS;
