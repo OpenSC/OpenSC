@@ -706,6 +706,13 @@ int sc_pkcs15_get_pin_info(struct sc_pkcs15_card *p15card,
 		goto out;
 	}
 
+	/* the path in the pin object is optional */
+	if ((pin_info->path.len > 0) || ((pin_info->path.aid.len > 0))) {
+		r = sc_select_file(card, &pin_info->path, NULL);
+		if (r)
+			goto out;
+	}
+
 	/* Try to update PIN info from card */
 	memset(&data, 0, sizeof(data));
 	data.cmd = SC_PIN_CMD_GET_INFO;
