@@ -614,6 +614,15 @@ int sc_pkcs15_unblock_pin(struct sc_pkcs15_card *p15card,
 	r = _validate_pin(p15card, puk_info, puklen);
 	LOG_TEST_RET(ctx, r, "PIN do not conforms PIN policy");
 
+	/*
+	 * With the current card driver interface we have no way of specifying different padding
+	 * flags for the PIN and the PUK. Therefore reject this case.
+	 */
+	if ((auth_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_NEEDS_PADDING) !=
+	    (puk_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_NEEDS_PADDING)) {
+		LOG_TEST_RET(ctx, r, "Padding mismatch for PIN/PUK");
+	}
+
 	r = sc_lock(card);
 	LOG_TEST_RET(ctx, r, "sc_lock() failed");
 
