@@ -1771,8 +1771,10 @@ static int unblock_pin(void)
 
 		if (pin_obj->auth_id.len)   {
 			r = sc_pkcs15_find_pin_by_auth_id(p15card, &pin_obj->auth_id, &puk_obj);
-			if (r)
+			if (r < 0)   {
+				fprintf(stderr, "Failed to find PUK object for PIN: %s\n", sc_strerror(r));
 				return 2;
+			}
 		}
 
 		if (puk_obj)   {
