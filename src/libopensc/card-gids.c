@@ -1031,7 +1031,6 @@ static int gids_get_pin_policy(struct sc_card *card, struct sc_pin_cmd_data *dat
 	LOG_TEST_RET(card->ctx, r, "gids_get_pin_status failed");
 	data->pin1.max_length = 16;
 	data->pin1.min_length = 4;
-	data->pin1.stored_length = 0;
 	data->pin1.encoding = SC_PIN_ENCODING_ASCII;
 	data->pin1.offset = 5;
 	data->pin1.logged_in = SC_PIN_STATE_UNKNOWN;
