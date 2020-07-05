@@ -715,9 +715,7 @@ static int sc_hsm_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 #endif
 
 		data->pin1.offset = 5;
-		data->pin1.length_offset = 4;
 		data->pin2.offset = 5;
-		data->pin2.length_offset = 4;
 
 		r = (*iso_ops->pin_cmd)(card, data, tries_left);
 	}

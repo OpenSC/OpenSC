@@ -445,7 +445,6 @@ struct sc_pin_cmd_pin {
 	unsigned char pad_char;
 
 	size_t offset;		/* PIN offset in the APDU */
-	size_t length_offset;	/* Effective PIN length offset in the APDU */
 
 	int max_tries;	/* Used for signaling back from SC_PIN_CMD_GET_INFO */
 	int tries_left;	/* Used for signaling back from SC_PIN_CMD_GET_INFO */
