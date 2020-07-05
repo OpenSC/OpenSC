@@ -437,7 +437,6 @@ struct sc_pin_cmd_pin {
 
 	size_t min_length;	/* min length of PIN */
 	size_t max_length;	/* max length of PIN */
-	size_t stored_length;	/* stored length of PIN */
 
 	unsigned int encoding;	/* ASCII-numeric, BCD, etc */
 
