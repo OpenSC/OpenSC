@@ -661,7 +661,6 @@ npa_reset_retry_counter(sc_card_t *card, enum s_type pin_id,
 		data.cmd = SC_PIN_CMD_CHANGE;
 		data.flags = SC_PIN_CMD_IMPLICIT_CHANGE;
 		data.pin2.encoding = SC_PIN_ENCODING_ASCII;
-		data.pin2.length_offset = 0;
 		data.pin2.offset = 5;
 		data.pin2.max_length = EAC_MAX_PIN_LEN;
 		data.pin2.min_length = EAC_MIN_PIN_LEN;

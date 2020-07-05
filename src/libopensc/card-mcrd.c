@@ -1140,9 +1140,7 @@ static int mcrd_pin_cmd(sc_card_t * card, struct sc_pin_cmd_data *data,
 	int r;
 	LOG_FUNC_CALLED(card->ctx);
 	data->pin1.offset = 5;
-	data->pin1.length_offset = 4;
 	data->pin2.offset = 5;
-	data->pin2.length_offset = 4;
 
 	if (is_esteid_card(card) && data->cmd == SC_PIN_CMD_GET_INFO) {
 		sc_path_t tmppath;
