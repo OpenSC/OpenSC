@@ -555,13 +555,13 @@ const sc_acl_entry_t * sc_file_get_acl_entry(const sc_file_t *file,
 {
 	sc_acl_entry_t *p;
 	static const sc_acl_entry_t e_never = {
-		SC_AC_NEVER, SC_AC_KEY_REF_NONE, {{0, 0, 0, {0}}}, NULL
+		SC_AC_NEVER, SC_AC_KEY_REF_NONE, NULL
 	};
 	static const sc_acl_entry_t e_none = {
-		SC_AC_NONE, SC_AC_KEY_REF_NONE, {{0, 0, 0, {0}}}, NULL
+		SC_AC_NONE, SC_AC_KEY_REF_NONE, NULL
 	};
 	static const sc_acl_entry_t e_unknown = {
-		SC_AC_UNKNOWN, SC_AC_KEY_REF_NONE, {{0, 0, 0, {0}}}, NULL
+		SC_AC_UNKNOWN, SC_AC_KEY_REF_NONE, NULL
 	};
 
 	if (file == NULL || operation >= SC_MAX_AC_OPS) {

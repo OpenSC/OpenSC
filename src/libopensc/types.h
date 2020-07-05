@@ -204,9 +204,6 @@ struct sc_crt {
 typedef struct sc_acl_entry {
 	unsigned int method;	/* See SC_AC_* */
 	unsigned int key_ref;	/* SC_AC_KEY_REF_NONE or an integer */
-
-	struct sc_crt crts[SC_MAX_CRTS_IN_SE];
-
 	struct sc_acl_entry *next;
 } sc_acl_entry_t;
 
