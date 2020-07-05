@@ -448,8 +448,6 @@ struct sc_pin_cmd_pin {
 	int max_tries;	/* Used for signaling back from SC_PIN_CMD_GET_INFO */
 	int tries_left;	/* Used for signaling back from SC_PIN_CMD_GET_INFO */
 	int logged_in;	/* Used for signaling back from SC_PIN_CMD_GET_INFO */
-
-	struct sc_acl_entry acls[SC_MAX_SDO_ACLS];
 };
 
 struct sc_pin_cmd_data {
