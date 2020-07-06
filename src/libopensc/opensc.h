@@ -429,27 +429,38 @@ typedef struct sc_reader {
 #define SC_PIN_STATE_LOGGED_OUT 0
 #define SC_PIN_STATE_LOGGED_IN  1
 
+/* A card driver receives the sc_pin_cmd_data and sc_pin_cmd_pin structures filled in by the
+ * caller, with the exception of the fields returned by the driver for SC_PIN_CMD_GET_INFO.
+ * It may use and update any of the fields before passing the structure to the ISO 7816 layer for
+ * processing.
+ */
 struct sc_pin_cmd_pin {
 	const char *prompt;	/* Prompt to display */
 
-	const unsigned char *data;		/* PIN, if given by the application */
-	int len;		/* set to -1 to get pin from pin pad */
+	const unsigned char *data; /* PIN, set to NULL when using pin pad */
+	int len;		/* set to 0 when using pin pad */
 
 	size_t min_length;	/* min length of PIN */
 	size_t max_length;	/* max length of PIN */
 
 	unsigned int encoding;	/* ASCII-numeric, BCD, etc */
 
-	size_t pad_length;	/* filled in by the card driver */
+	size_t pad_length;	/* PIN padding options, used with SC_PIN_CMD_NEED_PADDING */
 	unsigned char pad_char;
 
-	size_t offset;		/* PIN offset in the APDU */
+	size_t offset;		/* PIN offset in the APDU when using pin pad */
 
-	int max_tries;	/* Used for signaling back from SC_PIN_CMD_GET_INFO */
-	int tries_left;	/* Used for signaling back from SC_PIN_CMD_GET_INFO */
-	int logged_in;	/* Used for signaling back from SC_PIN_CMD_GET_INFO */
+	int max_tries;		/* Used for signaling back from SC_PIN_CMD_GET_INFO */
+	int tries_left;		/* Used for signaling back from SC_PIN_CMD_GET_INFO */
+	int logged_in;		/* Used for signaling back from SC_PIN_CMD_GET_INFO */
 };
 
+/* A NULL in apdu means that the APDU is prepared by the ISO 7816 layer, which also handles PIN
+ * padding and setting offset fields for the PINs (for PIN-pad use). A non-NULL in APDU means that
+ * the card driver has prepared the APDU (including padding) and set the PIN offset fields.
+ *
+ * Note that flags apply to both PINs for multi-PIN operations.
+ */
 struct sc_pin_cmd_data {
 	unsigned int cmd;
 	unsigned int flags;
