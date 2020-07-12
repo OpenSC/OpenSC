@@ -1424,7 +1424,7 @@ static int pcsc_detect_readers(sc_context_t *ctx)
 
 			if ((rv == (LONG)SCARD_E_NO_SERVICE) || (rv == (LONG)SCARD_E_SERVICE_STOPPED)) {
 				gpriv->SCardReleaseContext(gpriv->pcsc_ctx);
-				gpriv->pcsc_ctx = 0;
+				gpriv->pcsc_ctx = -1;
 				gpriv->pcsc_wait_ctx = -1;
 				/* reconnecting below may may restart PC/SC service */
 				rv = SCARD_E_INVALID_HANDLE;
@@ -1441,6 +1441,7 @@ static int pcsc_detect_readers(sc_context_t *ctx)
 
 			rv = gpriv->SCardEstablishContext(SCARD_SCOPE_USER, NULL, NULL, &gpriv->pcsc_ctx);
 			if (rv != SCARD_S_SUCCESS) {
+				gpriv->pcsc_ctx = -1;
 				PCSC_LOG(ctx, "SCardEstablishContext failed", rv);
 				ret = pcsc_to_opensc_error(rv);
 				goto out;
@@ -1451,7 +1452,8 @@ static int pcsc_detect_readers(sc_context_t *ctx)
 		}
 	} while (rv != SCARD_S_SUCCESS);
 
-	reader_buf = malloc(sizeof(char) * reader_buf_size);
+	/* The +2 below is to make sure we have zero terminators, in case we get invalid data */
+	reader_buf = calloc(reader_buf_size+2, sizeof(char));
 	if (!reader_buf) {
 		ret = SC_ERROR_OUT_OF_MEMORY;
 		goto out;
@@ -1629,6 +1631,7 @@ static int pcsc_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_re
 	if (gpriv->pcsc_wait_ctx == (SCARDCONTEXT)-1) {
 		rv = gpriv->SCardEstablishContext(SCARD_SCOPE_USER, NULL, NULL, &gpriv->pcsc_wait_ctx);
 		if (rv != SCARD_S_SUCCESS) {
+			gpriv->pcsc_wait_ctx = -1;
 			PCSC_LOG(ctx, "SCardEstablishContext(wait) failed", rv);
 			r = pcsc_to_opensc_error(rv);
 			goto out;
