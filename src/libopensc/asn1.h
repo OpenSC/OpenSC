@@ -127,13 +127,16 @@ int sc_asn1_sig_value_sequence_to_rs(struct sc_context *ctx,
 		const unsigned char *in, size_t inlen,
                 unsigned char *buf, size_t buflen);
 
-#define SC_ASN1_CLASS_MASK		0x30000000
+/* long form tags use these */
+/* Same as  SC_ASN1_TAG_* shifted left by 24 bits  */
+#define SC_ASN1_CLASS_MASK		0xC0000000
 #define SC_ASN1_UNI			0x00000000 /* Universal */
-#define SC_ASN1_APP			0x10000000 /* Application */
-#define SC_ASN1_CTX			0x20000000 /* Context */
-#define SC_ASN1_PRV			0x30000000 /* Private */
-#define SC_ASN1_CONS			0x01000000
+#define SC_ASN1_APP			0x40000000 /* Application */
+#define SC_ASN1_CTX			0x80000000 /* Context */
+#define SC_ASN1_PRV			0xC0000000 /* Private */
+#define SC_ASN1_CONS			0x20000000
 
+#define SC_ASN1_CLASS_CONS		0xE0000000 /* CLASS and CONS */
 #define SC_ASN1_TAG_MASK		0x00FFFFFF
 #define SC_ASN1_TAGNUM_SIZE		3
 
@@ -173,6 +176,7 @@ int sc_asn1_sig_value_sequence_to_rs(struct sc_context *ctx,
 /* use callback function */
 #define SC_ASN1_CALLBACK		384
 
+/* use with short one byte tags */
 #define SC_ASN1_TAG_CLASS		0xC0
 #define SC_ASN1_TAG_UNIVERSAL		0x00
 #define SC_ASN1_TAG_APPLICATION		0x40
@@ -181,6 +185,7 @@ int sc_asn1_sig_value_sequence_to_rs(struct sc_context *ctx,
 
 #define SC_ASN1_TAG_CONSTRUCTED		0x20
 #define SC_ASN1_TAG_PRIMITIVE		0x1F
+#define SC_ASN1_TAG_CLASS_CONS		0xE0
 
 #define SC_ASN1_TAG_EOC			0
 #define SC_ASN1_TAG_BOOLEAN		1
