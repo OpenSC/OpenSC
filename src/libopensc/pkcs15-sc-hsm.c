@@ -788,7 +788,7 @@ static int sc_pkcs15emu_sc_hsm_add_cd(sc_pkcs15_card_t * p15card, u8 id) {
 	/* Try to select a related EF containing the PKCS#15 description of the data */
 	len = sizeof efbin;
 	r = read_file(p15card, fid, efbin, &len, 1);
-	LOG_TEST_RET(card->ctx, r, "Skipping optional EF.DCOD");
+	LOG_TEST_RET(card->ctx, r, "Skipping optional EF.CDF");
 
 	ptr = efbin;
 
@@ -796,7 +796,7 @@ static int sc_pkcs15emu_sc_hsm_add_cd(sc_pkcs15_card_t * p15card, u8 id) {
 	r = sc_pkcs15_decode_cdf_entry(p15card, &obj, &ptr, &len);
 	if (obj.data == NULL && r >= SC_SUCCESS)
 		r = SC_ERROR_OBJECT_NOT_FOUND;
-	LOG_TEST_RET(card->ctx, r, "Skipping optional EF.CDOD");
+	LOG_TEST_RET(card->ctx, r, "Skipping optional EF.CDF");
 
 	cert_info = (sc_pkcs15_cert_info_t *)obj.data;
 
