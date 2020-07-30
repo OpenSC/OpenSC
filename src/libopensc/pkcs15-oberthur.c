@@ -271,11 +271,15 @@ sc_oberthur_read_file(struct sc_pkcs15_card *p15card, const char *in_path,
 		rv = sc_read_binary(card, 0, *out, sz, 0);
 	}
 	else	{
-		int rec;
-		int offs = 0;
-		int rec_len = file->record_length;
+		size_t rec;
+		size_t offs = 0;
+		size_t rec_len = file->record_length;
 
 		for (rec = 1; ; rec++)   {
+			if (rec > file->record_count) {
+				rv = 0;
+				break;
+			}
 			rv = sc_read_record(card, rec, *out + offs + 2, rec_len, SC_RECORD_BY_REC_NR);
 			if (rv == SC_ERROR_RECORD_NOT_FOUND)   {
 				rv = 0;
