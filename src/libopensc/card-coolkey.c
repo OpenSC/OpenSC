@@ -1711,7 +1711,7 @@ static int coolkey_rsa_op(sc_card_t *card, const u8 * data, size_t datalen,
 
 		params_len = sizeof(params.init);
 
-		*crypt_out_p = NULL;
+		crypt_out_p = NULL;
 		crypt_out_len_p = 0;
 
 		ushort2bebytes(len_buf, datalen);
