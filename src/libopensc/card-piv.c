@@ -1227,11 +1227,12 @@ piv_write_certificate(sc_card_t *card, const u8* buf, size_t count, unsigned lon
 	}
 
 	taglen = tmplen + tmplen2 + tmplen3;
-	sbuflen = sc_asn1_put_tag(0x53, NULL, taglen, NULL, 0, NULL);
-	if (sbuflen <= 0) {
+	tmplen = sc_asn1_put_tag(0x53, NULL, taglen, NULL, 0, NULL);
+	if (tmplen <= 0) {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 	}
 
+	sbuflen = tmplen;
 	sbuf = malloc(sbuflen);
 	if (sbuf == NULL)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
