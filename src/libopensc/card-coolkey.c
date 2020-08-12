@@ -2061,6 +2061,7 @@ coolkey_process_combined_object(sc_card_t *card, coolkey_private_data_t *priv, u
 	}
 
 	/* store the token name in the priv structure so the emulator can set it */
+	free(priv->token_name);
 	priv->token_name = malloc(decompressed_header->token_name_length+1);
 	if (priv->token_name == NULL) {
 		r = SC_ERROR_OUT_OF_MEMORY;
