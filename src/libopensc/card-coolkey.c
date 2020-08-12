@@ -799,9 +799,7 @@ static void coolkey_free_private_data(coolkey_private_data_t *priv)
 	list_iterator_stop(l);
 
 	list_destroy(&priv->objects_list);
-	if (priv->token_name) {
-		free(priv->token_name);
-	}
+	free(priv->token_name);
 	free(priv);
 	return;
 }
