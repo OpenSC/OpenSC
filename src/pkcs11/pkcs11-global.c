@@ -877,7 +877,7 @@ void sc_pkcs11_free_lock(void)
 }
 
 CK_FUNCTION_LIST pkcs11_function_list = {
-	{ 2, 11 }, /* Note: NSS/Firefox ignores this version number and uses C_GetInfo() */
+	{ 2, 20 }, /* Note: NSS/Firefox ignores this version number and uses C_GetInfo() */
 	C_Initialize,
 	C_Finalize,
 	C_GetInfo,
