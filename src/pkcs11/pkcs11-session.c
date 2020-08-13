@@ -188,6 +188,13 @@ out:
 	return rv;
 }
 
+/* PKCS #11 3.0 only */
+CK_RV C_SessionCancel(CK_SESSION_HANDLE hSession,  /* the session's handle */
+		      CK_FLAGS flags)      /* flags control which sessions are cancelled */
+{
+	return CKR_FUNCTION_NOT_SUPPORTED;
+}
+
 CK_RV C_GetSessionInfo(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		       CK_SESSION_INFO_PTR pInfo)
 {				/* receives session information */
@@ -332,6 +339,17 @@ CK_RV C_Login(CK_SESSION_HANDLE hSession,	/* the session's handle */
 out:
 	sc_pkcs11_unlock();
 	return rv;
+}
+
+/* PKCS #11 3.0 only */
+CK_RV C_LoginUser(CK_SESSION_HANDLE hSession,	/* the session's handle */
+		  CK_USER_TYPE userType,	/* the user type */
+		  CK_CHAR_PTR pPin,	/* the user's PIN */
+		  CK_ULONG ulPinLen, /* the length of the PIN */
+		  CK_UTF8CHAR_PTR pUsername, /* the user's name */
+		  CK_ULONG ulUsernameLen) /*the length of the user's name */
+{
+	return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
 CK_RV C_Logout(CK_SESSION_HANDLE hSession)
