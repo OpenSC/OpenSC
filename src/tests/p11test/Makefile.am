@@ -14,7 +14,7 @@ noinst_HEADERS = p11test_loader.h p11test_case_common.h \
 	p11test_case_mechs.h p11test_case_ec_sign.h \
 	p11test_case_usage.h p11test_case_wait.h \
 	p11test_case_pss_oaep.h p11test_helpers.h \
-	p11test_case_ec_derive.h \
+	p11test_case_ec_derive.h p11test_case_interface.h \
 	p11test_common.h
 
 AM_CPPFLAGS = -I$(top_srcdir)/src
@@ -29,6 +29,7 @@ p11test_SOURCES = p11test.c p11test_loader.c \
 	p11test_case_usage.c \
 	p11test_case_wait.c \
 	p11test_case_pss_oaep.c \
+	p11test_case_interface.c \
 	p11test_helpers.c
 p11test_CFLAGS = -DNDEBUG $(CMOCKA_CFLAGS)
 p11test_LDADD = $(OPTIONAL_OPENSSL_LIBS) $(CMOCKA_LIBS)

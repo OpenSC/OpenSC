@@ -31,6 +31,7 @@
 #include "p11test_case_mechs.h"
 #include "p11test_case_wait.h"
 #include "p11test_case_pss_oaep.h"
+#include "p11test_case_interface.h"
 
 #define DEFAULT_P11LIB	"../../pkcs11/.libs/opensc-pkcs11.so"
 
@@ -61,6 +62,9 @@ int main(int argc, char** argv) {
 		/* Check all the mechanisms provided by the token */
 		cmocka_unit_test_setup_teardown(supported_mechanisms_test,
 			token_setup, token_cleanup),
+
+		/* Check the PKCS #11 3.0 Interface to access new functions */
+		cmocka_unit_test(interface_test),
 
 		/* Complex readonly test of all objects on the card */
 		cmocka_unit_test_setup_teardown(readonly_tests,

@@ -22,7 +22,7 @@
 
 #include "p11test_loader.h"
 
-static void *pkcs11_so;
+void *pkcs11_so;
 
 int get_slot_with_card(token_info_t * info)
 {
