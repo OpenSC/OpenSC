@@ -166,7 +166,10 @@ extern "C" {
 #define ck_rv_t CK_RV
 #define ck_notify_t CK_NOTIFY
 
+#define ck_interface CK_INTERFACE
+
 #define ck_function_list _CK_FUNCTION_LIST
+#define ck_function_list_3_0 _CK_FUNCTION_LIST_3_0
 
 #define ck_createmutex_t CK_CREATEMUTEX
 #define ck_destroymutex_t CK_DESTROYMUTEX
@@ -862,8 +865,17 @@ typedef unsigned long ck_rv_t;
 typedef ck_rv_t (*ck_notify_t) (ck_session_handle_t session,
 				ck_notification_t event, void *application);
 
+typedef struct ck_interface {
+  char * pInterfaceName;
+  void * pFunctionList;
+  ck_flags_t flags;
+} ck_interface;
+
+#define CKF_INTERFACE_FORK_SAFE	(0x00000001UL)
+
 /* Forward reference.  */
 struct ck_function_list;
+struct ck_function_list_3_0;
 
 #define _CK_DECLARE_FUNCTION(name, args)	\
 typedef ck_rv_t (*CK_ ## name) args;		\
@@ -1145,6 +1157,144 @@ _CK_DECLARE_FUNCTION (C_GenerateRandom,
 _CK_DECLARE_FUNCTION (C_GetFunctionStatus, (ck_session_handle_t session));
 _CK_DECLARE_FUNCTION (C_CancelFunction, (ck_session_handle_t session));
 
+_CK_DECLARE_FUNCTION (C_GetInterfaceList,
+		      (ck_interface *interfaces_list,
+		       unsigned long *count));
+_CK_DECLARE_FUNCTION (C_GetInterface,
+		      (unsigned char *interface_name,
+		       struct ck_version *version,
+		       ck_interface **interface,
+		       ck_flags_t flags));
+
+_CK_DECLARE_FUNCTION (C_LoginUser,
+		      (ck_session_handle_t session,
+		       ck_user_type_t user_type,
+		       unsigned char *pin,
+		       unsigned long pin_len,
+		       unsigned char *username,
+		       unsigned long username_len));
+
+_CK_DECLARE_FUNCTION (C_SessionCancel,
+		      (ck_session_handle_t session,
+		       ck_flags_t flags));
+
+_CK_DECLARE_FUNCTION (C_MessageEncryptInit,
+		      (ck_session_handle_t session,
+		       struct ck_mechanism *mechanism,
+		       ck_object_handle_t key));
+_CK_DECLARE_FUNCTION (C_EncryptMessage,
+		      (ck_session_handle_t session,
+		       void *parameter,
+		       unsigned long parameter_len,
+		       unsigned char *associated_data,
+		       unsigned long associated_data_len,
+		       unsigned char *plaintext,
+		       unsigned long plaintext_len,
+		       unsigned char *ciphertext,
+		       unsigned long *ciphertext_len));
+_CK_DECLARE_FUNCTION (C_EncryptMessageBegin,
+		      (ck_session_handle_t session,
+		       void *parameter,
+		       unsigned long parameter_len,
+		       unsigned char *associated_data,
+		       unsigned long associated_data_len));
+_CK_DECLARE_FUNCTION (C_EncryptMessageNext,
+		      (ck_session_handle_t session,
+		       void *parameter,
+		       unsigned long parameter_len,
+		       unsigned char *plaintext_part,
+		       unsigned long plaintext_part_len,
+		       unsigned char *ciphertext_part,
+		       unsigned long *ciphertext_part_len,
+		       ck_flags_t flags));
+_CK_DECLARE_FUNCTION (C_MessageEncryptFinal,
+		      (ck_session_handle_t session));
+
+_CK_DECLARE_FUNCTION (C_MessageDecryptInit,
+		      (ck_session_handle_t session,
+		       struct ck_mechanism *mechanism,
+		       ck_object_handle_t key));
+_CK_DECLARE_FUNCTION (C_DecryptMessage,
+		      (ck_session_handle_t session,
+		       void *parameter,
+		       unsigned long parameter_len,
+		       unsigned char *associated_data,
+		       unsigned long associated_data_len,
+		       unsigned char *ciphertext,
+		       unsigned long ciphertext_len,
+		       unsigned char *plaintext,
+		       unsigned long *plaintext_len));
+_CK_DECLARE_FUNCTION (C_DecryptMessageBegin,
+		      (ck_session_handle_t session,
+		       void *parameter,
+		       unsigned long parameter_len,
+		       unsigned char *associated_data,
+		       unsigned long associated_data_len));
+_CK_DECLARE_FUNCTION (C_DecryptMessageNext,
+		      (ck_session_handle_t session,
+		       void *parameter,
+		       unsigned long parameter_len,
+		       unsigned char *ciphertext_part,
+		       unsigned long ciphertext_part_len,
+		       unsigned char *plaintext_part,
+		       unsigned long *plaintext_part_len,
+		       ck_flags_t flags));
+_CK_DECLARE_FUNCTION (C_MessageDecryptFinal,
+		      (ck_session_handle_t session));
+
+_CK_DECLARE_FUNCTION (C_MessageSignInit,
+		      (ck_session_handle_t session,
+		       struct ck_mechanism *mechanism,
+		       ck_object_handle_t key));
+_CK_DECLARE_FUNCTION (C_SignMessage,
+		      (ck_session_handle_t session,
+		       void *parameter,
+		       unsigned long parameter_len,
+		       unsigned char *data,
+		       unsigned long data_len,
+		       unsigned char *signature,
+		       unsigned long *signature_len));
+_CK_DECLARE_FUNCTION (C_SignMessageBegin,
+		      (ck_session_handle_t session,
+		       void *parameter,
+		       unsigned long parameter_len));
+_CK_DECLARE_FUNCTION (C_SignMessageNext,
+		      (ck_session_handle_t session,
+		       void *parameter,
+		       unsigned long parameter_len,
+		       unsigned char *data,
+		       unsigned long data_len,
+		       unsigned char *signature,
+		       unsigned long *signature_len));
+_CK_DECLARE_FUNCTION (C_MessageSignFinal,
+		      (ck_session_handle_t session));
+
+_CK_DECLARE_FUNCTION (C_MessageVerifyInit,
+		      (ck_session_handle_t session,
+		       struct ck_mechanism *mechanism,
+		       ck_object_handle_t key));
+_CK_DECLARE_FUNCTION (C_VerifyMessage,
+		      (ck_session_handle_t session,
+		       void *parameter,
+		       unsigned long parameter_len,
+		       unsigned char *data,
+		       unsigned long data_len,
+		       unsigned char *signature,
+		       unsigned long signature_len));
+_CK_DECLARE_FUNCTION (C_VerifyMessageBegin,
+		      (ck_session_handle_t session,
+		       void *parameter,
+		       unsigned long parameter_len));
+_CK_DECLARE_FUNCTION (C_VerifyMessageNext,
+		      (ck_session_handle_t session,
+		       void *parameter,
+		       unsigned long parameter_len,
+		       unsigned char *data,
+		       unsigned long data_len,
+		       unsigned char *signature,
+		       unsigned long signature_len));
+_CK_DECLARE_FUNCTION (C_MessageVerifyFinal,
+		      (ck_session_handle_t session));
 
 struct ck_function_list
 {
@@ -1218,6 +1368,105 @@ struct ck_function_list
   CK_C_CancelFunction C_CancelFunction;
   CK_C_WaitForSlotEvent C_WaitForSlotEvent;
 };
+
+struct ck_function_list_3_0
+{
+  struct ck_version version;
+  CK_C_Initialize C_Initialize;
+  CK_C_Finalize C_Finalize;
+  CK_C_GetInfo C_GetInfo;
+  CK_C_GetFunctionList C_GetFunctionList;
+  CK_C_GetSlotList C_GetSlotList;
+  CK_C_GetSlotInfo C_GetSlotInfo;
+  CK_C_GetTokenInfo C_GetTokenInfo;
+  CK_C_GetMechanismList C_GetMechanismList;
+  CK_C_GetMechanismInfo C_GetMechanismInfo;
+  CK_C_InitToken C_InitToken;
+  CK_C_InitPIN C_InitPIN;
+  CK_C_SetPIN C_SetPIN;
+  CK_C_OpenSession C_OpenSession;
+  CK_C_CloseSession C_CloseSession;
+  CK_C_CloseAllSessions C_CloseAllSessions;
+  CK_C_GetSessionInfo C_GetSessionInfo;
+  CK_C_GetOperationState C_GetOperationState;
+  CK_C_SetOperationState C_SetOperationState;
+  CK_C_Login C_Login;
+  CK_C_Logout C_Logout;
+  CK_C_CreateObject C_CreateObject;
+  CK_C_CopyObject C_CopyObject;
+  CK_C_DestroyObject C_DestroyObject;
+  CK_C_GetObjectSize C_GetObjectSize;
+  CK_C_GetAttributeValue C_GetAttributeValue;
+  CK_C_SetAttributeValue C_SetAttributeValue;
+  CK_C_FindObjectsInit C_FindObjectsInit;
+  CK_C_FindObjects C_FindObjects;
+  CK_C_FindObjectsFinal C_FindObjectsFinal;
+  CK_C_EncryptInit C_EncryptInit;
+  CK_C_Encrypt C_Encrypt;
+  CK_C_EncryptUpdate C_EncryptUpdate;
+  CK_C_EncryptFinal C_EncryptFinal;
+  CK_C_DecryptInit C_DecryptInit;
+  CK_C_Decrypt C_Decrypt;
+  CK_C_DecryptUpdate C_DecryptUpdate;
+  CK_C_DecryptFinal C_DecryptFinal;
+  CK_C_DigestInit C_DigestInit;
+  CK_C_Digest C_Digest;
+  CK_C_DigestUpdate C_DigestUpdate;
+  CK_C_DigestKey C_DigestKey;
+  CK_C_DigestFinal C_DigestFinal;
+  CK_C_SignInit C_SignInit;
+  CK_C_Sign C_Sign;
+  CK_C_SignUpdate C_SignUpdate;
+  CK_C_SignFinal C_SignFinal;
+  CK_C_SignRecoverInit C_SignRecoverInit;
+  CK_C_SignRecover C_SignRecover;
+  CK_C_VerifyInit C_VerifyInit;
+  CK_C_Verify C_Verify;
+  CK_C_VerifyUpdate C_VerifyUpdate;
+  CK_C_VerifyFinal C_VerifyFinal;
+  CK_C_VerifyRecoverInit C_VerifyRecoverInit;
+  CK_C_VerifyRecover C_VerifyRecover;
+  CK_C_DigestEncryptUpdate C_DigestEncryptUpdate;
+  CK_C_DecryptDigestUpdate C_DecryptDigestUpdate;
+  CK_C_SignEncryptUpdate C_SignEncryptUpdate;
+  CK_C_DecryptVerifyUpdate C_DecryptVerifyUpdate;
+  CK_C_GenerateKey C_GenerateKey;
+  CK_C_GenerateKeyPair C_GenerateKeyPair;
+  CK_C_WrapKey C_WrapKey;
+  CK_C_UnwrapKey C_UnwrapKey;
+  CK_C_DeriveKey C_DeriveKey;
+  CK_C_SeedRandom C_SeedRandom;
+  CK_C_GenerateRandom C_GenerateRandom;
+  CK_C_GetFunctionStatus C_GetFunctionStatus;
+  CK_C_CancelFunction C_CancelFunction;
+  CK_C_WaitForSlotEvent C_WaitForSlotEvent;
+  /* PKCS #11 3.0 functions */
+  CK_C_GetInterfaceList C_GetInterfaceList;
+  CK_C_GetInterface C_GetInterface;
+  CK_C_LoginUser C_LoginUser;
+  CK_C_SessionCancel C_SessionCancel;
+  CK_C_MessageEncryptInit C_MessageEncryptInit;
+  CK_C_EncryptMessage C_EncryptMessage;
+  CK_C_EncryptMessageBegin C_EncryptMessageBegin;
+  CK_C_EncryptMessageNext C_EncryptMessageNext;
+  CK_C_MessageEncryptFinal C_MessageEncryptFinal;
+  CK_C_MessageDecryptInit C_MessageDecryptInit;
+  CK_C_DecryptMessage C_DecryptMessage;
+  CK_C_DecryptMessageBegin C_DecryptMessageBegin;
+  CK_C_DecryptMessageNext C_DecryptMessageNext;
+  CK_C_MessageDecryptFinal C_MessageDecryptFinal;
+  CK_C_MessageSignInit C_MessageSignInit;
+  CK_C_SignMessage C_SignMessage;
+  CK_C_SignMessageBegin C_SignMessageBegin;
+  CK_C_SignMessageNext C_SignMessageNext;
+  CK_C_MessageSignFinal C_MessageSignFinal;
+  CK_C_MessageVerifyInit C_MessageVerifyInit;
+  CK_C_VerifyMessage C_VerifyMessage;
+  CK_C_VerifyMessageBegin C_VerifyMessageBegin;
+  CK_C_VerifyMessageNext C_VerifyMessageNext;
+  CK_C_MessageVerifyFinal C_MessageVerifyFinal;
+};
+
 
 
 typedef ck_rv_t (*ck_createmutex_t) (void **mutex);
@@ -1400,9 +1649,17 @@ typedef struct ck_mechanism *CK_MECHANISM_PTR;
 typedef struct ck_mechanism_info CK_MECHANISM_INFO;
 typedef struct ck_mechanism_info *CK_MECHANISM_INFO_PTR;
 
+typedef struct ck_interface CK_INTERFACE;
+typedef struct ck_interface *CK_INTERFACE_PTR;
+typedef struct ck_interface **CK_INTERFACE_PTR_PTR;
+
 typedef struct ck_function_list CK_FUNCTION_LIST;
 typedef struct ck_function_list *CK_FUNCTION_LIST_PTR;
 typedef struct ck_function_list **CK_FUNCTION_LIST_PTR_PTR;
+
+typedef struct ck_function_list_3_0 CK_FUNCTION_LIST_3_0;
+typedef struct ck_function_list_3_0 *CK_FUNCTION_LIST_3_0_PTR;
+typedef struct ck_function_list_3_0 **CK_FUNCTION_LIST_3_0_PTR_PTR;
 
 typedef struct ck_c_initialize_args CK_C_INITIALIZE_ARGS;
 typedef struct ck_c_initialize_args *CK_C_INITIALIZE_ARGS_PTR;
@@ -1478,6 +1735,7 @@ typedef struct ck_c_initialize_args *CK_C_INITIALIZE_ARGS_PTR;
 #undef ck_notify_t
 
 #undef ck_function_list
+#undef ck_function_list_3_0
 
 #undef ck_createmutex_t
 #undef ck_destroymutex_t
