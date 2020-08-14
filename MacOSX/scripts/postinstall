@@ -1,43 +1,63 @@
 #!/bin/bash
 
-cp /Library/OpenSC/lib/opensc-pkcs11.so /usr/local/lib/opensc-pkcs11.so
-cp /Library/OpenSC/lib/onepin-opensc-pkcs11.so /usr/local/lib/onepin-opensc-pkcs11.so
-if [ -e "/Library/OpenSC/etc/opensc.conf.md5" ]
-then
-	read cs_fromfile file < "/Library/OpenSC/etc/opensc.conf.md5"
-	cs_calculated=$( md5 -q "/Library/OpenSC/etc/opensc.conf")
-	if [ "$cs_fromfile" = "$cs_calculated" ]
-	then
-		mv /Library/OpenSC/etc/opensc.conf.orig /Library/OpenSC/etc/opensc.conf
-		md5 -r /Library/OpenSC/etc/opensc.conf  > /Library/OpenSC/etc/opensc.conf.md5
-	fi
-else
-	mv /Library/OpenSC/etc/opensc.conf.orig /Library/OpenSC/etc/opensc.conf
-	md5 -r /Library/OpenSC/etc/opensc.conf  > /Library/OpenSC/etc/opensc.conf.md5
-fi
+# copy libs to /usr/local/lib
+cp /Library/OpenSC/lib/opensc-pkcs11.so \
+  /Library/OpenSC/lib/onepin-opensc-pkcs11.so \
+  /usr/local/lib/
 
-for f in \
-	/Library/OpenSC/bin/* \
-	/Library/OpenSC/etc/bash_completion.d/* \
-	/Library/OpenSC/share/doc/opensc \
-	/Library/OpenSC/share/man/man1/* \
-	/Library/OpenSC/share/man/man5/*
-do
-	a=/Library/OpenSC
-	b=/usr/local
-	l="$(dirname ${f/$a/$b})"
-	mkdir -p $l
-	ln -sf $f $l
+# install opensc.conf if it hasn't been locally modified
+# shellcheck disable=SC2043
+for f in /Library/OpenSC/etc/opensc.conf; do
+  if [ -e "${f}.md5" ]; then
+    read -r cs_fromfile _ < "${f}.md5"
+    cs_calculated="$(md5 -q "${f}")"
+    if [ "$cs_fromfile" != "$cs_calculated" ]; then
+      echo "config ${f} was locally modified since last install, skipping" 2>&1
+      continue
+    fi
+  fi
+  cp "${f}.orig" "$f"
+  md5 -r "$f"  >"${f}.md5"
 done
 
+# symlink other files to /usr/local
 for f in \
-	/Library/LaunchAgents/pkcs11-register.plist \
-	/Library/LaunchAgents/opensc-notify.plist
+  /Library/OpenSC/bin/* \
+  /Library/OpenSC/etc/bash_completion.d/* \
+  /Library/OpenSC/share/doc/*
 do
-	if [ -e "$f" ]
-	then
-		/bin/launchctl asuser $(id -u "${USER}") /bin/launchctl load "$f" || true
-	fi
+  [ -e "$f" ] || continue # keep this or set "shopt -s nullglob"
+  a=/Library/OpenSC
+  b=/usr/local
+  l="${f/$a/$b}" # parameter expansion, returns $f where $a is replaced by $b
+  mkdir -p "$(dirname "$l")"
+  ln -sf "$f" "$l"
+done
+
+# correct past issue where a literal shell glob character was symlinked
+# e.g. /usr/local/share/man/man1/* -> /Library/OpenSC/share/man/man1/*
+# maybe remove this step post 2022?
+for f in \
+  '/usr/local/share/man/man1/*' \
+  '/usr/local/share/man/man5/*'
+do
+  [ -L "$f" ] || continue # skip unless $f is a symlink
+  t="$(readlink "$f")"
+  [ -e "$t" ] && continue # skip if the symlink target actually exists
+  a=/usr/local
+  b=/Library/OpenSC
+  [ "$t" = "${f/$a/$b}" ] || continue # skip unless the target is in the corresponding /Library/OpenSC subdirectory
+  # we can now assume that we originally made $f and can safely remove it
+  unlink "$f"
+done
+
+# register the launch agents
+for f in \
+  /Library/LaunchAgents/pkcs11-register.plist \
+  /Library/LaunchAgents/opensc-notify.plist
+do
+  [ -e "$f" ] || continue
+  /bin/launchctl asuser "$(id -u "$USER")" /bin/launchctl load "$f" || true
 done
 
 exit 0
