@@ -1296,6 +1296,9 @@ _CK_DECLARE_FUNCTION (C_VerifyMessageNext,
 _CK_DECLARE_FUNCTION (C_MessageVerifyFinal,
 		      (ck_session_handle_t session));
 
+/* Flags in Message-based encryption/decryption API */
+#define CKF_END_OF_MESSAGE 	(0x00000001UL)
+
 struct ck_function_list
 {
   struct ck_version version;
