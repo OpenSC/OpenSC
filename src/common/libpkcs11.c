@@ -49,6 +49,7 @@ C_LoadModule(const char *mspec, CK_FUNCTION_LIST_PTR_PTR funcs)
 {
 	sc_pkcs11_module_t *mod;
 	CK_RV rv, (*c_get_function_list)(CK_FUNCTION_LIST_PTR_PTR);
+	CK_RV (*c_get_interface)(CK_UTF8CHAR_PTR, CK_VERSION_PTR, CK_INTERFACE_PTR_PTR, CK_FLAGS);
 	mod = calloc(1, sizeof(*mod));
 	if (mod == NULL) {
 		return NULL;
@@ -63,6 +64,24 @@ C_LoadModule(const char *mspec, CK_FUNCTION_LIST_PTR_PTR funcs)
 	if (mod->handle == NULL) {
 		fprintf(stderr, "sc_dlopen failed: %s\n", sc_dlerror());
 		goto failed;
+	}
+
+	c_get_interface = (CK_RV (*)(CK_UTF8CHAR_PTR, CK_VERSION_PTR, CK_INTERFACE_PTR_PTR, CK_FLAGS))
+		sc_dlsym(mod->handle, "C_GetInterface");
+	if (c_get_interface) {
+		CK_INTERFACE *interface = NULL;
+
+		/* Get default PKCS #11 interface */
+		rv = c_get_interface((CK_UTF8CHAR_PTR) "PKCS 11", NULL, &interface, 0);
+		if (rv == CKR_OK) {
+			/* this is actually 3.0 function list, but it starts
+			 * with the same fields. Only for new functions, it
+			 * needs to be casted to new structure */
+			*funcs = interface->pFunctionList;
+			return (void *) mod;
+		} else {
+			fprintf(stderr, "C_GetInterface failed %lx, retry 2.x way", rv);
+		}
 	}
 
 	/* Get the list of function pointers */

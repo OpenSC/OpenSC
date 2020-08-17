@@ -69,7 +69,7 @@
 #endif
 
 #ifndef ENABLE_SHARED
-extern CK_FUNCTION_LIST pkcs11_function_list;
+extern CK_FUNCTION_LIST_3_0 pkcs11_function_list_3_0;
 #endif
 
 #define NEED_SESSION_RO	0x01
@@ -970,7 +970,7 @@ int main(int argc, char * argv[])
 
 #ifndef ENABLE_SHARED
 	if (strcmp(opt_module, DEFAULT_PKCS11_PROVIDER) == 0)
-		p11 = &pkcs11_function_list;
+		p11 = &pkcs11_function_list_3_0;
 	else
 #endif
 	{
