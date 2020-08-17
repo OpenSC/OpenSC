@@ -42,10 +42,7 @@ static const struct sc_atr_table mcrd_atrs[] = {
 	  "D-Trust", SC_CARD_TYPE_MCRD_GENERIC, 0, NULL},
 	{"3b:ff:11:00:ff:80:b1:fe:45:1f:03:00:68:d2:76:00:00:28:ff:05:1e:31:80:00:90:00:a6", NULL,
 	  "D-Trust", SC_CARD_TYPE_MCRD_GENERIC, 0, NULL},
-	{"3B:FE:18:00:00:80:31:FE:45:45:73:74:45:49:44:20:76:65:72:20:31:2E:30:A8", NULL, "EstEID 3.0 (dev1) cold", SC_CARD_TYPE_MCRD_ESTEID_V30, 0, NULL},
-	{"3B:FE:18:00:00:80:31:FE:45:80:31:80:66:40:90:A4:56:1B:16:83:01:90:00:86", NULL, "EstEID 3.0 (dev1) warm", SC_CARD_TYPE_MCRD_ESTEID_V30, 0, NULL},
-	{"3b:fe:18:00:00:80:31:fe:45:80:31:80:66:40:90:a4:16:2a:00:83:01:90:00:e1", NULL, "EstEID 3.0 (dev2) warm", SC_CARD_TYPE_MCRD_ESTEID_V30, 0, NULL},
-	{"3b:fe:18:00:00:80:31:fe:45:80:31:80:66:40:90:a4:16:2a:00:83:0f:90:00:ef", NULL, "EstEID 3.0 (18.01.2011) warm", SC_CARD_TYPE_MCRD_ESTEID_V30, 0, NULL},
+	{"3b:fe:18:00:00:80:31:fe:45:80:31:80:66:40:90:a4:16:2a:00:83:0f:90:00:ef", NULL, "EstEID 3.5 warm", SC_CARD_TYPE_MCRD_ESTEID_V30, 0, NULL},
 	{"3b:fa:18:00:00:80:31:fe:45:fe:65:49:44:20:2f:20:50:4b:49:03", NULL, "EstEID 3.5 cold", SC_CARD_TYPE_MCRD_ESTEID_V30, 0, NULL },
 	{"3b:f8:18:00:00:80:31:fe:45:fe:41:5a:45:20:44:49:54:33", NULL, "AzeDIT 3.5 cold", SC_CARD_TYPE_MCRD_ESTEID_V30, 0, NULL },
 	{NULL, NULL, NULL, 0, 0, NULL}
@@ -240,7 +237,7 @@ static int mcrd_match_card(sc_card_t * card)
 
 static int mcrd_init(sc_card_t * card)
 {
-	unsigned long flags = SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE, ext_flags;
+	unsigned long flags;
 	struct mcrd_priv_data *priv = calloc(1, sizeof *priv);
 	if (!priv)
 		return SC_ERROR_OUT_OF_MEMORY;
@@ -251,15 +248,15 @@ static int mcrd_init(sc_card_t * card)
 	card->caps = SC_CARD_CAP_RNG;
 
 	if (is_esteid_card(card)) {
-		_sc_card_add_rsa_alg(card, 2048, flags, 0);
+		unsigned long ext_flags = SC_ALGORITHM_EXT_EC_NAMEDCURVE | SC_ALGORITHM_EXT_EC_UNCOMPRESES;
 		flags = SC_ALGORITHM_ECDSA_RAW | SC_ALGORITHM_ECDH_CDH_RAW | SC_ALGORITHM_ECDSA_HASH_NONE;
-		ext_flags = SC_ALGORITHM_EXT_EC_NAMEDCURVE | SC_ALGORITHM_EXT_EC_UNCOMPRESES;
 		_sc_card_add_ec_alg(card, 384, flags, ext_flags, NULL);
 		// Force EstEID 3.5 card recv size 255 with T=0 to avoid recursive read binary
 		// sc_read_binary cannot handle recursive 61 00 calls
 		if (card->reader && card->reader->active_protocol == SC_PROTO_T0)
 			card->max_recv_size = 255;
 	} else {
+		flags = SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE;
 		_sc_card_add_rsa_alg(card, 512, flags, 0);
 		_sc_card_add_rsa_alg(card, 768, flags, 0);
 		_sc_card_add_rsa_alg(card, 1024, flags, 0);
@@ -962,8 +959,7 @@ static int mcrd_set_security_env(sc_card_t * card,
 {
 	struct mcrd_priv_data *priv;
 	sc_apdu_t apdu;
-	u8 sbuf[5];
-	u8 *p;
+	u8 sbuf[5] = {0x83, 0x03, 0x80, 0, 0};
 	int r = 0, locked = 0;
 
 	if (card == NULL || env == NULL)
@@ -999,12 +995,7 @@ static int mcrd_set_security_env(sc_card_t * card,
 		return 0;
 	}
 
-	p = sbuf;
-	*p++ = 0x83;
-	*p++ = 0x03;
-	*p++ = 0x80;
-	*p++ = env->key_ref[0];
-	*p++ = 0;
+	sbuf[3] = env->key_ref[0];
 	switch (env->operation) {
 	case SC_SEC_OPERATION_DECIPHER:
 	case SC_SEC_OPERATION_DERIVE:
