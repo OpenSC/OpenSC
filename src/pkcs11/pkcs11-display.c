@@ -1087,3 +1087,21 @@ print_session_info(FILE *f, CK_SESSION_INFO *info)
 	}
 	fprintf(f, "      ulDeviceError:           %0lx\n",     info->ulDeviceError );
 }
+
+
+void
+print_interfaces_list(FILE *f, CK_INTERFACE_PTR pInterfacesList, CK_ULONG ulCount)
+{
+	CK_ULONG i;
+
+	if (pInterfacesList) {
+		for (i = 0; i < ulCount; i++) {
+			fprintf(f, "Interface '%s' flags=%lx\n",
+				pInterfacesList[i].pInterfaceName,
+				pInterfacesList[i].flags);
+		}
+	}
+	else {
+		fprintf(f, "Count is %ld\n", ulCount);
+	}
+}
