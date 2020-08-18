@@ -53,6 +53,7 @@ typedef struct {
 
 enum ck_type{
   OBJ_T,
+  PROFILE_T,
   KEY_T,
   CRT_T,
   MEC_T,

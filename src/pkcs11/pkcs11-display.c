@@ -250,6 +250,7 @@ static enum_specs ck_cls_s[] = {
   { CKO_PUBLIC_KEY       , "CKO_PUBLIC_KEY       " },
   { CKO_PRIVATE_KEY      , "CKO_PRIVATE_KEY      " },
   { CKO_SECRET_KEY       , "CKO_SECRET_KEY       " },
+  { CKO_PROFILE          , "CKO_PROFILE          " },
   { CKO_HW_FEATURE       , "CKO_HW_FEATURE       " },
   { CKO_DOMAIN_PARAMETERS, "CKO_DOMAIN_PARAMETERS" },
   { CKO_NETSCAPE_CRL,              "CKO_NETSCAPE_CRL               " },
@@ -257,6 +258,15 @@ static enum_specs ck_cls_s[] = {
   { CKO_NETSCAPE_TRUST,            "CKO_NETSCAPE_TRUST             " },
   { CKO_NETSCAPE_BUILTIN_ROOT_LIST, "CKO_NETSCAPE_BUILTIN_ROOT_LIST" },
   { CKO_VENDOR_DEFINED   , "CKO_VENDOR_DEFINED   " }
+};
+
+enum_specs ck_profile_s[] = {
+  { CKP_INVALID_ID               , "CKP_INVALID_ID               " },
+  { CKP_BASELINE_PROVIDER        , "CKP_BASELINE_PROVIDER        " },
+  { CKP_EXTENDED_PROVIDER        , "CKP_EXTENDED_PROVIDER        " },
+  { CKP_AUTHENTICATION_TOKEN     , "CKP_AUTHENTICATION_TOKEN     " },
+  { CKP_PUBLIC_CERTIFICATES_TOKEN, "CKP_PUBLIC_CERTIFICATES_TOKEN" },
+  { CKP_VENDOR_DEFINED           , "CKP_VENDOR_DEFINED           " }
 };
 
 static enum_specs ck_crt_s[] = {
@@ -657,6 +667,7 @@ static enum_specs ck_ckd_s[] = {
 
 enum_spec ck_types[] = {
   { OBJ_T, ck_cls_s, sizeof(ck_cls_s) / SZ_SPECS, "CK_OBJECT_CLASS"     },
+  { PROFILE_T, ck_profile_s, sizeof(ck_profile_s)/SZ_SPECS, "CK_PROFILE"},
   { KEY_T, ck_key_s, sizeof(ck_key_s) / SZ_SPECS, "CK_KEY_TYPE"         },
   { CRT_T, ck_crt_s, sizeof(ck_crt_s) / SZ_SPECS, "CK_CERTIFICATE_TYPE" },
   { MEC_T, ck_mec_s, sizeof(ck_mec_s) / SZ_SPECS, "CK_MECHANISM_TYPE"   },
@@ -670,6 +681,7 @@ enum_spec ck_types[] = {
 static enum_spec ck_key_t[] = { { KEY_T, ck_key_s, sizeof(ck_key_s) / SZ_SPECS, "CK_KEY_TYPE" } };
 static enum_spec ck_cls_t[] = { { OBJ_T, ck_cls_s, sizeof(ck_cls_s) / SZ_SPECS, "CK_OBJECT_CLASS" } };
 static enum_spec ck_crt_t[] = { { CRT_T, ck_crt_s, sizeof(ck_crt_s) / SZ_SPECS, "CK_CERTIFICATE_TYPE" } };
+static enum_spec ck_profile_t[] = { { PROFILE_T, ck_profile_s, sizeof(ck_profile_s) / SZ_SPECS, "CK_PROFILE" } };
 
 type_spec ck_attribute_specs[] = {
   { CKA_CLASS             , "CKA_CLASS            ", print_enum,    ck_cls_t },
@@ -781,6 +793,7 @@ type_spec ck_attribute_specs[] = {
   { CKA_ENCODING_METHODS  , "CKA_ENCODING_METHODS ", print_generic, NULL },
   { CKA_MIME_TYPES        , "CKA_MIME_TYPES       ", print_generic, NULL },
   { CKA_MECHANISM_TYPE    , "CKA_MECHANISM_TYPE   ", print_generic, NULL },
+  { CKA_PROFILE_ID        , "CKA_PROFILE_ID       ", print_enum, ck_profile_t },
   { CKA_REQUIRED_CMS_ATTRIBUTES, "CKA_REQUIRED_CMS_ATTRIBUTES ", print_generic, NULL },
   { CKA_DEFAULT_CMS_ATTRIBUTES, "CKA_DEFAULT_CMS_ATTRIBUTES ", print_generic, NULL },
   { CKA_SUPPORTED_CMS_ATTRIBUTES, "CKA_SUPPORTED_CMS_ATTRIBUTES ", print_generic, NULL },

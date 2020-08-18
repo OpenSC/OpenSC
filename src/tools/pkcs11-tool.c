@@ -437,6 +437,7 @@ static void		show_object(CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		show_key(CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		show_cert(CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		show_dobj(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj);
+static void		show_profile(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj);
 static void		sign_data(CK_SLOT_ID, CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		verify_signature(CK_SLOT_ID, CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		decrypt_data(CK_SLOT_ID, CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
@@ -554,6 +555,7 @@ ATTR_METHOD(KEY_TYPE, CK_KEY_TYPE);			/* getKEY_TYPE */
 ATTR_METHOD(CERTIFICATE_TYPE, CK_CERTIFICATE_TYPE);	/* getCERTIFICATE_TYPE */
 ATTR_METHOD(MODULUS_BITS, CK_ULONG);			/* getMODULUS_BITS */
 ATTR_METHOD(VALUE_LEN, CK_ULONG);			/* getVALUE_LEN */
+ATTR_METHOD(PROFILE_ID, CK_ULONG);			/* getPROFILE_ID */
 VARATTR_METHOD(LABEL, char);				/* getLABEL */
 VARATTR_METHOD(APPLICATION, char);			/* getAPPLICATION */
 VARATTR_METHOD(ID, unsigned char);			/* getID */
@@ -3740,6 +3742,9 @@ static void show_object(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 	case CKO_DATA:
 		show_dobj(sess, obj);
 		break;
+	case CKO_PROFILE:
+		show_profile(sess, obj);
+		break;
 	default:
 		printf("Object %u, type %u\n",
 				(unsigned int) obj,
@@ -4300,6 +4305,20 @@ static void show_dobj(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 
 	printf ("\n");
 	suppress_warn = 0;
+}
+
+
+static void show_profile(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
+{
+	CK_ULONG    id = 0;
+
+	printf("Profile object %u\n", (unsigned int) obj);
+	printf("  profile_id:          ");
+	if ((id = getPROFILE_ID(sess, obj)) != 0) {
+		printf("'%lu'\n", id);
+	} else {
+		printf("<empty>\n");
+	}
 }
 
 

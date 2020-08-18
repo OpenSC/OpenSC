@@ -321,8 +321,16 @@ typedef unsigned long ck_object_class_t;
 #define CKO_HW_FEATURE		(5UL)
 #define CKO_DOMAIN_PARAMETERS	(6UL)
 #define CKO_MECHANISM		(7UL)
+#define CKO_OTP_KEY		(8UL)
+#define CKO_PROFILE		(9UL)
 #define CKO_VENDOR_DEFINED	(1UL << 31)
 
+#define CKP_INVALID_ID                (0UL)
+#define CKP_BASELINE_PROVIDER         (1UL)
+#define CKP_EXTENDED_PROVIDER         (2UL)
+#define CKP_AUTHENTICATION_TOKEN      (3UL)
+#define CKP_PUBLIC_CERTIFICATES_TOKEN (4UL)
+#define CKP_VENDOR_DEFINED            (1UL << 31)
 
 typedef unsigned long ck_hw_feature_type_t;
 
@@ -482,6 +490,7 @@ typedef unsigned long ck_attribute_type_t;
 #define CKA_OTP_COUNTER			(0x22EUL)
 #define CKA_OTP_TIME			(0x22FUL)
 #define CKA_ALLOWED_MECHANISMS		(CKF_ARRAY_ATTRIBUTE | 0x600UL)
+#define CKA_PROFILE_ID			(0x601UL)
 #define CKA_VENDOR_DEFINED		(1UL << 31)
 
 
@@ -1506,6 +1515,7 @@ struct ck_c_initialize_args
 #define CKR_ATTRIBUTE_SENSITIVE			(0x11UL)
 #define CKR_ATTRIBUTE_TYPE_INVALID		(0x12UL)
 #define CKR_ATTRIBUTE_VALUE_INVALID		(0x13UL)
+#define CKR_ACTION_PROHIBITED			(0x1BUL)
 #define CKR_DATA_INVALID			(0x20UL)
 #define CKR_DATA_LEN_RANGE			(0x21UL)
 #define CKR_DEVICE_ERROR			(0x30UL)
