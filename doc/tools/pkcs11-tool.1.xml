@@ -221,6 +221,13 @@
 
 				<varlistentry>
 					<term>
+						<option>--list-interfaces</option>
+					</term>
+					<listitem><para>List interfaces of PKCS #11 3.0 library.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
 						<option>--login</option>,
 						<option>-l</option>
 					</term>
