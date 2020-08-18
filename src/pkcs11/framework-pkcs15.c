@@ -126,6 +126,12 @@ struct pkcs15_data_object {
 #define data_p15obj		base.p15_object
 #define is_data(obj) (__p15_type(obj) == SC_PKCS15_TYPE_DATA_OBJECT)
 
+struct pkcs15_profile_object {
+	struct pkcs15_any_object	base;
+
+	unsigned long profile_id;
+};
+
 struct pkcs15_skey_object {
 	struct pkcs15_any_object    base;
 
@@ -142,6 +148,7 @@ extern struct sc_pkcs11_object_ops pkcs15_cert_ops;
 extern struct sc_pkcs11_object_ops pkcs15_prkey_ops;
 extern struct sc_pkcs11_object_ops pkcs15_pubkey_ops;
 extern struct sc_pkcs11_object_ops pkcs15_dobj_ops;
+extern struct sc_pkcs11_object_ops pkcs15_profile_ops;
 extern struct sc_pkcs11_object_ops pkcs15_skey_ops;
 
 const CK_BYTE gostr3410_paramset_A_encoded_oid[] = { 0x06, 0x07, 0x2a, 0x85, 0x03, 0x02, 0x02, 0x23, 0x01 };
@@ -811,6 +818,32 @@ __pkcs15_create_data_object(struct pkcs15_fw_data *fw_data,
 	return rv;
 }
 
+/* Note, that this is not actuall PKCS #15 object, but just bogus
+ * structure to create PKCS #11 object. There is no corresponding
+ * PKCS #15 object. */
+static int
+__pkcs15_create_profile_object(struct pkcs15_fw_data *fw_data,
+	int public_certificates, struct pkcs15_any_object **profile_object)
+{
+	struct pkcs15_profile_object *pobj = NULL;
+	struct sc_pkcs15_object *obj = NULL;
+	int rv;
+
+	obj = calloc(1, sizeof(struct sc_pkcs15_object));
+
+	rv = __pkcs15_create_object(fw_data, (struct pkcs15_any_object **) &pobj,
+			obj, &pkcs15_profile_ops, sizeof(struct pkcs15_profile_object));
+	if (rv >= 0) {
+		pobj->profile_id = public_certificates ? CKP_PUBLIC_CERTIFICATES_TOKEN : CKP_AUTHENTICATION_TOKEN;
+	}
+
+	if (profile_object != NULL)
+		*profile_object = (struct pkcs15_any_object *) pobj;
+
+	return rv;
+}
+
+
 
 static int
 __pkcs15_create_secret_key_object(struct pkcs15_fw_data *fw_data,
@@ -1430,6 +1463,10 @@ _add_pin_related_objects(struct sc_pkcs11_slot *slot, struct sc_pkcs15_object *p
 static void
 _add_public_objects(struct sc_pkcs11_slot *slot, struct pkcs15_fw_data *fw_data)
 {
+	/* Public Certificates Token in PKCS #11 3.0 */
+	struct pkcs15_any_object *pobj = NULL;
+	int public_certificates = 1;
+	CK_RV rv;
 	unsigned i;
 
 	if (slot == NULL || fw_data == NULL)
@@ -1446,8 +1483,15 @@ _add_public_objects(struct sc_pkcs11_slot *slot, struct pkcs15_fw_data *fw_data)
 		if (obj->base.flags & SC_PKCS11_OBJECT_SEEN)
 			continue;
 		/* Ignore 'private' object */
-		if (obj->p15_object->flags & SC_PKCS15_CO_FLAG_PRIVATE)
+		if (obj->p15_object->flags & SC_PKCS15_CO_FLAG_PRIVATE) {
+			/* If we found some non-accessible public object,
+			 * we can no longer claim Public Ceritificate Token conformance */
+			if (obj->p15_object->type & SC_PKCS15_TYPE_PUBKEY ||
+				obj->p15_object->type & SC_PKCS15_TYPE_CERT) {
+				public_certificates = 0;
+			}
 			continue;
+		}
 		/* PKCS#15 4.1.3 is a little vague, but implies if not PRIVATE it is readable
 		 * even if there is an auth_id to allow writing for example.
 		 * See bug issue #291
@@ -1456,9 +1500,20 @@ _add_public_objects(struct sc_pkcs11_slot *slot, struct pkcs15_fw_data *fw_data)
 		if (obj->p15_object->auth_id.len && !(is_pubkey(obj) || is_cert(obj)))
 			continue;
 
-		sc_log(context, "Add public object(%p,%.*s,%x)", obj, (int) sizeof obj->p15_object->label, obj->p15_object->label, obj->p15_object->type);
+		sc_log(context, "Add public object(%p,%.*s,%x)", obj,
+			(int) sizeof obj->p15_object->label, obj->p15_object->label,
+			obj->p15_object->type);
 		pkcs15_add_object(slot, obj, NULL);
 	}
+
+	/* If all certificates and public keys are visible, we can claim conformance
+	 * to Public Certificate Token profile, making life easier for many applications
+	 * saying, they do not need to login to see all keys available */
+	rv = __pkcs15_create_profile_object(fw_data, public_certificates, &pobj);
+	if (rv != CKR_OK || pobj == NULL) {
+		return;
+	}
+	pkcs15_add_object(slot, pobj, NULL);
 }
 
 
@@ -4948,6 +5003,66 @@ struct sc_pkcs11_object_ops pkcs15_dobj_ops = {
 	NULL,	/* init_params */
 	NULL	/* wrap_key */
 };
+
+/* PKCS#15 Data Object*/
+static void
+pkcs15_profile_release(void *object)
+{
+	__pkcs15_release_object((struct pkcs15_any_object *) object);
+}
+
+
+static CK_RV
+pkcs15_profile_set_attribute(struct sc_pkcs11_session *session,
+		void *object, CK_ATTRIBUTE_PTR attr)
+{
+	/* Profile object is not writable */
+	return CKR_ACTION_PROHIBITED;
+}
+
+static CK_RV
+pkcs15_profile_get_attribute(struct sc_pkcs11_session *session, void *object, CK_ATTRIBUTE_PTR attr)
+{
+	struct pkcs15_profile_object *pobj = (struct pkcs15_profile_object*) object;
+
+	sc_log(context, "pkcs15_profile_get_attribute() called");
+	switch (attr->type) {
+	case CKA_CLASS:
+		check_attribute_buffer(attr, sizeof(CK_OBJECT_CLASS));
+		*(CK_OBJECT_CLASS*)attr->pValue = CKO_PROFILE;
+		break;
+	case CKA_PRIVATE:
+		/* This is needed internally for the object to be visible */
+		check_attribute_buffer(attr, sizeof(CK_BBOOL));
+		*(CK_BBOOL*)attr->pValue = CK_FALSE;
+		break;
+	case CKA_PROFILE_ID:
+		/* TODO */
+		check_attribute_buffer(attr, sizeof(CK_ULONG));
+		*(CK_ULONG*)attr->pValue = pobj->profile_id;
+		break;
+	default:
+		return CKR_ATTRIBUTE_TYPE_INVALID;
+	}
+
+	return CKR_OK;
+}
+struct sc_pkcs11_object_ops pkcs15_profile_ops = {
+	pkcs15_profile_release,
+	pkcs15_profile_set_attribute,
+	pkcs15_profile_get_attribute,
+	sc_pkcs11_any_cmp_attribute,
+	pkcs15_any_destroy,
+	NULL,	/* get_size */
+	NULL,	/* sign */
+	NULL,	/* unwrap_key */
+	NULL,	/* decrypt */
+	NULL,	/* derive */
+	NULL,	/* can_do */
+	NULL,	/* init_params */
+	NULL	/* wrap_key */
+};
+
 
 
 /* PKCS#15 Secret Key Objects */
