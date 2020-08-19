@@ -176,6 +176,10 @@ static int npa_match_card(sc_card_t * card)
 		}
 	}
 
+	if (r == 0) {
+		sc_free_apps(card);
+	}
+
 	return r;
 }
 
