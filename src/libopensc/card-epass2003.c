@@ -2518,12 +2518,48 @@ epass2003_gen_key(struct sc_card *card, sc_epass2003_gen_key_data * data)
 static int
 epass2003_erase_card(struct sc_card *card)
 {
+	static const unsigned char install_magic_pin[26] = {
+		/* compare install_secret_key */
+		0x06,0x01,0x10,0x16, 0x16,0x16,0x00,0x0f, 0xff,0x66,
+		0x31,0x32,0x33,0x34, 0x35,0x36,0x37,0x38,
+		0x31,0x32,0x33,0x34, 0x35,0x36,0x37,0x38,
+	};
+	static const unsigned char magic_pin[16] = "1234567812345678";
+	static const unsigned char mf_path[2] = { 0x3f, 0x00 };
+	sc_apdu_t apdu;
 	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
 	sc_invalidate_cache(card);
 
-	r = sc_delete_file(card, sc_get_mf_path());
+	/* install magic pin */
+	sc_format_apdu(card, &apdu, 0x03, 0xe3, 0x00, 0x00);
+	apdu.cla = 0x80;
+	apdu.data = install_magic_pin;
+	apdu.datalen = apdu.lc = sizeof(install_magic_pin);
+	r = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_RET(card->ctx, r, "APDU install magic pin failed");
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	LOG_TEST_RET(card->ctx, r, "install magic pin failed");
+
+	/* verify magic pin */
+	sc_format_apdu(card, &apdu, 0x03, 0x20, 0x00, 0x01);
+	apdu.cla = 0;
+	apdu.data = magic_pin;
+	apdu.datalen = apdu.lc = sizeof(magic_pin);
+	r = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_RET(card->ctx, r, "APDU verify magic pin failed");
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	LOG_TEST_RET(card->ctx, r, "verify magic pin failed");
+
+	/* delete MF */
+	sc_format_apdu(card, &apdu, 0x03, 0xe4, 0x00, 0x00);
+	apdu.cla = 0;
+	apdu.data = mf_path;
+	apdu.datalen = apdu.lc = sizeof(mf_path);
+	r = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_RET(card->ctx, r, "APDU delete MF failed");
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(card->ctx, r, "delete MF failed");
 
 	LOG_FUNC_RETURN(card->ctx, r);
