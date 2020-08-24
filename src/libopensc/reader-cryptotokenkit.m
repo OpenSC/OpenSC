@@ -325,9 +325,6 @@ TKSmartCardPINFormat *getPINFormat(struct sc_pin_cmd_pin *pin)
 	}
 	format.minPINLength = pin->min_length;
 	format.maxPINLength = pin->max_length;
-	if (pin->length_offset > 4) {
-		format.PINLengthBitOffset = (pin->length_offset-5)*8;
-	}
 
 	return format;
 }
@@ -363,7 +360,7 @@ int cryptotokenkit_perform_verify(struct sc_reader *reader, struct sc_pin_cmd_da
 		case SC_PIN_CMD_VERIFY:
 			format = getPINFormat(pin_ref);
 			NSInteger offset;
-			if (data->pin1.length_offset != 4) {
+			if (data->pin1.offset >= 5) {
 				offset = data->pin1.offset - 5;
 			} else {
 				offset = 0;
@@ -378,13 +375,10 @@ int cryptotokenkit_perform_verify(struct sc_reader *reader, struct sc_pin_cmd_da
 			/* TODO: set confirmation and text */
 			format = getPINFormat(pin_ref);
 			NSInteger oldOffset, newOffset;
-			if (data->pin1.length_offset != 4) {
-				oldOffset = data->pin1.offset - 5;
-				newOffset = data->pin2.offset - 5;
-			} else {
-				oldOffset = 0;
-				newOffset = 0;
-			}
+
+			/* Set offsets if available, otherwise default to 0 */
+			oldOffset = (data->pin1.offset >= 5 ? data->pin1.offset - 5 : 0);
+			newOffset = (data->pin2.offset >= 5 ? data->pin2.offset - 5 : 0);
 			interaction = [priv->tksmartcard userInteractionForSecurePINChangeWithPINFormat:format APDU:apdu currentPINByteOffset:oldOffset newPINByteOffset:newOffset];
 		break;
 	default:
