@@ -435,39 +435,64 @@ int callback_public_keys(test_certs_t *objects,
 		|| o->key_type == CKK_EC_MONTGOMERY) {
 		EVP_PKEY *key = NULL;
 		ASN1_PRINTABLESTRING *curve = NULL;
+		ASN1_OBJECT *obj = NULL;
 		const unsigned char *a;
 		ASN1_OCTET_STRING *os;
 		int evp_type;
 
 		a = template[6].pValue;
-		if (!d2i_ASN1_PRINTABLESTRING(&curve, &a, (long)template[6].ulValueLen)) {
+		if (d2i_ASN1_PRINTABLESTRING(&curve, &a, (long)template[6].ulValueLen) != NULL) {
+			switch (o->key_type) {
+			case CKK_EC_EDWARDS:
+				if (strcmp((char *)curve->data, "edwards25519")) {
+					debug_print(" [WARN %s ] Unknown curve name. "
+						" expected edwards25519, got %s", o->id_str, curve->data);
+					return -1;
+				}
+				evp_type = EVP_PKEY_ED25519;
+				break;
+			case CKK_EC_MONTGOMERY:
+				if (strcmp((char *)curve->data, "curve25519")) {
+					debug_print(" [WARN %s ] Unknown curve name. "
+						" expected curve25519, got %s", o->id_str, curve->data);
+					return -1;
+				}
+				evp_type = EVP_PKEY_X25519;
+				break;
+			default:
+				debug_print(" [WARN %s ] Unknown key type %lu", o->id_str, o->key_type);
+				return -1;
+			}
+			ASN1_PRINTABLESTRING_free(curve);
+		} else if (d2i_ASN1_OBJECT(&obj, &a, (long)template[6].ulValueLen) != NULL) {
+			int nid = OBJ_obj2nid(obj);
+			switch (o->key_type) {
+			case CKK_EC_EDWARDS:
+				if (nid != NID_ED25519) {
+					debug_print(" [WARN %s ] Unknown OID. "
+						" expected NID_ED25519 (%d), got %d", o->id_str, NID_ED25519, nid);
+					return -1;
+				}
+				evp_type = EVP_PKEY_ED25519;
+				break;
+			case CKK_EC_MONTGOMERY:
+				if (nid != NID_X25519) {
+					debug_print(" [WARN %s ] Unknown OID. "
+						" expected NID_X25519 (%d), got %d", o->id_str, NID_X25519, nid);
+					return -1;
+				}
+				evp_type = EVP_PKEY_X25519;
+				break;
+			default:
+				debug_print(" [WARN %s ] Unknown key type %lu", o->id_str, o->key_type);
+				return -1;
+			}
+			ASN1_OBJECT_free(obj);
+		} else {
 			debug_print(" [WARN %s ] Failed to convert EC_PARAMS"
-				" to curve name", o->id_str);
+				" to curve name or object id", o->id_str);
 			return -1;
 		}
-
-		switch (o->key_type) {
-		case CKK_EC_EDWARDS:
-			if (strcmp((char *)curve->data, "edwards25519")) {
-				debug_print(" [WARN %s ] Unknown curve name. "
-					" expected edwards25519, got %s", o->id_str, curve->data);
-				return -1;
-			}
-			evp_type = EVP_PKEY_ED25519;
-			break;
-		case CKK_EC_MONTGOMERY:
-			if (strcmp((char *)curve->data, "curve25519")) {
-				debug_print(" [WARN %s ] Unknown curve name. "
-					" expected curve25519, got %s", o->id_str, curve->data);
-				return -1;
-			}
-			evp_type = EVP_PKEY_X25519;
-			break;
-		default:
-			debug_print(" [WARN %s ] Unknown key type %lu", o->id_str, o->key_type);
-			return -1;
-		}
-		ASN1_PRINTABLESTRING_free(curve);
 
 		/* PKCS#11-compliant modules should return ASN1_OCTET_STRING */
 		a = template[7].pValue;

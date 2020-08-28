@@ -4253,7 +4253,7 @@ pkcs15_prkey_unwrap(struct sc_pkcs11_session *session, void *obj,
 	struct	pkcs15_fw_data *fw_data = NULL;
 	struct	pkcs15_prkey_object *prkey = (struct pkcs15_prkey_object *) obj;
 	struct	pkcs15_any_object *targetKeyObj = (struct pkcs15_any_object *) targetKey;
-	int	rv;	
+	int	rv;
 
 	sc_log(context, "Initiating unwrapping with private key.");
 
@@ -5541,8 +5541,9 @@ static CK_RV
 get_ec_pubkey_params(struct sc_pkcs15_pubkey *key, CK_ATTRIBUTE_PTR attr)
 {
 	struct sc_ec_parameters *ecp;
-	unsigned long expected_size = 0;
-	char *curve_name = NULL;
+	unsigned long value_len = 0;
+	unsigned char *value = NULL;
+
 	int r;
 
 	if (key == NULL)
@@ -5553,26 +5554,23 @@ get_ec_pubkey_params(struct sc_pkcs15_pubkey *key, CK_ATTRIBUTE_PTR attr)
 	switch (key->algorithm) {
 	case SC_ALGORITHM_EDDSA:
 	case SC_ALGORITHM_XEDDSA:
-		/* TODO key->alg_id->oid contains OID which we need to convert to curve name */
-		/* For now, using hardcoded curve names */
-		if (key->algorithm == SC_ALGORITHM_EDDSA) {
-			curve_name = "edwards25519";
-		} else if (key->algorithm == SC_ALGORITHM_XEDDSA) {
-			curve_name = "curve25519";
-		} else {
-			return CKR_GENERAL_ERROR;
-		}
-		r = sc_asn1_put_tag(0x13, (u8 *)curve_name, strlen(curve_name), NULL, 0, NULL);
-		if (r <= 0) {
-			return CKR_GENERAL_ERROR;
-		}
-		expected_size = r;
-		check_attribute_buffer(attr, expected_size);
-		/* Tag PrintableString */
-		r = sc_asn1_put_tag(0x13, (u8 *)curve_name, strlen(curve_name), attr->pValue, expected_size, NULL);
+		r = sc_encode_oid(context, &key->alg_id->oid, &value, (size_t *)&value_len);
 		if (r != SC_SUCCESS) {
 			return sc_to_cryptoki_error(r, NULL);
 		}
+
+		attr->ulValueLen = value_len;
+		if (attr->pValue == NULL_PTR) {
+			free(value);
+			return CKR_OK;
+		}
+		if (attr->ulValueLen < value_len) {
+			free(value);
+			return CKR_BUFFER_TOO_SMALL;
+		}
+
+		memcpy(attr->pValue, value, value_len);
+		free(value);
 		return CKR_OK;
 
 	case SC_ALGORITHM_EC:

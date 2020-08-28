@@ -59,6 +59,7 @@
 #include "pkcs11/pkcs11.h"
 #include "pkcs11/pkcs11-opensc.h"
 #include "libopensc/asn1.h"
+#include "libopensc/log.h"
 #include "common/compat_strlcat.h"
 #include "common/compat_strlcpy.h"
 #include "common/libpkcs11.h"
@@ -4199,10 +4200,23 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 			bytes = getEC_PARAMS(sess, obj, &size);
 			if (bytes){
 				if ((CK_LONG)size > 0) {
+					struct sc_object_id oid;
+
 					printf("  EC_PARAMS:  ");
 					for (n = 0; n < size; n++)
 						printf("%02x", bytes[n]);
+
+					sc_init_oid(&oid);
+					if (size > 2 && sc_asn1_decode_object_id(bytes + 2, size - 2, &oid) == SC_SUCCESS) {
+						printf(" (OID %i", oid.value[0]);
+						if (oid.value[0] >= 0)
+							for (n = 1; (n < SC_MAX_OBJECT_ID_OCTETS)
+									&& (oid.value[n] >= 0); n++)
+								printf(".%i", oid.value[n]);
+						printf(")");
+					}
 					printf("\n");
+
 				}
 				free(bytes);
 			}
@@ -4768,13 +4782,28 @@ static int read_object(CK_SESSION_HANDLE session)
 		} else if (type == CKK_EC_EDWARDS) {
 			EVP_PKEY *key = NULL;
 			CK_BYTE *params = NULL;
-			ASN1_PRINTABLESTRING *curve = NULL;
 			const unsigned char *a;
 			ASN1_OCTET_STRING *os;
 
 			if ((params = getEC_PARAMS(session, obj, &len))) {
+				ASN1_PRINTABLESTRING *curve = NULL;
+				ASN1_OBJECT *obj = NULL;
+
 				a = params;
-				if (!d2i_ASN1_PRINTABLESTRING(&curve, &a, (long)len)) {
+				if (d2i_ASN1_PRINTABLESTRING(&curve, &a, (long)len) != NULL) {
+					if (strcmp((char *)curve->data, "edwards25519")) {
+						util_fatal("Unknown curve name, expected edwards25519, got %s",
+							curve->data);
+					}
+					ASN1_PRINTABLESTRING_free(curve);
+				} else if (d2i_ASN1_OBJECT(&obj, &a, (long)len) != NULL) {
+					int nid = OBJ_obj2nid(obj);
+					if (nid != NID_ED25519) {
+						util_fatal("Unknown curve OID, expected NID_ED25519 (%d), got %d",
+							NID_ED25519, nid);
+					}
+					ASN1_OBJECT_free(obj);
+				} else {
 					util_fatal("cannot parse curve name from EC_PARAMS");
 				}
 				free(params);
@@ -4782,11 +4811,6 @@ static int read_object(CK_SESSION_HANDLE session)
 				util_fatal("cannot obtain EC_PARAMS");
 			}
 
-			if (strcmp((char *)curve->data, "edwards25519")) {
-				util_fatal("Unknown curve name, expeced edwards25519, got %s",
-					curve->data);
-			}
-			ASN1_PRINTABLESTRING_free(curve);
 
 			value = getEC_POINT(session, obj, &len);
 			/* PKCS#11-compliant modules should return ASN1_OCTET_STRING */
