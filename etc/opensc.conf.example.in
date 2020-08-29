@@ -174,7 +174,7 @@ app default {
 		# QES is only possible with a Comfort Reader (CAT-K), which holds a
 		# cryptographic key to authenticate itself as signature terminal (ST).
 		# We usually will use the reader's capability to sign the data.
-		# However, during developement you may specify soft certificates and
+		# However, during develpement you may specify soft certificates and
 		# keys for a ST below.
 		# The following example EAC PKI can be found in vicc's example data:
 		# https://github.com/frankmorgner/vsmartcard/tree/master/virtualsmartcard/npa-example-data
