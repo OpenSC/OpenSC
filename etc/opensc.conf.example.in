@@ -1084,7 +1084,7 @@ app opensc-pkcs11 {
 		# Card can contain more then one PINs or more then one on-card application with
 		#   its own PINs. Normally, to access all of them with the PKCS#11 API a slot has to be
 		#   created for all of them. Many slots could be ennoying for some of widely used application,
-		#   like FireFox. This configuration parameter allows to select the PIN(s)
+		#   like FireFox. This configuration parameter allows one to select the PIN(s)
 		#   for which PKCS#11 slot will be created.
 		# Actually recognised following symbolic names:
 		#  'user', 'sign', 'all'
