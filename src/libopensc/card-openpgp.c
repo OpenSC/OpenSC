@@ -2250,7 +2250,7 @@ pgp_update_new_algo_attr(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_
 
 			data[0] = key_info->algorithm;
 			ushort2bebytes(data+1, key_info->u.rsa.modulus_len);
-			/* OpenPGP Card only accepts 32bit as exponent lenght field,
+			/* OpenPGP Card only accepts 32bit as exponent length field,
 			 * although you can import keys with smaller exponent;
 			 * thus we don't change rsa.exponent_len, but ignore it here */
 			ushort2bebytes(data+3, SC_OPENPGP_MAX_EXP_BITS);

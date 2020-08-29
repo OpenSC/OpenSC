@@ -168,7 +168,7 @@ soc_info(sc_context_t *ctx, sc_card_t *card)
                     }
                     putchar('\t');
                     util_hex_dump(stdout, p, length, "");
-                    /* align with the maximum lenght of an AID */
+                    /* align with the maximum length of an AID */
                     for (i = length; i < 0x10 + 1; i++)
                         printf("  ");
 
