@@ -210,7 +210,7 @@ static int load_cert(const char * cert_id, const char * cert_file,
 	} else {
 		cert = PEM_read_X509(fp, &cert, NULL, NULL);
     	if(cert == NULL){
-        	printf("file %s does not conatin PEM-encoded certificate\n",
+        	printf("file %s does not contain PEM-encoded certificate\n",
 				 cert_file);
         	goto err;
     	}

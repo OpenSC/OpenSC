@@ -370,7 +370,7 @@ static void handle_writecert(sc_card_t *card, int cert, char *file)
 	c=PEM_read_X509(fp,NULL,NULL,NULL);
 	fclose(fp);
 	if(c==NULL){
-		printf("file does not conatin PEM-encoded certificate\n");
+		printf("file does not contain PEM-encoded certificate\n");
 		return;
 	}
 	printf("OK\nStoring Cert into Card-Certificate %d: ", cert); fflush(stdout);
