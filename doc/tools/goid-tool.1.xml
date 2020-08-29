@@ -55,7 +55,7 @@
 					<listitem><para>
 						Specify the number of the reader to use. By default, the
 						first reader with present card is used. If
-						the arguement is an ATR, the reader with a
+						the argument is an ATR, the reader with a
 						matching card will be chosen.
 					</para></listitem>
 				</varlistentry>
