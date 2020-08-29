@@ -136,7 +136,7 @@ static int sc_pkcs15emu_westcos_init(sc_pkcs15_card_t * p15card)
 		if (!r) {
 			sc_pkcs15_cert_t *cert =
 			    (sc_pkcs15_cert_t *) (cert_obj.data);
-			strlcpy(cert_obj.label, "User certificat",
+			strlcpy(cert_obj.label, "User certificate",
 				sizeof(cert_obj.label));
 			cert_obj.flags = SC_PKCS15_CO_FLAG_MODIFIABLE;
 			r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj,
