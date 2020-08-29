@@ -77,7 +77,7 @@ size_t sc_apdu_get_length(const sc_apdu_t *apdu, unsigned int proto)
  *  @param  apdu    APDU to be encoded as an octet string
  *  @param  proto   protocol version to be used
  *  @param  out     output buffer of size outlen.
- *  @param  outlen  size of hte output buffer
+ *  @param  outlen  size of the output buffer
  *  @return SC_SUCCESS on success and an error code otherwise
  */
 int sc_apdu2bytes(sc_context_t *ctx, const sc_apdu_t *apdu,

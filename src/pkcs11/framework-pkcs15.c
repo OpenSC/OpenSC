@@ -1116,7 +1116,7 @@ pkcs15_init_slot(struct sc_pkcs15_card *p15card, struct sc_pkcs11_slot *slot,
 				if (p15card->tokeninfo)
 					tokeninfo_len = strlen(p15card->tokeninfo->label);
 				/* Print the possibly truncated token label with at least 4
-				 * characters followed by the PIN label in paranthesis */
+				 * characters followed by the PIN label in parenthesis */
 				if (tokeninfo_len == 0
 						|| pin_len + strlen("L... ()") > 32) {
 					/* There is no token label or it doesn't fit,
@@ -3011,7 +3011,7 @@ pkcs15_gen_keypair(struct sc_pkcs11_slot *slot, CK_MECHANISM_PTR pMechanism,
 	CK_RV rv = CKR_OK;
 	CK_BBOOL always_auth = CK_FALSE;
 
-	sc_log(context, "Keypair generation, mech = 0x%0lx",
+	sc_log(context, "Key pair generation, mech = 0x%0lx",
 		   pMechanism->mechanism);
 
 	if (pMechanism->mechanism != CKM_RSA_PKCS_KEY_PAIR_GEN
@@ -3984,9 +3984,9 @@ pkcs15_prkey_sign(struct sc_pkcs11_session *session, void *obj,
 		break;
 	case CKM_RSA_PKCS_PSS:
 		flags = SC_ALGORITHM_RSA_PAD_PSS;
-		/* The hash was done ouside of the module */
+		/* The hash was done outside of the module */
 		flags |= SC_ALGORITHM_RSA_HASH_NONE;
-		/* Omited parameter can use MGF1-SHA1 ? */
+		/* Omitted parameter can use MGF1-SHA1 ? */
 		if (pMechanism->pParameter == NULL) {
 			flags |= SC_ALGORITHM_MGF1_SHA1;
 			if (ulDataLen != SHA_DIGEST_LENGTH)
@@ -4013,7 +4013,7 @@ pkcs15_prkey_sign(struct sc_pkcs11_session *session, void *obj,
 	case CKM_SHA384_RSA_PKCS_PSS:
 	case CKM_SHA512_RSA_PKCS_PSS:
 		flags = SC_ALGORITHM_RSA_PAD_PSS;
-		/* Omited parameter can use MGF1-SHA1 and SHA1 hash ? */
+		/* Omitted parameter can use MGF1-SHA1 and SHA1 hash ? */
 		if (pMechanism->pParameter == NULL) {
 			flags |= SC_ALGORITHM_RSA_HASH_SHA1;
 			flags |= SC_ALGORITHM_MGF1_SHA1;
@@ -4207,7 +4207,7 @@ pkcs15_prkey_decrypt(struct sc_pkcs11_session *session, void *obj,
 	case CKM_RSA_PKCS_OAEP:
 		flags |= SC_ALGORITHM_RSA_PAD_OAEP;
 
-		/* Omited parameter can use MGF1-SHA1 and SHA1 hash ? */
+		/* Omitted parameter can use MGF1-SHA1 and SHA1 hash ? */
 		if (pMechanism->pParameter == NULL) {
 			flags |= SC_ALGORITHM_RSA_HASH_SHA1;
 			flags |= SC_ALGORITHM_MGF1_SHA1;

@@ -994,7 +994,7 @@ isoApplet_ctl_import_key(sc_card_t *card, sc_cardctl_isoApplet_import_key_t *arg
 	 *
 	 * The first step is to perform a MANAGE SECURITY ENVIRONMENT as it would be done
 	 * with on-card key generation. The second step is PUT DATA (instead of
-	 * GENERATE ASYMMETRIC KEYPAIR).
+	 * GENERATE ASYMMETRIC KEY PAIR).
 	 */
 
 	/* MANAGE SECURITY ENVIRONMENT (SET). Set the algorithm and key references. */

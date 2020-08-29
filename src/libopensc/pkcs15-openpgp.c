@@ -259,7 +259,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 		return SC_ERROR_OBJECT_NOT_VALID;
 	}
 
-	/* XXX: check if "halfkeys" can be stored with gpg2. If not, add keypairs in one loop */
+	/* XXX: check if "halfkeys" can be stored with gpg2. If not, add key pairs in one loop */
 	for (i = 0; i < 3; i++) {
 		sc_pkcs15_prkey_info_t prkey_info;
 		sc_pkcs15_object_t     prkey_obj;

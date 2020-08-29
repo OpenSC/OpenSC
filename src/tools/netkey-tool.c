@@ -162,18 +162,18 @@ static void show_initial_puk(sc_card_t *card)
 	u8 buf1[128], buf2[128];
 	int i;
 
-	printf("\nReading crypted Initial-PUK-file: ");
+	printf("\nReading encrypted Initial-PUK-file: ");
 	sc_format_path("3F004350",&p);
 	if((i=sc_select_file(card,&p,&f))<0){
-		printf("Cannot select crypted Initial-PUK-file, %s\n", sc_strerror(i));
+		printf("Cannot select encrypted Initial-PUK-file, %s\n", sc_strerror(i));
 		return;
 	}
 	if((i=sc_read_binary(card,0,buf1,128,0))!=128){
-		printf("Cannot read crypted Initial-PUK-file, %s\n", sc_strerror(i));
+		printf("Cannot read encrypted Initial-PUK-file, %s\n", sc_strerror(i));
 		return;
 	}
 
-	printf("OK\nDecrypting crypted Initial-PUK-file: ");
+	printf("OK\nDecrypting encrypted Initial-PUK-file: ");
 	sc_format_path("3F00DF01",&p);
 	if((i=sc_select_file(card,&p,&f))<0){
 		printf("Cannot select DF01, %s\n", sc_strerror(i));

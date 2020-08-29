@@ -322,14 +322,14 @@ int sc_connect_card(sc_reader_t *reader, sc_card_t **card_out)
 		sc_card_t uninitialized = *card;
 		sc_log(ctx, "matching built-in ATRs");
 		for (i = 0; ctx->card_drivers[i] != NULL; i++) {
-			/* FIXME If we had a clean API description, we'd propably get a
+			/* FIXME If we had a clean API description, we'd probably get a
 			 * cleaner implementation of the driver's match_card and init,
 			 * which should normally *not* modify the card object if
 			 * unsuccessful. However, after years of relentless hacking, reality
 			 * is different: The card object is changed in virtually every card
 			 * driver so in order to prevent unwanted interaction, we reset the
 			 * card object here and hope that the card driver at least doesn't
-			 * allocate any internal ressources that need to be freed. If we
+			 * allocate any internal resources that need to be freed. If we
 			 * had more time, we should refactor the existing code to not
 			 * modify sc_card_t until complete success (possibly by combining
 			 * `match_card()` and `init()`) */

@@ -174,7 +174,7 @@ app default {
 		# QES is only possible with a Comfort Reader (CAT-K), which holds a
 		# cryptographic key to authenticate itself as signature terminal (ST).
 		# We usually will use the reader's capability to sign the data.
-		# However, during develpement you may specify soft certificates and
+		# However, during development you may specify soft certificates and
 		# keys for a ST below.
 		# The following example EAC PKI can be found in vicc's example data:
 		# https://github.com/frankmorgner/vsmartcard/tree/master/virtualsmartcard/npa-example-data
@@ -1065,7 +1065,7 @@ app opensc-pkcs11 {
 		#    init_pin_in_so_session:  C_InitPIN() in CKU_SO logged session:
 		#       User PIN 'UNBLOCK' is protected by SOPIN. (PUK == SOPIN).
 		#       # Actually this style works only for the PKCS15 contents without SOPIN.
-		#       # For those with SOPIN, this mode will be usefull for the cards without
+		#       # For those with SOPIN, this mode will be useful for the cards without
 		#       #   modes 00 and 01 of ISO command 'RESET RETRY COUNTER'. --vt
 		#
 		# Default: none

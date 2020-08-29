@@ -871,7 +871,7 @@ static int cac_parse_properties_object(sc_card_t *card, u8 type,
 	if (data_len < 11)
 		return -1;
 
-	/* Initilize: non-PKI applet */
+	/* Initialize: non-PKI applet */
 	object->privatekey = 0;
 
 	val = data;
@@ -1299,7 +1299,7 @@ static int cac_parse_aid(sc_card_t *card, cac_private_data_t *priv, const u8 *ai
 	memcpy(new_object.path.aid.value, aid, aid_len);
 	new_object.path.aid.len = aid_len;
 
-	/* Call without OID set will just select the AID without subseqent
+	/* Call without OID set will just select the AID without subsequent
 	 * OID selection, which we need to figure out just now
 	 */
 	cac_select_file_by_type(card, &new_object.path, NULL);

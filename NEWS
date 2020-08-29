@@ -385,7 +385,7 @@ New separate CAC1 driver using the old CAC specification (#1502)
     * Fixed --id for `C_GenerateKey`, DES and DES3 keygen mechanism (#857)
     * Added `--derive-pass-der` option
     * Added `--generate-random` option
-    * Add GOSTR3410 keypair generation
+    * Add GOSTR3410 key pair generation
 * `npa-tool` (new)
     * Allows read/write access to EAC tokens
     * Allows PIN management for EAC tokens
@@ -513,7 +513,7 @@ New in 0.15.0; 2015-05-11
   allow extended length APDUs
   accept no output for 'SELECT' MF and 'SELECT' DF_NAME APDUs
   fixed sc_driver_version check
-  adjusted send/receive size accoriding to card capabilities
+  adjusted send/receive size according to card capabilities
   in iso7816 make SELECT agnosting to sc_path_t's aid
 * asn1
   support multi-bytes tags

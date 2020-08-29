@@ -12,7 +12,7 @@ nodist_noinst_DATA = opensc.conf.example
 
 # Make sure we build this every time
 # as there is no dependency for this.
-# Can be removed if MSVC is not requried.
+# Can be removed if MSVC is not required.
 force:
 opensc.conf.example: opensc.conf.example.in force
 

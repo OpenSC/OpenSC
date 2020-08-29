@@ -1197,7 +1197,7 @@ static int do_pininfo(int argc, char **argv)
 			break;
 		case SC_PIN_STATE_UNKNOWN:
 		default:
-			printf("Login status unkwown.\n");
+			printf("Login status unknown.\n");
 	}
 	if (tries_left >= 0)
 		printf("%d tries left.\n", tries_left);

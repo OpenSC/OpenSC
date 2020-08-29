@@ -142,7 +142,7 @@ DWORD WINAPI ThreadProc(_In_ LPVOID lpParameter)
 	return 0;
 }
 
-/* This application shall be executable without a console.  Therefor we're
+/* This application shall be executable without a console.  Therefore we're
  * creating a windows application that requires `WinMain()` rather than
  * `main()` as entry point. As benefit, we can properly handle `WM_CLOSE`. */
 int WINAPI

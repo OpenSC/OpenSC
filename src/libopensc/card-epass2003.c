@@ -2436,7 +2436,7 @@ epass2003_gen_key(struct sc_card *card, sc_epass2003_gen_key_data * data)
 	r = sc_transmit_apdu_t(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	LOG_TEST_RET(card->ctx, r, "generate keypair failed");
+	LOG_TEST_RET(card->ctx, r, "generate key pair failed");
 
 	/* read public key */
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xb4, 0x02, 0x00);

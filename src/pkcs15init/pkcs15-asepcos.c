@@ -226,7 +226,7 @@ static int asepcos_do_store_pin(sc_profile_t *profile, sc_card_t *card,
 	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
 		return SC_ERROR_OBJECT_NOT_VALID;
 
-	/* outter tag */
+	/* outer tag */
 	*p++ = 0x85;
 	p++;
 	/* as a file id for pin with use 0x00:<key id> */

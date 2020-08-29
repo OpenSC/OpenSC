@@ -689,7 +689,7 @@ int pss_sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 }
 
 /* ignore the prefilled mechanisms and list all combinations of mechanisms
- * found, all resonable hash functions, MGFs and salt lengths
+ * found, all reasonable hash functions, MGFs and salt lengths
  */
 void fill_object_pss_mechanisms(token_info_t *info, test_cert_t *o)
 {

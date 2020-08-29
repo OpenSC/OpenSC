@@ -2193,7 +2193,7 @@ static int piv_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 		LOG_TEST_GOTO_ERR(card->ctx, r, "No support for random data");
 	}
 
-	/* NIST 800-73-3 says use 9B, previous verisons used 00 */
+	/* NIST 800-73-3 says use 9B, previous versions used 00 */
 	r = piv_general_io(card, 0x87, 0x00, 0x9B, sbuf, sizeof sbuf, rbuf, sizeof rbuf);
 	/*
 	 * piv_get_challenge is called in a loop.
@@ -2619,7 +2619,7 @@ err:
 
 /*
  * parse a CCC to test  if this is a Dual CAC/PIV
- * We read teh CCC using the PIV API.
+ * We read the CCC using the PIV API.
  * Look for CAC RID=A0 00 00 00 79
  */
  static int piv_parse_ccc(sc_card_t *card, u8* rbuf, size_t rbuflen)
@@ -3161,7 +3161,7 @@ static int piv_match_card_continued(sc_card_t *card)
 	 * Discovery Object introduced in 800-73-3 so will return 0 if found and PIV applet active.
 	 * Will fail with SC_ERROR_FILE_NOT_FOUND if 800-73-3 and no Discovery object.
 	 * But some other card could also return SC_ERROR_FILE_NOT_FOUND.
-	 * Will fail for other reasons if wrong applet is selected, or bad PIV implimentation. 
+	 * Will fail for other reasons if wrong applet is selected, or bad PIV implementation.
 	 */
 	
 	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d CI:%08x r:%d\n", card->type,  priv->card_issues, r);
@@ -3753,7 +3753,7 @@ static int piv_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 			r = piv_select_aid(card, piv_aids[0].value, piv_aids[0].len_short, temp, &templen);
 			sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH piv_select_aid card->type:%d r:%d\n", card->type, r);
 		} else {
-			r = 0; /* cant do anything with this card, hope there was no interference */
+			r = 0; /* can't do anything with this card, hope there was no interference */
 		}
 	}
 

@@ -1393,7 +1393,7 @@ static int entersafe_gen_key(sc_card_t *card, sc_entersafe_gen_key_data *data)
 
 	r = entersafe_transmit_apdu(card, &apdu,0,0,0,0);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
-	LOG_TEST_RET(card->ctx, sc_check_sw(card,apdu.sw1,apdu.sw2),"EnterSafe generate keypair failed");
+	LOG_TEST_RET(card->ctx, sc_check_sw(card,apdu.sw1,apdu.sw2),"EnterSafe generate key pair failed");
 
 	/* read public key via READ PUBLIC KEY */
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xE6,  0x2A, data->key_id);

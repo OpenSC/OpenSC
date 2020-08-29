@@ -77,7 +77,7 @@ static int cardos_fix_token_info(sc_pkcs15_card_t *p15card)
 					&& sa->operations == 0 && sa->algo_ref == 0)
 				break;
 
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "supported_algos[%d] mechamism:0x%8.8x", i, sa->mechanism);
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "supported_algos[%d] mechanism:0x%8.8x", i, sa->mechanism);
 			switch(sa->mechanism) {
 			case 0x01 :
 				/*
@@ -88,7 +88,7 @@ static int cardos_fix_token_info(sc_pkcs15_card_t *p15card)
 				 * correct the mechanism in tokenInfo
 				 */
 				if (sa->reference & 0x10) {
-					sc_log(card->ctx, "Changeing mechanism to CKM_RSA_X_509 based on reference");
+					sc_log(card->ctx, "Changing mechanism to CKM_RSA_X_509 based on reference");
 					passed->new_flags |= SC_ALGORITHM_RSA_RAW
 						| SC_ALGORITHM_RSA_PAD_NONE;
 					sa->mechanism = 0x03;

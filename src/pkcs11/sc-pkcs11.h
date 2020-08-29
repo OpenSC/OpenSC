@@ -227,7 +227,7 @@ struct sc_pkcs11_slot {
 typedef struct sc_pkcs11_slot sc_pkcs11_slot_t;
 
 /* Debug virtual slots. S is slot to be highlighted or NULL
- * C is a comment format string and args It will be preceeded by "VSS " */
+ * C is a comment format string and args It will be preceded by "VSS " */
 #define DEBUG_VSS(S, ...) do { sc_log(context,"VSS " __VA_ARGS__); _debug_virtual_slots(S); } while (0)
 
 /* called by DEBUG_VSS to print table of virtual slots */
