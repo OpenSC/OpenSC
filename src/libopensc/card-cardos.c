@@ -332,7 +332,7 @@ static int cardos_init(sc_card_t *card)
 			 * Most, if not all, cardos cards do extended, but not chaining 
 			 */
 			if (card->reader->max_send_size == 255 && card->reader->max_recv_size == 256) {
-				sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "reseting reader to use data_field_length");
+				sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "resetting reader to use data_field_length");
 				card->reader->max_send_size = data_field_length - 6;
 				card->reader->max_recv_size = data_field_length - 3;
 			}
@@ -628,7 +628,7 @@ static const int ef_acl[9] = {
 	/* XXX: ADMIN should be an ACL type of its own, or mapped
 	 * to erase */
 	SC_AC_OP_UPDATE,	/* ADMIN EF (modify meta information?) */
-	-1,			/* INC (-> cylic fixed files) */
+	-1,			/* INC (-> cyclic fixed files) */
 	-1			/* DEC */
 };
 
@@ -1216,7 +1216,7 @@ cardos_decipher(struct sc_card *card,
 		r = iso_ops->decipher(card, crgram, crgram_len, out, outlen);
 		/*
 		 * 5.3 supports RAW as well as PKCS1 and PSS
-		 * decription may strip padding if card supports it
+		 * description may strip padding if card supports it
 		 * with cards that support RAW, it always appears to 
 		 * drop first 00 that is start of padding.
 		 */

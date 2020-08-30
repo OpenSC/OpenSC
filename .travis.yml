@@ -35,7 +35,7 @@ matrix:
 
 env:
   global:
-    # The next declaration are encrypted envirnmet variables, created via the
+    # The next declaration are encrypted environment variables, created via the
     # "travis encrypt" command using the project repo's public key
     # COVERITY_SCAN_TOKEN
     - secure: "UkHn7wy4im8V1nebCWbAetnDSOLRUbOlF6++ovk/7Bnso1/lnhXHelyzgRxfD/oI68wm9nnRV+RQEZ9+72Ug1CyvHxyyxxkwal/tPeHH4B/L+aGdPi0id+5OZSKIm77VP3m5s102sJMJgH7DFd03+nUd0K26p0tk8ad4j1geV4c="
@@ -128,7 +128,7 @@ before_script:
       ./configure --host=$HOST --with-completiondir=/tmp --disable-openssl --disable-readline --disable-zlib --disable-notify --prefix=${TRAVIS_BUILD_DIR}/win32/opensc || cat config.log;
     fi
   # Optionally try to upload to Coverity Scan
-  # On error (propably quota is exhausted), just continue
+  # On error (probably quota is exhausted), just continue
   - if [ "${DO_COVERITY_SCAN}" = "yes" ]; then curl -s 'https://scan.coverity.com/scripts/travisci_build_coverity_scan.sh' | bash || true; fi
 
   - if [ "${DO_SIMULATION}" = "javacard" ]; then

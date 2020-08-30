@@ -614,7 +614,7 @@ static int list_algorithms(void)
 			if (card->algorithms[i].flags & alg_flag_names[j].id)
 				printf(" %s", alg_flag_names[j].str);
 
-		/* print RSA spcific flags */
+		/* print RSA specific flags */
 		if ( card->algorithms[i].algorithm == SC_ALGORITHM_RSA) {
 			int padding = card->algorithms[i].flags
 					& SC_ALGORITHM_RSA_PADS;

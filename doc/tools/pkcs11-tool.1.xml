@@ -273,7 +273,7 @@
 						<option>--moz-cert</option> <replaceable>filename</replaceable>,
 						<option>-z</option> <replaceable>filename</replaceable>
 					</term>
-					<listitem><para>Test a Mozilla-like keypair generation
+					<listitem><para>Test a Mozilla-like key pair generation
 					and certificate request. Specify the <replaceable>filename</replaceable>
 					to the certificate file.</para></listitem>
 				</varlistentry>

@@ -463,7 +463,7 @@ setcos_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	r = sc_card_ctl(p15card->card, SC_CARDCTL_SETCOS_GENERATE_STORE_KEY, &args);
 	LOG_TEST_RET(ctx, r, "Card control 'GENERATE_STORE_KEY' failed");
 
-	/* Keypair generation -> collect public key info */
+	/* Key pair generation -> collect public key info */
 	if (pubkey != NULL) {
 		pubkey->algorithm		= SC_ALGORITHM_RSA;
 		pubkey->u.rsa.modulus.len	= (keybits + 7) / 8;

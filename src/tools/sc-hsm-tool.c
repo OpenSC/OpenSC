@@ -1425,7 +1425,7 @@ static int wrap_key(sc_context_t *ctx, sc_card_t *card, int keyid, const char *o
 		ptr += ef_cert_len;
 	}
 
-	// Encode key, key decription and certificate object in sequence
+	// Encode key, key description and certificate object in sequence
 	r = wrap_with_tag(0x30, keyblob, ptr - keyblob, &key, &key_len);
 	LOG_TEST_RET(ctx, r, "Out of memory");
 

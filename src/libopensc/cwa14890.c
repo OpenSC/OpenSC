@@ -57,7 +57,7 @@
  */
 typedef struct cwa_tlv_st {
         u8 *buf;                /** local copy of TLV byte array */
-        size_t buflen;          /** lengt of buffer */
+        size_t buflen;          /** length of buffer */
         unsigned int tag;       /** tag ID */
         size_t len;             /** length of data field */
         u8 *data;               /** pointer to start of data in buf buffer */

@@ -83,7 +83,7 @@ main (int argc, char **argv)
 	EAC_init();
 
 
-	/* Now we try to change the PIN. Therefor we need to establish a SM channel
+	/* Now we try to change the PIN. Therefore we need to establish a SM channel
 	 * with PACE.
 	 *
 	 * You could set your PIN with pin=“123456”; or just leave it at NULL to be

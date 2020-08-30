@@ -119,7 +119,7 @@ static void read_dg(sc_card_t *card, unsigned char sfid, const char *dg_str,
 {
 	int r = iso7816_read_binary_sfid(card, sfid, dg, dg_len);
 	if (r < 0)
-		fprintf(stderr, "Coult not read DG %02u %s (%s)\n",
+		fprintf(stderr, "Could not read DG %02u %s (%s)\n",
 				sfid, dg_str, sc_strerror(r));
 	else {
 		char buf[0x200];
@@ -161,7 +161,7 @@ static void verify(sc_card_t *card, const char *verify_str,
 
 	r = sc_transmit_apdu(card, &apdu);
 	if (r < 0)
-		fprintf(stderr, "Coult not verify %s (%s)\n",
+		fprintf(stderr, "Could not verify %s (%s)\n",
 				verify_str, sc_strerror(r));
 	else
 		printf("Verified %s\n", verify_str);

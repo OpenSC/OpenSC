@@ -382,7 +382,7 @@ static int entersafe_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 			  r = SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
 	}
 	sc_file_free(tfile);
-	LOG_TEST_RET(card->ctx, r, "cant verify pin");
+	LOG_TEST_RET(card->ctx, r, "can't verify pin");
 
 	data.key_id = (u8) kinfo->key_reference;
 	data.usage=0x22;
@@ -432,7 +432,7 @@ static int entersafe_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15ca
 			  r = SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
 	}
 	sc_file_free(tfile);
-	LOG_TEST_RET(card->ctx, r, "cant verify pin");
+	LOG_TEST_RET(card->ctx, r, "can't verify pin");
 
 	/* generate key pair */
 	gendat.key_id     = (u8) kinfo->key_reference;

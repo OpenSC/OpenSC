@@ -4759,7 +4759,7 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 	if (0 == (CARD_PADDING_INFO_PRESENT & pInfo->dwSigningFlags))   {
 		/* When CARD_PADDING_INFO_PRESENT is not set in dwSigningFlags, this is
 		 * the basic version of the signing structure. (If this is not the
-		 * basic verison of the signing structure, the minidriver should return
+		 * basic version of the signing structure, the minidriver should return
 		 * ERROR_REVISION_MISMATCH.) The minidriver should only do PKCS1
 		 * padding and use the value in aiHashAlg. */
 		logprintf(pCardData, 3, "CARD_PADDING_INFO_PRESENT not set\n");

@@ -284,7 +284,7 @@ static const int ef_acl[9] = {
 	/* XXX: ADMIN should be an ACL type of its own, or mapped
 	 * to erase */
 	-1,			/* ADMIN EF (modify meta information?) */
-	-1,			/* INC (-> cylic fixed files) */
+	-1,			/* INC (-> cyclic fixed files) */
 	-1			/* DEC */
 };
 

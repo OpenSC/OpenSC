@@ -61,7 +61,7 @@
 TORTURE_OID(small, "\x01\x02\x03\x04\x05\x06", 0, 1, 2, 3, 4, 5, 6, -1)
 /* Limit what we can fit into the first byte */
 TORTURE_OID(limit, "\x7F", 2, 47, -1)
-/* The second octet already oveflows to the second byte */
+/* The second octet already overflows to the second byte */
 TORTURE_OID(two_byte, "\x81\x00", 2, 48, -1)
 /* Existing OID ec publickey */
 TORTURE_OID(ecpubkey, "\x2A\x86\x48\xCE\x3D\x02\x01", 1, 2, 840, 10045, 2, 1, -1)
@@ -503,7 +503,7 @@ static void torture_asn1_put_tag_long_tag(void **state)
 	rv = sc_asn1_put_tag(tag, data, data_len, NULL, 0, NULL);
 	assert_int_equal(rv, SC_ERROR_INVALID_DATA);
 
-	/* Fisrt byte has bits 5-1 set to 1 */
+	/* First byte has bits 5-1 set to 1 */
 	tag = 0xE0FFFF7F;
 	rv = sc_asn1_put_tag(tag, data, data_len, NULL, 0, NULL);
 	assert_int_equal(rv, SC_ERROR_INVALID_DATA);

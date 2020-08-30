@@ -694,7 +694,7 @@ static int pcsc_lock(sc_reader_t *reader)
 
 	switch (rv) {
 		case SCARD_E_INVALID_VALUE:
-			/* This is retuned in case of the same reader was re-attached */
+			/* This is returned in case of the same reader was re-attached */
 		case SCARD_E_INVALID_HANDLE:
 		case SCARD_E_READER_UNAVAILABLE:
 			r = pcsc_connect(reader);
@@ -1695,7 +1695,7 @@ static int pcsc_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_re
 					/* Windows wants us to manually reset the changed state */
 					rsp->dwEventState &= ~SCARD_STATE_CHANGED;
 
-					/* By default, ignore a hotplug event as if a timout
+					/* By default, ignore a hotplug event as if a timeout
 					 * occurred, since it may be an unrequested removal or
 					 * false alarm. Just continue to loop and check at the end
 					 * of this function whether we need to return the attached

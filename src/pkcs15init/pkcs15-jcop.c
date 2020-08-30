@@ -237,7 +237,7 @@ jcop_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 }
 
 /*
- * Generate a keypair
+ * Generate a key pair
  */
 static int
 jcop_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,

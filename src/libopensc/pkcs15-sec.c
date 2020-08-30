@@ -352,7 +352,7 @@ int sc_pkcs15_derive(struct sc_pkcs15_card *p15card,
  * Unwrap a key into a key object on card.
  * in holds the wrapped key data
  * the target file that target_key points to must be created before calling this function
- * Use pkcs15init to peform the complete unwrapping operation and create the pkcs#15 object for the new key.
+ * Use pkcs15init to perform the complete unwrapping operation and create the pkcs#15 object for the new key.
  */
 int sc_pkcs15_unwrap(struct sc_pkcs15_card *p15card,
 		const struct sc_pkcs15_object *key,

@@ -685,7 +685,7 @@ struct sc_card_operations {
 	int (*update_binary)(struct sc_card *card, unsigned int idx,
 			     const u8 * buf, size_t count, unsigned long flags);
 	/**
-	 * @brief Sets (part of) the content fo an EF to its logical erased state
+	 * @brief Sets (part of) the content of an EF to its logical erased state
 	 *
 	 * Implementation of this call back is optional and may be NULL.
 	 *
@@ -915,7 +915,7 @@ int sc_bytes2apdu(sc_context_t *ctx, const u8 *buf, size_t len, sc_apdu_t *apdu)
  *  @param  apdu    APDU to be encoded as an octet string
  *  @param  proto   protocol version to be used
  *  @param  out     output buffer of size outlen.
- *  @param  outlen  size of hte output buffer
+ *  @param  outlen  size of the output buffer
  *  @return SC_SUCCESS on success and an error code otherwise
  */
 int sc_apdu2bytes(sc_context_t *ctx, const sc_apdu_t *apdu,
@@ -1243,7 +1243,7 @@ int sc_update_binary(struct sc_card *card, unsigned int idx, const u8 * buf,
 		     size_t count, unsigned long flags);
 
 /**
- * Sets (part of) the content fo an EF to its logical erased state
+ * Sets (part of) the content of an EF to its logical erased state
  * @param  card   struct sc_card object on which to issue the command
  * @param  idx    index within the file for the data to be erased
  * @param  count  number of bytes to erase

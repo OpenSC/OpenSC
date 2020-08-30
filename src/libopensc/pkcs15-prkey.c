@@ -760,7 +760,7 @@ sc_pkcs15_convert_prkey(struct sc_pkcs15_prkey *pkcs15_key, void *evp_key)
 		dst->ecpointQ.len = buflen;
 
 		/*
-		 * In OpenSC the field_length is in bits. Not all curves are a mutiple of 8.
+		 * In OpenSC the field_length is in bits. Not all curves are a multiple of 8.
 		 * EC_POINT_point2oct handles this and returns octstrings that can handle
 		 * these curves. Get real field_length from OpenSSL. 
 		 */

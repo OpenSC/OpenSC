@@ -50,7 +50,7 @@ unsigned long pkcs11_derive(test_cert_t *o, token_info_t * info,
 	unsigned char *pub = NULL;
 	size_t pub_len;
 
-	/* Conver the public key to the octet string */
+	/* Convert the public key to the octet string */
 	group = EC_KEY_get0_group(key);
 	publickey = EC_KEY_get0_public_key(key);
 	pub_len = EC_POINT_point2oct(group, publickey,

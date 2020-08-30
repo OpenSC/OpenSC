@@ -300,7 +300,7 @@ static const char *option_help[] = {
 
 	"Test (best used with the --login or --pin option)",
 	"Test hotplug capabilities (C_GetSlotList + C_WaitForSlotEvent)",
-	"Test Mozilla-like keypair gen and cert req, <arg>=certfile",
+	"Test Mozilla-like key pair gen and cert req, <arg>=certfile",
 	"Verbose operation. (Set OPENSC_DEBUG to enable OpenSC specific debugging)",
 	"Set the CKA_PRIVATE attribute (object is only viewable after a login)",
 	"Set the CKA_SENSITIVE attribute (object cannot be revealed in plaintext)",
@@ -2082,7 +2082,7 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	else if (rv == CKR_SIGNATURE_INVALID)
 		printf("Invalid signature\n");
 	else
-		printf("Cryptoki returned erorr: %s\n", CKR2Str(rv));
+		printf("Cryptoki returned error: %s\n", CKR2Str(rv));
 }
 
 

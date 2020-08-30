@@ -506,7 +506,7 @@ int msc_get_challenge(sc_card_t *card, unsigned short dataLength, unsigned short
 int msc_generate_keypair(sc_card_t *card, int privateKey, int publicKey, int algorithm, int keySize, int options)
 {
 	sc_apdu_t apdu;
-	u8 buffer[16]; /* Keypair payload length */
+	u8 buffer[16]; /* Key pair payload length */
 	u8 *ptr = buffer;
 	int r;
 	unsigned short prRead = 0xFFFF, prWrite = 0x0002, prCompute = 0x0002,
