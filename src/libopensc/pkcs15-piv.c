@@ -663,7 +663,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		strncpy(obj_info.app_label, objects[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
 		r = sc_format_oid(&obj_info.app_oid, objects[i].aoid);
 		if (r != SC_SUCCESS)
-			return r;
+			LOG_FUNC_RETURN(card->ctx, r);
 
 		if (objects[i].auth_id)
 			sc_pkcs15_format_id(objects[i].auth_id, &obj_obj.auth_id);
@@ -757,7 +757,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		}
 		/* following will find the cached cert in cert_info */
 		r =  sc_pkcs15_read_certificate(p15card, &cert_info, &cert_out);
-		if (r < 0 || cert_out->key == NULL) {
+		if (r < 0 || cert_out == NULL || cert_out->key == NULL) {
 			sc_log(card->ctx,  "Failed to read/parse the certificate r=%d",r);
 			if (cert_out != NULL)
 				sc_pkcs15_free_certificate(cert_out);
@@ -777,8 +777,9 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 				if (!token_name) {
 					sc_pkcs15_free_certificate(cert_out);
 					free(cn_name);
-					SC_FUNC_RETURN(card->ctx,
-						SC_ERROR_OUT_OF_MEMORY, r);
+					r = SC_ERROR_OUT_OF_MEMORY;
+					LOG_TEST_GOTO_ERR(card->ctx, r,
+						"Failed to allocate memory");
 				}
 				memcpy(token_name, cn_name, cn_len);
 				free(cn_name);
@@ -967,11 +968,8 @@ sc_log(card->ctx,  "DEE Adding pin %d label=%s",i, label);
 		}
 
 		r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
-		if (r < 0)
-			LOG_FUNC_RETURN(card->ctx, r);
+		LOG_TEST_GOTO_ERR(card->ctx, r, "Failed to add PIN");
 	}
-
-
 
 	/* set public keys */
 	/* We may only need this during initialization when genkey
@@ -1043,7 +1041,7 @@ sc_log(card->ctx,  "DEE Adding pin %d label=%s",i, label);
 
 			/* Lets also try another method. */
 			r = sc_pkcs15_encode_pubkey_as_spki(card->ctx, p15_key, &pubkey_info.direct.spki.value, &pubkey_info.direct.spki.len);
-        		LOG_TEST_RET(card->ctx, r, "SPKI encode public key error");
+			LOG_TEST_GOTO_ERR(card->ctx, r, "SPKI encode public key error");
 			
 			/* Only get here if no cert, and the the above found the
 			 * pub key file (actually the SPKI version). This only 
@@ -1077,13 +1075,12 @@ sc_log(card->ctx,  "DEE Adding pin %d label=%s",i, label);
 			p15_key = NULL;
 		}
 		else if (ckis[i].pubkey_from_cert)   {
-			r = sc_pkcs15_encode_pubkey_as_spki(card->ctx, ckis[i].pubkey_from_cert, &pubkey_info.direct.spki.value, &pubkey_info.direct.spki.len);
-			if (r != SC_SUCCESS) {
-				sc_pkcs15_free_pubkey(ckis[i].pubkey_from_cert);
-				LOG_TEST_RET(card->ctx, r, "SPKI encode public key error");
-			}
+			r = sc_pkcs15_encode_pubkey_as_spki(card->ctx, ckis[i].pubkey_from_cert,
+				&pubkey_info.direct.spki.value, &pubkey_info.direct.spki.len);
+			LOG_TEST_GOTO_ERR(card->ctx, r, "SPKI encode public key error");
 
 			pubkey_obj.emulated = ckis[i].pubkey_from_cert;
+			ckis[i].pubkey_from_cert = NULL;
 		}
 
 		sc_log(card->ctx, "adding pubkey for %d keyalg=%d",i, ckis[i].key_alg);
@@ -1097,9 +1094,9 @@ sc_log(card->ctx,  "DEE Adding pin %d label=%s",i, label);
 				pubkey_info.modulus_length = ckis[i].pubkey_len;
 				strncpy(pubkey_obj.label, pubkeys[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
 
+				/* should not fail */
 				r = sc_pkcs15emu_add_rsa_pubkey(p15card, &pubkey_obj, &pubkey_info);
-				if (r < 0)
-					LOG_FUNC_RETURN(card->ctx, r); /* should not fail */
+				LOG_TEST_GOTO_ERR(card->ctx, r, "Failed to add RSA pubkey");
 
 				ckis[i].pubkey_found = 1;
 				break;
@@ -1113,9 +1110,10 @@ sc_log(card->ctx,  "DEE Adding pin %d label=%s",i, label);
 				pubkey_info.field_length = ckis[i].pubkey_len; 
 				strncpy(pubkey_obj.label, pubkeys[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
 
+				/* should not fail */
 				r = sc_pkcs15emu_add_ec_pubkey(p15card, &pubkey_obj, &pubkey_info);
-				if (r < 0) 
-					LOG_FUNC_RETURN(card->ctx, r); /* should not fail */
+				LOG_TEST_GOTO_ERR(card->ctx, r, "Failed to add EC pubkey");
+
 				ckis[i].pubkey_found = 1;
 				break;
 			default:
@@ -1199,13 +1197,17 @@ sc_log(card->ctx,  "DEE Adding pin %d label=%s",i, label);
 				r = 0; /* we just skip this one */
 		}
 		sc_log(card->ctx, "USAGE: cert_keyUsage_present:%d usage:0x%8.8x", ckis[i].cert_keyUsage_present ,prkey_info.usage);
-		if (r < 0)
-			LOG_FUNC_RETURN(card->ctx, r);
+		LOG_TEST_GOTO_ERR(card->ctx, r, "Failed to add Private key");
 	}
 
 	p15card->ops.get_guid = piv_get_guid;
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+err:
+	for (i = 0; i < PIV_NUM_CERTS_AND_KEYS; i++) {
+		sc_pkcs15_free_pubkey(ckis[i].pubkey_from_cert);
+	}
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 int sc_pkcs15emu_piv_init_ex(sc_pkcs15_card_t *p15card,
