@@ -85,6 +85,8 @@ parse_x509_cert(sc_context_t *ctx, struct sc_pkcs15_der *der, struct sc_pkcs15_c
 	const u8 *obj;
 	size_t objlen;
 
+	LOG_FUNC_CALLED(ctx);
+
 	memset(cert, 0, sizeof(*cert));
 	obj = sc_asn1_verify_tag(ctx, buf, buflen, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, &objlen);
 	if (obj == NULL)
@@ -131,7 +133,7 @@ err:
 	free(subject);
 	free(issuer);
 
-	return r;
+	LOG_FUNC_RETURN(ctx, r);
 }
 
 
