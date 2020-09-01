@@ -764,8 +764,12 @@ authentic_select_file(struct sc_card *card, const struct sc_path *path,
 		memmove(&lpath.value[0], &lpath.value[2], lpath.len - 2);
 		lpath.len -=  2;
 
-		if (!lpath.len)
+		if (lpath.len == 0) {
 			LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+		} else if (file_out != NULL) {
+			sc_file_free(*file_out);
+			*file_out = NULL;
+		}
 	}
 
 	if (lpath.type == SC_PATH_TYPE_PATH && (lpath.len == 2))
