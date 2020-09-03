@@ -52,8 +52,8 @@
 
 				<varlistentry>
 					<term>
-						<option>--auth-id</option> <replaceable>pin</replaceable>,
-						<option>-a</option> <replaceable>pin</replaceable>
+						<option>--auth-id</option> <replaceable>id</replaceable>,
+						<option>-a</option> <replaceable>id</replaceable>
 					</term>
 					<listitem><para>Specifies the auth id of the PIN to use for the
 					operation. This is useful with the --change-pin operation.</para></listitem>
@@ -335,7 +335,7 @@
 
 				<varlistentry>
 					<term>
-						<option>--new-pin</option> <replaceable>PIN</replaceable>
+						<option>--new-pin</option> <replaceable>pin</replaceable>
 					</term>
 					<listitem><para>Specify New PIN (when changing or unblocking)</para></listitem>
 				</varlistentry>
