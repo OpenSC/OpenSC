@@ -3,7 +3,7 @@ _FUNCTION_NAME()
 {
     COMPREPLY=()
     local cur prev split=false
-    _get_comp_words_by_ref cur prev
+    _get_comp_words_by_ref -n : cur prev
 
     _split_longopt && split=true
 
@@ -21,6 +21,11 @@ _FUNCTION_NAME()
             ;;
         FILEOPTS)
             _filedir
+            return 0
+            ;;
+        PINOPTS|--password)
+            COMPREPLY=( $( compgen -W "$(printenv | cut -d = -f 1 | xargs printf 'env:%s ')" -- $cur ) )
+            __ltrim_colon_completions "$cur"
             return 0
             ;;
         OPTSWITHARGS)

@@ -32,6 +32,9 @@ tools.html: $(srcdir)/tools.xml $(wildcard $(srcdir)/*.1.xml)
 		| sed "s,FILEOPTS,\
 			$(shell sed -n 's,.*<option>\([^<]*\)</option>.*<replaceable>.*filename.*,\1,pg' $< \
 				| sort -u | grep -- '^\-' | tr '\n' '|' | sed 's,|$$,,' | grep ^ || echo "!*"),"  \
+		| sed "s,PINOPTS,\
+			$(shell sed -En 's,.*<option>([^<]*)</option>.*<replaceable>\s*(newpin|pin|puk|sopin|sopuk)\s*<.*,\1,pg' $< \
+				| sort -u | grep -- '^\-' | tr '\n' '|' | sed 's,|$$,,' | grep ^ || echo "!*"),"  \
 		| sed "s,MODULEOPTS,\
 			$(shell sed -n 's,.*<option>\([^<]*\)</option>.*<replaceable>.*mod.*,\1,pg' $< \
 				| sort -u | grep -- '^\-' | tr '\n' '|' | sed 's,|$$,,' | grep ^ || echo "!*")," \
