@@ -210,6 +210,7 @@ enum {
 	SC_CARDCTL_PIV_GENERATE_KEY,
 	SC_CARDCTL_PIV_PIN_PREFERENCE,
 	SC_CARDCTL_PIV_OBJECT_PRESENT,
+	SC_CARDCTL_PIV_YUBICO_ATTESTATION_CERT,
 
 	/*
 	 * CAC specific calls
@@ -963,6 +964,11 @@ typedef struct sc_cardctl_piv_genkey_info_st {
 	unsigned int    ecpoint_len;    /* EC */
 
 } sc_cardctl_piv_genkey_info_t;
+
+typedef struct sc_cardctl_piv_yubico_attestation_cert_st {
+	unsigned char key;
+	struct sc_lv_data der;
+} sc_cardctl_piv_yubico_attestation_cert_t;
 
 /*
  * OpenPGP

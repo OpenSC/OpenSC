@@ -93,7 +93,7 @@ typedef struct prdata_st {
 	int         ref;
 	const char *auth_id;
 	int         obj_flags;
-	int			user_consent; 
+	int			user_consent;
 } prdata;
 
 typedef struct common_key_info_st {
@@ -612,6 +612,9 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 	common_key_info ckis[PIV_NUM_CERTS_AND_KEYS];
 	int follows_nist_fascn = 0;
 	char *token_name = NULL;
+	int yubikey_with_policy_support = 0; /* 0 don't know, -1 no not yubico or to old, 1 yes */
+	int has_yubikey_touch_policy = 0; /* 1 if one or more keys have "02-always" or "03-cached" or greater */
+	/* yubikey pin policy is handled by user_consent and SC_PKCS15_CO_FLAG_PRIVATE */
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -922,57 +925,6 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		}
 	}
 
-	/* set pins */
-	sc_log(card->ctx,  "PIV-II adding pins...");
-	for (i = 0; pins[i].label; i++) {
-		struct sc_pkcs15_auth_info pin_info;
-		struct sc_pkcs15_object   pin_obj;
-		const char * label;
-		int pin_ref;
-
-		memset(&pin_info, 0, sizeof(pin_info));
-		memset(&pin_obj,  0, sizeof(pin_obj));
-
-		pin_info.auth_type = SC_PKCS15_PIN_AUTH_TYPE_PIN;
-		sc_pkcs15_format_id(pins[i].id, &pin_info.auth_id);
-		pin_info.attrs.pin.reference     = pins[i].ref;
-		pin_info.attrs.pin.flags         = pins[i].flags;
-		pin_info.attrs.pin.type          = pins[i].type;
-		pin_info.attrs.pin.min_length    = pins[i].minlen;
-		pin_info.attrs.pin.stored_length = pins[i].storedlen;
-		pin_info.attrs.pin.max_length    = pins[i].maxlen;
-		pin_info.attrs.pin.pad_char      = pins[i].pad_char;
-		sc_format_path(pins[i].path, &pin_info.path);
-		pin_info.tries_left    = -1;
-
-		label = pins[i].label;
-		if (i == 0 &&
-			sc_card_ctl(card, SC_CARDCTL_PIV_PIN_PREFERENCE,
-					&pin_ref) == 0 &&
-				pin_ref == 0x00) { /* must be 80 for PIV pin, or 00 for Global PIN */
-			pin_info.attrs.pin.reference = pin_ref;
-			pin_info.attrs.pin.flags &= ~SC_PKCS15_PIN_FLAG_LOCAL;
-			label = "Global PIN";
-		}
-sc_log(card->ctx,  "DEE Adding pin %d label=%s",i, label);
-		strncpy(pin_obj.label, label, SC_PKCS15_MAX_LABEL_SIZE - 1);
-		pin_obj.flags = pins[i].obj_flags;
-		if (i == 0 && pin_info.attrs.pin.reference == 0x80) {
-			/*
-			 * according to description of "RESET RETRY COUNTER"
-			 * command in specs PUK can only unblock PIV PIN
-			 */
-			pin_obj.auth_id.len = 1;
-			pin_obj.auth_id.value[0] = 2;
-		}
-
-		r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
-		if (r < 0)
-			LOG_FUNC_RETURN(card->ctx, r);
-	}
-
-
-
 	/* set public keys */
 	/* We may only need this during initialization when genkey
 	 * gets the pubkey, but it can not be read from the card 
@@ -1146,7 +1098,75 @@ sc_log(card->ctx,  "DEE Adding pin %d label=%s",i, label);
 
 		strncpy(prkey_obj.label, prkeys[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
 		prkey_obj.flags = prkeys[i].obj_flags;
-		prkey_obj.user_consent = prkeys[i].user_consent; /* only Sign key */
+
+		/* If Yubikey, try to get pin policy from ATTESTATION certificate */
+		/* Look at every key, to set pin and touch policy */
+		/* Update pin prompt if any have touch policy */
+
+		prkey_obj.user_consent = prkeys[i].user_consent; /* set the PIV default */
+		if (yubikey_with_policy_support >= 0) {
+			sc_cardctl_piv_yubico_attestation_cert_t attcertctl;
+
+			memset(&attcertctl, 0, sizeof(attcertctl));
+			attcertctl.key = prkeys[i].ref;
+
+			r = sc_card_ctl(card, SC_CARDCTL_PIV_YUBICO_ATTESTATION_CERT, &attcertctl);
+			if (r == SC_ERROR_NO_CARD_SUPPORT)
+				yubikey_with_policy_support = -1; /* do try again */
+			if (r < 0 || attcertctl.der.value == NULL || attcertctl.der.len == 0) {
+				sc_log(card->ctx," SC_CARDCTL_PIV_YUBICO_ATTESTATION_CERT failed r=%d", r);
+			} else {
+				struct sc_object_id pp_oid = {{1, 3, 6, 1, 4, 1, 41482, 3, 8, -1}}; /* pin policy extension */
+				sc_pkcs15_cert_info_t * attcert_info = NULL;
+				sc_pkcs15_cert_t *attcert_out = NULL;
+				u8  *pp_val = NULL;
+				size_t pp_len = 0;
+				int pp_critical = 0;
+
+				attcert_info = calloc(1, sizeof(sc_pkcs15_cert_info_t));
+				if (attcert_info == NULL)
+					LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+
+				attcert_info->value.len = attcertctl.der.len;
+				attcert_info->value.value  = attcertctl.der.value;
+				attcertctl.der.value = NULL;
+
+				r = sc_pkcs15_read_certificate(p15card, attcert_info, &attcert_out);
+				if (r >= 0 && attcert_out && attcert_out->extensions) {
+					r = sc_pkcs15_get_extension(card->ctx, attcert_out,
+							&pp_oid, &pp_val, &pp_len, &pp_critical);
+					/* *pp_val pin policy default = 0, never = 1, session = 2, always = 3 */
+					if (r >= 0 && pp_len == 2) {
+						switch (*pp_val) {
+							case 01:
+								prkey_obj.flags &= ~SC_PKCS15_CO_FLAG_PRIVATE;
+								prkey_obj.user_consent = 0;
+								break;
+							case 02:
+								prkey_obj.flags  |= SC_PKCS15_CO_FLAG_PRIVATE;
+								prkey_obj.user_consent = 0;
+								break;
+							case 03:
+								prkey_obj.flags  |= SC_PKCS15_CO_FLAG_PRIVATE;
+								prkey_obj.user_consent = 1; /* always */
+								break;
+							default:	/* 0 or unknown use NIST PIV defaults */
+								break;
+						}
+						sc_log(card->ctx, " yubikey user_consent %d for 0x%2.2x",
+								prkey_obj.user_consent, prkeys[i].ref);
+
+						/* *(pp_val + 1) touch policy 0 or 1 none, 02 always, 03 cache touch for 15 seconds */
+						if (*(pp_val + 1) >= 2)
+							has_yubikey_touch_policy = 1; /* some key has touch policy  */
+					}
+				}
+				free(pp_val);
+				sc_pkcs15_free_cert_info(attcert_info);
+				sc_pkcs15_free_certificate(attcert_out);
+			}
+			free(attcertctl.der.value);
+		}
 
 		if (prkeys[i].auth_id)
 			sc_pkcs15_format_id(prkeys[i].auth_id, &prkey_obj.auth_id);
@@ -1199,6 +1219,61 @@ sc_log(card->ctx,  "DEE Adding pin %d label=%s",i, label);
 				r = 0; /* we just skip this one */
 		}
 		sc_log(card->ctx, "USAGE: cert_keyUsage_present:%d usage:0x%8.8x", ckis[i].cert_keyUsage_present ,prkey_info.usage);
+		if (r < 0)
+			LOG_FUNC_RETURN(card->ctx, r);
+	}
+
+	/* set pins */
+	sc_log(card->ctx,  "PIV-II adding pins...");
+	for (i = 0; pins[i].label; i++) {
+		struct sc_pkcs15_auth_info pin_info;
+		struct sc_pkcs15_object   pin_obj;
+		char label[SC_PKCS15_MAX_LABEL_SIZE -1];
+		int pin_ref;
+
+		memset(&pin_info, 0, sizeof(pin_info));
+		memset(&pin_obj,  0, sizeof(pin_obj));
+
+		pin_info.auth_type = SC_PKCS15_PIN_AUTH_TYPE_PIN;
+		sc_pkcs15_format_id(pins[i].id, &pin_info.auth_id);
+		pin_info.attrs.pin.reference     = pins[i].ref;
+		pin_info.attrs.pin.flags         = pins[i].flags;
+		pin_info.attrs.pin.type          = pins[i].type;
+		pin_info.attrs.pin.min_length    = pins[i].minlen;
+		pin_info.attrs.pin.stored_length = pins[i].storedlen;
+		pin_info.attrs.pin.max_length    = pins[i].maxlen;
+		pin_info.attrs.pin.pad_char      = pins[i].pad_char;
+		sc_format_path(pins[i].path, &pin_info.path);
+		pin_info.tries_left    = -1;
+
+		strncpy(label, pins[i].label, SC_PKCS15_MAX_LABEL_SIZE -1);
+		if (i == 0 &&
+			sc_card_ctl(card, SC_CARDCTL_PIV_PIN_PREFERENCE,
+					&pin_ref) == 0 &&
+				pin_ref == 0x00) { /* must be 80 for PIV pin, or 00 for Global PIN */
+			pin_info.attrs.pin.reference = pin_ref;
+			pin_info.attrs.pin.flags &= ~SC_PKCS15_PIN_FLAG_LOCAL;
+			strncpy(label, "Global PIN", SC_PKCS15_MAX_LABEL_SIZE -1);
+		}
+		if (has_yubikey_touch_policy) {
+			int offset = strlen(label);
+			strncpy(label + offset, ",Yubikey has touch policy", SC_PKCS15_MAX_LABEL_SIZE - offset - 1);
+		}
+
+		sc_log(card->ctx,  "DEE Adding pin %d label=%s",i, label);
+		strncpy(pin_obj.label, label, SC_PKCS15_MAX_LABEL_SIZE - 1);
+		pin_obj.flags = pins[i].obj_flags;
+
+		if (i == 0 && pin_info.attrs.pin.reference == 0x80) {
+			/*
+			 * according to description of "RESET RETRY COUNTER"
+			 * command in specs PUK can only unblock PIV PIN
+			 */
+			pin_obj.auth_id.len = 1;
+			pin_obj.auth_id.value[0] = 2;
+		}
+
+		r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
 		if (r < 0)
 			LOG_FUNC_RETURN(card->ctx, r);
 	}
