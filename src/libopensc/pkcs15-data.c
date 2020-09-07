@@ -57,9 +57,8 @@ sc_pkcs15_read_data_object(struct sc_pkcs15_card *p15card,
 		LOG_TEST_RET(ctx, r, "Cannot get DATA object data");
 	}
 
-	sc_der_copy(&der, &info->data);
-	if (!der.value)
-		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate memory for der value");
+	r = sc_der_copy(&der, &info->data);
+	LOG_TEST_RET(ctx, r, "Cannot allocate memory for der value");
 
 	data_object = calloc(sizeof(struct sc_pkcs15_data), 1);
 	if (!data_object)   {
