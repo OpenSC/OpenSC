@@ -388,17 +388,30 @@ static int hextoint(char *src, unsigned int len)
 }
 
 static int get_name_from_EF_DatiPersonali(unsigned char *EFdata,
-	char name[], int name_len)
+	size_t EFdata_len, char name[], int name_len)
 {
+	const unsigned int EF_personaldata_maxlen = 400;
+	const unsigned int tlv_length_size = 6;
+	char *file = NULL;
+	int file_size;
+
 	/*
 	 * Bytes 0-5 contain the ASCII encoding of the following TLV
 	 * structure's total size, in base 16.
 	 */
-
-	const unsigned int EF_personaldata_maxlen = 400;
-	const unsigned int tlv_length_size = 6;
-	char *file = (char*)&EFdata[tlv_length_size];
-	int file_size = hextoint((char*)EFdata, tlv_length_size);
+	if (EFdata_len < tlv_length_size) {
+		/* We need at least 6 bytes for file length here */
+		return -1;
+	}
+	file_size = hextoint((char*)EFdata, tlv_length_size);
+	if (EFdata_len < (file_size + tlv_length_size)) {
+		/* Inconsistent external file length and internal file length
+		 * suggests we are trying to process junk data.
+		 * If the internal data length is shorter, the data can be padded,
+		 * but we should be fine as we will not go behind the buffer limits */
+		return -1;
+	}
+	file = (char*)&EFdata[tlv_length_size];
 
 	enum {
 		f_issuer_code = 0,
@@ -427,7 +440,7 @@ static int get_name_from_EF_DatiPersonali(unsigned char *EFdata,
 	int i=0; /* offset inside the file */
 	int f; /* field number */
 
-	if(file_size < 0)
+	if (file_size < 0)
 		return -1;
 
 	/*
@@ -547,7 +560,7 @@ static int itacns_add_data_files(sc_pkcs15_card_t *p15card)
 	if (p15_personaldata->data) {
 		char fullname[160];
 		if (get_name_from_EF_DatiPersonali(p15_personaldata->data,
-			fullname, sizeof(fullname))) {
+			p15_personaldata->data_len, fullname, sizeof(fullname))) {
 			sc_log(p15card->card->ctx,
 				"Could not parse EF_DatiPersonali: "
 				"keeping generic card name");
