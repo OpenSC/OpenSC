@@ -2176,7 +2176,9 @@ static int dnie_pin_verify(struct sc_card *card,
 	if (card->atr.value[15] >= DNIE_30_VERSION) {
 		sc_log(card->ctx, "DNIe 3.0 detected => re-establish secure channel");
 		dnie_change_cwa_provider_to_secure(card);
-		res = cwa_create_secure_channel(card, GET_DNIE_PRIV_DATA(card)->cwa_provider, CWA_SM_ON);
+		if (res == SC_SUCCESS) {
+			res = cwa_create_secure_channel(card, GET_DNIE_PRIV_DATA(card)->cwa_provider, CWA_SM_ON);
+		}
 	}
 
 	LOG_FUNC_RETURN(card->ctx, res);
