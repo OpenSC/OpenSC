@@ -375,7 +375,7 @@ C_FindObjectsInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 
 	/* Check whether we should hide private objects */
 	hide_private = 0;
-	if (slot->login_user != CKU_USER && (slot->token_info.flags & CKF_LOGIN_REQUIRED))
+	if ((slot->login_user != CKU_SO) && (slot->login_user != CKU_USER) && (slot->token_info.flags & CKF_LOGIN_REQUIRED))
 		hide_private = 1;
 
 	/* For each object in token do */
