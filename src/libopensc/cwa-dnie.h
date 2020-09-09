@@ -40,6 +40,41 @@ typedef struct ui_context {
 struct cwa_provider_st;
 
 /**
+ * Structs for the channel configuration data.
+ */
+typedef struct dnie_buffer {
+    u8 *value;
+    size_t len;
+} dnie_buffer_t;
+
+typedef struct dnie_public_key {
+    dnie_buffer_t modulus;
+    dnie_buffer_t exponent;
+} dnie_public_key_t;
+
+typedef struct dnie_private_key {
+    dnie_buffer_t modulus;
+    dnie_buffer_t exponent;
+    dnie_buffer_t private;
+} dnie_private_key_t;
+
+typedef struct dnie_channel_data {
+    dnie_public_key_t icc_root_ca;
+    dnie_private_key_t ifd;
+    dnie_private_key_t ifd_pin;
+    dnie_buffer_t C_CV_CA_CS_AUT_cert;
+    dnie_buffer_t C_CV_IFDUser_AUT_cert;
+    dnie_buffer_t C_CV_IFDUser_AUT_pin_cert;
+    dnie_buffer_t root_ca_keyref;
+    dnie_buffer_t icc_priv_keyref;
+    dnie_buffer_t cvc_intca_keyref;
+    dnie_buffer_t cvc_ifd_keyref;
+    dnie_buffer_t cvc_ifd_keyref_pin;
+    dnie_buffer_t sn_ifd;
+    dnie_buffer_t sn_ifd_pin;
+} dnie_channel_data_t;
+
+/**
   * OpenDNIe private data declaration
   *
   * Defines internal data used in OpenDNIe code
@@ -53,6 +88,7 @@ struct cwa_provider_st;
 #ifdef ENABLE_DNIE_UI
 	 struct ui_context ui_ctx;
 #endif
+     dnie_channel_data_t *channel_data; /* Configuration data for the secure channel */
  } dnie_private_data_t;
  
 /**
