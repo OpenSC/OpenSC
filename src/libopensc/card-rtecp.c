@@ -56,6 +56,10 @@ static const struct sc_atr_table rtecp_atrs[] = {
 	{ "3B:9C:94:80:11:40:52:75:74:6F:6B:65:6E:45:43:50:73:63:C3",
 		"00:00:00:00:00:00:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:00",
 		"Rutoken ECP SC", SC_CARD_TYPE_RUTOKEN_ECP_SC, 0, NULL },
+	/* Rutoken ECP SC NFC */
+	{ "3B:88:80:01:52:74:53:43:77:81:83:20:6A",
+		"00:00:00:00:FF:FF:FF:FF:00:00:00:00:00",
+		"Rutoken ECP SC NFC", SC_CARD_TYPE_RUTOKEN_ECP_SC, 0, NULL },
 	/* Rutoken Lite */
 	{ "3B:8B:01:52:75:74:6F:6B:65:6E:6C:69:74:65:C2",
 		NULL, "Rutoken Lite", SC_CARD_TYPE_RUTOKEN_LITE, 0, NULL },
