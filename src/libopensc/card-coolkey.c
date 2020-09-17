@@ -1678,7 +1678,7 @@ static int coolkey_rsa_op(sc_card_t *card, const u8 * data, size_t datalen,
 {
 	int r;
 	u8 **crypt_out_p = NULL;
-	size_t crypt_out_len_p;
+	size_t crypt_out_len_p = 0;
 	coolkey_private_data_t *priv = COOLKEY_DATA(card);
 	coolkey_compute_crypt_params_t params;
 	u8 key_number;
@@ -1708,9 +1708,6 @@ static int coolkey_rsa_op(sc_card_t *card, const u8 * data, size_t datalen,
 		params.init.location = COOLKEY_CRYPT_LOCATION_DL_OBJECT;
 
 		params_len = sizeof(params.init);
-
-		crypt_out_p = NULL;
-		crypt_out_len_p = 0;
 
 		ushort2bebytes(len_buf, datalen);
 
@@ -1754,7 +1751,9 @@ static int coolkey_rsa_op(sc_card_t *card, const u8 * data, size_t datalen,
 		size_t out_length;
 
 		/* Free card response -- nothing useful -- result is in export object */
-		free(*crypt_out_p);
+		if (crypt_out_p) {
+			free(*crypt_out_p);
+		}
 
 		r = coolkey_read_object(card, COOLKEY_DL_OBJECT_ID, 0, len_buf, sizeof(len_buf),
 					priv->nonce, sizeof(priv->nonce));
