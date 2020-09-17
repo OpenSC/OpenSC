@@ -1032,6 +1032,7 @@ sc_pkcs15emu_oberthur_init(struct sc_pkcs15_card * p15card)
 
 	for (ii=0; oberthur_infos[ii].name; ii++)   {
 		sc_log(ctx, "Oberthur init: read %s file", oberthur_infos[ii].name);
+		free(oberthur_infos[ii].content);
 		rv = sc_oberthur_read_file(p15card, oberthur_infos[ii].path,
 				&oberthur_infos[ii].content, &oberthur_infos[ii].len, 1);
 		LOG_TEST_RET(ctx, rv, "Oberthur init failed: read oberthur file error");
