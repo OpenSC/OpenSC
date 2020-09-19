@@ -612,6 +612,15 @@
 					</para></listitem>
 				</varlistentry>
 
+				<varlistentry>
+					<term>
+						<option>--allow-sw</option>
+					</term>
+					<listitem><para>Allow using software mechanisms that do not have the CKF_HW flag set.
+					May be required when using software tokens and emulators.
+					</para></listitem>
+				</varlistentry>
+
 			</variablelist>
 		</para>
 	</refsect1>
