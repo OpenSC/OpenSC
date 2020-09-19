@@ -160,7 +160,8 @@ enum {
 	OPT_SIGNATURE_FILE,
 	OPT_ALWAYS_AUTH,
 	OPT_ALLOWED_MECHANISMS,
-	OPT_OBJECT_INDEX
+	OPT_OBJECT_INDEX,
+	OPT_ALLOW_SW
 };
 
 static const struct option options[] = {
@@ -235,6 +236,7 @@ static const struct option options[] = {
 	{ "test-fork",		0, NULL,		OPT_TEST_FORK },
 #endif
 	{ "generate-random",	1, NULL,		OPT_GENERATE_RANDOM },
+	{ "allow-sw",		0, NULL,		OPT_ALLOW_SW },
 
 	{ NULL, 0, NULL, 0 }
 };
@@ -310,7 +312,8 @@ static const char *option_help[] = {
 #ifndef _WIN32
 	"Test forking and calling C_Initialize() in the child",
 #endif
-	"Generate given amount of random data"
+	"Generate given amount of random data",
+	"Allow using software mechanisms (without CKF_HW)"
 };
 
 static const char *	app_name = "pkcs11-tool"; /* for utils.c */
@@ -367,6 +370,7 @@ static unsigned long	opt_mgf = 0;
 static long	        opt_salt_len = 0;
 static int		opt_salt_len_given = 0; /* 0 - not given, 1 - given with input parameters */
 static int		opt_always_auth = 0;
+static CK_FLAGS		opt_allow_sw = CKF_HW;
 
 static void *module = NULL;
 static CK_FUNCTION_LIST_PTR p11 = NULL;
@@ -926,6 +930,9 @@ int main(int argc, char * argv[])
 			break;
 		case OPT_ALWAYS_AUTH:
 			opt_always_auth = 1;
+			break;
+		case OPT_ALLOW_SW:
+			opt_allow_sw = 0;
 			break;
 		case OPT_ALLOWED_MECHANISMS:
 			/* Parse the mechanism list and fail early */
@@ -1869,7 +1876,7 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	unsigned long	hashlen;
 
 	if (!opt_mechanism_used)
-		if (!find_mechanism(slot, CKF_SIGN|CKF_HW, NULL, 0, &opt_mechanism))
+		if (!find_mechanism(slot, CKF_SIGN|opt_allow_sw, NULL, 0, &opt_mechanism))
 			util_fatal("Sign mechanism not supported");
 
 	fprintf(stderr, "Using signature algorithm %s\n", p11_mechanism_to_name(opt_mechanism));
@@ -1973,7 +1980,7 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	unsigned long   hashlen;
 
 	if (!opt_mechanism_used)
-		if (!find_mechanism(slot, CKF_VERIFY|CKF_HW, NULL, 0, &opt_mechanism))
+		if (!find_mechanism(slot, CKF_VERIFY|opt_allow_sw, NULL, 0, &opt_mechanism))
 			util_fatal("Mechanism not supported for signature verification");
 
 	fprintf(stderr, "Using signature algorithm %s\n", p11_mechanism_to_name(opt_mechanism));
@@ -2097,7 +2104,7 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	int		fd, r;
 
 	if (!opt_mechanism_used)
-		if (!find_mechanism(slot, CKF_DECRYPT|CKF_HW, NULL, 0, &opt_mechanism))
+		if (!find_mechanism(slot, CKF_DECRYPT|opt_allow_sw, NULL, 0, &opt_mechanism))
 			util_fatal("Decrypt mechanism not supported");
 
 	fprintf(stderr, "Using decrypt algorithm %s\n", p11_mechanism_to_name(opt_mechanism));
@@ -3818,7 +3825,7 @@ derive_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
 	int rv, fd;
 
 	if (!opt_mechanism_used)
-		if (!find_mechanism(slot, CKF_DERIVE|CKF_HW, NULL, 0, &opt_mechanism))
+		if (!find_mechanism(slot, CKF_DERIVE|opt_allow_sw, NULL, 0, &opt_mechanism))
 			util_fatal("Derive mechanism not supported");
 
 	switch(opt_mechanism) {
@@ -4990,7 +4997,7 @@ static int test_signature(CK_SESSION_HANDLE sess)
 		return errors;
 	}
 
-	if (!find_mechanism(sessionInfo.slotID, CKF_SIGN | CKF_HW, mechTypes, mechTypes_num, &firstMechType)) {
+	if (!find_mechanism(sessionInfo.slotID, CKF_SIGN|opt_allow_sw, mechTypes, mechTypes_num, &firstMechType)) {
 		printf("Signatures: not implemented\n");
 		return errors;
 	}
@@ -5045,7 +5052,7 @@ static int test_signature(CK_SESSION_HANDLE sess)
 
 	if (firstMechType == CKM_RSA_X_509) {
 		/* make sure our data is smaller than the modulus - 11 */
-		memset(data, 0, 11); /* in effect is zero padding */ 
+		memset(data, 0, 11); /* in effect is zero padding */
 	}
 
 	ck_mech.mechanism = firstMechType;
@@ -5527,7 +5534,7 @@ static int test_unwrap(CK_SESSION_HANDLE sess)
 		return errors;
 	}
 
-	if (!find_mechanism(sessionInfo.slotID, CKF_UNWRAP | CKF_HW, NULL, 0, &firstMechType)) {
+	if (!find_mechanism(sessionInfo.slotID, CKF_UNWRAP|opt_allow_sw, NULL, 0, &firstMechType)) {
 		printf("Unwrap: not implemented\n");
 		return errors;
 	}
