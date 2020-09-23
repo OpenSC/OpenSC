@@ -3,7 +3,7 @@
  * card-default.c: Support for cards with no driver
  *
  * Copyright (C) 2001, 2002  Juha Yrjölä <juha.yrjola@iki.fi>
- * Copyright (C) 2005-2018  Douglas E. Engert <deengert@gmail.com>
+ * Copyright (C) 2005-2020  Douglas E. Engert <deengert@gmail.com>
  * Copyright (C) 2006, Identity Alliance, Thomas Harning <thomas.harning@identityalliance.com>
  * Copyright (C) 2007, EMC, Russell Larner <rlarner@rsa.com>
  *
@@ -212,22 +212,33 @@ struct piv_aid {
 /* ATRs of cards known to have PIV applet. But must still be tested for a PIV applet */
 static const struct sc_atr_table piv_atrs[] = {
 	/* CAC cards with PIV from: CAC-utilziation-and-variation-matrix-v2.03-20May2016.doc */
+	/*
+	* https://www.cac.mil/Common-Access-Card/Developer-Resources/
+	* https://www.cac.mil/Portals/53/Documents/DoD%20Token%20utilziation%20and%20variation%20matrix%20v2_06_17October2019.docx?ver=2019-10-18-102519-120
+	*/
 	/* Oberthur Card Systems (PIV Endpoint) with PIV endpoint applet and PIV auth cert OBSOLETE */
 	{ "3B:DB:96:00:80:1F:03:00:31:C0:64:77:E3:03:00:82:90.00:C1", NULL, NULL, SC_CARD_TYPE_PIV_II_OBERTHUR, 0, NULL },
 
 	/* Gemalto (PIV Endpoint) with PIV endpoint applet and PIV auth cert OBSOLETE */
 	{ "3B 7D 96 00 00 80 31 80 65 B0 83 11 13 AC 83 00 90 00", NULL, NULL, SC_CARD_TYPE_PIV_II_GEMALTO, 0, NULL },
 
-	/* Gemalto (PIV Endpoint) 2 entries */
+	/* Gemalto (PIV Endpoint) 2 entries  2016, 2019 */
 	{ "3B:7D:96:00:00:80:31:80:65:B0:83:11:17:D6:83:00:90:00", NULL, NULL, SC_CARD_TYPE_PIV_II_GEMALTO, 0, NULL },
 
-	/* Oberthur Card System (PIV Endpoint)  2 entries*/
+	/* Oberthur Card System (PIV Endpoint)  2 entries 2016, 2019 */
 	{ "3B:DB:96:00:80:1F:03:00:31:C0:64:B0:F3:10:00:07:90:00:80", NULL, NULL, SC_CARD_TYPE_PIV_II_OBERTHUR, 0, NULL },
 	/* Oberthur Card System  with LCS 0F - Some VA cards have Terminated state */
 	{ "3B:DB:96:00:80:1F:03:00:31:C0:64:B0:F3:10:00:0F:90:00:88", NULL, NULL, SC_CARD_TYPE_PIV_II_OBERTHUR, 0, NULL },
 
-	/* Giesecke & Devrient (PIV Endpoint)  2 entries */
+	/* Giesecke & Devrient (PIV Endpoint)  2 entries 2016, 2019 */
 	{ "3B:7A:18:00:00:73:66:74:65:20:63:64:31:34:34", NULL, NULL, SC_CARD_TYPE_PIV_II_GI_DE_DUAL_CAC, 0, NULL },
+	/* Giesecke & Devrient (CAC PIV Endpoint) 2019 */
+	{ "3B:F9:18:00:00:00:53:43:45:37:20:03:00:20:46", NULL, NULL, SC_CARD_TYPE_PIV_II_GI_DE_DUAL_CAC, 0, NULL },
+
+	/* IDEMIA (new name for Oberthur) (DoD Alternate Token IDEMIA Cosmo V8.0 2019*/
+	{ "3B:D8:18:00:80:B1:FE:45:1F:07:80:31:C1:64:08:06:92:0F:D5", NULL, NULL, SC_CARD_TYPE_PIV_II_OBERTHUR, 0, NULL },
+	{ "3b:86:80:01:80:31:c1:52:41:1a:7e", NULL, NULL, SC_CARD_TYPE_PIV_II_OBERTHUR, 0, NULL }, /* contactless */
+
 
 	/* PIVKEY from Taligo */
 	/* PIVKEY T600 token and T800  on Feitian eJAVA */
@@ -235,9 +246,16 @@ static const struct sc_atr_table piv_atrs[] = {
 
 	/* PIVKEY C910 */
 	{ "3b:fc:18:00:00:81:31:80:45:90:67:46:4a:00:64:16:06:f2:72:7e:00:e0", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
+	{ "3b:8c:80:01:90:67:46:4a:00:64:16:06:f2:72:7e:00:7c", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL }, /* contactless */
+
 
 	/* PIVKEY C980 */
 	{ "3B:f9:96:00:00:81:31:fe:45:53:50:49:56:4b:45:59:37:30:28", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
+	{ "3b:89:80:01:53:50:49:56:4b:45:59:37:30:44", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL }, /* contactless */
+
+	/* ID-One PIV 2.4.1 on Cosmo V8.1 */
+	{ "3b:d6:96:00:81:b1:fe:45:1f:87:80:31:c1:52:41:1a:2a", NULL, NULL, SC_CARD_TYPE_PIV_II_OBERTHUR, 0, NULL },
+	{ "3b:86:80:01:80:31:c1:52:41:12:76", NULL, NULL, SC_CARD_TYPE_PIV_II_OBERTHUR, 0, NULL }, /* contactless */
 
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
@@ -3092,11 +3110,23 @@ static int piv_match_card_continued(sc_card_t *card)
 			else if (card->reader->atr_info.hist_bytes_len > 0
 					&& card->reader->atr_info.hist_bytes[0] == 0x80u) { /* compact TLV */
 				size_t datalen;
-				const u8 *data = sc_compacttlv_find_tag(card->reader->atr_info.hist_bytes + 1,
-									card->reader->atr_info.hist_bytes_len - 1,
-									0xF0, &datalen);
+				const u8 *data;
 
-				if (data != NULL) {
+				if ((data = sc_compacttlv_find_tag(card->reader->atr_info.hist_bytes + 1,
+						card->reader->atr_info.hist_bytes_len - 1, 0x50, &datalen))) {
+					if (datalen == 7 && !(memcmp(data, "YubiKey", 7))) {
+						type = SC_CARD_TYPE_PIV_II_YUBIKEY4;   /* reader says 4  really 5 */
+					}
+					/* Yubikey 5 NFC ATR using ACR122 contactless reader does not match
+					 * https://developers.yubico.com/PIV/Introduction/Yubico_extensions.html
+					 * On Windows 10, using Omnikey 5021, the ATR is correct
+					 * will look at only 6 bytes that do match
+					 */
+					else if (datalen == 7 && !(memcmp(data, "YubiKe", 6))) {
+						type = SC_CARD_TYPE_PIV_II_YUBIKEY4;   /* reader says 4 really 5 */
+					}
+				} else if ((data = sc_compacttlv_find_tag(card->reader->atr_info.hist_bytes + 1,
+						card->reader->atr_info.hist_bytes_len - 1, 0xF0, &datalen))) {
 					int k;
 
 					for (k = 0; piv_aids[k].len_long != 0; k++) {
