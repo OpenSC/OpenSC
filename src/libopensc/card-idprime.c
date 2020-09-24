@@ -526,24 +526,31 @@ static int idprime_read_binary(sc_card_t *card, unsigned int offset,
 	unsigned char *buf, size_t count, unsigned long flags)
 {
 	struct idprime_private_data *priv = card->drv_data;
-	int r;
+	int r = 0;
 	int size;
 
 	sc_log(card->ctx, "called; %"SC_FORMAT_LEN_SIZE_T"u bytes at offset %d",
 		count, offset);
 
 	if (!priv->cached && offset == 0) {
+		/* Read what was reported by FCI from select command */
+		int left = priv->file_size;
+		size_t read = 0;
+
 		// this function is called to read and uncompress the certificate
 		u8 buffer[SC_MAX_EXT_APDU_BUFFER_SIZE];
 		if (sizeof(buffer) < count) {
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 		}
-		/* Read what was reported by FCI from select command */
-		r = iso_ops->read_binary(card, 0, buffer, priv->file_size, flags);
-		if (r < 0) {
-			LOG_FUNC_RETURN(card->ctx, r);
+		while (left > 0) {
+			r = iso_ops->read_binary(card, read, buffer + read, priv->file_size - read, flags);
+			if (r <= 0) {
+				LOG_FUNC_RETURN(card->ctx, r);
+			}
+			left -= r;
+			read += r;
 		}
-		if (r < 4) {
+		if (read < 4 || read != priv->file_size) {
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_DATA);
 		}
 		if (buffer[0] == 1 && buffer[1] == 0) {
