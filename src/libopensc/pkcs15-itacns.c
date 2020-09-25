@@ -455,17 +455,16 @@ static int get_name_from_EF_DatiPersonali(unsigned char *EFdata,
 
 	for(f=0; f<f_first_name+1; f++) {
 		int field_size;
+
 		/* Don't read beyond the allocated buffer */
-		if(i > file_size)
+		if(i+2 > file_size)
 			return -1;
-
 		field_size = hextoint((char*) &file[i], 2);
-		if((field_size < 0) || (field_size+i > file_size))
-			return -1;
-
 		i += 2;
 
-		if(field_size >= (int)sizeof(fields[f].value))
+		if (field_size < 0
+				|| i + field_size > file_size
+				|| field_size >= (int)sizeof(fields[f].value))
 			return -1;
 
 		fields[f].len = field_size;
