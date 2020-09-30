@@ -21,6 +21,7 @@ NEWS for OpenSC -- History of user visible changes
 ## OpenSC tools
 ### pkcs11-tool
 * Make SHA256 default for OAEP encryption
+* pkcs11-tool: allow using SW tokens (#2113)
 ### opensc-explorer
 * `asn1` accepts offsets and decode records (#2090)
 * `cat` accepts records (#2090)
@@ -28,8 +29,12 @@ NEWS for OpenSC -- History of user visible changes
 * Add new ec curves supported by GNUK (#1853)
 * First steps supporting OpenPGP 3.4
 * Add support for EC key import (#1821)
+## Rutoken
+* Add ATR for Rutoken ECP SC NFC (#2122)
 ## CardOS
 * Improve detection of various CardOS 5 configurations (#1987)
+## DNIe
+* Add new DNIe CA structure for the secure channel (#2109)
 ## ePass2003
 * Improve ECC support (#1859)
 * Fixed erase sequence (#2097)
@@ -41,6 +46,8 @@ NEWS for OpenSC -- History of user visible changes
 * Remove unused and broken RSA EstEID support (#2095)
 ## TCOS
 * Add missing encryption certificates (#2083)
+## PIV
+* Add ATR of DOD Yubikey (#2115)
 
 # New in 0.20.0; 2019-12-29
 ## General Improvements
