@@ -535,7 +535,7 @@ static int idprime_read_binary(sc_card_t *card, unsigned int offset,
 	if (!priv->cached && offset == 0) {
 		// this function is called to read and uncompress the certificate
 		u8 buffer[SC_MAX_EXT_APDU_BUFFER_SIZE];
-		if (sizeof(buffer) < count) {
+		if (sizeof(buffer) < count || sizeof(buffer) < priv->file_size) {
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 		}
 		/* Read what was reported by FCI from select command */
