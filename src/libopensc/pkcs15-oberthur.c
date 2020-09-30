@@ -400,7 +400,7 @@ sc_oberthur_parse_containers (struct sc_pkcs15_card *p15card,
 		Containers = next;
 	}
 
-	for (offs=0; offs < len;)  {
+	for (offs=0; offs + 2 + 2+2+2 + 2+2+2 + 2+36 <= len;)  {
 		struct container *cont;
 		unsigned char *ptr =  buff + offs + 2;
 
@@ -451,7 +451,7 @@ sc_oberthur_parse_publicinfo (struct sc_pkcs15_card *p15card,
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	for (ii=0; ii<len; ii+=5)   {
+	for (ii=0; ii+5<=len; ii+=5)   {
 		unsigned int file_id, size;
 
 		if(*(buff+ii) != 0xFF)
