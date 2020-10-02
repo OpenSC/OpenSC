@@ -196,8 +196,12 @@ static int idprime_process_index(sc_card_t *card, idprime_private_data_t *priv, 
 			&& (memcmp(&start[12], "mscp", 5) == 0)) {
 			new_object.fd++;
 			if (card->type == SC_CARD_TYPE_IDPRIME_V2) {
-				/* The key reference starts from 0x11 */
-				new_object.key_reference = 0x10 + new_object.fd;
+				/* The key reference starts from 0x11 and increments by the key id (ASCII) */
+				int key_id = 0;
+				if (start[8] >= '0' && start[8] <= '9') {
+					key_id = start[8] - '0';
+				}
+				new_object.key_reference = 0x11 + key_id;
 			} else {
 				/* The key reference is one bigger than the value found here for some reason */
 				new_object.key_reference = start[8] + 1;
