@@ -1,5 +1,54 @@
 NEWS for OpenSC -- History of user visible changes
 
+# New in 0.21.0; 2020-XX-XX
+## General Improvements
+* Bump minimal required OpenSSL version to 1.0.1 (#1658)
+* Implement basic unit tests for asn1 library, compression and simpletlv parser (#1830)
+* Allow generating code coverage
+* Improve fuzzing by providing corpus from real cards (#1830)
+* Implement support for OAEP encryption
+* New separate debug level for PIN commands (d06f23e8)
+* Fix handling of card/reader insertion/removal events in pcscd
+* Many bugfixes reported by oss-fuzz, coverity and lgtm.com
+* Fixes of removed readers handling (#1970)
+* Fix Firefox crash because of invalid pcsc context (#2077)
+## PKCS#11
+* Return CKR_TOKEN_NOT_RECOGNIZED for not recognized cards (#2030)
+* Propagate ignore_user_content to PKCS#11 layer not to confuse applications (#2040)
+## MacOS
+* Add installer signing for PR and master
+* Move OpenSC to MacOS Utilities folder (#2063)
+## OpenSC tools
+### pkcs11-tool
+* Make SHA256 default for OAEP encryption
+* pkcs11-tool: allow using SW tokens (#2113)
+### opensc-explorer
+* `asn1` accepts offsets and decode records (#2090)
+* `cat` accepts records (#2090)
+## OpenPGP
+* Add new ec curves supported by GNUK (#1853)
+* First steps supporting OpenPGP 3.4
+* Add support for EC key import (#1821)
+## Rutoken
+* Add ATR for Rutoken ECP SC NFC (#2122)
+## CardOS
+* Improve detection of various CardOS 5 configurations (#1987)
+## DNIe
+* Add new DNIe CA structure for the secure channel (#2109)
+## ePass2003
+* Improve ECC support (#1859)
+* Fixed erase sequence (#2097)
+## IDPrime
+* New driver for Gemalto IDPrime (only some types) (#1772)
+## eDo
+* New driver with initial support for Polish eID card (e-dowód, eDO) (#2023)
+## MCRD
+* Remove unused and broken RSA EstEID support (#2095)
+## TCOS
+* Add missing encryption certificates (#2083)
+## PIV
+* Add ATR of DOD Yubikey (#2115)
+
 # New in 0.20.0; 2019-12-29
 ## General Improvements
 * fixed security problems
