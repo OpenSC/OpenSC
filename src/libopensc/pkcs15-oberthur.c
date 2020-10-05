@@ -496,7 +496,7 @@ sc_oberthur_parse_privateinfo (struct sc_pkcs15_card *p15card,
 
 	LOG_FUNC_CALLED(ctx);
 
-	for (ii=0; ii<len; ii+=5)   {
+	for (ii=0; ii+5<=len; ii+=5)   {
 		unsigned int file_id, size;
 
 		if(*(buff+ii) != 0xFF)
