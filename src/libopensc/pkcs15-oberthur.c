@@ -307,7 +307,7 @@ sc_oberthur_read_file(struct sc_pkcs15_card *p15card, const char *in_path,
 		int ii;
 
 		rv = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH_PIN, objs, 0x10);
-		if (rv != SC_SUCCESS) {
+		if (rv != SC_SUCCESS || acl == NULL) {
 			sc_file_free(file);
 			free(*out);
 			*out = NULL;
