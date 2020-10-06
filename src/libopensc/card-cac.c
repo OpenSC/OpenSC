@@ -1793,7 +1793,7 @@ static int cac_find_and_initialize(sc_card_t *card, int initialize)
 		}
 		r = cac_process_ACA(card, priv);
 		if (r == SC_SUCCESS) {
-			card->type = SC_CARD_TYPE_CAC_II;
+			card->type = SC_CARD_TYPE_CAC_ALT_HID;
 			card->drv_data = priv;
 			return r;
 		}
@@ -1874,7 +1874,7 @@ static int cac_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries
 	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
 
 	if (data->cmd == SC_PIN_CMD_CHANGE) {
-		int i = 0, r = 0;
+		int i = 0;
 		if (data->pin2.len < 6) {
 			return SC_ERROR_INVALID_PIN_LENGTH;
 		}
@@ -1884,13 +1884,17 @@ static int cac_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries
 			}
 		}
 
-		r = iso7816_build_pin_apdu(card, &apdu, data, sbuf, sizeof(sbuf));
-		if (r < 0)
-			return r;
 		/* We can change the PIN of Giesecke & Devrient CAC ALT tokens
-		 * but it requires P1 = 0x01 completely against the ISO specs */
-		apdu.p1 = 0x01;
-		data->apdu = &apdu;
+		 * with a bit non-standard APDU */
+		if (card->type == SC_CARD_TYPE_CAC_ALT_HID) {
+			int r = 0;
+			r = iso7816_build_pin_apdu(card, &apdu, data, sbuf, sizeof(sbuf));
+			if (r < 0)
+				return r;
+			/* it requires P1 = 0x01 completely against the ISO specs */
+			apdu.p1 = 0x01;
+			data->apdu = &apdu;
+		}
 	}
 
 	return  iso_drv->ops->pin_cmd(card, data, tries_left);
