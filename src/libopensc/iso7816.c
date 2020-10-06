@@ -1017,7 +1017,7 @@ iso7816_decipher(struct sc_card *card,
 }
 
 
-static int
+int
 iso7816_build_pin_apdu(struct sc_card *card, struct sc_apdu *apdu,
 		struct sc_pin_cmd_data *data, u8 *buf, size_t buf_len)
 {
