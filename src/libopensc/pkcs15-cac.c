@@ -79,6 +79,7 @@ static const char * cac_get_name(int type)
     switch (type) {
     case SC_CARD_TYPE_CAC_I: return ("CAC I");
     case SC_CARD_TYPE_CAC_II: return ("CAC II");
+    case SC_CARD_TYPE_CAC_ALT_HID: return ("CAC ALT HID");
     default: break;
     }
     return ("CAC");
