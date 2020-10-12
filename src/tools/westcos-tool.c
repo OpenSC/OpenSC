@@ -673,11 +673,16 @@ int main(int argc, char *argv[])
 
 			if (!do_convert_bignum(&dst->modulus, rsa_n)
 			 || !do_convert_bignum(&dst->exponent, rsa_e))
+			{
+				free(dst->modulus.data);
+				free(dst->exponent.data);
 				goto out;
-
+			}
 		}
 
 		r = sc_pkcs15_encode_pubkey(ctx, &key, &pdata, &lg);
+		free(dst->modulus.data);
+		free(dst->exponent.data);
 		if(r) goto out;
 
 		printf("Public key length %"SC_FORMAT_LEN_SIZE_T"d\n", lg);
