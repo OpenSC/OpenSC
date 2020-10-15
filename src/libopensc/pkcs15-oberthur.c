@@ -332,7 +332,7 @@ sc_oberthur_read_file(struct sc_pkcs15_card *p15card, const char *in_path,
 			if (!rv)
 				rv = sc_oberthur_read_file(p15card, in_path, out, out_len, 0);
 		}
-	};
+	}
 
 	sc_file_free(file);
 
