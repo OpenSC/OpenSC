@@ -68,6 +68,7 @@ main (int argc, char **argv)
 	reader = sc_ctx_get_reader(ctx, 0);
 	if (!reader) {
 		fprintf(stderr, "Failed to access reader 0");
+		sc_release_context(ctx);
 		exit(1);
 	}
 
