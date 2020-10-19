@@ -75,11 +75,10 @@ before_install:
         brew update;
         brew uninstall libtool;
         brew install libtool;
-        brew install gengetopt help2man cmocka ccache;
+        brew install gengetopt help2man cmocka ccache git-lfs;
         export PATH="/usr/local/opt/ccache/libexec:$PATH";
         openssl aes-256-cbc -K $encrypted_3b9f0b9d36d1_key -iv $encrypted_3b9f0b9d36d1_iv -in .github/secrets.tar.enc -out .github/secrets.tar -d;
         .github/add_signing_key.sh;
-        export OTHER_CODE_SIGN_FLAGS=--timestamp CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO CODE_SIGN_STYLE=Manual;
         git clone https://github.com/frankmorgner/OpenSCToken.git;
     fi
   - if [ "${DO_SIMULATION}" = "javacard" ]; then

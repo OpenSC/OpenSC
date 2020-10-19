@@ -19,13 +19,6 @@ SDK_PATH=$(xcrun --sdk macosx --show-sdk-path)
 # Set SDK path
 export CFLAGS="$CFLAGS -isysroot $SDK_PATH -arch x86_64"
 
-# xcodebuild doesn't read the environment variables
-# transform them into parameters
-P1="${CODE_SIGN_IDENTITY:+CODE_SIGN_IDENTITY=${CODE_SIGN_IDENTITY}}"
-P2="${OTHER_CODE_SIGN_FLAGS:+OTHER_CODE_SIGN_FLAGS=${OTHER_CODE_SIGN_FLAGS}}"
-P3="${CODE_SIGN_INJECT_BASE_ENTITLEMENTS:+CODE_SIGN_INJECT_BASE_ENTITLEMENTS=${CODE_SIGN_INJECT_BASE_ENTITLEMENTS}}"
-P4="${CODE_SIGN_STYLE:+CODE_SIGN_STYLE=${CODE_SIGN_STYLE}}"
-
 export SED=/usr/bin/sed
 PREFIX=/Library/OpenSC
 export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/lib/pkgconfig
@@ -97,13 +90,17 @@ fi
 if ! test -e NotificationProxy; then
 	git clone http://github.com/frankmorgner/NotificationProxy.git
 fi
-if test -n "${CODE_SIGN_IDENTITY}"; then
-	xcodebuild -target NotificationProxy -configuration Release -project NotificationProxy/NotificationProxy.xcodeproj install DSTROOT=$BUILDPATH/target/Library/OpenSC/ "$P1" "$P2" "$P3" "$P4"
+if test -n "${CODE_SIGN_IDENTITY}" -a -n "${DEVELOPMENT_TEAM}"; then
+	xcodebuild -target NotificationProxy -configuration Release -project NotificationProxy/NotificationProxy.xcodeproj install DSTROOT=$BUILDPATH/target/Library/OpenSC/ \
+		CODE_SIGN_IDENTITY="${CODE_SIGN_IDENTITY}" DEVELOPMENT_TEAM="${DEVELOPMENT_TEAM}" OTHER_CODE_SIGN_FLAGS="--timestamp --options=runtime" CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO CODE_SIGN_STYLE=Manual
 else
 	xcodebuild -target NotificationProxy -configuration Release -project NotificationProxy/NotificationProxy.xcodeproj install DSTROOT=$BUILDPATH/target/Library/OpenSC/
 fi
 mkdir -p "$BUILDPATH/target/Applications/Utilities"
 osacompile -o "$BUILDPATH/target/Applications/Utilities/OpenSC Notify.app" "MacOSX/OpenSC_Notify.applescript"
+if test -n "${CODE_SIGN_IDENTITY}"; then
+	codesign --force --sign "${CODE_SIGN_IDENTITY}" --entitlements MacOSX/OpenSC_Uninstaller.entitlements --deep --timestamp --options runtime "$BUILDPATH/target/Applications/Utilities/OpenSC Notify.app"
+fi
 
 
 # Build OpenSC.tokend when XCode version < 10
@@ -117,8 +114,9 @@ if (( $(xcodebuild -version | sed -En 's/Xcode[[:space:]]+([0-9]+)(\.[0-9]*)*/\1
 	test -L OpenSC.tokend/build/opensc-src || ln -sf ${BUILDPATH}/src OpenSC.tokend/build/opensc-src
 
 	# Build and copy OpenSC.tokend
-	if test -n "${CODE_SIGN_IDENTITY}"; then
-		xcodebuild -target OpenSC -configuration Deployment -project OpenSC.tokend/Tokend.xcodeproj install DSTROOT=${BUILDPATH}/target_tokend "$P1" $P2 "$P3" "$P4"
+	if test -n "${CODE_SIGN_IDENTITY}" -a -n "${DEVELOPMENT_TEAM}"; then
+		xcodebuild -target OpenSC -configuration Deployment -project OpenSC.tokend/Tokend.xcodeproj install DSTROOT=${BUILDPATH}/target_tokend \
+		CODE_SIGN_IDENTITY="${CODE_SIGN_IDENTITY}" DEVELOPMENT_TEAM="${DEVELOPMENT_TEAM}" OTHER_CODE_SIGN_FLAGS="--timestamp --options=runtime" CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO CODE_SIGN_STYLE=Manual
 	else
 		xcodebuild -target OpenSC -configuration Deployment -project OpenSC.tokend/Tokend.xcodeproj install DSTROOT=${BUILDPATH}/target_tokend
 	fi
@@ -150,7 +148,7 @@ cp src/tools/pkcs11-register.plist ${BUILDPATH}/target_startup/Library/LaunchAge
 cp src/tools/opensc-notify.plist ${BUILDPATH}/target_startup/Library/LaunchAgents
 
 # Build OpenSCToken if possible
-if test -e OpenSCToken -a -n "${CODE_SIGN_IDENTITY}"; then
+if test -e OpenSCToken -a -n "${CODE_SIGN_IDENTITY}" -a -n "${DEVELOPMENT_TEAM}"; then
 	cd OpenSCToken
 	# make sure OpenSCToken builds with the same dependencies as before
 	if ! test -e OpenSC; then
@@ -172,26 +170,44 @@ if test -e OpenSCToken -a -n "${CODE_SIGN_IDENTITY}"; then
 	BP=${BUILDPATH}
 	. ./bootstrap
 	BUILDPATH=${BP}
-	xcodebuild -target OpenSCTokenApp -configuration Debug -project OpenSCTokenApp.xcodeproj install DSTROOT=${BUILDPATH}/target_token "$P1" "$P2" "$P3" "$P4"
-	mkdir ${BUILDPATH}/target_token/Applications/Utilities
-	mv ${BUILDPATH}/target_token/Applications/OpenSCTokenApp.app ${BUILDPATH}/target_token/Applications/Utilities
+	xcodebuild -target OpenSCTokenApp -configuration Debug -project OpenSCTokenApp.xcodeproj install DSTROOT=${BUILDPATH}/target_token \
+		CODE_SIGN_IDENTITY="${CODE_SIGN_IDENTITY}" DEVELOPMENT_TEAM="${DEVELOPMENT_TEAM}" OTHER_CODE_SIGN_FLAGS="--timestamp --options=runtime" CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO CODE_SIGN_STYLE=Manual
 	cd ..
 else
 	# if no OpenSCToken is checked out, then we create a dummy package
 	mkdir -p ${BUILDPATH}/target_token
 fi
 
+if test -n "${CODE_SIGN_IDENTITY}"; then
+	for d in ${BUILDPATH}/target/Library/OpenSC/bin ${BUILDPATH}/target/Library/OpenSC/lib
+	do
+		# find executable files and run codesign on them
+		find ${d} -type f -perm +111 -print -exec \
+			codesign --force --sign "${CODE_SIGN_IDENTITY}" --entitlements MacOSX/OpenSC_Uninstaller.entitlements --deep --timestamp --options runtime {} \;
+	done
+fi
+
+
 # Build package
-pkgbuild --root ${BUILDPATH}/target --scripts MacOSX/scripts --identifier org.opensc-project.mac --version @PACKAGE_VERSION@ --install-location / OpenSC.pkg
-pkgbuild --root ${BUILDPATH}/target_tokend --identifier org.opensc-project.tokend --version @PACKAGE_VERSION@ --install-location / OpenSC-tokend.pkg
-pkgbuild --root ${BUILDPATH}/target_token --identifier org.opensc-project.mac.opensctoken --version @PACKAGE_VERSION@ --install-location / OpenSCToken.pkg
-pkgbuild --root ${BUILDPATH}/target_startup --identifier org.opensc-project.startup --version @PACKAGE_VERSION@ --install-location / OpenSC-startup.pkg
+pkgbuild --root ${BUILDPATH}/target --component-plist MacOSX/target.plist --scripts MacOSX/scripts --identifier org.opensc-project.mac --version @PACKAGE_VERSION@ --install-location / OpenSC.pkg
+pkgbuild --root ${BUILDPATH}/target_tokend --component-plist MacOSX/target_tokend.plist --identifier org.opensc-project.tokend --version @PACKAGE_VERSION@ --install-location / OpenSC-tokend.pkg
+pkgbuild --root ${BUILDPATH}/target_token --component-plist MacOSX/target_token.plist --identifier org.opensc-project.mac.opensctoken --version @PACKAGE_VERSION@ --install-location / OpenSCToken.pkg
+pkgbuild --root ${BUILDPATH}/target_startup --component-plist MacOSX/target_startup.plist --identifier org.opensc-project.startup --version @PACKAGE_VERSION@ --install-location / OpenSC-startup.pkg
 
 # Build product
 productbuild --distribution MacOSX/Distribution.xml --package-path . --resources MacOSX/resources "${imagedir}/OpenSC @PACKAGE_VERSION@.pkg"
 
+# Sign installer
+if test -n "${INSTALLER_SIGN_IDENTITY}"; then
+	productsign --sign "${INSTALLER_SIGN_IDENTITY}" "${imagedir}/OpenSC @PACKAGE_VERSION@.pkg" "${BUILDPATH}/OpenSC @PACKAGE_VERSION@.pkg"
+	mv "${BUILDPATH}/OpenSC @PACKAGE_VERSION@.pkg" "${imagedir}/OpenSC @PACKAGE_VERSION@.pkg"
+fi
+
 # Build "Uninstaller"
 osacompile -o "${imagedir}/OpenSC Uninstaller.app" "MacOSX/OpenSC_Uninstaller.applescript"
+if test -n "${CODE_SIGN_IDENTITY}"; then
+	codesign --force --sign "${CODE_SIGN_IDENTITY}" --entitlements MacOSX/OpenSC_Uninstaller.entitlements --deep --timestamp --options runtime "${imagedir}/OpenSC Uninstaller.app"
+fi
 
 # Create .dmg
 rm -f OpenSC-@PACKAGE_VERSION@.dmg
@@ -205,3 +221,6 @@ do
 	fi
 done
 rm -rf ${imagedir}
+
+#if [ "$TRAVIS_EVENT_TYPE" != "pull_request" ]; then xcrun altool --notarize-app --file $(pwd)/vorteil_darwin-x86.dmg --username $OSX_NOTARIZE_USERNAME --primary-bundle-id com.vorteil.cli -p $OSX_NOTARIZE_PW -- >> /dev/null; fi;
+#if [ "$TRAVIS_EVENT_TYPE" != "pull_request" ]; then for ((i=1;i<=30;i+=1)); do xcrun stapler staple $(pwd)/vorteil_darwin-x86.dmg >> /dev/null; if [ $? = 65 ]; then echo "Waiting for notarization to complete..." && sleep 10; fi; done; fi;

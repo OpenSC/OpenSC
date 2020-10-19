@@ -13,8 +13,15 @@ for file in ${BUILDPATH}/win32/Output/OpenSC*.exe ${BUILDPATH}/opensc*.tar.gz ${
 do
     if [ -f ${file} ]
     then
-        cp ${file} .
-        git add `basename ${file}`
+        # github only allows a maximum file size of 50MB
+        MAX_MB_FILESIZE=50
+        if [ $(du -m "$file" | cut -f 1) -ge $MAX_MB_FILESIZE ]
+        then
+            split -b ${MAX_MB_FILESIZE}m ${file} `basename ${file}`.
+        else
+            cp ${file} .
+        fi
+        git add `basename ${file}`*
     fi
 done
 

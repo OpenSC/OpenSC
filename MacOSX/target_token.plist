@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<array>
+	<dict>
+		<key>BundleHasStrictIdentifier</key>
+		<true/>
+		<key>BundleIsRelocatable</key>
+		<false/>
+		<key>BundleIsVersionChecked</key>
+		<true/>
+		<key>BundleOverwriteAction</key>
+		<string>upgrade</string>
+		<key>ChildBundles</key>
+		<array>
+			<dict>
+				<key>BundleOverwriteAction</key>
+				<string></string>
+				<key>RootRelativeBundlePath</key>
+				<string>Applications/Utilities/OpenSCTokenApp.app/Contents/PlugIns/OpenSCToken.appex</string>
+			</dict>
+		</array>
+		<key>RootRelativeBundlePath</key>
+		<string>Applications/Utilities/OpenSCTokenApp.app</string>
+	</dict>
+</array>
+</plist>
