@@ -437,9 +437,9 @@ int main(
 		{ "pin1",     1, NULL, '1' },
 		{ NULL, 0, NULL, 0 }
 	};
-	sc_context_t *ctx;
+	sc_context_t *ctx = NULL;
 	sc_context_param_t ctx_param;
-	sc_card_t *card;
+	sc_card_t *card = NULL;
 	int do_help=0, do_unblock=0, do_change=0, do_nullpin=0, do_readcert=0, do_writecert=0;
 	u8 newpin[32];
 	char *certfile=NULL, *p;
@@ -542,17 +542,21 @@ int main(
 		if(!strcmp("tcos", ctx->card_drivers[i]->short_name)) break;
 	if(!ctx->card_drivers[i]){
 		fprintf(stderr,"Context does not support TCOS-cards\n");
+		sc_release_context(ctx);
 		exit(1);
 	}
 
 	printf("%d Readers detected\n", sc_ctx_get_reader_count(ctx));
 	if(reader < 0 || reader >= (int)sc_ctx_get_reader_count(ctx)){
 		fprintf(stderr,"Cannot open reader %d\n", reader);
+		sc_release_context(ctx);
 		exit(1);
 	}
 
 	if((r = sc_connect_card(sc_ctx_get_reader(ctx, 0), &card))<0){
 		fprintf(stderr,"Connect-Card failed: %s\n", sc_strerror(r));
+		sc_card_free(card);
+		sc_release_context(ctx);
 		exit(1);
 	}
 	printf("\nCard detected (driver: %s)\nATR:", card->driver->name);
@@ -562,6 +566,7 @@ int main(
 
 	if((r = sc_lock(card))<0){
 		fprintf(stderr,"Lock failed: %s\n", sc_strerror(r));
+		sc_release_context(ctx);
 		exit(1);
 	}
 
