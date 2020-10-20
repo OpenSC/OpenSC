@@ -146,7 +146,9 @@
 					<term>
 						<option>--key-type</option> <replaceable>specification</replaceable>
 					</term>
-					<listitem><para>Specify the type and length of the key to create, for example rsa:1024 or EC:prime256v1.</para></listitem>
+					<listitem><para>Specify the type and length (bytes if symmetric) of the key to create,
+					for example RSA:1024, EC:prime256v1, GOSTR3410-2012-256:B,
+					DES:8, DES3:24, AES:16 or GENERIC:64.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
