@@ -437,9 +437,9 @@ int main(
 		{ "pin1",     1, NULL, '1' },
 		{ NULL, 0, NULL, 0 }
 	};
-	sc_context_t *ctx;
+	sc_context_t *ctx = NULL;
 	sc_context_param_t ctx_param;
-	sc_card_t *card;
+	sc_card_t *card = NULL;
 	int do_help=0, do_unblock=0, do_change=0, do_nullpin=0, do_readcert=0, do_writecert=0;
 	u8 newpin[32];
 	char *certfile=NULL, *p;
@@ -565,6 +565,7 @@ int main(
 
 	if((r = sc_lock(card))<0){
 		fprintf(stderr,"Lock failed: %s\n", sc_strerror(r));
+		sc_disconnect_card(card);
 		sc_release_context(ctx);
 		exit(1);
 	}
