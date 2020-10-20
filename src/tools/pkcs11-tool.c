@@ -272,7 +272,7 @@ static const char *option_help[] = {
 	"Unlock User PIN (without '--login' unlock in logged in session; otherwise '--login-type' has to be 'context-specific')",
 	"Key pair generation",
 	"Key generation",
-	"Specify the type and length of the key to create, for example rsa:1024 or EC:prime256v1 or GOSTR3410-2012-256:B",
+	"Specify the type and length (bytes if symmetric) of the key to create, for example rsa:1024, EC:prime256v1, GOSTR3410-2012-256:B, AES:16 or GENERIC:64",
 	"Specify 'sign' key usage flag (sets SIGN in privkey, sets VERIFY in pubkey)",
 	"Specify 'decrypt' key usage flag (RSA only, set DECRYPT privkey, ENCRYPT in pubkey)",
 	"Specify 'derive' key usage flag (EC only)",
@@ -2340,7 +2340,7 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 				n_privkey_attr++;
 			}
 		}
-		else if (!strncmp(type, "EC:", 3))   {
+		else if (strncmp(type, "EC:", strlen("EC:")) == 0 || strncmp(type, "ec:", strlen("ec:")) == 0)  {
 			CK_MECHANISM_TYPE mtypes[] = {CKM_EC_KEY_PAIR_GEN};
 			size_t mtypes_num = sizeof(mtypes)/sizeof(mtypes[0]);
 			int ii;
@@ -2639,6 +2639,26 @@ gen_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE *hSecretKey
 			key_length = (unsigned long)atol(size);
 			if (key_length == 0)
 				key_length = 16;
+
+			FILL_ATTR(keyTemplate[n_attr], CKA_KEY_TYPE, &key_type, sizeof(key_type));
+			n_attr++;
+		}
+		else if (strncasecmp(type, "GENERIC:", strlen("GENERIC:")) == 0) {
+			CK_MECHANISM_TYPE mtypes[] = {CKM_GENERIC_SECRET_KEY_GEN};
+			size_t mtypes_num = sizeof(mtypes)/sizeof(mtypes[0]);
+			const char *size = type + strlen("GENERIC:");
+
+			key_type = CKK_GENERIC_SECRET;
+
+			if (!opt_mechanism_used)
+				if (!find_mechanism(slot, CKF_GENERATE, mtypes, mtypes_num, &opt_mechanism))
+					util_fatal("Generate Key mechanism not supported\n");
+
+			if (size == NULL)
+				util_fatal("Unknown key type %s", type);
+			key_length = (unsigned long)atol(size);
+			if (key_length == 0)
+				key_length = 32;
 
 			FILL_ATTR(keyTemplate[n_attr], CKA_KEY_TYPE, &key_type, sizeof(key_type));
 			n_attr++;
