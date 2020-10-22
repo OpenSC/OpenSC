@@ -2603,7 +2603,7 @@ static int piv_parse_discovery(sc_card_t *card, u8 * rbuf, size_t rbuflen, int a
 				if (pinp && pinplen == 2) {
 					sc_log(card->ctx, "Discovery pinp flags=0x%2.2x 0x%2.2x",*pinp, *(pinp+1));
 					r = SC_SUCCESS;
-					if (*pinp == 0x60 && *(pinp+1) == 0x20) { /* use Global pin */
+					if ((*pinp & 0x60) == 0x60 && *(pinp+1) == 0x20) { /* use Global pin */
 						sc_log(card->ctx, "Pin Preference - Global");
 						priv->pin_preference = 0x00;
 					}
