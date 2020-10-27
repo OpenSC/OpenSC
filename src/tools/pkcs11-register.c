@@ -330,6 +330,7 @@ main(int argc, char **argv)
 	const char *module_name = get_module_name(module_path);
 	if (!module_name) {
 		fprintf(stderr, "Could not load initialize %s\n", module_path);
+		cmdline_parser_free (&cmdline);
 		return 1;
 	}
 
