@@ -273,9 +273,9 @@ AC_ARG_ENABLE(
 
 AC_ARG_ENABLE(
 	[autostart-items],
-	[AS_HELP_STRING([--enable-autostart-items],[enable autostart items @<:@enabled@:>@])],
+	[AS_HELP_STRING([--enable-autostart-items],[enable autostart items @<:@disabled@:>@])],
 	,
-	[enable_autostart="yes"]
+	[enable_autostart="no"]
 )
 
 AC_ARG_ENABLE(
