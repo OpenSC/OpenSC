@@ -6871,7 +6871,7 @@ DWORD WINAPI CardAcquireContext(__inout PCARD_DATA pCardData, __in DWORD dwFlags
 	if ( pCardData->pwszCardName == NULL )
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 	/* <2 length or >=0x22 are not ISO compliant */
-	if (pCardData->cbAtr >= 0x22 || pCardData->cbAtr <= 0x2)
+	if (pCardData->cbAtr >= 0x22 || pCardData->cbAtr < 0x2)
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 	/* ATR beginning by 0x00 or 0xFF are not ISO compliant */
 	if (pCardData->pbAtr[0] == 0xFF || pCardData->pbAtr[0] == 0x00)
