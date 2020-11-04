@@ -144,8 +144,8 @@ cp MacOSX/opensc-uninstall ${BUILDPATH}/target/usr/local/bin
 
 # Prepare startup root
 mkdir -p ${BUILDPATH}/target_startup/Library/LaunchAgents
-cp src/tools/pkcs11-register.plist ${BUILDPATH}/target_startup/Library/LaunchAgents
-cp src/tools/opensc-notify.plist ${BUILDPATH}/target_startup/Library/LaunchAgents
+cp src/tools/org.opensc-project.mac.pkcs11-register.plist ${BUILDPATH}/target_startup/Library/LaunchAgents
+cp src/tools/org.opensc-project.mac.opensc-notify.plist   ${BUILDPATH}/target_startup/Library/LaunchAgents
 
 # Build OpenSCToken if possible
 if test -e OpenSCToken -a -n "${CODE_SIGN_IDENTITY}" -a -n "${DEVELOPMENT_TEAM}"; then

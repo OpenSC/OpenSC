@@ -53,8 +53,8 @@ done
 
 # register the launch agents
 for f in \
-  /Library/LaunchAgents/pkcs11-register.plist \
-  /Library/LaunchAgents/opensc-notify.plist
+  /Library/LaunchAgents/org.opensc-project.mac.pkcs11-register.plist \
+  /Library/LaunchAgents/org.opensc-project.mac.opensc-notify.plist
 do
   [ -e "$f" ] || continue
   /bin/launchctl asuser "$(id -u "$USER")" /bin/launchctl load "$f" || true
