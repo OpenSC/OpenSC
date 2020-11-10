@@ -6,8 +6,8 @@ include $(top_srcdir)/aminclude_static.am
 clean-local: code-coverage-clean
 distclean-local: code-coverage-dist-clean
 
-noinst_PROGRAMS = asn1 simpletlv
-TESTS = asn1 simpletlv
+noinst_PROGRAMS = asn1 simpletlv cachedir
+TESTS = asn1 simpletlv cachedir
 
 noinst_HEADERS = torture.h
 
@@ -22,6 +22,7 @@ LDADD = $(top_builddir)/src/libopensc/libopensc.la \
 
 asn1_SOURCES = asn1.c
 simpletlv_SOURCES = simpletlv.c
+cachedir_SOURCES = cachedir.c
 
 if ENABLE_ZLIB
 noinst_PROGRAMS += compression
