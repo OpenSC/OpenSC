@@ -1008,7 +1008,12 @@ int sc_get_cache_dir(sc_context_t *ctx, char *buf, size_t bufsize)
 	}
 
 #ifndef _WIN32
-	cache_dir = ".eid/cache";
+	cache_dir = getenv("XDG_CACHE_HOME");
+	if (cache_dir != NULL && cache_dir[0] != '\0') {
+		snprintf(buf, bufsize, "%s/%s", cache_dir, "opensc");
+		return SC_SUCCESS;
+	}
+	cache_dir = ".cache/opensc";
 	homedir = getenv("HOME");
 #else
 	cache_dir = "eid-cache";
@@ -1020,7 +1025,7 @@ int sc_get_cache_dir(sc_context_t *ctx, char *buf, size_t bufsize)
 		homedir = temp_path;
 	}
 #endif
-	if (homedir == NULL)
+	if (homedir == NULL || homedir[0] == '\0')
 		return SC_ERROR_INTERNAL;
 	if (snprintf(buf, bufsize, "%s/%s", homedir, cache_dir) < 0)
 		return SC_ERROR_BUFFER_TOO_SMALL;
