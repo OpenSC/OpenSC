@@ -15,8 +15,11 @@ NEWS for OpenSC -- History of user visible changes
 ## PKCS#11
 * Return CKR_TOKEN_NOT_RECOGNIZED for not recognized cards (#2030)
 * Propagate ignore_user_content to PKCS#11 layer not to confuse applications (#2040)
+## Minidriver
+* Fix check of ATR length (2-to 33 characters inclusive) (#2146)
 ## MacOS
 * Add installer signing for PR and master
+* Avoid app bundle relocations after installation
 * Move OpenSC to MacOS Utilities folder (#2063)
 ## OpenSC tools
 ### pkcs11-tool
@@ -38,6 +41,11 @@ NEWS for OpenSC -- History of user visible changes
 ## ePass2003
 * Improve ECC support (#1859)
 * Fixed erase sequence (#2097)
+## IAS-ECC (#2070):
+* Fixed support for Idemia Cosmo cards with AWP middleware interoperability (previously broken).
+* Added support for Idemia Cosmo v8 cards.
+* PIN padding settings are now used from PKCS#15 info when available.
+* Added PIN-pad support for PIN unblock.
 ## IDPrime
 * New driver for Gemalto IDPrime (only some types) (#1772)
 ## eDo
@@ -48,6 +56,9 @@ NEWS for OpenSC -- History of user visible changes
 * Add missing encryption certificates (#2083)
 ## PIV
 * Add ATR of DOD Yubikey (#2115)
+* fixed PIV global pin bug (#2142)
+## CAC1
+* Support changing PIN with CAC Alt tokens (#2129)
 
 # New in 0.20.0; 2019-12-29
 ## General Improvements
