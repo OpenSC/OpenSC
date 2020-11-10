@@ -1116,12 +1116,17 @@ app <replaceable>application</replaceable> {
 							<itemizedlist>
 								<listitem>
 									<para>
-										<filename><envar>HOME</envar>/.eid/cache/</filename> (Unix)
+										<filename><envar>$XDG_CACHE_HOME</envar>/opensc/</filename> (If <envar>$XDG_CACHE_HOME</envar> is defined)
 									</para>
 								</listitem>
 								<listitem>
 									<para>
-										<filename><envar>USERPROFILE</envar>\.eid-cache\</filename> (Windows)
+										<filename><envar>$HOME</envar>/.cache/opensc/</filename> (Unix)
+									</para>
+								</listitem>
+								<listitem>
+									<para>
+										<filename><envar>$USERPROFILE</envar>\.eid-cache\</filename> (Windows)
 									</para>
 								</listitem>
 							</itemizedlist>

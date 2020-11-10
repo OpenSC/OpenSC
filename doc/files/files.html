@@ -724,9 +724,11 @@ app <em class="replaceable"><code>application</code></em> {
 					</span></dt><dd><p>
 							Where to cache the card's files. The default values are:
 							</p><div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem"><p>
-										<code class="filename"><code class="envar">HOME</code>/.eid/cache/</code> (Unix)
+										<code class="filename"><code class="envar">$XDG_CACHE_HOME</code>/opensc/</code> (if defined)
 									</p></li><li class="listitem"><p>
-										<code class="filename"><code class="envar">USERPROFILE</code>\.eid-cache\</code> (Windows)
+										<code class="filename"><code class="envar">$HOME</code>/.cache/opensc/</code> (Unix)
+									</p></li><li class="listitem"><p>
+										<code class="filename"><code class="envar">$USERPROFILE</code>\.eid-cache\</code> (Windows)
 									</p></li></ul></div><p>
 						</p><p>
 							If caching is done by a system process, the
