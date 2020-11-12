@@ -2,6 +2,10 @@ NEWS for OpenSC -- History of user visible changes
 
 # New in 0.21.0; 2020-XX-XX
 ## General Improvements
+* fixed security problems
+  * CVE-2020-26570 (6903aebfddc466d966c7b865fae34572bf3ed23e)
+  * CVE-2020-26571
+  * CVE-2020-26572 (9d294de90d1cc66956389856e60b6944b27b4817)
 * Bump minimal required OpenSSL version to 1.0.1 (#1658)
 * Implement basic unit tests for asn1 library, compression and simpletlv parser (#1830)
 * Allow generating code coverage
