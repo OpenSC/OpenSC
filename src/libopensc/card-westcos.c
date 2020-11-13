@@ -805,6 +805,7 @@ static int westcos_pin_cmd(sc_card_t * card, struct sc_pin_cmd_data *data,
 			} else {
 				r = SC_ERROR_NOT_SUPPORTED;
 			}
+			data->apdu = NULL;
 		}
 		if (r)
 			return (r);
