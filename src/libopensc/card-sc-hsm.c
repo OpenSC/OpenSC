@@ -718,6 +718,7 @@ static int sc_hsm_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 		data->pin2.offset = 5;
 
 		r = (*iso_ops->pin_cmd)(card, data, tries_left);
+		data->apdu = NULL;
 	}
 	LOG_TEST_RET(card->ctx, r, "Verification failed");
 
