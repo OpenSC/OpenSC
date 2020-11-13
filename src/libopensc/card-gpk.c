@@ -1795,7 +1795,10 @@ gpk_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 
 	data->apdu = &apdu;
 
-	return iso_ops->pin_cmd(card, data, tries_left);
+	r = iso_ops->pin_cmd(card, data, tries_left);
+
+	data->apdu = NULL;
+	return r;
 }
 
 /*
