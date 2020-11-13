@@ -2143,7 +2143,6 @@ static int dnie_pin_verify(struct sc_card *card,
 	res = cwa_create_secure_channel(card, GET_DNIE_PRIV_DATA(card)->cwa_provider, CWA_SM_ON);
 	LOG_TEST_RET(card->ctx, res, "Establish SM failed");
 
-	data->apdu = &apdu;	/* prepare apdu struct */
 	/* compose pin data to be inserted in apdu */
 	if (data->flags & SC_PIN_CMD_NEED_PADDING)
 		padding = 1;
