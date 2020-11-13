@@ -1284,6 +1284,7 @@ static int flex_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 	r = iso_ops->pin_cmd(card, data, NULL);
 	if (old_cla != -1)
 		card->cla = old_cla;
+	data->apdu = NULL;
 	return r;
 }
 
