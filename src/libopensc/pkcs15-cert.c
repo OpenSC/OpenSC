@@ -337,8 +337,8 @@ sc_pkcs15_get_bitstring_extension(struct sc_context *ctx,
 	LOG_TEST_RET(ctx, r, "Get extension error");
 
 	r = sc_asn1_decode(ctx, asn1_bit_string, bit_string, bit_string_len, NULL, NULL);
-	LOG_TEST_RET(ctx, r, "Decoding extension bit string");
 	free(bit_string);
+	LOG_TEST_RET(ctx, r, "Decoding extension bit string");
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
