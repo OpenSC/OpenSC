@@ -172,6 +172,9 @@ iso7816_read_record(struct sc_card *card,
 	struct sc_apdu apdu;
 	int r;
 
+	if (rec_nr > 0xFF)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2, 0xB2, rec_nr, 0);
 	apdu.le = count;
 	apdu.resplen = count;
