@@ -2206,7 +2206,7 @@ auth_read_record(struct sc_card *card, unsigned int nr_rec,
 	       "auth_read_record(): nr_rec %i; count %"SC_FORMAT_LEN_SIZE_T"u",
 	       nr_rec, count);
 
-	if (rec_nr > 0xFF)
+	if (nr_rec > 0xFF)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xB2, nr_rec, 0);
