@@ -699,8 +699,8 @@ authentic_debug_select_file(struct sc_card *card, const struct sc_path *path)
 	struct sc_card_cache *cache = &card->cache;
 
 	if (path)
-		sc_log(ctx, "try to select path(type:%i) %s",
-				path->type, sc_print_path(path));
+		sc_log(ctx, "try to select path(type:%i,len=%"SC_FORMAT_LEN_SIZE_T"u) %s",
+				path->type, path->len, sc_print_path(path));
 
 	if (!cache->valid)
 		return;
