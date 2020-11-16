@@ -306,8 +306,15 @@ sc_oberthur_read_file(struct sc_pkcs15_card *p15card, const char *in_path,
 		const struct sc_acl_entry *acl = sc_file_get_acl_entry(file, SC_AC_OP_READ);
 		int ii;
 
+		if (acl == NULL) {
+			sc_file_free(file);
+			free(*out);
+			*out = NULL;
+			LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
+		}
+
 		rv = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH_PIN, objs, 0x10);
-		if (rv != SC_SUCCESS || acl == NULL) {
+		if (rv != SC_SUCCESS) {
 			sc_file_free(file);
 			free(*out);
 			*out = NULL;
