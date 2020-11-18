@@ -77,9 +77,13 @@ before_install:
         brew install libtool;
         brew install gengetopt help2man cmocka ccache git-lfs;
         export PATH="/usr/local/opt/ccache/libexec:$PATH";
+        git clone https://github.com/frankmorgner/OpenSCToken.git;
+    fi
+  - if [ "$TRAVIS_OS_NAME" = "osx" -a "$TRAVIS_PULL_REQUEST" = "false" ]; then
         openssl aes-256-cbc -K $encrypted_3b9f0b9d36d1_key -iv $encrypted_3b9f0b9d36d1_iv -in .github/secrets.tar.enc -out .github/secrets.tar -d;
         .github/add_signing_key.sh;
-        git clone https://github.com/frankmorgner/OpenSCToken.git;
+    else
+        unset CODE_SIGN_IDENTITY INSTALLER_SIGN_IDENTITY;
     fi
   - if [ "${DO_SIMULATION}" = "javacard" ]; then
         sudo apt-get install -y openjdk-8-jdk;
