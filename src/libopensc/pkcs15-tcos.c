@@ -139,7 +139,7 @@ static int insert_key(
 			"Searching for Key-Ref %02X\n", key_reference);
 		while ((r = sc_read_record(card, ++rec_no, buf, sizeof(buf), SC_RECORD_BY_REC_NR)) > 0) {
 			int found = 0;
-			if (buf[0] != 0xA0)
+			if (buf[0] != 0xA0 || r < 2)
 				continue;
 			for (i = 2; i < buf[1] + 2 && i < r - 2; i += 2 + buf[i + 1]) {
 				if (buf[i] == 0x83 && buf[i + 1] == 1 && buf[i + 2] == key_reference)
