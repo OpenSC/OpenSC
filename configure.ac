@@ -9,7 +9,7 @@ define([PRODUCT_URL], [https://github.com/OpenSC/OpenSC])
 define([PACKAGE_VERSION_MAJOR], [0])
 define([PACKAGE_VERSION_MINOR], [21])
 define([PACKAGE_VERSION_FIX], [0])
-define([PACKAGE_SUFFIX], [-rc2])
+define([PACKAGE_SUFFIX], [])
 
 define([VS_FF_LEGAL_COPYRIGHT], [OpenSC Project])
 define([VS_FF_LEGAL_COMPANY_NAME], [OpenSC Project])
@@ -43,10 +43,10 @@ OPENSC_VS_FF_PRODUCT_URL="VS_FF_PRODUCT_URL"
 
 # LT Version numbers, remember to change them just *before* a release.
 #   (Code changed:                      REVISION++)
-#   (Oldest interface removed:          OLDEST++)
+#   (Oldest interface changed/removed:  OLDEST++)
 #   (Interfaces added:                  CURRENT++, REVISION=0)
-OPENSC_LT_CURRENT="6"
-OPENSC_LT_OLDEST="6"
+OPENSC_LT_CURRENT="7"
+OPENSC_LT_OLDEST="7"
 OPENSC_LT_REVISION="0"
 OPENSC_LT_AGE="0"
 OPENSC_LT_AGE="$((${OPENSC_LT_CURRENT}-${OPENSC_LT_OLDEST}))"
