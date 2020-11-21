@@ -405,6 +405,7 @@ static u8 sn_ifd_pin_1[] = { 0xd0, 0x02, 0xe0, 0x00, 0x00, 0x00, 0x00, 0x04 };
 #define AC_RAIZ_COMPONENTES_ISSUER "/C=ES/O=DIRECCION GENERAL DE LA POLICIA/OU=DNIE/OU=AC RAIZ COMPONENTES/CN=000000006573524449600006"
 #define AC_RAIZ_COMPONENTES_2_NEW_IDX 1
 #define AC_RAIZ_COMPONENTES_2_ISSUER "/C=ES/O=DIRECCION GENERAL DE LA POLICIA/OU=DNIE/organizationIdentifier=VATES-S2816015H/OU=AC RAIZ COMPONENTES 2/CN=000000006573524449620018"
+#define AC_RAIZ_COMPONENTES_2_ISSUER_OU "/OU=AC RAIZ COMPONENTES 2/"
 
 /**
  * The DNIe secure channel uses some static configuration.
@@ -649,7 +650,7 @@ static int dnie_set_channel_data(sc_card_t * card, X509 * icc_intermediate_ca_ce
 		sc_log(card->ctx, "icc_intermediate_ca_cert issuer %s", buf);
 	}
 
-	if (buf && strcmp(buf, AC_RAIZ_COMPONENTES_2_ISSUER) == 0) {
+	if (buf && strstr(buf, AC_RAIZ_COMPONENTES_2_ISSUER_OU)) {
 		sc_log(card->ctx, "assigning new data channel configuration");
 		priv_data->channel_data = &channel_data[AC_RAIZ_COMPONENTES_2_NEW_IDX];
 	} else {
