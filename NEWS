@@ -1,6 +1,6 @@
 NEWS for OpenSC -- History of user visible changes
 
-# New in 0.21.0; 2020-11-20
+# New in 0.21.0; 2020-11-24
 ## General Improvements
 * fixed security problems
   * CVE-2020-26570 (6903aebfddc466d966c7b865fae34572bf3ed23e)
