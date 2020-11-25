@@ -2380,13 +2380,15 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 		}
 
 		if (file->ef_structure == SC_FILE_EF_LINEAR_VARIABLE_TLV) {
-			int i;
+			unsigned int i;
 			size_t l, record_len;
 			unsigned char *head = data;
 
-			for (i=1;  ; i++) {
+			for (i=1; ; i++) {
 				l = len - (head - data);
-				if (l > 256) { l = 256; }
+				if (l > 256) {
+					l = 256;
+				}
 				r = sc_read_record(p15card->card, i, head, l, SC_RECORD_BY_REC_NR);
 				if (r == SC_ERROR_RECORD_NOT_FOUND)
 					break;
@@ -2397,13 +2399,13 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 					break;
 				record_len = head[1];
 				if (record_len != 0xff) {
-					memmove(head,head+2,r-2);
+					memmove(head, head+2, r-2);
 					head += (r-2);
 				}
 				else {
 					if (r < 4)
 						break;
-					memmove(head,head+4,r-4);
+					memmove(head, head+4, r-4);
 					head += (r-4);
 				}
 			}
