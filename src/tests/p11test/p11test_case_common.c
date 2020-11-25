@@ -114,7 +114,7 @@ add_supported_mechs(test_cert_t *o)
 		if (token.num_rsa_mechs > 0 ) {
 			/* Get supported mechanisms by token */
 			o->num_mechs = token.num_rsa_mechs;
-			for (i = 0; i <= token.num_rsa_mechs; i++) {
+			for (i = 0; i < token.num_rsa_mechs; i++) {
 				o->mechs[i].mech = token.rsa_mechs[i].mech;
 				o->mechs[i].result_flags = 0;
 				o->mechs[i].usage_flags =
@@ -131,7 +131,7 @@ add_supported_mechs(test_cert_t *o)
 	} else if (o->type == EVP_PK_EC) {
 		if (token.num_ec_mechs > 0 ) {
 			o->num_mechs = token.num_ec_mechs;
-			for (i = 0; i <= token.num_ec_mechs; i++) {
+			for (i = 0; i < token.num_ec_mechs; i++) {
 				o->mechs[i].mech = token.ec_mechs[i].mech;
 				o->mechs[i].result_flags = 0;
 				o->mechs[i].usage_flags =
@@ -147,7 +147,7 @@ add_supported_mechs(test_cert_t *o)
 	} else if (o->type == EVP_PKEY_ED25519) {
 		if (token.num_ed_mechs > 0 ) {
 			o->num_mechs = token.num_ed_mechs;
-			for (i = 0; i <= token.num_ed_mechs; i++) {
+			for (i = 0; i < token.num_ed_mechs; i++) {
 				o->mechs[i].mech = token.ed_mechs[i].mech;
 				o->mechs[i].result_flags = 0;
 				o->mechs[i].usage_flags =
@@ -163,7 +163,7 @@ add_supported_mechs(test_cert_t *o)
 	} else if (o->type == EVP_PKEY_X25519) {
 		if (token.num_montgomery_mechs > 0 ) {
 			o->num_mechs = token.num_montgomery_mechs;
-			for (i = 0; i <= token.num_ed_mechs; i++) {
+			for (i = 0; i < token.num_ed_mechs; i++) {
 				o->mechs[i].mech = token.montgomery_mechs[i].mech;
 				o->mechs[i].result_flags = 0;
 				o->mechs[i].usage_flags =
