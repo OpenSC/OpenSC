@@ -1270,15 +1270,18 @@ static void list_slots(int tokens, int refresh, int print)
 		if (rv != CKR_OK)
 			p11_fatal("C_GetSlotList(NULL)", rv);
 		free(p11_slots);
-		p11_slots = calloc(p11_num_slots, sizeof(CK_SLOT_ID));
-		if (p11_slots == NULL) {
-			perror("calloc failed");
-			exit(1);
+		p11_slots = NULL;
+		if (p11_num_slots > 0) {
+			p11_slots = calloc(p11_num_slots, sizeof(CK_SLOT_ID));
+			if (p11_slots == NULL) {
+				perror("calloc failed");
+				exit(1);
+			}
+			rv = p11->C_GetSlotList(tokens, p11_slots, &p11_num_slots);
+			if (rv != CKR_OK)
+				p11_fatal("C_GetSlotList()", rv);
 		}
 
-		rv = p11->C_GetSlotList(tokens, p11_slots, &p11_num_slots);
-		if (rv != CKR_OK)
-			p11_fatal("C_GetSlotList()", rv);
 	}
 
 	if (!print)
