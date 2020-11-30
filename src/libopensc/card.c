@@ -1367,6 +1367,8 @@ scconf_block *sc_get_conf_block(sc_context_t *ctx, const char *name1, const char
 void sc_invalidate_cache(struct sc_card *card)
 {
 	if (card) {
+		sc_file_free(card->cache.current_ef);
+		sc_file_free(card->cache.current_df);
 		memset(&card->cache, 0, sizeof(card->cache));
 		card->cache.valid = 0;
 	}
