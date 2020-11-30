@@ -1235,9 +1235,12 @@ static int asn1_decode_se_info(sc_context_t *ctx, const u8 *obj, size_t objlen,
 	size_t idx, ptrlen = objlen;
 	int ret;
 
+	LOG_FUNC_CALLED(ctx);
+
 	ses = calloc(SC_MAX_SE_NUM, sizeof(sc_pkcs15_sec_env_info_t *));
-	if (ses == NULL)
-		return SC_ERROR_OUT_OF_MEMORY;
+	if (ses == NULL) {
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_ASN1, SC_ERROR_OUT_OF_MEMORY);
+	}
 
 	for (idx=0; idx < SC_MAX_SE_NUM && ptrlen; )   {
 		struct sc_asn1_entry asn1_se[2];
@@ -1281,7 +1284,7 @@ err:
 		free(ses);
 	}
 
-	return ret;
+	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_ASN1, ret);
 }
 
 
