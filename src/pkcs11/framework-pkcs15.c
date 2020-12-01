@@ -504,7 +504,7 @@ __pkcs15_create_object(struct pkcs15_fw_data *fw_data,
 	obj->size = size;
 
 	*result = obj;
-	return 0;
+	return SC_SUCCESS;
 }
 
 static int
