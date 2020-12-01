@@ -173,6 +173,8 @@ if test -e OpenSCToken -a -n "${CODE_SIGN_IDENTITY}" -a -n "${DEVELOPMENT_TEAM}"
 	xcodebuild -target OpenSCTokenApp -configuration Debug -project OpenSCTokenApp.xcodeproj install DSTROOT=${BUILDPATH}/target_token \
 		CODE_SIGN_IDENTITY="${CODE_SIGN_IDENTITY}" DEVELOPMENT_TEAM="${DEVELOPMENT_TEAM}" OTHER_CODE_SIGN_FLAGS="--timestamp --options=runtime" CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO CODE_SIGN_STYLE=Manual
 	cd ..
+
+	COMPONENT_TOKEN="--component-plist MacOSX/target_token.plist"
 else
 	# if no OpenSCToken is checked out, then we create a dummy package
 	mkdir -p ${BUILDPATH}/target_token
@@ -191,7 +193,7 @@ fi
 # Build package
 pkgbuild --root ${BUILDPATH}/target --component-plist MacOSX/target.plist --scripts MacOSX/scripts --identifier org.opensc-project.mac --version @PACKAGE_VERSION@ --install-location / OpenSC.pkg
 pkgbuild --root ${BUILDPATH}/target_tokend --component-plist MacOSX/target_tokend.plist --identifier org.opensc-project.tokend --version @PACKAGE_VERSION@ --install-location / OpenSC-tokend.pkg
-pkgbuild --root ${BUILDPATH}/target_token --component-plist MacOSX/target_token.plist --identifier org.opensc-project.mac.opensctoken --version @PACKAGE_VERSION@ --install-location / OpenSCToken.pkg
+pkgbuild --root ${BUILDPATH}/target_token $COMPONENT_TOKEN --identifier org.opensc-project.mac.opensctoken --version @PACKAGE_VERSION@ --install-location / OpenSCToken.pkg
 pkgbuild --root ${BUILDPATH}/target_startup --component-plist MacOSX/target_startup.plist --identifier org.opensc-project.startup --version @PACKAGE_VERSION@ --install-location / OpenSC-startup.pkg
 
 # Build product
