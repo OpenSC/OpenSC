@@ -833,9 +833,13 @@ __pkcs15_create_profile_object(struct pkcs15_fw_data *fw_data,
 
 	rv = __pkcs15_create_object(fw_data, (struct pkcs15_any_object **) &pobj,
 			obj, &pkcs15_profile_ops, sizeof(struct pkcs15_profile_object));
-	if (rv >= 0) {
-		pobj->profile_id = public_certificates ? CKP_PUBLIC_CERTIFICATES_TOKEN : CKP_AUTHENTICATION_TOKEN;
+
+	if (rv != SC_SUCCESS) {
+		free(obj);
+		return rv;
 	}
+
+	pobj->profile_id = public_certificates ? CKP_PUBLIC_CERTIFICATES_TOKEN : CKP_AUTHENTICATION_TOKEN;
 
 	if (profile_object != NULL)
 		*profile_object = (struct pkcs15_any_object *) pobj;
