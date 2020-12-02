@@ -418,6 +418,7 @@ static int idprime_get_token_name(sc_card_t* card, char** tname)
 	sc_path_t tinfo_path = {"\x00\x00", 2, 0, 0, SC_PATH_TYPE_PATH, {"", 0}};
 	sc_file_t *file = NULL;
 	u8 buf[2];
+	char *name;
 	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
@@ -445,20 +446,22 @@ static int idprime_get_token_name(sc_card_t* card, char** tname)
 	}
 	sc_file_free(file);
 
-	*tname = malloc(buf[1]);
-	if (*tname == NULL) {
+	name = malloc(buf[1]);
+	if (name == NULL) {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 	}
 
-	r = iso_ops->read_binary(card, 2, (unsigned char *)*tname, buf[1], 0);
+	r = iso_ops->read_binary(card, 2, (unsigned char *)name, buf[1], 0);
 	if (r < 1) {
-		free(*tname);
+		free(name);
 		LOG_FUNC_RETURN(card->ctx, r);
 	}
 
-	if ((*tname)[r-1] != '\0') {
-		(*tname)[r-1] = '\0';
+	if (name[r-1] != '\0') {
+		name[r-1] = '\0';
 	}
+	*tname = name;
+
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
