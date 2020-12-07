@@ -552,7 +552,9 @@ gpk_select_id(sc_card_t *card, int kind, unsigned int fid,
 			cp->len = 0;
 			/* fallthru */
 		case GPK_SEL_DF:
-			assert(cp->len + 1 <= SC_MAX_PATH_SIZE / 2);
+			if (cp->len + 1 > SC_MAX_PATH_SIZE / 2) {
+				return SC_ERROR_INTERNAL;
+			}
 			path = (unsigned short int *) cp->value;
 			path[cp->len++] = fid;
 		}
