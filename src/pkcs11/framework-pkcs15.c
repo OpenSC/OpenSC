@@ -3786,6 +3786,9 @@ pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 		*(CK_BBOOL*)attr->pValue = (prkey->prv_p15obj->flags & SC_PKCS15_CO_FLAG_PRIVATE) != 0;
 		break;
 	case CKA_MODIFIABLE:
+		check_attribute_buffer(attr, sizeof(CK_BBOOL));
+		*(CK_BBOOL*)attr->pValue = (prkey->prv_p15obj->flags & SC_PKCS15_CO_FLAG_MODIFIABLE) != 0;
+		break;
 	case CKA_EXTRACTABLE:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
 		*(CK_BBOOL*)attr->pValue = FALSE;
@@ -4366,7 +4369,7 @@ pkcs15_prkey_can_do(struct sc_pkcs11_session *session, void *obj,
 		return CKR_KEY_FUNCTION_NOT_PERMITTED;
 
 	pkinfo = prkey->prv_info;
-	/* Return in there are no usage algorithms specified for this key. */
+	/* Return if there are no usage algorithms specified for this key. */
 	if (!pkinfo->algo_refs[0])
 		return CKR_FUNCTION_NOT_SUPPORTED;
 
@@ -4603,9 +4606,20 @@ pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session, void *object, CK_
 			return CKR_ATTRIBUTE_TYPE_INVALID;
 		break;
 	case CKA_MODIFIABLE:
+		check_attribute_buffer(attr, sizeof(CK_BBOOL));
+		if (pubkey->pub_p15obj)
+			*(CK_BBOOL*)attr->pValue = (pubkey->pub_p15obj->flags & SC_PKCS15_CO_FLAG_MODIFIABLE) != 0;
+		else if (cert && cert->cert_p15obj)
+			*(CK_BBOOL*)attr->pValue = (cert->pub_p15obj->flags & SC_PKCS15_CO_FLAG_MODIFIABLE) != 0;
+		else
+			return CKR_ATTRIBUTE_TYPE_INVALID;
+		break;
 	case CKA_EXTRACTABLE:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
-		*(CK_BBOOL*)attr->pValue = FALSE;
+		if (pubkey->pub_info)
+			*(CK_BBOOL*)attr->pValue = (pubkey->pub_info->access_flags & SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE) != 0;
+		else /* no pub_info structure, falling back to TRUE */
+			*(CK_BBOOL*)attr->pValue = TRUE;
 		break;
 	case CKA_LABEL:
 		if (pubkey->pub_p15obj) {
@@ -5032,9 +5046,9 @@ pkcs15_skey_get_attribute(struct sc_pkcs11_session *session,
 		break;
 	case CKA_EXTRACTABLE:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
-		*(CK_BBOOL*)attr->pValue = (((skey->base.p15_object->flags & SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE) == SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE)
-					&& (skey->base.p15_object->flags & SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE) == 0
-					&& (skey->base.p15_object->flags & SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE) == 0) ? CK_TRUE : CK_FALSE;
+		*(CK_BBOOL*)attr->pValue = (((skey->info->access_flags & SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE) == SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE)
+					&& (skey->info->access_flags & SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE) == 0
+					&& (skey->info->access_flags & SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE) == 0) ? CK_TRUE : CK_FALSE;
 		break;
 	case CKA_ALWAYS_SENSITIVE:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
