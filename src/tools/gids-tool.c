@@ -415,8 +415,14 @@ static int print_info(sc_card_t *card) {
 					keymaprecordnum = (keymapsize - 1) / sizeof(struct gids_keymap_record);
 				}
 				for (i = 0; i < cmaprecordnum; i++) {
-					printf("   container:                  %d\n", i);
-					wprintf(L"      guid:                    %s\n", cmaprecords[i].wszGuid);
+#ifdef _WIN32
+					wprintf(L"      guid:                    %ls\n", cmaprecords[i].wszGuid);
+#else
+					/* avoid converting Windows' WCHAR to Unix' wchar_t by simply dumping the content */
+					util_hex_dump(stdout,
+							(unsigned char *) cmaprecords[i].wszGuid,
+							sizeof cmaprecords[i].wszGuid, "");
+#endif
 					printf("      bFlags:                  ");
 					if (cmaprecords[i].bFlags & CONTAINER_MAP_VALID_CONTAINER) {
 						printf("Valid container");
