@@ -480,20 +480,21 @@ parse_ddo(struct sc_pkcs15_card *p15card, const u8 * buf, size_t buflen)
 	LOG_TEST_RET(ctx, r, "DDO parsing failed");
 
 	if (asn1_ddo[1].flags & SC_ASN1_PRESENT) {
+		sc_file_free(p15card->file_odf);
 		p15card->file_odf = sc_file_new();
 		if (p15card->file_odf == NULL)
 			goto mem_err;
 		p15card->file_odf->path = odf_path;
 	}
 	if (asn1_ddo[2].flags & SC_ASN1_PRESENT) {
-		if (p15card->file_tokeninfo)
-			sc_file_free(p15card->file_tokeninfo);
+		sc_file_free(p15card->file_tokeninfo);
 		p15card->file_tokeninfo = sc_file_new();
 		if (p15card->file_tokeninfo == NULL)
 			goto mem_err;
 		p15card->file_tokeninfo->path = ti_path;
 	}
 	if (asn1_ddo[3].flags & SC_ASN1_PRESENT) {
+		sc_file_free(p15card->file_unusedspace);
 		p15card->file_unusedspace = sc_file_new();
 		if (p15card->file_unusedspace == NULL)
 			goto mem_err;
