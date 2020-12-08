@@ -13,11 +13,11 @@ set -ex
 test -x ./configure || ./bootstrap
 BUILDPATH=${PWD}
 
-# Locate the latest OSX SDK
-SDK_PATH=$(xcrun --sdk macosx --show-sdk-path)
-
-# Set SDK path
-export CFLAGS="$CFLAGS -isysroot $SDK_PATH -arch x86_64"
+xcode_ver=$(xcodebuild -version | sed -En 's/Xcode[[:space:]](.*)/\1/p')
+base_ver="12.2"
+if [ $(echo -e $base_ver"\n"$xcode_ver | sort -V | head -1) == "$base_ver" ]; then
+	export BUILD_ARM="true"
+fi
 
 export SED=/usr/bin/sed
 PREFIX=/Library/OpenSC
@@ -35,10 +35,29 @@ if ! pkg-config libcrypto --atleast-version=1.0.1; then
 		make clean
 		make -j 4
 		make DESTDIR=$BUILDPATH/openssl_bin install_sw
+		if test -n "${BUILD_ARM}"; then
+			make clean
+			MACHINE=arm64 KERNEL_BITS=64 ./config no-shared --prefix=$PREFIX
+			make -j 4
+			make DESTDIR=$BUILDPATH/openssl_arm64 install_sw
+			lipo -create $BUILDPATH/openssl_arm64/$PREFIX/lib/libcrypto.a $BUILDPATH/openssl_bin/$PREFIX/lib/libcrypto.a -output libcrypto.a
+			lipo -create $BUILDPATH/openssl_arm64/$PREFIX/lib/libssl.a $BUILDPATH/openssl_bin/$PREFIX/lib/libssl.a -output libssl.a
+			mv libcrypto.a $BUILDPATH/openssl_bin/$PREFIX/lib/libcrypto.a
+			mv libssl.a $BUILDPATH/openssl_bin/$PREFIX/lib/libssl.a
+		fi
 		cd ..
 	fi
 	export OPENSSL_CFLAGS="`env PKG_CONFIG_PATH=$BUILDPATH/openssl_bin/$PREFIX/lib/pkgconfig PKG_CONFIG_SYSROOT_DIR=$BUILDPATH/openssl_bin pkg-config --static --cflags libcrypto`"
 	export OPENSSL_LIBS="`  env PKG_CONFIG_PATH=$BUILDPATH/openssl_bin/$PREFIX/lib/pkgconfig PKG_CONFIG_SYSROOT_DIR=$BUILDPATH/openssl_bin pkg-config --static --libs   libcrypto`"
+fi
+
+# Locate the latest OSX SDK
+SDK_PATH=$(xcrun --sdk macosx --show-sdk-path)
+export CFLAGS="$CFLAGS -isysroot $SDK_PATH"
+
+if test -n "${BUILD_ARM}"; then
+	export CFLAGS="$CFLAGS -arch x86_64 -arch arm64"
+	export LDFLAGS="$LDFLAGS -arch x86_64 -arch arm64"
 fi
 
 if ! test -e $BUILDPATH/openpace_bin/$PREFIX/lib/pkgconfig; then
