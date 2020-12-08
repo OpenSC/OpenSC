@@ -657,13 +657,15 @@ static int tcos_decipher(sc_card_t *card, const u8 * crgram, size_t crgram_len, 
 		size_t len = (apdu.resplen > outlen) ? outlen : apdu.resplen;
 		unsigned int offset = 0;
 
-		if (tcos3 && (data->pad_flags & SC_ALGORITHM_RSA_PAD_PKCS1) && apdu.resp[0] == 0 && apdu.resp[1] == 2) {
+		if (tcos3 && (data->pad_flags & SC_ALGORITHM_RSA_PAD_PKCS1)
+				&& len > 2 && apdu.resp[0] == 0 && apdu.resp[1] == 2) {
 			offset = 2;
 			while (offset < len && apdu.resp[offset] != 0)
 				++offset;
 			offset = (offset < len - 1) ? offset + 1 : 0;
 		}
-		memcpy(out, apdu.resp + offset, len - offset);
+		if (offset < len)
+		    memcpy(out, apdu.resp + offset, len - offset);
 		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, len - offset);
 	}
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
