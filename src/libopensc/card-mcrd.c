@@ -882,6 +882,11 @@ select_file_by_fid(sc_card_t * card, unsigned short *pathptr,
 			priv->curpathlen--;
 			priv->is_ef = 0;
 		}
+		/* Free the previously allocated file so we do not leak memory here */
+		if (file) {
+			sc_file_free(*file);
+			*file = NULL;
+		}
 		r = select_down(card, pathptr, 1, 0, file);
 	}
 
