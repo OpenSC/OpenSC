@@ -318,6 +318,7 @@ script:
       ./OsEID-tool RSA-CREATE-KEYS;
       ./OsEID-tool RSA-UPLOAD-KEYS;
       ./OsEID-tool RSA-DECRYPT-TEST;
+      ./OsEID-tool RSA-SIGN-PKCS11-TEST;
       ./OsEID-tool EC-CREATE-KEYS;
       ./OsEID-tool EC-UPLOAD-KEYS;
       ./OsEID-tool EC-SIGN-TEST;
