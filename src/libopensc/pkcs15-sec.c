@@ -697,7 +697,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	 * truncation is done by the token.
 	 */
 	else if (senv.algorithm == SC_ALGORITHM_EC &&
-			(flags & SC_ALGORITHM_ECDSA_HASH_NONE) != 0) {
+			(flags & SC_ALGORITHM_ECDSA_HASHES)) {
 		inlen = MIN(inlen, (prkey->field_length+7)/8);
 	}
 

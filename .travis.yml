@@ -323,6 +323,7 @@ script:
       ./OsEID-tool EC-CREATE-KEYS;
       ./OsEID-tool EC-UPLOAD-KEYS;
       ./OsEID-tool EC-SIGN-TEST;
+      ./OsEID-tool EC-SIGN-PKCS11-TEST;
       ./OsEID-tool EC-ECDH-TEST;
       kill -9 $PID;
 
