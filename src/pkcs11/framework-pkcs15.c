@@ -4060,6 +4060,18 @@ pkcs15_prkey_sign(struct sc_pkcs11_session *session, void *obj,
 	case CKM_ECDSA_SHA1:
 		flags = SC_ALGORITHM_ECDSA_HASH_SHA1;
 		break;
+	case CKM_ECDSA_SHA224:
+		flags = SC_ALGORITHM_ECDSA_HASH_SHA224;
+		break;
+	case CKM_ECDSA_SHA256:
+		flags = SC_ALGORITHM_ECDSA_HASH_SHA256;
+		break;
+	case CKM_ECDSA_SHA384:
+		flags = SC_ALGORITHM_ECDSA_HASH_SHA384;
+		break;
+	case CKM_ECDSA_SHA512:
+		flags = SC_ALGORITHM_ECDSA_HASH_SHA512;
+		break;
 	default:
 		sc_log(context, "DEE - need EC for %lu", pMechanism->mechanism);
 		return CKR_MECHANISM_INVALID;
@@ -5523,26 +5535,45 @@ static CK_RV register_ec_mechanisms(struct sc_pkcs11_card *p11card, int flags,
 	mech_info.ulMinKeySize = min_key_size;
 	mech_info.ulMaxKeySize = max_key_size;
 
-	if(flags & SC_ALGORITHM_ECDSA_HASH_NONE) {
+	if (flags & SC_ALGORITHM_ECDSA_RAW) {
 		mt = sc_pkcs11_new_fw_mechanism(CKM_ECDSA, &mech_info, CKK_EC, NULL, NULL);
 		if (!mt)
 			return CKR_HOST_MEMORY;
 		rc = sc_pkcs11_register_mechanism(p11card, mt);
 		if (rc != CKR_OK)
 			return rc;
-	}
 
 #ifdef ENABLE_OPENSSL
-	if(flags & SC_ALGORITHM_ECDSA_HASH_SHA1) {
-		mt = sc_pkcs11_new_fw_mechanism(CKM_ECDSA_SHA1, &mech_info, CKK_EC, NULL, NULL);
-		if (!mt)
-			return CKR_HOST_MEMORY;
-		rc = sc_pkcs11_register_mechanism(p11card, mt);
-		if (rc != CKR_OK)
-			return rc;
-	}
+		/* Hashing is always done in openssl, if the card driver requests hashes, we enable them here. */
+
+		if (flags & SC_ALGORITHM_ECDSA_HASH_SHA1) {
+			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card, CKM_ECDSA_SHA1, CKM_SHA_1, mt);
+			if (rc != CKR_OK)
+				return rc;
+		}
+		if (flags & SC_ALGORITHM_ECDSA_HASH_SHA224) {
+			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card, CKM_ECDSA_SHA224, CKM_SHA224, mt);
+			if (rc != CKR_OK)
+				return rc;
+		}
+		if (flags & SC_ALGORITHM_ECDSA_HASH_SHA256) {
+			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card, CKM_ECDSA_SHA256, CKM_SHA256, mt);
+			if (rc != CKR_OK)
+				return rc;
+		}
+		if (flags & SC_ALGORITHM_ECDSA_HASH_SHA384) {
+			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card, CKM_ECDSA_SHA384, CKM_SHA384, mt);
+			if (rc != CKR_OK)
+				return rc;
+		}
+		if (flags & SC_ALGORITHM_ECDSA_HASH_SHA512) {
+			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card, CKM_ECDSA_SHA512, CKM_SHA512, mt);
+			if (rc != CKR_OK)
+				return rc;
+		}
 #endif
 
+	}
 	/* ADD ECDH mechanisms */
 	/* The PIV uses curves where CKM_ECDH1_DERIVE and CKM_ECDH1_COFACTOR_DERIVE produce the same results */
 	if(flags & SC_ALGORITHM_ECDH_CDH_RAW) {
