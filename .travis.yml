@@ -66,6 +66,7 @@ addons:
     - ant
     - socat
     - cmake
+    - clang-tidy
 
 before_install:
   # homebrew is dead slow in older images due to the many updates it would need to download and build.
