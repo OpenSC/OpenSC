@@ -66,5 +66,3 @@ C_GenerateRandom
 C_GetFunctionStatus
 C_CancelFunction
 C_WaitForSlotEvent
-C_Initialize
-C_Finalize
