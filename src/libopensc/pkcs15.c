@@ -1171,6 +1171,7 @@ sc_pkcs15_bind_internal(struct sc_pkcs15_card *p15card, struct sc_aid *aid)
 		goto end;
 	}
 
+	sc_pkcs15_clear_tokeninfo(p15card->tokeninfo);
 	*(p15card->tokeninfo) = tokeninfo;
 
 	if (!p15card->tokeninfo->serial_number && 0 == card->serialnr.len) {
