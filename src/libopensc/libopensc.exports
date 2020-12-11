@@ -114,7 +114,6 @@ sc_bytes2apdu
 sc_format_asn1_entry
 sc_format_oid
 sc_init_oid
-sc_compare_oid
 sc_valid_oid
 sc_format_path
 sc_free_apps
@@ -150,8 +149,6 @@ sc_pkcs15_cache_file
 sc_pkcs15_card_clear
 sc_pkcs15_card_free
 sc_pkcs15_card_new
-sc_pkcs15_tokeninfo_new
-sc_pkcs15_free_tokeninfo
 sc_pkcs15_change_pin
 sc_pkcs15_compare_id
 sc_pkcs15_compute_signature
