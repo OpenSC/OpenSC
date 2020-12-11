@@ -953,6 +953,7 @@ AC_PATH_PROG(GENGETOPT, gengetopt, not found)
 AC_ARG_VAR([CLANGTIDY],
            [absolute path to clang-tidy used for static code analysis])
 AC_PATH_PROG(CLANGTIDY, clang-tidy, not found)
+TIDY_CHECKS="-clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling"
 
 AX_FUNC_GETOPT_LONG
 #AH_BOTTOM([#include "common/compat_getopt.h"])
@@ -1060,6 +1061,7 @@ AC_SUBST([PROFILE_DIR])
 AC_SUBST([PROFILE_DIR_DEFAULT])
 AC_SUBST([OPTIONAL_NOTIFY_CFLAGS])
 AC_SUBST([OPTIONAL_NOTIFY_LIBS])
+AC_SUBST([TIDY_CHECKS])
 
 AM_CONDITIONAL([ENABLE_MAN], [test "${enable_man}" = "yes"])
 AM_CONDITIONAL([ENABLE_THREAD_LOCKING], [test "${enable_thread_locking}" = "yes"])
