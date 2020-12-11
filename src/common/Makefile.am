@@ -43,4 +43,4 @@ TIDY_FILES = \
 	libpkcs11.c libscdl.c
 
 check-local:
-	if [ -x "$(CLANGTIDY)" ]; then clang-tidy -config='' -header-filter=.* $(TIDY_FILES) -- $(TIDY_FLAGS); fi
+	if [ -x "$(CLANGTIDY)" ]; then clang-tidy -config='' --checks='$(TIDY_CHECKS)' -header-filter=.* $(TIDY_FILES) -- $(TIDY_FLAGS); fi
