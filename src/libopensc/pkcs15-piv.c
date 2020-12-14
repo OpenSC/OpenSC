@@ -2,10 +2,10 @@
  * partial PKCS15 emulation for PIV-II cards
  * only minimal use of the authentication cert and key
  *
- * Copyright (C) 2005,2006,2007,2008,2009,2010  
- *               Douglas E. Engert <deengert@anl.gov> 
+ * Copyright (C) 2005,2006,2007,2008,2009,2010
+ *               Douglas E. Engert <deengert@anl.gov>
  *               2004, Nils Larsch <larsch@trustcenter.de>
- * Copyright (C) 2006, Identity Alliance, 
+ * Copyright (C) 2006, Identity Alliance,
  *               Thomas Harning <thomas.harning@identityalliance.com>
  * Copyright (C) 2007, EMC, Russell Larner <rlarner@rsa.com>
  *
@@ -66,11 +66,11 @@ typedef struct pdata_st {
 	unsigned int maxlen;
 	unsigned int minlen;
 	unsigned int storedlen;
-	int         flags;	
+	int         flags;
 	int         tries_left;
 	const unsigned char  pad_char;
 	int         obj_flags;
-} pindata; 
+} pindata;
 
 typedef struct pubdata_st {
 	const char *id;
@@ -93,7 +93,7 @@ typedef struct prdata_st {
 	int         ref;
 	const char *auth_id;
 	int         obj_flags;
-	int			user_consent; 
+	int			user_consent;
 } prdata;
 
 typedef struct common_key_info_st {
@@ -116,11 +116,11 @@ typedef struct common_key_info_st {
  * is used, or the GUID is used as a serial number.
  * We need to return a GUID like value for each object
  * But this needs to be some what unique.
- * So we will use two different methods, depending 
+ * So we will use two different methods, depending
  * on the size of the serial number.
  * If it is 25 bytes, then it was from a FASCN. If 16 bytes
  * its from a GUID.
- * If neither, we will uase the default method. 
+ * If neither, we will uase the default method.
  */
 
 static int piv_get_guid(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_object *obj,
@@ -152,13 +152,13 @@ static int piv_get_guid(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_o
 
 		/* It is from a FASCN, and we need to shorten it but keep
 		 * as much uniqueness as possible.
-		 * FASC-N is stored like a ISO 7811 Magnetic Strip Card 
+		 * FASC-N is stored like a ISO 7811 Magnetic Strip Card
 		 * Using the ANSI/ISO BCD Data Format
-		 * 4 data bit + 1 parity bit (odd) least significant bit first. 
-		 * It starts with the Start Sentinel 0x0b ";" 
+		 * 4 data bit + 1 parity bit (odd) least significant bit first.
+		 * It starts with the Start Sentinel 0x0b ";"
 		 * Fields are separated by 0x0d "="
 		 * Ends with End Sentinel 0x0f "?"
-		 * Its 39 characters + the LRC 
+		 * Its 39 characters + the LRC
 		 * http://www.dataip.co.uk/Reference/MagneticCardBCD.php
 		 * 0x0a, 0x0c, 0x0e are some type of control
 		 * the FASCN has a lot of extra bits, with only 32 digits.
@@ -194,14 +194,14 @@ static int piv_get_guid(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_o
 		}
 
 		/* overwrite two insignificant digits in middle with id */
-		memcpy(guid_bin + 7, id.value, id.len); 
+		memcpy(guid_bin + 7, id.value, id.len);
 		tlen = 16;
 	}
 	else if (id.len == 1 && serialnr.len == 16) {
-		/* its from a GUID, we will overwrite the 
+		/* its from a GUID, we will overwrite the
 		 * first byte with id.value, as this preserves most
-	     * of the uniqueness. 
-		 */ 
+	     * of the uniqueness.
+		 */
 		memcpy(guid_bin, id.value, id.len);
 		memcpy(guid_bin + id.len, serialnr.value + 1, serialnr.len - 1);
 		
@@ -247,8 +247,9 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 	/* The cert objects will return all the data */
 	/* Note: pkcs11 objects do not have CK_ID values */
 
+	// clang-format off
 	static const objdata objects[] = {
-	{"01", "Card Capability Container", 
+	{"01", "Card Capability Container",
 			"2.16.840.1.101.3.7.1.219.0", NULL, "DB00", 0},
 	{"02", "Card Holder Unique Identifier",
 			"2.16.840.1.101.3.7.2.48.0", NULL, "3000", 0},
@@ -260,11 +261,11 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 			"2.16.840.1.101.3.7.2.96.16", "01", "6010", SC_PKCS15_CO_FLAG_PRIVATE},
 	{"06", "Printed Information",
 			"2.16.840.1.101.3.7.2.48.1", "01", "3001", SC_PKCS15_CO_FLAG_PRIVATE},
-	{"07", "Cardholder Facial Image", 
+	{"07", "Cardholder Facial Image",
 			"2.16.840.1.101.3.7.2.96.48", "01", "6030", SC_PKCS15_CO_FLAG_PRIVATE},
 	{"08", "X.509 Certificate for Digital Signature",
 			"2.16.840.1.101.3.7.2.1.0",  NULL, "0100", 0},
-	{"09", "X.509 Certificate for Key Management", 
+	{"09", "X.509 Certificate for Key Management",
 			"2.16.840.1.101.3.7.2.1.2", NULL, "0102", 0},
 	{"10","X.509 Certificate for Card Authentication",
 			"2.16.840.1.101.3.7.2.5.0", NULL, "0500", 0},
@@ -277,50 +278,51 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 	{"14", "Cardholder Iris Image",
 			"2.16.840.1.101.3.7.2.16.21", NULL, "1015", SC_PKCS15_CO_FLAG_PRIVATE},
 
-	{"15", "Retired X.509 Certificate for Key Management 1", 
+	{"15", "Retired X.509 Certificate for Key Management 1",
 			"2.16.840.1.101.3.7.2.16.1", NULL, "1001", 0},
-	{"16", "Retired X.509 Certificate for Key Management 2", 
+	{"16", "Retired X.509 Certificate for Key Management 2",
 			"2.16.840.1.101.3.7.2.16.2", NULL, "1002", 0},
-	{"17", "Retired X.509 Certificate for Key Management 3", 
+	{"17", "Retired X.509 Certificate for Key Management 3",
 			"2.16.840.1.101.3.7.2.16.3", NULL, "1003", 0},
-	{"18", "Retired X.509 Certificate for Key Management 4", 
+	{"18", "Retired X.509 Certificate for Key Management 4",
 			"2.16.840.1.101.3.7.2.16.4", NULL, "1004", 0},
-	{"19", "Retired X.509 Certificate for Key Management 5", 
+	{"19", "Retired X.509 Certificate for Key Management 5",
 			"2.16.840.1.101.3.7.2.16.5", NULL, "1005", 0},
-	{"20", "Retired X.509 Certificate for Key Management 6", 
+	{"20", "Retired X.509 Certificate for Key Management 6",
 			"2.16.840.1.101.3.7.2.16.6", NULL, "1006", 0},
-	{"21", "Retired X.509 Certificate for Key Management 7", 
+	{"21", "Retired X.509 Certificate for Key Management 7",
 			"2.16.840.1.101.3.7.2.16.7", NULL, "1007", 0},
-	{"22", "Retired X.509 Certificate for Key Management 8", 
+	{"22", "Retired X.509 Certificate for Key Management 8",
 			"2.16.840.1.101.3.7.2.16.8", NULL, "1008", 0},
-	{"23", "Retired X.509 Certificate for Key Management 9", 
+	{"23", "Retired X.509 Certificate for Key Management 9",
 			"2.16.840.1.101.3.7.2.16.9", NULL, "1009", 0},
-	{"24", "Retired X.509 Certificate for Key Management 10", 
+	{"24", "Retired X.509 Certificate for Key Management 10",
 			"2.16.840.1.101.3.7.2.16.10", NULL, "100A", 0},
-	{"25", "Retired X.509 Certificate for Key Management 11", 
+	{"25", "Retired X.509 Certificate for Key Management 11",
 			"2.16.840.1.101.3.7.2.16.11", NULL, "100B", 0},
-	{"26", "Retired X.509 Certificate for Key Management 12", 
+	{"26", "Retired X.509 Certificate for Key Management 12",
 			"2.16.840.1.101.3.7.2.16.12", NULL, "100C", 0},
-	{"27", "Retired X.509 Certificate for Key Management 13", 
+	{"27", "Retired X.509 Certificate for Key Management 13",
 			"2.16.840.1.101.3.7.2.16.13", NULL, "100D", 0},
-	{"28", "Retired X.509 Certificate for Key Management 14", 
+	{"28", "Retired X.509 Certificate for Key Management 14",
 			"2.16.840.1.101.3.7.2.16.14", NULL, "100E", 0},
-	{"29", "Retired X.509 Certificate for Key Management 15", 
+	{"29", "Retired X.509 Certificate for Key Management 15",
 			"2.16.840.1.101.3.7.2.16.15", NULL, "100F", 0},
-	{"30", "Retired X.509 Certificate for Key Management 16", 
+	{"30", "Retired X.509 Certificate for Key Management 16",
 			"2.16.840.1.101.3.7.2.16.16", NULL, "1010", 0},
-	{"31", "Retired X.509 Certificate for Key Management 17", 
+	{"31", "Retired X.509 Certificate for Key Management 17",
 			"2.16.840.1.101.3.7.2.16.17", NULL, "1011", 0},
-	{"32", "Retired X.509 Certificate for Key Management 18", 
+	{"32", "Retired X.509 Certificate for Key Management 18",
 			"2.16.840.1.101.3.7.2.16.18", NULL, "1012", 0},
-	{"33", "Retired X.509 Certificate for Key Management 19", 
+	{"33", "Retired X.509 Certificate for Key Management 19",
 			"2.16.840.1.101.3.7.2.16.19", NULL, "1013", 0},
-	{"34", "Retired X.509 Certificate for Key Management 20", 
+	{"34", "Retired X.509 Certificate for Key Management 20",
 			"2.16.840.1.101.3.7.2.16.20", NULL, "1014", 0},
 	{NULL, NULL, NULL, NULL, NULL, 0}
-};
-	/* 
-	 * NIST 800-73-1 lifted the restriction on 
+	};
+	// clang-format on
+	/*
+	 * NIST 800-73-1 lifted the restriction on
 	 * requiring pin protected certs. Thus the default is to
 	 * not require this.
 	 */
@@ -329,6 +331,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 
 #define PIV_NUM_CERTS_AND_KEYS 24
 
+	// clang-format off
 	static const cdata certs[PIV_NUM_CERTS_AND_KEYS] = {
 		{"01", "Certificate for PIV Authentication", "0101cece", 0, 0},
 		{"02", "Certificate for Digital Signature", "0100cece", 0, 0},
@@ -355,47 +358,50 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		{"23", "Retired Certificate for Key Management 19", "1013cece", 0, 0},
 		{"24", "Retired Certificate for Key Management 20", "1014cece", 0, 0}
 	};
+	// clang-format on
 
+	// clang-format off
 	static const pindata pins[] = {
 		{ "01", "PIN", "", 0x80,
 		  /* label, flag  and ref will change if using global pin */
 		  SC_PKCS15_PIN_TYPE_ASCII_NUMERIC,
-		  8, 4, 8, 
+		  8, 4, 8,
 		  SC_PKCS15_PIN_FLAG_NEEDS_PADDING |
 		  SC_PKCS15_PIN_FLAG_INITIALIZED |
-		  SC_PKCS15_PIN_FLAG_LOCAL, 
+		  SC_PKCS15_PIN_FLAG_LOCAL,
 		  -1, 0xFF,
 		  SC_PKCS15_CO_FLAG_PRIVATE },
-		{ "02", "PIV PUK", "", 0x81, 
+		{ "02", "PIV PUK", "", 0x81,
 		  SC_PKCS15_PIN_TYPE_ASCII_NUMERIC,
-		  8, 4, 8, 
+		  8, 4, 8,
 		  SC_PKCS15_PIN_FLAG_NEEDS_PADDING |
 		  SC_PKCS15_PIN_FLAG_INITIALIZED |
 		  SC_PKCS15_PIN_FLAG_LOCAL | SC_PKCS15_PIN_FLAG_SO_PIN |
-		  SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN, 
-		  -1, 0xFF, 
+		  SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN,
+		  -1, 0xFF,
 		  SC_PKCS15_CO_FLAG_PRIVATE },
 		{ NULL, NULL, NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 	};
+	// clang-format on
 
 
 	/*
 	 * The size of the key or the algid is not really known
-	 * but can be derived from the certificates. 
-	 * the cert, pubkey and privkey are a set. 
+	 * but can be derived from the certificates.
+	 * the cert, pubkey and privkey are a set.
 	 * Key usages bits taken from pkcs15v1_1 Table 2
 	 * RSA and EC have different sets of usage
 	 */
+	// clang-format off
 	static const pubdata pubkeys[PIV_NUM_CERTS_AND_KEYS] = {
-
-		{ "01", "PIV AUTH pubkey", 
+		{ "01", "PIV AUTH pubkey",
 			 	/*RSA*/SC_PKCS15_PRKEY_USAGE_ENCRYPT |
 			 		SC_PKCS15_PRKEY_USAGE_WRAP |
 					SC_PKCS15_PRKEY_USAGE_VERIFY |
 					SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_VERIFY,
 			"9A06", 0x9A, NULL, 0, "PIV_9A_KEY"},
-		{ "02", "SIGN pubkey", 
+		{ "02", "SIGN pubkey",
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_ENCRYPT |
 					SC_PKCS15_PRKEY_USAGE_VERIFY |
 					SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER |
@@ -403,13 +409,13 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 				/*EC*/SC_PKCS15_PRKEY_USAGE_VERIFY |
 					SC_PKCS15_PRKEY_USAGE_NONREPUDIATION,
 			"9C06", 0x9C, NULL, 0, "PIV_9C_KEY"},
-		{ "03", "KEY MAN pubkey", 
+		{ "03", "KEY MAN pubkey",
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_ENCRYPT| SC_PKCS15_PRKEY_USAGE_WRAP,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_DERIVE,
 			"9D06", 0x9D, NULL, 0, "PIV_9D_KEY"},
-		{ "04", "CARD AUTH pubkey", 
+		{ "04", "CARD AUTH pubkey",
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_VERIFY |
-					SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER, 
+					SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_VERIFY,
 			"9E06", 0x9E, NULL, 0, "PIV_9E_KEY"},  /* no pin, and avail in contactless */
 
@@ -492,33 +498,36 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		{ "24", "Retired KEY MAN 20",
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_ENCRYPT | SC_PKCS15_PRKEY_USAGE_WRAP,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_DERIVE,
-			 "9506", 0x95, NULL, 0, NULL} };
+			 "9506", 0x95, NULL, 0, NULL}
+	};
+	// clang-format on
 
 /*
  * note some of the SC_PKCS15_PRKEY values are dependent
- * on the key algorithm, and will be reset. 
+ * on the key algorithm, and will be reset.
  */
+	// clang-format off
 	static const prdata prkeys[PIV_NUM_CERTS_AND_KEYS] = {
-		{ "01", "PIV AUTH key", 
+		{ "01", "PIV AUTH key",
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_DECRYPT |
 					SC_PKCS15_PRKEY_USAGE_UNWRAP |
 					SC_PKCS15_PRKEY_USAGE_SIGN |
 					SC_PKCS15_PRKEY_USAGE_SIGNRECOVER,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_SIGN,
 			"", 0x9A, "01", SC_PKCS15_CO_FLAG_PRIVATE, 0},
-		{ "02", "SIGN key", 
+		{ "02", "SIGN key",
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_DECRYPT |
 					SC_PKCS15_PRKEY_USAGE_SIGN |
 					SC_PKCS15_PRKEY_USAGE_SIGNRECOVER |
 					SC_PKCS15_PRKEY_USAGE_NONREPUDIATION,
-				/*EC*/SC_PKCS15_PRKEY_USAGE_SIGN | 
+				/*EC*/SC_PKCS15_PRKEY_USAGE_SIGN |
 					SC_PKCS15_PRKEY_USAGE_NONREPUDIATION,
 			"", 0x9C, "01", SC_PKCS15_CO_FLAG_PRIVATE, 1},
-		{ "03", "KEY MAN key", 
+		{ "03", "KEY MAN key",
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_DECRYPT | SC_PKCS15_PRKEY_USAGE_UNWRAP,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_DERIVE,
 			"", 0x9D, "01", SC_PKCS15_CO_FLAG_PRIVATE, 0},
-		{ "04", "CARD AUTH key", 
+		{ "04", "CARD AUTH key",
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_SIGN |
 				SC_PKCS15_PRKEY_USAGE_SIGNRECOVER,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_SIGN,
@@ -604,6 +613,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 				/*EC*/SC_PKCS15_PRKEY_USAGE_DERIVE,
 			"", 0x95, "01", SC_PKCS15_CO_FLAG_PRIVATE, 0}
 	};
+	// clang-format on
 
 	int    r, i;
 	sc_card_t *card = p15card->card;
@@ -624,10 +634,10 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 	set_string(&p15card->tokeninfo->manufacturer_id, MANU_ID);
 
 	/*
-	 * get serial number 
+	 * get serial number
 	 * We will use the FASC-N from the CHUID
 	 * Note we are not verifying CHUID, belongs to this card
-	 * but need serial number for Mac tokend 
+	 * but need serial number for Mac tokend
 	 */
 
 	r = sc_card_ctl(card, SC_CARDCTL_GET_SERIALNR, &serial);
@@ -671,36 +681,36 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		strncpy(obj_obj.label, objects[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
 		obj_obj.flags = objects[i].obj_flags;
 		
-		r = sc_pkcs15emu_object_add(p15card, SC_PKCS15_TYPE_DATA_OBJECT, 
-			&obj_obj, &obj_info); 
+		r = sc_pkcs15emu_object_add(p15card, SC_PKCS15_TYPE_DATA_OBJECT,
+			&obj_obj, &obj_info);
 		if (r < 0)
 			LOG_FUNC_RETURN(card->ctx, r);
 /* TODO
  * PIV key 9C requires the pin verify be done just before any
- * crypto operation using the key. 
- * 
+ * crypto operation using the key.
+ *
  * Nss 3.12.7 does not check the CKA_ALWAYS_AUTHENTICATE attribute of a key
  * and will do a C_FindObjects with only CKA_VALUE looking for a certificate
  * it had found earlier after c_Login. The template does not add CKA_TYPE=cert.
  * This will cause the card-piv to read all the objects and will reset
  * the security status for the 9C key.
- * Mozilla Bug 357025 
+ * Mozilla Bug 357025
  * Mozilla Bug 613507
- * on 5/16/2012, both scheduled for NSS 3.14 
- * 
+ * on 5/16/2012, both scheduled for NSS 3.14
+ *
  * We can not read all the objects, as some need the PIN!
- */  
+ */
 	}
 
 	/*
 	 * certs, pubkeys and priv keys are related and we assume
-	 * they are in order 
-	 * We need to read the cert, get modulus and keylen 
-	 * We use those for the pubkey, and priv key objects. 
+	 * they are in order
+	 * We need to read the cert, get modulus and keylen
+	 * We use those for the pubkey, and priv key objects.
 	 * If no cert, then see if pubkey (i.e. we are initializing,
 	 * and the pubkey is in a file,) then add pubkey and privkey
-	 * If no cert and no pubkey, skip adding them. 
- 
+	 * If no cert and no pubkey, skip adding them.
+
 	 */
 	/* set certs */
 	sc_log(card->ctx,  "PIV-II adding certs...");
@@ -789,7 +799,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 			}
 		}
 
-		/* 
+		/*
 		 * get keyUsage if present save in ckis[i]
 		 * Will only use it if this in a non FED issued card
 		 * which has a CHUID with FASC-N not starting with 9999
@@ -973,9 +983,9 @@ sc_log(card->ctx,  "DEE Adding pin %d label=%s",i, label);
 
 	/* set public keys */
 	/* We may only need this during initialization when genkey
-	 * gets the pubkey, but it can not be read from the card 
+	 * gets the pubkey, but it can not be read from the card
 	 * at a later time. The piv-tool can stash  pubkey in file
-	 */ 
+	 */
 	sc_log(card->ctx,  "PIV-II adding pub keys...");
 	for (i = 0; i < PIV_NUM_CERTS_AND_KEYS; i++) {
 		struct sc_pkcs15_pubkey_info pubkey_info;
@@ -1002,7 +1012,7 @@ sc_log(card->ctx,  "DEE Adding pin %d label=%s",i, label);
 
 		/* If no cert found, piv-tool may have stashed the pubkey
 		 * so we can use it when generating a certificate request
-		 * The file is a OpenSSL DER EVP_KEY, which looks like 
+		 * The file is a OpenSSL DER EVP_KEY, which looks like
 		 * a certificate subjectPublicKeyInfo.
 		 *
 		 */
@@ -1011,7 +1021,7 @@ sc_log(card->ctx,  "DEE Adding pin %d label=%s",i, label);
 			
 			sc_log(card->ctx, "No cert for this pub key i=%d",i);
 			
-			/* 
+			/*
 			 * If we used the piv-tool to generate a key,
 			 * we would have saved the public key as a file.
 			 * This code is only used while signing a request
@@ -1020,15 +1030,15 @@ sc_log(card->ctx,  "DEE Adding pin %d label=%s",i, label);
 			 */
 	
 			
-			sc_log(card->ctx, "DEE look for env %s", 
+			sc_log(card->ctx, "DEE look for env %s",
 					pubkeys[i].getenvname?pubkeys[i].getenvname:"NULL");
 
-			if (pubkeys[i].getenvname == NULL) 
+			if (pubkeys[i].getenvname == NULL)
 				continue;
 
-			filename = getenv(pubkeys[i].getenvname); 
+			filename = getenv(pubkeys[i].getenvname);
 			sc_log(card->ctx, "DEE look for file %s", filename?filename:"NULL");
-			if (filename == NULL)  
+			if (filename == NULL)
 				continue;
 			
 			sc_log(card->ctx, "Adding pubkey from file %s",filename);
@@ -1044,16 +1054,16 @@ sc_log(card->ctx,  "DEE Adding pin %d label=%s",i, label);
 			LOG_TEST_GOTO_ERR(card->ctx, r, "SPKI encode public key error");
 			
 			/* Only get here if no cert, and the the above found the
-			 * pub key file (actually the SPKI version). This only 
-			 * happens when trying initializing a card and have set 
-			 * env PIV_9A_KEY or 9C, 9D, 9E to point at the file. 
+			 * pub key file (actually the SPKI version). This only
+			 * happens when trying initializing a card and have set
+			 * env PIV_9A_KEY or 9C, 9D, 9E to point at the file.
 			 *
 			 * We will cache it using the PKCS15 emulation objects
 			 */
 
 			pubkey_info.path.len = 0;
 			
-			ckis[i].key_alg = p15_key->algorithm; 
+			ckis[i].key_alg = p15_key->algorithm;
 			switch (p15_key->algorithm) {
 				case SC_ALGORITHM_RSA:
 					/* save pubkey_len in pub and priv */
@@ -1107,7 +1117,7 @@ sc_log(card->ctx,  "DEE Adding pin %d label=%s",i, label);
 					pubkey_info.usage = pubkeys[i].usage_ec;
 				}
 
-				pubkey_info.field_length = ckis[i].pubkey_len; 
+				pubkey_info.field_length = ckis[i].pubkey_len;
 				strncpy(pubkey_obj.label, pubkeys[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
 
 				/* should not fail */
@@ -1121,7 +1131,7 @@ sc_log(card->ctx,  "DEE Adding pin %d label=%s",i, label);
 				continue;
 		}
 		sc_log(card->ctx, "USAGE: cert_keyUsage_present:%d usage:0x%8.8x",
-				ckis[i].cert_keyUsage_present ,pubkey_info.usage); 
+				ckis[i].cert_keyUsage_present ,pubkey_info.usage);
 	}
 
 
@@ -1150,10 +1160,10 @@ sc_log(card->ctx,  "DEE Adding pin %d label=%s",i, label);
 			sc_pkcs15_format_id(prkeys[i].auth_id, &prkey_obj.auth_id);
 
 		/*
-		 * When no cert is present and a pubkey in a file was found, 
+		 * When no cert is present and a pubkey in a file was found,
 		 * means the caller is initializing a card. A sign operation
-		 * will be required to sign a certificate request even if 
-		 * normal usage would not allow it. Set SC_PKCS15_PRKEY_USAGE_SIGN 
+		 * will be required to sign a certificate request even if
+		 * normal usage would not allow it. Set SC_PKCS15_PRKEY_USAGE_SIGN
 		 * TODO if code is added to allow key generation and request
 		 * sign in the same session, similar code will be needed.
 		 */

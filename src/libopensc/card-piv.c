@@ -305,6 +305,7 @@ struct piv_object {
 };
 
 /* Must be in order, and one per enumerated PIV_OBJ */
+// clang-format off
 static const struct piv_object piv_objects[] = {
 	{ PIV_OBJ_CCC, "Card Capability Container",
 			"2.16.840.1.101.3.7.1.219.0", 3, "\x5F\xC1\x07", "\xDB\x00", 0},
@@ -455,6 +456,7 @@ static const struct piv_object piv_objects[] = {
 			"2.16.840.1.101.3.7.2.9999.120", 2, "\x95\x06", "\x95\x06", PIV_OBJECT_TYPE_PUBKEY},
 	{ PIV_OBJ_LAST_ENUM, "", "", 0, "", "", 0}
 };
+// clang-format on
 
 static struct sc_card_operations piv_ops;
 
@@ -2732,7 +2734,7 @@ static int piv_find_discovery(sc_card_t *card)
 
 	/*
 	 * During piv_match or piv_card_reader_lock_obtained,
-	 * we use the discovery object to test if card present, and 
+	 * we use the discovery object to test if card present, and
 	 * if PIV AID is active. So we can not use the cache
 	 */
 
@@ -3039,8 +3041,8 @@ static int piv_match_card(sc_card_t *card)
 			return 0; /* can not handle the card */
 	}
 	/* its one we know, or we can test for it in piv_init */
-	/* 
-	 * We will call piv_match_card_continued here then 
+	/*
+	 * We will call piv_match_card_continued here then
 	 * again in piv_init to avoid any issues with passing
 	 * anything from piv_match_card
 	 * to piv_init as had been done in the past
@@ -3187,7 +3189,7 @@ static int piv_match_card_continued(sc_card_t *card)
 	 * Try to avoid doing a select_aid and losing the login state on some cards.
 	 * We may get interference on some cards by other drivers trying SELECT_AID before
 	 * we get to see if PIV application is still active
-	 * putting PIV driver first might help. 
+	 * putting PIV driver first might help.
 	 * This may fail if the wrong AID is active.
 	 * Discovery Object introduced in 800-73-3 so will return 0 if found and PIV applet active.
 	 * Will fail with SC_ERROR_FILE_NOT_FOUND if 800-73-3 and no Discovery object.
@@ -3264,10 +3266,10 @@ static int piv_match_card_continued(sc_card_t *card)
 	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d i:%d CI:%08x r:%d\n", card->type, i, priv->card_issues, r);
 	if (i >= 0 && (priv->card_issues & CI_DISCOVERY_USELESS) == 0) {
 		/*
-		 * We now know PIV AID is active, test DISCOVERY object again 
-		 * Some PIV don't support DISCOVERY and return 
-		 * SC_ERROR_INCORRECT_PARAMETERS. Any error 
-		 * including SC_ERROR_FILE_NOT_FOUND means we cannot use discovery 
+		 * We now know PIV AID is active, test DISCOVERY object again
+		 * Some PIV don't support DISCOVERY and return
+		 * SC_ERROR_INCORRECT_PARAMETERS. Any error
+		 * including SC_ERROR_FILE_NOT_FOUND means we cannot use discovery
 		 * to test for active AID.
 		 */
 		int i7e = piv_find_discovery(card);
@@ -3350,18 +3352,18 @@ static int piv_init(sc_card_t *card)
 	}
 
 	/*
-	 * Set card_issues flags based card->type and version numbers if available. 
+	 * Set card_issues flags based card->type and version numbers if available.
 	 *
 	 * YubiKey NEO, Yubikey 4 and other devices with PIV applets, have compliance
 	 * issues with the NIST 800-73-3 specs. The OpenSC developers do not have
-	 * access to all the different devices or versions of the devices. 
-	 * Vendor and user input is welcome on any compliance issues. 
+	 * access to all the different devices or versions of the devices.
+	 * Vendor and user input is welcome on any compliance issues.
 	 *
-	 * For the Yubico devices The assumption is also made that if a bug is 
+	 * For the Yubico devices The assumption is also made that if a bug is
 	 * fixed in a Yubico version that means it is fixed on both NEO and Yubikey 4.
 	 *
 	 * The flags CI_CANT_USE_GETDATA_FOR_STATE and CI_DISCOVERY_USELESS
-	 * may be set earlier or later then in the following code. 
+	 * may be set earlier or later then in the following code.
 	 */
 
 	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d CI:%08x r:%d\n", card->type, priv->card_issues, r);
@@ -3463,7 +3465,7 @@ static int piv_init(sc_card_t *card)
 	 * We want to process them now as this has information on what
 	 * keys and certs the card has and how the pin might be used.
 	 * If they fail, ignore it there are optional and introduced in
-	 * NIST 800-73-3 and NIST 800-73-2 so some older cards may 
+	 * NIST 800-73-3 and NIST 800-73-2 so some older cards may
 	 * not handle the request.
 	 */
 	piv_process_history(card);
@@ -3626,7 +3628,7 @@ piv_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 
 		/*
 		 * If called to check on the login state for a context specific login
-		 * return not logged in. Needed because of logic in e6f7373ef066  
+		 * return not logged in. Needed because of logic in e6f7373ef066
 		 */
 		if (data->pin_type == SC_AC_CONTEXT_SPECIFIC) {
 			data->pin1.logged_in = 0;
@@ -3648,9 +3650,9 @@ piv_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 
 	/*
 	 * If this was for a CKU_CONTEXT_SPECFIC login, lock the card one more time.
-	 * to avoid any interference from other applications.  
-	 * Sc_unlock will be called at a later time after the next card command 
-	 * that should be a crypto operation. If its not then it is a error by the 
+	 * to avoid any interference from other applications.
+	 * Sc_unlock will be called at a later time after the next card command
+	 * that should be a crypto operation. If its not then it is a error by the
 	 * calling application.
 	 */
 	if (data->cmd == SC_PIN_CMD_VERIFY && data->pin_type == SC_AC_CONTEXT_SPECIFIC) {
