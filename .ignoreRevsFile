@@ -1,0 +1,15 @@
+70771735ae10180bb039043b9a1b00b66bf00fc1 # Remove trailing whitespace and reformat to improve readability
+ebee0cc63896c13741c1181defb911c1aa8c8872 # Reformat long lines for readability
+010d3f4a5b3fdbf9c393b1a85d261fcb3ff5d207 # profile: Reformat for readability
+38f437f182475ec01c52ff1bce725c14dfcbdf92 # setcos: Reformat for readability
+45e3daacb2380f38b7d09b3cfd6ec1e3240e24fb # Reformat to UTF8
+152b988c5a91eb4761734012d8fb7d0a53e3d830 # p11test: Reformat
+b820bdf5b3799aa15c0a29150e64c227d1c0abfc # tcos: Reformat tcos_decipher
+69544553c36f0613f6283e0eeb3f9eb549825986 # tcos: Reformat insert_pin() for readability
+d3451faa2190e9f4c12bb00adf00149b7af1d18d # tcos: Reformat insert_key
+71d1f69a3a8b7e6436c1747945227fc66f4c6fda # Reformat tcos_compute_signature() for better readability
+1819ca33d616f4b50d8a2e6444a15a0a5a4c157b # tcos_decipher: Reformat to improve readability
+7e0ef7c16c99f80bb90292ea3190eca5b426e251 # ramework-pkcs15.c: Reformat
+0c9717a82e8cd39c755ce5491cf4c3d77bd08022 # Reformat: remove extra spaces and tabs
+1a36ce7586e50de149aa05a9cde638df1b4f746f # Apply OpenSC:ci .clang-format
+f443c391b03d06c821a7a725279c3cd135f9c13b # PIV whitespace cleanup and addtion of // clang-format off|on
