@@ -21,11 +21,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "internal.h"
-#include "opensc.h"
 #include "cards.h"
 #include "common/compat_strlcpy.h"
+#include "internal.h"
 #include "log.h"
+#include "opensc.h"
 #include "pkcs15.h"
 
 static const char name_Card[] = "NQ-Applet";

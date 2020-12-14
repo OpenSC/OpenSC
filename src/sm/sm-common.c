@@ -40,8 +40,8 @@
 #error "Need OpenSSL"
 #endif
 
-#include <openssl/evp.h>
 #include <openssl/des.h>
+#include <openssl/evp.h>
 #include <openssl/sha.h>
 
 #include "libopensc/opensc.h"

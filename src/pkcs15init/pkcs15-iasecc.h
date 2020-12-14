@@ -21,5 +21,7 @@
 #ifndef pkcs15_iasecc_h
 #define pkcs15_iasecc_h
 
+#include "libopensc/pkcs15.h"
+
 extern int iasecc_pkcs15_encode_supported_algos(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *object);
 #endif /* #ifndef pkcs15_iasecc_h*/

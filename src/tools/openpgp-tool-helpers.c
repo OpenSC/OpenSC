@@ -20,11 +20,10 @@
 
 #include "config.h"
 
-#include <stdio.h>
-#include <time.h>
 #include "openpgp-tool-helpers.h"
 #include "util.h"
-
+#include <stdio.h>
+#include <time.h>
 
 /* prettify hex */
 char *prettify_hex(const u8 *data, size_t length, char *buffer, size_t buflen)

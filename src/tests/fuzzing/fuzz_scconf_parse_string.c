@@ -23,8 +23,8 @@
 #include "config.h"
 #endif
 
-#include "scconf/scconf.h"
 #include "libopensc/internal.h"
+#include "scconf/scconf.h"
 #include <stdlib.h>
 #include <string.h>
 

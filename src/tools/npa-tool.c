@@ -26,8 +26,8 @@
 #include "sm/sm-eac.h"
 #include "sm/sslutil.h"
 #include "util.h"
-#include <eac/pace.h>
 #include <eac/objects.h>
+#include <eac/pace.h>
 #include <libopensc/card-npa.h>
 #include <libopensc/log.h>
 #include <libopensc/opensc.h>

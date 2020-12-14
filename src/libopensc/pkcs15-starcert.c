@@ -26,10 +26,10 @@
 #include <string.h>
 #include <stdio.h>
 
-#include "internal.h"
-#include "common/compat_strlcpy.h"
-#include "pkcs15.h"
 #include "cardctl.h"
+#include "common/compat_strlcpy.h"
+#include "internal.h"
+#include "pkcs15.h"
 
 #define MANU_ID		"Giesecke & Devrient GmbH"
 #define STARCERT	"StarCertV2201"

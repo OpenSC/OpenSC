@@ -43,12 +43,12 @@
 #include <openssl/err.h>
 
 #include "fread_to_eof.h"
-#include "libopensc/sc-ossl-compat.h"
-#include "libopensc/opensc.h"
-#include "libopensc/cardctl.h"
 #include "libopensc/asn1.h"
-#include "libopensc/log.h"
 #include "libopensc/card-sc-hsm.h"
+#include "libopensc/cardctl.h"
+#include "libopensc/log.h"
+#include "libopensc/opensc.h"
+#include "libopensc/sc-ossl-compat.h"
 #include "util.h"
 
 static const char *app_name = "sc-hsm-tool";

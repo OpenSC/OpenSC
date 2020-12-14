@@ -27,10 +27,10 @@
 #include <string.h>
 #include <stdio.h>
 
-#include "internal.h"
 #include "common/compat_strlcpy.h"
-#include "libopensc/pkcs15.h"
+#include "internal.h"
 #include "libopensc/cardctl.h"
+#include "libopensc/pkcs15.h"
 
 #define MANU_ID		"A-Trust"
 #define CARD_LABEL	"a.sign Premium a"

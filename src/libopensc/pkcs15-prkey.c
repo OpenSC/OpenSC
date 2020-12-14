@@ -28,14 +28,13 @@
 #include <assert.h>
 
 #ifdef ENABLE_OPENSSL
-#include <openssl/opensslv.h>
 #include <openssl/bn.h>
+#include <openssl/err.h>
+#include <openssl/evp.h>
+#include <openssl/opensslv.h>
+#include <openssl/rsa.h>
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
-#include <openssl/err.h>
-#include <openssl/bn.h>
-#include <openssl/rsa.h>
-#include <openssl/evp.h>
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 # include <openssl/core_names.h>
 # include <openssl/param_build.h>

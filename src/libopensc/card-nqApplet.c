@@ -21,11 +21,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "opensc.h"
 #include "asn1.h"
 #include "cardctl.h"
 #include "internal.h"
 #include "log.h"
+#include "opensc.h"
 
 #define APPLET_VERSION_LEN  2
 #define APPLET_MEMTYPE_LEN  1

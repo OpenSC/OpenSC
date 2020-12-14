@@ -22,16 +22,16 @@
 #include "config.h"
 
 #ifdef ENABLE_OPENSSL		/* empty file without openssl */
-#include <string.h>
 #include <limits.h>
 #include <openssl/bn.h>
+#include <openssl/conf.h>
 #include <openssl/evp.h>
+#include <openssl/opensslconf.h> /* for OPENSSL_NO_* */
+#include <openssl/opensslv.h>
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
-#include <openssl/opensslv.h>
 #include <openssl/x509.h>
-#include <openssl/conf.h>
-#include <openssl/opensslconf.h> /* for OPENSSL_NO_* */
+#include <string.h>
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 #include <openssl/core_names.h>
 #include <openssl/param_build.h>

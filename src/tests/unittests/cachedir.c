@@ -21,8 +21,8 @@
 
 #include <limits.h>
 
-#include "torture.h"
 #include "libopensc/opensc.h"
+#include "torture.h"
 
 static void torture_cachedir_default_empty_home(void **state)
 {

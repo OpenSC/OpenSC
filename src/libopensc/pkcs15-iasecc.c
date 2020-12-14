@@ -32,11 +32,11 @@
 #include <openssl/x509v3.h>
 #endif
 
+#include "../pkcs15init/pkcs15-iasecc.h"
+#include "aux-data.h"
+#include "iasecc.h"
 #include "internal.h"
 #include "pkcs15.h"
-#include "../pkcs15init/pkcs15-iasecc.h"
-#include "iasecc.h"
-#include "aux-data.h"
 
 #define IASECC_GEMALTO_MD_APPLICATION_NAME "CSP"
 #define IASECC_GEMALTO_MD_DEFAULT_CONT_LABEL "Default Key Container"

@@ -17,10 +17,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdio.h>
-#include <stdint.h>
-#include <string.h>
 #include "libopensc/opensc.h"
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
 
 #define LEN 30
 

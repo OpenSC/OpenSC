@@ -28,12 +28,12 @@
 #include <stdio.h>
 #include <assert.h>
 
+#include "asn1.h"
 #include "common/libscdl.h"
 #include "internal.h"
-#include "asn1.h"
-#include "pkcs15.h"
-#include "pkcs15-syn.h"
 #include "pkcs15-emulator-filter.h"
+#include "pkcs15-syn.h"
+#include "pkcs15.h"
 
 // clang-format off
 struct sc_pkcs15_emulator_handler builtin_emulators[] = {

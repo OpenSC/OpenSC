@@ -22,10 +22,10 @@
 
 #include <errno.h>
 #include <fcntl.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <stdlib.h>
 #include <limits.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #ifndef _WIN32
 #include <sys/types.h>

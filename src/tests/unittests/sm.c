@@ -19,9 +19,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "torture.h"
 #include "libopensc/log.c"
 #include "sm/sm-common.h"
+#include "torture.h"
 
 /* Setup context */
 static int setup_sc_context(void **state)

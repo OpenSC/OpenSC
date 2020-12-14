@@ -23,8 +23,8 @@
 #include <config.h>
 #endif
 
-#include "internal.h"
 #include "common/compat_strlcpy.h"
+#include "internal.h"
 #include "log.h"
 #include "pkcs15.h"
 #include <stdlib.h>

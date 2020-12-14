@@ -19,8 +19,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 int LLVMFuzzerTestOneInput (const unsigned char *data, size_t size);
 

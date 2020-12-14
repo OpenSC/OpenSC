@@ -24,11 +24,11 @@
 #endif
 
 #include "fuzzer_reader.h"
-#include "pkcs15init/pkcs15-lib.c"
-#include "scconf/scconf.h"
 #include "pkcs15init/pkcs15-init.h"
+#include "pkcs15init/pkcs15-lib.c"
 #include "pkcs15init/profile.c"
 #include "pkcs15init/profile.h"
+#include "scconf/scconf.h"
 
 int fuzz_profile_load(struct sc_profile *profile, const uint8_t *data, size_t size)
 {

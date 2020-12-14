@@ -23,17 +23,17 @@
 #include <getopt.h>
 #include "p11test_helpers.h"
 
-#include "p11test_case_readonly.h"
-#include "p11test_case_multipart.h"
-#include "p11test_case_ec_sign.h"
 #include "p11test_case_ec_derive.h"
-#include "p11test_case_usage.h"
-#include "p11test_case_mechs.h"
-#include "p11test_case_wait.h"
-#include "p11test_case_pss_oaep.h"
+#include "p11test_case_ec_sign.h"
 #include "p11test_case_interface.h"
-#include "p11test_case_wrap.h"
+#include "p11test_case_mechs.h"
+#include "p11test_case_multipart.h"
+#include "p11test_case_pss_oaep.h"
+#include "p11test_case_readonly.h"
 #include "p11test_case_secret.h"
+#include "p11test_case_usage.h"
+#include "p11test_case_wait.h"
+#include "p11test_case_wrap.h"
 
 #define DEFAULT_P11LIB	"../../pkcs11/.libs/opensc-pkcs11.so"
 

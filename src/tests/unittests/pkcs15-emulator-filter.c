@@ -19,8 +19,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "torture.h"
 #include "libopensc/pkcs15-emulator-filter.c"
+#include "torture.h"
 
 int func(sc_pkcs15_card_t *card, struct sc_aid *aid) {
 	(void) card;

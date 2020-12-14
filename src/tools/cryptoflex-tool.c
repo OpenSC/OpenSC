@@ -20,18 +20,18 @@
 
 #include "config.h"
 
-#include "libopensc/sc-ossl-compat.h"
 #include "libopensc/internal.h"
+#include "libopensc/sc-ossl-compat.h"
 #include <openssl/bn.h>
-#include <openssl/rsa.h>
-#include <openssl/x509.h>
-#include <openssl/pem.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
+#include <openssl/pem.h>
+#include <openssl/rsa.h>
+#include <openssl/x509.h>
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
+# include <openssl/decoder.h>
 # include <openssl/param_build.h>
 # include <openssl/params.h>
-# include <openssl/decoder.h>
 #endif
 
 #include "libopensc/pkcs15.h"

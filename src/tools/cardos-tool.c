@@ -35,8 +35,8 @@
 
 #ifdef ENABLE_OPENSSL
 #include <openssl/des.h>
-#include <openssl/sha.h>
 #include <openssl/evp.h>
+#include <openssl/sha.h>
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 #include <openssl/provider.h>
 #endif

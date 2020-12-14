@@ -19,13 +19,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 
 #include "internal.h"
-#include "pkcs15-syn.h"
 #include "pkcs15-emulator-filter.h"
+#include "pkcs15-syn.h"
 
 static int add_emul(struct _sc_pkcs15_emulators* filtered_emulators,
 					struct sc_pkcs15_emulator_handler* emul_handler)
