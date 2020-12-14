@@ -246,7 +246,7 @@ script:
       fi;
     fi
   - if [ -z "$HOST" -a "${DO_COVERITY_SCAN}" != "yes" -a -z "$DO_SIMULATION" ]; then
-      make check && make dist;
+      make check && make dist || cat tests/*log;
     fi
   - if [ ! -z "$HOST" -a "${DO_COVERITY_SCAN}" != "yes" ]; then
       make install;
