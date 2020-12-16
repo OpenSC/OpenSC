@@ -136,11 +136,12 @@
 				<command>pkcs15-init --generate-key " keyspec " --auth-id " nn</command>
 			</para>
 			<para>
-				where <replaceable>keyspec</replaceable> describes the algorithm and length of the
-				key to be created, such as <literal>rsa/512</literal>. This will create a 512 bit
-				RSA key. Currently, only RSA key generation is supported. Note that cards
-				usually support just a few different key lengths. Almost all cards will support
-				512 and 1024 bit keys, some will support 768 or 2048 as well.
+				where <replaceable>keyspec</replaceable> describes the algorithm and the parameters
+				of the key to be created. For example, <literal>rsa:2048</literal> generates a RSA key
+				with 2048-bit modulus. If you are generating an EC key, the curve designation must
+				be specified, for example <literal>ec:prime256v1</literal>. For symmetric key,
+				the length of key is specified in bytes, for example  <literal>AES:32</literal>
+				or <literal>DES3:24</literal>.
 			</para>
 			<para>
 				<replaceable>nn</replaceable> is the ID of a user PIN installed previously,
@@ -242,7 +243,7 @@
 				you would use
 			</para>
 			<para>
-				<command>pkcs15-init --store-secret-key /dev/urandom --secret-key-algorithm aes/256 --auth-id 01</command>
+				<command>pkcs15-init --store-secret-key /dev/urandom --secret-key-algorithm aes:256 --auth-id 01</command>
 			</para>
 			<para>
 				By default a random ID is generated for the secret key. You may specify an ID
@@ -332,9 +333,9 @@
 					<listitem>
 						<para>
 							Tells the card to generate new key and store it on the card.
-							<replaceable>keyspec</replaceable> consists of an algorithm name
-							(currently, the only supported name is <option>RSA</option>),
-							optionally followed by a slash and the length of the key in bits.
+							<replaceable>keyspec</replaceable> consists of an algorithm name,
+							optionally followed by a colon ":", slash "/" or hyphen "-" and
+							the parameters of the key to be created.
 							It is a good idea to specify the key ID along with this command,
 							using the <option>id</option> option, otherwise an intrinsic ID
 							will be calculated from the key material. Look the description of
@@ -417,7 +418,7 @@
 					<listitem>
 						<para>
 							<replaceable>keyspec</replaceable> describes the algorithm and length of the
-							key to be created or downloaded, such as <literal>aes/256</literal>.
+							key to be created or downloaded, such as <literal>aes:256</literal>.
 							This will create a 256 bit AES key.
 						</para>
 					</listitem>
