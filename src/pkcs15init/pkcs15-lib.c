@@ -4028,7 +4028,7 @@ sc_pkcs15init_update_file(struct sc_profile *profile,
 	}
 
 	/* Present authentication info needed */
-	r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_UPDATE);
+	r = sc_pkcs15init_authenticate(profile, p15card, selected_file, SC_AC_OP_UPDATE);
 	if (r >= 0 && datalen)
 		r = sc_update_binary(p15card->card, 0, (const unsigned char *) data, datalen, 0);
 
