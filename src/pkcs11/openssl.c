@@ -475,7 +475,13 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, unsigned int pubkey_len
 		|| mech->mechanism == CKM_SHA224_RSA_PKCS
 		|| mech->mechanism == CKM_SHA256_RSA_PKCS
 		|| mech->mechanism == CKM_SHA384_RSA_PKCS
-		|| mech->mechanism == CKM_SHA512_RSA_PKCS)) {
+		|| mech->mechanism == CKM_SHA512_RSA_PKCS
+		|| mech->mechanism == CKM_ECDSA_SHA1
+		|| mech->mechanism == CKM_ECDSA_SHA224
+		|| mech->mechanism == CKM_ECDSA_SHA256
+		|| mech->mechanism == CKM_ECDSA_SHA384
+		|| mech->mechanism == CKM_ECDSA_SHA512
+		)) {
 		EVP_MD_CTX *md_ctx = DIGEST_CTX(md);
 
 		/* This does not really use the data argument, but the data
