@@ -608,56 +608,69 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 
 	/* if the card has SC_ALGORITHM_NEED_USAGE set, and the
 	 * key is for signing and decryption, we need to emulate signing */
-	/* TODO: -DEE assume only RSA keys will ever use _NEED_USAGE */
 
 	sc_log(ctx, "supported algorithm flags 0x%X, private key usage 0x%X", alg_info->flags, prkey->usage);
-	if ((alg_info->flags & SC_ALGORITHM_NEED_USAGE) &&
-		((prkey->usage & USAGE_ANY_SIGN) &&
-		(prkey->usage & USAGE_ANY_DECIPHER)) ) {
-		size_t tmplen = sizeof(buf);
-		if (flags & SC_ALGORITHM_RSA_RAW) {
-			r = sc_pkcs15_decipher(p15card, obj, flags, in, inlen, out, outlen);
+	if (obj->type == SC_ALGORITHM_RSA) {
+		if ((alg_info->flags & SC_ALGORITHM_NEED_USAGE) &&
+			((prkey->usage & USAGE_ANY_SIGN) &&
+			(prkey->usage & USAGE_ANY_DECIPHER)) ) {
+			size_t tmplen = sizeof(buf);
+			if (flags & SC_ALGORITHM_RSA_RAW) {
+				r = sc_pkcs15_decipher(p15card, obj, flags, in, inlen, out, outlen);
+				LOG_FUNC_RETURN(ctx, r);
+			}
+			if (modlen > tmplen)
+				LOG_TEST_RET(ctx, SC_ERROR_NOT_ALLOWED, "Buffer too small, needs recompile!");
+
+			/* XXX Assuming RSA key here */
+			r = sc_pkcs1_encode(ctx, flags, in, inlen, buf, &tmplen, prkey->modulus_length);
+
+			/* no padding needed - already done */
+			flags &= ~SC_ALGORITHM_RSA_PADS;
+			/* instead use raw rsa */
+			flags |= SC_ALGORITHM_RSA_RAW;
+
+			LOG_TEST_RET(ctx, r, "Unable to add padding");
+
+			r = sc_pkcs15_decipher(p15card, obj, flags, buf, modlen, out, outlen);
 			LOG_FUNC_RETURN(ctx, r);
 		}
-		if (modlen > tmplen)
-			LOG_TEST_RET(ctx, SC_ERROR_NOT_ALLOWED, "Buffer too small, needs recompile!");
 
-		/* XXX Assuming RSA key here */
-		r = sc_pkcs1_encode(ctx, flags, in, inlen, buf, &tmplen, prkey->modulus_length);
 
-		/* no padding needed - already done */
-		flags &= ~SC_ALGORITHM_RSA_PADS;
-		/* instead use raw rsa */
-		flags |= SC_ALGORITHM_RSA_RAW;
+		/* If the card doesn't support the requested algorithm, we normally add the
+		 * padding here in software and ask the card to do a raw signature.  There's
+		 * one exception to that, where we might be able to get the signature to
+		 * succeed by stripping padding if the card only offers higher-level
+		 * signature operations.  The only thing we can strip is the DigestInfo
+		 * block from PKCS1 padding. */
+		if ((flags == (SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE)) &&
+		    !(alg_info->flags & SC_ALGORITHM_RSA_RAW) &&
+		    !(alg_info->flags & SC_ALGORITHM_RSA_HASH_NONE) &&
+		    (alg_info->flags & SC_ALGORITHM_RSA_PAD_PKCS1)) {
+			unsigned int algo;
+			size_t tmplen = sizeof(buf);
 
-		LOG_TEST_RET(ctx, r, "Unable to add padding");
-
-		r = sc_pkcs15_decipher(p15card, obj, flags, buf, modlen, out, outlen);
-		LOG_FUNC_RETURN(ctx, r);
+			r = sc_pkcs1_strip_digest_info_prefix(&algo, tmp, inlen, tmp, &tmplen);
+			if (r != SC_SUCCESS || algo == SC_ALGORITHM_RSA_HASH_NONE) {
+				sc_mem_clear(buf, sizeof(buf));
+				LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
+			}
+			flags &= ~SC_ALGORITHM_RSA_HASH_NONE;
+			flags |= algo;
+			inlen = tmplen;
+		}
 	}
 
 
-	/* If the card doesn't support the requested algorithm, we normally add the
-	 * padding here in software and ask the card to do a raw signature.  There's
-	 * one exception to that, where we might be able to get the signature to
-	 * succeed by stripping padding if the card only offers higher-level
-	 * signature operations.  The only thing we can strip is the DigestInfo
-	 * block from PKCS1 padding. */
-	if ((flags == (SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE)) &&
-	    !(alg_info->flags & SC_ALGORITHM_RSA_RAW) &&
-	    !(alg_info->flags & SC_ALGORITHM_RSA_HASH_NONE) &&
-	    (alg_info->flags & SC_ALGORITHM_RSA_PAD_PKCS1)) {
-		unsigned int algo;
-		size_t tmplen = sizeof(buf);
-
-		r = sc_pkcs1_strip_digest_info_prefix(&algo, tmp, inlen, tmp, &tmplen);
-		if (r != SC_SUCCESS || algo == SC_ALGORITHM_RSA_HASH_NONE) {
-			sc_mem_clear(buf, sizeof(buf));
-			LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
+	/* ECDSA sofware hash has already been done, or is not needed, or card will do hash */
+	/* if card can not do the hash, will use SC_ALGORITHM_ECDSA_RAW */
+	if (obj->type == SC_PKCS15_TYPE_PRKEY_EC) {
+		if ((alg_info->flags & SC_ALGORITHM_ECDSA_RAW)
+				&& !(flags & SC_ALGORITHM_ECDSA_HASHES & alg_info->flags)) {
+			sc_log(ctx, "ECDSA using SC_ALGORITHM_ECDSA_RAW flags before 0x%8.8lx", flags);
+				flags |= SC_ALGORITHM_ECDSA_RAW;
+				flags &= ~SC_ALGORITHM_ECDSA_HASHES;
 		}
-		flags &= ~SC_ALGORITHM_RSA_HASH_NONE;
-		flags |= algo;
-		inlen = tmplen;
 	}
 
 	r = sc_get_encoding_flags(ctx, flags, alg_info->flags, &pad_flags, &sec_flags);
@@ -665,6 +678,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 		sc_mem_clear(buf, sizeof(buf));
 		LOG_FUNC_RETURN(ctx, r);
 	}
+	/* senv now has flags card or driver will do */
 	senv.algorithm_flags = sec_flags;
 
 	sc_log(ctx, "DEE flags:0x%8.8lx alg_info->flags:0x%8.8x pad:0x%8.8lx sec:0x%8.8lx",
@@ -695,9 +709,10 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	 * If the length of the hash value is larger than the bit length of n, only
 	 * the leftmost bits of the hash up to the length of n will be used. Any
 	 * truncation is done by the token.
+	 * But if card is going to do the hash, pass in all the data
 	 */
 	else if (senv.algorithm == SC_ALGORITHM_EC &&
-			(flags & SC_ALGORITHM_ECDSA_HASHES)) {
+			(senv.flags & SC_ALGORITHM_ECDSA_HASHES) == 0) {
 		inlen = MIN(inlen, (prkey->field_length+7)/8);
 	}
 

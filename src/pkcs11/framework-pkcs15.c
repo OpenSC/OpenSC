@@ -5530,11 +5530,12 @@ static CK_RV register_ec_mechanisms(struct sc_pkcs11_card *p11card, int flags,
 	if (ext_flags & SC_ALGORITHM_EXT_EC_COMPRESS)
 		ec_flags |= CKF_EC_COMPRESS;
 
-	mech_info.flags = CKF_HW | CKF_SIGN; /* check for more */
+	mech_info.flags = CKF_HW | CKF_SIGN | CKF_VERIFY;
 	mech_info.flags |= ec_flags;
 	mech_info.ulMinKeySize = min_key_size;
 	mech_info.ulMaxKeySize = max_key_size;
 
+	/* add mechs card or driver support */
 	if (flags & SC_ALGORITHM_ECDSA_RAW) {
 		mt = sc_pkcs11_new_fw_mechanism(CKM_ECDSA, &mech_info, CKK_EC, NULL, NULL);
 		if (!mt)
@@ -5542,38 +5543,89 @@ static CK_RV register_ec_mechanisms(struct sc_pkcs11_card *p11card, int flags,
 		rc = sc_pkcs11_register_mechanism(p11card, mt);
 		if (rc != CKR_OK)
 			return rc;
-
+	}
+	
 #ifdef ENABLE_OPENSSL
-		/* Hashing is always done in openssl, if the card driver requests hashes, we enable them here. */
+	/* if card supports RAW add sign_and_hash using RAW for mechs  card does not support */
 
-		if (flags & SC_ALGORITHM_ECDSA_HASH_SHA1) {
+	if (flags & SC_ALGORITHM_ECDSA_RAW) {
+		if (!(flags & SC_ALGORITHM_ECDSA_HASH_SHA1)) {
 			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card, CKM_ECDSA_SHA1, CKM_SHA_1, mt);
 			if (rc != CKR_OK)
 				return rc;
 		}
-		if (flags & SC_ALGORITHM_ECDSA_HASH_SHA224) {
+
+		if (!(flags & SC_ALGORITHM_ECDSA_HASH_SHA224)) {
 			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card, CKM_ECDSA_SHA224, CKM_SHA224, mt);
 			if (rc != CKR_OK)
 				return rc;
 		}
-		if (flags & SC_ALGORITHM_ECDSA_HASH_SHA256) {
+
+		if (!(flags & SC_ALGORITHM_ECDSA_HASH_SHA256)) {
 			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card, CKM_ECDSA_SHA256, CKM_SHA256, mt);
 			if (rc != CKR_OK)
 				return rc;
 		}
-		if (flags & SC_ALGORITHM_ECDSA_HASH_SHA384) {
+
+		if (!(flags & SC_ALGORITHM_ECDSA_HASH_SHA384)) {
 			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card, CKM_ECDSA_SHA384, CKM_SHA384, mt);
 			if (rc != CKR_OK)
 				return rc;
 		}
-		if (flags & SC_ALGORITHM_ECDSA_HASH_SHA512) {
+
+		if (!(flags & SC_ALGORITHM_ECDSA_HASH_SHA512)) {
 			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card, CKM_ECDSA_SHA512, CKM_SHA512, mt);
 			if (rc != CKR_OK)
 				return rc;
 		}
+	}
 #endif
 
+	if (flags & SC_ALGORITHM_ECDSA_HASH_SHA1) {
+		mt = sc_pkcs11_new_fw_mechanism(CKM_ECDSA_SHA1, &mech_info, CKK_EC, NULL, NULL);
+		if (!mt)
+			return CKR_HOST_MEMORY;
+		rc = sc_pkcs11_register_mechanism(p11card, mt);
+		if (rc != CKR_OK)
+			return rc;
 	}
+
+	if (flags & SC_ALGORITHM_ECDSA_HASH_SHA224) {
+		mt = sc_pkcs11_new_fw_mechanism(CKM_ECDSA_SHA224, &mech_info, CKK_EC, NULL, NULL);
+		if (!mt)
+			return CKR_HOST_MEMORY;
+		rc = sc_pkcs11_register_mechanism(p11card, mt);
+		if (rc != CKR_OK)
+			return rc;
+	}
+
+	if (flags & SC_ALGORITHM_ECDSA_HASH_SHA256) {
+		mt = sc_pkcs11_new_fw_mechanism(CKM_ECDSA_SHA256, &mech_info, CKK_EC, NULL, NULL);
+		if (!mt)
+			return CKR_HOST_MEMORY;
+		rc = sc_pkcs11_register_mechanism(p11card, mt);
+		if (rc != CKR_OK)
+			return rc;
+	}
+
+	if (flags & SC_ALGORITHM_ECDSA_HASH_SHA384) {
+		mt = sc_pkcs11_new_fw_mechanism(CKM_ECDSA_SHA384, &mech_info, CKK_EC, NULL, NULL);
+		if (!mt)
+			return CKR_HOST_MEMORY;
+		rc = sc_pkcs11_register_mechanism(p11card, mt);
+		if (rc != CKR_OK)
+			return rc;
+	}
+
+	if (flags & SC_ALGORITHM_ECDSA_HASH_SHA512) {
+		mt = sc_pkcs11_new_fw_mechanism(CKM_ECDSA_SHA512, &mech_info, CKK_EC, NULL, NULL);
+		if (!mt)
+			return CKR_HOST_MEMORY;
+		rc = sc_pkcs11_register_mechanism(p11card, mt);
+		if (rc != CKR_OK)
+			return rc;
+	}
+
 	/* ADD ECDH mechanisms */
 	/* The PIV uses curves where CKM_ECDH1_DERIVE and CKM_ECDH1_COFACTOR_DERIVE produce the same results */
 	if(flags & SC_ALGORITHM_ECDH_CDH_RAW) {
@@ -5605,6 +5657,11 @@ static CK_RV register_ec_mechanisms(struct sc_pkcs11_card *p11card, int flags,
 		if (rc != CKR_OK)
 			return rc;
 	}
+
+#ifdef ENABLE_OPNSSL
+	/* if card does not support a HASH but supports RAW add split mech */
+
+#endif
 
 	return CKR_OK;
 }
@@ -5667,6 +5724,7 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 	sc_pkcs11_mechanism_type_t *mt;
 	unsigned int num;
 	int rsa_flags = 0, ec_flags = 0, gostr_flags = 0, aes_flags = 0;
+	int ec_found;
 	CK_RV rc;
 
 	/* Register generic mechanisms */
@@ -5686,6 +5744,7 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 	mech_info.ulMaxKeySize = 0;
 	ec_min_key_size = ~0;
 	ec_max_key_size = 0;
+	ec_found = 0;
 	aes_min_key_size = ~0;
 	aes_max_key_size = 0;
 
@@ -5712,6 +5771,7 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 					ec_max_key_size = alg_info->key_length;
 				ec_flags |= alg_info->flags;
 				ec_ext_flags |= alg_info->u._ec.ext_flags;
+				ec_found = 1;
 				break;
 			case SC_ALGORITHM_GOSTR3410:
 				gostr_flags |= alg_info->flags;
@@ -5727,7 +5787,12 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 		alg_info++;
 	}
 
-	if (ec_flags & SC_ALGORITHM_ECDSA_RAW) {
+	/*
+	 * TODO this looked like a bug:
+	 * if (ec_flags & SC_ALGORITHM_ECDSA_RAW)
+	 * Card driver driver should not have to specify SC_ALGORITHM_ECDSA_RAW
+	 */
+	if (ec_found) {
 		rc = register_ec_mechanisms(p11card, ec_flags, ec_ext_flags, ec_min_key_size, ec_max_key_size);
 		if (rc != CKR_OK)
 			return rc;
