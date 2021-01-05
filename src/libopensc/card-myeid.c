@@ -86,6 +86,7 @@ typedef struct myeid_private_data {
 	 ECDH key agreement. Note that this pointer is usually not valid
 	 after this pair of calls and must not be used elsewhere. */
 	const struct sc_security_env* sec_env;
+	int disable_hw_pkcs1_padding;
 } myeid_private_data_t;
 
 typedef struct myeid_card_caps {
@@ -166,6 +167,34 @@ myeid_select_aid(struct sc_card *card, struct sc_aid *aid, unsigned char *out, s
 	return SC_SUCCESS;
 }
 
+static int myeid_load_options(sc_context_t *ctx, myeid_private_data_t *priv)
+{
+	int r;
+	size_t i, j;
+	scconf_block **found_blocks, *block;
+
+	if (!ctx || !priv) {
+		r = SC_ERROR_INTERNAL;
+		goto err;
+	}
+	priv->disable_hw_pkcs1_padding = 0;
+	for (i = 0; ctx->conf_blocks[i]; i++) {
+		found_blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[i],
+				"card_driver", "myeid");
+		if (!found_blocks)
+			continue;
+		for (j = 0, block = found_blocks[j]; block; j++, block = found_blocks[j]) {
+			priv->disable_hw_pkcs1_padding = scconf_get_int(block, "disable_hw_pkcs1_padding", 0);
+			sc_log(ctx,"Found config option: disable_hw_pkcs1_padding = %d\n", priv->disable_hw_pkcs1_padding);
+		}
+		free(found_blocks);
+	}
+	r = SC_SUCCESS;
+
+err:
+	return r;
+}
+
 static int myeid_init(struct sc_card *card)
 {
 	unsigned long flags = 0, ext_flags = 0;
@@ -196,6 +225,9 @@ static int myeid_init(struct sc_card *card)
 	if (!priv)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 
+	rv = myeid_load_options (card->ctx, priv);
+	LOG_TEST_GOTO_ERR(card->ctx, rv, "Unable to read options from opensc.conf");
+
 	priv->card_state = SC_FILE_STATUS_CREATION;
 	card->drv_data = priv;
 
@@ -224,7 +256,9 @@ static int myeid_init(struct sc_card *card)
 	    }
 	}
 
-	flags = SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_ONBOARD_KEY_GEN;
+	flags = SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_ONBOARD_KEY_GEN;
+	if (priv->disable_hw_pkcs1_padding == 0)
+		flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
 	flags |= SC_ALGORITHM_RSA_HASH_NONE;
 
 	_sc_card_add_rsa_alg(card,  512, flags, 0);

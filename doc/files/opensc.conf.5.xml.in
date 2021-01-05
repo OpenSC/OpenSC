@@ -297,6 +297,9 @@ app <replaceable>application</replaceable> {
 									<literal>edo</literal>: See <xref linkend="edo"/>
 							</para></listitem>
 							<listitem><para>
+									<literal>myeid</literal>: See <xref linkend="myeid"/>
+							</para></listitem>
+							<listitem><para>
 									Any other value: Configuration block for an externally loaded card driver
 							</para></listitem>
 						</itemizedlist>
@@ -637,6 +640,37 @@ app <replaceable>application</replaceable> {
 				</variablelist>
 			</refsect3>
 
+		</refsect2>
+
+		<refsect2 id="myeid">
+			<title>Configuration Options for MyEID Card</title>
+			<variablelist>
+				<varlistentry>
+					<term>
+						<option>disable_hw_pkcs1_padding = <replaceable>bool</replaceable>;</option>
+					</term>
+					<listitem><para>
+							The MyEID card can internally
+							encapsulate the data (hash code)
+							into a DigestInfo ASN.1 structure
+							according to the selected hash
+							algorithm (currently only for SHA1).
+							DigestInfo is padded to RSA key
+							modulus length according to PKCS#1
+							v1.5, block type 01h. Size of the
+							DigestInfo must not exceed 40%
+							of the RSA key modulus length. If
+							this limit is unsatisfactory (for
+							example someone needs RSA 1024
+							with SHA512), the user can disable
+							this feature. In this case, the
+							card driver will do everything
+							necessary before sending the data
+							(hash code) to the card.
+					</para></listitem>
+				</varlistentry>
+
+			</variablelist>
 		</refsect2>
 
 		<refsect2 id="npa">
