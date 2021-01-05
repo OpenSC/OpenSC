@@ -5777,11 +5777,6 @@ static CK_RV register_ec_mechanisms(struct sc_pkcs11_card *p11card, int flags,
 			return rc;
 	}
 
-#ifdef ENABLE_OPNSSL
-	/* if card does not support a HASH but supports RAW add split mech */
-
-#endif
-
 	return CKR_OK;
 }
 
