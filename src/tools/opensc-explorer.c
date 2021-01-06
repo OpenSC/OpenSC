@@ -906,6 +906,25 @@ static int do_info(int argc, char **argv)
 	int r, not_current = 1;
 	const id2str_t *ac_ops = NULL;
 
+	const char *lifecycle = "unknown value";
+
+	static const id2str_t lc[] = {
+		{ SC_FILE_STATUS_NO_INFO,		"No information given"		},
+		{ SC_FILE_STATUS_CREATION,		"Creation state"		},
+		{ SC_FILE_STATUS_RFU_2,			"RFU (2)"			},
+		{ SC_FILE_STATUS_INITIALISATION,	"Initialisation state"		},
+		{ SC_FILE_STATUS_INVALIDATED,		"Operational, deactivated"	},
+		{ SC_FILE_STATUS_ACTIVATED,		"Operational, activated"	},
+		{ SC_FILE_STATUS_RFU_8,			"RFU (8)"			},
+		{ SC_FILE_STATUS_RFU_9,			"RFU (9)"			},
+		{ SC_FILE_STATUS_RFU_10,		"RFU (10)"			},
+		{ SC_FILE_STATUS_RFU_11,		"RFU (11)"			},
+		{ SC_FILE_STATUS_TERMINATION,		"Termination state"		},
+		{ SC_FILE_STATUS_PROPRIETARY,		"Proprietary state"		},
+		{ SC_FILE_STATUS_UNKNOWN,		"LCSB is not present"		},
+		{  0, NULL }
+	};
+
 	if (!argc) {
 		path = current_path;
 		file = current_file;
@@ -1033,6 +1052,10 @@ static int do_info(int argc, char **argv)
 		util_hex_dump(stdout, file->sec_attr, file->sec_attr_len, " ");
 		printf("\n");
 	}
+	for (i = 0; lc[i].str != NULL; i++)
+		if (file->status == lc[i].id)
+			lifecycle = lc[i].str;
+	printf("%-25s%s\n", "Life cycle: ", lifecycle);
 	printf("\n");
 	if (not_current) {
 		sc_file_free(file);

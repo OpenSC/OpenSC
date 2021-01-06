@@ -331,6 +331,8 @@ iso7816_process_fci(struct sc_card *card, struct sc_file *file,
 	size_t length;
 	int size;
 
+	file->status = SC_FILE_STATUS_UNKNOWN;
+
 	for (p = buf, length = buflen, end = buf + buflen;
 			p < end;
 			p += length, length = end - p) {
@@ -451,12 +453,48 @@ iso7816_process_fci(struct sc_card *card, struct sc_file *file,
 
 			case 0x8A:
 				if (length == 1) {
-					if (p[0] == 0x01)
-						file->status = SC_FILE_STATUS_CREATION;
-					else if (p[0] == 0x07 || p[0] == 0x05)
-						file->status = SC_FILE_STATUS_ACTIVATED;
-					else if (p[0] == 0x06 || p[0] == 0x04)
-						file->status = SC_FILE_STATUS_INVALIDATED;
+					switch (p[0]) {
+						case 0:
+							file->status =SC_FILE_STATUS_NO_INFO;
+							break;
+						case 1:
+							file->status = SC_FILE_STATUS_CREATION;
+							break;
+						case 3:
+							file->status = SC_FILE_STATUS_INITIALISATION;
+							break;
+						case 4:
+						case 6:
+							file->status = SC_FILE_STATUS_INVALIDATED;
+							break;
+						case 5:
+						case 7:
+							file->status = SC_FILE_STATUS_ACTIVATED;
+							break;
+						case 12:
+						case 13:
+						case 14:
+						case 15:
+							file->status = SC_FILE_STATUS_TERMINATION;
+							break;
+						case 2:
+							file->status = SC_FILE_STATUS_RFU_2;
+							break;
+						case 8:
+							file->status = SC_FILE_STATUS_RFU_8;
+							break;
+						case 9:
+							file->status = SC_FILE_STATUS_RFU_9;
+							break;
+						case 10:
+							file->status = SC_FILE_STATUS_RFU_10;
+							break;
+						case 11:
+							file->status = SC_FILE_STATUS_RFU_11;
+							break;
+						default:
+							file->status = SC_FILE_STATUS_PROPRIETARY;
+					}
 				}
 				break;
 

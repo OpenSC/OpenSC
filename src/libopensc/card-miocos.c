@@ -187,7 +187,7 @@ static int encode_file_structure(sc_card_t *card, const sc_file_t *file,
                 *p++ = file->record_length;
 	else
 		*p++ = 0;
-	if (file->status & SC_FILE_STATUS_INVALIDATED)
+	if (file->status == SC_FILE_STATUS_INVALIDATED)
 		*p++ = 0;
 	else
 		*p++ = 0x01;
