@@ -164,6 +164,7 @@ enum {
 	OPT_ALLOW_SW
 };
 
+// clang-format off
 static const struct option options[] = {
 	{ "module",		1, NULL,		OPT_MODULE },
 	{ "show-info",		0, NULL,		'I' },
@@ -240,6 +241,7 @@ static const struct option options[] = {
 
 	{ NULL, 0, NULL, 0 }
 };
+// clang-format on
 
 static const char *option_help[] = {
 	"Specify the module to load (default:" DEFAULT_PKCS11_PROVIDER ")",

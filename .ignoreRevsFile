@@ -1,0 +1,7 @@
+4abea5e87bd5f9a0f9ad562041c39db0a8488801 # Whitespace cleanup according to clang-format
+69544553c36f0613f6283e0eeb3f9eb549825986 # tcos: Reformat insert_pin() for readability
+d3451faa2190e9f4c12bb00adf00149b7af1d18d # tcos: Reformat insert_key
+71d1f69a3a8b7e6436c1747945227fc66f4c6fda # Reformat tcos_compute_signature() for better readability
+1819ca33d616f4b50d8a2e6444a15a0a5a4c157b # tcos_decipher: Reformat to improve readability
+0c9717a82e8cd39c755ce5491cf4c3d77bd08022 # Reformat: remove extra spaces and tabs
+f443c391b03d06c821a7a725279c3cd135f9c13b # PIV whitespace cleanup and addtion of // clang-format off|on

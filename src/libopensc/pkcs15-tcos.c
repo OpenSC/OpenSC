@@ -180,7 +180,7 @@ static int insert_key(
 		prkey_info.usage |= SC_PKCS15_PRKEY_USAGE_NONREPUDIATION;
 
 	r = sc_pkcs15emu_add_rsa_prkey(p15card, &prkey_obj, &prkey_info);
-	if(r != SC_SUCCESS) {
+	if (r != SC_SUCCESS) {
 		sc_log(ctx,  "sc_pkcs15emu_add_rsa_prkey(%s) failed\n", path);
 		return 4;
 	}
@@ -225,7 +225,7 @@ static int insert_pin(
 	pin_obj.auth_id.len      = auth_id ? 0 : 1;
 	pin_obj.auth_id.value[0] = auth_id;
 
-	if(card->type == SC_CARD_TYPE_TCOS_V3) {
+	if (card->type == SC_CARD_TYPE_TCOS_V3) {
 		unsigned char buf[256];
 		int i, rec_no=0;
 		if (pin_info.path.len >= 2) {

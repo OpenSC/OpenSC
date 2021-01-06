@@ -21,6 +21,7 @@
 #ifndef _OPENSC_CARDS_H
 #define _OPENSC_CARDS_H
 
+#include "libopensc/opensc.h"
 #include "libopensc/types.h"
 
 #ifdef __cplusplus
@@ -119,7 +120,7 @@ enum {
 	SC_CARD_TYPE_OBERTHUR_32K_BIO,
 	SC_CARD_TYPE_OBERTHUR_64K,
 	/* Oberthur 'COSMO v7' with applet 'AuthentIC v3.2' */
-        SC_CARD_TYPE_OBERTHUR_AUTHENTIC_3_2 = 11100,
+	SC_CARD_TYPE_OBERTHUR_AUTHENTIC_3_2 = 11100,
 
 	/* belpic driver */
 	SC_CARD_TYPE_BELPIC_BASE = 12000,
@@ -213,9 +214,9 @@ enum {
 
 	/* Spanish DNIe card */
 	SC_CARD_TYPE_DNIE_BASE = 27000,
-	SC_CARD_TYPE_DNIE_BLANK, /* ATR LC byte: 00 */
-	SC_CARD_TYPE_DNIE_ADMIN, /* ATR LC byte: 01 */
-	SC_CARD_TYPE_DNIE_USER,  /* ATR LC byte: 03 */
+	SC_CARD_TYPE_DNIE_BLANK,      /* ATR LC byte: 00 */
+	SC_CARD_TYPE_DNIE_ADMIN,      /* ATR LC byte: 01 */
+	SC_CARD_TYPE_DNIE_USER,       /* ATR LC byte: 03 */
 	SC_CARD_TYPE_DNIE_TERMINATED, /* ATR LC byte: 0F */
 
 	/* JavaCards with isoApplet */

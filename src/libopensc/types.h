@@ -21,6 +21,10 @@
 #ifndef _OPENSC_TYPES_H
 #define _OPENSC_TYPES_H
 
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif

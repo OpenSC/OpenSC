@@ -671,13 +671,13 @@ authentic_reduce_path(struct sc_card *card, struct sc_path *path)
 	in_path = *path;
 	cur_path = card->cache.current_df->path;
 
-	if (!memcmp(cur_path.value, "\x3F\x00", 2) && memcmp(in_path.value, "\x3F\x00", 2))   {
+	if (!memcmp(cur_path.value, "\x3F\x00", 2) && memcmp(in_path.value, "\x3F\x00", 2)) {
 		memmove(in_path.value + 2, in_path.value, (in_path.len - 2));
 		memcpy(in_path.value, "\x3F\x00", 2);
 		in_path.len += 2;
 	}
 
-	for (offs = 0; (offs + 1) < in_path.len && (offs + 1) < cur_path.len; offs += 2)   {
+	for (offs = 0; (offs + 1) < in_path.len && (offs + 1) < cur_path.len; offs += 2) {
 		if (cur_path.value[offs] != in_path.value[offs])
 			break;
 		if (cur_path.value[offs + 1] != in_path.value[offs + 1])
@@ -699,8 +699,8 @@ authentic_debug_select_file(struct sc_card *card, const struct sc_path *path)
 	struct sc_card_cache *cache = &card->cache;
 
 	if (path)
-		sc_log(ctx, "try to select path(type:%i,len=%"SC_FORMAT_LEN_SIZE_T"u) %s",
-				path->type, path->len, sc_print_path(path));
+		sc_log(ctx, "try to select path(type:%i,len=%" SC_FORMAT_LEN_SIZE_T "u) %s",
+		       path->type, path->len, sc_print_path(path));
 
 	if (!cache->valid)
 		return;

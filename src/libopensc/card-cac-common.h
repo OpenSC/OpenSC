@@ -23,6 +23,9 @@
 #ifndef HAVE_CARD_CAC_COMMON_H
 #define HAVE_CARD_CAC_COMMON_H
 
+#include "common/simclist.h"
+#include "types.h"
+
 #define CAC_MAX_SIZE 4096		/* arbitrary, just needs to be 'large enough' */
 
 typedef struct cac_cuid {

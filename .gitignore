@@ -115,6 +115,15 @@ src/tests/pintest
 src/tests/prngtest
 src/tests/p11test/p11test
 
+src/tests/unittests/asn1
+src/tests/unittests/compression
+src/tests/unittests/simpletlv
+
+src/tests/fuzzing/fuzz_asn1_print
+src/tests/fuzzing/fuzz_asn1_sig_value
+src/tests/fuzzing/fuzz_pkcs15_decode
+src/tests/fuzzing/fuzz_pkcs15_reader
+
 tests/*.log
 tests/*.trs
 src/tests/unittests/*.log

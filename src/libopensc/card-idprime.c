@@ -457,8 +457,8 @@ static int idprime_get_token_name(sc_card_t* card, char** tname)
 		LOG_FUNC_RETURN(card->ctx, r);
 	}
 
-	if (name[r-1] != '\0') {
-		name[r-1] = '\0';
+	if (name[r - 1] != '\0') {
+		name[r - 1] = '\0';
 	}
 	*tname = name;
 

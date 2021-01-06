@@ -1,0 +1,21 @@
+name: test-clang-format
+
+on:
+  push:
+    branches:
+    - ci
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 100
+    - uses: yshui/git-clang-format-lint@master
+      #with:
+      #  base: origin/master

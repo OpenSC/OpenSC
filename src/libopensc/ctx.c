@@ -93,6 +93,7 @@ struct _sc_driver_entry {
 	void *(*func)(void);
 };
 
+// clang-format off
 static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "cardos",	(void *(*)(void)) sc_get_cardos_driver },
 	{ "flex",	(void *(*)(void)) sc_get_cryptoflex_driver },
@@ -165,6 +166,7 @@ static const struct _sc_driver_entry old_card_drivers[] = {
 	{ "jcop",	(void *(*)(void)) sc_get_jcop_driver },
 	{ NULL, NULL }
 };
+// clang-format on
 
 struct _sc_ctx_options {
 	struct _sc_driver_entry cdrv[SC_MAX_CARD_DRIVERS];

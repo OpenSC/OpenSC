@@ -1,0 +1,33 @@
+BasedOnStyle: LLVM
+# defaults from LLVM
+# BreakBeforeBraces: Attach
+# AllowShortIfStatementsOnASingleLine: Never
+# IndentCaseLabels: false
+# AlignAfterOpenBracket: Align
+# AlignTrailingComments: true
+# MaxEmptyLinesToKeep: 1
+# ReflowComments: falsedefault
+# SortIncludes: true
+# BreakBeforeBinaryOperators: None
+# BraceWrapping:
+#   AfterClass:      false
+#   AfterControlStatement: false
+#   AfterFunction:   false
+#   AfterNamespace:  false
+#   BeforeCatch:     false
+#   BeforeElse:      false
+#   IndentBraces:    false
+
+# OpenSC modifications
+IndentWidth: 8
+# This is ugly, but hopefully allowing to use tabs for continuation indentation
+ContinuationIndentWidth: 8
+UseTab: ForContinuationAndIndentation
+AlignConsecutiveMacros: true
+ColumnLimit: 110
+
+BraceWrapping:
+  AfterEnum:       true
+  AfterObjCDeclaration: true
+  AfterStruct:     true
+  AfterUnion:      true

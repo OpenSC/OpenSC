@@ -23,6 +23,8 @@
 #ifndef _CTBCS_
 #define _CTBCS_
 
+#include "opensc.h"
+
 /*
  * Command and response size 
  */

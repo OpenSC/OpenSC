@@ -37,9 +37,10 @@ extern "C" {
 #endif
 
 #include "common/simclist.h"
-#include "scconf/scconf.h"
+#include "config.h"
 #include "libopensc/errors.h"
 #include "libopensc/types.h"
+#include "scconf/scconf.h"
 #ifdef ENABLE_SM
 #include "libopensc/sm.h"
 #endif

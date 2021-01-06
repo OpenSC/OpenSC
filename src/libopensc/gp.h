@@ -27,6 +27,8 @@
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
+#include "opensc.h"
+#include "types.h"
 
 #ifdef __cplusplus
 extern "C" {
