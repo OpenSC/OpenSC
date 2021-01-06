@@ -815,7 +815,7 @@ cryptoflex_construct_file_attrs(sc_card_t *card, const sc_file_t *file,
 		r = acl_to_keynum_nibble(entry);
 		p[13 + i/2] |= (r & 0x0F) << (((i+1) % 2) * 4);
 	}
-	p[11] = (file->status & SC_FILE_STATUS_INVALIDATED) ? 0x00 : 0x01;
+	p[11] = (file->status == SC_FILE_STATUS_INVALIDATED) ? 0x00 : 0x01;
 	if (file->type != SC_FILE_TYPE_DF &&
 	    (file->ef_structure == SC_FILE_EF_LINEAR_FIXED ||
 	    file->ef_structure == SC_FILE_EF_CYCLIC))
