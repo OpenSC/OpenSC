@@ -654,7 +654,7 @@ static int tcos_decipher(sc_card_t *card, const u8 * crgram, size_t crgram_len, 
 	LOG_TEST_RET(ctx, r, "APDU transmit failed");
 
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
-		size_t len = (apdu.resplen>outlen) ? outlen : apdu.resplen;
+		size_t len = (apdu.resplen > outlen) ? outlen : apdu.resplen;
 		unsigned int offset = 0;
 
 		if (tcos3 && (data->pad_flags & SC_ALGORITHM_RSA_PAD_PKCS1) && apdu.resp[0] == 0 && apdu.resp[1] == 2) {
@@ -663,7 +663,7 @@ static int tcos_decipher(sc_card_t *card, const u8 * crgram, size_t crgram_len, 
 				++offset;
 			offset = (offset < len - 1) ? offset + 1 : 0;
 		}
-		memcpy(out, apdu.resp + offset, len-offset);
+		memcpy(out, apdu.resp + offset, len - offset);
 		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, len - offset);
 	}
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
