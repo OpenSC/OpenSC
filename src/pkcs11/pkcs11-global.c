@@ -61,6 +61,11 @@ extern CK_FUNCTION_LIST_3_0 pkcs11_function_list_3_0;
 
 #if defined(HAVE_PTHREAD)
 
+/* mutex used to control C_Initilize creation of mutexes */
+static pthread_mutex_t c_initialize_m = PTHREAD_MUTEX_INITIALIZER;
+#define C_INITIALIZE_M_LOCK  pthread_mutex_lock(&c_initialize_m);
+#define C_INITIALIZE_M_UNLOCK pthread_mutex_unlock(&c_initialize_m);
+
 CK_RV mutex_create(void **mutex)
 {
 	pthread_mutex_t *m;
@@ -101,6 +106,9 @@ static CK_C_INITIALIZE_ARGS _def_locks = {
 #define HAVE_OS_LOCKING
 
 #elif defined(_WIN32)
+CRITICAL_SECTION c_initialize_cs = {0};
+#define C_INITIALIZE_M_LOCK EnterCriticalSection(&c_initialize_cs);
+#define C_INITIALIZE_M_UNLOCK LeaveCriticalSection(&c_initialize_cs);
 
 CK_RV mutex_create(void **mutex)
 {
@@ -140,6 +148,10 @@ static CK_C_INITIALIZE_ARGS _def_locks = {
 #define HAVE_OS_LOCKING
 
 #endif
+
+#else /* PKCS11_THREAD_LOCKING */
+#define C_INITIALIZE_M_LOCK
+#define C_INITIALIZE_M_UNLOCK
 
 #endif /* PKCS11_THREAD_LOCKING */
 
@@ -221,6 +233,9 @@ __attribute__((constructor))
 #endif
 int module_init()
 {
+#ifdef _WIN32
+	InitializeCriticalSection(&c_initialize_cs);
+#endif
 	sc_notify_init();
 	return 1;
 }
@@ -236,6 +251,9 @@ int module_close()
 #endif
 #ifdef ENABLE_OPENPACE
 	EAC_cleanup();
+#endif
+#ifdef _WIN32
+	DeleteCriticalSection(&c_initialize_cs);
 #endif
 	return 1;
 }
@@ -283,8 +301,12 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs)
 	in_finalize = 0;
 #endif
 
+	/* protect from multiple threads tryng to setup locking */
+	C_INITIALIZE_M_LOCK
+
 	if (context != NULL) {
 		sc_log(context, "C_Initialize(): Cryptoki already initialized\n");
+		C_INITIALIZE_M_UNLOCK
 		return CKR_CRYPTOKI_ALREADY_INITIALIZED;
 	}
 
@@ -335,6 +357,9 @@ out:
 		/* Release and destroy the mutex */
 		sc_pkcs11_free_lock();
 	}
+
+	/* protect from multiple threads tryng to setup locking */
+	C_INITIALIZE_M_UNLOCK
 
 	return rv;
 }
