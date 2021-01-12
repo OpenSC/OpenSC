@@ -29,6 +29,9 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#ifdef HAVE_PTHREAD
+#include <pthread.h>
+#endif
 #else
 #include <windows.h>
 #include <io.h>
@@ -70,6 +73,10 @@
 
 #ifndef ENABLE_SHARED
 extern CK_FUNCTION_LIST_3_0 pkcs11_function_list_3_0;
+#endif
+
+#if defined(_WIN32) || defined(HAVE_PTHREAD)
+#define MAX_TEST_THREADS 10
 #endif
 
 #define NEED_SESSION_RO	0x01
@@ -151,6 +158,11 @@ enum {
 	OPT_DERIVE_PASS_DER,
 	OPT_DECRYPT,
 	OPT_TEST_FORK,
+#if defined(_WIN32) || defined(HAVE_PTHREAD)
+	OPT_TEST_THREADS,
+	OPT_USE_LOCKING,
+#endif
+
 	OPT_GENERATE_KEY,
 	OPT_GENERATE_RANDOM,
 	OPT_HASH_ALGORITHM,
@@ -237,6 +249,10 @@ static const struct option options[] = {
 #ifndef _WIN32
 	{ "test-fork",		0, NULL,		OPT_TEST_FORK },
 #endif
+	{ "use-locking",	0, NULL,		OPT_USE_LOCKING },
+#if defined(_WIN32) || defined(HAVE_PTHREAD)
+	{ "test-threads",	1, NULL,		OPT_TEST_THREADS },
+#endif
 	{ "generate-random",	1, NULL,		OPT_GENERATE_RANDOM },
 	{ "allow-sw",		0, NULL,		OPT_ALLOW_SW },
 
@@ -315,8 +331,12 @@ static const char *option_help[] = {
 #ifndef _WIN32
 	"Test forking and calling C_Initialize() in the child",
 #endif
+	"Call C_initialize() with CKF_OS_LOCKING_OK.",
+#if defined(_WIN32) || defined(HAVE_PTHREAD)
+	"Test threads. Multiple times to start additional threads, arg is string or 2 byte commands",
+#endif
 	"Generate given amount of random data",
-	"Allow using software mechanisms (without CKF_HW)"
+	"Allow using software mechanisms (without CKF_HW)",
 };
 
 static const char *	app_name = "pkcs11-tool"; /* for utils.c */
@@ -380,6 +400,24 @@ static CK_FUNCTION_LIST_3_0_PTR p11 = NULL;
 static CK_SLOT_ID_PTR p11_slots = NULL;
 static CK_ULONG p11_num_slots = 0;
 static int suppress_warn = 0;
+static CK_C_INITIALIZE_ARGS_PTR  c_initialize_args_ptr = NULL;
+
+#if defined(_WIN32) || defined(HAVE_PTHREAD)
+static CK_C_INITIALIZE_ARGS  c_initialize_args_OS = {NULL, NULL, NULL, NULL, CKF_OS_LOCKING_OK, NULL};
+#ifdef _WIN32
+static HANDLE test_threads_handles[MAX_TEST_THREADS];
+#else
+static pthread_t test_threads_handles[MAX_TEST_THREADS];
+#endif
+struct test_threads_data {
+	int tnum;
+	char * tests;
+	volatile int state;
+	volatile CK_RV rv;
+};
+static struct test_threads_data test_threads_datas[MAX_TEST_THREADS];
+static int test_threads_num = 0;
+#endif /* defined(_WIN32) || defined(HAVE_PTHREAD) */
 
 struct flag_info {
 	CK_FLAGS	value;
@@ -480,6 +518,16 @@ static void		test_ec(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
 #ifndef _WIN32
 static void		test_fork(void);
 #endif
+#if defined(_WIN32) || defined(HAVE_PTHREAD)
+static void		test_threads();
+static int		test_threads_start(int tnum);
+static int		test_threads_cleanup();
+#ifdef _WIN32
+static DWORD WINAPI	test_threads_run(_In_ LPVOID pttd);
+#else
+static void *		test_threads_run(void * pttd);
+#endif
+#endif /* defined(_WIN32) || defiend(HAVE_PTHREAD) */
 static void		generate_random(CK_SESSION_HANDLE session);
 static CK_RV		find_object_with_attributes(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE *out,
 				CK_ATTRIBUTE *attrs, CK_ULONG attrsLen, CK_ULONG obj_index);
@@ -572,7 +620,6 @@ VARATTR_METHOD(EC_POINT, unsigned char);		/* getEC_POINT */
 VARATTR_METHOD(EC_PARAMS, unsigned char);		/* getEC_PARAMS */
 VARATTR_METHOD(ALLOWED_MECHANISMS, CK_MECHANISM_TYPE);	/* getALLOWED_MECHANISMS */
 
-
 int main(int argc, char * argv[])
 {
 	CK_SESSION_HANDLE session = CK_INVALID_HANDLE;
@@ -600,6 +647,9 @@ int main(int argc, char * argv[])
 	int do_test_ec = 0;
 #ifndef _WIN32
 	int do_test_fork = 0;
+#endif
+#if defined(_WIN32) || defined(HAVE_PTHREAD)
+	int do_test_threads = 0;
 #endif
 	int need_session = 0;
 	int opt_login = 0;
@@ -929,6 +979,23 @@ int main(int argc, char * argv[])
 			action_count++;
 			break;
 #endif
+		case OPT_USE_LOCKING:
+			c_initialize_args_ptr = &c_initialize_args_OS;
+			break;
+#if defined(_WIN32) || defined(HAVE_PTHREAD)
+		case OPT_TEST_THREADS:
+			do_test_threads = 1;
+			if (test_threads_num < MAX_TEST_THREADS) {
+				test_threads_datas[test_threads_num].tnum = test_threads_num;
+				test_threads_datas[test_threads_num].tests = optarg;
+				test_threads_num++;
+			} else {
+				fprintf(stderr,"Too many --test_threads options limit is %d\n", MAX_TEST_THREADS);
+				util_print_usage_and_die(app_name, options, option_help, NULL);
+			}
+			action_count++;
+			break;
+#endif
 		case OPT_GENERATE_RANDOM:
 			need_session |= NEED_SESSION_RO;
 			opt_random_bytes = strtoul(optarg, NULL, 0);
@@ -994,10 +1061,23 @@ int main(int argc, char * argv[])
 	if (do_list_interfaces)
 		list_interfaces();
 
-	rv = p11->C_Initialize(NULL);
+#if defined(_WIN32) || defined(HAVE_PTHREAD)
+	if (do_test_threads)
+		test_threads();
+#endif
+
+	rv = p11->C_Initialize(c_initialize_args_ptr);
+
+#if defined(_WIN32) || defined(HAVE_PTHREAD)
+	if (do_test_threads || rv != CKR_OK)
+		fprintf(stderr,"Main C_Initialize(%s) rv:%s\n",
+				(c_initialize_args_ptr) ? "CKF_OS_LOCKING_OK" : "NULL",  CKR2Str(rv));
+#else
 	if (rv == CKR_CRYPTOKI_ALREADY_INITIALIZED)
 		fprintf(stderr, "\n*** Cryptoki library has already been initialized ***\n");
-	else if (rv != CKR_OK)
+#endif /* defined(_WIN32) || defined(HAVE_PTHREAD) */
+
+	if (rv != CKR_OK && rv != CKR_CRYPTOKI_ALREADY_INITIALIZED)
 		p11_fatal("C_Initialize", rv);
 
 #ifndef _WIN32
@@ -1241,6 +1321,11 @@ end:
 		if (rv != CKR_OK)
 			p11_fatal("C_CloseSession", rv);
 	}
+
+#if defined(_WIN32) || defined(HAVE_PTHREAD)
+	if (do_test_threads)
+		test_threads_cleanup();
+#endif /* defined(_WIN32) || defiend(HAVE_PTHREAD) */
 
 	if (p11)
 		p11->C_Finalize(NULL_PTR);
@@ -6278,7 +6363,7 @@ static CK_SESSION_HANDLE test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE
 	if (module == NULL)
 		util_fatal("Failed to load pkcs11 module");
 
-	rv = p11->C_Initialize(NULL);
+	rv = p11->C_Initialize(c_initialize_args_ptr);
 	if (rv == CKR_CRYPTOKI_ALREADY_INITIALIZED)
 		printf("\n*** Cryptoki library has already been initialized ***\n");
 	else if (rv != CKR_OK)
@@ -6436,7 +6521,7 @@ static void test_fork(void)
 
 	if (!pid) {
 		printf("*** Calling C_Initialize in forked child process ***\n");
-		rv = p11->C_Initialize(NULL);
+		rv = p11->C_Initialize(c_initialize_args_ptr);
 		if (rv != CKR_OK)
 			p11_fatal("C_Initialize in child\n", rv);
 		exit(0);
@@ -7114,3 +7199,224 @@ static const char * CKR2Str(CK_ULONG res)
 	}
 	return "unknown PKCS11 error";
 }
+
+#if defined(_WIN32) || defined(HAVE_PTHREAD)
+#ifdef _WIN32
+static DWORD WINAPI test_threads_run(_In_ LPVOID pttd)
+#else
+static void * test_threads_run(void * pttd)
+#endif
+{
+	int r = 0;
+	CK_RV rv = CKR_OK;
+	CK_INFO info;
+	int l_slots = 0;
+	int state = 0;
+	CK_ULONG l_p11_num_slots = 0;
+	CK_SLOT_ID_PTR l_p11_slots = NULL;
+	char * pctest;
+	struct test_threads_data * ttd = (struct test_threads_data *)pttd;
+
+	fprintf(stderr, "Test thread %d started with options:%s\n", ttd->tnum, ttd->tests);
+	/* call selected C_* routines with different options */
+	pctest = ttd-> tests;
+
+	/* series of two chatacter commands */
+	while (pctest && *pctest && *(pctest + 1)) {
+		ttd->state = state++;
+
+		/*  Pn - pause where n is 0 to 9 iseconds */
+		if (*pctest == 'P' && *(pctest + 1) >= '0' && *(pctest + 1) <= '9') {
+			fprintf(stderr, "Test thread %d pauseing for %d seconds\n", ttd->tnum, (*(pctest + 1) - '0'));
+#ifdef _WIN32
+			Sleep((*(pctest + 1) - '0') * 1000);
+#else
+			sleep(*(pctest + 1) - '0');
+#endif
+		}
+
+		/* IN - C_Initialize with NULL args */
+		else if (*pctest == 'I') {
+			if (*(pctest + 1) == 'N') {
+				fprintf(stderr, "Test thread %d C_Initialize(NULL)\n", ttd->tnum);
+				rv = p11->C_Initialize(NULL);
+				ttd->rv = rv;
+				fprintf(stderr, "Test thread %d C_Initialize returned %s\n", ttd->tnum, CKR2Str(rv));
+			}
+			/* CL C_Initialize with CKF_OS_LOCKING_OK */
+			else if (*(pctest + 1) == 'L') {
+				fprintf(stderr, "Test thread %d C_Initialize CKF_OS_LOCKING_OK \n", ttd->tnum);
+				rv = p11->C_Initialize(&c_initialize_args_OS);
+				ttd->rv = rv;
+				fprintf(stderr, "Test thread %d C_Initialize  returned %s\n", ttd->tnum, CKR2Str(rv));
+			}
+			else
+				goto err;
+		}
+
+		/* GI - C_GetInfo */
+		else if (*pctest == 'G' && *(pctest + 1) == 'I') {
+			fprintf(stderr, "Test thread %d C_GetInfo\n", ttd->tnum);
+			rv = p11->C_GetInfo(&info);
+			ttd->rv = rv;
+			fprintf(stderr, "Test thread %d C_GetInfo returned %s\n", ttd->tnum, CKR2Str(rv));
+		}
+
+		/* SL - C_GetSlotList */
+		else if (*pctest == 'S' && *(pctest + 1) == 'L') {
+			fprintf(stderr, "Test thread %d C_GetSlotList to get l_p11_num_slots\n", ttd->tnum);
+			rv = p11->C_GetSlotList(1, NULL, &l_p11_num_slots);
+			ttd->rv = rv;
+			fprintf(stderr, "Test thread %d C_GetSlotList returned %s\n", ttd->tnum, CKR2Str(rv));
+			fprintf(stderr, "Test thread %d l_p11_num_slots:%ld\n", ttd->tnum, l_p11_num_slots);
+			if (rv == CKR_OK) {
+				free(l_p11_slots);
+				if (l_p11_num_slots > 0) {
+					l_p11_slots = calloc(l_p11_num_slots, sizeof(CK_SLOT_ID));
+					fprintf(stderr, "Test thread %d C_GetSlotList\n", ttd->tnum);
+					rv = p11->C_GetSlotList(1, l_p11_slots, &l_p11_num_slots);
+					ttd->rv = rv;
+					fprintf(stderr, "Test thread %d C_GetSlotList returned %s\n", ttd->tnum, CKR2Str(rv));
+					fprintf(stderr, "Test thread %d l_p11_num_slots:%ld\n", ttd->tnum, l_p11_num_slots);
+					if (rv == CKR_OK && l_p11_num_slots && l_p11_slots)
+						l_slots = 1;
+				}
+			}
+		}
+
+		/* Tn Get token from slot_index n C_GetTokenInfo, where n is 0 to 9 */
+		else if (*pctest == 'T' && *(pctest + 1) >= '0' && *(pctest + 1) <= '9') {
+			fprintf(stderr, "Test thread %d C_GetTokenInfo from slot_index %d using show_token\n", ttd->tnum, (*(pctest + 1) - '0'));
+			if (l_slots) {
+				show_token(l_p11_slots[(*(pctest + 1) - '0')]);
+			} else {
+				show_token(p11_slots[(*(pctest + 1) - '0')]);
+			}
+		}
+
+		else {
+		err:
+			rv = CKR_GENERAL_ERROR; /* could be vendor error, */
+			ttd->rv = rv;
+			fprintf(stderr, "Test thread %d Unknown test '%c%c'\n", ttd->tnum, *pctest, *(pctest + 1));
+			break;
+		}
+
+		pctest ++;
+		if (*pctest != 0x00)
+			pctest ++;
+		if (*pctest == ':')
+			pctest++;
+		
+
+		if (rv != CKR_OK && rv != CKR_CRYPTOKI_ALREADY_INITIALIZED)
+		/* IN C_Initialize with NULL args */
+			break;
+	}
+
+	free(l_p11_slots);
+	fprintf(stderr, "Test thread %d returning rv = %d\n", ttd->tnum, r);
+	ttd->state = -1; /* done */
+	ttd->rv = rv;
+#ifdef _WIN32
+	ExitThread(0);
+#else
+	pthread_exit(NULL);
+#endif
+}
+
+static int test_threads_cleanup()
+{
+
+	int i, j;
+	int ended = 0;
+	int ended_ok = 0;
+
+	fprintf(stderr,"test_threads cleanup starting\n");
+	for (j = 0; j < 4; j++) {
+		ended = 0;
+		ended_ok = 0;
+
+		for (i = 0; i < test_threads_num; i++) {
+			if (test_threads_datas[i].state == -1) {
+				ended++;
+			}
+			if (test_threads_datas[i].rv == CKR_OK) {
+				ended_ok++;
+			}
+		}
+
+		if (ended == test_threads_num) {
+			fprintf(stderr,"test_threads all threads have ended %s\n",
+					(ended_ok == test_threads_num)? "with CKR_OK": "some errors");
+			break; 
+		} else {
+			fprintf(stderr,"test_threads threads stills active:%d\n", (test_threads_num - ended));
+			for (i = 0; i < test_threads_num; i++) {
+				fprintf(stderr,"test_threads thread:%d state:%d, rv:%s\n",
+					i, test_threads_datas[i].state, CKR2Str(test_threads_datas[i].rv));
+			}
+			fprintf(stderr,"\ntest_threads waiting for 30 seconds ...\n");
+#ifdef _WIN32
+			Sleep(30*1000);
+#else
+			sleep(30);
+#endif
+		}
+	}
+	
+	for (i = 0; i < test_threads_num; i++) {
+		fprintf(stderr,"test_threads thread:%d state:%d, rv:%s\n",
+			i, test_threads_datas[i].state, CKR2Str(test_threads_datas[i].rv));
+		if (test_threads_datas[i].state == -1) {
+#ifdef _WIN32
+			TerminateThread(test_threads_handles[i], 0);
+#else
+			pthread_join(test_threads_handles[i], NULL);
+		} else {
+			pthread_cancel(test_threads_handles[i]);
+#endif
+		}
+	}
+
+	fprintf(stderr,"test_threads cleanup finished\n");
+	return 0;
+}
+ 
+static int test_threads_start(int tnum)
+{
+	int r = 0;
+	
+#ifdef _WIN32
+	test_threads_handles[tnum] = CreateThread(NULL, 0, test_threads_run, (LPVOID) &test_threads_datas[tnum],
+		0, NULL);
+	if (test_threads_handles[tnum] == NULL) {
+		r = GetLastError();
+	}
+#else
+	pthread_attr_t attr;
+	pthread_attr_init(&attr);
+	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+	r = pthread_create(&test_threads_handles[tnum], &attr, test_threads_run, (void *) &test_threads_datas[tnum]);
+#endif
+	if (r != 0) {
+		fprintf(stderr,"test_threads pthread_create failed %d for thread %d\n", r, tnum);
+		/* system error */
+	}
+	return r;
+}
+
+/*********************************************************************************************/
+static void test_threads()
+{
+	int  i;
+
+	/* call test_threads_start for each --test-thread option */
+
+	/* upon return, C_Initialize will be called, from main code */
+	for (i = 0; i < test_threads_num && i < MAX_TEST_THREADS; i++) {
+		test_threads_start(i);
+	}
+}
+#endif /* defined(_WIN32) || defiend(HAVE_PTHREAD) */
+

@@ -426,6 +426,22 @@
 
 				<varlistentry>
 					<term>
+						<option>--use-locking</option>
+					</term>
+					<listitem><para>Tell pkcs11 module it should use OS thread locking.
+					</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--test-threads</option> <replaceable>options</replaceable>
+					</term>
+					<listitem><para>Test a pkcs11 module's thread implication. (See source code).
+					</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
 						<option>--token-label</option> <replaceable>label</replaceable>
 					</term>
 					<listitem><para>Specify the label of token.
