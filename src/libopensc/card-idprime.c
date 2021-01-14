@@ -195,16 +195,16 @@ static int idprime_process_index(sc_card_t *card, idprime_private_data_t *priv, 
 		if (((memcmp(&start[4], "ksc", 3) == 0) || memcmp(&start[4], "kxc", 3) == 0)
 			&& (memcmp(&start[12], "mscp", 5) == 0)) {
 			new_object.fd++;
-			if (card->type == SC_CARD_TYPE_IDPRIME_V2) {
+			if (card->type == SC_CARD_TYPE_IDPRIME_V1) {
+				/* The key reference is one bigger than the value found here for some reason */
+				new_object.key_reference = start[8] + 1;
+			} else {
 				/* The key reference starts from 0x11 and increments by the key id (ASCII) */
 				int key_id = 0;
 				if (start[8] >= '0' && start[8] <= '9') {
 					key_id = start[8] - '0';
 				}
 				new_object.key_reference = 0x11 + key_id;
-			} else {
-				/* The key reference is one bigger than the value found here for some reason */
-				new_object.key_reference = start[8] + 1;
 			}
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Found certificate with fd=%d, key_ref=%d",
 				new_object.fd, new_object.key_reference);
