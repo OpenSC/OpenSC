@@ -252,6 +252,10 @@ static int idprime_init(sc_card_t *card)
 			card->type = SC_CARD_TYPE_IDPRIME_V2;
 			sc_log(card->ctx, "Detected IDPrime applet version 2");
 			break;
+		case 0x03:
+			card->type = SC_CARD_TYPE_IDPRIME_V3;
+			sc_log(card->ctx, "Detected IDPrime applet version 3");
+			break;
 		default:
 			sc_log(card->ctx, "Unknown OS version received: %d", rbuf[11]);
 			break;
