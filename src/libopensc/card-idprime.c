@@ -199,12 +199,17 @@ static int idprime_process_index(sc_card_t *card, idprime_private_data_t *priv, 
 				/* The key reference is one bigger than the value found here for some reason */
 				new_object.key_reference = start[8] + 1;
 			} else {
-				/* The key reference starts from 0x11 and increments by the key id (ASCII) */
 				int key_id = 0;
 				if (start[8] >= '0' && start[8] <= '9') {
 					key_id = start[8] - '0';
 				}
-				new_object.key_reference = 0x11 + key_id;
+				if (card->type == SC_CARD_TYPE_IDPRIME_V2) {
+					/* The key reference starts from 0x11 and increments by the key id (ASCII) */
+					new_object.key_reference = 0x11 + key_id;
+				} else { /* V3 */
+					/* The key reference starts from 0xF7 and increments by the key id (ASCII) */
+					new_object.key_reference = 0xF7 + key_id;
+				}
 			}
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Found certificate with fd=%d, key_ref=%d",
 				new_object.fd, new_object.key_reference);
