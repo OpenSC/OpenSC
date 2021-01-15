@@ -310,12 +310,14 @@ iasecc_select_mf(struct sc_card *card, struct sc_file **file_out)
 	mf_file->type = SC_FILE_TYPE_DF;
 	mf_file->path = path;
 
-	if (card->cache.valid)
-		 sc_file_free(card->cache.current_df);
+	if (card->cache.valid) {
+		sc_file_free(card->cache.current_df);
+	}
 	card->cache.current_df = NULL;
 
-	if (card->cache.valid)
+	if (card->cache.valid) {
 		sc_file_free(card->cache.current_ef);
+	}
 	card->cache.current_ef = NULL;
 
 	sc_file_dup(&card->cache.current_df, mf_file);
@@ -1069,25 +1071,23 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 
 			sc_log(ctx, "FileType %i", file->type);
 			if (file->type == SC_FILE_TYPE_DF)   {
-				if (card->cache.valid)
+				if (card->cache.valid) {
 					sc_file_free(card->cache.current_df);
+				}
 				card->cache.current_df = NULL;
-
-
-				if (card->cache.valid)
-					sc_file_free(card->cache.current_ef);
-				card->cache.current_ef = NULL;
 
 				sc_file_dup(&card->cache.current_df, file);
 				card->cache.valid = 1;
 			}
 			else   {
-				if (card->cache.valid)
+				if (card->cache.valid) {
 					sc_file_free(card->cache.current_ef);
+				}
 
 				card->cache.current_ef = NULL;
 
 				sc_file_dup(&card->cache.current_ef, file);
+				card->cache.valid = 1;
 			}
 
 			if (file_out)   {
@@ -1493,8 +1493,9 @@ iasecc_delete_file(struct sc_card *card, const struct sc_path *path)
 		rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
 		LOG_TEST_RET(ctx, rv, "Delete file failed");
 
-		if (card->cache.valid)
+		if (card->cache.valid) {
 			sc_file_free(card->cache.current_ef);
+		}
 		card->cache.current_ef = NULL;
 	}
 
