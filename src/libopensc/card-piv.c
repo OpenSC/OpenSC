@@ -59,8 +59,8 @@
 	} while(0)
 #endif /* ENABLE_OPENSSL */
 
-/* 800-73-4 SM and VCI need ECC, SM and OpenSSL */
-#if defined(ENABLE_OPENSSL) && defined(ENABLE_SM) && !defined(OPENSSL_NO_EC)
+/* 800-73-4 SM and VCI need: ECC, SM and real OpenSSL >= 1.1 */
+#if defined(ENABLE_OPENSSL) && defined(ENABLE_SM) && !defined(OPENSSL_NO_EC) && !defined(LIBRESSL_VERSION_NUMBER) && OPENSSL_VERSION_NUMBER >= 0x10100000L
 #define ENABLE_PIV_SM
 #endif
 
