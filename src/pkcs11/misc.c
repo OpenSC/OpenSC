@@ -99,11 +99,6 @@ static CK_RV sc_to_cryptoki_error_common(int rc)
 		return CKR_BUFFER_TOO_SMALL;
 	case SC_ERROR_CARD_NOT_PRESENT:
 		return CKR_TOKEN_NOT_PRESENT;
-	case SC_ERROR_INVALID_CARD:
-	case SC_ERROR_WRONG_CARD:
-	case SC_ERROR_NO_CARD_SUPPORT:
-		/* CKR_TOKEN_NOT_RECOGNIZED is handled in sc_to_cryptoki_error() */
-		return CKR_FUNCTION_NOT_SUPPORTED;
 	case SC_ERROR_WRONG_LENGTH:
 		return CKR_DATA_LEN_RANGE;
 	case SC_ERROR_INVALID_PIN_LENGTH:
