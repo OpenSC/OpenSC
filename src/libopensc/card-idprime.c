@@ -627,13 +627,13 @@ idprime_set_security_env(struct sc_card *card,
 	switch (env->operation) {
 	case SC_SEC_OPERATION_DECIPHER:
 		if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_OAEP) {
-			if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA1) {
+			if (env->algorithm_flags & SC_ALGORITHM_MGF1_SHA1) {
 				new_env.algorithm_ref = 0x1D;
-			} else if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA256) {
+			} else if (env->algorithm_flags & SC_ALGORITHM_MGF1_SHA256) {
 				new_env.algorithm_ref = 0x4D;
-			} else if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA384) {
+			} else if (env->algorithm_flags & SC_ALGORITHM_MGF1_SHA384) {
 				new_env.algorithm_ref = 0x5D;
-			} else if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA512) {
+			} else if (env->algorithm_flags & SC_ALGORITHM_MGF1_SHA512) {
 				new_env.algorithm_ref = 0x6D;
 			}
 		} else { /* RSA-PKCS without hashing */
@@ -642,19 +642,19 @@ idprime_set_security_env(struct sc_card *card,
 		break;
 	case SC_SEC_OPERATION_SIGN:
 		if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PSS) {
-			if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA256) {
+			if (env->algorithm_flags & SC_ALGORITHM_MGF1_SHA256) {
 				new_env.algorithm_ref = 0x45;
-			} else if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA384) {
+			} else if (env->algorithm_flags & SC_ALGORITHM_MGF1_SHA384) {
 				new_env.algorithm_ref = 0x55;
-			} else if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA512) {
+			} else if (env->algorithm_flags & SC_ALGORITHM_MGF1_SHA512) {
 				new_env.algorithm_ref = 0x65;
 			}
 		} else { /* RSA-PKCS */
-			if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA256) {
+			if (env->algorithm_flags & SC_ALGORITHM_MGF1_SHA256) {
 				new_env.algorithm_ref = 0x42;
-			} else if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA384) {
+			} else if (env->algorithm_flags & SC_ALGORITHM_MGF1_SHA384) {
 				new_env.algorithm_ref = 0x52;
-			} else if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA512) {
+			} else if (env->algorithm_flags & SC_ALGORITHM_MGF1_SHA512) {
 				new_env.algorithm_ref = 0x62;
 			} else { /* RSA-PKCS without hashing */
 				new_env.algorithm_ref = 0x02;
