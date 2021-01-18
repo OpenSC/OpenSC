@@ -301,7 +301,7 @@ get_fw_data(struct sc_pkcs11_card *p11card, struct sc_app_info *app_info, int *o
 
 /* PKCS#15 Framework */
 static CK_RV
-pkcs15_bind(struct sc_pkcs11_card *p11card, struct sc_app_info *app_info)
+pkcs15_bind(struct sc_pkcs11_card *p11card, struct sc_app_info *app_info, const char *ctx)
 {
 	struct pkcs15_fw_data *fw_data = NULL;
 	struct sc_aid *aid = app_info ? &app_info->aid : NULL;
@@ -324,7 +324,7 @@ pkcs15_bind(struct sc_pkcs11_card *p11card, struct sc_app_info *app_info)
 	rc = sc_pkcs15_bind(p11card->card, aid, &fw_data->p15_card);
 	if (rc != SC_SUCCESS) {
 		sc_log(context, "sc_pkcs15_bind failed: %d", rc);
-		return sc_to_cryptoki_error(rc, NULL);
+		return sc_to_cryptoki_error(rc, ctx);
 	}
 
 	/* Mechanisms are registered globally per card. Checking
@@ -550,7 +550,7 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo)
 	if (rv != CKR_OK)
 		return rv;
 
-	rv = slot_get_token(slotID, &slot);
+	rv = slot_get_token(slotID, &slot, "C_GetTokenInfo");
 	if (rv != CKR_OK)   {
 		sc_log(context, "C_GetTokenInfo() get token: rv 0x%lX", rv);
 		goto out;
@@ -1463,7 +1463,7 @@ _add_public_objects(struct sc_pkcs11_slot *slot, struct pkcs15_fw_data *fw_data)
 
 
 static CK_RV
-pkcs15_create_tokens(struct sc_pkcs11_card *p11card, struct sc_app_info *app_info)
+pkcs15_create_tokens(struct sc_pkcs11_card *p11card, struct sc_app_info *app_info, const char *ctx)
 {
 	struct pkcs15_fw_data *fw_data = NULL;
 	struct sc_pkcs15_object *auth_user_pin = NULL, *auth_sign_pin = NULL;
@@ -1497,7 +1497,7 @@ pkcs15_create_tokens(struct sc_pkcs11_card *p11card, struct sc_app_info *app_inf
 	/* Add PKCS#15 objects of the known types to the framework data */
 	rc = _pkcs15_create_typed_objects(fw_data);
 	if (rc < 0)
-		return sc_to_cryptoki_error(rc, NULL);
+		return sc_to_cryptoki_error(rc, ctx);
 	sc_log(context, "Found %d FW objects objects", fw_data->num_objects);
 
 	/* Create slots for all non-unblock, non-so PINs if:
@@ -1512,7 +1512,7 @@ pkcs15_create_tokens(struct sc_pkcs11_card *p11card, struct sc_app_info *app_inf
 		/* Get authentication PKCS#15 objects present in the associated on-card application */
 		rc = sc_pkcs15_get_objects(fw_data->p15_card, SC_PKCS15_TYPE_AUTH_PIN, auths, SC_PKCS15_MAX_PINS);
 		if (rc < 0)
-			return sc_to_cryptoki_error(rc, NULL);
+			return sc_to_cryptoki_error(rc, ctx);
 		auth_count = rc;
 		sc_log(context, "Found %d authentication objects", auth_count);
 
@@ -5367,7 +5367,7 @@ get_ec_pubkey_point(struct sc_pkcs15_pubkey *key, CK_ATTRIBUTE_PTR attr)
 	case SC_ALGORITHM_EC:
 		rc = sc_pkcs15_encode_pubkey_ec(context, &key->u.ec, &value, &value_len);
 		if (rc != SC_SUCCESS)
-			return sc_to_cryptoki_error(rc, NULL);
+			return CKR_GENERAL_ERROR;
 
 		if (attr->pValue == NULL_PTR) {
 			attr->ulValueLen = value_len;

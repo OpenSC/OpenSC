@@ -578,7 +578,7 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 			now = get_current_time();
 			if (now >= slot->slot_state_expires || now == 0) {
 				/* Update slot status */
-				rv = card_detect(slot->reader);
+				rv = card_detect(slot->reader, "C_GetSlotInfo");
 				sc_log(context, "C_GetSlotInfo() card detect rv 0x%lX", rv);
 
 				if (rv == CKR_TOKEN_NOT_RECOGNIZED || rv == CKR_OK)
@@ -616,7 +616,7 @@ CK_RV C_GetMechanismList(CK_SLOT_ID slotID,
 	if (rv != CKR_OK)
 		return rv;
 
-	rv = slot_get_token(slotID, &slot);
+	rv = slot_get_token(slotID, &slot, "C_GetMechanismList");
 	if (rv == CKR_OK)
 		rv = sc_pkcs11_get_mechanism_list(slot->p11card, pMechanismList, pulCount);
 
@@ -638,7 +638,7 @@ CK_RV C_GetMechanismInfo(CK_SLOT_ID slotID,
 	if (rv != CKR_OK)
 		return rv;
 
-	rv = slot_get_token(slotID, &slot);
+	rv = slot_get_token(slotID, &slot, "C_GetMechanismInfo");
 	if (rv == CKR_OK)
 		rv = sc_pkcs11_get_mechanism_info(slot->p11card, type, pInfo);
 
@@ -661,7 +661,7 @@ CK_RV C_InitToken(CK_SLOT_ID slotID,
 	if (rv != CKR_OK)
 		return rv;
 
-	rv = slot_get_token(slotID, &slot);
+	rv = slot_get_token(slotID, &slot, "C_InitToken");
 	if (rv != CKR_OK)   {
 		sc_log(context, "C_InitToken() get token error 0x%lX", rv);
 		goto out;

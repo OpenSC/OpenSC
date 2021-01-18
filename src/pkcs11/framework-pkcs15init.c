@@ -30,7 +30,7 @@
 /*
  * Deal with uninitialized cards
  */
-static CK_RV pkcs15init_bind(struct sc_pkcs11_card *p11card, struct sc_app_info *app_info)
+static CK_RV pkcs15init_bind(struct sc_pkcs11_card *p11card, struct sc_app_info *app_info, const char *ctx)
 {
 	struct sc_card	*card;
 	struct sc_profile *profile;
@@ -42,7 +42,7 @@ static CK_RV pkcs15init_bind(struct sc_pkcs11_card *p11card, struct sc_app_info 
 	rc = sc_pkcs15init_bind(card, "pkcs15", NULL, NULL, &profile);
 	if (rc == 0)
 		p11card->fws_data[0] = profile;
-	return sc_to_cryptoki_error(rc, NULL);
+	return sc_to_cryptoki_error(rc, ctx);
 }
 
 static CK_RV pkcs15init_unbind(struct sc_pkcs11_card *p11card)
@@ -58,7 +58,7 @@ static CK_RV pkcs15init_unbind(struct sc_pkcs11_card *p11card)
 
 
 static CK_RV
-pkcs15init_create_tokens(struct sc_pkcs11_card *p11card, struct sc_app_info *app_info)
+pkcs15init_create_tokens(struct sc_pkcs11_card *p11card, struct sc_app_info *app_info, const char *ctx)
 {
 	struct sc_profile	*profile;
 	struct sc_pkcs11_slot	*slot;
@@ -156,7 +156,7 @@ pkcs15init_initialize(struct sc_pkcs11_slot *pslot, void *ptr,
 	/* Change the binding from the pkcs15init framework
 	 * to the pkcs15 framework on the fly.
 	 * First, try to bind pkcs15 framework */
-	if ((rv = framework_pkcs15.bind(p11card, NULL)) != CKR_OK) {
+	if ((rv = framework_pkcs15.bind(p11card, NULL, "C_Initialize")) != CKR_OK) {
 		/* whoops, bad */
 		p11card->fws_data[0] = profile;
 		return rv;

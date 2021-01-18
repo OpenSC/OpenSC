@@ -198,7 +198,7 @@ CK_RV card_removed(sc_reader_t * reader)
 }
 
 
-CK_RV card_detect(sc_reader_t *reader)
+CK_RV card_detect(sc_reader_t *reader, const char *ctx)
 {
 	struct sc_pkcs11_card *p11card = NULL;
 	int free_p11card = 0;
@@ -213,7 +213,7 @@ again:
 	rc = sc_detect_card_presence(reader);
 	if (rc < 0) {
 		sc_log(context, "%s: failed, %s", reader->name, sc_strerror(rc));
-		return sc_to_cryptoki_error(rc, NULL);
+		return sc_to_cryptoki_error(rc, ctx);
 	}
 	if (rc == 0) {
 		sc_log(context, "%s: card absent", reader->name);
@@ -257,7 +257,7 @@ again:
 		rc = sc_connect_card(reader, &p11card->card);
 		if (rc != SC_SUCCESS) {
 			sc_log(context, "%s: SC connect card error %i", reader->name, rc);
-			rv = sc_to_cryptoki_error(rc, NULL);
+			rv = sc_to_cryptoki_error(rc, ctx);
 			goto fail;
 		}
 
@@ -311,7 +311,7 @@ again:
 				"pkcs11_enable_InitToken", 0);
 
 			sc_log(context, "%s: Try to bind 'generic' token.", reader->name);
-			rv = frameworks[i]->bind(p11card, app_generic);
+			rv = frameworks[i]->bind(p11card, app_generic, ctx);
 			if (rv == CKR_TOKEN_NOT_RECOGNIZED && enable_InitToken)   {
 				sc_log(context, "%s: 'InitToken' enabled -- accept non-binded card", reader->name);
 				rv = CKR_OK;
@@ -324,7 +324,7 @@ again:
 			}
 
 			sc_log(context, "%s: Creating 'generic' token.", reader->name);
-			rv = frameworks[i]->create_tokens(p11card, app_generic);
+			rv = frameworks[i]->create_tokens(p11card, app_generic, ctx);
 			if (rv != CKR_OK)   {
 				sc_log(context,
 				       "%s: create 'generic' token error 0x%lX",
@@ -342,7 +342,7 @@ again:
 				continue;
 
 			sc_log(context, "%s: Binding %s token.", reader->name, app_name);
-			rv = frameworks[i]->bind(p11card, app_info);
+			rv = frameworks[i]->bind(p11card, app_info, ctx);
 			if (rv != CKR_OK)   {
 				sc_log(context, "%s: bind %s token error Ox%lX",
 				       reader->name, app_name, rv);
@@ -350,7 +350,7 @@ again:
 			}
 
 			sc_log(context, "%s: Creating %s token.", reader->name, app_name);
-			rv = frameworks[i]->create_tokens(p11card, app_info);
+			rv = frameworks[i]->create_tokens(p11card, app_info, ctx);
 			if (rv != CKR_OK)   {
 				sc_log(context,
 				       "%s: create %s token error 0x%lX",
@@ -417,7 +417,7 @@ card_detect_all(void)
 						return rv;
 				}
 			}
-			card_detect(reader);
+			card_detect(reader, NULL);
 		}
 	}
 	sc_log(context, "All cards detected");
@@ -456,7 +456,7 @@ CK_RV slot_get_slot(CK_SLOT_ID id, struct sc_pkcs11_slot ** slot)
 	return CKR_OK;
 }
 
-CK_RV slot_get_token(CK_SLOT_ID id, struct sc_pkcs11_slot ** slot)
+CK_RV slot_get_token(CK_SLOT_ID id, struct sc_pkcs11_slot ** slot, const char *ctx)
 {
 	CK_RV rv;
 
@@ -469,7 +469,7 @@ CK_RV slot_get_token(CK_SLOT_ID id, struct sc_pkcs11_slot ** slot)
 		if ((*slot)->reader == NULL)
 			return CKR_TOKEN_NOT_PRESENT;
 		sc_log(context, "Slot(id=0x%lX): get token: now detect card", id);
-		rv = card_detect((*slot)->reader);
+		rv = card_detect((*slot)->reader, ctx);
 		if (rv != CKR_OK)
 			return rv;
 	}

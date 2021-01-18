@@ -57,7 +57,7 @@ CK_RV C_OpenSession(CK_SLOT_ID slotID,	/* the slot's ID */
 
 	sc_log(context, "C_OpenSession(0x%lx)", slotID);
 
-	rv = slot_get_token(slotID, &slot);
+	rv = slot_get_token(slotID, &slot, "C_OpenSession");
 	if (rv != CKR_OK)
 		goto out;
 
@@ -177,7 +177,7 @@ CK_RV C_CloseAllSessions(CK_SLOT_ID slotID)
 
 	sc_log(context, "C_CloseAllSessions(0x%lx)", slotID);
 
-	rv = slot_get_token(slotID, &slot);
+	rv = slot_get_token(slotID, &slot, "C_CloseAllSessions");
 	if (rv != CKR_OK)
 		goto out;
 

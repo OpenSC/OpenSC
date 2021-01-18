@@ -142,13 +142,13 @@ struct sc_pkcs11_object {
 
 struct sc_pkcs11_framework_ops {
 	/* Detect and bind card to framework */
-	CK_RV (*bind)(struct sc_pkcs11_card *, struct sc_app_info *);
+	CK_RV (*bind)(struct sc_pkcs11_card *, struct sc_app_info *, const char *ctx);
 	/* Unbind and release allocated resources */
 	CK_RV (*unbind)(struct sc_pkcs11_card *);
 
 	/* Create tokens to virtual slots and
 	 * objects in tokens; called after bind */
-	CK_RV (*create_tokens)(struct sc_pkcs11_card *, struct sc_app_info *);
+	CK_RV (*create_tokens)(struct sc_pkcs11_card *, struct sc_app_info *, const char *ctx);
 	CK_RV (*release_token)(struct sc_pkcs11_card *, void *);
 
 	/* Login and logout */
@@ -367,9 +367,9 @@ CK_RV card_removed(sc_reader_t *reader);
 CK_RV card_detect_all(void);
 CK_RV create_slot(sc_reader_t *reader);
 void init_slot_info(CK_SLOT_INFO_PTR pInfo, sc_reader_t *reader);
-CK_RV card_detect(sc_reader_t *reader);
+CK_RV card_detect(sc_reader_t *reader, const char *ctx);
 CK_RV slot_get_slot(CK_SLOT_ID id, struct sc_pkcs11_slot **);
-CK_RV slot_get_token(CK_SLOT_ID id, struct sc_pkcs11_slot **);
+CK_RV slot_get_token(CK_SLOT_ID id, struct sc_pkcs11_slot **, const char *ctx);
 CK_RV slot_token_removed(CK_SLOT_ID id);
 CK_RV slot_allocate(struct sc_pkcs11_slot **, struct sc_pkcs11_card *);
 CK_RV slot_find_changed(CK_SLOT_ID_PTR idp, int mask);
