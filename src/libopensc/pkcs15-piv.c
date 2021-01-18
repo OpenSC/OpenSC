@@ -339,7 +339,6 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 	 */
 
 #define PIV_NUM_CERTS 25
-#define PIV_NUM_PUB_KEYS 25
 #define PIV_NUM_KEYS  24
 
 	// clang-format off
@@ -1004,7 +1003,7 @@ sc_log(card->ctx,  "DEE Adding pin %d label=%s",i, label);
 	 * at a later time. The piv-tool can stash  pubkey in file
 	 */
 	sc_log(card->ctx,  "PIV-II adding pub keys...");
-	for (i = 0; i < PIV_NUM_PUB_KEYS; i++) {
+	for (i = 0; i < PIV_NUM_KEYS; i++) {
 		struct sc_pkcs15_pubkey_info pubkey_info;
 		struct sc_pkcs15_object     pubkey_obj;
 		struct sc_pkcs15_pubkey *p15_key = NULL;
