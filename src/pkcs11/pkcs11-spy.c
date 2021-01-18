@@ -171,6 +171,12 @@ allocate_function_list(int v3)
 	return list_3_0;
 }
 
+/* The compatibility interfaces that can be returned from Interface functions
+ * if the V3 API is used, but the proxied module does not support V3 API */
+#define NUM_INTERFACES 1
+ck_interface compat_interfaces[NUM_INTERFACES] = {
+	{"PKCS 11", NULL, 0}
+};
 
 /* Inits the spy. If successful, po != NULL */
 static CK_RV
@@ -196,6 +202,8 @@ init_spy(void)
 		return CKR_HOST_MEMORY;
 	}
 
+	compat_interfaces[0].pFunctionList = pkcs11_spy;
+
 	/*
 	 * Don't use getenv() as the last parameter for scconf_get_str(),
 	 * as we want to be able to override configuration file via
@@ -204,6 +212,9 @@ init_spy(void)
 	output = getenv("PKCS11SPY_OUTPUT");
 	if (output)
 		spy_output = fopen(output, "a");
+
+
+
 
 #ifdef _WIN32
 	if (!spy_output) {
@@ -1563,6 +1574,17 @@ C_GetInterfaceList(CK_INTERFACE_PTR pInterfacesList, CK_ULONG_PTR pulCount)
 	}
 
 	enter("C_GetInterfaceList");
+	if (po->version.major < 3) {
+		fprintf(spy_output, "[compat]\n");
+
+		memcpy(pInterfacesList, compat_interfaces, NUM_INTERFACES * sizeof(CK_INTERFACE));
+		*pulCount = NUM_INTERFACES;
+
+		spy_dump_desc_out("pInterfacesList");
+		print_interfaces_list(spy_output, pInterfacesList, *pulCount);
+		spy_dump_ulong_out("*pulCount", *pulCount);
+		return retne(CKR_OK);
+	}
 	rv = po->C_GetInterfaceList(pInterfacesList, pulCount);
 	if (rv == CKR_OK) {
 		spy_dump_desc_out("pInterfacesList");
@@ -1593,6 +1615,9 @@ C_GetInterface(CK_UTF8CHAR_PTR pInterfaceName, CK_VERSION_PTR pVersion,
 	}
 
 	enter("C_GetInterface");
+	if (po->version.major < 3) {
+		fprintf(spy_output, "[compat]\n");
+	}
 	spy_dump_string_in("pInterfaceName", pInterfaceName, strlen((char *)pInterfaceName));
 	if (pVersion != NULL) {
 		fprintf(spy_output, "[in] pVersion = %d.%d\n", pVersion->major, pVersion->minor);
@@ -1601,9 +1626,20 @@ C_GetInterface(CK_UTF8CHAR_PTR pInterfaceName, CK_VERSION_PTR pVersion,
 	}
 	fprintf(spy_output, "[in] flags = %s\n",
 		(flags & CKF_INTERFACE_FORK_SAFE ? "CKF_INTERFACE_FORK_SAFE" : ""));
-	rv = po->C_GetInterface(pInterfaceName, pVersion, ppInterface, flags);
-	if (ppInterface != NULL) {
-		spy_interface_function_list(*ppInterface);
+	if (po->version.major >= 3) {
+		rv = po->C_GetInterface(pInterfaceName, pVersion, ppInterface, flags);
+		if (ppInterface != NULL) {
+			spy_interface_function_list(*ppInterface);
+		}
+	} else {
+		if ((pInterfaceName == NULL_PTR || strcmp((char *)pInterfaceName, "PKCS 11") == 0) &&
+			(pVersion == NULL_PTR || (pVersion->major == 2 && pVersion->minor == 11)) &&
+			flags == 0) {
+			*ppInterface = &compat_interfaces[0];
+			return retne(CKR_OK);
+		}
+		/* We can not serve this particular interface */
+		return retne(CKR_ARGUMENTS_BAD);
 	}
 
 	return retne(rv);
