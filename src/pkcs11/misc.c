@@ -52,6 +52,12 @@ static struct sc_to_cryptoki_error_conversion sc_to_cryptoki_error_map[]  = {
 	{ "C_OpenSession",		SC_ERROR_INVALID_CARD,		CKR_TOKEN_NOT_RECOGNIZED},
 	{ "C_OpenSession",		SC_ERROR_WRONG_CARD,		CKR_TOKEN_NOT_RECOGNIZED},
 	{ "C_OpenSession",		SC_ERROR_NO_CARD_SUPPORT,		CKR_TOKEN_NOT_RECOGNIZED},
+	/* CKR_TOKEN_NOT_RECOGNIZED is not allowed for C_GetSlotInfo.  We, however,
+	 * have special handling for this return code in pkcs11-global.c, which
+	 * finally replaces CKR_TOKEN_NOT_RECOGNIZED with CKR_OK */
+	{ "C_GetSlotInfo",		SC_ERROR_INVALID_CARD,		CKR_TOKEN_NOT_RECOGNIZED},
+	{ "C_GetSlotInfo",		SC_ERROR_WRONG_CARD,		CKR_TOKEN_NOT_RECOGNIZED},
+	{ "C_GetSlotInfo",		SC_ERROR_NO_CARD_SUPPORT,		CKR_TOKEN_NOT_RECOGNIZED},
 	{NULL, 0, 0}
 };
 
