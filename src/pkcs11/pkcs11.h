@@ -798,9 +798,11 @@ struct ck_mechanism_info
 #define CKF_EC_F_P			(1UL << 20)
 #define CKF_EC_F_2M			(1UL << 21)
 #define CKF_EC_ECPARAMETERS	(1UL << 22)
-#define CKF_EC_NAMEDCURVE	(1UL << 23)
+#define CKF_EC_OID		(1UL << 23)
+#define CKF_EC_NAMEDCURVE	CKF_EC_OID
 #define CKF_EC_UNCOMPRESS	(1UL << 24)
 #define CKF_EC_COMPRESS		(1UL << 25)
+#define CKF_EC_CURVENAME	(1UL << 26)
 
 /* Flags for C_WaitForSlotEvent.  */
 #define CKF_DONT_BLOCK				(1UL)
