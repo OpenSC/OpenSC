@@ -606,6 +606,8 @@ const char *get_mechanism_name(int mech_id)
 			return "ECDSA";
 		case CKM_ECDSA_SHA1:
 			return "ECDSA_SHA1";
+		case CKM_ECDSA_SHA224:
+			return "ECDSA_SHA224";
 		case CKM_ECDSA_SHA256:
 			return "ECDSA_SHA256";
 		case CKM_ECDSA_SHA384:
