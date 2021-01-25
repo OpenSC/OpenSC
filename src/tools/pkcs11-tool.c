@@ -1565,6 +1565,34 @@ static void list_mechs(CK_SLOT_ID slot)
 				printf(", derive");
 				info.flags &= ~CKF_DERIVE;
 			}
+			if (info.flags & CKF_EC_F_P) {
+				printf(", EC F_P");
+				info.flags &= ~CKF_EC_F_P;
+			}
+			if (info.flags & CKF_EC_F_2M) {
+				printf(", EC F_2M");
+				info.flags &= ~CKF_EC_F_2M;
+			}
+			if (info.flags & CKF_EC_ECPARAMETERS) {
+				printf(", EC parameters");
+				info.flags &= ~CKF_EC_ECPARAMETERS;
+			}
+			if (info.flags & CKF_EC_OID) {
+				printf(", EC OID");
+				info.flags &= ~CKF_EC_OID;
+			}
+			if (info.flags & CKF_EC_UNCOMPRESS) {
+				printf(", EC uncompressed");
+				info.flags &= ~CKF_EC_UNCOMPRESS;
+			}
+			if (info.flags & CKF_EC_COMPRESS) {
+				printf(", EC compressed");
+				info.flags &= ~CKF_EC_COMPRESS;
+			}
+			if (info.flags & CKF_EC_CURVENAME) {
+				printf(", EC curve name");
+				info.flags &= ~CKF_EC_CURVENAME;
+			}
 			if (info.flags)
 				printf(", other flags=0x%x", (unsigned int) info.flags);
 		}
