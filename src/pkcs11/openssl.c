@@ -518,6 +518,34 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, unsigned int pubkey_len
 			sc_log(context, "EVP_VerifyFinal() returned %d\n", res);
 			return CKR_GENERAL_ERROR;
 		}
+	} else if (md == NULL && mech->mechanism == CKM_ECDSA) {
+		size_t signat_len_tmp;
+		unsigned char *signat_tmp = NULL;
+		EVP_PKEY_CTX *ctx;
+		EC_KEY *eckey;
+		int r;
+
+		sc_log(context, "Trying to verify using EVP");
+
+		res = 0;
+		r = sc_asn1_sig_value_rs_to_sequence(NULL, signat, signat_len,
+						     &signat_tmp, &signat_len_tmp);
+		eckey = EVP_PKEY_get0_EC_KEY(pkey);
+		ctx = EVP_PKEY_CTX_new(pkey, NULL);
+		if (r == 0 && eckey && ctx && 1 == EVP_PKEY_verify_init(ctx))
+			res = EVP_PKEY_verify(ctx, signat_tmp, signat_len_tmp, data, data_len);
+
+		EVP_PKEY_CTX_free(ctx);
+		EVP_PKEY_free(pkey);
+		free(signat_tmp);
+
+		if (res == 1)
+			return CKR_OK;
+		else if (res == 0)
+			return CKR_SIGNATURE_INVALID;
+		else
+			return CKR_GENERAL_ERROR;
+
 	} else {
 		RSA *rsa;
 		unsigned char *rsa_out = NULL, pad;
