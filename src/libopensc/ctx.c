@@ -1008,7 +1008,11 @@ int sc_get_cache_dir(sc_context_t *ctx, char *buf, size_t bufsize)
 	}
 
 #ifndef _WIN32
+#ifdef __APPLE__
+	cache_dir = getenv("Caches");
+#else
 	cache_dir = getenv("XDG_CACHE_HOME");
+#endif
 	if (cache_dir != NULL && cache_dir[0] != '\0') {
 		snprintf(buf, bufsize, "%s/%s", cache_dir, "opensc");
 		return SC_SUCCESS;
