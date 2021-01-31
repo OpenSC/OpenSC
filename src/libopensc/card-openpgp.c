@@ -1769,9 +1769,8 @@ pgp_put_data(sc_card_t *card, unsigned int tag, const u8 *buf, size_t buf_len)
 
 	LOG_FUNC_CALLED(card->ctx);
 
-	/* check if the tag is writable */
-	if (priv->current->id != tag)
-		affected_blob = pgp_find_blob(card, tag);
+	/* Check if there is a blob for the given tag */
+	affected_blob = pgp_find_blob(card, tag);
 
 	/* Non-readable DOs have no represented blob, we have to check from pgp_get_info_by_tag */
 	if (affected_blob == NULL)
@@ -1779,6 +1778,7 @@ pgp_put_data(sc_card_t *card, unsigned int tag, const u8 *buf, size_t buf_len)
 	else
 		dinfo = affected_blob->info;
 
+	/* Make sure the DO exists and is writeable */
 	if (dinfo == NULL) {
 		sc_log(card->ctx, "The DO %04X does not exist.", tag);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
