@@ -95,6 +95,18 @@ static const struct sc_atr_table iasecc_known_atrs[] = {
 		"IAS/ECC v1.0.1 Amos", SC_CARD_TYPE_IASECC_AMOS, 0, NULL },
 	{ "3B:DC:18:FF:81:91:FE:1F:C3:80:73:C8:21:13:66:01:0B:03:52:00:05:38", NULL,
 		"IAS/ECC v1.0.1 Amos", SC_CARD_TYPE_IASECC_AMOS, 0, NULL },
+	{
+		.atr     = "3B:AC:00:40:2A:00:12:25:00:64:80:00:03:10:00:90:00",
+		.atrmask = "FF:00:00:00:00:FF:FF:FF:FF:FF:FF:00:00:00:FF:FF:FF",
+		.name = "IAS/ECC CPx",
+		.type = SC_CARD_TYPE_IASECC_CPX,
+	},
+	{
+		.atr     = "2B:8F:80:01:00:31:B8:64:04:B0:EC:C1:73:94:01:80:82:90:00:0E",
+		.atrmask = "FF:FF:FF:FF:FF:FF:FF:FF:00:00:FF:C0:FF:FF:FF:FF:FF:FF:FF:FF",
+		.name = "IAS/ECC CPxCL",
+		.type = SC_CARD_TYPE_IASECC_CPXCL,
+	},
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
