@@ -607,6 +607,19 @@ iasecc_init_amos_or_sagem(struct sc_card *card)
 
 
 static int
+iasecc_init_cpx(struct sc_card *card)
+{
+	struct sc_context *ctx = card->ctx;
+
+	LOG_FUNC_CALLED(ctx);
+
+	LOG_TEST_RET(ctx, sc_enum_apps(card), "Enumerate apps failed");
+
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+}
+
+
+static int
 iasecc_init(struct sc_card *card)
 {
 	struct sc_context *ctx = card->ctx;
@@ -632,6 +645,10 @@ iasecc_init(struct sc_card *card)
 		rv = iasecc_init_amos_or_sagem(card);
 	else if (card->type == SC_CARD_TYPE_IASECC_MI)
 		rv = iasecc_init_amos_or_sagem(card);
+	else if (card->type == SC_CARD_TYPE_IASECC_CPX)
+		rv = iasecc_init_cpx(card);
+	else if (card->type == SC_CARD_TYPE_IASECC_CPXCL)
+		rv = iasecc_init_cpx(card);
 	else {
 		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_INVALID_CARD, "");
 	}
@@ -954,7 +971,9 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 				&& card->type != SC_CARD_TYPE_IASECC_SAGEM
 				&& card->type != SC_CARD_TYPE_IASECC_AMOS
 				&& card->type != SC_CARD_TYPE_IASECC_MI
-				&& card->type != SC_CARD_TYPE_IASECC_MI2) {
+				&& card->type != SC_CARD_TYPE_IASECC_MI2
+				&& card->type != SC_CARD_TYPE_IASECC_CPX
+				&& card->type != SC_CARD_TYPE_IASECC_CPXCL) {
 			rv = SC_ERROR_NOT_SUPPORTED;
 			LOG_TEST_GOTO_ERR(ctx, rv, "Unsupported card");
 		}
@@ -975,7 +994,9 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 			if (card->type == SC_CARD_TYPE_IASECC_OBERTHUR ||
 			    card->type == SC_CARD_TYPE_IASECC_AMOS ||
 			    card->type == SC_CARD_TYPE_IASECC_MI ||
-			    card->type == SC_CARD_TYPE_IASECC_MI2)   {
+			    card->type == SC_CARD_TYPE_IASECC_MI2 ||
+			    card->type == SC_CARD_TYPE_IASECC_CPX ||
+			    card->type == SC_CARD_TYPE_IASECC_CPXCL)   {
 				apdu.p2 = 0x04;
 			}
 		}
