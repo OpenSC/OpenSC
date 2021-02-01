@@ -339,6 +339,8 @@ iasecc_select_aid(struct sc_card *card, struct sc_aid *aid, unsigned char *out, 
 	unsigned char apdu_resp[SC_MAX_APDU_BUFFER_SIZE];
 	int rv;
 
+	LOG_FUNC_CALLED(card->ctx);
+
 	/* Select application (deselect previously selected application) */
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xA4, 0x04, 0x00);
 	apdu.lc = aid->len;
@@ -356,7 +358,7 @@ iasecc_select_aid(struct sc_card *card, struct sc_aid *aid, unsigned char *out, 
 		LOG_TEST_RET(card->ctx, SC_ERROR_BUFFER_TOO_SMALL, "Cannot select AID");
 	memcpy(out, apdu.resp, apdu.resplen);
 
-	return SC_SUCCESS;
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
 
