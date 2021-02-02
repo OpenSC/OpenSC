@@ -610,13 +610,23 @@ static int
 iasecc_init_cpx(struct sc_card *card)
 {
 	struct sc_context *ctx = card->ctx;
+	unsigned int flags; /* TBC it is not IASECC_CARD_DEFAULT_FLAGS */
 
 	LOG_FUNC_CALLED(ctx);
 
-	LOG_TEST_RET(ctx, sc_enum_apps(card), "Enumerate apps failed");
+	card->caps = SC_CARD_CAP_RNG; /* TBC it is not IASECC_CARD_DEFAULT_CAPS */
 
-	_sc_card_add_rsa_alg(card, 1024, IASECC_CARD_DEFAULT_FLAGS, 0x10001);
-	_sc_card_add_rsa_alg(card, 2048, IASECC_CARD_DEFAULT_FLAGS, 0x10001);
+	flags = SC_ALGORITHM_RSA_PAD_PKCS1;
+	flags |= SC_ALGORITHM_RSA_RAW;
+
+	flags |= SC_ALGORITHM_RSA_HASH_SHA1    |
+	         SC_ALGORITHM_RSA_HASH_SHA256;
+
+	_sc_card_add_rsa_alg(card, 512, flags, 0);
+	_sc_card_add_rsa_alg(card, 1024, flags, 0);
+	_sc_card_add_rsa_alg(card, 2048, flags, 0);
+
+	LOG_TEST_RET(ctx, sc_enum_apps(card), "Enumerate apps failed");
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
