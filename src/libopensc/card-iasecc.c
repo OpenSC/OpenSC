@@ -419,6 +419,9 @@ static int iasecc_parse_ef_atr(struct sc_card *card)
 	sizes->recv =	 card->ef_atr->issuer_data[10] * 0x100 + card->ef_atr->issuer_data[11];
 	sizes->recv_sc = card->ef_atr->issuer_data[14] * 0x100 + card->ef_atr->issuer_data[15];
 
+	sc_log(ctx, "EF.ATR: IO Buffer Size send/sc %ld/%ld recv/sc %ld/%ld",
+		sizes->send, sizes->send_sc, sizes->recv, sizes->recv_sc);
+
 	card->max_send_size = sizes->send;
 	card->max_recv_size = sizes->recv;
 
