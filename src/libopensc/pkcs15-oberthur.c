@@ -575,7 +575,7 @@ sc_pkcs15emu_oberthur_add_pubkey(struct sc_pkcs15_card *p15card,
 	struct sc_pkcs15_pubkey_info key_info;
 	struct sc_pkcs15_object key_obj;
 	char ch_tmp[0x100];
-	unsigned char *info_blob;
+	unsigned char *info_blob = NULL;
 	size_t len, info_len, offs;
 	unsigned flags;
 	int rv;
@@ -592,8 +592,10 @@ sc_pkcs15emu_oberthur_add_pubkey(struct sc_pkcs15_card *p15card,
 
 	/* Flags */
 	offs = 2;
-	if (offs > info_len)
+	if (offs > info_len) {
+		free(info_blob);
 		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add public key: no 'tag'");
+	}
 	flags = *(info_blob + 0) * 0x100 + *(info_blob + 1);
 	key_info.usage = sc_oberthur_decode_usage(flags);
 	if (flags & OBERTHUR_ATTR_MODIFIABLE)
@@ -601,8 +603,10 @@ sc_pkcs15emu_oberthur_add_pubkey(struct sc_pkcs15_card *p15card,
 	sc_log(ctx, "Public key key-usage:%04X", key_info.usage);
 
 	/* Label */
-	if (offs + 2 > info_len)
+	if (offs + 2 > info_len) {
+		free(info_blob);
 		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add public key: no 'Label'");
+	}
 	len = *(info_blob + offs + 1) + *(info_blob + offs) * 0x100;
 	if (len)   {
 		if (len > sizeof(key_obj.label) - 1)
@@ -612,13 +616,19 @@ sc_pkcs15emu_oberthur_add_pubkey(struct sc_pkcs15_card *p15card,
 	offs += 2 + len;
 
 	/* ID */
-	if (offs > info_len)
+	if (offs > info_len) {
+		free(info_blob);
 		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add public key: no 'ID'");
+	}
 	len = *(info_blob + offs + 1) + *(info_blob + offs) * 0x100;
-	if (!len || len > sizeof(key_info.id.value))
+	if (!len || len > sizeof(key_info.id.value)) {
+		free(info_blob);
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Failed to add public key: invalid 'ID' length");
+	}
 	memcpy(key_info.id.value, info_blob + offs + 2, len);
 	key_info.id.len = len;
+
+	free(info_blob);
 
 	/* Ignore Start/End dates */
 
