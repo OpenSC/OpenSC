@@ -48,6 +48,7 @@
 #include "libopensc/cards.h"
 #include "libopensc/log.h"
 #include "libopensc/internal.h"
+#include "libopensc/iso7816.h"
 #include "common/compat_strlcpy.h"
 #include <getopt.h>
 #include "util.h"
@@ -2176,6 +2177,10 @@ static int do_asn1(int argc, char **argv)
 		}
 	}
 
+	/* workaround when the issuer of a card does prefix the EF.ATR payload with 0x80 */
+	if ((buf[0] == ISO7816_II_CATEGORY_TLV) &&
+	    (memcmp(path.value, "\x3f\x00\x2f\x01", 4) == 0))
+		offs++;
 	/* if offset does not exceed the length read from file/record, ... */
 	if (offs <= (unsigned int) r) {
 		/* ... perform the ASN.1 dump */
