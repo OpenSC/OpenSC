@@ -143,6 +143,7 @@ int sc_parse_ef_atr(struct sc_card *card)
 	int rv;
 	unsigned char *buf = NULL;
 	size_t size;
+	size_t off = 0;
 
 	LOG_FUNC_CALLED(ctx);
 
@@ -162,8 +163,16 @@ int sc_parse_ef_atr(struct sc_card *card)
 	}
 	rv = sc_read_binary(card, 0, buf, size, 0);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Cannot read EF(ATR) file");
-	
-	rv = sc_parse_ef_atr_content(card, buf, rv);
+
+	/* Workaround: Some cards seem to have a buggy storage of the EF.ATR */
+	if ((card->type == SC_CARD_TYPE_IASECC_CPX) ||
+	    (card->type == SC_CARD_TYPE_IASECC_CPXCL)) {
+		/* Let's keep the first byte */
+		if ((rv > 1) &&
+		    (buf[0] == ISO7816_II_CATEGORY_TLV))
+			off++;
+	}
+	rv = sc_parse_ef_atr_content(card, buf + off, rv - off);
 	LOG_TEST_GOTO_ERR(ctx, rv, "EF(ATR) parse error");
 
 	rv = SC_SUCCESS;
