@@ -539,7 +539,7 @@ auth_select_file(struct sc_card *card, const struct sc_path *in_path,
 			}
 		}
 
-		if (path.len - offs > 0)   {
+		if (path.len > offs)   {
 			struct sc_path tmp_path;
 
 			memset(&tmp_path, 0, sizeof(struct sc_path));
