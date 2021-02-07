@@ -195,7 +195,7 @@ TORTURE_INTEGER(negative, "\xff\x20", -224)
 		size_t value_len = sizeof(value); \
 		int rv; \
 	\
-		rv = decode_bit_field(data, datalen, &value, value_len); \
+		rv = decode_bit_field(data, datalen, &value, value_len, 1); \
 		assert_int_equal(rv, SC_SUCCESS); \
 		assert_int_equal(value, int_value); \
 	}
@@ -208,7 +208,7 @@ TORTURE_INTEGER(negative, "\xff\x20", -224)
 		size_t value_len = sizeof(value); \
 		int rv; \
 	\
-		rv = decode_bit_field(data, datalen, &value, value_len); \
+		rv = decode_bit_field(data, datalen, &value, value_len, 1); \
 		assert_int_equal(rv, error); \
 	}
 /* Without the Tag (0x03) and Length */
