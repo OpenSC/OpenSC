@@ -253,10 +253,15 @@ static void sc_asn1_print_bit_string(const u8 * buf, size_t buflen, size_t depth
 	if (buflen > sizeof(a) + 1) {
 		print_hex(buf, buflen, depth);
 	} else {
-		r = sc_asn1_decode_bit_string(buf, buflen, &a, sizeof(a));
+		r = sc_asn1_decode_bit_string(buf, buflen, &a, sizeof(a), 1);
 		if (r < 0) {
-			printf("decode error");
-			return;
+			printf("decode error, ");
+			/* try again without the strict mode */
+			r = sc_asn1_decode_bit_string(buf, buflen, &a, sizeof(a), 0);
+			if (r < 0) {
+				printf("even for lax decoding");
+				return ;
+			}
 		}
 		for (i = r - 1; i >= 0; i--) {
 			printf("%c", ((a >> i) & 1) ? '1' : '0');
@@ -567,7 +572,7 @@ const u8 *sc_asn1_verify_tag(sc_context_t *ctx, const u8 * buf, size_t buflen,
 }
 
 static int decode_bit_string(const u8 * inbuf, size_t inlen, void *outbuf,
-			     size_t outlen, int invert)
+			     size_t outlen, int invert, const int strict)
 {
 	const u8 *in = inbuf;
 	u8 *out = (u8 *) outbuf;
@@ -577,13 +582,19 @@ static int decode_bit_string(const u8 * inbuf, size_t inlen, void *outbuf,
 
 	if (inlen < 1)
 		return SC_ERROR_INVALID_ASN1_OBJECT;
-	/* 8.6.2.3 If the bitstring is empty, there shall be no subsequent octets,
-         * and the initial octet shall be zero. */
-	if (inlen == 1 && *in != 0)
-		return SC_ERROR_INVALID_ASN1_OBJECT;
-	/* ITU-T Rec. X.690 8.6.2.2: The number shall be in the range zero to seven. */
-	if ((*in & ~0x07) != 0)
-		return SC_ERROR_INVALID_ASN1_OBJECT;
+
+	/* The formatting is only enforced by SHALL keyword so we should accept
+	 * by default also non-strict values. */
+	if (strict) {
+		/* 8.6.2.3 If the bitstring is empty, there shall be no
+		 * subsequent octets,and the initial octet shall be zero. */
+		if (inlen == 1 && *in != 0)
+			return SC_ERROR_INVALID_ASN1_OBJECT;
+		/* ITU-T Rec. X.690 8.6.2.2: The number shall be in the range zero to seven. */
+		if ((*in & ~0x07) != 0)
+			return SC_ERROR_INVALID_ASN1_OBJECT;
+	}
+
 	memset(outbuf, 0, outlen);
 	zero_bits = *in & 0x07;
 	in++;
@@ -622,15 +633,15 @@ static int decode_bit_string(const u8 * inbuf, size_t inlen, void *outbuf,
 }
 
 int sc_asn1_decode_bit_string(const u8 * inbuf, size_t inlen,
-			      void *outbuf, size_t outlen)
+			      void *outbuf, size_t outlen, const int strict)
 {
-	return decode_bit_string(inbuf, inlen, outbuf, outlen, 1);
+	return decode_bit_string(inbuf, inlen, outbuf, outlen, 1, strict);
 }
 
 int sc_asn1_decode_bit_string_ni(const u8 * inbuf, size_t inlen,
-				 void *outbuf, size_t outlen)
+				 void *outbuf, size_t outlen, const int strict)
 {
-	return decode_bit_string(inbuf, inlen, outbuf, outlen, 0);
+	return decode_bit_string(inbuf, inlen, outbuf, outlen, 0, strict);
 }
 
 static int encode_bit_string(const u8 * inbuf, size_t bits_left, u8 **outbuf,
@@ -675,7 +686,7 @@ static int encode_bit_string(const u8 * inbuf, size_t bits_left, u8 **outbuf,
  * Bitfields are just bit strings, stored in an unsigned int
  * (taking endianness into account)
  */
-static int decode_bit_field(const u8 * inbuf, size_t inlen, void *outbuf, size_t outlen)
+static int decode_bit_field(const u8 * inbuf, size_t inlen, void *outbuf, size_t outlen, const int strict)
 {
 	u8		data[sizeof(unsigned int)];
 	unsigned int	field = 0;
@@ -684,7 +695,7 @@ static int decode_bit_field(const u8 * inbuf, size_t inlen, void *outbuf, size_t
 	if (outlen != sizeof(data))
 		return SC_ERROR_BUFFER_TOO_SMALL;
 
-	n = decode_bit_string(inbuf, inlen, data, sizeof(data), 1);
+	n = decode_bit_string(inbuf, inlen, data, sizeof(data), 1, strict);
 	if (n < 0)
 		return n;
 
@@ -1538,7 +1549,7 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 				*len = objlen-1;
 				parm = *buf;
 			}
-			r = decode_bit_string(obj, objlen, (u8 *) parm, *len, invert);
+			r = decode_bit_string(obj, objlen, (u8 *) parm, *len, invert, 0);
 			if (r >= 0) {
 				*len = r;
 				r = 0;
@@ -1547,7 +1558,7 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 		break;
 	case SC_ASN1_BIT_FIELD:
 		if (parm != NULL)
-			r = decode_bit_field(obj, objlen, (u8 *) parm, *len);
+			r = decode_bit_field(obj, objlen, (u8 *) parm, *len, 0);
 		break;
 	case SC_ASN1_OCTET_STRING:
 		if (parm != NULL) {
