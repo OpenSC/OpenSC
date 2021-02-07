@@ -1001,7 +1001,10 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 			if (card->type == SC_CARD_TYPE_IASECC_OBERTHUR ||
 			    card->type == SC_CARD_TYPE_IASECC_AMOS ||
 			    card->type == SC_CARD_TYPE_IASECC_MI ||
-			    card->type == SC_CARD_TYPE_IASECC_MI2)   {
+			    card->type == SC_CARD_TYPE_IASECC_MI2 ||
+			    card->type == SC_CARD_TYPE_IASECC_CPX ||
+			    card->type == SC_CARD_TYPE_IASECC_CPXCL
+			    )   {
 				apdu.p2 = 0x04;
 			}
 		}
