@@ -661,8 +661,10 @@ open_reader_and_card(char *reader)
 		return 0;
 	}
 
-	if (util_connect_card_ex(g_ctx, &g_card, reader, opt_wait, 0, verbose))
+	if (util_connect_card_ex(g_ctx, &g_card, reader, opt_wait, 0, verbose)) {
+		sc_release_context(ctx);
 		return 0;
+	}
 
 	return 1;
 }
