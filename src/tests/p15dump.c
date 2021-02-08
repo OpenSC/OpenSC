@@ -123,6 +123,7 @@ int main(int argc, char *argv[])
 	/* Keep card locked to prevent useless calls to sc_logout */
 	if (i) {
 		fprintf(stderr, "failed: %s\n", sc_strerror(i));
+		sc_test_cleanup();
 		return 1;
 	}
 	printf("found.\n");
