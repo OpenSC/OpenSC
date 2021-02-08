@@ -59,6 +59,7 @@ if test -n "${BUILD_ARM}"; then
 	export CFLAGS="$CFLAGS -arch x86_64 -arch arm64"
 	export LDFLAGS="$LDFLAGS -arch x86_64 -arch arm64"
 fi
+export OBJCFLAGS=$CFLAGS
 
 if ! test -e $BUILDPATH/openpace_bin/$PREFIX/lib/pkgconfig; then
 	if ! test -e openpace; then
