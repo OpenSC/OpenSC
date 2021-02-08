@@ -2086,6 +2086,7 @@ static int do_asn1(int argc, char **argv)
 {
 	int r, err = 1;
 	unsigned int offs = 0;
+	int offsu = 0; /* offset updated, set from argv */
 	sc_path_t path;
 	sc_file_t *file = NULL;
 	int not_current = 1;
@@ -2127,8 +2128,10 @@ static int do_asn1(int argc, char **argv)
 			goto err;
 		}
 
-		if (argc > 1)
+		if (argc > 1) {
 			offs = (unsigned int) strtoul(argv[1], NULL, 10);
+			offsu = 1;
+		}
 
 		r = sc_lock(card);
 		if (r == SC_SUCCESS)
@@ -2157,8 +2160,10 @@ static int do_asn1(int argc, char **argv)
 		}
 
 		rec = (unsigned int) strtoul(argv[1], NULL, 10);
-		if (argc > 2)
+		if (argc > 2) {
 			offs = (unsigned int) strtoul(argv[2], NULL, 10);
+			offsu = 1;
+		}
 
 		if (rec < 1 || rec > file->record_count) {
 			fprintf(stderr, "Invalid record number %u.\n", rec);
@@ -2178,7 +2183,9 @@ static int do_asn1(int argc, char **argv)
 	}
 
 	/* workaround when the issuer of a card does prefix the EF.ATR payload with 0x80 */
-	if ((buf[0] == ISO7816_II_CATEGORY_TLV) &&
+	if ((offsu == 0) && /* do not apply the workaround if any offset */
+	    (buf[0] == ISO7816_II_CATEGORY_TLV) &&
+	    (path.len >= 4) &&
 	    (memcmp(path.value, "\x3f\x00\x2f\x01", 4) == 0))
 		offs++;
 	/* if offset does not exceed the length read from file/record, ... */
