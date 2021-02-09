@@ -154,6 +154,8 @@ sc_pkcs15_decode_skdf_entry(struct sc_pkcs15_card *p15card, struct sc_pkcs15_obj
 	info.native = 1;
 
 	r = sc_asn1_decode(ctx, asn1_skey, *buf, *buflen, buf, buflen);
+	if (r < 0)
+		sc_pkcs15_free_key_params(&info.params);
 	if (r == SC_ERROR_ASN1_END_OF_CONTENTS)
 		return r;
 	LOG_TEST_RET(ctx, r, "ASN.1 decoding failed");
@@ -191,6 +193,7 @@ sc_pkcs15_decode_skdf_entry(struct sc_pkcs15_card *p15card, struct sc_pkcs15_obj
 		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 	memcpy(obj->data, &info, sizeof(info));
 
+	sc_pkcs15_free_key_params(&info.params);
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
