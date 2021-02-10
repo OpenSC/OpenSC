@@ -585,7 +585,7 @@ static void initialize_uid(sc_reader_t *reader)
 		if (SC_SUCCESS == pcsc_transmit(reader, &apdu)
 				&& apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 			reader->uid.len = apdu.resplen;
-			memcpy(reader->uid.value, apdu.resp, reader->uid.len);
+			memcpy(reader->uid.value, apdu.resp, MIN(sizeof(reader->uid.value), reader->uid.len));
 			sc_log_hex(reader->ctx, "UID",
 					reader->uid.value, reader->uid.len);
 		} else {
