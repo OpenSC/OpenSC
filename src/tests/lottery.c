@@ -37,6 +37,7 @@ int main(int argc, char *argv[])
 		if (c == 0) {
 			if (0 != gettimeofday(&tv1, NULL)) {
 				fprintf(stderr, "gettimeofday() failed: %s\n", strerror(errno));
+				sc_test_cleanup();
 				return 1;
 			}
 		}
