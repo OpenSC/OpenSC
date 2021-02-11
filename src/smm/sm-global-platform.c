@@ -384,8 +384,10 @@ sm_gp_securize_apdu(struct sc_context *ctx, struct sm_info *sm_info,
 		if (sm_gp_encrypt_command_data(ctx, gp_session->session_enc, apdu->data, apdu->datalen, &encrypted, &encrypted_len))
 			LOG_TEST_RET(ctx, SC_ERROR_SM_ENCRYPT_FAILED, "SM GP securize APDU: data encryption error");
 
-		if (encrypted_len + 8 > SC_MAX_APDU_BUFFER_SIZE)
-			LOG_TEST_RET(ctx, SC_ERROR_BUFFER_TOO_SMALL, "SM GP securize APDU: not enough place for encrypted data");
+		if (encrypted_len + 8 > SC_MAX_APDU_BUFFER_SIZE) {
+			rv = SC_ERROR_BUFFER_TOO_SMALL;
+			LOG_TEST_GOTO_ERR(ctx, rv, "SM GP securize APDU: not enough place for encrypted data");
+		}
 
 		sc_debug(ctx, SC_LOG_DEBUG_SM,
 		       "SM GP securize APDU: encrypted length %"SC_FORMAT_LEN_SIZE_T"u",
@@ -404,7 +406,7 @@ sm_gp_securize_apdu(struct sc_context *ctx, struct sm_info *sm_info,
 	memcpy(buff + 5, apdu_data, apdu->datalen);
 
 	rv = sm_gp_get_mac(gp_session->session_mac, &gp_session->mac_icv, buff, 5 + apdu->datalen, &mac);
-	LOG_TEST_RET(ctx, rv, "SM GP securize APDU: get MAC error");
+	LOG_TEST_GOTO_ERR(ctx, rv, "SM GP securize APDU: get MAC error");
 
 	if (gp_level == SM_GP_SECURITY_MAC)   {
 		memcpy(apdu_data + apdu->datalen, mac, 8);
@@ -432,10 +434,13 @@ sm_gp_securize_apdu(struct sc_context *ctx, struct sm_info *sm_info,
 			apdu->cse = SC_APDU_CASE_3_SHORT;
 
 		free(encrypted);
+		encrypted = NULL;
 	}
 
 	memcpy(sm_info->session.gp.mac_icv, mac, 8);
 
+err:
+	free(encrypted);
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
