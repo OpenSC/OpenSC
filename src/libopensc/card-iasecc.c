@@ -1171,7 +1171,7 @@ iasecc_process_fci(struct sc_card *card, struct sc_file *file,
 	else
 		acls = sc_asn1_find_tag(ctx, buf, buflen, IASECC_DOCP_TAG_ACLS_CONTACT, &taglen);
 
-	if (!acls)   {
+	if (!acls || taglen < 7)   {
 		sc_log(ctx,
 		       "ACLs not found in data(%"SC_FORMAT_LEN_SIZE_T"u) %s",
 		       buflen, sc_dump_hex(buf, buflen));
