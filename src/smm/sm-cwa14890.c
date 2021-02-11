@@ -234,7 +234,7 @@ sm_cwa_initialize(struct sc_context *ctx, struct sm_info *sm_info, struct sc_rem
 	size_t icc_sn_len = sizeof(cwa_session->icc.sn);
 	struct sc_remote_apdu *new_rapdu = NULL;
 	struct sc_apdu *apdu = NULL;
-	unsigned char buf[0x100], *encrypted;
+	unsigned char buf[0x100], *encrypted = NULL;
 	size_t encrypted_len;
 	DES_cblock icv = {0, 0, 0, 0, 0, 0, 0, 0}, cblock;
 	int rv, offs;
@@ -282,7 +282,7 @@ sm_cwa_initialize(struct sc_context *ctx, struct sm_info *sm_info, struct sc_rem
 	offs = encrypted_len;
 
 	rv = sm_cwa_get_mac(ctx, cwa_keyset->mac, &icv, buf, offs, &cblock, 1);
-	LOG_TEST_RET(ctx, rv, "sm_ecc_get_mac() failed");
+	LOG_TEST_GOTO_ERR(ctx, rv, "sm_ecc_get_mac() failed");
 	sc_debug(ctx, SC_LOG_DEBUG_SM, "MACed(%"SC_FORMAT_LEN_SIZE_T"u) %s", sizeof(cblock),
 	       sc_dump_hex(cblock, sizeof(cblock)));
 
@@ -296,9 +296,11 @@ sm_cwa_initialize(struct sc_context *ctx, struct sm_info *sm_info, struct sc_rem
 	apdu->datalen = encrypted_len + sizeof(cblock);
 	memcpy(new_rapdu->sbuf, encrypted, encrypted_len);
 	memcpy(new_rapdu->sbuf + encrypted_len, cblock, sizeof(cblock));
+	rv = SC_SUCCESS;
 
+err:
 	free(encrypted);
-	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+	LOG_FUNC_RETURN(ctx, rv);
 }
 
 
