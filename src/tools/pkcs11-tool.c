@@ -7319,8 +7319,12 @@ static void * test_threads_run(void * pttd)
 			fprintf(stderr, "Test thread %d l_p11_num_slots:%ld\n", ttd->tnum, l_p11_num_slots);
 			if (rv == CKR_OK) {
 				free(l_p11_slots);
+				l_p11_slots = NULL;
 				if (l_p11_num_slots > 0) {
 					l_p11_slots = calloc(l_p11_num_slots, sizeof(CK_SLOT_ID));
+					if (l_p11_slots == NULL) {
+						goto err;
+					}
 					fprintf(stderr, "Test thread %d C_GetSlotList\n", ttd->tnum);
 					rv = p11->C_GetSlotList(1, l_p11_slots, &l_p11_num_slots);
 					ttd->rv = rv;
