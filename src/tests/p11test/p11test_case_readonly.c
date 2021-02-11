@@ -171,7 +171,7 @@ int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 	CK_BYTE *message = NULL;
 	CK_BYTE *dec_message = NULL;
 	int dec_message_length = 0;
-	unsigned char *enc_message;
+	unsigned char *enc_message = NULL;
 	int enc_message_length, rv;
 
 	if (o->private_handle == CK_INVALID_HANDLE) {
@@ -207,6 +207,7 @@ int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 	enc_message_length = encrypt_message(o, info, message, message_length,
 	    mech, &enc_message);
 	if (enc_message_length <= 0) {
+		free(enc_message);
 		free(message);
 		return -1;
 	}
