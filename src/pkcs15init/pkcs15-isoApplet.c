@@ -454,6 +454,8 @@ isoApplet_generate_key_ec(const sc_pkcs15_prkey_info_t *key_info, sc_card_t *car
 
 	LOG_FUNC_CALLED(card->ctx);
 
+	memset(&args, 0, sizeof(args));
+
 	/* Check key size: */
 	if(key_info->field_length == 0)
 	{
@@ -472,8 +474,6 @@ isoApplet_generate_key_ec(const sc_pkcs15_prkey_info_t *key_info, sc_card_t *car
 	/* Generate the key.
 	 * Note: The field size is not explicitly passed to the card.
 	 *       As we only support FP curves, the field length can be calculated from any parameter. */
-	memset(&args, 0, sizeof(args));
-
 	args.pubkey.ec.params.prime.value			= curve->prime.value;
 	args.pubkey.ec.params.prime.len				= curve->prime.len;
 	args.pubkey.ec.params.coefficientA.value	= curve->coefficientA.value;
