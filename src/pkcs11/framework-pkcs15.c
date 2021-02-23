@@ -670,6 +670,7 @@ __pkcs15_create_cert_object(struct pkcs15_fw_data *fw_data, struct sc_pkcs15_obj
 {
 	struct sc_pkcs15_cert_info *p15_info = NULL;
 	struct sc_pkcs15_cert *p15_cert = NULL;
+	struct pkcs15_any_object *any_object = NULL;
 	struct pkcs15_cert_object *object = NULL;
 	struct pkcs15_pubkey_object *obj2 = NULL;
 	int rv;
@@ -686,8 +687,9 @@ __pkcs15_create_cert_object(struct pkcs15_fw_data *fw_data, struct sc_pkcs15_obj
 	}
 
 	/* Certificate object */
-	rv = __pkcs15_create_object(fw_data, (struct pkcs15_any_object **) &object,
+	rv = __pkcs15_create_object(fw_data, &any_object,
 			cert, &pkcs15_cert_ops, sizeof(struct pkcs15_cert_object));
+	object = (struct pkcs15_cert_object *) any_object;
 	if (rv < 0) {
 		if (p15_cert != NULL)
 			sc_pkcs15_free_certificate(p15_cert);
@@ -720,7 +722,7 @@ __pkcs15_create_cert_object(struct pkcs15_fw_data *fw_data, struct sc_pkcs15_obj
 	pkcs15_cert_extract_label(object);
 
 	if (cert_object != NULL)
-		*cert_object = (struct pkcs15_any_object *) object;
+		*cert_object = any_object;
 
 	return 0;
 }
@@ -730,6 +732,7 @@ static int
 __pkcs15_create_pubkey_object(struct pkcs15_fw_data *fw_data,
 	struct sc_pkcs15_object *pubkey, struct pkcs15_any_object **pubkey_object)
 {
+	struct pkcs15_any_object *any_object = NULL;
 	struct pkcs15_pubkey_object *object = NULL;
 	struct sc_pkcs15_pubkey *p15_key = NULL;
 	int rv;
@@ -758,8 +761,9 @@ __pkcs15_create_pubkey_object(struct pkcs15_fw_data *fw_data,
 	}
 
 	/* Public key object */
-	rv = __pkcs15_create_object(fw_data, (struct pkcs15_any_object **) &object,
+	rv = __pkcs15_create_object(fw_data, &any_object,
 			pubkey, &pkcs15_pubkey_ops, sizeof(struct pkcs15_pubkey_object));
+	object = (struct pkcs15_pubkey_object *) any_object;
 	if (rv >= 0) {
 		object->pub_info = (struct sc_pkcs15_pubkey_info *) pubkey->data;
 		object->pub_data = p15_key;
@@ -773,7 +777,7 @@ __pkcs15_create_pubkey_object(struct pkcs15_fw_data *fw_data,
 			object->pub_data->alg_id->params = &((object->pub_data->u).gostr3410.params);
 	}
 	if (pubkey_object != NULL)
-		*pubkey_object = (struct pkcs15_any_object *) object;
+		*pubkey_object = any_object;
 
 	return rv;
 }
@@ -783,16 +787,18 @@ static int
 __pkcs15_create_prkey_object(struct pkcs15_fw_data *fw_data,
 	struct sc_pkcs15_object *prkey, struct pkcs15_any_object **prkey_object)
 {
+	struct pkcs15_any_object *any_object = NULL;
 	struct pkcs15_prkey_object *object = NULL;
 	int rv;
 
-	rv = __pkcs15_create_object(fw_data, (struct pkcs15_any_object **) &object,
+	rv = __pkcs15_create_object(fw_data, &any_object,
 			prkey, &pkcs15_prkey_ops, sizeof(struct pkcs15_prkey_object));
+	object = (struct pkcs15_prkey_object *) any_object;
 	if (rv >= 0)
 		object->prv_info = (struct sc_pkcs15_prkey_info *) prkey->data;
 
 	if (prkey_object != NULL)
-		*prkey_object = (struct pkcs15_any_object *) object;
+		*prkey_object = any_object;
 
 	return rv;
 }
@@ -802,18 +808,20 @@ static int
 __pkcs15_create_data_object(struct pkcs15_fw_data *fw_data,
 		struct sc_pkcs15_object *object, struct pkcs15_any_object **data_object)
 {
+	struct pkcs15_any_object *any_object = NULL;
 	struct pkcs15_data_object *dobj = NULL;
 	int rv;
 
-	rv = __pkcs15_create_object(fw_data, (struct pkcs15_any_object **) &dobj,
+	rv = __pkcs15_create_object(fw_data, &any_object,
 			object, &pkcs15_dobj_ops, sizeof(struct pkcs15_data_object));
+        dobj = (struct pkcs15_data_object *) any_object;
 	if (rv >= 0)   {
 		dobj->info = (struct sc_pkcs15_data_info *) object->data;
 		dobj->value = NULL;
 	}
 
 	if (data_object != NULL)
-		*data_object = (struct pkcs15_any_object *) dobj;
+		*data_object = any_object;
 
 	return rv;
 }
@@ -853,16 +861,18 @@ static int
 __pkcs15_create_secret_key_object(struct pkcs15_fw_data *fw_data,
 		struct sc_pkcs15_object *object, struct pkcs15_any_object **skey_object)
 {
+	struct pkcs15_any_object *any_object = NULL;
 	struct pkcs15_skey_object *skey = NULL;
 	int rv;
 
-	rv = __pkcs15_create_object(fw_data, (struct pkcs15_any_object **) &skey,
+	rv = __pkcs15_create_object(fw_data, &any_object,
 			object, &pkcs15_skey_ops, sizeof(struct pkcs15_skey_object));
+        skey = (struct pkcs15_skey_object *) any_object;
 	if (rv >= 0)
 		skey->info = (struct sc_pkcs15_skey_info *) object->data;
 
 	if (skey_object != NULL)
-		*skey_object = (struct pkcs15_any_object *) skey;
+		*skey_object = any_object;
 
 	return rv;
 }
