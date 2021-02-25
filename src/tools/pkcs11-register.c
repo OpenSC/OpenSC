@@ -123,13 +123,15 @@ add_module_pkcs11_txt(const char *profile_dir,
 	char pkcs11_txt_path[PATH_MAX];
 	char *pkcs11_txt = NULL;
 	size_t pkcs11_txt_len = 0;
+	unsigned char *txt = NULL;
+
 	if (!profile_dir
 			|| snprintf(pkcs11_txt_path, sizeof pkcs11_txt_path,
 				"%s%c%s", profile_dir, path_sep, "pkcs11.txt") < 0
-			|| !fread_to_eof(pkcs11_txt_path,
-				(unsigned char **) &pkcs11_txt, &pkcs11_txt_len)) {
+			|| !fread_to_eof(pkcs11_txt_path, &txt, &pkcs11_txt_len)) {
 		goto err;
 	}
+	pkcs11_txt = (char *)txt;
 	char *p = realloc(pkcs11_txt, pkcs11_txt_len+1);
 	if (!p)
 		goto err;
