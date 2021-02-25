@@ -347,6 +347,7 @@ C_FindObjectsInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	struct sc_pkcs11_object *object;
 	struct sc_pkcs11_find_operation *operation;
 	struct sc_pkcs11_slot *slot;
+	struct sc_pkcs11_operation *op = NULL;
 
 	if (pTemplate == NULL_PTR && ulCount > 0)
 		return CKR_ARGUMENTS_BAD;
@@ -363,7 +364,8 @@ C_FindObjectsInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	dump_template(SC_LOG_DEBUG_NORMAL, "C_FindObjectsInit()", pTemplate, ulCount);
 
 	rv = session_start_operation(session, SC_PKCS11_OPERATION_FIND,
-				     &find_mechanism, (struct sc_pkcs11_operation **)&operation);
+				     &find_mechanism, &op);
+	operation = (struct sc_pkcs11_find_operation *) op;
 	if (rv != CKR_OK)
 		goto out;
 
@@ -451,6 +453,7 @@ C_FindObjects(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	CK_ULONG to_return;
 	struct sc_pkcs11_session *session;
 	struct sc_pkcs11_find_operation *operation;
+	struct sc_pkcs11_operation *op = NULL;
 
 	if (phObject == NULL_PTR || ulMaxObjectCount == 0 || pulObjectCount == NULL_PTR)
 		return CKR_ARGUMENTS_BAD;
@@ -463,7 +466,8 @@ C_FindObjects(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	if (rv != CKR_OK)
 		goto out;
 
-	rv = session_get_operation(session, SC_PKCS11_OPERATION_FIND, (sc_pkcs11_operation_t **) & operation);
+	rv = session_get_operation(session, SC_PKCS11_OPERATION_FIND, &op);
+	operation = (struct sc_pkcs11_find_operation *) op;
 	if (rv != CKR_OK)
 		goto out;
 
