@@ -2505,13 +2505,17 @@ static int piv_find_aid(sc_card_t * card)
 	int r,i;
 	const u8 *tag;
 	size_t taglen;
+	const u8 *nextac;
 	const u8 *pix;
 	size_t pixlen;
-	const u8 *cstag;  /* Cipher Suite */
-	size_t cstaglen;
+	const u8 *actag;  /* Cipher Suite */
+	size_t actaglen;
 	const u8 *csai; /* Cipher Suite Algorithm Identifer */
 	size_t csailen;
 	size_t resplen = sizeof(rbuf);
+#ifdef ENABLE_PIV_SM
+	int found_csai = 0;
+#endif
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -2529,33 +2533,35 @@ static int piv_find_aid(sc_card_t * card)
 		tag = sc_asn1_find_tag(card->ctx, rbuf, resplen, 0x61, &taglen);
 		if (tag != NULL) {
 			priv->init_flags |= PIV_INIT_AID_PARSED;
-			/* TODO use asn1 parser for this */
 			/* look for 800-73-4 0xAC for Cipher Suite Algorithm Identifer Table 14 */
-			cstag = sc_asn1_find_tag(card->ctx, tag, taglen, 0xAC, &cstaglen);
-			if (cstag != NULL) {
-				csai = sc_asn1_find_tag(card->ctx, cstag, cstaglen, 0x80, &csailen);
-				priv->init_flags |= PIV_INIT_AID_AC;
+			/* There maybe more then one 0xAC tag, loop to find all */
+
+			nextac = tag;
+			while((actag = sc_asn1_find_tag(card->ctx, nextac, taglen - (nextac - tag),
+					0xAC, &actaglen)) != NULL) {
+				nextac = actag + actaglen;
+
+				csai = sc_asn1_find_tag(card->ctx, actag, actaglen, 0x80, &csailen);
 				if (csai != NULL) {
-#ifdef ENABLE_PIV_SM
 					if (csailen == 1) {
+						sc_log(card->ctx,"found csID=0x%2.2x",*csai);
+#ifdef ENABLE_PIV_SM
 						for (i = 0; i < PIV_CSS_SIZE; i++) {
 							if (*csai != css[i].id)
 								continue;
-							priv->cs = &css[i];
-							priv->csID = *csai;
-							sc_log(card->ctx,"found csID=0x%2.2x",priv->csID);
-							break;
+							if (found_csai) {
+								sc_log(card->ctx,"found multiple csIDs, using first");
+							} else {
+								priv->cs = &css[i];
+								priv->csID = *csai;
+								found_csai++;
+								priv->init_flags |= PIV_INIT_AID_AC;
+							}
 						}
+#endif /* ENABLE_PIV_SM */
 					}
-					if (priv->cs == NULL) {
-						sc_log(card->ctx,"unknown csID=0x%2.2x %"SC_FORMAT_LEN_SIZE_T"u", *csai, csailen);
-					}
-#else
-				priv->csID = 0x00;
-				sc_log(card->ctx, "Card Supports SM, but OpenSC built without SM, OPENSSL or ECC");
-#endif /*  ENABLE_PIV_SM */
 				}
-		}
+			}
 
 			pix = sc_asn1_find_tag(card->ctx, tag, taglen, 0x4F, &pixlen);
 			if (pix != NULL ) {
@@ -5388,7 +5394,7 @@ static int piv_init(sc_card_t *card)
 		}
 	}
 
-	/* read "card_driver PIV_II" opensc.conf options, and env parameters */
+	/* read "card_driver PIV-II" opensc.conf options, and env parameters */
 	piv_load_options(card);
 
 	priv->pstate=PIV_STATE_INIT;
