@@ -659,7 +659,7 @@ sc_pkcs15emu_oberthur_add_cert(struct sc_pkcs15_card *p15card, unsigned int file
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_cert_info cinfo;
 	struct sc_pkcs15_object cobj;
-	unsigned char *info_blob, *cert_blob;
+	unsigned char *info_blob = NULL, *cert_blob = NULL;
 	size_t info_len, cert_len, len, offs;
 	unsigned flags;
 	int rv;
@@ -675,16 +675,23 @@ sc_pkcs15emu_oberthur_add_cert(struct sc_pkcs15_card *p15card, unsigned int file
 	rv = sc_oberthur_read_file(p15card, ch_tmp, &info_blob, &info_len, 1);
 	LOG_TEST_RET(ctx, rv, "Failed to add certificate: read oberthur file error");
 
-	if (info_len < 2)
+	if (info_len < 2) {
+		free(info_blob);
 		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add certificate: no 'tag'");
+	}
 	flags = *(info_blob + 0) * 0x100 + *(info_blob + 1);
 	offs = 2;
 
 	/* Label */
-	if (offs + 2 > info_len)
+	if (offs + 2 > info_len) {
+		free(info_blob);
 		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add certificate: no 'CN'");
+	}
 	len = *(info_blob + offs + 1) + *(info_blob + offs) * 0x100;
-	if (len)   {
+	if (len + offs + 2 > info_len) {
+		free(info_blob);
+		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Invalid 'CN' length");
+	} else if (len) {
 		if (len > sizeof(cobj.label) - 1)
 			len = sizeof(cobj.label) - 1;
 		memcpy(cobj.label, info_blob + offs + 2, len);
@@ -692,13 +699,22 @@ sc_pkcs15emu_oberthur_add_cert(struct sc_pkcs15_card *p15card, unsigned int file
 	offs += 2 + len;
 
 	/* ID */
-	if (offs > info_len)
+	if (offs + 2 > info_len) {
+		free(info_blob);
 		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add certificate: no 'ID'");
+	}
 	len = *(info_blob + offs + 1) + *(info_blob + offs) * 0x100;
-	if (len > sizeof(cinfo.id.value))
+	if (len + offs + 2 > info_len) {
+		free(info_blob);
+		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Invalid 'ID' length");
+	} else if (len > sizeof(cinfo.id.value)) {
+		free(info_blob);
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Failed to add certificate: invalid 'ID' length");
+	}
 	memcpy(cinfo.id.value, info_blob + offs + 2, len);
 	cinfo.id.len = len;
+
+	free(info_blob);
 
 	/* Ignore subject, issuer and serial */
 
@@ -784,15 +800,23 @@ sc_pkcs15emu_oberthur_add_prvkey(struct sc_pkcs15_card *p15card,
 	rv = sc_oberthur_read_file(p15card, ch_tmp, &info_blob, &info_len, 1);
 	LOG_TEST_RET(ctx, rv, "Failed to add private key: read oberthur file error");
 
-	if (info_len < 2)
+	if (info_len < 2) {
+		free(info_blob);
 		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add private key: no 'tag'");
+	}
 	flags = *(info_blob + 0) * 0x100 + *(info_blob + 1);
 	offs = 2;
 
 	/* CN */
-	if (offs > info_len)
+	if (offs + 2 > info_len) {
+		free(info_blob);
 		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add private key: no 'CN'");
+	}
 	len = *(info_blob + offs + 1) + *(info_blob + offs) * 0x100;
+	if (len + offs + 2 > info_len) {
+		free(info_blob);
+		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Invalid 'CN' length");
+	}
 	if (len && !strlen(kobj.label))   {
 		if (len > sizeof(kobj.label) - 1)
 			len = sizeof(kobj.label) - 1;
@@ -801,13 +825,21 @@ sc_pkcs15emu_oberthur_add_prvkey(struct sc_pkcs15_card *p15card,
 	offs += 2 + len;
 
 	/* ID */
-	if (offs > info_len)
+	if (offs + 2 > info_len) {
+		free(info_blob);
 		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add private key: no 'ID'");
+	}
 	len = *(info_blob + offs + 1) + *(info_blob + offs) * 0x100;
-	if (!len)
+	if (!len) {
+		free(info_blob);
 		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add private key: zero length ID");
-	else if (len > sizeof(kinfo.id.value))
+	} else if (len + offs + 2 > info_len) {
+		free(info_blob);
+		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Invalid 'ID' length");
+	} else if (len > sizeof(kinfo.id.value)) {
+		free(info_blob);
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Failed to add private key: invalid ID length");
+	}
 	memcpy(kinfo.id.value, info_blob + offs + 2, len);
 	kinfo.id.len = len;
 	offs += 2 + len;
@@ -816,18 +848,27 @@ sc_pkcs15emu_oberthur_add_prvkey(struct sc_pkcs15_card *p15card,
 	offs += 16;
 
 	/* Subject encoded in ASN1 */
-	if (offs > info_len)
-		return SC_ERROR_UNKNOWN_DATA_RECEIVED;
+	if (offs + 2 > info_len) {
+		free(info_blob);
+		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add private key: no 'subject'");
+	}
 	len = *(info_blob + offs + 1) + *(info_blob + offs) * 0x100;
-	if (len)   {
+	if (len + offs + 2 > info_len) {
+		free(info_blob);
+		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Invalid 'subject' length");
+	} else if (len) {
 		kinfo.subject.value = malloc(len);
-		if (!kinfo.subject.value)
+		if (!kinfo.subject.value) {
+			free(info_blob);
 			LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Failed to add private key: memory allocation error");
+		}
 		kinfo.subject.len = len;
 		memcpy(kinfo.subject.value, info_blob + offs + 2, len);
 	}
 
 	/* Modulus and exponent are ignored */
+
+	free(info_blob);
 
 	snprintf(ch_tmp, sizeof(ch_tmp), "%s%04X", AWP_OBJECTS_DF_PRV, file_id);
 	sc_format_path(ch_tmp, &kinfo.path);
@@ -899,22 +940,30 @@ sc_pkcs15emu_oberthur_add_data(struct sc_pkcs15_card *p15card,
 	offs += 2 + *(info_blob + offs + 1);
 
 	/* Application */
-	if (offs > info_len) {
+	if (offs + 2 > info_len) {
 		free(info_blob);
 		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add data: no 'application'");
 	}
 	app = info_blob + offs + 2;
 	app_len = *(info_blob + offs + 1) + *(info_blob + offs) * 0x100;
+	if (offs + 2 + app_len > info_len) {
+		free(info_blob);
+		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Invalid length of 'application' received");
+	}
 	if (app_len > sizeof(dinfo.app_label) - 1)
 		app_len = sizeof(dinfo.app_label) - 1;
 	offs += 2 + app_len;
 
 	/* OID encode like DER(ASN.1(oid)) */
-	if (offs + 1 > info_len) {
+	if (offs + 2 > info_len) {
 		free(info_blob);
 		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add data: no 'OID'");
 	}
 	oid_len = *(info_blob + offs + 1) + *(info_blob + offs) * 0x100;
+	if (offs + 2 + oid_len > info_len) {
+		free(info_blob);
+		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Invalid length of 'oid' received");
+	}
 	if (oid_len)   {
 		oid = info_blob + offs + 2;
 		if (*oid != 0x06 || (*(oid + 1) != oid_len - 2)) {
