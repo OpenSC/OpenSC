@@ -876,11 +876,11 @@ typedef unsigned long ck_rv_t;
 typedef ck_rv_t (*ck_notify_t) (ck_session_handle_t session,
 				ck_notification_t event, void *application);
 
-typedef struct ck_interface {
+struct ck_interface {
   char * pInterfaceName;
   void * pFunctionList;
   ck_flags_t flags;
-} ck_interface;
+};
 
 #define CKF_INTERFACE_FORK_SAFE	(0x00000001UL)
 
@@ -1169,12 +1169,12 @@ _CK_DECLARE_FUNCTION (C_GetFunctionStatus, (ck_session_handle_t session));
 _CK_DECLARE_FUNCTION (C_CancelFunction, (ck_session_handle_t session));
 
 _CK_DECLARE_FUNCTION (C_GetInterfaceList,
-		      (ck_interface *interfaces_list,
+		      (struct ck_interface *interfaces_list,
 		       unsigned long *count));
 _CK_DECLARE_FUNCTION (C_GetInterface,
 		      (unsigned char *interface_name,
 		       struct ck_version *version,
-		       ck_interface **interface,
+		       struct ck_interface **interface,
 		       ck_flags_t flags));
 
 _CK_DECLARE_FUNCTION (C_LoginUser,
