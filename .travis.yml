@@ -5,6 +5,7 @@ matrix:
     - compiler: clang
       os: osx
       osx_image: xcode9.4
+      env: DO_PUSH_ARTIFACT=yes
     - compiler: clang
       os: osx
       osx_image: xcode12.2

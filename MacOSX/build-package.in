@@ -140,9 +140,12 @@ if (( $(xcodebuild -version | sed -En 's/Xcode[[:space:]]+([0-9]+)(\.[0-9]*)*/\1
 	else
 		xcodebuild -target OpenSC -configuration Deployment -project OpenSC.tokend/Tokend.xcodeproj install DSTROOT=${BUILDPATH}/target_tokend
 	fi
+
+	TOKEND="-tokend"
 else
 	# https://github.com/OpenSC/OpenSC.tokend/issues/33
 	mkdir -p ${BUILDPATH}/target_tokend
+	TOKEND=""
 fi
 
 #if ! test -e $BUILDPATH/target/Library/Security/tokend/OpenSC.tokend/Contents/Resources/Applications/terminal-notifier.app; then
@@ -232,9 +235,9 @@ if test -n "${CODE_SIGN_IDENTITY}"; then
 fi
 
 # Create .dmg
-rm -f OpenSC-@PACKAGE_VERSION@.dmg
+rm -f OpenSC-@PACKAGE_VERSION@$TOKEND.dmg
 i=0
-while ! hdiutil create -srcfolder "${imagedir}" -volname "@PACKAGE_NAME@" -fs JHFS+ OpenSC-@PACKAGE_VERSION@.dmg
+while ! hdiutil create -srcfolder "${imagedir}" -volname "@PACKAGE_NAME@" -fs JHFS+ OpenSC-@PACKAGE_VERSION@$TOKEND.dmg
 do
 	i=$[$i+1]
 	if [ $i -gt 2 ]
