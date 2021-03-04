@@ -608,6 +608,19 @@ iasecc_init_amos_or_sagem(struct sc_card *card)
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
+inline static int
+iasecc_is_cpx(const struct sc_card *card)
+{
+	switch(card->type) {
+		case SC_CARD_TYPE_IASECC_CPX:
+		case SC_CARD_TYPE_IASECC_CPXCL:
+			return 1;
+		default:
+			return 0;
+	}
+
+	return 0;
+}
 
 static int
 iasecc_init_cpx(struct sc_card *card)
@@ -661,9 +674,7 @@ iasecc_init(struct sc_card *card)
 		rv = iasecc_init_amos_or_sagem(card);
 	else if (card->type == SC_CARD_TYPE_IASECC_MI)
 		rv = iasecc_init_amos_or_sagem(card);
-	else if (card->type == SC_CARD_TYPE_IASECC_CPX)
-		rv = iasecc_init_cpx(card);
-	else if (card->type == SC_CARD_TYPE_IASECC_CPXCL)
+	else if (iasecc_is_cpx(card))
 		rv = iasecc_init_cpx(card);
 	else {
 		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_INVALID_CARD, "");
@@ -988,8 +999,7 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 				&& card->type != SC_CARD_TYPE_IASECC_AMOS
 				&& card->type != SC_CARD_TYPE_IASECC_MI
 				&& card->type != SC_CARD_TYPE_IASECC_MI2
-				&& card->type != SC_CARD_TYPE_IASECC_CPX
-				&& card->type != SC_CARD_TYPE_IASECC_CPXCL) {
+				&& !iasecc_is_cpx(card)) {
 			rv = SC_ERROR_NOT_SUPPORTED;
 			LOG_TEST_GOTO_ERR(ctx, rv, "Unsupported card");
 		}
@@ -1002,8 +1012,7 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 			    card->type == SC_CARD_TYPE_IASECC_AMOS ||
 			    card->type == SC_CARD_TYPE_IASECC_MI ||
 			    card->type == SC_CARD_TYPE_IASECC_MI2 ||
-			    card->type == SC_CARD_TYPE_IASECC_CPX ||
-			    card->type == SC_CARD_TYPE_IASECC_CPXCL
+			    iasecc_is_cpx(card)
 			    )   {
 				apdu.p2 = 0x04;
 			}
@@ -1014,8 +1023,7 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 			    card->type == SC_CARD_TYPE_IASECC_AMOS ||
 			    card->type == SC_CARD_TYPE_IASECC_MI ||
 			    card->type == SC_CARD_TYPE_IASECC_MI2 ||
-			    card->type == SC_CARD_TYPE_IASECC_CPX ||
-			    card->type == SC_CARD_TYPE_IASECC_CPXCL)   {
+			    iasecc_is_cpx(card)) {
 				apdu.p2 = 0x04;
 			}
 		}
