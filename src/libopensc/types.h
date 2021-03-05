@@ -257,6 +257,7 @@ typedef struct sc_file {
 	int id;		/* file identifier (2 bytes) */
 	int sid;	/* short EF identifier (1 byte) */
 	struct sc_acl_entry *acl[SC_MAX_AC_OPS]; /* Access Control List */
+	int acl_inactive;                        /* if set, the card access control mechanism is not active */
 
 	size_t record_length; /* max. length in case of record-oriented EF */
 	size_t record_count;  /* Valid, if not transparent EF or DF */

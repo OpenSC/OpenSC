@@ -3851,6 +3851,11 @@ sc_pkcs15init_authenticate(struct sc_profile *profile, struct sc_pkcs15_card *p1
 	assert(file != NULL);
 	sc_log(ctx, "path '%s', op=%u", sc_print_path(&file->path), op);
 
+	if (file->acl_inactive) {
+		sc_log(ctx, "access control mechanism is not active (always allowed)");
+		LOG_FUNC_RETURN(ctx, r);
+	}
+
 	if (p15card->card->caps & SC_CARD_CAP_USE_FCI_AC) {
 		r = sc_select_file(p15card->card, &file->path, &file_tmp);
 		LOG_TEST_RET(ctx, r, "Authentication failed: cannot select file.");

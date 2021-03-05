@@ -43,9 +43,6 @@
 #define LOAD_KEY_EC_PRIVATE		0x1087
 #define LOAD_KEY_SYMMETRIC		0x20a0
 
-#define MYEID_STATE_CREATION		0x01
-#define MYEID_STATE_ACTIVATED		0x07
-
 #define MYEID_CARD_NAME_MAX_LEN		100
 
 /* The following flags define the features supported by the card currently in use.
@@ -475,20 +472,18 @@ static int myeid_process_fci(struct sc_card *card, struct sc_file *file,
 		sc_log(card->ctx, "id (%X) sec_attr (%X %X %X)", file->id,
 			file->sec_attr[0],file->sec_attr[1],file->sec_attr[2]);
 	}
-	tag = sc_asn1_find_tag(NULL, buf, buflen, 0x8A, &taglen);
-	if (tag != NULL && taglen > 0)
-	{
-		if(tag[0] == MYEID_STATE_CREATION) {
-			file->status = SC_FILE_STATUS_CREATION;
-			sc_log(card->ctx, "File id (%X) status SC_FILE_STATUS_CREATION (0x%X)",
-					file->id, tag[0]);
-		}
-		else if(tag[0] == MYEID_STATE_ACTIVATED) {
-			file->status = SC_FILE_STATUS_ACTIVATED;
-			sc_log(card->ctx, "File id (%X) status SC_FILE_STATUS_ACTIVATED (0x%X)",
-					file->id, tag[0]);
-		}
-		priv->card_state = file->status;
+
+	priv->card_state = file->status;
+	switch (file->status) {
+		case SC_FILE_STATUS_CREATION:
+			file->acl_inactive = 1;
+			sc_log(card->ctx, "File id (%X) status SC_FILE_STATUS_CREATION", file->id);
+			break;
+		case SC_FILE_STATUS_ACTIVATED:
+			sc_log(card->ctx, "File id (%X) status SC_FILE_STATUS_ACTIVATED", file->id);
+			break;
+		default:
+			sc_log(card->ctx, "File id (%X) unusual status (0x%X)", file->id, file->status);
 	}
 
 	LOG_FUNC_RETURN(card->ctx, 0);
