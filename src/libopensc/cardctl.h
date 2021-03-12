@@ -2,6 +2,7 @@
  * cardctl.h: card_ctl command numbers
  *
  * Copyright (C) 2003  Olaf Kirch <okir@lse.de>
+ * Copyright (C) 2018-2019 GSMK - Gesellschaft für Sichere Mobile Kommunikation mbH
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -273,6 +274,8 @@ enum {
 	SC_CARDCTL_SC_HSM_IMPORT_DKEK_SHARE,
 	SC_CARDCTL_SC_HSM_WRAP_KEY,
 	SC_CARDCTL_SC_HSM_UNWRAP_KEY,
+	SC_CARDCTL_SC_HSM_REGISTER_PUBLIC_KEY,
+	SC_CARDCTL_SC_HSM_PUBLIC_KEY_AUTH_STATUS,
 
 	/*
 	 * DNIe specific calls
@@ -1056,6 +1059,8 @@ typedef struct sc_cardctl_sc_hsm_init_param {
 	struct sc_aid bio2;			/* AID of biometric server for template 2 */
 	u8 options[2];				/* Initialization options */
 	signed char dkek_shares;	/* Number of DKEK shares, 0 for card generated, -1 for none */
+	signed char num_of_pub_keys;         /* Total number of public keys used for public authentication (if > 0) */
+	u8 required_pub_keys;       /* Number of public keys required for authentication (if public auth. is used) */
 	char *label;				/* Token label to be set in EF.TokenInfo (2F03) */
 } sc_cardctl_sc_hsm_init_param_t;
 
@@ -1072,6 +1077,19 @@ typedef struct sc_cardctl_sc_hsm_wrapped_key {
 	u8 *wrapped_key;			/* Binary wrapped key */
 	size_t wrapped_key_length;	/* Length of key blob */
 } sc_cardctl_sc_hsm_wrapped_key_t;
+
+typedef struct sc_cardctl_sc_hsm_public_key {
+	const u8 *pk;				/* Public key */
+	size_t pk_length;			/* Length of key */
+	const u8 *devcert;			/* Device certificate */
+	size_t devcert_length;		/* Length of device certificate */
+	const u8 *dicacert;			/* Device issuer certificate */
+	size_t dicacert_length;		/* Length of device issuer certificate */
+	const u8 *devcert_chr;		/* Device certificate CHR */
+	size_t devcert_chr_length;	/* Length of device certificate CHR */
+	const u8 *dicacert_chr;		/* Device issuer certificate CHR */
+	size_t dicacert_chr_length;	/* Device issuer certificate CHR length */
+} sc_cardctl_sc_hsm_public_key_t;
 
 /*
  * isoApplet
