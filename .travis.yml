@@ -87,7 +87,7 @@ before_install:
         export PATH="/usr/local/opt/ccache/libexec:$PATH";
         git clone https://github.com/frankmorgner/OpenSCToken.git;
     fi
-  - if [ "$TRAVIS_OS_NAME" = "osx" -a "$TRAVIS_PULL_REQUEST" = "false" ]; then
+  - if [ "$TRAVIS_OS_NAME" = "osx" -a "$TRAVIS_PULL_REQUEST" = "false" -a -n "$encrypted_3b9f0b9d36d1_key" ]; then
         openssl aes-256-cbc -K $encrypted_3b9f0b9d36d1_key -iv $encrypted_3b9f0b9d36d1_iv -in .github/secrets.tar.enc -out .github/secrets.tar -d;
         .github/add_signing_key.sh;
     else
