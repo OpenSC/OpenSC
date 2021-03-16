@@ -836,19 +836,20 @@ __pkcs15_create_profile_object(struct pkcs15_fw_data *fw_data,
 	int public_certificates, struct pkcs15_any_object **profile_object)
 {
 	struct pkcs15_profile_object *pobj = NULL;
+	struct pkcs15_any_object *any_pobj = NULL;
 	struct sc_pkcs15_object *obj = NULL;
 	int rv;
 
 	obj = calloc(1, sizeof(struct sc_pkcs15_object));
 
-	rv = __pkcs15_create_object(fw_data, (struct pkcs15_any_object **) &pobj,
+	rv = __pkcs15_create_object(fw_data, &any_pobj,
 			obj, &pkcs15_profile_ops, sizeof(struct pkcs15_profile_object));
 
 	if (rv != SC_SUCCESS) {
 		free(obj);
 		return rv;
 	}
-
+	pobj = (struct pkcs15_profile_object *) any_pobj;
 	pobj->profile_id = public_certificates ? CKP_PUBLIC_CERTIFICATES_TOKEN : CKP_AUTHENTICATION_TOKEN;
 
 	if (profile_object != NULL)

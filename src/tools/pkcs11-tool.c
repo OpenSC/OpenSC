@@ -1052,9 +1052,12 @@ int main(int argc, char * argv[])
 	else
 #endif
 	{
-		module = C_LoadModule(opt_module, (CK_FUNCTION_LIST_PTR_PTR)&p11);
+		CK_FUNCTION_LIST_PTR p11_v2 = NULL;
+
+		module = C_LoadModule(opt_module, &p11_v2);
 		if (module == NULL)
 			util_fatal("Failed to load pkcs11 module");
+		p11 = (CK_FUNCTION_LIST_3_0_PTR) p11_v2;
 	}
 
 	/* This can be done even before initialization */
@@ -6266,6 +6269,7 @@ static CK_SESSION_HANDLE test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE
 		{CKA_SUBJECT, (void *) "This won't be used in our lib", 29}
 	};
 	FILE			*f;
+	CK_FUNCTION_LIST_PTR	p11_v2 = NULL;
 
 	if (!opt_object_id_len) {
 		fprintf(stderr, "ERR: must give an ID, e.g.: --id 01\n");
@@ -6408,9 +6412,10 @@ static CK_SESSION_HANDLE test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE
 
 	printf("\n*** Loading the pkcs11 lib, opening a session and logging in ***\n");
 
-	module = C_LoadModule(opt_module, (CK_FUNCTION_LIST_PTR_PTR)&p11);
+	module = C_LoadModule(opt_module, &p11_v2);
 	if (module == NULL)
 		util_fatal("Failed to load pkcs11 module");
+	p11 = (CK_FUNCTION_LIST_3_0_PTR ) p11_v2;
 
 	rv = p11->C_Initialize(c_initialize_args_ptr);
 	if (rv == CKR_CRYPTOKI_ALREADY_INITIALIZED)
