@@ -99,7 +99,7 @@ fi
 mkdir -p "$BUILDPATH/target/Applications/Utilities"
 osacompile -o "$BUILDPATH/target/Applications/Utilities/OpenSC Notify.app" "MacOSX/OpenSC_Notify.applescript"
 if test -n "${CODE_SIGN_IDENTITY}"; then
-	codesign --force --sign "${CODE_SIGN_IDENTITY}" --entitlements MacOSX/OpenSC_Uninstaller.entitlements --deep --timestamp --options runtime "$BUILDPATH/target/Applications/Utilities/OpenSC Notify.app"
+	codesign --force --sign "${CODE_SIGN_IDENTITY}" --entitlements MacOSX/OpenSC_applescripts.entitlements --deep --timestamp --options runtime "$BUILDPATH/target/Applications/Utilities/OpenSC Notify.app"
 fi
 
 
@@ -185,7 +185,7 @@ if test -n "${CODE_SIGN_IDENTITY}"; then
 	do
 		# find executable files and run codesign on them
 		find ${d} -type f -perm +111 -print -exec \
-			codesign --force --sign "${CODE_SIGN_IDENTITY}" --entitlements MacOSX/OpenSC_Uninstaller.entitlements --deep --timestamp --options runtime {} \;
+			codesign --force --sign "${CODE_SIGN_IDENTITY}" --entitlements MacOSX/OpenSC_binaries.entitlements --deep --timestamp --options runtime {} \;
 	done
 fi
 
@@ -208,7 +208,7 @@ fi
 # Build "Uninstaller"
 osacompile -o "${imagedir}/OpenSC Uninstaller.app" "MacOSX/OpenSC_Uninstaller.applescript"
 if test -n "${CODE_SIGN_IDENTITY}"; then
-	codesign --force --sign "${CODE_SIGN_IDENTITY}" --entitlements MacOSX/OpenSC_Uninstaller.entitlements --deep --timestamp --options runtime "${imagedir}/OpenSC Uninstaller.app"
+	codesign --force --sign "${CODE_SIGN_IDENTITY}" --entitlements MacOSX/OpenSC_applescripts.entitlements --deep --timestamp --options runtime "${imagedir}/OpenSC Uninstaller.app"
 fi
 
 # Create .dmg
