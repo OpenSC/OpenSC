@@ -4456,19 +4456,22 @@ pkcs15_prkey_can_do(struct sc_pkcs11_session *session, void *obj,
 	struct sc_supported_algo_info *token_algos = NULL;
 	int ii, jj;
 
+	LOG_FUNC_CALLED(context);
+	sc_log(context, "check hardware capabilities: CK_MECHANISM_TYPE=0x%lx (CKM) and CKF_xxx=0x%x", mech_type, flags);
+
 	if (!prkey || !prkey->prv_info)
-		return CKR_KEY_FUNCTION_NOT_PERMITTED;
+		LOG_FUNC_RETURN(context, CKR_KEY_FUNCTION_NOT_PERMITTED);
 
 	pkinfo = prkey->prv_info;
 	/* Return if there are no usage algorithms specified for this key. */
 	if (!pkinfo->algo_refs[0])
-		return CKR_FUNCTION_NOT_SUPPORTED;
+		LOG_FUNC_RETURN(context, CKR_FUNCTION_NOT_SUPPORTED);
 
 	if (!p11card)
-		return CKR_FUNCTION_NOT_SUPPORTED;
+		LOG_FUNC_RETURN(context, CKR_FUNCTION_NOT_SUPPORTED);
 	fw_data = (struct pkcs15_fw_data *) p11card->fws_data[session->slot->fw_data_idx];
 	if (!fw_data->p15_card)
-		return CKR_FUNCTION_NOT_SUPPORTED;
+		LOG_FUNC_RETURN(context, CKR_FUNCTION_NOT_SUPPORTED);
 	token_algos = &fw_data->p15_card->tokeninfo->supported_algos[0];
 
 	for (ii=0;ii<SC_MAX_SUPPORTED_ALGORITHMS && pkinfo->algo_refs[ii];ii++)   {
@@ -4477,7 +4480,7 @@ pkcs15_prkey_can_do(struct sc_pkcs11_session *session, void *obj,
 			if (pkinfo->algo_refs[ii] == (token_algos + jj)->reference)
 				break;
 		if ((jj == SC_MAX_SUPPORTED_ALGORITHMS) || !(token_algos + jj)->reference)
-			return CKR_GENERAL_ERROR;
+			LOG_FUNC_RETURN(context, CKR_GENERAL_ERROR);
 
 		if ((token_algos + jj)->mechanism != mech_type)
 			continue;
@@ -4492,9 +4495,9 @@ pkcs15_prkey_can_do(struct sc_pkcs11_session *session, void *obj,
 	}
 
 	if (ii == SC_MAX_SUPPORTED_ALGORITHMS || !pkinfo->algo_refs[ii])
-		return CKR_MECHANISM_INVALID;
+		LOG_FUNC_RETURN(context, CKR_MECHANISM_INVALID);
 
-	return CKR_OK;
+	LOG_FUNC_RETURN(context, CKR_OK);
 }
 
 
