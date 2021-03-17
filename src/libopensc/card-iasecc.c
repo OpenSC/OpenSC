@@ -1233,7 +1233,7 @@ iasecc_process_fci(struct sc_card *card, struct sc_file *file,
 	else
 		acls = sc_asn1_find_tag(ctx, buf, buflen, IASECC_DOCP_TAG_ACLS_CONTACT, &taglen);
 
-	if (!acls || taglen < 7)   {
+	if (!acls)   {
 		sc_log(ctx,
 		       "ACLs not found in data(%"SC_FORMAT_LEN_SIZE_T"u) %s",
 		       buflen, sc_dump_hex(buf, buflen));
@@ -1248,6 +1248,11 @@ iasecc_process_fci(struct sc_card *card, struct sc_file *file,
 
 		if (!(mask & acls[0]))
 			continue;
+		/* avoid any access to acls[offs] beyond the taglen */
+		if (offs >= taglen) {
+			sc_log(ctx, "Warning: Invalid offset reached during ACL parsing");
+			break;
+		}
 
 		sc_log(ctx, "ACLs mask 0x%X, offs %"SC_FORMAT_LEN_SIZE_T"u, op 0x%X, acls[offs] 0x%X", mask, offs, op, acls[offs]);
 		if (op == 0xFF)   {
