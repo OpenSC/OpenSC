@@ -1189,7 +1189,8 @@ iasecc_process_fci(struct sc_card *card, struct sc_file *file,
 {
 	struct sc_context *ctx = card->ctx;
 	size_t taglen;
-	int rv, ii, offs;
+	size_t offs;
+	int rv, ii;
 	const unsigned char *acls = NULL, *tag = NULL;
 	unsigned char mask;
 	unsigned char ops_DF[7] = {
@@ -1248,7 +1249,7 @@ iasecc_process_fci(struct sc_card *card, struct sc_file *file,
 		if (!(mask & acls[0]))
 			continue;
 
-		sc_log(ctx, "ACLs mask 0x%X, offs %i, op 0x%X, acls[offs] 0x%X", mask, offs, op, acls[offs]);
+		sc_log(ctx, "ACLs mask 0x%X, offs %"SC_FORMAT_LEN_SIZE_T"u, op 0x%X, acls[offs] 0x%X", mask, offs, op, acls[offs]);
 		if (op == 0xFF)   {
 			;
 		}
