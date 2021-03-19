@@ -1246,13 +1246,13 @@ iasecc_process_fci(struct sc_card *card, struct sc_file *file,
 	for (ii = 0; ii < 7; ii++, mask /= 2)  {
 		unsigned char op = file->type == SC_FILE_TYPE_DF ? ops_DF[ii] : ops_EF[ii];
 
-		if (!(mask & acls[0]))
-			continue;
 		/* avoid any access to acls[offs] beyond the taglen */
 		if (offs >= taglen) {
 			sc_log(ctx, "Warning: Invalid offset reached during ACL parsing");
 			break;
 		}
+		if (!(mask & acls[0]))
+			continue;
 
 		sc_log(ctx, "ACLs mask 0x%X, offs %"SC_FORMAT_LEN_SIZE_T"u, op 0x%X, acls[offs] 0x%X", mask, offs, op, acls[offs]);
 		if (op == 0xFF)   {
