@@ -1188,9 +1188,8 @@ iasecc_process_fci(struct sc_card *card, struct sc_file *file,
 		 const unsigned char *buf, size_t buflen)
 {
 	struct sc_context *ctx = card->ctx;
-	size_t taglen;
-	size_t offs;
-	int rv, ii;
+	size_t taglen, offs, ii;
+	int rv;
 	const unsigned char *acls = NULL, *tag = NULL;
 	unsigned char mask;
 	unsigned char ops_DF[7] = {
