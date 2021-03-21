@@ -375,6 +375,12 @@
 
 				<varlistentry>
 					<term>
+						<option>--encrypt</option>,
+					</term>
+					<listitem><para>Encrypt some data.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
 						<option>--derive</option>,
 					</term>
 					<listitem><para>Derive a secret key using another key and some data.</para></listitem>
@@ -646,6 +652,15 @@
 					</para></listitem>
 				</varlistentry>
 
+				<varlistentry>
+					<term>
+						<option>--iv</option> <replaceable>data</replaceable>
+					</term>
+					<listitem><para>Initialization vector for symmetric ciphers.
+					The <replaceable>data</replaceable> is hexadecimal number, i.e. "000013aa7bffa0".
+					</para></listitem>
+				</varlistentry>
+
 			</variablelist>
 		</para>
 	</refsect1>
@@ -668,6 +683,13 @@
 			using the private key with ID <replaceable>ID</replaceable> and
 			using the RSA-PKCS mechanism:
 				<programlisting>pkcs11-tool --sign --id ID --mechanism RSA-PKCS --input-file data --output-file data.sig</programlisting>
+
+			To encrypt file using the AES key with ID 85 and using mechanism AES-CBC with padding:
+				<programlisting>
+pkcs11-tool --encrypt --id 85 -m AES-CBC-PAD \
+ --iv "00000000000000000000000000000000" \
+ -i file.txt -o encrypted_file.data
+				</programlisting>
 		</para>
 	</refsect1>
 
