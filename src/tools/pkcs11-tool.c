@@ -164,6 +164,7 @@ enum {
 	OPT_DERIVE,
 	OPT_DERIVE_PASS_DER,
 	OPT_DECRYPT,
+	OPT_ENCRYPT,
 	OPT_TEST_FORK,
 #if defined(_WIN32) || defined(HAVE_PTHREAD)
 	OPT_TEST_THREADS,
@@ -181,7 +182,8 @@ enum {
 	OPT_ALLOWED_MECHANISMS,
 	OPT_OBJECT_INDEX,
 	OPT_ALLOW_SW,
-	OPT_LIST_INTERFACES
+	OPT_LIST_INTERFACES,
+	OPT_IV
 };
 
 static const struct option options[] = {
@@ -196,6 +198,7 @@ static const struct option options[] = {
 	{ "sign",		0, NULL,		's' },
 	{ "verify",		0, NULL,		OPT_VERIFY },
 	{ "decrypt",		0, NULL,		OPT_DECRYPT },
+	{ "encrypt",		0, NULL,		OPT_ENCRYPT },
 	{ "hash",		0, NULL,		'h' },
 	{ "derive",		0, NULL,		OPT_DERIVE },
 	{ "derive-pass-der",	0, NULL,		OPT_DERIVE_PASS_DER },
@@ -262,6 +265,7 @@ static const struct option options[] = {
 #endif
 	{ "generate-random",	1, NULL,		OPT_GENERATE_RANDOM },
 	{ "allow-sw",		0, NULL,		OPT_ALLOW_SW },
+	{ "iv",			1, NULL,		OPT_IV },
 
 	{ NULL, 0, NULL, 0 }
 };
@@ -278,6 +282,7 @@ static const char *option_help[] = {
 	"Sign some data",
 	"Verify a signature of some data",
 	"Decrypt some data",
+	"Encrypt some data",
 	"Hash some data",
 	"Derive a secret key using another key and some data",
 	"Derive ECDHpass DER encoded pubkey for compatibility with some PKCS#11 implementations",
@@ -344,6 +349,7 @@ static const char *option_help[] = {
 #endif
 	"Generate given amount of random data",
 	"Allow using software mechanisms (without CKF_HW)",
+	"Initialization vector",
 };
 
 static const char *	app_name = "pkcs11-tool"; /* for utils.c */
@@ -401,6 +407,7 @@ static long	        opt_salt_len = 0;
 static int		opt_salt_len_given = 0; /* 0 - not given, 1 - given with input parameters */
 static int		opt_always_auth = 0;
 static CK_FLAGS		opt_allow_sw = CKF_HW;
+static const char *	opt_iv = NULL;
 
 static void *module = NULL;
 static CK_FUNCTION_LIST_3_0_PTR p11 = NULL;
@@ -509,11 +516,13 @@ static void		show_profile(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj);
 static void		sign_data(CK_SLOT_ID, CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		verify_signature(CK_SLOT_ID, CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		decrypt_data(CK_SLOT_ID, CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
+static void		encrypt_data(CK_SLOT_ID, CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		hash_data(CK_SLOT_ID, CK_SESSION_HANDLE);
 static void		derive_key(CK_SLOT_ID, CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static int		gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE,
 				CK_OBJECT_HANDLE *, CK_OBJECT_HANDLE *, const char *);
 static int		gen_key(CK_SLOT_ID slot, CK_SESSION_HANDLE, CK_OBJECT_HANDLE *, const char *, char *);
+
 static int		write_object(CK_SESSION_HANDLE session);
 static int		read_object(CK_SESSION_HANDLE session);
 static int		delete_object(CK_SESSION_HANDLE session);
@@ -546,6 +555,7 @@ static const char *	CKR2Str(CK_ULONG res);
 static int		p11_test(CK_SESSION_HANDLE session);
 static int test_card_detection(int);
 static int		hex_to_bin(const char *in, CK_BYTE *out, size_t *outlen);
+static CK_BYTE_PTR	get_iv(const char * iv_input, size_t *iv_size);
 static void		pseudo_randomize(unsigned char *data, size_t dataLen);
 static CK_SESSION_HANDLE test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
 static void		test_ec(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
@@ -668,6 +678,7 @@ int main(int argc, char * argv[])
 	int do_sign = 0;
 	int do_verify = 0;
 	int do_decrypt = 0;
+	int do_encrypt = 0;
 	int do_hash = 0;
 	int do_derive = 0;
 	int do_gen_keypair = 0;
@@ -870,6 +881,11 @@ int main(int argc, char * argv[])
 			do_decrypt = 1;
 			action_count++;
 			break;
+		case OPT_ENCRYPT:
+			need_session |= NEED_SESSION_RW;
+			do_encrypt = 1;
+			action_count++;
+			break;
 		case 'f':
 			opt_sig_format = optarg;
 			break;
@@ -1062,6 +1078,9 @@ int main(int argc, char * argv[])
 			do_list_interfaces = 1;
 			action_count++;
 			break;
+		case OPT_IV:
+			opt_iv = optarg;
+			break;
 		default:
 			util_print_usage_and_die(app_name, options, option_help, NULL);
 		}
@@ -1192,8 +1211,8 @@ int main(int argc, char * argv[])
 	if (do_list_mechs)
 		list_mechs(opt_slot);
 
-	if (do_sign || do_decrypt) {
-		CK_TOKEN_INFO	info;
+	if (do_sign || do_decrypt || do_encrypt) {
+		CK_TOKEN_INFO info;
 
 		get_token_info(opt_slot, &info);
 		if (!(info.flags & CKF_TOKEN_INITIALIZED))
@@ -1254,7 +1273,7 @@ int main(int argc, char * argv[])
 		mf_flags = p11_mechanism_to_flags(opt_mechanism);
 	}
 
-	if (do_sign || do_derive || do_decrypt) {
+	if (do_sign || do_derive) {
 
 		/*
 		 * Newer mechanisms have their details in the mechanism table, however
@@ -1270,6 +1289,40 @@ int main(int argc, char * argv[])
 					opt_object_id_len ? opt_object_id : NULL,
 					opt_object_id_len, 0))
 			util_fatal("Private key not found");
+	}
+
+	if (do_decrypt) {
+		/*
+		 * Newer mechanisms have their details in the mechanism table, however
+		 * if it's not known fall back to the old code always assuming it was a
+		 * CKO_PUBLIC_KEY then a CKO_CERTIFICATE.
+		 */
+		if (mf_flags != MF_UNKNOWN) {
+			/* this function dies on error via util_fatal */
+			find_object_flags(session, mf_flags, &object,
+				opt_object_id_len ? opt_object_id : NULL,
+				opt_object_id_len, 0);
+		} else if (!find_object(session, CKO_PRIVATE_KEY, &object,
+				 opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, 0))
+			if (!find_object(session, CKO_SECRET_KEY, &object,
+					 opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, 0))
+				util_fatal("Private/secret key not found");
+	}
+
+	if (do_encrypt) {
+		/*
+		 * Newer mechanisms have their details in the mechanism table, however
+		 * if it's not known fall back to the old code always assuming it was a
+		 * CKO_PUBLIC_KEY then a CKO_CERTIFICATE.
+		 */
+		if (mf_flags != MF_UNKNOWN) {
+			/* this function dies on error via util_fatal */
+			find_object_flags(session, mf_flags, &object,
+				opt_object_id_len ? opt_object_id : NULL,
+				opt_object_id_len, 0);
+		} else if (!find_object(session, CKO_SECRET_KEY, &object,
+				 opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, 0))
+			util_fatal("Secret key not found");
 	}
 
 	if (do_verify) {
@@ -1307,6 +1360,9 @@ int main(int argc, char * argv[])
 
 	if (do_decrypt)
 		decrypt_data(opt_slot, session, object);
+
+	if (do_encrypt)
+		encrypt_data(opt_slot, session, object);
 
 	if (do_hash)
 		hash_data(opt_slot, session);
@@ -2331,6 +2387,8 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	CK_RSA_PKCS_OAEP_PARAMS oaep_params;
 	CK_ULONG	in_len, out_len;
 	int		fd, r;
+	CK_BYTE_PTR	iv = NULL;
+	size_t		iv_size = 0;
 
 	if (!opt_mechanism_used)
 		if (!find_mechanism(slot, CKF_DECRYPT|opt_allow_sw, NULL, 0, &opt_mechanism))
@@ -2382,8 +2440,16 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		break;
 	case CKM_RSA_X_509:
 	case CKM_RSA_PKCS:
+	case CKM_AES_ECB:
 		mech.pParameter = NULL;
 		mech.ulParameterLen = 0;
+		break;
+	case CKM_AES_CBC:
+	case CKM_AES_CBC_PAD:
+		iv_size = 16;
+		iv = get_iv(opt_iv, &iv_size);
+		mech.pParameter = iv;
+		mech.ulParameterLen = iv_size;
 		break;
 	default:
 		util_fatal("Mechanism %s illegal or not supported\n", p11_mechanism_to_name(opt_mechanism));
@@ -2434,14 +2500,90 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		if (fd < 0)
 			util_fatal("failed to open %s: %m", opt_output);
 	}
+	r = write(fd, out_buffer, out_len);
+	if (r < 0)
+		util_fatal("Failed to write to %s: %m", opt_output);
+	if (fd != 1)
+		close(fd);
+
+	free(iv);
+}
+
+static void encrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
+		CK_OBJECT_HANDLE key)
+{
+	unsigned char	in_buffer[1024], out_buffer[1024];
+	CK_MECHANISM	mech;
+	CK_RV		rv;
+	CK_ULONG	in_len, out_len;
+	int		fd, r;
+	CK_BYTE_PTR	iv = NULL;
+	size_t		iv_size = 0;
+
+	if (!opt_mechanism_used)
+		if (!find_mechanism(slot, CKF_ENCRYPT | opt_allow_sw, NULL, 0, &opt_mechanism))
+			util_fatal("Encrypt mechanism not supported");
+
+	fprintf(stderr, "Using encrypt algorithm %s\n", p11_mechanism_to_name(opt_mechanism));
+	memset(&mech, 0, sizeof(mech));
+	mech.mechanism = opt_mechanism;
+
+	if (opt_input == NULL)
+		fd = 0;
+	else if ((fd = open(opt_input, O_RDONLY | O_BINARY)) < 0)
+		util_fatal("Cannot open %s: %m", opt_input);
+
+	r = read(fd, in_buffer, sizeof(in_buffer));
+	if (r < 0)
+		util_fatal("Cannot read from %s: %m", opt_input);
+	in_len = r;
+
+	switch (opt_mechanism) {
+	case CKM_AES_ECB:
+		mech.pParameter = NULL;
+		mech.ulParameterLen = 0;
+		break;
+	case CKM_AES_CBC:
+	case CKM_AES_CBC_PAD:
+		iv_size = 16;
+		iv = get_iv(opt_iv, &iv_size);
+		mech.pParameter = iv;
+		mech.ulParameterLen = iv_size;
+		break;
+	default:
+		util_fatal("Mechanism %s illegal or not supported\n", p11_mechanism_to_name(opt_mechanism));
+	}
+
+	rv = p11->C_EncryptInit(session, &mech, key);
+	if (rv != CKR_OK)
+		p11_fatal("C_EncryptInit", rv);
+	if (getALWAYS_AUTHENTICATE(session, key))
+		login(session, CKU_CONTEXT_SPECIFIC);
+
+	out_len = sizeof(out_buffer);
+	rv = p11->C_Encrypt(session, in_buffer, in_len, out_buffer, &out_len);
+	if (rv != CKR_OK)
+		p11_fatal("C_Encrypt", rv);
+
+	if (fd != 0)
+		close(fd);
+
+	if (opt_output == NULL) {
+		fd = 1;
+	} else {
+		fd = open(opt_output, O_CREAT | O_TRUNC | O_WRONLY | O_BINARY, S_IRUSR | S_IWUSR);
+		if (fd < 0)
+			util_fatal("failed to open %s: %m", opt_output);
+	}
 
 	r = write(fd, out_buffer, out_len);
 	if (r < 0)
 		util_fatal("Failed to write to %s: %m", opt_output);
 	if (fd != 1)
 		close(fd);
-}
 
+	free(iv);
+}
 
 static void hash_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 {
@@ -6998,6 +7140,33 @@ static int hex_to_bin(const char *in, unsigned char *out, size_t *outlen)
 
 	*outlen = count;
 	return 1;
+}
+
+static CK_BYTE_PTR get_iv(const char *iv_input, size_t *iv_size)
+{
+	CK_BYTE_PTR iv;
+	size_t size = *iv_size;
+
+	/* no IV supplied on command line */
+	if (!iv_input) {
+		*iv_size = 0;
+		return NULL;
+	}
+
+	iv = calloc(sizeof(CK_BYTE), *iv_size);
+	if (!iv) {
+		fprintf(stderr, "Warning, out of memory, IV will not be used.\n");
+		*iv_size = 0;
+		return NULL;
+	}
+
+	if (!hex_to_bin(iv_input, iv, &size))
+		return iv;	/* only part from IV string is used as IV, msg printed in hex_to_bin() */
+
+	if (*iv_size != size)
+		fprintf(stderr, "Warning: IV string is too short, padding with zero bytes to length\n");
+
+	return iv;
 }
 
 static void pseudo_randomize(unsigned char *data, size_t dataLen)
