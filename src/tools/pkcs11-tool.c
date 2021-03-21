@@ -165,6 +165,7 @@ enum {
 	OPT_DERIVE_PASS_DER,
 	OPT_DECRYPT,
 	OPT_ENCRYPT,
+	OPT_UNWRAP,
 	OPT_TEST_FORK,
 #if defined(_WIN32) || defined(HAVE_PTHREAD)
 	OPT_TEST_THREADS,
@@ -199,6 +200,7 @@ static const struct option options[] = {
 	{ "verify",		0, NULL,		OPT_VERIFY },
 	{ "decrypt",		0, NULL,		OPT_DECRYPT },
 	{ "encrypt",		0, NULL,		OPT_ENCRYPT },
+	{ "unwrap",		0, NULL,		OPT_UNWRAP },
 	{ "hash",		0, NULL,		'h' },
 	{ "derive",		0, NULL,		OPT_DERIVE },
 	{ "derive-pass-der",	0, NULL,		OPT_DERIVE_PASS_DER },
@@ -283,6 +285,7 @@ static const char *option_help[] = {
 	"Verify a signature of some data",
 	"Decrypt some data",
 	"Encrypt some data",
+	"Unwrap key",
 	"Hash some data",
 	"Derive a secret key using another key and some data",
 	"Derive ECDHpass DER encoded pubkey for compatibility with some PKCS#11 implementations",
@@ -522,6 +525,7 @@ static void		derive_key(CK_SLOT_ID, CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static int		gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE,
 				CK_OBJECT_HANDLE *, CK_OBJECT_HANDLE *, const char *);
 static int		gen_key(CK_SLOT_ID slot, CK_SESSION_HANDLE, CK_OBJECT_HANDLE *, const char *, char *);
+static int		unwrap_key(CK_SESSION_HANDLE session);
 
 static int		write_object(CK_SESSION_HANDLE session);
 static int		read_object(CK_SESSION_HANDLE session);
@@ -680,6 +684,7 @@ int main(int argc, char * argv[])
 	int do_verify = 0;
 	int do_decrypt = 0;
 	int do_encrypt = 0;
+	int do_unwrap = 0;
 	int do_hash = 0;
 	int do_derive = 0;
 	int do_gen_keypair = 0;
@@ -885,6 +890,11 @@ int main(int argc, char * argv[])
 		case OPT_ENCRYPT:
 			need_session |= NEED_SESSION_RW;
 			do_encrypt = 1;
+			action_count++;
+			break;
+		case OPT_UNWRAP:
+			need_session |= NEED_SESSION_RW;
+			do_unwrap = 1;
 			action_count++;
 			break;
 		case 'f':
@@ -1212,7 +1222,7 @@ int main(int argc, char * argv[])
 	if (do_list_mechs)
 		list_mechs(opt_slot);
 
-	if (do_sign || do_decrypt || do_encrypt) {
+	if (do_sign || do_decrypt || do_encrypt || do_unwrap) {
 		CK_TOKEN_INFO info;
 
 		get_token_info(opt_slot, &info);
@@ -1345,6 +1355,9 @@ int main(int argc, char * argv[])
 		        opt_object_id_len, 0))
 			util_fatal("Public key nor certificate not found");
 	}
+
+	if (do_unwrap)
+		unwrap_key(session);
 
 	/* before list objects, so we can see a derived key */
 	if (do_derive)
@@ -3141,6 +3154,149 @@ gen_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE *hSecretKey
 
 	printf("Key generated:\n");
 	show_object(session, *hSecretKey);
+	return 1;
+}
+
+static int
+unwrap_key(CK_SESSION_HANDLE session)
+{
+	CK_MECHANISM mechanism;
+	CK_OBJECT_CLASS secret_key_class = CKO_SECRET_KEY;
+	CK_BBOOL _true = TRUE;
+	CK_BBOOL _false = FALSE;
+	CK_KEY_TYPE key_type = CKK_AES;
+	CK_ULONG key_length;
+	const char *length;
+	CK_ATTRIBUTE keyTemplate[20] = {
+		{CKA_CLASS, &secret_key_class, sizeof(secret_key_class)},
+		{CKA_TOKEN, &_true, sizeof(_true)},
+	};
+	CK_OBJECT_HANDLE hSecretKey;
+	int n_attr = 2;
+	CK_RV rv;
+	int r, fd;
+	unsigned char in_buffer[1024];
+	CK_ULONG wrapped_key_length;
+	CK_BYTE_PTR pWrappedKey;
+	CK_BYTE_PTR iv = NULL;
+	size_t iv_size = 0;
+	CK_OBJECT_HANDLE hUnwrappingKey;
+
+	if (!find_object(session, CKO_PRIVATE_KEY, &hUnwrappingKey,
+			 opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, 0))
+		if (!find_object(session, CKO_SECRET_KEY, &hUnwrappingKey,
+				 opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, 0))
+			util_fatal("Private/secret key not found");
+
+	if (!opt_mechanism_used)
+		util_fatal("Unable to unwrap, no mechanism specified\n");
+
+	mechanism.mechanism = opt_mechanism;
+	mechanism.pParameter = NULL_PTR;
+	mechanism.ulParameterLen = 0;
+
+	if (opt_input == NULL)
+		fd = 0;
+	else if ((fd = open(opt_input, O_RDONLY | O_BINARY)) < 0)
+		util_fatal("Cannot open %s: %m", opt_input);
+
+	r = read(fd, in_buffer, sizeof(in_buffer));
+	if (r < 0)
+		util_fatal("Cannot read from %s: %m", opt_input);
+	wrapped_key_length = r;
+	if (fd != 0)
+		close(fd);
+	pWrappedKey = in_buffer;
+
+	if (opt_mechanism == CKM_AES_CBC || opt_mechanism == CKM_AES_CBC_PAD) {
+		iv_size = 16;
+		iv = get_iv(opt_iv, &iv_size);
+		mechanism.pParameter = iv;
+		mechanism.ulParameterLen = iv_size;
+	}
+
+	if (opt_key_type != NULL) {
+		if (strncasecmp(opt_key_type, "AES:", strlen("AES:")) == 0) {
+			length = opt_key_type + strlen("AES:");
+			key_type = CKK_AES;
+
+		} else if (strncasecmp(opt_key_type, "GENERIC:", strlen("GENERIC:")) == 0) {
+			length = opt_key_type + strlen("GENERIC:");
+			key_type = CKK_GENERIC_SECRET;
+
+		} else {
+			util_fatal("Unsupported key type %s", opt_key_type);
+		}
+
+		FILL_ATTR(keyTemplate[n_attr], CKA_KEY_TYPE, &key_type, sizeof(key_type));
+		n_attr++;
+
+		if (opt_is_sensitive != 0) {
+			FILL_ATTR(keyTemplate[n_attr], CKA_SENSITIVE, &_true, sizeof(_true));
+			n_attr++;
+		} else {
+			FILL_ATTR(keyTemplate[n_attr], CKA_SENSITIVE, &_false, sizeof(_false));
+			n_attr++;
+		}
+
+		if (opt_key_usage_default || opt_key_usage_decrypt) {
+			FILL_ATTR(keyTemplate[n_attr], CKA_ENCRYPT, &_true, sizeof(_true));
+			n_attr++;
+			FILL_ATTR(keyTemplate[n_attr], CKA_DECRYPT, &_true, sizeof(_true));
+			n_attr++;
+		}
+		if (opt_key_usage_wrap) {
+			FILL_ATTR(keyTemplate[n_attr], CKA_WRAP, &_true, sizeof(_true));
+			n_attr++;
+			FILL_ATTR(keyTemplate[n_attr], CKA_UNWRAP, &_true, sizeof(_true));
+			n_attr++;
+		}
+
+		if (opt_is_extractable != 0) {
+			FILL_ATTR(keyTemplate[n_attr], CKA_EXTRACTABLE, &_true, sizeof(_true));
+			n_attr++;
+		} else {
+			FILL_ATTR(keyTemplate[n_attr], CKA_EXTRACTABLE, &_false, sizeof(_true));
+			n_attr++;
+		}
+		/* softhsm2 does not allow to attribute CKA_VALUE_LEN, but MyEID card must have this attribute
+                   specified. We set CKA_VALUE_LEN only if the user sets it in the key specification. */
+		key_length = (unsigned long)atol(length);
+		if (key_length != 0) {
+			FILL_ATTR(keyTemplate[n_attr], CKA_VALUE_LEN, &key_length, sizeof(key_length));
+			n_attr++;
+		}
+	}
+
+	if (opt_application_label != NULL) {
+		FILL_ATTR(keyTemplate[n_attr], CKA_LABEL, opt_application_label, strlen(opt_application_label));
+		n_attr++;
+	}
+
+	if (opt_application_id != NULL) {
+		CK_BYTE object_id[100];
+		size_t id_len;
+
+		id_len = sizeof(object_id);
+		if (hex_to_bin(opt_application_id, object_id, &id_len)) {
+			FILL_ATTR(keyTemplate[n_attr], CKA_ID, object_id, id_len);
+			n_attr++;
+		}
+	}
+
+	if (opt_allowed_mechanisms_len > 0) {
+		FILL_ATTR(keyTemplate[n_attr], CKA_ALLOWED_MECHANISMS, opt_allowed_mechanisms,
+			  sizeof(CK_MECHANISM_TYPE) * opt_allowed_mechanisms_len);
+		n_attr++;
+	}
+	rv = p11->C_UnwrapKey(session, &mechanism, hUnwrappingKey,
+			      pWrappedKey, wrapped_key_length, keyTemplate, n_attr, &hSecretKey);
+	if (rv != CKR_OK)
+		p11_fatal("C_UnwrapKey", rv);
+
+	free(iv);
+	printf("Key unwrapped\n");
+	show_object(session, hSecretKey);
 	return 1;
 }
 

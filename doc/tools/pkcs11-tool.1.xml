@@ -381,6 +381,12 @@
 				</varlistentry>
 				<varlistentry>
 					<term>
+						<option>--unwrap</option>,
+					</term>
+					<listitem><para>Unwrap key.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
 						<option>--derive</option>,
 					</term>
 					<listitem><para>Derive a secret key using another key and some data.</para></listitem>
@@ -689,6 +695,18 @@
 pkcs11-tool --encrypt --id 85 -m AES-CBC-PAD \
  --iv "00000000000000000000000000000000" \
  -i file.txt -o encrypted_file.data
+				</programlisting>
+
+			Use the key with ID 22 and mechanism RSA-PKCS to unwrap key from file
+			<replaceable>aes_wrapped.key</replaceable>. After a successful unwrap operation,
+			a new AES key is created on token. ID of this key is set to 90 and label of this
+			key is set to <replaceable>unwrapped-key</replaceable>
+			Note: for the MyEID card, the AES key size must be present in key
+			specification i.e. AES:16
+				<programlisting>
+pkcs11-tool --unwrap --mechanism RSA-PKCS --id 22 \
+  -i aes_wrapped.key --key-type AES: \
+  --application-id 90 --applicatin-label unwrapped-key
 				</programlisting>
 		</para>
 	</refsect1>
