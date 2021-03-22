@@ -91,6 +91,8 @@ int sc_pkcs15_is_emulation_only(sc_card_t *card)
 		case SC_CARD_TYPE_DNIE_USER:
 		case SC_CARD_TYPE_DNIE_TERMINATED:
 		case SC_CARD_TYPE_IASECC_GEMALTO:
+		case SC_CARD_TYPE_IASECC_CPX:
+		case SC_CARD_TYPE_IASECC_CPXCL:
 		case SC_CARD_TYPE_PIV_II_GENERIC:
 		case SC_CARD_TYPE_PIV_II_HIST:
 		case SC_CARD_TYPE_PIV_II_NEO:
