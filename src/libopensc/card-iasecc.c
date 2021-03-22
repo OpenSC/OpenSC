@@ -644,8 +644,6 @@ iasecc_init_cpx(struct sc_card *card)
 	_sc_card_add_rsa_alg(card, 1024, flags, 0);
 	_sc_card_add_rsa_alg(card, 2048, flags, 0);
 
-	LOG_TEST_RET(ctx, sc_enum_apps(card), "Enumerate apps failed");
-
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
