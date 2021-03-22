@@ -2183,10 +2183,11 @@ static int do_asn1(int argc, char **argv)
 	}
 
 	/* workaround when the issuer of a card does prefix the EF.ATR payload with 0x80 */
-	if ((offsu == 0) && /* do not apply the workaround if any offset */
-	    (buf[0] == ISO7816_II_CATEGORY_TLV) &&
-	    (path.len >= 4) &&
-	    (memcmp(path.value, "\x3f\x00\x2f\x01", 4) == 0))
+	if (offsu == 0 /* do not apply the workaround if any offset */
+			&& r >= 1
+			&& buf[0] == ISO7816_II_CATEGORY_TLV
+			&& path.len >= 4
+			&& memcmp(path.value, "\x3f\x00\x2f\x01", 4) == 0)
 		offs++;
 	/* if offset does not exceed the length read from file/record, ... */
 	if (offs <= (unsigned int) r) {
