@@ -412,7 +412,6 @@ static struct sc_asn1_pkcs15_algorithm_info algorithm_table[] = {
 			asn1_encode_pbes2_params,
 			asn1_free_pbes2_params },
 #endif
-
 #ifdef SC_ALGORITHM_EC
 	{ SC_ALGORITHM_EC, {{ 1, 2, 840, 10045, 2, 1, -1}},
 			asn1_decode_ec_params,
@@ -448,6 +447,14 @@ static struct sc_asn1_pkcs15_algorithm_info algorithm_table[] = {
 			asn1_decode_ec_params,
 			asn1_encode_ec_params,
 			asn1_free_ec_params },
+#endif
+#ifdef SC_ALGORITHM_EDDSA
+	/* aka Ed25519 */
+	{ SC_ALGORITHM_EDDSA, {{1, 3, 6, 1, 4, 1, 11591, 15, 1, -1}}, NULL, NULL, NULL },
+#endif
+#ifdef SC_ALGORITHM_XEDDSA
+	/* aka curve25519 */
+	{ SC_ALGORITHM_XEDDSA, {{1, 3, 6, 1, 4, 1, 3029, 1, 5, 1, -1}}, NULL, NULL, NULL },
 #endif
 	{ -1, {{ -1 }}, NULL, NULL, NULL }
 };

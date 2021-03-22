@@ -166,7 +166,7 @@ static int use_key(struct sc_pkcs15_card *p15card,
 
 	sc_unlock(p15card->card);
 
-	return r;
+	LOG_FUNC_RETURN(p15card->card->ctx, r);
 }
 
 static int format_senv(struct sc_pkcs15_card *p15card,
@@ -211,6 +211,28 @@ static int format_senv(struct sc_pkcs15_card *p15card,
 				LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 			}
 			senv_out->algorithm = SC_ALGORITHM_GOSTR3410;
+			break;
+
+		case SC_PKCS15_TYPE_PRKEY_EDDSA:
+			*alg_info_out = sc_card_find_eddsa_alg(p15card->card, prkey->field_length, NULL);
+			if (*alg_info_out == NULL) {
+				sc_log(ctx,
+				       "Card does not support EDDSA with field_size %"SC_FORMAT_LEN_SIZE_T"u",
+				       prkey->field_length);
+				LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
+			}
+			senv_out->algorithm = SC_ALGORITHM_EDDSA;
+			break;
+
+		case SC_PKCS15_TYPE_PRKEY_XEDDSA:
+			*alg_info_out = sc_card_find_xeddsa_alg(p15card->card, prkey->field_length, NULL);
+			if (*alg_info_out == NULL) {
+				sc_log(ctx,
+				       "Card does not support XEDDSA with field_size %"SC_FORMAT_LEN_SIZE_T"u",
+				       prkey->field_length);
+				LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
+			}
+			senv_out->algorithm = SC_ALGORITHM_XEDDSA;
 			break;
 
 		case SC_PKCS15_TYPE_PRKEY_EC:
@@ -320,6 +342,7 @@ int sc_pkcs15_derive(struct sc_pkcs15_card *p15card,
 
 	switch (obj->type) {
 		case SC_PKCS15_TYPE_PRKEY_EC:
+		case SC_PKCS15_TYPE_PRKEY_XEDDSA:
 			if (out == NULL || *poutlen < (prkey->field_length + 7) / 8) {
 				*poutlen = (prkey->field_length + 7) / 8;
 				r = 0; /* say no data to return */
@@ -580,7 +603,9 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 			modlen = (prkey->modulus_length + 7) / 8 * 2;
 			break;
 		case SC_PKCS15_TYPE_PRKEY_EC:
-			modlen = ((prkey->field_length +7) / 8) * 2;  /* 2*nLen */ 
+		case SC_PKCS15_TYPE_PRKEY_EDDSA:
+		case SC_PKCS15_TYPE_PRKEY_XEDDSA:
+			modlen = ((prkey->field_length +7) / 8) * 2;  /* 2*nLen */
 			break;
 		default:
 			LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Key type not supported");

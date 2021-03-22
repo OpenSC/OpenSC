@@ -163,7 +163,7 @@ static void sc_card_free(sc_card_t *card)
 		int i;
 		for (i=0; i<card->algorithm_count; i++)   {
 			struct sc_algorithm_info *info = (card->algorithms + i);
-			if (info->algorithm == SC_ALGORITHM_EC)   {
+			if (info->algorithm == SC_ALGORITHM_EC) {
 				struct sc_ec_parameters ep = info->u._ec.params;
 
 				free(ep.named_curve);
@@ -1096,16 +1096,18 @@ int _sc_card_add_symmetric_alg(sc_card_t *card, unsigned int algorithm,
 	return _sc_card_add_algorithm(card, &info);
 }
 
-int  _sc_card_add_ec_alg(sc_card_t *card, unsigned int key_length,
+static int
+_sc_card_add_ec_alg_int(sc_card_t *card, unsigned int key_length,
 			unsigned long flags, unsigned long ext_flags,
-			struct sc_object_id *curve_oid)
+			struct sc_object_id *curve_oid,
+			int algorithm)
 {
 	sc_algorithm_info_t info;
 
 	memset(&info, 0, sizeof(info));
 	sc_init_oid(&info.u._ec.params.id);
 
-	info.algorithm = SC_ALGORITHM_EC;
+	info.algorithm = algorithm;
 	info.key_length = key_length;
 	info.flags = flags;
 
@@ -1114,6 +1116,32 @@ int  _sc_card_add_ec_alg(sc_card_t *card, unsigned int key_length,
 		info.u._ec.params.id = *curve_oid;
 
 	return _sc_card_add_algorithm(card, &info);
+}
+
+int  _sc_card_add_ec_alg(sc_card_t *card, unsigned int key_length,
+			unsigned long flags, unsigned long ext_flags,
+			struct sc_object_id *curve_oid)
+{
+	return _sc_card_add_ec_alg_int(card, key_length, flags, ext_flags,
+		curve_oid, SC_ALGORITHM_EC);
+}
+
+int  _sc_card_add_eddsa_alg(sc_card_t *card, unsigned int key_length,
+			unsigned long flags, unsigned long ext_flags,
+			struct sc_object_id *curve_oid)
+{
+	/* For simplicity, share the ec union with the curve information */
+	return _sc_card_add_ec_alg_int(card, key_length, flags, ext_flags,
+		curve_oid, SC_ALGORITHM_EDDSA);
+}
+
+int  _sc_card_add_xeddsa_alg(sc_card_t *card, unsigned int key_length,
+			unsigned long flags, unsigned long ext_flags,
+			struct sc_object_id *curve_oid)
+{
+	/* For simplicity, share the ec union with the curve information */
+	return _sc_card_add_ec_alg_int(card, key_length, flags, ext_flags,
+		curve_oid, SC_ALGORITHM_XEDDSA);
 }
 
 sc_algorithm_info_t * sc_card_find_alg(sc_card_t *card,
@@ -1126,13 +1154,15 @@ sc_algorithm_info_t * sc_card_find_alg(sc_card_t *card,
 
 		if (info->algorithm != algorithm)
 			continue;
+		if (param)   {
+			if (info->algorithm == SC_ALGORITHM_EC ||
+				info->algorithm == SC_ALGORITHM_EDDSA ||
+				info->algorithm == SC_ALGORITHM_XEDDSA)
+				if (sc_compare_oid((struct sc_object_id *)param, &info->u._ec.params.id))
+					return info;
+		}
 		if (info->key_length != key_length)
 			continue;
-		if (param)   {
-			if (info->algorithm == SC_ALGORITHM_EC)
-				if(!sc_compare_oid((struct sc_object_id *)param, &info->u._ec.params.id))
-					continue;
-		}
 		return info;
 	}
 	return NULL;
@@ -1142,6 +1172,18 @@ sc_algorithm_info_t * sc_card_find_ec_alg(sc_card_t *card,
 		unsigned int key_length, struct sc_object_id *curve_name)
 {
 	return sc_card_find_alg(card, SC_ALGORITHM_EC, key_length, curve_name);
+}
+
+sc_algorithm_info_t * sc_card_find_eddsa_alg(sc_card_t *card,
+		unsigned int key_length, struct sc_object_id *curve_name)
+{
+	return sc_card_find_alg(card, SC_ALGORITHM_EDDSA, key_length, curve_name);
+}
+
+sc_algorithm_info_t * sc_card_find_xeddsa_alg(sc_card_t *card,
+		unsigned int key_length, struct sc_object_id *curve_name)
+{
+	return sc_card_find_alg(card, SC_ALGORITHM_XEDDSA, key_length, curve_name);
 }
 
 int _sc_card_add_rsa_alg(sc_card_t *card, unsigned int key_length,

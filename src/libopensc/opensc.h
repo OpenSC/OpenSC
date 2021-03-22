@@ -78,6 +78,8 @@ extern "C" {
 #define SC_ALGORITHM_DSA		1
 #define SC_ALGORITHM_EC			2
 #define SC_ALGORITHM_GOSTR3410		3
+#define SC_ALGORITHM_EDDSA		4
+#define SC_ALGORITHM_XEDDSA		5
 
 /* Symmetric algorithms */
 #define SC_ALGORITHM_DES		64
@@ -188,6 +190,10 @@ extern "C" {
 							SC_ALGORITHM_ECDSA_HASH_SHA256 | \
 							SC_ALGORITHM_ECDSA_HASH_SHA384 | \
 							SC_ALGORITHM_ECDSA_HASH_SHA512)
+
+/* EdDSA algorithms */
+#define SC_ALGORITHM_EDDSA_RAW		0x00400000
+#define SC_ALGORITHM_XEDDSA_RAW		0x00800000
 
 /* define mask of all algorithms that can do raw */
 #define SC_ALGORITHM_RAW_MASK (SC_ALGORITHM_RSA_RAW | \
@@ -1554,6 +1560,10 @@ void sc_print_cache(struct sc_card *card);
 struct sc_algorithm_info * sc_card_find_rsa_alg(struct sc_card *card,
 		unsigned int key_length);
 struct sc_algorithm_info * sc_card_find_ec_alg(struct sc_card *card,
+		unsigned int field_length, struct sc_object_id *curve_oid);
+struct sc_algorithm_info * sc_card_find_eddsa_alg(struct sc_card *card,
+		unsigned int field_length, struct sc_object_id *curve_oid);
+struct sc_algorithm_info * sc_card_find_xeddsa_alg(struct sc_card *card,
 		unsigned int field_length, struct sc_object_id *curve_oid);
 struct sc_algorithm_info * sc_card_find_gostr3410_alg(struct sc_card *card,
 		unsigned int key_length);

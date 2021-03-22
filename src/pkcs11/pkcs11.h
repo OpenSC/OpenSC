@@ -370,6 +370,8 @@ typedef unsigned long ck_key_type_t;
 #define CKK_GOSTR3410		(0x30UL)
 #define CKK_GOSTR3411		(0x31UL)
 #define CKK_GOST28147		(0x32UL)
+#define CKK_EC_EDWARDS		(0x40UL)
+#define CKK_EC_MONTGOMERY	(0x41UL)
 #define CKK_VENDOR_DEFINED	(1UL << 31)
 
 // A mask for new GOST algorithms.
@@ -603,6 +605,18 @@ typedef unsigned long ck_mechanism_type_t;
 #define CKM_SHA512			(0x270UL)
 #define CKM_SHA512_HMAC			(0x271UL)
 #define CKM_SHA512_HMAC_GENERAL		(0x272UL)
+#define CKM_SHA3_256			(0x2B0UL)
+#define CKM_SHA3_256_HMAC		(0x2B1UL)
+#define CKM_SHA3_256_HMAC_GENERAL	(0x2B2UL)
+#define CKM_SHA3_224			(0x2B5UL)
+#define CKM_SHA3_224_HMAC		(0x2B6UL)
+#define CKM_SHA3_224_HMAC_GENERAL	(0x2B7UL)
+#define CKM_SHA3_384			(0x2C0UL)
+#define CKM_SHA3_384_HMAC		(0x2C1UL)
+#define CKM_SHA3_384_HMAC_GENERAL	(0x2C2UL)
+#define CKM_SHA3_512			(0x2D0UL)
+#define CKM_SHA3_512_HMAC		(0x2D1UL)
+#define CKM_SHA3_512_HMAC_GENERAL	(0x2D2UL)
 #define CKM_CAST_KEY_GEN		(0x300UL)
 #define CKM_CAST_ECB			(0x301UL)
 #define CKM_CAST_CBC			(0x302UL)
@@ -708,6 +722,9 @@ typedef unsigned long ck_mechanism_type_t;
 #define CKM_ECDH1_DERIVE		(0x1050UL)
 #define CKM_ECDH1_COFACTOR_DERIVE	(0x1051UL)
 #define CKM_ECMQV_DERIVE		(0x1052UL)
+#define CKM_EC_EDWARDS_KEY_PAIR_GEN     (0x1055UL)
+#define CKM_EC_MONTGOMERY_KEY_PAIR_GEN  (0x1056UL)
+#define CKM_EDDSA			(0x1057UL)
 #define CKM_JUNIPER_KEY_GEN		(0x1060UL)
 #define CKM_JUNIPER_ECB128		(0x1061UL)
 #define CKM_JUNIPER_CBC128		(0x1062UL)
@@ -762,6 +779,7 @@ typedef unsigned long ck_mechanism_type_t;
 #define CKM_DH_PKCS_PARAMETER_GEN	(0x2001UL)
 #define CKM_X9_42_DH_PARAMETER_GEN	(0x2002UL)
 #define CKM_AES_KEY_WRAP		(0x2109UL)
+#define CKM_XEDDSA			(0x4029UL)
 #define CKM_VENDOR_DEFINED		(1UL << 31)
 
 
@@ -869,6 +887,22 @@ typedef struct CK_GCM_PARAMS {
 	unsigned long ulAADLen;
 	unsigned long ulTagBits;
 } CK_GCM_PARAMS;
+
+/* EDDSA */
+typedef struct CK_EDDSA_PARAMS {
+	unsigned char phFlag;
+	unsigned long ulContextDataLen;
+	unsigned char *pContextData;
+} CK_EDDSA_PARAMS;
+
+typedef CK_EDDSA_PARAMS *CK_EDDSA_PARAMS_PTR;
+
+/* XEDDSA */
+typedef struct CK_XEDDSA_PARAMS {
+	unsigned long hash;
+} CK_XEDDSA_PARAMS;
+
+typedef CK_XEDDSA_PARAMS *CK_XEDDSA_PARAMS_PTR;
 
 typedef unsigned long ck_rv_t;
 
@@ -1580,6 +1614,7 @@ struct ck_c_initialize_args
 #define CKR_RANDOM_SEED_NOT_SUPPORTED		(0x120UL)
 #define CKR_RANDOM_NO_RNG			(0x121UL)
 #define CKR_DOMAIN_PARAMS_INVALID		(0x130UL)
+#define CKR_CURVE_NOT_SUPPORTED          	(0x140UL)
 #define CKR_BUFFER_TOO_SMALL			(0x150UL)
 #define CKR_SAVED_STATE_INVALID			(0x160UL)
 #define CKR_INFORMATION_SENSITIVE		(0x170UL)

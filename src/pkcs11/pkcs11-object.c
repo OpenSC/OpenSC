@@ -1249,6 +1249,7 @@ CK_RV C_DeriveKey(CK_SESSION_HANDLE hSession,	/* the session's handle */
 
 	switch(key_type) {
 	    case CKK_EC:
+	    case CKK_EC_MONTGOMERY:
 
 		rv = sc_create_object_int(hSession, pTemplate, ulAttributeCount, phKey, 0);
 		if (rv != CKR_OK)

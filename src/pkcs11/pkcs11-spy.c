@@ -543,9 +543,9 @@ C_GetMechanismInfo(CK_SLOT_ID  slotID, CK_MECHANISM_TYPE type,
 	enter("C_GetMechanismInfo");
 	spy_dump_ulong_in("slotID", slotID);
 	if (name)
-		fprintf(spy_output, "%30s \n", name);
+		fprintf(spy_output, "[in] type = %30s\n", name);
 	else
-		fprintf(spy_output, " Unknown Mechanism (%08lx)  \n", type);
+		fprintf(spy_output, "[in] type = Unknown Mechanism (%08lx)\n", type);
 
 	rv = po->C_GetMechanismInfo(slotID, type, pInfo);
 	if(rv == CKR_OK) {

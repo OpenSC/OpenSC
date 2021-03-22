@@ -77,8 +77,10 @@ void multipart_tests(void **state) {
 			continue;
 		printf("[%-6s] [%s] [%6lu] [ %s ] [%s%s] [%s]\n",
 			objects.data[i].id_str,
-			objects.data[i].key_type == CKK_RSA ? "RSA " :
-				objects.data[i].key_type == CKK_EC ? " EC " : " ?? ",
+			(objects.data[i].key_type == CKK_RSA ? "RSA " :
+				objects.data[i].key_type == CKK_EC ? " EC " :
+				objects.data[i].key_type == CKK_EC_EDWARDS ? "EC_E" :
+				objects.data[i].key_type == CKK_EC_MONTGOMERY ? "EC_M" : " ?? "),
 			objects.data[i].bits,
 			objects.data[i].verify_public == 1 ? " ./ " : "    ",
 			objects.data[i].sign ? "[./] " : "[  ] ",

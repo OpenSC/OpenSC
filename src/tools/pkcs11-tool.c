@@ -59,6 +59,7 @@
 #include "pkcs11/pkcs11.h"
 #include "pkcs11/pkcs11-opensc.h"
 #include "libopensc/asn1.h"
+#include "libopensc/log.h"
 #include "common/compat_strlcat.h"
 #include "common/compat_strlcpy.h"
 #include "common/libpkcs11.h"
@@ -85,41 +86,46 @@ extern CK_FUNCTION_LIST_3_0 pkcs11_function_list_3_0;
 static struct ec_curve_info {
 	const char *name;
 	const char *oid;
-	const char *oid_encoded;
+	const char *ec_params;
 	size_t size;
+	CK_KEY_TYPE mechanism;
 } ec_curve_infos[] = {
-	{"secp192r1",    "1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192},
-	{"prime192v1",   "1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192},
-	{"prime192v2",   "1.2.840.10045.3.1.2", "06082A8648CE3D030102", 192},
-	{"prime192v3",   "1.2.840.10045.3.1.3", "06082A8648CE3D030103", 192},
-	{"nistp192",     "1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192},
-	{"ansiX9p192r1", "1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192},
+	{"secp192r1",    "1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192, 0},
+	{"prime192v1",   "1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192, 0},
+	{"prime192v2",   "1.2.840.10045.3.1.2", "06082A8648CE3D030102", 192, 0},
+	{"prime192v3",   "1.2.840.10045.3.1.3", "06082A8648CE3D030103", 192, 0},
+	{"nistp192",     "1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192, 0},
+	{"ansiX9p192r1", "1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192, 0},
 
-	{"secp224r1", "1.3.132.0.33", "06052b81040021", 224},
-	{"nistp224",  "1.3.132.0.33", "06052b81040021", 224},
+	{"secp224r1", "1.3.132.0.33", "06052b81040021", 224, 0},
+	{"nistp224",  "1.3.132.0.33", "06052b81040021", 224, 0},
 
-	{"prime256v1",   "1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256},
-	{"secp256r1",    "1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256},
-	{"ansiX9p256r1", "1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256},
-	{"frp256v1",	 "1.2.250.1.223.101.256.1", "060a2a817a01815f65820001", 256},
+	{"prime256v1",   "1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256, 0},
+	{"secp256r1",    "1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256, 0},
+	{"ansiX9p256r1", "1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256, 0},
+	{"frp256v1",	 "1.2.250.1.223.101.256.1", "060a2a817a01815f65820001", 256, 0},
 
-	{"secp384r1",		"1.3.132.0.34", "06052B81040022", 384},
-	{"prime384v1",		"1.3.132.0.34", "06052B81040022", 384},
-	{"ansiX9p384r1",	"1.3.132.0.34", "06052B81040022", 384},
+	{"secp384r1",		"1.3.132.0.34", "06052B81040022", 384, 0},
+	{"prime384v1",		"1.3.132.0.34", "06052B81040022", 384, 0},
+	{"ansiX9p384r1",	"1.3.132.0.34", "06052B81040022", 384, 0},
 
-	{"secp521r1", "1.3.132.0.35", "06052B81040023", 521},
-	{"nistp521",  "1.3.132.0.35", "06052B81040023", 521},
+	{"secp521r1", "1.3.132.0.35", "06052B81040023", 521, 0},
+	{"nistp521",  "1.3.132.0.35", "06052B81040023", 521, 0},
 
-	{"brainpoolP192r1", "1.3.36.3.3.2.8.1.1.3", "06092B2403030208010103", 192},
-	{"brainpoolP224r1", "1.3.36.3.3.2.8.1.1.5", "06092B2403030208010105", 224},
-	{"brainpoolP256r1", "1.3.36.3.3.2.8.1.1.7", "06092B2403030208010107", 256},
-	{"brainpoolP320r1", "1.3.36.3.3.2.8.1.1.9", "06092B2403030208010109", 320},
-	{"brainpoolP384r1", "1.3.36.3.3.2.8.1.1.11", "06092B240303020801010B", 384},
-	{"brainpoolP512r1", "1.3.36.3.3.2.8.1.1.13", "06092B240303020801010D", 512},
+	{"brainpoolP192r1", "1.3.36.3.3.2.8.1.1.3", "06092B2403030208010103", 192, 0},
+	{"brainpoolP224r1", "1.3.36.3.3.2.8.1.1.5", "06092B2403030208010105", 224, 0},
+	{"brainpoolP256r1", "1.3.36.3.3.2.8.1.1.7", "06092B2403030208010107", 256, 0},
+	{"brainpoolP320r1", "1.3.36.3.3.2.8.1.1.9", "06092B2403030208010109", 320, 0},
+	{"brainpoolP384r1", "1.3.36.3.3.2.8.1.1.11", "06092B240303020801010B", 384, 0},
+	{"brainpoolP512r1", "1.3.36.3.3.2.8.1.1.13", "06092B240303020801010D", 512, 0},
 
-	{"secp192k1",		"1.3.132.0.31", "06052B8104001F", 192},
-	{"secp256k1",		"1.3.132.0.10", "06052B8104000A", 256},
-	{NULL, NULL, NULL, 0},
+	{"secp192k1",		"1.3.132.0.31", "06052B8104001F", 192, 0},
+	{"secp256k1",		"1.3.132.0.10", "06052B8104000A", 256, 0},
+
+	{"edwards25519","1.3.6.1.4.1159.15.1", "130c656477617264733235353139", 255, CKM_EC_EDWARDS_KEY_PAIR_GEN},
+	{"curve25519", "1.3.6.1.4.3029.1.5.1", "130b63757276653235353139", 255, CKM_EC_MONTGOMERY_KEY_PAIR_GEN},
+
+	{NULL, NULL, NULL, 0, 0},
 };
 
 static const struct sc_aid GOST_HASH2001_PARAMSET_OID = { { 0x06, 0x07, 0x2a, 0x85, 0x03, 0x02, 0x02, 0x1e, 0x01 }, 9 };
@@ -291,7 +297,7 @@ static const char *option_help[] = {
 	"Unlock User PIN (without '--login' unlock in logged in session; otherwise '--login-type' has to be 'context-specific')",
 	"Key pair generation",
 	"Key generation",
-	"Specify the type and length (bytes if symmetric) of the key to create, for example rsa:1024, EC:prime256v1, GOSTR3410-2012-256:B, AES:16 or GENERIC:64",
+	"Specify the type and length (bytes if symmetric) of the key to create, for example rsa:1024, EC:prime256v1, EC:ed25519, EC:curve25519, GOSTR3410-2012-256:B, AES:16 or GENERIC:64",
 	"Specify 'sign' key usage flag (sets SIGN in privkey, sets VERIFY in pubkey)",
 	"Specify 'decrypt' key usage flag (RSA only, set DECRYPT privkey, ENCRYPT in pubkey)",
 	"Specify 'derive' key usage flag (EC only)",
@@ -2461,6 +2467,7 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	int n_privkey_attr = 4;
 	unsigned char *ecparams = NULL;
 	size_t ecparams_size;
+	CK_ULONG key_type = CKK_RSA;
 	CK_RV rv;
 
 	if (type != NULL) {
@@ -2505,15 +2512,17 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 				FILL_ATTR(privateKeyTemplate[n_privkey_attr], CKA_UNWRAP, &_true, sizeof(_true));
 				n_privkey_attr++;
 			}
+			FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_KEY_TYPE, &key_type, sizeof(key_type));
+			n_pubkey_attr++;
+			FILL_ATTR(privateKeyTemplate[n_privkey_attr], CKA_KEY_TYPE, &key_type, sizeof(key_type));
+			n_privkey_attr++;
 		}
 		else if (strncmp(type, "EC:", strlen("EC:")) == 0 || strncmp(type, "ec:", strlen("ec:")) == 0)  {
 			CK_MECHANISM_TYPE mtypes[] = {CKM_EC_KEY_PAIR_GEN};
 			size_t mtypes_num = sizeof(mtypes)/sizeof(mtypes[0]);
 			int ii;
 
-			if (!opt_mechanism_used)
-				if (!find_mechanism(slot, CKF_GENERATE_KEY_PAIR, mtypes, mtypes_num, &opt_mechanism))
-					util_fatal("Generate EC key mechanism not supported\n");
+			key_type = CKK_EC;
 
 			for (ii=0; ec_curve_infos[ii].name; ii++)   {
 				if (!strcmp(ec_curve_infos[ii].name, type + 3))
@@ -2524,12 +2533,38 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			if (!ec_curve_infos[ii].name)
 				util_fatal("Unknown EC key params '%s'", type + 3);
 
-			ecparams_size = strlen(ec_curve_infos[ii].oid_encoded) / 2;
+			switch (ec_curve_infos[ii].mechanism) {
+			case CKM_EC_EDWARDS_KEY_PAIR_GEN:
+				/* The Edwards key can not be used for derivation */
+				opt_key_usage_derive = 0;
+				key_type = CKK_EC_EDWARDS;
+				/* This replaces the above default mechanism */
+				if (!opt_mechanism_used) {
+					mtypes[0] = ec_curve_infos[ii].mechanism;
+				}
+				break;
+			case CKM_EC_MONTGOMERY_KEY_PAIR_GEN:
+				key_type = CKK_EC_MONTGOMERY;
+				/* This replaces the above default mechanism */
+				if (!opt_mechanism_used) {
+					mtypes[0] = ec_curve_infos[ii].mechanism;
+				}
+				break;
+			}
+
+			if (!opt_mechanism_used) {
+				if (!find_mechanism(slot, CKF_GENERATE_KEY_PAIR, mtypes, mtypes_num,
+						&opt_mechanism)) {
+					util_fatal("Generate EC key mechanism %lx not supported", mtypes[0]);
+				}
+			}
+
+			ecparams_size = strlen(ec_curve_infos[ii].ec_params) / 2;
 			ecparams = malloc(ecparams_size);
 			if (!ecparams)
 				util_fatal("Allocation error", 0);
-			if (!hex_to_bin(ec_curve_infos[ii].oid_encoded, ecparams, &ecparams_size)) {
-				fprintf(stderr, "Cannot convert \"%s\"\n", ec_curve_infos[ii].oid_encoded);
+			if (!hex_to_bin(ec_curve_infos[ii].ec_params, ecparams, &ecparams_size)) {
+				fprintf(stderr, "Cannot convert \"%s\"\n", ec_curve_infos[ii].ec_params);
 				util_print_usage_and_die(app_name, options, option_help, NULL);
 			}
 
@@ -2549,6 +2584,10 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 
 			FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_EC_PARAMS, ecparams, ecparams_size);
 			n_pubkey_attr++;
+			FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_KEY_TYPE, &key_type, sizeof(key_type));
+			n_pubkey_attr++;
+			FILL_ATTR(privateKeyTemplate[n_privkey_attr], CKA_KEY_TYPE, &key_type, sizeof(key_type));
+			n_privkey_attr++;
 		}
 		else if (strncmp(type, "GOSTR3410", strlen("GOSTR3410")) == 0 || strncmp(type, "gostr3410", strlen("gostr3410")) == 0) {
 			const struct sc_aid GOST2001_PARAMSET_A_OID = { { 0x06, 0x07, 0x2a, 0x85, 0x03, 0x02, 0x02, 0x23, 0x01 }, 9 };
@@ -4135,6 +4174,58 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 			}
 		}
 		break;
+	case CKK_EC_EDWARDS:
+	case CKK_EC_MONTGOMERY:
+		if (key_type == CKK_EC_EDWARDS) {
+			printf("; EC_EDWARDS");
+		} else {
+			printf("; EC_MONTGOMERY");
+		}
+		if (pub) {
+			unsigned char *bytes = NULL;
+			int ksize;
+			unsigned int n;
+
+			bytes = getEC_POINT(sess, obj, &size);
+			ksize = 255; /* for now, we support only 255b curves */
+
+			printf("  EC_POINT %u bits\n", ksize);
+			if (bytes) {
+				if ((CK_LONG)size > 0) { /* Will print the point here */
+					printf("  EC_POINT:   ");
+					for (n = 0; n < size; n++)
+						printf("%02x", bytes[n]);
+					printf("\n");
+				}
+				free(bytes);
+			}
+			bytes = NULL;
+			bytes = getEC_PARAMS(sess, obj, &size);
+			if (bytes){
+				if ((CK_LONG)size > 0) {
+					struct sc_object_id oid;
+
+					printf("  EC_PARAMS:  ");
+					for (n = 0; n < size; n++)
+						printf("%02x", bytes[n]);
+
+					sc_init_oid(&oid);
+					if (size > 2 && sc_asn1_decode_object_id(bytes + 2, size - 2, &oid) == SC_SUCCESS) {
+						printf(" (OID %i", oid.value[0]);
+						if (oid.value[0] >= 0)
+							for (n = 1; (n < SC_MAX_OBJECT_ID_OCTETS)
+									&& (oid.value[n] >= 0); n++)
+								printf(".%i", oid.value[n]);
+						printf(")");
+					}
+					printf("\n");
+
+				}
+				free(bytes);
+			}
+		} else {
+			printf("\n");
+		}
 		break;
 	case CKK_EC:
 		printf("; EC");
@@ -4180,7 +4271,7 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 				free(bytes);
 			}
 		} else
-			 printf("\n");
+			printf("\n");
 		break;
 	case CKK_GENERIC_SECRET:
 	case CKK_AES:
@@ -4666,7 +4757,7 @@ static int read_object(CK_SESSION_HANDLE session)
 				const unsigned char *a = params;
 				if (!d2i_ECParameters(&ec, &a, (long)len))
 					util_fatal("cannot parse EC_PARAMS");
-				OPENSSL_free(params);
+				free(params);
 			} else
 				util_fatal("cannot obtain EC_PARAMS");
 
@@ -4689,6 +4780,65 @@ static int read_object(CK_SESSION_HANDLE session)
 			if (!i2d_EC_PUBKEY_bio(pout, ec))
 				util_fatal("cannot convert EC public key to DER");
 			EC_KEY_free(ec);
+#endif
+#ifdef EVP_PKEY_ED25519
+		} else if (type == CKK_EC_EDWARDS) {
+			EVP_PKEY *key = NULL;
+			CK_BYTE *params = NULL;
+			const unsigned char *a;
+			ASN1_OCTET_STRING *os;
+
+			if ((params = getEC_PARAMS(session, obj, &len))) {
+				ASN1_PRINTABLESTRING *curve = NULL;
+				ASN1_OBJECT *obj = NULL;
+
+				a = params;
+				if (d2i_ASN1_PRINTABLESTRING(&curve, &a, (long)len) != NULL) {
+					if (strcmp((char *)curve->data, "edwards25519")) {
+						util_fatal("Unknown curve name, expected edwards25519, got %s",
+							curve->data);
+					}
+					ASN1_PRINTABLESTRING_free(curve);
+				} else if (d2i_ASN1_OBJECT(&obj, &a, (long)len) != NULL) {
+					int nid = OBJ_obj2nid(obj);
+					if (nid != NID_ED25519) {
+						util_fatal("Unknown curve OID, expected NID_ED25519 (%d), got %d",
+							NID_ED25519, nid);
+					}
+					ASN1_OBJECT_free(obj);
+				} else {
+					util_fatal("cannot parse curve name from EC_PARAMS");
+				}
+				free(params);
+			} else {
+				util_fatal("cannot obtain EC_PARAMS");
+			}
+
+
+			value = getEC_POINT(session, obj, &len);
+			/* PKCS#11-compliant modules should return ASN1_OCTET_STRING */
+			a = value;
+			os = d2i_ASN1_OCTET_STRING(NULL, &a, (long)len);
+			if (!os) {
+				util_fatal("cannot decode EC_POINT");
+			}
+			if (os->length != 32) {
+				util_fatal("Invalid length of EC_POINT value");
+			}
+			key = EVP_PKEY_new_raw_public_key(EVP_PKEY_ED25519, NULL,
+				(const uint8_t *)os->data,
+				os->length);
+			ASN1_STRING_free(os);
+			if (key == NULL) {
+				util_fatal("out of memory");
+			}
+			/* Note, that we write PEM here as there is no "native"
+			 * representation of EdDSA public keys to use */
+			if (!PEM_write_bio_PUBKEY(pout, key)) {
+				util_fatal("cannot convert EdDSA public key to PEM");
+			}
+
+			EVP_PKEY_free(key);
 #endif
 		}
 		else
@@ -6967,6 +7117,10 @@ static struct mech_info	p11_mechanisms[] = {
       { CKM_ECDH1_DERIVE,	"ECDH1-DERIVE", NULL },
       { CKM_ECDH1_COFACTOR_DERIVE,"ECDH1-COFACTOR-DERIVE", NULL },
       { CKM_ECMQV_DERIVE,	"ECMQV-DERIVE", NULL },
+      { CKM_EC_EDWARDS_KEY_PAIR_GEN,"EC-EDWARDS-KEY-PAIR-GEN", NULL },
+      { CKM_EC_MONTGOMERY_KEY_PAIR_GEN,"EC-MONTGOMERY-KEY-PAIR-GEN", NULL },
+      { CKM_EDDSA,		"EDDSA", NULL },
+      { CKM_XEDDSA,		"XEDDSA", NULL },
       { CKM_JUNIPER_KEY_GEN,	"JUNIPER-KEY-GEN", NULL },
       { CKM_JUNIPER_ECB128,	"JUNIPER-ECB128", NULL },
       { CKM_JUNIPER_CBC128,	"JUNIPER-CBC128", NULL },
