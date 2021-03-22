@@ -5564,7 +5564,7 @@ static CK_RV
 get_ec_pubkey_params(struct sc_pkcs15_pubkey *key, CK_ATTRIBUTE_PTR attr)
 {
 	struct sc_ec_parameters *ecp;
-	unsigned long value_len = 0;
+	size_t value_size = 0;
 	unsigned char *value = NULL;
 
 	int r;
@@ -5577,22 +5577,22 @@ get_ec_pubkey_params(struct sc_pkcs15_pubkey *key, CK_ATTRIBUTE_PTR attr)
 	switch (key->algorithm) {
 	case SC_ALGORITHM_EDDSA:
 	case SC_ALGORITHM_XEDDSA:
-		r = sc_encode_oid(context, &key->alg_id->oid, &value, (size_t *)&value_len);
+		r = sc_encode_oid(context, &key->alg_id->oid, &value, &value_size);
 		if (r != SC_SUCCESS) {
 			return sc_to_cryptoki_error(r, NULL);
 		}
 
-		attr->ulValueLen = value_len;
+		attr->ulValueLen = (unsigned long)value_size;
 		if (attr->pValue == NULL_PTR) {
 			free(value);
 			return CKR_OK;
 		}
-		if (attr->ulValueLen < value_len) {
+		if (attr->ulValueLen < (unsigned long)value_size) {
 			free(value);
 			return CKR_BUFFER_TOO_SMALL;
 		}
 
-		memcpy(attr->pValue, value, value_len);
+		memcpy(attr->pValue, value, value_size);
 		free(value);
 		return CKR_OK;
 
