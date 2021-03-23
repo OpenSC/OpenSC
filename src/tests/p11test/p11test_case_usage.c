@@ -117,8 +117,8 @@ void usage_test(void **state) {
 		P11TEST_DATA_ROW(info, 14,
 			's', objects.data[i].id_str,
 			's', objects.data[i].label,
-			's', (objects.data[i].key_type == CKK_RSA ? "RSA " :
-				objects.data[i].key_type == CKK_EC ? " EC " :
+			's', (objects.data[i].key_type == CKK_RSA ? "RSA" :
+				objects.data[i].key_type == CKK_EC ? "EC" :
 				objects.data[i].key_type == CKK_EC_EDWARDS ? "EC_E" :
 				objects.data[i].key_type == CKK_EC_MONTGOMERY ? "EC_M" : " ?? "),
 			'd', objects.data[i].bits,
