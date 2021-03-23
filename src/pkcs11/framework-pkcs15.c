@@ -5582,16 +5582,18 @@ get_ec_pubkey_params(struct sc_pkcs15_pubkey *key, CK_ATTRIBUTE_PTR attr)
 			return sc_to_cryptoki_error(r, NULL);
 		}
 
-		attr->ulValueLen = (unsigned long)value_size;
 		if (attr->pValue == NULL_PTR) {
+			attr->ulValueLen = (unsigned long)value_size;
 			free(value);
 			return CKR_OK;
 		}
 		if (attr->ulValueLen < (unsigned long)value_size) {
+			attr->ulValueLen = (unsigned long)value_size;
 			free(value);
 			return CKR_BUFFER_TOO_SMALL;
 		}
 
+		attr->ulValueLen = (unsigned long)value_size;
 		memcpy(attr->pValue, value, value_size);
 		free(value);
 		return CKR_OK;
