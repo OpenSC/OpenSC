@@ -425,7 +425,8 @@ coolkey_get_public_key_from_certificate(sc_pkcs15_card_t *p15card, sc_cardctl_co
 	sc_pkcs15_pubkey_t *key = NULL;
 	int r;
 
-	cert_info.value.value = NULL;
+	memset(&cert_info, 0, sizeof(cert_info));
+
 	r = coolkey_get_certificate(p15card->card, obj, &cert_info.value);
 	if (r < 0) {
 		goto fail;
