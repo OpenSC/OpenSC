@@ -630,21 +630,23 @@ static int
 iasecc_init_cpx(struct sc_card *card)
 {
 	struct sc_context *ctx = card->ctx;
-	unsigned int flags; /* TBC it is not IASECC_CARD_DEFAULT_FLAGS */
+	unsigned int flags;
+	int rv = 0;
 
 	LOG_FUNC_CALLED(ctx);
 
-	card->caps = SC_CARD_CAP_RNG; /* TBC it is not IASECC_CARD_DEFAULT_CAPS */
+	card->caps = IASECC_CARD_DEFAULT_CAPS;
 
-	flags = SC_ALGORITHM_RSA_PAD_PKCS1;
-	flags |= SC_ALGORITHM_RSA_RAW;
-
-	flags |= SC_ALGORITHM_RSA_HASH_SHA1    |
-	         SC_ALGORITHM_RSA_HASH_SHA256;
+	flags = IASECC_CARD_DEFAULT_FLAGS;
 
 	_sc_card_add_rsa_alg(card, 512, flags, 0);
 	_sc_card_add_rsa_alg(card, 1024, flags, 0);
 	_sc_card_add_rsa_alg(card, 2048, flags, 0);
+
+	rv = iasecc_parse_ef_atr(card);
+	if (rv)
+		sc_invalidate_cache(card); /* avoid memory leakage */
+	LOG_TEST_RET(ctx, rv, "Parse EF.ATR");
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
