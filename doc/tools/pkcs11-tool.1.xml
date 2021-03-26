@@ -387,6 +387,12 @@
 				</varlistentry>
 				<varlistentry>
 					<term>
+						<option>--wrap</option>,
+					</term>
+					<listitem><para>Wrap key.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
 						<option>--derive</option>,
 					</term>
 					<listitem><para>Derive a secret key using another key and some data.</para></listitem>
