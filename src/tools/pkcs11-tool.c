@@ -166,6 +166,7 @@ enum {
 	OPT_DECRYPT,
 	OPT_ENCRYPT,
 	OPT_UNWRAP,
+	OPT_WRAP,
 	OPT_TEST_FORK,
 #if defined(_WIN32) || defined(HAVE_PTHREAD)
 	OPT_TEST_THREADS,
@@ -201,6 +202,7 @@ static const struct option options[] = {
 	{ "decrypt",		0, NULL,		OPT_DECRYPT },
 	{ "encrypt",		0, NULL,		OPT_ENCRYPT },
 	{ "unwrap",		0, NULL,		OPT_UNWRAP },
+	{ "wrap",		0, NULL,		OPT_WRAP },
 	{ "hash",		0, NULL,		'h' },
 	{ "derive",		0, NULL,		OPT_DERIVE },
 	{ "derive-pass-der",	0, NULL,		OPT_DERIVE_PASS_DER },
@@ -286,6 +288,7 @@ static const char *option_help[] = {
 	"Decrypt some data",
 	"Encrypt some data",
 	"Unwrap key",
+	"Wrap key",
 	"Hash some data",
 	"Derive a secret key using another key and some data",
 	"Derive ECDHpass DER encoded pubkey for compatibility with some PKCS#11 implementations",
@@ -526,6 +529,7 @@ static int		gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE,
 				CK_OBJECT_HANDLE *, CK_OBJECT_HANDLE *, const char *);
 static int		gen_key(CK_SLOT_ID slot, CK_SESSION_HANDLE, CK_OBJECT_HANDLE *, const char *, char *);
 static int		unwrap_key(CK_SESSION_HANDLE session);
+static int		wrap_key(CK_SESSION_HANDLE session);
 
 static int		write_object(CK_SESSION_HANDLE session);
 static int		read_object(CK_SESSION_HANDLE session);
@@ -684,6 +688,7 @@ int main(int argc, char * argv[])
 	int do_decrypt = 0;
 	int do_encrypt = 0;
 	int do_unwrap = 0;
+	int do_wrap = 0;
 	int do_hash = 0;
 	int do_derive = 0;
 	int do_gen_keypair = 0;
@@ -894,6 +899,11 @@ int main(int argc, char * argv[])
 		case OPT_UNWRAP:
 			need_session |= NEED_SESSION_RW;
 			do_unwrap = 1;
+			action_count++;
+			break;
+		case OPT_WRAP:
+			need_session |= NEED_SESSION_RW;
+			do_wrap = 1;
 			action_count++;
 			break;
 		case 'f':
@@ -1221,7 +1231,7 @@ int main(int argc, char * argv[])
 	if (do_list_mechs)
 		list_mechs(opt_slot);
 
-	if (do_sign || do_decrypt || do_encrypt || do_unwrap) {
+	if (do_sign || do_decrypt || do_encrypt || do_unwrap || do_wrap) {
 		CK_TOKEN_INFO info;
 
 		get_token_info(opt_slot, &info);
@@ -1357,6 +1367,9 @@ int main(int argc, char * argv[])
 
 	if (do_unwrap)
 		unwrap_key(session);
+
+	if (do_wrap)
+		wrap_key(session);
 
 	/* before list objects, so we can see a derived key */
 	if (do_derive)
@@ -3283,6 +3296,68 @@ unwrap_key(CK_SESSION_HANDLE session)
 	return 1;
 }
 
+static int
+wrap_key(CK_SESSION_HANDLE session)
+{
+	CK_BYTE pWrappedKey[4096];
+	CK_ULONG pulWrappedKeyLen = sizeof(pWrappedKey);
+	CK_MECHANISM mechanism;
+	CK_OBJECT_HANDLE hWrappingKey;	// wrapping key
+	CK_OBJECT_HANDLE hkey;	// key to be wrapped
+	CK_RV rv;
+	CK_BYTE hkey_id;
+	size_t hkey_id_len;
+	int fd, r;
+	CK_BYTE_PTR iv = NULL;
+	size_t iv_size = 0;
+
+	if (NULL == opt_application_id)
+		util_fatal("Use --application-id to specify secret key (to be wrapped)");
+	if (!opt_mechanism_used)
+		util_fatal("Unable to wrap, no mechanism specified\n");
+
+	mechanism.mechanism = opt_mechanism;
+	mechanism.pParameter = NULL_PTR;
+	mechanism.ulParameterLen = 0;
+	if (opt_mechanism == CKM_AES_CBC || opt_mechanism == CKM_AES_CBC_PAD) {
+		iv_size = 16;
+		iv = get_iv(opt_iv, &iv_size);
+		mechanism.pParameter = iv;
+		mechanism.ulParameterLen = iv_size;
+	}
+
+	hkey_id_len = sizeof(hkey_id);
+	if (!hex_to_bin(opt_application_id, &hkey_id, &hkey_id_len))
+		util_fatal("Invalid application-id \"%s\"\n", opt_application_id);
+
+	if (!find_object(session, CKO_SECRET_KEY, &hkey, hkey_id_len ? &hkey_id : NULL, hkey_id_len, 0))
+		util_fatal("Secret key (to be wrapped) not found");
+
+	if (!find_object(session, CKO_PUBLIC_KEY, &hWrappingKey,
+			 opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, 0))
+		if (!find_object(session, CKO_SECRET_KEY, &hWrappingKey,
+				 opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, 0))
+			util_fatal("Public/secret key (wrapping key) not found");
+
+	rv = p11->C_WrapKey(session, &mechanism, hWrappingKey, hkey, pWrappedKey, &pulWrappedKeyLen);
+	if (rv != CKR_OK)
+		p11_fatal("C_WrapKey", rv);
+	printf("Key wrapped\n");
+
+	if (opt_output == NULL)
+		fd = 1;
+	else if ((fd = open(opt_output, O_CREAT | O_TRUNC | O_WRONLY | O_BINARY, S_IRUSR | S_IWUSR)) < 0)
+		util_fatal("failed to open %s: %m", opt_output);
+
+	r = write(fd, pWrappedKey, pulWrappedKeyLen);
+
+	if (r < 0)
+		util_fatal("Failed to write to %s: %m", opt_output);
+	if (fd != 1)
+		close(fd);
+	free(iv);
+	return 1;
+}
 
 #ifdef ENABLE_OPENSSL
 static void	parse_certificate(struct x509cert_info *cert,
