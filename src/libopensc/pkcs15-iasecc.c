@@ -34,6 +34,7 @@
 
 #include "internal.h"
 #include "pkcs15.h"
+#include "../pkcs15init/pkcs15-iasecc.h"
 #include "iasecc.h"
 #include "aux-data.h"
 
