@@ -801,7 +801,8 @@ iasecc_pkcs15_encode_supported_algos(struct sc_pkcs15_card *p15card, struct sc_p
 			LOG_TEST_RET(ctx, rv, "cannot add supported algorithm DECIPHER:CKM_RSA_PKCS");
 		}
 
-		if (prkey_info->usage & SC_PKCS15_PRKEY_USAGE_SIGN)   {
+		if (prkey_info->usage & (SC_PKCS15_PRKEY_USAGE_SIGN |
+		                         SC_PKCS15_PRKEY_USAGE_NONREPUDIATION))   {
 			if (prkey_info->usage & SC_PKCS15_PRKEY_USAGE_NONREPUDIATION)   {
 				algo = sc_pkcs15_get_supported_algo(p15card, SC_PKCS15_ALGO_OP_COMPUTE_SIGNATURE, CKM_SHA1_RSA_PKCS);
 				rv = sc_pkcs15_add_supported_algo_ref(object, algo);
