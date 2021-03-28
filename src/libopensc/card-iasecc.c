@@ -1063,6 +1063,7 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 			rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
 			if (rv == SC_ERROR_INCORRECT_PARAMETERS &&
 					lpath.type == SC_PATH_TYPE_DF_NAME && apdu.p2 == 0x00)   {
+				sc_log(ctx, "Warning: SC_ERROR_INCORRECT_PARAMETERS for SC_PATH_TYPE_DF_NAME, try again with P2=0x0C");
 				apdu.p2 = 0x0C;
 				continue;
 			}
