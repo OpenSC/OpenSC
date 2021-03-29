@@ -2875,6 +2875,34 @@ iasecc_sdo_get_tagged_data(struct sc_card *card, int sdo_tag, struct iasecc_sdo 
 
 	LOG_FUNC_CALLED(ctx);
 
+	sc_log(ctx, "sdo_tag=0x%x sdo_ref=0x%x sdo_class=0x%x", sdo_tag,
+			sdo->sdo_ref, sdo->sdo_class);
+
+	/* XXX: for the CPx, the SDO are available from some specific path */
+	if (iasecc_is_cpx(card)) {
+		struct sc_path path;
+		char *path_str = NULL;
+		switch(sdo_tag) {
+			case IASECC_SDO_PRVKEY_TAG:
+			/* APDU 00 CB 3F FF 0B 4D 09 70 07 BF 90 02 03 7F 48 80 */
+			path_str = "3F00:0001";
+			break;
+			case IASECC_SDO_CHV_TAG:
+			/* APDU 00 CB 3F FF 0B 4D 09 70 07 BF 81 01 03 7F 41 80 */
+			path_str = "3F00";
+			break;
+			default:
+			path_str = NULL;
+			break;
+		}
+		if (path_str) {
+			sc_log(ctx, "Warning: Enforce the path=%s", path_str);
+			sc_format_path(path_str, &path);
+			rv = iasecc_select_file(card, &path, NULL);
+			LOG_TEST_RET(ctx, rv, "path error");
+		}
+	}
+
 	sbuf[offs--] = 0x80;
 	sbuf[offs--] = sdo_tag & 0xFF;
 	if ((sdo_tag >> 8) & 0xFF)
