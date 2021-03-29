@@ -6255,8 +6255,6 @@ static int test_decrypt(CK_SESSION_HANDLE sess)
 			continue;
 		}
 
-		printf("\n");
-
 #ifndef ENABLE_OPENSSL
 		printf("No OpenSSL support, unable to validate decryption\n");
 #else
@@ -6271,6 +6269,7 @@ static int test_decrypt(CK_SESSION_HANDLE sess)
 				continue;
 			}
 
+			/* each display will end with a \n */
 			errors += encrypt_decrypt(sess, mechs[n], privKeyObject);
 		}
 #endif
