@@ -1714,6 +1714,11 @@ iasecc_se_get_info(struct sc_card *card, struct iasecc_se_info *se)
 
 	LOG_FUNC_CALLED(ctx);
 
+	if (iasecc_is_cpx(card)) {
+		rv = iasecc_select_mf(card, NULL);
+		LOG_TEST_RET(ctx, rv, "MF invalid");
+	}
+
 	if (se->reference > IASECC_SE_REF_MAX)
                 LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
