@@ -119,6 +119,7 @@ static int do_put_data(int argc, char **argv);
 static int do_apdu(int argc, char **argv);
 static int do_sm(int argc, char **argv);
 static int do_asn1(int argc, char **argv);
+static int do_efatr(int argc, char **argv);
 static int do_help(int argc, char **argv);
 static int do_quit(int argc, char **argv);
 
@@ -209,6 +210,9 @@ static struct command	cmds[] = {
 	{ do_asn1,
 		"asn1",	"[<file-id> [<rec-no>] [<offs>]]",
 		"decode an ASN.1 file or record"	},
+	{ do_efatr,
+		"efatr", "",
+		"decode the EF.ATR record"		},
 	{ do_sm,
 		"sm",	"{open|close}",
 		"call SM 'open' or 'close' handlers, if available"},
@@ -2202,6 +2206,90 @@ err:
 		sc_file_free(file);
 		select_current_path_or_die();
 	}
+	return -err;
+}
+
+const char *
+efatr_str_oid(const struct sc_object_id * const oid)
+{
+	static char str[SC_MAX_OBJECT_ID_OCTETS * 30];
+	size_t i;
+
+	memset(str, 0, sizeof(str));
+
+	if (!oid)
+		return str;
+
+	for (i=0; i<SC_MAX_OBJECT_ID_OCTETS && oid->value[i] != -1; i++)
+		snprintf(str + strlen(str), sizeof(str) - strlen(str),
+		         "%s%i", i ? "." : "", oid->value[i]);
+
+	return str;
+}
+
+static int do_efatr(int argc, char **argv)
+{
+	int r, err = 1;
+
+	if (argc > 0)
+		return usage(do_efatr);
+
+	r = sc_parse_ef_atr(card);
+
+	if ((r < 0) ||
+	    (card->ef_atr == NULL)) {
+		goto err;
+
+	}
+	printf("EF.ATR/3F00:2F01\n");
+
+	printf("  card service 0x%X\n", card->ef_atr->card_service);
+
+	printf("  Pre-Issuing data 0x'%s'\n", sc_dump_hex(card->ef_atr->pre_issuing, card->ef_atr->pre_issuing_len));
+	if ((card->ef_atr->pre_issuing_len == 4) &&
+            (card->type >= SC_CARD_TYPE_IASECC_BASE) && (card->type < SC_CARD_TYPE_IASECC_BASE+100)) {
+		printf("    IC manufacturer 0x%X\n", card->ef_atr->pre_issuing[0]);
+		printf("    IC type 0x%X\n",         card->ef_atr->pre_issuing[1]);
+		printf("    OS Version 0x%X\n",      card->ef_atr->pre_issuing[2]);
+		printf("    IASECC Version 0x%X\n",  card->ef_atr->pre_issuing[3]);
+	}
+
+	printf("  DF selection 0x%X, unit_size %"SC_FORMAT_LEN_SIZE_T"u, card caps 0x%X\n",
+		card->ef_atr->df_selection,
+		card->ef_atr->unit_size,
+		card->ef_atr->card_capabilities);
+	if (card->ef_atr->card_capabilities & ISO7816_CAP_EXTENDED_LENGTH_INFO) {
+		printf("  Extended capabilities:\n");
+		printf("    Max command APDU %"SC_FORMAT_LEN_SIZE_T"u bytes\n",
+			card->ef_atr->max_command_apdu);
+		printf("    Max response APDU %"SC_FORMAT_LEN_SIZE_T"u bytes\n",
+			card->ef_atr->max_response_apdu);
+	}
+
+	printf("  AID 0x'%s'/", sc_dump_hex(card->ef_atr->aid.value, card->ef_atr->aid.len));
+	util_print_binary(stdout, card->ef_atr->aid.value, card->ef_atr->aid.len);
+	printf("\n");
+
+	printf("  Issuer data 0x'%s'\n", sc_dump_hex(card->ef_atr->issuer_data, card->ef_atr->issuer_data_len));
+	if ((card->ef_atr->issuer_data_len == 16) &&
+            (card->type >= SC_CARD_TYPE_IASECC_BASE) && (card->type < SC_CARD_TYPE_IASECC_BASE+100)) {
+		printf("    IO Buffer send[2,3] %d bytes/ SC[6,7] %d bytes\n",
+				card->ef_atr->issuer_data[2] * 0x100 + card->ef_atr->issuer_data[3],
+				card->ef_atr->issuer_data[6] * 0x100 + card->ef_atr->issuer_data[7]);
+		printf("    IO Buffer recv[10,11] %d bytes/ SC[14,15] %d bytes\n",
+				card->ef_atr->issuer_data[10] * 0x100 + card->ef_atr->issuer_data[11],
+				card->ef_atr->issuer_data[14] * 0x100 + card->ef_atr->issuer_data[15]);
+	}
+	printf("  DER encoded OID %s\n",
+		efatr_str_oid(&card->ef_atr->allocation_oid));
+	printf("  status word %04X\n", card->ef_atr->status);
+
+	sc_free_ef_atr(card);
+
+	return 0;
+
+err:
+	printf("  Error data\n");
 	return -err;
 }
 
