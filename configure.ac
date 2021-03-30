@@ -1,6 +1,6 @@
 dnl -*- mode: m4; -*-
 
-AC_PREREQ(2.60)
+AC_PREREQ(2.68)
 
 define([PRODUCT_NAME], [OpenSC])
 define([PRODUCT_TARNAME], [opensc])
@@ -188,7 +188,7 @@ AC_ARG_ENABLE(
 )
 
 AC_ARG_ENABLE([openssl-secure-malloc],
-    [AC_HELP_STRING([--openssl-secure-malloc=<SIZE_IN_BYTES>],
+    [AS_HELP_STRING([--openssl-secure-malloc=<SIZE_IN_BYTES>],
         [Enable OpenSSL secure memory by specifying its size in bytes, must be a power of 2 @<:@disabled@:>@])],
     [], [enable_openssl_secure_malloc=no])
 AS_IF([test $enable_openssl_secure_malloc != no],
@@ -394,7 +394,6 @@ dnl C Compiler features
 AC_C_INLINE
 
 dnl Checks for header files.
-AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
 AC_HEADER_ASSERT
 AC_CHECK_HEADERS([ \
@@ -408,7 +407,6 @@ dnl Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
 AC_TYPE_UID_T
 AC_TYPE_SIZE_T
-AC_HEADER_TIME
 
 dnl Checks for library functions.
 AC_FUNC_ERROR_AT_LINE
@@ -729,7 +727,7 @@ LIBS="$saved_LIBS"
 
 
 AC_ARG_ENABLE(cvcdir,
-              AC_HELP_STRING([--enable-cvcdir=DIR],
+              AS_HELP_STRING([--enable-cvcdir=DIR],
                              [directory containing CV certificates (default is determined by libeac)]),
                              [cvcdir="${enableval}"],
                              [cvcdir=false])
@@ -751,7 +749,7 @@ AC_SUBST(CVCDIR)
 AC_DEFINE_UNQUOTED([CVCDIR], ["${CVCDIR}"], [CVC directory])
 
 AC_ARG_ENABLE(x509dir,
-              AC_HELP_STRING([--enable-x509dir=DIR],
+              AS_HELP_STRING([--enable-x509dir=DIR],
                              [directory containing X.509 certificates (default is determined by libeac)]),
                              [x509dir="${enableval}"],
                              [x509dir=false])
