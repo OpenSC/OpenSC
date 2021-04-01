@@ -737,7 +737,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	 * But if card is going to do the hash, pass in all the data
 	 */
 	else if (senv.algorithm == SC_ALGORITHM_EC &&
-			(senv.flags & SC_ALGORITHM_ECDSA_HASHES) == 0) {
+			(senv.algorithm_flags & SC_ALGORITHM_ECDSA_HASHES) == 0) {
 		inlen = MIN(inlen, (prkey->field_length+7)/8);
 	}
 
