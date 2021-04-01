@@ -12,7 +12,7 @@ matrix:
       env: DO_PUSH_ARTIFACT=yes
     - compiler: clang
       os: linux
-      dist: bionic
+      dist: focal
     - compiler: gcc
       os: linux
       dist: bionic
@@ -21,7 +21,7 @@ matrix:
         - ENABLE_DOC=--enable-doc
     - compiler: gcc
       os: linux
-      dist: bionic
+      dist: focal
       env:
         - DO_SIMULATION=oseid
     - env:
@@ -71,6 +71,7 @@ addons:
     - socat
     - cmake
     - clang-tidy
+    - softhsm2
 
 before_install:
   # homebrew is dead slow in older images due to the many updates it would need to download and build.
