@@ -98,6 +98,19 @@ static pgp_ec_curves_t	ec_curves_openpgp[] = {
 	{{{-1}}, 0} /* This entry must not be touched. */
 };
 
+/* v3.0+ supports: [RFC 4880 & 6637] 0x12 = ECDH, 0x13 = ECDSA */
+static pgp_ec_curves_t  ec_curves_openpgp34[] = {
+        {{{1, 2, 840, 10045, 3, 1, 7, -1}}, 256}, /* ansiX9p256r1 */
+        {{{1, 3, 132, 0, 34, -1}}, 384}, /* ansiX9p384r1 */
+        {{{1, 3, 132, 0, 35, -1}}, 521}, /* ansiX9p521r1 */
+        {{{1, 3, 36, 3, 3, 2, 8, 1, 1, 7, -1}}, 256}, /* brainpoolP256r1 */
+        {{{1, 3, 36, 3, 3, 2, 8, 1, 1, 11, -1}}, 384}, /* brainpoolP384r1 */
+        {{{1, 3, 36, 3, 3, 2, 8, 1, 1, 13, -1}}, 512}, /* brainpoolP512r1 */
+        {{{1, 3, 6, 1, 4, 1, 3029, 1, 5, 1, -1}}, 256}, /* curve25519 for encryption => CKK_EC_MONTGOMERY */
+        {{{1, 3, 6, 1, 4, 1, 11591, 15, 1, -1}}, 256}, /* ed25519 for signatures => CKK_EC_EDWARDS */
+        {{{-1}}, 0} /* This entry must not be touched. */
+};
+
 struct sc_object_id curve25519_oid = {{1, 3, 6, 1, 4, 1, 3029, 1, 5, 1, -1}};
 
 /* Gnuk supports NIST, SECG and Curve25519 since version 1.2 */
@@ -455,6 +468,8 @@ pgp_init(sc_card_t *card)
 	/* With gnuk, we use different curves */
 	if (card->type == SC_CARD_TYPE_OPENPGP_GNUK) {
 		priv->ec_curves = ec_curves_gnuk;
+	} else if (priv->bcd_version >= OPENPGP_CARD_3_4) {
+		priv->ec_curves = ec_curves_openpgp34;
 	} else {
 		priv->ec_curves = ec_curves_openpgp;
 	}
