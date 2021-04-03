@@ -300,10 +300,10 @@ int sc_compare_oid(const struct sc_object_id *oid1, const struct sc_object_id *o
 	}
 
 	for (i = 0; i < SC_MAX_OBJECT_ID_OCTETS; i++)   {
+		if ((oid1->value[i] == -1) || (oid2->value[i] == -1))
+			break;
 		if (oid1->value[i] != oid2->value[i])
 			return 0;
-		if (oid1->value[i] == -1)
-			break;
 	}
 
 	return 1;
