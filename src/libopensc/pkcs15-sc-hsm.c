@@ -276,11 +276,88 @@ static void fixup_cvc_printable_string_lengths(sc_cvc_t *cvc)
 }
 
 /*
+ * Sets up asn1_cvcert to point to asn1_cvc_body, asn1_cvc_pubkey, and
+ * cvc. When sc_asn1_decode is called on asn1_cvcert, it will populate fields
+ * in cvc.
+ *
+ * @param asn1_cvcert: unpopulated array with len matching c_asn1_cvcert
+ * @param asn1_cvc_cert: unpopulated array with len matching c_asn1_cvc_body
+ * @param asn1_cvc_pubkey: unpopulated array matching c_asn1_cvc_pubkey
+ * @param cvc: non NULL cvc struct
+ */
+static int sc_pkcs15emu_sc_hsm_format_asn1_cvcert(
+		struct sc_asn1_entry *asn1_cvcert, size_t asn1_cvcert_len,
+		struct sc_asn1_entry *asn1_cvc_body, size_t asn1_cvc_body_len,
+		struct sc_asn1_entry *asn1_cvc_pubkey, size_t asn1_cvc_pubkey_len,
+		sc_cvc_t *cvc)
+{
+	if ((asn1_cvc_pubkey_len < C_ASN1_CVC_PUBKEY_SIZE) ||
+		(asn1_cvc_body_len < C_ASN1_CVC_BODY_SIZE) ||
+		(asn1_cvcert_len < C_ASN1_CVCERT_SIZE)) {
+		return SC_ERROR_BUFFER_TOO_SMALL;
+	}
+
+	sc_copy_asn1_entry(c_asn1_cvc_pubkey, asn1_cvc_pubkey);
+	sc_copy_asn1_entry(c_asn1_cvc_body, asn1_cvc_body);
+	sc_copy_asn1_entry(c_asn1_cvcert, asn1_cvcert);
+
+	sc_format_asn1_entry(asn1_cvc_pubkey    , &cvc->pukoid, NULL, 0);
+	sc_format_asn1_entry(asn1_cvc_pubkey + 1, &cvc->primeOrModulus, &cvc->primeOrModuluslen, 0);
+	sc_format_asn1_entry(asn1_cvc_pubkey + 2, &cvc->coefficientAorExponent, &cvc->coefficientAorExponentlen, 0);
+	sc_format_asn1_entry(asn1_cvc_pubkey + 3, &cvc->coefficientB, &cvc->coefficientBlen, 0);
+	sc_format_asn1_entry(asn1_cvc_pubkey + 4, &cvc->basePointG, &cvc->basePointGlen, 0);
+	sc_format_asn1_entry(asn1_cvc_pubkey + 5, &cvc->order, &cvc->orderlen, 0);
+	sc_format_asn1_entry(asn1_cvc_pubkey + 6, &cvc->publicPoint, &cvc->publicPointlen, 0);
+	sc_format_asn1_entry(asn1_cvc_pubkey + 7, &cvc->cofactor, &cvc->cofactorlen, 0);
+	sc_format_asn1_entry(asn1_cvc_pubkey + 8, &cvc->modulusSize, NULL, 0);
+
+	sc_format_asn1_entry(asn1_cvc_body    , &cvc->cpi, NULL, 0);
+	cvc->carLen = sizeof(cvc->car);
+	sc_format_asn1_entry(asn1_cvc_body + 1, &cvc->car, &cvc->carLen, 0);
+	sc_format_asn1_entry(asn1_cvc_body + 2, asn1_cvc_pubkey, NULL, 0);
+	cvc->chrLen = sizeof(cvc->chr);
+	sc_format_asn1_entry(asn1_cvc_body + 3, &cvc->chr, &cvc->chrLen, 0);
+
+	sc_format_asn1_entry(asn1_cvcert    , asn1_cvc_body, NULL, 0);
+	sc_format_asn1_entry(asn1_cvcert + 1, &cvc->signature, &cvc->signatureLen, 0);
+	return SC_SUCCESS;
+}
+
+/*
+ * Sets up asn1_req to point to asn1_authreq, which points to asn1_cvcert and
+ * cvc
+ * When sc_asn1_decode is called on asn1_authreq, it will populate fields
+ * in cvc and asn1_cvcert
+ *
+ * @param asn1_authreq: unpopulated array with len matching c_asn1_req
+ * @param asn1_authreq: unpopulated array with len matching c_asn1_authreq
+ * @param asn1_cvcert: already-initialized array matching c_asn1_cvcert
+ *
+ */
+static int sc_pkcs15emu_sc_hsm_format_asn1_req(
+		struct sc_asn1_entry *asn1_authreq, size_t asn1_authreq_len,
+		struct sc_asn1_entry *asn1_cvcert,
+		sc_cvc_t *cvc)
+{
+	if (asn1_authreq_len < C_ASN1_AUTHREQ_SIZE) {
+		return SC_ERROR_BUFFER_TOO_SMALL;
+	}
+
+	sc_copy_asn1_entry(c_asn1_authreq, asn1_authreq);
+
+	sc_format_asn1_entry(asn1_authreq    , asn1_cvcert, NULL, 0);
+	cvc->outerCARLen = sizeof(cvc->outer_car);
+	sc_format_asn1_entry(asn1_authreq + 1, &cvc->outer_car, &cvc->outerCARLen, 0);
+	sc_format_asn1_entry(asn1_authreq + 2, &cvc->outerSignature, &cvc->outerSignatureLen, 0);
+	return SC_SUCCESS;
+}
+
+/*
  * Decode a card verifiable certificate as defined in TR-03110.
  */
 int sc_pkcs15emu_sc_hsm_decode_cvc(sc_pkcs15_card_t * p15card,
-											const u8 ** buf, size_t *buflen,
-											sc_cvc_t *cvc)
+	const u8 ** buf, size_t *buflen,
+	sc_cvc_t *cvc)
 {
 	sc_card_t *card = p15card->card;
 	struct sc_asn1_entry asn1_req[C_ASN1_REQ_SIZE];
@@ -296,40 +373,23 @@ int sc_pkcs15emu_sc_hsm_decode_cvc(sc_pkcs15_card_t * p15card,
 
 	memset(cvc, 0, sizeof(*cvc));
 	sc_copy_asn1_entry(c_asn1_req, asn1_req);
-	sc_copy_asn1_entry(c_asn1_authreq, asn1_authreq);
 	sc_copy_asn1_entry(c_asn1_cvc, asn1_cvc);
-	sc_copy_asn1_entry(c_asn1_cvcert, asn1_cvcert);
-	sc_copy_asn1_entry(c_asn1_cvc_body, asn1_cvc_body);
-	sc_copy_asn1_entry(c_asn1_cvc_pubkey, asn1_cvc_pubkey);
 
-	sc_format_asn1_entry(asn1_cvc_pubkey    , &cvc->pukoid, NULL, 0);
-	sc_format_asn1_entry(asn1_cvc_pubkey + 1, &cvc->primeOrModulus, &cvc->primeOrModuluslen, 0);
-	sc_format_asn1_entry(asn1_cvc_pubkey + 2, &cvc->coefficientAorExponent, &cvc->coefficientAorExponentlen, 0);
-	sc_format_asn1_entry(asn1_cvc_pubkey + 3, &cvc->coefficientB, &cvc->coefficientBlen, 0);
-	sc_format_asn1_entry(asn1_cvc_pubkey + 4, &cvc->basePointG, &cvc->basePointGlen, 0);
-	sc_format_asn1_entry(asn1_cvc_pubkey + 5, &cvc->order, &cvc->orderlen, 0);
-	sc_format_asn1_entry(asn1_cvc_pubkey + 6, &cvc->publicPoint, &cvc->publicPointlen, 0);
-	sc_format_asn1_entry(asn1_cvc_pubkey + 7, &cvc->cofactor, &cvc->cofactorlen, 0);
-	sc_format_asn1_entry(asn1_cvc_pubkey + 8, &cvc->modulusSize, NULL, 0);
+	r = sc_pkcs15emu_sc_hsm_format_asn1_cvcert(
+			asn1_cvcert, C_ASN1_CVCERT_SIZE,
+			asn1_cvc_body, C_ASN1_CVC_BODY_SIZE,
+			asn1_cvc_pubkey, C_ASN1_CVC_PUBKEY_SIZE,
+			cvc);
+	LOG_TEST_RET(card->ctx, r, "sc_asn1_entry array too small");
 
-	sc_format_asn1_entry(asn1_cvc_body    , &cvc->cpi, NULL, 0);
-	cvc->carLen = sizeof(cvc->car);
-	sc_format_asn1_entry(asn1_cvc_body + 1, &cvc->car, &cvc->carLen, 0);
-	sc_format_asn1_entry(asn1_cvc_body + 2, &asn1_cvc_pubkey, NULL, 0);
-	cvc->chrLen = sizeof(cvc->chr);
-	sc_format_asn1_entry(asn1_cvc_body + 3, &cvc->chr, &cvc->chrLen, 0);
+	sc_format_asn1_entry(asn1_cvc, asn1_cvcert, NULL, 0);
 
-	sc_format_asn1_entry(asn1_cvcert    , &asn1_cvc_body, NULL, 0);
-	sc_format_asn1_entry(asn1_cvcert + 1, &cvc->signature, &cvc->signatureLen, 0);
+	r = sc_pkcs15emu_sc_hsm_format_asn1_req(
+			asn1_authreq, C_ASN1_AUTHREQ_SIZE,
+			asn1_cvcert, cvc);
+	LOG_TEST_RET(card->ctx, r, "sc_asn1_entry array too small");
 
-	sc_format_asn1_entry(asn1_cvc , &asn1_cvcert, NULL, 0);
-
-	sc_format_asn1_entry(asn1_authreq    , &asn1_cvcert, NULL, 0);
-	cvc->outerCARLen = sizeof(cvc->outer_car);
-	sc_format_asn1_entry(asn1_authreq + 1, &cvc->outer_car, &cvc->outerCARLen, 0);
-	sc_format_asn1_entry(asn1_authreq + 2, &cvc->outerSignature, &cvc->outerSignatureLen, 0);
-
-	sc_format_asn1_entry(asn1_req , &asn1_authreq, NULL, 0);
+	sc_format_asn1_entry(asn1_req, asn1_authreq, NULL, 0);
 
 /*	sc_asn1_print_tags(*buf, *buflen); */
 
