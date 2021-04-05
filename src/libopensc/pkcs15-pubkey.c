@@ -912,6 +912,14 @@ sc_pkcs15_encode_pubkey_as_spki(sc_context_t *ctx, struct sc_pkcs15_pubkey *pubk
 		r = sc_pkcs15_encode_pubkey(ctx, pubkey, &pkey.value, &pkey.len);
 		key_len = pkey.len * 8;
 		break;
+	case SC_ALGORITHM_EDDSA:
+	case SC_ALGORITHM_XEDDSA:
+		/* For a SPKI, the pubkey is placed directly in the BIT STRING */
+		pkey.value = malloc(pubkey->u.eddsa.pubkey.len);
+		memcpy(pkey.value, pubkey->u.eddsa.pubkey.value, pubkey->u.eddsa.pubkey.len);
+		// Should be pkey.len = 0 there?
+		key_len = pubkey->u.eddsa.pubkey.len * 8;
+		break;
 	default:
 		r = sc_pkcs15_encode_pubkey(ctx, pubkey, &pkey.value, &pkey.len);
 		key_len = pkey.len * 8;
@@ -1507,6 +1515,12 @@ sc_pkcs15_pubkey_from_spki_fields(struct sc_context *ctx, struct sc_pkcs15_pubke
 		}
 		memcpy(pubkey->u.ec.ecpointQ.value, pk.value, pk.len);
 		pubkey->u.ec.ecpointQ.len = pk.len;
+	} else if (pk_alg.algorithm == SC_ALGORITHM_EDDSA ||
+		   pk_alg.algorithm == SC_ALGORITHM_XEDDSA) {
+		/* EDDSA/XEDDSA public key is not encapsulated into BIT STRING -- it's a BIT STRING */
+		pubkey->u.eddsa.pubkey.value = malloc(pk.len);
+		memcpy(pubkey->u.eddsa.pubkey.value, pk.value, pk.len);
+		pubkey->u.eddsa.pubkey.len = pk.len;
 	} else {
 		/* Public key is expected to be encapsulated into BIT STRING */
 		r = sc_pkcs15_decode_pubkey(ctx, pubkey, pk.value, pk.len);
