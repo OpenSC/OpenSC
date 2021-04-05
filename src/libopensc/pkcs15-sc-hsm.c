@@ -261,7 +261,19 @@ static int read_file(sc_pkcs15_card_t * p15card, u8 fid[2],
 	return SC_SUCCESS;
 }
 
-
+static void fixup_cvc_printable_string_lengths(sc_cvc_t *cvc)
+{
+	/* SC_ASN1_PRINTABLESTRING adds 1 for the null-terminator */
+	if (cvc->chrLen > 0) {
+		cvc->chrLen--;
+	}
+	if (cvc->carLen > 0) {
+		cvc->carLen--;
+	}
+	if (cvc->outerCARLen > 0) {
+		cvc->outerCARLen--;
+	}
+}
 
 /*
  * Decode a card verifiable certificate as defined in TR-03110.
@@ -279,9 +291,6 @@ int sc_pkcs15emu_sc_hsm_decode_cvc(sc_pkcs15_card_t * p15card,
 	struct sc_asn1_entry asn1_cvc_pubkey[C_ASN1_CVC_PUBKEY_SIZE];
 	unsigned int cla,tag;
 	size_t taglen;
-	size_t lenchr = sizeof(cvc->chr);
-	size_t lencar = sizeof(cvc->car);
-	size_t lenoutercar = sizeof(cvc->outer_car);
 	const u8 *tbuf;
 	int r;
 
@@ -304,9 +313,11 @@ int sc_pkcs15emu_sc_hsm_decode_cvc(sc_pkcs15_card_t * p15card,
 	sc_format_asn1_entry(asn1_cvc_pubkey + 8, &cvc->modulusSize, NULL, 0);
 
 	sc_format_asn1_entry(asn1_cvc_body    , &cvc->cpi, NULL, 0);
-	sc_format_asn1_entry(asn1_cvc_body + 1, &cvc->car, &lencar, 0);
+	cvc->carLen = sizeof(cvc->car);
+	sc_format_asn1_entry(asn1_cvc_body + 1, &cvc->car, &cvc->carLen, 0);
 	sc_format_asn1_entry(asn1_cvc_body + 2, &asn1_cvc_pubkey, NULL, 0);
-	sc_format_asn1_entry(asn1_cvc_body + 3, &cvc->chr, &lenchr, 0);
+	cvc->chrLen = sizeof(cvc->chr);
+	sc_format_asn1_entry(asn1_cvc_body + 3, &cvc->chr, &cvc->chrLen, 0);
 
 	sc_format_asn1_entry(asn1_cvcert    , &asn1_cvc_body, NULL, 0);
 	sc_format_asn1_entry(asn1_cvcert + 1, &cvc->signature, &cvc->signatureLen, 0);
@@ -314,7 +325,8 @@ int sc_pkcs15emu_sc_hsm_decode_cvc(sc_pkcs15_card_t * p15card,
 	sc_format_asn1_entry(asn1_cvc , &asn1_cvcert, NULL, 0);
 
 	sc_format_asn1_entry(asn1_authreq    , &asn1_cvcert, NULL, 0);
-	sc_format_asn1_entry(asn1_authreq + 1, &cvc->outer_car, &lenoutercar, 0);
+	cvc->outerCARLen = sizeof(cvc->outer_car);
+	sc_format_asn1_entry(asn1_authreq + 1, &cvc->outer_car, &cvc->outerCARLen, 0);
 	sc_format_asn1_entry(asn1_authreq + 2, &cvc->outerSignature, &cvc->outerSignatureLen, 0);
 
 	sc_format_asn1_entry(asn1_req , &asn1_authreq, NULL, 0);
@@ -334,6 +346,8 @@ int sc_pkcs15emu_sc_hsm_decode_cvc(sc_pkcs15_card_t * p15card,
 
 	LOG_TEST_RET(card->ctx, r, "Could not decode card verifiable certificate");
 
+	fixup_cvc_printable_string_lengths(cvc);
+
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
@@ -351,8 +365,6 @@ int sc_pkcs15emu_sc_hsm_encode_cvc(sc_pkcs15_card_t * p15card,
 	struct sc_asn1_entry asn1_cvcert[C_ASN1_CVCERT_SIZE];
 	struct sc_asn1_entry asn1_cvc_body[C_ASN1_CVC_BODY_SIZE];
 	struct sc_asn1_entry asn1_cvc_pubkey[C_ASN1_CVC_PUBKEY_SIZE];
-	size_t lenchr;
-	size_t lencar;
 	int r;
 
 	sc_copy_asn1_entry(c_asn1_cvc, asn1_cvc);
@@ -382,11 +394,9 @@ int sc_pkcs15emu_sc_hsm_encode_cvc(sc_pkcs15_card_t * p15card,
 	}
 
 	sc_format_asn1_entry(asn1_cvc_body    , &cvc->cpi, NULL, 1);
-	lencar = strnlen(cvc->car, sizeof cvc->car);
-	sc_format_asn1_entry(asn1_cvc_body + 1, &cvc->car, &lencar, 1);
+	sc_format_asn1_entry(asn1_cvc_body + 1, &cvc->car, &cvc->carLen, 1);
 	sc_format_asn1_entry(asn1_cvc_body + 2, &asn1_cvc_pubkey, NULL, 1);
-	lenchr = strnlen(cvc->chr, sizeof cvc->chr);
-	sc_format_asn1_entry(asn1_cvc_body + 3, &cvc->chr, &lenchr, 1);
+	sc_format_asn1_entry(asn1_cvc_body + 3, &cvc->chr, &cvc->chrLen, 1);
 
 	sc_format_asn1_entry(asn1_cvcert    , &asn1_cvc_body, NULL, 1);
 	if (cvc->signature && (cvc->signatureLen > 0)) {
