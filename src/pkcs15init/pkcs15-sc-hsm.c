@@ -265,8 +265,10 @@ static int sc_hsm_generate_key(struct sc_profile *profile, struct sc_pkcs15_card
 	memset(&cvc, 0, sizeof(cvc));
 
 	strlcpy(cvc.car, "UTCA00001", sizeof cvc.car);
+	cvc.carLen = strlen(cvc.car);
 	strlcpy(cvc.chr, priv->serialno, sizeof cvc.chr);
 	strlcat(cvc.chr, "00001", sizeof cvc.chr);
+	cvc.chrLen = strlen(cvc.chr);
 
 	switch(object->type) {
 	case SC_PKCS15_TYPE_PRKEY_RSA:

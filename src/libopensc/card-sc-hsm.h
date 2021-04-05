@@ -74,6 +74,7 @@ typedef struct sc_hsm_private_data {
 struct sc_cvc {
 	int cpi;							// Certificate profile indicator (0)
 	char car[17];						// Certification authority reference
+	size_t carLen;						// strlen of car
 
 	struct sc_object_id pukoid;			// Public key algorithm object identifier
 	u8 *primeOrModulus;					// Prime for ECC or modulus for RSA
@@ -94,11 +95,14 @@ struct sc_cvc {
 	int modulusSize;					// Size of RSA modulus in bits
 
 	char chr[21];						// Certificate holder reference
+	size_t chrLen;						// strlen of chr
 
 	u8 *signature;						// Certificate signature or request self-signed signature
 	size_t signatureLen;
 
 	char outer_car[17];					// Instance signing the request
+	size_t outerCARLen;					// strlen of outer_car
+
 	u8 *outerSignature;					// Request authenticating signature
 	size_t outerSignatureLen;
 };
