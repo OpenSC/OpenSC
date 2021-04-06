@@ -973,7 +973,7 @@ sc_pkcs15emu_oberthur_add_data(struct sc_pkcs15_card *p15card,
 		free(info_blob);
 		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Invalid length of 'oid' received");
 	}
-	if (oid_len)   {
+	if (oid_len > 2) {
 		oid = info_blob + offs + 2;
 		if (*oid != 0x06 || (*(oid + 1) != oid_len - 2)) {
 			free(info_blob);
