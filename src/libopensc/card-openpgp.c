@@ -907,9 +907,9 @@ pgp_get_card_features(sc_card_t *card)
 		}
 
 		/* if we found at least one usable algo, let's skip other ways to find them */
-		if (handled_algos > 0) {
+		if (handled_algos) {
 			sc_log(card->ctx, "Algo list populated from Algorithm Information DO");
-			LOG_FUNC_RETURN(card->ctx, 1);
+			LOG_FUNC_RETURN(card->ctx, handled_algos);
 		}
 
 		/* get _current_ algorithms & key lengths from "algorithm attributes" DOs
@@ -932,7 +932,7 @@ pgp_get_card_features(sc_card_t *card)
 
 	}
 
-	LOG_FUNC_RETURN(card->ctx, 0);
+	LOG_FUNC_RETURN(card->ctx, handled_algos);
 }
 
 
