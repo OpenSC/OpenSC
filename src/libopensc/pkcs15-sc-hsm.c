@@ -214,6 +214,26 @@ static const struct sc_asn1_entry c_asn1_req[C_ASN1_REQ_SIZE] = {
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
+struct sc_object_id sc_hsm_public_key_oid = {
+    {1, 3, 6, 1, 4, 1, 24991, 4, 3, 1, -1}
+};
+
+#define C_ASN1_SC_HSM_PKA_NEW_SIZE 5
+static const struct sc_asn1_entry c_asn1_sc_hsm_pka_new_format[C_ASN1_SC_HSM_PKA_NEW_SIZE] = {
+	{ "oid", SC_ASN1_OBJECT, SC_ASN1_TAG_UNIVERSAL | SC_ASN1_TAG_OBJECT, 0, NULL, NULL },
+	{ "dicaCVC", SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_APP | 1, 0, NULL, NULL },
+	{ "deviceCVC", SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_APP | 2, 0, NULL, NULL },
+	{ "publicKey", SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_APP | 3, 0, NULL, NULL },
+	{ NULL, 0, 0, 0, NULL, NULL }
+};
+
+#define C_ASN1_SC_HSM_PKA_OLD_SIZE 4
+static const struct sc_asn1_entry c_asn1_sc_hsm_pka_old_format[C_ASN1_SC_HSM_PKA_OLD_SIZE] = {
+	{ "publicKey", SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_APP | 7, 0, NULL, NULL },
+	{ "deviceCVCert", SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_APP | 0x1F21, 0, NULL, NULL },
+	{ "dicaCVCert", SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_APP | 0x1F21, 0, NULL, NULL },
+	{ NULL, 0, 0, 0, NULL, NULL }
+};
 
 
 static int read_file(sc_pkcs15_card_t * p15card, u8 fid[2],
@@ -411,7 +431,332 @@ int sc_pkcs15emu_sc_hsm_decode_cvc(sc_pkcs15_card_t * p15card,
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
+struct sc_asn1_cvc_format {
+	struct sc_asn1_entry asn1_cvc[C_ASN1_CVC_SIZE];
+	struct sc_asn1_entry asn1_cvcert[C_ASN1_CVCERT_SIZE];
+	struct sc_asn1_entry asn1_cvc_body[C_ASN1_CVC_BODY_SIZE];
+	struct sc_asn1_entry asn1_cvc_pubkey[C_ASN1_CVC_PUBKEY_SIZE];
+};
 
+struct sc_asn1_sc_hsm_pka_callback_arg {
+	sc_context_t *ctx;
+	struct sc_asn1_entry *next_entry;
+	sc_cvc_pka_component_t *component;
+};
+
+
+struct sc_asn1_sc_hsm_pka_data {
+	struct sc_asn1_entry asn1_public_key_req[C_ASN1_REQ_SIZE];
+	struct sc_asn1_entry asn1_public_key_authreq[C_ASN1_AUTHREQ_SIZE];
+	struct sc_asn1_cvc_format asn1_public_key_cvc;
+	struct sc_asn1_cvc_format asn1_device_cvc;
+	struct sc_asn1_cvc_format asn1_dica_cvc;
+	struct sc_asn1_sc_hsm_pka_callback_arg public_key_req_arg;
+	struct sc_asn1_sc_hsm_pka_callback_arg device_arg;
+	struct sc_asn1_sc_hsm_pka_callback_arg dica_arg;
+};
+
+struct sc_asn1_sc_hsm_pka_new_format {
+	struct sc_asn1_entry seq[C_ASN1_SC_HSM_PKA_NEW_SIZE];
+	struct sc_asn1_sc_hsm_pka_data data;
+	struct sc_object_id oid;
+};
+
+struct sc_asn1_sc_hsm_pka_old_format {
+	struct sc_asn1_entry seq[C_ASN1_SC_HSM_PKA_OLD_SIZE];
+	struct sc_asn1_sc_hsm_pka_data data;
+};
+
+/*
+ * Saves the current pointer then continues to decode
+ */
+static int sc_asn1_sc_hsm_pka_set_ptr_callback(
+		sc_context_t *nctx, void *arg, const u8 *obj,
+		size_t objlen, int depth)
+{
+	struct sc_asn1_sc_hsm_pka_callback_arg *carg = arg;
+
+	carg->component->ptr = obj;
+	carg->component->len = objlen;
+
+	return sc_asn1_decode(carg->ctx, carg->next_entry, obj, objlen, NULL, NULL);
+}
+
+static int sc_asn1_sc_hsm_pka_data_init(sc_context_t *ctx,
+	struct sc_asn1_sc_hsm_pka_data *data,
+	sc_cvc_pka_t *pka)
+{
+	int r;
+
+	data->public_key_req_arg.ctx = ctx;
+	data->device_arg.ctx = ctx;
+	data->dica_arg.ctx = ctx;
+
+	/* public key info is in an authenticatedrequest (0x67) */
+	r = sc_pkcs15emu_sc_hsm_format_asn1_cvcert(
+			data->asn1_public_key_cvc.asn1_cvcert, C_ASN1_CVCERT_SIZE,
+			data->asn1_public_key_cvc.asn1_cvc_body, C_ASN1_CVC_BODY_SIZE,
+			data->asn1_public_key_cvc.asn1_cvc_pubkey, C_ASN1_CVC_PUBKEY_SIZE,
+			&pka->public_key_req.cvc);
+	LOG_TEST_RET(ctx, r, "sc_asn1_entry too small");
+
+	r = sc_pkcs15emu_sc_hsm_format_asn1_req(
+			data->asn1_public_key_authreq, C_ASN1_AUTHREQ_SIZE,
+			data->asn1_public_key_cvc.asn1_cvcert,
+			&pka->public_key_req.cvc);
+	LOG_TEST_RET(ctx, r, "sc_asn1_entry too small");
+
+	/*
+	 * insert a callback between req and authreq
+	 * the HSM expects the contents of the 0x67 authenticatedrequest tag (not
+	 * including the 0x67 tag itself)
+	 */
+	sc_copy_asn1_entry(c_asn1_req, data->asn1_public_key_req);
+	data->asn1_public_key_req[0].type = SC_ASN1_CALLBACK;
+	data->public_key_req_arg.component = &pka->public_key_req;
+	data->public_key_req_arg.next_entry = data->asn1_public_key_authreq;
+	sc_format_asn1_entry(data->asn1_public_key_req,
+			sc_asn1_sc_hsm_pka_set_ptr_callback,
+			&data->public_key_req_arg, 0);
+
+	/* device CVC is a certificate (0x7F21) */
+	r = sc_pkcs15emu_sc_hsm_format_asn1_cvcert(
+			data->asn1_device_cvc.asn1_cvcert, C_ASN1_CVCERT_SIZE,
+			data->asn1_device_cvc.asn1_cvc_body, C_ASN1_CVC_BODY_SIZE,
+			data->asn1_device_cvc.asn1_cvc_pubkey, C_ASN1_CVC_PUBKEY_SIZE,
+			&pka->device.cvc);
+	LOG_TEST_RET(ctx, r, "sc_asn1_entry too small");
+
+	/*
+	 * insert a callback between asn1_cvc and asn1_cvcert
+	 * the HSM expects the contents of the 0x7F21 CVC tag (not including the
+	 * 0x7F21 tag itself)
+	 */
+	sc_copy_asn1_entry(c_asn1_cvc, data->asn1_device_cvc.asn1_cvc);
+	data->asn1_device_cvc.asn1_cvc[0].type = SC_ASN1_CALLBACK;
+	data->device_arg.component = &pka->device;
+	data->device_arg.next_entry = data->asn1_device_cvc.asn1_cvcert;
+	sc_format_asn1_entry(data->asn1_device_cvc.asn1_cvc,
+			sc_asn1_sc_hsm_pka_set_ptr_callback,
+			&data->device_arg, 0);
+
+	/* device issuer CA CVC is a certificate (0x7F21) */
+	r = sc_pkcs15emu_sc_hsm_format_asn1_cvcert(
+			data->asn1_dica_cvc.asn1_cvcert, C_ASN1_CVCERT_SIZE,
+			data->asn1_dica_cvc.asn1_cvc_body, C_ASN1_CVC_BODY_SIZE,
+			data->asn1_dica_cvc.asn1_cvc_pubkey, C_ASN1_CVC_PUBKEY_SIZE,
+			&pka->dica.cvc);
+	LOG_TEST_RET(ctx, r, "sc_asn1_entry too small");
+
+	/*
+	 * insert a callback between asn1_cvc and asn1_cvcert
+	 * the HSM expects the contents of the 0x7F21 CVC tag (not including the
+	 * 0x7F21 tag itself)
+	 */
+	sc_copy_asn1_entry(c_asn1_cvc, data->asn1_dica_cvc.asn1_cvc);
+	data->asn1_dica_cvc.asn1_cvc[0].type = SC_ASN1_CALLBACK;
+	data->dica_arg.component = &pka->dica;
+	data->dica_arg.next_entry = data->asn1_dica_cvc.asn1_cvcert;
+	sc_format_asn1_entry(data->asn1_dica_cvc.asn1_cvc,
+			sc_asn1_sc_hsm_pka_set_ptr_callback,
+			&data->dica_arg, 0);
+	return SC_SUCCESS;
+}
+
+/*
+ * For SmartCard HSMs, this is the older format for registering a public key
+ * for public key authentication.
+ *
+ * @param buf: *buf should point to the first tag in the sequence
+ *
+ * SEQUENCE (0x30)
+ *	 authenticatedrequest for public key details (0x67)
+ *	 device CVC (0x7F21)
+ *	 device issuer CA CVC (0x7F21)
+ */
+static int decode_pka_old_format(sc_pkcs15_card_t *p15card,
+	const u8 **buf, size_t *buflen,
+	sc_cvc_pka_t *pka)
+{
+	int r;
+	sc_card_t *card;
+	struct sc_asn1_sc_hsm_pka_old_format *format = NULL;
+
+	card = p15card->card;
+
+	format = calloc(1, sizeof(*format));
+	if (format == NULL) {
+		r = SC_ERROR_OUT_OF_MEMORY;
+		goto err;
+	}
+
+	r = sc_asn1_sc_hsm_pka_data_init(card->ctx, &format->data, pka);
+	LOG_TEST_GOTO_ERR(card->ctx, r, "sc_asn1_entry array too small");
+
+	sc_copy_asn1_entry(c_asn1_sc_hsm_pka_old_format, format->seq);
+	format->seq[0] = format->data.asn1_public_key_req[0];
+	format->seq[1] = format->data.asn1_device_cvc.asn1_cvc[0];
+	format->seq[2] = format->data.asn1_dica_cvc.asn1_cvc[0];
+
+	r = sc_asn1_decode(p15card->card->ctx, format->seq, *buf, *buflen,
+			buf, buflen);
+	LOG_TEST_GOTO_ERR(card->ctx, r,
+		"Could not decode ASN.1 for public key file's old format");
+
+	r = SC_SUCCESS;
+	/* fall-through */
+
+err:
+	free(format);
+	format = NULL;
+	return r;
+}
+
+/*
+ * For SmartCard HSMs, this is the newer format for registering a public key
+ * for public key authentication.
+ *
+ * @param buf: *buf should point to the first tag after the sequence tag
+ *
+ * 1.3.6.1.4.1.24991 is the CardContact organization
+ * The 4.3.1 part is from inspecting their exported public key, but it doesn't
+ * seem to be publicly registered.
+ *
+ * SEQUENCE (0x30)
+ *   OID (0x6) 1.3.6.1.4.1.24991.4.3.1
+ *   Application 1 (0x61)
+ *      device CVC (0x7F21)
+ *   Application 2 (0x62)
+ *      device issuer CA CVC (0x7F21)
+ *   Application 3 (0x63)
+ *      authenticatedrequest for public key details (0x67)
+ */
+static int decode_pka_new_format(sc_pkcs15_card_t *p15card,
+	const u8 **buf, size_t *buflen,
+	sc_cvc_pka_t *pka)
+{
+	int r;
+	sc_card_t *card;
+	struct sc_asn1_sc_hsm_pka_new_format *format = NULL;
+
+	card = p15card->card;
+
+	format = calloc(1, sizeof(*format));
+	if (format == NULL) {
+		r = SC_ERROR_OUT_OF_MEMORY;
+		goto err;
+	}
+
+	r = sc_asn1_sc_hsm_pka_data_init(card->ctx, &format->data, pka);
+	LOG_TEST_GOTO_ERR(card->ctx, r, "sc_asn1_entry array too small");
+
+	sc_copy_asn1_entry(c_asn1_sc_hsm_pka_new_format, format->seq);
+	sc_format_asn1_entry(&format->seq[0], &format->oid, NULL, 0);
+	sc_format_asn1_entry(&format->seq[1],
+			format->data.asn1_dica_cvc.asn1_cvc, NULL, 0);
+	sc_format_asn1_entry(&format->seq[2],
+			format->data.asn1_device_cvc.asn1_cvc, NULL, 0);
+	sc_format_asn1_entry(&format->seq[3],
+			format->data.asn1_public_key_req, NULL, 0);
+
+	r = sc_asn1_decode(p15card->card->ctx, format->seq, *buf, *buflen,
+			buf, buflen);
+	LOG_TEST_GOTO_ERR(card->ctx, r,
+		"Could not decode ASN.1 for public key file's new format");
+
+	if (sc_compare_oid(&format->oid, &sc_hsm_public_key_oid) == 0) {
+		/* sc_dump_oid uses static memory */
+		sc_log(p15card->card->ctx, "OID %s did not match expected value",
+			   sc_dump_oid(&format->oid));
+		r = -1;
+		goto err;
+	}
+
+	r = SC_SUCCESS;
+	/* fall-through */
+
+err:
+	free(format);
+	format = NULL;
+	return r;
+}
+
+/*
+ * @param pka: will be overwritten, should be uninitialized or memset to 0
+ */
+int sc_pkcs15emu_sc_hsm_decode_pka(sc_pkcs15_card_t *p15card,
+	const u8 **buf, size_t *buflen,
+	sc_cvc_pka_t *pka)
+{
+	int r;
+	const u8 *curr;
+	const u8 *peek;
+	unsigned int cla, tag;
+	size_t taglen;
+	size_t currlen;
+	sc_card_t *card;
+
+	memset(pka, 0, sizeof(*pka));
+
+	card = p15card->card;
+	curr = *buf;
+	currlen = *buflen;
+
+	/* first tag should be sequence */
+	r = sc_asn1_read_tag(&curr, currlen, &cla, &tag, &taglen);
+	LOG_TEST_GOTO_ERR(card->ctx, r,
+			"Could not decode first sequence tag for public key file");
+	currlen = *buflen - (curr - *buf);
+
+	if ((cla != (SC_ASN1_TAG_UNIVERSAL|SC_ASN1_TAG_CONSTRUCTED)) ||
+			(tag != SC_ASN1_TAG_SEQUENCE)) {
+		sc_log(card->ctx,
+			   "Expected sequence tag, but got tag %u class 0x%x", tag, cla);
+		r = SC_ERROR_INVALID_ASN1_OBJECT;
+		goto err;
+	}
+
+	/* next tag is either OID (new format) or 0x67 (old format) */
+	peek = curr;
+	r = sc_asn1_read_tag(&peek, currlen, &cla, &tag, &taglen);
+	LOG_TEST_GOTO_ERR(card->ctx, r,
+			"Could not decode first sequence element tag for public key file");
+
+	if (tag == SC_ASN1_TAG_OBJECT) {
+		/* OID means it's the new format */
+		r = decode_pka_new_format(p15card, &curr, &currlen, pka);
+		LOG_TEST_GOTO_ERR(card->ctx, r,
+			"Could not decode public key file new format");
+	} else if ((cla == (SC_ASN1_TAG_APPLICATION|SC_ASN1_TAG_CONSTRUCTED)) &&
+				(tag == 7)) {
+		/*
+		 * if it's authenticatedrequest (Application 7 / 0x67), then attempt
+		 * to parse the old format
+		 */
+		r = decode_pka_old_format(p15card, &curr, &currlen, pka);
+		LOG_TEST_GOTO_ERR(card->ctx, r,
+			"Could not decode authenticatedrequest for public key file");
+	} else {
+		sc_log(card->ctx,
+				"Unexpected tag %u class 0x%x for first element of sequence",
+				tag, cla);
+		r = SC_ERROR_INVALID_ASN1_OBJECT;
+		goto err;
+	}
+
+	fixup_cvc_printable_string_lengths(&pka->public_key_req.cvc);
+	fixup_cvc_printable_string_lengths(&pka->device.cvc);
+	fixup_cvc_printable_string_lengths(&pka->dica.cvc);
+
+	*buf = curr;
+	*buflen = *buflen - (curr - *buf);
+
+	return SC_SUCCESS;
+
+err:
+	sc_pkcs15emu_sc_hsm_free_cvc_pka(pka);
+	return r;
+}
 
 /*
  * Encode a card verifiable certificate as defined in TR-03110.
@@ -650,7 +995,13 @@ void sc_pkcs15emu_sc_hsm_free_cvc(sc_cvc_t *cvc)
 	}
 }
 
-
+void sc_pkcs15emu_sc_hsm_free_cvc_pka(sc_cvc_pka_t *pka)
+{
+	sc_pkcs15emu_sc_hsm_free_cvc(&pka->public_key_req.cvc);
+	sc_pkcs15emu_sc_hsm_free_cvc(&pka->device.cvc);
+	sc_pkcs15emu_sc_hsm_free_cvc(&pka->dica.cvc);
+	memset(pka, 0, sizeof(*pka));
+}
 
 static int sc_pkcs15emu_sc_hsm_add_pubkey(sc_pkcs15_card_t *p15card, u8 *efbin, size_t len, sc_pkcs15_prkey_info_t *key_info, char *label)
 {

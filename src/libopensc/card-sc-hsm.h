@@ -120,15 +120,29 @@ struct ec_curve {
 	const struct sc_lv_data coFactor;
 };
 
+typedef struct sc_cvc_pka_component {
+	sc_cvc_t cvc;
+	const u8 *ptr; /* don't free, this points to the middle of a buffer */
+	size_t len;
+} sc_cvc_pka_component_t;
 
+typedef struct sc_cvc_pka {
+	sc_cvc_pka_component_t public_key_req;	/* CVC request with public key */
+	sc_cvc_pka_component_t device;			/* device CVC*/
+	sc_cvc_pka_component_t dica;			/* device issuer CA CVC */
+} sc_cvc_pka_t;
 
 int sc_pkcs15emu_sc_hsm_decode_cvc(sc_pkcs15_card_t * p15card,
 											const u8 ** buf, size_t *buflen,
 											sc_cvc_t *cvc);
+int sc_pkcs15emu_sc_hsm_decode_pka(sc_pkcs15_card_t * p15card,
+	const u8 **buf, size_t *buflen,
+	sc_cvc_pka_t *pka);
 int sc_pkcs15emu_sc_hsm_encode_cvc(sc_pkcs15_card_t * p15card,
 		sc_cvc_t *cvc,
 		u8 ** buf, size_t *buflen);
 void sc_pkcs15emu_sc_hsm_free_cvc(sc_cvc_t *cvc);
+void sc_pkcs15emu_sc_hsm_free_cvc_pka(sc_cvc_pka_t *pka);
 int sc_pkcs15emu_sc_hsm_get_curve(struct ec_curve **curve, u8 *oid, size_t oidlen);
 int sc_pkcs15emu_sc_hsm_get_public_key(struct sc_context *ctx, sc_cvc_t *cvc, struct sc_pkcs15_pubkey *pubkey);
 
