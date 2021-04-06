@@ -1,5 +1,36 @@
 NEWS for OpenSC -- History of user visible changes
 
+# New in 0.22.0; 2021-04-XX
+## General improvements
+ * Use standard paths for file cache on Linux (#2148) and OSX (#2214)
+ * Various issues of memory/buffer handling in legacy drivers mostly reported by oss-fuzz and coverity (tcos, oberthur, isoapplet, iasecc, westcos, gpk, flex, dnie, mcrd, authentic, belpic)
+ * Add threading test to `pkcs11-tool` (#2067)
+ * Add support to generate generic secret keys (#2140)
+ * `opensc-explorer`: Print information about LCS (Life cycle status byte) (#2195)
+ * Add support for Apple's arm64 (M1) binaries, removed TokenD. A seperate installer with TokenD (and without arm64 binaries) will be available (#2179).
+ * Support for gcc11 and its new strict aliasing rules (#2241, #2260)
+## PKCS#11
+ * Support for ECDSA verification (#2211)
+ * Support for ECDSA with different SHA hashes (#2190)
+ * Prevent issues in p11-kit by not returning unexpected return codes (#2207)
+ * Add support for PKCS#11 3.0: The new interfaces, profile objects and functions (#2096)
+ * Standardize the version 2 on 2.20 in the code (#2096)
+ * Fix CKA_MODIFIABLE and CKA_EXTRACTABLE  (#2176)
+## Minidriver
+ * Fix RSA-PSS signing (#2234)
+## OpenPGP
+ * Fix DO deletion (#2215)
+ * Add support for (X)EdDSA keys (#1960)
+## IDPrime
+ * Add support for applet version 3 and fix RSA-PSS mechanisms (#2205)
+## MyEID
+ * New configuration option for opensc.conf to disable pkcs1_padding (#2193)
+ * Add support for ECDSA with different hashes (#2190)
+ * Enable more mechanisms (#2178)
+ * Fixed asking for a user pin when formatting a card (#1737)
+## IAS/ECC
+ * Added support for French CPx Healthcare cards (#2217)
+
 # New in 0.21.0; 2020-11-24
 ## General Improvements
 * fixed security problems
