@@ -552,6 +552,10 @@ int sc_pkcs15emu_sc_hsm_get_public_key(struct sc_context *ctx, sc_cvc_t *cvc, st
 
 void sc_pkcs15emu_sc_hsm_free_cvc(sc_cvc_t *cvc)
 {
+	if (cvc->outerSignature) {
+		free(cvc->outerSignature);
+		cvc->outerSignature = NULL;
+	}
 	if (cvc->signature) {
 		free(cvc->signature);
 		cvc->signature = NULL;
