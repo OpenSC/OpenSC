@@ -685,58 +685,61 @@ int _pgp_add_algo(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t key_info, si
 {
 	unsigned long flags = 0, ext_flags = 0;
 
-	/* RSA [RFC 4880] */
+	/* [RFC 4880], [draft-ietf-openpgp-crypto-refresh] */
 	switch (key_info.algorithm) {
-		case SC_OPENPGP_KEYALGO_RSA:
-			/* OpenPGP card spec 1.1 & 2.x, section 7.2.9 & 7.2.10 /
-			 * v3.x section 7.2.11 & 7.2.12 */
-			flags = SC_ALGORITHM_RSA_PAD_PKCS1 |
-				SC_ALGORITHM_RSA_HASH_NONE |
-				SC_ALGORITHM_ONBOARD_KEY_GEN;	/* key gen on card */
+	case SC_OPENPGP_KEYALGO_RSA:
+		/* OpenPGP card spec 1.1 & 2.x, section 7.2.9 & 7.2.10 /
+		 * v3.x section 7.2.11 & 7.2.12 */
+		flags = SC_ALGORITHM_RSA_PAD_PKCS1 |
+			SC_ALGORITHM_RSA_HASH_NONE |
+			SC_ALGORITHM_ONBOARD_KEY_GEN;	/* key gen on card */
 
-			_sc_card_add_rsa_alg(card, key_info.u.rsa.modulus_len, flags, 0);
-			sc_log(card->ctx, "DO %zX: Added RSA algorithm, mod_len = %"
-				SC_FORMAT_LEN_SIZE_T"u",
-				do_num, key_info.u.rsa.modulus_len);
-			LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
-		case SC_OPENPGP_KEYALGO_ECDH:
-			/* The montgomery curve (curve25519) needs to go through
-			 * different paths, otherwise we handle it as a normal EC key */
-			if (_pgp_handle_curve25519(card, key_info, do_num))
-			    LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
-			/* fall through */
-		case SC_OPENPGP_KEYALGO_ECDSA:
-			/* v3.0+: ECC [RFC 4880 & 6637] */
-			/* EdDSA from draft-ietf-openpgp-rfc4880bis-08 */
+		_sc_card_add_rsa_alg(card, key_info.u.rsa.modulus_len, flags, 0);
+		sc_log(card->ctx, "DO %zX: Added RSA algorithm, mod_len = %"
+			SC_FORMAT_LEN_SIZE_T"u",
+			do_num, key_info.u.rsa.modulus_len);
+		break;
+	case SC_OPENPGP_KEYALGO_ECDH:
+		/* The montgomery curve (curve25519) needs to go through
+		 * different paths, otherwise we handle it as a normal EC key */
+		if (_pgp_handle_curve25519(card, key_info, do_num))
+			break;
+		/* fall through */
+	case SC_OPENPGP_KEYALGO_ECDSA:
+		/* v3.0+: ECC [RFC 4880 & 6637] */
+		/* EdDSA from draft-ietf-openpgp-rfc4880bis-08 */
 
-			/* Allow curve to be used by both ECDH and ECDSA.
-                         * pgp_init set these flags the same way */
-			flags = SC_ALGORITHM_ECDH_CDH_RAW;
-			flags |= SC_ALGORITHM_ECDSA_RAW;
-			flags |= SC_ALGORITHM_ECDSA_HASH_NONE;
-			flags |= SC_ALGORITHM_ONBOARD_KEY_GEN;
-			ext_flags = SC_ALGORITHM_EXT_EC_NAMEDCURVE;
+		/* Allow curve to be used by both ECDH and ECDSA.
+		 * pgp_init set these flags the same way */
+		flags = SC_ALGORITHM_ECDH_CDH_RAW;
+		flags |= SC_ALGORITHM_ECDSA_RAW;
+		flags |= SC_ALGORITHM_ECDSA_HASH_NONE;
+		flags |= SC_ALGORITHM_ONBOARD_KEY_GEN;
+		ext_flags = SC_ALGORITHM_EXT_EC_NAMEDCURVE;
 
-			_sc_card_add_ec_alg(card, key_info.u.ec.key_length, flags, ext_flags,
-				&key_info.u.ec.oid);
-			sc_log(card->ctx, "DO %zX: Added EC algorithm (%d), mod_len = %d" ,
-				do_num, key_info.algorithm, key_info.u.ec.key_length);
-			LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
-		case SC_OPENPGP_KEYALGO_EDDSA:
-			/* Handle Yubikey bug, that in DO FA curve25519 has EDDSA algo */
-			if (_pgp_handle_curve25519(card, key_info, do_num))
-				LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
-			_sc_card_add_eddsa_alg(card, key_info.u.ec.key_length,
-				SC_ALGORITHM_EDDSA_RAW, 0, &key_info.u.ec.oid);
+		_sc_card_add_ec_alg(card, key_info.u.ec.key_length, flags, ext_flags,
+			&key_info.u.ec.oid);
+		sc_log(card->ctx, "DO %zX: Added EC algorithm (%d), mod_len = %d" ,
+			do_num, key_info.algorithm, key_info.u.ec.key_length);
+		break;
+	case SC_OPENPGP_KEYALGO_EDDSA:
+		/* Handle Yubikey bug, that in DO FA curve25519 has EDDSA algo */
+		if (_pgp_handle_curve25519(card, key_info, do_num))
+			break;
+		_sc_card_add_eddsa_alg(card, key_info.u.ec.key_length,
+			SC_ALGORITHM_EDDSA_RAW, 0, &key_info.u.ec.oid);
 
-			sc_log(card->ctx, "DO %zX: Added EDDSA algorithm (%d), mod_len = %d" ,
-				do_num, key_info.algorithm, key_info.u.ec.key_length);
-			LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
-		default:
-			sc_log(card->ctx, "DO %zX: Unknown algorithm ID (%d)" ,
-				do_num, key_info.algorithm);
-			LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+		sc_log(card->ctx, "DO %zX: Added EDDSA algorithm (%d), mod_len = %d" ,
+			do_num, key_info.algorithm, key_info.u.ec.key_length);
+		break;
+	default:
+		sc_log(card->ctx, "DO %zX: Unknown algorithm ID (%d)" ,
+			do_num, key_info.algorithm);
+		/* return "false" if we do not understand algo */
+		return 0;
 	}
+	/* return true */
+	return 1;
 }
 
 
@@ -751,6 +754,7 @@ pgp_get_card_features(sc_card_t *card)
 	size_t hist_bytes_len = card->reader->atr_info.hist_bytes_len;
 	size_t i;
 	pgp_blob_t *blob, *blob6e, *blob73, *blobfa;
+	int handled_algos = 0;
 
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -800,6 +804,24 @@ pgp_get_card_features(sc_card_t *card)
 
 	if (priv->bcd_version >= OPENPGP_CARD_3_1) {
 		card->caps |= SC_CARD_CAP_ISO7816_PIN_INFO;
+	}
+
+	if (priv->bcd_version >= OPENPGP_CARD_3_4) {
+		/* Parse supported algorithms from Algorithm Information DO
+		 * see OpenPGP card spec 3.4 section 4.4.3.11 */
+		if (pgp_get_blob(card, priv->mf, 0x00fa, &blobfa) >= 0) {
+			pgp_blob_t *child;
+			pgp_enumerate_blob(card, blobfa);
+			/* There will be multiple childs with the same ID, but
+			 * different algos, so we need to iterate over all of them */
+			for (child = blobfa->files; child; child = child->next) {
+				if ((child->id < 0x00c1) || (child->id > 0x00c3))
+					continue;
+				sc_cardctl_openpgp_keygen_info_t key_info;
+				if (pgp_parse_algo_attr_blob(card, child, &key_info) >= 0)
+					handled_algos += _pgp_add_algo(card, key_info, 0x00fa);
+			}
+		}
 	}
 
 	/* v1.1 & v2.x: special DOs are limited to 254 bytes */
@@ -884,30 +906,10 @@ pgp_get_card_features(sc_card_t *card)
 			}
 		}
 
-		if (priv->bcd_version >= OPENPGP_CARD_3_4) {
-			int handled_algos = 0;
-			/* Parse supported algorithms from Algorithm Information DO
-			 * see OpenPGP card spec 3.4 section 4.4.3.11 */
-			if (pgp_get_blob(card, priv->mf, 0x00fa, &blobfa) >= 0) {
-				pgp_blob_t *child;
-				pgp_enumerate_blob(card, blobfa);
-				/* There will be multiple childs with the same ID, but
-				 * different algos, so we need to iterate over all of them */
-				for (child = blobfa->files; child; child = child->next) {
-					if ((child->id < 0x00c1) || (child->id > 0x00c3))
-						continue;
-					sc_cardctl_openpgp_keygen_info_t key_info;
-					if (pgp_parse_algo_attr_blob(card, child, &key_info) >= 0) {
-					    _pgp_add_algo(card, key_info, 0x00fa);
-					    /* Set it if we have at lest one known algo in DO FA */
-					    handled_algos = 1;
-					}
-				}
-			}
-			if (handled_algos) {
-			    sc_log(card->ctx, "Algo list populated from Algorithm Information DO");
-			    LOG_FUNC_RETURN(card->ctx, 1);
-			}
+		/* if we found at least one usable algo, let's skip other ways to find them */
+		if (handled_algos > 0) {
+			sc_log(card->ctx, "Algo list populated from Algorithm Information DO");
+			LOG_FUNC_RETURN(card->ctx, 1);
 		}
 
 		/* get _current_ algorithms & key lengths from "algorithm attributes" DOs
