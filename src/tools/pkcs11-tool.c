@@ -5746,7 +5746,7 @@ static int test_verify(CK_SESSION_HANDLE sess)
 	return errors;
 }
 
-#if OPENSC_VERSION_MAJOR == 0 && OPENSC_VERSION_MINOR <= 21
+#if OPENSC_VERSION_MAJOR == 0 && OPENSC_VERSION_MINOR <= 22
 #else
 #ifdef ENABLE_OPENSSL
 static int wrap_unwrap(CK_SESSION_HANDLE session,
@@ -5870,7 +5870,7 @@ static int wrap_unwrap(CK_SESSION_HANDLE session,
  */
 static int test_unwrap(CK_SESSION_HANDLE sess)
 {
-#if OPENSC_VERSION_MAJOR == 0 && OPENSC_VERSION_MINOR <= 21
+#if OPENSC_VERSION_MAJOR == 0 && OPENSC_VERSION_MINOR <= 22
 	/* temporarily disable test, see https://github.com/OpenSC/OpenSC/issues/1796 */
 	return 0;
 #else
@@ -7520,7 +7520,7 @@ static void * test_threads_run(void * pttd)
 			pctest ++;
 		if (*pctest == ':')
 			pctest++;
-		
+
 
 		if (rv != CKR_OK && rv != CKR_CRYPTOKI_ALREADY_INITIALIZED)
 		/* IN C_Initialize with NULL args */
@@ -7562,7 +7562,7 @@ static int test_threads_cleanup()
 		if (ended == test_threads_num) {
 			fprintf(stderr,"test_threads all threads have ended %s\n",
 					(ended_ok == test_threads_num)? "with CKR_OK": "some errors");
-			break; 
+			break;
 		} else {
 			fprintf(stderr,"test_threads threads stills active:%d\n", (test_threads_num - ended));
 			for (i = 0; i < test_threads_num; i++) {
@@ -7577,7 +7577,7 @@ static int test_threads_cleanup()
 #endif
 		}
 	}
-	
+
 	for (i = 0; i < test_threads_num; i++) {
 		fprintf(stderr,"test_threads thread:%d state:%d, rv:%s\n",
 			i, test_threads_datas[i].state, CKR2Str(test_threads_datas[i].rv));
@@ -7595,11 +7595,11 @@ static int test_threads_cleanup()
 	fprintf(stderr,"test_threads cleanup finished\n");
 	return 0;
 }
- 
+
 static int test_threads_start(int tnum)
 {
 	int r = 0;
-	
+
 #ifdef _WIN32
 	test_threads_handles[tnum] = CreateThread(NULL, 0, test_threads_run, (LPVOID) &test_threads_datas[tnum],
 		0, NULL);
@@ -7632,4 +7632,3 @@ static void test_threads()
 	}
 }
 #endif /* defined(_WIN32) || defiend(HAVE_PTHREAD) */
-
