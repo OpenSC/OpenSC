@@ -54,11 +54,6 @@ void usage_test(void **state) {
 			fprintf(stderr, " [ ERROR %s ] If Unwrap is set, Wrap should be set too.\n",
 			    objects.data[i].id_str);
 		}
-		if (objects.data[i].derive_pub) {
-			errors++;
-			fprintf(stderr, " [ ERROR %s ] Derive should not be set on public key\n",
-			    objects.data[i].id_str);
-		}
 
 		/* We have at least one usage flag for every key group */
 		if (! objects.data[i].sign       && ! objects.data[i].verify &&
