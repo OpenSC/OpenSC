@@ -613,7 +613,7 @@ pgp_parse_algo_attr_blob(sc_card_t *card, const pgp_blob_t *blob,
 			/* SC_OPENPGP_KEYALGO_ECDH || SC_OPENPGP_KEYALGO_ECDSA || SC_OPENPGP_KEYALGO_EDDSA */
 			key_info->algorithm = blob->data[0];
 
-			/* last byte is only set if pubkey import is supported, empty otherwise*/
+			/* last byte is set to 0xFF if pubkey import is supported */
 			if (blob->data[blob->len-1] == SC_OPENPGP_KEYFORMAT_EC_STDPUB){
 				if (blob->len < 3)
 					return SC_ERROR_INCORRECT_PARAMETERS;
@@ -621,9 +621,14 @@ pgp_parse_algo_attr_blob(sc_card_t *card, const pgp_blob_t *blob,
 				key_info->u.ec.keyformat = SC_OPENPGP_KEYFORMAT_EC_STDPUB;
 			}
 			else {
+				/* otherwise, last byte could be 00, so let's ignore it, as
+				 * it is not part of OID */
 				if (blob->len < 2)
 					return SC_ERROR_INCORRECT_PARAMETERS;
-				key_info->u.ec.oid_len = blob->len - 1;
+				if (blob->data[blob->len-1] == SC_OPENPGP_KEYFORMAT_EC_STD)
+					key_info->u.ec.oid_len = blob->len - 2;
+				else
+					key_info->u.ec.oid_len = blob->len - 1;
 				key_info->u.ec.keyformat = SC_OPENPGP_KEYFORMAT_EC_STD;
 			}
 
@@ -1635,7 +1640,6 @@ pgp_get_pubkey_pem(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 				/* PKCS#11 3.0: 2.3.5 Edwards EC public keys only support the use
 				 * of the curveName selection to specify a curve name as defined
 				 * in [RFC 8032] */
-
 				r = sc_pkcs15_encode_pubkey_as_spki(card->ctx, &p15pubkey, &data, &len);
 				break;
 			case SC_OPENPGP_KEYALGO_ECDH:
