@@ -1246,12 +1246,14 @@ pgp_enumerate_blob(sc_card_t *card, pgp_blob_t *blob)
 
 		r = sc_asn1_read_tag(&data, blob->len - (in - blob->data),
 					&cla, &tag, &len);
-		if (data == NULL) {
-			sc_log(card->ctx, "Unexpected end of contents");
-			return SC_ERROR_OBJECT_NOT_VALID;
-		}
 		if (r == SC_ERROR_INVALID_ASN1_OBJECT) {
 			sc_log(card->ctx, "Invalid ASN.1 object");
+			return SC_ERROR_OBJECT_NOT_VALID;
+		}
+		/* Check for unknown error, or empty data */
+		if (((r < 0) && (r != SC_ERROR_ASN1_END_OF_CONTENTS)) ||
+		    (data == NULL)) {
+			sc_log(card->ctx, "Unexpected end of contents");
 			return SC_ERROR_OBJECT_NOT_VALID;
 		}
 
