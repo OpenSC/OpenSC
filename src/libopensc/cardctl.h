@@ -1079,18 +1079,18 @@ typedef struct sc_cardctl_sc_hsm_wrapped_key {
 	size_t wrapped_key_length;	/* Length of key blob */
 } sc_cardctl_sc_hsm_wrapped_key_t;
 
-typedef struct sc_cardctl_sc_hsm_public_key {
-	const u8 *pk;				/* Public key */
-	size_t pk_length;			/* Length of key */
-	const u8 *devcert;			/* Device certificate */
-	size_t devcert_length;		/* Length of device certificate */
-	const u8 *dicacert;			/* Device issuer certificate */
-	size_t dicacert_length;		/* Length of device issuer certificate */
-	const u8 *devcert_chr;		/* Device certificate CHR */
-	size_t devcert_chr_length;	/* Length of device certificate CHR */
-	const u8 *dicacert_chr;		/* Device issuer certificate CHR */
-	size_t dicacert_chr_length;	/* Device issuer certificate CHR length */
-} sc_cardctl_sc_hsm_public_key_t;
+typedef struct sc_cardctl_sc_hsm_pka_status {
+    u8 num_total;
+    u8 num_missing;
+    u8 num_required;
+    u8 num_authenticated;
+} sc_cardctl_sc_hsm_pka_status_t;
+
+typedef struct sc_cardctl_sc_hsm_pka_register {
+    u8 *buf;
+    size_t buflen;
+    sc_cardctl_sc_hsm_pka_status_t new_status;
+} sc_cardctl_sc_hsm_pka_register_t;
 
 /*
  * isoApplet
