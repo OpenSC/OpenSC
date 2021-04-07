@@ -1811,90 +1811,13 @@ err:
 	return r;
 }
 
-static void get_CHR(char *chrstr, int is_cvc, sc_context_t *ctx, const u8 *buf, size_t buflen)
-{
-	const u8 *cv = NULL, *cb = NULL, *chr = NULL;
-	size_t taglen;
-
-	/* find CV certificate (should be right at the start) */
-	if (is_cvc) {
-		if (!(cv = sc_asn1_find_tag(ctx, buf, buflen, 0x7F21, &taglen))) {
-			strcpy(chrstr, "(CV certificate not found)");
-			return;
-		}
-		buf = cv;
-		buflen = taglen;
-	}
-
-	/* find embedded Certificate Body */
-	if (!(cb = sc_asn1_find_tag(ctx, buf, buflen, 0x7F4E, &taglen))) {
-		strcpy(chrstr, "(Certificate Body not found)");
-		return;
-	}
-	buf = cb;
-	buflen = taglen;
-
-	/* find embedded Certification Holder Reference (CHR) */
-	if (!(chr = sc_asn1_find_tag(ctx, buf, buflen, 0x5F20, &taglen))) {
-		strcpy(chrstr, "(CHR not found)");
-		return;
-	}
-
-	/* return CHR */
-	memcpy(chrstr, chr, taglen);
-}
-
-
-static int register_public_key_with_card(sc_context_t *ctx, sc_card_t *card, const u8 *pk, size_t pk_len, const u8 *devcert, size_t devcert_len, const u8 *dicacert, size_t dicacert_len)
-{
-	sc_cardctl_sc_hsm_public_key_t public_key;
-	char pk_chr[BUFSIZ] = { 0 }, devcert_chr[BUFSIZ] = { 0 }, dicacert_chr[BUFSIZ] = { 0 };
-	int r;
-
-	get_CHR(pk_chr, 1, ctx, pk, pk_len);
-	get_CHR(devcert_chr, 0, ctx, devcert, devcert_len);
-	fprintf(stderr, "Adding the key issued to '%s' on device '%s'.\n", pk_chr, devcert_chr);
-	get_CHR(dicacert_chr, 0, ctx, dicacert, dicacert_len);
-
-	public_key.pk = pk;
-	public_key.pk_length = pk_len;
-	public_key.devcert = devcert;
-	public_key.devcert_length = devcert_len;
-	public_key.dicacert = dicacert;
-	public_key.dicacert_length = dicacert_len;
-	public_key.devcert_chr = (const u8*) devcert_chr;
-	public_key.devcert_chr_length = strlen(devcert_chr);
-	public_key.dicacert_chr = (const u8*) dicacert_chr;
-	public_key.dicacert_chr_length = strlen(dicacert_chr);
-
-	r = sc_card_ctl(card, SC_CARDCTL_SC_HSM_REGISTER_PUBLIC_KEY, (void *)&public_key);
-	if (r == SC_ERROR_INS_NOT_SUPPORTED) { /* Not supported or not initialized for public key registration */
-		fprintf(stderr, "Card not initialized for public key registration\n");
-		return -1;
-	}
-	if (r < 0) {
-		fprintf(stderr, "sc_card_ctl(*, SC_CARDCTL_SC_HSM_REGISTER_PUBLIC_KEY, *) failed with %s\n", sc_strerror(r));
-		return -1;
-	}
-	fprintf(stderr, "Done.\n");
-	return 0;
-}
-
-
-
 static int register_public_key(sc_context_t *ctx, sc_card_t *card, const char *inf)
 {
 	FILE *in = NULL;
 	struct stat sb;
 	u8 *pka = NULL;
-	u8 tag = SC_ASN1_TAG_CONSTRUCTED | SC_ASN1_TAG_SEQUENCE; /* 0x30 */
-	unsigned int cla_out, tag_out;
-	const u8 *buf;
-	const u8 *pk;
-	const u8 *devcert;
-	const u8 *dicacert;
-	size_t taglen, pk_len, devcert_len, dicacert_len;
 	int r = 0;
+	sc_cardctl_sc_hsm_pka_register_t pka_register;
 
 	if (!(in = fopen(inf, "rb"))) {
 		perror(inf);
@@ -1923,65 +1846,28 @@ static int register_public_key(sc_context_t *ctx, sc_card_t *card, const char *i
 	}
 	fclose(in);
 	in = NULL;
-	if (pka[0] != tag) {
-		fprintf(stderr, "File does not contain a public key with certificates\n");
+
+	pka_register.buf = pka;
+	pka_register.buflen = sb.st_size;
+
+	r = sc_card_ctl(card, SC_CARDCTL_SC_HSM_REGISTER_PUBLIC_KEY, &pka_register);
+	if (r == SC_ERROR_INS_NOT_SUPPORTED) { /* Not supported or not initialized for public key registration */
+		fprintf(stderr, "Card not initialized for public key registration\n");
+		r = -1;
+		goto err;
+	}
+	if (r < 0) {
+		fprintf(stderr, "sc_card_ctl(*, SC_CARDCTL_SC_HSM_REGISTER_PUBLIC_KEY, *) failed with %s\n", sc_strerror(r));
 		r = -1;
 		goto err;
 	}
 
-	/* read ASN.1 sequence */
-	buf = pka;
-	if ((r = sc_asn1_read_tag(&buf, sb.st_size, &cla_out, &tag_out, &taglen)) < 0) {
-		fprintf(stderr, "Error reading ASN.1 sequence: %s\n", sc_strerror(r));
-		r = -1;
-		goto err;
-	}
+	printf("Number of public keys:     %d\n", pka_register.new_status.num_total);
+	printf("Missing public keys:       %d\n", pka_register.new_status.num_missing);
+	printf("Required pubkeys for auth: %d\n", pka_register.new_status.num_required);
+	printf("Authenticated public keys: %d\n", pka_register.new_status.num_authenticated);
 
-	/* read public key */
-	if ((r = sc_asn1_read_tag(&buf, sb.st_size, &cla_out, &tag_out, &taglen)) < 0) {
-		fprintf(stderr, "Error reading ASN.1 sequence: %s\n", sc_strerror(r));
-		r = -1;
-		goto err;
-	}
-	if (tag_out != 0x7) {
-		fprintf(stderr, "Wrong tag when reading public key: got %x, expected %x\n", tag_out, 0x7);
-		r = -1;
-		goto err;
-	}
-	pk = buf;
-	pk_len = taglen;
-	buf += taglen;
-
-	/* read device certificate */
-	if ((r = sc_asn1_read_tag(&buf, sb.st_size, &cla_out, &tag_out, &taglen)) < 0) {
-		fprintf(stderr, "Error reading ASN.1 sequence: %s\n", sc_strerror(r));
-		r = -1;
-		goto err;
-	}
-	if (tag_out != 0x1f21) {
-		fprintf(stderr, "Wrong tag when reading device certificate: got %x, expected %x\n", tag_out, 0x1f21);
-		r = -1;
-		goto err;
-	}
-	devcert = buf;
-	devcert_len = taglen;
-	buf += taglen;
-
-	/* read device CA */
-	if ((r = sc_asn1_read_tag(&buf, sb.st_size, &cla_out, &tag_out, &taglen)) < 0) {
-		fprintf(stderr, "Error reading ASN.1 sequence: %s\n", sc_strerror(r));
-		r = -1;
-		goto err;
-	}
-	if (tag_out != 0x1f21) {
-		fprintf(stderr, "Wrong tag when reading device CA: got %x, expected %x\n", tag_out, 0x1f21);
-		r = -1;
-		goto err;
-	}
-	dicacert = buf;
-	dicacert_len = taglen;
-
-	r = register_public_key_with_card(ctx, card, pk, pk_len, devcert, devcert_len, dicacert, dicacert_len);
+	r = 0;
 
 err:
 	if (pka)
