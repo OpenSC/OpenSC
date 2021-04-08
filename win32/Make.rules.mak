@@ -132,8 +132,10 @@ CANDLEFLAGS = -dOpenPACE="$(OPENPACE_DIR)" $(CANDLEFLAGS)
 
 # Used for MiniDriver
 CNGSDK_INCL_DIR = "/IC:\Program Files (x86)\Microsoft CNG Development Kit\Include"
+CPDK_INCL_DIR   = "/IC:\Program Files (x86)\Windows Kits\10\Cryptographic Provider Development Kit\Include"
 !IF "$(PROCESSOR_ARCHITECTURE)" == "x86" && "$(PROCESSOR_ARCHITEW6432)" == ""
 CNGSDK_INCL_DIR = "/IC:\Program Files\Microsoft CNG Development Kit\Include"
+CPDK_INCL_DIR   = "/IC:\Program Files\Windows Kits\10\Cryptographic Provider Development Kit\Include"
 !ENDIF
 # Mandatory path to 'ISO C9x compliant stdint.h and inttypes.h for Microsoft Visual Studio'
 # http://msinttypes.googlecode.com/files/msinttypes-r26.zip
@@ -143,7 +145,7 @@ CNGSDK_INCL_DIR = "/IC:\Program Files\Microsoft CNG Development Kit\Include"
 #  O1 - minimal code size
 CODE_OPTIMIZATION = /O1
 
-ALL_INCLUDES = /I$(TOPDIR)\win32 /I$(TOPDIR)\src $(OPENPACE_INCL_DIR) $(OPENSSL_INCL_DIR) $(OPENSSL_EXTRA_CFLAGS) $(ZLIB_INCL_DIR) $(LIBLTDL_INCL) $(INTTYPES_INCL_DIR) $(CNGSDK_INCL_DIR) $(WIX_INCL_DIR)
+ALL_INCLUDES = /I$(TOPDIR)\win32 /I$(TOPDIR)\src $(OPENPACE_INCL_DIR) $(OPENSSL_INCL_DIR) $(OPENSSL_EXTRA_CFLAGS) $(ZLIB_INCL_DIR) $(LIBLTDL_INCL) $(INTTYPES_INCL_DIR) $(CPDK_INCL_DIR) $(CNGSDK_INCL_DIR) $(WIX_INCL_DIR)
 
 !IF "$(DEBUG_DEF)" == "/DDEBUG"
 LINKDEBUGFLAGS = /NODEFAULTLIB:LIBCMT /DEBUG
