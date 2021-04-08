@@ -59,12 +59,12 @@ install:
           Rename-Item -path "c:\openpace-${env:OPENPACE_VER}" -newName "openpace"
         }
       }
-      If (!(Test-Path cngsdk.msi )) {
-          appveyor DownloadFile "http://download.microsoft.com/download/2/C/9/2C93059C-0532-42DF-8C24-9AEAFF00768E/cngsdk.msi"
+      If (!(Test-Path cpdksetup.exe )) {
+          appveyor DownloadFile "https://download.microsoft.com/download/1/7/6/176909B0-50F2-4DF3-B29B-830A17EA7E38/CPDK_RELEASE_UPDATE/cpdksetup.exe"
       }
   - echo "Using %APPVEYOR_BUILD_WORKER_IMAGE% with %VCVARSALL%"
   - call "%VCVARSALL%" %Platform%
-  - cngsdk.msi /quiet
+  - cpdksetup.exe /quiet
   - uname -a
   - set
 
@@ -126,4 +126,4 @@ cache:
   - C:\openpace -> appveyor.yml
   - C:\openpace-Win32 -> appveyor.yml
   - C:\openpace-Win64 -> appveyor.yml
-  - cngsdk.msi -> appveyor.yml
+  - cpdksetup.exe -> appveyor.yml
