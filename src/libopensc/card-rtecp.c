@@ -366,6 +366,19 @@ static int rtecp_logout(sc_card_t *card)
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
 
+static int rtecp_set_security_env(	struct sc_card *card,
+									const struct sc_security_env *env,
+									int se_num)
+{
+	struct sc_security_env se_env;
+	if(!env)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	se_env= *env;
+	se_env.flags &= ~SC_SEC_ENV_FILE_REF_PRESENT;
+	return iso_ops->set_security_env(card, &se_env, se_num);
+}
+
 static int rtecp_cipher(sc_card_t *card, const u8 *data, size_t data_len,
 		u8 *out, size_t out_len, int sign)
 {
@@ -824,7 +837,7 @@ struct sc_card_driver * sc_get_rtecp_driver(void)
 	rtecp_ops.verify = rtecp_verify;
 	rtecp_ops.logout = rtecp_logout;
 	/* restore_security_env */
-	/* set_security_env */
+	rtecp_ops.set_security_env = rtecp_set_security_env;
 	rtecp_ops.decipher = rtecp_decipher;
 	rtecp_ops.compute_signature = rtecp_compute_signature;
 	rtecp_ops.change_reference_data = rtecp_change_reference_data;
