@@ -27,6 +27,7 @@
 #ifdef _WIN32
 #include <windows.h>
 #include <shlwapi.h>
+#pragma comment(lib, "shlwapi")
 void *sc_dlopen(const char *filename)
 {
 	DWORD flags = PathIsRelativeA(filename) ? 0 : LOAD_WITH_ALTERED_SEARCH_PATH;
