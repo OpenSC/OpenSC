@@ -83,6 +83,14 @@ signature_data_buffer_append(struct signature_data *data,
 	return CKR_OK;
 }
 
+void _update_mech_info(CK_MECHANISM_INFO_PTR mech_info, CK_MECHANISM_INFO_PTR new_mech_info) {
+	if (new_mech_info->ulMaxKeySize > mech_info->ulMaxKeySize)
+		mech_info->ulMaxKeySize = new_mech_info->ulMaxKeySize;
+	if (new_mech_info->ulMinKeySize < mech_info->ulMinKeySize)
+		mech_info->ulMinKeySize = new_mech_info->ulMinKeySize;
+	mech_info->flags |= new_mech_info->flags;
+}
+
 /*
  * Register a mechanism
  */
@@ -90,10 +98,41 @@ CK_RV
 sc_pkcs11_register_mechanism(struct sc_pkcs11_card *p11card,
 				sc_pkcs11_mechanism_type_t *mt)
 {
+	sc_pkcs11_mechanism_type_t *existing_mt;
 	sc_pkcs11_mechanism_type_t **p;
+	int i;
 
 	if (mt == NULL)
 		return CKR_HOST_MEMORY;
+
+	if ((existing_mt = sc_pkcs11_find_mechanism(p11card, mt->mech, mt->mech_info.flags))) {
+		for (i = 0; i < MAX_KEY_TYPES; i++) {
+			if (existing_mt->key_types[i] == mt->key_types[0]) {
+				/* Mechanism already registered with the same key_type,
+				 * just update it's info */
+				_update_mech_info(&existing_mt->mech_info, &mt->mech_info);
+				free(mt);
+				return CKR_OK;
+			}
+			if (existing_mt->key_types[i] < 0) {
+				/* There is a free slot for new key type, let's add it and
+				 * update mechanism info */
+				_update_mech_info(&existing_mt->mech_info, &mt->mech_info);
+				/* XXX Should be changed to loop over mt->key_types, if
+				 * we allow to register mechanism with multiple key types
+                                 * in one operation */
+				existing_mt->key_types[i] = mt->key_types[0];
+				if (i + 1 < MAX_KEY_TYPES) {
+					existing_mt->key_types[i + 1] = -1;
+				}
+				free(mt);
+				return CKR_OK;
+			}
+		}
+		sc_log(p11card->card->ctx, "Too much key types in mechanism 0x%lx, more than %d", mt->mech, MAX_KEY_TYPES);
+		free(mt);
+		return CKR_BUFFER_TOO_SMALL;
+	}
 
 	p = (sc_pkcs11_mechanism_type_t **) realloc(p11card->mechanisms,
 			(p11card->nmechanisms + 2) * sizeof(*p));
@@ -103,6 +142,19 @@ sc_pkcs11_register_mechanism(struct sc_pkcs11_card *p11card,
 	p[p11card->nmechanisms++] = mt;
 	p[p11card->nmechanisms] = NULL;
 	return CKR_OK;
+}
+
+
+CK_RV
+_validate_key_type(sc_pkcs11_mechanism_type_t *mech, CK_KEY_TYPE key_type) {
+	int i;
+	for (i = 0; i < MAX_KEY_TYPES; i++) {
+		if (mech->key_types[i] < 0)
+			break;
+		if ((CK_KEY_TYPE)mech->key_types[i] == key_type)
+			return CKR_OK;
+	}
+	return CKR_KEY_TYPE_INCONSISTENT;
 }
 
 /*
@@ -280,7 +332,7 @@ sc_pkcs11_md_final(struct sc_pkcs11_session *session,
  */
 CK_RV
 sc_pkcs11_sign_init(struct sc_pkcs11_session *session, CK_MECHANISM_PTR pMechanism,
-		    struct sc_pkcs11_object *key, CK_MECHANISM_TYPE key_type)
+		    struct sc_pkcs11_object *key, CK_KEY_TYPE key_type)
 {
 	struct sc_pkcs11_card *p11card;
 	sc_pkcs11_operation_t *operation;
@@ -299,8 +351,9 @@ sc_pkcs11_sign_init(struct sc_pkcs11_session *session, CK_MECHANISM_PTR pMechani
 		LOG_FUNC_RETURN(context, CKR_MECHANISM_INVALID);
 
 	/* See if compatible with key type */
-	if (mt->key_type != key_type)
-		LOG_FUNC_RETURN(context, CKR_KEY_TYPE_INCONSISTENT);
+	rv = _validate_key_type(mt, key_type);
+	if (rv != CKR_OK)
+		LOG_FUNC_RETURN(context, (int) rv);
 
 	if (pMechanism->pParameter &&
 	    pMechanism->ulParameterLen > sizeof(operation->mechanism_params))
@@ -580,7 +633,7 @@ sc_pkcs11_signature_release(sc_pkcs11_operation_t *operation)
  */
 CK_RV
 sc_pkcs11_verif_init(struct sc_pkcs11_session *session, CK_MECHANISM_PTR pMechanism,
-		struct sc_pkcs11_object *key, CK_MECHANISM_TYPE key_type)
+		struct sc_pkcs11_object *key, CK_KEY_TYPE key_type)
 {
 	struct sc_pkcs11_card *p11card;
 	sc_pkcs11_operation_t *operation;
@@ -597,8 +650,9 @@ sc_pkcs11_verif_init(struct sc_pkcs11_session *session, CK_MECHANISM_PTR pMechan
 		return CKR_MECHANISM_INVALID;
 
 	/* See if compatible with key type */
-	if (mt->key_type != key_type)
-		return CKR_KEY_TYPE_INCONSISTENT;
+	rv = _validate_key_type(mt, key_type);
+	if (rv != CKR_OK)
+		LOG_FUNC_RETURN(context, (int) rv);
 
 	rv = session_start_operation(session, SC_PKCS11_OPERATION_VERIFY, mt, &operation);
 	if (rv != CKR_OK)
@@ -815,7 +869,7 @@ CK_RV
 sc_pkcs11_decr_init(struct sc_pkcs11_session *session,
 			CK_MECHANISM_PTR pMechanism,
 			struct sc_pkcs11_object *key,
-			CK_MECHANISM_TYPE key_type)
+			CK_KEY_TYPE key_type)
 {
 	struct sc_pkcs11_card *p11card;
 	sc_pkcs11_operation_t *operation;
@@ -832,8 +886,9 @@ sc_pkcs11_decr_init(struct sc_pkcs11_session *session,
 		return CKR_MECHANISM_INVALID;
 
 	/* See if compatible with key type */
-	if (mt->key_type != key_type)
-		return CKR_KEY_TYPE_INCONSISTENT;
+	rv = _validate_key_type(mt, key_type);
+	if (rv != CKR_OK)
+		LOG_FUNC_RETURN(context, (int) rv);
 
 	rv = session_start_operation(session, SC_PKCS11_OPERATION_DECRYPT, mt, &operation);
 	if (rv != CKR_OK)
@@ -906,9 +961,9 @@ sc_pkcs11_wrap(struct sc_pkcs11_session *session,
 		return CKR_MECHANISM_INVALID;
 
 	/* See if compatible with key type */
-	/* TODO: what if there are several mechanisms with different key types? Should we loop through them? */
-	if (mt->key_type != key_type)
-		return CKR_KEY_TYPE_INCONSISTENT;
+	rv = _validate_key_type(mt, key_type);
+	if (rv != CKR_OK)
+		LOG_FUNC_RETURN(context, (int) rv);
 
 	rv = session_start_operation(session, SC_PKCS11_OPERATION_WRAP, mt, &operation);
 	if (rv != CKR_OK)
@@ -952,9 +1007,9 @@ sc_pkcs11_unwrap(struct sc_pkcs11_session *session,
 		return CKR_MECHANISM_INVALID;
 
 	/* See if compatible with key type */
-	/* TODO: what if there are several mechanisms with different key types? Should we loop through them? */
-	if (mt->key_type != key_type)
-		return CKR_KEY_TYPE_INCONSISTENT;
+	rv = _validate_key_type(mt, key_type);
+	if (rv != CKR_OK)
+		LOG_FUNC_RETURN(context, (int) rv);
 
 	rv = session_start_operation(session, SC_PKCS11_OPERATION_UNWRAP, mt, &operation);
 	if (rv != CKR_OK)
@@ -1014,9 +1069,9 @@ sc_pkcs11_deri(struct sc_pkcs11_session *session,
 		return CKR_MECHANISM_INVALID;
 
 	/* See if compatible with key type */
-	if (mt->key_type != key_type)
-		return CKR_KEY_TYPE_INCONSISTENT;
-
+	rv = _validate_key_type(mt, key_type);
+	if (rv != CKR_OK)
+		LOG_FUNC_RETURN(context, (int) rv);
 
 	rv = session_start_operation(session, SC_PKCS11_OPERATION_DERIVE, mt, &operation);
 	if (rv != CKR_OK)
@@ -1192,7 +1247,8 @@ sc_pkcs11_new_fw_mechanism(CK_MECHANISM_TYPE mech,
 		return mt;
 	mt->mech = mech;
 	mt->mech_info = *pInfo;
-	mt->key_type = key_type;
+	mt->key_types[0] = (int)key_type;
+	mt->key_types[1] = -1;
 	mt->mech_data = priv_data;
 	mt->free_mech_data = free_priv_data;
 	mt->obj_size = sizeof(sc_pkcs11_operation_t);
@@ -1275,7 +1331,7 @@ sc_pkcs11_register_sign_and_hash_mechanism(struct sc_pkcs11_card *p11card,
 	info->sign_mech = sign_type->mech;
 	info->hash_mech = hash_mech;
 
-	new_type = sc_pkcs11_new_fw_mechanism(mech, &mech_info, sign_type->key_type, info, free_info);
+	new_type = sc_pkcs11_new_fw_mechanism(mech, &mech_info, sign_type->key_types[0], info, free_info);
 	if (!new_type) {
 		free_info(info);
 		return CKR_HOST_MEMORY;
