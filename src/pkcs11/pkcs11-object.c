@@ -31,7 +31,7 @@ static void sc_find_release(sc_pkcs11_operation_t *operation);
 static sc_pkcs11_mechanism_type_t find_mechanism = {
 	0,		/* mech */
 	{0,0,0},	/* mech_info */
-	0,		/* key_type */
+	{ -1 },		/* key_types */
 	sizeof(struct sc_pkcs11_find_operation),	/* obj_size */
 	sc_find_release,				/* release */
 	NULL,		/* md_init */
