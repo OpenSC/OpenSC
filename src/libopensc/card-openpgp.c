@@ -707,7 +707,6 @@ int _pgp_add_algo(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t key_info, si
 		/* fall through */
 	case SC_OPENPGP_KEYALGO_ECDSA:
 		/* v3.0+: ECC [RFC 4880 & 6637] */
-		/* EdDSA from draft-ietf-openpgp-rfc4880bis-08 */
 
 		/* Allow curve to be used by both ECDH and ECDSA.
 		 * pgp_init set these flags the same way */
@@ -723,6 +722,7 @@ int _pgp_add_algo(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t key_info, si
 			do_num, key_info.algorithm, key_info.u.ec.key_length);
 		break;
 	case SC_OPENPGP_KEYALGO_EDDSA:
+		/* EdDSA from draft-ietf-openpgp-rfc4880bis-08 */
 		/* Handle Yubikey bug, that in DO FA curve25519 has EDDSA algo */
 		if (_pgp_handle_curve25519(card, key_info, do_num))
 			break;
@@ -812,7 +812,7 @@ pgp_get_card_features(sc_card_t *card)
 		if (pgp_get_blob(card, priv->mf, 0x00fa, &blobfa) >= 0) {
 			pgp_blob_t *child;
 			pgp_enumerate_blob(card, blobfa);
-			/* There will be multiple childs with the same ID, but
+			/* There will be multiple children with the same ID, but
 			 * different algos, so we need to iterate over all of them */
 			for (child = blobfa->files; child; child = child->next) {
 				if ((child->id < 0x00c1) || (child->id > 0x00c3))

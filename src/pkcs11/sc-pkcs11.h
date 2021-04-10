@@ -264,11 +264,13 @@ enum {
 	SC_PKCS11_OPERATION_MAX
 };
 
+#define MAX_KEY_TYPES 2
+
 /* This describes a PKCS11 mechanism */
 struct sc_pkcs11_mechanism_type {
-	CK_MECHANISM_TYPE mech;		/* algorithm: md5, sha1, ... */
-	CK_MECHANISM_INFO mech_info;	/* mechanism info */
-	CK_MECHANISM_TYPE key_type;	/* for sign/decipher ops */
+	CK_MECHANISM_TYPE mech;				/* algorithm: md5, sha1, ... */
+	CK_MECHANISM_INFO mech_info;			/* mechanism info */
+	int 		  key_types[MAX_KEY_TYPES];	/* for sign/decipher ops */
 	unsigned int	  obj_size;
 
 	/* General management */
@@ -440,17 +442,17 @@ CK_RV sc_pkcs11_md_init(struct sc_pkcs11_session *, CK_MECHANISM_PTR);
 CK_RV sc_pkcs11_md_update(struct sc_pkcs11_session *, CK_BYTE_PTR, CK_ULONG);
 CK_RV sc_pkcs11_md_final(struct sc_pkcs11_session *, CK_BYTE_PTR, CK_ULONG_PTR);
 CK_RV sc_pkcs11_sign_init(struct sc_pkcs11_session *, CK_MECHANISM_PTR,
-				struct sc_pkcs11_object *, CK_MECHANISM_TYPE);
+				struct sc_pkcs11_object *, CK_KEY_TYPE);
 CK_RV sc_pkcs11_sign_update(struct sc_pkcs11_session *, CK_BYTE_PTR, CK_ULONG);
 CK_RV sc_pkcs11_sign_final(struct sc_pkcs11_session *, CK_BYTE_PTR, CK_ULONG_PTR);
 CK_RV sc_pkcs11_sign_size(struct sc_pkcs11_session *, CK_ULONG_PTR);
 #ifdef ENABLE_OPENSSL
 CK_RV sc_pkcs11_verif_init(struct sc_pkcs11_session *, CK_MECHANISM_PTR,
-				struct sc_pkcs11_object *, CK_MECHANISM_TYPE);
+				struct sc_pkcs11_object *, CK_KEY_TYPE);
 CK_RV sc_pkcs11_verif_update(struct sc_pkcs11_session *, CK_BYTE_PTR, CK_ULONG);
 CK_RV sc_pkcs11_verif_final(struct sc_pkcs11_session *, CK_BYTE_PTR, CK_ULONG);
 #endif
-CK_RV sc_pkcs11_decr_init(struct sc_pkcs11_session *, CK_MECHANISM_PTR, struct sc_pkcs11_object *, CK_MECHANISM_TYPE);
+CK_RV sc_pkcs11_decr_init(struct sc_pkcs11_session *, CK_MECHANISM_PTR, struct sc_pkcs11_object *, CK_KEY_TYPE);
 CK_RV sc_pkcs11_decr(struct sc_pkcs11_session *, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG_PTR);
 CK_RV sc_pkcs11_wrap(struct sc_pkcs11_session *,CK_MECHANISM_PTR, struct sc_pkcs11_object *, CK_KEY_TYPE, struct sc_pkcs11_object *, CK_BYTE_PTR, CK_ULONG_PTR);
 CK_RV sc_pkcs11_unwrap(struct sc_pkcs11_session *,CK_MECHANISM_PTR, struct sc_pkcs11_object *, CK_KEY_TYPE, CK_BYTE_PTR, CK_ULONG, struct sc_pkcs11_object *);
