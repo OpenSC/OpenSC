@@ -27,6 +27,22 @@
 
 #include "sc-pkcs11.h"
 
+#define SC_LOG_RV(fmt, rv)\
+do {\
+        const char *name = lookup_enum(RV_T, (rv));\
+        if (name)\
+                sc_log(context, (fmt), name);\
+        else {\
+                size_t needed = snprintf(NULL, 0, "0x%08lX", (rv)) + 1;\
+                char *buffer = malloc(needed);\
+                if (buffer) {\
+                        sprintf(buffer, "0x%08lX", (rv));\
+                        sc_log(context, (fmt), buffer);\
+                        free(buffer);\
+                }\
+        }\
+} while(0)
+
 CK_RV get_session(CK_SESSION_HANDLE hSession, struct sc_pkcs11_session **session)
 {
 	*session = list_seek(&sessions, &hSession);
@@ -94,7 +110,7 @@ CK_RV C_OpenSession(CK_SLOT_ID slotID,	/* the slot's ID */
 	sc_log(context, "C_OpenSession handle: 0x%lx", session->handle);
 
 out:
-	sc_log(context, "C_OpenSession() = %s", lookup_enum(RV_T, rv));
+	SC_LOG_RV("C_OpenSession() = %s", rv);
 	sc_pkcs11_unlock();
 	return rv;
 }
@@ -291,7 +307,12 @@ CK_RV C_GetSessionInfo(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	}
 
 out:
-	sc_log(context, "C_GetSessionInfo(0x%lx) = %s", hSession, lookup_enum(RV_T, rv));
+	;
+	const char *name = lookup_enum(RV_T, rv);
+	if (name)
+		sc_log(context, "C_GetSessionInfo(0x%lx) = %s", hSession, name);
+	else
+		sc_log(context, "C_GetSessionInfo(0x%lx) = 0x%lx", hSession, rv);
 	sc_pkcs11_unlock();
 	return rv;
 }

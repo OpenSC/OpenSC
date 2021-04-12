@@ -283,6 +283,22 @@ BOOL APIENTRY DllMain( HINSTANCE hinstDLL,
 }
 #endif
 
+#define SC_LOG_RV(fmt, rv)\
+do {\
+	const char *name = lookup_enum(RV_T, (rv));\
+	if (name)\
+		sc_log(context, (fmt), name);\
+	else {\
+		size_t needed = snprintf(NULL, 0, "0x%08lX", (rv)) + 1;\
+		char *buffer = malloc(needed);\
+		if (buffer) {\
+			sprintf(buffer, "0x%08lX", (rv));\
+			sc_log(context, (fmt), buffer);\
+			free(buffer);\
+		}\
+	}\
+} while(0)
+
 CK_RV C_Initialize(CK_VOID_PTR pInitArgs)
 {
 	CK_RV rv;
@@ -349,7 +365,7 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs)
 
 out:
 	if (context != NULL)
-		sc_log(context, "C_Initialize() = %s", lookup_enum ( RV_T, rv ));
+		SC_LOG_RV("C_Initialize() = %s", rv);
 
 	if (rv != CKR_OK) {
 		if (context != NULL) {
@@ -613,7 +629,7 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 
 	rv = slot_get_slot(slotID, &slot);
 	DEBUG_VSS(slot, "C_GetSlotInfo found");
-	sc_log(context, "C_GetSlotInfo() get slot rv %s", lookup_enum( RV_T, rv));
+	SC_LOG_RV("C_GetSlotInfo() get slot rv %s", rv);
 	if (rv == CKR_OK) {
 		if (slot->reader == NULL) {
 			rv = CKR_TOKEN_NOT_PRESENT;
@@ -640,7 +656,11 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 		memcpy(pInfo, &slot->slot_info, sizeof(CK_SLOT_INFO));
 
 	sc_log(context, "C_GetSlotInfo() flags 0x%lX", pInfo->flags);
-	sc_log(context, "C_GetSlotInfo(0x%lx) = %s", slotID, lookup_enum( RV_T, rv));
+	const char *name = lookup_enum(RV_T, rv);
+	if (name)
+		sc_log(context, "C_GetSlotInfo(0x%lx) = %s", slotID, name);
+	else
+		sc_log(context, "C_GetSlotInfo(0x%lx) = 0x%08lX", slotID, rv);
 	sc_pkcs11_unlock();
 	return rv;
 }
@@ -802,7 +822,7 @@ out:
 		sc_wait_for_event(context, 0, NULL, NULL, -1, &reader_states);
 	}
 
-	sc_log(context, "C_WaitForSlotEvent() = %s", lookup_enum (RV_T, rv));
+	SC_LOG_RV("C_WaitForSlotEvent() = %s", rv);
 	sc_pkcs11_unlock();
 	return rv;
 }

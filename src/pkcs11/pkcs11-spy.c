@@ -332,7 +332,7 @@ enter(const char *function)
 static CK_RV
 retne(CK_RV rv)
 {
-	fprintf(spy_output, "Returned:  %ld %s\n", (unsigned long) rv, lookup_enum ( RV_T, rv ));
+	fprintf(spy_output, "Returned:  %ld %s\n", (unsigned long) rv, lookup_enum (RV_T, rv ));
 	fflush(spy_output);
 	return rv;
 }
@@ -404,13 +404,26 @@ static void
 spy_dump_mechanism_in(const char *name, CK_MECHANISM_PTR pMechanism)
 {
 	char param_name[64];
+	const char *mec_name;
 
 	if (!pMechanism) {
 		fprintf(spy_output, "[in] %s = NULL\n", name);
 		return;
 	}
 
-	fprintf(spy_output, "[in] %s->type = %s\n", name, lookup_enum(MEC_T, pMechanism->mechanism));
+	mec_name = lookup_enum(MEC_T, pMechanism->mechanism);
+	if (mec_name)
+		fprintf(spy_output, "[in] %s->type = %s\n", name, mec_name);
+	else {
+		size_t needed = snprintf(NULL, 0, "0x%08lX", pMechanism->mechanism) + 1;
+		char *buffer = malloc(needed);
+		if (buffer) {
+			sprintf(buffer, "0x%08lX", pMechanism->mechanism);
+			fprintf(spy_output, "[in] %s->type = %s\n", name, buffer);
+			free(buffer);
+		}
+	}
+
 	switch (pMechanism->mechanism) {
 	case CKM_AES_GCM:
 		if (pMechanism->pParameter != NULL) {
@@ -520,6 +533,22 @@ print_ptr_in(const char *name, CK_VOID_PTR ptr)
 {
  	fprintf(spy_output, "[in] %s = %p\n", name, ptr);
 }
+
+#define FPRINTF_LOOKUP_ENUM(fmt, category, type)\
+do {\
+        const char *name = lookup_enum((category), (type));\
+        if (name)\
+                fprintf(spy_output, (fmt), (name));\
+        else {\
+                size_t needed = snprintf(NULL, 0, "0x%08lX", (type)) + 1;\
+                char *buffer = malloc(needed);\
+                if (buffer) {\
+                        sprintf(buffer, "0x%08lX", (type));\
+                        fprintf(spy_output, (fmt), buffer);\
+                        free(buffer);\
+                }\
+        }\
+} while(0)
 
 CK_RV C_GetFunctionList
 (CK_FUNCTION_LIST_PTR_PTR ppFunctionList)
@@ -657,14 +686,10 @@ C_GetMechanismInfo(CK_SLOT_ID  slotID, CK_MECHANISM_TYPE type,
 		CK_MECHANISM_INFO_PTR pInfo)
 {
 	CK_RV rv;
-	const char *name = lookup_enum(MEC_T, type);
 
 	enter("C_GetMechanismInfo");
 	spy_dump_ulong_in("slotID", slotID);
-	if (name)
-		fprintf(spy_output, "[in] type = %30s\n", name);
-	else
-		fprintf(spy_output, "[in] type = Unknown Mechanism (%08lx)\n", type);
+	FPRINTF_LOOKUP_ENUM("[in] type = %s", MEC_T, type);
 
 	rv = po->C_GetMechanismInfo(slotID, type, pInfo);
 	if(rv == CKR_OK) {
@@ -807,8 +832,7 @@ C_Login(CK_SESSION_HANDLE hSession, CK_USER_TYPE userType,
 
 	enter("C_Login");
 	spy_dump_ulong_in("hSession", hSession);
-	fprintf(spy_output, "[in] userType = %s\n",
-			lookup_enum(USR_T, userType));
+	FPRINTF_LOOKUP_ENUM("[in] userType = %s\n", USR_T, userType);
 	spy_dump_string_in("pPin[ulPinLen]", pPin, ulPinLen);
 	rv = po->C_Login(hSession, userType, pPin, ulPinLen);
 	return retne(rv);
@@ -1647,8 +1671,7 @@ C_LoginUser(CK_SESSION_HANDLE hSession, CK_USER_TYPE userType,
 
 	enter("C_LoginUser");
 	spy_dump_ulong_in("hSession", hSession);
-	fprintf(spy_output, "[in] userType = %s\n",
-			lookup_enum(USR_T, userType));
+	FPRINTF_LOOKUP_ENUM("[in] userType = %s\n", USR_T, userType);
 	spy_dump_string_in("pPin[ulPinLen]", pPin, ulPinLen);
 	spy_dump_string_in("pUsername[ulUsernameLen]", pUsername, ulUsernameLen);
 	rv = po->C_LoginUser(hSession, userType, pPin, ulPinLen, pUsername, ulUsernameLen);

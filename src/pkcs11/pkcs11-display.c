@@ -864,7 +864,7 @@ lookup_enum(CK_ULONG type, CK_ULONG value)
 void
 show_error( FILE *f, char *str, CK_RV rc )
 {
-	fprintf(f, "%s returned:  %ld %s", str, (unsigned long) rc, lookup_enum ( RV_T, rc ));
+	fprintf(f, "%s returned:  %ld %s", str, (unsigned long) rc, lookup_enum (RV_T, rc ));
 	fprintf(f, "\n");
 }
 
@@ -1102,7 +1102,7 @@ print_session_info(FILE *f, CK_SESSION_INFO *info)
 	};
 
 	fprintf(f, "      slotID:                  %ld\n",       info->slotID );
-	fprintf(f, "      state:                  '%32.32s'\n",  lookup_enum(STA_T, info->state));
+	fprintf(f, "      state:                   %0lx (%32.32s)\n", info->state, lookup_enum(STA_T, info->state));
 	fprintf(f, "      flags:                   %0lx\n",     info->flags );
 
 	for(i = 0; i < sizeof (ck_flags) / sizeof (*ck_flags); i++) {

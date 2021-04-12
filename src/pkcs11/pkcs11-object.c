@@ -145,6 +145,21 @@ out:
 	return rv;
 }
 
+#define SC_LOG_RV(fmt, rv)\
+do {\
+        const char *name = lookup_enum(RV_T, (rv));\
+        if (name)\
+                sc_log(context, (fmt), name);\
+        else {\
+                size_t needed = snprintf(NULL, 0, "0x%08lX", (rv)) + 1;\
+                char *buffer = malloc(needed);\
+                if (buffer) {\
+                        sprintf(buffer, "0x%08lX", (rv));\
+                        sc_log(context, (fmt), buffer);\
+                        free(buffer);\
+                }\
+        }\
+} while(0)
 
 CK_RV
 C_CreateObject(CK_SESSION_HANDLE hSession,	/* the session's handle */
@@ -281,8 +296,15 @@ C_GetAttributeValue(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		}
 	}
 
-out:	sc_log(context, "C_GetAttributeValue(hSession=0x%lx, hObject=0x%lx) = %s",
-			hSession, hObject, lookup_enum ( RV_T, rv ));
+out:
+	;
+	const char *name = lookup_enum (RV_T, rv );
+	if (name)
+		sc_log(context, "C_GetAttributeValue(hSession=0x%lx, hObject=0x%lx) = %s",
+			hSession, hObject, name);
+	else
+		sc_log(context, "C_GetAttributeValue(hSession=0x%lx, hObject=0x%lx) = 0x%lx",
+                        hSession, hObject, rv);
 	sc_pkcs11_unlock();
 	return rv;
 }
@@ -531,7 +553,7 @@ C_DigestInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	if (rv == CKR_OK)
 		rv = sc_pkcs11_md_init(session, pMechanism);
 
-	sc_log(context, "C_DigestInit() = %s", lookup_enum ( RV_T, rv ));
+	SC_LOG_RV("C_DigestInit() = %s", rv);
 	sc_pkcs11_unlock();
 	return rv;
 }
@@ -576,7 +598,7 @@ C_Digest(CK_SESSION_HANDLE hSession,		/* the session's handle */
 		rv = sc_pkcs11_md_final(session, pDigest, pulDigestLen);
 
 out:
-	sc_log(context, "C_Digest() = %s", lookup_enum ( RV_T, rv ));
+	SC_LOG_RV("C_Digest = %s", rv);
 	sc_pkcs11_unlock();
 	return rv;
 }
@@ -598,7 +620,7 @@ C_DigestUpdate(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	if (rv == CKR_OK)
 		rv = sc_pkcs11_md_update(session, pPart, ulPartLen);
 
-	sc_log(context, "C_DigestUpdate() == %s", lookup_enum ( RV_T, rv ));
+	SC_LOG_RV("C_DigestUpdate() = %s", rv);
 	sc_pkcs11_unlock();
 	return rv;
 }
@@ -628,7 +650,7 @@ C_DigestFinal(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	if (rv == CKR_OK)
 		rv = sc_pkcs11_md_final(session, pDigest, pulDigestLen);
 
-	sc_log(context, "C_DigestFinal() = %s", lookup_enum ( RV_T, rv ));
+	SC_LOG_RV("C_DigestFinal() = %s", rv);
 	sc_pkcs11_unlock();
 	return rv;
 }
@@ -680,7 +702,7 @@ C_SignInit(CK_SESSION_HANDLE hSession,		/* the session's handle */
 	rv = sc_pkcs11_sign_init(session, pMechanism, object, key_type);
 
 out:
-	sc_log(context, "C_SignInit() = %s", lookup_enum ( RV_T, rv ));
+	SC_LOG_RV("C_SignInit() = %s", rv);
 	sc_pkcs11_unlock();
 	return rv;
 }
@@ -728,7 +750,7 @@ C_Sign(CK_SESSION_HANDLE hSession,		/* the session's handle */
 	}
 
 out:
-	sc_log(context, "C_Sign() = %s", lookup_enum ( RV_T, rv ));
+	SC_LOG_RV("C_Sign() = %s", rv);
 	sc_pkcs11_unlock();
 	return rv;
 }
@@ -750,7 +772,7 @@ C_SignUpdate(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	if (rv == CKR_OK)
 		rv = sc_pkcs11_sign_update(session, pPart, ulPartLen);
 
-	sc_log(context, "C_SignUpdate() = %s", lookup_enum ( RV_T, rv ));
+	SC_LOG_RV("C_SignUpdate() = %s", rv);
 	sc_pkcs11_unlock();
 	return rv;
 }
@@ -792,7 +814,7 @@ C_SignFinal(CK_SESSION_HANDLE hSession,		/* the session's handle */
 	}
 
 out:
-	sc_log(context, "C_SignFinal() = %s", lookup_enum ( RV_T, rv ));
+	SC_LOG_RV("C_SignFinal() = %s", rv);
 	sc_pkcs11_unlock();
 	return rv;
 }
@@ -902,7 +924,7 @@ CK_RV C_DecryptInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	rv = sc_pkcs11_decr_init(session, pMechanism, object, key_type);
 
 out:
-	sc_log(context, "C_DecryptInit() = %s", lookup_enum ( RV_T, rv ));
+	SC_LOG_RV("C_DecryptInit() = %s", rv);
 	sc_pkcs11_unlock();
 	return rv;
 }
@@ -930,7 +952,7 @@ CK_RV C_Decrypt(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		rv = reset_login_state(session->slot, rv);
 	}
 
-	sc_log(context, "C_Decrypt() = %s", lookup_enum ( RV_T, rv ));
+	SC_LOG_RV("C_Decrypt() = %s", rv);
 	sc_pkcs11_unlock();
 	return rv;
 }
@@ -1309,7 +1331,7 @@ CK_RV C_GenerateRandom(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	}
 
 	sc_pkcs11_unlock();
-	sc_log(context, "C_GenerateRandom() = %s", lookup_enum ( RV_T, rv ));
+	SC_LOG_RV("C_GenerateRandom() = %s", rv);
 	return rv;
 }
 
@@ -1359,7 +1381,7 @@ CK_RV C_VerifyInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	rv = sc_pkcs11_verif_init(session, pMechanism, object, key_type);
 
 out:
-	sc_log(context, "C_VerifyInit() = %s", lookup_enum ( RV_T, rv ));
+	SC_LOG_RV("C_VerifyInit() = %s", rv);
 	sc_pkcs11_unlock();
 	return rv;
 #endif
@@ -1394,7 +1416,7 @@ CK_RV C_Verify(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	}
 
 out:
-	sc_log(context, "C_Verify() = %s", lookup_enum ( RV_T, rv ));
+	SC_LOG_RV("C_Verify() = %s", rv);
 	sc_pkcs11_unlock();
 	return rv;
 #endif
@@ -1418,7 +1440,7 @@ CK_RV C_VerifyUpdate(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	if (rv == CKR_OK)
 		rv = sc_pkcs11_verif_update(session, pPart, ulPartLen);
 
-	sc_log(context, "C_VerifyUpdate() = %s", lookup_enum ( RV_T, rv ));
+	SC_LOG_RV("C_VerifyUpdate() = %s", rv);
 	sc_pkcs11_unlock();
 	return rv;
 #endif
@@ -1446,7 +1468,7 @@ CK_RV C_VerifyFinal(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		rv = reset_login_state(session->slot, rv);
 	}
 
-	sc_log(context, "C_VerifyFinal() = %s", lookup_enum ( RV_T, rv ));
+	SC_LOG_RV("C_VerifyFinal() = %s", rv);
 	sc_pkcs11_unlock();
 	return rv;
 #endif
