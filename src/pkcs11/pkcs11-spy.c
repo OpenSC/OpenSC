@@ -406,6 +406,22 @@ print_ptr_in(const char *name, CK_VOID_PTR ptr)
  	fprintf(spy_output, "[in] %s = %p\n", name, ptr);
 }
 
+#define FPRINTF_LOOKUP_ENUM(fmt, category, type)\
+do {\
+        const char *name = lookup_enum((category), (type));\
+        if (name)\
+                fprintf(spy_output, (fmt), (name));\
+        else {\
+                size_t needed = snprintf(NULL, 0, "0x%08lX", (type)) + 1;\
+                char *buffer = malloc(needed);\
+                if (buffer) {\
+                        sprintf(buffer, "0x%08lX", (type));\
+                        fprintf(spy_output, (fmt), buffer);\
+                        free(buffer);\
+                }\
+        }\
+} while(0)
+
 CK_RV C_GetFunctionList
 (CK_FUNCTION_LIST_PTR_PTR ppFunctionList)
 {
@@ -540,14 +556,10 @@ C_GetMechanismInfo(CK_SLOT_ID  slotID, CK_MECHANISM_TYPE type,
 		CK_MECHANISM_INFO_PTR pInfo)
 {
 	CK_RV rv;
-	const char *name = lookup_enum(MEC_T, type);
 
 	enter("C_GetMechanismInfo");
 	spy_dump_ulong_in("slotID", slotID);
-	if (name)
-		fprintf(spy_output, "[in] type = %30s\n", name);
-	else
-		fprintf(spy_output, "[in] type = Unknown Mechanism (%08lx)\n", type);
+	FPRINTF_LOOKUP_ENUM("[in] type = %s", MEC_T, type);
 
 	rv = po->C_GetMechanismInfo(slotID, type, pInfo);
 	if(rv == CKR_OK) {
@@ -687,8 +699,7 @@ C_Login(CK_SESSION_HANDLE hSession, CK_USER_TYPE userType,
 
 	enter("C_Login");
 	spy_dump_ulong_in("hSession", hSession);
-	fprintf(spy_output, "[in] userType = %s\n",
-			lookup_enum(USR_T, userType));
+	FPRINTF_LOOKUP_ENUM("[in] userType = %s\n", USR_T, userType);
 	spy_dump_string_in("pPin[ulPinLen]", pPin, ulPinLen);
 	rv = po->C_Login(hSession, userType, pPin, ulPinLen);
 	return retne(rv);
@@ -853,7 +864,7 @@ C_EncryptInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT
 
 	enter("C_EncryptInit");
 	spy_dump_ulong_in("hSession", hSession);
-	fprintf(spy_output, "pMechanism->type=%s\n", lookup_enum(MEC_T, pMechanism->mechanism));
+	FPRINTF_LOOKUP_ENUM("pMechanism->type=%s\n", MEC_T, pMechanism->mechanism);
 	switch (pMechanism->mechanism) {
 	case CKM_AES_GCM:
 		if (pMechanism->pParameter != NULL) {
@@ -866,8 +877,7 @@ C_EncryptInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT
 				param->pAAD, param->ulAADLen);
 			fprintf(spy_output, "pMechanism->pParameter->ulTagBits=%lu\n", param->ulTagBits);
 		} else {
-			fprintf(spy_output, "Parameters block for %s is empty...\n",
-				lookup_enum(MEC_T, pMechanism->mechanism));
+			FPRINTF_LOOKUP_ENUM("Parameters block for %s is empty...\n", MEC_T, pMechanism->mechanism);
 		}
 		break;
 	default:
@@ -931,22 +941,19 @@ C_DecryptInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT
 
 	enter("C_DecryptInit");
 	spy_dump_ulong_in("hSession", hSession);
-	fprintf(spy_output, "pMechanism->type=%s\n", lookup_enum(MEC_T, pMechanism->mechanism));
+	FPRINTF_LOOKUP_ENUM("pMechanism->type=%s\n", MEC_T, pMechanism->mechanism);
 	switch (pMechanism->mechanism) {
 	case CKM_RSA_PKCS_OAEP:
 		if (pMechanism->pParameter != NULL) {
  			CK_RSA_PKCS_OAEP_PARAMS *param =
 				(CK_RSA_PKCS_OAEP_PARAMS *) pMechanism->pParameter;
-			fprintf(spy_output, "pMechanism->pParameter->hashAlg=%s\n",
-				lookup_enum(MEC_T, param->hashAlg));
-			fprintf(spy_output, "pMechanism->pParameter->mgf=%s\n",
-				lookup_enum(MGF_T, param->mgf));
+			FPRINTF_LOOKUP_ENUM("pMechanism->pParameter->hashAlg=%s\n", MEC_T, param->hashAlg);
+			FPRINTF_LOOKUP_ENUM("pMechanism->pParameter->mgf=%s\n", MGF_T, param->mgf);
 			fprintf(spy_output, "pMechanism->pParameter->source=%lu\n", param->source);
 			spy_dump_string_out("pSourceData[ulSourceDalaLen]", 
 				param->pSourceData, param->ulSourceDataLen);
 		} else {
-			fprintf(spy_output, "Parameters block for %s is empty...\n",
-				lookup_enum(MEC_T, pMechanism->mechanism));
+			FPRINTF_LOOKUP_ENUM("Parameters block for %s is empty...\n", MEC_T, pMechanism->mechanism);
 		}
 		break;
 	default:
@@ -1011,7 +1018,7 @@ C_DigestInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism)
 
 	enter("C_DigestInit");
 	spy_dump_ulong_in("hSession", hSession);
-	fprintf(spy_output, "pMechanism->type=%s\n", lookup_enum(MEC_T, pMechanism->mechanism));
+	FPRINTF_LOOKUP_ENUM("pMechanism->type=%s\n", MEC_T, pMechanism->mechanism);
 	rv = po->C_DigestInit(hSession, pMechanism);
 	return retne(rv);
 }
@@ -1077,7 +1084,7 @@ C_SignInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_HA
 
 	enter("C_SignInit");
 	spy_dump_ulong_in("hSession", hSession);
-	fprintf(spy_output, "pMechanism->type=%s\n", lookup_enum(MEC_T, pMechanism->mechanism));
+	FPRINTF_LOOKUP_ENUM("pMechanism->type=%s\n", MEC_T, pMechanism->mechanism);
 	switch (pMechanism->mechanism) {
 	case CKM_RSA_PKCS_PSS:
 	case CKM_SHA1_RSA_PKCS_PSS:
@@ -1087,15 +1094,12 @@ C_SignInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_HA
 		if (pMechanism->pParameter != NULL) {
 			CK_RSA_PKCS_PSS_PARAMS *param =
 				(CK_RSA_PKCS_PSS_PARAMS *) pMechanism->pParameter;
-			fprintf(spy_output, "pMechanism->pParameter->hashAlg=%s\n",
-				lookup_enum(MEC_T, param->hashAlg));
-			fprintf(spy_output, "pMechanism->pParameter->mgf=%s\n",
-				lookup_enum(MGF_T, param->mgf));
+			FPRINTF_LOOKUP_ENUM("pMechanism->pParameter->hashAlg=%s\n", MEC_T, param->hashAlg);
+			FPRINTF_LOOKUP_ENUM("pMechanism->pParameter->mgf=%s\n", MGF_T, param->mgf);
 			fprintf(spy_output, "pMechanism->pParameter->sLen=%lu\n",
 				param->sLen);
 		} else {
-			fprintf(spy_output, "Parameters block for %s is empty...\n",
-				lookup_enum(MEC_T, pMechanism->mechanism));
+			FPRINTF_LOOKUP_ENUM("Parameters block for %s is empty...\n", MEC_T, pMechanism->mechanism);
 		}
 		break;
 	}
@@ -1153,8 +1157,7 @@ C_SignRecoverInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OB
 
 	enter("C_SignRecoverInit");
 	spy_dump_ulong_in("hSession", hSession);
-	fprintf(spy_output, "pMechanism->type=%s\n",
-			lookup_enum(MEC_T, pMechanism->mechanism));
+	FPRINTF_LOOKUP_ENUM("pMechanism->type=%s\n", MEC_T, pMechanism->mechanism);
 	spy_dump_ulong_in("hKey", hKey);
 	rv = po->C_SignRecoverInit(hSession, pMechanism, hKey);
 	return retne(rv);
@@ -1182,7 +1185,7 @@ C_VerifyInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_
 
 	enter("C_VerifyInit");
 	spy_dump_ulong_in("hSession", hSession);
-	fprintf(spy_output, "pMechanism->type=%s\n", lookup_enum(MEC_T, pMechanism->mechanism));
+	FPRINTF_LOOKUP_ENUM("pMechanism->type=%s\n", MEC_T, pMechanism->mechanism);
 	switch (pMechanism->mechanism) {
 	case CKM_RSA_PKCS_PSS:
 	case CKM_SHA1_RSA_PKCS_PSS:
@@ -1192,15 +1195,12 @@ C_VerifyInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_
 		if (pMechanism->pParameter != NULL) {
 			CK_RSA_PKCS_PSS_PARAMS *param =
 				(CK_RSA_PKCS_PSS_PARAMS *) pMechanism->pParameter;
-			fprintf(spy_output, "pMechanism->pParameter->hashAlg=%s\n",
-				lookup_enum(MEC_T, param->hashAlg));
-			fprintf(spy_output, "pMechanism->pParameter->mgf=%s\n",
-				lookup_enum(MGF_T, param->mgf));
+			FPRINTF_LOOKUP_ENUM("pMechanism->pParameter->hashAlg=%s\n", MEC_T, param->hashAlg);
+			FPRINTF_LOOKUP_ENUM("pMechanism->pParameter->mgf=%s\n", MGF_T, param->mgf);
 			fprintf(spy_output, "pMechanism->pParameter->sLen=%lu\n",
 				param->sLen);
 		} else {
-			fprintf(spy_output, "Parameters block for %s is empty...\n",
-				lookup_enum(MEC_T, pMechanism->mechanism));
+			FPRINTF_LOOKUP_ENUM("Parameters block for %s is empty...\n", MEC_T, pMechanism->mechanism);
 		}
 		break;
 	}
@@ -1256,7 +1256,7 @@ C_VerifyRecoverInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism,
 
 	enter("C_VerifyRecoverInit");
 	spy_dump_ulong_in("hSession", hSession);
-	fprintf(spy_output, "pMechanism->type=%s\n", lookup_enum(MEC_T, pMechanism->mechanism));
+	FPRINTF_LOOKUP_ENUM("pMechanism->type=%s\n", MEC_T, pMechanism->mechanism);
 	spy_dump_ulong_in("hKey", hKey);
 	rv = po->C_VerifyRecoverInit(hSession, pMechanism, hKey);
 	return retne(rv);
@@ -1349,7 +1349,7 @@ C_GenerateKey(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism,
 
 	enter("C_GenerateKey");
 	spy_dump_ulong_in("hSession", hSession);
-	fprintf(spy_output, "pMechanism->type=%s\n", lookup_enum(MEC_T, pMechanism->mechanism));
+	FPRINTF_LOOKUP_ENUM("pMechanism->type=%s\n", MEC_T, pMechanism->mechanism);
 	spy_attribute_list_in("pTemplate", pTemplate, ulCount);
 	rv = po->C_GenerateKey(hSession, pMechanism, pTemplate, ulCount, phKey);
 	if (rv == CKR_OK)
@@ -1368,7 +1368,7 @@ C_GenerateKeyPair(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism,
 
 	enter("C_GenerateKeyPair");
 	spy_dump_ulong_in("hSession", hSession);
-	fprintf(spy_output, "pMechanism->type=%s\n", lookup_enum(MEC_T, pMechanism->mechanism));
+	FPRINTF_LOOKUP_ENUM("pMechanism->type=%s\n", MEC_T, pMechanism->mechanism);
 	spy_attribute_list_in("pPublicKeyTemplate", pPublicKeyTemplate, ulPublicKeyAttributeCount);
 	spy_attribute_list_in("pPrivateKeyTemplate", pPrivateKeyTemplate, ulPrivateKeyAttributeCount);
 	rv = po->C_GenerateKeyPair(hSession, pMechanism,
@@ -1391,7 +1391,7 @@ C_WrapKey(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism,
 
 	enter("C_WrapKey");
 	spy_dump_ulong_in("hSession", hSession);
-	fprintf(spy_output, "pMechanism->type=%s\n", lookup_enum(MEC_T, pMechanism->mechanism));
+	FPRINTF_LOOKUP_ENUM("pMechanism->type=%s\n", MEC_T, pMechanism->mechanism);
 	spy_dump_ulong_in("hWrappingKey", hWrappingKey);
 	spy_dump_ulong_in("hKey", hKey);
 	rv = po->C_WrapKey(hSession, pMechanism, hWrappingKey, hKey, pWrappedKey, pulWrappedKeyLen);
@@ -1411,7 +1411,7 @@ C_UnwrapKey(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism,
 
 	enter("C_UnwrapKey");
 	spy_dump_ulong_in("hSession", hSession);
-	fprintf(spy_output, "pMechanism->type=%s\n", lookup_enum(MEC_T, pMechanism->mechanism));
+	FPRINTF_LOOKUP_ENUM("pMechanism->type=%s\n", MEC_T, pMechanism->mechanism);
 	spy_dump_ulong_in("hUnwrappingKey", hUnwrappingKey);
 	spy_dump_string_in("pWrappedKey[ulWrappedKeyLen]", pWrappedKey, ulWrappedKeyLen);
 	spy_attribute_list_in("pTemplate", pTemplate, ulAttributeCount);
@@ -1430,8 +1430,7 @@ C_DeriveKey(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_H
 
 	enter("C_DeriveKey");
 	spy_dump_ulong_in("hSession", hSession);
-	fprintf(spy_output, "[in] pMechanism->type=%s\n",
-		lookup_enum(MEC_T, pMechanism->mechanism));
+	FPRINTF_LOOKUP_ENUM("[in] pMechanism->type=%s\n", MEC_T, pMechanism->mechanism);
 	switch (pMechanism->mechanism) {
 	case CKM_ECDH1_DERIVE:
 	case CKM_ECDH1_COFACTOR_DERIVE:
@@ -1441,8 +1440,7 @@ C_DeriveKey(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_H
 		}
 		CK_ECDH1_DERIVE_PARAMS *param =
 			(CK_ECDH1_DERIVE_PARAMS *) pMechanism->pParameter;
-		fprintf(spy_output, "[in] pMechanism->pParameter = {\n\tkdf=%s\n",
-			lookup_enum(CKD_T, param->kdf));
+		FPRINTF_LOOKUP_ENUM("[in] pMechanism->pParameter = {\n\tkdf=%s\n", CKD_T, param->kdf);
 		fprintf(spy_output, "\tpSharedData[ulSharedDataLen] = ");
 		print_generic(spy_output, 0, param->pSharedData,
 			param->ulSharedDataLen, NULL);
@@ -1458,8 +1456,7 @@ C_DeriveKey(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_H
 		}
 		CK_ECMQV_DERIVE_PARAMS *param2 =
 			(CK_ECMQV_DERIVE_PARAMS *) pMechanism->pParameter;
-		fprintf(spy_output, "[in] pMechanism->pParameter = {\n\tkdf=%s\n",
-			lookup_enum(CKD_T, param2->kdf));
+		FPRINTF_LOOKUP_ENUM("[in] pMechanism->pParameter = {\n\tkdf=%s\n", CKD_T, param2->kdf);
 		fprintf(spy_output, "\tpSharedData[ulSharedDataLen] =");
 		print_generic(spy_output, 0, param2->pSharedData,
 			param2->ulSharedDataLen, NULL);
@@ -1656,8 +1653,7 @@ C_LoginUser(CK_SESSION_HANDLE hSession, CK_USER_TYPE userType,
 
 	enter("C_LoginUser");
 	spy_dump_ulong_in("hSession", hSession);
-	fprintf(spy_output, "[in] userType = %s\n",
-			lookup_enum(USR_T, userType));
+	FPRINTF_LOOKUP_ENUM("[in] userType = %s\n", USR_T, userType);
 	spy_dump_string_in("pPin[ulPinLen]", pPin, ulPinLen);
 	spy_dump_string_in("pUsername[ulUsernameLen]", pUsername, ulUsernameLen);
 	rv = po->C_LoginUser(hSession, userType, pPin, ulPinLen, pUsername, ulUsernameLen);
@@ -1696,7 +1692,7 @@ C_MessageEncryptInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK
 
 	enter("C_MessageEncryptInit");
 	spy_dump_ulong_in("hSession", hSession);
-	fprintf(spy_output, "pMechanism->type=%s\n", lookup_enum(MEC_T, pMechanism->mechanism));
+	FPRINTF_LOOKUP_ENUM("pMechanism->type=%s\n", MEC_T, pMechanism->mechanism);
 	spy_dump_ulong_in("hKey", hKey);
 	rv = po->C_MessageEncryptInit(hSession, pMechanism, hKey);
 	return retne(rv);
@@ -1779,7 +1775,7 @@ C_MessageDecryptInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK
 
 	enter("C_MessageDecryptInit");
 	spy_dump_ulong_in("hSession", hSession);
-	fprintf(spy_output, "pMechanism->type=%s\n", lookup_enum(MEC_T, pMechanism->mechanism));
+	FPRINTF_LOOKUP_ENUM("pMechanism->type=%s\n", MEC_T, pMechanism->mechanism);
 	spy_dump_ulong_in("hKey", hKey);
 	rv = po->C_MessageDecryptInit(hSession, pMechanism, hKey);
 	return retne(rv);
@@ -1862,7 +1858,7 @@ C_MessageSignInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OB
 
 	enter("C_MessageSignInit");
 	spy_dump_ulong_in("hSession", hSession);
-	fprintf(spy_output, "pMechanism->type=%s\n", lookup_enum(MEC_T, pMechanism->mechanism));
+	FPRINTF_LOOKUP_ENUM("pMechanism->type=%s\n", MEC_T, pMechanism->mechanism);
 	spy_dump_ulong_in("hKey", hKey);
 	rv = po->C_MessageSignInit(hSession, pMechanism, hKey);
 	return retne(rv);
@@ -1934,7 +1930,7 @@ C_MessageVerifyInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_
 
 	enter("C_MessageVerifyInit");
 	spy_dump_ulong_in("hSession", hSession);
-	fprintf(spy_output, "pMechanism->type=%s\n", lookup_enum(MEC_T, pMechanism->mechanism));
+	FPRINTF_LOOKUP_ENUM("pMechanism->type=%s\n", MEC_T, pMechanism->mechanism);
 	spy_dump_ulong_in("hKey", hKey);
 	rv = po->C_MessageVerifyInit(hSession, pMechanism, hKey);
 	return retne(rv);
