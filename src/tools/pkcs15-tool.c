@@ -1745,9 +1745,11 @@ static void list_info(void)
 		if (sa->reference == 0 && sa->mechanism == 0
 				&& sa->operations == 0 && sa->algo_ref == 0)
 					break;
+
 		printf("\t\t sc_supported_algo_info[%d]:\n", i);
 		printf("\t\t\t reference  : %u (0x%02x)\n", sa->reference, sa->reference);
 		printf("\t\t\t mechanism  : [0x%02x] %s\n", sa->mechanism, lookup_enum(MEC_T, sa->mechanism));
+
 		if (sc_valid_oid(&sa->parameters)) {
 			printf("\t\t\t parameters:  %i", sa->parameters.value[0]);
 			for (idx = 1; idx < SC_MAX_OBJECT_ID_OCTETS && sa->parameters.value[idx] != -1 ; idx++)
