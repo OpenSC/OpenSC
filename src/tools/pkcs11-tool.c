@@ -2404,7 +2404,6 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		printf("Cryptoki returned error: %s\n", CKR2Str(rv));
 }
 
-
 static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		CK_OBJECT_HANDLE key)
 {
@@ -2413,7 +2412,8 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	CK_RV		rv;
 	CK_RSA_PKCS_OAEP_PARAMS oaep_params;
 	CK_ULONG	in_len, out_len;
-	int		fd, r;
+	int		fd_in, fd_out;
+	int		r;
 	CK_BYTE_PTR	iv = NULL;
 	size_t		iv_size = 0;
 
@@ -2430,15 +2430,6 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		util_fatal("The hash-algorithm is applicable only to "
                "RSA-PKCS-OAEP mechanism");
 
-	if (opt_input == NULL)
-		fd = 0;
-	else if ((fd = open(opt_input, O_RDONLY|O_BINARY)) < 0)
-		util_fatal("Cannot open %s: %m", opt_input);
-
-	r = read(fd, in_buffer, sizeof(in_buffer));
-	if (r < 0)
-		util_fatal("Cannot read from %s: %m", opt_input);
-	in_len = r;
 
 	/* set "default" MGF and hash algorithms. We can overwrite MGF later */
 	switch (opt_mechanism) {
@@ -2505,33 +2496,66 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 
 	}
 
-	rv = p11->C_DecryptInit(session, &mech, key);
-	if (rv != CKR_OK)
-		p11_fatal("C_DecryptInit", rv);
-	if (getALWAYS_AUTHENTICATE(session, key))
-		login(session,CKU_CONTEXT_SPECIFIC);
+	if (opt_input == NULL)
+		fd_in = 0;
+	else if ((fd_in = open(opt_input, O_RDONLY | O_BINARY)) < 0)
+		util_fatal("Cannot open %s: %m", opt_input);
 
-	out_len = sizeof(out_buffer);
-	rv = p11->C_Decrypt(session, in_buffer, in_len, out_buffer, &out_len);
-	if (rv != CKR_OK)
-		p11_fatal("C_Decrypt", rv);
-
-	if (fd != 0)
-		close(fd);
-
-	if (opt_output == NULL)   {
-		fd = 1;
-	}
-	else  {
-		fd = open(opt_output, O_CREAT|O_TRUNC|O_WRONLY|O_BINARY, S_IRUSR|S_IWUSR);
-		if (fd < 0)
+	if (opt_output == NULL) {
+		fd_out = 1;
+	} else {
+		fd_out = open(opt_output, O_CREAT | O_TRUNC | O_WRONLY | O_BINARY, S_IRUSR | S_IWUSR);
+		if (fd_out < 0)
 			util_fatal("failed to open %s: %m", opt_output);
 	}
-	r = write(fd, out_buffer, out_len);
+
+	r = read(fd_in, in_buffer, sizeof(in_buffer));
+	in_len = r;
+
 	if (r < 0)
-		util_fatal("Failed to write to %s: %m", opt_output);
-	if (fd != 1)
-		close(fd);
+		util_fatal("Cannot read from %s: %m", opt_input);
+
+	rv = CKR_CANCEL;
+	if (r < (int) sizeof(in_buffer)) {
+		out_len = sizeof(out_buffer);
+		rv = p11->C_DecryptInit(session, &mech, key);
+		if (rv != CKR_OK)
+			p11_fatal("C_DecryptInit", rv);
+		if (getALWAYS_AUTHENTICATE(session, key))
+			login(session, CKU_CONTEXT_SPECIFIC);
+		rv = p11->C_Decrypt(session, in_buffer, in_len, out_buffer, &out_len);
+	}
+	if (rv != CKR_OK) {
+		rv = p11->C_DecryptInit(session, &mech, key);
+		if (rv != CKR_OK)
+			p11_fatal("C_DecryptInit", rv);
+		if (getALWAYS_AUTHENTICATE(session, key))
+			login(session, CKU_CONTEXT_SPECIFIC);
+		do {
+			out_len = sizeof(out_buffer);
+			rv = p11->C_DecryptUpdate(session, in_buffer, in_len, out_buffer, &out_len);
+			if (rv != CKR_OK)
+				p11_fatal("C_DecryptUpdate", rv);
+			r = write(fd_out, out_buffer, out_len);
+			if (r != (int) out_len)
+				util_fatal("Cannot write to %s: %m", opt_output);
+			r = read(fd_in, in_buffer, sizeof(in_buffer));
+			in_len = r;
+		} while (r > 0);
+		out_len = sizeof(out_buffer);
+		rv = p11->C_DecryptFinal(session, out_buffer, &out_len);
+		if (rv != CKR_OK)
+			p11_fatal("C_DecryptFinal", rv);
+	}
+	if (out_len) {
+		r = write(fd_out, out_buffer, out_len);
+		if (r != (int) out_len)
+			util_fatal("Cannot write to %s: %m", opt_output);
+	}
+	if (fd_in != 0)
+		close(fd_in);
+	if (fd_out != 1)
+		close(fd_out);
 
 	free(iv);
 }
@@ -2543,7 +2567,8 @@ static void encrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	CK_MECHANISM	mech;
 	CK_RV		rv;
 	CK_ULONG	in_len, out_len;
-	int		fd, r;
+	int		fd_in, fd_out;
+	int		r;
 	CK_BYTE_PTR	iv = NULL;
 	size_t		iv_size = 0;
 
@@ -2554,16 +2579,6 @@ static void encrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	fprintf(stderr, "Using encrypt algorithm %s\n", p11_mechanism_to_name(opt_mechanism));
 	memset(&mech, 0, sizeof(mech));
 	mech.mechanism = opt_mechanism;
-
-	if (opt_input == NULL)
-		fd = 0;
-	else if ((fd = open(opt_input, O_RDONLY | O_BINARY)) < 0)
-		util_fatal("Cannot open %s: %m", opt_input);
-
-	r = read(fd, in_buffer, sizeof(in_buffer));
-	if (r < 0)
-		util_fatal("Cannot read from %s: %m", opt_input);
-	in_len = r;
 
 	switch (opt_mechanism) {
 	case CKM_AES_ECB:
@@ -2581,36 +2596,71 @@ static void encrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		util_fatal("Mechanism %s illegal or not supported\n", p11_mechanism_to_name(opt_mechanism));
 	}
 
-	rv = p11->C_EncryptInit(session, &mech, key);
-	if (rv != CKR_OK)
-		p11_fatal("C_EncryptInit", rv);
-	if (getALWAYS_AUTHENTICATE(session, key))
-		login(session, CKU_CONTEXT_SPECIFIC);
-
-	out_len = sizeof(out_buffer);
-	rv = p11->C_Encrypt(session, in_buffer, in_len, out_buffer, &out_len);
-	if (rv != CKR_OK)
-		p11_fatal("C_Encrypt", rv);
-
-	if (fd != 0)
-		close(fd);
+	if (opt_input == NULL)
+		fd_in = 0;
+	else if ((fd_in = open(opt_input, O_RDONLY | O_BINARY)) < 0)
+		util_fatal("Cannot open %s: %m", opt_input);
 
 	if (opt_output == NULL) {
-		fd = 1;
+		fd_out = 1;
 	} else {
-		fd = open(opt_output, O_CREAT | O_TRUNC | O_WRONLY | O_BINARY, S_IRUSR | S_IWUSR);
-		if (fd < 0)
+		fd_out = open(opt_output, O_CREAT | O_TRUNC | O_WRONLY | O_BINARY, S_IRUSR | S_IWUSR);
+		if (fd_out < 0)
 			util_fatal("failed to open %s: %m", opt_output);
 	}
 
-	r = write(fd, out_buffer, out_len);
+	r = read(fd_in, in_buffer, sizeof(in_buffer));
+	in_len = r;
+
 	if (r < 0)
-		util_fatal("Failed to write to %s: %m", opt_output);
-	if (fd != 1)
-		close(fd);
+		util_fatal("Cannot read from %s: %m", opt_input);
+
+	rv = CKR_CANCEL;
+	if (r < (int) sizeof(in_buffer)) {
+		out_len = sizeof(out_buffer);
+		rv = p11->C_EncryptInit(session, &mech, key);
+		if (rv != CKR_OK)
+			p11_fatal("C_EncryptInit", rv);
+		if (getALWAYS_AUTHENTICATE(session, key))
+			login(session, CKU_CONTEXT_SPECIFIC);
+		out_len = sizeof(out_buffer);
+		rv = p11->C_Encrypt(session, in_buffer, in_len, out_buffer, &out_len);
+	}
+	if (rv != CKR_OK) {
+		rv = p11->C_EncryptInit(session, &mech, key);
+		if (rv != CKR_OK)
+			p11_fatal("C_EncryptInit", rv);
+		if (getALWAYS_AUTHENTICATE(session, key))
+			login(session, CKU_CONTEXT_SPECIFIC);
+		do {
+			out_len = sizeof(out_buffer);
+			rv = p11->C_EncryptUpdate(session, in_buffer, in_len, out_buffer, &out_len);
+			if (rv != CKR_OK)
+				p11_fatal("C_EncryptUpdate", rv);
+			r = write(fd_out, out_buffer, out_len);
+			if (r != (int) out_len)
+				util_fatal("Cannot write to %s: %m", opt_output);
+			r = read(fd_in, in_buffer, sizeof(in_buffer));
+			in_len = r;
+		} while (r > 0);
+		out_len = sizeof(out_buffer);
+		rv = p11->C_EncryptFinal(session, out_buffer, &out_len);
+		if (rv != CKR_OK)
+			p11_fatal("C_EncryptFinal", rv);
+	}
+	if (out_len) {
+		r = write(fd_out, out_buffer, out_len);
+		if (r != (int) out_len)
+			util_fatal("Cannot write to %s: %m", opt_output);
+	}
+	if (fd_in != 0)
+		close(fd_in);
+	if (fd_out != 1)
+		close(fd_out);
 
 	free(iv);
 }
+
 
 static void hash_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 {
