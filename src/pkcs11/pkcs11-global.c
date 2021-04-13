@@ -283,22 +283,6 @@ BOOL APIENTRY DllMain( HINSTANCE hinstDLL,
 }
 #endif
 
-#define SC_LOG_RV(fmt, rv)\
-do {\
-	const char *name = lookup_enum(RV_T, (rv));\
-	if (name)\
-		sc_log(context, (fmt), name);\
-	else {\
-		size_t needed = snprintf(NULL, 0, "0x%08lX", (rv)) + 1;\
-		char *buffer = malloc(needed);\
-		if (buffer) {\
-			sprintf(buffer, "0x%08lX", (rv));\
-			sc_log(context, (fmt), buffer);\
-			free(buffer);\
-		}\
-	}\
-} while(0)
-
 CK_RV C_Initialize(CK_VOID_PTR pInitArgs)
 {
 	CK_RV rv;
@@ -607,6 +591,7 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 {
 	struct sc_pkcs11_slot *slot = NULL;
 	sc_timestamp_t now;
+	const char *name;
 	CK_RV rv;
 
 	if (pInfo == NULL_PTR)
@@ -656,7 +641,8 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 		memcpy(pInfo, &slot->slot_info, sizeof(CK_SLOT_INFO));
 
 	sc_log(context, "C_GetSlotInfo() flags 0x%lX", pInfo->flags);
-	const char *name = lookup_enum(RV_T, rv);
+	
+	name = lookup_enum(RV_T, rv);
 	if (name)
 		sc_log(context, "C_GetSlotInfo(0x%lx) = %s", slotID, name);
 	else

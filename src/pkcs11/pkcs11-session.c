@@ -27,22 +27,6 @@
 
 #include "sc-pkcs11.h"
 
-#define SC_LOG_RV(fmt, rv)\
-do {\
-        const char *name = lookup_enum(RV_T, (rv));\
-        if (name)\
-                sc_log(context, (fmt), name);\
-        else {\
-                size_t needed = snprintf(NULL, 0, "0x%08lX", (rv)) + 1;\
-                char *buffer = malloc(needed);\
-                if (buffer) {\
-                        sprintf(buffer, "0x%08lX", (rv));\
-                        sc_log(context, (fmt), buffer);\
-                        free(buffer);\
-                }\
-        }\
-} while(0)
-
 CK_RV get_session(CK_SESSION_HANDLE hSession, struct sc_pkcs11_session **session)
 {
 	*session = list_seek(&sessions, &hSession);
@@ -267,6 +251,7 @@ CK_RV C_GetSessionInfo(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	struct sc_pkcs11_session *session;
 	struct sc_pkcs11_slot *slot;
 	int logged_out;
+	const char *name;
 
 	if (pInfo == NULL_PTR)
 		return CKR_ARGUMENTS_BAD;
@@ -307,8 +292,7 @@ CK_RV C_GetSessionInfo(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	}
 
 out:
-	;
-	const char *name = lookup_enum(RV_T, rv);
+	name = lookup_enum(RV_T, rv);
 	if (name)
 		sc_log(context, "C_GetSessionInfo(0x%lx) = %s", hSession, name);
 	else

@@ -145,22 +145,6 @@ out:
 	return rv;
 }
 
-#define SC_LOG_RV(fmt, rv)\
-do {\
-        const char *name = lookup_enum(RV_T, (rv));\
-        if (name)\
-                sc_log(context, (fmt), name);\
-        else {\
-                size_t needed = snprintf(NULL, 0, "0x%08lX", (rv)) + 1;\
-                char *buffer = malloc(needed);\
-                if (buffer) {\
-                        sprintf(buffer, "0x%08lX", (rv));\
-                        sc_log(context, (fmt), buffer);\
-                        free(buffer);\
-                }\
-        }\
-} while(0)
-
 CK_RV
 C_CreateObject(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		CK_ATTRIBUTE_PTR pTemplate,	/* the object's template */
@@ -254,6 +238,7 @@ C_GetAttributeValue(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	CK_RV res;
 	CK_RV res_type;
 	unsigned int i;
+	const char *name;
 
 	if (pTemplate == NULL_PTR || ulCount == 0)
 		return CKR_ARGUMENTS_BAD;
@@ -297,14 +282,14 @@ C_GetAttributeValue(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	}
 
 out:
-	;
-	const char *name = lookup_enum (RV_T, rv );
+	name = lookup_enum (RV_T, rv );
 	if (name)
 		sc_log(context, "C_GetAttributeValue(hSession=0x%lx, hObject=0x%lx) = %s",
 			hSession, hObject, name);
 	else
 		sc_log(context, "C_GetAttributeValue(hSession=0x%lx, hObject=0x%lx) = 0x%lx",
                         hSession, hObject, rv);
+
 	sc_pkcs11_unlock();
 	return rv;
 }
