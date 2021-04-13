@@ -42,26 +42,42 @@ echo " OpenSSL encrypt, pkcs11-tool decrypt"
 echo " pkcs11-tool encrypt, compare to openssl encrypt"
 echo "======================================================="
 
-echo -n "UUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU" > aes_plain.data
+echo "C_Encrypt"
+dd if=/dev/urandom bs=200 count=1 >aes_plain.data 2>/dev/null
+$PKCS11_TOOL --module="$P11LIB" --pin "$PIN" --encrypt --id "$ID2" -m AES-CBC-PAD --iv "${VECTOR}" \
+	--input-file aes_plain.data --output-file aes_ciphertext_pkcs11.data 2>/dev/null
+assert $? "Fail/pkcs11-tool encrypt"
+openssl enc -aes-128-cbc -in aes_plain.data -out aes_ciphertext_openssl.data -iv "${VECTOR}" -K "70707070707070707070707070707070"
+cmp aes_ciphertext_pkcs11.data aes_ciphertext_openssl.data >/dev/null 2>/dev/null
+assert $? "Fail, AES-CBC-PAD (C_Encrypt) - wrong encrypt"
+echo "C_Decrypt"
+$PKCS11_TOOL --module="$P11LIB" --pin "$PIN" --decrypt --id "$ID2" -m AES-CBC-PAD --iv "${VECTOR}" \
+	--input-file aes_ciphertext_pkcs11.data --output-file aes_plain_pkcs11.data 2>/dev/null
+assert $? "Fail/pkcs11-tool decrypt"
+cmp aes_plain.data aes_plain_pkcs11.data >/dev/null 2>/dev/null
+assert $? "Fail, AES-CBC-PAD (C_Decrypt) - wrong decrypt"
+
+echo "C_DecryptUpdate"
+dd if=/dev/urandom bs=8131 count=3 >aes_plain.data 2>/dev/null
 openssl enc -aes-128-cbc -in aes_plain.data -out aes_ciphertext_openssl.data -iv "${VECTOR}" -K "70707070707070707070707070707070"
 assert $? "Fail, OpenSSL"
 $PKCS11_TOOL --module="$P11LIB" --pin "$PIN" --decrypt --id "$ID2" -m AES-CBC-PAD --iv "${VECTOR}" \
 	--input-file aes_ciphertext_openssl.data --output-file aes_plain_test.data 2>/dev/null
-assert $? "Fail/pkcs11-tool decrypt"
+assert $? "Fail/pkcs11-tool (C_DecryptUpdate) decrypt"
 cmp aes_plain.data aes_plain_test.data >/dev/null 2>/dev/null
 assert $? "Fail, AES-CBC-PAD - wrong decrypt"
-
+echo "C_EncryptUpdate"
 $PKCS11_TOOL --module="$P11LIB" --pin "$PIN" --encrypt --id "$ID2" -m AES-CBC-PAD --iv "${VECTOR}" \
 	--input-file aes_plain.data --output-file aes_ciphertext_pkcs11.data 2>/dev/null
 assert $? "Fail/pkcs11-tool encrypt"
 cmp aes_ciphertext_pkcs11.data aes_ciphertext_openssl.data >/dev/null 2>/dev/null
-assert $? "Fail, AES-CBC-PAD - wrong encrypt"
-
+assert $? "Fail, AES-CBC-PAD (C_EncryptUpdate) - wrong encrypt"
 
 echo "======================================================="
 echo " AES-ECB, AES-CBC - must fail, because the length of   "
 echo " the input is not multiple od block size               "
 echo "======================================================="
+echo -n "UUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU" > aes_plain.data
 ! $PKCS11_TOOL --module="$P11LIB" --pin "$PIN" --encrypt --id "$ID2" -m AES-ECB --input-file aes_plain.data --output-file aes_ciphertext_pkcs11.data 2>/dev/null
 assert $? "Fail, AES-ECB must not work if the input is not a multiple of the block size"
 ! $PKCS11_TOOL --module="$P11LIB" --pin "$PIN" --encrypt --id "$ID2" -m AES-CBC --iv "${VECTOR}" \
@@ -135,5 +151,5 @@ echo "======================================================="
 softhsm_cleanup
 
 rm objects.list
-rm aes_128.key aes_plain.data aes_plain_test.data  aes_ciphertext_openssl.data aes_ciphertext_pkcs11.data
+rm aes_128.key aes_plain.data aes_plain_test.data aes_ciphertext_openssl.data aes_ciphertext_pkcs11.data aes_plain_pkcs11.data
 exit $ERRORS
