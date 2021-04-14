@@ -55,6 +55,8 @@ static const struct sc_atr_table cardos_atrs[] = {
 	/* CardOS v5.3 */
 	{ "3b:d2:18:00:81:31:fe:58:c9:02:17", NULL, NULL, SC_CARD_TYPE_CARDOS_V5_3, 0, NULL},
 	{ "3b:d2:18:00:81:31:fe:58:c9:03:16", NULL, NULL, SC_CARD_TYPE_CARDOS_V5_3, 0, NULL},
+	/* CardOS v5.4 */
+	{ "3b:d2:18:00:81:31:fe:58:c9:04:11", NULL, NULL, SC_CARD_TYPE_CARDOS_V5_3, 0, NULL},
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
