@@ -1501,14 +1501,6 @@ static int verify_certificate(sc_card_t *card, sc_cvc_t *cvc,
 
 
 
-static void print_public_key_auth_status(u8 *recvbuf)
-{
-	printf("Number of public keys:     %d\n", recvbuf[0]);
-	printf("Missing public keys:       %d\n", recvbuf[1]);
-	printf("Required pubkeys for auth: %d\n", recvbuf[2]);
-	printf("Authenticated public keys: %d\n", recvbuf[3]);
-}
-
 static int sc_hsm_register_public_key(sc_card_t *card,
 		sc_cardctl_sc_hsm_pka_register_t *pka_register)
 {
@@ -1583,7 +1575,8 @@ err:
 
 
 
-static int sc_hsm_public_key_auth_status(sc_card_t *card)
+static int sc_hsm_public_key_auth_status(sc_card_t *card,
+	sc_cardctl_sc_hsm_pka_status_t *status)
 {
 	u8 recvbuf[4];
 	sc_context_t *ctx = card->ctx;
@@ -1602,7 +1595,10 @@ static int sc_hsm_public_key_auth_status(sc_card_t *card)
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(ctx, r, "Check SW error");
 
-	print_public_key_auth_status(recvbuf);
+	status->num_total = recvbuf[0];
+	status->num_missing = recvbuf[1];
+	status->num_required = recvbuf[2];
+	status->num_authenticated = recvbuf[3];
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
@@ -1776,7 +1772,7 @@ static int sc_hsm_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 	case SC_CARDCTL_SC_HSM_REGISTER_PUBLIC_KEY:
 		return sc_hsm_register_public_key(card, ptr);
 	case SC_CARDCTL_SC_HSM_PUBLIC_KEY_AUTH_STATUS:
-		return sc_hsm_public_key_auth_status(card);
+		return sc_hsm_public_key_auth_status(card, ptr);
 	}
 	return SC_ERROR_NOT_SUPPORTED;
 }
