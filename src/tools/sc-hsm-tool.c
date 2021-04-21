@@ -42,6 +42,7 @@
 #include <openssl/rand.h>
 #include <openssl/err.h>
 
+#include "fread_to_eof.h"
 #include "libopensc/sc-ossl-compat.h"
 #include "libopensc/opensc.h"
 #include "libopensc/cardctl.h"
@@ -1821,42 +1822,15 @@ static void print_pka_status(const sc_cardctl_sc_hsm_pka_status_t *status)
 
 static int register_public_key(sc_context_t *ctx, sc_card_t *card, const char *inf)
 {
-	FILE *in = NULL;
-	struct stat sb;
-	u8 *pka = NULL;
 	int r = 0;
 	sc_cardctl_sc_hsm_pka_register_t pka_register;
 
-	if (!(in = fopen(inf, "rb"))) {
-		perror(inf);
-		r = -1;
-		goto err;
-	}
-	if (fstat(fileno(in), &sb)) {
-		perror("cannot fstat");
-		r = -1;
-		goto err;
-	}
-	if (sb.st_size == 0) {
-		fprintf(stderr, "File is empty\n");
-		r = -1;
-		goto err;
-	}
-	if (!(pka = malloc(sb.st_size))) {
-		fprintf(stderr, "Malloc failed\n");
-		r = -1;
-		goto err;
-	}
-	if (fread(pka, 1, sb.st_size, in) != (size_t)sb.st_size) {
-		perror(inf);
-		r = -1;
-		goto err;
-	}
-	fclose(in);
-	in = NULL;
+	memset(&pka_register, 0, sizeof(pka_register));
 
-	pka_register.buf = pka;
-	pka_register.buflen = sb.st_size;
+	if (!fread_to_eof(inf, &pka_register.buf, &pka_register.buflen)) {
+		r = -1;
+		goto err;
+	}
 
 	r = sc_card_ctl(card, SC_CARDCTL_SC_HSM_REGISTER_PUBLIC_KEY, &pka_register);
 	if (r == SC_ERROR_INS_NOT_SUPPORTED) { /* Not supported or not initialized for public key registration */
@@ -1873,13 +1847,11 @@ static int register_public_key(sc_context_t *ctx, sc_card_t *card, const char *i
 	print_pka_status(&pka_register.new_status);
 
 	r = 0;
+	/* fall-through */
 
 err:
-	if (pka)
-		free(pka);
-	if (in)
-		fclose(in);
-
+	free(pka_register.buf);
+	pka_register.buf = NULL;
 	return r;
 }
 

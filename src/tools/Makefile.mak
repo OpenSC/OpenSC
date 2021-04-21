@@ -62,6 +62,11 @@ openpgp-tool.exe: openpgp-tool-helpers.obj $(LIBS)
 	link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj openpgp-tool-helpers.obj $(OBJECTS) $(LIBS) gdi32.lib shell32.lib User32.lib ws2_32.lib shlwapi.lib
 	mt -manifest exe.manifest -outputresource:$@;1
 
+sc-hsm-tool.exe: sc-hsm-tool.obj fread_to_eof.obj $(OBJECTS) $(LIBS)
+	cl $(COPTS) /c $*.c
+	link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj sc-hsm-tool.obj fread_to_eof.obj $(OBJECTS) $(LIBS) $(OPENSSL_LIB) gdi32.lib shell32.lib User32.lib ws2_32.lib
+	mt -manifest exe.manifest -outputresource:$@;1
+
 .c.exe:
 	cl $(COPTS) /c $<
 	link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj $(OBJECTS) $(LIBS) $(OPENSSL_LIB) gdi32.lib shell32.lib User32.lib ws2_32.lib shlwapi.lib
