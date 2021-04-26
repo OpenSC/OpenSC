@@ -30,6 +30,8 @@ NEWS for OpenSC -- History of user visible changes
  * Fixed asking for a user pin when formatting a card (#1737)
 ## IAS/ECC
  * Added support for French CPx Healthcare cards (#2217)
+## CardOS
+ * Added ATR for new CardOS 5.4 version (#2296)
 
 # New in 0.21.0; 2020-11-24
 ## General Improvements
