@@ -140,9 +140,9 @@ endif
 
 .PHONY: cmdline
 cmdline:
-	for f in *.ggo.in; do $(do_subst) < "$$f" > "$${f%.in}"; done
-	for f in *.ggo;    do $(GENGETOPT) --file-name="$${f%.ggo}-cmdline" --output-dir=$(builddir) < "$$f"; done
-	$(GENGETOPT) --file-name=opensc-asn1-cmdline --output-dir=$(builddir) < opensc-asn1.ggo --unamed-opts
+	@for f in *.ggo.in; do $(do_subst) < "$$f" > "$${f%.in}"; done
+	@for f in *.ggo;    do $(GENGETOPT) --file-name="$${f%.ggo}-cmdline" --output-dir=$(builddir) < "$$f"; done
+	$(AM_V_GEN)$(GENGETOPT) --file-name=opensc-asn1-cmdline --output-dir=$(builddir) < opensc-asn1.ggo --unamed-opts
 
 if WIN32
 opensc_tool_SOURCES += versioninfo-tools.rc
@@ -174,12 +174,12 @@ xdg_autostart_DATA = pkcs11-register.desktop
 endif
 
 %.desktop: %.desktop.in
-	$(do_subst) < $< > $@
+	$(AM_V_GEN)$(do_subst) < $< > $@
 
 noinst_DATA = org.opensc-project.mac.pkcs11-register.plist org.opensc-project.mac.opensc-notify.plist
 
 %.plist: %.plist.in
-	$(do_subst) < $< > $@
+	$(AM_V_GEN)$(do_subst) < $< > $@
 
 clean-local:
 	rm -f $(abs_builddir)/npa-tool.ggo $(abs_builddir)/opensc-notify.ggo $(abs_builddir)/opensc-asn1.ggo $(abs_builddir)/goid-tool.ggo $(abs_builddir)/egk-tool.ggo org.opensc.notify.desktop pkcs11-register.desktop

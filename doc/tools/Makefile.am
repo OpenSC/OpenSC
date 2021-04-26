@@ -14,15 +14,14 @@ endif
 completion_DATA = $(patsubst $(srcdir)/%.1.xml, %, $(wildcard $(srcdir)/*.1.xml))
 
 tools.html: $(srcdir)/tools.xml $(wildcard $(srcdir)/*.1.xml)
-	$(XSLTPROC) --nonet --path "$(srcdir)/..:$(xslstylesheetsdir)/html" --xinclude -o $@ html.xsl $<
+	$(AM_V_GEN)$(XSLTPROC) --nonet --path "$(srcdir)/..:$(xslstylesheetsdir)/html" --xinclude -o $@ html.xsl $< 2>/dev/null
 
 %.1: $(srcdir)/%.1.xml
-	sed -e 's|@pkgdatadir[@]|$(pkgdatadir)|g' < $< \
-	| $(XSLTPROC) --nonet --path "$(srcdir)/..:$(xslstylesheetsdir)/manpages" --xinclude -o $@ man.xsl $<
+	$(AM_V_GEN)sed -e 's|@pkgdatadir[@]|$(pkgdatadir)|g' < $< \
+	| $(XSLTPROC) --nonet --path "$(srcdir)/..:$(xslstylesheetsdir)/manpages" --xinclude -o $@ man.xsl $< 2>/dev/null
 
 %: $(srcdir)/%.1.xml
-	@echo $< $@
-	@cat $(srcdir)/completion-template \
+	$(AM_V_GEN)cat $(srcdir)/completion-template \
 		| sed "s,ALLOPTS,\
 			$(shell sed -n 's,.*<option>\([^<]*\)</option>.*,\1,pg' $< \
 				| sort -u | grep -- '^\-' | tr '\n' ' ')," \
