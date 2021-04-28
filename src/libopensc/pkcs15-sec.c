@@ -581,8 +581,8 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	sc_security_env_t senv;
 	sc_algorithm_info_t *alg_info;
 	const struct sc_pkcs15_prkey_info *prkey = (const struct sc_pkcs15_prkey_info *) obj->data;
-	u8 buf[1024], *tmp;
-	size_t modlen;
+	u8 *buf = NULL, *tmp;
+	size_t modlen = 0, buflen = 0;
 	unsigned long pad_flags = 0, sec_flags = 0;
 
 	LOG_FUNC_CALLED(ctx);
@@ -612,9 +612,13 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	}
 
 	/* Probably never happens, but better make sure */
-	if (inlen > sizeof(buf) || outlen < modlen)
+	if (outlen < modlen)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_BUFFER_TOO_SMALL);
 
+	buflen = inlen + 256;
+	buf = sc_mem_secure_alloc(buflen);
+	if (buf == NULL)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 	memcpy(buf, in, inlen);
 
 	/* revert data to sign when signing with the GOST key.
@@ -622,7 +626,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	 * TODO: tested with RuTokenECP, has to be validated for RuToken. */
 	if (obj->type == SC_PKCS15_TYPE_PRKEY_GOSTR3410) {
 		r = sc_mem_reverse(buf, inlen);
-		LOG_TEST_RET(ctx, r, "Reverse memory error");
+		LOG_TEST_GOTO_ERR(ctx, r, "Reverse memory error");
 	}
 
 	tmp = buf;
@@ -639,13 +643,13 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 		if ((alg_info->flags & SC_ALGORITHM_NEED_USAGE) &&
 			((prkey->usage & USAGE_ANY_SIGN) &&
 			(prkey->usage & USAGE_ANY_DECIPHER)) ) {
-			size_t tmplen = sizeof(buf);
+			size_t tmplen = buflen;
 			if (flags & SC_ALGORITHM_RSA_RAW) {
 				r = sc_pkcs15_decipher(p15card, obj, flags, in, inlen, out, outlen);
-				LOG_FUNC_RETURN(ctx, r);
+				goto err;
 			}
 			if (modlen > tmplen)
-				LOG_TEST_RET(ctx, SC_ERROR_NOT_ALLOWED, "Buffer too small, needs recompile!");
+				LOG_TEST_GOTO_ERR(ctx, SC_ERROR_NOT_ALLOWED, "Buffer too small, needs recompile!");
 
 			/* XXX Assuming RSA key here */
 			r = sc_pkcs1_encode(ctx, flags, in, inlen, buf, &tmplen, prkey->modulus_length);
@@ -655,10 +659,10 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 			/* instead use raw rsa */
 			flags |= SC_ALGORITHM_RSA_RAW;
 
-			LOG_TEST_RET(ctx, r, "Unable to add padding");
+			LOG_TEST_GOTO_ERR(ctx, r, "Unable to add padding");
 
 			r = sc_pkcs15_decipher(p15card, obj, flags, buf, modlen, out, outlen);
-			LOG_FUNC_RETURN(ctx, r);
+			goto err;
 		}
 
 
@@ -673,12 +677,12 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 		    !(alg_info->flags & SC_ALGORITHM_RSA_HASH_NONE) &&
 		    (alg_info->flags & SC_ALGORITHM_RSA_PAD_PKCS1)) {
 			unsigned int algo;
-			size_t tmplen = sizeof(buf);
+			size_t tmplen = buflen;
 
 			r = sc_pkcs1_strip_digest_info_prefix(&algo, tmp, inlen, tmp, &tmplen);
 			if (r != SC_SUCCESS || algo == SC_ALGORITHM_RSA_HASH_NONE) {
-				sc_mem_clear(buf, sizeof(buf));
-				LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
+				r = SC_ERROR_INVALID_DATA;
+				goto err;
 			}
 			flags &= ~SC_ALGORITHM_RSA_HASH_NONE;
 			flags |= algo;
@@ -700,8 +704,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 
 	r = sc_get_encoding_flags(ctx, flags, alg_info->flags, &pad_flags, &sec_flags);
 	if (r != SC_SUCCESS) {
-		sc_mem_clear(buf, sizeof(buf));
-		LOG_FUNC_RETURN(ctx, r);
+		goto err;
 	}
 	/* senv now has flags card or driver will do */
 	senv.algorithm_flags = sec_flags;
@@ -711,19 +714,19 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 
 	/* add the padding bytes (if necessary) */
 	if (pad_flags != 0) {
-		size_t tmplen = sizeof(buf);
+		size_t tmplen = buflen;
 
 		/* XXX Assuming RSA key here */
 		r = sc_pkcs1_encode(ctx, pad_flags, tmp, inlen, tmp, &tmplen,
 		    prkey->modulus_length);
-		LOG_TEST_RET(ctx, r, "Unable to add padding");
+		LOG_TEST_GOTO_ERR(ctx, r, "Unable to add padding");
 		inlen = tmplen;
 	}
 	else if ( senv.algorithm == SC_ALGORITHM_RSA &&
 	          (flags & SC_ALGORITHM_RSA_PADS) == SC_ALGORITHM_RSA_PAD_NONE) {
 		/* Add zero-padding if input is shorter than the modulus */
 		if (inlen < modlen) {
-			if (modlen > sizeof(buf))
+			if (modlen > buflen)
 				return SC_ERROR_BUFFER_TOO_SMALL;
 			memmove(tmp+modlen-inlen, tmp, inlen);
 			memset(tmp, 0, modlen-inlen);
@@ -744,7 +747,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 
 	r = use_key(p15card, obj, &senv, sc_compute_signature, tmp, inlen,
 			out, outlen);
-	LOG_TEST_RET(ctx, r, "use_key() failed");
+	LOG_TEST_GOTO_ERR(ctx, r, "use_key() failed");
 
 	/* Some cards may return RSA signature as integer without leading zero bytes */
 	/* Already know outlen >= modlen and r >= 0 */
@@ -754,7 +757,8 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 		r = modlen;
 	}
 
-	sc_mem_clear(buf, sizeof(buf));
+err:
+	sc_mem_secure_free(buf, buflen);
 
 	LOG_FUNC_RETURN(ctx, r);
 }
