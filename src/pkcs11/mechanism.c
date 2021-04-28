@@ -38,10 +38,50 @@ struct hash_signature_info {
 struct signature_data {
 	struct sc_pkcs11_object *key;
 	struct hash_signature_info *info;
-	sc_pkcs11_operation_t *	md;
-	CK_BYTE			buffer[4096/8];
+	sc_pkcs11_operation_t *md;
+	CK_BYTE			*buffer;
 	unsigned int	buffer_len;
 };
+
+static struct signature_data *
+new_signature_data()
+{
+	return calloc(1, sizeof(struct signature_data));
+}
+
+static void
+signature_data_release(struct signature_data *data)
+{
+	if (!data)
+		return;
+	sc_pkcs11_release_operation(&data->md);
+	sc_mem_secure_free(data->buffer, data->buffer_len);
+	free(data);
+}
+
+static CK_RV
+signature_data_buffer_append(struct signature_data *data,
+		const CK_BYTE *in, unsigned int in_len)
+{
+	if (!data)
+		return CKR_ARGUMENTS_BAD;
+	if (in_len == 0)
+		return CKR_OK;
+
+	unsigned int new_len = data->buffer_len + in_len;
+	CK_BYTE *new_buffer = sc_mem_secure_alloc(new_len);
+	if (!new_buffer)
+		return CKR_HOST_MEMORY;
+
+	if (data->buffer_len != 0)
+		memcpy(new_buffer, data->buffer, data->buffer_len);
+	memcpy(new_buffer+data->buffer_len, in, in_len);
+
+	sc_mem_secure_free(data->buffer, data->buffer_len);
+	data->buffer = new_buffer;
+	data->buffer_len = new_len;
+	return CKR_OK;
+}
 
 /*
  * Register a mechanism
@@ -374,7 +414,7 @@ sc_pkcs11_signature_init(sc_pkcs11_operation_t *operation,
 	int can_do_it = 0;
 
 	LOG_FUNC_CALLED(context);
-	if (!(data = calloc(1, sizeof(*data))))
+	if (!(data = new_signature_data()))
 		LOG_FUNC_RETURN(context, CKR_HOST_MEMORY);
 	data->info = NULL;
 	data->key = key;
@@ -391,7 +431,7 @@ sc_pkcs11_signature_init(sc_pkcs11_operation_t *operation,
 		}
 		else  {
 			/* Mechanism recognised but cannot be performed by pkcs#15 card, or some general error. */
-			free(data);
+			signature_data_release(data);
 			LOG_FUNC_RETURN(context, (int) rv);
 		}
 	}
@@ -401,7 +441,7 @@ sc_pkcs11_signature_init(sc_pkcs11_operation_t *operation,
 		rv = key->ops->init_params(operation->session, &operation->mechanism);
 		if (rv != CKR_OK) {
 			/* Probably bad arguments */
-			free(data);
+			signature_data_release(data);
 			LOG_FUNC_RETURN(context, (int) rv);
 		}
 	}
@@ -420,7 +460,7 @@ sc_pkcs11_signature_init(sc_pkcs11_operation_t *operation,
 			rv = info->hash_type->md_init(data->md);
 		if (rv != CKR_OK) {
 			sc_pkcs11_release_operation(&data->md);
-			free(data);
+			signature_data_release(data);
 			LOG_FUNC_RETURN(context, (int) rv);
 		}
 		data->info = info;
@@ -435,21 +475,19 @@ sc_pkcs11_signature_update(sc_pkcs11_operation_t *operation,
 		CK_BYTE_PTR pPart, CK_ULONG ulPartLen)
 {
 	struct signature_data *data;
+	CK_RV rv;
 
 	LOG_FUNC_CALLED(context);
 	sc_log(context, "data part length %li", ulPartLen);
 	data = (struct signature_data *) operation->priv_data;
 	if (data->md) {
-		CK_RV rv = data->md->type->md_update(data->md, pPart, ulPartLen);
+		rv = data->md->type->md_update(data->md, pPart, ulPartLen);
 		LOG_FUNC_RETURN(context, (int) rv);
 	}
 
 	/* This signature mechanism operates on the raw data */
-	if (data->buffer_len + ulPartLen > sizeof(data->buffer))
-		LOG_FUNC_RETURN(context, CKR_DATA_LEN_RANGE);
-	memcpy(data->buffer + data->buffer_len, pPart, ulPartLen);
-	data->buffer_len += ulPartLen;
-	LOG_FUNC_RETURN(context, CKR_OK);
+	rv = signature_data_buffer_append(data, pPart, ulPartLen);
+	LOG_FUNC_RETURN(context, (int) rv);
 }
 
 static CK_RV
@@ -463,14 +501,17 @@ sc_pkcs11_signature_final(sc_pkcs11_operation_t *operation,
 	data = (struct signature_data *) operation->priv_data;
 	if (data->md) {
 		sc_pkcs11_operation_t	*md = data->md;
-		CK_ULONG len = sizeof(data->buffer);
+		CK_BYTE hash[64];
+		CK_ULONG len = sizeof(hash);
 
-		rv = md->type->md_final(md, data->buffer, &len);
+		rv = md->type->md_final(md, hash, &len);
 		if (rv == CKR_BUFFER_TOO_SMALL)
 			rv = CKR_FUNCTION_FAILED;
 		if (rv != CKR_OK)
 			LOG_FUNC_RETURN(context, (int) rv);
-		data->buffer_len = (unsigned int) len;
+		rv = signature_data_buffer_append(data, hash, len);
+		if (rv != CKR_OK)
+			LOG_FUNC_RETURN(context, (int) rv);
 	}
 
 	rv = data->key->ops->sign(operation->session, data->key, &operation->mechanism,
@@ -527,14 +568,9 @@ sc_pkcs11_signature_size(sc_pkcs11_operation_t *operation, CK_ULONG_PTR pLength)
 static void
 sc_pkcs11_signature_release(sc_pkcs11_operation_t *operation)
 {
-	struct signature_data *data;
-
-	data = (struct signature_data *) operation->priv_data;
-	if (!data)
+	if (!operation)
 	    return;
-	sc_pkcs11_release_operation(&data->md);
-	memset(data, 0, sizeof(*data));
-	free(data);
+	signature_data_release(operation->priv_data);
 }
 
 #ifdef ENABLE_OPENSSL
@@ -643,7 +679,7 @@ sc_pkcs11_verify_init(sc_pkcs11_operation_t *operation,
 	struct signature_data *data;
 	CK_RV rv;
 
-	if (!(data = calloc(1, sizeof(*data))))
+	if (!(data = new_signature_data()))
 		return CKR_HOST_MEMORY;
 
 	data->info = NULL;
@@ -708,11 +744,8 @@ sc_pkcs11_verify_update(sc_pkcs11_operation_t *operation,
 	}
 
 	/* This verification mechanism operates on the raw data */
-	if (data->buffer_len + ulPartLen > sizeof(data->buffer))
-		return CKR_DATA_LEN_RANGE;
-	memcpy(data->buffer + data->buffer_len, pPart, ulPartLen);
-	data->buffer_len += ulPartLen;
-	return CKR_OK;
+	CK_RV rv = signature_data_buffer_append(data, pPart, ulPartLen);
+	LOG_FUNC_RETURN(context, (int) rv);
 }
 
 static CK_RV
@@ -1056,7 +1089,7 @@ sc_pkcs11_decrypt_init(sc_pkcs11_operation_t *operation,
 	struct signature_data *data;
 	CK_RV rv;
 
-	if (!(data = calloc(1, sizeof(*data))))
+	if (!(data = new_signature_data()))
 		return CKR_HOST_MEMORY;
 
 	data->key = key;
