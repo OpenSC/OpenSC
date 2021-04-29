@@ -375,7 +375,7 @@ CK_RV sc_to_cryptoki_error(int rc, const char *ctx);
 void sc_pkcs11_print_attrs(int level, const char *file, unsigned int line, const char *function,
 		const char *info, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount);
 #define dump_template(level, info, pTemplate, ulCount) \
-		sc_pkcs11_print_attrs(level, __FILE__, __LINE__, __FUNCTION__, \
+		sc_pkcs11_print_attrs(level, FILENAME, __LINE__, __FUNCTION__, \
 				info, pTemplate, ulCount)
 
 /* Slot and card handling functions */
