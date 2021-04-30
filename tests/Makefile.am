@@ -2,6 +2,7 @@ MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
 
 dist_noinst_SCRIPTS = common.sh \
                       test-manpage.sh \
+                      test-duplicate-symbols.sh \
                       test-fuzzing.sh \
                       test-pkcs11-tool-test.sh \
                       test-pkcs11-tool-test-threads.sh \
