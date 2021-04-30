@@ -2557,8 +2557,7 @@ void sc_pkcs15_free_object_content(struct sc_pkcs15_object *obj)
 			|| SC_PKCS15_TYPE_SKEY & obj->type
 			|| SC_PKCS15_TYPE_PRKEY & obj->type) {
 			/* clean everything that potentially contains a secret */
-			sc_mem_clear(obj->content.value, obj->content.len);
-			sc_mem_secure_free(obj->content.value, obj->content.len);
+			sc_mem_secure_clear_free(obj->content.value, obj->content.len);
 		} else {
 			free(obj->content.value);
 		}
