@@ -1539,6 +1539,10 @@ int sc_base64_decode(const char *in, u8 *out, size_t outlen);
 void sc_mem_clear(void *ptr, size_t len);
 void *sc_mem_secure_alloc(size_t len);
 void sc_mem_secure_free(void *ptr, size_t len);
+#define sc_mem_secure_clear_free(ptr, len) do { \
+	sc_mem_clear(ptr, len); \
+	sc_mem_secure_free(ptr, len); \
+} while (0);
 int sc_mem_reverse(unsigned char *buf, size_t len);
 
 int sc_get_cache_dir(sc_context_t *ctx, char *buf, size_t bufsize);

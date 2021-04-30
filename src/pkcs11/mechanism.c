@@ -55,7 +55,7 @@ signature_data_release(struct signature_data *data)
 	if (!data)
 		return;
 	sc_pkcs11_release_operation(&data->md);
-	sc_mem_secure_free(data->buffer, data->buffer_len);
+	sc_mem_secure_clear_free(data->buffer, data->buffer_len);
 	free(data);
 }
 
@@ -77,7 +77,7 @@ signature_data_buffer_append(struct signature_data *data,
 		memcpy(new_buffer, data->buffer, data->buffer_len);
 	memcpy(new_buffer+data->buffer_len, in, in_len);
 
-	sc_mem_secure_free(data->buffer, data->buffer_len);
+	sc_mem_secure_clear_free(data->buffer, data->buffer_len);
 	data->buffer = new_buffer;
 	data->buffer_len = new_len;
 	return CKR_OK;
