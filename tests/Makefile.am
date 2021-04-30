@@ -6,6 +6,7 @@ dist_noinst_SCRIPTS = common.sh \
                       test-pkcs11-tool-test.sh \
                       test-pkcs11-tool-test-threads.sh \
                       test-pkcs11-tool-sign-verify.sh \
+                      test-duplicate-symbols.sh \
                       test-pkcs11-tool-allowed-mechanisms.sh
 
 TESTS = \
