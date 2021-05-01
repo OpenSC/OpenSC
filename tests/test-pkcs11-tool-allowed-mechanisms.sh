@@ -48,6 +48,6 @@ echo "Cleanup"
 echo "======================================================="
 softhsm_cleanup
 
-rm objects.list 
+rm objects.list sign.log
 
 exit $ERRORS

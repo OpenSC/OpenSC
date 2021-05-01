@@ -182,4 +182,4 @@ noinst_DATA = org.opensc-project.mac.pkcs11-register.plist org.opensc-project.ma
 	$(AM_V_GEN)$(do_subst) < $< > $@
 
 clean-local:
-	rm -f $(abs_builddir)/npa-tool.ggo $(abs_builddir)/opensc-notify.ggo $(abs_builddir)/opensc-asn1.ggo $(abs_builddir)/goid-tool.ggo $(abs_builddir)/egk-tool.ggo org.opensc.notify.desktop pkcs11-register.desktop
+	rm -f $(abs_builddir)/npa-tool.ggo $(abs_builddir)/opensc-notify.ggo $(abs_builddir)/opensc-asn1.ggo $(abs_builddir)/goid-tool.ggo $(abs_builddir)/egk-tool.ggo org.opensc.notify.desktop pkcs11-register.desktop org.opensc-project.mac.opensc-notify.plist org.opensc-project.mac.pkcs11-register.plist
