@@ -3,7 +3,7 @@
 
 SOPIN="12345678"
 PIN="123456"
-PKCS11_TOOL="../src/tools/pkcs11-tool"
+PKCS11_TOOL="$BUILD_PATH/src/tools/pkcs11-tool"
 
 softhsm_paths="/usr/local/lib/softhsm/libsofthsm2.so \
 	/usr/lib/softhsm/libsofthsm2.so

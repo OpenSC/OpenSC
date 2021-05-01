@@ -1,5 +1,5 @@
 #!/bin/bash
-SOURCE_PATH=..
+SOURCE_PATH=${SOURCE_PATH:-../}
 
 EXPORTS=`find "${SOURCE_PATH}" -name "*exports"`
 

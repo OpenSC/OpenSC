@@ -1,5 +1,11 @@
 MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
 
+AM_TESTS_ENVIRONMENT = \
+	SOURCE_PATH='$(top_srcdir)'; \
+	export SOURCE_PATH; \
+	BUILD_PATH='$(top_builddir)'; \
+	export BUILD_PATH;
+
 dist_noinst_SCRIPTS = common.sh \
                       test-manpage.sh \
                       test-duplicate-symbols.sh \
