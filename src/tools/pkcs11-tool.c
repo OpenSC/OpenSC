@@ -3234,7 +3234,7 @@ static int write_object(CK_SESSION_HANDLE session)
 	if (opt_attr_from_file) {
 		if (!(f = fopen(opt_attr_from_file, "rb")))
 			util_fatal("Couldn't open file \"%s\"", opt_attr_from_file);
-		certdata_len = fread(certdata, 1, sizeof(certdata), f);
+		certdata_len = fread(certdata, 1, sizeof(certdata) - 1, f);
 		fclose(f);
 		if (certdata_len < 0)
 			util_fatal("Couldn't read from file \"%s\"", opt_attr_from_file);
