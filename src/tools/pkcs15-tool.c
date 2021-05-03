@@ -389,7 +389,7 @@ print_data_object(const char *kind, const u8*data, size_t data_len)
 
 	if (opt_outfile != NULL) {
 		FILE *outf;
-		outf = fopen(opt_outfile, "w");
+		outf = fopen(opt_outfile, "wb");
 		if (outf == NULL) {
 			fprintf(stderr, "Error opening file '%s': %s\n",
 				opt_outfile, strerror(errno));
