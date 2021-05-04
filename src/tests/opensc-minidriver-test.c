@@ -602,7 +602,12 @@ int apiTests(char *reader)
 	unsigned char atr[36], cardid[16];
 	DWORD dwrc,dwlen,dwparam;
 	BOOL flag;
+	char *pinEnv = getenv("MINIDRIVER_PIN");
 
+	if (pinEnv)
+		printf("Running tests using PIN=%s/len=%zd\n", pinEnv, strlen(pinEnv));
+	else
+		printf("Running tests wihtout any PIN\n");
 	memset(&cardData, 0, sizeof(cardData));
 	cardData.dwVersion = 7;
 	cardData.pwszCardName = L"TestCard";
@@ -703,14 +708,17 @@ int apiTests(char *reader)
 	
 	printf("Calling CardGetProperty(CP_CARD_LIST_PINS)");
 	dwrc = (*cardData.pfnCardGetProperty)(&cardData, CP_CARD_LIST_PINS, (PBYTE)&dwparam, sizeof(dwparam), &dwlen, 0);
-	printf(" - %x : %s\n", dwrc, verdict((dwrc == SCARD_S_SUCCESS) && (dwparam == CREATE_PIN_SET(ROLE_USER))));
+	printf(" - %x : %s\n", dwrc, verdict((dwrc == SCARD_S_SUCCESS) && (IS_PIN_SET(dwparam, ROLE_USER))));
+	/* let's continue the tests only for the ROLE_USER */
+	dwparam = 0;
+	SET_PIN(dwparam, ROLE_USER);
 
 	printf("Calling CardGetProperty(CP_CARD_AUTHENTICATED_STATE)");
 	dwrc = (*cardData.pfnCardGetProperty)(&cardData, CP_CARD_AUTHENTICATED_STATE, (PBYTE)&dwparam, sizeof(dwparam), &dwlen, 0);
 	printf(" - %x : %s\n", dwrc, verdict((dwrc == SCARD_S_SUCCESS) && (dwparam == 0)));
 
 	printf("Calling CardGetProperty(CP_CARD_PIN_STRENGTH_VERIFY)");
-	dwrc = (*cardData.pfnCardGetProperty)(&cardData, CP_CARD_PIN_STRENGTH_VERIFY, (PBYTE)&dwparam, sizeof(dwparam), &dwlen, 0);
+	dwrc = (*cardData.pfnCardGetProperty)(&cardData, CP_CARD_PIN_STRENGTH_VERIFY, (PBYTE)&dwparam, sizeof(dwparam), &dwlen, ROLE_USER);
 	printf(" - %x : %s\n", dwrc, verdict((dwrc == SCARD_S_SUCCESS) && (dwparam == CARD_PIN_STRENGTH_PLAINTEXT)));
 
 	printf("Calling CardGetProperty(CP_KEY_IMPORT_SUPPORT)");
@@ -756,36 +764,40 @@ int apiTests(char *reader)
 	printf(" - %x : %s\n", dwrc, verdict(dwrc == SCARD_S_SUCCESS));
 
 	printf("Calling CardAuthenticatePin(wszCARD_USER_USER)");
-	dwrc = (*cardData.pfnCardAuthenticatePin)(&cardData, wszCARD_USER_USER, "648219", 6, &dwparam);
-	printf(" - %x : %s\n", dwrc, verdict((dwrc == SCARD_S_SUCCESS) && (dwparam == 3)));
+	if (pinEnv) {
+		dwrc = (*cardData.pfnCardAuthenticatePin)(&cardData, wszCARD_USER_USER, pinEnv, (DWORD)strlen(pinEnv), &dwparam);
+		printf(" - %x : %s\n", dwrc, verdict((dwrc == SCARD_S_SUCCESS) && (dwparam == -1)));
 
-	printf("Calling CardGetProperty(CP_CARD_AUTHENTICATED_STATE)");
-	dwrc = (*cardData.pfnCardGetProperty)(&cardData, CP_CARD_AUTHENTICATED_STATE, (PBYTE)&dwparam, sizeof(dwparam), &dwlen, 0);
-	printf(" - %x : %s\n", dwrc, verdict((dwrc == SCARD_S_SUCCESS) && (dwparam == 2)));
+		printf("Calling CardGetProperty(CP_CARD_AUTHENTICATED_STATE)");
+		dwrc = (*cardData.pfnCardGetProperty)(&cardData, CP_CARD_AUTHENTICATED_STATE, (PBYTE)&dwparam, sizeof(dwparam), &dwlen, 0);
+		printf(" - %x : %s\n", dwrc, verdict((dwrc == SCARD_S_SUCCESS) && (dwparam == 2)));
 
-	printf("Calling CardAuthenticatePin(wszCARD_USER_USER) - Wrong PIN");
-	dwrc = (*cardData.pfnCardAuthenticatePin)(&cardData, wszCARD_USER_USER, "123456", 6, &dwparam);
-	printf(" - %x : %s\n", dwrc, verdict((dwrc == SCARD_W_WRONG_CHV) && (dwparam == 2)));
+		printf("Calling CardAuthenticatePin(wszCARD_USER_USER) - Wrong PIN");
+		dwrc = (*cardData.pfnCardAuthenticatePin)(&cardData, wszCARD_USER_USER, "3456", 4, &dwparam);
+		printf(" - %x : %s\n", dwrc, verdict((dwrc == SCARD_W_WRONG_CHV) && (dwparam == 2)));
 
-	printf("Calling CardGetProperty(CP_CARD_AUTHENTICATED_STATE)");
-	dwrc = (*cardData.pfnCardGetProperty)(&cardData, CP_CARD_AUTHENTICATED_STATE, (PBYTE)&dwparam, sizeof(dwparam), &dwlen, 0);
-	printf(" - %x : %s\n", dwrc, verdict((dwrc == SCARD_S_SUCCESS) && (dwparam == 0)));
+		printf("Calling CardGetProperty(CP_CARD_AUTHENTICATED_STATE)");
+		dwrc = (*cardData.pfnCardGetProperty)(&cardData, CP_CARD_AUTHENTICATED_STATE, (PBYTE)&dwparam, sizeof(dwparam), &dwlen, 0);
+		printf(" - %x : %s\n", dwrc, verdict((dwrc == SCARD_S_SUCCESS) && (dwparam == 0)));
 
-	printf("Calling CardAuthenticatePin(wszCARD_USER_USER)");
-	dwrc = (*cardData.pfnCardAuthenticatePin)(&cardData, wszCARD_USER_USER, "648219", 6, &dwparam);
-	printf(" - %x : %s\n", dwrc, verdict((dwrc == SCARD_S_SUCCESS) && (dwparam == 3)));
+		printf("Calling CardAuthenticatePin(wszCARD_USER_USER)");
+		dwrc = (*cardData.pfnCardAuthenticatePin)(&cardData, wszCARD_USER_USER, pinEnv, (DWORD)strlen(pinEnv), &dwparam);
+		printf(" - %x : %s\n", dwrc, verdict((dwrc == SCARD_S_SUCCESS) && (dwparam == -1)));
 
-	printf("Calling CardGetProperty(CP_CARD_AUTHENTICATED_STATE)");
-	dwrc = (*cardData.pfnCardGetProperty)(&cardData, CP_CARD_AUTHENTICATED_STATE, (PBYTE)&dwparam, sizeof(dwparam), &dwlen, 0);
-	printf(" - %x : %s\n", dwrc, verdict((dwrc == SCARD_S_SUCCESS) && (dwparam == 2)));
+		printf("Calling CardGetProperty(CP_CARD_AUTHENTICATED_STATE)");
+		dwrc = (*cardData.pfnCardGetProperty)(&cardData, CP_CARD_AUTHENTICATED_STATE, (PBYTE)&dwparam, sizeof(dwparam), &dwlen, 0);
+		printf(" - %x : %s\n", dwrc, verdict((dwrc == SCARD_S_SUCCESS) && (dwparam == 2)));
 
-	printf("Calling CardDeAuthenticate(wszCARD_USER_USER)");
-	dwrc = (*cardData.pfnCardDeauthenticate)(&cardData, wszCARD_USER_USER, 0);
-	printf(" - %x : %s\n", dwrc, verdict(dwrc == SCARD_S_SUCCESS));
+		printf("Calling CardDeAuthenticate(wszCARD_USER_USER)");
+		dwrc = (*cardData.pfnCardDeauthenticate)(&cardData, wszCARD_USER_USER, 0);
+		printf(" - %x : %s\n", dwrc, verdict(dwrc == SCARD_S_SUCCESS));
 
-	printf("Calling CardGetProperty(CP_CARD_AUTHENTICATED_STATE)");
-	dwrc = (*cardData.pfnCardGetProperty)(&cardData, CP_CARD_AUTHENTICATED_STATE, (PBYTE)&dwparam, sizeof(dwparam), &dwlen, 0);
-	printf(" - %x : %s\n", dwrc, verdict((dwrc == SCARD_S_SUCCESS) && (dwparam == 0)));
+		printf("Calling CardGetProperty(CP_CARD_AUTHENTICATED_STATE)");
+		dwrc = (*cardData.pfnCardGetProperty)(&cardData, CP_CARD_AUTHENTICATED_STATE, (PBYTE)&dwparam, sizeof(dwparam), &dwlen, 0);
+		printf(" - %x : %s\n", dwrc, verdict((dwrc == SCARD_S_SUCCESS) && (dwparam == 0)));
+	} else {
+		printf(" - skip: missing set MINIDRIVER_PIN=abcd\n");
+	}
 
 	printf("Calling CardDeleteContext()");
 	dwrc = (*cardData.pfnCardDeleteContext)(&cardData);
