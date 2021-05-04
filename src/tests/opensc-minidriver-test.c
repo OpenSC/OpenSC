@@ -635,8 +635,11 @@ int apiTests(char *reader)
 	atrlen = sizeof(atr);
 
 	if (SCardConnect(cardData.hSCardCtx, reader, SCARD_SHARE_SHARED, SCARD_PROTOCOL_T1, &cardData.hScard, &protocol) != SCARD_S_SUCCESS) {
-		printf("SCardStatus() failed\n");
-		exit(1);
+		printf("SCardStatus(T1) failed, retry with T0\n");
+		if (SCardConnect(cardData.hSCardCtx, reader, SCARD_SHARE_SHARED, SCARD_PROTOCOL_T0, &cardData.hScard, &protocol) != SCARD_S_SUCCESS) {
+			printf("SCardStatus() failed\n");
+			exit(1);
+		}
 	}
 
 	if (SCardStatus(cardData.hScard, NULL, &readernamelen, &state, &protocol, atr, &atrlen) != SCARD_S_SUCCESS) {
