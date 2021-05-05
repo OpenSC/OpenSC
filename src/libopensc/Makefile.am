@@ -147,4 +147,4 @@ TIDY_FILES = \
 	#$(SOURCES)
 
 check-local:
-	if [ -x "$(CLANGTIDY)" ]; then clang-tidy -config='' --checks='$(TIDY_CHECKS)' -header-filter=.* $(TIDY_FILES) -- $(TIDY_FLAGS); fi
+	if [ -x "$(CLANGTIDY)" ]; then clang-tidy -config='' --checks='$(TIDY_CHECKS)' -header-filter=.* $(addprefix $(srcdir)/,$(TIDY_FILES)) -- $(TIDY_FLAGS); fi
