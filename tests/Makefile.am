@@ -9,6 +9,7 @@ dist_noinst_SCRIPTS = common.sh \
                       test-pkcs11-tool-sign-verify.sh \
                       test-pkcs11-tool-allowed-mechanisms.sh
 
+.NOTPARALLEL:
 TESTS = \
         test-manpage.sh \
         test-duplicate-symbols.sh \
