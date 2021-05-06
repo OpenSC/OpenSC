@@ -307,6 +307,12 @@ static int idprime_init(sc_card_t *card)
 	case SC_CARD_TYPE_IDPRIME_V2:
 		card->name = "Gemalto IDPrime (OSv2)";
 		break;
+	case SC_CARD_TYPE_IDPRIME_V3:
+		card->name = "Gemalto IDPrime (OSv3)";
+		break;
+	case SC_CARD_TYPE_IDPRIME_V4:
+		card->name = "Gemalto IDPrime (OSv4)";
+		break;
 	case SC_CARD_TYPE_IDPRIME_GENERIC:
 	default:
 		card->name = "Gemalto IDPrime (generic)";
