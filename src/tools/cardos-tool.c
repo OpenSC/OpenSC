@@ -36,6 +36,7 @@
 #ifdef ENABLE_OPENSSL
 #include <openssl/des.h>
 #include <openssl/sha.h>
+#include <openssl/evp.h>
 #endif
 
 #include "libopensc/opensc.h"
@@ -944,7 +945,7 @@ static int cardos_change_startkey(const char *change_startkey_apdu)
 		printf("can't convert startkey apdu to binary format: aborting\n");
 		return 1;
 	}
-	SHA1(apdu_bin, apdu_len, checksum);
+	EVP_Digest(apdu_bin, apdu_len, checksum, NULL, EVP_sha1(), NULL);
 
 	if (cardos_version[0] == 0xc8 && cardos_version[1] == 0x08) {
 		if (memcmp(checksum, cardos_43b_checksum, SHA_DIGEST_LENGTH) != 0) {

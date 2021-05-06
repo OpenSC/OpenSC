@@ -188,24 +188,47 @@ size_t get_hash_length(CK_MECHANISM_TYPE mech)
 CK_BYTE *hash_message(const CK_BYTE *message, size_t message_length,
     CK_MECHANISM_TYPE hash)
 {
+	CK_BYTE *out = NULL;
+
 	switch (hash) {
 	case CKM_SHA224:
-		return SHA224(message, message_length, NULL);
+		out = malloc(SHA224_DIGEST_LENGTH);
+		if (out == NULL)
+			return NULL;
+		EVP_Digest(message, message_length, out, NULL, EVP_sha224(), NULL);
+		break;
 
 	case CKM_SHA256:
-		return SHA256(message, message_length, NULL);
+		out = malloc(SHA256_DIGEST_LENGTH);
+		if (out == NULL)
+			return NULL;
+		EVP_Digest(message, message_length, out, NULL, EVP_sha256(), NULL);
+		break;
 
 	case CKM_SHA384:
-		return SHA384(message, message_length, NULL);
+		out = malloc(SHA384_DIGEST_LENGTH);
+		if (out == NULL)
+			return NULL;
+		EVP_Digest(message, message_length, out, NULL, EVP_sha384(), NULL);
+		break;
 
 	case CKM_SHA512:
-		return SHA512(message, message_length, NULL);
+		out = malloc(SHA512_DIGEST_LENGTH);
+		if (out == NULL)
+			return NULL;
+		EVP_Digest(message, message_length, out, NULL, EVP_sha512(), NULL);
+		break;
 
 	case CKM_SHA_1:
 	default:
-		return SHA1(message, message_length, NULL);
+		out = malloc(SHA_DIGEST_LENGTH);
+		if (out == NULL)
+			return NULL;
+		EVP_Digest(message, message_length, out, NULL, EVP_sha1(), NULL);
+		break;
 
 	}
+	return out;
 }
 
 int oaep_encrypt_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
