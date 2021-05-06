@@ -41,5 +41,4 @@ sm_LDADD = $(top_builddir)/src/sm/libsm.la $(LDADD)
 endif
 
 
-
 endif
