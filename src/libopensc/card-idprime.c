@@ -206,9 +206,13 @@ static int idprime_process_index(sc_card_t *card, idprime_private_data_t *priv, 
 				if (card->type == SC_CARD_TYPE_IDPRIME_V2) {
 					/* The key reference starts from 0x11 and increments by the key id (ASCII) */
 					new_object.key_reference = 0x11 + key_id;
-				} else { /* V3 */
-					/* The key reference starts from 0xF7 and increments by the key id (ASCII) */
-					new_object.key_reference = 0xF7 + key_id;
+				} else {
+					if (card->type == SC_CARD_TYPE_IDPRIME_V3) { /* V3 */
+						/* The key reference starts from 0xF7 and increments by the key id (ASCII) */
+						new_object.key_reference = 0xF7 + key_id;
+					} else { /* V4 */
+						new_object.key_reference = 0x56 + key_id;
+					}
 				}
 			}
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Found certificate with fd=%d, key_ref=%d",
@@ -260,6 +264,10 @@ static int idprime_init(sc_card_t *card)
 		case 0x03:
 			card->type = SC_CARD_TYPE_IDPRIME_V3;
 			sc_log(card->ctx, "Detected IDPrime applet version 3");
+			break;
+		case 0x04:
+			card->type = SC_CARD_TYPE_IDPRIME_V4;
+			sc_log(card->ctx, "Detected IDPrime applet version 4");
 			break;
 		default:
 			sc_log(card->ctx, "Unknown OS version received: %d", rbuf[11]);
