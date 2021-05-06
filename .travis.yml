@@ -51,27 +51,29 @@ env:
     - COVERITY_SCAN_PROJECT_NAME="$TRAVIS_REPO_SLUG"
     - SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)
 
-addons:
-  apt_packages:
-    - binutils-mingw-w64-i686
-    - binutils-mingw-w64-x86-64
-    - docbook-xsl
-    - gcc-mingw-w64-i686
-    - gcc-mingw-w64-x86-64
-    - libpcsclite-dev
-    - mingw-w64
-    - xsltproc
-    - gengetopt
-    - libcmocka-dev
-    - help2man
-    - pcscd
-    - pcsc-tools
-    - check
-    - ant
-    - socat
-    - cmake
-    - clang-tidy
-    - softhsm2
+# Commented out because of a bug in travis images for Focal:
+# https://travis-ci.community/t/clang-10-was-recently-broken-on-linux-unmet-dependencies-for-clang-10-clang-tidy-10-valgrind/11527
+#addons:
+#  apt_packages:
+#    - binutils-mingw-w64-i686
+#    - binutils-mingw-w64-x86-64
+#    - docbook-xsl
+#    - gcc-mingw-w64-i686
+#    - gcc-mingw-w64-x86-64
+#    - libpcsclite-dev
+#    - mingw-w64
+#    - xsltproc
+#    - gengetopt
+#    - libcmocka-dev
+#    - help2man
+#    - pcscd
+#    - pcsc-tools
+#    - check
+#    - ant
+#    - socat
+#    - cmake
+#    - clang-tidy
+#    - softhsm2
 
 before_install:
   # homebrew is dead slow in older images due to the many updates it would need to download and build.
@@ -113,6 +115,12 @@ before_install:
     fi
   - if [ -n "${HOST}" ]; then
         sudo apt-get install -y wine;
+    fi
+  - if [ "$TRAVIS_DIST" == "focal" ]; then
+        sudo apt-get install -yq --allow-downgrades libc6=2.31-0ubuntu9.2 libc6-dev=2.31-0ubuntu9.2;
+    fi
+  - if [ "$TRAVIS_OS_NAME" == "linux" ]; then
+        sudo -E apt-get -yq --no-install-suggests --no-install-recommends --allow-downgrades --allow-remove-essential --allow-change-held-packages install binutils-mingw-w64-i686 binutils-mingw-w64-x86-64 docbook-xsl gcc-mingw-w64-i686 gcc-mingw-w64-x86-64 libpcsclite-dev mingw-w64 xsltproc gengetopt libcmocka-dev help2man pcscd pcsc-tools check ant socat cmake clang-tidy softhsm2;
     fi
 
 before_script:
