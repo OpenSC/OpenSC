@@ -40,6 +40,7 @@
 #error "Need OpenSSL"
 #endif
 
+#include <openssl/evp.h>
 #include <openssl/des.h>
 #include <openssl/sha.h>
 
@@ -85,6 +86,7 @@
 			 *((c)++)=(unsigned char)(((l)>>24L)&0xff))
 
 
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 /*
  * Inspired by or taken from OpenSSL crypto/des/cbc3_enc.c
  */
@@ -229,15 +231,21 @@ DES_cbc_cksum_3des(const unsigned char *in, DES_cblock *output,
 	      | ((tout1 << 24L) & 0xFF000000);
 	return(tout1);
 }
+#endif
 
 
 int
 sm_encrypt_des_ecb3(unsigned char *key, unsigned char *data, int data_len,
 		unsigned char **out, int *out_len)
 {
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	int ii;
 	DES_cblock kk,k2;
 	DES_key_schedule ks,ks2;
+#else
+	EVP_CIPHER_CTX *cctx = NULL;
+	int tmplen;
+#endif
 
 
 	if (!out || !out_len)
@@ -251,6 +259,7 @@ sm_encrypt_des_ecb3(unsigned char *key, unsigned char *data, int data_len,
 	if (!(*out))
 		return -1;
 
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	memcpy(&kk, key, 8);
 	memcpy(&k2, key + 8, 8);
 
@@ -260,6 +269,24 @@ sm_encrypt_des_ecb3(unsigned char *key, unsigned char *data, int data_len,
 	for (ii=0; ii<data_len; ii+=8)
 		DES_ecb2_encrypt( (DES_cblock *)(data + ii),
 				(DES_cblock *)(*out + ii), &ks, &ks2, DES_ENCRYPT);
+#else
+	cctx = EVP_CIPHER_CTX_new();
+	/* FIXME should use EVP_EncryptInit_ex2 but it is not available in last alpha I used */
+	//EVP_EncryptInit_ex2(cctx, EVP_des_ede_ecb(), key, NULL, NULL);
+	EVP_EncryptInit_ex(cctx, EVP_des_ede_ecb(), NULL, key, NULL);
+	if (!EVP_EncryptUpdate(cctx, *out, &tmplen, data, data_len)) {
+		EVP_CIPHER_CTX_free(cctx);
+		return SC_ERROR_INTERNAL;
+	}
+	*out_len = tmplen;
+
+	if (!EVP_DecryptFinal_ex(cctx, *out + *out_len, &tmplen)) {
+		EVP_CIPHER_CTX_free(cctx);
+		return SC_ERROR_INTERNAL;
+	}
+	*out_len += tmplen;
+	EVP_CIPHER_CTX_free(cctx);
+#endif
 
 	return 0;
 }
@@ -270,10 +297,16 @@ sm_decrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
 		unsigned char *data, size_t data_len,
 		unsigned char **out, size_t *out_len)
 {
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	DES_cblock kk,k2;
 	DES_key_schedule ks,ks2;
 	DES_cblock icv={0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
 	size_t st;
+#else
+	unsigned char icv[] = {0x00 ,0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+	EVP_CIPHER_CTX *cctx = NULL;
+	int tmplen;
+#endif
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_SM);
 	if (!out || !out_len)
@@ -286,6 +319,7 @@ sm_decrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
 	if (!(*out))
 		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "SM decrypt_des_cbc3: allocation error");
 
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	memcpy(&kk, key, 8);
 	memcpy(&k2, key + 8, 8);
 
@@ -295,21 +329,47 @@ sm_decrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
 	for (st=0; st<data_len; st+=8)
 		DES_3cbc_encrypt((DES_cblock *)(data + st),
 				(DES_cblock *)(*out + st), 8, &ks, &ks2, &icv, DES_DECRYPT);
+#else
+	cctx = EVP_CIPHER_CTX_new();
+	/* FIXME should use EVP_DecryptInit_ex2 but it is not available in last alpha I used */
+	//EVP_DecryptInit_ex2(cctx, EVP_des_ede_cbc(), key, icv, NULL);
+	EVP_DecryptInit_ex(cctx, EVP_des_ede_cbc(), NULL, key, icv);
+	/* Disable padding, otherwise it will fail to decrypt non-padded inputs */
+	EVP_CIPHER_CTX_set_padding(cctx, 0);
+	if (!EVP_DecryptUpdate(cctx, *out, &tmplen, data, data_len)) {
+		EVP_CIPHER_CTX_free(cctx);
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_SM, SC_ERROR_INTERNAL);
+	}
+	*out_len = tmplen;
 
+	if (!EVP_DecryptFinal_ex(cctx, *out + *out_len, &tmplen)) {
+		EVP_CIPHER_CTX_free(cctx);
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_SM, SC_ERROR_INTERNAL);
+	}
+	*out_len += tmplen;
+	EVP_CIPHER_CTX_free(cctx);
+#endif
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_SM, SC_SUCCESS);
 }
 
-
+/* This function expects the data to be a multilpe of DES block size */
 int
 sm_encrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
 		const unsigned char *in, size_t in_len,
 		unsigned char **out, size_t *out_len, int not_force_pad)
 {
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	DES_cblock kk,k2;
 	DES_key_schedule ks,ks2;
 	DES_cblock icv={0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+	size_t st;
+#else
+	unsigned char icv[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+	EVP_CIPHER_CTX *cctx = NULL;
+	int tmplen;
+#endif
 	unsigned char *data;
-	size_t data_len, st;
+	size_t data_len;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_SM);
 	sc_debug(ctx, SC_LOG_DEBUG_SM,
@@ -345,6 +405,7 @@ sm_encrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
 		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "SM encrypt_des_cbc3: failure");
 	}
 
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	memcpy(&kk, key, 8);
 	memcpy(&k2, key + 8, 8);
 
@@ -353,6 +414,26 @@ sm_encrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
 
 	for (st=0; st<data_len; st+=8)
 		DES_3cbc_encrypt((DES_cblock *)(data + st), (DES_cblock *)(*out + st), 8, &ks, &ks2, &icv, DES_ENCRYPT);
+#else
+	cctx = EVP_CIPHER_CTX_new();
+	/* FIXME should use EVP_EncryptInit_ex2 but it is not available in last alpha I used */
+	//EVP_EncryptInit_ex2(cctx, EVP_des_ede_cbc(), key, icv, NULL);
+	EVP_EncryptInit_ex(cctx, EVP_des_ede_cbc(), NULL, key, icv);
+	/* Disable padding, otherwise it will fail to decrypt non-padded inputs */
+	EVP_CIPHER_CTX_set_padding(cctx, 0);
+	if (!EVP_EncryptUpdate(cctx, *out, &tmplen, data, data_len)) {
+		EVP_CIPHER_CTX_free(cctx);
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_SM, SC_ERROR_INTERNAL);
+	}
+	*out_len = tmplen;
+
+	if (!EVP_EncryptFinal_ex(cctx, *out + *out_len, &tmplen)) {
+		EVP_CIPHER_CTX_free(cctx);
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_SM, SC_ERROR_INTERNAL);
+	}
+	*out_len += tmplen;
+	EVP_CIPHER_CTX_free(cctx);
+#endif
 
 	free(data);
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_SM, SC_SUCCESS);
