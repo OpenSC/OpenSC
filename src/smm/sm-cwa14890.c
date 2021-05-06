@@ -36,6 +36,7 @@
 #include <sys/stat.h>
 
 #include <openssl/des.h>
+#include <openssl/evp.h>
 
 #include "libopensc/opensc.h"
 #include "libopensc/sm.h"
@@ -191,21 +192,21 @@ sm_cwa_init_session_keys(struct sc_context *ctx, struct sm_cwa_session *session_
 	if (mechanism == IASECC_ALGORITHM_SYMMETRIC_SHA1)   {
 		xored[35] = 0x01;
 		sc_debug(ctx, SC_LOG_DEBUG_SM, "XOR for SkEnc %s", sc_dump_hex(xored, 36));
-		SHA1(xored, 36, buff);
+		EVP_Digest(xored, 36, buff, NULL, EVP_sha1(), NULL);
 		memcpy(&session_data->session_enc[0], buff, sizeof(session_data->session_enc));
 
 		xored[35] = 0x02;
 		sc_debug(ctx, SC_LOG_DEBUG_SM, "XOR for SkMac %s", sc_dump_hex(xored, 36));
-		SHA1(xored, 36, buff);
+		EVP_Digest(xored, 36, buff, NULL, EVP_sha1(), NULL);
 		memcpy(&session_data->session_mac[0], buff, sizeof(session_data->session_mac));
 	}
 	else if (mechanism == IASECC_ALGORITHM_SYMMETRIC_SHA256)   {
 		xored[35] = 0x01;
-		SHA256(xored, 36, buff);
+		EVP_Digest(xored, 36, buff, NULL, EVP_sha256(), NULL);
 		memcpy(&session_data->session_enc[0], buff, sizeof(session_data->session_enc));
 
 		xored[35] = 0x02;
-		SHA256(xored, 36, buff);
+		EVP_Digest(xored, 36, buff, NULL, EVP_sha256(), NULL);
 		memcpy(&session_data->session_mac[0], buff, sizeof(session_data->session_mac));
 	}
 	else   {

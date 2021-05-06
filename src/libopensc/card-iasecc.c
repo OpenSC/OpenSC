@@ -183,7 +183,7 @@ iasecc_chv_cache_verified(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd)
 
 	pin_status->reference = pin_cmd->pin_reference;
 	if (pin_cmd->pin1.data)
-		SHA1(pin_cmd->pin1.data, pin_cmd->pin1.len, pin_status->sha1);
+		EVP_Digest(pin_cmd->pin1.data, pin_cmd->pin1.len, pin_status->sha1, NULL, EVP_sha1(), NULL);
 	else
 		memset(pin_status->sha1, 0, SHA_DIGEST_LENGTH);
 
@@ -246,7 +246,7 @@ iasecc_chv_cache_is_verified(struct sc_card *card, struct sc_pin_cmd_data *pin_c
 	LOG_FUNC_CALLED(ctx);
 
 	if (pin_cmd->pin1.data)
-		SHA1(pin_cmd->pin1.data, pin_cmd->pin1.len, data_sha1);
+		EVP_Digest(pin_cmd->pin1.data, pin_cmd->pin1.len, data_sha1, NULL, EVP_sha1(), NULL);
 	else
 		memset(data_sha1, 0, SHA_DIGEST_LENGTH);
 	sc_log_hex(ctx, "data_sha1: %s", data_sha1, SHA_DIGEST_LENGTH);

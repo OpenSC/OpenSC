@@ -2685,13 +2685,16 @@ sc_pkcs15init_select_intrinsic_id(struct sc_pkcs15_card *p15card, struct sc_prof
 	switch (id_style)  {
 	case SC_PKCS15INIT_ID_STYLE_MOZILLA:
 		if (pubkey->algorithm == SC_ALGORITHM_RSA)
-			SHA1(pubkey->u.rsa.modulus.data, pubkey->u.rsa.modulus.len, id.value);
+			EVP_Digest(pubkey->u.rsa.modulus.data, pubkey->u.rsa.modulus.len,
+				id.value, NULL, EVP_sha1(), NULL);
 		else if (pubkey->algorithm == SC_ALGORITHM_DSA)
-			SHA1(pubkey->u.dsa.pub.data, pubkey->u.dsa.pub.len, id.value);
+			EVP_Digest(pubkey->u.dsa.pub.data, pubkey->u.dsa.pub.len,
+				id.value, NULL, EVP_sha1(), NULL);
 		else if (pubkey->algorithm == SC_ALGORITHM_EC)
 			/* ID should be SHA1 of the X coordinate according to PKCS#15 v1.1 */
 			/* skip the 04 tag and get the X component */
-			SHA1(pubkey->u.ec.ecpointQ.value+1, (pubkey->u.ec.ecpointQ.len - 1) / 2, id.value);
+			EVP_Digest(pubkey->u.ec.ecpointQ.value+1, (pubkey->u.ec.ecpointQ.len - 1) / 2,
+				id.value, NULL, EVP_sha1(), NULL);
 		else
 			goto done;
 
@@ -2706,7 +2709,7 @@ sc_pkcs15init_select_intrinsic_id(struct sc_pkcs15_card *p15card, struct sc_prof
 			LOG_TEST_GOTO_ERR(ctx, rv, "Encoding public key error");
 		}
 
-		SHA1(id_data, id_data_len, id.value);
+		EVP_Digest(id_data, id_data_len, id.value, NULL, EVP_sha1(), NULL);
 		id.len = SHA_DIGEST_LENGTH;
 
 		break;

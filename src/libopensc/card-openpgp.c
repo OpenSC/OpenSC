@@ -50,6 +50,7 @@
 #include "errors.h"
 #ifdef ENABLE_OPENSSL
 #include <openssl/sha.h>
+#include <openssl/evp.h>
 #endif /* ENABLE_OPENSSL */
 
 #include "card-openpgp.h"
@@ -2647,7 +2648,7 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 	p = NULL;
 
 	/* hash with SHA-1 */
-	SHA1(fp_buffer, fp_buffer_len, fingerprint);
+	EVP_Digest(fp_buffer, fp_buffer_len, fingerprint, NULL, EVP_sha1(), NULL);
 	free(fp_buffer);
 
 	/* store to DO */

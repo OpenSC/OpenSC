@@ -1318,9 +1318,9 @@ authentic_pin_verify(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd)
 	}
 
 	if (pin_cmd->pin1.data)
-		SHA1(pin_cmd->pin1.data, pin_cmd->pin1.len, pin_sha1);
+		EVP_Digest(pin_cmd->pin1.data, pin_cmd->pin1.len, pin_sha1, NULL, EVP_sha1(), NULL);
 	else
-		SHA1((unsigned char *)"", 0, pin_sha1);
+		EVP_Digest((unsigned char *)"", 0, pin_sha1, NULL, EVP_sha1(), NULL);
 
 	if (!memcmp(pin_sha1, prv_data->pins_sha1[pin_cmd->pin_reference], SHA_DIGEST_LENGTH))   {
 		sc_log(ctx, "Already verified");

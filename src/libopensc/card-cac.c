@@ -44,6 +44,7 @@
 
 #ifdef ENABLE_OPENSSL
 #include <openssl/sha.h>
+#include <openssl/evp.h>
 #endif /* ENABLE_OPENSSL */
 
 #include "internal.h"
@@ -1707,7 +1708,7 @@ static int cac_populate_cac_alt(sc_card_t *card, int index, cac_private_data_t *
 		if (priv->cac_id == NULL) {
 			return SC_ERROR_OUT_OF_MEMORY;
 		}
-		SHA1(val, val_len, priv->cac_id);
+		EVP_Digest(val, val_len, priv->cac_id, NULL, EVP_sha1(), NULL);
 		priv->cac_id_len = 20;
 		sc_debug_hex(card->ctx, SC_LOG_DEBUG_VERBOSE,
 		    "cuid", priv->cac_id, priv->cac_id_len);

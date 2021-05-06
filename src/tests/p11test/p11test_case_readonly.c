@@ -378,38 +378,59 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 		/* Digest mechanisms */
 		switch (mech->mech) {
 		case CKM_SHA1_RSA_PKCS:
-			cmp_message = SHA1(message, message_length, NULL);
 			cmp_message_length = SHA_DIGEST_LENGTH;
+			cmp_message = malloc(cmp_message_length);
+			if (cmp_message == NULL)
+				return -1;
+			EVP_Digest(message, message_length, cmp_message, NULL, EVP_sha1(), NULL);
 			type = NID_sha1;
 			break;
 		case CKM_SHA224_RSA_PKCS:
-			cmp_message = SHA224(message, message_length, NULL);
 			cmp_message_length = SHA224_DIGEST_LENGTH;
+			cmp_message = malloc(cmp_message_length);
+			if (cmp_message == NULL)
+				return -1;
+			EVP_Digest(message, message_length, cmp_message, NULL, EVP_sha224(), NULL);
 			type = NID_sha224;
 			break;
 		case CKM_SHA256_RSA_PKCS:
-			cmp_message = SHA256(message, message_length, NULL);
 			cmp_message_length = SHA256_DIGEST_LENGTH;
+			cmp_message = malloc(cmp_message_length);
+			if (cmp_message == NULL)
+				return -1;
+			EVP_Digest(message, message_length, cmp_message, NULL, EVP_sha256(), NULL);
 			type = NID_sha256;
 			break;
 		case CKM_SHA384_RSA_PKCS:
-			cmp_message = SHA384(message, message_length, NULL);
 			cmp_message_length = SHA384_DIGEST_LENGTH;
+			cmp_message = malloc(cmp_message_length);
+			if (cmp_message == NULL)
+				return -1;
+			EVP_Digest(message, message_length, cmp_message, NULL, EVP_sha384(), NULL);
 			type = NID_sha384;
 			break;
 		case CKM_SHA512_RSA_PKCS:
-			cmp_message = SHA512(message, message_length, NULL);
 			cmp_message_length = SHA512_DIGEST_LENGTH;
+			cmp_message = malloc(cmp_message_length);
+			if (cmp_message == NULL)
+				return -1;
+			EVP_Digest(message, message_length, cmp_message, NULL, EVP_sha512(), NULL);
 			type = NID_sha512;
 			break;
 		case CKM_MD5_RSA_PKCS:
-			cmp_message = MD5(message, message_length, NULL);
 			cmp_message_length = MD5_DIGEST_LENGTH;
+			cmp_message = malloc(cmp_message_length);
+			if (cmp_message == NULL)
+				return -1;
+			EVP_Digest(message, message_length, cmp_message, NULL, EVP_md5(), NULL);
 			type = NID_md5;
 			break;
 		case CKM_RIPEMD160_RSA_PKCS:
-			cmp_message = RIPEMD160(message, message_length, NULL);
 			cmp_message_length = RIPEMD160_DIGEST_LENGTH;
+			cmp_message = malloc(cmp_message_length);
+			if (cmp_message == NULL)
+				return -1;
+			EVP_Digest(message, message_length, cmp_message, NULL, EVP_ripemd160(), NULL);
 			type = NID_ripemd160;
 			break;
 		default:
@@ -440,19 +461,19 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 		ECDSA_SIG_set0(sig, r, s);
 		switch (mech->mech) {
 		case CKM_ECDSA_SHA512:
-			cmp_message = SHA512(message, message_length, NULL);
+			EVP_Digest(message, message_length, cmp_message, NULL, EVP_sha512(), NULL);
 			cmp_message_length = SHA512_DIGEST_LENGTH;
 			break;
 		case CKM_ECDSA_SHA384:
-			cmp_message = SHA384(message, message_length, NULL);
+			EVP_Digest(message, message_length, cmp_message, NULL, EVP_sha384(), NULL);
 			cmp_message_length = SHA384_DIGEST_LENGTH;
 			break;
 		case CKM_ECDSA_SHA256:
-			cmp_message = SHA256(message, message_length, NULL);
+			EVP_Digest(message, message_length, cmp_message, NULL, EVP_sha256(), NULL);
 			cmp_message_length = SHA256_DIGEST_LENGTH;
 			break;
 		case CKM_ECDSA_SHA1:
-			cmp_message = SHA1(message, message_length, NULL);
+			EVP_Digest(message, message_length, cmp_message, NULL, EVP_sha1(), NULL);
 			cmp_message_length = SHA_DIGEST_LENGTH;
 			break;
 		case CKM_ECDSA:

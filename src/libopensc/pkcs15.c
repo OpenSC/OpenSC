@@ -36,6 +36,7 @@
 
 #ifdef ENABLE_OPENSSL
 #include <openssl/sha.h>
+#include <openssl/evp.h>
 #endif
 
 #ifdef HAVE_SYS_TIME_H
@@ -2860,7 +2861,7 @@ sc_pkcs15_get_object_guid(struct sc_pkcs15_card *p15card, const struct sc_pkcs15
 	 * - this also protects against data being too short
 	 */
 #ifdef ENABLE_OPENSSL
-	SHA1(guid_bin, guid_bin_size, guid_bin);
+	EVP_Digest(guid_bin, guid_bin_size, guid_bin, NULL, EVP_sha1(), NULL);
 	guid_bin_size = SHA_DIGEST_LENGTH;
 #else
 	/* If guid_bin has a size larger than 16 bytes
