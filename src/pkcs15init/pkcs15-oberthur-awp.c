@@ -769,7 +769,9 @@ awp_encode_key_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *obj
 	int r = 0;
 
 	LOG_FUNC_CALLED(ctx);
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	ERR_load_ERR_strings();
+#endif
 	ERR_load_crypto_strings();
 
 	key_info = (struct sc_pkcs15_prkey_info *)obj->data;
@@ -827,7 +829,9 @@ awp_encode_key_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *obj
 
 	sc_log(ctx,  "cosm_encode_key_info() label:%s",ki->label.value);
 done:
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	ERR_load_ERR_strings();
+#endif
 	ERR_load_crypto_strings();
 	LOG_FUNC_RETURN(ctx, r);
 }
@@ -933,7 +937,9 @@ awp_encode_cert_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *ob
 
 	LOG_FUNC_CALLED(ctx);
 
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	ERR_load_ERR_strings();
+#endif
 	ERR_load_crypto_strings();
 
 	if (!obj || !ci)
