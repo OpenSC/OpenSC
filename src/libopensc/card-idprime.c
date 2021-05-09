@@ -168,18 +168,22 @@ static int idprime_process_index(sc_card_t *card, idprime_private_data_t *priv, 
 		goto done;
 	}
 
-	r = iso_ops->read_binary(card, 0, buf, length, 0);
-	if (r < 1) {
-		r = SC_ERROR_WRONG_LENGTH;
-		goto done;
-	}
+	r = 0;
+	do {
+		if (length == r) {
+			r = SC_ERROR_NOT_ENOUGH_MEMORY;
+			goto done;
+		}
+		const int got = iso_ops->read_binary(card, r, buf + r, length - r, 0);
+		if (got < 1) {
+			r = SC_ERROR_WRONG_LENGTH;
+			goto done;
+		}
+		/* First byte shows the number of entries, each of them 21 bytes long */
+		num_entries = buf[0];
+		r += got;
+	} while(r < num_entries * 21 + 1);
 
-	/* First byte shows the number of entries, each of them 21 bytes long */
-	num_entries = buf[0];
-	if (r < num_entries*21 + 1) {
-		r = SC_ERROR_INVALID_DATA;
-		goto done;
-	}
 	new_object.fd = 0;
 	for (i = 0; i < num_entries; i++) {
 		u8 *start = &buf[i*21+1];
