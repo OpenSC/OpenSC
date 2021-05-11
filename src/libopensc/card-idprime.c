@@ -525,6 +525,8 @@ static int idprime_init(sc_card_t *card)
 
 	card->caps |= SC_CARD_CAP_ISO7816_PIN_INFO;
 
+	card->caps |= SC_CARD_CAP_RNG;
+
 	LOG_FUNC_RETURN(card->ctx, 0);
 }
 
@@ -1006,6 +1008,38 @@ idprime_decipher(struct sc_card *card,
 		LOG_FUNC_RETURN(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
 
+static int
+idprime_get_challenge(struct sc_card *card, u8 *rnd, size_t len)
+{
+	u8 rbuf[16];
+	size_t out_len;
+	struct sc_apdu apdu;
+	int r;
+
+	LOG_FUNC_CALLED(card->ctx);
+
+	if (len <= 8) {
+		/* official closed driver always calls this regardless the length */
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_2, 0x84, 0x00, 0x01);
+		apdu.le = apdu.resplen = 8;
+	} else {
+		/* this was discovered accidentally - all 16 bytes seem random */
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_2, 0x84, 0x00, 0x00);
+		apdu.le = apdu.resplen = 16;
+	}
+	apdu.resp = rbuf;
+
+	r = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	LOG_TEST_RET(card->ctx, r, "GET CHALLENGE failed");
+
+	out_len = len < apdu.resplen ? len : apdu.resplen;
+	memcpy(rnd, rbuf, out_len);
+
+	LOG_FUNC_RETURN(card->ctx, (int) out_len);
+}
 
 static struct sc_card_driver * sc_get_driver(void)
 {
@@ -1024,6 +1058,8 @@ static struct sc_card_driver * sc_get_driver(void)
 	idprime_ops.set_security_env = idprime_set_security_env;
 	idprime_ops.compute_signature = idprime_compute_signature;
 	idprime_ops.decipher = idprime_decipher;
+
+	idprime_ops.get_challenge = idprime_get_challenge;
 
 	return &idprime_drv;
 }
