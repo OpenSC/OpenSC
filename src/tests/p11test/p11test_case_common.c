@@ -780,8 +780,12 @@ const char *get_mechanism_name(int mech_id)
 			return "ECDH1_COFACTOR_DERIVE";
 		case CKM_EC_KEY_PAIR_GEN:
 			return "EC_KEY_PAIR_GEN";
+		case CKM_EC_EDWARDS_KEY_PAIR_GEN:
+			return "EC_EDWARDS_KEY_PAIR_GEN";
 		case CKM_RSA_PKCS_KEY_PAIR_GEN:
 			return "RSA_PKCS_KEY_PAIR_GEN";
+		case CKM_GENERIC_SECRET_KEY_GEN:
+			return "GENERIC_SECRET_KEY_GEN";
 		case CKM_MD5_RSA_PKCS:
 			return "MD5_RSA_PKCS";
 		case CKM_RIPEMD160_RSA_PKCS:
@@ -802,6 +806,8 @@ const char *get_mechanism_name(int mech_id)
 			return "MD5_HMAC";
 		case CKM_SHA_1_HMAC:
 			return "SHA_1_HMAC";
+		case CKM_SHA224_HMAC:
+			return "SHA224_HMAC";
 		case CKM_SHA256_HMAC:
 			return "SHA256_HMAC";
 		case CKM_SHA384_HMAC:
