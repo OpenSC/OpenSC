@@ -498,9 +498,7 @@ int verify_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
 	CK_MECHANISM sign_mechanism = { mech->mech, NULL_PTR, 0 };
 	static int verify_support = 1;
-#ifndef NDEBUG
 	char *name;
-#endif
 
 	if (!verify_support)
 		goto openssl_verify;
@@ -531,15 +529,11 @@ int verify_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 		/* Final */
 		rv = fp->C_VerifyFinal(info->session_handle,
 			sign, sign_length);
-#ifndef NDEBUG
 		name = "C_VerifyFinal";
-#endif
 	} else {
 		rv = fp->C_Verify(info->session_handle,
 			message, message_length, sign, sign_length);
-#ifndef NDEBUG
 		name = "C_Verify";
-#endif
 	}
 	if (rv == CKR_OK) {
 		mech->result_flags |= FLAGS_SIGN;
