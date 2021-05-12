@@ -118,7 +118,7 @@ static int load_object(const char * object_id, const char * object_file)
 	int r = -1;
 	struct stat stat_buf;
 
-    if(!object_file || (fp=fopen(object_file, "r")) == NULL){
+    if(!object_file || (fp=fopen(object_file, "rb")) == NULL){
         printf("Cannot open object file, %s %s\n",
 			(object_file)?object_file:"", strerror(errno));
 		goto err;
@@ -184,7 +184,7 @@ static int load_cert(const char * cert_id, const char * cert_file,
 		goto err;
 	}
 
-    if((fp=fopen(cert_file, "r"))==NULL){
+    if((fp=fopen(cert_file, "rb"))==NULL){
         printf("Cannot open cert file, %s %s\n",
 				cert_file, strerror(errno));
         goto err;
