@@ -31,7 +31,7 @@ p11test_SOURCES = p11test.c p11test_loader.c \
 	p11test_case_pss_oaep.c \
 	p11test_case_interface.c \
 	p11test_helpers.c
-p11test_CFLAGS = -DNDEBUG $(CMOCKA_CFLAGS)
+p11test_CFLAGS = $(CMOCKA_CFLAGS)
 p11test_LDADD = $(OPTIONAL_OPENSSL_LIBS) $(CMOCKA_LIBS)
 
 if WIN32
