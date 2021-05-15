@@ -635,7 +635,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	 * key is for signing and decryption, we need to emulate signing */
 
 	sc_log(ctx, "supported algorithm flags 0x%X, private key usage 0x%X", alg_info->flags, prkey->usage);
-	if (obj->type == SC_ALGORITHM_RSA) {
+	if (obj->type == SC_PKCS15_TYPE_PRKEY_RSA) {
 		if ((alg_info->flags & SC_ALGORITHM_NEED_USAGE) &&
 			((prkey->usage & USAGE_ANY_SIGN) &&
 			(prkey->usage & USAGE_ANY_DECIPHER)) ) {
