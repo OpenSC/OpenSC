@@ -664,11 +664,11 @@ idprime_set_security_env(struct sc_card *card,
 				new_env.algorithm_ref = 0x65;
 			}
 		} else { /* RSA-PKCS */
-			if (env->algorithm_flags & SC_ALGORITHM_MGF1_SHA256) {
+			if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA256) {
 				new_env.algorithm_ref = 0x42;
-			} else if (env->algorithm_flags & SC_ALGORITHM_MGF1_SHA384) {
+			} else if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA384) {
 				new_env.algorithm_ref = 0x52;
-			} else if (env->algorithm_flags & SC_ALGORITHM_MGF1_SHA512) {
+			} else if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA512) {
 				new_env.algorithm_ref = 0x62;
 			} else { /* RSA-PKCS without hashing */
 				new_env.algorithm_ref = 0x02;
