@@ -350,6 +350,50 @@ static int idprime_process_index(sc_card_t *card, idprime_private_data_t *priv, 
 		u8 *start = &buf[i*21+1];
 
 		/* object's filename */
+		const u8 file_type = start[3] & 0xF0; // hmmm...
+		const u8 file_len = start[3] & 0x0F; // matches filename length in some cases
+		/*
+df=0201, len=16
+Skipping object with type=10|0, name=cardid, data=02010010636172646964000000000000 0000000003
+df=0202, len=6
+Skipping object with type=0|6, name=cardcf, data=02020006636172646366000000000000 0000000001
+df=0203, len=8
+Skipping object with type=0|8, name=cardapps, data=02030008636172646170707300000000 0000000001
+df=0204, len=172
+Skipping object with type=a0|c, name=cmapfilemscp, data=020400AC636D617066696C656D736370 0000000001
+df=0205, len=331
+Skipping object with type=40|b, name=pubpuk00p11, data=0205014B70756270756B303070313100 0000000001
+df=0206, len=342
+Skipping object with type=50|6, name=priprk00p11, data=0206015670726970726B303070313100 0000000001
+df=0208, len=1512
+Found certificate with fd=1, key_ref=245(f5), type=e0|8, name=kxc00, data=020805E86B786330300000006D736370 0000000001
+	label=MLADEN MILINKOVIĆ
+df=0209, len=357
+Skipping object with type=60|5, name=pubkxc00p11, data=020901657075626B7863303070313100 0000000001
+df=0207, len=1326
+Found certificate with fd=2, key_ref=245(f5), type=20|e, name=kxc10, data=0207052E6B786331300000006D736370 0000000001
+	label=CN=Fina Root CA, O=Financijska agencija, C=HR
+df=020A, len=2682
+Skipping object with type=70|a, name=msroots, data=020A0A7A6D73726F6F7473006D736370 0000000001
+df=020B, len=263
+Skipping object with type=0|7, name=pubkxc10p11, data=020B01077075626B7863313070313100 0000000001
+df=020C, len=1545
+Found certificate with fd=3, key_ref=246(f6), type=0|9, name=kxc11, data=020C06096B786331310000006D736370 0000000001
+	label=RDC CA 2015
+df=020D, len=228
+Skipping object with type=e0|4, name=pubkxc11p11, data=020D00E47075626B7863313170313100 0000000001
+df=020E, len=331
+Skipping object with type=40|b, name=pubpuk01p11, data=020E014B70756270756B303170313100 0000000001
+df=020F, len=342
+Skipping object with type=50|6, name=priprk01p11, data=020F015670726970726B303170313100 0000000001
+df=0211, len=1577
+Found certificate with fd=4, key_ref=246(f6), type=20|9, name=ksc01, data=021106296B736330310000006D736370 0000000001
+	label=MLADEN MILINKOVIĆ
+df=0212, len=356
+Skipping object with type=60|4, name=pubksc01p11, data=021201647075626B7363303170313100 0000000001
+df=0210, len=34
+Found p11/tinfo object with type=20|2, name=tinfo, data=0210002274696E666F00000070313100 0000000001
+		*/
 		char filename[18];
 		strncpy(filename, (char *)&start[4], 17);
 		filename[17] = 0;
@@ -387,8 +431,6 @@ static int idprime_process_index(sc_card_t *card, idprime_private_data_t *priv, 
 					break;
 				}
 			}
-			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Found certificate with fd=%d, key_ref=%d, name=%s",
-				new_object.fd, new_object.key_reference, filename);
 
 			/* find pubfile that belongs to this certificate and fetch key_id/label */
 			static u8 pub[] = "pubxxxNNp11";
@@ -409,14 +451,21 @@ static int idprime_process_index(sc_card_t *card, idprime_private_data_t *priv, 
 				new_object.key_len = 2;
 			}
 
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Found certificate with fd=%d, key_ref=%d(%02x), type=%x|%x, name=%s, data=%s\n\tlabel=%s",
+				new_object.fd, new_object.key_reference, new_object.key_reference, file_type, file_len, filename,
+				sc_dump_hex(start, 21), new_object.key_label);
+
 			idprime_add_object_to_list(&priv->pki_list, &new_object);
 		/* This looks like non-standard extension listing pkcs11 token info label in my card */
 		} else if ((memcmp(&start[4], "tinfo", 6) == 0) && (memcmp(&start[12], "p11", 4) == 0)) {
 			memcpy(priv->tinfo_df, new_object.df, sizeof(priv->tinfo_df));
 			priv->tinfo_present = 1;
-			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Found p11/tinfo object");
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Found p11/tinfo object with type=%x|%x, name=%s, data=%s",
+				file_type, file_len, filename, sc_dump_hex(start, 21));
+
 		} else {
-			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Skipping object '%s'", filename);
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Skipping object with type=%x|%x, name=%s, data=%s",
+				file_type, file_len, filename, sc_dump_hex(start, 21));
 		}
 	}
 	r = SC_SUCCESS;
