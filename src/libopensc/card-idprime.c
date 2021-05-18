@@ -378,7 +378,9 @@ static int idprime_process_index(sc_card_t *card, idprime_private_data_t *priv, 
 					new_object.key_reference = 0x11 + key_id;
 					break;
 				case SC_CARD_TYPE_IDPRIME_V3:
-					new_object.key_reference = 0xF7 + key_id;
+					//new_object.key_reference = 0xF7 + key_id; // how it was
+					//new_object.key_reference = 0xF5 + key_id; // mine IDBridge K30
+					new_object.key_reference = 0xF0 + start[2];
 					break;
 				case SC_CARD_TYPE_IDPRIME_V4:
 					new_object.key_reference = 0x56 + key_id;
