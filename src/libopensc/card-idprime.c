@@ -287,9 +287,11 @@ static int idprime_pubfile_get_keyinfo(sc_card_t *card, u8 *pubfile_df, idprime_
 	/* select file */
 	memcpy(tinfo_path.value, pubfile_df, 2);
 	r = iso_ops->select_file(card, &tinfo_path, &file);
+	if (r != SC_SUCCESS)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 	const size_t file_size = file->size;
 	sc_file_free(file);
-	if (r != SC_SUCCESS || file->size == 0)
+	if (file_size == 0)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 
 	/* read whole file */
