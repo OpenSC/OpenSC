@@ -53,15 +53,18 @@
 						<option>--admin</option> <replaceable>argument</replaceable>,
 						<option>-A</option> <replaceable>argument</replaceable>
 					</term>
-					<listitem><para>Authenticate to the card using a 2DES or 3DES key.
+					<listitem><para>Authenticate to the card using a 2DES, 3DES or AES key.
 					The <replaceable>argument</replaceable> of the form
 					<synopsis> {<literal>A</literal>|<literal>M</literal>}<literal>:</literal><replaceable>ref</replaceable><literal>:</literal><replaceable>alg</replaceable></synopsis>
 					is required, were <literal>A</literal> uses "EXTERNAL AUTHENTICATION"
 					and <literal>M</literal> uses "MUTUAL AUTHENTICATION".
 					<replaceable>ref</replaceable> is normally <literal>9B</literal>,
-					and <replaceable>alg</replaceable> is <literal>03</literal> for 3DES.
-					The key is provided by the card vendor, and the environment variable
-					<varname>PIV_EXT_AUTH_KEY</varname> must point to a text file containing
+					and <replaceable>alg</replaceable> is <literal>03</literal> for 3DES,
+					<literal>01</literal> for 2DES, <literal>08</literal> for AES-128,
+					<literal>0A</literal> for AES-192 or <literal>0C</literal> for AES-256.
+					The key is provided by the card vendor. The environment variable
+					<varname>PIV_EXT_AUTH_KEY</varname> must point to either a binary file
+					matching the length of the key or a text file containing
 					the key in the format:
 					<code>XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX</code>
 					</para></listitem>
