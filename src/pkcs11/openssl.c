@@ -53,7 +53,7 @@ static void	sc_pkcs11_openssl_md_release(sc_pkcs11_operation_t *);
 static sc_pkcs11_mechanism_type_t openssl_sha1_mech = {
 	CKM_SHA_1,
 	{ 0, 0, CKF_DIGEST },
-	0,
+	{ -1 },
 	sizeof(struct sc_pkcs11_operation),
 	sc_pkcs11_openssl_md_release,
 	sc_pkcs11_openssl_md_init,
@@ -72,7 +72,7 @@ static sc_pkcs11_mechanism_type_t openssl_sha1_mech = {
 static sc_pkcs11_mechanism_type_t openssl_sha224_mech = {
 	CKM_SHA224,
 	{ 0, 0, CKF_DIGEST },
-	0,
+	{ -1 },
 	sizeof(struct sc_pkcs11_operation),
 	sc_pkcs11_openssl_md_release,
 	sc_pkcs11_openssl_md_init,
@@ -91,7 +91,7 @@ static sc_pkcs11_mechanism_type_t openssl_sha224_mech = {
 static sc_pkcs11_mechanism_type_t openssl_sha256_mech = {
 	CKM_SHA256,
 	{ 0, 0, CKF_DIGEST },
-	0,
+	{ -1 },
 	sizeof(struct sc_pkcs11_operation),
 	sc_pkcs11_openssl_md_release,
 	sc_pkcs11_openssl_md_init,
@@ -110,7 +110,7 @@ static sc_pkcs11_mechanism_type_t openssl_sha256_mech = {
 static sc_pkcs11_mechanism_type_t openssl_sha384_mech = {
 	CKM_SHA384,
 	{ 0, 0, CKF_DIGEST },
-	0,
+	{ -1 },
 	sizeof(struct sc_pkcs11_operation),
 	sc_pkcs11_openssl_md_release,
 	sc_pkcs11_openssl_md_init,
@@ -129,7 +129,7 @@ static sc_pkcs11_mechanism_type_t openssl_sha384_mech = {
 static sc_pkcs11_mechanism_type_t openssl_sha512_mech = {
 	CKM_SHA512,
 	{ 0, 0, CKF_DIGEST },
-	0,
+	{ -1 },
 	sizeof(struct sc_pkcs11_operation),
 	sc_pkcs11_openssl_md_release,
 	sc_pkcs11_openssl_md_init,
@@ -148,7 +148,7 @@ static sc_pkcs11_mechanism_type_t openssl_sha512_mech = {
 static sc_pkcs11_mechanism_type_t openssl_gostr3411_mech = {
 	CKM_GOSTR3411,
 	{ 0, 0, CKF_DIGEST },
-	0,
+	{ -1 },
 	sizeof(struct sc_pkcs11_operation),
 	sc_pkcs11_openssl_md_release,
 	sc_pkcs11_openssl_md_init,
@@ -167,7 +167,7 @@ static sc_pkcs11_mechanism_type_t openssl_gostr3411_mech = {
 static sc_pkcs11_mechanism_type_t openssl_md5_mech = {
 	CKM_MD5,
 	{ 0, 0, CKF_DIGEST },
-	0,
+	{ -1 },
 	sizeof(struct sc_pkcs11_operation),
 	sc_pkcs11_openssl_md_release,
 	sc_pkcs11_openssl_md_init,
@@ -186,7 +186,7 @@ static sc_pkcs11_mechanism_type_t openssl_md5_mech = {
 static sc_pkcs11_mechanism_type_t openssl_ripemd160_mech = {
 	CKM_RIPEMD160,
 	{ 0, 0, CKF_DIGEST },
-	0,
+	{ -1 },
 	sizeof(struct sc_pkcs11_operation),
 	sc_pkcs11_openssl_md_release,
 	sc_pkcs11_openssl_md_init,
