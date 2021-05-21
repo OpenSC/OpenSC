@@ -866,14 +866,14 @@ int main(int argc, char * argv[])
 			break;
 		case OPT_SLOT_DESCRIPTION:
 			if (opt_slot_set) {
-				fprintf(stderr, "Error: Only one of --slot, --slot-label, --slot-index or --token-label can be used\n");
+				fprintf(stderr, "Error: Only one of --slot, --slot-description, --slot-index or --token-label can be used\n");
 				util_print_usage_and_die(app_name, options, option_help, NULL);
 			}
 			opt_slot_description = optarg;
 			break;
 		case OPT_SLOT_INDEX:
 			if (opt_slot_set || opt_slot_description) {
-				fprintf(stderr, "Error: Only one of --slot, --slot-label, --slot-index or --token-label can be used\n");
+				fprintf(stderr, "Error: Only one of --slot, --slot-description, --slot-index or --token-label can be used\n");
 				util_print_usage_and_die(app_name, options, option_help, NULL);
 			}
 			opt_slot_index = (CK_ULONG) strtoul(optarg, NULL, 0);
@@ -885,7 +885,7 @@ int main(int argc, char * argv[])
 			break;
 		case OPT_TOKEN_LABEL:
 			if (opt_slot_set || opt_slot_description || opt_slot_index_set) {
-				fprintf(stderr, "Error: Only one of --slot, --slot-label, --slot-index or --token-label can be used\n");
+				fprintf(stderr, "Error: Only one of --slot, --slot-description, --slot-index or --token-label can be used\n");
 				util_print_usage_and_die(app_name, options, option_help, NULL);
 			}
 			opt_token_label = optarg;
@@ -1133,7 +1133,7 @@ int main(int argc, char * argv[])
 				fprintf(stderr, "Using slot with index %lu (0x%lx)\n", opt_slot_index, opt_slot);
 			} else {
 				fprintf(stderr, "Slot with index %lu (counting from 0) is not available.\n", opt_slot_index);
-				fprintf(stderr, "You must specify a valid slot with either --slot, --slot-index or --slot-label.\n");
+				fprintf(stderr, "You must specify a valid slot with either --slot, --slot-description, --slot-index or --token-label.\n");
 				err = 1;
 				goto end;
 			}
