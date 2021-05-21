@@ -447,7 +447,6 @@ int callback_public_keys(test_certs_t *objects,
 				if (strcmp((char *)curve->data, "edwards25519")) {
 					debug_print(" [WARN %s ] Unknown curve name. "
 						" expected edwards25519, got %s", o->id_str, curve->data);
-					return -1;
 				}
 				evp_type = EVP_PKEY_ED25519;
 				break;
@@ -455,7 +454,6 @@ int callback_public_keys(test_certs_t *objects,
 				if (strcmp((char *)curve->data, "curve25519")) {
 					debug_print(" [WARN %s ] Unknown curve name. "
 						" expected curve25519, got %s", o->id_str, curve->data);
-					return -1;
 				}
 				evp_type = EVP_PKEY_X25519;
 				break;
@@ -466,12 +464,13 @@ int callback_public_keys(test_certs_t *objects,
 			ASN1_PRINTABLESTRING_free(curve);
 		} else if (d2i_ASN1_OBJECT(&obj, &a, (long)template[6].ulValueLen) != NULL) {
 			int nid = OBJ_obj2nid(obj);
+			ASN1_OBJECT_free(obj);
+
 			switch (o->key_type) {
 			case CKK_EC_EDWARDS:
 				if (nid != NID_ED25519) {
 					debug_print(" [WARN %s ] Unknown OID. "
 						" expected NID_ED25519 (%d), got %d", o->id_str, NID_ED25519, nid);
-					return -1;
 				}
 				evp_type = EVP_PKEY_ED25519;
 				break;
@@ -479,7 +478,6 @@ int callback_public_keys(test_certs_t *objects,
 				if (nid != NID_X25519) {
 					debug_print(" [WARN %s ] Unknown OID. "
 						" expected NID_X25519 (%d), got %d", o->id_str, NID_X25519, nid);
-					return -1;
 				}
 				evp_type = EVP_PKEY_X25519;
 				break;
@@ -487,7 +485,6 @@ int callback_public_keys(test_certs_t *objects,
 				debug_print(" [WARN %s ] Unknown key type %lu", o->id_str, o->key_type);
 				return -1;
 			}
-			ASN1_OBJECT_free(obj);
 		} else {
 			debug_print(" [WARN %s ] Failed to convert EC_PARAMS"
 				" to curve name or object id", o->id_str);
