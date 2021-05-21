@@ -54,9 +54,9 @@ void usage_test(void **state) {
 			fprintf(stderr, " [ ERROR %s ] If Unwrap is set, Wrap should be set too.\n",
 			    objects.data[i].id_str);
 		}
-		if (objects.data[i].derive_pub) {
+		if (objects.data[i].derive_pub != objects.data[i].derive_priv) {
 			errors++;
-			fprintf(stderr, " [ ERROR %s ] Derive should not be set on public key\n",
+			fprintf(stderr, " [ ERROR %s ] Derive should be set on both private and public part.\n",
 			    objects.data[i].id_str);
 		}
 
