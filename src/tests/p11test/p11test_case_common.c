@@ -20,6 +20,7 @@
  */
 
 #include "p11test_case_common.h"
+#include "../../libopensc/sc-ossl-compat.h"
 
 char name_buffer[11];
 char flag_buffer[11];
@@ -208,8 +209,8 @@ int callback_certificates(test_certs_t *objects,
 
 	if (EVP_PKEY_base_id(evp) == EVP_PKEY_RSA) {
 		/* Extract public RSA key */
-		RSA *rsa = EVP_PKEY_get0_RSA(evp);
-		if ((o->key.rsa = RSAPublicKey_dup(rsa)) == NULL) {
+		const RSA *rsa = EVP_PKEY_get0_RSA(evp);
+		if ((o->key.rsa = RSAPublicKey_dup((RSA *)rsa)) == NULL) {
 			fail_msg("RSAPublicKey_dup failed");
 			return -1;
 		}
@@ -218,7 +219,7 @@ int callback_certificates(test_certs_t *objects,
 
 	} else if (EVP_PKEY_base_id(evp) == EVP_PKEY_EC) {
 		/* Extract public EC key */
-		EC_KEY *ec = EVP_PKEY_get0_EC_KEY(evp);
+		const EC_KEY *ec = EVP_PKEY_get0_EC_KEY(evp);
 		if ((o->key.ec = EC_KEY_dup(ec)) == NULL) {
 			fail_msg("EC_KEY_dup failed");
 			return -1;

@@ -143,7 +143,7 @@ CERT_HANDLE_FUNCTION(default_cert_handle) {
 	int r;
 	X509 *cert_data = NULL;
 	EVP_PKEY *pkey = NULL;
-	RSA * rsa = NULL;
+	const RSA * rsa = NULL;
 	int certtype = 0;
 	int modulus_len = 0;
 	const prdata* key = get_prkey_by_cert(items, cert);

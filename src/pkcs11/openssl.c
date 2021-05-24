@@ -522,7 +522,7 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, unsigned int pubkey_len
 		size_t signat_len_tmp;
 		unsigned char *signat_tmp = NULL;
 		EVP_PKEY_CTX *ctx;
-		EC_KEY *eckey;
+		const EC_KEY *eckey;
 		int r;
 
 		sc_log(context, "Trying to verify using EVP");
