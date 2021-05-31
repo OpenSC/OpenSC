@@ -37,6 +37,7 @@
 
 /* Global variable keeping information about token we are using */
 token_info_t token;
+int debug_flag = 0;
 
 void display_usage() {
 	fprintf(stdout,
@@ -98,7 +99,7 @@ int main(int argc, char** argv) {
 	token.slot_id = (unsigned long) -1;
 	token.log.outfile = NULL;
 
-	while ((command = getopt(argc, argv, "?hm:s:p:io:")) != -1) {
+	while ((command = getopt(argc, argv, "?hm:s:p:io:v")) != -1) {
 		switch (command) {
 			case 'o':
 				token.log.outfile = strdup(optarg);
@@ -120,6 +121,9 @@ int main(int argc, char** argv) {
 			case '?':
 				display_usage();
 				return 0;
+			case 'v':
+				debug_flag = 1;
+				break;
 			default:
 				break;
 		}

@@ -527,7 +527,9 @@ sc_pkcs15_prkey_attrs_from_cert(struct sc_pkcs15_card *p15card, struct sc_pkcs15
 
 	key_info = (struct sc_pkcs15_prkey_info *) key_object->data;
 
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	ERR_load_ERR_strings();
+#endif
 	ERR_load_crypto_strings();
 
 	sc_log(ctx, "CertValue(%"SC_FORMAT_LEN_SIZE_T"u) %p",

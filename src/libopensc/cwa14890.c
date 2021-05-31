@@ -41,6 +41,7 @@
 #include <openssl/x509.h>
 #include <openssl/des.h>
 #include <openssl/rand.h>
+#include <openssl/evp.h>
 #include "cwa14890.h"
 #include "cwa-dnie.h"
 
@@ -588,7 +589,7 @@ static int cwa_prepare_external_auth(sc_card_t * card,
 	memcpy(sha_buf + 74, buf3 + 1 + 74, 32);	/* copy kifd into sha_buf */
 	memcpy(sha_buf + 74 + 32, sm->icc.rnd, 8);	/* copy 8 byte icc challenge */
 	memcpy(sha_buf + 74 + 32 + 8, sm->icc.sn, 8);	/* copy serialnr, 8 bytes */
-	SHA1(sha_buf, 74 + 32 + 8 + 8, sha_data);
+	EVP_Digest(sha_buf, 74 + 32 + 8 + 8, sha_data, NULL, EVP_sha1(), NULL);
 	/* copy hashed data into buffer */
 	memcpy(buf3 + 1 + 74 + 32, sha_data, SHA_DIGEST_LENGTH);
 	buf3[127] = 0xBC;	/* iso padding */
@@ -748,7 +749,7 @@ static int cwa_compute_session_keys(sc_card_t * card)
 	/* evaluate kenc (cwa-14890-1 sect 8.8) */
 	memcpy(data, kseed, 32);
 	memcpy(data + 32, kenc, 4);
-	SHA1(data, 32 + 4, sha_data);
+	EVP_Digest(data, 32 + 4, sha_data, NULL, EVP_sha1(), NULL);
 	memcpy(sm->session_enc, sha_data, 16);	/* kenc=16 fsb sha((kifd^kicc)||00000001) */
 
 	/* evaluate kmac */
@@ -757,7 +758,7 @@ static int cwa_compute_session_keys(sc_card_t * card)
 
 	memcpy(data, kseed, 32);
 	memcpy(data + 32, kmac, 4);
-	SHA1(data, 32 + 4, sha_data);
+	EVP_Digest(data, 32 + 4, sha_data, NULL, EVP_sha1(), NULL);
 	memcpy(sm->session_mac, sha_data, 16);	/* kmac=16 fsb sha((kifd^kicc)||00000002) */
 
 	/* evaluate send sequence counter  (cwa-14890-1 sect 8.9 & 9.6 */
@@ -815,7 +816,7 @@ static int cwa_compare_signature(u8 * data, size_t dlen, u8 * ifd_data)
 		goto compare_signature_end;	/* iso 9796-2 padding */
 	memcpy(buf, data + 1, 74 + 32);
 	memcpy(buf + 74 + 32, ifd_data, 16);
-	SHA1(buf, 74 + 32 + 16, sha);
+	EVP_Digest(buf, 74 + 32 + 16, sha, NULL, EVP_sha1(), NULL);
 	if (memcmp(data + 127 - SHA_DIGEST_LENGTH, sha, SHA_DIGEST_LENGTH) == 0)
 		res = SC_SUCCESS;
  compare_signature_end:

@@ -188,24 +188,47 @@ size_t get_hash_length(CK_MECHANISM_TYPE mech)
 CK_BYTE *hash_message(const CK_BYTE *message, size_t message_length,
     CK_MECHANISM_TYPE hash)
 {
+	CK_BYTE *out = NULL;
+
 	switch (hash) {
 	case CKM_SHA224:
-		return SHA224(message, message_length, NULL);
+		out = malloc(SHA224_DIGEST_LENGTH);
+		if (out == NULL)
+			return NULL;
+		EVP_Digest(message, message_length, out, NULL, EVP_sha224(), NULL);
+		break;
 
 	case CKM_SHA256:
-		return SHA256(message, message_length, NULL);
+		out = malloc(SHA256_DIGEST_LENGTH);
+		if (out == NULL)
+			return NULL;
+		EVP_Digest(message, message_length, out, NULL, EVP_sha256(), NULL);
+		break;
 
 	case CKM_SHA384:
-		return SHA384(message, message_length, NULL);
+		out = malloc(SHA384_DIGEST_LENGTH);
+		if (out == NULL)
+			return NULL;
+		EVP_Digest(message, message_length, out, NULL, EVP_sha384(), NULL);
+		break;
 
 	case CKM_SHA512:
-		return SHA512(message, message_length, NULL);
+		out = malloc(SHA512_DIGEST_LENGTH);
+		if (out == NULL)
+			return NULL;
+		EVP_Digest(message, message_length, out, NULL, EVP_sha512(), NULL);
+		break;
 
 	case CKM_SHA_1:
 	default:
-		return SHA1(message, message_length, NULL);
+		out = malloc(SHA_DIGEST_LENGTH);
+		if (out == NULL)
+			return NULL;
+		EVP_Digest(message, message_length, out, NULL, EVP_sha1(), NULL);
+		break;
 
 	}
+	return out;
 }
 
 int oaep_encrypt_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
@@ -216,20 +239,11 @@ int oaep_encrypt_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *me
 	EVP_PKEY_CTX *pctx = NULL;
 	const EVP_MD *md = EVP_md_null();
 	const EVP_MD *mgf1_md = EVP_md_null();
-	EVP_PKEY *key = NULL;
 
 	md = md_cryptoki_to_ossl(mech->hash);
 	mgf1_md = mgf_cryptoki_to_ossl(mech->mgf);
 
-	if ((key = EVP_PKEY_new()) == NULL
-		|| RSA_up_ref(o->key.rsa) < 1
-		|| EVP_PKEY_set1_RSA(key, o->key.rsa) != 1) {
-		fprintf(stderr, " [ ERROR %s ] Failed to initialize EVP_PKEY. Error: %s\n",
-			o->id_str, ERR_error_string(ERR_peek_last_error(), NULL));
-		goto out;
-	}
-
-	if ((pctx = EVP_PKEY_CTX_new(key, NULL)) == NULL
+	if ((pctx = EVP_PKEY_CTX_new(o->key, NULL)) == NULL
 		|| EVP_PKEY_encrypt_init(pctx) != 1
 		|| EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_PKCS1_OAEP_PADDING) != 1
 		|| EVP_PKEY_CTX_set_rsa_oaep_md(pctx, md) != 1
@@ -254,7 +268,6 @@ int oaep_encrypt_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *me
 	}
 out:
 	EVP_PKEY_CTX_free(pctx);
-	EVP_PKEY_free(key);
 	return enc_length;
 }
 
@@ -536,31 +549,23 @@ int pss_verify_message_openssl(test_cert_t *o, token_info_t *info,
 	CK_RV rv = -1;
 	EVP_PKEY_CTX *pctx = NULL;
 	const CK_BYTE *my_message;
+	CK_BYTE *free_message = NULL;
 	CK_ULONG my_message_length;
 	const EVP_MD *mgf_md = EVP_md_null();
 	const EVP_MD *md = EVP_md_null();
-	EVP_PKEY *key = NULL;
 
 	md = md_cryptoki_to_ossl(mech->hash);
 	mgf_md = mgf_cryptoki_to_ossl(mech->mgf);
 
 	if (mech->mech != CKM_RSA_PKCS_PSS) {
-		my_message = hash_message(message, message_length, mech->hash);
+		my_message = free_message = hash_message(message, message_length, mech->hash);
 		my_message_length = get_hash_length(mech->hash);
 	} else {
 		my_message = message;
 		my_message_length = message_length;
 	}
 
-	if ((key = EVP_PKEY_new()) == NULL
-		|| RSA_up_ref(o->key.rsa) < 1
-		|| EVP_PKEY_set1_RSA(key, o->key.rsa) != 1) {
-		fprintf(stderr, " [ ERROR %s ] Failed to initialize EVP_PKEY. Error: %s\n",
-			o->id_str, ERR_error_string(ERR_peek_last_error(), NULL));
-		goto out;
-	}
-
-	if ((pctx = EVP_PKEY_CTX_new(key, NULL)) == NULL
+	if ((pctx = EVP_PKEY_CTX_new(o->key, NULL)) == NULL
 		|| EVP_PKEY_verify_init(pctx) != 1
 		|| EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_PKCS1_PSS_PADDING) != 1
 		|| EVP_PKEY_CTX_set_signature_md(pctx, md) != 1
@@ -580,9 +585,9 @@ int pss_verify_message_openssl(test_cert_t *o, token_info_t *info,
 			o->id_str, ERR_error_string(ERR_peek_last_error(), NULL));
 		goto out;
 	}
+	free(free_message);
 out:
 	EVP_PKEY_CTX_free(pctx);
-	EVP_PKEY_free(key);
 	return rv;
 }
 
@@ -684,6 +689,9 @@ int pss_sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 	debug_print(" [ KEY %s ] Verify message signature", o->id_str);
 	rv = pss_verify_message(o, info, message, message_length, mech,
 		sign, sign_length);
+	if (mech->mech == CKM_RSA_PKCS_PSS) {
+		free(message);
+	}
 	free(sign);
 	return rv;
 }

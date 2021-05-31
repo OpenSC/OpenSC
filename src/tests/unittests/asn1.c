@@ -241,7 +241,7 @@ static int setup_sc_context(void **state)
 	sc_context_t *ctx = NULL;
 	int rv;
 
-	rv = sc_establish_context(&ctx, "fuzz");
+	rv = sc_establish_context(&ctx, "asn1");
 	assert_non_null(ctx);
 	assert_int_equal(rv, SC_SUCCESS);
 
