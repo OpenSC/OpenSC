@@ -810,7 +810,7 @@ out:
  */
 #define NUM_INTERFACES 2
 #define DEFAULT_INTERFACE 0
-ck_interface interfaces[NUM_INTERFACES] = {
+CK_INTERFACE interfaces[NUM_INTERFACES] = {
 	{"PKCS 11", (void *)&pkcs11_function_list_3_0, 0},
 	{"PKCS 11", (void *)&pkcs11_function_list, 0}
 };

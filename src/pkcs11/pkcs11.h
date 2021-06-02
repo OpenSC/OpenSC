@@ -1786,6 +1786,8 @@ typedef struct ck_c_initialize_args *CK_C_INITIALIZE_ARGS_PTR;
 #undef ck_rv_t
 #undef ck_notify_t
 
+#undef ck_interface
+
 #undef ck_function_list
 #undef ck_function_list_3_0
 
