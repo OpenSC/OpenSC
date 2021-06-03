@@ -55,9 +55,10 @@ opensc_explorer_LDADD = $(OPTIONAL_READLINE_LIBS)
 pkcs15_tool_SOURCES = pkcs15-tool.c util.c ../pkcs11/pkcs11-display.c ../pkcs11/pkcs11-display.h
 pkcs15_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
 pkcs11_tool_SOURCES = pkcs11-tool.c util.c
+pkcs11_tool_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(PTHREAD_CFLAGS)
 pkcs11_tool_LDADD = \
 	$(top_builddir)/src/common/libpkcs11.la \
-	$(OPTIONAL_OPENSSL_LIBS)
+	$(OPTIONAL_OPENSSL_LIBS) $(PTHREAD_CFLAGS)
 if ENABLE_SHARED
 else
 pkcs11_tool_LDADD += \
@@ -139,9 +140,9 @@ endif
 
 .PHONY: cmdline
 cmdline:
-	for f in *.ggo.in; do $(do_subst) < "$$f" > "$${f%.in}"; done
-	for f in *.ggo;    do $(GENGETOPT) --file-name="$${f%.ggo}-cmdline" --output-dir=$(builddir) < "$$f"; done
-	$(GENGETOPT) --file-name=opensc-asn1-cmdline --output-dir=$(builddir) < opensc-asn1.ggo --unamed-opts
+	@for f in *.ggo.in; do $(do_subst) < "$$f" > "$${f%.in}"; done
+	@for f in *.ggo;    do $(GENGETOPT) --file-name="$${f%.ggo}-cmdline" --output-dir=$(builddir) < "$$f"; done
+	$(AM_V_GEN)$(GENGETOPT) --file-name=opensc-asn1-cmdline --output-dir=$(builddir) < opensc-asn1.ggo --unamed-opts
 
 if WIN32
 opensc_tool_SOURCES += versioninfo-tools.rc
@@ -173,12 +174,12 @@ xdg_autostart_DATA = pkcs11-register.desktop
 endif
 
 %.desktop: %.desktop.in
-	$(do_subst) < $< > $@
+	$(AM_V_GEN)$(do_subst) < $< > $@
 
 noinst_DATA = org.opensc-project.mac.pkcs11-register.plist org.opensc-project.mac.opensc-notify.plist
 
 %.plist: %.plist.in
-	$(do_subst) < $< > $@
+	$(AM_V_GEN)$(do_subst) < $< > $@
 
 clean-local:
-	rm -f $(abs_builddir)/npa-tool.ggo $(abs_builddir)/opensc-notify.ggo $(abs_builddir)/opensc-asn1.ggo $(abs_builddir)/goid-tool.ggo $(abs_builddir)/egk-tool.ggo org.opensc.notify.desktop pkcs11-register.desktop
+	rm -f $(abs_builddir)/npa-tool.ggo $(abs_builddir)/opensc-notify.ggo $(abs_builddir)/opensc-asn1.ggo $(abs_builddir)/goid-tool.ggo $(abs_builddir)/egk-tool.ggo org.opensc.notify.desktop pkcs11-register.desktop org.opensc-project.mac.opensc-notify.plist org.opensc-project.mac.pkcs11-register.plist

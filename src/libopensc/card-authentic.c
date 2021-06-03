@@ -1558,6 +1558,7 @@ authentic_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data, int *tri
 	pin_cmd.pin_type = data->pin_type;
 	pin_cmd.pin1.tries_left = -1;
 
+	memset(&acls, 0, sizeof(acls));
 	rv = authentic_pin_get_policy(card, &pin_cmd, acls);
 	LOG_TEST_RET(ctx, rv, "Get 'PIN policy' error");
 

@@ -43,7 +43,7 @@ span.errortext {
   font-style: italic;
 }
 
-		--></style></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="book"><div class="titlepage"><div><div><h1 class="title"><a name="idm1"></a>OpenSC Manual Pages: Section 5</h1></div></div><hr></div><div class="toc"><p><b>Table of Contents</b></p><dl class="toc"><dt><span class="refentrytitle"><a href="#opensc.conf">opensc.conf</a></span><span class="refpurpose"> &#8212; configuration file for OpenSC</span></dt><dt><span class="refentrytitle"><a href="#pkcs15-profile">pkcs15-profile</a></span><span class="refpurpose"> &#8212; format of profile for <span class="command"><strong>pkcs15-init</strong></span></span></dt></dl></div><div class="refentry"><a name="opensc.conf"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>opensc.conf &#8212; configuration file for OpenSC</p></div><div class="refsect1"><a name="idm13"></a><h2>Description</h2><p>
+		--></style></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="book"><div class="titlepage"><div><div><h1 class="title"><a name="id-1"></a>OpenSC Manual Pages: Section 5</h1></div></div><hr></div><div class="toc"><p><b>Table of Contents</b></p><dl class="toc"><dt><span class="refentrytitle"><a href="#opensc.conf">opensc.conf</a></span><span class="refpurpose"> &#8212; configuration file for OpenSC</span></dt><dt><span class="refentrytitle"><a href="#pkcs15-profile">pkcs15-profile</a></span><span class="refpurpose"> &#8212; format of profile for <span class="command"><strong>pkcs15-init</strong></span></span></dt></dl></div><div class="refentry"><a name="opensc.conf"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>opensc.conf &#8212; configuration file for OpenSC</p></div><div class="refsect1"><a name="id-1.2.3"></a><h2>Description</h2><p>
 			OpenSC obtains configuration data from the following sources in the following order
 			</p><div class="orderedlist"><ol class="orderedlist" type="1"><li class="listitem"><p>
 						command-line options
@@ -122,7 +122,7 @@ app <em class="replaceable"><code>application</code></em> {
 						<code class="literal">westcos-tool</code>:
 						Configuration block for OpenSC tools
 				</p></li></ul></div><p>
-		</p></div><div class="refsect1"><a name="idm103"></a><h2>Configuration Options</h2><div class="variablelist"><dl class="variablelist"><dt><a name="debug"></a><span class="term">
+		</p></div><div class="refsect1"><a name="id-1.2.4"></a><h2>Configuration Options</h2><div class="variablelist"><dl class="variablelist"><dt><a name="debug"></a><span class="term">
 					<code class="option">debug = <em class="replaceable"><code>num</code></em>;</code>
 				</span></dt><dd><p>
 						Amount of debug info to print (Default:
@@ -154,6 +154,12 @@ app <em class="replaceable"><code>application</code></em> {
 							Project\OpenSC\ProfileDir</code> is
 						checked.
 				</p></dd><dt><span class="term">
+					<code class="option">disable_colors = <em class="replaceable"><code>bool</code></em>;</code>
+				</span></dt><dd><p>
+						Disable colors of log messages (Default:
+						<code class="literal">false</code> if attached to a console,
+						<code class="literal">true</code> otherwise).
+				</p></dd><dt><span class="term">
 					<code class="option">disable_popups = <em class="replaceable"><code>bool</code></em>;</code>
 				</span></dt><dd><p>
 						Disable pop-ups of built-in GUI (Default: <code class="literal">false</code>).
@@ -176,7 +182,7 @@ app <em class="replaceable"><code>application</code></em> {
 						default) will load all statically linked drivers.
 					</p><p>
 						If an unknown (i.e. not internal or old) driver is
-						supplied, a separate configuration configuration
+						supplied, a separate configuration
 						block has to be written for the driver. A special
 						value <code class="literal">old</code> will load all
 						statically linked drivers that may be removed in
@@ -227,6 +233,10 @@ app <em class="replaceable"><code>application</code></em> {
 									<code class="literal">npa</code>: See <a class="xref" href="#npa" title="Configuration Options for German ID Card">the section called &#8220;Configuration Options for German ID Card&#8221;</a>
 							</p></li><li class="listitem"><p>
 									<code class="literal">dnie</code>: See <a class="xref" href="#dnie" title="Configuration Options for DNIe">the section called &#8220;Configuration Options for DNIe&#8221;</a>
+							</p></li><li class="listitem"><p>
+									<code class="literal">edo</code>: See <a class="xref" href="#edo" title="Configuration Options for Polish eID Card">the section called &#8220;Configuration Options for Polish eID Card&#8221;</a>
+							</p></li><li class="listitem"><p>
+									<code class="literal">myeid</code>: See <a class="xref" href="#myeid" title="Configuration Options for MyEID Card">the section called &#8220;Configuration Options for MyEID Card&#8221;</a>
 							</p></li><li class="listitem"><p>
 									Any other value: Configuration block for an externally loaded card driver
 							</p></li></ul></div><p>
@@ -332,7 +342,7 @@ app <em class="replaceable"><code>application</code></em> {
 						Parameters for the OpenSC PKCS11 module.
 					</p><p>
 						For details see <a class="xref" href="#pkcs11" title="Configuration of PKCS#11">the section called &#8220;Configuration of PKCS#11&#8221;</a>.
-					</p></dd></dl></div><div class="refsect2"><a name="reader_driver"></a><h3>Configuration of Smart Card Reader Driver</h3><div class="refsect3"><a name="idm330"></a><h4>Configuration Options for all Reader Drivers</h4><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+					</p></dd></dl></div><div class="refsect2"><a name="reader_driver"></a><h3>Configuration of Smart Card Reader Driver</h3><div class="refsect3"><a name="id-1.2.4.3.2"></a><h4>Configuration Options for all Reader Drivers</h4><div class="variablelist"><dl class="variablelist"><dt><span class="term">
 							<code class="option">max_send_size = <em class="replaceable"><code>num</code></em>;</code>
 							<code class="option">max_recv_size = <em class="replaceable"><code>num</code></em>;</code>
 						</span></dt><dd><p>
@@ -429,7 +439,27 @@ app <em class="replaceable"><code>application</code></em> {
 							<code class="option">readers = <em class="replaceable"><code>num</code></em>;</code>
 						</span></dt><dd><p>
 								Virtual readers to allocate (Default: <code class="literal">2</code>).
-						</p></dd></dl></div></div></div><div class="refsect2"><a name="npa"></a><h3>Configuration Options for German ID Card</h3><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+						</p></dd></dl></div></div></div><div class="refsect2"><a name="myeid"></a><h3>Configuration Options for MyEID Card</h3><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+						<code class="option">disable_hw_pkcs1_padding = <em class="replaceable"><code>bool</code></em>;</code>
+					</span></dt><dd><p>
+							The MyEID card can internally
+							encapsulate the data (hash code)
+							into a DigestInfo ASN.1 structure
+							according to the selected hash
+							algorithm (currently only for SHA1).
+							DigestInfo is padded to RSA key
+							modulus length according to PKCS#1
+							v1.5, block type 01h. Size of the
+							DigestInfo must not exceed 40%
+							of the RSA key modulus length. If
+							this limit is unsatisfactory (for
+							example someone needs RSA 1024
+							with SHA512), the user can disable
+							this feature. In this case, the
+							card driver will do everything
+							necessary before sending the data
+							(hash code) to the card.
+					</p></dd></dl></div></div><div class="refsect2"><a name="npa"></a><h3>Configuration Options for German ID Card</h3><div class="variablelist"><dl class="variablelist"><dt><span class="term">
 						<code class="option">can = <em class="replaceable"><code>value</code></em>;</code>
 					</span></dt><dd><p>
 							German ID card requires the CAN to
@@ -478,6 +508,16 @@ app <em class="replaceable"><code>application</code></em> {
 							<code class="literal">/usr/bin/pinentry</code>).
 							Only used if compiled with
 							<code class="option">--enable-dnie-ui</code>
+					</p></dd></dl></div></div><div class="refsect2"><a name="edo"></a><h3>Configuration Options for Polish eID Card</h3><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+						<code class="option">can = <em class="replaceable"><code>value</code></em>;</code>
+					</span></dt><dd><p>
+							CAN (Card Access Number &#8211; 6 digit number
+							printed on the right bottom corner of the
+							front side of the document) is required
+							to establish connection with the card.
+							It might be overwritten by <code class="literal">EDO_CAN</code>
+							environment variable. Currently, it is not
+							possible to set it in any other way.
 					</p></dd></dl></div></div><div class="refsect2"><a name="card_atr"></a><h3>Configuration based on ATR</h3><p>
 				</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
 							<code class="option">atrmask = <em class="replaceable"><code>hexstring</code></em>;</code>
@@ -554,10 +594,10 @@ app <em class="replaceable"><code>application</code></em> {
 											<code class="literal">raw</code>
 									</p></li></ul></div><p>
 						</p></dd><dt><span class="term">
-							<code class="option">md_read_only = <em class="replaceable"><code>bool</code></em>;</code>
+							<code class="option">read_only = <em class="replaceable"><code>bool</code></em>;</code>
 						</span></dt><dd><p>
 								Mark card as read/only card in
-								Minidriver/BaseCSP interface
+								PKCS#11/Minidriver/BaseCSP interface
 								(Default: <code class="literal">false</code>).
 						</p></dd><dt><span class="term">
 							<code class="option">md_supports_X509_enrollment = <em class="replaceable"><code>bool</code></em>;</code>
@@ -724,7 +764,7 @@ app <em class="replaceable"><code>application</code></em> {
 					</span></dt><dd><p>
 							Where to cache the card's files. The default values are:
 							</p><div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem"><p>
-										<code class="filename"><code class="envar">$XDG_CACHE_HOME</code>/opensc/</code> (if defined)
+										<code class="filename"><code class="envar">$XDG_CACHE_HOME</code>/opensc/</code> (If <code class="envar">$XDG_CACHE_HOME</code> is defined)
 									</p></li><li class="listitem"><p>
 										<code class="filename"><code class="envar">$HOME</code>/.cache/opensc/</code> (Unix)
 									</p></li><li class="listitem"><p>
@@ -755,6 +795,26 @@ app <em class="replaceable"><code>application</code></em> {
 							<code class="literal">CKA_ALWAYS_AUTHENTICATE</code> may
 							need to set this to get signatures to work with
 							some cards (Default: <code class="literal">false</code>).
+					</p><p>
+							It is recommended to enable also PIN caching using
+							<code class="literal">use_pin_caching</code> option for OpenSC
+							to be able to provide PIN for the card when needed.
+					</p></dd><dt><span class="term">
+						<code class="option">private_certificate = <em class="replaceable"><code>value</code></em>;</code>
+					</span></dt><dd><p>
+							How to handle a PIN-protected certificate. Known
+							parameters:
+							</p><div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem"><p>
+										<code class="literal">protect</code>: The certificate stays PIN-protected.
+								</p></li><li class="listitem"><p>
+										<code class="literal">declassify</code>: Allow
+										reading the certificate without
+										enforcing verification of the PIN.
+								</p></li><li class="listitem"><p>
+										<code class="literal">ignore</code>: Ignore PIN-protected certificates.
+								</p></li></ul></div><p>
+							(Default: <code class="literal">ignore</code> in Tokend,
+							<code class="literal">protect</code> otherwise).
 					</p></dd><dt><span class="term">
 						<code class="option">enable_pkcs15_emulation = <em class="replaceable"><code>bool</code></em>;</code>
 					</span></dt><dd><p>
@@ -777,7 +837,7 @@ app <em class="replaceable"><code>application</code></em> {
 						<code class="option">builtin_emulators = <em class="replaceable"><code>emulators</code></em>;</code>
 					</span></dt><dd><p>
 							List of the builtin pkcs15 emulators to test
-							(Default: <code class="literal">westcos, openpgp,
+							(Default: <code class="literal">westcos, openpgp, 
 								starcert, tcos, esteid, itacns, 
 								PIV-II, cac, gemsafeGPK, gemsafeV1, actalis,
 								atrust-acos, tccardos, entersafe, pteid,
@@ -856,13 +916,6 @@ app <em class="replaceable"><code>application</code></em> {
 							Score for <span class="application">OpenSC.tokend</span>
 							(Default: <code class="literal">300</code>).  The tokend with
 							the highest score shall be used.
-					</p></dd><dt><span class="term">
-						<code class="option">ignore_private_certificate = <em class="replaceable"><code>bool</code></em>;</code>
-					</span></dt><dd><p>
-							Tokend ignore to read PIN protected certificate
-							that is set
-							<code class="literal">SC_PKCS15_CO_FLAG_PRIVATE</code> flag
-							(Default: <code class="literal">true</code>).
 					</p></dd></dl></div></div><div class="refsect2"><a name="pkcs11"></a><h3>Configuration of PKCS#11</h3><div class="variablelist"><dl class="variablelist"><dt><span class="term">
 						<code class="option">max_virtual_slots = <em class="replaceable"><code>num</code></em>;</code>
 					</span></dt><dd><p>
@@ -1022,7 +1075,7 @@ app <em class="replaceable"><code>application</code></em> {
 							For the module to simulate the opensc-onepin module
 							behavior the following option
 							<code class="option">create_slots_for_pins = "user";</code>
-					</p></dd></dl></div></div></div><div class="refsect1"><a name="idm971"></a><h2>Environment</h2><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+					</p></dd></dl></div></div></div><div class="refsect1"><a name="id-1.2.5"></a><h2>Environment</h2><div class="variablelist"><dl class="variablelist"><dt><span class="term">
 					<code class="envar">OPENSC_CONF</code>
 				</span></dt><dd><p>
 						Filename for a user defined configuration file
@@ -1065,7 +1118,7 @@ app <em class="replaceable"><code>application</code></em> {
 				</span></dt><dd><p>
 						PIV configuration during initialization with
 						<span class="application">piv-tool</span>.
-				</p></dd></dl></div></div><div class="refsect1"><a name="idm1012"></a><h2>Files</h2><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+				</p></dd></dl></div></div><div class="refsect1"><a name="id-1.2.6"></a><h2>Files</h2><div class="variablelist"><dl class="variablelist"><dt><span class="term">
 					<code class="filename">/usr/etc/opensc.conf</code>
 				</span></dt><dd><p>
 						System-wide configuration file
@@ -1073,7 +1126,7 @@ app <em class="replaceable"><code>application</code></em> {
 					<code class="filename">/usr/share/doc/opensc/opensc.conf</code>
 				</span></dt><dd><p>
 						Extended example configuration file
-				</p></dd></dl></div></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="pkcs15-profile"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>pkcs15-profile &#8212; format of profile for <span class="command"><strong>pkcs15-init</strong></span></p></div><div class="refsect1"><a name="idm1036"></a><h2>Description</h2><p>
+				</p></dd></dl></div></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="pkcs15-profile"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>pkcs15-profile &#8212; format of profile for <span class="command"><strong>pkcs15-init</strong></span></p></div><div class="refsect1"><a name="id-1.3.3"></a><h2>Description</h2><p>
 			The <span class="command"><strong>pkcs15-init</strong></span> utility for PKCS #15 smart card
 			personalization is controlled via profiles. When starting, it will read two
 			such profiles at the moment, a generic application profile, and a card
@@ -1089,10 +1142,10 @@ app <em class="replaceable"><code>application</code></em> {
 			The card specific profile contains additional information required during
 			card initialization, such as location of PIN files, key references etc.
 			Profiles currently reside in <code class="filename">@pkgdatadir@</code>
-		</p></div><div class="refsect1"><a name="idm1044"></a><h2>Syntax</h2><p>
+		</p></div><div class="refsect1"><a name="id-1.3.4"></a><h2>Syntax</h2><p>
 			This section should contain information about the profile syntax. Will add
 			this soonishly.
-		</p></div><div class="refsect1"><a name="idm1047"></a><h2>See also</h2><p>
+		</p></div><div class="refsect1"><a name="id-1.3.5"></a><h2>See also</h2><p>
 			<span class="citerefentry"><span class="refentrytitle">pkcs15-init</span>(1)</span>,
 			<span class="citerefentry"><span class="refentrytitle">pkcs15-crypt</span>(1)</span>
 		</p></div></div></div></body></html>

@@ -491,6 +491,8 @@ int sc_get_encoding_flags(sc_context_t *ctx,
 	} else if ((caps & SC_ALGORITHM_RSA_PAD_PSS) &&
 			(iflags & SC_ALGORITHM_RSA_PAD_PSS)) {
 		*sflags |= SC_ALGORITHM_RSA_PAD_PSS;
+		*sflags |= iflags & SC_ALGORITHM_MGF1_HASHES;
+		*pflags = iflags & ~(iflags & (SC_ALGORITHM_MGF1_HASHES | SC_ALGORITHM_RSA_PAD_PSS));
 
 	} else if ((caps & SC_ALGORITHM_RSA_RAW) &&
 				(iflags & SC_ALGORITHM_RSA_PAD_PKCS1

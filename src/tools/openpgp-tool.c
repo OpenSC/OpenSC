@@ -177,7 +177,7 @@ static const struct ef_name_map key_data[] = {
 };
 
 static const struct ef_name_map user_data[] = {
-	{ "Account",  "OPENGPG_ACCOUNT", "3F00:005E",      TYPE_STRING, 0, 0, NULL              },
+	{ "Account",  "OPENPGP_ACCOUNT", "3F00:005E",      TYPE_STRING, 0, 0, NULL              },
 	{ "URL",      "OPENPGP_URL",     "3F00:5F50",      TYPE_STRING, 0, 0, NULL              },
 	{ "Name",     "OPENPGP_NAME",    "3F00:0065:005B", TYPE_STRING, 0, 0, prettify_name     },
 	{ "Language", "OPENPGP_LANG",    "3F00:0065:5F2D", TYPE_STRING, 0, 0, prettify_language },
@@ -847,7 +847,7 @@ int delete_key_openpgp(sc_card_t *card, u8 in_key_id)
 		}
 	}
 	/* TODO: Rewrite Extended Header List.
-	 * Not support by OpenGPG v2 yet */
+	 * Not support by OpenPGP v2 yet */
 	return r;
 }
 

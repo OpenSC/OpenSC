@@ -48,6 +48,7 @@
 #include "libopensc/cards.h"
 #include "libopensc/log.h"
 #include "libopensc/internal.h"
+#include "libopensc/iso7816.h"
 #include "common/compat_strlcpy.h"
 #include <getopt.h>
 #include "util.h"
@@ -906,6 +907,25 @@ static int do_info(int argc, char **argv)
 	int r, not_current = 1;
 	const id2str_t *ac_ops = NULL;
 
+	const char *lifecycle = "unknown value";
+
+	static const id2str_t lc[] = {
+		{ SC_FILE_STATUS_NO_INFO,		"No information given"		},
+		{ SC_FILE_STATUS_CREATION,		"Creation state"		},
+		{ SC_FILE_STATUS_RFU_2,			"RFU (2)"			},
+		{ SC_FILE_STATUS_INITIALISATION,	"Initialisation state"		},
+		{ SC_FILE_STATUS_INVALIDATED,		"Operational, deactivated"	},
+		{ SC_FILE_STATUS_ACTIVATED,		"Operational, activated"	},
+		{ SC_FILE_STATUS_RFU_8,			"RFU (8)"			},
+		{ SC_FILE_STATUS_RFU_9,			"RFU (9)"			},
+		{ SC_FILE_STATUS_RFU_10,		"RFU (10)"			},
+		{ SC_FILE_STATUS_RFU_11,		"RFU (11)"			},
+		{ SC_FILE_STATUS_TERMINATION,		"Termination state"		},
+		{ SC_FILE_STATUS_PROPRIETARY,		"Proprietary state"		},
+		{ SC_FILE_STATUS_UNKNOWN,		"LCSB is not present"		},
+		{  0, NULL }
+	};
+
 	if (!argc) {
 		path = current_path;
 		file = current_file;
@@ -1033,6 +1053,10 @@ static int do_info(int argc, char **argv)
 		util_hex_dump(stdout, file->sec_attr, file->sec_attr_len, " ");
 		printf("\n");
 	}
+	for (i = 0; lc[i].str != NULL; i++)
+		if (file->status == lc[i].id)
+			lifecycle = lc[i].str;
+	printf("%-25s%s\n", "Life cycle: ", lifecycle);
 	printf("\n");
 	if (not_current) {
 		sc_file_free(file);
@@ -2062,6 +2086,7 @@ static int do_asn1(int argc, char **argv)
 {
 	int r, err = 1;
 	unsigned int offs = 0;
+	int offsu = 0; /* offset updated, set from argv */
 	sc_path_t path;
 	sc_file_t *file = NULL;
 	int not_current = 1;
@@ -2103,8 +2128,10 @@ static int do_asn1(int argc, char **argv)
 			goto err;
 		}
 
-		if (argc > 1)
+		if (argc > 1) {
 			offs = (unsigned int) strtoul(argv[1], NULL, 10);
+			offsu = 1;
+		}
 
 		r = sc_lock(card);
 		if (r == SC_SUCCESS)
@@ -2133,8 +2160,10 @@ static int do_asn1(int argc, char **argv)
 		}
 
 		rec = (unsigned int) strtoul(argv[1], NULL, 10);
-		if (argc > 2)
+		if (argc > 2) {
 			offs = (unsigned int) strtoul(argv[2], NULL, 10);
+			offsu = 1;
+		}
 
 		if (rec < 1 || rec > file->record_count) {
 			fprintf(stderr, "Invalid record number %u.\n", rec);
@@ -2153,6 +2182,13 @@ static int do_asn1(int argc, char **argv)
 		}
 	}
 
+	/* workaround when the issuer of a card does prefix the EF.ATR payload with 0x80 */
+	if (offsu == 0 /* do not apply the workaround if any offset */
+			&& r >= 1
+			&& buf[0] == ISO7816_II_CATEGORY_TLV
+			&& path.len >= 4
+			&& memcmp(path.value, "\x3f\x00\x2f\x01", 4) == 0)
+		offs++;
 	/* if offset does not exceed the length read from file/record, ... */
 	if (offs <= (unsigned int) r) {
 		/* ... perform the ASN.1 dump */

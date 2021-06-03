@@ -102,6 +102,27 @@ void supported_mechanisms_test(void **state) {
 					P11TEST_FAIL(info, "Too many EC mechanisms (%d)", MAX_MECHS);
 			}
 
+			/* We list all known edwards EC curve mechanisms */
+			if (mechanism_list[i] == CKM_EDDSA) {
+				if (token.num_ed_mechs < MAX_MECHS) {
+					mech = &token.ed_mechs[token.num_ed_mechs++];
+					mech->mech = mechanism_list[i];
+					mech->usage_flags = mechanism_info[i].flags;
+				} else
+					P11TEST_FAIL(info, "Too many edwards EC mechanisms (%d)", MAX_MECHS);
+			}
+
+			/* We list all known montgomery EC curve mechanisms */
+			if (mechanism_list[i] == CKM_XEDDSA
+					|| mechanism_list[i] == CKM_ECDH1_DERIVE) {
+				if (token.num_montgomery_mechs < MAX_MECHS) {
+					mech = &token.montgomery_mechs[token.num_montgomery_mechs++];
+					mech->mech = mechanism_list[i];
+					mech->usage_flags = mechanism_info[i].flags;
+				} else
+					P11TEST_FAIL(info, "Too many montgomery EC mechanisms (%d)", MAX_MECHS);
+			}
+
 			if ((mechanism_info[i].flags & CKF_GENERATE_KEY_PAIR) != 0) {
 				if (token.num_keygen_mechs < MAX_MECHS) {
 					mech = &token.keygen_mechs[token.num_keygen_mechs++];

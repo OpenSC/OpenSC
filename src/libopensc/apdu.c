@@ -401,11 +401,13 @@ sc_set_le_and_transmit(struct sc_card *card, struct sc_apdu *apdu, size_t olen)
 	/* set the new expected length */
 	apdu->resplen = olen;
 	apdu->le      = nlen;
+#ifndef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
 	/* Belpic V1 applets have a problem: if the card sends a 6C XX (only XX bytes available), 
 	 * and we resend the command too soon (i.e. the reader is too fast), the card doesn't respond. 
 	 * So we build in a delay. */
 	if (card->type == SC_CARD_TYPE_BELPIC_EID)
 		msleep(40);
+#endif
 
 	/* re-transmit the APDU with new Le length */
 	rv = sc_single_transmit(card, apdu);

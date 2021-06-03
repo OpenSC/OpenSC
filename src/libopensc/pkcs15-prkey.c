@@ -617,6 +617,14 @@ sc_pkcs15_free_prkey(struct sc_pkcs15_prkey *key)
 		if (key->u.ec.ecpointQ.value)
 			free(key->u.ec.ecpointQ.value);
 		break;
+	case SC_ALGORITHM_EDDSA:
+		free(key->u.eddsa.pubkey.value);
+		key->u.eddsa.pubkey.value = NULL;
+		key->u.eddsa.pubkey.len = 0;
+		free(key->u.eddsa.value.value);
+		key->u.eddsa.value.value = NULL;
+		key->u.eddsa.value.len = 0;
+		break;
 	}
 }
 
@@ -783,6 +791,13 @@ sc_pkcs15_convert_prkey(struct sc_pkcs15_prkey *pkcs15_key, void *evp_key)
 		break;
 	}
 #endif /* !defined(OPENSSL_NO_EC) */
+#ifdef EVP_PKEY_ED25519
+	case EVP_PKEY_ED25519: {
+		/* TODO */
+		break;
+	}
+#endif /* EVP_PKEY_ED25519 */
+
 	default:
 		return SC_ERROR_NOT_SUPPORTED;
 	}

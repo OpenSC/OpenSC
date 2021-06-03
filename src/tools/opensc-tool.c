@@ -557,6 +557,7 @@ static int list_algorithms(void)
 		{ SC_ALGORITHM_RSA,       "rsa"       },
 		{ SC_ALGORITHM_DSA,       "dsa"       },
 		{ SC_ALGORITHM_EC,        "ec"        },
+		{ SC_ALGORITHM_EDDSA,     "eddsa"     },
 		{ SC_ALGORITHM_GOSTR3410, "gostr3410" },
 		{ SC_ALGORITHM_DES,       "des"       },
 		{ SC_ALGORITHM_3DES,      "3des"      },

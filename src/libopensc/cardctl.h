@@ -974,6 +974,7 @@ typedef struct sc_cardctl_piv_genkey_info_st {
 #define	SC_OPENPGP_KEYALGO_RSA		0x01
 #define	SC_OPENPGP_KEYALGO_ECDH		0x12
 #define	SC_OPENPGP_KEYALGO_ECDSA	0x13
+#define	SC_OPENPGP_KEYALGO_EDDSA	0x16
 
 #define SC_OPENPGP_KEYFORMAT_RSA_STD	0    /* See 4.3.3.6 Algorithm Attributes */
 #define SC_OPENPGP_KEYFORMAT_RSA_STDN	1    /* OpenPGP card spec v2 */

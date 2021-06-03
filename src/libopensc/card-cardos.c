@@ -55,6 +55,8 @@ static const struct sc_atr_table cardos_atrs[] = {
 	/* CardOS v5.3 */
 	{ "3b:d2:18:00:81:31:fe:58:c9:02:17", NULL, NULL, SC_CARD_TYPE_CARDOS_V5_3, 0, NULL},
 	{ "3b:d2:18:00:81:31:fe:58:c9:03:16", NULL, NULL, SC_CARD_TYPE_CARDOS_V5_3, 0, NULL},
+	/* CardOS v5.4 */
+	{ "3b:d2:18:00:81:31:fe:58:c9:04:11", NULL, NULL, SC_CARD_TYPE_CARDOS_V5_3, 0, NULL},
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
@@ -159,7 +161,7 @@ static int cardos_have_2048bit_package(sc_card_t *card)
 	sc_apdu_t apdu;
         u8        rbuf[SC_MAX_APDU_BUFFER_SIZE];
         int       r;
-	const u8  *p = rbuf, *q;
+	const u8  *p = rbuf, *q, *pp;
 	size_t    len, tlen = 0, ilen = 0;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xca, 0x01, 0x88);
@@ -175,10 +177,10 @@ static int cardos_have_2048bit_package(sc_card_t *card)
 		return 0;
 
 	while (len != 0) {
-		p = sc_asn1_find_tag(card->ctx, p, len, 0xe1, &tlen);
-		if (p == NULL)
+		pp = sc_asn1_find_tag(card->ctx, p, len, 0xe1, &tlen);
+		if (pp == NULL)
 			return 0;
-		q = sc_asn1_find_tag(card->ctx, p, tlen, 0x01, &ilen);
+		q = sc_asn1_find_tag(card->ctx, pp, tlen, 0x01, &ilen);
 		if (q == NULL || ilen != 4)
 			return 0;
 		if (q[0] == 0x1c)

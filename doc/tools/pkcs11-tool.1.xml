@@ -146,7 +146,9 @@
 					<term>
 						<option>--key-type</option> <replaceable>specification</replaceable>
 					</term>
-					<listitem><para>Specify the type and length of the key to create, for example rsa:1024 or EC:prime256v1.</para></listitem>
+					<listitem><para>Specify the type and length (bytes if symmetric) of the key to create,
+					for example RSA:1024, EC:prime256v1, GOSTR3410-2012-256:B,
+					DES:8, DES3:24, AES:16 or GENERIC:64.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -217,6 +219,13 @@
 						<option>-T</option>
 					</term>
 					<listitem><para>List slots with tokens.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--list-interfaces</option>
+					</term>
+					<listitem><para>List interfaces of PKCS #11 3.0 library.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -415,6 +424,22 @@
 						<option>--object-index</option> <replaceable>index</replaceable>
 					</term>
 					<listitem><para>Specify the index of the object to use.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--use-locking</option>
+					</term>
+					<listitem><para>Tell pkcs11 module it should use OS thread locking.
+					</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--test-threads</option> <replaceable>options</replaceable>
+					</term>
+					<listitem><para>Test a pkcs11 module's thread implication. (See source code).
+					</para></listitem>
 				</varlistentry>
 
 				<varlistentry>

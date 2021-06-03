@@ -195,7 +195,7 @@ TORTURE_INTEGER(negative, "\xff\x20", -224)
 		size_t value_len = sizeof(value); \
 		int rv; \
 	\
-		rv = decode_bit_field(data, datalen, &value, value_len); \
+		rv = decode_bit_field(data, datalen, &value, value_len, 1); \
 		assert_int_equal(rv, SC_SUCCESS); \
 		assert_int_equal(value, int_value); \
 	}
@@ -208,7 +208,7 @@ TORTURE_INTEGER(negative, "\xff\x20", -224)
 		size_t value_len = sizeof(value); \
 		int rv; \
 	\
-		rv = decode_bit_field(data, datalen, &value, value_len); \
+		rv = decode_bit_field(data, datalen, &value, value_len, 1); \
 		assert_int_equal(rv, error); \
 	}
 /* Without the Tag (0x03) and Length */
@@ -558,6 +558,41 @@ static void torture_asn1_put_tag_without_data(void **state)
 	assert_ptr_equal(p, out + sizeof(expected));
 }
 
+static void torture_asn1_encode_simple(void **state)
+{
+	sc_context_t *ctx = *state;
+	struct sc_asn1_entry asn1[] = {
+		{ "OctetString", SC_ASN1_OCTET_STRING, 0x05, SC_ASN1_PRESENT, NULL, NULL },
+		{ NULL , 0 , 0 , 0 , NULL , NULL }
+	};
+	u8 expected[] = {0x05, 0x09, 't', 'e', 's', 't', ' ', 'd', 'a', 't', 'a'};
+	char *data = "test data";
+	size_t datalen = strlen(data);
+	u8 *outptr = NULL;
+	size_t outlen = 0;
+	int rv;
+
+	/* NULL arguments should not crash */
+	rv = sc_asn1_encode(NULL, NULL, NULL, NULL);
+	assert_int_equal(rv, SC_ERROR_INVALID_ARGUMENTS);
+
+	/* NULL asn1 entry should not crash */
+	rv = sc_asn1_encode(ctx, NULL, NULL, NULL);
+	assert_int_equal(rv, SC_ERROR_INVALID_ARGUMENTS);
+
+	/* Real example of encoding an octet string */
+	asn1[0].parm = data;
+	asn1[0].arg = &datalen;
+	rv = sc_asn1_encode(ctx, asn1, &outptr, &outlen);
+	assert_int_equal(rv, SC_SUCCESS);
+	assert_int_equal(outlen, sizeof(expected));
+	assert_memory_equal(expected, outptr, sizeof(expected));
+
+	/* Context is not needed */
+	rv = sc_asn1_encode(NULL, asn1, &outptr, &outlen);
+	assert_int_equal(rv, SC_SUCCESS);
+}
+
 int main(void)
 {
 	int rc;
@@ -625,6 +660,9 @@ int main(void)
 		cmocka_unit_test(torture_asn1_put_tag_without_data),
 		cmocka_unit_test(torture_asn1_put_tag_long_tag),
 		cmocka_unit_test(torture_asn1_put_tag_long_data),
+		/* encode() */
+		cmocka_unit_test_setup_teardown(torture_asn1_encode_simple,
+			setup_sc_context, teardown_sc_context),
 	};
 
 	rc = cmocka_run_group_tests(tests, NULL, NULL);

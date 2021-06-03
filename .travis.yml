@@ -7,8 +7,12 @@ matrix:
       osx_image: xcode9.4
       env: DO_PUSH_ARTIFACT=yes
     - compiler: clang
+      os: osx
+      osx_image: xcode12.2
+      env: DO_PUSH_ARTIFACT=yes
+    - compiler: clang
       os: linux
-      dist: bionic
+      dist: focal
     - compiler: gcc
       os: linux
       dist: bionic
@@ -17,7 +21,7 @@ matrix:
         - ENABLE_DOC=--enable-doc
     - compiler: gcc
       os: linux
-      dist: bionic
+      dist: focal
       env:
         - DO_SIMULATION=oseid
     - env:
@@ -47,25 +51,29 @@ env:
     - COVERITY_SCAN_PROJECT_NAME="$TRAVIS_REPO_SLUG"
     - SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct)
 
-addons:
-  apt_packages:
-    - binutils-mingw-w64-i686
-    - binutils-mingw-w64-x86-64
-    - docbook-xsl
-    - gcc-mingw-w64-i686
-    - gcc-mingw-w64-x86-64
-    - libpcsclite-dev
-    - mingw-w64
-    - xsltproc
-    - gengetopt
-    - libcmocka-dev
-    - help2man
-    - pcscd
-    - pcsc-tools
-    - check
-    - ant
-    - socat
-    - cmake
+# Commented out because of a bug in travis images for Focal:
+# https://travis-ci.community/t/clang-10-was-recently-broken-on-linux-unmet-dependencies-for-clang-10-clang-tidy-10-valgrind/11527
+#addons:
+#  apt_packages:
+#    - binutils-mingw-w64-i686
+#    - binutils-mingw-w64-x86-64
+#    - docbook-xsl
+#    - gcc-mingw-w64-i686
+#    - gcc-mingw-w64-x86-64
+#    - libpcsclite-dev
+#    - mingw-w64
+#    - xsltproc
+#    - gengetopt
+#    - libcmocka-dev
+#    - help2man
+#    - pcscd
+#    - pcsc-tools
+#    - check
+#    - ant
+#    - socat
+#    - cmake
+#    - clang-tidy
+#    - softhsm2
 
 before_install:
   # homebrew is dead slow in older images due to the many updates it would need to download and build.
@@ -85,8 +93,9 @@ before_install:
         popd;
         export PATH="/usr/local/opt/ccache/libexec:$PATH";
         git clone https://github.com/frankmorgner/OpenSCToken.git;
+        sudo rm -rf /Library/Developer/CommandLineTools;
     fi
-  - if [ "$TRAVIS_OS_NAME" = "osx" -a "$TRAVIS_PULL_REQUEST" = "false" ]; then
+  - if [ "$TRAVIS_OS_NAME" = "osx" -a "$TRAVIS_PULL_REQUEST" = "false" -a -n "$encrypted_3b9f0b9d36d1_key" ]; then
         openssl aes-256-cbc -K $encrypted_3b9f0b9d36d1_key -iv $encrypted_3b9f0b9d36d1_iv -in .github/secrets.tar.enc -out .github/secrets.tar -d;
         .github/add_signing_key.sh;
     else
@@ -106,6 +115,12 @@ before_install:
     fi
   - if [ -n "${HOST}" ]; then
         sudo apt-get install -y wine;
+    fi
+  - if [ "$TRAVIS_DIST" == "focal" ]; then
+        sudo apt-get install -yq --allow-downgrades libc6=2.31-0ubuntu9.2 libc6-dev=2.31-0ubuntu9.2;
+    fi
+  - if [ "$TRAVIS_OS_NAME" == "linux" ]; then
+        sudo -E apt-get -yq --no-install-suggests --no-install-recommends --allow-downgrades --allow-remove-essential --allow-change-held-packages install binutils-mingw-w64-i686 binutils-mingw-w64-x86-64 docbook-xsl gcc-mingw-w64-i686 gcc-mingw-w64-x86-64 libpcsclite-dev mingw-w64 xsltproc gengetopt libcmocka-dev help2man pcscd pcsc-tools check ant socat cmake clang-tidy softhsm2;
     fi
 
 before_script:
@@ -245,7 +260,7 @@ script:
       fi;
     fi
   - if [ -z "$HOST" -a "${DO_COVERITY_SCAN}" != "yes" -a -z "$DO_SIMULATION" ]; then
-      make check && make dist;
+      make check && make distcheck || (cat tests/*log src/tests/unittests/*log && exit 1);
     fi
   - if [ ! -z "$HOST" -a "${DO_COVERITY_SCAN}" != "yes" ]; then
       make install;
@@ -318,9 +333,11 @@ script:
       ./OsEID-tool RSA-CREATE-KEYS;
       ./OsEID-tool RSA-UPLOAD-KEYS;
       ./OsEID-tool RSA-DECRYPT-TEST;
+      ./OsEID-tool RSA-SIGN-PKCS11-TEST;
       ./OsEID-tool EC-CREATE-KEYS;
       ./OsEID-tool EC-UPLOAD-KEYS;
       ./OsEID-tool EC-SIGN-TEST;
+      ./OsEID-tool EC-SIGN-PKCS11-TEST;
       ./OsEID-tool EC-ECDH-TEST;
       kill -9 $PID;
 
@@ -328,7 +345,7 @@ script:
     fi
   - if [ "${DO_SIMULATION}" = "cac" ]; then
       cd $TRAVIS_BUILD_DIR;
-      make check && sudo make install || (cat tests/*log src/tests/unittests/*log && exit);
+      make check && sudo make install || (cat tests/*log src/tests/unittests/*log && exit 1);
       export LD_LIBRARY_PATH=/usr/local/lib;
       cd src/tests/p11test/;
       ./p11test -s 0 -p 12345678 -i &

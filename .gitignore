@@ -64,6 +64,7 @@ ChangeLog
 doc/tools/*-tool
 doc/tools/eidenv
 doc/tools/opensc-explorer
+doc/tools/pkcs11-register
 doc/tools/pkcs15-crypt
 doc/tools/pkcs15-init
 doc/tools/opensc-asn1
@@ -120,5 +121,7 @@ tests/*.trs
 src/tests/unittests/*.log
 src/tests/unittests/*.trs
 src/tests/unittests/asn1
+src/tests/unittests/compression
+src/tests/unittests/simpletlv
 
 version.m4.ci

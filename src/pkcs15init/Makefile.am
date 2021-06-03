@@ -4,7 +4,7 @@ MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
 EXTRA_DIST = Makefile.mak
 
 noinst_LTLIBRARIES = libpkcs15init.la
-noinst_HEADERS = profile.h pkcs15-init.h pkcs15-oberthur.h
+noinst_HEADERS = profile.h pkcs15-init.h pkcs15-oberthur.h pkcs15-iasecc.h
 dist_pkgdata_DATA = \
 	cyberflex.profile \
 	flex.profile \

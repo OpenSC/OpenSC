@@ -43,9 +43,6 @@
 #define LOAD_KEY_EC_PRIVATE		0x1087
 #define LOAD_KEY_SYMMETRIC		0x20a0
 
-#define MYEID_STATE_CREATION		0x01
-#define MYEID_STATE_ACTIVATED		0x07
-
 #define MYEID_CARD_NAME_MAX_LEN		100
 
 /* The following flags define the features supported by the card currently in use.
@@ -86,6 +83,7 @@ typedef struct myeid_private_data {
 	 ECDH key agreement. Note that this pointer is usually not valid
 	 after this pair of calls and must not be used elsewhere. */
 	const struct sc_security_env* sec_env;
+	int disable_hw_pkcs1_padding;
 } myeid_private_data_t;
 
 typedef struct myeid_card_caps {
@@ -166,6 +164,34 @@ myeid_select_aid(struct sc_card *card, struct sc_aid *aid, unsigned char *out, s
 	return SC_SUCCESS;
 }
 
+static int myeid_load_options(sc_context_t *ctx, myeid_private_data_t *priv)
+{
+	int r;
+	size_t i, j;
+	scconf_block **found_blocks, *block;
+
+	if (!ctx || !priv) {
+		r = SC_ERROR_INTERNAL;
+		goto err;
+	}
+	priv->disable_hw_pkcs1_padding = 0;
+	for (i = 0; ctx->conf_blocks[i]; i++) {
+		found_blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[i],
+				"card_driver", "myeid");
+		if (!found_blocks)
+			continue;
+		for (j = 0, block = found_blocks[j]; block; j++, block = found_blocks[j]) {
+			priv->disable_hw_pkcs1_padding = scconf_get_int(block, "disable_hw_pkcs1_padding", 0);
+			sc_log(ctx,"Found config option: disable_hw_pkcs1_padding = %d\n", priv->disable_hw_pkcs1_padding);
+		}
+		free(found_blocks);
+	}
+	r = SC_SUCCESS;
+
+err:
+	return r;
+}
+
 static int myeid_init(struct sc_card *card)
 {
 	unsigned long flags = 0, ext_flags = 0;
@@ -196,6 +222,9 @@ static int myeid_init(struct sc_card *card)
 	if (!priv)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 
+	rv = myeid_load_options (card->ctx, priv);
+	LOG_TEST_GOTO_ERR(card->ctx, rv, "Unable to read options from opensc.conf");
+
 	priv->card_state = SC_FILE_STATUS_CREATION;
 	card->drv_data = priv;
 
@@ -224,8 +253,10 @@ static int myeid_init(struct sc_card *card)
 	    }
 	}
 
-	flags = SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_ONBOARD_KEY_GEN;
-	flags |= SC_ALGORITHM_RSA_HASH_NONE | SC_ALGORITHM_RSA_HASH_SHA1;
+	flags = SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_ONBOARD_KEY_GEN;
+	if (priv->disable_hw_pkcs1_padding == 0)
+		flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
+	flags |= SC_ALGORITHM_RSA_HASH_NONE;
 
 	_sc_card_add_rsa_alg(card,  512, flags, 0);
 	_sc_card_add_rsa_alg(card,  768, flags, 0);
@@ -245,7 +276,7 @@ static int myeid_init(struct sc_card *card)
 		int i;
 
 		flags = SC_ALGORITHM_ECDSA_RAW | SC_ALGORITHM_ECDH_CDH_RAW | SC_ALGORITHM_ONBOARD_KEY_GEN;
-		flags |= SC_ALGORITHM_ECDSA_HASH_NONE | SC_ALGORITHM_ECDSA_HASH_SHA1;
+		flags |= SC_ALGORITHM_ECDSA_HASH_NONE;
 		ext_flags = SC_ALGORITHM_EXT_EC_NAMEDCURVE | SC_ALGORITHM_EXT_EC_UNCOMPRESES;
 
 		for (i=0; ec_curves[i].curve_name != NULL; i++) {
@@ -441,20 +472,18 @@ static int myeid_process_fci(struct sc_card *card, struct sc_file *file,
 		sc_log(card->ctx, "id (%X) sec_attr (%X %X %X)", file->id,
 			file->sec_attr[0],file->sec_attr[1],file->sec_attr[2]);
 	}
-	tag = sc_asn1_find_tag(NULL, buf, buflen, 0x8A, &taglen);
-	if (tag != NULL && taglen > 0)
-	{
-		if(tag[0] == MYEID_STATE_CREATION) {
-			file->status = SC_FILE_STATUS_CREATION;
-			sc_log(card->ctx, "File id (%X) status SC_FILE_STATUS_CREATION (0x%X)",
-					file->id, tag[0]);
-		}
-		else if(tag[0] == MYEID_STATE_ACTIVATED) {
-			file->status = SC_FILE_STATUS_ACTIVATED;
-			sc_log(card->ctx, "File id (%X) status SC_FILE_STATUS_ACTIVATED (0x%X)",
-					file->id, tag[0]);
-		}
-		priv->card_state = file->status;
+
+	priv->card_state = file->status;
+	switch (file->status) {
+		case SC_FILE_STATUS_CREATION:
+			file->acl_inactive = 1;
+			sc_log(card->ctx, "File id (%X) status SC_FILE_STATUS_CREATION", file->id);
+			break;
+		case SC_FILE_STATUS_ACTIVATED:
+			sc_log(card->ctx, "File id (%X) status SC_FILE_STATUS_ACTIVATED", file->id);
+			break;
+		default:
+			sc_log(card->ctx, "File id (%X) unusual status (0x%X)", file->id, file->status);
 	}
 
 	LOG_FUNC_RETURN(card->ctx, 0);

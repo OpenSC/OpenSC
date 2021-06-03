@@ -503,6 +503,7 @@ static int itacns_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 		return SC_ERROR_WRONG_CARD;
 	}
 	len = file->size;
+	sc_file_free(file);
 
 	//Returned file->size should be 16. 
 	//We choose to not consider it as critical, because some cards 

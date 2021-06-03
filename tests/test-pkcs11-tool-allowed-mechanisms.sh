@@ -1,6 +1,7 @@
 #!/bin/bash
+SOURCE_PATH=${SOURCE_PATH:-../}
 
-source common.sh
+source $SOURCE_PATH/tests/common.sh
 
 echo "======================================================="
 echo "Setup SoftHSM"
@@ -22,7 +23,7 @@ MECHANISMS="RSA-PKCS,SHA1-RSA-PKCS,RSA-PKCS-PSS"
 # Generate key pair
 $PKCS11_TOOL --keypairgen --key-type="RSA:" --login --pin=$PIN \
 	--module="$P11LIB" --label="test" --id="$ID" \
-	--allowed-mechanisms="$MECHANISMS"
+	--allowed-mechanisms="$MECHANISMS,SHA384-RSA-PKCS"
 assert $? "Failed to Generate RSA key pair"
 
 # Check the attributes are visible
@@ -47,6 +48,6 @@ echo "Cleanup"
 echo "======================================================="
 softhsm_cleanup
 
-rm objects.list 
+rm objects.list sign.log
 
 exit $ERRORS

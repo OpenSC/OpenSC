@@ -358,6 +358,8 @@ isoApplet_generate_key_rsa(sc_pkcs15_prkey_info_t *key_info, sc_card_t *card,
 
 	LOG_FUNC_CALLED(card->ctx);
 
+	memset(&args, 0, sizeof(args));
+
 	/* Check key size: */
 	keybits = key_info->modulus_length;
 	if (keybits != 2048)
@@ -370,7 +372,6 @@ isoApplet_generate_key_rsa(sc_pkcs15_prkey_info_t *key_info, sc_card_t *card,
 	/* Generate the key.
 	 * Note: key size is not explicitly passed to the card.
 	 * It assumes 2048 along with the algorithm reference. */
-	memset(&args, 0, sizeof(args));
 	args.algorithm_ref = SC_ISOAPPLET_ALG_REF_RSA_GEN_2048;
 	args.priv_key_ref = key_info->key_reference;
 
@@ -453,6 +454,8 @@ isoApplet_generate_key_ec(const sc_pkcs15_prkey_info_t *key_info, sc_card_t *car
 
 	LOG_FUNC_CALLED(card->ctx);
 
+	memset(&args, 0, sizeof(args));
+
 	/* Check key size: */
 	if(key_info->field_length == 0)
 	{
@@ -471,8 +474,6 @@ isoApplet_generate_key_ec(const sc_pkcs15_prkey_info_t *key_info, sc_card_t *car
 	/* Generate the key.
 	 * Note: The field size is not explicitly passed to the card.
 	 *       As we only support FP curves, the field length can be calculated from any parameter. */
-	memset(&args, 0, sizeof(args));
-
 	args.pubkey.ec.params.prime.value			= curve->prime.value;
 	args.pubkey.ec.params.prime.len				= curve->prime.len;
 	args.pubkey.ec.params.coefficientA.value	= curve->coefficientA.value;

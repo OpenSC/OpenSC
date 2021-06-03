@@ -412,7 +412,6 @@ static struct sc_asn1_pkcs15_algorithm_info algorithm_table[] = {
 			asn1_encode_pbes2_params,
 			asn1_free_pbes2_params },
 #endif
-
 #ifdef SC_ALGORITHM_EC
 	{ SC_ALGORITHM_EC, {{ 1, 2, 840, 10045, 2, 1, -1}},
 			asn1_decode_ec_params,
@@ -448,6 +447,16 @@ static struct sc_asn1_pkcs15_algorithm_info algorithm_table[] = {
 			asn1_decode_ec_params,
 			asn1_encode_ec_params,
 			asn1_free_ec_params },
+#endif
+#ifdef SC_ALGORITHM_EDDSA
+	/* aka Ed25519 */
+	/* RFC 8410, needed to parse/create X509 certs/pubkeys */
+	{ SC_ALGORITHM_EDDSA, {{1, 3, 101, 112, -1}}, NULL, NULL, NULL },
+#endif
+#ifdef SC_ALGORITHM_XEDDSA
+	/* aka curve25519 */
+	/* RFC 8410, needed to parse/create X509 certs/pubkeys */
+	{ SC_ALGORITHM_XEDDSA, {{1, 3, 101, 110, -1}}, NULL, NULL, NULL },
 #endif
 	{ -1, {{ -1 }}, NULL, NULL, NULL }
 };
@@ -545,7 +554,11 @@ sc_asn1_encode_algorithm_id(struct sc_context *ctx, u8 **buf, size_t *len,
 	sc_format_asn1_entry(asn1_alg_id + 0, (void *) &id->oid, NULL, 1);
 
 	/* no parameters, write NULL tag */
-	if (!id->params || !alg_info->encode)
+	/* If it's EDDSA/XEDDSA, according to RFC8410, params
+	 * MUST be absent */
+	if (id->algorithm != SC_ALGORITHM_EDDSA &&
+	    id->algorithm != SC_ALGORITHM_XEDDSA &&
+	    (!id->params || !alg_info->encode))
 		asn1_alg_id[1].flags |= SC_ASN1_PRESENT;
 
 	r = _sc_asn1_encode(ctx, asn1_alg_id, buf, len, depth + 1);

@@ -34,6 +34,7 @@
 
 #include "internal.h"
 #include "pkcs15.h"
+#include "../pkcs15init/pkcs15-iasecc.h"
 #include "iasecc.h"
 #include "aux-data.h"
 
@@ -103,6 +104,38 @@ _iasecc_md_update_keyinfo(struct sc_pkcs15_card *p15card, struct sc_pkcs15_objec
 }
 
 
+/*
+ * CPx cards have an undocumented issue: they lack of
+ * Algorithm's reference into their PKCS's ASN1 encoding.
+ */
+static int
+_iasecc_cpx_fixup_prkdf(struct sc_pkcs15_card *p15card)
+{
+	struct sc_context * const ctx = p15card->card->ctx;
+	struct sc_pkcs15_object *pkobjs[32];
+	int ii, count;
+	int rv = SC_SUCCESS;
+
+	LOG_FUNC_CALLED(ctx);
+
+	rv = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PRKEY, pkobjs, sizeof(pkobjs)/sizeof(pkobjs[0]));
+	LOG_TEST_RET(ctx, rv, "Cannot get PRKEY objects list");
+
+	count = rv;
+	for(ii=0; ii<count; ii++)   {
+		rv = iasecc_pkcs15_encode_supported_algos(p15card, pkobjs[ii]);
+		LOG_TEST_RET(ctx, rv, "Cannot fix suported_algos");
+	}
+
+	LOG_FUNC_RETURN(ctx, rv);
+}
+
+
+/*
+ * It is the entry point for 2 models of cards that need some hot patching
+ * - Gemalto cards
+ * - CPx: fixup algo_refs from the prkey
+ */
 static int
 _iasecc_parse_df(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *df)
 {
@@ -122,13 +155,28 @@ _iasecc_parse_df(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *df)
 	rv = sc_pkcs15_parse_df(p15card, df);
 	LOG_TEST_RET(ctx, rv, "DF parse error");
 
-	if (p15card->card->type != SC_CARD_TYPE_IASECC_GEMALTO)
-		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+	switch(p15card->card->type) {
+		/* enumerate the IASECC cards that need a fixup of the keyInfo */
+		case SC_CARD_TYPE_IASECC_GEMALTO:
+		case SC_CARD_TYPE_IASECC_CPX:
+		case SC_CARD_TYPE_IASECC_CPXCL:
+			sc_log(ctx, "Warning: the %d card has an invalid DF, hot patch to be applied",
+				p15card->card->type);
+			break;
+		default:
+			sc_log(ctx, "the %d card has a proper DF, no need for a hot patch",
+				p15card->card->type);
+			LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+			break;
+	}
 
 	if (df->type != SC_PKCS15_PRKDF)
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 
 	sc_log(ctx, "parse of SC_PKCS15_PRKDF");
+
+	rv = _iasecc_cpx_fixup_prkdf(p15card);
+	LOG_TEST_RET(ctx, rv, "Cannot fixup PrKDF");
 
 	rv = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_DATA_OBJECT, dobjs, sizeof(dobjs)/sizeof(dobjs[0]));
 	LOG_TEST_RET(ctx, rv, "Cannot get DATA objects list");

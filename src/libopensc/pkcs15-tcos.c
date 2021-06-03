@@ -152,7 +152,7 @@ static int insert_key(
 			sc_log(ctx, "No EF_KEYD-Record found\n");
 			return 1;
 		}
-		for (i = 0; i < r; i += 2 + buf[i + 1]) {
+		for (i = 0; i + 1 < r; i += 2 + buf[i + 1]) {
 			if (buf[i] == 0xB6)
 				can_sign++;
 			if (buf[i] == 0xB8)
@@ -225,12 +225,14 @@ static int insert_pin(
 	pin_obj.auth_id.len      = auth_id ? 0 : 1;
 	pin_obj.auth_id.value[0] = auth_id;
 
-	if(card->type==SC_CARD_TYPE_TCOS_V3){
+	if(card->type == SC_CARD_TYPE_TCOS_V3) {
 		unsigned char buf[256];
 		int i, rec_no=0;
-		if(pin_info.path.len>=2) pin_info.path.len-=2;
+		if (pin_info.path.len >= 2) {
+			pin_info.path.len -= 2;
+		}
 		sc_append_file_id(&pin_info.path, 0x5049);
-		if(sc_select_file(card, &pin_info.path, NULL)!=SC_SUCCESS){
+		if (sc_select_file(card, &pin_info.path, NULL) != SC_SUCCESS) {
 			sc_log(ctx, 
 				"Select(%s) failed\n",
 				sc_print_path(&pin_info.path));
@@ -238,17 +240,24 @@ static int insert_pin(
 		}
 		sc_log(ctx, 
 			"Searching for PIN-Ref %02X\n", pin_reference);
-		while((r=sc_read_record(card, ++rec_no, buf, sizeof(buf), SC_RECORD_BY_REC_NR))>0){
-			int found=0, fbz=-1;
-			if(buf[0]!=0xA0) continue;
-			for(i=2;i<buf[1]+2;i+=2+buf[i+1]){
-				if(buf[i]==0x83 && buf[i+1]==1 && buf[i+2]==pin_reference) ++found;
-				if(buf[i]==0x90) fbz=buf[i+1+buf[i+1]];
+		while ((r = sc_read_record(card, ++rec_no, buf, sizeof(buf), SC_RECORD_BY_REC_NR)) > 0) {
+			int found = 0, fbz = -1;
+			if (r < 2 || buf[0] != 0xA0)
+				continue;
+			for (i = 2; i < buf[1] + 2 && (i + 2) < r; i += 2 + buf[i + 1]) {
+				if (buf[i] == 0x83 && buf[i + 1] == 1 && buf[i + 2] == pin_reference) {
+					++found;
+				}
+				if (buf[i] == 0x90 && (i + 1 + buf[i + 1]) < r) {
+					fbz = buf[i + 1 + buf[i + 1]];
+				}
 			}
-			if(found) pin_info.tries_left=fbz;
-			if(found) break;
+			if (found) {
+				pin_info.tries_left = fbz;
+				break;
+			}
 		}
-		if(r<=0){
+		if (r <= 0) {
 			sc_log(ctx, "No EF_PWDD-Record found\n");
 			return 1;
 		}
@@ -259,7 +268,7 @@ static int insert_pin(
 			sc_file_free(f);
 			return 1;
 		}
-		pin_info.tries_left=f->prop_attr[3];
+		pin_info.tries_left = f->prop_attr[3];
 		sc_file_free(f);
 	}
 

@@ -11,15 +11,19 @@ if [[ ! -f $P11LIB ]]; then
     exit 77;
 fi
 
-# The Ubuntu has old softhsm version not supporting this feature
-grep "Ubuntu 18.04" /etc/issue && echo "WARNING: Not supported on Ubuntu 18.04" && exit 77
-
 card_setup
 
 echo "======================================================="
-echo "Test"
+echo "Test pkcs11 threads OSILGISLT0 "
 echo "======================================================="
-$PKCS11_TOOL --test -p $PIN --module $P11LIB
+$PKCS11_TOOL --test-threads IN -L
+assert $? "Failed running tests"
+
+
+echo "======================================================="
+echo "Test pkcs11 threads OSILGISLT0 "
+echo "======================================================="
+$PKCS11_TOOL --test-threads OSILGISLT0 -L
 assert $? "Failed running tests"
 
 echo "======================================================="

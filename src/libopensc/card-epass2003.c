@@ -948,7 +948,7 @@ decrypt_response(struct sc_card *card, unsigned char *in, size_t inlen, unsigned
 		des3_decrypt_cbc(exdata->sk_enc, 16, iv, &in[i], cipher_len - 1, plaintext);
 
 	/* unpadding */
-	while (0x80 != plaintext[cipher_len - 2] && (cipher_len - 2 > 0))
+	while (0x80 != plaintext[cipher_len - 2] && (cipher_len > 2))
 		cipher_len--;
 
 	if (2 == cipher_len || *out_len < cipher_len - 2)

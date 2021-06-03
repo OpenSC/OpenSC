@@ -4827,19 +4827,19 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 				if (!pss_pinf->pszAlgId || wcscmp(pss_pinf->pszAlgId, BCRYPT_SHA1_ALGORITHM) == 0) {
 					/* hashAlg = CALG_SHA1; */
 					logprintf(pCardData, 3, "Using CALG_SHA1  hashAlg\n");
-					opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA1;
+					opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA1 | SC_ALGORITHM_MGF1_SHA1;
 					expected_salt_len = 160;
 				} else if (wcscmp(pss_pinf->pszAlgId, L"SHA224") == 0) {
-					opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA224;
+					opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA224 | SC_ALGORITHM_MGF1_SHA224;
 					expected_salt_len = 224;
 				} else if (wcscmp(pss_pinf->pszAlgId, BCRYPT_SHA256_ALGORITHM) == 0) {
-					opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA256;
+					opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA256 | SC_ALGORITHM_MGF1_SHA256;
 					expected_salt_len = 256;
 				} else if (wcscmp(pss_pinf->pszAlgId, BCRYPT_SHA384_ALGORITHM) == 0) {
-					opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA384;
+					opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA384 | SC_ALGORITHM_MGF1_SHA384;
 					expected_salt_len = 384;
 				} else if (wcscmp(pss_pinf->pszAlgId, BCRYPT_SHA512_ALGORITHM) == 0) {
-					opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA512;
+					opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA512 | SC_ALGORITHM_MGF1_SHA512;
 					expected_salt_len = 512;
 				} else {
 					logprintf(pCardData, 0,"unknown AlgId %S\n",NULLWSTR(pss_pinf->pszAlgId));

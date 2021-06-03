@@ -36,7 +36,7 @@ const char *gengetopt_args_info_description = "";
 const char *gengetopt_args_info_help[] = {
   "  -h, --help           Print help and exit",
   "  -V, --version        Print version and exit",
-  "  -r, --reader=STRING  Number of the reader to use. By default, the first\n                         reader with a present card is used. If the argument\n                         is an ATR, the reader with a matching card will be\n                         chosen.",
+  "  -r, --reader=STRING  Number of the reader to use. By default, the first\n                         reader with a present card is used. If the argument is\n                         an ATR, the reader with a matching card will be\n                         chosen.",
   "  -v, --verbose        Use (several times) to be more verbose",
   "\nHealth Care Application (HCA):",
   "      --pd             Show 'Persönliche Versicherungsdaten' (XML)\n                         (default=off)",

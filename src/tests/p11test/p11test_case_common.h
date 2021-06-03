@@ -36,6 +36,7 @@ typedef struct {
 	union {
 		RSA		*rsa;
 		EC_KEY	*ec;
+		EVP_PKEY	*pkey;
 	} key;
 	CK_OBJECT_HANDLE private_handle;
 	CK_OBJECT_HANDLE public_handle;
@@ -98,7 +99,7 @@ int is_pss_mechanism(CK_MECHANISM_TYPE mech);
 	} \
 	} else {}
 
-#define P11TEST_SKIP(info) do { _P11TEST_FINALIZE(info, "skip"); skip(); } while(0);
+#define P11TEST_SKIP(info) do { _P11TEST_FINALIZE(info, "skip"); skip(); return; } while(0);
 
 #define P11TEST_PASS(info) do { _P11TEST_FINALIZE(info, "pass"); } while(0);
 

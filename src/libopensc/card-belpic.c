@@ -215,7 +215,6 @@ static int belpic_match_card(sc_card_t *card)
 static int belpic_init(sc_card_t *card)
 {
 	int key_size = 1024;
-	int r;
 
 	sc_log(card->ctx,  "Belpic V%s\n", BELPIC_VERSION);
 
@@ -227,7 +226,7 @@ static int belpic_init(sc_card_t *card)
 		u8 carddata[BELPIC_CARDDATA_RESP_LEN];
 		memset(carddata, 0, sizeof(carddata));
 
-		if((r = get_carddata(card, carddata, sizeof(carddata))) < 0) {
+		if(get_carddata(card, carddata, sizeof(carddata)) < 0) {
 			return SC_ERROR_INVALID_CARD;
 		}
 		if (carddata[BELPIC_CARDDATA_OFF_APPLETVERS] >= 0x17) {

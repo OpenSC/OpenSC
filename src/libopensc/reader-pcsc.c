@@ -583,7 +583,8 @@ static void initialize_uid(sc_reader_t *reader)
 		apdu.resplen = sizeof rbuf;
 
 		if (SC_SUCCESS == pcsc_transmit(reader, &apdu)
-				&& apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
+				&& apdu.sw1 == 0x90 && apdu.sw2 == 0x00
+				&& 0 < apdu.resplen && apdu.resplen <= SC_MAX_UID_SIZE) {
 			reader->uid.len = apdu.resplen;
 			memcpy(reader->uid.value, apdu.resp, reader->uid.len);
 			sc_log_hex(reader->ctx, "UID",
@@ -1131,9 +1132,19 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 	sc_context_t *ctx = reader->ctx;
 	struct pcsc_global_private_data *gpriv = (struct pcsc_global_private_data *) ctx->reader_drv_data;
 	struct pcsc_private_data *priv = reader->drv_data;
-	u8 feature_buf[256], rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	DWORD rcount, feature_len, i;
 	PCSC_TLV_STRUCTURE *pcsc_tlv;
+	union {
+		PCSC_TLV_STRUCTURE msg;
+		u8 buf[256];
+	} feature_buf;
+	union {
+#ifdef PIN_PROPERTIES_v5
+		PIN_PROPERTIES_STRUCTURE_v5 capsv5;
+#endif
+		PIN_PROPERTIES_STRUCTURE caps;
+		u8 buf[SC_MAX_APDU_BUFFER_SIZE];
+	} rbuf;
 	LONG rv;
 	const char *log_disabled = "but it's disabled in configuration file";
 	int id_vendor = 0, id_product = 0;
@@ -1145,7 +1156,7 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 	if (gpriv->SCardControl == NULL)
 		return;
 
-	rv = gpriv->SCardControl(card_handle, CM_IOCTL_GET_FEATURE_REQUEST, NULL, 0, feature_buf, sizeof(feature_buf), &feature_len);
+	rv = gpriv->SCardControl(card_handle, CM_IOCTL_GET_FEATURE_REQUEST, NULL, 0, feature_buf.buf, sizeof(feature_buf.buf), &feature_len);
 	if (rv != SCARD_S_SUCCESS) {
 		PCSC_TRACE(reader, "SCardControl failed", rv);
 		return;
@@ -1159,7 +1170,7 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 	/* get the number of elements instead of the complete size */
 	feature_len /= sizeof(PCSC_TLV_STRUCTURE);
 
-	pcsc_tlv = (PCSC_TLV_STRUCTURE *)feature_buf;
+	pcsc_tlv = &feature_buf.msg;
 	for (i = 0; i < feature_len; i++) {
 		sc_log(ctx, "Reader feature %02x found", pcsc_tlv[i].tag);
 		if (pcsc_tlv[i].tag == FEATURE_VERIFY_PIN_DIRECT) {
@@ -1219,12 +1230,13 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 
 	/* Detect display */
 	if (priv->pin_properties_ioctl) {
-		rcount = sizeof(rbuf);
-		rv = gpriv->SCardControl(card_handle, priv->pin_properties_ioctl, NULL, 0, rbuf, sizeof(rbuf), &rcount);
+		rcount = sizeof(rbuf.buf);
+		rv = gpriv->SCardControl(card_handle, priv->pin_properties_ioctl,
+			NULL, 0, rbuf.buf, sizeof(rbuf.buf), &rcount);
 		if (rv == SCARD_S_SUCCESS) {
 #ifdef PIN_PROPERTIES_v5
 			if (rcount == sizeof(PIN_PROPERTIES_STRUCTURE_v5)) {
-				PIN_PROPERTIES_STRUCTURE_v5 *caps = (PIN_PROPERTIES_STRUCTURE_v5 *)rbuf;
+				PIN_PROPERTIES_STRUCTURE_v5 *caps = &rbuf.capsv5;
 				if (caps->wLcdLayout > 0) {
 					sc_log(ctx, "Reader has a display: %04X", caps->wLcdLayout);
 					reader->capabilities |= SC_READER_CAP_DISPLAY;
@@ -1233,7 +1245,7 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 			}
 #endif
 			if (rcount == sizeof(PIN_PROPERTIES_STRUCTURE)) {
-				PIN_PROPERTIES_STRUCTURE *caps = (PIN_PROPERTIES_STRUCTURE *)rbuf;
+				PIN_PROPERTIES_STRUCTURE *caps = &rbuf.caps;
 				if (caps->wLcdLayout > 0) {
 					sc_log(ctx, "Reader has a display: %04X", caps->wLcdLayout);
 					reader->capabilities |= SC_READER_CAP_DISPLAY;
@@ -1292,13 +1304,13 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 	}
 
 	if(gpriv->SCardGetAttrib != NULL) {
-		rcount = sizeof(rbuf);
+		rcount = sizeof(rbuf.buf);
 		if (gpriv->SCardGetAttrib(card_handle, SCARD_ATTR_VENDOR_NAME,
-					rbuf, &rcount) == SCARD_S_SUCCESS
+					rbuf.buf, &rcount) == SCARD_S_SUCCESS
 				&& rcount > 0) {
 			/* add NUL termination, just in case... */
-			rbuf[(sizeof rbuf)-1] = '\0';
-			reader->vendor = strdup((char *) rbuf);
+			rbuf.buf[(sizeof rbuf.buf)-1] = '\0';
+			reader->vendor = strdup((char *) rbuf.buf);
 		}
 
 		rcount = sizeof i;

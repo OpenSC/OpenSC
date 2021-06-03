@@ -53,6 +53,7 @@ typedef struct {
 
 enum ck_type{
   OBJ_T,
+  PROFILE_T,
   KEY_T,
   CRT_T,
   MEC_T,
@@ -84,6 +85,7 @@ void print_attribute_list(FILE *f, CK_ATTRIBUTE_PTR pTemplate,
 void print_attribute_list_req(FILE *f, CK_ATTRIBUTE_PTR pTemplate,
 			      CK_ULONG  ulCount);
 void print_session_info(FILE *f, CK_SESSION_INFO *info);
+void print_interfaces_list(FILE *f, CK_INTERFACE_PTR pInterfacesList, CK_ULONG ulCount);
 
 extern type_spec ck_attribute_specs[];
 extern CK_ULONG ck_attribute_num;

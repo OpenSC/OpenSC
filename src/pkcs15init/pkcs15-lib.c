@@ -38,7 +38,7 @@
 #include <string.h>
 #include <limits.h>
 #include <time.h>
-#ifdef HAVE_GETTIMEOFDAY
+#ifdef HAVE_SYS_TIME_H
 #include <sys/time.h>
 #endif
 #ifdef HAVE_STRINGS_H
@@ -3851,6 +3851,11 @@ sc_pkcs15init_authenticate(struct sc_profile *profile, struct sc_pkcs15_card *p1
 	assert(file != NULL);
 	sc_log(ctx, "path '%s', op=%u", sc_print_path(&file->path), op);
 
+	if (file->acl_inactive) {
+		sc_log(ctx, "access control mechanism is not active (always allowed)");
+		LOG_FUNC_RETURN(ctx, r);
+	}
+
 	if (p15card->card->caps & SC_CARD_CAP_USE_FCI_AC) {
 		r = sc_select_file(p15card->card, &file->path, &file_tmp);
 		LOG_TEST_RET(ctx, r, "Authentication failed: cannot select file.");
@@ -4028,7 +4033,7 @@ sc_pkcs15init_update_file(struct sc_profile *profile,
 	}
 
 	/* Present authentication info needed */
-	r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_UPDATE);
+	r = sc_pkcs15init_authenticate(profile, p15card, selected_file, SC_AC_OP_UPDATE);
 	if (r >= 0 && datalen)
 		r = sc_update_binary(p15card->card, 0, (const unsigned char *) data, datalen, 0);
 

@@ -211,6 +211,7 @@ sc_oberthur_get_certificate_authority(struct sc_pkcs15_der *der, int *out_author
 
 	BIO_set_mem_buf(bio, &buf_mem, BIO_NOCLOSE);
 	x = d2i_X509_bio(bio, 0);
+	free(buf_mem.data);
 	BIO_free(bio);
 	if (!x)
 		return SC_ERROR_INVALID_DATA;
@@ -304,7 +305,7 @@ sc_oberthur_read_file(struct sc_pkcs15_card *p15card, const char *in_path,
 	if (verify_pin && rv == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED)   {
 		struct sc_pkcs15_object *objs[0x10], *pin_obj = NULL;
 		const struct sc_acl_entry *acl = sc_file_get_acl_entry(file, SC_AC_OP_READ);
-		int ii;
+		int ii, nobjs;
 
 		if (acl == NULL) {
 			sc_file_free(file);
@@ -313,18 +314,19 @@ sc_oberthur_read_file(struct sc_pkcs15_card *p15card, const char *in_path,
 			LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
 		}
 
-		rv = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH_PIN, objs, 0x10);
-		if (rv != SC_SUCCESS) {
+		nobjs = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH_PIN, objs, 0x10);
+		if (nobjs < 1) {
 			sc_file_free(file);
 			free(*out);
 			*out = NULL;
-			LOG_TEST_RET(ctx, rv, "Cannot read oberthur file: get AUTH objects error");
+			LOG_TEST_RET(ctx, SC_ERROR_DATA_OBJECT_NOT_FOUND,
+				"Cannot read oberthur file: get AUTH objects error");
 		}
 
-		for (ii=0; ii<rv; ii++)   {
+		for (ii = 0; ii < nobjs; ii++) {
 			struct sc_pkcs15_auth_info *auth_info = (struct sc_pkcs15_auth_info *) objs[ii]->data;
 			sc_log(ctx, "compare PIN/ACL refs:%i/%i, method:%i/%i",
-					auth_info->attrs.pin.reference, acl->key_ref, auth_info->auth_method, acl->method);
+				auth_info->attrs.pin.reference, acl->key_ref, auth_info->auth_method, acl->method);
 			if (auth_info->attrs.pin.reference == (int)acl->key_ref && auth_info->auth_method == (unsigned)acl->method)   {
 				pin_obj = objs[ii];
 				break;
@@ -574,7 +576,7 @@ sc_pkcs15emu_oberthur_add_pubkey(struct sc_pkcs15_card *p15card,
 	struct sc_pkcs15_pubkey_info key_info;
 	struct sc_pkcs15_object key_obj;
 	char ch_tmp[0x100];
-	unsigned char *info_blob;
+	unsigned char *info_blob = NULL;
 	size_t len, info_len, offs;
 	unsigned flags;
 	int rv;
@@ -591,8 +593,10 @@ sc_pkcs15emu_oberthur_add_pubkey(struct sc_pkcs15_card *p15card,
 
 	/* Flags */
 	offs = 2;
-	if (offs > info_len)
+	if (offs > info_len) {
+		free(info_blob);
 		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add public key: no 'tag'");
+	}
 	flags = *(info_blob + 0) * 0x100 + *(info_blob + 1);
 	key_info.usage = sc_oberthur_decode_usage(flags);
 	if (flags & OBERTHUR_ATTR_MODIFIABLE)
@@ -600,10 +604,15 @@ sc_pkcs15emu_oberthur_add_pubkey(struct sc_pkcs15_card *p15card,
 	sc_log(ctx, "Public key key-usage:%04X", key_info.usage);
 
 	/* Label */
-	if (offs + 2 > info_len)
+	if (offs + 2 > info_len) {
+		free(info_blob);
 		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add public key: no 'Label'");
+	}
 	len = *(info_blob + offs + 1) + *(info_blob + offs) * 0x100;
-	if (len)   {
+	if (offs + 2 + len > info_len) {
+		free(info_blob);
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Failed to add public key: invalid 'Label' length");
+	} else if (len) {
 		if (len > sizeof(key_obj.label) - 1)
 			len = sizeof(key_obj.label) - 1;
 		memcpy(key_obj.label, info_blob + offs + 2, len);
@@ -611,13 +620,21 @@ sc_pkcs15emu_oberthur_add_pubkey(struct sc_pkcs15_card *p15card,
 	offs += 2 + len;
 
 	/* ID */
-	if (offs > info_len)
+	if (offs + 2 > info_len) {
+		free(info_blob);
 		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add public key: no 'ID'");
+	}
 	len = *(info_blob + offs + 1) + *(info_blob + offs) * 0x100;
-	if (!len || len > sizeof(key_info.id.value))
+	if (len == 0
+			|| len > sizeof(key_info.id.value)
+			|| offs + 2 + len > info_len) {
+		free(info_blob);
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Failed to add public key: invalid 'ID' length");
+	}
 	memcpy(key_info.id.value, info_blob + offs + 2, len);
 	key_info.id.len = len;
+
+	free(info_blob);
 
 	/* Ignore Start/End dates */
 
@@ -648,7 +665,7 @@ sc_pkcs15emu_oberthur_add_cert(struct sc_pkcs15_card *p15card, unsigned int file
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_cert_info cinfo;
 	struct sc_pkcs15_object cobj;
-	unsigned char *info_blob, *cert_blob;
+	unsigned char *info_blob = NULL, *cert_blob = NULL;
 	size_t info_len, cert_len, len, offs;
 	unsigned flags;
 	int rv;
@@ -664,16 +681,23 @@ sc_pkcs15emu_oberthur_add_cert(struct sc_pkcs15_card *p15card, unsigned int file
 	rv = sc_oberthur_read_file(p15card, ch_tmp, &info_blob, &info_len, 1);
 	LOG_TEST_RET(ctx, rv, "Failed to add certificate: read oberthur file error");
 
-	if (info_len < 2)
+	if (info_len < 2) {
+		free(info_blob);
 		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add certificate: no 'tag'");
+	}
 	flags = *(info_blob + 0) * 0x100 + *(info_blob + 1);
 	offs = 2;
 
 	/* Label */
-	if (offs + 2 > info_len)
+	if (offs + 2 > info_len) {
+		free(info_blob);
 		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add certificate: no 'CN'");
+	}
 	len = *(info_blob + offs + 1) + *(info_blob + offs) * 0x100;
-	if (len)   {
+	if (len + offs + 2 > info_len) {
+		free(info_blob);
+		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Invalid 'CN' length");
+	} else if (len) {
 		if (len > sizeof(cobj.label) - 1)
 			len = sizeof(cobj.label) - 1;
 		memcpy(cobj.label, info_blob + offs + 2, len);
@@ -681,13 +705,22 @@ sc_pkcs15emu_oberthur_add_cert(struct sc_pkcs15_card *p15card, unsigned int file
 	offs += 2 + len;
 
 	/* ID */
-	if (offs > info_len)
+	if (offs + 2 > info_len) {
+		free(info_blob);
 		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add certificate: no 'ID'");
+	}
 	len = *(info_blob + offs + 1) + *(info_blob + offs) * 0x100;
-	if (len > sizeof(cinfo.id.value))
+	if (len + offs + 2 > info_len) {
+		free(info_blob);
+		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Invalid 'ID' length");
+	} else if (len > sizeof(cinfo.id.value)) {
+		free(info_blob);
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Failed to add certificate: invalid 'ID' length");
+	}
 	memcpy(cinfo.id.value, info_blob + offs + 2, len);
 	cinfo.id.len = len;
+
+	free(info_blob);
 
 	/* Ignore subject, issuer and serial */
 
@@ -700,7 +733,10 @@ sc_pkcs15emu_oberthur_add_cert(struct sc_pkcs15_card *p15card, unsigned int file
 	cinfo.value.len = cert_len;
 
 	rv = sc_oberthur_get_certificate_authority(&cinfo.value, &cinfo.authority);
-	LOG_TEST_RET(ctx, rv, "Failed to add certificate: get certificate attributes error");
+	if (rv != SC_SUCCESS) {
+		free(cinfo.value.value);
+		LOG_TEST_RET(ctx, rv, "Failed to add certificate: get certificate attributes error");
+	}
 
 	if (flags & OBERTHUR_ATTR_MODIFIABLE)
 		cobj.flags |= SC_PKCS15_CO_FLAG_MODIFIABLE;
@@ -773,15 +809,23 @@ sc_pkcs15emu_oberthur_add_prvkey(struct sc_pkcs15_card *p15card,
 	rv = sc_oberthur_read_file(p15card, ch_tmp, &info_blob, &info_len, 1);
 	LOG_TEST_RET(ctx, rv, "Failed to add private key: read oberthur file error");
 
-	if (info_len < 2)
+	if (info_len < 2) {
+		free(info_blob);
 		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add private key: no 'tag'");
+	}
 	flags = *(info_blob + 0) * 0x100 + *(info_blob + 1);
 	offs = 2;
 
 	/* CN */
-	if (offs > info_len)
+	if (offs + 2 > info_len) {
+		free(info_blob);
 		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add private key: no 'CN'");
+	}
 	len = *(info_blob + offs + 1) + *(info_blob + offs) * 0x100;
+	if (len + offs + 2 > info_len) {
+		free(info_blob);
+		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Invalid 'CN' length");
+	}
 	if (len && !strlen(kobj.label))   {
 		if (len > sizeof(kobj.label) - 1)
 			len = sizeof(kobj.label) - 1;
@@ -790,13 +834,21 @@ sc_pkcs15emu_oberthur_add_prvkey(struct sc_pkcs15_card *p15card,
 	offs += 2 + len;
 
 	/* ID */
-	if (offs > info_len)
+	if (offs + 2 > info_len) {
+		free(info_blob);
 		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add private key: no 'ID'");
+	}
 	len = *(info_blob + offs + 1) + *(info_blob + offs) * 0x100;
-	if (!len)
+	if (!len) {
+		free(info_blob);
 		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add private key: zero length ID");
-	else if (len > sizeof(kinfo.id.value))
+	} else if (len + offs + 2 > info_len) {
+		free(info_blob);
+		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Invalid 'ID' length");
+	} else if (len > sizeof(kinfo.id.value)) {
+		free(info_blob);
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Failed to add private key: invalid ID length");
+	}
 	memcpy(kinfo.id.value, info_blob + offs + 2, len);
 	kinfo.id.len = len;
 	offs += 2 + len;
@@ -805,18 +857,27 @@ sc_pkcs15emu_oberthur_add_prvkey(struct sc_pkcs15_card *p15card,
 	offs += 16;
 
 	/* Subject encoded in ASN1 */
-	if (offs > info_len)
-		return SC_ERROR_UNKNOWN_DATA_RECEIVED;
+	if (offs + 2 > info_len) {
+		free(info_blob);
+		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add private key: no 'subject'");
+	}
 	len = *(info_blob + offs + 1) + *(info_blob + offs) * 0x100;
-	if (len)   {
+	if (len + offs + 2 > info_len) {
+		free(info_blob);
+		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Invalid 'subject' length");
+	} else if (len) {
 		kinfo.subject.value = malloc(len);
-		if (!kinfo.subject.value)
+		if (!kinfo.subject.value) {
+			free(info_blob);
 			LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Failed to add private key: memory allocation error");
+		}
 		kinfo.subject.len = len;
 		memcpy(kinfo.subject.value, info_blob + offs + 2, len);
 	}
 
 	/* Modulus and exponent are ignored */
+
+	free(info_blob);
 
 	snprintf(ch_tmp, sizeof(ch_tmp), "%s%04X", AWP_OBJECTS_DF_PRV, file_id);
 	sc_format_path(ch_tmp, &kinfo.path);
@@ -865,37 +926,59 @@ sc_pkcs15emu_oberthur_add_data(struct sc_pkcs15_card *p15card,
 	rv = sc_oberthur_read_file(p15card, ch_tmp, &info_blob, &info_len, 1);
 	LOG_TEST_RET(ctx, rv, "Failed to add data: read oberthur file error");
 
-	if (info_len < 2)
+	if (info_len < 2) {
+		free(info_blob);
 		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add certificate: no 'tag'");
+	}
 	flags = *(info_blob + 0) * 0x100 + *(info_blob + 1);
 	offs = 2;
 
 	/* Label */
-	if (offs > info_len)
+	if (offs + 2 > info_len) {
+		free(info_blob);
 		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add data: no 'label'");
+	}
 	label = info_blob + offs + 2;
 	label_len = *(info_blob + offs + 1) + *(info_blob + offs) * 0x100;
+	if (offs + 2 + label_len > info_len) {
+		free(info_blob);
+		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Invalid length of 'label' received");
+	}
 	if (label_len > sizeof(dobj.label) - 1)
 		label_len = sizeof(dobj.label) - 1;
 	offs += 2 + *(info_blob + offs + 1);
 
 	/* Application */
-	if (offs > info_len)
+	if (offs + 2 > info_len) {
+		free(info_blob);
 		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add data: no 'application'");
+	}
 	app = info_blob + offs + 2;
 	app_len = *(info_blob + offs + 1) + *(info_blob + offs) * 0x100;
+	if (offs + 2 + app_len > info_len) {
+		free(info_blob);
+		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Invalid length of 'application' received");
+	}
 	if (app_len > sizeof(dinfo.app_label) - 1)
 		app_len = sizeof(dinfo.app_label) - 1;
 	offs += 2 + app_len;
 
 	/* OID encode like DER(ASN.1(oid)) */
-	if (offs > info_len)
+	if (offs + 2 > info_len) {
+		free(info_blob);
 		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add data: no 'OID'");
+	}
 	oid_len = *(info_blob + offs + 1) + *(info_blob + offs) * 0x100;
-	if (oid_len)   {
+	if (offs + 2 + oid_len > info_len) {
+		free(info_blob);
+		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Invalid length of 'oid' received");
+	}
+	if (oid_len > 2) {
 		oid = info_blob + offs + 2;
-		if (*oid != 0x06 || (*(oid + 1) != oid_len - 2))
+		if (*oid != 0x06 || (*(oid + 1) != oid_len - 2)) {
+			free(info_blob);
 			LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Failed to add data: invalid 'OID' format");
+		}
 		oid += 2;
 		oid_len -= 2;
 	}
@@ -922,6 +1005,7 @@ sc_pkcs15emu_oberthur_add_data(struct sc_pkcs15_card *p15card,
 
 	rv = sc_pkcs15emu_add_data_object(p15card, &dobj, &dinfo);
 
+	free(info_blob);
 	LOG_FUNC_RETURN(p15card->card->ctx, rv);
 }
 

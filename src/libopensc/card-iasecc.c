@@ -95,6 +95,18 @@ static const struct sc_atr_table iasecc_known_atrs[] = {
 		"IAS/ECC v1.0.1 Amos", SC_CARD_TYPE_IASECC_AMOS, 0, NULL },
 	{ "3B:DC:18:FF:81:91:FE:1F:C3:80:73:C8:21:13:66:01:0B:03:52:00:05:38", NULL,
 		"IAS/ECC v1.0.1 Amos", SC_CARD_TYPE_IASECC_AMOS, 0, NULL },
+	{
+		.atr     = "3B:AC:00:40:2A:00:12:25:00:64:80:00:03:10:00:90:00",
+		.atrmask = "FF:00:00:00:00:FF:FF:FF:FF:FF:FF:00:00:00:FF:FF:FF",
+		.name = "IAS/ECC CPx",
+		.type = SC_CARD_TYPE_IASECC_CPX,
+	},
+	{
+		.atr     = "2B:8F:80:01:00:31:B8:64:04:B0:EC:C1:73:94:01:80:82:90:00:0E",
+		.atrmask = "FF:FF:FF:FF:FF:FF:FF:FF:00:00:FF:C0:FF:FF:FF:FF:FF:FF:FF:FF",
+		.name = "IAS/ECC CPxCL",
+		.type = SC_CARD_TYPE_IASECC_CPXCL,
+	},
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
@@ -310,12 +322,14 @@ iasecc_select_mf(struct sc_card *card, struct sc_file **file_out)
 	mf_file->type = SC_FILE_TYPE_DF;
 	mf_file->path = path;
 
-	if (card->cache.valid)
-		 sc_file_free(card->cache.current_df);
+	if (card->cache.valid) {
+		sc_file_free(card->cache.current_df);
+	}
 	card->cache.current_df = NULL;
 
-	if (card->cache.valid)
+	if (card->cache.valid) {
 		sc_file_free(card->cache.current_ef);
+	}
 	card->cache.current_ef = NULL;
 
 	sc_file_dup(&card->cache.current_df, mf_file);
@@ -337,6 +351,8 @@ iasecc_select_aid(struct sc_card *card, struct sc_aid *aid, unsigned char *out, 
 	unsigned char apdu_resp[SC_MAX_APDU_BUFFER_SIZE];
 	int rv;
 
+	LOG_FUNC_CALLED(card->ctx);
+
 	/* Select application (deselect previously selected application) */
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xA4, 0x04, 0x00);
 	apdu.lc = aid->len;
@@ -354,7 +370,7 @@ iasecc_select_aid(struct sc_card *card, struct sc_aid *aid, unsigned char *out, 
 		LOG_TEST_RET(card->ctx, SC_ERROR_BUFFER_TOO_SMALL, "Cannot select AID");
 	memcpy(out, apdu.resp, apdu.resplen);
 
-	return SC_SUCCESS;
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
 
@@ -404,6 +420,11 @@ static int iasecc_parse_ef_atr(struct sc_card *card)
 	sizes->send_sc = card->ef_atr->issuer_data[6] * 0x100 + card->ef_atr->issuer_data[7];
 	sizes->recv =	 card->ef_atr->issuer_data[10] * 0x100 + card->ef_atr->issuer_data[11];
 	sizes->recv_sc = card->ef_atr->issuer_data[14] * 0x100 + card->ef_atr->issuer_data[15];
+
+	sc_log(ctx,
+		"EF.ATR: IO Buffer Size send/sc %"SC_FORMAT_LEN_SIZE_T"d/%"SC_FORMAT_LEN_SIZE_T"d "
+		"recv/sc %"SC_FORMAT_LEN_SIZE_T"d/%"SC_FORMAT_LEN_SIZE_T"d",
+		sizes->send, sizes->send_sc, sizes->recv, sizes->recv_sc);
 
 	card->max_send_size = sizes->send;
 	card->max_recv_size = sizes->recv;
@@ -591,6 +612,45 @@ iasecc_init_amos_or_sagem(struct sc_card *card)
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
+inline static int
+iasecc_is_cpx(const struct sc_card *card)
+{
+	switch(card->type) {
+		case SC_CARD_TYPE_IASECC_CPX:
+		case SC_CARD_TYPE_IASECC_CPXCL:
+			return 1;
+		default:
+			return 0;
+	}
+
+	return 0;
+}
+
+static int
+iasecc_init_cpx(struct sc_card *card)
+{
+	struct sc_context *ctx = card->ctx;
+	unsigned int flags;
+	int rv = 0;
+
+	LOG_FUNC_CALLED(ctx);
+
+	card->caps = IASECC_CARD_DEFAULT_CAPS;
+
+	flags = IASECC_CARD_DEFAULT_FLAGS;
+
+	_sc_card_add_rsa_alg(card, 512, flags, 0);
+	_sc_card_add_rsa_alg(card, 1024, flags, 0);
+	_sc_card_add_rsa_alg(card, 2048, flags, 0);
+
+	rv = iasecc_parse_ef_atr(card);
+	if (rv)
+		sc_invalidate_cache(card); /* avoid memory leakage */
+	LOG_TEST_RET(ctx, rv, "Parse EF.ATR");
+
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+}
+
 
 static int
 iasecc_init(struct sc_card *card)
@@ -618,6 +678,8 @@ iasecc_init(struct sc_card *card)
 		rv = iasecc_init_amos_or_sagem(card);
 	else if (card->type == SC_CARD_TYPE_IASECC_MI)
 		rv = iasecc_init_amos_or_sagem(card);
+	else if (iasecc_is_cpx(card))
+		rv = iasecc_init_cpx(card);
 	else {
 		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_INVALID_CARD, "");
 	}
@@ -857,9 +919,11 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 	sc_log(ctx, "iasecc_select_file() path:%s", sc_print_path(path));
 
 	sc_print_cache(card);
-	if (path->type != SC_PATH_TYPE_DF_NAME
+	if ((!iasecc_is_cpx(card)) &&
+	    (card->type != SC_CARD_TYPE_IASECC_GEMALTO) &&
+	    (path->type != SC_PATH_TYPE_DF_NAME
 			&& lpath.len >= 2
-			&& lpath.value[0] == 0x3F && lpath.value[1] == 0x00)   {
+			&& lpath.value[0] == 0x3F && lpath.value[1] == 0x00))   {
 		sc_log(ctx, "EF.ATR(aid:'%s')", card->ef_atr ? sc_dump_hex(card->ef_atr->aid.value, card->ef_atr->aid.len) : "");
 
 		rv = iasecc_select_mf(card, file_out);
@@ -940,7 +1004,8 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 				&& card->type != SC_CARD_TYPE_IASECC_SAGEM
 				&& card->type != SC_CARD_TYPE_IASECC_AMOS
 				&& card->type != SC_CARD_TYPE_IASECC_MI
-				&& card->type != SC_CARD_TYPE_IASECC_MI2) {
+				&& card->type != SC_CARD_TYPE_IASECC_MI2
+				&& !iasecc_is_cpx(card)) {
 			rv = SC_ERROR_NOT_SUPPORTED;
 			LOG_TEST_GOTO_ERR(ctx, rv, "Unsupported card");
 		}
@@ -952,7 +1017,10 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 			if (card->type == SC_CARD_TYPE_IASECC_OBERTHUR ||
 			    card->type == SC_CARD_TYPE_IASECC_AMOS ||
 			    card->type == SC_CARD_TYPE_IASECC_MI ||
-			    card->type == SC_CARD_TYPE_IASECC_MI2)   {
+			    card->type == SC_CARD_TYPE_IASECC_MI2 ||
+			    card->type == SC_CARD_TYPE_IASECC_GEMALTO ||
+			    iasecc_is_cpx(card)
+			    )   {
 				apdu.p2 = 0x04;
 			}
 		}
@@ -961,7 +1029,9 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 			if (card->type == SC_CARD_TYPE_IASECC_OBERTHUR ||
 			    card->type == SC_CARD_TYPE_IASECC_AMOS ||
 			    card->type == SC_CARD_TYPE_IASECC_MI ||
-			    card->type == SC_CARD_TYPE_IASECC_MI2)   {
+			    card->type == SC_CARD_TYPE_IASECC_MI2 ||
+			    card->type == SC_CARD_TYPE_IASECC_GEMALTO ||
+			    iasecc_is_cpx(card)) {
 				apdu.p2 = 0x04;
 			}
 		}
@@ -974,7 +1044,9 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 			apdu.p1 = 0x04;
 			if (card->type == SC_CARD_TYPE_IASECC_AMOS ||
 			    card->type == SC_CARD_TYPE_IASECC_MI2 ||
-			    card->type == SC_CARD_TYPE_IASECC_OBERTHUR)   {
+			    card->type == SC_CARD_TYPE_IASECC_OBERTHUR ||
+			    card->type == SC_CARD_TYPE_IASECC_GEMALTO ||
+			    iasecc_is_cpx(card)) {
 				apdu.p2 = 0x04;
 			}
 		}
@@ -998,6 +1070,7 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 			rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
 			if (rv == SC_ERROR_INCORRECT_PARAMETERS &&
 					lpath.type == SC_PATH_TYPE_DF_NAME && apdu.p2 == 0x00)   {
+				sc_log(ctx, "Warning: SC_ERROR_INCORRECT_PARAMETERS for SC_PATH_TYPE_DF_NAME, try again with P2=0x0C");
 				apdu.p2 = 0x0C;
 				continue;
 			}
@@ -1069,25 +1142,23 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 
 			sc_log(ctx, "FileType %i", file->type);
 			if (file->type == SC_FILE_TYPE_DF)   {
-				if (card->cache.valid)
+				if (card->cache.valid) {
 					sc_file_free(card->cache.current_df);
+				}
 				card->cache.current_df = NULL;
-
-
-				if (card->cache.valid)
-					sc_file_free(card->cache.current_ef);
-				card->cache.current_ef = NULL;
 
 				sc_file_dup(&card->cache.current_df, file);
 				card->cache.valid = 1;
 			}
 			else   {
-				if (card->cache.valid)
+				if (card->cache.valid) {
 					sc_file_free(card->cache.current_ef);
+				}
 
 				card->cache.current_ef = NULL;
 
 				sc_file_dup(&card->cache.current_ef, file);
+				card->cache.valid = 1;
 			}
 
 			if (file_out)   {
@@ -1125,8 +1196,8 @@ iasecc_process_fci(struct sc_card *card, struct sc_file *file,
 		 const unsigned char *buf, size_t buflen)
 {
 	struct sc_context *ctx = card->ctx;
-	size_t taglen;
-	int rv, ii, offs;
+	size_t taglen, offs, ii;
+	int rv;
 	const unsigned char *acls = NULL, *tag = NULL;
 	unsigned char mask;
 	unsigned char ops_DF[7] = {
@@ -1182,10 +1253,15 @@ iasecc_process_fci(struct sc_card *card, struct sc_file *file,
 	for (ii = 0; ii < 7; ii++, mask /= 2)  {
 		unsigned char op = file->type == SC_FILE_TYPE_DF ? ops_DF[ii] : ops_EF[ii];
 
+		/* avoid any access to acls[offs] beyond the taglen */
+		if (offs >= taglen) {
+			sc_log(ctx, "Warning: Invalid offset reached during ACL parsing");
+			break;
+		}
 		if (!(mask & acls[0]))
 			continue;
 
-		sc_log(ctx, "ACLs mask 0x%X, offs %i, op 0x%X, acls[offs] 0x%X", mask, offs, op, acls[offs]);
+		sc_log(ctx, "ACLs mask 0x%X, offs %"SC_FORMAT_LEN_SIZE_T"u, op 0x%X, acls[offs] 0x%X", mask, offs, op, acls[offs]);
 		if (op == 0xFF)   {
 			;
 		}
@@ -1493,8 +1569,9 @@ iasecc_delete_file(struct sc_card *card, const struct sc_path *path)
 		rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
 		LOG_TEST_RET(ctx, rv, "Delete file failed");
 
-		if (card->cache.valid)
+		if (card->cache.valid) {
 			sc_file_free(card->cache.current_ef);
+		}
 		card->cache.current_ef = NULL;
 	}
 
@@ -1640,6 +1717,11 @@ iasecc_se_get_info(struct sc_card *card, struct iasecc_se_info *se)
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
+
+	if (iasecc_is_cpx(card)) {
+		rv = iasecc_select_mf(card, NULL);
+		LOG_TEST_RET(ctx, rv, "MF invalid");
+	}
 
 	if (se->reference > IASECC_SE_REF_MAX)
                 LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
@@ -2796,6 +2878,34 @@ iasecc_sdo_get_tagged_data(struct sc_card *card, int sdo_tag, struct iasecc_sdo 
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
+
+	sc_log(ctx, "sdo_tag=0x%x sdo_ref=0x%x sdo_class=0x%x", sdo_tag,
+			sdo->sdo_ref, sdo->sdo_class);
+
+	/* XXX: for the CPx, the SDO are available from some specific path */
+	if (iasecc_is_cpx(card)) {
+		struct sc_path path;
+		char *path_str = NULL;
+		switch(sdo_tag) {
+			case IASECC_SDO_PRVKEY_TAG:
+			/* APDU 00 CB 3F FF 0B 4D 09 70 07 BF 90 02 03 7F 48 80 */
+			path_str = "3F00:0001";
+			break;
+			case IASECC_SDO_CHV_TAG:
+			/* APDU 00 CB 3F FF 0B 4D 09 70 07 BF 81 01 03 7F 41 80 */
+			path_str = "3F00";
+			break;
+			default:
+			path_str = NULL;
+			break;
+		}
+		if (path_str) {
+			sc_log(ctx, "Warning: Enforce the path=%s", path_str);
+			sc_format_path(path_str, &path);
+			rv = iasecc_select_file(card, &path, NULL);
+			LOG_TEST_RET(ctx, rv, "path error");
+		}
+	}
 
 	sbuf[offs--] = 0x80;
 	sbuf[offs--] = sdo_tag & 0xFF;

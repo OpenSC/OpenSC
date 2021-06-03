@@ -195,16 +195,25 @@ static int idprime_process_index(sc_card_t *card, idprime_private_data_t *priv, 
 		if (((memcmp(&start[4], "ksc", 3) == 0) || memcmp(&start[4], "kxc", 3) == 0)
 			&& (memcmp(&start[12], "mscp", 5) == 0)) {
 			new_object.fd++;
-			if (card->type == SC_CARD_TYPE_IDPRIME_V2) {
-				/* The key reference starts from 0x11 and increments by the key id (ASCII) */
+			if (card->type == SC_CARD_TYPE_IDPRIME_V1) {
+				/* The key reference is one bigger than the value found here for some reason */
+				new_object.key_reference = start[8] + 1;
+			} else {
 				int key_id = 0;
 				if (start[8] >= '0' && start[8] <= '9') {
 					key_id = start[8] - '0';
 				}
-				new_object.key_reference = 0x11 + key_id;
-			} else {
-				/* The key reference is one bigger than the value found here for some reason */
-				new_object.key_reference = start[8] + 1;
+				switch (card->type) {
+				case SC_CARD_TYPE_IDPRIME_V2:
+					new_object.key_reference = 0x11 + key_id;
+					break;
+				case SC_CARD_TYPE_IDPRIME_V3:
+					new_object.key_reference = 0xF7 + key_id;
+					break;
+				case SC_CARD_TYPE_IDPRIME_V4:
+					new_object.key_reference = 0x56 + key_id;
+					break;
+				}
 			}
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Found certificate with fd=%d, key_ref=%d",
 				new_object.fd, new_object.key_reference);
@@ -252,6 +261,14 @@ static int idprime_init(sc_card_t *card)
 			card->type = SC_CARD_TYPE_IDPRIME_V2;
 			sc_log(card->ctx, "Detected IDPrime applet version 2");
 			break;
+		case 0x03:
+			card->type = SC_CARD_TYPE_IDPRIME_V3;
+			sc_log(card->ctx, "Detected IDPrime applet version 3");
+			break;
+		case 0x04:
+			card->type = SC_CARD_TYPE_IDPRIME_V4;
+			sc_log(card->ctx, "Detected IDPrime applet version 4");
+			break;
 		default:
 			sc_log(card->ctx, "Unknown OS version received: %d", rbuf[11]);
 			break;
@@ -289,6 +306,12 @@ static int idprime_init(sc_card_t *card)
 		break;
 	case SC_CARD_TYPE_IDPRIME_V2:
 		card->name = "Gemalto IDPrime (OSv2)";
+		break;
+	case SC_CARD_TYPE_IDPRIME_V3:
+		card->name = "Gemalto IDPrime (OSv3)";
+		break;
+	case SC_CARD_TYPE_IDPRIME_V4:
+		card->name = "Gemalto IDPrime (OSv4)";
 		break;
 	case SC_CARD_TYPE_IDPRIME_GENERIC:
 	default:
@@ -418,6 +441,7 @@ static int idprime_get_token_name(sc_card_t* card, char** tname)
 	sc_path_t tinfo_path = {"\x00\x00", 2, 0, 0, SC_PATH_TYPE_PATH, {"", 0}};
 	sc_file_t *file = NULL;
 	u8 buf[2];
+	char *name;
 	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
@@ -445,20 +469,22 @@ static int idprime_get_token_name(sc_card_t* card, char** tname)
 	}
 	sc_file_free(file);
 
-	*tname = malloc(buf[1]);
-	if (*tname == NULL) {
+	name = malloc(buf[1]);
+	if (name == NULL) {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 	}
 
-	r = iso_ops->read_binary(card, 2, (unsigned char *)*tname, buf[1], 0);
+	r = iso_ops->read_binary(card, 2, (unsigned char *)name, buf[1], 0);
 	if (r < 1) {
-		free(*tname);
+		free(name);
 		LOG_FUNC_RETURN(card->ctx, r);
 	}
 
-	if ((*tname)[r-1] != '\0') {
-		(*tname)[r-1] = '\0';
+	if (name[r-1] != '\0') {
+		name[r-1] = '\0';
 	}
+	*tname = name;
+
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
@@ -615,13 +641,13 @@ idprime_set_security_env(struct sc_card *card,
 	switch (env->operation) {
 	case SC_SEC_OPERATION_DECIPHER:
 		if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_OAEP) {
-			if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA1) {
+			if (env->algorithm_flags & SC_ALGORITHM_MGF1_SHA1) {
 				new_env.algorithm_ref = 0x1D;
-			} else if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA256) {
+			} else if (env->algorithm_flags & SC_ALGORITHM_MGF1_SHA256) {
 				new_env.algorithm_ref = 0x4D;
-			} else if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA384) {
+			} else if (env->algorithm_flags & SC_ALGORITHM_MGF1_SHA384) {
 				new_env.algorithm_ref = 0x5D;
-			} else if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA512) {
+			} else if (env->algorithm_flags & SC_ALGORITHM_MGF1_SHA512) {
 				new_env.algorithm_ref = 0x6D;
 			}
 		} else { /* RSA-PKCS without hashing */
@@ -630,11 +656,11 @@ idprime_set_security_env(struct sc_card *card,
 		break;
 	case SC_SEC_OPERATION_SIGN:
 		if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PSS) {
-			if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA256) {
+			if (env->algorithm_flags & SC_ALGORITHM_MGF1_SHA256) {
 				new_env.algorithm_ref = 0x45;
-			} else if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA384) {
+			} else if (env->algorithm_flags & SC_ALGORITHM_MGF1_SHA384) {
 				new_env.algorithm_ref = 0x55;
-			} else if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA512) {
+			} else if (env->algorithm_flags & SC_ALGORITHM_MGF1_SHA512) {
 				new_env.algorithm_ref = 0x65;
 			}
 		} else { /* RSA-PKCS */

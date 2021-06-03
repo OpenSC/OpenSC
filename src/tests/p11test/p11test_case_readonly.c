@@ -171,7 +171,7 @@ int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 	CK_BYTE *message = NULL;
 	CK_BYTE *dec_message = NULL;
 	int dec_message_length = 0;
-	unsigned char *enc_message;
+	unsigned char *enc_message = NULL;
 	int enc_message_length, rv;
 
 	if (o->private_handle == CK_INVALID_HANDLE) {
@@ -207,6 +207,7 @@ int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 	enc_message_length = encrypt_message(o, info, message, message_length,
 	    mech, &enc_message);
 	if (enc_message_length <= 0) {
+		free(enc_message);
 		free(message);
 		return -1;
 	}
@@ -457,8 +458,34 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 				rv, ERR_error_string(ERR_peek_last_error(), NULL));
 			return -1;
 		}
+	} else if (o->type == EVP_PKEY_ED25519) {
+		/* need to be created even though we do not do any MD */
+		EVP_MD_CTX *ctx = EVP_MD_CTX_create();
+
+		rv = EVP_DigestVerifyInit(ctx, NULL, NULL, NULL, o->key.pkey);
+		if (rv != 1) {
+			fprintf(stderr, " [FAIL %s ] EVP_DigestVerifyInit: rv = %lu: %s\n", o->id_str,
+				rv, ERR_error_string(ERR_peek_last_error(), NULL));
+			EVP_MD_CTX_free(ctx);
+			return -1;
+		}
+
+		rv = EVP_DigestVerify(ctx, sign, sign_length, message, message_length);
+		if (rv == 1) {
+			debug_print(" [  OK %s ] EdDSA Signature of length %lu is valid.",
+				o->id_str, message_length);
+			mech->result_flags |= FLAGS_SIGN_OPENSSL;
+			EVP_MD_CTX_free(ctx);
+			return 1;
+		} else {
+			fprintf(stderr, " [FAIL %s ] EVP_DigestVerifyInit: rv = %lu: %s\n", o->id_str,
+				rv, ERR_error_string(ERR_peek_last_error(), NULL));
+			EVP_MD_CTX_free(ctx);
+			return -1;
+		}
+
 	} else {
-		fprintf(stderr, " [ KEY %s ] Unknown type. Not verifying", o->id_str);
+		fprintf(stderr, " [ KEY %s ] Unknown type. Not verifying\n", o->id_str);
 	}
 	return 0;
 }
@@ -556,7 +583,7 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 		return 0;
 	}
 
-	if (o->type != EVP_PK_EC && o->type != EVP_PK_RSA) {
+	if (o->type != EVP_PK_EC && o->type != EVP_PK_RSA && o->type != EVP_PKEY_ED25519) {
 		debug_print(" [SKIP %s ] Skip non-RSA and non-EC key", o->id_str);
 		return 0;
 	}
@@ -655,8 +682,10 @@ void readonly_tests(void **state) {
 			o->id_str,
 			o->label);
 		printf("[ %s ] [%6lu] [ %s ] [%s%s] [%s%s] [%s %s] [%s%s]\n",
-			o->key_type == CKK_RSA ? "RSA " :
-				o->key_type == CKK_EC ? " EC " : " ?? ",
+			(o->key_type == CKK_RSA ? "RSA " :
+				o->key_type == CKK_EC ? " EC " :
+				o->key_type == CKK_EC_EDWARDS ? "EC_E" :
+				o->key_type == CKK_EC_MONTGOMERY ? "EC_M" : " ?? "),
 			o->bits,
 			o->verify_public == 1 ? " ./ " : "    ",
 			o->sign ? "[./] " : "[  ] ",

@@ -55,10 +55,16 @@ pid_t initialized_pid = (pid_t)-1;
 #endif
 static int in_finalize = 0;
 extern CK_FUNCTION_LIST pkcs11_function_list;
+extern CK_FUNCTION_LIST_3_0 pkcs11_function_list_3_0;
 
 #ifdef PKCS11_THREAD_LOCKING
 
 #if defined(HAVE_PTHREAD)
+
+/* mutex used to control C_Initilize creation of mutexes */
+static pthread_mutex_t c_initialize_m = PTHREAD_MUTEX_INITIALIZER;
+#define C_INITIALIZE_M_LOCK  pthread_mutex_lock(&c_initialize_m);
+#define C_INITIALIZE_M_UNLOCK pthread_mutex_unlock(&c_initialize_m);
 
 CK_RV mutex_create(void **mutex)
 {
@@ -100,6 +106,9 @@ static CK_C_INITIALIZE_ARGS _def_locks = {
 #define HAVE_OS_LOCKING
 
 #elif defined(_WIN32)
+CRITICAL_SECTION c_initialize_cs = {0};
+#define C_INITIALIZE_M_LOCK EnterCriticalSection(&c_initialize_cs);
+#define C_INITIALIZE_M_UNLOCK LeaveCriticalSection(&c_initialize_cs);
 
 CK_RV mutex_create(void **mutex)
 {
@@ -139,6 +148,10 @@ static CK_C_INITIALIZE_ARGS _def_locks = {
 #define HAVE_OS_LOCKING
 
 #endif
+
+#else /* PKCS11_THREAD_LOCKING */
+#define C_INITIALIZE_M_LOCK
+#define C_INITIALIZE_M_UNLOCK
 
 #endif /* PKCS11_THREAD_LOCKING */
 
@@ -222,6 +235,9 @@ __attribute__((constructor))
 #endif
 int module_init()
 {
+#ifdef _WIN32
+	InitializeCriticalSection(&c_initialize_cs);
+#endif
 	sc_notify_init();
 	return 1;
 }
@@ -237,6 +253,9 @@ int module_close()
 #endif
 #ifdef ENABLE_OPENPACE
 	EAC_cleanup();
+#endif
+#ifdef _WIN32
+	DeleteCriticalSection(&c_initialize_cs);
 #endif
 	return 1;
 }
@@ -284,8 +303,12 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs)
 	in_finalize = 0;
 #endif
 
+	/* protect from multiple threads tryng to setup locking */
+	C_INITIALIZE_M_LOCK
+
 	if (context != NULL) {
 		sc_log(context, "C_Initialize(): Cryptoki already initialized\n");
+		C_INITIALIZE_M_UNLOCK
 		return CKR_CRYPTOKI_ALREADY_INITIALIZED;
 	}
 
@@ -336,6 +359,9 @@ out:
 		/* Release and destroy the mutex */
 		sc_pkcs11_free_lock();
 	}
+
+	/* protect from multiple threads tryng to setup locking */
+	C_INITIALIZE_M_UNLOCK
 
 	return rv;
 }
@@ -390,7 +416,7 @@ CK_RV C_Finalize(CK_VOID_PTR pReserved)
 	return rv;
 }
 
-CK_RV C_GetInfo(CK_INFO_PTR pInfo)
+CK_RV get_info_version(CK_INFO_PTR pInfo, CK_VERSION version)
 {
 	CK_RV rv = CKR_OK;
 
@@ -404,8 +430,8 @@ CK_RV C_GetInfo(CK_INFO_PTR pInfo)
 	sc_log(context, "C_GetInfo()");
 
 	memset(pInfo, 0, sizeof(CK_INFO));
-	pInfo->cryptokiVersion.major = 2;
-	pInfo->cryptokiVersion.minor = 20;
+	pInfo->cryptokiVersion.major = version.major;
+	pInfo->cryptokiVersion.minor = version.minor;
 	strcpy_bp(pInfo->manufacturerID,
 		  OPENSC_VS_FF_COMPANY_NAME,
 		  sizeof(pInfo->manufacturerID));
@@ -417,6 +443,20 @@ CK_RV C_GetInfo(CK_INFO_PTR pInfo)
 
 	sc_pkcs11_unlock();
 	return rv;
+}
+
+CK_RV C_GetInfoV2(CK_INFO_PTR pInfo)
+{
+	CK_VERSION v = {2, 20};
+
+	return get_info_version(pInfo, v);
+}
+
+CK_RV C_GetInfo(CK_INFO_PTR pInfo)
+{
+	CK_VERSION v = {3, 0};
+
+	return get_info_version(pInfo, v);
 }
 
 CK_RV C_GetFunctionList(CK_FUNCTION_LIST_PTR_PTR ppFunctionList)
@@ -481,9 +521,10 @@ CK_RV C_GetSlotList(CK_BBOOL       tokenPresent,  /* only slots with token prese
 		 * - any slot with token;
 		 * - any slot that has already been seen;
 		 */
-		if ((!tokenPresent && slot->reader != prev_reader)
-				|| (slot->slot_info.flags & CKF_TOKEN_PRESENT)
-				|| (slot->flags & SC_PKCS11_SLOT_FLAG_SEEN)) {
+		if ((!tokenPresent &&
+				(slot->reader != prev_reader ||
+			 	 slot->flags & SC_PKCS11_SLOT_FLAG_SEEN))
+				|| slot->slot_info.flags & CKF_TOKEN_PRESENT) {
 			found[numMatches++] = slot->id;
 			slot->flags |= SC_PKCS11_SLOT_FLAG_SEEN;
 		}
@@ -767,6 +808,94 @@ out:
 }
 
 /*
+ * Interfaces
+ */
+#define NUM_INTERFACES 2
+#define DEFAULT_INTERFACE 0
+ck_interface interfaces[NUM_INTERFACES] = {
+	{"PKCS 11", (void *)&pkcs11_function_list_3_0, 0},
+	{"PKCS 11", (void *)&pkcs11_function_list, 0}
+};
+
+CK_RV C_GetInterfaceList(CK_INTERFACE_PTR pInterfacesList,  /* returned interfaces */
+			 CK_ULONG_PTR pulCount)         /* number of interfaces returned */
+{
+	sc_log(context, "C_GetInterfaceList()");
+
+	if (pulCount == NULL_PTR)
+		return CKR_ARGUMENTS_BAD;
+
+	if (pInterfacesList == NULL_PTR) {
+		*pulCount = NUM_INTERFACES;
+		sc_log(context, "was only a size inquiry (%lu)\n", *pulCount);
+		return CKR_OK;
+	}
+
+	if (*pulCount < NUM_INTERFACES) {
+		sc_log(context, "buffer was too small (needed %d)\n", NUM_INTERFACES);
+		*pulCount = NUM_INTERFACES;
+		return CKR_BUFFER_TOO_SMALL;
+	}
+
+	memcpy(pInterfacesList, interfaces, NUM_INTERFACES * sizeof(CK_INTERFACE));
+	*pulCount = NUM_INTERFACES;
+
+	sc_log(context, "returned %lu interfaces\n", *pulCount);
+	return CKR_OK;
+}
+
+CK_RV C_GetInterface(CK_UTF8CHAR_PTR pInterfaceName, /* name of the interface */
+                     CK_VERSION_PTR pVersion,       /* version of the interface */
+                     CK_INTERFACE_PTR_PTR ppInterface,    /* returned interface */
+                     CK_FLAGS flags)           /* flags controlling the semantics
+						* of the interface */
+{
+	int i;
+
+	sc_log(context, "C_GetInterface(%s)",
+		pInterfaceName == NULL_PTR ? "<default>" : (char *)pInterfaceName);
+
+	if (ppInterface == NULL) {
+		return CKR_ARGUMENTS_BAD;
+	}
+
+	if (pInterfaceName == NULL_PTR) {
+		/* return default interface */
+		*ppInterface = &interfaces[DEFAULT_INTERFACE];
+		sc_log(context, "Returning default interface\n");
+		return CKR_OK;
+	}
+
+	for (i = 0; i < NUM_INTERFACES; i++) {
+		CK_VERSION_PTR interface_version = (CK_VERSION_PTR)interfaces[i].pFunctionList;
+
+		/* The interface name is not null here */
+		if (strcmp((char *)pInterfaceName, interfaces[i].pInterfaceName) != 0) {
+			continue;
+		}
+		/* If version is not null, it must match */
+		if (pVersion != NULL_PTR && (pVersion->major != interface_version->major ||
+		    pVersion->minor != interface_version->minor)) {
+			continue;
+		}
+		/* If any flags specified, it must be supported by the interface */
+		if ((flags & interfaces[i].flags) != flags) {
+			continue;
+		}
+		*ppInterface = &interfaces[i];
+		sc_log(context, "Returning interface %s\n", (*ppInterface)->pInterfaceName);
+		return CKR_OK;
+	}
+	sc_log(context, "Interface not found: %s, version=%d.%d, flags=%lu\n",
+		pInterfaceName ? (char *)pInterfaceName : "<null>",
+		pVersion ? (*pVersion).major : 0,
+		pVersion ? (*pVersion).minor : 0,
+		flags);
+
+	return CKR_ARGUMENTS_BAD;
+}
+
+/*
  * Locking functions
  */
 
@@ -881,7 +1010,80 @@ void sc_pkcs11_free_lock(void)
 }
 
 CK_FUNCTION_LIST pkcs11_function_list = {
-	{ 2, 11 }, /* Note: NSS/Firefox ignores this version number and uses C_GetInfo() */
+	{ 2, 20 }, /* Note: NSS/Firefox ignores this version number and uses C_GetInfo() */
+	C_Initialize,
+	C_Finalize,
+	C_GetInfoV2,
+	C_GetFunctionList,
+	C_GetSlotList,
+	C_GetSlotInfo,
+	C_GetTokenInfo,
+	C_GetMechanismList,
+	C_GetMechanismInfo,
+	C_InitToken,
+	C_InitPIN,
+	C_SetPIN,
+	C_OpenSession,
+	C_CloseSession,
+	C_CloseAllSessions,
+	C_GetSessionInfo,
+	C_GetOperationState,
+	C_SetOperationState,
+	C_Login,
+	C_Logout,
+	C_CreateObject,
+	C_CopyObject,
+	C_DestroyObject,
+	C_GetObjectSize,
+	C_GetAttributeValue,
+	C_SetAttributeValue,
+	C_FindObjectsInit,
+	C_FindObjects,
+	C_FindObjectsFinal,
+	C_EncryptInit,
+	C_Encrypt,
+	C_EncryptUpdate,
+	C_EncryptFinal,
+	C_DecryptInit,
+	C_Decrypt,
+	C_DecryptUpdate,
+	C_DecryptFinal,
+	C_DigestInit,
+	C_Digest,
+	C_DigestUpdate,
+	C_DigestKey,
+	C_DigestFinal,
+	C_SignInit,
+	C_Sign,
+	C_SignUpdate,
+	C_SignFinal,
+	C_SignRecoverInit,
+	C_SignRecover,
+	C_VerifyInit,
+	C_Verify,
+	C_VerifyUpdate,
+	C_VerifyFinal,
+	C_VerifyRecoverInit,
+	C_VerifyRecover,
+	C_DigestEncryptUpdate,
+	C_DecryptDigestUpdate,
+	C_SignEncryptUpdate,
+	C_DecryptVerifyUpdate,
+	C_GenerateKey,
+	C_GenerateKeyPair,
+	C_WrapKey,
+	C_UnwrapKey,
+	C_DeriveKey,
+	C_SeedRandom,
+	C_GenerateRandom,
+	C_GetFunctionStatus,
+	C_CancelFunction,
+	C_WaitForSlotEvent
+};
+
+/* Returned from getInterface */
+CK_FUNCTION_LIST_3_0 pkcs11_function_list_3_0 = {
+	{ 3, 0 },
 	C_Initialize,
 	C_Finalize,
 	C_GetInfo,
@@ -949,5 +1151,29 @@ CK_FUNCTION_LIST pkcs11_function_list = {
 	C_GenerateRandom,
 	C_GetFunctionStatus,
 	C_CancelFunction,
-	C_WaitForSlotEvent
+	C_WaitForSlotEvent,
+	C_GetInterfaceList,
+	C_GetInterface,
+	C_LoginUser,
+	C_SessionCancel,
+	C_MessageEncryptInit,
+	C_EncryptMessage,
+	C_EncryptMessageBegin,
+	C_EncryptMessageNext,
+	C_MessageEncryptFinal,
+	C_MessageDecryptInit,
+	C_DecryptMessage,
+	C_DecryptMessageBegin,
+	C_DecryptMessageNext,
+	C_MessageDecryptFinal,
+	C_MessageSignInit,
+	C_SignMessage,
+	C_SignMessageBegin,
+	C_SignMessageNext,
+	C_MessageSignFinal,
+	C_MessageVerifyInit,
+	C_VerifyMessage,
+	C_VerifyMessageBegin,
+	C_VerifyMessageNext,
+	C_MessageVerifyFinal
 };

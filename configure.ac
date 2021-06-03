@@ -1,15 +1,15 @@
 dnl -*- mode: m4; -*-
 
-AC_PREREQ(2.60)
+AC_PREREQ(2.68)
 
 define([PRODUCT_NAME], [OpenSC])
 define([PRODUCT_TARNAME], [opensc])
 define([PRODUCT_BUGREPORT], [https://github.com/OpenSC/OpenSC/issues])
 define([PRODUCT_URL], [https://github.com/OpenSC/OpenSC])
 define([PACKAGE_VERSION_MAJOR], [0])
-define([PACKAGE_VERSION_MINOR], [21])
+define([PACKAGE_VERSION_MINOR], [22])
 define([PACKAGE_VERSION_FIX], [0])
-define([PACKAGE_SUFFIX], [])
+define([PACKAGE_SUFFIX], [-rc1])
 
 define([VS_FF_LEGAL_COPYRIGHT], [OpenSC Project])
 define([VS_FF_LEGAL_COMPANY_NAME], [OpenSC Project])
@@ -45,7 +45,7 @@ OPENSC_VS_FF_PRODUCT_URL="VS_FF_PRODUCT_URL"
 #   (Code changed:                      REVISION++)
 #   (Oldest interface changed/removed:  OLDEST++)
 #   (Interfaces added:                  CURRENT++, REVISION=0)
-OPENSC_LT_CURRENT="7"
+OPENSC_LT_CURRENT="8"
 OPENSC_LT_OLDEST="7"
 OPENSC_LT_REVISION="0"
 OPENSC_LT_AGE="0"
@@ -188,7 +188,7 @@ AC_ARG_ENABLE(
 )
 
 AC_ARG_ENABLE([openssl-secure-malloc],
-    [AC_HELP_STRING([--openssl-secure-malloc=<SIZE_IN_BYTES>],
+    [AS_HELP_STRING([--openssl-secure-malloc=<SIZE_IN_BYTES>],
         [Enable OpenSSL secure memory by specifying its size in bytes, must be a power of 2 @<:@disabled@:>@])],
     [], [enable_openssl_secure_malloc=no])
 AS_IF([test $enable_openssl_secure_malloc != no],
@@ -394,7 +394,6 @@ dnl C Compiler features
 AC_C_INLINE
 
 dnl Checks for header files.
-AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
 AC_HEADER_ASSERT
 AC_CHECK_HEADERS([ \
@@ -408,7 +407,6 @@ dnl Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
 AC_TYPE_UID_T
 AC_TYPE_SIZE_T
-AC_HEADER_TIME
 
 dnl Checks for library functions.
 AC_FUNC_ERROR_AT_LINE
@@ -729,7 +727,7 @@ LIBS="$saved_LIBS"
 
 
 AC_ARG_ENABLE(cvcdir,
-              AC_HELP_STRING([--enable-cvcdir=DIR],
+              AS_HELP_STRING([--enable-cvcdir=DIR],
                              [directory containing CV certificates (default is determined by libeac)]),
                              [cvcdir="${enableval}"],
                              [cvcdir=false])
@@ -751,7 +749,7 @@ AC_SUBST(CVCDIR)
 AC_DEFINE_UNQUOTED([CVCDIR], ["${CVCDIR}"], [CVC directory])
 
 AC_ARG_ENABLE(x509dir,
-              AC_HELP_STRING([--enable-x509dir=DIR],
+              AS_HELP_STRING([--enable-x509dir=DIR],
                              [directory containing X.509 certificates (default is determined by libeac)]),
                              [x509dir="${enableval}"],
                              [x509dir=false])
@@ -953,6 +951,7 @@ AC_PATH_PROG(GENGETOPT, gengetopt, not found)
 AC_ARG_VAR([CLANGTIDY],
            [absolute path to clang-tidy used for static code analysis])
 AC_PATH_PROG(CLANGTIDY, clang-tidy, not found)
+TIDY_CHECKS="-clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling"
 
 AX_FUNC_GETOPT_LONG
 #AH_BOTTOM([#include "common/compat_getopt.h"])
@@ -1060,6 +1059,7 @@ AC_SUBST([PROFILE_DIR])
 AC_SUBST([PROFILE_DIR_DEFAULT])
 AC_SUBST([OPTIONAL_NOTIFY_CFLAGS])
 AC_SUBST([OPTIONAL_NOTIFY_LIBS])
+AC_SUBST([TIDY_CHECKS])
 
 AM_CONDITIONAL([ENABLE_MAN], [test "${enable_man}" = "yes"])
 AM_CONDITIONAL([ENABLE_THREAD_LOCKING], [test "${enable_thread_locking}" = "yes"])
@@ -1089,7 +1089,7 @@ if test "${enable_pedantic}" = "yes"; then
 	CFLAGS="-pedantic ${CFLAGS}"
 fi
 if test "${enable_strict}" = "yes"; then
-	CFLAGS="-Wall -Wextra -Wno-unused-parameter -Werror ${CFLAGS}"
+	CFLAGS="-Wall -Wextra -Wno-unused-parameter -Werror -Wstrict-aliasing=2 ${CFLAGS}"
 fi
 
 AC_CONFIG_FILES([

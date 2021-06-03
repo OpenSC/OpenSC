@@ -130,6 +130,7 @@ static void sc_pkcs15_remove_dfs(struct sc_pkcs15_card *);
 static void sc_pkcs15_remove_objects(struct sc_pkcs15_card *);
 static int sc_pkcs15_aux_get_md_guid(struct sc_pkcs15_card *, const struct sc_pkcs15_object *,
 		unsigned, unsigned char *, size_t *);
+static void sc_pkcs15_clear_tokeninfo(struct sc_pkcs15_tokeninfo *tokeninfo);
 
 int sc_pkcs15_parse_tokeninfo(sc_context_t *ctx,
 	sc_pkcs15_tokeninfo_t *ti, const u8 *buf, size_t blen)
@@ -217,7 +218,11 @@ int sc_pkcs15_parse_tokeninfo(sc_context_t *ctx,
 	sc_format_asn1_entry(asn1_tokeninfo, asn1_toki_attrs, NULL, 0);
 
 	r = sc_asn1_decode(ctx, asn1_tokeninfo, buf, blen, NULL, NULL);
-	LOG_TEST_RET(ctx, r, "ASN.1 parsing of EF(TokenInfo) failed");
+	if (r != SC_SUCCESS) {
+		/* The decoding could have allocated something we need to free */
+		sc_pkcs15_clear_tokeninfo(ti);
+		LOG_TEST_RET(ctx, r, "ASN.1 parsing of EF(TokenInfo) failed");
+	}
 
 	if (asn1_toki_attrs[1].flags & SC_ASN1_PRESENT && serial_len > 0)   {
 		free(ti->serial_number);
@@ -475,20 +480,21 @@ parse_ddo(struct sc_pkcs15_card *p15card, const u8 * buf, size_t buflen)
 	LOG_TEST_RET(ctx, r, "DDO parsing failed");
 
 	if (asn1_ddo[1].flags & SC_ASN1_PRESENT) {
+		sc_file_free(p15card->file_odf);
 		p15card->file_odf = sc_file_new();
 		if (p15card->file_odf == NULL)
 			goto mem_err;
 		p15card->file_odf->path = odf_path;
 	}
 	if (asn1_ddo[2].flags & SC_ASN1_PRESENT) {
-		if (p15card->file_tokeninfo)
-			sc_file_free(p15card->file_tokeninfo);
+		sc_file_free(p15card->file_tokeninfo);
 		p15card->file_tokeninfo = sc_file_new();
 		if (p15card->file_tokeninfo == NULL)
 			goto mem_err;
 		p15card->file_tokeninfo->path = ti_path;
 	}
 	if (asn1_ddo[3].flags & SC_ASN1_PRESENT) {
+		sc_file_free(p15card->file_unusedspace);
 		p15card->file_unusedspace = sc_file_new();
 		if (p15card->file_unusedspace == NULL)
 			goto mem_err;
@@ -726,6 +732,32 @@ sc_pkcs15_tokeninfo_new(void)
 	return tokeninfo;
 }
 
+static void
+sc_pkcs15_clear_tokeninfo(struct sc_pkcs15_tokeninfo *tokeninfo)
+{
+	if (!tokeninfo)
+		return;
+
+	free(tokeninfo->label);
+	tokeninfo->label = NULL;
+	free(tokeninfo->serial_number);
+	tokeninfo->serial_number = NULL;
+	free(tokeninfo->manufacturer_id);
+	tokeninfo->manufacturer_id = NULL;
+	free(tokeninfo->last_update.gtime);
+	tokeninfo->last_update.gtime = NULL;
+	free(tokeninfo->preferred_language);
+	tokeninfo->preferred_language = NULL;
+	free(tokeninfo->profile_indication.name);
+	tokeninfo->profile_indication.name = NULL;
+	if (tokeninfo->seInfo != NULL) {
+		unsigned i;
+		for (i = 0; i < tokeninfo->num_seInfo; i++)
+			free(tokeninfo->seInfo[i]);
+		free(tokeninfo->seInfo);
+		tokeninfo->seInfo = NULL;
+	}
+}
 
 void
 sc_pkcs15_free_tokeninfo(struct sc_pkcs15_tokeninfo *tokeninfo)
@@ -733,21 +765,9 @@ sc_pkcs15_free_tokeninfo(struct sc_pkcs15_tokeninfo *tokeninfo)
 	if (!tokeninfo)
 		return;
 
-	free(tokeninfo->label);
-	free(tokeninfo->serial_number);
-	free(tokeninfo->manufacturer_id);
-	free(tokeninfo->last_update.gtime);
-	free(tokeninfo->preferred_language);
-	free(tokeninfo->profile_indication.name);
-	if (tokeninfo->seInfo != NULL) {
-		unsigned i;
-		for (i = 0; i < tokeninfo->num_seInfo; i++)
-			free(tokeninfo->seInfo[i]);
-		free(tokeninfo->seInfo);
-	}
+	sc_pkcs15_clear_tokeninfo(tokeninfo);
 	free(tokeninfo);
 }
-
 
 void
 sc_pkcs15_free_app(struct sc_pkcs15_card *p15card)
@@ -1152,6 +1172,7 @@ sc_pkcs15_bind_internal(struct sc_pkcs15_card *p15card, struct sc_aid *aid)
 		goto end;
 	}
 
+	sc_pkcs15_clear_tokeninfo(p15card->tokeninfo);
 	*(p15card->tokeninfo) = tokeninfo;
 
 	if (!p15card->tokeninfo->serial_number && 0 == card->serialnr.len) {

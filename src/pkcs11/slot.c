@@ -163,6 +163,24 @@ CK_RV create_slot(sc_reader_t *reader)
 	return CKR_OK;
 }
 
+void sc_pkcs11_card_free(struct sc_pkcs11_card *p11card)
+{
+	if (p11card) {
+		size_t i;
+		if (p11card->framework && p11card->framework->unbind)
+			p11card->framework->unbind(p11card);
+		sc_disconnect_card(p11card->card);
+		for (i=0; i < p11card->nmechanisms; ++i) {
+			if (p11card->mechanisms[i]->free_mech_data) {
+				p11card->mechanisms[i]->free_mech_data(p11card->mechanisms[i]->mech_data);
+			}
+			free(p11card->mechanisms[i]);
+		}
+		free(p11card->mechanisms);
+		free(p11card);
+	}
+}
+
 CK_RV card_removed(sc_reader_t * reader)
 {
 	unsigned int i;
@@ -181,18 +199,7 @@ CK_RV card_removed(sc_reader_t * reader)
 		}
 	}
 
-	if (p11card) {
-		p11card->framework->unbind(p11card);
-		sc_disconnect_card(p11card->card);
-		for (i=0; i < p11card->nmechanisms; ++i) {
-			if (p11card->mechanisms[i]->free_mech_data) {
-				p11card->mechanisms[i]->free_mech_data(p11card->mechanisms[i]->mech_data);
-			}
-			free(p11card->mechanisms[i]);
-		}
-		free(p11card->mechanisms);
-		free(p11card);
-	}
+	sc_pkcs11_card_free(p11card);
 
 	return CKR_OK;
 }
@@ -331,6 +338,8 @@ again:
 				       reader->name, rv);
 				goto fail;
 			}
+			/* p11card is now bound to some slot */
+			free_p11card = 0;
 		}
 
 		/* Now bind the rest of applications that are not 'generic' */
@@ -357,19 +366,17 @@ again:
 				       reader->name, app_name, rv);
 				goto fail;
 			}
+			/* p11card is now bound to some slot */
+			free_p11card = 0;
 		}
 	}
 
 	sc_log(context, "%s: Detection ended", reader->name);
-	return CKR_OK;
+	rv = CKR_OK;
 
 fail:
 	if (free_p11card) {
-		if (p11card->framework)
-			p11card->framework->unbind(p11card);
-		if (p11card->card != NULL)
-			sc_disconnect_card(p11card->card);
-		free(p11card);
+		sc_pkcs11_card_free(p11card);
 	}
 
 	return rv;

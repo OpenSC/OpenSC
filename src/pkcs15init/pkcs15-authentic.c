@@ -862,7 +862,7 @@ authentic_emu_update_tokeninfo(struct sc_profile *profile, struct sc_pkcs15_card
 
 		len = file->size > sizeof(buffer) ? sizeof(buffer) : file->size;
 	        rv = sc_update_binary(p15card->card, 0, buffer, len, 0);
-		LOG_TEST_RET(ctx, rv, "Get challenge error");
+		LOG_TEST_RET(ctx, rv, "Update binary error");
 
 		sc_file_free(file);
 	}
