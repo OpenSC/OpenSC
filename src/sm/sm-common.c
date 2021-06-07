@@ -40,6 +40,7 @@
 #error "Need OpenSSL"
 #endif
 
+#include <openssl/evp.h>
 #include <openssl/des.h>
 #include <openssl/sha.h>
 
@@ -49,6 +50,7 @@
 
 #include "sm-common.h"
 
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 /*
  * From crypto/des/des_locl.h of OpenSSL .
  */
@@ -120,18 +122,34 @@ DES_3cbc_encrypt(DES_cblock *input, DES_cblock *output, long length,
 	}
 	memcpy(*iv,icv_out,sizeof(DES_cblock));
 }
+#else
+#include <openssl/provider.h>
+
+/* The single-DES algorithm is not available in the default provider anymore
+ * so we need to load the legacy provider. This is not done on the application
+ * start, but only as needed */
+OSSL_PROVIDER *legacy_provider = NULL;
+#endif
 
 
 DES_LONG
 DES_cbc_cksum_3des_emv96(const unsigned char *in, DES_cblock *output,
-			   long length, DES_key_schedule *schedule, DES_key_schedule *schedule2,
+			   long length, unsigned char *key,
 			   const_DES_cblock *ivec)
 {
-	register DES_LONG tout0,tout1,tin0,tin1;
 	register long l=length;
-	DES_LONG tin[2];
 	unsigned char *out = &(*output)[0];
 	const unsigned char *iv = &(*ivec)[0];
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+	register DES_LONG tout0,tout1,tin0,tin1;
+	DES_LONG tin[2];
+	DES_cblock kk, k2;
+	DES_key_schedule ks,ks2;
+
+	memcpy(&kk, key, 8);
+	memcpy(&k2, key + 8, 8);
+	DES_set_key_unchecked(&kk,&ks);
+	DES_set_key_unchecked(&k2,&ks2);
 
 	c2l(iv,tout0);
 	c2l(iv,tout1);
@@ -147,7 +165,7 @@ DES_cbc_cksum_3des_emv96(const unsigned char *in, DES_cblock *output,
 
 		tin0^=tout0; tin[0]=tin0;
 		tin1^=tout1; tin[1]=tin1;
-		DES_encrypt1((DES_LONG *)tin,schedule, DES_ENCRYPT);
+		DES_encrypt1((DES_LONG *)tin, &ks, DES_ENCRYPT);
 		tout0=tin[0];
 		tout1=tin[1];
 	}
@@ -161,9 +179,8 @@ DES_cbc_cksum_3des_emv96(const unsigned char *in, DES_cblock *output,
 
 	tin0^=tout0; tin[0]=tin0;
 	tin1^=tout1; tin[1]=tin1;
-	DES_encrypt3((DES_LONG *)tin,schedule,schedule2,schedule);
+	DES_encrypt3((DES_LONG *)tin, &ks, &ks2, &ks);
 	tout1=tin[1];
-
 	if (out != NULL)
 		{
 		l2c(tout0,out);
@@ -179,22 +196,87 @@ DES_cbc_cksum_3des_emv96(const unsigned char *in, DES_cblock *output,
 		  | ((tout1 << 8L)  & 0x00FF0000)
 		  | ((tout1 << 24L) & 0xFF000000);
 	return(tout1);
+#else
+	EVP_CIPHER_CTX *cctx = NULL;
+	unsigned char outv[8], tmpout[4];
+	int tmplen;
+
+	/* Prepare IV */
+	memcpy(outv, iv, sizeof outv);
+
+	cctx = EVP_CIPHER_CTX_new();
+	if (l > 8) {
+		if (legacy_provider == NULL) {
+			 legacy_provider = OSSL_PROVIDER_load(NULL, "legacy");
+		}
+		if (!EVP_EncryptInit_ex2(cctx, EVP_des_cbc(), key, iv, NULL)) {
+			EVP_CIPHER_CTX_free(cctx);
+			return SC_ERROR_INTERNAL;
+		}
+		/* Disable padding, otherwise it will fail to decrypt non-padded inputs */
+		EVP_CIPHER_CTX_set_padding(cctx, 0);
+		for (; l > 8; l -= 8, in += 8) {
+			if (!EVP_EncryptUpdate(cctx, outv, &tmplen, in, 8)) {
+				EVP_CIPHER_CTX_free(cctx);
+				return SC_ERROR_INTERNAL;
+			}
+		}
+		if (!EVP_EncryptFinal_ex(cctx, outv + tmplen, &tmplen)) {
+			EVP_CIPHER_CTX_free(cctx);
+			return SC_ERROR_INTERNAL;
+		}
+	}
+
+	/* We need to return first 4 bytes from here */
+	memcpy(tmpout, outv, 4);
+	if (!EVP_EncryptInit_ex2(cctx, EVP_des_ede_cbc(), key, outv, NULL)) {
+		EVP_CIPHER_CTX_free(cctx);
+		return SC_ERROR_INTERNAL;
+	}
+	/* Disable padding, otherwise it will fail to decrypt non-padded inputs */
+	EVP_CIPHER_CTX_set_padding(cctx, 0);
+	if (!EVP_EncryptUpdate(cctx, outv, &tmplen, in, l)) {
+		EVP_CIPHER_CTX_free(cctx);
+		return SC_ERROR_INTERNAL;
+	}
+	if (!EVP_EncryptFinal_ex(cctx, outv + tmplen, &tmplen)) {
+		EVP_CIPHER_CTX_free(cctx);
+		return SC_ERROR_INTERNAL;
+	}
+	if (out != NULL) {
+		memcpy(out, tmpout, 4);
+		memcpy(out+4, outv+4, 4);
+	}
+	EVP_CIPHER_CTX_free(cctx);
+	return ((outv[7] << 0L)  & 0x000000FF) |
+	       ((outv[6] << 8L)  & 0x0000FF00) |
+	       ((outv[5] << 16L) & 0x00FF0000) |
+	       ((outv[4] << 24L) & 0xFF000000);
+#endif
 }
 
 
 DES_LONG
 DES_cbc_cksum_3des(const unsigned char *in, DES_cblock *output,
-		       long length, DES_key_schedule *schedule, DES_key_schedule *schedule2,
+		       long length, unsigned char *key,
 		       const_DES_cblock *ivec)
 {
-	register DES_LONG tout0,tout1,tin0,tin1;
 	register long l=length;
-	DES_LONG tin[2];
 	unsigned char *out = &(*output)[0];
 	const unsigned char *iv = &(*ivec)[0];
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+	register DES_LONG tout0,tout1,tin0,tin1;
+	DES_LONG tin[2];
+	DES_cblock kk, k2;
+	DES_key_schedule ks,ks2;
 
-	c2l(iv,tout0);
-	c2l(iv,tout1);
+	memcpy(&kk, key, 8);
+	memcpy(&k2, key + 8, 8);
+	DES_set_key_unchecked(&kk,&ks);
+	DES_set_key_unchecked(&k2,&ks2);
+
+	c2l(iv, tout0);
+	c2l(iv, tout1);
 
 	for (; l>0; l-=8)
 		{
@@ -208,7 +290,7 @@ DES_cbc_cksum_3des(const unsigned char *in, DES_cblock *output,
 
 		tin0^=tout0; tin[0]=tin0;
 		tin1^=tout1; tin[1]=tin1;
-		DES_encrypt3((DES_LONG *)tin,schedule,schedule2,schedule);
+		DES_encrypt3((DES_LONG *)tin, &ks, &ks2, &ks);
 		/* fix 15/10/91 eay - thanks to keithr@sco.COM */
 		tout0=tin[0];
 		tout1=tin[1];
@@ -228,6 +310,40 @@ DES_cbc_cksum_3des(const unsigned char *in, DES_cblock *output,
 	      | ((tout1 << 8L)  & 0x00FF0000)
 	      | ((tout1 << 24L) & 0xFF000000);
 	return(tout1);
+#else
+	EVP_CIPHER_CTX *cctx = NULL;
+	unsigned char outv[8];
+	int tmplen;
+
+	/* Prepare IV */
+	memcpy(outv, iv, sizeof outv);
+
+	cctx = EVP_CIPHER_CTX_new();
+	if (!EVP_EncryptInit_ex2(cctx, EVP_des_ede_cbc(), key, iv, NULL)) {
+		EVP_CIPHER_CTX_free(cctx);
+		return SC_ERROR_INTERNAL;
+	}
+	/* Disable padding, otherwise it will fail to decrypt non-padded inputs */
+	EVP_CIPHER_CTX_set_padding(cctx, 0);
+	for (; l > 0; l -= 8, in += 8) {
+		if (!EVP_EncryptUpdate(cctx, outv, &tmplen, in, 8)) {
+			EVP_CIPHER_CTX_free(cctx);
+			return SC_ERROR_INTERNAL;
+		}
+	}
+	if (!EVP_EncryptFinal_ex(cctx, outv + tmplen, &tmplen)) {
+		EVP_CIPHER_CTX_free(cctx);
+		return SC_ERROR_INTERNAL;
+	}
+	if (out != NULL) {
+		memcpy(out, outv, sizeof outv);
+	}
+	EVP_CIPHER_CTX_free(cctx);
+	return ((outv[7] << 0L)  & 0x000000FF) |
+	       ((outv[6] << 8L)  & 0x0000FF00) |
+	       ((outv[5] << 16L) & 0x00FF0000) |
+	       ((outv[4] << 24L) & 0xFF000000);
+#endif
 }
 
 
@@ -235,9 +351,14 @@ int
 sm_encrypt_des_ecb3(unsigned char *key, unsigned char *data, int data_len,
 		unsigned char **out, int *out_len)
 {
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	int ii;
 	DES_cblock kk,k2;
 	DES_key_schedule ks,ks2;
+#else
+	EVP_CIPHER_CTX *cctx = NULL;
+	int tmplen;
+#endif
 
 
 	if (!out || !out_len)
@@ -251,6 +372,7 @@ sm_encrypt_des_ecb3(unsigned char *key, unsigned char *data, int data_len,
 	if (!(*out))
 		return -1;
 
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	memcpy(&kk, key, 8);
 	memcpy(&k2, key + 8, 8);
 
@@ -260,6 +382,27 @@ sm_encrypt_des_ecb3(unsigned char *key, unsigned char *data, int data_len,
 	for (ii=0; ii<data_len; ii+=8)
 		DES_ecb2_encrypt( (DES_cblock *)(data + ii),
 				(DES_cblock *)(*out + ii), &ks, &ks2, DES_ENCRYPT);
+#else
+	cctx = EVP_CIPHER_CTX_new();
+	if (!EVP_EncryptInit_ex2(cctx, EVP_des_ede_ecb(), key, NULL, NULL)) {
+		EVP_CIPHER_CTX_free(cctx);
+		return SC_ERROR_INTERNAL;
+	}
+	/* Disable padding, otherwise it will fail to decrypt non-padded inputs */
+	EVP_CIPHER_CTX_set_padding(cctx, 0);
+	if (!EVP_EncryptUpdate(cctx, *out, &tmplen, data, data_len)) {
+		EVP_CIPHER_CTX_free(cctx);
+		return SC_ERROR_INTERNAL;
+	}
+	*out_len = tmplen;
+
+	if (!EVP_EncryptFinal_ex(cctx, *out + *out_len, &tmplen)) {
+		EVP_CIPHER_CTX_free(cctx);
+		return SC_ERROR_INTERNAL;
+	}
+	*out_len += tmplen;
+	EVP_CIPHER_CTX_free(cctx);
+#endif
 
 	return 0;
 }
@@ -270,10 +413,16 @@ sm_decrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
 		unsigned char *data, size_t data_len,
 		unsigned char **out, size_t *out_len)
 {
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	DES_cblock kk,k2;
 	DES_key_schedule ks,ks2;
 	DES_cblock icv={0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
 	size_t st;
+#else
+	unsigned char icv[] = {0x00 ,0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+	EVP_CIPHER_CTX *cctx = NULL;
+	int tmplen;
+#endif
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_SM);
 	if (!out || !out_len)
@@ -286,6 +435,7 @@ sm_decrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
 	if (!(*out))
 		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "SM decrypt_des_cbc3: allocation error");
 
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	memcpy(&kk, key, 8);
 	memcpy(&k2, key + 8, 8);
 
@@ -295,21 +445,48 @@ sm_decrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
 	for (st=0; st<data_len; st+=8)
 		DES_3cbc_encrypt((DES_cblock *)(data + st),
 				(DES_cblock *)(*out + st), 8, &ks, &ks2, &icv, DES_DECRYPT);
+#else
+	cctx = EVP_CIPHER_CTX_new();
+	if (!EVP_DecryptInit_ex2(cctx, EVP_des_ede_cbc(), key, icv, NULL)) {
+		EVP_CIPHER_CTX_free(cctx);
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_SM, SC_ERROR_INTERNAL);
+	}
+	/* Disable padding, otherwise it will fail to decrypt non-padded inputs */
+	EVP_CIPHER_CTX_set_padding(cctx, 0);
+	if (!EVP_DecryptUpdate(cctx, *out, &tmplen, data, data_len)) {
+		EVP_CIPHER_CTX_free(cctx);
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_SM, SC_ERROR_INTERNAL);
+	}
+	*out_len = tmplen;
 
+	if (!EVP_DecryptFinal_ex(cctx, *out + *out_len, &tmplen)) {
+		EVP_CIPHER_CTX_free(cctx);
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_SM, SC_ERROR_INTERNAL);
+	}
+	*out_len += tmplen;
+	EVP_CIPHER_CTX_free(cctx);
+#endif
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_SM, SC_SUCCESS);
 }
 
-
+/* This function expects the data to be a multilpe of DES block size */
 int
 sm_encrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
 		const unsigned char *in, size_t in_len,
 		unsigned char **out, size_t *out_len, int not_force_pad)
 {
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	DES_cblock kk,k2;
 	DES_key_schedule ks,ks2;
 	DES_cblock icv={0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+	size_t st;
+#else
+	unsigned char icv[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+	EVP_CIPHER_CTX *cctx = NULL;
+	int tmplen;
+#endif
 	unsigned char *data;
-	size_t data_len, st;
+	size_t data_len;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_SM);
 	sc_debug(ctx, SC_LOG_DEBUG_SM,
@@ -345,6 +522,7 @@ sm_encrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
 		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "SM encrypt_des_cbc3: failure");
 	}
 
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	memcpy(&kk, key, 8);
 	memcpy(&k2, key + 8, 8);
 
@@ -353,6 +531,27 @@ sm_encrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
 
 	for (st=0; st<data_len; st+=8)
 		DES_3cbc_encrypt((DES_cblock *)(data + st), (DES_cblock *)(*out + st), 8, &ks, &ks2, &icv, DES_ENCRYPT);
+#else
+	cctx = EVP_CIPHER_CTX_new();
+	if (!EVP_EncryptInit_ex2(cctx, EVP_des_ede_cbc(), key, icv, NULL)) {
+		EVP_CIPHER_CTX_free(cctx);
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_SM, SC_ERROR_INTERNAL);
+	}
+	/* Disable padding, otherwise it will fail to decrypt non-padded inputs */
+	EVP_CIPHER_CTX_set_padding(cctx, 0);
+	if (!EVP_EncryptUpdate(cctx, *out, &tmplen, data, data_len)) {
+		EVP_CIPHER_CTX_free(cctx);
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_SM, SC_ERROR_INTERNAL);
+	}
+	*out_len = tmplen;
+
+	if (!EVP_EncryptFinal_ex(cctx, *out + *out_len, &tmplen)) {
+		EVP_CIPHER_CTX_free(cctx);
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_SM, SC_ERROR_INTERNAL);
+	}
+	*out_len += tmplen;
+	EVP_CIPHER_CTX_free(cctx);
+#endif
 
 	free(data);
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_SM, SC_SUCCESS);

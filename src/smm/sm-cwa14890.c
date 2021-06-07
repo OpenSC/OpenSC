@@ -49,8 +49,6 @@ int
 sm_cwa_get_mac(struct sc_context *ctx, unsigned char *key, DES_cblock *icv,
 			unsigned char *in, int in_len, DES_cblock *out, int force_padding)
 {
-	DES_cblock kk, k2;
-	DES_key_schedule ks,ks2;
 	unsigned char padding[8] = {0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 	unsigned char *buf;
 
@@ -73,11 +71,7 @@ sm_cwa_get_mac(struct sc_context *ctx, unsigned char *key, DES_cblock *icv,
 	sc_debug(ctx, SC_LOG_DEBUG_SM, "sm_cwa_get_mac() data to MAC(%i) %s", in_len, sc_dump_hex(buf, in_len));
 	sc_debug(ctx, SC_LOG_DEBUG_SM, "sm_cwa_get_mac() ICV %s", sc_dump_hex((unsigned char *)icv, 8));
 
-	memcpy(&kk, key, 8);
-	memcpy(&k2, key + 8, 8);
-	DES_set_key_unchecked(&kk,&ks);
-	DES_set_key_unchecked(&k2,&ks2);
-	DES_cbc_cksum_3des_emv96(buf, out, in_len ,&ks, &ks2, icv);
+	DES_cbc_cksum_3des_emv96(buf, out, in_len, key, icv);
 
 	free(buf);
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);

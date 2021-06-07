@@ -129,8 +129,6 @@ sm_gp_get_cryptogram(unsigned char *session_key,
 		unsigned char *out, int out_len)
 {
 	unsigned char block[24];
-	DES_cblock kk,k2;
-	DES_key_schedule ks,ks2;
 	DES_cblock cksum={0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
 
 	if (out_len!=8)
@@ -140,11 +138,7 @@ sm_gp_get_cryptogram(unsigned char *session_key,
 	memcpy(block + 8, right, 8);
 	memcpy(block + 16, "\x80\0\0\0\0\0\0\0",8);
 
-	memcpy(&kk, session_key, 8);
-	memcpy(&k2, session_key + 8, 8);
-	DES_set_key_unchecked(&kk,&ks);
-	DES_set_key_unchecked(&k2,&ks2);
-	DES_cbc_cksum_3des(block,&cksum, sizeof(block),&ks,&ks2,&cksum);
+	DES_cbc_cksum_3des(block,&cksum, sizeof(block), session_key, &cksum);
 
 	memcpy(out, cksum, 8);
 
@@ -158,8 +152,6 @@ sm_gp_get_mac(unsigned char *key, DES_cblock *icv,
 {
 	int len;
 	unsigned char *block;
-	DES_cblock kk, k2;
-	DES_key_schedule ks,ks2;
 
 	block = malloc(in_len + 8);
 	if (!block)
@@ -170,12 +162,7 @@ sm_gp_get_mac(unsigned char *key, DES_cblock *icv,
 	len = in_len + 8;
 	len -= (len%8);
 
-	memcpy(&kk, key, 8);
-	memcpy(&k2, key + 8, 8);
-	DES_set_key_unchecked(&kk,&ks);
-	DES_set_key_unchecked(&k2,&ks2);
-
-	DES_cbc_cksum_3des(block, out, len ,&ks, &ks2, icv);
+	DES_cbc_cksum_3des(block, out, len, key, icv);
 
 	free(block);
 	return 0;

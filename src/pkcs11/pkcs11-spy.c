@@ -176,7 +176,7 @@ allocate_function_list(int v3)
 /* The compatibility interfaces that can be returned from Interface functions
  * if the V3 API is used, but the proxied module does not support V3 API */
 #define NUM_INTERFACES 1
-ck_interface compat_interfaces[NUM_INTERFACES] = {
+CK_INTERFACE compat_interfaces[NUM_INTERFACES] = {
 	{"PKCS 11", NULL, 0}
 };
 

@@ -519,8 +519,8 @@ static int cwa_internal_auth(sc_card_t * card, u8 * sig, size_t sig_len, u8 * da
  * @return SC_SUCCESS if ok; else errorcode
  */
 static int cwa_prepare_external_auth(sc_card_t * card,
-				     RSA * icc_pubkey,
-				     RSA * ifd_privkey,
+				     const RSA * icc_pubkey,
+				     const RSA * ifd_privkey,
 				     u8 * sig,
 				     size_t sig_len)
 {
@@ -594,7 +594,7 @@ static int cwa_prepare_external_auth(sc_card_t * card,
 	buf3[127] = 0xBC;	/* iso padding */
 
 	/* encrypt with ifd private key */
-	len2 = RSA_private_decrypt(128, buf3, buf2, ifd_privkey, RSA_NO_PADDING);
+	len2 = RSA_private_decrypt(128, buf3, buf2, (RSA *)ifd_privkey, RSA_NO_PADDING);
 	if (len2 < 0) {
 		msg = "Prepare external auth: ifd_privk encrypt failed";
 		res = SC_ERROR_SM_ENCRYPT_FAILED;
@@ -630,7 +630,7 @@ static int cwa_prepare_external_auth(sc_card_t * card,
 	}
 
 	/* re-encrypt result with icc public key */
-	len1 = RSA_public_encrypt(len3, buf3, buf1, icc_pubkey, RSA_NO_PADDING);
+	len1 = RSA_public_encrypt(len3, buf3, buf1, (RSA *)icc_pubkey, RSA_NO_PADDING);
 	if (len1 <= 0 || (size_t) len1 != sig_len) {
 		msg = "Prepare external auth: icc_pubk encrypt failed";
 		res = SC_ERROR_SM_ENCRYPT_FAILED;
@@ -842,8 +842,8 @@ static int cwa_compare_signature(u8 * data, size_t dlen, u8 * ifd_data)
  * @return SC_SUCCESS if ok; else error code
  */
 static int cwa_verify_internal_auth(sc_card_t * card,
-				    RSA * icc_pubkey,
-				    RSA * ifd_privkey,
+				    const RSA * icc_pubkey,
+				    const RSA * ifd_privkey,
 				    u8 * ifdbuf,
 				    size_t ifdlen,
 				    u8 * sig,
@@ -901,7 +901,7 @@ static int cwa_verify_internal_auth(sc_card_t * card,
 	 */
 
 	/* decrypt data with our ifd priv key */
-	len1 = RSA_private_decrypt(sig_len, sig, buf1, ifd_privkey, RSA_NO_PADDING);
+	len1 = RSA_private_decrypt(sig_len, sig, buf1, (RSA *)ifd_privkey, RSA_NO_PADDING);
 	if (len1 <= 0) {
 		msg = "Verify Signature: decrypt with ifd privk failed";
 		res = SC_ERROR_SM_ENCRYPT_FAILED;
@@ -911,7 +911,7 @@ static int cwa_verify_internal_auth(sc_card_t * card,
 	/* OK: now we have SIGMIN in buf1 */
 	/* check if SIGMIN data matches SIG or N.ICC-SIG */
 	/* evaluate DS[SK.ICC.AUTH](SIG) trying to decrypt with icc pubk */
-	len3 = RSA_public_encrypt(len1, buf1, buf3, icc_pubkey, RSA_NO_PADDING);
+	len3 = RSA_public_encrypt(len1, buf1, buf3, (RSA *) icc_pubkey, RSA_NO_PADDING);
 	if (len3 <= 0)
 		goto verify_nicc_sig;	/* evaluate N.ICC-SIG and retry */
 	res = cwa_compare_signature(buf3, len3, ifdbuf);
@@ -945,7 +945,7 @@ static int cwa_verify_internal_auth(sc_card_t * card,
 	}
 	/* ok: check again with new data */
 	/* evaluate DS[SK.ICC.AUTH](I.ICC-SIG) trying to decrypt with icc pubk */
-	len3 = RSA_public_encrypt(len2, buf2, buf3, icc_pubkey, RSA_NO_PADDING);
+	len3 = RSA_public_encrypt(len2, buf2, buf3, (RSA *)icc_pubkey, RSA_NO_PADDING);
 	if (len3 <= 0) {
 		msg = "Verify Signature: cannot get valid SIG data";
 		res = SC_ERROR_INVALID_DATA;

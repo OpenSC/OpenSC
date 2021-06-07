@@ -63,9 +63,9 @@ extern "C" {
    version of this file, please consider deleting the revision macro
    (you may use a macro with a different name to keep track of your
    versions).  */
-#define CRYPTOKI_VERSION_MAJOR		2
-#define CRYPTOKI_VERSION_MINOR		20
-#define CRYPTOKI_VERSION_REVISION	6
+#define CRYPTOKI_VERSION_MAJOR		3
+#define CRYPTOKI_VERSION_MINOR		0
+#define CRYPTOKI_VERSION_REVISION	0
 
 
 /* Compatibility interface is default, unless CRYPTOKI_GNU is
@@ -1785,6 +1785,8 @@ typedef struct ck_c_initialize_args *CK_C_INITIALIZE_ARGS_PTR;
 
 #undef ck_rv_t
 #undef ck_notify_t
+
+#undef ck_interface
 
 #undef ck_function_list
 #undef ck_function_list_3_0
