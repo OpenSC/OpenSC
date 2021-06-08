@@ -2768,6 +2768,7 @@ static int piv_find_aid(sc_card_t * card)
 					if ((pixlen >= 6 && memcmp(pix, piv_aids[i].value + 5, piv_aids[i].len_long - 5 ) == 0)
 							|| ((pixlen >=  piv_aids[i].len_short && memcmp(pix, piv_aids[i].value,
 								piv_aids[i].len_short) == 0))) {
+						free(priv->aid_der.value);  /* free previous value if any */
 						if ((priv->aid_der.value = malloc(resplen)) == NULL) {
 							LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 						}
