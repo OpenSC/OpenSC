@@ -3,7 +3,7 @@
  * card-default.c: Support for cards with no driver
  *
  * Copyright (C) 2001, 2002  Juha Yrjölä <juha.yrjola@iki.fi>
- * Copyright (C) 2005-2020  Douglas E. Engert <deengert@gmail.com>
+ * Copyright (C) 2005-2021  Douglas E. Engert <deengert@gmail.com>
  * Copyright (C) 2006, Identity Alliance, Thomas Harning <thomas.harning@identityalliance.com>
  * Copyright (C) 2007, EMC, Russell Larner <rlarner@rsa.com>
  *
@@ -210,6 +210,9 @@ enum {
 		EVP_MD *(*kdf_md)(void);
 		const EVP_CIPHER *(*cipher_cbc)(void);
 		const EVP_CIPHER *(*cipher_ecb)(void);
+		char *cipher_cbc_name;
+		char *cipher_ecb_name;
+		char *curve_group; /* curve name TODO or is this just p-256 or p-384?*/
 	} cipher_suite_t;
 
 // clang-fromat off
@@ -221,7 +224,9 @@ static cipher_suite_t css[PIV_CSS_SIZE] = {
 		4, 128/8, SHA256_DIGEST_LENGTH,
 		(EVP_MD *(*)(void)) EVP_sha256,
 		(const EVP_CIPHER *(*)(void)) EVP_aes_128_cbc,
-		(const EVP_CIPHER *(*)(void)) EVP_aes_128_ecb},
+		(const EVP_CIPHER *(*)(void)) EVP_aes_128_ecb,
+		"aes-128-cbc", "aes-128-ecb",
+		"prime256v1"},
 
 		{PIV_CS_CS7, 384, NID_secp384r1, {{1, 3, 132, 0, 34, -1}},
 		PIV_CS_CS7, 97, 16, 48, 69,
@@ -229,7 +234,9 @@ static cipher_suite_t css[PIV_CSS_SIZE] = {
 		4, 256/8, SHA384_DIGEST_LENGTH,
 		(EVP_MD *(*)(void)) EVP_sha384,
 		(const EVP_CIPHER *(*)(void)) EVP_aes_256_cbc,
-		(const EVP_CIPHER *(*)(void)) EVP_aes_256_ecb}
+		(const EVP_CIPHER *(*)(void)) EVP_aes_256_ecb,
+		"aes-256-cbc", "aes-256-ecb",
+		"secp384r1"}
 	};
 // clang-format on
 
@@ -851,15 +858,35 @@ static int piv_encode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu
 
 	u8 *p;
 	EVP_CIPHER_CTX *ed_ctx = NULL;
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	CMAC_CTX *cmac_ctx  = NULL;
+#else
+	EVP_MAC_CTX *cmac_ctx = NULL;
+	EVP_MAC *mac = NULL;
+	OSSL_PARAM cmac_params[2];
+	size_t cmac_params_n;
+#endif
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	cmac_ctx = CMAC_CTX_new();
 	if (cmac_ctx == NULL) {
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
+#else
+	mac = EVP_MAC_fetch(NULL, "cmac", NULL);
+	cmac_params_n = 0;
+	cmac_params[cmac_params_n++] = OSSL_PARAM_construct_utf8_string("cipher", cs->cipher_cbc_name, 0);
+	cmac_params[cmac_params_n] = OSSL_PARAM_construct_end();
+	if (mac == NULL
+			|| (cmac_ctx = EVP_MAC_CTX_new(mac)) == NULL) {
+		piv_log_openssl(card->ctx);
+		r = SC_ERROR_INTERNAL;
+		goto err;
+	}
+#endif
 
 	ed_ctx = EVP_CIPHER_CTX_new();
 	if (ed_ctx == NULL) {
@@ -947,6 +974,7 @@ static int piv_encode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu
 
 	memcpy(priv->sm_session.C_MCV_last, priv->sm_session.C_MCV, MCVlen); /* save is case fails */
 
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	if (CMAC_Init(cmac_ctx, priv->sm_session.SKmac, priv->sm_session.aes_size, (*cs->cipher_cbc)(), NULL) != 1
 			|| CMAC_Update(cmac_ctx, priv->sm_session.C_MCV, MCVlen) != 1
 			|| CMAC_Update(cmac_ctx, header, sizeof(header)) != 1
@@ -955,7 +983,19 @@ static int piv_encode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
-	
+#else
+	if(!EVP_MAC_init(cmac_ctx, (const unsigned char *)priv->sm_session.SKmac,
+				priv->sm_session.aes_size, cmac_params)
+			|| !EVP_MAC_update(cmac_ctx, priv->sm_session.C_MCV, MCVlen)
+			|| !EVP_MAC_update(cmac_ctx, header, sizeof(header))
+			|| !EVP_MAC_update(cmac_ctx, sbuf,  macdatalen)
+			|| !EVP_MAC_final(cmac_ctx, priv->sm_session.C_MCV, &C_MCVlen, MCVlen)) {
+		piv_log_openssl(card->ctx);
+		r = SC_ERROR_INTERNAL;
+		goto err;
+	}
+#endif
+
 	*p++ = 0x8E;
 	*p++ = 0x08;
 	memcpy(p, priv->sm_session.C_MCV, 8);
@@ -985,8 +1025,15 @@ static int piv_encode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu
 	
 	r = SC_SUCCESS;
 err:
+
 	free(sbuf);
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	CMAC_CTX_free(cmac_ctx);
+#else
+	EVP_MAC_CTX_free(cmac_ctx);
+	EVP_MAC_free(mac);
+#endif
+
 	EVP_CIPHER_CTX_free(ed_ctx);
 
 
@@ -1081,7 +1128,14 @@ static int piv_decode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu
 	size_t R_MCVlen = 0;
 
         EVP_CIPHER_CTX *ed_ctx = NULL;
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
         CMAC_CTX *cmac_ctx  = NULL;
+#else
+	EVP_MAC *mac = NULL;
+	EVP_MAC_CTX *cmac_ctx = NULL;
+	OSSL_PARAM cmac_params[2];
+	size_t cmac_params_n = 0;
+#endif
 
 	struct sc_asn1_entry asn1_sm_response[C_ASN1_PIV_SM_RESPONSE_SIZE];
 	
@@ -1124,15 +1178,28 @@ static int piv_decode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu
 		goto err;
 	}
 
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	cmac_ctx = CMAC_CTX_new();
 	if (cmac_ctx == NULL) {
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
+#else
+	mac = EVP_MAC_fetch(NULL, "cmac", NULL);
+	cmac_params[cmac_params_n++] = OSSL_PARAM_construct_utf8_string("cipher", cs->cipher_cbc_name, 0);
+	cmac_params[cmac_params_n] = OSSL_PARAM_construct_end();
+	if (mac == NULL
+			|| (cmac_ctx = EVP_MAC_CTX_new(mac)) == NULL) {
+		piv_log_openssl(card->ctx);
+		r = SC_ERROR_INTERNAL;
+		goto err;
+	}
+#endif
 
 	/*  MCV is first, then BER TLV Encoded Encrypted PIV Data and Status */
 	macdatalen = status.value + status.len - sm_apdu->resp;
 
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	if (CMAC_Init(cmac_ctx, priv->sm_session.SKrmac, priv->sm_session.aes_size, (*cs->cipher_cbc)(), NULL) != 1
 			|| CMAC_Update(cmac_ctx, priv->sm_session.R_MCV, MCVlen) != 1
 			|| CMAC_Update(cmac_ctx, sm_apdu->resp, macdatalen) != 1
@@ -1140,6 +1207,17 @@ static int piv_decode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu
 		r = SC_ERROR_SM_AUTHENTICATION_FAILED;
 		goto err;
 	}
+#else
+	if(!EVP_MAC_init(cmac_ctx, (const unsigned char *)priv->sm_session.SKrmac,
+				priv->sm_session.aes_size, cmac_params)
+			|| !EVP_MAC_update(cmac_ctx, priv->sm_session.R_MCV, MCVlen)
+			|| !EVP_MAC_update(cmac_ctx, sm_apdu->resp, macdatalen)
+			|| !EVP_MAC_final(cmac_ctx, priv->sm_session.R_MCV, &R_MCVlen, MCVlen)) {
+		piv_log_openssl(card->ctx);
+		r = SC_ERROR_INTERNAL;
+		goto err;
+	}
+#endif
 
 	if (memcmp(priv->sm_session.R_MCV, rmac8.value, 8) != 0) {
 		sc_log(card->ctx, "SM 8 bytes of R-MAC do not match received R-MAC");
@@ -1255,7 +1333,14 @@ err:
 		plain->sw1 = 0x69;
 		plain->sw2 = 0x88;
 	}
+
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	CMAC_CTX_free(cmac_ctx);
+#else
+	EVP_MAC_CTX_free(cmac_ctx);
+	EVP_MAC_free(mac);
+#endif
+
 	EVP_CIPHER_CTX_free(ed_ctx);
 
 	LOG_FUNC_RETURN(card->ctx, r);
@@ -1752,10 +1837,16 @@ static int piv_sm_verify_certs(struct sc_card *card)
 	size_t rbuflen;
 	X509 *cert = NULL;
 	EVP_PKEY *cert_pkey =  NULL; /* do not free */
+	EVP_PKEY *in_cvc_pkey = NULL;
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	EC_GROUP *in_cvc_group = NULL;
 	EC_POINT *in_cvc_point = NULL;
 	EC_KEY *in_cvc_eckey = NULL;
-	EVP_PKEY *in_cvc_pkey = NULL;
+#else
+	EVP_PKEY_CTX *in_cvc_pkey_ctx = NULL;
+	OSSL_PARAM params[3];
+	size_t params_n;
+#endif
 	
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -1813,6 +1904,7 @@ static int piv_sm_verify_certs(struct sc_card *card)
 			goto err;
 		}
 
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 		if ((in_cvc_group = EC_GROUP_new_by_curve_name(cs->nid)) == NULL
 				|| (in_cvc_pkey = EVP_PKEY_new()) == NULL
 				|| (in_cvc_eckey = EC_KEY_new_by_curve_name(cs->nid)) == NULL
@@ -1826,7 +1918,23 @@ static int piv_sm_verify_certs(struct sc_card *card)
 			r = SC_ERROR_SM_AUTHENTICATION_FAILED;
 			goto err;
 		}
+#else
+		params_n = 0;
+		params[params_n++] = OSSL_PARAM_construct_utf8_string("group", cs->curve_group, 0);
+		params[params_n++] = OSSL_PARAM_construct_octet_string("pub",
+				priv->sm_in_cvc.publicPoint, priv->sm_in_cvc.publicPointlen);
+		params[params_n] = OSSL_PARAM_construct_end();
 
+		if (!(in_cvc_pkey_ctx = EVP_PKEY_CTX_new_from_name(NULL, "EC", NULL))
+				|| !EVP_PKEY_fromdata_init(in_cvc_pkey_ctx)
+				|| !EVP_PKEY_fromdata(in_cvc_pkey_ctx, &in_cvc_pkey, EVP_PKEY_PUBLIC_KEY, params)
+				|| !in_cvc_pkey) {
+			sc_log(card->ctx, "OpenSSL failed to set EC pubkey, during verify");
+			piv_log_openssl(card->ctx);
+			r = SC_ERROR_SM_AUTHENTICATION_FAILED;
+			goto err;
+		}
+#endif
 		r = piv_sm_verify_sig(card, cs->kdf_md(), in_cvc_pkey,
 				priv->sm_cvc.body, priv->sm_cvc.bodylen,
 				priv->sm_cvc.signature,priv->sm_cvc.signaturelen);
@@ -1861,9 +1969,13 @@ static int piv_sm_verify_certs(struct sc_card *card)
 	 */
 err:
 	X509_free(cert);
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	EC_GROUP_free(in_cvc_group);
 	EC_POINT_free(in_cvc_point);
 	EC_KEY_free(in_cvc_eckey);
+#else
+	EVP_PKEY_CTX_free(in_cvc_pkey_ctx);
+#endif
 	EVP_PKEY_free(in_cvc_pkey);
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
@@ -1890,8 +2002,15 @@ static int piv_sm_open(struct sc_card *card)
 	/* ephemeral EC key */
 	EVP_PKEY_CTX *eph_ctx = NULL;
 	EVP_PKEY *eph_pkey = NULL;
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	EC_KEY *eph_eckey = NULL; /* don't free _get0_*/
 	const EC_GROUP *eph_group = NULL; /* don't free _get0_ */
+#else
+	OSSL_PARAM eph_params[5];
+	size_t eph_params_n;
+	size_t Qehxlen = 0;
+	u8 *Qehx = NULL;
+#endif
 	size_t Qehlen = 0;
 	u8 Qeh[2 * PIV_SM_MAX_FIELD_LENGTH/8 + 1]; /*  big enough for 384 04||x||y  if x and y have leading zeros, length may be less */
 	size_t Qeh_OSlen = 0;
@@ -1935,7 +2054,16 @@ static int piv_sm_open(struct sc_card *card)
 	unsigned int hashlen = 0;
 	u8 aeskeys[SHA384_DIGEST_LENGTH * 3] = {0}; /*  4 keys, Hash function is run 2 or 3 times max is 3 * 384/8 see below */
 	EVP_MD_CTX *hash_ctx = NULL;
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	CMAC_CTX *cmac_ctx  = NULL;
+#else
+	EVP_MAC *mac = NULL;
+	EVP_MAC_CTX *cmac_ctx = NULL;
+	OSSL_PARAM cmac_params[2];
+	size_t cmac_params_n = 0;
+	OSSL_PARAM Cicc_params[3];
+	size_t Cicc_params_n = 0;
+#endif
 
 	u8 IDsicc[8]; /* will only use 8 bytes for step H6 */
 
@@ -1961,6 +2089,7 @@ static int piv_sm_open(struct sc_card *card)
 
 	/* Step H2 generate ephemeral EC */
 
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	if ((eph_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_EC, NULL)) == NULL
 			|| EVP_PKEY_keygen_init(eph_ctx) <= 0
 			|| EVP_PKEY_CTX_set_ec_paramgen_curve_nid(eph_ctx, cs->nid) <= 0
@@ -1978,7 +2107,29 @@ static int piv_sm_open(struct sc_card *card)
 		r = SC_ERROR_SM_AUTHENTICATION_FAILED;
 		goto err;
 	}
-	
+#else
+	/* generate Qeh */
+	eph_params_n = 0;
+	eph_params[eph_params_n++] = OSSL_PARAM_construct_utf8_string( "group", cs->curve_group, 0);
+	eph_params[eph_params_n++] = OSSL_PARAM_construct_utf8_string( "point-format","uncompressed", 0);
+	eph_params[eph_params_n] = OSSL_PARAM_construct_end();
+	if (!(eph_ctx = EVP_PKEY_CTX_new_from_name(NULL, "EC", NULL))  /* TODO should be FIPS */
+			|| !EVP_PKEY_keygen_init(eph_ctx)
+			|| !EVP_PKEY_CTX_set_params(eph_ctx, eph_params)
+			|| !EVP_PKEY_generate(eph_ctx, &eph_pkey)
+			|| !(Qehxlen = EVP_PKEY_get1_encoded_public_key(eph_pkey, &Qehx))
+			|| !Qehx
+			|| Qehxlen > cs->Qlen
+			) {
+		sc_log(card->ctx,"OpenSSL failed to create ephemeral EC key");
+		piv_log_openssl(card->ctx);
+		r = SC_ERROR_SM_AUTHENTICATION_FAILED;
+		goto err;
+	}
+	memcpy(Qeh, Qehx, Qehxlen);
+	Qehlen = Qehxlen;
+#endif
+
 	/* For later use, get  Qeh without 04 and full size  X || Y */
 	if (Q2OS(cs->field_length, Qeh, Qehlen, Qeh_OS, &Qeh_OSlen)) {
 		sc_log(card->ctx,"Q2OS for Qeh failed");
@@ -2126,6 +2277,7 @@ static int piv_sm_open(struct sc_card *card)
 	/* TODO check Ciss uses same curve as ours will fail to authenticate if different */
 	/* Step H7 get the cards public key Qsicc into OpenSSL Cicc_eckey */
 
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	if ((Cicc_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_EC, NULL)) == NULL
 			|| (Cicc_group = EC_GROUP_new_by_curve_name(cs->nid)) == NULL
 			|| (Cicc_pkey = EVP_PKEY_new()) == NULL
@@ -2140,6 +2292,23 @@ static int piv_sm_open(struct sc_card *card)
 		r = SC_ERROR_SM_AUTHENTICATION_FAILED;
 		goto err;
 		}
+#else
+	Cicc_params_n = 0;
+	Cicc_params[Cicc_params_n++] = OSSL_PARAM_construct_utf8_string( "group", cs->curve_group, 0);
+	Cicc_params[Cicc_params_n++] = OSSL_PARAM_construct_octet_string("pub",
+			priv->sm_cvc.publicPoint, priv->sm_cvc.publicPointlen);
+	Cicc_params[Cicc_params_n] = OSSL_PARAM_construct_end();
+
+	if (!(Cicc_ctx = EVP_PKEY_CTX_new_from_name(NULL, "EC", NULL))
+			|| !EVP_PKEY_fromdata_init(Cicc_ctx)
+			|| !EVP_PKEY_fromdata(Cicc_ctx, &Cicc_pkey, EVP_PKEY_PUBLIC_KEY, Cicc_params)
+			|| !Cicc_pkey) {
+		sc_log(card->ctx, "OpenSSL failed to set EC pubkey for Cicc");
+		piv_log_openssl(card->ctx);
+		r = SC_ERROR_SM_AUTHENTICATION_FAILED;
+		goto err;
+	}
+#endif
 	
 	/* Qsicc without 04 and expanded x||y */
 	if (Q2OS(cs->field_length, priv->sm_cvc.publicPoint, priv->sm_cvc.publicPointlen, Qsicc_OS, &Qsicc_OSlen)) {
@@ -2291,14 +2460,32 @@ static int piv_sm_open(struct sc_card *card)
 		p += Qeh_OSlen;
 		MacDatalen = p - MacData;
 
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 		if ((cmac_ctx = CMAC_CTX_new()) == NULL
 				|| CMAC_Init(cmac_ctx, priv->sm_session.SKcfrm, cs->aeskeylen, (*cs->cipher_cbc)(), NULL) != 1
 				|| CMAC_Update(cmac_ctx, MacData, MacDatalen) != 1
 				|| CMAC_Final(cmac_ctx, Check_AuthCryptogram, &Check_Alen) != 1) {
-			sc_log(card->ctx,"AES_CMAC failed %d",r);
 			r = SC_ERROR_INTERNAL;
+			sc_log(card->ctx,"AES_CMAC failed %d",r);
 			goto err;
 		}
+#else
+		mac = EVP_MAC_fetch(NULL, "cmac", NULL);
+		cmac_params[cmac_params_n++] = OSSL_PARAM_construct_utf8_string("cipher", cs->cipher_cbc_name, 0);
+
+		cmac_params[cmac_params_n] = OSSL_PARAM_construct_end();
+		if (mac == NULL
+				|| (cmac_ctx = EVP_MAC_CTX_new(mac)) == NULL
+				|| !EVP_MAC_init(cmac_ctx, priv->sm_session.SKcfrm,
+					priv->sm_session.aes_size, cmac_params)
+				|| !EVP_MAC_update( cmac_ctx, MacData, MacDatalen)
+				|| !EVP_MAC_final(cmac_ctx, Check_AuthCryptogram, &Check_Alen, cs->AuthCryptogramlen)) {
+			piv_log_openssl(card->ctx);
+			r = SC_ERROR_INTERNAL;
+			sc_log(card->ctx,"AES_CMAC failed %d",r);
+			goto err;
+		}
+#endif
 
 		rc = memcmp(AuthCryptogram, Check_AuthCryptogram, cs->AuthCryptogramlen);
 		if (rc == 0) {
@@ -2336,9 +2523,11 @@ err:
 	free(kdf_in);
 	free(Z);
 
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	EC_GROUP_free(Cicc_group);
 	EC_POINT_free(Cicc_point);
 	EC_KEY_free(Cicc_eckey);
+#endif
 
 	EVP_PKEY_free(eph_pkey); /* in case not cleared in step H9 */
 	EVP_PKEY_CTX_free(eph_ctx);
@@ -2346,11 +2535,18 @@ err:
 	EVP_PKEY_CTX_free(Cicc_ctx);
 	EVP_PKEY_CTX_free(Z_ctx);
 	EVP_MD_CTX_free(hash_ctx);
+
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	CMAC_CTX_free(cmac_ctx);
+#else
+	EVP_MAC_CTX_free(cmac_ctx);
+	EVP_MAC_free(mac);
+	OPENSSL_free(Qehx);
+#endif
 
 	LOG_FUNC_RETURN(card->ctx, r);
 }
-#endif /* ENABLE+PIV_SM */
+#endif /* ENABLE_PIV_SM */
 
 /* Add the PIV-II operations */
 /* Should use our own keydata, actually should be common to all cards */
