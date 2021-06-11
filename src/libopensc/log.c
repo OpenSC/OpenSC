@@ -48,6 +48,7 @@
 #include "internal.h"
 
 static void sc_do_log_va(sc_context_t *ctx, int level, const char *file, int line, const char *func, int color, const char *format, va_list args);
+static int sc_color_fprintf_va(int colors, struct sc_context *ctx, FILE * stream, const char *format, va_list args);
 
 void sc_do_log(sc_context_t *ctx, int level, const char *file, int line, const char *func, const char *format, ...)
 {
@@ -74,7 +75,6 @@ void sc_do_log_noframe(sc_context_t *ctx, int level, const char *format, va_list
 
 static void sc_do_log_va(sc_context_t *ctx, int level, const char *file, int line, const char *func, int color, const char *format, va_list args)
 {
-	char	buf[4096];
 #ifdef _WIN32
 	SYSTEMTIME st;
 #else
@@ -142,11 +142,7 @@ static void sc_do_log_va(sc_context_t *ctx, int level, const char *file, int lin
 				file, line, func ? func : "");
 	}
 
-	if (vsnprintf(buf, sizeof buf, format, args) >= 0) {
-		sc_color_fprintf(color, ctx, ctx->debug_file, "%s", buf);
-		if (strlen(buf) == 0 || buf[strlen(buf)-1] != '\n')
-			sc_color_fprintf(color, ctx, ctx->debug_file, "\n");
-	}
+	sc_color_fprintf_va(color, ctx, ctx->debug_file, format, args);
 	fflush(ctx->debug_file);
 
 #ifdef _WIN32
@@ -202,7 +198,18 @@ static int is_a_tty(FILE *fp)
 
 int sc_color_fprintf(int colors, struct sc_context *ctx, FILE * stream, const char * format, ...)
 {
+	int r;
 	va_list ap;
+
+	va_start(ap, format);
+	r = sc_color_fprintf_va(colors, ctx, stream, format, ap);
+	va_end(ap);
+
+	return r;
+}
+
+int sc_color_fprintf_va(int colors, struct sc_context *ctx, FILE * stream, const char *format, va_list args)
+{
 	int r;
 #ifdef _WIN32
 	WORD old_attr = 0;
@@ -264,9 +271,7 @@ int sc_color_fprintf(int colors, struct sc_context *ctx, FILE * stream, const ch
 #endif
 	}
 
-	va_start(ap, format);
-	r = vfprintf(stream, format, ap);
-	va_end(ap);
+	r = vfprintf(stream, format, args);
 
 	if (colors && (!ctx || (!(ctx->flags & SC_CTX_FLAG_DISABLE_COLORS)))) {
 #ifdef _WIN32
