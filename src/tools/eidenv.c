@@ -248,6 +248,7 @@ static void exportprint(const char *key, const char *val)
 			strcat(cp, "=");
 			strcat(cp, val);
 			putenv(cp);
+			free(cp);
 		}
 	} else
 		printf("%s: %s\n", key, val);
