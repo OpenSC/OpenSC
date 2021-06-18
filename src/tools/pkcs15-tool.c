@@ -987,13 +987,13 @@ static int read_ssh_key(void)
 	}
 
 	if (r == SC_ERROR_OBJECT_NOT_FOUND) {
-		if (outf != stdout)
+		if (opt_outfile != NULL)
 			fclose(outf);
 		fprintf(stderr, "Public key with ID '%s' not found.\n", opt_pubkey);
 		return 2;
 	}
 	if (r < 0) {
-		if (outf != stdout)
+		if (opt_outfile != NULL)
 			fclose(outf);
 		fprintf(stderr, "Public key enumeration failed: %s\n", sc_strerror(r));
 		return 1;
@@ -1242,7 +1242,7 @@ static int read_ssh_key(void)
 		print_ssh_key(outf, "ssh-dss", obj, buf, len);
 	}
 
-	if (outf != stdout)
+	if (opt_outfile != NULL)
 		fclose(outf);
 	if (cert)
 		sc_pkcs15_free_certificate(cert);
@@ -1252,7 +1252,7 @@ static int read_ssh_key(void)
 fail:
 	printf("can't convert key: buffer too small\n");
 fail2:
-	if (outf && outf != stdout)
+	if (opt_outfile != NULL && outf != NULL)
 		fclose(outf);
 	if (cert)
 		sc_pkcs15_free_certificate(cert);
