@@ -728,6 +728,14 @@ nopace:
 			if (r < 0)
 				goto err;
 			printf("Selected eID application.\n");
+		} else {
+			unsigned char emrtd_aid[] = { 0xA0, 0x00, 0x00, 0x02, 0x47, 0x10, 0x01};
+
+			sc_path_set(&path, SC_PATH_TYPE_DF_NAME, eid_aid, sizeof eid_aid, 0, 0);
+			r = sc_select_file(card, &path, NULL);
+			if (r < 0)
+				goto err;
+			printf("Selected eMRTD application.\n");
 		}
 
 		if (cmdline.read_dg1_flag)
