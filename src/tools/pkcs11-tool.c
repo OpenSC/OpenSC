@@ -2745,6 +2745,12 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		n_privkey_attr++;
 	}
 
+	if (opt_is_extractable != 0) {
+		FILL_ATTR(privateKeyTemplate[n_privkey_attr], CKA_EXTRACTABLE,
+				&_true, sizeof(_true));
+		n_privkey_attr++;
+	}
+
 	if (opt_allowed_mechanisms_len > 0) {
 		FILL_ATTR(privateKeyTemplate[n_privkey_attr],
 			CKA_ALLOWED_MECHANISMS, opt_allowed_mechanisms,
