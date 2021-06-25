@@ -1,6 +1,6 @@
 NEWS for OpenSC -- History of user visible changes
 
-# New in 0.22.0; 2021-04-XX
+# New in 0.22.0; 2021-06-XX
 ## General improvements
  * Use standard paths for file cache on Linux (#2148) and OSX (#2214)
  * Various issues of memory/buffer handling in legacy drivers mostly reported by oss-fuzz and coverity (tcos, oberthur, isoapplet, iasecc, westcos, gpk, flex, dnie, mcrd, authentic, belpic)
@@ -9,13 +9,16 @@ NEWS for OpenSC -- History of user visible changes
  * `opensc-explorer`: Print information about LCS (Life cycle status byte) (#2195)
  * Add support for Apple's arm64 (M1) binaries, removed TokenD. A seperate installer with TokenD (and without arm64 binaries) will be available (#2179).
  * Support for gcc11 and its new strict aliasing rules (#2241, #2260)
+ * Initial support for building with OpenSSL 3.0 (#2343)
+ * pkcs15-tool: Write data objects in binary mode (#2324)
 ## PKCS#11
  * Support for ECDSA verification (#2211)
  * Support for ECDSA with different SHA hashes (#2190)
  * Prevent issues in p11-kit by not returning unexpected return codes (#2207)
- * Add support for PKCS#11 3.0: The new interfaces, profile objects and functions (#2096)
+ * Add support for PKCS#11 3.0: The new interfaces, profile objects and functions (#2096, #2293)
  * Standardize the version 2 on 2.20 in the code (#2096)
  * Fix CKA_MODIFIABLE and CKA_EXTRACTABLE  (#2176)
+ * Copy arguments of C_Initialize (#2350)
 ## Minidriver
  * Fix RSA-PSS signing (#2234)
 ## OpenPGP
@@ -23,6 +26,7 @@ NEWS for OpenSC -- History of user visible changes
  * Add support for (X)EdDSA keys (#1960)
 ## IDPrime
  * Add support for applet version 3 and fix RSA-PSS mechanisms (#2205)
+ * Add support for applet version 4 (#2332)
 ## MyEID
  * New configuration option for opensc.conf to disable pkcs1_padding (#2193)
  * Add support for ECDSA with different hashes (#2190)
