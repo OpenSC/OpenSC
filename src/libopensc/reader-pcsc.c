@@ -1801,6 +1801,10 @@ out:
 				/* no other event has been detected, yet */
 				*event_reader = gpriv->attached_reader;
 				*event = SC_EVENT_READER_ATTACHED;
+				/* If the card is present in the reader, report also this event */
+				if (gpriv->attached_reader->flags & SC_READER_CARD_PRESENT) {
+					*event |= SC_EVENT_CARD_INSERTED;
+				}
 				r = SC_SUCCESS;
 			}
 			gpriv->attached_reader = NULL;
