@@ -6,7 +6,7 @@ BUILDPATH=${PWD}
 BRANCH="`git log --max-count=1 --date=short --abbrev=8 --pretty=format:"%cd_%h"`"
 
 git clone --single-branch https://${GH_TOKEN}@github.com/OpenSC/Nightly.git > /dev/null 2>&1
-cd Nightly
+pushd Nightly
 git checkout -b "${BRANCH}"
 
 for file in ${BUILDPATH}/win32/Output/OpenSC*.exe ${BUILDPATH}/opensc*.tar.gz ${BUILDPATH}/OpenSC*.dmg ${BUILDPATH}/OpenSC*.msi ${BUILDPATH}/OpenSC*.zip
@@ -33,3 +33,4 @@ do
     git pull --rebase origin --strategy-option ours "${BRANCH}"
     i=$(( $i + 1 ))
 done
+popd
