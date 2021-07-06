@@ -26,6 +26,9 @@ popd
  
 sudo /etc/init.d/pcscd restart
 
+# Needed for tput to not report warnings
+export TERM=xterm-256color
+
 pushd oseid/tools
 echo | ./OsEID-tool INIT
 ./OsEID-tool RSA-CREATE-KEYS
