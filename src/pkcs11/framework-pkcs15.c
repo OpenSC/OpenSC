@@ -547,6 +547,7 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo)
 	struct sc_pkcs15_card *p15card = NULL;
 	struct sc_pkcs15_object *auth;
 	struct sc_pkcs15_auth_info *pin_info;
+	const char* name;
 	CK_RV rv;
 
 	sc_log(context, "C_GetTokenInfo(%lx)", slotID);
@@ -606,7 +607,12 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo)
 	memcpy(pInfo, &slot->token_info, sizeof(CK_TOKEN_INFO));
 out:
 	sc_pkcs11_unlock();
-	sc_log(context, "C_GetTokenInfo(%lx) returns %s", slotID, lookup_enum(RV_T, rv));
+	
+	name = lookup_enum(RV_T, rv);
+	if (name)
+		sc_log(context, "C_GetTokenInfo(%lx) returns %s", slotID, name);
+	else
+		sc_log(context, "C_GetTokenInfo(%lx) returns 0x%08lX", slotID, rv);
 	return rv;
 }
 

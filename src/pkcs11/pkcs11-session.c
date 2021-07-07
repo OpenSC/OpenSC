@@ -94,7 +94,7 @@ CK_RV C_OpenSession(CK_SLOT_ID slotID,	/* the slot's ID */
 	sc_log(context, "C_OpenSession handle: 0x%lx", session->handle);
 
 out:
-	sc_log(context, "C_OpenSession() = %s", lookup_enum(RV_T, rv));
+	SC_LOG_RV("C_OpenSession() = %s", rv);
 	sc_pkcs11_unlock();
 	return rv;
 }
@@ -251,6 +251,7 @@ CK_RV C_GetSessionInfo(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	struct sc_pkcs11_session *session;
 	struct sc_pkcs11_slot *slot;
 	int logged_out;
+	const char* name;
 
 	if (pInfo == NULL_PTR)
 		return CKR_ARGUMENTS_BAD;
@@ -291,7 +292,11 @@ CK_RV C_GetSessionInfo(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	}
 
 out:
-	sc_log(context, "C_GetSessionInfo(0x%lx) = %s", hSession, lookup_enum(RV_T, rv));
+	name = lookup_enum(RV_T, rv);
+	if (name)
+		sc_log(context, "C_GetSessionInfo(0x%lx) = %s", hSession, name);
+	else
+		sc_log(context, "C_GetSessionInfo(0x%lx) = 0x%lx", hSession, rv);
 	sc_pkcs11_unlock();
 	return rv;
 }

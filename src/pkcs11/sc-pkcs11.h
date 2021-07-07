@@ -226,6 +226,22 @@ struct sc_pkcs11_slot {
 };
 typedef struct sc_pkcs11_slot sc_pkcs11_slot_t;
 
+#define SC_LOG_RV(fmt, rv)\
+do {\
+        const char *name = lookup_enum(RV_T, (rv));\
+        if (name)\
+                sc_log(context, (fmt), name);\
+        else {\
+                size_t needed = snprintf(NULL, 0, "0x%08lX", (rv)) + 1;\
+                char *buffer = malloc(needed);\
+                if (buffer) {\
+                        sprintf(buffer, "0x%08lX", (rv));\
+                        sc_log(context, (fmt), buffer);\
+                        free(buffer);\
+                }\
+        }\
+} while(0)
+
 /* Debug virtual slots. S is slot to be highlighted or NULL
  * C is a comment format string and args It will be preceded by "VSS " */
 #define DEBUG_VSS(S, ...) do { sc_log(context,"VSS " __VA_ARGS__); _debug_virtual_slots(S); } while (0)
