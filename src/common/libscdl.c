@@ -26,9 +26,12 @@
 
 #ifdef _WIN32
 #include <windows.h>
+#include <shlwapi.h>
+
 void *sc_dlopen(const char *filename)
 {
-	return (void *)LoadLibraryA(filename);
+	DWORD flags = PathIsRelativeA(filename) ? 0 : LOAD_WITH_ALTERED_SEARCH_PATH;
+	return (void *)LoadLibraryExA(filename, NULL, flags);
 }
 
 void *sc_dlsym(void *handle, const char *symbol)
