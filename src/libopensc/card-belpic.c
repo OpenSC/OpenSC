@@ -146,6 +146,8 @@ static long t1, t2, tot_read = 0, tot_dur = 0, dur;
 static size_t next_idx = (size_t)-1;
 
 static const struct sc_atr_table belpic_atrs[] = {
+	/* Applet v1.8 */
+	{ "3B:7F:96:00:00:80:31:80:65:B0:85:04:01:20:12:0F:FF:82:90:00", NULL, NULL, SC_CARD_TYPE_BELPIC_EID, 0, NULL },
 	/* Applet V1.1 */
 	{ "3B:98:13:40:0A:A5:03:01:01:01:AD:13:11", NULL, NULL, SC_CARD_TYPE_BELPIC_EID, 0, NULL },
 	/* Applet V1.0 with new EMV-compatible ATR */
@@ -214,8 +216,6 @@ static int belpic_match_card(sc_card_t *card)
 
 static int belpic_init(sc_card_t *card)
 {
-	int key_size = 1024;
-
 	sc_log(card->ctx,  "Belpic V%s\n", BELPIC_VERSION);
 
 	if (card->type < 0)
@@ -229,11 +229,24 @@ static int belpic_init(sc_card_t *card)
 		if(get_carddata(card, carddata, sizeof(carddata)) < 0) {
 			return SC_ERROR_INVALID_CARD;
 		}
-		if (carddata[BELPIC_CARDDATA_OFF_APPLETVERS] >= 0x17) {
-			key_size = 2048;
+		// secp384r1 is the only supported curve on current
+		// cards, so hardcode it.
+		struct sc_object_id ec_curve_oid = {{1,3,132,0,34,-1}};
+		switch(carddata[BELPIC_CARDDATA_OFF_APPLETVERS]) {
+			case 0x17:
+				_sc_card_add_rsa_alg(card, 2048,
+					SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE, 0);
+				break;
+			case 0x18:
+				_sc_card_add_ec_alg(card, 384, SC_ALGORITHM_ECDSA_RAW | SC_ALGORITHM_ECDSA_HASH_NONE, 0, &ec_curve_oid);
+				break;
+			default:
+				/* Older cards, no longer in circulation except
+				 * for test cards */
+				_sc_card_add_rsa_alg(card, 1024,
+					SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE, 0);
+				break;
 		}
-		_sc_card_add_rsa_alg(card, key_size,
-				SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE, 0);
 	}
 
 	/* State that we have an RNG */
