@@ -61,7 +61,7 @@ struct sc_pkcs15_emulator_handler builtin_emulators[] = {
 	{ "din66291",   sc_pkcs15emu_din_66291_init_ex	},
 	{ "esteid2018", sc_pkcs15emu_esteid2018_init_ex	},
 	{ "cardos",     sc_pkcs15emu_cardos_init_ex	},
-
+	{ "esign_qes",  sc_pkcs15emu_starcos_esign_qes_init_ex },
 	{ NULL, NULL }
 };
 
