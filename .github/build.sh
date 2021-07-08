@@ -23,6 +23,16 @@ if [ "$RUNNER_OS" == "macOS" ]; then
 	exit $?
 fi
 
+if [ "$1" == "mingw" -o "$1" == "mingw32" ]; then
+	if [ "$1" == "mingw" ]; then
+		HOST=x86_64-w64-mingw32
+	elif [ "$1" == "mingw32" ]; then
+		HOST=i686-w64-mingw32
+	fi
+	unset CC
+	unset CXX
+	./configure --host=$HOST --with-completiondir=/tmp --disable-openssl --disable-readline --disable-zlib --disable-notify --prefix=$PWD/win32/opensc || cat config.log;
+fi
 # normal procedure
 ./configure  --disable-dependency-tracking
 
@@ -36,3 +46,7 @@ if [ "$1" == "dist" ]; then
 fi
 
 sudo make install
+
+if [ "$1" == "mingw" -o "$1" == "mingw32" ]; then
+	wine "C:/Program Files (x86)/Inno Setup 5/ISCC.exe" win32/OpenSC.iss
+fi
