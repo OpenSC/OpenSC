@@ -375,6 +375,24 @@
 
 				<varlistentry>
 					<term>
+						<option>--encrypt</option>,
+					</term>
+					<listitem><para>Encrypt some data.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--unwrap</option>,
+					</term>
+					<listitem><para>Unwrap key.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--wrap</option>,
+					</term>
+					<listitem><para>Wrap key.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
 						<option>--derive</option>,
 					</term>
 					<listitem><para>Derive a secret key using another key and some data.</para></listitem>
@@ -646,6 +664,15 @@
 					</para></listitem>
 				</varlistentry>
 
+				<varlistentry>
+					<term>
+						<option>--iv</option> <replaceable>data</replaceable>
+					</term>
+					<listitem><para>Initialization vector for symmetric ciphers.
+					The <replaceable>data</replaceable> is hexadecimal number, i.e. "000013aa7bffa0".
+					</para></listitem>
+				</varlistentry>
+
 			</variablelist>
 		</para>
 	</refsect1>
@@ -668,6 +695,25 @@
 			using the private key with ID <replaceable>ID</replaceable> and
 			using the RSA-PKCS mechanism:
 				<programlisting>pkcs11-tool --sign --id ID --mechanism RSA-PKCS --input-file data --output-file data.sig</programlisting>
+
+			To encrypt file using the AES key with ID 85 and using mechanism AES-CBC with padding:
+				<programlisting>
+pkcs11-tool --encrypt --id 85 -m AES-CBC-PAD \
+ --iv "00000000000000000000000000000000" \
+ -i file.txt -o encrypted_file.data
+				</programlisting>
+
+			Use the key with ID 22 and mechanism RSA-PKCS to unwrap key from file
+			<replaceable>aes_wrapped.key</replaceable>. After a successful unwrap operation,
+			a new AES key is created on token. ID of this key is set to 90 and label of this
+			key is set to <replaceable>unwrapped-key</replaceable>
+			Note: for the MyEID card, the AES key size must be present in key
+			specification i.e. AES:16
+				<programlisting>
+pkcs11-tool --unwrap --mechanism RSA-PKCS --id 22 \
+  -i aes_wrapped.key --key-type AES: \
+  --application-id 90 --applicatin-label unwrapped-key
+				</programlisting>
 		</para>
 	</refsect1>
 
