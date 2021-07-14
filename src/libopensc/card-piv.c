@@ -608,14 +608,12 @@ static int piv_generate_key(sc_card_t *card,
 		const u8 *cp;
 		keydata->exponent = 0;
 
-		/* expected tag is 7f49.  */
-		/* we will whatever tag is present */
-
 		cp = rbuf;
 		in_len = r;
 
+		/* expected tag is 0x7f49,returned as cla_out == 0x60 and tag_out = 0x1F49 */
 		r = sc_asn1_read_tag(&cp, in_len, &cla_out, &tag_out, &in_len);
-		if (cp == NULL) {
+		if (cp == NULL || in_len == 0 || cla_out != 0x60 || tag_out != 0x1f49) {
 			r = SC_ERROR_ASN1_OBJECT_NOT_FOUND;
 		}
 		if (r != SC_SUCCESS) {
@@ -1032,7 +1030,7 @@ piv_cache_internal_data(sc_card_t *card, int enumtag)
 			priv->obj_cache[enumtag].obj_len,
 			0x53, &bodylen);
 
-	if (body == NULL)
+	if (body == NULL || priv->obj_cache[enumtag].obj_data[0] != 0x53)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OBJECT_NOT_VALID);
 
 	/* get the certificate out */
@@ -1611,7 +1609,7 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 	/* Remove the encompassing outer TLV of 0x7C and get the data */
 	body = sc_asn1_find_tag(card->ctx, rbuf,
 		r, 0x7C, &body_len);
-	if (!body) {
+	if (!body || rbuf[0] != 0x7C) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Invalid Witness Data response of NULL\n");
 		r =  SC_ERROR_INVALID_DATA;
 		goto err;
@@ -1753,7 +1751,7 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 	/* Remove the encompassing outer TLV of 0x7C and get the data */
 	body = sc_asn1_find_tag(card->ctx, rbuf,
 		r, 0x7C, &body_len);
-	if(!body) {
+	if(!body || rbuf[0] != 0x7C) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not find outer tag 0x7C in response");
 		r =  SC_ERROR_INVALID_DATA;
 		goto err;
@@ -1914,7 +1912,7 @@ static int piv_general_external_authenticate(sc_card_t *card,
 	/* Remove the encompassing outer TLV of 0x7C and get the data */
 	body = sc_asn1_find_tag(card->ctx, rbuf,
 		r, 0x7C, &body_len);
-	if (!body) {
+	if (!body || rbuf[0] != 0x7C) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Invalid Challenge Data response of NULL\n");
 		r =  SC_ERROR_INVALID_DATA;
 		goto err;
@@ -2079,7 +2077,7 @@ piv_get_serial_nr_from_CHUI(sc_card_t* card, sc_serial_number_t* serial)
 	r = SC_ERROR_INTERNAL;
 	if (rbuflen != 0) {
 		body = sc_asn1_find_tag(card->ctx, rbuf, rbuflen, 0x53, &bodylen); /* Pass the outer wrapper asn1 */
-		if (body != NULL && bodylen != 0) {
+		if (body != NULL && bodylen != 0 && rbuf[0] == 0x53) {
 			fascn = sc_asn1_find_tag(card->ctx, body, bodylen, 0x30, &fascnlen); /* Find the FASC-N data */
 			guid = sc_asn1_find_tag(card->ctx, body, bodylen, 0x34, &guidlen);
 
@@ -2311,10 +2309,10 @@ static int piv_validate_general_authentication(sc_card_t *card,
 	piv_private_data_t * priv = PIV_DATA(card);
 	int r, tmplen, tmplen2;
 	u8 *p;
-	const u8 *tag;
+	const unsigned char *p2;
 	size_t taglen;
-	const u8 *body;
 	size_t bodylen;
+	unsigned int cla, tag;
 	unsigned int real_alg_id, op_tag;
 
 	u8 sbuf[4096]; /* needs work. for 3072 keys, needs 384+10 or so */
@@ -2367,20 +2365,28 @@ static int piv_validate_general_authentication(sc_card_t *card,
 
 	r = piv_general_io(card, 0x87, real_alg_id, priv->key_ref,
 			sbuf, p - sbuf, rbuf, sizeof rbuf);
+	if (r < 0)
+		goto err;
 
-	if (r >= 0) {
-		body = sc_asn1_find_tag(card->ctx, rbuf, r, 0x7c, &bodylen);
-		if (body) {
-			tag = sc_asn1_find_tag(card->ctx, body,  bodylen, 0x82, &taglen);
-			if (tag) {
-				memcpy(out, tag, taglen);
-				r = taglen;
-			} else
-				r = SC_ERROR_INVALID_DATA;
-		} else
-			r = SC_ERROR_INVALID_DATA;
+	p2 = rbuf;
+	r = sc_asn1_read_tag(&p2, r, &cla, &tag, &bodylen);
+	if (p2 == NULL || r < 0 || bodylen == 0 || (cla|tag) != 0x7C) {
+		LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_INVALID_DATA, "Can't find 0x7C");
+        }
+
+	r = sc_asn1_read_tag(&p2, bodylen, &cla, &tag, &taglen);
+	if (p2 == NULL || r < 0 || taglen == 0 || (cla|tag) != 0x82) {
+		LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_INVALID_DATA, "Can't find 0x82");
 	}
 
+	if (taglen > outlen) {
+		LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_INVALID_DATA, "data read longer then buffer");
+	}
+
+	memcpy(out, p2, taglen);
+	r = taglen;
+
+err:
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
@@ -2394,19 +2400,19 @@ piv_compute_signature(sc_card_t *card, const u8 * data, size_t datalen,
 	int i;
 	size_t nLen;
 	u8 rbuf[128]; /* For EC conversions  384 will fit */
-	const u8 * body;
-	size_t bodylen;
-	const u8 * tag;
-	size_t taglen;
+	const unsigned char *pseq, *pint, *ptemp, *pend;
+	unsigned int cla, tag;
+	size_t seqlen;
+	size_t intlen;
+	size_t templen;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	/* The PIV returns a DER SEQUENCE{INTEGER, INTEGER}
-	 * Which may have leading 00 to force positive
-	 * TODO: -DEE should check if PKCS15 want the same
-	 * But PKCS11 just wants 2* filed_length in bytes
+	 * Which may have leading 00 to force a positive integer
+	 * But PKCS11 just wants 2* field_length in bytes
 	 * So we have to strip out the integers
-	 * if present and pad on left if too short.
+	 * and pad on left if too short.
 	 */
 
 	if (priv->alg_id == 0x11 || priv->alg_id == 0x14 ) {
@@ -2424,32 +2430,34 @@ piv_compute_signature(sc_card_t *card, const u8 * data, size_t datalen,
 		if (r < 0)
 			goto err;
 
-		body = sc_asn1_find_tag(card->ctx, rbuf, r, 0x30, &bodylen);
+		pseq = rbuf;
+		r = sc_asn1_read_tag(&pseq, r, &cla, &tag, &seqlen);
+		if (pseq == NULL || r < 0 || seqlen == 0 || (cla|tag) != 0x30)
+			LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_INVALID_DATA, "Can't find 0x30");
 
-		for (i = 0; i<2; i++) {
-			if (body) {
-				tag = sc_asn1_find_tag(card->ctx, body,  bodylen, 0x02, &taglen);
-				if (tag) {
-					bodylen -= taglen - (tag - body);
-					body = tag + taglen;
+		pint = pseq;
+		pend = pseq + seqlen;
+		for (i = 0; i < 2; i++) {
+			r = sc_asn1_read_tag(&pint, (pend - pint), &cla, &tag, &intlen);
+			if (pint == NULL || r < 0 || intlen == 0 || (cla|tag) != 0x02)
+				LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_INVALID_DATA, "Can't find 0x02");
+			if (intlen > nLen + 1)
+				LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_INVALID_DATA,"Signature too long");
 
-					if (taglen > nLen) { /* drop leading 00 if present */
-						if (*tag != 0x00) {
-							r = SC_ERROR_INVALID_DATA;
-							goto err;
-						}
-						tag++;
-						taglen--;
-					}
-					memcpy(out + nLen*i + nLen - taglen , tag, taglen);
-				} else {
+			ptemp = pint;
+			templen = intlen;
+			if (intlen > nLen) { /* drop leading 00 if present */
+				if (*ptemp != 0x00) {
+					LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_INVALID_DATA,"Signature too long");
 					r = SC_ERROR_INVALID_DATA;
 					goto err;
 				}
-			} else  {
-				r = SC_ERROR_INVALID_DATA;
-				goto err;
+				ptemp++;
+				templen--;
 			}
+			memcpy(out + nLen*i + nLen - templen , ptemp, templen);
+			pint += intlen; /* next integer */
+			
 		}
 		r = 2 * nLen;
 	} else { /* RSA is all set */
