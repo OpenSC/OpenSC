@@ -1783,13 +1783,13 @@ sc_pkcs15_convert_pubkey(struct sc_pkcs15_pubkey *pkcs15_key, void *evp_key)
 	}
 	case EVP_PKEY_EC: {
 		struct sc_pkcs15_pubkey_ec *dst = &pkcs15_key->u.ec;
-		EC_KEY *src = NULL;
+		const EC_KEY *src = NULL;
 		const EC_GROUP *grp = NULL;
 		unsigned char buf[255];
 		size_t buflen = 255;
 		int nid;
 
-		src = EVP_PKEY_get0(pk);
+		src = EVP_PKEY_get0_EC_KEY(pk);
 		assert(src);
 		assert(EC_KEY_get0_public_key(src));
 
