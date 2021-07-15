@@ -1165,8 +1165,8 @@ iso7816_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_l
 
 	/* Many cards do support PIN status queries, but some cards don't and
 	 * mistakenly count the command as a failed PIN attempt, so for now we
-	 * whitelist cards with this flag.  In future this may be reduced to a
-	 * blacklist, subject to testing more cards. */
+	 * allow cards with this flag.  In future this may be reduced to a
+	 * blocklist, subject to testing more cards. */
 	if (data->cmd == SC_PIN_CMD_GET_INFO &&
 	    !(card->caps & SC_CARD_CAP_ISO7816_PIN_INFO)) {
 		sc_log(card->ctx, "Card does not support PIN status queries");

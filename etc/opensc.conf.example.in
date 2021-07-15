@@ -133,7 +133,7 @@ app default {
 		# max_recv_size = 65536;
 	}
 
-	# Whitelist of card drivers to load at start-up
+	# Allowlist of card drivers to load at start-up
 	#
 	# The supported internal card driver names can be retrieved
 	# from the output of:

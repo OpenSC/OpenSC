@@ -209,7 +209,7 @@ app <replaceable>application</replaceable> {
 							rep="repeat"><replaceable>name</replaceable></arg>;</option>
 				</term>
 				<listitem><para>
-						Whitelist of card drivers to load at start-up.
+						Allowlist of card drivers to load at start-up.
 						The special value <literal>internal</literal> (the
 						default) will load all statically linked drivers.
 					</para>
