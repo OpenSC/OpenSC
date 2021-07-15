@@ -3143,18 +3143,18 @@ parse_gost_pkey(EVP_PKEY *pkey, int private, struct gostkey_info *gost)
 static int
 parse_ec_pkey(EVP_PKEY *pkey, int private, struct gostkey_info *gost)
 {
-	EC_KEY *src = EVP_PKEY_get0(pkey);
+	const EC_KEY *src = EVP_PKEY_get0_EC_KEY(pkey);
 	const BIGNUM *bignum;
 
 	if (!src)
 		return -1;
 
-	gost->param_oid.len = i2d_ECParameters(src, &gost->param_oid.value);
+	gost->param_oid.len = i2d_ECParameters((EC_KEY *)src, &gost->param_oid.value);
 	if (gost->param_oid.len <= 0)
 		return -1;
 
 	if (private) {
-		bignum = EC_KEY_get0_private_key(EVP_PKEY_get0(pkey));
+		bignum = EC_KEY_get0_private_key(src);
 
 		gost->private.len = BN_num_bytes(bignum);
 		gost->private.value = malloc(gost->private.len);
