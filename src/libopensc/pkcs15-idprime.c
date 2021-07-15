@@ -168,9 +168,17 @@ static int sc_pkcs15emu_idprime_init(sc_pkcs15_card_t *p15card)
 		pubkey_info.native        = 1;
 		prkey_info.native        = 1;
 
-		snprintf(cert_obj.label, SC_PKCS15_MAX_LABEL_SIZE, CERT_LABEL_TEMPLATE, i+1);
-		snprintf(pubkey_obj.label, SC_PKCS15_MAX_LABEL_SIZE, PUBKEY_LABEL_TEMPLATE, i+1);
-		snprintf(prkey_obj.label, SC_PKCS15_MAX_LABEL_SIZE, PRIVKEY_LABEL_TEMPLATE, i+1);
+		if (prkey_info.aux_data != NULL) {
+			/* note: xxx_obj.label are all zeroed thus null terminated */
+			strncpy(cert_obj.label, (const char *)prkey_info.aux_data, SC_PKCS15_MAX_LABEL_SIZE - 1);
+			strncpy(pubkey_obj.label, (const char *)prkey_info.aux_data, SC_PKCS15_MAX_LABEL_SIZE - 1);
+			strncpy(prkey_obj.label, (const char *)prkey_info.aux_data, SC_PKCS15_MAX_LABEL_SIZE - 1);
+			prkey_info.aux_data = NULL;
+		} else {
+			snprintf(cert_obj.label, SC_PKCS15_MAX_LABEL_SIZE, CERT_LABEL_TEMPLATE, i+1);
+			snprintf(pubkey_obj.label, SC_PKCS15_MAX_LABEL_SIZE, PUBKEY_LABEL_TEMPLATE, i+1);
+			snprintf(prkey_obj.label, SC_PKCS15_MAX_LABEL_SIZE, PRIVKEY_LABEL_TEMPLATE, i+1);
+		}
 		prkey_obj.flags = SC_PKCS15_CO_FLAG_PRIVATE;
 		sc_pkcs15_format_id(pin_id, &prkey_obj.auth_id);
 
