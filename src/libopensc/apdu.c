@@ -322,13 +322,13 @@ sc_check_apdu(sc_card_t *card, const sc_apdu_t *apdu)
 error:
 	sc_log(card->ctx, "Invalid Case %d %s APDU:\n"
 		"cse=%02x cla=%02x ins=%02x p1=%02x p2=%02x lc=%lu le=%lu\n"
-		"resp=%p resplen=%lu data=%p datalen=%lu",
+		"resp=%p resplen=%lu data=%p datalen=%lu flags=0x%8.8lx",
 		apdu->cse & SC_APDU_SHORT_MASK,
 		(apdu->cse & SC_APDU_EXT) != 0 ? "extended" : "short",
 		apdu->cse, apdu->cla, apdu->ins, apdu->p1, apdu->p2,
 		(unsigned long) apdu->lc, (unsigned long) apdu->le,
 		apdu->resp, (unsigned long) apdu->resplen,
-		apdu->data, (unsigned long) apdu->datalen);
+		apdu->data, (unsigned long) apdu->datalen, apdu->flags);
 	return SC_ERROR_INVALID_ARGUMENTS;
 }
 
@@ -561,6 +561,14 @@ int sc_transmit_apdu(sc_card_t *card, sc_apdu_t *apdu)
 		return r;
 	}
 
+#if ENABLE_SM
+	if (card->sm_ctx.sm_mode == SM_MODE_TRANSMIT
+			&& (apdu->flags & SC_APDU_FLAGS_CHAINING) != 0
+			&& (apdu->flags & SC_APDU_FLAGS_SM_CHAINING) != 0) {
+		sc_log(card->ctx,"Let SM do the chaining");
+		r = sc_transmit(card, apdu);
+	} else
+#endif
 	if ((apdu->flags & SC_APDU_FLAGS_CHAINING) != 0) {
 		/* divide et impera: transmit APDU in chunks with Lc <= max_send_size
 		 * bytes using command chaining */

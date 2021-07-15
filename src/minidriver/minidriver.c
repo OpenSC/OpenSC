@@ -97,7 +97,7 @@ HINSTANCE g_inst;
 #define NULLSTR(a) (a == NULL ? "<NULL>" : a)
 #define NULLWSTR(a) (a == NULL ? L"<NULL>" : a)
 
-#define MD_MAX_KEY_CONTAINERS 12
+#define MD_MAX_KEY_CONTAINERS 32
 #define MD_CARDID_SIZE 16
 
 #define MD_ROLE_USER_SIGN (ROLE_ADMIN + 1)
@@ -6355,9 +6355,13 @@ DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData,
 
 		if (dwFlags >= MD_MAX_PINS)
 			MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
-
+#if 0
+	/* CardGetProperty('PIN Information' does not use pin_objs, why the test */
+	/* in some debug logs  SCARD_E_INVALID_PARAMETER is returned, causing OpenSC  to state over.*/
+	/* ROLE_EVERYONE is 0, and we don't need a pin_objs for this. */
 		if (!vs->pin_objs[dwFlags])
 			MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
+#endif
 
 		p->PinType = vs->reader->capabilities & SC_READER_CAP_PIN_PAD
 			|| vs->p15card->card->caps & SC_CARD_CAP_PROTECTED_AUTHENTICATION_PATH
