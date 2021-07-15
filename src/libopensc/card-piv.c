@@ -2449,8 +2449,6 @@ piv_compute_signature(sc_card_t *card, const u8 * data, size_t datalen,
 			if (intlen > nLen) { /* drop leading 00 if present */
 				if (*ptemp != 0x00) {
 					LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_INVALID_DATA,"Signature too long");
-					r = SC_ERROR_INVALID_DATA;
-					goto err;
 				}
 				ptemp++;
 				templen--;
