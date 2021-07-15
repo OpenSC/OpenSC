@@ -1,0 +1,39 @@
+name: OSX
+
+on:
+  pull_request:
+    paths:
+      - '**.c'
+      - '**.h'
+  push:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: .github/setup-macos.sh
+      - run: .github/build.sh
+      - name: Cache build artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: opensc-build-macos
+          path:
+            OpenSC*.dmg
+
+  push-artifacts:
+    runs-on: macos-latest
+    needs: [build]
+    steps:
+      - uses: actions/checkout@v2
+      - name: Pull build artifacts
+        uses: actions/download-artifact@v2
+        with:
+          name: opensc-build-macos
+      - run: git config --global user.email "builds@github.com"
+      - run: git config --global user.name "Github Actions";
+      - run: echo .github/push_artifacts.sh "Github Actions ${GITHUB_REF}"
+        if: ${{ github.event_name != 'pull_request' && github.repository == 'OpenSC/OpenSC' }}
+# TODO this fails probably because the key is not loaded in keychain before with
+# security: SecKeychainDelete: The specified keychain could not be found.
+#      - run: .github/remove_signing_key.sh; rm -f .github/secrets.tar

@@ -1,0 +1,163 @@
+name: Linux
+
+on:
+  pull_request:
+    paths:
+      - '**.c'
+      - '**.h'
+  push:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: .github/setup-linux.sh
+      - run: .github/build.sh dist
+      - uses: actions/cache@v2
+        id: cache-build
+        with:
+          path: ./*
+          key: ${{ runner.os }}-${{ github.sha }}
+
+  build-ubuntu-18:
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+      - run: .github/setup-linux.sh
+      - run: .github/build.sh
+      - uses: actions/cache@v2
+        id: cache-build
+        with:
+          path: ./*
+          key: ${{ runner.os }}-18-${{ github.sha }}
+
+  build-mingw:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: .github/setup-linux.sh mingw
+      - run: .github/build.sh mingw
+      - uses: actions/cache@v2
+        id: cache-build
+        with:
+          path: ./*
+          key: ${{ runner.os }}-${{ github.sha }}
+
+  build-mingw32:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: .github/setup-linux.sh mingw32
+      - run: .github/build.sh mingw32
+      - uses: actions/cache@v2
+        id: cache-build
+        with:
+          path: ./*
+          key: ${{ runner.os }}-${{ github.sha }}
+
+  test-piv:
+    runs-on: ubuntu-18.04
+    needs: [build-ubuntu-18]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        id: cache-build
+        with:
+          path: ./*
+          key: ${{ runner.os }}-18-${{ github.sha }}
+      - run: .github/setup-linux.sh piv
+      - run: .github/test-piv.sh
+
+  test-isoapplet:
+    runs-on: ubuntu-18.04
+    needs: [build-ubuntu-18]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        id: cache-build
+        with:
+          path: ./*
+          key: ${{ runner.os }}-18-${{ github.sha }}
+      - run: .github/setup-linux.sh isoapplet
+      - run: .github/test-isoapplet.sh
+
+  test-gidsapplet:
+    runs-on: ubuntu-18.04
+    needs: [build-ubuntu-18]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        id: cache-build
+        with:
+          path: ./*
+          key: ${{ runner.os }}-18-${{ github.sha }}
+      - run: .github/setup-linux.sh gidsapplet
+      - run: .github/test-gidsapplet.sh
+
+  test-openpgp:
+    runs-on: ubuntu-18.04
+    needs: [build-ubuntu-18]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        id: cache-build
+        with:
+          path: ./*
+          key: ${{ runner.os }}-18-${{ github.sha }}
+      - run: .github/setup-linux.sh openpgp
+      - run: .github/test-openpgp.sh
+
+  build-clang-tidy:
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        id: cache-build
+        with:
+          path: ./*
+          key: ${{ runner.os }}-${{ github.sha }}
+      - run: .github/setup-linux.sh clang-tidy
+      - run: .github/build.sh
+
+  test-cac:
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        id: cache-build
+        with:
+          path: ./*
+          key: ${{ runner.os }}-${{ github.sha }}
+      - run: .github/setup-linux.sh cac
+      - run: .github/test-cac.sh
+
+  test-oseid:
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        id: cache-build
+        with:
+          path: ./*
+          key: ${{ runner.os }}-${{ github.sha }}
+      - run: .github/setup-linux.sh oseid
+      - run: .github/test-oseid.sh
+
+  push-artifacts:
+    runs-on: ubuntu-latest
+    needs: [build, build-mingw, build-mingw32]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        id: cache-build
+        with:
+          path: ./*
+          key: ${{ runner.os }}-${{ github.sha }}
+      - run: git config --global user.email "builds@github.com"
+      - run: git config --global user.name "Github Actions";
+      - run: cd out && .github/push_artifacts.sh "Github Actions ${GITHUB_REF}"
+        if: ${{ github.event_name != 'pull_request' && github.repository == 'OpenSC/OpenSC' }}
