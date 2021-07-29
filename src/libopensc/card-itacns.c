@@ -105,7 +105,7 @@ static int itacns_match_cns_card(sc_card_t *card, unsigned int i)
 		DRVDATA(card)->cns_version = atr[i];
 	}
 	/* Warn if the version is not 1.0. */
-	if(atr[i] != 0x10) {
+	if(atr[i] != 0x10 && atr[i] != 0x11) {
 		char version[8];
 		snprintf(version, sizeof(version), "%d.%d", (atr[i] >> 4) & 0x0f, atr[i] & 0x0f);
 		sc_log(card->ctx, "CNS card version %s; no official specifications "
@@ -219,8 +219,13 @@ static int itacns_init(sc_card_t *card)
 		| SC_ALGORITHM_RSA_RAW
 		| SC_ALGORITHM_RSA_HASHES
 		;
+
 	_sc_card_add_rsa_alg(card, 1024, flags, 0);
 
+	if (DRVDATA(card)->cns_version == 0x11) {
+		card->caps |= SC_CARD_CAP_APDU_EXT;
+		_sc_card_add_rsa_alg(card, 2048, flags, 0);
+	}
 	return SC_SUCCESS;
 }
 
