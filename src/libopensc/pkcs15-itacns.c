@@ -283,7 +283,16 @@ static int itacns_add_pubkey(sc_pkcs15_card_t *p15card,
 	 * This is hard-coded, unless unforeseen versions of the CNS
 	 * turn up sometime.
 	 */
-	info.modulus_length = 1024;
+
+	/* This is the unforseen version :D */
+	if (((itacns_drv_data_t *) p15card->card->drv_data)->cns_version == 0x11) {
+		info.modulus_length = 2048;
+	}
+	else {
+		info.modulus_length = 1024;
+	}
+
+	
 
 	*modulus_len_out = info.modulus_length;
 	r = sc_pkcs15emu_add_rsa_pubkey(p15card, &obj, &info);
@@ -590,6 +599,10 @@ static int itacns_add_keyset(sc_pkcs15_card_t *p15card,
 
 	/* This is hard-coded, for the time being. */
 	int modulus_length = 1024;
+	/* it's a ST2021? */
+	if (((itacns_drv_data_t *) p15card->card->drv_data)->cns_version == 0x11) {
+		modulus_length = 2048;
+	}
 
 	/* Public key; not really needed */
 	/* FIXME: set usage according to the certificate. */
