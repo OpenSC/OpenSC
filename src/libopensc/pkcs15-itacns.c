@@ -189,7 +189,7 @@ static int loadFile(const sc_pkcs15_card_t *p15card, const sc_path_t *path,
 static int itacns_add_cert(sc_pkcs15_card_t *p15card,
 	int type, int authority, const sc_path_t *path,
 	const sc_pkcs15_id_t *id, const char *label, int obj_flags,
-	int *ext_info_ok, int *key_usage, int *x_key_usage)
+	int *ext_info_ok, int *key_usage, int *x_key_usage, int *modulus_len)
 {
 	int r;
 	/* const char *label = "Certificate"; */
@@ -237,6 +237,11 @@ static int itacns_add_cert(sc_pkcs15_card_t *p15card,
 		const u8 *throwaway = cert->data.value;
 		x509 = d2i_X509(NULL, &throwaway, cert->data.len);
 	}
+
+	if (cert->key && cert->key->algorithm == SC_ALGORITHM_RSA) {
+		*modulus_len = cert->key->u.rsa.modulus.len * 8;
+	}
+
 	sc_pkcs15_free_certificate(cert);
 	if (!x509) return SC_SUCCESS;
 	X509_check_purpose(x509, -1, 0);
@@ -260,7 +265,7 @@ static int itacns_add_cert(sc_pkcs15_card_t *p15card,
 
 static int itacns_add_pubkey(sc_pkcs15_card_t *p15card,
 	 const sc_path_t *path, const sc_pkcs15_id_t *id, const char *label,
-	int usage, int ref, int obj_flags, int *modulus_len_out)
+	int usage, int ref, int obj_flags, int modulus_len)
 {
 	int r;
 	sc_pkcs15_pubkey_info_t info;
@@ -279,22 +284,8 @@ static int itacns_add_pubkey(sc_pkcs15_card_t *p15card,
 	strlcpy(obj.label, label, sizeof(obj.label));
 	obj.flags		= obj_flags;
 
-	/*
-	 * This is hard-coded, unless unforeseen versions of the CNS
-	 * turn up sometime.
-	 */
+	info.modulus_length = modulus_len;
 
-	/* This is the unforseen version :D */
-	if (((itacns_drv_data_t *) p15card->card->drv_data)->cns_version == 0x11) {
-		info.modulus_length = 2048;
-	}
-	else {
-		info.modulus_length = 1024;
-	}
-
-	
-
-	*modulus_len_out = info.modulus_length;
 	r = sc_pkcs15emu_add_rsa_pubkey(p15card, &obj, &info);
 	LOG_TEST_RET(p15card->card->ctx, r,
 		"Could not add pub key");
@@ -589,7 +580,7 @@ static int itacns_add_keyset(sc_pkcs15_card_t *p15card,
 	const char *label, int sec_env, sc_pkcs15_id_t *cert_id,
 	const char *pubkey_path, const char *prkey_path,
 	unsigned int pubkey_usage_flags, unsigned int prkey_usage_flags,
-	u8 pin_ref)
+	u8 pin_ref, int modulus_len)
 {
 	int r;
 	sc_path_t path;
@@ -597,19 +588,13 @@ static int itacns_add_keyset(sc_pkcs15_card_t *p15card,
 	char pinlabel[16];
 	int fake_puk_authid, pin_flags;
 
-	/* This is hard-coded, for the time being. */
-	int modulus_length = 1024;
-	/* it's a ST2021? */
-	if (((itacns_drv_data_t *) p15card->card->drv_data)->cns_version == 0x11) {
-		modulus_length = 2048;
-	}
 
 	/* Public key; not really needed */
 	/* FIXME: set usage according to the certificate. */
 	if (pubkey_path) {
 		sc_format_path(pubkey_path, &path);
 		r = itacns_add_pubkey(p15card, &path, cert_id, label,
-			pubkey_usage_flags, sec_env, 0, &modulus_length);
+			pubkey_usage_flags, sec_env, 0, modulus_len);
 		LOG_TEST_RET(p15card->card->ctx, r,
 			"Could not add public key");
 	}
@@ -623,7 +608,7 @@ static int itacns_add_keyset(sc_pkcs15_card_t *p15card,
 		private_path = &path;
 	}
 	r = itacns_add_prkey(p15card, cert_id, label, SC_PKCS15_TYPE_PRKEY_RSA,
-		modulus_length,
+		modulus_len,
 		prkey_usage_flags,
 		private_path, sec_env, cert_id, SC_PKCS15_CO_FLAG_PRIVATE);
 	LOG_TEST_RET(p15card->card->ctx, r,
@@ -674,7 +659,7 @@ static int itacns_check_and_add_keyset(sc_pkcs15_card_t *p15card,
 	sc_path_t path;
 	sc_pkcs15_id_t cert_id;
 	int ext_info_ok;
-	int ku = 0, xku = 0;
+	int ku = 0, xku = 0, modulus_len = 0;
 	int pubkey_usage_flags = 0, prkey_usage_flags = 0;
 
 	cert_id.len = 1;
@@ -720,7 +705,7 @@ static int itacns_check_and_add_keyset(sc_pkcs15_card_t *p15card,
 	}
 
 	r = itacns_add_cert(p15card, SC_PKCS15_TYPE_CERT_X509, 0,
-		&path, &cert_id, label, 0, &ext_info_ok, &ku, &xku);
+		&path, &cert_id, label, 0, &ext_info_ok, &ku, &xku, &modulus_len);
 	if (r == SC_ERROR_INVALID_ASN1_OBJECT)
 		return 0;
 	LOG_TEST_RET(p15card->card->ctx, r,
@@ -765,7 +750,7 @@ static int itacns_check_and_add_keyset(sc_pkcs15_card_t *p15card,
 
 	r = itacns_add_keyset(p15card, label, sec_env, &cert_id,
 		pubkey_path, prkey_path, pubkey_usage_flags, prkey_usage_flags,
-		pin_ref);
+		pin_ref, modulus_len);
 	LOG_TEST_RET(p15card->card->ctx, r,
 		"Could not add keys for this certificate");
 

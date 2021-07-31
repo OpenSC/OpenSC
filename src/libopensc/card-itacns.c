@@ -104,7 +104,7 @@ static int itacns_match_cns_card(sc_card_t *card, unsigned int i)
 	if(card->driver) {
 		DRVDATA(card)->cns_version = atr[i];
 	}
-	/* Warn if the version is not 1.0. */
+	/* Warn if version is not 1.X. */
 	if(atr[i] != 0x10 && atr[i] != 0x11) {
 		char version[8];
 		snprintf(version, sizeof(version), "%d.%d", (atr[i] >> 4) & 0x0f, atr[i] & 0x0f);
