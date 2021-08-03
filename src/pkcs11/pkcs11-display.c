@@ -141,7 +141,8 @@ print_generic(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_P
 	CK_ULONG i;
 
 	if((CK_LONG)size != -1 && value != NULL) {
-		char hex[16*3+1], ascii[16+1];
+		char hex[16*3+1] = {0};
+		char ascii[16+1];
 		char *hex_ptr = hex, *ascii_ptr = ascii;
 		int offset = 0;
 
