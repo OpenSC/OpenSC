@@ -2372,7 +2372,7 @@ static int piv_validate_general_authentication(sc_card_t *card,
 	r = sc_asn1_read_tag(&p2, r, &cla, &tag, &bodylen);
 	if (p2 == NULL || r < 0 || bodylen == 0 || (cla|tag) != 0x7C) {
 		LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_INVALID_DATA, "Can't find 0x7C");
-        }
+	}
 
 	r = sc_asn1_read_tag(&p2, bodylen, &cla, &tag, &taglen);
 	if (p2 == NULL || r < 0 || taglen == 0 || (cla|tag) != 0x82) {
@@ -2453,7 +2453,7 @@ piv_compute_signature(sc_card_t *card, const u8 * data, size_t datalen,
 				ptemp++;
 				templen--;
 			}
-			memcpy(out + nLen*i + nLen - templen , ptemp, templen);
+			memcpy(out + nLen*i + nLen - templen, ptemp, templen);
 			pint += intlen; /* next integer */
 			
 		}
