@@ -403,23 +403,28 @@ spy_attribute_list_out(const char *name, CK_ATTRIBUTE_PTR pTemplate,
 static void
 spy_dump_mechanism_in(const char *name, CK_MECHANISM_PTR pMechanism)
 {
+	char param_name[64];
+
 	if (!pMechanism) {
-		fprintf(spy_output, "[in] %s=(null)\n", name);
+		fprintf(spy_output, "[in] %s = NULL\n", name);
 		return;
 	}
 
-	fprintf(spy_output, "[in] %s->type=%s\n", name, lookup_enum(MEC_T, pMechanism->mechanism));
+	fprintf(spy_output, "[in] %s->type = %s\n", name, lookup_enum(MEC_T, pMechanism->mechanism));
 	switch (pMechanism->mechanism) {
 	case CKM_AES_GCM:
 		if (pMechanism->pParameter != NULL) {
 			CK_GCM_PARAMS *param =
 				(CK_GCM_PARAMS *) pMechanism->pParameter;
-			spy_dump_string_in("pIv[ulIvLen]",
+			snprintf(param_name, sizeof(param_name), "%s->pParameter->pIv[ulIvLen]", name);
+			spy_dump_string_in(param_name,
 				param->pIv, param->ulIvLen);
-			spy_dump_ulong_in("ulIvBits", param->ulIvBits);
-			spy_dump_string_in("pAAD[ulAADLen]",
+			snprintf(param_name, sizeof(param_name), "%s->pParameter->ulIvBits", name);
+			spy_dump_ulong_in(param_name, param->ulIvBits);
+			snprintf(param_name, sizeof(param_name), "%s->pParameter->pAAD[ulAADLen]", name);
+			spy_dump_string_in(param_name,
 				param->pAAD, param->ulAADLen);
-			fprintf(spy_output, "[in] %s->pParameter->ulTagBits=%lu\n", name, param->ulTagBits);
+			fprintf(spy_output, "[in] %s->pParameter->ulTagBits = %lu\n", name, param->ulTagBits);
 		} else {
 			fprintf(spy_output, "[in] %s->pParameter = NULL\n", name);
 			break;
@@ -430,15 +435,14 @@ spy_dump_mechanism_in(const char *name, CK_MECHANISM_PTR pMechanism)
 		if (pMechanism->pParameter != NULL) {
 			CK_ECDH1_DERIVE_PARAMS *param =
 				(CK_ECDH1_DERIVE_PARAMS *) pMechanism->pParameter;
-			fprintf(spy_output, "[in] %s->pParameter = {\n\tkdf=%s\n", name,
+			fprintf(spy_output, "[in] %s->pParameter->kdf = %s\n", name,
 				lookup_enum(CKD_T, param->kdf));
-			fprintf(spy_output, "\tpSharedData[ulSharedDataLen] = ");
+			fprintf(spy_output, "[in] %s->pParameter->pSharedData[ulSharedDataLen] = ", name);
 			print_generic(spy_output, 0, param->pSharedData,
 				param->ulSharedDataLen, NULL);
-			fprintf(spy_output, "\tpPublicData[ulPublicDataLen] = ");
+			fprintf(spy_output, "[in] %s->pParameter->pPublicData[ulPublicDataLen] = ", name);
 			print_generic(spy_output, 0, param->pPublicData,
 				param->ulPublicDataLen, NULL);
-			fprintf(spy_output, "}\n");
 		} else {
 			fprintf(spy_output, "[in] %s->pParameter = NULL\n", name);
 			break;
@@ -448,22 +452,21 @@ spy_dump_mechanism_in(const char *name, CK_MECHANISM_PTR pMechanism)
 		if (pMechanism->pParameter != NULL) {
 			CK_ECMQV_DERIVE_PARAMS *param =
 				(CK_ECMQV_DERIVE_PARAMS *) pMechanism->pParameter;
-			fprintf(spy_output, "[in] %s->pParameter = {\n\tkdf=%s\n", name,
+			fprintf(spy_output, "[in] %s->pParameter->kdf = %s\n", name,
 				lookup_enum(CKD_T, param->kdf));
-			fprintf(spy_output, "\tpSharedData[ulSharedDataLen] =");
+			fprintf(spy_output, "%s->pParameter->pSharedData[ulSharedDataLen] = ", name);
 			print_generic(spy_output, 0, param->pSharedData,
 				param->ulSharedDataLen, NULL);
-			fprintf(spy_output, "\tpPublicData[ulPublicDataLen] = ");
+			fprintf(spy_output, "%s->pParameter->pPublicData[ulPublicDataLen] = ", name);
 			print_generic(spy_output, 0, param->pPublicData,
 				param->ulPublicDataLen, NULL);
-			fprintf(spy_output, "\tulPrivateDataLen = %lu",
+			fprintf(spy_output, "%s->pParameter->ulPrivateDataLen = %lu", name,
 				param->ulPrivateDataLen);
-			fprintf(spy_output, "\thPrivateData = %lu", param->hPrivateData);
-			fprintf(spy_output, "\tpPublicData2[ulPublicDataLen2] = ");
+			fprintf(spy_output, "%s->pParameter->hPrivateData = %lu", name, param->hPrivateData);
+			fprintf(spy_output, "%s->pParameter->pPublicData2[ulPublicDataLen2] = ", name);
 			print_generic(spy_output, 0, param->pPublicData2,
 				param->ulPublicDataLen2, NULL);
-			fprintf(spy_output, "\tpublicKey = %lu", param->publicKey);
-			fprintf(spy_output, "}\n");
+			fprintf(spy_output, "%s->pParameter->publicKey = %lu", name, param->publicKey);
 		} else {
 			fprintf(spy_output, "[in] %s->pParameter = NULL\n", name);
 			break;
@@ -473,12 +476,13 @@ spy_dump_mechanism_in(const char *name, CK_MECHANISM_PTR pMechanism)
 		if (pMechanism->pParameter != NULL) {
 			CK_RSA_PKCS_OAEP_PARAMS *param =
 				(CK_RSA_PKCS_OAEP_PARAMS *) pMechanism->pParameter;
-			fprintf(spy_output, "[in] %s->pParameter->hashAlg=%s\n", name,
+			fprintf(spy_output, "[in] %s->pParameter->hashAlg = %s\n", name,
 				lookup_enum(MEC_T, param->hashAlg));
-			fprintf(spy_output, "[in] %s->pParameter->mgf=%s\n", name,
+			fprintf(spy_output, "[in] %s->pParameter->mgf = %s\n", name,
 				lookup_enum(MGF_T, param->mgf));
-			fprintf(spy_output, "[in] %s->pParameter->source=%lu\n", name, param->source);
-			spy_dump_string_out("pSourceData[ulSourceDalaLen]",
+			fprintf(spy_output, "[in] %s->pParameter->source = %lu\n", name, param->source);
+			snprintf(param_name, sizeof(param_name), "%s->pParameter->pSourceData[ulSourceDalaLen]", name);
+			spy_dump_string_in(param_name,
 				param->pSourceData, param->ulSourceDataLen);
 		} else {
 			fprintf(spy_output, "[in] %s->pParameter = NULL\n", name);
@@ -493,11 +497,11 @@ spy_dump_mechanism_in(const char *name, CK_MECHANISM_PTR pMechanism)
 		if (pMechanism->pParameter != NULL) {
 			CK_RSA_PKCS_PSS_PARAMS *param =
 				(CK_RSA_PKCS_PSS_PARAMS *) pMechanism->pParameter;
-			fprintf(spy_output, "[in] %s->pParameter->hashAlg=%s\n", name,
+			fprintf(spy_output, "[in] %s->pParameter->hashAlg = %s\n", name,
 				lookup_enum(MEC_T, param->hashAlg));
-			fprintf(spy_output, "[in] %s->pParameter->mgf=%s\n", name,
+			fprintf(spy_output, "[in] %s->pParameter->mgf = %s\n", name,
 				lookup_enum(MGF_T, param->mgf));
-			fprintf(spy_output, "[in] %s->pParameter->sLen=%lu\n", name,
+			fprintf(spy_output, "[in] %s->pParameter->sLen = %lu\n", name,
 				param->sLen);
 		} else {
 			fprintf(spy_output, "[in] %s->pParameter = NULL\n", name);
@@ -505,7 +509,8 @@ spy_dump_mechanism_in(const char *name, CK_MECHANISM_PTR pMechanism)
 		}
 		break;
 	default:
-		spy_dump_string_in("pParameter[ulParameterLen]", pMechanism->pParameter, pMechanism->ulParameterLen);
+		snprintf(param_name, sizeof(param_name), "%s->pParameter[ulParameterLen]", name);
+		spy_dump_string_in(param_name, pMechanism->pParameter, pMechanism->ulParameterLen);
 		break;
 	}
 }
