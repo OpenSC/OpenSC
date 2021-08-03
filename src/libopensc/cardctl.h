@@ -95,12 +95,6 @@ enum {
 	SC_CARDCTL_STARCOS_GENERATE_KEY,
 
 	/*
-	 * JCOP specific calls
-	 */
-	SC_CARDCTL_JCOP_BASE = _CTL_PREFIX('J', 'C', 'P'),
-	SC_CARDCTL_JCOP_GENERATE_KEY,
-
-	/*
 	 * Oberthur specific calls
 	 */
 	SC_CARDCTL_OBERTHUR_BASE = _CTL_PREFIX('O', 'B', 'R'),
@@ -500,14 +494,6 @@ typedef struct sc_starcos_gen_key_data_st {
 	size_t	key_length;
 	u8	*modulus;
 } sc_starcos_gen_key_data;
-
-struct sc_cardctl_jcop_genkey  {
-     unsigned long exponent;
-     sc_path_t pub_file_ref;
-     sc_path_t pri_file_ref;
-     unsigned char *	pubkey;
-     unsigned int	pubkey_len;
-};
 
 /*
  * Oberthur ex_data stuff
