@@ -301,7 +301,6 @@ sc_pkcs15init_get_gpk_ops
 sc_pkcs15init_get_gids_ops
 sc_pkcs15init_get_incrypto34_ops
 sc_pkcs15init_get_manufacturer
-sc_pkcs15init_get_miocos_ops
 sc_pkcs15init_get_muscle_ops
 sc_pkcs15init_get_oberthur_ops
 sc_pkcs15init_get_pin_info
