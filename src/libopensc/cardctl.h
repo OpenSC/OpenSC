@@ -63,12 +63,6 @@ enum {
 	SC_CARDCTL_CRYPTOFLEX_GENERATE_KEY,
 
 	/*
-	 * MioCOS specific calls
-	 */
-	SC_CARDCTL_MIOCOS_BASE = _CTL_PREFIX('M', 'I', 'O'),
-	SC_CARDCTL_MIOCOS_CREATE_AC,
-
-	/*
 	 * TCOS specific calls
 	 */
 	SC_CARDCTL_TCOS_BASE = _CTL_PREFIX('T','C','S'),
@@ -386,26 +380,6 @@ struct sc_cardctl_gpk_genkey {
 	unsigned int		privlen;
 	unsigned char *		pubkey;
 	unsigned int		pubkey_len;
-};
-
-enum {
-	SC_CARDCTL_MIOCOS_AC_PIN,
-	SC_CARDCTL_MIOCOS_AC_CHAL,
-	SC_CARDCTL_MIOCOS_AC_LOGICAL,
-	SC_CARDCTL_MIOCOS_AC_SMARTPIN
-};
-
-/*
- * MioCOS AC info
- */
-struct sc_cardctl_miocos_ac_info {
-	int type;
-	int ref;
-	int max_tries;
-	int enable_ac;		/* only applicable to PINs */
-	u8 key_value[8];
-	int max_unblock_tries;	/* same here */
-	u8 unblock_value[8];	/* and here */
 };
 
 /*

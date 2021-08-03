@@ -37,7 +37,7 @@ libopensc_la_SOURCES_BASE = \
 	\
 	ctbcs.c reader-ctapi.c reader-pcsc.c reader-openct.c reader-tr03119.c \
 	\
-	card-setcos.c card-miocos.c card-flex.c card-gpk.c \
+	card-setcos.c card-flex.c card-gpk.c \
 	card-cardos.c card-tcos.c card-default.c \
 	card-mcrd.c card-starcos.c card-openpgp.c \
 	card-oberthur.c card-belpic.c card-atrust-acos.c \
@@ -120,7 +120,7 @@ TIDY_FILES = \
 	\
 	ctbcs.c reader-ctapi.c reader-pcsc.c reader-openct.c reader-tr03119.c \
 	\
-	card-setcos.c card-miocos.c card-flex.c card-gpk.c \
+	card-setcos.c card-flex.c card-gpk.c \
 	card-cardos.c card-tcos.c card-default.c \
 	card-mcrd.c card-starcos.c \
 	card-oberthur.c card-belpic.c card-atrust-acos.c \
