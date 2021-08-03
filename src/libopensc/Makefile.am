@@ -39,7 +39,7 @@ libopensc_la_SOURCES_BASE = \
 	\
 	card-setcos.c card-miocos.c card-flex.c card-gpk.c \
 	card-cardos.c card-tcos.c card-default.c \
-	card-mcrd.c card-starcos.c card-openpgp.c card-jcop.c \
+	card-mcrd.c card-starcos.c card-openpgp.c \
 	card-oberthur.c card-belpic.c card-atrust-acos.c \
 	card-entersafe.c card-epass2003.c card-coolkey.c card-incrypto34.c \
 	card-piv.c card-cac-common.c card-cac.c card-cac1.c \
@@ -122,7 +122,7 @@ TIDY_FILES = \
 	\
 	card-setcos.c card-miocos.c card-flex.c card-gpk.c \
 	card-cardos.c card-tcos.c card-default.c \
-	card-mcrd.c card-starcos.c card-jcop.c \
+	card-mcrd.c card-starcos.c \
 	card-oberthur.c card-belpic.c card-atrust-acos.c \
 	card-entersafe.c card-epass2003.c card-coolkey.c card-incrypto34.c \
 	card-cac-common.c card-cac.c card-cac1.c \
