@@ -161,7 +161,6 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 };
 
 static const struct _sc_driver_entry old_card_drivers[] = {
-	{ "miocos",	(void *(*)(void)) sc_get_miocos_driver },
 	{ NULL, NULL }
 };
 

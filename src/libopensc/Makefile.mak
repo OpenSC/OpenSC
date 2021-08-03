@@ -14,7 +14,7 @@ OBJECTS			= \
 	\
 	ctbcs.obj reader-ctapi.obj reader-pcsc.obj reader-openct.obj reader-tr03119.obj \
 	\
-	card-setcos.obj card-miocos.obj card-flex.obj card-gpk.obj \
+	card-setcos.obj card-flex.obj card-gpk.obj \
 	card-cardos.obj card-tcos.obj card-default.obj \
 	card-mcrd.obj card-starcos.obj card-openpgp.obj \
 	card-oberthur.obj card-belpic.obj card-atrust-acos.obj \
