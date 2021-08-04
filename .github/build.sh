@@ -43,6 +43,7 @@ make check
 # this is broken in old ubuntu
 if [ "$1" == "dist" ]; then
 	make distcheck
+	make dist
 fi
 
 sudo make install
