@@ -726,7 +726,10 @@ C_OpenSession(CK_SLOT_ID  slotID, CK_FLAGS  flags, CK_VOID_PTR  pApplication,
 	fprintf(spy_output, "[in] pApplication = %p\n", pApplication);
 	fprintf(spy_output, "[in] Notify = %p\n", (void *)Notify);
 	rv = po->C_OpenSession(slotID, flags, pApplication, Notify, phSession);
-	spy_dump_ulong_out("*phSession", *phSession);
+	if (phSession)
+		spy_dump_ulong_out("*phSession", *phSession);
+	else
+		fprintf(spy_output, "[out] phSession = %p\n", phSession);
 	return retne(rv);
 }
 
