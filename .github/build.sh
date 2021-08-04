@@ -32,13 +32,14 @@ if [ "$1" == "mingw" -o "$1" == "mingw32" ]; then
 	unset CC
 	unset CXX
 	./configure --host=$HOST --with-completiondir=/tmp --disable-openssl --disable-readline --disable-zlib --disable-notify --prefix=$PWD/win32/opensc || cat config.log;
+	make -j 2
+	# no point in running tests on mingw
+else
+	# normal procedure
+	./configure  --disable-dependency-tracking
+	make -j 2
+	make check
 fi
-# normal procedure
-./configure  --disable-dependency-tracking
-
-make -j 2
-
-make check
 
 # this is broken in old ubuntu
 if [ "$1" == "dist" ]; then
@@ -47,7 +48,7 @@ if [ "$1" == "dist" ]; then
 fi
 
 sudo make install
-
 if [ "$1" == "mingw" -o "$1" == "mingw32" ]; then
-	wine "C:/Program Files (x86)/Inno Setup 5/ISCC.exe" win32/OpenSC.iss
+	# pack installed files
+	wine "C:/Program Files/Inno Setup 5/ISCC.exe" win32/OpenSC.iss
 fi

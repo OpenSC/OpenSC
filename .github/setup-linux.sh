@@ -14,11 +14,12 @@ elif [ "$1" == "piv" -o "$1" == "isoapplet" -o "$1" == "gidsapplet" -o "$1" == "
 	fi
 	DEPS="$DEPS ant openjdk-8-jdk"
 elif [ "$1" == "mingw" -o "$1" == "mingw32" ]; then
+	DEPS="$DEPS wine wine32 xvfb wget"
 	sudo dpkg --add-architecture i386
 	if [ "$1" == "mingw" ]; then
-		DEPS="$DEPS wine wine32 binutils-mingw-w64-x86-64 gcc-mingw-w64-x86-64 mingw-w64"
+		DEPS="$DEPS binutils-mingw-w64-x86-64 gcc-mingw-w64-x86-64 mingw-w64"
 	elif [ "$1" == "mingw32" ]; then
-		DEPS="$DEPS wine wine32 binutils-mingw-w64-i686 gcc-mingw-w64-i686"
+		DEPS="$DEPS binutils-mingw-w64-i686 gcc-mingw-w64-i686"
 	fi
 fi
 
@@ -28,7 +29,7 @@ sudo apt-get update
 sudo apt-get install -y build-essential $DEPS
 
 if [ "$1" == "mingw" -o "$1" == "mingw32" ]; then
-	if [ ! -f "$(winepath 'C:/Program Files (x86)/Inno Setup 5/ISCC.exe')" ]; then
+	if [ ! -f "$(winepath 'C:/Program Files/Inno Setup 5/ISCC.exe')" ]; then
 		/sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_99.pid --make-pidfile --background --exec /usr/bin/Xvfb -- :99 -ac -screen 0 1280x1024x16
 		export DISPLAY=:99.0
 		[ -d isetup ] || mkdir isetup
