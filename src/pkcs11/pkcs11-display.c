@@ -1036,6 +1036,9 @@ print_attribute_list(FILE *f, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG  ulCount)
 	CK_ULONG j, k;
 	int found;
 
+	if (!pTemplate)
+		return;
+
 	for(j = 0; j < ulCount ; j++) {
 		found = 0;
 		for(k = 0; k < ck_attribute_num; k++) {
@@ -1066,6 +1069,9 @@ print_attribute_list_req(FILE *f, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG  ulCount)
 {
 	CK_ULONG j, k;
 	int found;
+
+	if (!pTemplate)
+		return;
 
 	for(j = 0; j < ulCount ; j++) {
 		found = 0;
