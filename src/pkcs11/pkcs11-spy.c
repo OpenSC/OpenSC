@@ -531,6 +531,8 @@ CK_RV C_GetFunctionList
 	}
 
 	enter("C_GetFunctionList");
+	if (ppFunctionList == NULL)
+		return retne(CKR_ARGUMENTS_BAD);
 	*ppFunctionList = pkcs11_spy;
 	return retne(CKR_OK);
 }
