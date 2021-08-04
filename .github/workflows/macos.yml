@@ -32,7 +32,7 @@ jobs:
           name: opensc-build-macos
       - run: git config --global user.email "builds@github.com"
       - run: git config --global user.name "Github Actions";
-      - run: echo .github/push_artifacts.sh "Github Actions ${GITHUB_REF}"
+      - run: .github/push_artifacts.sh "Github Actions ${GITHUB_REF}"
         if: ${{ github.event_name != 'pull_request' && github.repository == 'OpenSC/OpenSC' }}
 # TODO this fails probably because the key is not loaded in keychain before with
 # security: SecKeychainDelete: The specified keychain could not be found.
