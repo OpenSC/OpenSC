@@ -19,6 +19,12 @@ jobs:
         with:
           path: ./*
           key: ${{ runner.os }}-${{ github.sha }}
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: opensc-build
+          path:
+            opensc*.tar.gz
 
   build-ubuntu-18:
     runs-on: ubuntu-18.04
