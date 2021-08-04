@@ -38,11 +38,12 @@ jobs:
       - uses: actions/checkout@v2
       - run: .github/setup-linux.sh mingw
       - run: .github/build.sh mingw
-      - uses: actions/cache@v2
-        id: cache-build
+      - name: Cache build artifacts
+        uses: actions/upload-artifact@v2
         with:
-          path: ./*
-          key: ${{ runner.os }}-${{ github.sha }}
+          name: opensc-build-mingw
+          path:
+            win32/Output/OpenSC*.exe
 
   build-mingw32:
     runs-on: ubuntu-latest
@@ -50,11 +51,12 @@ jobs:
       - uses: actions/checkout@v2
       - run: .github/setup-linux.sh mingw32
       - run: .github/build.sh mingw32
-      - uses: actions/cache@v2
-        id: cache-build
+      - name: Cache build artifacts
+        uses: actions/upload-artifact@v2
         with:
-          path: ./*
-          key: ${{ runner.os }}-${{ github.sha }}
+          name: opensc-build-mingw32
+          path:
+            win32/Output/OpenSC*.exe
 
   test-piv:
     runs-on: ubuntu-18.04
@@ -150,7 +152,7 @@ jobs:
 
   push-artifacts:
     runs-on: ubuntu-latest
-    needs: [build, build-mingw, build-mingw32]
+    needs: [build, build-mingw]
     steps:
       - uses: actions/checkout@v2
       - uses: actions/cache@v2
@@ -158,6 +160,10 @@ jobs:
         with:
           path: ./*
           key: ${{ runner.os }}-${{ github.sha }}
+      - name: Pull mingw build artifacts
+        uses: actions/download-artifact@v2
+        with:
+          name: opensc-build-mingw
       - run: git config --global user.email "builds@github.com"
       - run: git config --global user.name "Github Actions";
       - run: .github/push_artifacts.sh "Github Actions ${GITHUB_REF}"
