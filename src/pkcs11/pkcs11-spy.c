@@ -723,8 +723,8 @@ C_OpenSession(CK_SLOT_ID  slotID, CK_FLAGS  flags, CK_VOID_PTR  pApplication,
 	enter("C_OpenSession");
 	spy_dump_ulong_in("slotID", slotID);
 	spy_dump_ulong_in("flags", flags);
-	fprintf(spy_output, "pApplication=%p\n", pApplication);
-	fprintf(spy_output, "Notify=%p\n", (void *)Notify);
+	fprintf(spy_output, "[in] pApplication = %p\n", pApplication);
+	fprintf(spy_output, "[in] Notify = %p\n", (void *)Notify);
 	rv = po->C_OpenSession(slotID, flags, pApplication, Notify, phSession);
 	spy_dump_ulong_out("*phSession", *phSession);
 	return retne(rv);
