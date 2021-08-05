@@ -1272,10 +1272,10 @@ app <replaceable>application</replaceable> {
 							(Default: <literal>internal</literal>)
 						</para>
 						<para>
-							Special value of 'internal' will try all not disabled builtin pkcs15 emulators.
+							Special value of <literal>internal</literal> will try all not disabled builtin pkcs15 emulators.
 						</para>
 						<para>
-							Special value of 'old' will try all disabled pkcs15 emulators.
+							Special value of <literal>old</literal> will try all disabled pkcs15 emulators.
 					</para></listitem>
 				</varlistentry>
 				<varlistentry>
