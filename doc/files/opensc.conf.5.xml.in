@@ -1269,12 +1269,13 @@ app <replaceable>application</replaceable> {
 					</term>
 					<listitem><para>
 							List of the builtin pkcs15 emulators to test
-							(Default: <literal>westcos, openpgp, 
-								starcert, tcos, esteid, itacns, 
-								PIV-II, cac, gemsafeGPK, gemsafeV1, actalis,
-								atrust-acos, tccardos, entersafe, pteid,
-								oberthur, sc-hsm, dnie, gids, iasecc, jpki,
-								coolkey, din66291</literal>)
+							(Default: <literal>internal</literal>)
+						</para>
+						<para>
+							Special value of 'internal' will try all not disabled builtin pkcs15 emulators.
+						</para>
+						<para>
+							Special value of 'old' will try all disabled pkcs15 emulators.
 					</para></listitem>
 				</varlistentry>
 				<varlistentry>

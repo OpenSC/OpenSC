@@ -49,6 +49,7 @@ typedef unsigned char u8;
 #define SC_MAX_SDO_ACLS			8
 #define SC_MAX_CRTS_IN_SE		12
 #define SC_MAX_SE_NUM			8
+#define SC_MAX_PKCS15_EMULATORS	48
 
 /* When changing this value, pay attention to the initialization of the ASN1
  * static variables that use this macro, like, for example,

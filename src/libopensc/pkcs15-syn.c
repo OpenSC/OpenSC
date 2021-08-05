@@ -33,9 +33,9 @@
 #include "asn1.h"
 #include "pkcs15.h"
 #include "pkcs15-syn.h"
+#include "pkcs15-emulator-filter.h"
 
 struct sc_pkcs15_emulator_handler builtin_emulators[] = {
-	{ "westcos",	sc_pkcs15emu_westcos_init_ex	},
 	{ "openpgp",	sc_pkcs15emu_openpgp_init_ex	},
 	{ "starcert",	sc_pkcs15emu_starcert_init_ex	},
 	{ "tcos",	sc_pkcs15emu_tcos_init_ex	},
@@ -44,10 +44,8 @@ struct sc_pkcs15_emulator_handler builtin_emulators[] = {
 	{ "PIV-II",     sc_pkcs15emu_piv_init_ex	},
 	{ "cac",        sc_pkcs15emu_cac_init_ex	},
 	{ "idprime",    sc_pkcs15emu_idprime_init_ex	},
-	{ "gemsafeGPK",	sc_pkcs15emu_gemsafeGPK_init_ex	},
 	{ "gemsafeV1",	sc_pkcs15emu_gemsafeV1_init_ex	},
 	{ "actalis",	sc_pkcs15emu_actalis_init_ex	},
-	{ "atrust-acos",sc_pkcs15emu_atrust_acos_init_ex},
 	{ "tccardos",	sc_pkcs15emu_tccardos_init_ex	},
 	{ "entersafe",  sc_pkcs15emu_entersafe_init_ex	},
 	{ "pteid",	sc_pkcs15emu_pteid_init_ex	},
@@ -61,9 +59,15 @@ struct sc_pkcs15_emulator_handler builtin_emulators[] = {
 	{ "din66291",   sc_pkcs15emu_din_66291_init_ex	},
 	{ "esteid2018", sc_pkcs15emu_esteid2018_init_ex	},
 	{ "cardos",     sc_pkcs15emu_cardos_init_ex	},
-
 	{ NULL, NULL }
 };
+
+struct sc_pkcs15_emulator_handler old_emulators[] = {
+	{ "westcos",	sc_pkcs15emu_westcos_init_ex	},
+	{ "gemsafeGPK",	sc_pkcs15emu_gemsafeGPK_init_ex	},
+	{ "atrust-acos",sc_pkcs15emu_atrust_acos_init_ex},
+	{ NULL, NULL }
+};	
 
 static int parse_emu_block(sc_pkcs15_card_t *, struct sc_aid *, scconf_block *);
 static sc_pkcs15_df_t * sc_pkcs15emu_get_df(sc_pkcs15_card_t *p15card,
@@ -132,25 +136,34 @@ sc_pkcs15_bind_synthetic(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
 	} else {
 		/* we have a conf file => let's use it */
 		int builtin_enabled;
-		const scconf_list *list, *item;
+		const scconf_list *list;
 
 		builtin_enabled = scconf_get_bool(conf_block, "enable_builtin_emulation", 1);
 		list = scconf_find_list(conf_block, "builtin_emulators"); /* FIXME: rename to enabled_emulators */
 
 		if (builtin_enabled && list) {
-			/* get the list of enabled emulation drivers */
-			for (item = list; item; item = item->next) {
-				/* go through the list of builtin drivers */
-				const char *name = item->data;
+			/* filter enabled emulation drivers from conf file */
+			struct _sc_pkcs15_emulators filtered_emulators;
+			struct sc_pkcs15_emulator_handler** lst;
+			int ret;
 
-				sc_log(ctx, "trying %s", name);
-				for (i = 0; builtin_emulators[i].name; i++)
-					if (!strcmp(builtin_emulators[i].name, name)) {
-						r = builtin_emulators[i].handler(p15card, aid);
-						if (r == SC_SUCCESS)
-							/* we got a hit */
-							goto out;
-					}
+			filtered_emulators.ccount = 0;
+			ret = set_emulators(&filtered_emulators, list, builtin_emulators, old_emulators);
+			if (ret == SC_SUCCESS || ret == SC_ERROR_TOO_MANY_OBJECTS) {
+				lst = filtered_emulators.list_of_handlers;
+
+				if (ret == SC_ERROR_TOO_MANY_OBJECTS)
+					sc_log(ctx, "number of filtered emulators exceeded %d", SC_MAX_PKCS15_EMULATORS);
+
+				for (i = 0; lst[i]; i++) {
+					sc_log(ctx, "trying %s", lst[i]->name);
+					r = lst[i]->handler(p15card, aid);
+					if (r == SC_SUCCESS)
+						/* we got a hit */
+						goto out;
+				}
+			} else {
+				sc_log(ctx, "failed to filter enabled card emulators: %s", sc_strerror(ret));
 			}
 		}
 		else if (builtin_enabled) {
@@ -220,6 +233,14 @@ static int parse_emu_block(sc_pkcs15_card_t *p15card, struct sc_aid *aid, scconf
 			if (!strcmp(builtin_emulators[i].name, module_name)) {
 				init_func_ex = builtin_emulators[i].handler;
 				break;
+			}
+		}
+		if (init_func_ex == NULL) {
+			for (i = 0; old_emulators[i].name; i++) {
+				if (!strcmp(old_emulators[i].name, module_name)) {
+					init_func_ex = old_emulators[i].handler;
+					break;
+				}
 			}
 		}
 	} else {
