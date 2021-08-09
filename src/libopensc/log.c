@@ -143,6 +143,8 @@ static void sc_do_log_va(sc_context_t *ctx, int level, const char *file, int lin
 	}
 
 	sc_color_fprintf_va(color, ctx, ctx->debug_file, format, args);
+	if (strlen(format) == 0 || format[strlen(format) - 1] != '\n')
+		sc_color_fprintf(color, ctx, ctx->debug_file, "\n");
 	fflush(ctx->debug_file);
 
 #ifdef _WIN32
