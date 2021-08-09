@@ -1,6 +1,6 @@
 NEWS for OpenSC -- History of user visible changes
 
-# New in 0.22.0; 2021-06-XX
+# New in 0.22.0; 2021-08-10
 ## General improvements
  * Use standard paths for file cache on Linux (#2148) and OSX (#2214)
  * Various issues of memory/buffer handling in legacy drivers mostly reported by oss-fuzz and coverity (tcos, oberthur, isoapplet, iasecc, westcos, gpk, flex, dnie, mcrd, authentic, belpic)
@@ -11,6 +11,7 @@ NEWS for OpenSC -- History of user visible changes
  * Support for gcc11 and its new strict aliasing rules (#2241, #2260)
  * Initial support for building with OpenSSL 3.0 (#2343)
  * pkcs15-tool: Write data objects in binary mode (#2324)
+ * Avoid limited size of log messages (#2352)
 ## PKCS#11
  * Support for ECDSA verification (#2211)
  * Support for ECDSA with different SHA hashes (#2190)
