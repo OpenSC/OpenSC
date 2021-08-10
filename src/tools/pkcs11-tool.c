@@ -7549,7 +7549,7 @@ static void * test_threads_run(void * pttd)
 				ttd->rv = rv;
 				fprintf(stderr, "Test thread %d C_Initialize returned %s\n", ttd->tnum, CKR2Str(rv));
 			}
-			/* CL C_Initialize with CKF_OS_LOCKING_OK */
+			/* IL C_Initialize with CKF_OS_LOCKING_OK */
 			else if (*(pctest + 1) == 'L') {
 				fprintf(stderr, "Test thread %d C_Initialize CKF_OS_LOCKING_OK \n", ttd->tnum);
 				rv = p11->C_Initialize(&c_initialize_args_OS);
