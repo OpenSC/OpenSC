@@ -37,8 +37,16 @@ PID=$!
 sleep 5
 opensc-tool --card-driver default --send-apdu 80b80000120ba000000308000010000100050000020F0F7f
 opensc-tool -n
-yubico-piv-tool -v 9999 -r 'Virtual PCD 00 00' -P 123456 -s 9e -a generate -A RSA2048
-yubico-piv-tool -v 9999 -r 'Virtual PCD 00 00' -P 123456 -s 9a -a generate -A ECCP256
+
+yubico-piv-tool -v 9999 -r 'Virtual PCD 00 00' -P 123456 -s 9e -a generate -A RSA2048 | tee 9e.pub
+yubico-piv-tool -v 9999 -r 'Virtual PCD 00 00' -P 123456 -s 9e -S'/CN=barCard/OU=test/O=example.com/' -averify -aselfsign < 9e.pub | tee 9e.cert
+yubico-piv-tool -v 9999 -r 'Virtual PCD 00 00' -P 123456 -s 9e -aimport-certificate <9e.cert
+
+yubico-piv-tool -v 9999 -r 'Virtual PCD 00 00' -P 123456 -s 9a -a generate -A ECCP256 | tee 9a.pub
+yubico-piv-tool -v 9999 -r 'Virtual PCD 00 00' -P 123456 -s 9a -S'/CN=bar/OU=test/O=example.com/' -averify -aselfsign < 9a.pub | tee 9e.cert
+yubico-piv-tool -v 9999 -r 'Virtual PCD 00 00' -P 123456 -s 9a -aimport-certificate < 9e.cert
+
+pkcs11-tool -l -O -p 123456
 pkcs11-tool -l -t -p 123456
 kill -9 $PID
 
