@@ -139,7 +139,7 @@ int main(int argc, char** argv) {
 		return -1;
 	}
 
-	debug_print("Card info:\n\tPIN %s\n\tPIN LENGTH %lu\n\t",
+	debug_print("Card info:\n\tPIN %s\n\tPIN LENGTH %zu\n\t",
 		token.pin, token.pin_length);
 
 	return cmocka_run_group_tests(readonly_tests_without_initialization,

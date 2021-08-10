@@ -402,7 +402,7 @@ int oaep_encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *m
 	if (message_length < 0) {
 		mech->usage_flags &= ~CKF_DECRYPT;
 		debug_print(" [SKIP %s ] Too small modulus (%ld bits)"
-			" or too large hash %s (%lu B) for OAEP", o->id_str,
+			" or too large hash %s (%zu B) for OAEP", o->id_str,
 			o->bits, get_mechanism_name(mech->hash),
 			get_hash_length(mech->hash));
 		return 0;
