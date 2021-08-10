@@ -2,7 +2,16 @@
 
 set -ex -o xtrace
 
-DEPS="docbook-xsl libpcsclite-dev xsltproc gengetopt libcmocka-dev help2man pcscd check softhsm2 pcsc-tools libtool make autoconf autoconf-archive automake libssl-dev zlib1g-dev pkg-config libreadline-dev openssl git"
+# Generic dependencies
+DEPS="docbook-xsl xsltproc gengetopt help2man pcscd check softhsm2 pcsc-tools libtool make autoconf autoconf-archive automake pkg-config openssl git"
+
+# 64bit or 32bit dependencies
+if [ "$1" == "ix86" ]; then
+	sudo dpkg --add-architecture i386
+	DEPS="$DEPS gcc-multilib zlib1g-dev:i386 libssl-dev:i386 libcmocka-dev:i386 libreadline-dev:i386 libpcsclite-dev:i386"
+else
+	DEPS="$DEPS libpcsclite-dev libcmocka-dev libssl-dev zlib1g-dev libreadline-dev"
+fi
 
 if [ "$1" == "clang-tidy" ]; then
 	DEPS="$DEPS clang-tidy"

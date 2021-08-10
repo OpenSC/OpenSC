@@ -37,6 +37,10 @@ if [ "$1" == "mingw" -o "$1" == "mingw32" ]; then
 	make -j 2
 	# no point in running tests on mingw
 else
+	if [ "$1" == "ix86" ]; then
+		export CFLAGS="-m32"
+		export LDFLAGS="-m32"
+	fi
 	# normal procedure
 	./configure  --disable-dependency-tracking
 	make -j 2
