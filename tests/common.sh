@@ -8,6 +8,7 @@ PKCS11_TOOL="$BUILD_PATH/src/tools/pkcs11-tool"
 softhsm_paths="/usr/local/lib/softhsm/libsofthsm2.so \
 	/usr/lib/softhsm/libsofthsm2.so
 	/usr/lib64/pkcs11/libsofthsm2.so \
+	/usr/lib/i386-linux-gnu/softhsm/libsofthsm2.so \
 	/usr/lib/x86_64-linux-gnu/softhsm/libsofthsm2.so"
 
 for LIB in $softhsm_paths; do
