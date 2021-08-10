@@ -44,7 +44,10 @@ else
 	# normal procedure
 	./configure  --disable-dependency-tracking
 	make -j 2
-	make check
+	# 32b build has some issues to find openssl correctly
+	if [ "$1" != "ix86" ]; then
+		make check
+	fi
 fi
 
 # this is broken in old ubuntu
