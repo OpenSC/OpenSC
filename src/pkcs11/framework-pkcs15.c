@@ -6266,13 +6266,13 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 			if (rc != CKR_OK)
 				return rc;
 		}
-		if (rsa_flags & SC_ALGORITHM_RSA_HASH_MD5) {
+		if (!FIPS_mode() && rsa_flags & SC_ALGORITHM_RSA_HASH_MD5) {
 			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card,
 				CKM_MD5_RSA_PKCS, CKM_MD5, mt);
 			if (rc != CKR_OK)
 				return rc;
 		}
-		if (rsa_flags & SC_ALGORITHM_RSA_HASH_RIPEMD160) {
+		if (!FIPS_mode() && rsa_flags & SC_ALGORITHM_RSA_HASH_RIPEMD160) {
 			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card,
 				CKM_RIPEMD160_RSA_PKCS, CKM_RIPEMD160, mt);
 			if (rc != CKR_OK)
