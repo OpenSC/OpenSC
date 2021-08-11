@@ -5054,15 +5054,15 @@ static int test_digest(CK_SESSION_HANDLE session)
 
 	CK_MECHANISM_TYPE mechTypes[] = {
 		CKM_MD5,
-		CKM_SHA_1,
 		CKM_RIPEMD160,
+		CKM_SHA_1,
 		CKM_SHA256,
 		0xffffff
 	};
 	unsigned char  *digests[] = {
 		(unsigned char *) "\x7a\x08\xb0\x7e\x84\x64\x17\x03\xe5\xf2\xc8\x36\xaa\x59\xa1\x70",
-		(unsigned char *) "\x29\xb0\xe7\x87\x82\x71\x64\x5f\xff\xb7\xee\xc7\xdb\x4a\x74\x73\xa1\xc0\x0b\xc1",
 		(unsigned char *) "\xda\x79\xa5\x8f\xb8\x83\x3d\x61\xf6\x32\x16\x17\xe3\xfd\xf0\x56\x26\x5f\xb7\xcd",
+		(unsigned char *) "\x29\xb0\xe7\x87\x82\x71\x64\x5f\xff\xb7\xee\xc7\xdb\x4a\x74\x73\xa1\xc0\x0b\xc1",
 		(unsigned char *) "\x9c\xfe\x7f\xaf\xf7\x5\x42\x98\xca\x87\x55\x7e\x15\xa1\x2\x62\xde\x8d\x3e\xee\x77\x82\x74\x17\xfb\xdf\xea\x1c\x41\xb9\xec\x23",
 	};
 	CK_ULONG        digestLens[] = {
@@ -5146,8 +5146,12 @@ static int test_digest(CK_SESSION_HANDLE session)
 		for (j = 0; j < 10; j++)
 			data[10 * i + j] = (unsigned char) (0x30 + j);
 
-
-	for (i = 0; mechTypes[i] != 0xffffff; i++) {
+#ifdef ENABLE_OPENSSL
+	i = (FIPS_mode() ? 2 : 0);
+#else
+	i = 0;
+#endif
+	for (; mechTypes[i] != 0xffffff; i++) {
 		ck_mech.mechanism = mechTypes[i];
 
 		rv = p11->C_DigestInit(session, &ck_mech);
