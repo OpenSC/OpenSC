@@ -2030,9 +2030,9 @@ static int do_put_data(int argc, char **argv)
 static int do_apdu(int argc, char **argv)
 {
 	sc_apdu_t apdu;
-	u8 buf[SC_MAX_EXT_APDU_BUFFER_SIZE];
+	u8 buf[SC_MAX_EXT_APDU_BUFFER_SIZE] = {0};
 	u8 rbuf[SC_MAX_EXT_APDU_BUFFER_SIZE];
-	size_t len, i;
+	size_t len = 0, i;
 	int r;
 
 	if (argc < 1)
