@@ -1,9 +1,10 @@
 TOPDIR = ..\..\..
 
-TARGETS = asn1 compression
+TARGETS = asn1 compression pkcs15filter
 
 OBJECTS = asn1.obj \
-	compression.obj
+	compression.obj \
+	pkcs15-emulator-filter.obj
 	$(TOPDIR)\win32\versioninfo.res
 
 all: $(TARGETS)

@@ -6,8 +6,8 @@ include $(top_srcdir)/aminclude_static.am
 clean-local: code-coverage-clean
 distclean-local: code-coverage-dist-clean
 
-noinst_PROGRAMS = asn1 simpletlv cachedir
-TESTS = asn1 simpletlv cachedir
+noinst_PROGRAMS = asn1 simpletlv cachedir pkcs15filter
+TESTS = asn1 simpletlv cachedir pkcs15filter
 
 noinst_HEADERS = torture.h
 
@@ -23,6 +23,7 @@ LDADD = $(top_builddir)/src/libopensc/libopensc.la \
 asn1_SOURCES = asn1.c
 simpletlv_SOURCES = simpletlv.c
 cachedir_SOURCES = cachedir.c
+pkcs15filter_SOURCES = pkcs15-emulator-filter.c
 
 if ENABLE_ZLIB
 noinst_PROGRAMS += compression
