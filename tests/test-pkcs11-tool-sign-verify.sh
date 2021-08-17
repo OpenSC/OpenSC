@@ -145,6 +145,27 @@ for SIGN_KEY in "03" "04"; do
 done
 
 echo "======================================================="
+echo "Test GENERIC keys"
+echo "======================================================="
+
+echo "Hello World" > data.msg
+
+for MECHANISM in "SHA-1-HMAC" "SHA256-HMAC" "SHA384-HMAC" "SHA512-HMAC"; do
+	echo
+	echo "======================================================="
+	echo "$MECHANISM: Sign & Verify (KEY (First Found))"
+	echo "======================================================="
+
+	$PKCS11_TOOL --login --pin=1234 --sign --mechanism=$MECHANISM \
+		--input-file=data.msg --output-file=data.sig
+	$PKCS11_TOOL --login --pin=1234 --verify --mechanism=$MECHANISM \
+		--input-file=data.msg --signature-file=data.sig
+	rm data.sig
+done;
+
+rm data.msg
+
+echo "======================================================="
 echo "Cleanup"
 echo "======================================================="
 card_cleanup
