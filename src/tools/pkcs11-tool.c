@@ -7506,10 +7506,12 @@ static void * test_threads_run(void * pttd)
 		/* Tn Get token from slot_index n C_GetTokenInfo, where n is 0 to 9 */
 		else if (*pctest == 'T' && *(pctest + 1) >= '0' && *(pctest + 1) <= '9') {
 			fprintf(stderr, "Test thread %d C_GetTokenInfo from slot_index %d using show_token\n", ttd->tnum, (*(pctest + 1) - '0'));
-			if (l_slots) {
+			if (l_slots && (CK_ULONG)(*(pctest + 1) - '0') < l_p11_num_slots) {
 				show_token(l_p11_slots[(*(pctest + 1) - '0')]);
 			} else {
-				show_token(p11_slots[(*(pctest + 1) - '0')]);
+				fprintf(stderr, "Test thread %d slot not available, unable to call C_GetTokenInfo\n", ttd->tnum);
+				rv = CKR_TOKEN_NOT_PRESENT;
+				break;
 			}
 		}
 

@@ -14,16 +14,16 @@ fi
 card_setup
 
 echo "======================================================="
-echo "Test pkcs11 threads OSILGISLT0 "
+echo "Test pkcs11 threads IN "
 echo "======================================================="
 $PKCS11_TOOL --test-threads IN -L
 assert $? "Failed running tests"
 
 
 echo "======================================================="
-echo "Test pkcs11 threads OSILGISLT0 "
+echo "Test pkcs11 threads ILGISLT0 "
 echo "======================================================="
-$PKCS11_TOOL --test-threads OSILGISLT0 -L
+$PKCS11_TOOL --test-threads ILGISLT0 -L
 assert $? "Failed running tests"
 
 echo "======================================================="
