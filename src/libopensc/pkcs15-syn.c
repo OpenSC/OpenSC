@@ -45,8 +45,6 @@ struct sc_pkcs15_emulator_handler builtin_emulators[] = {
 	{ "cac",        sc_pkcs15emu_cac_init_ex	},
 	{ "idprime",    sc_pkcs15emu_idprime_init_ex	},
 	{ "gemsafeV1",	sc_pkcs15emu_gemsafeV1_init_ex	},
-	{ "actalis",	sc_pkcs15emu_actalis_init_ex	},
-	{ "tccardos",	sc_pkcs15emu_tccardos_init_ex	},
 	{ "entersafe",  sc_pkcs15emu_entersafe_init_ex	},
 	{ "pteid",	sc_pkcs15emu_pteid_init_ex	},
 	{ "oberthur",   sc_pkcs15emu_oberthur_init_ex	},
@@ -66,6 +64,8 @@ struct sc_pkcs15_emulator_handler old_emulators[] = {
 	{ "westcos",	sc_pkcs15emu_westcos_init_ex	},
 	{ "gemsafeGPK",	sc_pkcs15emu_gemsafeGPK_init_ex	},
 	{ "atrust-acos",sc_pkcs15emu_atrust_acos_init_ex},
+	{ "actalis",	sc_pkcs15emu_actalis_init_ex	},
+	{ "tccardos",	sc_pkcs15emu_tccardos_init_ex	},
 	{ NULL, NULL }
 };	
 
