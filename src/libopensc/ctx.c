@@ -95,13 +95,8 @@ struct _sc_driver_entry {
 
 static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "cardos",	(void *(*)(void)) sc_get_cardos_driver },
-	{ "flex",	(void *(*)(void)) sc_get_cryptoflex_driver },
 	{ "cyberflex",	(void *(*)(void)) sc_get_cyberflex_driver },
-#ifdef ENABLE_OPENSSL
-	{ "gpk",	(void *(*)(void)) sc_get_gpk_driver },
-#endif
 	{ "gemsafeV1",	(void *(*)(void)) sc_get_gemsafeV1_driver },
-	{ "asepcos",	(void *(*)(void)) sc_get_asepcos_driver },
 	{ "starcos",	(void *(*)(void)) sc_get_starcos_driver },
 	{ "tcos",	(void *(*)(void)) sc_get_tcos_driver },
 #ifdef ENABLE_OPENSSL
@@ -110,8 +105,6 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "iasecc",	(void *(*)(void)) sc_get_iasecc_driver },
 #endif
 	{ "belpic",	(void *(*)(void)) sc_get_belpic_driver },
-	{ "incrypto34", (void *(*)(void)) sc_get_incrypto34_driver },
-	{ "akis",	(void *(*)(void)) sc_get_akis_driver },
 #ifdef ENABLE_OPENSSL
 	{ "entersafe",(void *(*)(void)) sc_get_entersafe_driver },
 #ifdef ENABLE_SM
@@ -125,8 +118,6 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "dnie",       (void *(*)(void)) sc_get_dnie_driver },
 #endif
 	{ "masktech",	(void *(*)(void)) sc_get_masktech_driver },
-	{ "atrust-acos",(void *(*)(void)) sc_get_atrust_acos_driver },
-	{ "westcos",	(void *(*)(void)) sc_get_westcos_driver },
 	{ "esteid2018",	(void *(*)(void)) sc_get_esteid2018_driver },
 	{ "idprime",	(void *(*)(void)) sc_get_idprime_driver },
 #if defined(ENABLE_SM) && defined(ENABLE_OPENPACE)
@@ -161,6 +152,15 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 };
 
 static const struct _sc_driver_entry old_card_drivers[] = {
+	{ "akis",       (void *(*)(void)) sc_get_akis_driver },
+	{ "asepcos",    (void *(*)(void)) sc_get_asepcos_driver },
+	{ "atrust-acos",(void *(*)(void)) sc_get_atrust_acos_driver },
+	{ "flex",       (void *(*)(void)) sc_get_cryptoflex_driver },
+#ifdef ENABLE_OPENSSL
+    { "gpk",        (void *(*)(void)) sc_get_gpk_driver },
+#endif
+	{ "incrypto34", (void *(*)(void)) sc_get_incrypto34_driver },
+	{ "westcos",    (void *(*)(void)) sc_get_westcos_driver },
 	{ NULL, NULL }
 };
 
