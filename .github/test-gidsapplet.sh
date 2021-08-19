@@ -18,10 +18,9 @@ echo "com.licel.jcardsim.card.ATR=3B80800101" >> gids_jcardsim.cfg;
 echo "com.licel.jcardsim.vsmartcard.host=localhost" >> gids_jcardsim.cfg;
 echo "com.licel.jcardsim.vsmartcard.port=35963" >> gids_jcardsim.cfg;
 
-# log errors from pcscd to console
-sudo systemctl stop pcscd.service pcscd.socket
-sudo /usr/sbin/pcscd -f &
-PCSCD_PID=$!
+
+# prepare pcscd
+. .github/restart-pcscd.sh
 
 
 # start the applet and run couple of commands against that
@@ -32,7 +31,3 @@ opensc-tool --card-driver default --send-apdu 80b80000190bA000000397425446590201
 opensc-tool -n;
 gids-tool --initialize --pin 123456 --admin-key 000000000000000000000000000000000000000000000000 --serial 00000000000000000000000000000000;
 kill -9 $PID
-
-
-# cleanup
-sudo kill -9 $PCSCD_PID
