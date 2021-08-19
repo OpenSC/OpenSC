@@ -25,10 +25,8 @@ popd
 popd
 
 
-# log errors from pcscd to console
-sudo systemctl stop pcscd.service pcscd.socket
-sudo /usr/sbin/pcscd -f &
-PCSCD_PID=$!
+# prepare pcscd
+. .github/restart-pcscd.sh
 
 
 # start the applet and run couple of commands against that
@@ -49,7 +47,3 @@ yubico-piv-tool -v 9999 -r 'Virtual PCD 00 00' -P 123456 -s 9a -aimport-certific
 pkcs11-tool -l -O -p 123456
 pkcs11-tool -l -t -p 123456
 kill -9 $PID
-
-
-# cleanup
-sudo kill -9 $PCSCD_PID

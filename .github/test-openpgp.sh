@@ -20,10 +20,9 @@ echo "com.licel.jcardsim.card.ATR=3B80800101" >> openpgp_jcardsim.cfg;
 echo "com.licel.jcardsim.vsmartcard.host=localhost" >> openpgp_jcardsim.cfg;
 echo "com.licel.jcardsim.vsmartcard.port=35963" >> openpgp_jcardsim.cfg;
 
-# log errors from pcscd to console
-sudo systemctl stop pcscd.service pcscd.socket
-sudo /usr/sbin/pcscd -f &
-PCSCD_PID=$!
+
+# prepare pcscd
+. .github/restart-pcscd.sh
 
 
 # start the applet and run couple of commands against that
@@ -36,7 +35,3 @@ openpgp-tool --verify CHV3 --pin 12345678 --gen-key 2;
 pkcs15-init --verify --auth-id 3 --pin 12345678 --delete-objects privkey,pubkey --id 2 --generate-key rsa/2048;
 pkcs11-tool -l -t -p 123456;
 kill -9 $PID
-
-
-# cleanup
-sudo kill -9 $PCSCD_PID

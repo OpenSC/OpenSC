@@ -25,7 +25,8 @@ pushd virt_cacard
 ./autogen.sh && ./configure && make
 popd
 
-sudo /etc/init.d/pcscd restart
+# prepare pcscd
+. .github/restart-pcscd.sh
 
 pushd src/tests/p11test/
 ./p11test -s 0 -p 12345678 -i -o virt_cacard.json &

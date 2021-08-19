@@ -18,10 +18,10 @@ echo "com.licel.jcardsim.card.ATR=3B80800101" >> isoapplet_jcardsim.cfg;
 echo "com.licel.jcardsim.vsmartcard.host=localhost" >> isoapplet_jcardsim.cfg;
 echo "com.licel.jcardsim.vsmartcard.port=35963" >> isoapplet_jcardsim.cfg;
 
-# log errors from pcscd to console
-sudo systemctl stop pcscd.service pcscd.socket
-sudo /usr/sbin/pcscd -f &
-PCSCD_PID=$!
+
+# prepare pcscd
+. .github/restart-pcscd.sh
+
 
 # start the applet and run couple of commands against that
 java -noverify -cp IsoApplet/src/:jcardsim/target/jcardsim-3.0.5-SNAPSHOT.jar com.licel.jcardsim.remote.VSmartCard isoapplet_jcardsim.cfg >/dev/null &
@@ -38,6 +38,3 @@ pkcs15-init --generate-key ec/secp256r1 --id 3 --key-usage sign         --auth-i
 pkcs15-tool -D;
 pkcs11-tool -l -t -p 123456;
 kill -9 $PID;
-
-# cleanup
-sudo kill -9 $PCSCD_PID
