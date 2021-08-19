@@ -1,4 +1,5 @@
-#!/bin/bash -e -x
+#!/bin/bash -e
+set -x
 
 # install the opensc
 sudo make install
