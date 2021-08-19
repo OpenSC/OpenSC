@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash -e -x
 
 # install the opensc
 sudo make install
@@ -25,14 +25,19 @@ popd
 
 # log errors from pcscd to console
 sudo systemctl stop pcscd.service pcscd.socket
+
+sleep 10
+
 sudo /usr/sbin/pcscd -f &
 PCSCD_PID=$!
 
+sleep 10
 
 # start the applet and run couple of commands against that
 java -noverify -cp PivApplet/bin/:jcardsim/target/jcardsim-3.0.5-SNAPSHOT.jar com.licel.jcardsim.remote.VSmartCard PivApplet/test/jcardsim.cfg >/dev/null &
 PID=$!
-sleep 5
+sleep 10
+
 opensc-tool --card-driver default --send-apdu 80b80000120ba000000308000010000100050000020F0F7f
 opensc-tool -n
 yubico-piv-tool -v 9999 -r 'Virtual PCD 00 00' -P 123456 -s 9e -a generate -A RSA2048
@@ -43,3 +48,4 @@ kill -9 $PID
 
 # cleanup
 sudo kill -9 $PCSCD_PID
+sudo kill -9 $PID
