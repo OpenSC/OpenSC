@@ -11,9 +11,9 @@ export LD_LIBRARY_PATH=/usr/local/lib
 
 # The OpenPGP applet
 git clone --recursive https://github.com/Yubico/ykneo-openpgp.git;
-cd ykneo-openpgp;
+pushd ykneo-openpgp;
 ant -DJAVACARD_HOME=${JC_HOME};
-cd $TRAVIS_BUILD_DIR;
+popd
 echo "com.licel.jcardsim.card.applet.0.AID=D2760001240102000000000000010000" > openpgp_jcardsim.cfg;
 echo "com.licel.jcardsim.card.applet.0.Class=openpgpcard.OpenPGPApplet" >> openpgp_jcardsim.cfg;
 echo "com.licel.jcardsim.card.ATR=3B80800101" >> openpgp_jcardsim.cfg;
