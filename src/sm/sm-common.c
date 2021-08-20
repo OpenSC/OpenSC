@@ -313,7 +313,7 @@ DES_cbc_cksum_3des(const unsigned char *in, DES_cblock *output,
 #else
 	EVP_CIPHER_CTX *cctx = NULL;
 	unsigned char outv[8];
-	int tmplen;
+	int tmplen = 0;
 
 	/* Prepare IV */
 	memcpy(outv, iv, sizeof outv);
