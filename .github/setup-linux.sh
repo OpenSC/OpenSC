@@ -36,6 +36,7 @@ fi
 
 # make sure we do not get prompts
 export DEBIAN_FRONTEND=noninteractive
+export DEBCONF_NONINTERACTIVE_SEEN=true
 sudo apt-get update
 sudo apt-get install -y build-essential $DEPS
 
