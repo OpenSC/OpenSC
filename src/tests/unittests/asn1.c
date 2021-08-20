@@ -587,6 +587,7 @@ static void torture_asn1_encode_simple(void **state)
 	assert_int_equal(rv, SC_SUCCESS);
 	assert_int_equal(outlen, sizeof(expected));
 	assert_memory_equal(expected, outptr, sizeof(expected));
+	free(outptr);
 
 	/* Context is not needed */
 	rv = sc_asn1_encode(NULL, asn1, &outptr, &outlen);
