@@ -2315,6 +2315,7 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 		*/
 		/* fall through */
 	default:
+		free(temp);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 
