@@ -10,15 +10,21 @@ export LD_LIBRARY_PATH=/usr/local/lib
 . .github/setup-java.sh
 
 # The PIV Applet
-git clone --recursive https://github.com/arekinath/PivApplet.git
+if [ ! -d "PivApplet" ]; then
+	git clone --recursive https://github.com/arekinath/PivApplet.git
+fi
 pushd PivApplet
 JC_HOME=${JC_CLASSIC_HOME} ant dist
 popd
 
 # yubico-piv-tool is needed for PIV Applet management 
-git clone https://github.com/Yubico/yubico-piv-tool.git
+if [ ! -d "yubico-piv-tool" ]; then
+	git clone https://github.com/Yubico/yubico-piv-tool.git
+fi
 pushd yubico-piv-tool
-mkdir build
+if [ ! -d "build" ]; then
+	mkdir build
+fi
 pushd build
 cmake .. && make && sudo make install
 popd
