@@ -211,6 +211,7 @@ static int idprime_process_index(sc_card_t *card, idprime_private_data_t *priv, 
 					new_object.key_reference = 0xF7 + key_id;
 					break;
 				case SC_CARD_TYPE_IDPRIME_V4:
+				default:
 					new_object.key_reference = 0x56 + key_id;
 					break;
 				}
