@@ -186,6 +186,7 @@ int test_derive_x25519(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 	rc = EVP_PKEY_get_raw_public_key(pkey, pub, &pub_len);
 	if (rc != 1) {
 		debug_print(" [ KEY %s ] EVP_PKEY_get_raw_public_key failed", o->id_str);
+		free(pub);
 		EVP_PKEY_free(pkey);
 		free(secret);
 		return 1;
@@ -196,6 +197,7 @@ int test_derive_x25519(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 	if (secret_len == pkcs11_secret_len && memcmp(secret, pkcs11_secret, secret_len) == 0) {
 		mech->result_flags |= FLAGS_DERIVE;
 		debug_print(" [ OK %s ] Derived secrets match", o->id_str);
+		free(pub);
 		EVP_PKEY_free(pkey);
 		free(secret);
 		free(pkcs11_secret);
