@@ -3,7 +3,7 @@
 "results": [
 {
 	"test_id": "wait_test",
-	"result": "pass"
+	"result": "skip"
 },
 {
 	"test_id": "supported_mechanisms_test",
