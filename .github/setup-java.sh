@@ -13,12 +13,16 @@ env | grep -i openjdk
 ./.github/setup-vsmartcard.sh
 
 # Javacard SDKs
-git clone https://github.com/martinpaljak/oracle_javacard_sdks.git
+if [ ! -d "oracle_javacard_sdks" ]; then
+	git clone https://github.com/martinpaljak/oracle_javacard_sdks.git
+fi
 export JC_HOME=$PWD/oracle_javacard_sdks/jc222_kit
 export JC_CLASSIC_HOME=$PWD/oracle_javacard_sdks/jc305u3_kit
 
 # jCardSim
-git clone https://github.com/arekinath/jcardsim.git
+if [ ! -d "jcardsim" ]; then
+	git clone https://github.com/arekinath/jcardsim.git
+fi
 pushd jcardsim
 env | grep -i openjdk
 export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/
