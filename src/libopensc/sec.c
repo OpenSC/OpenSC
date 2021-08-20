@@ -37,7 +37,10 @@ int sc_decipher(sc_card_t *card,
 {
 	int r;
 
-	if (card == NULL || crgram == NULL || out == NULL) {
+	if (card == NULL) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+	if (crgram == NULL || out == NULL) {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	LOG_FUNC_CALLED(card->ctx);
