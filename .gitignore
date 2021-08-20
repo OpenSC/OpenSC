@@ -123,5 +123,6 @@ src/tests/unittests/*.trs
 src/tests/unittests/asn1
 src/tests/unittests/compression
 src/tests/unittests/simpletlv
+src/tests/unittests/sm
 
 version.m4.ci
