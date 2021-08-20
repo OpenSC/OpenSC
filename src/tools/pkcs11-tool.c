@@ -2518,6 +2518,7 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		{CKA_PRIVATE, &_true, sizeof(_true)},
 		{CKA_SENSITIVE, &_true, sizeof(_true)},
 	};
+	unsigned long int gost_key_type = -1;
 	int n_privkey_attr = 4;
 	unsigned char *ecparams = NULL;
 	size_t ecparams_size;
@@ -2653,7 +2654,6 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			const struct sc_aid GOST2012_512_PARAMSET_C_OID = { { 0x06, 0x09, 0x2A, 0x85, 0x03, 0x07, 0x01, 0x02, 0x01, 0x02, 0x03 }, 11 };
 			struct sc_aid key_paramset_encoded_oid;
 			struct sc_aid hash_paramset_encoded_oid;
-			unsigned long int gost_key_type = -1;
 			CK_MECHANISM_TYPE mtypes[] = {-1};
 			size_t mtypes_num = sizeof(mtypes)/sizeof(mtypes[0]);
 			const char *p_param_set = type + strlen("GOSTR3410");
