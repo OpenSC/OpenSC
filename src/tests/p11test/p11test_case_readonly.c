@@ -68,6 +68,7 @@ int encrypt_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message
 		*enc_message, o->key.rsa, padding);
 	if (rv < 0) {
 		free(*enc_message);
+		*enc_message = NULL;
 		debug_print("RSA_public_encrypt: rv = 0x%.8X\n", rv);
 		return -1;
 	}
