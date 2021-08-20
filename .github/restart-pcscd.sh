@@ -7,14 +7,20 @@
 function pcscd_cleanup {
 	echo "Process terminated: resetting pcscd"
 	sudo pkill pcscd
-	sudo systemctl start pcscd.socket
+	if which systemctl; then
+		sudo systemctl start pcscd.socket
+	fi
 }
 trap pcscd_cleanup EXIT
 
 
 # stop the pcscd service and run it from console to see possible errors
-sudo systemctl stop pcscd.service pcscd.socket
-sudo /usr/sbin/pcscd -f | sed -e 's/^/pcscd: /;' &
+if which systemctl; then
+	sudo systemctl stop pcscd.service pcscd.socket
+else
+	sudo pkill pcscd || echo "no pcscd process was running"
+fi
+sudo /usr/sbin/pcscd -f 2>&1 | sed -e 's/^/pcscd: /;' &
 
 
 # Try to wait up to 30 seconds for pcscd to come up and create PID file
