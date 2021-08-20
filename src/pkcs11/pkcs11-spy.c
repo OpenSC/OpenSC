@@ -1636,7 +1636,11 @@ C_GetInterface(CK_UTF8CHAR_PTR pInterfaceName, CK_VERSION_PTR pVersion,
 	if (po->version.major < 3) {
 		fprintf(spy_output, "[compat]\n");
 	}
-	spy_dump_string_in("pInterfaceName", pInterfaceName, strlen((char *)pInterfaceName));
+	if (pInterfaceName != NULL) {
+		spy_dump_string_in("pInterfaceName", pInterfaceName, strlen((char *)pInterfaceName));
+	} else {
+		fprintf(spy_output, "[in] pInterfaceName = NULL\n");
+	}
 	if (pVersion != NULL) {
 		fprintf(spy_output, "[in] pVersion = %d.%d\n", pVersion->major, pVersion->minor);
 	} else {
