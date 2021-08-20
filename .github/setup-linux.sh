@@ -23,7 +23,7 @@ elif [ "$1" == "piv" -o "$1" == "isoapplet" -o "$1" == "gidsapplet" -o "$1" == "
 	if [ "$1" == "piv" ]; then
 		DEPS="$DEPS cmake"
 	fi
-	DEPS="$DEPS ant openjdk-8-jdk"
+	DEPS="$DEPS ant openjdk-8-jdk maven"
 elif [ "$1" == "mingw" -o "$1" == "mingw32" ]; then
 	DEPS="$DEPS wine wine32 xvfb wget"
 	sudo dpkg --add-architecture i386
