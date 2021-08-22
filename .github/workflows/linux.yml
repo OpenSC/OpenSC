@@ -5,6 +5,7 @@ on:
     paths:
       - '**.c'
       - '**.h'
+      - .github/workflows/linux.yml
   push:
 
 jobs:
