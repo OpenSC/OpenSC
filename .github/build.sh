@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash -ex -o xtrace
 
 export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig;
 
