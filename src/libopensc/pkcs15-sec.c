@@ -726,8 +726,10 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	          (flags & SC_ALGORITHM_RSA_PADS) == SC_ALGORITHM_RSA_PAD_NONE) {
 		/* Add zero-padding if input is shorter than the modulus */
 		if (inlen < modlen) {
-			if (modlen > buflen)
-				return SC_ERROR_BUFFER_TOO_SMALL;
+			if (modlen > buflen) {
+				r = SC_ERROR_BUFFER_TOO_SMALL;
+				goto err;
+			}
 			memmove(tmp+modlen-inlen, tmp, inlen);
 			memset(tmp, 0, modlen-inlen);
 		}
