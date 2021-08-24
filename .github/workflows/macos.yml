@@ -28,6 +28,7 @@ jobs:
           name: opensc-build-macos
           path:
             OpenSC*.dmg
+      - run: .github/remove_signing_key.sh; rm -f .github/secrets.tar
 
   push-artifacts:
     runs-on: macos-latest
@@ -42,4 +43,3 @@ jobs:
       - run: git config --global user.name "Github Actions";
       - run: .github/push_artifacts.sh "Github Actions ${GITHUB_REF}"
         if: ${{ github.event_name != 'pull_request' && github.repository == 'OpenSC/OpenSC' }}
-      - run: .github/remove_signing_key.sh; rm -f .github/secrets.tar
