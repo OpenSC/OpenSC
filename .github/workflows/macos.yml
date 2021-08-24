@@ -28,7 +28,9 @@ jobs:
           name: opensc-build-macos
           path:
             OpenSC*.dmg
-      - run: .github/remove_signing_key.sh; rm -f .github/secrets.tar
+      - run: .github/cleanup-macos.sh
+        env:
+          PASS_SECRETS_TAR_ENC: ${{ secrets.PASS_SECRETS_TAR_ENC }}
 
   push-artifacts:
     runs-on: macos-latest
