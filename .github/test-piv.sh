@@ -6,7 +6,7 @@ set -ex -o xtrace
 sudo make install
 export LD_LIBRARY_PATH=/usr/local/lib
 
-# setup java stuff
+# setup java stuff and virutal smartcard
 . .github/setup-java.sh
 
 # The PIV Applet
