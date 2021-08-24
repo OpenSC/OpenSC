@@ -42,6 +42,7 @@ echo | ./OsEID-tool INIT
 ./OsEID-tool EC-SIGN-TEST
 ./OsEID-tool EC-SIGN-PKCS11-TEST
 ./OsEID-tool EC-ECDH-TEST
+./OsEID-tool UNWRAP-WRAP-TEST
 popd
 
 # this does not work as we have random key IDs in here
