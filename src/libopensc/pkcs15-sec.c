@@ -758,7 +758,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	}
 
 err:
-	sc_mem_secure_free(buf, buflen);
+	sc_mem_secure_clear_free(buf, buflen);
 
 	LOG_FUNC_RETURN(ctx, r);
 }
