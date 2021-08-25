@@ -1,4 +1,6 @@
-#!/bin/bash -e
+#!/bin/bash
+
+set -ex -o xtrace
 
 # install the opensc
 sudo make install

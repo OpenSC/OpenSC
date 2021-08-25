@@ -1,4 +1,6 @@
-#!/bin/bash -ex -o xtrace
+#!/bin/bash
+
+set -ex -o xtrace
 
 brew install automake
 
