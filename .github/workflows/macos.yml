@@ -16,12 +16,13 @@ jobs:
       - uses: actions/checkout@v2
       - run: .github/setup-macos.sh
         env:
-          CODE_SIGN_IDENTITY: ${{ secrets.CODE_SIGN_IDENTITY }}
-          DEVELOPMENT_TEAM: ${{ secrets.DEVELOPMENT_TEAM }}
-          INSTALLER_SIGN_IDENTITY: ${{ secrets.INSTALLER_SIGN_IDENTITY }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           PASS_SECRETS_TAR_ENC: ${{ secrets.PASS_SECRETS_TAR_ENC }}
       - run: .github/build.sh
+        env:
+          CODE_SIGN_IDENTITY: ${{ secrets.CODE_SIGN_IDENTITY }}
+          DEVELOPMENT_TEAM: ${{ secrets.DEVELOPMENT_TEAM }}
+          INSTALLER_SIGN_IDENTITY: ${{ secrets.INSTALLER_SIGN_IDENTITY }}
       - name: Cache build artifacts
         uses: actions/upload-artifact@v2
         with:
@@ -30,6 +31,7 @@ jobs:
             OpenSC*.dmg
       - run: .github/cleanup-macos.sh
         env:
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           PASS_SECRETS_TAR_ENC: ${{ secrets.PASS_SECRETS_TAR_ENC }}
 
   push-artifacts:
