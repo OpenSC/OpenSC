@@ -239,7 +239,7 @@ static void torture_non_existing(void **state)
 	scconf_list list =  { NULL, "non" };
 	filtered_emulators.ccount = 0;
 
-	rv = set_emulators(&filtered_emulators, &list, builtin, old);
+	rv = set_emulators(NULL, &filtered_emulators, &list, builtin, old);
 	assert_int_equal(rv, SC_SUCCESS);
 	assert_null(filtered_emulators.list_of_handlers[0]);
 }
@@ -251,7 +251,7 @@ static void torture_internal_only(void **state)
 	scconf_list list =  { NULL, "internal" };
 	filtered_emulators.ccount = 0;
 
-	rv = set_emulators(&filtered_emulators, &list, builtin, old);
+	rv = set_emulators(NULL, &filtered_emulators, &list, builtin, old);
 	assert_int_equal(rv, SC_SUCCESS);
 	for (i = 0; builtin[i].name; i++) {
 		assert_ptr_equal(&builtin[i], filtered_emulators.list_of_handlers[i]);
@@ -268,7 +268,7 @@ static void torture_old_only(void **state)
 	scconf_list list =  { NULL, "old" };
 	filtered_emulators.ccount = 0;
 
-	rv = set_emulators(&filtered_emulators, &list, builtin, old);
+	rv = set_emulators(NULL, &filtered_emulators, &list, builtin, old);
 	assert_int_equal(rv, SC_SUCCESS);
 	for (i = 0; old[i].name; i++) {
 		assert_ptr_equal(&old[i], filtered_emulators.list_of_handlers[i]);
@@ -284,7 +284,7 @@ static void torture_internal_name(void **state)
 	scconf_list list =  { NULL, strdup(builtin[0].name) };
 	filtered_emulators.ccount = 0;
 
-	rv = set_emulators(&filtered_emulators, &list, builtin, old);
+	rv = set_emulators(NULL, &filtered_emulators, &list, builtin, old);
 	assert_int_equal(rv, SC_SUCCESS);
 	assert_ptr_equal(&builtin[0], filtered_emulators.list_of_handlers[0]);
 	assert_null(filtered_emulators.list_of_handlers[1]);
@@ -297,7 +297,7 @@ static void torture_old_name(void **state)
 	scconf_list list =  { NULL, strdup(old[0].name) };
 	filtered_emulators.ccount = 0;
 
-	rv = set_emulators(&filtered_emulators, &list, builtin, old);
+	rv = set_emulators(NULL, &filtered_emulators, &list, builtin, old);
 	assert_int_equal(rv, SC_SUCCESS);
 	assert_ptr_equal(&old[0], filtered_emulators.list_of_handlers[0]);
 	assert_null(filtered_emulators.list_of_handlers[1]);
@@ -311,7 +311,7 @@ static void torture_internal_and_name(void **state)
 	scconf_list list1 =  { &list2, "internal" };
 	filtered_emulators.ccount = 0;
 
-	rv = set_emulators(&filtered_emulators, &list1, builtin, old);
+	rv = set_emulators(NULL, &filtered_emulators, &list1, builtin, old);
 	assert_int_equal(rv, SC_SUCCESS);
 	for (i = 0; builtin[i].name; i++) {
 		assert_ptr_equal(&builtin[i], filtered_emulators.list_of_handlers[i]);
@@ -328,7 +328,7 @@ static void torture_name_and_internal(void **state)
 	scconf_list list1 =  { &list2, "starcert" };
 	filtered_emulators.ccount = 0;
 
-	rv = set_emulators(&filtered_emulators, &list1, builtin, old);
+	rv = set_emulators(NULL, &filtered_emulators, &list1, builtin, old);
 	assert_int_equal(rv, SC_SUCCESS);
 	assert_ptr_equal(&builtin[1], filtered_emulators.list_of_handlers[0]);
 	assert_ptr_equal(&builtin[0], filtered_emulators.list_of_handlers[1]);
@@ -343,7 +343,7 @@ static void torture_internal_and_nonexisting(void **state)
 	scconf_list list1 =  { &list2, "internal" };
 	filtered_emulators.ccount = 0;
 
-	rv = set_emulators(&filtered_emulators, &list1, builtin, old);
+	rv = set_emulators(NULL, &filtered_emulators, &list1, builtin, old);
 	assert_int_equal(rv, SC_SUCCESS);
 	for (i = 0; builtin[i].name; i++) {
 		assert_ptr_equal(&builtin[i], filtered_emulators.list_of_handlers[i]);
@@ -360,7 +360,7 @@ static void torture_nonexisting_and_internal(void **state)
 	scconf_list list1 =  { &list2, "non" };
 	filtered_emulators.ccount = 0;
 
-	rv = set_emulators(&filtered_emulators, &list1, builtin, old);
+	rv = set_emulators(NULL, &filtered_emulators, &list1, builtin, old);
 	assert_int_equal(rv, SC_SUCCESS);
 	for (i = 0; builtin[i].name; i++) {
 		assert_ptr_equal(&builtin[i], filtered_emulators.list_of_handlers[i]);
@@ -375,13 +375,13 @@ static void torture_null_set_emul(void **state)
 	int rv;
 	scconf_list list1 = { NULL, "internal" };
 
-	rv = set_emulators(NULL, &list1, builtin, old);
+	rv = set_emulators(NULL, NULL, &list1, builtin, old);
 	assert_int_equal(rv, SC_ERROR_INVALID_ARGUMENTS);
-	rv = set_emulators(&filtered_emulators, NULL, builtin, old);
+	rv = set_emulators(NULL, &filtered_emulators, NULL, builtin, old);
 	assert_int_equal(rv, SC_ERROR_INVALID_ARGUMENTS);
-	rv = set_emulators(&filtered_emulators, &list1, NULL, old);
+	rv = set_emulators(NULL, &filtered_emulators, &list1, NULL, old);
 	assert_int_equal(rv, SC_ERROR_INVALID_ARGUMENTS);
-	rv = set_emulators(&filtered_emulators, &list1, builtin, NULL);
+	rv = set_emulators(NULL, &filtered_emulators, &list1, builtin, NULL);
 	assert_int_equal(rv, SC_ERROR_INVALID_ARGUMENTS);
 }
 
@@ -395,7 +395,7 @@ static void torture_full_set_emul(void **state)
 		filtered_emulators.list_of_handlers[i] = &builtin[0];
 	}
 
-	rv = set_emulators(&filtered_emulators, &list1, builtin, old);
+	rv = set_emulators(NULL, &filtered_emulators, &list1, builtin, old);
 	assert_int_equal(rv, SC_ERROR_TOO_MANY_OBJECTS);
 	assert_non_null(filtered_emulators.list_of_handlers[SC_MAX_PKCS15_EMULATORS - 1]);
 	assert_null(filtered_emulators.list_of_handlers[SC_MAX_PKCS15_EMULATORS]);
@@ -412,7 +412,7 @@ static void torture_one_to_full_set_emul(void **state)
 		filtered_emulators.list_of_handlers[i] = &builtin[0];
 	}
 
-	rv = set_emulators(&filtered_emulators, &list1, builtin, old);
+	rv = set_emulators(NULL, &filtered_emulators, &list1, builtin, old);
 	assert_int_equal(rv, SC_ERROR_TOO_MANY_OBJECTS);
 	assert_ptr_equal(filtered_emulators.list_of_handlers[SC_MAX_PKCS15_EMULATORS - 1], &old[0]);
 	assert_null(filtered_emulators.list_of_handlers[SC_MAX_PKCS15_EMULATORS]);
@@ -429,7 +429,7 @@ static void torture_one_to_full2_set_emul(void **state)
 		filtered_emulators.list_of_handlers[i] = &builtin[0];
 	}
 
-	rv = set_emulators(&filtered_emulators, &list1, builtin, old);
+	rv = set_emulators(NULL, &filtered_emulators, &list1, builtin, old);
 	assert_int_equal(rv, SC_SUCCESS);
 	assert_ptr_equal(filtered_emulators.list_of_handlers[SC_MAX_PKCS15_EMULATORS - 1], &old[1]);
 	assert_null(filtered_emulators.list_of_handlers[SC_MAX_PKCS15_EMULATORS]);
@@ -446,7 +446,7 @@ static void torture_overfilled_set_emul(void **state)
 		filtered_emulators.list_of_handlers[i] = &builtin[0];
 	}
 
-	rv = set_emulators(&filtered_emulators, &list1, builtin, old);
+	rv = set_emulators(NULL, &filtered_emulators, &list1, builtin, old);
 	assert_int_equal(rv, SC_ERROR_INVALID_ARGUMENTS);
 }
 
