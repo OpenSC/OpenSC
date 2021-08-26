@@ -74,12 +74,14 @@ static int add_emul_list(struct _sc_pkcs15_emulators* filtered_emulators,
 	return SC_SUCCESS;
 }
 
-int set_emulators(struct _sc_pkcs15_emulators* filtered_emulators, const scconf_list *list, 
+int set_emulators(sc_context_t *ctx, struct _sc_pkcs15_emulators* filtered_emulators, const scconf_list *list,
 				  struct sc_pkcs15_emulator_handler* internal, struct sc_pkcs15_emulator_handler* old)
 {
 	const scconf_list *item;
 	int *cp, i, r, count;
 	
+	LOG_FUNC_CALLED(ctx);
+
 	if (!filtered_emulators || !list || !internal || !old)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
@@ -112,11 +114,15 @@ int set_emulators(struct _sc_pkcs15_emulators* filtered_emulators, const scconf_
 					break;
 				}
 			}
+			if (count == *cp)
+				sc_log(ctx, "Warning: Trying to add non-existing emulator '%s'.", item->data);
 		}
 	}
 out:
 	if (r == SC_SUCCESS || r == SC_ERROR_TOO_MANY_OBJECTS) {
 		filtered_emulators->list_of_handlers[*cp] = NULL;
+		if (r == SC_ERROR_TOO_MANY_OBJECTS)
+			sc_log(ctx, "Warning: Number of filtered emulators exceeded %d.", SC_MAX_PKCS15_EMULATORS);
 	}
-	return r;
+	LOG_FUNC_RETURN(ctx, r);
 }

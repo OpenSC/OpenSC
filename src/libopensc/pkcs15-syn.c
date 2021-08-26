@@ -148,12 +148,12 @@ sc_pkcs15_bind_synthetic(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
 			int ret;
 
 			filtered_emulators.ccount = 0;
-			ret = set_emulators(&filtered_emulators, list, builtin_emulators, old_emulators);
+			ret = set_emulators(ctx, &filtered_emulators, list, builtin_emulators, old_emulators);
 			if (ret == SC_SUCCESS || ret == SC_ERROR_TOO_MANY_OBJECTS) {
 				lst = filtered_emulators.list_of_handlers;
 
 				if (ret == SC_ERROR_TOO_MANY_OBJECTS)
-					sc_log(ctx, "number of filtered emulators exceeded %d", SC_MAX_PKCS15_EMULATORS);
+					sc_log(ctx, "trying first %d emulators from conf file", SC_MAX_PKCS15_EMULATORS);
 
 				for (i = 0; lst[i]; i++) {
 					sc_log(ctx, "trying %s", lst[i]->name);
