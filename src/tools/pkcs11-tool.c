@@ -541,6 +541,7 @@ static CK_MECHANISM_TYPE p11_name_to_mechanism(const char *);
 static uint16_t p11_mechanism_to_flags(CK_MECHANISM_TYPE mech);
 static const char *	p11_mgf_to_name(CK_RSA_PKCS_MGF_TYPE);
 static CK_MECHANISM_TYPE p11_name_to_mgf(const char *);
+static const char *	p11_profile_to_name(CK_ULONG);
 static void		p11_perror(const char *, CK_RV);
 static const char *	CKR2Str(CK_ULONG res);
 static int		p11_test(CK_SESSION_HANDLE session);
@@ -4636,7 +4637,7 @@ static void show_profile(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 	printf("Profile object %u\n", (unsigned int) obj);
 	printf("  profile_id:          ");
 	if ((id = getPROFILE_ID(sess, obj)) != 0) {
-		printf("'%lu'\n", id);
+		printf("%s (%lu)\n", p11_profile_to_name(id), id);
 	} else {
 		printf("<empty>\n");
 	}
@@ -7280,6 +7281,16 @@ static struct mech_info	p11_mgf[] = {
       { 0, NULL, NULL, MF_UNKNOWN }
 };
 
+static struct mech_info p11_profile[] = {
+	{ CKP_INVALID_ID,                "CKP_INVALID_ID",                NULL, MF_UNKNOWN },
+	{ CKP_BASELINE_PROVIDER,         "CKP_BASELINE_PROVIDER",         NULL, MF_UNKNOWN },
+	{ CKP_EXTENDED_PROVIDER,         "CKP_EXTENDED_PROVIDER",         NULL, MF_UNKNOWN },
+	{ CKP_AUTHENTICATION_TOKEN,      "CKP_AUTHENTICATION_TOKEN",      NULL, MF_UNKNOWN },
+	{ CKP_PUBLIC_CERTIFICATES_TOKEN, "CKP_PUBLIC_CERTIFICATES_TOKEN", NULL, MF_UNKNOWN },
+	{ CKP_VENDOR_DEFINED,            "CKP_VENDOR_DEFINED",            NULL, MF_UNKNOWN },
+	{ 0, NULL, NULL, MF_UNKNOWN }
+};
+
 static const char *p11_mechanism_to_name(CK_MECHANISM_TYPE mech)
 {
 	static char temp[64];
@@ -7349,6 +7360,19 @@ static const char *p11_mgf_to_name(CK_RSA_PKCS_MGF_TYPE mgf)
 			return mi->name;
 	}
 	snprintf(temp, sizeof(temp), "mgf-0x%lX", (unsigned long) mgf);
+	return temp;
+}
+
+static const char *p11_profile_to_name(CK_ULONG profile)
+{
+	static char temp[64];
+	struct mech_info *mi;
+
+	for (mi = p11_profile; mi->name; mi++) {
+		if (mi->mech == profile)
+			return mi->name;
+	}
+	snprintf(temp, sizeof(temp), "profile-0x%lX", (unsigned long) profile);
 	return temp;
 }
 
