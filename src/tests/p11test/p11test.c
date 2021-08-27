@@ -49,6 +49,7 @@ void display_usage() {
 		"		-s slot_id		Slot ID with the card\n"
 		"		-i				Wait for the card before running the test (interactive)\n"
 		"		-o				File to write a log in JSON\n"
+		"		-v				Verbose log output\n"
 		"		-h				This help\n"
 		"\n");
 }
