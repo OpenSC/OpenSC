@@ -25,15 +25,32 @@
 #include <openssl/md5.h>
 #include <openssl/ripemd.h>
 
-#define SHORT_MESSAGE_TO_SIGN "Simple message for signing & verifying. It needs to be little bit longer to fit also longer keys and allow the truncation.\n"
-#define SHORT_MESSAGE_DIGEST	"\x30\x21\x30\x09\x06\x05\x2b\x0e" \
-				"\x03\x02\x1a\x05\x00\x04\x14\xd9" \
-				"\xdd\xa3\x76\x44\x2f\x50\xe1\xec" \
-				"\xd3\x8b\xcd\x6f\xc6\xce\x4e\xfd" \
-				"\xd3\x1a\x3f"
+#define MESSAGE_TO_SIGN "Simple message for signing & verifying. " \
+	"It needs to be little bit longer to fit also longer keys and allow the truncation.\n" \
+	"Simple message for signing & verifying. " \
+	"It needs to be little bit longer to fit also longer keys and allow the truncation.\n" \
+	"Simple message for signing & verifying. " \
+	"It needs to be little bit longer to fit also longer keys and allow the truncation.\n" \
+	"Simple message for signing & verifying. " \
+	"It needs to be little bit longer to fit also longer keys and allow the truncation.\n" \
+	"Simple message for signing & verifying. " \
+	"It needs to be little bit longer to fit also longer keys and allow the truncation.\n" \
+	"Simple message for signing & verifying. " \
+	"It needs to be little bit longer to fit also longer keys and allow the truncation.\n" \
+	"Simple message for signing & verifying. " \
+	"It needs to be little bit longer to fit also longer keys and allow the truncation.\n" \
+	"Simple message for signing & verifying. " \
+	"It needs to be little bit longer to fit also longer keys and allow the truncation.\n" \
+	"Simple message for signing & verifying. " \
+	"It needs to be little bit longer to fit also longer keys and allow the truncation.\n"
+#define MESSAGE_DIGEST	"\x30\x21\x30\x09\x06\x05\x2b\x0e" \
+			"\x03\x02\x1a\x05\x00\x04\x14\xd9" \
+			"\xdd\xa3\x76\x44\x2f\x50\xe1\xec" \
+			"\xd3\x8b\xcd\x6f\xc6\xce\x4e\xfd" \
+			"\xd3\x1a\x3f"
 #define BUFFER_SIZE		4096
 
-const unsigned char *const_message = (unsigned char *) SHORT_MESSAGE_TO_SIGN;
+const unsigned char *const_message = (unsigned char *) MESSAGE_TO_SIGN;
 
 static unsigned char *
 rsa_x_509_pad_message(const unsigned char *message,
@@ -201,7 +218,7 @@ int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 		message = rsa_x_509_pad_message(const_message,
 			&message_length, o, 1);
 	else
-		message = (CK_BYTE *) strdup(SHORT_MESSAGE_TO_SIGN);
+		message = (CK_BYTE *) strdup(MESSAGE_TO_SIGN);
 
 	debug_print(" [ KEY %s ] Encrypt message using CKM_%s",
 		o->id_str, get_mechanism_name(mech->mech));
@@ -568,8 +585,9 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 	CK_ULONG sign_length = 0;
 	int rv = 0;
 
-	if (message_length > strlen(SHORT_MESSAGE_TO_SIGN)) {
-		fail_msg("Truncate is longer than the actual message");
+	if (message_length > strlen(MESSAGE_TO_SIGN)) {
+		fail_msg("Truncate (%lu) is longer than the actual message (%lu)",
+			message_length, strlen(MESSAGE_TO_SIGN));
 		return -1;
 	}
 
@@ -596,9 +614,9 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 		/* DigestInfo + SHA1(message) */
 		message_length = 35;
 		message = malloc(message_length * sizeof(unsigned char));
-		memcpy(message, SHORT_MESSAGE_DIGEST, message_length);
+		memcpy(message, MESSAGE_DIGEST, message_length);
 	} else
-		message = (CK_BYTE *) strdup(SHORT_MESSAGE_TO_SIGN);
+		message = (CK_BYTE *) strdup(MESSAGE_TO_SIGN);
 
 	debug_print(" [ KEY %s ] Signing message of length %lu using CKM_%s",
 		o->id_str, message_length, get_mechanism_name(mech->mech));
