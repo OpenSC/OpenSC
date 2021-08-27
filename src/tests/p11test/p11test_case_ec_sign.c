@@ -22,12 +22,12 @@
 
 void ec_sign_size_test(void **state) {
 	unsigned int i;
-	int min, max, j, l, errors = 0, rv;
+	int min, max, inc, j, l, errors = 0, rv;
 	token_info_t *info = (token_info_t *) *state;
 
 	P11TEST_START(info);
-	if (token.num_ec_mechs == 0 ) {
-		fprintf(stderr, "Token does not support any ECC mechanisms. Skipping.\n");
+	if (token.num_ec_mechs == 0 && token.num_ed_mechs == 0) {
+		fprintf(stderr, "Token does not support any ECC signature mechanisms. Skipping.\n");
 		P11TEST_SKIP(info);
 	}
 
@@ -39,14 +39,29 @@ void ec_sign_size_test(void **state) {
 
 	debug_print("\nCheck functionality of Sign&Verify on different data lengths");
 	for (i = 0; i < objects.count; i++) {
-		if (objects.data[i].key_type != CKK_EC)
+		switch (objects.data[i].key_type) {
+		case CKK_EC:
+			/* This tests just couple of sizes around the curve length
+			 * to verify they are properly truncated on input */
+			min = (objects.data[i].bits + 7) / 8 - 2;
+			max = (objects.data[i].bits + 7) / 8 + 2;
+			inc = 1;
+			break;
+		case CKK_EC_EDWARDS:
+			/* Tests larger inputs for EdDSA. Previously, we had hardcoded limit of 512
+			 * https://github.com/OpenSC/OpenSC/issues/2300 */
+			min = 128;
+			max = 1024;
+			inc = 128;
+			break;
+		default:
 			continue;
+		}
+
 		// sanity: Test all mechanisms
-		min = (objects.data[i].bits + 7) / 8 - 2;
-		max = (objects.data[i].bits + 7) / 8 + 2;
 		if (objects.data[i].sign && objects.data[i].verify) {
 			for (j = 0; j < objects.data[i].num_mechs; j++) {
-				for (l = min; l < max; l++) {
+				for (l = min; l < max; l += inc) {
 					rv = sign_verify_test(&(objects.data[i]), info,
 						&(objects.data[i].mechs[j]), l, 0);
 					if (rv == -1)
@@ -61,4 +76,3 @@ void ec_sign_size_test(void **state) {
 		P11TEST_FAIL(info, "Some signatures were not verified successfully. Please review the log");
 	P11TEST_PASS(info);
 }
-
