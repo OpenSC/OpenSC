@@ -174,4 +174,3 @@ jobs:
       - run: git config --global user.email "builds@github.com"
       - run: git config --global user.name "Github Actions";
       - run: .github/push_artifacts.sh "Github Actions ${GITHUB_REF}"
-        if: ${{ secrets.GH_TOKEN != '' }}
