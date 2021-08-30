@@ -1,4 +1,6 @@
-#!/bin/bash -e
+#!/bin/bash
+
+set -ex -o xtrace
 
 # Select the right java
 sudo update-java-alternatives -s java-1.8.0-openjdk-amd64

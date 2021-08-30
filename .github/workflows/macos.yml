@@ -5,6 +5,8 @@ on:
     paths:
       - '**.c'
       - '**.h'
+      - '**.m'
+      - .github/workflows/macos.yml
   push:
 
 jobs:
@@ -13,13 +15,24 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - run: .github/setup-macos.sh
+        env:
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          PASS_SECRETS_TAR_ENC: ${{ secrets.PASS_SECRETS_TAR_ENC }}
       - run: .github/build.sh
+        env:
+          CODE_SIGN_IDENTITY: ${{ secrets.CODE_SIGN_IDENTITY }}
+          DEVELOPMENT_TEAM: ${{ secrets.DEVELOPMENT_TEAM }}
+          INSTALLER_SIGN_IDENTITY: ${{ secrets.INSTALLER_SIGN_IDENTITY }}
       - name: Cache build artifacts
         uses: actions/upload-artifact@v2
         with:
           name: opensc-build-macos
           path:
             OpenSC*.dmg
+      - run: .github/cleanup-macos.sh
+        env:
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          PASS_SECRETS_TAR_ENC: ${{ secrets.PASS_SECRETS_TAR_ENC }}
 
   push-artifacts:
     runs-on: macos-latest
@@ -34,6 +47,3 @@ jobs:
       - run: git config --global user.name "Github Actions";
       - run: .github/push_artifacts.sh "Github Actions ${GITHUB_REF}"
         if: ${{ github.event_name != 'pull_request' && github.repository == 'OpenSC/OpenSC' }}
-# TODO this fails probably because the key is not loaded in keychain before with
-# security: SecKeychainDelete: The specified keychain could not be found.
-#      - run: .github/remove_signing_key.sh; rm -f .github/secrets.tar

@@ -1,4 +1,6 @@
-#!/bin/bash -e
+#!/bin/bash
+
+set -ex -o xtrace
 
 DEPS="docbook-xsl libpcsclite-dev xsltproc gengetopt libcmocka-dev help2man pcscd check softhsm2 pcsc-tools libtool make autoconf autoconf-archive automake libssl-dev zlib1g-dev pkg-config libreadline-dev openssl git"
 
