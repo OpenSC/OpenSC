@@ -2,6 +2,10 @@
 
 set -ex -o xtrace
 
+if [ -z "$GH_TOKEN" ]; then
+    exit 0
+fi
+
 BUILDPATH=${PWD}
 BRANCH="`git log --max-count=1 --date=short --abbrev=8 --pretty=format:"%cd_%h"`"
 
