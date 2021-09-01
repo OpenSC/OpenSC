@@ -21,7 +21,7 @@ export JC_CLASSIC_HOME=$PWD/oracle_javacard_sdks/jc305u3_kit
 
 # jCardSim
 if [ ! -d "jcardsim" ]; then
-	git clone https://github.com/arekinath/jcardsim.git
+	git clone https://github.com/Jakuje/jcardsim.git
 fi
 pushd jcardsim
 env | grep -i openjdk
