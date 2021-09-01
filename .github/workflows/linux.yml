@@ -122,8 +122,7 @@ jobs:
           path: ./*
           key: ${{ runner.os }}-18-${{ github.sha }}
       - run: .github/setup-linux.sh openpgp
-      # the openpgp sometimes fails
-      - run: .github/test-openpgp.sh || true
+      - run: .github/test-openpgp.sh
 
   build-clang-tidy:
     runs-on: ubuntu-latest
