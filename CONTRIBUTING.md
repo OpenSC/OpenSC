@@ -1,7 +1,7 @@
 # Testing locally
 
 To learn how to run the tests from Github actions locally in containers, see
-[`containers`](https://github.com/OpenSC/OpenSC/master/containers/).
+[`containers`](containers/README.md).
 
 # Release process
 
