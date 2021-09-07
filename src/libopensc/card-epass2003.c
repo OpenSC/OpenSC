@@ -169,6 +169,42 @@ static const struct sc_card_error epass2003_errors[] = {
 	{ 0x9000,SC_SUCCESS,                       NULL }
 };
 
+typedef struct sec_attr_to_acl_entries {
+	unsigned int file_type;		/* file->type */
+	unsigned int file_ef_structure;	/* file->ef_structure */
+	int indx;			/* index in  epass2003 iversion of sec_attr */
+	/* use the follow for sc_file_add_entry */
+	int op;				/* SC_AC_OP_* */
+} sec_attr_to_acl_entries_t;
+
+/* Known combinations of file type and methods. More can be added as needed */
+static const sec_attr_to_acl_entries_t sec_attr_to_acl_entry[] = {
+	{SC_FILE_TYPE_DF, 0, 0,				SC_AC_OP_LIST_FILES},
+	{SC_FILE_TYPE_DF, 0, 1,				SC_AC_OP_CREATE},
+	{SC_FILE_TYPE_DF, 0, 3,				SC_AC_OP_DELETE},
+
+	{SC_FILE_TYPE_WORKING_EF, SC_FILE_EF_TRANSPARENT, 0,  SC_AC_OP_READ},
+	{SC_FILE_TYPE_WORKING_EF, SC_FILE_EF_TRANSPARENT, 1,  SC_AC_OP_UPDATE},
+	{SC_FILE_TYPE_WORKING_EF, SC_FILE_EF_TRANSPARENT, 3,  SC_AC_OP_DELETE},
+
+	{SC_FILE_TYPE_WORKING_EF, SC_FILE_EF_TRANSPARENT, 0,  SC_AC_OP_READ},
+	{SC_FILE_TYPE_WORKING_EF, SC_FILE_EF_TRANSPARENT, 1,  SC_AC_OP_UPDATE},
+	{SC_FILE_TYPE_WORKING_EF, SC_FILE_EF_TRANSPARENT, 3,  SC_AC_OP_DELETE},
+
+	{SC_FILE_TYPE_WORKING_EF, SC_FILE_EF_LINEAR_FIXED, 0,  SC_AC_OP_READ},
+	{SC_FILE_TYPE_WORKING_EF, SC_FILE_EF_LINEAR_FIXED, 1,  SC_AC_OP_UPDATE},
+	{SC_FILE_TYPE_WORKING_EF, SC_FILE_EF_LINEAR_FIXED, 2,  SC_AC_OP_WRITE},
+	{SC_FILE_TYPE_WORKING_EF, SC_FILE_EF_LINEAR_FIXED, 3,  SC_AC_OP_DELETE},
+
+	{SC_FILE_TYPE_WORKING_EF, SC_FILE_EF_LINEAR_VARIABLE, 0,  SC_AC_OP_READ},
+	{SC_FILE_TYPE_WORKING_EF, SC_FILE_EF_LINEAR_VARIABLE, 1,  SC_AC_OP_UPDATE},
+	{SC_FILE_TYPE_WORKING_EF, SC_FILE_EF_LINEAR_VARIABLE, 2,  SC_AC_OP_WRITE},
+	{SC_FILE_TYPE_WORKING_EF, SC_FILE_EF_LINEAR_VARIABLE, 3,  SC_AC_OP_DELETE},
+
+	{SC_FILE_TYPE_BSO, 0, 0,				SC_AC_OP_UPDATE},
+	{SC_FILE_TYPE_BSO, 0, 3,				SC_AC_OP_DELETE},
+};
+
 static int epass2003_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu);
 static int epass2003_select_file(struct sc_card *card, const sc_path_t * in_path, sc_file_t ** file_out);
 int epass2003_refresh(struct sc_card *card);
@@ -1806,6 +1842,51 @@ acl_to_ac_byte(struct sc_card *card, const struct sc_acl_entry *e)
 	LOG_FUNC_RETURN(card->ctx, SC_ERROR_INCORRECT_PARAMETERS);
 }
 
+/* Use epass2003 sec_attr to add acl entries */
+int
+sec_attr_to_entry(struct sc_card *card, sc_file_t *file, int indx)
+{
+	int i;
+	int found = 0;
+
+	unsigned int method;
+	unsigned long  keyref;
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	switch  (file->sec_attr[indx]) {
+		case (EPASS2003_AC_MAC_NOLESS | EPASS2003_AC_EVERYONE):
+			method = SC_AC_NONE;
+			keyref = SC_AC_KEY_REF_NONE;
+			break;
+		case (EPASS2003_AC_MAC_NOLESS | EPASS2003_AC_USER):
+			method = SC_AC_CHV;
+			keyref = 1;
+			break;
+		default:
+			sc_log(card->ctx,"Unknown value 0x%2.2x in file->sec_attr[%d]", file->sec_attr[indx], indx);
+			method = SC_AC_NEVER;
+			keyref = SC_AC_KEY_REF_NONE;
+
+			break;
+	}
+	
+	for (i = 0; i < (int)(sizeof(sec_attr_to_acl_entry) / sizeof(sec_attr_to_acl_entries_t)); i++) {
+		const sec_attr_to_acl_entries_t *e = &sec_attr_to_acl_entry[i];
+
+		if (indx == e->indx && file->type == e->file_type
+				&& file->ef_structure == e->file_ef_structure) {
+				/* may add multiple entries */
+			sc_file_add_acl_entry(file, e->op, method, keyref);
+			found++;
+		}
+	}
+	if (found != 1) {
+		sc_log(card->ctx,"found %d entries ", found);
+	}
+
+	return 0;
+}
 
 static int
 epass2003_process_fci(struct sc_card *card, sc_file_t * file, const u8 * buf, size_t buflen)
@@ -1914,8 +1995,13 @@ epass2003_process_fci(struct sc_card *card, sc_file_t * file, const u8 * buf, si
 		sc_file_set_prop_attr(file, tag, taglen);
 
 	tag = sc_asn1_find_tag(ctx, p, len, 0x86, &taglen);
-	if (tag != NULL && taglen)
+	if (tag != NULL && taglen) {
+		unsigned int i;
 		sc_file_set_sec_attr(file, tag, taglen);
+		for (i = 0; i< taglen; i++)
+			if (tag[i] != 0xff) /* skip unused entries */
+				sec_attr_to_entry(card, file, i);
+	}
 
 	tag = sc_asn1_find_tag(ctx, p, len, 0x8A, &taglen);
 	if (tag != NULL && taglen == 1) {
@@ -2033,6 +2119,7 @@ epass2003_construct_fci(struct sc_card *card, const sc_file_t * file,
 	if (file->sec_attr_len) {
 		memcpy(buf, file->sec_attr, file->sec_attr_len);
 		sc_asn1_put_tag(0x86, buf, file->sec_attr_len, p, *outlen - (p - out), &p);
+
 	}
 	else {
 		sc_log(card->ctx, "SC_FILE_ACL");
