@@ -145,6 +145,7 @@ cmdline:
 	$(AM_V_GEN)$(GENGETOPT) --file-name=opensc-asn1-cmdline --output-dir=$(builddir) < opensc-asn1.ggo --unamed-opts
 
 if WIN32
+LIBS += -lshlwapi
 opensc_tool_SOURCES += versioninfo-tools.rc
 piv_tool_SOURCES += versioninfo-tools.rc
 opensc_explorer_SOURCES += versioninfo-tools.rc

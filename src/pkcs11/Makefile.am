@@ -23,6 +23,9 @@ OPENSC_PKCS11_LIBS = \
 	$(top_builddir)/src/common/libscdl.la \
 	$(top_builddir)/src/common/libcompat.la \
 	$(OPENPACE_LIBS) $(OPTIONAL_OPENSSL_LIBS) $(PTHREAD_LIBS)
+if WIN32
+OPENSC_PKCS11_LIBS += -lshlwapi
+endif
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = opensc-pkcs11.pc
@@ -61,6 +64,7 @@ pkcs11_spy_la_LDFLAGS = $(AM_LDFLAGS) \
 if WIN32
 opensc_pkcs11_la_SOURCES += versioninfo-pkcs11.rc
 pkcs11_spy_la_SOURCES += versioninfo-pkcs11-spy.rc
+pkcs11_spy_la_LIBADD += -lshlwapi
 endif
 
 if WIN32
