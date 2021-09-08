@@ -25,6 +25,9 @@
 #include <openssl/x509.h>
 #include <openssl/rsa.h>
 #include <openssl/err.h>
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+# include <openssl/core_names.h>
+#endif
 #include "p11test_common.h"
 
 typedef struct {
@@ -33,11 +36,7 @@ typedef struct {
 	char		*id_str;
 	X509		*x509;
 	int		 type;
-	union {
-		RSA		*rsa;
-		EC_KEY	*ec;
-		EVP_PKEY	*pkey;
-	} key;
+	EVP_PKEY	*key;
 	CK_OBJECT_HANDLE private_handle;
 	CK_OBJECT_HANDLE public_handle;
 	CK_BBOOL	sign;
