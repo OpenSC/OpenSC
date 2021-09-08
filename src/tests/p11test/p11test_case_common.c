@@ -85,9 +85,7 @@ add_object(test_certs_t *objects, CK_ATTRIBUTE key_id, CK_ATTRIBUTE label)
 	o->derive_pub = 0;
 	o->key_type = -1;
 	o->x509 = NULL; /* The "reuse" capability of d2i_X509() is strongly discouraged */
-	o->key.rsa = NULL;
-	o->key.ec = NULL;
-	o->value = NULL;
+	o->key = NULL;
 
 	/* Store the passed CKA_ID and CKA_LABEL */
 	o->key_id = malloc(key_id.ulValueLen);
@@ -256,30 +254,20 @@ int callback_certificates(test_certs_t *objects,
 	}
 
 	if (EVP_PKEY_base_id(evp) == EVP_PKEY_RSA) {
-		/* Extract public RSA key */
-		const RSA *rsa = EVP_PKEY_get0_RSA(evp);
-		if ((o->key.rsa = RSAPublicKey_dup((RSA *)rsa)) == NULL) {
-			fail_msg("RSAPublicKey_dup failed");
-			return -1;
-		}
+		o->key = evp;
 		o->type = EVP_PK_RSA;
 		o->bits = EVP_PKEY_bits(evp);
 
 	} else if (EVP_PKEY_base_id(evp) == EVP_PKEY_EC) {
-		/* Extract public EC key */
-		const EC_KEY *ec = EVP_PKEY_get0_EC_KEY(evp);
-		if ((o->key.ec = EC_KEY_dup(ec)) == NULL) {
-			fail_msg("EC_KEY_dup failed");
-			return -1;
-		}
+		o->key = evp;
 		o->type = EVP_PK_EC;
 		o->bits = EVP_PKEY_bits(evp);
 
 	} else {
+		EVP_PKEY_free(evp);
 		fprintf(stderr, "[WARN %s ]evp->type = 0x%.4X (not RSA, EC)\n",
 			o->id_str, EVP_PKEY_id(evp));
 	}
-	EVP_PKEY_free(evp);
 
 	debug_print(" [  OK %s ] Certificate with label %s loaded successfully",
 		o->id_str, o->label);
@@ -378,28 +366,66 @@ int callback_public_keys(test_certs_t *objects,
 		BIGNUM *n = NULL, *e = NULL;
 		n = BN_bin2bn(template[4].pValue, template[4].ulValueLen, NULL);
 		e = BN_bin2bn(template[5].pValue, template[5].ulValueLen, NULL);
-		if (o->key.rsa != NULL) {
+		if (o->key != NULL) {
+			int rv;
+#if 1
+// OPENSSL_VERSION_NUMBER < 0x30000000L
 			const BIGNUM *cert_n = NULL, *cert_e = NULL;
-			RSA_get0_key(o->key.rsa, &cert_n, &cert_e, NULL);
-			if (BN_cmp(cert_n, n) != 0 ||
-				BN_cmp(cert_e, e) != 0) {
-				debug_print(" [WARN %s ] Got different public key then from the certificate",
+			RSA *rsa = EVP_PKEY_get0_RSA(o->key);
+			RSA_get0_key(rsa, &cert_n, &cert_e, NULL);
+#else
+//TODO This looks broken in in current OpenSSL 3.0
+			BIGNUM *cert_n = NULL, *cert_e = NULL;
+			if ((EVP_PKEY_get_bn_param(o->key, OSSL_PKEY_PARAM_RSA_N, &cert_n) != 1) ||
+			    (EVP_PKEY_get_bn_param(o->key, OSSL_PKEY_PARAM_RSA_E, &cert_e) != 1)) {
+				debug_print(" [WARN %s ] Failed to get RSA key parameters",
 					o->id_str);
+				BN_free(cert_n);
 				BN_free(n);
 				BN_free(e);
 				return -1;
 			}
+#endif
+			rv = BN_cmp(cert_n, n) != 0 || BN_cmp(cert_e, e) != 0;
+			if (rv != 0) {
+				o->verify_public = 1;
+			} else {
+				debug_print(" [WARN %s ] Got different public key then from the certificate",
+					o->id_str);
+			}
+#if 0
+// OPENSSL_VERSION_NUMBER >= 0x30000000L
+			BN_free(cert_n);
+			BN_free(cert_e);
+#endif
 			BN_free(n);
 			BN_free(e);
-			o->verify_public = 1;
 		} else { /* store the public key for future use */
 			o->type = EVP_PK_RSA;
-			o->key.rsa = RSA_new();
-			if (RSA_set0_key(o->key.rsa, n, e, NULL) != 1) {
+			o->key = EVP_PKEY_new();
+#if 1
+// OPENSSL_VERSION_NUMBER < 0x30000000L
+			RSA *rsa = RSA_new();
+			if (RSA_set0_key(rsa, n, e, NULL) != 1 ||
+			    EVP_PKEY_set1_RSA(o->key, rsa))
+#else
+//TODO This looks broken in in current OpenSSL 3.0
+			if ((EVP_PKEY_set_bn_param(o->key, OSSL_PKEY_PARAM_RSA_N, n) != 1) ||
+			    (EVP_PKEY_set_bn_param(o->key, OSSL_PKEY_PARAM_RSA_E, e) != 1))
+#endif
+			{
 				fail_msg("Unable to set key params");
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+				BN_free(n);
+				BN_free(e);
+#endif
 				return -1;
 			}
-			o->bits = RSA_bits(o->key.rsa);
+			o->bits = EVP_PKEY_bits(o->key);
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+			BN_free(n);
+			BN_free(e);
+#endif
 			n = NULL;
 			e = NULL;
 		}
@@ -457,9 +483,10 @@ int callback_public_keys(test_certs_t *objects,
 			return -1;
 		}
 
-		if (o->key.ec != NULL) {
-			const EC_GROUP *cert_group = EC_KEY_get0_group(o->key.ec);
-			const EC_POINT *cert_point = EC_KEY_get0_public_key(o->key.ec);
+		if (o->key != NULL) {
+			EC_KEY *ec = EVP_PKEY_get0_EC_KEY(o->key);
+			const EC_GROUP *cert_group = EC_KEY_get0_group(ec);
+			const EC_POINT *cert_point = EC_KEY_get0_public_key(ec);
 			int cert_nid = EC_GROUP_get_curve_name(cert_group);
 
 			if (cert_nid != nid ||
@@ -477,10 +504,12 @@ int callback_public_keys(test_certs_t *objects,
 			o->verify_public = 1;
 		} else { /* store the public key for future use */
 			o->type = EVP_PK_EC;
-			o->key.ec = EC_KEY_new_by_curve_name(nid);
-			EC_KEY_set_public_key(o->key.ec, ecpoint);
-			EC_KEY_set_group(o->key.ec, ecgroup);
+			o->key = EVP_PKEY_new();
+			EC_KEY *ec = EC_KEY_new_by_curve_name(nid);
+			EC_KEY_set_public_key(ec, ecpoint);
+			EC_KEY_set_group(ec, ecgroup);
 			o->bits = EC_GROUP_get_degree(ecgroup);
+			EVP_PKEY_set1_EC_KEY(o->key, ec);
 		}
 	} else if (o->key_type == CKK_EC_EDWARDS
 		|| o->key_type == CKK_EC_MONTGOMERY) {
@@ -561,13 +590,13 @@ int callback_public_keys(test_certs_t *objects,
 			ASN1_STRING_free(os);
 			return -1;
 		}
-		if (o->key.pkey != NULL) {
+		if (o->key != NULL) {
 			unsigned char *pub = NULL;
 			size_t publen = 0;
 
 			/* TODO check EVP_PKEY type */
 
-			if (EVP_PKEY_get_raw_public_key(o->key.pkey, NULL, &publen) != 1) {
+			if (EVP_PKEY_get_raw_public_key(o->key, NULL, &publen) != 1) {
 				debug_print(" [WARN %s ] Can not get size of the key", o->id_str);
 				ASN1_STRING_free(os);
 				return -1;
@@ -579,7 +608,7 @@ int callback_public_keys(test_certs_t *objects,
 				return -1;
 			}
 
-			if (EVP_PKEY_get_raw_public_key(o->key.pkey, pub, &publen) != 1 ||
+			if (EVP_PKEY_get_raw_public_key(o->key, pub, &publen) != 1 ||
 				publen != (size_t)os->length ||
 				memcmp(pub, os->data, publen) != 0) {
 				debug_print(" [WARN %s ] Got different public"
@@ -594,7 +623,7 @@ int callback_public_keys(test_certs_t *objects,
 			o->verify_public = 1;
 		} else { /* store the public key for future use */
 			o->type = evp_type;
-			o->key.pkey = key;
+			o->key = key;
 			o->bits = 255;
 		}
 		ASN1_STRING_free(os);
@@ -854,15 +883,8 @@ void clean_all_objects(test_certs_t *objects) {
 		free(objects->data[i].label);
 		free(objects->data[i].value);
 		X509_free(objects->data[i].x509);
-		if (objects->data[i].key_type == CKK_RSA &&
-		    objects->data[i].key.rsa != NULL) {
-			RSA_free(objects->data[i].key.rsa);
-		} else if (objects->data[i].key_type == CKK_EC &&
-			objects->data[i].key.ec != NULL) {
-			EC_KEY_free(objects->data[i].key.ec);
-		} else if (objects->data[i].key_type == CKK_EC_EDWARDS &&
-			objects->data[i].key.pkey != NULL) {
-			EVP_PKEY_free(objects->data[i].key.pkey);
+		if (objects->data[i].key != NULL) {
+			EVP_PKEY_free(objects->data[i].key);
 		}
 	}
 	free(objects->data);

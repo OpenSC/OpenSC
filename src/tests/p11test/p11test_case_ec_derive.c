@@ -143,7 +143,7 @@ int test_derive_x25519(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 		return 1;
 	}
 
-	rc = EVP_PKEY_derive_set_peer(pctx, o->key.pkey);
+	rc = EVP_PKEY_derive_set_peer(pctx, o->key);
 	if (rc != 1) {
 		debug_print(" [ KEY %s ] EVP_PKEY_derive_set_peer failed", o->id_str);
 		EVP_PKEY_CTX_free(pctx);
@@ -215,7 +215,7 @@ int test_derive_x25519(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 int test_derive(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 {
 	int nid, field_size;
-	EC_KEY *key = NULL;
+	EC_KEY *key = NULL, *pkey = NULL;
 	const EC_POINT *publickey = NULL;
 	const EC_GROUP *group = NULL;
 	unsigned char *secret = NULL, *pkcs11_secret = NULL;
@@ -263,10 +263,10 @@ int test_derive(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 		EC_KEY_free(key);
 		return 1;
 	}
-
+	pkey = EVP_PKEY_get0_EC_KEY(o->key);
 	/* Derive the shared secret locally */
 	secret_len = ECDH_compute_key(secret, secret_len,
-		EC_KEY_get0_public_key(o->key.ec), key, NULL);
+		EC_KEY_get0_public_key(pkey), key, NULL);
 
 	/* Try to do the same with the card key */
 
