@@ -332,6 +332,11 @@ int callback_public_keys(test_certs_t *objects,
 {
 	test_cert_t *o = NULL;
 	char *key_id;
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	EVP_PKEY_CTX *ctx = NULL;
+	OSSL_PARAM *params = NULL;
+	OSSL_PARAM_BLD *bld = NULL;
+#endif
 
 	/* Search for already stored certificate with same ID */
 	if ((o = search_certificate(objects, &(template[3]))) == NULL) {
@@ -368,33 +373,29 @@ int callback_public_keys(test_certs_t *objects,
 		e = BN_bin2bn(template[5].pValue, template[5].ulValueLen, NULL);
 		if (o->key != NULL) {
 			int rv;
-#if 1
-// OPENSSL_VERSION_NUMBER < 0x30000000L
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 			const BIGNUM *cert_n = NULL, *cert_e = NULL;
 			RSA *rsa = EVP_PKEY_get0_RSA(o->key);
 			RSA_get0_key(rsa, &cert_n, &cert_e, NULL);
 #else
-//TODO This looks broken in in current OpenSSL 3.0
 			BIGNUM *cert_n = NULL, *cert_e = NULL;
 			if ((EVP_PKEY_get_bn_param(o->key, OSSL_PKEY_PARAM_RSA_N, &cert_n) != 1) ||
 			    (EVP_PKEY_get_bn_param(o->key, OSSL_PKEY_PARAM_RSA_E, &cert_e) != 1)) {
-				debug_print(" [WARN %s ] Failed to get RSA key parameters",
-					o->id_str);
+				fprintf(stderr, "Failed to extract RSA key parameters");
 				BN_free(cert_n);
 				BN_free(n);
 				BN_free(e);
-				return -1;
+				return -1; 
 			}
 #endif
-			rv = BN_cmp(cert_n, n) != 0 || BN_cmp(cert_e, e) != 0;
-			if (rv != 0) {
+			rv = BN_cmp(cert_n, n) == 0 && BN_cmp(cert_e, e) == 0;
+			if (rv == 1) {
 				o->verify_public = 1;
 			} else {
 				debug_print(" [WARN %s ] Got different public key then from the certificate",
 					o->id_str);
 			}
-#if 0
-// OPENSSL_VERSION_NUMBER >= 0x30000000L
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
 			BN_free(cert_n);
 			BN_free(cert_e);
 #endif
@@ -403,13 +404,11 @@ int callback_public_keys(test_certs_t *objects,
 		} else { /* store the public key for future use */
 			o->type = EVP_PK_RSA;
 			o->key = EVP_PKEY_new();
-#if 1
-// OPENSSL_VERSION_NUMBER < 0x30000000L
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 			RSA *rsa = RSA_new();
 			if (RSA_set0_key(rsa, n, e, NULL) != 1 ||
 			    EVP_PKEY_set1_RSA(o->key, rsa))
 #else
-//TODO This looks broken in in current OpenSSL 3.0
 			if ((EVP_PKEY_set_bn_param(o->key, OSSL_PKEY_PARAM_RSA_N, n) != 1) ||
 			    (EVP_PKEY_set_bn_param(o->key, OSSL_PKEY_PARAM_RSA_E, e) != 1))
 #endif
@@ -422,12 +421,6 @@ int callback_public_keys(test_certs_t *objects,
 				return -1;
 			}
 			o->bits = EVP_PKEY_bits(o->key);
-#if OPENSSL_VERSION_NUMBER < 0x30000000L
-			BN_free(n);
-			BN_free(e);
-#endif
-			n = NULL;
-			e = NULL;
 		}
 	} else if (o->key_type == CKK_EC) {
 		ASN1_OBJECT *oid = NULL;
@@ -473,8 +466,11 @@ int callback_public_keys(test_certs_t *objects,
 			EC_GROUP_free(ecgroup);
 			return -1;
 		}
-
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 		ecpoint = EC_POINT_bn2point(ecgroup, bn, NULL, NULL);
+#else
+		ecpoint = EC_POINT_hex2point(ecgroup, BN_bn2hex(bn), NULL, NULL);
+#endif
 		BN_free(bn);
 		if (ecpoint == NULL) {
 			debug_print(" [WARN %s ] Can not convert EC_POINT from"
@@ -484,11 +480,37 @@ int callback_public_keys(test_certs_t *objects,
 		}
 
 		if (o->key != NULL) {
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 			EC_KEY *ec = EVP_PKEY_get0_EC_KEY(o->key);
 			const EC_GROUP *cert_group = EC_KEY_get0_group(ec);
 			const EC_POINT *cert_point = EC_KEY_get0_public_key(ec);
 			int cert_nid = EC_GROUP_get_curve_name(cert_group);
-
+#else
+			EC_GROUP *cert_group = NULL;
+			char curve_name[80]; size_t curve_name_len = 0;
+			int cert_nid = 0;
+			if (EVP_PKEY_get_group_name(o->key, curve_name, sizeof(curve_name), &curve_name_len) != 1 ||
+				(cert_nid = OBJ_txt2nid(curve_name)) == NID_undef ||
+				(cert_group = EC_GROUP_new_by_curve_name(cert_nid)) == NULL) {
+				fprintf(stderr, "Can not get EC_GROUP from EVP_PKEY");
+				EC_GROUP_free(ecgroup);
+				EC_POINT_free(ecpoint);
+				EC_GROUP_free(cert_group);
+				return -1;
+			}
+			EC_POINT *cert_point = EC_POINT_new(cert_group);
+			unsigned char pubkey[80]; size_t pubkey_len = 0;
+			if (!cert_point ||
+				EVP_PKEY_get_octet_string_param(o->key, OSSL_PKEY_PARAM_PUB_KEY, pubkey, sizeof(pubkey), &pubkey_len) != 1 ||
+				EC_POINT_oct2point(cert_group, cert_point, pubkey, pubkey_len, NULL) != 1) {
+				fprintf(stderr, "Can not get EC_POINT from EVP_PKEY");
+				EC_GROUP_free(ecgroup);
+				EC_POINT_free(ecpoint);
+				EC_POINT_free(cert_point);
+				EC_GROUP_free(cert_group);
+				return -1;
+			}
+#endif
 			if (cert_nid != nid ||
 				EC_GROUP_cmp(cert_group, ecgroup, NULL) != 0 ||
 				EC_POINT_cmp(ecgroup, cert_point, ecpoint, NULL) != 0) {
@@ -505,11 +527,40 @@ int callback_public_keys(test_certs_t *objects,
 		} else { /* store the public key for future use */
 			o->type = EVP_PK_EC;
 			o->key = EVP_PKEY_new();
+			o->bits = EC_GROUP_get_degree(ecgroup);
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 			EC_KEY *ec = EC_KEY_new_by_curve_name(nid);
 			EC_KEY_set_public_key(ec, ecpoint);
 			EC_KEY_set_group(ec, ecgroup);
-			o->bits = EC_GROUP_get_degree(ecgroup);
 			EVP_PKEY_set1_EC_KEY(o->key, ec);
+#else
+			EVP_PKEY_CTX* ctx = EVP_PKEY_CTX_new_from_name(0, "EC", 0);
+			char curve_name[80]; size_t curve_name_len = 0;
+			unsigned char pubkey[80]; size_t pubkey_len = 0;
+			if (EVP_PKEY_get_group_name(o->key, curve_name, sizeof(curve_name), &curve_name_len)||
+				EVP_PKEY_get_octet_string_param(o->key, OSSL_PKEY_PARAM_PUB_KEY, pubkey, sizeof(pubkey), &pubkey_len) != 1) {
+				debug_print(" [WARN %s ] Can not get params from EVP_PKEY", o->id_str);
+				EC_GROUP_free(ecgroup);
+				EC_POINT_free(ecpoint);
+				return -1;
+			}
+			OSSL_PARAM_BLD *param_bld;
+			OSSL_PARAM *params = NULL;
+			param_bld = OSSL_PARAM_BLD_new();
+			if (param_bld != NULL &&
+				OSSL_PARAM_BLD_push_utf8_string(param_bld, "group", curve_name, curve_name_len) &&
+				OSSL_PARAM_BLD_push_octet_string(param_bld, "pub", pubkey, pubkey_len)) {
+					params = OSSL_PARAM_BLD_to_param(param_bld);
+			}
+			if (ctx == NULL || params == NULL ||
+				EVP_PKEY_fromdata_init(ctx) != 1 ||
+				EVP_PKEY_fromdata(ctx, &o->key, EVP_PKEY_PUBLIC_KEY, params) != 1) {
+				debug_print(" [WARN %s ] Can not set params for EVP_PKEY", o->id_str);
+				EC_GROUP_free(ecgroup);
+				EC_POINT_free(ecpoint);
+				return -1;
+			}
+#endif
 		}
 	} else if (o->key_type == CKK_EC_EDWARDS
 		|| o->key_type == CKK_EC_MONTGOMERY) {
