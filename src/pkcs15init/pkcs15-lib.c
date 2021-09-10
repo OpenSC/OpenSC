@@ -912,9 +912,20 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 		if (r >= 0) {
 			r = sc_pkcs15init_update_tokeninfo(p15card, profile);
 		} else {
-			/* FIXME: what to do if sc_pkcs15init_update_dir failed? */
-			free(app->label);
-			free(app); /* unused */
+			/* FIXED: what to do if sc_pkcs15init_update_dir failed? */
+			/* sc_pkcs15init_update_dir may add app to card->app[] */
+			int found = 0;
+			int i;
+			for (i = 0; i < card->app_count; i++) {
+				if (card->app[i] == app) {
+					found = 1;
+					break;
+				}
+			}
+			if (found == 0) { /* not in card->app[] free it */
+				free(app->label);
+				free(app); /* unused */
+			}
 		}
 	}
 	else {
