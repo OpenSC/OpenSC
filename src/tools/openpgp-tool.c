@@ -325,9 +325,7 @@ static char *prettify_serialnumber(u8 *data, size_t length)
 {
 	if (data != NULL && length >= 4) {
 		static char result[15];	/* large enough for even 2*3 digits + separator */
-		unsigned long serial = (unsigned long) (data[0] << 24 | data[1] << 16 | data[2] << 8 | data[3]);
-
-		sprintf(result, "%08lX", serial);
+		sprintf(result, "%02X%02X%02X%02X", data[0], data[1], data[2], data[3]);
 		return result;
 	}
 	return NULL;
