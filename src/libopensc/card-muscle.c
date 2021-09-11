@@ -299,9 +299,6 @@ static int muscle_delete_mscfs_file(sc_card_t *card, mscfs_file_t *file_data)
 		oid[2] = oid[3] = 0;
 		/* ??? objectId = objectId >> 16; */
 	}
-	if((0 == memcmp(oid, "\x3F\x00\x00\x00", 4))
-		|| (0 == memcmp(oid, "\x3F\x00\x3F\x00", 4))) {
-	}
 	r = msc_delete_object(card, id, 1);
 	/* Check if its the root... this file generally is virtual
 	 * So don't return an error if it fails */
