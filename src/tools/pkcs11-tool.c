@@ -442,14 +442,14 @@ struct flag_info {
  *
  * TODO these flags are only the tip of the iceberg, but can be filled out as time progresses.
  */
-#define MF_UNKNOWN 0        /* Used to indicate additional informtion is not available */
+#define MF_UNKNOWN 0        /* Used to indicate additional information is not available */
 #define MF_SIGN    (1 << 0) /* C_Sign interface supported */
 #define MF_VERIFY  (1 << 1) /* C_verify interface supported */
 #define MF_HMAC    (1 << 2) /* Is an Hashed Message Authentication Code (HMAC) */
 #define MF_MGF     (1 << 3) /* Is an Mask Generation Function (MGF) */
 #define MF_CKO_SECRET_KEY (1 << 4) /* Uses a CKO_SECRET_KEY class object */
 
-/* Handy intializers */
+/* Handy initializers */
 #define MF_GENERIC_HMAC_FLAGS (MF_SIGN | MF_VERIFY | MF_HMAC | MF_CKO_SECRET_KEY)
 
 struct mech_info {
@@ -562,7 +562,7 @@ static DWORD WINAPI	test_threads_run(_In_ LPVOID pttd);
 #else
 static void *		test_threads_run(void * pttd);
 #endif
-#endif /* defined(_WIN32) || defiend(HAVE_PTHREAD) */
+#endif /* defined(_WIN32) || defined(HAVE_PTHREAD) */
 static void		generate_random(CK_SESSION_HANDLE session);
 static CK_RV		find_object_with_attributes(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE *out,
 				CK_ATTRIBUTE *attrs, CK_ULONG attrsLen, CK_ULONG obj_index);
@@ -1389,7 +1389,7 @@ end:
 #if defined(_WIN32) || defined(HAVE_PTHREAD)
 	if (do_test_threads)
 		test_threads_cleanup();
-#endif /* defined(_WIN32) || defiend(HAVE_PTHREAD) */
+#endif /* defined(_WIN32) || defined(HAVE_PTHREAD) */
 
 	if (p11)
 		p11->C_Finalize(NULL_PTR);
@@ -7574,7 +7574,7 @@ static void * test_threads_run(void * pttd)
 	/* call selected C_* routines with different options */
 	pctest = ttd-> tests;
 
-	/* series of two chatacter commands */
+	/* series of two character commands */
 	while (pctest && *pctest && *(pctest + 1)) {
 		ttd->state = state++;
 
@@ -7777,4 +7777,4 @@ static void test_threads()
 		test_threads_start(i);
 	}
 }
-#endif /* defined(_WIN32) || defiend(HAVE_PTHREAD) */
+#endif /* defined(_WIN32) || defined(HAVE_PTHREAD) */

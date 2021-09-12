@@ -7,7 +7,7 @@ NEWS for OpenSC -- History of user visible changes
  * Add threading test to `pkcs11-tool` (#2067)
  * Add support to generate generic secret keys (#2140)
  * `opensc-explorer`: Print information about LCS (Life cycle status byte) (#2195)
- * Add support for Apple's arm64 (M1) binaries, removed TokenD. A seperate installer with TokenD (and without arm64 binaries) will be available (#2179).
+ * Add support for Apple's arm64 (M1) binaries, removed TokenD. A separate installer with TokenD (and without arm64 binaries) will be available (#2179).
  * Support for gcc11 and its new strict aliasing rules (#2241, #2260)
  * Initial support for building with OpenSSL 3.0 (#2343)
  * pkcs15-tool: Write data objects in binary mode (#2324)

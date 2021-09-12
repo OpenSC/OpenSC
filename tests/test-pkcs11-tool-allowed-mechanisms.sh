@@ -7,7 +7,7 @@ echo "======================================================="
 echo "Setup SoftHSM"
 echo "======================================================="
 if [[ ! -f $P11LIB ]]; then
-    echo "WARNINIG: The SoftHSM is not installed. Can not run this test"
+    echo "WARNING: The SoftHSM is not installed. Can not run this test"
     exit 77;
 fi
 # The Ubuntu has old softhsm version not supporting this feature

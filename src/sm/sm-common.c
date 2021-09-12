@@ -469,7 +469,7 @@ sm_decrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_SM, SC_SUCCESS);
 }
 
-/* This function expects the data to be a multilpe of DES block size */
+/* This function expects the data to be a multiple of DES block size */
 int
 sm_encrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
 		const unsigned char *in, size_t in_len,
