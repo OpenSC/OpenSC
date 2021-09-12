@@ -607,7 +607,7 @@ int apiTests(char *reader)
 	if (pinEnv)
 		printf("Running tests using PIN=%s/len=%zd\n", pinEnv, strlen(pinEnv));
 	else
-		printf("Running tests wihtout any PIN\n");
+		printf("Running tests without any PIN\n");
 	memset(&cardData, 0, sizeof(cardData));
 	cardData.dwVersion = 7;
 	cardData.pwszCardName = L"TestCard";
