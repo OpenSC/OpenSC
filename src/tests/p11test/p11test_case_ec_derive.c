@@ -214,13 +214,19 @@ int test_derive_x25519(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 
 int test_derive(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 {
-	int nid, field_size;
-	EC_KEY *key = NULL, *pkey = NULL;
-	const EC_POINT *publickey = NULL;
-	const EC_GROUP *group = NULL;
 	unsigned char *secret = NULL, *pkcs11_secret = NULL;
 	unsigned char *pub = NULL;
 	size_t pub_len = 0, secret_len = 0, pkcs11_secret_len = 0;
+	int rv = 1;
+
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+	int nid = 0;
+	const EC_GROUP *group = NULL;
+	const EC_POINT *publickey = NULL;
+	EC_KEY *key = NULL;
+#endif
+	EVP_PKEY_CTX *pctx = NULL;
+	EVP_PKEY *evp_pkey = NULL;
 
 	if (o->private_handle == CK_INVALID_HANDLE) {
 		debug_print(" [SKIP %s ] Missing private key", o->id_str);
@@ -234,6 +240,7 @@ int test_derive(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 
 	debug_print(" [ KEY %s ] Trying EC derive using CKM_%s and %lu-bit key",
 	o->id_str, get_mechanism_name(mech->mech), o->bits);
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	if (o->bits == 256)
 		nid = NID_X9_62_prime256v1;
 	else if (o->bits == 384)
@@ -244,75 +251,118 @@ int test_derive(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 		debug_print(" [ KEY %s ] Skip key of unknown size", o->id_str);
 		return 1;
 	}
+#endif
 
-	/* Generate the peer private key */
-	if ((key = EC_KEY_new_by_curve_name(nid)) == NULL ||
-			EC_KEY_generate_key(key) != 1) {
-		debug_print(" [ KEY %s ] Failed to generate peer private key", o->id_str);
-		EC_KEY_free(key);
+/* Generate the peer private key */
+	if ((pctx = EVP_PKEY_CTX_new(o->key, NULL)) == NULL) {
+		debug_print(" [ KEY %s ] EVP_PKEY_CTX_new_id failed", o->id_str);
 		return 1;
 	}
 
-	/* Calculate the size of the buffer for the shared secret */
-	field_size = EC_GROUP_get_degree(EC_KEY_get0_group(key));
-	secret_len = (field_size+7)/8;
+	if (EVP_PKEY_keygen_init(pctx) != 1) {
+		debug_print(" [ KEY %s ] EVP_PKEY_keygen_init failed", o->id_str);
+		EVP_PKEY_CTX_free(pctx);
+		return 1;
+	}
 
+	if (EVP_PKEY_keygen(pctx, &evp_pkey) != 1) {
+		debug_print(" [ KEY %s ] EVP_PKEY_keygen failed", o->id_str);
+		EVP_PKEY_CTX_free(pctx);
+		return 1;
+	}
+	EVP_PKEY_CTX_free(pctx);
+
+/* Start with key derivation in OpenSSL*/
+	pctx = EVP_PKEY_CTX_new(evp_pkey, NULL);
+	if (pctx == NULL ||
+		EVP_PKEY_derive_init(pctx) != 1 ||
+		EVP_PKEY_derive_set_peer(pctx, o->key) != 1) {
+		debug_print(" [ KEY %s ] Can not derive key", o->id_str);
+		EVP_PKEY_free(evp_pkey);
+		return 1;
+	}
+	
+	/* Get buffer length */
+	if (EVP_PKEY_derive(pctx, NULL, &secret_len) != 1) {
+		debug_print(" [ KEY %s ] EVP_PKEY_derive failed", o->id_str);
+		EVP_PKEY_CTX_free(pctx);
+		EVP_PKEY_free(evp_pkey);
+		return 1;
+	}
 	/* Allocate the memory for the shared secret */
-	if ((secret = OPENSSL_malloc(secret_len)) == NULL) {
+	if ((secret = malloc(secret_len)) == NULL) {
 		debug_print(" [ KEY %s ] Failed to allocate memory for secret", o->id_str);
-		EC_KEY_free(key);
+		EVP_PKEY_CTX_free(pctx);
+		EVP_PKEY_free(evp_pkey);
 		return 1;
 	}
-	pkey = EVP_PKEY_get0_EC_KEY(o->key);
-	/* Derive the shared secret locally */
-	secret_len = ECDH_compute_key(secret, secret_len,
-		EC_KEY_get0_public_key(pkey), key, NULL);
-
+	
+	if (EVP_PKEY_derive(pctx, secret, &secret_len) != 1) {
+		debug_print(" [ KEY %s ] EVP_PKEY_derive failed", o->id_str);
+		EVP_PKEY_CTX_free(pctx);
+		EVP_PKEY_free(evp_pkey);
+		return 1;
+	}
+	EVP_PKEY_CTX_free(pctx);
+	
 	/* Try to do the same with the card key */
 
-	/* Convert the public key to the octet string */
-	group = EC_KEY_get0_group(key);
+	/* Get length of pub */
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+	group = EC_GROUP_new_by_curve_name(nid);
+	key = EVP_PKEY_get0_EC_KEY(evp_pkey);
 	publickey = EC_KEY_get0_public_key(key);
+
 	pub_len = EC_POINT_point2oct(group, publickey,
 		POINT_CONVERSION_UNCOMPRESSED, NULL, 0, NULL);
+#else
+	EVP_PKEY_get_octet_string_param(evp_pkey, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, NULL, 0, &pub_len);
+#endif
+	/* Allocate memory for public key*/
 	if (pub_len == 0) {
 		debug_print(" [ KEY %s ] Failed to allocate memory for secret", o->id_str);
-		EC_KEY_free(key);
 		OPENSSL_free(secret);
+		EVP_PKEY_free(evp_pkey);
 		return 1;
 	}
+
 	pub = malloc(pub_len);
 	if (pub == NULL) {
 		debug_print(" [ OK %s ] Failed to allocate memory", o->id_str);
-		EC_KEY_free(key);
 		OPENSSL_free(secret);
+		EVP_PKEY_free(evp_pkey);
 		return 1;
 	}
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	pub_len = EC_POINT_point2oct(group, publickey,
 		POINT_CONVERSION_UNCOMPRESSED, pub, pub_len, NULL);
+
 	if (pub_len == 0) {
-		debug_print(" [ KEY %s ] Failed to allocate memory for secret", o->id_str);
-		EC_KEY_free(key);
+#else
+	if (EVP_PKEY_get_octet_string_param(evp_pkey, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, pub, pub_len, NULL) != 1) {
+#endif
+		debug_print(" [ KEY %s ] Can not get public key", o->id_str);
+		EVP_PKEY_free(evp_pkey);
 		OPENSSL_free(secret);
 		free(pub);
 		return 1;
 	}
+	EVP_PKEY_free(evp_pkey);
 
 	pkcs11_secret_len = pkcs11_derive(o, info, pub, pub_len, mech, &pkcs11_secret);
-	free(pub);
 
 	if (secret_len == pkcs11_secret_len && memcmp(secret, pkcs11_secret, secret_len) == 0) {
 		mech->result_flags |= FLAGS_DERIVE;
 		debug_print(" [ OK %s ] Derived secrets match", o->id_str);
-		OPENSSL_free(secret);
-		free(pkcs11_secret);
-		return 0;
+		rv = 0;
+	} else {
+		debug_print(" [ KEY %s ] Derived secret does not match", o->id_str);
 	}
 
-	debug_print(" [ KEY %s ] Derived secret does not match", o->id_str);
+	free(pub);
 	OPENSSL_free(secret);
 	free(pkcs11_secret);
-	return 1;
+	return rv;
 }
 
 
@@ -336,8 +386,8 @@ void derive_tests(void **state) {
 			continue;
 
 		for (j = 0; j < o->num_mechs; j++) {
-			if ((o->mechs[j].usage_flags & CKF_DERIVE) == 0
-				|| ! o->derive_priv)
+			if ((o->mechs[j].usage_flags & CKF_DERIVE) == 0 ||
+				! o->derive_priv)
 				continue;
 
 			switch (o->key_type) {
