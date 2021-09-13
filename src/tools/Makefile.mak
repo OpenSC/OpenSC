@@ -57,6 +57,11 @@ pkcs15-tool.exe: pkcs15-tool.obj $(TOPDIR)\src\pkcs11\pkcs11-display.obj
 	link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj $(TOPDIR)\src\pkcs11\pkcs11-display.obj $(OBJECTS) $(LIBS) $(OPENSSL_LIB) gdi32.lib shell32.lib User32.lib ws2_32.lib shlwapi.lib
 	mt -manifest exe.manifest -outputresource:$@;1
 
+openpgp-tool.exe: openpgp-tool-helpers.obj $(LIBS)
+	cl $(COPTS) /c $*.c
+	link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj openpgp-tool-helpers.obj $(OBJECTS) $(LIBS) gdi32.lib shell32.lib User32.lib ws2_32.lib shlwapi.lib
+	mt -manifest exe.manifest -outputresource:$@;1
+
 .c.exe:
 	cl $(COPTS) /c $<
 	link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj $(OBJECTS) $(LIBS) $(OPENSSL_LIB) gdi32.lib shell32.lib User32.lib ws2_32.lib shlwapi.lib
