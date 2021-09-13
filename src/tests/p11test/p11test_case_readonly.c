@@ -24,6 +24,7 @@
 #include <openssl/sha.h>
 #include <openssl/md5.h>
 #include <openssl/ripemd.h>
+#include <openssl/rand.h>
 
 #define MESSAGE_TO_SIGN "Simple message for signing & verifying. " \
 	"It needs to be little bit longer to fit also longer keys and allow the truncation.\n" \
@@ -48,7 +49,7 @@
 			"\xdd\xa3\x76\x44\x2f\x50\xe1\xec" \
 			"\xd3\x8b\xcd\x6f\xc6\xce\x4e\xfd" \
 			"\xd3\x1a\x3f"
-#define BUFFER_SIZE		4096
+#define BUFFER_SIZE		4096		
 
 const unsigned char *const_message = (unsigned char *) MESSAGE_TO_SIGN;
 
@@ -57,13 +58,35 @@ rsa_x_509_pad_message(const unsigned char *message,
 	unsigned long *message_length, test_cert_t *o, int encrypt)
 {
 	int pad_message_length = (o->bits+7)/8;
-	unsigned char *pad_message = malloc(pad_message_length);
-	if (!encrypt)
-		RSA_padding_add_PKCS1_type_1(pad_message, pad_message_length,
-		    message, *message_length);
-	else
-		RSA_padding_add_PKCS1_type_2(pad_message, pad_message_length,
-		    message, *message_length);
+	unsigned char *pad_message = NULL;
+	size_t padding_len = pad_message_length - (*message_length) - 3;
+
+	if (pad_message_length - (*message_length) <= 11) {
+		debug_print("Can not pad message - buffer to small");
+		return NULL;
+	}
+	if ((pad_message = malloc(pad_message_length)) == NULL) {
+		fprintf(stderr, "System error: unable to allocate memory\n");
+		return NULL;
+	}
+
+	pad_message[0] = 0x00;
+	pad_message[pad_message_length - 1] = 0x00;
+	if (!encrypt) {
+		pad_message[1] = 0x01;
+		memset(pad_message + 2, 0xff, padding_len);
+	} else {
+		pad_message[1] = 0x02;
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+		if (RAND_bytes_ex(NULL, pad_message + 2, padding_len, 0) != 1) {
+#else
+		if (RAND_bytes(pad_message + 2, padding_len) != 1) {
+#endif
+			debug_print("Can not generate random bytes.");
+		}
+	}
+	memcpy(pad_message + 2 + padding_len, message, (*message_length) * sizeof(unsigned char));
+
 	*message_length = pad_message_length;
 	return pad_message;
 }
@@ -218,11 +241,16 @@ int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 		return 0;
 	}
 
-	if (mech->mech == CKM_RSA_X_509)
-		message = rsa_x_509_pad_message(const_message,
-			&message_length, o, 1);
-	else
+	if (mech->mech == CKM_RSA_X_509) {
+		if ((message = rsa_x_509_pad_message(const_message,
+			&message_length, o, 1)) == NULL) {
+			debug_print(" [SKIP %s ] Could not pad message", o->id_str);
+			return -1;
+		}
+	} else {
 		message = (CK_BYTE *) strdup(MESSAGE_TO_SIGN);
+	}
+
 
 	debug_print(" [ KEY %s ] Encrypt message using CKM_%s",
 		o->id_str, get_mechanism_name(mech->mech));
@@ -582,10 +610,13 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 		return 0;
 	}
 
-	if (mech->mech == CKM_RSA_X_509) /* manually add padding */
-		message = rsa_x_509_pad_message(const_message,
-			&message_length, o, 0);
-	else if (mech->mech == CKM_RSA_PKCS) {
+	if (mech->mech == CKM_RSA_X_509) { /* manually add padding */
+		if ((message = rsa_x_509_pad_message(const_message,
+			&message_length, o, 0)) == NULL) {
+			debug_print(" [SKIP %s ] Could not pad message", o->id_str);
+			return -1;
+		}
+	} else if (mech->mech == CKM_RSA_PKCS) {
 		/* DigestInfo + SHA1(message) */
 		message_length = 35;
 		message = malloc(message_length * sizeof(unsigned char));
