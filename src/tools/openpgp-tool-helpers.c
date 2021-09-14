@@ -27,7 +27,7 @@
 
 
 /* prettify hex */
-char *prettify_hex(u8 *data, size_t length, char *buffer, size_t buflen)
+char *prettify_hex(const u8 *data, size_t length, char *buffer, size_t buflen)
 {
 	if (data != NULL) {
 		int r = sc_bin_to_hex(data, length, buffer, buflen, ':');
@@ -40,7 +40,7 @@ char *prettify_hex(u8 *data, size_t length, char *buffer, size_t buflen)
 
 
 /* prettify algorithm parameters */
-char *prettify_algorithm(u8 *data, size_t length)
+char *prettify_algorithm(const u8 *data, size_t length)
 {
 	if (data != NULL && length >= 1) {
 		static char result[64];	/* large enough */
@@ -64,7 +64,7 @@ char *prettify_algorithm(u8 *data, size_t length)
 
 
 /* prettify date/time */
-char *prettify_date(u8 *data, size_t length)
+char *prettify_date(const u8 *data, size_t length)
 {
 	if (data != NULL && length == 4) {
 		time_t time = (time_t) (data[0] << 24 | data[1] << 16 | data[2] << 8 | data[3]);
@@ -88,7 +88,7 @@ char *prettify_date(u8 *data, size_t length)
 #define BCD2CHAR(x) (((((x) & 0xF0) >> 4) * 10) + ((x) & 0x0F))
 
 /* prettify OpenPGP card version */
-char *prettify_version(u8 *data, size_t length)
+char *prettify_version(const u8 *data, size_t length)
 {
 	if (data != NULL && length >= 2) {
 		static char result[10];	/* large enough for even 2*3 digits + separator */
@@ -103,7 +103,7 @@ char *prettify_version(u8 *data, size_t length)
 
 
 /* prettify manufacturer */
-char *prettify_manufacturer(u8 *data, size_t length)
+char *prettify_manufacturer(const u8 *data, size_t length)
 {
 	if (data != NULL && length >= 2) {
 		unsigned int manuf = (data[0] << 8) + data[1];
@@ -147,7 +147,7 @@ char *prettify_manufacturer(u8 *data, size_t length)
 
 
 /* prettify pure serial number */
-char *prettify_serialnumber(u8 *data, size_t length)
+char *prettify_serialnumber(const u8 *data, size_t length)
 {
 	if (data != NULL && length >= 4) {
 		static char result[15];	/* large enough for even 2*3 digits + separator */
@@ -159,11 +159,14 @@ char *prettify_serialnumber(u8 *data, size_t length)
 
 
 /* prettify card holder's name */
-char *prettify_name(u8 *data, size_t length)
+char *prettify_name(const u8 *data, size_t length)
 {
 	if (data != NULL && length > 0) {
+		static char result[100]; /* should be large enough */
 		char *src = (char *) data;
-		char *dst = (char *) data;
+		char *dst = result;
+		if (length > sizeof(result) - 1)
+		    length = sizeof(result) - 1;
 
 		while (*src != '\0' && length > 0) {
 			*dst = *src++;
@@ -178,37 +181,35 @@ char *prettify_name(u8 *data, size_t length)
 			dst++;
 		}
 		*dst = '\0';
-		return (char *) data;
+		return result;
 	}
 	return NULL;
 }
 
 
 /* prettify language */
-char *prettify_language(u8 *data, size_t length)
+char *prettify_language(const u8 *data, size_t length)
 {
 	if (data != NULL && length > 0) {
-		char *str = (char *) data;
+		static char result[12]; /* 8 chars, 3 separators, 1 null */
+		char *src = (char *) data;
+		size_t used_length = strnlen(src, length) >> 1;
+		int i = 0;
 
-		switch (strlen(str)) {
-			case 8: memmove(str+7, str+6, 1+strlen(str+6));
-				str[6] = ',';
-				/* fall through */
-			case 6: memmove(str+5, str+4, 1+strlen(str+4));
-				str[4] = ',';
-				/* fall through */
-			case 4: memmove(str+3, str+2, 1+strlen(str+2));
-				str[2] = ',';
-				/* fall through */
-			case 2: return str;
+		while (used_length) {
+			used_length--;
+			result[i++] = *src++;
+			result[i++] = *src++;
+			result[i++] = used_length ? ',' : '\0';
 		}
+		return result;
 	}
 	return NULL;
 }
 
 
 /* convert the raw ISO-5218 SEX value to an english word */
-char *prettify_gender(u8 *data, size_t length)
+char *prettify_gender(const u8 *data, size_t length)
 {
 	if (data != NULL && length > 0) {
 		switch (*data) {
