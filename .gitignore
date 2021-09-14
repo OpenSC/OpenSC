@@ -121,7 +121,9 @@ tests/*.trs
 src/tests/unittests/*.log
 src/tests/unittests/*.trs
 src/tests/unittests/asn1
+src/tests/unittests/cachedir
 src/tests/unittests/compression
+src/tests/unittests/pkcs15filter
 src/tests/unittests/simpletlv
 src/tests/unittests/sm
 
