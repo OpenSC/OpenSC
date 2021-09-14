@@ -1,0 +1,13 @@
+FROM ubuntu:latest
+RUN apt update
+# Install sudo to mimic Github Actions runnner
+# Install tzdata to avoid messing up with interactive prompts later
+RUN export DEBIAN_FRONTEND=noninteractive; \
+    export DEBCONF_NONINTERACTIVE_SEEN=true; \
+    echo 'tzdata tzdata/Areas select Etc' | debconf-set-selections; \
+    echo 'tzdata tzdata/Zones/Etc select UTC' | debconf-set-selections; \
+    apt-get install -y --no-install-recommends tzdata sudo
+WORKDIR /src
+RUN /src/.github/setup-linux.sh oseid
+RUN /src/.github/build.sh
+CMD /src/.github/test-oseid.sh
