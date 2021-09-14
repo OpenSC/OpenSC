@@ -123,6 +123,7 @@ src/tests/unittests/*.trs
 src/tests/unittests/asn1
 src/tests/unittests/cachedir
 src/tests/unittests/compression
+src/tests/unittests/openpgp-tool
 src/tests/unittests/pkcs15filter
 src/tests/unittests/simpletlv
 src/tests/unittests/sm
