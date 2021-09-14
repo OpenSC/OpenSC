@@ -58,6 +58,10 @@ char *prettify_algorithm(const u8 *data, size_t length)
 			strcpy(result, "ECDSA");
 			return result;
 		}
+		else if (data[0] == 0x16) {			/* EDDSA */
+			strcpy(result, "EDDSA");
+			return result;
+		}
 	}
 	return NULL;
 }
