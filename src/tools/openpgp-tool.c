@@ -71,7 +71,7 @@ struct ef_name_map {
 	enum code_types type;
 	size_t offset;
 	size_t length;	/* exact length: 0 <=> potentially infinite */
-	char *(*prettify_value)(u8 *, size_t);
+	char *(*prettify_value)(const u8 *, size_t);
 };
 
 /* declare functions */
