@@ -1927,7 +1927,7 @@ static int piv_general_external_authenticate(sc_card_t *card,
 		goto err;
 	}
 
-	/* Store this to sanity check that plaintext length and cyphertext lengths match */
+	/* Store this to sanity check that plaintext length and ciphertext lengths match */
 	/* TODO is this required */
 	tmplen = challenge_len;
 
@@ -3748,7 +3748,7 @@ static int piv_logout(sc_card_t *card)
 
 /*
  * Called when a sc_lock gets a reader lock and PCSC SCardBeginTransaction
- * If SCardBeginTransaction may pass back tha a card reset was seen since
+ * If SCardBeginTransaction may pass back that a card reset was seen since
  * the last transaction  completed.
  * There may have been one or more resets, by other card drivers in different
  * processes, and they may have taken action already

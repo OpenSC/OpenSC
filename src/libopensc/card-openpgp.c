@@ -806,7 +806,7 @@ pgp_get_card_features(sc_card_t *card)
 		for (i = 0x00c1; i <= 0x00c3; i++) {
 			sc_cardctl_openpgp_keygen_info_t key_info;
 
-			sc_log(card->ctx, "Parsing algorithm attribues DO %zX" , i);
+			sc_log(card->ctx, "Parsing algorithm attributes DO %zX" , i);
 
 			/* OpenPGP card spec 1.1 & 2.x section 4.3.3.6 / v3.x section 4.4.3.7 */
 			if ((pgp_get_blob(card, blob73, i, &blob) >= 0) &&
@@ -2275,7 +2275,7 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 		}
 		pklen = r;
 
-		/* Calculate lenght of Public Key DO (0x7F49) */
+		/* Calculate length of Public Key DO (0x7F49) */
 		r = sc_asn1_put_tag(0x7f49, NULL, pklen, NULL, 0, NULL);
 		if (r <= 0) {
 			free(temp);

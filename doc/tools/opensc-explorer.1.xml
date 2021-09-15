@@ -485,7 +485,7 @@
 							List files in the current DF.
 							If no <replaceable>pattern</replaceable> is given,
 							then all files are listed.
-							If one ore more <replaceable>pattern</replaceable>s are given,
+							If one or more <replaceable>pattern</replaceable>s are given,
 							only files matching at least one
 							<replaceable>pattern</replaceable> are listed.
 						</para>

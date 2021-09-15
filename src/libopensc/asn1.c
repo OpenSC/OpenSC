@@ -1689,7 +1689,7 @@ static int asn1_decode(sc_context_t *ctx, struct sc_asn1_entry *asn1,
 	size_t left = len, objlen;
 
 	sc_debug(ctx, SC_LOG_DEBUG_ASN1,
-		 "%*.*scalled, left=%"SC_FORMAT_LEN_SIZE_T"u, depth %d%s\n",
+		 "%*.*s""called, left=%"SC_FORMAT_LEN_SIZE_T"u, depth %d%s\n",
 		 depth, depth, "", left, depth, choice ? ", choice" : "");
 
 	if (!p)

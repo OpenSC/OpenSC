@@ -436,7 +436,7 @@ static int setcos_create_file_44(sc_card_t *card, sc_file_t *file)
 	/* Set file creation status  */
 	sc_file_set_prop_attr(file, &bFileStatus, 1);
 
-	/* Build ACI from local structure = get AC for each operation group */
+	/* Build ACL from local structure = get AC for each operation group */
 	if (file->sec_attr_len == 0) {
 		const int* p_idx;
 		int	       i;

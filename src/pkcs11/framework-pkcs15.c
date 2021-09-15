@@ -834,7 +834,7 @@ __pkcs15_create_data_object(struct pkcs15_fw_data *fw_data,
 	return rv;
 }
 
-/* Note, that this is not actuall PKCS #15 object, but just bogus
+/* Note, that this is not an actual PKCS #15 object, but just a bogus
  * structure to create PKCS #11 object. There is no corresponding
  * PKCS #15 object. */
 static int
@@ -1194,7 +1194,7 @@ pkcs15_init_slot(struct sc_pkcs15_card *p15card, struct sc_pkcs11_slot *slot,
 							")", 32 - max_tokeninfo_len-2-pin_len);
 				}
 			} else {
-				/* PIN label is empty or just says non-useful "PIN",
+				/* PIN label is empty or just says useless "PIN",
 				 * print only token label */
 				strcpy_bp(slot->token_info.label,
 						p15card->tokeninfo ? p15card->tokeninfo->label : "",

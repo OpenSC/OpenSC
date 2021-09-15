@@ -108,7 +108,7 @@ static void cwa_trace_apdu(sc_card_t * card, sc_apdu_t * apdu, int flag)
  * @param card smart card info structure
  * @return SC_SUCCESS if ok; else error code
  *
- * TODO: to further study: what about using bignum arithmetics?
+ * TODO: to further study: what about using bignum arithmetic?
  */
 static int cwa_increase_ssc(sc_card_t * card)
 {
