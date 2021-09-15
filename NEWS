@@ -262,7 +262,7 @@ New separate CAC1 driver using the old CAC specification (#1502)
     * added support for reading ECDSA ssh keys
 * `p11test`
     *  Filter certificates other than `CKC_X_509`
-* `opengpg-tool`
+* `openpgp-tool`
     * allow calling -d multiple times
     * clarify usage text
 ## sc-hsm
