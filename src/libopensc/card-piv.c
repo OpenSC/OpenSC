@@ -994,7 +994,7 @@ piv_get_cached_data(sc_card_t * card, int enumtag, u8 **buf, size_t *buf_len)
 			r = SC_ERROR_FILE_NOT_FOUND;
 			priv->obj_cache[enumtag].flags |= PIV_OBJ_CACHE_VALID;
 			priv->obj_cache[enumtag].obj_len = 0;
-		} else if ( r < 0) {
+		} else {
 			goto err;
 		}
 	}
