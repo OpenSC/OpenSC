@@ -576,7 +576,7 @@ out:
 			pubkey->u.ec.params.der.value = NULL;
 			pubkey->u.ec.params.der.len = 0;
 		}
-		if(r < 0 && pubkey->u.ec.ecpointQ.value)
+		if(pubkey->u.ec.ecpointQ.value)
 		{
 			free(pubkey->u.ec.ecpointQ.value);
 			pubkey->u.ec.ecpointQ.value = NULL;
