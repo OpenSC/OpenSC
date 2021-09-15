@@ -612,7 +612,7 @@ static int dnie_read_certificate(sc_card_t * card, char *certpath, X509 ** cert)
  * Just created in case this will be modified.
  *
  * @param card Pointer to card driver structure
- * @param data The data for the channel will be assined here
+ * @param data The data for the channel will be assigned here
  * @return SC_SUCCESS if ok; else error code
  */
 static int dnie_get_channel_data(sc_card_t * card, dnie_channel_data_t ** data) {

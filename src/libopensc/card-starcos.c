@@ -137,7 +137,7 @@ static const char * starcos_ef_pwdd = "3F000015";
 static const char * starcos_ef_keyd = "3F000013";
 
 /**
- * Parses supported securiy mechanisms record data.
+ * Parses supported security mechanisms record data.
  * It returns SC_SUCCESS and the ctrl_ref_template structure data on success
  */
 static int starcos_parse_supported_sec_mechanisms(struct sc_card *card, const unsigned char * buf, size_t buflen, starcos_ctrl_ref_template * ctrl_ref_template)

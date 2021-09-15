@@ -691,7 +691,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	}
 
 
-	/* ECDSA sofware hash has already been done, or is not needed, or card will do hash */
+	/* ECDSA software hash has already been done, or is not needed, or card will do hash */
 	/* if card can not do the hash, will use SC_ALGORITHM_ECDSA_RAW */
 	if (obj->type == SC_PKCS15_TYPE_PRKEY_EC) {
 		if ((alg_info->flags & SC_ALGORITHM_ECDSA_RAW)
