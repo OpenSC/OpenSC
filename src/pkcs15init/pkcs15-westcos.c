@@ -32,6 +32,9 @@
 #include <openssl/pem.h>
 #include <openssl/err.h>
 #include <openssl/bio.h>
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+ #include <openssl/encoder.h>
+#endif
 #endif
 
 #include "libopensc/sc-ossl-compat.h"
@@ -217,42 +220,57 @@ static int westcos_pkcs15init_generate_key(sc_profile_t *profile,
 	long lg;
 	u8 *p;
 	sc_pkcs15_prkey_info_t *key_info = (sc_pkcs15_prkey_info_t *) obj->data;
-	RSA *rsa = NULL;
 	BIGNUM *bn = NULL;
 	BIO *mem = NULL;
-
+	EVP_PKEY *key = NULL;
+	EVP_PKEY_CTX *pctx = NULL;
 	sc_file_t *prkf = NULL;
+
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	OSSL_ENCODER_CTX *ectx = NULL;
+	int selection = 0;
+#endif
 
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
-	rsa = RSA_new();
-	bn = BN_new();
+	pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, NULL);
 	mem = BIO_new(BIO_s_mem());
-
-	if(rsa == NULL || bn == NULL || mem == NULL)
-	{
+	bn = BN_new();
+	if (pctx == NULL || key == NULL || mem == NULL || bn == NULL) {
 		r = SC_ERROR_OUT_OF_MEMORY;
 		goto out;
 	}
 
-	if(!BN_set_word(bn, RSA_F4) ||
-		!RSA_generate_key_ex(rsa, key_info->modulus_length, bn, NULL))
-	{
+	if (BN_set_word(bn, RSA_F4) != 1 ||
+	    EVP_PKEY_keygen_init(pctx) != 1 ||
+	    EVP_PKEY_CTX_set_rsa_keygen_bits(pctx, key_info->modulus_length) != 1 ||
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+	    EVP_PKEY_CTX_set_rsa_keygen_pubexp(pctx, bn) != 1 ||
+#else
+	    EVP_PKEY_CTX_set1_rsa_keygen_pubexp(pctx, bn) != 1 ||
+#endif
+	    EVP_PKEY_keygen(pctx, &key) != 1) {
 		r = SC_ERROR_UNKNOWN;
 		goto out;
 	}
 
-	RSA_set_method(rsa, RSA_PKCS1_OpenSSL());
-
-	if(pubkey != NULL)
-	{
-		if(!i2d_RSAPublicKey_bio(mem, rsa))
+	if(pubkey != NULL) {
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+		if(!i2d_RSAPublicKey_bio(mem, EVP_PKEY_get0_RSA(key)))
+#else
+		selection = OSSL_KEYMGMT_SELECT_PUBLIC_KEY;
+		ectx = OSSL_ENCODER_CTX_new_for_pkey(key, selection, "DER", "PublicKeyInfo", NULL);
+		if(ectx == NULL || OSSL_ENCODER_to_bio(ectx, mem) != 1)
+#endif
 		{
 			r = SC_ERROR_UNKNOWN;
 			goto out;
 		}
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	OSSL_ENCODER_CTX_free(ectx);
+#endif
 
 		lg = BIO_get_mem_data(mem, &p);
 
@@ -265,7 +283,7 @@ static int westcos_pkcs15init_generate_key(sc_profile_t *profile,
 
 	(void) BIO_reset(mem);
 
-	if(!i2d_RSAPrivateKey_bio(mem, rsa))
+	if (!i2d_PrivateKey_bio(mem, key))
 	{
 		r = SC_ERROR_UNKNOWN;
 		goto out;
@@ -299,10 +317,8 @@ out:
 		BIO_free(mem);
 	if(bn)
 		BN_free(bn);
-	if(rsa)
-		RSA_free(rsa);
+	EVP_PKEY_free(key);
 	sc_file_free(prkf);
-
 	return r;
 #endif
 }
