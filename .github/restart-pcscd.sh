@@ -7,7 +7,7 @@
 function pcscd_cleanup {
 	echo "Process terminated: resetting pcscd"
 	sudo pkill pcscd
-	if which systemctl; then
+	if which systemctl && systemctl is-system-running; then
 		sudo systemctl start pcscd.socket
 	fi
 }
@@ -15,7 +15,7 @@ trap pcscd_cleanup EXIT
 
 
 # stop the pcscd service and run it from console to see possible errors
-if which systemctl; then
+if which systemctl && systemctl is-system-running; then
 	sudo systemctl stop pcscd.service pcscd.socket
 else
 	sudo pkill pcscd || echo "no pcscd process was running"
