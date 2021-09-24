@@ -39,4 +39,13 @@ pkcs15-init --generate-key rsa/2048     --id 2 --key-usage decrypt      --auth-i
 pkcs15-init --generate-key ec/secp256r1 --id 3 --key-usage sign         --auth-id FF --pin 123456;
 pkcs15-tool -D;
 pkcs11-tool -l -t -p 123456;
+
+# run the tests
+pushd src/tests/p11test/
+sleep 5
+./p11test -s 0 -p 123456 -o isoapplet.json || true # ec_sign_size_test is failing here
+popd
+
 kill -9 $PID;
+
+diff -u3 src/tests/p11test/isoapplet{_ref,}.json
