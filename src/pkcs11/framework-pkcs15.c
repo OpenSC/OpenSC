@@ -544,9 +544,7 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo)
 {
 	struct sc_pkcs11_slot *slot;
 	struct pkcs15_fw_data *fw_data = NULL;
-	struct sc_pkcs15_card *p15card = NULL;
 	struct sc_pkcs15_object *auth;
-	struct sc_pkcs15_auth_info *pin_info;
 	const char *name;
 	CK_RV rv;
 
@@ -578,12 +576,6 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo)
 		rv = sc_to_cryptoki_error(SC_ERROR_INTERNAL, "C_GetTokenInfo");
 		goto out;
 	}
-	p15card = fw_data->p15_card;
-	if (!p15card) {
-		rv = sc_to_cryptoki_error(SC_ERROR_INVALID_CARD, "C_GetTokenInfo");
-		goto out;
-	}
-
 	/* User PIN flags are cleared before re-calculation */
 	slot->token_info.flags &= ~(CKF_USER_PIN_COUNT_LOW|CKF_USER_PIN_FINAL_TRY|CKF_USER_PIN_LOCKED);
 	auth = slot_data_auth(slot->fw_data);
@@ -591,7 +583,16 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo)
 		"C_GetTokenInfo() auth. object %p, token-info flags 0x%lX", auth,
 		slot->token_info.flags);
 	if (auth) {
+		struct sc_pkcs15_card *p15card = NULL;
+		struct sc_pkcs15_auth_info *pin_info = NULL;
+
 		pin_info = (struct sc_pkcs15_auth_info*) auth->data;
+
+		p15card = fw_data->p15_card;
+		if (!p15card) {
+			rv = sc_to_cryptoki_error(SC_ERROR_INVALID_CARD, "C_GetTokenInfo");
+			goto out;
+		}
 
 		sc_pkcs15_get_pin_info(p15card, auth);
 
