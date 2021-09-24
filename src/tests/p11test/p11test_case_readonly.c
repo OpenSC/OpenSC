@@ -357,14 +357,29 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 	int cmp_message_length;
 
 	if (o->type == EVP_PK_RSA) {
-		EVP_PKEY_CTX *ctx = NULL;
 		const EVP_MD *md = NULL;
+		EVP_MD_CTX *mdctx = NULL;
+		EVP_PKEY_CTX *ctx = NULL;
 		int padding = RSA_PKCS1_PADDING;
 
 		/* Digest mechanisms */
 		switch (mech->mech) {
 		case CKM_RSA_X_509:
 			padding = RSA_NO_PADDING;
+			/* fall through */
+		case CKM_RSA_PKCS:
+			if ((ctx = EVP_PKEY_CTX_new(o->key, NULL)) == NULL ||
+			    (rv = EVP_PKEY_verify_init(ctx)) <= 0 ||
+			    (rv = EVP_PKEY_CTX_set_rsa_padding(ctx, padding)) <= 0 ||
+			    (rv = EVP_PKEY_verify(ctx, sign, sign_length, message, message_length)) != 1) {
+				fprintf(stderr, " [ ERROR %s ] Signature is not valid. Error: %s\n",
+					o->id_str, ERR_error_string(ERR_peek_last_error(), NULL));
+				EVP_PKEY_CTX_free(ctx);
+				return -1;
+			}
+			mech->result_flags |= FLAGS_SIGN_OPENSSL;
+			debug_print(" [  OK %s ] Signature is valid.", o->id_str);
+			return 1;
 			break;
 		case CKM_SHA1_RSA_PKCS:
 			md = EVP_sha1();
@@ -392,17 +407,15 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 			return 0;
 		}
 
-		ctx = EVP_PKEY_CTX_new(o->key, NULL);
-		if (!ctx || (rv = EVP_PKEY_verify_init(ctx)) <= 0 ||
-		    (rv = EVP_PKEY_CTX_set_rsa_padding(ctx, padding)) <= 0 ||
-		    (md && (rv = EVP_PKEY_CTX_set_signature_md(ctx, md)) <= 0) ||
-		    (rv = EVP_PKEY_verify(ctx, sign, sign_length, message, message_length)) != 1) {
+		if ((mdctx = EVP_MD_CTX_create()) == NULL ||
+		    (rv = EVP_DigestVerifyInit(mdctx, NULL, md, NULL, o->key) <= 0) ||
+		    (rv = EVP_DigestVerify(mdctx, sign, sign_length, message, message_length)) != 1) {
 			fprintf(stderr, " [ ERROR %s ] Signature is not valid. Error: %s\n",
 				o->id_str, ERR_error_string(ERR_peek_last_error(), NULL));
-			EVP_PKEY_CTX_free(ctx);
+			EVP_MD_CTX_free(mdctx);
 			return -1;
 		}
-		EVP_PKEY_CTX_free(ctx);
+		mech->result_flags |= FLAGS_SIGN_OPENSSL;
 		debug_print(" [  OK %s ] Signature is valid.", o->id_str);
 		return 1;
 	} else if (o->type == EVP_PK_EC) {
