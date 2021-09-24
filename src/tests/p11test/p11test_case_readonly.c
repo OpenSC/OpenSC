@@ -75,7 +75,8 @@ int encrypt_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message
 	size_t outlen = 0;
 	EVP_PKEY_CTX *ctx = NULL;
 
-	*enc_message = malloc(EVP_PKEY_size(o->key));
+	outlen = EVP_PKEY_size(o->key);
+	*enc_message = malloc(outlen);
 	if (*enc_message == NULL) {
 		debug_print("malloc returned null");
 		return -1;
@@ -91,7 +92,8 @@ int encrypt_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message
 		free(*enc_message);
 		*enc_message = NULL;
 		EVP_PKEY_CTX_free(ctx);
-		debug_print("OpenSSL encrypt failed: rv = 0x%.8X\n", rv);
+		fprintf(stderr, " [ ERROR %s ] OpenSSL encrypt failed: %s\n",
+			o->id_str, ERR_error_string(ERR_peek_last_error(), NULL));
 		return -1;
 	}
 	EVP_PKEY_CTX_free(ctx);
