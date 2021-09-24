@@ -10,7 +10,9 @@ export LD_LIBRARY_PATH=/usr/local/lib
 ./.github/setup-java.sh
 
 # The ISO applet
-git clone https://github.com/philipWendland/IsoApplet.git;
+if [ ! -d IsoApplet ]; then
+	git clone https://github.com/philipWendland/IsoApplet.git;
+fi
 javac -classpath jcardsim/target/jcardsim-3.0.5-SNAPSHOT.jar IsoApplet/src/net/pwendland/javacard/pki/isoapplet/*.java;
 echo "com.licel.jcardsim.card.applet.0.AID=F276A288BCFBA69D34F31001" > isoapplet_jcardsim.cfg;
 echo "com.licel.jcardsim.card.applet.0.Class=net.pwendland.javacard.pki.isoapplet.IsoApplet" >> isoapplet_jcardsim.cfg;
