@@ -27,5 +27,7 @@ fi
 pushd jcardsim
 env | grep -i openjdk
 export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/
-mvn initialize && mvn clean install
+if [ ! -f target/jcardsim-3.0.5-SNAPSHOT.jar ]; then
+	mvn initialize && mvn clean install
+fi
 popd
