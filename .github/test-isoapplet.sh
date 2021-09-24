@@ -29,6 +29,26 @@ echo "com.licel.jcardsim.vsmartcard.port=35963" >> isoapplet_jcardsim.cfg
 java -noverify -cp IsoApplet/src/:jcardsim/target/jcardsim-3.0.5-SNAPSHOT.jar com.licel.jcardsim.remote.VSmartCard isoapplet_jcardsim.cfg >/dev/null &
 PID=$!
 sleep 5
+
+# Does OpenSC see the uninitialized card?
+pkcs11-tool -L | tee opensc.log
+# report as "token not recognized"
+grep "(token not recognized)" opensc.log
+
+# Does OpenSC see the uninitialized card with options for InitToken?
+cat >opensc.conf <<EOF
+app default {
+    enable_default_driver = true;
+    card_atr 3B:80:80:01:01 {
+        pkcs11_enable_InitToken = yes;
+    }
+    card_drivers = default;
+}
+EOF
+OPENSC_CONF=opensc.conf pkcs11-tool -L | tee opensc.log
+# report as "token not recognized"
+grep "uninitialized" opensc.log
+
 opensc-tool --card-driver default --send-apdu 80b800001a0cf276a288bcfba69d34f310010cf276a288bcfba69d34f3100100
 opensc-tool -n
 pkcs15-init --create-pkcs15 --so-pin 123456 --so-puk 0123456789abcdef
