@@ -663,7 +663,10 @@ static int westcos_get_crypte_challenge(sc_card_t * card, const u8 * key,
 {
 	int r;
 #ifdef ENABLE_OPENSSL
-	DES_key_schedule ks1, ks2;
+	EVP_CIPHER_CTX *cctx = NULL;
+	int tmplen = 0;
+	if ((cctx = EVP_CIPHER_CTX_new()) == NULL)
+		return SC_ERROR_INTERNAL;
 #endif
 	u8 buf[8];
 	if ((*len) < sizeof(buf))
@@ -673,9 +676,14 @@ static int westcos_get_crypte_challenge(sc_card_t * card, const u8 * key,
 	if (r)
 		return r;
 #ifdef ENABLE_OPENSSL
-	DES_set_key((const_DES_cblock *) & key[0], &ks1);
-	DES_set_key((const_DES_cblock *) & key[8], &ks2);
-	DES_ecb2_encrypt((const_DES_cblock *)buf, (DES_cblock*)result, &ks1, &ks2, DES_ENCRYPT);
+	if (EVP_EncryptInit_ex(cctx, EVP_des_ede(), NULL, key, NULL) != 1 ||
+		EVP_CIPHER_CTX_set_padding(cctx,0) != 1 ||
+		EVP_EncryptUpdate(cctx, result, &tmplen, buf, *len) != 1) {
+		EVP_CIPHER_CTX_free(cctx);
+		return SC_ERROR_INTERNAL;
+	}
+	*len = tmplen;
+	EVP_CIPHER_CTX_free(cctx);
 	return SC_SUCCESS;
 #else
 	return SC_ERROR_NOT_SUPPORTED;
@@ -1103,8 +1111,9 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 	u8 buf[180];
 	priv_data_t *priv_data = NULL;
 	int pad;
-	RSA *rsa = NULL;
+	EVP_PKEY_CTX *ctx = NULL;
 	BIO *mem = BIO_new(BIO_s_mem());
+	EVP_PKEY *pkey = NULL;
 #endif
 
 	if (card == NULL)
@@ -1175,29 +1184,33 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 		idx += r;
 	} while (1);
 	BIO_set_mem_eof_return(mem, -1);
-	if (!d2i_RSAPrivateKey_bio(mem, &rsa)) {
+	if (!(pkey = d2i_PrivateKey_bio(mem, NULL))) {
 		sc_log(card->ctx, 
 			"RSA key invalid, %lu\n", ERR_get_error());
 		r = SC_ERROR_UNKNOWN;
 		goto out;
 	}
 
-	/* pkcs11 reset openssl functions */
-	RSA_set_method(rsa, RSA_PKCS1_OpenSSL());
-
-	if ((size_t)RSA_size(rsa) > outlen) {
+	if ((size_t)EVP_PKEY_size(pkey) > outlen) {
 		sc_log(card->ctx,  "Buffer too small\n");
 		r = SC_ERROR_OUT_OF_MEMORY;
 		goto out;
 	}
+
+	if ((ctx = EVP_PKEY_CTX_new(pkey, NULL)) == NULL) {
+		sc_log(card->ctx,  "Can not establish context\n");
+		r = SC_ERROR_UNKNOWN;
+		goto out;
+	}
+
 #if 1
 	if (mode) {		/* decipher */
-		r = RSA_private_decrypt(data_len, data, out, rsa, pad);
-		if (r == -1) {
+		if (EVP_PKEY_decrypt_init(ctx) != 1 ||
+			EVP_PKEY_CTX_set_rsa_padding(ctx, pad) != 1 ||
+			(r = EVP_PKEY_decrypt(ctx, out, NULL, data, data_len)) != 1) {
 
 #ifdef DEBUG_SSL
 			print_openssl_error();
-
 #endif
 			sc_log(card->ctx, 
 				"Decipher error %lu\n", ERR_get_error());
@@ -1207,13 +1220,12 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 	}
 
 	else {			/* sign */
-
-		r = RSA_private_encrypt(data_len, data, out, rsa, pad);
-		if (r == -1) {
+		if (EVP_PKEY_encrypt_init(ctx) != 1 ||
+			EVP_PKEY_CTX_set_rsa_padding(ctx, pad) != 1 ||
+			(r = EVP_PKEY_encrypt(ctx, out, NULL, data, data_len)) != 1) {
 
 #ifdef DEBUG_SSL
 			print_openssl_error();
-
 #endif
 			sc_log(card->ctx, 
 				"Signature error %lu\n", ERR_get_error());
@@ -1235,8 +1247,8 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 out:
 	if (mem)
 		BIO_free(mem);
-	if (rsa)
-		RSA_free(rsa);
+	EVP_PKEY_free(pkey);
+	EVP_PKEY_CTX_free(ctx);
 out2:
 #endif /* ENABLE_OPENSSL */
 	sc_file_free(keyfile);
