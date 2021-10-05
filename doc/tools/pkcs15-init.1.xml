@@ -133,7 +133,7 @@
 				You can do this using:
 			</para>
 			<para>
-				<command>pkcs15-init --generate-key " keyspec " --auth-id " nn</command>
+				<command>pkcs15-init --generate-key "keyspec" --auth-id "nn"</command>
 			</para>
 			<para>
 				where <replaceable>keyspec</replaceable> describes the algorithm and the parameters
