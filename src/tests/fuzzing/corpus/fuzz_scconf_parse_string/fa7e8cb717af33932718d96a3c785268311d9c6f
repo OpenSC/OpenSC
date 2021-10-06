@@ -1,0 +1,10 @@
+app default {
+	debug = 0;
+	debug_file = stdout;
+	framework pkcs15 {
+		enable_builtin_emulation = yes;
+		builtin_emulators = old, jpki, dnie, gids, PIV-II;
+
+	}
+}
+
