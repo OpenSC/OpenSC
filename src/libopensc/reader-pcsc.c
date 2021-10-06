@@ -476,7 +476,12 @@ static int pcsc_detect_card_presence(sc_reader_t *reader)
 	rv = refresh_attributes(reader);
 	if (rv != SC_SUCCESS)
 		LOG_FUNC_RETURN(reader->ctx, rv);
-	LOG_FUNC_RETURN(reader->ctx, reader->flags);
+
+	// Return 0 if the card is not present
+	if (reader->flags & SC_READER_CARD_PRESENT)
+		LOG_FUNC_RETURN(reader->ctx, reader->flags);
+	else
+		LOG_FUNC_RETURN(reader->ctx, 0);
 }
 
 static int check_forced_protocol(sc_reader_t *reader, DWORD *protocol)
