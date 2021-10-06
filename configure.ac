@@ -703,6 +703,9 @@ if test "${enable_cmocka}" = "yes"; then
 	fi
 fi
 
+if test "${enable_fuzzing}" = "yes"; then
+	AC_DEFINE([FUZZING_ENABLED], [1], [Define if fuzzing is enabled])
+fi
 
 
 PKG_CHECK_EXISTS([libeac], [PKG_CHECK_MODULES([OPENPACE], [libeac >= 0.9])],
