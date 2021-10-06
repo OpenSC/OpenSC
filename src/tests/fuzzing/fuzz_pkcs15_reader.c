@@ -236,7 +236,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
                 /* see `pkcs15_create_secret_key` in
                  * `src/pkcs11/framework-pkc15.c` for creating a temporary
                  * secret key for wrapping/unwrapping */
-                unsigned long l = sizeof buf;
+                size_t l = sizeof buf;
                 struct sc_pkcs15_object target_key;
                 struct sc_pkcs15_skey_info skey_info;
                 uint16_t len;
