@@ -415,7 +415,8 @@ static int refresh_attributes(sc_reader_t *reader)
 		 * XXX: We'll hit it again, as no readers are removed currently.
 		 */
 		reader->flags &= ~(SC_READER_CARD_PRESENT);
-		return SC_ERROR_READER_DETACHED;
+		sc_log(reader->ctx, "Reader unknown: %s", sc_strerror(SC_ERROR_READER_DETACHED));
+		SC_FUNC_RETURN(reader->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
 	}
 
 	reader->flags &= ~(SC_READER_CARD_CHANGED|SC_READER_CARD_INUSE|SC_READER_CARD_EXCLUSIVE);
