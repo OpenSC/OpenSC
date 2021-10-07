@@ -1,0 +1,183 @@
+app default {
+	debug = 3;
+	# Disable pop-ups of built-in GUI
+	disable_popups = true;
+	enable_default_driver = true;
+
+	ignored_readers = "CardMan 1021", "SPR 532";
+
+	# The following section shows definitions for PC/SC readers.
+	reader_driver pcsc {
+		max_send_size = 65535;
+		max_recv_size = 65536;
+		connect_exclusive = true;
+		disconnect_action = reset;
+		transaction_end_action = reset;
+		reconnect_action = reset;
+		enable_pinpad = false;
+		fixed_pinlength = 6;
+		enable_escape = true;
+		provider_library = @DEFAULT_PCSC_PROVIDER@
+	}
+
+	reader_driver openct {
+		readers = 5;
+
+		max_send_size = 255;
+		max_recv_size = 256;
+	}
+
+	reader_driver cryptotokenkit {
+		max_send_size = 65535;
+		max_recv_size = 65536;
+	}
+
+	card_drivers = old, internal;
+	card_driver customcos {
+		module = @LIBDIR@@LIB_PRE@card_customcos@DYN_LIB_EXT@;
+	}
+
+	card_driver npa {
+		can = 222222;
+		st_dv_certificate = ZZSTDVCA00001.cvcert;
+		st_certificate = ZZSTTERM00001.cvcert;
+		st_key = ZZSTTERM00001.pkcs8;
+	}
+	card_atr 3b:8c:80:01:59:75:62:69:6b:65:79:4e:45:4f:72:33:58 {
+		atrmask = "FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:00:00";
+		name = "Yubikey Neo";
+		driver = "PIV-II";
+		flags = "keep_alive";
+	}
+
+	card_atr 3B:DD:18:00:81:31:FE:45:80:F9:A0:00:00:00:77:01:00:70:0A:90:00:8B {
+		type = 11100;
+		driver = "authentic";
+		name = "AuthentIC v3.1";
+		secure_messaging = local_authentic;
+	}
+	card_atr 3B:7F:96:00:00:00:31:B9:64:40:70:14:10:73:94:01:80:82:90:00 {
+		type = 25001;
+		driver = "iasecc";
+		name = "Gemalto MultiApp IAS/ECC v1.0.1";
+		secure_messaging = local_gemalto_iam;
+		secure_messaging = local_adele;
+		read_only = false;
+		md_supports_X509_enrollment = true;
+	}
+	card_atr 3B:7F:96:00:00:00:31:B8:64:40:70:14:10:73:94:01:80:82:90:00 {
+		type = 25001;
+		driver = "iasecc";
+		name = "Gemalto MultiApp IAS/ECC v1.0.1";
+		secure_messaging = local_gemalto_iam;
+		read_only = false;
+		md_supports_X509_enrollment = true;
+	}
+	card_atr 3B:DF:18:FF:81:91:FE:1F:C3:00:31:B8:64:0C:01:EC:C1:73:94:01:80:82:90:00:B3 {
+		type = 25004;
+		driver = "iasecc";
+		name = "Amos IAS/ECC v1.0.1";
+		read_only = false;
+		md_supports_X509_enrollment = true;
+		secure_messaging = local_amos;
+	}
+	# SmartCard-HSM with fingerprint sensor and PIN pad
+	card_atr 3B:80:80:01:01 {
+		force_protocol = "t1";
+		read_only = true;
+		md_supports_X509_enrollment = true;
+		md_supports_container_key_gen = true;
+		md_guid_as_label = true;
+		md_pinpad_dlg_main = "Fingerabdruck oder PIN eingeben";
+		md_pinpad_dlg_content_user = "Bitte verifizieren Sie Ihren Fingarabdruck oder Ihre PIN auf der Karte.";
+		md_pinpad_dlg_content_user_sign = "Bitte verifizieren Sie Ihren Fingarabdruck oder Ihre PIN für die digitale Signatur auf der Karte.";
+		md_pinpad_dlg_content_admin = "Bitte geben Sie Ihre PIN zum Entsperren der Nutzer-PIN auf dem PIN-Pad ein.";
+		md_pinpad_dlg_expanded = "Dieses Fenster wird automatisch geschlossen, wenn die PIN oder der Fingerabdruck verifiziert wurde (Timeout nach 30 Sekunden). Nutzen Sie das PIN-Pad, um die Eingabe abzubrechen.";
+		md_pinpad_dlg_timeout = 30;
+		notify_card_inserted = "GoID erkannt";
+		notify_card_inserted_text = "";
+		notify_card_removed = "GoID entfernt";
+		notify_pin_good = "Fingerabdruck bzw. PIN verifiziert";
+		notify_pin_good_text = "GoID ist entsperrt";
+		notify_pin_bad = "Fingerabdruck bzw. PIN nicht verifiziert";
+		notify_pin_bad_text = "GoID ist gesperrt";
+	}
+
+	secure_messaging local_authentic  {
+		module_path = @DEFAULT_SM_MODULE_PATH@;
+		mode = transmit;
+		flags = 0x78;
+		kmc = "00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00";
+	}
+
+	secure_messaging local_gemalto_iam  {
+		module_name = @DEFAULT_SM_MODULE@;
+		type = acl;	     # transmit, acl
+
+		ifd_serial = "11:22:33:44:55:66:77:88";
+		keyset_02_enc = "RW_PRIV_ENC_TEST";
+		keyset_02_mac = "RW_PRIV_MAC_TEST";
+		keyset_E828BD080FD2504543432D654944_01_enc = "RO_ENC_TEST_KEY_";
+		keyset_E828BD080FD2504543432D654944_01_mac = "RO_MAC_TEST_KEY_";
+		keyset_E828BD080FD2504543432D654944_03_enc = "RW_PUBL_ENC_TEST";
+		keyset_E828BD080FD2504543432D654944_03_mac = "RW_PUBL_MAC_TEST";
+	}
+
+	framework pkcs15 {
+		use_file_caching = true;
+		use_pin_caching = false;
+		pin_cache_counter = 3;
+		pin_cache_ignore_user_consent = true;
+		private_certificate = declassify;
+		enable_pkcs15_emulation = no;
+		try_emulation_first = yes;
+		enable_builtin_emulation = no;
+		builtin_emulators = old, internal;
+		emulate custom {
+			module = @LIBDIR@@LIB_PRE@p15emu_custom@DYN_LIB_EXT@;
+		}
+		application E828BD080FD25047656E65726963 {
+			type = generic;
+			model = "ECC Generic PKI";
+		}
+
+		application E828BD080FD2500000040301 {
+			type = generic;
+			model = "Adèle Générique";
+		}
+	}
+}
+
+app opensc-pkcs11 {
+	pkcs11 {
+		max_virtual_slots = 32;
+		slots_per_card = 2;
+		lock_login = true;
+		atomic = true;
+		init_sloppy = false;
+		user_pin_unblock_style = set_pin_in_unlogged_session;
+		create_puk_slot = true;
+		create_slots_for_pins = "user,sign";
+		create_slots_for_pins = "sign";
+		create_slots_for_pins = "user"
+	}
+}
+
+app onepin-opensc-pkcs11 {
+	pkcs11 {
+		slots_per_card = 1;
+	}
+}
+
+# Used by OpenSC.tokend on Mac OS X only
+app tokend {
+	framework tokend {
+		score = 10;
+		ignore_private_certificate = false;
+	}
+}
+
+# Used by OpenSC minidriver on Windows only
+app cardmod {
+}
+

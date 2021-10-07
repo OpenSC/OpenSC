@@ -25,14 +25,23 @@
 
 #include "scconf/scconf.h"
 #include "libopensc/internal.h"
+#include <string.h>
 
+#define MAX_SIZE 5500
 
 int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
-    scconf_context *ctx = scconf_new(NULL);
+    scconf_context *ctx = NULL;
+    char buf[MAX_SIZE];
 
-    if (!ctx)
+    if (size == 0 || size > MAX_SIZE)
+        return 0;
+
+    if (!(ctx = scconf_new(NULL)))
         return 1;
-    const char *buf = (const char *)data;
+
+    memcpy(buf, data, size);
+    buf[size - 1] = '\0';
+
     scconf_parse_string(ctx, buf);
 
     scconf_free(ctx);
