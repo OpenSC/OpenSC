@@ -52,6 +52,10 @@
 #include <openssl/x509v3.h>
 #include <openssl/crypto.h>
 #include <openssl/opensslconf.h> /* for OPENSSL_NO_EC */
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+# include <openssl/core_names.h>
+# include <openssl/param_build.h>
+#endif
 #ifndef OPENSSL_NO_EC
 #include <openssl/ec.h>
 #endif /* OPENSSL_NO_EC */
@@ -1340,7 +1344,10 @@ do_read_check_certificate(sc_pkcs15_cert_t *sc_oldcert,
 	r = SC_ERROR_INVALID_ARGUMENTS;
 	if (oldpk_type == newpk_type)
 	{
-#if  OPENSSL_VERSION_NUMBER >= 0x10002000L
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+		if (EVP_PKEY_eq(oldpk, newpk))
+			r = 0;
+#elif  OPENSSL_VERSION_NUMBER >= 0x10002000L
 		if (EVP_PKEY_cmp(oldpk, newpk) == 1)
 			r = 0;
 #else
@@ -1870,16 +1877,27 @@ static void
 init_gost_params(struct sc_pkcs15init_keyarg_gost_params *params, EVP_PKEY *pkey)
 {
 #if !defined(OPENSSL_NO_EC)
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	EC_KEY *key;
+#else
+	char name[256]; size_t name_len = 0;
+#endif
+	int nid = 0;
 
 	assert(pkey);
 	if (EVP_PKEY_id(pkey) == NID_id_GostR3410_2001) {
+		assert(params);
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 		key = EVP_PKEY_get0(pkey);
 		assert(key);
-		assert(params);
 		assert(EC_KEY_get0_group(key));
-		assert(EC_GROUP_get_curve_name(EC_KEY_get0_group(key)) > 0);
-		switch (EC_GROUP_get_curve_name(EC_KEY_get0_group(key))) {
+		EC_GROUP_get_curve_name(EC_KEY_get0_group(key));
+#else
+		assert(EVP_PKEY_get_group_name(pkey, name ,sizeof(name), &name_len));
+		nid = OBJ_txt2nid(name);
+#endif
+		assert(nid > 0);
+		switch (nid) {
 		case NID_id_GostR3410_2001_CryptoPro_A_ParamSet:
 			params->gostr3410 = SC_PKCS15_PARAMSET_GOSTR3410_A;
 			break;
