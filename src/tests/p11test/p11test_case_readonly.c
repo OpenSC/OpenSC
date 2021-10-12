@@ -690,6 +690,13 @@ void readonly_tests(void **state) {
 		's', "ENCRYPT&DECRYPT WORKS");
 	for (i = 0; i < objects.count; i++) {
 		test_cert_t *o = &objects.data[i];
+
+		if (o->key_type != CKK_RSA &&
+		    o->key_type != CKK_EC &&
+		    o->key_type != CKK_EC_EDWARDS &&
+		    o->key_type != CKK_EC_MONTGOMERY)
+			continue;
+
 		printf("\n[%-6s] [%s]\n",
 			o->id_str,
 			o->label);
@@ -712,12 +719,12 @@ void readonly_tests(void **state) {
 			printf("  no usable attributes found ... ignored\n");
 			continue;
 		}
-		if (objects.data[i].private_handle == CK_INVALID_HANDLE) {
+		if (o->private_handle == CK_INVALID_HANDLE) {
 			continue;
 		}
 		for (j = 0; j < o->num_mechs; j++) {
 			test_mech_t *mech = &o->mechs[j];
-			if ((mech->usage_flags & CKF_SIGN) == 0) {
+			if ((mech->usage_flags & (CKF_SIGN|CKF_DECRYPT)) == 0) {
 				/* not applicable mechanisms are skipped */
 				continue;
 			}
