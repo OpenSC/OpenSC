@@ -50,8 +50,10 @@ typedef struct {
 	CK_BBOOL	derive_pub;
 	CK_KEY_TYPE	key_type;
 	CK_BBOOL	always_auth;
+	CK_BBOOL	extractable;
 	char		*label;
 	CK_ULONG 	 bits;
+	char 		*value;
 	int			verify_public;
 	test_mech_t	mechs[MAX_MECHS];
 	int			num_mechs;

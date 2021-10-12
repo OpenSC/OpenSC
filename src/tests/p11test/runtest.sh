@@ -25,6 +25,23 @@ export GNUTLS_PIN=$PIN
 GENERATE_KEYS=1
 PKCS11_TOOL="../../tools/pkcs11-tool";
 
+function generate_sym() {
+	TYPE="$1"
+	ID="$2"
+	LABEL="$3"
+
+	# Generate key
+	$PKCS11_TOOL --keygen --key-type="$TYPE" --login --pin=$PIN \
+		--extractable --module="$P11LIB" --label="$LABEL" --id=$ID
+
+	if [[ "$?" -ne "0" ]]; then
+		echo "Couldn't generate $TYPE key pair"
+		return 1
+	fi
+
+	p11tool --login --provider="$P11LIB" --list-all
+}
+
 function generate_cert() {
 	TYPE="$1"
 	ID="$2"
@@ -69,6 +86,7 @@ function generate_cert() {
 function card_setup() {
 	ECC_KEYS=1
 	EDDSA=1
+	SECRET=1
 	case $1 in
 		"softhsm")
 			P11LIB="/usr/lib64/pkcs11/libsofthsm2.so"
@@ -82,6 +100,7 @@ function card_setup() {
 			# Supports only RSA mechanisms
 			ECC_KEYS=0
 			EDDSA=0
+			SECRET=0
 			P11LIB="/usr/lib64/pkcs11/libopencryptoki.so"
 			SO_PIN=87654321
 			SLOT_ID=3 # swtok slot
@@ -132,6 +151,12 @@ function card_setup() {
 			# Generate curve25519
 			#generate_cert "EC:curve25519" "06" "Curve25519" 0
 			# not supported by softhsm either
+		fi
+		if [[ $SECRET -eq 1 ]]; then
+			# Generate AES 128 key
+			generate_sym "aes:16" "07" "AES128 key"
+			# Generate AES 256 key
+			generate_sym "aes:32" "08" "AES256 key"
 		fi
 	fi
 }
