@@ -59,9 +59,13 @@ typedef struct {
 
 typedef struct {
 	CK_MECHANISM_TYPE mech;
+	/* RSA-PSS parameters */
 	CK_MECHANISM_TYPE hash;
 	CK_RSA_PKCS_MGF_TYPE mgf;
 	int salt;
+	/* generic parameters used for example for secret keys */
+	void *params;
+	unsigned long params_len;
 	int usage_flags;
 	int result_flags;
 } test_mech_t;
@@ -84,6 +88,8 @@ typedef struct {
 	size_t  num_ed_mechs;
 	test_mech_t	montgomery_mechs[MAX_MECHS];
 	size_t  num_montgomery_mechs;
+	test_mech_t	aes_mechs[MAX_MECHS];
+	size_t  num_aes_mechs;
 	test_mech_t	keygen_mechs[MAX_MECHS];
 	size_t  num_keygen_mechs;
 } token_info_t;

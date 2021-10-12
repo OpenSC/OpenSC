@@ -97,7 +97,7 @@ int encrypt_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 {
 	CK_RV rv;
 	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
-	CK_MECHANISM enc_mechanism = { mech->mech, NULL_PTR, 0 };
+	CK_MECHANISM enc_mechanism = { mech->mech, mech->params, mech->params_len };
 	CK_ULONG enc_message_length;
 	static int encrypt_support = 1;
 
@@ -145,7 +145,7 @@ int decrypt_message(test_cert_t *o, token_info_t *info, CK_BYTE *enc_message,
 {
 	CK_RV rv;
 	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
-	CK_MECHANISM dec_mechanism = { mech->mech, NULL_PTR, 0 };
+	CK_MECHANISM dec_mechanism = { mech->mech, mech->params, mech->params_len };
 	CK_ULONG dec_message_length = BUFFER_SIZE;
 
 	rv = fp->C_DecryptInit(info->session_handle, &dec_mechanism,
@@ -261,7 +261,7 @@ int sign_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 {
 	CK_RV rv;
 	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
-	CK_MECHANISM sign_mechanism = { mech->mech, NULL_PTR, 0 };
+	CK_MECHANISM sign_mechanism = { mech->mech, mech->params, mech->params_len };
 	CK_ULONG sign_length = 0;
 	char *name;
 
@@ -514,7 +514,7 @@ int verify_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 {
 	CK_RV rv;
 	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
-	CK_MECHANISM sign_mechanism = { mech->mech, NULL_PTR, 0 };
+	CK_MECHANISM sign_mechanism = { mech->mech, mech->params, mech->params_len };
 	static int verify_support = 1;
 	char *name;
 
