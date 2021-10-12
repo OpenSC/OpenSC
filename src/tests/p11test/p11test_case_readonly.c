@@ -129,7 +129,6 @@ int encrypt_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 	rv = fp->C_Encrypt(info->session_handle, message, message_length,
 		*enc_message, &enc_message_length);
 	if (rv == CKR_OK) {
-		mech->result_flags |= FLAGS_SIGN;
 		return enc_message_length;
 	}
 	debug_print("   C_Encrypt: rv = 0x%.8lX", rv);
