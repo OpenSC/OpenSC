@@ -397,7 +397,7 @@ void derive_tests(void **state) {
 				mech->result_flags & FLAGS_DERIVE ? "[./]" : "    ");
 			if ((mech->result_flags & FLAGS_DERIVE) == 0)
 				continue; /* skip empty rows for export */
-			P11TEST_DATA_ROW(info, 4,
+			P11TEST_DATA_ROW(info, 3,
 				's', o->id_str,
 				's', get_mechanism_name(mech->mech),
 				's', mech->result_flags & FLAGS_DERIVE ? "YES" : "");
