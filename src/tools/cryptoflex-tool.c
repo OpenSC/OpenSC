@@ -27,6 +27,12 @@
 #include <openssl/x509.h>
 #include <openssl/pem.h>
 #include <openssl/err.h>
+#include <openssl/evp.h>
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+# include <openssl/param_build.h>
+# include <openssl/params.h>
+# include <openssl/decoder.h>
+#endif
 
 #include "libopensc/pkcs15.h"
 #include "common/compat_strlcpy.h"
@@ -196,12 +202,18 @@ static int bn2cf(const BIGNUM *num, u8 *buf)
 	return r;
 }
 
-static int parse_public_key(const u8 *key, size_t keysize, RSA *rsa)
+static int parse_public_key(const u8 *key, size_t keysize, EVP_PKEY *pkey)
 {
 	const u8 *p = key;
 	BIGNUM *n, *e;
 	int base;
-
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+	RSA *rsa = NULL;
+#else
+	EVP_PKEY_CTX *ctx = NULL;
+	OSSL_PARAM *params = NULL;
+	OSSL_PARAM_BLD *bld = NULL;
+#endif
 	base = (keysize - 7) / 5;
 	if (base != 32 && base != 48 && base != 64 && base != 128) {
 		fprintf(stderr, "Invalid public key.\n");
@@ -219,17 +231,44 @@ static int parse_public_key(const u8 *key, size_t keysize, RSA *rsa)
 	if (e == NULL)
 		return -1;
 	cf2bn(p, 4, e);
-	if (RSA_set0_key(rsa, n, e, NULL) != 1)
-	    return -1;
+	
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+	if (!(rsa = RSA_new()) || 
+		!(pkey = EVP_PKEY_new()) || 
+		RSA_set0_key(rsa, n, e, NULL) != 1 || 
+		EVP_PKEY_assign_RSA(pkey, rsa) != 1) {
+		RSA_free(rsa);
+		EVP_PKEY_free(pkey);
+		return -1;
+	}
+#else
+	ctx = EVP_PKEY_CTX_new_from_name(NULL, "RSA", NULL);
+	if (!ctx || 
+		!(bld = OSSL_PARAM_BLD_new()) || 
+		OSSL_PARAM_BLD_push_BN(bld, "n", n) != 1 || 
+		OSSL_PARAM_BLD_push_BN(bld, "e", e) != 1 || 
+		!(params = OSSL_PARAM_BLD_to_param(bld))) {
+		OSSL_PARAM_BLD_free(bld);
+		EVP_PKEY_CTX_free(ctx);
+		OSSL_PARAM_free(params);
+		return -1;
+	}
+	OSSL_PARAM_BLD_free(bld);
+
+	if (EVP_PKEY_fromdata_init(ctx) != 1 || 
+		EVP_PKEY_fromdata(ctx, &pkey, EVP_PKEY_PUBLIC_KEY, params) != 1) {
+		return -1;;
+	}
+	OSSL_PARAM_free(params);
+	EVP_PKEY_CTX_free(ctx);
+#endif
 	return 0;
 }
 
-static int gen_d(RSA *rsa)
+static int gen_d(BIGNUM *rsa_d_new, const BIGNUM *rsa_p, const BIGNUM *rsa_q, const BIGNUM *rsa_n, const BIGNUM *rsa_e)
 {
 	BN_CTX *bnctx;
 	BIGNUM *r0, *r1, *r2;
-	const BIGNUM *rsa_p, *rsa_q, *rsa_n, *rsa_e, *rsa_d;
-	BIGNUM *rsa_n_new, *rsa_e_new, *rsa_d_new;
 
 	bnctx = BN_CTX_new();
 	if (bnctx == NULL)
@@ -238,8 +277,6 @@ static int gen_d(RSA *rsa)
 	r0 = BN_CTX_get(bnctx);
 	r1 = BN_CTX_get(bnctx);
 	r2 = BN_CTX_get(bnctx);
-	RSA_get0_key(rsa, &rsa_n, &rsa_e, &rsa_d);
-	RSA_get0_factors(rsa, &rsa_p, &rsa_q);
 
 	BN_sub(r1, rsa_p, BN_value_one());
 	BN_sub(r2, rsa_q, BN_value_one());
@@ -249,24 +286,31 @@ static int gen_d(RSA *rsa)
 		return -1;
 	}
 
-	/* RSA_set0_key will free previous value, and replace with new value
-	 * Thus the need to copy the contents of rsa_n and rsa_e
-	 */
-	rsa_n_new = BN_dup(rsa_n);
-	rsa_e_new = BN_dup(rsa_e);
-	if (RSA_set0_key(rsa, rsa_n_new, rsa_e_new, rsa_d_new) != 1)
-		return -1;
-
 	BN_CTX_end(bnctx);
 	BN_CTX_free(bnctx);
 	return 0;
 }
 
-static int parse_private_key(const u8 *key, size_t keysize, RSA *rsa)
+static int parse_private_key(const u8 *key, size_t keysize, EVP_PKEY *pkey)
 {
 	const u8 *p = key;
 	BIGNUM *bn_p, *q, *dmp1, *dmq1, *iqmp;
 	int base;
+	BIGNUM *rsa_d = NULL;
+	int rv = 0;
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+	const BIGNUM *rsa_n, *rsa_e;
+	BIGNUM *rsa_n_new, *rsa_e_new ;
+	RSA *rsa = NULL;
+	if (!(rsa = EVP_PKEY_get0_RSA(pkey)))
+		return -1;
+#else
+	OSSL_PARAM *params = NULL, *pkey_params = NULL, *new_params = NULL;
+	const OSSL_PARAM *e = NULL, *n = NULL;
+	BIGNUM *rsa_n, *rsa_e;
+	OSSL_PARAM_BLD *bld = NULL;
+	EVP_PKEY_CTX *ctx = NULL;
+#endif
 
 	base = (keysize - 3) / 5;
 	if (base != 32 && base != 48 && base != 64 && base != 128) {
@@ -302,18 +346,69 @@ static int parse_private_key(const u8 *key, size_t keysize, RSA *rsa)
 	if (dmq1 == NULL)
 		return -1;
 	cf2bn(p, base, dmq1);
-	
-	if (RSA_set0_factors(rsa, bn_p, q) != 1)
-		return -1;
-	if (RSA_set0_crt_params(rsa, dmp1, dmq1, iqmp) != 1)
-		return -1;
-	if (gen_d(rsa))
+
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+	RSA_get0_key(rsa, &rsa_n, &rsa_e, NULL);
+
+	if (RSA_set0_factors(rsa, bn_p, q) != 1 || 
+		RSA_set0_crt_params(rsa, dmp1, dmq1, iqmp) != 1 || 
+		gen_d(rsa_d, bn_p, q, rsa_n, rsa_e) != 0)
 		return -1;
 
-	return 0;
+	/* RSA_set0_key will free previous value, and replace with new value
+	 * Thus the need to copy the contents of rsa_n and rsa_e
+	 */
+	rsa_n_new = BN_dup(rsa_n);
+	rsa_e_new = BN_dup(rsa_e);
+	if (RSA_set0_key(rsa, rsa_n_new, rsa_e_new, rsa_d) != 1)
+		return -1;
+#else
+	/* Extract parameters from pkey */
+	if (EVP_PKEY_todata(pkey, EVP_PKEY_PUBLIC_KEY, &pkey_params) != 1) {
+		return -1;
+	 }
+	e = OSSL_PARAM_locate_const(pkey_params, "e");
+	n = OSSL_PARAM_locate_const(pkey_params, "n");
+	if (!e ||  !n) {
+		OSSL_PARAM_free(pkey_params);
+		return -1;
+	}
+	OSSL_PARAM_get_BN(e, &rsa_e);
+	OSSL_PARAM_get_BN(n, &rsa_n);
+	gen_d(rsa_d, bn_p, q, rsa_n, rsa_e);
+	/* Merge params*/
+	if (!(bld = OSSL_PARAM_BLD_new()) || 
+		OSSL_PARAM_BLD_push_BN(bld, "d", rsa_d) != 1 || 
+		OSSL_PARAM_BLD_push_BN(bld, "rsa-factor1", bn_p) != 1 || 
+		OSSL_PARAM_BLD_push_BN(bld, "rsa-factor2", q) != 1 || 
+		OSSL_PARAM_BLD_push_BN(bld, "rsa-exponent1", dmp1) != 1 || 
+		OSSL_PARAM_BLD_push_BN(bld, "rsa-exponent2", dmq1) != 1 || 
+		OSSL_PARAM_BLD_push_BN(bld, "rsa-coefficient1", iqmp) != 1 || 
+		!(new_params = OSSL_PARAM_BLD_to_param(bld))) {
+		OSSL_PARAM_free(pkey_params);
+		OSSL_PARAM_BLD_free(bld);
+		return -1;
+	}
+	OSSL_PARAM_BLD_free(bld);
+	if (!(params = OSSL_PARAM_merge(pkey_params, new_params))) {
+		OSSL_PARAM_free(pkey_params);
+		OSSL_PARAM_free(new_params);
+		return -1;
+	}
+
+	/* Create pkey from params */
+	if (!(ctx = EVP_PKEY_CTX_new_from_name(NULL, "RSA", NULL)) || 
+		EVP_PKEY_fromdata_init(ctx) != 1 || 
+		EVP_PKEY_fromdata(ctx, &pkey, EVP_PKEY_KEYPAIR, params) != 1)
+		rv = -1;
+	OSSL_PARAM_free(pkey_params);
+	OSSL_PARAM_free(new_params);
+	EVP_PKEY_CTX_free(ctx);
+#endif
+	return rv;
 }
 
-static int read_public_key(RSA *rsa)
+static int read_public_key(EVP_PKEY *pkey)
 {
 	int r;
 	sc_path_t path;
@@ -355,11 +450,11 @@ static int read_public_key(RSA *rsa)
 		printf("Key number %d not found.\n", opt_key_num);
 		return 2;
 	}
-	return parse_public_key(p, keysize, rsa);
+	return parse_public_key(p, keysize, pkey);
 }
 
 
-static int read_private_key(RSA *rsa)
+static int read_private_key(EVP_PKEY *pkey)
 {
 	int r;
 	sc_path_t path;
@@ -406,22 +501,21 @@ static int read_private_key(RSA *rsa)
 		printf("Key number %d not found.\n", opt_key_num);
 		return 2;
 	}
-	return parse_private_key(p, keysize, rsa);
+	return parse_private_key(p, keysize, pkey);
 }
 
 static int read_key(void)
 {
-	RSA *rsa = RSA_new();
+	EVP_PKEY *pkey = NULL;
 	u8 buf[1024], *p = buf;
 	u8 b64buf[2048];
 	int r;
 
-	if (rsa == NULL)
-		return -1;
-	r = read_public_key(rsa);
+	r = read_public_key(pkey);
 	if (r)
 		return r;
-	r = i2d_RSA_PUBKEY(rsa, &p);
+
+	r = i2d_PUBKEY(pkey, &p);
 	if (r <= 0) {
 		fprintf(stderr, "Error encoding public key.\n");
 		return -1;
@@ -433,13 +527,13 @@ static int read_key(void)
 	}
 	printf("-----BEGIN PUBLIC KEY-----\n%s-----END PUBLIC KEY-----\n", b64buf);
 
-	r = read_private_key(rsa);
+	r = read_private_key(pkey);
 	if (r == 10)
 		return 0;
 	else if (r)
 		return r;
 	p = buf;
-	r = i2d_RSAPrivateKey(rsa, &p);
+	r = i2d_PrivateKey(pkey, &p);
 	if (r <= 0) {
 		fprintf(stderr, "Error encoding private key.\n");
 		return -1;
@@ -630,11 +724,17 @@ static int create_key_files(void)
 	return 0;
 }
 
-static int read_rsa_privkey(RSA **rsa_out)
+static int read_rsa_privkey(EVP_PKEY **pkey_out)
 {
-	RSA *rsa = NULL;
+	EVP_PKEY *pkey = NULL;
 	BIO *in = NULL;
 	int r;
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+	RSA *rsa = NULL;
+	pkey = EVP_PKEY_new();
+#else
+	OSSL_DECODER_CTX *dctx;
+#endif
 
 	in = BIO_new(BIO_s_file());
 	if (opt_prkeyf == NULL) {
@@ -646,25 +746,37 @@ static int read_rsa_privkey(RSA **rsa_out)
 		perror(opt_prkeyf);
 		return 2;
 	}
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	rsa = PEM_read_bio_RSAPrivateKey(in, NULL, NULL, NULL);
 	if (rsa == NULL) {
 		fprintf(stderr, "Unable to load private key.\n");
 		return 2;
 	}
+	EVP_PKEY_assign_RSA(pkey, rsa);
+#else
+	dctx = OSSL_DECODER_CTX_new_for_pkey(&pkey, "PEM", NULL, "RSA", OSSL_KEYMGMT_SELECT_KEYPAIR, NULL, NULL);
+	OSSL_DECODER_from_bio(dctx, in);
+#endif
 	BIO_free(in);
-	*rsa_out = rsa;
+	*pkey_out = pkey;
 	return 0;
 }
 
-static int encode_private_key(RSA *rsa, u8 *key, size_t *keysize)
+static int encode_private_key(EVP_PKEY *pkey, u8 *key, size_t *keysize)
 {
 	u8 buf[1024], *p = buf;
 	u8 bnbuf[256];
 	int base = 0;
 	int r;
+	int rv = 0;
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	const BIGNUM *rsa_p, *rsa_q, *rsa_dmp1, *rsa_dmq1, *rsa_iqmp;
+	RSA *rsa = EVP_PKEY_get1_RSA(pkey);
+#else
+	BIGNUM *rsa_p = NULL, *rsa_q = NULL, *rsa_dmp1 = NULL, *rsa_dmq1 = NULL, *rsa_iqmp = NULL;
+#endif
 
-	switch (RSA_bits(rsa)) {
+	switch (EVP_PKEY_bits(pkey)) {
 	case 512:
 		base = 32;
 		break;
@@ -686,12 +798,22 @@ static int encode_private_key(RSA *rsa, u8 *key, size_t *keysize)
 	*p++ = (5 * base + 3) & 0xFF;
 	*p++ = opt_key_num;
 
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	RSA_get0_factors(rsa, &rsa_p, &rsa_q);
+#else
+	if (EVP_PKEY_get_bn_param(pkey, "rsa-factor1", &rsa_p) != 1 || 
+		EVP_PKEY_get_bn_param(pkey, "rsa-factor2", &rsa_q) != 1) {
+		fprintf(stderr, "Invalid private key.\n");
+		rv = 2;
+		goto end;
+	}
+#endif
 
 	r = bn2cf(rsa_p, bnbuf);
 	if (r != base) {
 		fprintf(stderr, "Invalid private key.\n");
-		return 2;
+		rv = 2;
+		goto end;
 	}
 	memcpy(p, bnbuf, base);
 	p += base;
@@ -699,17 +821,28 @@ static int encode_private_key(RSA *rsa, u8 *key, size_t *keysize)
 	r = bn2cf(rsa_q, bnbuf);
 	if (r != base) {
 		fprintf(stderr, "Invalid private key.\n");
-		return 2;
+		rv = 2;
+		goto end;
 	}
 	memcpy(p, bnbuf, base);
 	p += base;
 
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	RSA_get0_crt_params(rsa, &rsa_dmp1, &rsa_dmq1, &rsa_iqmp);
-
+#else
+	if (EVP_PKEY_get_bn_param(pkey, "rsa-exponent1", &rsa_dmp1) != 1 || 
+		EVP_PKEY_get_bn_param(pkey, "rsa-exponent2", &rsa_dmq1) != 1 || 
+		EVP_PKEY_get_bn_param(pkey, "rsa-coefficient1", &rsa_iqmp) != 1) {
+		fprintf(stderr, "Invalid private key.\n");
+		rv = 2;
+		goto end;
+	}
+#endif
 	r = bn2cf(rsa_iqmp, bnbuf);
 	if (r != base) {
 		fprintf(stderr, "Invalid private key.\n");
-		return 2;
+		rv = 2;
+		goto end;
 	}
 	memcpy(p, bnbuf, base);
 	p += base;
@@ -717,7 +850,8 @@ static int encode_private_key(RSA *rsa, u8 *key, size_t *keysize)
 	r = bn2cf(rsa_dmp1, bnbuf);
 	if (r != base) {
 		fprintf(stderr, "Invalid private key.\n");
-		return 2;
+		rv = 2;
+		goto end;
 	}
 	memcpy(p, bnbuf, base);
 	p += base;
@@ -725,7 +859,8 @@ static int encode_private_key(RSA *rsa, u8 *key, size_t *keysize)
 	r = bn2cf(rsa_dmq1, bnbuf);
 	if (r != base) {
 		fprintf(stderr, "Invalid private key.\n");
-		return 2;
+		rv = 2;
+		goto end;
 	}
 	memcpy(p, bnbuf, base);
 	p += base;
@@ -733,18 +868,34 @@ static int encode_private_key(RSA *rsa, u8 *key, size_t *keysize)
 	memcpy(key, buf, p - buf);
 	*keysize = p - buf;
 
-	return 0;
+end:
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+	RSA_free(rsa);
+#else
+	BN_free(rsa_p);
+	BN_free(rsa_q);
+	BN_free(rsa_dmp1);
+	BN_free(rsa_dmq1);
+	BN_free(rsa_iqmp);
+#endif
+	return rv;
 }
 
-static int encode_public_key(RSA *rsa, u8 *key, size_t *keysize)
+static int encode_public_key(EVP_PKEY *pkey, u8 *key, size_t *keysize)
 {
 	u8 buf[1024], *p = buf;
 	u8 bnbuf[256];
 	int base = 0;
 	int r;
+	int rv = 0;
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	const BIGNUM *rsa_n, *rsa_e;
+	RSA *rsa = NULL;
+#else
+	BIGNUM *rsa_n = NULL, *rsa_e = NULL;
+#endif
 
-	switch (RSA_bits(rsa)) {
+	switch (EVP_PKEY_bits(pkey)) {
 	case 512:
 		base = 32;
 		break;
@@ -766,11 +917,21 @@ static int encode_public_key(RSA *rsa, u8 *key, size_t *keysize)
 	*p++ = (5 * base + 7) & 0xFF;
 	*p++ = opt_key_num;
 
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	RSA_get0_key(rsa, &rsa_n, &rsa_e, NULL);
+#else
+	if (EVP_PKEY_get_bn_param(pkey, "n", &rsa_n) != 1 || 
+		EVP_PKEY_get_bn_param(pkey, "e", &rsa_e) != 1) {
+		fprintf(stderr, "Invalid public key.\n");
+		rv = 2;
+		goto end;
+	}
+#endif
 	r = bn2cf(rsa_n, bnbuf);
 	if (r != 2*base) {
 		fprintf(stderr, "Invalid public key.\n");
-		return 2;
+		rv = 2;
+		goto end;
 	}
 	memcpy(p, bnbuf, 2*base);
 	p += 2*base;
@@ -784,15 +945,22 @@ static int encode_public_key(RSA *rsa, u8 *key, size_t *keysize)
 	r = bn2cf(rsa_e, bnbuf);
 	if (r != 4) {
 		fprintf(stderr, "Invalid exponent value.\n");
-		return 2;
+		rv = 2;
+		goto end;
 	}
 	memcpy(p, bnbuf, 4);
 	p += 4;
 
 	memcpy(key, buf, p - buf);
 	*keysize = p - buf;
-
-	return 0;
+end:
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+	RSA_free(rsa);
+#else
+	BN_free(rsa_n);
+	BN_free(rsa_e);
+#endif
+	return rv;
 }
 
 static int update_public_key(const u8 *key, size_t keysize)
@@ -844,17 +1012,17 @@ static int update_private_key(const u8 *key, size_t keysize)
 static int store_key(void)
 {
 	u8 prv[1024], pub[1024];
-	size_t prvsize, pubsize;
+	size_t prvsize = 0, pubsize = 0;
 	int r;
-	RSA *rsa;
+	EVP_PKEY *pkey = NULL;
 
-	r = read_rsa_privkey(&rsa);
+	r = read_rsa_privkey(&pkey);
 	if (r)
 		return r;
-	r = encode_private_key(rsa, prv, &prvsize);
+	r = encode_private_key(pkey, prv, &prvsize);
 	if (r)
 		return r;
-	r = encode_public_key(rsa, pub, &pubsize);
+	r = encode_public_key(pkey, pub, &pubsize);
 	if (r)
 		return r;
 	if (verbose)
