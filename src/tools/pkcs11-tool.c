@@ -2808,7 +2808,7 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 					util_fatal("Generate RSA mechanism not supported");
 
 			if (size == NULL)
-				util_fatal("Unknown key type %s", type);
+				util_fatal("Unknown key pair type %s, expecting RSA:<nbytes>", type);
 			key_length = (unsigned long)atol(size);
 			if (key_length != 0)
 				modulusBits = key_length;
@@ -2930,7 +2930,7 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			const char *p_param_set = type + strlen("GOSTR3410");
 
 			if (p_param_set == NULL)
-				util_fatal("Unknown key type %s", type);
+				util_fatal("Unknown key pair type %s, expecting GOSTR3410:<nbytes>", type);
 
 			if (!strcmp(":A", p_param_set) || !strcmp("-2001:A", p_param_set)) {
 				gost_key_type = CKK_GOSTR3410;
@@ -2992,7 +2992,7 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 				hash_paramset_encoded_oid = GOST_HASH2012_512_PARAMSET_OID;
 			}
 			else
-				util_fatal("Unknown key type %s, valid key types for mechanism GOSTR3410 are GOSTR3410-2001:{A,B,C},"
+				util_fatal("Unknown key pair type %s, valid key types for mechanism GOSTR3410 are GOSTR3410-2001:{A,B,C},"
 					" GOSTR3410-2012-256:{A,B,C,D}, GOSTR3410-2012-512:{A,B,C}", type);
 
 			if (!opt_mechanism_used) {
@@ -3029,7 +3029,7 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			}
 		}
 		else {
-			util_fatal("Unknown key type %s", type);
+			util_fatal("Unknown key pair type %s", type);
 		}
 
 		mechanism.mechanism = opt_mechanism;
@@ -3131,7 +3131,7 @@ gen_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE *hSecretKey
 					util_fatal("Generate Key mechanism not supported\n");
 
 			if (size == NULL)
-				util_fatal("Unknown key type %s", type);
+				util_fatal("Unknown key type %s, expecting AES:<nbytes>", type);
 			key_length = (unsigned long)atol(size);
 			if (key_length == 0)
 				key_length = 32;
@@ -3151,7 +3151,7 @@ gen_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE *hSecretKey
 					util_fatal("Generate Key mechanism not supported\n");
 
 			if (size == NULL)
-				util_fatal("Unknown key type %s", type);
+				util_fatal("Unknown key type %s, expecting DES:<nbytes>", type);
 			key_length = (unsigned long)atol(size);
 			if (key_length == 0)
 				key_length = 8;
@@ -3171,7 +3171,7 @@ gen_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE *hSecretKey
 					util_fatal("Generate Key mechanism not supported\n");
 
 			if (size == NULL)
-				util_fatal("Unknown key type %s", type);
+				util_fatal("Unknown key type %s, expecting DES3:<nbytes>", type);
 			key_length = (unsigned long)atol(size);
 			if (key_length == 0)
 				key_length = 16;
@@ -3191,7 +3191,7 @@ gen_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE *hSecretKey
 					util_fatal("Generate Key mechanism not supported\n");
 
 			if (size == NULL)
-				util_fatal("Unknown key type %s", type);
+				util_fatal("Unknown key type %s, expecting GENERIC:<nbytes>", type);
 			key_length = (unsigned long)atol(size);
 			if (key_length == 0)
 				key_length = 32;
