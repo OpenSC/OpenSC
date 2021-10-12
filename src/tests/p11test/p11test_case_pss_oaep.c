@@ -757,6 +757,8 @@ void pss_oaep_test(void **state) {
 	int used, j;
 	test_certs_t objects;
 
+	test_certs_init(&objects);
+
 	P11TEST_START(info);
 
 	if (have_pss_oaep_mechanisms() == 0) {
@@ -764,8 +766,6 @@ void pss_oaep_test(void **state) {
 		skip();
 	}
 
-	objects.count = 0;
-	objects.data = NULL;
 	search_for_all_objects(&objects, info);
 
 	debug_print("\nCheck functionality of Sign&Verify and/or Encrypt&Decrypt");

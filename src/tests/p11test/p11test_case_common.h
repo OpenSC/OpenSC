@@ -58,9 +58,12 @@ typedef struct {
 } test_cert_t;
 
 typedef struct {
+	unsigned int alloc_count;
 	unsigned int count;
 	test_cert_t *data;
 } test_certs_t;
+
+void test_certs_init(test_certs_t *objects);
 
 void always_authenticate(test_cert_t *o, token_info_t *info);
 

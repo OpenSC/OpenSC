@@ -24,16 +24,15 @@ void ec_sign_size_test(void **state) {
 	unsigned int i;
 	int min, max, inc, j, l, errors = 0, rv;
 	token_info_t *info = (token_info_t *) *state;
+	test_certs_t objects;
+
+	test_certs_init(&objects);
 
 	P11TEST_START(info);
 	if (token.num_ec_mechs == 0 && token.num_ed_mechs == 0) {
 		fprintf(stderr, "Token does not support any ECC signature mechanisms. Skipping.\n");
 		P11TEST_SKIP(info);
 	}
-
-	test_certs_t objects;
-	objects.count = 0;
-	objects.data = NULL;
 
 	search_for_all_objects(&objects, info);
 

@@ -24,10 +24,9 @@ void usage_test(void **state) {
 	unsigned int i;
 	int errors = 0;
 	token_info_t *info = (token_info_t *) *state;
-
 	test_certs_t objects;
-	objects.count = 0;
-	objects.data = NULL;
+
+	test_certs_init(&objects);
 
 	P11TEST_START(info);
 	search_for_all_objects(&objects, info);
