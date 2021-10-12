@@ -25,6 +25,13 @@
 char name_buffer[11];
 char flag_buffer[11];
 
+void test_certs_init(test_certs_t *objects)
+{
+	objects->alloc_count = 0;
+	objects->count = 0;
+	objects->data = NULL;
+}
+
 /**
  * If the object enforces re-authentication, do it now.
  */
@@ -51,10 +58,13 @@ test_cert_t *
 add_object(test_certs_t *objects, CK_ATTRIBUTE key_id, CK_ATTRIBUTE label)
 {
 	test_cert_t *o = NULL;
-	objects->count = objects->count+1;
-	objects->data = realloc(objects->data, objects->count * sizeof(test_cert_t));
-	if (objects->data == NULL)
-		return NULL;
+	objects->count = objects->count + 1;
+	if (objects->count > objects->alloc_count) {
+		objects->alloc_count += 8;
+		objects->data = realloc(objects->data, objects->alloc_count * sizeof(test_cert_t));
+		if (objects->data == NULL)
+			return NULL;
+	}
 
 	o = &(objects->data[objects->count - 1]);
 	o->private_handle = CK_INVALID_HANDLE;

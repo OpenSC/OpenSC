@@ -642,8 +642,7 @@ void readonly_tests(void **state) {
 	int used, j;
 	test_certs_t objects;
 
-	objects.count = 0;
-	objects.data = NULL;
+	test_certs_init(&objects);
 
 	search_for_all_objects(&objects, info);
 
