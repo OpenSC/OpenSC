@@ -358,7 +358,7 @@ void derive_tests(void **state) {
 
 	/* print summary */
 	printf("[KEY ID] [LABEL]\n");
-	printf("[ TYPE ] [ SIZE ]  [ PUBLIC ] [  DERIVE  ]\n");
+	printf("[ TYPE ] [ SIZE ] [ PUBLIC ] [  DERIVE  ]\n");
 	P11TEST_DATA_ROW(info, 3,
 		's', "KEY ID",
 		's', "MECHANISM",
@@ -372,7 +372,7 @@ void derive_tests(void **state) {
 		printf("\n[%-6s] [%s]\n",
 			o->id_str,
 			o->label);
-		printf("[ %s ] [%6lu] [  %s  ]  [ %s%s ]\n",
+		printf("[ %s ] [%6lu] [  %s  ] [ %s%s ]\n",
 			(o->key_type == CKK_EC ? " EC " :
 				o->key_type == CKK_EC_MONTGOMERY ? "EC_M" : " ?? "),
 			o->bits,
@@ -392,7 +392,7 @@ void derive_tests(void **state) {
 				/* not applicable mechanisms are skipped */
 				continue;
 			}
-			printf("  [ %-23s ] [   %s   ]\n",
+			printf("  [ %-22s ] [   %s   ]\n",
 				get_mechanism_name(mech->mech),
 				mech->result_flags & FLAGS_DERIVE ? "[./]" : "    ");
 			if ((mech->result_flags & FLAGS_DERIVE) == 0)
@@ -403,8 +403,8 @@ void derive_tests(void **state) {
 				's', mech->result_flags & FLAGS_DERIVE ? "YES" : "");
 		}
 	}
-	printf(" Public == Cert -----^          ^\n");
-	printf(" ECDH Derive functionality -----'\n");
+	printf(" Public == Cert -----^            ^\n");
+	printf(" ECDH Derive functionality -------'\n");
 
 	clean_all_objects(&objects);
 	if (errors > 0)
