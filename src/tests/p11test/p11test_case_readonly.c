@@ -681,7 +681,7 @@ void readonly_tests(void **state) {
 
 	/* print summary */
 	printf("[KEY ID] [LABEL]\n");
-	printf("[ TYPE ] [ SIZE ] [PUBLIC] [SIGN&VERIFY] [ENC&DECRYPT] [WRAP&UNWR] [ DERIVE ]\n");
+	printf("[ TYPE ] [ SIZE ] [PUBLIC] [SIGN&VERIFY] [ENC&DECRYPT]\n");
 	P11TEST_DATA_ROW(info, 4,
 		's', "KEY ID",
 		's', "MECHANISM",
@@ -699,7 +699,7 @@ void readonly_tests(void **state) {
 		printf("\n[%-6s] [%s]\n",
 			o->id_str,
 			o->label);
-		printf("[ %s ] [%6lu] [ %s ] [%s%s] [%s%s] [%s %s] [%s%s]\n",
+		printf("[ %s ] [%6lu] [ %s ] [%s%s] [%s%s]\n",
 			(o->key_type == CKK_RSA ? "RSA " :
 				o->key_type == CKK_EC ? " EC " :
 				o->key_type == CKK_EC_EDWARDS ? "EC_E" :
@@ -709,11 +709,7 @@ void readonly_tests(void **state) {
 			o->sign ? "[./] " : "[  ] ",
 			o->verify ? " [./] " : " [  ] ",
 			o->encrypt ? "[./] " : "[  ] ",
-			o->decrypt ? " [./] " : " [  ] ",
-			o->wrap ? "[./]" : "[  ]",
-			o->unwrap ? "[./]" : "[  ]",
-			o->derive_pub ? "[./]" : "[  ]",
-			o->derive_priv ? "[./]" : "[  ]");
+			o->decrypt ? " [./] " : " [  ] ");
 		if (!o->sign && !o->verify && !o->encrypt && !o->decrypt) {
 			printf("  no usable attributes found ... ignored\n");
 			continue;
@@ -727,7 +723,7 @@ void readonly_tests(void **state) {
 				/* not applicable mechanisms are skipped */
 				continue;
 			}
-			printf("  [ %-20s ] [   %s    ] [   %s    ] [         ] [        ]\n",
+			printf("  [ %-20s ] [   %s    ] [   %s    ]\n",
 				get_mechanism_name(mech->mech),
 				mech->result_flags & FLAGS_SIGN_ANY ? "[./]" : "    ",
 				mech->result_flags & FLAGS_DECRYPT_ANY ? "[./]" : "    ");
@@ -741,7 +737,7 @@ void readonly_tests(void **state) {
 				's', mech->result_flags & FLAGS_DECRYPT_ANY ? "YES" : "");
 		}
 	}
-	printf(" Public == Cert -----^       ^  ^  ^       ^  ^  ^       ^----^- Attributes\n");
+	printf(" Public == Cert -----^       ^  ^  ^       ^  ^  ^\n");
 	printf(" Sign Attribute -------------'  |  |       |  |  '---- Decrypt Attribute\n");
 	printf(" Sign&Verify functionality -----'  |       |  '------- Enc&Dec functionality\n");
 	printf(" Verify Attribute -----------------'       '---------- Encrypt Attribute\n");
