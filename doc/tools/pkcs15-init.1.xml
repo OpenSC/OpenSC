@@ -680,6 +680,17 @@
 
 				<varlistentry>
 					<term>
+						<option>--label</option> <replaceable>LABEL</replaceable>
+					</term>
+					<listitem>
+						<para>
+							Specify label for a PIN, key, certificate or data object when creating a new objects. When deleting objects, this can be used to delete object by label.
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
 						<option>--puk-label</option> <replaceable>LABEL</replaceable>
 					</term>
 					<listitem>
