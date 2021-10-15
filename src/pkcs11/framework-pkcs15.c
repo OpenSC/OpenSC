@@ -5357,7 +5357,11 @@ pkcs15_skey_get_attribute(struct sc_pkcs11_session *session,
 		break;
 	case CKA_VALUE_LEN:
 		check_attribute_buffer(attr, sizeof(CK_ULONG));
-		*(CK_ULONG*)attr->pValue = skey->info->data.len;
+		if (skey->info->data.len) { /* Available only if the CKA_VALUE is present -- probably never */
+			*(CK_ULONG*)attr->pValue = skey->info->data.len;
+		} else { /* From standard secret key SKDF keyLen attribute (in bits) */
+			*(CK_ULONG*)attr->pValue = skey->info->value_len/8;
+		}
 		break;
 	case CKA_VALUE:
 		check_attribute_buffer(attr, skey->info->data.len);
