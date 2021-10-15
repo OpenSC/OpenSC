@@ -56,7 +56,7 @@ static void buf_init(BUFHAN * bp, FILE * fp, const char *saved_string)
 
 static void buf_addch(BUFHAN * bp, char ch)
 {
-	if (bp->bufcur >= bp->bufmax) {
+	if (bp->bufcur + 1 >= bp->bufmax) {
 		char *p = (char *) realloc(bp->buf, bp->bufmax + 256);
 		if (!p)
 			return;
