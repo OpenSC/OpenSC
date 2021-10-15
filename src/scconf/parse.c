@@ -298,7 +298,7 @@ void scconf_parse_token(scconf_parser * parser, int token_type, const char *toke
 				/* name */
 				parser->state |= STATE_SET;
 				scconf_list_add(&parser->name, stoken);
-			} else if (parser->state == STATE_VALUE) {
+			} else if (parser->state == STATE_VALUE && parser->current_item->type == SCCONF_ITEM_TYPE_VALUE) {
 				/* value */
 				parser->state |= STATE_SET;
 				scconf_list_add(&parser->current_item->value.list,
@@ -420,6 +420,8 @@ int scconf_parse_string(scconf_context * config, const char *string)
 	} else {
 		r = 1;
 	}
+
+	scconf_parse_reset_state(&p);
 
 	if (r <= 0)
 		config->errmsg = buffer;
