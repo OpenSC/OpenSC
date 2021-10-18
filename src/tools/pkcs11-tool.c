@@ -5417,12 +5417,13 @@ static int read_object(CK_SESSION_HANDLE session)
 	if (clazz == CKO_PUBLIC_KEY) {
 #ifdef ENABLE_OPENSSL
 		long derlen;
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
 		EVP_PKEY *pkey = NULL;
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
 		EVP_PKEY_CTX *ctx = NULL;
 		OSSL_PARAM *params = NULL;
 		OSSL_PARAM_BLD *bld = NULL;
 #endif
+
 		BIO *pout = BIO_new(BIO_s_mem());
 		if (!pout)
 			util_fatal("out of memory");
@@ -5436,7 +5437,6 @@ static int read_object(CK_SESSION_HANDLE session)
 			if (!rsa)
 				util_fatal("out of memory");
 #endif
-
 			if ((value = getMODULUS(session, obj, &len))) {
 				if (!(rsa_n = BN_bin2bn(value, len, NULL)))
 					util_fatal("cannot parse MODULUS");
@@ -5461,20 +5461,18 @@ static int read_object(CK_SESSION_HANDLE session)
 			ctx = EVP_PKEY_CTX_new_from_name(NULL, "RSA", NULL);
 			if (!ctx)
 				util_fatal("out of memory");
-			
-			if (!(bld = OSSL_PARAM_BLD_new())
-			 || OSSL_PARAM_BLD_push_BN(bld, "n", rsa_n) != 1
-			 || OSSL_PARAM_BLD_push_BN(bld, "e", rsa_e) != 1
-			 || !(params = OSSL_PARAM_BLD_to_param(bld)) != 1) {
+			if (!(bld = OSSL_PARAM_BLD_new()) ||
+				OSSL_PARAM_BLD_push_BN(bld, "n", rsa_n) != 1 ||
+				OSSL_PARAM_BLD_push_BN(bld, "e", rsa_e) != 1 ||
+				!(params = OSSL_PARAM_BLD_to_param(bld))) {
 				OSSL_PARAM_BLD_free(bld);
 				EVP_PKEY_CTX_free(ctx);
 				OSSL_PARAM_free(params);
 			 	util_fatal("cannot set RSA values");
 			}
 			OSSL_PARAM_BLD_free(bld);
-
-			if (EVP_PKEY_fromdata_init(ctx) != 1
-			 || EVP_PKEY_fromdata(ctx, &pkey, EVP_PKEY_PUBLIC_KEY, params) != 1) {
+			if (EVP_PKEY_fromdata_init(ctx) != 1 ||
+				EVP_PKEY_fromdata(ctx, &pkey, EVP_PKEY_PUBLIC_KEY, params) != 1) {
 				EVP_PKEY_CTX_free(ctx);
 				OSSL_PARAM_free(params);
 			 	util_fatal("cannot set RSA values");
@@ -5489,24 +5487,34 @@ static int read_object(CK_SESSION_HANDLE session)
 #endif
 #if !defined(OPENSSL_NO_EC)
 		} else if (type == CKK_EC) {
-			EC_KEY *ec;
 			CK_BYTE *params;
 			const unsigned char *a;
+			size_t a_len = 0;
 			ASN1_OCTET_STRING *os;
-			EC_KEY *success = NULL;
+			int success = 0;
+			EC_POINT *point = NULL;
 
-			ec = EC_KEY_new();
-			if (ec == NULL)
-				util_fatal("out of memory");
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+			const EC_GROUP *group = NULL;
+			EC_KEY *ec = EC_KEY_new();
+			pkey = EVP_PKEY_new();
+#else
+			EC_GROUP *group = NULL;
+			char group_name[80];
+			OSSL_PARAM *old = NULL, *new = NULL, *p = NULL;
+			OSSL_PARAM_BLD *bld = NULL;
+#endif
 
 			if ((params = getEC_PARAMS(session, obj, &len))) {
 				const unsigned char *a = params;
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 				if (!d2i_ECParameters(&ec, &a, (long)len))
-#else
-				if (!(pkey = d2i_KeyParams(EVP_PKEY_EC, &pkey, &a, len)))
-#endif
 					util_fatal("cannot parse EC_PARAMS");
+				EVP_PKEY_assign_EC_KEY(pkey, ec);
+#else
+				if (!d2i_KeyParams(EVP_PKEY_EC, &pkey, &a, len))
+					util_fatal("cannot parse EC_PARAMS");
+#endif
 				free(params);
 			} else
 				util_fatal("cannot obtain EC_PARAMS");
@@ -5515,25 +5523,73 @@ static int read_object(CK_SESSION_HANDLE session)
 			/* PKCS#11-compliant modules should return ASN1_OCTET_STRING */
 			a = value;
 			os = d2i_ASN1_OCTET_STRING(NULL, &a, (long)len);
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+			group = EC_KEY_get0_group(EVP_PKEY_get0_EC_KEY(pkey));
+#else
+			if (EVP_PKEY_get_group_name(pkey, group_name, sizeof(group_name), NULL) != 1)
+				util_fatal("cannot obtain EC_PARAMS");
+			group = EC_GROUP_new_by_curve_name(OBJ_txt2nid(group_name));
+#endif
+			point = EC_POINT_new(group);
 			if (os) {
 				a = os->data;
-				success = o2i_ECPublicKey(&ec, &a, os->length); // no idea what to do with it
-				ASN1_STRING_free(os);
+				a_len = os->length;
+				success = EC_POINT_oct2point(group, point, a, a_len, NULL);
 			}
 			if (!success) { /* Workaround for broken PKCS#11 modules */
+				ASN1_STRING_free(os);
 				a = value;
-				success = o2i_ECPublicKey(&ec, &a, len); // no idea what to do with it
+				a_len = len;
+				if (!EC_POINT_oct2point(group, point, a, len, NULL)) {
+					free(value);
+					util_fatal("cannot obtain and parse EC_POINT");
+				}
 			}
-			free(value);
-			if (!success)
-				util_fatal("cannot obtain and parse EC_POINT");
+
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
-			if (!i2d_EC_PUBKEY_bio(pout, ec))
+			if (success)
+				ASN1_STRING_free(os);
+			free(value);
+			EC_KEY_set_public_key(EVP_PKEY_get0_EC_KEY(pkey), point);
 #else
-			if (!i2d_PUBKEY_bio(pout, pkey))
+			if (!(bld = OSSL_PARAM_BLD_new()) ||
+				EVP_PKEY_todata(pkey, EVP_PKEY_PUBLIC_KEY, &old) != 1 ||
+				OSSL_PARAM_BLD_push_octet_string(bld, "pub", a, a_len) != 1 ||
+				!(new = OSSL_PARAM_BLD_to_param(bld)) ||
+				!(p = OSSL_PARAM_merge(old, new))) {
+					OSSL_PARAM_BLD_free(bld);
+					OSSL_PARAM_free(old);
+					OSSL_PARAM_free(new);
+					OSSL_PARAM_free(p);
+					if (success)
+						ASN1_STRING_free(os);
+					free(value);
+					util_fatal("cannot set OSSL_PARAM");
+			}
+			OSSL_PARAM_BLD_free(bld);
+			OSSL_PARAM_free(old);
+			OSSL_PARAM_free(new);
+			if (success)
+				ASN1_STRING_free(os);
+			free(value);
+
+			if (!(ctx = EVP_PKEY_CTX_new_from_name(NULL, "EC", NULL)) ||
+				EVP_PKEY_fromdata_init(ctx) != 1) {
+					OSSL_PARAM_free(p);
+					EVP_PKEY_CTX_free(ctx);
+					util_fatal("cannot set CTX");
+			}
+			EVP_PKEY_free(pkey);
+			pkey = NULL;
+			if (EVP_PKEY_fromdata(ctx, &pkey, EVP_PKEY_PUBLIC_KEY, p) != 1) {
+					OSSL_PARAM_free(p);
+					EVP_PKEY_CTX_free(ctx);
+					util_fatal("cannot create EVP_PKEY");
+			}
+
 #endif
+			if (!i2d_PUBKEY_bio(pout, pkey))
 				util_fatal("cannot convert EC public key to DER");
-			EC_KEY_free(ec);
 #endif
 #ifdef EVP_PKEY_ED25519
 		} else if (type == CKK_EC_EDWARDS) {
