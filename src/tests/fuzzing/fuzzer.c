@@ -1,5 +1,5 @@
 /*
- * fuzz_scconf_parse.c: Fuzz target for scconf_parse
+ * fuzzer.c: Standalone main for fuzz target
  *
  * Copyright (C) 2021 Red Hat, Inc.
  *
