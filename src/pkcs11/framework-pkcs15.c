@@ -2217,6 +2217,7 @@ pkcs15_create_private_key(struct sc_pkcs11_slot *slot, struct sc_profile *profil
 	CK_KEY_TYPE key_type;
 	struct sc_pkcs15_prkey_rsa *rsa = NULL;
 	struct sc_pkcs15_prkey_gostr3410 *gost = NULL;
+	struct sc_pkcs15_prkey_ec *ec = NULL;
 	int rc;
 	CK_RV rv;
 	char label[SC_PKCS15_MAX_LABEL_SIZE];
@@ -2258,8 +2259,8 @@ pkcs15_create_private_key(struct sc_pkcs11_slot *slot, struct sc_profile *profil
 			return CKR_ATTRIBUTE_VALUE_INVALID;
 		case CKK_EC:
 			args.key.algorithm = SC_ALGORITHM_EC;
-			/* TODO: -DEE Do not have PKCS15 card with EC to test this */
-			/* fall through */
+			ec = &args.key.u.ec;
+			break;
 		default:
 			return CKR_ATTRIBUTE_VALUE_INVALID;
 	}
@@ -2297,6 +2298,17 @@ pkcs15_create_private_key(struct sc_pkcs11_slot *slot, struct sc_profile *profil
 		case CKA_VALUE:
 			if (key_type == CKK_GOSTR3410)
 				bn = &gost->d;
+			if (key_type == CKK_EC)
+				bn = &ec->privateD;
+			break;
+		case CKA_EC_PARAMS:
+			ec->params.der.value = calloc(1, attr->ulValueLen);
+			ec->params.der.len = attr->ulValueLen;
+			rv = attr_extract(attr, ec->params.der.value, &ec->params.der.len);
+			if (rv != CKR_OK)
+				goto out;
+			if (sc_pkcs15_fix_ec_parameters(p11card->card->ctx, &ec->params) != SC_SUCCESS)
+				return CKR_ATTRIBUTE_VALUE_INVALID;
 			break;
 		case CKA_SIGN:
 			args.usage |= pkcs15_check_bool_cka(attr, SC_PKCS15_PRKEY_USAGE_SIGN);
@@ -2347,6 +2359,12 @@ pkcs15_create_private_key(struct sc_pkcs11_slot *slot, struct sc_profile *profil
 		if (rc != SC_SUCCESS)  {
 			rv = sc_to_cryptoki_error(rc, "C_CreateObject");
 			goto out;
+		}
+	}
+	else if (key_type == CKK_EC)   {
+		if (!ec->privateD.len || !ec->params.field_length)   {
+			sc_log(context, "Template to store the EC private key is incomplete");
+			return CKR_TEMPLATE_INCOMPLETE;
 		}
 	}
 
@@ -2573,6 +2591,7 @@ pkcs15_create_public_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 	struct sc_pkcs15_auth_info *pin = NULL;
 	CK_KEY_TYPE key_type;
 	struct sc_pkcs15_pubkey_rsa *rsa = NULL;
+	struct sc_pkcs15_pubkey_ec *ec = NULL;
 	int rc;
 	CK_RV rv;
 	char label[SC_PKCS15_MAX_LABEL_SIZE];
@@ -2600,6 +2619,9 @@ pkcs15_create_public_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 			rsa = &args.key.u.rsa;
 			break;
 		case CKK_EC:
+			args.key.algorithm = SC_ALGORITHM_EC;
+			ec = &args.key.u.ec;
+			break;
 		case CKK_EC_EDWARDS:
 		case CKK_EC_MONTGOMERY:
 			/* TODO: -DEE Do not have real pkcs15 card with EC */
@@ -2644,6 +2666,19 @@ pkcs15_create_public_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 		case CKA_WRAP:
 			args.usage |= pkcs15_check_bool_cka(attr, SC_PKCS15_PRKEY_USAGE_WRAP);
 			break;
+		case CKA_EC_POINT:
+			if (key_type == CKK_EC) {
+				if (sc_pkcs15_decode_pubkey_ec(p11card->card->ctx, ec, attr->pValue, attr->ulValueLen) < 0)
+					return CKR_ATTRIBUTE_VALUE_INVALID;
+			}
+			break;
+		case CKA_EC_PARAMS:
+			ec->params.der.value = calloc(1, attr->ulValueLen);
+			ec->params.der.len = attr->ulValueLen;
+			rv = attr_extract(attr, ec->params.der.value, &ec->params.der.len);
+			if (rv != CKR_OK)
+				return CKR_ATTRIBUTE_VALUE_INVALID;
+			break;
 		default:
 			/* ignore unknown attrs, or flag error? */
 			continue;
@@ -2657,8 +2692,16 @@ pkcs15_create_public_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 		}
 	}
 
-	if (!rsa->modulus.len || !rsa->exponent.len)
-		return CKR_TEMPLATE_INCOMPLETE;
+	if (key_type == CKK_RSA) {
+		if (!rsa->modulus.len || !rsa->exponent.len)
+			return CKR_TEMPLATE_INCOMPLETE;
+	}
+	else if (key_type == CKK_EC) {
+		if (!ec->ecpointQ.len || !ec->params.der.value)   {
+			sc_log(context, "Template to store the EC public key is incomplete");
+			return CKR_TEMPLATE_INCOMPLETE;
+		}
+	}
 
 	rc = sc_pkcs15init_store_public_key(fw_data->p15_card, profile, &args, &key_obj);
 	if (rc < 0)
