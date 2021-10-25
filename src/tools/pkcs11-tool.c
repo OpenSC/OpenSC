@@ -4619,9 +4619,6 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 	CK_ECDH1_DERIVE_PARAMS ecdh_parms;
 	CK_RV rv;
 	BIO *bio_in = NULL;
-	EC_KEY  *eckey = NULL;
-	const EC_GROUP *ecgroup = NULL;
-	const EC_POINT *ecpoint = NULL;
 	unsigned char *buf = NULL;
 	size_t buf_size = 0;
 	CK_ULONG key_len = 0;
@@ -4629,6 +4626,16 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 	unsigned char * der = NULL;
 	unsigned char * derp = NULL;
 	size_t  der_size = 0;
+	EVP_PKEY *pkey = NULL;
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+	EC_KEY *eckey = NULL;
+	const EC_GROUP *ecgroup = NULL;
+	const EC_POINT *ecpoint = NULL;
+#else
+	EC_GROUP *ecgroup = NULL;
+	char name[256]; size_t len = 0;
+	int nid = 0;
+#endif
 
 	printf("Using derive algorithm 0x%8.8lx %s\n", opt_mechanism, p11_mechanism_to_name(mech_mech));
 	memset(&mech, 0, sizeof(mech));
@@ -4639,15 +4646,24 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 	if (BIO_read_filename(bio_in, opt_input) <= 0)
 		util_fatal("Cannot open %s: %m", opt_input);
 
-	eckey = d2i_EC_PUBKEY_bio(bio_in, NULL);
-	if (!eckey)
+	pkey = d2i_PUBKEY_bio(bio_in, NULL);
+
+	if (!pkey)
 		util_fatal("Cannot read EC key from %s", opt_input);
 
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+	eckey = EVP_PKEY_get0_EC_KEY(pkey);
 	ecpoint = EC_KEY_get0_public_key(eckey);
 	ecgroup = EC_KEY_get0_group(eckey);
 
 	if (!ecpoint || !ecgroup)
 		util_fatal("Failed to parse other EC key from %s", opt_input);
+#else
+	if (EVP_PKEY_get_group_name(pkey, name, sizeof(name), &len) != 1
+	 || (nid = OBJ_txt2nid(name)) == NID_undef
+	 || (ecgroup = EC_GROUP_new_by_curve_name(nid)) == NULL)
+		util_fatal("Failed to parse other EC key from %s", opt_input);
+#endif
 
 	/* both eckeys must be same curve */
 	key_len = (EC_GROUP_get_degree(ecgroup) + 7) / 8;
@@ -4661,11 +4677,23 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 		n_attrs++;
 	}
 
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	buf_size = EC_POINT_point2oct(ecgroup, ecpoint, POINT_CONVERSION_UNCOMPRESSED, NULL,	    0, NULL);
 	buf = (unsigned char *)malloc(buf_size);
 	if (buf == NULL)
 	    util_fatal("malloc() failure\n");
 	buf_size = EC_POINT_point2oct(ecgroup, ecpoint, POINT_CONVERSION_UNCOMPRESSED, buf, buf_size, NULL);
+#else
+	EC_GROUP_free(ecgroup);
+	EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, NULL, 0, &buf_size);
+	if ((buf = (unsigned char *)malloc(buf_size)) == NULL)
+	    util_fatal("malloc() failure\n");
+
+	if (EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, buf, buf_size, NULL) != 1) {
+		free(buf);
+		util_fatal("Failed to parse other EC key from %s", opt_input);
+	}
+#endif
 
 	if (opt_derive_pass_der) {
 		octet = ASN1_OCTET_STRING_new();
@@ -4680,7 +4708,7 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 	}
 
 	BIO_free(bio_in);
-	EC_KEY_free(eckey);
+	EVP_PKEY_free(pkey);
 
 	memset(&ecdh_parms, 0, sizeof(ecdh_parms));
 	ecdh_parms.kdf = CKD_NULL;
