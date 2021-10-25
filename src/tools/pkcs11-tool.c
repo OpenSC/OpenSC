@@ -52,6 +52,7 @@
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 # include <openssl/core_names.h>
 # include <openssl/param_build.h>
+#include <openssl/provider.h>
 #endif
 #if !defined(OPENSSL_NO_EC) && !defined(OPENSSL_NO_ECDSA)
 #include <openssl/ec.h>
@@ -70,6 +71,10 @@
 #include "common/libpkcs11.h"
 #include "util.h"
 #include "libopensc/sc-ossl-compat.h"
+
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+OSSL_PROVIDER *legacy_provider = NULL;
+#endif
 
 #ifdef _WIN32
 #ifndef STDOUT_FILENO
@@ -5767,7 +5772,6 @@ static int test_digest(CK_SESSION_HANDLE session)
 	CK_ULONG        hashLen1, hashLen2;
 	CK_MECHANISM_TYPE firstMechType;
 	CK_SESSION_INFO sessionInfo;
-
 	CK_MECHANISM_TYPE mechTypes[] = {
 		CKM_MD5,
 		CKM_RIPEMD160,
@@ -5869,6 +5873,11 @@ static int test_digest(CK_SESSION_HANDLE session)
 #endif
 	for (; mechTypes[i] != 0xffffff; i++) {
 		ck_mech.mechanism = mechTypes[i];
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+		if (!legacy_provider) {
+			legacy_provider = OSSL_PROVIDER_load(NULL, "legacy");
+		}
+#endif
 
 		rv = p11->C_DigestInit(session, &ck_mech);
 		if (rv == CKR_MECHANISM_INVALID)
@@ -6065,6 +6074,11 @@ static int sign_verify_openssl(CK_SESSION_HANDLE session,
 #endif
 		EVP_sha256(),
 	};
+#endif
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	if (!legacy_provider) {
+		legacy_provider = OSSL_PROVIDER_load(NULL, "legacy");
+	}
 #endif
 
 	rv = p11->C_SignInit(session, ck_mech, privKeyObject);
