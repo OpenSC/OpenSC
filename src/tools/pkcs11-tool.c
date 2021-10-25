@@ -3663,17 +3663,30 @@ parse_rsa_pkey(EVP_PKEY *pkey, int private, struct rsakey_info *rsa)
 static int
 parse_gost_pkey(EVP_PKEY *pkey, int private, struct gostkey_info *gost)
 {
-	EC_KEY *src = EVP_PKEY_get0(pkey);
 	unsigned char *pder;
-	const BIGNUM *bignum;
 	BIGNUM *X, *Y;
-	const EC_POINT *point;
 	int nid, rv;
-
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+	const BIGNUM *bignum;
+	const EC_GROUP *group;
+	const EC_POINT *point;
+	EC_KEY *src = EVP_PKEY_get0(pkey);
 	if (!src)
 		return -1;
+	group = EC_KEY_get0_group(src);
+	nid = EC_GROUP_get_curve_name(group);
+#else
+	unsigned char *pubkey = NULL;
+	size_t pubkey_len = 0;
+	BIGNUM *bignum = NULL;
+	EC_GROUP *group = NULL;
+	EC_POINT *point = NULL;
+	char name[256]; size_t len = 0;
+	if (EVP_PKEY_get_group_name(pkey, name, sizeof(name), &len) != 1)
+		return -1;
 
-	nid = EC_GROUP_get_curve_name(EC_KEY_get0_group(EVP_PKEY_get0(pkey)));
+	nid = OBJ_txt2nid(name);
+#endif
 	rv = i2d_ASN1_OBJECT(OBJ_nid2obj(nid), NULL);
 	if (rv < 0)
 		return -1;
@@ -3687,22 +3700,45 @@ parse_gost_pkey(EVP_PKEY *pkey, int private, struct gostkey_info *gost)
 	gost->param_oid.len = rv;
 
 	if (private) {
-		bignum = EC_KEY_get0_private_key(EVP_PKEY_get0(pkey));
-
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+		bignum = EC_KEY_get0_private_key(src);
+#else
+		if (EVP_PKEY_get_bn_param(pkey, OSSL_PKEY_PARAM_PRIV_KEY, &bignum) != 1)
+			return -1;
+#endif
 		gost->private.len = BN_num_bytes(bignum);
 		gost->private.value = malloc(gost->private.len);
-		if (!gost->private.value)
+		if (!gost->private.value) {
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+			BN_free(bignum);
+#endif
 			return -1;
+		}
 		BN_bn2bin(bignum, gost->private.value);
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+		BN_free(bignum);
+#endif
 	}
 	else {
 		X = BN_new();
 		Y = BN_new();
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 		point = EC_KEY_get0_public_key(src);
+#else
+		group = EC_GROUP_new_by_curve_name(nid);
+		EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_PUB_KEY, NULL, 0, &pubkey_len);
+		if (!(pubkey = malloc(pubkey_len)) ||
+			EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_PUB_KEY, pubkey, pubkey_len, NULL) != 1 ||
+			!(point = EC_POINT_new(group)) ||
+			EC_POINT_oct2point(group, point, pubkey, pubkey_len, NULL) != 1) {
+			EC_GROUP_free(group);
+			EC_POINT_free(point);
+			return -1;
+		}
+#endif
 		rv = -1;
-		if (X && Y && point && EC_KEY_get0_group(src))
-			rv = EC_POINT_get_affine_coordinates_GFp(EC_KEY_get0_group(src),
-					point, X, Y, NULL);
+		if (X && Y && point && group)
+			rv = EC_POINT_get_affine_coordinates(group, point, X, Y, NULL);
 		if (rv == 1) {
 			gost->public.len = BN_num_bytes(X) + BN_num_bytes(Y);
 			gost->public.value = malloc(gost->public.len);
@@ -3716,10 +3752,13 @@ parse_gost_pkey(EVP_PKEY *pkey, int private, struct gostkey_info *gost)
 		}
 		BN_free(X);
 		BN_free(Y);
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+		EC_GROUP_free(group);
+		EC_POINT_free(point);
+#endif
 		if (rv != 1)
 			return -1;
 	}
-
 	return 0;
 }
 
