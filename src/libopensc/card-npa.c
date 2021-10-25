@@ -136,51 +136,33 @@ err:
 	return r;
 }
 
+unsigned char dir_content_ref[] = {
+	0x61, 0x32, 0x4F, 0x0F, 0xE8, 0x28, 0xBD, 0x08, 0x0F, 0xA0, 0x00, 0x00,
+	0x01, 0x67, 0x45, 0x53, 0x49, 0x47, 0x4E, 0x50, 0x0F, 0x43, 0x49, 0x41,
+	0x20, 0x7A, 0x75, 0x20, 0x44, 0x46, 0x2E, 0x65, 0x53, 0x69, 0x67, 0x6E,
+	0x51, 0x00, 0x73, 0x0C, 0x4F, 0x0A, 0xA0, 0x00, 0x00, 0x01, 0x67, 0x45,
+	0x53, 0x49, 0x47, 0x4E, 0x61, 0x09, 0x4F, 0x07, 0xA0, 0x00, 0x00, 0x02,
+	0x47, 0x10, 0x01, 0x61, 0x0B, 0x4F, 0x09, 0xE8, 0x07, 0x04, 0x00, 0x7F,
+	0x00, 0x07, 0x03, 0x02, 0x61, 0x0C, 0x4F, 0x0A, 0xA0, 0x00, 0x00, 0x01,
+	0x67, 0x45, 0x53, 0x49, 0x47, 0x4E,
+};
+
 static int npa_match_card(sc_card_t * card)
 {
-	int r = 0;
+	unsigned char dir_content[sizeof dir_content_ref];
+	unsigned char id[] = {0x2F, 0x00};
+	sc_apdu_t select_ef_dir;
 
-	if (SC_SUCCESS == sc_enum_apps(card)) {
-		unsigned char esign_aid_0[] = {
-			0xE8, 0x28, 0xBD, 0x08, 0x0F, 0xA0, 0x00, 0x00, 0x01, 0x67, 0x45, 0x53, 0x49, 0x47, 0x4E,
-		}, esign_aid_1[] = {
-			0xa0, 0x00, 0x00, 0x02, 0x47, 0x10, 0x01,
-		}, esign_aid_2[] = {
-			0xe8, 0x07, 0x04, 0x00, 0x7f, 0x00, 0x07, 0x03, 0x02,
-		}, esign_aid_3[] = {
-			0xA0, 0x00, 0x00, 0x01, 0x67, 0x45, 0x53, 0x49, 0x47, 0x4E,
-		};
-		int i, found_0 = 0, found_1 = 0, found_2 = 0, found_3 = 0;
-		for (i = 0; i < card->app_count; i++)   {
-			struct sc_app_info *app_info = card->app[i];
-			if (sizeof esign_aid_0 == app_info->aid.len
-					&& 0 == memcmp(esign_aid_0, app_info->aid.value,
-						sizeof esign_aid_0))
-				found_0 = 1;
-			if (sizeof esign_aid_1 == app_info->aid.len
-					&& 0 == memcmp(esign_aid_1, app_info->aid.value,
-						sizeof esign_aid_1))
-				found_1 = 1;
-			if (sizeof esign_aid_2 == app_info->aid.len
-					&& 0 == memcmp(esign_aid_2, app_info->aid.value,
-						sizeof esign_aid_2))
-				found_2 = 1;
-			if (sizeof esign_aid_3 == app_info->aid.len
-					&& 0 == memcmp(esign_aid_3, app_info->aid.value,
-						sizeof esign_aid_3))
-				found_3 = 1;
-		}
-		if (found_0 && found_1 && found_2 && found_3) {
-			card->type = SC_CARD_TYPE_NPA;
-			r = 1;
-		}
-	}
+	sc_format_apdu_ex(&select_ef_dir, 0x00, 0xA4, 0x02, 0x0C, id, sizeof id, NULL, 0);
 
-	if (r == 0) {
-		sc_free_apps(card);
-	}
+	if (SC_SUCCESS == sc_select_file(card, sc_get_mf_path(), NULL)
+			&& SC_SUCCESS == sc_transmit_apdu(card, &select_ef_dir)
+			&& select_ef_dir.sw1 == 0x90 && select_ef_dir.sw2 == 0x00
+			&& sizeof dir_content == sc_read_binary(card, 0, dir_content, sizeof dir_content, 0)
+			&& 0 == memcmp(dir_content_ref, dir_content, sizeof dir_content))
+		return 1;
 
-	return r;
+	return 0;
 }
 
 static void npa_get_cached_pace_params(sc_card_t *card,
@@ -369,6 +351,42 @@ static int npa_finish(sc_card_t * card)
 	return SC_SUCCESS;
 }
 
+static void npa_init_apps(sc_card_t * card)
+{
+	/* this initializes the internal structures with the data from
+	 * `dir_content_ref` */
+	const u8 *aids[] = {
+		(const u8 *) "\xa0\x00\x00\x02\x47\x10\x01",
+		(const u8 *) "\xe8\x07\x04\x00\x7f\x00\x07\x03\x02",
+		(const u8 *) "\xa0\x00\x00\x01\x67\x45\x53\x49\x47\x4e",
+	};
+	const size_t lens[] = {7, 9, 10};
+	size_t i;
+
+	sc_free_apps(card);
+	card->app_count = 0;
+
+	for (i = 0; i < 3; i++) {
+		const u8 *aid = aids[i];
+		size_t aid_len = lens[i];
+		struct sc_app_info *app = calloc(1, sizeof *app);
+		if (NULL == app)
+			continue;
+
+		app->aid.len = aid_len;
+		memcpy(app->aid.value, aid, aid_len);
+
+		app->path.len = aid_len;
+		memcpy(app->path.value, aid, aid_len);
+		app->path.type = SC_PATH_TYPE_DF_NAME;
+
+		app->rec_nr = -1;
+
+		card->app[card->app_count] = app;
+		card->app_count++;
+	}
+}
+
 static int npa_init(sc_card_t * card)
 {
 	int flags = SC_ALGORITHM_ECDSA_RAW;
@@ -414,6 +432,8 @@ static int npa_init(sc_card_t * card)
 	r = npa_load_options(card->ctx, card->drv_data);
 	if (r != SC_SUCCESS)
 		goto err;
+
+	npa_init_apps(card);
 
 	/* unlock the eSign application for reading the certificates
 	 * by the PKCS#15 layer (i.e. sc_pkcs15_bind_internal) */
