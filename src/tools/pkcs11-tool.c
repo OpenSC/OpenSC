@@ -3765,34 +3765,54 @@ parse_gost_pkey(EVP_PKEY *pkey, int private, struct gostkey_info *gost)
 static int
 parse_ec_pkey(EVP_PKEY *pkey, int private, struct gostkey_info *gost)
 {
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	const EC_KEY *src = EVP_PKEY_get0_EC_KEY(pkey);
 	const BIGNUM *bignum;
-
 	if (!src)
 		return -1;
-
 	gost->param_oid.len = i2d_ECParameters((EC_KEY *)src, &gost->param_oid.value);
-	if (gost->param_oid.len <= 0)
+#else
+	BIGNUM *bignum = NULL;
+	gost->param_oid.len = i2d_KeyParams(pkey, &gost->param_oid.value);
+#endif
+	if (gost->param_oid.len <= 0) {
 		return -1;
+	}
 
 	if (private) {
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 		bignum = EC_KEY_get0_private_key(src);
-
+#else
+		if (EVP_PKEY_get_bn_param(pkey, OSSL_PKEY_PARAM_PRIV_KEY, &bignum) != 1) {
+			return -1;
+		}
+#endif
 		gost->private.len = BN_num_bytes(bignum);
 		gost->private.value = malloc(gost->private.len);
-		if (!gost->private.value)
+		if (!gost->private.value) {
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+			BN_free(bignum);
+#endif
 			return -1;
+		}
 		BN_bn2bin(bignum, gost->private.value);
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+		BN_free(bignum);
+#endif
 	}
 	else {
 		unsigned char buf[512], *point;
-		int point_len, header_len;
+		size_t point_len, header_len;
 		const int MAX_HEADER_LEN = 3;
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 		const EC_GROUP *ecgroup = EC_KEY_get0_group(src);
 		const EC_POINT *ecpoint = EC_KEY_get0_public_key(src);
 		if (!ecgroup || !ecpoint)
 			return -1;
 		point_len = EC_POINT_point2oct(ecgroup, ecpoint, POINT_CONVERSION_UNCOMPRESSED, buf, sizeof(buf), NULL);
+#else
+		EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, buf, sizeof(buf), &point_len);
+#endif
 		gost->public.value = malloc(MAX_HEADER_LEN+point_len);
 		if (!gost->public.value)
 			return -1;
