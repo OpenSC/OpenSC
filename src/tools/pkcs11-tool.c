@@ -5878,9 +5878,15 @@ static EVP_PKEY *get_public_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE priv
 	unsigned char  *pubkey;
 	const unsigned char *pubkey_c;
 	CK_ULONG        pubkeyLen;
-	EVP_PKEY       *pkey;
-	RSA            *rsa;
+	EVP_PKEY       *pkey = NULL;
 	BIGNUM *rsa_n, *rsa_e;
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+	RSA				*rsa;
+#else
+	EVP_PKEY_CTX 	*ctx = NULL;
+	OSSL_PARAM_BLD	*bld = NULL;
+	OSSL_PARAM		*params = NULL;
+#endif
 
 	id = NULL;
 	id = getID(session, privKeyObject, &idLen);
@@ -5897,17 +5903,22 @@ static EVP_PKEY *get_public_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE priv
 	free(id);
 
 	switch(getKEY_TYPE(session, pubkeyObject)) {
-		case CKK_RSA:
-			pkey = EVP_PKEY_new();
+		case CKK_RSA:;
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 			rsa = RSA_new();
-			mod = getMODULUS(session, pubkeyObject, &modLen);
-			exp = getPUBLIC_EXPONENT(session, pubkeyObject, &expLen);
-			if ( !pkey || !rsa || !mod || !exp) {
-				fprintf(stderr, "public key not extractable\n");
+			pkey = EVP_PKEY_new();
+			if (!rsa || !pkey) {
+			fprintf(stderr, "public key not extractable\n");
 				if (pkey)
 					EVP_PKEY_free(pkey);
 				if (rsa)
 					RSA_free(rsa);
+			}
+#endif
+			mod = getMODULUS(session, pubkeyObject, &modLen);
+			exp = getPUBLIC_EXPONENT(session, pubkeyObject, &expLen);
+			if (!mod || !exp) {
+				fprintf(stderr, "public key not extractable\n");
 				if (mod)
 					free(mod);
 				if (exp)
@@ -5916,12 +5927,33 @@ static EVP_PKEY *get_public_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE priv
 			}
 			rsa_n = BN_bin2bn(mod, modLen, NULL);
 			rsa_e =	BN_bin2bn(exp, expLen, NULL);
-			if (RSA_set0_key(rsa, rsa_n, rsa_e, NULL) != 1)
-			    return NULL;
-
-			EVP_PKEY_assign_RSA(pkey, rsa);
 			free(mod);
 			free(exp);
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+			if (RSA_set0_key(rsa, rsa_n, rsa_e, NULL) != 1)
+			    return NULL;
+			EVP_PKEY_assign_RSA(pkey, rsa);
+#else
+			if (!(bld = OSSL_PARAM_BLD_new()) ||
+				OSSL_PARAM_BLD_push_BN(bld, "n", rsa_n) != 1 ||
+				OSSL_PARAM_BLD_push_BN(bld, "e", rsa_e) != 1 ||
+				!(params = OSSL_PARAM_BLD_to_param(bld))) {
+				fprintf(stderr, "public key not extractable\n");
+				OSSL_PARAM_BLD_free(bld);
+				OSSL_PARAM_free(params);
+				return NULL;
+			}
+			OSSL_PARAM_BLD_free(bld);
+			
+			if (!(ctx = EVP_PKEY_CTX_new_from_name(NULL, "RSA", NULL)) ||
+				EVP_PKEY_fromdata_init(ctx) != 1 ||
+				EVP_PKEY_fromdata(ctx, &pkey, EVP_PKEY_PUBLIC_KEY, params) != 1) {
+				fprintf(stderr, "public key not extractable\n");
+				OSSL_PARAM_free(params);
+				return NULL;
+			}
+			OSSL_PARAM_free(params);
+#endif
 			return pkey;
 		case CKK_DSA:
 		case CKK_ECDSA:
