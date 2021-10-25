@@ -49,6 +49,9 @@
 #include <openssl/asn1t.h>
 #include <openssl/rsa.h>
 #include <openssl/pem.h>
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+# include <openssl/core_names.h>
+#endif
 #if !defined(OPENSSL_NO_EC) && !defined(OPENSSL_NO_ECDSA)
 #include <openssl/ec.h>
 #include <openssl/ecdsa.h>
@@ -3585,11 +3588,11 @@ do_read_key(unsigned char *data, size_t data_len, int private, EVP_PKEY **key)
 static int
 parse_rsa_pkey(EVP_PKEY *pkey, int private, struct rsakey_info *rsa)
 {
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	RSA *r;
 	const BIGNUM *r_n, *r_e, *r_d;
 	const BIGNUM *r_p, *r_q;
 	const BIGNUM *r_dmp1, *r_dmq1, *r_iqmp;
-
 	r = EVP_PKEY_get1_RSA(pkey);
 	if (!r) {
 		if (private)
@@ -3599,25 +3602,59 @@ parse_rsa_pkey(EVP_PKEY *pkey, int private, struct rsakey_info *rsa)
 	}
 
 	RSA_get0_key(r, &r_n, &r_e, NULL);
+#else
+	BIGNUM *r_n, *r_e, *r_d;
+	BIGNUM *r_p, *r_q;
+	BIGNUM *r_dmp1, *r_dmq1, *r_iqmp;
+	if (EVP_PKEY_get_bn_param(pkey, OSSL_PKEY_PARAM_RSA_N, &r_n) != 1 ||
+		EVP_PKEY_get_bn_param(pkey, OSSL_PKEY_PARAM_RSA_E, &r_e) != 1) {
+		if (private)
+			util_fatal("OpenSSL error during RSA private key parsing");
+		else
+			util_fatal("OpenSSL error during RSA public key parsing");
+	 }
+#endif
 	RSA_GET_BN(rsa, modulus, r_n);
 	RSA_GET_BN(rsa, public_exponent, r_e);
 
 	if (private) {
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 		RSA_get0_key(r, NULL, NULL, &r_d);
+		RSA_get0_factors(r, &r_p, &r_q);
+		RSA_get0_crt_params(r, &r_dmp1, &r_dmq1, &r_iqmp);
+#else
+		if (EVP_PKEY_get_bn_param(pkey, OSSL_PKEY_PARAM_RSA_FACTOR1, &r_d) != 1 ||
+			EVP_PKEY_get_bn_param(pkey, OSSL_PKEY_PARAM_RSA_FACTOR1, &r_p) != 1 ||
+			EVP_PKEY_get_bn_param(pkey, OSSL_PKEY_PARAM_RSA_FACTOR2, &r_q) != 1 ||
+			EVP_PKEY_get_bn_param(pkey, OSSL_PKEY_PARAM_RSA_EXPONENT1, &r_dmp1) != 1 ||
+			EVP_PKEY_get_bn_param(pkey, OSSL_PKEY_PARAM_RSA_EXPONENT2, &r_dmq1) != 1 ||
+			EVP_PKEY_get_bn_param(pkey, OSSL_PKEY_PARAM_RSA_EXPONENT3, &r_iqmp) != 1) {
+			util_fatal("OpenSSL error during RSA private key parsing");
+		}
+#endif
 		RSA_GET_BN(rsa, private_exponent, r_d);
 
-		RSA_get0_factors(r, &r_p, &r_q);
 		RSA_GET_BN(rsa, prime_1, r_p);
 		RSA_GET_BN(rsa, prime_2, r_q);
 
-		RSA_get0_crt_params(r, &r_dmp1, &r_dmq1, &r_iqmp);
 		RSA_GET_BN(rsa, exponent_1, r_dmp1);
 		RSA_GET_BN(rsa, exponent_2, r_dmq1);
 		RSA_GET_BN(rsa, coefficient, r_iqmp);
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+		BN_clear_free(r_d);
+		BN_clear_free(r_p);
+		BN_clear_free(r_q);
+		BN_clear_free(r_dmp1);
+		BN_clear_free(r_dmq1);
+		BN_clear_free(r_iqmp);
+#endif
 	}
-
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	RSA_free(r);
-
+#else
+	BN_free(r_n);
+	BN_free(r_e);
+#endif
 	return 0;
 }
 
