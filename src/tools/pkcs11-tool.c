@@ -51,6 +51,7 @@
 #include <openssl/pem.h>
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 # include <openssl/core_names.h>
+# include <openssl/param_build.h>
 #endif
 #if !defined(OPENSSL_NO_EC) && !defined(OPENSSL_NO_ECDSA)
 #include <openssl/ec.h>
@@ -5399,20 +5400,25 @@ static int read_object(CK_SESSION_HANDLE session)
 	if (clazz == CKO_PUBLIC_KEY) {
 #ifdef ENABLE_OPENSSL
 		long derlen;
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+		EVP_PKEY *pkey = NULL;
+		EVP_PKEY_CTX *ctx = NULL;
+		OSSL_PARAM *params = NULL;
+		OSSL_PARAM_BLD *bld = NULL;
+#endif
 		BIO *pout = BIO_new(BIO_s_mem());
 		if (!pout)
 			util_fatal("out of memory");
 
 		type = getKEY_TYPE(session, obj);
 		if (type == CKK_RSA) {
-			RSA *rsa;
 			BIGNUM *rsa_n = NULL;
 			BIGNUM *rsa_e = NULL;
-
-
-			rsa = RSA_new();
-			if (rsa == NULL)
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+			RSA *rsa = RSA_new();
+			if (!rsa)
 				util_fatal("out of memory");
+#endif
 
 			if ((value = getMODULUS(session, obj, &len))) {
 				if (!(rsa_n = BN_bin2bn(value, len, NULL)))
@@ -5427,13 +5433,43 @@ static int read_object(CK_SESSION_HANDLE session)
 				free(value);
 			} else
 				util_fatal("cannot obtain PUBLIC_EXPONENT");
-
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 			if (RSA_set0_key(rsa, rsa_n, rsa_e, NULL) != 1)
 				util_fatal("cannot set RSA values");
 
 			if (!i2d_RSA_PUBKEY_bio(pout, rsa))
 				util_fatal("cannot convert RSA public key to DER");
 			RSA_free(rsa);
+#else
+			ctx = EVP_PKEY_CTX_new_from_name(NULL, "RSA", NULL);
+			if (!ctx)
+				util_fatal("out of memory");
+			
+			if (!(bld = OSSL_PARAM_BLD_new())
+			 || OSSL_PARAM_BLD_push_BN(bld, "n", rsa_n) != 1
+			 || OSSL_PARAM_BLD_push_BN(bld, "e", rsa_e) != 1
+			 || !(params = OSSL_PARAM_BLD_to_param(bld)) != 1) {
+				OSSL_PARAM_BLD_free(bld);
+				EVP_PKEY_CTX_free(ctx);
+				OSSL_PARAM_free(params);
+			 	util_fatal("cannot set RSA values");
+			}
+			OSSL_PARAM_BLD_free(bld);
+
+			if (EVP_PKEY_fromdata_init(ctx) != 1
+			 || EVP_PKEY_fromdata(ctx, &pkey, EVP_PKEY_PUBLIC_KEY, params) != 1) {
+				EVP_PKEY_CTX_free(ctx);
+				OSSL_PARAM_free(params);
+			 	util_fatal("cannot set RSA values");
+			}
+			OSSL_PARAM_free(params);
+			if (i2d_PUBKEY_bio(pout, pkey) != 1) {
+				EVP_PKEY_CTX_free(ctx);
+				util_fatal("cannot convert RSA public key to DER");
+			}
+			EVP_PKEY_free(pkey);
+			EVP_PKEY_CTX_free(ctx);
+#endif
 #if !defined(OPENSSL_NO_EC)
 		} else if (type == CKK_EC) {
 			EC_KEY *ec;
@@ -5448,7 +5484,11 @@ static int read_object(CK_SESSION_HANDLE session)
 
 			if ((params = getEC_PARAMS(session, obj, &len))) {
 				const unsigned char *a = params;
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 				if (!d2i_ECParameters(&ec, &a, (long)len))
+#else
+				if (!(pkey = d2i_KeyParams(EVP_PKEY_EC, &pkey, &a, len)))
+#endif
 					util_fatal("cannot parse EC_PARAMS");
 				free(params);
 			} else
@@ -5460,17 +5500,21 @@ static int read_object(CK_SESSION_HANDLE session)
 			os = d2i_ASN1_OCTET_STRING(NULL, &a, (long)len);
 			if (os) {
 				a = os->data;
-				success = o2i_ECPublicKey(&ec, &a, os->length);
+				success = o2i_ECPublicKey(&ec, &a, os->length); // no idea what to do with it
 				ASN1_STRING_free(os);
 			}
 			if (!success) { /* Workaround for broken PKCS#11 modules */
 				a = value;
-				success = o2i_ECPublicKey(&ec, &a, len);
+				success = o2i_ECPublicKey(&ec, &a, len); // no idea what to do with it
 			}
 			free(value);
 			if (!success)
 				util_fatal("cannot obtain and parse EC_POINT");
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 			if (!i2d_EC_PUBKEY_bio(pout, ec))
+#else
+			if (!i2d_PUBKEY_bio(pout, pkey))
+#endif
 				util_fatal("cannot convert EC public key to DER");
 			EC_KEY_free(ec);
 #endif
