@@ -1046,7 +1046,7 @@ static int sc_hsm_decode_ecdsa_signature(sc_card_t *card,
 		fieldsizebytes = 40;
 	} else if (datalen <= 106) {		// 384 bit curve = 48 * 2 + 10 byte maximum DER signature
 		fieldsizebytes = 48;
-	} else if (datalen <= 138) {		// 512 bit curve = 64 * 2 + 10 byte maximum DER signature
+	} else if (datalen <= 137) {		// 512 bit curve = 64 * 2 + 9 byte maximum DER signature
 		fieldsizebytes = 64;
 	} else {
 		fieldsizebytes = 66;
