@@ -403,23 +403,41 @@ int callback_public_keys(test_certs_t *objects,
 			BN_free(e);
 		} else { /* store the public key for future use */
 			o->type = EVP_PK_RSA;
-			o->key = EVP_PKEY_new();
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
+			o->key = EVP_PKEY_new();
 			RSA *rsa = RSA_new();
 			if (RSA_set0_key(rsa, n, e, NULL) != 1 ||
-			    EVP_PKEY_set1_RSA(o->key, rsa))
-#else
-			if ((EVP_PKEY_set_bn_param(o->key, OSSL_PKEY_PARAM_RSA_N, n) != 1) ||
-			    (EVP_PKEY_set_bn_param(o->key, OSSL_PKEY_PARAM_RSA_E, e) != 1))
-#endif
-			{
+			    EVP_PKEY_set1_RSA(o->key, rsa) != 1) {
 				fail_msg("Unable to set key params");
-#if OPENSSL_VERSION_NUMBER < 0x30000000L
-				BN_free(n);
-				BN_free(e);
-#endif
 				return -1;
 			}
+#else
+			if (!(ctx = EVP_PKEY_CTX_new_from_name(NULL, "RSA", NULL)) ||
+				!(bld = OSSL_PARAM_BLD_new()) ||
+				OSSL_PARAM_BLD_push_BN(bld, "n", n) != 1 ||
+				OSSL_PARAM_BLD_push_BN(bld, "e", e) != 1 ||
+				!(params = OSSL_PARAM_BLD_to_param(bld))) {
+				EVP_PKEY_CTX_free(ctx);
+				BN_free(n);
+				BN_free(e);
+				OSSL_PARAM_BLD_free(bld);
+				fail_msg("Unable to set key params");
+				return -1;
+			}
+			OSSL_PARAM_BLD_free(bld);
+			if (EVP_PKEY_fromdata_init(ctx) != 1 ||
+				EVP_PKEY_fromdata(ctx, &o->key, EVP_PKEY_PUBLIC_KEY, params) != 1) {
+				EVP_PKEY_CTX_free(ctx);
+				BN_free(n);
+				BN_free(e);
+				OSSL_PARAM_free(params);
+			 	fail_msg("Unable to store key");
+				return -1;
+			}
+			OSSL_PARAM_free(params);
+			BN_free(n);
+			BN_free(e);
+#endif
 			o->bits = EVP_PKEY_bits(o->key);
 		}
 	} else if (o->key_type == CKK_EC) {
@@ -487,7 +505,9 @@ int callback_public_keys(test_certs_t *objects,
 			int cert_nid = EC_GROUP_get_curve_name(cert_group);
 #else
 			EC_GROUP *cert_group = NULL;
+			EC_POINT *cert_point = NULL;
 			char curve_name[80]; size_t curve_name_len = 0;
+			unsigned char pubkey[80]; size_t pubkey_len = 0;
 			int cert_nid = 0;
 			if (EVP_PKEY_get_group_name(o->key, curve_name, sizeof(curve_name), &curve_name_len) != 1 ||
 				(cert_nid = OBJ_txt2nid(curve_name)) == NID_undef ||
@@ -498,8 +518,7 @@ int callback_public_keys(test_certs_t *objects,
 				EC_GROUP_free(cert_group);
 				return -1;
 			}
-			EC_POINT *cert_point = EC_POINT_new(cert_group);
-			unsigned char pubkey[80]; size_t pubkey_len = 0;
+			cert_point = EC_POINT_new(cert_group);
 			if (!cert_point ||
 				EVP_PKEY_get_octet_string_param(o->key, OSSL_PKEY_PARAM_PUB_KEY, pubkey, sizeof(pubkey), &pubkey_len) != 1 ||
 				EC_POINT_oct2point(cert_group, cert_point, pubkey, pubkey_len, NULL) != 1) {
@@ -534,7 +553,7 @@ int callback_public_keys(test_certs_t *objects,
 			EC_KEY_set_group(ec, ecgroup);
 			EVP_PKEY_set1_EC_KEY(o->key, ec);
 #else
-			EVP_PKEY_CTX* ctx = EVP_PKEY_CTX_new_from_name(0, "EC", 0);
+			ctx = EVP_PKEY_CTX_new_from_name(0, "EC", 0);
 			char curve_name[80]; size_t curve_name_len = 0;
 			unsigned char pubkey[80]; size_t pubkey_len = 0;
 			if (EVP_PKEY_get_group_name(o->key, curve_name, sizeof(curve_name), &curve_name_len)||
@@ -544,22 +563,31 @@ int callback_public_keys(test_certs_t *objects,
 				EC_POINT_free(ecpoint);
 				return -1;
 			}
-			OSSL_PARAM_BLD *param_bld;
-			OSSL_PARAM *params = NULL;
-			param_bld = OSSL_PARAM_BLD_new();
-			if (param_bld != NULL &&
-				OSSL_PARAM_BLD_push_utf8_string(param_bld, "group", curve_name, curve_name_len) &&
-				OSSL_PARAM_BLD_push_octet_string(param_bld, "pub", pubkey, pubkey_len)) {
-					params = OSSL_PARAM_BLD_to_param(param_bld);
+			
+			if (!(bld = OSSL_PARAM_BLD_new()) ||
+				OSSL_PARAM_BLD_push_utf8_string(bld, "group", curve_name, curve_name_len) != 1 ||
+				OSSL_PARAM_BLD_push_octet_string(bld, "pub", pubkey, pubkey_len) != 1 ||
+				!(params = OSSL_PARAM_BLD_to_param(bld))) {
+				debug_print(" [WARN %s ] Can not set params from EVP_PKEY", o->id_str);
+				EC_GROUP_free(ecgroup);
+				EC_POINT_free(ecpoint);
+				OSSL_PARAM_BLD_free(bld);
+				EVP_PKEY_CTX_free(ctx);
+				return -1;
 			}
+			OSSL_PARAM_BLD_free(bld);
+
 			if (ctx == NULL || params == NULL ||
 				EVP_PKEY_fromdata_init(ctx) != 1 ||
 				EVP_PKEY_fromdata(ctx, &o->key, EVP_PKEY_PUBLIC_KEY, params) != 1) {
 				debug_print(" [WARN %s ] Can not set params for EVP_PKEY", o->id_str);
 				EC_GROUP_free(ecgroup);
 				EC_POINT_free(ecpoint);
+				EVP_PKEY_CTX_free(ctx);
 				return -1;
 			}
+			EVP_PKEY_CTX_free(ctx);
+			OSSL_PARAM_free(params);
 #endif
 		}
 	} else if (o->key_type == CKK_EC_EDWARDS
