@@ -178,6 +178,56 @@ jobs:
       - run: .github/setup-linux.sh oseid
       - run: .github/test-oseid.sh
 
+  ##########################
+  ## OpenSSL 3.0 pipeline ##
+  ##########################
+  build-openssl-3:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: .github/setup-linux.sh ossl3
+      - run: .github/build.sh dist ossl3
+      - uses: actions/cache@v2
+        id: cache-build
+        with:
+          path: ./*
+          key: ${{ runner.os }}-${{ github.sha }}-ossl3
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: opensc-build
+          path:
+            opensc*.tar.gz
+
+  test-cac-openssl-3:
+    runs-on: ubuntu-latest
+    needs: [build-openssl-3]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        id: cache-build
+        with:
+          path: ./*
+          key: ${{ runner.os }}-${{ github.sha }}-ossl3
+      - run: .github/setup-linux.sh cac ossl3
+      - run: .github/test-cac.sh
+
+  test-oseid-openssl-3:
+    runs-on: ubuntu-latest
+    needs: [build-openssl-3]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        id: cache-build
+        with:
+          path: ./*
+          key: ${{ runner.os }}-${{ github.sha }}-ossl3
+      - run: .github/setup-linux.sh oseid ossl3
+      - run: .github/test-oseid.sh
+
+  ####################
+  ## Push artifacts ##
+  ####################
   push-artifacts:
     runs-on: ubuntu-latest
     needs: [build, build-mingw]
