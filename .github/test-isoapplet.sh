@@ -12,6 +12,8 @@ export LD_LIBRARY_PATH=/usr/local/lib
 # The ISO applet
 if [ ! -d IsoApplet ]; then
 	git clone https://github.com/philipWendland/IsoApplet.git
+	# enable IsoApplet key import patch
+	sed "s/DEF_PRIVATE_KEY_IMPORT_ALLOWED = false/DEF_PRIVATE_KEY_IMPORT_ALLOWED = true/g" -i IsoApplet/src/net/pwendland/javacard/pki/isoapplet/IsoApplet.java
 fi
 javac -classpath jcardsim/target/jcardsim-3.0.5-SNAPSHOT.jar IsoApplet/src/net/pwendland/javacard/pki/isoapplet/*.java
 echo "com.licel.jcardsim.card.applet.0.AID=F276A288BCFBA69D34F31001" > isoapplet_jcardsim.cfg
@@ -65,6 +67,21 @@ pushd src/tests/p11test/
 sleep 5
 ./p11test -s 0 -p 123456 -o isoapplet.json || true # ec_sign_size_test is failing here
 popd
+
+# random data to be signed
+dd if=/dev/random of=/tmp/data.bin bs=300 count=1
+# sign & verify using secp256r1 key
+pkcs11-tool -l -p 123456 -s -m ECDSA-SHA1 -d 3 -i /tmp/data.bin -o /tmp/data.sig
+pkcs11-tool --verify -m ECDSA-SHA1 -d 3 -i /tmp/data.bin --signature-file /tmp/data.sig
+# import, sign & verify using another secp256r1 key
+openssl ecparam -name secp256r1 -genkey -noout -out /tmp/ECprivKey.pem
+openssl ec -in /tmp/ECprivKey.pem -pubout -out /tmp/ECpubKey.pem
+pkcs11-tool -l -p 123456 -w /tmp/ECprivKey.pem -y privkey -d 4
+pkcs11-tool -l -p 123456 -w /tmp/ECpubKey.pem -y pubkey -d 4
+pkcs11-tool -l -p 123456 -s -m ECDSA-SHA1 -d 4 -i /tmp/data.bin -o /tmp/data.sig
+pkcs11-tool --verify -m ECDSA-SHA1 -d 4 -i /tmp/data.bin --signature-file /tmp/data.sig
+# cleanup
+rm /tmp/ECprivKey.pem /tmp/ECpubKey.pem /tmp/data.bin /tmp/data.sig
 
 kill -9 $PID
 

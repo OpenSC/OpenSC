@@ -234,7 +234,6 @@ isoApplet_init(sc_card_t *card)
 		 * should be kept in sync with the explicit parameters in the pkcs15-init
 		 * driver. */
 		flags = 0;
-		flags |= SC_ALGORITHM_ECDSA_RAW;
 		flags |= SC_ALGORITHM_ECDSA_HASH_SHA1;
 		flags |= SC_ALGORITHM_ONBOARD_KEY_GEN;
 		ext_flags = SC_ALGORITHM_EXT_EC_UNCOMPRESES;
@@ -1116,14 +1115,14 @@ isoApplet_set_security_env(sc_card_t *card,
 			break;
 
 		case SC_ALGORITHM_EC:
-			if( env->algorithm_flags & SC_ALGORITHM_ECDSA_RAW )
+			if( env->algorithm_flags & SC_ALGORITHM_ECDSA_HASH_SHA1 )
 			{
 				drvdata->sec_env_alg_ref = ISOAPPLET_ALG_REF_ECDSA;
 				drvdata->sec_env_ec_field_length = env->algorithm_ref;
 			}
 			else
 			{
-				LOG_TEST_RET(card->ctx, SC_ERROR_NOT_SUPPORTED, "IsoApplet only supports raw ECDSA.");
+				LOG_TEST_RET(card->ctx, SC_ERROR_NOT_SUPPORTED, "IsoApplet only supports ECDSA with on-card SHA1.");
 			}
 			break;
 
