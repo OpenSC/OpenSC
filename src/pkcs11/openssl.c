@@ -520,14 +520,73 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, unsigned int pubkey_len
 			sc_log(context, "EVP_VerifyFinal() returned %d\n", res);
 			return CKR_GENERAL_ERROR;
 		}
-	} else if (md == NULL && mech->mechanism == CKM_ECDSA) {
+	} else	/* If plain CKM_ECDSA (without any hashing) is used or card supports
+		 * on-card CKM_ECDSA_SHAx only we land here. Since for CKM_ECDSA_SHAx no
+		 * hashing happened in C_VerifyUpdate() we do it here instead.
+		 */
+		if (md == NULL && (mech->mechanism == CKM_ECDSA
+		    || mech->mechanism == CKM_ECDSA_SHA1
+		    || mech->mechanism == CKM_ECDSA_SHA224
+		    || mech->mechanism == CKM_ECDSA_SHA256
+		    || mech->mechanism == CKM_ECDSA_SHA384
+		    || mech->mechanism == CKM_ECDSA_SHA512)) {
 		size_t signat_len_tmp;
 		unsigned char *signat_tmp = NULL;
+		unsigned int mdbuf_len;
+		unsigned char *mdbuf = NULL;
 		EVP_PKEY_CTX *ctx;
 		const EC_KEY *eckey;
 		int r;
 
 		sc_log(context, "Trying to verify using EVP");
+
+		/* If needed, hash input first
+		 */
+		if (mech->mechanism == CKM_ECDSA_SHA1
+		    || mech->mechanism == CKM_ECDSA_SHA224
+		    || mech->mechanism == CKM_ECDSA_SHA256
+		    || mech->mechanism == CKM_ECDSA_SHA384
+		    || mech->mechanism == CKM_ECDSA_SHA512) {
+			EVP_MD_CTX *mdctx;
+			const EVP_MD *md;
+			switch (mech->mechanism) {
+				case CKM_ECDSA_SHA1:
+					md = EVP_sha1();
+					break;
+				case CKM_ECDSA_SHA224:
+					md = EVP_sha224();
+					break;
+				case CKM_ECDSA_SHA256:
+					md = EVP_sha256();
+					break;
+				case CKM_ECDSA_SHA384:
+					md = EVP_sha384();
+					break;
+				case CKM_ECDSA_SHA512:
+					md = EVP_sha512();
+					break;
+				default:
+					return CKR_GENERAL_ERROR;
+			}
+			mdbuf_len = EVP_MD_size(md);
+			mdbuf = calloc(1, mdbuf_len);
+			if (mdbuf == NULL)
+				return CKR_DEVICE_MEMORY;
+			if ((mdctx = EVP_MD_CTX_new()) == NULL) {
+				free(mdbuf);
+				return CKR_GENERAL_ERROR;
+			}
+			if (!EVP_DigestInit(mdctx, md)
+				|| !EVP_DigestUpdate(mdctx, data, data_len)
+				|| !EVP_DigestFinal(mdctx, mdbuf, &mdbuf_len)) {
+				EVP_MD_CTX_free(mdctx);
+				free(mdbuf);
+				return CKR_GENERAL_ERROR;
+			}
+			EVP_MD_CTX_free(mdctx);
+			data = mdbuf;
+			data_len = mdbuf_len;
+		}
 
 		res = 0;
 		r = sc_asn1_sig_value_rs_to_sequence(NULL, signat, signat_len,
@@ -540,6 +599,7 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, unsigned int pubkey_len
 		EVP_PKEY_CTX_free(ctx);
 		EVP_PKEY_free(pkey);
 		free(signat_tmp);
+		free(mdbuf);
 
 		if (res == 1)
 			return CKR_OK;
