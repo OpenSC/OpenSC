@@ -145,6 +145,7 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "jpki",	(void *(*)(void)) sc_get_jpki_driver },
 	{ "npa",	(void *(*)(void)) sc_get_npa_driver },
 	{ "cac1",	(void *(*)(void)) sc_get_cac1_driver },
+	{ "nqapplet",	(void *(*)(void)) sc_get_nqApplet_driver },
 	/* The default driver should be last, as it handles all the
 	 * unrecognized cards. */
 	{ "default",	(void *(*)(void)) sc_get_default_driver },
