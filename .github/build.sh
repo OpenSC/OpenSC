@@ -2,7 +2,11 @@
 
 set -ex -o xtrace
 
-export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig;
+if [ "$1" == "ossl3" -o "$2" == "ossl3" ]; then
+	export PKG_CONFIG_PATH=/usr/local/lib64/pkgconfig;
+else
+	export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig;
+fi
 
 if [ "$GITHUB_EVENT_NAME" == "pull_request" ]; then
 	PR_NUMBER=$(echo $GITHUB_REF | awk 'BEGIN { FS = "/" } ; { print $3 }')
@@ -42,7 +46,13 @@ else
 		export LDFLAGS="-m32"
 	fi
 	# normal procedure
-	./configure  --disable-dependency-tracking
+
+	if [ "$1" == "ossl3" -o "$2" == "ossl3" ]; then
+		# without -Werror, because of rest of deprecated API
+		./configure  --disable-dependency-tracking --disable-strict CFLAGS="-Wall -Wextra -Wno-unused-parameter -Wstrict-aliasing=2 -g -O2"
+	else
+		./configure  --disable-dependency-tracking
+	fi
 	make -j 2 V=1
 	# 32b build has some issues to find openssl correctly
 	if [ "$1" != "ix86" ]; then
@@ -52,7 +62,11 @@ fi
 
 # this is broken in old ubuntu
 if [ "$1" == "dist" ]; then
-	make distcheck
+	if [ "$1" == "ossl3" -o "$2" == "ossl3" ]; then
+		make distcheck DISTCHECK_CONFIGURE_FLAGS="--disable-strict CFLAGS=\"-Wall -Wextra -Wno-unused-parameter -Wstrict-aliasing=2 -g -O2\""
+	else
+		make distcheck
+	fi
 	make dist
 fi
 
