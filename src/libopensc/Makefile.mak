@@ -28,7 +28,7 @@ OBJECTS			= \
 	card-sc-hsm.obj card-dnie.obj card-isoApplet.obj pkcs15-coolkey.obj \
 	card-masktech.obj card-gids.obj card-jpki.obj \
 	card-npa.obj card-esteid2018.obj card-idprime.obj \
-	card-edo.obj \
+	card-edo.obj card-nqApplet.obj \
 	\
 	pkcs15-openpgp.obj pkcs15-starcert.obj pkcs15-cardos.obj \
 	pkcs15-tcos.obj pkcs15-esteid.obj pkcs15-gemsafeGPK.obj \
@@ -36,7 +36,7 @@ OBJECTS			= \
 	pkcs15-cac.obj pkcs15-esinit.obj pkcs15-westcos.obj pkcs15-pteid.obj pkcs15-din-66291.obj \
 	pkcs15-oberthur.obj pkcs15-itacns.obj pkcs15-gemsafeV1.obj pkcs15-sc-hsm.obj \
 	pkcs15-dnie.obj pkcs15-gids.obj pkcs15-iasecc.obj pkcs15-jpki.obj \
-	pkcs15-esteid2018.obj pkcs15-idprime.obj \
+	pkcs15-esteid2018.obj pkcs15-idprime.obj pkcs15-nqApplet.obj \
 	compression.obj p15card-helper.obj sm.obj \
 	aux-data.obj \
 	$(TOPDIR)\win32\versioninfo.res

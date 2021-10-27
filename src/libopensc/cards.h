@@ -265,7 +265,10 @@ enum {
 	SC_CARD_TYPE_IDPRIME_GENERIC,
 
 	/* eDO cards */
-	SC_CARD_TYPE_EDO = 38000
+	SC_CARD_TYPE_EDO = 38000,
+
+	/* JCOP4 cards with NQ-Applet */
+	SC_CARD_TYPE_NQ_APPLET = 39000
 };
 
 extern sc_card_driver_t *sc_get_default_driver(void);
@@ -309,6 +312,7 @@ extern sc_card_driver_t *sc_get_npa_driver(void);
 extern sc_card_driver_t *sc_get_esteid2018_driver(void);
 extern sc_card_driver_t *sc_get_idprime_driver(void);
 extern sc_card_driver_t *sc_get_edo_driver(void);
+extern sc_card_driver_t *sc_get_nqApplet_driver(void);
 
 #ifdef __cplusplus
 }
