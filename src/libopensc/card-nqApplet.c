@@ -1,7 +1,7 @@
 /*
  * Support for the JCOP4 Cards with NQ-Applet
  *
- * Copyright (C) 2020 jozsefd <jozsef.dojcsak@gmail.com>
+ * Copyright (C) 2021 jozsefd <jozsef.dojcsak@gmail.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -61,8 +61,8 @@ static struct sc_card_driver nqapplet_driver =
 	"nqapplet",      // short name
 	&nqapplet_operations,	// operations
 	NULL,           // atr table
-    0,              // nr of atr
-    NULL            // dll?
+	0,              // nr of atr
+	NULL            // dll?
 };
 
 static const struct sc_card_error nqapplet_errors[] = 
@@ -281,7 +281,8 @@ static int nqapplet_logout(struct sc_card *card)
 
 int nqapplet_set_security_env(struct sc_card *card, const struct sc_security_env *env, int se_num)
 {
-	/* Note: the NQ-Applet does not have APDU for SET SECURITY ENV, this function only checks the intended parameters */
+	/* Note: the NQ-Applet does not have APDU for SET SECURITY ENV, 
+	this function checks the intended parameters and sets card_data.key_reference */
 	nqapplet_driver_data_ptr data;
 	
 	assert(card != NULL && env != NULL);
@@ -344,7 +345,8 @@ static int nqapplet_decipher(struct sc_card *card, const u8 * data, size_t cb_da
 		LOG_TEST_RET(card->ctx, SC_ERROR_INCOMPATIBLE_KEY, "Decipher operation is only supported with AUTH and ENCR keys.");
 	}
 
-	/* the applet supports only 3072 RAW RSA input must be 384 bytes out at least 384 octets */
+	/* the applet supports only 3072 RAW RSA, input buffer size must be 384 octets,
+	output buffer size must be at least 384 octets */
 	sc_format_apdu_ex(&apdu, 0x80, 0x2A, p1, p2, data, cb_data, out, outlen);
 	apdu.le = 256;
 	apdu.flags |= SC_APDU_FLAGS_CHAINING;
@@ -382,7 +384,8 @@ static int nqapplet_compute_signature(struct sc_card *card, const u8 * data, siz
 		LOG_TEST_RET(card->ctx, SC_ERROR_INCOMPATIBLE_KEY, "Sign operation is only supported with AUTH key.");
 	}
 
-	/* the applet supports only 3072 RAW RSA input must be 384 bytes out at least 384 octets */
+	/* the applet supports only 3072 RAW RSA, input buffer size must be 384 octets,
+	output buffer size must be at least 384 octets */
 	sc_format_apdu_ex(&apdu, 0x80, 0x2A, 0x9E, 0x9A, data, cb_data, out, outlen);
 	apdu.le = 256;
 	apdu.flags |= SC_APDU_FLAGS_CHAINING;
