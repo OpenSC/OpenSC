@@ -92,7 +92,7 @@ static int init_driver_data(sc_card_t *card, u8 version_major, u8 version_minor,
 	data->version_major = version_major;
 	data->version_minor = version_minor;
 	data->key_reference = KEY_REFERENCE_NO_KEY;
-	memcpy(data->serial_nr, serial_nr, min(cb_serial_nr, sizeof(data->serial_nr)));
+	memcpy(data->serial_nr, serial_nr, MIN(cb_serial_nr, sizeof(data->serial_nr)));
 	card->drv_data = (void*)data;
 	return SC_SUCCESS;
 }
@@ -487,9 +487,9 @@ static int nqapplet_card_ctl(sc_card_t* card, unsigned long cmd, void* ptr)
 			serial->len = card->serialnr.len;
 			return SC_SUCCESS;
 		}
-	default:
-		return SC_ERROR_NOT_SUPPORTED;
+		break;
 	}
+	return SC_ERROR_NOT_SUPPORTED;
 }
 
 
