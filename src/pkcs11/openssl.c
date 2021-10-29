@@ -794,10 +794,25 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, unsigned int pubkey_len
 				data_len = tmp_len;
 			}
 			rv = CKR_SIGNATURE_INVALID;
-			if (data_len == (unsigned int) EVP_MD_size(pss_md)
-					/*&& RSA_verify_PKCS1_PSS_mgf1(rsa, data, pss_md, mgf_md,
-						rsa_out, EVP_MD_size(pss_md))*/ == 1)
+
+			if ((ctx = EVP_PKEY_CTX_new(pkey, NULL)) == NULL ||
+				EVP_PKEY_verify_init(ctx) != 1 ||
+				EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PSS_PADDING) != 1 ||
+				EVP_PKEY_CTX_set_signature_md(ctx, pss_md) != 1 ||
+				EVP_PKEY_CTX_set_rsa_pss_saltlen(ctx, param->sLen) != 1 ||
+				EVP_PKEY_CTX_set_rsa_mgf1_md(ctx, mgf_md) != 1) {
+				sc_log(context, "Failed to initialize EVP_PKEY_CTX");
+				free(rsa_out);
+				EVP_PKEY_free(pkey);
+				EVP_PKEY_CTX_free(ctx);
+				return rv;
+			}
+
+			if (data_len == (unsigned int) EVP_MD_size(pss_md) &&
+					EVP_PKEY_verify(ctx, signat, signat_len, data, data_len) == 1)
 				rv = CKR_OK;
+			EVP_PKEY_free(pkey);
+			EVP_PKEY_CTX_free(ctx);
 			free(rsa_out);
 			sc_log(context, "Returning %lu", rv);
 			return rv;
@@ -807,7 +822,7 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, unsigned int pubkey_len
 			rv = CKR_OK;
 		else
 			rv = CKR_SIGNATURE_INVALID;
-
+		free(rsa_out);
 	}
 
 	return rv;
