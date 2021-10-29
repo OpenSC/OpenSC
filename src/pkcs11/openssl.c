@@ -548,7 +548,7 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, unsigned int pubkey_len
 		sc_log(context, "Trying to verify using EVP");
 		if (md_ctx) {
 
-			if (EVP_PKEY_get0_EC_KEY(pkey)) {
+			if (EVP_PKEY_base_id(pkey) == EVP_PKEY_EC) {
 				unsigned char *signat_tmp = NULL;
 				size_t signat_len_tmp;
 				int r;
@@ -591,7 +591,6 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, unsigned int pubkey_len
 		unsigned int mdbuf_len;
 		unsigned char *mdbuf = NULL;
 		EVP_PKEY_CTX *ctx;
-		const EC_KEY *eckey;
 		int r;
 
 		sc_log(context, "Trying to verify using EVP");
@@ -647,9 +646,8 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, unsigned int pubkey_len
 		res = 0;
 		r = sc_asn1_sig_value_rs_to_sequence(NULL, signat, signat_len,
 						     &signat_tmp, &signat_len_tmp);
-		eckey = EVP_PKEY_get0_EC_KEY(pkey);
 		ctx = EVP_PKEY_CTX_new(pkey, NULL);
-		if (r == 0 && eckey && ctx && 1 == EVP_PKEY_verify_init(ctx))
+		if (r == 0 && EVP_PKEY_base_id(pkey) == EVP_PKEY_EC && ctx && EVP_PKEY_verify_init(ctx) == 1)
 			res = EVP_PKEY_verify(ctx, signat_tmp, signat_len_tmp, data, data_len);
 
 		EVP_PKEY_CTX_free(ctx);
