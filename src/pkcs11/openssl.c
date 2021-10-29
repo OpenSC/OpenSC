@@ -31,6 +31,10 @@
 #include <openssl/x509.h>
 #include <openssl/conf.h>
 #include <openssl/opensslconf.h> /* for OPENSSL_NO_* */
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+#include <openssl/core_names.h>
+#include <openssl/param_build.h>
+#endif
 #include "libopensc/sc-ossl-compat.h"
 #ifndef OPENSSL_NO_EC
 #include <openssl/ec.h>
@@ -369,13 +373,24 @@ static CK_RV gostr3410_verify_data(const unsigned char *pubkey, unsigned int pub
 	EC_POINT *P;
 	BIGNUM *X, *Y;
 	ASN1_OCTET_STRING *octet = NULL;
-	const EC_GROUP *group = NULL;
 	char paramset[2] = "A";
 	int r = -1, ret_vrf = 0;
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+	const EC_GROUP *group = NULL;
+#else
+	EC_GROUP *group = NULL;
+	char group_name[256];
+	OSSL_PARAM *old_params = NULL, *new_params = NULL, *p = NULL;
+	OSSL_PARAM_BLD *bld = NULL;
+	unsigned char *buf = NULL;
+	size_t buf_len = 0;
+	EVP_PKEY *new_pkey = NULL;
+#endif
 
 	pkey = EVP_PKEY_new();
 	if (!pkey)
 		return CKR_HOST_MEMORY;
+
 	r = EVP_PKEY_set_type(pkey, NID_id_GostR3410_2001);
 	if (r == 1) {
 		pkey_ctx = EVP_PKEY_CTX_new(pkey, NULL);
@@ -395,8 +410,13 @@ static CK_RV gostr3410_verify_data(const unsigned char *pubkey, unsigned int pub
 			r = EVP_PKEY_paramgen_init(pkey_ctx);
 		if (r == 1)
 			r = EVP_PKEY_paramgen(pkey_ctx, &pkey);
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 		if (r == 1 && EVP_PKEY_get0(pkey) != NULL)
 			group = EC_KEY_get0_group(EVP_PKEY_get0(pkey));
+#else
+		EVP_PKEY_get_utf8_string_param(pkey, OSSL_PKEY_PARAM_GROUP_NAME, group_name, sizeof(group_name), NULL);
+		group = EC_GROUP_new_by_curve_name(OBJ_txt2nid(group_name));
+#endif
 		r = -1;
 		if (group)
 			octet = d2i_ASN1_OCTET_STRING(NULL, &pubkey, (long)pubkey_len);
@@ -412,8 +432,44 @@ static CK_RV gostr3410_verify_data(const unsigned char *pubkey, unsigned int pub
 						P, X, Y, NULL);
 			BN_free(X);
 			BN_free(Y);
+
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 			if (r == 1 && EVP_PKEY_get0(pkey) && P)
 				r = EC_KEY_set_public_key(EVP_PKEY_get0(pkey), P);
+#else
+			EC_GROUP_free(group);
+
+			buf_len = EC_POINT_point2oct(group, P, POINT_CONVERSION_COMPRESSED, NULL, 0, NULL);
+			if (!(buf = malloc(buf_len)))
+				r = -1;
+			if (r == 1 && P)
+				r = EC_POINT_point2oct(group, P, POINT_CONVERSION_COMPRESSED, buf, buf_len, NULL);
+
+			if (EVP_PKEY_todata(pkey, EVP_PKEY_KEYPAIR, &old_params) != 1 ||
+				!(bld = OSSL_PARAM_BLD_new()) ||
+				OSSL_PARAM_BLD_push_octet_string(bld, "pub", buf, buf_len) != 1 ||
+				!(new_params = OSSL_PARAM_BLD_to_param(bld)) ||
+				!(p = OSSL_PARAM_merge(old_params, new_params))) {
+				r = -1;
+			}
+			free(buf);
+			OSSL_PARAM_BLD_free(bld);
+
+			if (r == 1) {
+				if (EVP_PKEY_fromdata_init(pkey_ctx) != 1 ||
+					EVP_PKEY_fromdata(pkey_ctx, &new_pkey, EVP_PKEY_KEYPAIR, p) != 1) {
+					r = -1;
+				}
+			}
+			OSSL_PARAM_free(old_params);
+			OSSL_PARAM_free(new_params);
+			OSSL_PARAM_free(p);
+
+			if (r == 1) {
+				EVP_PKEY_free(pkey);
+				pkey = new_pkey;
+			}
+#endif
 			EC_POINT_free(P);
 		}
 		if (r == 1) {
