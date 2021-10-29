@@ -615,7 +615,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	if (outlen < modlen)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_BUFFER_TOO_SMALL);
 
-	buflen = inlen + 256;
+	buflen = inlen + modlen;
 	buf = sc_mem_secure_alloc(buflen);
 	if (buf == NULL)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
