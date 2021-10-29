@@ -663,9 +663,11 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, unsigned int pubkey_len
 			return CKR_GENERAL_ERROR;
 
 	} else {
-		RSA *rsa;
 		unsigned char *rsa_out = NULL, pad;
-		int rsa_outlen = 0;
+		size_t rsa_outlen = 0;
+		EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new(pkey, NULL);
+		if (!ctx)
+			return CKR_DEVICE_MEMORY;
 
 		sc_log(context, "Trying to verify using low-level API");
 		switch (mech->mechanism) {
@@ -687,28 +689,32 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, unsigned int pubkey_len
 			break;
 		default:
 			EVP_PKEY_free(pkey);
+			EVP_PKEY_CTX_free(ctx);
 			return CKR_ARGUMENTS_BAD;
 		}
 
-		rsa = EVP_PKEY_get1_RSA(pkey);
-		EVP_PKEY_free(pkey);
-		if (rsa == NULL)
-			return CKR_DEVICE_MEMORY;
-
-		rsa_out = calloc(1, RSA_size(rsa));
-		if (rsa_out == NULL) {
-			RSA_free(rsa);
-			return CKR_DEVICE_MEMORY;
-		}
-
-		rsa_outlen = RSA_public_decrypt(signat_len, signat, rsa_out, rsa, pad);
-		if (rsa_outlen <= 0) {
-			RSA_free(rsa);
-			free(rsa_out);
-			sc_log(context, "RSA_public_decrypt() returned %d\n", rsa_outlen);
+		if ( EVP_PKEY_verify_recover_init(ctx) != 1 ||
+			EVP_PKEY_CTX_set_rsa_padding(ctx, pad) != 1) {
+			EVP_PKEY_CTX_free(ctx);
+			EVP_PKEY_free(pkey);
 			return CKR_GENERAL_ERROR;
 		}
 
+		rsa_outlen = EVP_PKEY_size(pkey);
+		rsa_out = calloc(1, rsa_outlen);
+		if (rsa_out == NULL) {
+			EVP_PKEY_free(pkey);
+			EVP_PKEY_CTX_free(ctx);
+			return CKR_DEVICE_MEMORY;
+		}
+		if (EVP_PKEY_verify_recover(ctx, rsa_out, &rsa_outlen, signat, signat_len) != 1) {
+			free(rsa_out);
+			EVP_PKEY_free(pkey);
+			EVP_PKEY_CTX_free(ctx);
+			sc_log(context, "RSA_public_decrypt() returned %d\n", (int) rsa_outlen);
+			return CKR_GENERAL_ERROR;
+		}
+		EVP_PKEY_CTX_free(ctx);
 		/* For PSS mechanisms we can not simply compare the "decrypted"
 		 * data -- we need to verify the PSS padding is valid
 		 */
@@ -723,7 +729,6 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, unsigned int pubkey_len
 			unsigned char digest[EVP_MAX_MD_SIZE];
 
 			if (mech->pParameter == NULL) {
-				RSA_free(rsa);
 				free(rsa_out);
 				sc_log(context, "PSS mechanism requires parameter");
 				return CKR_MECHANISM_PARAM_INVALID;
@@ -747,7 +752,6 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, unsigned int pubkey_len
 				mgf_md = EVP_sha512();
 				break;
 			default:
-				RSA_free(rsa);
 				free(rsa_out);
 				return CKR_MECHANISM_PARAM_INVALID;
 			}
@@ -769,7 +773,6 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, unsigned int pubkey_len
 				pss_md = EVP_sha512();
 				break;
 			default:
-				RSA_free(rsa);
 				free(rsa_out);
 				return CKR_MECHANISM_PARAM_INVALID;
 			}
@@ -784,7 +787,6 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, unsigned int pubkey_len
 				unsigned int tmp_len;
 
 				if (!md_ctx || !EVP_DigestFinal(md_ctx, tmp, &tmp_len)) {
-					RSA_free(rsa);
 					free(rsa_out);
 					return CKR_GENERAL_ERROR;
 				}
@@ -793,22 +795,19 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, unsigned int pubkey_len
 			}
 			rv = CKR_SIGNATURE_INVALID;
 			if (data_len == (unsigned int) EVP_MD_size(pss_md)
-					&& RSA_verify_PKCS1_PSS_mgf1(rsa, data, pss_md, mgf_md,
-						rsa_out, EVP_MD_size(pss_md)/*sLen*/) == 1)
+					/*&& RSA_verify_PKCS1_PSS_mgf1(rsa, data, pss_md, mgf_md,
+						rsa_out, EVP_MD_size(pss_md))*/ == 1)
 				rv = CKR_OK;
-			RSA_free(rsa);
 			free(rsa_out);
 			sc_log(context, "Returning %lu", rv);
 			return rv;
 		}
-		RSA_free(rsa);
 
 		if ((unsigned int) rsa_outlen == data_len && memcmp(rsa_out, data, data_len) == 0)
 			rv = CKR_OK;
 		else
 			rv = CKR_SIGNATURE_INVALID;
 
-		free(rsa_out);
 	}
 
 	return rv;
