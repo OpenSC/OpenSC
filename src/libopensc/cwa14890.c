@@ -49,6 +49,10 @@
 # include <openssl/provider.h>
 #endif
 
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	OSSL_PROVIDER *legacy_provider = NULL;
+#endif
+
 #define MAX_RESP_BUFFER_SIZE 2048
 
 /**
@@ -1456,8 +1460,6 @@ int cwa_encode_apdu(sc_card_t * card,
 	u8 *ccbuf = NULL;		/* where to store data to eval cryptographic checksum CC */
 	size_t cclen = 0;
 	u8 macbuf[8];		/* to store and compute CC */
-	DES_key_schedule k1;
-	DES_key_schedule k2;
 	char *msg = NULL;
 
 	size_t i, j;		/* for xor loops */
@@ -1466,6 +1468,10 @@ int cwa_encode_apdu(sc_card_t * card,
 	struct sm_cwa_session * sm_session = &card->sm_ctx.info.session.cwa;
 	u8 *msgbuf = NULL;	/* to encrypt apdu data */
 	u8 *cryptbuf = NULL;
+
+	EVP_CIPHER_CTX *cctx = NULL;
+	unsigned char *key = NULL;
+	int tmplen = 0;
 
 	/* mandatory check */
 	if (!card || !card->ctx || !provider)
@@ -1534,30 +1540,36 @@ int cwa_encode_apdu(sc_card_t * card,
 	*(ccbuf + cclen++) = to->p2;
 	cwa_iso7816_padding(ccbuf, &cclen);	/* pad header (4 bytes pad) */
 
+	if (!(cctx = EVP_CIPHER_CTX_new())) {
+		res = SC_ERROR_INTERNAL;
+		goto err;
+	}
+
 	/* if no data, skip data encryption step */
 	if (from->lc != 0) {
-		size_t dlen = from->lc;
-
-		/* prepare keys */
-		DES_cblock iv = { 0, 0, 0, 0, 0, 0, 0, 0 };
-		DES_set_key_unchecked((const_DES_cblock *) & (sm_session->session_enc[0]),
-				      &k1);
-		DES_set_key_unchecked((const_DES_cblock *) & (sm_session->session_enc[8]),
-				      &k2);
+		unsigned char iv[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+		int dlen = from->lc;
+		size_t len = dlen;
 
 		/* pad message */
 		memcpy(msgbuf, from->data, dlen);
-		cwa_iso7816_padding(msgbuf, &dlen);
+		cwa_iso7816_padding(msgbuf, &len);
+		dlen = len;
 
 		/* start kriptbuff with iso padding indicator */
 		*cryptbuf = 0x01;
-		/* apply TDES + CBC with kenc and iv=(0,..,0) */
-		DES_ede3_cbc_encrypt(msgbuf, cryptbuf + 1, dlen, &k1, &k2, &k1,
-				     &iv, DES_ENCRYPT);
+		key = sm_session->session_enc;
+
+		if (EVP_EncryptInit_ex(cctx, EVP_des_ede_cbc(), NULL, key, iv) != 1 ||
+			EVP_EncryptUpdate(cctx, cryptbuf + 1, &dlen, msgbuf, dlen) != 1 ||
+			EVP_EncryptFinal_ex(cctx, cryptbuf + 1 + dlen, &tmplen) != 1) {
+			msg = "Error in encrypting APDU";
+			goto encode_end;
+		 }
+		dlen += tmplen;
+
 		/* compose data TLV and add to result buffer */
-		res =
-		    cwa_compose_tlv(card, 0x87, dlen + 1, cryptbuf, &ccbuf,
-				    &cclen);
+		res = cwa_compose_tlv(card, 0x87, dlen + 1, cryptbuf, &ccbuf, &cclen);
 		if (res != SC_SUCCESS) {
 			msg = "Error in compose tag 8x87 TLV";
 			goto encode_end;
@@ -1593,22 +1605,45 @@ int cwa_encode_apdu(sc_card_t * card,
 		msg = "Error in computing SSC";
 		goto encode_end;
 	}
-	/* set up keys for mac computing */
-	DES_set_key_unchecked((const_DES_cblock *) & (sm_session->session_mac[0]),&k1);
-	DES_set_key_unchecked((const_DES_cblock *) & (sm_session->session_mac[8]),&k2);
 
 	memcpy(macbuf, sm_session->ssc, 8);	/* start with computed SSC */
+
+	tmplen = 0;
+	key = sm_session->session_mac;
+
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	if (!legacy_provider)
+		legacy_provider = OSSL_PROVIDER_load(NULL, "legacy");
+#endif
+
+	if (EVP_EncryptInit_ex(cctx, EVP_des_ecb(), NULL, key, NULL) != 1 ||
+		EVP_CIPHER_CTX_set_padding(cctx, 0) != 1) {
+		msg = "Error in DES ECB encryption";
+		goto encode_end;
+	 }
+
 	for (i = 0; i < cclen; i += 8) {	/* divide data in 8 byte blocks */
 		/* compute DES */
-		DES_ecb_encrypt((const_DES_cblock *) macbuf,
-				(DES_cblock *) macbuf, &k1, DES_ENCRYPT);
+		if (EVP_EncryptUpdate(cctx, macbuf, &tmplen, macbuf , 8) != 1) {
+			msg = "Error in DES ECB encryption";
+			goto encode_end;
+		}
 		/* XOR with next data and repeat */
 		for (j = 0; j < 8; j++)
 			macbuf[j] ^= ccbuf[i + j];
 	}
+	if (EVP_EncryptFinal_ex(cctx, macbuf + tmplen, NULL) != 1) {
+		msg = "Error in DES ECB encryption";
+		goto encode_end;
+	}
+
 	/* and apply 3DES to result */
-	DES_ecb2_encrypt((const_DES_cblock *) macbuf, (DES_cblock *) macbuf,
-			 &k1, &k2, DES_ENCRYPT);
+	if (EVP_EncryptInit_ex(cctx, EVP_des_ede(), NULL, key, NULL) != 1 ||
+		EVP_EncryptUpdate(cctx, macbuf, &tmplen, macbuf, 8) != 1 ||
+		EVP_EncryptFinal_ex(cctx, macbuf + tmplen, &tmplen) != 1) {
+		msg = "Error in 3DEC ECB encryption";
+		goto encode_end;
+	}
 
 	/* compose and add computed MAC TLV to result buffer */
 	tlv_len = (card->atr.value[15] >= DNIE_30_VERSION)? 8 : 4;
@@ -1635,6 +1670,8 @@ encode_end:
 	if (from->resp != to->resp)
 		free(to->resp);
 encode_end_apdu_valid:
+	if (cctx)
+		EVP_CIPHER_CTX_free(cctx);
 	if (msg)
 		sc_log(ctx, "%s", msg);
 	free(msgbuf);
@@ -1672,12 +1709,17 @@ int cwa_decode_response(sc_card_t * card,
 	size_t cclen = 0;	/* ccbuf len */
 	u8 macbuf[8];		/* where to calculate mac */
 	size_t resplen = 0;	/* respbuf length */
-	DES_key_schedule k1;
-	DES_key_schedule k2;
 	int res = SC_SUCCESS;
 	char *msg = NULL;	/* to store error messages */
 	sc_context_t *ctx = NULL;
 	struct sm_cwa_session * sm_session = &card->sm_ctx.info.session.cwa;
+
+	EVP_CIPHER_CTX *cctx = NULL;
+	unsigned char *key = NULL;
+	int tmplen = 0;
+
+	if ((cctx = EVP_CIPHER_CTX_new()) == NULL)
+		return SC_ERROR_INTERNAL;
 
 	/* mandatory check */
 	if (!card || !card->ctx || !provider)
@@ -1798,22 +1840,43 @@ int cwa_decode_response(sc_card_t * card,
 		msg = "Error in computing SSC";
 		goto response_decode_end;
 	}
-	/* set up keys for mac computing */
-	DES_set_key_unchecked((const_DES_cblock *) & (sm_session->session_mac[0]), &k1);
-	DES_set_key_unchecked((const_DES_cblock *) & (sm_session->session_mac[8]), &k2);
+	/* set up key for mac computing */
+	key = sm_session->session_mac;
+
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	if (!legacy_provider)
+		legacy_provider = OSSL_PROVIDER_load(NULL, "legacy");
+#endif
+
+	if (EVP_EncryptInit_ex(cctx, EVP_des_ecb(), NULL, key, NULL) != 1 ||
+		EVP_CIPHER_CTX_set_padding(cctx, 0) != 1) {
+		msg = "Error in DES ECB encryption";
+		goto response_decode_end;
+	 }
 
 	memcpy(macbuf, sm_session->ssc, 8);	/* start with computed SSC */
 	for (i = 0; i < cclen; i += 8) {	/* divide data in 8 byte blocks */
 		/* compute DES */
-		DES_ecb_encrypt((const_DES_cblock *) macbuf,
-				(DES_cblock *) macbuf, &k1, DES_ENCRYPT);
+		if (EVP_EncryptUpdate(cctx, macbuf, &tmplen, macbuf, 8) != 1) {
+			msg = "Error in DES ECB encryption";
+			goto response_decode_end;
+		}
 		/* XOR with data and repeat */
 		for (j = 0; j < 8; j++)
 			macbuf[j] ^= ccbuf[i + j];
 	}
+	if (EVP_EncryptFinal_ex(cctx, macbuf + tmplen, &tmplen) != 1) {
+		msg = "Error in DES ECB encryption";
+		goto response_decode_end;
+	}
+
 	/* finally apply 3DES to result */
-	DES_ecb2_encrypt((const_DES_cblock *) macbuf, (DES_cblock *) macbuf,
-			 &k1, &k2, DES_ENCRYPT);
+	if (EVP_EncryptInit_ex(cctx, EVP_des_ede(), NULL, key, NULL) != 1 ||
+		EVP_EncryptUpdate(cctx, macbuf, &tmplen, macbuf, 8) != 1 ||
+		EVP_EncryptFinal_ex(cctx, macbuf + tmplen, &tmplen) != 1) {
+		msg = "Error in 3DEC ECB encryption";
+		goto response_decode_end;
+	}
 
 	/* check evaluated mac with provided by apdu response */
 
@@ -1843,7 +1906,8 @@ int cwa_decode_response(sc_card_t * card,
 
 	/* if encoded data, decode and store into apdu response */
 	else if (e_tlv->buf) {	/* encoded data */
-		DES_cblock iv = { 0, 0, 0, 0, 0, 0, 0, 0 };
+		unsigned char iv[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+		int dlen = apdu->resplen;
 		/* check data len */
 		if ((e_tlv->len < 9) || ((e_tlv->len - 1) % 8) != 0) {
 			msg = "Invalid length for Encoded data TLV";
@@ -1857,15 +1921,18 @@ int cwa_decode_response(sc_card_t * card,
 			goto response_decode_end;
 		}
 		/* prepare keys to decode */
-		DES_set_key_unchecked((const_DES_cblock *) & (sm_session->session_enc[0]),
-				      &k1);
-		DES_set_key_unchecked((const_DES_cblock *) & (sm_session->session_enc[8]),
-				      &k2);
+		key = sm_session->session_enc;
+
 		/* decrypt into response buffer
 		 * by using 3DES CBC by mean of kenc and iv={0,...0} */
-		DES_ede3_cbc_encrypt(&e_tlv->data[1], apdu->resp, e_tlv->len - 1,
-				     &k1, &k2, &k1, &iv, DES_DECRYPT);
-		apdu->resplen = e_tlv->len - 1;
+		if (EVP_DecryptInit_ex(cctx, EVP_des_ede_cbc(), NULL, key, iv) != 1 ||
+			EVP_DecryptUpdate(cctx, apdu->resp, &dlen, &e_tlv->data[1], e_tlv->len - 1) ||
+			EVP_DecryptFinal_ex(cctx, apdu->resp + dlen, &tmplen)) {
+			msg = "Can not decrypt 3DES CBC";
+			goto response_decode_end;
+		}
+		apdu->resplen = dlen + tmplen;
+
 		/* remove iso padding from response length */
 		for (; (apdu->resplen > 0) && *(apdu->resp + apdu->resplen - 1) == 0x00; apdu->resplen--) ;	/* empty loop */
 
@@ -1886,6 +1953,7 @@ int cwa_decode_response(sc_card_t * card,
 	res = SC_SUCCESS;
 
  response_decode_end:
+ 	EVP_CIPHER_CTX_free(cctx);
 	if (buffer)
 		free(buffer);
 	if (ccbuf)
