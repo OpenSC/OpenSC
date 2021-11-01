@@ -43,6 +43,11 @@
 #include <openssl/rand.h>
 #include "cwa14890.h"
 #include "cwa-dnie.h"
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+# include <openssl/core_names.h>
+# include <openssl/param_build.h>
+# include <openssl/provider.h>
+#endif
 
 #define MAX_RESP_BUFFER_SIZE 2048
 
@@ -512,15 +517,15 @@ static int cwa_internal_auth(sc_card_t * card, u8 * sig, size_t sig_len, u8 * da
  *
  * @param card pointer to st_card_t card data information
  * @param icc_pubkey public key of card
- * @param ifd_privkey private RSA key of ifd
+ * @param ifd_privkey private key of ifd
  * @param sn_icc card serial number
  * @param sig signature buffer
  * @param sig_len signature buffer length
  * @return SC_SUCCESS if ok; else errorcode
  */
 static int cwa_prepare_external_auth(sc_card_t * card,
-				     const RSA * icc_pubkey,
-				     const RSA * ifd_privkey,
+				     EVP_PKEY *icc_pubkey,
+				     EVP_PKEY *ifd_privkey,
 				     u8 * sig,
 				     size_t sig_len)
 {
@@ -545,18 +550,30 @@ static int cwa_prepare_external_auth(sc_card_t * card,
 	 */
 	char *msg = NULL;		/* to store error messages */
 	int res = SC_SUCCESS;
-	u8 *buf1;		/* where to encrypt with icc pub key */
-	u8 *buf2;		/* where to encrypt with ifd pub key */
-	u8 *buf3;		/* where to compose message to be encrypted */
-	int len1, len2, len3;
-	u8 *sha_buf;		/* to compose message to be sha'd */
-	u8 *sha_data;		/* sha signature data */
+	u8 *buf1 = NULL;		/* where to encrypt with icc pub key */
+	u8 *buf2 = NULL;		/* where to encrypt with ifd pub key */
+	u8 *buf3 = NULL;		/* where to compose message to be encrypted */
+	size_t len1, len2, len3;
+	u8 *sha_buf = NULL;		/* to compose message to be sha'd */
+	u8 *sha_data = NULL;		/* sha signature data */
 	BIGNUM *bn = NULL;
 	BIGNUM *bnsub = NULL;
 	BIGNUM *bnres = NULL;
 	sc_context_t *ctx = NULL;
-	const BIGNUM *ifd_privkey_n, *ifd_privkey_e, *ifd_privkey_d;
 	struct sm_cwa_session * sm = &card->sm_ctx.info.session.cwa;
+	EVP_PKEY_CTX *pctx = NULL;
+
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+	const BIGNUM *ifd_privkey_n, *ifd_privkey_e, *ifd_privkey_d = NULL;
+	RSA *rsa_ifd_privkey = EVP_PKEY_get0_RSA(ifd_privkey);
+	if (!rsa_ifd_privkey) {
+		res = SC_ERROR_INTERNAL;
+		msg = "Can not extract RSA object ifd priv";
+		goto prepare_external_auth_end;
+	}
+#else
+	BIGNUM *ifd_privkey_n, *ifd_privkey_e, *ifd_privkey_d = NULL;
+#endif
 
 	/* safety check */
 	if (!card || !card->ctx)
@@ -594,12 +611,18 @@ static int cwa_prepare_external_auth(sc_card_t * card,
 	buf3[127] = 0xBC;	/* iso padding */
 
 	/* encrypt with ifd private key */
-	len2 = RSA_private_decrypt(128, buf3, buf2, (RSA *)ifd_privkey, RSA_NO_PADDING);
-	if (len2 < 0) {
+	pctx = EVP_PKEY_CTX_new(ifd_privkey, NULL);
+	if (!pctx ||
+		EVP_PKEY_decrypt_init(pctx) != 1 ||
+		EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_NO_PADDING) != 1 ||
+		EVP_PKEY_decrypt(pctx, buf2, &len2, buf3, 128) != 1) {
 		msg = "Prepare external auth: ifd_privk encrypt failed";
 		res = SC_ERROR_SM_ENCRYPT_FAILED;
+		EVP_PKEY_CTX_free(pctx);
 		goto prepare_external_auth_end;
 	}
+	EVP_PKEY_CTX_free(pctx);
+	pctx = NULL;
 
 	/* evaluate value of minsig and store into buf3 */
 	bn = BN_bin2bn(buf2, len2, NULL);
@@ -609,7 +632,18 @@ static int cwa_prepare_external_auth(sc_card_t * card,
 		res = SC_ERROR_INTERNAL;
 		goto prepare_external_auth_end;
 	}
-	RSA_get0_key(ifd_privkey, &ifd_privkey_n, &ifd_privkey_e, &ifd_privkey_d);
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+	RSA_get0_key(rsa_ifd_privkey, &ifd_privkey_n, &ifd_privkey_e, &ifd_privkey_d);
+#else
+	if (EVP_PKEY_get_bn_param(ifd_privkey, OSSL_PKEY_PARAM_RSA_N, &ifd_privkey_n) != 1 ||
+		EVP_PKEY_get_bn_param(ifd_privkey, OSSL_PKEY_PARAM_RSA_E, &ifd_privkey_e) != 1 ||
+		EVP_PKEY_get_bn_param(ifd_privkey, OSSL_PKEY_PARAM_RSA_D, &ifd_privkey_d) != 1) {
+		msg = "Prepare external auth: BN get param failed";
+		res = SC_ERROR_INTERNAL;
+		goto prepare_external_auth_end;
+	 }
+#endif
+
 	res = BN_sub(bnsub, ifd_privkey_n, bn);	/* eval N.IFD-SIG */
 	if (res == 0) {		/* 1:success 0 fail */
 		msg = "Prepare external auth: BN sigmin evaluation failed";
@@ -630,12 +664,18 @@ static int cwa_prepare_external_auth(sc_card_t * card,
 	}
 
 	/* re-encrypt result with icc public key */
-	len1 = RSA_public_encrypt(len3, buf3, buf1, (RSA *)icc_pubkey, RSA_NO_PADDING);
-	if (len1 <= 0 || (size_t) len1 != sig_len) {
+	pctx = EVP_PKEY_CTX_new(icc_pubkey, NULL);
+	if (!pctx ||
+		EVP_PKEY_encrypt_init(pctx) != 1 ||
+		EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_NO_PADDING) != 1 ||
+		EVP_PKEY_encrypt(pctx, buf1, &len1, buf3, 128) != 1 ||
+		(size_t) len1 != sig_len) {
 		msg = "Prepare external auth: icc_pubk encrypt failed";
 		res = SC_ERROR_SM_ENCRYPT_FAILED;
+		EVP_PKEY_CTX_free(pctx);
 		goto prepare_external_auth_end;
 	}
+	EVP_PKEY_CTX_free(pctx);
 
 	/* process done: copy result into cwa_internal buffer and return success */
 	memcpy(sig, buf1, len1);
@@ -842,8 +882,8 @@ static int cwa_compare_signature(u8 * data, size_t dlen, u8 * ifd_data)
  * @return SC_SUCCESS if ok; else error code
  */
 static int cwa_verify_internal_auth(sc_card_t * card,
-				    const RSA * icc_pubkey,
-				    const RSA * ifd_privkey,
+				    EVP_PKEY *icc_pubkey,
+				    EVP_PKEY *ifd_privkey,
 				    u8 * ifdbuf,
 				    size_t ifdlen,
 				    u8 * sig,
@@ -854,14 +894,24 @@ static int cwa_verify_internal_auth(sc_card_t * card,
 	u8 *buf1 = NULL;	/* to decrypt with our private key */
 	u8 *buf2 = NULL;	/* to try SIGNUM==SIG */
 	u8 *buf3 = NULL;	/* to try SIGNUM==N.ICC-SIG */
-	int len1 = 0;
-	int len2 = 0;
-	int len3 = 0;
+	size_t len1, len2, len3 = 0;
 	BIGNUM *bn = NULL;
 	BIGNUM *sigbn = NULL;
 	sc_context_t *ctx = NULL;
-	const BIGNUM *icc_pubkey_n, *icc_pubkey_e, *icc_pubkey_d;
 	struct sm_cwa_session * sm = &card->sm_ctx.info.session.cwa;
+	EVP_PKEY_CTX *pctx = NULL;
+
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+	const BIGNUM *icc_pubkey_n, *icc_pubkey_e, *icc_pubkey_d = NULL;
+	RSA *rsa_icc_pubkey = EVP_PKEY_get0_RSA(icc_pubkey);
+	if (!rsa_icc_pubkey) {
+		res = SC_ERROR_INTERNAL;
+		msg = "Can not extract RSA object icc pub";
+		goto verify_internal_done;
+	}
+#else
+	BIGNUM *icc_pubkey_n, *icc_pubkey_e, *icc_pubkey_d = NULL;
+#endif
 
 	if (!card || !card->ctx)
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -901,19 +951,34 @@ static int cwa_verify_internal_auth(sc_card_t * card,
 	 */
 
 	/* decrypt data with our ifd priv key */
-	len1 = RSA_private_decrypt(sig_len, sig, buf1, (RSA *)ifd_privkey, RSA_NO_PADDING);
-	if (len1 <= 0) {
+	pctx = EVP_PKEY_CTX_new(ifd_privkey, NULL);
+	if (!pctx ||
+		EVP_PKEY_decrypt_init(pctx) != 1 ||
+		EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_NO_PADDING) != 1 ||
+		EVP_PKEY_decrypt(pctx, buf1, &len1, sig, sig_len) != 1) {
 		msg = "Verify Signature: decrypt with ifd privk failed";
 		res = SC_ERROR_SM_ENCRYPT_FAILED;
+		EVP_PKEY_CTX_free(pctx);
 		goto verify_internal_done;
 	}
+	EVP_PKEY_CTX_free(pctx);
+	pctx = NULL;
 
 	/* OK: now we have SIGMIN in buf1 */
 	/* check if SIGMIN data matches SIG or N.ICC-SIG */
 	/* evaluate DS[SK.ICC.AUTH](SIG) trying to decrypt with icc pubk */
-	len3 = RSA_public_encrypt(len1, buf1, buf3, (RSA *) icc_pubkey, RSA_NO_PADDING);
-	if (len3 <= 0)
+	pctx = EVP_PKEY_CTX_new(icc_pubkey, NULL);
+	if (!pctx ||
+		EVP_PKEY_encrypt_init(pctx) != 1 ||
+		EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_NO_PADDING) != 1 ||
+		EVP_PKEY_encrypt(pctx, buf3, &len3, buf1, len1)) {
+		EVP_PKEY_CTX_free(pctx);
 		goto verify_nicc_sig;	/* evaluate N.ICC-SIG and retry */
+	}
+
+	EVP_PKEY_CTX_free(pctx);
+	pctx = NULL;
+
 	res = cwa_compare_signature(buf3, len3, ifdbuf);
 	if (res == SC_SUCCESS)
 		goto verify_internal_ok;
@@ -930,7 +995,17 @@ static int cwa_verify_internal_auth(sc_card_t * card,
 		res = SC_ERROR_OUT_OF_MEMORY;
 		goto verify_internal_done;
 	}
-	RSA_get0_key(icc_pubkey, &icc_pubkey_n, &icc_pubkey_e, &icc_pubkey_d);
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+	RSA_get0_key(rsa_icc_pubkey, &icc_pubkey_n, &icc_pubkey_e, &icc_pubkey_d);
+#else
+	if (EVP_PKEY_get_bn_param(icc_pubkey, OSSL_PKEY_PARAM_RSA_N, &icc_pubkey_n) != 1 ||
+		EVP_PKEY_get_bn_param(icc_pubkey, OSSL_PKEY_PARAM_RSA_E, &icc_pubkey_e) != 1 ||
+		EVP_PKEY_get_bn_param(icc_pubkey, OSSL_PKEY_PARAM_RSA_D, &icc_pubkey_d) != 1) {
+		msg = "Verify Signature: BN get param failed";
+		res = SC_ERROR_INTERNAL;
+		goto verify_internal_ok;
+	 }
+#endif
 	res = BN_sub(sigbn, icc_pubkey_n, bn);	/* eval N.ICC-SIG */
 	if (!res) {
 		msg = "Verify Signature: evaluation of N.ICC-SIG failed";
@@ -945,12 +1020,19 @@ static int cwa_verify_internal_auth(sc_card_t * card,
 	}
 	/* ok: check again with new data */
 	/* evaluate DS[SK.ICC.AUTH](I.ICC-SIG) trying to decrypt with icc pubk */
-	len3 = RSA_public_encrypt(len2, buf2, buf3, (RSA *)icc_pubkey, RSA_NO_PADDING);
-	if (len3 <= 0) {
+	pctx = EVP_PKEY_CTX_new(icc_pubkey, NULL);
+	if (!pctx ||
+		EVP_PKEY_encrypt_init(pctx) != 1 ||
+		EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_NO_PADDING) != 1 ||
+		EVP_PKEY_encrypt(pctx, buf3, &len3, buf2, len2) != 1) {
 		msg = "Verify Signature: cannot get valid SIG data";
 		res = SC_ERROR_INVALID_DATA;
+		EVP_PKEY_CTX_free(pctx);
 		goto verify_internal_done;
 	}
+	EVP_PKEY_CTX_free(pctx);
+	pctx = NULL;
+
 	res = cwa_compare_signature(buf3, len3, ifdbuf);
 	if (res != SC_SUCCESS) {
 		msg = "Verify Signature: cannot get valid SIG data";
@@ -1276,8 +1358,8 @@ int cwa_create_secure_channel(sc_card_t * card,
 
 	/* verify received signature */
 	sc_log(ctx, "Verify Internal Auth command response");
-	res = cwa_verify_internal_auth(card, EVP_PKEY_get0_RSA(icc_pubkey),	/* evaluated icc public key */
-				       EVP_PKEY_get0_RSA(ifd_privkey),	/* evaluated from DGP's Manual Annex 3 Data */
+	res = cwa_verify_internal_auth(card, icc_pubkey,	/* evaluated icc public key */
+				       ifd_privkey,	/* evaluated from DGP's Manual Annex 3 Data */
 				       rndbuf,	/* RND.IFD || SN.IFD */
 				       16,	/* rndbuf length; should be 16 */
 				       sig, 128
@@ -1296,9 +1378,7 @@ int cwa_create_secure_channel(sc_card_t * card,
 	}
 
 	/* compose signature data for external auth */
-	res = cwa_prepare_external_auth(card,
-					EVP_PKEY_get0_RSA(icc_pubkey),
-					EVP_PKEY_get0_RSA(ifd_privkey), sig, 128);
+	res = cwa_prepare_external_auth(card, icc_pubkey, ifd_privkey, sig, 128);
 	if (res != SC_SUCCESS) {
 		msg = "Prepare external auth failed";
 		goto csc_end;
