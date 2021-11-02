@@ -230,6 +230,10 @@ void secret_tests(void **state)
 	P11TEST_START(info);
 	search_for_all_objects(&objects, info);
 
+	/* Make sure to try the pkcs11 functions */
+	info->verify_support = 1;
+	info->encrypt_support = 1;
+
 	debug_print("Check operations on secret keys.\n");
 	for (i = 0; i < objects.count; i++) {
 		test_cert_t *o = &objects.data[i];
