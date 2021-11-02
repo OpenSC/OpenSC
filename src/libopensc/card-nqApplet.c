@@ -121,13 +121,7 @@ static int select_nqapplet(sc_card_t *card, u8 *version_major, u8 *version_minor
 
 	LOG_FUNC_CALLED(card->ctx);
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xA4, 0x04, 0x00);
-	apdu.lc = cb_aid;
-	apdu.data = nqapplet_aid;
-	apdu.datalen = cb_aid;
-	apdu.resp = buffer;
-	apdu.resplen = cb_buffer;
-	apdu.le = cb_buffer;
+	sc_format_apdu_ex(&apdu, 0x00, 0xA4, 0x04, 0x00, nqapplet_aid, cb_aid, buffer, cb_buffer);
 
 	rv = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(ctx, rv, "APDU transmit failure.");
