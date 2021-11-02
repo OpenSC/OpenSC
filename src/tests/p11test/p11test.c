@@ -106,6 +106,8 @@ int main(int argc, char** argv) {
 	/* Make sure it is initialized to sensible values */
 	memset(&token, 0, sizeof(token_info_t));
 	token.slot_id = (unsigned long) -1;
+	token.verify_support = 1;
+	token.encrypt_support = 1;
 
 	while ((command = getopt(argc, argv, "?hm:s:p:io:v")) != -1) {
 		switch (command) {
