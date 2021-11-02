@@ -1007,12 +1007,22 @@ const char *get_mechanism_name(int mech_id)
 			return "DES3_CMAC";
 		case CKM_DES3_CMAC_GENERAL:
 			return "DES3_CMAC_GENERAL";
+		case CKM_DES3_ECB:
+			return "DES3_ECB";
+		case CKM_DES3_CBC:
+			return "DES3_CBC";
+		case CKM_DES3_CBC_PAD:
+			return "DES3_CBC_PAD";
+		case CKM_DES3_CBC_ENCRYPT_DATA:
+			return "DES3_CBC_ENCRYPT_DATA";
 		case CKM_AES_XCBC_MAC:
 			return "AES_XCBC_MAC";
 		case CKM_AES_XCBC_MAC_96:
 			return "AES_XCBC_MAC_96";
 		case CKM_AES_KEY_WRAP:
 			return "AES_KEY_WRAP";
+		case CKM_AES_KEY_WRAP_PAD:
+			return "AES_KEY_WRAP_PAD";
 		default:
 			sprintf(name_buffer, "0x%.8X", mech_id);
 			return name_buffer;
@@ -1043,6 +1053,16 @@ const char *get_mechanism_flag_name(int mech_id)
 	switch (mech_id) {
 		case CKF_HW:
 			return "CKF_HW";
+		case CKF_MESSAGE_ENCRYPT:
+			return "CKF_MESSAGE_ENCRYPT";
+		case CKF_MESSAGE_DECRYPT:
+			return "CKF_MESSAGE_DECRYPT";
+		case CKF_MESSAGE_SIGN:
+			return "CKF_MESSAGE_SIGN";
+		case CKF_MESSAGE_VERIFY:
+			return "CKF_MESSAGE_VERIFY";
+		case CKF_MULTI_MESSAGE:
+			return "CKF_MULTI_MESSAGE";
 		case CKF_ENCRYPT:
 			return "CKF_ENCRYPT";
 		case CKF_DECRYPT:

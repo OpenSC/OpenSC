@@ -581,6 +581,7 @@ typedef unsigned long ck_mechanism_type_t;
 #define CKM_DES3_MAC			(0x134UL)
 #define CKM_DES3_MAC_GENERAL		(0x135UL)
 #define CKM_DES3_CBC_PAD		(0x136UL)
+#define CKM_DES3_CMAC_GENERAL		(0x137UL)
 #define CKM_DES3_CMAC			(0x138UL)
 #define CKM_CDMF_KEY_GEN		(0x140UL)
 #define CKM_CDMF_ECB			(0x141UL)
@@ -827,6 +828,14 @@ struct ck_mechanism_info
 };
 
 #define CKF_HW			(1UL << 0)
+
+#define CKF_MESSAGE_ENCRYPT	(1UL << 1)
+#define CKF_MESSAGE_DECRYPT	(1UL << 2)
+#define CKF_MESSAGE_SIGN	(1UL << 3)
+#define CKF_MESSAGE_VERIFY	(1UL << 4)
+#define CKF_MULTI_MESSAGE	(1UL << 5)
+#define CKF_FIND_OBJECTS	(1UL << 6)
+
 #define CKF_ENCRYPT		(1UL << 8)
 #define CKF_DECRYPT		(1UL << 9)
 #define CKF_DIGEST		(1UL << 10)
