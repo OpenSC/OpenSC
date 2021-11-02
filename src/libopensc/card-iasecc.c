@@ -2161,53 +2161,6 @@ iasecc_pin_verify(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries
 }
 
 
-// @todo Add support for pins with SC_PIN_CMD_NEED_PADDING
-static int
-iasecc_chv_change_pinpad(struct sc_card *card, unsigned reference, int *tries_left)
-{
-	struct sc_context *ctx = card->ctx;
-	struct sc_pin_cmd_data pin_cmd;
-	unsigned char pin1_data[0x100], pin2_data[0x100];
-	struct iasecc_pin_policy policy;
-	int tries_before_verify = -1;
-	int rv;
-
-	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "CHV PINPAD PIN reference %i", reference);
-
-	memset(pin1_data, 0xFF, sizeof(pin1_data));
-	memset(pin2_data, 0xFF, sizeof(pin2_data));
-
-	/* PIN-pads work best with fixed-size lengths. Use PIN padding when length is available. */
-	if (pin_cmd.flags & SC_PIN_CMD_USE_PINPAD) {
-		tries_before_verify = pin_cmd.pin1.tries_left;
-		if (policy.stored_length > 0)
-			iasecc_set_pin_padding(&pin_cmd, &pin_cmd.pin1, policy.stored_length);
-	}
-
-	rv = iasecc_chv_verify(card, &pin_cmd, policy.scbs, tries_left);
-
-	/*
-	 * Detect and log PIN-pads which don't handle variable-length PIN - special case where they
-	 * forward the CHV verify command with Lc = 0 to the card, without updating Lc. An IAS-ECC
-	 * card responds to this command by returning the number of attempts left, without
-	 * decreasing the counter.
-	 */
-	if ((pin_cmd.flags & SC_PIN_CMD_USE_PINPAD) && !(pin_cmd.flags & SC_PIN_CMD_NEED_PADDING)) {
-		if (rv == SC_ERROR_PIN_CODE_INCORRECT && pin_cmd.pin1.tries_left == tries_before_verify) {
-			SC_TEST_RET(ctx, SC_LOG_DEBUG_VERBOSE, rv,
-				    "PIN-pad reader does not support variable-length PIN");
-		}
-	}
-
-	LOG_TEST_RET(ctx, rv, "PIN CHV verification error");
-
-	rv = iasecc_chv_cache_verified(card, &pin_cmd);
-
-	LOG_FUNC_RETURN(ctx, rv);
-}
-
-
 static int
 iasecc_pin_get_policy (struct sc_card *card, struct sc_pin_cmd_data *data, struct iasecc_pin_policy *pin)
 {
