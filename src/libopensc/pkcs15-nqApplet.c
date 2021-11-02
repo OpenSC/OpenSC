@@ -45,10 +45,7 @@ static int get_nqapplet_certificate(sc_card_t *card, u8 data_id, struct sc_pkcs1
 
 	if (cert_info != NULL)
 	{
-		if (cert_info->value != NULL)
-		{
-			free(cert_info->value);
-		}
+		free(cert_info->value);
 		cert_info->value = malloc(rv);
 		if (cert_info->value != NULL)
 		{
