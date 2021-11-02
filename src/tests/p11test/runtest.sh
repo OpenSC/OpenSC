@@ -50,7 +50,7 @@ function generate_cert() {
 
 	# Generate key pair
 	$PKCS11_TOOL --keypairgen --key-type="$TYPE" --login --pin=$PIN \
-		--module="$P11LIB" --label="$LABEL" --id=$ID
+		--extractable --module="$P11LIB" --label="$LABEL" --id=$ID
 
 	if [[ "$?" -ne "0" ]]; then
 		echo "Couldn't generate $TYPE key pair"
@@ -175,9 +175,9 @@ make p11test || exit
 if [[ "$PKCS11SPY" != "" ]]; then
 	export PKCS11SPY="$P11LIB"
 	$VALGRIND ./p11test -m ../../pkcs11/.libs/pkcs11-spy.so -p $PIN &> /tmp/spy.log
+	echo "Output stored in /tmp/spy.log"
 else
-	#bash
-	$VALGRIND ./p11test -m "$P11LIB" -o test.json -p $PIN
+	$VALGRIND ./p11test -v -m "$P11LIB" -o test.json -p $PIN
 fi
 
 card_cleanup "$@"
