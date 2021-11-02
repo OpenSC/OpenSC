@@ -336,5 +336,27 @@
 		"DERIVE WORKS"
 	]],
 	"result": "pass"
+},
+{
+	"test_id": "secret_tests",
+	"data": [
+	[
+		"KEY ID",
+		"MECHANISM",
+		"SIGN&VERIFY WORKS",
+		"ENCRYPT&DECRYPT WORKS"
+	]],
+	"result": "pass"
+},
+{
+	"test_id": "wrap_tests",
+	"data": [
+	[
+		"KEY ID",
+		"MECHANISM",
+		"WRAP WORKS",
+		"UNWRAP WORKS"
+	]],
+	"result": "pass"
 }]
 }
