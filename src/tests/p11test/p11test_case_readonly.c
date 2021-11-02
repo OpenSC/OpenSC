@@ -243,8 +243,8 @@ int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 		return -1;
 	}
 
-	if (memcmp(dec_message, message, dec_message_length) == 0
-			&& (unsigned int) dec_message_length == message_length) {
+	if ((unsigned int) dec_message_length == message_length &&
+	    memcmp(dec_message, message, dec_message_length) == 0) {
 		debug_print(" [  OK %s ] Text decrypted successfully.", o->id_str);
 		mech->result_flags |= FLAGS_DECRYPT;
 		rv = 1;
