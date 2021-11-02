@@ -155,4 +155,3 @@ int main(int argc, char** argv) {
 	return cmocka_run_group_tests(readonly_tests_without_initialization,
 		group_setup, group_teardown);
 }
-
