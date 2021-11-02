@@ -84,6 +84,9 @@ typedef struct {
 	unsigned int interactive;
 	log_context_t log;
 
+	int verify_support;
+	int encrypt_support;
+
 	test_mech_t rsa_mechs[MAX_MECHS];
 	size_t  num_rsa_mechs;
 	test_mech_t	ec_mechs[MAX_MECHS];
