@@ -73,6 +73,12 @@ int encrypt_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message
 {
 	int rv, padding;
 
+	/* this works only for RSA keys */
+	if (o->key_type != CKK_RSA) {
+		debug_print("skip non-RSA key");
+		return -1;
+	}
+
 	*enc_message = malloc(RSA_size(o->key.rsa));
 	if (*enc_message == NULL) {
 		debug_print("malloc returned null");

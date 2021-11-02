@@ -139,6 +139,8 @@ void supported_mechanisms_test(void **state) {
 			    mechanism_list[i] == CKM_AES_GCM ||
 			    mechanism_list[i] == CKM_AES_CCM ||
 			    mechanism_list[i] == CKM_AES_CTS ||
+			    mechanism_list[i] == CKM_AES_KEY_WRAP ||
+			    mechanism_list[i] == CKM_AES_KEY_WRAP_PAD ||
 			    mechanism_list[i] == CKM_AES_CMAC ||
 			    mechanism_list[i] == CKM_AES_CMAC_GENERAL ||
 			    mechanism_list[i] == CKM_AES_XCBC_MAC ||
