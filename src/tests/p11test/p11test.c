@@ -32,6 +32,7 @@
 #include "p11test_case_wait.h"
 #include "p11test_case_pss_oaep.h"
 #include "p11test_case_interface.h"
+#include "p11test_case_wrap.h"
 #include "p11test_case_secret.h"
 
 #define DEFAULT_P11LIB	"../../pkcs11/.libs/opensc-pkcs11.so"
@@ -95,6 +96,10 @@ int main(int argc, char** argv) {
 
 		/* Verify that basic operations with secret keys work */
 		cmocka_unit_test_setup_teardown(secret_tests,
+			user_login_setup, after_test_cleanup),
+
+		/* Verify that key wrapping and unwrapping works */
+		cmocka_unit_test_setup_teardown(wrap_tests,
 			user_login_setup, after_test_cleanup),
 	};
 
