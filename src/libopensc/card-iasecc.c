@@ -2676,7 +2676,7 @@ iasecc_get_serialnr(struct sc_card *card, struct sc_serial_number *serial)
 	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(ctx, rv, "Get 'serial number' data failed");
 
-	if (apdu.resplen < 2 || rbuf[0] != ISO7812_PAN_SN_TAG || rbuf[1] > (apdu.resplen-2))
+	if (apdu.resplen < 2 || (rbuf[0] != ISO7812_PAN_SN_TAG && rbuf[0] != 0x31) || rbuf[1] > (apdu.resplen-2))
 		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "serial number parse error");
 	len = rbuf[1];
 
