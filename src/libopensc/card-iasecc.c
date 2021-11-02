@@ -115,7 +115,9 @@ static const struct sc_atr_table iasecc_known_atrs[] = {
 static struct sc_aid OberthurIASECC_AID = {
 	{0xA0,0x00,0x00,0x00,0x77,0x01,0x08,0x00,0x07,0x00,0x00,0xFE,0x00,0x00,0x01,0x00}, 16
 };
-
+static struct sc_aid GlobalPlatform_ISD_Default_RID = {
+       { 0xA0,0x00,0x00,0x01,0x51,0x00,0x00}, 7
+};
 static struct sc_aid MIIASECC_AID = {
 	{ 0x4D, 0x49, 0x4F, 0x4D, 0x43, 0x54}, 6
 };
@@ -556,7 +558,6 @@ static int
 iasecc_init_latviaeid(struct sc_card *card)
 {
 	struct sc_context *ctx = card->ctx;
-	unsigned char *hist = card->reader->atr_info.hist_bytes;
 	unsigned char resp[0x100];
 	size_t resp_len;
 	unsigned int flags;
@@ -1062,7 +1063,8 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 
 		if (lpath.type == SC_PATH_TYPE_FILE_ID)   {
 			apdu.p1 = 0x02;
-			if (card->type == SC_CARD_TYPE_IASECC_OBERTHUR || card->type == SC_CARD_TYPE_IASECC_LATVIAEID)   {
+			if (card->type == SC_CARD_TYPE_IASECC_OBERTHUR ||
+				card->type == SC_CARD_TYPE_IASECC_LATVIAEID)
 				apdu.p1 = 0x01;
 			if (card->type == SC_CARD_TYPE_IASECC_OBERTHUR ||
 			    card->type == SC_CARD_TYPE_IASECC_AMOS ||
@@ -2166,6 +2168,8 @@ iasecc_chv_change_pinpad(struct sc_card *card, unsigned reference, int *tries_le
 	struct sc_context *ctx = card->ctx;
 	struct sc_pin_cmd_data pin_cmd;
 	unsigned char pin1_data[0x100], pin2_data[0x100];
+	struct iasecc_pin_policy policy;
+	int tries_before_verify = -1;
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
@@ -2574,6 +2578,8 @@ iasecc_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_
 	unsigned char scb;
 	struct sc_pin_cmd_data pin_cmd;
 	struct iasecc_pin_policy policy;
+	struct sc_apdu apdu;
+	struct iasecc_sdo sdo;
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
@@ -2628,8 +2634,8 @@ iasecc_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_
 
 	// @todo add suppport for pins with SC_PIN_CMD_NEED_PADDING
 	if (data->pin2.len)   {
-		sc_log(ctx, "Reset PIN %X and set new value", reference);
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2C, 0x02, reference);
+		sc_log(ctx, "Reset PIN %X and set new value", data->pin_reference);
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2C, 0x02, data->pin_reference);
 		apdu.data = data->pin2.data;
 		apdu.datalen = data->pin2.len;
 		apdu.lc = apdu.datalen;
@@ -2640,8 +2646,8 @@ iasecc_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_
 		LOG_TEST_RET(ctx, rv, "PIN cmd failed");
 	}
 	else if (data->pin2.data) {
-		sc_log(ctx, "Reset PIN %X and set new value", reference);
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x2C, 3, reference);
+		sc_log(ctx, "Reset PIN %X and set new value", data->pin_reference);
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x2C, 3, data->pin_reference);
 	}
 
 	rv = iasecc_pin_merge_policy(card, &pin_cmd, &pin_cmd.pin2, &policy);
