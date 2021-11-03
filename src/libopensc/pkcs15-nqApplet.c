@@ -159,7 +159,7 @@ static int add_nqapplet_objects(sc_pkcs15_card_t *p15card)
 	LOG_TEST_RET(card->ctx, rv, "Failed to add Auth. certificate");
 
 	// 2.2) PrK.CH.Auth
-	rv = add_nqapplet_private_key(p15card, "1", 0x01, "PrK.CH.Auth", "1", SC_PKCS15_PRKEY_USAGE_SIGN | SC_PKCS15_PRKEY_USAGE_ENCRYPT | SC_PKCS15_PRKEY_USAGE_DECRYPT);
+	rv = add_nqapplet_private_key(p15card, "1", 0x01, "PrK.CH.Auth", "1", SC_PKCS15_PRKEY_USAGE_SIGN | SC_PKCS15_PRKEY_USAGE_DECRYPT);
 	LOG_TEST_RET(card->ctx, rv, "Failed to add Auth. private key");
 
 	// 3.1) C.CH.Encr
