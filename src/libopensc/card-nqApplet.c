@@ -281,7 +281,6 @@ int nqapplet_set_security_env(struct sc_card *card, const struct sc_security_env
 	this function checks the intended parameters and sets card_data.key_reference */
 	nqapplet_driver_data_ptr data;
 	
-	assert(card != NULL && env != NULL);
 	LOG_FUNC_CALLED(card->ctx);
 
 	data = (nqapplet_driver_data_ptr)card->drv_data;
@@ -326,7 +325,6 @@ static int nqapplet_decipher(struct sc_card *card, const u8 * data, size_t cb_da
 	u8 p2 = 0x86;
 	nqapplet_driver_data_ptr drv_data;
 
-	assert(card != NULL && data != NULL && out != NULL);
 	LOG_FUNC_CALLED(card->ctx);
 
 	drv_data = (nqapplet_driver_data_ptr)card->drv_data;
@@ -371,7 +369,6 @@ static int nqapplet_compute_signature(struct sc_card *card, const u8 * data, siz
 	struct sc_apdu apdu;
 	nqapplet_driver_data_ptr drv_data;
 
-	assert(card != NULL && data != NULL && out != NULL);
 	LOG_FUNC_CALLED(card->ctx);
 	drv_data = (nqapplet_driver_data_ptr)card->drv_data;
 	
