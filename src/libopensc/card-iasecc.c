@@ -575,6 +575,7 @@ iasecc_init_latviaeid(struct sc_card *card)
 	card->caps = SC_CARD_CAP_RNG;
 	card->caps |= SC_CARD_CAP_APDU_EXT;
 	card->caps |= SC_CARD_CAP_USE_FCI_AC;
+	card->caps |= SC_CARD_CAP_ISO7816_PIN_INFO;
 
 	// Select the GlobalPlatform_ISD_Default_RID application
 	resp_len = sizeof(resp);
