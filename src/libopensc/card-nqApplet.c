@@ -51,7 +51,6 @@ struct nqapplet_driver_data
 	u8 version_minor;
 	u8 version_major;
 	u8 key_reference;
-	u8 serial_nr[APPLET_SERIALNR_LEN];
 };
 typedef struct nqapplet_driver_data * nqapplet_driver_data_ptr;
 
@@ -81,7 +80,7 @@ static const struct sc_card_error nqapplet_errors[] =
 
 /* convenience functions */
 
-static int init_driver_data(sc_card_t *card, u8 version_major, u8 version_minor, u8 * serial_nr, size_t cb_serial_nr)
+static int init_driver_data(sc_card_t *card, u8 version_major, u8 version_minor)
 {
 	nqapplet_driver_data_ptr data = calloc(1, sizeof(struct nqapplet_driver_data));
 	if (data == NULL)
@@ -92,7 +91,6 @@ static int init_driver_data(sc_card_t *card, u8 version_major, u8 version_minor,
 	data->version_major = version_major;
 	data->version_minor = version_minor;
 	data->key_reference = KEY_REFERENCE_NO_KEY;
-	memcpy(data->serial_nr, serial_nr, MIN(cb_serial_nr, sizeof(data->serial_nr)));
 	card->drv_data = (void*)data;
 	return SC_SUCCESS;
 }
@@ -174,7 +172,7 @@ static int nqapplet_init(struct sc_card *card)
 		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_CARD, "Cannot select NQ-Applet.");
 	}
 
-	rv = init_driver_data(card, version_major, version_minor, serial_nr, cb_serial_nr);
+	rv = init_driver_data(card, version_major, version_minor);
 	LOG_TEST_RET(card->ctx, rv, "Failed to initialize driver data.");
 
 	card->max_send_size = 255;
