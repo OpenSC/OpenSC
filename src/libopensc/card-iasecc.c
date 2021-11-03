@@ -2590,7 +2590,7 @@ iasecc_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_
 	pin_cmd.pin1.len = 0;
 	iasecc_sdo_free_fields(card, &sdo);
 
-	// @todo add suppport for pins with SC_PIN_CMD_NEED_PADDING
+	// @todo add support for pins with SC_PIN_CMD_NEED_PADDING
 	if (data->pin2.len)   {
 		sc_log(ctx, "Reset PIN %X and set new value", data->pin_reference);
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2C, 0x02, data->pin_reference);
