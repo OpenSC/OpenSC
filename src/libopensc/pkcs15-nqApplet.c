@@ -27,7 +27,7 @@
 #include "cards.h"
 
 static const char name_Card[] = "NQ-Applet";
-static const char name_Vendor[] = "JCOP4";
+static const char name_Vendor[] = "NXP";
 
 static int get_nqapplet_certificate(sc_card_t *card, u8 data_id, struct sc_pkcs15_der *cert_info)
 {
