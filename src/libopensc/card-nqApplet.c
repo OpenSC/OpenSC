@@ -127,7 +127,8 @@ static int select_nqapplet(sc_card_t *card, u8 *version_major, u8 *version_minor
 	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(card->ctx, rv, "Card returned error");
 
-	if ( apdu.resplen < APPLET_VERSION_LEN+APPLET_MEMTYPE_LEN+APPLET_SERIALNR_LEN ) {
+	if ( apdu.resplen < APPLET_VERSION_LEN+APPLET_MEMTYPE_LEN+APPLET_SERIALNR_LEN )
+	{
 		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_WRONG_LENGTH);
 	}
 
@@ -299,13 +300,15 @@ int nqapplet_set_security_env(struct sc_card *card, const struct sc_security_env
 	switch (env->operation)
 	{
 		case SC_SEC_OPERATION_DECIPHER:
-			if ( key_reference != KEY_REFERENCE_AUTH_KEY && key_reference != KEY_REFERENCE_ENCR_KEY ) {
+			if ( key_reference != KEY_REFERENCE_AUTH_KEY && key_reference != KEY_REFERENCE_ENCR_KEY )
+			{
 				LOG_TEST_RET(card->ctx, SC_ERROR_INCOMPATIBLE_KEY, "Decipher operation is only supported with AUTH and ENCR keys.");
 			}
 			data->key_reference = key_reference;
 			break;
 		case SC_SEC_OPERATION_SIGN:
-			if ( key_reference != KEY_REFERENCE_AUTH_KEY ) {
+			if ( key_reference != KEY_REFERENCE_AUTH_KEY )
+			{
 				LOG_TEST_RET(card->ctx, SC_ERROR_INCOMPATIBLE_KEY, "Sign operation is only supported with AUTH key.");
 			}
 			data->key_reference = key_reference;
@@ -455,8 +458,10 @@ static int nqapplet_select_file(struct sc_card *card, const struct sc_path *in_p
 
 	/* the applet does not support SELECT EF/DF except for SELECT APPLET.
 	In order to enable opensc-explorer add support for virtually selecting MF only */
-	if (in_path->type == SC_PATH_TYPE_PATH && in_path->len == 2 && memcmp(in_path->value, "\x3F\x00", 2) == 0 ) {
-		if ( file_out != NULL )   {
+	if (in_path->type == SC_PATH_TYPE_PATH && in_path->len == 2 && memcmp(in_path->value, "\x3F\x00", 2) == 0 )
+	{
+		if ( file_out != NULL )
+		{
 			struct sc_file *file = sc_file_new();
 			if (file == NULL)
 			{
@@ -477,7 +482,8 @@ static int nqapplet_card_ctl(sc_card_t* card, unsigned long cmd, void* ptr)
 	switch (cmd)
 	{
 	case SC_CARDCTL_GET_SERIALNR:
-		if (card->serialnr.len) {
+		if (card->serialnr.len)
+		{
 			sc_serial_number_t* serial = (sc_serial_number_t*)ptr;
 			memcpy(serial->value, card->serialnr.value, card->serialnr.len);
 			serial->len = card->serialnr.len;
