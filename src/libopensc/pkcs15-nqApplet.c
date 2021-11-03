@@ -154,7 +154,7 @@ static int add_nqapplet_objects(sc_pkcs15_card_t *p15card)
 	rv = add_nqapplet_pin(p15card, "1", 0x01);
 	LOG_TEST_RET(card->ctx, rv, "Failed to add PIN 1");
 
-	// 2.1) CH.Auth
+	// 2.1) C.CH.Auth
 	rv = add_nqapplet_certificate(p15card, "1", "C.CH.Auth", 0x00);
 	LOG_TEST_RET(card->ctx, rv, "Failed to add Auth. certificate");
 
@@ -162,11 +162,11 @@ static int add_nqapplet_objects(sc_pkcs15_card_t *p15card)
 	rv = add_nqapplet_private_key(p15card, "1", 0x01, "PrK.CH.Auth", "1", SC_PKCS15_PRKEY_USAGE_SIGN | SC_PKCS15_PRKEY_USAGE_ENCRYPT | SC_PKCS15_PRKEY_USAGE_DECRYPT);
 	LOG_TEST_RET(card->ctx, rv, "Failed to add Auth. private key");
 
-	// 2.1) CH.Auth
+	// 3.1) C.CH.Encr
 	rv = add_nqapplet_certificate(p15card, "2", "C.CH.Encr", 0x01);
 	LOG_TEST_RET(card->ctx, rv, "Failed to add Encr. certificate");
 
-	// 2.2) PrK.CH.Auth
+	// 3.2) PrK.CH.Encr
 	rv = add_nqapplet_private_key(p15card, "2", 0x02, "PrK.CH.Encr", "1", SC_PKCS15_PRKEY_USAGE_DECRYPT);
 	LOG_TEST_RET(card->ctx, rv, "Failed to add Encr. private key");
 
