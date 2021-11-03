@@ -1069,6 +1069,7 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 				card->type == SC_CARD_TYPE_IASECC_LATVIAEID)
 				apdu.p1 = 0x01;
 			if (card->type == SC_CARD_TYPE_IASECC_OBERTHUR ||
+			    card->type == SC_CARD_TYPE_IASECC_LATVIAEID ||
 			    card->type == SC_CARD_TYPE_IASECC_AMOS ||
 			    card->type == SC_CARD_TYPE_IASECC_MI ||
 			    card->type == SC_CARD_TYPE_IASECC_MI2 ||
@@ -1101,6 +1102,7 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 			    card->type == SC_CARD_TYPE_IASECC_MI2 ||
 			    card->type == SC_CARD_TYPE_IASECC_OBERTHUR ||
 			    card->type == SC_CARD_TYPE_IASECC_GEMALTO ||
+			    card->type == SC_CARD_TYPE_IASECC_LATVIAEID ||
 			    iasecc_is_cpx(card)) {
 				apdu.p2 = 0x04;
 			}
