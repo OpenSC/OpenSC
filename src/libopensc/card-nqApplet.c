@@ -129,6 +129,10 @@ static int select_nqapplet(sc_card_t *card, u8 *version_major, u8 *version_minor
 	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(card->ctx, rv, "Card returned error");
 
+	if ( apdu.resplen < APPLET_VERSION_LEN+APPLET_MEMTYPE_LEN+APPLET_SERIALNR_LEN ) {
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_WRONG_LENGTH);
+	}
+
 	if ( version_major != NULL )
 	{
 		*version_major = buffer[0];
