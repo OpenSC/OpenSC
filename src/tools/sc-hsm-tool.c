@@ -99,6 +99,7 @@ static const struct option options[] = {
 	{ "so-pin",					1, NULL,		OPT_SO_PIN },
 	{ "pin",					1, NULL,		OPT_PIN },
 	{ "pin-retry",				1, NULL,		OPT_RETRY },
+	{ "transport-pin",			0, NULL,		'T' },
 	{ "bio-server1",			1, NULL,		OPT_BIO1 },
 	{ "bio-server2",			1, NULL,		OPT_BIO2 },
 	{ "password",				1, NULL,		OPT_PASSWORD },
@@ -131,6 +132,7 @@ static const char *option_help[] = {
 	"Define security officer PIN (SO-PIN)",
 	"Define user PIN",
 	"Define user PIN retry counter",
+	"User PIN should be generated as a transport PIN (initialization only)",
 	"AID of biometric server for template 1 (hex)",
 	"AID of biometric server for template 2 (hex)",
 	"Define password for DKEK share",
@@ -573,7 +575,7 @@ static void print_info(sc_card_t *card, sc_file_t *file)
 
 
 
-static int initialize(sc_card_t *card, const char *so_pin, const char *user_pin, int retry_counter, const char *bio1, const char *bio2, int dkek_shares, signed char num_of_pub_keys, u8 required_pub_keys, const char *label)
+static int initialize(sc_card_t *card, const char *so_pin, const char *user_pin, int transport_pin, int retry_counter, const char *bio1, const char *bio2, int dkek_shares, signed char num_of_pub_keys, u8 required_pub_keys, const char *label)
 {
 	sc_cardctl_sc_hsm_init_param_t param;
 	size_t len;
@@ -614,7 +616,9 @@ static int initialize(sc_card_t *card, const char *so_pin, const char *user_pin,
 	}
 
 	if (user_pin == NULL) {
-		printf("Enter initial User-PIN (6 - 16 characters) : ");
+		printf("Enter %s (6 - 16 characters) : ",
+			transport_pin ? "transport PIN" : "initial User-PIN"
+		);
 		util_getpass(&_user_pin, NULL, stdin);
 		printf("\n");
 	} else {
@@ -675,6 +679,9 @@ static int initialize(sc_card_t *card, const char *so_pin, const char *user_pin,
 
 	param.options[0] = 0x00;
 	param.options[1] = 0x01; /* RESET RETRY COUNTER enabled */
+	if (transport_pin) {
+		param.options[1] |= 0x02;
+	}
 	if (param.bio1.len || param.bio2.len) {
 		param.options[1] |= 0x04; /* Session-PIN enabled with clear on reset */
 	}
@@ -687,6 +694,13 @@ static int initialize(sc_card_t *card, const char *so_pin, const char *user_pin,
 	r = sc_card_ctl(card, SC_CARDCTL_SC_HSM_INITIALIZE, (void *)&param);
 	if (r < 0) {
 		fprintf(stderr, "sc_card_ctl(*, SC_CARDCTL_SC_HSM_INITIALIZE, *) failed with %s\n", sc_strerror(r));
+		return -1;
+	} 
+	if (transport_pin) {
+		fprintf(stderr,
+			"Token has been initialized with a transport PIN.\n"
+			"You have to install all the keys needed now.\n"
+			"Do not reset or log off the token until this is completed!\n");
 	}
 
 	return 0;
@@ -1883,6 +1897,7 @@ int main(int argc, char *argv[])
 	int err = 0, r, c, long_optind = 0;
 	int action_count = 0;
 	int do_initialize = 0;
+	int do_transport_pin = 0;
 	int do_import_dkek_share = 0;
 	int do_print_dkek_share = 0;
 	int do_create_dkek_share = 0;
@@ -1913,7 +1928,7 @@ int main(int argc, char *argv[])
 	sc_card_t *card = NULL;
 
 	while (1) {
-		c = getopt_long(argc, argv, "XC:I:P:W:U:K:n:e:g:Ss:i:fr:wv", options, &long_optind);
+		c = getopt_long(argc, argv, "XTC:I:P:W:U:K:n:e:g:Ss:i:fr:wv", options, &long_optind);
 		if (c == -1)
 			break;
 		if (c == '?')
@@ -1936,6 +1951,10 @@ int main(int argc, char *argv[])
 		case 'P':
 			do_print_dkek_share = 1;
 			opt_filename = optarg;
+			action_count++;
+			break;
+		case 'T':
+			do_transport_pin = 1;
 			action_count++;
 			break;
 		case 'W':
@@ -2076,6 +2095,10 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "Option -S (--public-key-auth-status) excludes option -g\n");
 		exit(1);
 	}
+	if (do_transport_pin && !do_initialize) {
+		fprintf(stderr, "Transport PIN can be defined only during device initialization\n");
+		exit(1);
+	}
 
 	memset(&ctx_param, 0, sizeof(sc_context_param_t));
 	ctx_param.app_name = app_name;
@@ -2102,7 +2125,7 @@ int main(int argc, char *argv[])
 		goto fail;
 	}
 
-	if (do_initialize && initialize(card, opt_so_pin, opt_pin, opt_retry_counter, opt_bio1, opt_bio2, opt_dkek_shares, opt_num_of_pub_keys, opt_required_pub_keys, opt_label))
+	if (do_initialize && initialize(card, opt_so_pin, opt_pin, do_transport_pin, opt_retry_counter, opt_bio1, opt_bio2, opt_dkek_shares, opt_num_of_pub_keys, opt_required_pub_keys, opt_label))
 		goto fail;
 
 	if (do_create_dkek_share && create_dkek_share(card, opt_filename, opt_iter, opt_password, opt_password_shares_threshold, opt_password_shares_total))

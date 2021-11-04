@@ -47,6 +47,7 @@
 						<para>Use with <option>--dkek-shares</option> to enable key wrap / unwrap.</para>
 						<para>Use with <option>--label</option> to define a token label</para>
 						<para>Use with <option>--public-key-auth</option> and <option>--required-pub-keys</option> to require public key authentication for login</para>
+						<para>Use with <option>--transport-pin</option> to make sure the user PIN has to be changed before first real use of the token.</para>
 					</listitem>
 				</varlistentry>
 
@@ -149,6 +150,20 @@
 					</term>
 					<listitem>
 						<para>Define number of PIN retries for user PIN during initialization. Default is 3.</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--transport-pin</option>,
+						<option>-T</option>
+					</term>
+					<listitem>
+						<para>
+							The User PIN will be initialized as transport PIN, in which case
+							the user must change theUser PIN to a self-selected value before
+							using any cryptographic operation.
+						</para>
 					</listitem>
 				</varlistentry>
 
