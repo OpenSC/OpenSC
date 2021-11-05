@@ -82,7 +82,7 @@ static const char *option_help[] = {
 	"Modulus length to use in key generation [1024]",
 	"Uses reader <arg>",
 	"Wait for card insertion",
-	"Verbose operation. Use several times to enable debug output.",
+	"Verbose operation, may be used several times",
 };
 
 static sc_context_t *ctx = NULL;

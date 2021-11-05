@@ -138,7 +138,7 @@ static const char *option_help[] = {
 /* G */ "Generate key",
 /* t */ "Key type (default: rsa2048)",
 /* h */	"Print this help message",
-/* v */	"Verbose operation. Use several times to enable debug output.",
+/* v */	"Verbose operation, may be used several times",
 /* V */	"Show version number",
 /* E */	"Erase (reset) the card",
 	"Verify PIN (CHV1, CHV2, CHV3...)",

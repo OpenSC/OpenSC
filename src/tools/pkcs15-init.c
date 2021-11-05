@@ -279,7 +279,7 @@ static const char *		option_help[] = {
 	"For a new key specify GUID for a MD container",
 	"Wait for card insertion",
 	"Display this message",
-	"Verbose operation. Use several times to enable debug output.",
+	"Verbose operation, may be used several times",
 
 	NULL,
 	NULL,

@@ -193,7 +193,7 @@ static const char *option_help[] = {
 	"The auth ID of the PIN to use",
 	"Specify AID of the on-card PKCS#15 application to bind to (in hexadecimal form)",
 	"Wait for card insertion",
-	"Verbose operation. Use several times to enable debug output.",
+	"Verbose operation, may be used several times",
 	"Do not prompt the user; if no PINs supplied, pinpad will be used.",
 	NULL,
 	NULL

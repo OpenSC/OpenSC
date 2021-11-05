@@ -68,7 +68,7 @@ static const char *option_help[] = {
 	"List the on-card PKCS#15 applications",
 	"List the SDOs with the <arg> tag in the current ADF",
 	"Wait for card insertion",
-	"Verbose operation. Use several times to enable debug output.",
+	"Verbose operation, may be used several times",
 	NULL
 };
 

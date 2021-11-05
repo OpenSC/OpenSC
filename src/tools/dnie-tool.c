@@ -75,7 +75,7 @@ static const char *option_help[] = {
 	"Show DNIe number, Name, and SurName",
 	"Show DNIe serial number",
 	"Display all the information available",
-	"Verbose operation. Use several times to enable debug output."
+	"Verbose operation, may be used several times",
 };
 
 /*  Get DNIe device extra information  */
