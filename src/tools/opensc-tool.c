@@ -87,7 +87,7 @@ static const char *option_help[] = {
 	"Lists readers",
 	"Lists all installed card drivers",
 	"Recursively lists files stored on card",
-	"Sends an APDU in format AA:BB:CC:DD:EE:FF...",
+	"Sends an APDU (may need '-c default')",
 	"Uses reader number <arg> [0]",
 	"Does card reset of type <cold|warm> [cold]",
 	"Forces the use of driver <arg> [auto-detect; '?' for list]",
