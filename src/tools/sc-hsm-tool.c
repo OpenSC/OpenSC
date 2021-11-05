@@ -129,7 +129,7 @@ static const char *option_help[] = {
 	"Force replacement of key and certificate",
 	"Uses reader number <arg> [0]",
 	"Wait for a card to be inserted",
-	"Verbose operation. Use several times to enable debug output.",
+	"Verbose operation, may be used several times",
 };
 
 typedef struct {

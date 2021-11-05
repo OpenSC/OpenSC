@@ -79,7 +79,7 @@ static const char *option_help[] = {
 	"Read file <arg>",
 	"Write file <arg> (ex 0002 write file 0002 to 0002)",
 	"This message",
-	"Verbose operation. Use several times to enable debug output."
+	"Verbose operation, may be used several times",
 };
 
 

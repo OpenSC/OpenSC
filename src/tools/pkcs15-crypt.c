@@ -106,7 +106,7 @@ static const char *option_help[] = {
 	"Uses password (PIN) <arg> (use - for reading PIN from STDIN)",
 	"Specify AID of the on-card PKCS#15 application to be binded to (in hexadecimal form)",
 	"Wait for card insertion",
-	"Verbose operation. Use several times to enable debug output.",
+	"Verbose operation, may be used several times",
 };
 
 static sc_context_t *ctx = NULL;

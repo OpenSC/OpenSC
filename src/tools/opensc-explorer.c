@@ -87,7 +87,7 @@ static const char *option_help[] = {
 	"Forces the use of driver <arg> [auto-detect; '?' for list]",
 	"Selects path <arg> on start-up, or none if empty [3F00]",
 	"Wait for card insertion",
-	"Verbose operation. Use several times to enable debug output.",
+	"Verbose operation, may be used several times",
 };
 
 

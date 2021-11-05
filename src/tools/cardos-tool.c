@@ -68,7 +68,7 @@ static const char *option_help[] = {
 	"Change Startkey with given APDU command",
 	"Uses reader number <arg> [0]",
 	"Wait for a card to be inserted",
-	"Verbose operation. Use several times to enable debug output.",
+	"Verbose operation, may be used several times",
 };
 
 static sc_context_t *ctx = NULL;
