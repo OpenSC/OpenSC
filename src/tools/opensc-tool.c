@@ -82,18 +82,18 @@ static const char *option_help[] = {
 	"Prints the ATR bytes of the card",
 	"Prints the card serial number",
 	"Identify the card and print its name",
-	"Get configuration key, format: section:name:key",
-	"Set configuration key, format: section:name:key:value",
+	"Get configuration, e.g. section:name:key",
+	"Set configuration, e.g. section:name:key:val",
 	"Lists readers",
 	"Lists all installed card drivers",
 	"Recursively lists files stored on card",
 	"Sends an APDU (may need '-c default')",
 	"Uses reader number <arg> [0]",
 	"Does card reset of type <cold|warm> [cold]",
-	"Forces the use of driver <arg> [auto-detect; '?' for list]",
+	"Forces a card driver (use '?' for list)",
 	"Lists algorithms supported by card",
 	"Wait for a card to be inserted",
-	"Verbose operation. Use several times to enable debug output.",
+	"Verbose operation, may be used several times",
 };
 
 static sc_context_t *ctx = NULL;
