@@ -141,8 +141,19 @@
 						<option>--send-apdu</option> <replaceable>apdu</replaceable>,
 						<option>-s</option> <replaceable>apdu</replaceable>
 					</term>
-					<listitem><para>Sends an arbitrary APDU to the card in the format
-					<code>AA:BB:CC:DD:EE:FF...</code>.</para></listitem>
+					<listitem>
+						<para>
+							Sends an arbitrary APDU to the card in the format
+							<code>AA:BB:CC:DD:EE:FF...</code>. Use this option
+							multiple times to send more than one APDU.
+						</para>
+						<para>
+                            The built-in card drivers may send additional APDUs
+                            for detection and initialization. To avoid this
+							behavior, you may additionally specify
+							<option>--card-driver</option> <literal>default</literal>.
+						</para>
+					</listitem>
 				</varlistentry>
 				<varlistentry>
 					<term>
