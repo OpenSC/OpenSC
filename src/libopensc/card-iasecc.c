@@ -495,10 +495,7 @@ static int
 iasecc_oberthur_match(struct sc_card *card)
 {
 	struct sc_context *ctx = card->ctx;
-	unsigned char resp[0x100];
 	unsigned char *hist = card->reader->atr_info.hist_bytes;
-	size_t resp_len;
-	int rv = 0;
 
 	LOG_FUNC_CALLED(ctx);
 
@@ -509,13 +506,6 @@ iasecc_oberthur_match(struct sc_card *card)
 
 	if (memcmp(hist + 2, OberthurIASECC_AID.value, *(hist+1) & 0x0F))
 		LOG_FUNC_RETURN(ctx, SC_ERROR_RECORD_NOT_FOUND);
-
-
-	if (card->type == SC_CARD_TYPE_IASECC_LATVIAEID) {
-		resp_len = sizeof(resp);
-		rv = iasecc_select_aid(card, &GlobalPlatform_ISD_Default_RID, resp, &resp_len);
-		LOG_TEST_RET(ctx, rv, "IASECC: failed to select MI IAS/ECC applet");
-	}
 
 	if (!card->ef_atr)
 		card->ef_atr = calloc(1, sizeof(struct sc_ef_atr));
@@ -545,13 +535,6 @@ iasecc_init_oberthur(struct sc_card *card)
 
 	card->caps = IASECC_CARD_DEFAULT_CAPS;
 
-	if (card->type == SC_CARD_TYPE_IASECC_LATVIAEID) {
-		card->caps |= SC_CARD_CAP_RNG;
-		card->caps |= SC_CARD_CAP_APDU_EXT;
-		card->caps |= SC_CARD_CAP_USE_FCI_AC;
-		card->caps |= SC_CARD_CAP_ISO7816_PIN_INFO;
-	}
-
 	iasecc_parse_ef_atr(card);
 
 	/* if we fail to select CM, */
@@ -569,6 +552,51 @@ iasecc_init_oberthur(struct sc_card *card)
 	LOG_TEST_RET(ctx, rv, "EF.ATR read or parse error");
 
 	sc_log(ctx, "EF.ATR(aid:'%s')", sc_dump_hex(card->ef_atr->aid.value, card->ef_atr->aid.len));
+	LOG_FUNC_RETURN(ctx, rv);
+}
+
+
+static int
+iasecc_init_latviaeid(struct sc_card *card)
+{
+	struct sc_context *ctx = card->ctx;
+	unsigned char resp[0x100];
+	size_t resp_len;
+	unsigned int flags;
+	int rv = 0;
+
+	LOG_FUNC_CALLED(ctx);
+
+	flags = IASECC_CARD_DEFAULT_FLAGS;
+
+	_sc_card_add_rsa_alg(card, 1024, flags, 0x10001);
+	_sc_card_add_rsa_alg(card, 2048, flags, 0x10001);
+
+	card->caps = SC_CARD_CAP_RNG;
+	card->caps |= SC_CARD_CAP_APDU_EXT;
+	card->caps |= SC_CARD_CAP_USE_FCI_AC;
+	card->caps |= SC_CARD_CAP_ISO7816_PIN_INFO;
+
+	// Select the GlobalPlatform_ISD_Default_RID application
+	resp_len = sizeof(resp);
+	rv = iasecc_select_aid(card, &GlobalPlatform_ISD_Default_RID, resp, &resp_len);
+
+	// Allocate space for storing the OberthurIASECC_AID
+	if (!card->ef_atr)
+		card->ef_atr = calloc(1, sizeof(struct sc_ef_atr));
+	if (!card->ef_atr)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+
+	// Store the OberthurIASECC_AID
+	memcpy(card->ef_atr->aid.value, OberthurIASECC_AID.value, OberthurIASECC_AID.len);
+	card->ef_atr->aid.len = OberthurIASECC_AID.len;
+
+	rv = iasecc_select_mf(card, NULL);
+	LOG_TEST_RET(ctx, rv, "Latvia eID MF selection error");
+
+	rv = iasecc_parse_ef_atr(card);
+	LOG_TEST_RET(ctx, rv, "Latvia eID EF.ATR read or parse error");
+
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
@@ -696,7 +724,7 @@ iasecc_init(struct sc_card *card)
 	else if (card->type == SC_CARD_TYPE_IASECC_OBERTHUR)
 		rv = iasecc_init_oberthur(card);
 	else if (card->type == SC_CARD_TYPE_IASECC_LATVIAEID)
-		rv = iasecc_init_oberthur(card);
+		rv = iasecc_init_latviaeid(card);
 	else if (card->type == SC_CARD_TYPE_IASECC_SAGEM)
 		rv = iasecc_init_amos_or_sagem(card);
 	else if (card->type == SC_CARD_TYPE_IASECC_AMOS)
