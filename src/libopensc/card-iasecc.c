@@ -567,7 +567,9 @@ iasecc_init_latviaeid(struct sc_card *card)
 
 	LOG_FUNC_CALLED(ctx);
 
-	flags = IASECC_CARD_DEFAULT_FLAGS;
+	 flags = 	 SC_ALGORITHM_ONBOARD_KEY_GEN
+		| SC_ALGORITHM_RSA_PAD_PKCS1
+		| SC_ALGORITHM_RSA_HASH_NONE;
 
 	_sc_card_add_rsa_alg(card, 1024, flags, 0x10001);
 	_sc_card_add_rsa_alg(card, 2048, flags, 0x10001);

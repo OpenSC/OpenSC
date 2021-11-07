@@ -196,7 +196,7 @@ static int sc_pkcs1_add_digest_info_prefix(unsigned int algorithm,
 			size_t    hdr_len  = digest_info_prefix[i].hdr_len,
 			          hash_len = digest_info_prefix[i].hash_len;
 
-			if (in_len != hash_len || *out_len < (hdr_len + hash_len))
+			if (in_len < hash_len || *out_len < (hdr_len + hash_len))
 				return SC_ERROR_INTERNAL;
 
 			memmove(out + hdr_len, in, hash_len);
