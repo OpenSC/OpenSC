@@ -189,13 +189,6 @@ typedef struct piv_private_data {
 
 #define PIV_DATA(card) ((piv_private_data_t*)card->drv_data)
 
-struct piv_aid {
-	int enumtag;
-	size_t len_short;	/* min length without version */
-	size_t len_long;	/* With version and other stuff */
-	u8 *value;
-};
-
 /*
  * The Generic entry should be the "A0 00 00 03 08 00 00 10 00 "
  * NIST published  this on 10/6/2005
@@ -260,12 +253,8 @@ static const struct sc_atr_table piv_atrs[] = {
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
-/* all have same AID */
-static struct piv_aid piv_aids[] = {
-	{SC_CARD_TYPE_PIV_II_GENERIC, /* TODO not really card type but what PIV AID is supported */
-		 9, 9, (u8 *) "\xA0\x00\x00\x03\x08\x00\x00\x10\x00" },
-	{0,  9, 0, NULL }
-};
+/* right-truncated version of PIV AID; that is, without the two-byte version */
+struct sc_aid piv_aid = { {0xA0, 0x00, 0x00, 0x03, 0x08, 0x00, 0x00, 0x10, 0x00}, 9 };
 
 /* card_issues - bugs in PIV implementations requires special handling */
 #define CI_VERIFY_630X			    0x00000001U /* VERIFY tries left returns 630X rather then 63CX */
@@ -660,7 +649,7 @@ err:
 }
 
 
-static int piv_select_aid(sc_card_t* card, u8* aid, size_t aidlen, u8* response, size_t *responselen)
+static int piv_select_aid(sc_card_t* card, u8* response, size_t *responselen)
 {
 	sc_apdu_t apdu;
 	int r;
@@ -669,9 +658,9 @@ static int piv_select_aid(sc_card_t* card, u8* aid, size_t aidlen, u8* response,
 
 	sc_format_apdu(card, &apdu,
 		response == NULL ? SC_APDU_CASE_3_SHORT : SC_APDU_CASE_4_SHORT, 0xA4, 0x04, 0x00);
-	apdu.lc = aidlen;
-	apdu.data = aid;
-	apdu.datalen = aidlen;
+	apdu.lc = piv_aid.len;
+	apdu.data = piv_aid.value;
+	apdu.datalen = piv_aid.len;
 	apdu.resp = response;
 	apdu.resplen = responselen ? *responselen : 0;
 	apdu.le = response == NULL ? 0 : 256; /* could be 21  for fci */
@@ -690,89 +679,40 @@ static int piv_select_aid(sc_card_t* card, u8* aid, size_t aidlen, u8* response,
 
 static int piv_find_aid(sc_card_t * card)
 {
-	sc_apdu_t apdu;
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
-	int r,i;
+	int r;
 	const u8 *tag;
 	size_t taglen;
-	const u8 *pix;
-	size_t pixlen;
 	size_t resplen = sizeof(rbuf);
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	/* first  see if the default application will return a template
+	/* see if the default application will return a template
 	 * that we know about.
 	 */
 
-	r = piv_select_aid(card, piv_aids[0].value, piv_aids[0].len_short, rbuf, &resplen);
-	if (r >= 0 && resplen > 2 ) {
-		tag = sc_asn1_find_tag(card->ctx, rbuf, resplen, 0x61, &taglen);
-		if (tag != NULL) {
-			pix = sc_asn1_find_tag(card->ctx, tag, taglen, 0x4F, &pixlen);
-			if (pix != NULL ) {
-				sc_log(card->ctx, "found PIX");
+	r = piv_select_aid(card, rbuf, &resplen);
+	if (r < 0)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NO_CARD_SUPPORT);
 
-				/* early cards returned full AID, rather then just the pix */
-				for (i = 0; piv_aids[i].len_long != 0; i++) {
-					if ((pixlen >= 6 && memcmp(pix, piv_aids[i].value + 5,
-									piv_aids[i].len_long - 5 ) == 0)
-						 || ((pixlen >=  piv_aids[i].len_short &&
-							memcmp(pix, piv_aids[i].value,
-							piv_aids[i].len_short) == 0))) {
-						if (card->type > SC_CARD_TYPE_PIV_II_BASE &&
-							card->type < SC_CARD_TYPE_PIV_II_BASE+1000 &&
-							card->type == piv_aids[i].enumtag) {
-							LOG_FUNC_RETURN(card->ctx, i);
-						} else {
-							LOG_FUNC_RETURN(card->ctx, i);
-						}
-					}
-				}
-			}
+	/* read PIV Card Application Property Template and Application Identifier of application */
+	if (NULL != (tag = sc_asn1_find_tag(card->ctx, rbuf, resplen, 0x61, &taglen))
+			&& NULL != (tag = sc_asn1_find_tag(card->ctx, tag, taglen, 0x4F, &taglen))) {
+		switch (taglen) {
+			case 11:
+				if (memcmp(tag, piv_aid.value, piv_aid.len) != 0)
+					break;
+				/* early cards returned full AID, rather then just the PIX */
+				tag += 5;
+				taglen -= 5;
+				/* fall through */
+			case 6:
+				sc_log_hex(card->ctx, "Proprietary Identifier extension", tag, 6);
+				break;
 		}
 	}
 
-	/* for testing, we can force the use of a specific AID
-	 *  by using the card= parameter in conf file
-	 */
-	for (i = 0; piv_aids[i].len_long != 0; i++) {
-		if (card->type > SC_CARD_TYPE_PIV_II_BASE &&
-			card->type < SC_CARD_TYPE_PIV_II_BASE+1000 &&
-			card->type != piv_aids[i].enumtag) {
-				continue;
-		}
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xA4, 0x04, 0x00);
-		apdu.lc = piv_aids[i].len_long;
-		apdu.data = piv_aids[i].value;
-
-		apdu.datalen = apdu.lc;
-		apdu.resp = rbuf;
-		apdu.resplen = sizeof(rbuf);
-		apdu.le = 256;
-
-		r = sc_transmit_apdu(card, &apdu);
-		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
-
-		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-		if (r)  {
-			if (card->type != 0 && card->type == piv_aids[i].enumtag)
-				LOG_FUNC_RETURN(card->ctx, (r < 0)? r: i);
-			continue;
-		}
-
-		if ( apdu.resplen == 0 && r == 0) {
-			/* could be the MSU card */
-			continue; /* other cards will return a FCI */
-		}
-
-		if (apdu.resp[0] != 0x6f || apdu.resp[1] > apdu.resplen - 2 )
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_NO_CARD_SUPPORT);
-
-		LOG_FUNC_RETURN(card->ctx, i);
-	}
-
-	LOG_FUNC_RETURN(card->ctx, SC_ERROR_NO_CARD_SUPPORT);
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
 /*
@@ -2600,8 +2540,8 @@ static int piv_parse_discovery(sc_card_t *card, u8 * rbuf, size_t rbuflen, int a
 		if ( cla_out+tag_out == 0x7E && body != NULL && bodylen != 0) {
 			aidlen = 0;
 			aid = sc_asn1_find_tag(card->ctx, body, bodylen, 0x4F, &aidlen);
-			if (aid == NULL || aidlen < piv_aids[0].len_short ||
-				memcmp(aid,piv_aids[0].value,piv_aids[0].len_short) != 0) { /*TODO look at long */
+			if (aid == NULL || aidlen < piv_aid.len ||
+				memcmp(aid,piv_aid.value,piv_aid.len) != 0) { /*TODO look at long */
 				sc_log(card->ctx, "Discovery object not PIV");
 				r = SC_ERROR_INVALID_CARD; /* This is an error */
 				goto err;
@@ -3135,14 +3075,9 @@ static int piv_match_card_continued(sc_card_t *card)
 					}
 				} else if ((data = sc_compacttlv_find_tag(card->reader->atr_info.hist_bytes + 1,
 						card->reader->atr_info.hist_bytes_len - 1, 0xF0, &datalen))) {
-					int k;
-
-					for (k = 0; piv_aids[k].len_long != 0; k++) {
-						if (datalen == piv_aids[k].len_long
-							&& !memcmp(data, piv_aids[k].value, datalen)) {
-							type = SC_CARD_TYPE_PIV_II_HIST;
-							break;
-						}
+					if (datalen == piv_aid.len
+							&& !memcmp(data, piv_aid.value, datalen)) {
+						type = SC_CARD_TYPE_PIV_II_HIST;
 					}
 				}
 			}
@@ -3438,7 +3373,7 @@ static int piv_init(sc_card_t *card)
 
 	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d CI:%08x r:%d\n", card->type, priv->card_issues, r);
 
-	priv->enumtag = piv_aids[0].enumtag;
+	priv->enumtag = SC_CARD_TYPE_PIV_II_GENERIC;
 
 	/* PKCS#11 may try to generate session keys, and get confused
 	 * if SC_ALGORITHM_ONBOARD_KEY_GEN is present
@@ -3789,7 +3724,7 @@ static int piv_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 
 	if (r < 0) {
 		if (was_reset > 0 || !(priv->card_issues & CI_PIV_AID_LOSE_STATE)) {
-			r = piv_select_aid(card, piv_aids[0].value, piv_aids[0].len_short, temp, &templen);
+			r = piv_select_aid(card, temp, &templen);
 			sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH piv_select_aid card->type:%d r:%d\n", card->type, r);
 		} else {
 			r = 0; /* can't do anything with this card, hope there was no interference */
