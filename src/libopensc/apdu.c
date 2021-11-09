@@ -455,6 +455,10 @@ sc_get_response(struct sc_card *card, struct sc_apdu *apdu, size_t olen)
 		unsigned char resp[256];
 		size_t resp_len = le;
 
+		/* we have all the data the caller requested even if the card has more data */
+		if (buflen == 0)
+			break;
+
 		/* call GET RESPONSE to get more date from the card;
 		 * note: GET RESPONSE returns the left amount of data (== SW2) */
 		memset(resp, 0, sizeof(resp));
@@ -477,10 +481,6 @@ sc_get_response(struct sc_card *card, struct sc_apdu *apdu, size_t olen)
 		memcpy(buf, resp, le);
 		buf    += le;
 		buflen -= le;
-
-		/* we have all the data the caller requested even if the card has more data */
-		if (buflen == 0)
-			break;
 
 		minlen -= le;
 		if (rv != 0)
@@ -521,18 +521,20 @@ sc_transmit(sc_card_t *card, sc_apdu_t *apdu)
 	 * 1. the card returned 0x6Cxx: in this case APDU will be re-transmitted with Le set to SW2
 	 * (possible only if response buffer size is larger than new Le = SW2)
 	 */
-	if (apdu->sw1 == 0x6C && (apdu->flags & SC_APDU_FLAGS_NO_RETRY_WL) == 0)
+	if (apdu->sw1 == 0x6C && (apdu->flags & SC_APDU_FLAGS_NO_RETRY_WL) == 0) {
 		r = sc_set_le_and_transmit(card, apdu, olen);
-	LOG_TEST_RET(ctx, r, "cannot re-transmit APDU ");
+		LOG_TEST_RET(ctx, r, "cannot re-transmit APDU ");
+	}
 
 	/* 2. the card returned 0x61xx: more data can be read from the card
 	 *    using the GET RESPONSE command (mostly used in the T0 protocol).
 	 *    Unless the SC_APDU_FLAGS_NO_GET_RESP is set we try to read as
 	 *    much data as possible using GET RESPONSE.
 	 */
-	if (apdu->sw1 == 0x61 && (apdu->flags & SC_APDU_FLAGS_NO_GET_RESP) == 0)
+	if (apdu->sw1 == 0x61 && (apdu->flags & SC_APDU_FLAGS_NO_GET_RESP) == 0) {
 		r = sc_get_response(card, apdu, olen);
-	LOG_TEST_RET(ctx, r, "cannot get all data with 'GET RESPONSE'");
+		LOG_TEST_RET(ctx, r, "cannot get all data with 'GET RESPONSE'");
+	}
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
