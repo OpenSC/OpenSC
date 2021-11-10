@@ -468,6 +468,7 @@ static struct sc_card_driver piv_drv = {
 };
 
 static int piv_match_card_continued(sc_card_t *card);
+static int piv_activate(sc_card_t *card);
 
 static int
 piv_find_obj_by_containerid(sc_card_t *card, const u8 * str)
@@ -2575,7 +2576,6 @@ static int piv_select_file(sc_card_t *card, const sc_path_t *in_path,
 
 static int piv_parse_discovery(sc_card_t *card, u8 * rbuf, size_t rbuflen, int aid_only)
 {
-	piv_private_data_t * priv = PIV_DATA(card);
 	int r = 0;
 	const u8 * body;
 	size_t bodylen;
@@ -2612,6 +2612,7 @@ static int piv_parse_discovery(sc_card_t *card, u8 * rbuf, size_t rbuflen, int a
 					sc_log(card->ctx, "Discovery pinp flags=0x%2.2x 0x%2.2x",*pinp, *(pinp+1));
 					r = SC_SUCCESS;
 					if ((*pinp & 0x60) == 0x60 && *(pinp+1) == 0x20) { /* use Global pin */
+						piv_private_data_t * priv = PIV_DATA(card);
 						sc_log(card->ctx, "Pin Preference - Global");
 						priv->pin_preference = 0x00;
 					}
@@ -2734,26 +2735,20 @@ static int piv_find_discovery(sc_card_t *card)
 	u8  rbuf[256];
 	size_t rbuflen = sizeof(rbuf);
 	u8 * arbuf = rbuf;
-	piv_private_data_t * priv = PIV_DATA(card);
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	/*
 	 * During piv_match or piv_card_reader_lock_obtained,
 	 * we use the discovery object to test if card present, and
-	 * if PIV AID is active. So we can not use the cache
+	 * if PIV AID is active. So we can not use the cache and
+	 * don't access the driver's private data
 	 */
 
-	/* If not valid, read, cache and test */
-	if (!(priv->obj_cache[PIV_OBJ_DISCOVERY].flags & PIV_OBJ_CACHE_VALID)) {
-		r = piv_process_discovery(card);
-	} else {
-		/* if already in cache,force read */
-		r = piv_get_data(card, PIV_OBJ_DISCOVERY, &arbuf, &rbuflen);
-		if (r >= 0)
-			/* make sure it is PIV AID */
-			r = piv_parse_discovery(card, rbuf, rbuflen, 1);
-	}
+	r = piv_get_data(card, PIV_OBJ_DISCOVERY, &arbuf, &rbuflen);
+	if (r >= 0)
+		/* make sure it is PIV AID */
+		r = piv_parse_discovery(card, rbuf, rbuflen, 1);
 
 	LOG_FUNC_RETURN(card->ctx, r);
 }
@@ -3053,12 +3048,13 @@ static int piv_match_card(sc_card_t *card)
 	 * anything from piv_match_card
 	 * to piv_init as had been done in the past
 	 */
-	r = piv_match_card_continued(card);
-	if (r == 1) {
-		/* clean up what we left in card */
-		sc_unlock(card);
-		piv_finish(card);
+	r = sc_lock(card);
+	if (r != SC_SUCCESS) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "sc_lock failed\n");
+		return 0;
 	}
+	r = piv_match_card_continued(card);
+	sc_unlock(card);
 
 	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d r:%d\n", card->type,r);
 	return r;
@@ -3069,8 +3065,6 @@ static int piv_match_card_continued(sc_card_t *card)
 {
 	int i, r = 0;
 	int type  = -1;
-	piv_private_data_t *priv = NULL;
-	int saved_type = card->type;
 
 	/* Since we send an APDU, the card's logout function may be called...
 	 * however it may be in dirty memory */
@@ -3098,7 +3092,6 @@ static int piv_match_card_continued(sc_card_t *card)
 	}
 	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d type:%d r:%d\n", card->type, type, r);
 	if (type == -1) {
-
 		/*
 		 *try to identify card by ATR or historical data in ATR
 		 * currently all PIV card will respond to piv_find_aid
@@ -3157,16 +3150,28 @@ static int piv_match_card_continued(sc_card_t *card)
 		}
 	}
 
-	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d type:%d r:%d\n", card->type, type, r);
-	/* allocate and init basic fields */
+	i = piv_activate(card);
+	if (i < 0) {
+		/* don't match. Does not have a PIV applet. */
+		return 0;
+	}
 
+	card->type = type;
+
+	return 1; /* match */
+}
+
+static int piv_init_priv(sc_card_t *card)
+{
+	size_t i;
+	int r;
+
+	/* allocate and init basic fields */
+	piv_private_data_t *priv = NULL;
 	priv = calloc(1, sizeof(piv_private_data_t));
 
 	if (!priv)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
-
-	if (card->type == -1)
-		card->type = type;
 
 	card->drv_data = priv; /* will free if no match, or pass on to piv_init */
 	priv->selected_obj = -1;
@@ -3181,42 +3186,10 @@ static int piv_match_card_continued(sc_card_t *card)
 		if(piv_objects[i].flags & PIV_OBJECT_NOT_PRESENT)
 			priv->obj_cache[i].flags |= PIV_OBJ_CACHE_NOT_PRESENT;
 
-	r = sc_lock(card);
-	if (r != SC_SUCCESS) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "sc_lock failed\n");
-		piv_finish(card);
-		card->type = saved_type;
-		return 0;
-	}
+	r = piv_activate(card);
 
-	/*
-	 * Detect if active AID is PIV. NIST 800-73 says only one PIV application per card
-	 * and PIV must be the default application.
-	 * Try to avoid doing a select_aid and losing the login state on some cards.
-	 * We may get interference on some cards by other drivers trying SELECT_AID before
-	 * we get to see if PIV application is still active
-	 * putting PIV driver first might help.
-	 * This may fail if the wrong AID is active.
-	 * Discovery Object introduced in 800-73-3 so will return 0 if found and PIV applet active.
-	 * Will fail with SC_ERROR_FILE_NOT_FOUND if 800-73-3 and no Discovery object.
-	 * But some other card could also return SC_ERROR_FILE_NOT_FOUND.
-	 * Will fail for other reasons if wrong applet is selected, or bad PIV implementation.
-	 */
-	
-	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d CI:%08x r:%d\n", card->type,  priv->card_issues, r);
-	if (priv->card_issues & CI_DISCOVERY_USELESS) /* TODO may be in wrong place */
-		i = -1;
-	else
-		i = piv_find_discovery(card);
-
-	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d i:%d CI:%08x r:%d\n", card->type, i, priv->card_issues, r);
-	if (i < 0) {
-		/* Detect by selecting applet */
-		i = piv_find_aid(card);
-	}
-
-	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d i:%d CI:%08x r:%d\n", card->type, i, priv->card_issues, r);
-	if (i >= 0) {
+	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d CI:%08x r:%d\n", card->type, priv->card_issues, r);
+	if (r >= 0) {
 		int iccc = 0;
 		 /* We now know PIV AID is active, test CCC object  800-73-* say CCC is required */
 		switch (card->type)  {
@@ -3269,8 +3242,8 @@ static int piv_match_card_continued(sc_card_t *card)
 				break;
 			}
 		}
-	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d i:%d CI:%08x r:%d\n", card->type, i, priv->card_issues, r);
-	if (i >= 0 && (priv->card_issues & CI_DISCOVERY_USELESS) == 0) {
+	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d CI:%08x r:%d\n", card->type, priv->card_issues, r);
+	if (r >= 0 && (priv->card_issues & CI_DISCOVERY_USELESS) == 0) {
 		/*
 		 * We now know PIV AID is active, test DISCOVERY object again
 		 * Some PIV don't support DISCOVERY and return
@@ -3287,21 +3260,38 @@ static int piv_match_card_continued(sc_card_t *card)
 		}
 	}
 
-	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d i:%d CI:%08x r:%d\n", card->type, i, priv->card_issues, r);
-	if (i < 0) {
-		/* don't match. Does not have a PIV applet. */
-		sc_unlock(card);
-		piv_finish(card);
-		card->type = saved_type;
-		return 0;
-	}
-
-	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d i:%d CI:%08x r:%d\n", card->type, i, priv->card_issues, r);
+	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d CI:%08x r:%d\n", card->type, priv->card_issues, r);
 	/* Matched, caller will use or free priv and sc_lock as needed */
 	priv->pstate=PIV_STATE_INIT;
-	return 1; /* match */
+
+	return r;
 }
 
+static int piv_activate(sc_card_t *card)
+{
+	/*
+	 * Detect if active AID is PIV. NIST 800-73 says only one PIV application per card
+	 * and PIV must be the default application.
+	 * Try to avoid doing a select_aid and losing the login state on some cards.
+	 * We may get interference on some cards by other drivers trying SELECT_AID before
+	 * we get to see if PIV application is still active
+	 * putting PIV driver first might help.
+	 * This may fail if the wrong AID is active.
+	 * Discovery Object introduced in 800-73-3 so will return 0 if found and PIV applet active.
+	 * Will fail with SC_ERROR_FILE_NOT_FOUND if 800-73-3 and no Discovery object.
+	 * But some other card could also return SC_ERROR_FILE_NOT_FOUND.
+	 * Will fail for other reasons if wrong applet is selected, or bad PIV implementation.
+	 */
+	
+	int i = piv_find_discovery(card);
+
+	if (i < 0) {
+		/* Detect by selecting applet */
+		i = piv_find_aid(card);
+	}
+
+	return i;
+}
 
 static int piv_init(sc_card_t *card)
 {
@@ -3314,20 +3304,23 @@ static int piv_init(sc_card_t *card)
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	/* continue the matching get a lock and the priv */
-	r = piv_match_card_continued(card);
-	if (r != 1)  {
-		sc_log(card->ctx,"piv_match_card_continued failed card->type:%d", card->type);
+	r = sc_lock(card);
+	if (r != SC_SUCCESS) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "sc_lock failed\n");
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_CARD);
+	}
+
+	/* setup the priv */
+	r = piv_init_priv(card);
+	if (r < 0)  {
+		sc_log(card->ctx,"piv_init_priv failed card->type:%d", card->type);
 		piv_finish(card);
+		sc_unlock(card);
 		/* tell sc_connect_card to try other drivers */
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_CARD);
 	}
 		
 	priv = PIV_DATA(card);
-
-	/* can not force the PIV driver to use non-PIV cards as tested in piv_card_match_continued */
-	if (!priv || card->type == -1)
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_CARD);
 
 	sc_log(card->ctx,
 	       "Max send = %"SC_FORMAT_LEN_SIZE_T"u recv = %"SC_FORMAT_LEN_SIZE_T"u card->type = %d",
@@ -3479,7 +3472,7 @@ static int piv_init(sc_card_t *card)
 	piv_process_discovery(card);
 
 	priv->pstate=PIV_STATE_NORMAL;
-	sc_unlock(card) ; /* obtained in piv_match */
+	sc_unlock(card);
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
