@@ -929,12 +929,6 @@ iasecc_pkcs15_fix_private_key_attributes(struct sc_profile *profile, struct sc_p
 	sc_log(ctx, "SDO AMB:%X, SCBS:%s", sdo_prvkey->docp.amb,
 			sc_dump_hex(sdo_prvkey->docp.scbs, IASECC_MAX_SCBS));
 
-	/* Doesn't do anything I think */
-	if (p15card->card->type == SC_CARD_TYPE_IASECC_LATVIAEID) {
-		rv = iasecc_pkcs15_add_algorithm_reference(p15card, key_info, IASECC_ALGORITHM_RSA_PKCS);
-		LOG_TEST_RET(ctx, rv, "Cannot add RSA_PKCS supported mechanism to Latvian EID");
-	}
-
 	for (ii=0;ii<IASECC_MAX_SCBS;ii++)   {
 		sc_log(ctx, "SBC(%i):%X", ii, sdo_prvkey->docp.scbs[ii]);
 		if (sdo_prvkey->docp.scbs[ii] == 0xFF)   {
