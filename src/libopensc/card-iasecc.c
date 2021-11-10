@@ -567,7 +567,9 @@ iasecc_init_latviaeid(struct sc_card *card)
 
 	LOG_FUNC_CALLED(ctx);
 
-	flags = IASECC_CARD_DEFAULT_FLAGS;
+	flags = SC_ALGORITHM_ONBOARD_KEY_GEN
+               | SC_ALGORITHM_RSA_PAD_PKCS1
+               | SC_ALGORITHM_RSA_HASH_NONE;
 
 	_sc_card_add_rsa_alg(card, 1024, flags, 0x10001);
 	_sc_card_add_rsa_alg(card, 2048, flags, 0x10001);
@@ -1859,6 +1861,7 @@ iasecc_set_security_env(struct sc_card *card,
 
 	rv = iasecc_sdo_convert_acl(card, &sdo, SC_AC_OP_INTERNAL_AUTHENTICATE, &auth_meth, &auth_ref);
 	LOG_TEST_RET(ctx, rv, "Cannot convert SC_AC_OP_INT_AUTH acl");
+	auth_meth = SC_AC_SCB;
 
 	aflags = env->algorithm_flags;
 
@@ -3470,9 +3473,19 @@ iasecc_compute_signature_at(struct sc_card *card,
 	if (env->operation != SC_SEC_OPERATION_AUTHENTICATE)
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "It's not SC_SEC_OPERATION_AUTHENTICATE");
 
+	static unsigned char OID_SHA256[] = {
+		0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86,
+		0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01, 0x05,
+		0x00, 0x04, 0x20
+	};
+
+	unsigned char data[64];
+	memcpy(data, OID_SHA256, sizeof(OID_SHA256));
+    memcpy(data + sizeof(OID_SHA256), in, in_len);
+
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x88, 0x00, 0x00);
-	apdu.datalen = in_len;
-	apdu.data = in;
+	apdu.datalen = in_len + sizeof(OID_SHA256);
+	apdu.data = data;
 	apdu.lc = in_len;
 	apdu.resp = rbuf;
 	apdu.resplen = sizeof(rbuf);
