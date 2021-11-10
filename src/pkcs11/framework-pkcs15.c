@@ -4552,7 +4552,6 @@ pkcs15_prkey_can_do(struct sc_pkcs11_session *session, void *obj,
 		LOG_FUNC_RETURN(context, CKR_FUNCTION_NOT_SUPPORTED);
 	token_algos = &fw_data->p15_card->tokeninfo->supported_algos[0];
 
-	pkinfo->algo_refs[1]=5;
 	for (ii=0;ii<SC_MAX_SUPPORTED_ALGORITHMS && pkinfo->algo_refs[ii];ii++)   {
 		/* Look for algorithm supported by token referenced in the list of key's algorithms */
 		for (jj=0;jj<SC_MAX_SUPPORTED_ALGORITHMS && (token_algos + jj)->reference; jj++)

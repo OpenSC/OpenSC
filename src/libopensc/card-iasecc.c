@@ -569,6 +569,7 @@ iasecc_init_latviaeid(struct sc_card *card)
 
 	flags = SC_ALGORITHM_ONBOARD_KEY_GEN
                | SC_ALGORITHM_RSA_PAD_PKCS1
+			   | SC_ALGORITHM_RSA_HASH_SHA256 // Maybe needed?
                | SC_ALGORITHM_RSA_HASH_NONE;
 
 	_sc_card_add_rsa_alg(card, 1024, flags, 0x10001);
