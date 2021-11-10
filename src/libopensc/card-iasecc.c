@@ -114,6 +114,13 @@ static const struct sc_atr_table iasecc_known_atrs[] = {
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
+// From https://github.com/eID-LV/Middleware/blob/b04c8376decd611c269460b896217e2a036273c1/opensc-0.12.2/src/pkcs11/mechanism.c#L474-L478
+static unsigned char LATVIANEID_OID_SHA256[] = {
+	0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86,
+	0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01, 0x05,
+	0x00, 0x04, 0x20
+};
+
 static struct sc_aid OberthurIASECC_AID = {
 	{0xA0,0x00,0x00,0x00,0x77,0x01,0x08,0x00,0x07,0x00,0x00,0xFE,0x00,0x00,0x01,0x00}, 16
 };
@@ -3468,25 +3475,23 @@ iasecc_compute_signature_at(struct sc_card *card,
 	struct sc_apdu apdu;
 	size_t offs = 0, sz = 0;
 	unsigned char rbuf[SC_MAX_APDU_BUFFER_SIZE];
+	unsigned char data[64];
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
 	if (env->operation != SC_SEC_OPERATION_AUTHENTICATE)
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "It's not SC_SEC_OPERATION_AUTHENTICATE");
 
-	static unsigned char OID_SHA256[] = {
-		0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86,
-		0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01, 0x05,
-		0x00, 0x04, 0x20
-	};
-
-	unsigned char data[64];
-	memcpy(data, OID_SHA256, sizeof(OID_SHA256));
-    memcpy(data + sizeof(OID_SHA256), in, in_len);
-
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x88, 0x00, 0x00);
-	apdu.datalen = in_len + sizeof(OID_SHA256);
-	apdu.data = data;
+	if (card->type == SC_CARD_TYPE_IASECC_LATVIAEID) {
+		memcpy(data, LATVIANEID_OID_SHA256, sizeof(LATVIANEID_OID_SHA256));
+		memcpy(data + sizeof(LATVIANEID_OID_SHA256), in, in_len);
+		apdu.datalen = in_len + sizeof(LATVIANEID_OID_SHA256);
+		apdu.data = data;
+	} else {
+		apdu.datalen = in_len;
+		apdu.data = in;
+	}
 	apdu.lc = in_len;
 	apdu.resp = rbuf;
 	apdu.resplen = sizeof(rbuf);
