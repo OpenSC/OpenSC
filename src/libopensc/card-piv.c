@@ -2937,19 +2937,15 @@ static int
 piv_finish(sc_card_t *card)
 {
 	piv_private_data_t * priv = PIV_DATA(card);
-	int i;
+	size_t i;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (priv) {
-		if (priv->w_buf)
-			free(priv->w_buf);
-		if (priv->offCardCertURL)
-			free(priv->offCardCertURL);
+		free(priv->w_buf);
+		free(priv->offCardCertURL);
 		for (i = 0; i < PIV_OBJ_LAST_ENUM - 1; i++) {
-			if (priv->obj_cache[i].obj_data)
-				free(priv->obj_cache[i].obj_data);
-			if (priv->obj_cache[i].internal_obj_data)
-				free(priv->obj_cache[i].internal_obj_data);
+			free(priv->obj_cache[i].obj_data);
+			free(priv->obj_cache[i].internal_obj_data);
 		}
 		free(priv);
 		card->drv_data = NULL; /* priv */
