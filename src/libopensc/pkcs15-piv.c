@@ -744,14 +744,14 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		/* See if the cert might be present or not. */
 		r = sc_card_ctl(card, SC_CARDCTL_PIV_OBJECT_PRESENT, &cert_info.path);
 		if (r == 1) {
-			sc_log(card->ctx,  "Cert can not be present,i=%d", i);
+			sc_log(card->ctx,  "%s cannot be present", certs[i].label);
 			continue;
 		}
 
 		r = sc_pkcs15_read_file(p15card, &cert_info.path, &cert_der.value, &cert_der.len);
 
 		if (r) {
-			sc_log(card->ctx,  "No cert found,i=%d", i);
+			sc_log(card->ctx,  "%s not found", certs[i].label);
 			continue;
 		}
 
@@ -766,9 +766,9 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 			}
 		}
 		/* following will find the cached cert in cert_info */
-		r =  sc_pkcs15_read_certificate(p15card, &cert_info, &cert_out);
+		r = sc_pkcs15_read_certificate(p15card, &cert_info, &cert_out);
 		if (r < 0 || cert_out == NULL || cert_out->key == NULL) {
-			sc_log(card->ctx,  "Failed to read/parse the certificate r=%d",r);
+			sc_log(card->ctx,  "Failed to parse %s", certs[i].label);
 			if (cert_out != NULL)
 				sc_pkcs15_free_certificate(cert_out);
 			free(cert_der.value);
@@ -928,7 +928,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 
 		r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
 		if (r < 0) {
-			sc_log(card->ctx,  " Failed to add cert obj r=%d",r);
+			sc_log(card->ctx,  " Failed to add %s", certs[i].label);
 			continue;
 		}
 	}
@@ -965,7 +965,6 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 			pin_info.attrs.pin.flags &= ~SC_PKCS15_PIN_FLAG_LOCAL;
 			label = "Global PIN";
 		}
-sc_log(card->ctx,  "DEE Adding pin %d label=%s",i, label);
 		strncpy(pin_obj.label, label, SC_PKCS15_MAX_LABEL_SIZE - 1);
 		pin_obj.flags = pins[i].obj_flags;
 		if (i == 0 && pin_info.attrs.pin.reference == 0x80) {
@@ -979,6 +978,7 @@ sc_log(card->ctx,  "DEE Adding pin %d label=%s",i, label);
 
 		r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
 		LOG_TEST_GOTO_ERR(card->ctx, r, "Failed to add PIN");
+		sc_log(card->ctx,  "Added PIN %d label=%s", i, label);
 	}
 
 	/* set public keys */
@@ -1019,7 +1019,7 @@ sc_log(card->ctx,  "DEE Adding pin %d label=%s",i, label);
 		if (ckis[i].cert_found == 0 ) { /*  no cert found */
 			char * filename = NULL;
 			
-			sc_log(card->ctx, "No cert for this pub key i=%d",i);
+			sc_log(card->ctx, "No certificate for %s", pubkeys[i].label);
 			
 			/*
 			 * If we used the piv-tool to generate a key,
