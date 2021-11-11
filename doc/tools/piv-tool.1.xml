@@ -63,7 +63,7 @@
 					<literal>01</literal> for 2DES, <literal>08</literal> for AES-128,
 					<literal>0A</literal> for AES-192 or <literal>0C</literal> for AES-256.
 					The key is provided by the card vendor. The environment variable
-					<varname>PIV_EXT_AUTH_KEY</varname> must point to either a binary file
+					<envar>PIV_EXT_AUTH_KEY</envar> must point to either a binary file
 					matching the length of the key or a text file containing
 					the key in the format:
 					<code>XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX</code>
