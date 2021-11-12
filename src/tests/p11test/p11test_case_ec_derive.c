@@ -301,6 +301,7 @@ int test_derive(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 		debug_print(" [ KEY %s ] EVP_PKEY_derive failed", o->id_str);
 		EVP_PKEY_CTX_free(pctx);
 		EVP_PKEY_free(evp_pkey);
+		free(secret);
 		return 1;
 	}
 	EVP_PKEY_CTX_free(pctx);
@@ -321,7 +322,7 @@ int test_derive(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 	/* Allocate memory for public key*/
 	if (pub_len == 0) {
 		debug_print(" [ KEY %s ] Failed to allocate memory for secret", o->id_str);
-		OPENSSL_free(secret);
+		free(secret);
 		EVP_PKEY_free(evp_pkey);
 		return 1;
 	}
@@ -329,7 +330,7 @@ int test_derive(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 	pub = malloc(pub_len);
 	if (pub == NULL) {
 		debug_print(" [ OK %s ] Failed to allocate memory", o->id_str);
-		OPENSSL_free(secret);
+		free(secret);
 		EVP_PKEY_free(evp_pkey);
 		return 1;
 	}
@@ -343,7 +344,7 @@ int test_derive(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 #endif
 		debug_print(" [ KEY %s ] Can not get public key", o->id_str);
 		EVP_PKEY_free(evp_pkey);
-		OPENSSL_free(secret);
+		free(secret);
 		free(pub);
 		return 1;
 	}
@@ -360,7 +361,7 @@ int test_derive(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 	}
 
 	free(pub);
-	OPENSSL_free(secret);
+	free(secret);
 	free(pkcs11_secret);
 	return rv;
 }
