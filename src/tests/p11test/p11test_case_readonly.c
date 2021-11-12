@@ -49,7 +49,7 @@
 			"\xdd\xa3\x76\x44\x2f\x50\xe1\xec" \
 			"\xd3\x8b\xcd\x6f\xc6\xce\x4e\xfd" \
 			"\xd3\x1a\x3f"
-#define BUFFER_SIZE		4096		
+#define BUFFER_SIZE		4096
 
 const unsigned char *const_message = (unsigned char *) MESSAGE_TO_SIGN;
 
