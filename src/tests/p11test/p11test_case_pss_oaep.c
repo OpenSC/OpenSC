@@ -189,44 +189,42 @@ CK_BYTE *hash_message(const CK_BYTE *message, size_t message_length,
     CK_MECHANISM_TYPE hash)
 {
 	CK_BYTE *out = NULL;
+	const EVP_MD *md = NULL;
+	size_t digest_len = 0;
 
 	switch (hash) {
 	case CKM_SHA224:
-		out = malloc(SHA224_DIGEST_LENGTH);
-		if (out == NULL)
-			return NULL;
-		EVP_Digest(message, message_length, out, NULL, EVP_sha224(), NULL);
+		digest_len = SHA224_DIGEST_LENGTH;
+		md = EVP_sha224();
 		break;
 
 	case CKM_SHA256:
-		out = malloc(SHA256_DIGEST_LENGTH);
-		if (out == NULL)
-			return NULL;
-		EVP_Digest(message, message_length, out, NULL, EVP_sha256(), NULL);
+		digest_len = SHA256_DIGEST_LENGTH;
+		md = EVP_sha256();
 		break;
 
 	case CKM_SHA384:
-		out = malloc(SHA384_DIGEST_LENGTH);
-		if (out == NULL)
-			return NULL;
-		EVP_Digest(message, message_length, out, NULL, EVP_sha384(), NULL);
+		digest_len = SHA384_DIGEST_LENGTH;
+		md = EVP_sha384();
 		break;
 
 	case CKM_SHA512:
-		out = malloc(SHA512_DIGEST_LENGTH);
-		if (out == NULL)
-			return NULL;
-		EVP_Digest(message, message_length, out, NULL, EVP_sha512(), NULL);
+		digest_len = SHA512_DIGEST_LENGTH;
+		md = EVP_sha512();
 		break;
 
 	case CKM_SHA_1:
 	default:
-		out = malloc(SHA_DIGEST_LENGTH);
-		if (out == NULL)
-			return NULL;
-		EVP_Digest(message, message_length, out, NULL, EVP_sha1(), NULL);
+		digest_len = SHA_DIGEST_LENGTH;
+		md = EVP_sha1();
 		break;
+	}
 
+	out = malloc(digest_len);
+	if (!out ||
+		EVP_Digest(message, message_length, out, NULL, md, NULL) != 1) {
+		free(out);
+		return NULL;
 	}
 	return out;
 }
