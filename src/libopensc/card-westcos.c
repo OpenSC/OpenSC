@@ -683,6 +683,10 @@ static int westcos_get_crypte_challenge(sc_card_t * card, const u8 * key,
 		return SC_ERROR_INTERNAL;
 	}
 	*len = tmplen;
+	if (EVP_EncryptFinal_ex(cctx, result + tmplen, &tmplen)  != 1) {
+		EVP_CIPHER_CTX_free(cctx);
+		return SC_ERROR_INTERNAL;
+    }
 	EVP_CIPHER_CTX_free(cctx);
 	return SC_SUCCESS;
 #else
