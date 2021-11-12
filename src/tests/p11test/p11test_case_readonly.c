@@ -77,11 +77,7 @@ rsa_x_509_pad_message(const unsigned char *message,
 		memset(pad_message + 2, 0xff, padding_len);
 	} else {
 		pad_message[1] = 0x02;
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
-		if (RAND_bytes_ex(NULL, pad_message + 2, padding_len, 0) != 1) {
-#else
 		if (RAND_bytes(pad_message + 2, padding_len) != 1) {
-#endif
 			debug_print("Can not generate random bytes.");
 		}
 	}
