@@ -484,12 +484,10 @@ int callback_public_keys(test_certs_t *objects,
 			EC_GROUP_free(ecgroup);
 			return -1;
 		}
-#if OPENSSL_VERSION_NUMBER < 0x30000000L
-		ecpoint = EC_POINT_bn2point(ecgroup, bn, NULL, NULL);
-#else
+
 		ecpoint = EC_POINT_hex2point(ecgroup, BN_bn2hex(bn), NULL, NULL);
-#endif
 		BN_free(bn);
+		
 		if (ecpoint == NULL) {
 			debug_print(" [WARN %s ] Can not convert EC_POINT from"
 				" BIGNUM to OpenSSL format", o->id_str);
