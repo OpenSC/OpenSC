@@ -1614,6 +1614,10 @@ int cwa_encode_apdu(sc_card_t * card,
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 	if (!legacy_provider)
 		legacy_provider = OSSL_PROVIDER_load(NULL, "legacy");
+	if (!legacy_provider) {
+		msg = "Failed to load legacy provider";
+		goto encode_end;
+	}
 #endif
 
 	if (EVP_EncryptInit_ex(cctx, EVP_des_ecb(), NULL, key, NULL) != 1 ||
@@ -1846,6 +1850,10 @@ int cwa_decode_response(sc_card_t * card,
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 	if (!legacy_provider)
 		legacy_provider = OSSL_PROVIDER_load(NULL, "legacy");
+	if (!legacy_provider) {
+		msg = "Failed to load legacy provider";
+		goto response_decode_end;
+	}
 #endif
 
 	if (EVP_EncryptInit_ex(cctx, EVP_des_ecb(), NULL, key, NULL) != 1 ||
