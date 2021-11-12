@@ -868,6 +868,10 @@ static int dnie_get_privkey(sc_card_t * card, EVP_PKEY ** ifd_privkey,
 	*ifd_privkey = EVP_PKEY_new();
 	int res = SC_ERROR_INTERNAL;
 	if (!ifd_rsa || !*ifd_privkey) {
+		if (ifd_rsa)
+			RSA_free(ifd_rsa);
+		if (*ifd_privkey)
+			EVP_PKEY_free(*ifd_privkey);
 #else
 	OSSL_PARAM_BLD *bld = NULL;
 	OSSL_PARAM *params = NULL;
@@ -908,6 +912,9 @@ static int dnie_get_privkey(sc_card_t * card, EVP_PKEY ** ifd_privkey,
 		OSSL_PARAM_BLD_free(bld);
 		OSSL_PARAM_free(params);
 		EVP_PKEY_CTX_free(ctx);
+		BN_free(ifd_rsa_n);
+		BN_free(ifd_rsa_e);
+		BN_free(ifd_rsa_d);
 		sc_log(card->ctx, "Cannot set RSA values for CA public key");
 		return SC_ERROR_INTERNAL;
 	}
