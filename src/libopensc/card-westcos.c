@@ -1108,7 +1108,7 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 				 const u8 * data, size_t data_len, u8 * out,
 				 size_t outlen)
 {
-	int r;
+	int r = SC_SUCCESS;
 	sc_file_t *keyfile = NULL;
 #ifdef ENABLE_OPENSSL
 	int idx = 0;
@@ -1118,6 +1118,7 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 	EVP_PKEY_CTX *ctx = NULL;
 	BIO *mem = BIO_new(BIO_s_mem());
 	EVP_PKEY *pkey = NULL;
+	size_t tmplen = 0;
 #endif
 
 	if (card == NULL)
@@ -1207,11 +1208,10 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 		goto out;
 	}
 
-#if 1
 	if (mode) {		/* decipher */
 		if (EVP_PKEY_decrypt_init(ctx) != 1 ||
 			EVP_PKEY_CTX_set_rsa_padding(ctx, pad) != 1 ||
-			(r = EVP_PKEY_decrypt(ctx, out, NULL, data, data_len)) != 1) {
+			EVP_PKEY_decrypt(ctx, out, &tmplen, data, data_len) != 1) {
 
 #ifdef DEBUG_SSL
 			print_openssl_error();
@@ -1226,7 +1226,7 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 	else {			/* sign */
 		if (EVP_PKEY_encrypt_init(ctx) != 1 ||
 			EVP_PKEY_CTX_set_rsa_padding(ctx, pad) != 1 ||
-			(r = EVP_PKEY_encrypt(ctx, out, NULL, data, data_len)) != 1) {
+			EVP_PKEY_encrypt(ctx, out, &tmplen, data, data_len) != 1) {
 
 #ifdef DEBUG_SSL
 			print_openssl_error();
@@ -1238,16 +1238,6 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 		}
 	}
 
-#else
-	if (RSA_sign(nid, data, data_len, out, &outlen, rsa) != 1) {
-		sc_log(card->ctx, 
-			"RSA_sign error %d \n", ERR_get_error());
-		r = SC_ERROR_UNKNOWN;
-		goto out;
-	}
-	r = outlen;
-
-#endif
 out:
 	if (mem)
 		BIO_free(mem);
