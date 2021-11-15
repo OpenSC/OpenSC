@@ -1723,7 +1723,7 @@ sc_pkcs15_convert_pubkey(struct sc_pkcs15_pubkey *pkcs15_key, void *evp_key)
 		struct sc_pkcs15_pubkey_rsa *dst = &pkcs15_key->u.rsa;
 		/* Get parameters */
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
-		const BIGNUM *src_n, *src_e = NULL;
+		const BIGNUM *src_n, *src_e;
 		RSA *src = NULL;
 		if (!(src = EVP_PKEY_get1_RSA(pk)))
 			return SC_ERROR_INCOMPATIBLE_KEY;
@@ -1733,7 +1733,7 @@ sc_pkcs15_convert_pubkey(struct sc_pkcs15_pubkey *pkcs15_key, void *evp_key)
 			return SC_ERROR_INTERNAL;
 		}
 #else
-		BIGNUM *src_n, *src_e = NULL;
+		BIGNUM *src_n = NULL, *src_e = NULL;
 		if (EVP_PKEY_get_bn_param(pk, OSSL_PKEY_PARAM_RSA_N, &src_n) != 1 ||
 			EVP_PKEY_get_bn_param(pk, OSSL_PKEY_PARAM_RSA_E, &src_e) != 1) {
 			BN_free(src_n);
@@ -1774,7 +1774,7 @@ sc_pkcs15_convert_pubkey(struct sc_pkcs15_pubkey *pkcs15_key, void *evp_key)
 			return SC_ERROR_INTERNAL;
 		}
 #else
-		BIGNUM *src_pub_key, *src_priv_key, *src_p, *src_q, *src_g;
+		BIGNUM *src_pub_key = NULL, *src_priv_key = NULL, *src_p = NULL, *src_q = NULL, *src_g = NULL;
 		if (EVP_PKEY_get_bn_param(pk, OSSL_PKEY_PARAM_PUB_KEY, &src_pub_key) != 1 ||
 			EVP_PKEY_get_bn_param(pk, OSSL_PKEY_PARAM_PRIV_KEY, &src_priv_key) != 1 ||
 			EVP_PKEY_get_bn_param(pk, OSSL_PKEY_PARAM_FFC_P, &src_p) != 1 ||
@@ -1910,19 +1910,17 @@ sc_pkcs15_convert_pubkey(struct sc_pkcs15_pubkey *pkcs15_key, void *evp_key)
 				dst->params.named_curve = strdup(group_name);
 		}
 #else
-		char *group_name = NULL; size_t group_name_len = 0;
+		char group_name[256];
 		if (EVP_PKEY_get_octet_string_param(pk, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, buf, buflen, NULL) != 1)
 			return SC_ERROR_INTERNAL;
-		EVP_PKEY_get_group_name(pk, NULL, 0, &group_name_len);
-		if (group_name_len != 0) {
-			if (!(group_name = malloc(group_name_len)) ||
-				EVP_PKEY_get_group_name(pk, group_name, group_name_len, NULL)) {
-				free(group_name);
-				return SC_ERROR_INTERNAL;
-			 }
-		}
+		if (EVP_PKEY_get_group_name(pk, group_name, sizeof(group_name), NULL) != 1)
+			return SC_ERROR_INTERNAL;
 		dst->params.named_curve = strdup(group_name);
-		free(group_name);
+		
+		/* Decode EC_POINT from a octet string */
+		if (EVP_PKEY_get_octet_string_param(pk, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, buf, buflen, &buflen) != 1) {
+			return SC_ERROR_INCOMPATIBLE_KEY;
+		}
 #endif
 
 		/* copy the public key */
