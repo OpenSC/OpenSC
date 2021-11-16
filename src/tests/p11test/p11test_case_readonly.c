@@ -25,6 +25,9 @@
 #include <openssl/md5.h>
 #include <openssl/ripemd.h>
 #include <openssl/rand.h>
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+# include <openssl/provider.h>
+#endif
 
 #define MESSAGE_TO_SIGN "Simple message for signing & verifying. " \
 	"It needs to be little bit longer to fit also longer keys and allow the truncation.\n" \
@@ -50,6 +53,10 @@
 			"\xd3\x8b\xcd\x6f\xc6\xce\x4e\xfd" \
 			"\xd3\x1a\x3f"
 #define BUFFER_SIZE		4096
+
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+OSSL_PROVIDER *legacy_provider = NULL;
+#endif
 
 const unsigned char *const_message = (unsigned char *) MESSAGE_TO_SIGN;
 
@@ -294,7 +301,14 @@ int sign_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 	CK_MECHANISM sign_mechanism = { mech->mech, mech->params, mech->params_len };
 	CK_ULONG sign_length = 0;
 	char *name;
-
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	if (!legacy_provider)
+		legacy_provider = OSSL_PROVIDER_load(NULL, "legacy");
+	if (!legacy_provider) {
+		debug_print(" [SKIP %s ] Failed to load legacy provider", o->id_str);
+		return 0;
+	}
+#endif
 	rv = fp->C_SignInit(info->session_handle, &sign_mechanism,
 		o->private_handle);
 	if (rv == CKR_KEY_TYPE_INCONSISTENT) {
@@ -304,8 +318,8 @@ int sign_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 		debug_print(" [SKIP %s ] Bad mechanism. Not supported?", o->id_str);
 		return 0;
 	} else if (rv != CKR_OK) {
-		debug_print("  C_SignInit: rv = 0x%.8lX\n", rv);
-		return -1;
+		debug_print(" [SKIP %s ] Not allowed to sign with this key?", o->id_str);
+		return 0;
 	}
 
 	always_authenticate(o, info);
@@ -422,6 +436,14 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 			md = EVP_md5();
 			break;
 		case CKM_RIPEMD160_RSA_PKCS:
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+			if (!legacy_provider)
+				legacy_provider = OSSL_PROVIDER_load(NULL, "legacy");
+			if (!legacy_provider) {
+				debug_print(" [SKIP %s ] Failed to load legacy provider", o->id_str);
+				return 0;
+			}
+#endif
 			md = EVP_ripemd160();
 			break;
 		default:
@@ -429,7 +451,7 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 			return 0;
 		}
 
-		if ((mdctx = EVP_MD_CTX_create()) == NULL ||
+		if ((mdctx = EVP_MD_CTX_new()) == NULL ||
 		    (rv = EVP_DigestVerifyInit(mdctx, NULL, md, NULL, o->key) <= 0) ||
 		    (rv = EVP_DigestVerify(mdctx, sign, sign_length, message, message_length)) != 1) {
 			fprintf(stderr, " [ ERROR %s ] Signature is not valid. Error: %s\n",
@@ -538,10 +560,11 @@ int verify_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 {
 	CK_RV rv;
 	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
-	CK_MECHANISM sign_mechanism = { mech->mech, mech->params, mech->params_len };
+	CK_MECHANISM sign_mechanism = { mech->mech, NULL_PTR, 0 };
+	static int verify_support = 0;
 	char *name;
 
-	if (!info->verify_support)
+	if (!verify_support)
 		goto openssl_verify;
 
 	/* try C_Verify() if it is supported */
@@ -549,7 +572,7 @@ int verify_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 		o->public_handle);
 	if (rv != CKR_OK) {
 		debug_print("   C_VerifyInit: rv = 0x%.8lX", rv);
-		info->verify_support = 0; /* avoid trying over and over again */
+		verify_support = 0; /* avoid trying over and over again */
 		goto openssl_verify;
 	}
 	if (multipart) {
@@ -582,7 +605,7 @@ int verify_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 		return 1;
 	}
 	debug_print("   %s: rv = 0x%.8lX", name, rv);
-	info->verify_support = 0; /* avoid trying over and over again */
+	verify_support = 0; /* avoid trying over and over again */
 
 openssl_verify:
 	debug_print(" [ KEY %s ] Falling back to openssl verification", o->id_str);
