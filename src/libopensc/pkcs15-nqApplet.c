@@ -102,12 +102,10 @@ static int add_nqapplet_certificate(sc_pkcs15_card_t *p15card, const char *id, c
 	memset(&cert_obj, 0, sizeof(cert_obj));
 
 	sc_pkcs15_format_id(id, &cert_info.id);
-	cert_info.authority = 0;
 	rv = get_nqapplet_certificate(card, data_id, &cert_info.value);
 	LOG_TEST_RET(card->ctx, rv, "Failed to get certificate");
 
 	strlcpy(cert_obj.label, name, sizeof(cert_obj.label));
-	cert_obj.flags = 0;
 
 	rv = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
 	LOG_TEST_RET(card->ctx, rv, "sc_pkcs15emu_add_x509_cert failed");
@@ -210,10 +208,7 @@ int sc_pkcs15emu_nqapplet_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
 		}
 	}
 
-	if (p15card->tokeninfo != NULL)
-	{
-		sc_pkcs15_free_tokeninfo(p15card->tokeninfo);
-	}
+	sc_pkcs15_free_tokeninfo(p15card->tokeninfo);
 
 	p15card->tokeninfo = sc_pkcs15_tokeninfo_new();
 	if (p15card->tokeninfo == NULL)
