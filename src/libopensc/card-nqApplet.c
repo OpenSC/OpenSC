@@ -266,7 +266,7 @@ static int nqapplet_get_challenge(struct sc_card *card, u8 * buf, size_t count)
 static int nqapplet_logout(struct sc_card *card)
 {
 	LOG_FUNC_CALLED(card->ctx);
-
+	/* selecting NQ-Applet again will reset the applet status and unauthorize PINs */
 	int rv = select_nqapplet(card, NULL, NULL, NULL, 0, NULL);
 	if ( rv != SC_SUCCESS )
 	{
@@ -281,12 +281,12 @@ int nqapplet_set_security_env(struct sc_card *card, const struct sc_security_env
 	/* Note: the NQ-Applet does not have APDU for SET SECURITY ENV, 
 	this function checks the intended parameters and sets card_data.key_reference */
 	nqapplet_driver_data_ptr data;
+	u8 key_reference = KEY_REFERENCE_NO_KEY;
 	
 	LOG_FUNC_CALLED(card->ctx);
 
 	data = (nqapplet_driver_data_ptr)card->drv_data;
 	data->key_reference = KEY_REFERENCE_NO_KEY;
-	u8 key_reference = KEY_REFERENCE_NO_KEY;
 
 	if(se_num != 0)
 	{
@@ -519,6 +519,7 @@ struct sc_card_driver * sc_get_nqApplet_driver(void)
 	nqapplet_operations.check_sw = nqapplet_check_sw;
 	nqapplet_operations.get_data = nqapplet_get_data;
 	nqapplet_operations.select_file = nqapplet_select_file;
+	nqapplet_operations.card_ctl = nqapplet_card_ctl;
 
 	/* unsupported operations */
 	nqapplet_operations.read_binary = NULL;
@@ -542,7 +543,6 @@ struct sc_card_driver * sc_get_nqApplet_driver(void)
 	nqapplet_operations.put_data = NULL;
 	nqapplet_operations.delete_record = NULL;
 	nqapplet_operations.read_public_key = NULL;
-	nqapplet_operations.card_ctl = nqapplet_card_ctl;
 
 	/* let iso driver handle these operations
 	nqapplet_operations.pin_cmd;
