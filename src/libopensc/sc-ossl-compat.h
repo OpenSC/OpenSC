@@ -103,6 +103,10 @@ extern "C" {
 #define FIPS_mode()                             OSSL_PROVIDER_available(NULL, "fips")
 #endif
 
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+#define EVP_PKEY_eq                             EVP_PKEY_cmp
+#endif
+
 /*
  * OpenSSL-1.1.0-pre5 has hidden the RSA and DSA structures
  * One can no longer use statements like rsa->n = ...
