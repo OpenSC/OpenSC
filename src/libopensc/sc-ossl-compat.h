@@ -99,12 +99,12 @@ extern "C" {
 #include <openssl/provider.h>
 #define EC_POINT_get_affine_coordinates_GFp     EC_POINT_get_affine_coordinates
 #define EC_POINT_set_affine_coordinates_GFp     EC_POINT_set_affine_coordinates
-#define EVP_PKEY_CTX_set_rsa_keygen_pubexp      EVP_PKEY_CTX_set1_rsa_keygen_pubexp
 #define FIPS_mode()                             OSSL_PROVIDER_available(NULL, "fips")
 #endif
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 #define EVP_PKEY_eq                             EVP_PKEY_cmp
+#define EVP_PKEY_CTX_set1_rsa_keygen_pubexp     EVP_PKEY_CTX_set_rsa_keygen_pubexp
 #endif
 
 /*
