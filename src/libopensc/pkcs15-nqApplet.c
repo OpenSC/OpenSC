@@ -21,10 +21,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "cards.h"
 #include "common/compat_strlcpy.h"
 #include "log.h"
 #include "pkcs15.h"
-#include "cards.h"
 
 static const char name_Card[] = "NQ-Applet";
 static const char name_Vendor[] = "NXP";
@@ -38,17 +38,14 @@ static int get_nqapplet_certificate(sc_card_t *card, u8 data_id, struct sc_pkcs1
 
 	rv = sc_get_data(card, data_id, buffer, cb_buffer);
 	LOG_TEST_RET(card->ctx, rv, "GET DATA failed");
-	if (rv == 0)
-	{
+	if (rv == 0) {
 		LOG_TEST_RET(card->ctx, SC_ERROR_FILE_NOT_FOUND, "No certificate data returned");
 	}
 
-	if (cert_info != NULL)
-	{
+	if (cert_info != NULL) {
 		free(cert_info->value);
 		cert_info->value = malloc(rv);
-		if (cert_info->value != NULL)
-		{
+		if (cert_info->value != NULL) {
 			cert_info->len = rv;
 			memcpy(cert_info->value, buffer, rv);
 		}
@@ -71,13 +68,14 @@ static int add_nqapplet_pin(sc_pkcs15_card_t *p15card, const char *id, u8 refere
 	sc_pkcs15_format_id(id, &pin_info.auth_id);
 	pin_info.auth_type = SC_PKCS15_PIN_AUTH_TYPE_PIN;
 	pin_info.attrs.pin.reference = reference;
-	pin_info.attrs.pin.flags = SC_PKCS15_PIN_FLAG_INITIALIZED | SC_PKCS15_PIN_FLAG_CASE_SENSITIVE | SC_PKCS15_PIN_TYPE_FLAGS_PIN_GLOBAL | SC_PKCS15_PIN_AUTH_TYPE_PIN;
+	pin_info.attrs.pin.flags = SC_PKCS15_PIN_FLAG_INITIALIZED | SC_PKCS15_PIN_FLAG_CASE_SENSITIVE |
+	                           SC_PKCS15_PIN_TYPE_FLAGS_PIN_GLOBAL | SC_PKCS15_PIN_AUTH_TYPE_PIN;
 	pin_info.attrs.pin.type = SC_PKCS15_PIN_TYPE_UTF8;
 	pin_info.attrs.pin.min_length = 6;
 	pin_info.attrs.pin.stored_length = 6;
 	pin_info.attrs.pin.max_length = 6;
 	pin_info.attrs.pin.pad_char = '\0';
-	pin_info.tries_left = -1; //TODO
+	pin_info.tries_left = -1; // TODO
 	pin_info.max_tries = 3;
 
 	strlcpy(pin_obj.label, "UserPIN", sizeof(pin_obj.label));
@@ -113,7 +111,8 @@ static int add_nqapplet_certificate(sc_pkcs15_card_t *p15card, const char *id, c
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
-static int add_nqapplet_private_key(sc_pkcs15_card_t *p15card, const char *id, int reference, const char *name, const char *pin_id, unsigned int usage)
+static int add_nqapplet_private_key(sc_pkcs15_card_t *p15card, const char *id, int reference,
+                                    const char *name, const char *pin_id, unsigned int usage)
 {
 	int rv;
 	struct sc_pkcs15_prkey_info prkey_info;
@@ -157,7 +156,8 @@ static int add_nqapplet_objects(sc_pkcs15_card_t *p15card)
 	LOG_TEST_RET(card->ctx, rv, "Failed to add Auth. certificate");
 
 	// 2.2) PrK.CH.Auth
-	rv = add_nqapplet_private_key(p15card, "1", 0x01, "PrK.CH.Auth", "1", SC_PKCS15_PRKEY_USAGE_SIGN | SC_PKCS15_PRKEY_USAGE_DECRYPT);
+	rv = add_nqapplet_private_key(p15card, "1", 0x01, "PrK.CH.Auth", "1",
+	                              SC_PKCS15_PRKEY_USAGE_SIGN | SC_PKCS15_PRKEY_USAGE_DECRYPT);
 	LOG_TEST_RET(card->ctx, rv, "Failed to add Auth. private key");
 
 	// 3.1) C.CH.Encr
@@ -177,8 +177,7 @@ int sc_pkcs15emu_nqapplet_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
 	sc_context_t *ctx;
 	sc_card_t *card;
 
-	if (!p15card || !p15card->card || !p15card->card->ctx)
-	{
+	if (!p15card || !p15card->card || !p15card->card->ctx) {
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
@@ -187,8 +186,7 @@ int sc_pkcs15emu_nqapplet_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 
-	if (card->type != SC_CARD_TYPE_NQ_APPLET)
-	{
+	if (card->type != SC_CARD_TYPE_NQ_APPLET) {
 		sc_log(p15card->card->ctx, "Unsupported card type: %d", card->type);
 		return SC_ERROR_WRONG_CARD;
 	}
@@ -196,11 +194,9 @@ int sc_pkcs15emu_nqapplet_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
 	rv = add_nqapplet_objects(p15card);
 	LOG_TEST_RET(ctx, rv, "Failed to add PKCS15");
 
-	if (aid != NULL)
-	{
+	if (aid != NULL) {
 		struct sc_file *file = sc_file_new();
-		if (file != NULL)
-		{
+		if (file != NULL) {
 			/* PKCS11 depends on the file_app object, provide MF */
 			sc_format_path("3f00", &file->path);
 			sc_file_free(p15card->file_app);
@@ -211,12 +207,9 @@ int sc_pkcs15emu_nqapplet_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
 	sc_pkcs15_free_tokeninfo(p15card->tokeninfo);
 
 	p15card->tokeninfo = sc_pkcs15_tokeninfo_new();
-	if (p15card->tokeninfo == NULL)
-	{
+	if (p15card->tokeninfo == NULL) {
 		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "unable to create tokeninfo struct");
-	}
-	else
-	{
+	} else {
 		char serial_hex[SC_MAX_SERIALNR * 2 + 2];
 
 		sc_bin_to_hex(card->serialnr.value, card->serialnr.len, serial_hex, sizeof(serial_hex), 0);
