@@ -1344,11 +1344,8 @@ do_read_check_certificate(sc_pkcs15_cert_t *sc_oldcert,
 	r = SC_ERROR_INVALID_ARGUMENTS;
 	if (oldpk_type == newpk_type)
 	{
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
-		if (EVP_PKEY_eq(oldpk, newpk))
-			r = 0;
-#elif  OPENSSL_VERSION_NUMBER >= 0x10002000L
-		if (EVP_PKEY_cmp(oldpk, newpk) == 1)
+#if  OPENSSL_VERSION_NUMBER >= 0x10002000L
+		if (EVP_PKEY_eq(oldpk, newpk) == 1)
 			r = 0;
 #else
 		if ((oldpk_type == EVP_PKEY_DSA) &&
