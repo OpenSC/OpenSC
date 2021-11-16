@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "opensc.h"
 #include "asn1.h"
 #include "cardctl.h"
 #include "internal.h"

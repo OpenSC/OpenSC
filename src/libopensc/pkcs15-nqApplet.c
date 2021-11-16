@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "opensc.h"
 #include "cards.h"
 #include "common/compat_strlcpy.h"
 #include "log.h"
