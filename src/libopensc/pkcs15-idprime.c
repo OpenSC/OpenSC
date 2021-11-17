@@ -269,8 +269,10 @@ static int sc_pkcs15emu_idprime_init(sc_pkcs15_card_t *p15card)
 		cert_out->key = NULL;
 fail:
 		sc_pkcs15_free_certificate(cert_out);
-		if (r < 0)
+		if (r < 0) {
+			(card->ops->card_ctl)(card, SC_CARDCTL_IDPRIME_FINAL_GET_OBJECTS, &count);
 			LOG_FUNC_RETURN(card->ctx, r); /* should not fail */
+		}
 
 	}
 	r = (card->ops->card_ctl)(card, SC_CARDCTL_IDPRIME_FINAL_GET_OBJECTS, &count);
