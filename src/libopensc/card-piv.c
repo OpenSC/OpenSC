@@ -629,28 +629,24 @@ err:
 }
 
 
-static int piv_select_aid(sc_card_t* card, u8* response, size_t *responselen)
+static int piv_select_aid(sc_card_t* card, u8* response, size_t responselen)
 {
 	sc_apdu_t apdu;
 	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
 
-	sc_format_apdu(card, &apdu,
-		response == NULL ? SC_APDU_CASE_3_SHORT : SC_APDU_CASE_4_SHORT, 0xA4, 0x04, 0x00);
-	apdu.lc = piv_aid.len;
-	apdu.data = piv_aid.value;
-	apdu.datalen = piv_aid.len;
-	apdu.resp = response;
-	apdu.resplen = responselen ? *responselen : 0;
-	apdu.le = response == NULL ? 0 : 256; /* could be 21  for fci */
+	sc_format_apdu_ex(&apdu, 0x00, 0xA4, 0x04, 0x00,
+			piv_aid.value, piv_aid.len, response, responselen);
 
 	r = sc_transmit_apdu(card, &apdu);
-	if (responselen)
-		*responselen = apdu.resplen;
 	LOG_TEST_RET(card->ctx, r, "PIV select failed");
 
-	LOG_FUNC_RETURN(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2));
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	LOG_TEST_RET(card->ctx, r, "Card returned error");
+
+	r = apdu.resplen;
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 /* find the PIV AID on the card. If card->type already filled in,
@@ -659,11 +655,10 @@ static int piv_select_aid(sc_card_t* card, u8* response, size_t *responselen)
 
 static int piv_find_aid(sc_card_t * card)
 {
-	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
+	u8 rbuf[SC_READER_SHORT_APDU_MAX_RECV_SIZE];
 	int r;
 	const u8 *tag;
 	size_t taglen;
-	size_t resplen = sizeof(rbuf);
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -671,12 +666,12 @@ static int piv_find_aid(sc_card_t * card)
 	 * that we know about.
 	 */
 
-	r = piv_select_aid(card, rbuf, &resplen);
+	r = piv_select_aid(card, rbuf, sizeof(rbuf));
 	if (r < 0)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NO_CARD_SUPPORT);
 
 	/* read PIV Card Application Property Template and Application Identifier of application */
-	if (NULL != (tag = sc_asn1_find_tag(card->ctx, rbuf, resplen, 0x61, &taglen))
+	if (NULL != (tag = sc_asn1_find_tag(card->ctx, rbuf, r, 0x61, &taglen))
 			&& NULL != (tag = sc_asn1_find_tag(card->ctx, tag, taglen, 0x4F, &taglen))) {
 		switch (taglen) {
 			case 11:
@@ -3663,7 +3658,6 @@ static int piv_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 {
 	int r = 0;
 	u8 temp[256];
-	size_t templen = sizeof(temp);
 	piv_private_data_t * priv = PIV_DATA(card); /* may be null */
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
@@ -3691,7 +3685,7 @@ static int piv_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 
 	if (r < 0) {
 		if (was_reset > 0 || !(priv->card_issues & CI_PIV_AID_LOSE_STATE)) {
-			r = piv_select_aid(card, temp, &templen);
+			r = piv_select_aid(card, temp, sizeof(temp));
 			sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH piv_select_aid card->type:%d r:%d\n", card->type, r);
 		} else {
 			r = 0; /* can't do anything with this card, hope there was no interference */
