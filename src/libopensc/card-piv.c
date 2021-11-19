@@ -476,7 +476,7 @@ piv_find_obj_by_containerid(sc_card_t *card, const u8 * str)
 }
 
 /*
- * Send a command and receive data. There is always something to send.
+ * Send a command and receive data.
  * Used by  GET DATA, PUT DATA, GENERAL AUTHENTICATE
  * and GENERATE ASYMMETRIC KEY PAIR.
  * GET DATA may call to get the first 128 bytes to get the length from the tag.
@@ -491,46 +491,25 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	r = sc_lock(card);
-	if (r != SC_SUCCESS)
-		LOG_FUNC_RETURN(card->ctx, r);
+	sc_format_apdu_ex(&apdu, 0x00, ins, p1, p2,
+			sendbuf, sendbuflen, recvbuf, recvbuflen);
 
-	sc_format_apdu(card, &apdu,
-			recvbuf ? SC_APDU_CASE_4_SHORT: SC_APDU_CASE_3_SHORT,
-			ins, p1, p2);
-	apdu.flags |= SC_APDU_FLAGS_CHAINING;
-	apdu.lc = sendbuflen;
-	apdu.datalen = sendbuflen;
-	apdu.data = sendbuf;
-
-	if (recvbuf && recvbuflen) {
-		apdu.le = (recvbuflen > 256) ? 256 : recvbuflen;
-		apdu.resplen = recvbuflen;
-	} else {
-		 apdu.le = 0;
-		 apdu.resplen = 0;
+	/* with chaining and automatic GET RESPONSE, sc_transmit_apdu() will
+	 * actually tranceive all objects even if they don't fit the APDU */
+	if (apdu.lc > sc_get_max_send_size(card)) {
+		apdu.flags |= SC_APDU_FLAGS_CHAINING;
 	}
-	apdu.resp =  recvbuf;
+	if (apdu.le > sc_get_max_recv_size(card)) {
+		apdu.le = sc_get_max_recv_size(card);
+	}
 
-	/* with new adpu.c and chaining, this actually reads the whole object */
 	r = sc_transmit_apdu(card, &apdu);
-
-	if (r < 0) {
-		sc_log(card->ctx, "Transmit failed");
-		goto err;
-	}
+	LOG_TEST_RET(card->ctx, r, "Transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-
-	if (r < 0) {
-		sc_log(card->ctx,  "Card returned error ");
-		goto err;
-	}
+	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
 	r = apdu.resplen;
-
-err:
-	sc_unlock(card);
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
