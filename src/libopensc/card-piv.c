@@ -2114,11 +2114,14 @@ static int piv_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 	LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 }
 
+#define TAG_DYNAMIC_AUTH_TEMPL 0x7C
+#define TAG_CHALLENGE 0x80
+
 static int piv_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 {
 	/* Dynamic Authentication Template (Challenge) */
-	u8 sbuf[] = {0x7c, 0x02, 0x81, 0x00};
-	u8 rbuf[4096];
+	u8 sbuf[] = {TAG_DYNAMIC_AUTH_TEMPL, 0x02, TAG_CHALLENGE, 0x00};
+	u8 rbuf[256];
 	const u8 *p;
 	size_t out_len = 0;
 	int r;
@@ -2128,8 +2131,8 @@ static int piv_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 	LOG_FUNC_CALLED(card->ctx);
 
 	if (priv->card_issues & CI_NO_RANDOM) {
-		r = SC_ERROR_NOT_SUPPORTED;
-		LOG_TEST_GOTO_ERR(card->ctx, r, "No support for random data");
+		LOG_TEST_RET(card->ctx, SC_ERROR_NOT_SUPPORTED,
+				"No support for random data");
 	}
 
 	/* NIST 800-73-3 says use 9B, previous versions used 00 */
@@ -2147,17 +2150,15 @@ static int piv_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 			r = SC_ERROR_NOT_SUPPORTED;
 		}
 	}
-	LOG_TEST_GOTO_ERR(card->ctx, r, "GENERAL AUTHENTICATE failed");
+	LOG_TEST_RET(card->ctx, r, "GENERAL AUTHENTICATE failed");
 
 	p = rbuf;
-	r = sc_asn1_read_tag(&p, r, &cla, &tag, &out_len);
-	if (r < 0 || (cla|tag) != 0x7C) {
-		LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_INVALID_DATA, "Can't find Dynamic Authentication Template");
-	}
-
-	r = sc_asn1_read_tag(&p, out_len, &cla, &tag, &out_len);
-	if (r < 0 || (cla|tag) != 0x81) {
-		LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_INVALID_DATA, "Can't find Challenge");
+	if (SC_SUCCESS != sc_asn1_read_tag(&p, r, &cla, &tag, &out_len)
+			|| (cla|tag) != TAG_DYNAMIC_AUTH_TEMPL
+			|| SC_SUCCESS != sc_asn1_read_tag(&p, out_len, &cla, &tag, &out_len)
+			|| (cla|tag) != TAG_CHALLENGE) {
+		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_DATA,
+				"Can't find Challenge in Dynamic Authentication Template");
 	}
 
 	if (len < out_len) {
@@ -2167,9 +2168,7 @@ static int piv_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 
 	r = (int) out_len;
 
-err:
 	LOG_FUNC_RETURN(card->ctx, r);
-
 }
 
 static int
