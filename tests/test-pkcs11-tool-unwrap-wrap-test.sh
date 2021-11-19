@@ -5,7 +5,7 @@ echo "======================================================="
 echo "Setup SoftHSM"
 echo "======================================================="
 if [[ ! -f $P11LIB ]]; then
-    echo "WARNINIG: The SoftHSM is not installed. Can not run this test"
+    echo "WARNING: The SoftHSM is not installed. Can not run this test"
     exit 77;
 fi
 # The Ubuntu has old softhsm version not supporting this feature
@@ -66,11 +66,11 @@ echo "======================================================="
 echo " Wrap test"
 echo "======================================================="
 
-$PKCS11_TOOL --module="$P11LIB" --pin "$PIN" --wrap --mechanism RSA-PKCS --id "$ID1" --application-id  "$ID3" --output-file wraped.key
+$PKCS11_TOOL --module="$P11LIB" --pin "$PIN" --wrap --mechanism RSA-PKCS --id "$ID1" --application-id  "$ID3" --output-file wrapped.key
 assert $? "Fail, unable to wrap"
-$PKCS11_TOOL --module="$P11LIB" --pin "$PIN" --decrypt --mechanism RSA-PKCS --id "$ID1" --input-file wraped.key --output-file plain_wraped.key
+$PKCS11_TOOL --module="$P11LIB" --pin "$PIN" --decrypt --mechanism RSA-PKCS --id "$ID1" --input-file wrapped.key --output-file plain_wrapped.key
 assert $? "Fail, unable to decrypt wrapped key"
-cmp plain_wraped.key aes_plain_key >/dev/null 2>/dev/null
+cmp plain_wrapped.key aes_plain_key >/dev/null 2>/dev/null
 assert $? "wrapped key after decipher does not match the original key"
 
 echo "======================================================="
@@ -78,6 +78,6 @@ echo "Cleanup"
 echo "======================================================="
 softhsm_cleanup
 
-rm rsa_pub.key aes_plain_key aes_wrapped_key aes_ciphertext_pkcs11.data aes_ciphertext_openssl.data aes_plain.data generic_extracted_key wraped.key plain_wraped.key
+rm rsa_pub.key aes_plain_key aes_wrapped_key aes_ciphertext_pkcs11.data aes_ciphertext_openssl.data aes_plain.data generic_extracted_key wrapped.key plain_wrapped.key
 
 exit $ERRORS
