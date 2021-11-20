@@ -21,7 +21,7 @@
 #include "config.h"
 #endif
 
-#include "fread_to_eof.h"
+#include "common/fread_to_eof.h"
 #include "libopensc/asn1.h"
 #include "opensc-asn1-cmdline.h"
 #include <stdlib.h>

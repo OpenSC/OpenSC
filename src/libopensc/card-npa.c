@@ -35,8 +35,7 @@
 #include <openssl/evp.h>
 #endif
 
-static int fread_to_eof(const char *file, unsigned char **buf, size_t *buflen);
-#include "../tools/fread_to_eof.c"
+#include "common/fread_to_eof.h"
 
 struct npa_drv_data {
 	const char *can;

@@ -8,7 +8,7 @@ dist_noinst_DATA = \
 	LICENSE.compat_getopt compat_getopt.txt \
 	compat_getopt_main.c \
 	README.compat_strlcpy compat_strlcpy.3
-noinst_HEADERS = compat_strlcat.h compat_strlcpy.h compat_strnlen.h compat_getpass.h compat_getopt.h simclist.h libpkcs11.h libscdl.h
+noinst_HEADERS = compat_strlcat.h compat_strlcpy.h compat_strnlen.h compat_getpass.h compat_getopt.h simclist.h libpkcs11.h libscdl.h fread_to_eof.h
 
 AM_CPPFLAGS = -I$(top_srcdir)/src
 
@@ -21,7 +21,8 @@ libcompat_la_SOURCES = \
 	compat_getopt.c \
 	compat_report_rangecheckfailure.c \
 	compat___iob_func.c \
-	simclist.c
+	simclist.c \
+	fread_to_eof.c
 
 compat_getopt_main_LDADD = libcompat.la
 
@@ -40,6 +41,7 @@ TIDY_FILES = \
 	compat_report_rangecheckfailure.c \
 	compat___iob_func.c \
 	simclist.c simclist.h \
+	fread_to_eof.c fread_to_eof.h \
 	libpkcs11.c libscdl.c
 
 check-local:

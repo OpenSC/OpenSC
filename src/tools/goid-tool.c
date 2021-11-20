@@ -21,7 +21,7 @@
 #include "config.h"
 #endif
 
-#include "fread_to_eof.h"
+#include "common/fread_to_eof.h"
 #include <string.h>
 #include "goid-tool-cmdline.h"
 #include "libopensc/asn1.h"

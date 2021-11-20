@@ -23,7 +23,7 @@ do_subst = $(SED) \
 MAINTAINERCLEANFILES = $(srcdir)/Makefile.in $(srcdir)/versioninfo-tools.rc $(srcdir)/versioninfo-opensc-notify.rc
 EXTRA_DIST = Makefile.mak versioninfo-tools.rc.in versioninfo-opensc-notify.rc.in goid-tool.ggo.in npa-tool.ggo.in opensc-notify.ggo.in egk-tool.ggo.in opensc-asn1.ggo.in org.opensc.notify.desktop.in exe.manifest pkcs11-register.desktop.in org.opensc-project.mac.pkcs11-register.plist.in org.opensc-project.mac.opensc-notify.plist.in
 
-noinst_HEADERS = util.h fread_to_eof.h \
+noinst_HEADERS = util.h \
 	egk-tool-cmdline.h goid-tool-cmdline.h npa-tool-cmdline.h \
 	opensc-asn1-cmdline.h opensc-notify-cmdline.h pkcs11-register-cmdline.h \
 	openpgp-tool-helpers.h
@@ -89,7 +89,7 @@ dnie_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
 gids_tool_SOURCES = gids-tool.c util.c
 gids_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
 
-npa_tool_SOURCES = npa-tool.c fread_to_eof.c util.c npa-tool-cmdline.c
+npa_tool_SOURCES = npa-tool.c util.c npa-tool-cmdline.c
 npa_tool_LDADD = $(top_builddir)/src/libopensc/libopensc.la \
 				 $(OPENPACE_LIBS)
 npa_tool_CFLAGS = -I$(top_srcdir)/src $(OPENPACE_CFLAGS) $(OPENSSL_CFLAGS)
@@ -114,7 +114,7 @@ if HAVE_UNKNOWN_WARNING_OPTION
 egk_tool_CFLAGS += -Wno-unknown-warning-option
 endif
 
-goid_tool_SOURCES = goid-tool.c util.c fread_to_eof.c goid-tool-cmdline.c
+goid_tool_SOURCES = goid-tool.c util.c goid-tool-cmdline.c
 goid_tool_LDADD = $(top_builddir)/src/libopensc/libopensc.la $(OPENPACE_LIBS)
 goid_tool_CFLAGS = -I$(top_srcdir)/src $(OPENPACE_CFLAGS)
 goid_tool_CFLAGS += -Wno-unused-but-set-variable
@@ -122,7 +122,7 @@ if HAVE_UNKNOWN_WARNING_OPTION
 goid_tool_CFLAGS += -Wno-unknown-warning-option
 endif
 
-opensc_asn1_SOURCES = opensc-asn1.c fread_to_eof.c opensc-asn1-cmdline.c
+opensc_asn1_SOURCES = opensc-asn1.c opensc-asn1-cmdline.c
 opensc_asn1_LDADD = $(top_builddir)/src/libopensc/libopensc.la $(OPTIONAL_ZLIB_LIBS)
 opensc_asn1_CFLAGS = -I$(top_srcdir)/src $(OPTIONAL_ZLIB_CFLAGS)
 opensc_asn1_CFLAGS += -Wno-unused-but-set-variable
@@ -130,7 +130,7 @@ if HAVE_UNKNOWN_WARNING_OPTION
 opensc_asn1_CFLAGS += -Wno-unknown-warning-option
 endif
 
-pkcs11_register_SOURCES = pkcs11-register.c fread_to_eof.c pkcs11-register-cmdline.c
+pkcs11_register_SOURCES = pkcs11-register.c pkcs11-register-cmdline.c
 pkcs11_register_CFLAGS = -I$(top_srcdir)/src
 pkcs11_register_CFLAGS += -Wno-unused-but-set-variable -Wno-unused-function
 pkcs11_register_LDADD = \
