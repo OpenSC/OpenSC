@@ -49,7 +49,7 @@ else
 
 	if [ "$1" == "ossl3" -o "$2" == "ossl3" ]; then
 		# without -Werror, because of rest of deprecated API
-		./configure  --disable-dependency-tracking --disable-strict CFLAGS="-Wall -Wextra -Wno-unused-parameter -Wstrict-aliasing=2 -g -O2"
+		./configure  --disable-dependency-tracking --disable-strict CFLAGS="-Wall -Wextra -Wno-unused-parameter -Wstrict-aliasing=2"
 	else
 		./configure  --disable-dependency-tracking
 	fi
@@ -63,7 +63,7 @@ fi
 # this is broken in old ubuntu
 if [ "$1" == "dist" ]; then
 	if [ "$1" == "ossl3" -o "$2" == "ossl3" ]; then
-		make distcheck DISTCHECK_CONFIGURE_FLAGS="--disable-strict CFLAGS=\"-Wall -Wextra -Wno-unused-parameter -Wstrict-aliasing=2 -g -O2\""
+		make distcheck DISTCHECK_CONFIGURE_FLAGS="--disable-strict CFLAGS=\"-Wall -Wextra -Wno-unused-parameter -Wstrict-aliasing=2\""
 	else
 		make distcheck
 	fi
