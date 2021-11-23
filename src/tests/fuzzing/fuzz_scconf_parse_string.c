@@ -28,9 +28,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define MAX_SIZE 16000
+
 int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
     scconf_context *ctx = NULL;
     char *buf = NULL;
+
+    if (size > MAX_SIZE)
+        return 0;
 
     if (!(buf = malloc(size + 1)))
         return 0;
