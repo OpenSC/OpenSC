@@ -630,7 +630,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		sc_path_set(&obj_info.path, SC_PATH_TYPE_PATH, piv_obj->containerid, 2, 0, -1);
 
 		/* See if the object can not be present on the card */
-		r = sc_card_ctl(card, SC_CARDCTL_PIV_OBJECT_PRESENT, &obj_info.path);
+		r = sc_card_ctl(card, SC_CARDCTL_PIV_OBJECT_PRESENT, (void *)&objects[i].enumtag);
 		if (r == 1)
 			continue; /* Not on card, do not define the object */
 			
@@ -715,7 +715,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		cert_obj.flags = certs[i].obj_flags;
 
 		/* See if the cert might be present or not. */
-		r = sc_card_ctl(card, SC_CARDCTL_PIV_OBJECT_PRESENT, &cert_info.path);
+		r = sc_card_ctl(card, SC_CARDCTL_PIV_OBJECT_PRESENT, (void *)&certs[i].enumtag);
 		if (r == 1) {
 			sc_log(card->ctx,  "%s cannot be present", piv_obj->name);
 			continue;

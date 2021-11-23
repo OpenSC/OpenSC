@@ -1903,14 +1903,13 @@ piv_get_serial_nr_from_CHUI(sc_card_t* card, sc_serial_number_t* serial)
  * pkcs15-piv.c calls this via cardctl.
  */
 
-static int piv_is_object_present(sc_card_t *card, u8 *ptr)
+static int piv_is_object_present(sc_card_t *card, const enum piv_enumtag *enumtag)
 {
 	piv_private_data_t * priv = PIV_DATA(card);
 	int r = 0;
-	int enumtag;
 
-	enumtag = piv_find_obj_by_containerid(card, ptr);
-	if (enumtag >= 0 && priv->obj_cache[enumtag].flags & PIV_OBJ_CACHE_NOT_PRESENT)
+	if (enumtag != NULL && *enumtag >= 0 && *enumtag < PIV_OBJ_LAST_ENUM
+			&& priv->obj_cache[*enumtag].flags & PIV_OBJ_CACHE_NOT_PRESENT)
 		r = 1;
 
 	LOG_FUNC_RETURN(card->ctx, r);
