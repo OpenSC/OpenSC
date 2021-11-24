@@ -56,6 +56,7 @@
 #include "libopensc/asn1.h"
 #include "util.h"
 #include "libopensc/sc-ossl-compat.h"
+#include "common/fread_to_eof.h"
 
 static const char *app_name = "piv-tool";
 
@@ -116,29 +117,13 @@ static int load_object(const char * object_id, const char * object_file)
 	u8 *body;
 	size_t bodylen;
 	int r = -1;
-	struct stat stat_buf;
 
-    if(!object_file || (fp=fopen(object_file, "rb")) == NULL){
-        printf("Cannot open object file, %s %s\n",
-			(object_file)?object_file:"", strerror(errno));
+	if(1 != fread_to_eof(object_file, &der, &derlen)) {
+		printf("Cannot open object file, %s %s\n",
+				(object_file)?object_file:"", strerror(errno));
 		goto err;
-    }
+	}
 
-	if (0 != stat(object_file, &stat_buf)) {
-		printf("unable to read file %s\n",object_file);
-		goto err;
-	}
-	derlen = stat_buf.st_size;
-	der = malloc(derlen);
-	if (der == NULL) {
-		printf("file %s is too big, %lu\n",
-		object_file, (unsigned long)derlen);
-		goto err;
-	}
-	if (1 != fread(der, derlen, 1, fp)) {
-		printf("unable to read file %s\n",object_file);
-		goto err;
-	}
 	/* check if tag and length are valid */
 	body = (u8 *)sc_asn1_find_tag(card->ctx, der, derlen, 0x53, &bodylen);
 	if (body == NULL || derlen != body  - der +  bodylen) {
@@ -170,7 +155,6 @@ static int load_cert(const char * cert_id, const char * cert_file,
 					int compress)
 {
 	X509 * cert = NULL;
-	FILE *fp = NULL;
 	u8 buf[1];
 	size_t buflen = 1;
 	sc_path_t path;
@@ -184,31 +168,20 @@ static int load_cert(const char * cert_id, const char * cert_file,
 		goto err;
 	}
 
-    if((fp=fopen(cert_file, "rb"))==NULL){
-        printf("Cannot open cert file, %s %s\n",
-				cert_file, strerror(errno));
-        goto err;
-    }
 	if (compress) { /* file is gzipped already */
-		struct stat stat_buf;
-
-		if (0 != stat(cert_file, &stat_buf)) {
-			printf("unable to read file %s\n",cert_file);
-			goto err;
-		}
-		derlen = stat_buf.st_size;
-		der = malloc(derlen);
-		if (der == NULL) {
-			printf("file %s is too big, %lu\n",
-				cert_file, (unsigned long)derlen);
-			goto err;
-		}
-		if (1 != fread(der, derlen, 1, fp)) {
+		if(1 != fread_to_eof(cert_file, &der, &derlen)) {
 			printf("unable to read file %s\n",cert_file);
 			goto err;
 		}
 	} else {
+		FILE *fp = NULL;
+		if((fp=fopen(cert_file, "rb"))==NULL){
+			printf("Cannot open cert file, %s %s\n",
+					cert_file, strerror(errno));
+			goto err;
+		}
 		cert = PEM_read_X509(fp, &cert, NULL, NULL);
+		fclose(fp);
     	if(cert == NULL){
         	printf("file %s does not contain PEM-encoded certificate\n",
 				 cert_file);
@@ -247,8 +220,6 @@ static int load_cert(const char * cert_id, const char * cert_file,
 
 err:
 	free(der);
-	if (fp)
-		fclose(fp);
 
 	return r;
 }
