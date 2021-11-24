@@ -1793,13 +1793,14 @@ do_generate_skey(struct sc_profile *profile, const char *spec)
 
 	if ((r = init_skeyargs(&skey_args)) < 0)
 		return r;
-	skey_args.algorithm = algorithm;
 
 	algorithm = parse_alg_spec(alg_types_sym, spec, &keybits, 0);
 	if (algorithm < 0) {
 		util_error("Invalid symmetric key spec: \"%s\"", spec);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
+
+	skey_args.algorithm = algorithm;
 	skey_args.value_len = keybits;
 
 	r = sc_lock(g_p15card->card);
