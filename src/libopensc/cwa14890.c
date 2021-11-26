@@ -1642,7 +1642,7 @@ int cwa_encode_apdu(sc_card_t * card,
 	}
 
 	/* and apply 3DES to result */
-	if (EVP_EncryptInit_ex(cctx, EVP_des_ede(), NULL, key, NULL) != 1 ||
+	if (EVP_EncryptInit_ex(cctx, EVP_des_ede_ecb(), NULL, key, NULL) != 1 ||
 		EVP_EncryptUpdate(cctx, macbuf, &tmplen, macbuf, 8) != 1 ||
 		EVP_EncryptFinal_ex(cctx, macbuf + tmplen, &tmplen) != 1) {
 		msg = "Error in 3DEC ECB encryption";
@@ -1879,7 +1879,7 @@ int cwa_decode_response(sc_card_t * card,
 	}
 
 	/* finally apply 3DES to result */
-	if (EVP_EncryptInit_ex(cctx, EVP_des_ede(), NULL, key, NULL) != 1 ||
+	if (EVP_EncryptInit_ex(cctx, EVP_des_ede_ecb(), NULL, key, NULL) != 1 ||
 		EVP_EncryptUpdate(cctx, macbuf, &tmplen, macbuf, 8) != 1 ||
 		EVP_EncryptFinal_ex(cctx, macbuf + tmplen, &tmplen) != 1) {
 		msg = "Error in 3DEC ECB encryption";
