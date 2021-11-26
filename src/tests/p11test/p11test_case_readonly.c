@@ -302,11 +302,11 @@ int sign_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 	CK_ULONG sign_length = 0;
 	char *name;
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
-	if (!legacy_provider)
-		legacy_provider = OSSL_PROVIDER_load(NULL, "legacy");
 	if (!legacy_provider) {
-		debug_print(" [SKIP %s ] Failed to load legacy provider", o->id_str);
-		return 0;
+		if (!(legacy_provider = OSSL_PROVIDER_load(NULL, "legacy"))) {
+			debug_print(" [SKIP %s ] Failed to load legacy provider", o->id_str);
+			return 0;
+		}
 	}
 #endif
 	rv = fp->C_SignInit(info->session_handle, &sign_mechanism,
@@ -437,11 +437,11 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 			break;
 		case CKM_RIPEMD160_RSA_PKCS:
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
-			if (!legacy_provider)
-				legacy_provider = OSSL_PROVIDER_load(NULL, "legacy");
 			if (!legacy_provider) {
-				debug_print(" [SKIP %s ] Failed to load legacy provider", o->id_str);
-				return 0;
+				if (!(legacy_provider = OSSL_PROVIDER_load(NULL, "legacy"))) {
+					debug_print(" [SKIP %s ] Failed to load legacy provider", o->id_str);
+					return 0;
+				}
 			}
 #endif
 			md = EVP_ripemd160();
