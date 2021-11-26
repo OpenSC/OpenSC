@@ -676,7 +676,7 @@ static int westcos_get_crypte_challenge(sc_card_t * card, const u8 * key,
 	if (r)
 		return r;
 #ifdef ENABLE_OPENSSL
-	if (EVP_EncryptInit_ex(cctx, EVP_des_ede(), NULL, key, NULL) != 1 ||
+	if (EVP_EncryptInit_ex(cctx, EVP_des_ede_ecb(), NULL, key, NULL) != 1 ||
 		EVP_CIPHER_CTX_set_padding(cctx,0) != 1 ||
 		EVP_EncryptUpdate(cctx, result, &tmplen, buf, *len) != 1) {
 		EVP_CIPHER_CTX_free(cctx);
@@ -687,6 +687,7 @@ static int westcos_get_crypte_challenge(sc_card_t * card, const u8 * key,
 		EVP_CIPHER_CTX_free(cctx);
 		return SC_ERROR_INTERNAL;
     }
+	*len += tmplen;
 	EVP_CIPHER_CTX_free(cctx);
 	return SC_SUCCESS;
 #else
