@@ -253,7 +253,7 @@ int test_derive(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 	}
 #endif
 
-/* Generate the peer private key */
+	/* Generate the peer private key */
 	if ((pctx = EVP_PKEY_CTX_new(o->key, NULL)) == NULL) {
 		debug_print(" [ KEY %s ] EVP_PKEY_CTX_new_id failed", o->id_str);
 		return 1;
@@ -272,7 +272,7 @@ int test_derive(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 	}
 	EVP_PKEY_CTX_free(pctx);
 
-/* Start with key derivation in OpenSSL*/
+	/* Start with key derivation in OpenSSL*/
 	pctx = EVP_PKEY_CTX_new(evp_pkey, NULL);
 	if (pctx == NULL ||
 		EVP_PKEY_derive_init(pctx) != 1 ||
