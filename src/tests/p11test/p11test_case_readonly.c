@@ -561,7 +561,7 @@ int verify_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 	CK_RV rv;
 	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
 	CK_MECHANISM sign_mechanism = { mech->mech, NULL_PTR, 0 };
-	static int verify_support = 0;
+	static int verify_support = 1;
 	char *name;
 
 	if (!verify_support)
