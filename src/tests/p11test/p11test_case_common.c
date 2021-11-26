@@ -960,9 +960,7 @@ void clean_all_objects(test_certs_t *objects) {
 		free(objects->data[i].label);
 		free(objects->data[i].value);
 		X509_free(objects->data[i].x509);
-		if (objects->data[i].key != NULL) {
-			EVP_PKEY_free(objects->data[i].key);
-		}
+		EVP_PKEY_free(objects->data[i].key);
 	}
 	free(objects->data);
 }
