@@ -4,17 +4,6 @@ path_classifiers:
     - src/tests/
   generated:
     - "src/tools/*-cmdline.*"
-  library:
-    - src/libopensc/
-    - src/common/
-    - src/minidriver/
-    - src/pkcs11/
-    - src/pkcs15init/
-    - src/scconf/
-    - src/sm/
-    - src/smm/
-  tools:
-    - src/tools/
 queries:
   # This reports all the uses of the DES, but this is needed for
   # interoperability with cards not supporting AES
