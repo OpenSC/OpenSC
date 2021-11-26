@@ -25,6 +25,12 @@ elif [ "$1" == "piv" -o "$1" == "isoapplet" -o "$1" == "gidsapplet" -o "$1" == "
 	fi
 	DEPS="$DEPS ant openjdk-8-jdk maven"
 elif [ "$1" == "mingw" -o "$1" == "mingw32" ]; then
+	# The Github's Ubuntu images since 20211122.1 are broken
+	# https://github.com/actions/virtual-environments/issues/4589
+	sudo apt install -y --allow-downgrades libpcre2-8-0=10.34-7
+
+	# Note, that this list is somehow magic and adding libwine, libwine:i386 or wine64
+	# will make the following sections break without any useful logs. See GH#2458
 	DEPS="$DEPS wine wine32 xvfb wget"
 	sudo dpkg --add-architecture i386
 	if [ "$1" == "mingw" ]; then
