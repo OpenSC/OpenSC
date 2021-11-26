@@ -442,12 +442,12 @@ static int cardos_sm4h(const unsigned char *in, size_t inlen, unsigned char
 	memcpy(key2, key + 8, 8);
 	
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
-	if (!legacy_provider)
-		legacy_provider = OSSL_PROVIDER_load(NULL, "legacy");
 	if (!legacy_provider) {
-		printf("Failed to load legacy provider, aborting\n");
-		free(mac_input);
-		return 0;
+		if (!(legacy_provider = OSSL_PROVIDER_load(NULL, "legacy"))) {
+			printf("Failed to load legacy provider, aborting\n");
+			free(mac_input);
+			return 0;
+		}
 	}
 #endif
 
