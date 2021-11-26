@@ -614,13 +614,13 @@ static int cwa_prepare_external_auth(sc_card_t * card,
 	memcpy(buf3 + 1 + 74 + 32, sha_data, SHA_DIGEST_LENGTH);
 	buf3[127] = 0xBC;	/* iso padding */
 
-	/* encrypt with ifd private key */
+	/* decrypt with ifd private key */
 	pctx = EVP_PKEY_CTX_new(ifd_privkey, NULL);
 	if (!pctx ||
 		EVP_PKEY_decrypt_init(pctx) != 1 ||
 		EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_NO_PADDING) != 1 ||
 		EVP_PKEY_decrypt(pctx, buf2, &len2, buf3, 128) != 1) {
-		msg = "Prepare external auth: ifd_privk encrypt failed";
+		msg = "Prepare external auth: ifd_privk decrypt failed";
 		res = SC_ERROR_SM_ENCRYPT_FAILED;
 		EVP_PKEY_CTX_free(pctx);
 		goto prepare_external_auth_end;
