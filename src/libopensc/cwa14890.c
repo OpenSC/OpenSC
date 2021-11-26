@@ -1612,11 +1612,11 @@ int cwa_encode_apdu(sc_card_t * card,
 	key = sm_session->session_mac;
 
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
-	if (!legacy_provider)
-		legacy_provider = OSSL_PROVIDER_load(NULL, "legacy");
 	if (!legacy_provider) {
-		msg = "Failed to load legacy provider";
-		goto encode_end;
+		if (!(legacy_provider = OSSL_PROVIDER_load(NULL, "legacy"))) {
+			msg = "Failed to load legacy provider";
+			goto encode_end;
+		}
 	}
 #endif
 
@@ -1848,11 +1848,11 @@ int cwa_decode_response(sc_card_t * card,
 	key = sm_session->session_mac;
 
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
-	if (!legacy_provider)
-		legacy_provider = OSSL_PROVIDER_load(NULL, "legacy");
 	if (!legacy_provider) {
-		msg = "Failed to load legacy provider";
-		goto response_decode_end;
+		if (!(legacy_provider = OSSL_PROVIDER_load(NULL, "legacy"))) {
+			msg = "Failed to load legacy provider";
+			goto response_decode_end;
+		}
 	}
 #endif
 

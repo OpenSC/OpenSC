@@ -5890,11 +5890,11 @@ static int test_digest(CK_SESSION_HANDLE session)
 	for (; mechTypes[i] != 0xffffff; i++) {
 		ck_mech.mechanism = mechTypes[i];
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
-		if (!legacy_provider)
-			legacy_provider = OSSL_PROVIDER_load(NULL, "legacy");
 		if (!legacy_provider) {
-			printf("Failed to load legacy provider\n");
-			break;
+			if (!(legacy_provider = OSSL_PROVIDER_load(NULL, "legacy"))) {
+				printf("Failed to load legacy provider\n");
+				break;
+			}
 		}
 #endif
 
