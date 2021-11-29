@@ -7,6 +7,10 @@ on:
       - '**.h'
       - '**.m'
       - .github/workflows/macos.yml
+      - .github/setup-macos.sh
+      - .github/cleanup-macos.sh
+      - .github/build.sh
+      - .github/push-artifacts.sh
   push:
 
 jobs:

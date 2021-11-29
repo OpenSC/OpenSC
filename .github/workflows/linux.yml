@@ -6,6 +6,9 @@ on:
       - '**.c'
       - '**.h'
       - .github/workflows/linux.yml
+      - .github/setup-linux.sh
+      - .github/build.sh
+      - .github/push-artifacts.sh
   push:
 
 jobs:
