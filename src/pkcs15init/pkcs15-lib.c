@@ -1046,7 +1046,13 @@ sc_pkcs15init_store_pin(struct sc_pkcs15_card *p15card, struct sc_profile *profi
 
 	/* Now store the PINs */
 	sc_log(ctx, "Store PIN(%.*s,authID:%s)", (int) sizeof pin_obj->label, pin_obj->label, sc_pkcs15_print_id(&auth_info->auth_id));
-	r = sc_pkcs15init_create_pin(p15card, profile, pin_obj, args);
+	if (profile->ops->create_pin)
+		r = sc_pkcs15init_create_pin(p15card, profile, pin_obj, args);
+	else {
+		sc_pkcs15_free_object(pin_obj);
+		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Store PIN operation is not supported");
+	}
+	
 	if (r < 0)
 		sc_pkcs15_free_object(pin_obj);
 	LOG_TEST_RET(ctx, r, "Card specific create PIN failed.");
