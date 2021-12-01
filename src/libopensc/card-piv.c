@@ -781,6 +781,85 @@ err:
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
+static const struct sc_asn1_entry c_x509_certificate[] = {
+	{ "Certificate",
+		SC_ASN1_OCTET_STRING, SC_ASN1_APP|SC_ASN1_CONS|0x10,
+		SC_ASN1_ALLOC, NULL, NULL },
+	{ "CertInfo",
+		SC_ASN1_OCTET_STRING, SC_ASN1_APP|SC_ASN1_CONS|0x11,
+		0, NULL, NULL },
+	{ "MSCUID (Optional)",
+		SC_ASN1_OCTET_STRING, SC_ASN1_APP|SC_ASN1_CONS|0x12,
+		SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "Error Detection Code",
+		SC_ASN1_OCTET_STRING, SC_ASN1_PRV|SC_ASN1_CONS|0x1E,
+		0, NULL, NULL },
+	{ NULL, 0, 0, 0, NULL, NULL }
+};
+static const struct sc_asn1_entry c_proprietary_do[] = {
+	{ "Proprietary DO", SC_ASN1_STRUCT, SC_ASN1_APP|0x13,
+		0, NULL, NULL },
+	{ NULL, 0, 0, 0, NULL, NULL }
+};
+
+int decode_certificate(struct sc_context *ctx,
+		const u8 *in, size_t len,
+		u8 **certificate, size_t *certificate_len)
+{
+	u8 certinfo = 0;
+	size_t certinfo_len = sizeof certinfo;
+	struct sc_asn1_entry x509_certificate[sizeof c_x509_certificate/sizeof *c_x509_certificate];
+	struct sc_asn1_entry proprietary_do[sizeof c_proprietary_do/sizeof *c_proprietary_do];
+
+	sc_copy_asn1_entry(c_x509_certificate, x509_certificate);
+	sc_format_asn1_entry(x509_certificate + 0, certificate, certificate_len, 0);
+	sc_format_asn1_entry(x509_certificate + 1, &certinfo, &certinfo_len, 0);
+	sc_copy_asn1_entry(c_proprietary_do, proprietary_do);
+	sc_format_asn1_entry(proprietary_do + 0, &x509_certificate, NULL, 0);
+
+	if (SC_SUCCESS != sc_asn1_decode(ctx, proprietary_do, in, len, NULL, NULL))
+		LOG_FUNC_RETURN(ctx, SC_ERROR_OBJECT_NOT_VALID);
+
+	if (certinfo_len == sizeof certinfo
+			/* 800-72-1 not clear if this is 80 or 01 Sent comment to NIST for 800-72-2 */
+			/* 800-73-3 says it is 01, keep dual test so old cards still work */
+			&& ((certinfo & 0x80) || (certinfo & 0x01))) {
+#ifdef ENABLE_ZLIB
+		size_t uncompressed_len = 0;
+		u8* uncompressed = NULL;
+
+		if (SC_SUCCESS != sc_decompress_alloc(&uncompressed, &uncompressed_len, *certificate, *certificate_len, COMPRESSION_AUTO))
+			LOG_FUNC_RETURN(ctx, SC_ERROR_OBJECT_NOT_VALID);
+
+		free(*certificate);
+		*certificate = uncompressed;
+		*certificate_len = uncompressed_len;
+#else
+		sc_log(ctx, "PIV compression not supported, no zlib");
+		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
+#endif
+	}
+
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+}
+
+int encode_certificate(struct sc_context *ctx,
+		u8 *certificate, size_t certificate_len,
+		u8 certinfo, u8 **out, size_t *len)
+{
+	size_t certinfo_len = sizeof certinfo;
+	struct sc_asn1_entry x509_certificate[sizeof c_x509_certificate/sizeof *c_x509_certificate];
+	struct sc_asn1_entry proprietary_do[sizeof c_proprietary_do/sizeof *c_proprietary_do];
+
+	sc_copy_asn1_entry(c_x509_certificate, x509_certificate);
+	sc_format_asn1_entry(x509_certificate + 0, &certificate, &certificate_len, 1);
+	sc_format_asn1_entry(x509_certificate + 1, &certinfo, &certinfo_len, 1);
+	sc_format_asn1_entry(x509_certificate + 2, NULL, NULL, 1); /* empty FE */
+	sc_copy_asn1_entry(c_proprietary_do, proprietary_do);
+	sc_format_asn1_entry(proprietary_do + 0, &x509_certificate, NULL, 1);
+
+	return sc_asn1_encode(ctx, proprietary_do, out, len);
+}
 
 static int
 piv_cache_internal_data(sc_card_t *card, int enumtag)
@@ -790,7 +869,6 @@ piv_cache_internal_data(sc_card_t *card, int enumtag)
 	const u8* body;
 	size_t taglen;
 	size_t bodylen;
-	int compressed = 0;
 
 	/* if already cached */
 	if (priv->obj_cache[enumtag].internal_obj_data && priv->obj_cache[enumtag].internal_obj_len) {
@@ -812,45 +890,12 @@ piv_cache_internal_data(sc_card_t *card, int enumtag)
 
 	/* get the certificate out */
 	 if (piv_objects[enumtag].flags & PIV_OBJECT_TYPE_CERT) {
+		decode_certificate(card->ctx,
+				priv->obj_cache[enumtag].obj_data,
+				priv->obj_cache[enumtag].obj_len,
+				&priv->obj_cache[enumtag].internal_obj_data,
+				&priv->obj_cache[enumtag].internal_obj_len);
 
-		tag = sc_asn1_find_tag(card->ctx, body, bodylen, 0x71, &taglen);
-		/* 800-72-1 not clear if this is 80 or 01 Sent comment to NIST for 800-72-2 */
-		/* 800-73-3 says it is 01, keep dual test so old cards still work */
-		if (tag && taglen > 0 && (((*tag) & 0x80) || ((*tag) & 0x01)))
-			compressed = 1;
-
-		tag = sc_asn1_find_tag(card->ctx, body, bodylen, 0x70, &taglen);
-		if (tag == NULL)
-			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OBJECT_NOT_VALID);
-
-		if (taglen == 0)
-			LOG_FUNC_RETURN(card->ctx, SC_ERROR_FILE_NOT_FOUND);
-
-		if(compressed) {
-#ifdef ENABLE_ZLIB
-			size_t len;
-			u8* newBuf = NULL;
-
-			if(SC_SUCCESS != sc_decompress_alloc(&newBuf, &len, tag, taglen, COMPRESSION_AUTO))
-				LOG_FUNC_RETURN(card->ctx, SC_ERROR_OBJECT_NOT_VALID);
-
-			priv->obj_cache[enumtag].internal_obj_data = newBuf;
-			priv->obj_cache[enumtag].internal_obj_len = len;
-#else
-			sc_log(card->ctx, "PIV compression not supported, no zlib");
-			LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
-#endif
-		}
-		else {
-			if (!(priv->obj_cache[enumtag].internal_obj_data = malloc(taglen)))
-				LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
-
-			memcpy(priv->obj_cache[enumtag].internal_obj_data, tag, taglen);
-			priv->obj_cache[enumtag].internal_obj_len = taglen;
-		}
-
-	/* convert pub key to internal */
-/* TODO: -DEE need to fix ...  would only be used if we cache the pub key, but we don't today */
 	}
 	else if (piv_objects[enumtag].flags & PIV_OBJECT_TYPE_PUBKEY) {
 		tag = sc_asn1_find_tag(card->ctx, body, bodylen, *body, &taglen);
@@ -1005,41 +1050,18 @@ piv_put_data(sc_card_t *card, int tag, const u8 *buf, size_t buf_len)
 
 
 static int
-piv_write_certificate(sc_card_t *card, const u8* buf, size_t count, unsigned long flags)
+piv_write_certificate(sc_card_t *card, u8 *buf, size_t count, unsigned long flags)
 {
 	piv_private_data_t * priv = PIV_DATA(card);
-	int enumtag, tmplen, tmplen2, tmplen3;
+	int enumtag;
 	int r = SC_SUCCESS;
 	u8 *sbuf = NULL;
-	u8 *p;
 	size_t sbuflen;
-	size_t taglen;
 
-	if ((tmplen = sc_asn1_put_tag(0x70, buf, count, NULL, 0, NULL)) <= 0 ||
-	    (tmplen2 = sc_asn1_put_tag(0x71, NULL, 1, NULL, 0, NULL)) <= 0 ||
-	    (tmplen3 = sc_asn1_put_tag(0xFE, NULL, 0, NULL, 0, NULL)) <= 0) {
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
-	}
-
-	taglen = tmplen + tmplen2 + tmplen3;
-	tmplen = sc_asn1_put_tag(0x53, NULL, taglen, NULL, 0, NULL);
-	if (tmplen <= 0) {
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
-	}
-
-	sbuflen = tmplen;
-	sbuf = malloc(sbuflen);
-	if (sbuf == NULL)
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
-	p = sbuf;
-	if ((r = sc_asn1_put_tag(0x53, NULL, taglen, sbuf, sbuflen, &p)) != SC_SUCCESS ||
-	    (r = sc_asn1_put_tag(0x70, buf, count, p, sbuflen - (p - sbuf), &p)) != SC_SUCCESS ||
-	    (r = sc_asn1_put_tag(0x71, NULL, 1, p, sbuflen - (p - sbuf), &p)) != SC_SUCCESS) {
-		goto out;
-	}
-	/* Use 01 as per NIST 800-73-3 */
-	*p++ = (flags) ? 0x01 : 0x00; /* certinfo, i.e. gzipped? */
-	r = sc_asn1_put_tag(0xFE, NULL, 0, p, sbuflen - (p - sbuf), &p);
+	r = encode_certificate(card->ctx, buf, count,
+			/* Use 01 as per NIST 800-73-3 */
+			(flags) ? 0x01 : 0x00, /* certinfo, i.e. gzipped? */
+			&sbuf, &sbuflen);
 	if (r != SC_SUCCESS) {
 		goto out;
 	}
