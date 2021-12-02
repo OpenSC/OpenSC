@@ -1225,13 +1225,9 @@ static int piv_get_key(sc_card_t *card, unsigned int alg_id, u8 **key, size_t *l
 {
 
 	int r;
-	size_t fsize;
-	FILE *f = NULL;
+	size_t keylen, expected_keylen;
 	char * keyfilename = NULL;
-	size_t expected_keylen;
-	size_t keylen, readlen;
 	u8 * keybuf = NULL;
-	u8 * tkey = NULL;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -1251,79 +1247,43 @@ static int piv_get_key(sc_card_t *card, unsigned int alg_id, u8 **key, size_t *l
 		goto err;
 	}
 
-	f = fopen(keyfilename, "rb");
-	if (!f) {
+	r = fread_to_eof(keyfilename, &keybuf, &keylen);
+	if (r != 1) {
 		sc_log(card->ctx, " Unable to load key from file\n");
 		r = SC_ERROR_FILE_NOT_FOUND;
 		goto err;
 	}
 
-	if (0 > fseek(f, 0L, SEEK_END))
-		r = SC_ERROR_INTERNAL;
-	fsize = ftell(f);
-	if (0 > (long) fsize)
-		r = SC_ERROR_INTERNAL;
-	if (0 > fseek(f, 0L, SEEK_SET))
-		r = SC_ERROR_INTERNAL;
-	if(r) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not read %s\n", keyfilename);
-		goto err;
-	}
-
-	keybuf = malloc(fsize+1); /* if not binary, need null to make it a string */
-	if (!keybuf) {
-		sc_log(card->ctx, " Unable to allocate key memory");
-		r = SC_ERROR_OUT_OF_MEMORY;
-		goto err;
-	}
-	keybuf[fsize] = 0x00;    /* in case it is text need null */
-
-	if ((readlen = fread(keybuf, 1, fsize, f)) != fsize) {
-		sc_log(card->ctx, " Unable to read key\n");
-		r = SC_ERROR_WRONG_LENGTH;
-		goto err;
-	}
-	keybuf[readlen] = '\0';
-
-	tkey = malloc(expected_keylen);
-	if (!tkey) {
-	    sc_log(card->ctx, " Unable to allocate key memory");
-	    r = SC_ERROR_OUT_OF_MEMORY;
-	    goto err;
-	}
-
-	if (fsize == expected_keylen) { /* it must be binary */
-		memcpy(tkey, keybuf, expected_keylen);
-	} else {
+	if (keylen != expected_keylen) {
 		/* if the key-length is larger then binary length, we assume hex encoded */
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Treating key as hex-encoded!\n");
-		sc_right_trim(keybuf, fsize);
-		keylen = expected_keylen;
-		r = sc_hex_to_bin((char *)keybuf, tkey, &keylen);
-		if (keylen !=expected_keylen || r != 0 ) {
+
+		char *hexkey = malloc(keylen + 1);
+		if (!hexkey) {
+			sc_log(card->ctx, " Unable to allocate key memory");
+			r = SC_ERROR_OUT_OF_MEMORY;
+			goto err;
+		}
+		memcpy(hexkey, keybuf, keylen);
+		hexkey[keylen] = '\0'; /* NUL termination is needed to avoid OOB read */
+
+		r = sc_hex_to_bin(hexkey, keybuf, &keylen);
+		free(hexkey);
+		if (r != 0 || keylen != expected_keylen) {
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Error formatting key\n");
 			if (r == 0)
 				r = SC_ERROR_INCOMPATIBLE_KEY;
 			goto err;
 		}
 	}
-	*key = tkey;
-	tkey = NULL;
-	*len = expected_keylen;
+	*key = keybuf;
+	*len = keylen;
 	r = SC_SUCCESS;
 
 err:
-	if (f)
-		fclose(f);
-	if (keybuf) {
-		free(keybuf);
-	}
-	if (tkey) {
-		free(tkey);
-	}
+	free(keybuf);
 
 	LOG_FUNC_RETURN(card->ctx, r);
-	return r;
 }
 #endif
 

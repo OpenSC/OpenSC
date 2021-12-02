@@ -1497,7 +1497,7 @@ int sc_hex_to_bin(const char *in, u8 *out, size_t *outlen);
  * writes to out: [0x33, 0x66, 0x3A, 0x30, 0x31, 0x00] which reads as "3f:01"
  */
 int sc_bin_to_hex(const u8 *, size_t, char *, size_t, int separator);
-size_t sc_right_trim(u8 *buf, size_t len);
+
 scconf_block *sc_get_conf_block(sc_context_t *ctx, const char *name1, const char *name2, int priority);
 
 /**
