@@ -112,6 +112,20 @@ extern "C" {
 #define EC_POINT_get_affine_coordinates_GFp     EC_POINT_get_affine_coordinates
 #define EC_POINT_set_affine_coordinates_GFp     EC_POINT_set_affine_coordinates
 #define FIPS_mode()                             OSSL_PROVIDER_available(NULL, "fips")
+
+/* As defined in openssl/include/openssl/evp.h */
+# ifndef EVP_PK_RSA
+#  define EVP_PK_RSA      0x0001
+#  define EVP_PK_DSA      0x0002
+#  define EVP_PK_DH       0x0004
+#  define EVP_PK_EC       0x0008
+#  define EVP_PKT_SIGN    0x0010
+#  define EVP_PKT_ENC     0x0020
+#  define EVP_PKT_EXCH    0x0040
+#  define EVP_PKS_RSA     0x0100
+#  define EVP_PKS_DSA     0x0200
+#  define EVP_PKS_EC      0x0400
+# endif
 #endif
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
