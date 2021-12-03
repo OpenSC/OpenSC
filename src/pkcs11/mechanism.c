@@ -120,7 +120,7 @@ sc_pkcs11_register_mechanism(struct sc_pkcs11_card *p11card,
 				_update_mech_info(&existing_mt->mech_info, &mt->mech_info);
 				/* XXX Should be changed to loop over mt->key_types, if
 				 * we allow to register mechanism with multiple key types
-                                 * in one operation */
+				 * in one operation */
 				existing_mt->key_types[i] = mt->key_types[0];
 				if (i + 1 < MAX_KEY_TYPES) {
 					existing_mt->key_types[i + 1] = -1;
@@ -129,7 +129,7 @@ sc_pkcs11_register_mechanism(struct sc_pkcs11_card *p11card,
 				return CKR_OK;
 			}
 		}
-		sc_log(p11card->card->ctx, "Too much key types in mechanism 0x%lx, more than %d", mt->mech, MAX_KEY_TYPES);
+		sc_log(p11card->card->ctx, "Too many key types in mechanism 0x%lx, more than %d", mt->mech, MAX_KEY_TYPES);
 		free(mt);
 		return CKR_BUFFER_TOO_SMALL;
 	}
