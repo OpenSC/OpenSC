@@ -34,8 +34,8 @@ extern "C" {
 #include "sm/sm-common.h"
 
 /* Global Platform definitions */
-int sm_gp_get_mac(unsigned char *key, DES_cblock *icv, unsigned char *in, int in_len,
-		DES_cblock *out);
+int sm_gp_get_mac(unsigned char *key, sm_des_cblock *icv, unsigned char *in, int in_len,
+		sm_des_cblock *out);
 int sm_gp_get_cryptogram(unsigned char *session_key, unsigned char *left, unsigned char *right,
 		unsigned char *out, int out_len);
 int sm_gp_external_authentication(struct sc_context *ctx, struct sm_info *sm_info,

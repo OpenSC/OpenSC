@@ -129,7 +129,7 @@ sm_gp_get_cryptogram(unsigned char *session_key,
 		unsigned char *out, int out_len)
 {
 	unsigned char block[24];
-	DES_cblock cksum={0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+	sm_des_cblock cksum={0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
 
 	if (out_len!=8)
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -147,8 +147,8 @@ sm_gp_get_cryptogram(unsigned char *session_key,
 
 
 int
-sm_gp_get_mac(unsigned char *key, DES_cblock *icv,
-		unsigned char *in, int in_len, DES_cblock *out)
+sm_gp_get_mac(unsigned char *key, sm_des_cblock *icv,
+		unsigned char *in, int in_len, sm_des_cblock *out)
 {
 	int len;
 	unsigned char *block;
@@ -244,7 +244,7 @@ sm_gp_external_authentication(struct sc_context *ctx, struct sm_info *sm_info,
 	struct sc_apdu *apdu = NULL;
 	unsigned char host_cryptogram[8], raw_apdu[SC_MAX_APDU_BUFFER_SIZE];
 	struct sm_gp_session *gp_session = &sm_info->session.gp;
-	DES_cblock mac;
+	sm_des_cblock mac;
 	int rv, offs = 0;
 
 	LOG_FUNC_CALLED(ctx);
@@ -344,7 +344,7 @@ sm_gp_securize_apdu(struct sc_context *ctx, struct sm_info *sm_info,
 	struct sm_gp_session *gp_session = &sm_info->session.gp;
 	unsigned gp_level = sm_info->session.gp.params.level;
 	unsigned gp_index = sm_info->session.gp.params.index;
-	DES_cblock mac;
+	sm_des_cblock mac;
 	unsigned char *encrypted = NULL;
 	size_t encrypted_len = 0;
 	int rv;

@@ -401,7 +401,7 @@ static int cardos_sm4h(const unsigned char *in, size_t inlen, unsigned char
 	int plain_lc;	/* data size in orig APDU */
 	unsigned int mac_input_len, enc_input_len;
 	unsigned char *mac_input, *enc_input;
-	DES_cblock des_in, des_out;
+	unsigned char des_in[8], des_out[8];
 	unsigned int i,j;
 	EVP_CIPHER_CTX *cctx = NULL;
 	int tmplen = 0;

@@ -46,8 +46,8 @@
 #include "sm-module.h"
 
 int
-sm_cwa_get_mac(struct sc_context *ctx, unsigned char *key, DES_cblock *icv,
-			unsigned char *in, int in_len, DES_cblock *out, int force_padding)
+sm_cwa_get_mac(struct sc_context *ctx, unsigned char *key, sm_des_cblock *icv,
+			unsigned char *in, int in_len, sm_des_cblock *out, int force_padding)
 {
 	unsigned char padding[8] = {0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 	unsigned char *buf;
@@ -122,8 +122,8 @@ int
 sm_cwa_decode_authentication_data(struct sc_context *ctx, struct sm_cwa_keyset *keyset,
 		struct sm_cwa_session *session_data, unsigned char *auth_data)
 {
-	DES_cblock icv = {0, 0, 0, 0, 0, 0, 0, 0};
-	DES_cblock cblock;
+	sm_des_cblock icv = {0, 0, 0, 0, 0, 0, 0, 0};
+	sm_des_cblock cblock;
 	unsigned char *decrypted = NULL;
 	size_t decrypted_len;
 	int rv;
@@ -230,7 +230,7 @@ sm_cwa_initialize(struct sc_context *ctx, struct sm_info *sm_info, struct sc_rem
 	struct sc_apdu *apdu = NULL;
 	unsigned char buf[0x100], *encrypted = NULL;
 	size_t encrypted_len;
-	DES_cblock icv = {0, 0, 0, 0, 0, 0, 0, 0}, cblock;
+	sm_des_cblock icv = {0, 0, 0, 0, 0, 0, 0, 0}, cblock;
 	int rv, offs;
 
 	LOG_FUNC_CALLED(ctx);
@@ -304,7 +304,7 @@ sm_cwa_securize_apdu(struct sc_context *ctx, struct sm_info *sm_info, struct sc_
 	struct sm_cwa_session *session_data = &sm_info->session.cwa;
 	struct sc_apdu *apdu = &rapdu->apdu;
 	unsigned char sbuf[0x400];
-	DES_cblock cblock, icv;
+	sm_des_cblock cblock, icv;
 	unsigned char *encrypted = NULL, edfb_data[0x200], mac_data[0x200];
 	size_t encrypted_len, edfb_len = 0, mac_len = 0, offs;
 	int rv;
