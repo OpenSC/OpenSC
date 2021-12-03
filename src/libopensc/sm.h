@@ -88,6 +88,10 @@ extern "C" {
 #define SM_GP_SECURITY_MAC		0x01
 #define SM_GP_SECURITY_ENC		0x03
 
+/* As in OpenSSL include/openssl/des.h */
+typedef unsigned char sm_des_cblock[8];
+typedef /* const */ unsigned char sm_const_des_cblock[8];
+
 /* Global Platform (SCP01) data types */
 /*
  * @struct sm_type_params_gp
