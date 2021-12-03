@@ -108,10 +108,13 @@ extern "C" {
 #endif
 
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
-#include <openssl/provider.h>
 #define EC_POINT_get_affine_coordinates_GFp     EC_POINT_get_affine_coordinates
 #define EC_POINT_set_affine_coordinates_GFp     EC_POINT_set_affine_coordinates
+
+# ifndef FIPS_mode
+#include <openssl/provider.h>
 #define FIPS_mode()                             OSSL_PROVIDER_available(NULL, "fips")
+# endif
 
 /* As defined in openssl/include/openssl/evp.h */
 # ifndef EVP_PK_RSA
