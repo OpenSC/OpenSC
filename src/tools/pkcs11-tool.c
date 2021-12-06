@@ -3610,9 +3610,9 @@ parse_rsa_pkey(EVP_PKEY *pkey, int private, struct rsakey_info *rsa)
 
 	RSA_get0_key(r, &r_n, &r_e, NULL);
 #else
-	BIGNUM *r_n, *r_e, *r_d;
-	BIGNUM *r_p, *r_q;
-	BIGNUM *r_dmp1, *r_dmq1, *r_iqmp;
+	BIGNUM *r_n = NULL, *r_e = NULL, *r_d = NULL;
+	BIGNUM *r_p = NULL, *r_q = NULL;
+	BIGNUM *r_dmp1 = NULL, *r_dmq1 = NULL, *r_iqmp = NULL;
 	if (EVP_PKEY_get_bn_param(pkey, OSSL_PKEY_PARAM_RSA_N, &r_n) != 1 ||
 		EVP_PKEY_get_bn_param(pkey, OSSL_PKEY_PARAM_RSA_E, &r_e) != 1) {
 		if (private)
