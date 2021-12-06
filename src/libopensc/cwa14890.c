@@ -50,7 +50,7 @@
 #endif
 
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
-	OSSL_PROVIDER *legacy_provider = NULL;
+	static OSSL_PROVIDER *legacy_provider = NULL;
 #endif
 
 #define MAX_RESP_BUFFER_SIZE 2048
@@ -1613,7 +1613,7 @@ int cwa_encode_apdu(sc_card_t * card,
 
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 	if (!legacy_provider) {
-		if (!(legacy_provider = OSSL_PROVIDER_load(NULL, "legacy"))) {
+		if (!(legacy_provider = OSSL_PROVIDER_try_load(NULL, "legacy", 1))) {
 			msg = "Failed to load legacy provider";
 			goto encode_end;
 		}
@@ -1849,7 +1849,7 @@ int cwa_decode_response(sc_card_t * card,
 
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 	if (!legacy_provider) {
-		if (!(legacy_provider = OSSL_PROVIDER_load(NULL, "legacy"))) {
+		if (!(legacy_provider = OSSL_PROVIDER_try_load(NULL, "legacy", 1))) {
 			msg = "Failed to load legacy provider";
 			goto response_decode_end;
 		}
