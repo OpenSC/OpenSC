@@ -1763,7 +1763,7 @@ sc_pkcs15_convert_pubkey(struct sc_pkcs15_pubkey *pkcs15_key, void *evp_key)
 		struct sc_pkcs15_pubkey_dsa *dst = &pkcs15_key->u.dsa;
 		/* Get parameters */
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
-		const BIGNUM *src_pub_key, *src_priv_key, *src_p, *src_q, *src_g = NULL;
+		const BIGNUM *src_pub_key, *src_priv_key, *src_p, *src_q, *src_g;
 		DSA *src = NULL;
 		if (!(src = EVP_PKEY_get1_DSA(pk)))
 			return SC_ERROR_INCOMPATIBLE_KEY;
