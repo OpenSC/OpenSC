@@ -576,7 +576,7 @@ static int cwa_prepare_external_auth(sc_card_t * card,
 		goto prepare_external_auth_end;
 	}
 #else
-	BIGNUM *ifd_privkey_n, *ifd_privkey_e, *ifd_privkey_d = NULL;
+	BIGNUM *ifd_privkey_n = NULL, *ifd_privkey_e = NULL, *ifd_privkey_d = NULL;
 #endif
 
 	/* safety check */
@@ -914,7 +914,7 @@ static int cwa_verify_internal_auth(sc_card_t * card,
 		goto verify_internal_done;
 	}
 #else
-	BIGNUM *icc_pubkey_n, *icc_pubkey_e, *icc_pubkey_d = NULL;
+	BIGNUM *icc_pubkey_n = NULL, *icc_pubkey_e = NULL, *icc_pubkey_d = NULL;
 #endif
 
 	if (!card || !card->ctx)
