@@ -128,7 +128,7 @@ DES_3cbc_encrypt(sm_des_cblock *input, sm_des_cblock *output, long length,
 /* The single-DES algorithm is not available in the default provider anymore
  * so we need to load the legacy provider. This is not done on the application
  * start, but only as needed */
-OSSL_PROVIDER *legacy_provider = NULL;
+static OSSL_PROVIDER *legacy_provider = NULL;
 #endif
 
 
@@ -206,8 +206,11 @@ DES_cbc_cksum_3des_emv96(const unsigned char *in, sm_des_cblock *output,
 
 	cctx = EVP_CIPHER_CTX_new();
 	if (l > 8) {
-		if (legacy_provider == NULL) {
-			 legacy_provider = OSSL_PROVIDER_load(NULL, "legacy");
+		if (!legacy_provider) {
+			if (!(legacy_provider = OSSL_PROVIDER_try_load(NULL, "legacy", 1))) {
+				EVP_CIPHER_CTX_free(cctx);
+				return SC_ERROR_INTERNAL;
+			}
 		}
 		if (!EVP_EncryptInit_ex2(cctx, EVP_des_cbc(), key, iv, NULL)) {
 			EVP_CIPHER_CTX_free(cctx);

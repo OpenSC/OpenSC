@@ -73,7 +73,7 @@
 #include "libopensc/sc-ossl-compat.h"
 
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
-OSSL_PROVIDER *legacy_provider = NULL;
+	static OSSL_PROVIDER *legacy_provider = NULL;
 #endif
 
 #ifdef _WIN32
@@ -5871,16 +5871,16 @@ static int test_digest(CK_SESSION_HANDLE session)
 #else
 	i = 0;
 #endif
-	for (; mechTypes[i] != 0xffffff; i++) {
-		ck_mech.mechanism = mechTypes[i];
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 		if (!legacy_provider) {
-			if (!(legacy_provider = OSSL_PROVIDER_load(NULL, "legacy"))) {
+			if (!(legacy_provider = OSSL_PROVIDER_try_load(NULL, "legacy", 1))) {
 				printf("Failed to load legacy provider\n");
-				break;
+				return errors;
 			}
 		}
 #endif
+	for (; mechTypes[i] != 0xffffff; i++) {
+		ck_mech.mechanism = mechTypes[i];
 
 		rv = p11->C_DigestInit(session, &ck_mech);
 		if (rv == CKR_MECHANISM_INVALID)
@@ -6079,11 +6079,11 @@ static int sign_verify_openssl(CK_SESSION_HANDLE session,
 	};
 #endif
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L && !defined(OPENSSL_NO_RIPEMD)
-	if (!legacy_provider)
-		legacy_provider = OSSL_PROVIDER_load(NULL, "legacy");
 	if (!legacy_provider) {
-		printf("Failed to load legacy provider");
-		return errors;
+		if (!(legacy_provider = OSSL_PROVIDER_try_load(NULL, "legacy", 1))) {
+			printf("Failed to load legacy provider");
+			return errors;
+		}
 	}
 #endif
 

@@ -303,7 +303,7 @@ int sign_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 	char *name;
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 	if (!legacy_provider) {
-		if (!(legacy_provider = OSSL_PROVIDER_load(NULL, "legacy"))) {
+		if (!(legacy_provider = OSSL_PROVIDER_try_load(NULL, "legacy", 1))) {
 			debug_print(" [SKIP %s ] Failed to load legacy provider", o->id_str);
 			return 0;
 		}
@@ -438,7 +438,7 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 		case CKM_RIPEMD160_RSA_PKCS:
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 			if (!legacy_provider) {
-				if (!(legacy_provider = OSSL_PROVIDER_load(NULL, "legacy"))) {
+				if (!(legacy_provider = OSSL_PROVIDER_try_load(NULL, "legacy", 1))) {
 					debug_print(" [SKIP %s ] Failed to load legacy provider", o->id_str);
 					return 0;
 				}
