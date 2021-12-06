@@ -47,7 +47,7 @@
 #include "util.h"
 
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
-	OSSL_PROVIDER *legacy_provider = NULL;
+	static OSSL_PROVIDER *legacy_provider = NULL;
 #endif
 
 static const char *app_name = "cardos-tool";
@@ -443,7 +443,7 @@ static int cardos_sm4h(const unsigned char *in, size_t inlen, unsigned char
 	
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 	if (!legacy_provider) {
-		if (!(legacy_provider = OSSL_PROVIDER_load(NULL, "legacy"))) {
+		if (!(legacy_provider = OSSL_PROVIDER_try_load(NULL, "legacy", 1))) {
 			printf("Failed to load legacy provider, aborting\n");
 			free(mac_input);
 			return 0;
