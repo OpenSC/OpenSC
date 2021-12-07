@@ -29,6 +29,7 @@
 #include "libopensc/pace.h"
 #include "libopensc/sm.h"
 #include "sm/sm-eac.h"
+#include <stdlib.h>
 #include <string.h>
 
 #ifdef ENABLE_OPENSSL
