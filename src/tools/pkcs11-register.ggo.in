@@ -12,7 +12,7 @@ option "skip-chrome" -
 
 option "skip-firefox" -
     "Don't install module to Firefox"
-    flag off
+    flag @PKCS11_REGISTER_SKIP_FIREFOX@
 
 option "skip-thunderbird" -
     "Don't install module to Thunderbird"
