@@ -17,6 +17,7 @@ do_subst = $(SED) \
 	   -e 's,[@]PACKAGE_SUMMARY[@],$(PACKAGE_SUMMARY),g' \
 	   -e 's,[@]PACKAGE_VERSION[@],"$(PACKAGE_VERSION)",g' \
 	   -e 's,[@]DEFAULT_PKCS11_PROVIDER[@],"$(DEFAULT_PKCS11_PROVIDER)",g' \
+	   -e 's,[@]PKCS11_REGISTER_SKIP_FIREFOX[@],$(PKCS11_REGISTER_SKIP_FIREFOX),g' \
 	   -e 's,[@]VDFORMAT[@],$(VDFORMAT),g' \
 	   -e 's,[@]X509DIR[@],$(X509DIR),g'
 
