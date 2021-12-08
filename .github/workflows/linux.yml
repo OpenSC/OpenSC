@@ -23,12 +23,18 @@ jobs:
         with:
           path: ./*
           key: ${{ runner.os }}-${{ github.sha }}
-      - name: Upload artifacts
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v2
         with:
           name: opensc-build
           path:
             opensc*.tar.gz
+      - name: Upload test logs
+        uses: actions/upload-artifact@v2
+        with:
+          name: ubuntu-test-logs
+          path:
+            tests/*.log
 
   build-ix86:
     runs-on: ubuntu-latest
@@ -48,6 +54,12 @@ jobs:
         with:
           path: ./*
           key: ${{ runner.os }}-18-${{ github.sha }}
+      - name: Upload test logs
+        uses: actions/upload-artifact@v2
+        with:
+          name: ubuntu-18-test-logs
+          path:
+            tests/*.log
 
   build-mingw:
     runs-on: ubuntu-latest
