@@ -112,8 +112,7 @@ extern "C" {
 #define EC_POINT_set_affine_coordinates_GFp     EC_POINT_set_affine_coordinates
 
 # ifndef FIPS_mode
-#include <openssl/provider.h>
-#define FIPS_mode()                             OSSL_PROVIDER_available(NULL, "fips")
+#define FIPS_mode()                             EVP_default_properties_is_fips_enabled(NULL)
 # endif
 
 /* As defined in openssl/include/openssl/evp.h */
