@@ -30,6 +30,9 @@
 #include "common/compat_strnlen.h"
 #ifdef ENABLE_OPENSSL
 #include <openssl/sha.h>
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+#include <openssl/evp.h>
+#endif
 #else
 #define SHA_DIGEST_LENGTH	20
 #endif
