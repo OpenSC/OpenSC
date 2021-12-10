@@ -1287,6 +1287,78 @@ err:
 }
 #endif
 
+static const struct sc_asn1_entry c_auth_templ[] = {
+	{ "Dynamic Authentication Template",
+		SC_ASN1_STRUCT, SC_ASN1_APP|SC_ASN1_CONS|0x1C,
+		0, NULL, NULL },
+	{ NULL, 0, 0, 0, NULL, NULL }
+};
+static const struct sc_asn1_entry c_dyn_data[] = {
+	{ "Witness",
+		SC_ASN1_OCTET_STRING, SC_ASN1_CTX|0x00,
+		SC_ASN1_OPTIONAL|SC_ASN1_ALLOC|SC_ASN1_EMPTY_ALLOWED, NULL, NULL },
+	{ "Challenge",
+		SC_ASN1_OCTET_STRING, SC_ASN1_CTX|0x01,
+		SC_ASN1_OPTIONAL|SC_ASN1_ALLOC|SC_ASN1_EMPTY_ALLOWED, NULL, NULL },
+	{ "Response",
+		SC_ASN1_OCTET_STRING, SC_ASN1_CTX|0x02,
+		SC_ASN1_OPTIONAL|SC_ASN1_ALLOC|SC_ASN1_EMPTY_ALLOWED, NULL, NULL },
+	{ "Exponentiation",
+		SC_ASN1_OCTET_STRING, SC_ASN1_CTX|0x05,
+		SC_ASN1_OPTIONAL|SC_ASN1_ALLOC|SC_ASN1_EMPTY_ALLOWED, NULL, NULL },
+	{ NULL, 0, 0, 0, NULL, NULL }
+};
+
+int encode_dynamic_authentication_template(struct sc_context *ctx,
+		const u8 *witness, size_t witness_len,
+		const u8 *challenge, size_t challenge_len,
+		const u8 *response, size_t response_len,
+		const u8 *exponentiation, size_t exponentiation_len,
+		u8 **out, size_t *len)
+{
+	struct sc_asn1_entry dyn_data[sizeof c_dyn_data/sizeof *c_dyn_data];
+	struct sc_asn1_entry auth_templ[sizeof c_auth_templ/sizeof *c_auth_templ];
+	sc_copy_asn1_entry(c_dyn_data, dyn_data);
+
+	if (witness != NULL) {
+		sc_format_asn1_entry(dyn_data + 0, (void *) witness, &witness_len, 1);
+	}
+	if (challenge != NULL) {
+		sc_format_asn1_entry(dyn_data + 1, (void *) challenge, &challenge_len, 1);
+	}
+	if (response != NULL) {
+		sc_format_asn1_entry(dyn_data + 2, (void *) response, &response_len, 1);
+	}
+	if (exponentiation != NULL) {
+		sc_format_asn1_entry(dyn_data + 3, (void *) exponentiation, &exponentiation_len, 1);
+	}
+	sc_copy_asn1_entry(c_auth_templ, auth_templ);
+	sc_format_asn1_entry(auth_templ + 0, &dyn_data, NULL, 1);
+
+	return sc_asn1_encode(ctx, auth_templ, out, len);
+}
+
+int decode_dynamic_authentication_template(struct sc_context *ctx,
+		const u8 *in, size_t len,
+		u8 **witness, size_t *witness_len,
+		u8 **challenge, size_t *challenge_len,
+		u8 **response, size_t *response_len,
+		u8 **exponentiation, size_t *exponentiation_len)
+{
+	struct sc_asn1_entry dyn_data[sizeof c_dyn_data/sizeof *c_dyn_data];
+	struct sc_asn1_entry auth_templ[sizeof c_auth_templ/sizeof *c_auth_templ];
+
+	sc_copy_asn1_entry(c_dyn_data, dyn_data);
+	sc_format_asn1_entry(dyn_data + 0, witness, witness_len, 0);
+	sc_format_asn1_entry(dyn_data + 1, challenge, challenge_len, 0);
+	sc_format_asn1_entry(dyn_data + 2, response, response_len, 0);
+	sc_format_asn1_entry(dyn_data + 3, exponentiation, exponentiation_len, 0);
+	sc_copy_asn1_entry(c_auth_templ, auth_templ);
+	sc_format_asn1_entry(auth_templ + 0, &dyn_data, NULL, 0);
+
+	return sc_asn1_decode(ctx, auth_templ, in, len, NULL, NULL);
+}
+
 /*
  * will only deal with 3des for now
  * assumptions include:
@@ -1310,20 +1382,17 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 	u8 *plain_text = NULL;
 	size_t plain_text_len = 0;
 	u8 *tmp;
-	size_t tmplen, tmplen2;
+	size_t tmplen;
 	u8 *built = NULL;
-	size_t built_len;
-	const u8 *body = NULL;
-	size_t body_len;
-	const u8 *witness_data = NULL;
-	size_t witness_len;
-	const u8 *challenge_response = NULL;
-	size_t challenge_response_len;
+	size_t built_len = 0;
+	u8 *witness_data = NULL;
+	size_t witness_len = 0;
+	u8 *challenge_response = NULL;
+	size_t challenge_response_len = 0;
 	u8 *decrypted_reponse = NULL;
 	size_t decrypted_reponse_len;
 	EVP_CIPHER_CTX * ctx = NULL;
 
-	u8 sbuf[255];
 	const EVP_CIPHER *cipher;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
@@ -1354,29 +1423,17 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 	}
 	locked = 1;
 
-	p = sbuf;
-	*p++ = 0x7C;
-	*p++ = 0x02;
-	*p++ = 0x80;
-	*p++ = 0x00;
-
 	/* get the encrypted nonce */
-	r = piv_general_io(card, 0x87, alg_id, key_ref, sbuf, p - sbuf, rbuf, sizeof rbuf);
-
-	if (r < 0) goto err;
-
-	/* Remove the encompassing outer TLV of 0x7C and get the data */
-	body = sc_asn1_find_tag(card->ctx, rbuf,
-		r, 0x7C, &body_len);
-	if (!body || rbuf[0] != 0x7C) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Invalid Witness Data response of NULL\n");
-		r =  SC_ERROR_INVALID_DATA;
+	const u8 sbuf[] = {0x7C, 0x02, 0x80, 0x00};
+	r = piv_general_io(card, 0x87, alg_id, key_ref, sbuf, sizeof sbuf, rbuf, sizeof rbuf);
+	if (r < 0)
 		goto err;
-	}
 
-	/* Get the witness data indicated by the TAG 0x80 */
-	witness_data = sc_asn1_find_tag(card->ctx, body,
-		body_len, 0x80, &witness_len);
+	r = decode_dynamic_authentication_template(card->ctx, rbuf, r,
+			&witness_data, &witness_len, NULL, NULL, NULL, NULL, NULL, NULL);
+	if (r < 0)
+		goto err;
+
 	if (!witness_len) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Invalid Challenge Data none found in TLV\n");
 		r =  SC_ERROR_INVALID_DATA;
@@ -1447,57 +1504,11 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 		goto err;
 	}
 
-	/* nonce for challenge */
-	r = sc_asn1_put_tag(0x81, NULL, witness_len, NULL, 0, NULL);
-	if (r <= 0) {
-		r = SC_ERROR_INTERNAL;
-		goto err;
-	}
-	tmplen = r;
-
-	/* plain text witness keep a length separate for the 0x7C tag */
-	r = sc_asn1_put_tag(0x80, NULL, witness_len, NULL, 0, NULL);
-	if (r <= 0) {
-		r = SC_ERROR_INTERNAL;
-		goto err;
-	}
-	tmplen += r;
-	tmplen2 = tmplen;
-
-	/* outside 7C tag with 81:80 as innards */
-	r = sc_asn1_put_tag(0x7C, NULL, tmplen, NULL, 0, NULL);
-	if (r <= 0) {
-		r = SC_ERROR_INTERNAL;
-		goto err;
-	}
-
-	built_len = r;
-
-	/* Build the response buffer */
-	p = built = malloc(built_len);
-	if(!built) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "OOM Building witness response and challenge\n");
-		r = SC_ERROR_INTERNAL;
-		goto err;
-	}
-
-	p = built;
-
-	/* Start with the 7C Tag */
-	r = sc_asn1_put_tag(0x7C, NULL, tmplen2, p, built_len, &p);
-	if (r != SC_SUCCESS) {
-		goto err;
-	}
-
 	/* Add the DECRYPTED witness, tag 0x80 */
-	r = sc_asn1_put_tag(0x80, plain_text, witness_len, p, built_len - (p - built), &p);
-	if (r != SC_SUCCESS) {
-		goto err;
-	}
-
-	/* Add the challenge, tag 0x81 */
-	r = sc_asn1_put_tag(0x81, nonce, witness_len, p, built_len - (p - built), &p);
-	if (r != SC_SUCCESS) {
+	r = encode_dynamic_authentication_template(card->ctx,
+			plain_text, witness_len, nonce, witness_len,
+			NULL, 0, NULL, 0, &built, &built_len);
+	if (r < 0) {
 		goto err;
 	}
 
@@ -1507,27 +1518,10 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 		goto err;
 	}
 
-	/* Remove the encompassing outer TLV of 0x7C and get the data */
-	body = sc_asn1_find_tag(card->ctx, rbuf,
-		r, 0x7C, &body_len);
-	if(!body || rbuf[0] != 0x7C) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not find outer tag 0x7C in response");
-		r =  SC_ERROR_INVALID_DATA;
+	r = decode_dynamic_authentication_template(card->ctx, rbuf, r,
+			NULL, NULL, &challenge_response, &challenge_response_len, NULL, NULL, NULL, NULL);
+	if (r < 0)
 		goto err;
-	}
-
-	/* SP800-73 not clear if  80 or 82 */
-	challenge_response = sc_asn1_find_tag(card->ctx, body,
-		body_len, 0x82, &challenge_response_len);
-	if(!challenge_response) {
-		challenge_response = sc_asn1_find_tag(card->ctx, body,
-				body_len, 0x80, &challenge_response_len);
-		if(!challenge_response) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not find tag 0x82 or 0x80 in response");
-			r =  SC_ERROR_INVALID_DATA;
-			goto err;
-		}
-	}
 
 	/* Decrypt challenge and check against nonce */
 	decrypted_reponse = malloc(challenge_response_len);
@@ -1574,16 +1568,13 @@ err:
 		EVP_CIPHER_CTX_free(ctx);
 	if (locked)
 		sc_unlock(card);
-	if (decrypted_reponse)
-		free(decrypted_reponse);
-	if (built)
-		free(built);
-	if (plain_text)
-		free(plain_text);
-	if (nonce)
-		free(nonce);
-	if (key)
-		free(key);
+	free(decrypted_reponse);
+	free(witness_data);
+	free(built);
+	free(plain_text);
+	free(nonce);
+	free(challenge_response);
+	free(key);
 
 #else
 	sc_log(card->ctx, "OpenSSL Required");
@@ -1603,19 +1594,15 @@ static int piv_general_external_authenticate(sc_card_t *card,
 	int tmplen;
 	int outlen;
 	int locked = 0;
-	u8 *p;
 	u8 rbuf[4096];
 	u8 *key = NULL;
 	u8 *cypher_text = NULL;
 	u8 *output_buf = NULL;
-	const u8 *body = NULL;
-	const u8 *challenge_data = NULL;
-	size_t body_len;
-	size_t output_len;
-	size_t challenge_len;
+	u8 *challenge_data = NULL;
+	size_t output_len = 0;
+	size_t challenge_len = 0;
 	size_t keylen = 0;
 	size_t cypher_text_len = 0;
-	u8 sbuf[255];
 	EVP_CIPHER_CTX * ctx = NULL;
 	const EVP_CIPHER *cipher;
 
@@ -1649,14 +1636,9 @@ static int piv_general_external_authenticate(sc_card_t *card,
 	}
 	locked = 1;
 
-	p = sbuf;
-	*p++ = 0x7C;
-	*p++ = 0x02;
-	*p++ = 0x81;
-	*p++ = 0x00;
-
 	/* get a challenge */
-	r = piv_general_io(card, 0x87, alg_id, key_ref, sbuf, p - sbuf, rbuf, sizeof rbuf);
+	const u8 sbuf[] = {0x7C, 0x02, 0x81, 0x00};
+	r = piv_general_io(card, 0x87, alg_id, key_ref, sbuf, sizeof sbuf, rbuf, sizeof rbuf);
 	if (r < 0) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Error getting Challenge\n");
 		goto err;
@@ -1668,18 +1650,11 @@ static int piv_general_external_authenticate(sc_card_t *card,
 	 */
 	output_len = r;
 
-	/* Remove the encompassing outer TLV of 0x7C and get the data */
-	body = sc_asn1_find_tag(card->ctx, rbuf,
-		r, 0x7C, &body_len);
-	if (!body || rbuf[0] != 0x7C) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Invalid Challenge Data response of NULL\n");
-		r =  SC_ERROR_INVALID_DATA;
+	r = decode_dynamic_authentication_template(card->ctx, rbuf, r,
+			NULL, NULL, &challenge_data, &challenge_len, NULL, NULL, NULL, NULL);
+	if (r < 0)
 		goto err;
-	}
 
-	/* Get the challenge data indicated by the TAG 0x81 */
-	challenge_data = sc_asn1_find_tag(card->ctx, body,
-		body_len, 0x81, &challenge_len);
 	if (!challenge_data) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Invalid Challenge Data none found in TLV\n");
 		r =  SC_ERROR_INVALID_DATA;
@@ -1737,8 +1712,6 @@ static int piv_general_external_authenticate(sc_card_t *card,
 		goto err;
 	}
 
-	p = output_buf;
-
 	/*
 	 * Build: 7C<len>[82<len><challenge>]
 	 * Start off by capturing the data of the response:
@@ -1749,30 +1722,10 @@ static int piv_general_external_authenticate(sc_card_t *card,
 	 * memcopy the body past the 7C<len> portion
 	 * Transmit
 	 */
-	tmplen = sc_asn1_put_tag(0x82, NULL, cypher_text_len, NULL, 0, NULL);
-	if (tmplen <= 0) {
-		r = SC_ERROR_INTERNAL;
-		goto err;
-	}
-
-	r = sc_asn1_put_tag(0x7C, NULL, tmplen, p, output_len, &p);
-	if (r != SC_SUCCESS) {
-		goto err;
-	}
-
-	/* Build the 0x82 TLV and append to the 7C<len> tag */
-	r = sc_asn1_put_tag(0x82, cypher_text, cypher_text_len, p, output_len - (p - output_buf), &p);
-	if (r != SC_SUCCESS) {
-		goto err;
-	}
-
-	/* Sanity check the lengths again */
-	tmplen = sc_asn1_put_tag(0x7C, NULL, tmplen, NULL, 0, NULL)
-		+ sc_asn1_put_tag(0x82, NULL, cypher_text_len, NULL, 0, NULL);
-	if (output_len != (size_t)tmplen) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Allocated and computed lengths do not match! "
-			 "Expected %"SC_FORMAT_LEN_SIZE_T"d, found: %d\n", output_len, tmplen);
-		r = SC_ERROR_INTERNAL;
+	r = encode_dynamic_authentication_template(card->ctx,
+			NULL, 0, cypher_text, cypher_text_len,
+			NULL, 0, NULL, 0, &output_buf, &output_len);
+	if (r < 0) {
 		goto err;
 	}
 
@@ -1791,11 +1744,9 @@ err:
 		free(key);
 	}
 
-	if (cypher_text)
-		free(cypher_text);
-
-	if (output_buf)
-		free(output_buf);
+	free(challenge_data);
+	free(cypher_text);
+	free(output_buf);
 #else
 	sc_log(card->ctx, "OpenSSL Required");
 	r = SC_ERROR_NOT_SUPPORTED;
@@ -2068,42 +2019,28 @@ static int piv_validate_general_authentication(sc_card_t *card,
 					u8 * out, size_t outlen)
 {
 	piv_private_data_t * priv = PIV_DATA(card);
-	int r, tmplen, tmplen2;
-	u8 *p;
-	const unsigned char *p2;
-	size_t taglen;
-	size_t bodylen;
-	unsigned int cla, tag;
-	unsigned int real_alg_id, op_tag;
+	int r;
+	u8 *result = NULL, *sbuf = NULL;
+	size_t result_len = 0, sbuflen = 0;
+	unsigned int real_alg_id;
 
-	u8 sbuf[4096]; /* needs work. for 3072 keys, needs 384+10 or so */
-	size_t sbuflen = sizeof(sbuf);
 	u8 rbuf[4096];
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	/* should assume large send data */
-	p = sbuf;
-	tmplen = sc_asn1_put_tag(0xff, NULL, datalen, NULL, 0, NULL);
-	tmplen2 = sc_asn1_put_tag(0x82, NULL, 0, NULL, 0, NULL);
-	if (tmplen <= 0 || tmplen2 <= 0) {
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
-	}
-	tmplen += tmplen2;
-	if ((r = sc_asn1_put_tag(0x7c, NULL, tmplen, p, sbuflen, &p)) != SC_SUCCESS ||
-	    (r = sc_asn1_put_tag(0x82, NULL, 0, p, sbuflen - (p - sbuf), &p)) != SC_SUCCESS) {
-		LOG_FUNC_RETURN(card->ctx, r);
-	}
+	/* we want 0x82 to be encoded with length 0, so just pass a pointer without
+	 * a length */
+	u8 empty_object;
 	if (priv->operation == SC_SEC_OPERATION_DERIVE
 			&& priv->algorithm == SC_ALGORITHM_EC) {
-		op_tag = 0x85;
+		r = encode_dynamic_authentication_template(card->ctx,
+				NULL, 0, NULL, 0, &empty_object, 0, data, datalen, &sbuf, &sbuflen);
 	} else {
-		op_tag = 0x81;
+		r = encode_dynamic_authentication_template(card->ctx,
+				NULL, 0, data, datalen, &empty_object, 0, NULL, 0, &sbuf, &sbuflen);
 	}
-	r = sc_asn1_put_tag(op_tag, data, datalen, p, sbuflen - (p - sbuf), &p);
-	if (r != SC_SUCCESS) {
-		LOG_FUNC_RETURN(card->ctx, r);
-	}
+	if (r < 0)
+		goto err;
 
 	/*
 	 * alg_id=06 is a place holder for all RSA keys.
@@ -2125,29 +2062,26 @@ static int piv_validate_general_authentication(sc_card_t *card,
 	/* EC alg_id was already set */
 
 	r = piv_general_io(card, 0x87, real_alg_id, priv->key_ref,
-			sbuf, p - sbuf, rbuf, sizeof rbuf);
+			sbuf, sbuflen, rbuf, sizeof rbuf);
 	if (r < 0)
 		goto err;
 
-	p2 = rbuf;
-	r = sc_asn1_read_tag(&p2, r, &cla, &tag, &bodylen);
-	if (p2 == NULL || r < 0 || bodylen == 0 || (cla|tag) != 0x7C) {
-		LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_INVALID_DATA, "Can't find 0x7C");
-	}
+	r = decode_dynamic_authentication_template(card->ctx, rbuf, r,
+			NULL, NULL, NULL, NULL, &result, &result_len, NULL, NULL);
+	if (r < 0)
+		goto err;
 
-	r = sc_asn1_read_tag(&p2, bodylen, &cla, &tag, &taglen);
-	if (p2 == NULL || r < 0 || taglen == 0 || (cla|tag) != 0x82) {
-		LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_INVALID_DATA, "Can't find 0x82");
-	}
-
-	if (taglen > outlen) {
+	if (result_len > outlen) {
 		LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_INVALID_DATA, "data read longer then buffer");
 	}
 
-	memcpy(out, p2, taglen);
-	r = taglen;
+	memcpy(out, result, result_len);
+	r = result_len;
 
 err:
+	free(sbuf);
+	free(result);
+
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
