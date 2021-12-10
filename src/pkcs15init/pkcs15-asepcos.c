@@ -221,7 +221,7 @@ static int asepcos_do_store_pin(sc_profile_t *profile, sc_card_t *card,
 {
 	sc_file_t *nfile = NULL;
 	u8  buf[64], sbuf[64], *p = buf, *q = sbuf;
-	int r, akn;
+	int r, akn = 0;
 
 	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
 		return SC_ERROR_OBJECT_NOT_VALID;

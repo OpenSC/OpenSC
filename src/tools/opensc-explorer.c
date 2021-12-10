@@ -2472,7 +2472,7 @@ int main(int argc, char *argv[])
 		char *line;
 		int cargc;
 		char *cargv[260];
-		int multiple;
+		int multiple = 0;
 		struct command *cmd;
 		char prompt[3*SC_MAX_PATH_STRING_SIZE];
 
