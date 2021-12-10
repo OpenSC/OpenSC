@@ -147,9 +147,9 @@ coolkey_find_matching_cert(sc_card_t *card, sc_cardctl_coolkey_object_t *in_obj,
 static int
 coolkey_get_attribute_ulong(sc_card_t *card, sc_cardctl_coolkey_object_t *obj, CK_ATTRIBUTE_TYPE type, CK_ULONG *value)
 {
-	const u8 *val;
-	size_t val_len;
-	u8 data_type;
+	const u8 *val = NULL;
+	size_t val_len = 0;
+	u8 data_type = 0;
 	int r;
 
 	r  = coolkey_get_attribute(card, obj, type, &val, &val_len, &data_type);
@@ -168,8 +168,8 @@ static int
 coolkey_get_attribute_boolean(sc_card_t *card, sc_cardctl_coolkey_object_t *obj, CK_ATTRIBUTE_TYPE attr_type)
 {
 	int r;
-	const u8 *val;
-	size_t val_len;
+	const u8 *val = NULL;
+	size_t val_len = 0;
 
 	r = coolkey_get_attribute(card, obj, attr_type, &val, &val_len, NULL);
 	if (r < 0) {
@@ -186,7 +186,7 @@ static int
 coolkey_get_attribute_bytes(sc_card_t *card, sc_cardctl_coolkey_object_t *obj, CK_ATTRIBUTE_TYPE type, u8 *data, size_t *data_len, size_t max_data_len)
 {
 	const u8 *val;
-	size_t val_len;
+	size_t val_len = 0;
 	int r;
 
 	r = coolkey_get_attribute(card, obj, type, &val, &val_len, NULL);
