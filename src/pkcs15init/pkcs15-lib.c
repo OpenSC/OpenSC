@@ -1388,8 +1388,10 @@ sc_pkcs15init_init_skdf(struct sc_pkcs15_card *p15card, struct sc_profile *profi
 	LOG_TEST_GOTO_ERR(ctx, r, "Failed to select secret key object path");
 
 	/* See if we need to select a key reference for this object */
-	if (profile->ops->select_key_reference)
+	if (profile->ops->select_key_reference) {
+		r = SC_ERROR_NOT_SUPPORTED;
 		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_NOT_SUPPORTED, "SKey keyreference selection not supported");
+	}
 
 	*res_obj = object;
 	object = NULL;
