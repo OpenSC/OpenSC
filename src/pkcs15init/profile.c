@@ -1715,7 +1715,7 @@ process_macros(struct state *cur, struct block *info,
 
 	for (item = blk->items; item; item = item->next) {
 		name = item->key;
-		if (item->type != SCCONF_ITEM_TYPE_VALUE)
+		if (item->type != SCCONF_ITEM_TYPE_VALUE || !name)
 			continue;
 #ifdef DEBUG_PROFILE
 		printf("Defining %s\n", name);
