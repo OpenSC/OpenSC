@@ -1059,18 +1059,33 @@ template_sanity_check(struct state *cur, struct sc_profile *templ)
 
 	for (fi = templ->ef_list; fi; fi = fi->next) {
 		struct sc_path fi_path =  fi->file->path;
-		int fi_id = fi_path.value[fi_path.len - 2] * 0x100
-			+ fi_path.value[fi_path.len - 1];
+		int fi_id;
 
 		if (fi->file->type == SC_FILE_TYPE_BSO)
 			continue;
+
+		if (fi_path.len < 2) {
+			parse_error(cur, "Template insane: file-path length should not less than 2");
+			return 1;
+		}
+
+		fi_id = fi_path.value[fi_path.len - 2] * 0x100
+				+ fi_path.value[fi_path.len - 1];
+
 		for (ffi = templ->ef_list; ffi; ffi = ffi->next) {
 			struct sc_path ffi_path =  ffi->file->path;
-			int dlt, ffi_id = ffi_path.value[ffi_path.len - 2] * 0x100
-				+ ffi_path.value[ffi_path.len - 1];
+			int dlt, ffi_id;
 
 			if (ffi->file->type == SC_FILE_TYPE_BSO)
 				continue;
+
+			if (ffi_path.len < 2) {
+				parse_error(cur, "Template insane: file-path length should not less than 2");
+				return 1;
+			}
+
+			ffi_id = ffi_path.value[ffi_path.len - 2] * 0x100
+					+ ffi_path.value[ffi_path.len - 1];
 
 			dlt = fi_id > ffi_id ? fi_id - ffi_id : ffi_id - fi_id;
 			if (strcmp(ffi->ident, fi->ident))   {
