@@ -1968,6 +1968,10 @@ process_block(struct state *cur, struct block *info,
 		cmd = item->key;
 		if (item->type == SCCONF_ITEM_TYPE_COMMENT)
 			continue;
+		if (!cmd) {
+			parse_error(cur, "Command can not be processed.");
+			return SC_ERROR_SYNTAX_ERROR;
+		}
 		if (item->type == SCCONF_ITEM_TYPE_BLOCK) {
 			scconf_list *nlist;
 
