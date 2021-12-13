@@ -1252,6 +1252,11 @@ do_file_type(struct state *cur, int argc, char **argv)
 {
 	unsigned int	type;
 
+	if (!cur->file) {
+		parse_error(cur, "Invalid state\n");
+		return 1;
+	}
+
 	if (map_str2int(cur, argv[0], &type, fileTypeNames))
 		return 1;
 	cur->file->file->type = type;
@@ -1261,8 +1266,15 @@ do_file_type(struct state *cur, int argc, char **argv)
 static int
 do_file_path(struct state *cur, int argc, char **argv)
 {
-	struct sc_file	*file = cur->file->file;
-	struct sc_path	*path = &file->path;
+	struct sc_file	*file = NULL;
+	struct sc_path	*path = NULL;
+
+	if (!cur->file) {
+		parse_error(cur, "Invalid state\n");
+		return 1;
+	}
+	file = cur->file->file;
+	path = &file->path;
 
 	/* sc_format_path doesn't return an error indication
 	 * when it's unable to parse the path */
@@ -1279,8 +1291,15 @@ static int
 do_fileid(struct state *cur, int argc, char **argv)
 {
 	struct file_info *fi;
-	struct sc_file	*df, *file = cur->file->file;
-	struct sc_path	temp, *path = &file->path;
+	struct sc_file	*df, *file = NULL;
+	struct sc_path	temp, *path = NULL;
+
+	if (!cur->file) {
+		parse_error(cur, "Invalid state\n");
+		return 1;
+	}
+	file = cur->file->file;
+	path = &file->path;
 
 	/* sc_format_path doesn't return an error indication
 	 * when it's unable to parse the path */
@@ -1314,6 +1333,11 @@ do_structure(struct state *cur, int argc, char **argv)
 {
 	unsigned int	ef_structure;
 
+	if (!cur->file) {
+		parse_error(cur, "Invalid state\n");
+		return 1;
+	}
+
 	if (map_str2int(cur, argv[0], &ef_structure, fileStructureNames))
 		return 1;
 	cur->file->file->ef_structure = ef_structure;
@@ -1324,6 +1348,11 @@ static int
 do_size(struct state *cur, int argc, char **argv)
 {
 	unsigned int	size;
+
+	if (!cur->file) {
+		parse_error(cur, "Invalid state\n");
+		return 1;
+	}
 
 	if (get_uint_eval(cur, argc, argv, &size))
 		return 1;
@@ -1336,6 +1365,11 @@ do_reclength(struct state *cur, int argc, char **argv)
 {
 	unsigned int	reclength;
 
+	if (!cur->file) {
+		parse_error(cur, "Invalid state\n");
+		return 1;
+	}
+
 	if (get_uint(cur, argv[0], &reclength))
 		return 1;
 	cur->file->file->record_length = reclength;
@@ -1345,9 +1379,15 @@ do_reclength(struct state *cur, int argc, char **argv)
 static int
 do_content(struct state *cur, int argc, char **argv)
 {
-	struct sc_file *file = cur->file->file;
+	struct sc_file *file = NULL;
 	size_t len = (strlen(argv[0]) + 1) / 2;
 	int rv = 0;
+
+	if (!cur->file) {
+		parse_error(cur, "Invalid state\n");
+		return 1;
+	}
+	file = cur->file->file;
 
 	file->encoded_content = malloc(len);
 	if (!file->encoded_content)
@@ -1360,9 +1400,15 @@ do_content(struct state *cur, int argc, char **argv)
 static int
 do_prop_attr(struct state *cur, int argc, char **argv)
 {
-	struct sc_file *file = cur->file->file;
+	struct sc_file *file = NULL;
 	size_t len = (strlen(argv[0]) + 1) / 2;
 	int rv = 0;
+
+	if (!cur->file) {
+		parse_error(cur, "Invalid state\n");
+		return 1;
+	}
+	file = cur->file->file;
 
 	file->prop_attr = malloc(len);
 	if (!file->prop_attr)
@@ -1375,10 +1421,16 @@ do_prop_attr(struct state *cur, int argc, char **argv)
 static int
 do_aid(struct state *cur, int argc, char **argv)
 {
-	struct sc_file	*file = cur->file->file;
+	struct sc_file	*file = NULL;
 	const char	*name = argv[0];
 	unsigned int	len;
 	int		res = 0;
+
+	if (!cur->file) {
+		parse_error(cur, "Invalid state\n");
+		return 1;
+	}
+	file = cur->file->file;
 
 	if (*name == '=') {
 		len = strlen(++name);
@@ -1399,10 +1451,16 @@ do_aid(struct state *cur, int argc, char **argv)
 static int
 do_exclusive_aid(struct state *cur, int argc, char **argv)
 {
-	struct sc_file	*file = cur->file->file;
+	struct sc_file	*file = NULL;
 	const char	*name = argv[0];
 	unsigned int	len;
 	int		res = 0;
+
+	if (!cur->file) {
+		parse_error(cur, "Invalid state\n");
+		return 1;
+	}
+	file = cur->file->file;
 
 #ifdef DEBUG_PROFILE
 	printf("do_exclusive_aid(): exclusive-aid '%s'\n", name);
@@ -1456,8 +1514,12 @@ do_profile_extension(struct state *cur, int argc, char **argv)
 static int
 do_acl(struct state *cur, int argc, char **argv)
 {
-	struct sc_file	*file = cur->file->file;
+	struct sc_file	*file = NULL;
 	char		oper[64], *what = NULL;
+
+	if (!cur->file)
+		goto bad;
+	file = cur->file->file;
 
 	memset(oper, 0, sizeof(oper));
 	while (argc--) {
