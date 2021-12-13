@@ -2045,15 +2045,19 @@ static unsigned long hash_length(const int hash) {
 		sLen = 20;
 		break;
 	case  CKM_SHA224:
+	case  CKM_SHA3_224:
 		sLen = 28;
 		break;
 	case  CKM_SHA256:
+	case  CKM_SHA3_256:
 		sLen = 32;
 		break;
 	case  CKM_SHA384:
+	case  CKM_SHA3_384:
 		sLen = 48;
 		break;
 	case  CKM_SHA512:
+	case  CKM_SHA3_512:
 		sLen = 64;
 		break;
 	default:
@@ -2097,6 +2101,18 @@ parse_pss_params(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key,
 		case CKM_SHA512:
 			pss_params->mgf = CKG_MGF1_SHA512;
 			break;
+		case CKM_SHA3_224:
+			pss_params->mgf = CKG_MGF1_SHA3_224;
+			break;
+		case CKM_SHA3_256:
+			pss_params->mgf = CKG_MGF1_SHA3_256;
+			break;
+		case CKM_SHA3_384:
+			pss_params->mgf = CKG_MGF1_SHA3_384;
+			break;
+		case CKM_SHA3_512:
+			pss_params->mgf = CKG_MGF1_SHA3_512;
+			break;
 		default:
 			/* the PSS should use SHA-1 if not specified */
 			pss_params->hashAlg = CKM_SHA_1;
@@ -2129,6 +2145,26 @@ parse_pss_params(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key,
 	case CKM_SHA512_RSA_PKCS_PSS:
 		pss_params->hashAlg = CKM_SHA512;
 		pss_params->mgf = CKG_MGF1_SHA512;
+		break;
+
+	case CKM_SHA3_224_RSA_PKCS_PSS:
+		pss_params->hashAlg = CKM_SHA3_224;
+		pss_params->mgf = CKG_MGF1_SHA3_224;
+		break;
+
+	case CKM_SHA3_256_RSA_PKCS_PSS:
+		pss_params->hashAlg = CKM_SHA3_256;
+		pss_params->mgf = CKG_MGF1_SHA3_256;
+		break;
+
+	case CKM_SHA3_384_RSA_PKCS_PSS:
+		pss_params->hashAlg = CKM_SHA3_384;
+		pss_params->mgf = CKG_MGF1_SHA3_384;
+		break;
+
+	case CKM_SHA3_512_RSA_PKCS_PSS:
+		pss_params->hashAlg = CKM_SHA3_512;
+		pss_params->mgf = CKG_MGF1_SHA3_512;
 		break;
 
 	default: /* The non-RSA-PSS algorithms do not need any parameters */
@@ -2254,8 +2290,10 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	}
 
 	if (opt_mechanism == CKM_ECDSA || opt_mechanism == CKM_ECDSA_SHA1 ||
-	    opt_mechanism == CKM_ECDSA_SHA256 || opt_mechanism == CKM_ECDSA_SHA384 ||
-	    opt_mechanism == CKM_ECDSA_SHA512 || opt_mechanism == CKM_ECDSA_SHA224) {
+		opt_mechanism == CKM_ECDSA_SHA256 || opt_mechanism == CKM_ECDSA_SHA384 ||
+		opt_mechanism == CKM_ECDSA_SHA512 || opt_mechanism == CKM_ECDSA_SHA224 ||
+		opt_mechanism == CKM_ECDSA_SHA3_224 || opt_mechanism == CKM_ECDSA_SHA3_256 ||
+		opt_mechanism == CKM_ECDSA_SHA3_384 || opt_mechanism == CKM_ECDSA_SHA3_512) {
 		if (opt_sig_format && (!strcmp(opt_sig_format, "openssl") ||
 		                       !strcmp(opt_sig_format, "sequence"))) {
 			unsigned char *seq;
@@ -2314,7 +2352,9 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 
 	if (opt_mechanism == CKM_ECDSA || opt_mechanism == CKM_ECDSA_SHA1 ||
 		opt_mechanism == CKM_ECDSA_SHA256 || opt_mechanism == CKM_ECDSA_SHA384 ||
-		opt_mechanism == CKM_ECDSA_SHA512 || opt_mechanism == CKM_ECDSA_SHA224) {
+		opt_mechanism == CKM_ECDSA_SHA512 || opt_mechanism == CKM_ECDSA_SHA224 ||
+		opt_mechanism == CKM_ECDSA_SHA3_224 || opt_mechanism == CKM_ECDSA_SHA3_256 ||
+		opt_mechanism == CKM_ECDSA_SHA3_384 || opt_mechanism == CKM_ECDSA_SHA3_512) {
 		if (opt_sig_format && (!strcmp(opt_sig_format, "openssl") ||
 							   !strcmp(opt_sig_format, "sequence"))) {
 
@@ -2441,6 +2481,18 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			break;
 		case CKM_SHA224:
 			oaep_params.mgf = CKG_MGF1_SHA224;
+			break;
+		case CKM_SHA3_224:
+			oaep_params.mgf = CKG_MGF1_SHA3_224;
+			break;
+		case CKM_SHA3_256:
+			oaep_params.mgf = CKG_MGF1_SHA3_256;
+			break;
+		case CKM_SHA3_384:
+			oaep_params.mgf = CKG_MGF1_SHA3_384;
+			break;
+		case CKM_SHA3_512:
+			oaep_params.mgf = CKG_MGF1_SHA3_512;
 			break;
 		default:
 			oaep_params.hashAlg = CKM_SHA256;
@@ -6517,6 +6569,18 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 		case CKM_SHA512:
 			mgf = CKG_MGF1_SHA512;
 			break;
+		case CKM_SHA3_224:
+			mgf = CKG_MGF1_SHA3_224;
+			break;
+		case CKM_SHA3_256:
+			mgf = CKG_MGF1_SHA3_256;
+			break;
+		case CKM_SHA3_384:
+			mgf = CKG_MGF1_SHA3_384;
+			break;
+		case CKM_SHA3_512:
+			mgf = CKG_MGF1_SHA3_512;
+			break;
 		}
 		if (opt_mgf != 0) {
 			mgf = opt_mgf;
@@ -6595,6 +6659,18 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 		case CKM_SHA512:
 			md = EVP_sha512();
 			break;
+		case CKM_SHA3_224:
+			md = EVP_sha3_224();
+			break;
+		case CKM_SHA3_256:
+			md = EVP_sha3_256();
+			break;
+		case CKM_SHA3_384:
+			md = EVP_sha3_384();
+			break;
+		case CKM_SHA3_512:
+			md = EVP_sha3_512();
+			break;
 		}
 		if (EVP_PKEY_CTX_set_rsa_oaep_md(ctx, md) <= 0) {
 			EVP_PKEY_CTX_free(ctx);
@@ -6621,6 +6697,18 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 			break;
 		case CKG_MGF1_SHA512:
 			md = EVP_sha512();
+			break;
+		case CKG_MGF1_SHA3_224:
+			md = EVP_sha3_224();
+			break;
+		case CKG_MGF1_SHA3_256:
+			md = EVP_sha3_256();
+			break;
+		case CKG_MGF1_SHA3_384:
+			md = EVP_sha3_384();
+			break;
+		case CKG_MGF1_SHA3_512:
+			md = EVP_sha3_512();
 			break;
 		}
 		if (EVP_PKEY_CTX_set_rsa_mgf1_md(ctx, md) <= 0) {
@@ -7497,6 +7585,10 @@ static struct mech_info	p11_mechanisms[] = {
       { CKM_SHA256_RSA_PKCS,	"SHA256-RSA-PKCS",	"rsa-sha256", MF_UNKNOWN },
       { CKM_SHA384_RSA_PKCS,	"SHA384-RSA-PKCS",	"rsa-sha384", MF_UNKNOWN },
       { CKM_SHA512_RSA_PKCS,	"SHA512-RSA-PKCS",	"rsa-sha512", MF_UNKNOWN },
+      { CKM_SHA3_224_RSA_PKCS,	"SHA3-224-RSA-PKCS",	"rsa-sha3-224", MF_UNKNOWN },
+      { CKM_SHA3_256_RSA_PKCS,	"SHA3-256-RSA-PKCS",	"rsa-sha3-256", MF_UNKNOWN },
+      { CKM_SHA3_384_RSA_PKCS,	"SHA3-384-RSA-PKCS",	"rsa-sha3-384", MF_UNKNOWN },
+      { CKM_SHA3_512_RSA_PKCS,	"SHA3-512-RSA-PKCS",	"rsa-sha3-512", MF_UNKNOWN },
       { CKM_RIPEMD128_RSA_PKCS,	"RIPEMD128-RSA-PKCS",	NULL, MF_UNKNOWN },
       { CKM_RIPEMD160_RSA_PKCS,	"RIPEMD160-RSA-PKCS",	"rsa-ripemd160", MF_UNKNOWN },
       { CKM_RSA_PKCS_OAEP,	"RSA-PKCS-OAEP",	NULL, MF_UNKNOWN },
@@ -7509,6 +7601,10 @@ static struct mech_info	p11_mechanisms[] = {
       { CKM_SHA256_RSA_PKCS_PSS,"SHA256-RSA-PKCS-PSS",	"rsa-pss-sha256", MF_UNKNOWN },
       { CKM_SHA384_RSA_PKCS_PSS,"SHA384-RSA-PKCS-PSS",	"rsa-pss-sha384", MF_UNKNOWN },
       { CKM_SHA512_RSA_PKCS_PSS,"SHA512-RSA-PKCS-PSS",	"rsa-pss-sha512", MF_UNKNOWN },
+      { CKM_SHA3_224_RSA_PKCS_PSS,"SHA3-224-RSA-PKCS-PSS",	"rsa-pss-sha3-224", MF_UNKNOWN },
+      { CKM_SHA3_256_RSA_PKCS_PSS,"SHA3-256-RSA-PKCS-PSS",	"rsa-pss-sha3-256", MF_UNKNOWN },
+      { CKM_SHA3_384_RSA_PKCS_PSS,"SHA3-384-RSA-PKCS-PSS",	"rsa-pss-sha3-384", MF_UNKNOWN },
+      { CKM_SHA3_512_RSA_PKCS_PSS,"SHA3-512-RSA-PKCS-PSS",	"rsa-pss-sha3-512", MF_UNKNOWN },
       { CKM_DSA_KEY_PAIR_GEN,	"DSA-KEY-PAIR-GEN",	NULL, MF_UNKNOWN },
       { CKM_DSA,		"DSA",	NULL, MF_UNKNOWN },
       { CKM_DSA_SHA1,		"DSA-SHA1", NULL, MF_UNKNOWN },
@@ -7567,6 +7663,10 @@ static struct mech_info	p11_mechanisms[] = {
       { CKM_SHA384_HMAC,	"SHA384-HMAC", NULL, MF_GENERIC_HMAC_FLAGS },
       { CKM_SHA512,		"SHA512", NULL, MF_UNKNOWN },
       { CKM_SHA512_HMAC,	"SHA512-HMAC", NULL, MF_GENERIC_HMAC_FLAGS },
+      { CKM_SHA3_224,		"SHA3-224", NULL, MF_UNKNOWN },
+      { CKM_SHA3_256,		"SHA3-256", NULL, MF_UNKNOWN },
+      { CKM_SHA3_384,		"SHA3-384", NULL, MF_UNKNOWN },
+      { CKM_SHA3_512,		"SHA3-512", NULL, MF_UNKNOWN },
       { CKM_RIPEMD128,		"RIPEMD128", NULL, MF_UNKNOWN },
       { CKM_RIPEMD128_HMAC,	"RIPEMD128-HMAC", NULL, MF_UNKNOWN },
       { CKM_RIPEMD128_HMAC_GENERAL,"RIPEMD128-HMAC-GENERAL", NULL, MF_UNKNOWN },
@@ -7666,6 +7766,10 @@ static struct mech_info	p11_mechanisms[] = {
       { CKM_ECDSA_SHA256,	"ECDSA-SHA256", NULL, MF_UNKNOWN },
       { CKM_ECDSA_SHA384,	"ECDSA-SHA384", NULL, MF_UNKNOWN },
       { CKM_ECDSA_SHA512,	"ECDSA-SHA512", NULL, MF_UNKNOWN },
+      { CKM_ECDSA_SHA3_224,	"ECDSA-SHA3-224", NULL, MF_UNKNOWN },
+      { CKM_ECDSA_SHA3_256,	"ECDSA-SHA3-256", NULL, MF_UNKNOWN },
+      { CKM_ECDSA_SHA3_384,	"ECDSA-SHA3-384", NULL, MF_UNKNOWN },
+      { CKM_ECDSA_SHA3_512,	"ECDSA-SHA3-512", NULL, MF_UNKNOWN },
       { CKM_ECDH1_DERIVE,	"ECDH1-DERIVE", NULL, MF_UNKNOWN },
       { CKM_ECDH1_COFACTOR_DERIVE,"ECDH1-COFACTOR-DERIVE", NULL, MF_UNKNOWN },
       { CKM_ECMQV_DERIVE,	"ECMQV-DERIVE", NULL, MF_UNKNOWN },
@@ -7728,6 +7832,11 @@ static struct mech_info	p11_mgf[] = {
       { CKG_MGF1_SHA256,	"MGF1-SHA256", NULL, MF_MGF },
       { CKG_MGF1_SHA384,	"MGF1-SHA384", NULL, MF_MGF },
       { CKG_MGF1_SHA512,	"MGF1-SHA512", NULL, MF_MGF },
+      { CKG_MGF1_SHA3_224,	"MGF1-SHA3_224", NULL, MF_MGF },
+      { CKG_MGF1_SHA3_256,	"MGF1-SHA3_256", NULL, MF_MGF },
+      { CKG_MGF1_SHA3_384,	"MGF1-SHA3_384", NULL, MF_MGF },
+      { CKG_MGF1_SHA3_512,	"MGF1-SHA3_512", NULL, MF_MGF },
+      
       { 0, NULL, NULL, MF_UNKNOWN }
 };
 
