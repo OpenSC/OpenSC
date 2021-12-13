@@ -263,8 +263,8 @@ static const struct option options[] = {
 #ifndef _WIN32
 	{ "test-fork",		0, NULL,		OPT_TEST_FORK },
 #endif
-	{ "use-locking",	0, NULL,		OPT_USE_LOCKING },
 #if defined(_WIN32) || defined(HAVE_PTHREAD)
+	{ "use-locking",	0, NULL,		OPT_USE_LOCKING },
 	{ "test-threads",	1, NULL,		OPT_TEST_THREADS },
 #endif
 	{ "generate-random",	1, NULL,		OPT_GENERATE_RANDOM },
@@ -1050,10 +1050,10 @@ int main(int argc, char * argv[])
 			action_count++;
 			break;
 #endif
+#if defined(_WIN32) || defined(HAVE_PTHREAD)
 		case OPT_USE_LOCKING:
 			c_initialize_args_ptr = &c_initialize_args_OS;
 			break;
-#if defined(_WIN32) || defined(HAVE_PTHREAD)
 		case OPT_TEST_THREADS:
 			do_test_threads = 1;
 			if (test_threads_num < MAX_TEST_THREADS) {
