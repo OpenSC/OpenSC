@@ -557,7 +557,7 @@ static int cwa_prepare_external_auth(sc_card_t * card,
 	u8 *buf1 = NULL;		/* where to encrypt with icc pub key */
 	u8 *buf2 = NULL;		/* where to encrypt with ifd pub key */
 	u8 *buf3 = NULL;		/* where to compose message to be encrypted */
-	size_t len1, len2, len3;
+	size_t len1 = 128, len2 = 128, len3 = 128;
 	u8 *sha_buf = NULL;		/* to compose message to be sha'd */
 	u8 *sha_data = NULL;		/* sha signature data */
 	BIGNUM *bn = NULL;
@@ -568,15 +568,15 @@ static int cwa_prepare_external_auth(sc_card_t * card,
 	EVP_PKEY_CTX *pctx = NULL;
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
-	const BIGNUM *ifd_privkey_n, *ifd_privkey_e, *ifd_privkey_d = NULL;
-	RSA *rsa_ifd_privkey = EVP_PKEY_get0_RSA(ifd_privkey);
+	const BIGNUM *ifd_privkey_n = NULL;
+	const RSA *rsa_ifd_privkey = EVP_PKEY_get0_RSA(ifd_privkey);
 	if (!rsa_ifd_privkey) {
 		res = SC_ERROR_INTERNAL;
 		msg = "Can not extract RSA object ifd priv";
 		goto prepare_external_auth_end;
 	}
 #else
-	BIGNUM *ifd_privkey_n = NULL, *ifd_privkey_e = NULL, *ifd_privkey_d = NULL;
+	BIGNUM *ifd_privkey_n = NULL;
 #endif
 
 	/* safety check */
@@ -637,15 +637,13 @@ static int cwa_prepare_external_auth(sc_card_t * card,
 		goto prepare_external_auth_end;
 	}
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
-	RSA_get0_key(rsa_ifd_privkey, &ifd_privkey_n, &ifd_privkey_e, &ifd_privkey_d);
+	RSA_get0_key(rsa_ifd_privkey, &ifd_privkey_n, NULL, NULL);
 #else
-	if (EVP_PKEY_get_bn_param(ifd_privkey, OSSL_PKEY_PARAM_RSA_N, &ifd_privkey_n) != 1 ||
-		EVP_PKEY_get_bn_param(ifd_privkey, OSSL_PKEY_PARAM_RSA_E, &ifd_privkey_e) != 1 ||
-		EVP_PKEY_get_bn_param(ifd_privkey, OSSL_PKEY_PARAM_RSA_D, &ifd_privkey_d) != 1) {
+	if (EVP_PKEY_get_bn_param(ifd_privkey, OSSL_PKEY_PARAM_RSA_N, &ifd_privkey_n) != 1) {
 		msg = "Prepare external auth: BN get param failed";
 		res = SC_ERROR_INTERNAL;
 		goto prepare_external_auth_end;
-	 }
+	}
 #endif
 
 	res = BN_sub(bnsub, ifd_privkey_n, bn);	/* eval N.IFD-SIG */
@@ -709,6 +707,11 @@ static int cwa_prepare_external_auth(sc_card_t * card,
 	if (sha_data) {
 		free(sha_data);
 	}
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	if (ifd_privkey_n) {
+		BN_clear_free(ifd_privkey_n);
+	}
+#endif
 
 	if (res != SC_SUCCESS)
 		sc_log(ctx, "%s", msg);
@@ -898,7 +901,7 @@ static int cwa_verify_internal_auth(sc_card_t * card,
 	u8 *buf1 = NULL;	/* to decrypt with our private key */
 	u8 *buf2 = NULL;	/* to try SIGNUM==SIG */
 	u8 *buf3 = NULL;	/* to try SIGNUM==N.ICC-SIG */
-	size_t len1, len2, len3 = 0;
+	size_t len1 = 128, len2 = 128, len3 = 128;
 	BIGNUM *bn = NULL;
 	BIGNUM *sigbn = NULL;
 	sc_context_t *ctx = NULL;
@@ -906,15 +909,15 @@ static int cwa_verify_internal_auth(sc_card_t * card,
 	EVP_PKEY_CTX *pctx = NULL;
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
-	const BIGNUM *icc_pubkey_n, *icc_pubkey_e, *icc_pubkey_d = NULL;
-	RSA *rsa_icc_pubkey = EVP_PKEY_get0_RSA(icc_pubkey);
+	const BIGNUM *icc_pubkey_n = NULL;
+	const RSA *rsa_icc_pubkey = EVP_PKEY_get0_RSA(icc_pubkey);
 	if (!rsa_icc_pubkey) {
 		res = SC_ERROR_INTERNAL;
 		msg = "Can not extract RSA object icc pub";
 		goto verify_internal_done;
 	}
 #else
-	BIGNUM *icc_pubkey_n = NULL, *icc_pubkey_e = NULL, *icc_pubkey_d = NULL;
+	BIGNUM *icc_pubkey_n = NULL;
 #endif
 
 	if (!card || !card->ctx)
@@ -975,7 +978,7 @@ static int cwa_verify_internal_auth(sc_card_t * card,
 	if (!pctx ||
 		EVP_PKEY_encrypt_init(pctx) != 1 ||
 		EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_NO_PADDING) != 1 ||
-		EVP_PKEY_encrypt(pctx, buf3, &len3, buf1, len1)) {
+		EVP_PKEY_encrypt(pctx, buf3, &len3, buf1, len1) != 1) {
 		EVP_PKEY_CTX_free(pctx);
 		goto verify_nicc_sig;	/* evaluate N.ICC-SIG and retry */
 	}
@@ -1000,15 +1003,13 @@ static int cwa_verify_internal_auth(sc_card_t * card,
 		goto verify_internal_done;
 	}
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
-	RSA_get0_key(rsa_icc_pubkey, &icc_pubkey_n, &icc_pubkey_e, &icc_pubkey_d);
+	RSA_get0_key(rsa_icc_pubkey, &icc_pubkey_n, NULL, NULL);
 #else
-	if (EVP_PKEY_get_bn_param(icc_pubkey, OSSL_PKEY_PARAM_RSA_N, &icc_pubkey_n) != 1 ||
-		EVP_PKEY_get_bn_param(icc_pubkey, OSSL_PKEY_PARAM_RSA_E, &icc_pubkey_e) != 1 ||
-		EVP_PKEY_get_bn_param(icc_pubkey, OSSL_PKEY_PARAM_RSA_D, &icc_pubkey_d) != 1) {
+	if (EVP_PKEY_get_bn_param(icc_pubkey, OSSL_PKEY_PARAM_RSA_N, &icc_pubkey_n) != 1) {
 		msg = "Verify Signature: BN get param failed";
 		res = SC_ERROR_INTERNAL;
 		goto verify_internal_ok;
-	 }
+	}
 #endif
 	res = BN_sub(sigbn, icc_pubkey_n, bn);	/* eval N.ICC-SIG */
 	if (!res) {
@@ -1058,6 +1059,10 @@ static int cwa_verify_internal_auth(sc_card_t * card,
 		BN_free(bn);
 	if (sigbn)
 		BN_free(sigbn);
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	if (icc_pubkey_n)
+		BN_clear_free(icc_pubkey_n);
+#endif
 	if (res != SC_SUCCESS)
 		sc_log(ctx, "%s", msg);
 	LOG_FUNC_RETURN(ctx, res);
@@ -1561,11 +1566,13 @@ int cwa_encode_apdu(sc_card_t * card,
 		key = sm_session->session_enc;
 
 		if (EVP_EncryptInit_ex(cctx, EVP_des_ede_cbc(), NULL, key, iv) != 1 ||
+			EVP_CIPHER_CTX_set_padding(cctx, 0) != 1 ||
 			EVP_EncryptUpdate(cctx, cryptbuf + 1, &dlen, msgbuf, dlen) != 1 ||
 			EVP_EncryptFinal_ex(cctx, cryptbuf + 1 + dlen, &tmplen) != 1) {
 			msg = "Error in encrypting APDU";
+			res = SC_ERROR_INTERNAL;
 			goto encode_end;
-		 }
+		}
 		dlen += tmplen;
 
 		/* compose data TLV and add to result buffer */
@@ -1615,6 +1622,7 @@ int cwa_encode_apdu(sc_card_t * card,
 	if (!legacy_provider) {
 		if (!(legacy_provider = OSSL_PROVIDER_try_load(NULL, "legacy", 1))) {
 			msg = "Failed to load legacy provider";
+			res = SC_ERROR_INTERNAL;
 			goto encode_end;
 		}
 	}
@@ -1623,6 +1631,7 @@ int cwa_encode_apdu(sc_card_t * card,
 	if (EVP_EncryptInit_ex(cctx, EVP_des_ecb(), NULL, key, NULL) != 1 ||
 		EVP_CIPHER_CTX_set_padding(cctx, 0) != 1) {
 		msg = "Error in DES ECB encryption";
+		res = SC_ERROR_INTERNAL;
 		goto encode_end;
 	 }
 
@@ -1630,22 +1639,26 @@ int cwa_encode_apdu(sc_card_t * card,
 		/* compute DES */
 		if (EVP_EncryptUpdate(cctx, macbuf, &tmplen, macbuf , 8) != 1) {
 			msg = "Error in DES ECB encryption";
+			res = SC_ERROR_INTERNAL;
 			goto encode_end;
 		}
 		/* XOR with next data and repeat */
 		for (j = 0; j < 8; j++)
 			macbuf[j] ^= ccbuf[i + j];
 	}
-	if (EVP_EncryptFinal_ex(cctx, macbuf + tmplen, NULL) != 1) {
+	if (EVP_EncryptFinal_ex(cctx, macbuf + tmplen, &tmplen) != 1) {
 		msg = "Error in DES ECB encryption";
+		res = SC_ERROR_INTERNAL;
 		goto encode_end;
 	}
 
 	/* and apply 3DES to result */
 	if (EVP_EncryptInit_ex(cctx, EVP_des_ede_ecb(), NULL, key, NULL) != 1 ||
+		EVP_CIPHER_CTX_set_padding(cctx, 0) != 1 ||
 		EVP_EncryptUpdate(cctx, macbuf, &tmplen, macbuf, 8) != 1 ||
 		EVP_EncryptFinal_ex(cctx, macbuf + tmplen, &tmplen) != 1) {
 		msg = "Error in 3DEC ECB encryption";
+		res = SC_ERROR_INTERNAL;
 		goto encode_end;
 	}
 
@@ -1851,6 +1864,7 @@ int cwa_decode_response(sc_card_t * card,
 	if (!legacy_provider) {
 		if (!(legacy_provider = OSSL_PROVIDER_try_load(NULL, "legacy", 1))) {
 			msg = "Failed to load legacy provider";
+			res = SC_ERROR_INTERNAL;
 			goto response_decode_end;
 		}
 	}
@@ -1859,6 +1873,7 @@ int cwa_decode_response(sc_card_t * card,
 	if (EVP_EncryptInit_ex(cctx, EVP_des_ecb(), NULL, key, NULL) != 1 ||
 		EVP_CIPHER_CTX_set_padding(cctx, 0) != 1) {
 		msg = "Error in DES ECB encryption";
+		res = SC_ERROR_INTERNAL;
 		goto response_decode_end;
 	 }
 
@@ -1867,6 +1882,7 @@ int cwa_decode_response(sc_card_t * card,
 		/* compute DES */
 		if (EVP_EncryptUpdate(cctx, macbuf, &tmplen, macbuf, 8) != 1) {
 			msg = "Error in DES ECB encryption";
+			res = SC_ERROR_INTERNAL;
 			goto response_decode_end;
 		}
 		/* XOR with data and repeat */
@@ -1875,14 +1891,17 @@ int cwa_decode_response(sc_card_t * card,
 	}
 	if (EVP_EncryptFinal_ex(cctx, macbuf + tmplen, &tmplen) != 1) {
 		msg = "Error in DES ECB encryption";
+		res = SC_ERROR_INTERNAL;
 		goto response_decode_end;
 	}
 
 	/* finally apply 3DES to result */
 	if (EVP_EncryptInit_ex(cctx, EVP_des_ede_ecb(), NULL, key, NULL) != 1 ||
+		EVP_CIPHER_CTX_set_padding(cctx, 0) != 1 ||
 		EVP_EncryptUpdate(cctx, macbuf, &tmplen, macbuf, 8) != 1 ||
 		EVP_EncryptFinal_ex(cctx, macbuf + tmplen, &tmplen) != 1) {
 		msg = "Error in 3DEC ECB encryption";
+		res = SC_ERROR_INTERNAL;
 		goto response_decode_end;
 	}
 
@@ -1934,8 +1953,10 @@ int cwa_decode_response(sc_card_t * card,
 		/* decrypt into response buffer
 		 * by using 3DES CBC by mean of kenc and iv={0,...0} */
 		if (EVP_DecryptInit_ex(cctx, EVP_des_ede_cbc(), NULL, key, iv) != 1 ||
-			EVP_DecryptUpdate(cctx, apdu->resp, &dlen, &e_tlv->data[1], e_tlv->len - 1) ||
-			EVP_DecryptFinal_ex(cctx, apdu->resp + dlen, &tmplen)) {
+			EVP_CIPHER_CTX_set_padding(cctx, 0) != 1 ||
+			EVP_DecryptUpdate(cctx, apdu->resp, &dlen, &e_tlv->data[1], e_tlv->len - 1) != 1 ||
+			EVP_DecryptFinal_ex(cctx, apdu->resp + dlen, &tmplen) != 1) {
+			res = SC_ERROR_INTERNAL;
 			msg = "Can not decrypt 3DES CBC";
 			goto response_decode_end;
 		}
@@ -1945,8 +1966,7 @@ int cwa_decode_response(sc_card_t * card,
 		for (; (apdu->resplen > 0) && *(apdu->resp + apdu->resplen - 1) == 0x00; apdu->resplen--) ;	/* empty loop */
 
 		if (*(apdu->resp + apdu->resplen - 1) != 0x80) {	/* check padding byte */
-			msg =
-			    "Decrypted TLV has no 0x80 iso padding indicator!";
+			msg = "Decrypted TLV has no 0x80 iso padding indicator!";
 			res = SC_ERROR_INVALID_DATA;
 			goto response_decode_end;
 		}
