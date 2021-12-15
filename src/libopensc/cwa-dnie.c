@@ -735,8 +735,8 @@ static int dnie_get_root_ca_pubkey(sc_card_t * card, EVP_PKEY ** root_ca_key)
 		RSA_free(root_ca_rsa);
 #else
 	if (!(bld = OSSL_PARAM_BLD_new()) ||
-		OSSL_PARAM_BLD_push_BN(bld, "n", root_ca_rsa_n) != 1 ||
-		OSSL_PARAM_BLD_push_BN(bld, "e", root_ca_rsa_e) != 1 ||
+		OSSL_PARAM_BLD_push_BN(bld, OSSL_PKEY_PARAM_RSA_N, root_ca_rsa_n) != 1 ||
+		OSSL_PARAM_BLD_push_BN(bld, OSSL_PKEY_PARAM_RSA_E, root_ca_rsa_e) != 1 ||
 		!(params = OSSL_PARAM_BLD_to_param(bld))) {
 		OSSL_PARAM_BLD_free(bld);
 		OSSL_PARAM_free(params);
@@ -761,6 +761,8 @@ static int dnie_get_root_ca_pubkey(sc_card_t * card, EVP_PKEY ** root_ca_key)
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 	EVP_PKEY_CTX_free(ctx);
 	OSSL_PARAM_free(params);
+	BN_free(root_ca_rsa_n);
+	BN_free(root_ca_rsa_e);
 #endif
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
@@ -872,7 +874,7 @@ static int dnie_get_privkey(sc_card_t * card, EVP_PKEY ** ifd_privkey,
                             u8 * public_exponent, int public_exponent_len,
                             u8 * private_exponent, int private_exponent_len)
 {
-	BIGNUM *ifd_rsa_n, *ifd_rsa_e, *ifd_rsa_d = NULL;
+	BIGNUM *ifd_rsa_n = NULL, *ifd_rsa_e = NULL, *ifd_rsa_d = NULL;
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 	int res = SC_ERROR_INTERNAL;
@@ -922,9 +924,9 @@ static int dnie_get_privkey(sc_card_t * card, EVP_PKEY ** ifd_privkey,
 		RSA_free(ifd_rsa);
 #else
 	if (!(bld = OSSL_PARAM_BLD_new()) ||
-		OSSL_PARAM_BLD_push_BN(bld, "n", ifd_rsa_n) != 1 ||
-		OSSL_PARAM_BLD_push_BN(bld, "e", ifd_rsa_e) != 1 ||
-		OSSL_PARAM_BLD_push_BN(bld, "d", ifd_rsa_d) != 1 ||
+		OSSL_PARAM_BLD_push_BN(bld, OSSL_PKEY_PARAM_RSA_N, ifd_rsa_n) != 1 ||
+		OSSL_PARAM_BLD_push_BN(bld, OSSL_PKEY_PARAM_RSA_E, ifd_rsa_e) != 1 ||
+		OSSL_PARAM_BLD_push_BN(bld, OSSL_PKEY_PARAM_RSA_D, ifd_rsa_d) != 1 ||
 		!(params = OSSL_PARAM_BLD_to_param(bld))) {
 		OSSL_PARAM_BLD_free(bld);
 		OSSL_PARAM_free(params);
@@ -938,7 +940,7 @@ static int dnie_get_privkey(sc_card_t * card, EVP_PKEY ** ifd_privkey,
 	OSSL_PARAM_BLD_free(bld);
 
 	if (EVP_PKEY_fromdata_init(ctx) != 1 ||
-		EVP_PKEY_fromdata(ctx, ifd_privkey, EVP_PKEY_KEY_PARAMETERS, params) != 1) {
+		EVP_PKEY_fromdata(ctx, ifd_privkey, EVP_PKEY_KEYPAIR, params) != 1) {
 		 EVP_PKEY_CTX_free(ctx);
 #endif
 		BN_free(ifd_rsa_n);
@@ -952,6 +954,9 @@ static int dnie_get_privkey(sc_card_t * card, EVP_PKEY ** ifd_privkey,
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 	OSSL_PARAM_free(params);
 	EVP_PKEY_CTX_free(ctx);
+	BN_free(ifd_rsa_n);
+	BN_free(ifd_rsa_e);
+	BN_free(ifd_rsa_d);
 #endif
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
