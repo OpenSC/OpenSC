@@ -38,7 +38,7 @@
 			<variablelist>
                                 <varlistentry>
                                         <term>
-                                                <option>--version</option>,
+                                                <option>--version</option>
                                         </term>
                                         <listitem><para>Print the OpenSC package release version.</para></listitem>
                                 </varlistentry>
@@ -152,7 +152,7 @@
 
 				<varlistentry>
 					<term>
-						<option>--short</option>
+						<option>--short</option>,
 						<option>-s</option>
 					</term>
 					<listitem><para>Output lists in compact format.</para></listitem>
@@ -163,16 +163,6 @@
 						<option>--no-cache</option>
 					</term>
 					<listitem><para>Disables token data caching.</para></listitem>
-				</varlistentry>
-
-				<varlistentry>
-					<term>
-						<option>--clear-cache</option>
-					</term>
-					<listitem><para>Removes the user's cache directory. On
-					Windows, this option additionally removes the system's
-					caching directory (requires administrator
-					privileges).</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -216,7 +206,7 @@
 
 				<varlistentry>
 					<term>
-						<option>--read-data-object</option> <replaceable>cert</replaceable>,
+						<option>--read-data-object</option> <replaceable>data</replaceable>,
 						<option>-R</option> <replaceable>data</replaceable>
 					</term>
 					<listitem><para>Reads data object with OID, applicationName or label.
@@ -262,7 +252,7 @@
 				<varlistentry>
 					<term>
 						<option>--test-update</option>,
-						<option>-T</option>,
+						<option>-T</option>
 					</term>
 					<listitem><para>Test if the card needs a security update</para></listitem>
 				</varlistentry>
@@ -270,7 +260,7 @@
 				<varlistentry>
 					<term>
 						<option>--update</option>,
-						<option>-U</option>,
+						<option>-U</option>
 					</term>
 					<listitem><para>Update the card with a security update</para></listitem>
 				</varlistentry>
@@ -311,7 +301,7 @@
 				<varlistentry>
 					<term>
 						<option>--pin</option> <replaceable>pin</replaceable>,
-						<option>--new-pin</option> <replaceable>newpin</replaceable>
+						<option>--new-pin</option> <replaceable>newpin</replaceable>,
 						<option>--puk</option> <replaceable>puk</replaceable>
 					</term>
 					<listitem>
