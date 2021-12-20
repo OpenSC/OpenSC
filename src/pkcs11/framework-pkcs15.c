@@ -4396,6 +4396,21 @@ pkcs15_prkey_decrypt(struct sc_pkcs11_session *session, void *obj,
 	unsigned char decrypted[512]; /* FIXME: Will not work for keys above 4096 bits */
 	int	buff_too_small, rv, flags = 0, prkey_has_path = 0;
 
+	if (pulDataLen == NULL) {
+		/* This is call from the C_DecyptInit function */
+		sc_log(context, "C_DecryptInit...");
+		return CKR_OK;
+	}
+	if (pEncryptedData == NULL && ulEncryptedDataLen == 0) {
+		/* This is call from the C_DecryptFinalize function */
+		sc_log(context, "C_DecryptFinalize...");
+		*pulDataLen = 0;
+		return CKR_OK;
+	}
+	/* DecryptUpdate: we assume this code is called only once per session, either
+	 * from the C_Decrypt function or from an application using the C_DecryptUpdate call
+	 */
+
 	sc_log(context, "Initiating decryption.");
 
 	if (!p11card)

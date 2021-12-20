@@ -1449,9 +1449,11 @@ sc_pkcs11_decrypt_init(sc_pkcs11_operation_t *operation,
 			LOG_FUNC_RETURN(context, (int) rv);
 		}
 	}
-
 	operation->priv_data = data;
-	return CKR_OK;
+
+	/* The last parameter is NULL - this is call to INIT code in underlying functions */
+	return key->ops->decrypt(operation->session,
+			key, &operation->mechanism, NULL, 0, NULL, NULL);
 }
 
 static CK_RV
@@ -1461,14 +1463,42 @@ sc_pkcs11_decrypt(sc_pkcs11_operation_t *operation,
 {
 	struct operation_data *data;
 	struct sc_pkcs11_object *key;
+	CK_RV rv;
+	CK_ULONG ulDataLen, ulLastDataLen;
+
+	/* PKCS#11: If pBuf is not NULL_PTR, then *pulBufLen must contain the size in bytes.. */
+	if (pData && !pulDataLen)
+		return CKR_ARGUMENTS_BAD;
+
+	ulDataLen = pulDataLen ? *pulDataLen : 0;
+	ulLastDataLen = ulDataLen;
 
 	data = (struct operation_data *)operation->priv_data;
 
 	key = data->key;
-	return key->ops->decrypt(operation->session,
-				key, &operation->mechanism,
-				pEncryptedData, ulEncryptedDataLen,
-				pData, pulDataLen);
+
+	/* Decrypt */
+	rv = key->ops->decrypt(operation->session, key, &operation->mechanism,
+			pEncryptedData, ulEncryptedDataLen, pData, &ulDataLen);
+
+	if (pulDataLen)
+		*pulDataLen = ulDataLen;
+
+	if (rv != CKR_OK)
+		return rv;
+
+	/* recalculate buffer space */
+	if (ulDataLen <= ulLastDataLen)
+		ulLastDataLen -= ulDataLen;
+	else
+		ulLastDataLen = 0;
+
+	/* DecryptFinalize */
+	rv = key->ops->decrypt(operation->session, key, &operation->mechanism,
+			NULL, 0, pData + ulDataLen, &ulLastDataLen);
+	if (pulDataLen)
+		*pulDataLen = ulDataLen + ulLastDataLen;
+	return rv;
 }
 
 static CK_RV
