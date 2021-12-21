@@ -680,7 +680,7 @@ static int dnie_set_channel_data(sc_card_t * card, X509 * icc_intermediate_ca_ce
 static int dnie_get_root_ca_pubkey(sc_card_t * card, EVP_PKEY ** root_ca_key)
 {
 	int res = SC_SUCCESS;
-	BIGNUM *root_ca_rsa_n, *root_ca_rsa_e = NULL;
+	BIGNUM *root_ca_rsa_n = NULL, *root_ca_rsa_e = NULL;
 	dnie_channel_data_t *data;
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 	RSA *root_ca_rsa = NULL;
