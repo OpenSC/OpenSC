@@ -427,6 +427,21 @@ static int myeid_select_file(struct sc_card *card, const struct sc_path *in_path
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
+static int myeid_logout(struct sc_card *card)
+{
+	sc_apdu_t apdu;
+	int r;
+
+	LOG_FUNC_CALLED(card->ctx);
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x2E, 0x00, 0x00 /*pin ref: 0x01-0x0E, 0=ALL*/);
+	apdu.cla = 0;
+
+	r = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+
+	LOG_FUNC_RETURN(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2));
+}
 
 static int myeid_list_files(struct sc_card *card, u8 *buf, size_t buflen)
 {
@@ -1820,6 +1835,7 @@ static struct sc_card_driver * sc_get_driver(void)
 	myeid_ops.update_record		= NULL;
 	myeid_ops.select_file		= myeid_select_file;
 	myeid_ops.get_response		= iso_ops->get_response;
+	myeid_ops.logout		= myeid_logout;
 	myeid_ops.create_file		= myeid_create_file;
 	myeid_ops.delete_file		= myeid_delete_file;
 	myeid_ops.list_files		= myeid_list_files;
