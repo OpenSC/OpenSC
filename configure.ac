@@ -737,6 +737,7 @@ AC_MSG_CHECKING([for EAC_CTX_init_pace])
 AC_TRY_LINK_FUNC(EAC_CTX_init_pace, [ AC_MSG_RESULT([yes]) ],
                  [ AC_MSG_WARN([Cannot link against libeac])
                  have_openpace="no" ])
+AC_CHECK_FUNCS([EAC_OBJ_nid2obj])
 
 CPPFLAGS="$saved_CPPFLAGS"
 LIBS="$saved_LIBS"
