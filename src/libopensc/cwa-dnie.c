@@ -941,7 +941,7 @@ static int dnie_get_privkey(sc_card_t * card, EVP_PKEY ** ifd_privkey,
 
 	if (EVP_PKEY_fromdata_init(ctx) != 1 ||
 		EVP_PKEY_fromdata(ctx, ifd_privkey, EVP_PKEY_KEYPAIR, params) != 1) {
-		 EVP_PKEY_CTX_free(ctx);
+		EVP_PKEY_CTX_free(ctx);
 #endif
 		BN_free(ifd_rsa_n);
 		BN_free(ifd_rsa_e);
