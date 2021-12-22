@@ -86,6 +86,7 @@ add_object(test_certs_t *objects, CK_ATTRIBUTE key_id, CK_ATTRIBUTE label)
 	o->key_type = -1;
 	o->x509 = NULL; /* The "reuse" capability of d2i_X509() is strongly discouraged */
 	o->key = NULL;
+	o->value = NULL;
 
 	/* Store the passed CKA_ID and CKA_LABEL */
 	o->key_id = malloc(key_id.ulValueLen);
