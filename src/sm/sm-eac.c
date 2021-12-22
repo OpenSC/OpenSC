@@ -1141,6 +1141,7 @@ int perform_pace(sc_card_t *card,
 		sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "EF.CardAccess", pace_output->ef_cardaccess,
 				pace_output->ef_cardaccess_length);
 
+		EAC_init();
 		eac_ctx = EAC_CTX_new();
 		if (!eac_ctx
 				|| !EAC_CTX_init_ef_cardaccess(pace_output->ef_cardaccess,
@@ -1525,6 +1526,7 @@ int perform_terminal_authentication(sc_card_t *card,
 		 * seems valid. */
 		card->caps |= SC_CARD_CAP_APDU_EXT;
 
+		EAC_init();
 		eac_ctx = EAC_CTX_new();
 		if (!eac_ctx
 				|| !EAC_CTX_init_ef_cardaccess(ef_cardaccess,

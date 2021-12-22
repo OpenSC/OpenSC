@@ -598,9 +598,6 @@ int paccess_main(struct sc_context *ctx, sc_card_t *card, struct gengetopt_args_
             }
         }
 
-#ifdef ENABLE_OPENPACE
-        EAC_init();
-#endif
         SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_VERBOSE_TOOL,
                 perform_terminal_authentication(card,
                     (const unsigned char **) certs, certs_lens,
