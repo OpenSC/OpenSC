@@ -28,6 +28,11 @@
 			stored on the German eID card (neuer Personalausweis, <abbrev>nPA</abbrev>),
 			and to perform some write and verification operations.
 		</para>
+		<para>
+			Extended Access Control version 2 is performed according to ICAO Doc
+			9303 or BSI TR-03110 so that other identity cards and machine
+			readable travel documents (MRTDs) may be read as well.
+		</para>
 	</refsect1>
 
 	<refsect1>
