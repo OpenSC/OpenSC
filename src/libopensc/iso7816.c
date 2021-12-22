@@ -1386,11 +1386,13 @@ int iso7816_read_binary_sfid(sc_card_t *card, unsigned char sfid,
 			*ef_len += r;
 			break;
 		}
-		if (r == 0 || r == SC_ERROR_FILE_END_REACHED)
-			break;
-		if (r < 0) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not read EF.");
-			goto err;
+		if (r <= 0) {
+			if (*ef_len > 0)
+				break;
+			else {
+				sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not read EF.");
+				goto err;
+			}
 		}
 		*ef_len += r;
 
