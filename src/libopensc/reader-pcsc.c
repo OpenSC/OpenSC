@@ -393,10 +393,7 @@ static int refresh_attributes(sc_reader_t *reader)
 				|| rv == (LONG)SCARD_E_NO_READERS_AVAILABLE
 #endif
 				|| rv == (LONG)SCARD_E_SERVICE_STOPPED) {
- 			if (old_flags & SC_READER_CARD_PRESENT) {
- 				reader->flags |= SC_READER_CARD_CHANGED;
- 			}
-			
+ 			reader->flags &= ~(SC_READER_CARD_PRESENT);
  			SC_FUNC_RETURN(reader->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
  		}
 
@@ -415,7 +412,8 @@ static int refresh_attributes(sc_reader_t *reader)
 		 * XXX: We'll hit it again, as no readers are removed currently.
 		 */
 		reader->flags &= ~(SC_READER_CARD_PRESENT);
-		return SC_ERROR_READER_DETACHED;
+		sc_log(reader->ctx, "Reader unknown: %s", sc_strerror(SC_ERROR_READER_DETACHED));
+		SC_FUNC_RETURN(reader->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
 	}
 
 	reader->flags &= ~(SC_READER_CARD_CHANGED|SC_READER_CARD_INUSE|SC_READER_CARD_EXCLUSIVE);
@@ -458,8 +456,6 @@ static int refresh_attributes(sc_reader_t *reader)
 		}
 	} else {
 		reader->flags &= ~SC_READER_CARD_PRESENT;
-		if (old_flags & SC_READER_CARD_PRESENT)
-			reader->flags |= SC_READER_CARD_CHANGED;
 	}
 	sc_log(reader->ctx, "card %s%s",
 			reader->flags & SC_READER_CARD_PRESENT ? "present" : "absent",
@@ -476,7 +472,12 @@ static int pcsc_detect_card_presence(sc_reader_t *reader)
 	rv = refresh_attributes(reader);
 	if (rv != SC_SUCCESS)
 		LOG_FUNC_RETURN(reader->ctx, rv);
-	LOG_FUNC_RETURN(reader->ctx, reader->flags);
+
+	// Return 0 if the card is not present
+	if (reader->flags & SC_READER_CARD_PRESENT)
+		LOG_FUNC_RETURN(reader->ctx, reader->flags);
+	else
+		LOG_FUNC_RETURN(reader->ctx, 0);
 }
 
 static int check_forced_protocol(sc_reader_t *reader, DWORD *protocol)

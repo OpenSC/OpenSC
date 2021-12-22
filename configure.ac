@@ -131,6 +131,19 @@ case "${host}" in
 	;;
 esac
 
+dnl with Firefox's osclientcerts.so we skip registering our PKCS#11 module on Windows and macOS by default
+case "${host}" in
+	*-*-darwin*)
+		PKCS11_REGISTER_SKIP_FIREFOX="on"
+	;;
+	*-mingw*|*-winnt*|*-cygwin*)
+		PKCS11_REGISTER_SKIP_FIREFOX="on"
+	;;
+	*)
+		PKCS11_REGISTER_SKIP_FIREFOX="off"
+	;;
+esac
+
 AX_CODE_COVERAGE()
 
 AX_CHECK_COMPILE_FLAG([-Wunknown-warning-option], [have_unknown_warning_option="yes"], [have_unknown_warning_option="no"])

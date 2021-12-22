@@ -32,6 +32,8 @@
 #include "p11test_case_wait.h"
 #include "p11test_case_pss_oaep.h"
 #include "p11test_case_interface.h"
+#include "p11test_case_wrap.h"
+#include "p11test_case_secret.h"
 
 #define DEFAULT_P11LIB	"../../pkcs11/.libs/opensc-pkcs11.so"
 
@@ -91,14 +93,21 @@ int main(int argc, char** argv) {
 		/* Verify that ECDH key derivation works */
 		cmocka_unit_test_setup_teardown(derive_tests,
 			user_login_setup, after_test_cleanup),
+
+		/* Verify that basic operations with secret keys work */
+		cmocka_unit_test_setup_teardown(secret_tests,
+			user_login_setup, after_test_cleanup),
+
+		/* Verify that key wrapping and unwrapping works */
+		cmocka_unit_test_setup_teardown(wrap_tests,
+			user_login_setup, after_test_cleanup),
 	};
 
-	token.library_path = NULL;
-	token.pin = NULL;
-	token.pin_length = 0;
-	token.interactive = 0;
+	/* Make sure it is initialized to sensible values */
+	memset(&token, 0, sizeof(token_info_t));
 	token.slot_id = (unsigned long) -1;
-	token.log.outfile = NULL;
+	token.verify_support = 1;
+	token.encrypt_support = 1;
 
 	while ((command = getopt(argc, argv, "?hm:s:p:io:v")) != -1) {
 		switch (command) {
@@ -146,4 +155,3 @@ int main(int argc, char** argv) {
 	return cmocka_run_group_tests(readonly_tests_without_initialization,
 		group_setup, group_teardown);
 }
-

@@ -581,6 +581,7 @@ typedef unsigned long ck_mechanism_type_t;
 #define CKM_DES3_MAC			(0x134UL)
 #define CKM_DES3_MAC_GENERAL		(0x135UL)
 #define CKM_DES3_CBC_PAD		(0x136UL)
+#define CKM_DES3_CMAC_GENERAL		(0x137UL)
 #define CKM_DES3_CMAC			(0x138UL)
 #define CKM_CDMF_KEY_GEN		(0x140UL)
 #define CKM_CDMF_ECB			(0x141UL)
@@ -761,6 +762,10 @@ typedef unsigned long ck_mechanism_type_t;
 #define CKM_AES_CCM				(0x1088UL)
 #define CKM_AES_CTS				(0x1089UL)
 #define CKM_AES_CMAC			(0x108AUL)
+#define CKM_AES_CMAC_GENERAL		(0x108BUL)
+#define CKM_AES_XCBC_MAC		(0x108CUL)
+#define CKM_AES_XCBC_MAC_96		(0x108DUL)
+#define CKM_AES_GMAC			(0x108EUL)
 #define CKM_BLOWFISH_KEY_GEN    (0x1090UL)
 #define CKM_BLOWFISH_CBC        (0x1091UL)
 #define CKM_TWOFISH_KEY_GEN     (0x1092UL)
@@ -796,10 +801,16 @@ typedef unsigned long ck_mechanism_type_t;
 #define CKM_DSA_PARAMETER_GEN		(0x2000UL)
 #define CKM_DH_PKCS_PARAMETER_GEN	(0x2001UL)
 #define CKM_X9_42_DH_PARAMETER_GEN	(0x2002UL)
+#define CKM_AES_OFB			(0x2104UL)
+#define CKM_AES_CFB64			(0x2105UL)
+#define CKM_AES_CFB8			(0x2106UL)
+#define CKM_AES_CFB128			(0x2107UL)
 #define CKM_AES_KEY_WRAP		(0x2109UL)
+#define CKM_AES_KEY_WRAP_PAD		(0x210AUL)
 #define CKM_XEDDSA			(0x4029UL)
-#define CKM_VENDOR_DEFINED		(1UL << 31)
 
+
+#define CKM_VENDOR_DEFINED		(1UL << 31)
 
 struct ck_mechanism
 {
@@ -817,6 +828,14 @@ struct ck_mechanism_info
 };
 
 #define CKF_HW			(1UL << 0)
+
+#define CKF_MESSAGE_ENCRYPT	(1UL << 1)
+#define CKF_MESSAGE_DECRYPT	(1UL << 2)
+#define CKF_MESSAGE_SIGN	(1UL << 3)
+#define CKF_MESSAGE_VERIFY	(1UL << 4)
+#define CKF_MULTI_MESSAGE	(1UL << 5)
+#define CKF_FIND_OBJECTS	(1UL << 6)
+
 #define CKF_ENCRYPT		(1UL << 8)
 #define CKF_DECRYPT		(1UL << 9)
 #define CKF_DIGEST		(1UL << 10)
@@ -925,6 +944,13 @@ typedef struct CK_XEDDSA_PARAMS {
 } CK_XEDDSA_PARAMS;
 
 typedef CK_XEDDSA_PARAMS *CK_XEDDSA_PARAMS_PTR;
+
+typedef struct CK_AES_CTR_PARAMS {
+    unsigned long ulCounterBits;
+    unsigned char cb[16];
+} CK_AES_CTR_PARAMS;
+
+typedef CK_AES_CTR_PARAMS *CK_AES_CTR_PARAMS_PTR;
 
 typedef unsigned long ck_rv_t;
 

@@ -28,8 +28,7 @@ void multipart_tests(void **state) {
 	int used, j;
 	test_certs_t objects;
 
-	objects.count = 0;
-	objects.data = NULL;
+	test_certs_init(&objects);
 
 	P11TEST_START(info);
 	search_for_all_objects(&objects, info);
@@ -73,24 +72,24 @@ void multipart_tests(void **state) {
 		's', "MECHANISM",
 		's', "MULTIPART SIGN&VERIFY WORKS");
 	for (i = 0; i < objects.count; i++) {
-		if (objects.data[i].type == EVP_PK_EC)
+		test_cert_t *o = &objects.data[i];
+
+		if (o->key_type != CKK_RSA)
 			continue;
+
 		printf("[%-6s] [%s] [%6lu] [ %s ] [%s%s] [%s]\n",
-			objects.data[i].id_str,
-			(objects.data[i].key_type == CKK_RSA ? "RSA " :
-				objects.data[i].key_type == CKK_EC ? " EC " :
-				objects.data[i].key_type == CKK_EC_EDWARDS ? "EC_E" :
-				objects.data[i].key_type == CKK_EC_MONTGOMERY ? "EC_M" : " ?? "),
-			objects.data[i].bits,
-			objects.data[i].verify_public == 1 ? " ./ " : "    ",
-			objects.data[i].sign ? "[./] " : "[  ] ",
-			objects.data[i].verify ? " [./] " : " [  ] ",
-			objects.data[i].label);
-		if (objects.data[i].private_handle == CK_INVALID_HANDLE) {
+			o->id_str,
+			"RSA ",
+			o->bits,
+			o->verify_public == 1 ? " ./ " : "    ",
+			o->sign ? "[./] " : "[  ] ",
+			o->verify ? " [./] " : " [  ] ",
+			o->label);
+		if (o->private_handle == CK_INVALID_HANDLE) {
 			continue;
 		}
-		for (j = 0; j < objects.data[i].num_mechs; j++) {
-			test_mech_t *mech = &objects.data[i].mechs[j];
+		for (j = 0; j < o->num_mechs; j++) {
+			test_mech_t *mech = &o->mechs[j];
 			if ((mech->usage_flags & CKF_SIGN) == 0) {
 				/* not applicable mechanisms are skipped */
 				continue;
@@ -101,7 +100,7 @@ void multipart_tests(void **state) {
 			if ((mech->result_flags & FLAGS_SIGN_ANY) == 0)
 				continue; /* do not export unknown and non-working algorithms */
 			P11TEST_DATA_ROW(info, 3,
-				's', objects.data[i].id_str,
+				's', o->id_str,
 				's', get_mechanism_name(mech->mech),
 				's', mech->result_flags & FLAGS_SIGN_ANY ? "YES" : "");
 		}

@@ -73,6 +73,12 @@ int encrypt_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message
 {
 	int rv, padding;
 
+	/* this works only for RSA keys */
+	if (o->key_type != CKK_RSA) {
+		debug_print("skip non-RSA key");
+		return -1;
+	}
+
 	*enc_message = malloc(RSA_size(o->key.rsa));
 	if (*enc_message == NULL) {
 		debug_print("malloc returned null");
@@ -97,18 +103,17 @@ int encrypt_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 {
 	CK_RV rv;
 	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
-	CK_MECHANISM enc_mechanism = { mech->mech, NULL_PTR, 0 };
+	CK_MECHANISM enc_mechanism = { mech->mech, mech->params, mech->params_len };
 	CK_ULONG enc_message_length;
-	static int encrypt_support = 1;
 
-	if (!encrypt_support)
+	if (!info->encrypt_support)
 		goto openssl_encrypt;
 
 	rv = fp->C_EncryptInit(info->session_handle, &enc_mechanism,
 		o->public_handle);
 	if (rv != CKR_OK) {
 		debug_print("   C_EncryptInit: rv = 0x%.8lX", rv);
-		encrypt_support = 0; /* avoid trying over and over again */
+		info->encrypt_support = 0; /* avoid trying over and over again */
 		goto openssl_encrypt;
 	}
 
@@ -129,7 +134,6 @@ int encrypt_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 	rv = fp->C_Encrypt(info->session_handle, message, message_length,
 		*enc_message, &enc_message_length);
 	if (rv == CKR_OK) {
-		mech->result_flags |= FLAGS_SIGN;
 		return enc_message_length;
 	}
 	debug_print("   C_Encrypt: rv = 0x%.8lX", rv);
@@ -145,7 +149,7 @@ int decrypt_message(test_cert_t *o, token_info_t *info, CK_BYTE *enc_message,
 {
 	CK_RV rv;
 	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
-	CK_MECHANISM dec_mechanism = { mech->mech, NULL_PTR, 0 };
+	CK_MECHANISM dec_mechanism = { mech->mech, mech->params, mech->params_len };
 	CK_ULONG dec_message_length = BUFFER_SIZE;
 
 	rv = fp->C_DecryptInit(info->session_handle, &dec_mechanism,
@@ -239,8 +243,8 @@ int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 		return -1;
 	}
 
-	if (memcmp(dec_message, message, dec_message_length) == 0
-			&& (unsigned int) dec_message_length == message_length) {
+	if ((unsigned int) dec_message_length == message_length &&
+	    memcmp(dec_message, message, dec_message_length) == 0) {
 		debug_print(" [  OK %s ] Text decrypted successfully.", o->id_str);
 		mech->result_flags |= FLAGS_DECRYPT;
 		rv = 1;
@@ -261,7 +265,7 @@ int sign_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 {
 	CK_RV rv;
 	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
-	CK_MECHANISM sign_mechanism = { mech->mech, NULL_PTR, 0 };
+	CK_MECHANISM sign_mechanism = { mech->mech, mech->params, mech->params_len };
 	CK_ULONG sign_length = 0;
 	char *name;
 
@@ -514,11 +518,10 @@ int verify_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 {
 	CK_RV rv;
 	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
-	CK_MECHANISM sign_mechanism = { mech->mech, NULL_PTR, 0 };
-	static int verify_support = 1;
+	CK_MECHANISM sign_mechanism = { mech->mech, mech->params, mech->params_len };
 	char *name;
 
-	if (!verify_support)
+	if (!info->verify_support)
 		goto openssl_verify;
 
 	/* try C_Verify() if it is supported */
@@ -526,7 +529,7 @@ int verify_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 		o->public_handle);
 	if (rv != CKR_OK) {
 		debug_print("   C_VerifyInit: rv = 0x%.8lX", rv);
-		verify_support = 0; /* avoid trying over and over again */
+		info->verify_support = 0; /* avoid trying over and over again */
 		goto openssl_verify;
 	}
 	if (multipart) {
@@ -559,7 +562,7 @@ int verify_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 		return 1;
 	}
 	debug_print("   %s: rv = 0x%.8lX", name, rv);
-	verify_support = 0; /* avoid trying over and over again */
+	info->verify_support = 0; /* avoid trying over and over again */
 
 openssl_verify:
 	debug_print(" [ KEY %s ] Falling back to openssl verification", o->id_str);
@@ -642,8 +645,7 @@ void readonly_tests(void **state) {
 	int used, j;
 	test_certs_t objects;
 
-	objects.count = 0;
-	objects.data = NULL;
+	test_certs_init(&objects);
 
 	search_for_all_objects(&objects, info);
 
@@ -683,7 +685,7 @@ void readonly_tests(void **state) {
 
 	/* print summary */
 	printf("[KEY ID] [LABEL]\n");
-	printf("[ TYPE ] [ SIZE ] [PUBLIC] [SIGN&VERIFY] [ENC&DECRYPT] [WRAP&UNWR] [ DERIVE ]\n");
+	printf("[ TYPE ] [ SIZE ] [PUBLIC] [SIGN&VERIFY] [ENC&DECRYPT]\n");
 	P11TEST_DATA_ROW(info, 4,
 		's', "KEY ID",
 		's', "MECHANISM",
@@ -691,10 +693,17 @@ void readonly_tests(void **state) {
 		's', "ENCRYPT&DECRYPT WORKS");
 	for (i = 0; i < objects.count; i++) {
 		test_cert_t *o = &objects.data[i];
+
+		if (o->key_type != CKK_RSA &&
+		    o->key_type != CKK_EC &&
+		    o->key_type != CKK_EC_EDWARDS &&
+		    o->key_type != CKK_EC_MONTGOMERY)
+			continue;
+
 		printf("\n[%-6s] [%s]\n",
 			o->id_str,
 			o->label);
-		printf("[ %s ] [%6lu] [ %s ] [%s%s] [%s%s] [%s %s] [%s%s]\n",
+		printf("[ %s ] [%6lu] [ %s ] [%s%s] [%s%s]\n",
 			(o->key_type == CKK_RSA ? "RSA " :
 				o->key_type == CKK_EC ? " EC " :
 				o->key_type == CKK_EC_EDWARDS ? "EC_E" :
@@ -704,25 +713,21 @@ void readonly_tests(void **state) {
 			o->sign ? "[./] " : "[  ] ",
 			o->verify ? " [./] " : " [  ] ",
 			o->encrypt ? "[./] " : "[  ] ",
-			o->decrypt ? " [./] " : " [  ] ",
-			o->wrap ? "[./]" : "[  ]",
-			o->unwrap ? "[./]" : "[  ]",
-			o->derive_pub ? "[./]" : "[  ]",
-			o->derive_priv ? "[./]" : "[  ]");
+			o->decrypt ? " [./] " : " [  ] ");
 		if (!o->sign && !o->verify && !o->encrypt && !o->decrypt) {
 			printf("  no usable attributes found ... ignored\n");
 			continue;
 		}
-		if (objects.data[i].private_handle == CK_INVALID_HANDLE) {
+		if (o->private_handle == CK_INVALID_HANDLE) {
 			continue;
 		}
 		for (j = 0; j < o->num_mechs; j++) {
 			test_mech_t *mech = &o->mechs[j];
-			if ((mech->usage_flags & CKF_SIGN) == 0) {
+			if ((mech->usage_flags & (CKF_SIGN|CKF_DECRYPT)) == 0) {
 				/* not applicable mechanisms are skipped */
 				continue;
 			}
-			printf("  [ %-20s ] [   %s    ] [   %s    ] [         ] [        ]\n",
+			printf("  [ %-20s ] [   %s    ] [   %s    ]\n",
 				get_mechanism_name(mech->mech),
 				mech->result_flags & FLAGS_SIGN_ANY ? "[./]" : "    ",
 				mech->result_flags & FLAGS_DECRYPT_ANY ? "[./]" : "    ");
@@ -736,7 +741,7 @@ void readonly_tests(void **state) {
 				's', mech->result_flags & FLAGS_DECRYPT_ANY ? "YES" : "");
 		}
 	}
-	printf(" Public == Cert -----^       ^  ^  ^       ^  ^  ^       ^----^- Attributes\n");
+	printf(" Public == Cert -----^       ^  ^  ^       ^  ^  ^\n");
 	printf(" Sign Attribute -------------'  |  |       |  |  '---- Decrypt Attribute\n");
 	printf(" Sign&Verify functionality -----'  |       |  '------- Enc&Dec functionality\n");
 	printf(" Verify Attribute -----------------'       '---------- Encrypt Attribute\n");

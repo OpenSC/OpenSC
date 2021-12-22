@@ -24,10 +24,9 @@ void usage_test(void **state) {
 	unsigned int i;
 	int errors = 0;
 	token_info_t *info = (token_info_t *) *state;
-
 	test_certs_t objects;
-	objects.count = 0;
-	objects.data = NULL;
+
+	test_certs_init(&objects);
 
 	P11TEST_START(info);
 	search_for_all_objects(&objects, info);
@@ -90,48 +89,50 @@ void usage_test(void **state) {
 		's', "DERIVE PRIVATE",
 		's', "ALWAYS AUTH");
 	for (i = 0; i < objects.count; i++) {
-		printf("\n[%-6s] [%s]\n",
-			objects.data[i].id_str,
-			objects.data[i].label);
+		test_cert_t *o = &objects.data[i];
+
+		printf("\n[%-6s] [%s]\n", o->id_str, o->label);
 
 		/* Ignore if there is missing private key */
 		if (objects.data[i].private_handle == CK_INVALID_HANDLE)
 			continue;
 
 		printf("[ %s ] [%6lu] [ %s ] [%s%s] [%s%s] [%s %s] [%s%s] [    %s   ]\n",
-			(objects.data[i].key_type == CKK_RSA ? "RSA " :
-				objects.data[i].key_type == CKK_EC ? " EC " :
-				objects.data[i].key_type == CKK_EC_EDWARDS ? "EC_E" :
-				objects.data[i].key_type == CKK_EC_MONTGOMERY ? "EC_M" : " ?? "),
-			objects.data[i].bits,
-			objects.data[i].verify_public == 1 ? " ./ " : "    ",
-			objects.data[i].sign ? "[./] " : "[  ] ",
-			objects.data[i].verify ? " [./] " : " [  ] ",
-			objects.data[i].encrypt ? "[./] " : "[  ] ",
-			objects.data[i].decrypt ? " [./] " : " [  ] ",
-			objects.data[i].wrap ? "[./]" : "[  ]",
-			objects.data[i].unwrap ? "[./]" : "[  ]",
-			objects.data[i].derive_pub ? "[./]" : "[  ]",
-			objects.data[i].derive_priv ? "[./]" : "[  ]",
-			objects.data[i].always_auth ? "[./]" : "[  ]");
+			(o->key_type == CKK_RSA ? "RSA " :
+				o->key_type == CKK_EC ? " EC " :
+				o->key_type == CKK_EC_EDWARDS ? "EC_E" :
+				o->key_type == CKK_EC_MONTGOMERY ? "EC_M" :
+				o->key_type == CKK_AES ? "AES " : " ?? "),
+			o->bits,
+			o->verify_public == 1 ? " ./ " : "    ",
+			o->sign ? "[./] " : "[  ] ",
+			o->verify ? " [./] " : " [  ] ",
+			o->encrypt ? "[./] " : "[  ] ",
+			o->decrypt ? " [./] " : " [  ] ",
+			o->wrap ? "[./]" : "[  ]",
+			o->unwrap ? "[./]" : "[  ]",
+			o->derive_pub ? "[./]" : "[  ]",
+			o->derive_priv ? "[./]" : "[  ]",
+			o->always_auth ? "[./]" : "[  ]");
 		P11TEST_DATA_ROW(info, 14,
-			's', objects.data[i].id_str,
-			's', objects.data[i].label,
-			's', (objects.data[i].key_type == CKK_RSA ? "RSA" :
-				objects.data[i].key_type == CKK_EC ? "EC" :
-				objects.data[i].key_type == CKK_EC_EDWARDS ? "EC_E" :
-				objects.data[i].key_type == CKK_EC_MONTGOMERY ? "EC_M" : " ?? "),
-			'd', objects.data[i].bits,
-			's', objects.data[i].verify_public == 1 ? "YES" : "",
-			's', objects.data[i].sign ? "YES" : "",
-			's', objects.data[i].verify ? "YES" : "",
-			's', objects.data[i].encrypt ? "YES" : "",
-			's', objects.data[i].decrypt ? "YES" : "",
-			's', objects.data[i].wrap ? "YES" : "",
-			's', objects.data[i].unwrap ? "YES" : "",
-			's', objects.data[i].derive_pub ? "YES" : "",
-			's', objects.data[i].derive_priv ? "YES" : "",
-			's', objects.data[i].always_auth ? "YES" : "");
+			's', o->id_str,
+			's', o->label,
+			's', (o->key_type == CKK_RSA ? "RSA" :
+				o->key_type == CKK_EC ? "EC" :
+				o->key_type == CKK_EC_EDWARDS ? "EC_E" :
+				o->key_type == CKK_EC_MONTGOMERY ? "EC_M" :
+				o->key_type == CKK_AES ? "AES" : " ?? "),
+			'd', o->bits,
+			's', o->verify_public == 1 ? "YES" : "",
+			's', o->sign ? "YES" : "",
+			's', o->verify ? "YES" : "",
+			's', o->encrypt ? "YES" : "",
+			's', o->decrypt ? "YES" : "",
+			's', o->wrap ? "YES" : "",
+			's', o->unwrap ? "YES" : "",
+			's', o->derive_pub ? "YES" : "",
+			's', o->derive_priv ? "YES" : "",
+			's', o->always_auth ? "YES" : "");
 	}
 	printf(" Public == Cert -----^       ^-----^       ^-----^       ^----^      ^---^\n");
 	printf(" Sign & Verify Attributes ------'             |            |           |\n");

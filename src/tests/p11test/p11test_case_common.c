@@ -25,6 +25,13 @@
 char name_buffer[11];
 char flag_buffer[11];
 
+void test_certs_init(test_certs_t *objects)
+{
+	objects->alloc_count = 0;
+	objects->count = 0;
+	objects->data = NULL;
+}
+
 /**
  * If the object enforces re-authentication, do it now.
  */
@@ -51,15 +58,19 @@ test_cert_t *
 add_object(test_certs_t *objects, CK_ATTRIBUTE key_id, CK_ATTRIBUTE label)
 {
 	test_cert_t *o = NULL;
-	objects->count = objects->count+1;
-	objects->data = realloc(objects->data, objects->count * sizeof(test_cert_t));
-	if (objects->data == NULL)
-		return NULL;
+	objects->count = objects->count + 1;
+	if (objects->count > objects->alloc_count) {
+		objects->alloc_count += 8;
+		objects->data = realloc(objects->data, objects->alloc_count * sizeof(test_cert_t));
+		if (objects->data == NULL)
+			return NULL;
+	}
 
 	o = &(objects->data[objects->count - 1]);
 	o->private_handle = CK_INVALID_HANDLE;
 	o->public_handle = CK_INVALID_HANDLE;
 	o->always_auth = 0;
+	o->extractable = 0;
 	o->bits = 0;
 	o->verify_public = 0;
 	o->num_mechs = 0;
@@ -76,6 +87,7 @@ add_object(test_certs_t *objects, CK_ATTRIBUTE key_id, CK_ATTRIBUTE label)
 	o->x509 = NULL; /* The "reuse" capability of d2i_X509() is strongly discouraged */
 	o->key.rsa = NULL;
 	o->key.ec = NULL;
+	o->value = NULL;
 
 	/* Store the passed CKA_ID and CKA_LABEL */
 	o->key_id = malloc(key_id.ulValueLen);
@@ -117,6 +129,8 @@ add_supported_mechs(test_cert_t *o)
 			o->num_mechs = token.num_rsa_mechs;
 			for (i = 0; i < token.num_rsa_mechs; i++) {
 				o->mechs[i].mech = token.rsa_mechs[i].mech;
+				o->mechs[i].params = token.rsa_mechs[i].params;
+				o->mechs[i].params_len = token.rsa_mechs[i].params_len;
 				o->mechs[i].result_flags = 0;
 				o->mechs[i].usage_flags =
 					token.rsa_mechs[i].usage_flags;
@@ -125,6 +139,8 @@ add_supported_mechs(test_cert_t *o)
 			/* Use the default list */
 			o->num_mechs = 1;
 			o->mechs[0].mech = CKM_RSA_PKCS;
+			o->mechs[0].params = NULL;
+			o->mechs[0].params_len = 0;
 			o->mechs[0].result_flags = 0;
 			o->mechs[0].usage_flags = CKF_SIGN | CKF_VERIFY
 				| CKF_ENCRYPT | CKF_DECRYPT;
@@ -134,6 +150,8 @@ add_supported_mechs(test_cert_t *o)
 			o->num_mechs = token.num_ec_mechs;
 			for (i = 0; i < token.num_ec_mechs; i++) {
 				o->mechs[i].mech = token.ec_mechs[i].mech;
+				o->mechs[i].params = token.ec_mechs[i].params;
+				o->mechs[i].params_len = token.ec_mechs[i].params_len;
 				o->mechs[i].result_flags = 0;
 				o->mechs[i].usage_flags =
 					token.ec_mechs[i].usage_flags;
@@ -142,6 +160,8 @@ add_supported_mechs(test_cert_t *o)
 			/* Use the default list */
 			o->num_mechs = 1;
 			o->mechs[0].mech = CKM_ECDSA;
+			o->mechs[0].params = NULL;
+			o->mechs[0].params_len = 0;
 			o->mechs[0].result_flags = 0;
 			o->mechs[0].usage_flags = CKF_SIGN | CKF_VERIFY;
 		}
@@ -150,6 +170,8 @@ add_supported_mechs(test_cert_t *o)
 			o->num_mechs = token.num_ed_mechs;
 			for (i = 0; i < token.num_ed_mechs; i++) {
 				o->mechs[i].mech = token.ed_mechs[i].mech;
+				o->mechs[i].params = token.ed_mechs[i].params;
+				o->mechs[i].params_len = token.ed_mechs[i].params_len;
 				o->mechs[i].result_flags = 0;
 				o->mechs[i].usage_flags =
 					token.ed_mechs[i].usage_flags;
@@ -158,6 +180,8 @@ add_supported_mechs(test_cert_t *o)
 			/* Use the default list */
 			o->num_mechs = 1;
 			o->mechs[0].mech = CKM_EDDSA;
+			o->mechs[0].params = NULL;
+			o->mechs[0].params_len = 0;
 			o->mechs[0].result_flags = 0;
 			o->mechs[0].usage_flags = CKF_SIGN | CKF_VERIFY;
 		}
@@ -166,6 +190,8 @@ add_supported_mechs(test_cert_t *o)
 			o->num_mechs = token.num_montgomery_mechs;
 			for (i = 0; i < token.num_montgomery_mechs; i++) {
 				o->mechs[i].mech = token.montgomery_mechs[i].mech;
+				o->mechs[i].params = token.montgomery_mechs[i].params;
+				o->mechs[i].params_len = token.montgomery_mechs[i].params_len;
 				o->mechs[i].result_flags = 0;
 				o->mechs[i].usage_flags =
 					token.montgomery_mechs[i].usage_flags;
@@ -174,8 +200,30 @@ add_supported_mechs(test_cert_t *o)
 			/* Use the default list */
 			o->num_mechs = 1;
 			o->mechs[0].mech = CKM_ECDH1_DERIVE;
+			o->mechs[0].params = NULL;
+			o->mechs[0].params_len = 0;
 			o->mechs[0].result_flags = 0;
 			o->mechs[0].usage_flags = CKF_DERIVE;
+		}
+	/* Nothing in the above enum can be used for secret keys */
+	} else if (o->key_type == CKK_AES) {
+		if (token.num_aes_mechs > 0 ) {
+			o->num_mechs = token.num_aes_mechs;
+			for (i = 0; i < token.num_aes_mechs; i++) {
+				o->mechs[i].mech = token.aes_mechs[i].mech;
+				o->mechs[i].params = token.aes_mechs[i].params;
+				o->mechs[i].params_len = token.aes_mechs[i].params_len;
+				o->mechs[i].result_flags = 0;
+				o->mechs[i].usage_flags = token.aes_mechs[i].usage_flags;
+			}
+		} else {
+			/* Use the default list */
+			o->num_mechs = 1;
+			o->mechs[0].mech = CKM_AES_CBC;
+			o->mechs[0].params = NULL;
+			o->mechs[0].params_len = 0;
+			o->mechs[0].result_flags = 0;
+			o->mechs[0].usage_flags = CKF_ENCRYPT|CKF_DECRYPT|CKF_WRAP|CKF_UNWRAP;
 		}
 	}
 }
@@ -280,6 +328,8 @@ int callback_private_keys(test_certs_t *objects,
 		? *((CK_BBOOL *) template[5].pValue) : CK_FALSE;
 	o->derive_priv = (template[6].ulValueLen != (CK_ULONG) -1)
 		? *((CK_BBOOL *) template[6].pValue) : CK_FALSE;
+	o->extractable = (template[8].ulValueLen != (CK_ULONG) -1)
+		? *((CK_BBOOL *) template[8].pValue) : CK_FALSE;
 
 	debug_print(" [  OK %s ] Private key loaded successfully S:%d D:%d T:%02lX",
 		o->id_str, o->sign, o->decrypt, o->key_type);
@@ -561,6 +611,59 @@ int callback_public_keys(test_certs_t *objects,
 	return 0;
 }
 
+/**
+ * Store any secret keys
+ */
+int callback_secret_keys(test_certs_t *objects,
+	CK_ATTRIBUTE template[], unsigned int template_size, CK_OBJECT_HANDLE object_handle)
+{
+	test_cert_t *o = NULL;
+
+	if ((o = add_object(objects, template[1], template[13])) == NULL)
+		return -1;
+
+	/* TODO generic secret
+	 * there is also no respective EVP_* for AES keys in OpenSSL ...
+	o->type = ??; */
+
+	/* Store attributes, flags and handles */
+	o->private_handle = object_handle;
+	/* For verification/encryption, we use the same key */
+	o->public_handle = object_handle;
+	o->key_type = (template[0].ulValueLen != (CK_ULONG) -1)
+		? *((CK_KEY_TYPE *) template[0].pValue) : (CK_KEY_TYPE) -1;
+	o->sign = (template[3].ulValueLen != (CK_ULONG) -1)
+		? *((CK_BBOOL *) template[3].pValue) : CK_FALSE;
+	o->sign = (template[4].ulValueLen != (CK_ULONG) -1)
+		? *((CK_BBOOL *) template[4].pValue) : CK_FALSE;
+	o->decrypt = (template[5].ulValueLen != (CK_ULONG) -1)
+		? *((CK_BBOOL *) template[5].pValue) : CK_FALSE;
+	o->decrypt = (template[6].ulValueLen != (CK_ULONG) -1)
+		? *((CK_BBOOL *) template[6].pValue) : CK_FALSE;
+	o->derive_priv = (template[7].ulValueLen != (CK_ULONG) -1)
+		? *((CK_BBOOL *) template[7].pValue) : CK_FALSE;
+	o->wrap = (template[8].ulValueLen != (CK_ULONG) -1)
+		? *((CK_BBOOL *) template[8].pValue) : CK_FALSE;
+	o->unwrap = (template[9].ulValueLen != (CK_ULONG) -1)
+		? *((CK_BBOOL *) template[9].pValue) : CK_FALSE;
+	o->extractable = (template[12].ulValueLen != (CK_ULONG) -1)
+		? *((CK_BBOOL *) template[12].pValue) : CK_FALSE;
+
+	if (template[10].ulValueLen > 0) {
+		/* pass the pointer to our structure */
+		o->value = template[10].pValue;
+		template[10].pValue = NULL;
+	}
+
+	o->bits = template[11].ulValueLen > 0 ? *((CK_ULONG *) template[11].pValue)*8 : 0;
+
+	add_supported_mechs(o);
+
+	debug_print(" [  OK %s ] Secret key loaded successfully T:%02lX", o->id_str, o->key_type);
+	return 0;
+}
+
+
 int search_objects(test_certs_t *objects, token_info_t *info,
 	CK_ATTRIBUTE filter[], CK_LONG filter_size, CK_ATTRIBUTE template[], CK_LONG template_size,
 	int (*callback)(test_certs_t *, CK_ATTRIBUTE[], unsigned int, CK_OBJECT_HANDLE))
@@ -622,7 +725,8 @@ int search_objects(test_certs_t *objects, token_info_t *info,
 
 			rv = fp->C_GetAttributeValue(info->session_handle, object_handles[i],
 				&(template[j]), 1);
-			if (rv == CKR_ATTRIBUTE_TYPE_INVALID) {
+			if (rv == CKR_ATTRIBUTE_TYPE_INVALID ||
+			    rv == CKR_ATTRIBUTE_SENSITIVE) {
 				continue;
 			} else if (rv != CKR_OK) {
 				fail_msg("C_GetAttributeValue: rv = 0x%.8lX\n", rv);
@@ -664,6 +768,7 @@ void search_for_all_objects(test_certs_t *objects, token_info_t *info)
 	CK_OBJECT_CLASS keyClass = CKO_CERTIFICATE;
 	CK_OBJECT_CLASS privateClass = CKO_PRIVATE_KEY;
 	CK_OBJECT_CLASS publicClass = CKO_PUBLIC_KEY;
+	CK_OBJECT_CLASS secretClass = CKO_SECRET_KEY;
 	CK_ATTRIBUTE filter[] = {
 			{CKA_CLASS, &keyClass, sizeof(keyClass)},
 	};
@@ -684,6 +789,7 @@ void search_for_all_objects(test_certs_t *objects, token_info_t *info)
 			{ CKA_UNWRAP, NULL, 0}, // CK_BBOOL
 			{ CKA_DERIVE, NULL, 0}, // CK_BBOOL
 			{ CKA_LABEL, NULL_PTR, 0},
+			{ CKA_EXTRACTABLE, NULL, 0}, // CK_BBOOL
 	};
 	CK_ULONG private_attrs_size = sizeof (private_attrs) / sizeof (CK_ATTRIBUTE);
 	CK_ATTRIBUTE public_attrs[] = {
@@ -699,6 +805,23 @@ void search_for_all_objects(test_certs_t *objects, token_info_t *info)
 			{ CKA_DERIVE, NULL, 0}, // CK_BBOOL
 	};
 	CK_ULONG public_attrs_size = sizeof (public_attrs) / sizeof (CK_ATTRIBUTE);
+	CK_ATTRIBUTE secret_attrs[] = {
+			{ CKA_KEY_TYPE, NULL, 0},
+			{ CKA_ID, NULL, 0},
+			{ CKA_TOKEN, NULL, 0}, // CK_BBOOL
+			{ CKA_SIGN, NULL, 0}, // CK_BBOOL
+			{ CKA_VERIFY, NULL, 0}, // CK_BBOOL
+			{ CKA_ENCRYPT, NULL, 0}, // CK_BBOOL
+			{ CKA_DECRYPT, NULL, 0}, // CK_BBOOL
+			{ CKA_DERIVE, NULL, 0}, // CK_BBOOL
+			{ CKA_WRAP, NULL, 0}, // CK_BBOOL
+			{ CKA_UNWRAP, NULL, 0}, // CK_BBOOL
+			{ CKA_VALUE, NULL, 0},
+			{ CKA_VALUE_LEN, NULL, 0},
+			{ CKA_EXTRACTABLE, NULL, 0}, // CK_BBOOL
+			{ CKA_LABEL, NULL_PTR, 0},
+	};
+	CK_ULONG secret_attrs_size = sizeof (secret_attrs) / sizeof (CK_ATTRIBUTE);
 
 	debug_print("\nSearch for all certificates on the card");
 	search_objects(objects, info, filter, filter_size,
@@ -716,6 +839,11 @@ void search_for_all_objects(test_certs_t *objects, token_info_t *info)
 	filter[0].pValue = &publicClass;
 	search_objects(objects, info, filter, filter_size,
 		public_attrs, public_attrs_size, callback_public_keys);
+
+	debug_print("\nSearch for all secret keys");
+	filter[0].pValue = &secretClass;
+	search_objects(objects, info, filter, filter_size, secret_attrs, secret_attrs_size,
+	               callback_secret_keys);
 }
 
 void clean_all_objects(test_certs_t *objects) {
@@ -724,6 +852,7 @@ void clean_all_objects(test_certs_t *objects) {
 		free(objects->data[i].key_id);
 		free(objects->data[i].id_str);
 		free(objects->data[i].label);
+		free(objects->data[i].value);
 		X509_free(objects->data[i].x509);
 		if (objects->data[i].key_type == CKK_RSA &&
 		    objects->data[i].key.rsa != NULL) {
@@ -838,6 +967,62 @@ const char *get_mechanism_name(int mech_id)
 			return "SHA3_384";
 		case CKM_SHA3_512:
 			return "SHA3_512";
+		case CKM_AES_ECB:
+			return "AES_ECB";
+		case CKM_AES_ECB_ENCRYPT_DATA:
+			return "AES_ECB_ENCRYPT_DATA";
+		case CKM_AES_KEY_GEN:
+			return "AES_KEY_GEN";
+		case CKM_AES_CBC:
+			return "AES_CBC";
+		case CKM_AES_CBC_ENCRYPT_DATA:
+			return "AES_CBC_ENCRYPT_DATA";
+		case CKM_AES_CBC_PAD:
+			return "AES_CBC_PAD";
+		case CKM_AES_MAC:
+			return "AES_MAC";
+		case CKM_AES_MAC_GENERAL:
+			return "AES_MAC_GENERAL";
+		case CKM_AES_CFB64:
+			return "AES_CFB64";
+		case CKM_AES_CFB8:
+			return "AES_CFB8";
+		case CKM_AES_CFB128:
+			return "AES_CFB128";
+		case CKM_AES_OFB:
+			return "AES_OFB";
+		case CKM_AES_CTR:
+			return "AES_CTR";
+		case CKM_AES_GCM:
+			return "AES_GCM";
+		case CKM_AES_CCM:
+			return "AES_CCM";
+		case CKM_AES_CTS:
+			return "AES_CTS";
+		case CKM_AES_CMAC:
+			return "AES_CMAC";
+		case CKM_AES_CMAC_GENERAL:
+			return "AES_CMAC_GENERAL";
+		case CKM_DES3_CMAC:
+			return "DES3_CMAC";
+		case CKM_DES3_CMAC_GENERAL:
+			return "DES3_CMAC_GENERAL";
+		case CKM_DES3_ECB:
+			return "DES3_ECB";
+		case CKM_DES3_CBC:
+			return "DES3_CBC";
+		case CKM_DES3_CBC_PAD:
+			return "DES3_CBC_PAD";
+		case CKM_DES3_CBC_ENCRYPT_DATA:
+			return "DES3_CBC_ENCRYPT_DATA";
+		case CKM_AES_XCBC_MAC:
+			return "AES_XCBC_MAC";
+		case CKM_AES_XCBC_MAC_96:
+			return "AES_XCBC_MAC_96";
+		case CKM_AES_KEY_WRAP:
+			return "AES_KEY_WRAP";
+		case CKM_AES_KEY_WRAP_PAD:
+			return "AES_KEY_WRAP_PAD";
 		default:
 			sprintf(name_buffer, "0x%.8X", mech_id);
 			return name_buffer;
@@ -868,6 +1053,16 @@ const char *get_mechanism_flag_name(int mech_id)
 	switch (mech_id) {
 		case CKF_HW:
 			return "CKF_HW";
+		case CKF_MESSAGE_ENCRYPT:
+			return "CKF_MESSAGE_ENCRYPT";
+		case CKF_MESSAGE_DECRYPT:
+			return "CKF_MESSAGE_DECRYPT";
+		case CKF_MESSAGE_SIGN:
+			return "CKF_MESSAGE_SIGN";
+		case CKF_MESSAGE_VERIFY:
+			return "CKF_MESSAGE_VERIFY";
+		case CKF_MULTI_MESSAGE:
+			return "CKF_MULTI_MESSAGE";
 		case CKF_ENCRYPT:
 			return "CKF_ENCRYPT";
 		case CKF_DECRYPT:

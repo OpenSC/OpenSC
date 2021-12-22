@@ -133,7 +133,7 @@
 				You can do this using:
 			</para>
 			<para>
-				<command>pkcs15-init --generate-key " keyspec " --auth-id " nn</command>
+				<command>pkcs15-init --generate-key "keyspec" --auth-id "nn"</command>
 			</para>
 			<para>
 				where <replaceable>keyspec</replaceable> describes the algorithm and the parameters
@@ -674,6 +674,17 @@
 					<listitem>
 						<para>
 							Specify ID of PUK to use/create
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--label</option> <replaceable>LABEL</replaceable>
+					</term>
+					<listitem>
+						<para>
+							Specify label for a PIN, key, certificate or data object when creating a new objects. When deleting objects, this can be used to delete object by label.
 						</para>
 					</listitem>
 				</varlistentry>

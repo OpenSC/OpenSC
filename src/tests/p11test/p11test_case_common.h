@@ -50,17 +50,22 @@ typedef struct {
 	CK_BBOOL	derive_pub;
 	CK_KEY_TYPE	key_type;
 	CK_BBOOL	always_auth;
+	CK_BBOOL	extractable;
 	char		*label;
 	CK_ULONG 	 bits;
+	char 		*value;
 	int			verify_public;
 	test_mech_t	mechs[MAX_MECHS];
 	int			num_mechs;
 } test_cert_t;
 
 typedef struct {
+	unsigned int alloc_count;
 	unsigned int count;
 	test_cert_t *data;
 } test_certs_t;
+
+void test_certs_init(test_certs_t *objects);
 
 void always_authenticate(test_cert_t *o, token_info_t *info);
 

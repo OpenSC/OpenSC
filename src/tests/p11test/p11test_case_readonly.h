@@ -27,3 +27,13 @@ int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
     CK_ULONG message_length, int multipart);
 
+int verify_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
+    CK_ULONG message_length, test_mech_t *mech, unsigned char *sign,
+    CK_ULONG sign_length, int multipart);
+int sign_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
+    CK_ULONG message_length, test_mech_t *mech, unsigned char **sign,
+    int multipart);
+int encrypt_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
+    CK_ULONG message_length, test_mech_t *mech, unsigned char **enc_message);
+int decrypt_message(test_cert_t *o, token_info_t *info, CK_BYTE *enc_message,
+    CK_ULONG enc_message_length, test_mech_t *mech, unsigned char **dec_message);
