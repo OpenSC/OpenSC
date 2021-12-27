@@ -6251,7 +6251,7 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 		rsa_flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
 #ifdef ENABLE_OPENSSL
 		rsa_flags |= SC_ALGORITHM_RSA_PAD_PSS;
-		/* TODO support OAEP decryption & encryption using OpenSSL */
+		rsa_flags |= SC_ALGORITHM_RSA_PAD_OAEP;
 #endif
 	}
 
