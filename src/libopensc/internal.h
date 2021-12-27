@@ -170,6 +170,10 @@ int sc_pkcs1_strip_02_padding(struct sc_context *ctx, const u8 *data, size_t len
 		u8 *out_dat, size_t *out_len);
 int sc_pkcs1_strip_digest_info_prefix(unsigned int *algorithm,
 		const u8 *in_dat, size_t in_len, u8 *out_dat, size_t *out_len);
+#ifdef ENABLE_OPENSSL
+int sc_pkcs1_strip_oaep_padding(sc_context_t *ctx, u8 *data, size_t len,
+		unsigned long flags);
+#endif
 
 /**
  * PKCS1 encodes the given data.
