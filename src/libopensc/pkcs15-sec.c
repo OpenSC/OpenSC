@@ -312,7 +312,14 @@ int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 		r = sc_pkcs1_strip_02_padding(ctx, out, s, out, &s);
 		LOG_TEST_RET(ctx, r, "Invalid PKCS#1 padding");
 	}
-
+#ifdef ENABLE_OPENSSL
+	if (pad_flags & SC_ALGORITHM_RSA_PAD_OAEP)
+	{
+		size_t s = r;
+		r = sc_pkcs1_strip_oaep_padding(ctx, out, s, flags);
+		LOG_TEST_RET(ctx, r, "Invalid OAEP padding");
+	}
+#endif
 	LOG_FUNC_RETURN(ctx, r);
 }
 
