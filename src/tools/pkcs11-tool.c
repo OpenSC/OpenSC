@@ -563,7 +563,6 @@ static void		p11_perror(const char *, CK_RV);
 static const char *	CKR2Str(CK_ULONG res);
 static int		p11_test(CK_SESSION_HANDLE session);
 static int test_card_detection(int);
-static int		hex_to_bin(const char *in, CK_BYTE *out, size_t *outlen);
 static CK_BYTE_PTR	get_iv(const char * iv_input, size_t *iv_size);
 static void		pseudo_randomize(unsigned char *data, size_t dataLen);
 static CK_SESSION_HANDLE test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
@@ -799,7 +798,7 @@ int main(int argc, char * argv[])
 			need_session |= NEED_SESSION_RW;
 			do_set_id = 1;
 			new_object_id_len = sizeof(new_object_id);
-			if (!hex_to_bin(optarg, new_object_id, &new_object_id_len)) {
+			if (sc_hex_to_bin(optarg, new_object_id, &new_object_id_len)) {
 				fprintf(stderr, "Invalid ID \"%s\"\n", optarg);
 				util_print_usage_and_die(app_name, options, option_help, NULL);
 			}
@@ -827,7 +826,7 @@ int main(int argc, char * argv[])
 			break;
 		case 'd':
 			opt_object_id_len = sizeof(opt_object_id);
-			if (!hex_to_bin(optarg, opt_object_id, &opt_object_id_len)) {
+			if (sc_hex_to_bin(optarg, opt_object_id, &opt_object_id_len)) {
 				fprintf(stderr, "Invalid ID \"%s\"\n", optarg);
 				util_print_usage_and_die(app_name, options, option_help, NULL);
 			}
@@ -2889,7 +2888,7 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			ecparams = malloc(ecparams_size);
 			if (!ecparams)
 				util_fatal("Allocation error", 0);
-			if (!hex_to_bin(ec_curve_infos[ii].ec_params, ecparams, &ecparams_size)) {
+			if (sc_hex_to_bin(ec_curve_infos[ii].ec_params, ecparams, &ecparams_size)) {
 				fprintf(stderr, "Cannot convert \"%s\"\n", ec_curve_infos[ii].ec_params);
 				util_print_usage_and_die(app_name, options, option_help, NULL);
 			}
@@ -3393,7 +3392,7 @@ unwrap_key(CK_SESSION_HANDLE session)
 		size_t id_len;
 
 		id_len = sizeof(object_id);
-		if (hex_to_bin(opt_application_id, object_id, &id_len)) {
+		if (!sc_hex_to_bin(opt_application_id, object_id, &id_len)) {
 			FILL_ATTR(keyTemplate[n_attr], CKA_ID, object_id, id_len);
 			n_attr++;
 		}
@@ -3424,7 +3423,7 @@ wrap_key(CK_SESSION_HANDLE session)
 	CK_OBJECT_HANDLE hWrappingKey;	// wrapping key
 	CK_OBJECT_HANDLE hkey;	// key to be wrapped
 	CK_RV rv;
-	CK_BYTE hkey_id;
+	CK_BYTE hkey_id[100];
 	size_t hkey_id_len;
 	int fd, r;
 	CK_BYTE_PTR iv = NULL;
@@ -3446,10 +3445,10 @@ wrap_key(CK_SESSION_HANDLE session)
 	}
 
 	hkey_id_len = sizeof(hkey_id);
-	if (!hex_to_bin(opt_application_id, &hkey_id, &hkey_id_len))
+	if (sc_hex_to_bin(opt_application_id, hkey_id, &hkey_id_len))
 		util_fatal("Invalid application-id \"%s\"\n", opt_application_id);
 
-	if (!find_object(session, CKO_SECRET_KEY, &hkey, hkey_id_len ? &hkey_id : NULL, hkey_id_len, 0))
+	if (!find_object(session, CKO_SECRET_KEY, &hkey, hkey_id_len ? hkey_id : NULL, hkey_id_len, 0))
 		util_fatal("Secret key (to be wrapped) not found");
 
 	if (!find_object(session, CKO_PUBLIC_KEY, &hWrappingKey,
@@ -7482,59 +7481,6 @@ static void p11_perror(const char *msg, CK_RV rv)
 {
 	fprintf(stderr, "  ERR: %s failed: %s (0x%0x)\n", msg, CKR2Str(rv), (unsigned int) rv);
 }
-
-static int hex_to_bin(const char *in, unsigned char *out, size_t *outlen)
-{
-	size_t left, count = 0;
-	int nybbles = 2;
-
-	if (in == NULL || *in == '\0') {
-		*outlen = 0;
-		return 1;
-	}
-
-	left = *outlen;
-
-	if (strlen(in) % 2)
-		nybbles = 1; // any leading zero in output should be in most-significant byte, not last one!
-	while (*in != '\0') {
-		int byte = 0;
-
-		while (nybbles-- && *in && *in != ':') {
-			char c;
-			byte <<= 4;
-			c = *in++;
-			if ('0' <= c && c <= '9')
-				c -= '0';
-			else
-			if ('a' <= c && c <= 'f')
-				c = c - 'a' + 10;
-			else
-			if ('A' <= c && c <= 'F')
-				c = c - 'A' + 10;
-			else {
-				fprintf(stderr, "hex_to_bin(): invalid char '%c' in hex string\n", c);
-				*outlen = 0;
-				return 0;
-			}
-			byte |= c;
-		}
-		if (*in == ':')
-			in++;
-		if (left <= 0) {
-			fprintf(stderr, "hex_to_bin(): hex string too long");
-			*outlen = 0;
-			return 0;
-		}
-		out[count++] = (unsigned char) byte;
-		left--;
-		nybbles = 2;
-	}
-
-	*outlen = count;
-	return 1;
-}
-
 static CK_BYTE_PTR get_iv(const char *iv_input, size_t *iv_size)
 {
 	CK_BYTE_PTR iv;
@@ -7553,11 +7499,14 @@ static CK_BYTE_PTR get_iv(const char *iv_input, size_t *iv_size)
 		return NULL;
 	}
 
-	if (!hex_to_bin(iv_input, iv, &size))
-		return iv;	/* only part from IV string is used as IV, msg printed in hex_to_bin() */
+	if (sc_hex_to_bin(iv_input, iv, &size)) {
+		fprintf(stderr, "Warning, unable to parse IV, IV will not be used.\n");
+		*iv_size = 0;
+		return NULL;
+	}
 
 	if (*iv_size != size)
-		fprintf(stderr, "Warning: IV string is too short, padding with zero bytes to length\n");
+		fprintf(stderr, "Warning: IV string is too short, IV will be padded from the right by zeros.\n");
 
 	return iv;
 }
