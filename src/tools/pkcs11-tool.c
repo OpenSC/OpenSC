@@ -2199,7 +2199,8 @@ parse_pss_params(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key,
 				pss_params->sLen = hashlen;
 				break;
 			case -2: /* maximum permissible salt len */
-				pss_params->sLen = modlen - hashlen -2;
+			case -3:
+				pss_params->sLen = modlen - hashlen - 2;
 				break;
 			default: /* use given size but its value must be >= 0 */
 				pss_params->sLen = opt_salt_len;
