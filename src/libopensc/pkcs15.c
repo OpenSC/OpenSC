@@ -910,6 +910,7 @@ sc_dup_app_info(const struct sc_app_info *info)
 		return NULL;
 	}
 	memcpy(out->ddo.value, info->ddo.value, info->ddo.len);
+	out->ddo.len = info->ddo.len;
 
 	return out;
 }
