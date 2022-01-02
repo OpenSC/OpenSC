@@ -844,7 +844,7 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 					pin_attrs->flags, pin_attrs->reference, sc_print_path(&pin_ainfo.path));
 
 			r = sc_pkcs15_add_object(p15card, pin_obj);
-			LOG_TEST_RET(ctx, r, "Failed to add 'SOPIN' AUTH object");
+			LOG_TEST_GOTO_ERR(ctx, r, "Failed to add 'SOPIN' AUTH object");
 		}
 	}
 
@@ -854,15 +854,18 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 		r = profile->ops->init_card(profile, p15card);
 		if (r < 0 && pin_obj)   {
 			sc_pkcs15_remove_object(p15card, pin_obj);
-			sc_pkcs15_free_object(pin_obj);
 		}
-		LOG_TEST_RET(ctx, r, "Card specific init failed");
+		LOG_TEST_GOTO_ERR(ctx, r, "Card specific init failed");
 	}
 
 	/* Create the application directory */
-	if (profile->ops->create_dir)
+	if (profile->ops->create_dir) {
 		r = profile->ops->create_dir(profile, p15card, df);
-	LOG_TEST_RET(ctx, r, "Create 'DIR' error");
+		if (r < 0 && pin_obj)   {
+			sc_pkcs15_remove_object(p15card, pin_obj);
+		}
+		LOG_TEST_GOTO_ERR(ctx, r, "Create 'DIR' error");
+	}
 
 	/* Store SO PIN */
 	if (pin_obj && profile->ops->create_pin)
@@ -874,14 +877,13 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 		/* Remove 'virtual' AUTH object . */
 		sc_pkcs15_remove_object(p15card, pin_obj);
 
-	if (r < 0)
-		sc_pkcs15_free_object(pin_obj);
-	LOG_TEST_RET(ctx, r, "Card specific create application DF failed");
+	LOG_TEST_GOTO_ERR(ctx, r, "Card specific create application DF failed");
 
 	/* Store the PKCS15 information on the card */
 	app = (struct sc_app_info *)calloc(1, sizeof(*app));
-	if (app == NULL)
-		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Failed to allocate application info");
+	if (app == NULL) {
+		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_OUT_OF_MEMORY, "Failed to allocate application info");
+	}
 
 	app->path = p15card->file_app->path;
 	if (p15card->file_app->namelen <= SC_MAX_AID_SIZE) {
@@ -939,9 +941,14 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 	else {
 		free(app->label);
 		free(app); /* unused */
+		LOG_TEST_GOTO_ERR(ctx, r, "Failed to add pin object.");
 	}
 
 	sc_pkcs15init_write_info(p15card, profile, pin_obj);
+	LOG_FUNC_RETURN(ctx, r);
+err:
+	if (pin_obj)
+		sc_pkcs15_free_object(pin_obj);
 	LOG_FUNC_RETURN(ctx, r);
 }
 
@@ -995,18 +1002,19 @@ sc_pkcs15init_store_puk(struct sc_pkcs15_card *p15card,
 	/* Now store the PINs */
 	if (profile->ops->create_pin)
 		r = sc_pkcs15init_create_pin(p15card, profile, pin_obj, args);
-	else {
-		sc_pkcs15_free_object(pin_obj);
-		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "In Old API store PUK object is not supported");
-	}
+	else 
+		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_NOT_SUPPORTED, "In Old API store PUK object is not supported");
+	LOG_TEST_GOTO_ERR(ctx, r, "Failed to create PIN");
 
-	if (r >= 0)
-		r = sc_pkcs15init_add_object(p15card, profile, SC_PKCS15_AODF, pin_obj);
-	else
-		sc_pkcs15_free_object(pin_obj);
+	r = sc_pkcs15init_add_object(p15card, profile, SC_PKCS15_AODF, pin_obj);
+	LOG_TEST_GOTO_ERR(ctx, r, "Add pin object error");
 
 	profile->dirty = 1;
 
+	LOG_FUNC_RETURN(ctx, r);
+err:
+	if (pin_obj)
+		sc_pkcs15_free_object(pin_obj);
 	LOG_FUNC_RETURN(ctx, r);
 }
 
@@ -1056,25 +1064,23 @@ sc_pkcs15init_store_pin(struct sc_pkcs15_card *p15card, struct sc_profile *profi
 	sc_log(ctx, "Store PIN(%.*s,authID:%s)", (int) sizeof pin_obj->label, pin_obj->label, sc_pkcs15_print_id(&auth_info->auth_id));
 	if (profile->ops->create_pin)
 		r = sc_pkcs15init_create_pin(p15card, profile, pin_obj, args);
-	else {
-		sc_pkcs15_free_object(pin_obj);
-		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Store PIN operation is not supported");
-	}
+	else
+		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_NOT_SUPPORTED, "Store PIN operation is not supported");
 	
-	if (r < 0)
-		sc_pkcs15_free_object(pin_obj);
-	LOG_TEST_RET(ctx, r, "Card specific create PIN failed.");
+	LOG_TEST_GOTO_ERR(ctx, r, "Card specific create PIN failed.");
 
 	r = sc_pkcs15init_add_object(p15card, profile, SC_PKCS15_AODF, pin_obj);
-	if (r < 0)
-		sc_pkcs15_free_object(pin_obj);
-	LOG_TEST_RET(ctx, r, "Failed to add PIN object");
+	LOG_TEST_GOTO_ERR(ctx, r, "Failed to add PIN object");
 
 	if (args->puk_id.len)
 		r = sc_pkcs15init_store_puk(p15card, profile, args);
 
 	profile->dirty = 1;
 
+	LOG_FUNC_RETURN(ctx, r);
+err:
+	if (pin_obj)
+		sc_pkcs15_free_object(pin_obj);
 	LOG_FUNC_RETURN(ctx, r);
 }
 
@@ -1200,7 +1206,7 @@ sc_pkcs15init_init_prkdf(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 		struct sc_pkcs15_object **res_obj)
 {
 	struct sc_context *ctx = p15card->card->ctx;
-	struct sc_pkcs15_prkey_info *key_info;
+	struct sc_pkcs15_prkey_info *key_info = NULL;
 	struct sc_pkcs15_keyinfo_gostparams *keyinfo_gostparams;
 	struct sc_pkcs15_object *object = NULL;
 	const char	*label;
@@ -1312,9 +1318,8 @@ sc_pkcs15init_init_prkdf(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 	}
 
 	*res_obj = object;
-	object = NULL;
 	r = SC_SUCCESS;
-
+	LOG_FUNC_RETURN(ctx, r);
 err:
 	if (key->algorithm == SC_ALGORITHM_EC)
 		free(key_info->params.data);
@@ -1521,13 +1526,18 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 	/* Set up the PrKDF object */
 	r = sc_pkcs15init_init_prkdf(p15card, profile, &keygen_args->prkey_args,
 		&keygen_args->prkey_args.key, keybits, &object);
+	if (r < 0) {
+		free(keygen_args->prkey_args.key.u.ec.params.der.value);
+		free(keygen_args->prkey_args.key.u.ec.params.named_curve);
+	}
+
 	LOG_TEST_RET(ctx, r, "Set up private key object error");
 
 	key_info = (struct sc_pkcs15_prkey_info *) object->data;
 
 	r = _pkcd15init_set_aux_md_data(p15card, &key_info->aux_data,
 			keygen_args->prkey_args.guid, keygen_args->prkey_args.guid_len);
-	LOG_TEST_RET(ctx, r, "Failed to set aux MD data");
+	LOG_TEST_GOTO_ERR(ctx, r, "Failed to set aux MD data");
 
 	/* Set up the PuKDF info. The public key will be filled in
 	 * by the card driver's generate_key function called below.
@@ -1541,20 +1551,28 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 	if (keygen_args->prkey_args.key.algorithm == SC_ALGORITHM_GOSTR3410)   {
 		pubkey_args.params.gost = keygen_args->prkey_args.params.gost;
 		r = sc_copy_gost_params(&(pubkey_args.key.u.gostr3410.params), &(keygen_args->prkey_args.key.u.gostr3410.params));
-		LOG_TEST_RET(ctx, r, "Cannot allocate GOST parameters");
+		LOG_TEST_GOTO_ERR(ctx, r, "Cannot allocate GOST parameters");
 	}
 	else if (keygen_args->prkey_args.key.algorithm == SC_ALGORITHM_EC)   {
 		pubkey_args.key.u.ec.params = keygen_args->prkey_args.key.u.ec.params;
 		r = sc_copy_ec_params(&pubkey_args.key.u.ec.params, &keygen_args->prkey_args.key.u.ec.params);
-		LOG_TEST_RET(ctx, r, "Cannot allocate EC parameters");
+		LOG_TEST_GOTO_ERR(ctx, r, "Cannot allocate EC parameters");
 	}
 
 	/* Generate the private key on card */
 	r = profile->ops->create_key(profile, p15card, object);
-	LOG_TEST_RET(ctx, r, "Cannot generate key: create key failed");
+	if (r < 0) {
+		free(pubkey_args.key.u.ec.params.der.value);
+		free(pubkey_args.key.u.ec.params.named_curve);
+	}
+	LOG_TEST_GOTO_ERR(ctx, r, "Cannot generate key: create key failed");
 
 	r = profile->ops->generate_key(profile, p15card, object, &pubkey_args.key);
-	LOG_TEST_RET(ctx, r, "Failed to generate key");
+	if (r < 0) {
+		free(pubkey_args.key.u.ec.params.der.value);
+		free(pubkey_args.key.u.ec.params.named_curve);
+	}
+	LOG_TEST_GOTO_ERR(ctx, r, "Failed to generate key");
 
 	/* update PrKDF entry */
 	if (!caller_supplied_id)   {
@@ -1564,7 +1582,11 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 		 * if intrinsic ID can be calculated -- overwrite the native one */
 		memset(&iid, 0, sizeof(iid));
 		r = sc_pkcs15init_select_intrinsic_id(p15card, profile, SC_PKCS15_TYPE_PUBKEY, &iid, &pubkey_args.key);
-		LOG_TEST_RET(ctx, r, "Select intrinsic ID error");
+		if (r < 0) {
+			free(pubkey_args.key.u.ec.params.der.value);
+			free(pubkey_args.key.u.ec.params.named_curve);
+		}
+		LOG_TEST_GOTO_ERR(ctx, r, "Select intrinsic ID error");
 
 		if (iid.len)
 			key_info->id = iid;
@@ -1573,8 +1595,14 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 	pubkey = &pubkey_args.key;
 	if (!pubkey->alg_id)   {
 		pubkey->alg_id = calloc(1, sizeof(struct sc_algorithm_id));
-		if (!pubkey->alg_id)
+		if (!pubkey->alg_id) {
+			if (r < 0) {
+				free(pubkey_args.key.u.ec.params.der.value);
+				free(pubkey_args.key.u.ec.params.named_curve);
+				sc_pkcs15_free_object(object);
+			}
 			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+		}
 
 		sc_init_oid(&pubkey->alg_id->oid);
 		pubkey->alg_id->algorithm = pubkey->algorithm;
@@ -1582,28 +1610,35 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 
 	pubkey_args.id = key_info->id;
 	r = sc_pkcs15_encode_pubkey(ctx, pubkey, &object->content.value, &object->content.len);
-	LOG_TEST_RET(ctx, r, "Failed to encode public key");
+	LOG_TEST_GOTO_ERR(ctx, r, "Failed to encode public key");
 
 	r = sc_pkcs15init_add_object(p15card, profile, SC_PKCS15_PRKDF, object);
-	LOG_TEST_RET(ctx, r, "Failed to add generated private key object");
+	LOG_TEST_GOTO_ERR(ctx, r, "Failed to add generated private key object");
 
 	if (!r && profile->ops->emu_store_data)   {
 		r = profile->ops->emu_store_data(p15card, profile, object, NULL, NULL);
 		if (r == SC_ERROR_NOT_IMPLEMENTED)
 			r = SC_SUCCESS;
-		LOG_TEST_RET(ctx, r, "Card specific 'store data' failed");
+		LOG_TEST_GOTO_ERR(ctx, r, "Card specific 'store data' failed");
 	}
 
 	r = sc_pkcs15init_store_public_key(p15card, profile, &pubkey_args, NULL);
-	LOG_TEST_RET(ctx, r, "Failed to store public key");
+	if (r < 0)
+		sc_pkcs15_remove_object(p15card, object);
+	LOG_TEST_GOTO_ERR(ctx, r, "Failed to store public key");
 
 	if (res_obj)
 		*res_obj = object;
+	object = NULL;
 
 	sc_pkcs15_erase_pubkey(&pubkey_args.key);
 
 	profile->dirty = 1;
-
+err:
+	if (pubkey)
+		sc_pkcs15_erase_pubkey(&pubkey_args.key);
+	if (object)
+		sc_pkcs15_free_object(object);
 	LOG_FUNC_RETURN(ctx, r);
 }
 
@@ -1642,30 +1677,33 @@ sc_pkcs15init_generate_secret_key(struct sc_pkcs15_card *p15card, struct sc_prof
 
 	/* Set up the SKDF object */
 	r = sc_pkcs15init_init_skdf(p15card, profile, skey_args, &object);
-	LOG_TEST_RET(ctx, r, "Set up secret key object error");
+	LOG_TEST_GOTO_ERR(ctx, r, "Set up secret key object error");
 
 	/* Generate the secret key on card */
 	r = profile->ops->create_key(profile, p15card, object);
-	LOG_TEST_RET(ctx, r, "Cannot generate key: create key failed");
+	LOG_TEST_GOTO_ERR(ctx, r, "Cannot generate key: create key failed");
 
 	r = profile->ops->generate_key(profile, p15card, object, NULL);
-	LOG_TEST_RET(ctx, r, "Failed to generate key");
+	LOG_TEST_GOTO_ERR(ctx, r, "Failed to generate key");
 
 	r = sc_pkcs15init_add_object(p15card, profile, SC_PKCS15_SKDF, object);
-	LOG_TEST_RET(ctx, r, "Failed to add generated secret key object");
+	LOG_TEST_GOTO_ERR(ctx, r, "Failed to add generated secret key object");
 
 	if (!r && profile->ops->emu_store_data)   {
 		r = profile->ops->emu_store_data(p15card, profile, object, NULL, NULL);
 		if (r == SC_ERROR_NOT_IMPLEMENTED)
 			r = SC_SUCCESS;
-		LOG_TEST_RET(ctx, r, "Card specific 'store data' failed");
+		LOG_TEST_GOTO_ERR(ctx, r, "Card specific 'store data' failed");
 	}
 
 	if (res_obj)
 		*res_obj = object;
+	object = NULL;
 
 	profile->dirty = 1;
-
+err:
+	if (object)
+		sc_pkcs15_free_object(object);
 	LOG_FUNC_RETURN(ctx, r);
 }
 
@@ -1718,40 +1756,43 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card, struct sc_profil
 	LOG_TEST_RET(ctx, r, "Failed to initialize private key object");
 
 	r = sc_pkcs15init_encode_prvkey_content(p15card, &key, object);
-	LOG_TEST_RET(ctx, r, "Failed to encode public key");
+	LOG_TEST_GOTO_ERR(ctx, r, "Failed to encode public key");
 
 	key_info = (struct sc_pkcs15_prkey_info *) object->data;
 	r = _pkcd15init_set_aux_md_data(p15card, &key_info->aux_data, keyargs->guid, keyargs->guid_len);
-	LOG_TEST_RET(ctx, r, "Failed to set aux MD data");
+	LOG_TEST_GOTO_ERR(ctx, r, "Failed to set aux MD data");
 
 	if (profile->ops->create_key)
 		r = profile->ops->create_key(profile, p15card, object);
-	LOG_TEST_RET(ctx, r, "Card specific 'create key' failed");
+	LOG_TEST_GOTO_ERR(ctx, r, "Card specific 'create key' failed");
 
 	if (profile->ops->store_key)
 		r = profile->ops->store_key(profile, p15card, object, &key);
-	LOG_TEST_RET(ctx, r, "Card specific 'store key' failed");
+	LOG_TEST_GOTO_ERR(ctx, r, "Card specific 'store key' failed");
 
 	sc_pkcs15_free_object_content(object);
 	r = sc_pkcs15init_encode_prvkey_content(p15card, &key, object);
-	LOG_TEST_RET(ctx, r, "Failed to encode public key");
+	LOG_TEST_GOTO_ERR(ctx, r, "Failed to encode public key");
 
 	/* Now update the PrKDF */
 	r = sc_pkcs15init_add_object(p15card, profile, SC_PKCS15_PRKDF, object);
-	LOG_TEST_RET(ctx, r, "Failed to add new private key PKCS#15 object");
+	LOG_TEST_GOTO_ERR(ctx, r, "Failed to add new private key PKCS#15 object");
 
 	if (!r && profile->ops->emu_store_data)   {
 		r = profile->ops->emu_store_data(p15card, profile, object, NULL, NULL);
 		if (r == SC_ERROR_NOT_IMPLEMENTED)
 			r = SC_SUCCESS;
-		LOG_TEST_RET(ctx, r, "Card specific 'store data' failed");
+		LOG_TEST_GOTO_ERR(ctx, r, "Card specific 'store data' failed");
 	}
 
 	if (r >= 0 && res_obj)
 		*res_obj = object;
 
 	profile->dirty = 1;
-
+	LOG_FUNC_RETURN(ctx, r);
+err:
+	if (object)
+		sc_pkcs15_free_object(object);
 	LOG_FUNC_RETURN(ctx, r);
 }
 
@@ -1893,16 +1934,16 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card, struct sc_profile
 	/* Update the PuKDF */
 	if (r >= 0)
 		r = sc_pkcs15init_add_object(p15card, profile, SC_PKCS15_PUKDF, object);
+	LOG_TEST_GOTO_ERR(ctx, r, "Add object error");
 
 	if (r >= 0 && res_obj)
 		*res_obj = object;
 
 	profile->dirty = 1;
-
+	LOG_FUNC_RETURN(ctx, r);
 err:
-	if (r < 0)
-		sc_pkcs15init_free_object(object);
-
+	if (object)
+		sc_pkcs15_free_object(object);
 	LOG_FUNC_RETURN(ctx, r);
 }
 
@@ -1950,7 +1991,7 @@ sc_pkcs15init_store_secret_key(struct sc_pkcs15_card *p15card, struct sc_profile
 
 	if (profile->ops->create_key)
 		r = profile->ops->create_key(profile, p15card, object);
-	LOG_TEST_RET(ctx, r, "Card specific 'create key' failed");
+	LOG_TEST_GOTO_ERR(ctx, r, "Card specific 'create key' failed");
 
 	/* If no key data, only an empty EF is created. 
 	 * It can be used to receive an unwrapped key later. */
@@ -1963,7 +2004,7 @@ sc_pkcs15init_store_secret_key(struct sc_pkcs15_card *p15card, struct sc_profile
 			r = profile->ops->store_key(profile, p15card, object, &key);
 		}
 	}
-	LOG_TEST_RET(ctx, r, "Card specific 'store key' failed");
+	LOG_TEST_GOTO_ERR(ctx, r, "Card specific 'store key' failed");
 
 	sc_pkcs15_free_object_content(object);
 
@@ -1974,21 +2015,24 @@ sc_pkcs15init_store_secret_key(struct sc_pkcs15_card *p15card, struct sc_profile
 	   but we don't want it to be written into SKDF. */
 	if (!object->session_object) {
 		r = sc_pkcs15init_add_object(p15card, profile, SC_PKCS15_SKDF, object);
-		LOG_TEST_RET(ctx, r, "Failed to add new secret key PKCS#15 object");
+		LOG_TEST_GOTO_ERR(ctx, r, "Failed to add new secret key PKCS#15 object");
 	}
 
 	if (!r && profile->ops->emu_store_data && !object->session_object)   {
 		r = profile->ops->emu_store_data(p15card, profile, object, NULL, NULL);
 		if (r == SC_ERROR_NOT_IMPLEMENTED)
 			r = SC_SUCCESS;
-		LOG_TEST_RET(ctx, r, "Card specific 'store data' failed");
+		LOG_TEST_GOTO_ERR(ctx, r, "Card specific 'store data' failed");
 	}
 
 	if (r >= 0 && res_obj)
 		*res_obj = object;
+	object = NULL;
 
 	profile->dirty = 1;
-
+err:
+	if (object)
+		sc_pkcs15_free_object(object);
 	LOG_FUNC_RETURN(ctx, r);
 }
 
@@ -2167,17 +2211,21 @@ sc_pkcs15init_store_data_object(struct sc_pkcs15_card *p15card,
 	sc_der_copy(&data_object_info->data, &args->der_encoded);
 
 	r = sc_pkcs15init_store_data(p15card, profile, object, &args->der_encoded, &data_object_info->path);
-	LOG_TEST_RET(ctx, r, "Store 'DATA' object error");
+	LOG_TEST_GOTO_ERR(ctx, r, "Store 'DATA' object error");
 
 	/* Now update the DDF */
 	r = sc_pkcs15init_add_object(p15card, profile, SC_PKCS15_DODF, object);
-	LOG_TEST_RET(ctx, r, "'DODF' update error");
+	LOG_TEST_GOTO_ERR(ctx, r, "'DODF' update error");
 
 	if (r >= 0 && res_obj)
 		*res_obj = object;
+	object = NULL;
 
 	profile->dirty = 1;
 
+err:
+	if (object)
+		sc_pkcs15_free_object(object);
 	LOG_FUNC_RETURN(ctx, r);
 }
 
@@ -3977,20 +4025,21 @@ sc_pkcs15init_create_file(struct sc_profile *profile, struct sc_pkcs15_card *p15
 	LOG_TEST_RET(ctx, r, "Cannot create file: select parent error");
 
 	r = sc_pkcs15init_authenticate(profile, p15card, parent, SC_AC_OP_CREATE);
-	LOG_TEST_RET(ctx, r, "Cannot create file: 'CREATE' authentication failed");
+	LOG_TEST_GOTO_ERR(ctx, r, "Cannot create file: 'CREATE' authentication failed");
 
 	/* Fix up the file's ACLs */
 	r = sc_pkcs15init_fixup_file(profile, p15card, file);
-	LOG_TEST_RET(ctx, r, "Cannot create file: file fixup failed");
+	LOG_TEST_GOTO_ERR(ctx, r, "Cannot create file: file fixup failed");
 
 	/* ensure we are in the correct lifecycle */
 	r = sc_pkcs15init_set_lifecycle(p15card->card, SC_CARDCTRL_LIFECYCLE_ADMIN);
 	if (r != SC_ERROR_NOT_SUPPORTED)
-		LOG_TEST_RET(ctx, r, "Cannot create file: failed to set lifecycle 'ADMIN'");
+		LOG_TEST_GOTO_ERR(ctx, r, "Cannot create file: failed to set lifecycle 'ADMIN'");
 
 	r = sc_create_file(p15card->card, file);
-	LOG_TEST_RET(ctx, r, "Create file failed");
+	LOG_TEST_GOTO_ERR(ctx, r, "Create file failed");
 
+err:
 	sc_file_free(parent);
 	LOG_FUNC_RETURN(ctx, r);
 }
