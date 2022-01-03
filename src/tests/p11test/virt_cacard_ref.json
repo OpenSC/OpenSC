@@ -151,6 +151,12 @@
 		"1024",
 		"3072",
 		"0x00002800"
+	],
+	[
+		"RSA_PKCS_OAEP",
+		"1024",
+		"3072",
+		"0x00000201"
 	]],
 	"result": "pass"
 },
@@ -967,6 +973,51 @@
 		""
 	],
 	[
+		"00:01",
+		"RSA_PKCS_OAEP",
+		"SHA_1",
+		"MGF1_SHA_1",
+		"0",
+		"",
+		"YES"
+	],
+	[
+		"00:01",
+		"RSA_PKCS_OAEP",
+		"SHA224",
+		"MGF1_SHA224",
+		"0",
+		"",
+		"YES"
+	],
+	[
+		"00:01",
+		"RSA_PKCS_OAEP",
+		"SHA256",
+		"MGF1_SHA256",
+		"0",
+		"",
+		"YES"
+	],
+	[
+		"00:01",
+		"RSA_PKCS_OAEP",
+		"SHA384",
+		"MGF1_SHA384",
+		"0",
+		"",
+		"YES"
+	],
+	[
+		"00:01",
+		"RSA_PKCS_OAEP",
+		"SHA512",
+		"MGF1_SHA512",
+		"0",
+		"",
+		"YES"
+	],
+	[
 		"00:02",
 		"RSA_PKCS_PSS",
 		"SHA_1",
@@ -1372,6 +1423,51 @@
 		""
 	],
 	[
+		"00:02",
+		"RSA_PKCS_OAEP",
+		"SHA_1",
+		"MGF1_SHA_1",
+		"0",
+		"",
+		"YES"
+	],
+	[
+		"00:02",
+		"RSA_PKCS_OAEP",
+		"SHA224",
+		"MGF1_SHA224",
+		"0",
+		"",
+		"YES"
+	],
+	[
+		"00:02",
+		"RSA_PKCS_OAEP",
+		"SHA256",
+		"MGF1_SHA256",
+		"0",
+		"",
+		"YES"
+	],
+	[
+		"00:02",
+		"RSA_PKCS_OAEP",
+		"SHA384",
+		"MGF1_SHA384",
+		"0",
+		"",
+		"YES"
+	],
+	[
+		"00:02",
+		"RSA_PKCS_OAEP",
+		"SHA512",
+		"MGF1_SHA512",
+		"0",
+		"",
+		"YES"
+	],
+	[
 		"00:03",
 		"RSA_PKCS_PSS",
 		"SHA_1",
@@ -1775,6 +1871,51 @@
 		"-1",
 		"YES",
 		""
+	],
+	[
+		"00:03",
+		"RSA_PKCS_OAEP",
+		"SHA_1",
+		"MGF1_SHA_1",
+		"0",
+		"",
+		"YES"
+	],
+	[
+		"00:03",
+		"RSA_PKCS_OAEP",
+		"SHA224",
+		"MGF1_SHA224",
+		"0",
+		"",
+		"YES"
+	],
+	[
+		"00:03",
+		"RSA_PKCS_OAEP",
+		"SHA256",
+		"MGF1_SHA256",
+		"0",
+		"",
+		"YES"
+	],
+	[
+		"00:03",
+		"RSA_PKCS_OAEP",
+		"SHA384",
+		"MGF1_SHA384",
+		"0",
+		"",
+		"YES"
+	],
+	[
+		"00:03",
+		"RSA_PKCS_OAEP",
+		"SHA512",
+		"MGF1_SHA512",
+		"0",
+		"",
+		"YES"
 	]],
 	"result": "pass"
 },
