@@ -25,6 +25,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <limits.h>
 
 #ifndef _WIN32
 #include <sys/types.h>
@@ -2188,10 +2189,6 @@ parse_pss_params(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key,
 
 		if (opt_salt_len_given == 1) { /* salt size explicitly given */
 			unsigned long modlen = 0;
-			if (opt_salt_len < 0 && opt_salt_len != -1 && opt_salt_len != -2)
-				util_fatal("Salt length must be greater or equal "
-				    "to zero, or equal to -1 (meaning: use digest size) "
-				    "or to -2 (meaning: use maximum permissible size");
 
 			modlen = (get_private_key_length(session, key) + 7) / 8;
 			switch (opt_salt_len) {
@@ -2203,6 +2200,11 @@ parse_pss_params(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key,
 				pss_params->sLen = modlen - hashlen - 2;
 				break;
 			default: /* use given size but its value must be >= 0 */
+				if (opt_salt_len < 0)
+					util_fatal("Salt length must be greater or equal "
+						"to zero, or equal to -1 (meaning: use digest size) "
+						"or to -2 or -3 (meaning: use maximum permissible size");
+
 				pss_params->sLen = opt_salt_len;
 				break;
 			} /* end switch (opt_salt_len_given) */
@@ -2346,7 +2348,17 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	memset(&mech, 0, sizeof(mech));
 	mech.mechanism = opt_mechanism;
 	hashlen = parse_pss_params(session, key, &mech, &pss_params);
-
+	if (hashlen && opt_salt_len_given) {
+		if (opt_salt_len == -2) {
+			/* openssl allow us to set sLen to -2 for autodetecting salt length
+			 * here maximal CK_ULONG value is used to pass this special code
+			 * to openssl. For non OpenSC PKCS#11 module this is minimal limitation
+			 * because there is no need to use extra long salt length.
+			 */
+			pss_params.sLen = ((CK_ULONG) 1 ) << (sizeof(CK_ULONG) * CHAR_BIT -1);
+			fprintf(stderr, "Warning, requesting salt length recovery from signature (supported only in in opensc pkcs11 module).\n");
+		}
+	}
 	/* Open a signature file */
 	if (opt_signature_file == NULL)
 		util_fatal("No file with signature provided. Use --signature-file");

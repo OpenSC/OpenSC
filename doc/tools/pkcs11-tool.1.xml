@@ -412,7 +412,9 @@
 					<listitem><para>Specify how many bytes of salt should
 					be used in RSA-PSS signatures. Accepts two special values:
 					"-1" means salt length equals to digest length,
-					"-2" means use maximum permissible length.
+					"-2" or "-3" means use maximum permissible length.
+					For verify operation "-2" means that the salt length is automatically recovered from signature.
+					The value "-2" for the verify operation is supported for opensc pkcs#11 module only.
 					Default is digest length (-1).</para></listitem>
 				</varlistentry>
 
