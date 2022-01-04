@@ -451,7 +451,8 @@ main(int argc, char **argv)
 {
 	struct sc_profile	*profile = NULL;
 	unsigned int		n;
-	int			r = 0;
+	int					r = 0;
+	struct sc_pkcs15_card *tmp_p15_data = NULL;
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
 	OPENSSL_config(NULL);
@@ -636,8 +637,13 @@ main(int argc, char **argv)
 	}
 
 out:
+	/* After erasing card profile->p15_data might change */
 	if (profile) {
+		tmp_p15_data = profile->p15_data;
 		sc_pkcs15init_unbind(profile);
+		if 	(tmp_p15_data != g_p15card) {
+ 			sc_pkcs15_unbind(tmp_p15_data);
+		}
 	}
 	if (g_p15card) {
 		sc_pkcs15_unbind(g_p15card);
