@@ -4920,7 +4920,7 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 			goto err;
 		}
 
-		r = sc_pkcs15_compute_signature(vs->p15card, pkey, opt_crypt_flags, dataToSign, dataToSignLen, pbuf, lg);
+		r = sc_pkcs15_compute_signature(vs->p15card, pkey, opt_crypt_flags, dataToSign, dataToSignLen, pbuf, lg, NULL);
 		logprintf(pCardData, 2, "sc_pkcs15_compute_signature return %d\n", r);
 		if(r < 0)   {
 			logprintf(pCardData, 2, "sc_pkcs15_compute_signature error %s\n", sc_strerror(r));

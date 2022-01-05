@@ -237,7 +237,7 @@ static int sign(struct sc_pkcs15_object *obj)
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
-	r = sc_pkcs15_compute_signature(p15card, obj, opt_crypt_flags, buf, c, out, len);
+	r = sc_pkcs15_compute_signature(p15card, obj, opt_crypt_flags, buf, c, out, len, NULL);
 	if (r < 0) {
 		fprintf(stderr, "Compute signature failed: %s\n", sc_strerror(r));
 		return 1;

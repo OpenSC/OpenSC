@@ -33,7 +33,7 @@
 #include <stdlib.h>
 
 #include "internal.h"
-
+#include "pkcs11/pkcs11.h"
 /* TODO doxygen comments */
 
 /*
@@ -408,9 +408,11 @@ static const EVP_MD* mgf1_flag2md(unsigned int mgf1)
 	}
 }
 
+/* large enough up to RSA 4096 */
+#define PSS_MAX_SALT_SIZE 512
 /* add PKCS#1 v2.0 PSS padding */
 static int sc_pkcs1_add_pss_padding(unsigned int hash, unsigned int mgf1_hash,
-    const u8 *in, size_t in_len, u8 *out, size_t *out_len, size_t mod_bits)
+    const u8 *in, size_t in_len, u8 *out, size_t *out_len, size_t mod_bits, size_t sLen)
 {
 	/* hLen = sLen in our case */
 	int rv = SC_ERROR_INTERNAL, i, j, hlen, dblen, plen, round, mgf_rounds;
@@ -418,7 +420,7 @@ static int sc_pkcs1_add_pss_padding(unsigned int hash, unsigned int mgf1_hash,
 	const EVP_MD* md, *mgf1_md;
 	EVP_MD_CTX* ctx = NULL;
 	u8 buf[8];
-	u8 salt[EVP_MAX_MD_SIZE], mask[EVP_MAX_MD_SIZE];
+	u8 salt[PSS_MAX_SALT_SIZE], mask[EVP_MAX_MD_SIZE];
 	size_t mod_length = (mod_bits + 7) / 8;
 
 	if (*out_len < mod_length)
@@ -429,15 +431,16 @@ static int sc_pkcs1_add_pss_padding(unsigned int hash, unsigned int mgf1_hash,
 		return SC_ERROR_NOT_SUPPORTED;
 	hlen = EVP_MD_size(md);
 	dblen = mod_length - hlen - 1; /* emLen - hLen - 1 */
-	plen = mod_length - 2*hlen - 1;
+	plen = mod_length - sLen - hlen - 1;
 	if (in_len != (unsigned)hlen)
 		return SC_ERROR_INVALID_ARGUMENTS;
-	if (2 * (unsigned)hlen + 2 > mod_length)
+	if (sLen + (unsigned)hlen + 2 > mod_length)
 		/* RSA key too small for chosen hash (1296 bits or higher needed for
 		 * signing SHA-512 hashes) */
 		return SC_ERROR_NOT_SUPPORTED;
-
-	if (RAND_bytes(salt, hlen) != 1)
+	if (sLen > PSS_MAX_SALT_SIZE)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	if (RAND_bytes(salt, sLen) != 1)
 		return SC_ERROR_INTERNAL;
 
 	/* Hash M' to create H */
@@ -447,7 +450,7 @@ static int sc_pkcs1_add_pss_padding(unsigned int hash, unsigned int mgf1_hash,
 	if (EVP_DigestInit_ex(ctx, md, NULL) != 1 ||
 	    EVP_DigestUpdate(ctx, buf, 8) != 1 ||
 	    EVP_DigestUpdate(ctx, in, hlen) != 1 || /* mHash */
-	    EVP_DigestUpdate(ctx, salt, hlen) != 1) {
+	    EVP_DigestUpdate(ctx, salt, sLen) != 1) {
 		goto done;
 	}
 
@@ -455,7 +458,7 @@ static int sc_pkcs1_add_pss_padding(unsigned int hash, unsigned int mgf1_hash,
 	/* DB = PS || 0x01 || salt */
 	memset(out, 0x00, plen - 1); /* emLen - sLen - hLen - 2 */
 	out[plen - 1] = 0x01;
-	memcpy(out + plen, salt, hlen);
+	memcpy(out + plen, salt, sLen);
 	if (EVP_DigestFinal_ex(ctx, out + dblen, NULL) != 1) { /* H */
 		goto done;
 	}
@@ -528,7 +531,7 @@ static int hash_len2algo(size_t hash_len)
 
 /* general PKCS#1 encoding function */
 int sc_pkcs1_encode(sc_context_t *ctx, unsigned long flags,
-	const u8 *in, size_t in_len, u8 *out, size_t *out_len, size_t mod_bits)
+	const u8 *in, size_t in_len, u8 *out, size_t *out_len, size_t mod_bits, void *pMechanism)
 {
 	int    rv, i;
 	size_t tmp_len = *out_len;
@@ -536,6 +539,8 @@ int sc_pkcs1_encode(sc_context_t *ctx, unsigned long flags,
 	unsigned int hash_algo, pad_algo;
 	size_t mod_len = (mod_bits + 7) / 8;
 #ifdef ENABLE_OPENSSL
+	size_t sLen;
+	const EVP_MD* md;
 	unsigned int mgf1_hash;
 #endif
 
@@ -583,8 +588,21 @@ int sc_pkcs1_encode(sc_context_t *ctx, unsigned long flags,
 			 */
 			hash_algo = hash_len2algo(tmp_len);
 		}
+		/* sLen is by default same as hash length */
+		if (!(md = hash_flag2md(hash_algo)))
+			return SC_ERROR_NOT_SUPPORTED;
+		sLen = EVP_MD_size(md);
+		/* if application provide sLen, use it */
+		if (pMechanism != NULL) {
+			CK_MECHANISM *mech = (CK_MECHANISM *)pMechanism;
+			CK_RSA_PKCS_PSS_PARAMS *pss_params;
+			if (mech->pParameter && sizeof(CK_RSA_PKCS_PSS_PARAMS) == mech->ulParameterLen) {
+				pss_params = mech->pParameter;
+				sLen = pss_params->sLen;
+			}
+		}
 		rv = sc_pkcs1_add_pss_padding(hash_algo, mgf1_hash,
-		    tmp, tmp_len, out, out_len, mod_bits);
+		    tmp, tmp_len, out, out_len, mod_bits, sLen);
 #else
 		rv = SC_ERROR_NOT_SUPPORTED;
 #endif
