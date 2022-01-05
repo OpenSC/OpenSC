@@ -82,8 +82,13 @@ int sc_hex_to_bin(const char *in, u8 *out, size_t *outlen)
 		else if ('A' <= c && c <= 'F')
 			nibble = c - 'A' + 10;
 		else {
-			if (strchr(sc_hex_to_bin_separators, (int) c))
+			if (strchr(sc_hex_to_bin_separators, (int) c)) {
+				if (byte_needs_nibble) {
+					r = SC_ERROR_INVALID_ARGUMENTS;
+					goto err;
+				}
 				continue;
+			}
 			r = SC_ERROR_INVALID_ARGUMENTS;
 			goto err;
 		}
