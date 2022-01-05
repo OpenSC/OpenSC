@@ -187,7 +187,7 @@ int sc_pkcs1_strip_oaep_padding(sc_context_t *ctx, u8 *data, size_t len,
  * @return SC_SUCCESS on success and an error code otherwise
  */
 int sc_pkcs1_encode(sc_context_t *ctx, unsigned long flags,
-		const u8 *in, size_t inlen, u8 *out, size_t *outlen, size_t mod_bits);
+		const u8 *in, size_t inlen, u8 *out, size_t *outlen, size_t mod_bits, void *pMechanism);
 /**
  * Get the necessary padding and sec. env. flags.
  * @param  ctx     IN  sc_contex_t object

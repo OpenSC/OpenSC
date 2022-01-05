@@ -700,7 +700,7 @@ int sc_pkcs15_wrap(struct sc_pkcs15_card *p15card,
 int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 				const struct sc_pkcs15_object *prkey_obj,
 				unsigned long alg_flags, const u8 *in,
-				size_t inlen, u8 *out, size_t outlen);
+				size_t inlen, u8 *out, size_t outlen, void *pMechanism);
 
 int sc_pkcs15_read_pubkey(struct sc_pkcs15_card *,
 		const struct sc_pkcs15_object *, struct sc_pkcs15_pubkey **);
