@@ -1732,7 +1732,7 @@ static int starcos_compute_signature(sc_card_t *card,
 					flags = SC_ALGORITHM_RSA_HASH_NONE;
 				}
 				tmp_len = sizeof(sbuf);
-				r = sc_pkcs1_encode(card->ctx, flags, data, datalen, sbuf, &tmp_len, sizeof(sbuf)*8);
+				r = sc_pkcs1_encode(card->ctx, flags, data, datalen, sbuf, &tmp_len, sizeof(sbuf)*8, NULL);
 				LOG_TEST_RET(card->ctx, r, "sc_pkcs1_encode failed");
 			} else {
 				memcpy(sbuf, data, datalen);
@@ -1794,7 +1794,7 @@ static int starcos_compute_signature(sc_card_t *card,
 				flags = SC_ALGORITHM_RSA_HASH_NONE;
 			tmp_len = sizeof(sbuf);
 			r = sc_pkcs1_encode(card->ctx, flags, data, datalen,
-					sbuf, &tmp_len, sizeof(sbuf)*8);
+					sbuf, &tmp_len, sizeof(sbuf)*8, NULL);
 			if (r < 0)
 				return r;
 		} else {
