@@ -115,6 +115,8 @@ static CK_RV sc_to_cryptoki_error_common(int rc)
 		return CKR_DEVICE_MEMORY;
 	case SC_ERROR_MEMORY_FAILURE:	/* EEPROM has failed */
 		return CKR_DEVICE_ERROR;
+	case SC_ERROR_WRONG_PADDING:
+		return CKR_ENCRYPTED_DATA_INVALID;
 	}
 	return CKR_GENERAL_ERROR;
 }
