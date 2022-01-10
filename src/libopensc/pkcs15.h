@@ -676,7 +676,7 @@ void sc_pkcs15_free_tokeninfo(struct sc_pkcs15_tokeninfo *tokeninfo);
 int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 		       const struct sc_pkcs15_object *prkey_obj,
 		       unsigned long flags,
-		       const u8 *in, size_t inlen, u8 *out, size_t outlen);
+		       const u8 *in, size_t inlen, u8 *out, size_t outlen, void *pMechanism);
 
 int sc_pkcs15_derive(struct sc_pkcs15_card *p15card,
 		       const struct sc_pkcs15_object *prkey_obj,

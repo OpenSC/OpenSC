@@ -235,7 +235,7 @@ static const EVP_MD *mgf1_flag2md(unsigned int mgf1);
 static const EVP_MD *hash_flag2md(unsigned int hash);
 
 /* check/remove OAEP - RFC 8017 padding */
-int sc_pkcs1_strip_oaep_padding(sc_context_t *ctx, u8 *data, size_t len, unsigned long flags)
+int sc_pkcs1_strip_oaep_padding(sc_context_t *ctx, u8 *data, size_t len, unsigned long flags, uint8_t *param, size_t paramlen)
 {
 	size_t i,j;
 	size_t mdlen, dblen;
@@ -250,10 +250,7 @@ int sc_pkcs1_strip_oaep_padding(sc_context_t *ctx, u8 *data, size_t len, unsigne
 	if (data == NULL)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
 
-	/*
-	 * https://www.rfc-editor.org/rfc/pdfrfc/rfc8017.txt.pdf, page 26, 3.a.
-         * there is no implementation for label "L" (empty string for now)
-	 */
+	/* https://www.rfc-editor.org/rfc/pdfrfc/rfc8017.txt.pdf, page 26, 3.a. */
 	hash_md = hash_flag2md(flags);
 	if (!hash_md)
 		return SC_ERROR_NOT_SUPPORTED;
@@ -261,7 +258,7 @@ int sc_pkcs1_strip_oaep_padding(sc_context_t *ctx, u8 *data, size_t len, unsigne
 	memset(label, 0, sizeof(label));
 	if ((md_ctx = EVP_MD_CTX_new())) {
 		if (!EVP_DigestInit_ex(md_ctx, hash_md, NULL)
-		    || !EVP_DigestUpdate(md_ctx, label, 0)
+		    || !EVP_DigestUpdate(md_ctx, param, paramlen)
 		    || !EVP_DigestFinal_ex(md_ctx, label, &hash_len))
 			hash_len = 0;
 		EVP_MD_CTX_free(md_ctx);

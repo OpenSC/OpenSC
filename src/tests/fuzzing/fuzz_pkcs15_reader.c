@@ -223,7 +223,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
                 SC_ALGORITHM_RSA_PAD_ISO9796};
             for (i = 0; i < sizeof decipher_flags/sizeof *decipher_flags; i++) {
                 sc_pkcs15_decipher(p15card, obj, decipher_flags[i],
-                        in, in_len, buf, sizeof buf);
+                        in, in_len, buf, sizeof buf, NULL);
             }
 
             i = sizeof buf;

@@ -4460,12 +4460,12 @@ pkcs15_prkey_decrypt(struct sc_pkcs11_session *session, void *obj,
 		return sc_to_cryptoki_error(rv, "C_Decrypt");
 
 	rv = sc_pkcs15_decipher(fw_data->p15_card, prkey->prv_p15obj, flags,
-			pEncryptedData, ulEncryptedDataLen, decrypted, sizeof(decrypted));
+			pEncryptedData, ulEncryptedDataLen, decrypted, sizeof(decrypted), pMechanism);
 
 	if (rv < 0 && !sc_pkcs11_conf.lock_login && !prkey_has_path)
 		if (reselect_app_df(fw_data->p15_card) == SC_SUCCESS)
 			rv = sc_pkcs15_decipher(fw_data->p15_card, prkey->prv_p15obj, flags,
-					pEncryptedData, ulEncryptedDataLen, decrypted, sizeof(decrypted));
+					pEncryptedData, ulEncryptedDataLen, decrypted, sizeof(decrypted), pMechanism);
 
 	sc_unlock(p11card->card);
 

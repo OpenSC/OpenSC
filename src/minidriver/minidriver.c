@@ -4572,7 +4572,7 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 
 	if (alg_info->flags & SC_ALGORITHM_RSA_RAW)   {
 		logprintf(pCardData, 2, "sc_pkcs15_decipher: using RSA-RAW mechanism\n");
-		r = sc_pkcs15_decipher(vs->p15card, pkey, opt_crypt_flags, pbuf, pInfo->cbData, pbuf2, pInfo->cbData);
+		r = sc_pkcs15_decipher(vs->p15card, pkey, opt_crypt_flags, pbuf, pInfo->cbData, pbuf2, pInfo->cbData, NULL);
 		logprintf(pCardData, 2, "sc_pkcs15_decipher returned %d\n", r);
 
 		if (r > 0) {
@@ -4608,7 +4608,7 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 	else if (alg_info->flags & SC_ALGORITHM_RSA_PAD_PKCS1)   {
 		logprintf(pCardData, 2, "sc_pkcs15_decipher: using RSA_PAD_PKCS1 mechanism\n");
 		r = sc_pkcs15_decipher(vs->p15card, pkey, opt_crypt_flags | SC_ALGORITHM_RSA_PAD_PKCS1,
-				pbuf, pInfo->cbData, pbuf2, pInfo->cbData);
+				pbuf, pInfo->cbData, pbuf2, pInfo->cbData, NULL);
 		logprintf(pCardData, 2, "sc_pkcs15_decipher returned %d\n", r);
 		if (r > 0) {
 			/* No padding info, or padding info none */
