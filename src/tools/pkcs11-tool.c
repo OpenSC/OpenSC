@@ -6796,7 +6796,8 @@ static int test_unwrap(CK_SESSION_HANDLE sess)
 #ifdef ENABLE_OPENSSL
 static int encrypt_decrypt(CK_SESSION_HANDLE session,
 		CK_MECHANISM_TYPE mech_type,
-		CK_OBJECT_HANDLE privKeyObject)
+		CK_OBJECT_HANDLE privKeyObject,
+		char *param, unsigned long param_len)
 {
 	EVP_PKEY       *pkey;
 	unsigned char	orig_data[512];
@@ -7005,6 +7006,18 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 			printf("set mgf1 md failed, returning\n");
 			return 0;
 		}
+		if (param_len != 0 && param != NULL) {
+			/* label is in ownership of openssl, do not free this ptr! */
+			char *label = malloc(param_len);
+			memcpy(label, param, param_len);
+
+			if (EVP_PKEY_CTX_set0_rsa_oaep_label(ctx, label, param_len) <= 0) {
+				EVP_PKEY_CTX_free(ctx);
+				EVP_PKEY_free(pkey);
+				printf("set OAEP label failed, returning\n");
+				return 0;
+			}
+		}
 #else
 		if (hash_alg != CKM_SHA_1) {
 			printf("This version of OpenSSL only supports SHA1 for OAEP, returning\n");
@@ -7030,21 +7043,28 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 		oaep_params.hashAlg = hash_alg;
 		oaep_params.mgf = mgf;
 
-		/* These settings are compatible with OpenSSL 1.0.2L and 1.1.0+ */
 		oaep_params.source = 0UL;  /* empty encoding parameter (label) */
 		oaep_params.pSourceData = NULL; /* PKCS#11 standard: this must be NULLPTR */
 		oaep_params.ulSourceDataLen = 0; /* PKCS#11 standard: this must be 0 */
 
-		/* If an RSA-OAEP mechanism, it needs parameters */
+		fprintf(stderr, "OAEP parameters: hashAlg=%s, mgf=%s, ",
+			p11_mechanism_to_name(oaep_params.hashAlg),
+			p11_mgf_to_name(oaep_params.mgf));
+
+		if (param != NULL && param_len > 0) {
+			oaep_params.source = CKZ_DATA_SPECIFIED;
+			oaep_params.pSourceData = param;
+			oaep_params.ulSourceDataLen = param_len;
+			fprintf(stderr, "encoding parameter (Label) present, length %ld\n", param_len);
+		} else {
+			fprintf(stderr, "encoding parameter (Label) not present\n");
+		}
+
 		mech.pParameter = &oaep_params;
 		mech.ulParameterLen = sizeof(oaep_params);
 
-		fprintf(stderr, "OAEP parameters: hashAlg=%s, mgf=%s, source_type=%lu, source_ptr=%p, source_len=%lu\n",
-			p11_mechanism_to_name(oaep_params.hashAlg),
-			p11_mgf_to_name(oaep_params.mgf),
-			oaep_params.source,
-			oaep_params.pSourceData,
-			oaep_params.ulSourceDataLen);
+
+
 		break;
 	case CKM_RSA_X_509:
 	case CKM_RSA_PKCS:
@@ -7163,16 +7183,17 @@ static int test_decrypt(CK_SESSION_HANDLE sess)
 #else
 		for (n = 0; n < num_mechs; n++) {
 			switch (mechs[n]) {
-			case CKM_RSA_PKCS:
 			case CKM_RSA_PKCS_OAEP:
+				/* one more OAEP test with param .. */
+				errors += encrypt_decrypt(sess, mechs[n], privKeyObject, "ABC", 3);
+				/* fall through */
+			case CKM_RSA_PKCS:
 			case CKM_RSA_X_509:
+				errors += encrypt_decrypt(sess, mechs[n], privKeyObject, NULL, 0);
 				break;
 			default:
 				printf(" -- mechanism can't be used to decrypt, skipping\n");
-				continue;
 			}
-
-			errors += encrypt_decrypt(sess, mechs[n], privKeyObject);
 		}
 #endif
 	}
