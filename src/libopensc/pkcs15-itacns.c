@@ -222,11 +222,6 @@ static int itacns_add_cert(sc_pkcs15_card_t *p15card,
 		info.path = *path;
 
 	strlcpy(obj.label, label, sizeof(obj.label));
-	obj.flags = obj_flags;
-
-	r = sc_pkcs15emu_add_x509_cert(p15card, &obj, &info);
-	LOG_TEST_RET(p15card->card->ctx, r,
-		"Could not add X.509 certificate");
 
 	/* If we have OpenSSL, read keyUsage */
 #ifdef ENABLE_OPENSSL
@@ -255,14 +250,14 @@ static int itacns_add_cert(sc_pkcs15_card_t *p15card,
 	}
 	OPENSSL_free(x509);
 
-	return SC_SUCCESS;
-
-#else /* ENABLE_OPENSSL */
-
-	return SC_SUCCESS;
-
 #endif /* ENABLE_OPENSSL */
 
+	obj.flags = obj_flags;
+	r = sc_pkcs15emu_add_x509_cert(p15card, &obj, &info);
+	LOG_TEST_RET(p15card->card->ctx, r,
+		"Could not add X.509 certificate");
+
+	return r;
 }
 
 static int itacns_add_pubkey(sc_pkcs15_card_t *p15card,
