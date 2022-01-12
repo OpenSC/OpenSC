@@ -852,6 +852,14 @@ static int itacns_init(sc_pkcs15_card_t *p15card)
 		"Could not add CNS1");
 	certificate_count += found_certs;
 
+	/* Idemia card */
+	r = itacns_check_and_add_keyset(p15card, "CNS1", 0x02,
+		0, "3F00140090012002", "3F0011001102", "3F0014009002",
+		0x10, &found_certs);
+	LOG_TEST_RET(p15card->card->ctx, r,
+		"Could not add CNS1");
+	certificate_count += found_certs;
+
 	/* Did we find anything? */
 	if (certificate_count == 0)
 		sc_debug(p15card->card->ctx, SC_LOG_DEBUG_NORMAL,
