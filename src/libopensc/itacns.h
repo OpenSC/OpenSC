@@ -4,9 +4,6 @@
 typedef struct {
 	u8 ic_manufacturer_code;
 	u8 mask_manufacturer_code;
-	u8 os_version_h;
-	u8 os_version_l;
-	u8 cns_version;
 } itacns_drv_data_t;
 
 #define ITACNS_MASKMAN_SIEMENS		0x08

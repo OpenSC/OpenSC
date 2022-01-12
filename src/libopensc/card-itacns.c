@@ -65,15 +65,17 @@ static void itacns_init_cns_card(sc_card_t *card)
 	if (15 != card->reader->atr_info.hist_bytes_len)
 		return;
 
-	/* Warn if version is not 1.X. */
 	u8 cns_version = card->reader->atr_info.hist_bytes[12];
-	if(cns_version != 0x10 && cns_version != 0x11) {
+	card->version.hw_major = (cns_version >> 4) & 0x0f;
+	card->version.hw_minor = cns_version & 0x0f;
+
+	/* Warn if version is not 1.X. */
+	if (cns_version != 0x10 && cns_version != 0x11) {
 		char version[8];
-		snprintf(version, sizeof(version), "%d.%d", (cns_version >> 4) & 0x0f, cns_version & 0x0f);
+		snprintf(version, sizeof(version), "%d.%d", card->version.hw_major, card->version.hw_minor);
 		sc_log(card->ctx, "CNS card version %s; no official specifications "
 		       "are published. Proceeding anyway.\n", version);
 	}
-	DRVDATA(card)->cns_version = cns_version;
 }
 
 static int itacns_match_cns_card(sc_card_t *card)
@@ -136,8 +138,8 @@ static int itacns_init(sc_card_t *card)
 
 	DRVDATA(card)->ic_manufacturer_code = card->reader->atr_info.hist_bytes[2];
 	DRVDATA(card)->mask_manufacturer_code = card->reader->atr_info.hist_bytes[3];
-	DRVDATA(card)->os_version_h = card->reader->atr_info.hist_bytes[4];
-	DRVDATA(card)->os_version_l = card->reader->atr_info.hist_bytes[5];
+	card->version.fw_major = card->reader->atr_info.hist_bytes[4];
+	card->version.fw_minor = card->reader->atr_info.hist_bytes[5];
 
 	/* Set up algorithm info. */
 	flags = SC_ALGORITHM_NEED_USAGE
@@ -147,7 +149,7 @@ static int itacns_init(sc_card_t *card)
 
 	_sc_card_add_rsa_alg(card, 1024, flags, 0);
 
-	if (DRVDATA(card)->cns_version == 0x11) {
+	if (card->version.hw_major >= 1 && card->version.hw_minor >= 1) {
 		card->caps |= SC_CARD_CAP_APDU_EXT;
 		_sc_card_add_rsa_alg(card, 2048, flags, 0);
 	}
