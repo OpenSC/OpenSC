@@ -54,6 +54,9 @@ static struct sc_card_driver itacns_drv = {
 static const struct sc_atr_table itacns_atrs[] = {
 	{ "3b:f4:18:00:ff:81:31:80:55:00:31:80:00:c7", NULL, NULL,
 		SC_CARD_TYPE_ITACNS_CIE_V1, 0, NULL},
+	{ "3b:8b:80:01:00:31:c1:64:00:00:00:00:00:00:00:00",
+	  "ff:ff:ff:ff:ff:ff:ff:ff:00:00:00:00:00:00:00:00",
+	  "Idemia (Oberthur)", SC_CARD_TYPE_ITACNS_CNS_IDEMIA_2021, 0, NULL},
 	{ NULL, NULL, NULL, 0, 0, NULL}
 };
 
