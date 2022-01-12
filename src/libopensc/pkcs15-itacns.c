@@ -62,14 +62,15 @@ const char * itacns_mask_manufacturers[] = {
 	"Gemplus",
 	"Ghirlanda",
 	"Giesecke & Devrient",
-	"Oberthur Card Systems",
+	"IDEMIA (Oberthur)",
 	"Orga",
 	"Axalto",
 	"Siemens",
 	"STIncard",
 	"GEP",
 	"EPS Corp",
-	"Athena"
+	"Athena",
+	"Gemalto",
 };
 
 const char * iso7816_ic_manufacturers[] = {
