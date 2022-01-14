@@ -471,6 +471,15 @@ itacns_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 	return SC_ERROR_NOT_SUPPORTED;
 }
 
+static int
+itacns_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
+{
+	if (card->type == SC_CARD_TYPE_ITACNS_CNS_IDEMIA_2021)
+		len = MIN (0x20, len);
+
+	return default_ops->get_challenge(card, rnd, len);
+}
+
 static struct sc_card_driver * sc_get_driver(void)
 {
 	if (!default_ops)
@@ -486,6 +495,7 @@ static struct sc_card_driver * sc_get_driver(void)
 	itacns_ops.list_files = itacns_list_files;
 	itacns_ops.select_file = itacns_select_file;
 	itacns_ops.card_ctl = itacns_card_ctl;
+	itacns_ops.get_challenge = itacns_get_challenge;
 	return &itacns_drv;
 }
 
