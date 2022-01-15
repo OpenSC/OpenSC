@@ -57,138 +57,58 @@ static const struct sc_atr_table itacns_atrs[] = {
 	{ NULL, NULL, NULL, 0, 0, NULL}
 };
 
-/* Output debug info */
-#define matchdebug(idx, c) do { \
-	sc_debug(ctx, SC_LOG_DEBUG_VERBOSE, \
-		"Matching %x against atr[%d] == %x", c, idx, atr[idx]); \
-	} while(0);
-
-/* Check that we are not looking at values beyond the ATR's length.
- * If we are, then the card does not match. */
-#define itacns_atr_l(idx) do {if (idx >= card->atr.len) return 0;} while(0);
-
-/* Match byte exactly and increment index. */
-#define itacns_atr_match(idx, c) do { \
-		itacns_atr_l(idx); \
-		matchdebug(idx, c); \
-		if (((u8)atr[idx]) != c) return 0; \
-		idx++; \
-	} while(0);
-
-/* Match masked bits and increment index. */
-#define itacns_atr_mmatch(idx, c, mask) do { \
-		itacns_atr_l(idx); \
-		if ((((u8)atr[idx]) & mask) != c) return 0; \
-		idx ++; \
-	} while(0);
-
 /* Macro to access private driver data. */
 #define DRVDATA(card) ((itacns_drv_data_t *) card->drv_data)
 
-
-static int itacns_match_cns_card(sc_card_t *card, unsigned int i)
+static void itacns_init_cns_card(sc_card_t *card)
 {
-	unsigned char *atr = card->atr.value;
-	sc_context_t *ctx;
-	ctx = card->ctx;
+	if (15 != card->reader->atr_info.hist_bytes_len)
+		return;
 
-
-	itacns_atr_match(i, 0x01); /* H7 */
-	i += 2; /* H8, H9 */
-	itacns_atr_match(i, 'C'); /* H10 */
-	itacns_atr_match(i, 'N'); /* H11 */
-	itacns_atr_match(i, 'S'); /* H12 */
-
-	/* H13 */
-	/* Version byte: h.l, h in the high nibble, l in the low nibble. */
-	if(card->driver) {
-		DRVDATA(card)->cns_version = atr[i];
-	}
 	/* Warn if version is not 1.X. */
-	if(atr[i] != 0x10 && atr[i] != 0x11) {
+	u8 cns_version = card->reader->atr_info.hist_bytes[12];
+	if(cns_version != 0x10 && cns_version != 0x11) {
 		char version[8];
-		snprintf(version, sizeof(version), "%d.%d", (atr[i] >> 4) & 0x0f, atr[i] & 0x0f);
+		snprintf(version, sizeof(version), "%d.%d", (cns_version >> 4) & 0x0f, cns_version & 0x0f);
 		sc_log(card->ctx, "CNS card version %s; no official specifications "
-			"are published. Proceeding anyway.\n", version);
+		       "are published. Proceeding anyway.\n", version);
 	}
-	i++;
+	DRVDATA(card)->cns_version = cns_version;
+}
 
-	itacns_atr_match(i, 0x31); /* H14 */
-	itacns_atr_match(i, 0x80); /* H15 */
+static int itacns_match_cns_card(sc_card_t *card)
+{
+	if (15 != card->reader->atr_info.hist_bytes_len ||
+	    0 != memcmp(card->reader->atr_info.hist_bytes+9, "CNS", 3))
+		return 0;
 
 	card->type = SC_CARD_TYPE_ITACNS_CNS;
 
 	return 1;
 }
 
-static int itacns_match_cie_card(sc_card_t *card, unsigned int i)
+static int itacns_match_cie_card(sc_card_t *card)
 {
-	unsigned char *atr = card->atr.value;
-	sc_context_t *ctx;
-	ctx = card->ctx;
-
-	itacns_atr_match(i, 0x02); /* H7 */
-	itacns_atr_match(i, 'I'); /* H8 */
-	itacns_atr_match(i, 'T'); /* H9 */
-	itacns_atr_match(i, 'I'); /* H10 */
-	itacns_atr_match(i, 'D'); /* H11 */
-	itacns_atr_match(i, 0x20); /* H12 */
-	itacns_atr_match(i, 0x20); /* H13 */
-	itacns_atr_match(i, 0x31); /* H14 */
-	itacns_atr_match(i, 0x80); /* H15 */
+	u8 h7_to_h15[] = { 0x02, 'I', 'T', 'I', 'D', 0x20, 0x20, 0x31, 0x80, };
+	if (15 != card->reader->atr_info.hist_bytes_len ||
+	    0 != memcmp(card->reader->atr_info.hist_bytes+6,
+			h7_to_h15, sizeof h7_to_h15))
+		return 0;
 
 	card->type = SC_CARD_TYPE_ITACNS_CIE_V2;
-
 	return 1;
 }
 
 static int itacns_match_card(sc_card_t *card)
 {
-	unsigned int i = 0;
-	int r;
-	unsigned char *atr = card->atr.value;
-	int td1_idx;
-	sc_context_t *ctx;
-	ctx = card->ctx;
+	int r = 0;
 
 	/* Try table first */
 	r = _sc_match_atr(card, itacns_atrs, &card->type);
 	if(r >= 0) return 1;
 
-	/* The ATR was not recognized; try to match it
-	   according to the official specs. */
-
-	/* Check ATR up to byte H6 */
-	itacns_atr_match(i, 0x3b); /* TS */
-	itacns_atr_mmatch(i, 0x8f, 0x8f); /* T0 */
-	/* TA1, TB1, TC1 */
-	if(atr[1] & 0x40) i++;
-	if(atr[1] & 0x20) i++;
-	if(atr[1] & 0x10) i++;
-	/* TD1 */
-	td1_idx = i;
-	itacns_atr_mmatch(i, 0x81, 0x8f);
-	/* TA2, TB2, TC2 */
-	if(atr[td1_idx] & 0x40) i++;
-	if(atr[td1_idx] & 0x20) i++;
-	if(atr[td1_idx] & 0x10) i++;
-	/* TD2 */
-	itacns_atr_match(i, 0x31);
-	i += 2; /* TA3, TB3 */
-	itacns_atr_match(i, 0x00); /* H1 */
-	itacns_atr_match(i, 0x6b); /* H2 */
-	/* Store interesting data */
-	if(card->driver) {
-		DRVDATA(card)->ic_manufacturer_code = card->atr.value[i];
-		DRVDATA(card)->mask_manufacturer_code = card->atr.value[i+1];
-		DRVDATA(card)->os_version_h = card->atr.value[i+2];
-		DRVDATA(card)->os_version_l = card->atr.value[i+3];
-	}
-	i += 4; /* H3, H4, H5, H6 */
-
-	/* Check final part. */
-	if (itacns_match_cns_card(card, i)) return 1;
-	if (itacns_match_cie_card(card, i)) return 1;
+	if (itacns_match_cns_card(card)) return 1;
+	if (itacns_match_cie_card(card)) return 1;
 
 	/* No card type was matched. */
 	return 0;
@@ -211,8 +131,13 @@ static int itacns_init(sc_card_t *card)
 	if (!card->drv_data)
 		return SC_ERROR_OUT_OF_MEMORY;
 
-	/* Match ATR again to find the card data. */
-	itacns_match_card(card);
+	if (card->type == SC_CARD_TYPE_ITACNS_CNS)
+		itacns_init_cns_card(card);
+
+	DRVDATA(card)->ic_manufacturer_code = card->reader->atr_info.hist_bytes[2];
+	DRVDATA(card)->mask_manufacturer_code = card->reader->atr_info.hist_bytes[3];
+	DRVDATA(card)->os_version_h = card->reader->atr_info.hist_bytes[4];
+	DRVDATA(card)->os_version_l = card->reader->atr_info.hist_bytes[5];
 
 	/* Set up algorithm info. */
 	flags = SC_ALGORITHM_NEED_USAGE
