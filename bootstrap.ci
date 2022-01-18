@@ -41,12 +41,12 @@ if [ -f Makefile ]; then
   make distclean
 fi
 
-rm -rf *~ *.cache config.guess config.log config.status config.sub depcomp ltmain.sh version.m4.ci
+rm -rf *~ *.cache config.guess config.log config.status config.sub depcomp ltmain.sh m4/version.m4.ci
 
 if [ -n "$SUFFIX" ]
 then
     echo Set package suffix "$SUFFIX"
-    sed 's/^define(\[PACKAGE_SUFFIX\],\s*\[\([-~]*[0-9a-zA-Z]*\)\])$/define(\[PACKAGE_SUFFIX\], \['$SUFFIX'\])/g' < version.m4 > version.m4.ci
+    sed 's/^define(\[PACKAGE_SUFFIX\],\s*\[\([-~]*[0-9a-zA-Z]*\)\])$/define(\[PACKAGE_SUFFIX\], \['$SUFFIX'\])/g' < m4/version.m4 > m4/version.m4.ci
 fi
 
 ./bootstrap
