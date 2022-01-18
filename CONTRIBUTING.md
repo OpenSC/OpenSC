@@ -20,7 +20,7 @@ After installing
 [codespell](https://github.com/codespell-project/codespell#installation),
 you can run it from the command line as:
 ```sh
-codespell -I codespell_ignore_words.txt
+codespell -I .github/codespell_ignore_words.txt
 ```
 
 # Release process
