@@ -29,6 +29,7 @@
 #include "ui/notify.h"
 #include "common/compat_strnlen.h"
 #ifdef ENABLE_OPENSSL
+#include <openssl/crypto.h>
 #include <openssl/sha.h>
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 #include <openssl/evp.h>
