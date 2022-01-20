@@ -2,23 +2,7 @@
 
 set -ex -o xtrace
 
-brew install automake
-
-# gengetopt
-curl https://ftp.gnu.org/gnu/gengetopt/gengetopt-2.23.tar.xz -L --output gengetopt-2.23.tar.xz
-tar xfj gengetopt-2.23.tar.xz
-pushd gengetopt-2.23
-./configure && make
-sudo make install
-popd
-
-# help2man
-curl https://ftp.gnu.org/gnu/help2man/help2man-1.47.16.tar.xz -L --output help2man-1.47.16.tar.xz
-tar xjf help2man-1.47.16.tar.xz
-pushd help2man-1.47.16
-./configure && make
-sudo make install
-popd
+brew install automake gengetopt help2man
 
 # openSCToken
 export PATH="/usr/local/opt/ccache/libexec:$PATH"
