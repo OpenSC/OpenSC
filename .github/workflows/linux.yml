@@ -225,6 +225,41 @@ jobs:
       - run: .github/setup-linux.sh oseid ossl3
       - run: .github/test-oseid.sh
 
+  ###########################
+  ## LibreSSL 3.0 pipeline ##
+  ###########################
+  build-libressl:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: .github/setup-linux.sh libressl
+      - run: .github/build.sh dist libressl
+      - uses: actions/upload-artifact@v2
+        if: failure()
+        with:
+          name: logs
+          path: |
+            tests/test-suite.log
+            config.log
+      - uses: actions/cache@v2
+        id: cache-build
+        with:
+          path: ./*
+          key: ${{ runner.os }}-${{ github.sha }}-libressl
+
+  test-cac-libressl:
+    runs-on: ubuntu-latest
+    needs: [build-libressl]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        id: cache-build
+        with:
+          path: ./*
+          key: ${{ runner.os }}-${{ github.sha }}-libressl
+      - run: .github/setup-linux.sh cac libressl
+      - run: .github/test-cac.sh
+
   ####################
   ## Push artifacts ##
   ####################
