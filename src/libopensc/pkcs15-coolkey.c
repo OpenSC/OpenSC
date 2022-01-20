@@ -643,6 +643,7 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 				obj_type = SC_PKCS15_TYPE_PUBKEY_EC;
 				pubkey_info.field_length = key->u.ec.params.field_length;
 			} else {
+				free(pubkey_info.direct.spki.value);
 				goto fail;
 			}
 			/* set the obj values */
