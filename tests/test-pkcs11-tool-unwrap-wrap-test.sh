@@ -30,7 +30,7 @@ KEY="70707070707070707070707070707070"
 
 echo -n $KEY|xxd -p -r > aes_plain_key
 # wrap AES key
-openssl rsautl -encrypt -pubin --keyform der -inkey rsa_pub.key -in aes_plain_key -out aes_wrapped_key
+openssl rsautl -encrypt -pubin -keyform der -inkey rsa_pub.key -in aes_plain_key -out aes_wrapped_key
 assert $? "Failed wrap AES key"
 
 # unwrap key by pkcs11 interface
