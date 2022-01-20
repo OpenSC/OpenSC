@@ -6,7 +6,7 @@ set -ex -o xtrace
 DEPS="docbook-xsl xsltproc gengetopt help2man pcscd check pcsc-tools libtool make autoconf autoconf-archive automake pkg-config git"
 
 # Add openssl or install openssl3.0
-if [ "$1" != "ossl3" -a "$2" != "ossl3"  ]; then
+if [ "$1" != "ossl3" -a "$2" != "ossl3" -a  ]; then
 	DEPS="$DEPS openssl"
 fi
 
@@ -56,6 +56,11 @@ sudo apt-get install -y build-essential $DEPS
 # install openssl 3.0 if needed
 if [ "$1" == "ossl3" -o "$2" == "ossl3" ]; then
 	./.github/setup-openssl.sh
+fi
+
+# install libressl if needed
+if [ "$1" == "libressl" -o "$2" == "libressl" ]; then
+	./.github/setup-libressl.sh
 fi
 
 if [ "$1" == "mingw" -o "$1" == "mingw32" ]; then
