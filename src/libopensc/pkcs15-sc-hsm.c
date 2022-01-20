@@ -622,6 +622,8 @@ static int sc_pkcs15emu_sc_hsm_add_pubkey(sc_pkcs15_card_t *p15card, u8 *efbin, 
 		pubkey_info.usage = SC_PKCS15_PRKEY_USAGE_VERIFY;
 		r = sc_pkcs15emu_add_ec_pubkey(p15card, &pubkey_obj, &pubkey_info);
 	}
+	if (r < 0)
+		free(pubkey_info.direct.spki.value);
 	LOG_TEST_RET(ctx, r, "Could not add public key");
 
 	sc_pkcs15emu_sc_hsm_free_cvc(&cvc);
