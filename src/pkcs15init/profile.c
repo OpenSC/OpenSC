@@ -1224,12 +1224,24 @@ new_file(struct state *cur, const char *name, unsigned int type)
 	if (strncasecmp(name, "PKCS15-", 7)) {
 		file = init_file(type);
 	} else if (!strcasecmp(name+7, "TokenInfo")) {
+		if (!profile->p15_spec) {
+			parse_error(cur, "no pkcs15 spec in profile");
+			return NULL;
+		}
 		file = profile->p15_spec->file_tokeninfo;
 		dont_free = 1;
 	} else if (!strcasecmp(name+7, "ODF")) {
+		if (!profile->p15_spec) {
+			parse_error(cur, "no pkcs15 spec in profile");
+			return NULL;
+		}
 		file = profile->p15_spec->file_odf;
 		dont_free = 1;
 	} else if (!strcasecmp(name+7, "UnusedSpace")) {
+		if (!profile->p15_spec) {
+			parse_error(cur, "no pkcs15 spec in profile");
+			return NULL;
+		}
 		file = profile->p15_spec->file_unusedspace;
 		dont_free = 1;
 	} else if (!strcasecmp(name+7, "AppDF")) {
