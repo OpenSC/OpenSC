@@ -105,6 +105,13 @@ extern "C" {
 /* workaround unused value warning for a macro that does nothing */
 #if defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER >= 0x20700000L
 #define OPENSSL_malloc_init()
+#define FIPS_mode()                             (0)
+#define EVP_sha3_224()                          (NULL)
+#define EVP_sha3_256()                          (NULL)
+#define EVP_sha3_384()                          (NULL)
+#define EVP_sha3_512()                          (NULL)
+#define EVP_PKEY_new_raw_public_key(t, e, p, l) (NULL)
+#define EVP_PKEY_get_raw_public_key(p, pu, l)   (0)
 #endif
 
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L

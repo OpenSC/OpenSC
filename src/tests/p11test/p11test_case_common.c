@@ -164,6 +164,7 @@ add_supported_mechs(test_cert_t *o)
 			o->mechs[0].result_flags = 0;
 			o->mechs[0].usage_flags = CKF_SIGN | CKF_VERIFY;
 		}
+#ifdef EVP_PKEY_ED25519
 	} else if (o->type == EVP_PKEY_ED25519) {
 		if (token.num_ed_mechs > 0 ) {
 			o->num_mechs = token.num_ed_mechs;
@@ -184,6 +185,8 @@ add_supported_mechs(test_cert_t *o)
 			o->mechs[0].result_flags = 0;
 			o->mechs[0].usage_flags = CKF_SIGN | CKF_VERIFY;
 		}
+#endif
+#ifdef EVP_PKEY_X25519
 	} else if (o->type == EVP_PKEY_X25519) {
 		if (token.num_montgomery_mechs > 0 ) {
 			o->num_mechs = token.num_montgomery_mechs;
@@ -204,6 +207,7 @@ add_supported_mechs(test_cert_t *o)
 			o->mechs[0].result_flags = 0;
 			o->mechs[0].usage_flags = CKF_DERIVE;
 		}
+#endif
 	/* Nothing in the above enum can be used for secret keys */
 	} else if (o->key_type == CKK_AES) {
 		if (token.num_aes_mechs > 0 ) {
@@ -601,6 +605,7 @@ int callback_public_keys(test_certs_t *objects,
 		a = template[6].pValue;
 		if (d2i_ASN1_PRINTABLESTRING(&curve, &a, (long)template[6].ulValueLen) != NULL) {
 			switch (o->key_type) {
+#ifdef EVP_PKEY_ED25519
 			case CKK_EC_EDWARDS:
 				if (strcmp((char *)curve->data, "edwards25519")) {
 					debug_print(" [WARN %s ] Unknown curve name. "
@@ -608,6 +613,8 @@ int callback_public_keys(test_certs_t *objects,
 				}
 				evp_type = EVP_PKEY_ED25519;
 				break;
+#endif
+#ifdef EVP_PKEY_X25519
 			case CKK_EC_MONTGOMERY:
 				if (strcmp((char *)curve->data, "curve25519")) {
 					debug_print(" [WARN %s ] Unknown curve name. "
@@ -615,16 +622,20 @@ int callback_public_keys(test_certs_t *objects,
 				}
 				evp_type = EVP_PKEY_X25519;
 				break;
+#endif
 			default:
 				debug_print(" [WARN %s ] Unknown key type %lu", o->id_str, o->key_type);
 				return -1;
 			}
 			ASN1_PRINTABLESTRING_free(curve);
 		} else if (d2i_ASN1_OBJECT(&obj, &a, (long)template[6].ulValueLen) != NULL) {
+#if defined(EVP_PKEY_ED25519) || defined (EVP_PKEY_X25519)
 			int nid = OBJ_obj2nid(obj);
+#endif
 			ASN1_OBJECT_free(obj);
 
 			switch (o->key_type) {
+#ifdef EVP_PKEY_ED25519
 			case CKK_EC_EDWARDS:
 				if (nid != NID_ED25519) {
 					debug_print(" [WARN %s ] Unknown OID. "
@@ -632,6 +643,8 @@ int callback_public_keys(test_certs_t *objects,
 				}
 				evp_type = EVP_PKEY_ED25519;
 				break;
+#endif
+#ifdef EVP_PKEY_X25519
 			case CKK_EC_MONTGOMERY:
 				if (nid != NID_X25519) {
 					debug_print(" [WARN %s ] Unknown OID. "
@@ -639,6 +652,7 @@ int callback_public_keys(test_certs_t *objects,
 				}
 				evp_type = EVP_PKEY_X25519;
 				break;
+#endif
 			default:
 				debug_print(" [WARN %s ] Unknown key type %lu", o->id_str, o->key_type);
 				return -1;
