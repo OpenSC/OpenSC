@@ -7795,6 +7795,7 @@ static CK_BYTE_PTR get_iv(const char *iv_input, size_t *iv_size)
 	if (sc_hex_to_bin(iv_input, iv, &size)) {
 		fprintf(stderr, "Warning, unable to parse IV, IV will not be used.\n");
 		*iv_size = 0;
+		free(iv);
 		return NULL;
 	}
 
