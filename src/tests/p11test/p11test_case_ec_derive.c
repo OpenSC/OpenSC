@@ -89,6 +89,7 @@ pkcs11_derive(test_cert_t *o, token_info_t * info,
 
 int test_derive_x25519(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 {
+#ifdef EVP_PKEY_X25519
 	unsigned char *secret = NULL, *pkcs11_secret = NULL;
 	EVP_PKEY_CTX *pctx = NULL;
 	EVP_PKEY *pkey = NULL; /* This is peer key */
@@ -210,6 +211,9 @@ int test_derive_x25519(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 	free(secret);
 	free(pkcs11_secret);
 	return 1;
+#else
+	return 0;
+#endif
 }
 
 int test_derive(test_cert_t *o, token_info_t *info, test_mech_t *mech)
