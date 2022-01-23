@@ -241,6 +241,12 @@ static void scconf_parse_reset_state(scconf_parser * parser)
 	}
 }
 
+void scconf_skip_block(scconf_parser * parser)
+{
+	scconf_parse_error(parser, "too many nested blocks");
+	scconf_parse_reset_state(parser);
+}
+
 void scconf_parse_token(scconf_parser * parser, int token_type, const char *token)
 {
 	scconf_item *item;
@@ -320,10 +326,12 @@ void scconf_parse_token(scconf_parser * parser, int token_type, const char *toke
 				scconf_parse_error_not_expect(parser, "{");
 				break;
 			}
+			parser->nested_blocks++;
 			scconf_block_add_internal(parser);
 			scconf_parse_reset_state(parser);
 			break;
 		case '}':
+			parser->nested_blocks--;
 			if (parser->state != 0) {
 				if ((parser->state & STATE_VALUE) == 0 ||
 				    (parser->state & STATE_SET) == 0) {
@@ -381,6 +389,7 @@ int scconf_parse(scconf_context * config)
 	p.config = config;
 	p.block = config->root;
 	p.line = 1;
+	p.nested_blocks = 0;
 
 	if (!scconf_lex_parse(&p, config->filename)) {
 		snprintf(buffer, sizeof(buffer),
@@ -409,6 +418,7 @@ int scconf_parse_string(scconf_context * config, const char *string)
 	p.config = config;
 	p.block = config->root;
 	p.line = 1;
+	p.nested_blocks = 0;
 
 	if (!scconf_lex_parse_string(&p, string)) {
 		snprintf(buffer, sizeof(buffer),

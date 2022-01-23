@@ -144,6 +144,12 @@ static int scconf_lex_engine(scconf_parser * parser, BUFHAN * bp)
 			continue;
 		case ',':
 		case '{':
+			if (parser->nested_blocks >= DEPTH_LIMIT) {
+				/* reached the limit, this whole block */
+				scconf_skip_block(parser);
+				continue;
+			}
+			/* fall through */
 		case '}':
 		case '=':
 		case ';':

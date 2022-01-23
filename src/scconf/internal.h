@@ -33,6 +33,8 @@ extern "C" {
 #define TOKEN_TYPE_STRING	2
 #define TOKEN_TYPE_PUNCT	3
 
+#define DEPTH_LIMIT 16
+
 typedef struct _scconf_parser {
 	scconf_context *config;
 
@@ -49,11 +51,13 @@ typedef struct _scconf_parser {
 	unsigned int error:1;
 	unsigned int warnings:1;
 	char emesg[256];
+	size_t nested_blocks;
 } scconf_parser;
 
 extern int scconf_lex_parse(scconf_parser * parser, const char *filename);
 extern int scconf_lex_parse_string(scconf_parser * parser,
 				   const char *config_string);
+extern void scconf_skip_block(scconf_parser * parser);
 extern void scconf_parse_token(scconf_parser * parser, int token_type, const char *token);
 
 #ifdef __cplusplus
