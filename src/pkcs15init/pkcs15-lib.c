@@ -175,8 +175,16 @@ static struct sc_pkcs15init_callbacks callbacks = {
 };
 
 
-static void sc_pkcs15init_empty_callback(void *ptr)
+static void sc_pkcs15init_free_ec_params(void *ptr)
 {
+	struct sc_ec_parameters *ecparams = (struct sc_ec_parameters *)ptr;
+	if (ecparams) {
+		if (ecparams->der.value)
+			free(ecparams->der.value);
+		if (ecparams->named_curve)
+			free(ecparams->named_curve);
+		free(ecparams);
+	}
 }
 
 /*
@@ -1263,8 +1271,16 @@ sc_pkcs15init_init_prkdf(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 	}
 	else if (key->algorithm == SC_ALGORITHM_EC)  {
 		struct sc_ec_parameters *ecparams = &keyargs->key.u.ec.params;
-		key_info->params.data = &keyargs->key.u.ec.params;
-		key_info->params.free_params = sc_pkcs15init_empty_callback;
+		struct sc_ec_parameters *new_ecparams = malloc(sizeof(struct sc_ec_parameters));
+		new_ecparams->named_curve = ecparams->named_curve;
+		new_ecparams->der.value = ecparams->der.value;
+		new_ecparams->der.len = ecparams->der.len;
+		new_ecparams->type = ecparams->type;
+		new_ecparams->field_length = ecparams->field_length;
+		new_ecparams->id = ecparams->id;
+
+		key_info->params.data = new_ecparams;
+		key_info->params.free_params = sc_pkcs15init_free_ec_params;
 		key_info->field_length = ecparams->field_length;
 		key_info->modulus_length = 0;
 	}
@@ -1300,6 +1316,8 @@ sc_pkcs15init_init_prkdf(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 	r = SC_SUCCESS;
 
 err:
+	if (key->algorithm == SC_ALGORITHM_EC)
+		free(key_info->params.data);
 	if (object)
 		sc_pkcs15init_free_object(object);
 	LOG_FUNC_RETURN(ctx, r);
