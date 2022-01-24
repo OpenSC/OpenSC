@@ -680,13 +680,14 @@ int pss_sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 		get_mgf_name(mech->mgf), mech->salt);
 	rv = pss_sign_message(o, info, message, message_length, mech, &sign);
 	if (rv <= 0) {
-		return rv;
+		goto out;
 	}
 	sign_length = (unsigned long) rv;
 
 	debug_print(" [ KEY %s ] Verify message signature", o->id_str);
 	rv = pss_verify_message(o, info, message, message_length, mech,
 		sign, sign_length);
+out:
 	if (mech->mech == CKM_RSA_PKCS_PSS) {
 		free(message);
 	}
