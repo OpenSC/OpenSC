@@ -321,7 +321,7 @@ static const char *option_help[] = {
 	"Key generation",
 	"Specify the type and length (bytes if symmetric) of the key to create, for example rsa:1024, EC:prime256v1, EC:ed25519, EC:curve25519, GOSTR3410-2012-256:B, AES:16 or GENERIC:64",
 	"Specify 'sign' key usage flag (sets SIGN in privkey, sets VERIFY in pubkey)",
-	"Specify 'decrypt' key usage flag (RSA only, set DECRYPT privkey, ENCRYPT in pubkey)",
+	"Specify 'decrypt' key usage flag (sets DECRYPT in privkey and ENCRYPT in pubkey for RSA, sets both DECRYPT and ENCRYPT for secret keys)",
 	"Specify 'derive' key usage flag (EC only)",
 	"Specify 'wrap' key usage flag",
 	"Write an object (key, cert, data) to the card",
@@ -3249,14 +3249,20 @@ gen_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE *hSecretKey
 			n_attr++;
 		}
 
-		FILL_ATTR(keyTemplate[n_attr], CKA_ENCRYPT, &_true, sizeof(_true));
-		n_attr++;
-		FILL_ATTR(keyTemplate[n_attr], CKA_DECRYPT, &_true, sizeof(_true));
-		n_attr++;
-		FILL_ATTR(keyTemplate[n_attr], CKA_WRAP, &_true, sizeof(_true));
-		n_attr++;
-		FILL_ATTR(keyTemplate[n_attr], CKA_UNWRAP, &_true, sizeof(_true));
-		n_attr++;
+		if (opt_key_usage_default || opt_key_usage_decrypt) {
+			FILL_ATTR(keyTemplate[n_attr], CKA_ENCRYPT, &_true, sizeof(_true));
+			n_attr++;
+			FILL_ATTR(keyTemplate[n_attr], CKA_DECRYPT, &_true, sizeof(_true));
+			n_attr++;
+		}
+
+		if (opt_key_usage_wrap) {
+			FILL_ATTR(keyTemplate[n_attr], CKA_WRAP, &_true, sizeof(_true));
+			n_attr++;
+			FILL_ATTR(keyTemplate[n_attr], CKA_UNWRAP, &_true, sizeof(_true));
+			n_attr++;
+		}
+
 		FILL_ATTR(keyTemplate[n_attr], CKA_VALUE_LEN, &key_length, sizeof(key_length));
 		n_attr++;
 
@@ -4251,6 +4257,20 @@ static int write_object(CK_SESSION_HANDLE session)
 		}
 		else {
 			FILL_ATTR(seckey_templ[n_seckey_attr], CKA_EXTRACTABLE, &_false, sizeof(_false));
+			n_seckey_attr++;
+		}
+
+		if (opt_key_usage_default || opt_key_usage_decrypt) {
+			FILL_ATTR(seckey_templ[n_seckey_attr], CKA_ENCRYPT, &_true, sizeof(_true));
+			n_seckey_attr++;
+			FILL_ATTR(seckey_templ[n_seckey_attr], CKA_DECRYPT, &_true, sizeof(_true));
+			n_seckey_attr++;
+		}
+
+		if (opt_key_usage_wrap) {
+			FILL_ATTR(seckey_templ[n_seckey_attr], CKA_WRAP, &_true, sizeof(_true));
+			n_seckey_attr++;
+			FILL_ATTR(seckey_templ[n_seckey_attr], CKA_UNWRAP, &_true, sizeof(_true));
 			n_seckey_attr++;
 		}
 
