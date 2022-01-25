@@ -162,7 +162,13 @@
 					<term>
 						<option>--usage-decrypt</option>
 					</term>
-					<listitem><para>Specify 'decrypt' key usage flag (RSA only, set DECRYPT privkey, ENCRYPT in pubkey).</para></listitem>
+					<listitem>
+						<para>Specify 'decrypt' key usage flag.</para>
+						<para>
+							For RSA keys, sets DECRYPT in privkey and ENCRYPT in pubkey. For secret
+							keys, sets both DECRYPT and ENCRYPT.
+						</para>
+					</listitem>
 				</varlistentry>
 
 				<varlistentry>
