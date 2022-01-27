@@ -497,10 +497,6 @@ cosm_new_file(struct sc_profile *profile, struct sc_card *card,
 			_template = "template-public-key";
 			structure = SC_CARDCTL_OBERTHUR_KEY_RSA_PUBLIC;
 			break;
-		case SC_PKCS15_TYPE_PUBKEY_DSA:
-			desc = "DSA public key";
-			_template = "template-public-key";
-			break;
 		case SC_PKCS15_TYPE_CERT:
 			desc = "certificate";
 			_template = "template-certificate";
