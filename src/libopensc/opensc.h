@@ -75,8 +75,7 @@ extern "C" {
 
 /* PK algorithms */
 #define SC_ALGORITHM_RSA		0
-#define SC_ALGORITHM_DSA		1
-#define SC_ALGORITHM_EC			2
+#define SC_ALGORITHM_EC		2
 #define SC_ALGORITHM_GOSTR3410		3
 #define SC_ALGORITHM_EDDSA		4
 #define SC_ALGORITHM_XEDDSA		5
