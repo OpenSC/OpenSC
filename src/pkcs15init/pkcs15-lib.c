@@ -1759,12 +1759,6 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card, struct sc_profile
 		keybits = sc_pkcs15init_keybits(&key.u.rsa.modulus);
 		type = SC_PKCS15_TYPE_PUBKEY_RSA;
 		break;
-#ifdef SC_PKCS15_TYPE_PUBKEY_DSA
-	case SC_ALGORITHM_DSA:
-		keybits = sc_pkcs15init_keybits(&key.u.dsa.q);
-		type = SC_PKCS15_TYPE_PUBKEY_DSA;
-		break;
-#endif
 	case SC_ALGORITHM_GOSTR3410:
 		keybits = SC_PKCS15_GOSTR3410_KEYSIZE;
 		type = SC_PKCS15_TYPE_PUBKEY_GOSTR3410;
@@ -2546,7 +2540,6 @@ prkey_fixup(struct sc_pkcs15_card *p15card, struct sc_pkcs15_prkey *key)
 	switch (key->algorithm) {
 	case SC_ALGORITHM_RSA:
 		return prkey_fixup_rsa(p15card, &key->u.rsa);
-	case SC_ALGORITHM_DSA:
 	case SC_ALGORITHM_GOSTR3410:
 		/* for now */
 		return 0;
@@ -2563,8 +2556,6 @@ prkey_bits(struct sc_pkcs15_card *p15card, struct sc_pkcs15_prkey *key)
 	switch (key->algorithm) {
 	case SC_ALGORITHM_RSA:
 		return sc_pkcs15init_keybits(&key->u.rsa.modulus);
-	case SC_ALGORITHM_DSA:
-		return sc_pkcs15init_keybits(&key->u.dsa.q);
 	case SC_ALGORITHM_GOSTR3410:
 		if (sc_pkcs15init_keybits(&key->u.gostr3410.d) > SC_PKCS15_GOSTR3410_KEYSIZE) {
 			sc_log(ctx,
@@ -2595,8 +2586,6 @@ key_pkcs15_algo(struct sc_pkcs15_card *p15card, unsigned int algorithm)
 	switch (algorithm) {
 	case SC_ALGORITHM_RSA:
 		return SC_PKCS15_TYPE_PRKEY_RSA;
-	case SC_ALGORITHM_DSA:
-		return SC_PKCS15_TYPE_PRKEY_DSA;
 	case SC_ALGORITHM_GOSTR3410:
 		return SC_PKCS15_TYPE_PRKEY_GOSTR3410;
 	case SC_ALGORITHM_EC:
@@ -2680,8 +2669,6 @@ sc_pkcs15init_select_intrinsic_id(struct sc_pkcs15_card *p15card, struct sc_prof
 	/* Skip silently if key is not initialized. */
 	if (pubkey->algorithm == SC_ALGORITHM_RSA && !pubkey->u.rsa.modulus.len)
 		goto done;
-	else if (pubkey->algorithm == SC_ALGORITHM_DSA && !pubkey->u.dsa.pub.data)
-		goto done;
 	else if (pubkey->algorithm == SC_ALGORITHM_GOSTR3410 &&
 			!pubkey->u.gostr3410.xy.data)
 		goto done;
@@ -2697,8 +2684,6 @@ sc_pkcs15init_select_intrinsic_id(struct sc_pkcs15_card *p15card, struct sc_prof
 	case SC_PKCS15INIT_ID_STYLE_MOZILLA:
 		if (pubkey->algorithm == SC_ALGORITHM_RSA)
 			SHA1(pubkey->u.rsa.modulus.data, pubkey->u.rsa.modulus.len, id.value);
-		else if (pubkey->algorithm == SC_ALGORITHM_DSA)
-			SHA1(pubkey->u.dsa.pub.data, pubkey->u.dsa.pub.len, id.value);
 		else if (pubkey->algorithm == SC_ALGORITHM_EC)
 			/* ID should be SHA1 of the X coordinate according to PKCS#15 v1.1 */
 			/* skip the 04 tag and get the X component */
