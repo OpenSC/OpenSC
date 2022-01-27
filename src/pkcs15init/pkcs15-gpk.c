@@ -81,9 +81,6 @@ static int	gpk_pkfile_create(sc_profile_t *, sc_pkcs15_card_t *, sc_file_t *);
 static int	gpk_encode_rsa_key(sc_profile_t *, sc_card_t *,
 			struct sc_pkcs15_prkey_rsa *, struct pkdata *,
 			struct sc_pkcs15_prkey_info *);
-static int	gpk_encode_dsa_key(sc_profile_t *, sc_card_t *,
-			struct sc_pkcs15_prkey_dsa *, struct pkdata *,
-			struct sc_pkcs15_prkey_info *);
 static int	gpk_store_pk(struct sc_profile *, sc_pkcs15_card_t *,
 			sc_file_t *, struct pkdata *);
 static int	gpk_init_pinfile(sc_profile_t *, sc_pkcs15_card_t *, sc_file_t *);
@@ -433,8 +430,6 @@ gpk_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_pkcs15_objec
 	switch (obj->type) {
 	case SC_PKCS15_TYPE_PRKEY_RSA:
 		algo = SC_ALGORITHM_RSA; break;
-	case SC_PKCS15_TYPE_PRKEY_DSA:
-		algo = SC_ALGORITHM_DSA; break;
 	default:
 		sc_log(p15card->card->ctx,  "Unsupported public key algorithm");
 		return SC_ERROR_NOT_SUPPORTED;
@@ -489,10 +484,6 @@ gpk_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 					&data, key_info);
 		break;
 
-	case SC_ALGORITHM_DSA:
-		r = gpk_encode_dsa_key(profile, p15card->card, &key->u.dsa,
-					&data, key_info);
-		break;
 	default:
 		return SC_ERROR_NOT_SUPPORTED;
 	}
@@ -617,7 +608,6 @@ gpk_pkfile_keyalgo(unsigned int algo, unsigned char *p)
 {
 	switch (algo) {
 	case SC_ALGORITHM_RSA: *p = 0x00; return 0;
-	case SC_ALGORITHM_DSA: *p = 0x01; return 0;
 	}
 	return SC_ERROR_NOT_SUPPORTED;
 }
@@ -996,54 +986,6 @@ static int gpk_encode_rsa_key(sc_profile_t *profile, sc_card_t *card,
 		gpk_add_bignum(&p->_private, 0x54, &rsa->dmp1, p->bytes/2);
 		gpk_add_bignum(&p->_private, 0x55, &rsa->dmq1, p->bytes/2);
 	}
-
-	return 0;
-}
-
-/*
- * Encode a DSA key.
- * Confusingly, the GPK manual says that the GPK8000 can handle
- * DSA with 512 as well as 1024 bits, but all byte sizes shown
- * in the tables are 512 bits only...
- */
-static int gpk_encode_dsa_key(sc_profile_t *profile, sc_card_t *card,
-		struct sc_pkcs15_prkey_dsa *dsa, struct pkdata *p,
-		sc_pkcs15_prkey_info_t *info)
-{
-	if (!dsa->p.len || !dsa->q.len || !dsa->g.len
-	 || !dsa->pub.len || !dsa->priv.len) {
-		sc_log(card->ctx, 
-			"incomplete DSA public key");
-		return SC_ERROR_INVALID_ARGUMENTS;
-	}
-
-	memset(p, 0, sizeof(*p));
-	p->algo  = SC_ALGORITHM_RSA;
-	p->usage = info->usage;
-	p->bytes = dsa->q.len;
-	p->bits  = dsa->q.len << 3;
-
-	/* Make sure the key is either 512 or 1024 bits */
-	if (p->bytes <= 64) {
-		p->bits  = 512;
-		p->bytes = 64;
-	} else if (p->bytes <= 128) {
-		p->bits  = 1024;
-		p->bytes = 128;
-	} else {
-		sc_log(card->ctx, 
-			"incompatible DSA key size (%u bits)", p->bits);
-		return SC_ERROR_INVALID_ARGUMENTS;
-	}
-
-	/* Set up the list of public elements */
-	gpk_add_bignum(&p->_public, 0x09, &dsa->p, 0);
-	gpk_add_bignum(&p->_public, 0x0a, &dsa->q, 0);
-	gpk_add_bignum(&p->_public, 0x0b, &dsa->g, 0);
-	gpk_add_bignum(&p->_public, 0x0c, &dsa->pub, 0);
-
-	/* Set up the list of private elements */
-	gpk_add_bignum(&p->_private, 0x0d, &dsa->priv, 0);
 
 	return 0;
 }
