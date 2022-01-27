@@ -96,7 +96,6 @@ extern "C" {
 #define OPENSSL_malloc_init		CRYPTO_malloc_init
 #define EVP_PKEY_get0_RSA(x)		(x->pkey.rsa)
 #define EVP_PKEY_get0_EC_KEY(x)		(x->pkey.ec)
-#define EVP_PKEY_get0_DSA(x)		(x->pkey.dsa)
 #define EVP_PKEY_up_ref(user_key)	CRYPTO_add(&user_key->references, 1, CRYPTO_LOCK_EVP_PKEY)
 #define ASN1_STRING_get0_data(x)	ASN1_STRING_data(x)
 #endif
@@ -125,14 +124,12 @@ extern "C" {
 /* As defined in openssl/include/openssl/evp.h */
 # ifndef EVP_PK_RSA
 #  define EVP_PK_RSA      0x0001
-#  define EVP_PK_DSA      0x0002
 #  define EVP_PK_DH       0x0004
 #  define EVP_PK_EC       0x0008
 #  define EVP_PKT_SIGN    0x0010
 #  define EVP_PKT_ENC     0x0020
 #  define EVP_PKT_EXCH    0x0040
 #  define EVP_PKS_RSA     0x0100
-#  define EVP_PKS_DSA     0x0200
 #  define EVP_PKS_EC      0x0400
 # endif
 #endif
@@ -175,9 +172,6 @@ extern "C" {
 #include <openssl/bn.h>
 #ifndef OPENSSL_NO_RSA
 #include <openssl/rsa.h>
-#endif
-#ifndef OPENSSL_NO_DSA
-#include <openssl/dsa.h>
 #endif
 #ifndef OPENSSL_NO_EC
 #include <openssl/ecdsa.h>
@@ -258,28 +252,6 @@ static sc_ossl_inline void RSA_get0_crt_params(const RSA *r,
 }
 
 #endif /* OPENSSL_NO_RSA */
-
-#ifndef OPENSSL_NO_DSA
-static sc_ossl_inline void DSA_get0_pqg(const DSA *d, const BIGNUM **p, const BIGNUM **q, const BIGNUM **g)
-{
-    if (p != NULL)
-        *p = d->p;
-    if (q != NULL)
-        *q = d->q;
-    if (g != NULL)
-        *g = d->g;
-}
-
-static sc_ossl_inline void DSA_get0_key(const DSA *d, const BIGNUM **pub_key, const BIGNUM **priv_key)
-{
-    if (pub_key != NULL)
-        *pub_key = d->pub_key;
-    if (priv_key != NULL)
-        *priv_key = d->priv_key;
-}
-
-/* NOTE: DSA_set0_*  functions not defined because they are not currently used in OpenSC */
-#endif /* OPENSSL_NO_DSA */
 
 
 #ifndef OPENSSL_NO_EC
