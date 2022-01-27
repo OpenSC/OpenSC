@@ -158,7 +158,6 @@ sc_pkcs15_decode_cdf_entry
 sc_pkcs15_decode_dodf_entry
 sc_pkcs15_decode_prkdf_entry
 sc_pkcs15_decode_pubkey
-sc_pkcs15_decode_pubkey_dsa
 sc_pkcs15_decode_pubkey_rsa
 sc_pkcs15_decode_pubkey_ec
 sc_pkcs15_decode_pubkey_gostr3410
@@ -172,7 +171,6 @@ sc_pkcs15_encode_dodf_entry
 sc_pkcs15_encode_odf
 sc_pkcs15_encode_prkdf_entry
 sc_pkcs15_encode_pubkey
-sc_pkcs15_encode_pubkey_dsa
 sc_pkcs15_encode_pubkey_rsa
 sc_pkcs15_encode_pubkey_ec
 sc_pkcs15_encode_pubkey_eddsa
