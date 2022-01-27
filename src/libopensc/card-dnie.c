@@ -1444,7 +1444,6 @@ static int dnie_set_security_env(struct sc_card *card,
 		case SC_ALGORITHM_RSA:
 			result = SC_SUCCESS;
 			break;
-		case SC_ALGORITHM_DSA:
 		case SC_ALGORITHM_EC:
 		case SC_ALGORITHM_GOSTR3410:
 		default:
