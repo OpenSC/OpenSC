@@ -50,7 +50,6 @@
 #include "profile.h"
 
 #define DEF_PRKEY_RSA_ACCESS	0x1D
-#define DEF_PRKEY_DSA_ACCESS	0x12
 #define DEF_PUBKEY_ACCESS	0x12
 
 #define TEMPLATE_FILEID_MIN_DIFF	0x20
@@ -309,9 +308,8 @@ sc_profile_new(void)
 		p15card->file_unusedspace = init_file(SC_FILE_TYPE_WORKING_EF);
 	}
 
-	/* Assume card does RSA natively, but no DSA */
+	/* Assume card does RSA natively */
 	pro->rsa_access_flags = DEF_PRKEY_RSA_ACCESS;
-	pro->dsa_access_flags = DEF_PRKEY_DSA_ACCESS;
 	pro->pin_encoding = SC_PKCS15_PIN_TYPE_ASCII_NUMERIC;
 	pro->pin_minlen = 4;
 	pro->pin_maxlen = 8;

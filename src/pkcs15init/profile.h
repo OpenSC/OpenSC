@@ -120,7 +120,6 @@ struct sc_profile {
 	unsigned int		pin_attempts;
 	unsigned int		puk_attempts;
 	unsigned int		rsa_access_flags;
-	unsigned int		dsa_access_flags;
 
 	struct {
 		unsigned int	direct_certificates;
