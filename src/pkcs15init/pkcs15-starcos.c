@@ -798,7 +798,7 @@ static int starcos_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_starcos_wkey_data tkey;
 
 	if (key->algorithm != SC_ALGORITHM_RSA)
-		/* ignore DSA keys */
+		/* ignore non-RSA keys */
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	/* create sc_starcos_wkey_data */

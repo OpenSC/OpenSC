@@ -14,7 +14,7 @@ cardinfo {
 
 pkcs15 {
 	# Method to calculate ID of the crypto objects
-	#	mozilla: SHA1(modulus) for RSA, SHA1(pub) for DSA
+	#	mozilla: SHA1(modulus) for RSA
 	#	rfc2459: SHA1(SequenceASN1 of public key components as ASN1 integers)
 	#	native: 'E' + number_of_present_objects_of_the_same_type
 	# default value: 'native'
