@@ -236,14 +236,6 @@ void sc_test_print_object(const struct sc_pkcs15_object *obj)
 		printer = print_pubkey;
 		kind = "Public RSA key";
 		break;
-	case SC_PKCS15_TYPE_PRKEY_DSA:
-		printer = print_prkey;
-		kind = "Private DSA key";
-		break;
-	case SC_PKCS15_TYPE_PUBKEY_DSA:
-		printer = print_pubkey;
-		kind = "Public DSA key";
-		break;
 	case SC_PKCS15_TYPE_CERT_X509:
 		printer = print_cert_x509;
 		kind = "X.509 Certificate";
