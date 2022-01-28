@@ -1212,6 +1212,46 @@ end:
 }
 
 
+const char *pkcs15_get_default_use_file_cache(struct sc_card *card)
+{
+	/* enable file caching by default for cards with static content to avoid
+	 * synchronization problems.
+	 *
+	 * The following list was initialized with the cards that can't be modified
+	 * with OpenSC i.e. which don't have a profile/driver for pkcs15-init. */
+	const char *card_drivers_with_file_cache[] = {
+		"akis",
+		"atrust-acos",
+		"belpic",
+		"cac1",
+		"cac",
+		"coolkey",
+		"dnie",
+		"edo",
+		"esteid2018",
+		"flex",
+		"cyberflex",
+		"gemsafeV1",
+		"idprime",
+		"itacns",
+		"jpki",
+		"MaskTech",
+		"mcrd",
+		"npa",
+		"nqapplet",
+		"tcos",
+	};
+
+	if (NULL == card || NULL == card->driver || NULL == card->driver->short_name)
+		return "no";
+	for (size_t i = 0; i < (sizeof card_drivers_with_file_cache / sizeof *card_drivers_with_file_cache); i++) {
+		if (0 == strcmp(card->driver->short_name, card_drivers_with_file_cache[i]))
+			return "public";
+	}
+
+	return "no";
+}
+
 int
 sc_pkcs15_bind(struct sc_card *card, struct sc_aid *aid,
 		struct sc_pkcs15_card **p15card_out)
@@ -1237,11 +1277,11 @@ sc_pkcs15_bind(struct sc_card *card, struct sc_aid *aid,
 
 	p15card->card = card;
 	p15card->opts.use_file_cache = SC_PKCS15_OPTS_CACHE_NO_FILES;
-	use_file_cache = "no";
+	use_file_cache = pkcs15_get_default_use_file_cache(card);
 	p15card->opts.use_pin_cache = 1;
 	p15card->opts.pin_cache_counter = 10;
 	p15card->opts.pin_cache_ignore_user_consent = 0;
-	if(0 == strcmp(ctx->app_name, "tokend")) {
+	if (0 == strcmp(ctx->app_name, "tokend")) {
 		private_certificate = "ignore";
 		p15card->opts.private_certificate = SC_PKCS15_CARD_OPTS_PRIV_CERT_IGNORE;
 	} else {

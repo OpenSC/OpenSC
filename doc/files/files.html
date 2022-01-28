@@ -745,7 +745,7 @@ app <em class="replaceable"><code>application</code></em> {
 									locked"</code>).
 						</p></dd></dl></div><p>
 			</p></div><div class="refsect2"><a name="framework%20pkcs15"></a><h3>Configuration of PKCS#15 Framework</h3><div class="variablelist"><dl class="variablelist"><dt><span class="term">
-						<code class="option">use_file_caching = <em class="replaceable"><code>bool</code></em>;</code>
+						<code class="option">use_file_caching = <em class="replaceable"><code>value</code></em>;</code>
 					</span></dt><dd><p>
 							Whether to cache the card's files (e.g.
 							certificates) on disk in
@@ -758,7 +758,28 @@ app <em class="replaceable"><code>application</code></em> {
 								</p></li><li class="listitem"><p>
 									<code class="literal">no</code>: File caching disabled.
 								</p></li></ul></div><p>
-							(Default:<code class="literal">no</code>).
+							(Default: <code class="literal">public</code>
+							for the following card drivers
+							<code class="literal">akis</code>,
+							<code class="literal">atrust-acos</code>,
+							<code class="literal">belpic</code>,
+							<code class="literal">cac1</code>,
+							<code class="literal">cac</code>,
+							<code class="literal">coolkey</code>,
+							<code class="literal">dnie</code>,
+							<code class="literal">edo</code>,
+							<code class="literal">esteid2018</code>,
+							<code class="literal">flex</code>,
+							<code class="literal">cyberflex</code>,
+							<code class="literal">gemsafeV1</code>,
+							<code class="literal">idprime</code>,
+							<code class="literal">itacns</code>,
+							<code class="literal">jpki</code>,
+							<code class="literal">MaskTech</code>,
+							<code class="literal">mcrd</code>,
+							<code class="literal">npa</code>,
+							<code class="literal">nqapplet</code>,
+							<code class="literal">tcos</code> and otherwise <code class="literal">no</code>).
 						</p><p>
 							If caching is done by a system process, the
 							cached files may be placed inaccessible from
@@ -847,7 +868,7 @@ app <em class="replaceable"><code>application</code></em> {
 							List of the builtin pkcs15 emulators to test
 							(Default: <code class="literal">internal</code>)
 						</p><p>
-							Special value <code class="literal">internal</code> will try all not disabled builtin pkcs15 emulators.
+							Special value of <code class="literal">internal</code> will try all not disabled builtin pkcs15 emulators.
 						</p><p>
 							Special value of <code class="literal">old</code> will try all disabled pkcs15 emulators.
 					</p></dd><dt><span class="term">

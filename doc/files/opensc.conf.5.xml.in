@@ -1123,7 +1123,7 @@ app <replaceable>application</replaceable> {
 			<variablelist>
 				<varlistentry>
 					<term>
-						<option>use_file_caching = <replaceable>bool</replaceable>;</option>
+						<option>use_file_caching = <replaceable>value</replaceable>;</option>
 					</term>
 					<listitem><para>
 							Whether to cache the card's files (e.g.
@@ -1134,14 +1134,35 @@ app <replaceable>application</replaceable> {
 								<listitem><para>
 									<literal>yes</literal>: Cache all files (public and private).
 								</para></listitem>
+								<listitem><para>
 									<literal>public</literal>: Cache only public files.
-								<listitem><para>
 								</para></listitem>
-									<literal>no</literal>: File caching disabled.
 								<listitem><para>
+									<literal>no</literal>: File caching disabled.
 								</para></listitem>
 							</itemizedlist>
-							(Default: <literal>no</literal>).
+							(Default: <literal>public</literal>
+							for the following card drivers
+							<literal>akis</literal>,
+							<literal>atrust-acos</literal>,
+							<literal>belpic</literal>,
+							<literal>cac1</literal>,
+							<literal>cac</literal>,
+							<literal>coolkey</literal>,
+							<literal>dnie</literal>,
+							<literal>edo</literal>,
+							<literal>esteid2018</literal>,
+							<literal>flex</literal>,
+							<literal>cyberflex</literal>,
+							<literal>gemsafeV1</literal>,
+							<literal>idprime</literal>,
+							<literal>itacns</literal>,
+							<literal>jpki</literal>,
+							<literal>MaskTech</literal>,
+							<literal>mcrd</literal>,
+							<literal>npa</literal>,
+							<literal>nqapplet</literal>,
+							<literal>tcos</literal> and otherwise <literal>no</literal>).
 						</para>
 						<para>
 							If caching is done by a system process, the

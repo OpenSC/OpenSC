@@ -1,5 +1,6 @@
 # OpenSC documentation
 
+
 Wiki is [available online](https://github.com/OpenSC/OpenSC/wiki)
 
 Please take a look at the documentation before trying to use OpenSC.
