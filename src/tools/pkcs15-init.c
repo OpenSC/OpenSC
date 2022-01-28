@@ -46,7 +46,6 @@
 #include <openssl/err.h>
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
-#include <openssl/dsa.h>
 #include <openssl/bn.h>
 #include <openssl/pkcs12.h>
 #include <openssl/x509v3.h>
@@ -731,7 +730,6 @@ static const struct alg_spec alg_types_sym[] = {
 
 static const struct alg_spec alg_types_asym[] = {
 	{ "rsa",	SC_ALGORITHM_RSA,	1024 },
-	{ "dsa",	SC_ALGORITHM_DSA,	1024 },
 	{ "gost2001",	SC_ALGORITHM_GOSTR3410,	SC_PKCS15_GOSTR3410_KEYSIZE },
 	{ "ec",		SC_ALGORITHM_EC,	0 },
 	{ NULL, -1, 0 }
@@ -1348,12 +1346,7 @@ do_read_check_certificate(sc_pkcs15_cert_t *sc_oldcert,
 		if (EVP_PKEY_eq(oldpk, newpk) == 1)
 			r = 0;
 #else
-		if ((oldpk_type == EVP_PKEY_DSA) &&
-			!BN_cmp(EVP_PKEY_get0_DSA(oldpk)->p, EVP_PKEY_get0_DSA(newpk)->p) &&
-			!BN_cmp(EVP_PKEY_get0_DSA(oldpk)->q, EVP_PKEY_get0_DSA(newpk)->q) &&
-			!BN_cmp(EVP_PKEY_get0_DSA(oldpk)->g, EVP_PKEY_get0_DSA(newpk)->g))
-				r = 0;
-		else if ((oldpk_type == EVP_PKEY_RSA) &&
+		if ((oldpk_type == EVP_PKEY_RSA) &&
 			!BN_cmp(EVP_PKEY_get0_RSA(oldpk)->n, EVP_PKEY_get0_RSA(newpk)->n) &&
 			!BN_cmp(EVP_PKEY_get0_RSA(oldpk)->e, EVP_PKEY_get0_RSA(newpk)->e))
 				r = 0;
