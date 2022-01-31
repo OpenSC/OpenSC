@@ -173,7 +173,7 @@
 				Note that usage of <option>--id</option> option in the <command>pkcs15-init</command>
 				commands to generate or to import a new key is deprecated.
 				Better practice is to let the middleware to derive the identifier from the key material.
-				(SHA1(modulus) for RSA, SHA1(pub) for DSA, ...).
+				(SHA1(modulus) for RSA, ...).
 				This allows easily set up relation between 'related' objects
 				(private/public keys and certificates).
 			</para>
