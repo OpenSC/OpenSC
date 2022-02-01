@@ -849,7 +849,6 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 	}
 
 	/* Perform card-specific initialization */
-
 	if (profile->ops->init_card)   {
 		r = profile->ops->init_card(profile, p15card);
 		if (r < 0 && pin_obj)   {
@@ -882,7 +881,8 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 	/* Store the PKCS15 information on the card */
 	app = (struct sc_app_info *)calloc(1, sizeof(*app));
 	if (app == NULL) {
-		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_OUT_OF_MEMORY, "Failed to allocate application info");
+		r = SC_ERROR_OUT_OF_MEMORY;
+		LOG_TEST_GOTO_ERR(ctx, r, "Failed to allocate application info");
 	}
 
 	app->path = p15card->file_app->path;
@@ -1000,10 +1000,13 @@ sc_pkcs15init_store_puk(struct sc_pkcs15_card *p15card,
 	auth_info->auth_id = args->puk_id;
 
 	/* Now store the PINs */
-	if (profile->ops->create_pin)
+	if (profile->ops->create_pin) {
 		r = sc_pkcs15init_create_pin(p15card, profile, pin_obj, args);
-	else 
-		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_NOT_SUPPORTED, "In Old API store PUK object is not supported");
+	}
+	else {
+		r = SC_ERROR_NOT_SUPPORTED;
+		LOG_TEST_GOTO_ERR(ctx, r, "In Old API store PUK object is not supported");
+	}
 	LOG_TEST_GOTO_ERR(ctx, r, "Failed to create PIN");
 
 	r = sc_pkcs15init_add_object(p15card, profile, SC_PKCS15_AODF, pin_obj);
@@ -1062,10 +1065,12 @@ sc_pkcs15init_store_pin(struct sc_pkcs15_card *p15card, struct sc_profile *profi
 
 	/* Now store the PINs */
 	sc_log(ctx, "Store PIN(%.*s,authID:%s)", (int) sizeof pin_obj->label, pin_obj->label, sc_pkcs15_print_id(&auth_info->auth_id));
-	if (profile->ops->create_pin)
+	if (profile->ops->create_pin) {
 		r = sc_pkcs15init_create_pin(p15card, profile, pin_obj, args);
-	else
-		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_NOT_SUPPORTED, "Store PIN operation is not supported");
+	} else {
+		r = SC_ERROR_NOT_SUPPORTED;
+		LOG_TEST_GOTO_ERR(ctx, r, "Store PIN operation is not supported");
+	}
 	
 	LOG_TEST_GOTO_ERR(ctx, r, "Card specific create PIN failed.");
 
@@ -1238,8 +1243,10 @@ sc_pkcs15init_init_prkdf(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 	LOG_TEST_GOTO_ERR(ctx, r, "Unsupported key type");
 
 	object = sc_pkcs15init_new_object(key_type, label, &keyargs->auth_id, NULL);
-	if (object == NULL)
-		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate new PrKey object");
+	if (object == NULL) {
+		r = SC_ERROR_OUT_OF_MEMORY;
+		LOG_TEST_GOTO_ERR(ctx, r, "Cannot allocate new PrKey object");
+	}
 
 	key_info = (struct sc_pkcs15_prkey_info *) object->data;
 	key_info->usage = usage;
@@ -1366,8 +1373,10 @@ sc_pkcs15init_init_skdf(struct sc_pkcs15_card *p15card, struct sc_profile *profi
 	LOG_TEST_GOTO_ERR(ctx, r, "Unsupported key type");
 
 	object = sc_pkcs15init_new_object(key_type, label, &keyargs->auth_id, NULL);
-	if (object == NULL)
-		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate new SKey object");
+	if (object == NULL) {
+		r = SC_ERROR_OUT_OF_MEMORY;
+		LOG_TEST_GOTO_ERR(ctx, r, "Cannot allocate new SKey object");
+	}
 
 	key_info = (struct sc_pkcs15_skey_info *) object->data;
 	key_info->usage = usage;
@@ -1413,7 +1422,7 @@ sc_pkcs15init_init_skdf(struct sc_pkcs15_card *p15card, struct sc_profile *profi
 	/* See if we need to select a key reference for this object */
 	if (profile->ops->select_key_reference) {
 		r = SC_ERROR_NOT_SUPPORTED;
-		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_NOT_SUPPORTED, "SKey keyreference selection not supported");
+		LOG_TEST_GOTO_ERR(ctx, r, "SKey keyreference selection not supported");
 	}
 
 	*res_obj = object;
