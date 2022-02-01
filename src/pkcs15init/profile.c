@@ -1063,7 +1063,7 @@ template_sanity_check(struct state *cur, struct sc_profile *templ)
 			continue;
 
 		if (fi_path.len < 2) {
-			parse_error(cur, "Template insane: file-path length should not less than 2");
+			parse_error(cur, "Template insane: file-path length should not be less than 2 bytes");
 			return 1;
 		}
 
@@ -1078,7 +1078,7 @@ template_sanity_check(struct state *cur, struct sc_profile *templ)
 				continue;
 
 			if (ffi_path.len < 2) {
-				parse_error(cur, "Template insane: file-path length should not less than 2");
+				parse_error(cur, "Template insane: file-path length should not be less than 2 bytes");
 				return 1;
 			}
 
