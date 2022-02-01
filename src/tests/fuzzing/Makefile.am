@@ -9,6 +9,8 @@ LIBS = $(FUZZING_LIBS)\
 noinst_PROGRAMS = fuzz_asn1_print fuzz_asn1_sig_value fuzz_pkcs15_decode fuzz_pkcs15_reader \
 					fuzz_scconf_parse_string fuzz_pkcs15init
 
+noinst_HEADERS = fuzzer_reader.h
+
 ADDITIONAL_SRC =
 if !ENABLE_FUZZING
 ADDITIONAL_SRC += fuzzer.c
@@ -17,8 +19,8 @@ endif
 fuzz_asn1_print_SOURCES = fuzz_asn1_print.c $(ADDITIONAL_SRC)
 fuzz_asn1_sig_value_SOURCES = fuzz_asn1_sig_value.c $(ADDITIONAL_SRC)
 fuzz_pkcs15_decode_SOURCES = fuzz_pkcs15_decode.c $(ADDITIONAL_SRC)
-fuzz_pkcs15_reader_SOURCES = fuzz_pkcs15_reader.c fuzzer_reader.c fuzzer_reader.h $(ADDITIONAL_SRC)
+fuzz_pkcs15_reader_SOURCES = fuzz_pkcs15_reader.c fuzzer_reader.c $(ADDITIONAL_SRC)
 fuzz_scconf_parse_string_SOURCES = fuzz_scconf_parse_string.c $(ADDITIONAL_SRC)
-fuzz_pkcs15init_SOURCES = fuzz_pkcs15init.c fuzzer_reader.c fuzzer_reader.h $(ADDITIONAL_SRC)
+fuzz_pkcs15init_SOURCES = fuzz_pkcs15init.c fuzzer_reader.c $(ADDITIONAL_SRC)
 fuzz_pkcs15init_LDADD = $(OPTIONAL_OPENSSL_LIBS) $(OPENPACE_LIBS)
 fuzz_pkcs15init_LDFLAGS = -static

@@ -1,7 +1,7 @@
 /*
  * fuzz_pkcs15init.c: Fuzzer for functions processing pkcs15 init
  *
- * Copyright (C) 2021 Red Hat, Inc.
+ * Copyright (C) 2022 Red Hat, Inc.
  *
  * Author: Veronika Hanulikova <vhanulik@redhat.com>
  *
@@ -258,9 +258,6 @@ void do_erase(struct sc_profile *profile, sc_card_t *card)
 
 int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
-#ifdef FUZZING_ENABLED
-    fclose(stdout);
-#endif
     sc_context_t          *ctx = NULL;
     sc_card_t             *card = NULL;
     struct sc_pkcs15_card *p15card = NULL;
@@ -275,6 +272,10 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     unsigned char         *puk = NULL;
     unsigned char         *so_puk = NULL;
     struct sc_pkcs15_card *tmp_p15_data = NULL;
+
+#ifdef FUZZING_ENABLED
+    fclose(stdout);
+#endif
 
     if (size == 0)
         return 0;
