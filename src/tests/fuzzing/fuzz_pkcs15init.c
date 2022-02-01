@@ -317,12 +317,14 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     so_pin = malloc(9);
     puk = malloc(9);
     so_puk = malloc(9);
+    buf = malloc(len * sizeof(char));
+    if (!pin || !so_pin || !puk || !so_puk || !buf)
+        goto end_release;
+
     memcpy(pin, "123456\0", 7);
     memcpy(so_pin, "12345678\0", 9);
     memcpy(puk, "12345678\0", 9);
     memcpy(so_puk, "12345678\0", 9);
-
-    buf = malloc(len * sizeof(char));
     memcpy(buf, data, len);
 
     /* test pkcs15-init functionality*/
