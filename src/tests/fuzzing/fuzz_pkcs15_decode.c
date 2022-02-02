@@ -37,6 +37,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
         sc_pkcs15_decode_skdf_entry, sc_pkcs15_decode_cdf_entry,
         sc_pkcs15_decode_dodf_entry, sc_pkcs15_decode_aodf_entry
     };
+    int algorithms[] = { SC_ALGORITHM_RSA, SC_ALGORITHM_EC, SC_ALGORITHM_GOSTR3410, SC_ALGORITHM_EDDSA };
     size_t i;
 
     if (!ctx)
@@ -61,9 +62,12 @@ int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
         sc_pkcs15_free_object(obj);
     }
 
-    struct sc_pkcs15_pubkey *pubkey = calloc(1, sizeof *pubkey);
-    sc_pkcs15_decode_pubkey(ctx, pubkey, Data, Size);
-    sc_pkcs15_free_pubkey(pubkey);
+    for (i = 0; i < 4; i++) {
+        struct sc_pkcs15_pubkey *pubkey = calloc(1, sizeof *pubkey);
+        pubkey->algorithm = algorithms[i];
+        sc_pkcs15_decode_pubkey(ctx, pubkey, Data, Size);
+        sc_pkcs15_free_pubkey(pubkey);
+    }
 
     struct sc_pkcs15_tokeninfo *tokeninfo = sc_pkcs15_tokeninfo_new();
     sc_pkcs15_parse_tokeninfo(ctx, tokeninfo, Data, Size);
