@@ -1344,19 +1344,11 @@ do_read_check_certificate(sc_pkcs15_cert_t *sc_oldcert,
 	/* Compare the public keys, there's no high level openssl function for this(?) */
 	/* Yes there is in 1.0.2 and above EVP_PKEY_cmp */
 
-
 	r = SC_ERROR_INVALID_ARGUMENTS;
 	if (oldpk_type == newpk_type)
 	{
-#if  OPENSSL_VERSION_NUMBER >= 0x10002000L
-		if (EVP_PKEY_eq(oldpk, newpk) == 1)
-			r = 0;
-#else
-		if ((oldpk_type == EVP_PKEY_RSA) &&
-			!BN_cmp(EVP_PKEY_get0_RSA(oldpk)->n, EVP_PKEY_get0_RSA(newpk)->n) &&
-			!BN_cmp(EVP_PKEY_get0_RSA(oldpk)->e, EVP_PKEY_get0_RSA(newpk)->e))
-				r = 0;
-#endif
+		if (EVP_PKEY_cmp(oldpk, newpk) == 1)
+		r = 0;
 	}
 
 	EVP_PKEY_free(newpk);
