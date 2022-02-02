@@ -447,10 +447,7 @@ static int gen_key(const char * key_info)
 		i = (keydata.ecpoint_len - 1)/2;
 		x = BN_bin2bn(keydata.ecpoint + 1, i, NULL);
 		y = BN_bin2bn(keydata.ecpoint + 1 + i, i, NULL) ;
-		r = EC_POINT_set_affine_coordinates_GFp(ecgroup, ecpoint, x, y, NULL);
-
-		free(keydata.ecpoint);
-		keydata.ecpoint_len = 0;
+		r = EC_POINT_set_affine_coordinates(ecgroup, ecpoint, x, y, NULL);
 		if (r == 0) {
 			fprintf(stderr, "EC_POINT_set_affine_coordinates_GFp failed\n");
 			EVP_PKEY_free(evpkey);
