@@ -57,6 +57,7 @@
 #ifdef ENABLE_OPENSSL
 #include <openssl/opensslv.h>
 #include <openssl/pem.h>
+#include <openssl/crypto.h>
 #endif
 
 #ifdef ENABLE_OPENPACE
@@ -7160,7 +7161,7 @@ BOOL APIENTRY DllMain( HINSTANCE hinstDLL,
 	case DLL_PROCESS_DETACH:
 		sc_notify_close();
 		if (lpReserved == NULL) {
-#if defined(ENABLE_OPENSSL) && defined(OPENSSL_SECURE_MALLOC_SIZE)
+#if defined(ENABLE_OPENSSL) && defined(OPENSSL_SECURE_MALLOC_SIZE) && !defined(LIBRESSL_VERSION_NUMBER)
 			CRYPTO_secure_malloc_done();
 #endif
 #ifdef ENABLE_OPENPACE
