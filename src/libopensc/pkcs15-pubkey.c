@@ -1678,7 +1678,7 @@ sc_pkcs15_convert_pubkey(struct sc_pkcs15_pubkey *pkcs15_key, void *evp_key)
 		X = BN_new();
 		Y = BN_new();
 		if (X && Y && group)
-				r = EC_POINT_get_affine_coordinates_GFp(group, point, X, Y, NULL);
+				r = EC_POINT_get_affine_coordinates(group, point, X, Y, NULL);
 		if (r == 1) {
 			dst->xy.len = BN_num_bytes(X) + BN_num_bytes(Y);
 			dst->xy.data = malloc(dst->xy.len);
