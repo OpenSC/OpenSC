@@ -356,11 +356,14 @@ fail:
 		sc_pkcs15_free_certificate(cert_out);
 		if (r < 0) {
 			(card->ops->card_ctl)(card, SC_CARDCTL_CAC_FINAL_GET_CERT_OBJECTS, &count);
+			sc_pkcs15_card_clear(p15card);
 			LOG_FUNC_RETURN(card->ctx, r); /* should not fail */
 		}
 
 	}
 	r = (card->ops->card_ctl)(card, SC_CARDCTL_CAC_FINAL_GET_CERT_OBJECTS, &count);
+	if (r < 0)
+		sc_pkcs15_card_clear(p15card);
 	LOG_TEST_RET(card->ctx, r, "Can not finalize cert objects.");
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);

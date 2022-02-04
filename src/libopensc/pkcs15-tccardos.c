@@ -325,26 +325,38 @@ static int sc_pkcs15_tccardos_init_func(sc_pkcs15_card_t *p15card)
 		return SC_ERROR_OUT_OF_MEMORY;
 	/* set the manufacturer ID */
 	set_string(&p15card->tokeninfo->manufacturer_id, MANU_ID);
-	if (p15card->tokeninfo->manufacturer_id == NULL)
-		return SC_ERROR_OUT_OF_MEMORY;
+	if (p15card->tokeninfo->manufacturer_id == NULL) {
+		r = SC_ERROR_OUT_OF_MEMORY;
+		goto err;
+	}
 	/* set the serial number */
 	r = sc_parse_ef_gdo(card, iccsn.value, &iccsn.len, NULL, 0);
-	if (r != SC_SUCCESS || iccsn.len < 5+8)
-		return SC_ERROR_INTERNAL;
+	if (r != SC_SUCCESS || iccsn.len < 5+8) {
+		r = SC_ERROR_INTERNAL;
+		goto err;
+	}
 	sc_bin_to_hex(iccsn.value + 5, 8, hex_buf, sizeof(hex_buf), 0);
 	set_string(&p15card->tokeninfo->serial_number, hex_buf);
-	if (p15card->tokeninfo->serial_number == NULL)
-		return SC_ERROR_OUT_OF_MEMORY;
+	if (p15card->tokeninfo->serial_number == NULL) {
+		r = SC_ERROR_OUT_OF_MEMORY;
+		goto err;
+	}
 	/* select the application DF */
 	sc_format_path(TC_CARDOS_APP_DF, &path);
 	r = sc_select_file(card, &path, &file);
-	if (r != SC_SUCCESS || file == NULL)
-		return SC_ERROR_INTERNAL;
+	if (r != SC_SUCCESS || file == NULL) {
+		r = SC_ERROR_INTERNAL;
+		goto err;
+	}
 	/* set the application DF */
 	sc_file_free(p15card->file_app);
 	p15card->file_app = file;
 
 	return SC_SUCCESS;
+
+err:
+	sc_pkcs15_card_clear(p15card);
+	return r;
 }
 
 int sc_pkcs15emu_tccardos_init_ex(sc_pkcs15_card_t *p15card,

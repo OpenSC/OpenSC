@@ -90,8 +90,10 @@ sc_pkcs15emu_jpki_init(sc_pkcs15_card_t * p15card)
 		cert_info.authority = jpki_cert_authority[i];
 		cert_obj.flags = jpki_cert_flags[i];
 		rc = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
-		if (rc < 0)
+		if (rc < 0) {
+			sc_pkcs15_card_clear(p15card);
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
+		}
 
 	}
 
@@ -146,8 +148,10 @@ sc_pkcs15emu_jpki_init(sc_pkcs15_card_t * p15card)
 		pin_obj.flags = jpki_pin_flags[i];
 
 		rc = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
-		if (rc < 0)
+		if (rc < 0) {
+			sc_pkcs15_card_clear(p15card);
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
+		}
 	}
 
 	/* add private keys */
@@ -182,8 +186,10 @@ sc_pkcs15emu_jpki_init(sc_pkcs15_card_t * p15card)
 		prkey_obj.flags = SC_PKCS15_CO_FLAG_PRIVATE;
 
 		rc = sc_pkcs15emu_add_rsa_prkey(p15card, &prkey_obj, &prkey_info);
-		if (rc < 0)
+		if (rc < 0) {
+			sc_pkcs15_card_clear(p15card);
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
+		}
 	}
 
 	/* add public keys */
@@ -213,8 +219,10 @@ sc_pkcs15emu_jpki_init(sc_pkcs15_card_t * p15card)
 		pubkey_info.path.type = SC_PATH_TYPE_FILE_ID;
 
 		rc = sc_pkcs15emu_add_rsa_pubkey(p15card, &pubkey_obj, &pubkey_info);
-		if (rc < 0)
+		if (rc < 0) {
+			sc_pkcs15_card_clear(p15card);
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
+		}
 	}
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
