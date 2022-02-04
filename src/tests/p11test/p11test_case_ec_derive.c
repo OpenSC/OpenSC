@@ -237,7 +237,7 @@ int test_derive(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 		return 1;
 	}
 
-	if (o->type != EVP_PK_EC) {
+	if (o->type != EVP_PKEY_EC) {
 		debug_print(" [ KEY %s ] Skip non-EC key for derive", o->id_str);
 		return 1;
 	}

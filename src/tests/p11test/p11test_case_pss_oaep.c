@@ -395,7 +395,7 @@ int oaep_encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *m
 		return 0;
 	}
 
-	if (o->type != EVP_PK_RSA) {
+	if (o->type != EVP_PKEY_RSA) {
 		debug_print(" [ KEY %s ] Skip non-RSA key for encryption", o->id_str);
 		return 0;
 	}
@@ -654,7 +654,7 @@ int pss_sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 		return 0;
 	}
 
-	if (o->type != EVP_PK_RSA) {
+	if (o->type != EVP_PKEY_RSA) {
 		debug_print(" [SKIP %s ] Skip non-RSA key", o->id_str);
 		return 0;
 	}
@@ -827,7 +827,7 @@ void pss_oaep_test(void **state) {
 			continue;
 
 		/* Do not list non-RSA keys here */
-		if (o->type != EVP_PK_RSA)
+		if (o->type != EVP_PKEY_RSA)
 			continue;
 
 		printf("\n[%-6s] [%s]\n",
