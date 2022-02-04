@@ -122,7 +122,7 @@ add_supported_mechs(test_cert_t *o)
 {
 	size_t i;
 
-	if (o->type == EVP_PK_RSA) {
+	if (o->type == EVP_PKEY_RSA) {
 		if (token.num_rsa_mechs > 0 ) {
 			/* Get supported mechanisms by token */
 			o->num_mechs = token.num_rsa_mechs;
@@ -144,7 +144,7 @@ add_supported_mechs(test_cert_t *o)
 			o->mechs[0].usage_flags = CKF_SIGN | CKF_VERIFY
 				| CKF_ENCRYPT | CKF_DECRYPT;
 		}
-	} else if (o->type == EVP_PK_EC) {
+	} else if (o->type == EVP_PKEY_EC) {
 		if (token.num_ec_mechs > 0 ) {
 			o->num_mechs = token.num_ec_mechs;
 			for (i = 0; i < token.num_ec_mechs; i++) {
@@ -260,12 +260,12 @@ int callback_certificates(test_certs_t *objects,
 
 	if (EVP_PKEY_base_id(evp) == EVP_PKEY_RSA) {
 		o->key = evp;
-		o->type = EVP_PK_RSA;
+		o->type = EVP_PKEY_RSA;
 		o->bits = EVP_PKEY_bits(evp);
 
 	} else if (EVP_PKEY_base_id(evp) == EVP_PKEY_EC) {
 		o->key = evp;
-		o->type = EVP_PK_EC;
+		o->type = EVP_PKEY_EC;
 		o->bits = EVP_PKEY_bits(evp);
 
 	} else {
@@ -407,7 +407,7 @@ int callback_public_keys(test_certs_t *objects,
 			BN_free(n);
 			BN_free(e);
 		} else { /* store the public key for future use */
-			o->type = EVP_PK_RSA;
+			o->type = EVP_PKEY_RSA;
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 			o->key = EVP_PKEY_new();
 			RSA *rsa = RSA_new();
@@ -547,7 +547,7 @@ int callback_public_keys(test_certs_t *objects,
 			EC_POINT_free(ecpoint);
 			o->verify_public = 1;
 		} else { /* store the public key for future use */
-			o->type = EVP_PK_EC;
+			o->type = EVP_PKEY_EC;
 			o->key = EVP_PKEY_new();
 			o->bits = EC_GROUP_get_degree(ecgroup);
 #if OPENSSL_VERSION_NUMBER < 0x30000000L

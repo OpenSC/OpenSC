@@ -40,7 +40,7 @@ void multipart_tests(void **state) {
 			objects.data[i].id_str);
 			continue;
 		}
-		if (objects.data[i].type == EVP_PK_EC) {
+		if (objects.data[i].type == EVP_PKEY_EC) {
 			debug_print(" [ SKIP %s ] EC keys do not support multi-part operations",
 			objects.data[i].id_str);
 			continue;
