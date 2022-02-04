@@ -223,11 +223,15 @@ static int sc_pkcs15emu_gemsafeGPK_init(sc_pkcs15_card_t *p15card)
 	set_string(&p15card->tokeninfo->manufacturer_id, MANU_ID);
 	/* get serial number */
 	r = sc_card_ctl(card, SC_CARDCTL_GET_SERIALNR, &serial);
-	if (r != SC_SUCCESS)
+	if (r != SC_SUCCESS) {
+		sc_pkcs15_card_clear(p15card);
 		return SC_ERROR_INTERNAL;
+	}
 	r = sc_bin_to_hex(serial.value, serial.len, buf, sizeof(buf), 0);
-	if (r != SC_SUCCESS)
+	if (r != SC_SUCCESS) {
+		sc_pkcs15_card_clear(p15card);
 		return SC_ERROR_INTERNAL;
+	}
 	set_string(&p15card->tokeninfo->serial_number, buf);
 
 	/* test if we have a gemsafe app df */
@@ -243,8 +247,10 @@ static int sc_pkcs15emu_gemsafeGPK_init(sc_pkcs15_card_t *p15card)
 		r = sc_select_file(card, &path, &file);
 	}
 
-	if (r < 0)
+	if (r < 0) {
+		sc_pkcs15_card_clear(p15card);
 		return SC_ERROR_WRONG_CARD;
+	}
 
 	/* we will use dfpath in all other references */
 	dfpath = file->id;
@@ -307,6 +313,7 @@ static int sc_pkcs15emu_gemsafeGPK_init(sc_pkcs15_card_t *p15card)
 	 path.value[3] = dfpath & 0xff; 
 	
 	if (sc_select_file(card, &path, &file) < 0) {
+		sc_pkcs15_card_clear(p15card);
 		return SC_ERROR_WRONG_CARD;
 	}
 
@@ -398,6 +405,7 @@ static int sc_pkcs15emu_gemsafeGPK_init(sc_pkcs15_card_t *p15card)
 		r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
 		if (r < 0) {
 			free(gsdata);
+			sc_pkcs15_card_clear(p15card);
 			return SC_ERROR_INTERNAL;
 		}
 
@@ -406,6 +414,7 @@ static int sc_pkcs15emu_gemsafeGPK_init(sc_pkcs15_card_t *p15card)
 		r = sc_pkcs15_read_certificate(p15card, &cert_info, &cert_out);
 		if (r < 0) {
 			free(gsdata);
+			sc_pkcs15_card_clear(p15card);
 			return SC_ERROR_INTERNAL;
 		}
 
@@ -457,8 +466,10 @@ static int sc_pkcs15emu_gemsafeGPK_init(sc_pkcs15_card_t *p15card)
 		pin_obj.flags = pins[i].obj_flags;
 
 		r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
-		if (r < 0)
+		if (r < 0) {
+			sc_pkcs15_card_clear(p15card);
 			return SC_ERROR_INTERNAL;
+		}
 	}
 
 	/* needs work, as we may want to add more then one key */
@@ -501,8 +512,10 @@ static int sc_pkcs15emu_gemsafeGPK_init(sc_pkcs15_card_t *p15card)
 			sc_pkcs15_format_id(prkeys[i].auth_id, &prkey_obj.auth_id);
 
 		r = sc_pkcs15emu_add_rsa_prkey(p15card, &prkey_obj, &prkey_info);
-		if (r < 0)
+		if (r < 0) {
+			sc_pkcs15_card_clear(p15card);
 			return SC_ERROR_INTERNAL;
+		}
 	}
 	return SC_SUCCESS;
 }

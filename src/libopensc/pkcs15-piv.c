@@ -1217,6 +1217,7 @@ err:
 	for (i = 0; i < PIV_NUM_CERTS_AND_KEYS; i++) {
 		sc_pkcs15_free_pubkey(ckis[i].pubkey_from_cert);
 	}
+	sc_pkcs15_card_clear(p15card);
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 

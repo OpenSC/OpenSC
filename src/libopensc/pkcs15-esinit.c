@@ -66,8 +66,11 @@ static int sc_pkcs15emu_entersafe_init( sc_pkcs15_card_t *p15card)
 	/* the manufacturer ID, in this case Giesecke & Devrient GmbH */
 	free(p15card->tokeninfo->manufacturer_id);
 	p15card->tokeninfo->manufacturer_id = strdup(MANU_ID);
-	if (!p15card->tokeninfo->manufacturer_id)
+	if (!p15card->tokeninfo->manufacturer_id) {
+		free(p15card->tokeninfo->serial_number);
+		p15card->tokeninfo->serial_number = NULL;
 		return SC_ERROR_INTERNAL;
+	}
 
 	return SC_SUCCESS;
 }

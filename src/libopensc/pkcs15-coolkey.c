@@ -681,6 +681,8 @@ fail:
 
 	}
 	r = (card->ops->card_ctl)(card, SC_CARDCTL_COOLKEY_FINAL_GET_OBJECTS, &count);
+	if (r < 0)
+		sc_pkcs15_card_clear(p15card);
 	LOG_TEST_RET(card->ctx, r, "Can not finalize objects.");
 
 	/* Iterate over all the created objects and fill missing labels */

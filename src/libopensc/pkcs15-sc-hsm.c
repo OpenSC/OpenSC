@@ -932,13 +932,17 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 		} else {
 			p15card->tokeninfo->manufacturer_id = strdup("www.CardContact.de");
 		}
-		if (p15card->tokeninfo->manufacturer_id == NULL)
+		if (p15card->tokeninfo->manufacturer_id == NULL) {
+			sc_pkcs15_card_clear(p15card);
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+		}
 	}
 
 	appinfo->label = strdup(p15card->tokeninfo->label);
-	if (appinfo->label == NULL)
+	if (appinfo->label == NULL) {
+		sc_pkcs15_card_clear(p15card);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+	}
 
 	len = strnlen(devcert.chr, sizeof devcert.chr);		/* Strip last 5 digit sequence number from CHR */
 	assert(len >= 8);
@@ -946,8 +950,10 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 
 	free(p15card->tokeninfo->serial_number);
 	p15card->tokeninfo->serial_number = calloc(len + 1, 1);
-	if (p15card->tokeninfo->serial_number == NULL)
+	if (p15card->tokeninfo->serial_number == NULL) {
+		sc_pkcs15_card_clear(p15card);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+	}
 
 	memcpy(p15card->tokeninfo->serial_number, devcert.chr, len);
 	*(p15card->tokeninfo->serial_number + len) = 0;
@@ -979,8 +985,10 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 	pin_obj.flags = SC_PKCS15_CO_FLAG_PRIVATE|SC_PKCS15_CO_FLAG_MODIFIABLE;
 
 	r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
-	if (r < 0)
+	if (r < 0) {
+		sc_pkcs15_card_clear(p15card);
 		LOG_FUNC_RETURN(card->ctx, r);
+	}
 
 	memset(&pin_info, 0, sizeof(pin_info));
 	memset(&pin_obj, 0, sizeof(pin_obj));
@@ -1003,8 +1011,10 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 	pin_obj.flags = SC_PKCS15_CO_FLAG_PRIVATE;
 
 	r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
-	if (r < 0)
+	if (r < 0) {
+		sc_pkcs15_card_clear(p15card);
 		LOG_FUNC_RETURN(card->ctx, r);
+	}
 
 
 	if (card->type == SC_CARD_TYPE_SC_HSM_SOC
@@ -1033,6 +1043,8 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 
 
 	filelistlength = sc_list_files(card, filelist, sizeof(filelist));
+	if (filelistlength < 0)
+		sc_pkcs15_card_clear(p15card);
 	LOG_TEST_RET(card->ctx, filelistlength, "Could not enumerate file and key identifier");
 
 	for (i = 0; i < filelistlength; i += 2) {

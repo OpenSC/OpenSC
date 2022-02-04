@@ -223,6 +223,7 @@ static int sc_pkcs15emu_actalis_init(sc_pkcs15_card_t * p15card)
 			if (!cert || !compCert) {
 				free(cert);
 				free(compCert);
+				sc_pkcs15_card_clear(p15card);
 				return SC_ERROR_OUT_OF_MEMORY;
 			}
 
