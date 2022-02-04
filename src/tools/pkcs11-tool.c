@@ -747,14 +747,6 @@ int main(int argc, char * argv[])
 		util_fatal("Cannot set FMODE to O_BINARY");
 #endif
 
-#ifdef ENABLE_OPENSSL
-#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
-	OPENSSL_config(NULL);
-	/* OpenSSL magic */
-	OpenSSL_add_all_algorithms();
-	OPENSSL_malloc_init();
-#endif
-#endif
 	while (1) {
 		c = getopt_long(argc, argv, "ILMOTa:bd:e:hi:klm:o:p:scvf:ty:w:z:r",
 		                options, &long_optind);
