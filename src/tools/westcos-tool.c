@@ -111,16 +111,9 @@ static int do_convert_bignum(sc_pkcs15_bignum_t *dst, const BIGNUM *src)
 	return 1;
 }
 
-static int	charge = 0;
 static void print_openssl_error(void)
 {
 	long r;
-
-	if (!charge)
-	{
-		ERR_load_crypto_strings();
-		charge = 1;
-	}
 
 	while ((r = ERR_get_error()) != 0)
 		printf("%s\n", ERR_error_string(r, NULL));
