@@ -2077,17 +2077,6 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L || (defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER >= 0x20700000L)
-	OPENSSL_init_crypto(OPENSSL_INIT_LOAD_CRYPTO_STRINGS
-		| OPENSSL_INIT_ADD_ALL_CIPHERS
-		| OPENSSL_INIT_ADD_ALL_DIGESTS,
-		NULL);
-#else
-	CRYPTO_malloc_init();
-	ERR_load_crypto_strings();
-	OpenSSL_add_all_algorithms();
-#endif
-
 	memset(&ctx_param, 0, sizeof(sc_context_param_t));
 	ctx_param.app_name = app_name;
 

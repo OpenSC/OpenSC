@@ -453,22 +453,6 @@ main(int argc, char **argv)
 	int					r = 0;
 	struct sc_pkcs15_card *tmp_p15_data = NULL;
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-	OPENSSL_config(NULL);
-#endif
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L && !(defined LIBRESSL_VERSION_NUMBER)
-	/* Openssl 1.1.0 magic */
-	OPENSSL_init_crypto(OPENSSL_INIT_LOAD_CRYPTO_STRINGS
-		| OPENSSL_INIT_ADD_ALL_CIPHERS
-		| OPENSSL_INIT_ADD_ALL_DIGESTS
-		| OPENSSL_INIT_LOAD_CONFIG,
-		NULL);
-#else
-	/* OpenSSL magic */
-	OpenSSL_add_all_algorithms();
-	OPENSSL_malloc_init();
-#endif
-
 #ifdef RANDOM_POOL
 	if (!RAND_load_file(RANDOM_POOL, 32))
 		util_fatal("Unable to seed random number pool for key generation");
@@ -2965,13 +2949,7 @@ next: ;
 static void
 ossl_print_errors(void)
 {
-	static int	loaded = 0;
 	long		err;
-
-	if (!loaded) {
-		ERR_load_crypto_strings();
-		loaded = 1;
-	}
 
 	while ((err = ERR_get_error()) != 0)
 		fprintf(stderr, "%s\n", ERR_error_string(err, NULL));
