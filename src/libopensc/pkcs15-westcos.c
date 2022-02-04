@@ -223,6 +223,7 @@ static int sc_pkcs15emu_westcos_init(sc_pkcs15_card_t * p15card)
 	}
 	r = 0;
 out:
+	sc_pkcs15_card_clear(p15card);
 	return r;
 }
 

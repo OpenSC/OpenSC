@@ -161,13 +161,13 @@ static int sc_pkcs15emu_atrust_acos_init(sc_pkcs15_card_t *p15card)
 	free(p15card->tokeninfo->manufacturer_id);
 	p15card->tokeninfo->manufacturer_id = strdup(MANU_ID);
 	if (!p15card->tokeninfo->manufacturer_id)
-		return SC_ERROR_INTERNAL;
+		goto err;
 
 	/* card label */
 	free(p15card->tokeninfo->label);
 	p15card->tokeninfo->label = strdup(CARD_LABEL);
 	if (!p15card->tokeninfo->label)
-		return SC_ERROR_INTERNAL;
+		goto err;
 
 	/* set certs */
 	for (i = 0; certs[i].label; i++) {
@@ -189,7 +189,7 @@ static int sc_pkcs15emu_atrust_acos_init(sc_pkcs15_card_t *p15card)
 
 		r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
 		if (r < 0)
-			return SC_ERROR_INTERNAL;
+			goto err;
 	}
 	/* set pins */
 	for (i = 0; pins[i].label; i++) {
@@ -217,7 +217,7 @@ static int sc_pkcs15emu_atrust_acos_init(sc_pkcs15_card_t *p15card)
 
 		r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
 		if (r < 0)
-			return SC_ERROR_INTERNAL;
+			goto err;
 	}
 	/* set private keys */
 	for (i = 0; prkeys[i].label; i++) {
@@ -241,19 +241,23 @@ static int sc_pkcs15emu_atrust_acos_init(sc_pkcs15_card_t *p15card)
 
 		r = sc_pkcs15emu_add_rsa_prkey(p15card, &prkey_obj, &prkey_info);
 		if (r < 0)
-			return SC_ERROR_INTERNAL;
+			goto err;
 	}
 		
 	/* select the application DF */
 	sc_format_path("DF71", &path);
 	r = sc_select_file(card, &path, &file);
 	if (r != SC_SUCCESS || !file)
-		return SC_ERROR_INTERNAL;
+		goto err;
 	/* set the application DF */
 	sc_file_free(p15card->file_app);
 	p15card->file_app = file;
 
 	return SC_SUCCESS;
+
+err:
+	sc_pkcs15_card_clear(p15card);
+	return SC_ERROR_INTERNAL;
 }
 
 int sc_pkcs15emu_atrust_acos_init_ex(sc_pkcs15_card_t *p15card,

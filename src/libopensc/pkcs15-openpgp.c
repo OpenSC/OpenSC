@@ -388,8 +388,10 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 					cxdata[0], r);
 			}
 
-			if (r < 0)
+			if (r < 0) {
+				sc_pkcs15_card_clear(p15card);
 				return SC_ERROR_INTERNAL;
+			}
 		}
 	}
 
@@ -510,8 +512,10 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 					cxdata[0], r);
 			}
 
-			if (r < 0)
+			if (r < 0) {
+				sc_pkcs15_card_clear(p15card);
 				return SC_ERROR_INTERNAL;
+			}
 		}
 	}
 
@@ -553,9 +557,9 @@ failed:
 		sc_log(card->ctx,
 				"Failed to initialize OpenPGP emulation: %s\n",
 				sc_strerror(r));
+		sc_pkcs15_card_clear(p15card);
 	}
 	sc_file_free(file);
-
 	LOG_FUNC_RETURN(ctx, r);
 }
 

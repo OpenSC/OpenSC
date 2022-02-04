@@ -201,6 +201,7 @@ static int sc_pkcs15emu_dnie_init(sc_pkcs15_card_t * p15card)
 	rv = parse_odf(buf, len, p15card);
 	if (rv != SC_SUCCESS) {
 		sc_log(ctx, "Decoding of ODF failed: %d", rv);
+		sc_pkcs15_card_clear(p15card);
 		LOG_FUNC_RETURN(ctx, rv);
 	}
 

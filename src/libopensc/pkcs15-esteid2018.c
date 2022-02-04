@@ -81,7 +81,7 @@ static int sc_pkcs15emu_esteid2018_init(sc_pkcs15_card_t *p15card) {
 		cert_info.id.len = 1;
 		r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
 		if (r < 0)
-			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
+			goto err;
 
 		// Read data from first cert
 		if (i != 0)
@@ -89,6 +89,8 @@ static int sc_pkcs15emu_esteid2018_init(sc_pkcs15_card_t *p15card) {
 
 		sc_pkcs15_cert_t *cert = NULL;
 		r = sc_pkcs15_read_certificate(p15card, &cert_info, &cert);
+		if (r < 0)
+			sc_pkcs15_card_clear(p15card);
 		LOG_TEST_RET(card->ctx, r, "Could not read authentication certificate");
 
 		if (cert->key->algorithm == SC_ALGORITHM_EC)
@@ -155,19 +157,19 @@ static int sc_pkcs15emu_esteid2018_init(sc_pkcs15_card_t *p15card) {
 
 		r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
 		if (r < 0)
-			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
+			goto err;
 	}
 
 	// trigger PIN counter refresh via pin_cmd
 	struct sc_pkcs15_object *objs[3];
 	r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH, objs, 3);
 	if (r != 3) {
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
+		goto err;
 	}
 	for (i = 0; i < r; i++) {
 		r = sc_pkcs15_get_pin_info(p15card, objs[i]);
 		if (r < 0)
-			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
+			goto err;
 	}
 
 	/* add private keys */
@@ -202,10 +204,13 @@ static int sc_pkcs15emu_esteid2018_init(sc_pkcs15_card_t *p15card) {
 
 		r = sc_pkcs15emu_add_ec_prkey(p15card, &prkey_obj, &prkey_info);
 		if (r < 0)
-			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
+			goto err;
 	}
 
 	return SC_SUCCESS;
+err:
+	sc_pkcs15_card_clear(p15card);
+	LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 }
 
 int sc_pkcs15emu_esteid2018_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid) {

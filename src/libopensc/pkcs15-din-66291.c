@@ -106,8 +106,10 @@ sc_pkcs15emu_din_66291_init(sc_pkcs15_card_t *p15card)
                 pin_obj.auth_id.len = 1;
             }
 
-            if (0 > sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info))
+            if (0 > sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info)) {
+                sc_pkcs15_card_clear(p15card);
                 return SC_ERROR_INTERNAL;
+            }
         }
 
         for (i = 0; i < 2; i++) {

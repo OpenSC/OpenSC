@@ -110,8 +110,7 @@ static int sc_pkcs15emu_idprime_init(sc_pkcs15_card_t *p15card)
 	pin_obj.flags = SC_PKCS15_CO_FLAG_PRIVATE;
 
 	r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
-	if (r < 0)
-		LOG_FUNC_RETURN(card->ctx, r);
+	LOG_TEST_GOTO_ERR(card->ctx, r, "Can not add pin object");
 
 	/*
 	 * get token name if provided
@@ -133,7 +132,7 @@ static int sc_pkcs15emu_idprime_init(sc_pkcs15_card_t *p15card)
 	 */
 	sc_log(card->ctx,  "IDPrime adding certs, pub and priv keys...");
 	r = (card->ops->card_ctl)(card, SC_CARDCTL_IDPRIME_INIT_GET_OBJECTS, &count);
-	LOG_TEST_RET(card->ctx, r, "Can not initiate cert objects.");
+	LOG_TEST_GOTO_ERR(card->ctx, r, "Can not initiate cert objects.");
 
 	for (i = 0; i < count; i++) {
 		struct sc_pkcs15_prkey_info prkey_info;
@@ -146,7 +145,7 @@ static int sc_pkcs15emu_idprime_init(sc_pkcs15_card_t *p15card)
 		sc_pkcs15_cert_t *cert_out = NULL;
 
 		r = (card->ops->card_ctl)(card, SC_CARDCTL_IDPRIME_GET_NEXT_OBJECT, &prkey_info);
-		LOG_TEST_RET(card->ctx, r, "Can not get next object");
+		LOG_TEST_GOTO_ERR(card->ctx, r, "Can not get next object");
 
 		memset(&cert_info, 0, sizeof(cert_info));
 		memset(&pubkey_info, 0, sizeof(pubkey_info));
@@ -274,14 +273,19 @@ fail:
 		sc_pkcs15_free_certificate(cert_out);
 		if (r < 0) {
 			(card->ops->card_ctl)(card, SC_CARDCTL_IDPRIME_FINAL_GET_OBJECTS, &count);
+			sc_pkcs15_card_clear(p15card);
 			LOG_FUNC_RETURN(card->ctx, r); /* should not fail */
 		}
 
 	}
 	r = (card->ops->card_ctl)(card, SC_CARDCTL_IDPRIME_FINAL_GET_OBJECTS, &count);
-	LOG_TEST_RET(card->ctx, r, "Can not finalize cert objects.");
+	LOG_TEST_GOTO_ERR(card->ctx, r, "Can not finalize cert objects.");
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+	
+err:
+	sc_pkcs15_card_clear(p15card);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 int sc_pkcs15emu_idprime_init_ex(sc_pkcs15_card_t *p15card,
