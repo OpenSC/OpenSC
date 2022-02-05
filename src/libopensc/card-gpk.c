@@ -903,14 +903,14 @@ gpk_set_filekey(const u8 *key, const u8 *challenge,
 	if (!EVP_EncryptUpdate(ctx, kats, &outl, r_rn+4, 8))
 		r = SC_ERROR_INTERNAL;
 
-	if (!EVP_CIPHER_CTX_cleanup(ctx))
+	if (!EVP_CIPHER_CTX_reset(ctx))
 		r = SC_ERROR_INTERNAL;
 	if (r == SC_SUCCESS) {
-		EVP_CIPHER_CTX_init(ctx);
+		EVP_CIPHER_CTX_reset(ctx);
 		EVP_EncryptInit_ex(ctx, EVP_des_ede(), NULL, out, NULL);
 		if (!EVP_EncryptUpdate(ctx, kats+8, &outl, r_rn+4, 8))
 			r = SC_ERROR_INTERNAL;
-	if (!EVP_CIPHER_CTX_cleanup(ctx))
+	if (!EVP_CIPHER_CTX_reset(ctx))
 		r = SC_ERROR_INTERNAL;
 	}
 	memset(out, 0, sizeof(out));
@@ -920,7 +920,7 @@ gpk_set_filekey(const u8 *key, const u8 *challenge,
 	 * here? INVALID_ARGS doesn't seem quite right
 	 */
 	if (r == SC_SUCCESS) {
-		EVP_CIPHER_CTX_init(ctx);
+		EVP_CIPHER_CTX_reset(ctx);
 		EVP_EncryptInit_ex(ctx, EVP_des_ede(), NULL, kats, NULL);
 		if (!EVP_EncryptUpdate(ctx, out, &outl, challenge, 8))
 			r = SC_ERROR_INTERNAL;
