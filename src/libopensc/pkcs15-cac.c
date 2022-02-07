@@ -345,6 +345,8 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 				free(pubkey_info.direct.spki.value);
 				goto fail;
 			}
+			pubkey_info.direct.spki.value = NULL; /* moved to the pubkey object on p15card  */
+			pubkey_info.direct.spki.len = 0;
 			r = sc_pkcs15emu_add_rsa_prkey(p15card, &prkey_obj, &prkey_info);
 			if (r < 0)
 				goto fail;
