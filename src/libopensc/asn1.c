@@ -2061,7 +2061,7 @@ _sc_asn1_decode(sc_context_t *ctx, struct sc_asn1_entry *asn1,
 int
 sc_der_copy(sc_pkcs15_der_t *dst, const sc_pkcs15_der_t *src)
 {
-	if (!dst)
+	if (!dst || !src)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	memset(dst, 0, sizeof(*dst));
 	if (src->len) {
