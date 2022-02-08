@@ -1283,14 +1283,25 @@ sc_pkcs15init_init_prkdf(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 		keyinfo_gostparams->gost28147 = keyargs->params.gost.gost28147;
 	}
 	else if (key->algorithm == SC_ALGORITHM_EC)  {
+		/* keyargs->key.u.ec.params.der.value is allocated in keyargs, which is on stack */
 		struct sc_ec_parameters *ecparams = &keyargs->key.u.ec.params;
 		struct sc_ec_parameters *new_ecparams = malloc(sizeof(struct sc_ec_parameters));
-		new_ecparams->named_curve = ecparams->named_curve;
-		new_ecparams->der.value = ecparams->der.value;
-		new_ecparams->der.len = ecparams->der.len;
-		new_ecparams->type = ecparams->type;
-		new_ecparams->field_length = ecparams->field_length;
-		new_ecparams->id = ecparams->id;
+		key_info->params.data = NULL;
+		if (!new_ecparams) {
+			r = SC_ERROR_OUT_OF_MEMORY;
+			LOG_TEST_GOTO_ERR(ctx, r, "Cannot allocate memory for EC parameters");
+		}
+		/* copy ecparams into allocated one
+		 * it will be freed with the corresponding object */
+		memcpy(new_ecparams, ecparams, sizeof(struct sc_ec_parameters));
+		new_ecparams->named_curve = strdup(ecparams->named_curve);
+		new_ecparams->der.value = malloc(ecparams->der.len);
+		if (!new_ecparams->der.value) {
+			r = SC_ERROR_OUT_OF_MEMORY;
+			free(new_ecparams);
+			LOG_TEST_GOTO_ERR(ctx, r, "Cannot allocate memory for EC parameters");
+		}
+		memcpy(new_ecparams->der.value, ecparams->der.value, ecparams->der.len);
 
 		key_info->params.data = new_ecparams;
 		key_info->params.free_params = sc_pkcs15init_free_ec_params;
@@ -1328,8 +1339,11 @@ sc_pkcs15init_init_prkdf(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 	r = SC_SUCCESS;
 	LOG_FUNC_RETURN(ctx, r);
 err:
-	if (key->algorithm == SC_ALGORITHM_EC)
+	if (key->algorithm == SC_ALGORITHM_EC && key_info->params.data) {
+		free(((struct sc_ec_parameters *) key_info->params.data)->named_curve);
+		free(((struct sc_ec_parameters *) key_info->params.data)->der.value);
 		free(key_info->params.data);
+	}
 	if (object)
 		sc_pkcs15init_free_object(object);
 	LOG_FUNC_RETURN(ctx, r);
@@ -1505,21 +1519,22 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 	struct sc_pkcs15_prkey_info *key_info = NULL;
 	struct sc_pkcs15_pubkey *pubkey = NULL;
 	int r, caller_supplied_id = 0;
+	int algorithm = keygen_args->prkey_args.key.algorithm;
 
 	LOG_FUNC_CALLED(ctx);
 	/* check supported key size */
 	r = check_keygen_params_consistency(p15card->card,
-		keygen_args->prkey_args.key.algorithm, &keygen_args->prkey_args,
+		algorithm, &keygen_args->prkey_args,
 		&keybits);
 	LOG_TEST_RET(ctx, r, "Invalid key size");
 
-	if (check_key_compatibility(p15card, keygen_args->prkey_args.key.algorithm,
+	if (check_key_compatibility(p15card, algorithm,
 			&keygen_args->prkey_args.key, keygen_args->prkey_args.x509_usage,
 			keybits, SC_ALGORITHM_ONBOARD_KEY_GEN) != SC_SUCCESS)
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Cannot generate key with the given parameters");
 
 	if (profile->ops->generate_key == NULL)
-		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Key generation not supported");
+		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_NOT_SUPPORTED, "Key generation not supported");
 
 	if (keygen_args->prkey_args.id.len)   {
 		caller_supplied_id = 1;
@@ -1527,20 +1542,15 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 		/* Make sure that private key's ID is the unique inside the PKCS#15 application */
 		r = sc_pkcs15_find_prkey_by_id(p15card, &keygen_args->prkey_args.id, NULL);
 		if (!r)
-			LOG_TEST_RET(ctx, SC_ERROR_NON_UNIQUE_ID, "Non unique ID of the private key object");
+			LOG_TEST_GOTO_ERR(ctx, SC_ERROR_NON_UNIQUE_ID, "Non unique ID of the private key object");
 		else if (r != SC_ERROR_OBJECT_NOT_FOUND)
-			LOG_TEST_RET(ctx, r, "Find private key error");
+			LOG_TEST_GOTO_ERR(ctx, r, "Find private key error");
 	}
 
 	/* Set up the PrKDF object */
 	r = sc_pkcs15init_init_prkdf(p15card, profile, &keygen_args->prkey_args,
 		&keygen_args->prkey_args.key, keybits, &object);
-	if (r < 0) {
-		free(keygen_args->prkey_args.key.u.ec.params.der.value);
-		free(keygen_args->prkey_args.key.u.ec.params.named_curve);
-	}
-
-	LOG_TEST_RET(ctx, r, "Set up private key object error");
+	LOG_TEST_GOTO_ERR(ctx, r, "Set up private key object error");
 
 	key_info = (struct sc_pkcs15_prkey_info *) object->data;
 
@@ -1557,12 +1567,13 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 	pubkey_args.usage = keygen_args->prkey_args.usage;
 	pubkey_args.x509_usage = keygen_args->prkey_args.x509_usage;
 
-	if (keygen_args->prkey_args.key.algorithm == SC_ALGORITHM_GOSTR3410)   {
+	if (algorithm == SC_ALGORITHM_GOSTR3410)   {
 		pubkey_args.params.gost = keygen_args->prkey_args.params.gost;
 		r = sc_copy_gost_params(&(pubkey_args.key.u.gostr3410.params), &(keygen_args->prkey_args.key.u.gostr3410.params));
 		LOG_TEST_GOTO_ERR(ctx, r, "Cannot allocate GOST parameters");
 	}
-	else if (keygen_args->prkey_args.key.algorithm == SC_ALGORITHM_EC)   {
+	else if (algorithm == SC_ALGORITHM_EC)   {
+		/* needs to be freed in case of failure when pubkey is not set yet */
 		pubkey_args.key.u.ec.params = keygen_args->prkey_args.key.u.ec.params;
 		r = sc_copy_ec_params(&pubkey_args.key.u.ec.params, &keygen_args->prkey_args.key.u.ec.params);
 		LOG_TEST_GOTO_ERR(ctx, r, "Cannot allocate EC parameters");
@@ -1570,14 +1581,15 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 
 	/* Generate the private key on card */
 	r = profile->ops->create_key(profile, p15card, object);
-	if (r < 0) {
+	if (r < 0 && algorithm == SC_ALGORITHM_EC) {
+		/* pubkey->alg_id->algorithm is not set yet, needs to be freed independently */
 		free(pubkey_args.key.u.ec.params.der.value);
 		free(pubkey_args.key.u.ec.params.named_curve);
 	}
 	LOG_TEST_GOTO_ERR(ctx, r, "Cannot generate key: create key failed");
 
 	r = profile->ops->generate_key(profile, p15card, object, &pubkey_args.key);
-	if (r < 0) {
+	if (r < 0 && algorithm == SC_ALGORITHM_EC) {
 		free(pubkey_args.key.u.ec.params.der.value);
 		free(pubkey_args.key.u.ec.params.named_curve);
 	}
@@ -1591,7 +1603,7 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 		 * if intrinsic ID can be calculated -- overwrite the native one */
 		memset(&iid, 0, sizeof(iid));
 		r = sc_pkcs15init_select_intrinsic_id(p15card, profile, SC_PKCS15_TYPE_PUBKEY, &iid, &pubkey_args.key);
-		if (r < 0) {
+		if (r < 0 && algorithm == SC_ALGORITHM_EC) {
 			free(pubkey_args.key.u.ec.params.der.value);
 			free(pubkey_args.key.u.ec.params.named_curve);
 		}
@@ -1605,12 +1617,12 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 	if (!pubkey->alg_id)   {
 		pubkey->alg_id = calloc(1, sizeof(struct sc_algorithm_id));
 		if (!pubkey->alg_id) {
-			if (r < 0) {
+			if (algorithm == SC_ALGORITHM_EC) {
 				free(pubkey_args.key.u.ec.params.der.value);
 				free(pubkey_args.key.u.ec.params.named_curve);
-				sc_pkcs15_free_object(object);
 			}
-			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+			r = SC_ERROR_OUT_OF_MEMORY;
+			LOG_TEST_GOTO_ERR(ctx, SC_ERROR_OUT_OF_MEMORY, "Can not allocate memory for algorithm id");
 		}
 
 		sc_init_oid(&pubkey->alg_id->oid);
@@ -1643,11 +1655,15 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 	sc_pkcs15_erase_pubkey(&pubkey_args.key);
 
 	profile->dirty = 1;
+
 err:
 	if (pubkey)
 		sc_pkcs15_erase_pubkey(&pubkey_args.key);
 	if (object)
 		sc_pkcs15_free_object(object);
+	if (algorithm == SC_ALGORITHM_EC)
+		/* allocated in check_keygen_params_consistency() */
+		free(keygen_args->prkey_args.key.u.ec.params.der.value);
 	LOG_FUNC_RETURN(ctx, r);
 }
 
