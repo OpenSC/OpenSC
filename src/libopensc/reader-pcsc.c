@@ -1165,7 +1165,8 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 		return;
 	}
 
-	if ((feature_len % sizeof(PCSC_TLV_STRUCTURE)) != 0) {
+	if ((feature_len % sizeof(PCSC_TLV_STRUCTURE)) != 0
+			|| feature_len > sizeof(feature_buf.buf)) {
 		sc_log(ctx, "Inconsistent TLV from reader!");
 		return;
 	}
