@@ -1879,7 +1879,7 @@ init_gost_params(struct sc_pkcs15init_keyarg_gost_params *params, EVP_PKEY *pkey
 #else
 	char name[256]; size_t name_len = 0;
 #endif
-	int nid = 0;
+	int nid = NID_undef;
 
 	assert(pkey);
 	if (EVP_PKEY_id(pkey) == NID_id_GostR3410_2001) {
@@ -1888,7 +1888,7 @@ init_gost_params(struct sc_pkcs15init_keyarg_gost_params *params, EVP_PKEY *pkey
 		key = EVP_PKEY_get0(pkey);
 		assert(key);
 		assert(EC_KEY_get0_group(key));
-		EC_GROUP_get_curve_name(EC_KEY_get0_group(key));
+		nid = EC_GROUP_get_curve_name(EC_KEY_get0_group(key));
 #else
 		assert(EVP_PKEY_get_group_name(pkey, name ,sizeof(name), &name_len));
 		nid = OBJ_txt2nid(name);
