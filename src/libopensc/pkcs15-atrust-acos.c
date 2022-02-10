@@ -27,6 +27,7 @@
 #include <string.h>
 #include <stdio.h>
 
+#include "internal.h"
 #include "common/compat_strlcpy.h"
 #include "libopensc/pkcs15.h"
 #include "libopensc/cardctl.h"
@@ -152,20 +153,18 @@ static int sc_pkcs15emu_atrust_acos_init(sc_pkcs15_card_t *p15card)
 	r = sc_bin_to_hex(buf, 8, buf2, sizeof(buf2), 0);
 	if (r != SC_SUCCESS)
 		return SC_ERROR_INTERNAL;
-	free(p15card->tokeninfo->serial_number);
-	p15card->tokeninfo->serial_number = strdup(buf2);
+
+	set_string(&p15card->tokeninfo->serial_number, buf2);
 	if (!p15card->tokeninfo->serial_number)
 		return SC_ERROR_INTERNAL;
 
 	/* manufacturer ID */
-	free(p15card->tokeninfo->manufacturer_id);
-	p15card->tokeninfo->manufacturer_id = strdup(MANU_ID);
+	set_string(&p15card->tokeninfo->manufacturer_id, MANU_ID);
 	if (!p15card->tokeninfo->manufacturer_id)
 		goto err;
 
 	/* card label */
-	free(p15card->tokeninfo->label);
-	p15card->tokeninfo->label = strdup(CARD_LABEL);
+	set_string(&p15card->tokeninfo->label, CARD_LABEL);
 	if (!p15card->tokeninfo->label)
 		goto err;
 

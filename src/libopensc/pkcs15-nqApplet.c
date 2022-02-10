@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "internal.h"
 #include "opensc.h"
 #include "cards.h"
 #include "common/compat_strlcpy.h"
@@ -215,9 +216,9 @@ int sc_pkcs15emu_nqapplet_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
 		char serial_hex[SC_MAX_SERIALNR * 2 + 2];
 
 		sc_bin_to_hex(card->serialnr.value, card->serialnr.len, serial_hex, sizeof(serial_hex), 0);
-		p15card->tokeninfo->serial_number = strdup(serial_hex);
-		p15card->tokeninfo->label = strdup(name_Card);
-		p15card->tokeninfo->manufacturer_id = strdup(name_Vendor);
+		set_string(&p15card->tokeninfo->serial_number, serial_hex);
+		set_string(&p15card->tokeninfo->label, name_Card);
+		set_string(&p15card->tokeninfo->manufacturer_id, name_Vendor);
 		p15card->tokeninfo->flags = SC_PKCS15_TOKEN_READONLY;
 	}
 
