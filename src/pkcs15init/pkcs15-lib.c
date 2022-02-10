@@ -1533,18 +1533,23 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 			keybits, SC_ALGORITHM_ONBOARD_KEY_GEN) != SC_SUCCESS)
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Cannot generate key with the given parameters");
 
-	if (profile->ops->generate_key == NULL)
-		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_NOT_SUPPORTED, "Key generation not supported");
+	if (profile->ops->generate_key == NULL) {
+		r = SC_ERROR_NOT_SUPPORTED;
+		LOG_TEST_GOTO_ERR(ctx, r, "Key generation not supported");
+	}
 
 	if (keygen_args->prkey_args.id.len)   {
 		caller_supplied_id = 1;
 
 		/* Make sure that private key's ID is the unique inside the PKCS#15 application */
 		r = sc_pkcs15_find_prkey_by_id(p15card, &keygen_args->prkey_args.id, NULL);
-		if (!r)
-			LOG_TEST_GOTO_ERR(ctx, SC_ERROR_NON_UNIQUE_ID, "Non unique ID of the private key object");
-		else if (r != SC_ERROR_OBJECT_NOT_FOUND)
+		if (!r) {
+			r = SC_ERROR_NON_UNIQUE_ID;
+			LOG_TEST_GOTO_ERR(ctx, r, "Non unique ID of the private key object");
+		}
+		else if (r != SC_ERROR_OBJECT_NOT_FOUND) {
 			LOG_TEST_GOTO_ERR(ctx, r, "Find private key error");
+		}
 	}
 
 	/* Set up the PrKDF object */
@@ -1622,7 +1627,7 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 				free(pubkey_args.key.u.ec.params.named_curve);
 			}
 			r = SC_ERROR_OUT_OF_MEMORY;
-			LOG_TEST_GOTO_ERR(ctx, SC_ERROR_OUT_OF_MEMORY, "Can not allocate memory for algorithm id");
+			LOG_TEST_GOTO_ERR(ctx, r, "Can not allocate memory for algorithm id");
 		}
 
 		sc_init_oid(&pubkey->alg_id->oid);
