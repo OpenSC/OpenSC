@@ -170,18 +170,17 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 
 		/* get the ACA path in case it needs to be selected before PIN verify */
 		r = sc_card_ctl(card, SC_CARDCTL_CAC_GET_ACA_PATH, &pin_info.path);
-		if (r < 0) {
-			LOG_FUNC_RETURN(card->ctx, r);
-		}
+		if (r < 0)
+			goto err;
 
 		r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
 		if (r < 0)
-			LOG_FUNC_RETURN(card->ctx, r);
+			goto err;
 	}
 
 	/* set other objects */
 	r = (card->ops->card_ctl)(card, SC_CARDCTL_CAC_INIT_GET_GENERIC_OBJECTS, &count);
-	LOG_TEST_RET(card->ctx, r, "Can not initiate generic objects.");
+	LOG_TEST_GOTO_ERR(card->ctx, r, "Can not initiate generic objects.");
 
 	for (i = 0; i < count; i++) {
 		struct sc_pkcs15_data_info obj_info;
@@ -189,17 +188,17 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 
 		r = (card->ops->card_ctl)(card, SC_CARDCTL_CAC_GET_NEXT_GENERIC_OBJECT, &obj_info);
 		if (r < 0)
-			LOG_FUNC_RETURN(card->ctx, r);
+			goto err;
 		memset(&obj_obj, 0, sizeof(obj_obj));
 		memcpy(obj_obj.label, obj_info.app_label, sizeof(obj_obj.label));
 
 		r = sc_pkcs15emu_object_add(p15card, SC_PKCS15_TYPE_DATA_OBJECT,
 			&obj_obj, &obj_info);
 		if (r < 0)
-			LOG_FUNC_RETURN(card->ctx, r);
+			goto err;
 	}
 	r = (card->ops->card_ctl)(card, SC_CARDCTL_CAC_FINAL_GET_GENERIC_OBJECTS, &count);
-	LOG_TEST_RET(card->ctx, r, "Can not finalize generic objects.");
+	LOG_TEST_GOTO_ERR(card->ctx, r, "Can not finalize generic objects.");
 
 	/*
 	 * certs, pubkeys and priv keys are related and we assume
@@ -209,7 +208,7 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 	 */
 	sc_log(card->ctx,  "CAC adding certs, pub and priv keys...");
 	r = (card->ops->card_ctl)(card, SC_CARDCTL_CAC_INIT_GET_CERT_OBJECTS, &count);
-	LOG_TEST_RET(card->ctx, r, "Can not initiate cert objects.");
+	LOG_TEST_GOTO_ERR(card->ctx, r, "Can not initiate cert objects.");
 
 	for (i = 0; i < count; i++) {
 		struct sc_pkcs15_data_info obj_info;
@@ -358,17 +357,18 @@ fail:
 		sc_pkcs15_free_certificate(cert_out);
 		if (r < 0) {
 			(card->ops->card_ctl)(card, SC_CARDCTL_CAC_FINAL_GET_CERT_OBJECTS, &count);
-			sc_pkcs15_card_clear(p15card);
-			LOG_FUNC_RETURN(card->ctx, r); /* should not fail */
+			goto err;
 		}
 
 	}
 	r = (card->ops->card_ctl)(card, SC_CARDCTL_CAC_FINAL_GET_CERT_OBJECTS, &count);
-	if (r < 0)
-		sc_pkcs15_card_clear(p15card);
-	LOG_TEST_RET(card->ctx, r, "Can not finalize cert objects.");
+	LOG_TEST_GOTO_ERR(card->ctx, r, "Can not finalize cert objects.");
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+
+err:
+	sc_pkcs15_card_clear(p15card);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 int sc_pkcs15emu_cac_init_ex(sc_pkcs15_card_t *p15card,
