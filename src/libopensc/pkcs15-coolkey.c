@@ -461,6 +461,7 @@ coolkey_get_public_key(sc_pkcs15_card_t *p15card, sc_cardctl_coolkey_object_t *o
 
 static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 {
+	int use_pin_cache_backup = p15card->opts.use_pin_cache;
 	static const pindata pins[] = {
 		{ "1", NULL, "", 0x00,
 		  SC_PKCS15_PIN_TYPE_ASCII_NUMERIC,
@@ -716,6 +717,7 @@ fail:
 
 err:
 	sc_pkcs15_card_clear(p15card);
+	p15card->opts.use_pin_cache = use_pin_cache_backup;
 
 	LOG_FUNC_RETURN(card->ctx, r);
 }
