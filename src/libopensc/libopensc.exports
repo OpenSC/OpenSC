@@ -177,6 +177,7 @@ sc_pkcs15_encode_pubkey_eddsa
 sc_pkcs15_encode_pubkey_gostr3410
 sc_pkcs15_encode_pubkey_as_spki
 sc_pkcs15_encode_pukdf_entry
+sc_pkcs15_encode_skdf_entry
 sc_pkcs15_encode_tokeninfo
 sc_pkcs15_encode_unusedspace
 sc_pkcs15_erase_pubkey
