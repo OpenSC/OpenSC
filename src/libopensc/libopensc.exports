@@ -268,11 +268,13 @@ sc_set_security_env
 sc_strerror
 sc_transmit_apdu
 sc_unlock
+sc_unwrap
 sc_update_binary
 sc_update_dir
 sc_update_record
 sc_verify
 sc_wait_for_event
+sc_wrap
 sc_write_binary
 sc_write_record
 sc_erase_binary
