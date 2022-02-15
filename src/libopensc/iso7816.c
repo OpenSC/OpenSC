@@ -329,7 +329,7 @@ iso7816_process_fci(struct sc_card *card, struct sc_file *file,
 	const unsigned char *p, *end;
 	unsigned int cla = 0, tag = 0;
 	size_t length;
-	int size;
+	uint32_t size;
 
 	file->status = SC_FILE_STATUS_UNKNOWN;
 
@@ -350,11 +350,17 @@ iso7816_process_fci(struct sc_card *card, struct sc_file *file,
 				/* fall through */
 			case 0x80:
 				/* determine the file size */
-				if (sc_asn1_decode_integer(p, length, &size, 0) == 0 && size >= 0) {
+				file->size = 0;
+				if(p && length < 5) {
+					size = 0;
+					for(size_t i=0; i<length; i++) {
+						size <<= 8;
+						size |= (uint32_t) p[i];
+					}
 					file->size = size;
-					sc_log(ctx, "  bytes in file: %"SC_FORMAT_LEN_SIZE_T"u",
-							file->size);
 				}
+				
+				sc_log(ctx, "  bytes in file: %"SC_FORMAT_LEN_SIZE_T"u", file->size);
 				break;
 
 			case 0x82:
