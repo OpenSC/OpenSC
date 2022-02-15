@@ -38,7 +38,13 @@
 #include <openssl/pkcs12.h>
 #include <openssl/x509v3.h>
 
+/*
+ * OpenSSL-3.0.0 does not allow access to the SHA data
+ * so this driver can not produces signatures
+ */
+
 #ifndef SHA_LONG
+//#warning "SHA_LONG not defined in this version of OpenSSL signatures not supported"
 #  define SHA_LONG unsigned int
 #  define SHA_LBLOCK      16
 
@@ -3218,6 +3224,7 @@ iasecc_qsign_data_sha1(struct sc_context *ctx, const unsigned char *in, size_t i
 #endif
 	if (md_data == NULL) {
 		sc_log(ctx, "Failed to find md_data");
+		r = SC_ERROR_NOT_SUPPORTED;
 		goto err;
 	}
 
@@ -3267,7 +3274,8 @@ iasecc_qsign_data_sha1(struct sc_context *ctx, const unsigned char *in, size_t i
 	goto end;
 
 err:
-	ERR_print_errors_fp(stderr);
+	if (ctx->debug > 0 && ctx->debug_file != 0)
+		ERR_print_errors_fp(ctx->debug_file);
 end:
 	EVP_MD_CTX_free(mdctx);
 
@@ -3314,6 +3322,7 @@ iasecc_qsign_data_sha256(struct sc_context *ctx, const unsigned char *in, size_t
 #endif
 	if (md_data == NULL) {
 		sc_log(ctx, "Failed to find md_data");
+		r = SC_ERROR_NOT_SUPPORTED;
 		goto err;
 	}
 
@@ -3357,7 +3366,8 @@ iasecc_qsign_data_sha256(struct sc_context *ctx, const unsigned char *in, size_t
 	goto end;
 
 err:
-	ERR_print_errors_fp(stderr);
+	if (ctx->debug > 0 && ctx->debug_file != 0)
+		ERR_print_errors_fp(ctx->debug_file);
 end:
 	EVP_MD_CTX_free(mdctx);
 
