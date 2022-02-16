@@ -181,13 +181,14 @@ static int format_le(size_t le, struct sc_asn1_entry *le_entry,
 
 static int prefix_buf(u8 prefix, u8 *buf, size_t buflen, u8 **cat)
 {
-	u8 *p;
+	u8 *p = NULL;
+	int ptr_same = *cat == buf;
 
 	p = realloc(*cat, buflen + 1);
 	if (!p)
 		return SC_ERROR_OUT_OF_MEMORY;
 
-	if (*cat == buf) {
+	if (ptr_same) {
 		memmove(p + 1, p, buflen);
 	} else {
 		/* Flawfinder: ignore */
