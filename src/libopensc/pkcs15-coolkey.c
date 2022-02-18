@@ -531,9 +531,7 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 		pin_obj.flags = pins[i].obj_flags;
 
 		r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
-		if (r < 0) {
-			goto err;
-		}
+		LOG_TEST_GOTO_ERR(card->ctx, r, "Can not add pin object.");
 	}
 
 	/* set other objects */
@@ -555,9 +553,7 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 		size_t len;
 
 		r = (card->ops->card_ctl)(card, SC_CARDCTL_COOLKEY_GET_NEXT_OBJECT, &coolkey_obj);
-		if (r < 0) {
-			goto err;
-		}
+		LOG_TEST_GOTO_ERR(card->ctx, r, "Can not get next object from card.");
 		sc_log(card->ctx, "Loading object %d", i);
 		memset(&obj_obj, 0, sizeof(obj_obj));
 		/* coolkey applets have label only on the certificates,

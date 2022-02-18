@@ -275,7 +275,7 @@ fail:
 		sc_pkcs15_free_certificate(cert_out);
 		if (r < 0) {
 			(card->ops->card_ctl)(card, SC_CARDCTL_IDPRIME_FINAL_GET_OBJECTS, &count);
-			goto err;
+			LOG_TEST_GOTO_ERR(card->ctx, r, "Failed to add object.");
 		}
 
 	}
