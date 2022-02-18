@@ -170,12 +170,10 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 
 		/* get the ACA path in case it needs to be selected before PIN verify */
 		r = sc_card_ctl(card, SC_CARDCTL_CAC_GET_ACA_PATH, &pin_info.path);
-		if (r < 0)
-			goto err;
+		LOG_TEST_GOTO_ERR(card->ctx, r, "Can not get ACA path.");
 
 		r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
-		if (r < 0)
-			goto err;
+		LOG_TEST_GOTO_ERR(card->ctx, r, "Can not add pin object.");
 	}
 
 	/* set other objects */
@@ -187,15 +185,13 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 		struct sc_pkcs15_object    obj_obj;
 
 		r = (card->ops->card_ctl)(card, SC_CARDCTL_CAC_GET_NEXT_GENERIC_OBJECT, &obj_info);
-		if (r < 0)
-			goto err;
+		LOG_TEST_GOTO_ERR(card->ctx, r, "Can not get next generic object.");
 		memset(&obj_obj, 0, sizeof(obj_obj));
 		memcpy(obj_obj.label, obj_info.app_label, sizeof(obj_obj.label));
 
 		r = sc_pkcs15emu_object_add(p15card, SC_PKCS15_TYPE_DATA_OBJECT,
 			&obj_obj, &obj_info);
-		if (r < 0)
-			goto err;
+		LOG_TEST_GOTO_ERR(card->ctx, r, "Can not finalize generic object.");
 	}
 	r = (card->ops->card_ctl)(card, SC_CARDCTL_CAC_FINAL_GET_GENERIC_OBJECTS, &count);
 	LOG_TEST_GOTO_ERR(card->ctx, r, "Can not finalize generic objects.");
@@ -357,7 +353,7 @@ fail:
 		sc_pkcs15_free_certificate(cert_out);
 		if (r < 0) {
 			(card->ops->card_ctl)(card, SC_CARDCTL_CAC_FINAL_GET_CERT_OBJECTS, &count);
-			goto err;
+			LOG_TEST_GOTO_ERR(card->ctx, r, "Failed to add object.");
 		}
 
 	}
