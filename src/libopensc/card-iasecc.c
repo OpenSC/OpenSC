@@ -41,27 +41,13 @@
 /*
  * OpenSSL-3.0.0 does not allow access to the SHA data
  * so this driver can not produces signatures
+ * OpenSSL 1.1.1 uses EVP_MD_CTX_md_data
+ * LibreSSL
  */
 
-#ifndef SHA_LONG
-//#warning "SHA_LONG not defined in this version of OpenSSL signatures not supported"
-#  define SHA_LONG unsigned int
-#  define SHA_LBLOCK      16
-
-typedef struct SHAstate_st {
-SHA_LONG h0, h1, h2, h3, h4;
-SHA_LONG Nl, Nh;
-SHA_LONG data[SHA_LBLOCK];
-unsigned int num;
-} SHA_CTX;
-
-typedef struct SHA256state_st {
-	SHA_LONG h[8];
-	SHA_LONG Nl, Nh;
-	SHA_LONG data[SHA_LBLOCK];
-	unsigned int num, md_len;
-} SHA256_CTX;
-#endif /* SHA_LONG */
+#if defined(LIBRESSL_VERSION_NUMBER)
+# define  EVP_MD_CTX_md_data(x)  (x->md_data)
+#endif
 
 #include "internal.h"
 #include "asn1.h"
@@ -3189,6 +3175,8 @@ static int
 iasecc_qsign_data_sha1(struct sc_context *ctx, const unsigned char *in, size_t in_len,
 				struct iasecc_qsign_data *out)
 {
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+
 	int r = SC_ERROR_INTERNAL;
 	EVP_MD_CTX *mdctx = NULL;
 	const EVP_MD *md = NULL;
@@ -3215,13 +3203,7 @@ iasecc_qsign_data_sha1(struct sc_context *ctx, const unsigned char *in, size_t i
 		goto err;
 	}
 	
-#if defined(LIBRESSL_VERSION_NUMBER)
-	md_data = (SHA_CTX *)mdctx->md_data;
-#elif  OPENSSL_VERSION_NUMBER < 0x30000000L
 	md_data = EVP_MD_CTX_md_data(mdctx);
-#else
-	md_data = EVP_MD_CTX_get0_md_data(mdctx);
-#endif
 	if (md_data == NULL) {
 		sc_log(ctx, "Failed to find md_data");
 		r = SC_ERROR_NOT_SUPPORTED;
@@ -3280,6 +3262,10 @@ end:
 	EVP_MD_CTX_free(mdctx);
 
 	LOG_FUNC_RETURN(ctx, r);
+
+#else /* OPENSSL_VERSION_NUMBER < 0x30000000L */
+	LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
+#endif /* OPENSSL_VERSION_NUMBER < 0x30000000L */
 }
 
 
@@ -3287,6 +3273,8 @@ static int
 iasecc_qsign_data_sha256(struct sc_context *ctx, const unsigned char *in, size_t in_len,
 				struct iasecc_qsign_data *out)
 {
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+
 	int r = SC_ERROR_INTERNAL;
 	EVP_MD_CTX *mdctx = NULL;
 	const EVP_MD *md = NULL;
@@ -3313,13 +3301,7 @@ iasecc_qsign_data_sha256(struct sc_context *ctx, const unsigned char *in, size_t
 		goto err;
 	}
 
-#if defined(LIBRESSL_VERSION_NUMBER)
-	md_data = (SHA256_CTX *)mdctx->md_data;
-#elif  OPENSSL_VERSION_NUMBER < 0x30000000L
 	md_data = EVP_MD_CTX_md_data(mdctx);
-#else
-	md_data = EVP_MD_CTX_get0_md_data(mdctx);
-#endif
 	if (md_data == NULL) {
 		sc_log(ctx, "Failed to find md_data");
 		r = SC_ERROR_NOT_SUPPORTED;
@@ -3372,6 +3354,10 @@ end:
 	EVP_MD_CTX_free(mdctx);
 
 	LOG_FUNC_RETURN(ctx, r);
+
+#else /* OPENSSL_VERSION_NUMBER < 0x30000000L */
+	LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
+#endif /* OPENSSL_VERSION_NUMBER < 0x30000000L */
 }
 
 
