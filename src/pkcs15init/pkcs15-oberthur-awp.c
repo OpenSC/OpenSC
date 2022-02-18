@@ -1067,7 +1067,7 @@ err:
 	ERR_clear_error();
 	if (pubkey.exponent.data) free(pubkey.exponent.data);
 	if (pubkey.modulus.data) free(pubkey.modulus.data);
-	if (x)		X509_free(x);
+	if (x) X509_free(x);
 	if (mem)	BIO_free(mem);
 	if (buff)	OPENSSL_free(buff);
 
