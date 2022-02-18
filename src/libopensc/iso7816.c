@@ -357,7 +357,7 @@ iso7816_process_fci(struct sc_card *card, struct sc_file *file,
 						size <<= 8;
 						size |= (uint32_t) p[i];
 					}
-					file->size = size;
+					file->size = (size > MAX_FILE_SIZE)? MAX_FILE_SIZE:size;
 				}
 				
 				sc_log(ctx, "  bytes in file: %"SC_FORMAT_LEN_SIZE_T"u", file->size);

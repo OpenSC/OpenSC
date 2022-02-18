@@ -2459,15 +2459,17 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 
 		if (file->ef_structure == SC_FILE_EF_LINEAR_VARIABLE) {
 
-			// in_path->index = record_no, in_path->count ignored!
+			// in_path->index: record_no
+			// in_path->count: ignored!
+
 			if(file->record_length > 0) {
-				len = file->record_length + 5;
+				len = (file->record_length > MAX_FILE_SIZE)? MAX_FILE_SIZE:file->record_length + 5;
 			} else {
 				len = 0x2000 + 5;
 			}
 			
 			if ((in_path->index <= 0) || (in_path->index > (int)(file->record_count))) {
-				r = SC_ERROR_INVALID_ASN1_OBJECT;
+				r = SC_ERROR_RECORD_NOT_FOUND;
 				goto fail_unlock;
 			}
 		
@@ -2475,7 +2477,7 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 
 			if (in_path->count < 0) {
 				if (file->size)
-					len = file->size;
+					len = (file->size > MAX_FILE_SIZE)? MAX_FILE_SIZE:file->size;
 				else
 					len = 1024;
 				offset = 0;
