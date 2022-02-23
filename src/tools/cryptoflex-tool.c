@@ -265,7 +265,7 @@ static int parse_public_key(const u8 *key, size_t keysize, EVP_PKEY *pkey)
 	return 0;
 }
 
-static int gen_d(BIGNUM *rsa_d_new, const BIGNUM *rsa_p, const BIGNUM *rsa_q, const BIGNUM *rsa_n, const BIGNUM *rsa_e)
+static int gen_d(BIGNUM **rsa_d_new, const BIGNUM *rsa_p, const BIGNUM *rsa_q, const BIGNUM *rsa_n, const BIGNUM *rsa_e)
 {
 	BN_CTX *bnctx;
 	BIGNUM *r0, *r1, *r2;
@@ -281,7 +281,7 @@ static int gen_d(BIGNUM *rsa_d_new, const BIGNUM *rsa_p, const BIGNUM *rsa_q, co
 	BN_sub(r1, rsa_p, BN_value_one());
 	BN_sub(r2, rsa_q, BN_value_one());
 	BN_mul(r0, r1, r2, bnctx);
-	if ((rsa_d_new = BN_mod_inverse(NULL, rsa_e, r0, bnctx)) == NULL) {
+	if ((*rsa_d_new = BN_mod_inverse(NULL, rsa_e, r0, bnctx)) == NULL) {
 		fprintf(stderr, "BN_mod_inverse() failed.\n");
 		return -1;
 	}
@@ -352,7 +352,7 @@ static int parse_private_key(const u8 *key, size_t keysize, EVP_PKEY *pkey)
 
 	if (RSA_set0_factors(rsa, bn_p, q) != 1 || 
 		RSA_set0_crt_params(rsa, dmp1, dmq1, iqmp) != 1 || 
-		gen_d(rsa_d, bn_p, q, rsa_n, rsa_e) != 0)
+		gen_d(&rsa_d, bn_p, q, rsa_n, rsa_e) != 0)
 		return -1;
 
 	/* RSA_set0_key will free previous value, and replace with new value
@@ -375,7 +375,7 @@ static int parse_private_key(const u8 *key, size_t keysize, EVP_PKEY *pkey)
 	}
 	OSSL_PARAM_get_BN(e, &rsa_e);
 	OSSL_PARAM_get_BN(n, &rsa_n);
-	gen_d(rsa_d, bn_p, q, rsa_n, rsa_e);
+	gen_d(&rsa_d, bn_p, q, rsa_n, rsa_e);
 	/* Merge params*/
 	if (!(bld = OSSL_PARAM_BLD_new()) || 
 		OSSL_PARAM_BLD_push_BN(bld, "d", rsa_d) != 1 || 
