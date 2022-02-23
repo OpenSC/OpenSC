@@ -72,6 +72,7 @@ static sc_pkcs11_mechanism_type_t openssl_sha1_mech = {
 	NULL,			/* unwrap */
 	NULL,			/* mech_data */
 	NULL,			/* free_mech_data */
+	NULL,			/* copy_mech_data */
 };
 
 static sc_pkcs11_mechanism_type_t openssl_sha224_mech = {
@@ -91,6 +92,7 @@ static sc_pkcs11_mechanism_type_t openssl_sha224_mech = {
 	NULL,			/* unwrap */
 	NULL,			/* mech_data */
 	NULL,			/* free_mech_data */
+	NULL,			/* copy_mech_data */
 };
 
 static sc_pkcs11_mechanism_type_t openssl_sha256_mech = {
@@ -110,6 +112,7 @@ static sc_pkcs11_mechanism_type_t openssl_sha256_mech = {
 	NULL,			/* unwrap */
 	NULL,			/* mech_data */
 	NULL,			/* free_mech_data */
+	NULL,			/* copy_mech_data */
 };
 
 static sc_pkcs11_mechanism_type_t openssl_sha384_mech = {
@@ -129,6 +132,7 @@ static sc_pkcs11_mechanism_type_t openssl_sha384_mech = {
 	NULL,			/* unwrap */
 	NULL,			/* mech_data */
 	NULL,			/* free_mech_data */
+	NULL,			/* copy_mech_data */
 };
 
 static sc_pkcs11_mechanism_type_t openssl_sha512_mech = {
@@ -148,6 +152,7 @@ static sc_pkcs11_mechanism_type_t openssl_sha512_mech = {
 	NULL,			/* unwrap */
 	NULL,			/* mech_data */
 	NULL,			/* free_mech_data */
+	NULL,			/* copy_mech_data */
 };
 
 static sc_pkcs11_mechanism_type_t openssl_gostr3411_mech = {
@@ -167,6 +172,7 @@ static sc_pkcs11_mechanism_type_t openssl_gostr3411_mech = {
 	NULL,			/* unwrap */
 	NULL,			/* mech_data */
 	NULL,			/* free_mech_data */
+	NULL,			/* copy_mech_data */
 };
 
 static sc_pkcs11_mechanism_type_t openssl_md5_mech = {
@@ -186,6 +192,7 @@ static sc_pkcs11_mechanism_type_t openssl_md5_mech = {
 	NULL,			/* unwrap */
 	NULL,			/* mech_data */
 	NULL,			/* free_mech_data */
+	NULL,			/* copy_mech_data */
 };
 
 static sc_pkcs11_mechanism_type_t openssl_ripemd160_mech = {
@@ -205,6 +212,7 @@ static sc_pkcs11_mechanism_type_t openssl_ripemd160_mech = {
 	NULL,			/* unwrap */
 	NULL,			/* mech_data */
 	NULL,			/* free_mech_data */
+	NULL,			/* copy_mech_data */
 };
 
 static void * dup_mem(void *in, size_t in_len)
