@@ -945,7 +945,7 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 	}
 
 	sc_pkcs15init_write_info(p15card, profile, pin_obj);
-	LOG_FUNC_RETURN(ctx, r);
+	pin_obj = NULL;
 err:
 	if (pin_obj)
 		sc_pkcs15_free_object(pin_obj);
@@ -1002,19 +1002,19 @@ sc_pkcs15init_store_puk(struct sc_pkcs15_card *p15card,
 	/* Now store the PINs */
 	if (profile->ops->create_pin) {
 		r = sc_pkcs15init_create_pin(p15card, profile, pin_obj, args);
+		LOG_TEST_GOTO_ERR(ctx, r, "Failed to create PIN");
 	}
 	else {
 		r = SC_ERROR_NOT_SUPPORTED;
 		LOG_TEST_GOTO_ERR(ctx, r, "In Old API store PUK object is not supported");
 	}
-	LOG_TEST_GOTO_ERR(ctx, r, "Failed to create PIN");
 
 	r = sc_pkcs15init_add_object(p15card, profile, SC_PKCS15_AODF, pin_obj);
 	LOG_TEST_GOTO_ERR(ctx, r, "Add pin object error");
 
 	profile->dirty = 1;
 
-	LOG_FUNC_RETURN(ctx, r);
+	pin_obj = NULL;
 err:
 	if (pin_obj)
 		sc_pkcs15_free_object(pin_obj);
@@ -1067,12 +1067,11 @@ sc_pkcs15init_store_pin(struct sc_pkcs15_card *p15card, struct sc_profile *profi
 	sc_log(ctx, "Store PIN(%.*s,authID:%s)", (int) sizeof pin_obj->label, pin_obj->label, sc_pkcs15_print_id(&auth_info->auth_id));
 	if (profile->ops->create_pin) {
 		r = sc_pkcs15init_create_pin(p15card, profile, pin_obj, args);
+		LOG_TEST_GOTO_ERR(ctx, r, "Card specific create PIN failed.");
 	} else {
 		r = SC_ERROR_NOT_SUPPORTED;
 		LOG_TEST_GOTO_ERR(ctx, r, "Store PIN operation is not supported");
 	}
-	
-	LOG_TEST_GOTO_ERR(ctx, r, "Card specific create PIN failed.");
 
 	r = sc_pkcs15init_add_object(p15card, profile, SC_PKCS15_AODF, pin_obj);
 	LOG_TEST_GOTO_ERR(ctx, r, "Failed to add PIN object");
@@ -1082,7 +1081,7 @@ sc_pkcs15init_store_pin(struct sc_pkcs15_card *p15card, struct sc_profile *profi
 
 	profile->dirty = 1;
 
-	LOG_FUNC_RETURN(ctx, r);
+	pin_obj = NULL;
 err:
 	if (pin_obj)
 		sc_pkcs15_free_object(pin_obj);
@@ -1295,9 +1294,15 @@ sc_pkcs15init_init_prkdf(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 		 * it will be freed with the corresponding object */
 		memcpy(new_ecparams, ecparams, sizeof(struct sc_ec_parameters));
 		new_ecparams->named_curve = strdup(ecparams->named_curve);
+		if (!new_ecparams->named_curve) {
+			r = SC_ERROR_OUT_OF_MEMORY;
+			free(new_ecparams);
+			LOG_TEST_GOTO_ERR(ctx, r, "Cannot allocate memory for EC parameters");
+		}
 		new_ecparams->der.value = malloc(ecparams->der.len);
 		if (!new_ecparams->der.value) {
 			r = SC_ERROR_OUT_OF_MEMORY;
+			free(new_ecparams->named_curve);
 			free(new_ecparams);
 			LOG_TEST_GOTO_ERR(ctx, r, "Cannot allocate memory for EC parameters");
 		}
@@ -1336,10 +1341,11 @@ sc_pkcs15init_init_prkdf(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 	}
 
 	*res_obj = object;
+	object = NULL;
 	r = SC_SUCCESS;
-	LOG_FUNC_RETURN(ctx, r);
+
 err:
-	if (key->algorithm == SC_ALGORITHM_EC && key_info->params.data) {
+	if (r < 0 && key->algorithm == SC_ALGORITHM_EC && key_info->params.data) {
 		free(((struct sc_ec_parameters *) key_info->params.data)->named_curve);
 		free(((struct sc_ec_parameters *) key_info->params.data)->der.value);
 		free(key_info->params.data);
@@ -1530,8 +1536,10 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 
 	if (check_key_compatibility(p15card, algorithm,
 			&keygen_args->prkey_args.key, keygen_args->prkey_args.x509_usage,
-			keybits, SC_ALGORITHM_ONBOARD_KEY_GEN) != SC_SUCCESS)
-		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Cannot generate key with the given parameters");
+			keybits, SC_ALGORITHM_ONBOARD_KEY_GEN) != SC_SUCCESS) {
+		r = SC_ERROR_NOT_SUPPORTED;
+		LOG_TEST_GOTO_ERR(ctx, r, "Cannot generate key with the given parameters");
+	}
 
 	if (profile->ops->generate_key == NULL) {
 		r = SC_ERROR_NOT_SUPPORTED;
@@ -1974,9 +1982,10 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card, struct sc_profile
 
 	if (r >= 0 && res_obj)
 		*res_obj = object;
+	object = NULL;
 
 	profile->dirty = 1;
-	LOG_FUNC_RETURN(ctx, r);
+
 err:
 	if (object)
 		sc_pkcs15_free_object(object);
