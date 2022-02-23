@@ -1002,12 +1002,13 @@ static int read_ssh_key(void)
 	if (pubkey->algorithm == SC_ALGORITHM_EDDSA) {
 		// SSH supports only ed25519 key now
 
-		char alg[20];
+		const char alg[] = "ssh-ed25519";
 		/* Large enough to fit the following:
 		 * 2 x 4B item length headers
 		 * max 11B algorithm name, 32B key data */
 		unsigned char buf[64];
-		unsigned int len, n;
+		unsigned int n;
+		int len;
 
 		n = pubkey->u.eddsa.pubkey.len;
 		if (n != 32) {
@@ -1015,12 +1016,12 @@ static int read_ssh_key(void)
 			goto fail2;
 		}
 
+		len = strlen(alg);
 		buf[0] = 0;
 		buf[1] = 0;
 		buf[2] = 0;
-		len = snprintf((char *) buf+4, 20, "ssh-ed25519");
-		memcpy(alg, buf+4, 20);
 		buf[3] = len;
+		memcpy(buf+4, alg, len);
 		len += 4;
 
 		buf[len++] = 0;
@@ -1051,7 +1052,8 @@ static int read_ssh_key(void)
 		 * 3 x 4B item length headers
 		 * max 20B algorithm name, 9B curve name, max 256B key data */
 		unsigned char buf[300];
-		unsigned int i, len, tmp, n;
+		unsigned int i, tmp, n;
+		int len;
 
 		for (n = 0,i = 0; ec_curves[i].curve_name != NULL; i++) {
 			if(sc_compare_oid (&ec_curves[i].curve_oid,&pubkey->u.ec.params.id))
@@ -1066,14 +1068,18 @@ static int read_ssh_key(void)
 			goto fail2;
 		}
 
+		len = snprintf(alg, sizeof alg, "ecdsa-sha2-nistp%d", n);
+		if (len < 0) {
+			fprintf(stderr, "failed to write algorithm\n");
+			goto fail2;
+		}
 		buf[0] = 0;
 		buf[1] = 0;
 		buf[2] = 0;
-		len = snprintf((char *) buf+4, 20, "ecdsa-sha2-nistp%d", n);
-		memcpy(alg, buf+4, 20);
 		buf[3] = len;
-
+		memcpy(buf+4, alg, len);
 		len += 4;
+
 		buf[len++] = 0;
 		buf[len++] = 0;
 		buf[len++] = 0;
