@@ -168,6 +168,8 @@ myeid_erase_card(struct sc_profile *profile, struct sc_pkcs15_card *p15card) {
 	/* ACLs are not actives if file is not in the operational state */
 	if (mf->status == SC_FILE_STATUS_ACTIVATED)
 		r = sc_pkcs15init_authenticate(profile, p15card, mf, SC_AC_OP_DELETE);
+	if (r < 0)
+		sc_file_free(mf);
 	LOG_TEST_RET(ctx, r, "'DELETE' authentication failed on MF");
 
 	data_obj.P1 = 0x01;
@@ -847,8 +849,8 @@ myeid_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 
 			/* Get public key modulus */
 			r = sc_select_file(card, &file->path, NULL);
-			if (r < 0)
-				sc_file_free(file);
+			sc_file_free(file);
+			file = NULL;
 			LOG_TEST_RET(ctx, r, "Cannot get key modulus: select key file failed");
 
 			data_obj.P1 = 0x01;
@@ -857,8 +859,6 @@ myeid_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 			data_obj.DataLen = sizeof (raw_pubkey);
 
 			r = sc_card_ctl(card, SC_CARDCTL_MYEID_GETDATA, &data_obj);
-			if (r < 0)
-				sc_file_free(file);
 			LOG_TEST_RET(ctx, r, "Cannot get RSA key modulus: 'MYEID_GETDATA' failed");
 
 			if ((data_obj.DataLen * 8) != key_info->modulus_length)
@@ -876,8 +876,8 @@ myeid_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 			pubkey->algorithm = SC_ALGORITHM_EC;
 
 			r = sc_select_file(card, &file->path, NULL);
-			if (r < 0)
-				sc_file_free(file);
+			sc_file_free(file);
+			file = NULL;
 			LOG_TEST_RET(ctx, r, "Cannot get public key: select key file failed");
 
 			data_obj.P1 = 0x01;
@@ -886,33 +886,24 @@ myeid_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 			data_obj.DataLen = sizeof (raw_pubkey);
 
 			r = sc_card_ctl(card, SC_CARDCTL_MYEID_GETDATA, &data_obj);
-			if (r < 0)
-				sc_file_free(file);
 			LOG_TEST_RET(ctx, r, "Cannot get EC public key: 'MYEID_GETDATA' failed");
 
 			dataptr = data_obj.Data;
 			r = sc_asn1_read_tag((const u8 **)&dataptr, data_obj.DataLen, &cla, &tag, &taglen);
 			if (dataptr == NULL)
 				r = SC_ERROR_ASN1_OBJECT_NOT_FOUND;
-			if (r < 0)
-				sc_file_free(file);
 			LOG_TEST_RET(ctx, r, "Invalid EC public key data. Cannot parse DER structure.");
 
-			if (taglen == 0) {
-				if (r < 0)
-					sc_file_free(file);
+			if (taglen == 0)
 			    LOG_FUNC_RETURN(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
-			}
 
 			if (pubkey->u.ec.ecpointQ.value)
 				free(pubkey->u.ec.ecpointQ.value);
 
 			pubkey->u.ec.ecpointQ.value = malloc(taglen);
 
-			if (pubkey->u.ec.ecpointQ.value == NULL) {
-				sc_file_free(file);
+			if (pubkey->u.ec.ecpointQ.value == NULL)
 				LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
-			}
 
 			memcpy(pubkey->u.ec.ecpointQ.value, dataptr, taglen);
 			pubkey->u.ec.ecpointQ.len = taglen;
@@ -926,13 +917,10 @@ myeid_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 			pubkey->u.ec.params.der.len = 0;
 
 			pubkey->u.ec.params.named_curve = strdup(ecparams->named_curve);
-			if (!pubkey->u.ec.params.named_curve) {
-				sc_file_free(file);
+			if (!pubkey->u.ec.params.named_curve)
 				LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
-			}
+
 			r = sc_pkcs15_fix_ec_parameters(ctx, &pubkey->u.ec.params);
-			if (r < 0)
-				sc_file_free(file);
 			LOG_TEST_RET(ctx, r, "Cannot fix EC parameters");
 		}
 	}
