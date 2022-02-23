@@ -1135,19 +1135,8 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 	sc_context_t *ctx = reader->ctx;
 	struct pcsc_global_private_data *gpriv = (struct pcsc_global_private_data *) ctx->reader_drv_data;
 	struct pcsc_private_data *priv = reader->drv_data;
-	DWORD rcount, feature_len, i;
-	PCSC_TLV_STRUCTURE *pcsc_tlv;
-	union {
-		PCSC_TLV_STRUCTURE msg;
-		u8 buf[256];
-	} feature_buf;
-	union {
-#ifdef PIN_PROPERTIES_v5
-		PIN_PROPERTIES_STRUCTURE_v5 capsv5;
-#endif
-		PIN_PROPERTIES_STRUCTURE caps;
-		u8 buf[SC_MAX_APDU_BUFFER_SIZE];
-	} rbuf;
+	DWORD rcount, i;
+	u8 buf[256];
 	LONG rv;
 	const char *log_disabled = "but it's disabled in configuration file";
 	int id_vendor = 0, id_product = 0;
@@ -1159,44 +1148,41 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 	if (gpriv->SCardControl == NULL)
 		return;
 
-	rv = gpriv->SCardControl(card_handle, CM_IOCTL_GET_FEATURE_REQUEST, NULL, 0, feature_buf.buf, sizeof(feature_buf.buf), &feature_len);
+	rv = gpriv->SCardControl(card_handle, CM_IOCTL_GET_FEATURE_REQUEST, NULL, 0, buf, sizeof(buf), &rcount);
 	if (rv != SCARD_S_SUCCESS) {
 		PCSC_TRACE(reader, "SCardControl failed", rv);
 		return;
 	}
 
-	if ((feature_len % sizeof(PCSC_TLV_STRUCTURE)) != 0
-			|| feature_len > sizeof(feature_buf.buf)) {
+	if ((rcount % sizeof(PCSC_TLV_STRUCTURE)) != 0
+			|| rcount > sizeof buf) {
 		sc_log(ctx, "Inconsistent TLV from reader!");
 		return;
 	}
 
-	/* get the number of elements instead of the complete size */
-	feature_len /= sizeof(PCSC_TLV_STRUCTURE);
-
-	pcsc_tlv = &feature_buf.msg;
-	for (i = 0; i < feature_len; i++) {
-		sc_log(ctx, "Reader feature %02x found", pcsc_tlv[i].tag);
-		if (pcsc_tlv[i].tag == FEATURE_VERIFY_PIN_DIRECT) {
-			priv->verify_ioctl = ntohl(pcsc_tlv[i].value);
-		} else if (pcsc_tlv[i].tag == FEATURE_VERIFY_PIN_START) {
-			priv->verify_ioctl_start = ntohl(pcsc_tlv[i].value);
-		} else if (pcsc_tlv[i].tag == FEATURE_VERIFY_PIN_FINISH) {
-			priv->verify_ioctl_finish = ntohl(pcsc_tlv[i].value);
-		} else if (pcsc_tlv[i].tag == FEATURE_MODIFY_PIN_DIRECT) {
-			priv->modify_ioctl = ntohl(pcsc_tlv[i].value);
-		} else if (pcsc_tlv[i].tag == FEATURE_MODIFY_PIN_START) {
-			priv->modify_ioctl_start = ntohl(pcsc_tlv[i].value);
-		} else if (pcsc_tlv[i].tag == FEATURE_MODIFY_PIN_FINISH) {
-			priv->modify_ioctl_finish = ntohl(pcsc_tlv[i].value);
-		} else if (pcsc_tlv[i].tag == FEATURE_IFD_PIN_PROPERTIES) {
-			priv->pin_properties_ioctl = ntohl(pcsc_tlv[i].value);
-		} else if (pcsc_tlv[i].tag == FEATURE_GET_TLV_PROPERTIES)  {
-			priv->get_tlv_properties = ntohl(pcsc_tlv[i].value);
-		} else if (pcsc_tlv[i].tag == FEATURE_EXECUTE_PACE) {
-			priv->pace_ioctl = ntohl(pcsc_tlv[i].value);
+	for (i = 0; i < rcount; i += sizeof(PCSC_TLV_STRUCTURE)) {
+		PCSC_TLV_STRUCTURE *pcsc_tlv = (PCSC_TLV_STRUCTURE *)(buf+i);
+		sc_log(ctx, "Reader feature %02x found", pcsc_tlv->tag);
+		if (pcsc_tlv->tag == FEATURE_VERIFY_PIN_DIRECT) {
+			priv->verify_ioctl = ntohl(pcsc_tlv->value);
+		} else if (pcsc_tlv->tag == FEATURE_VERIFY_PIN_START) {
+			priv->verify_ioctl_start = ntohl(pcsc_tlv->value);
+		} else if (pcsc_tlv->tag == FEATURE_VERIFY_PIN_FINISH) {
+			priv->verify_ioctl_finish = ntohl(pcsc_tlv->value);
+		} else if (pcsc_tlv->tag == FEATURE_MODIFY_PIN_DIRECT) {
+			priv->modify_ioctl = ntohl(pcsc_tlv->value);
+		} else if (pcsc_tlv->tag == FEATURE_MODIFY_PIN_START) {
+			priv->modify_ioctl_start = ntohl(pcsc_tlv->value);
+		} else if (pcsc_tlv->tag == FEATURE_MODIFY_PIN_FINISH) {
+			priv->modify_ioctl_finish = ntohl(pcsc_tlv->value);
+		} else if (pcsc_tlv->tag == FEATURE_IFD_PIN_PROPERTIES) {
+			priv->pin_properties_ioctl = ntohl(pcsc_tlv->value);
+		} else if (pcsc_tlv->tag == FEATURE_GET_TLV_PROPERTIES)  {
+			priv->get_tlv_properties = ntohl(pcsc_tlv->value);
+		} else if (pcsc_tlv->tag == FEATURE_EXECUTE_PACE) {
+			priv->pace_ioctl = ntohl(pcsc_tlv->value);
 		} else {
-			sc_log(ctx, "Reader feature %02x is not supported", pcsc_tlv[i].tag);
+			sc_log(ctx, "Reader feature %02x is not supported", pcsc_tlv->tag);
 		}
 	}
 
@@ -1234,13 +1220,13 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 
 	/* Detect display */
 	if (priv->pin_properties_ioctl) {
-		rcount = sizeof(rbuf.buf);
+		rcount = sizeof(buf);
 		rv = gpriv->SCardControl(card_handle, priv->pin_properties_ioctl,
-			NULL, 0, rbuf.buf, sizeof(rbuf.buf), &rcount);
+			NULL, 0, buf, sizeof(buf), &rcount);
 		if (rv == SCARD_S_SUCCESS) {
 #ifdef PIN_PROPERTIES_v5
 			if (rcount == sizeof(PIN_PROPERTIES_STRUCTURE_v5)) {
-				PIN_PROPERTIES_STRUCTURE_v5 *caps = &rbuf.capsv5;
+				PIN_PROPERTIES_STRUCTURE_v5 *caps = (PIN_PROPERTIES_STRUCTURE_v5 *) &buf;
 				if (caps->wLcdLayout > 0) {
 					sc_log(ctx, "Reader has a display: %04X", caps->wLcdLayout);
 					reader->capabilities |= SC_READER_CAP_DISPLAY;
@@ -1249,7 +1235,7 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 			}
 #endif
 			if (rcount == sizeof(PIN_PROPERTIES_STRUCTURE)) {
-				PIN_PROPERTIES_STRUCTURE *caps = &rbuf.caps;
+				PIN_PROPERTIES_STRUCTURE *caps = (PIN_PROPERTIES_STRUCTURE *) buf;
 				if (caps->wLcdLayout > 0) {
 					sc_log(ctx, "Reader has a display: %04X", caps->wLcdLayout);
 					reader->capabilities |= SC_READER_CAP_DISPLAY;
@@ -1308,13 +1294,13 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 	}
 
 	if(gpriv->SCardGetAttrib != NULL) {
-		rcount = sizeof(rbuf.buf);
+		rcount = sizeof(buf);
 		if (gpriv->SCardGetAttrib(card_handle, SCARD_ATTR_VENDOR_NAME,
-					rbuf.buf, &rcount) == SCARD_S_SUCCESS
+					buf, &rcount) == SCARD_S_SUCCESS
 				&& rcount > 0) {
 			/* add NUL termination, just in case... */
-			rbuf.buf[(sizeof rbuf.buf)-1] = '\0';
-			reader->vendor = strdup((char *) rbuf.buf);
+			buf[(sizeof buf)-1] = '\0';
+			reader->vendor = strdup((char *) buf);
 		}
 
 		rcount = sizeof i;
