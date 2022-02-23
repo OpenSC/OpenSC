@@ -51,6 +51,7 @@ static sc_pkcs11_mechanism_type_t find_mechanism = {
 	NULL,		/* unwrap */
 	NULL,		/* mech_data */
 	NULL,		/* free_mech_data */
+	NULL,		/* copy_mech_data */
 };
 
 static void
