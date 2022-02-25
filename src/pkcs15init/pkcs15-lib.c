@@ -4040,9 +4040,17 @@ do_select_parent(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		}
 
 		r = sc_pkcs15init_create_file(profile, p15card, *parent);
+		if (r < 0) {
+			sc_file_free(*parent);
+			*parent = NULL;
+		}
 		LOG_TEST_RET(ctx, r, "Cannot create parent DF");
 
 		r = sc_select_file(p15card->card, &path, NULL);
+		if (r < 0) {
+			sc_file_free(*parent);
+			*parent = NULL;
+		}
 		LOG_TEST_RET(ctx, r, "Cannot select parent DF");
 	}
 	else if (r == SC_SUCCESS && !strcmp(p15card->card->name, "STARCOS")) {
@@ -4056,6 +4064,7 @@ do_select_parent(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 			LOG_FUNC_RETURN(ctx, r);
 		}
 	}
+
 	LOG_FUNC_RETURN(ctx, r);
 }
 
