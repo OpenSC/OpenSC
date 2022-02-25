@@ -226,6 +226,7 @@ static void * dup_mem(void *in, size_t in_len)
 void
 sc_pkcs11_register_openssl_mechanisms(struct sc_pkcs11_card *p11card)
 {
+	sc_pkcs11_mechanism_type_t *mt = NULL;
 #if !defined(OPENSSL_NO_ENGINE)
 	ENGINE *e;
 /* crypto locking removed in 1.1 */
@@ -273,23 +274,47 @@ sc_pkcs11_register_openssl_mechanisms(struct sc_pkcs11_card *p11card)
 #endif /* !defined(OPENSSL_NO_ENGINE) */
 
 	openssl_sha1_mech.mech_data = EVP_sha1();
-	sc_pkcs11_register_mechanism(p11card, dup_mem(&openssl_sha1_mech, sizeof openssl_sha1_mech), NULL);
+	mt = dup_mem(&openssl_sha1_mech, sizeof openssl_sha1_mech);
+	sc_pkcs11_register_mechanism(p11card, mt, NULL);
+	sc_pkcs11_free_mechanism(mt);
+
 	openssl_sha224_mech.mech_data = EVP_sha224();
-	sc_pkcs11_register_mechanism(p11card, dup_mem(&openssl_sha224_mech, sizeof openssl_sha224_mech), NULL);
+	mt = dup_mem(&openssl_sha224_mech, sizeof openssl_sha224_mech);
+	sc_pkcs11_register_mechanism(p11card, mt, NULL);
+	sc_pkcs11_free_mechanism(mt);
+
 	openssl_sha256_mech.mech_data = EVP_sha256();
-	sc_pkcs11_register_mechanism(p11card, dup_mem(&openssl_sha256_mech, sizeof openssl_sha256_mech), NULL);
+	mt = dup_mem(&openssl_sha256_mech, sizeof openssl_sha256_mech);
+	sc_pkcs11_register_mechanism(p11card, mt, NULL);
+	sc_pkcs11_free_mechanism(mt);
+
 	openssl_sha384_mech.mech_data = EVP_sha384();
-	sc_pkcs11_register_mechanism(p11card, dup_mem(&openssl_sha384_mech, sizeof openssl_sha384_mech), NULL);
+	mt = dup_mem(&openssl_sha384_mech, sizeof openssl_sha384_mech);
+	sc_pkcs11_register_mechanism(p11card, mt, NULL);
+	sc_pkcs11_free_mechanism(mt);
+
 	openssl_sha512_mech.mech_data = EVP_sha512();
-	sc_pkcs11_register_mechanism(p11card, dup_mem(&openssl_sha512_mech, sizeof openssl_sha512_mech), NULL);
+	mt = dup_mem(&openssl_sha512_mech, sizeof openssl_sha512_mech);
+	sc_pkcs11_register_mechanism(p11card, mt, NULL);
+	sc_pkcs11_free_mechanism(mt);
+
 	if (!FIPS_mode()) {
 		openssl_md5_mech.mech_data = EVP_md5();
-		sc_pkcs11_register_mechanism(p11card, dup_mem(&openssl_md5_mech, sizeof openssl_md5_mech), NULL);
+		mt = dup_mem(&openssl_md5_mech, sizeof openssl_md5_mech);
+		sc_pkcs11_register_mechanism(p11card, mt, NULL);
+		sc_pkcs11_free_mechanism(mt);
+
 		openssl_ripemd160_mech.mech_data = EVP_ripemd160();
-		sc_pkcs11_register_mechanism(p11card, dup_mem(&openssl_ripemd160_mech, sizeof openssl_ripemd160_mech), NULL);
+		mt = dup_mem(&openssl_ripemd160_mech, sizeof openssl_ripemd160_mech);
+		sc_pkcs11_register_mechanism(p11card, mt, NULL);
+		sc_pkcs11_free_mechanism(mt);
+
 	}
 	openssl_gostr3411_mech.mech_data = EVP_get_digestbynid(NID_id_GostR3411_94);
-	sc_pkcs11_register_mechanism(p11card, dup_mem(&openssl_gostr3411_mech, sizeof openssl_gostr3411_mech), NULL);
+	mt = dup_mem(&openssl_gostr3411_mech, sizeof openssl_gostr3411_mech);
+	sc_pkcs11_register_mechanism(p11card, mt, NULL);
+	sc_pkcs11_free_mechanism(mt);
+
 }
 
 
