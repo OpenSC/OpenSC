@@ -1315,6 +1315,16 @@ sc_pkcs11_new_fw_mechanism(CK_MECHANISM_TYPE mech,
 	return mt;
 }
 
+void sc_pkcs11_free_mechanism(sc_pkcs11_mechanism_type_t *mt)
+{
+	if (!mt)
+		return;
+	if (mt->free_mech_data)
+		mt->free_mech_data(mt->mech_data);
+	free(mt);
+	mt = NULL;
+}
+
 /*
  * Register generic mechanisms
  */
@@ -1380,10 +1390,7 @@ sc_pkcs11_register_sign_and_hash_mechanism(struct sc_pkcs11_card *p11card,
 	}
 
 	rv = sc_pkcs11_register_mechanism(p11card, new_type, NULL);
-	if (CKR_OK != rv) {
-		new_type->free_mech_data(new_type->mech_data);
-		free(new_type);
-	}
+	sc_pkcs11_free_mechanism(new_type);
 
 	return rv;
 }
