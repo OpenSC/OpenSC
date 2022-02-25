@@ -121,7 +121,7 @@ sc_pkcs11_copy_mechanism(sc_pkcs11_mechanism_type_t *mt,
  */
 CK_RV
 sc_pkcs11_register_mechanism(struct sc_pkcs11_card *p11card,
-				sc_pkcs11_mechanism_type_t *mt)
+				sc_pkcs11_mechanism_type_t *mt, sc_pkcs11_mechanism_type_t **result_mt)
 {
 	sc_pkcs11_mechanism_type_t *existing_mt;
 	sc_pkcs11_mechanism_type_t *copy_mt = NULL;
@@ -168,6 +168,9 @@ sc_pkcs11_register_mechanism(struct sc_pkcs11_card *p11card,
 	p11card->mechanisms = p;
 	p[p11card->nmechanisms++] = copy_mt;
 	p[p11card->nmechanisms] = NULL;
+	/* Return registered mechanism for further use */
+	if (result_mt)
+		*result_mt = copy_mt;
 	return CKR_OK;
 }
 
@@ -1376,7 +1379,7 @@ sc_pkcs11_register_sign_and_hash_mechanism(struct sc_pkcs11_card *p11card,
 		return CKR_HOST_MEMORY;
 	}
 
-	rv = sc_pkcs11_register_mechanism(p11card, new_type);
+	rv = sc_pkcs11_register_mechanism(p11card, new_type, NULL);
 	if (CKR_OK != rv) {
 		new_type->free_mech_data(new_type->mech_data);
 		free(new_type);
