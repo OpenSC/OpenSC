@@ -1825,9 +1825,10 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card, struct sc_profil
 
 	if (r >= 0 && res_obj)
 		*res_obj = object;
+	object = NULL;
 
 	profile->dirty = 1;
-	LOG_FUNC_RETURN(ctx, r);
+
 err:
 	if (object)
 		sc_pkcs15_free_object(object);
