@@ -128,7 +128,7 @@ sc_pkcs11_register_mechanism(struct sc_pkcs11_card *p11card,
 	sc_pkcs11_mechanism_type_t *existing_mt;
 	sc_pkcs11_mechanism_type_t *copy_mt = NULL;
 	sc_pkcs11_mechanism_type_t **p;
-	int i;
+	int i, rv;
 
 	if (mt == NULL)
 		return CKR_HOST_MEMORY;
@@ -163,9 +163,9 @@ sc_pkcs11_register_mechanism(struct sc_pkcs11_card *p11card,
 			(p11card->nmechanisms + 2) * sizeof(*p));
 	if (p == NULL)
 		return CKR_HOST_MEMORY;
-	if (sc_pkcs11_copy_mechanism(mt, &copy_mt) != CKR_OK) {
+	if ((rv = sc_pkcs11_copy_mechanism(mt, &copy_mt)) != CKR_OK) {
 		free(p);
-		return CKR_HOST_MEMORY;
+		return rv;
 	}
 	p11card->mechanisms = p;
 	p[p11card->nmechanisms++] = copy_mt;
