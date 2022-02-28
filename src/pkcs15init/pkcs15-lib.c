@@ -2492,6 +2492,10 @@ check_keygen_params_consistency(struct sc_card *card,
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 	}
 
+	if (alg == SC_ALGORITHM_EC && prkey)
+		/* allocated in sc_pkcs15_fix_ec_parameters */
+		free(prkey->key.u.ec.params.der.value);
+
 	LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 }
 
