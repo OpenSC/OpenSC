@@ -1324,7 +1324,6 @@ void sc_pkcs11_free_mechanism(sc_pkcs11_mechanism_type_t *mt)
 	if (mt->free_mech_data)
 		mt->free_mech_data(mt->mech_data);
 	free(mt);
-	mt = NULL;
 }
 
 /*
