@@ -98,6 +98,8 @@ static CK_RV
 sc_pkcs11_copy_mechanism(sc_pkcs11_mechanism_type_t *mt,
 				sc_pkcs11_mechanism_type_t **new_mt)
 {
+	int rv;
+
 	*new_mt = calloc(1, sizeof(sc_pkcs11_mechanism_type_t));
 	if (!(*new_mt))
 		return CKR_HOST_MEMORY;
@@ -105,9 +107,9 @@ sc_pkcs11_copy_mechanism(sc_pkcs11_mechanism_type_t *mt,
 	memcpy(*new_mt, mt, sizeof(sc_pkcs11_mechanism_type_t));
 	/* mech_data needs specific function for making copy*/
 	if (mt->copy_mech_data
-		&& mt->copy_mech_data(mt->mech_data, (void **) &(*new_mt)->mech_data) != CKR_OK) {
+		&& (rv = mt->copy_mech_data(mt->mech_data, (void **) &(*new_mt)->mech_data)) != CKR_OK) {
 		free(*new_mt);
-		return CKR_HOST_MEMORY;
+		return rv;
 	}
 	
 	return CKR_OK;
@@ -1344,8 +1346,11 @@ void free_info(const void *info)
 
 CK_RV copy_hash_signature_info(const void *mech_data, void **new_data)
 {
+	if (mech_data == NULL || new_data == NULL)
+		return CKR_ARGUMENTS_BAD;
+
 	*new_data = calloc(1, sizeof(struct hash_signature_info));
-	if (!new_data)
+	if (!(*new_data))
 		return CKR_HOST_MEMORY;
 	
 	memcpy(*new_data, mech_data, sizeof(struct hash_signature_info));
