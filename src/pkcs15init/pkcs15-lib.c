@@ -1216,6 +1216,7 @@ sc_pkcs15init_init_prkdf(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 	const char	*label;
 	unsigned int	usage;
 	int		r = 0, key_type;
+	struct sc_ec_parameters *new_ecparams = NULL;
 
 	LOG_FUNC_CALLED(ctx);
 	if (!res_obj || !keybits) {
@@ -1284,8 +1285,7 @@ sc_pkcs15init_init_prkdf(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 	else if (key->algorithm == SC_ALGORITHM_EC)  {
 		/* keyargs->key.u.ec.params.der.value is allocated in keyargs, which is on stack */
 		struct sc_ec_parameters *ecparams = &keyargs->key.u.ec.params;
-		struct sc_ec_parameters *new_ecparams = malloc(sizeof(struct sc_ec_parameters));
-		key_info->params.data = NULL;
+		new_ecparams = calloc(1, sizeof(struct sc_ec_parameters));
 		if (!new_ecparams) {
 			r = SC_ERROR_OUT_OF_MEMORY;
 			LOG_TEST_GOTO_ERR(ctx, r, "Cannot allocate memory for EC parameters");
@@ -1293,17 +1293,11 @@ sc_pkcs15init_init_prkdf(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 		/* copy ecparams into allocated one
 		 * it will be freed with the corresponding object */
 		memcpy(new_ecparams, ecparams, sizeof(struct sc_ec_parameters));
+
 		new_ecparams->named_curve = strdup(ecparams->named_curve);
-		if (!new_ecparams->named_curve) {
-			r = SC_ERROR_OUT_OF_MEMORY;
-			free(new_ecparams);
-			LOG_TEST_GOTO_ERR(ctx, r, "Cannot allocate memory for EC parameters");
-		}
 		new_ecparams->der.value = malloc(ecparams->der.len);
-		if (!new_ecparams->der.value) {
+		if (!new_ecparams->named_curve || !new_ecparams->der.value) {
 			r = SC_ERROR_OUT_OF_MEMORY;
-			free(new_ecparams->named_curve);
-			free(new_ecparams);
 			LOG_TEST_GOTO_ERR(ctx, r, "Cannot allocate memory for EC parameters");
 		}
 		memcpy(new_ecparams->der.value, ecparams->der.value, ecparams->der.len);
@@ -1342,13 +1336,15 @@ sc_pkcs15init_init_prkdf(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 
 	*res_obj = object;
 	object = NULL;
+	new_ecparams = NULL;
 	r = SC_SUCCESS;
 
 err:
-	if (r < 0 && key->algorithm == SC_ALGORITHM_EC && key_info->params.data) {
-		free(((struct sc_ec_parameters *) key_info->params.data)->named_curve);
-		free(((struct sc_ec_parameters *) key_info->params.data)->der.value);
-		free(key_info->params.data);
+	if (new_ecparams) {
+		free(new_ecparams->named_curve);
+		free(new_ecparams->der.value);
+		free(new_ecparams);
+		key_info->params.data = NULL;
 	}
 	sc_pkcs15init_free_object(object);
 	LOG_FUNC_RETURN(ctx, r);
