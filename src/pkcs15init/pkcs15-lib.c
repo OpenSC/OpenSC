@@ -946,9 +946,9 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 
 	sc_pkcs15init_write_info(p15card, profile, pin_obj);
 	pin_obj = NULL;
+
 err:
-	if (pin_obj)
-		sc_pkcs15_free_object(pin_obj);
+	sc_pkcs15_free_object(pin_obj);
 	LOG_FUNC_RETURN(ctx, r);
 }
 
@@ -1015,9 +1015,9 @@ sc_pkcs15init_store_puk(struct sc_pkcs15_card *p15card,
 	profile->dirty = 1;
 
 	pin_obj = NULL;
+
 err:
-	if (pin_obj)
-		sc_pkcs15_free_object(pin_obj);
+	sc_pkcs15_free_object(pin_obj);
 	LOG_FUNC_RETURN(ctx, r);
 }
 
@@ -1082,9 +1082,9 @@ sc_pkcs15init_store_pin(struct sc_pkcs15_card *p15card, struct sc_profile *profi
 	profile->dirty = 1;
 
 	pin_obj = NULL;
+
 err:
-	if (pin_obj)
-		sc_pkcs15_free_object(pin_obj);
+	sc_pkcs15_free_object(pin_obj);
 	LOG_FUNC_RETURN(ctx, r);
 }
 
@@ -1350,8 +1350,7 @@ err:
 		free(((struct sc_ec_parameters *) key_info->params.data)->der.value);
 		free(key_info->params.data);
 	}
-	if (object)
-		sc_pkcs15init_free_object(object);
+	sc_pkcs15init_free_object(object);
 	LOG_FUNC_RETURN(ctx, r);
 }
 
@@ -1450,8 +1449,7 @@ sc_pkcs15init_init_skdf(struct sc_pkcs15_card *p15card, struct sc_profile *profi
 	r = SC_SUCCESS;
 
 err:
-	if (object)
-		sc_pkcs15init_free_object(object);
+	sc_pkcs15init_free_object(object);
 	LOG_FUNC_RETURN(ctx, r);
 }
 
@@ -1665,15 +1663,13 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 		*res_obj = object;
 	object = NULL;
 
-	sc_pkcs15_erase_pubkey(&pubkey_args.key);
+	sc_pkcs15_erase_pubkey(pubkey);
 
 	profile->dirty = 1;
 
 err:
-	if (pubkey)
-		sc_pkcs15_erase_pubkey(&pubkey_args.key);
-	if (object)
-		sc_pkcs15_free_object(object);
+	sc_pkcs15_erase_pubkey(pubkey);
+	sc_pkcs15_free_object(object);
 	if (algorithm == SC_ALGORITHM_EC)
 		/* allocated in check_keygen_params_consistency() */
 		free(keygen_args->prkey_args.key.u.ec.params.der.value);
@@ -1739,9 +1735,9 @@ sc_pkcs15init_generate_secret_key(struct sc_pkcs15_card *p15card, struct sc_prof
 	object = NULL;
 
 	profile->dirty = 1;
+
 err:
-	if (object)
-		sc_pkcs15_free_object(object);
+	sc_pkcs15_free_object(object);
 	LOG_FUNC_RETURN(ctx, r);
 }
 
@@ -1830,8 +1826,7 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card, struct sc_profil
 	profile->dirty = 1;
 
 err:
-	if (object)
-		sc_pkcs15_free_object(object);
+	sc_pkcs15_free_object(object);
 	LOG_FUNC_RETURN(ctx, r);
 }
 
@@ -1982,8 +1977,7 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card, struct sc_profile
 	profile->dirty = 1;
 
 err:
-	if (object)
-		sc_pkcs15_free_object(object);
+	sc_pkcs15_free_object(object);
 	LOG_FUNC_RETURN(ctx, r);
 }
 
@@ -2070,9 +2064,9 @@ sc_pkcs15init_store_secret_key(struct sc_pkcs15_card *p15card, struct sc_profile
 	object = NULL;
 
 	profile->dirty = 1;
+
 err:
-	if (object)
-		sc_pkcs15_free_object(object);
+	sc_pkcs15_free_object(object);
 	LOG_FUNC_RETURN(ctx, r);
 }
 
@@ -2264,8 +2258,7 @@ sc_pkcs15init_store_data_object(struct sc_pkcs15_card *p15card,
 	profile->dirty = 1;
 
 err:
-	if (object)
-		sc_pkcs15_free_object(object);
+	sc_pkcs15_free_object(object);
 	LOG_FUNC_RETURN(ctx, r);
 }
 
@@ -2833,6 +2826,7 @@ sc_pkcs15init_select_intrinsic_id(struct sc_pkcs15_card *p15card, struct sc_prof
 done:
 	memcpy(id_out, &id, sizeof(*id_out));
 	rv = id_out->len;
+
 err:
 	if (id_data)
 		free(id_data);
