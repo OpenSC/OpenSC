@@ -1788,9 +1788,7 @@ do_generate_key(struct sc_profile *profile, const char *spec)
 	if (r == 0)
 		r = sc_pkcs15init_generate_key(g_p15card, profile, &keygen_args, keybits, NULL);
 	sc_unlock(g_p15card->card);
-	if (algorithm == SC_ALGORITHM_EC)
-		/* allocated in parse_alg_spec() */
-		free(keygen_args.prkey_args.key.u.ec.params.named_curve);
+	sc_pkcs15_free_prkey(&keygen_args.prkey_args.key);
 	return r;
 }
 

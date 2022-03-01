@@ -1666,9 +1666,11 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 err:
 	sc_pkcs15_erase_pubkey(pubkey);
 	sc_pkcs15_free_object(object);
-	if (algorithm == SC_ALGORITHM_EC)
+	if (algorithm == SC_ALGORITHM_EC) {
 		/* allocated in check_keygen_params_consistency() */
 		free(keygen_args->prkey_args.key.u.ec.params.der.value);
+		keygen_args->prkey_args.key.u.ec.params.der.value = NULL;
+	}
 	LOG_FUNC_RETURN(ctx, r);
 }
 
