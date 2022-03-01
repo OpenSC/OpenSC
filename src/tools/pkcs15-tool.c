@@ -221,7 +221,7 @@ struct _access_rule_text {
 	{0, NULL},
 };
 
-static const char *key_types[] = { "", "RSA", "GOSTR3410", "EC", "EDDSA", "XEDDSA", "", "" };
+static const char *key_types[] = { "", "RSA", "", "GOSTR3410", "EC", "EDDSA", "XEDDSA", "" };
 
 static void
 print_access_rules(const struct sc_pkcs15_accessrule *rules, int num)
