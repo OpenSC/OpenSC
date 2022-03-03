@@ -444,12 +444,18 @@ check_card_reader_status(PCARD_DATA pCardData, const char *name)
 			(size_t)vs->hSCardCtx,
 			(size_t)vs->hScard);
 		if (vs->ctx) {
-			vs->hScard = pCardData->hScard;
-			vs->hSCardCtx = pCardData->hSCardCtx;
-			r = sc_ctx_use_reader(vs->ctx, &vs->hSCardCtx, &vs->hScard);
+			/* call with new handles but dont change vs yet */
+			r = sc_ctx_use_reader(vs->ctx, &pCardData->hSCardCtx, &pCardData->hScard);
 			logprintf(pCardData, 1, "sc_ctx_use_reader returned %d\n", r);
-			if (r)
+			if (r == SC_ERROR_READER) { /* handles are using different reader */
+				/* reinit_card_for will will free old reader and set new reader */
+				reinit_card_for(pCardData, name);
+			} else if (r) {
 			    MD_FUNC_RETURN(pCardData, 1, SCARD_F_INTERNAL_ERROR);
+			} else {
+				vs->hScard = pCardData->hScard;
+				vs->hSCardCtx = pCardData->hSCardCtx;
+			}
 		}
 	}
 
