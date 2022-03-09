@@ -552,7 +552,9 @@ static int muscle_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *cmd,
 		case SC_AC_CHV: {
 			sc_apdu_t apdu;
 			int r;
-			msc_verify_pin_apdu(card, &apdu, buffer, bufferLength, cmd->pin_reference, cmd->pin1.data, cmd->pin1.len);
+			r = msc_verify_pin_apdu(card, &apdu, buffer, bufferLength, cmd->pin_reference, cmd->pin1.data, cmd->pin1.len);
+			if (r < 0)
+				return r;
 			cmd->apdu = &apdu;
 			cmd->pin1.offset = 5;
 			r = iso_ops->pin_cmd(card, cmd, tries_left);
@@ -572,7 +574,10 @@ static int muscle_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *cmd,
 		switch(cmd->pin_type) {
 		case SC_AC_CHV: {
 			sc_apdu_t apdu;
-			msc_change_pin_apdu(card, &apdu, buffer, bufferLength, cmd->pin_reference, cmd->pin1.data, cmd->pin1.len, cmd->pin2.data, cmd->pin2.len);
+			int r;
+			r = msc_change_pin_apdu(card, &apdu, buffer, bufferLength, cmd->pin_reference, cmd->pin1.data, cmd->pin1.len, cmd->pin2.data, cmd->pin2.len);
+			if (r < 0)
+				return r;
 			cmd->apdu = &apdu;
 			return iso_ops->pin_cmd(card, cmd, tries_left);
 		}
@@ -588,7 +593,10 @@ static int muscle_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *cmd,
 	switch(cmd->pin_type) {
 		case SC_AC_CHV: {
 			sc_apdu_t apdu;
-			msc_unblock_pin_apdu(card, &apdu, buffer, bufferLength, cmd->pin_reference, cmd->pin1.data, cmd->pin1.len);
+			int r;
+			r = msc_unblock_pin_apdu(card, &apdu, buffer, bufferLength, cmd->pin_reference, cmd->pin1.data, cmd->pin1.len);
+			if (r < 0)
+				return r;
 			cmd->apdu = &apdu;
 			return iso_ops->pin_cmd(card, cmd, tries_left);
 		}

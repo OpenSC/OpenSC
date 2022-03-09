@@ -288,9 +288,13 @@ int msc_verify_pin(sc_card_t *card, int pinNumber, const u8 *pinValue, int pinLe
 
 	const int bufferLength = MSC_MAX_PIN_LENGTH;
 	u8 buffer[MSC_MAX_PIN_LENGTH];
-	assert(pinLength <= MSC_MAX_PIN_LENGTH);
 
-	msc_verify_pin_apdu(card, &apdu, buffer, bufferLength, pinNumber, pinValue, pinLength);
+	if (pinLength > MSC_MAX_PIN_LENGTH)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
+	r = msc_verify_pin_apdu(card, &apdu, buffer, bufferLength, pinNumber, pinValue, pinLength);
+	LOG_TEST_RET(card->ctx, r, "APDU verification failed");
+
 	if(tries)
 		*tries = -1;
 	r = sc_transmit_apdu(card, &apdu);
@@ -311,11 +315,10 @@ int msc_verify_pin(sc_card_t *card, int pinNumber, const u8 *pinValue, int pinLe
 }
 
 /* USE ISO_VERIFY due to tries return */
-void msc_verify_pin_apdu(sc_card_t *card, sc_apdu_t *apdu, u8* buffer, size_t bufferLength, int pinNumber, const u8 *pinValue, int pinLength)
+int msc_verify_pin_apdu(sc_card_t *card, sc_apdu_t *apdu, u8* buffer, size_t bufferLength, int pinNumber, const u8 *pinValue, int pinLength)
 {
-	assert(buffer);
-	assert(bufferLength >= (size_t)pinLength);
-	assert(pinLength <= MSC_MAX_PIN_LENGTH);
+	if (!buffer || bufferLength < (size_t)pinLength || pinLength > MSC_MAX_PIN_LENGTH)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	truncatePinNulls(pinValue, &pinLength);
 
@@ -324,6 +327,7 @@ void msc_verify_pin_apdu(sc_card_t *card, sc_apdu_t *apdu, u8* buffer, size_t bu
 	apdu->lc = pinLength;
 	apdu->data = buffer;
 	apdu->datalen = pinLength;
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
 int msc_unblock_pin(sc_card_t *card, int pinNumber, const u8 *pukValue, int pukLength, int *tries)
@@ -333,9 +337,12 @@ int msc_unblock_pin(sc_card_t *card, int pinNumber, const u8 *pukValue, int pukL
 	const int bufferLength = MSC_MAX_PIN_LENGTH;
 	u8 buffer[MSC_MAX_PIN_LENGTH];
 
-	assert(pukLength <= MSC_MAX_PIN_LENGTH);
+	if (pukLength > MSC_MAX_PIN_LENGTH)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-	msc_unblock_pin_apdu(card, &apdu, buffer, bufferLength, pinNumber, pukValue, pukLength);
+	r = msc_unblock_pin_apdu(card, &apdu, buffer, bufferLength, pinNumber, pukValue, pukLength);
+	LOG_TEST_RET(card->ctx, r, "APDU unblock failed");
+
 	if(tries)
 		*tries = -1;
 	r = sc_transmit_apdu(card, &apdu);
@@ -355,11 +362,10 @@ int msc_unblock_pin(sc_card_t *card, int pinNumber, const u8 *pukValue, int pukL
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,  SC_ERROR_PIN_CODE_INCORRECT);
 }
 
-void msc_unblock_pin_apdu(sc_card_t *card, sc_apdu_t *apdu, u8* buffer, size_t bufferLength, int pinNumber, const u8 *pukValue, int pukLength)
+int msc_unblock_pin_apdu(sc_card_t *card, sc_apdu_t *apdu, u8* buffer, size_t bufferLength, int pinNumber, const u8 *pukValue, int pukLength)
 {
-	assert(buffer);
-	assert(bufferLength >= (size_t)pukLength);
-	assert(pukLength <= MSC_MAX_PIN_LENGTH);
+	if (!buffer || bufferLength < (size_t)pukLength || pukLength > MSC_MAX_PIN_LENGTH)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	truncatePinNulls(pukValue, &pukLength);
 
@@ -368,6 +374,7 @@ void msc_unblock_pin_apdu(sc_card_t *card, sc_apdu_t *apdu, u8* buffer, size_t b
 	apdu->lc = pukLength;
 	apdu->data = buffer;
 	apdu->datalen = pukLength;
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
 int msc_change_pin(sc_card_t *card, int pinNumber, const u8 *pinValue, int pinLength, const u8 *newPin, int newPinLength, int *tries)
@@ -377,7 +384,8 @@ int msc_change_pin(sc_card_t *card, int pinNumber, const u8 *pinValue, int pinLe
 	const int bufferLength = (MSC_MAX_PIN_LENGTH + 1) * 2;
 	u8 buffer[(MSC_MAX_PIN_LENGTH + 1) * 2];
 
-	msc_change_pin_apdu(card, &apdu, buffer, bufferLength, pinNumber, pinValue, pinLength, newPin, newPinLength);
+	r = msc_change_pin_apdu(card, &apdu, buffer, bufferLength, pinNumber, pinValue, pinLength, newPin, newPinLength);
+	LOG_TEST_RET(card->ctx, r, "APDU change failed");
 	if(tries)
 		*tries = -1;
 	r = sc_transmit_apdu(card, &apdu);
@@ -398,13 +406,12 @@ int msc_change_pin(sc_card_t *card, int pinNumber, const u8 *pinValue, int pinLe
 }
 
 /* USE ISO_VERIFY due to tries return */
-void msc_change_pin_apdu(sc_card_t *card, sc_apdu_t *apdu, u8* buffer, size_t bufferLength, int pinNumber, const u8 *pinValue, int pinLength, const u8 *newPin, int newPinLength)
+int msc_change_pin_apdu(sc_card_t *card, sc_apdu_t *apdu, u8* buffer, size_t bufferLength, int pinNumber, const u8 *pinValue, int pinLength, const u8 *newPin, int newPinLength)
 {
 	u8 *ptr;
-	assert(pinLength <= MSC_MAX_PIN_LENGTH);
-	assert(newPinLength <= MSC_MAX_PIN_LENGTH);
-	assert(buffer);
-	assert(bufferLength >= pinLength + newPinLength + 2UL);
+	if (pinLength > MSC_MAX_PIN_LENGTH || newPinLength > MSC_MAX_PIN_LENGTH
+		|| !buffer || bufferLength < pinLength + newPinLength + 2UL)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	truncatePinNulls(pinValue, &pinLength);
 	truncatePinNulls(newPin, &newPinLength);
@@ -422,6 +429,7 @@ void msc_change_pin_apdu(sc_card_t *card, sc_apdu_t *apdu, u8* buffer, size_t bu
 	apdu->lc = pinLength + newPinLength + 2;
 	apdu->datalen = apdu->lc;
 	apdu->data = buffer;
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
 int msc_get_challenge(sc_card_t *card, unsigned short dataLength, unsigned short seedLength, u8 *seedData, u8 *outputData)
@@ -435,8 +443,8 @@ int msc_get_challenge(sc_card_t *card, unsigned short dataLength, unsigned short
 	cse = (location == 1) ? SC_APDU_CASE_4_SHORT : SC_APDU_CASE_3_SHORT;
 	len = seedLength + 4;
 	
-	assert(seedLength < MSC_MAX_SEND - 4);
-	assert(dataLength < MSC_MAX_READ - 9); /* Output buffer doesn't seem to operate as desired.... nobody can read/delete */
+	if (seedLength >= MSC_MAX_SEND - 4 || dataLength >= MSC_MAX_READ - 9)/* Output buffer doesn't seem to operate as desired.... nobody can read/delete */
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	
 	buffer = malloc(len);
 	if(!buffer) LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
@@ -510,7 +518,8 @@ int msc_generate_keypair(sc_card_t *card, int privateKey, int publicKey, int alg
 	unsigned short prRead = 0xFFFF, prWrite = 0x0002, prCompute = 0x0002,
 		puRead = 0x0000, puWrite = 0x0002, puCompute = 0x0000;
 
-	assert(privateKey <= 0x0F && publicKey <= 0x0F);
+	if (privateKey > 0x0F || publicKey > 0x0F)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x30, privateKey, publicKey);
 
@@ -673,7 +682,8 @@ int msc_compute_crypt_init(sc_card_t *card,
 		short receivedData = outputBuffer[0] << 8 | outputBuffer[1];
 		*outputDataLength = receivedData;
 
-		assert(receivedData <= MSC_MAX_APDU);
+		if (receivedData > MSC_MAX_APDU)
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_DATA);
 		memcpy(outputData, outputBuffer + 2, receivedData);
 		return 0;
 	}
@@ -723,7 +733,9 @@ int msc_compute_crypt_final(
 	if(apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 		short receivedData = outputBuffer[0] << 8 | outputBuffer[1];
 		*outputDataLength = receivedData;
-		assert(receivedData <= MSC_MAX_APDU);
+
+		if (receivedData > MSC_MAX_APDU)
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_DATA);
 		memcpy(outputData, outputBuffer + 2, receivedData);
 		return 0;
 	}
@@ -825,7 +837,9 @@ int msc_compute_crypt(sc_card_t *card,
 	int r;
 
 	size_t received = 0;
-	assert(outputDataLength >= dataLength);
+
+	if (outputDataLength < dataLength)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	
 	/* Don't send data during init... apparently current version does not support it */
 	toSend = 0;
@@ -886,7 +900,9 @@ int msc_import_key(sc_card_t *card,
 	sc_apdu_t apdu;
 	int r;
 
-	assert(data->keyType == 0x02 || data->keyType == 0x03);
+	if (data->keyType != 0x02 && data->keyType != 0x03)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
 	if(data->keyType == 0x02) {
 		if( (data->pLength == 0 || !data->pValue)
 		|| (data->modLength == 0 || !data->modValue))
