@@ -52,9 +52,9 @@ int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
 
     reader = sc_ctx_get_reader(ctx, 0);
     sc_connect_card(reader, &card);
-    sc_pkcs15_bind(card, NULL, &p15card);
 
-    if (p15card) {
+    if (SC_SUCCESS == sc_pkcs15_bind(card, NULL, &p15card)
+        && p15card) {
         const uint8_t *in, *param;
         uint16_t in_len, param_len;
         fuzz_get_chunk(reader, &in, &in_len);
