@@ -5828,7 +5828,7 @@ static CK_RV register_ec_mechanisms(struct sc_pkcs11_card *p11card, int flags,
 		unsigned long ext_flags, CK_ULONG min_key_size, CK_ULONG max_key_size)
 {
 	CK_MECHANISM_INFO mech_info;
-	sc_pkcs11_mechanism_type_t *mt, *registered_mt;
+	sc_pkcs11_mechanism_type_t *mt = NULL, *registered_mt = NULL;
 	CK_FLAGS ec_flags = 0;
 	CK_RV rc;
 
