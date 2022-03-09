@@ -1543,12 +1543,12 @@ do_acl(struct state *cur, int argc, char **argv)
 {
 	struct sc_file	*file = NULL;
 	char		oper[64], *what = NULL;
+	memset(oper, 0, sizeof(oper));
 
 	if (!cur->file)
 		goto bad;
 	file = cur->file->file;
 
-	memset(oper, 0, sizeof(oper));
 	while (argc--) {
 		unsigned int	op, method, id;
 
