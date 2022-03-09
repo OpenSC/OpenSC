@@ -1908,7 +1908,9 @@ static int do_random(int argc, char **argv)
 
 	if (argc == 2) {
 		/* outf is guaranteed to be non-NULL */
-		size_t written = fwrite(buffer, 1, count, outf);
+		size_t written = 0;
+		if (count > 0)
+			written = fwrite(buffer, 1, count, outf);
 
 		if (written < (size_t) count)
 			perror(filename);
