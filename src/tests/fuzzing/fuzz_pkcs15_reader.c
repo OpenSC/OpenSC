@@ -32,26 +32,15 @@ int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
     struct sc_context *ctx = NULL;
     struct sc_card *card = NULL;
     struct sc_pkcs15_card *p15card = NULL;
-    struct sc_reader *reader;
+    struct sc_reader *reader = NULL;
     struct sc_pkcs15_object *obj;
 
     sc_establish_context(&ctx, "fuzz");
     if (!ctx)
         return 0;
-    /* copied from sc_release_context() */
-    while (list_size(&ctx->readers)) {
-        sc_reader_t *rdr = (sc_reader_t *) list_get_at(&ctx->readers, 0);
-        _sc_delete_reader(ctx, rdr);
-    }
-    if (ctx->reader_driver->ops->finish != NULL)
-        ctx->reader_driver->ops->finish(ctx);
 
-    ctx->reader_driver = sc_get_fuzz_driver();
-
-    fuzz_add_reader(ctx, Data, Size);
-
-    reader = sc_ctx_get_reader(ctx, 0);
-    sc_connect_card(reader, &card);
+    if (fuzz_connect_card(ctx, &card, &reader, Data, Size) != SC_SUCCESS)
+        goto err;
 
     if (SC_SUCCESS == sc_pkcs15_bind(card, NULL, &p15card)
         && p15card) {
@@ -135,6 +124,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
         sc_pkcs15_card_free(p15card);
     }
 
+err:
     sc_disconnect_card(card);
     sc_release_context(ctx);
 
