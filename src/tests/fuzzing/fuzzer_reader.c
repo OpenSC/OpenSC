@@ -170,3 +170,31 @@ void fuzz_add_reader(struct sc_context *ctx, const uint8_t *Data, size_t Size)
     reader->ctx = ctx;
     list_append(&ctx->readers, reader);
 }
+
+int fuzz_connect_card(sc_context_t *ctx, sc_card_t **card, sc_reader_t **reader_out,
+                      const uint8_t *data, size_t size)
+{
+    struct sc_reader *reader = NULL;
+
+    /* Erase possible readers from ctx */
+    while (list_size(&ctx->readers)) {
+        sc_reader_t *rdr = (sc_reader_t *) list_get_at(&ctx->readers, 0);
+        _sc_delete_reader(ctx, rdr);
+    }
+    if (ctx->reader_driver->ops->finish != NULL)
+        ctx->reader_driver->ops->finish(ctx);
+
+    /* Create virtual reader */
+    ctx->reader_driver = sc_get_fuzz_driver();
+    fuzz_add_reader(ctx, data, size);
+    reader = sc_ctx_get_reader(ctx, 0);
+
+    /* Connect card */
+    if (sc_connect_card(reader, card))
+        return SC_ERROR_INTERNAL;
+
+    if (reader_out)
+        *reader_out = reader;
+
+    return SC_SUCCESS;
+}

@@ -298,24 +298,8 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     if (!ctx)
         return 0;
 
-    /* Erase possible readers from ctx */
-    while (list_size(&ctx->readers)) {
-        sc_reader_t *rdr = (sc_reader_t *) list_get_at(&ctx->readers, 0);
-        _sc_delete_reader(ctx, rdr);
-    }
-    if (ctx->reader_driver->ops->finish != NULL)
-        ctx->reader_driver->ops->finish(ctx);
-
-    /* Create virtual reader */
-    ctx->reader_driver = sc_get_fuzz_driver();
-    fuzz_add_reader(ctx, reader_data, reader_data_size);
-    reader = sc_ctx_get_reader(ctx, 0);
-
-    /* Connect card to reader */
-    if (sc_connect_card(reader, &card)) { // last op with card in open_reader_and_card
-        sc_release_context(ctx);
-        return 0;
-    }
+    if (fuzz_connect_card(ctx, &card, &reader, reader_data, reader_data_size) != SC_SUCCESS)
+        goto end;
 
     /* Load profile and bind with card */
     fuzz_pkcs15init_bind(card, &profile, data, size - reader_data_size);
