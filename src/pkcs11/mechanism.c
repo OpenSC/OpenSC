@@ -1368,8 +1368,12 @@ sc_pkcs11_register_sign_and_hash_mechanism(struct sc_pkcs11_card *p11card,
 {
 	sc_pkcs11_mechanism_type_t *hash_type, *new_type;
 	struct hash_signature_info *info;
-	CK_MECHANISM_INFO mech_info = sign_type->mech_info;
+	CK_MECHANISM_INFO mech_info;
 	CK_RV rv;
+
+	if (!sign_type)
+		return CKR_MECHANISM_INVALID;
+	mech_info = sign_type->mech_info;
 
 	if (!(hash_type = sc_pkcs11_find_mechanism(p11card, hash_mech, CKF_DIGEST)))
 		return CKR_MECHANISM_INVALID;
