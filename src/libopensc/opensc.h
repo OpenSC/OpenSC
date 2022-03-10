@@ -1026,7 +1026,9 @@ sc_reader_t *sc_ctx_get_reader(sc_context_t *ctx, unsigned int i);
  * @param  ctx   pointer to a sc_context_t
  * @param  pcsc_context_handle pointer to the  new context_handle to use
  * @param  pcsc_card_handle pointer to the new card_handle to use
- * @return SC_SUCCESS on success and an error code otherwise.
+ * @return SC_SUCCESS or 1 on success and an error code otherwise.
+ *		a return of 1 indicates to call reinit_card_for, as
+ *		the reader has changed.
  */
 int sc_ctx_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcsc_card_handle);
 

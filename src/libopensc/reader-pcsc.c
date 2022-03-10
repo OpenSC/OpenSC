@@ -2559,7 +2559,7 @@ int pcsc_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcsc_c
 					|| strcmp(reader_name, reader->name) != 0) {
 				sc_log(ctx, "Reader name changed from \"%s\" to \"%s\"", reader->name, reader_name);
 	
-				ret = SC_ERROR_READER; /* tell caller to cleanup old reader and any cached data then try again */
+				ret = 1; /* tell caller to cleanup old reader and any cached data then try again */
 				ctx->flags |= SC_CTX_FLAG_TERMINATE; /* but don't do any operations on handle and try again */
 				goto out;
 			}

@@ -412,6 +412,7 @@ static DWORD check_card_status(PCARD_DATA pCardData, const char *name)
  * check if the card is OK, has been removed, or the
  * caller has changed the handles.
  * if so, then try to reinit card
+ * or if different handles but same reader, just use the handles
  */
 static DWORD
 check_card_reader_status(PCARD_DATA pCardData, const char *name)
@@ -443,20 +444,24 @@ check_card_reader_status(PCARD_DATA pCardData, const char *name)
 		logprintf(pCardData, 1, "HANDLES CHANGED from  vs->hSCardCtx:0x%08"SC_FORMAT_LEN_SIZE_T"X vs->hScard:0x%08"SC_FORMAT_LEN_SIZE_T"X\n",
 			(size_t)vs->hSCardCtx,
 			(size_t)vs->hScard);
-		if (vs->ctx) {
-			/* call with new handles but dont change vs yet */
-			r = sc_ctx_use_reader(vs->ctx, &pCardData->hSCardCtx, &pCardData->hScard);
-			logprintf(pCardData, 1, "sc_ctx_use_reader returned %d\n", r);
-			if (r == SC_ERROR_READER) { /* handles are using different reader */
-				/* reinit_card_for will will free old reader and set new reader */
-				reinit_card_for(pCardData, name);
-			} else if (r) {
-			    MD_FUNC_RETURN(pCardData, 1, SCARD_F_INTERNAL_ERROR);
-			} else {
-				vs->hScard = pCardData->hScard;
-				vs->hSCardCtx = pCardData->hSCardCtx;
+		if (vs->ctx == NULL) {
+			MD_FUNC_RETURN(pCardData, 1, SC_ERROR_INTERNAL);
+		}
+		/* call with new handles but dont change vs yet */
+		r = sc_ctx_use_reader(vs->ctx, &pCardData->hSCardCtx, &pCardData->hScard);
+		logprintf(pCardData, 1, "sc_ctx_use_reader returned %d\n", r);
+		if (r < 0 || r > 1) {
+		    MD_FUNC_RETURN(pCardData, 1, r);
+		}
+		if (r == 1) { /* handles are using a different reader */
+			/* reinit_card_for will eventually call sc_ctx_use_reader to setup new reader */
+			r = reinit_card_for(pCardData, name);
+			if (r != SCARD_S_SUCCESS) {
+				MD_FUNC_RETURN(pCardData, 1, r);
 			}
 		}
+		vs->hScard = pCardData->hScard;
+		vs->hSCardCtx = pCardData->hSCardCtx;
 	}
 
 	/* This should always work, as BaseCSP should be checking for removal too */
