@@ -1,0 +1,23 @@
+upstream_project_url: https://github.com/OpenSC/OpenSC
+
+specfile_path: packaging/opensc.spec
+files_to_sync:
+  - packaging/opensc.spec
+  - .packit.yaml
+upstream_package_name: opensc
+downstream_package_name: opensc
+merge_pr_in_ci: false
+
+notifications:
+  pull_request:
+    successful_build: true
+
+jobs:
+- job: copr_build
+  trigger: pull_request
+  metadata:
+    targets:
+    - fedora-development-x86_64
+    - fedora-development-aarch64
+    - fedora-development-ppc64le
+    - fedora-development-s390x
