@@ -2499,7 +2499,8 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 				apdu.resplen = len - offset_u16;
 	
 				r = sc_transmit_apdu(p15card->card, &apdu);
-				if(r < 0 || apdu.resplen == 0) break;
+				if (r < 0 || apdu.resplen == 0)
+					break;
 
 				data_do = NULL;
 				r = sc_decode_do53(ctx, &data_do, &data_do_len,	apdu.resp, apdu.resplen);
