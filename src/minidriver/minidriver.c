@@ -2788,7 +2788,8 @@ md_query_key_sizes(PCARD_DATA pCardData, DWORD dwKeySpec, CARD_KEY_SIZES *pKeySi
 		for (i = 0; i < count; i++) {
 			algo_info = vs->p15card->card->algorithms + i;
 			if (algo_info->algorithm == SC_ALGORITHM_EC) {
-				flag = SC_ALGORITHM_ECDH_CDH_RAW | SC_ALGORITHM_EXT_EC_NAMEDCURVE;
+				flag = SC_ALGORITHM_ECDH_CDH_RAW;
+				/* TODO  check if namedCurve matches Windows supported curves */
 				/* ECDHE */
 				if ((dwKeySpec == AT_ECDHE_P256) && (algo_info->key_length == 256) && (algo_info->flags & flag)) {
 					keysize = 256;
@@ -2803,11 +2804,12 @@ md_query_key_sizes(PCARD_DATA pCardData, DWORD dwKeySpec, CARD_KEY_SIZES *pKeySi
 					break;
 				}
 				/* ECDSA */
-				flag = SC_ALGORITHM_ECDSA_HASH_NONE|
+				flag = SC_ALGORITHM_ECDSA_RAW|
+						SC_ALGORITHM_ECDSA_HASH_NONE|
 						SC_ALGORITHM_ECDSA_HASH_SHA1|
 						SC_ALGORITHM_ECDSA_HASH_SHA224|
-						SC_ALGORITHM_ECDSA_HASH_SHA256|
-						SC_ALGORITHM_EXT_EC_NAMEDCURVE;
+						SC_ALGORITHM_ECDSA_HASH_SHA256;
+				/* TODO  check if namedCurve matches Windows supported curves */
 				if ((dwKeySpec == AT_ECDSA_P256) && (algo_info->key_length == 256) && (algo_info->flags & flag)) {
 					keysize = 256;
 					break;
@@ -6284,7 +6286,8 @@ DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData,
 		if (cbData < sizeof(*pKeySizes))
 			MD_FUNC_RETURN(pCardData, 1, ERROR_INSUFFICIENT_BUFFER);
 
-		dwret = md_query_key_sizes(pCardData, 0, pKeySizes);
+		/* dwFlags has key_type */
+		dwret = md_query_key_sizes(pCardData, dwFlags, pKeySizes);
 		if (dwret != SCARD_S_SUCCESS)
 			MD_FUNC_RETURN(pCardData, 1, dwret);
 	}
