@@ -13,7 +13,7 @@ if ENABLE_STATIC
 noinst_PROGRAMS += fuzz_pkcs15init
 endif
 
-noinst_HEADERS = fuzzer_reader.h
+noinst_HEADERS = fuzzer_reader.h fuzzer_tool.h
 
 ADDITIONAL_SRC =
 if !ENABLE_FUZZING
