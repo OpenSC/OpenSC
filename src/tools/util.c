@@ -259,8 +259,8 @@ void util_hex_dump_asc(FILE *f, const u8 *in, size_t count, int addr)
 	}
 }
 
-NORETURN void
-util_print_usage_and_die(const char *app_name, const struct option options[],
+void
+util_print_usage(const char *app_name, const struct option options[],
 	const char *option_help[], const char *args)
 {
 	int i;
@@ -306,7 +306,13 @@ util_print_usage_and_die(const char *app_name, const struct option options[],
 		}
 		printf("  %-28s  %s\n", buf, option_help[i]);
 	}
+}
 
+NORETURN void
+util_print_usage_and_die(const char *app_name, const struct option options[],
+	const char *option_help[], const char *args)
+{
+	util_print_usage(app_name, options, option_help, args);
 	exit(2);
 }
 
