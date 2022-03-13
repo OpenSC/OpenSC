@@ -13,6 +13,10 @@ if ENABLE_STATIC
 noinst_PROGRAMS += fuzz_pkcs15init
 endif
 
+if ENABLE_OPENSSL
+noinst_PROGRAMS += fuzz_piv_tool
+endif
+
 noinst_HEADERS = fuzzer_reader.h fuzzer_tool.h
 
 ADDITIONAL_SRC =
@@ -30,3 +34,6 @@ fuzz_pkcs15init_LDADD = $(OPTIONAL_OPENSSL_LIBS) $(OPENPACE_LIBS)
 fuzz_pkcs15init_LDFLAGS = -static
 fuzz_pkcs15_encode_SOURCES = fuzz_pkcs15_encode.c fuzzer_reader.c $(ADDITIONAL_SRC)
 fuzz_card_SOURCES = fuzz_card.c fuzzer_reader.c $(ADDITIONAL_SRC)
+fuzz_piv_tool_SOURCES = fuzz_piv_tool.c fuzzer_reader.c fuzzer_tool.c $(ADDITIONAL_SRC) \
+						 ../../tools/util.c
+fuzz_piv_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
