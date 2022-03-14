@@ -572,7 +572,7 @@ sc_profile_get_file_instance(struct sc_profile *profile, const char *name,
 	if ((fi = sc_profile_find_file(profile, NULL, name)) == NULL)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_FILE_NOT_FOUND);
 	sc_file_dup(&file, fi->file);
-	sc_log(ctx, "ident '%s'; parent '%s'", fi->ident, fi->parent->ident);
+	sc_log(ctx, "ident '%s'; parent '%s'", fi->ident, fi->parent ? fi->parent->ident : "(null)");
 	if (file == NULL)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 	sc_log(ctx, "file (type:%X, path:'%s')", file->type, sc_print_path(&file->path));
