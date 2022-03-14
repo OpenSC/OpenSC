@@ -22,9 +22,11 @@
 #include "libopensc/pkcs15-emulator-filter.c"
 #include "torture.h"
 
-int func(sc_pkcs15_card_t *card, struct sc_aid *aid) {
-	(void) card;
-	(void) aid;
+int
+func(sc_pkcs15_card_t *card, struct sc_aid *aid)
+{
+	(void)card;
+	(void)aid;
 	return SC_SUCCESS;
 }
 
@@ -43,9 +45,10 @@ struct sc_pkcs15_emulator_handler old[] = {
 // clang-format on
 
 /* add_emul */
-static void torture_null_add_emul(void **state)
+static void
+torture_null_add_emul(void **state)
 {
-	struct _sc_pkcs15_emulators filtered_emulators = { { &builtin[0] }, 1 };
+	struct _sc_pkcs15_emulators filtered_emulators = {{&builtin[0]}, 1};
 	int rv;
 
 	rv = add_emul(NULL, &builtin[0]);
@@ -54,7 +57,8 @@ static void torture_null_add_emul(void **state)
 	assert_int_equal(rv, SC_ERROR_INVALID_ARGUMENTS);
 }
 
-static void torture_name_add_emul(void **state)
+static void
+torture_name_add_emul(void **state)
 {
 	struct _sc_pkcs15_emulators filtered_emulators;
 	int rv;
@@ -65,9 +69,10 @@ static void torture_name_add_emul(void **state)
 	assert_int_equal(filtered_emulators.ccount, 1);
 }
 
-static void torture_name_already_in_add_emul(void **state)
+static void
+torture_name_already_in_add_emul(void **state)
 {
-	struct _sc_pkcs15_emulators filtered_emulators = { { &builtin[0] }, 1 };
+	struct _sc_pkcs15_emulators filtered_emulators = {{&builtin[0]}, 1};
 	int rv;
 
 	rv = add_emul(&filtered_emulators, &builtin[0]);
@@ -75,7 +80,8 @@ static void torture_name_already_in_add_emul(void **state)
 	assert_int_equal(filtered_emulators.ccount, 1);
 }
 
-static void torture_full_add_emul(void **state)
+static void
+torture_full_add_emul(void **state)
 {
 	struct _sc_pkcs15_emulators filtered_emulators;
 	int i, rv;
@@ -90,7 +96,8 @@ static void torture_full_add_emul(void **state)
 	assert_ptr_equal(filtered_emulators.list_of_handlers[SC_MAX_PKCS15_EMULATORS - 1], &builtin[0]);
 }
 
-static void torture_overfilled_add_emul(void **state)
+static void
+torture_overfilled_add_emul(void **state)
 {
 	struct _sc_pkcs15_emulators filtered_emulators;
 	int i, rv;
@@ -104,10 +111,11 @@ static void torture_overfilled_add_emul(void **state)
 	assert_int_equal(filtered_emulators.ccount, SC_MAX_PKCS15_EMULATORS + 1);
 }
 
-static void torture_invalid_handler_name_add_emul(void **state)
+static void
+torture_invalid_handler_name_add_emul(void **state)
 {
 	struct _sc_pkcs15_emulators filtered_emulators;
-	struct sc_pkcs15_emulator_handler handler = { NULL, &func };
+	struct sc_pkcs15_emulator_handler handler = {NULL, &func};
 	int rv;
 	filtered_emulators.ccount = 0;
 
@@ -115,10 +123,11 @@ static void torture_invalid_handler_name_add_emul(void **state)
 	assert_int_equal(rv, SC_ERROR_INVALID_ARGUMENTS);
 }
 
-static void torture_invalid_handler_func_add_emul(void **state)
+static void
+torture_invalid_handler_func_add_emul(void **state)
 {
 	struct _sc_pkcs15_emulators filtered_emulators;
-	struct sc_pkcs15_emulator_handler handler = { "name", NULL };
+	struct sc_pkcs15_emulator_handler handler = {"name", NULL};
 	int rv;
 	filtered_emulators.ccount = 0;
 
@@ -126,10 +135,11 @@ static void torture_invalid_handler_func_add_emul(void **state)
 	assert_int_equal(rv, SC_ERROR_INVALID_ARGUMENTS);
 }
 
-static void torture_invalid_emulator_list_add_emul(void **state)
+static void
+torture_invalid_emulator_list_add_emul(void **state)
 {
-	struct _sc_pkcs15_emulators filtered_emulators = { { NULL }, 1 };
-	struct sc_pkcs15_emulator_handler handler = { "name", &func };
+	struct _sc_pkcs15_emulators filtered_emulators = {{NULL}, 1};
+	struct sc_pkcs15_emulator_handler handler = {"name", &func};
 	int rv;
 
 	rv = add_emul(&filtered_emulators, &handler);
@@ -137,9 +147,10 @@ static void torture_invalid_emulator_list_add_emul(void **state)
 }
 
 /* add_emul_list */
-static void torture_null_add_emul_list(void **state)
+static void
+torture_null_add_emul_list(void **state)
 {
-	struct _sc_pkcs15_emulators filtered_emulators = { { &builtin[0] }, 1 };
+	struct _sc_pkcs15_emulators filtered_emulators = {{&builtin[0]}, 1};
 	int rv;
 
 	rv = add_emul_list(NULL, builtin);
@@ -148,7 +159,8 @@ static void torture_null_add_emul_list(void **state)
 	assert_int_equal(rv, SC_ERROR_INVALID_ARGUMENTS);
 }
 
-static void torture_internal_add_emul_list(void **state)
+static void
+torture_internal_add_emul_list(void **state)
 {
 	struct _sc_pkcs15_emulators filtered_emulators;
 	int i, rv;
@@ -162,9 +174,10 @@ static void torture_internal_add_emul_list(void **state)
 	assert_int_equal(filtered_emulators.ccount, i);
 }
 
-static void torture_internal_already_name_add_emul_list(void **state)
+static void
+torture_internal_already_name_add_emul_list(void **state)
 {
-	struct _sc_pkcs15_emulators filtered_emulators = { { &builtin[0] }, 1 };
+	struct _sc_pkcs15_emulators filtered_emulators = {{&builtin[0]}, 1};
 	int i, rv;
 
 	rv = add_emul_list(&filtered_emulators, builtin);
@@ -175,9 +188,10 @@ static void torture_internal_already_name_add_emul_list(void **state)
 	assert_int_equal(filtered_emulators.ccount, i);
 }
 
-static void torture_internal_already_name2_add_emul_list(void **state)
+static void
+torture_internal_already_name2_add_emul_list(void **state)
 {
-	struct _sc_pkcs15_emulators filtered_emulators = { { &old[0] }, 1 };
+	struct _sc_pkcs15_emulators filtered_emulators = {{&old[0]}, 1};
 	int i, rv;
 
 	rv = add_emul_list(&filtered_emulators, builtin);
@@ -188,7 +202,8 @@ static void torture_internal_already_name2_add_emul_list(void **state)
 	assert_int_equal(filtered_emulators.ccount, i + 1);
 }
 
-static void torture_full_add_emul_list(void **state)
+static void
+torture_full_add_emul_list(void **state)
 {
 	struct _sc_pkcs15_emulators filtered_emulators;
 	int i, rv;
@@ -202,7 +217,8 @@ static void torture_full_add_emul_list(void **state)
 	assert_int_equal(filtered_emulators.ccount, SC_MAX_PKCS15_EMULATORS);
 }
 
-static void torture_one_to_full_add_emul_list(void **state)
+static void
+torture_one_to_full_add_emul_list(void **state)
 {
 	struct _sc_pkcs15_emulators filtered_emulators;
 	int i, rv;
@@ -218,7 +234,8 @@ static void torture_one_to_full_add_emul_list(void **state)
 	assert_ptr_not_equal(filtered_emulators.list_of_handlers[SC_MAX_PKCS15_EMULATORS], &old[0]);
 }
 
-static void torture_overfilled_add_emul_list(void **state)
+static void
+torture_overfilled_add_emul_list(void **state)
 {
 	struct _sc_pkcs15_emulators filtered_emulators;
 	int i, rv;
@@ -234,11 +251,12 @@ static void torture_overfilled_add_emul_list(void **state)
 }
 
 /* set_emulators */
-static void torture_non_existing(void **state)
+static void
+torture_non_existing(void **state)
 {
 	struct _sc_pkcs15_emulators filtered_emulators;
 	int rv;
-	scconf_list list =  { NULL, "non" };
+	scconf_list list = {NULL, "non"};
 	filtered_emulators.ccount = 0;
 
 	rv = set_emulators(NULL, &filtered_emulators, &list, builtin, old);
@@ -246,11 +264,12 @@ static void torture_non_existing(void **state)
 	assert_null(filtered_emulators.list_of_handlers[0]);
 }
 
-static void torture_internal_only(void **state)
+static void
+torture_internal_only(void **state)
 {
 	struct _sc_pkcs15_emulators filtered_emulators;
 	int i, rv;
-	scconf_list list =  { NULL, "internal" };
+	scconf_list list = {NULL, "internal"};
 	filtered_emulators.ccount = 0;
 
 	rv = set_emulators(NULL, &filtered_emulators, &list, builtin, old);
@@ -263,11 +282,12 @@ static void torture_internal_only(void **state)
 	assert_null(builtin[i].name);
 }
 
-static void torture_old_only(void **state)
+static void
+torture_old_only(void **state)
 {
 	struct _sc_pkcs15_emulators filtered_emulators;
 	int i, rv;
-	scconf_list list =  { NULL, "old" };
+	scconf_list list = {NULL, "old"};
 	filtered_emulators.ccount = 0;
 
 	rv = set_emulators(NULL, &filtered_emulators, &list, builtin, old);
@@ -279,11 +299,12 @@ static void torture_old_only(void **state)
 	assert_null(old[i].name);
 }
 
-static void torture_internal_name(void **state)
+static void
+torture_internal_name(void **state)
 {
 	struct _sc_pkcs15_emulators filtered_emulators;
 	int rv;
-	scconf_list list =  { NULL, strdup(builtin[0].name) };
+	scconf_list list = {NULL, strdup(builtin[0].name)};
 	filtered_emulators.ccount = 0;
 
 	rv = set_emulators(NULL, &filtered_emulators, &list, builtin, old);
@@ -292,11 +313,12 @@ static void torture_internal_name(void **state)
 	assert_null(filtered_emulators.list_of_handlers[1]);
 }
 
-static void torture_old_name(void **state)
+static void
+torture_old_name(void **state)
 {
 	struct _sc_pkcs15_emulators filtered_emulators;
 	int rv;
-	scconf_list list =  { NULL, strdup(old[0].name) };
+	scconf_list list = {NULL, strdup(old[0].name)};
 	filtered_emulators.ccount = 0;
 
 	rv = set_emulators(NULL, &filtered_emulators, &list, builtin, old);
@@ -305,12 +327,13 @@ static void torture_old_name(void **state)
 	assert_null(filtered_emulators.list_of_handlers[1]);
 }
 
-static void torture_internal_and_name(void **state)
+static void
+torture_internal_and_name(void **state)
 {
 	struct _sc_pkcs15_emulators filtered_emulators;
 	int i, rv;
-	scconf_list list2 =  { NULL, "cardos" };
-	scconf_list list1 =  { &list2, "internal" };
+	scconf_list list2 = {NULL, "cardos"};
+	scconf_list list1 = {&list2, "internal"};
 	filtered_emulators.ccount = 0;
 
 	rv = set_emulators(NULL, &filtered_emulators, &list1, builtin, old);
@@ -322,12 +345,13 @@ static void torture_internal_and_name(void **state)
 	assert_null(filtered_emulators.list_of_handlers[i + 1]);
 }
 
-static void torture_name_and_internal(void **state)
+static void
+torture_name_and_internal(void **state)
 {
 	struct _sc_pkcs15_emulators filtered_emulators;
 	int rv;
-	scconf_list list2 =  { NULL, "internal" };
-	scconf_list list1 =  { &list2, "starcert" };
+	scconf_list list2 = {NULL, "internal"};
+	scconf_list list1 = {&list2, "starcert"};
 	filtered_emulators.ccount = 0;
 
 	rv = set_emulators(NULL, &filtered_emulators, &list1, builtin, old);
@@ -337,29 +361,13 @@ static void torture_name_and_internal(void **state)
 	assert_null(filtered_emulators.list_of_handlers[2]);
 }
 
-static void torture_internal_and_nonexisting(void **state)
-{
-	struct _sc_pkcs15_emulators filtered_emulators;
-	int i, rv;;
-	scconf_list list2 =  { NULL, "non" };
-	scconf_list list1 =  { &list2, "internal" };
-	filtered_emulators.ccount = 0;
-
-	rv = set_emulators(NULL, &filtered_emulators, &list1, builtin, old);
-	assert_int_equal(rv, SC_SUCCESS);
-	for (i = 0; builtin[i].name; i++) {
-		assert_ptr_equal(&builtin[i], filtered_emulators.list_of_handlers[i]);
-	}
-	assert_null(filtered_emulators.list_of_handlers[i]);
-	assert_null(builtin[i].name);
-}
-
-static void torture_nonexisting_and_internal(void **state)
+static void
+torture_internal_and_nonexisting(void **state)
 {
 	struct _sc_pkcs15_emulators filtered_emulators;
 	int i, rv;
-	scconf_list list2 =  { NULL, "internal" };
-	scconf_list list1 =  { &list2, "non" };
+	scconf_list list2 = {NULL, "non"};
+	scconf_list list1 = {&list2, "internal"};
 	filtered_emulators.ccount = 0;
 
 	rv = set_emulators(NULL, &filtered_emulators, &list1, builtin, old);
@@ -371,11 +379,30 @@ static void torture_nonexisting_and_internal(void **state)
 	assert_null(builtin[i].name);
 }
 
-static void torture_null_set_emul(void **state)
+static void
+torture_nonexisting_and_internal(void **state)
 {
-	struct _sc_pkcs15_emulators filtered_emulators = { { &builtin[0] }, 1 };
+	struct _sc_pkcs15_emulators filtered_emulators;
+	int i, rv;
+	scconf_list list2 = {NULL, "internal"};
+	scconf_list list1 = {&list2, "non"};
+	filtered_emulators.ccount = 0;
+
+	rv = set_emulators(NULL, &filtered_emulators, &list1, builtin, old);
+	assert_int_equal(rv, SC_SUCCESS);
+	for (i = 0; builtin[i].name; i++) {
+		assert_ptr_equal(&builtin[i], filtered_emulators.list_of_handlers[i]);
+	}
+	assert_null(filtered_emulators.list_of_handlers[i]);
+	assert_null(builtin[i].name);
+}
+
+static void
+torture_null_set_emul(void **state)
+{
+	struct _sc_pkcs15_emulators filtered_emulators = {{&builtin[0]}, 1};
 	int rv;
-	scconf_list list1 = { NULL, "internal" };
+	scconf_list list1 = {NULL, "internal"};
 
 	rv = set_emulators(NULL, NULL, &list1, builtin, old);
 	assert_int_equal(rv, SC_ERROR_INVALID_ARGUMENTS);
@@ -387,12 +414,13 @@ static void torture_null_set_emul(void **state)
 	assert_int_equal(rv, SC_ERROR_INVALID_ARGUMENTS);
 }
 
-static void torture_full_set_emul(void **state)
+static void
+torture_full_set_emul(void **state)
 {
 	struct _sc_pkcs15_emulators filtered_emulators;
 	int i, rv;
 	filtered_emulators.ccount = SC_MAX_PKCS15_EMULATORS;
-	scconf_list list1 = { NULL, "old" };
+	scconf_list list1 = {NULL, "old"};
 	for (i = 0; i < SC_MAX_PKCS15_EMULATORS; i++) {
 		filtered_emulators.list_of_handlers[i] = &builtin[0];
 	}
@@ -404,12 +432,13 @@ static void torture_full_set_emul(void **state)
 	assert_int_equal(filtered_emulators.ccount, SC_MAX_PKCS15_EMULATORS);
 }
 
-static void torture_one_to_full_set_emul(void **state)
+static void
+torture_one_to_full_set_emul(void **state)
 {
 	struct _sc_pkcs15_emulators filtered_emulators;
 	int i, rv;
 	filtered_emulators.ccount = SC_MAX_PKCS15_EMULATORS - 1;
-	scconf_list list1 = { NULL, "old" };
+	scconf_list list1 = {NULL, "old"};
 	for (i = 0; i < SC_MAX_PKCS15_EMULATORS - 1; i++) {
 		filtered_emulators.list_of_handlers[i] = &builtin[0];
 	}
@@ -421,12 +450,13 @@ static void torture_one_to_full_set_emul(void **state)
 	assert_int_equal(filtered_emulators.ccount, SC_MAX_PKCS15_EMULATORS);
 }
 
-static void torture_one_to_full2_set_emul(void **state)
+static void
+torture_one_to_full2_set_emul(void **state)
 {
 	struct _sc_pkcs15_emulators filtered_emulators;
 	int i, rv;
 	filtered_emulators.ccount = SC_MAX_PKCS15_EMULATORS - 1;
-	scconf_list list1 = { NULL, strdup(old[1].name) };
+	scconf_list list1 = {NULL, strdup(old[1].name)};
 	for (i = 0; i < SC_MAX_PKCS15_EMULATORS - 1; i++) {
 		filtered_emulators.list_of_handlers[i] = &builtin[0];
 	}
@@ -438,12 +468,13 @@ static void torture_one_to_full2_set_emul(void **state)
 	assert_int_equal(filtered_emulators.ccount, SC_MAX_PKCS15_EMULATORS);
 }
 
-static void torture_overfilled_set_emul(void **state)
+static void
+torture_overfilled_set_emul(void **state)
 {
 	struct _sc_pkcs15_emulators filtered_emulators;
 	int i, rv;
 	filtered_emulators.ccount = SC_MAX_PKCS15_EMULATORS + 1;
-	scconf_list list1 = { NULL, strdup(old[1].name) };
+	scconf_list list1 = {NULL, strdup(old[1].name)};
 	for (i = 0; i < SC_MAX_PKCS15_EMULATORS + 1; i++) {
 		filtered_emulators.list_of_handlers[i] = &builtin[0];
 	}
@@ -452,7 +483,8 @@ static void torture_overfilled_set_emul(void **state)
 	assert_int_equal(rv, SC_ERROR_INVALID_ARGUMENTS);
 }
 
-int main(void)
+int
+main(void)
 {
 	const struct CMUnitTest tests[] = {
 		/* add_emul */

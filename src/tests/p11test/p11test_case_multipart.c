@@ -21,8 +21,9 @@
 
 #include "p11test_case_multipart.h"
 
-void multipart_tests(void **state) {
-
+void
+multipart_tests(void **state)
+{
 	token_info_t *info = (token_info_t *) *state;
 	unsigned int i;
 	int used, j;
@@ -78,13 +79,13 @@ void multipart_tests(void **state) {
 			continue;
 
 		printf("[%-6s] [%s] [%6lu] [ %s ] [%s%s] [%s]\n",
-			o->id_str,
-			"RSA ",
-			o->bits,
-			o->verify_public == 1 ? " ./ " : "    ",
-			o->sign ? "[./] " : "[  ] ",
-			o->verify ? " [./] " : " [  ] ",
-			o->label);
+		       o->id_str,
+		       "RSA ",
+		       o->bits,
+		       o->verify_public == 1 ? " ./ " : "    ",
+		       o->sign ? "[./] " : "[  ] ",
+		       o->verify ? " [./] " : " [  ] ",
+		       o->label);
 		if (o->private_handle == CK_INVALID_HANDLE) {
 			continue;
 		}
@@ -95,14 +96,14 @@ void multipart_tests(void **state) {
 				continue;
 			}
 			printf("         [ %-20s ] [   %s    ]\n",
-				get_mechanism_name(mech->mech),
-				mech->result_flags & FLAGS_SIGN_ANY ? "[./]" : "    ");
+			       get_mechanism_name(mech->mech),
+			       mech->result_flags & FLAGS_SIGN_ANY ? "[./]" : "    ");
 			if ((mech->result_flags & FLAGS_SIGN_ANY) == 0)
 				continue; /* do not export unknown and non-working algorithms */
 			P11TEST_DATA_ROW(info, 3,
-				's', o->id_str,
-				's', get_mechanism_name(mech->mech),
-				's', mech->result_flags & FLAGS_SIGN_ANY ? "YES" : "");
+			                 's', o->id_str,
+			                 's', get_mechanism_name(mech->mech),
+			                 's', mech->result_flags & FLAGS_SIGN_ANY ? "YES" : "");
 		}
 		printf("\n");
 	}

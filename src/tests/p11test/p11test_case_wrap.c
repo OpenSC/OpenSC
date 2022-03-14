@@ -25,8 +25,7 @@
 
 /* returns the new length of message after stripping the pkcs7 padding */
 static int
-strip_pkcs7_padding(const unsigned char *message, unsigned long message_length,
-                    unsigned long block_len)
+strip_pkcs7_padding(const unsigned char *message, unsigned long message_length, unsigned long block_len)
 {
 	unsigned char pad_length = message[message_length - 1];
 
@@ -37,16 +36,17 @@ strip_pkcs7_padding(const unsigned char *message, unsigned long message_length,
 	return message_length - pad_length;
 }
 
-static int test_wrap(test_cert_t *o, token_info_t *info, test_cert_t *key, test_mech_t *mech)
+static int
+test_wrap(test_cert_t *o, token_info_t *info, test_cert_t *key, test_mech_t *mech)
 {
 	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
-	CK_MECHANISM mechanism = { mech->mech, NULL_PTR, 0 };
+	CK_MECHANISM mechanism = {mech->mech, NULL_PTR, 0};
 	/* SoftHSM supports only SHA1 with OAEP encryption */
 	CK_RSA_PKCS_OAEP_PARAMS oaep_params = {CKM_SHA_1, CKG_MGF1_SHA1, CKZ_DATA_SPECIFIED, NULL, 0};
 	CK_BYTE iv[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
 	                0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f};
-	CK_AES_CTR_PARAMS ctr_params = { 64, {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-	                                      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}};
+	CK_AES_CTR_PARAMS ctr_params = {64, {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+	                                     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}};
 	CK_BYTE aad[] = {0x00, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80};
 	CK_GCM_PARAMS gcm_params = {
 		.pIv = (void *)iv,
@@ -56,7 +56,6 @@ static int test_wrap(test_cert_t *o, token_info_t *info, test_cert_t *key, test_
 		.ulAADLen = sizeof(aad),
 		.ulTagBits = 128,
 	};
-	//unsigned char key[16];
 	CK_BYTE *wrapped = NULL;
 	CK_ULONG wrapped_len = 0;
 	CK_BYTE *plain = NULL;
@@ -87,7 +86,7 @@ static int test_wrap(test_cert_t *o, token_info_t *info, test_cert_t *key, test_
 			return 1;
 		}
 	} else if (mech->mech == CKM_RSA_PKCS_OAEP) {
-		if (o->bits - 2 - 2*SHA_DIGEST_LENGTH < key->bits) {
+		if (o->bits - 2 - 2 * SHA_DIGEST_LENGTH < key->bits) {
 			debug_print(" [SKIP %s ] The wrapping key too small", o->id_str);
 			return 1;
 		}
@@ -106,8 +105,8 @@ static int test_wrap(test_cert_t *o, token_info_t *info, test_cert_t *key, test_
 	} else if (mech->mech == CKM_AES_KEY_WRAP || mech->mech == CKM_AES_KEY_WRAP_PAD) {
 		/* Nothing special ... */
 	} else {
-		debug_print(" [ KEY %s ] Unknown wrapping mechanism %s",
-		            o->id_str, get_mechanism_name(mech->mech));
+		debug_print(" [ KEY %s ] Unknown wrapping mechanism %s", o->id_str,
+		            get_mechanism_name(mech->mech));
 		return 1;
 	}
 
@@ -165,7 +164,7 @@ static int test_wrap(test_cert_t *o, token_info_t *info, test_cert_t *key, test_
 	 *  2) We encrypt something with a assumed key and decrypt it with the card key
 	 */
 	if (key->value) {
-/*
+	/*
 		if (plain_len == key->bits/8 && memcmp(plain, key->value, plain_len) == 0) {
 			debug_print(" [  OK %s ] Wrapped key recovered correctly", o->id_str);
 		} else {
@@ -264,12 +263,13 @@ out:
 	return 0;
 }
 
-void wrap_tests(void **state)
+void
+wrap_tests(void **state)
 {
 	unsigned int i;
 	int j;
 	int errors = 0;
-	token_info_t *info = (token_info_t *) *state;
+	token_info_t *info = (token_info_t *)*state;
 	test_certs_t objects;
 	test_cert_t *aes_key = NULL, *aes2_key = NULL;
 	test_cert_t *rsa_key = NULL, *rsa2_key = NULL;
@@ -303,10 +303,10 @@ void wrap_tests(void **state)
 			/*
 			if ((o->mechs[j].usage_flags & CKF_WRAP) == 0 || !o->wrap)
 				continue;
-			if ((o->mechs[j].usage_flags & CKF_UNWRAP) == 0	|| !o->unwrap)
+			if ((o->mechs[j].usage_flags & CKF_UNWRAP) == 0 || !o->unwrap)
 				continue;
 			*/
-			if ((o->mechs[j].usage_flags & (CKF_WRAP|CKF_UNWRAP)) == 0)
+			if ((o->mechs[j].usage_flags & (CKF_WRAP | CKF_UNWRAP)) == 0)
 				continue;
 
 			switch (o->key_type) {
@@ -343,25 +343,25 @@ void wrap_tests(void **state)
 	printf("[KEY ID] [EXTRACTABLE] [LABEL]\n");
 	printf("[ TYPE ] [ SIZE ]              [ WRAP ] [UNWRAP]\n");
 	P11TEST_DATA_ROW(info, 4,
-		's', "KEY ID",
-		's', "MECHANISM",
-		's', "WRAP WORKS",
-		's', "UNWRAP WORKS");
+	                 's', "KEY ID",
+	                 's', "MECHANISM",
+	                 's', "WRAP WORKS",
+	                 's', "UNWRAP WORKS");
 	for (i = 0; i < objects.count; i++) {
 		test_cert_t *o = &objects.data[i];
 		if (o->key_type != CKK_RSA && o->key_type != CKK_AES)
 			continue;
 
 		printf("\n[%-6s] [     %s    ] [%s]\n",
-			o->id_str,
-			o->extractable ? "./" : "  ",
-			o->label);
+		       o->id_str,
+		       o->extractable ? "./" : "  ",
+		       o->label);
 		printf("[ %s ] [%6lu]              [ [%s] ] [ [%s] ]\n",
-			(o->key_type == CKK_RSA ? "RSA " :
-				o->key_type == CKK_AES ? "AES " : " ?? "),
-			o->bits,
-			o->wrap ? "./" : "  ",
-			o->unwrap ? "./" : "  ");
+		       (o->key_type == CKK_RSA ? "RSA " :
+		        o->key_type == CKK_AES ? "AES " : " ?? "),
+		       o->bits,
+		       o->wrap ? "./" : "  ",
+		       o->unwrap ? "./" : "  ");
 		/* the attributes are sometimes confusing
 		if (!o->wrap && !o->unwrap) {
 			printf("  no usable attributes found ... ignored\n");
@@ -377,20 +377,20 @@ void wrap_tests(void **state)
 				continue;
 			}
 			printf("  [ %-24s ] [%s][%s] [%s][%s]\n",
-				get_mechanism_name(mech->mech),
-				mech->result_flags & FLAGS_WRAP_SYM ? "./" : "  ",
-				mech->result_flags & FLAGS_WRAP ? "./" : "  ",
-				mech->result_flags & FLAGS_UNWRAP_SYM ? "./" : "  ",
-				mech->result_flags & FLAGS_UNWRAP ? "./" : "  ");
+			       get_mechanism_name(mech->mech),
+			       mech->result_flags & FLAGS_WRAP_SYM ? "./" : "  ",
+			       mech->result_flags & FLAGS_WRAP ? "./" : "  ",
+			       mech->result_flags & FLAGS_UNWRAP_SYM ? "./" : "  ",
+			       mech->result_flags & FLAGS_UNWRAP ? "./" : "  ");
 			if ((mech->result_flags & (FLAGS_WRAP | FLAGS_UNWRAP)) == 0)
 				continue; /* skip empty rows for export */
 			P11TEST_DATA_ROW(info, 6,
-				's', o->id_str,
-				's', get_mechanism_name(mech->mech),
-				's', mech->result_flags & FLAGS_WRAP_SYM ? "YES" : "",
-				's', mech->result_flags & FLAGS_WRAP ? "YES" : "",
-				's', mech->result_flags & FLAGS_UNWRAP_SYM ? "YES" : "",
-				's', mech->result_flags & FLAGS_UNWRAP ? "YES" : "");
+			                 's', o->id_str,
+			                 's', get_mechanism_name(mech->mech),
+			                 's', mech->result_flags & FLAGS_WRAP_SYM ? "YES" : "",
+			                 's', mech->result_flags & FLAGS_WRAP ? "YES" : "",
+			                 's', mech->result_flags & FLAGS_UNWRAP_SYM ? "YES" : "",
+			                 's', mech->result_flags & FLAGS_UNWRAP ? "YES" : "");
 		}
 	}
 	printf(" Wrapping symmetric key works --^   ^    ^   ^- Unwrapping asymmetric key works\n");

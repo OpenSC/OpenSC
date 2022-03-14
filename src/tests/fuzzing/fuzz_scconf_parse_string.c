@@ -30,26 +30,28 @@
 
 #define MAX_SIZE 16000
 
-int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
-    scconf_context *ctx = NULL;
-    char *buf = NULL;
+int
+LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
+{
+	scconf_context *ctx = NULL;
+	char *buf = NULL;
 
-    if (size > MAX_SIZE)
-        return 0;
+	if (size > MAX_SIZE)
+		return 0;
 
-    if (!(buf = malloc(size + 1)))
-        return 0;
-    if (!(ctx = scconf_new(NULL))) {
-        free(buf);
-        return 0;
-    }
+	if (!(buf = malloc(size + 1)))
+		return 0;
+	if (!(ctx = scconf_new(NULL))) {
+		free(buf);
+		return 0;
+	}
 
-    memcpy(buf, data, size);
-    buf[size] = '\0';
+	memcpy(buf, data, size);
+	buf[size] = '\0';
 
-    scconf_parse_string(ctx, buf);
+	scconf_parse_string(ctx, buf);
 
-    scconf_free(ctx);
-    free(buf);
-    return 0;
+	scconf_free(ctx);
+	free(buf);
+	return 0;
 }

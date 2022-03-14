@@ -23,4 +23,3 @@
 #include "p11test_case_readonly.h"
 
 void secret_tests(void **state);
-

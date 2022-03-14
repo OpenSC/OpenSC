@@ -24,8 +24,8 @@
 
 int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
 #ifdef FUZZING_ENABLED
-    fclose(stdout);
+	fclose(stdout);
 #endif
-    sc_asn1_print_tags(Data, Size);
-    return 0;
+	sc_asn1_print_tags(Data, Size);
+	return 0;
 }

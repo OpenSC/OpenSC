@@ -22,17 +22,19 @@
 #include "tools/openpgp-tool-helpers.h"
 
 struct expectation {
-    const char *data;
-    size_t length;
-    const char *output;
+	const char *data;
+	size_t length;
+	const char *output;
 };
 
-static void torture_prettify(void **state, const struct expectation *cur, char *(prettify_func)(const u8 *data, size_t length))
+static void
+torture_prettify(void **state, const struct expectation *cur,
+                 char *(prettify_func)(const u8 *data, size_t length))
 {
 	char *output;
 
 	while (cur->data != NULL) {
-		output = prettify_func((u8 *) cur->data, cur->length);
+		output = prettify_func((u8 *)cur->data, cur->length);
 		if (cur->output == NULL)
 			assert_null(output);
 		else {
@@ -44,13 +46,14 @@ static void torture_prettify(void **state, const struct expectation *cur, char *
 }
 
 const struct expectation expectations_algorithm[] = {
-    { "", 0, NULL },
-    { "\x12\x2b\x06\x01\x04\x01\x97\x55\x01\x05\x01", 11, "ECDH" },
-    { "\x01\x08\x00\x00\x20\x00", 6, "RSA2048" },
-    { NULL, 0, NULL }
+	{"", 0, NULL},
+	{"\x12\x2b\x06\x01\x04\x01\x97\x55\x01\x05\x01", 11, "ECDH"},
+	{"\x01\x08\x00\x00\x20\x00", 6, "RSA2048"},
+	{NULL, 0, NULL}
 };
 
-static void torture_prettify_algorithm(void **state)
+static void
+torture_prettify_algorithm(void **state)
 {
 	torture_prettify(state, expectations_algorithm, prettify_algorithm);
 }
@@ -64,7 +67,8 @@ const struct expectation expectations_date[] = {
     { NULL, 0, NULL }
 };
 
-static void torture_prettify_date(void **state)
+static void
+torture_prettify_date(void **state)
 {
 	torture_prettify(state, expectations_date, prettify_date);
 }
@@ -75,7 +79,8 @@ const struct expectation expectations_version[] = {
     { NULL, 0, NULL }
 };
 
-static void torture_prettify_version(void **state)
+static void
+torture_prettify_version(void **state)
 {
 	torture_prettify(state, expectations_version, prettify_version);
 }
@@ -92,7 +97,8 @@ const struct expectation expectations_manufacturer[] = {
     { NULL, 0, NULL }
 };
 
-static void torture_prettify_manufacturer(void **state)
+static void
+torture_prettify_manufacturer(void **state)
 {
 	torture_prettify(state, expectations_manufacturer, prettify_manufacturer);
 }
@@ -104,7 +110,8 @@ const struct expectation expectations_serialnumber[] = {
     { NULL, 0, NULL }
 };
 
-static void torture_prettify_serialnumber(void **state)
+static void
+torture_prettify_serialnumber(void **state)
 {
 	torture_prettify(state, expectations_serialnumber, prettify_serialnumber);
 }
@@ -117,7 +124,8 @@ const struct expectation expectations_name[] = {
     { NULL, 0, NULL }
 };
 
-static void torture_prettify_name(void **state)
+static void
+torture_prettify_name(void **state)
 {
 	torture_prettify(state, expectations_name, prettify_name);
 }
@@ -130,7 +138,8 @@ const struct expectation expectations_language[] = {
     { NULL, 0, NULL }
 };
 
-static void torture_prettify_language(void **state)
+static void
+torture_prettify_language(void **state)
 {
 	torture_prettify(state, expectations_language, prettify_language);
 }
@@ -144,12 +153,14 @@ const struct expectation expectations_gender[] = {
     { NULL, 0, NULL }
 };
 
-static void torture_prettify_gender(void **state)
+static void
+torture_prettify_gender(void **state)
 {
 	torture_prettify(state, expectations_gender, prettify_gender);
 }
 
-int main(void)
+int
+main(void)
 {
 	int rc;
 	struct CMUnitTest tests[] = {

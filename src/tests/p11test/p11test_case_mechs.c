@@ -21,7 +21,9 @@
 
 #include "p11test_case_mechs.h"
 
-void supported_mechanisms_test(void **state) {
+void
+supported_mechanisms_test(void **state)
+{
 	token_info_t *info = (token_info_t *) *state;
 	CK_FUNCTION_LIST_PTR function_pointer = info->function_pointer;
 
@@ -191,4 +193,3 @@ void supported_mechanisms_test(void **state) {
 	}
 	P11TEST_PASS(info);
 }
-

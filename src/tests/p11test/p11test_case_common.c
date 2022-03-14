@@ -25,7 +25,8 @@
 char name_buffer[11];
 char flag_buffer[11];
 
-void test_certs_init(test_certs_t *objects)
+void
+test_certs_init(test_certs_t *objects)
 {
 	objects->alloc_count = 0;
 	objects->count = 0;
@@ -35,7 +36,8 @@ void test_certs_init(test_certs_t *objects)
 /**
  * If the object enforces re-authentication, do it now.
  */
-void always_authenticate(test_cert_t *o, token_info_t *info)
+void
+always_authenticate(test_cert_t *o, token_info_t *info)
 {
 	CK_RV rv;
 	if (!o->always_auth) {
@@ -103,7 +105,8 @@ add_object(test_certs_t *objects, CK_ATTRIBUTE key_id, CK_ATTRIBUTE label)
 /*
  * Search for certificate in the list by ID and return pointer to it
  */
-test_cert_t * search_certificate(test_certs_t *objects, CK_ATTRIBUTE *id)
+test_cert_t *
+search_certificate(test_certs_t *objects, CK_ATTRIBUTE *id)
 {
 	unsigned int i = 0;
 
@@ -208,9 +211,9 @@ add_supported_mechs(test_cert_t *o)
 			o->mechs[0].usage_flags = CKF_DERIVE;
 		}
 #endif
-	/* Nothing in the above enum can be used for secret keys */
 	} else if (o->key_type == CKK_AES) {
-		if (token.num_aes_mechs > 0 ) {
+		/* Nothing in the above enum can be used for secret keys */
+		if (token.num_aes_mechs > 0) {
 			o->num_mechs = token.num_aes_mechs;
 			for (i = 0; i < token.num_aes_mechs; i++) {
 				o->mechs[i].mech = token.aes_mechs[i].mech;
@@ -226,7 +229,7 @@ add_supported_mechs(test_cert_t *o)
 			o->mechs[0].params = NULL;
 			o->mechs[0].params_len = 0;
 			o->mechs[0].result_flags = 0;
-			o->mechs[0].usage_flags = CKF_ENCRYPT|CKF_DECRYPT|CKF_WRAP|CKF_UNWRAP;
+			o->mechs[0].usage_flags = CKF_ENCRYPT | CKF_DECRYPT | CKF_WRAP | CKF_UNWRAP;
 		}
 	}
 }
@@ -235,8 +238,9 @@ add_supported_mechs(test_cert_t *o)
  * Allocate place in the structure for every certificate found
  * and store related information
  */
-int callback_certificates(test_certs_t *objects,
-	CK_ATTRIBUTE template[], unsigned int template_size, CK_OBJECT_HANDLE object_handle)
+int
+callback_certificates(test_certs_t *objects, CK_ATTRIBUTE template[], unsigned int template_size,
+                      CK_OBJECT_HANDLE object_handle)
 {
 	EVP_PKEY *evp = NULL;
 	const u_char *cp = NULL;
@@ -282,8 +286,9 @@ int callback_certificates(test_certs_t *objects,
 /**
  * Pair found private keys on the card with existing certificates
  */
-int callback_private_keys(test_certs_t *objects,
-	CK_ATTRIBUTE template[], unsigned int template_size, CK_OBJECT_HANDLE object_handle)
+int
+callback_private_keys(test_certs_t *objects, CK_ATTRIBUTE template[], unsigned int template_size,
+                      CK_OBJECT_HANDLE object_handle)
 {
 	test_cert_t *o = NULL;
 	char *key_id;
@@ -332,8 +337,9 @@ int callback_private_keys(test_certs_t *objects,
 /**
  * Pair found public keys on the card with existing certificates
  */
-int callback_public_keys(test_certs_t *objects,
-	CK_ATTRIBUTE template[], unsigned int template_size, CK_OBJECT_HANDLE object_handle)
+int
+callback_public_keys(test_certs_t *objects, CK_ATTRIBUTE template[], unsigned int template_size,
+                     CK_OBJECT_HANDLE object_handle)
 {
 	test_cert_t *o = NULL;
 	char *key_id;
@@ -398,7 +404,7 @@ int callback_public_keys(test_certs_t *objects,
 				o->verify_public = 1;
 			} else {
 				debug_print(" [WARN %s ] Got different public key then from the certificate",
-					o->id_str);
+				            o->id_str);
 			}
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 			BN_free(cert_n);
@@ -418,10 +424,10 @@ int callback_public_keys(test_certs_t *objects,
 			}
 #else
 			if (!(ctx = EVP_PKEY_CTX_new_from_name(NULL, "RSA", NULL)) ||
-				!(bld = OSSL_PARAM_BLD_new()) ||
-				OSSL_PARAM_BLD_push_BN(bld, "n", n) != 1 ||
-				OSSL_PARAM_BLD_push_BN(bld, "e", e) != 1 ||
-				!(params = OSSL_PARAM_BLD_to_param(bld))) {
+			    !(bld = OSSL_PARAM_BLD_new()) ||
+			    OSSL_PARAM_BLD_push_BN(bld, "n", n) != 1 ||
+			    OSSL_PARAM_BLD_push_BN(bld, "e", e) != 1 ||
+			    !(params = OSSL_PARAM_BLD_to_param(bld))) {
 				EVP_PKEY_CTX_free(ctx);
 				BN_free(n);
 				BN_free(e);
@@ -431,12 +437,12 @@ int callback_public_keys(test_certs_t *objects,
 			}
 			OSSL_PARAM_BLD_free(bld);
 			if (EVP_PKEY_fromdata_init(ctx) != 1 ||
-				EVP_PKEY_fromdata(ctx, &o->key, EVP_PKEY_PUBLIC_KEY, params) != 1) {
+			    EVP_PKEY_fromdata(ctx, &o->key, EVP_PKEY_PUBLIC_KEY, params) != 1) {
 				EVP_PKEY_CTX_free(ctx);
 				BN_free(n);
 				BN_free(e);
 				OSSL_PARAM_free(params);
-			 	fail_msg("Unable to store key");
+				fail_msg("Unable to store key");
 				return -1;
 			}
 			OSSL_PARAM_free(params);
@@ -509,12 +515,15 @@ int callback_public_keys(test_certs_t *objects,
 #else
 			EC_GROUP *cert_group = NULL;
 			EC_POINT *cert_point = NULL;
-			char curve_name[80]; size_t curve_name_len = 0;
-			unsigned char pubkey[80]; size_t pubkey_len = 0;
+			char curve_name[80];
+			size_t curve_name_len = 0;
+			unsigned char pubkey[80];
+			size_t pubkey_len = 0;
 			int cert_nid = 0;
-			if (EVP_PKEY_get_group_name(o->key, curve_name, sizeof(curve_name), &curve_name_len) != 1 ||
-				(cert_nid = OBJ_txt2nid(curve_name)) == NID_undef ||
-				(cert_group = EC_GROUP_new_by_curve_name(cert_nid)) == NULL) {
+			if (EVP_PKEY_get_group_name(o->key, curve_name, sizeof(curve_name),
+			                            &curve_name_len) != 1 ||
+			    (cert_nid = OBJ_txt2nid(curve_name)) == NID_undef ||
+			    (cert_group = EC_GROUP_new_by_curve_name(cert_nid)) == NULL) {
 				fprintf(stderr, "Can not get EC_GROUP from EVP_PKEY");
 				EC_GROUP_free(ecgroup);
 				EC_POINT_free(ecpoint);
@@ -523,8 +532,9 @@ int callback_public_keys(test_certs_t *objects,
 			}
 			cert_point = EC_POINT_new(cert_group);
 			if (!cert_point ||
-				EVP_PKEY_get_octet_string_param(o->key, OSSL_PKEY_PARAM_PUB_KEY, pubkey, sizeof(pubkey), &pubkey_len) != 1 ||
-				EC_POINT_oct2point(cert_group, cert_point, pubkey, pubkey_len, NULL) != 1) {
+			    EVP_PKEY_get_octet_string_param(o->key, OSSL_PKEY_PARAM_PUB_KEY, pubkey,
+			                                    sizeof(pubkey), &pubkey_len) != 1 ||
+			    EC_POINT_oct2point(cert_group, cert_point, pubkey, pubkey_len, NULL) != 1) {
 				fprintf(stderr, "Can not get EC_POINT from EVP_PKEY");
 				EC_GROUP_free(ecgroup);
 				EC_POINT_free(ecpoint);
@@ -557,10 +567,13 @@ int callback_public_keys(test_certs_t *objects,
 			EVP_PKEY_set1_EC_KEY(o->key, ec);
 #else
 			ctx = EVP_PKEY_CTX_new_from_name(0, "EC", 0);
-			char curve_name[80]; size_t curve_name_len = 0;
-			unsigned char pubkey[80]; size_t pubkey_len = 0;
-			if (EVP_PKEY_get_group_name(o->key, curve_name, sizeof(curve_name), &curve_name_len)||
-				EVP_PKEY_get_octet_string_param(o->key, OSSL_PKEY_PARAM_PUB_KEY, pubkey, sizeof(pubkey), &pubkey_len) != 1) {
+			char curve_name[80];
+			size_t curve_name_len = 0;
+			unsigned char pubkey[80];
+			size_t pubkey_len = 0;
+			if (EVP_PKEY_get_group_name(o->key, curve_name, sizeof(curve_name), &curve_name_len) ||
+			    EVP_PKEY_get_octet_string_param(o->key, OSSL_PKEY_PARAM_PUB_KEY, pubkey,
+			                                    sizeof(pubkey), &pubkey_len) != 1) {
 				debug_print(" [WARN %s ] Can not get params from EVP_PKEY", o->id_str);
 				EC_GROUP_free(ecgroup);
 				EC_POINT_free(ecpoint);
@@ -568,9 +581,9 @@ int callback_public_keys(test_certs_t *objects,
 			}
 
 			if (!(bld = OSSL_PARAM_BLD_new()) ||
-				OSSL_PARAM_BLD_push_utf8_string(bld, "group", curve_name, curve_name_len) != 1 ||
-				OSSL_PARAM_BLD_push_octet_string(bld, "pub", pubkey, pubkey_len) != 1 ||
-				!(params = OSSL_PARAM_BLD_to_param(bld))) {
+			    OSSL_PARAM_BLD_push_utf8_string(bld, "group", curve_name, curve_name_len) != 1 ||
+			    OSSL_PARAM_BLD_push_octet_string(bld, "pub", pubkey, pubkey_len) != 1 ||
+			    !(params = OSSL_PARAM_BLD_to_param(bld))) {
 				debug_print(" [WARN %s ] Can not set params from EVP_PKEY", o->id_str);
 				EC_GROUP_free(ecgroup);
 				EC_POINT_free(ecpoint);
@@ -581,8 +594,8 @@ int callback_public_keys(test_certs_t *objects,
 			OSSL_PARAM_BLD_free(bld);
 
 			if (ctx == NULL || params == NULL ||
-				EVP_PKEY_fromdata_init(ctx) != 1 ||
-				EVP_PKEY_fromdata(ctx, &o->key, EVP_PKEY_PUBLIC_KEY, params) != 1) {
+			    EVP_PKEY_fromdata_init(ctx) != 1 ||
+			    EVP_PKEY_fromdata(ctx, &o->key, EVP_PKEY_PUBLIC_KEY, params) != 1) {
 				debug_print(" [WARN %s ] Can not set params for EVP_PKEY", o->id_str);
 				EC_GROUP_free(ecgroup);
 				EC_POINT_free(ecpoint);
@@ -629,7 +642,7 @@ int callback_public_keys(test_certs_t *objects,
 			}
 			ASN1_PRINTABLESTRING_free(curve);
 		} else if (d2i_ASN1_OBJECT(&obj, &a, (long)template[6].ulValueLen) != NULL) {
-#if defined(EVP_PKEY_ED25519) || defined (EVP_PKEY_X25519)
+#if defined(EVP_PKEY_ED25519) || defined(EVP_PKEY_X25519)
 			int nid = OBJ_obj2nid(obj);
 #endif
 			ASN1_OBJECT_free(obj);
@@ -701,8 +714,8 @@ int callback_public_keys(test_certs_t *objects,
 			}
 
 			if (EVP_PKEY_get_raw_public_key(o->key, pub, &publen) != 1 ||
-				publen != (size_t)os->length ||
-				memcmp(pub, os->data, publen) != 0) {
+			    publen != (size_t)os->length ||
+			    memcmp(pub, os->data, publen) != 0) {
 				debug_print(" [WARN %s ] Got different public"
 					"key then from the certificate",
 					o->id_str);
@@ -735,8 +748,9 @@ int callback_public_keys(test_certs_t *objects,
 /**
  * Store any secret keys
  */
-int callback_secret_keys(test_certs_t *objects,
-	CK_ATTRIBUTE template[], unsigned int template_size, CK_OBJECT_HANDLE object_handle)
+int
+callback_secret_keys(test_certs_t *objects, CK_ATTRIBUTE template[], unsigned int template_size,
+                     CK_OBJECT_HANDLE object_handle)
 {
 	test_cert_t *o = NULL;
 
@@ -776,7 +790,7 @@ int callback_secret_keys(test_certs_t *objects,
 		template[10].pValue = NULL;
 	}
 
-	o->bits = template[11].ulValueLen > 0 ? *((CK_ULONG *) template[11].pValue)*8 : 0;
+	o->bits = template[11].ulValueLen > 0 ? *((CK_ULONG *)template[11].pValue) * 8 : 0;
 
 	add_supported_mechs(o);
 
@@ -784,10 +798,10 @@ int callback_secret_keys(test_certs_t *objects,
 	return 0;
 }
 
-
-int search_objects(test_certs_t *objects, token_info_t *info,
-	CK_ATTRIBUTE filter[], CK_LONG filter_size, CK_ATTRIBUTE template[], CK_LONG template_size,
-	int (*callback)(test_certs_t *, CK_ATTRIBUTE[], unsigned int, CK_OBJECT_HANDLE))
+int
+search_objects(test_certs_t *objects, token_info_t *info, CK_ATTRIBUTE filter[], CK_LONG filter_size,
+               CK_ATTRIBUTE template[], CK_LONG template_size,
+               int (*callback)(test_certs_t *, CK_ATTRIBUTE[], unsigned int, CK_OBJECT_HANDLE))
 {
 	CK_RV rv;
 	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
@@ -844,8 +858,8 @@ int search_objects(test_certs_t *objects, token_info_t *info,
 			template[j].pValue = NULL;
 			template[j].ulValueLen = 0;
 
-			rv = fp->C_GetAttributeValue(info->session_handle, object_handles[i],
-				&(template[j]), 1);
+			rv = fp->C_GetAttributeValue(info->session_handle, object_handles[i], &(template[j]),
+			                             1);
 			if (rv == CKR_ATTRIBUTE_TYPE_INVALID ||
 			    rv == CKR_ATTRIBUTE_SENSITIVE ||
 			    rv == CKR_DEVICE_ERROR) {
@@ -885,7 +899,8 @@ out:
 	return ret;
 }
 
-void search_for_all_objects(test_certs_t *objects, token_info_t *info)
+void
+search_for_all_objects(test_certs_t *objects, token_info_t *info)
 {
 	CK_OBJECT_CLASS keyClass = CKO_CERTIFICATE;
 	CK_OBJECT_CLASS privateClass = CKO_PRIVATE_KEY;
@@ -896,54 +911,54 @@ void search_for_all_objects(test_certs_t *objects, token_info_t *info)
 	};
 	CK_ULONG filter_size = 1;
 	CK_ATTRIBUTE attrs[] = {
-			{ CKA_ID, NULL_PTR, 0},
-			{ CKA_VALUE, NULL_PTR, 0},
-			{ CKA_LABEL, NULL_PTR, 0},
-			{ CKA_CERTIFICATE_TYPE, NULL_PTR, 0},
+		{CKA_ID, NULL_PTR, 0},
+		{CKA_VALUE, NULL_PTR, 0},
+		{CKA_LABEL, NULL_PTR, 0},
+		{CKA_CERTIFICATE_TYPE, NULL_PTR, 0},
 	};
 	CK_ULONG attrs_size = sizeof (attrs) / sizeof (CK_ATTRIBUTE);
 	CK_ATTRIBUTE private_attrs[] = {
-			{ CKA_SIGN, NULL, 0}, // CK_BBOOL
-			{ CKA_DECRYPT, NULL, 0}, // CK_BBOOL
-			{ CKA_KEY_TYPE, NULL, 0}, // CKK_
-			{ CKA_ID, NULL, 0},
-			{ CKA_ALWAYS_AUTHENTICATE, NULL, 0}, // CK_BBOOL
-			{ CKA_UNWRAP, NULL, 0}, // CK_BBOOL
-			{ CKA_DERIVE, NULL, 0}, // CK_BBOOL
-			{ CKA_LABEL, NULL_PTR, 0},
-			{ CKA_EXTRACTABLE, NULL, 0}, // CK_BBOOL
+		{CKA_SIGN, NULL, 0}, // CK_BBOOL
+		{CKA_DECRYPT, NULL, 0}, // CK_BBOOL
+		{CKA_KEY_TYPE, NULL, 0}, // CKK_
+		{CKA_ID, NULL, 0}, // CK_BYTE_PTR
+		{CKA_ALWAYS_AUTHENTICATE, NULL, 0}, // CK_BBOOL
+		{CKA_UNWRAP, NULL, 0}, // CK_BBOOL
+		{CKA_DERIVE, NULL, 0}, // CK_BBOOL
+		{CKA_LABEL, NULL_PTR, 0}, // CK_BYTE_PTR
+		{CKA_EXTRACTABLE, NULL, 0}, // CK_BBOOL
 	};
 	CK_ULONG private_attrs_size = sizeof (private_attrs) / sizeof (CK_ATTRIBUTE);
 	CK_ATTRIBUTE public_attrs[] = {
-			{ CKA_VERIFY, NULL, 0}, // CK_BBOOL
-			{ CKA_ENCRYPT, NULL, 0}, // CK_BBOOL
-			{ CKA_KEY_TYPE, NULL, 0},
-			{ CKA_ID, NULL, 0},
-			{ CKA_MODULUS, NULL, 0},
-			{ CKA_PUBLIC_EXPONENT, NULL, 0},
-			{ CKA_EC_PARAMS, NULL, 0},
-			{ CKA_EC_POINT, NULL, 0},
-			{ CKA_WRAP, NULL, 0}, // CK_BBOOL
-			{ CKA_DERIVE, NULL, 0}, // CK_BBOOL
+		{CKA_VERIFY, NULL, 0}, // CK_BBOOL
+		{CKA_ENCRYPT, NULL, 0}, // CK_BBOOL
+		{CKA_KEY_TYPE, NULL, 0}, // CKK_
+		{CKA_ID, NULL, 0}, // CK_BYTE_PTR
+		{CKA_MODULUS, NULL, 0},
+		{CKA_PUBLIC_EXPONENT, NULL, 0},
+		{CKA_EC_PARAMS, NULL, 0},
+		{CKA_EC_POINT, NULL, 0},
+		{CKA_WRAP, NULL, 0}, // CK_BBOOL
+		{CKA_DERIVE, NULL, 0}, // CK_BBOOL
 	};
 	CK_ULONG public_attrs_size = sizeof (public_attrs) / sizeof (CK_ATTRIBUTE);
 	CK_ATTRIBUTE secret_attrs[] = {
-			{ CKA_KEY_TYPE, NULL, 0},
-			{ CKA_ID, NULL, 0},
-			{ CKA_TOKEN, NULL, 0}, // CK_BBOOL
-			{ CKA_SIGN, NULL, 0}, // CK_BBOOL
-			{ CKA_VERIFY, NULL, 0}, // CK_BBOOL
-			{ CKA_ENCRYPT, NULL, 0}, // CK_BBOOL
-			{ CKA_DECRYPT, NULL, 0}, // CK_BBOOL
-			{ CKA_DERIVE, NULL, 0}, // CK_BBOOL
-			{ CKA_WRAP, NULL, 0}, // CK_BBOOL
-			{ CKA_UNWRAP, NULL, 0}, // CK_BBOOL
-			{ CKA_VALUE, NULL, 0},
-			{ CKA_VALUE_LEN, NULL, 0},
-			{ CKA_EXTRACTABLE, NULL, 0}, // CK_BBOOL
-			{ CKA_LABEL, NULL_PTR, 0},
+		{ CKA_KEY_TYPE, NULL, 0},
+		{ CKA_ID, NULL, 0},
+		{ CKA_TOKEN, NULL, 0}, // CK_BBOOL
+		{ CKA_SIGN, NULL, 0}, // CK_BBOOL
+		{ CKA_VERIFY, NULL, 0}, // CK_BBOOL
+		{ CKA_ENCRYPT, NULL, 0}, // CK_BBOOL
+		{ CKA_DECRYPT, NULL, 0}, // CK_BBOOL
+		{ CKA_DERIVE, NULL, 0}, // CK_BBOOL
+		{ CKA_WRAP, NULL, 0}, // CK_BBOOL
+		{ CKA_UNWRAP, NULL, 0}, // CK_BBOOL
+		{ CKA_VALUE, NULL, 0},
+		{ CKA_VALUE_LEN, NULL, 0},
+		{ CKA_EXTRACTABLE, NULL, 0}, // CK_BBOOL
+		{ CKA_LABEL, NULL_PTR, 0},
 	};
-	CK_ULONG secret_attrs_size = sizeof (secret_attrs) / sizeof (CK_ATTRIBUTE);
+	CK_ULONG secret_attrs_size = sizeof(secret_attrs) / sizeof(CK_ATTRIBUTE);
 
 	debug_print("\nSearch for all certificates on the card");
 	search_objects(objects, info, filter, filter_size,
@@ -981,7 +996,8 @@ void clean_all_objects(test_certs_t *objects) {
 	free(objects->data);
 }
 
-const char *get_mechanism_name(int mech_id)
+const char *
+get_mechanism_name(int mech_id)
 {
 	switch (mech_id) {
 		case CKM_RSA_PKCS:
@@ -1161,7 +1177,8 @@ const char *get_mgf_name(int mgf_id)
 	}
 }
 
-const char *get_mechanism_flag_name(int mech_id)
+const char *
+get_mechanism_flag_name(int mech_id)
 {
 	switch (mech_id) {
 		case CKF_HW:
@@ -1218,7 +1235,8 @@ const char *get_mechanism_flag_name(int mech_id)
 	}
 }
 
-char *convert_byte_string(unsigned char *id, unsigned long length)
+char *
+convert_byte_string(unsigned char *id, unsigned long length)
 {
 	unsigned int i;
 	char *data;
@@ -1239,7 +1257,8 @@ char *convert_byte_string(unsigned char *id, unsigned long length)
 	return data;
 }
 
-void write_data_row(token_info_t *info, int cols, ...)
+void
+write_data_row(token_info_t *info, int cols, ...)
 {
 	va_list ap;
 	int i, intval, type;
@@ -1264,7 +1283,8 @@ void write_data_row(token_info_t *info, int cols, ...)
 	va_end(ap);
 }
 
-int is_pss_mechanism(CK_MECHANISM_TYPE mech)
+int
+is_pss_mechanism(CK_MECHANISM_TYPE mech)
 {
 	return (mech == CKM_RSA_PKCS_PSS
 		|| mech == CKM_SHA1_RSA_PKCS_PSS

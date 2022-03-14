@@ -90,17 +90,17 @@ typedef struct {
 	int encrypt_support;
 
 	test_mech_t rsa_mechs[MAX_MECHS];
-	size_t  num_rsa_mechs;
-	test_mech_t	ec_mechs[MAX_MECHS];
-	size_t  num_ec_mechs;
-	test_mech_t	ed_mechs[MAX_MECHS];
-	size_t  num_ed_mechs;
-	test_mech_t	montgomery_mechs[MAX_MECHS];
-	size_t  num_montgomery_mechs;
-	test_mech_t	aes_mechs[MAX_MECHS];
-	size_t  num_aes_mechs;
-	test_mech_t	keygen_mechs[MAX_MECHS];
-	size_t  num_keygen_mechs;
+	size_t num_rsa_mechs;
+	test_mech_t ec_mechs[MAX_MECHS];
+	size_t num_ec_mechs;
+	test_mech_t ed_mechs[MAX_MECHS];
+	size_t num_ed_mechs;
+	test_mech_t montgomery_mechs[MAX_MECHS];
+	size_t num_montgomery_mechs;
+	test_mech_t aes_mechs[MAX_MECHS];
+	size_t num_aes_mechs;
+	test_mech_t keygen_mechs[MAX_MECHS];
+	size_t num_keygen_mechs;
 } token_info_t;
 
 extern token_info_t token;

@@ -20,7 +20,9 @@
  */
 #include "p11test_case_usage.h"
 
-void usage_test(void **state) {
+void
+usage_test(void **state)
+{
 	unsigned int i;
 	int errors = 0;
 	token_info_t *info = (token_info_t *) *state;
@@ -74,20 +76,20 @@ void usage_test(void **state) {
 	printf("[KEY ID] [LABEL]\n");
 	printf("[ TYPE ] [ SIZE ] [PUBLIC] [SIGN&VERIFY] [ENC&DECRYPT] [WRAP&UNWR] [ DERIVE ] [ALWAYS_AUTH]\n");
 	P11TEST_DATA_ROW(info, 14,
-		's', "KEY ID",
-		's', "LABEL",
-		's', "TYPE",
-		's', "BITS",
-		's', "VERIFY PUBKEY",
-		's', "SIGN",
-		's', "VERIFY",
-		's', "ENCRYPT",
-		's', "DECRYPT",
-		's', "WRAP",
-		's', "UNWRAP",
-		's', "DERIVE PUBLIC",
-		's', "DERIVE PRIVATE",
-		's', "ALWAYS AUTH");
+	                 's', "KEY ID",
+	                 's', "LABEL",
+	                 's', "TYPE",
+	                 's', "BITS",
+	                 's', "VERIFY PUBKEY",
+	                 's', "SIGN",
+	                 's', "VERIFY",
+	                 's', "ENCRYPT",
+	                 's', "DECRYPT",
+	                 's', "WRAP",
+	                 's', "UNWRAP",
+	                 's', "DERIVE PUBLIC",
+	                 's', "DERIVE PRIVATE",
+	                 's', "ALWAYS AUTH");
 	for (i = 0; i < objects.count; i++) {
 		test_cert_t *o = &objects.data[i];
 
@@ -98,41 +100,41 @@ void usage_test(void **state) {
 			continue;
 
 		printf("[ %s ] [%6lu] [ %s ] [%s%s] [%s%s] [%s %s] [%s%s] [    %s   ]\n",
-			(o->key_type == CKK_RSA ? "RSA " :
-				o->key_type == CKK_EC ? " EC " :
-				o->key_type == CKK_EC_EDWARDS ? "EC_E" :
-				o->key_type == CKK_EC_MONTGOMERY ? "EC_M" :
-				o->key_type == CKK_AES ? "AES " : " ?? "),
-			o->bits,
-			o->verify_public == 1 ? " ./ " : "    ",
-			o->sign ? "[./] " : "[  ] ",
-			o->verify ? " [./] " : " [  ] ",
-			o->encrypt ? "[./] " : "[  ] ",
-			o->decrypt ? " [./] " : " [  ] ",
-			o->wrap ? "[./]" : "[  ]",
-			o->unwrap ? "[./]" : "[  ]",
-			o->derive_pub ? "[./]" : "[  ]",
-			o->derive_priv ? "[./]" : "[  ]",
-			o->always_auth ? "[./]" : "[  ]");
+		       (o->key_type == CKK_RSA ? "RSA " :
+		        o->key_type == CKK_EC ? " EC " :
+		        o->key_type == CKK_EC_EDWARDS ? "EC_E" :
+		        o->key_type == CKK_EC_MONTGOMERY ? "EC_M" :
+		        o->key_type == CKK_AES ? "AES " : " ?? "),
+		       o->bits,
+		       o->verify_public == 1 ? " ./ " : "    ",
+		       o->sign ? "[./] " : "[  ] ",
+		       o->verify ? " [./] " : " [  ] ",
+		       o->encrypt ? "[./] " : "[  ] ",
+		       o->decrypt ? " [./] " : " [  ] ",
+		       o->wrap ? "[./]" : "[  ]",
+		       o->unwrap ? "[./]" : "[  ]",
+		       o->derive_pub ? "[./]" : "[  ]",
+		       o->derive_priv ? "[./]" : "[  ]",
+		       o->always_auth ? "[./]" : "[  ]");
 		P11TEST_DATA_ROW(info, 14,
-			's', o->id_str,
-			's', o->label,
-			's', (o->key_type == CKK_RSA ? "RSA" :
-				o->key_type == CKK_EC ? "EC" :
-				o->key_type == CKK_EC_EDWARDS ? "EC_E" :
-				o->key_type == CKK_EC_MONTGOMERY ? "EC_M" :
-				o->key_type == CKK_AES ? "AES" : " ?? "),
-			'd', o->bits,
-			's', o->verify_public == 1 ? "YES" : "",
-			's', o->sign ? "YES" : "",
-			's', o->verify ? "YES" : "",
-			's', o->encrypt ? "YES" : "",
-			's', o->decrypt ? "YES" : "",
-			's', o->wrap ? "YES" : "",
-			's', o->unwrap ? "YES" : "",
-			's', o->derive_pub ? "YES" : "",
-			's', o->derive_priv ? "YES" : "",
-			's', o->always_auth ? "YES" : "");
+		                 's', o->id_str,
+		                 's', o->label,
+		                 's', (o->key_type == CKK_RSA ? "RSA" :
+		                       o->key_type == CKK_EC ? "EC" :
+		                       o->key_type == CKK_EC_EDWARDS ? "EC_E" :
+		                       o->key_type == CKK_EC_MONTGOMERY ? "EC_M" :
+		                       o->key_type == CKK_AES ? "AES" : " ?? "),
+		                 'd', o->bits,
+		                 's', o->verify_public == 1 ? "YES" : "",
+		                 's', o->sign ? "YES" : "",
+		                 's', o->verify ? "YES" : "",
+		                 's', o->encrypt ? "YES" : "",
+		                 's', o->decrypt ? "YES" : "",
+		                 's', o->wrap ? "YES" : "",
+		                 's', o->unwrap ? "YES" : "",
+		                 's', o->derive_pub ? "YES" : "",
+		                 's', o->derive_priv ? "YES" : "",
+		                 's', o->always_auth ? "YES" : "");
 	}
 	printf(" Public == Cert -----^       ^-----^       ^-----^       ^----^      ^---^\n");
 	printf(" Sign & Verify Attributes ------'             |            |           |\n");

@@ -22,46 +22,47 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-int LLVMFuzzerTestOneInput (const unsigned char *data, size_t size);
+int LLVMFuzzerTestOneInput(const unsigned char *data, size_t size);
 
-int main (int argc, char **argv)
+int
+main(int argc, char **argv)
 {
-    printf("Testing one input:\n");
-    FILE *fd = NULL;
-    long int len = 0;
-    unsigned char *buffer = NULL;
-    int r = 1;
+	printf("Testing one input:\n");
+	FILE *fd = NULL;
+	long int len = 0;
+	unsigned char *buffer = NULL;
+	int r = 1;
 
-    if (argc < 2) {
-        fprintf(stderr, "No arguments, passing NULL\n");
-        len = 0;
-    } else {
-        if ((fd = fopen(argv[1], "r")) == NULL
-                || fseek(fd, 0, SEEK_END) != 0
-                || (len = ftell(fd)) < 0) {
-            fprintf(stderr, "fopen/fseek failed\n");
-            goto err;
-        }
-        rewind(fd);
-        if ((buffer = (unsigned char*) malloc(len)) == NULL) {
-            fprintf(stderr, "malloc failed\n");
-            goto err;
-        }
+	if (argc < 2) {
+		fprintf(stderr, "No arguments, passing NULL\n");
+		len = 0;
+	} else {
+		if ((fd = fopen(argv[1], "r")) == NULL ||
+		    fseek(fd, 0, SEEK_END) != 0 ||
+		    (len = ftell(fd)) < 0) {
+			fprintf(stderr, "fopen/fseek failed\n");
+			goto err;
+		}
+		rewind(fd);
+		if ((buffer = (unsigned char*)malloc(len)) == NULL) {
+			fprintf(stderr, "malloc failed\n");
+			goto err;
+		}
 
-        if (fread(buffer, 1, len, fd) != (size_t)len) {
-            fprintf(stderr, "fread failed\n");
-            goto err;
-        }
-    }
+		if (fread(buffer, 1, len, fd) != (size_t)len) {
+			fprintf(stderr, "fread failed\n");
+			goto err;
+		}
+	}
 
-    LLVMFuzzerTestOneInput(buffer, len);
-    r = 0;
+	LLVMFuzzerTestOneInput(buffer, len);
+	r = 0;
 
 err:
-    if (fd)
-        fclose(fd);
-    if (buffer)
-        free(buffer);
-    printf("Done!\n");
-    return r;
+	if (fd)
+		fclose(fd);
+	if (buffer)
+		free(buffer);
+	printf("Done!\n");
+	return r;
 }

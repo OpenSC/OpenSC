@@ -23,5 +23,3 @@
 #include "p11test_case_readonly.h"
 
 void wrap_tests(void **state);
-
-

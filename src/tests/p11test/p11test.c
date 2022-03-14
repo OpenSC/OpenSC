@@ -43,64 +43,55 @@ int debug_flag = 0;
 
 void display_usage() {
 	fprintf(stdout,
-		" Usage:\n"
-		"	./p11test [-m module_path] [-s slot_id] [-p pin]\n"
-		"		-m module_path	Path to tested module (e.g. /usr/lib64/opensc-pkcs11.so)\n"
-		"						Default is "DEFAULT_P11LIB"\n"
-		"		-p pin			Application PIN\n"
-		"		-s slot_id		Slot ID with the card\n"
-		"		-i				Wait for the card before running the test (interactive)\n"
-		"		-o				File to write a log in JSON\n"
-		"		-v				Verbose log output\n"
-		"		-h				This help\n"
-		"\n");
+	        " Usage:\n"
+	        "	./p11test [-m module_path] [-s slot_id] [-p pin]\n"
+	        "		-m module_path	Path to tested module (e.g. /usr/lib64/opensc-pkcs11.so)\n"
+	        "						Default is " DEFAULT_P11LIB "\n"
+	        "		-p pin			Application PIN\n"
+	        "		-s slot_id		Slot ID with the card\n"
+	        "		-i				Wait for the card before running the test "
+	        "(interactive)\n"
+	        "		-o				File to write a log in JSON\n"
+	        "		-v				Verbose log output\n"
+	        "		-h				This help\n"
+	        "\n");
 }
 
 int main(int argc, char** argv) {
 	signed char command;
 	const struct CMUnitTest readonly_tests_without_initialization[] = {
 		/* Test card events on slot */
-		cmocka_unit_test_setup_teardown(wait_test,
-			token_initialize, token_cleanup),
+		cmocka_unit_test_setup_teardown(wait_test, token_initialize, token_cleanup),
 
 		/* Check all the mechanisms provided by the token */
-		cmocka_unit_test_setup_teardown(supported_mechanisms_test,
-			token_setup, token_cleanup),
+		cmocka_unit_test_setup_teardown(supported_mechanisms_test, token_setup, token_cleanup),
 
 		/* Check the PKCS #11 3.0 Interface to access new functions */
 		cmocka_unit_test(interface_test),
 
 		/* Complex readonly test of all objects on the card */
-		cmocka_unit_test_setup_teardown(readonly_tests,
-			user_login_setup, after_test_cleanup),
+		cmocka_unit_test_setup_teardown(readonly_tests, user_login_setup, after_test_cleanup),
 
 		/* Multipart signatures and encryption */
-		cmocka_unit_test_setup_teardown(multipart_tests,
-			user_login_setup, after_test_cleanup),
+		cmocka_unit_test_setup_teardown(multipart_tests, user_login_setup, after_test_cleanup),
 
 		/* Regression test Sign&Verify with various data lengths */
-		cmocka_unit_test_setup_teardown(ec_sign_size_test,
-			user_login_setup, after_test_cleanup),
+		cmocka_unit_test_setup_teardown(ec_sign_size_test, user_login_setup, after_test_cleanup),
 
 		/* Verify that the Usage flags on the objects are sane */
-		cmocka_unit_test_setup_teardown(usage_test,
-			user_login_setup, after_test_cleanup),
+		cmocka_unit_test_setup_teardown(usage_test, user_login_setup, after_test_cleanup),
 
 		/* Verify that RSA-PSS and RSA-OAEP functions if supported */
-		cmocka_unit_test_setup_teardown(pss_oaep_test,
-			user_login_setup, after_test_cleanup),
+		cmocka_unit_test_setup_teardown(pss_oaep_test, user_login_setup, after_test_cleanup),
 
 		/* Verify that ECDH key derivation works */
-		cmocka_unit_test_setup_teardown(derive_tests,
-			user_login_setup, after_test_cleanup),
+		cmocka_unit_test_setup_teardown(derive_tests, user_login_setup, after_test_cleanup),
 
 		/* Verify that basic operations with secret keys work */
-		cmocka_unit_test_setup_teardown(secret_tests,
-			user_login_setup, after_test_cleanup),
+		cmocka_unit_test_setup_teardown(secret_tests, user_login_setup, after_test_cleanup),
 
 		/* Verify that key wrapping and unwrapping works */
-		cmocka_unit_test_setup_teardown(wrap_tests,
-			user_login_setup, after_test_cleanup),
+		cmocka_unit_test_setup_teardown(wrap_tests, user_login_setup, after_test_cleanup),
 	};
 
 	/* Make sure it is initialized to sensible values */
@@ -149,8 +140,7 @@ int main(int argc, char** argv) {
 		return -1;
 	}
 
-	debug_print("Card info:\n\tPIN %s\n\tPIN LENGTH %zu\n\t",
-		token.pin, token.pin_length);
+	debug_print("Card info:\n\tPIN %s\n\tPIN LENGTH %zu\n\t", token.pin, token.pin_length);
 
 	return cmocka_run_group_tests(readonly_tests_without_initialization,
 		group_setup, group_teardown);

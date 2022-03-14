@@ -123,7 +123,8 @@ get_mgfs(void)
 	return h;
 }
 
-const EVP_MD *mgf_cryptoki_to_ossl(CK_RSA_PKCS_MGF_TYPE mgf)
+const EVP_MD *
+mgf_cryptoki_to_ossl(CK_RSA_PKCS_MGF_TYPE mgf)
 {
 	switch (mgf) {
 	case CKG_MGF1_SHA224:
@@ -145,7 +146,8 @@ const EVP_MD *mgf_cryptoki_to_ossl(CK_RSA_PKCS_MGF_TYPE mgf)
 	}
 }
 
-const EVP_MD *md_cryptoki_to_ossl(CK_MECHANISM_TYPE hash)
+const EVP_MD *
+md_cryptoki_to_ossl(CK_MECHANISM_TYPE hash)
 {
 	/* Digest mechanisms */
 	switch (hash) {
@@ -168,7 +170,8 @@ const EVP_MD *md_cryptoki_to_ossl(CK_MECHANISM_TYPE hash)
 	}
 }
 
-size_t get_hash_length(CK_MECHANISM_TYPE mech)
+size_t
+get_hash_length(CK_MECHANISM_TYPE mech)
 {
 	switch (mech) {
 	case CKM_SHA224:
@@ -185,8 +188,8 @@ size_t get_hash_length(CK_MECHANISM_TYPE mech)
 	}
 }
 
-CK_BYTE *hash_message(const CK_BYTE *message, size_t message_length,
-    CK_MECHANISM_TYPE hash)
+CK_BYTE *
+hash_message(const CK_BYTE *message, size_t message_length, CK_MECHANISM_TYPE hash)
 {
 	CK_BYTE *out = NULL;
 	const EVP_MD *md = NULL;
@@ -221,16 +224,16 @@ CK_BYTE *hash_message(const CK_BYTE *message, size_t message_length,
 	}
 
 	out = malloc(digest_len);
-	if (!out ||
-		EVP_Digest(message, message_length, out, NULL, md, NULL) != 1) {
+	if (!out || EVP_Digest(message, message_length, out, NULL, md, NULL) != 1) {
 		free(out);
 		return NULL;
 	}
 	return out;
 }
 
-int oaep_encrypt_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
-    CK_ULONG message_length, test_mech_t *mech, unsigned char **enc_message)
+int
+oaep_encrypt_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message, CK_ULONG message_length,
+                             test_mech_t *mech, unsigned char **enc_message)
 {
 	size_t enc_length = 0;
 	CK_RV rv = -1;
@@ -241,11 +244,11 @@ int oaep_encrypt_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *me
 	md = md_cryptoki_to_ossl(mech->hash);
 	mgf1_md = mgf_cryptoki_to_ossl(mech->mgf);
 
-	if ((pctx = EVP_PKEY_CTX_new(o->key, NULL)) == NULL
-		|| EVP_PKEY_encrypt_init(pctx) != 1
-		|| EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_PKCS1_OAEP_PADDING) != 1
-		|| EVP_PKEY_CTX_set_rsa_oaep_md(pctx, md) != 1
-		|| EVP_PKEY_CTX_set_rsa_mgf1_md(pctx, mgf1_md) != 1) {
+	if ((pctx = EVP_PKEY_CTX_new(o->key, NULL)) == NULL ||
+	    EVP_PKEY_encrypt_init(pctx) != 1 ||
+	    EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_PKCS1_OAEP_PADDING) != 1 ||
+	    EVP_PKEY_CTX_set_rsa_oaep_md(pctx, md) != 1 ||
+	    EVP_PKEY_CTX_set_rsa_mgf1_md(pctx, mgf1_md) != 1) {
 		fprintf(stderr, " [ ERROR %s ] Failed to initialize EVP_PKEY_CTX. Error: %s\n",
 			o->id_str, ERR_error_string(ERR_peek_last_error(), NULL));
 		goto out;
@@ -269,8 +272,8 @@ out:
 	return enc_length;
 }
 
-void fill_oaep_params(CK_RSA_PKCS_OAEP_PARAMS *oaep_params,
-    test_mech_t *mech)
+void
+fill_oaep_params(CK_RSA_PKCS_OAEP_PARAMS *oaep_params, test_mech_t *mech)
 {
 	oaep_params->hashAlg = mech->hash;
 	oaep_params->mgf = mech->mgf;
@@ -280,8 +283,9 @@ void fill_oaep_params(CK_RSA_PKCS_OAEP_PARAMS *oaep_params,
 
 }
 
-int oaep_encrypt_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
-    CK_ULONG message_length, test_mech_t *mech, unsigned char **enc_message)
+int
+oaep_encrypt_message(test_cert_t *o, token_info_t *info, CK_BYTE *message, CK_ULONG message_length,
+                     test_mech_t *mech, unsigned char **enc_message)
 {
 	CK_RV rv;
 	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
@@ -333,8 +337,9 @@ openssl_encrypt:
 	    enc_message);
 }
 
-int oaep_decrypt_message(test_cert_t *o, token_info_t *info, CK_BYTE *enc_message,
-    CK_ULONG enc_message_length, test_mech_t *mech, unsigned char **dec_message)
+int
+oaep_decrypt_message(test_cert_t *o, token_info_t *info, CK_BYTE *enc_message, CK_ULONG enc_message_length,
+                     test_mech_t *mech, unsigned char **dec_message)
 {
 	CK_RV rv;
 	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
@@ -381,7 +386,8 @@ int oaep_decrypt_message(test_cert_t *o, token_info_t *info, CK_BYTE *enc_messag
  *  * -1 otherwise.
  *  Serious errors terminate the execution.
  */
-int oaep_encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech)
+int
+oaep_encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 {
 	CK_BYTE *message = (CK_BYTE *) SHORT_MESSAGE_TO_SIGN;
 	CK_BYTE *dec_message = NULL;
@@ -412,10 +418,8 @@ int oaep_encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *m
 	/* will not work for 1024b RSA key and SHA512 hash: It has max size -2 */
 	if (message_length < 0) {
 		mech->usage_flags &= ~CKF_DECRYPT;
-		debug_print(" [SKIP %s ] Too small modulus (%ld bits)"
-			" or too large hash %s (%zu B) for OAEP", o->id_str,
-			o->bits, get_mechanism_name(mech->hash),
-			get_hash_length(mech->hash));
+		debug_print(" [SKIP %s ] Too small modulus (%ld bits) or too large hash %s (%zu B) for OAEP",
+		            o->id_str, o->bits, get_mechanism_name(mech->hash), get_hash_length(mech->hash));
 		return 0;
 	}
 
@@ -452,13 +456,14 @@ int oaep_encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *m
 	return rv;
 }
 
-static int get_max_salt_len(unsigned long bits, CK_MECHANISM_TYPE hash)
+static int
+get_max_salt_len(unsigned long bits, CK_MECHANISM_TYPE hash)
 {
 	return (bits + 7)/8 - get_hash_length(hash) - 2;
 }
 
-int fill_pss_params(CK_RSA_PKCS_PSS_PARAMS *pss_params,
-    test_mech_t *mech, test_cert_t *o)
+int
+fill_pss_params(CK_RSA_PKCS_PSS_PARAMS *pss_params, test_mech_t *mech, test_cert_t *o)
 {
 	pss_params->hashAlg = mech->hash;
 	pss_params->mgf = mech->mgf;
@@ -483,8 +488,9 @@ int fill_pss_params(CK_RSA_PKCS_PSS_PARAMS *pss_params,
 	return 1;
 }
 
-int pss_sign_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
-    CK_ULONG message_length, test_mech_t *mech, unsigned char **sign)
+int
+pss_sign_message(test_cert_t *o, token_info_t *info, CK_BYTE *message, CK_ULONG message_length,
+                 test_mech_t *mech, unsigned char **sign)
 {
 	CK_RV rv;
 	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
@@ -540,9 +546,9 @@ int pss_sign_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 	return sign_length;
 }
 
-int pss_verify_message_openssl(test_cert_t *o, token_info_t *info,
-    CK_BYTE *message, CK_ULONG message_length, test_mech_t *mech,
-    unsigned char *sign, CK_ULONG sign_length)
+int
+pss_verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message, CK_ULONG message_length,
+                           test_mech_t *mech, unsigned char *sign, CK_ULONG sign_length)
 {
 	CK_RV rv = -1;
 	EVP_PKEY_CTX *pctx = NULL;
@@ -563,12 +569,12 @@ int pss_verify_message_openssl(test_cert_t *o, token_info_t *info,
 		my_message_length = message_length;
 	}
 
-	if ((pctx = EVP_PKEY_CTX_new(o->key, NULL)) == NULL
-		|| EVP_PKEY_verify_init(pctx) != 1
-		|| EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_PKCS1_PSS_PADDING) != 1
-		|| EVP_PKEY_CTX_set_signature_md(pctx, md) != 1
-		|| EVP_PKEY_CTX_set_rsa_pss_saltlen(pctx, mech->salt) != 1
-		|| EVP_PKEY_CTX_set_rsa_mgf1_md(pctx, mgf_md) != 1) {
+	if ((pctx = EVP_PKEY_CTX_new(o->key, NULL)) == NULL ||
+	    EVP_PKEY_verify_init(pctx) != 1 ||
+	    EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_PKCS1_PSS_PADDING) != 1 ||
+	    EVP_PKEY_CTX_set_signature_md(pctx, md) != 1 ||
+	    EVP_PKEY_CTX_set_rsa_pss_saltlen(pctx, mech->salt) != 1 ||
+	    EVP_PKEY_CTX_set_rsa_mgf1_md(pctx, mgf_md) != 1) {
 		fprintf(stderr, " [ ERROR %s ] Failed to initialize EVP_PKEY_CTX. Error: %s\n",
 			o->id_str, ERR_error_string(ERR_peek_last_error(), NULL));
 		goto out;
@@ -589,9 +595,9 @@ out:
 	return rv;
 }
 
-int pss_verify_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
-    CK_ULONG message_length, test_mech_t *mech, unsigned char *sign,
-    CK_ULONG sign_length)
+int
+pss_verify_message(test_cert_t *o, token_info_t *info, CK_BYTE *message, CK_ULONG message_length,
+                   test_mech_t *mech, unsigned char *sign, CK_ULONG sign_length)
 {
 	CK_RV rv;
 	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
@@ -641,7 +647,8 @@ openssl_verify:
  *  * -1 otherwise.
  *  Serious errors terminate the execution.
  */
-int pss_sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech)
+int
+pss_sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 {
 	CK_BYTE *message = NULL;
 	size_t message_length = global_message_length;
@@ -698,7 +705,8 @@ out:
 /* ignore the prefilled mechanisms and list all combinations of mechanisms
  * found, all reasonable hash functions, MGFs and salt lengths
  */
-void fill_object_pss_mechanisms(token_info_t *info, test_cert_t *o)
+void
+fill_object_pss_mechanisms(token_info_t *info, test_cert_t *o)
 {
 	const CK_MECHANISM_TYPE *h;
 	const CK_RSA_PKCS_MGF_TYPE *mgf;
@@ -745,7 +753,8 @@ void fill_object_pss_mechanisms(token_info_t *info, test_cert_t *o)
 	o->num_mechs = n;
 }
 
-int have_pss_oaep_mechanisms()
+int
+have_pss_oaep_mechanisms()
 {
 	unsigned have = 0, i;
 	for (i = 0; i <= token.num_rsa_mechs; i++) {
@@ -757,8 +766,9 @@ int have_pss_oaep_mechanisms()
 	return have;
 }
 
-void pss_oaep_test(void **state) {
-
+void
+pss_oaep_test(void **state)
+{
 	token_info_t *info = (token_info_t *) *state;
 	unsigned int i;
 	int used, j;
