@@ -465,7 +465,7 @@ sc_pkcs11_mechanism_type_t *sc_pkcs11_find_mechanism(struct sc_pkcs11_card *,
 sc_pkcs11_mechanism_type_t *sc_pkcs11_new_fw_mechanism(CK_MECHANISM_TYPE,
 				CK_MECHANISM_INFO_PTR, CK_KEY_TYPE,
 				const void *, void (*)(const void *), CK_RV (*)(const void *, void **));
-void sc_pkcs11_free_mechanism(sc_pkcs11_mechanism_type_t *mt);
+void sc_pkcs11_free_mechanism(sc_pkcs11_mechanism_type_t **mt);
 sc_pkcs11_operation_t *sc_pkcs11_new_operation(sc_pkcs11_session_t *,
 				sc_pkcs11_mechanism_type_t *);
 void sc_pkcs11_release_operation(sc_pkcs11_operation_t **);
