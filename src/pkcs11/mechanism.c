@@ -31,7 +31,6 @@ struct hash_signature_info {
 	CK_MECHANISM_TYPE	hash_mech;
 	CK_MECHANISM_TYPE	sign_mech;
 	sc_pkcs11_mechanism_type_t *hash_type;
-	sc_pkcs11_mechanism_type_t *sign_type;
 };
 
 /* Also used for verification and decryption data */
@@ -1387,7 +1386,6 @@ sc_pkcs11_register_sign_and_hash_mechanism(struct sc_pkcs11_card *p11card,
 		return CKR_HOST_MEMORY;
 
 	info->mech = mech;
-	info->sign_type = sign_type;
 	info->hash_type = hash_type;
 	info->sign_mech = sign_type->mech;
 	info->hash_mech = hash_mech;
