@@ -266,7 +266,8 @@ static int sc_hsm_generate_key(struct sc_profile *profile, struct sc_pkcs15_card
 
 	strlcpy(cvc.car, "UTCA00001", sizeof cvc.car);
 	cvc.carLen = strlen(cvc.car);
-	strlcpy(cvc.chr, priv->serialno, sizeof cvc.chr);
+	if (priv->serialno)
+		strlcpy(cvc.chr, priv->serialno, sizeof cvc.chr);
 	strlcat(cvc.chr, "00001", sizeof cvc.chr);
 	cvc.chrLen = strlen(cvc.chr);
 
