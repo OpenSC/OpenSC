@@ -1877,7 +1877,7 @@ init_gost_params(struct sc_pkcs15init_keyarg_gost_params *params, EVP_PKEY *pkey
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 	EC_KEY *key;
 #else
-	char name[256]; size_t name_len = 0;
+	char name[256];
 #endif
 	int nid = NID_undef;
 
@@ -1890,7 +1890,7 @@ init_gost_params(struct sc_pkcs15init_keyarg_gost_params *params, EVP_PKEY *pkey
 		assert(EC_KEY_get0_group(key));
 		nid = EC_GROUP_get_curve_name(EC_KEY_get0_group(key));
 #else
-		assert(EVP_PKEY_get_group_name(pkey, name ,sizeof(name), &name_len));
+		assert(EVP_PKEY_get_group_name(pkey, name, sizeof(name), NULL));
 		nid = OBJ_txt2nid(name);
 #endif
 		assert(nid > 0);
