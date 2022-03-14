@@ -221,7 +221,7 @@ struct _access_rule_text {
 	{0, NULL},
 };
 
-static const char *key_types[] = { "", "RSA", "", "GOSTR3410", "EC", "EDDSA", "XEDDSA", "" };
+static const char *key_types[] = {"", "RSA", "", "GOSTR3410", "EC", "EDDSA", "XEDDSA", ""};
 
 static void
 print_access_rules(const struct sc_pkcs15_accessrule *rules, int num)
@@ -1033,7 +1033,7 @@ static int read_ssh_key(void)
 		buf[1] = 0;
 		buf[2] = 0;
 		buf[3] = len;
-		memcpy(buf+4, alg, len);
+		memcpy(buf + 4, alg, len);
 		len += 4;
 
 		buf[len++] = 0;
@@ -1089,7 +1089,7 @@ static int read_ssh_key(void)
 		buf[1] = 0;
 		buf[2] = 0;
 		buf[3] = len;
-		memcpy(buf+4, alg, len);
+		memcpy(buf + 4, alg, len);
 		len += 4;
 
 		buf[len++] = 0;

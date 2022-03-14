@@ -1403,8 +1403,7 @@ int iso7816_read_binary_sfid(sc_card_t *card, unsigned char sfid,
 		}
 		*ef = p;
 
-		r = iso7816_read_binary(card, *ef_len,
-				*ef + *ef_len, read, 0);
+		r = iso7816_read_binary(card, *ef_len, *ef + *ef_len, read, 0);
 	}
 
 	r = *ef_len;

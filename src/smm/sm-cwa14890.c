@@ -46,8 +46,8 @@
 #include "sm-module.h"
 
 int
-sm_cwa_get_mac(struct sc_context *ctx, unsigned char *key, sm_des_cblock *icv,
-			unsigned char *in, int in_len, sm_des_cblock *out, int force_padding)
+sm_cwa_get_mac(struct sc_context *ctx, unsigned char *key, sm_des_cblock *icv, unsigned char *in, int in_len,
+               sm_des_cblock *out, int force_padding)
 {
 	unsigned char padding[8] = {0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 	unsigned char *buf;
@@ -77,10 +77,9 @@ sm_cwa_get_mac(struct sc_context *ctx, unsigned char *key, sm_des_cblock *icv,
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
-
 static int
 sm_cwa_encode_external_auth_data(struct sc_context *ctx, struct sm_cwa_session *session_data,
-		unsigned char *out, size_t out_len)
+                                 unsigned char *out, size_t out_len)
 {
 	if (out_len < 16)
 		return SC_ERROR_BUFFER_TOO_SMALL;
@@ -94,10 +93,9 @@ sm_cwa_encode_external_auth_data(struct sc_context *ctx, struct sm_cwa_session *
 	return 16;
 }
 
-
 int
 sm_cwa_encode_mutual_auth_data(struct sc_context *ctx, struct sm_cwa_session *session_data,
-		unsigned char *out, size_t out_len)
+                               unsigned char *out, size_t out_len)
 {
 	if (out_len < 64)
 		return SC_ERROR_BUFFER_TOO_SMALL;
@@ -117,10 +115,9 @@ sm_cwa_encode_mutual_auth_data(struct sc_context *ctx, struct sm_cwa_session *se
 	return 64;
 }
 
-
 int
 sm_cwa_decode_authentication_data(struct sc_context *ctx, struct sm_cwa_keyset *keyset,
-		struct sm_cwa_session *session_data, unsigned char *auth_data)
+                                  struct sm_cwa_session *session_data, unsigned char *auth_data)
 {
 	sm_des_cblock icv = {0, 0, 0, 0, 0, 0, 0, 0};
 	sm_des_cblock cblock;
@@ -171,10 +168,8 @@ sm_cwa_decode_authentication_data(struct sc_context *ctx, struct sm_cwa_keyset *
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
-
 int
-sm_cwa_init_session_keys(struct sc_context *ctx, struct sm_cwa_session *session_data,
-		unsigned char mechanism)
+sm_cwa_init_session_keys(struct sc_context *ctx, struct sm_cwa_session *session_data, unsigned char mechanism)
 {
 	unsigned char xored[36];
 	unsigned char buff[SHA256_DIGEST_LENGTH];

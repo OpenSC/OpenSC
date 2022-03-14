@@ -624,8 +624,8 @@ out:
 	if (profile) {
 		tmp_p15_data = profile->p15_data;
 		sc_pkcs15init_unbind(profile);
-		if 	(tmp_p15_data != g_p15card) {
- 			sc_pkcs15_unbind(tmp_p15_data);
+		if (tmp_p15_data != g_p15card) {
+			sc_pkcs15_unbind(tmp_p15_data);
 		}
 	}
 	if (g_p15card) {
@@ -1338,7 +1338,7 @@ do_read_check_certificate(sc_pkcs15_cert_t *sc_oldcert,
 #else
 		if (EVP_PKEY_cmp(oldpk, newpk) == 1)
 #endif
-		r = 0;
+			r = 0;
 	}
 
 	EVP_PKEY_free(newpk);

@@ -94,7 +94,6 @@ sc_pkcs15emu_jpki_init(sc_pkcs15_card_t * p15card)
 			sc_pkcs15_card_clear(p15card);
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 		}
-
 	}
 
 	/* add pins */

@@ -336,8 +336,8 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 				cxdata[0] == SC_OPENPGP_KEYALGO_EDDSA) {
 				/* Last byte could be Import-Format of private key, let's ignore it,
 				 * as it is not part of OID */
-				if (cxdata[cxdata_len-1] == SC_OPENPGP_KEYFORMAT_EC_STD ||
-				    cxdata[cxdata_len-1] == SC_OPENPGP_KEYFORMAT_EC_STDPUB)
+				if (cxdata[cxdata_len - 1] == SC_OPENPGP_KEYFORMAT_EC_STD ||
+				    cxdata[cxdata_len - 1] == SC_OPENPGP_KEYFORMAT_EC_STDPUB)
 					cxdata_len--;
 				r = sc_asn1_decode_object_id(&cxdata[1], cxdata_len-1, &oid);
 				if (r != SC_SUCCESS) {
@@ -463,8 +463,8 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 				cxdata[0] == SC_OPENPGP_KEYALGO_EDDSA) {
 				/* Last byte could be Import-Format of private key, let's ignore it,
 				 * as it is not part of OID */
-				if (cxdata[cxdata_len-1] == SC_OPENPGP_KEYFORMAT_EC_STD ||
-				    cxdata[cxdata_len-1] == SC_OPENPGP_KEYFORMAT_EC_STDPUB)
+				if (cxdata[cxdata_len - 1] == SC_OPENPGP_KEYFORMAT_EC_STD ||
+				    cxdata[cxdata_len - 1] == SC_OPENPGP_KEYFORMAT_EC_STDPUB)
 					cxdata_len--;
 				r = sc_asn1_decode_object_id(&cxdata[1], cxdata_len-1, &oid);
 				if (r != SC_SUCCESS) {

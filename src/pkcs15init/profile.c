@@ -1074,8 +1074,7 @@ template_sanity_check(struct state *cur, struct sc_profile *templ)
 			return 1;
 		}
 
-		fi_id = fi_path.value[fi_path.len - 2] * 0x100
-				+ fi_path.value[fi_path.len - 1];
+		fi_id = fi_path.value[fi_path.len - 2] * 0x100 + fi_path.value[fi_path.len - 1];
 
 		for (ffi = templ->ef_list; ffi; ffi = ffi->next) {
 			struct sc_path ffi_path =  ffi->file->path;
@@ -1085,12 +1084,12 @@ template_sanity_check(struct state *cur, struct sc_profile *templ)
 				continue;
 
 			if (ffi_path.len < 2) {
-				parse_error(cur, "Template insane: file-path length should not be less than 2 bytes");
+				parse_error(cur, "Template insane: file-path length should not be "
+				                 "less than 2 bytes");
 				return 1;
 			}
 
-			ffi_id = ffi_path.value[ffi_path.len - 2] * 0x100
-					+ ffi_path.value[ffi_path.len - 1];
+			ffi_id = ffi_path.value[ffi_path.len - 2] * 0x100 + ffi_path.value[ffi_path.len - 1];
 
 			dlt = fi_id > ffi_id ? fi_id - ffi_id : ffi_id - fi_id;
 			if (strcmp(ffi->ident, fi->ident))   {
@@ -1305,8 +1304,8 @@ do_file_type(struct state *cur, int argc, char **argv)
 static int
 do_file_path(struct state *cur, int argc, char **argv)
 {
-	struct sc_file	*file = NULL;
-	struct sc_path	*path = NULL;
+	struct sc_file *file = NULL;
+	struct sc_path *path = NULL;
 
 	if (!cur->file) {
 		parse_error(cur, "Invalid state\n");
@@ -1330,8 +1329,8 @@ static int
 do_fileid(struct state *cur, int argc, char **argv)
 {
 	struct file_info *fi;
-	struct sc_file	*df, *file = NULL;
-	struct sc_path	temp, *path = NULL;
+	struct sc_file *df, *file = NULL;
+	struct sc_path temp, *path = NULL;
 
 	if (!cur->file) {
 		parse_error(cur, "Invalid state\n");

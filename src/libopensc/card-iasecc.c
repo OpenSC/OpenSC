@@ -2887,16 +2887,16 @@ iasecc_sdo_get_tagged_data(struct sc_card *card, int sdo_tag, struct iasecc_sdo 
 	if (iasecc_is_cpx(card)) {
 		struct sc_path path;
 		char *path_str = NULL;
-		switch(sdo_tag) {
-			case IASECC_SDO_PRVKEY_TAG:
+		switch (sdo_tag) {
+		case IASECC_SDO_PRVKEY_TAG:
 			/* APDU 00 CB 3F FF 0B 4D 09 70 07 BF 90 02 03 7F 48 80 */
 			path_str = "3F00:0001";
 			break;
-			case IASECC_SDO_CHV_TAG:
+		case IASECC_SDO_CHV_TAG:
 			/* APDU 00 CB 3F FF 0B 4D 09 70 07 BF 81 01 03 7F 41 80 */
 			path_str = "3F00";
 			break;
-			default:
+		default:
 			path_str = NULL;
 			break;
 		}

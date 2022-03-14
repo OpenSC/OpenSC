@@ -86,19 +86,18 @@ static struct sc_card_driver pgp_drv = {
 	NULL, 0, NULL
 };
 
-
-static pgp_ec_curves_t  ec_curves_openpgp34[] = {
+static pgp_ec_curves_t ec_curves_openpgp34[] = {
 	/* OpenPGP 3.4+ Ed25519 and Curve25519 */
 	{{{1, 3, 6, 1, 4, 1, 3029, 1, 5, 1, -1}}, 256}, /* curve25519 for encryption => CKK_EC_MONTGOMERY */
-	{{{1, 3, 6, 1, 4, 1, 11591, 15, 1, -1}}, 256}, /* ed25519 for signatures => CKK_EC_EDWARDS */
+	{{{1, 3, 6, 1, 4, 1, 11591, 15, 1, -1}}, 256},  /* ed25519 for signatures => CKK_EC_EDWARDS */
 	/* v3.0+ supports: [RFC 4880 & 6637] 0x12 = ECDH, 0x13 = ECDSA */
-	{{{1, 2, 840, 10045, 3, 1, 7, -1}}, 256}, /* ansiX9p256r1 */
-	{{{1, 3, 132, 0, 34, -1}}, 384}, /* ansiX9p384r1 */
-	{{{1, 3, 132, 0, 35, -1}}, 521}, /* ansiX9p521r1 */
-	{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 7, -1}}, 256}, /* brainpoolP256r1 */
+	{{{1, 2, 840, 10045, 3, 1, 7, -1}}, 256},      /* ansiX9p256r1 */
+	{{{1, 3, 132, 0, 34, -1}}, 384},               /* ansiX9p384r1 */
+	{{{1, 3, 132, 0, 35, -1}}, 521},               /* ansiX9p521r1 */
+	{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 7, -1}}, 256},  /* brainpoolP256r1 */
 	{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 11, -1}}, 384}, /* brainpoolP384r1 */
 	{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 13, -1}}, 512}, /* brainpoolP512r1 */
-	{{{-1}}, 0} /* This entry must not be touched. */
+	{{{-1}}, 0}                                    /* This entry must not be touched. */
 };
 
 static pgp_ec_curves_t *ec_curves_openpgp = ec_curves_openpgp34 + 2;
@@ -138,7 +137,6 @@ static void		pgp_free_blob(pgp_blob_t *);
 static int		pgp_get_pubkey(sc_card_t *, unsigned int, u8 *, size_t);
 static int		pgp_get_pubkey_pem(sc_card_t *, unsigned int, u8 *, size_t);
 static int		pgp_enumerate_blob(sc_card_t *card, pgp_blob_t *blob);
-
 
 // clang-format off
 static pgp_do_info_t	pgp1x_objects[] = {	/* OpenPGP card spec 1.1 */
@@ -581,8 +579,7 @@ pgp_parse_hist_bytes(sc_card_t *card, u8 *ctlv, size_t ctlv_len)
  * Internal: parse an algorithm attributes DO
  **/
 static int
-pgp_parse_algo_attr_blob(sc_card_t *card, const pgp_blob_t *blob,
-	sc_cardctl_openpgp_keygen_info_t *key_info)
+pgp_parse_algo_attr_blob(sc_card_t *card, const pgp_blob_t *blob, sc_cardctl_openpgp_keygen_info_t *key_info)
 {
 	struct pgp_priv_data *priv = DRVDATA(card);
 	struct sc_object_id oid;
@@ -630,7 +627,7 @@ pgp_parse_algo_attr_blob(sc_card_t *card, const pgp_blob_t *blob,
 				 * it is not part of OID */
 				if (blob->len < 2)
 					return SC_ERROR_INCORRECT_PARAMETERS;
-				if (blob->data[blob->len-1] == SC_OPENPGP_KEYFORMAT_EC_STD)
+				if (blob->data[blob->len - 1] == SC_OPENPGP_KEYFORMAT_EC_STD)
 					key_info->u.ec.oid_len = blob->len - 2;
 				else
 					key_info->u.ec.oid_len = blob->len - 1;
@@ -667,23 +664,24 @@ pgp_parse_algo_attr_blob(sc_card_t *card, const pgp_blob_t *blob,
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
-int _pgp_handle_curve25519(sc_card_t *card,
-	sc_cardctl_openpgp_keygen_info_t key_info, size_t do_num)
+int
+_pgp_handle_curve25519(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t key_info, size_t do_num)
 {
 	if (!sc_compare_oid(&key_info.u.ec.oid, &curve25519_oid))
 		return 0;
 
 	/* CKM_XEDDSA supports both Sign and Derive, but
-	* OpenPGP card supports only derivation using these
-	* keys as far as I know */
-	_sc_card_add_xeddsa_alg(card, key_info.u.ec.key_length,
-	    SC_ALGORITHM_ECDH_CDH_RAW, 0, &key_info.u.ec.oid);
-	sc_log(card->ctx, "DO %zX: Added XEDDSA algorithm (%d), mod_len = %d",
-	    do_num, SC_ALGORITHM_XEDDSA, key_info.u.ec.key_length);
+	 * OpenPGP card supports only derivation using these
+	 * keys as far as I know */
+	_sc_card_add_xeddsa_alg(card, key_info.u.ec.key_length, SC_ALGORITHM_ECDH_CDH_RAW, 0,
+	                        &key_info.u.ec.oid);
+	sc_log(card->ctx, "DO %zX: Added XEDDSA algorithm (%d), mod_len = %d", do_num, SC_ALGORITHM_XEDDSA,
+	       key_info.u.ec.key_length);
 	return 1;
 }
 
-int _pgp_add_algo(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t key_info, size_t do_num)
+int
+_pgp_add_algo(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t key_info, size_t do_num)
 {
 	unsigned long flags = 0, ext_flags = 0;
 
@@ -697,9 +695,8 @@ int _pgp_add_algo(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t key_info, si
 			SC_ALGORITHM_ONBOARD_KEY_GEN;	/* key gen on card */
 
 		_sc_card_add_rsa_alg(card, key_info.u.rsa.modulus_len, flags, 0);
-		sc_log(card->ctx, "DO %zX: Added RSA algorithm, mod_len = %"
-			SC_FORMAT_LEN_SIZE_T"u",
-			do_num, key_info.u.rsa.modulus_len);
+		sc_log(card->ctx, "DO %zX: Added RSA algorithm, mod_len = %" SC_FORMAT_LEN_SIZE_T "u", do_num,
+		       key_info.u.rsa.modulus_len);
 		break;
 	case SC_OPENPGP_KEYALGO_ECDH:
 		/* The montgomery curve (curve25519) needs to go through
@@ -718,32 +715,29 @@ int _pgp_add_algo(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t key_info, si
 		flags |= SC_ALGORITHM_ONBOARD_KEY_GEN;
 		ext_flags = SC_ALGORITHM_EXT_EC_NAMEDCURVE;
 
-		_sc_card_add_ec_alg(card, key_info.u.ec.key_length, flags, ext_flags,
-			&key_info.u.ec.oid);
-		sc_log(card->ctx, "DO %zX: Added EC algorithm (%d), mod_len = %d" ,
-			do_num, key_info.algorithm, key_info.u.ec.key_length);
+		_sc_card_add_ec_alg(card, key_info.u.ec.key_length, flags, ext_flags, &key_info.u.ec.oid);
+		sc_log(card->ctx, "DO %zX: Added EC algorithm (%d), mod_len = %d", do_num, key_info.algorithm,
+		       key_info.u.ec.key_length);
 		break;
 	case SC_OPENPGP_KEYALGO_EDDSA:
 		/* EdDSA from draft-ietf-openpgp-rfc4880bis-08 */
 		/* Handle Yubikey bug, that in DO FA curve25519 has EDDSA algo */
 		if (_pgp_handle_curve25519(card, key_info, do_num))
 			break;
-		_sc_card_add_eddsa_alg(card, key_info.u.ec.key_length,
-			SC_ALGORITHM_EDDSA_RAW, 0, &key_info.u.ec.oid);
+		_sc_card_add_eddsa_alg(card, key_info.u.ec.key_length, SC_ALGORITHM_EDDSA_RAW, 0,
+		                       &key_info.u.ec.oid);
 
-		sc_log(card->ctx, "DO %zX: Added EDDSA algorithm (%d), mod_len = %d" ,
-			do_num, key_info.algorithm, key_info.u.ec.key_length);
+		sc_log(card->ctx, "DO %zX: Added EDDSA algorithm (%d), mod_len = %d", do_num,
+		       key_info.algorithm, key_info.u.ec.key_length);
 		break;
 	default:
-		sc_log(card->ctx, "DO %zX: Unknown algorithm ID (%d)" ,
-			do_num, key_info.algorithm);
+		sc_log(card->ctx, "DO %zX: Unknown algorithm ID (%d)", do_num, key_info.algorithm);
 		/* return "false" if we do not understand algo */
 		return 0;
 	}
 	/* return true */
 	return 1;
 }
-
 
 /**
  * Internal: get features of the card: capabilities, ...
@@ -901,7 +895,7 @@ pgp_get_card_features(sc_card_t *card)
 		if (priv->bcd_version >= OPENPGP_CARD_3_0) {
 			/* v3.0+: get length info from "extended length information" DO */
 			if ((pgp_get_blob(card, blob6e, 0x7f66, &blob) >= 0) &&
-				(blob->data != NULL) && (blob->len >= 8)) {
+			    (blob->data != NULL) && (blob->len >= 8)) {
 				/* kludge: treat as SIMPLE DO and use appropriate offsets */
 				card->max_send_size = bebytes2ushort(blob->data + 2);
 				card->max_recv_size = bebytes2ushort(blob->data + 6);
@@ -923,7 +917,7 @@ pgp_get_card_features(sc_card_t *card)
 		for (i = 0x00c1; i <= 0x00c3; i++) {
 			sc_cardctl_openpgp_keygen_info_t key_info;
 
-			sc_log(card->ctx, "Parsing algorithm attributes DO %zX" , i);
+			sc_log(card->ctx, "Parsing algorithm attributes DO %zX", i);
 
 			/* OpenPGP card spec 1.1 & 2.x section 4.3.3.6 / v3.x section 4.4.3.7 */
 			if ((pgp_get_blob(card, blob73, i, &blob) >= 0) &&
@@ -1063,8 +1057,7 @@ pgp_attach_acl(sc_card_t *card, sc_file_t *file, pgp_do_info_t *info)
  * Internal: append a blob to the list of children of a given parent blob.
  */
 static pgp_blob_t *
-pgp_new_blob(sc_card_t *card, pgp_blob_t *parent, unsigned int file_id,
-		sc_file_t *file)
+pgp_new_blob(sc_card_t *card, pgp_blob_t *parent, unsigned int file_id, sc_file_t *file)
 {
 	pgp_blob_t *blob = NULL;
 
@@ -1303,8 +1296,7 @@ pgp_enumerate_blob(sc_card_t *card, pgp_blob_t *blob)
  * Internal: find a blob by ID below a given parent, filling its contents when necessary.
  */
 static int
-pgp_get_blob(sc_card_t *card, pgp_blob_t *blob, unsigned int id,
-		pgp_blob_t **ret)
+pgp_get_blob(sc_card_t *card, pgp_blob_t *blob, unsigned int id, pgp_blob_t **ret)
 {
 	pgp_blob_t		*child;
 	int			r;
@@ -1347,8 +1339,7 @@ pgp_get_blob(sc_card_t *card, pgp_blob_t *blob, unsigned int id,
  * Internal: search recursively for a blob by ID below a given root.
  */
 static int
-pgp_seek_blob(sc_card_t *card, pgp_blob_t *root, unsigned int id,
-		pgp_blob_t **ret)
+pgp_seek_blob(sc_card_t *card, pgp_blob_t *root, unsigned int id, pgp_blob_t **ret)
 {
 	pgp_blob_t	*child;
 	int			r;
@@ -1578,8 +1569,7 @@ pgp_get_challenge(struct sc_card *card, u8 *rnd, size_t len)
  * ABI: ISO 7816-4 READ BINARY - read data from currently selected EF.
  */
 static int
-pgp_read_binary(sc_card_t *card, unsigned int idx,
-		u8 *buf, size_t count, unsigned long flags)
+pgp_read_binary(sc_card_t *card, unsigned int idx, u8 *buf, size_t count, unsigned long flags)
 {
 	struct pgp_priv_data *priv = DRVDATA(card);
 	pgp_blob_t	*blob;
@@ -2171,8 +2161,7 @@ int pgp_logout(struct sc_card *card)
  * This is optional in the OpenPGP Card 3.4 specs
  */
 static int
-pgp_set_security_env(sc_card_t *card,
-		const sc_security_env_t *env, int se_num)
+pgp_set_security_env(sc_card_t *card, const sc_security_env_t *env, int se_num)
 {
 	struct pgp_priv_data *priv = DRVDATA(card);
 
@@ -2276,8 +2265,7 @@ pgp_set_MSE(sc_card_t *card, int key, u8 p2)
  * ABI: ISO 7816-8 COMPUTE DIGITAL SIGNATURE.
  */
 static int
-pgp_compute_signature(sc_card_t *card, const u8 *data,
-                size_t data_len, u8 * out, size_t outlen)
+pgp_compute_signature(sc_card_t *card, const u8 *data, size_t data_len, u8 *out, size_t outlen)
 {
 	struct pgp_priv_data	*priv = DRVDATA(card);
 	sc_security_env_t	*env = &priv->sec_env;
@@ -2335,8 +2323,7 @@ pgp_compute_signature(sc_card_t *card, const u8 *data,
  * ABI: ISO 7816-8 DECIPHER - perform deciphering operation.
  */
 static int
-pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
-		u8 *out, size_t outlen)
+pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen, u8 *out, size_t outlen)
 {
 	struct pgp_priv_data	*priv = DRVDATA(card);
 	sc_security_env_t	*env = &priv->sec_env;
@@ -3676,8 +3663,7 @@ pgp_delete_file(sc_card_t *card, const sc_path_t *path)
  * ABI: ISO 7816-4 UPDATE BINARY - update data in current EF.
  */
 static int
-pgp_update_binary(sc_card_t *card, unsigned int idx,
-		  const u8 *buf, size_t count, unsigned long flags)
+pgp_update_binary(sc_card_t *card, unsigned int idx, const u8 *buf, size_t count, unsigned long flags)
 {
 	struct pgp_priv_data *priv = DRVDATA(card);
 	pgp_blob_t *blob = priv->current;
@@ -3703,7 +3689,8 @@ pgp_update_binary(sc_card_t *card, unsigned int idx,
 /**
  * ABI: card reader lock obtained - re-select card applet if necessary.
  */
-static int pgp_card_reader_lock_obtained(sc_card_t *card, int was_reset)
+static int
+pgp_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 {
 	struct pgp_priv_data *priv = DRVDATA(card); /* may be null during initialization */
 	int r = SC_SUCCESS;

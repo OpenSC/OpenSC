@@ -1720,9 +1720,8 @@ static int asn1_decode(sc_context_t *ctx, struct sc_asn1_entry *asn1,
 	struct sc_asn1_entry *entry = asn1;
 	size_t left = len, objlen;
 
-	sc_debug(ctx, SC_LOG_DEBUG_ASN1,
-		 "%*.*s""called, left=%"SC_FORMAT_LEN_SIZE_T"u, depth %d%s\n",
-		 depth, depth, "", left, depth, choice ? ", choice" : "");
+	sc_debug(ctx, SC_LOG_DEBUG_ASN1, "%*.*s""called, left=%" SC_FORMAT_LEN_SIZE_T "u, depth %d%s\n",
+	         depth, depth, "", left, depth, choice ? ", choice" : "");
 
 	if (!p)
 		return SC_ERROR_ASN1_OBJECT_NOT_FOUND;

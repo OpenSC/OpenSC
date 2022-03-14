@@ -151,7 +151,7 @@ sc_pkcs15_bind_synthetic(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
 		if (builtin_enabled && list) {
 			/* filter enabled emulation drivers from conf file */
 			struct _sc_pkcs15_emulators filtered_emulators;
-			struct sc_pkcs15_emulator_handler** lst;
+			struct sc_pkcs15_emulator_handler **lst;
 			int ret;
 
 			filtered_emulators.ccount = 0;
@@ -160,7 +160,8 @@ sc_pkcs15_bind_synthetic(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
 				lst = filtered_emulators.list_of_handlers;
 
 				if (ret == SC_ERROR_TOO_MANY_OBJECTS)
-					sc_log(ctx, "trying first %d emulators from conf file", SC_MAX_PKCS15_EMULATORS);
+					sc_log(ctx, "trying first %d emulators from conf file",
+					       SC_MAX_PKCS15_EMULATORS);
 
 				for (i = 0; lst[i]; i++) {
 					sc_log(ctx, "trying %s", lst[i]->name);

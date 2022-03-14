@@ -388,14 +388,14 @@ static int refresh_attributes(sc_reader_t *reader)
 		}
 		
 		/* the system could not detect the reader. It means, the prevoiusly attached reader is disconnected. */
-		if (rv == (LONG)SCARD_E_UNKNOWN_READER
+		if (rv == (LONG)SCARD_E_UNKNOWN_READER ||
 #ifdef SCARD_E_NO_READERS_AVAILABLE
-				|| rv == (LONG)SCARD_E_NO_READERS_AVAILABLE
+		    rv == (LONG)SCARD_E_NO_READERS_AVAILABLE ||
 #endif
-				|| rv == (LONG)SCARD_E_SERVICE_STOPPED) {
- 			reader->flags &= ~(SC_READER_CARD_PRESENT);
- 			SC_FUNC_RETURN(reader->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
- 		}
+		    rv == (LONG)SCARD_E_SERVICE_STOPPED) {
+			reader->flags &= ~(SC_READER_CARD_PRESENT);
+			SC_FUNC_RETURN(reader->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
+		}
 
 		PCSC_TRACE(reader, "SCardGetStatusChange failed", rv);
 		return pcsc_to_opensc_error(rv);
@@ -1148,20 +1148,20 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 	if (gpriv->SCardControl == NULL)
 		return;
 
-	rv = gpriv->SCardControl(card_handle, CM_IOCTL_GET_FEATURE_REQUEST, NULL, 0, buf, sizeof(buf), &rcount);
+	rv = gpriv->SCardControl(card_handle, CM_IOCTL_GET_FEATURE_REQUEST, NULL, 0, buf, sizeof(buf),
+	                         &rcount);
 	if (rv != SCARD_S_SUCCESS) {
 		PCSC_TRACE(reader, "SCardControl failed", rv);
 		return;
 	}
 
-	if ((rcount % sizeof(PCSC_TLV_STRUCTURE)) != 0
-			|| rcount > sizeof buf) {
+	if ((rcount % sizeof(PCSC_TLV_STRUCTURE)) != 0 || rcount > sizeof buf) {
 		sc_log(ctx, "Inconsistent TLV from reader!");
 		return;
 	}
 
 	for (i = 0; i < rcount; i += sizeof(PCSC_TLV_STRUCTURE)) {
-		PCSC_TLV_STRUCTURE *pcsc_tlv = (PCSC_TLV_STRUCTURE *)(buf+i);
+		PCSC_TLV_STRUCTURE *pcsc_tlv = (PCSC_TLV_STRUCTURE *)(buf + i);
 		sc_log(ctx, "Reader feature %02x found", pcsc_tlv->tag);
 		if (pcsc_tlv->tag == FEATURE_VERIFY_PIN_DIRECT) {
 			priv->verify_ioctl = ntohl(pcsc_tlv->value);
@@ -1177,7 +1177,7 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 			priv->modify_ioctl_finish = ntohl(pcsc_tlv->value);
 		} else if (pcsc_tlv->tag == FEATURE_IFD_PIN_PROPERTIES) {
 			priv->pin_properties_ioctl = ntohl(pcsc_tlv->value);
-		} else if (pcsc_tlv->tag == FEATURE_GET_TLV_PROPERTIES)  {
+		} else if (pcsc_tlv->tag == FEATURE_GET_TLV_PROPERTIES) {
 			priv->get_tlv_properties = ntohl(pcsc_tlv->value);
 		} else if (pcsc_tlv->tag == FEATURE_EXECUTE_PACE) {
 			priv->pace_ioctl = ntohl(pcsc_tlv->value);
@@ -1221,12 +1221,12 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 	/* Detect display */
 	if (priv->pin_properties_ioctl) {
 		rcount = sizeof(buf);
-		rv = gpriv->SCardControl(card_handle, priv->pin_properties_ioctl,
-			NULL, 0, buf, sizeof(buf), &rcount);
+		rv = gpriv->SCardControl(card_handle, priv->pin_properties_ioctl, NULL, 0, buf, sizeof(buf),
+		                         &rcount);
 		if (rv == SCARD_S_SUCCESS) {
 #ifdef PIN_PROPERTIES_v5
 			if (rcount == sizeof(PIN_PROPERTIES_STRUCTURE_v5)) {
-				PIN_PROPERTIES_STRUCTURE_v5 *caps = (PIN_PROPERTIES_STRUCTURE_v5 *) &buf;
+				PIN_PROPERTIES_STRUCTURE_v5 *caps = (PIN_PROPERTIES_STRUCTURE_v5 *)&buf;
 				if (caps->wLcdLayout > 0) {
 					sc_log(ctx, "Reader has a display: %04X", caps->wLcdLayout);
 					reader->capabilities |= SC_READER_CAP_DISPLAY;
@@ -1235,7 +1235,7 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 			}
 #endif
 			if (rcount == sizeof(PIN_PROPERTIES_STRUCTURE)) {
-				PIN_PROPERTIES_STRUCTURE *caps = (PIN_PROPERTIES_STRUCTURE *) buf;
+				PIN_PROPERTIES_STRUCTURE *caps = (PIN_PROPERTIES_STRUCTURE *)buf;
 				if (caps->wLcdLayout > 0) {
 					sc_log(ctx, "Reader has a display: %04X", caps->wLcdLayout);
 					reader->capabilities |= SC_READER_CAP_DISPLAY;
@@ -1295,12 +1295,11 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 
 	if(gpriv->SCardGetAttrib != NULL) {
 		rcount = sizeof(buf);
-		if (gpriv->SCardGetAttrib(card_handle, SCARD_ATTR_VENDOR_NAME,
-					buf, &rcount) == SCARD_S_SUCCESS
-				&& rcount > 0) {
+		if (gpriv->SCardGetAttrib(card_handle, SCARD_ATTR_VENDOR_NAME, buf, &rcount) == SCARD_S_SUCCESS &&
+		    rcount > 0) {
 			/* add NUL termination, just in case... */
-			buf[(sizeof buf)-1] = '\0';
-			reader->vendor = strdup((char *) buf);
+			buf[(sizeof buf) - 1] = '\0';
+			reader->vendor = strdup((char *)buf);
 		}
 
 		rcount = sizeof i;

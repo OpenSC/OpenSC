@@ -90,7 +90,6 @@ static const char *option_help[] = {
 	"Verbose operation, may be used several times",
 };
 
-
 /* declare functions called by user commands */
 static int do_echo(int argc, char **argv);
 static int do_ls(int argc, char **argv);

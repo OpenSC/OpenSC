@@ -1790,7 +1790,7 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 	/* Remove the encompassing outer TLV of 0x7C and get the data */
 	body = sc_asn1_find_tag(card->ctx, rbuf,
 		r, 0x7C, &body_len);
-	if(!body || rbuf[0] != 0x7C) {
+	if (!body || rbuf[0] != 0x7C) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not find outer tag 0x7C in response");
 		r =  SC_ERROR_INVALID_DATA;
 		goto err;
@@ -2408,12 +2408,12 @@ static int piv_validate_general_authentication(sc_card_t *card,
 
 	p2 = rbuf;
 	r = sc_asn1_read_tag(&p2, r, &cla, &tag, &bodylen);
-	if (p2 == NULL || r < 0 || bodylen == 0 || (cla|tag) != 0x7C) {
+	if (p2 == NULL || r < 0 || bodylen == 0 || (cla | tag) != 0x7C) {
 		LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_INVALID_DATA, "Can't find 0x7C");
 	}
 
 	r = sc_asn1_read_tag(&p2, bodylen, &cla, &tag, &taglen);
-	if (p2 == NULL || r < 0 || taglen == 0 || (cla|tag) != 0x82) {
+	if (p2 == NULL || r < 0 || taglen == 0 || (cla | tag) != 0x82) {
 		LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_INVALID_DATA, "Can't find 0x82");
 	}
 
@@ -2460,7 +2460,7 @@ piv_compute_signature(sc_card_t *card, const u8 * data, size_t datalen,
 		r = piv_validate_general_authentication(card, data, datalen, rbuf, sizeof rbuf);
 		if (r < 0)
 			goto err;
-		
+
 		r = sc_asn1_decode_ecdsa_signature(card->ctx, rbuf, r, nLen, &out, outlen);
 	} else { /* RSA is all set */
 		r = piv_validate_general_authentication(card, data, datalen, out, outlen);
@@ -2615,7 +2615,8 @@ static int piv_parse_discovery(sc_card_t *card, u8 * rbuf, size_t rbuflen, int a
 				if (pinp && pinplen == 2) {
 					sc_log(card->ctx, "Discovery pinp flags=0x%2.2x 0x%2.2x",*pinp, *(pinp+1));
 					r = SC_SUCCESS;
-					if ((*pinp & 0x60) == 0x60 && *(pinp+1) == 0x20) { /* use Global pin */
+					if ((*pinp & 0x60) == 0x60 &&
+					    *(pinp + 1) == 0x20) { /* use Global pin */
 						sc_log(card->ctx, "Pin Preference - Global");
 						priv->pin_preference = 0x00;
 					}
@@ -3034,7 +3035,7 @@ piv_finish(sc_card_t *card)
 static int piv_match_card(sc_card_t *card)
 {
 	int r = 0;
-	
+
 	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d\n", card->type);
 	/* piv_match_card may be called with card->type, set by opensc.conf */
 	/* user provide card type must be one we know */
@@ -3211,7 +3212,7 @@ static int piv_match_card_continued(sc_card_t *card)
 	 * But some other card could also return SC_ERROR_FILE_NOT_FOUND.
 	 * Will fail for other reasons if wrong applet is selected, or bad PIV implementation.
 	 */
-	
+
 	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d CI:%08x r:%d\n", card->type,  priv->card_issues, r);
 	if (priv->card_issues & CI_DISCOVERY_USELESS) /* TODO may be in wrong place */
 		i = -1;
@@ -3331,7 +3332,7 @@ static int piv_init(sc_card_t *card)
 		/* tell sc_connect_card to try other drivers */
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_CARD);
 	}
-		
+
 	priv = PIV_DATA(card);
 
 	/* can not force the PIV driver to use non-PIV cards as tested in piv_card_match_continued */
@@ -3756,7 +3757,6 @@ static int piv_logout(sc_card_t *card)
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
-
 /*
  * Called when a sc_lock gets a reader lock and PCSC SCardBeginTransaction
  * If SCardBeginTransaction may pass back that a card reset was seen since
@@ -3809,7 +3809,7 @@ static int piv_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 
 	if (r < 0) /* bad error return will show up in sc_lock as error*/
 		goto err;
-	
+
 	if (was_reset > 0)
 		priv->logged_in =  SC_PIN_STATE_UNKNOWN;
 

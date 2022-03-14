@@ -97,7 +97,6 @@ struct _sc_driver_entry {
 	void *(*func)(void);
 };
 
-
 // clang-format off
 static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "cardos",	(void *(*)(void)) sc_get_cardos_driver },

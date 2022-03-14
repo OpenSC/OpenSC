@@ -168,8 +168,8 @@ static const struct {
  * Utility functions
  */
 
-static int loadFile(const sc_pkcs15_card_t *p15card, const sc_path_t *path,
-	u8 *buf, const size_t buflen)
+static int
+loadFile(const sc_pkcs15_card_t *p15card, const sc_path_t *path, u8 *buf, const size_t buflen)
 {
 	int sc_res;
 	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_NORMAL);
@@ -186,10 +186,10 @@ static int loadFile(const sc_pkcs15_card_t *p15card, const sc_path_t *path,
  * The following functions add objects to the card emulator.
  */
 
-static int itacns_add_cert(sc_pkcs15_card_t *p15card,
-	int type, int authority, const sc_path_t *path,
-	const sc_pkcs15_id_t *id, const char *label, int obj_flags,
-	int *ext_info_ok, int *key_usage, int *x_key_usage, int *modulus_len)
+static int
+itacns_add_cert(sc_pkcs15_card_t *p15card, int type, int authority, const sc_path_t *path,
+                const sc_pkcs15_id_t *id, const char *label, int obj_flags, int *ext_info_ok, int *key_usage,
+                int *x_key_usage, int *modulus_len)
 {
 	int r;
 	/* const char *label = "Certificate"; */
@@ -264,9 +264,9 @@ static int itacns_add_cert(sc_pkcs15_card_t *p15card,
 
 }
 
-static int itacns_add_pubkey(sc_pkcs15_card_t *p15card,
-	 const sc_path_t *path, const sc_pkcs15_id_t *id, const char *label,
-	int usage, int ref, int obj_flags, int modulus_len)
+static int
+itacns_add_pubkey(sc_pkcs15_card_t *p15card, const sc_path_t *path, const sc_pkcs15_id_t *id,
+                  const char *label, int usage, int ref, int obj_flags, int modulus_len)
 {
 	int r;
 	sc_pkcs15_pubkey_info_t info;
@@ -293,12 +293,10 @@ static int itacns_add_pubkey(sc_pkcs15_card_t *p15card,
 	return r;
 }
 
-static int itacns_add_prkey(sc_pkcs15_card_t *p15card,
-                const sc_pkcs15_id_t *id,
-                const char *label,
-                int type, unsigned int modulus_length, int usage,
-		const sc_path_t *path, int ref,
-                const sc_pkcs15_id_t *auth_id, int obj_flags)
+static int
+itacns_add_prkey(sc_pkcs15_card_t *p15card, const sc_pkcs15_id_t *id, const char *label, int type,
+                 unsigned int modulus_length, int usage, const sc_path_t *path, int ref,
+                 const sc_pkcs15_id_t *auth_id, int obj_flags)
 {
 	sc_pkcs15_prkey_info_t info;
 	sc_pkcs15_object_t obj;
@@ -331,13 +329,9 @@ static int itacns_add_prkey(sc_pkcs15_card_t *p15card,
 	return sc_pkcs15emu_add_rsa_prkey(p15card, &obj, &info);
 }
 
-static int itacns_add_pin(sc_pkcs15_card_t *p15card,
-	char *label,
-	int id,
-	int auth_id,
-	int reference,
-	sc_path_t *path,
-	int flags)
+static int
+itacns_add_pin(sc_pkcs15_card_t *p15card, char *label, int id, int auth_id, int reference, sc_path_t *path,
+               int flags)
 {
 	struct sc_pkcs15_auth_info pin_info;
 	struct sc_pkcs15_object pin_obj;
@@ -372,7 +366,8 @@ static int itacns_add_pin(sc_pkcs15_card_t *p15card,
 	return sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
 }
 
-static int hextoint(char *src, unsigned int len)
+static int
+hextoint(char *src, unsigned int len)
 {
 	char hex[16];
 	char *end;
@@ -388,8 +383,8 @@ static int hextoint(char *src, unsigned int len)
 	return res;
 }
 
-static int get_name_from_EF_DatiPersonali(unsigned char *EFdata,
-	size_t EFdata_len, char name[], int name_len)
+static int
+get_name_from_EF_DatiPersonali(unsigned char *EFdata, size_t EFdata_len, char name[], int name_len)
 {
 	const unsigned int EF_personaldata_maxlen = 400;
 	const unsigned int tlv_length_size = 6;
@@ -484,7 +479,8 @@ static int get_name_from_EF_DatiPersonali(unsigned char *EFdata,
 	return 0;
 }
 
-static int itacns_add_data_files(sc_pkcs15_card_t *p15card)
+static int
+itacns_add_data_files(sc_pkcs15_card_t *p15card)
 {
 	const size_t array_size =
 		sizeof(itacns_data_files)/sizeof(itacns_data_files[0]);
@@ -579,11 +575,10 @@ static int itacns_add_data_files(sc_pkcs15_card_t *p15card)
 	return SC_SUCCESS;
 }
 
-static int itacns_add_keyset(sc_pkcs15_card_t *p15card,
-	const char *label, int sec_env, sc_pkcs15_id_t *cert_id,
-	const char *pubkey_path, const char *prkey_path,
-	unsigned int pubkey_usage_flags, unsigned int prkey_usage_flags,
-	u8 pin_ref, int modulus_len)
+static int
+itacns_add_keyset(sc_pkcs15_card_t *p15card, const char *label, int sec_env, sc_pkcs15_id_t *cert_id,
+                  const char *pubkey_path, const char *prkey_path, unsigned int pubkey_usage_flags,
+                  unsigned int prkey_usage_flags, u8 pin_ref, int modulus_len)
 {
 	int r;
 	sc_path_t path;
@@ -596,8 +591,8 @@ static int itacns_add_keyset(sc_pkcs15_card_t *p15card,
 	/* FIXME: set usage according to the certificate. */
 	if (pubkey_path) {
 		sc_format_path(pubkey_path, &path);
-		r = itacns_add_pubkey(p15card, &path, cert_id, label,
-			pubkey_usage_flags, sec_env, 0, modulus_len);
+		r = itacns_add_pubkey(p15card, &path, cert_id, label, pubkey_usage_flags, sec_env, 0,
+		                      modulus_len);
 		LOG_TEST_RET(p15card->card->ctx, r,
 			"Could not add public key");
 	}
@@ -610,10 +605,8 @@ static int itacns_add_keyset(sc_pkcs15_card_t *p15card,
 		sc_format_path(prkey_path, &path);
 		private_path = &path;
 	}
-	r = itacns_add_prkey(p15card, cert_id, label, SC_PKCS15_TYPE_PRKEY_RSA,
-		modulus_len,
-		prkey_usage_flags,
-		private_path, sec_env, cert_id, SC_PKCS15_CO_FLAG_PRIVATE);
+	r = itacns_add_prkey(p15card, cert_id, label, SC_PKCS15_TYPE_PRKEY_RSA, modulus_len,
+	                     prkey_usage_flags, private_path, sec_env, cert_id, SC_PKCS15_CO_FLAG_PRIVATE);
 	LOG_TEST_RET(p15card->card->ctx, r,
 		"Could not add private key");
 
@@ -653,10 +646,10 @@ static int itacns_add_keyset(sc_pkcs15_card_t *p15card,
  * otherwise it aborts.
  */
 
-static int itacns_check_and_add_keyset(sc_pkcs15_card_t *p15card,
-	const char *label, int sec_env, size_t cert_offset,
-	const char *cert_path, const char *pubkey_path, const char *prkey_path,
-	u8 pin_ref, int *found_certificates)
+static int
+itacns_check_and_add_keyset(sc_pkcs15_card_t *p15card, const char *label, int sec_env, size_t cert_offset,
+                            const char *cert_path, const char *pubkey_path, const char *prkey_path,
+                            u8 pin_ref, int *found_certificates)
 {
 	int r;
 	sc_path_t path;
@@ -695,8 +688,7 @@ static int itacns_check_and_add_keyset(sc_pkcs15_card_t *p15card,
 		u8 certlen[3];
 		memset(certlen, 0, sizeof certlen);
 		r = loadFile(p15card, &path, certlen, sizeof(certlen));
-		LOG_TEST_RET(p15card->card->ctx, r,
-			"Could not read certificate file");
+		LOG_TEST_RET(p15card->card->ctx, r, "Could not read certificate file");
 		if (r < 3)
 			return SC_ERROR_INVALID_DATA;
 		path.index = cert_offset;
@@ -707,8 +699,8 @@ static int itacns_check_and_add_keyset(sc_pkcs15_card_t *p15card,
 			return 0;
 	}
 
-	r = itacns_add_cert(p15card, SC_PKCS15_TYPE_CERT_X509, 0,
-		&path, &cert_id, label, 0, &ext_info_ok, &ku, &xku, &modulus_len);
+	r = itacns_add_cert(p15card, SC_PKCS15_TYPE_CERT_X509, 0, &path, &cert_id, label, 0, &ext_info_ok,
+	                    &ku, &xku, &modulus_len);
 	if (r == SC_ERROR_INVALID_ASN1_OBJECT)
 		return 0;
 	LOG_TEST_RET(p15card->card->ctx, r,
@@ -751,18 +743,17 @@ static int itacns_check_and_add_keyset(sc_pkcs15_card_t *p15card,
 			| SC_PKCS15_PRKEY_USAGE_UNWRAP;
 	}
 
-	r = itacns_add_keyset(p15card, label, sec_env, &cert_id,
-		pubkey_path, prkey_path, pubkey_usage_flags, prkey_usage_flags,
-		pin_ref, modulus_len);
-	LOG_TEST_RET(p15card->card->ctx, r,
-		"Could not add keys for this certificate");
+	r = itacns_add_keyset(p15card, label, sec_env, &cert_id, pubkey_path, prkey_path, pubkey_usage_flags,
+	                      prkey_usage_flags, pin_ref, modulus_len);
+	LOG_TEST_RET(p15card->card->ctx, r, "Could not add keys for this certificate");
 
 	return r;
 }
 
 /* Initialization. */
 
-static int itacns_init(sc_pkcs15_card_t *p15card)
+static int
+itacns_init(sc_pkcs15_card_t *p15card)
 {
 	int r;
 	sc_path_t path;
@@ -828,32 +819,28 @@ static int itacns_init(sc_pkcs15_card_t *p15card)
 
 	/* Data files */
 	r = itacns_add_data_files(p15card);
-	LOG_TEST_GOTO_ERR(p15card->card->ctx, r,
-		"Could not add data files");
+	LOG_TEST_GOTO_ERR(p15card->card->ctx, r, "Could not add data files");
 
 	/*** Certificate and keys. ***/
 	/* Standard CNS */
 	r = itacns_check_and_add_keyset(p15card, "CNS0", cns0_secenv,
 		0, "3F0011001101", "3F003F01", NULL,
 		0x10, &found_certs);
-	LOG_TEST_GOTO_ERR(p15card->card->ctx, r,
-		"Could not add CNS0");
+	LOG_TEST_GOTO_ERR(p15card->card->ctx, r, "Could not add CNS0");
 	certificate_count += found_certs;
 
 	/* Infocamere 1204 */
 	r = itacns_check_and_add_keyset(p15card, "CNS01", 0x21,
 		5, "3F002FFF8228", NULL, "3F002FFF0000",
 		0x10, &found_certs);
-	LOG_TEST_GOTO_ERR(p15card->card->ctx, r,
-		"Could not add CNS01");
+	LOG_TEST_GOTO_ERR(p15card->card->ctx, r, "Could not add CNS01");
 	certificate_count += found_certs;
 
 	/* Digital signature */
 	r = itacns_check_and_add_keyset(p15card, "CNS1", 0x10,
 		0, "3F0014009010", "3F00140081108010", "3F0014008110",
 		0x1a, &found_certs);
-	LOG_TEST_GOTO_ERR(p15card->card->ctx, r,
-		"Could not add CNS1");
+	LOG_TEST_GOTO_ERR(p15card->card->ctx, r, "Could not add CNS1");
 	certificate_count += found_certs;
 
 	/* Did we find anything? */
@@ -864,8 +851,7 @@ static int itacns_init(sc_pkcs15_card_t *p15card)
 	/* Back to Master File */
 	sc_format_path("3F00", &path);
 	r = sc_select_file(p15card->card, &path, NULL);
-	LOG_TEST_GOTO_ERR(p15card->card->ctx, r,
-		"Could not select master file again");
+	LOG_TEST_GOTO_ERR(p15card->card->ctx, r, "Could not select master file again");
 
 	LOG_FUNC_RETURN(p15card->card->ctx, r);
 
@@ -874,7 +860,8 @@ err:
 	LOG_FUNC_RETURN(p15card->card->ctx, r);
 }
 
-int sc_pkcs15emu_itacns_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
+int
+sc_pkcs15emu_itacns_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
 {
 	sc_card_t *card = p15card->card;
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);

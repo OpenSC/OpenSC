@@ -142,7 +142,7 @@ static int sc_pkcs15emu_actalis_init(sc_pkcs15_card_t * p15card)
 
 #ifdef ENABLE_ZLIB
 	int use_file_cache_backup = p15card->opts.use_file_cache;
-	
+
 	int i = 0, j = 0;
 	const char *certLabel[] = {
 		"User Non-repudiation Certificate",	/* "User Non-repudiation Certificate" */

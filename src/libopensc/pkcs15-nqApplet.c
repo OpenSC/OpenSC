@@ -31,7 +31,8 @@
 static const char name_Card[] = "NQ-Applet";
 static const char name_Vendor[] = "NXP";
 
-static int get_nqapplet_certificate(sc_card_t *card, u8 data_id, struct sc_pkcs15_der *cert_info)
+static int
+get_nqapplet_certificate(sc_card_t *card, u8 data_id, struct sc_pkcs15_der *cert_info)
 {
 	int rv;
 	u8 buffer[3072];
@@ -55,7 +56,8 @@ static int get_nqapplet_certificate(sc_card_t *card, u8 data_id, struct sc_pkcs1
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
-static int add_nqapplet_pin(sc_pkcs15_card_t *p15card, const char *id, u8 reference)
+static int
+add_nqapplet_pin(sc_pkcs15_card_t *p15card, const char *id, u8 reference)
 {
 	int rv;
 	struct sc_pkcs15_auth_info pin_info;
@@ -89,7 +91,8 @@ static int add_nqapplet_pin(sc_pkcs15_card_t *p15card, const char *id, u8 refere
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
-static int add_nqapplet_certificate(sc_pkcs15_card_t *p15card, const char *id, const char *name, u8 data_id)
+static int
+add_nqapplet_certificate(sc_pkcs15_card_t *p15card, const char *id, const char *name, u8 data_id)
 {
 	int rv;
 	struct sc_pkcs15_cert_info cert_info;
@@ -113,8 +116,9 @@ static int add_nqapplet_certificate(sc_pkcs15_card_t *p15card, const char *id, c
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
-static int add_nqapplet_private_key(sc_pkcs15_card_t *p15card, const char *id, int reference,
-                                    const char *name, const char *pin_id, unsigned int usage)
+static int
+add_nqapplet_private_key(sc_pkcs15_card_t *p15card, const char *id, int reference, const char *name,
+                         const char *pin_id, unsigned int usage)
 {
 	int rv;
 	struct sc_pkcs15_prkey_info prkey_info;
@@ -142,7 +146,8 @@ static int add_nqapplet_private_key(sc_pkcs15_card_t *p15card, const char *id, i
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
-static int add_nqapplet_objects(sc_pkcs15_card_t *p15card)
+static int
+add_nqapplet_objects(sc_pkcs15_card_t *p15card)
 {
 	int rv;
 	sc_card_t *card = p15card->card;
@@ -173,7 +178,8 @@ static int add_nqapplet_objects(sc_pkcs15_card_t *p15card)
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
-int sc_pkcs15emu_nqapplet_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
+int
+sc_pkcs15emu_nqapplet_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
 {
 	int rv = SC_ERROR_WRONG_CARD;
 	sc_context_t *ctx;

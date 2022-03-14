@@ -122,11 +122,10 @@ static int load_object(const char * object_id, const char * object_file)
 	int r = -1;
 	struct stat stat_buf;
 
-    if(!object_file || (fp=fopen(object_file, "rb")) == NULL){
-        printf("Cannot open object file, %s %s\n",
-			(object_file)?object_file:"", strerror(errno));
+	if (!object_file || (fp = fopen(object_file, "rb")) == NULL) {
+		printf("Cannot open object file, %s %s\n", (object_file) ? object_file : "", strerror(errno));
 		goto err;
-    }
+	}
 
 	if (0 != stat(object_file, &stat_buf)) {
 		printf("unable to read file %s\n",object_file);
@@ -145,7 +144,7 @@ static int load_object(const char * object_id, const char * object_file)
 	}
 	/* check if tag and length are valid */
 	body = (u8 *)sc_asn1_find_tag(card->ctx, der, derlen, 0x53, &bodylen);
-	if (body == NULL || derlen != body  - der +  bodylen) {
+	if (body == NULL || derlen != body - der + bodylen) {
 		fprintf(stderr, "object tag or length not valid\n");
 		goto err;
 	}
@@ -184,15 +183,14 @@ static int load_cert(const char * cert_id, const char * cert_file,
 	int r = -1;
 
 	if (!cert_file) {
-        printf("Missing cert file\n");
+		printf("Missing cert file\n");
 		goto err;
 	}
 
-    if((fp=fopen(cert_file, "rb"))==NULL){
-        printf("Cannot open cert file, %s %s\n",
-				cert_file, strerror(errno));
-        goto err;
-    }
+	if ((fp = fopen(cert_file, "rb")) == NULL) {
+		printf("Cannot open cert file, %s %s\n", cert_file, strerror(errno));
+		goto err;
+	}
 	if (compress) { /* file is gzipped already */
 		struct stat stat_buf;
 
@@ -213,11 +211,10 @@ static int load_cert(const char * cert_id, const char * cert_file,
 		}
 	} else {
 		cert = PEM_read_X509(fp, &cert, NULL, NULL);
-    	if(cert == NULL){
-        	printf("file %s does not contain PEM-encoded certificate\n",
-				 cert_file);
-        	goto err;
-    	}
+		if (cert == NULL) {
+			printf("file %s does not contain PEM-encoded certificate\n", cert_file);
+			goto err;
+		}
 
 		derlen = i2d_X509(cert, NULL);
 		der = malloc(derlen);
@@ -230,14 +227,22 @@ static int load_cert(const char * cert_id, const char * cert_file,
 	sc_hex_to_bin(cert_id, buf,&buflen);
 
 	switch (buf[0]) {
-		case 0x9a: sc_format_path("0101",&path); break;
-		case 0x9c: sc_format_path("0100",&path); break;
-		case 0x9d: sc_format_path("0102",&path); break;
-		case 0x9e: sc_format_path("0500",&path); break;
-		default:
-			fprintf(stderr,"cert must be 9A, 9C, 9D or 9E\n");
-			r = 2;
-			goto err;
+	case 0x9a:
+		sc_format_path("0101", &path);
+		break;
+	case 0x9c:
+		sc_format_path("0100", &path);
+		break;
+	case 0x9d:
+		sc_format_path("0102", &path);
+		break;
+	case 0x9e:
+		sc_format_path("0500", &path);
+		break;
+	default:
+		fprintf(stderr, "cert must be 9A, 9C, 9D or 9E\n");
+		r = 2;
+		goto err;
 	}
 
 	r = sc_select_file(card, &path, NULL);
@@ -344,7 +349,7 @@ static int gen_key(const char * key_info)
 	if (keydata.key_bits > 0) { /* RSA key */
 		BIGNUM *newkey_n, *newkey_e;
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
-		RSA * newkey = NULL;
+		RSA *newkey = NULL;
 		newkey = RSA_new();
 		if (newkey == NULL) {
 			EVP_PKEY_free(evpkey);
@@ -394,9 +399,9 @@ static int gen_key(const char * key_info)
 		EVP_PKEY_assign_RSA(evpkey, newkey);
 #else
 		if (!(bld = OSSL_PARAM_BLD_new()) ||
-			OSSL_PARAM_BLD_push_BN(bld, "n", newkey_n) != 1 ||
-			OSSL_PARAM_BLD_push_BN(bld, "e", newkey_e) != 1 ||
-			!(params = OSSL_PARAM_BLD_to_param(bld))) {
+		    OSSL_PARAM_BLD_push_BN(bld, "n", newkey_n) != 1 ||
+		    OSSL_PARAM_BLD_push_BN(bld, "e", newkey_e) != 1 ||
+		    !(params = OSSL_PARAM_BLD_to_param(bld))) {
 			OSSL_PARAM_BLD_free(bld);
 			BN_free(newkey_n);
 			BN_free(newkey_e);
@@ -408,8 +413,8 @@ static int gen_key(const char * key_info)
 
 		ctx = EVP_PKEY_CTX_new_from_name(NULL, "RSA", NULL);
 		if (!ctx ||
-			EVP_PKEY_fromdata_init(ctx) != 1 ||
-			EVP_PKEY_fromdata(ctx, &evpkey, EVP_PKEY_KEYPAIR, params) != 1) {
+		    EVP_PKEY_fromdata_init(ctx) != 1 ||
+		    EVP_PKEY_fromdata(ctx, &evpkey, EVP_PKEY_KEYPAIR, params) != 1) {
 			fprintf(stderr, "gen_key unable to gen RSA");
 			EVP_PKEY_CTX_free(ctx);
 			OSSL_PARAM_free(params);
@@ -429,13 +434,13 @@ static int gen_key(const char * key_info)
 		EC_GROUP * ecgroup = NULL;
 		EC_POINT * ecpoint = NULL;
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
-		EC_KEY * eckey = NULL;
+		EC_KEY *eckey = NULL;
 #else
 		EVP_PKEY_CTX *ctx = NULL;
 		OSSL_PARAM_BLD *bld = NULL;
 		OSSL_PARAM *params = NULL;
 		size_t len = 0;
-		unsigned char * buf = NULL;
+		unsigned char *buf = NULL;
 		const char *group_name;
 #endif
 
@@ -510,9 +515,9 @@ static int gen_key(const char * key_info)
 		EC_POINT_free(ecpoint);
 
 		if (!(bld = OSSL_PARAM_BLD_new()) ||
-			OSSL_PARAM_BLD_push_utf8_string(bld, "group", group_name, sizeof(group_name)) != 1 ||
-			OSSL_PARAM_BLD_push_octet_string(bld, "pub", buf, len) != 1 ||
-			!(params = OSSL_PARAM_BLD_to_param(bld))) {
+		    OSSL_PARAM_BLD_push_utf8_string(bld, "group", group_name, sizeof(group_name)) != 1 ||
+		    OSSL_PARAM_BLD_push_octet_string(bld, "pub", buf, len) != 1 ||
+		    !(params = OSSL_PARAM_BLD_to_param(bld))) {
 			OSSL_PARAM_BLD_free(bld);
 			free(buf);
 			return -1;
@@ -522,8 +527,8 @@ static int gen_key(const char * key_info)
 
 		ctx = EVP_PKEY_CTX_new_from_name(NULL, "EC", NULL);
 		if (!ctx ||
-			EVP_PKEY_fromdata_init(ctx) != 1 ||
-			EVP_PKEY_fromdata(ctx, &evpkey, EVP_PKEY_KEYPAIR, params) != 1) {
+		    EVP_PKEY_fromdata_init(ctx) != 1 ||
+		    EVP_PKEY_fromdata(ctx, &evpkey, EVP_PKEY_KEYPAIR, params) != 1) {
 			fprintf(stderr, "gen_key unable to gen EC key");
 			EVP_PKEY_CTX_free(ctx);
 			OSSL_PARAM_free(params);

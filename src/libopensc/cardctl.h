@@ -66,7 +66,7 @@ enum {
 	/*
 	 * TCOS specific calls
 	 */
-	SC_CARDCTL_TCOS_BASE = _CTL_PREFIX('T','C','S'),
+	SC_CARDCTL_TCOS_BASE = _CTL_PREFIX('T', 'C', 'S'),
 	SC_CARDCTL_TCOS_SETPERM,
 
 	/*
@@ -116,11 +116,11 @@ enum {
 	SC_CARDCTL_INCRYPTO34_GENERATE_KEY,
 	SC_CARDCTL_INCRYPTO34_CHANGE_KEY_DATA,
 	SC_CARDCTL_INCRYPTO34_ERASE_FILES,
-	
+
 	/*
 	 * Muscle specific calls
 	 */
-	SC_CARDCTL_MUSCLE_BASE = _CTL_PREFIX('M','S','C'),
+	SC_CARDCTL_MUSCLE_BASE = _CTL_PREFIX('M', 'S', 'C'),
 	SC_CARDCTL_MUSCLE_GENERATE_KEY,
 	SC_CARDCTL_MUSCLE_EXTRACT_KEY,
 	SC_CARDCTL_MUSCLE_IMPORT_KEY,
@@ -129,26 +129,26 @@ enum {
 	/*
 	 * ASEPCOS specific calls
 	 */
-	SC_CARDCTL_ASEPCOS_BASE = _CTL_PREFIX('A','S','E'),
+	SC_CARDCTL_ASEPCOS_BASE = _CTL_PREFIX('A', 'S', 'E'),
 	SC_CARDCTL_ASEPCOS_CHANGE_KEY,
 	SC_CARDCTL_ASEPCOS_AKN2FILEID,
 	SC_CARDCTL_ASEPCOS_SET_SATTR,
 	SC_CARDCTL_ASEPCOS_ACTIVATE_FILE,
 
- 	/*
+	/*
 	 * ruToken specific calls
 	 */
- 	SC_CARDCTL_RUTOKEN_BASE = _CTL_PREFIX('R', 'T', 'K'),
- 	/*  PUT_DATA  */
- 	SC_CARDCTL_RUTOKEN_CREATE_DO,
- 	SC_CARDCTL_RUTOKEN_CHANGE_DO,
- 	SC_CARDCTL_RUTOKEN_GENERATE_KEY_DO,
- 	SC_CARDCTL_RUTOKEN_DELETE_DO,
- 	SC_CARDCTL_RUTOKEN_GET_INFO,
- 	/* NON STANDARD  */
- 	SC_CARDCTL_RUTOKEN_GET_DO_INFO,
- 	SC_CARDCTL_RUTOKEN_GOST_ENCIPHER, 
- 	SC_CARDCTL_RUTOKEN_GOST_DECIPHER,
+	SC_CARDCTL_RUTOKEN_BASE = _CTL_PREFIX('R', 'T', 'K'),
+	/*  PUT_DATA  */
+	SC_CARDCTL_RUTOKEN_CREATE_DO,
+	SC_CARDCTL_RUTOKEN_CHANGE_DO,
+	SC_CARDCTL_RUTOKEN_GENERATE_KEY_DO,
+	SC_CARDCTL_RUTOKEN_DELETE_DO,
+	SC_CARDCTL_RUTOKEN_GET_INFO,
+	/* NON STANDARD  */
+	SC_CARDCTL_RUTOKEN_GET_DO_INFO,
+	SC_CARDCTL_RUTOKEN_GOST_ENCIPHER,
+	SC_CARDCTL_RUTOKEN_GOST_DECIPHER,
 	SC_CARDCTL_RUTOKEN_FORMAT_INIT,
 	SC_CARDCTL_RUTOKEN_FORMAT_END,
 
@@ -171,8 +171,8 @@ enum {
 	SC_CARDCTL_RTECP_GENERATE_KEY,
 
 	/*
-	* Westcos specific
-	*/
+	 * Westcos specific
+	 */
 	SC_CARDCTL_WESTCOS_FREEZE = _CTL_PREFIX('W', 'T', 'C'),
 	SC_CARDCTL_WESTCOS_CREATE_MF,
 	SC_CARDCTL_WESTCOS_COMMIT,
@@ -212,14 +212,14 @@ enum {
 	SC_CARDCTL_CAC_FINAL_GET_CERT_OBJECTS,
 	SC_CARDCTL_CAC_GET_ACA_PATH,
 
-        /*
+	/*
 	 * AuthentIC v3
 	 */
-        SC_CARDCTL_AUTHENTIC_BASE = _CTL_PREFIX('A','V','3'),
-        SC_CARDCTL_AUTHENTIC_SDO_CREATE,
-        SC_CARDCTL_AUTHENTIC_SDO_DELETE,
-        SC_CARDCTL_AUTHENTIC_SDO_STORE,
-        SC_CARDCTL_AUTHENTIC_SDO_GENERATE,
+	SC_CARDCTL_AUTHENTIC_BASE = _CTL_PREFIX('A', 'V', '3'),
+	SC_CARDCTL_AUTHENTIC_SDO_CREATE,
+	SC_CARDCTL_AUTHENTIC_SDO_DELETE,
+	SC_CARDCTL_AUTHENTIC_SDO_STORE,
+	SC_CARDCTL_AUTHENTIC_SDO_GENERATE,
 
 	/*
 	 * Coolkey specific calls
@@ -232,13 +232,13 @@ enum {
 	SC_CARDCTL_COOLKEY_GET_TOKEN_INFO,
 	SC_CARDCTL_COOLKEY_FIND_OBJECT,
 
-        /*
+	/*
 	 * IAS/ECC
 	 */
-	SC_CARDCTL_IASECC_BASE = _CTL_PREFIX('E','C','C'),
+	SC_CARDCTL_IASECC_BASE = _CTL_PREFIX('E', 'C', 'C'),
 	SC_CARDCTL_IASECC_GET_FREE_KEY_REFERENCE,
-	SC_CARDCTL_IASECC_SDO_MAGIC = _CTL_PREFIX('S','D','O') | 'M',
-	SC_CARDCTL_IASECC_SDO_MAGIC_PUT_DATA = _CTL_PREFIX('S','D','O') | 'P',
+	SC_CARDCTL_IASECC_SDO_MAGIC = _CTL_PREFIX('S', 'D', 'O') | 'M',
+	SC_CARDCTL_IASECC_SDO_MAGIC_PUT_DATA = _CTL_PREFIX('S', 'D', 'O') | 'P',
 	SC_CARDCTL_IASECC_SDO_PUT_DATA,
 	SC_CARDCTL_IASECC_SDO_KEY_RSA_PUT_DATA,
 	SC_CARDCTL_IASECC_SDO_GET_DATA,
@@ -269,21 +269,21 @@ enum {
 	/*
 	 * DNIe specific calls
 	 */
-    SC_CARDCTL_DNIE_BASE = _CTL_PREFIX('D', 'N', 'I'),
+	SC_CARDCTL_DNIE_BASE = _CTL_PREFIX('D', 'N', 'I'),
 	SC_CARDCTL_DNIE_GENERATE_KEY,
 	SC_CARDCTL_DNIE_GET_INFO,
 
 	/*
 	 * isoApplet Java Card Applet
 	 */
-	SC_CARDCTL_ISOAPPLET_BASE = _CTL_PREFIX('I','S','O'),
+	SC_CARDCTL_ISOAPPLET_BASE = _CTL_PREFIX('I', 'S', 'O'),
 	SC_CARDCTL_ISOAPPLET_GENERATE_KEY,
 	SC_CARDCTL_ISOAPPLET_IMPORT_KEY,
 
 	/*
 	 * GIDS cards
 	 */
-	SC_CARDCTL_GIDS_BASE = _CTL_PREFIX('G','I','D'),
+	SC_CARDCTL_GIDS_BASE = _CTL_PREFIX('G', 'I', 'D'),
 	SC_CARDCTL_GIDS_GET_ALL_CONTAINERS,
 	SC_CARDCTL_GIDS_GET_CONTAINER_DETAIL,
 	SC_CARDCTL_GIDS_SELECT_KEY_REFERENCE,
@@ -618,7 +618,7 @@ typedef struct {
  *  RuToken types and constants
  */
 
-#define SC_RUTOKEN_DO_PART_BODY_LEN    199    
+#define SC_RUTOKEN_DO_PART_BODY_LEN    199
 #define SC_RUTOKEN_DO_HDR_LEN  32
 
 /*   DO Types  */
@@ -645,7 +645,7 @@ typedef struct {
 
 /*  DO ID  */
 #define SC_RUTOKEN_ID_CURDF_RESID_FLAG   0x80        /*  DO placed in current DF  */
-                                            
+
 #define SC_RUTOKEN_DEF_ID_GCHV_ADMIN       0x01      /*  ID DO ADMIN  */
 #define SC_RUTOKEN_DEF_ID_GCHV_USER        0x02      /*  ID DO USER  */
 
@@ -727,7 +727,7 @@ struct sc_rutoken_decipherinfo {
 
 /*
  * EnterSafe stuff
- * 
+ *
  */
 
 #define	SC_ENTERSAFE_MF_DATA	0x01
@@ -887,20 +887,20 @@ typedef struct sc_rtecp_genkey_data {
 
 	struct sc_cardctl_myeid_gen_store_key_info {
 		int             op_type;
-		unsigned int	key_type;			/* value of SC_CARDCTL_MYEID_KEY_TYPE */ 
-		size_t    key_len_bits;   
+		unsigned int	key_type;			/* value of SC_CARDCTL_MYEID_KEY_TYPE */
+		size_t    key_len_bits;
 		unsigned char  *mod;
-		size_t    pubexp_len;  
+		size_t    pubexp_len;
 		unsigned char  *pubexp;
-		size_t    primep_len;  
+		size_t    primep_len;
 		unsigned char  *primep;
-		size_t    primeq_len;  
+		size_t    primeq_len;
 		unsigned char  *primeq;
-		size_t    dp1_len;  
+		size_t    dp1_len;
 		unsigned char  *dp1;
-		size_t    dq1_len;  
+		size_t    dq1_len;
 		unsigned char  *dq1;
-		size_t    invq_len;  
+		size_t    invq_len;
 		unsigned char  *invq;
 		/* new for MyEID > 3.6.0 */
 		unsigned char  *d;                  /* EC private key / Symmetric key */
@@ -914,7 +914,7 @@ typedef struct sc_rtecp_genkey_data {
  */
 typedef struct sc_cardctl_piv_genkey_info_st {
 	unsigned int	key_num;
-	unsigned int	key_algid;	/* RSA 5, 6, 7; EC 11, 14 */ 
+	unsigned int	key_algid;	/* RSA 5, 6, 7; EC 11, 14 */
 	unsigned int	key_bits;	/* RSA */
 	unsigned long	exponent;	/* RSA */
 	unsigned char *	pubkey;		/* RSA */
@@ -1039,16 +1039,16 @@ typedef struct sc_cardctl_sc_hsm_wrapped_key {
 } sc_cardctl_sc_hsm_wrapped_key_t;
 
 typedef struct sc_cardctl_sc_hsm_pka_status {
-    u8 num_total;
-    u8 num_missing;
-    u8 num_required;
-    u8 num_authenticated;
+	u8 num_total;
+	u8 num_missing;
+	u8 num_required;
+	u8 num_authenticated;
 } sc_cardctl_sc_hsm_pka_status_t;
 
 typedef struct sc_cardctl_sc_hsm_pka_register {
-    u8 *buf;
-    size_t buflen;
-    sc_cardctl_sc_hsm_pka_status_t new_status;
+	u8 *buf;
+	size_t buflen;
+	sc_cardctl_sc_hsm_pka_status_t new_status;
 } sc_cardctl_sc_hsm_pka_register_t;
 
 /*

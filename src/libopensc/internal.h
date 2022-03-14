@@ -165,14 +165,14 @@ int _sc_card_add_xeddsa_alg(struct sc_card *card, unsigned int key_length,
 /********************************************************************/
 
 int sc_pkcs1_strip_01_padding(struct sc_context *ctx, const u8 *in_dat, size_t in_len,
-		u8 *out_dat, size_t *out_len);
+                              u8 *out_dat, size_t *out_len);
 int sc_pkcs1_strip_02_padding(struct sc_context *ctx, const u8 *data, size_t len,
-		u8 *out_dat, size_t *out_len);
-int sc_pkcs1_strip_digest_info_prefix(unsigned int *algorithm,
-		const u8 *in_dat, size_t in_len, u8 *out_dat, size_t *out_len);
+                              u8 *out_dat, size_t *out_len);
+int sc_pkcs1_strip_digest_info_prefix(unsigned int *algorithm, const u8 *in_dat, size_t in_len,
+                                      u8 *out_dat, size_t *out_len);
 #ifdef ENABLE_OPENSSL
-int sc_pkcs1_strip_oaep_padding(sc_context_t *ctx, u8 *data, size_t len,
-		unsigned long flags, uint8_t *param, size_t paramlen);
+int sc_pkcs1_strip_oaep_padding(sc_context_t *ctx, u8 *data, size_t len, unsigned long flags,
+                                uint8_t *param, size_t paramlen);
 #endif
 
 /**
@@ -186,8 +186,8 @@ int sc_pkcs1_strip_oaep_padding(sc_context_t *ctx, u8 *data, size_t len,
  * @param  mod_bits IN  length of the modulus in bits
  * @return SC_SUCCESS on success and an error code otherwise
  */
-int sc_pkcs1_encode(sc_context_t *ctx, unsigned long flags,
-		const u8 *in, size_t inlen, u8 *out, size_t *outlen, size_t mod_bits, void *pMechanism);
+int sc_pkcs1_encode(sc_context_t *ctx, unsigned long flags, const u8 *in, size_t inlen,
+                    u8 *out, size_t *outlen, size_t mod_bits, void *pMechanism);
 /**
  * Get the necessary padding and sec. env. flags.
  * @param  ctx     IN  sc_contex_t object

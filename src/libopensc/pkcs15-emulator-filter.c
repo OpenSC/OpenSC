@@ -27,15 +27,15 @@
 #include "pkcs15-emulator-filter.h"
 #include "pkcs15-syn.h"
 
-static int add_emul(struct _sc_pkcs15_emulators* filtered_emulators,
-					struct sc_pkcs15_emulator_handler* emul_handler)
+static int
+add_emul(struct _sc_pkcs15_emulators *filtered_emulators, struct sc_pkcs15_emulator_handler *emul_handler)
 {
-	struct sc_pkcs15_emulator_handler** lst;
+	struct sc_pkcs15_emulator_handler **lst;
 	int *cp, max, i;
 
 	if (!filtered_emulators || !emul_handler || !emul_handler->name || !emul_handler->handler)
 		return SC_ERROR_INVALID_ARGUMENTS;
-	
+
 	lst = filtered_emulators->list_of_handlers;
 	cp = &filtered_emulators->ccount;
 	max = SC_MAX_PKCS15_EMULATORS;
@@ -57,29 +57,30 @@ static int add_emul(struct _sc_pkcs15_emulators* filtered_emulators,
 	return SC_SUCCESS;
 }
 
-static int add_emul_list(struct _sc_pkcs15_emulators* filtered_emulators,
-						 struct sc_pkcs15_emulator_handler* emulators)
+static int
+add_emul_list(struct _sc_pkcs15_emulators *filtered_emulators, struct sc_pkcs15_emulator_handler *emulators)
 {
-	struct sc_pkcs15_emulator_handler* lst;
+	struct sc_pkcs15_emulator_handler *lst;
 	int i, r;
 
 	if (!filtered_emulators || !emulators)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	lst = emulators;
-	for(i = 0; lst[i].name; i++) {
+	for (i = 0; lst[i].name; i++) {
 		if ((r = add_emul(filtered_emulators, &lst[i])))
 			return r;
 	}
 	return SC_SUCCESS;
 }
 
-int set_emulators(sc_context_t *ctx, struct _sc_pkcs15_emulators* filtered_emulators, const scconf_list *list,
-				  struct sc_pkcs15_emulator_handler* internal, struct sc_pkcs15_emulator_handler* old)
+int
+set_emulators(sc_context_t *ctx, struct _sc_pkcs15_emulators *filtered_emulators, const scconf_list *list,
+              struct sc_pkcs15_emulator_handler *internal, struct sc_pkcs15_emulator_handler *old)
 {
 	const scconf_list *item;
 	int *cp, i, r, count;
-	
+
 	LOG_FUNC_CALLED(ctx);
 
 	if (!filtered_emulators || !list || !internal || !old)
@@ -122,7 +123,8 @@ out:
 	if (r == SC_SUCCESS || r == SC_ERROR_TOO_MANY_OBJECTS) {
 		filtered_emulators->list_of_handlers[*cp] = NULL;
 		if (r == SC_ERROR_TOO_MANY_OBJECTS)
-			sc_log(ctx, "Warning: Number of filtered emulators exceeded %d.", SC_MAX_PKCS15_EMULATORS);
+			sc_log(ctx, "Warning: Number of filtered emulators exceeded %d.",
+			       SC_MAX_PKCS15_EMULATORS);
 	}
 	LOG_FUNC_RETURN(ctx, r);
 }

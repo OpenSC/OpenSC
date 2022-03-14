@@ -756,7 +756,6 @@ iasecc_pkcs15_fix_file_access_rule(struct sc_pkcs15_card *p15card, struct sc_fil
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
-
 static int
 iasecc_pkcs15_fix_file_access(struct sc_pkcs15_card *p15card, struct sc_file *file,
 		struct sc_pkcs15_object *object)
@@ -780,7 +779,6 @@ iasecc_pkcs15_fix_file_access(struct sc_pkcs15_card *p15card, struct sc_file *fi
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
-
 
 int
 iasecc_pkcs15_encode_supported_algos(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *object)
@@ -829,7 +827,6 @@ iasecc_pkcs15_encode_supported_algos(struct sc_pkcs15_card *p15card, struct sc_p
 
 	LOG_FUNC_RETURN(ctx, rv);
 }
-
 
 /*
  * Store SDO key RSA

@@ -82,7 +82,6 @@ static const char *option_help[] = {
 	"Verbose operation, may be used several times",
 };
 
-
 static int opt_wait = 0, verbose = 0;
 static const char *opt_driver = NULL;
 static const char *opt_reader = NULL;
@@ -582,8 +581,7 @@ int main(int argc, char *argv[])
 		mem = BIO_new(BIO_s_mem());
 		pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, NULL);
 
-		if(bn == NULL || mem == NULL || pctx == NULL)
-		{
+		if (bn == NULL || mem == NULL || pctx == NULL) {
 			printf("Not enough memory.\n");
 			if (pctx)
 				EVP_PKEY_CTX_free(pctx);
@@ -591,17 +589,15 @@ int main(int argc, char *argv[])
 		}
 
 		if (EVP_PKEY_keygen_init(pctx) != 1 ||
-			EVP_PKEY_CTX_set_rsa_keygen_bits(pctx, keylen) != 1 ||
-			EVP_PKEY_keygen(pctx, &pkey) != 1)
-		{
+		    EVP_PKEY_CTX_set_rsa_keygen_bits(pctx, keylen) != 1 ||
+		    EVP_PKEY_keygen(pctx, &pkey) != 1) {
 			printf("Key generation failed.\n");
 			EVP_PKEY_CTX_free(pctx);
 			goto out;
 		}
 		EVP_PKEY_CTX_free(pctx);
 
-		if(!i2d_PrivateKey_bio(mem, pkey))
-		{
+		if (!i2d_PrivateKey_bio(mem, pkey)) {
 			printf("i2d_RSAPrivateKey_bio return %ld\n", ERR_get_error());
 			goto out;
 		}
@@ -610,13 +606,12 @@ int main(int argc, char *argv[])
 
 		sc_format_path("0001", &path);
 		r = sc_select_file(card, &path, NULL);
-		if(r)
-		{
-			if(r != SC_ERROR_FILE_NOT_FOUND) goto out;
+		if (r) {
+			if (r != SC_ERROR_FILE_NOT_FOUND)
+				goto out;
 
 			file = sc_file_new();
-			if(file == NULL)
-			{
+			if (file == NULL) {
 				printf("Not enough memory.\n");
 				goto out;
 			}
@@ -628,11 +623,14 @@ int main(int argc, char *argv[])
 			file->size = ((lg/4)+1)*4;
 
 			r = sc_file_add_acl_entry(file, SC_AC_OP_READ, SC_AC_CHV, 0);
-			if(r) goto out;
+			if (r)
+				goto out;
 			r = sc_file_add_acl_entry(file, SC_AC_OP_UPDATE, SC_AC_CHV, 0);
-			if(r) goto out;
+			if (r)
+				goto out;
 			r = sc_file_add_acl_entry(file, SC_AC_OP_ERASE, SC_AC_CHV, 0);
-			if(r) goto out;
+			if (r)
+				goto out;
 
 			file->path = path;
 
@@ -641,12 +639,10 @@ int main(int argc, char *argv[])
 			       file->size);
 
 			r = sc_create_file(card, file);
-			if(r) goto out;
-		}
-		else
-		{
-			if(!overwrite)
-			{
+			if (r)
+				goto out;
+		} else {
+			if (!overwrite) {
 				printf("Key file already exist,"\
 						" use -o to replace it.\n");
 				goto out;
@@ -672,15 +668,13 @@ int main(int argc, char *argv[])
 #else
 			BIGNUM *rsa_n = NULL, *rsa_e = NULL;
 			if (EVP_PKEY_get_bn_param(pkey, "n", &rsa_n) != 1 ||
-				EVP_PKEY_get_bn_param(pkey, "e", &rsa_e) != 1)
-			{
+			    EVP_PKEY_get_bn_param(pkey, "e", &rsa_e) != 1) {
 				BN_free(rsa_n);
 			}
 #endif
 
 			if (!do_convert_bignum(&dst->modulus, rsa_n) ||
-				!do_convert_bignum(&dst->exponent, rsa_e))
-			{
+			    !do_convert_bignum(&dst->exponent, rsa_e)) {
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 				RSA_free(rsa);
 #else
@@ -717,28 +711,23 @@ int main(int argc, char *argv[])
 
 	}
 
-	if(cert)
-	{
+	if (cert) {
 		BIO *bio;
 		X509 *xp;
 		u8 *pdata;
 
 		bio = BIO_new(BIO_s_file());
-		if (BIO_read_filename(bio, cert) <= 0)
-		{
+		if (BIO_read_filename(bio, cert) <= 0) {
 			BIO_free(bio);
 			printf("Can't open file %s.\n", cert);
 			goto out;
 		}
 		xp = PEM_read_bio_X509(bio, NULL, NULL, NULL);
 		BIO_free(bio);
-		if (xp == NULL)
-		{
+		if (xp == NULL) {
 			print_openssl_error();
 			goto out;
-		}
-		else
-		{
+		} else {
 			int lg = cert2der(xp, &pdata);
 
 			sc_format_path("0002", &path);
@@ -749,47 +738,42 @@ int main(int argc, char *argv[])
 			printf("Write certificate %s.\n", cert);
 
 			r = sc_update_binary(card,0,pdata,lg,0);
-			if(r == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED)
-			{
-				if(verify_pin(card, 0, pin))
-				{
+			if (r == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED) {
+				if (verify_pin(card, 0, pin)) {
 					printf("Wrong pin.\n");
-				}
-				else
-				{
+				} else {
 					r = sc_update_binary(card,0,pdata,lg,0);
 				}
 			}
-			if(r<0)
-			{
-				if(pdata) free(pdata);
+			if (r < 0) {
+				if (pdata)
+					free(pdata);
 				goto out;
 			}
-			if(xp) X509_free(xp);
-			if(pdata) free(pdata);
+			if (xp)
+				X509_free(xp);
+			if (pdata)
+				free(pdata);
 
 			printf("Certificate correctly written.\n");
 		}
 	}
 
-	if(finalize)
-	{
+	if (finalize) {
 		int mode = SC_CARDCTRL_LIFECYCLE_USER;
 
 		if(card->atr.value[10] != 0x82)
 		{
 			sc_format_path("0001", &path);
 			r = sc_select_file(card, &path, NULL);
-			if(r)
-			{
+			if (r) {
 				printf("This card don't have private key"\
 					" and can't be finalize.\n");
 				goto out;
 			}
 			printf("Finalize card...\n");
-			if(sc_card_ctl(card, SC_CARDCTL_WESTCOS_AUT_KEY, NULL) ||
-				sc_card_ctl(card, SC_CARDCTL_LIFECYCLE_SET, &mode))
-			{
+			if (sc_card_ctl(card, SC_CARDCTL_WESTCOS_AUT_KEY, NULL) ||
+			    sc_card_ctl(card, SC_CARDCTL_LIFECYCLE_SET, &mode)) {
 				printf("Error finalizing card,"\
 					" card isn't secure.\n");
 				goto out;
@@ -908,18 +892,17 @@ int main(int argc, char *argv[])
 
 out:
 
-	if(mem)
+	if (mem)
 		BIO_free(mem);
-	if(bn)
+	if (bn)
 		BN_free(bn);
-	if(pkey)
+	if (pkey)
 		EVP_PKEY_free(pkey);
 
-	if(file)
+	if (file)
 		sc_file_free(file);
 
-	if (card)
-	{
+	if (card) {
 		sc_unlock(card);
 		sc_disconnect_card(card);
 	}

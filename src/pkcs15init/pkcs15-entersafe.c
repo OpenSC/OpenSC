@@ -155,94 +155,95 @@ static int entersafe_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	{/* df */
-		 sc_entersafe_create_data df_data;
+		sc_entersafe_create_data df_data;
 
-		 df_data.type = SC_ENTERSAFE_DF_DATA;
-		 df_data.data.df.file_id[0]=(df->id >> 8) & 0xFF;
-		 df_data.data.df.file_id[1]=df->id & 0xFF;
-		 df_data.data.df.file_count=0x30;
-		 df_data.data.df.flag=0x01;
-		 df_data.data.df.ikf_size[0]=(df->size>>8)&0xFF;
-		 df_data.data.df.ikf_size[1]=df->size&0xFF;
-		 df_data.data.df.create_ac=0x10;
-		 df_data.data.df.append_ac=0xC0;
-		 df_data.data.df.lock_ac=0x10;
-		 memcpy(df_data.data.df.aid,df->name,df->namelen);
+		df_data.type = SC_ENTERSAFE_DF_DATA;
+		df_data.data.df.file_id[0] = (df->id >> 8) & 0xFF;
+		df_data.data.df.file_id[1] = df->id & 0xFF;
+		df_data.data.df.file_count = 0x30;
+		df_data.data.df.flag = 0x01;
+		df_data.data.df.ikf_size[0] = (df->size >> 8) & 0xFF;
+		df_data.data.df.ikf_size[1] = df->size & 0xFF;
+		df_data.data.df.create_ac = 0x10;
+		df_data.data.df.append_ac = 0xC0;
+		df_data.data.df.lock_ac = 0x10;
+		memcpy(df_data.data.df.aid, df->name, df->namelen);
 
-		 ret = sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_CREATE_FILE, &df_data);
-		 LOG_TEST_RET(card->ctx,ret,"Create DF failed");
+		ret = sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_CREATE_FILE, &df_data);
+		LOG_TEST_RET(card->ctx, ret, "Create DF failed");
 	}
 
 	{/* GPKF */
-		 sc_file_t *gpkf_file;
-		 sc_entersafe_create_data ef_data;
+		sc_file_t *gpkf_file;
+		sc_entersafe_create_data ef_data;
 
-		 /* get p15_gpkf profile */
-		 ret = sc_profile_get_file(profile, "p15_gpkf", &gpkf_file);
-		 LOG_TEST_RET(card->ctx,ret,"Get GPKF info failed");
+		/* get p15_gpkf profile */
+		ret = sc_profile_get_file(profile, "p15_gpkf", &gpkf_file);
+		LOG_TEST_RET(card->ctx, ret, "Get GPKF info failed");
 
-		 ef_data.type=SC_ENTERSAFE_EF_DATA;
-		 ef_data.data.ef.file_id[0]=(gpkf_file->id>>8)&0xFF;
-		 ef_data.data.ef.file_id[1]=gpkf_file->id&0xFF;
-		 ef_data.data.ef.size[0]=(gpkf_file->size>>8)&0xFF;
-		 ef_data.data.ef.size[1]=gpkf_file->size&0xFF;
-		 ef_data.data.ef.attr[0]=0x15;
-		 ef_data.data.ef.attr[1]=0x80;
-		 ef_data.data.ef.name=0x00;
-		 memset(ef_data.data.ef.ac,0x10,sizeof(ef_data.data.ef.ac));
-		 memset(ef_data.data.ef.sm,0x00,sizeof(ef_data.data.ef.sm));
+		ef_data.type = SC_ENTERSAFE_EF_DATA;
+		ef_data.data.ef.file_id[0] = (gpkf_file->id >> 8) & 0xFF;
+		ef_data.data.ef.file_id[1] = gpkf_file->id & 0xFF;
+		ef_data.data.ef.size[0] = (gpkf_file->size >> 8) & 0xFF;
+		ef_data.data.ef.size[1] = gpkf_file->size & 0xFF;
+		ef_data.data.ef.attr[0] = 0x15;
+		ef_data.data.ef.attr[1] = 0x80;
+		ef_data.data.ef.name = 0x00;
+		memset(ef_data.data.ef.ac, 0x10, sizeof(ef_data.data.ef.ac));
+		memset(ef_data.data.ef.sm, 0x00, sizeof(ef_data.data.ef.sm));
 
-		 sc_file_free(gpkf_file);
+		sc_file_free(gpkf_file);
 
-		 ret = sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_CREATE_FILE, &ef_data);
-		 LOG_TEST_RET(card->ctx,ret,"Create GPKF failed");
+		ret = sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_CREATE_FILE, &ef_data);
+		LOG_TEST_RET(card->ctx, ret, "Create GPKF failed");
 	}
 
 	{/* p15 efs */
-		 const char * create_efs[]={
-			  "PKCS15-ODF",
-			  "PKCS15-TokenInfo",
-			  "PKCS15-UnusedSpace",
-			  "PKCS15-AODF",
-			  "PKCS15-PrKDF",
-			  "PKCS15-PuKDF",
-			  "PKCS15-CDF",
-			  "PKCS15-DODF",
-			  NULL,
-		 };
-		 int i;
-		 sc_file_t *file=0;
-		 sc_entersafe_create_data tmp;
+		const char * create_efs[] = {
+			"PKCS15-ODF",
+			"PKCS15-TokenInfo",
+			"PKCS15-UnusedSpace",
+			"PKCS15-AODF",
+			"PKCS15-PrKDF",
+			"PKCS15-PuKDF",
+			"PKCS15-CDF",
+			"PKCS15-DODF",
+			NULL,
+		};
+		int i;
+		sc_file_t *file = 0;
+		sc_entersafe_create_data tmp;
 
-		 for(i = 0; create_efs[i]; ++i)   {
-			  if (sc_profile_get_file(profile, create_efs[i], &file))   {
-				   sc_log(card->ctx,  "Inconsistent profile: cannot find %s", create_efs[i]);
-				   SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,SC_ERROR_INCONSISTENT_PROFILE);
-			  }
+		for (i = 0; create_efs[i]; ++i) {
+			if (sc_profile_get_file(profile, create_efs[i], &file)) {
+				sc_log(card->ctx, "Inconsistent profile: cannot find %s", create_efs[i]);
+				SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,
+				               SC_ERROR_INCONSISTENT_PROFILE);
+			}
 
-			  tmp.type=SC_ENTERSAFE_EF_DATA;
-			  tmp.data.ef.file_id[0]=(file->id>>8)&0xFF;
-			  tmp.data.ef.file_id[1]=file->id&0xFF;
-			  tmp.data.ef.size[0]=(file->size>>8)&0xFF;
-			  tmp.data.ef.size[1]=file->size&0xFF;
-			  tmp.data.ef.attr[0]=0x00;
-			  tmp.data.ef.attr[1]=0x00;
-			  tmp.data.ef.name=0x00;
-			  memset(tmp.data.ef.ac,ENTERSAFE_AC_ALWAYS,sizeof(tmp.data.ef.ac));
-			  tmp.data.ef.ac[0]=process_acl_entry(file,SC_AC_OP_READ,ENTERSAFE_AC_ALWAYS); /* read */
-			  tmp.data.ef.ac[1]=process_acl_entry(file,SC_AC_OP_UPDATE,ENTERSAFE_AC_ALWAYS); /* update */
-			  memset(tmp.data.ef.sm,0x00,sizeof(tmp.data.ef.sm));
+			tmp.type = SC_ENTERSAFE_EF_DATA;
+			tmp.data.ef.file_id[0] = (file->id >> 8) & 0xFF;
+			tmp.data.ef.file_id[1] = file->id & 0xFF;
+			tmp.data.ef.size[0] = (file->size >> 8) & 0xFF;
+			tmp.data.ef.size[1] = file->size & 0xFF;
+			tmp.data.ef.attr[0] = 0x00;
+			tmp.data.ef.attr[1] = 0x00;
+			tmp.data.ef.name = 0x00;
+			memset(tmp.data.ef.ac, ENTERSAFE_AC_ALWAYS, sizeof(tmp.data.ef.ac));
+			tmp.data.ef.ac[0] = process_acl_entry(file, SC_AC_OP_READ, ENTERSAFE_AC_ALWAYS);
+			tmp.data.ef.ac[1] = process_acl_entry(file, SC_AC_OP_UPDATE, ENTERSAFE_AC_ALWAYS);
+			memset(tmp.data.ef.sm, 0x00, sizeof(tmp.data.ef.sm));
 
-			  sc_file_free(file);
+			sc_file_free(file);
 
-			  ret = sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_CREATE_FILE, &tmp);
-			  LOG_TEST_RET(card->ctx,ret,"Create pkcs15 file failed");
-		 }
+			ret = sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_CREATE_FILE, &tmp);
+			LOG_TEST_RET(card->ctx, ret, "Create pkcs15 file failed");
+		}
 	}
 
 	{/* Preinstall keys */
-		 ret = sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_PREINSTALL_KEYS, 0);
-		 LOG_TEST_RET(card->ctx,ret,"Preinstall keys failed");
+		ret = sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_PREINSTALL_KEYS, 0);
+		LOG_TEST_RET(card->ctx, ret, "Preinstall keys failed");
 	}
 
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,ret);
@@ -323,8 +324,8 @@ static int entersafe_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
 
-static int entersafe_key_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
-								   sc_pkcs15_prkey_info_t *prkey)
+static int
+entersafe_key_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_pkcs15_prkey_info_t *prkey)
 {
 	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (prkey->key_reference < ENTERSAFE_MIN_KEY_ID)
@@ -334,15 +335,16 @@ static int entersafe_key_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15c
 	SC_FUNC_RETURN(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE,SC_SUCCESS);
 }
 
-static int entersafe_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
-								sc_pkcs15_object_t *obj)
+static int
+entersafe_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_pkcs15_object_t *obj)
 {
 	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
 	SC_FUNC_RETURN(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE,SC_SUCCESS);
 }
 
-static int entersafe_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
-							   sc_pkcs15_object_t *obj, sc_pkcs15_prkey_t *key)
+static int
+entersafe_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_pkcs15_object_t *obj,
+                    sc_pkcs15_prkey_t *key)
 {
 	sc_pkcs15_prkey_info_t *kinfo = (sc_pkcs15_prkey_info_t *) obj->data;
 	sc_card_t *card = p15card->card;
@@ -356,39 +358,35 @@ static int entersafe_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	if ( key->algorithm != SC_ALGORITHM_RSA )
-	{
-		 /* ignore non-RSA keys */
-		 SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,SC_ERROR_INVALID_ARGUMENTS);
+	if (key->algorithm != SC_ALGORITHM_RSA) {
+		/* ignore non-RSA keys */
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
 	}
 
 	/* Disable RSA:512bits */
-	if ( ( keybits < 1024 ) ||
-		 ( keybits > 2048 ) ||
-		 ( keybits % 0x20 ) )
-	{
-		sc_debug(card->ctx,
-			 SC_LOG_DEBUG_NORMAL,
-			 "Unsupported key size %"SC_FORMAT_LEN_SIZE_T"u\n",
-			 keybits);
+	if ((keybits < 1024) ||
+	    (keybits > 2048) ||
+	    (keybits % 0x20) ) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Unsupported key size %"SC_FORMAT_LEN_SIZE_T"u\n",
+		         keybits);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
 	r = sc_profile_get_file(profile, "PKCS15-AODF", &tfile);
 	if (r < 0)
-		 return r;
+		return r;
 	acl_entry = sc_file_get_acl_entry(tfile, SC_AC_OP_UPDATE);
 	if (acl_entry->method  != SC_AC_NONE) {
-		 r = sc_pkcs15init_authenticate(profile, p15card, tfile, SC_AC_OP_UPDATE);
-		 if(r<0)
-			  r = SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
+		r = sc_pkcs15init_authenticate(profile, p15card, tfile, SC_AC_OP_UPDATE);
+		if (r < 0)
+			r = SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
 	}
 	sc_file_free(tfile);
 	LOG_TEST_RET(card->ctx, r, "can't verify pin");
 
 	data.key_id = (u8) kinfo->key_reference;
-	data.usage=0x22;
-	data.key_data.rsa=&key->u.rsa;
+	data.usage = 0x22;
+	data.key_data.rsa = &key->u.rsa;
 	return sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_WRITE_KEY, &data);
 }
 

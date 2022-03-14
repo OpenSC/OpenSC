@@ -202,7 +202,8 @@ static int bn2cf(const BIGNUM *num, u8 *buf)
 	return r;
 }
 
-static int parse_public_key(const u8 *key, size_t keysize, EVP_PKEY *pkey)
+static int
+parse_public_key(const u8 *key, size_t keysize, EVP_PKEY *pkey)
 {
 	const u8 *p = key;
 	BIGNUM *n, *e;
@@ -231,23 +232,23 @@ static int parse_public_key(const u8 *key, size_t keysize, EVP_PKEY *pkey)
 	if (e == NULL)
 		return -1;
 	cf2bn(p, 4, e);
-	
+
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
-	if (!(rsa = RSA_new()) || 
-		!(pkey = EVP_PKEY_new()) || 
-		RSA_set0_key(rsa, n, e, NULL) != 1 || 
-		EVP_PKEY_assign_RSA(pkey, rsa) != 1) {
+	if (!(rsa = RSA_new()) ||
+	    !(pkey = EVP_PKEY_new()) ||
+	    RSA_set0_key(rsa, n, e, NULL) != 1 ||
+	    EVP_PKEY_assign_RSA(pkey, rsa) != 1) {
 		RSA_free(rsa);
 		EVP_PKEY_free(pkey);
 		return -1;
 	}
 #else
 	ctx = EVP_PKEY_CTX_new_from_name(NULL, "RSA", NULL);
-	if (!ctx || 
-		!(bld = OSSL_PARAM_BLD_new()) || 
-		OSSL_PARAM_BLD_push_BN(bld, "n", n) != 1 || 
-		OSSL_PARAM_BLD_push_BN(bld, "e", e) != 1 || 
-		!(params = OSSL_PARAM_BLD_to_param(bld))) {
+	if (!ctx ||
+	    !(bld = OSSL_PARAM_BLD_new()) ||
+	    OSSL_PARAM_BLD_push_BN(bld, "n", n) != 1 ||
+	    OSSL_PARAM_BLD_push_BN(bld, "e", e) != 1 ||
+	    !(params = OSSL_PARAM_BLD_to_param(bld))) {
 		OSSL_PARAM_BLD_free(bld);
 		EVP_PKEY_CTX_free(ctx);
 		OSSL_PARAM_free(params);
@@ -255,9 +256,9 @@ static int parse_public_key(const u8 *key, size_t keysize, EVP_PKEY *pkey)
 	}
 	OSSL_PARAM_BLD_free(bld);
 
-	if (EVP_PKEY_fromdata_init(ctx) != 1 || 
-		EVP_PKEY_fromdata(ctx, &pkey, EVP_PKEY_PUBLIC_KEY, params) != 1) {
-		return -1;;
+	if (EVP_PKEY_fromdata_init(ctx) != 1 ||
+	    EVP_PKEY_fromdata(ctx, &pkey, EVP_PKEY_PUBLIC_KEY, params) != 1) {
+		return -1;
 	}
 	OSSL_PARAM_free(params);
 	EVP_PKEY_CTX_free(ctx);
@@ -265,7 +266,8 @@ static int parse_public_key(const u8 *key, size_t keysize, EVP_PKEY *pkey)
 	return 0;
 }
 
-static int gen_d(BIGNUM **rsa_d_new, const BIGNUM *rsa_p, const BIGNUM *rsa_q, const BIGNUM *rsa_n, const BIGNUM *rsa_e)
+static int
+gen_d(BIGNUM **rsa_d_new, const BIGNUM *rsa_p, const BIGNUM *rsa_q, const BIGNUM *rsa_n, const BIGNUM *rsa_e)
 {
 	BN_CTX *bnctx;
 	BIGNUM *r0, *r1, *r2;
@@ -291,7 +293,8 @@ static int gen_d(BIGNUM **rsa_d_new, const BIGNUM *rsa_p, const BIGNUM *rsa_q, c
 	return 0;
 }
 
-static int parse_private_key(const u8 *key, size_t keysize, EVP_PKEY *pkey)
+static int
+parse_private_key(const u8 *key, size_t keysize, EVP_PKEY *pkey)
 {
 	const u8 *p = key;
 	BIGNUM *bn_p, *q, *dmp1, *dmq1, *iqmp;
@@ -300,7 +303,7 @@ static int parse_private_key(const u8 *key, size_t keysize, EVP_PKEY *pkey)
 	int rv = 0;
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 	const BIGNUM *rsa_n, *rsa_e;
-	BIGNUM *rsa_n_new, *rsa_e_new ;
+	BIGNUM *rsa_n_new, *rsa_e_new;
 	RSA *rsa = NULL;
 	if (!(rsa = EVP_PKEY_get0_RSA(pkey)))
 		return -1;
@@ -350,9 +353,9 @@ static int parse_private_key(const u8 *key, size_t keysize, EVP_PKEY *pkey)
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 	RSA_get0_key(rsa, &rsa_n, &rsa_e, NULL);
 
-	if (RSA_set0_factors(rsa, bn_p, q) != 1 || 
-		RSA_set0_crt_params(rsa, dmp1, dmq1, iqmp) != 1 || 
-		gen_d(&rsa_d, bn_p, q, rsa_n, rsa_e) != 0)
+	if (RSA_set0_factors(rsa, bn_p, q) != 1 ||
+	    RSA_set0_crt_params(rsa, dmp1, dmq1, iqmp) != 1 ||
+	    gen_d(&rsa_d, bn_p, q, rsa_n, rsa_e) != 0)
 		return -1;
 
 	/* RSA_set0_key will free previous value, and replace with new value
@@ -366,10 +369,10 @@ static int parse_private_key(const u8 *key, size_t keysize, EVP_PKEY *pkey)
 	/* Extract parameters from pkey */
 	if (EVP_PKEY_todata(pkey, EVP_PKEY_PUBLIC_KEY, &pkey_params) != 1) {
 		return -1;
-	 }
+	}
 	e = OSSL_PARAM_locate_const(pkey_params, "e");
 	n = OSSL_PARAM_locate_const(pkey_params, "n");
-	if (!e ||  !n) {
+	if (!e || !n) {
 		OSSL_PARAM_free(pkey_params);
 		return -1;
 	}
@@ -377,14 +380,14 @@ static int parse_private_key(const u8 *key, size_t keysize, EVP_PKEY *pkey)
 	OSSL_PARAM_get_BN(n, &rsa_n);
 	gen_d(&rsa_d, bn_p, q, rsa_n, rsa_e);
 	/* Merge params*/
-	if (!(bld = OSSL_PARAM_BLD_new()) || 
-		OSSL_PARAM_BLD_push_BN(bld, "d", rsa_d) != 1 || 
-		OSSL_PARAM_BLD_push_BN(bld, "rsa-factor1", bn_p) != 1 || 
-		OSSL_PARAM_BLD_push_BN(bld, "rsa-factor2", q) != 1 || 
-		OSSL_PARAM_BLD_push_BN(bld, "rsa-exponent1", dmp1) != 1 || 
-		OSSL_PARAM_BLD_push_BN(bld, "rsa-exponent2", dmq1) != 1 || 
-		OSSL_PARAM_BLD_push_BN(bld, "rsa-coefficient1", iqmp) != 1 || 
-		!(new_params = OSSL_PARAM_BLD_to_param(bld))) {
+	if (!(bld = OSSL_PARAM_BLD_new()) ||
+	    OSSL_PARAM_BLD_push_BN(bld, "d", rsa_d) != 1 ||
+	    OSSL_PARAM_BLD_push_BN(bld, "rsa-factor1", bn_p) != 1 ||
+	    OSSL_PARAM_BLD_push_BN(bld, "rsa-factor2", q) != 1 ||
+	    OSSL_PARAM_BLD_push_BN(bld, "rsa-exponent1", dmp1) != 1 ||
+	    OSSL_PARAM_BLD_push_BN(bld, "rsa-exponent2", dmq1) != 1 ||
+	    OSSL_PARAM_BLD_push_BN(bld, "rsa-coefficient1", iqmp) != 1 ||
+	    !(new_params = OSSL_PARAM_BLD_to_param(bld))) {
 		OSSL_PARAM_free(pkey_params);
 		OSSL_PARAM_BLD_free(bld);
 		return -1;
@@ -397,9 +400,9 @@ static int parse_private_key(const u8 *key, size_t keysize, EVP_PKEY *pkey)
 	}
 
 	/* Create pkey from params */
-	if (!(ctx = EVP_PKEY_CTX_new_from_name(NULL, "RSA", NULL)) || 
-		EVP_PKEY_fromdata_init(ctx) != 1 || 
-		EVP_PKEY_fromdata(ctx, &pkey, EVP_PKEY_KEYPAIR, params) != 1)
+	if (!(ctx = EVP_PKEY_CTX_new_from_name(NULL, "RSA", NULL)) ||
+	    EVP_PKEY_fromdata_init(ctx) != 1 ||
+	    EVP_PKEY_fromdata(ctx, &pkey, EVP_PKEY_KEYPAIR, params) != 1)
 		rv = -1;
 	OSSL_PARAM_free(pkey_params);
 	OSSL_PARAM_free(new_params);
@@ -408,7 +411,8 @@ static int parse_private_key(const u8 *key, size_t keysize, EVP_PKEY *pkey)
 	return rv;
 }
 
-static int read_public_key(EVP_PKEY *pkey)
+static int
+read_public_key(EVP_PKEY *pkey)
 {
 	int r;
 	sc_path_t path;
@@ -453,8 +457,8 @@ static int read_public_key(EVP_PKEY *pkey)
 	return parse_public_key(p, keysize, pkey);
 }
 
-
-static int read_private_key(EVP_PKEY *pkey)
+static int
+read_private_key(EVP_PKEY *pkey)
 {
 	int r;
 	sc_path_t path;
@@ -504,7 +508,8 @@ static int read_private_key(EVP_PKEY *pkey)
 	return parse_private_key(p, keysize, pkey);
 }
 
-static int read_key(void)
+static int
+read_key(void)
 {
 	EVP_PKEY *pkey = NULL;
 	u8 buf[1024], *p = buf;
@@ -548,7 +553,8 @@ static int read_key(void)
 	return 0;
 }
 
-static int list_keys(void)
+static int
+list_keys(void)
 {
 	int r, idx = 0;
 	sc_path_t path;
@@ -589,7 +595,8 @@ static int list_keys(void)
 	return 0;
 }
 
-static int generate_key(void)
+static int
+generate_key(void)
 {
 	sc_apdu_t apdu;
 	u8 sbuf[4];
@@ -646,7 +653,8 @@ static int generate_key(void)
 	return 1;
 }
 
-static int create_key_files(void)
+static int
+create_key_files(void)
 {
 	sc_file_t *file;
 	int mod_lens[] = { 512, 768, 1024, 2048 };
@@ -724,7 +732,8 @@ static int create_key_files(void)
 	return 0;
 }
 
-static int read_rsa_privkey(EVP_PKEY **pkey_out)
+static int
+read_rsa_privkey(EVP_PKEY **pkey_out)
 {
 	EVP_PKEY *pkey = NULL;
 	BIO *in = NULL;
@@ -754,7 +763,8 @@ static int read_rsa_privkey(EVP_PKEY **pkey_out)
 	}
 	EVP_PKEY_assign_RSA(pkey, rsa);
 #else
-	dctx = OSSL_DECODER_CTX_new_for_pkey(&pkey, "PEM", NULL, "RSA", OSSL_KEYMGMT_SELECT_KEYPAIR, NULL, NULL);
+	dctx = OSSL_DECODER_CTX_new_for_pkey(&pkey, "PEM", NULL, "RSA", OSSL_KEYMGMT_SELECT_KEYPAIR, NULL,
+	                                     NULL);
 	OSSL_DECODER_from_bio(dctx, in);
 #endif
 	BIO_free(in);
@@ -762,7 +772,8 @@ static int read_rsa_privkey(EVP_PKEY **pkey_out)
 	return 0;
 }
 
-static int encode_private_key(EVP_PKEY *pkey, u8 *key, size_t *keysize)
+static int
+encode_private_key(EVP_PKEY *pkey, u8 *key, size_t *keysize)
 {
 	u8 buf[1024], *p = buf;
 	u8 bnbuf[256];
@@ -801,8 +812,8 @@ static int encode_private_key(EVP_PKEY *pkey, u8 *key, size_t *keysize)
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 	RSA_get0_factors(rsa, &rsa_p, &rsa_q);
 #else
-	if (EVP_PKEY_get_bn_param(pkey, "rsa-factor1", &rsa_p) != 1 || 
-		EVP_PKEY_get_bn_param(pkey, "rsa-factor2", &rsa_q) != 1) {
+	if (EVP_PKEY_get_bn_param(pkey, "rsa-factor1", &rsa_p) != 1 ||
+	    EVP_PKEY_get_bn_param(pkey, "rsa-factor2", &rsa_q) != 1) {
 		fprintf(stderr, "Invalid private key.\n");
 		rv = 2;
 		goto end;
@@ -830,9 +841,9 @@ static int encode_private_key(EVP_PKEY *pkey, u8 *key, size_t *keysize)
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 	RSA_get0_crt_params(rsa, &rsa_dmp1, &rsa_dmq1, &rsa_iqmp);
 #else
-	if (EVP_PKEY_get_bn_param(pkey, "rsa-exponent1", &rsa_dmp1) != 1 || 
-		EVP_PKEY_get_bn_param(pkey, "rsa-exponent2", &rsa_dmq1) != 1 || 
-		EVP_PKEY_get_bn_param(pkey, "rsa-coefficient1", &rsa_iqmp) != 1) {
+	if (EVP_PKEY_get_bn_param(pkey, "rsa-exponent1", &rsa_dmp1) != 1 ||
+	    EVP_PKEY_get_bn_param(pkey, "rsa-exponent2", &rsa_dmq1) != 1 ||
+	    EVP_PKEY_get_bn_param(pkey, "rsa-coefficient1", &rsa_iqmp) != 1) {
 		fprintf(stderr, "Invalid private key.\n");
 		rv = 2;
 		goto end;
@@ -881,7 +892,8 @@ end:
 	return rv;
 }
 
-static int encode_public_key(EVP_PKEY *pkey, u8 *key, size_t *keysize)
+static int
+encode_public_key(EVP_PKEY *pkey, u8 *key, size_t *keysize)
 {
 	u8 buf[1024], *p = buf;
 	u8 bnbuf[256];
@@ -920,8 +932,8 @@ static int encode_public_key(EVP_PKEY *pkey, u8 *key, size_t *keysize)
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 	RSA_get0_key(rsa, &rsa_n, &rsa_e, NULL);
 #else
-	if (EVP_PKEY_get_bn_param(pkey, "n", &rsa_n) != 1 || 
-		EVP_PKEY_get_bn_param(pkey, "e", &rsa_e) != 1) {
+	if (EVP_PKEY_get_bn_param(pkey, "n", &rsa_n) != 1 ||
+	    EVP_PKEY_get_bn_param(pkey, "e", &rsa_e) != 1) {
 		fprintf(stderr, "Invalid public key.\n");
 		rv = 2;
 		goto end;
@@ -963,7 +975,8 @@ end:
 	return rv;
 }
 
-static int update_public_key(const u8 *key, size_t keysize)
+static int
+update_public_key(const u8 *key, size_t keysize)
 {
 	int r, idx = 0;
 	sc_path_t path;
@@ -986,7 +999,8 @@ static int update_public_key(const u8 *key, size_t keysize)
 	return 0;
 }
 
-static int update_private_key(const u8 *key, size_t keysize)
+static int
+update_private_key(const u8 *key, size_t keysize)
 {
 	int r, idx = 0;
 	sc_path_t path;
@@ -1009,7 +1023,8 @@ static int update_private_key(const u8 *key, size_t keysize)
 	return 0;
 }
 
-static int store_key(void)
+static int
+store_key(void)
 {
 	u8 prv[1024], pub[1024];
 	size_t prvsize = 0, pubsize = 0;
@@ -1044,7 +1059,8 @@ static int store_key(void)
 	return 0;
 }
 
-static int create_pin_file(const sc_path_t *inpath, int chv, const char *key_id)
+static int
+create_pin_file(const sc_path_t *inpath, int chv, const char *key_id)
 {
 	char prompt[40], *pin, *puk;
 	char buf[30], *p = buf;
@@ -1132,7 +1148,8 @@ static int create_pin_file(const sc_path_t *inpath, int chv, const char *key_id)
 	return 0;
 }
 
-static int create_pin(void)
+static int
+create_pin(void)
 {
 	sc_path_t path;
 	char buf[80];

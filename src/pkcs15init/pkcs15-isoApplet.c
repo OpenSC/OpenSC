@@ -558,41 +558,33 @@ isoApplet_generate_key_ec(const sc_pkcs15_prkey_info_t *key_info, sc_card_t *car
 	pubkey->u.ec.params.der.len = alg_id_params->der.len;
 	r = sc_pkcs15_fix_ec_parameters(card->ctx, &pubkey->u.ec.params);
 out:
-	if(args.pubkey.ec.ecPointQ.value)
-	{
+	if (args.pubkey.ec.ecPointQ.value) {
 		free(args.pubkey.ec.ecPointQ.value);
 		args.pubkey.ec.ecPointQ.value = NULL;
 	}
-	if(r < 0 && pubkey)
-	{
-		if(pubkey->alg_id)
-		{
+	if (r < 0 && pubkey) {
+		if (pubkey->alg_id) {
 			free(pubkey->alg_id);
 			pubkey->alg_id = NULL;
 		}
-		if(pubkey->u.ec.params.der.value)
-		{
+		if (pubkey->u.ec.params.der.value) {
 			free(pubkey->u.ec.params.der.value);
 			pubkey->u.ec.params.der.value = NULL;
 			pubkey->u.ec.params.der.len = 0;
 		}
-		if(pubkey->u.ec.params.named_curve)
-		{
+		if (pubkey->u.ec.params.named_curve) {
 			free(pubkey->u.ec.params.named_curve);
 			pubkey->u.ec.params.named_curve = NULL;
 		}
-		if(pubkey->u.ec.ecpointQ.value)
-		{
+		if (pubkey->u.ec.ecpointQ.value) {
 			free(pubkey->u.ec.ecpointQ.value);
 			pubkey->u.ec.ecpointQ.value = NULL;
 			pubkey->u.ec.ecpointQ.len = 0;
 		}
 		memset(pubkey, 0, sizeof(sc_pkcs15_pubkey_t));
 	}
-	if(r < 0 && alg_id_params)
-	{
-		if(alg_id_params->der.value)
-		{
+	if (r < 0 && alg_id_params) {
+		if (alg_id_params->der.value) {
 			free(alg_id_params->der.value);
 			alg_id_params->der.value = NULL;
 		}

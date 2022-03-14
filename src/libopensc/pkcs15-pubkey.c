@@ -309,11 +309,9 @@ int sc_pkcs15_decode_pukdf_entry(struct sc_pkcs15_card *p15card,
 		keyinfo_gostparams->gostr3410 = (unsigned int)gostr3410_params[0];
 		keyinfo_gostparams->gostr3411 = (unsigned int)gostr3410_params[1];
 		keyinfo_gostparams->gost28147 = (unsigned int)gostr3410_params[2];
-	}
-	else if (asn1_pubkey_choice[2].flags & SC_ASN1_PRESENT) {
+	} else if (asn1_pubkey_choice[2].flags & SC_ASN1_PRESENT) {
 		obj->type = SC_PKCS15_TYPE_PUBKEY_EC;
-	}
-	else {
+	} else {
 		goto err;
 	}
 
@@ -1392,8 +1390,7 @@ sc_pkcs15_pubkey_from_spki_fields(struct sc_context *ctx, struct sc_pkcs15_pubke
 		}
 		memcpy(pubkey->u.ec.ecpointQ.value, pk.value, pk.len);
 		pubkey->u.ec.ecpointQ.len = pk.len;
-	} else if (pk_alg.algorithm == SC_ALGORITHM_EDDSA ||
-		   pk_alg.algorithm == SC_ALGORITHM_XEDDSA) {
+	} else if (pk_alg.algorithm == SC_ALGORITHM_EDDSA || pk_alg.algorithm == SC_ALGORITHM_XEDDSA) {
 		/* EDDSA/XEDDSA public key is not encapsulated into BIT STRING -- it's a BIT STRING */
 		pubkey->u.eddsa.pubkey.value = malloc(pk.len);
 		memcpy(pubkey->u.eddsa.pubkey.value, pk.value, pk.len);
@@ -1608,7 +1605,7 @@ sc_pkcs15_convert_pubkey(struct sc_pkcs15_pubkey *pkcs15_key, void *evp_key)
 #else
 		BIGNUM *src_n = NULL, *src_e = NULL;
 		if (EVP_PKEY_get_bn_param(pk, OSSL_PKEY_PARAM_RSA_N, &src_n) != 1 ||
-			EVP_PKEY_get_bn_param(pk, OSSL_PKEY_PARAM_RSA_E, &src_e) != 1) {
+		    EVP_PKEY_get_bn_param(pk, OSSL_PKEY_PARAM_RSA_E, &src_e) != 1) {
 			BN_free(src_n);
 			return SC_ERROR_INTERNAL;
 		}
@@ -1616,11 +1613,12 @@ sc_pkcs15_convert_pubkey(struct sc_pkcs15_pubkey *pkcs15_key, void *evp_key)
 		/* Convert */
 		pkcs15_key->algorithm = SC_ALGORITHM_RSA;
 		if (!sc_pkcs15_convert_bignum(&dst->modulus, src_n) ||
-			!sc_pkcs15_convert_bignum(&dst->exponent, src_e)) {
+		    !sc_pkcs15_convert_bignum(&dst->exponent, src_e)) {
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 			RSA_free(src);
 #else
-			BN_free(src_n); BN_free(src_e);
+			BN_free(src_n);
+			BN_free(src_e);
 #endif
 			return SC_ERROR_INVALID_DATA;
 		}
@@ -1628,7 +1626,8 @@ sc_pkcs15_convert_pubkey(struct sc_pkcs15_pubkey *pkcs15_key, void *evp_key)
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 		RSA_free(src);
 #else
-		BN_free(src_n); BN_free(src_e);
+		BN_free(src_n);
+		BN_free(src_e);
 #endif
 		break;
 	}
@@ -1644,7 +1643,7 @@ sc_pkcs15_convert_pubkey(struct sc_pkcs15_pubkey *pkcs15_key, void *evp_key)
 		if (!(eckey = EVP_PKEY_get0(pk)))
 			return SC_ERROR_INCOMPATIBLE_KEY;
 		if (!(point = EC_KEY_get0_public_key(eckey)) ||
-			!(group = EC_KEY_get0_group(eckey)))
+		    !(group = EC_KEY_get0_group(eckey)))
 			return SC_ERROR_INTERNAL;
 #else
 		EC_POINT *point = NULL;
@@ -1666,15 +1665,15 @@ sc_pkcs15_convert_pubkey(struct sc_pkcs15_pubkey *pkcs15_key, void *evp_key)
 			return SC_ERROR_OUT_OF_MEMORY;
 		}
 		if (EVP_PKEY_get_octet_string_param(pk, OSSL_PKEY_PARAM_PUB_KEY, pub, pub_len, NULL) != 1 ||
-			EVP_PKEY_get_group_name(pk, group_name, group_name_len, NULL) != 1) {
+		    EVP_PKEY_get_group_name(pk, group_name, group_name_len, NULL) != 1) {
 			free(pub);
 			free(group_name);
 			return SC_ERROR_INTERNAL;
 		}
 		if ((nid = OBJ_sn2nid(group_name) == 0) ||
-			!(group = EC_GROUP_new_by_curve_name(nid)) ||
-			!(point = EC_POINT_new(group)) ||
-			EC_POINT_oct2point(group, point, pub, pub_len, NULL) != 1) {
+		    !(group = EC_GROUP_new_by_curve_name(nid)) ||
+		    !(point = EC_POINT_new(group)) ||
+		    EC_POINT_oct2point(group, point, pub, pub_len, NULL) != 1) {
 			free(pub);
 			free(group_name);
 			EC_POINT_free(point);
@@ -1687,7 +1686,7 @@ sc_pkcs15_convert_pubkey(struct sc_pkcs15_pubkey *pkcs15_key, void *evp_key)
 		X = BN_new();
 		Y = BN_new();
 		if (X && Y && group)
-				r = EC_POINT_get_affine_coordinates(group, point, X, Y, NULL);
+			r = EC_POINT_get_affine_coordinates(group, point, X, Y, NULL);
 		if (r == 1) {
 			dst->xy.len = BN_num_bytes(X) + BN_num_bytes(Y);
 			dst->xy.data = malloc(dst->xy.len);
@@ -1716,7 +1715,8 @@ sc_pkcs15_convert_pubkey(struct sc_pkcs15_pubkey *pkcs15_key, void *evp_key)
 	case EVP_PKEY_EC: {
 		struct sc_pkcs15_pubkey_ec *dst = &pkcs15_key->u.ec;
 		pkcs15_key->algorithm = SC_ALGORITHM_EC;
-		unsigned char buf[255]; size_t buflen = 255;
+		unsigned char buf[255];
+		size_t buflen = 255;
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 		const EC_KEY *src = NULL;
 		const EC_GROUP *grp = NULL;
@@ -1726,13 +1726,12 @@ sc_pkcs15_convert_pubkey(struct sc_pkcs15_pubkey *pkcs15_key, void *evp_key)
 		if (!(src = EVP_PKEY_get0_EC_KEY(pk)))
 			return SC_ERROR_INCOMPATIBLE_KEY;
 		if (!(point = EC_KEY_get0_public_key(src)) ||
-			!(grp = EC_KEY_get0_group(src))) {
+		    !(grp = EC_KEY_get0_group(src))) {
 			return SC_ERROR_INCOMPATIBLE_KEY;
-		 }
+		}
 
 		/* Decode EC_POINT from a octet string */
-		buflen = EC_POINT_point2oct(grp, point,
-				POINT_CONVERSION_UNCOMPRESSED, buf, buflen, NULL);
+		buflen = EC_POINT_point2oct(grp, point, POINT_CONVERSION_UNCOMPRESSED, buf, buflen, NULL);
 
 		/* get curve name */
 		nid = EC_GROUP_get_curve_name(grp);

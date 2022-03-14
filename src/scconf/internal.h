@@ -54,11 +54,10 @@ typedef struct _scconf_parser {
 	size_t nested_blocks;
 } scconf_parser;
 
-extern int scconf_lex_parse(scconf_parser * parser, const char *filename);
-extern int scconf_lex_parse_string(scconf_parser * parser,
-				   const char *config_string);
-extern void scconf_skip_block(scconf_parser * parser);
-extern void scconf_parse_token(scconf_parser * parser, int token_type, const char *token);
+extern int scconf_lex_parse(scconf_parser *parser, const char *filename);
+extern int scconf_lex_parse_string(scconf_parser *parser, const char *config_string);
+extern void scconf_skip_block(scconf_parser *parser);
+extern void scconf_parse_token(scconf_parser *parser, int token_type, const char *token);
 
 #ifdef __cplusplus
 }

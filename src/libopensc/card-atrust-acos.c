@@ -720,8 +720,8 @@ static int atrust_acos_compute_signature(struct sc_card *card,
 				/* XXX: assume no hash is wanted */
 				flags = SC_ALGORITHM_RSA_HASH_NONE;
 			tmp_len = sizeof(sbuf);
-			r = sc_pkcs1_encode(card->ctx, flags, data, datalen,
-					sbuf, &tmp_len, sizeof(sbuf)*8, NULL);
+			r = sc_pkcs1_encode(card->ctx, flags, data, datalen, sbuf, &tmp_len, sizeof(sbuf) * 8,
+			                    NULL);
 			if (r < 0)
 				return r;
 		} else {

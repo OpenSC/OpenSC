@@ -331,7 +331,7 @@ static int sc_pkcs15_tccardos_init_func(sc_pkcs15_card_t *p15card)
 	}
 	/* set the serial number */
 	r = sc_parse_ef_gdo(card, iccsn.value, &iccsn.len, NULL, 0);
-	if (r != SC_SUCCESS || iccsn.len < 5+8) {
+	if (r != SC_SUCCESS || iccsn.len < 5 + 8) {
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}

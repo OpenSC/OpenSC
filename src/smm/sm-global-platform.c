@@ -46,11 +46,11 @@
 #include "sm-module.h"
 
 int
-sm_gp_decode_card_answer(struct sc_context *ctx, struct sc_remote_data *rdata, unsigned char *out, size_t out_len)
+sm_gp_decode_card_answer(struct sc_context *ctx, struct sc_remote_data *rdata,
+                         unsigned char *out, size_t out_len)
 {
 	LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 }
-
 
 int
 sm_gp_initialize(struct sc_context *ctx, struct sm_info *sm_info,  struct sc_remote_data *rdata)
@@ -91,10 +91,8 @@ sm_gp_initialize(struct sc_context *ctx, struct sm_info *sm_info,  struct sc_rem
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
-
 static unsigned char *
-sc_gp_get_session_key(struct sc_context *ctx, struct sm_gp_session *gp_session,
-		unsigned char *key)
+sc_gp_get_session_key(struct sc_context *ctx, struct sm_gp_session *gp_session, unsigned char *key)
 {
 	int out_len;
 	unsigned char *out = NULL;
@@ -121,14 +119,12 @@ sc_gp_get_session_key(struct sc_context *ctx, struct sm_gp_session *gp_session,
 	return out;
 }
 
-
 int
-sm_gp_get_cryptogram(unsigned char *session_key,
-		unsigned char *left, unsigned char *right,
-		unsigned char *out, int out_len)
+sm_gp_get_cryptogram(unsigned char *session_key, unsigned char *left, unsigned char *right,
+                     unsigned char *out, int out_len)
 {
 	unsigned char block[24];
-	sm_des_cblock cksum={0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+	sm_des_cblock cksum = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
 	if (out_len!=8)
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -137,17 +133,15 @@ sm_gp_get_cryptogram(unsigned char *session_key,
 	memcpy(block + 8, right, 8);
 	memcpy(block + 16, "\x80\0\0\0\0\0\0\0",8);
 
-	DES_cbc_cksum_3des(block,&cksum, sizeof(block), session_key, &cksum);
+	DES_cbc_cksum_3des(block, &cksum, sizeof(block), session_key, &cksum);
 
 	memcpy(out, cksum, 8);
 
 	return 0;
 }
 
-
 int
-sm_gp_get_mac(unsigned char *key, sm_des_cblock *icv,
-		unsigned char *in, int in_len, sm_des_cblock *out)
+sm_gp_get_mac(unsigned char *key, sm_des_cblock *icv, unsigned char *in, int in_len, sm_des_cblock *out)
 {
 	int len;
 	unsigned char *block;
@@ -167,10 +161,9 @@ sm_gp_get_mac(unsigned char *key, sm_des_cblock *icv,
 	return 0;
 }
 
-
 static int
-sm_gp_parse_init_data(struct sc_context *ctx, struct sm_gp_session *gp_session,
-		unsigned char *init_data, size_t init_len)
+sm_gp_parse_init_data(struct sc_context *ctx, struct sm_gp_session *gp_session, unsigned char *init_data,
+                      size_t init_len)
 {
 	struct sm_gp_keyset *gp_keyset = &gp_session->gp_keyset;
 
@@ -184,10 +177,9 @@ sm_gp_parse_init_data(struct sc_context *ctx, struct sm_gp_session *gp_session,
 	return SC_SUCCESS;
 }
 
-
 static int
 sm_gp_init_session(struct sc_context *ctx, struct sm_gp_session *gp_session,
-		unsigned char *adata, size_t adata_len)
+                   unsigned char *adata, size_t adata_len)
 {
 	struct sm_gp_keyset *gp_keyset = &gp_session->gp_keyset;
 	unsigned char cksum[8];
@@ -222,7 +214,6 @@ sm_gp_init_session(struct sc_context *ctx, struct sm_gp_session *gp_session,
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
-
 void
 sm_gp_close_session(struct sc_context *ctx, struct sm_gp_session *gp_session)
 {
@@ -231,13 +222,11 @@ sm_gp_close_session(struct sc_context *ctx, struct sm_gp_session *gp_session)
 	free(gp_session->session_kek);
 }
 
-
 int
 sm_gp_external_authentication(struct sc_context *ctx, struct sm_info *sm_info,
-		unsigned char *init_data, size_t init_len, struct sc_remote_data *rdata,
-		int (*diversify_keyset)(struct sc_context *ctx,
-				struct sm_info *sm_info,
-				unsigned char *idata, size_t idata_len))
+                              unsigned char *init_data, size_t init_len, struct sc_remote_data *rdata,
+                              int (*diversify_keyset)(struct sc_context *ctx, struct sm_info *sm_info,
+                                                      unsigned char *idata, size_t idata_len))
 {
 	struct sc_remote_apdu *new_rapdu = NULL;
 	struct sc_apdu *apdu = NULL;
@@ -296,10 +285,9 @@ sm_gp_external_authentication(struct sc_context *ctx, struct sm_info *sm_info,
 	LOG_FUNC_RETURN(ctx, 1);
 }
 
-
 static int
 sm_gp_encrypt_command_data(struct sc_context *ctx, unsigned char *session_key,
-		const unsigned char *in, size_t in_len, unsigned char **out, size_t *out_len)
+                           const unsigned char *in, size_t in_len, unsigned char **out, size_t *out_len)
 {
 	unsigned char *data = NULL;
 	int rv, len;
@@ -333,10 +321,8 @@ sm_gp_encrypt_command_data(struct sc_context *ctx, unsigned char *session_key,
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
-
 int
-sm_gp_securize_apdu(struct sc_context *ctx, struct sm_info *sm_info,
-		char *init_data, struct sc_apdu *apdu)
+sm_gp_securize_apdu(struct sc_context *ctx, struct sm_info *sm_info, char *init_data, struct sc_apdu *apdu)
 {
 	unsigned char  buff[SC_MAX_APDU_BUFFER_SIZE + 24];
 	unsigned char *apdu_data = NULL;
@@ -429,5 +415,3 @@ err:
 	free(encrypted);
 	LOG_FUNC_RETURN(ctx, rv);
 }
-
-

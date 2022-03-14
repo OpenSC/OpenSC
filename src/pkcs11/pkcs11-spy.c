@@ -332,7 +332,7 @@ enter(const char *function)
 static CK_RV
 retne(CK_RV rv)
 {
-	fprintf(spy_output, "Returned:  %ld %s\n", (unsigned long) rv, lookup_enum (RV_T, rv ));
+	fprintf(spy_output, "Returned:  %ld %s\n", (unsigned long)rv, lookup_enum(RV_T, rv));
 	fflush(spy_output);
 	return rv;
 }
@@ -427,16 +427,13 @@ spy_dump_mechanism_in(const char *name, CK_MECHANISM_PTR pMechanism)
 	switch (pMechanism->mechanism) {
 	case CKM_AES_GCM:
 		if (pMechanism->pParameter != NULL) {
-			CK_GCM_PARAMS *param =
-				(CK_GCM_PARAMS *) pMechanism->pParameter;
+			CK_GCM_PARAMS *param = (CK_GCM_PARAMS *)pMechanism->pParameter;
 			snprintf(param_name, sizeof(param_name), "%s->pParameter->pIv[ulIvLen]", name);
-			spy_dump_string_in(param_name,
-				param->pIv, param->ulIvLen);
+			spy_dump_string_in(param_name, param->pIv, param->ulIvLen);
 			snprintf(param_name, sizeof(param_name), "%s->pParameter->ulIvBits", name);
 			spy_dump_ulong_in(param_name, param->ulIvBits);
 			snprintf(param_name, sizeof(param_name), "%s->pParameter->pAAD[ulAADLen]", name);
-			spy_dump_string_in(param_name,
-				param->pAAD, param->ulAADLen);
+			spy_dump_string_in(param_name, param->pAAD, param->ulAADLen);
 			fprintf(spy_output, "[in] %s->pParameter->ulTagBits = %lu\n", name, param->ulTagBits);
 		} else {
 			fprintf(spy_output, "[in] %s->pParameter = NULL\n", name);
@@ -446,16 +443,13 @@ spy_dump_mechanism_in(const char *name, CK_MECHANISM_PTR pMechanism)
 	case CKM_ECDH1_DERIVE:
 	case CKM_ECDH1_COFACTOR_DERIVE:
 		if (pMechanism->pParameter != NULL) {
-			CK_ECDH1_DERIVE_PARAMS *param =
-				(CK_ECDH1_DERIVE_PARAMS *) pMechanism->pParameter;
+			CK_ECDH1_DERIVE_PARAMS *param = (CK_ECDH1_DERIVE_PARAMS *)pMechanism->pParameter;
 			fprintf(spy_output, "[in] %s->pParameter->kdf = %s\n", name,
 				lookup_enum(CKD_T, param->kdf));
 			fprintf(spy_output, "[in] %s->pParameter->pSharedData[ulSharedDataLen] = ", name);
-			print_generic(spy_output, 0, param->pSharedData,
-				param->ulSharedDataLen, NULL);
+			print_generic(spy_output, 0, param->pSharedData, param->ulSharedDataLen, NULL);
 			fprintf(spy_output, "[in] %s->pParameter->pPublicData[ulPublicDataLen] = ", name);
-			print_generic(spy_output, 0, param->pPublicData,
-				param->ulPublicDataLen, NULL);
+			print_generic(spy_output, 0, param->pPublicData, param->ulPublicDataLen, NULL);
 		} else {
 			fprintf(spy_output, "[in] %s->pParameter = NULL\n", name);
 			break;
@@ -463,8 +457,7 @@ spy_dump_mechanism_in(const char *name, CK_MECHANISM_PTR pMechanism)
 		break;
 	case CKM_ECMQV_DERIVE:
 		if (pMechanism->pParameter != NULL) {
-			CK_ECMQV_DERIVE_PARAMS *param =
-				(CK_ECMQV_DERIVE_PARAMS *) pMechanism->pParameter;
+			CK_ECMQV_DERIVE_PARAMS *param = (CK_ECMQV_DERIVE_PARAMS *)pMechanism->pParameter;
 			fprintf(spy_output, "[in] %s->pParameter->kdf = %s\n", name,
 				lookup_enum(CKD_T, param->kdf));
 			fprintf(spy_output, "%s->pParameter->pSharedData[ulSharedDataLen] = ", name);
@@ -487,16 +480,14 @@ spy_dump_mechanism_in(const char *name, CK_MECHANISM_PTR pMechanism)
 		break;
 	case CKM_RSA_PKCS_OAEP:
 		if (pMechanism->pParameter != NULL) {
-			CK_RSA_PKCS_OAEP_PARAMS *param =
-				(CK_RSA_PKCS_OAEP_PARAMS *) pMechanism->pParameter;
+			CK_RSA_PKCS_OAEP_PARAMS *param = (CK_RSA_PKCS_OAEP_PARAMS *)pMechanism->pParameter;
 			fprintf(spy_output, "[in] %s->pParameter->hashAlg = %s\n", name,
 				lookup_enum(MEC_T, param->hashAlg));
 			fprintf(spy_output, "[in] %s->pParameter->mgf = %s\n", name,
 				lookup_enum(MGF_T, param->mgf));
 			fprintf(spy_output, "[in] %s->pParameter->source = %lu\n", name, param->source);
 			snprintf(param_name, sizeof(param_name), "%s->pParameter->pSourceData[ulSourceDalaLen]", name);
-			spy_dump_string_in(param_name,
-				param->pSourceData, param->ulSourceDataLen);
+			spy_dump_string_in(param_name, param->pSourceData, param->ulSourceDataLen);
 		} else {
 			fprintf(spy_output, "[in] %s->pParameter = NULL\n", name);
 			break;
@@ -508,14 +499,12 @@ spy_dump_mechanism_in(const char *name, CK_MECHANISM_PTR pMechanism)
 	case CKM_SHA384_RSA_PKCS_PSS:
 	case CKM_SHA512_RSA_PKCS_PSS:
 		if (pMechanism->pParameter != NULL) {
-			CK_RSA_PKCS_PSS_PARAMS *param =
-				(CK_RSA_PKCS_PSS_PARAMS *) pMechanism->pParameter;
+			CK_RSA_PKCS_PSS_PARAMS *param = (CK_RSA_PKCS_PSS_PARAMS *)pMechanism->pParameter;
 			fprintf(spy_output, "[in] %s->pParameter->hashAlg = %s\n", name,
 				lookup_enum(MEC_T, param->hashAlg));
 			fprintf(spy_output, "[in] %s->pParameter->mgf = %s\n", name,
 				lookup_enum(MGF_T, param->mgf));
-			fprintf(spy_output, "[in] %s->pParameter->sLen = %lu\n", name,
-				param->sLen);
+			fprintf(spy_output, "[in] %s->pParameter->sLen = %lu\n", name, param->sLen);
 		} else {
 			fprintf(spy_output, "[in] %s->pParameter = NULL\n", name);
 			break;

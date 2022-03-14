@@ -98,8 +98,7 @@ static int sc_pkcs15emu_idprime_init(sc_pkcs15_card_t *p15card)
 	pin_info.attrs.pin.max_length    = 16;
 	pin_info.tries_left    = -1;
 
-	if (card->type == SC_CARD_TYPE_IDPRIME_V3 ||
-			card->type == SC_CARD_TYPE_IDPRIME_V4) {
+	if (card->type == SC_CARD_TYPE_IDPRIME_V3 || card->type == SC_CARD_TYPE_IDPRIME_V4) {
 		pin_info.attrs.pin.flags |= SC_PKCS15_PIN_FLAG_NEEDS_PADDING;
 		pin_info.attrs.pin.stored_length = 16;
 		pin_info.attrs.pin.pad_char = 0x00;
@@ -277,13 +276,12 @@ fail:
 			(card->ops->card_ctl)(card, SC_CARDCTL_IDPRIME_FINAL_GET_OBJECTS, &count);
 			LOG_TEST_GOTO_ERR(card->ctx, r, "Failed to add object.");
 		}
-
 	}
 	r = (card->ops->card_ctl)(card, SC_CARDCTL_IDPRIME_FINAL_GET_OBJECTS, &count);
 	LOG_TEST_GOTO_ERR(card->ctx, r, "Can not finalize cert objects.");
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
-	
+
 err:
 	sc_pkcs15_card_clear(p15card);
 	LOG_FUNC_RETURN(card->ctx, r);

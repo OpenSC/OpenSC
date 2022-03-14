@@ -23,7 +23,6 @@
 
 #include "util.h"
 
-
 char *prettify_hex(const u8 *data, size_t length, char *buffer, size_t buflen);
 char *prettify_algorithm(const u8 *data, size_t length);
 char *prettify_date(const u8 *data, size_t length);
@@ -33,6 +32,5 @@ char *prettify_serialnumber(const u8 *data, size_t length);
 char *prettify_name(const u8 *data, size_t length);
 char *prettify_language(const u8 *data, size_t length);
 char *prettify_gender(const u8 *data, size_t length);
-
 
 #endif /* OPENPGP_TOOL_HELPERS_H */

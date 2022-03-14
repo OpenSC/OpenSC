@@ -50,7 +50,7 @@
 #endif
 
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
-	static OSSL_PROVIDER *legacy_provider = NULL;
+static OSSL_PROVIDER *legacy_provider = NULL;
 #endif
 
 #define MAX_RESP_BUFFER_SIZE 2048
@@ -85,7 +85,8 @@ typedef struct cwa_tlv_st {
  * @param apdu APDU to be encoded, or APDU response after decoded
  * @param flag 0: APDU is to be encoded: 1; APDU decoded response
  */
-static void cwa_trace_apdu(sc_card_t * card, sc_apdu_t * apdu, int flag)
+static void
+cwa_trace_apdu(sc_card_t *card, sc_apdu_t *apdu, int flag)
 {
 	char buf[2048];
 	if (!card || !card->ctx || !apdu || card->ctx->debug < SC_LOG_DEBUG_NORMAL)
@@ -119,7 +120,8 @@ static void cwa_trace_apdu(sc_card_t * card, sc_apdu_t * apdu, int flag)
  *
  * TODO: to further study: what about using bignum arithmetic?
  */
-static int cwa_increase_ssc(sc_card_t * card)
+static int
+cwa_increase_ssc(sc_card_t *card)
 {
 	int n;
 	struct sm_cwa_session * sm = &card->sm_ctx.info.session.cwa;
@@ -149,7 +151,8 @@ static int cwa_increase_ssc(sc_card_t * card)
  * @param buffer where to compose data
  * @param len pointer to buffer length
  */
-static void cwa_iso7816_padding(u8 * buf, size_t * buflen)
+static void
+cwa_iso7816_padding(u8 *buf, size_t *buflen)
 {
 	buf[*buflen] = 0x80;
 	(*buflen)++;
@@ -175,9 +178,8 @@ static void cwa_iso7816_padding(u8 * buf, size_t * buflen)
  * @param outlen length of composed tlv data
  * @return SC_SUCCESS if ok; else error
  */
-static int cwa_compose_tlv(sc_card_t * card,
-			   u8 tag,
-			   size_t len, u8 * data, u8 ** out, size_t * outlen)
+static int
+cwa_compose_tlv(sc_card_t *card, u8 tag, size_t len, u8 *data, u8 **out, size_t *outlen)
 {
 	u8 *pt;
 	size_t size;
@@ -234,10 +236,8 @@ static int cwa_compose_tlv(sc_card_t * card,
  * @param tlv  array of TLV structure to store results into
  * @return SC_SUCCESS if OK; else error code
  */
-static int cwa_parse_tlv(sc_card_t * card,
-			 u8 * buffer, size_t datalen,
-			 cwa_tlv_t tlv_array[]
-    )
+static int
+cwa_parse_tlv(sc_card_t *card, u8 *buffer, size_t datalen, cwa_tlv_t tlv_array[])
 {
 	size_t n = 0;
 	size_t next = 0;
@@ -270,8 +270,7 @@ static int cwa_parse_tlv(sc_card_t * card,
 			tlv = &tlv_array[3];
 			break;	/* 0x99 Status */
 		default:	/* CWA_SM_LE_TAG (0x97) is not valid here */
-			sc_log(ctx, "Invalid TLV Tag type: '0x%02X'",
-			       *(buffer + n));
+			sc_log(ctx, "Invalid TLV Tag type: '0x%02X'", *(buffer + n));
 			LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
 		}
 		tlv->buf = buffer + n;
@@ -283,28 +282,23 @@ static int cwa_parse_tlv(sc_card_t * card,
 			tlv->len = (0xff & *(buffer + n + j++));
 			/* fall through */
 		case 0x83:
-			tlv->len =
-			    (tlv->len << 8) + (0xff & *(buffer + n + j++));
+			tlv->len = (tlv->len << 8) + (0xff & *(buffer + n + j++));
 			/* fall through */
 		case 0x82:
-			tlv->len =
-			    (tlv->len << 8) + (0xff & *(buffer + n + j++));
+			tlv->len = (tlv->len << 8) + (0xff & *(buffer + n + j++));
 			/* fall through */
 		case 0x81:
-			tlv->len =
-			    (tlv->len << 8) + (0xff & *(buffer + n + j++));
+			tlv->len = (tlv->len << 8) + (0xff & *(buffer + n + j++));
 			break;
 			/* case 0x80 is not standard, but official code uses it */
 		case 0x80:
-			tlv->len =
-			    (tlv->len << 8) + (0xff & *(buffer + n + j++));
+			tlv->len = (tlv->len << 8) + (0xff & *(buffer + n + j++));
 			break;
 		default:
 			if ((*(buffer + n + 1) & 0xff) < 0x80) {
 				tlv->len = 0xff & *(buffer + n + 1);
 			} else {
-				sc_log(ctx, "Invalid tag length indicator: %d",
-				       *(buffer + n + 1));
+				sc_log(ctx, "Invalid tag length indicator: %d", *(buffer + n + 1));
 				LOG_FUNC_RETURN(ctx, SC_ERROR_WRONG_LENGTH);
 			}
 		}
@@ -333,9 +327,8 @@ static int cwa_parse_tlv(sc_card_t * card,
  * @param icc_ca icc certificate from card
  * @return SC_SUCCESS if verification is ok; else error code
  */
-static int cwa_verify_icc_certificates(sc_card_t * card,
-				       cwa_provider_t * provider,
-				       X509 * sub_ca_cert, X509 * icc_cert)
+static int
+cwa_verify_icc_certificates(sc_card_t *card, cwa_provider_t *provider, X509 *sub_ca_cert, X509 *icc_cert)
 {
 	char *msg = NULL;
 	int res = SC_SUCCESS;
@@ -401,8 +394,8 @@ static int cwa_verify_icc_certificates(sc_card_t * card,
  * @param len  length of CVC certificate
  * @return SC_SUCCESS if ok; else error code
  */
-static int cwa_verify_cvc_certificate(sc_card_t * card,
-				      const u8 * cert, size_t len)
+static int
+cwa_verify_cvc_certificate(sc_card_t *card, const u8 *cert, size_t len)
 {
 	sc_apdu_t apdu;
 	int result = SC_SUCCESS;
@@ -441,8 +434,8 @@ static int cwa_verify_cvc_certificate(sc_card_t * card,
  * @param length size of buffer
  * @return SC_SUCCESS if ok; else error code
  */
-static int cwa_set_security_env(sc_card_t * card,
-				u8 p1, u8 p2, u8 * buffer, size_t length)
+static int
+cwa_set_security_env(sc_card_t *card, u8 p1, u8 p2, u8 *buffer, size_t length)
 {
 	sc_apdu_t apdu;
 	int result = SC_SUCCESS;
@@ -479,7 +472,8 @@ static int cwa_set_security_env(sc_card_t * card,
  * @param datalen length of data to send
  * @return SC_SUCCESS if OK: else error code
  */
-static int cwa_internal_auth(sc_card_t * card, u8 * sig, size_t sig_len, u8 * data, size_t datalen)
+static int
+cwa_internal_auth(sc_card_t *card, u8 *sig, size_t sig_len, u8 *data, size_t datalen)
 {
 	sc_apdu_t apdu;
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
@@ -527,11 +521,9 @@ static int cwa_internal_auth(sc_card_t * card, u8 * sig, size_t sig_len, u8 * da
  * @param sig_len signature buffer length
  * @return SC_SUCCESS if ok; else errorcode
  */
-static int cwa_prepare_external_auth(sc_card_t * card,
-				     EVP_PKEY *icc_pubkey,
-				     EVP_PKEY *ifd_privkey,
-				     u8 * sig,
-				     size_t sig_len)
+static int
+cwa_prepare_external_auth(sc_card_t *card, EVP_PKEY *icc_pubkey, EVP_PKEY *ifd_privkey,
+                          u8 *sig, size_t sig_len)
 {
 	/* we have to compose following message:
 	   data = E[PK.ICC.AUT](SIGMIN)
@@ -617,9 +609,9 @@ static int cwa_prepare_external_auth(sc_card_t * card,
 	/* decrypt with ifd private key */
 	pctx = EVP_PKEY_CTX_new(ifd_privkey, NULL);
 	if (!pctx ||
-		EVP_PKEY_decrypt_init(pctx) != 1 ||
-		EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_NO_PADDING) != 1 ||
-		EVP_PKEY_decrypt(pctx, buf2, &len2, buf3, 128) != 1) {
+	    EVP_PKEY_decrypt_init(pctx) != 1 ||
+	    EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_NO_PADDING) != 1 ||
+	    EVP_PKEY_decrypt(pctx, buf2, &len2, buf3, 128) != 1) {
 		msg = "Prepare external auth: ifd_privk decrypt failed";
 		res = SC_ERROR_SM_ENCRYPT_FAILED;
 		EVP_PKEY_CTX_free(pctx);
@@ -668,10 +660,10 @@ static int cwa_prepare_external_auth(sc_card_t * card,
 	/* re-encrypt result with icc public key */
 	pctx = EVP_PKEY_CTX_new(icc_pubkey, NULL);
 	if (!pctx ||
-		EVP_PKEY_encrypt_init(pctx) != 1 ||
-		EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_NO_PADDING) != 1 ||
-		EVP_PKEY_encrypt(pctx, buf1, &len1, buf3, 128) != 1 ||
-		(size_t) len1 != sig_len) {
+	    EVP_PKEY_encrypt_init(pctx) != 1 ||
+	    EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_NO_PADDING) != 1 ||
+	    EVP_PKEY_encrypt(pctx, buf1, &len1, buf3, 128) != 1 ||
+	    (size_t) len1 != sig_len) {
 		msg = "Prepare external auth: icc_pubk encrypt failed";
 		res = SC_ERROR_SM_ENCRYPT_FAILED;
 		EVP_PKEY_CTX_free(pctx);
@@ -728,7 +720,8 @@ static int cwa_prepare_external_auth(sc_card_t * card,
  * @param sig signature buffer length
  * @return SC_SUCCESS if OK: else error code
  */
-static int cwa_external_auth(sc_card_t * card, u8 * sig, size_t sig_len)
+static int
+cwa_external_auth(sc_card_t *card, u8 *sig, size_t sig_len)
 {
 	sc_apdu_t apdu;
 	int result = SC_SUCCESS;
@@ -760,7 +753,8 @@ static int cwa_external_auth(sc_card_t * card, u8 * sig, size_t sig_len)
  * @param card pointer to sc_card_t data
  * @return SC_SUCCESS if ok; else error code
  */
-static int cwa_compute_session_keys(sc_card_t * card)
+static int
+cwa_compute_session_keys(sc_card_t *card)
 {
 
 	char *msg = NULL;
@@ -844,7 +838,8 @@ static int cwa_compute_session_keys(sc_card_t * card)
  * @param expected results
  * @return SC_SUCCESS or error code
  */
-static int cwa_compare_signature(u8 * data, size_t dlen, u8 * ifd_data)
+static int
+cwa_compare_signature(u8 *data, size_t dlen, u8 *ifd_data)
 {
 	u8 *buf = calloc(74 + 32 + 32, sizeof(u8));
 	u8 *sha = calloc(SHA_DIGEST_LENGTH, sizeof(u8));
@@ -888,13 +883,9 @@ static int cwa_compare_signature(u8 * data, size_t dlen, u8 * ifd_data)
  * @param sig_len signature buffer length
  * @return SC_SUCCESS if ok; else error code
  */
-static int cwa_verify_internal_auth(sc_card_t * card,
-				    EVP_PKEY *icc_pubkey,
-				    EVP_PKEY *ifd_privkey,
-				    u8 * ifdbuf,
-				    size_t ifdlen,
-				    u8 * sig,
-				    size_t sig_len)
+static int
+cwa_verify_internal_auth(sc_card_t *card, EVP_PKEY *icc_pubkey, EVP_PKEY *ifd_privkey,
+                         u8 *ifdbuf, size_t ifdlen, u8 *sig, size_t sig_len)
 {
 	int res = SC_SUCCESS;
 	char *msg = NULL;
@@ -960,9 +951,9 @@ static int cwa_verify_internal_auth(sc_card_t * card,
 	/* decrypt data with our ifd priv key */
 	pctx = EVP_PKEY_CTX_new(ifd_privkey, NULL);
 	if (!pctx ||
-		EVP_PKEY_decrypt_init(pctx) != 1 ||
-		EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_NO_PADDING) != 1 ||
-		EVP_PKEY_decrypt(pctx, buf1, &len1, sig, sig_len) != 1) {
+	    EVP_PKEY_decrypt_init(pctx) != 1 ||
+	    EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_NO_PADDING) != 1 ||
+	    EVP_PKEY_decrypt(pctx, buf1, &len1, sig, sig_len) != 1) {
 		msg = "Verify Signature: decrypt with ifd privk failed";
 		res = SC_ERROR_SM_ENCRYPT_FAILED;
 		EVP_PKEY_CTX_free(pctx);
@@ -976,9 +967,9 @@ static int cwa_verify_internal_auth(sc_card_t * card,
 	/* evaluate DS[SK.ICC.AUTH](SIG) trying to decrypt with icc pubk */
 	pctx = EVP_PKEY_CTX_new(icc_pubkey, NULL);
 	if (!pctx ||
-		EVP_PKEY_encrypt_init(pctx) != 1 ||
-		EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_NO_PADDING) != 1 ||
-		EVP_PKEY_encrypt(pctx, buf3, &len3, buf1, len1) != 1) {
+	    EVP_PKEY_encrypt_init(pctx) != 1 ||
+	    EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_NO_PADDING) != 1 ||
+	    EVP_PKEY_encrypt(pctx, buf3, &len3, buf1, len1) != 1) {
 		EVP_PKEY_CTX_free(pctx);
 		goto verify_nicc_sig;	/* evaluate N.ICC-SIG and retry */
 	}
@@ -1027,9 +1018,9 @@ static int cwa_verify_internal_auth(sc_card_t * card,
 	/* evaluate DS[SK.ICC.AUTH](I.ICC-SIG) trying to decrypt with icc pubk */
 	pctx = EVP_PKEY_CTX_new(icc_pubkey, NULL);
 	if (!pctx ||
-		EVP_PKEY_encrypt_init(pctx) != 1 ||
-		EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_NO_PADDING) != 1 ||
-		EVP_PKEY_encrypt(pctx, buf3, &len3, buf2, len2) != 1) {
+	    EVP_PKEY_encrypt_init(pctx) != 1 ||
+	    EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_NO_PADDING) != 1 ||
+	    EVP_PKEY_encrypt(pctx, buf3, &len3, buf2, len2) != 1) {
 		msg = "Verify Signature: cannot get valid SIG data";
 		res = SC_ERROR_INVALID_DATA;
 		EVP_PKEY_CTX_free(pctx);
@@ -1088,8 +1079,8 @@ static int cwa_verify_internal_auth(sc_card_t * card,
  * @param flag requested init method ( OFF, COLD, WARM )
  * @return SC_SUCCESS if OK; else error code
  */
-int cwa_create_secure_channel(sc_card_t * card,
-			      cwa_provider_t * provider, int flag)
+int
+cwa_create_secure_channel(sc_card_t *card, cwa_provider_t *provider, int flag)
 {
 	u8 *cert = NULL;
 	size_t certlen;
@@ -1173,16 +1164,13 @@ int cwa_create_secure_channel(sc_card_t * card,
 
 	/* Read Intermediate CA from card */
 	if (!provider->cwa_get_icc_intermediate_ca_cert) {
-		sc_log(ctx,
-		       "Step 8.4.1.6: Skip Retrieving ICC intermediate CA");
+		sc_log(ctx, "Step 8.4.1.6: Skip Retrieving ICC intermediate CA");
 		ca_cert = NULL;
 	} else {
 		sc_log(ctx, "Step 8.4.1.7: Retrieving ICC intermediate CA");
-		res =
-		    provider->cwa_get_icc_intermediate_ca_cert(card, &ca_cert);
+		res = provider->cwa_get_icc_intermediate_ca_cert(card, &ca_cert);
 		if (res != SC_SUCCESS) {
-			msg =
-			    "Cannot get ICC intermediate CA certificate from provider";
+			msg = "Cannot get ICC intermediate CA certificate from provider";
 			goto csc_end;
 		}
 	}
@@ -1200,9 +1188,7 @@ int cwa_create_secure_channel(sc_card_t * card,
 	 * but simply verifies that icc_cert is a valid certificate */
 	if (ca_cert) {
 		sc_log(ctx, "Verifying ICC certificate chain");
-		res =
-		    cwa_verify_icc_certificates(card, provider, ca_cert,
-						icc_cert);
+		res = cwa_verify_icc_certificates(card, provider, ca_cert, icc_cert);
 		if (res != SC_SUCCESS) {
 			res = SC_ERROR_SM_AUTHENTICATION_FAILED;
 			msg = "Icc Certificates verification failed";
@@ -1216,8 +1202,7 @@ int cwa_create_secure_channel(sc_card_t * card,
 	icc_pubkey = X509_get_pubkey(icc_cert);
 
 	/* Select Root CA in card for ifd certificate verification */
-	sc_log(ctx,
-	       "Step 8.4.1.2: Select Root CA in card for IFD cert verification");
+	sc_log(ctx, "Step 8.4.1.2: Select Root CA in card for IFD cert verification");
 	res = provider->cwa_get_root_ca_pubkey_ref(card, &buffer, &bufferlen);
 	if (res != SC_SUCCESS) {
 		msg = "Cannot get Root CA key reference from provider";
@@ -1242,8 +1227,7 @@ int cwa_create_secure_channel(sc_card_t * card,
 	}
 
 	/* Send IFD intermediate CA in CVC format C_CV_CA */
-	sc_log(ctx,
-	       "Step 8.4.1.3: Send CVC IFD intermediate CA Cert for ICC verification");
+	sc_log(ctx, "Step 8.4.1.3: Send CVC IFD intermediate CA Cert for ICC verification");
 	res = provider->cwa_get_cvc_ca_cert(card, &cert, &certlen);
 	if (res != SC_SUCCESS) {
 		msg = "Get CVC CA cert from provider failed";
@@ -1256,11 +1240,8 @@ int cwa_create_secure_channel(sc_card_t * card,
 	}
 
 	/* select public key reference for sent IFD intermediate CA certificate */
-	sc_log(ctx,
-	       "Step 8.4.1.4: Select Intermediate CA pubkey ref for ICC verification");
-	res =
-	    provider->cwa_get_intermediate_ca_pubkey_ref(card, &buffer,
-							 &bufferlen);
+	sc_log(ctx, "Step 8.4.1.4: Select Intermediate CA pubkey ref for ICC verification");
+	res = provider->cwa_get_intermediate_ca_pubkey_ref(card, &buffer, &bufferlen);
 	if (res != SC_SUCCESS) {
 		msg = "Cannot get intermediate CA key reference from provider";
 		goto csc_end;
@@ -1275,8 +1256,7 @@ int cwa_create_secure_channel(sc_card_t * card,
 	}
 	res = cwa_compose_tlv(card, 0x83, bufferlen, buffer, &tlv, &tlvlen);
 	if (res != SC_SUCCESS) {
-		msg =
-		    "Cannot compose tlv for setting intermediate CA key reference";
+		msg = "Cannot compose tlv for setting intermediate CA key reference";
 		goto csc_end;
 	}
 	res = cwa_set_security_env(card, 0x81, 0xB6, tlv, tlvlen);
@@ -1286,8 +1266,7 @@ int cwa_create_secure_channel(sc_card_t * card,
 	}
 
 	/* Send IFD certificate in CVC format C_CV_IFD */
-	sc_log(ctx,
-	       "Step 8.4.1.5: Send CVC IFD Certificate for ICC verification");
+	sc_log(ctx, "Step 8.4.1.5: Send CVC IFD Certificate for ICC verification");
 	res = provider->cwa_get_cvc_ifd_cert(card, &cert, &certlen);
 	if (res != SC_SUCCESS) {
 		msg = "Get CVC IFD cert from provider failed";
@@ -1302,8 +1281,7 @@ int cwa_create_secure_channel(sc_card_t * card,
 	/* remember that this code changes IFD and ICC Cert verification steps */
 
 	/* select public key of ifd certificate and icc private key */
-	sc_log(ctx,
-	       "Step 8.4.1.9: Send IFD pubk and ICC privk key references for Internal Auth");
+	sc_log(ctx, "Step 8.4.1.9: Send IFD pubk and ICC privk key references for Internal Auth");
 	res = provider->cwa_get_ifd_pubkey_ref(card, &buffer, &bufferlen);
 	if (res != SC_SUCCESS) {
 		msg = "Cannot get ifd public key reference from provider";
@@ -1367,12 +1345,11 @@ int cwa_create_secure_channel(sc_card_t * card,
 
 	/* verify received signature */
 	sc_log(ctx, "Verify Internal Auth command response");
-	res = cwa_verify_internal_auth(card, icc_pubkey,	/* evaluated icc public key */
-				       ifd_privkey,	/* evaluated from DGP's Manual Annex 3 Data */
-				       rndbuf,	/* RND.IFD || SN.IFD */
-				       16,	/* rndbuf length; should be 16 */
-				       sig, 128
-	    );
+	res = cwa_verify_internal_auth(card, icc_pubkey, /* evaluated icc public key */
+	                               ifd_privkey,      /* evaluated from DGP's Manual Annex 3 Data */
+	                               rndbuf,           /* RND.IFD || SN.IFD */
+	                               16,               /* rndbuf length; should be 16 */
+	                               sig, 128);
 	if (res != SC_SUCCESS) {
 		msg = "Internal Auth Verify failed";
 		goto csc_end;
@@ -1457,8 +1434,8 @@ int cwa_create_secure_channel(sc_card_t * card,
  * @param to where to store encoded apdu
  * @return SC_SUCCESS if ok; else error code
  */
-int cwa_encode_apdu(sc_card_t * card,
-		    cwa_provider_t * provider, sc_apdu_t * from, sc_apdu_t * to)
+int
+cwa_encode_apdu(sc_card_t *card, cwa_provider_t *provider, sc_apdu_t *from, sc_apdu_t *to)
 {
 	u8 *apdubuf = NULL;		/* to store resulting apdu */
 	size_t apdulen, tlv_len;
@@ -1516,10 +1493,8 @@ int cwa_encode_apdu(sc_card_t * card,
 	/* reserve enough space for apdulen+tlv bytes
 	 * to-be-crypted buffer and result apdu buffer */
 	 /* TODO DEE add 4 more bytes for testing.... */
-	apdubuf = calloc(MAX(SC_MAX_APDU_BUFFER_SIZE, 20 + from->datalen),
-		   sizeof(u8));
-	ccbuf = calloc(MAX(SC_MAX_APDU_BUFFER_SIZE, 20 + from->datalen),
-		   sizeof(u8));
+	apdubuf = calloc(MAX(SC_MAX_APDU_BUFFER_SIZE, 20 + from->datalen), sizeof(u8));
+	ccbuf = calloc(MAX(SC_MAX_APDU_BUFFER_SIZE, 20 + from->datalen), sizeof(u8));
 	/* always create a new buffer for the encoded response */
 	to->resp = calloc(MAX_RESP_BUFFER_SIZE, sizeof(u8));
 	to->resplen = MAX_RESP_BUFFER_SIZE;
@@ -1552,7 +1527,7 @@ int cwa_encode_apdu(sc_card_t * card,
 
 	/* if no data, skip data encryption step */
 	if (from->lc != 0) {
-		unsigned char iv[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+		unsigned char iv[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 		int dlen = from->lc;
 		size_t len = dlen;
 
@@ -1566,9 +1541,9 @@ int cwa_encode_apdu(sc_card_t * card,
 		key = sm_session->session_enc;
 
 		if (EVP_EncryptInit_ex(cctx, EVP_des_ede_cbc(), NULL, key, iv) != 1 ||
-			EVP_CIPHER_CTX_set_padding(cctx, 0) != 1 ||
-			EVP_EncryptUpdate(cctx, cryptbuf + 1, &dlen, msgbuf, dlen) != 1 ||
-			EVP_EncryptFinal_ex(cctx, cryptbuf + 1 + dlen, &tmplen) != 1) {
+		    EVP_CIPHER_CTX_set_padding(cctx, 0) != 1 ||
+		    EVP_EncryptUpdate(cctx, cryptbuf + 1, &dlen, msgbuf, dlen) != 1 ||
+		    EVP_EncryptFinal_ex(cctx, cryptbuf + 1 + dlen, &tmplen) != 1) {
 			msg = "Error in encrypting APDU";
 			res = SC_ERROR_INTERNAL;
 			goto encode_end;
@@ -1582,22 +1557,21 @@ int cwa_encode_apdu(sc_card_t * card,
 			goto encode_end;
 		}
 	} else if ((0xff & from->le) > 0) {
-
-	/* if le byte is declared, compose and add Le TLV */
-	/* FIXME: For DNIe we must not send the le bytes
-	  when le == 256 but this goes against the standard
-	  and might break other cards reusing this code */
-        /* NOTE: In FNMT MultiPKCS11 code this is an if, i.e.,
-           the le is only sent if no data (lc) is set.
-           In DNIe 3.0 pin verification sending both TLV return
-           69 88 "SM Data Object incorrect". For the moment it is
-           fixed sendind le=0 in pin verification apdu */
-	    u8 le = 0xff & from->le;
-	    res = cwa_compose_tlv(card, 0x97, 1, &le, &ccbuf, &cclen);
-	    if (res != SC_SUCCESS) {
-		msg = "Encode APDU compose_tlv(0x97) failed";
-		goto encode_end;
-	    }
+		/* if le byte is declared, compose and add Le TLV */
+		/* FIXME: For DNIe we must not send the le bytes
+		  when le == 256 but this goes against the standard
+		  and might break other cards reusing this code */
+		/* NOTE: In FNMT MultiPKCS11 code this is an if, i.e.,
+		   the le is only sent if no data (lc) is set.
+		   In DNIe 3.0 pin verification sending both TLV return
+		   69 88 "SM Data Object incorrect". For the moment it is
+		   fixed sendind le=0 in pin verification apdu */
+		u8 le = 0xff & from->le;
+		res = cwa_compose_tlv(card, 0x97, 1, &le, &ccbuf, &cclen);
+		if (res != SC_SUCCESS) {
+			msg = "Encode APDU compose_tlv(0x97) failed";
+			goto encode_end;
+		}
 	}
 	/* copy current data to apdu buffer (skip header and header padding) */
 	memcpy(apdubuf, ccbuf + 8, cclen - 8);
@@ -1629,15 +1603,15 @@ int cwa_encode_apdu(sc_card_t * card,
 #endif
 
 	if (EVP_EncryptInit_ex(cctx, EVP_des_ecb(), NULL, key, NULL) != 1 ||
-		EVP_CIPHER_CTX_set_padding(cctx, 0) != 1) {
+	    EVP_CIPHER_CTX_set_padding(cctx, 0) != 1) {
 		msg = "Error in DES ECB encryption";
 		res = SC_ERROR_INTERNAL;
 		goto encode_end;
-	 }
+	}
 
 	for (i = 0; i < cclen; i += 8) {	/* divide data in 8 byte blocks */
 		/* compute DES */
-		if (EVP_EncryptUpdate(cctx, macbuf, &tmplen, macbuf , 8) != 1) {
+		if (EVP_EncryptUpdate(cctx, macbuf, &tmplen, macbuf, 8) != 1) {
 			msg = "Error in DES ECB encryption";
 			res = SC_ERROR_INTERNAL;
 			goto encode_end;
@@ -1654,9 +1628,9 @@ int cwa_encode_apdu(sc_card_t * card,
 
 	/* and apply 3DES to result */
 	if (EVP_EncryptInit_ex(cctx, EVP_des_ede_ecb(), NULL, key, NULL) != 1 ||
-		EVP_CIPHER_CTX_set_padding(cctx, 0) != 1 ||
-		EVP_EncryptUpdate(cctx, macbuf, &tmplen, macbuf, 8) != 1 ||
-		EVP_EncryptFinal_ex(cctx, macbuf + tmplen, &tmplen) != 1) {
+	    EVP_CIPHER_CTX_set_padding(cctx, 0) != 1 ||
+	    EVP_EncryptUpdate(cctx, macbuf, &tmplen, macbuf, 8) != 1 ||
+	    EVP_EncryptFinal_ex(cctx, macbuf + tmplen, &tmplen) != 1) {
 		msg = "Error in 3DEC ECB encryption";
 		res = SC_ERROR_INTERNAL;
 		goto encode_end;
@@ -1711,9 +1685,8 @@ encode_end_apdu_valid:
  * @param to where to store decoded apdu
  * @return SC_SUCCESS if ok; else error code
  */
-int cwa_decode_response(sc_card_t * card,
-			cwa_provider_t * provider,
-			sc_apdu_t * apdu)
+int
+cwa_decode_response(sc_card_t *card, cwa_provider_t *provider, sc_apdu_t *apdu)
 {
 	size_t i, j, tlv_len;
 	cwa_tlv_t tlv_array[4];
@@ -1797,8 +1770,7 @@ int cwa_decode_response(sc_card_t * card,
 
 	/* check consistency of received TLV's */
 	if (p_tlv->buf && e_tlv->buf) {
-		msg =
-		    "Plain and Encoded data are mutually exclusive in apdu response";
+		msg = "Plain and Encoded data are mutually exclusive in apdu response";
 		res = SC_ERROR_INVALID_DATA;
 		goto response_decode_end;
 	}
@@ -1817,9 +1789,7 @@ int cwa_decode_response(sc_card_t * card,
 	/* compose buffer to evaluate mac */
 
 	/* reserve enough space for data+status+padding */
-	ccbuf =
-	    calloc(e_tlv->buflen + s_tlv->buflen + p_tlv->buflen + 8,
-		   sizeof(u8));
+	ccbuf = calloc(e_tlv->buflen + s_tlv->buflen + p_tlv->buflen + 8, sizeof(u8));
 	if (!ccbuf) {
 		msg = "Cannot allocate space for mac checking";
 		res = SC_ERROR_OUT_OF_MEMORY;
@@ -1871,11 +1841,11 @@ int cwa_decode_response(sc_card_t * card,
 #endif
 
 	if (EVP_EncryptInit_ex(cctx, EVP_des_ecb(), NULL, key, NULL) != 1 ||
-		EVP_CIPHER_CTX_set_padding(cctx, 0) != 1) {
+	    EVP_CIPHER_CTX_set_padding(cctx, 0) != 1) {
 		msg = "Error in DES ECB encryption";
 		res = SC_ERROR_INTERNAL;
 		goto response_decode_end;
-	 }
+	}
 
 	memcpy(macbuf, sm_session->ssc, 8);	/* start with computed SSC */
 	for (i = 0; i < cclen; i += 8) {	/* divide data in 8 byte blocks */
@@ -1897,9 +1867,9 @@ int cwa_decode_response(sc_card_t * card,
 
 	/* finally apply 3DES to result */
 	if (EVP_EncryptInit_ex(cctx, EVP_des_ede_ecb(), NULL, key, NULL) != 1 ||
-		EVP_CIPHER_CTX_set_padding(cctx, 0) != 1 ||
-		EVP_EncryptUpdate(cctx, macbuf, &tmplen, macbuf, 8) != 1 ||
-		EVP_EncryptFinal_ex(cctx, macbuf + tmplen, &tmplen) != 1) {
+	    EVP_CIPHER_CTX_set_padding(cctx, 0) != 1 ||
+	    EVP_EncryptUpdate(cctx, macbuf, &tmplen, macbuf, 8) != 1 ||
+	    EVP_EncryptFinal_ex(cctx, macbuf + tmplen, &tmplen) != 1) {
 		msg = "Error in 3DEC ECB encryption";
 		res = SC_ERROR_INTERNAL;
 		goto response_decode_end;
@@ -1933,7 +1903,7 @@ int cwa_decode_response(sc_card_t * card,
 
 	/* if encoded data, decode and store into apdu response */
 	else if (e_tlv->buf) {	/* encoded data */
-		unsigned char iv[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+		unsigned char iv[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 		int dlen = apdu->resplen;
 		/* check data len */
 		if ((e_tlv->len < 9) || ((e_tlv->len - 1) % 8) != 0) {
@@ -1953,9 +1923,9 @@ int cwa_decode_response(sc_card_t * card,
 		/* decrypt into response buffer
 		 * by using 3DES CBC by mean of kenc and iv={0,...0} */
 		if (EVP_DecryptInit_ex(cctx, EVP_des_ede_cbc(), NULL, key, iv) != 1 ||
-			EVP_CIPHER_CTX_set_padding(cctx, 0) != 1 ||
-			EVP_DecryptUpdate(cctx, apdu->resp, &dlen, &e_tlv->data[1], e_tlv->len - 1) != 1 ||
-			EVP_DecryptFinal_ex(cctx, apdu->resp + dlen, &tmplen) != 1) {
+		    EVP_CIPHER_CTX_set_padding(cctx, 0) != 1 ||
+		    EVP_DecryptUpdate(cctx, apdu->resp, &dlen, &e_tlv->data[1], e_tlv->len - 1) != 1 ||
+		    EVP_DecryptFinal_ex(cctx, apdu->resp + dlen, &tmplen) != 1) {
 			res = SC_ERROR_INTERNAL;
 			msg = "Can not decrypt 3DES CBC";
 			goto response_decode_end;
@@ -1980,8 +1950,8 @@ int cwa_decode_response(sc_card_t * card,
 	/* that's all folks */
 	res = SC_SUCCESS;
 
- response_decode_end:
- 	EVP_CIPHER_CTX_free(cctx);
+response_decode_end:
+	EVP_CIPHER_CTX_free(cctx);
 	if (buffer)
 		free(buffer);
 	if (ccbuf)
@@ -1998,87 +1968,96 @@ int cwa_decode_response(sc_card_t * card,
 
 /* pre and post operations */
 
-static int default_create_pre_ops(sc_card_t * card, cwa_provider_t * provider)
+static int
+default_create_pre_ops(sc_card_t *card, cwa_provider_t *provider)
 {
 	return SC_SUCCESS;
 }
 
-static int default_create_post_ops(sc_card_t * card, cwa_provider_t * provider)
+static int
+default_create_post_ops(sc_card_t *card, cwa_provider_t *provider)
 {
 	return SC_SUCCESS;
 }
 
-static int default_get_root_ca_pubkey(sc_card_t * card, EVP_PKEY ** root_ca_key)
+static int
+default_get_root_ca_pubkey(sc_card_t *card, EVP_PKEY **root_ca_key)
 {
 	return SC_ERROR_NOT_SUPPORTED;
 }
 
 /* retrieve CVC intermediate CA certificate and length */
-static int default_get_cvc_ca_cert(sc_card_t * card, u8 ** cert,
-				   size_t * length)
+static int
+default_get_cvc_ca_cert(sc_card_t *card, u8 **cert, size_t *length)
 {
 	return SC_ERROR_NOT_SUPPORTED;
 }
 
 /* retrieve CVC IFD certificate and length */
-static int default_get_cvc_ifd_cert(sc_card_t * card, u8 ** cert,
-				    size_t * length)
+static int
+default_get_cvc_ifd_cert(sc_card_t *card, u8 **cert, size_t *length)
 {
 	return SC_ERROR_NOT_SUPPORTED;
 }
 
-static int default_get_ifd_privkey(sc_card_t * card, EVP_PKEY ** ifd_privkey)
+static int
+default_get_ifd_privkey(sc_card_t *card, EVP_PKEY **ifd_privkey)
 {
 	return SC_ERROR_NOT_SUPPORTED;
 }
 
 /* get ICC intermediate CA  path */
-static int default_get_icc_intermediate_ca_cert(sc_card_t * card, X509 ** cert)
+static int
+default_get_icc_intermediate_ca_cert(sc_card_t *card, X509 **cert)
 {
 	return SC_ERROR_NOT_SUPPORTED;
 }
 
 /* get ICC certificate path */
-static int default_get_icc_cert(sc_card_t * card, X509 ** cert)
+static int
+default_get_icc_cert(sc_card_t *card, X509 **cert)
 {
 	return SC_ERROR_NOT_SUPPORTED;
 }
 
 /* Retrieve key reference for Root CA to validate CVC intermediate CA certs */
-static int default_get_root_ca_pubkey_ref(sc_card_t * card, u8 ** buf,
-					  size_t * len)
+static int
+default_get_root_ca_pubkey_ref(sc_card_t *card, u8 **buf, size_t *len)
 {
 	return SC_ERROR_NOT_SUPPORTED;
 }
 
 /* Retrieve key reference for intermediate CA to validate IFD certs */
-static int default_get_intermediate_ca_pubkey_ref(sc_card_t * card, u8 ** buf,
-						  size_t * len)
+static int
+default_get_intermediate_ca_pubkey_ref(sc_card_t *card, u8 **buf, size_t *len)
 {
 	return SC_ERROR_NOT_SUPPORTED;
 }
 
 /* Retrieve key reference for IFD certificate */
-static int default_get_ifd_pubkey_ref(sc_card_t * card, u8 ** buf, size_t * len)
+static int
+default_get_ifd_pubkey_ref(sc_card_t *card, u8 **buf, size_t *len)
 {
 	return SC_ERROR_NOT_SUPPORTED;
 }
 
 /* Retrieve key reference for ICC privkey */
-static int default_get_icc_privkey_ref(sc_card_t * card, u8 ** buf,
-				       size_t * len)
+static int
+default_get_icc_privkey_ref(sc_card_t *card, u8 **buf, size_t *len)
 {
 	return SC_ERROR_NOT_SUPPORTED;
 }
 
 /* Retrieve SN.IFD (8 bytes left padded with zeroes if needed) */
-static int default_get_sn_ifd(sc_card_t * card)
+static int
+default_get_sn_ifd(sc_card_t *card)
 {
 	return SC_ERROR_NOT_SUPPORTED;
 }
 
 /* Retrieve SN.ICC (8 bytes left padded with zeroes if needed) */
-static int default_get_sn_icc(sc_card_t * card)
+static int
+default_get_sn_icc(sc_card_t *card)
 {
 	return SC_ERROR_NOT_SUPPORTED;
 }
@@ -2135,7 +2114,8 @@ static cwa_provider_t default_cwa_provider = {
  * @param card pointer to card info structure
  * @return copy of default provider or null on error
  */
-cwa_provider_t *cwa_get_default_provider(sc_card_t * card)
+cwa_provider_t *
+cwa_get_default_provider(sc_card_t *card)
 {
 	cwa_provider_t *res = NULL;
 	if (!card || !card->ctx)

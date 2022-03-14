@@ -1115,14 +1115,12 @@ isoApplet_set_security_env(sc_card_t *card,
 			break;
 
 		case SC_ALGORITHM_EC:
-			if( env->algorithm_flags & SC_ALGORITHM_ECDSA_HASH_SHA1 )
-			{
+			if (env->algorithm_flags & SC_ALGORITHM_ECDSA_HASH_SHA1) {
 				drvdata->sec_env_alg_ref = ISOAPPLET_ALG_REF_ECDSA;
 				drvdata->sec_env_ec_field_length = env->algorithm_ref;
-			}
-			else
-			{
-				LOG_TEST_RET(card->ctx, SC_ERROR_NOT_SUPPORTED, "IsoApplet only supports ECDSA with on-card SHA1.");
+			} else {
+				LOG_TEST_RET(card->ctx, SC_ERROR_NOT_SUPPORTED,
+				             "IsoApplet only supports ECDSA with on-card SHA1.");
 			}
 			break;
 

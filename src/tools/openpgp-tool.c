@@ -147,7 +147,6 @@ static const char *option_help[] = {
 /* d */ "Dump private data object number <arg> (i.e. DO <arg>)",
 };
 
-
 static const struct ef_name_map card_data[] = {
 	{ "AID",           "OPENPGP_AID",          "3F00:004F", TYPE_HEX,  0, 16, NULL                  },
 	{ "Version",       "OPENPGP_VERSION",      "3F00:004F", TYPE_HEX,  6,  2, prettify_version      },

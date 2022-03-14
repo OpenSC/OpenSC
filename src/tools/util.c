@@ -69,8 +69,8 @@ int util_connect_reader (sc_context_t *ctx, sc_reader_t **reader,
 
 		if (sc_ctx_get_reader_count(ctx) == 0) {
 			fprintf(stderr, "Waiting for a reader to be attached...\n");
-			r = sc_wait_for_event(ctx, SC_EVENT_READER_ATTACHED|SC_EVENT_CARD_INSERTED,
-			                      &found, &event, -1, NULL);
+			r = sc_wait_for_event(ctx, SC_EVENT_READER_ATTACHED | SC_EVENT_CARD_INSERTED, &found,
+			                      &event, -1, NULL);
 			if (r < 0) {
 				fprintf(stderr, "Error while waiting for a reader: %s\n", sc_strerror(r));
 				return r;

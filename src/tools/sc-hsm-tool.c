@@ -573,9 +573,10 @@ static void print_info(sc_card_t *card, sc_file_t *file)
 	print_dkek_info(&dkekinfo);
 }
 
-
-
-static int initialize(sc_card_t *card, const char *so_pin, const char *user_pin, int retry_counter, const char *bio1, const char *bio2, int dkek_shares, signed char num_of_pub_keys, u8 required_pub_keys, const char *label)
+static int
+initialize(sc_card_t *card, const char *so_pin, const char *user_pin, int retry_counter, const char *bio1,
+           const char *bio2, int dkek_shares, signed char num_of_pub_keys, u8 required_pub_keys,
+           const char *label)
 {
 	sc_cardctl_sc_hsm_init_param_t param;
 	size_t len;
@@ -587,7 +588,8 @@ static int initialize(sc_card_t *card, const char *so_pin, const char *user_pin,
 		return -1;
 	}
 	if (required_pub_keys < 1 || required_pub_keys > 90) {
-		fprintf(stderr, "Number of public keys required for authentication must be between 1 and 90\n");
+		fprintf(stderr, "Number of public keys required for authentication must be between "
+		                "1 and 90\n");
 		return -1;
 	}
 	if (num_of_pub_keys != -1 && required_pub_keys > num_of_pub_keys) {
@@ -683,7 +685,7 @@ static int initialize(sc_card_t *card, const char *so_pin, const char *user_pin,
 
 	param.dkek_shares = (char)dkek_shares;
 	param.num_of_pub_keys = (signed char)num_of_pub_keys; /* guaranteed in [-1,90] */
-	param.required_pub_keys = (u8)required_pub_keys; /* guaranteed in [1,90] */
+	param.required_pub_keys = (u8)required_pub_keys;      /* guaranteed in [1,90] */
 	param.label = (char *)label;
 
 	r = sc_card_ctl(card, SC_CARDCTL_SC_HSM_INITIALIZE, (void *)&param);
@@ -693,8 +695,6 @@ static int initialize(sc_card_t *card, const char *so_pin, const char *user_pin,
 
 	return 0;
 }
-
-
 
 static int recreate_password_from_shares(char **pwd, int *pwdlen, int num_of_password_shares)
 {
@@ -1695,8 +1695,8 @@ static int unwrap_key(sc_card_t *card, int keyid, const char *inf, const char *p
 	return 0;
 }
 
-
-static int export_key(sc_card_t *card, int keyid, const char *outf)
+static int
+export_key(sc_card_t *card, int keyid, const char *outf)
 {
 	sc_path_t path;
 	FILE *outfp = NULL;
@@ -1722,7 +1722,8 @@ static int export_key(sc_card_t *card, int keyid, const char *outf)
 	sc_path_set(&path, SC_PATH_TYPE_FILE_ID, fid, sizeof(fid), 0, 0);
 	r = sc_select_file(card, &path, NULL);
 	if (r != SC_SUCCESS) {
-		fprintf(stderr, "Wrong key reference (-i %d)? Failed to select file: %s\n", keyid, sc_strerror(r));
+		fprintf(stderr, "Wrong key reference (-i %d)? Failed to select file: %s\n", keyid,
+		        sc_strerror(r));
 		return -1;
 	}
 
@@ -1814,7 +1815,8 @@ err:
 	return r;
 }
 
-static void print_pka_status(const sc_cardctl_sc_hsm_pka_status_t *status)
+static void
+print_pka_status(const sc_cardctl_sc_hsm_pka_status_t *status)
 {
 	printf("Number of public keys:     %d\n", status->num_total);
 	printf("Missing public keys:       %d\n", status->num_missing);
@@ -1822,7 +1824,8 @@ static void print_pka_status(const sc_cardctl_sc_hsm_pka_status_t *status)
 	printf("Authenticated public keys: %d\n", status->num_authenticated);
 }
 
-static int register_public_key(sc_context_t *ctx, sc_card_t *card, const char *inf)
+static int
+register_public_key(sc_context_t *ctx, sc_card_t *card, const char *inf)
 {
 	int r = 0;
 	sc_cardctl_sc_hsm_pka_register_t pka_register;
@@ -1835,13 +1838,15 @@ static int register_public_key(sc_context_t *ctx, sc_card_t *card, const char *i
 	}
 
 	r = sc_card_ctl(card, SC_CARDCTL_SC_HSM_REGISTER_PUBLIC_KEY, &pka_register);
-	if (r == SC_ERROR_INS_NOT_SUPPORTED) { /* Not supported or not initialized for public key registration */
+	if (r == SC_ERROR_INS_NOT_SUPPORTED) {
+		/* Not supported or not initialized for public key registration */
 		fprintf(stderr, "Card not initialized for public key registration\n");
 		r = -1;
 		goto err;
 	}
 	if (r < 0) {
-		fprintf(stderr, "sc_card_ctl(*, SC_CARDCTL_SC_HSM_REGISTER_PUBLIC_KEY, *) failed with %s\n", sc_strerror(r));
+		fprintf(stderr, "sc_card_ctl(*, SC_CARDCTL_SC_HSM_REGISTER_PUBLIC_KEY, *) failed with %s\n",
+		        sc_strerror(r));
 		r = -1;
 		goto err;
 	}
@@ -1857,20 +1862,22 @@ err:
 	return r;
 }
 
-
-
-static int public_key_auth_status(sc_context_t *ctx, sc_card_t *card)
+static int
+public_key_auth_status(sc_context_t *ctx, sc_card_t *card)
 {
 	int r;
 	sc_cardctl_sc_hsm_pka_status_t status;
 
 	r = sc_card_ctl(card, SC_CARDCTL_SC_HSM_PUBLIC_KEY_AUTH_STATUS, &status);
-	if (r == SC_ERROR_INS_NOT_SUPPORTED) { /* Not supported or not initialized for public key registration */
+	if (r == SC_ERROR_INS_NOT_SUPPORTED) {
+		/* Not supported or not initialized for public key registration */
 		fprintf(stderr, "Card not initialized for public key registration\n");
 		return -1;
 	}
 	if (r < 0) {
-		fprintf(stderr, "sc_card_ctl(*, SC_CARDCTL_SC_HSM_PUBLIC_KEY_AUTH_STATUS, *) failed with %s\n", sc_strerror(r));
+		fprintf(stderr,
+		        "sc_card_ctl(*, SC_CARDCTL_SC_HSM_PUBLIC_KEY_AUTH_STATUS, *) failed with %s\n",
+		        sc_strerror(r));
 		return -1;
 	}
 
@@ -1878,7 +1885,6 @@ static int public_key_auth_status(sc_context_t *ctx, sc_card_t *card)
 
 	return 0;
 }
-
 
 int main(int argc, char *argv[])
 {
@@ -2104,16 +2110,22 @@ int main(int argc, char *argv[])
 		goto fail;
 	}
 
-	if (do_initialize && initialize(card, opt_so_pin, opt_pin, opt_retry_counter, opt_bio1, opt_bio2, opt_dkek_shares, opt_num_of_pub_keys, opt_required_pub_keys, opt_label))
+	if (do_initialize &&
+	    initialize(card, opt_so_pin, opt_pin, opt_retry_counter, opt_bio1, opt_bio2, opt_dkek_shares,
+	               opt_num_of_pub_keys, opt_required_pub_keys, opt_label))
 		goto fail;
 
-	if (do_create_dkek_share && create_dkek_share(card, opt_filename, opt_iter, opt_password, opt_password_shares_threshold, opt_password_shares_total))
+	if (do_create_dkek_share &&
+	    create_dkek_share(card, opt_filename, opt_iter, opt_password, opt_password_shares_threshold,
+	                      opt_password_shares_total))
 		goto fail;
 
-	if (do_import_dkek_share && import_dkek_share(card, opt_filename, opt_iter, opt_password, opt_password_shares_total))
+	if (do_import_dkek_share &&
+	    import_dkek_share(card, opt_filename, opt_iter, opt_password, opt_password_shares_total))
 		goto fail;
 
-	if (do_print_dkek_share && print_dkek_share(card, opt_filename, opt_iter, opt_password, opt_password_shares_total))
+	if (do_print_dkek_share &&
+	    print_dkek_share(card, opt_filename, opt_iter, opt_password, opt_password_shares_total))
 		goto fail;
 
 	if (do_wrap_key && wrap_key(ctx, card, opt_key_reference, opt_filename, opt_pin))

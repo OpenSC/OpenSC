@@ -672,16 +672,16 @@ static int westcos_get_crypte_challenge(sc_card_t * card, const u8 * key,
 		return r;
 #ifdef ENABLE_OPENSSL
 	if (EVP_EncryptInit_ex(cctx, EVP_des_ede_ecb(), NULL, key, NULL) != 1 ||
-		EVP_CIPHER_CTX_set_padding(cctx,0) != 1 ||
-		EVP_EncryptUpdate(cctx, result, &tmplen, buf, *len) != 1) {
+	    EVP_CIPHER_CTX_set_padding(cctx, 0) != 1 ||
+	    EVP_EncryptUpdate(cctx, result, &tmplen, buf, *len) != 1) {
 		EVP_CIPHER_CTX_free(cctx);
 		return SC_ERROR_INTERNAL;
 	}
 	*len = tmplen;
-	if (EVP_EncryptFinal_ex(cctx, result + tmplen, &tmplen)  != 1) {
+	if (EVP_EncryptFinal_ex(cctx, result + tmplen, &tmplen) != 1) {
 		EVP_CIPHER_CTX_free(cctx);
 		return SC_ERROR_INTERNAL;
-    }
+	}
 	*len += tmplen;
 	EVP_CIPHER_CTX_free(cctx);
 	return SC_SUCCESS;
@@ -1186,28 +1186,27 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 	} while (1);
 	BIO_set_mem_eof_return(mem, -1);
 	if (!(pkey = d2i_PrivateKey_bio(mem, NULL))) {
-		sc_log(card->ctx, 
-			"RSA key invalid, %lu\n", ERR_get_error());
+		sc_log(card->ctx, "RSA key invalid, %lu\n", ERR_get_error());
 		r = SC_ERROR_UNKNOWN;
 		goto out;
 	}
 
 	if ((size_t)EVP_PKEY_size(pkey) > outlen) {
-		sc_log(card->ctx,  "Buffer too small\n");
+		sc_log(card->ctx, "Buffer too small\n");
 		r = SC_ERROR_OUT_OF_MEMORY;
 		goto out;
 	}
 
 	if ((ctx = EVP_PKEY_CTX_new(pkey, NULL)) == NULL) {
-		sc_log(card->ctx,  "Can not establish context\n");
+		sc_log(card->ctx, "Can not establish context\n");
 		r = SC_ERROR_UNKNOWN;
 		goto out;
 	}
 
 	if (mode) {		/* decipher */
 		if (EVP_PKEY_decrypt_init(ctx) != 1 ||
-			EVP_PKEY_CTX_set_rsa_padding(ctx, pad) != 1 ||
-			EVP_PKEY_decrypt(ctx, out, &tmplen, data, data_len) != 1) {
+		    EVP_PKEY_CTX_set_rsa_padding(ctx, pad) != 1 ||
+		    EVP_PKEY_decrypt(ctx, out, &tmplen, data, data_len) != 1) {
 
 #ifdef DEBUG_SSL
 			print_openssl_error();
@@ -1221,8 +1220,8 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 
 	else {			/* sign */
 		if (EVP_PKEY_encrypt_init(ctx) != 1 ||
-			EVP_PKEY_CTX_set_rsa_padding(ctx, pad) != 1 ||
-			EVP_PKEY_encrypt(ctx, out, &tmplen, data, data_len) != 1) {
+		    EVP_PKEY_CTX_set_rsa_padding(ctx, pad) != 1 ||
+		    EVP_PKEY_encrypt(ctx, out, &tmplen, data, data_len) != 1) {
 
 #ifdef DEBUG_SSL
 			print_openssl_error();

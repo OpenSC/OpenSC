@@ -215,29 +215,29 @@ static const struct sc_asn1_entry c_asn1_req[C_ASN1_REQ_SIZE] = {
 };
 
 struct sc_object_id sc_hsm_public_key_oid = {
-    {1, 3, 6, 1, 4, 1, 24991, 4, 3, 1, -1}
+	{1, 3, 6, 1, 4, 1, 24991, 4, 3, 1, -1}
 };
 
 #define C_ASN1_SC_HSM_PKA_NEW_SIZE 5
 static const struct sc_asn1_entry c_asn1_sc_hsm_pka_new_format[C_ASN1_SC_HSM_PKA_NEW_SIZE] = {
-	{ "oid", SC_ASN1_OBJECT, SC_ASN1_TAG_UNIVERSAL | SC_ASN1_TAG_OBJECT, 0, NULL, NULL },
-	{ "dicaCVC", SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_APP | 1, 0, NULL, NULL },
-	{ "deviceCVC", SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_APP | 2, 0, NULL, NULL },
-	{ "publicKey", SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_APP | 3, 0, NULL, NULL },
-	{ NULL, 0, 0, 0, NULL, NULL }
+	{"oid", SC_ASN1_OBJECT, SC_ASN1_TAG_UNIVERSAL | SC_ASN1_TAG_OBJECT, 0, NULL, NULL},
+	{"dicaCVC", SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_APP | 1, 0, NULL, NULL},
+	{"deviceCVC", SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_APP | 2, 0, NULL, NULL},
+	{"publicKey", SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_APP | 3, 0, NULL, NULL},
+	{NULL, 0, 0, 0, NULL, NULL }
 };
 
 #define C_ASN1_SC_HSM_PKA_OLD_SIZE 4
 static const struct sc_asn1_entry c_asn1_sc_hsm_pka_old_format[C_ASN1_SC_HSM_PKA_OLD_SIZE] = {
-	{ "publicKey", SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_APP | 7, 0, NULL, NULL },
-	{ "deviceCVCert", SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_APP | 0x1F21, 0, NULL, NULL },
-	{ "dicaCVCert", SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_APP | 0x1F21, 0, NULL, NULL },
-	{ NULL, 0, 0, 0, NULL, NULL }
+	{"publicKey", SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_APP | 7, 0, NULL, NULL},
+	{"deviceCVCert", SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_APP | 0x1F21, 0, NULL, NULL},
+	{"dicaCVCert", SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_APP | 0x1F21, 0, NULL, NULL},
+	{NULL, 0, 0, 0, NULL, NULL }
 };
 
 
-static int read_file(sc_pkcs15_card_t * p15card, u8 fid[2],
-		u8 *efbin, size_t *len, int optional)
+static int
+read_file(sc_pkcs15_card_t *p15card, u8 fid[2], u8 *efbin, size_t *len, int optional)
 {
 	sc_path_t path;
 	int r;
@@ -281,7 +281,8 @@ static int read_file(sc_pkcs15_card_t * p15card, u8 fid[2],
 	return SC_SUCCESS;
 }
 
-static void fixup_cvc_printable_string_lengths(sc_cvc_t *cvc)
+static void
+fixup_cvc_printable_string_lengths(sc_cvc_t *cvc)
 {
 	/* SC_ASN1_PRINTABLESTRING adds 1 for the null-terminator */
 	if (cvc->chrLen > 0) {
@@ -305,15 +306,15 @@ static void fixup_cvc_printable_string_lengths(sc_cvc_t *cvc)
  * @param asn1_cvc_pubkey: unpopulated array matching c_asn1_cvc_pubkey
  * @param cvc: non NULL cvc struct
  */
-static int sc_pkcs15emu_sc_hsm_format_asn1_cvcert(
-		struct sc_asn1_entry *asn1_cvcert, size_t asn1_cvcert_len,
-		struct sc_asn1_entry *asn1_cvc_body, size_t asn1_cvc_body_len,
-		struct sc_asn1_entry *asn1_cvc_pubkey, size_t asn1_cvc_pubkey_len,
-		sc_cvc_t *cvc)
+static int
+sc_pkcs15emu_sc_hsm_format_asn1_cvcert(struct sc_asn1_entry *asn1_cvcert, size_t asn1_cvcert_len,
+                                       struct sc_asn1_entry *asn1_cvc_body, size_t asn1_cvc_body_len,
+                                       struct sc_asn1_entry *asn1_cvc_pubkey, size_t asn1_cvc_pubkey_len,
+                                       sc_cvc_t *cvc)
 {
 	if ((asn1_cvc_pubkey_len < C_ASN1_CVC_PUBKEY_SIZE) ||
-		(asn1_cvc_body_len < C_ASN1_CVC_BODY_SIZE) ||
-		(asn1_cvcert_len < C_ASN1_CVCERT_SIZE)) {
+	    (asn1_cvc_body_len < C_ASN1_CVC_BODY_SIZE) ||
+	    (asn1_cvcert_len < C_ASN1_CVCERT_SIZE)) {
 		return SC_ERROR_BUFFER_TOO_SMALL;
 	}
 
@@ -354,10 +355,9 @@ static int sc_pkcs15emu_sc_hsm_format_asn1_cvcert(
  * @param asn1_cvcert: already-initialized array matching c_asn1_cvcert
  *
  */
-static int sc_pkcs15emu_sc_hsm_format_asn1_req(
-		struct sc_asn1_entry *asn1_authreq, size_t asn1_authreq_len,
-		struct sc_asn1_entry *asn1_cvcert,
-		sc_cvc_t *cvc)
+static int
+sc_pkcs15emu_sc_hsm_format_asn1_req(struct sc_asn1_entry *asn1_authreq, size_t asn1_authreq_len,
+                                    struct sc_asn1_entry *asn1_cvcert, sc_cvc_t *cvc)
 {
 	if (asn1_authreq_len < C_ASN1_AUTHREQ_SIZE) {
 		return SC_ERROR_BUFFER_TOO_SMALL;
@@ -375,9 +375,8 @@ static int sc_pkcs15emu_sc_hsm_format_asn1_req(
 /*
  * Decode a card verifiable certificate as defined in TR-03110.
  */
-int sc_pkcs15emu_sc_hsm_decode_cvc(sc_pkcs15_card_t * p15card,
-	const u8 ** buf, size_t *buflen,
-	sc_cvc_t *cvc)
+int
+sc_pkcs15emu_sc_hsm_decode_cvc(sc_pkcs15_card_t *p15card, const u8 **buf, size_t *buflen, sc_cvc_t *cvc)
 {
 	sc_card_t *card = p15card->card;
 	struct sc_asn1_entry asn1_req[C_ASN1_REQ_SIZE];
@@ -386,7 +385,7 @@ int sc_pkcs15emu_sc_hsm_decode_cvc(sc_pkcs15_card_t * p15card,
 	struct sc_asn1_entry asn1_cvcert[C_ASN1_CVCERT_SIZE];
 	struct sc_asn1_entry asn1_cvc_body[C_ASN1_CVC_BODY_SIZE];
 	struct sc_asn1_entry asn1_cvc_pubkey[C_ASN1_CVC_PUBKEY_SIZE];
-	unsigned int cla,tag;
+	unsigned int cla, tag;
 	size_t taglen;
 	const u8 *tbuf;
 	int r;
@@ -395,23 +394,17 @@ int sc_pkcs15emu_sc_hsm_decode_cvc(sc_pkcs15_card_t * p15card,
 	sc_copy_asn1_entry(c_asn1_req, asn1_req);
 	sc_copy_asn1_entry(c_asn1_cvc, asn1_cvc);
 
-	r = sc_pkcs15emu_sc_hsm_format_asn1_cvcert(
-			asn1_cvcert, C_ASN1_CVCERT_SIZE,
-			asn1_cvc_body, C_ASN1_CVC_BODY_SIZE,
-			asn1_cvc_pubkey, C_ASN1_CVC_PUBKEY_SIZE,
-			cvc);
+	r = sc_pkcs15emu_sc_hsm_format_asn1_cvcert(asn1_cvcert, C_ASN1_CVCERT_SIZE,
+	                                           asn1_cvc_body, C_ASN1_CVC_BODY_SIZE,
+	                                           asn1_cvc_pubkey, C_ASN1_CVC_PUBKEY_SIZE, cvc);
 	LOG_TEST_RET(card->ctx, r, "sc_asn1_entry array too small");
 
 	sc_format_asn1_entry(asn1_cvc, asn1_cvcert, NULL, 0);
 
-	r = sc_pkcs15emu_sc_hsm_format_asn1_req(
-			asn1_authreq, C_ASN1_AUTHREQ_SIZE,
-			asn1_cvcert, cvc);
+	r = sc_pkcs15emu_sc_hsm_format_asn1_req(asn1_authreq, C_ASN1_AUTHREQ_SIZE, asn1_cvcert, cvc);
 	LOG_TEST_RET(card->ctx, r, "sc_asn1_entry array too small");
 
 	sc_format_asn1_entry(asn1_req, asn1_authreq, NULL, 0);
-
-/*	sc_asn1_print_tags(*buf, *buflen); */
 
 	tbuf = *buf;
 	r = sc_asn1_read_tag(&tbuf, *buflen, &cla, &tag, &taglen);
@@ -444,7 +437,6 @@ struct sc_asn1_sc_hsm_pka_callback_arg {
 	sc_cvc_pka_component_t *component;
 };
 
-
 struct sc_asn1_sc_hsm_pka_data {
 	struct sc_asn1_entry asn1_public_key_req[C_ASN1_REQ_SIZE];
 	struct sc_asn1_entry asn1_public_key_authreq[C_ASN1_AUTHREQ_SIZE];
@@ -470,9 +462,8 @@ struct sc_asn1_sc_hsm_pka_old_format {
 /*
  * Saves the current pointer then continues to decode
  */
-static int sc_asn1_sc_hsm_pka_set_ptr_callback(
-		sc_context_t *nctx, void *arg, const u8 *obj,
-		size_t objlen, int depth)
+static int
+sc_asn1_sc_hsm_pka_set_ptr_callback(sc_context_t *nctx, void *arg, const u8 *obj, size_t objlen, int depth)
 {
 	struct sc_asn1_sc_hsm_pka_callback_arg *carg = arg;
 
@@ -482,9 +473,8 @@ static int sc_asn1_sc_hsm_pka_set_ptr_callback(
 	return sc_asn1_decode(carg->ctx, carg->next_entry, obj, objlen, NULL, NULL);
 }
 
-static int sc_asn1_sc_hsm_pka_data_init(sc_context_t *ctx,
-	struct sc_asn1_sc_hsm_pka_data *data,
-	sc_cvc_pka_t *pka)
+static int
+sc_asn1_sc_hsm_pka_data_init(sc_context_t *ctx, struct sc_asn1_sc_hsm_pka_data *data, sc_cvc_pka_t *pka)
 {
 	int r;
 
@@ -494,16 +484,14 @@ static int sc_asn1_sc_hsm_pka_data_init(sc_context_t *ctx,
 
 	/* public key info is in an authenticatedrequest (0x67) */
 	r = sc_pkcs15emu_sc_hsm_format_asn1_cvcert(
-			data->asn1_public_key_cvc.asn1_cvcert, C_ASN1_CVCERT_SIZE,
-			data->asn1_public_key_cvc.asn1_cvc_body, C_ASN1_CVC_BODY_SIZE,
-			data->asn1_public_key_cvc.asn1_cvc_pubkey, C_ASN1_CVC_PUBKEY_SIZE,
-			&pka->public_key_req.cvc);
+		data->asn1_public_key_cvc.asn1_cvcert, C_ASN1_CVCERT_SIZE,
+		data->asn1_public_key_cvc.asn1_cvc_body, C_ASN1_CVC_BODY_SIZE,
+		data->asn1_public_key_cvc.asn1_cvc_pubkey, C_ASN1_CVC_PUBKEY_SIZE, &pka->public_key_req.cvc);
 	LOG_TEST_RET(ctx, r, "sc_asn1_entry too small");
 
-	r = sc_pkcs15emu_sc_hsm_format_asn1_req(
-			data->asn1_public_key_authreq, C_ASN1_AUTHREQ_SIZE,
-			data->asn1_public_key_cvc.asn1_cvcert,
-			&pka->public_key_req.cvc);
+	r = sc_pkcs15emu_sc_hsm_format_asn1_req(data->asn1_public_key_authreq, C_ASN1_AUTHREQ_SIZE,
+	                                        data->asn1_public_key_cvc.asn1_cvcert,
+	                                        &pka->public_key_req.cvc);
 	LOG_TEST_RET(ctx, r, "sc_asn1_entry too small");
 
 	/*
@@ -515,9 +503,8 @@ static int sc_asn1_sc_hsm_pka_data_init(sc_context_t *ctx,
 	data->asn1_public_key_req[0].type = SC_ASN1_CALLBACK;
 	data->public_key_req_arg.component = &pka->public_key_req;
 	data->public_key_req_arg.next_entry = data->asn1_public_key_authreq;
-	sc_format_asn1_entry(data->asn1_public_key_req,
-			sc_asn1_sc_hsm_pka_set_ptr_callback,
-			&data->public_key_req_arg, 0);
+	sc_format_asn1_entry(data->asn1_public_key_req, sc_asn1_sc_hsm_pka_set_ptr_callback,
+	                     &data->public_key_req_arg, 0);
 
 	/* device CVC is a certificate (0x7F21) */
 	r = sc_pkcs15emu_sc_hsm_format_asn1_cvcert(
@@ -536,16 +523,14 @@ static int sc_asn1_sc_hsm_pka_data_init(sc_context_t *ctx,
 	data->asn1_device_cvc.asn1_cvc[0].type = SC_ASN1_CALLBACK;
 	data->device_arg.component = &pka->device;
 	data->device_arg.next_entry = data->asn1_device_cvc.asn1_cvcert;
-	sc_format_asn1_entry(data->asn1_device_cvc.asn1_cvc,
-			sc_asn1_sc_hsm_pka_set_ptr_callback,
-			&data->device_arg, 0);
+	sc_format_asn1_entry(data->asn1_device_cvc.asn1_cvc, sc_asn1_sc_hsm_pka_set_ptr_callback,
+	                     &data->device_arg, 0);
 
 	/* device issuer CA CVC is a certificate (0x7F21) */
-	r = sc_pkcs15emu_sc_hsm_format_asn1_cvcert(
-			data->asn1_dica_cvc.asn1_cvcert, C_ASN1_CVCERT_SIZE,
-			data->asn1_dica_cvc.asn1_cvc_body, C_ASN1_CVC_BODY_SIZE,
-			data->asn1_dica_cvc.asn1_cvc_pubkey, C_ASN1_CVC_PUBKEY_SIZE,
-			&pka->dica.cvc);
+	r = sc_pkcs15emu_sc_hsm_format_asn1_cvcert(data->asn1_dica_cvc.asn1_cvcert, C_ASN1_CVCERT_SIZE,
+	                                           data->asn1_dica_cvc.asn1_cvc_body, C_ASN1_CVC_BODY_SIZE,
+	                                           data->asn1_dica_cvc.asn1_cvc_pubkey,
+	                                           C_ASN1_CVC_PUBKEY_SIZE, &pka->dica.cvc);
 	LOG_TEST_RET(ctx, r, "sc_asn1_entry too small");
 
 	/*
@@ -557,9 +542,8 @@ static int sc_asn1_sc_hsm_pka_data_init(sc_context_t *ctx,
 	data->asn1_dica_cvc.asn1_cvc[0].type = SC_ASN1_CALLBACK;
 	data->dica_arg.component = &pka->dica;
 	data->dica_arg.next_entry = data->asn1_dica_cvc.asn1_cvcert;
-	sc_format_asn1_entry(data->asn1_dica_cvc.asn1_cvc,
-			sc_asn1_sc_hsm_pka_set_ptr_callback,
-			&data->dica_arg, 0);
+	sc_format_asn1_entry(data->asn1_dica_cvc.asn1_cvc, sc_asn1_sc_hsm_pka_set_ptr_callback,
+	                     &data->dica_arg, 0);
 	return SC_SUCCESS;
 }
 
@@ -574,9 +558,8 @@ static int sc_asn1_sc_hsm_pka_data_init(sc_context_t *ctx,
  *	 device CVC (0x7F21)
  *	 device issuer CA CVC (0x7F21)
  */
-static int decode_pka_old_format(sc_pkcs15_card_t *p15card,
-	const u8 **buf, size_t *buflen,
-	sc_cvc_pka_t *pka)
+static int
+decode_pka_old_format(sc_pkcs15_card_t *p15card, const u8 **buf, size_t *buflen, sc_cvc_pka_t *pka)
 {
 	int r;
 	sc_card_t *card;
@@ -598,10 +581,8 @@ static int decode_pka_old_format(sc_pkcs15_card_t *p15card,
 	format->seq[1] = format->data.asn1_device_cvc.asn1_cvc[0];
 	format->seq[2] = format->data.asn1_dica_cvc.asn1_cvc[0];
 
-	r = sc_asn1_decode(p15card->card->ctx, format->seq, *buf, *buflen,
-			buf, buflen);
-	LOG_TEST_GOTO_ERR(card->ctx, r,
-		"Could not decode ASN.1 for public key file's old format");
+	r = sc_asn1_decode(p15card->card->ctx, format->seq, *buf, *buflen, buf, buflen);
+	LOG_TEST_GOTO_ERR(card->ctx, r, "Could not decode ASN.1 for public key file's old format");
 
 	r = SC_SUCCESS;
 	/* fall-through */
@@ -631,9 +612,8 @@ err:
  *   Application 3 (0x63)
  *      authenticatedrequest for public key details (0x67)
  */
-static int decode_pka_new_format(sc_pkcs15_card_t *p15card,
-	const u8 **buf, size_t *buflen,
-	sc_cvc_pka_t *pka)
+static int
+decode_pka_new_format(sc_pkcs15_card_t *p15card, const u8 **buf, size_t *buflen, sc_cvc_pka_t *pka)
 {
 	int r;
 	sc_card_t *card;
@@ -652,22 +632,16 @@ static int decode_pka_new_format(sc_pkcs15_card_t *p15card,
 
 	sc_copy_asn1_entry(c_asn1_sc_hsm_pka_new_format, format->seq);
 	sc_format_asn1_entry(&format->seq[0], &format->oid, NULL, 0);
-	sc_format_asn1_entry(&format->seq[1],
-			format->data.asn1_dica_cvc.asn1_cvc, NULL, 0);
-	sc_format_asn1_entry(&format->seq[2],
-			format->data.asn1_device_cvc.asn1_cvc, NULL, 0);
-	sc_format_asn1_entry(&format->seq[3],
-			format->data.asn1_public_key_req, NULL, 0);
+	sc_format_asn1_entry(&format->seq[1], format->data.asn1_dica_cvc.asn1_cvc, NULL, 0);
+	sc_format_asn1_entry(&format->seq[2], format->data.asn1_device_cvc.asn1_cvc, NULL, 0);
+	sc_format_asn1_entry(&format->seq[3], format->data.asn1_public_key_req, NULL, 0);
 
-	r = sc_asn1_decode(p15card->card->ctx, format->seq, *buf, *buflen,
-			buf, buflen);
-	LOG_TEST_GOTO_ERR(card->ctx, r,
-		"Could not decode ASN.1 for public key file's new format");
+	r = sc_asn1_decode(p15card->card->ctx, format->seq, *buf, *buflen, buf, buflen);
+	LOG_TEST_GOTO_ERR(card->ctx, r, "Could not decode ASN.1 for public key file's new format");
 
 	if (sc_compare_oid(&format->oid, &sc_hsm_public_key_oid) == 0) {
 		/* sc_dump_oid uses static memory */
-		sc_log(p15card->card->ctx, "OID %s did not match expected value",
-			   sc_dump_oid(&format->oid));
+		sc_log(p15card->card->ctx, "OID %s did not match expected value", sc_dump_oid(&format->oid));
 		r = -1;
 		goto err;
 	}
@@ -684,9 +658,8 @@ err:
 /*
  * @param pka: will be overwritten, should be uninitialized or memset to 0
  */
-int sc_pkcs15emu_sc_hsm_decode_pka(sc_pkcs15_card_t *p15card,
-	const u8 **buf, size_t *buflen,
-	sc_cvc_pka_t *pka)
+int
+sc_pkcs15emu_sc_hsm_decode_pka(sc_pkcs15_card_t *p15card, const u8 **buf, size_t *buflen, sc_cvc_pka_t *pka)
 {
 	int r;
 	const u8 *curr;
@@ -704,14 +677,12 @@ int sc_pkcs15emu_sc_hsm_decode_pka(sc_pkcs15_card_t *p15card,
 
 	/* first tag should be sequence */
 	r = sc_asn1_read_tag(&curr, currlen, &cla, &tag, &taglen);
-	LOG_TEST_GOTO_ERR(card->ctx, r,
-			"Could not decode first sequence tag for public key file");
+	LOG_TEST_GOTO_ERR(card->ctx, r, "Could not decode first sequence tag for public key file");
 	currlen = *buflen - (curr - *buf);
 
 	if ((cla != (SC_ASN1_TAG_UNIVERSAL|SC_ASN1_TAG_CONSTRUCTED)) ||
-			(tag != SC_ASN1_TAG_SEQUENCE)) {
-		sc_log(card->ctx,
-			   "Expected sequence tag, but got tag %u class 0x%x", tag, cla);
+	    (tag != SC_ASN1_TAG_SEQUENCE)) {
+		sc_log(card->ctx, "Expected sequence tag, but got tag %u class 0x%x", tag, cla);
 		r = SC_ERROR_INVALID_ASN1_OBJECT;
 		goto err;
 	}
@@ -719,27 +690,22 @@ int sc_pkcs15emu_sc_hsm_decode_pka(sc_pkcs15_card_t *p15card,
 	/* next tag is either OID (new format) or 0x67 (old format) */
 	peek = curr;
 	r = sc_asn1_read_tag(&peek, currlen, &cla, &tag, &taglen);
-	LOG_TEST_GOTO_ERR(card->ctx, r,
-			"Could not decode first sequence element tag for public key file");
+	LOG_TEST_GOTO_ERR(card->ctx, r, "Could not decode first sequence element tag for public key file");
 
 	if (tag == SC_ASN1_TAG_OBJECT) {
 		/* OID means it's the new format */
 		r = decode_pka_new_format(p15card, &curr, &currlen, pka);
-		LOG_TEST_GOTO_ERR(card->ctx, r,
-			"Could not decode public key file new format");
+		LOG_TEST_GOTO_ERR(card->ctx, r, "Could not decode public key file new format");
 	} else if ((cla == (SC_ASN1_TAG_APPLICATION|SC_ASN1_TAG_CONSTRUCTED)) &&
-				(tag == 7)) {
+	           (tag == 7)) {
 		/*
 		 * if it's authenticatedrequest (Application 7 / 0x67), then attempt
 		 * to parse the old format
 		 */
 		r = decode_pka_old_format(p15card, &curr, &currlen, pka);
-		LOG_TEST_GOTO_ERR(card->ctx, r,
-			"Could not decode authenticatedrequest for public key file");
+		LOG_TEST_GOTO_ERR(card->ctx, r, "Could not decode authenticatedrequest for public key file");
 	} else {
-		sc_log(card->ctx,
-				"Unexpected tag %u class 0x%x for first element of sequence",
-				tag, cla);
+		sc_log(card->ctx, "Unexpected tag %u class 0x%x for first element of sequence", tag, cla);
 		r = SC_ERROR_INVALID_ASN1_OBJECT;
 		goto err;
 	}
@@ -761,9 +727,8 @@ err:
 /*
  * Encode a card verifiable certificate as defined in TR-03110.
  */
-int sc_pkcs15emu_sc_hsm_encode_cvc(sc_pkcs15_card_t * p15card,
-		sc_cvc_t *cvc,
-		u8 ** buf, size_t *buflen)
+int
+sc_pkcs15emu_sc_hsm_encode_cvc(sc_pkcs15_card_t *p15card, sc_cvc_t *cvc, u8 **buf, size_t *buflen)
 {
 	sc_card_t *card = p15card->card;
 	struct sc_asn1_entry asn1_cvc[C_ASN1_CVC_SIZE];
@@ -816,9 +781,8 @@ int sc_pkcs15emu_sc_hsm_encode_cvc(sc_pkcs15_card_t * p15card,
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
-
-
-int sc_pkcs15emu_sc_hsm_get_curve(struct ec_curve **curve, u8 *oid, size_t oidlen)
+int
+sc_pkcs15emu_sc_hsm_get_curve(struct ec_curve **curve, u8 *oid, size_t oidlen)
 {
 	int i;
 
@@ -831,9 +795,8 @@ int sc_pkcs15emu_sc_hsm_get_curve(struct ec_curve **curve, u8 *oid, size_t oidle
 	return SC_ERROR_INVALID_DATA;
 }
 
-
-
-int sc_pkcs15emu_sc_hsm_get_curve_oid(sc_cvc_t *cvc, const struct sc_lv_data **oid)
+int
+sc_pkcs15emu_sc_hsm_get_curve_oid(sc_cvc_t *cvc, const struct sc_lv_data **oid)
 {
 	int i;
 
@@ -846,9 +809,8 @@ int sc_pkcs15emu_sc_hsm_get_curve_oid(sc_cvc_t *cvc, const struct sc_lv_data **o
 	return SC_ERROR_INVALID_DATA;
 }
 
-
-
-static int sc_pkcs15emu_sc_hsm_get_rsa_public_key(struct sc_context *ctx, sc_cvc_t *cvc, struct sc_pkcs15_pubkey *pubkey)
+static int
+sc_pkcs15emu_sc_hsm_get_rsa_public_key(struct sc_context *ctx, sc_cvc_t *cvc, struct sc_pkcs15_pubkey *pubkey)
 {
 	pubkey->algorithm = SC_ALGORITHM_RSA;
 
@@ -875,9 +837,8 @@ static int sc_pkcs15emu_sc_hsm_get_rsa_public_key(struct sc_context *ctx, sc_cvc
 	return SC_SUCCESS;
 }
 
-
-
-static int sc_pkcs15emu_sc_hsm_get_ec_public_key(struct sc_context *ctx, sc_cvc_t *cvc, struct sc_pkcs15_pubkey *pubkey)
+static int
+sc_pkcs15emu_sc_hsm_get_ec_public_key(struct sc_context *ctx, sc_cvc_t *cvc, struct sc_pkcs15_pubkey *pubkey)
 {
 	struct sc_ec_parameters *ecp;
 	const struct sc_lv_data *oid;
@@ -942,9 +903,8 @@ static int sc_pkcs15emu_sc_hsm_get_ec_public_key(struct sc_context *ctx, sc_cvc_
 	return SC_SUCCESS;
 }
 
-
-
-int sc_pkcs15emu_sc_hsm_get_public_key(struct sc_context *ctx, sc_cvc_t *cvc, struct sc_pkcs15_pubkey *pubkey)
+int
+sc_pkcs15emu_sc_hsm_get_public_key(struct sc_context *ctx, sc_cvc_t *cvc, struct sc_pkcs15_pubkey *pubkey)
 {
 	if (cvc->publicPoint && cvc->publicPointlen) {
 		return sc_pkcs15emu_sc_hsm_get_ec_public_key(ctx, cvc, pubkey);
@@ -953,9 +913,8 @@ int sc_pkcs15emu_sc_hsm_get_public_key(struct sc_context *ctx, sc_cvc_t *cvc, st
 	}
 }
 
-
-
-void sc_pkcs15emu_sc_hsm_free_cvc(sc_cvc_t *cvc)
+void
+sc_pkcs15emu_sc_hsm_free_cvc(sc_cvc_t *cvc)
 {
 	if (cvc->outerSignature) {
 		free(cvc->outerSignature);
@@ -995,7 +954,8 @@ void sc_pkcs15emu_sc_hsm_free_cvc(sc_cvc_t *cvc)
 	}
 }
 
-void sc_pkcs15emu_sc_hsm_free_cvc_pka(sc_cvc_pka_t *pka)
+void
+sc_pkcs15emu_sc_hsm_free_cvc_pka(sc_cvc_pka_t *pka)
 {
 	sc_pkcs15emu_sc_hsm_free_cvc(&pka->public_key_req.cvc);
 	sc_pkcs15emu_sc_hsm_free_cvc(&pka->device.cvc);
@@ -1003,7 +963,9 @@ void sc_pkcs15emu_sc_hsm_free_cvc_pka(sc_cvc_pka_t *pka)
 	memset(pka, 0, sizeof(*pka));
 }
 
-static int sc_pkcs15emu_sc_hsm_add_pubkey(sc_pkcs15_card_t *p15card, u8 *efbin, size_t len, sc_pkcs15_prkey_info_t *key_info, char *label)
+static int
+sc_pkcs15emu_sc_hsm_add_pubkey(sc_pkcs15_card_t *p15card, u8 *efbin, size_t len,
+                               sc_pkcs15_prkey_info_t *key_info, char *label)
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	sc_card_t *card = p15card->card;
@@ -1057,13 +1019,12 @@ static int sc_pkcs15emu_sc_hsm_add_pubkey(sc_pkcs15_card_t *p15card, u8 *efbin, 
 	return SC_SUCCESS;
 }
 
-
-
 /*
  * Add a key and the key description in PKCS#15 format to the framework
  */
-static int sc_pkcs15emu_sc_hsm_add_prkd(sc_pkcs15_card_t * p15card, u8 keyid) {
-
+static int
+sc_pkcs15emu_sc_hsm_add_prkd(sc_pkcs15_card_t *p15card, u8 keyid)
+{
 	sc_card_t *card = p15card->card;
 	sc_pkcs15_cert_info_t cert_info;
 	sc_pkcs15_object_t cert_obj;
@@ -1154,13 +1115,12 @@ static int sc_pkcs15emu_sc_hsm_add_prkd(sc_pkcs15_card_t * p15card, u8 keyid) {
 	return SC_SUCCESS;
 }
 
-
-
 /*
  * Add a data object and description in PKCS#15 format to the framework
  */
-static int sc_pkcs15emu_sc_hsm_add_dcod(sc_pkcs15_card_t * p15card, u8 id) {
-
+static int
+sc_pkcs15emu_sc_hsm_add_dcod(sc_pkcs15_card_t *p15card, u8 id)
+{
 	sc_card_t *card = p15card->card;
 	sc_pkcs15_data_info_t *data_info;
 	sc_pkcs15_object_t data_obj;
@@ -1193,13 +1153,12 @@ static int sc_pkcs15emu_sc_hsm_add_dcod(sc_pkcs15_card_t * p15card, u8 id) {
 	return SC_SUCCESS;
 }
 
-
-
 /*
  * Add a unrelated certificate object and description in PKCS#15 format to the framework
  */
-static int sc_pkcs15emu_sc_hsm_add_cd(sc_pkcs15_card_t * p15card, u8 id) {
-
+static int
+sc_pkcs15emu_sc_hsm_add_cd(sc_pkcs15_card_t *p15card, u8 id)
+{
 	sc_card_t *card = p15card->card;
 	sc_pkcs15_cert_info_t *cert_info;
 	sc_pkcs15_object_t obj;
@@ -1234,9 +1193,8 @@ static int sc_pkcs15emu_sc_hsm_add_cd(sc_pkcs15_card_t * p15card, u8 id) {
 	return SC_SUCCESS;
 }
 
-
-
-static int sc_pkcs15emu_sc_hsm_read_tokeninfo (sc_pkcs15_card_t * p15card)
+static int
+sc_pkcs15emu_sc_hsm_read_tokeninfo(sc_pkcs15_card_t *p15card)
 {
 	sc_card_t *card = p15card->card;
 	int r;
@@ -1256,13 +1214,12 @@ static int sc_pkcs15emu_sc_hsm_read_tokeninfo (sc_pkcs15_card_t * p15card)
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
-
-
 /*
  * Initialize PKCS#15 emulation with user PIN, private keys, certificate and data objects
  *
  */
-static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
+static int
+sc_pkcs15emu_sc_hsm_init(sc_pkcs15_card_t *p15card)
 {
 	sc_card_t *card = p15card->card;
 	sc_hsm_private_data_t *priv = (sc_hsm_private_data_t *) card->drv_data;
@@ -1441,7 +1398,6 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 		LOG_FUNC_RETURN(card->ctx, r);
 	}
 
-
 	if (card->type == SC_CARD_TYPE_SC_HSM_SOC
 			|| card->type == SC_CARD_TYPE_SC_HSM_GOID) {
 		/* SC-HSM of this type always has a PIN-Pad */
@@ -1463,9 +1419,9 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 		r = sc_pin_cmd(card, &pindata, NULL);
 	}
 
-	if ((r != SC_ERROR_DATA_OBJECT_NOT_FOUND) && (r != SC_ERROR_INCORRECT_PARAMETERS) && (r != SC_ERROR_REF_DATA_NOT_USABLE))
+	if ((r != SC_ERROR_DATA_OBJECT_NOT_FOUND) && (r != SC_ERROR_INCORRECT_PARAMETERS) &&
+	    (r != SC_ERROR_REF_DATA_NOT_USABLE))
 		card->caps |= SC_CARD_CAP_PROTECTED_AUTHENTICATION_PATH;
-
 
 	filelistlength = sc_list_files(card, filelist, sizeof(filelist));
 	if (filelistlength < 0)
@@ -1492,14 +1448,12 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
-
-
-int sc_pkcs15emu_sc_hsm_init_ex(sc_pkcs15_card_t *p15card,
-				struct sc_aid *aid)
+int
+sc_pkcs15emu_sc_hsm_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
 {
-	if (p15card->card->type != SC_CARD_TYPE_SC_HSM
-			&& p15card->card->type != SC_CARD_TYPE_SC_HSM_SOC
-			&& p15card->card->type != SC_CARD_TYPE_SC_HSM_GOID) {
+	if (p15card->card->type != SC_CARD_TYPE_SC_HSM &&
+	    p15card->card->type != SC_CARD_TYPE_SC_HSM_SOC &&
+	    p15card->card->type != SC_CARD_TYPE_SC_HSM_GOID) {
 		return SC_ERROR_WRONG_CARD;
 	}
 	return sc_pkcs15emu_sc_hsm_init(p15card);

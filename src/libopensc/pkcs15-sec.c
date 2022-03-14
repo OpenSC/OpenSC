@@ -277,10 +277,9 @@ static int format_senv(struct sc_pkcs15_card *p15card,
 	return SC_SUCCESS;
 }
 
-int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
-		const struct sc_pkcs15_object *obj,
-		unsigned long flags,
-		const u8 * in, size_t inlen, u8 *out, size_t outlen, void *pMechanism)
+int
+sc_pkcs15_decipher(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_object *obj, unsigned long flags,
+                   const u8 *in, size_t inlen, u8 *out, size_t outlen, void *pMechanism)
 {
 	sc_context_t *ctx = p15card->card->ctx;
 	int r;
@@ -313,15 +312,14 @@ int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 		LOG_TEST_RET(ctx, r, "Invalid PKCS#1 padding");
 	}
 #ifdef ENABLE_OPENSSL
-	if (pad_flags & SC_ALGORITHM_RSA_PAD_OAEP)
-	{
+	if (pad_flags & SC_ALGORITHM_RSA_PAD_OAEP) {
 		size_t s = r;
 		uint8_t *param = NULL;
 		size_t paramlen = 0;
 		if (pMechanism != NULL) {
 			CK_MECHANISM *mech = (CK_MECHANISM *)pMechanism;
 			if (mech->pParameter && sizeof(CK_RSA_PKCS_OAEP_PARAMS) == mech->ulParameterLen) {
-				CK_RSA_PKCS_OAEP_PARAMS * oaep_params = mech->pParameter;
+				CK_RSA_PKCS_OAEP_PARAMS *oaep_params = mech->pParameter;
 				if (oaep_params->source == CKZ_DATA_SPECIFIED) {
 					param = oaep_params->pSourceData;
 					paramlen = (size_t)oaep_params->ulSourceDataLen;
@@ -590,10 +588,10 @@ int sc_pkcs15_wrap(struct sc_pkcs15_card *p15card,
 #define USAGE_ANY_DECIPHER      (SC_PKCS15_PRKEY_USAGE_DECRYPT|\
                                  SC_PKCS15_PRKEY_USAGE_UNWRAP)
 
-int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
-				const struct sc_pkcs15_object *obj,
-				unsigned long flags, const u8 *in, size_t inlen,
-				u8 *out, size_t outlen, void *pMechanism)
+int
+sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_object *obj,
+                            unsigned long flags, const u8 *in, size_t inlen, u8 *out, size_t outlen,
+                            void *pMechanism)
 {
 	sc_context_t *ctx = p15card->card->ctx;
 	int r;
@@ -668,10 +666,12 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 				goto err;
 			}
 			if (modlen > tmplen)
-				LOG_TEST_GOTO_ERR(ctx, SC_ERROR_NOT_ALLOWED, "Buffer too small, needs recompile!");
+				LOG_TEST_GOTO_ERR(ctx, SC_ERROR_NOT_ALLOWED,
+				                  "Buffer too small, needs recompile!");
 
 			/* XXX Assuming RSA key here */
-			r = sc_pkcs1_encode(ctx, flags, in, inlen, buf, &tmplen, prkey->modulus_length, pMechanism);
+			r = sc_pkcs1_encode(ctx, flags, in, inlen, buf, &tmplen, prkey->modulus_length,
+			                    pMechanism);
 
 			/* no padding needed - already done */
 			flags &= ~SC_ALGORITHM_RSA_PADS;
@@ -709,7 +709,6 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 		}
 	}
 
-
 	/* ECDSA software hash has already been done, or is not needed, or card will do hash */
 	/* if card can not do the hash, will use SC_ALGORITHM_ECDSA_RAW */
 	if (obj->type == SC_PKCS15_TYPE_PRKEY_EC) {
@@ -736,8 +735,8 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 		size_t tmplen = buflen;
 
 		/* XXX Assuming RSA key here */
-		r = sc_pkcs1_encode(ctx, pad_flags, tmp, inlen, tmp, &tmplen,
-		    prkey->modulus_length, pMechanism);
+		r = sc_pkcs1_encode(ctx, pad_flags, tmp, inlen, tmp, &tmplen, prkey->modulus_length,
+		                    pMechanism);
 		LOG_TEST_GOTO_ERR(ctx, r, "Unable to add padding");
 		inlen = tmplen;
 	}
@@ -761,10 +760,9 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	 * But if card is going to do the hash, pass in all the data
 	 */
 	else if (senv.algorithm == SC_ALGORITHM_EC &&
-			(senv.algorithm_flags & SC_ALGORITHM_ECDSA_HASHES) == 0) {
+	         (senv.algorithm_flags & SC_ALGORITHM_ECDSA_HASHES) == 0) {
 		inlen = MIN(inlen, (prkey->field_length+7)/8);
 	}
-
 
 	r = use_key(p15card, obj, &senv, sc_compute_signature, tmp, inlen,
 			out, outlen);

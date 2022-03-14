@@ -695,7 +695,7 @@ static int dnie_get_root_ca_pubkey(sc_card_t * card, EVP_PKEY ** root_ca_key)
 	EVP_PKEY_CTX *ctx = NULL;
 	OSSL_PARAM_BLD *bld = NULL;
 	OSSL_PARAM *params = NULL;
-	
+
 	ctx = EVP_PKEY_CTX_new_from_name(NULL, "RSA", NULL);
 	if (!ctx) {
 #endif
@@ -735,9 +735,9 @@ static int dnie_get_root_ca_pubkey(sc_card_t * card, EVP_PKEY ** root_ca_key)
 		RSA_free(root_ca_rsa);
 #else
 	if (!(bld = OSSL_PARAM_BLD_new()) ||
-		OSSL_PARAM_BLD_push_BN(bld, OSSL_PKEY_PARAM_RSA_N, root_ca_rsa_n) != 1 ||
-		OSSL_PARAM_BLD_push_BN(bld, OSSL_PKEY_PARAM_RSA_E, root_ca_rsa_e) != 1 ||
-		!(params = OSSL_PARAM_BLD_to_param(bld))) {
+	    OSSL_PARAM_BLD_push_BN(bld, OSSL_PKEY_PARAM_RSA_N, root_ca_rsa_n) != 1 ||
+	    OSSL_PARAM_BLD_push_BN(bld, OSSL_PKEY_PARAM_RSA_E, root_ca_rsa_e) != 1 ||
+	    !(params = OSSL_PARAM_BLD_to_param(bld))) {
 		OSSL_PARAM_BLD_free(bld);
 		OSSL_PARAM_free(params);
 		EVP_PKEY_CTX_free(ctx);
@@ -747,7 +747,7 @@ static int dnie_get_root_ca_pubkey(sc_card_t * card, EVP_PKEY ** root_ca_key)
 	OSSL_PARAM_BLD_free(bld);
 
 	if (EVP_PKEY_fromdata_init(ctx) != 1 ||
-		EVP_PKEY_fromdata(ctx, root_ca_key, EVP_PKEY_PUBLIC_KEY, params) != 1) {
+	    EVP_PKEY_fromdata(ctx, root_ca_key, EVP_PKEY_PUBLIC_KEY, params) != 1) {
 		EVP_PKEY_CTX_free(ctx);
 		OSSL_PARAM_free(params);
 #endif
@@ -897,7 +897,7 @@ static int dnie_get_privkey(sc_card_t * card, EVP_PKEY ** ifd_privkey,
 	LOG_FUNC_CALLED(card->ctx);
 	ctx = EVP_PKEY_CTX_new_from_name(NULL, "RSA", NULL);
 
-	if (!ctx) { 
+	if (!ctx) {
 #endif
 		sc_log(card->ctx, "Cannot create data for IFD private key");
 		return SC_ERROR_OUT_OF_MEMORY;
@@ -924,10 +924,10 @@ static int dnie_get_privkey(sc_card_t * card, EVP_PKEY ** ifd_privkey,
 		RSA_free(ifd_rsa);
 #else
 	if (!(bld = OSSL_PARAM_BLD_new()) ||
-		OSSL_PARAM_BLD_push_BN(bld, OSSL_PKEY_PARAM_RSA_N, ifd_rsa_n) != 1 ||
-		OSSL_PARAM_BLD_push_BN(bld, OSSL_PKEY_PARAM_RSA_E, ifd_rsa_e) != 1 ||
-		OSSL_PARAM_BLD_push_BN(bld, OSSL_PKEY_PARAM_RSA_D, ifd_rsa_d) != 1 ||
-		!(params = OSSL_PARAM_BLD_to_param(bld))) {
+	    OSSL_PARAM_BLD_push_BN(bld, OSSL_PKEY_PARAM_RSA_N, ifd_rsa_n) != 1 ||
+	    OSSL_PARAM_BLD_push_BN(bld, OSSL_PKEY_PARAM_RSA_E, ifd_rsa_e) != 1 ||
+	    OSSL_PARAM_BLD_push_BN(bld, OSSL_PKEY_PARAM_RSA_D, ifd_rsa_d) != 1 ||
+	    !(params = OSSL_PARAM_BLD_to_param(bld))) {
 		OSSL_PARAM_BLD_free(bld);
 		OSSL_PARAM_free(params);
 		EVP_PKEY_CTX_free(ctx);
@@ -940,7 +940,7 @@ static int dnie_get_privkey(sc_card_t * card, EVP_PKEY ** ifd_privkey,
 	OSSL_PARAM_BLD_free(bld);
 
 	if (EVP_PKEY_fromdata_init(ctx) != 1 ||
-		EVP_PKEY_fromdata(ctx, ifd_privkey, EVP_PKEY_KEYPAIR, params) != 1) {
+	    EVP_PKEY_fromdata(ctx, ifd_privkey, EVP_PKEY_KEYPAIR, params) != 1) {
 		EVP_PKEY_CTX_free(ctx);
 #endif
 		BN_free(ifd_rsa_n);

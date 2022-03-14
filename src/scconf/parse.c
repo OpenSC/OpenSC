@@ -33,11 +33,12 @@
 #include "internal.h"
 #include "scconf.h"
 
-#define STATE_NAME	0x01
-#define STATE_VALUE	0x02
-#define STATE_SET	0x10
+#define STATE_NAME  0x01
+#define STATE_VALUE 0x02
+#define STATE_SET   0x10
 
-static scconf_item *scconf_get_last_item(scconf_block *root)
+static scconf_item *
+scconf_get_last_item(scconf_block *root)
 {
 	scconf_block *block = root;
 	scconf_item *item;
@@ -50,7 +51,8 @@ static scconf_item *scconf_get_last_item(scconf_block *root)
 	return block->items;
 }
 
-static void scconf_parse_error(scconf_parser * parser, const char *error)
+static void
+scconf_parse_error(scconf_parser *parser, const char *error)
 {
 	/* FIXME: save the error somewhere */
 	parser->error = 1;
@@ -58,8 +60,8 @@ static void scconf_parse_error(scconf_parser * parser, const char *error)
 	snprintf(parser->emesg, sizeof(parser->emesg), "Line %d: %s\n", parser->line, error);
 }
 
-static void scconf_parse_error_not_expect(scconf_parser * parser,
-					  const char *token)
+static void
+scconf_parse_error_not_expect(scconf_parser *parser, const char *token)
 {
 	/* FIXME: save the error somewhere */
 	parser->error = 1;
@@ -67,31 +69,32 @@ static void scconf_parse_error_not_expect(scconf_parser * parser,
 	snprintf(parser->emesg, sizeof(parser->emesg), "Line %d: not expecting '%s'\n", parser->line, token);
 }
 
-static void scconf_parse_warning_expect(scconf_parser * parser, const char *token)
+static void
+scconf_parse_warning_expect(scconf_parser *parser, const char *token)
 {
 	/* FIXME: save the warnings somewhere */
 	parser->warnings = 1;
 
-	snprintf(parser->emesg, sizeof(parser->emesg),
-		"Line %d: missing '%s', ignoring\n",
-		parser->line, token);
+	snprintf(parser->emesg, sizeof(parser->emesg), "Line %d: missing '%s', ignoring\n", parser->line,
+	         token);
 }
 
-static scconf_item *scconf_item_find(scconf_parser * parser)
+static scconf_item *
+scconf_item_find(scconf_parser *parser)
 {
 	scconf_item *item;
 
 	for (item = parser->block->items; item; item = item->next) {
-		if (item && item->type == SCCONF_ITEM_TYPE_VALUE
-			   	&& item->key && parser->key
-			   	&& strcasecmp(item->key, parser->key) == 0) {
+		if (item && item->type == SCCONF_ITEM_TYPE_VALUE && item->key && parser->key &&
+		    strcasecmp(item->key, parser->key) == 0) {
 			return item;
 		}
 	}
 	return item;
 }
 
-static scconf_item *scconf_item_add_internal(scconf_parser * parser, int type)
+static scconf_item *
+scconf_item_add_internal(scconf_parser *parser, int type)
 {
 	scconf_item *item;
 
@@ -123,7 +126,9 @@ static scconf_item *scconf_item_add_internal(scconf_parser * parser, int type)
 	return item;
 }
 
-scconf_item *scconf_item_add(scconf_context * config, scconf_block * block, scconf_item * item, int type, const char *key, const void *data)
+scconf_item *
+scconf_item_add(scconf_context *config, scconf_block *block, scconf_item *item, int type, const char *key,
+                const void *data)
 {
 	scconf_parser parser;
 	scconf_block *dst = NULL;
@@ -142,24 +147,24 @@ scconf_item *scconf_item_add(scconf_context * config, scconf_block * block, scco
 	parser.current_item = item;
 
 	if (type == SCCONF_ITEM_TYPE_BLOCK) {
-		scconf_block_copy((const scconf_block *) data, &dst);
+		scconf_block_copy((const scconf_block *)data, &dst);
 		scconf_list_copy(dst->name, &parser.name);
 	}
 	if (scconf_item_add_internal(&parser, type)) {
 		switch (parser.current_item->type) {
-			case SCCONF_ITEM_TYPE_COMMENT:
-				parser.current_item->value.comment = strdup((const char *) data);
-				break;
-			case SCCONF_ITEM_TYPE_BLOCK:
-				if (!dst)
-					return NULL;
-				dst->parent = parser.block;
-				parser.current_item->value.block = dst;
-				scconf_list_destroy(parser.name);
-				break;
-			case SCCONF_ITEM_TYPE_VALUE:
-				scconf_list_copy((const scconf_list *) data, &parser.current_item->value.list);
-				break;
+		case SCCONF_ITEM_TYPE_COMMENT:
+			parser.current_item->value.comment = strdup((const char *)data);
+			break;
+		case SCCONF_ITEM_TYPE_BLOCK:
+			if (!dst)
+				return NULL;
+			dst->parent = parser.block;
+			parser.current_item->value.block = dst;
+			scconf_list_destroy(parser.name);
+			break;
+		case SCCONF_ITEM_TYPE_VALUE:
+			scconf_list_copy((const scconf_list *)data, &parser.current_item->value.list);
+			break;
 		}
 	} else {
 		/* FIXME is it an error if item is NULL? */
@@ -169,7 +174,8 @@ scconf_item *scconf_item_add(scconf_context * config, scconf_block * block, scco
 	return parser.current_item;
 }
 
-static void scconf_block_add_internal(scconf_parser * parser)
+static void
+scconf_block_add_internal(scconf_parser *parser)
 {
 	scconf_block *block;
 	scconf_item *item;
@@ -196,7 +202,8 @@ static void scconf_block_add_internal(scconf_parser * parser)
 	parser->last_item = NULL;
 }
 
-scconf_block *scconf_block_add(scconf_context * config, scconf_block * block, const char *key, const scconf_list *name)
+scconf_block *
+scconf_block_add(scconf_context *config, scconf_block *block, const char *key, const scconf_list *name)
 {
 	scconf_parser parser;
 
@@ -215,7 +222,8 @@ scconf_block *scconf_block_add(scconf_context * config, scconf_block * block, co
 	return parser.block;
 }
 
-static void scconf_parse_parent(scconf_parser * parser)
+static void
+scconf_parse_parent(scconf_parser *parser)
 {
 	parser->block = parser->block->parent;
 
@@ -227,7 +235,8 @@ static void scconf_parse_parent(scconf_parser * parser)
 	}
 }
 
-static void scconf_parse_reset_state(scconf_parser * parser)
+static void
+scconf_parse_reset_state(scconf_parser *parser)
 {
 	if (parser) {
 		if (parser->key) {
@@ -241,13 +250,15 @@ static void scconf_parse_reset_state(scconf_parser * parser)
 	}
 }
 
-void scconf_skip_block(scconf_parser * parser)
+void
+scconf_skip_block(scconf_parser *parser)
 {
 	scconf_parse_error(parser, "too many nested blocks");
 	scconf_parse_reset_state(parser);
 }
 
-void scconf_parse_token(scconf_parser * parser, int token_type, const char *token)
+void
+scconf_parse_token(scconf_parser *parser, int token_type, const char *token)
 {
 	scconf_item *item;
 	int len;
@@ -270,55 +281,52 @@ void scconf_parse_token(scconf_parser * parser, int token_type, const char *toke
 		}
 		item->value.comment = token ? strdup(token) : NULL;
 		break;
-	case TOKEN_TYPE_STRING:
-		{
-			char *stoken = NULL;
+	case TOKEN_TYPE_STRING: {
+		char *stoken = NULL;
 
-			if ((parser->state & (STATE_VALUE | STATE_SET)) ==
-			    (STATE_VALUE | STATE_SET)) {
-				scconf_parse_warning_expect(parser, ";");
-				scconf_parse_reset_state(parser);
-			}
-			if (token && *token == '"') {
-				/* quoted string, remove them */
-				token++;
-				len = strlen(token);
-				if (len < 1 || token[len - 1] != '"') {
-					scconf_parse_warning_expect(parser, "\"");
-				} else {
-					/* stoken */
-					stoken = strdup(token);
-					if (stoken) {
-						stoken[len - 1] = '\0';
-					}
+		if ((parser->state & (STATE_VALUE | STATE_SET)) == (STATE_VALUE | STATE_SET)) {
+			scconf_parse_warning_expect(parser, ";");
+			scconf_parse_reset_state(parser);
+		}
+		if (token && *token == '"') {
+			/* quoted string, remove them */
+			token++;
+			len = strlen(token);
+			if (len < 1 || token[len - 1] != '"') {
+				scconf_parse_warning_expect(parser, "\"");
+			} else {
+				/* stoken */
+				stoken = strdup(token);
+				if (stoken) {
+					stoken[len - 1] = '\0';
 				}
 			}
-			if (!stoken) {
-				stoken = token ? strdup(token) : NULL;
-			}
-			if (parser->state == 0) {
-				/* key */
-				parser->key = stoken ? strdup(stoken) : NULL;
-				parser->state = STATE_NAME;
-			} else if (parser->state == STATE_NAME) {
-				/* name */
-				parser->state |= STATE_SET;
-				scconf_list_add(&parser->name, stoken);
-			} else if (parser->state == STATE_VALUE && parser->current_item->type == SCCONF_ITEM_TYPE_VALUE) {
-				/* value */
-				parser->state |= STATE_SET;
-				scconf_list_add(&parser->current_item->value.list,
-						      stoken);
-			} else {
-				/* error */
-				scconf_parse_error_not_expect(parser, stoken);
-			}
-			if (stoken) {
-				free(stoken);
-			}
-			stoken = NULL;
 		}
-		break;
+		if (!stoken) {
+			stoken = token ? strdup(token) : NULL;
+		}
+		if (parser->state == 0) {
+			/* key */
+			parser->key = stoken ? strdup(stoken) : NULL;
+			parser->state = STATE_NAME;
+		} else if (parser->state == STATE_NAME) {
+			/* name */
+			parser->state |= STATE_SET;
+			scconf_list_add(&parser->name, stoken);
+		} else if (parser->state == STATE_VALUE &&
+		           parser->current_item->type == SCCONF_ITEM_TYPE_VALUE) {
+			/* value */
+			parser->state |= STATE_SET;
+			scconf_list_add(&parser->current_item->value.list, stoken);
+		} else {
+			/* error */
+			scconf_parse_error_not_expect(parser, stoken);
+		}
+		if (stoken) {
+			free(stoken);
+		}
+		stoken = NULL;
+	} break;
 	case TOKEN_TYPE_PUNCT:
 		switch (*token) {
 		case '{':
@@ -333,10 +341,8 @@ void scconf_parse_token(scconf_parser * parser, int token_type, const char *toke
 		case '}':
 			parser->nested_blocks--;
 			if (parser->state != 0) {
-				if ((parser->state & STATE_VALUE) == 0 ||
-				    (parser->state & STATE_SET) == 0) {
-					scconf_parse_error_not_expect(parser,
-								      "}");
+				if ((parser->state & STATE_VALUE) == 0 || (parser->state & STATE_SET) == 0) {
+					scconf_parse_error_not_expect(parser, "}");
 					break;
 				}
 				/* foo = bar } */
@@ -345,8 +351,7 @@ void scconf_parse_token(scconf_parser * parser, int token_type, const char *toke
 			}
 			if (!parser->block->parent) {
 				/* too many '}' */
-				scconf_parse_error(parser,
-						   "missing matching '{'");
+				scconf_parse_error(parser, "missing matching '{'");
 				break;
 			}
 			scconf_parse_parent(parser);
@@ -369,9 +374,8 @@ void scconf_parse_token(scconf_parser * parser, int token_type, const char *toke
 			scconf_parse_reset_state(parser);
 			break;
 		default:
-			snprintf(parser->emesg, sizeof(parser->emesg),
-				"Line %d: bad token ignoring\n",
-				parser->line);
+			snprintf(parser->emesg, sizeof(parser->emesg), "Line %d: bad token ignoring\n",
+			         parser->line);
 		}
 		break;
 	}
@@ -379,7 +383,8 @@ void scconf_parse_token(scconf_parser * parser, int token_type, const char *toke
 	parser->last_token_type = token_type;
 }
 
-int scconf_parse(scconf_context * config)
+int
+scconf_parse(scconf_context *config)
 {
 	static char buffer[256];
 	scconf_parser p;
@@ -392,9 +397,8 @@ int scconf_parse(scconf_context * config)
 	p.nested_blocks = 0;
 
 	if (!scconf_lex_parse(&p, config->filename)) {
-		snprintf(buffer, sizeof(buffer),
-				"Unable to open \"%s\": %s",
-				config->filename, strerror(errno));
+		snprintf(buffer, sizeof(buffer), "Unable to open \"%s\": %s", config->filename,
+		         strerror(errno));
 		r = -1;
 	} else if (p.error) {
 		strlcpy(buffer, p.emesg, sizeof(buffer));
@@ -408,7 +412,8 @@ int scconf_parse(scconf_context * config)
 	return r;
 }
 
-int scconf_parse_string(scconf_context * config, const char *string)
+int
+scconf_parse_string(scconf_context *config, const char *string)
 {
 	static char buffer[256];
 	scconf_parser p;
@@ -421,8 +426,7 @@ int scconf_parse_string(scconf_context * config, const char *string)
 	p.nested_blocks = 0;
 
 	if (!scconf_lex_parse_string(&p, string)) {
-		snprintf(buffer, sizeof(buffer),
-				"Failed to parse configuration string");
+		snprintf(buffer, sizeof(buffer), "Failed to parse configuration string");
 		r = -1;
 	} else if (p.error) {
 		strlcpy(buffer, p.emesg, sizeof(buffer));

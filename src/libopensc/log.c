@@ -47,10 +47,13 @@
 
 #include "internal.h"
 
-static void sc_do_log_va(sc_context_t *ctx, int level, const char *file, int line, const char *func, int color, const char *format, va_list args);
-static int sc_color_fprintf_va(int colors, struct sc_context *ctx, FILE * stream, const char *format, va_list args);
+static void sc_do_log_va(sc_context_t *ctx, int level, const char *file, int line, const char *func,
+                         int color, const char *format, va_list args);
+static int sc_color_fprintf_va(int colors, struct sc_context *ctx, FILE *stream, const char *format,
+                               va_list args);
 
-void sc_do_log(sc_context_t *ctx, int level, const char *file, int line, const char *func, const char *format, ...)
+void
+sc_do_log(sc_context_t *ctx, int level, const char *file, int line, const char *func, const char *format, ...)
 {
 	va_list ap;
 
@@ -59,7 +62,9 @@ void sc_do_log(sc_context_t *ctx, int level, const char *file, int line, const c
 	va_end(ap);
 }
 
-void sc_do_log_color(sc_context_t *ctx, int level, const char *file, int line, const char *func, int color, const char *format, ...)
+void
+sc_do_log_color(sc_context_t *ctx, int level, const char *file, int line, const char *func, int color,
+                const char *format, ...)
 {
 	va_list ap;
 
@@ -73,7 +78,9 @@ void sc_do_log_noframe(sc_context_t *ctx, int level, const char *format, va_list
 	sc_do_log_va(ctx, level, NULL, 0, NULL, 0, format, args);
 }
 
-static void sc_do_log_va(sc_context_t *ctx, int level, const char *file, int line, const char *func, int color, const char *format, va_list args)
+static void
+sc_do_log_va(sc_context_t *ctx, int level, const char *file, int line, const char *func, int color,
+             const char *format, va_list args)
 {
 #ifdef _WIN32
 	SYSTEMTIME st;
@@ -154,7 +161,8 @@ static void sc_do_log_va(sc_context_t *ctx, int level, const char *file, int lin
 #endif
 }
 
-void _sc_debug(struct sc_context *ctx, int level, const char *format, ...)
+void
+_sc_debug(struct sc_context *ctx, int level, const char *format, ...)
 {
 	va_list ap;
 
@@ -163,7 +171,8 @@ void _sc_debug(struct sc_context *ctx, int level, const char *format, ...)
 	va_end(ap);
 }
 
-void _sc_log(struct sc_context *ctx, const char *format, ...)
+void
+_sc_log(struct sc_context *ctx, const char *format, ...)
 {
 	va_list ap;
 
@@ -172,7 +181,8 @@ void _sc_log(struct sc_context *ctx, const char *format, ...)
 	va_end(ap);
 }
 
-static int is_a_tty(FILE *fp)
+static int
+is_a_tty(FILE *fp)
 {
 	if (fp != NULL) {
 		int fd = fileno(fp);
@@ -198,7 +208,8 @@ static int is_a_tty(FILE *fp)
 	do { if (colors & sc_color) { fprintf(stream, vt100_color); } } while (0)
 #endif
 
-int sc_color_fprintf(int colors, struct sc_context *ctx, FILE * stream, const char * format, ...)
+int
+sc_color_fprintf(int colors, struct sc_context *ctx, FILE *stream, const char *format, ...)
 {
 	int r;
 	va_list ap;
@@ -210,7 +221,8 @@ int sc_color_fprintf(int colors, struct sc_context *ctx, FILE * stream, const ch
 	return r;
 }
 
-int sc_color_fprintf_va(int colors, struct sc_context *ctx, FILE * stream, const char *format, va_list args)
+int
+sc_color_fprintf_va(int colors, struct sc_context *ctx, FILE *stream, const char *format, va_list args)
 {
 	int r;
 #ifdef _WIN32
@@ -286,8 +298,9 @@ int sc_color_fprintf_va(int colors, struct sc_context *ctx, FILE * stream, const
 	return r;
 }
 
-void _sc_debug_hex(sc_context_t *ctx, int type, const char *file, int line,
-		const char *func, const char *label, const u8 *data, size_t len)
+void
+_sc_debug_hex(sc_context_t *ctx, int type, const char *file, int line, const char *func, const char *label,
+              const u8 *data, size_t len)
 {
 	size_t blen = len * 5 + 128;
 	char *buf = malloc(blen);
@@ -308,7 +321,8 @@ void _sc_debug_hex(sc_context_t *ctx, int type, const char *file, int line,
 	free(buf);
 }
 
-void sc_hex_dump(const u8 * in, size_t count, char *buf, size_t len)
+void
+sc_hex_dump(const u8 *in, size_t count, char *buf, size_t len)
 {
 	char *p = buf;
 	int lines = 0;

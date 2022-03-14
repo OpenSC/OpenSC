@@ -58,7 +58,8 @@ static struct npa_drv_data *npa_drv_data_create(void)
 	return drv_data;
 }
 
-static void npa_drv_data_free(struct npa_drv_data *drv_data)
+static void
+npa_drv_data_free(struct npa_drv_data *drv_data)
 {
 	if (drv_data) {
 		free(drv_data->ef_cardaccess);
@@ -78,7 +79,8 @@ static struct sc_card_driver npa_drv = {
 	NULL, 0, NULL
 };
 
-static int npa_load_options(sc_context_t *ctx, struct npa_drv_data *drv_data)
+static int
+npa_load_options(sc_context_t *ctx, struct npa_drv_data *drv_data)
 {
 	int r;
 	size_t i, j;
@@ -149,7 +151,8 @@ unsigned char dir_content_ref[] = {
 };
 // clang-format on
 
-static int npa_match_card(sc_card_t * card)
+static int
+npa_match_card(sc_card_t *card)
 {
 	unsigned char dir_content[sizeof dir_content_ref];
 	unsigned char id[] = {0x2F, 0x00};
@@ -157,19 +160,19 @@ static int npa_match_card(sc_card_t * card)
 
 	sc_format_apdu_ex(&select_ef_dir, 0x00, 0xA4, 0x02, 0x0C, id, sizeof id, NULL, 0);
 
-	if (SC_SUCCESS == sc_select_file(card, sc_get_mf_path(), NULL)
-			&& SC_SUCCESS == sc_transmit_apdu(card, &select_ef_dir)
-			&& select_ef_dir.sw1 == 0x90 && select_ef_dir.sw2 == 0x00
-			&& sizeof dir_content == sc_read_binary(card, 0, dir_content, sizeof dir_content, 0)
-			&& 0 == memcmp(dir_content_ref, dir_content, sizeof dir_content))
+	if (SC_SUCCESS == sc_select_file(card, sc_get_mf_path(), NULL) &&
+	    SC_SUCCESS == sc_transmit_apdu(card, &select_ef_dir) &&
+	    select_ef_dir.sw1 == 0x90 && select_ef_dir.sw2 == 0x00 &&
+	    sizeof dir_content == sc_read_binary(card, 0, dir_content, sizeof dir_content, 0) &&
+	    0 == memcmp(dir_content_ref, dir_content, sizeof dir_content))
 		return 1;
 
 	return 0;
 }
 
-static void npa_get_cached_pace_params(sc_card_t *card,
-		struct establish_pace_channel_input *pace_input,
-		struct establish_pace_channel_output *pace_output)
+static void
+npa_get_cached_pace_params(sc_card_t *card, struct establish_pace_channel_input *pace_input,
+                           struct establish_pace_channel_output *pace_output)
 {
 	struct npa_drv_data *drv_data;
 
@@ -188,9 +191,9 @@ static void npa_get_cached_pace_params(sc_card_t *card,
 	}
 }
 
-static void npa_get_cached_ta_params(sc_card_t *card,
-	const unsigned char *certs[2], size_t certs_lens[2],
-	const unsigned char **st_key, size_t *st_key_len)
+static void
+npa_get_cached_ta_params(sc_card_t *card, const unsigned char *certs[2], size_t certs_lens[2],
+                         const unsigned char **st_key, size_t *st_key_len)
 {
 	struct npa_drv_data *drv_data;
 	size_t i;
@@ -217,8 +220,8 @@ static void npa_get_cached_ta_params(sc_card_t *card,
 	}
 }
 
-static void npa_get_cached_ca_params(sc_card_t *card,
-	unsigned char **ef_cardsecurity, size_t *ef_cardsecurity_length)
+static void
+npa_get_cached_ca_params(sc_card_t *card, unsigned char **ef_cardsecurity, size_t *ef_cardsecurity_length)
 {
 	struct npa_drv_data *drv_data;
 
@@ -232,9 +235,9 @@ static void npa_get_cached_ca_params(sc_card_t *card,
 	}
 }
 
-static void npa_cache_or_free(sc_card_t *card,
-		unsigned char **ef_cardaccess, size_t *ef_cardaccess_length,
-		unsigned char **ef_cardsecurity, size_t *ef_cardsecurity_length)
+static void
+npa_cache_or_free(sc_card_t *card, unsigned char **ef_cardaccess, size_t *ef_cardaccess_length,
+                  unsigned char **ef_cardsecurity, size_t *ef_cardsecurity_length)
 {
 	struct npa_drv_data *drv_data;
 
@@ -269,7 +272,8 @@ static void npa_cache_or_free(sc_card_t *card,
 	}
 }
 
-static int npa_unlock_esign(sc_card_t *card)
+static int
+npa_unlock_esign(sc_card_t *card)
 {
 	int r = SC_ERROR_INTERNAL;
 	struct establish_pace_channel_input pace_input;
@@ -344,7 +348,8 @@ err:
 	return r;
 }
 
-static int npa_finish(sc_card_t * card)
+static int
+npa_finish(sc_card_t *card)
 {
 	sc_sm_stop(card);
 	npa_drv_data_free(card->drv_data);
@@ -353,14 +358,15 @@ static int npa_finish(sc_card_t * card)
 	return SC_SUCCESS;
 }
 
-static void npa_init_apps(sc_card_t * card)
+static void
+npa_init_apps(sc_card_t *card)
 {
 	/* this initializes the internal structures with the data from
 	 * `dir_content_ref` */
 	const u8 *aids[] = {
-		(const u8 *) "\xa0\x00\x00\x02\x47\x10\x01",
-		(const u8 *) "\xe8\x07\x04\x00\x7f\x00\x07\x03\x02",
-		(const u8 *) "\xa0\x00\x00\x01\x67\x45\x53\x49\x47\x4e",
+		(const u8 *)"\xa0\x00\x00\x02\x47\x10\x01",
+		(const u8 *)"\xe8\x07\x04\x00\x7f\x00\x07\x03\x02",
+		(const u8 *)"\xa0\x00\x00\x01\x67\x45\x53\x49\x47\x4e",
 	};
 	const size_t lens[] = {7, 9, 10};
 	size_t i;
@@ -389,7 +395,8 @@ static void npa_init_apps(sc_card_t * card)
 	}
 }
 
-static int npa_init(sc_card_t * card)
+static int
+npa_init(sc_card_t *card)
 {
 	int flags = SC_ALGORITHM_ECDSA_RAW;
 	int ext_flags = 0;
@@ -447,8 +454,8 @@ err:
 	return r;
 }
 
-static int npa_set_security_env(struct sc_card *card,
-		const struct sc_security_env *env, int se_num)
+static int
+npa_set_security_env(struct sc_card *card, const struct sc_security_env *env, int se_num)
 {
 	int r;
 	struct sc_card_driver *iso_drv;
@@ -472,8 +479,8 @@ static int npa_set_security_env(struct sc_card *card,
 	return r;
 }
 
-static int npa_pin_cmd_get_info(struct sc_card *card,
-		struct sc_pin_cmd_data *data, int *tries_left)
+static int
+npa_pin_cmd_get_info(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left)
 {
 	int r;
 	u8 pin_reference;
@@ -521,9 +528,9 @@ err:
 	return r;
 }
 
-static int npa_pace_verify(struct sc_card *card,
-		unsigned char pin_reference, struct sc_pin_cmd_pin *pin,
-		const unsigned char *chat, size_t chat_length, int *tries_left)
+static int
+npa_pace_verify(struct sc_card *card, unsigned char pin_reference, struct sc_pin_cmd_pin *pin,
+                const unsigned char *chat, size_t chat_length, int *tries_left)
 {
 	int r;
 	struct establish_pace_channel_input pace_input;
@@ -616,8 +623,8 @@ static int npa_pace_verify(struct sc_card *card,
 	return r;
 }
 
-static int npa_standard_pin_cmd(struct sc_card *card,
-		struct sc_pin_cmd_data *data, int *tries_left)
+static int
+npa_standard_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left)
 {
 	int r;
 	struct sc_card_driver *iso_drv;
@@ -634,8 +641,8 @@ static int npa_standard_pin_cmd(struct sc_card *card,
 }
 
 int
-npa_reset_retry_counter(sc_card_t *card, enum s_type pin_id,
-		int ask_for_secret, const char *new, size_t new_len)
+npa_reset_retry_counter(sc_card_t *card, enum s_type pin_id, int ask_for_secret, const char *new,
+                        size_t new_len)
 {
 	sc_apdu_t apdu;
 	char *p = NULL;
@@ -703,8 +710,8 @@ npa_reset_retry_counter(sc_card_t *card, enum s_type pin_id,
 	return r;
 }
 
-static int npa_pin_cmd(struct sc_card *card,
-		struct sc_pin_cmd_data *data, int *tries_left)
+static int
+npa_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left)
 {
 	int r;
 
@@ -793,7 +800,8 @@ err:
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
-static int npa_logout(sc_card_t *card)
+static int
+npa_logout(sc_card_t *card)
 {
 	struct sc_apdu apdu;
 
@@ -811,7 +819,8 @@ static int npa_logout(sc_card_t *card)
 	return sc_select_file(card, sc_get_mf_path(), NULL);
 }
 
-struct sc_card_driver *sc_get_npa_driver(void)
+struct sc_card_driver *
+sc_get_npa_driver(void)
 {
 	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
 

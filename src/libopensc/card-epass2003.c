@@ -567,8 +567,8 @@ openssl_dig(const EVP_MD * digest, const unsigned char *input, size_t length,
 	}
 		
 	EVP_MD_CTX_init(ctx);
-	if (!EVP_DigestInit_ex(ctx, digest, NULL)
-			|| !EVP_DigestUpdate(ctx, input, length)) {
+	if (!EVP_DigestInit_ex(ctx, digest, NULL) ||
+	    !EVP_DigestUpdate(ctx, input, length)) {
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
@@ -1524,7 +1524,8 @@ get_data(struct sc_card *card, unsigned char type, unsigned char *data, size_t d
 
 /* card driver functions */
 
-static int epass2003_match_card(struct sc_card *card)
+static int
+epass2003_match_card(struct sc_card *card)
 {
 	int r;
 
@@ -2091,7 +2092,6 @@ err:
 	return r;
 }
 
-
 static int
 epass2003_restore_security_env(struct sc_card *card, int se_num)
 {
@@ -2099,9 +2099,8 @@ epass2003_restore_security_env(struct sc_card *card, int se_num)
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
-
-static int epass2003_decipher(struct sc_card *card, const u8 * data, size_t datalen,
-		u8 * out, size_t outlen)
+static int
+epass2003_decipher(struct sc_card *card, const u8 *data, size_t datalen, u8 *out, size_t outlen)
 {
 	int r;
 	struct sc_apdu apdu;
@@ -2224,39 +2223,39 @@ sec_attr_to_entry(struct sc_card *card, sc_file_t *file, int indx)
 	int found = 0;
 
 	unsigned int method;
-	unsigned long  keyref;
+	unsigned long keyref;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	switch  (file->sec_attr[indx]) {
-		case (EPASS2003_AC_MAC_NOLESS | EPASS2003_AC_EVERYONE):
-			method = SC_AC_NONE;
-			keyref = SC_AC_KEY_REF_NONE;
-			break;
-		case (EPASS2003_AC_MAC_NOLESS | EPASS2003_AC_USER):
-			method = SC_AC_CHV;
-			keyref = 1;
-			break;
-		default:
-			sc_log(card->ctx,"Unknown value 0x%2.2x in file->sec_attr[%d]", file->sec_attr[indx], indx);
-			method = SC_AC_NEVER;
-			keyref = SC_AC_KEY_REF_NONE;
+	switch (file->sec_attr[indx]) {
+	case (EPASS2003_AC_MAC_NOLESS | EPASS2003_AC_EVERYONE):
+		method = SC_AC_NONE;
+		keyref = SC_AC_KEY_REF_NONE;
+		break;
+	case (EPASS2003_AC_MAC_NOLESS | EPASS2003_AC_USER):
+		method = SC_AC_CHV;
+		keyref = 1;
+		break;
+	default:
+		sc_log(card->ctx, "Unknown value 0x%2.2x in file->sec_attr[%d]", file->sec_attr[indx], indx);
+		method = SC_AC_NEVER;
+		keyref = SC_AC_KEY_REF_NONE;
 
-			break;
+		break;
 	}
-	
+
 	for (i = 0; i < (int)(sizeof(sec_attr_to_acl_entry) / sizeof(sec_attr_to_acl_entries_t)); i++) {
 		const sec_attr_to_acl_entries_t *e = &sec_attr_to_acl_entry[i];
 
-		if (indx == e->indx && file->type == e->file_type
-				&& file->ef_structure == e->file_ef_structure) {
-				/* may add multiple entries */
+		if (indx == e->indx && file->type == e->file_type &&
+		    file->ef_structure == e->file_ef_structure) {
+			/* may add multiple entries */
 			sc_file_add_acl_entry(file, e->op, method, keyref);
 			found++;
 		}
 	}
 	if (found != 1) {
-		sc_log(card->ctx,"found %d entries ", found);
+		sc_log(card->ctx, "found %d entries ", found);
 	}
 
 	return 0;
@@ -2372,7 +2371,7 @@ epass2003_process_fci(struct sc_card *card, sc_file_t * file, const u8 * buf, si
 	if (tag != NULL && taglen) {
 		unsigned int i;
 		sc_file_set_sec_attr(file, tag, taglen);
-		for (i = 0; i< taglen; i++)
+		for (i = 0; i < taglen; i++)
 			if (tag[i] != 0xff) /* skip unused entries */
 				sec_attr_to_entry(card, file, i);
 	}
@@ -2391,10 +2390,8 @@ epass2003_process_fci(struct sc_card *card, sc_file_t * file, const u8 * buf, si
 	return 0;
 }
 
-
 static int
-epass2003_construct_fci(struct sc_card *card, const sc_file_t * file,
-		u8 * out, size_t * outlen)
+epass2003_construct_fci(struct sc_card *card, const sc_file_t *file, u8 *out, size_t *outlen)
 {
 	u8 *p = out;
 	u8 buf[64];
@@ -2753,11 +2750,9 @@ hash_data(const unsigned char *data, size_t datalen, unsigned char *hash, unsign
 	return SC_SUCCESS;
 }
 
-
 static int
-install_secret_key(struct sc_card *card, unsigned char ktype, unsigned char kid,
-		unsigned char useac, unsigned char modifyac, unsigned char EC,
-		unsigned char *data, unsigned long dataLen)
+install_secret_key(struct sc_card *card, unsigned char ktype, unsigned char kid, unsigned char useac,
+                   unsigned char modifyac, unsigned char EC, unsigned char *data, unsigned long dataLen)
 {
 	int r;
 	struct sc_apdu apdu;
@@ -3280,7 +3275,8 @@ epass2003_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries
 	return r;
 }
 
-static struct sc_card_driver *sc_get_driver(void)
+static struct sc_card_driver *
+sc_get_driver(void)
 {
 	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
 
@@ -3312,7 +3308,8 @@ static struct sc_card_driver *sc_get_driver(void)
 	return &epass2003_drv;
 }
 
-struct sc_card_driver *sc_get_epass2003_driver(void)
+struct sc_card_driver *
+sc_get_epass2003_driver(void)
 {
 	return sc_get_driver();
 }

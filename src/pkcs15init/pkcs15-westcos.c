@@ -262,20 +262,20 @@ static int westcos_pkcs15init_generate_key(sc_profile_t *profile,
 		goto out;
 	}
 
-	if(pubkey != NULL) {
+	if (pubkey != NULL) {
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
-		if(!i2d_RSAPublicKey_bio(mem, EVP_PKEY_get0_RSA(key)))
+		if (!i2d_RSAPublicKey_bio(mem, EVP_PKEY_get0_RSA(key)))
 #else
 		selection = OSSL_KEYMGMT_SELECT_PUBLIC_KEY;
 		ectx = OSSL_ENCODER_CTX_new_for_pkey(key, selection, "DER", "PublicKeyInfo", NULL);
-		if(ectx == NULL || OSSL_ENCODER_to_bio(ectx, mem) != 1)
+		if (ectx == NULL || OSSL_ENCODER_to_bio(ectx, mem) != 1)
 #endif
 		{
 			r = SC_ERROR_UNKNOWN;
 			goto out;
 		}
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
-	OSSL_ENCODER_CTX_free(ectx);
+		OSSL_ENCODER_CTX_free(ectx);
 #endif
 
 		lg = BIO_get_mem_data(mem, &p);
@@ -289,8 +289,7 @@ static int westcos_pkcs15init_generate_key(sc_profile_t *profile,
 
 	(void) BIO_reset(mem);
 
-	if (!i2d_PrivateKey_bio(mem, key))
-	{
+	if (!i2d_PrivateKey_bio(mem, key)) {
 		r = SC_ERROR_UNKNOWN;
 		goto out;
 	}

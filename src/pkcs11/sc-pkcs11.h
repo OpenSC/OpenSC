@@ -398,8 +398,7 @@ void sc_pkcs11_print_attrs(int level, const char *file, unsigned int line, const
 		const char *info, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount);
 void sc_pkcs11_card_free(struct sc_pkcs11_card *p11card);
 #define dump_template(level, info, pTemplate, ulCount) \
-		sc_pkcs11_print_attrs(level, FILENAME, __LINE__, __FUNCTION__, \
-				info, pTemplate, ulCount)
+	sc_pkcs11_print_attrs(level, FILENAME, __LINE__, __FUNCTION__, info, pTemplate, ulCount)
 
 /* Slot and card handling functions */
 CK_RV card_removed(sc_reader_t *reader);

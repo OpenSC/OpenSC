@@ -656,10 +656,9 @@ void sc_pkcs15_card_clear(struct sc_pkcs15_card *p15card);
 struct sc_pkcs15_tokeninfo * sc_pkcs15_tokeninfo_new(void);
 void sc_pkcs15_free_tokeninfo(struct sc_pkcs15_tokeninfo *tokeninfo);
 
-int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
-		       const struct sc_pkcs15_object *prkey_obj,
-		       unsigned long flags,
-		       const u8 *in, size_t inlen, u8 *out, size_t outlen, void *pMechanism);
+int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_object *prkey_obj,
+                       unsigned long flags, const u8 *in, size_t inlen, u8 *out, size_t outlen,
+                       void *pMechanism);
 
 int sc_pkcs15_derive(struct sc_pkcs15_card *p15card,
 		       const struct sc_pkcs15_object *prkey_obj,
@@ -680,10 +679,9 @@ int sc_pkcs15_wrap(struct sc_pkcs15_card *p15card,
 		u8 * cryptogram, size_t* crgram_len,
 		const u8 * param, size_t paramlen);
 
-int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
-				const struct sc_pkcs15_object *prkey_obj,
-				unsigned long alg_flags, const u8 *in,
-				size_t inlen, u8 *out, size_t outlen, void *pMechanism);
+int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_object *prkey_obj,
+                                unsigned long alg_flags, const u8 *in, size_t inlen, u8 *out, size_t outlen,
+                                void *pMechanism);
 
 int sc_pkcs15_encrypt_sym(struct sc_pkcs15_card *p15card,
 		const struct sc_pkcs15_object *obj,

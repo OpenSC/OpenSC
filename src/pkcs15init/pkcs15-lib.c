@@ -174,8 +174,8 @@ static struct sc_pkcs15init_callbacks callbacks = {
 	NULL,
 };
 
-
-static void sc_pkcs15init_free_ec_params(void *ptr)
+static void
+sc_pkcs15init_free_ec_params(void *ptr)
 {
 	struct sc_ec_parameters *ecparams = (struct sc_ec_parameters *)ptr;
 	if (ecparams) {
@@ -875,7 +875,7 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 	/* Create the application directory */
 	if (profile->ops->create_dir) {
 		r = profile->ops->create_dir(profile, p15card, df);
-		if (r < 0 && pin_obj)   {
+		if (r < 0 && pin_obj) {
 			sc_pkcs15_remove_object(p15card, pin_obj);
 		}
 		LOG_TEST_GOTO_ERR(ctx, r, "Create 'DIR' error");
@@ -1018,8 +1018,7 @@ sc_pkcs15init_store_puk(struct sc_pkcs15_card *p15card,
 	if (profile->ops->create_pin) {
 		r = sc_pkcs15init_create_pin(p15card, profile, pin_obj, args);
 		LOG_TEST_GOTO_ERR(ctx, r, "Failed to create PIN");
-	}
-	else {
+	} else {
 		r = SC_ERROR_NOT_SUPPORTED;
 		LOG_TEST_GOTO_ERR(ctx, r, "In Old API store PUK object is not supported");
 	}
@@ -1538,14 +1537,12 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 
 	LOG_FUNC_CALLED(ctx);
 	/* check supported key size */
-	r = check_keygen_params_consistency(p15card->card,
-		algorithm, &keygen_args->prkey_args,
-		&keybits);
+	r = check_keygen_params_consistency(p15card->card, algorithm, &keygen_args->prkey_args, &keybits);
 	LOG_TEST_RET(ctx, r, "Invalid key size");
 
-	if (check_key_compatibility(p15card, algorithm,
-			&keygen_args->prkey_args.key, keygen_args->prkey_args.x509_usage,
-			keybits, SC_ALGORITHM_ONBOARD_KEY_GEN) != SC_SUCCESS) {
+	if (check_key_compatibility(p15card, algorithm, &keygen_args->prkey_args.key,
+	                            keygen_args->prkey_args.x509_usage, keybits,
+	                            SC_ALGORITHM_ONBOARD_KEY_GEN) != SC_SUCCESS) {
 		r = SC_ERROR_NOT_SUPPORTED;
 		LOG_TEST_GOTO_ERR(ctx, r, "Cannot generate key with the given parameters");
 	}
@@ -1563,8 +1560,7 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 		if (!r) {
 			r = SC_ERROR_NON_UNIQUE_ID;
 			LOG_TEST_GOTO_ERR(ctx, r, "Non unique ID of the private key object");
-		}
-		else if (r != SC_ERROR_OBJECT_NOT_FOUND) {
+		} else if (r != SC_ERROR_OBJECT_NOT_FOUND) {
 			LOG_TEST_GOTO_ERR(ctx, r, "Find private key error");
 		}
 	}
@@ -1589,12 +1585,11 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 	pubkey_args.usage = keygen_args->prkey_args.usage;
 	pubkey_args.x509_usage = keygen_args->prkey_args.x509_usage;
 
-	if (algorithm == SC_ALGORITHM_GOSTR3410)   {
+	if (algorithm == SC_ALGORITHM_GOSTR3410) {
 		pubkey_args.params.gost = keygen_args->prkey_args.params.gost;
 		r = sc_copy_gost_params(&(pubkey_args.key.u.gostr3410.params), &(keygen_args->prkey_args.key.u.gostr3410.params));
 		LOG_TEST_GOTO_ERR(ctx, r, "Cannot allocate GOST parameters");
-	}
-	else if (algorithm == SC_ALGORITHM_EC)   {
+	} else if (algorithm == SC_ALGORITHM_EC) {
 		/* needs to be freed in case of failure when pubkey is not set yet */
 		pubkey_args.key.u.ec.params = keygen_args->prkey_args.key.u.ec.params;
 		r = sc_copy_ec_params(&pubkey_args.key.u.ec.params, &keygen_args->prkey_args.key.u.ec.params);

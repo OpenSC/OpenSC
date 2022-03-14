@@ -1870,7 +1870,7 @@ static int cac_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries
 	 * (6 character minimum) requirements.
 	 */
 	sc_apdu_t apdu;
-	u8  sbuf[SC_MAX_APDU_BUFFER_SIZE];
+	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
 	int rv;
 

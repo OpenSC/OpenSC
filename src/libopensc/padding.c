@@ -89,8 +89,8 @@ static const struct digest_info_prefix {
 
 /* add/remove pkcs1 BT01 padding */
 
-static int sc_pkcs1_add_01_padding(const u8 *in, size_t in_len,
-	u8 *out, size_t *out_len, size_t mod_length)
+static int
+sc_pkcs1_add_01_padding(const u8 *in, size_t in_len, u8 *out, size_t *out_len, size_t mod_length)
 {
 	size_t i;
 
@@ -185,7 +185,8 @@ sc_pkcs1_strip_02_padding(sc_context_t *ctx, const u8 *data, size_t len, u8 *out
 }
 
 #ifdef ENABLE_OPENSSL
-static int mgf1(u8 *mask, size_t len, u8 *seed, size_t seedLen, const EVP_MD *dgst)
+static int
+mgf1(u8 *mask, size_t len, u8 *seed, size_t seedLen, const EVP_MD *dgst)
 {
 	int i;
 	size_t outlen = 0;
@@ -203,13 +204,13 @@ static int mgf1(u8 *mask, size_t len, u8 *seed, size_t seedLen, const EVP_MD *dg
 		goto out;
 
 	for (i = 0; outlen < len; i++) {
-		cnt[0] = (u8) ((i >> 24) & 255);
-		cnt[1] = (u8) ((i >> 16) & 255);
-		cnt[2] = (u8) ((i >> 8) & 255);
-		cnt[3] = (u8) ((i >> 0) & 255);
-		if (!EVP_DigestInit_ex(md_ctx, dgst, NULL)
-		    || !EVP_DigestUpdate(md_ctx, seed, seedLen)
-		    || !EVP_DigestUpdate(md_ctx, cnt, 4))
+		cnt[0] = (u8)((i >> 24) & 255);
+		cnt[1] = (u8)((i >> 16) & 255);
+		cnt[2] = (u8)((i >> 8) & 255);
+		cnt[3] = (u8)((i >> 0) & 255);
+		if (!EVP_DigestInit_ex(md_ctx, dgst, NULL) ||
+		    !EVP_DigestUpdate(md_ctx, seed, seedLen) ||
+		    !EVP_DigestUpdate(md_ctx, cnt, 4))
 			goto out;
 		if (outlen + mdlen <= len) {
 			if (!EVP_DigestFinal_ex(md_ctx, mask + outlen, NULL))
@@ -223,7 +224,7 @@ static int mgf1(u8 *mask, size_t len, u8 *seed, size_t seedLen, const EVP_MD *dg
 		}
 	}
 	rv = 0;
- out:
+out:
 	OPENSSL_cleanse(md, sizeof(md));
 	if (md_ctx)
 		EVP_MD_CTX_free(md_ctx);
@@ -235,13 +236,15 @@ static const EVP_MD *mgf1_flag2md(unsigned int mgf1);
 static const EVP_MD *hash_flag2md(unsigned int hash);
 
 /* check/remove OAEP - RFC 8017 padding */
-int sc_pkcs1_strip_oaep_padding(sc_context_t *ctx, u8 *data, size_t len, unsigned long flags, uint8_t *param, size_t paramlen)
+int
+sc_pkcs1_strip_oaep_padding(sc_context_t *ctx, u8 *data, size_t len, unsigned long flags, uint8_t *param,
+                            size_t paramlen)
 {
-	size_t i,j;
+	size_t i, j;
 	size_t mdlen, dblen;
 	u8 seed[EVP_MAX_MD_SIZE];
 	const EVP_MD *mgf1_md, *hash_md;
-	u8 db[512];		/* up to RSA 4096 */
+	u8 db[512]; /* up to RSA 4096 */
 	u8 label[EVP_MAX_MD_SIZE];
 	EVP_MD_CTX *md_ctx;
 	unsigned int hash_len = 0;
@@ -257,9 +260,9 @@ int sc_pkcs1_strip_oaep_padding(sc_context_t *ctx, u8 *data, size_t len, unsigne
 
 	memset(label, 0, sizeof(label));
 	if ((md_ctx = EVP_MD_CTX_new())) {
-		if (!EVP_DigestInit_ex(md_ctx, hash_md, NULL)
-		    || !EVP_DigestUpdate(md_ctx, param, paramlen)
-		    || !EVP_DigestFinal_ex(md_ctx, label, &hash_len))
+		if (!EVP_DigestInit_ex(md_ctx, hash_md, NULL) ||
+		    !EVP_DigestUpdate(md_ctx, param, paramlen) ||
+		    !EVP_DigestFinal_ex(md_ctx, label, &hash_len))
 			hash_len = 0;
 		EVP_MD_CTX_free(md_ctx);
 	}
@@ -315,8 +318,8 @@ int sc_pkcs1_strip_oaep_padding(sc_context_t *ctx, u8 *data, size_t len, unsigne
 #endif
 
 /* add/remove DigestInfo prefix */
-static int sc_pkcs1_add_digest_info_prefix(unsigned int algorithm,
-	const u8 *in, size_t in_len, u8 *out, size_t *out_len)
+static int
+sc_pkcs1_add_digest_info_prefix(unsigned int algorithm, const u8 *in, size_t in_len, u8 *out, size_t *out_len)
 {
 	int i;
 
@@ -340,8 +343,9 @@ static int sc_pkcs1_add_digest_info_prefix(unsigned int algorithm,
 	return SC_ERROR_INTERNAL;
 }
 
-int sc_pkcs1_strip_digest_info_prefix(unsigned int *algorithm,
-	const u8 *in_dat, size_t in_len, u8 *out_dat, size_t *out_len)
+int
+sc_pkcs1_strip_digest_info_prefix(unsigned int *algorithm, const u8 *in_dat, size_t in_len,
+                                  u8 *out_dat, size_t *out_len)
 {
 	int i;
 
@@ -369,7 +373,8 @@ int sc_pkcs1_strip_digest_info_prefix(unsigned int *algorithm,
 
 #ifdef ENABLE_OPENSSL
 
-static const EVP_MD* hash_flag2md(unsigned int hash)
+static const EVP_MD *
+hash_flag2md(unsigned int hash)
 {
 	switch (hash & SC_ALGORITHM_RSA_HASHES) {
 	case SC_ALGORITHM_RSA_HASH_SHA1:
@@ -387,7 +392,8 @@ static const EVP_MD* hash_flag2md(unsigned int hash)
 	}
 }
 
-static const EVP_MD* mgf1_flag2md(unsigned int mgf1)
+static const EVP_MD *
+mgf1_flag2md(unsigned int mgf1)
 {
 	switch (mgf1 & SC_ALGORITHM_MGF1_HASHES) {
 	case SC_ALGORITHM_MGF1_SHA1:
@@ -408,8 +414,9 @@ static const EVP_MD* mgf1_flag2md(unsigned int mgf1)
 /* large enough up to RSA 4096 */
 #define PSS_MAX_SALT_SIZE 512
 /* add PKCS#1 v2.0 PSS padding */
-static int sc_pkcs1_add_pss_padding(unsigned int hash, unsigned int mgf1_hash,
-    const u8 *in, size_t in_len, u8 *out, size_t *out_len, size_t mod_bits, size_t sLen)
+static int
+sc_pkcs1_add_pss_padding(unsigned int hash, unsigned int mgf1_hash, const u8 *in, size_t in_len,
+                         u8 *out, size_t *out_len, size_t mod_bits, size_t sLen)
 {
 	/* hLen = sLen in our case */
 	int rv = SC_ERROR_INTERNAL, i, j, hlen, dblen, plen, round, mgf_rounds;
@@ -505,7 +512,8 @@ done:
 	return rv;
 }
 
-static int hash_len2algo(size_t hash_len)
+static int
+hash_len2algo(size_t hash_len)
 {
 	switch (hash_len) {
 	case SHA_DIGEST_LENGTH:
@@ -527,8 +535,9 @@ static int hash_len2algo(size_t hash_len)
 #endif
 
 /* general PKCS#1 encoding function */
-int sc_pkcs1_encode(sc_context_t *ctx, unsigned long flags,
-	const u8 *in, size_t in_len, u8 *out, size_t *out_len, size_t mod_bits, void *pMechanism)
+int
+sc_pkcs1_encode(sc_context_t *ctx, unsigned long flags, const u8 *in, size_t in_len, u8 *out, size_t *out_len,
+                size_t mod_bits, void *pMechanism)
 {
 	int    rv, i;
 	size_t tmp_len = *out_len;
@@ -537,7 +546,7 @@ int sc_pkcs1_encode(sc_context_t *ctx, unsigned long flags,
 	size_t mod_len = (mod_bits + 7) / 8;
 #ifdef ENABLE_OPENSSL
 	size_t sLen;
-	const EVP_MD* md;
+	const EVP_MD *md;
 	unsigned int mgf1_hash;
 #endif
 
@@ -598,8 +607,8 @@ int sc_pkcs1_encode(sc_context_t *ctx, unsigned long flags,
 				sLen = pss_params->sLen;
 			}
 		}
-		rv = sc_pkcs1_add_pss_padding(hash_algo, mgf1_hash,
-		    tmp, tmp_len, out, out_len, mod_bits, sLen);
+		rv = sc_pkcs1_add_pss_padding(hash_algo, mgf1_hash, tmp, tmp_len, out, out_len, mod_bits,
+		                              sLen);
 #else
 		rv = SC_ERROR_NOT_SUPPORTED;
 #endif
@@ -611,9 +620,9 @@ int sc_pkcs1_encode(sc_context_t *ctx, unsigned long flags,
 	}
 }
 
-int sc_get_encoding_flags(sc_context_t *ctx,
-	unsigned long iflags, unsigned long caps,
-	unsigned long *pflags, unsigned long *sflags)
+int
+sc_get_encoding_flags(sc_context_t *ctx, unsigned long iflags, unsigned long caps, unsigned long *pflags,
+                      unsigned long *sflags)
 {
 	LOG_FUNC_CALLED(ctx);
 	if (pflags == NULL || sflags == NULL)
@@ -643,24 +652,26 @@ int sc_get_encoding_flags(sc_context_t *ctx,
 		*pflags = iflags & ~(iflags & (SC_ALGORITHM_MGF1_HASHES | SC_ALGORITHM_RSA_PAD_PSS));
 
 	} else if ((caps & SC_ALGORITHM_RSA_RAW) &&
-				(iflags & SC_ALGORITHM_RSA_PAD_PKCS1
-				|| iflags & SC_ALGORITHM_RSA_PAD_PSS
+	           (iflags & SC_ALGORITHM_RSA_PAD_PKCS1 ||
+	            iflags & SC_ALGORITHM_RSA_PAD_PSS ||
 #ifdef ENABLE_OPENSSL
-				|| iflags & SC_ALGORITHM_RSA_PAD_OAEP
+	            iflags & SC_ALGORITHM_RSA_PAD_OAEP ||
 #endif
-				|| iflags & SC_ALGORITHM_RSA_PAD_NONE)) {
+	            iflags & SC_ALGORITHM_RSA_PAD_NONE)) {
 		/* Use the card's raw RSA capability on the padded input */
 		*sflags = SC_ALGORITHM_RSA_PAD_NONE;
 		*pflags = iflags;
 
 	} else if ((caps & (SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE)) &&
-			(iflags & SC_ALGORITHM_RSA_PAD_PKCS1)) {
+	           (iflags & SC_ALGORITHM_RSA_PAD_PKCS1)) {
 		/* A corner case - the card can partially do PKCS1, if we prepend the
 		 * DigestInfo bit it will do the rest. */
 		*sflags = SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE;
 		*pflags = iflags & SC_ALGORITHM_RSA_HASHES;
 
-	} else if ((iflags & SC_ALGORITHM_AES) == SC_ALGORITHM_AES) { /* TODO: seems like this constant does not belong to the same set of flags used form asymmetric algos. Fix this! */
+	} else if ((iflags & SC_ALGORITHM_AES) == SC_ALGORITHM_AES) {
+		/* TODO: seems like this constant does not belong to the same set of flags used for
+		 * asymmetric algos. Fix this! */
 		*sflags = 0;
 		*pflags = 0;
 

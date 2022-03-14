@@ -70,7 +70,8 @@ static const struct sc_atr_table rtecp_atrs[] = {
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
-static int rtecp_match_card(sc_card_t *card)
+static int
+rtecp_match_card(sc_card_t *card)
 {
 	int i = -1;
 	i = _sc_match_atr(card, rtecp_atrs, &card->type);
@@ -81,7 +82,8 @@ static int rtecp_match_card(sc_card_t *card)
 	LOG_FUNC_RETURN(card->ctx, 0);
 }
 
-static int rtecp_init(sc_card_t *card)
+static int
+rtecp_init(sc_card_t *card)
 {
 	sc_algorithm_info_t info;
 	unsigned long flags;
@@ -117,7 +119,8 @@ static int rtecp_init(sc_card_t *card)
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, 0);
 }
 
-static void reverse(unsigned char *buf, size_t len)
+static void
+reverse(unsigned char *buf, size_t len)
 {
 	unsigned char tmp;
 	size_t i;
@@ -131,7 +134,8 @@ static void reverse(unsigned char *buf, size_t len)
 	}
 }
 
-static unsigned int sec_attr_to_method(unsigned int attr)
+static unsigned int
+sec_attr_to_method(unsigned int attr)
 {
 	if (attr == 0xFF)
 		return SC_AC_NEVER;
@@ -143,14 +147,16 @@ static unsigned int sec_attr_to_method(unsigned int attr)
 		return SC_AC_UNKNOWN;
 }
 
-static unsigned long sec_attr_to_key_ref(unsigned int attr)
+static unsigned long
+sec_attr_to_key_ref(unsigned int attr)
 {
 	if (attr == 1 || attr == 2)
 		return attr;
 	return 0;
 }
 
-static unsigned int to_sec_attr(unsigned int method, unsigned int key_ref)
+static unsigned int
+to_sec_attr(unsigned int method, unsigned int key_ref)
 {
 	if (method == SC_AC_NEVER || method == SC_AC_NONE)
 		return method;
@@ -159,7 +165,8 @@ static unsigned int to_sec_attr(unsigned int method, unsigned int key_ref)
 	return 0;
 }
 
-static void set_acl_from_sec_attr(sc_card_t *card, sc_file_t *file)
+static void
+set_acl_from_sec_attr(sc_card_t *card, sc_file_t *file)
 {
 	unsigned int method;
 	unsigned long key_ref;
@@ -211,7 +218,8 @@ static void set_acl_from_sec_attr(sc_card_t *card, sc_file_t *file)
 		}
 }
 
-static int set_sec_attr_from_acl(sc_card_t *card, sc_file_t *file)
+static int
+set_sec_attr_from_acl(sc_card_t *card, sc_file_t *file)
 {
 	const sc_acl_entry_t *entry;
 	u8 sec_attr[SC_RTECP_SEC_ATTR_SIZE] = { 0 };
@@ -273,8 +281,8 @@ static int set_sec_attr_from_acl(sc_card_t *card, sc_file_t *file)
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
 
-static int rtecp_select_file(sc_card_t *card,
-		const sc_path_t *in_path, sc_file_t **file_out)
+static int
+rtecp_select_file(sc_card_t *card, const sc_path_t *in_path, sc_file_t **file_out)
 {
 	sc_file_t *file = NULL;
 	int r = SC_SUCCESS;
@@ -314,8 +322,9 @@ static int rtecp_select_file(sc_card_t *card,
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
 
-static int rtecp_verify(sc_card_t *card, unsigned int type, int ref_qualifier,
-		const u8 *data, size_t data_len, int *tries_left)
+static int
+rtecp_verify(sc_card_t *card, unsigned int type, int ref_qualifier, const u8 *data, size_t data_len,
+             int *tries_left)
 {
 	sc_apdu_t apdu;
 	int r, send_logout = 0;
@@ -352,7 +361,8 @@ static int rtecp_verify(sc_card_t *card, unsigned int type, int ref_qualifier,
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
 
-static int rtecp_logout(sc_card_t *card)
+static int
+rtecp_logout(sc_card_t *card)
 {
 	sc_apdu_t apdu;
 	int r;
@@ -366,21 +376,20 @@ static int rtecp_logout(sc_card_t *card)
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
 
-static int rtecp_set_security_env(	struct sc_card *card,
-									const struct sc_security_env *env,
-									int se_num)
+static int
+rtecp_set_security_env(struct sc_card *card, const struct sc_security_env *env, int se_num)
 {
 	struct sc_security_env se_env;
-	if(!env)
+	if (!env)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
-	se_env= *env;
+	se_env = *env;
 	se_env.flags &= ~SC_SEC_ENV_FILE_REF_PRESENT;
 	return iso_ops->set_security_env(card, &se_env, se_num);
 }
 
-static int rtecp_cipher(sc_card_t *card, const u8 *data, size_t data_len,
-		u8 *out, size_t out_len, int sign)
+static int
+rtecp_cipher(sc_card_t *card, const u8 *data, size_t data_len, u8 *out, size_t out_len, int sign)
 {
 	sc_apdu_t apdu;
 	u8 *buf, *buf_out;
@@ -461,8 +470,8 @@ static int rtecp_decipher(sc_card_t *card,
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
 
-static int rtecp_compute_signature(sc_card_t *card,
-		const u8 *data, size_t data_len, u8 *out, size_t out_len)
+static int
+rtecp_compute_signature(sc_card_t *card, const u8 *data, size_t data_len, u8 *out, size_t out_len)
 {
 	int r;
 
@@ -477,9 +486,9 @@ static int rtecp_compute_signature(sc_card_t *card,
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
 
-static int rtecp_change_reference_data(sc_card_t *card, unsigned int type,
-		int ref_qualifier, const u8 *old, size_t oldlen,
-		const u8 *newref, size_t newlen, int *tries_left)
+static int
+rtecp_change_reference_data(sc_card_t *card, unsigned int type, int ref_qualifier,
+                            const u8 *old, size_t oldlen, const u8 *newref, size_t newlen, int *tries_left)
 {
 	sc_apdu_t apdu;
 	u8 rsf_length[2], *buf, *buf_end, *p;
@@ -548,9 +557,9 @@ static int rtecp_change_reference_data(sc_card_t *card, unsigned int type,
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
 
-static int rtecp_reset_retry_counter(sc_card_t *card, unsigned int type,
-		int ref_qualifier, const u8 *puk, size_t puklen,
-		const u8 *newref, size_t newlen)
+static int
+rtecp_reset_retry_counter(sc_card_t *card, unsigned int type, int ref_qualifier, const u8 *puk, size_t puklen,
+                          const u8 *newref, size_t newlen)
 {
 	sc_apdu_t apdu;
 	int r;
@@ -588,7 +597,8 @@ static int rtecp_reset_retry_counter(sc_card_t *card, unsigned int type,
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
 
-static int rtecp_create_file(sc_card_t *card, sc_file_t *file)
+static int
+rtecp_create_file(sc_card_t *card, sc_file_t *file)
 {
 	int r;
 
@@ -603,7 +613,8 @@ static int rtecp_create_file(sc_card_t *card, sc_file_t *file)
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
 
-static int rtecp_list_files(sc_card_t *card, u8 *buf, size_t buflen)
+static int
+rtecp_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 {
 	sc_apdu_t apdu;
 	u8 rbuf[SC_MAX_APDU_RESP_SIZE], previd[2];
@@ -667,7 +678,8 @@ static int rtecp_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, len);
 }
 
-static int rtecp_card_ctl(sc_card_t *card, unsigned long request, void *data)
+static int
+rtecp_card_ctl(sc_card_t *card, unsigned long request, void *data)
 {
 	sc_apdu_t apdu;
 	u8 buf[SC_MAX_APDU_BUFFER_SIZE];
@@ -752,8 +764,8 @@ static int rtecp_card_ctl(sc_card_t *card, unsigned long request, void *data)
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
 
-static int rtecp_construct_fci(sc_card_t *card, const sc_file_t *file,
-		u8 *out, size_t *outlen)
+static int
+rtecp_construct_fci(sc_card_t *card, const sc_file_t *file, u8 *out, size_t *outlen)
 {
 	u8 buf[64], *p = out;
 
@@ -816,7 +828,8 @@ static int rtecp_construct_fci(sc_card_t *card, const sc_file_t *file,
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, 0);
 }
 
-struct sc_card_driver * sc_get_rtecp_driver(void)
+struct sc_card_driver *
+sc_get_rtecp_driver(void)
 {
 	if (iso_ops == NULL)
 		iso_ops = sc_get_iso7816_driver()->ops;

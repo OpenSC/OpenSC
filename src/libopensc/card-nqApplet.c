@@ -75,7 +75,8 @@ static const struct sc_card_error nqapplet_errors[] = {
 
 /* convenience functions */
 
-static int init_driver_data(sc_card_t *card, u8 version_major, u8 version_minor)
+static int
+init_driver_data(sc_card_t *card, u8 version_major, u8 version_minor)
 {
 	nqapplet_driver_data_ptr data = calloc(1, sizeof(struct nqapplet_driver_data));
 	if (data == NULL) {
@@ -102,8 +103,9 @@ static int init_driver_data(sc_card_t *card, u8 version_major, u8 version_minor)
  * @return SC_SUCCESS: The applet is present and selected.
  *
  */
-static int select_nqapplet(sc_card_t *card, u8 *version_major, u8 *version_minor, u8 *serial_nr,
-                           size_t cb_serial_nr, size_t *serial_nr_len)
+static int
+select_nqapplet(sc_card_t *card, u8 *version_major, u8 *version_minor, u8 *serial_nr, size_t cb_serial_nr,
+                size_t *serial_nr_len)
 {
 	int rv;
 	sc_context_t *ctx = card->ctx;
@@ -142,13 +144,15 @@ static int select_nqapplet(sc_card_t *card, u8 *version_major, u8 *version_minor
 }
 
 /* driver operations API */
-static int nqapplet_match_card(struct sc_card *card)
+static int
+nqapplet_match_card(struct sc_card *card)
 {
 	int rv = _sc_match_atr(card, nqapplet_atrs, &card->type);
 	return (rv >= 0);
 }
 
-static int nqapplet_init(struct sc_card *card)
+static int
+nqapplet_init(struct sc_card *card)
 {
 	u8 version_major;
 	u8 version_minor;
@@ -178,7 +182,8 @@ static int nqapplet_init(struct sc_card *card)
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
-static int nqapplet_finish(struct sc_card *card)
+static int
+nqapplet_finish(struct sc_card *card)
 {
 	nqapplet_driver_data_ptr data = (nqapplet_driver_data_ptr)card->drv_data;
 
@@ -190,7 +195,8 @@ static int nqapplet_finish(struct sc_card *card)
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
-static int nqapplet_get_response(struct sc_card *card, size_t *cb_resp, u8 *resp)
+static int
+nqapplet_get_response(struct sc_card *card, size_t *cb_resp, u8 *resp)
 {
 	struct sc_apdu apdu;
 	int rv;
@@ -221,7 +227,8 @@ static int nqapplet_get_response(struct sc_card *card, size_t *cb_resp, u8 *resp
 	LOG_FUNC_RETURN(card->ctx, rv);
 }
 
-static int nqapplet_get_challenge(struct sc_card *card, u8 *buf, size_t count)
+static int
+nqapplet_get_challenge(struct sc_card *card, u8 *buf, size_t count)
 {
 	int r;
 	struct sc_apdu apdu;
@@ -245,7 +252,8 @@ static int nqapplet_get_challenge(struct sc_card *card, u8 *buf, size_t count)
 	return (int)apdu.resplen;
 }
 
-static int nqapplet_logout(struct sc_card *card)
+static int
+nqapplet_logout(struct sc_card *card)
 {
 	LOG_FUNC_CALLED(card->ctx);
 	/* selecting NQ-Applet again will reset the applet status and unauthorize PINs */
@@ -257,7 +265,8 @@ static int nqapplet_logout(struct sc_card *card)
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
-int nqapplet_set_security_env(struct sc_card *card, const struct sc_security_env *env, int se_num)
+int
+nqapplet_set_security_env(struct sc_card *card, const struct sc_security_env *env, int se_num)
 {
 	/* Note: the NQ-Applet does not have APDU for SET SECURITY ENV,
 	this function checks the intended parameters and sets card_data.key_reference */
@@ -299,7 +308,8 @@ int nqapplet_set_security_env(struct sc_card *card, const struct sc_security_env
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
-static int nqapplet_decipher(struct sc_card *card, const u8 *data, size_t cb_data, u8 *out, size_t outlen)
+static int
+nqapplet_decipher(struct sc_card *card, const u8 *data, size_t cb_data, u8 *out, size_t outlen)
 {
 	int rv;
 	struct sc_apdu apdu;
@@ -338,8 +348,8 @@ static int nqapplet_decipher(struct sc_card *card, const u8 *data, size_t cb_dat
 	LOG_FUNC_RETURN(card->ctx, rv);
 }
 
-static int nqapplet_compute_signature(struct sc_card *card, const u8 *data, size_t cb_data, u8 *out,
-                                      size_t outlen)
+static int
+nqapplet_compute_signature(struct sc_card *card, const u8 *data, size_t cb_data, u8 *out, size_t outlen)
 {
 	int rv;
 	struct sc_apdu apdu;
@@ -372,7 +382,8 @@ static int nqapplet_compute_signature(struct sc_card *card, const u8 *data, size
 	LOG_FUNC_RETURN(card->ctx, rv);
 }
 
-static int nqapplet_check_sw(struct sc_card *card, unsigned int sw1, unsigned int sw2)
+static int
+nqapplet_check_sw(struct sc_card *card, unsigned int sw1, unsigned int sw2)
 {
 	const int nqapplet_error_count = sizeof(nqapplet_errors) / sizeof(struct sc_card_error);
 	int i;
@@ -389,7 +400,8 @@ static int nqapplet_check_sw(struct sc_card *card, unsigned int sw1, unsigned in
 	return iso_operations->check_sw(card, sw1, sw2);
 }
 
-static int nqapplet_get_data(struct sc_card *card, unsigned int id, u8 *resp, size_t cb_resp)
+static int
+nqapplet_get_data(struct sc_card *card, unsigned int id, u8 *resp, size_t cb_resp)
 {
 	struct sc_apdu apdu;
 	int rv;
@@ -413,8 +425,8 @@ static int nqapplet_get_data(struct sc_card *card, unsigned int id, u8 *resp, si
 	LOG_FUNC_RETURN(card->ctx, rv);
 }
 
-static int nqapplet_select_file(struct sc_card *card, const struct sc_path *in_path,
-                                struct sc_file **file_out)
+static int
+nqapplet_select_file(struct sc_card *card, const struct sc_path *in_path, struct sc_file **file_out)
 {
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -437,7 +449,8 @@ static int nqapplet_select_file(struct sc_card *card, const struct sc_path *in_p
 	LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 }
 
-static int nqapplet_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
+static int
+nqapplet_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 {
 	switch (cmd) {
 	case SC_CARDCTL_GET_SERIALNR:
@@ -452,7 +465,8 @@ static int nqapplet_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 	return SC_ERROR_NOT_SUPPORTED;
 }
 
-struct sc_card_driver *sc_get_nqApplet_driver(void)
+struct sc_card_driver *
+sc_get_nqApplet_driver(void)
 {
 	sc_card_driver_t *iso_driver = sc_get_iso7816_driver();
 

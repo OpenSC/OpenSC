@@ -29,35 +29,35 @@ static void sc_find_release(sc_pkcs11_operation_t *operation);
 
 /* Pseudo mechanism for the Find operation */
 static sc_pkcs11_mechanism_type_t find_mechanism = {
-	0,		/* mech */
-	{0,0,0},	/* mech_info */
-	{ -1 },		/* key_types */
-	sizeof(struct sc_pkcs11_find_operation),	/* obj_size */
-	sc_find_release,				/* release */
-	NULL,		/* md_init */
-	NULL,		/* md_update */
-	NULL,		/* md_final */
-	NULL,		/* sign_init */
-	NULL,		/* sign_update */
-	NULL,		/* sign_final */
-	NULL,		/* sign_size */
-	NULL,		/* verif_init */
-	NULL,		/* verif_update */
-	NULL,		/* verif_final */
-	NULL,		/* decrypt_init */
-	NULL,		/* decrypt */
-	NULL,		/* decrypt_update */
-	NULL,		/* decrypt_final */
-	NULL,		/* derive */
-	NULL,		/* wrap */
-	NULL,		/* unwrap */
-	NULL,		/* encrypt init */
-	NULL,		/* encrypt */
-	NULL,		/* ecnrypt_update */
-	NULL,		/* encrypt_final */
-	NULL,		/* mech_data */
-	NULL,		/* free_mech_data */
-	NULL,		/* copy_mech_data */
+	0,                                       /* mech */
+	{0, 0, 0},                               /* mech_info */
+	{-1},                                    /* key_types */
+	sizeof(struct sc_pkcs11_find_operation), /* obj_size */
+	sc_find_release,                         /* release */
+	NULL,                                    /* md_init */
+	NULL,                                    /* md_update */
+	NULL,                                    /* md_final */
+	NULL,                                    /* sign_init */
+	NULL,                                    /* sign_update */
+	NULL,                                    /* sign_final */
+	NULL,                                    /* sign_size */
+	NULL,                                    /* verif_init */
+	NULL,                                    /* verif_update */
+	NULL,                                    /* verif_final */
+	NULL,                                    /* decrypt_init */
+	NULL,                                    /* decrypt */
+	NULL,                                    /* decrypt_update */
+	NULL,                                    /* decrypt_final */
+	NULL,                                    /* derive */
+	NULL,                                    /* wrap */
+	NULL,                                    /* unwrap */
+	NULL,                                    /* encrypt init */
+	NULL,                                    /* encrypt */
+	NULL,                                    /* ecnrypt_update */
+	NULL,                                    /* encrypt_final */
+	NULL,                                    /* mech_data */
+	NULL,                                    /* free_mech_data */
+	NULL,                                    /* copy_mech_data */
 };
 
 static void
@@ -289,13 +289,13 @@ C_GetAttributeValue(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	}
 
 out:
-	name = lookup_enum (RV_T, rv );
+	name = lookup_enum(RV_T, rv);
 	if (name)
-		sc_log(context, "C_GetAttributeValue(hSession=0x%lx, hObject=0x%lx) = %s",
-			hSession, hObject, name);
+		sc_log(context, "C_GetAttributeValue(hSession=0x%lx, hObject=0x%lx) = %s", hSession, hObject,
+		       name);
 	else
-		sc_log(context, "C_GetAttributeValue(hSession=0x%lx, hObject=0x%lx) = 0x%lx",
-                        hSession, hObject, rv);
+		sc_log(context, "C_GetAttributeValue(hSession=0x%lx, hObject=0x%lx) = 0x%lx", hSession,
+		       hObject, rv);
 
 	sc_pkcs11_unlock();
 	return rv;

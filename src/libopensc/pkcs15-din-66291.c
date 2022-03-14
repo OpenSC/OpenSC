@@ -86,7 +86,7 @@ sc_pkcs15emu_din_66291_init(sc_pkcs15_card_t *p15card)
 
             pin_info.auth_id.value[0] = pin_id[i];
             pin_info.auth_id.len = 1;
-            pin_info.auth_type = SC_PKCS15_PIN_AUTH_TYPE_PIN;	
+            pin_info.auth_type = SC_PKCS15_PIN_AUTH_TYPE_PIN;
             pin_info.attrs.pin.flags = pin_flags[i];
             pin_info.attrs.pin.type = SC_PKCS15_PIN_TYPE_ASCII_NUMERIC;
             pin_info.attrs.pin.min_length = pin_min[i];
