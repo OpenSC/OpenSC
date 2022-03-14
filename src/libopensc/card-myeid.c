@@ -333,6 +333,8 @@ static const struct sc_card_operations *iso_ops = NULL;
 
 static int acl_to_byte(const struct sc_acl_entry *e)
 {
+	if (NULL == e)
+		return 0x00;
 	switch (e->method) {
 	case SC_AC_NONE:
 		return 0x00;
