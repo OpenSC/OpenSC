@@ -7,8 +7,11 @@ LIBS = $(FUZZING_LIBS)\
 	$(top_builddir)/src/common/libcompat.la
 
 noinst_PROGRAMS = fuzz_asn1_print fuzz_asn1_sig_value fuzz_pkcs15_decode fuzz_pkcs15_reader \
-					fuzz_scconf_parse_string fuzz_pkcs15init \
-					fuzz_pkcs15_encode fuzz_card
+					fuzz_scconf_parse_string fuzz_pkcs15_encode fuzz_card
+
+if ENABLE_STATIC
+noinst_PROGRAMS += fuzz_pkcs15init
+endif
 
 noinst_HEADERS = fuzzer_reader.h
 
