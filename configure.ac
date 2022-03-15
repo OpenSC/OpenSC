@@ -1100,6 +1100,8 @@ AM_CONDITIONAL([GIT_CHECKOUT], [test "${GIT_CHECKOUT}" = "yes"])
 AM_CONDITIONAL([ENABLE_FUZZING], [test "${enable_fuzzing}" = "yes"])
 AM_CONDITIONAL([ENABLE_SHARED], [test "${enable_shared}" = "yes"])
 AS_IF([test "${enable_shared}" = "yes"], [AC_DEFINE([ENABLE_SHARED], [1], [Enable shared libraries])])
+AM_CONDITIONAL([ENABLE_STATIC], [test "${enable_static}" = "yes"])
+AS_IF([test "${enable_static}" = "yes"], [AC_DEFINE([ENABLE_static], [1], [Enable static libraries])])
 
 if test "${enable_pedantic}" = "yes"; then
 	enable_strict="yes";
