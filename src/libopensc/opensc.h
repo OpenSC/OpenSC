@@ -1033,6 +1033,15 @@ sc_reader_t *sc_ctx_get_reader(sc_context_t *ctx, unsigned int i);
 int sc_ctx_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcsc_card_handle);
 
 /**
+ * detect if the given handles are referencing `reader`
+ *
+ * 0 -> handles also point to `reader`
+ * 1 -> handles don't point to `reader`, but to a different reader
+ */
+int
+pcsc_check_reader_handles(sc_context_t *ctx, sc_reader_t *reader, void * pcsc_context_handle, void * pcsc_card_handle);
+
+/**
  * Returns a pointer to the specified sc_reader_t object
  * @param  ctx  OpenSC context
  * @param  name name of the reader to look for

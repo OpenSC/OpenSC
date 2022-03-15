@@ -2502,12 +2502,35 @@ static void detect_protocol(sc_reader_t *reader, SCARDHANDLE card_handle)
 	reader->active_protocol = pcsc_proto_to_opensc(prot);
 }
 
+int
+pcsc_check_reader_handles(sc_context_t *ctx, sc_reader_t *reader, void * pcsc_context_handle, void * pcsc_card_handle)
+{
+	char reader_name[128];
+	DWORD reader_name_size = sizeof(reader_name);
+
+	if (NULL == reader)
+		return 1;
+
+	struct pcsc_private_data *priv = reader->drv_data;
+	memset(reader_name, 0, sizeof(reader_name));
+
+	/* check if new handles are for the same reader as old handles */
+	if (SCARD_S_SUCCESS != priv->gpriv->SCardGetAttrib(*(SCARDHANDLE *)pcsc_card_handle,
+				SCARD_ATTR_DEVICE_SYSTEM_NAME_A, (LPBYTE)
+				reader_name, &reader_name_size)
+			|| strcmp(reader_name, reader->name) != 0) {
+		sc_log(ctx, "Reader name changed from \"%s\" to \"%s\"", reader->name, reader_name);
+
+		return 1;
+	}
+
+	return 0;
+}
+
 int pcsc_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcsc_card_handle)
 {
 	SCARDHANDLE card_handle;
 	struct pcsc_global_private_data *gpriv = (struct pcsc_global_private_data *) ctx->reader_drv_data;
-	sc_reader_t *reader = NULL;
-	struct pcsc_private_data *priv = NULL;
 	char reader_name[128];
 	DWORD reader_name_size = sizeof(reader_name);
 	int ret = SC_ERROR_INTERNAL;
@@ -2524,49 +2547,20 @@ int pcsc_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcsc_c
 		goto out;
 	}
 
-	/* Only minidriver calls pcsc use_reader as minidriver uses one reader
-	 * if we already have a reader 
-	 * first see if we are trying to free it 
-	 * test if new handles point to the same reader 
-	 * if they do use it,
-	 * if not set SC_CTX_FLAG_TERMINATE so we remove it before getting new reader
-	 */
-
+	/* Only minidriver calls this and only uses one reader */
+	/* if we already have a reader, update it */
 	if (sc_ctx_get_reader_count(ctx) > 0) {
-		reader = list_get_at(&ctx->readers, 0);
+		sc_log(ctx, "Reusing the reader");
+		sc_reader_t *reader = list_get_at(&ctx->readers, 0);
 
-		if (reader == NULL) {
-			ret = SC_ERROR_INTERNAL;
-			goto out;
-		}
-
-		if (ctx->flags & SC_CTX_FLAG_TERMINATE) {
-			sc_log(ctx, "Freeing reader");
-			ctx->flags &= ~SC_CTX_FLAG_TERMINATE;
-			_sc_delete_reader(ctx, reader);
-			reader = NULL;
-			/* fall thru to get new reader */
-		} else {
-			sc_log(ctx, "Try Reusing the reader");
-	
-			priv = reader->drv_data;
-			memset(reader_name, 0, sizeof(reader_name));
-	
-			/* check if new handles are for the same reader as old handles */
-			if (SCARD_S_SUCCESS != gpriv->SCardGetAttrib(*(SCARDHANDLE *)pcsc_card_handle,
-					SCARD_ATTR_DEVICE_SYSTEM_NAME_A, (LPBYTE)
-					reader_name, &reader_name_size)
-					|| strcmp(reader_name, reader->name) != 0) {
-				sc_log(ctx, "Reader name changed from \"%s\" to \"%s\"", reader->name, reader_name);
-	
-				ret = 1; /* tell caller to cleanup old reader and any cached data then try again */
-				ctx->flags |= SC_CTX_FLAG_TERMINATE; /* but don't do any operations on handle and try again */
-				goto out;
-			}
-
-			priv->pcsc_card = *(SCARDHANDLE *)pcsc_card_handle;
+		if (reader) {
+			struct pcsc_private_data *priv = reader->drv_data;
+			priv->pcsc_card =*(SCARDHANDLE *)pcsc_card_handle;
 			gpriv->pcsc_ctx = *(SCARDCONTEXT *)pcsc_context_handle;
 			ret = SC_SUCCESS;
+			goto out;
+		} else {
+			ret = SC_ERROR_INTERNAL;
 			goto out;
 		}
 	}
@@ -2580,7 +2574,7 @@ int pcsc_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcsc_c
 	if(SCARD_S_SUCCESS == gpriv->SCardGetAttrib(card_handle,
 				SCARD_ATTR_DEVICE_SYSTEM_NAME_A, (LPBYTE)
 				reader_name, &reader_name_size)) {
-		reader = NULL;
+		sc_reader_t *reader = NULL;
 
 		ret = pcsc_add_reader(ctx, reader_name, reader_name_size, &reader);
 		if (ret == SC_SUCCESS) {
