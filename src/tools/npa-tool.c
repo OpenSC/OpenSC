@@ -870,7 +870,7 @@ err:
 int
 main (int argc, char **argv)
 {
-	fprintf(stderr, "OpenPACE is needed for npa-tool");
+	fprintf(stderr, "OpenPACE is needed for npa-tool\n");
 	return 1;
 }
 #endif
