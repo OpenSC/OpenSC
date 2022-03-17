@@ -3690,8 +3690,10 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 				memcpy(((PBYTE)publicKey) + sizeof(BCRYPT_ECCKEY_BLOB),  pubkey_der.value + 3,  pubkey_der.len -3);
 
 				logprintf(pCardData, 3,
-					  "return info on ECC SIGN_CONTAINER_INDEX %u\n",
-					  (unsigned int)bContainerIndex);
+					  "return info on ECC SIGN_CONTAINER_INDEX %u cbKey:%u dwMagic:%u\n",
+					  (unsigned int)bContainerIndex,
+					  (unsigned int)publicKey->cbKey,
+					  (unsigned int)publicKey->dwMagic);
 			}
 			if (cont->size_key_exchange)   {
 				sz = (DWORD) (sizeof(BCRYPT_ECCKEY_BLOB) +  pubkey_der.len -3);
@@ -3729,13 +3731,22 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 				memcpy(((PBYTE)publicKey) + sizeof(BCRYPT_ECCKEY_BLOB),  pubkey_der.value + 3,  pubkey_der.len -3);
 
 				logprintf(pCardData, 3,
-					  "return info on ECC KEYX_CONTAINER_INDEX %u\n",
-					  (unsigned int)bContainerIndex);
+					  "return info on ECC KEYX_CONTAINER_INDEX %u cbKey:%u dwMagic:%u\n",
+					  (unsigned int)bContainerIndex,
+					  (unsigned int)publicKey->cbKey,
+					  (unsigned int)publicKey->dwMagic);
 			}
 		}
 	}
 	logprintf(pCardData, 7, "returns container(idx:%u) info\n",
 		  (unsigned int)bContainerIndex);
+
+	logprintf(pCardData, 1,
+		  "CardGetContainerInfo bContainerIndex=%u, dwFlags=0x%08X, dwVersion=%lu, cbSigPublicKey=%lu, cbKeyExPublicKey=%lu\n",
+		  (unsigned int)bContainerIndex, (unsigned int)dwFlags,
+		  (unsigned long)pContainerInfo->dwVersion,
+		  (unsigned long)pContainerInfo->cbSigPublicKey,
+		  (unsigned long)pContainerInfo->cbKeyExPublicKey);
 
 err:
 	free(pubkey_der.value);
