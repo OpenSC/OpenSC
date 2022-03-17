@@ -98,7 +98,7 @@ HINSTANCE g_inst;
 #define NULLSTR(a) (a == NULL ? "<NULL>" : a)
 #define NULLWSTR(a) (a == NULL ? L"<NULL>" : a)
 
-#define MD_MAX_KEY_CONTAINERS 12
+#define MD_MAX_KEY_CONTAINERS 32
 #define MD_CARDID_SIZE 16
 
 #define MD_ROLE_USER_SIGN (ROLE_ADMIN + 1)
