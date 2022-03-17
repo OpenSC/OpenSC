@@ -52,9 +52,13 @@ void fuzz_pkcs15init_bind(struct sc_card *card, struct sc_profile **result,
                           const uint8_t *data, size_t size)
 {
     struct sc_profile *profile = NULL;
-    const char	      *driver = card->driver->short_name;
+    const char	      *driver;
     struct sc_pkcs15init_operations * (* func)(void) = NULL;
     int r = 0;
+
+    if (!card || !card->driver || !result)
+        return;
+
     *result = NULL;
 
     r = sc_pkcs15init_set_lifecycle(card, SC_CARDCTRL_LIFECYCLE_ADMIN);
@@ -63,7 +67,10 @@ void fuzz_pkcs15init_bind(struct sc_card *card, struct sc_profile **result,
     }
 
 	profile = sc_profile_new();
+    if (!profile)
+        return;
     profile->card = card;
+    driver = card->driver->short_name;
 
     for (int i = 0; profile_operations[i].name; i++) {
 		if (!strcasecmp(driver, profile_operations[i].name)) {
