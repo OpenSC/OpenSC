@@ -44,7 +44,8 @@ void fuzz_get_chunk(sc_reader_t *reader, const uint8_t **chunk, uint16_t *chunk_
         *chunk_size = 0;
 
     if (!chunk || !chunk_size || !reader) {
-        sc_debug(reader->ctx, SC_LOG_DEBUG_VERBOSE_TOOL, "Invalid Arguments");
+        if (reader)
+            sc_debug(reader->ctx, SC_LOG_DEBUG_VERBOSE_TOOL, "Invalid Arguments");
         return;
     }
     data = reader->drv_data;
