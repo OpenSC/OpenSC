@@ -49,8 +49,10 @@
 
 #define X86onX64_SC_DATABASE TEXT("SOFTWARE\\Wow6432Node\\Microsoft\\Cryptography\\Calais\\SmartCards")
 #define SC_DATABASE TEXT("SOFTWARE\\Microsoft\\Cryptography\\Calais\\SmartCards")
-#define BASE_CSP TEXT("OpenSC CSP")
+#define BASE_CSP TEXT("Microsoft Base Smart Card Crypto Provider")
 #define BASE_KSP TEXT("Microsoft Smart Card Key Storage Provider")
+#define BASE_INSTALLED_BY_KEY TEXT("InstalledBy")
+#define BASE_INSTALLED_BY_VALUE TEXT("OpenSC")
 
 typedef struct _MD_REGISTRATION
 {
@@ -199,7 +201,8 @@ MD_REGISTRATION minidriver_registration[] = {
 };
 
 
-/* remove a card in the database if and only if the CSP match the OpenSC CSP
+/* remove a card in the database if and only if the BASE_INSTALLED_BY_KEY is present and has value of BASE INSTALLED_BY_VALUE
+It also will not install drivers installed by other or modified by a user (who should have changed the BASE INSTALLED_BY_VALUE
 The program try to avoid any failure to not break the uninstall process */
 VOID RemoveKey(PTSTR szSubKey)
 {
@@ -226,13 +229,13 @@ VOID RemoveKey(PTSTR szSubKey)
 			lResult = RegOpenKeyEx (hKey, szName, 0, KEY_READ, &hTempKey);
 			if (lResult == ERROR_SUCCESS)
 			{
-				TCHAR szCSP[MAX_PATH] = {0};
+				TCHAR szIB[MAX_PATH] = {0};
 				dwSize = MAX_PATH;
-				lResult = RegQueryValueEx(hTempKey, TEXT("Crypto Provider"), NULL, NULL, (PBYTE) szCSP, &dwSize);
+				lResult = RegQueryValueEx(hTempKey, BASE_INSTALLED_BY_KEY, NULL, NULL, (PBYTE) szIB, &dwSize);
 				RegCloseKey(hTempKey);
 				if (lResult == ERROR_SUCCESS)
 				{
-					if ( _tcsstr(szCSP, TEXT("OpenSC CSP")) != 0)
+					if ( _tcsstr(szIB, BASE_INSTALLED_BY_VALUE) != 0)
 					{
 						lResult = RegDeleteKey(hKey, szName);
 						if (lResult != ERROR_SUCCESS)
@@ -303,6 +306,8 @@ void RegisterCardWithKey(PTSTR szKey, PTSTR szCard, PTSTR szPath, PBYTE pbATR, D
 		RegSetValueEx( hTempKey,TEXT("80000001"),0, REG_SZ, (PBYTE)szPath,(DWORD) (sizeof(TCHAR) * _tcslen(szPath)));
 		RegSetValueEx( hTempKey,TEXT("ATR"),0, REG_BINARY, (PBYTE)pbATR, dwATRSize);
 		RegSetValueEx( hTempKey,TEXT("ATRMask"),0, REG_BINARY, (PBYTE)pbAtrMask, dwATRSize);
+		RegSetValueEx( hTempKey,BASE_INSTALLED_BY_KEY,0, REG_SZ, (PBYTE)BASE_INSTALLED_BY_VALUE,
+			sizeof(BASE_INSTALLED_BY_VALUE) - sizeof(TCHAR));
 		RegCloseKey(hTempKey);
 	}
 	else
