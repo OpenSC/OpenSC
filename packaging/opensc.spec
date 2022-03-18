@@ -1,6 +1,3 @@
-%define opensc_module "OpenSC PKCS #11 Module"
-%define nssdb %{_sysconfdir}/pki/nssdb
-
 Name:           opensc
 Version:        0.1.0
 Release:        1%{?dist}
@@ -11,7 +8,7 @@ URL:            https://github.com/OpenSC/OpenSC/wiki
 Source0:        opensc-0.1.0.tar.gz
 Source1:        opensc.module
 
-BuildRequires: make
+BuildRequires:  make
 BuildRequires:  pcsc-lite-devel
 BuildRequires:  readline-devel
 BuildRequires:  openssl-devel
@@ -22,9 +19,7 @@ BuildRequires:  bash-completion
 BuildRequires:  zlib-devel
 # For tests
 BuildRequires:  libcmocka-devel
-%if ! 0%{?rhel}
 BuildRequires:  softhsm
-%endif
 BuildRequires:  openssl
 Requires:       pcsc-lite-libs%{?_isa}
 Requires:       pcsc-lite
@@ -112,9 +107,6 @@ rm -f $RPM_BUILD_ROOT%{_libdir}/libopensc.so
 # remove the .pc file so we do not confuse users #1673139
 rm -f $RPM_BUILD_ROOT%{_libdir}/pkgconfig/*.pc
 rm -f $RPM_BUILD_ROOT%{_libdir}/libsmm-local.so
-%if 0%{?rhel} && 0%{?rhel} < 7
-rm -rf %{buildroot}%{_datadir}/bash-completion/
-%endif
 
 # the npa-tool builds to nothing since we do not have OpenPACE library
 rm -rf %{buildroot}%{_bindir}/npa-tool
@@ -133,9 +125,7 @@ rm %{buildroot}%{_mandir}/man1/opensc-notify.1*
 %files
 %doc COPYING NEWS README*
 
-%if ! 0%{?rhel} || 0%{?rhel} >= 7
 %{_datadir}/bash-completion/*
-%endif
 
 %ifarch %{ix86}
 %{_mandir}/man5/opensc-%{_arch}.conf.5*
@@ -173,7 +163,7 @@ rm %{buildroot}%{_mandir}/man1/opensc-notify.1*
 %{_libdir}/opensc-pkcs11.so
 %{_libdir}/pkcs11-spy.so
 %{_libdir}/onepin-opensc-pkcs11.so
-%%dir %{_libdir}/pkcs11
+%dir %{_libdir}/pkcs11
 %{_libdir}/pkcs11/opensc-pkcs11.so
 %{_libdir}/pkcs11/onepin-opensc-pkcs11.so
 %{_libdir}/pkcs11/pkcs11-spy.so
