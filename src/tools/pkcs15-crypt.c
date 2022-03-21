@@ -389,8 +389,10 @@ int main(int argc, char *argv[])
 		c = getopt_long(argc, argv, "sck:r:i:o:f:Rp:vw", options, &long_optind);
 		if (c == -1)
 			break;
-		if (c == '?')
-			util_print_usage_and_die(app_name, options, option_help, NULL);
+		if (c == '?') {
+			util_print_usage(app_name, options, option_help, NULL);
+			return 2;
+		}
 		switch (c) {
 		case OPT_VERSION:
 			do_print_version = 1;
@@ -458,8 +460,10 @@ int main(int argc, char *argv[])
 			break;
 		}
 	}
-	if (action_count == 0)
-		util_print_usage_and_die(app_name, options, option_help, NULL);
+	if (action_count == 0) {
+		util_print_usage(app_name, options, option_help, NULL);
+		return 2;
+	}
 
 	if (do_print_version)   {
 		printf("%s\n", OPENSC_SCM_REVISION);
