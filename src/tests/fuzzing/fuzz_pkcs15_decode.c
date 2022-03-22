@@ -24,13 +24,33 @@
 #include "libopensc/pkcs15.h"
 #include "libopensc/internal.h"
 
+uint16_t fuzz_get_buffer(const uint8_t **buf, size_t buf_len, const uint8_t **out, size_t *out_len)
+{
+	uint16_t len = 0;
+
+	if (!buf || !(*buf) || buf_len < 2)
+		return 0;
+
+	/* Get length of the result buffer*/
+	len = *((uint16_t *) *buf);
+	if (buf_len - 2 <= len)
+		return 0;
+	(*buf) += 2;
+	buf_len -= 2;
+	
+	/* Set out buffer to new reader data*/
+	*out = *buf + len;
+	*out_len = buf_len - len;
+	return len;
+}
 
 int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
 {
 	size_t i = 0;
 	struct sc_reader *reader = NULL;
-	const uint8_t *buf;
-	uint16_t buf_len;
+	const uint8_t *buf = Data, *reader_data = NULL;
+	uint16_t buf_len = 0;
+	size_t reader_data_len = 0;
 	static struct sc_context *ctx = NULL;
 	static struct sc_pkcs15_card *p15card = NULL;
 	static sc_card_t *card = NULL;
@@ -43,12 +63,16 @@ int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
 	};
 	int algorithms[] = { SC_ALGORITHM_RSA, SC_ALGORITHM_EC, SC_ALGORITHM_GOSTR3410, SC_ALGORITHM_EDDSA };
 
+	/* Split data into testing buffer and APDU for connecting */
+	if ((buf_len = fuzz_get_buffer(&buf, Size, &reader_data, &reader_data_len)) == 0)
+		return 0;
+
 	/* Establish context for fuzz app*/
 	sc_establish_context(&ctx, "fuzz");
 	if (!ctx)
 		return 0;
 
-	if (fuzz_connect_card(ctx, &card, &reader, Data, Size) != SC_SUCCESS)
+	if (fuzz_connect_card(ctx, &card, &reader, reader_data, reader_data_len) != SC_SUCCESS)
 		goto err;
 
 	sc_pkcs15_bind(card, NULL, &p15card);
@@ -57,14 +81,11 @@ int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
 
 	for (i = 0; i < sizeof decode_entries/sizeof *decode_entries; i++) {
 		struct sc_pkcs15_object *obj;
-		const u8 *p = NULL;
-		size_t len = 0;
+		const u8 *p = buf;
+		size_t len = (size_t) buf_len;
 		if (!(obj = calloc(1, sizeof *obj)))
 			goto err;
-		fuzz_get_chunk(reader, &buf, &buf_len);
-		p = buf;
-		len = (size_t) buf_len;
-		while (SC_SUCCESS == decode_entries[i](p15card, obj, &p, (size_t *) &len)) {
+		while (SC_SUCCESS == decode_entries[i](p15card, obj, &p, &len)) {
 			sc_pkcs15_free_object(obj);
 			if (!(obj = calloc(1, sizeof *obj)))
 				goto err;
@@ -72,7 +93,6 @@ int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
 		sc_pkcs15_free_object(obj);
 	}
 
-	fuzz_get_chunk(reader, &buf, &buf_len);
 	for (i = 0; i < 4; i++) {
 		struct sc_pkcs15_pubkey *pubkey = calloc(1, sizeof *pubkey);
 		if (!pubkey)
@@ -82,12 +102,10 @@ int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
 		sc_pkcs15_free_pubkey(pubkey);
 	}
 
-	fuzz_get_chunk(reader, &buf, &buf_len);
 	tokeninfo = sc_pkcs15_tokeninfo_new();
 	sc_pkcs15_parse_tokeninfo(ctx, tokeninfo, buf, buf_len);
 	sc_pkcs15_free_tokeninfo(tokeninfo);
 
-	fuzz_get_chunk(reader, &buf, &buf_len);
 	sc_pkcs15_parse_unusedspace(buf, buf_len, p15card);
 
 	sc_pkcs15_card_free(p15card);
