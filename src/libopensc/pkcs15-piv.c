@@ -144,6 +144,8 @@ static int piv_get_guid(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_o
 	r = sc_card_ctl(p15card->card, SC_CARDCTL_GET_SERIALNR, &serialnr);
 	if (r)
 		return r;
+	if (serialnr.len > SC_MAX_SERIALNR)
+		return SC_ERROR_INTERNAL;
 
 	memset(guid_bin, 0, sizeof(guid_bin));
 	memset(out, 0, *out_size);
