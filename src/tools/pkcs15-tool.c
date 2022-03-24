@@ -1854,7 +1854,8 @@ static int change_pin(void)
 		if (newpin == NULL || strlen((char *) newpin) == 0)   {
 			fprintf(stderr, "No new PIN value supplied.\n");
 			free(newpin);
-			free(pincode);
+			if (opt_pin == NULL)
+				free(pincode);
 			return 2;
 		}
 
