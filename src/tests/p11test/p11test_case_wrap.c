@@ -73,7 +73,7 @@ test_wrap(test_cert_t *o, token_info_t *info, test_cert_t *key, test_mech_t *mec
 	}
 
 	debug_print(" [ KEY %s ] Wrap a key [%s] using CKM_%s", o->id_str, key->id_str,
-	            get_mechanism_name(mech->mech));
+			get_mechanism_name(mech->mech));
 	/* RSA mechanisms */
 	if (mech->mech == CKM_RSA_X_509) {
 		if (o->bits < key->bits) {
@@ -106,7 +106,7 @@ test_wrap(test_cert_t *o, token_info_t *info, test_cert_t *key, test_mech_t *mec
 		/* Nothing special ... */
 	} else {
 		debug_print(" [ KEY %s ] Unknown wrapping mechanism %s", o->id_str,
-		            get_mechanism_name(mech->mech));
+				get_mechanism_name(mech->mech));
 		return 1;
 	}
 
@@ -114,7 +114,7 @@ test_wrap(test_cert_t *o, token_info_t *info, test_cert_t *key, test_mech_t *mec
 	mechanism.pParameter = mech->params;
 	mechanism.ulParameterLen = mech->params_len;
 	rv = fp->C_WrapKey(info->session_handle, &mechanism, o->public_handle, key->private_handle,
-	                   wrapped, &wrapped_len);
+			wrapped, &wrapped_len);
 	if (rv != CKR_OK) {
 		mech->params = NULL;
 		mech->params_len = 0;
@@ -130,7 +130,7 @@ test_wrap(test_cert_t *o, token_info_t *info, test_cert_t *key, test_mech_t *mec
 	}
 	/* Wrap the key using public RSA key through PKCS#11 */
 	rv = fp->C_WrapKey(info->session_handle, &mechanism, o->public_handle, key->private_handle,
-	                   wrapped, &wrapped_len);
+			wrapped, &wrapped_len);
 	if (rv != CKR_OK) {
 		mech->params = NULL;
 		mech->params_len = 0;
@@ -239,7 +239,7 @@ test_wrap(test_cert_t *o, token_info_t *info, test_cert_t *key, test_mech_t *mec
 			debug_print(" [  OK %s ] Decrypted message matches", o->id_str);
 		} else {
 			printf(" [ ERROR %s ] Decrypted message does not match (%d, %d)\n", o->id_str,
-			       check_len, plaintext_len);
+					check_len, plaintext_len);
 			printf("\nplaintext:\n");
 			for (int i = 0; i < plaintext_len; i++) {
 				printf(":%x", plaintext[i]);
@@ -343,25 +343,25 @@ wrap_tests(void **state)
 	printf("[KEY ID] [EXTRACTABLE] [LABEL]\n");
 	printf("[ TYPE ] [ SIZE ]              [ WRAP ] [UNWRAP]\n");
 	P11TEST_DATA_ROW(info, 4,
-	                 's', "KEY ID",
-	                 's', "MECHANISM",
-	                 's', "WRAP WORKS",
-	                 's', "UNWRAP WORKS");
+			's', "KEY ID",
+			's', "MECHANISM",
+			's', "WRAP WORKS",
+			's', "UNWRAP WORKS");
 	for (i = 0; i < objects.count; i++) {
 		test_cert_t *o = &objects.data[i];
 		if (o->key_type != CKK_RSA && o->key_type != CKK_AES)
 			continue;
 
 		printf("\n[%-6s] [     %s    ] [%s]\n",
-		       o->id_str,
-		       o->extractable ? "./" : "  ",
-		       o->label);
+				o->id_str,
+				o->extractable ? "./" : "  ",
+				o->label);
 		printf("[ %s ] [%6lu]              [ [%s] ] [ [%s] ]\n",
-		       (o->key_type == CKK_RSA ? "RSA " :
-		        o->key_type == CKK_AES ? "AES " : " ?? "),
-		       o->bits,
-		       o->wrap ? "./" : "  ",
-		       o->unwrap ? "./" : "  ");
+				(o->key_type == CKK_RSA ? "RSA " :
+						o->key_type == CKK_AES ? "AES " : " ?? "),
+				o->bits,
+				o->wrap ? "./" : "  ",
+				o->unwrap ? "./" : "  ");
 		/* the attributes are sometimes confusing
 		if (!o->wrap && !o->unwrap) {
 			printf("  no usable attributes found ... ignored\n");
@@ -377,20 +377,20 @@ wrap_tests(void **state)
 				continue;
 			}
 			printf("  [ %-24s ] [%s][%s] [%s][%s]\n",
-			       get_mechanism_name(mech->mech),
-			       mech->result_flags & FLAGS_WRAP_SYM ? "./" : "  ",
-			       mech->result_flags & FLAGS_WRAP ? "./" : "  ",
-			       mech->result_flags & FLAGS_UNWRAP_SYM ? "./" : "  ",
-			       mech->result_flags & FLAGS_UNWRAP ? "./" : "  ");
+					get_mechanism_name(mech->mech),
+					mech->result_flags & FLAGS_WRAP_SYM ? "./" : "  ",
+					mech->result_flags & FLAGS_WRAP ? "./" : "  ",
+					mech->result_flags & FLAGS_UNWRAP_SYM ? "./" : "  ",
+					mech->result_flags & FLAGS_UNWRAP ? "./" : "  ");
 			if ((mech->result_flags & (FLAGS_WRAP | FLAGS_UNWRAP)) == 0)
 				continue; /* skip empty rows for export */
 			P11TEST_DATA_ROW(info, 6,
-			                 's', o->id_str,
-			                 's', get_mechanism_name(mech->mech),
-			                 's', mech->result_flags & FLAGS_WRAP_SYM ? "YES" : "",
-			                 's', mech->result_flags & FLAGS_WRAP ? "YES" : "",
-			                 's', mech->result_flags & FLAGS_UNWRAP_SYM ? "YES" : "",
-			                 's', mech->result_flags & FLAGS_UNWRAP ? "YES" : "");
+					's', o->id_str,
+					's', get_mechanism_name(mech->mech),
+					's', mech->result_flags & FLAGS_WRAP_SYM ? "YES" : "",
+					's', mech->result_flags & FLAGS_WRAP ? "YES" : "",
+					's', mech->result_flags & FLAGS_UNWRAP_SYM ? "YES" : "",
+					's', mech->result_flags & FLAGS_UNWRAP ? "YES" : "");
 		}
 	}
 	printf(" Wrapping symmetric key works --^   ^    ^   ^- Unwrapping asymmetric key works\n");

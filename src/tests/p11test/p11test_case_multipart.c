@@ -69,9 +69,9 @@ multipart_tests(void **state)
 	/* print summary */
 	printf("[KEY ID] [TYPE] [ SIZE ] [PUBLIC] [SIGN&VERIFY] [LABEL]\n");
 	P11TEST_DATA_ROW(info, 3,
-		's', "KEY ID",
-		's', "MECHANISM",
-		's', "MULTIPART SIGN&VERIFY WORKS");
+			's', "KEY ID",
+			's', "MECHANISM",
+			's', "MULTIPART SIGN&VERIFY WORKS");
 	for (i = 0; i < objects.count; i++) {
 		test_cert_t *o = &objects.data[i];
 
@@ -79,13 +79,13 @@ multipart_tests(void **state)
 			continue;
 
 		printf("[%-6s] [%s] [%6lu] [ %s ] [%s%s] [%s]\n",
-		       o->id_str,
-		       "RSA ",
-		       o->bits,
-		       o->verify_public == 1 ? " ./ " : "    ",
-		       o->sign ? "[./] " : "[  ] ",
-		       o->verify ? " [./] " : " [  ] ",
-		       o->label);
+				o->id_str,
+				"RSA ",
+				o->bits,
+				o->verify_public == 1 ? " ./ " : "    ",
+				o->sign ? "[./] " : "[  ] ",
+				o->verify ? " [./] " : " [  ] ",
+				o->label);
 		if (o->private_handle == CK_INVALID_HANDLE) {
 			continue;
 		}
@@ -96,14 +96,14 @@ multipart_tests(void **state)
 				continue;
 			}
 			printf("         [ %-20s ] [   %s    ]\n",
-			       get_mechanism_name(mech->mech),
-			       mech->result_flags & FLAGS_SIGN_ANY ? "[./]" : "    ");
+					get_mechanism_name(mech->mech),
+					mech->result_flags & FLAGS_SIGN_ANY ? "[./]" : "    ");
 			if ((mech->result_flags & FLAGS_SIGN_ANY) == 0)
 				continue; /* do not export unknown and non-working algorithms */
 			P11TEST_DATA_ROW(info, 3,
-			                 's', o->id_str,
-			                 's', get_mechanism_name(mech->mech),
-			                 's', mech->result_flags & FLAGS_SIGN_ANY ? "YES" : "");
+					's', o->id_str,
+					's', get_mechanism_name(mech->mech),
+					's', mech->result_flags & FLAGS_SIGN_ANY ? "YES" : "");
 		}
 		printf("\n");
 	}

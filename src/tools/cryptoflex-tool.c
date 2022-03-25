@@ -235,20 +235,19 @@ parse_public_key(const u8 *key, size_t keysize, EVP_PKEY *pkey)
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 	if (!(rsa = RSA_new()) ||
-	    !(pkey = EVP_PKEY_new()) ||
-	    RSA_set0_key(rsa, n, e, NULL) != 1 ||
-	    EVP_PKEY_assign_RSA(pkey, rsa) != 1) {
+			!(pkey = EVP_PKEY_new()) ||
+			RSA_set0_key(rsa, n, e, NULL) != 1 ||
+			EVP_PKEY_assign_RSA(pkey, rsa) != 1) {
 		RSA_free(rsa);
 		EVP_PKEY_free(pkey);
 		return -1;
 	}
 #else
 	ctx = EVP_PKEY_CTX_new_from_name(NULL, "RSA", NULL);
-	if (!ctx ||
-	    !(bld = OSSL_PARAM_BLD_new()) ||
-	    OSSL_PARAM_BLD_push_BN(bld, "n", n) != 1 ||
-	    OSSL_PARAM_BLD_push_BN(bld, "e", e) != 1 ||
-	    !(params = OSSL_PARAM_BLD_to_param(bld))) {
+	if (!ctx || !(bld = OSSL_PARAM_BLD_new()) ||
+			OSSL_PARAM_BLD_push_BN(bld, "n", n) != 1 ||
+			OSSL_PARAM_BLD_push_BN(bld, "e", e) != 1 ||
+			!(params = OSSL_PARAM_BLD_to_param(bld))) {
 		OSSL_PARAM_BLD_free(bld);
 		EVP_PKEY_CTX_free(ctx);
 		OSSL_PARAM_free(params);
@@ -257,7 +256,7 @@ parse_public_key(const u8 *key, size_t keysize, EVP_PKEY *pkey)
 	OSSL_PARAM_BLD_free(bld);
 
 	if (EVP_PKEY_fromdata_init(ctx) != 1 ||
-	    EVP_PKEY_fromdata(ctx, &pkey, EVP_PKEY_PUBLIC_KEY, params) != 1) {
+			EVP_PKEY_fromdata(ctx, &pkey, EVP_PKEY_PUBLIC_KEY, params) != 1) {
 		return -1;
 	}
 	OSSL_PARAM_free(params);
@@ -354,8 +353,8 @@ parse_private_key(const u8 *key, size_t keysize, EVP_PKEY *pkey)
 	RSA_get0_key(rsa, &rsa_n, &rsa_e, NULL);
 
 	if (RSA_set0_factors(rsa, bn_p, q) != 1 ||
-	    RSA_set0_crt_params(rsa, dmp1, dmq1, iqmp) != 1 ||
-	    gen_d(&rsa_d, bn_p, q, rsa_n, rsa_e) != 0)
+			RSA_set0_crt_params(rsa, dmp1, dmq1, iqmp) != 1 ||
+			gen_d(&rsa_d, bn_p, q, rsa_n, rsa_e) != 0)
 		return -1;
 
 	/* RSA_set0_key will free previous value, and replace with new value
@@ -381,13 +380,13 @@ parse_private_key(const u8 *key, size_t keysize, EVP_PKEY *pkey)
 	gen_d(&rsa_d, bn_p, q, rsa_n, rsa_e);
 	/* Merge params*/
 	if (!(bld = OSSL_PARAM_BLD_new()) ||
-	    OSSL_PARAM_BLD_push_BN(bld, "d", rsa_d) != 1 ||
-	    OSSL_PARAM_BLD_push_BN(bld, "rsa-factor1", bn_p) != 1 ||
-	    OSSL_PARAM_BLD_push_BN(bld, "rsa-factor2", q) != 1 ||
-	    OSSL_PARAM_BLD_push_BN(bld, "rsa-exponent1", dmp1) != 1 ||
-	    OSSL_PARAM_BLD_push_BN(bld, "rsa-exponent2", dmq1) != 1 ||
-	    OSSL_PARAM_BLD_push_BN(bld, "rsa-coefficient1", iqmp) != 1 ||
-	    !(new_params = OSSL_PARAM_BLD_to_param(bld))) {
+			OSSL_PARAM_BLD_push_BN(bld, "d", rsa_d) != 1 ||
+			OSSL_PARAM_BLD_push_BN(bld, "rsa-factor1", bn_p) != 1 ||
+			OSSL_PARAM_BLD_push_BN(bld, "rsa-factor2", q) != 1 ||
+			OSSL_PARAM_BLD_push_BN(bld, "rsa-exponent1", dmp1) != 1 ||
+			OSSL_PARAM_BLD_push_BN(bld, "rsa-exponent2", dmq1) != 1 ||
+			OSSL_PARAM_BLD_push_BN(bld, "rsa-coefficient1", iqmp) != 1 ||
+			!(new_params = OSSL_PARAM_BLD_to_param(bld))) {
 		OSSL_PARAM_free(pkey_params);
 		OSSL_PARAM_BLD_free(bld);
 		return -1;
@@ -401,8 +400,8 @@ parse_private_key(const u8 *key, size_t keysize, EVP_PKEY *pkey)
 
 	/* Create pkey from params */
 	if (!(ctx = EVP_PKEY_CTX_new_from_name(NULL, "RSA", NULL)) ||
-	    EVP_PKEY_fromdata_init(ctx) != 1 ||
-	    EVP_PKEY_fromdata(ctx, &pkey, EVP_PKEY_KEYPAIR, params) != 1)
+			EVP_PKEY_fromdata_init(ctx) != 1 ||
+			EVP_PKEY_fromdata(ctx, &pkey, EVP_PKEY_KEYPAIR, params) != 1)
 		rv = -1;
 	OSSL_PARAM_free(pkey_params);
 	OSSL_PARAM_free(new_params);
@@ -764,7 +763,7 @@ read_rsa_privkey(EVP_PKEY **pkey_out)
 	EVP_PKEY_assign_RSA(pkey, rsa);
 #else
 	dctx = OSSL_DECODER_CTX_new_for_pkey(&pkey, "PEM", NULL, "RSA", OSSL_KEYMGMT_SELECT_KEYPAIR, NULL,
-	                                     NULL);
+			NULL);
 	OSSL_DECODER_from_bio(dctx, in);
 #endif
 	BIO_free(in);
@@ -813,7 +812,7 @@ encode_private_key(EVP_PKEY *pkey, u8 *key, size_t *keysize)
 	RSA_get0_factors(rsa, &rsa_p, &rsa_q);
 #else
 	if (EVP_PKEY_get_bn_param(pkey, "rsa-factor1", &rsa_p) != 1 ||
-	    EVP_PKEY_get_bn_param(pkey, "rsa-factor2", &rsa_q) != 1) {
+			EVP_PKEY_get_bn_param(pkey, "rsa-factor2", &rsa_q) != 1) {
 		fprintf(stderr, "Invalid private key.\n");
 		rv = 2;
 		goto end;
@@ -842,8 +841,8 @@ encode_private_key(EVP_PKEY *pkey, u8 *key, size_t *keysize)
 	RSA_get0_crt_params(rsa, &rsa_dmp1, &rsa_dmq1, &rsa_iqmp);
 #else
 	if (EVP_PKEY_get_bn_param(pkey, "rsa-exponent1", &rsa_dmp1) != 1 ||
-	    EVP_PKEY_get_bn_param(pkey, "rsa-exponent2", &rsa_dmq1) != 1 ||
-	    EVP_PKEY_get_bn_param(pkey, "rsa-coefficient1", &rsa_iqmp) != 1) {
+			EVP_PKEY_get_bn_param(pkey, "rsa-exponent2", &rsa_dmq1) != 1 ||
+			EVP_PKEY_get_bn_param(pkey, "rsa-coefficient1", &rsa_iqmp) != 1) {
 		fprintf(stderr, "Invalid private key.\n");
 		rv = 2;
 		goto end;
@@ -933,7 +932,7 @@ encode_public_key(EVP_PKEY *pkey, u8 *key, size_t *keysize)
 	RSA_get0_key(rsa, &rsa_n, &rsa_e, NULL);
 #else
 	if (EVP_PKEY_get_bn_param(pkey, "n", &rsa_n) != 1 ||
-	    EVP_PKEY_get_bn_param(pkey, "e", &rsa_e) != 1) {
+			EVP_PKEY_get_bn_param(pkey, "e", &rsa_e) != 1) {
 		fprintf(stderr, "Invalid public key.\n");
 		rv = 2;
 		goto end;

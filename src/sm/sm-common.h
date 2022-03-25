@@ -31,15 +31,15 @@ extern "C" {
 #include "libopensc/sm.h"
 
 unsigned int DES_cbc_cksum_3des(const unsigned char *in, sm_des_cblock *output, long length,
-                                unsigned char *key, sm_const_des_cblock *ivec);
+		unsigned char *key, sm_const_des_cblock *ivec);
 unsigned int DES_cbc_cksum_3des_emv96(const unsigned char *in, sm_des_cblock *output, long length,
-                                      unsigned char *key, sm_const_des_cblock *ivec);
+		unsigned char *key, sm_const_des_cblock *ivec);
 int sm_encrypt_des_ecb3(unsigned char *key, unsigned char *data, int data_len,
-                        unsigned char **out, int *out_len);
+		unsigned char **out, int *out_len);
 int sm_encrypt_des_cbc3(struct sc_context *ctx, unsigned char *key, const unsigned char *in, size_t in_len,
-                        unsigned char **out, size_t *out_len, int not_force_pad);
+		unsigned char **out, size_t *out_len, int not_force_pad);
 int sm_decrypt_des_cbc3(struct sc_context *ctx, unsigned char *key, unsigned char *data, size_t data_len,
-                        unsigned char **out, size_t *out_len);
+		unsigned char **out, size_t *out_len);
 void sm_incr_ssc(unsigned char *ssc, size_t ssc_len);
 #ifdef __cplusplus
 }

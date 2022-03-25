@@ -390,9 +390,9 @@ static int refresh_attributes(sc_reader_t *reader)
 		/* the system could not detect the reader. It means, the prevoiusly attached reader is disconnected. */
 		if (rv == (LONG)SCARD_E_UNKNOWN_READER ||
 #ifdef SCARD_E_NO_READERS_AVAILABLE
-		    rv == (LONG)SCARD_E_NO_READERS_AVAILABLE ||
+				rv == (LONG)SCARD_E_NO_READERS_AVAILABLE ||
 #endif
-		    rv == (LONG)SCARD_E_SERVICE_STOPPED) {
+				rv == (LONG)SCARD_E_SERVICE_STOPPED) {
 			reader->flags &= ~(SC_READER_CARD_PRESENT);
 			SC_FUNC_RETURN(reader->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
 		}
@@ -1149,7 +1149,7 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 		return;
 
 	rv = gpriv->SCardControl(card_handle, CM_IOCTL_GET_FEATURE_REQUEST, NULL, 0, buf, sizeof(buf),
-	                         &rcount);
+			&rcount);
 	if (rv != SCARD_S_SUCCESS) {
 		PCSC_TRACE(reader, "SCardControl failed", rv);
 		return;
@@ -1222,7 +1222,7 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 	if (priv->pin_properties_ioctl) {
 		rcount = sizeof(buf);
 		rv = gpriv->SCardControl(card_handle, priv->pin_properties_ioctl, NULL, 0, buf, sizeof(buf),
-		                         &rcount);
+				&rcount);
 		if (rv == SCARD_S_SUCCESS) {
 #ifdef PIN_PROPERTIES_v5
 			if (rcount == sizeof(PIN_PROPERTIES_STRUCTURE_v5)) {
@@ -1293,10 +1293,10 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 		part10_get_vendor_product(reader, card_handle, NULL, NULL);
 	}
 
-	if(gpriv->SCardGetAttrib != NULL) {
+	if (gpriv->SCardGetAttrib != NULL) {
 		rcount = sizeof(buf);
 		if (gpriv->SCardGetAttrib(card_handle, SCARD_ATTR_VENDOR_NAME, buf, &rcount) == SCARD_S_SUCCESS &&
-		    rcount > 0) {
+				rcount > 0) {
 			/* add NUL termination, just in case... */
 			buf[(sizeof buf) - 1] = '\0';
 			reader->vendor = strdup((char *)buf);

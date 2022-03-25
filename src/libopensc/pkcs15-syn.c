@@ -161,7 +161,7 @@ sc_pkcs15_bind_synthetic(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
 
 				if (ret == SC_ERROR_TOO_MANY_OBJECTS)
 					sc_log(ctx, "trying first %d emulators from conf file",
-					       SC_MAX_PKCS15_EMULATORS);
+							SC_MAX_PKCS15_EMULATORS);
 
 				for (i = 0; lst[i]; i++) {
 					sc_log(ctx, "trying %s", lst[i]->name);

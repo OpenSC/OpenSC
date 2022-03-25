@@ -1234,12 +1234,12 @@ int perform_pace(sc_card_t *card,
 		}
 		p = (u8 *)pub_opp->data;
 		r = eac_gen_auth_3_perform_key_agreement(card, (u8 *)pub->data, pub->length, &p,
-		                                         &pub_opp->length);
+				&pub_opp->length);
 		pub_opp->data = (char *)p;
 		if (r < 0) {
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
-			         "Could not exchange ephemeral public key with card "
-			         "(General Authenticate step 3 failed).");
+					"Could not exchange ephemeral public key with card "
+					"(General Authenticate step 3 failed).");
 			goto err;
 		}
 		pub_opp->max = pub_opp->length;
@@ -1263,10 +1263,10 @@ int perform_pace(sc_card_t *card,
 			goto err;
 		}
 		p = (u8 *)token_opp->data;
-		r = eac_gen_auth_4_mutual_authentication(
-			card, (u8 *)token->data, token->length, &p, &token_opp->length,
-			&pace_output->recent_car, &pace_output->recent_car_length,
-			&pace_output->previous_car, &pace_output->previous_car_length);
+		r = eac_gen_auth_4_mutual_authentication(card, (u8 *)token->data, token->length,
+				&p, &token_opp->length,
+				&pace_output->recent_car, &pace_output->recent_car_length,
+				&pace_output->previous_car, &pace_output->previous_car_length);
 		token_opp->data = (char *)p;
 
 		if (r < 0) {

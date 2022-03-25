@@ -28,7 +28,7 @@ const unsigned char *short_message = (unsigned char *)MESSAGE_TO_SIGN;
 
 static unsigned char *
 pkcs7_pad_message(const unsigned char *message, unsigned long message_length, unsigned long block_len,
-                  unsigned long *out_len)
+		unsigned long *out_len)
 {
 	int pad_length = block_len - (message_length % block_len);
 	unsigned char *pad_message = malloc(message_length + pad_length);
@@ -54,7 +54,7 @@ pkcs7_pad_message(const unsigned char *message, unsigned long message_length, un
  */
 static int
 test_secret_encrypt_decrypt(test_cert_t *o, token_info_t *info, test_mech_t *mech, CK_ULONG message_length,
-                            int multipart)
+		int multipart)
 {
 	CK_BYTE *message = NULL;
 	CK_BYTE *dec_message = NULL;
@@ -129,14 +129,14 @@ test_secret_encrypt_decrypt(test_cert_t *o, token_info_t *info, test_mech_t *mec
 	}
 
 	if (memcmp(dec_message, message, dec_message_length) == 0 &&
-	    (unsigned int)dec_message_length == message_length) {
+			(unsigned int)dec_message_length == message_length) {
 		debug_print(" [  OK %s ] Text decrypted successfully.", o->id_str);
 		mech->result_flags |= FLAGS_DECRYPT;
 		rv = 1;
 	} else {
 		dec_message[dec_message_length] = '\0';
 		debug_print(" [ ERROR %s ] Text decryption failed. Recovered text: %s", o->id_str,
-		            dec_message);
+				dec_message);
 		rv = 0;
 	}
 	mech->params = NULL;
@@ -158,7 +158,7 @@ test_secret_encrypt_decrypt(test_cert_t *o, token_info_t *info, test_mech_t *mec
  */
 static int
 test_secret_sign_verify(test_cert_t *o, token_info_t *info, test_mech_t *mech, CK_ULONG message_length,
-                        int multipart)
+		int multipart)
 {
 	CK_BYTE *message = NULL;
 	CK_ULONG sig_len = 42;
@@ -168,7 +168,7 @@ test_secret_sign_verify(test_cert_t *o, token_info_t *info, test_mech_t *mech, C
 
 	if (message_length > strlen(MESSAGE_TO_SIGN)) {
 		fail_msg("Truncate (%lu) is longer than the actual message (%lu)", message_length,
-		         strlen(MESSAGE_TO_SIGN));
+				strlen(MESSAGE_TO_SIGN));
 		return -1;
 	}
 
@@ -195,7 +195,7 @@ test_secret_sign_verify(test_cert_t *o, token_info_t *info, test_mech_t *mech, C
 	}
 
 	debug_print(" [ KEY %s ] Signing message of length %lu using CKM_%s", o->id_str, message_length,
-	            get_mechanism_name(mech->mech));
+			get_mechanism_name(mech->mech));
 	rv = sign_message(o, info, message, message_length, mech, &sign, multipart);
 	if (rv <= 0) {
 		mech->params = NULL;
@@ -243,11 +243,11 @@ secret_tests(void **state)
 			if (o->key_type == CKK_AES) {
 				if (o->mechs[j].usage_flags & CKF_SIGN) {
 					errors += test_secret_sign_verify(&(objects.data[i]), info,
-					                                  &(o->mechs[j]), 42, 0);
+							&(o->mechs[j]), 42, 0);
 				}
 				if (o->mechs[j].usage_flags & CKF_DECRYPT) {
 					errors += test_secret_encrypt_decrypt(&(objects.data[i]), info,
-					                                      &(o->mechs[j]), 42, 0);
+							&(o->mechs[j]), 42, 0);
 				}
 			}
 		}
@@ -257,10 +257,10 @@ secret_tests(void **state)
 	printf("[KEY ID] [LABEL]\n");
 	printf("[ TYPE ] [ SIZE ] [SIGN&VERIFY] [ENC&DECRYPT]\n");
 	P11TEST_DATA_ROW(info, 4,
-	                 's', "KEY ID",
-	                 's', "MECHANISM",
-	                 's', "SIGN&VERIFY WORKS",
-	                 's', "ENCRYPT&DECRYPT WORKS");
+			's', "KEY ID",
+			's', "MECHANISM",
+			's', "SIGN&VERIFY WORKS",
+			's', "ENCRYPT&DECRYPT WORKS");
 	for (i = 0; i < objects.count; i++) {
 		test_cert_t *o = &objects.data[i];
 
@@ -268,15 +268,15 @@ secret_tests(void **state)
 			continue;
 
 		printf("\n[%-6s] [%s]\n",
-		       o->id_str,
-		       o->label);
+				o->id_str,
+				o->label);
 		printf("[ %s ] [%6lu] [%s%s] [%s%s]\n",
-		       "AES ",
-		       o->bits,
-		       o->sign ? "[./] " : "[  ] ",
-		       o->verify ? " [./] " : " [  ] ",
-		       o->encrypt ? "[./] " : "[  ] ",
-		       o->decrypt ? " [./] " : " [  ] ");
+				"AES ",
+				o->bits,
+				o->sign ? "[./] " : "[  ] ",
+				o->verify ? " [./] " : " [  ] ",
+				o->encrypt ? "[./] " : "[  ] ",
+				o->decrypt ? " [./] " : " [  ] ");
 		if (!o->sign && !o->verify && !o->encrypt && !o->decrypt) {
 			printf("  no usable attributes found ... ignored\n");
 			continue;
@@ -291,17 +291,17 @@ secret_tests(void **state)
 				continue;
 			}
 			printf("  [ %-11s ] [   %s    ] [   %s    ]\n",
-			       get_mechanism_name(mech->mech),
-			       mech->result_flags & FLAGS_SIGN_ANY ? "[./]" : "    ",
-			       mech->result_flags & FLAGS_DECRYPT_ANY ? "[./]" : "    ");
+					get_mechanism_name(mech->mech),
+					mech->result_flags & FLAGS_SIGN_ANY ? "[./]" : "    ",
+					mech->result_flags & FLAGS_DECRYPT_ANY ? "[./]" : "    ");
 			if ((mech->result_flags & FLAGS_SIGN_ANY) == 0 &&
-			    (mech->result_flags & FLAGS_DECRYPT_ANY) == 0)
+					(mech->result_flags & FLAGS_DECRYPT_ANY) == 0)
 				continue; /* skip empty rows for export */
 			P11TEST_DATA_ROW(info, 4,
-			                 's', o->id_str,
-			                 's', get_mechanism_name(mech->mech),
-			                 's', mech->result_flags & FLAGS_SIGN_ANY ? "YES" : "",
-			                 's', mech->result_flags & FLAGS_DECRYPT_ANY ? "YES" : "");
+					's', o->id_str,
+					's', get_mechanism_name(mech->mech),
+					's', mech->result_flags & FLAGS_SIGN_ANY ? "YES" : "",
+					's', mech->result_flags & FLAGS_DECRYPT_ANY ? "YES" : "");
 		}
 	}
 	printf(" Sign Attribute ----^  ^  ^       ^  ^  ^---- Decrypt Attribute\n");

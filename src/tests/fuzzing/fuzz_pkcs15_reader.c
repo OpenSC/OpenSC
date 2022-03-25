@@ -52,17 +52,17 @@ int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
 			size_t i;
 
 			int decipher_flags[] = {SC_ALGORITHM_RSA_RAW, SC_ALGORITHM_RSA_PAD_PKCS1,
-			                        SC_ALGORITHM_RSA_PAD_ANSI, SC_ALGORITHM_RSA_PAD_ISO9796};
+					SC_ALGORITHM_RSA_PAD_ANSI, SC_ALGORITHM_RSA_PAD_ISO9796};
 			for (i = 0; i < sizeof decipher_flags / sizeof *decipher_flags; i++) {
-				sc_pkcs15_decipher(p15card, obj, decipher_flags[i],
-				                   in, in_len, buf, sizeof buf, NULL);
+				sc_pkcs15_decipher(p15card, obj, decipher_flags[i], in, in_len,
+						buf, sizeof buf, NULL);
 			}
 
 			i = sizeof buf;
 			sc_pkcs15_derive(p15card, obj, 0, in, in_len, buf, &i);
 
 			int wrap_flags[] = {0, SC_ALGORITHM_AES_ECB, SC_ALGORITHM_AES_CBC_PAD,
-			                    SC_ALGORITHM_AES_CBC};
+					SC_ALGORITHM_AES_CBC};
 			for (i = 0; i < sizeof wrap_flags / sizeof *wrap_flags; i++) {
 				/* see `pkcs15_create_secret_key` in
 				 * `src/pkcs11/framework-pkc15.c` for creating a temporary
@@ -88,7 +88,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
 				skey_info.data.len = len;
 
 				sc_pkcs15_unwrap(p15card, obj, &target_key, wrap_flags[i], in, in_len, param,
-				                 param_len);
+						param_len);
 				sc_pkcs15_wrap(p15card, obj, &target_key, wrap_flags[i], buf, &l, in, in_len);
 			}
 
@@ -114,7 +114,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
 			};
 			for (i = 0; i < sizeof signature_flags / sizeof *signature_flags; i++) {
 				sc_pkcs15_compute_signature(p15card, obj, signature_flags[i], in, in_len, buf,
-				                            sizeof buf, NULL);
+						sizeof buf, NULL);
 			}
 
 			if (obj->type == SC_PKCS15_TYPE_AUTH_PIN) {

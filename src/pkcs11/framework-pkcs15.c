@@ -2675,7 +2675,7 @@ pkcs15_create_public_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 		case CKA_EC_POINT:
 			if (key_type == CKK_EC) {
 				if (sc_pkcs15_decode_pubkey_ec(p11card->card->ctx, ec, attr->pValue,
-				                               attr->ulValueLen) < 0)
+						attr->ulValueLen) < 0)
 					return CKR_ATTRIBUTE_VALUE_INVALID;
 			}
 			break;
@@ -4289,11 +4289,10 @@ pkcs15_prkey_sign(struct sc_pkcs11_session *session, void *obj,
 	if (rc < 0)
 		return sc_to_cryptoki_error(rc, "C_Sign");
 
-	sc_log(context,
-	       "Selected flags %X. Now computing signature for %lu bytes. %lu bytes reserved.",
-	       flags, ulDataLen, *pulDataLen);
+	sc_log(context, "Selected flags %X. Now computing signature for %lu bytes. %lu bytes reserved.",
+			flags, ulDataLen, *pulDataLen);
 	rc = sc_pkcs15_compute_signature(fw_data->p15_card, prkey->prv_p15obj, flags, pData, ulDataLen,
-	                                 pSignature, *pulDataLen, pMechanism);
+			pSignature, *pulDataLen, pMechanism);
 	if (rc < 0 && !sc_pkcs11_conf.lock_login && !prkey_has_path) {
 		/* If private key PKCS#15 object do not have 'path' attribute,
 		 * and if PKCS#11 login session is not locked,
@@ -4303,7 +4302,7 @@ pkcs15_prkey_sign(struct sc_pkcs11_session *session, void *obj,
 		 */
 		if (reselect_app_df(fw_data->p15_card) == SC_SUCCESS)
 			rc = sc_pkcs15_compute_signature(fw_data->p15_card, prkey->prv_p15obj, flags, pData,
-			                                 ulDataLen, pSignature, *pulDataLen, pMechanism);
+					ulDataLen, pSignature, *pulDataLen, pMechanism);
 	}
 
 	sc_unlock(p11card->card);
@@ -4374,7 +4373,7 @@ pkcs15_prkey_unwrap(struct sc_pkcs11_session *session, void *obj,
 
 	/* Call the card to do the unwrap operation */
 	rv = sc_pkcs15_unwrap(fw_data->p15_card, prkey->prv_p15obj, targetKeyObj->p15_object, flags,
-	                      pWrappedKey, ulWrappedKeyLen, NULL, 0);
+			pWrappedKey, ulWrappedKeyLen, NULL, 0);
 
 	sc_unlock(p11card->card);
 
@@ -4481,12 +4480,12 @@ pkcs15_prkey_decrypt(struct sc_pkcs11_session *session, void *obj,
 		return sc_to_cryptoki_error(rv, "C_Decrypt");
 
 	rv = sc_pkcs15_decipher(fw_data->p15_card, prkey->prv_p15obj, flags, pEncryptedData,
-	                        ulEncryptedDataLen, decrypted, sizeof(decrypted), pMechanism);
+			ulEncryptedDataLen, decrypted, sizeof(decrypted), pMechanism);
 
 	if (rv < 0 && !sc_pkcs11_conf.lock_login && !prkey_has_path)
 		if (reselect_app_df(fw_data->p15_card) == SC_SUCCESS)
 			rv = sc_pkcs15_decipher(fw_data->p15_card, prkey->prv_p15obj, flags, pEncryptedData,
-			                        ulEncryptedDataLen, decrypted, sizeof(decrypted), pMechanism);
+					ulEncryptedDataLen, decrypted, sizeof(decrypted), pMechanism);
 
 	sc_unlock(p11card->card);
 
@@ -5983,7 +5982,7 @@ register_gost_mechanisms(struct sc_pkcs11_card *p11card, int flags)
 	}
 	if (flags & SC_ALGORITHM_GOSTR3410_HASH_GOSTR3411) {
 		mt = sc_pkcs11_new_fw_mechanism(CKM_GOSTR3410_WITH_GOSTR3411, &mech_info, CKK_GOSTR3410, NULL,
-		                                NULL, NULL);
+				NULL, NULL);
 		if (!mt)
 			return CKR_HOST_MEMORY;
 		rc = sc_pkcs11_register_mechanism(p11card, mt, NULL);
@@ -5994,7 +5993,7 @@ register_gost_mechanisms(struct sc_pkcs11_card *p11card, int flags)
 	if (flags & SC_ALGORITHM_ONBOARD_KEY_GEN) {
 		mech_info.flags = CKF_HW | CKF_GENERATE_KEY_PAIR;
 		mt = sc_pkcs11_new_fw_mechanism(CKM_GOSTR3410_KEY_PAIR_GEN, &mech_info, CKK_GOSTR3410, NULL,
-		                                NULL, NULL);
+				NULL, NULL);
 		if (!mt)
 			return CKR_HOST_MEMORY;
 		rc = sc_pkcs11_register_mechanism(p11card, mt, NULL);
@@ -6051,7 +6050,7 @@ static CK_RV register_ec_mechanisms(struct sc_pkcs11_card *p11card, int flags,
 		if (flags & SC_ALGORITHM_ECDSA_RAW) {
 			if (!(flags & SC_ALGORITHM_ECDSA_HASH_SHA1)) {
 				rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card,
-					CKM_ECDSA_SHA1, CKM_SHA_1, sign_type);
+						CKM_ECDSA_SHA1, CKM_SHA_1, sign_type);
 				if (rc != CKR_OK) {
 					sc_pkcs11_free_mechanism(&mt);
 					return rc;
@@ -6060,7 +6059,7 @@ static CK_RV register_ec_mechanisms(struct sc_pkcs11_card *p11card, int flags,
 
 			if (!(flags & SC_ALGORITHM_ECDSA_HASH_SHA224)) {
 				rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card,
-					CKM_ECDSA_SHA224, CKM_SHA224, sign_type);
+						CKM_ECDSA_SHA224, CKM_SHA224, sign_type);
 				if (rc != CKR_OK) {
 					sc_pkcs11_free_mechanism(&mt);
 					return rc;
@@ -6069,7 +6068,7 @@ static CK_RV register_ec_mechanisms(struct sc_pkcs11_card *p11card, int flags,
 
 			if (!(flags & SC_ALGORITHM_ECDSA_HASH_SHA256)) {
 				rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card,
-					CKM_ECDSA_SHA256, CKM_SHA256, sign_type);
+						CKM_ECDSA_SHA256, CKM_SHA256, sign_type);
 				if (rc != CKR_OK) {
 					sc_pkcs11_free_mechanism(&mt);
 					return rc;
@@ -6078,7 +6077,7 @@ static CK_RV register_ec_mechanisms(struct sc_pkcs11_card *p11card, int flags,
 
 			if (!(flags & SC_ALGORITHM_ECDSA_HASH_SHA384)) {
 				rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card,
-					CKM_ECDSA_SHA384, CKM_SHA384, sign_type);
+						CKM_ECDSA_SHA384, CKM_SHA384, sign_type);
 				if (rc != CKR_OK) {
 					sc_pkcs11_free_mechanism(&mt);
 					return rc;
@@ -6087,7 +6086,7 @@ static CK_RV register_ec_mechanisms(struct sc_pkcs11_card *p11card, int flags,
 
 			if (!(flags & SC_ALGORITHM_ECDSA_HASH_SHA512)) {
 				rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card,
-					CKM_ECDSA_SHA512, CKM_SHA512, sign_type);
+						CKM_ECDSA_SHA512, CKM_SHA512, sign_type);
 				if (rc != CKR_OK) {
 					sc_pkcs11_free_mechanism(&mt);
 					return rc;
@@ -6155,7 +6154,7 @@ static CK_RV register_ec_mechanisms(struct sc_pkcs11_card *p11card, int flags,
 		mech_info.flags |= CKF_DERIVE;
 
 		mt = sc_pkcs11_new_fw_mechanism(CKM_ECDH1_COFACTOR_DERIVE, &mech_info, CKK_EC, NULL, NULL,
-		                                NULL);
+				NULL);
 		if (!mt)
 			return CKR_HOST_MEMORY;
 		rc = sc_pkcs11_register_mechanism(p11card, mt, NULL);
@@ -6216,7 +6215,7 @@ static CK_RV register_eddsa_mechanisms(struct sc_pkcs11_card *p11card, int flags
 	if (flags & SC_ALGORITHM_ONBOARD_KEY_GEN) {
 		mech_info.flags = CKF_HW | CKF_GENERATE_KEY_PAIR;
 		mt = sc_pkcs11_new_fw_mechanism(CKM_EC_EDWARDS_KEY_PAIR_GEN, &mech_info, CKK_EC_EDWARDS, NULL,
-		                                NULL, NULL);
+				NULL, NULL);
 		if (!mt)
 			return CKR_HOST_MEMORY;
 		rc = sc_pkcs11_register_mechanism(p11card, mt, NULL);
@@ -6256,7 +6255,7 @@ static CK_RV register_xeddsa_mechanisms(struct sc_pkcs11_card *p11card, int flag
 
 		/* Montgomery curves derive function is defined only for CKM_ECDH1_DERIVE mechanism */
 		mt = sc_pkcs11_new_fw_mechanism(CKM_ECDH1_DERIVE, &mech_info, CKK_EC_MONTGOMERY, NULL, NULL,
-		                                NULL);
+				NULL);
 		if (!mt)
 			return CKR_HOST_MEMORY;
 		rc = sc_pkcs11_register_mechanism(p11card, mt, NULL);
@@ -6268,7 +6267,7 @@ static CK_RV register_xeddsa_mechanisms(struct sc_pkcs11_card *p11card, int flag
 	if (flags & SC_ALGORITHM_ONBOARD_KEY_GEN) {
 		mech_info.flags = CKF_HW | CKF_GENERATE_KEY_PAIR;
 		mt = sc_pkcs11_new_fw_mechanism(CKM_EC_MONTGOMERY_KEY_PAIR_GEN, &mech_info, CKK_EC_MONTGOMERY,
-		                                NULL, NULL, NULL);
+				NULL, NULL, NULL);
 		if (!mt)
 			return CKR_HOST_MEMORY;
 		rc = sc_pkcs11_register_mechanism(p11card, mt, NULL);
@@ -6494,43 +6493,43 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 
 		if (rsa_flags & SC_ALGORITHM_RSA_HASH_SHA1) {
 			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card, CKM_SHA1_RSA_PKCS, CKM_SHA_1,
-			                                                registered_mt);
+					registered_mt);
 			if (rc != CKR_OK)
 				return rc;
 		}
 		if (rsa_flags & SC_ALGORITHM_RSA_HASH_SHA224) {
 			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card, CKM_SHA224_RSA_PKCS,
-			                                                CKM_SHA224, registered_mt);
+					CKM_SHA224, registered_mt);
 			if (rc != CKR_OK)
 				return rc;
 		}
 		if (rsa_flags & SC_ALGORITHM_RSA_HASH_SHA256) {
 			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card, CKM_SHA256_RSA_PKCS,
-			                                                CKM_SHA256, registered_mt);
+					CKM_SHA256, registered_mt);
 			if (rc != CKR_OK)
 				return rc;
 		}
 		if (rsa_flags & SC_ALGORITHM_RSA_HASH_SHA384) {
 			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card, CKM_SHA384_RSA_PKCS,
-			                                                CKM_SHA384, registered_mt);
+					CKM_SHA384, registered_mt);
 			if (rc != CKR_OK)
 				return rc;
 		}
 		if (rsa_flags & SC_ALGORITHM_RSA_HASH_SHA512) {
 			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card, CKM_SHA512_RSA_PKCS,
-			                                                CKM_SHA512, registered_mt);
+					CKM_SHA512, registered_mt);
 			if (rc != CKR_OK)
 				return rc;
 		}
 		if (!FIPS_mode() && rsa_flags & SC_ALGORITHM_RSA_HASH_MD5) {
 			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card, CKM_MD5_RSA_PKCS, CKM_MD5,
-			                                                registered_mt);
+					registered_mt);
 			if (rc != CKR_OK)
 				return rc;
 		}
 		if (!FIPS_mode() && rsa_flags & SC_ALGORITHM_RSA_HASH_RIPEMD160) {
 			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card, CKM_RIPEMD160_RSA_PKCS,
-			                                                CKM_RIPEMD160, registered_mt);
+					CKM_RIPEMD160, registered_mt);
 			if (rc != CKR_OK)
 				return rc;
 		}
@@ -6548,31 +6547,31 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 
 		if (rsa_flags & SC_ALGORITHM_RSA_HASH_SHA1) {
 			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card, CKM_SHA1_RSA_PKCS_PSS,
-			                                                CKM_SHA_1, registered_mt);
+					CKM_SHA_1, registered_mt);
 			if (rc != CKR_OK)
 				return rc;
 		}
 		if (rsa_flags & SC_ALGORITHM_RSA_HASH_SHA224) {
 			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card, CKM_SHA224_RSA_PKCS_PSS,
-			                                                CKM_SHA224, registered_mt);
+					CKM_SHA224, registered_mt);
 			if (rc != CKR_OK)
 				return rc;
 		}
 		if (rsa_flags & SC_ALGORITHM_RSA_HASH_SHA256) {
 			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card, CKM_SHA256_RSA_PKCS_PSS,
-			                                                CKM_SHA256, registered_mt);
+					CKM_SHA256, registered_mt);
 			if (rc != CKR_OK)
 				return rc;
 		}
 		if (rsa_flags & SC_ALGORITHM_RSA_HASH_SHA384) {
 			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card, CKM_SHA384_RSA_PKCS_PSS,
-			                                                CKM_SHA384, registered_mt);
+					CKM_SHA384, registered_mt);
 			if (rc != CKR_OK)
 				return rc;
 		}
 		if (rsa_flags & SC_ALGORITHM_RSA_HASH_SHA512) {
 			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card, CKM_SHA512_RSA_PKCS_PSS,
-			                                                CKM_SHA512, registered_mt);
+					CKM_SHA512, registered_mt);
 			if (rc != CKR_OK)
 				return rc;
 		}
@@ -6594,7 +6593,7 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 	if (rsa_flags & SC_ALGORITHM_ONBOARD_KEY_GEN) {
 		mech_info.flags = CKF_GENERATE_KEY_PAIR;
 		mt = sc_pkcs11_new_fw_mechanism(CKM_RSA_PKCS_KEY_PAIR_GEN, &mech_info, CKK_RSA, NULL, NULL,
-		                                NULL);
+				NULL);
 		if (!mt)
 			return CKR_HOST_MEMORY;
 		rc = sc_pkcs11_register_mechanism(p11card, mt, NULL);

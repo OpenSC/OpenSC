@@ -1085,7 +1085,7 @@ template_sanity_check(struct state *cur, struct sc_profile *templ)
 
 			if (ffi_path.len < 2) {
 				parse_error(cur, "Template insane: file-path length should not be "
-				                 "less than 2 bytes");
+						"less than 2 bytes");
 				return 1;
 			}
 
@@ -1232,33 +1232,33 @@ new_file(struct state *cur, const char *name, unsigned int type)
 	if (strncasecmp(name, "PKCS15-", 7)) {
 		file = init_file(type);
 		free_file = 1;
-	} else if (!strcasecmp(name+7, "TokenInfo")) {
+	} else if (!strcasecmp(name + 7, "TokenInfo")) {
 		if (!profile->p15_spec) {
 			parse_error(cur, "no pkcs15 spec in profile");
 			return NULL;
 		}
 		file = profile->p15_spec->file_tokeninfo;
 		dont_free = 1;
-	} else if (!strcasecmp(name+7, "ODF")) {
+	} else if (!strcasecmp(name + 7, "ODF")) {
 		if (!profile->p15_spec) {
 			parse_error(cur, "no pkcs15 spec in profile");
 			return NULL;
 		}
 		file = profile->p15_spec->file_odf;
 		dont_free = 1;
-	} else if (!strcasecmp(name+7, "UnusedSpace")) {
+	} else if (!strcasecmp(name + 7, "UnusedSpace")) {
 		if (!profile->p15_spec) {
 			parse_error(cur, "no pkcs15 spec in profile");
 			return NULL;
 		}
 		file = profile->p15_spec->file_unusedspace;
 		dont_free = 1;
-	} else if (!strcasecmp(name+7, "AppDF")) {
+	} else if (!strcasecmp(name + 7, "AppDF")) {
 		file = init_file(SC_FILE_TYPE_DF);
 		free_file = 1;
 	} else {
-		if (map_str2int(cur, name+7, &df_type, pkcs15DfNames)
-				|| df_type >= SC_PKCS15_DF_TYPE_COUNT)
+		if (map_str2int(cur, name + 7, &df_type, pkcs15DfNames) ||
+				df_type >= SC_PKCS15_DF_TYPE_COUNT)
 			return NULL;
 
 		file = init_file(SC_FILE_TYPE_WORKING_EF);

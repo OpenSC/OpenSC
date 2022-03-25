@@ -209,8 +209,8 @@ mgf1(u8 *mask, size_t len, u8 *seed, size_t seedLen, const EVP_MD *dgst)
 		cnt[2] = (u8)((i >> 8) & 255);
 		cnt[3] = (u8)((i >> 0) & 255);
 		if (!EVP_DigestInit_ex(md_ctx, dgst, NULL) ||
-		    !EVP_DigestUpdate(md_ctx, seed, seedLen) ||
-		    !EVP_DigestUpdate(md_ctx, cnt, 4))
+				!EVP_DigestUpdate(md_ctx, seed, seedLen) ||
+				!EVP_DigestUpdate(md_ctx, cnt, 4))
 			goto out;
 		if (outlen + mdlen <= len) {
 			if (!EVP_DigestFinal_ex(md_ctx, mask + outlen, NULL))
@@ -238,7 +238,7 @@ static const EVP_MD *hash_flag2md(unsigned int hash);
 /* check/remove OAEP - RFC 8017 padding */
 int
 sc_pkcs1_strip_oaep_padding(sc_context_t *ctx, u8 *data, size_t len, unsigned long flags, uint8_t *param,
-                            size_t paramlen)
+		size_t paramlen)
 {
 	size_t i, j;
 	size_t mdlen, dblen;
@@ -261,8 +261,8 @@ sc_pkcs1_strip_oaep_padding(sc_context_t *ctx, u8 *data, size_t len, unsigned lo
 	memset(label, 0, sizeof(label));
 	if ((md_ctx = EVP_MD_CTX_new())) {
 		if (!EVP_DigestInit_ex(md_ctx, hash_md, NULL) ||
-		    !EVP_DigestUpdate(md_ctx, param, paramlen) ||
-		    !EVP_DigestFinal_ex(md_ctx, label, &hash_len))
+				!EVP_DigestUpdate(md_ctx, param, paramlen) ||
+				!EVP_DigestFinal_ex(md_ctx, label, &hash_len))
 			hash_len = 0;
 		EVP_MD_CTX_free(md_ctx);
 	}
@@ -345,7 +345,7 @@ sc_pkcs1_add_digest_info_prefix(unsigned int algorithm, const u8 *in, size_t in_
 
 int
 sc_pkcs1_strip_digest_info_prefix(unsigned int *algorithm, const u8 *in_dat, size_t in_len,
-                                  u8 *out_dat, size_t *out_len)
+		u8 *out_dat, size_t *out_len)
 {
 	int i;
 
@@ -416,7 +416,7 @@ mgf1_flag2md(unsigned int mgf1)
 /* add PKCS#1 v2.0 PSS padding */
 static int
 sc_pkcs1_add_pss_padding(unsigned int hash, unsigned int mgf1_hash, const u8 *in, size_t in_len,
-                         u8 *out, size_t *out_len, size_t mod_bits, size_t sLen)
+		u8 *out, size_t *out_len, size_t mod_bits, size_t sLen)
 {
 	/* hLen = sLen in our case */
 	int rv = SC_ERROR_INTERNAL, i, j, hlen, dblen, plen, round, mgf_rounds;
@@ -452,9 +452,9 @@ sc_pkcs1_add_pss_padding(unsigned int hash, unsigned int mgf1_hash, const u8 *in
 		goto done;
 	memset(buf, 0x00, 8);
 	if (EVP_DigestInit_ex(ctx, md, NULL) != 1 ||
-	    EVP_DigestUpdate(ctx, buf, 8) != 1 ||
-	    EVP_DigestUpdate(ctx, in, hlen) != 1 || /* mHash */
-	    EVP_DigestUpdate(ctx, salt, sLen) != 1) {
+			EVP_DigestUpdate(ctx, buf, 8) != 1 ||
+			EVP_DigestUpdate(ctx, in, hlen) != 1 || /* mHash */
+			EVP_DigestUpdate(ctx, salt, sLen) != 1) {
 		goto done;
 	}
 
@@ -537,7 +537,7 @@ hash_len2algo(size_t hash_len)
 /* general PKCS#1 encoding function */
 int
 sc_pkcs1_encode(sc_context_t *ctx, unsigned long flags, const u8 *in, size_t in_len, u8 *out, size_t *out_len,
-                size_t mod_bits, void *pMechanism)
+		size_t mod_bits, void *pMechanism)
 {
 	int    rv, i;
 	size_t tmp_len = *out_len;
@@ -608,7 +608,7 @@ sc_pkcs1_encode(sc_context_t *ctx, unsigned long flags, const u8 *in, size_t in_
 			}
 		}
 		rv = sc_pkcs1_add_pss_padding(hash_algo, mgf1_hash, tmp, tmp_len, out, out_len, mod_bits,
-		                              sLen);
+				sLen);
 #else
 		rv = SC_ERROR_NOT_SUPPORTED;
 #endif
@@ -622,7 +622,7 @@ sc_pkcs1_encode(sc_context_t *ctx, unsigned long flags, const u8 *in, size_t in_
 
 int
 sc_get_encoding_flags(sc_context_t *ctx, unsigned long iflags, unsigned long caps, unsigned long *pflags,
-                      unsigned long *sflags)
+		unsigned long *sflags)
 {
 	LOG_FUNC_CALLED(ctx);
 	if (pflags == NULL || sflags == NULL)
@@ -652,18 +652,18 @@ sc_get_encoding_flags(sc_context_t *ctx, unsigned long iflags, unsigned long cap
 		*pflags = iflags & ~(iflags & (SC_ALGORITHM_MGF1_HASHES | SC_ALGORITHM_RSA_PAD_PSS));
 
 	} else if ((caps & SC_ALGORITHM_RSA_RAW) &&
-	           (iflags & SC_ALGORITHM_RSA_PAD_PKCS1 ||
-	            iflags & SC_ALGORITHM_RSA_PAD_PSS ||
+			(iflags & SC_ALGORITHM_RSA_PAD_PKCS1 ||
+					iflags & SC_ALGORITHM_RSA_PAD_PSS ||
 #ifdef ENABLE_OPENSSL
-	            iflags & SC_ALGORITHM_RSA_PAD_OAEP ||
+					iflags & SC_ALGORITHM_RSA_PAD_OAEP ||
 #endif
-	            iflags & SC_ALGORITHM_RSA_PAD_NONE)) {
+					iflags & SC_ALGORITHM_RSA_PAD_NONE)) {
 		/* Use the card's raw RSA capability on the padded input */
 		*sflags = SC_ALGORITHM_RSA_PAD_NONE;
 		*pflags = iflags;
 
 	} else if ((caps & (SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE)) &&
-	           (iflags & SC_ALGORITHM_RSA_PAD_PKCS1)) {
+			(iflags & SC_ALGORITHM_RSA_PAD_PKCS1)) {
 		/* A corner case - the card can partially do PKCS1, if we prepend the
 		 * DigestInfo bit it will do the rest. */
 		*sflags = SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE;

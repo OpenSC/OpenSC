@@ -452,9 +452,8 @@ static int cardos_sm4h(const unsigned char *in, size_t inlen, unsigned char
 #endif
 
 	cctx = EVP_CIPHER_CTX_new();
-	if (!cctx ||
-	    !EVP_EncryptInit_ex(cctx, EVP_des_ecb(), NULL, key1, NULL) ||
-	    !EVP_CIPHER_CTX_set_padding(cctx, 0)) {
+	if (!cctx || !EVP_EncryptInit_ex(cctx, EVP_des_ecb(), NULL, key1, NULL) ||
+			!EVP_CIPHER_CTX_set_padding(cctx, 0)) {
 		printf("Can not setup context, aborting\n");
 		free(mac_input);
 		EVP_CIPHER_CTX_free(cctx);
@@ -490,7 +489,7 @@ static int cardos_sm4h(const unsigned char *in, size_t inlen, unsigned char
 	/* now decrypt with key B and encrypt with key A again */
 	/* (a noop if key A and B are the same, e.g. 8 bytes ff */
 	if (!EVP_DecryptInit_ex(cctx, EVP_des_ecb(), NULL, key2, NULL) ||
-	    !EVP_CIPHER_CTX_set_padding(cctx, 0)) {
+			!EVP_CIPHER_CTX_set_padding(cctx, 0)) {
 		printf("Can not setup context, aborting\n");
 		free(mac_input);
 		EVP_CIPHER_CTX_free(cctx);
@@ -511,13 +510,14 @@ static int cardos_sm4h(const unsigned char *in, size_t inlen, unsigned char
 	}
 
 	if (!EVP_EncryptInit_ex(cctx, EVP_des_ecb(), NULL, key1, NULL) ||
-	    !EVP_CIPHER_CTX_set_padding(cctx, 0)) {
+			!EVP_CIPHER_CTX_set_padding(cctx, 0)) {
 		printf("Can not setup context, aborting\n");
 		free(mac_input);
 		EVP_CIPHER_CTX_free(cctx);
 		return 0;
 	}
-	for (i=0; i < 8; i++) des_in[i] = des_out[i];
+	for (i = 0; i < 8; i++)
+		des_in[i] = des_out[i];
 	if (!EVP_EncryptUpdate(cctx, des_out, &tmplen, des_in, 8)) {
 		printf("Can not encrypt, aborting\n");
 		free(mac_input);
@@ -534,7 +534,8 @@ static int cardos_sm4h(const unsigned char *in, size_t inlen, unsigned char
 	/* now we want to enc:
  	 * orig APDU data plus mac (8 bytes) plus iso padding (1-8 bytes) */
 	enc_input_len = plain_lc + 8 + 1;
-	while (enc_input_len % 8) enc_input_len++;
+	while (enc_input_len % 8)
+		enc_input_len++;
 
 	enc_input = calloc(1,enc_input_len);
 	if (!enc_input) {
@@ -543,7 +544,7 @@ static int cardos_sm4h(const unsigned char *in, size_t inlen, unsigned char
 		return 0;
 	}
 	if (plain_lc)
-		memcpy(&enc_input[0],&in[5],plain_lc);
+		memcpy(&enc_input[0], &in[5], plain_lc);
 	for (i=0; i < 8; i++) enc_input[i+plain_lc] = des_out[i];
 	enc_input[plain_lc+8] = 0x80; /* iso padding */
 	/* calloc already cleared the remaining bytes to 00 */
@@ -563,9 +564,8 @@ static int cardos_sm4h(const unsigned char *in, size_t inlen, unsigned char
 
 	/* encrypt first block */
 	cctx = EVP_CIPHER_CTX_new();
-	if (!cctx ||
-	    !EVP_EncryptInit_ex(cctx, EVP_des_ede_ecb(), NULL, key, NULL) ||
-	    !EVP_CIPHER_CTX_set_padding(cctx, 0)) {
+	if (!cctx || !EVP_EncryptInit_ex(cctx, EVP_des_ede_ecb(), NULL, key, NULL) ||
+			!EVP_CIPHER_CTX_set_padding(cctx, 0)) {
 		printf("Can not setup context, aborting\n");
 		free(mac_input);
 		free(enc_input);

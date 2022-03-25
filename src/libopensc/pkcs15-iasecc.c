@@ -112,7 +112,7 @@ _iasecc_md_update_keyinfo(struct sc_pkcs15_card *p15card, struct sc_pkcs15_objec
 static int
 _iasecc_cpx_fixup_prkdf(struct sc_pkcs15_card *p15card)
 {
-	struct sc_context *const ctx = p15card->card->ctx;
+	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_object *pkobjs[32];
 	int ii, count;
 	int rv = SC_SUCCESS;
@@ -161,7 +161,7 @@ _iasecc_parse_df(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *df)
 	case SC_CARD_TYPE_IASECC_CPX:
 	case SC_CARD_TYPE_IASECC_CPXCL:
 		sc_log(ctx, "Warning: the %d card has an invalid DF, hot patch to be applied",
-		       p15card->card->type);
+				p15card->card->type);
 		break;
 	default:
 		sc_log(ctx, "the %d card has a proper DF, no need for a hot patch", p15card->card->type);

@@ -47,7 +47,7 @@
 
 int
 sm_gp_decode_card_answer(struct sc_context *ctx, struct sc_remote_data *rdata,
-                         unsigned char *out, size_t out_len)
+		unsigned char *out, size_t out_len)
 {
 	LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 }
@@ -121,7 +121,7 @@ sc_gp_get_session_key(struct sc_context *ctx, struct sm_gp_session *gp_session, 
 
 int
 sm_gp_get_cryptogram(unsigned char *session_key, unsigned char *left, unsigned char *right,
-                     unsigned char *out, int out_len)
+		unsigned char *out, int out_len)
 {
 	unsigned char block[24];
 	sm_des_cblock cksum = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
@@ -163,7 +163,7 @@ sm_gp_get_mac(unsigned char *key, sm_des_cblock *icv, unsigned char *in, int in_
 
 static int
 sm_gp_parse_init_data(struct sc_context *ctx, struct sm_gp_session *gp_session, unsigned char *init_data,
-                      size_t init_len)
+		size_t init_len)
 {
 	struct sm_gp_keyset *gp_keyset = &gp_session->gp_keyset;
 
@@ -179,7 +179,7 @@ sm_gp_parse_init_data(struct sc_context *ctx, struct sm_gp_session *gp_session, 
 
 static int
 sm_gp_init_session(struct sc_context *ctx, struct sm_gp_session *gp_session,
-                   unsigned char *adata, size_t adata_len)
+		unsigned char *adata, size_t adata_len)
 {
 	struct sm_gp_keyset *gp_keyset = &gp_session->gp_keyset;
 	unsigned char cksum[8];
@@ -198,12 +198,16 @@ sm_gp_init_session(struct sc_context *ctx, struct sm_gp_session *gp_session,
 		LOG_TEST_RET(ctx, SC_ERROR_SM_NO_SESSION_KEYS, "SM GP init session: get session keys error");
 	memcpy(gp_session->session_kek, gp_keyset->kek, 16);
 
-	sc_debug(ctx, SC_LOG_DEBUG_SM, "SM GP init session: session ENC: %s", sc_dump_hex(gp_session->session_enc, 16));
-	sc_debug(ctx, SC_LOG_DEBUG_SM, "SM GP init session: session MAC: %s", sc_dump_hex(gp_session->session_mac, 16));
-	sc_debug(ctx, SC_LOG_DEBUG_SM, "SM GP init session: session KEK: %s", sc_dump_hex(gp_session->session_kek, 16));
+	sc_debug(ctx, SC_LOG_DEBUG_SM, "SM GP init session: session ENC: %s",
+			sc_dump_hex(gp_session->session_enc, 16));
+	sc_debug(ctx, SC_LOG_DEBUG_SM, "SM GP init session: session MAC: %s",
+			sc_dump_hex(gp_session->session_mac, 16));
+	sc_debug(ctx, SC_LOG_DEBUG_SM, "SM GP init session: session KEK: %s",
+			sc_dump_hex(gp_session->session_kek, 16));
 
 	memset(cksum, 0, sizeof(cksum));
-	rv = sm_gp_get_cryptogram(gp_session->session_enc, gp_session->host_challenge, gp_session->card_challenge, cksum, sizeof(cksum));
+	rv = sm_gp_get_cryptogram(gp_session->session_enc, gp_session->host_challenge,
+			gp_session->card_challenge, cksum, sizeof(cksum));
 	LOG_TEST_RET(ctx, rv, "SM GP init session: cannot get cryptogram");
 
 	sc_debug(ctx, SC_LOG_DEBUG_SM, "SM GP init session: cryptogram: %s", sc_dump_hex(cksum, 8));
@@ -224,9 +228,9 @@ sm_gp_close_session(struct sc_context *ctx, struct sm_gp_session *gp_session)
 
 int
 sm_gp_external_authentication(struct sc_context *ctx, struct sm_info *sm_info,
-                              unsigned char *init_data, size_t init_len, struct sc_remote_data *rdata,
-                              int (*diversify_keyset)(struct sc_context *ctx, struct sm_info *sm_info,
-                                                      unsigned char *idata, size_t idata_len))
+		unsigned char *init_data, size_t init_len, struct sc_remote_data *rdata,
+		int (*diversify_keyset)(struct sc_context *ctx, struct sm_info *sm_info,
+				unsigned char *idata, size_t idata_len))
 {
 	struct sc_remote_apdu *new_rapdu = NULL;
 	struct sc_apdu *apdu = NULL;
@@ -287,7 +291,7 @@ sm_gp_external_authentication(struct sc_context *ctx, struct sm_info *sm_info,
 
 static int
 sm_gp_encrypt_command_data(struct sc_context *ctx, unsigned char *session_key,
-                           const unsigned char *in, size_t in_len, unsigned char **out, size_t *out_len)
+		const unsigned char *in, size_t in_len, unsigned char **out, size_t *out_len)
 {
 	unsigned char *data = NULL;
 	int rv, len;

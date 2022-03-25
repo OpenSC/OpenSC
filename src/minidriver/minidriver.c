@@ -4594,10 +4594,10 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 		goto err;
 	}
 
-	if (alg_info->flags & SC_ALGORITHM_RSA_RAW)   {
+	if (alg_info->flags & SC_ALGORITHM_RSA_RAW) {
 		logprintf(pCardData, 2, "sc_pkcs15_decipher: using RSA-RAW mechanism\n");
 		r = sc_pkcs15_decipher(vs->p15card, pkey, opt_crypt_flags, pbuf, pInfo->cbData, pbuf2,
-		                       pInfo->cbData, NULL);
+				pInfo->cbData, NULL);
 		logprintf(pCardData, 2, "sc_pkcs15_decipher returned %d\n", r);
 
 		if (r > 0) {
@@ -4629,11 +4629,10 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 				}
 			}
 		}
-	}
-	else if (alg_info->flags & SC_ALGORITHM_RSA_PAD_PKCS1)   {
+	} else if (alg_info->flags & SC_ALGORITHM_RSA_PAD_PKCS1) {
 		logprintf(pCardData, 2, "sc_pkcs15_decipher: using RSA_PAD_PKCS1 mechanism\n");
 		r = sc_pkcs15_decipher(vs->p15card, pkey, opt_crypt_flags | SC_ALGORITHM_RSA_PAD_PKCS1, pbuf,
-		                       pInfo->cbData, pbuf2, pInfo->cbData, NULL);
+				pInfo->cbData, pbuf2, pInfo->cbData, NULL);
 		logprintf(pCardData, 2, "sc_pkcs15_decipher returned %d\n", r);
 		if (r > 0) {
 			/* No padding info, or padding info none */
@@ -4656,8 +4655,7 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 			}
 			/* TODO: Handle OAEP padding if present - can call PFN_CSP_UNPAD_DATA */
 		}
-	}
-	else    {
+	} else {
 		logprintf(pCardData, 2, "CardRSADecrypt: no usable RSA algorithm\n");
 		pCardData->pfnCspFree(pbuf);
 		pCardData->pfnCspFree(pbuf2);
@@ -4946,9 +4944,9 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 		}
 
 		r = sc_pkcs15_compute_signature(vs->p15card, pkey, opt_crypt_flags, dataToSign, dataToSignLen,
-		                                pbuf, lg, NULL);
+				pbuf, lg, NULL);
 		logprintf(pCardData, 2, "sc_pkcs15_compute_signature return %d\n", r);
-		if(r < 0)   {
+		if (r < 0) {
 			logprintf(pCardData, 2, "sc_pkcs15_compute_signature error %s\n", sc_strerror(r));
 			pCardData->pfnCspFree(pbuf);
 			dwret = md_translate_OpenSC_to_Windows_error(r, SCARD_F_INTERNAL_ERROR);

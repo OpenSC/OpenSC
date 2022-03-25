@@ -38,13 +38,13 @@ main(int argc, char **argv)
 		len = 0;
 	} else {
 		if ((fd = fopen(argv[1], "r")) == NULL ||
-		    fseek(fd, 0, SEEK_END) != 0 ||
-		    (len = ftell(fd)) < 0) {
+				fseek(fd, 0, SEEK_END) != 0 ||
+				(len = ftell(fd)) < 0) {
 			fprintf(stderr, "fopen/fseek failed\n");
 			goto err;
 		}
 		rewind(fd);
-		if ((buffer = (unsigned char*)malloc(len)) == NULL) {
+		if ((buffer = (unsigned char *)malloc(len)) == NULL) {
 			fprintf(stderr, "malloc failed\n");
 			goto err;
 		}

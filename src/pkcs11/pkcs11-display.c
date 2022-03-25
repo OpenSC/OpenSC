@@ -1103,11 +1103,11 @@ print_session_info(FILE *f, CK_SESSION_INFO *info)
 
 	fprintf(f, "      slotID:                  %ld\n",       info->slotID );
 	fprintf(f, "      state:                   %0lx (%32.32s)\n", info->state,
-	        lookup_enum(STA_T, info->state));
+			lookup_enum(STA_T, info->state));
 	fprintf(f, "      flags:                   %0lx\n",     info->flags );
 
-	for(i = 0; i < sizeof (ck_flags) / sizeof (*ck_flags); i++) {
-		if(info->flags & ck_flags[i].type)
+	for (i = 0; i < sizeof(ck_flags) / sizeof(*ck_flags); i++) {
+		if (info->flags & ck_flags[i].type)
 			fprintf(f, "        %s\n", ck_flags[i].name);
 	}
 	fprintf(f, "      ulDeviceError:           %0lx\n",     info->ulDeviceError );

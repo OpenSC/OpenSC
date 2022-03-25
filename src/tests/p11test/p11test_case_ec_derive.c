@@ -22,7 +22,7 @@
 
 size_t
 pkcs11_derive(test_cert_t *o, token_info_t *info, unsigned char *pub, size_t pub_len, test_mech_t *mech,
-              unsigned char **secret)
+		unsigned char **secret)
 {
 	CK_RV rv;
 	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
@@ -280,9 +280,8 @@ test_derive(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 
 	/* Start with key derivation in OpenSSL*/
 	pctx = EVP_PKEY_CTX_new(evp_pkey, NULL);
-	if (pctx == NULL ||
-	    EVP_PKEY_derive_init(pctx) != 1 ||
-	    EVP_PKEY_derive_set_peer(pctx, o->key) != 1) {
+	if (pctx == NULL || EVP_PKEY_derive_init(pctx) != 1 ||
+			EVP_PKEY_derive_set_peer(pctx, o->key) != 1) {
 		debug_print(" [ KEY %s ] Can not derive key", o->id_str);
 		EVP_PKEY_free(evp_pkey);
 		return 1;
@@ -342,13 +341,12 @@ test_derive(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 		return 1;
 	}
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
-	pub_len = EC_POINT_point2oct(group, publickey,
-		POINT_CONVERSION_UNCOMPRESSED, pub, pub_len, NULL);
+	pub_len = EC_POINT_point2oct(group, publickey, POINT_CONVERSION_UNCOMPRESSED, pub, pub_len, NULL);
 
 	if (pub_len == 0) {
 #else
 	if (EVP_PKEY_get_octet_string_param(evp_pkey, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, pub, pub_len,
-	                                    NULL) != 1) {
+				NULL) != 1) {
 #endif
 		debug_print(" [ KEY %s ] Can not get public key", o->id_str);
 		EVP_PKEY_free(evp_pkey);
@@ -429,15 +427,15 @@ derive_tests(void **state)
 
 		test_cert_t *o = &objects.data[i];
 		printf("\n[%-6s] [%s]\n",
-		       o->id_str,
-		       o->label);
+				o->id_str,
+				o->label);
 		printf("[ %s ] [%6lu] [  %s  ] [ %s%s ]\n",
-		       (o->key_type == CKK_EC ? " EC " :
-		        o->key_type == CKK_EC_MONTGOMERY ? "EC_M" : " ?? "),
-		       o->bits,
-		       o->verify_public == 1 ? " ./ " : "    ",
-		       o->derive_pub ? "[./]" : "[  ]",
-		       o->derive_priv ? "[./]" : "[  ]");
+				(o->key_type == CKK_EC ? " EC " :
+						o->key_type == CKK_EC_MONTGOMERY ? "EC_M" : " ?? "),
+				o->bits,
+				o->verify_public == 1 ? " ./ " : "    ",
+				o->derive_pub ? "[./]" : "[  ]",
+				o->derive_priv ? "[./]" : "[  ]");
 		if (!o->derive_pub && !o->derive_priv) {
 			printf("  no usable attributes found ... ignored\n");
 			continue;
@@ -452,14 +450,14 @@ derive_tests(void **state)
 				continue;
 			}
 			printf("  [ %-22s ] [   %s   ]\n",
-			       get_mechanism_name(mech->mech),
-			       mech->result_flags & FLAGS_DERIVE ? "[./]" : "    ");
+					get_mechanism_name(mech->mech),
+					mech->result_flags & FLAGS_DERIVE ? "[./]" : "    ");
 			if ((mech->result_flags & FLAGS_DERIVE) == 0)
 				continue; /* skip empty rows for export */
 			P11TEST_DATA_ROW(info, 3,
-			                 's', o->id_str,
-			                 's', get_mechanism_name(mech->mech),
-			                 's', mech->result_flags & FLAGS_DERIVE ? "YES" : "");
+					's', o->id_str,
+					's', get_mechanism_name(mech->mech),
+					's', mech->result_flags & FLAGS_DERIVE ? "YES" : "");
 		}
 	}
 	printf(" Public == Cert -----^            ^\n");

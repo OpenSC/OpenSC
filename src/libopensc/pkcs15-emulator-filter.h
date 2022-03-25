@@ -25,4 +25,4 @@ struct _sc_pkcs15_emulators {
 };
 
 int set_emulators(sc_context_t *ctx, struct _sc_pkcs15_emulators *filtered_emulators, const scconf_list *list,
-                  struct sc_pkcs15_emulator_handler *builtin, struct sc_pkcs15_emulator_handler *old);
+		struct sc_pkcs15_emulator_handler *builtin, struct sc_pkcs15_emulator_handler *old);

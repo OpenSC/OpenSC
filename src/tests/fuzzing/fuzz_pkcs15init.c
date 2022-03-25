@@ -54,7 +54,7 @@ fuzz_pkcs15init_bind(struct sc_card *card, struct sc_profile **result, const uin
 {
 	struct sc_profile *profile = NULL;
 	const char	      *driver;
-	struct sc_pkcs15init_operations * (* func)(void) = NULL;
+	struct sc_pkcs15init_operations *(*func)(void) = NULL;
 	int r = 0;
 
 	if (!card || !card->driver || !result)
@@ -122,7 +122,7 @@ fuzz_get_reader_data(const uint8_t *from, size_t from_size, const uint8_t **to, 
 
 void
 do_init_app(struct sc_profile *profile, struct sc_pkcs15_card *p15card, sc_card_t *card,
-            unsigned char *so_pin, unsigned char *so_puk)
+		unsigned char *so_pin, unsigned char *so_puk)
 {
 	struct sc_pkcs15init_initargs init_args;
 	sc_pkcs15_auth_info_t info;
@@ -131,7 +131,7 @@ do_init_app(struct sc_profile *profile, struct sc_pkcs15_card *p15card, sc_card_
 	memset(&init_args, 0, sizeof(init_args));
 	sc_pkcs15init_get_pin_info(profile, SC_PKCS15INIT_SO_PIN, &info);
 	if ((info.attrs.pin.flags & SC_PKCS15_PIN_FLAG_UNBLOCK_DISABLED) &&
-	    (info.attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN))
+			(info.attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN))
 		so_puk_disabled = 1;
 
 	sc_pkcs15init_get_pin_info(profile, SC_PKCS15INIT_SO_PUK, &info);
@@ -149,7 +149,7 @@ do_init_app(struct sc_profile *profile, struct sc_pkcs15_card *p15card, sc_card_
 
 void
 do_store_pin(struct sc_profile *profile, struct sc_pkcs15_card *p15card, sc_card_t *card, unsigned char *pin,
-             unsigned char *so_pin)
+		unsigned char *so_pin)
 {
 	struct sc_pkcs15init_pinargs pin_args;
 	char pin_id[SC_PKCS15_MAX_ID_SIZE] = "1\0";
@@ -171,7 +171,7 @@ do_store_pin(struct sc_profile *profile, struct sc_pkcs15_card *p15card, sc_card
 
 void
 do_store_data_object(struct sc_profile *profile, struct sc_pkcs15_card *p15card, sc_card_t *card,
-                     uint8_t *buf, size_t len)
+		uint8_t *buf, size_t len)
 {
 	struct sc_pkcs15init_dataargs args;
 	char value[SC_MAX_OBJECT_ID_OCTETS];
@@ -201,10 +201,10 @@ do_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card, sc_c
 	memset(&keygen_args, 0, sizeof(keygen_args));
 	sc_pkcs15_format_id("01", &(keygen_args.prkey_args.auth_id));
 	keygen_args.prkey_args.access_flags |=
-		SC_PKCS15_PRKEY_ACCESS_SENSITIVE |
-		SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE |
-		SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE |
-		SC_PKCS15_PRKEY_ACCESS_LOCAL;
+			SC_PKCS15_PRKEY_ACCESS_SENSITIVE |
+			SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE |
+			SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE |
+			SC_PKCS15_PRKEY_ACCESS_LOCAL;
 
 	for (int i = 1; i < 2; i++) {
 		keygen_args.prkey_args.key.algorithm = algorithms[i];

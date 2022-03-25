@@ -324,7 +324,7 @@ rtecp_select_file(sc_card_t *card, const sc_path_t *in_path, sc_file_t **file_ou
 
 static int
 rtecp_verify(sc_card_t *card, unsigned int type, int ref_qualifier, const u8 *data, size_t data_len,
-             int *tries_left)
+		int *tries_left)
 {
 	sc_apdu_t apdu;
 	int r, send_logout = 0;
@@ -488,7 +488,7 @@ rtecp_compute_signature(sc_card_t *card, const u8 *data, size_t data_len, u8 *ou
 
 static int
 rtecp_change_reference_data(sc_card_t *card, unsigned int type, int ref_qualifier,
-                            const u8 *old, size_t oldlen, const u8 *newref, size_t newlen, int *tries_left)
+		const u8 *old, size_t oldlen, const u8 *newref, size_t newlen, int *tries_left)
 {
 	sc_apdu_t apdu;
 	u8 rsf_length[2], *buf, *buf_end, *p;
@@ -559,7 +559,7 @@ rtecp_change_reference_data(sc_card_t *card, unsigned int type, int ref_qualifie
 
 static int
 rtecp_reset_retry_counter(sc_card_t *card, unsigned int type, int ref_qualifier, const u8 *puk, size_t puklen,
-                          const u8 *newref, size_t newlen)
+		const u8 *newref, size_t newlen)
 {
 	sc_apdu_t apdu;
 	int r;

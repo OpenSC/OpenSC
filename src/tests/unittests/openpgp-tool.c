@@ -29,7 +29,7 @@ struct expectation {
 
 static void
 torture_prettify(void **state, const struct expectation *cur,
-                 char *(prettify_func)(const u8 *data, size_t length))
+		char *(prettify_func)(const u8 *data, size_t length))
 {
 	char *output;
 

@@ -48,9 +48,9 @@
 #include "internal.h"
 
 static void sc_do_log_va(sc_context_t *ctx, int level, const char *file, int line, const char *func,
-                         int color, const char *format, va_list args);
+		int color, const char *format, va_list args);
 static int sc_color_fprintf_va(int colors, struct sc_context *ctx, FILE *stream, const char *format,
-                               va_list args);
+		va_list args);
 
 void
 sc_do_log(sc_context_t *ctx, int level, const char *file, int line, const char *func, const char *format, ...)
@@ -64,7 +64,7 @@ sc_do_log(sc_context_t *ctx, int level, const char *file, int line, const char *
 
 void
 sc_do_log_color(sc_context_t *ctx, int level, const char *file, int line, const char *func, int color,
-                const char *format, ...)
+		const char *format, ...)
 {
 	va_list ap;
 
@@ -80,7 +80,7 @@ void sc_do_log_noframe(sc_context_t *ctx, int level, const char *format, va_list
 
 static void
 sc_do_log_va(sc_context_t *ctx, int level, const char *file, int line, const char *func, int color,
-             const char *format, va_list args)
+		const char *format, va_list args)
 {
 #ifdef _WIN32
 	SYSTEMTIME st;
@@ -300,7 +300,7 @@ sc_color_fprintf_va(int colors, struct sc_context *ctx, FILE *stream, const char
 
 void
 _sc_debug_hex(sc_context_t *ctx, int type, const char *file, int line, const char *func, const char *label,
-              const u8 *data, size_t len)
+		const u8 *data, size_t len)
 {
 	size_t blen = len * 5 + 128;
 	char *buf = malloc(blen);

@@ -218,7 +218,7 @@ static int entersafe_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 			if (sc_profile_get_file(profile, create_efs[i], &file)) {
 				sc_log(card->ctx, "Inconsistent profile: cannot find %s", create_efs[i]);
 				SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,
-				               SC_ERROR_INCONSISTENT_PROFILE);
+						SC_ERROR_INCONSISTENT_PROFILE);
 			}
 
 			tmp.type = SC_ENTERSAFE_EF_DATA;
@@ -344,7 +344,7 @@ entersafe_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_pkcs15
 
 static int
 entersafe_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_pkcs15_object_t *obj,
-                    sc_pkcs15_prkey_t *key)
+		sc_pkcs15_prkey_t *key)
 {
 	sc_pkcs15_prkey_info_t *kinfo = (sc_pkcs15_prkey_info_t *) obj->data;
 	sc_card_t *card = p15card->card;
@@ -364,11 +364,9 @@ entersafe_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_pkcs15_
 	}
 
 	/* Disable RSA:512bits */
-	if ((keybits < 1024) ||
-	    (keybits > 2048) ||
-	    (keybits % 0x20) ) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Unsupported key size %"SC_FORMAT_LEN_SIZE_T"u\n",
-		         keybits);
+	if ((keybits < 1024) || (keybits > 2048) || (keybits % 0x20)) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Unsupported key size %" SC_FORMAT_LEN_SIZE_T "u\n",
+				keybits);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 

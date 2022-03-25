@@ -730,7 +730,8 @@ struct sc_card_operations {
 	 * @param  card   struct sc_card object on which to issue the command
 	 * @param  buf    buffer to be filled with random data
 	 * @param  count  number of random bytes to initialize
-	 * @return number of random bytes successfully initialized (i.e. `count` or less bytes) or an error code
+	 * @return number of random bytes successfully initialized (i.e. `count` or less bytes) or an error
+	 *         code
 	 */
 	int (*get_challenge)(struct sc_card *card, u8 * buf, size_t count);
 
@@ -1347,7 +1348,8 @@ int sc_put_data(struct sc_card *, unsigned int, const u8 *, size_t);
 /**
  * Gets challenge from the card (normally random data).
  * @param  card    struct sc_card object on which to issue the command
- * @param  rndout  buffer for the returned random challenge. Note that the buffer may be only partially initialized on error.
+ * @param  rndout  buffer for the returned random challenge. Note that the buffer may be only partially
+ *                 initialized on error.
  * @param  len     length of the challenge
  * @return SC_SUCCESS on success and an error code otherwise
  */

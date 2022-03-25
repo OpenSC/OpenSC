@@ -604,16 +604,16 @@ sc_pkcs15_convert_prkey(struct sc_pkcs15_prkey *pkcs15_key, void *evp_key)
 		RSA_get0_factors(src, &src_p, &src_q);
 		RSA_get0_crt_params(src, &src_dmp1, &src_dmq1, &src_iqmp);
 #else
-		BIGNUM *src_n = NULL, *src_e = NULL, *src_d = NULL, *src_p = NULL, *src_q = NULL,
-		       *src_iqmp = NULL, *src_dmp1 = NULL, *src_dmq1 = NULL;
+		BIGNUM *src_n = NULL, *src_e = NULL, *src_d = NULL, *src_p = NULL, *src_q = NULL;
+		BIGNUM *src_iqmp = NULL, *src_dmp1 = NULL, *src_dmq1 = NULL;
 		if (EVP_PKEY_get_bn_param(pk, OSSL_PKEY_PARAM_RSA_N, &src_n) != 1 ||
-		    EVP_PKEY_get_bn_param(pk, OSSL_PKEY_PARAM_RSA_E, &src_e) != 1 ||
-		    EVP_PKEY_get_bn_param(pk, OSSL_PKEY_PARAM_RSA_D, &src_d) != 1 ||
-		    EVP_PKEY_get_bn_param(pk, OSSL_PKEY_PARAM_RSA_FACTOR1, &src_p) != 1 ||
-		    EVP_PKEY_get_bn_param(pk, OSSL_PKEY_PARAM_RSA_FACTOR2, &src_q) != 1 ||
-		    EVP_PKEY_get_bn_param(pk, OSSL_PKEY_PARAM_RSA_EXPONENT1, &src_dmp1) != 1 ||
-		    EVP_PKEY_get_bn_param(pk, OSSL_PKEY_PARAM_RSA_EXPONENT2, &src_dmq1) != 1 ||
-		    EVP_PKEY_get_bn_param(pk, OSSL_PKEY_PARAM_RSA_COEFFICIENT1, &src_iqmp) != 1) {
+				EVP_PKEY_get_bn_param(pk, OSSL_PKEY_PARAM_RSA_E, &src_e) != 1 ||
+				EVP_PKEY_get_bn_param(pk, OSSL_PKEY_PARAM_RSA_D, &src_d) != 1 ||
+				EVP_PKEY_get_bn_param(pk, OSSL_PKEY_PARAM_RSA_FACTOR1, &src_p) != 1 ||
+				EVP_PKEY_get_bn_param(pk, OSSL_PKEY_PARAM_RSA_FACTOR2, &src_q) != 1 ||
+				EVP_PKEY_get_bn_param(pk, OSSL_PKEY_PARAM_RSA_EXPONENT1, &src_dmp1) != 1 ||
+				EVP_PKEY_get_bn_param(pk, OSSL_PKEY_PARAM_RSA_EXPONENT2, &src_dmq1) != 1 ||
+				EVP_PKEY_get_bn_param(pk, OSSL_PKEY_PARAM_RSA_COEFFICIENT1, &src_iqmp) != 1) {
 			BN_free(src_n);
 			BN_free(src_e);
 			BN_free(src_d);
@@ -626,10 +626,10 @@ sc_pkcs15_convert_prkey(struct sc_pkcs15_prkey *pkcs15_key, void *evp_key)
 #endif
 		pkcs15_key->algorithm = SC_ALGORITHM_RSA;
 		if (!sc_pkcs15_convert_bignum(&dst->modulus, src_n) ||
-		    !sc_pkcs15_convert_bignum(&dst->exponent, src_e) ||
-		    !sc_pkcs15_convert_bignum(&dst->d, src_d) ||
-		    !sc_pkcs15_convert_bignum(&dst->p, src_p) ||
-		    !sc_pkcs15_convert_bignum(&dst->q, src_q)) {
+				!sc_pkcs15_convert_bignum(&dst->exponent, src_e) ||
+				!sc_pkcs15_convert_bignum(&dst->d, src_d) ||
+				!sc_pkcs15_convert_bignum(&dst->p, src_p) ||
+				!sc_pkcs15_convert_bignum(&dst->q, src_q)) {
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 			BN_free(src_n);
 			BN_free(src_e);
@@ -705,8 +705,8 @@ sc_pkcs15_convert_prkey(struct sc_pkcs15_prkey *pkcs15_key, void *evp_key)
 		if (!(src = EVP_PKEY_get0_EC_KEY(pk)))
 			return SC_ERROR_INCOMPATIBLE_KEY;
 		if (!(src_priv_key = EC_KEY_get0_private_key(src)) ||
-		    !(src_pub_key = EC_KEY_get0_public_key(src)) ||
-		    !(grp = EC_KEY_get0_group(src)))
+				!(src_pub_key = EC_KEY_get0_public_key(src)) ||
+				!(grp = EC_KEY_get0_group(src)))
 			return SC_ERROR_INCOMPATIBLE_KEY;
 		nid = EC_GROUP_get_curve_name(grp);
 #else
@@ -753,13 +753,13 @@ sc_pkcs15_convert_prkey(struct sc_pkcs15_prkey *pkcs15_key, void *evp_key)
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 		/* Decode EC_POINT from a octet string */
 		buflen = EC_POINT_point2oct(grp, src_pub_key, POINT_CONVERSION_UNCOMPRESSED, buf, buflen,
-		                            NULL);
+				NULL);
 		if (!buflen)
 			return SC_ERROR_INCOMPATIBLE_KEY;
 #else
 		/* Decode EC_POINT from a octet string */
 		if (EVP_PKEY_get_octet_string_param(pk, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, buf, buflen,
-		                                    &buflen) != 1) {
+					&buflen) != 1) {
 			return SC_ERROR_INCOMPATIBLE_KEY;
 		}
 #endif

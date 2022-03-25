@@ -240,7 +240,7 @@ add_supported_mechs(test_cert_t *o)
  */
 int
 callback_certificates(test_certs_t *objects, CK_ATTRIBUTE template[], unsigned int template_size,
-                      CK_OBJECT_HANDLE object_handle)
+		CK_OBJECT_HANDLE object_handle)
 {
 	EVP_PKEY *evp = NULL;
 	const u_char *cp = NULL;
@@ -288,7 +288,7 @@ callback_certificates(test_certs_t *objects, CK_ATTRIBUTE template[], unsigned i
  */
 int
 callback_private_keys(test_certs_t *objects, CK_ATTRIBUTE template[], unsigned int template_size,
-                      CK_OBJECT_HANDLE object_handle)
+		CK_OBJECT_HANDLE object_handle)
 {
 	test_cert_t *o = NULL;
 	char *key_id;
@@ -339,7 +339,7 @@ callback_private_keys(test_certs_t *objects, CK_ATTRIBUTE template[], unsigned i
  */
 int
 callback_public_keys(test_certs_t *objects, CK_ATTRIBUTE template[], unsigned int template_size,
-                     CK_OBJECT_HANDLE object_handle)
+		CK_OBJECT_HANDLE object_handle)
 {
 	test_cert_t *o = NULL;
 	char *key_id;
@@ -391,7 +391,7 @@ callback_public_keys(test_certs_t *objects, CK_ATTRIBUTE template[], unsigned in
 #else
 			BIGNUM *cert_n = NULL, *cert_e = NULL;
 			if ((EVP_PKEY_get_bn_param(o->key, OSSL_PKEY_PARAM_RSA_N, &cert_n) != 1) ||
-			    (EVP_PKEY_get_bn_param(o->key, OSSL_PKEY_PARAM_RSA_E, &cert_e) != 1)) {
+					(EVP_PKEY_get_bn_param(o->key, OSSL_PKEY_PARAM_RSA_E, &cert_e) != 1)) {
 				fprintf(stderr, "Failed to extract RSA key parameters");
 				BN_free(cert_n);
 				BN_free(n);
@@ -404,7 +404,7 @@ callback_public_keys(test_certs_t *objects, CK_ATTRIBUTE template[], unsigned in
 				o->verify_public = 1;
 			} else {
 				debug_print(" [WARN %s ] Got different public key then from the certificate",
-				            o->id_str);
+						o->id_str);
 			}
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 			BN_free(cert_n);
@@ -418,16 +418,16 @@ callback_public_keys(test_certs_t *objects, CK_ATTRIBUTE template[], unsigned in
 			o->key = EVP_PKEY_new();
 			RSA *rsa = RSA_new();
 			if (RSA_set0_key(rsa, n, e, NULL) != 1 ||
-			    EVP_PKEY_set1_RSA(o->key, rsa) != 1) {
+					EVP_PKEY_set1_RSA(o->key, rsa) != 1) {
 				fail_msg("Unable to set key params");
 				return -1;
 			}
 #else
 			if (!(ctx = EVP_PKEY_CTX_new_from_name(NULL, "RSA", NULL)) ||
-			    !(bld = OSSL_PARAM_BLD_new()) ||
-			    OSSL_PARAM_BLD_push_BN(bld, "n", n) != 1 ||
-			    OSSL_PARAM_BLD_push_BN(bld, "e", e) != 1 ||
-			    !(params = OSSL_PARAM_BLD_to_param(bld))) {
+					!(bld = OSSL_PARAM_BLD_new()) ||
+					OSSL_PARAM_BLD_push_BN(bld, "n", n) != 1 ||
+					OSSL_PARAM_BLD_push_BN(bld, "e", e) != 1 ||
+					!(params = OSSL_PARAM_BLD_to_param(bld))) {
 				EVP_PKEY_CTX_free(ctx);
 				BN_free(n);
 				BN_free(e);
@@ -437,7 +437,7 @@ callback_public_keys(test_certs_t *objects, CK_ATTRIBUTE template[], unsigned in
 			}
 			OSSL_PARAM_BLD_free(bld);
 			if (EVP_PKEY_fromdata_init(ctx) != 1 ||
-			    EVP_PKEY_fromdata(ctx, &o->key, EVP_PKEY_PUBLIC_KEY, params) != 1) {
+					EVP_PKEY_fromdata(ctx, &o->key, EVP_PKEY_PUBLIC_KEY, params) != 1) {
 				EVP_PKEY_CTX_free(ctx);
 				BN_free(n);
 				BN_free(e);
@@ -521,9 +521,9 @@ callback_public_keys(test_certs_t *objects, CK_ATTRIBUTE template[], unsigned in
 			size_t pubkey_len = 0;
 			int cert_nid = 0;
 			if (EVP_PKEY_get_group_name(o->key, curve_name, sizeof(curve_name),
-			                            &curve_name_len) != 1 ||
-			    (cert_nid = OBJ_txt2nid(curve_name)) == NID_undef ||
-			    (cert_group = EC_GROUP_new_by_curve_name(cert_nid)) == NULL) {
+						&curve_name_len) != 1 ||
+					(cert_nid = OBJ_txt2nid(curve_name)) == NID_undef ||
+					(cert_group = EC_GROUP_new_by_curve_name(cert_nid)) == NULL) {
 				fprintf(stderr, "Can not get EC_GROUP from EVP_PKEY");
 				EC_GROUP_free(ecgroup);
 				EC_POINT_free(ecpoint);
@@ -532,9 +532,10 @@ callback_public_keys(test_certs_t *objects, CK_ATTRIBUTE template[], unsigned in
 			}
 			cert_point = EC_POINT_new(cert_group);
 			if (!cert_point ||
-			    EVP_PKEY_get_octet_string_param(o->key, OSSL_PKEY_PARAM_PUB_KEY, pubkey,
-			                                    sizeof(pubkey), &pubkey_len) != 1 ||
-			    EC_POINT_oct2point(cert_group, cert_point, pubkey, pubkey_len, NULL) != 1) {
+					EVP_PKEY_get_octet_string_param(o->key, OSSL_PKEY_PARAM_PUB_KEY, pubkey,
+							sizeof(pubkey), &pubkey_len) != 1 ||
+					EC_POINT_oct2point(cert_group, cert_point, pubkey, pubkey_len,
+							NULL) != 1) {
 				fprintf(stderr, "Can not get EC_POINT from EVP_PKEY");
 				EC_GROUP_free(ecgroup);
 				EC_POINT_free(ecpoint);
@@ -546,9 +547,8 @@ callback_public_keys(test_certs_t *objects, CK_ATTRIBUTE template[], unsigned in
 			if (cert_nid != nid ||
 				EC_GROUP_cmp(cert_group, ecgroup, NULL) != 0 ||
 				EC_POINT_cmp(ecgroup, cert_point, ecpoint, NULL) != 0) {
-				debug_print(" [WARN %s ] Got different public"
-					"key then from the certificate",
-					o->id_str);
+				debug_print(" [WARN %s ] Got different public key then from the certificate",
+						o->id_str);
 				EC_GROUP_free(ecgroup);
 				EC_POINT_free(ecpoint);
 				return -1;
@@ -572,8 +572,8 @@ callback_public_keys(test_certs_t *objects, CK_ATTRIBUTE template[], unsigned in
 			unsigned char pubkey[80];
 			size_t pubkey_len = 0;
 			if (EVP_PKEY_get_group_name(o->key, curve_name, sizeof(curve_name), &curve_name_len) ||
-			    EVP_PKEY_get_octet_string_param(o->key, OSSL_PKEY_PARAM_PUB_KEY, pubkey,
-			                                    sizeof(pubkey), &pubkey_len) != 1) {
+					EVP_PKEY_get_octet_string_param(o->key, OSSL_PKEY_PARAM_PUB_KEY, pubkey,
+							sizeof(pubkey), &pubkey_len) != 1) {
 				debug_print(" [WARN %s ] Can not get params from EVP_PKEY", o->id_str);
 				EC_GROUP_free(ecgroup);
 				EC_POINT_free(ecpoint);
@@ -581,9 +581,9 @@ callback_public_keys(test_certs_t *objects, CK_ATTRIBUTE template[], unsigned in
 			}
 
 			if (!(bld = OSSL_PARAM_BLD_new()) ||
-			    OSSL_PARAM_BLD_push_utf8_string(bld, "group", curve_name, curve_name_len) != 1 ||
-			    OSSL_PARAM_BLD_push_octet_string(bld, "pub", pubkey, pubkey_len) != 1 ||
-			    !(params = OSSL_PARAM_BLD_to_param(bld))) {
+					OSSL_PARAM_BLD_push_utf8_string(bld, "group", curve_name, curve_name_len) != 1 ||
+					OSSL_PARAM_BLD_push_octet_string(bld, "pub", pubkey, pubkey_len) != 1 ||
+					!(params = OSSL_PARAM_BLD_to_param(bld))) {
 				debug_print(" [WARN %s ] Can not set params from EVP_PKEY", o->id_str);
 				EC_GROUP_free(ecgroup);
 				EC_POINT_free(ecpoint);
@@ -594,8 +594,8 @@ callback_public_keys(test_certs_t *objects, CK_ATTRIBUTE template[], unsigned in
 			OSSL_PARAM_BLD_free(bld);
 
 			if (ctx == NULL || params == NULL ||
-			    EVP_PKEY_fromdata_init(ctx) != 1 ||
-			    EVP_PKEY_fromdata(ctx, &o->key, EVP_PKEY_PUBLIC_KEY, params) != 1) {
+					EVP_PKEY_fromdata_init(ctx) != 1 ||
+					EVP_PKEY_fromdata(ctx, &o->key, EVP_PKEY_PUBLIC_KEY, params) != 1) {
 				debug_print(" [WARN %s ] Can not set params for EVP_PKEY", o->id_str);
 				EC_GROUP_free(ecgroup);
 				EC_POINT_free(ecpoint);
@@ -714,8 +714,8 @@ callback_public_keys(test_certs_t *objects, CK_ATTRIBUTE template[], unsigned in
 			}
 
 			if (EVP_PKEY_get_raw_public_key(o->key, pub, &publen) != 1 ||
-			    publen != (size_t)os->length ||
-			    memcmp(pub, os->data, publen) != 0) {
+					publen != (size_t)os->length ||
+					memcmp(pub, os->data, publen) != 0) {
 				debug_print(" [WARN %s ] Got different public"
 					"key then from the certificate",
 					o->id_str);
@@ -750,7 +750,7 @@ callback_public_keys(test_certs_t *objects, CK_ATTRIBUTE template[], unsigned in
  */
 int
 callback_secret_keys(test_certs_t *objects, CK_ATTRIBUTE template[], unsigned int template_size,
-                     CK_OBJECT_HANDLE object_handle)
+		CK_OBJECT_HANDLE object_handle)
 {
 	test_cert_t *o = NULL;
 
@@ -800,8 +800,8 @@ callback_secret_keys(test_certs_t *objects, CK_ATTRIBUTE template[], unsigned in
 
 int
 search_objects(test_certs_t *objects, token_info_t *info, CK_ATTRIBUTE filter[], CK_LONG filter_size,
-               CK_ATTRIBUTE template[], CK_LONG template_size,
-               int (*callback)(test_certs_t *, CK_ATTRIBUTE[], unsigned int, CK_OBJECT_HANDLE))
+		CK_ATTRIBUTE template[], CK_LONG template_size,
+		int (*callback)(test_certs_t *, CK_ATTRIBUTE[], unsigned int, CK_OBJECT_HANDLE))
 {
 	CK_RV rv;
 	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
@@ -859,10 +859,10 @@ search_objects(test_certs_t *objects, token_info_t *info, CK_ATTRIBUTE filter[],
 			template[j].ulValueLen = 0;
 
 			rv = fp->C_GetAttributeValue(info->session_handle, object_handles[i], &(template[j]),
-			                             1);
+					1);
 			if (rv == CKR_ATTRIBUTE_TYPE_INVALID ||
-			    rv == CKR_ATTRIBUTE_SENSITIVE ||
-			    rv == CKR_DEVICE_ERROR) {
+					rv == CKR_ATTRIBUTE_SENSITIVE ||
+					rv == CKR_DEVICE_ERROR) {
 				continue;
 			} else if (rv != CKR_OK) {
 				fail_msg("C_GetAttributeValue: rv = 0x%.8lX\n", rv);
@@ -969,18 +969,18 @@ search_for_all_objects(test_certs_t *objects, token_info_t *info)
 	debug_print("\nSearch for all private keys respective to the certificates");
 	filter[0].pValue = &privateClass;
 	// search for all and pair on the fly
-	search_objects(objects, info, filter, filter_size,
-		private_attrs, private_attrs_size, callback_private_keys);
+	search_objects(objects, info, filter, filter_size, private_attrs, private_attrs_size,
+			callback_private_keys);
 
 	debug_print("\nSearch for all public keys respective to the certificates");
 	filter[0].pValue = &publicClass;
-	search_objects(objects, info, filter, filter_size,
-		public_attrs, public_attrs_size, callback_public_keys);
+	search_objects(objects, info, filter, filter_size, public_attrs, public_attrs_size,
+			callback_public_keys);
 
 	debug_print("\nSearch for all secret keys");
 	filter[0].pValue = &secretClass;
 	search_objects(objects, info, filter, filter_size, secret_attrs, secret_attrs_size,
-	               callback_secret_keys);
+			callback_secret_keys);
 }
 
 void clean_all_objects(test_certs_t *objects) {

@@ -76,7 +76,7 @@ scconf_parse_warning_expect(scconf_parser *parser, const char *token)
 	parser->warnings = 1;
 
 	snprintf(parser->emesg, sizeof(parser->emesg), "Line %d: missing '%s', ignoring\n", parser->line,
-	         token);
+			token);
 }
 
 static scconf_item *
@@ -86,7 +86,7 @@ scconf_item_find(scconf_parser *parser)
 
 	for (item = parser->block->items; item; item = item->next) {
 		if (item && item->type == SCCONF_ITEM_TYPE_VALUE && item->key && parser->key &&
-		    strcasecmp(item->key, parser->key) == 0) {
+				strcasecmp(item->key, parser->key) == 0) {
 			return item;
 		}
 	}
@@ -128,7 +128,7 @@ scconf_item_add_internal(scconf_parser *parser, int type)
 
 scconf_item *
 scconf_item_add(scconf_context *config, scconf_block *block, scconf_item *item, int type, const char *key,
-                const void *data)
+		const void *data)
 {
 	scconf_parser parser;
 	scconf_block *dst = NULL;
@@ -314,7 +314,7 @@ scconf_parse_token(scconf_parser *parser, int token_type, const char *token)
 			parser->state |= STATE_SET;
 			scconf_list_add(&parser->name, stoken);
 		} else if (parser->state == STATE_VALUE &&
-		           parser->current_item->type == SCCONF_ITEM_TYPE_VALUE) {
+				parser->current_item->type == SCCONF_ITEM_TYPE_VALUE) {
 			/* value */
 			parser->state |= STATE_SET;
 			scconf_list_add(&parser->current_item->value.list, stoken);
@@ -375,7 +375,7 @@ scconf_parse_token(scconf_parser *parser, int token_type, const char *token)
 			break;
 		default:
 			snprintf(parser->emesg, sizeof(parser->emesg), "Line %d: bad token ignoring\n",
-			         parser->line);
+					parser->line);
 		}
 		break;
 	}
@@ -398,7 +398,7 @@ scconf_parse(scconf_context *config)
 
 	if (!scconf_lex_parse(&p, config->filename)) {
 		snprintf(buffer, sizeof(buffer), "Unable to open \"%s\": %s", config->filename,
-		         strerror(errno));
+				strerror(errno));
 		r = -1;
 	} else if (p.error) {
 		strlcpy(buffer, p.emesg, sizeof(buffer));

@@ -161,10 +161,10 @@ npa_match_card(sc_card_t *card)
 	sc_format_apdu_ex(&select_ef_dir, 0x00, 0xA4, 0x02, 0x0C, id, sizeof id, NULL, 0);
 
 	if (SC_SUCCESS == sc_select_file(card, sc_get_mf_path(), NULL) &&
-	    SC_SUCCESS == sc_transmit_apdu(card, &select_ef_dir) &&
-	    select_ef_dir.sw1 == 0x90 && select_ef_dir.sw2 == 0x00 &&
-	    sizeof dir_content == sc_read_binary(card, 0, dir_content, sizeof dir_content, 0) &&
-	    0 == memcmp(dir_content_ref, dir_content, sizeof dir_content))
+			SC_SUCCESS == sc_transmit_apdu(card, &select_ef_dir) &&
+			select_ef_dir.sw1 == 0x90 && select_ef_dir.sw2 == 0x00 &&
+			sizeof dir_content == sc_read_binary(card, 0, dir_content, sizeof dir_content, 0) &&
+			0 == memcmp(dir_content_ref, dir_content, sizeof dir_content))
 		return 1;
 
 	return 0;
@@ -172,7 +172,7 @@ npa_match_card(sc_card_t *card)
 
 static void
 npa_get_cached_pace_params(sc_card_t *card, struct establish_pace_channel_input *pace_input,
-                           struct establish_pace_channel_output *pace_output)
+		struct establish_pace_channel_output *pace_output)
 {
 	struct npa_drv_data *drv_data;
 
@@ -193,7 +193,7 @@ npa_get_cached_pace_params(sc_card_t *card, struct establish_pace_channel_input 
 
 static void
 npa_get_cached_ta_params(sc_card_t *card, const unsigned char *certs[2], size_t certs_lens[2],
-                         const unsigned char **st_key, size_t *st_key_len)
+		const unsigned char **st_key, size_t *st_key_len)
 {
 	struct npa_drv_data *drv_data;
 	size_t i;
@@ -237,7 +237,7 @@ npa_get_cached_ca_params(sc_card_t *card, unsigned char **ef_cardsecurity, size_
 
 static void
 npa_cache_or_free(sc_card_t *card, unsigned char **ef_cardaccess, size_t *ef_cardaccess_length,
-                  unsigned char **ef_cardsecurity, size_t *ef_cardsecurity_length)
+		unsigned char **ef_cardsecurity, size_t *ef_cardsecurity_length)
 {
 	struct npa_drv_data *drv_data;
 
@@ -530,7 +530,7 @@ err:
 
 static int
 npa_pace_verify(struct sc_card *card, unsigned char pin_reference, struct sc_pin_cmd_pin *pin,
-                const unsigned char *chat, size_t chat_length, int *tries_left)
+		const unsigned char *chat, size_t chat_length, int *tries_left)
 {
 	int r;
 	struct establish_pace_channel_input pace_input;
@@ -642,7 +642,7 @@ npa_standard_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tr
 
 int
 npa_reset_retry_counter(sc_card_t *card, enum s_type pin_id, int ask_for_secret, const char *new,
-                        size_t new_len)
+		size_t new_len)
 {
 	sc_apdu_t apdu;
 	char *p = NULL;

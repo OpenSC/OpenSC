@@ -92,7 +92,7 @@
  */
 static void
 DES_3cbc_encrypt(sm_des_cblock *input, sm_des_cblock *output, long length, DES_key_schedule *ks1,
-                 DES_key_schedule *ks2, sm_des_cblock *iv, int enc)
+		DES_key_schedule *ks2, sm_des_cblock *iv, int enc)
 {
 	int off = ((int)length - 1) / 8;
 	long l8 = ((length + 7) / 8) * 8;
@@ -126,7 +126,7 @@ static OSSL_PROVIDER *legacy_provider = NULL;
 
 unsigned int
 DES_cbc_cksum_3des_emv96(const unsigned char *in, sm_des_cblock *output, long length, unsigned char *key,
-                         sm_const_des_cblock *ivec)
+		sm_const_des_cblock *ivec)
 {
 	register long l = length;
 	unsigned char *out = &(*output)[0];
@@ -251,7 +251,7 @@ DES_cbc_cksum_3des_emv96(const unsigned char *in, sm_des_cblock *output, long le
 
 unsigned int
 DES_cbc_cksum_3des(const unsigned char *in, sm_des_cblock *output, long length, unsigned char *key,
-                   sm_const_des_cblock *ivec)
+		sm_const_des_cblock *ivec)
 {
 	register long l = length;
 	unsigned char *out = &(*output)[0];
@@ -367,7 +367,7 @@ sm_encrypt_des_ecb3(unsigned char *key, unsigned char *data, int data_len, unsig
 	DES_set_key_unchecked(&kk,&ks);
 	DES_set_key_unchecked(&k2,&ks2);
 
-	for (ii=0; ii<data_len; ii+=8)
+	for (ii = 0; ii < data_len; ii += 8)
 		DES_ecb2_encrypt((sm_des_cblock *)(data + ii),
 				(sm_des_cblock *)(*out + ii), &ks, &ks2, DES_ENCRYPT);
 
@@ -403,7 +403,7 @@ err:
 
 int
 sm_decrypt_des_cbc3(struct sc_context *ctx, unsigned char *key, unsigned char *data, size_t data_len,
-                    unsigned char **out, size_t *out_len)
+		unsigned char **out, size_t *out_len)
 {
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 	sm_des_cblock kk, k2;
@@ -436,7 +436,7 @@ sm_decrypt_des_cbc3(struct sc_context *ctx, unsigned char *key, unsigned char *d
 
 	for (st = 0; st < data_len; st += 8)
 		DES_3cbc_encrypt((sm_des_cblock *)(data + st), (sm_des_cblock *)(*out + st), 8, &ks, &ks2,
-		                 &icv, DES_DECRYPT);
+				&icv, DES_DECRYPT);
 #else
 	cctx = EVP_CIPHER_CTX_new();
 	if (!EVP_DecryptInit_ex2(cctx, EVP_des_ede_cbc(), key, icv, NULL)) {
@@ -464,7 +464,7 @@ sm_decrypt_des_cbc3(struct sc_context *ctx, unsigned char *key, unsigned char *d
 /* This function expects the data to be a multiple of DES block size */
 int
 sm_encrypt_des_cbc3(struct sc_context *ctx, unsigned char *key, const unsigned char *in, size_t in_len,
-                    unsigned char **out, size_t *out_len, int not_force_pad)
+		unsigned char **out, size_t *out_len, int not_force_pad)
 {
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 	sm_des_cblock kk, k2;
@@ -522,7 +522,7 @@ sm_encrypt_des_cbc3(struct sc_context *ctx, unsigned char *key, const unsigned c
 
 	for (st = 0; st < data_len; st += 8)
 		DES_3cbc_encrypt((sm_des_cblock *)(data + st), (sm_des_cblock *)(*out + st), 8, &ks, &ks2,
-		                 &icv, DES_ENCRYPT);
+				&icv, DES_ENCRYPT);
 #else
 	cctx = EVP_CIPHER_CTX_new();
 	if (!EVP_EncryptInit_ex2(cctx, EVP_des_ede_cbc(), key, icv, NULL)) {

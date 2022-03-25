@@ -172,7 +172,7 @@ fuzz_add_reader(struct sc_context *ctx, const uint8_t *Data, size_t Size)
 	char name[64] = {0};
 
 	if (!(reader = calloc(1, sizeof(*reader))) ||
-	    !(data = (calloc(1, sizeof(*data))))) {
+			!(data = (calloc(1, sizeof(*data))))) {
 		free(reader);
 		return;
 	}

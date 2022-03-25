@@ -134,7 +134,7 @@ typedef struct sc_cvc_pka {
 
 int sc_pkcs15emu_sc_hsm_decode_cvc(sc_pkcs15_card_t *p15card, const u8 **buf, size_t *buflen, sc_cvc_t *cvc);
 int sc_pkcs15emu_sc_hsm_decode_pka(sc_pkcs15_card_t *p15card, const u8 **buf, size_t *buflen,
-                                   sc_cvc_pka_t *pka);
+		sc_cvc_pka_t *pka);
 int sc_pkcs15emu_sc_hsm_encode_cvc(sc_pkcs15_card_t *p15card, sc_cvc_t *cvc, u8 **buf, size_t *buflen);
 void sc_pkcs15emu_sc_hsm_free_cvc(sc_cvc_t *cvc);
 void sc_pkcs15emu_sc_hsm_free_cvc_pka(sc_cvc_pka_t *pka);

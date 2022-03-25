@@ -1605,7 +1605,7 @@ sc_pkcs15_convert_pubkey(struct sc_pkcs15_pubkey *pkcs15_key, void *evp_key)
 #else
 		BIGNUM *src_n = NULL, *src_e = NULL;
 		if (EVP_PKEY_get_bn_param(pk, OSSL_PKEY_PARAM_RSA_N, &src_n) != 1 ||
-		    EVP_PKEY_get_bn_param(pk, OSSL_PKEY_PARAM_RSA_E, &src_e) != 1) {
+				EVP_PKEY_get_bn_param(pk, OSSL_PKEY_PARAM_RSA_E, &src_e) != 1) {
 			BN_free(src_n);
 			return SC_ERROR_INTERNAL;
 		}
@@ -1613,7 +1613,7 @@ sc_pkcs15_convert_pubkey(struct sc_pkcs15_pubkey *pkcs15_key, void *evp_key)
 		/* Convert */
 		pkcs15_key->algorithm = SC_ALGORITHM_RSA;
 		if (!sc_pkcs15_convert_bignum(&dst->modulus, src_n) ||
-		    !sc_pkcs15_convert_bignum(&dst->exponent, src_e)) {
+				!sc_pkcs15_convert_bignum(&dst->exponent, src_e)) {
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 			RSA_free(src);
 #else
@@ -1643,7 +1643,7 @@ sc_pkcs15_convert_pubkey(struct sc_pkcs15_pubkey *pkcs15_key, void *evp_key)
 		if (!(eckey = EVP_PKEY_get0(pk)))
 			return SC_ERROR_INCOMPATIBLE_KEY;
 		if (!(point = EC_KEY_get0_public_key(eckey)) ||
-		    !(group = EC_KEY_get0_group(eckey)))
+				!(group = EC_KEY_get0_group(eckey)))
 			return SC_ERROR_INTERNAL;
 #else
 		EC_POINT *point = NULL;
@@ -1665,15 +1665,15 @@ sc_pkcs15_convert_pubkey(struct sc_pkcs15_pubkey *pkcs15_key, void *evp_key)
 			return SC_ERROR_OUT_OF_MEMORY;
 		}
 		if (EVP_PKEY_get_octet_string_param(pk, OSSL_PKEY_PARAM_PUB_KEY, pub, pub_len, NULL) != 1 ||
-		    EVP_PKEY_get_group_name(pk, group_name, group_name_len, NULL) != 1) {
+				EVP_PKEY_get_group_name(pk, group_name, group_name_len, NULL) != 1) {
 			free(pub);
 			free(group_name);
 			return SC_ERROR_INTERNAL;
 		}
 		if ((nid = OBJ_sn2nid(group_name) == 0) ||
-		    !(group = EC_GROUP_new_by_curve_name(nid)) ||
-		    !(point = EC_POINT_new(group)) ||
-		    EC_POINT_oct2point(group, point, pub, pub_len, NULL) != 1) {
+				!(group = EC_GROUP_new_by_curve_name(nid)) ||
+				!(point = EC_POINT_new(group)) ||
+				EC_POINT_oct2point(group, point, pub, pub_len, NULL) != 1) {
 			free(pub);
 			free(group_name);
 			EC_POINT_free(point);
@@ -1726,7 +1726,7 @@ sc_pkcs15_convert_pubkey(struct sc_pkcs15_pubkey *pkcs15_key, void *evp_key)
 		if (!(src = EVP_PKEY_get0_EC_KEY(pk)))
 			return SC_ERROR_INCOMPATIBLE_KEY;
 		if (!(point = EC_KEY_get0_public_key(src)) ||
-		    !(grp = EC_KEY_get0_group(src))) {
+				!(grp = EC_KEY_get0_group(src))) {
 			return SC_ERROR_INCOMPATIBLE_KEY;
 		}
 

@@ -233,7 +233,7 @@ hash_message(const CK_BYTE *message, size_t message_length, CK_MECHANISM_TYPE ha
 
 int
 oaep_encrypt_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message, CK_ULONG message_length,
-                             test_mech_t *mech, unsigned char **enc_message)
+		test_mech_t *mech, unsigned char **enc_message)
 {
 	size_t enc_length = 0;
 	CK_RV rv = -1;
@@ -245,10 +245,10 @@ oaep_encrypt_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *messag
 	mgf1_md = mgf_cryptoki_to_ossl(mech->mgf);
 
 	if ((pctx = EVP_PKEY_CTX_new(o->key, NULL)) == NULL ||
-	    EVP_PKEY_encrypt_init(pctx) != 1 ||
-	    EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_PKCS1_OAEP_PADDING) != 1 ||
-	    EVP_PKEY_CTX_set_rsa_oaep_md(pctx, md) != 1 ||
-	    EVP_PKEY_CTX_set_rsa_mgf1_md(pctx, mgf1_md) != 1) {
+			EVP_PKEY_encrypt_init(pctx) != 1 ||
+			EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_PKCS1_OAEP_PADDING) != 1 ||
+			EVP_PKEY_CTX_set_rsa_oaep_md(pctx, md) != 1 ||
+			EVP_PKEY_CTX_set_rsa_mgf1_md(pctx, mgf1_md) != 1) {
 		fprintf(stderr, " [ ERROR %s ] Failed to initialize EVP_PKEY_CTX. Error: %s\n",
 			o->id_str, ERR_error_string(ERR_peek_last_error(), NULL));
 		goto out;
@@ -285,7 +285,7 @@ fill_oaep_params(CK_RSA_PKCS_OAEP_PARAMS *oaep_params, test_mech_t *mech)
 
 int
 oaep_encrypt_message(test_cert_t *o, token_info_t *info, CK_BYTE *message, CK_ULONG message_length,
-                     test_mech_t *mech, unsigned char **enc_message)
+		test_mech_t *mech, unsigned char **enc_message)
 {
 	CK_RV rv;
 	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
@@ -339,7 +339,7 @@ openssl_encrypt:
 
 int
 oaep_decrypt_message(test_cert_t *o, token_info_t *info, CK_BYTE *enc_message, CK_ULONG enc_message_length,
-                     test_mech_t *mech, unsigned char **dec_message)
+		test_mech_t *mech, unsigned char **dec_message)
 {
 	CK_RV rv;
 	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
@@ -419,7 +419,8 @@ oaep_encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 	if (message_length < 0) {
 		mech->usage_flags &= ~CKF_DECRYPT;
 		debug_print(" [SKIP %s ] Too small modulus (%ld bits) or too large hash %s (%zu B) for OAEP",
-		            o->id_str, o->bits, get_mechanism_name(mech->hash), get_hash_length(mech->hash));
+				o->id_str, o->bits, get_mechanism_name(mech->hash),
+				get_hash_length(mech->hash));
 		return 0;
 	}
 
@@ -490,7 +491,7 @@ fill_pss_params(CK_RSA_PKCS_PSS_PARAMS *pss_params, test_mech_t *mech, test_cert
 
 int
 pss_sign_message(test_cert_t *o, token_info_t *info, CK_BYTE *message, CK_ULONG message_length,
-                 test_mech_t *mech, unsigned char **sign)
+		test_mech_t *mech, unsigned char **sign)
 {
 	CK_RV rv;
 	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
@@ -548,7 +549,7 @@ pss_sign_message(test_cert_t *o, token_info_t *info, CK_BYTE *message, CK_ULONG 
 
 int
 pss_verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message, CK_ULONG message_length,
-                           test_mech_t *mech, unsigned char *sign, CK_ULONG sign_length)
+		test_mech_t *mech, unsigned char *sign, CK_ULONG sign_length)
 {
 	CK_RV rv = -1;
 	EVP_PKEY_CTX *pctx = NULL;
@@ -570,11 +571,11 @@ pss_verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 	}
 
 	if ((pctx = EVP_PKEY_CTX_new(o->key, NULL)) == NULL ||
-	    EVP_PKEY_verify_init(pctx) != 1 ||
-	    EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_PKCS1_PSS_PADDING) != 1 ||
-	    EVP_PKEY_CTX_set_signature_md(pctx, md) != 1 ||
-	    EVP_PKEY_CTX_set_rsa_pss_saltlen(pctx, mech->salt) != 1 ||
-	    EVP_PKEY_CTX_set_rsa_mgf1_md(pctx, mgf_md) != 1) {
+			EVP_PKEY_verify_init(pctx) != 1 ||
+			EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_PKCS1_PSS_PADDING) != 1 ||
+			EVP_PKEY_CTX_set_signature_md(pctx, md) != 1 ||
+			EVP_PKEY_CTX_set_rsa_pss_saltlen(pctx, mech->salt) != 1 ||
+			EVP_PKEY_CTX_set_rsa_mgf1_md(pctx, mgf_md) != 1) {
 		fprintf(stderr, " [ ERROR %s ] Failed to initialize EVP_PKEY_CTX. Error: %s\n",
 			o->id_str, ERR_error_string(ERR_peek_last_error(), NULL));
 		goto out;
@@ -597,7 +598,7 @@ out:
 
 int
 pss_verify_message(test_cert_t *o, token_info_t *info, CK_BYTE *message, CK_ULONG message_length,
-                   test_mech_t *mech, unsigned char *sign, CK_ULONG sign_length)
+		test_mech_t *mech, unsigned char *sign, CK_ULONG sign_length)
 {
 	CK_RV rv;
 	CK_FUNCTION_LIST_PTR fp = info->function_pointer;

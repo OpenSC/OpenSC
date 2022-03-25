@@ -279,7 +279,7 @@ static int format_senv(struct sc_pkcs15_card *p15card,
 
 int
 sc_pkcs15_decipher(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_object *obj, unsigned long flags,
-                   const u8 *in, size_t inlen, u8 *out, size_t outlen, void *pMechanism)
+		const u8 *in, size_t inlen, u8 *out, size_t outlen, void *pMechanism)
 {
 	sc_context_t *ctx = p15card->card->ctx;
 	int r;
@@ -590,8 +590,7 @@ int sc_pkcs15_wrap(struct sc_pkcs15_card *p15card,
 
 int
 sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_object *obj,
-                            unsigned long flags, const u8 *in, size_t inlen, u8 *out, size_t outlen,
-                            void *pMechanism)
+		unsigned long flags, const u8 *in, size_t inlen, u8 *out, size_t outlen, void *pMechanism)
 {
 	sc_context_t *ctx = p15card->card->ctx;
 	int r;
@@ -667,11 +666,11 @@ sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card, const struct sc_pkcs
 			}
 			if (modlen > tmplen)
 				LOG_TEST_GOTO_ERR(ctx, SC_ERROR_NOT_ALLOWED,
-				                  "Buffer too small, needs recompile!");
+						"Buffer too small, needs recompile!");
 
 			/* XXX Assuming RSA key here */
 			r = sc_pkcs1_encode(ctx, flags, in, inlen, buf, &tmplen, prkey->modulus_length,
-			                    pMechanism);
+					pMechanism);
 
 			/* no padding needed - already done */
 			flags &= ~SC_ALGORITHM_RSA_PADS;
@@ -712,8 +711,8 @@ sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card, const struct sc_pkcs
 	/* ECDSA software hash has already been done, or is not needed, or card will do hash */
 	/* if card can not do the hash, will use SC_ALGORITHM_ECDSA_RAW */
 	if (obj->type == SC_PKCS15_TYPE_PRKEY_EC) {
-		if ((alg_info->flags & SC_ALGORITHM_ECDSA_RAW)
-				&& !(flags & SC_ALGORITHM_ECDSA_HASHES & alg_info->flags)) {
+		if ((alg_info->flags & SC_ALGORITHM_ECDSA_RAW) &&
+				!(flags & SC_ALGORITHM_ECDSA_HASHES & alg_info->flags)) {
 			sc_log(ctx, "ECDSA using SC_ALGORITHM_ECDSA_RAW flags before 0x%8.8lx", flags);
 				flags |= SC_ALGORITHM_ECDSA_RAW;
 				flags &= ~SC_ALGORITHM_ECDSA_HASHES;
@@ -727,8 +726,8 @@ sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card, const struct sc_pkcs
 	/* senv now has flags card or driver will do */
 	senv.algorithm_flags = sec_flags;
 
-	sc_log(ctx, "DEE flags:0x%8.8lx alg_info->flags:0x%8.8x pad:0x%8.8lx sec:0x%8.8lx",
-		flags, alg_info->flags, pad_flags, sec_flags);
+	sc_log(ctx, "DEE flags:0x%8.8lx alg_info->flags:0x%8.8x pad:0x%8.8lx sec:0x%8.8lx", flags,
+			alg_info->flags, pad_flags, sec_flags);
 
 	/* add the padding bytes (if necessary) */
 	if (pad_flags != 0) {
@@ -736,7 +735,7 @@ sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card, const struct sc_pkcs
 
 		/* XXX Assuming RSA key here */
 		r = sc_pkcs1_encode(ctx, pad_flags, tmp, inlen, tmp, &tmplen, prkey->modulus_length,
-		                    pMechanism);
+				pMechanism);
 		LOG_TEST_GOTO_ERR(ctx, r, "Unable to add padding");
 		inlen = tmplen;
 	}
@@ -760,7 +759,7 @@ sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card, const struct sc_pkcs
 	 * But if card is going to do the hash, pass in all the data
 	 */
 	else if (senv.algorithm == SC_ALGORITHM_EC &&
-	         (senv.algorithm_flags & SC_ALGORITHM_ECDSA_HASHES) == 0) {
+			(senv.algorithm_flags & SC_ALGORITHM_ECDSA_HASHES) == 0) {
 		inlen = MIN(inlen, (prkey->field_length+7)/8);
 	}
 

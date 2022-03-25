@@ -280,12 +280,12 @@ static int decipher(struct sc_pkcs15_object *obj)
 
 	len = sizeof(out);
 	if (!((struct sc_pkcs15_prkey_info *) obj->data)->native) {
-                fprintf(stderr, "Deprecated non-native key detected! Upgrade your smart cards.\n");
+		fprintf(stderr, "Deprecated non-native key detected! Upgrade your smart cards.\n");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
 	r = sc_pkcs15_decipher(p15card, obj, opt_crypt_flags & SC_ALGORITHM_RSA_PAD_PKCS1, buf, c, out, len,
-	                       NULL);
+			NULL);
 	if (r < 0) {
 		fprintf(stderr, "Decrypt failed: %s\n", sc_strerror(r));
 		return 1;

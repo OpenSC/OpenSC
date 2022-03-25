@@ -674,9 +674,9 @@ _pgp_handle_curve25519(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t key_inf
 	 * OpenPGP card supports only derivation using these
 	 * keys as far as I know */
 	_sc_card_add_xeddsa_alg(card, key_info.u.ec.key_length, SC_ALGORITHM_ECDH_CDH_RAW, 0,
-	                        &key_info.u.ec.oid);
+			&key_info.u.ec.oid);
 	sc_log(card->ctx, "DO %zX: Added XEDDSA algorithm (%d), mod_len = %d", do_num, SC_ALGORITHM_XEDDSA,
-	       key_info.u.ec.key_length);
+			key_info.u.ec.key_length);
 	return 1;
 }
 
@@ -692,11 +692,11 @@ _pgp_add_algo(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t key_info, size_t
 		 * v3.x section 7.2.11 & 7.2.12 */
 		flags = SC_ALGORITHM_RSA_PAD_PKCS1 |
 			SC_ALGORITHM_RSA_HASH_NONE |
-			SC_ALGORITHM_ONBOARD_KEY_GEN;	/* key gen on card */
+			SC_ALGORITHM_ONBOARD_KEY_GEN; /* key gen on card */
 
 		_sc_card_add_rsa_alg(card, key_info.u.rsa.modulus_len, flags, 0);
 		sc_log(card->ctx, "DO %zX: Added RSA algorithm, mod_len = %" SC_FORMAT_LEN_SIZE_T "u", do_num,
-		       key_info.u.rsa.modulus_len);
+				key_info.u.rsa.modulus_len);
 		break;
 	case SC_OPENPGP_KEYALGO_ECDH:
 		/* The montgomery curve (curve25519) needs to go through
@@ -717,7 +717,7 @@ _pgp_add_algo(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t key_info, size_t
 
 		_sc_card_add_ec_alg(card, key_info.u.ec.key_length, flags, ext_flags, &key_info.u.ec.oid);
 		sc_log(card->ctx, "DO %zX: Added EC algorithm (%d), mod_len = %d", do_num, key_info.algorithm,
-		       key_info.u.ec.key_length);
+				key_info.u.ec.key_length);
 		break;
 	case SC_OPENPGP_KEYALGO_EDDSA:
 		/* EdDSA from draft-ietf-openpgp-rfc4880bis-08 */
@@ -725,10 +725,10 @@ _pgp_add_algo(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t key_info, size_t
 		if (_pgp_handle_curve25519(card, key_info, do_num))
 			break;
 		_sc_card_add_eddsa_alg(card, key_info.u.ec.key_length, SC_ALGORITHM_EDDSA_RAW, 0,
-		                       &key_info.u.ec.oid);
+				&key_info.u.ec.oid);
 
 		sc_log(card->ctx, "DO %zX: Added EDDSA algorithm (%d), mod_len = %d", do_num,
-		       key_info.algorithm, key_info.u.ec.key_length);
+				key_info.algorithm, key_info.u.ec.key_length);
 		break;
 	default:
 		sc_log(card->ctx, "DO %zX: Unknown algorithm ID (%d)", do_num, key_info.algorithm);
@@ -895,7 +895,7 @@ pgp_get_card_features(sc_card_t *card)
 		if (priv->bcd_version >= OPENPGP_CARD_3_0) {
 			/* v3.0+: get length info from "extended length information" DO */
 			if ((pgp_get_blob(card, blob6e, 0x7f66, &blob) >= 0) &&
-			    (blob->data != NULL) && (blob->len >= 8)) {
+					(blob->data != NULL) && (blob->len >= 8)) {
 				/* kludge: treat as SIMPLE DO and use appropriate offsets */
 				card->max_send_size = bebytes2ushort(blob->data + 2);
 				card->max_recv_size = bebytes2ushort(blob->data + 6);
@@ -1246,7 +1246,7 @@ pgp_enumerate_blob(sc_card_t *card, pgp_blob_t *blob)
 		}
 		/* Check for unknown error, or empty data */
 		if (((r < 0) && (r != SC_ERROR_ASN1_END_OF_CONTENTS)) ||
-		    (data == NULL)) {
+				(data == NULL)) {
 			sc_log(card->ctx, "Unexpected end of contents");
 			return SC_ERROR_OBJECT_NOT_VALID;
 		}
@@ -1258,7 +1258,7 @@ pgp_enumerate_blob(sc_card_t *card, pgp_blob_t *blob)
 		tag |= cla;
 		/* Check for length mismatch */
 		if ((r == SC_ERROR_ASN1_END_OF_CONTENTS) ||
-		    (data + len > blob->data + blob->len)) {
+				(data + len > blob->data + blob->len)) {
 			// Check if it is not known Yubikey 5 issue
 			if ((tag != blob->id) || (tag != 0xfa)) {
 				sc_log(card->ctx, "Unexpected end of contents");

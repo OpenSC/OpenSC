@@ -589,8 +589,8 @@ int main(int argc, char *argv[])
 		}
 
 		if (EVP_PKEY_keygen_init(pctx) != 1 ||
-		    EVP_PKEY_CTX_set_rsa_keygen_bits(pctx, keylen) != 1 ||
-		    EVP_PKEY_keygen(pctx, &pkey) != 1) {
+				EVP_PKEY_CTX_set_rsa_keygen_bits(pctx, keylen) != 1 ||
+				EVP_PKEY_keygen(pctx, &pkey) != 1) {
 			printf("Key generation failed.\n");
 			EVP_PKEY_CTX_free(pctx);
 			goto out;
@@ -668,13 +668,13 @@ int main(int argc, char *argv[])
 #else
 			BIGNUM *rsa_n = NULL, *rsa_e = NULL;
 			if (EVP_PKEY_get_bn_param(pkey, "n", &rsa_n) != 1 ||
-			    EVP_PKEY_get_bn_param(pkey, "e", &rsa_e) != 1) {
+					EVP_PKEY_get_bn_param(pkey, "e", &rsa_e) != 1) {
 				BN_free(rsa_n);
 			}
 #endif
 
 			if (!do_convert_bignum(&dst->modulus, rsa_n) ||
-			    !do_convert_bignum(&dst->exponent, rsa_e)) {
+					!do_convert_bignum(&dst->exponent, rsa_e)) {
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 				RSA_free(rsa);
 #else
@@ -773,7 +773,7 @@ int main(int argc, char *argv[])
 			}
 			printf("Finalize card...\n");
 			if (sc_card_ctl(card, SC_CARDCTL_WESTCOS_AUT_KEY, NULL) ||
-			    sc_card_ctl(card, SC_CARDCTL_LIFECYCLE_SET, &mode)) {
+					sc_card_ctl(card, SC_CARDCTL_LIFECYCLE_SET, &mode)) {
 				printf("Error finalizing card,"\
 					" card isn't secure.\n");
 				goto out;
