@@ -1613,6 +1613,7 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 		if (r < 0 && algorithm == SC_ALGORITHM_EC) {
 			free(pubkey_args.key.u.ec.params.der.value);
 			free(pubkey_args.key.u.ec.params.named_curve);
+			free(pubkey_args.key.u.ec.ecpointQ.value); /* allocated in profile->ops->generate_key */
 		}
 		LOG_TEST_GOTO_ERR(ctx, r, "Select intrinsic ID error");
 
