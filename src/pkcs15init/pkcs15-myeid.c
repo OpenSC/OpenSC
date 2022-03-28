@@ -917,10 +917,14 @@ myeid_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 			pubkey->u.ec.params.der.len = 0;
 
 			pubkey->u.ec.params.named_curve = strdup(ecparams->named_curve);
-			if (!pubkey->u.ec.params.named_curve)
+			if (!pubkey->u.ec.params.named_curve) {
+				free(pubkey->u.ec.ecpointQ.value);
 				LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+			}
 
 			r = sc_pkcs15_fix_ec_parameters(ctx, &pubkey->u.ec.params);
+			if (r < 0)
+				free(pubkey->u.ec.ecpointQ.value);
 			LOG_TEST_RET(ctx, r, "Cannot fix EC parameters");
 		}
 	}
