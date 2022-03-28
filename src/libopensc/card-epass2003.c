@@ -1287,8 +1287,13 @@ epass2003_finish(sc_card_t *card)
 static int
 epass2003_hook_path(struct sc_path *path, int inc)
 {
-	u8 fid_h = path->value[path->len - 2];
-	u8 fid_l = path->value[path->len - 1];
+	u8 fid_h = 0;
+	u8 fid_l = 0;
+
+	if (!path || path->len < 2)
+		return -1;
+	fid_h = path->value[path->len - 2];
+	fid_l = path->value[path->len - 1];
 
 	switch (fid_h) {
 	case 0x29:
@@ -1310,17 +1315,24 @@ epass2003_hook_path(struct sc_path *path, int inc)
 }
 
 
-static void
+static int
 epass2003_hook_file(struct sc_file *file, int inc)
 {
 	int fidl = file->id & 0xff;
 	int fidh = file->id & 0xff00;
-	if (epass2003_hook_path(&file->path, inc)) {
+	int rv = 0;
+
+	rv = epass2003_hook_path(&file->path, inc);
+
+	if (rv > 0) {
 		if (inc)
 			file->id = fidh + fidl * FID_STEP;
 		else
 			file->id = fidh + fidl / FID_STEP;
 	}
+	if (rv < 0)
+		return rv;
+	return SC_SUCCESS;
 }
 
 
@@ -1333,7 +1345,9 @@ epass2003_select_fid_(struct sc_card *card, sc_path_t * in_path, sc_file_t ** fi
 	int r, pathlen;
 	sc_file_t *file = NULL;
 
-	epass2003_hook_path(in_path, 1);
+	r = epass2003_hook_path(in_path, 1);
+	LOG_TEST_RET(card->ctx, r, "Can not hook path");
+
 	memcpy(path, in_path->value, in_path->len);
 	pathlen = in_path->len;
 
@@ -2266,18 +2280,16 @@ epass2003_delete_file(struct sc_card *card, const sc_path_t * path)
 	LOG_FUNC_CALLED(card->ctx);
 
 	r = sc_select_file(card, path, NULL);
-	epass2003_hook_path((struct sc_path *)path, 1);
-	if (r == SC_SUCCESS) {
-		sbuf[0] = path->value[path->len - 2];
-		sbuf[1] = path->value[path->len - 1];
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xE4, 0x00, 0x00);
-		apdu.lc = 2;
-		apdu.datalen = 2;
-		apdu.data = sbuf;
-	}
-	else   {
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
-	}
+	LOG_TEST_RET(card->ctx, r, "Can not select file");
+	r = epass2003_hook_path((struct sc_path *)path, 1);
+	LOG_TEST_RET(card->ctx, r, "Can not hook path");
+
+	sbuf[0] = path->value[path->len - 2];
+	sbuf[1] = path->value[path->len - 1];
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xE4, 0x00, 0x00);
+	apdu.lc = 2;
+	apdu.datalen = 2;
+	apdu.data = sbuf;
 
 	r = sc_transmit_apdu_t(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
