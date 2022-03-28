@@ -136,12 +136,24 @@ static int fuzz_reader_transmit(sc_reader_t *reader, sc_apdu_t *apdu)
     return SC_SUCCESS;
 }
 
+static int fuzz_reader_lock(sc_reader_t *reader)
+{
+    return 0;
+}
+
+static int fuzz_reader_unlock(sc_reader_t *reader)
+{
+    return 0;
+}
+
 struct sc_reader_driver *sc_get_fuzz_driver(void)
 {
     fuzz_ops.release = fuzz_reader_release;
     fuzz_ops.connect = fuzz_reader_connect;
     fuzz_ops.disconnect = fuzz_reader_disconnect;
     fuzz_ops.transmit = fuzz_reader_transmit;
+    fuzz_ops.lock = fuzz_reader_lock;
+    fuzz_ops.unlock = fuzz_reader_unlock;
     return &fuzz_drv;
 }
 
