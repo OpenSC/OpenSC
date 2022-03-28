@@ -49,8 +49,10 @@ static int muscle_erase_card(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 	sc_format_path("3F00", &path);
 	if ((r = sc_select_file(p15card->card, &path, &file)) < 0)
 		return r;
-	if ((r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_ERASE)) < 0)
+	if ((r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_ERASE)) < 0) {
+		sc_file_free(file);
 		return r;
+	}
 	if ((r = sc_delete_file(p15card->card, &path)) < 0)
 		return r;
 	return 0;
