@@ -307,7 +307,7 @@ static int
 cosm_new_file(struct sc_profile *profile, struct sc_card *card,
 	      unsigned int type, unsigned int num, struct sc_file **out)
 {
-	struct sc_file *file;
+	struct sc_file *file = NULL;
 	const char *_template = NULL, *desc = NULL;
 	unsigned int structure = 0xFFFFFFFF;
 
@@ -317,12 +317,12 @@ cosm_new_file(struct sc_profile *profile, struct sc_card *card,
 	while (1) {
 		switch (type) {
 		case SC_PKCS15_TYPE_PRKEY_EC:
-			desc = "RSA private key";
+			desc = "EC private key";
 			_template = "private-key";
 			structure = SC_CARDCTL_OBERTHUR_KEY_EC_CRT;
 			break;
 		case SC_PKCS15_TYPE_PUBKEY_EC:
-			desc = "RSA public key";
+			desc = "EC public key";
 			_template = "public-key";
 			structure = SC_CARDCTL_OBERTHUR_KEY_EC_PUBLIC;
 			break;
@@ -371,6 +371,11 @@ cosm_new_file(struct sc_profile *profile, struct sc_card *card,
 			 "Profile doesn't define %s template '%s'\n", desc,
 			 _template);
 		return SC_ERROR_NOT_SUPPORTED;
+	}
+
+	if (file->path.len < 1) {
+		sc_file_free(file);
+		return SC_ERROR_INTERNAL;
 	}
 
 	file->id &= 0xFF00;
