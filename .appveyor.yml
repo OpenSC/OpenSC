@@ -120,10 +120,10 @@ deploy_script:
   - bash -c "if [ \"$DO_PUSH_ARTIFACT\" = yes -a -z \"$APPVEYOR_PULL_REQUEST_NUMBER\" -a \"$APPVEYOR_REPO_NAME\" = \"OpenSC/OpenSC\" ]; then .github/push_artifacts.sh \"AppVeyor build ${APPVEYOR_BUILD_NUMBER}.${APPVEYOR_JOB_NUMBER}\"; fi"
 
 cache:
-  - C:\zlib -> appveyor.yml
-  - C:\zlib-Win32 -> appveyor.yml
-  - C:\zlib-Win64 -> appveyor.yml
-  - C:\openpace -> appveyor.yml
-  - C:\openpace-Win32 -> appveyor.yml
-  - C:\openpace-Win64 -> appveyor.yml
-  - cpdksetup.exe -> appveyor.yml
+  - C:\zlib -> .appveyor.yml
+  - C:\zlib-Win32 -> .appveyor.yml
+  - C:\zlib-Win64 -> .appveyor.yml
+  - C:\openpace -> .appveyor.yml
+  - C:\openpace-Win32 -> .appveyor.yml
+  - C:\openpace-Win64 -> .appveyor.yml
+  - cpdksetup.exe -> .appveyor.yml
