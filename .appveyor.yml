@@ -13,7 +13,7 @@ environment:
     secure: aLu3tFc7lRJbotnmnHLx/QruIHc5rLaGm1RttoEdy4QILlPXzVkCZ6loYMz0sfrY
   PATH: C:\cygwin\bin;%PATH%
   OPENPACE_VER: 1.1.2
-  ZLIB_VER_DOT: 1.2.11
+  ZLIB_VER_DOT: 1.2.12
   matrix:
   # not compatible with OpenSSL 1.1.1:
   # - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2013
