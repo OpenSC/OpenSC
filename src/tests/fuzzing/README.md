@@ -1,11 +1,66 @@
-# Fuzzing
+# Fuzzing in OpenSC
 
-## Corpus semantics
+OpenSC is part of the [OSS-Fuzz project](https://google.github.io/oss-fuzz/), which provides continuous fuzzing support for open-source projects.
+Fuzzer [libFuzzer](https://llvm.org/docs/LibFuzzer.html) can be used for local testing.
+
+To the terms used, _fuzzer_ refers to a program that injects malformed inputs to the system under test; _fuzz target_ is a program that accepts data buffer, processes it and passes the data to the tested interface.
+
+## Building
+
+### Building for fuzzing
+Successful build of fuzz targets requires `./configure` run with correctly set CC, CFLAGS and FUZZING_LIBS. Note that some of the fuzz targets can be built only with the `--disable-shared` option.
+
+Example configuration for libFuzzer:
+```
+./configure --disable-optimization --disable-shared --disable-pcsc --enable-ctapi --enable-fuzzing CC=clang CFLAGS=-fsanitize=fuzzer-no-link FUZZING_LIBS=-fuzzer
+```
+
+To add some of the LLVM Sanitizers, modify `FUZZING_LIBS`:  
+```
+FUZZING_LIBS=-fuzzer,address,undefined
+```
+Sanitizers can also be modified by [flags](https://github.com/google/sanitizers/wiki/SanitizerCommonFlags).
+
+### Building without fuzzing support
+When fuzzing is not enabled explicitly by `--enable-fuzzing`, fuzz targets are built without fuzzing support. They can be used for local regression testing and accept one argument for filename with input for the testing functions.
+
+Example of testing without fuzzing:
+```
+./fuzz_pkcs15_reader ./input_file
+```
+
+## Fuzzing
+### libFuzzer
+See libFuzzer [documentation](https://llvm.org/docs/LibFuzzer.html) for details.
+
+Fuzzing with a predefined corpus can be run like this:
+```
+./fuzz_pkcs15_reader corpus/fuzz_pkcs15_reader 
+```
+Newly generated input files are stored in the corpus directory.
+
+By default, `stdout` is closed for fuzzing. However, some fuzz targets may output to `stderr`. You can suppress `stderr` with the `-close_fd_mask` option (see libFuzzer).
+
+To execute the fuzz target on one input, try:
+```
+./fuzz_pkcs15_reader ./test-case
+```
+
+### Fuzzing OpenSC tools
+
+It is possible to fuzz also tools provided by OpenSC. Since it is not possible to directly fuzz the source code of tools (because of the `main()` function), the fuzz targets first create a copy of the source code via the `helper.sh` script during the build, and rename the `main()` functions (and do some more modifications if necessary).
+The fuzz targets for tools then test the tool by supplying fuzzer arguments and card APDU responses.
+
+Fuzzing input can supply whole arguments for the `argv` or only particular values for static options. See the fuzz target source code for how the fuzzing input is split into an argument and APDU parts.
+
+## Corpus
+
+### Corpus for `fuzz_pkcs15_reader`
 
 The corpus files for the `fuzz_pkcs15_reader` are interpreted by the virtual
 reader as follows:
 
- * first two bytes denote the block length N as unsigned integer. The endianness
+ * first two bytes denote the block length N as an unsigned integer. The endianness
    depends on the architecture
  * the following block of the length N
 
@@ -35,26 +90,26 @@ Modify the `src/libopensc/reader-pcsc.c` and uncomment the following line:
 ```
 #define APDU_LOG_FILE "apdulog"
 ```
-and rebuild OpenSC. Then run any opensc tool talking to the card. For example
+and rebuild OpenSC. Then run any OpenSC tool talking to the card. For example
 ```
 ./src/tools/pkcs11-tool -L --module ./src/pkcs11/.libs/opensc-pkcs11.so
 ```
 Any APDU returned from the card is now logged into the file `apdulog` in the
-format expected by the `fuzz_pkcs15_reader`  fuzzer. It is also prefixed with
-the ATR of the connected card as expected by the fuzzer. This file can be used
-as a starting point which gets through the card detection, but does not go into
-all the operations the fuzzer attempts later.
+format expected by the `fuzz_pkcs15_reader`  fuzz target. It is also prefixed with
+the ATR of the connected card as expected by the fuzz target. This file can be used
+as a starting point that gets through the card detection but does not go into
+all the operations the fuzz target attempts later.
 
-### The pkcs15init fuzzer
+### The pkcs15init fuzz target
 
-The pkcs15init fuzzer consist of two separate parts. The first one is parsing
-of the profile file, which is separated from the rest of the input with a NULL
-byte (0x00). The rest is interpreted as in case of the `fuzz_pkcs15_reader`.
+The pkcs15init fuzz target consists of two separate parts. The first one is parsing
+the profile file, which is separated from the rest of the input with a NULL
+byte (0x00). The rest is interpreted as in the case of the `fuzz_pkcs15_reader`.
 
-When creating corpus for this fuzzer, stuff get more messy because:
+When creating a corpus for this fuzz target, stuff gets messier because:
 
  * The first part is the profile file
- * The `pkcs15-init` can do only one operation at time so we need to skip the
+ * The `pkcs15-init` can do only one operation at a time, so we need to skip the
    card init when concatenating the APDU traces
 
 So at first, erase the card and move away the apdulog:
@@ -62,7 +117,7 @@ So at first, erase the card and move away the apdulog:
 ./src/tools/pkcs15-init --erase-card --so-pin 12345678
 $ mv apdulog /tmp/apdu_erase
 ```
-Then prepare the separate files for each operation in the fuzzer:
+Then prepare the separate files for each operation in the fuzz target:
 ```
 $ ./src/tools/pkcs15-init -C --pin 123456 --puk 12345678 --so-pin 12345678 --so-puk 12345678
 $ mv apdulog /tmp/apdu_create
@@ -79,13 +134,13 @@ $ mv apdulog /tmp/apdu_finalize
 ```
 
 Now, construct the corpus file:
-* insert profile and zero byte as delimiter
-* apdu create can be used as it is
-* from apdu\_create_pin remove part for connecting card
-* from apdu\_store_data remove some central parts, since testing data is smaller than data used in apdu
-* apdu_generate_* and apdu\_finalize need to skip connecting card and `sc_pcks15_bind()`
-* symmetric key generation is not supported on the card, lets fill that part with some dummy values from generating RSA keys
-* apdu\_erase needs to skip part for connecting card
+* insert profile and zero bytes as a delimiter
+* `apdu\_create` can be used as it is
+* from `apdu\_create\_pin` remove the part for connecting the card
+* from `apdu\_store\_data` remove some central parts since testing data is smaller than data used in apdu
+* `apdu_generate_*` and `apdu\_finalize` need to skip connecting card and `sc_pcks15_bind()`
+* symmetric key generation is not supported on the card; let's fill that part with some dummy values from generating RSA keys
+* `apdu\_erase` needs to skip part for connecting card
 
 ```
 SKIP=1257
@@ -105,9 +160,36 @@ SKIP=1257
 ) > tmp/testcase
 ```
 
-Now, lets try to feed the data into the fuzzer:
+Now, let's try to feed the data into the fuzz target:
 ```
 OPENSC_DEBUG=9 ./src/tests/fuzzing/fuzz_pkcs15init_profile /tmp/testcase
 ```
 The debug log should show the card detection, which goes through and then some
 pkcs15init operations.
+
+### The piv-tool fuzz target
+
+The `fuzz_piv_tool` target allows testing operations of `piv-tool`. What operation is tested depends of first byte of the fuzzing input:
+
+* `\x00` tests loading of the object, the input looks as\
+`| \x00 | len1 | len2 | admin key | containerID | \x00 | admin_arg | \x00 | len1 | len2 | file content | APDU part |`[^1]
+* `\x01` tests loading of the certificate, the input looks as\
+`| \x01 | len1 | len2 | admin key | ref | \x00 | admin_arg | \x00 | len1 | len2 | file content | APDU part |`[^1]
+* `\x02` tests loading of the compressed certificate, the input looks as by loading of certificate
+* other values for first byte means that whole `argv` is taken from fuzzing input\
+`| > \x003 | arg_1 | \x00 | arg_2 | \x00 | ... | arg_n | \x00 | \x00 | APDU part |`
+
+### The pkcs15-tool fuzz target
+
+The `fuzz_pkcs15_tool` target allows testing operations of `pkcs15-tool`. The options are taken from fuzzing input, it is parsed as\
+`| arg_1 | \x00 | arg_2 | \x00 | ... | arg_n | \x00 | \x00 | APDU part |`
+
+[^1]: `len1` and `len2` refer to two bytes that are parsed as the length of the content of the file that is extracted from the input
+
+### The pkcs15-crypt fuzz target
+
+The `fuzz_pkcs15_crypt` target allows testing operations of `pkcs15-crypt`. What operation is tested depends of first byte of the fuzzing input:
+
+* the whole `argv` is taken from fuzzing input
+* the `-c` and `-s` options are tested with various combinations of other command-line options\
+`| op | hash type | padding | format | aid | aid value | \x00 | id | id value | \x00 | len1 |len2 |file content | APDU part |`
