@@ -2463,12 +2463,18 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 			// in_path->count: ignored!
 
 			if(file->record_length > 0) {
-				len = (file->record_length > MAX_FILE_SIZE)? MAX_FILE_SIZE:file->record_length + 5;
+				if(file->record_length > MAX_FILE_SIZE) {
+					len = MAX_FILE_SIZE;
+					sc_log(ctx, "  record size truncated, encoded length: %"SC_FORMAT_LEN_SIZE_T"u", file->record_length);
+				} else {
+					len = file->record_length;
+				}
 			} else {
-				len = 0x2000 + 5;
+				len = MAX_FILE_SIZE;
 			}
 			
 			if ((in_path->index <= 0) || (in_path->index > (int)(file->record_count))) {
+				sc_log(ctx, "  record number out of bounds: %d", in_path->index);
 				r = SC_ERROR_RECORD_NOT_FOUND;
 				goto fail_unlock;
 			}
@@ -2534,6 +2540,7 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 		else if (file->ef_structure == SC_FILE_EF_LINEAR_VARIABLE) {
 
 			u8 offset_buffer[] = {0x54, 0x02, 0x00, 0x00};
+			u8 response_buffer[SC_MAX_APDU_RESP_SIZE];
 			struct sc_apdu apdu;
 			uint16_t offset_u16 = 0;
 			u8 *data_do;
@@ -2547,15 +2554,16 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 				sc_format_apdu(p15card->card, &apdu, SC_APDU_CASE_4_SHORT, 0xB3, in_path->index, 4);
 				
 				apdu.data = offset_buffer;
-				apdu.datalen = 4;
-				apdu.lc = 4;
+				apdu.datalen = sizeof(offset_buffer);
+				apdu.lc = sizeof(offset_buffer);
 				apdu.le = 0;
 				
-				apdu.resp = data + offset_u16;
-				apdu.resplen = len - offset_u16;
+				apdu.resp = response_buffer;
+				apdu.resplen = sizeof(response_buffer);
 	
 				r = sc_transmit_apdu(p15card->card, &apdu);
-				if(r < 0 || apdu.resplen == 0) break;
+				if (r < 0 || apdu.resplen == 0)
+					break;
 
 				data_do = NULL;
 				r = sc_decode_do53(ctx, &data_do, &data_do_len,	apdu.resp, apdu.resplen);

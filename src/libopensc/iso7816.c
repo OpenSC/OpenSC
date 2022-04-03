@@ -329,7 +329,6 @@ iso7816_process_fci(struct sc_card *card, struct sc_file *file,
 	const unsigned char *p, *end;
 	unsigned int cla = 0, tag = 0;
 	size_t length;
-	uint32_t size;
 
 	file->status = SC_FILE_STATUS_UNKNOWN;
 
@@ -351,13 +350,18 @@ iso7816_process_fci(struct sc_card *card, struct sc_file *file,
 			case 0x80:
 				/* determine the file size */
 				file->size = 0;
-				if(p && length < 5) {
-					size = 0;
-					for(size_t i=0; i<length; i++) {
+				if (p && length <= sizeof(size_t)) {
+					size_t size = 0, i;
+					for (i = 0; i < length; i++) {
 						size <<= 8;
-						size |= (uint32_t) p[i];
+						size |= p[i];
 					}
-					file->size = (size > MAX_FILE_SIZE)? MAX_FILE_SIZE:size;
+					if (size > MAX_FILE_SIZE) {
+						file->size = MAX_FILE_SIZE;
+						sc_log(ctx, "  file size truncated, encoded length: %"SC_FORMAT_LEN_SIZE_T"u", size);
+					} else {
+						file->size = size;
+					}
 				}
 				
 				sc_log(ctx, "  bytes in file: %"SC_FORMAT_LEN_SIZE_T"u", file->size);
