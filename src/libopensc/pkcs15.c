@@ -2507,7 +2507,7 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 				apdu.resplen = sizeof(response_buffer);
 	
 				r = sc_transmit_apdu(p15card->card, &apdu);
-				if(r < 0 || apdu.resplen == 0) 
+				if (r < 0 || apdu.resplen == 0)
 					break;
 
 				data_do = NULL;
