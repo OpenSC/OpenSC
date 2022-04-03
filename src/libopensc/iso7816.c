@@ -357,7 +357,13 @@ iso7816_process_fci(struct sc_card *card, struct sc_file *file,
 						size <<= 8;
 						size |= (uint32_t) p[i];
 					}
-					file->size = (size > MAX_FILE_SIZE)? MAX_FILE_SIZE:size;
+					if(size > MAX_FILE_SIZE) {
+
+						file->size = MAX_FILE_SIZE;
+						sc_log(ctx, "  file size truncated, encoded length: %u", size);
+					} else {
+						file->size = size;
+					}
 				}
 				
 				sc_log(ctx, "  bytes in file: %"SC_FORMAT_LEN_SIZE_T"u", file->size);
