@@ -110,8 +110,7 @@ static int sc_pkcs15emu_idprime_init(sc_pkcs15_card_t *p15card)
 	pin_obj.flags = SC_PKCS15_CO_FLAG_PRIVATE;
 
 	r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
-	if (r < 0)
-		LOG_FUNC_RETURN(card->ctx, r);
+	LOG_TEST_GOTO_ERR(card->ctx, r, "Can not add pin object");
 
 	/*
 	 * get token name if provided
@@ -133,7 +132,7 @@ static int sc_pkcs15emu_idprime_init(sc_pkcs15_card_t *p15card)
 	 */
 	sc_log(card->ctx,  "IDPrime adding certs, pub and priv keys...");
 	r = (card->ops->card_ctl)(card, SC_CARDCTL_IDPRIME_INIT_GET_OBJECTS, &count);
-	LOG_TEST_RET(card->ctx, r, "Can not initiate cert objects.");
+	LOG_TEST_GOTO_ERR(card->ctx, r, "Can not initiate cert objects.");
 
 	for (i = 0; i < count; i++) {
 		struct sc_pkcs15_prkey_info prkey_info;
@@ -146,7 +145,7 @@ static int sc_pkcs15emu_idprime_init(sc_pkcs15_card_t *p15card)
 		sc_pkcs15_cert_t *cert_out = NULL;
 
 		r = (card->ops->card_ctl)(card, SC_CARDCTL_IDPRIME_GET_NEXT_OBJECT, &prkey_info);
-		LOG_TEST_RET(card->ctx, r, "Can not get next object");
+		LOG_TEST_GOTO_ERR(card->ctx, r, "Can not get next object");
 
 		memset(&cert_info, 0, sizeof(cert_info));
 		memset(&pubkey_info, 0, sizeof(pubkey_info));
@@ -252,14 +251,19 @@ static int sc_pkcs15emu_idprime_init(sc_pkcs15_card_t *p15card)
 		if (cert_out->key->algorithm != SC_ALGORITHM_RSA) {
 			sc_log(card->ctx, "unsupported key.algorithm %d", cert_out->key->algorithm);
 			sc_pkcs15_free_certificate(cert_out);
+			free(pubkey_info.direct.spki.value);
 			continue;
 		} else {
 			pubkey_info.modulus_length = cert_out->key->u.rsa.modulus.len * 8;
 			prkey_info.modulus_length = cert_out->key->u.rsa.modulus.len * 8;
 			sc_log(card->ctx,  "adding rsa public key r=%d usage=%x",r, pubkey_info.usage);
 			r = sc_pkcs15emu_add_rsa_pubkey(p15card, &pubkey_obj, &pubkey_info);
-			if (r < 0)
+			if (r < 0) {
+				free(pubkey_info.direct.spki.value);
 				goto fail;
+			}
+			pubkey_info.direct.spki.value = NULL; /* moved to the pubkey object on p15card  */
+			pubkey_info.direct.spki.len = 0;
 			sc_log(card->ctx,  "adding rsa private key r=%d usage=%x",r, prkey_info.usage);
 			r = sc_pkcs15emu_add_rsa_prkey(p15card, &prkey_obj, &prkey_info);
 			if (r < 0)
@@ -271,14 +275,18 @@ fail:
 		sc_pkcs15_free_certificate(cert_out);
 		if (r < 0) {
 			(card->ops->card_ctl)(card, SC_CARDCTL_IDPRIME_FINAL_GET_OBJECTS, &count);
-			LOG_FUNC_RETURN(card->ctx, r); /* should not fail */
+			LOG_TEST_GOTO_ERR(card->ctx, r, "Failed to add object.");
 		}
 
 	}
 	r = (card->ops->card_ctl)(card, SC_CARDCTL_IDPRIME_FINAL_GET_OBJECTS, &count);
-	LOG_TEST_RET(card->ctx, r, "Can not finalize cert objects.");
+	LOG_TEST_GOTO_ERR(card->ctx, r, "Can not finalize cert objects.");
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+	
+err:
+	sc_pkcs15_card_clear(p15card);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 int sc_pkcs15emu_idprime_init_ex(sc_pkcs15_card_t *p15card,

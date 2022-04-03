@@ -356,7 +356,7 @@ static int entersafe_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 
 	if ( key->algorithm != SC_ALGORITHM_RSA )
 	{
-		 /* ignore DSA keys */
+		 /* ignore non-RSA keys */
 		 SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,SC_ERROR_INVALID_ARGUMENTS);
 	}
 

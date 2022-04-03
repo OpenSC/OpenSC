@@ -221,7 +221,7 @@ struct _access_rule_text {
 	{0, NULL},
 };
 
-static const char *key_types[] = { "", "RSA", "DSA", "GOSTR3410", "EC", "EDDSA", "XEDDSA", "" };
+static const char *key_types[] = { "", "RSA", "", "GOSTR3410", "EC", "EDDSA", "XEDDSA", "" };
 
 static void
 print_access_rules(const struct sc_pkcs15_accessrule *rules, int num)
@@ -1002,12 +1002,13 @@ static int read_ssh_key(void)
 	if (pubkey->algorithm == SC_ALGORITHM_EDDSA) {
 		// SSH supports only ed25519 key now
 
-		char alg[20];
+		const char alg[] = "ssh-ed25519";
 		/* Large enough to fit the following:
 		 * 2 x 4B item length headers
 		 * max 11B algorithm name, 32B key data */
 		unsigned char buf[64];
-		unsigned int len, n;
+		unsigned int n;
+		int len;
 
 		n = pubkey->u.eddsa.pubkey.len;
 		if (n != 32) {
@@ -1015,12 +1016,12 @@ static int read_ssh_key(void)
 			goto fail2;
 		}
 
+		len = strlen(alg);
 		buf[0] = 0;
 		buf[1] = 0;
 		buf[2] = 0;
-		len = snprintf((char *) buf+4, 20, "ssh-ed25519");
-		memcpy(alg, buf+4, 20);
 		buf[3] = len;
+		memcpy(buf+4, alg, len);
 		len += 4;
 
 		buf[len++] = 0;
@@ -1051,7 +1052,8 @@ static int read_ssh_key(void)
 		 * 3 x 4B item length headers
 		 * max 20B algorithm name, 9B curve name, max 256B key data */
 		unsigned char buf[300];
-		unsigned int i, len, tmp, n;
+		unsigned int i, tmp, n;
+		int len;
 
 		for (n = 0,i = 0; ec_curves[i].curve_name != NULL; i++) {
 			if(sc_compare_oid (&ec_curves[i].curve_oid,&pubkey->u.ec.params.id))
@@ -1066,14 +1068,18 @@ static int read_ssh_key(void)
 			goto fail2;
 		}
 
+		len = snprintf(alg, sizeof alg, "ecdsa-sha2-nistp%d", n);
+		if (len < 0) {
+			fprintf(stderr, "failed to write algorithm\n");
+			goto fail2;
+		}
 		buf[0] = 0;
 		buf[1] = 0;
 		buf[2] = 0;
-		len = snprintf((char *) buf+4, 20, "ecdsa-sha2-nistp%d", n);
-		memcpy(alg, buf+4, 20);
 		buf[3] = len;
-
+		memcpy(buf+4, alg, len);
 		len += 4;
+
 		buf[len++] = 0;
 		buf[len++] = 0;
 		buf[len++] = 0;
@@ -1149,97 +1155,6 @@ static int read_ssh_key(void)
 		len += pubkey->u.rsa.modulus.len;
 
 		print_ssh_key(outf, "ssh-rsa", obj, buf, len);
-	}
-
-	if (pubkey->algorithm == SC_ALGORITHM_DSA) {
-		unsigned char buf[2048];
-		uint32_t len;
-		uint32_t n;
-
-		if (!pubkey->u.dsa.p.data || !pubkey->u.dsa.p.len ||
-				!pubkey->u.dsa.q.data || !pubkey->u.dsa.q.len ||
-				!pubkey->u.dsa.g.data || !pubkey->u.dsa.g.len ||
-				!pubkey->u.dsa.pub.data || !pubkey->u.dsa.pub.len)   {
-			fprintf(stderr, "Failed to decode DSA key.\n");
-			goto fail2;
-		}
-
-		buf[0]=0;
-		buf[1]=0;
-		buf[2]=0;
-		buf[3]=7;
-
-		len = sprintf((char *) buf+4,"ssh-dss");
-		len+=4;
-
-		if (sizeof(buf)-len < 5+pubkey->u.dsa.p.len)
-			goto fail;
-
-		n = pubkey->u.dsa.p.len;
-		if (pubkey->u.dsa.p.data[0] & 0x80)
-			n++;
-
-		buf[len++]=(n >>24) & 0xff;
-		buf[len++]=(n >>16) & 0xff;
-		buf[len++]=(n >>8) & 0xff;
-		buf[len++]=(n) & 0xff;
-		if (pubkey->u.dsa.p.data[0] & 0x80)
-			buf[len++]= 0;
-
-		memcpy(buf+len,pubkey->u.dsa.p.data, pubkey->u.dsa.p.len);
-		len += pubkey->u.dsa.p.len;
-
-		if (sizeof(buf)-len < 5+pubkey->u.dsa.q.len)
-			goto fail;
-
-		n = pubkey->u.dsa.q.len;
-		if (pubkey->u.dsa.q.data[0] & 0x80)
-			n++;
-
-		buf[len++]=(n >>24) & 0xff;
-		buf[len++]=(n >>16) & 0xff;
-		buf[len++]=(n >>8) & 0xff;
-		buf[len++]=(n) & 0xff;
-		if (pubkey->u.dsa.q.data[0] & 0x80)
-			buf[len++]= 0;
-
-		memcpy(buf+len,pubkey->u.dsa.q.data, pubkey->u.dsa.q.len);
-		len += pubkey->u.dsa.q.len;
-
-		if (sizeof(buf)-len < 5+pubkey->u.dsa.g.len)
-			goto fail;
-		n = pubkey->u.dsa.g.len;
-		if (pubkey->u.dsa.g.data[0] & 0x80)
-			n++;
-
-		buf[len++]=(n >>24) & 0xff;
-		buf[len++]=(n >>16) & 0xff;
-		buf[len++]=(n >>8) & 0xff;
-		buf[len++]=(n) & 0xff;
-		if (pubkey->u.dsa.g.data[0] & 0x80)
-			buf[len++]= 0;
-
-		memcpy(buf+len,pubkey->u.dsa.g.data, pubkey->u.dsa.g.len);
-		len += pubkey->u.dsa.g.len;
-
-		if (sizeof(buf)-len < 5+pubkey->u.dsa.pub.len)
-			goto fail;
-
-		n = pubkey->u.dsa.pub.len;
-		if (pubkey->u.dsa.pub.data[0] & 0x80)
-			n++;
-
-		buf[len++]=(n >>24) & 0xff;
-		buf[len++]=(n >>16) & 0xff;
-		buf[len++]=(n >>8) & 0xff;
-		buf[len++]=(n) & 0xff;
-		if (pubkey->u.dsa.pub.data[0] & 0x80)
-			buf[len++]= 0;
-
-		memcpy(buf+len,pubkey->u.dsa.pub.data, pubkey->u.dsa.pub.len);
-		len += pubkey->u.dsa.pub.len;
-
-		print_ssh_key(outf, "ssh-dss", obj, buf, len);
 	}
 
 	if (opt_outfile != NULL)

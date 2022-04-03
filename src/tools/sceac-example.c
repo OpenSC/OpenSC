@@ -80,10 +80,6 @@ main (int argc, char **argv)
 		exit(1);
 	}
 
-	/* initialize OpenPACE */
-	EAC_init();
-
-
 	/* Now we try to change the PIN. Therefore we need to establish a SM channel
 	 * with PACE.
 	 *
@@ -135,7 +131,6 @@ err:
 	sc_reset(card, 1);
 	sc_disconnect_card(card);
 	sc_release_context(ctx);
-	EAC_cleanup();
 
 	return -r;
 }

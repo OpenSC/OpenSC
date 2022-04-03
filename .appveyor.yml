@@ -12,7 +12,7 @@ environment:
   GH_TOKEN:
     secure: aLu3tFc7lRJbotnmnHLx/QruIHc5rLaGm1RttoEdy4QILlPXzVkCZ6loYMz0sfrY
   PATH: C:\cygwin\bin;%PATH%
-  OPENPACE_VER: 1.1.1
+  OPENPACE_VER: 1.1.2
   ZLIB_VER_DOT: 1.2.11
   matrix:
   # not compatible with OpenSSL 1.1.1:

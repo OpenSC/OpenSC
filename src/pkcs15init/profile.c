@@ -50,7 +50,6 @@
 #include "profile.h"
 
 #define DEF_PRKEY_RSA_ACCESS	0x1D
-#define DEF_PRKEY_DSA_ACCESS	0x12
 #define DEF_PUBKEY_ACCESS	0x12
 
 #define TEMPLATE_FILEID_MIN_DIFF	0x20
@@ -309,9 +308,8 @@ sc_profile_new(void)
 		p15card->file_unusedspace = init_file(SC_FILE_TYPE_WORKING_EF);
 	}
 
-	/* Assume card does RSA natively, but no DSA */
+	/* Assume card does RSA natively */
 	pro->rsa_access_flags = DEF_PRKEY_RSA_ACCESS;
-	pro->dsa_access_flags = DEF_PRKEY_DSA_ACCESS;
 	pro->pin_encoding = SC_PKCS15_PIN_TYPE_ASCII_NUMERIC;
 	pro->pin_minlen = 4;
 	pro->pin_maxlen = 8;
@@ -574,7 +572,7 @@ sc_profile_get_file_instance(struct sc_profile *profile, const char *name,
 	if ((fi = sc_profile_find_file(profile, NULL, name)) == NULL)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_FILE_NOT_FOUND);
 	sc_file_dup(&file, fi->file);
-	sc_log(ctx, "ident '%s'; parent '%s'", fi->ident, fi->parent->ident);
+	sc_log(ctx, "ident '%s'; parent '%s'", fi->ident, fi->parent ? fi->parent->ident : "(null)");
 	if (file == NULL)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 	sc_log(ctx, "file (type:%X, path:'%s')", file->type, sc_print_path(&file->path));
@@ -1059,18 +1057,33 @@ template_sanity_check(struct state *cur, struct sc_profile *templ)
 
 	for (fi = templ->ef_list; fi; fi = fi->next) {
 		struct sc_path fi_path =  fi->file->path;
-		int fi_id = fi_path.value[fi_path.len - 2] * 0x100
-			+ fi_path.value[fi_path.len - 1];
+		int fi_id;
 
 		if (fi->file->type == SC_FILE_TYPE_BSO)
 			continue;
+
+		if (fi_path.len < 2) {
+			parse_error(cur, "Template insane: file-path length should not be less than 2 bytes");
+			return 1;
+		}
+
+		fi_id = fi_path.value[fi_path.len - 2] * 0x100
+				+ fi_path.value[fi_path.len - 1];
+
 		for (ffi = templ->ef_list; ffi; ffi = ffi->next) {
 			struct sc_path ffi_path =  ffi->file->path;
-			int dlt, ffi_id = ffi_path.value[ffi_path.len - 2] * 0x100
-				+ ffi_path.value[ffi_path.len - 1];
+			int dlt, ffi_id;
 
 			if (ffi->file->type == SC_FILE_TYPE_BSO)
 				continue;
+
+			if (ffi_path.len < 2) {
+				parse_error(cur, "Template insane: file-path length should not be less than 2 bytes");
+				return 1;
+			}
+
+			ffi_id = ffi_path.value[ffi_path.len - 2] * 0x100
+					+ ffi_path.value[ffi_path.len - 1];
 
 			dlt = fi_id > ffi_id ? fi_id - ffi_id : ffi_id - fi_id;
 			if (strcmp(ffi->ident, fi->ident))   {
@@ -1211,18 +1224,31 @@ new_file(struct state *cur, const char *name, unsigned int type)
 	if (strncasecmp(name, "PKCS15-", 7)) {
 		file = init_file(type);
 	} else if (!strcasecmp(name+7, "TokenInfo")) {
+		if (!profile->p15_spec) {
+			parse_error(cur, "no pkcs15 spec in profile");
+			return NULL;
+		}
 		file = profile->p15_spec->file_tokeninfo;
 		dont_free = 1;
 	} else if (!strcasecmp(name+7, "ODF")) {
+		if (!profile->p15_spec) {
+			parse_error(cur, "no pkcs15 spec in profile");
+			return NULL;
+		}
 		file = profile->p15_spec->file_odf;
 		dont_free = 1;
 	} else if (!strcasecmp(name+7, "UnusedSpace")) {
+		if (!profile->p15_spec) {
+			parse_error(cur, "no pkcs15 spec in profile");
+			return NULL;
+		}
 		file = profile->p15_spec->file_unusedspace;
 		dont_free = 1;
 	} else if (!strcasecmp(name+7, "AppDF")) {
 		file = init_file(SC_FILE_TYPE_DF);
 	} else {
-		if (map_str2int(cur, name+7, &df_type, pkcs15DfNames))
+		if (map_str2int(cur, name+7, &df_type, pkcs15DfNames)
+				|| df_type >= SC_PKCS15_DF_TYPE_COUNT)
 			return NULL;
 
 		file = init_file(SC_FILE_TYPE_WORKING_EF);
@@ -1254,6 +1280,11 @@ do_file_type(struct state *cur, int argc, char **argv)
 {
 	unsigned int	type;
 
+	if (!cur->file) {
+		parse_error(cur, "Invalid state\n");
+		return 1;
+	}
+
 	if (map_str2int(cur, argv[0], &type, fileTypeNames))
 		return 1;
 	cur->file->file->type = type;
@@ -1263,8 +1294,15 @@ do_file_type(struct state *cur, int argc, char **argv)
 static int
 do_file_path(struct state *cur, int argc, char **argv)
 {
-	struct sc_file	*file = cur->file->file;
-	struct sc_path	*path = &file->path;
+	struct sc_file	*file = NULL;
+	struct sc_path	*path = NULL;
+
+	if (!cur->file) {
+		parse_error(cur, "Invalid state\n");
+		return 1;
+	}
+	file = cur->file->file;
+	path = &file->path;
 
 	/* sc_format_path doesn't return an error indication
 	 * when it's unable to parse the path */
@@ -1281,8 +1319,15 @@ static int
 do_fileid(struct state *cur, int argc, char **argv)
 {
 	struct file_info *fi;
-	struct sc_file	*df, *file = cur->file->file;
-	struct sc_path	temp, *path = &file->path;
+	struct sc_file	*df, *file = NULL;
+	struct sc_path	temp, *path = NULL;
+
+	if (!cur->file) {
+		parse_error(cur, "Invalid state\n");
+		return 1;
+	}
+	file = cur->file->file;
+	path = &file->path;
 
 	/* sc_format_path doesn't return an error indication
 	 * when it's unable to parse the path */
@@ -1316,6 +1361,11 @@ do_structure(struct state *cur, int argc, char **argv)
 {
 	unsigned int	ef_structure;
 
+	if (!cur->file) {
+		parse_error(cur, "Invalid state\n");
+		return 1;
+	}
+
 	if (map_str2int(cur, argv[0], &ef_structure, fileStructureNames))
 		return 1;
 	cur->file->file->ef_structure = ef_structure;
@@ -1326,6 +1376,11 @@ static int
 do_size(struct state *cur, int argc, char **argv)
 {
 	unsigned int	size;
+
+	if (!cur->file) {
+		parse_error(cur, "Invalid state\n");
+		return 1;
+	}
 
 	if (get_uint_eval(cur, argc, argv, &size))
 		return 1;
@@ -1338,6 +1393,11 @@ do_reclength(struct state *cur, int argc, char **argv)
 {
 	unsigned int	reclength;
 
+	if (!cur->file) {
+		parse_error(cur, "Invalid state\n");
+		return 1;
+	}
+
 	if (get_uint(cur, argv[0], &reclength))
 		return 1;
 	cur->file->file->record_length = reclength;
@@ -1347,9 +1407,15 @@ do_reclength(struct state *cur, int argc, char **argv)
 static int
 do_content(struct state *cur, int argc, char **argv)
 {
-	struct sc_file *file = cur->file->file;
+	struct sc_file *file = NULL;
 	size_t len = (strlen(argv[0]) + 1) / 2;
 	int rv = 0;
+
+	if (!cur->file) {
+		parse_error(cur, "Invalid state\n");
+		return 1;
+	}
+	file = cur->file->file;
 
 	file->encoded_content = malloc(len);
 	if (!file->encoded_content)
@@ -1362,9 +1428,15 @@ do_content(struct state *cur, int argc, char **argv)
 static int
 do_prop_attr(struct state *cur, int argc, char **argv)
 {
-	struct sc_file *file = cur->file->file;
+	struct sc_file *file = NULL;
 	size_t len = (strlen(argv[0]) + 1) / 2;
 	int rv = 0;
+
+	if (!cur->file) {
+		parse_error(cur, "Invalid state\n");
+		return 1;
+	}
+	file = cur->file->file;
 
 	file->prop_attr = malloc(len);
 	if (!file->prop_attr)
@@ -1377,10 +1449,16 @@ do_prop_attr(struct state *cur, int argc, char **argv)
 static int
 do_aid(struct state *cur, int argc, char **argv)
 {
-	struct sc_file	*file = cur->file->file;
+	struct sc_file	*file = NULL;
 	const char	*name = argv[0];
 	unsigned int	len;
 	int		res = 0;
+
+	if (!cur->file) {
+		parse_error(cur, "Invalid state\n");
+		return 1;
+	}
+	file = cur->file->file;
 
 	if (*name == '=') {
 		len = strlen(++name);
@@ -1401,10 +1479,16 @@ do_aid(struct state *cur, int argc, char **argv)
 static int
 do_exclusive_aid(struct state *cur, int argc, char **argv)
 {
-	struct sc_file	*file = cur->file->file;
+	struct sc_file	*file = NULL;
 	const char	*name = argv[0];
 	unsigned int	len;
 	int		res = 0;
+
+	if (!cur->file) {
+		parse_error(cur, "Invalid state\n");
+		return 1;
+	}
+	file = cur->file->file;
 
 #ifdef DEBUG_PROFILE
 	printf("do_exclusive_aid(): exclusive-aid '%s'\n", name);
@@ -1458,10 +1542,14 @@ do_profile_extension(struct state *cur, int argc, char **argv)
 static int
 do_acl(struct state *cur, int argc, char **argv)
 {
-	struct sc_file	*file = cur->file->file;
+	struct sc_file	*file = NULL;
 	char		oper[64], *what = NULL;
-
 	memset(oper, 0, sizeof(oper));
+
+	if (!cur->file)
+		goto bad;
+	file = cur->file->file;
+
 	while (argc--) {
 		unsigned int	op, method, id;
 
@@ -1717,7 +1805,7 @@ process_macros(struct state *cur, struct block *info,
 
 	for (item = blk->items; item; item = item->next) {
 		name = item->key;
-		if (item->type != SCCONF_ITEM_TYPE_VALUE)
+		if (item->type != SCCONF_ITEM_TYPE_VALUE || !name)
 			continue;
 #ifdef DEBUG_PROFILE
 		printf("Defining %s\n", name);
@@ -1970,6 +2058,10 @@ process_block(struct state *cur, struct block *info,
 		cmd = item->key;
 		if (item->type == SCCONF_ITEM_TYPE_COMMENT)
 			continue;
+		if (!cmd) {
+			parse_error(cur, "Command can not be processed.");
+			return SC_ERROR_SYNTAX_ERROR;
+		}
 		if (item->type == SCCONF_ITEM_TYPE_BLOCK) {
 			scconf_list *nlist;
 

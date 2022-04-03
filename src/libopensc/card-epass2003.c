@@ -433,8 +433,8 @@ openssl_dig(const EVP_MD * digest, const unsigned char *input, size_t length,
 	}
 		
 	EVP_MD_CTX_init(ctx);
-	EVP_DigestInit_ex(ctx, digest, NULL);
-	if (!EVP_DigestUpdate(ctx, input, length)) {
+	if (!EVP_DigestInit_ex(ctx, digest, NULL)
+			|| !EVP_DigestUpdate(ctx, input, length)) {
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}

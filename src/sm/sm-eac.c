@@ -59,6 +59,7 @@ IMPLEMENT_ASN1_FUNCTIONS(ASN1_AUXILIARY_DATA)
 #include <eac/ca.h>
 #include <eac/cv_cert.h>
 #include <eac/eac.h>
+#include <eac/objects.h>
 #include <eac/pace.h>
 #include <eac/ta.h>
 #include <openssl/bio.h>
@@ -414,7 +415,11 @@ static int format_mse_cdata(struct sc_context *ctx, int protocol,
 	}
 
 	if (protocol) {
+#ifndef HAVE_EAC_OBJ_NID2OBJ
 		data->cryptographic_mechanism_reference = OBJ_nid2obj(protocol);
+#else
+		data->cryptographic_mechanism_reference = EAC_OBJ_nid2obj(protocol);
+#endif
 		if (!data->cryptographic_mechanism_reference) {
 			sc_debug(ctx, SC_LOG_DEBUG_VERBOSE, "Error setting Cryptographic mechanism reference of MSE:Set AT data");
 			r = SC_ERROR_INTERNAL;
@@ -1136,6 +1141,7 @@ int perform_pace(sc_card_t *card,
 		sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "EF.CardAccess", pace_output->ef_cardaccess,
 				pace_output->ef_cardaccess_length);
 
+		EAC_init();
 		eac_ctx = EAC_CTX_new();
 		if (!eac_ctx
 				|| !EAC_CTX_init_ef_cardaccess(pace_output->ef_cardaccess,
@@ -1520,6 +1526,7 @@ int perform_terminal_authentication(sc_card_t *card,
 		 * seems valid. */
 		card->caps |= SC_CARD_CAP_APDU_EXT;
 
+		EAC_init();
 		eac_ctx = EAC_CTX_new();
 		if (!eac_ctx
 				|| !EAC_CTX_init_ef_cardaccess(ef_cardaccess,

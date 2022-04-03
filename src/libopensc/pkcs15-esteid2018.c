@@ -80,8 +80,7 @@ static int sc_pkcs15emu_esteid2018_init(sc_pkcs15_card_t *p15card) {
 		cert_info.id.value[0] = esteid_cert_ids[i];
 		cert_info.id.len = 1;
 		r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
-		if (r < 0)
-			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
+		LOG_TEST_GOTO_ERR(card->ctx, r, "Could not add cert oebjct");
 
 		// Read data from first cert
 		if (i != 0)
@@ -89,7 +88,7 @@ static int sc_pkcs15emu_esteid2018_init(sc_pkcs15_card_t *p15card) {
 
 		sc_pkcs15_cert_t *cert = NULL;
 		r = sc_pkcs15_read_certificate(p15card, &cert_info, &cert);
-		LOG_TEST_RET(card->ctx, r, "Could not read authentication certificate");
+		LOG_TEST_GOTO_ERR(card->ctx, r, "Could not read authentication certificate");
 
 		if (cert->key->algorithm == SC_ALGORITHM_EC)
 			field_length = cert->key->u.ec.params.field_length;
@@ -154,20 +153,19 @@ static int sc_pkcs15emu_esteid2018_init(sc_pkcs15_card_t *p15card) {
 		}
 
 		r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
-		if (r < 0)
-			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
+		LOG_TEST_GOTO_ERR(card->ctx, r, "Could not add pin object");
 	}
 
 	// trigger PIN counter refresh via pin_cmd
 	struct sc_pkcs15_object *objs[3];
 	r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH, objs, 3);
 	if (r != 3) {
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
+		sc_log(card->ctx, "Can not get auth objects");
+		goto err;
 	}
 	for (i = 0; i < r; i++) {
 		r = sc_pkcs15_get_pin_info(p15card, objs[i]);
-		if (r < 0)
-			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
+		LOG_TEST_GOTO_ERR(card->ctx, r, "Could not get pin object");
 	}
 
 	/* add private keys */
@@ -201,11 +199,13 @@ static int sc_pkcs15emu_esteid2018_init(sc_pkcs15_card_t *p15card) {
 		prkey_obj.flags = SC_PKCS15_CO_FLAG_PRIVATE;
 
 		r = sc_pkcs15emu_add_ec_prkey(p15card, &prkey_obj, &prkey_info);
-		if (r < 0)
-			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
+		LOG_TEST_GOTO_ERR(card->ctx, r, "Could not add private key object");
 	}
 
 	return SC_SUCCESS;
+err:
+	sc_pkcs15_card_clear(p15card);
+	LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 }
 
 int sc_pkcs15emu_esteid2018_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid) {

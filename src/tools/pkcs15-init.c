@@ -46,7 +46,6 @@
 #include <openssl/err.h>
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
-#include <openssl/dsa.h>
 #include <openssl/bn.h>
 #include <openssl/pkcs12.h>
 #include <openssl/x509v3.h>
@@ -451,7 +450,8 @@ main(int argc, char **argv)
 {
 	struct sc_profile	*profile = NULL;
 	unsigned int		n;
-	int			r = 0;
+	int					r = 0;
+	struct sc_pkcs15_card *tmp_p15_data = NULL;
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
 	OPENSSL_config(NULL);
@@ -636,8 +636,13 @@ main(int argc, char **argv)
 	}
 
 out:
+	/* After erasing card profile->p15_data might change */
 	if (profile) {
+		tmp_p15_data = profile->p15_data;
 		sc_pkcs15init_unbind(profile);
+		if 	(tmp_p15_data != g_p15card) {
+ 			sc_pkcs15_unbind(tmp_p15_data);
+		}
 	}
 	if (g_p15card) {
 		sc_pkcs15_unbind(g_p15card);
@@ -731,7 +736,6 @@ static const struct alg_spec alg_types_sym[] = {
 
 static const struct alg_spec alg_types_asym[] = {
 	{ "rsa",	SC_ALGORITHM_RSA,	1024 },
-	{ "dsa",	SC_ALGORITHM_DSA,	1024 },
 	{ "gost2001",	SC_ALGORITHM_GOSTR3410,	SC_PKCS15_GOSTR3410_KEYSIZE },
 	{ "ec",		SC_ALGORITHM_EC,	0 },
 	{ NULL, -1, 0 }
@@ -1348,12 +1352,7 @@ do_read_check_certificate(sc_pkcs15_cert_t *sc_oldcert,
 		if (EVP_PKEY_eq(oldpk, newpk) == 1)
 			r = 0;
 #else
-		if ((oldpk_type == EVP_PKEY_DSA) &&
-			!BN_cmp(EVP_PKEY_get0_DSA(oldpk)->p, EVP_PKEY_get0_DSA(newpk)->p) &&
-			!BN_cmp(EVP_PKEY_get0_DSA(oldpk)->q, EVP_PKEY_get0_DSA(newpk)->q) &&
-			!BN_cmp(EVP_PKEY_get0_DSA(oldpk)->g, EVP_PKEY_get0_DSA(newpk)->g))
-				r = 0;
-		else if ((oldpk_type == EVP_PKEY_RSA) &&
+		if ((oldpk_type == EVP_PKEY_RSA) &&
 			!BN_cmp(EVP_PKEY_get0_RSA(oldpk)->n, EVP_PKEY_get0_RSA(newpk)->n) &&
 			!BN_cmp(EVP_PKEY_get0_RSA(oldpk)->e, EVP_PKEY_get0_RSA(newpk)->e))
 				r = 0;
@@ -1782,6 +1781,7 @@ do_generate_key(struct sc_profile *profile, const char *spec)
 	if (r == 0)
 		r = sc_pkcs15init_generate_key(g_p15card, profile, &keygen_args, keybits, NULL);
 	sc_unlock(g_p15card->card);
+	sc_pkcs15_free_prkey(&keygen_args.prkey_args.key);
 	return r;
 }
 
@@ -1879,7 +1879,7 @@ init_gost_params(struct sc_pkcs15init_keyarg_gost_params *params, EVP_PKEY *pkey
 #else
 	char name[256]; size_t name_len = 0;
 #endif
-	int nid = 0;
+	int nid = NID_undef;
 
 	assert(pkey);
 	if (EVP_PKEY_id(pkey) == NID_id_GostR3410_2001) {
@@ -1888,7 +1888,7 @@ init_gost_params(struct sc_pkcs15init_keyarg_gost_params *params, EVP_PKEY *pkey
 		key = EVP_PKEY_get0(pkey);
 		assert(key);
 		assert(EC_KEY_get0_group(key));
-		EC_GROUP_get_curve_name(EC_KEY_get0_group(key));
+		nid = EC_GROUP_get_curve_name(EC_KEY_get0_group(key));
 #else
 		assert(EVP_PKEY_get_group_name(pkey, name ,sizeof(name), &name_len));
 		nid = OBJ_txt2nid(name);

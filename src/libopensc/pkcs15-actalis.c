@@ -141,6 +141,8 @@ static int sc_pkcs15emu_actalis_init(sc_pkcs15_card_t * p15card)
 	int r;
 
 #ifdef ENABLE_ZLIB
+	int use_file_cache_backup = p15card->opts.use_file_cache;
+	
 	int i = 0, j = 0;
 	const char *certLabel[] = {
 		"User Non-repudiation Certificate",	/* "User Non-repudiation Certificate" */
@@ -165,7 +167,7 @@ static int sc_pkcs15emu_actalis_init(sc_pkcs15_card_t * p15card)
 
 	const char *authPRKEY = "Authentication Key";
 	/* const char *nonrepPRKEY = "Non repudiation Key"; */
-	
+
 	p15card->opts.use_file_cache = 1;	
 
 	/* Get Serial number */
@@ -223,6 +225,8 @@ static int sc_pkcs15emu_actalis_init(sc_pkcs15_card_t * p15card)
 			if (!cert || !compCert) {
 				free(cert);
 				free(compCert);
+				sc_pkcs15_card_clear(p15card);
+				p15card->opts.use_file_cache = use_file_cache_backup;
 				return SC_ERROR_OUT_OF_MEMORY;
 			}
 

@@ -31,7 +31,6 @@ struct hash_signature_info {
 	CK_MECHANISM_TYPE	hash_mech;
 	CK_MECHANISM_TYPE	sign_mech;
 	sc_pkcs11_mechanism_type_t *hash_type;
-	sc_pkcs11_mechanism_type_t *sign_type;
 };
 
 /* Also used for verification and decryption data */
@@ -92,15 +91,43 @@ void _update_mech_info(CK_MECHANISM_INFO_PTR mech_info, CK_MECHANISM_INFO_PTR ne
 }
 
 /*
+ * Copy a mechanism
+ */
+static CK_RV
+sc_pkcs11_copy_mechanism(sc_pkcs11_mechanism_type_t *mt,
+				sc_pkcs11_mechanism_type_t **new_mt)
+{
+	int rv;
+
+	*new_mt = calloc(1, sizeof(sc_pkcs11_mechanism_type_t));
+	if (!(*new_mt))
+		return CKR_HOST_MEMORY;
+	
+	memcpy(*new_mt, mt, sizeof(sc_pkcs11_mechanism_type_t));
+	/* mech_data needs specific function for making copy*/
+	if (mt->copy_mech_data
+		&& (rv = mt->copy_mech_data(mt->mech_data, (void **) &(*new_mt)->mech_data)) != CKR_OK) {
+		free(*new_mt);
+		return rv;
+	}
+	
+	return CKR_OK;
+}
+
+/*
  * Register a mechanism
+ * Check whether the mechanism is already in p11card,
+ * if not, make a copy of the given mechanism and store it
+ * in p11card.
  */
 CK_RV
 sc_pkcs11_register_mechanism(struct sc_pkcs11_card *p11card,
-				sc_pkcs11_mechanism_type_t *mt)
+				sc_pkcs11_mechanism_type_t *mt, sc_pkcs11_mechanism_type_t **result_mt)
 {
 	sc_pkcs11_mechanism_type_t *existing_mt;
+	sc_pkcs11_mechanism_type_t *copy_mt = NULL;
 	sc_pkcs11_mechanism_type_t **p;
-	int i;
+	int i, rv;
 
 	if (mt == NULL)
 		return CKR_HOST_MEMORY;
@@ -111,7 +138,6 @@ sc_pkcs11_register_mechanism(struct sc_pkcs11_card *p11card,
 				/* Mechanism already registered with the same key_type,
 				 * just update it's info */
 				_update_mech_info(&existing_mt->mech_info, &mt->mech_info);
-				free(mt);
 				return CKR_OK;
 			}
 			if (existing_mt->key_types[i] < 0) {
@@ -125,12 +151,10 @@ sc_pkcs11_register_mechanism(struct sc_pkcs11_card *p11card,
 				if (i + 1 < MAX_KEY_TYPES) {
 					existing_mt->key_types[i + 1] = -1;
 				}
-				free(mt);
 				return CKR_OK;
 			}
 		}
 		sc_log(p11card->card->ctx, "Too many key types in mechanism 0x%lx, more than %d", mt->mech, MAX_KEY_TYPES);
-		free(mt);
 		return CKR_BUFFER_TOO_SMALL;
 	}
 
@@ -138,9 +162,16 @@ sc_pkcs11_register_mechanism(struct sc_pkcs11_card *p11card,
 			(p11card->nmechanisms + 2) * sizeof(*p));
 	if (p == NULL)
 		return CKR_HOST_MEMORY;
+	if ((rv = sc_pkcs11_copy_mechanism(mt, &copy_mt)) != CKR_OK) {
+		free(p);
+		return rv;
+	}
 	p11card->mechanisms = p;
-	p[p11card->nmechanisms++] = mt;
+	p[p11card->nmechanisms++] = copy_mt;
 	p[p11card->nmechanisms] = NULL;
+	/* Return registered mechanism for further use */
+	if (result_mt)
+		*result_mt = copy_mt;
 	return CKR_OK;
 }
 
@@ -1238,7 +1269,8 @@ sc_pkcs11_new_fw_mechanism(CK_MECHANISM_TYPE mech,
 				CK_MECHANISM_INFO_PTR pInfo,
 				CK_KEY_TYPE key_type,
 				const void *priv_data,
-				void (*free_priv_data)(const void *priv_data))
+				void (*free_priv_data)(const void *priv_data),
+				CK_RV (*copy_priv_data)(const void *mech_data, void **new_data))
 {
 	sc_pkcs11_mechanism_type_t *mt;
 
@@ -1251,6 +1283,7 @@ sc_pkcs11_new_fw_mechanism(CK_MECHANISM_TYPE mech,
 	mt->key_types[1] = -1;
 	mt->mech_data = priv_data;
 	mt->free_mech_data = free_priv_data;
+	mt->copy_mech_data = copy_priv_data;
 	mt->obj_size = sizeof(sc_pkcs11_operation_t);
 
 	mt->release = sc_pkcs11_signature_release;
@@ -1283,6 +1316,16 @@ sc_pkcs11_new_fw_mechanism(CK_MECHANISM_TYPE mech,
 	return mt;
 }
 
+void sc_pkcs11_free_mechanism(sc_pkcs11_mechanism_type_t **mt)
+{
+	if (!mt || !(*mt))
+		return;
+	if ((*mt)->free_mech_data)
+		(*mt)->free_mech_data((*mt)->mech_data);
+	free(*mt);
+	*mt = NULL;
+}
+
 /*
  * Register generic mechanisms
  */
@@ -1300,6 +1343,19 @@ void free_info(const void *info)
 	free((void *) info);
 }
 
+CK_RV copy_hash_signature_info(const void *mech_data, void **new_data)
+{
+	if (mech_data == NULL || new_data == NULL)
+		return CKR_ARGUMENTS_BAD;
+
+	*new_data = calloc(1, sizeof(struct hash_signature_info));
+	if (!(*new_data))
+		return CKR_HOST_MEMORY;
+	
+	memcpy(*new_data, mech_data, sizeof(struct hash_signature_info));
+	return CKR_OK;
+}
+
 /*
  * Register a sign+hash algorithm derived from an algorithm supported
  * by the token + a software hash mechanism
@@ -1312,8 +1368,12 @@ sc_pkcs11_register_sign_and_hash_mechanism(struct sc_pkcs11_card *p11card,
 {
 	sc_pkcs11_mechanism_type_t *hash_type, *new_type;
 	struct hash_signature_info *info;
-	CK_MECHANISM_INFO mech_info = sign_type->mech_info;
+	CK_MECHANISM_INFO mech_info;
 	CK_RV rv;
+
+	if (!sign_type)
+		return CKR_MECHANISM_INVALID;
+	mech_info = sign_type->mech_info;
 
 	if (!(hash_type = sc_pkcs11_find_mechanism(p11card, hash_mech, CKF_DIGEST)))
 		return CKR_MECHANISM_INVALID;
@@ -1326,22 +1386,18 @@ sc_pkcs11_register_sign_and_hash_mechanism(struct sc_pkcs11_card *p11card,
 		return CKR_HOST_MEMORY;
 
 	info->mech = mech;
-	info->sign_type = sign_type;
 	info->hash_type = hash_type;
 	info->sign_mech = sign_type->mech;
 	info->hash_mech = hash_mech;
 
-	new_type = sc_pkcs11_new_fw_mechanism(mech, &mech_info, sign_type->key_types[0], info, free_info);
+	new_type = sc_pkcs11_new_fw_mechanism(mech, &mech_info, sign_type->key_types[0], info, free_info, copy_hash_signature_info);
 	if (!new_type) {
 		free_info(info);
 		return CKR_HOST_MEMORY;
 	}
 
-	rv = sc_pkcs11_register_mechanism(p11card, new_type);
-	if (CKR_OK != rv) {
-		new_type->free_mech_data(new_type->mech_data);
-		free(new_type);
-	}
+	rv = sc_pkcs11_register_mechanism(p11card, new_type, NULL);
+	sc_pkcs11_free_mechanism(&new_type);
 
 	return rv;
 }

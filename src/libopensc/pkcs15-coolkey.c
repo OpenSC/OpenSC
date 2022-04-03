@@ -461,6 +461,7 @@ coolkey_get_public_key(sc_pkcs15_card_t *p15card, sc_cardctl_coolkey_object_t *o
 
 static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 {
+	int use_pin_cache_backup = p15card->opts.use_pin_cache;
 	static const pindata pins[] = {
 		{ "1", NULL, "", 0x00,
 		  SC_PKCS15_PIN_TYPE_ASCII_NUMERIC,
@@ -492,7 +493,6 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 	 * stay logged in until it's been pulled from the reader, in which case you want to reauthenticate
 	 * anyway */
 	p15card->opts.use_pin_cache = 0;
-
 
 	/* get the token info from the card */
 	r = sc_card_ctl(card, SC_CARDCTL_COOLKEY_GET_TOKEN_INFO, p15card->tokeninfo);
@@ -531,13 +531,12 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 		pin_obj.flags = pins[i].obj_flags;
 
 		r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
-		if (r < 0)
-			LOG_FUNC_RETURN(card->ctx, r);
+		LOG_TEST_GOTO_ERR(card->ctx, r, "Can not add pin object.");
 	}
 
 	/* set other objects */
 	r = (card->ops->card_ctl)(card, SC_CARDCTL_COOLKEY_INIT_GET_OBJECTS, &count);
-	LOG_TEST_RET(card->ctx, r, "Can not initiate objects.");
+	LOG_TEST_GOTO_ERR(card->ctx, r, "Can not initiate objects.");
 
 	sc_log(card->ctx,  "Iterating over %d objects", count);
 	for (i = 0; i < count; i++) {
@@ -554,9 +553,7 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 		size_t len;
 
 		r = (card->ops->card_ctl)(card, SC_CARDCTL_COOLKEY_GET_NEXT_OBJECT, &coolkey_obj);
-		if (r < 0)
-			LOG_FUNC_RETURN(card->ctx, r);
-
+		LOG_TEST_GOTO_ERR(card->ctx, r, "Can not get next object from card.");
 		sc_log(card->ctx, "Loading object %d", i);
 		memset(&obj_obj, 0, sizeof(obj_obj));
 		/* coolkey applets have label only on the certificates,
@@ -643,6 +640,7 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 				obj_type = SC_PKCS15_TYPE_PUBKEY_EC;
 				pubkey_info.field_length = key->u.ec.params.field_length;
 			} else {
+				free(pubkey_info.direct.spki.value);
 				goto fail;
 			}
 			/* set the obj values */
@@ -680,7 +678,7 @@ fail:
 
 	}
 	r = (card->ops->card_ctl)(card, SC_CARDCTL_COOLKEY_FINAL_GET_OBJECTS, &count);
-	LOG_TEST_RET(card->ctx, r, "Can not finalize objects.");
+	LOG_TEST_GOTO_ERR(card->ctx, r, "Can not finalize objects.");
 
 	/* Iterate over all the created objects and fill missing labels */
 	for (obj = p15card->obj_list; obj != NULL; obj = obj->next) {
@@ -712,6 +710,12 @@ fail:
 	}
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+
+err:
+	sc_pkcs15_card_clear(p15card);
+	p15card->opts.use_pin_cache = use_pin_cache_backup;
+
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 int

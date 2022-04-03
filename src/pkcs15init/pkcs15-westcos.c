@@ -238,7 +238,7 @@ static int westcos_pkcs15init_generate_key(sc_profile_t *profile,
 	pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, NULL);
 	mem = BIO_new(BIO_s_mem());
 	bn = BN_new();
-	if (pctx == NULL || key == NULL || mem == NULL || bn == NULL) {
+	if (pctx == NULL || mem == NULL || bn == NULL) {
 		r = SC_ERROR_OUT_OF_MEMORY;
 		goto out;
 	}

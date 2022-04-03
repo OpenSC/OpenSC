@@ -51,11 +51,11 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 	/* Select application directory */
 	sc_format_path ("3f00eeee5044", &tmppath);
 	r = sc_select_file (card, &tmppath, NULL);
-	LOG_TEST_RET(card->ctx, r, "select esteid PD failed");
+	LOG_TEST_GOTO_ERR(card->ctx, r, "select esteid PD failed");
 
 	/* read the serial (document number) */
 	r = sc_read_record (card, SC_ESTEID_PD_DOCUMENT_NR, buff, sizeof(buff), SC_RECORD_BY_REC_NR);
-	LOG_TEST_RET(card->ctx, r, "read document number failed");
+	LOG_TEST_GOTO_ERR(card->ctx, r, "read document number failed");
 	buff[MIN((size_t) r, (sizeof buff)-1)] = '\0';
 	set_string(&p15card->tokeninfo->serial_number, (const char *)buff);
 
@@ -85,14 +85,14 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 		strlcpy(cert_obj.label, esteid_cert_names[i], sizeof(cert_obj.label));
 		r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
 		if (r < 0)
-			return SC_ERROR_INTERNAL;
+			goto err;
 		if (i != 0)
 			continue;
 
 		sc_pkcs15_cert_t *cert = NULL;
 		r = sc_pkcs15_read_certificate(p15card, &cert_info, &cert);
 		if (r < 0)
-			return SC_ERROR_INTERNAL;
+			goto err;
 		if (cert->key->algorithm == SC_ALGORITHM_EC)
 			field_length = cert->key->u.ec.params.field_length;
 		else
@@ -115,7 +115,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 	sc_format_path ("3f000016", &tmppath);
 	r = sc_select_file (card, &tmppath, NULL);
 	if (r < 0)
-		return SC_ERROR_INTERNAL;
+		goto err;
 
 	/* add pins */
 	for (i = 0; i < 3; i++) {
@@ -138,7 +138,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 		/* read the number of tries left for the PIN */
 		r = sc_read_record (card, (unsigned int) i + 1, buff, sizeof(buff), SC_RECORD_BY_REC_NR);
 		if (r < 6)
-			return SC_ERROR_INTERNAL;
+			goto err;
 
 		pin_info.auth_id.len = 1;
 		pin_info.auth_id.value[0] = esteid_pin_authid[i];
@@ -164,7 +164,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 
 		r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
 		if (r < 0)
-			return SC_ERROR_INTERNAL;
+			goto err;
 	}
 
 	/* add private keys */
@@ -205,10 +205,13 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 		else
 			r = sc_pkcs15emu_add_rsa_prkey(p15card, &prkey_obj, &prkey_info);
 		if (r < 0)
-			return SC_ERROR_INTERNAL;
+			goto err;
 	}
 
 	return SC_SUCCESS;
+err:
+	sc_pkcs15_card_clear(p15card);
+	return SC_ERROR_INTERNAL;
 }
 
 int sc_pkcs15emu_esteid_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid)

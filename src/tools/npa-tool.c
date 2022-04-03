@@ -28,6 +28,7 @@
 #include "sm/sslutil.h"
 #include "util.h"
 #include <eac/pace.h>
+#include <eac/objects.h>
 #include <libopensc/card-npa.h>
 #include <libopensc/log.h>
 #include <libopensc/opensc.h>
@@ -258,7 +259,11 @@ static int add_to_ASN1_AUXILIARY_DATA_NPA_TOOL(
 		goto err;
 	}
 
+#ifndef HAVE_EAC_OBJ_NID2OBJ
 	template->type = OBJ_nid2obj(nid);
+#else
+	template->type = EAC_OBJ_nid2obj(nid);
+#endif
 	if (!template->type) {
 		r = SC_ERROR_INTERNAL;
 		goto err;
@@ -865,7 +870,7 @@ err:
 int
 main (int argc, char **argv)
 {
-	fprintf(stderr, "OpenPACE is needed for npa-tool");
+	fprintf(stderr, "OpenPACE is needed for npa-tool\n");
 	return 1;
 }
 #endif

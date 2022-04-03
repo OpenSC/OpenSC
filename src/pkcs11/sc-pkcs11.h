@@ -319,6 +319,7 @@ struct sc_pkcs11_mechanism_type {
 	const void *  mech_data;
 	/* free mechanism specific data */
 	void		  (*free_mech_data)(const void *mech_data);
+	CK_RV		  (*copy_mech_data)(const void *mech_data, void **new_data);
 };
 typedef struct sc_pkcs11_mechanism_type sc_pkcs11_mechanism_type_t;
 
@@ -433,7 +434,7 @@ CK_RV attr_extract(CK_ATTRIBUTE_PTR, void *, size_t *);
 
 /* Generic Mechanism functions */
 CK_RV sc_pkcs11_register_mechanism(struct sc_pkcs11_card *,
-				sc_pkcs11_mechanism_type_t *);
+				sc_pkcs11_mechanism_type_t *, sc_pkcs11_mechanism_type_t **);
 CK_RV sc_pkcs11_get_mechanism_list(struct sc_pkcs11_card *,
 				CK_MECHANISM_TYPE_PTR, CK_ULONG_PTR);
 CK_RV sc_pkcs11_get_mechanism_info(struct sc_pkcs11_card *, CK_MECHANISM_TYPE,
@@ -463,7 +464,8 @@ sc_pkcs11_mechanism_type_t *sc_pkcs11_find_mechanism(struct sc_pkcs11_card *,
 				CK_MECHANISM_TYPE, unsigned int);
 sc_pkcs11_mechanism_type_t *sc_pkcs11_new_fw_mechanism(CK_MECHANISM_TYPE,
 				CK_MECHANISM_INFO_PTR, CK_KEY_TYPE,
-				const void *, void (*)(const void *));
+				const void *, void (*)(const void *), CK_RV (*)(const void *, void **));
+void sc_pkcs11_free_mechanism(sc_pkcs11_mechanism_type_t **mt);
 sc_pkcs11_operation_t *sc_pkcs11_new_operation(sc_pkcs11_session_t *,
 				sc_pkcs11_mechanism_type_t *);
 void sc_pkcs11_release_operation(sc_pkcs11_operation_t **);

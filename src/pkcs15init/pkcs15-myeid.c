@@ -168,6 +168,8 @@ myeid_erase_card(struct sc_profile *profile, struct sc_pkcs15_card *p15card) {
 	/* ACLs are not actives if file is not in the operational state */
 	if (mf->status == SC_FILE_STATUS_ACTIVATED)
 		r = sc_pkcs15init_authenticate(profile, p15card, mf, SC_AC_OP_DELETE);
+	if (r < 0)
+		sc_file_free(mf);
 	LOG_TEST_RET(ctx, r, "'DELETE' authentication failed on MF");
 
 	data_obj.P1 = 0x01;
@@ -176,6 +178,7 @@ myeid_erase_card(struct sc_profile *profile, struct sc_pkcs15_card *p15card) {
 	data_obj.DataLen = sizeof (data);
 
 	r = sc_card_ctl(p15card->card, SC_CARDCTL_MYEID_PUTDATA, &data_obj);
+	sc_file_free(mf);
 
 	LOG_FUNC_RETURN(p15card->card->ctx, r);
 }
@@ -810,6 +813,8 @@ myeid_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	LOG_TEST_RET(ctx, r, "Cannot generate key: failed to select key file");
 
 	r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_GENERATE);
+	if (r < 0)
+		sc_file_free(file);
 	LOG_TEST_RET(ctx, r, "No authorisation to generate private key");
 
 	/* Fill in data structure */
@@ -826,6 +831,8 @@ myeid_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 
 	/* Generate the key  */
 	r = sc_card_ctl(card, SC_CARDCTL_MYEID_GENERATE_STORE_KEY, &args);
+	if (r < 0)
+		sc_file_free(file);
 	LOG_TEST_RET(ctx, r, "Card control 'MYEID_GENERATE_STORE_KEY' failed");
 
 	/* Key pair generation -> collect public key info */
@@ -842,6 +849,8 @@ myeid_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 
 			/* Get public key modulus */
 			r = sc_select_file(card, &file->path, NULL);
+			sc_file_free(file);
+			file = NULL;
 			LOG_TEST_RET(ctx, r, "Cannot get key modulus: select key file failed");
 
 			data_obj.P1 = 0x01;
@@ -867,6 +876,8 @@ myeid_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 			pubkey->algorithm = SC_ALGORITHM_EC;
 
 			r = sc_select_file(card, &file->path, NULL);
+			sc_file_free(file);
+			file = NULL;
 			LOG_TEST_RET(ctx, r, "Cannot get public key: select key file failed");
 
 			data_obj.P1 = 0x01;
@@ -908,6 +919,7 @@ myeid_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 			pubkey->u.ec.params.named_curve = strdup(ecparams->named_curve);
 			if (!pubkey->u.ec.params.named_curve)
 				LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+
 			r = sc_pkcs15_fix_ec_parameters(ctx, &pubkey->u.ec.params);
 			LOG_TEST_RET(ctx, r, "Cannot fix EC parameters");
 		}

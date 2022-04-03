@@ -30,8 +30,6 @@
 #define MSC_RSA_PUBLIC		0x01
 #define MSC_RSA_PRIVATE 	0x02
 #define MSC_RSA_PRIVATE_CRT	0x03
-#define MSC_DSA_PUBLIC		0x04
-#define MSC_DSA_PRIVATE 	0x05
 
 static msc_id inputId = { { 0xFF, 0xFF, 0xFF, 0xFF } };
 static msc_id outputId = { { 0xFF, 0xFF, 0xFF, 0xFE } };

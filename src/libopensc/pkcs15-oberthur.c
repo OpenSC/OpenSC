@@ -1033,7 +1033,7 @@ sc_pkcs15emu_oberthur_init(struct sc_pkcs15_card * p15card)
 
 	sc_format_path(AWP_PIN_DF, &path);
 	rv = sc_select_file(card, &path, NULL);
-	LOG_TEST_RET(ctx, rv, "Oberthur init failed: cannot select PIN dir");
+	LOG_TEST_GOTO_ERR(ctx, rv, "Oberthur init failed: cannot select PIN dir");
 
 	tries_left = -1;
 	rv = sc_verify(card, SC_AC_CHV, sopin_reference, (unsigned char *)"", 0, &tries_left);
@@ -1042,7 +1042,7 @@ sc_pkcs15emu_oberthur_init(struct sc_pkcs15_card * p15card)
 		rv = sc_verify(card, SC_AC_CHV, sopin_reference, (unsigned char *)"", 0, &tries_left);
 	}
 	if (rv && rv != SC_ERROR_PIN_CODE_INCORRECT)
-		LOG_TEST_RET(ctx, rv, "Invalid state of SO-PIN");
+		LOG_TEST_GOTO_ERR(ctx, rv, "Invalid state of SO-PIN");
 
 	/* add PIN */
 	memset(&auth_info, 0, sizeof(auth_info));
@@ -1071,7 +1071,7 @@ sc_pkcs15emu_oberthur_init(struct sc_pkcs15_card * p15card)
 	sc_log(ctx, "Add PIN(%s,auth_id:%s,reference:%i)", obj.label,
 			sc_pkcs15_print_id(&auth_info.auth_id), auth_info.attrs.pin.reference);
 	rv = sc_pkcs15emu_add_pin_obj(p15card, &obj, &auth_info);
-	LOG_TEST_RET(ctx, rv, "Oberthur init failed: cannot add PIN object");
+	LOG_TEST_GOTO_ERR(ctx, rv, "Oberthur init failed: cannot add PIN object");
 
 	tries_left = -1;
 	rv = sc_verify(card, SC_AC_CHV, 0x81, (unsigned char *)"", 0, &tries_left);
@@ -1115,10 +1115,10 @@ sc_pkcs15emu_oberthur_init(struct sc_pkcs15_card * p15card)
 		sc_log(ctx, "Add PIN(%s,auth_id:%s,reference:%i)", obj.label,
 				sc_pkcs15_print_id(&auth_info.auth_id), auth_info.attrs.pin.reference);
 		rv = sc_pkcs15emu_add_pin_obj(p15card, &obj, &auth_info);
-		LOG_TEST_RET(ctx, rv, "Oberthur init failed: cannot add PIN object");
+		LOG_TEST_GOTO_ERR(ctx, rv, "Oberthur init failed: cannot add PIN object");
 	}
 	else if (rv != SC_ERROR_DATA_OBJECT_NOT_FOUND)    {
-		LOG_TEST_RET(ctx, rv, "Oberthur init failed: cannot verify PIN");
+		LOG_TEST_GOTO_ERR(ctx, rv, "Oberthur init failed: cannot verify PIN");
 	}
 
 	for (ii=0; oberthur_infos[ii].name; ii++)   {
@@ -1126,17 +1126,21 @@ sc_pkcs15emu_oberthur_init(struct sc_pkcs15_card * p15card)
 		free(oberthur_infos[ii].content);
 		rv = sc_oberthur_read_file(p15card, oberthur_infos[ii].path,
 				&oberthur_infos[ii].content, &oberthur_infos[ii].len, 1);
-		LOG_TEST_RET(ctx, rv, "Oberthur init failed: read oberthur file error");
+		LOG_TEST_GOTO_ERR(ctx, rv, "Oberthur init failed: read oberthur file error");
 
 		sc_log(ctx,
 		       "Oberthur init: parse %s file, content length %"SC_FORMAT_LEN_SIZE_T"u",
 		       oberthur_infos[ii].name, oberthur_infos[ii].len);
 		rv = oberthur_infos[ii].parser(p15card, oberthur_infos[ii].content, oberthur_infos[ii].len,
 				oberthur_infos[ii].postpone_allowed);
-		LOG_TEST_RET(ctx, rv, "Oberthur init failed: parse error");
+		LOG_TEST_GOTO_ERR(ctx, rv, "Oberthur init failed: parse error");
 	}
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+
+err:
+	sc_pkcs15_card_clear(p15card);
+	LOG_FUNC_RETURN(ctx, rv);
 }
 
 

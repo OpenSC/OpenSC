@@ -212,7 +212,8 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 	if (r != 7) {
 		sc_log(ctx, 
 			"CHV status bytes have unexpected length (expected 7, got %d)\n", r);
-		return SC_ERROR_OBJECT_NOT_VALID;
+		r = SC_ERROR_OBJECT_NOT_VALID;
+		goto failed;
 	}
 
 	/* Add PIN codes */
@@ -246,8 +247,10 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 		}
 
 		r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
-		if (r < 0)
-			return SC_ERROR_INTERNAL;
+		if (r < 0) {
+			r = SC_ERROR_INTERNAL;
+			goto failed;
+		}
 	}
 
 	/* Get private key finger prints from DO 006E/0073/00C5:
@@ -261,7 +264,8 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 	if (r < 60) {
 		sc_log(ctx,
 			"finger print bytes have unexpected length (expected 60, got %d)\n", r);
-		return SC_ERROR_OBJECT_NOT_VALID;
+		r = SC_ERROR_OBJECT_NOT_VALID;
+		goto failed;
 	}
 
 	sc_log(ctx, "Adding private keys");
@@ -388,8 +392,10 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 					cxdata[0], r);
 			}
 
-			if (r < 0)
-				return SC_ERROR_INTERNAL;
+			if (r < 0) {
+				r = SC_ERROR_INTERNAL;
+				goto failed;
+			}
 		}
 	}
 
@@ -510,8 +516,10 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 					cxdata[0], r);
 			}
 
-			if (r < 0)
-				return SC_ERROR_INTERNAL;
+			if (r < 0) {
+				r = SC_ERROR_INTERNAL;
+				goto failed;
+			}
 		}
 	}
 
@@ -553,9 +561,9 @@ failed:
 		sc_log(card->ctx,
 				"Failed to initialize OpenPGP emulation: %s\n",
 				sc_strerror(r));
+		sc_pkcs15_card_clear(p15card);
 	}
 	sc_file_free(file);
-
 	LOG_FUNC_RETURN(ctx, r);
 }
 

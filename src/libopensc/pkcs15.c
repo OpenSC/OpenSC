@@ -306,6 +306,7 @@ sc_pkcs15_encode_tokeninfo(sc_context_t *ctx, sc_pkcs15_tokeninfo_t *ti,
 	size_t algo_ref_len = sizeof(ti->supported_algos[0].algo_ref);
 	struct sc_asn1_entry asn1_last_update[C_ASN1_LAST_UPDATE_SIZE];
 	struct sc_asn1_entry asn1_profile_indication[C_ASN1_PROFILE_INDICATION_SIZE];
+	u8 serial[128];
 
 	sc_copy_asn1_entry(c_asn1_toki_attrs, asn1_toki_attrs);
 	sc_copy_asn1_entry(c_asn1_tokeninfo, asn1_tokeninfo);
@@ -340,7 +341,6 @@ sc_pkcs15_encode_tokeninfo(sc_context_t *ctx, sc_pkcs15_tokeninfo_t *ti,
 
 	sc_format_asn1_entry(asn1_toki_attrs + 0, &ti->version, NULL, 1);
 	if (ti->serial_number != NULL) {
-		u8 serial[128];
 		serial_len = 0;
 		if (strlen(ti->serial_number)/2 > sizeof(serial))
 			return SC_ERROR_BUFFER_TOO_SMALL;
@@ -910,6 +910,7 @@ sc_dup_app_info(const struct sc_app_info *info)
 		return NULL;
 	}
 	memcpy(out->ddo.value, info->ddo.value, info->ddo.len);
+	out->ddo.len = info->ddo.len;
 
 	return out;
 }

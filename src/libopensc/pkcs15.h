@@ -192,24 +192,6 @@ struct sc_pkcs15_prkey_rsa {
 	sc_pkcs15_bignum_t dmq1;
 };
 
-struct sc_pkcs15_pubkey_dsa {
-	sc_pkcs15_bignum_t pub;
-	sc_pkcs15_bignum_t p;
-	sc_pkcs15_bignum_t q;
-	sc_pkcs15_bignum_t g;
-};
-
-struct sc_pkcs15_prkey_dsa {
-	/* public components */
-	sc_pkcs15_bignum_t pub;
-	sc_pkcs15_bignum_t p;
-	sc_pkcs15_bignum_t q;
-	sc_pkcs15_bignum_t g;
-
-	/* private key */
-	sc_pkcs15_bignum_t priv;
-};
-
 struct sc_pkcs15_gost_parameters {
 	struct sc_object_id key;
 	struct sc_object_id hash;
@@ -253,7 +235,6 @@ struct sc_pkcs15_pubkey {
 	/* Decoded key */
 	union {
 		struct sc_pkcs15_pubkey_rsa rsa;
-		struct sc_pkcs15_pubkey_dsa dsa;
 		struct sc_pkcs15_pubkey_ec ec;
 		struct sc_pkcs15_pubkey_eddsa eddsa;
 		struct sc_pkcs15_pubkey_gostr3410 gostr3410;
@@ -267,7 +248,6 @@ struct sc_pkcs15_prkey {
 
 	union {
 		struct sc_pkcs15_prkey_rsa rsa;
-		struct sc_pkcs15_prkey_dsa dsa;
 		struct sc_pkcs15_prkey_ec ec;
 		struct sc_pkcs15_prkey_eddsa eddsa;
 		struct sc_pkcs15_prkey_gostr3410 gostr3410;
@@ -448,7 +428,6 @@ typedef struct sc_pkcs15_skey_info sc_pkcs15_skey_info_t;
 
 #define SC_PKCS15_TYPE_PRKEY			0x100
 #define SC_PKCS15_TYPE_PRKEY_RSA		0x101
-#define SC_PKCS15_TYPE_PRKEY_DSA		0x102
 #define SC_PKCS15_TYPE_PRKEY_GOSTR3410		0x103
 #define SC_PKCS15_TYPE_PRKEY_EC		0x104
 #define SC_PKCS15_TYPE_PRKEY_EDDSA		0x105
@@ -456,7 +435,6 @@ typedef struct sc_pkcs15_skey_info sc_pkcs15_skey_info_t;
 
 #define SC_PKCS15_TYPE_PUBKEY			0x200
 #define SC_PKCS15_TYPE_PUBKEY_RSA		0x201
-#define SC_PKCS15_TYPE_PUBKEY_DSA		0x202
 #define SC_PKCS15_TYPE_PUBKEY_GOSTR3410		0x203
 #define SC_PKCS15_TYPE_PUBKEY_EC		0x204
 #define SC_PKCS15_TYPE_PUBKEY_EDDSA		0x205
@@ -708,10 +686,6 @@ int sc_pkcs15_decode_pubkey_rsa(struct sc_context *,
 		struct sc_pkcs15_pubkey_rsa *, const u8 *, size_t);
 int sc_pkcs15_encode_pubkey_rsa(struct sc_context *,
 		struct sc_pkcs15_pubkey_rsa *, u8 **, size_t *);
-int sc_pkcs15_decode_pubkey_dsa(struct sc_context *,
-		struct sc_pkcs15_pubkey_dsa *, const u8 *, size_t);
-int sc_pkcs15_encode_pubkey_dsa(struct sc_context *,
-		struct sc_pkcs15_pubkey_dsa *, u8 **, size_t *);
 int sc_pkcs15_decode_pubkey_gostr3410(struct sc_context *,
 		struct sc_pkcs15_pubkey_gostr3410 *, const u8 *, size_t);
 int sc_pkcs15_encode_pubkey_gostr3410(struct sc_context *,

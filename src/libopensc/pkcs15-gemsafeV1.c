@@ -305,15 +305,16 @@ static int sc_pkcs15emu_gemsafeV1_init( sc_pkcs15_card_t *p15card)
 
 	sc_log(p15card->card->ctx, "Setting pkcs15 parameters");
 
-	free(p15card->tokeninfo->label);
-	p15card->tokeninfo->label = strdup(APPLET_NAME);
+	set_string(&p15card->tokeninfo->label, APPLET_NAME);
 	if (!p15card->tokeninfo->label)
 		return SC_ERROR_INTERNAL;
 
-	free(p15card->tokeninfo->serial_number);
-	p15card->tokeninfo->serial_number = strdup(DRIVER_SERIAL_NUMBER);
-	if (!p15card->tokeninfo->serial_number)
+	set_string(&p15card->tokeninfo->serial_number, DRIVER_SERIAL_NUMBER);
+	if (!p15card->tokeninfo->serial_number) {
+		free(p15card->tokeninfo->label);
+		p15card->tokeninfo->label = NULL;
 		return SC_ERROR_INTERNAL;
+	}
 
 	/* the GemSAFE applet version number */
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xca, 0xdf, 0x03);
@@ -325,23 +326,28 @@ static int sc_pkcs15emu_gemsafeV1_init( sc_pkcs15_card_t *p15card)
 	apdu.lc = 0;
 	apdu.datalen = 0;
 	r = sc_transmit_apdu(card, &apdu);
+	if (r < 0)
+		sc_pkcs15_card_clear(p15card);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
-	if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
+	if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00 || r != SC_SUCCESS) {
+		sc_pkcs15_card_clear(p15card);
 		return SC_ERROR_INTERNAL;
-	if (r != SC_SUCCESS)
-		return SC_ERROR_INTERNAL;
+	}
 
 	/* the manufacturer ID, in this case GemPlus */
-	free(p15card->tokeninfo->manufacturer_id);
-	p15card->tokeninfo->manufacturer_id = strdup(MANU_ID);
-	if (!p15card->tokeninfo->manufacturer_id)
+	set_string(&p15card->tokeninfo->manufacturer_id, MANU_ID);
+	if (!p15card->tokeninfo->manufacturer_id) {
+		sc_pkcs15_card_clear(p15card);
 		return SC_ERROR_INTERNAL;
+	}
 
 	/* determine allocated key containers and length of certificates */
 	r = gemsafe_get_cert_len(card);
-	if (r != SC_SUCCESS)
+	if (r != SC_SUCCESS) {
+		sc_pkcs15_card_clear(p15card);
 		return SC_ERROR_INTERNAL;
+	}
 
 	/* set certs */
 	sc_log(p15card->card->ctx, "Setting certificates");
@@ -420,8 +426,10 @@ static int sc_pkcs15emu_gemsafeV1_init( sc_pkcs15_card_t *p15card)
 	sc_log(p15card->card->ctx, "Selecting application DF");
 	sc_format_path(GEMSAFE_APP_PATH, &path);
 	r = sc_select_file(card, &path, &file);
-	if (r != SC_SUCCESS || !file)
+	if (r != SC_SUCCESS || !file) {
+		sc_pkcs15_card_clear(p15card);
 		return SC_ERROR_INTERNAL;
+	}
 	/* set the application DF */
 	sc_file_free(p15card->file_app);
 	p15card->file_app = file;

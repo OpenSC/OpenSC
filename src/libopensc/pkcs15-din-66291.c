@@ -23,6 +23,7 @@
 #include <config.h>
 #endif
 
+#include "internal.h"
 #include "common/compat_strlcpy.h"
 #include "log.h"
 #include "pkcs15.h"
@@ -106,8 +107,10 @@ sc_pkcs15emu_din_66291_init(sc_pkcs15_card_t *p15card)
                 pin_obj.auth_id.len = 1;
             }
 
-            if (0 > sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info))
+            if (0 > sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info)) {
+                sc_pkcs15_card_clear(p15card);
                 return SC_ERROR_INTERNAL;
+            }
         }
 
         for (i = 0; i < 2; i++) {
@@ -254,7 +257,7 @@ int sc_pkcs15emu_din_66291_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid
             && SC_SUCCESS == sc_card_ctl(p15card->card, SC_CARDCTL_GET_SERIALNR, &serial)) {
         char serial_hex[SC_MAX_SERIALNR*2+2];
         sc_bin_to_hex(serial.value, serial.len , serial_hex, sizeof serial_hex, 0);
-        p15card->tokeninfo->serial_number = strdup(serial_hex);
+        set_string(&p15card->tokeninfo->serial_number, serial_hex);
     }
 
     r = SC_SUCCESS;

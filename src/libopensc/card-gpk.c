@@ -186,11 +186,6 @@ gpk_init(sc_card_t *card)
 			priv->offset_shift = 0;
 			priv->offset_mask = 0;
 		}
-		if (info[12] & 0x10) {
-			/* DSA supported - add algo information.
-			 * It's highly unlikely we'll ever see this.
-			 */
-		}
 		if (info[12] & 0x08) {
 			priv->locked = 1;
 		}
