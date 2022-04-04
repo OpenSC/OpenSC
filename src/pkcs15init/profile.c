@@ -1577,7 +1577,8 @@ do_acl(struct state *cur, int argc, char **argv)
 
 			if (map_str2int(cur, oper, &op, fileOpNames))
 				goto bad;
-			acl = sc_file_get_acl_entry(file, op);
+			if (!(acl = sc_file_get_acl_entry(file, op)))
+				goto bad;
 			if (acl->method == SC_AC_NEVER
 			 || acl->method == SC_AC_NONE
 			 || acl->method == SC_AC_UNKNOWN)
