@@ -2491,7 +2491,10 @@ expr_eval(struct num_exp_ctx *ctx, unsigned int *vp, unsigned int pri)
 		expr_eval(ctx, &right, new_pri + 1);
 		switch (op) {
 		case '*': left *= right; break;
-		case '/': left /= right; break;
+		case '/':
+			if (right == 0)
+				expr_fail(ctx);
+			left /= right; break;
 		case '+': left += right; break;
 		case '-': left -= right; break;
 		case '&': left &= right; break;
