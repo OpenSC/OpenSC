@@ -450,6 +450,8 @@ sc_profile_free(struct sc_profile *profile)
 
 	if (profile->name)
 		free(profile->name);
+	if (profile->driver)
+		free(profile->driver);
 
 	free_file_list(&profile->ef_list);
 
