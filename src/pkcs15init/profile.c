@@ -2122,12 +2122,14 @@ sc_profile_find_file(struct sc_profile *pro,
 {
 	struct file_info	*fi;
 	unsigned int		len;
+	const u8			*value;
 
-	len = path? path->len : 0;
+	value = path ? path->value : (const u8*) "";
+	len = path ? path->len : 0;
 	for (fi = pro->ef_list; fi; fi = fi->next) {
 		sc_path_t *fpath = &fi->file->path;
 
-		if (!strcasecmp(fi->ident, name) && fpath->len >= len && !memcmp(fpath->value, path->value, len))
+		if (!strcasecmp(fi->ident, name) && fpath->len >= len && !memcmp(fpath->value, value, len))
 			return fi;
 	}
 	return NULL;
