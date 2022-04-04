@@ -4443,13 +4443,14 @@ sc_pkcs15init_parse_info(struct sc_card *card,
 	const unsigned char *end;
 	unsigned int	nopts = 0;
 	size_t		n;
+	int	r = 0;
 
 	if ((p == NULL) || (len == 0))
 		return 0;
 
 	end = p + (len - 1);
 	while (p < end) {	/* more bytes to look at */
-		int	r = 0;
+		r = 0;
 
 		tag = *p; p++;
 		if ((tag == 0) || (tag == 0xff) || (p >= end))
@@ -4458,23 +4459,26 @@ sc_pkcs15init_parse_info(struct sc_card *card,
 		n = *p;
 		p++;
 
-		if (p >= end || p + n > end) /* invalid length byte n */
+		if (p >= end || p + n > end) { /* invalid length byte n */
+			r = SC_ERROR_PKCS15INIT;
 			goto error;
+		}
 
 		switch (tag) {
 		case OPENSC_INFO_TAG_PROFILE:
 			r = set_info_string(&profile->name, p, n);
 			if (r < 0)
-				return r;
+				goto error;
 			break;
 		case OPENSC_INFO_TAG_OPTION:
 			if (nopts >= SC_PKCS15INIT_MAX_OPTIONS - 1) {
 				sc_log(card->ctx, "Too many options in OpenSC Info file");
-				return SC_ERROR_PKCS15INIT;
+				r = SC_ERROR_PKCS15INIT;
+				goto error;
 			}
 			r = set_info_string(&profile->options[nopts], p, n);
 			if (r < 0)
-				return r;
+				goto error;
 			profile->options[++nopts] = NULL;
 			break;
 		default:
@@ -4486,7 +4490,16 @@ sc_pkcs15init_parse_info(struct sc_card *card,
 
 error:
 	sc_log(card->ctx, "OpenSC info file corrupted");
-	return SC_ERROR_PKCS15INIT;
+	if (profile->name) {
+		free(profile->name);
+		profile->name = NULL;
+	}
+	for (size_t i = 0; i < nopts; i++) {
+		if (profile->options[i])
+			free(profile->options[i]);
+		profile->options[i] = NULL;
+	}
+	return r;
 }
 
 
