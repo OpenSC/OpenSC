@@ -2359,8 +2359,9 @@ __expr_get(struct num_exp_ctx *ctx, int eof_okay)
 	}
 
 	ctx->j = 0;
+	s = ctx->str;
 	do {
-		if ((s = ctx->str) == NULL || *s == '\0') {
+		if (s == NULL || *s == '\0') {
 			if (ctx->argc == 0) {
 				if (eof_okay)
 					return NULL;
