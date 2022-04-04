@@ -4390,6 +4390,8 @@ sc_pkcs15init_read_info(struct sc_card *card, struct sc_profile *profile)
 	if (r >= 0) {
 		len = file->size;
 		sc_file_free(file);
+		if (len > MAX_FILE_SIZE)
+			return SC_ERROR_INTERNAL;
 		mem = malloc(len);
 		if (mem != NULL)
 			r = sc_read_binary(card, 0, mem, len, 0);
