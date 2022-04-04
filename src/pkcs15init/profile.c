@@ -1201,6 +1201,7 @@ free_file_list(struct file_info **list)
 
 		if (fi->dont_free == 0)
 			sc_file_free(fi->file);
+		free(fi->profile_extension);
 		free(fi->ident);
 		free(fi);
 	}
