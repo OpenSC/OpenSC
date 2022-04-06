@@ -8,7 +8,7 @@ LIBS = $(FUZZING_LIBS)\
 
 noinst_PROGRAMS = fuzz_asn1_print fuzz_asn1_sig_value fuzz_pkcs15_decode fuzz_pkcs15_reader \
 					fuzz_scconf_parse_string fuzz_pkcs15_encode fuzz_card \
-					fuzz_pkcs15_tool
+					fuzz_pkcs15_tool fuzz_pkcs15_crypt
 
 if ENABLE_STATIC
 noinst_PROGRAMS += fuzz_pkcs15init
@@ -41,3 +41,6 @@ fuzz_piv_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
 fuzz_pkcs15_tool_SOURCES = fuzz_pkcs15_tool.c fuzzer_reader.c fuzzer_tool.c $(ADDITIONAL_SRC) \
 							../../tools/util.c ../../pkcs11/pkcs11-display.c
 fuzz_pkcs15_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
+fuzz_pkcs15_crypt_SOURCES = fuzz_pkcs15_crypt.c fuzzer_reader.c fuzzer_tool.c $(ADDITIONAL_SRC) \
+							../../tools/util.c
+fuzz_pkcs15_crypt_LDADD = $(OPTIONAL_OPENSSL_LIBS)
