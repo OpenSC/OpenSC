@@ -635,12 +635,16 @@ int main(int argc, char *argv[])
 			break;
 		default:
 			util_print_usage(app_name, options, option_help, NULL);
+			if (opt_apdus)
+				free(opt_apdus);
 			return 2;
 		}
 	}
 
 	if (action_count == 0) {
 		util_print_usage(app_name, options, option_help, NULL);
+		if (opt_apdus)
+			free(opt_apdus);
 		return 2;
 	}
 
@@ -744,6 +748,8 @@ end:
 		sc_unlock(card);
 		sc_disconnect_card(card);
 	}
+	if (opt_apdus)
+		free(opt_apdus);
 	sc_release_context(ctx);
 
 	ERR_print_errors_fp(stderr);
