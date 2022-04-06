@@ -7,7 +7,8 @@ LIBS = $(FUZZING_LIBS)\
 	$(top_builddir)/src/common/libcompat.la
 
 noinst_PROGRAMS = fuzz_asn1_print fuzz_asn1_sig_value fuzz_pkcs15_decode fuzz_pkcs15_reader \
-					fuzz_scconf_parse_string fuzz_pkcs15_encode fuzz_card
+					fuzz_scconf_parse_string fuzz_pkcs15_encode fuzz_card \
+					fuzz_pkcs15_tool
 
 if ENABLE_STATIC
 noinst_PROGRAMS += fuzz_pkcs15init
@@ -37,3 +38,6 @@ fuzz_card_SOURCES = fuzz_card.c fuzzer_reader.c $(ADDITIONAL_SRC)
 fuzz_piv_tool_SOURCES = fuzz_piv_tool.c fuzzer_reader.c fuzzer_tool.c $(ADDITIONAL_SRC) \
 						 ../../tools/util.c
 fuzz_piv_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
+fuzz_pkcs15_tool_SOURCES = fuzz_pkcs15_tool.c fuzzer_reader.c fuzzer_tool.c $(ADDITIONAL_SRC) \
+							../../tools/util.c ../../pkcs11/pkcs11-display.c
+fuzz_pkcs15_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
