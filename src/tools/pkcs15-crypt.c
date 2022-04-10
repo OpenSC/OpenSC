@@ -495,7 +495,8 @@ int main(int argc, char *argv[])
 		aid.len = sizeof(aid.value);
 		if (sc_hex_to_bin(opt_bind_to_aid, aid.value, &aid.len))   {
 			fprintf(stderr, "Invalid AID value: '%s'\n", opt_bind_to_aid);
-			return 1;
+			err = 1;
+			goto end;
 		}
 
 		r = sc_pkcs15_bind(card, &aid, &p15card);
