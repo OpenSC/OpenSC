@@ -38,7 +38,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 	uint8_t           len = 0;
 	u8               *rnd = NULL, *wrap_buf = NULL, *unwrap_buf = NULL;
 	size_t            wrap_buf_len = 0, unwrap_buf_len = 0;
-	int               reset = 0;
+	int               reset = 0, r = 0;
 
 #ifdef FUZZING_ENABLED
 	fclose(stdout);
@@ -86,8 +86,11 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 	sc_list_files(card, files, sizeof(files));
 
 	/* Get challenge */
-	if ((rnd = malloc(len)))
-	sc_get_challenge(card, rnd, len);
+	rnd = malloc(len);
+	if (rnd == NULL)
+		goto err;
+	if ((r = sc_get_challenge(card, rnd, len)) != SC_SUCCESS)
+		sc_log(ctx, "sc_get_challenge failed with rc = %d", r);
 
 	/* Append record */
 	sc_append_record(card, ptr, ptr_size, flag);
