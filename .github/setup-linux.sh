@@ -3,7 +3,7 @@
 set -ex -o xtrace
 
 # Generic dependencies
-DEPS="docbook-xsl xsltproc gengetopt help2man pcscd check pcsc-tools libtool make autoconf autoconf-archive automake pkg-config git"
+DEPS="docbook-xsl xsltproc gengetopt help2man pcscd check pcsc-tools libtool make autoconf autoconf-archive automake pkg-config git xxd"
 
 # Add openssl or install openssl3.0
 if [ "$1" != "ossl3" -a "$2" != "ossl3" -a  ]; then
@@ -23,7 +23,7 @@ if [ "$1" == "clang-tidy" ]; then
 elif [ "$1" == "cac" ]; then
 	DEPS="$DEPS libglib2.0-dev libnss3-dev gnutls-bin libusb-dev libudev-dev flex libnss3-tools"
 elif [ "$1" == "oseid" ]; then
-	DEPS="$DEPS socat gawk xxd"
+	DEPS="$DEPS socat gawk"
 elif [ "$1" == "piv" -o "$1" == "isoapplet" -o "$1" == "gidsapplet" -o "$1" == "openpgp" ]; then
 	if [ "$1" == "piv" ]; then
 		DEPS="$DEPS cmake"
