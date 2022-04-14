@@ -6,7 +6,7 @@ set -ex -o xtrace
 DEPS="docbook-xsl xsltproc gengetopt help2man pcscd check pcsc-tools libtool make autoconf autoconf-archive automake pkg-config git xxd"
 
 # Add openssl or install openssl3.0
-if [ "$1" != "ossl3" -a "$2" != "ossl3" -a  ]; then
+if [ "$1" != "ossl3" -a "$2" != "ossl3" ]; then
 	DEPS="$DEPS openssl"
 fi
 
