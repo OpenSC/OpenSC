@@ -5,10 +5,9 @@ set -ex -o xtrace
 sudo apt-get remove -y openssl libssl-dev java8-runtime-headless default-jre-headless
 
 if [ ! -d "openssl" ]; then
-	git clone https://github.com/openssl/openssl
+	git clone --single-branch --branch=openssl-3.0 --depth 1 https://github.com/openssl/openssl
 fi
 pushd openssl
-git checkout openssl-3.0
 ./Configure --prefix=/usr/local linux-x86_64
 make -j $(nproc)
 sudo make install
