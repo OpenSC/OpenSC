@@ -757,7 +757,7 @@ int callback_secret_keys(test_certs_t *objects,
 		? *((CK_BBOOL *) template[3].pValue) : CK_FALSE;
 	o->sign = (template[4].ulValueLen != (CK_ULONG) -1)
 		? *((CK_BBOOL *) template[4].pValue) : CK_FALSE;
-	o->decrypt = (template[5].ulValueLen != (CK_ULONG) -1)
+	o->encrypt = (template[5].ulValueLen != (CK_ULONG) -1)
 		? *((CK_BBOOL *) template[5].pValue) : CK_FALSE;
 	o->decrypt = (template[6].ulValueLen != (CK_ULONG) -1)
 		? *((CK_BBOOL *) template[6].pValue) : CK_FALSE;
