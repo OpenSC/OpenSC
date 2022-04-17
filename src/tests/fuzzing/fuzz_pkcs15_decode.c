@@ -51,9 +51,9 @@ int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
 	const uint8_t *buf = Data, *reader_data = NULL;
 	uint16_t buf_len = 0;
 	size_t reader_data_len = 0;
-	static struct sc_context *ctx = NULL;
-	static struct sc_pkcs15_card *p15card = NULL;
-	static sc_card_t *card = NULL;
+	struct sc_context *ctx = NULL;
+	struct sc_pkcs15_card *p15card = NULL;
+	sc_card_t *card = NULL;
 	struct sc_pkcs15_tokeninfo *tokeninfo = NULL;
 	int (* decode_entries[])(struct sc_pkcs15_card *, struct sc_pkcs15_object *,
 			const u8 **nbuf, size_t *nbufsize) = {
