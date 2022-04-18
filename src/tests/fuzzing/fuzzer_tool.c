@@ -90,20 +90,23 @@ int get_fuzzed_argv(const char *app_name, const uint8_t *data, size_t size,
 	return 0;
 }
 
-static uint16_t get_buffer(const uint8_t **buf, size_t buf_len, const uint8_t **out, size_t *out_len)
+uint16_t get_buffer(const uint8_t **buf, size_t buf_len, const uint8_t **out, size_t *out_len, size_t max_size)
 {
 	/* Split buf into two parts according to length stored in first two bytes */
 	uint16_t len = 0;
 
-	if (!buf || !(*buf) || buf_len < 2)
+	if (!buf || !(*buf) || buf_len < sizeof(uint16_t))
 		return 0;
 
 	/* Get length of the result buffer*/
-	len = *((uint16_t *) *buf);
-	if (buf_len - 2 <= len)
-		return 0;
+	len = *((uint16_t *) *buf) % max_size;
 	(*buf) += 2;
 	buf_len -= 2;
+	if (buf_len <= len) {
+		*out = *buf;
+		*out_len = buf_len;
+		return 0;
+	}
 
 	/* Set out buffer to new reader data*/
 	*out = *buf + len;
@@ -120,7 +123,7 @@ int create_input_file(char **filename_out, const uint8_t **data, size_t *size)
 	char *filename = NULL;
 	
 	/* Split data into file content and rest*/
-	file_size = get_buffer(&ptr, *size, data, size);
+	file_size = get_buffer(&ptr, *size, data, size, 6000);
 	if (file_size == 0)
 		return 1;
 
