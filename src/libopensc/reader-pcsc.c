@@ -2502,6 +2502,31 @@ static void detect_protocol(sc_reader_t *reader, SCARDHANDLE card_handle)
 	reader->active_protocol = pcsc_proto_to_opensc(prot);
 }
 
+int
+pcsc_check_reader_handles(sc_context_t *ctx, sc_reader_t *reader, void * pcsc_context_handle, void * pcsc_card_handle)
+{
+	char reader_name[128];
+	DWORD reader_name_size = sizeof(reader_name);
+
+	if (NULL == reader)
+		return 1;
+
+	struct pcsc_private_data *priv = reader->drv_data;
+	memset(reader_name, 0, sizeof(reader_name));
+
+	/* check if new handles are for the same reader as old handles */
+	if (SCARD_S_SUCCESS != priv->gpriv->SCardGetAttrib(*(SCARDHANDLE *)pcsc_card_handle,
+				SCARD_ATTR_DEVICE_SYSTEM_NAME_A, (LPBYTE)
+				reader_name, &reader_name_size)
+			|| strcmp(reader_name, reader->name) != 0) {
+		sc_log(ctx, "Reader name changed from \"%s\" to \"%s\"", reader->name, reader_name);
+
+		return 1;
+	}
+
+	return 0;
+}
+
 int pcsc_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcsc_card_handle)
 {
 	SCARDHANDLE card_handle;
