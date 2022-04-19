@@ -11,7 +11,9 @@ LIBS = $(top_builddir)/src/sm/libsm.la \
 	$(top_builddir)/src/common/libcompat.la
 
 if ENABLE_OPENSSL
+if ENABLE_SHARED
 lib_LTLIBRARIES = libsmm-local.la
+endif
 endif
 
 libsmm_local_la_SOURCES = smm-local.c sm-module.h \
