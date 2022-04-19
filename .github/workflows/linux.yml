@@ -36,6 +36,13 @@ jobs:
           path:
             tests/*.log
 
+  build-no-shared:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: .github/setup-linux.sh
+      - run: .github/build.sh no-shared
+
   build-ix86:
     runs-on: ubuntu-latest
     steps:
