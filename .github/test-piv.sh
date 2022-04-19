@@ -27,6 +27,7 @@ if [ ! -d "build" ]; then
 fi
 pushd build
 cmake .. && make && sudo make install
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib/x86_64-linux-gnu
 popd
 popd
 
