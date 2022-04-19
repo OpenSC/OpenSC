@@ -412,6 +412,7 @@ static DWORD check_card_status(PCARD_DATA pCardData, const char *name)
  * check if the card is OK, has been removed, or the
  * caller has changed the handles.
  * if so, then try to reinit card
+ * or if different handles but same reader, just use the handles
  */
 static DWORD
 check_card_reader_status(PCARD_DATA pCardData, const char *name)
@@ -444,12 +445,17 @@ check_card_reader_status(PCARD_DATA pCardData, const char *name)
 			(size_t)vs->hSCardCtx,
 			(size_t)vs->hScard);
 		if (vs->ctx) {
-			vs->hScard = pCardData->hScard;
-			vs->hSCardCtx = pCardData->hSCardCtx;
-			r = sc_ctx_use_reader(vs->ctx, &vs->hSCardCtx, &vs->hScard);
-			logprintf(pCardData, 1, "sc_ctx_use_reader returned %d\n", r);
-			if (r)
-			    MD_FUNC_RETURN(pCardData, 1, SCARD_F_INTERNAL_ERROR);
+			if (1 == pcsc_check_reader_handles(vs->ctx, vs->reader, &pCardData->hSCardCtx, &pCardData->hScard)) {
+				_sc_delete_reader(vs->ctx, vs->reader);
+				MD_FUNC_RETURN(pCardData, 1, reinit_card_for(pCardData, name));
+			} else {
+				vs->hScard = pCardData->hScard;
+				vs->hSCardCtx = pCardData->hSCardCtx;
+				r = sc_ctx_use_reader(vs->ctx, &vs->hSCardCtx, &vs->hScard);
+				logprintf(pCardData, 1, "sc_ctx_use_reader returned %d\n", r);
+				if (r)
+					MD_FUNC_RETURN(pCardData, 1, SCARD_F_INTERNAL_ERROR);
+			}
 		}
 	}
 
