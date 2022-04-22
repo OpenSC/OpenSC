@@ -126,6 +126,8 @@ static CK_RV sc_pkcs11_close_session(CK_SESSION_HANDLE hSession)
 			slot->p11card->framework->logout(slot);
 		}
 	}
+	for (size_t i = 0; i < SC_PKCS11_OPERATION_MAX; i++)
+		sc_pkcs11_release_operation(&session->operation[i]);
 
 	if (list_delete(&sessions, session) != 0)
 		sc_log(context, "Could not delete session from list!");
