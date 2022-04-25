@@ -606,14 +606,14 @@ gen_init_key(struct sc_card *card, unsigned char *key_enc, unsigned char *key_ma
 
 	/* Step 1 - Generate Derivation data */
 	if(isFips){
-        memset(data,0x00,15);
-        memset(&data[11], 0x04, 1);
-        memset(&data[14], 0x80, 1);
-        memset(&data[15], 0x01, 1);
-        memcpy(&data[16], g_random, 8);
-        memcpy(&data[24], &result[12+1], 8);
-    }
-    else{
+        	memset(data,0x00,15);
+        	memset(&data[11], 0x04, 1);
+        	memset(&data[14], 0x80, 1);
+        	memset(&data[15], 0x01, 1);
+        	memcpy(&data[16], g_random, 8);
+        	memcpy(&data[24], &result[12+1], 8);
+    	}
+    	else{
 		memcpy(data, &result[16], 4);
 		memcpy(&data[4], g_random, 4);
 		memcpy(&data[8], &result[12], 4);
@@ -623,12 +623,12 @@ gen_init_key(struct sc_card *card, unsigned char *key_enc, unsigned char *key_ma
 	/* Step 2,3 - Create S-ENC/S-MAC Session Key */
 	if (KEY_TYPE_AES == key_type) {
 		if(isFips){
-            r = aes128_encrypt_cmac(key_enc, 128, data, 32, exdata->sk_enc);
-            LOG_TEST_RET(card->ctx, r, "aes128_encrypt_cmac enc failed");
-            memset(&data[11], 0x06, 1);
-            r = aes128_encrypt_cmac(key_mac, 128, data, 32, exdata->sk_mac);
-            LOG_TEST_RET(card->ctx, r, "aes128_encrypt_cmac mac  failed");
-        }else{
+        	    	r = aes128_encrypt_cmac(key_enc, 128, data, 32, exdata->sk_enc);
+            		LOG_TEST_RET(card->ctx, r, "aes128_encrypt_cmac enc failed");
+            		memset(&data[11], 0x06, 1);
+            		r = aes128_encrypt_cmac(key_mac, 128, data, 32, exdata->sk_mac);
+            		LOG_TEST_RET(card->ctx, r, "aes128_encrypt_cmac mac  failed");
+        	}else{
 			r = aes128_encrypt_ecb(key_enc, 16, data, 16, exdata->sk_enc);
 			LOG_TEST_RET(card->ctx, r, "aes128_encrypt_ecb enc  failed");
 			r = aes128_encrypt_ecb(key_mac, 16, data, 16, exdata->sk_mac);
@@ -706,14 +706,12 @@ verify_init_key(struct sc_card *card, unsigned char *ran_key, unsigned char key_
 	if(isFips)
 	{
 		memset(data,0x00,15);
-        memset(&data[11], 0x01, 1);
-        memset(&data[14], 0x40, 1);
-        memset(&data[15], 0x01, 1);
-        memcpy(&data[16], g_random, 8);
-        memcpy(&data[24], ran_key, 8);
-	}
-	else
-	{
+        	memset(&data[11], 0x01, 1);
+        	memset(&data[14], 0x40, 1);
+        	memset(&data[15], 0x01, 1);
+        	memcpy(&data[16], g_random, 8);
+        	memcpy(&data[24], ran_key, 8);
+	}else{
 		memcpy(data, ran_key, 8);
 		memcpy(&data[8], g_random, 8);
 		data[16] = 0x80;
@@ -738,9 +736,8 @@ verify_init_key(struct sc_card *card, unsigned char *ran_key, unsigned char key_
 	memset(data, 0, sizeof(data));
 	if(isFips){
 		memcpy(data, "\x84\x82\x03\x00\x10", 5);
-        memcpy(&data[5], &cryptogram[0], 8);
-	}
-	else{
+        	memcpy(&data[5], &cryptogram[0], 8);
+	}else{
 		memcpy(data, "\x84\x82\x03\x00\x10", 5);
 		memcpy(&data[5], &cryptogram[16], 8);
 		memcpy(&data[13], "\x80\x00\x00", 3);
@@ -976,19 +973,19 @@ construct_mac_tlv(struct sc_card *card, unsigned char *apdu_buf, size_t data_tlv
 	memcpy(icv, exdata->icv_mac, 16);
 	if (KEY_TYPE_AES == key_type) {
 		if(exdata->bFipsCertification)
-        {
-            for (int i=0;i<16;i++)
-            {
-                apdu_buf[i]=apdu_buf[i]^icv[i];
-            }
-            r = aes128_encrypt_cmac(exdata->sk_mac, 128, apdu_buf, data_tlv_len+le_tlv_len+block_size, mac);
-            LOG_TEST_RET(card->ctx, r, "aes128_encrypt_cmac failed");
-            memcpy(mac_tlv+2, &mac[0/*ulmacLen-16*/], 8);
-            for (int j=0;j<4;j++)
-            {
-                apdu_buf[j]=apdu_buf[j]^icv[j];
-            }
-        }
+        	{
+            		for (int i=0;i<16;i++)
+            		{
+                		apdu_buf[i]=apdu_buf[i]^icv[i];
+            		}
+            		r = aes128_encrypt_cmac(exdata->sk_mac, 128, apdu_buf, data_tlv_len+le_tlv_len+block_size, mac);
+            		LOG_TEST_RET(card->ctx, r, "aes128_encrypt_cmac failed");
+            		memcpy(mac_tlv+2, &mac[0/*ulmacLen-16*/], 8);
+            		for (int j=0;j<4;j++)
+            		{
+                		apdu_buf[j]=apdu_buf[j]^icv[j];
+            		}
+        	}
 		else{
 			r = aes128_encrypt_cbc(exdata->sk_mac, 16, icv, apdu_buf, mac_len, mac);
 			LOG_TEST_RET(card->ctx, r, "aes128_encrypt_cbc failed");
@@ -1129,13 +1126,13 @@ encode_apdu(struct sc_card *card, struct sc_apdu *plain, struct sc_apdu *sm,
 	/* plain_le = plain->le; */
 	/* padding */
 	if(exdata->bFipsCertification){
-        if(plain->lc == 0 && apdu_buf[1] == 0x82 && apdu_buf[2] == 0x01){
-            apdu_buf[4] = 0x00;
-        }
-        else{
-            apdu_buf[4] = 0x80;
-        }
-    }
+        	if(plain->lc == 0 && apdu_buf[1] == 0x82 && apdu_buf[2] == 0x01){
+            		apdu_buf[4] = 0x00;
+        	}
+        	else{
+            		apdu_buf[4] = 0x80;
+        	}
+    	}
 	else{
 		apdu_buf[4] = 0x80;
 	}
@@ -1152,16 +1149,16 @@ encode_apdu(struct sc_card *card, struct sc_apdu *plain, struct sc_apdu *sm,
 			return -1;
 	
 	if(exdata->bFipsCertification){
-        if(plain->lc == 0 && apdu_buf[1] == 0x82 && apdu_buf[2] == 0x01){
-            if(0 != construct_mac_tlv_case1(card, apdu_buf, data_tlv_len, le_tlv_len, mac_tlv, &mac_tlv_len, exdata->smtype))
-                return -1;
-        }
-        else{
-            if (0 != construct_mac_tlv(card, apdu_buf, data_tlv_len, le_tlv_len, mac_tlv, &mac_tlv_len, exdata->smtype))
-                return -1;
-        }
-    }
-    else{
+        	if(plain->lc == 0 && apdu_buf[1] == 0x82 && apdu_buf[2] == 0x01){
+            		if(0 != construct_mac_tlv_case1(card, apdu_buf, data_tlv_len, le_tlv_len, mac_tlv, &mac_tlv_len, exdata->smtype))
+                		return -1;
+        	}
+        	else{
+            		if (0 != construct_mac_tlv(card, apdu_buf, data_tlv_len, le_tlv_len, mac_tlv, &mac_tlv_len, exdata->smtype))
+                		return -1;
+        	}
+    	}
+    	else{
 		if (0 != construct_mac_tlv(card, apdu_buf, data_tlv_len, le_tlv_len, mac_tlv, &mac_tlv_len, exdata->smtype))
 			return -1;
 	}
