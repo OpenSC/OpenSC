@@ -50,8 +50,8 @@ int fuzz_util_connect_card(struct sc_context *ctx, struct sc_card **card)
 
 void initilize_global()
 {
-	/* Global variables need to be initialized
-	   since libFuzzer runs more test in one thread. */
+	/* Global variables need to be reser between runs,
+	   fuzz target is called repetitively in one execution */
 	reader_data = NULL;
 	reader_data_size = 0;
 	ctx = NULL;
@@ -71,7 +71,7 @@ void test_load(char *op, const uint8_t *data, size_t size)
 {
 	char *filename = NULL;
 	char *argv[] = {"./fuzz_piv", op, NULL /*ref*/, "-i", NULL /*filename*/, "-A", NULL /*admin*/, NULL};
-	int argc = 3;
+	int argc = 7;
 	char *opt_ref = NULL, *opt_admin = NULL;
 
 	if (!(opt_ref = extract_word(&data, &size)))
@@ -82,7 +82,7 @@ void test_load(char *op, const uint8_t *data, size_t size)
 		free(opt_ref);
 		return;
 	}
-	argv[7] = opt_admin;
+	argv[6] = opt_admin;
 
 	if (create_input_file(&filename, &data, &size) != 0) {
 		free(opt_ref);
