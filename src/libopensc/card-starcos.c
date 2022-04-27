@@ -85,6 +85,12 @@ typedef struct starcos_ex_data_st {
 	unsigned int    pin_encoding;
 } starcos_ex_data;
 
+/* 
+   This constant allows signing or
+   decrypting with RSA keys up to 4096 bits.
+*/
+#define STARCOS3X_PROBE_APDU_LENGTH	512
+
 #define PIN_ENCODING_DETERMINE	0
 #define PIN_ENCODING_DEFAULT	SC_PIN_ENCODING_GLP
 
@@ -288,14 +294,15 @@ static unsigned int starcos_determine_pin_encoding(sc_card_t *card)
 static int starcos_probe_reader_for_ext_apdu(sc_card_t * card) {
 	sc_apdu_t apdu;
 	int rv;
-	u8 data[260];
+	/* try to read STARCOS3X_PROBE_APDU_LENGTH bytes */
+	u8 data[STARCOS3X_PROBE_APDU_LENGTH];
 
-	// Get Data: Get Chip Serial Number
+	/* Get Data: Get Chip Serial Number */
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_EXT, 0xCA, 0x9F, 0x6C);
 	apdu.cla = 0xA0;
 	apdu.resp = data;
 	apdu.resplen = sizeof(data);
-	apdu.le = apdu.datalen;
+	apdu.le = apdu.resplen;
 	rv = sc_transmit_apdu(card, &apdu);
 	return ( rv == SC_SUCCESS );
 }
@@ -327,7 +334,6 @@ static int starcos_init(sc_card_t *card)
 
 	if (card->type == SC_CARD_TYPE_STARCOS_V3_4
 			|| card->type == SC_CARD_TYPE_STARCOS_V3_5) {
-		card->caps |= SC_CARD_CAP_APDU_EXT;
 
 		flags |= SC_CARD_FLAG_RNG
 			| SC_ALGORITHM_RSA_HASH_SHA224
@@ -362,20 +368,39 @@ static int starcos_init(sc_card_t *card)
 	}
 
 	if (sc_parse_ef_atr(card) == SC_SUCCESS) {
-		if (card->ef_atr->card_capabilities & ISO7816_CAP_EXTENDED_LENGTH) {
-			card->caps |= SC_CARD_CAP_APDU_EXT;
+		size_t max_recv_size = 0;
+		size_t max_send_size = 0;
+
+		/* Add max. length values from IAS/ECC specific issuer data */
+		if ( card->ef_atr->issuer_data_len >= 4 ) {
+			max_recv_size = bebytes2ushort(card->ef_atr->issuer_data);
+			max_send_size = bebytes2ushort(card->ef_atr->issuer_data + 2);
 		}
+		/* which could be overridden with ISO7816 EF.ATR options, if present */
 		if (card->ef_atr->max_response_apdu > 0) {
-			card->max_recv_size = card->ef_atr->max_response_apdu;
+			max_recv_size = card->ef_atr->max_response_apdu;
 		}
 		if (card->ef_atr->max_command_apdu > 0) {
-			card->max_send_size = card->ef_atr->max_command_apdu;
+			max_send_size = card->ef_atr->max_command_apdu;
 		}
-		if ( card->caps & SC_CARD_CAP_APDU_EXT && card->max_send_size > 255 && card->max_recv_size ) {
-			// probe reader for extended APDU support
-			if ( !starcos_probe_reader_for_ext_apdu(card) ) {
-				sc_log(card->ctx, "Failed probing extended APDU, reset caps");
+
+		if ( max_send_size > 256 && max_recv_size > 256 ) {
+			size_t max_recv_size_prev = card->max_recv_size;
+			size_t max_send_size_prev = card->max_send_size;
+			/* allow SC_CARD_CAP_APDU_EXT independent of ef_atr->caps, see IAS/ECC issuer data above */
+			card->caps |= SC_CARD_CAP_APDU_EXT;
+			/* the received data should not exceed max_recv_size including the sw1/sw2 */
+			card->max_recv_size = max_recv_size - 2;
+			/* the sent APDU should not exceed max_send_size including the 4 bytes of the APDU and 2 * 3 bytes Lc/Le */
+			card->max_send_size = max_send_size - 10;
+			/* probe reader for extended APDU support */
+			if ( starcos_probe_reader_for_ext_apdu(card) ) {
+				sc_log(card->ctx, "Successfully probed extended APDU, enabling extended APDU with max send/recv %ld/%ld", max_send_size, max_recv_size);
+			} else {
 				card->caps &= ~(SC_CARD_CAP_APDU_EXT);
+				card->max_recv_size = max_recv_size_prev;
+				card->max_send_size = max_send_size_prev;
+				sc_log(card->ctx, "Ext APDU probing failed, the actual reader does not support ext APDU");
 			}
 		}
 	}
@@ -666,7 +691,7 @@ static int process_fcp_v3_4(sc_context_t *ctx, sc_file_t *file,
 }
 
 static int starcos_select_aid(sc_card_t *card,
-			      u8 aid[16], size_t len,
+			      const u8 aid[16], size_t len,
 			      sc_file_t **file_out)
 {
 	sc_apdu_t apdu;
@@ -1792,25 +1817,12 @@ static int starcos_compute_signature(sc_card_t *card,
 		if (card->type == SC_CARD_TYPE_STARCOS_V3_4
 				|| card->type == SC_CARD_TYPE_STARCOS_V3_5) {
 			size_t tmp_len;
-			u8 apdu_case;
-			size_t apdu_le;
 
-			apdu_le = outlen;
-			/* RSA signatures with greater than 2048 bitlength require extended APDU,
-			   Note SC_CARD_CAP_APDU_EXT cap was probed during card initialization */
-			if (card->caps & SC_CARD_CAP_APDU_EXT) {
-				apdu_case = SC_APDU_CASE_4_EXT;
-			}
-			else {
-				apdu_case = SC_APDU_CASE_4_SHORT;
-				apdu_le = 0x00; /* allow max for short APDU (256) */
-			}
-
-			sc_format_apdu(card, &apdu, apdu_case, 0x2A,
+			sc_format_apdu(card, &apdu, SC_APDU_CASE_4, 0x2A,
 					   0x9E, 0x9A);
 			apdu.resp = out;
 			apdu.resplen = outlen;
-			apdu.le = apdu_le;
+			apdu.le = outlen;
 			if (ex_data->fix_digestInfo) {
 				// need to pad data
 				unsigned int flags = ex_data->fix_digestInfo & SC_ALGORITHM_RSA_HASHES;
@@ -1866,7 +1878,6 @@ static int starcos_compute_signature(sc_card_t *card,
 		}
 		if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 			size_t len = apdu.resplen > outlen ? outlen : apdu.resplen;
-			/* Note: no local buffer was used for extended APDU */
 			if ( out != apdu.resp ) {
 				memcpy(out, apdu.resp, len);
 			}
@@ -2112,8 +2123,6 @@ static int starcos_logout_v3_x(sc_card_t *card)
 {
 	int r = SC_ERROR_NOT_SUPPORTED;
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
-
-	starcos_pin_clear_logged_in(card);
 
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
