@@ -26,16 +26,11 @@ const uint8_t *get_word(const uint8_t *data, size_t size)
 	/* Words are separated by one zero byte,
 	   return pointer to the next word if there is one */
 	const uint8_t *ptr = data;
-	if (size == 0 || *data == 0)
+	if (!data || size == 0 || *data == 0)
 		return NULL;
 	
-	while ((size_t) (ptr - data) < size && *ptr != 0) {
-		ptr++;
-	}
-	if ((size_t) (ptr - data) < size - 1 && *ptr == 0)
-		return ++ptr;
-
-	return NULL;
+	ptr = memchr(data, 0, size - 1);
+	return ptr ? ++ptr : NULL;
 }
 
 char *extract_word(const uint8_t **data, size_t *size)
