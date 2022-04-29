@@ -55,12 +55,12 @@ sudo apt-get install -y build-essential $DEPS
 
 # install openssl 3.0 if needed
 if [ "$1" == "ossl3" -o "$2" == "ossl3" ]; then
-	./.github/setup-openssl.sh
+	./.github/setup-openssl.sh &> /tmp/openssl.log || cat /tmp/openssl.log
 fi
 
 # install libressl if needed
 if [ "$1" == "libressl" -o "$2" == "libressl" ]; then
-	./.github/setup-libressl.sh
+	./.github/setup-libressl.sh &> /tmp/libressl.log || cat /tmp/libressl.log
 fi
 
 if [ "$1" == "mingw" -o "$1" == "mingw32" ]; then
