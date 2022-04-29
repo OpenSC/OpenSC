@@ -924,7 +924,10 @@ static int sc_hsm_list_files(sc_card_t *card, u8 * buf, size_t buflen)
 	}
 	LOG_TEST_RET(card->ctx, r, "ENUMERATE OBJECTS APDU transmit failed");
 
-	memcpy(buf, recvbuf, buflen);
+	if (buflen < apdu.resplen)
+		memcpy(buf, recvbuf, buflen);
+	else
+		memcpy(buf, recvbuf, apdu.resplen);
 
 	LOG_FUNC_RETURN(card->ctx, apdu.resplen);
 }
