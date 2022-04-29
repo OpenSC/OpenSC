@@ -4,7 +4,7 @@ set -ex -o xtrace
 
 V=libressl-3.4.2
 
-sudo apt-get remove -y openssl libssl-dev java8-runtime-headless default-jre-headless
+sudo apt-get remove -y libssl-dev
 
 if [ ! -d "$V" ]; then
 	# letsencrypt CA does not seem to be included in CI runner
