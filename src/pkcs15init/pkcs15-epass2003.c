@@ -298,6 +298,8 @@ static int epass2003_pkcs15_key_reference(struct sc_profile *profile,
 					  struct sc_pkcs15_prkey_info *prkey)
 {
 	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
+	if (prkey->path.len == 0)
+		SC_FUNC_RETURN(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
 	prkey->key_reference = prkey->path.value[prkey->path.len - 1];
 	SC_FUNC_RETURN(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
 }
