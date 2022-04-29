@@ -2,7 +2,7 @@
 
 set -ex -o xtrace
 
-sudo apt-get remove -y openssl libssl-dev java8-runtime-headless default-jre-headless
+sudo apt-get remove -y libssl-dev
 
 if [ ! -d "openssl" ]; then
 	git clone --single-branch --branch=openssl-3.0 --depth 1 https://github.com/openssl/openssl
