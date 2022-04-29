@@ -588,9 +588,9 @@ sc_pkcs15init_delete_by_path(struct sc_profile *profile, struct sc_pkcs15_card *
 	 * card (driver and profile) that uses self delete ACL.
 	 */
 	/* Select the file itself */
-        path = *file_path;
-        rv = sc_select_file(p15card->card, &path, &file);
-        LOG_TEST_RET(ctx, rv, "cannot select file to delete");
+	path = *file_path;
+	rv = sc_select_file(p15card->card, &path, &file);
+	LOG_TEST_RET(ctx, rv, "cannot select file to delete");
 
 	if (sc_file_get_acl_entry(file, SC_AC_OP_DELETE_SELF))   {
 		sc_log(ctx, "Found 'DELETE-SELF' acl");
@@ -625,6 +625,8 @@ sc_pkcs15init_delete_by_path(struct sc_profile *profile, struct sc_pkcs15_card *
 
 	memset(&path, 0, sizeof(path));
 	path.type = SC_PATH_TYPE_FILE_ID;
+	if (file_path->len < 2)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 	path.value[0] = file_path->value[file_path->len - 2];
 	path.value[1] = file_path->value[file_path->len - 1];
 	path.len = 2;
