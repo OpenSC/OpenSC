@@ -1355,6 +1355,10 @@ do_fileid(struct state *cur, int argc, char **argv)
 		}
 		*path = df->path;
 	}
+	if (path->len + 2 > sizeof(path->value)) {
+		parse_error(cur, "File path too long\n");
+		return 1;
+	}
 	memcpy(path->value + path->len, temp.value, 2);
 	path->len += 2;
 
