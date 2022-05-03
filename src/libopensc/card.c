@@ -1461,8 +1461,10 @@ int sc_copy_ec_params(struct sc_ec_parameters *dst, struct sc_ec_parameters *src
 	dst->id = src->id;
 	if (src->der.value && src->der.len)   {
 		dst->der.value = malloc(src->der.len);
-		if (!dst->der.value)
+		if (!dst->der.value) {
+			free(dst->named_curve);
 			return SC_ERROR_OUT_OF_MEMORY;
+		}
 		memcpy(dst->der.value, src->der.value, src->der.len);
 		dst->der.len = src->der.len;
 	}
