@@ -606,14 +606,14 @@ gen_init_key(struct sc_card *card, unsigned char *key_enc, unsigned char *key_ma
 
 	/* Step 1 - Generate Derivation data */
 	if(isFips){
-        	memset(data,0x00,15);
-        	memset(&data[11], 0x04, 1);
-        	memset(&data[14], 0x80, 1);
-        	memset(&data[15], 0x01, 1);
-        	memcpy(&data[16], g_random, 8);
-        	memcpy(&data[24], &result[12+1], 8);
-    	}
-    	else{
+		memset(data,0x00,15);
+		memset(&data[11], 0x04, 1);
+		memset(&data[14], 0x80, 1);
+		memset(&data[15], 0x01, 1);
+		memcpy(&data[16], g_random, 8);
+		memcpy(&data[24], &result[12+1], 8);
+	}
+	else{
 		memcpy(data, &result[16], 4);
 		memcpy(&data[4], g_random, 4);
 		memcpy(&data[8], &result[12], 4);
@@ -643,8 +643,8 @@ gen_init_key(struct sc_card *card, unsigned char *key_enc, unsigned char *key_ma
 	}
 
 	if(isFips){
-		memset(&data[11], 0x00, 1);
-		memset(&data[14], 0x40, 1);
+		data[11] = 0x00;
+		data[14] = 0x40;
 	}
 	else{
 		memcpy(data, g_random, 8);
@@ -706,11 +706,11 @@ verify_init_key(struct sc_card *card, unsigned char *ran_key, unsigned char key_
 	if(isFips)
 	{
 		memset(data,0x00,15);
-        	memset(&data[11], 0x01, 1);
-        	memset(&data[14], 0x40, 1);
-        	memset(&data[15], 0x01, 1);
-        	memcpy(&data[16], g_random, 8);
-        	memcpy(&data[24], ran_key, 8);
+		data[11] = 0x01;
+		data[14] = 0x40;
+		data[15] = 0x01;
+		memcpy(&data[16], g_random, 8);
+		memcpy(&data[24], ran_key, 8);
 	}else{
 		memcpy(data, ran_key, 8);
 		memcpy(&data[8], g_random, 8);
@@ -737,7 +737,8 @@ verify_init_key(struct sc_card *card, unsigned char *ran_key, unsigned char key_
 	if(isFips){
 		memcpy(data, "\x84\x82\x03\x00\x10", 5);
         	memcpy(&data[5], &cryptogram[0], 8);
-	}else{
+	}
+	else{
 		memcpy(data, "\x84\x82\x03\x00\x10", 5);
 		memcpy(&data[5], &cryptogram[16], 8);
 		memcpy(&data[13], "\x80\x00\x00", 3);
@@ -1126,13 +1127,13 @@ encode_apdu(struct sc_card *card, struct sc_apdu *plain, struct sc_apdu *sm,
 	/* plain_le = plain->le; */
 	/* padding */
 	if(exdata->bFipsCertification){
-        	if(plain->lc == 0 && apdu_buf[1] == 0x82 && apdu_buf[2] == 0x01){
-            		apdu_buf[4] = 0x00;
-        	}
-        	else{
-            		apdu_buf[4] = 0x80;
-        	}
-    	}
+		if(plain->lc == 0 && apdu_buf[1] == 0x82 && apdu_buf[2] == 0x01){
+			apdu_buf[4] = 0x00;
+		}
+		else{
+			apdu_buf[4] = 0x80;
+		}
+	}
 	else{
 		apdu_buf[4] = 0x80;
 	}
