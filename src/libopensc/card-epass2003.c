@@ -328,96 +328,130 @@ static int
 aes128_encrypt_cmac_ft(const unsigned char *key, int keysize,
         const unsigned char *input, size_t length, unsigned char *output,unsigned char *iv) 
 {
-    unsigned char data1[32] = {0}; 
-    unsigned char data2[32] = {0}; 
-    unsigned char k1Bin[32] = {0}; 
-    unsigned char k2Bin[32] = {0}; 
+	unsigned char data1[32] = {0}; 
+	unsigned char data2[32] = {0}; 
+	unsigned char k1Bin[32] = {0}; 
+	unsigned char k2Bin[32] = {0}; 
 
-    unsigned char check = 0; 
-    BIGNUM *enc1,*lenc1; 
-    BIGNUM *enc2,*lenc2; 
+	unsigned char check = 0; 
+	BIGNUM *enc1,*lenc1; 
+	BIGNUM *enc2,*lenc2; 
 
     // k1
-    int offset = 0; 
-    int r = SC_ERROR_INTERNAL;
-    unsigned char out[32] = {0}; 
-    unsigned char iv0[EVP_MAX_IV_LENGTH] = {0}; 
-    r = openssl_enc(EVP_aes_128_ecb(), key, iv0, data1, 16, out);
-    if( r != SC_SUCCESS)
-        return r;
-
-    check = out[0];
-
-    enc1 = BN_new();
-    lenc1 = BN_new();
-    BN_bin2bn(out,16,enc1);
-    BN_lshift1(lenc1,enc1);
-    BN_bn2bin(lenc1,k1Bin);
+	int offset = 0; 
+	int r = SC_ERROR_INTERNAL;
+	unsigned char out[32] = {0}; 
+	unsigned char iv0[EVP_MAX_IV_LENGTH] = {0}; 
+	r = openssl_enc(EVP_aes_128_ecb(), key, iv0, data1, 16, out);
+	if( r != SC_SUCCESS)
+		return r;
+	
+	check = out[0];
+	enc1 = BN_new();
+	lenc1 = BN_new();
+	BN_bin2bn(out,16,enc1);
+	BN_lshift1(lenc1,enc1);
+	BN_bn2bin(lenc1,k1Bin);
 	if(check > 0x80){
-        offset = 1; 
-        k1Bin[15+offset] ^= 0x87; 
-    }    
-    BN_free(enc1);
-    BN_free(lenc1);
+		offset = 1; 
+		k1Bin[15+offset] ^= 0x87; 
+	}
+	BN_free(enc1);
+	BN_free(lenc1);
 
     // k2
-    enc2 = BN_new();
-    lenc2 = BN_new();
-    check = k1Bin[offset];
-    BN_bin2bn(&k1Bin[offset],16,enc2);
+	enc2 = BN_new();
+	lenc2 = BN_new();
+	check = k1Bin[offset];
+	BN_bin2bn(&k1Bin[offset],16,enc2);
 
-    offset = 0;
-    BN_lshift1(lenc2,enc2);
-    BN_bn2bin(lenc2,k2Bin);
-    if(check > 0x80){
-        offset = 1;
-        k2Bin[15+offset] ^= 0x87;
-    }
-    BN_free(enc2);
-    BN_free(lenc2);
+	offset = 0;
+	BN_lshift1(lenc2,enc2);
+	BN_bn2bin(lenc2,k2Bin);
+	if(check > 0x80){
+		offset = 1;
+		k2Bin[15+offset] ^= 0x87;
+	}
+	BN_free(enc2);
+	BN_free(lenc2);
     //padding 
-    if(length < 16){
-        memcpy(&data2[0],input,length);
-        data2[length] = 0x80;
-    }
+	if(length < 16){
+		memcpy(&data2[0],input,length);
+		data2[length] = 0x80;
+	}
 
     //k2 xor padded data
-    for (int i=0;i<16;i++){
-        data2[i]=data2[i]^k2Bin[offset + i];
-    }
-    return openssl_enc(EVP_aes_128_cbc(), key, iv, data2, 16, output);
+	for (int i=0;i<16;i++){
+		data2[i]=data2[i]^k2Bin[offset + i];
+	}
+	return openssl_enc(EVP_aes_128_cbc(), key, iv, data2, 16, output);
 }
 
 static int
 aes128_encrypt_cmac(const unsigned char *key, int keysize,
         const unsigned char *input, size_t length, unsigned char *output)
 {
-    size_t mactlen = 0;
-    CMAC_CTX *ctx = CMAC_CTX_new();
-    if(ctx == NULL)
-    {
-        return SC_ERROR_INTERNAL;
-    }
+	size_t mactlen = 0;
+	int r = SC_ERROR_INTERNAL;
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+	CMAC_CTX *ctx = CMAC_CTX_new();
+	if(ctx == NULL)
+	{
+		return SC_ERROR_INTERNAL;
+	}
+	
+	if(!CMAC_Init(ctx, key,keysize/8, EVP_aes_128_cbc(), NULL))
+	{
+		goto err;
+	}
+	
+	if(!CMAC_Update(ctx, input, length))
+	{
+		goto err;
+	}
 
-    if(!CMAC_Init(ctx, key,keysize/8, EVP_aes_128_cbc(), NULL))
-    {
-        CMAC_CTX_free(ctx);
-        return SC_ERROR_INTERNAL;
-    }
+	if(!CMAC_Final(ctx, output, &mactlen))
+	{
+		goto err;
+	}
+	r = SC_SUCCESS;
+err:
+    	CMAC_CTX_free(ctx);
+#else
+	EVP_MAC *mac = EVP_MAC_fetch(NULL, "cmac", NULL);
+	if(mac == NULL)
+	{    
+		return r;
+	}
 
-    if(!CMAC_Update(ctx, input, length))
-    {
-        CMAC_CTX_free(ctx);
-        return SC_ERROR_INTERNAL;
-    }
+	OSSL_PARAM params[2] = {0}; 
+	params[0] = OSSL_PARAM_construct_utf8_string("cipher","aes-128-cbc", 0);
+	params[1] = OSSL_PARAM_construct_end();
 
-    if(!CMAC_Final(ctx, output, &mactlen))
-    {
-        CMAC_CTX_free(ctx);
-        return SC_ERROR_INTERNAL;
-    }
-    CMAC_CTX_free(ctx);
-    return SC_SUCCESS;
+	EVP_MAC_CTX *ctx = EVP_MAC_CTX_new(mac);
+	if(ctx == NULL)
+	{
+		EVP_MAC_CTX_free(ctx);
+		return r;
+	}    
+	if(!EVP_MAC_init(ctx, (const unsigned char *)key, keysize/8,params))
+	{
+		goto err;
+	}
+	if(!EVP_MAC_update(ctx, input,length))
+	{
+		goto err; 
+	}
+	if(!EVP_MAC_final(ctx, output, &mactlen, 16)) 
+	{    
+		goto err; 
+	}    
+	r = SC_SUCCESS;
+err:
+	EVP_MAC_CTX_free(ctx);
+	EVP_MAC_free(mac);
+#endif
+	return r;
 }
 
 static int
