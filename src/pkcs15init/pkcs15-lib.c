@@ -609,10 +609,14 @@ sc_pkcs15init_delete_by_path(struct sc_profile *profile, struct sc_pkcs15_card *
 			/* Select the parent DF */
 			path.len -= 2;
 			rv = sc_select_file(p15card->card, &path, &parent);
+			if (rv < 0)
+				sc_file_free(file);
 			LOG_TEST_RET(ctx, rv, "Cannot select parent");
 
 			rv = sc_pkcs15init_authenticate(profile, p15card, parent, SC_AC_OP_DELETE);
 			sc_file_free(parent);
+			if (rv < 0)
+				sc_file_free(file);
 			LOG_TEST_RET(ctx, rv, "parent 'DELETE' authentication failed");
 		}
 	}
