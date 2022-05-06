@@ -395,23 +395,17 @@ aes128_encrypt_cmac(const unsigned char *key, int keysize,
 	int r = SC_ERROR_INTERNAL;
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 	CMAC_CTX *ctx = CMAC_CTX_new();
-	if(ctx == NULL)
-	{
+	if(ctx == NULL) {
 		return SC_ERROR_INTERNAL;
 	}
 	
-	if(!CMAC_Init(ctx, key,keysize/8, EVP_aes_128_cbc(), NULL))
-	{
+	if(!CMAC_Init(ctx, key,keysize/8, EVP_aes_128_cbc(), NULL)) {
 		goto err;
 	}
-	
-	if(!CMAC_Update(ctx, input, length))
-	{
+	if(!CMAC_Update(ctx, input, length)) {
 		goto err;
 	}
-
-	if(!CMAC_Final(ctx, output, &mactlen))
-	{
+	if(!CMAC_Final(ctx, output, &mactlen)) {
 		goto err;
 	}
 	r = SC_SUCCESS;
@@ -419,8 +413,7 @@ err:
 	CMAC_CTX_free(ctx);
 #else
 	EVP_MAC *mac = EVP_MAC_fetch(NULL, "cmac", NULL);
-	if(mac == NULL)
-	{    
+	if(mac == NULL){    
 		return r;
 	}
 
@@ -429,21 +422,17 @@ err:
 	params[1] = OSSL_PARAM_construct_end();
 
 	EVP_MAC_CTX *ctx = EVP_MAC_CTX_new(mac);
-	if(ctx == NULL)
-	{
+	if(ctx == NULL){
 		EVP_MAC_CTX_free(ctx);
 		return r;
 	}    
-	if(!EVP_MAC_init(ctx, (const unsigned char *)key, keysize/8,params))
-	{
+	if(!EVP_MAC_init(ctx, (const unsigned char *)key, keysize/8,params)){
 		goto err;
 	}
-	if(!EVP_MAC_update(ctx, input,length))
-	{
+	if(!EVP_MAC_update(ctx, input,length)){
 		goto err; 
 	}
-	if(!EVP_MAC_final(ctx, output, &mactlen, 16)) 
-	{    
+	if(!EVP_MAC_final(ctx, output, &mactlen, 16)) {    
 		goto err; 
 	}    
 	r = SC_SUCCESS;
