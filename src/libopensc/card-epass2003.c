@@ -745,7 +745,8 @@ verify_init_key(struct sc_card *card, unsigned char *ran_key, unsigned char key_
 		data[15] = 0x01;
 		memcpy(&data[16], g_random, 8);
 		memcpy(&data[24], ran_key, 8);
-	}else{
+	}
+	else{
 		memcpy(data, ran_key, 8);
 		memcpy(&data[8], g_random, 8);
 		data[16] = 0x80;
@@ -1184,15 +1185,15 @@ encode_apdu(struct sc_card *card, struct sc_apdu *plain, struct sc_apdu *sm,
 			return -1;
 	
 	if(exdata->bFipsCertification){
-        	if(plain->lc == 0 && apdu_buf[1] == 0x82 && apdu_buf[2] == 0x01){
-            		if(0 != construct_mac_tlv_case1(card, apdu_buf, data_tlv_len, le_tlv_len, mac_tlv, &mac_tlv_len, exdata->smtype))
-                		return -1;
-        	}
-        	else{
-            		if (0 != construct_mac_tlv(card, apdu_buf, data_tlv_len, le_tlv_len, mac_tlv, &mac_tlv_len, exdata->smtype))
-                		return -1;
-        	}
-    	}
+		if(plain->lc == 0 && apdu_buf[1] == 0x82 && apdu_buf[2] == 0x01){
+			if(0 != construct_mac_tlv_case1(card, apdu_buf, data_tlv_len, le_tlv_len, mac_tlv, &mac_tlv_len, exdata->smtype))
+				return -1;
+		}
+		else{
+			if (0 != construct_mac_tlv(card, apdu_buf, data_tlv_len, le_tlv_len, mac_tlv, &mac_tlv_len, exdata->smtype))
+				return -1;
+		}
+	}
     	else{
 		if (0 != construct_mac_tlv(card, apdu_buf, data_tlv_len, le_tlv_len, mac_tlv, &mac_tlv_len, exdata->smtype))
 			return -1;
