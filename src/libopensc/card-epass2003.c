@@ -416,7 +416,7 @@ aes128_encrypt_cmac(const unsigned char *key, int keysize,
 	}
 	r = SC_SUCCESS;
 err:
-    	CMAC_CTX_free(ctx);
+	CMAC_CTX_free(ctx);
 #else
 	EVP_MAC *mac = EVP_MAC_fetch(NULL, "cmac", NULL);
 	if(mac == NULL)
@@ -641,9 +641,9 @@ gen_init_key(struct sc_card *card, unsigned char *key_enc, unsigned char *key_ma
 	/* Step 1 - Generate Derivation data */
 	if(isFips){
 		memset(data,0x00,15);
-		memset(&data[11], 0x04, 1);
-		memset(&data[14], 0x80, 1);
-		memset(&data[15], 0x01, 1);
+		data[11] = 0x04;
+		data[14] = 0x80;
+		data[15] = 0x01;
 		memcpy(&data[16], g_random, 8);
 		memcpy(&data[24], &result[12+1], 8);
 	}
@@ -1194,7 +1194,7 @@ encode_apdu(struct sc_card *card, struct sc_apdu *plain, struct sc_apdu *sm,
 				return -1;
 		}
 	}
-    	else{
+	else{
 		if (0 != construct_mac_tlv(card, apdu_buf, data_tlv_len, le_tlv_len, mac_tlv, &mac_tlv_len, exdata->smtype))
 			return -1;
 	}
