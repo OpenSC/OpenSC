@@ -483,6 +483,10 @@ sc_profile_free(struct sc_profile *profile)
 		free(pi);
 	}
 
+	for (int i = 0; profile->options[i]; i++) {
+		free(profile->options[i]);
+	}
+
 	if (profile->p15_spec)
 		sc_pkcs15_card_free(profile->p15_spec);
 	free(profile);
