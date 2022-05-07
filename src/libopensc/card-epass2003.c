@@ -758,12 +758,11 @@ verify_init_key(struct sc_card *card, unsigned char *ran_key, unsigned char key_
 	LOG_TEST_RET(card->ctx, r, "calculate host cryptogram  failed");
 
 	memset(data, 0, sizeof(data));
+	memcpy(data, "\x84\x82\x03\x00\x10", 5);
 	if(isFips){
-		memcpy(data, "\x84\x82\x03\x00\x10", 5);
         	memcpy(&data[5], &cryptogram[0], 8);
 	}
 	else{
-		memcpy(data, "\x84\x82\x03\x00\x10", 5);
 		memcpy(&data[5], &cryptogram[16], 8);
 		memcpy(&data[13], "\x80\x00\x00", 3);
 	}
@@ -1150,13 +1149,8 @@ encode_apdu(struct sc_card *card, struct sc_apdu *plain, struct sc_apdu *sm,
 	apdu_buf[3] = (unsigned char)plain->p2;
 	/* plain_le = plain->le; */
 	/* padding */
-	if(exdata->bFipsCertification){
-		if(plain->lc == 0 && apdu_buf[1] == 0x82 && apdu_buf[2] == 0x01){
-			apdu_buf[4] = 0x00;
-		}
-		else{
-			apdu_buf[4] = 0x80;
-		}
+	if(exdata->bFipsCertification && plain->lc == 0 && apdu_buf[1] == 0x82 && apdu_buf[2] == 0x01){
+		apdu_buf[4] = 0x00;
 	}
 	else{
 		apdu_buf[4] = 0x80;
@@ -1173,15 +1167,9 @@ encode_apdu(struct sc_card *card, struct sc_apdu *plain, struct sc_apdu *sm,
 				     &le_tlv_len, exdata->smtype))
 			return -1;
 	
-	if(exdata->bFipsCertification){
-		if(plain->lc == 0 && apdu_buf[1] == 0x82 && apdu_buf[2] == 0x01){
-			if(0 != construct_mac_tlv_case1(card, apdu_buf, data_tlv_len, le_tlv_len, mac_tlv, &mac_tlv_len, exdata->smtype))
-				return -1;
-		}
-		else{
-			if (0 != construct_mac_tlv(card, apdu_buf, data_tlv_len, le_tlv_len, mac_tlv, &mac_tlv_len, exdata->smtype))
-				return -1;
-		}
+	if(exdata->bFipsCertification && plain->lc == 0 && apdu_buf[1] == 0x82 && apdu_buf[2] == 0x01){
+		if(0 != construct_mac_tlv_case1(card, apdu_buf, data_tlv_len, le_tlv_len, mac_tlv, &mac_tlv_len, exdata->smtype))
+			return -1;
 	}
 	else{
 		if (0 != construct_mac_tlv(card, apdu_buf, data_tlv_len, le_tlv_len, mac_tlv, &mac_tlv_len, exdata->smtype))
