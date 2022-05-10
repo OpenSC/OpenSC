@@ -389,7 +389,7 @@ static int fuzz_find_object(CK_SESSION_HANDLE sess, CK_OBJECT_CLASS cls,
 static void test_sign(const uint8_t *data, size_t size)
 {
 	CK_SESSION_HANDLE    session;
-	uint8_t                        login_type = CKU_USER;
+	uint8_t              login_type = CKU_USER;
 	char                *pin = NULL;
 	const unsigned char *opt_id;
 	size_t               opt_id_len = 0;
@@ -405,7 +405,7 @@ static void test_sign(const uint8_t *data, size_t size)
 	/* Process options*/
 	if (set_mechanism(&data, &size, &mech) || size < 3)
 		return;
-	          login_type = data[0];
+	login_type = data[0];
 	data++; size--;
 	if (!(pin = extract_word(&data, &size)))
 		return;
@@ -457,7 +457,7 @@ static void test_verify(const uint8_t *data, size_t size)
 {
 	CK_SESSION_HANDLE    session;
 	CK_MECHANISM         mech = {0, NULL_PTR, 0};
-	uint8_t                        login_type = CKU_USER;
+	uint8_t              login_type = CKU_USER;
 	char                *pin = NULL;
 	const unsigned char *opt_id = NULL;
 	size_t               opt_id_len = 0;
@@ -471,7 +471,7 @@ static void test_verify(const uint8_t *data, size_t size)
 	/* Process options*/
 	if (set_mechanism(&data, &size, &mech) || size < 3)
 		return;
-	          login_type = data[0];
+	login_type = data[0];
 	data++; size--;
 	if (!(pin = extract_word(&data, &size)))
 		return;
@@ -527,7 +527,7 @@ end:
 static void test_decrypt(const uint8_t *data, size_t size)
 {
 	CK_SESSION_HANDLE    session;
-	uint8_t                        login_type = CKU_USER;
+	uint8_t              login_type = CKU_USER;
 	char                *pin = NULL;
 	const unsigned char *opt_id;
 	size_t               opt_id_len = 0;
@@ -541,7 +541,7 @@ static void test_decrypt(const uint8_t *data, size_t size)
 	/* Process options*/
 	if (set_mechanism(&data, &size, &mech) || size < 3)
 		return;
-	          login_type = data[0];
+	login_type = data[0];
 	data++; size--;
 	if (!(pin = extract_word(&data, &size)))
 		return;
@@ -594,7 +594,7 @@ static void test_wrap(const uint8_t *data, size_t size)
 	/* Set options */
 	if (set_mechanism(&data, &size, &mech) || size < 3)
 		return;
-	          login_type = data[0];
+	login_type = data[0];
 	data++; size--;
 	if (!(pin = extract_word(&data, &size)))
 		return;
@@ -745,7 +745,7 @@ static void test_unwrap(const uint8_t *data, size_t size)
 	/* Set options */
 	if (set_mechanism(&data, &size, &mech) || size < 3)
 		goto end;
-	          login_type = data[0];
+	login_type = data[0];
 	data++; size--;
 	if (!(pin = extract_word(&data, &size)))
 		goto end;
@@ -796,7 +796,7 @@ static void test_derive(const uint8_t *data, size_t size)
 	/* Set options */
 	if (set_mechanism(&data, &size, &mech) || size < 3)
 		goto end;
-	          login_type = data[0];
+	login_type = data[0];
 	data++; size--;
 	if (!(pin = extract_word(&data, &size)))
 		goto end;
@@ -838,7 +838,7 @@ static void test_genkeypair(const uint8_t *data, size_t size)
 	/* Process options*/
 	if (set_mechanism(&data, &size, &mech) || size < 3)
 		goto end;
-	          login_type = data[0];
+	login_type = data[0];
 	data++; size--;
 	if (!(pin = extract_word(&data, &size)))
 		goto end;
@@ -899,8 +899,10 @@ static void test_store_data(const uint8_t *data, size_t size)
 	/* Fill attributes to data template */
 	if (size < 4)
 		goto end;
-	FILL_ATTR(data_templ[n_data_attr++], CKA_CLASS, &class, sizeof(class));
-	FILL_ATTR(data_templ[n_data_attr++], CKA_VALUE, &contents, contents_len);
+	FILL_ATTR(data_templ[n_data_attr], CKA_CLASS, &class, sizeof(class));
+	n_data_attr++;
+	FILL_ATTR(data_templ[n_data_attr], CKA_VALUE, &contents, contents_len);
+	n_data_attr++;
 	fill_bool_attr(&data_templ, &n_data_attr, CKA_TOKEN, *data % 2);
 	data++; size--;
 	fill_bool_attr(&data_templ, &n_data_attr, CKA_PRIVATE, *data % 2);
@@ -913,7 +915,8 @@ static void test_store_data(const uint8_t *data, size_t size)
 		if ((app_id_len = get_buffer(&ptr, size, &data, &size, 256)) == 0)
 			goto end;
 		memcpy(app_id, ptr, app_id_len);
-		FILL_ATTR(data_templ[n_data_attr++], CKA_OBJECT_ID, app_id, app_id_len);
+		FILL_ATTR(data_templ[n_data_attr], CKA_OBJECT_ID, app_id, app_id_len);
+		n_data_attr++;
 	}
 
 	/* Initialize */
@@ -963,9 +966,12 @@ static void test_store_cert(const uint8_t *data, size_t size)
 	/* Fill attributes to certificate template */
 	if (size < 4)
 		goto end;
-	FILL_ATTR(cert_templ[n_cert_attr++], CKA_CLASS, &class, sizeof(class));
-	FILL_ATTR(cert_templ[n_cert_attr++], CKA_VALUE, contents, contents_len);
-	FILL_ATTR(cert_templ[n_cert_attr++], CKA_CERTIFICATE_TYPE, &cert_type, sizeof(cert_type));
+	FILL_ATTR(cert_templ[n_cert_attr], CKA_CLASS, &class, sizeof(class));
+	n_cert_attr++;
+	FILL_ATTR(cert_templ[n_cert_attr], CKA_VALUE, contents, contents_len);
+	n_cert_attr++;
+	FILL_ATTR(cert_templ[n_cert_attr], CKA_CERTIFICATE_TYPE, &cert_type, sizeof(cert_type));
+	n_cert_attr++;
 	fill_bool_attr(&cert_templ, &n_cert_attr, CKA_TOKEN, *data % 2);
 	data++; size--;
 	fill_bool_attr(&cert_templ, &n_cert_attr, CKA_PRIVATE, *data % 2);
@@ -986,23 +992,26 @@ end:
 
 static void test_store_key(const uint8_t *data, size_t size)
 {
-	CK_SESSION_HANDLE   session;
-	CK_OBJECT_CLASS     class = CKO_SECRET_KEY;
-	uint8_t             login_type = CKU_USER;
-	unsigned char       contents[5000];
-	int                 contents_len = 0;
-	const uint8_t      *ptr = NULL;
-	CK_ATTRIBUTE       *key_template = NULL;
-	int                 n_key_attr = 0;
-	char               *pin = NULL;
-	CK_OBJECT_HANDLE    key_obj;
+	CK_SESSION_HANDLE session;
+	CK_OBJECT_CLASS   class = CKO_SECRET_KEY;
+	uint8_t           login_type = CKU_USER;
+	unsigned char     contents[5000];
+	int               contents_len = 0;
+	const uint8_t    *ptr = NULL;
+	CK_ATTRIBUTE     *key_template = NULL;
+	int               n_key_attr = 0;
+	char             *pin = NULL;
+	CK_OBJECT_HANDLE  key_obj;
+
+	memset(contents, 0, sizeof(contents));
+	if (size < 3)
+		return;
+	class = *data;
+	data++; size--;
 
 	/* Get PIN */
 	if (!(pin = extract_word(&data, &size)))
 		goto end;
-
-	/* Extract content from fuzzing input */
-	memset(contents, 0, sizeof(contents));
 
 	if (fill_key_template(&key_template, &n_key_attr, &data, &size, &class, true) != 0)
 		goto end;
@@ -1015,11 +1024,9 @@ static void test_store_key(const uint8_t *data, size_t size)
 		if ((contents_len = get_buffer(&ptr, size, &data, &size, 5000)) == 0)	
 			goto end;
 		memcpy(contents, ptr, contents_len);
-		FILL_ATTR(key_template[n_key_attr++], CKA_VALUE, contents, contents_len);
+		FILL_ATTR(key_template[n_key_attr], CKA_VALUE, contents, contents_len);
+		n_key_attr++;
 	}
-	class = *data;
-	data++; size--;
-	
 
 	/* Initialize */
 	if (fuzz_pkcs11_initialize(data, size, NULL, &session) != CKR_OK)
