@@ -622,7 +622,12 @@ end:
 	free(pin);
 }
 
-#define FILL_ATTR(attr, typ, val, len) {(attr).type=(typ); (attr).pValue=(val); (attr).ulValueLen=len;}
+#define FILL_ATTR(attr, typ, val, len) do { \
+	(attr).type=(typ); \
+	(attr).pValue=(val); \
+	(attr).ulValueLen=len; \
+} while(0)
+
 void fill_bool_attr(CK_ATTRIBUTE **keyTemplate, int *n_attr, int type, int value)
 {
 	if (value) {
