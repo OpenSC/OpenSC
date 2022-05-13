@@ -348,6 +348,7 @@ static int gen_key(const char * key_info)
 		newkey = RSA_new();
 		if (newkey == NULL) {
 			EVP_PKEY_free(evpkey);
+			free(keydata.pubkey);
 			fprintf(stderr, "gen_key RSA_new failed %d\n",r);
 			return -1;
 		}
@@ -359,6 +360,7 @@ static int gen_key(const char * key_info)
 
 		if (!keydata.pubkey) {
 			fprintf(stderr, "gen_key failed %d\n", r);
+			free(keydata.pubkey);
 			EVP_PKEY_free(evpkey);
 			return -1;
 		}
@@ -370,6 +372,8 @@ static int gen_key(const char * key_info)
 		expc[1] = (u8) (expl >>16) & 0xff;
 		expc[0] = (u8) (expl >>24) & 0xff;
 		newkey_e =  BN_bin2bn(expc, 4, NULL);
+		free(keydata.pubkey);
+		keydata.pubkey_len = 0;
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 		if (RSA_set0_key(newkey, newkey_n, newkey_e, NULL) != 1) {
@@ -440,6 +444,9 @@ static int gen_key(const char * key_info)
 		x = BN_bin2bn(keydata.ecpoint + 1, i, NULL);
 		y = BN_bin2bn(keydata.ecpoint + 1 + i, i, NULL) ;
 		r = EC_POINT_set_affine_coordinates_GFp(ecgroup, ecpoint, x, y, NULL);
+
+		free(keydata.ecpoint);
+		keydata.ecpoint_len = 0;
 		if (r == 0) {
 			fprintf(stderr, "EC_POINT_set_affine_coordinates_GFp failed\n");
 			EVP_PKEY_free(evpkey);
