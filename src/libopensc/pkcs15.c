@@ -859,6 +859,8 @@ sc_pkcs15_card_clear(struct sc_pkcs15_card *p15card)
 		p15card->tokeninfo->seInfo     = NULL;
 		p15card->tokeninfo->num_seInfo = 0;
 	}
+
+	sc_pkcs15_free_app(p15card);
 }
 
 
