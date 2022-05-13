@@ -19,8 +19,7 @@ if ENABLE_OPENSSL
 noinst_PROGRAMS += fuzz_piv_tool
 endif
 
-if ENABLE_SHARED
-else
+if !ENABLE_SHARED
 noinst_PROGRAMS += fuzz_pkcs11
 endif
 
