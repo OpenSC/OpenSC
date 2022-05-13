@@ -1834,7 +1834,8 @@ static int change_pin(void)
 
 	if (pincode && strlen((char *) pincode) == 0) {
 		fprintf(stderr, "No PIN code supplied.\n");
-		free(pincode);
+		if (opt_pin == NULL)
+			free(pincode);
 		return 2;
 	}
 
