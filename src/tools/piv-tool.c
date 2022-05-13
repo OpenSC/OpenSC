@@ -347,6 +347,7 @@ static int gen_key(const char * key_info)
 		RSA * newkey = NULL;
 		newkey = RSA_new();
 		if (newkey == NULL) {
+			EVP_PKEY_free(evpkey);
 			fprintf(stderr, "gen_key RSA_new failed %d\n",r);
 			return -1;
 		}
@@ -355,6 +356,13 @@ static int gen_key(const char * key_info)
 		OSSL_PARAM_BLD *bld = NULL;
 		OSSL_PARAM *params = NULL;
 #endif
+
+		if (!keydata.pubkey) {
+			fprintf(stderr, "gen_key failed %d\n", r);
+			EVP_PKEY_free(evpkey);
+			return -1;
+		}
+
 		newkey_n = BN_bin2bn(keydata.pubkey, keydata.pubkey_len, NULL);
 		expl = keydata.exponent;
 		expc[3] = (u8) expl & 0xff;
@@ -366,6 +374,7 @@ static int gen_key(const char * key_info)
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 		if (RSA_set0_key(newkey, newkey_n, newkey_e, NULL) != 1) {
 			fprintf(stderr, "gen_key unable to set RSA values");
+			EVP_PKEY_free(evpkey);
 			return -1;
 		}
 
@@ -416,6 +425,12 @@ static int gen_key(const char * key_info)
 		const char *group_name;
 #endif
 
+		if (!keydata.ecpoint) {
+			fprintf(stderr, "gen_key failed %d\n", r);
+			EVP_PKEY_free(evpkey);
+			return -1;
+		}
+
 		ecgroup = EC_GROUP_new_by_curve_name(nid);
 		EC_GROUP_set_asn1_flag(ecgroup, OPENSSL_EC_NAMED_CURVE);
 		ecpoint = EC_POINT_new(ecgroup);
@@ -427,6 +442,7 @@ static int gen_key(const char * key_info)
 		r = EC_POINT_set_affine_coordinates_GFp(ecgroup, ecpoint, x, y, NULL);
 		if (r == 0) {
 			fprintf(stderr, "EC_POINT_set_affine_coordinates_GFp failed\n");
+			EVP_PKEY_free(evpkey);
 			return -1;
 		}
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
@@ -434,11 +450,13 @@ static int gen_key(const char * key_info)
 		r = EC_KEY_set_group(eckey, ecgroup);
 		if (r == 0) {
 			fprintf(stderr, "EC_KEY_set_group failed\n");
+			EVP_PKEY_free(evpkey);
 			return -1;
 		}
 		r = EC_KEY_set_public_key(eckey, ecpoint);
 		if (r == 0) {
 			fprintf(stderr, "EC_KEY_set_public_key failed\n");
+			EVP_PKEY_free(evpkey);
 			return -1;
 		}
 
