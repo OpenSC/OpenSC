@@ -1542,6 +1542,10 @@ do_exclusive_aid(struct state *cur, int argc, char **argv)
 static int
 do_profile_extension(struct state *cur, int argc, char **argv)
 {
+	if (!cur->file) {
+		parse_error(cur, "Invalid state\n");
+		return 1;
+	}
 	return setstr(&cur->file->profile_extension, argv[0]);
 }
 
