@@ -46,13 +46,6 @@ To execute the fuzz target on one input, try:
 ./fuzz_pkcs15_reader ./test-case
 ```
 
-### Fuzzing OpenSC tools
-
-It is possible to fuzz also tools provided by OpenSC. Since it is not possible to directly fuzz the source code of tools (because of the `main()` function), the fuzz targets first create a copy of the source code via the `helper.sh` script during the build, and rename the `main()` functions (and do some more modifications if necessary).
-The fuzz targets for tools then test the tool by supplying fuzzer arguments and card APDU responses.
-
-Fuzzing input can supply whole arguments for the `argv` or only particular values for static options. See the fuzz target source code for how the fuzzing input is split into an argument and APDU parts.
-
 ## Corpus
 
 ### Corpus for `fuzz_pkcs15_reader`
