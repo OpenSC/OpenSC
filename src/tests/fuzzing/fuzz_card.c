@@ -38,7 +38,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 	uint8_t           len = 0;
 	u8               *rnd = NULL, *wrap_buf = NULL, *unwrap_buf = NULL;
 	size_t            wrap_buf_len = 0, unwrap_buf_len = 0;
-	int               reset = 0, r = 0;
+	int               r = 0;
 
 #ifdef FUZZING_ENABLED
 	fclose(stdout);
@@ -92,10 +92,6 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 
 	/* Append record */
 	sc_append_record(card, ptr, ptr_size, flag);
-
-	/* Reset card */
-	reset = (*data) < 128 ? 1 : 0;
-	sc_reset(card, reset);
 
 err:
 	free(rnd);
