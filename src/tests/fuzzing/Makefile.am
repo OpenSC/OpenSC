@@ -50,7 +50,7 @@ fuzz_pkcs15_crypt_SOURCES = fuzz_pkcs15_crypt.c fuzzer_reader.c fuzzer_tool.c $(
 							../../tools/util.c
 fuzz_pkcs15_crypt_LDADD = $(OPTIONAL_OPENSSL_LIBS)
 fuzz_pkcs11_SOURCES = fuzz_pkcs11.c fuzzer_reader.c fuzzer_tool.c $(ADDITIONAL_SRC)
-fuzz_pkcs11_CFLAGS = $(PTHREAD_CFLAGS)
+fuzz_pkcs11_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(PTHREAD_CFLAGS)
 fuzz_pkcs11_LDADD = \
 	$(top_builddir)/src/common/libpkcs11.la \
 	$(OPTIONAL_OPENSSL_LIBS) \
