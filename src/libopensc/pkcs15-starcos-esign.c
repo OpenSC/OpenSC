@@ -267,7 +267,7 @@ starcos_add_esign_app(sc_pkcs15_card_t *p15card)
 	static pindata auth_pin_v35 = {"1", "UserPIN", "3F00", 0x06, SC_PKCS15_PIN_TYPE_UTF8, 16, 6, 0,
 			USER_PIN, -1, 3, 0x00, SC_PKCS15_CO_FLAG_MODIFIABLE | SC_PKCS15_CO_FLAG_PRIVATE};
 
-	ppindata auth = (p15card->card->type == SC_CARD_TYPE_STARCOS_V3_5) ? &auth_pin_v35 : &auth_pin;
+	ppindata auth = (p15card->card->type == SC_CARD_TYPE_STARCOS_V3_5_ESIGN) ? &auth_pin_v35 : &auth_pin;
 
 	const container containers[] = {
 			{"1", &auth_cert, auth, &auth_key},
@@ -292,7 +292,7 @@ starcos_esign_init(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 
-	if (card->type != SC_CARD_TYPE_STARCOS_V3_4 && card->type != SC_CARD_TYPE_STARCOS_V3_5) {
+	if (card->type != SC_CARD_TYPE_STARCOS_V3_4_ESIGN && card->type != SC_CARD_TYPE_STARCOS_V3_5_ESIGN) {
 		return SC_ERROR_WRONG_CARD;
 	}
 
