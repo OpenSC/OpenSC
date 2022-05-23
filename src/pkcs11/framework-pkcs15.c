@@ -2576,7 +2576,9 @@ pkcs15_create_secret_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 
 out:
 	free(args.key.data); /* if allocated */
-	if (temp_object)
+
+	/* on error, free key_obj, unless it's created by pkcs15init. if OK, let it live as part of key_any_obj. */
+	if (rv != CKR_OK && temp_object)
 		free(key_obj); /* do not free if the object was created by pkcs15init. It will be freed in C_Finalize */
 	return rv;
 }
