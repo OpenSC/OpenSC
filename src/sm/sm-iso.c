@@ -477,9 +477,13 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 	if (apdu->cse & SC_APDU_EXT) {
 		sm_apdu->cse = SC_APDU_CASE_4_EXT;
 		sm_apdu->resplen = 4 + 2 + mac_len + 2 + 3 + ((apdu->resplen+1)/ctx->block_length+1)*ctx->block_length;
+		if (sm_apdu->resplen > SC_MAX_EXT_APDU_RESP_SIZE)
+			sm_apdu->resplen = SC_MAX_EXT_APDU_RESP_SIZE;
 	} else {
 		sm_apdu->cse = SC_APDU_CASE_4_SHORT;
 		sm_apdu->resplen = 4 + 2 + mac_len + 2 + 2 + ((apdu->resplen+1)/ctx->block_length+1)*ctx->block_length;
+		if (sm_apdu->resplen > SC_MAX_APDU_RESP_SIZE)
+			sm_apdu->resplen = SC_MAX_APDU_RESP_SIZE;
 	}
 	resp_data = calloc(sm_apdu->resplen, 1);
 	if (!resp_data) {
