@@ -101,10 +101,13 @@ muscle_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 
 	if ((r = sc_select_file(p15card->card, &df->path, &file)) < 0)
 		return r;
-	if ((r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_WRITE)) < 0)
+	if ((r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_WRITE)) < 0) {
+		sc_file_free(file);
 		return r;
+	}
 
 	auth_info->attrs.pin.flags &= ~SC_PKCS15_PIN_FLAG_LOCAL;
+	sc_file_free(file);
 	return 0;
 }
 
