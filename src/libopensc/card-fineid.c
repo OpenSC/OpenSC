@@ -90,8 +90,8 @@ static const struct sc_atr_table fineid_atrs[] = {
 };
 
 struct private_driver_data {
-	unsigned char aid[SC_MAX_AID_SIZE], key_ref_msb;
-	int           aid_len, operation;
+	unsigned char key_ref_msb;
+	int           operation;
 	unsigned int  algorithm, algorithm_flags;
 	long int      sn;
 };
@@ -116,8 +116,6 @@ static struct sc_card_driver fineid_drv = {
 	NULL, 0, NULL
 };
 
-/* static int fineid_get_pin_reference (struct sc_card *card,
- * int type, int reference, int cmd, int *out_ref); */
 static int fineid_get_serialnr(struct sc_card *card,
 	struct sc_serial_number *serial);
 static int fineid_select_file(struct sc_card *card, const struct sc_path *in_path,
@@ -217,8 +215,6 @@ fineid_select_aid(struct sc_card *card)
 	sc_file_dup(&fineid_current_ef, fineid_current_df);
 
 	/* Store aid to drv_data for later use */
-	memcpy(_driver_data->aid, aid_FINEID, lenAid_FINEID);
-	_driver_data->aid_len = lenAid_FINEID;
 	card->name = nameAid_FINEID;
 
 	LOG_FUNC_RETURN(card->ctx, rv);
@@ -248,7 +244,6 @@ fineid_init(struct sc_card *card)
 	if (!_driver_data)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 
-	card->cla = 0x00;
 	card->drv_data = _driver_data;
 
 	card->caps |= SC_CARD_CAP_RNG;
@@ -785,6 +780,7 @@ fineid_compute_signature(struct sc_card *card, const unsigned char *in, size_t i
 	unsigned char resp[SC_MAX_APDU_BUFFER_SIZE];
 	size_t ii = 0, reqlen, orglen, blklen = 64;
 	int rv;
+	const int MAX_INPUT_LEN = 96;
 
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -792,7 +788,7 @@ fineid_compute_signature(struct sc_card *card, const unsigned char *in, size_t i
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
-	else if (ilen > 96) {
+	else if (ilen > MAX_INPUT_LEN) {
 		sc_log(card->ctx, "Illegal input length %"SC_FORMAT_LEN_SIZE_T"u", ilen);
 		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS, "Illegal input length");
 	}

@@ -1769,7 +1769,6 @@ decode_ok:
 				sprintf((char *) linep, "%02X ", p[i]);
 				linep += 3;
 			}
-			sc_debug(ctx, SC_LOG_DEBUG_ASN1, "next tag: %s\n", line);
 		}
 		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_ASN1, SC_ERROR_ASN1_OBJECT_NOT_FOUND);
 	}
