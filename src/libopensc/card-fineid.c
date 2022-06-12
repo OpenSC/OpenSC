@@ -920,20 +920,33 @@ fineid_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 
 
 static int
-fineid_logout(struct sc_card *card)
+fineid_logout_single(struct sc_card *card, unsigned char keytype, const char *error_message)
 {
 	int rv;
+	rv = iso7816_logout(card, FINEID_PIN_AUTH);
+	LOG_TEST_RET(card->ctx, rv, error_message);
+	return SC_SUCCESS;
+}
+
+static int
+fineid_logout(struct sc_card *card)
+{
+	int rv1, rv2, rv3;
 
 	LOG_FUNC_CALLED(card->ctx);
 
-	rv = iso7816_logout(card, FINEID_PIN_AUTH);
-	LOG_TEST_RET(card->ctx, rv, "AUTH PIN logout failed");
+	rv1 = fineid_logout_single(card, FINEID_PIN_AUTH, "AUTH PIN logout failed");
+	rv2 = fineid_logout_single(card, FINEID_PIN_SIGN, "SIGN PIN logout failed");
+	rv3 = fineid_logout_single(card, FINEID_PIN_PUK, "PUK PIN logout failed");
 
-	rv = iso7816_logout(card, FINEID_PIN_SIGN);
-	LOG_TEST_RET(card->ctx, rv, "SIGN PIN logout failed");
+	if(rv1 != SC_SUCCESS)
+		LOG_FUNC_RETURN(card->ctx, rv1);
 
-	rv = iso7816_logout(card, FINEID_PIN_PUK);
-	LOG_TEST_RET(card->ctx, rv, "PUK PIN logout failed");
+	if(rv2 != SC_SUCCESS)
+		LOG_FUNC_RETURN(card->ctx, rv2);
+
+	if(rv3 != SC_SUCCESS)
+		LOG_FUNC_RETURN(card->ctx, rv3);
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
