@@ -646,11 +646,17 @@ sc_pkcs15_decode_pubkey_ec(sc_context_t *ctx,
 	sc_copy_asn1_entry(c_asn1_ec_pointQ, asn1_ec_pointQ);
 	sc_format_asn1_entry(asn1_ec_pointQ + 0, &ecpoint_data, &ecpoint_len, 1);
 	r = sc_asn1_decode(ctx, asn1_ec_pointQ, buf, buflen, NULL, NULL);
-	if (r < 0)
+	if (r < 0) {
+		if (ecpoint_data)
+			free(ecpoint_data);
 		LOG_TEST_RET(ctx, r, "ASN.1 decoding failed");
+	}
 
-	if (ecpoint_len == 0 || *ecpoint_data != 0x04)
+	if (ecpoint_len == 0 || *ecpoint_data != 0x04) {
+		if (ecpoint_data)
+			free(ecpoint_data);
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Supported only uncompressed EC pointQ value");
+	}
 
 	key->ecpointQ.len = ecpoint_len;
 	key->ecpointQ.value = ecpoint_data;
