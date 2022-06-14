@@ -335,14 +335,18 @@ static int starcos_select_aid(sc_card_t *card,
    otherwise returns 0
  */
 static int starcos_has_esign_app(sc_card_t * card) {
-	
-	static u8 esign_aid[SC_MAX_PATH_SIZE] = { 0xA0, 0x00, 0x00, 0x02, 0x45, 0x53, 0x69, 0x67, 0x6E };
+	static const char * starcos_esign_aid = "A0:00:00:02:45:53:69:67:6E";
 	int rv;
 
 	rv = starcos_select_mf(card);
 	if ( rv == SC_SUCCESS ) {
 		sc_file_t * file;
-		rv = starcos_select_aid(card, esign_aid, 9, &file);
+		u8 aid[SC_MAX_PATH_SIZE];
+		size_t len = sizeof(aid);
+
+		rv = sc_hex_to_bin(starcos_esign_aid, aid, &len);
+		LOG_TEST_RET(card->ctx, rv, "Failed to convert eSing AID");
+		rv = starcos_select_aid(card, aid, len, &file);
 		sc_file_free(file);
 		if ( rv == SC_SUCCESS ) {
 			starcos_select_mf(card);
@@ -2088,28 +2092,28 @@ static int starcos_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 	}
 
 	if ( IS_V3x(card) ) {
-			card->serialnr.len = SC_MAX_SERIALNR;
-			r = sc_parse_ef_gdo(card, card->serialnr.value, &card->serialnr.len, NULL, 0);
-			if (r < 0) {
-				card->serialnr.len = 0;
-				return r;
-			}
+		card->serialnr.len = SC_MAX_SERIALNR;
+		r = sc_parse_ef_gdo(card, card->serialnr.value, &card->serialnr.len, NULL, 0);
+		if (r < 0) {
+			card->serialnr.len = 0;
+			return r;
+		}
 	} else {
-			/* get serial number via GET CARD DATA */
-			sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xf6, 0x00, 0x00);
-			apdu.cla |= 0x80;
-			apdu.resp = rbuf;
-			apdu.resplen = sizeof(rbuf);
-			apdu.le   = 256;
-			apdu.lc   = 0;
-			apdu.datalen = 0;
-			r = sc_transmit_apdu(card, &apdu);
-			LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
-			if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
-				return SC_ERROR_INTERNAL;
-			/* cache serial number */
-			memcpy(card->serialnr.value, apdu.resp, MIN(apdu.resplen, SC_MAX_SERIALNR));
-			card->serialnr.len = MIN(apdu.resplen, SC_MAX_SERIALNR);
+		/* get serial number via GET CARD DATA */
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xf6, 0x00, 0x00);
+		apdu.cla |= 0x80;
+		apdu.resp = rbuf;
+		apdu.resplen = sizeof(rbuf);
+		apdu.le   = 256;
+		apdu.lc   = 0;
+		apdu.datalen = 0;
+		r = sc_transmit_apdu(card, &apdu);
+		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+		if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
+			return SC_ERROR_INTERNAL;
+		/* cache serial number */
+		memcpy(card->serialnr.value, apdu.resp, MIN(apdu.resplen, SC_MAX_SERIALNR));
+		card->serialnr.len = MIN(apdu.resplen, SC_MAX_SERIALNR);
 	}
 
 	/* copy and return serial number */
