@@ -347,8 +347,8 @@ static int starcos_has_esign_app(sc_card_t * card) {
 		rv = sc_hex_to_bin(starcos_esign_aid, aid, &len);
 		LOG_TEST_RET(card->ctx, rv, "Failed to convert eSing AID");
 		rv = starcos_select_aid(card, aid, len, &file);
-		sc_file_free(file);
 		if ( rv == SC_SUCCESS ) {
+			sc_file_free(file);
 			starcos_select_mf(card);
 		}
 	}
