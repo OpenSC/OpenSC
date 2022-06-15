@@ -340,15 +340,13 @@ static int starcos_has_esign_app(sc_card_t * card) {
 
 	rv = starcos_select_mf(card);
 	if ( rv == SC_SUCCESS ) {
-		sc_file_t * file;
 		u8 aid[SC_MAX_PATH_SIZE];
 		size_t len = sizeof(aid);
 
 		rv = sc_hex_to_bin(starcos_esign_aid, aid, &len);
 		LOG_TEST_RET(card->ctx, rv, "Failed to convert eSing AID");
-		rv = starcos_select_aid(card, aid, len, &file);
+		rv = starcos_select_aid(card, aid, len, NULL);
 		if ( rv == SC_SUCCESS ) {
-			sc_file_free(file);
 			starcos_select_mf(card);
 		}
 	}
