@@ -967,13 +967,6 @@ fineid_get_serialnr(struct sc_card *card, struct sc_serial_number *serial)
 }
 
 
-static int
-fineid_check_sw(struct sc_card *card, unsigned int sw1, unsigned int sw2)
-{
-	return iso_ops->check_sw(card, sw1, sw2);
-}
-
-
 static struct sc_card_driver *
 sc_get_driver(void)
 {
@@ -992,7 +985,6 @@ sc_get_driver(void)
 	fineid_ops.compute_signature = fineid_compute_signature;
 	fineid_ops.process_fci = fineid_process_fci;
 	fineid_ops.logout = fineid_logout;
-	fineid_ops.check_sw = fineid_check_sw;
 	return &fineid_drv;
 }
 
