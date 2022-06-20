@@ -896,21 +896,10 @@ fineid_compute_signature(struct sc_card *card, const unsigned char *in, size_t i
 }
 
 
-/* Return the default AAK for this type of card */
-static int
-fineid_get_default_key(struct sc_card *card, struct sc_cardctl_default_key *data)
-{
-	LOG_FUNC_RETURN(card->ctx, SC_ERROR_NO_DEFAULT_KEY);
-}
-
-
 static int
 fineid_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 {
 	switch (cmd) {
-	case SC_CARDCTL_GET_DEFAULT_KEY:
-		return fineid_get_default_key(card,
-				(struct sc_cardctl_default_key *) ptr);
 	case SC_CARDCTL_GET_SERIALNR:
 		return fineid_get_serialnr(card, (struct sc_serial_number *)ptr);
 	default:
