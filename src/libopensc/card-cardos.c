@@ -530,7 +530,7 @@ get_next_part:
 			sc_log(card->ctx,  "directory tag missing");
 			return SC_ERROR_INTERNAL;
 		}
-		len -= tlen - (tag - p);
+		len = len - tlen - (tag - p);
 		p = tag + tlen;
 		if (tlen == 0)
 			/* empty directory */
