@@ -780,7 +780,7 @@ fineid_compute_signature(struct sc_card *card, const unsigned char *in, size_t i
 	unsigned char resp[SC_MAX_APDU_BUFFER_SIZE];
 	size_t ii = 0, reqlen, orglen, blklen = 64;
 	int rv;
-	const int MAX_INPUT_LEN = 96;
+	const size_t MAX_INPUT_LEN = 96;
 
 	LOG_FUNC_CALLED(card->ctx);
 
