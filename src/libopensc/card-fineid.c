@@ -555,10 +555,10 @@ fineid_select_file(struct sc_card *card, const struct sc_path *in_path,
 			for (ii=0; ii < path.len - offs; ii+=2) {
 				memcpy(tmp_path.value, path.value + offs + ii, 2);
 
-				sc_log(card->ctx, "iteration %lu begin", ii/2);
+				sc_log(card->ctx, "iteration %lu begin", (long unsigned int)(ii/2));
 				rv = fineid_select_file(card, &tmp_path, file_out);
 				LOG_TEST_RET(card->ctx, rv, "select file failed");
-				sc_log(card->ctx, "iteration %lu end", ii/2);
+				sc_log(card->ctx, "iteration %lu end", (long unsigned int)(ii/2));
 			}
 		}
 		else if (path.len - offs == 0 && file_out) {
@@ -802,12 +802,12 @@ fineid_compute_signature(struct sc_card *card, const unsigned char *in, size_t i
 	   ilen != 20 && ilen != 28 && ilen != 32 && ilen != 48 && ilen != 64) {
 		orglen = ilen;
 		sc_log(card->ctx, "Stripping pkcs prefix, cur flags: %X, cur length: %lu",
-			_driver_data->algorithm_flags, orglen);
+			_driver_data->algorithm_flags, (long unsigned int)orglen);
 
 		sc_pkcs1_strip_digest_info_prefix(&_driver_data->algorithm_flags, instr, ilen, instr, &ilen);
 		_driver_data->algorithm_flags = _driver_data->algorithm_flags | FINEID_ALGO_LOW_RSASSA_PKCS1;
 		sc_log(card->ctx, "Stripped pkcs prefix, new flags: %X, new length: %lu",
-			_driver_data->algorithm_flags, ilen);
+			_driver_data->algorithm_flags, (long unsigned int)ilen);
 
 		/* If prefix was present, re-provision security env */
 		if(orglen > ilen) {
@@ -829,7 +829,7 @@ fineid_compute_signature(struct sc_card *card, const unsigned char *in, size_t i
 			apdu.data = instr+ii;
 			apdu.lc = blklen;
 
-			sc_log(card->ctx, "Iterating at offset %lu", ii);
+			sc_log(card->ctx, "Iterating at offset %lu", (long unsigned int)ii);
 			rv = sc_transmit_apdu(card, &apdu);
 			LOG_TEST_RET(card->ctx, rv, "APDU transmit failed");
 			rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
@@ -851,7 +851,7 @@ fineid_compute_signature(struct sc_card *card, const unsigned char *in, size_t i
 
 	req[1] = ilen-ii;
 
-	sc_log(card->ctx, "Finalizing at offset %lu", ii);
+	sc_log(card->ctx, "Finalizing at offset %lu", (long unsigned int)ii);
 
 	/* Security operation hash
 	 *   INS 2A sec op
