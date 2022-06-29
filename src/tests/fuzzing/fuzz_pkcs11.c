@@ -225,7 +225,7 @@ static void test_init_pin(const unsigned char *data, size_t size)
 	if (fuzz_pkcs11_initialize(data, size, NULL, &session) != CKR_OK)
 		goto end;
 	p11->C_GetTokenInfo(0, &info);
-	p11->C_Login(session, login_type, (CK_UTF8CHAR *) so_pin, so_pin == NULL ? 0 : strlen(pin));
+	p11->C_Login(session, login_type, (CK_UTF8CHAR *) so_pin, so_pin == NULL ? 0 : strlen(so_pin));
 	p11->C_InitPIN(session, (CK_UTF8CHAR *) pin, pin == NULL ? 0 : strlen(pin));
 
 	p11->C_CloseSession(session);
