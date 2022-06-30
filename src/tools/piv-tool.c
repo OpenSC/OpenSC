@@ -362,6 +362,9 @@ static int gen_key(const char * key_info)
 			fprintf(stderr, "gen_key failed %d\n", r);
 			free(keydata.pubkey);
 			EVP_PKEY_free(evpkey);
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+			RSA_free(newkey);
+#endif
 			return -1;
 		}
 
@@ -379,6 +382,7 @@ static int gen_key(const char * key_info)
 		if (RSA_set0_key(newkey, newkey_n, newkey_e, NULL) != 1) {
 			fprintf(stderr, "gen_key unable to set RSA values");
 			EVP_PKEY_free(evpkey);
+			RSA_free(newkey);
 			return -1;
 		}
 
