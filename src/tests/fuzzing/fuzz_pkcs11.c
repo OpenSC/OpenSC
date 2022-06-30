@@ -56,7 +56,7 @@ static int fuzz_card_connect(const uint8_t *data, size_t size, sc_pkcs11_slot_t 
 	struct sc_reader *reader = NULL;
 	struct sc_app_info *app_generic = NULL;
 	sc_pkcs11_slot_t *slot = NULL;
-	int rv = CKR_OK;
+	int rv = CKR_OK, free_p11card = 0;
 
 	/* Erase possible virtual slots*/
 	list_clear(&virtual_slots);
@@ -91,6 +91,7 @@ static int fuzz_card_connect(const uint8_t *data, size_t size, sc_pkcs11_slot_t 
 	/* Create p11card */
 	p11card = (struct sc_pkcs11_card *)calloc(1, sizeof(struct sc_pkcs11_card));
 	p11card->reader = reader;
+	free_p11card = 1;
 
 	/* Connect card to reader */
 	if ((rv = sc_connect_card(reader, &p11card->card)) != SC_SUCCESS) {
@@ -117,6 +118,7 @@ static int fuzz_card_connect(const uint8_t *data, size_t size, sc_pkcs11_slot_t 
 		rv = p11card->framework->create_tokens(p11card, app_generic);
 		if (rv != CKR_OK)
 			goto fail;
+		free_p11card = 0;
 	}
 	
 	/* Bind rest of application*/
@@ -133,12 +135,14 @@ static int fuzz_card_connect(const uint8_t *data, size_t size, sc_pkcs11_slot_t 
 		if (rv != CKR_OK) {
 			goto fail;
 		}
+		free_p11card = 0;
 	}
 	if (slot_out)
 		*slot_out = slot;
-	return CKR_OK;
 fail:
-	sc_pkcs11_card_free(p11card);
+	if (free_p11card) {
+		sc_pkcs11_card_free(p11card);
+	}
 	return rv;
 }
 #endif
