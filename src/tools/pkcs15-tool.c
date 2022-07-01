@@ -1961,8 +1961,11 @@ static int test_update(sc_card_t *in_card)
 			}
 			/* other tag */
 			i += 2 + rbuf[2+i+1]; /* length of this tag*/
+			if (2+i+1 >= apdu.resplen) {
+				break;
+			}
 		}
-		if (rbuf[2+i+1] < 9 || 2+i+2+9 > apdu.resplen) {
+		if (2+i+1 >= apdu.resplen || rbuf[2+i+1] < 9 || 2+i+2+9 > apdu.resplen) {
 			printf("select file returned short fci\n");
 			goto bad_fci;
 		}
