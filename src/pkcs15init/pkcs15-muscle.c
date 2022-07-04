@@ -53,6 +53,7 @@ static int muscle_erase_card(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 		sc_file_free(file);
 		return r;
 	}
+	sc_file_free(file);
 	if ((r = sc_delete_file(p15card->card, &path)) < 0)
 		return r;
 	return 0;
