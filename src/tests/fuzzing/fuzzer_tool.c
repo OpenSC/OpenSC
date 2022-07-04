@@ -20,6 +20,7 @@
  */
 
 #include "fuzzer_tool.h"
+#define MAX_ARGC 10000
 
 const uint8_t *get_word(const uint8_t *data, size_t size)
 {
@@ -69,6 +70,9 @@ int get_fuzzed_argv(const char *app_name, const uint8_t *data, size_t size,
 		ptr_size -= (ptr - help_ptr);
 		help_ptr = ptr;
 	}
+
+	if (argc > MAX_ARGC)
+		return -1;
 
 	argv = malloc((argc + 1) * sizeof(char*));
 	if (!argv)
