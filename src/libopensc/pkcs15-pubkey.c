@@ -638,7 +638,7 @@ sc_pkcs15_decode_pubkey_ec(sc_context_t *ctx,
 		const u8 *buf, size_t buflen)
 {
 	int r;
-	u8 * ecpoint_data;
+	u8 * ecpoint_data = NULL;
 	size_t ecpoint_len;
 	struct sc_asn1_entry asn1_ec_pointQ[C_ASN1_EC_POINTQ_SIZE];
 
@@ -647,14 +647,12 @@ sc_pkcs15_decode_pubkey_ec(sc_context_t *ctx,
 	sc_format_asn1_entry(asn1_ec_pointQ + 0, &ecpoint_data, &ecpoint_len, 1);
 	r = sc_asn1_decode(ctx, asn1_ec_pointQ, buf, buflen, NULL, NULL);
 	if (r < 0) {
-		if (ecpoint_data)
-			free(ecpoint_data);
+		free(ecpoint_data);
 		LOG_TEST_RET(ctx, r, "ASN.1 decoding failed");
 	}
 
 	if (ecpoint_len == 0 || *ecpoint_data != 0x04) {
-		if (ecpoint_data)
-			free(ecpoint_data);
+		free(ecpoint_data);
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Supported only uncompressed EC pointQ value");
 	}
 
