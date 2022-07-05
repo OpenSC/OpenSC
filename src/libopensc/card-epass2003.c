@@ -47,10 +47,22 @@
 #include "asn1.h"
 #include "cardctl.h"
 
+/*
+ * See https://github.com/OpenSC/OpenSC/issues/2572
+ * 2012 ATR: note verion 01:00:11
+ *        3b:9f:95:81:31:fe:9f:00:66:46:53:05:01:00:11:71:df:00:00:03:90:00:80
+ * 2022 ATRs: note version 23:00:25
+ *   OpenSC-initialized ATR:
+ *        3b 9f:95:81:31:fe:9f:00:66:46:53:05:23:00:25:71:df:00:00:03:90:00:96
+ *   Feitian-initalized ATR:
+ *        3b:9f:95:81:31:fe:9f:00:66:46:53:05:23:00:25:71:df:00:00:00:00:00:05
+ */
+
 static const struct sc_atr_table epass2003_atrs[] = {
 	/* This is a FIPS certified card using SCP01 security messaging. */
-	{"3B:9F:95:81:31:FE:9F:00:66:46:53:05:10:00:11:71:df:00:00:00:6a:82:5e",
-	 "FF:FF:FF:FF:FF:00:FF:FF:FF:FF:FF:FF:00:00:00:ff:00:ff:ff:00:00:00:00",
+	/* will match all the above */
+	{"3B:9F:95:81:31:FE:9F:00:66:46:53:05:00:00:00:71:df:00:00:00:00:00:00",
+	 "FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:00:00:00:FF:FF:FF:FF:00:00:00:00",
 	 "FTCOS/ePass2003", SC_CARD_TYPE_ENTERSAFE_FTCOS_EPASS2003, 0, NULL },
 	{NULL, NULL, NULL, 0, 0, NULL}
 };
