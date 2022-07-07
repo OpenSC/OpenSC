@@ -547,6 +547,11 @@ static int		write_object(CK_SESSION_HANDLE session);
 static int		read_object(CK_SESSION_HANDLE session);
 static int		delete_object(CK_SESSION_HANDLE session);
 static void		set_id_attr(CK_SESSION_HANDLE session);
+static int		find_object_id_or_label(CK_SESSION_HANDLE sess, CK_OBJECT_CLASS cls,
+				CK_OBJECT_HANDLE_PTR ret,
+				const unsigned char *, size_t id_len,
+				const char *,
+				int obj_index);
 static int		find_object(CK_SESSION_HANDLE, CK_OBJECT_CLASS,
 				CK_OBJECT_HANDLE_PTR,
 				const unsigned char *, size_t id_len, int obj_index);
@@ -1446,8 +1451,8 @@ int main(int argc, char * argv[])
 	if (do_set_id) {
 		if (opt_object_class_str == NULL)
 			util_fatal("You should specify the object type with the -y option");
-		if (opt_object_id_len == 0)
-			util_fatal("You should specify the current ID with the -d option");
+		if (opt_object_id_len == 0 && opt_object_label == NULL)
+			util_fatal("You should specify the current object with the -d or -a option");
 		set_id_attr(session);
 	}
 
@@ -4386,8 +4391,8 @@ static void set_id_attr(CK_SESSION_HANDLE session)
 	CK_ATTRIBUTE templ[] = {{CKA_ID, new_object_id, new_object_id_len}};
 	CK_RV rv;
 
-	if (!find_object(session, opt_object_class, &obj, opt_object_id, opt_object_id_len, 0)) {
-		fprintf(stderr, "set_id(): couldn't find the object\n");
+	if (!find_object_id_or_label(session, opt_object_class, &obj, opt_object_id, opt_object_id_len, opt_object_label, 0)) {
+		fprintf(stderr, "set_id(): couldn't find the object by id %s label\n", (opt_object_label && opt_object_id_len) ? "and" : "or");
 		return;
 	}
 
@@ -4450,11 +4455,13 @@ static int find_slot_by_token_label(const char *label, CK_SLOT_ID_PTR result)
 }
 
 
-static int find_object(CK_SESSION_HANDLE sess, CK_OBJECT_CLASS cls,
+static int find_object_id_or_label(CK_SESSION_HANDLE sess, CK_OBJECT_CLASS cls,
 		CK_OBJECT_HANDLE_PTR ret,
-		const unsigned char *id, size_t id_len, int obj_index)
+		const unsigned char *id, size_t id_len,
+		const char *label,
+		int obj_index)
 {
-	CK_ATTRIBUTE attrs[2];
+	CK_ATTRIBUTE attrs[3];
 	unsigned int nattrs = 0;
 	CK_ULONG count;
 	CK_RV rv;
@@ -4464,10 +4471,16 @@ static int find_object(CK_SESSION_HANDLE sess, CK_OBJECT_CLASS cls,
 	attrs[0].pValue = &cls;
 	attrs[0].ulValueLen = sizeof(cls);
 	nattrs++;
-	if (id) {
+	if (id && id_len) {
 		attrs[nattrs].type = CKA_ID;
 		attrs[nattrs].pValue = (void *) id;
 		attrs[nattrs].ulValueLen = id_len;
+		nattrs++;
+	}
+	if (label) {
+		attrs[nattrs].type = CKA_LABEL;
+		attrs[nattrs].pValue = (void *) label;
+		attrs[nattrs].ulValueLen = strlen(label);
 		nattrs++;
 	}
 
@@ -4486,11 +4499,19 @@ static int find_object(CK_SESSION_HANDLE sess, CK_OBJECT_CLASS cls,
 	if (rv != CKR_OK)
 		p11_fatal("C_FindObjects", rv);
 
-done:	if (count == 0)
+done:
+	if (count == 0)
 		*ret = CK_INVALID_HANDLE;
 	p11->C_FindObjectsFinal(sess);
 
 	return count;
+}
+
+static int find_object(CK_SESSION_HANDLE sess, CK_OBJECT_CLASS cls,
+		CK_OBJECT_HANDLE_PTR ret,
+		const unsigned char *id, size_t id_len, int obj_index)
+{
+	return find_object_id_or_label(sess, cls, ret, id, id_len, NULL, obj_index);
 }
 
 static int find_object_flags(CK_SESSION_HANDLE sess, uint16_t mf_flags,
