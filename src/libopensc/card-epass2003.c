@@ -49,7 +49,7 @@
 
 /*
  * See https://github.com/OpenSC/OpenSC/issues/2572
- * 2012 ATR: note verion 01:00:11
+ * 2012 ATR: note version 01:00:11
  *        3b:9f:95:81:31:fe:9f:00:66:46:53:05:01:00:11:71:df:00:00:03:90:00:80
  * 2022 ATRs: note version 23:00:25
  *   OpenSC-initialized ATR:
