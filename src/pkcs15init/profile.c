@@ -2000,6 +2000,9 @@ build_argv(struct state *cur, const char *cmdname,
 			return SC_ERROR_SYNTAX_ERROR;
 		}
 
+		if (list == mac->value) {
+			return SC_ERROR_SYNTAX_ERROR;
+		}
 #ifdef DEBUG_PROFILE
 		{
 			scconf_list *list;
