@@ -519,7 +519,7 @@ sm_encrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
 	       data_len, sc_dump_hex(data, data_len));
 
 	*out_len = data_len;
-	*out = malloc(data_len + 8);
+	*out = calloc(data_len + 8, sizeof(unsigned char));
 	if (*out == NULL) {
 		free(data);
 		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "SM encrypt_des_cbc3: failure");
