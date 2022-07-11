@@ -44,8 +44,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
 	if (fuzz_connect_card(ctx, &card, NULL, Data, Size) != SC_SUCCESS)
 		goto err;
 
-	sc_pkcs15_bind(card, NULL, &p15card);
-	if (!p15card)
+	if (sc_pkcs15_bind(card, NULL, &p15card) != 0)
 		goto err;
 
 	for (obj = p15card->obj_list; obj != NULL; obj = obj->next) {
