@@ -3177,6 +3177,8 @@ sc_pkcs15init_update_lastupdate(struct sc_pkcs15_card *p15card, struct sc_profil
 		LOG_TEST_RET(ctx, r, "select object path failed");
 
 		r = sc_select_file(p15card->card, &last_update->path, &file);
+		if (r < 0)
+			free(buf);
 		LOG_TEST_RET(ctx, r, "select object path failed");
 
 		r = sc_pkcs15init_update_file(profile, p15card, file, buf, buflen);
