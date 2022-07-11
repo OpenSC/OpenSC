@@ -1175,7 +1175,7 @@ pkcs15_init_slot(struct sc_pkcs15_card *p15card, struct sc_pkcs11_slot *slot,
 
 			if (pin_len) {
 				size_t tokeninfo_len = 0;
-				if (p15card->tokeninfo)
+				if (p15card->tokeninfo && p15card->tokeninfo->label)
 					tokeninfo_len = strlen(p15card->tokeninfo->label);
 				/* Print the possibly truncated token label with at least 4
 				 * characters followed by the PIN label in parenthesis */
