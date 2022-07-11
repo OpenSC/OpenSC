@@ -877,6 +877,7 @@ construct_data_tlv(struct sc_card *card, struct sc_apdu *apdu, unsigned char *ap
 	size_t tlv_more;	/* increased tlv length */
 	unsigned char iv[16] = { 0 };
 	epass2003_exdata *exdata = NULL;
+	int r = 0;
 
 	if (!card->drv_data) 
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -909,10 +910,13 @@ construct_data_tlv(struct sc_card *card, struct sc_apdu *apdu, unsigned char *ap
 	memcpy(data_tlv, &apdu_buf[block_size], tlv_more);
 
 	/* encrypt Data */
-	if (KEY_TYPE_AES == key_type)
-		aes128_encrypt_cbc(exdata->sk_enc, 16, iv, pad, pad_len, apdu_buf + block_size + tlv_more);
-	else
-		des3_encrypt_cbc(exdata->sk_enc, 16, iv, pad, pad_len, apdu_buf + block_size + tlv_more);
+	if (KEY_TYPE_AES == key_type) {
+		r = aes128_encrypt_cbc(exdata->sk_enc, 16, iv, pad, pad_len, apdu_buf + block_size + tlv_more);
+		LOG_TEST_RET(card->ctx, r, "aes128_encrypt_cbc failed");
+	} else {
+		r = des3_encrypt_cbc(exdata->sk_enc, 16, iv, pad, pad_len, apdu_buf + block_size + tlv_more);
+		LOG_TEST_RET(card->ctx, r, "des3_encrypt_cbc failed");
+	}
 
 	memcpy(data_tlv + tlv_more, apdu_buf + block_size + tlv_more, pad_len);
 	*data_tlv_len = tlv_more + pad_len;
