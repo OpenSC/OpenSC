@@ -5913,6 +5913,7 @@ static CK_RV register_ec_mechanisms(struct sc_pkcs11_card *p11card, int flags,
 				}
 			}
 		}
+		sc_pkcs11_free_mechanism(&mt);
 #endif
 	}
 
