@@ -1858,7 +1858,7 @@ static int do_erase(int argc, char **argv)
 
 static int do_random(int argc, char **argv)
 {
-	unsigned char buffer[SC_MAX_EXT_APDU_BUFFER_SIZE];
+	unsigned char buffer[SC_MAX_EXT_APDU_BUFFER_SIZE] = {0};
 	int r, count;
 	const char *filename = NULL;
 	FILE *outf = NULL;
