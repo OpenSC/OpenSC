@@ -1377,7 +1377,7 @@ static int test_session_pin(void)
 	unsigned int  auth_method;
 	unsigned char		*pin;
 	int r;
-	unsigned char sessionpin[SC_MAX_PIN_SIZE];
+	unsigned char sessionpin[SC_MAX_PIN_SIZE] = {0};
 	size_t sessionpinlen = sizeof sessionpin;
 
 	if (!opt_auth_id)   {
