@@ -417,7 +417,7 @@ myeid_new_file(sc_profile_t *profile, sc_card_t *card,
 	file->id += num;
 	p = &file->path;
 	*p = profile->df_info->file->path;
-	if (p->len >= SC_MAX_PATH_SIZE) {
+	if (p->len >= SC_MAX_PATH_SIZE - 2) {
 		sc_log(card->ctx, "Wrong path length");
 		sc_file_free(file);
 		return SC_ERROR_INTERNAL;
