@@ -419,6 +419,7 @@ myeid_new_file(sc_profile_t *profile, sc_card_t *card,
 	*p = profile->df_info->file->path;
 	if (p->len >= SC_MAX_PATH_SIZE) {
 		sc_log(card->ctx, "Wrong path length");
+		sc_file_free(file);
 		return SC_ERROR_INTERNAL;
 	}
 	p->value[p->len++] = (u8) (file->id / 256);
