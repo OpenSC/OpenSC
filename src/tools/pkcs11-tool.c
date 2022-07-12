@@ -858,7 +858,7 @@ int main(int argc, char * argv[])
 			opt_signature_file = optarg;
 			break;
 		case 'l':
-			need_session |= NEED_SESSION_RW;
+			need_session |= NEED_SESSION_RO;
 			opt_login = 1;
 			break;
 		case 'm':
@@ -879,7 +879,7 @@ int main(int argc, char * argv[])
 			opt_output = optarg;
 			break;
 		case 'p':
-			need_session |= NEED_SESSION_RW;
+			need_session |= NEED_SESSION_RO;
 			opt_login = 1;
 			util_get_pin(optarg, &opt_pin);
 			break;
@@ -894,7 +894,7 @@ int main(int argc, char * argv[])
 			action_count++;
 			break;
 		case 's':
-			need_session |= NEED_SESSION_RW;
+			need_session |= NEED_SESSION_RO;
 			do_sign = 1;
 			action_count++;
 			break;
