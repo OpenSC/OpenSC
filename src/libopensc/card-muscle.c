@@ -122,7 +122,9 @@ static unsigned short muscle_parse_singleAcl(const sc_acl_entry_t* acl)
 		case SC_AC_UNKNOWN:
 			break;
 		case SC_AC_CHV:
-			acl_entry |= (1 << key); /* Assuming key 0 == SO */
+			/* Ignore shift with more bits that acl_entry has */
+			if ((size_t) key < sizeof(acl_entry) * 8)
+				acl_entry |= (1u << key); /* Assuming key 0 == SO */
 			break;
 		case SC_AC_AUT:
 		case SC_AC_TERM:
