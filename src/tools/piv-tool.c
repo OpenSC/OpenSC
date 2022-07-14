@@ -454,17 +454,22 @@ static int gen_key(const char * key_info)
 		if (r == 0) {
 			fprintf(stderr, "EC_POINT_set_affine_coordinates_GFp failed\n");
 			EVP_PKEY_free(evpkey);
+			EC_GROUP_free(ecgroup);
+			EC_POINT_free(ecpoint);
 			return -1;
 		}
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 		eckey = EC_KEY_new();
 		r = EC_KEY_set_group(eckey, ecgroup);
+		EC_GROUP_free(ecgroup);
 		if (r == 0) {
 			fprintf(stderr, "EC_KEY_set_group failed\n");
 			EVP_PKEY_free(evpkey);
+			EC_POINT_free(ecpoint);
 			return -1;
 		}
 		r = EC_KEY_set_public_key(eckey, ecpoint);
+		EC_POINT_free(ecpoint);
 		if (r == 0) {
 			fprintf(stderr, "EC_KEY_set_public_key failed\n");
 			EVP_PKEY_free(evpkey);
@@ -480,13 +485,21 @@ static int gen_key(const char * key_info)
 		len = EC_POINT_point2oct(ecgroup, ecpoint, POINT_CONVERSION_COMPRESSED, NULL, 0, NULL);
 		if (!(buf = malloc(len))) {
 			fprintf(stderr, "EC_KEY_set_public_key out of memory\n");
+			EC_GROUP_free(ecgroup);
+			EC_POINT_free(ecpoint);
 			return -1;
 		}
 		if (EC_POINT_point2oct(ecgroup, ecpoint, POINT_CONVERSION_COMPRESSED, buf, len, NULL) == 0) {
 			fprintf(stderr, "EC_KEY_set_public_key failed\n");
+			EC_GROUP_free(ecgroup);
+			EC_POINT_free(ecpoint);
 			free(buf);
 			return -1;
 		}
+
+		EC_GROUP_free(ecgroup);
+		EC_POINT_free(ecpoint);
+
 		if (!(bld = OSSL_PARAM_BLD_new()) ||
 			OSSL_PARAM_BLD_push_utf8_string(bld, "group", group_name, sizeof(group_name)) != 1 ||
 			OSSL_PARAM_BLD_push_octet_string(bld, "pub", buf, len) != 1 ||
