@@ -619,6 +619,11 @@ sc_pkcs15init_delete_by_path(struct sc_profile *profile, struct sc_pkcs15_card *
 				sc_file_free(file);
 			LOG_TEST_RET(ctx, rv, "parent 'DELETE' authentication failed");
 		}
+		else {
+			/* No 'DELETE' ACL of the file and not deleted for parent */
+			rv = SC_ERROR_INVALID_ARGUMENTS;
+			sc_file_free(file);
+		}
 	}
 	LOG_TEST_RET(ctx, rv, "'DELETE' authentication failed");
 
@@ -629,8 +634,10 @@ sc_pkcs15init_delete_by_path(struct sc_profile *profile, struct sc_pkcs15_card *
 
 	memset(&path, 0, sizeof(path));
 	path.type = SC_PATH_TYPE_FILE_ID;
-	if (file_path->len < 2)
+	if (file_path->len < 2) {
+		sc_file_free(file);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+	}
 	path.value[0] = file_path->value[file_path->len - 2];
 	path.value[1] = file_path->value[file_path->len - 1];
 	path.len = 2;
