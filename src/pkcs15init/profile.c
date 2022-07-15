@@ -1454,6 +1454,7 @@ do_prop_attr(struct state *cur, int argc, char **argv)
 	}
 	file = cur->file->file;
 
+	free(file->prop_attr);
 	file->prop_attr = malloc(len);
 	if (!file->prop_attr)
 		return 1;
