@@ -4030,7 +4030,7 @@ do_select_parent(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	r = sc_select_file(p15card->card, &path, parent);
 	/* If DF doesn't exist, create it (unless it's the MF,
 	 * but then something's badly broken anyway :-) */
-	if (r == SC_ERROR_FILE_NOT_FOUND && path.len != 2) {
+	if (r == SC_ERROR_FILE_NOT_FOUND && path.len > 2) {
 		r = sc_profile_get_file_by_path(profile, &path, parent);
 		if (r < 0) {
 			sc_log(ctx, "no profile template for DF %s", sc_print_path(&path));
