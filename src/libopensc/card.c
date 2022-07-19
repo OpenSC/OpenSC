@@ -413,8 +413,6 @@ int sc_disconnect_card(sc_card_t *card)
 	ctx = card->ctx;
 	LOG_FUNC_CALLED(ctx);
 
-	if (card->lock_count != 0)
-		return SC_ERROR_NOT_ALLOWED;
 	if (card->ops->finish) {
 		int r = card->ops->finish(card);
 		if (r)
