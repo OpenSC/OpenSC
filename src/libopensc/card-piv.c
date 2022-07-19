@@ -3006,6 +3006,11 @@ piv_finish(sc_card_t *card)
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (priv) {
+		if (priv->context_specific) {
+			sc_log(card->ctx, "Clearing CONTEXT_SPECIFIC lock");
+			priv->context_specific = 0;
+			sc_unlock(card);
+		}
 		if (priv->w_buf)
 			free(priv->w_buf);
 		if (priv->offCardCertURL)
