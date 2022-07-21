@@ -21,7 +21,7 @@
 #include "config.h"
 #endif
 
-#include "fread_to_eof.h"
+#include "common/fread_to_eof.h"
 #include "pkcs11-register-cmdline.h"
 #include <limits.h>
 #include <string.h>

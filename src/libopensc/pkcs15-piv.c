@@ -37,22 +37,20 @@
 #include "cardctl.h"
 #include "asn1.h"
 #include "pkcs15.h"
+#include "card-piv.h"
 
 #define MANU_ID		"piv_II "
 
 typedef struct objdata_st {
 	const char *id;
-	const char *label;
-	const char *aoid;
+	enum piv_enumtag enumtag;
 	const char *auth_id;
-	const char *path;
 	int         obj_flags;
 } objdata;
 
 typedef struct cdata_st {
 	const char *id;
-	const char *label;
-	const char *path;
+	enum piv_enumtag enumtag;
 	int	    authority;
 	int         obj_flags;
 } cdata;
@@ -74,11 +72,10 @@ typedef struct pdata_st {
 
 typedef struct pubdata_st {
 	const char *id;
-	const char *label;
+	enum piv_enumtag enumtag;
 	int         usage_rsa;
 	int         usage_ec;
-	const char *path;
-	int         ref;
+	int         ref; /* FIXME is this `piv_obj->containerid[0]`? If so, ref could be removed */
 	const char *auth_id;
 	int         obj_flags;
 	const char *getenvname;
@@ -237,7 +234,7 @@ static int piv_detect_card(sc_pkcs15_card_t *p15card)
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (card->type < SC_CARD_TYPE_PIV_II_GENERIC
-		|| card->type >= SC_CARD_TYPE_PIV_II_GENERIC+1000)
+			|| card->type >= SC_CARD_TYPE_PIV_II_GENERIC+1000)
 		return SC_ERROR_INVALID_CARD;
 	return SC_SUCCESS;
 }
@@ -251,76 +248,41 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 
 	// clang-format off
 	static const objdata objects[] = {
-	{"01", "Card Capability Container",
-			"2.16.840.1.101.3.7.1.219.0", NULL, "DB00", 0},
-	{"02", "Card Holder Unique Identifier",
-			"2.16.840.1.101.3.7.2.48.0", NULL, "3000", 0},
-	{"03", "Unsigned Card Holder Unique Identifier",
-			"2.16.840.1.101.3.7.2.48.2", NULL, "3010", 0},
-	{"04", "X.509 Certificate for PIV Authentication",
-			"2.16.840.1.101.3.7.2.1.1", NULL, "0101", 0},
-	{"05", "Cardholder Fingerprints",
-			"2.16.840.1.101.3.7.2.96.16", "01", "6010", SC_PKCS15_CO_FLAG_PRIVATE},
-	{"06", "Printed Information",
-			"2.16.840.1.101.3.7.2.48.1", "01", "3001", SC_PKCS15_CO_FLAG_PRIVATE},
-	{"07", "Cardholder Facial Image",
-			"2.16.840.1.101.3.7.2.96.48", "01", "6030", SC_PKCS15_CO_FLAG_PRIVATE},
-	{"08", "X.509 Certificate for Digital Signature",
-			"2.16.840.1.101.3.7.2.1.0",  NULL, "0100", 0},
-	{"09", "X.509 Certificate for Key Management",
-			"2.16.840.1.101.3.7.2.1.2", NULL, "0102", 0},
-	{"10","X.509 Certificate for Card Authentication",
-			"2.16.840.1.101.3.7.2.5.0", NULL, "0500", 0},
-	{"11", "Security Object",
-			"2.16.840.1.101.3.7.2.144.0", NULL, "9000", 0},
-	{"12", "Discovery Object",
-			"2.16.840.1.101.3.7.2.96.80", NULL, "6050", 0},
-	{"13", "Key History Object",
-			"2.16.840.1.101.3.7.2.96.96", NULL, "6060", 0},
-	{"14", "Cardholder Iris Image",
-			"2.16.840.1.101.3.7.2.16.21", NULL, "1015", SC_PKCS15_CO_FLAG_PRIVATE},
+	{"01", PIV_OBJ_CCC, NULL, 0},
+	{"02", PIV_OBJ_CHUI, NULL, 0},
+	/*{"03", PIV_OBJ_UCHUI, NULL, 0},*/
+	{"04", PIV_OBJ_X509_PIV_AUTH, NULL, 0},
+	{"05", PIV_OBJ_CHF, "01", SC_PKCS15_CO_FLAG_PRIVATE},
+	{"06", PIV_OBJ_PI, "01", SC_PKCS15_CO_FLAG_PRIVATE},
+	{"07", PIV_OBJ_CHFI, "01", SC_PKCS15_CO_FLAG_PRIVATE},
+	{"08", PIV_OBJ_X509_DS, NULL, 0},
+	{"09", PIV_OBJ_X509_KM, NULL, 0},
+	{"10", PIV_OBJ_X509_CARD_AUTH, NULL, 0},
+	{"11", PIV_OBJ_SEC_OBJ, NULL, 0},
+	{"12", PIV_OBJ_DISCOVERY, NULL, 0},
+	{"13", PIV_OBJ_HISTORY, NULL, 0},
+	{"14", PIV_OBJ_IRIS_IMAGE, NULL, SC_PKCS15_CO_FLAG_PRIVATE},
 
-	{"15", "Retired X.509 Certificate for Key Management 1",
-			"2.16.840.1.101.3.7.2.16.1", NULL, "1001", 0},
-	{"16", "Retired X.509 Certificate for Key Management 2",
-			"2.16.840.1.101.3.7.2.16.2", NULL, "1002", 0},
-	{"17", "Retired X.509 Certificate for Key Management 3",
-			"2.16.840.1.101.3.7.2.16.3", NULL, "1003", 0},
-	{"18", "Retired X.509 Certificate for Key Management 4",
-			"2.16.840.1.101.3.7.2.16.4", NULL, "1004", 0},
-	{"19", "Retired X.509 Certificate for Key Management 5",
-			"2.16.840.1.101.3.7.2.16.5", NULL, "1005", 0},
-	{"20", "Retired X.509 Certificate for Key Management 6",
-			"2.16.840.1.101.3.7.2.16.6", NULL, "1006", 0},
-	{"21", "Retired X.509 Certificate for Key Management 7",
-			"2.16.840.1.101.3.7.2.16.7", NULL, "1007", 0},
-	{"22", "Retired X.509 Certificate for Key Management 8",
-			"2.16.840.1.101.3.7.2.16.8", NULL, "1008", 0},
-	{"23", "Retired X.509 Certificate for Key Management 9",
-			"2.16.840.1.101.3.7.2.16.9", NULL, "1009", 0},
-	{"24", "Retired X.509 Certificate for Key Management 10",
-			"2.16.840.1.101.3.7.2.16.10", NULL, "100A", 0},
-	{"25", "Retired X.509 Certificate for Key Management 11",
-			"2.16.840.1.101.3.7.2.16.11", NULL, "100B", 0},
-	{"26", "Retired X.509 Certificate for Key Management 12",
-			"2.16.840.1.101.3.7.2.16.12", NULL, "100C", 0},
-	{"27", "Retired X.509 Certificate for Key Management 13",
-			"2.16.840.1.101.3.7.2.16.13", NULL, "100D", 0},
-	{"28", "Retired X.509 Certificate for Key Management 14",
-			"2.16.840.1.101.3.7.2.16.14", NULL, "100E", 0},
-	{"29", "Retired X.509 Certificate for Key Management 15",
-			"2.16.840.1.101.3.7.2.16.15", NULL, "100F", 0},
-	{"30", "Retired X.509 Certificate for Key Management 16",
-			"2.16.840.1.101.3.7.2.16.16", NULL, "1010", 0},
-	{"31", "Retired X.509 Certificate for Key Management 17",
-			"2.16.840.1.101.3.7.2.16.17", NULL, "1011", 0},
-	{"32", "Retired X.509 Certificate for Key Management 18",
-			"2.16.840.1.101.3.7.2.16.18", NULL, "1012", 0},
-	{"33", "Retired X.509 Certificate for Key Management 19",
-			"2.16.840.1.101.3.7.2.16.19", NULL, "1013", 0},
-	{"34", "Retired X.509 Certificate for Key Management 20",
-			"2.16.840.1.101.3.7.2.16.20", NULL, "1014", 0},
-	{NULL, NULL, NULL, NULL, NULL, 0}
+	{"15", PIV_OBJ_RETIRED_X509_1, NULL, 0},
+	{"16", PIV_OBJ_RETIRED_X509_2, NULL, 0},
+	{"17", PIV_OBJ_RETIRED_X509_3, NULL, 0},
+	{"18", PIV_OBJ_RETIRED_X509_4, NULL, 0},
+	{"19", PIV_OBJ_RETIRED_X509_5, NULL, 0},
+	{"20", PIV_OBJ_RETIRED_X509_6, NULL, 0},
+	{"21", PIV_OBJ_RETIRED_X509_7, NULL, 0},
+	{"22", PIV_OBJ_RETIRED_X509_8, NULL, 0},
+	{"23", PIV_OBJ_RETIRED_X509_9, NULL, 0},
+	{"24", PIV_OBJ_RETIRED_X509_10, NULL, 0},
+	{"25", PIV_OBJ_RETIRED_X509_11, NULL, 0},
+	{"26", PIV_OBJ_RETIRED_X509_12, NULL, 0},
+	{"27", PIV_OBJ_RETIRED_X509_13, NULL, 0},
+	{"28", PIV_OBJ_RETIRED_X509_14, NULL, 0},
+	{"29", PIV_OBJ_RETIRED_X509_15, NULL, 0},
+	{"30", PIV_OBJ_RETIRED_X509_16, NULL, 0},
+	{"31", PIV_OBJ_RETIRED_X509_17, NULL, 0},
+	{"32", PIV_OBJ_RETIRED_X509_18, NULL, 0},
+	{"33", PIV_OBJ_RETIRED_X509_19, NULL, 0},
+	{"34", PIV_OBJ_RETIRED_X509_20, NULL, 0},
 	};
 	// clang-format on
 	/*
@@ -335,30 +297,30 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 
 	// clang-format off
 	static const cdata certs[PIV_NUM_CERTS_AND_KEYS] = {
-		{"01", "Certificate for PIV Authentication", "0101cece", 0, 0},
-		{"02", "Certificate for Digital Signature", "0100cece", 0, 0},
-		{"03", "Certificate for Key Management", "0102cece", 0, 0},
-		{"04", "Certificate for Card Authentication", "0500cece", 0, 0},
-		{"05", "Retired Certificate for Key Management 1", "1001cece", 0, 0},
-		{"06", "Retired Certificate for Key Management 2", "1002cece", 0, 0},
-		{"07", "Retired Certificate for Key Management 3", "1003cece", 0, 0},
-		{"08", "Retired Certificate for Key Management 4", "1004cece", 0, 0},
-		{"09", "Retired Certificate for Key Management 5", "1005cece", 0, 0},
-		{"10", "Retired Certificate for Key Management 6", "1006cece", 0, 0},
-		{"11", "Retired Certificate for Key Management 7", "1007cece", 0, 0},
-		{"12", "Retired Certificate for Key Management 8", "1008cece", 0, 0},
-		{"13", "Retired Certificate for Key Management 9", "1009cece", 0, 0},
-		{"14", "Retired Certificate for Key Management 10", "100Acece", 0, 0},
-		{"15", "Retired Certificate for Key Management 11", "100Bcece", 0, 0},
-		{"16", "Retired Certificate for Key Management 12", "100Ccece", 0, 0},
-		{"17", "Retired Certificate for Key Management 13", "100Dcece", 0, 0},
-		{"18", "Retired Certificate for Key Management 14", "100Ecece", 0, 0},
-		{"19", "Retired Certificate for Key Management 15", "100Fcece", 0, 0},
-		{"20", "Retired Certificate for Key Management 16", "1010cece", 0, 0},
-		{"21", "Retired Certificate for Key Management 17", "1011cece", 0, 0},
-		{"22", "Retired Certificate for Key Management 18", "1012cece", 0, 0},
-		{"23", "Retired Certificate for Key Management 19", "1013cece", 0, 0},
-		{"24", "Retired Certificate for Key Management 20", "1014cece", 0, 0}
+		{"01", PIV_OBJ_X509_PIV_AUTH, 0, 0},
+		{"02", PIV_OBJ_X509_DS, 0, 0},
+		{"03", PIV_OBJ_X509_KM, 0, 0},
+		{"04", PIV_OBJ_X509_CARD_AUTH, 0, 0},
+		{"05", PIV_OBJ_RETIRED_X509_1, 0, 0},
+		{"06", PIV_OBJ_RETIRED_X509_2, 0, 0},
+		{"07", PIV_OBJ_RETIRED_X509_3, 0, 0},
+		{"08", PIV_OBJ_RETIRED_X509_4, 0, 0},
+		{"09", PIV_OBJ_RETIRED_X509_5, 0, 0},
+		{"10", PIV_OBJ_RETIRED_X509_6, 0, 0},
+		{"11", PIV_OBJ_RETIRED_X509_7, 0, 0},
+		{"12", PIV_OBJ_RETIRED_X509_8, 0, 0},
+		{"13", PIV_OBJ_RETIRED_X509_9, 0, 0},
+		{"14", PIV_OBJ_RETIRED_X509_10, 0, 0},
+		{"15", PIV_OBJ_RETIRED_X509_11, 0, 0},
+		{"16", PIV_OBJ_RETIRED_X509_12, 0, 0},
+		{"17", PIV_OBJ_RETIRED_X509_13, 0, 0},
+		{"18", PIV_OBJ_RETIRED_X509_14, 0, 0},
+		{"19", PIV_OBJ_RETIRED_X509_15, 0, 0},
+		{"20", PIV_OBJ_RETIRED_X509_16, 0, 0},
+		{"21", PIV_OBJ_RETIRED_X509_17, 0, 0},
+		{"22", PIV_OBJ_RETIRED_X509_18, 0, 0},
+		{"23", PIV_OBJ_RETIRED_X509_19, 0, 0},
+		{"24", PIV_OBJ_RETIRED_X509_20, 0, 0}
 	};
 	// clang-format on
 
@@ -396,118 +358,118 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 	 */
 	// clang-format off
 	static const pubdata pubkeys[PIV_NUM_CERTS_AND_KEYS] = {
-		{ "01", "PIV AUTH pubkey",
+		{ "01", PIV_OBJ_9A06,
 			 	/*RSA*/SC_PKCS15_PRKEY_USAGE_ENCRYPT |
 			 		SC_PKCS15_PRKEY_USAGE_WRAP |
 					SC_PKCS15_PRKEY_USAGE_VERIFY |
 					SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_VERIFY,
-			"9A06", 0x9A, NULL, 0, "PIV_9A_KEY"},
-		{ "02", "SIGN pubkey",
+			0x9A, NULL, 0, "PIV_9A_KEY"},
+		{ "02", PIV_OBJ_9C06,
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_ENCRYPT |
 					SC_PKCS15_PRKEY_USAGE_VERIFY |
 					SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER |
 					SC_PKCS15_PRKEY_USAGE_NONREPUDIATION,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_VERIFY |
 					SC_PKCS15_PRKEY_USAGE_NONREPUDIATION,
-			"9C06", 0x9C, NULL, 0, "PIV_9C_KEY"},
-		{ "03", "KEY MAN pubkey",
+			0x9C, NULL, 0, "PIV_9C_KEY"},
+		{ "03", PIV_OBJ_9D06,
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_ENCRYPT| SC_PKCS15_PRKEY_USAGE_WRAP,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_DERIVE,
-			"9D06", 0x9D, NULL, 0, "PIV_9D_KEY"},
-		{ "04", "CARD AUTH pubkey",
+			0x9D, NULL, 0, "PIV_9D_KEY"},
+		{ "04", PIV_OBJ_9E06,
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_VERIFY |
 					SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_VERIFY,
-			"9E06", 0x9E, NULL, 0, "PIV_9E_KEY"},  /* no pin, and avail in contactless */
+			0x9E, NULL, 0, "PIV_9E_KEY"},  /* no pin, and avail in contactless */
 
-		{ "05", "Retired KEY MAN 1",
+		{ "05", PIV_OBJ_8206,
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_ENCRYPT | SC_PKCS15_PRKEY_USAGE_WRAP,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_DERIVE,
-			 "8206", 0x82, NULL, 0, NULL},
-		{ "06", "Retired KEY MAN 2",
+			 0x82, NULL, 0, NULL},
+		{ "06", PIV_OBJ_8306,
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_ENCRYPT | SC_PKCS15_PRKEY_USAGE_WRAP,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_DERIVE,
-			 "8306", 0x83, NULL, 0, NULL},
-		{ "07", "Retired KEY MAN 3",
+			 0x83, NULL, 0, NULL},
+		{ "07", PIV_OBJ_8406,
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_ENCRYPT | SC_PKCS15_PRKEY_USAGE_WRAP,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_DERIVE,
-			 "8406", 0x84, NULL, 0, NULL},
-		{ "08", "Retired KEY MAN 4",
+			 0x84, NULL, 0, NULL},
+		{ "08", PIV_OBJ_8506,
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_ENCRYPT | SC_PKCS15_PRKEY_USAGE_WRAP,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_DERIVE,
-			 "8506", 0x85, NULL, 0, NULL},
-		{ "09", "Retired KEY MAN 5",
+			 0x85, NULL, 0, NULL},
+		{ "09", PIV_OBJ_8606,
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_ENCRYPT | SC_PKCS15_PRKEY_USAGE_WRAP,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_DERIVE,
-			 "8606", 0x86, NULL, 0, NULL},
-		{ "10", "Retired KEY MAN 6",
+			 0x86, NULL, 0, NULL},
+		{ "10", PIV_OBJ_8706,
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_ENCRYPT | SC_PKCS15_PRKEY_USAGE_WRAP,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_DERIVE,
-			 "8706", 0x87, NULL, 0, NULL},
-		{ "11", "Retired KEY MAN 7",
+			 0x87, NULL, 0, NULL},
+		{ "11", PIV_OBJ_8806,
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_ENCRYPT | SC_PKCS15_PRKEY_USAGE_WRAP,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_DERIVE,
-			 "8806", 0x88, NULL, 0, NULL},
-		{ "12", "Retired KEY MAN 8",
+			 0x88, NULL, 0, NULL},
+		{ "12", PIV_OBJ_8906,
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_ENCRYPT | SC_PKCS15_PRKEY_USAGE_WRAP,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_DERIVE,
-			 "8906", 0x89, NULL, 0, NULL},
-		{ "13", "Retired KEY MAN 9",
+			 0x89, NULL, 0, NULL},
+		{ "13", PIV_OBJ_8A06,
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_ENCRYPT | SC_PKCS15_PRKEY_USAGE_WRAP,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_DERIVE,
-			 "8A06", 0x8A, NULL, 0, NULL},
-		{ "14", "Retired KEY MAN 10",
+			 0x8A, NULL, 0, NULL},
+		{ "14", PIV_OBJ_8B06,
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_ENCRYPT | SC_PKCS15_PRKEY_USAGE_WRAP,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_DERIVE,
-			 "8B06", 0x8B, NULL, 0, NULL},
-		{ "15", "Retired KEY MAN 11",
+			 0x8B, NULL, 0, NULL},
+		{ "15", PIV_OBJ_8C06,
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_ENCRYPT | SC_PKCS15_PRKEY_USAGE_WRAP,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_DERIVE,
-			 "8C06", 0x8C, NULL, 0, NULL},
-		{ "16", "Retired KEY MAN 12",
+			 0x8C, NULL, 0, NULL},
+		{ "16", PIV_OBJ_8D06,
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_ENCRYPT | SC_PKCS15_PRKEY_USAGE_WRAP,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_DERIVE,
-			 "8D06", 0x8D, NULL, 0, NULL},
-		{ "17", "Retired KEY MAN 13",
+			 0x8D, NULL, 0, NULL},
+		{ "17", PIV_OBJ_8E06,
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_ENCRYPT | SC_PKCS15_PRKEY_USAGE_WRAP,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_DERIVE,
-			 "8E06", 0x8E, NULL, 0, NULL},
-		{ "18", "Retired KEY MAN 14",
+			 0x8E, NULL, 0, NULL},
+		{ "18", PIV_OBJ_8F06,
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_ENCRYPT | SC_PKCS15_PRKEY_USAGE_WRAP,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_DERIVE,
-			 "8F06", 0x8F, NULL, 0, NULL},
-		{ "19", "Retired KEY MAN 15",
+			 0x8F, NULL, 0, NULL},
+		{ "19", PIV_OBJ_9006,
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_ENCRYPT | SC_PKCS15_PRKEY_USAGE_WRAP,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_DERIVE,
-			 "9006", 0x90, NULL, 0, NULL},
-		{ "20", "Retired KEY MAN 16",
+			 0x90, NULL, 0, NULL},
+		{ "20", PIV_OBJ_9106,
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_ENCRYPT | SC_PKCS15_PRKEY_USAGE_WRAP,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_DERIVE,
-			 "9106", 0x91, NULL, 0, NULL},
-		{ "21", "Retired KEY MAN 17",
+			 0x91, NULL, 0, NULL},
+		{ "21", PIV_OBJ_9206,
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_ENCRYPT | SC_PKCS15_PRKEY_USAGE_WRAP,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_DERIVE,
-			 "9206", 0x92, NULL, 0, NULL},
-		{ "22", "Retired KEY MAN 18",
+			 0x92, NULL, 0, NULL},
+		{ "22", PIV_OBJ_9306,
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_ENCRYPT | SC_PKCS15_PRKEY_USAGE_WRAP,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_DERIVE,
-			 "9306", 0x93, NULL, 0, NULL},
-		{ "23", "Retired KEY MAN 19",
+			 0x93, NULL, 0, NULL},
+		{ "23", PIV_OBJ_9406,
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_ENCRYPT | SC_PKCS15_PRKEY_USAGE_WRAP,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_DERIVE,
-			 "9406", 0x94, NULL, 0, NULL},
-		{ "24", "Retired KEY MAN 20",
+			 0x94, NULL, 0, NULL},
+		{ "24", PIV_OBJ_9506,
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_ENCRYPT | SC_PKCS15_PRKEY_USAGE_WRAP,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_DERIVE,
-			 "9506", 0x95, NULL, 0, NULL}
+			 0x95, NULL, 0, NULL}
 	};
 	// clang-format on
 
-/*
- * note some of the SC_PKCS15_PRKEY values are dependent
- * on the key algorithm, and will be reset.
- */
+	/*
+	 * note some of the SC_PKCS15_PRKEY values are dependent
+	 * on the key algorithm, and will be reset.
+	 */
 	// clang-format off
 	static const prdata prkeys[PIV_NUM_CERTS_AND_KEYS] = {
 		{ "01", "PIV AUTH key",
@@ -617,7 +579,8 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 	};
 	// clang-format on
 
-	int    r, i;
+	int    r;
+	size_t i;
 	sc_card_t *card = p15card->card;
 	sc_serial_number_t serial;
 	char buf[SC_MAX_SERIALNR * 2 + 1];
@@ -658,29 +621,30 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 	sc_log(card->ctx,  "PIV-II adding objects...");
 
 	/* set other objects */
-	for (i = 0; objects[i].label; i++) {
+	for (i = 0; i < sizeof(objects)/sizeof(*objects); i++) {
 		struct sc_pkcs15_data_info obj_info;
 		struct sc_pkcs15_object    obj_obj;
+		const struct piv_object *piv_obj = &piv_objects[objects[i].enumtag];
 
 		memset(&obj_info, 0, sizeof(obj_info));
 		memset(&obj_obj, 0, sizeof(obj_obj));
 		sc_pkcs15_format_id(objects[i].id, &obj_info.id);
-		sc_format_path(objects[i].path, &obj_info.path);
+		sc_path_set(&obj_info.path, SC_PATH_TYPE_PATH, piv_obj->containerid, 2, 0, -1);
 
 		/* See if the object can not be present on the card */
-		r = sc_card_ctl(card, SC_CARDCTL_PIV_OBJECT_PRESENT, &obj_info.path);
+		r = sc_card_ctl(card, SC_CARDCTL_PIV_OBJECT_PRESENT, (void *)&objects[i].enumtag);
 		if (r == 1)
 			continue; /* Not on card, do not define the object */
 			
-		strncpy(obj_info.app_label, objects[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
-		r = sc_format_oid(&obj_info.app_oid, objects[i].aoid);
+		strncpy(obj_info.app_label, piv_obj->name, SC_PKCS15_MAX_LABEL_SIZE - 1);
+		r = sc_format_oid(&obj_info.app_oid, piv_obj->oidstring);
 		if (r != SC_SUCCESS)
 			LOG_FUNC_RETURN(card->ctx, r);
 
 		if (objects[i].auth_id)
 			sc_pkcs15_format_id(objects[i].auth_id, &obj_obj.auth_id);
 
-		strncpy(obj_obj.label, objects[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
+		strncpy(obj_obj.label, piv_obj->name, SC_PKCS15_MAX_LABEL_SIZE - 1);
 		obj_obj.flags = objects[i].obj_flags;
 		
 		r = sc_pkcs15emu_object_add(p15card, SC_PKCS15_TYPE_DATA_OBJECT,
@@ -719,8 +683,9 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 	for (i = 0; i < PIV_NUM_CERTS_AND_KEYS; i++) {
 		struct sc_pkcs15_cert_info cert_info;
 		struct sc_pkcs15_object    cert_obj;
-		sc_pkcs15_der_t   cert_der;
 		sc_pkcs15_cert_t *cert_out = NULL;
+		u8 emulated_path[4];
+		const struct piv_object *piv_obj = &piv_objects[certs[i].enumtag];
 		
 		ckis[i].cert_found = 0;
 		ckis[i].key_alg = -1;
@@ -735,47 +700,38 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 
 		memset(&cert_info, 0, sizeof(cert_info));
 		memset(&cert_obj,  0, sizeof(cert_obj));
+
+		/*
+		 * pkcs15 will use a 2 byte path or a 4 byte path
+		 * with cece added to path to request only the cert from the cert obj
+		 * PIV "Container ID" is used as the path, and are two bytes long
+		 */
+		memset(emulated_path, 0xCE, sizeof(emulated_path));
+		memcpy(emulated_path, piv_obj->containerid, 2);
+		sc_path_set(&cert_info.path, SC_PATH_TYPE_PATH, emulated_path, sizeof(emulated_path), 0, -1);
 	
 		sc_pkcs15_format_id(certs[i].id, &cert_info.id);
 		cert_info.authority = certs[i].authority;
-		sc_format_path(certs[i].path, &cert_info.path);
 
-		strncpy(cert_obj.label, certs[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
+		strncpy(cert_obj.label, piv_obj->name, SC_PKCS15_MAX_LABEL_SIZE - 1);
 		cert_obj.flags = certs[i].obj_flags;
 
 		/* See if the cert might be present or not. */
-		r = sc_card_ctl(card, SC_CARDCTL_PIV_OBJECT_PRESENT, &cert_info.path);
+		r = sc_card_ctl(card, SC_CARDCTL_PIV_OBJECT_PRESENT, (void *)&certs[i].enumtag);
 		if (r == 1) {
-			sc_log(card->ctx,  "Cert can not be present,i=%d", i);
+			sc_log(card->ctx,  "%s cannot be present", piv_obj->name);
 			continue;
 		}
 
-		r = sc_pkcs15_read_file(p15card, &cert_info.path, &cert_der.value, &cert_der.len);
-
-		if (r) {
-			sc_log(card->ctx,  "No cert found,i=%d", i);
-			continue;
-		}
-
-		ckis[i].cert_found = 1;
-		/* cache it using the PKCS15 emulation objects */
-		/* as it does not change */
-		if (cert_der.value) {
-			cert_info.value.value = cert_der.value;
-			cert_info.value.len = cert_der.len;
-			if (!p15card->opts.use_file_cache) {
-				cert_info.path.len = 0; /* use in mem cert from now on */
-			}
-		}
 		/* following will find the cached cert in cert_info */
-		r =  sc_pkcs15_read_certificate(p15card, &cert_info, &cert_out);
+		r = sc_pkcs15_read_certificate(p15card, &cert_info, &cert_out);
 		if (r < 0 || cert_out == NULL || cert_out->key == NULL) {
-			sc_log(card->ctx,  "Failed to read/parse the certificate r=%d",r);
+			sc_log(card->ctx,  "Failed to find/parse %s", piv_obj->name);
 			if (cert_out != NULL)
 				sc_pkcs15_free_certificate(cert_out);
-			free(cert_der.value);
 			continue;
 		}
+		ckis[i].cert_found = 1;
 
 		/* set the token name to the name of the CN of the first certificate */
 		if (!token_name) {
@@ -930,7 +886,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 
 		r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
 		if (r < 0) {
-			sc_log(card->ctx,  " Failed to add cert obj r=%d",r);
+			sc_log(card->ctx,  " Failed to add %s", piv_obj->name);
 			continue;
 		}
 	}
@@ -967,7 +923,6 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 			pin_info.attrs.pin.flags &= ~SC_PKCS15_PIN_FLAG_LOCAL;
 			label = "Global PIN";
 		}
-sc_log(card->ctx,  "DEE Adding pin %d label=%s",i, label);
 		strncpy(pin_obj.label, label, SC_PKCS15_MAX_LABEL_SIZE - 1);
 		pin_obj.flags = pins[i].obj_flags;
 		if (i == 0 && pin_info.attrs.pin.reference == 0x80) {
@@ -993,6 +948,7 @@ sc_log(card->ctx,  "DEE Adding pin %d label=%s",i, label);
 		struct sc_pkcs15_pubkey_info pubkey_info;
 		struct sc_pkcs15_object     pubkey_obj;
 		struct sc_pkcs15_pubkey *p15_key = NULL;
+		const struct piv_object *piv_obj = &piv_objects[pubkeys[i].enumtag];
 
 		memset(&pubkey_info, 0, sizeof(pubkey_info));
 		memset(&pubkey_obj,  0, sizeof(pubkey_obj));
@@ -1002,9 +958,9 @@ sc_log(card->ctx,  "DEE Adding pin %d label=%s",i, label);
 		pubkey_info.native        = 1;
 		pubkey_info.key_reference = pubkeys[i].ref;
 
-//		sc_format_path(pubkeys[i].path, &pubkey_info.path);
+//		sc_path_set(&pubkey_info.path, SC_PATH_TYPE_PATH, piv_obj->containerid, 2, 0, -1);
 
-		strncpy(pubkey_obj.label, pubkeys[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
+		strncpy(pubkey_obj.label, piv_obj->name, SC_PKCS15_MAX_LABEL_SIZE - 1);
 
 		pubkey_obj.flags = pubkeys[i].obj_flags;
 		
@@ -1021,7 +977,7 @@ sc_log(card->ctx,  "DEE Adding pin %d label=%s",i, label);
 		if (ckis[i].cert_found == 0 ) { /*  no cert found */
 			char * filename = NULL;
 			
-			sc_log(card->ctx, "No cert for this pub key i=%d",i);
+			sc_log(card->ctx, "No certificate for %s", piv_obj->name);
 			
 			/*
 			 * If we used the piv-tool to generate a key,
@@ -1095,7 +1051,6 @@ sc_log(card->ctx,  "DEE Adding pin %d label=%s",i, label);
 			ckis[i].pubkey_from_cert = NULL;
 		}
 
-		sc_log(card->ctx, "adding pubkey for %d keyalg=%d",i, ckis[i].key_alg);
 		switch (ckis[i].key_alg) {
 			case SC_ALGORITHM_RSA:
 				if (ckis[i].cert_keyUsage_present) {
@@ -1104,7 +1059,7 @@ sc_log(card->ctx,  "DEE Adding pin %d label=%s",i, label);
 					pubkey_info.usage = pubkeys[i].usage_rsa;
 				}
 				pubkey_info.modulus_length = ckis[i].pubkey_len;
-				strncpy(pubkey_obj.label, pubkeys[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
+				strncpy(pubkey_obj.label, piv_obj->name, SC_PKCS15_MAX_LABEL_SIZE - 1);
 
 				/* should not fail */
 				r = sc_pkcs15emu_add_rsa_pubkey(p15card, &pubkey_obj, &pubkey_info);
@@ -1120,7 +1075,7 @@ sc_log(card->ctx,  "DEE Adding pin %d label=%s",i, label);
 				}
 
 				pubkey_info.field_length = ckis[i].pubkey_len;
-				strncpy(pubkey_obj.label, pubkeys[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
+				strncpy(pubkey_obj.label, piv_obj->name, SC_PKCS15_MAX_LABEL_SIZE - 1);
 
 				/* should not fail */
 				r = sc_pkcs15emu_add_ec_pubkey(p15card, &pubkey_obj, &pubkey_info);

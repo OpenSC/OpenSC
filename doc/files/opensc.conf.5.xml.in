@@ -1678,15 +1678,16 @@ app <replaceable>application</replaceable> {
 			</varlistentry>
 			<varlistentry>
 				<term>
-					<envar>PIV_EXT_AUTH_KEY</envar>,
 					<envar>PIV_9A_KEY</envar>,
 					<envar>PIV_9C_KEY</envar>,
 					<envar>PIV_9D_KEY</envar>,
 					<envar>PIV_9E_KEY</envar>
 				</term>
 				<listitem><para>
-						PIV configuration during initialization with
-						<application>piv-tool</application>.
+						If the PIV PKCS#15 emulator can't find the public keys on
+						the card, the environment variables can be used to load them
+						from the filesystem. Files need to be encoded as
+						subjectPubkeyInfo.
 				</para></listitem>
 			</varlistentry>
 		</variablelist>
