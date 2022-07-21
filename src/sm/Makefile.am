@@ -20,6 +20,8 @@ AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(OPTIONAL_READLINE_CFLAGS)
 AM_CPPFLAGS = -I$(top_srcdir)/src -I$(top_builddir)/src/include
 
 libsm_la_SOURCES = sm-common.c sm-common.h
+libsm_la_LIBADD = $(OPENSSL_LIBS)
+libsm_la_CFLAGS = $(OPENSSL_CFLAGS)
 
 libsmiso_la_SOURCES = sm-iso.c
 
