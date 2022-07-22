@@ -73,6 +73,11 @@ install-exec-hook:
 	for l in opensc-pkcs11.dll pkcs11-spy.dll; do \
 		mv "$(DESTDIR)$(libdir)/$$l" "$(DESTDIR)$(bindir)/$$l"; \
 	done
+
+uninstall-hook:
+	for l in opensc-pkcs11.dll pkcs11-spy.dll; do \
+		rm -f "$(DESTDIR)$(bindir)/$$l"; \
+	done
 else
 # see http://wiki.cacert.org/wiki/Pkcs11TaskForce
 install-exec-hook:
