@@ -44,7 +44,10 @@ fi
 # The Github's Ubuntu images since 20211122.1 are broken
 # https://github.com/actions/virtual-environments/issues/4589
 if [ "$1" == "mingw" -o "$1" == "mingw32" -o "$1" == "ix86" ]; then
-	sudo apt install -y --allow-downgrades libpcre2-8-0=10.34-7
+	sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list
+	sudo apt-get update -qq
+	sudo apt-get install -yqq --allow-downgrades libgd3/focal libpcre2-8-0/focal libpcre2-16-0/focal libpcre2-32-0/focal libpcre2-posix2/focal
+	sudo apt-get purge -yqq libmono* moby* mono* php* libgdiplus libpcre2-posix3 libzip4
 fi
 
 # make sure we do not get prompts
