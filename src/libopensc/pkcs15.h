@@ -583,6 +583,7 @@ typedef struct sc_pkcs15_card {
 
 	struct sc_pkcs15_card_opts {
 		int use_file_cache;
+		int cache_private_data;
 		int use_pin_cache;
 		int pin_cache_counter;
 		int pin_cache_ignore_user_consent;

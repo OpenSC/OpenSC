@@ -1236,6 +1236,7 @@ sc_pkcs15_bind(struct sc_card *card, struct sc_aid *aid,
 
 	p15card->card = card;
 	p15card->opts.use_file_cache = 0;
+	p15card->opts.cache_private_data = 0;
 	p15card->opts.use_pin_cache = 1;
 	p15card->opts.pin_cache_counter = 10;
 	p15card->opts.pin_cache_ignore_user_consent = 0;
@@ -1250,6 +1251,7 @@ sc_pkcs15_bind(struct sc_card *card, struct sc_aid *aid,
 	conf_block = sc_get_conf_block(ctx, "framework", "pkcs15", 1);
 	if (conf_block) {
 		p15card->opts.use_file_cache = scconf_get_bool(conf_block, "use_file_caching", p15card->opts.use_file_cache);
+		p15card->opts.cache_private_data = scconf_get_bool(conf_block, "cache_private_data", p15card->opts.cache_private_data);
 		p15card->opts.use_pin_cache = scconf_get_bool(conf_block, "use_pin_caching", p15card->opts.use_pin_cache);
 		p15card->opts.pin_cache_counter = scconf_get_int(conf_block, "pin_cache_counter", p15card->opts.pin_cache_counter);
 		p15card->opts.pin_cache_ignore_user_consent = scconf_get_bool(conf_block, "pin_cache_ignore_user_consent",
