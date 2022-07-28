@@ -290,6 +290,15 @@ static const struct sc_atr_table piv_atrs[] = {
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
+static struct piv_supported_ec_curves {
+	struct sc_object_id oid;
+	size_t size;
+} ec_curves[] = {
+	{{{1, 2, 840, 10045, 3, 1, 7, -1}},     256}, /* secp256r1, nistp256, prime256v1, ansiX9p256r1 */
+	{{{1, 3, 132, 0, 34, -1}},              384}, /* secp384r1, nistp384, prime384v1, ansiX9p384r1 */
+	{{{-1}}, 0} /* This entry must not be touched. */
+};
+
 /* all have same AID */
 static struct piv_aid piv_aids[] = {
 	{SC_CARD_TYPE_PIV_II_GENERIC, /* TODO not really card type but what PIV AID is supported */
@@ -3487,12 +3496,14 @@ static int piv_init(sc_card_t *card)
 	_sc_card_add_rsa_alg(card, 3072, flags, 0); /* optional */
 
 	if (!(priv->card_issues & CI_NO_EC)) {
+		int i;
 		flags = SC_ALGORITHM_ECDSA_RAW | SC_ALGORITHM_ECDH_CDH_RAW | SC_ALGORITHM_ECDSA_HASH_NONE;
 		ext_flags = SC_ALGORITHM_EXT_EC_NAMEDCURVE | SC_ALGORITHM_EXT_EC_UNCOMPRESES;
 
-		_sc_card_add_ec_alg(card, 256, flags, ext_flags, NULL);
-		if (!(priv->card_issues & CI_NO_EC384))
-			_sc_card_add_ec_alg(card, 384, flags, ext_flags, NULL);
+		for (i = 0; ec_curves[i].oid.value[0] >= 0; i++) {
+			if (!(priv->card_issues & CI_NO_EC384 && ec_curves[i].size == 384))
+				_sc_card_add_ec_alg(card, ec_curves[i].size, flags, ext_flags, &ec_curves[i].oid);
+		}
 	}
 
 	if (!(priv->card_issues & CI_NO_RANDOM))
