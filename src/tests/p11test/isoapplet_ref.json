@@ -63,10 +63,40 @@
 		"CKF_DIGEST"
 	],
 	[
-		"ECDSA_SHA1",
+		"ECDSA",
 		"192",
 		"384",
 		"0x01902801"
+	],
+	[
+		"ECDSA_SHA1",
+		"192",
+		"384",
+		"0x00002800"
+	],
+	[
+		"ECDSA_SHA224",
+		"192",
+		"384",
+		"0x00002800"
+	],
+	[
+		"ECDSA_SHA256",
+		"192",
+		"384",
+		"0x00002800"
+	],
+	[
+		"ECDSA_SHA384",
+		"192",
+		"384",
+		"0x00002800"
+	],
+	[
+		"ECDSA_SHA512",
+		"192",
+		"384",
+		"0x00002800"
 	],
 	[
 		"EC_KEY_PAIR_GEN",
@@ -196,6 +226,36 @@
 		"RSA_PKCS",
 		"",
 		"YES"
+	],
+	[
+		"03",
+		"ECDSA",
+		"YES",
+		""
+	],
+	[
+		"03",
+		"ECDSA_SHA1",
+		"YES",
+		""
+	],
+	[
+		"03",
+		"ECDSA_SHA256",
+		"YES",
+		""
+	],
+	[
+		"03",
+		"ECDSA_SHA384",
+		"YES",
+		""
+	],
+	[
+		"03",
+		"ECDSA_SHA512",
+		"YES",
+		""
 	]],
 	"result": "pass"
 },
@@ -251,8 +311,7 @@
 },
 {
 	"test_id": "ec_sign_size_test",
-	"fail_reason": "Some signatures were not verified successfully. Please review the log",
-	"result": "fail"
+	"result": "pass"
 },
 {
 	"test_id": "usage_test",
