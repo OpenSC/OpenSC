@@ -10,7 +10,7 @@ fi
 
 if [ "$GITHUB_EVENT_NAME" == "pull_request" ]; then
 	PR_NUMBER=$(echo $GITHUB_REF | awk 'BEGIN { FS = "/" } ; { print $3 }')
-	if [ "$GITHUB_BASE_REF" == "master" ]; then
+	if [ "$GITHUB_BASE_REF" == "swissbit-master" ]; then
 		./bootstrap.ci -s "-pr$PR_NUMBER"
 	else
 		./bootstrap.ci -s "$GITHUB_BASE_REF-pr$PR_NUMBER"

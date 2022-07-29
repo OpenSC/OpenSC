@@ -2266,7 +2266,7 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	}
 
 	rv = CKR_CANCEL;
-	if (r < (int) sizeof(in_buffer)) {
+	if (r < (int) sizeof(in_buffer) || opt_mechanism == CKM_ECDSA) {
 		rv = p11->C_SignInit(session, &mech, key);
 		if (rv != CKR_OK)
 			p11_fatal("C_SignInit", rv);
