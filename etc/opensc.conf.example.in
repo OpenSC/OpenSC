@@ -886,6 +886,11 @@ app default {
 		# Default: false
 		# use_file_caching = true;
 		#
+		# Whether to cache private objects.
+		#
+		# Default: false
+		# cache_private_data = false;
+		#
 		# set a path for caching
 		# so you do not use the env variables and for pam_pkcs11
 		# (with certificate check)  where $HOME is not set

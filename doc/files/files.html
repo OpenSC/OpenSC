@@ -760,6 +760,22 @@ app <em class="replaceable"><code>application</code></em> {
 							may contain personal data such as name and mail
 							address.
 					</p></dd><dt><span class="term">
+						<code class="option">cache_private_data = <em class="replaceable"><code>bool</code></em>;</code>
+					</span></dt><dd><p>
+							Whether to cache private card's files (e.g.
+							certificates) on disk in
+							<code class="option">file_cache_dir</code>
+							Usable only with <option>use_file_caching</option>.
+							(Default: <code class="literal">false</code>).
+						</p><p>
+							If caching is done by a system process, the
+							cached files may be placed inaccessible from
+							the user account. Use a globally readable and
+							writable location if you wish to share the
+							cached information. Note that the cached files
+							may contain personal data such as name and mail
+							address.
+					</p></dd><dt><span class="term">
 						<code class="option">file_cache_dir = <em class="replaceable"><code>filename</code></em>;</code>
 					</span></dt><dd><p>
 							Where to cache the card's files. The default values are:

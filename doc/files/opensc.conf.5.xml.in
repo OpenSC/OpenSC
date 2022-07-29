@@ -1143,6 +1143,28 @@ app <replaceable>application</replaceable> {
 				</varlistentry>
 				<varlistentry>
 					<term>
+						<option>cache_private_data = <replaceable>bool</replaceable>;</option>
+					</term>
+					<listitem><para>
+							Whether to cache private card's files (e.g.
+							private keys) on disk in
+							<option>file_cache_dir</option>.
+							Usable only with <option>use_file_caching</option>
+							(Default:
+							<literal>false</literal>).
+						</para>
+						<para>
+							If caching is done by a system process, the
+							cached files may be placed inaccessible from
+							the user account. Use a globally readable and
+							writable location if you wish to share the
+							cached information. Note that the cached files
+							may contain personal data such as name and mail
+							address.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
 						<option>file_cache_dir = <replaceable>filename</replaceable>;</option>
 					</term>
 					<listitem><para>
