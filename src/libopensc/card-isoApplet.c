@@ -34,7 +34,7 @@
 #define ISOAPPLET_ALG_REF_RSA_SHA256_PAD_PSS 0x12
 #define ISOAPPLET_ALG_REF_RSA_SHA512_PAD_PSS 0x13
 
-#define ISOAPPLET_VERSION 0x0006
+#define ISOAPPLET_VERSION 0x0100
 
 #define ISOAPPLET_API_FEATURE_EXT_APDU 0x01
 #define ISOAPPLET_API_FEATURE_SECURE_RANDOM 0x02
@@ -157,7 +157,7 @@ isoApplet_match_card(sc_card_t *card)
 	}
 
 	return 1;
-}
+	}
 
 static int
 isoApplet_get_info(sc_card_t * card, struct isoApplet_drv_data * drvdata) {
@@ -242,9 +242,9 @@ isoApplet_init(sc_card_t *card)
 	}
 
 	if(drvdata->isoapplet_features & ISOAPPLET_API_FEATURE_EXT_APDU)
-		card->caps |= SC_CARD_CAP_APDU_EXT;
+		card->caps |=  SC_CARD_CAP_APDU_EXT;
 	if(drvdata->isoapplet_features & ISOAPPLET_API_FEATURE_SECURE_RANDOM)
-		card->caps |= SC_CARD_CAP_RNG;
+		card->caps |=  SC_CARD_CAP_RNG;
 	if(drvdata->isoapplet_version <= 0x0005
 			|| drvdata->isoapplet_features & ISOAPPLET_API_FEATURE_ECC)
 	{
@@ -255,10 +255,11 @@ isoApplet_init(sc_card_t *card)
 		 * should be kept in sync with the explicit parameters in the pkcs15-init
 		 * driver. */
 		flags = 0;
-		flags |= SC_ALGORITHM_ECDSA_HASH_SHA1;
+		flags |= SC_ALGORITHM_ECDSA_RAW;
+		flags |= SC_ALGORITHM_ECDSA_HASH_NONE;
 		flags |= SC_ALGORITHM_ONBOARD_KEY_GEN;
 		ext_flags = SC_ALGORITHM_EXT_EC_UNCOMPRESES;
-		ext_flags |= SC_ALGORITHM_EXT_EC_NAMEDCURVE;
+		ext_flags |=  SC_ALGORITHM_EXT_EC_NAMEDCURVE;
 		ext_flags |= SC_ALGORITHM_EXT_EC_F_P;
 		for (i=0; ec_curves[i].oid.value[0] >= 0; i++)
 		{
@@ -1151,14 +1152,14 @@ isoApplet_set_security_env(sc_card_t *card,
 			break;
 
 		case SC_ALGORITHM_EC:
-			if( env->algorithm_flags & SC_ALGORITHM_ECDSA_HASH_SHA1 )
+			if( env->algorithm_flags & SC_ALGORITHM_ECDSA_RAW )
 			{
 				drvdata->sec_env_alg_ref = ISOAPPLET_ALG_REF_ECDSA;
 				drvdata->sec_env_ec_field_length = env->algorithm_ref;
 			}
 			else
 			{
-				LOG_TEST_RET(card->ctx, SC_ERROR_NOT_SUPPORTED, "IsoApplet only supports ECDSA with on-card SHA1.");
+				LOG_TEST_RET(card->ctx, SC_ERROR_NOT_SUPPORTED, "IsoApplet only supports raw ECDSA.");
 			}
 			break;
 
@@ -1214,11 +1215,16 @@ isoApplet_compute_signature(struct sc_card *card,
 {
 	struct sc_context *ctx = card->ctx;
 	struct isoApplet_drv_data *drvdata = DRVDATA(card);
+	/* No more than 256 byte are needed for the signature. The IsoApplet
+	* supports no larger key sizes than for RSA-2048 or EC:secp384r1 leading
+	* to 256 byte or 104 byte, respectively, in ASN.1 sequence. */
+	static u8 seqbuf[256];
+	size_t seqlen = sizeof(seqbuf);
 	int r;
 
 	LOG_FUNC_CALLED(ctx);
 
-	r = iso_ops->compute_signature(card, data, datalen, out, outlen);
+	r = iso_ops->compute_signature(card, data, datalen, seqbuf, seqlen);
 	if(r < 0)
 	{
 		LOG_FUNC_RETURN(ctx, r);
@@ -1231,21 +1237,24 @@ isoApplet_compute_signature(struct sc_card *card,
 		u8* p = NULL;
 		size_t len = (drvdata->sec_env_ec_field_length + 7) / 8 * 2;
 
-		if (len > outlen)
+		if (len > seqlen)
 			LOG_FUNC_RETURN(ctx, SC_ERROR_BUFFER_TOO_SMALL);
 
 		p = calloc(1,len);
 		if (!p)
 			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 
-		r = sc_asn1_sig_value_sequence_to_rs(ctx, out, r, p, len);
+		r = sc_asn1_sig_value_sequence_to_rs(ctx, seqbuf, r, p, len);
 		if (!r)   {
-			memcpy(out, p, len);
+			memcpy(seqbuf, p, len);
 			r = len;
 		}
 
 		free(p);
 	}
+	if ((size_t) r > outlen)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_BUFFER_TOO_SMALL);
+	memcpy(out, seqbuf, r);
 	LOG_FUNC_RETURN(ctx, r);
 }
 

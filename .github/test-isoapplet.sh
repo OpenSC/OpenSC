@@ -11,7 +11,7 @@ export LD_LIBRARY_PATH=/usr/local/lib
 
 # The ISO applet
 if [ ! -d IsoApplet ]; then
-	git clone https://github.com/philipWendland/IsoApplet.git
+	git clone https://github.com/swissbit-eis/IsoApplet.git
 	# enable IsoApplet key import patch
 	sed "s/DEF_PRIVATE_KEY_IMPORT_ALLOWED = false/DEF_PRIVATE_KEY_IMPORT_ALLOWED = true/g" -i IsoApplet/src/net/pwendland/javacard/pki/isoapplet/IsoApplet.java
 fi
@@ -65,7 +65,7 @@ pkcs11-tool -l -t -p 123456
 # run the tests
 pushd src/tests/p11test/
 sleep 5
-./p11test -s 0 -p 123456 -o isoapplet.json || true # ec_sign_size_test is failing here
+./p11test -s 0 -p 123456 -o isoapplet.json
 popd
 
 # random data to be signed
@@ -85,4 +85,7 @@ rm /tmp/ECprivKey.pem /tmp/ECpubKey.pem /tmp/data.bin /tmp/data.sig
 
 kill -9 $PID
 
-diff -u3 src/tests/p11test/isoapplet{_ref,}.json
+if ! diff -u3 src/tests/p11test/isoapplet.json src/tests/p11test/isoapplet_ref.json; then
+    echo "The output of p11test has changed (see diff above). If that is expected, update the reference file. Otherwise, fix the error."
+    exit 1
+fi
