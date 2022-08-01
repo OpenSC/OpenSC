@@ -345,6 +345,7 @@ static int sc_pkcs15emu_gemsafeGPK_init(sc_pkcs15_card_t *p15card)
 		struct sc_pkcs15_cert_info cert_info;
 		struct sc_pkcs15_object    cert_obj;
 		sc_pkcs15_cert_t 		*cert_out;
+		int private_obj;
 
 		memset(&cert_info, 0, sizeof(cert_info));
 		memset(&cert_obj,  0, sizeof(cert_obj));
@@ -410,8 +411,8 @@ static int sc_pkcs15emu_gemsafeGPK_init(sc_pkcs15_card_t *p15card)
 		}
 
 		/* now lets see if we have a matching key for this cert */
-		
-		r = sc_pkcs15_read_certificate(p15card, &cert_info, &cert_out);
+		private_obj = cert_obj.flags & SC_PKCS15_CO_FLAG_PRIVATE;
+		r = sc_pkcs15_read_certificate(p15card, &cert_info, private_obj, &cert_out);
 		if (r < 0) {
 			free(gsdata);
 			sc_pkcs15_card_clear(p15card);

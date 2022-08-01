@@ -149,7 +149,7 @@ sc_pkcs15emu_din_66291_init(sc_pkcs15_card_t *p15card)
 
             if (i == 0) {
                 sc_pkcs15_cert_t *cert;
-                if (SC_SUCCESS == sc_pkcs15_read_certificate(p15card, &cert_info, &cert)) {
+                if (SC_SUCCESS == sc_pkcs15_read_certificate(p15card, &cert_info, 0, &cert)) {
                     static const struct sc_object_id cn_oid = {{ 2, 5, 4, 3, -1 }};
                     u8 *cn_name = NULL;
                     size_t cn_len = 0;

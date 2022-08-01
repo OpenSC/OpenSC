@@ -198,6 +198,7 @@ static int itacns_add_cert(sc_pkcs15_card_t *p15card,
 #ifdef ENABLE_OPENSSL
 	X509 *x509;
 	sc_pkcs15_cert_t *cert;
+	int private_obj;
 #endif
 
 	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_NORMAL);
@@ -228,8 +229,8 @@ static int itacns_add_cert(sc_pkcs15_card_t *p15card,
 
 	/* If we have OpenSSL, read keyUsage */
 #ifdef ENABLE_OPENSSL
-
-	r = sc_pkcs15_read_certificate(p15card, &info, &cert);
+	private_obj = obj_flags & SC_PKCS15_CO_FLAG_PRIVATE;
+	r = sc_pkcs15_read_certificate(p15card, &info, private_obj, &cert);
 	LOG_TEST_RET(p15card->card->ctx, r,
 		"Could not read X.509 certificate");
 

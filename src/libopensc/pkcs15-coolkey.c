@@ -431,7 +431,7 @@ coolkey_get_public_key_from_certificate(sc_pkcs15_card_t *p15card, sc_cardctl_co
 	if (r < 0) {
 		goto fail;
 	}
-	r = sc_pkcs15_read_certificate(p15card, &cert_info, &cert_out);
+	r = sc_pkcs15_read_certificate(p15card, &cert_info, 0, &cert_out);
 	if (r < 0) {
 		goto fail;
 	}
