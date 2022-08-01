@@ -87,7 +87,7 @@ static int sc_pkcs15emu_esteid2018_init(sc_pkcs15_card_t *p15card) {
 			continue;
 
 		sc_pkcs15_cert_t *cert = NULL;
-		r = sc_pkcs15_read_certificate(p15card, &cert_info, &cert);
+		r = sc_pkcs15_read_certificate(p15card, &cert_info, 0, &cert);
 		LOG_TEST_GOTO_ERR(card->ctx, r, "Could not read authentication certificate");
 
 		if (cert->key->algorithm == SC_ALGORITHM_EC)

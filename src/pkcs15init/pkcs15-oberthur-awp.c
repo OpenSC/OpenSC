@@ -1455,11 +1455,12 @@ awp_update_df_create_prvkey(struct sc_pkcs15_card *p15card, struct sc_profile *p
 	rv = sc_pkcs15_find_cert_by_id(p15card, &key_info->id, &cert_obj);
 	if (!rv)   {
 		struct sc_pkcs15_cert_info *cert_info = (struct sc_pkcs15_cert_info *) cert_obj->data;
+		int private_obj = cert_obj->flags & SC_PKCS15_CO_FLAG_PRIVATE;
 
 		path = cert_info->path;
 		cc.cert_id = (path.value[path.len-1] & 0xFF) + (path.value[path.len-2] & 0xFF) * 0x100;
 
-		rv = sc_pkcs15_read_certificate(p15card, cert_info, &p15cert);
+		rv = sc_pkcs15_read_certificate(p15card, cert_info, private_obj, &p15cert);
 		SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_VERBOSE, rv, "AWP 'update private key' DF failed:  cannot get certificate");
 
 		rv = sc_pkcs15_allocate_object_content(ctx, cert_obj, p15cert->data.value, p15cert->data.len);

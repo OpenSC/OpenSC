@@ -90,7 +90,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 			continue;
 
 		sc_pkcs15_cert_t *cert = NULL;
-		r = sc_pkcs15_read_certificate(p15card, &cert_info, &cert);
+		r = sc_pkcs15_read_certificate(p15card, &cert_info, 0, &cert);
 		if (r < 0)
 			goto err;
 		if (cert->key->algorithm == SC_ALGORITHM_EC)
