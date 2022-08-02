@@ -905,12 +905,12 @@ int main(int argc, char * argv[])
 			action_count++;
 			break;
 		case OPT_DECRYPT:
-			need_session |= NEED_SESSION_RW;
+			need_session |= NEED_SESSION_RO;
 			do_decrypt = 1;
 			action_count++;
 			break;
 		case OPT_ENCRYPT:
-			need_session |= NEED_SESSION_RW;
+			need_session |= NEED_SESSION_RO;
 			do_encrypt = 1;
 			action_count++;
 			break;
