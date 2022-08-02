@@ -236,6 +236,13 @@
 
 				<varlistentry>
 					<term>
+						<option>--session-rw</option>,
+					</term>
+					<listitem><para>Forces to open the PKCS#11 session with CKF_RW_SESSION.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
 						<option>--login</option>,
 						<option>-l</option>
 					</term>
