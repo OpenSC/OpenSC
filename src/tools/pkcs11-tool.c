@@ -920,7 +920,7 @@ int main(int argc, char * argv[])
 			action_count++;
 			break;
 		case OPT_WRAP:
-			need_session |= NEED_SESSION_RW;
+			need_session |= NEED_SESSION_RO;
 			do_wrap = 1;
 			action_count++;
 			break;
