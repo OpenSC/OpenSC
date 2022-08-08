@@ -90,6 +90,14 @@ filesystem {
 
             DF Resrv1-DF {
                 file-id = 1001;
+
+                DF Resrv5-DF {
+                    file-id = 8001;
+                }
+
+                DF Resrv6-DF {
+                    file-id = 8002;
+                }
             }
             DF Resrv2-DF {
                 file-id = 1002;
