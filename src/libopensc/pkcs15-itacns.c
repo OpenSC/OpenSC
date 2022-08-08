@@ -493,6 +493,7 @@ static int itacns_add_data_files(sc_pkcs15_card_t *p15card)
 	sc_pkcs15_data_info_t dinfo;
 	struct sc_pkcs15_object *objs[32];
 	struct sc_pkcs15_data_info *cinfo;
+	int private_obj;
 
 	for(i=0; i < array_size; i++) {
 		sc_path_t path;
@@ -548,7 +549,8 @@ static int itacns_add_data_files(sc_pkcs15_card_t *p15card)
 		return SC_SUCCESS;
 	}
 
-	rv = sc_pkcs15_read_data_object(p15card, cinfo, &p15_personaldata);
+	private_obj = objs[i]->flags & SC_PKCS15_CO_FLAG_PRIVATE;
+	rv = sc_pkcs15_read_data_object(p15card, cinfo, private_obj, &p15_personaldata);
 	if (rv) {
 		sc_log(p15card->card->ctx,
 			"Could not read EF_DatiPersonali: "

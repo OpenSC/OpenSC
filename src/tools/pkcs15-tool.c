@@ -466,6 +466,7 @@ static int read_data_object(void)
 	for (i = 0; i < count; i++) {
 		struct sc_pkcs15_data_info *cinfo = (struct sc_pkcs15_data_info *) objs[i]->data;
 		struct sc_pkcs15_data *data_object = NULL;
+		int private_obj;
 
 		if (!sc_format_oid(&oid, opt_data))   {
 			if (!sc_compare_oid(&oid, &cinfo->app_oid))
@@ -480,7 +481,8 @@ static int read_data_object(void)
 			printf("Reading data object with label '%s'\n", opt_data);
 		r = authenticate(objs[i]);
 		if (r >= 0) {
-			r = sc_pkcs15_read_data_object(p15card, cinfo, &data_object);
+			private_obj = objs[i]->flags & SC_PKCS15_CO_FLAG_PRIVATE;
+			r = sc_pkcs15_read_data_object(p15card, cinfo, private_obj, &data_object);
 			if (r) {
 				fprintf(stderr, "Data object read failed: %s\n", sc_strerror(r));
 				if (r == SC_ERROR_FILE_NOT_FOUND)
@@ -527,7 +529,8 @@ static int list_data_objects(void)
 			}
 			if (objs[i]->auth_id.len == 0) {
 				struct sc_pkcs15_data *data_object;
-				r = sc_pkcs15_read_data_object(p15card, cinfo, &data_object);
+				int private_obj = objs[i]->flags & SC_PKCS15_CO_FLAG_PRIVATE;
+				r = sc_pkcs15_read_data_object(p15card, cinfo, private_obj, &data_object);
 				if (r) {
 					fprintf(stderr, "Data object read failed: %s\n", sc_strerror(r));
 					if (r == SC_ERROR_FILE_NOT_FOUND)
@@ -559,7 +562,8 @@ static int list_data_objects(void)
 		printf("\tPath:            %s\n", sc_print_path(&cinfo->path));
 		if (objs[i]->auth_id.len == 0) {
 			struct sc_pkcs15_data *data_object;
-			r = sc_pkcs15_read_data_object(p15card, cinfo, &data_object);
+			int private_obj = objs[i]->flags & SC_PKCS15_CO_FLAG_PRIVATE;
+			r = sc_pkcs15_read_data_object(p15card, cinfo, private_obj, &data_object);
 			if (r) {
 				fprintf(stderr, "Data object read failed: %s\n", sc_strerror(r));
 				if (r == SC_ERROR_FILE_NOT_FOUND)
