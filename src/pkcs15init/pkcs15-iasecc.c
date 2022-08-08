@@ -1473,7 +1473,7 @@ iasecc_md_gemalto_unset_default(struct sc_pkcs15_card *p15card, struct sc_profil
 	struct sc_pkcs15_prkey_info *key_info = (struct sc_pkcs15_prkey_info *)key_obj->data;
 	unsigned char guid[40];
 	size_t guid_len;
-	int rv, ii, keys_num;
+	int rv, ii, keys_num, private_obj;
 
 	LOG_FUNC_CALLED(ctx);
 
@@ -1487,7 +1487,8 @@ iasecc_md_gemalto_unset_default(struct sc_pkcs15_card *p15card, struct sc_profil
 	if (rv == SC_ERROR_OBJECT_NOT_FOUND)
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 
-	rv = sc_pkcs15_read_data_object(p15card, (struct sc_pkcs15_data_info *)data_obj->data, &dod);
+	private_obj = data_obj->flags & SC_PKCS15_CO_FLAG_PRIVATE;
+	rv = sc_pkcs15_read_data_object(p15card, (struct sc_pkcs15_data_info *)data_obj->data, private_obj, &dod);
 	LOG_TEST_RET(ctx, rv, "Cannot read from 'CSP/'Default Key Container'");
 
 	if (guid_len != dod->data_len || memcmp(guid, dod->data, guid_len)) {

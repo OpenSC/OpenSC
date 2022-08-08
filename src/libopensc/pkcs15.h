@@ -728,6 +728,7 @@ void sc_pkcs15_free_key_params(struct sc_pkcs15_key_params *params);
 
 int sc_pkcs15_read_data_object(struct sc_pkcs15_card *p15card,
 			       const struct sc_pkcs15_data_info *info,
+			       int private_obj,
 			       struct sc_pkcs15_data **data_object_out);
 int sc_pkcs15_find_data_object_by_id(struct sc_pkcs15_card *p15card,
 				     const struct sc_pkcs15_id *id,
