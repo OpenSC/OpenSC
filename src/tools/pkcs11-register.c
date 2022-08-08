@@ -231,6 +231,7 @@ add_module_firefox(const char *module_path, const char *module_name, const char 
 		{"APPDATA", "Mozilla\\Firefox"},
 #else
 		{"HOME", ".mozilla/firefox"},
+		{"HOME", ".mozilla/firefox-esr"},
 #endif
 	};
 
