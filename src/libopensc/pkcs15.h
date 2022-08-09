@@ -914,7 +914,7 @@ void sc_pkcs15_free_object(struct sc_pkcs15_object *obj);
 /* Generic file i/o */
 int sc_pkcs15_read_file(struct sc_pkcs15_card *p15card,
 			const struct sc_path *path,
-			u8 **buf, size_t *buflen);
+			u8 **buf, size_t *buflen, int private_data);
 
 /* Caching functions */
 int sc_pkcs15_read_cached_file(struct sc_pkcs15_card *p15card,
