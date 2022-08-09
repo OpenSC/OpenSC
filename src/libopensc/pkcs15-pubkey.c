@@ -883,6 +883,7 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_obj
 	unsigned char *data = NULL;
 	size_t	len;
 	int	algorithm, r;
+	int	private_obj;
 
 	if (p15card == NULL || p15card->card == NULL || p15card->card->ops == NULL
 			|| obj == NULL || out == NULL) {
@@ -951,7 +952,8 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_obj
 	}
 	else if (info->path.len)   {
 		sc_log(ctx, "Read from EF and decode");
-		r = sc_pkcs15_read_file(p15card, &info->path, &data, &len);
+		private_obj = obj->flags & SC_PKCS15_CO_FLAG_PRIVATE;
+		r = sc_pkcs15_read_file(p15card, &info->path, &data, &len, private_obj);
 		LOG_TEST_GOTO_ERR(ctx, r, "Failed to read public key file.");
 
 		if ((algorithm == SC_ALGORITHM_EC || algorithm == SC_ALGORITHM_EDDSA || algorithm == SC_ALGORITHM_XEDDSA)

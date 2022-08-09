@@ -384,7 +384,7 @@ sc_pkcs15_read_certificate(struct sc_pkcs15_card *p15card, const struct sc_pkcs1
 		sc_der_copy(&der, &info->value);
 	}
 	else if (info->path.len) {
-		r = sc_pkcs15_read_file(p15card, &info->path, &der.value, &der.len);
+		r = sc_pkcs15_read_file(p15card, &info->path, &der.value, &der.len, 0);
 		LOG_TEST_RET(ctx, r, "Unable to read certificate file.");
 	}
 	else   {

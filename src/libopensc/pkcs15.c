@@ -2103,7 +2103,7 @@ sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *df)
 		sc_log(ctx, "unknown DF type: %d", df->type);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
-	r = sc_pkcs15_read_file(p15card, &df->path, &buf, &bufsize);
+	r = sc_pkcs15_read_file(p15card, &df->path, &buf, &bufsize, 0);
 	LOG_TEST_RET(ctx, r, "pkcs15 read file failed");
 
 	p = buf;
@@ -2344,7 +2344,7 @@ sc_pkcs15_parse_unusedspace(const unsigned char *buf, size_t buflen, struct sc_p
 
 int
 sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_path,
-		unsigned char **buf, size_t *buflen)
+		unsigned char **buf, size_t *buflen, int private_data)
 {
 	struct sc_context *ctx;
 	struct sc_file *file = NULL;
@@ -2361,7 +2361,7 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 	sc_log(ctx, "path=%s, index=%u, count=%d", sc_print_path(in_path), in_path->index, in_path->count);
 
 	r = -1; /* file state: not in cache */
-	if (p15card->opts.use_file_cache) {
+	if (p15card->opts.use_file_cache && (p15card->opts.cache_private_data || !private_data)) {
 		r = sc_pkcs15_read_cached_file(p15card, in_path, &data, &len);
 
 		if (!r && in_path->aid.len > 0 && in_path->len >= 2)   {
@@ -2449,7 +2449,7 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 
 		sc_file_free(file);
 
-		if (len && p15card->opts.use_file_cache) {
+		if (len && p15card->opts.use_file_cache && (p15card->opts.cache_private_data || !private_data)) {
 			sc_pkcs15_cache_file(p15card, in_path, data, len);
 		}
 	}

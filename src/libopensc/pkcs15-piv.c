@@ -721,6 +721,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		struct sc_pkcs15_object    cert_obj;
 		sc_pkcs15_der_t   cert_der;
 		sc_pkcs15_cert_t *cert_out = NULL;
+		int private_obj;
 		
 		ckis[i].cert_found = 0;
 		ckis[i].key_alg = -1;
@@ -750,7 +751,8 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 			continue;
 		}
 
-		r = sc_pkcs15_read_file(p15card, &cert_info.path, &cert_der.value, &cert_der.len);
+		private_obj = cert_obj.flags & SC_PKCS15_CO_FLAG_PRIVATE;
+		r = sc_pkcs15_read_file(p15card, &cert_info.path, &cert_der.value, &cert_der.len, private_obj);
 
 		if (r) {
 			sc_log(card->ctx,  "No cert found,i=%d", i);
