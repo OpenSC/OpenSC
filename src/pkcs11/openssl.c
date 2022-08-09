@@ -227,6 +227,11 @@ void
 sc_pkcs11_register_openssl_mechanisms(struct sc_pkcs11_card *p11card)
 {
 	sc_pkcs11_mechanism_type_t *mt = NULL;
+/*
+ * Engine support is being dropped in 3.0. OpenSC loads GOST as engine.
+ * When GOST developers convert to provider, we can load the provider
+ */
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 #if !defined(OPENSSL_NO_ENGINE)
 	ENGINE *e;
 /* crypto locking removed in 1.1 */
@@ -272,6 +277,7 @@ sc_pkcs11_register_openssl_mechanisms(struct sc_pkcs11_card *p11card)
 		CRYPTO_set_locking_callback(locking_cb);
 #endif
 #endif /* !defined(OPENSSL_NO_ENGINE) */
+#endif /* OPENSSL_VERSION_NUMBER >= 0x30000000L && !defined(LIBRESSL_VERSION_NUMBER) */
 
 	openssl_sha1_mech.mech_data = EVP_sha1();
 	mt = dup_mem(&openssl_sha1_mech, sizeof openssl_sha1_mech);
