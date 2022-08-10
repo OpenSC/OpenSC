@@ -48,8 +48,7 @@ else
 	# normal procedure
 
 	if [ "$1" == "ossl3" -o "$2" == "ossl3" ]; then
-		# without -Werror, because of rest of deprecated API
-		./configure --disable-dependency-tracking --disable-strict CFLAGS="-Wall -Wextra -Wno-unused-parameter -Wstrict-aliasing=2"
+		./configure --disable-dependency-tracking
 	elif [ "$1" == "no-shared" ]; then
 		./configure --disable-shared
 	else
