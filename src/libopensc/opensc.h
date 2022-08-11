@@ -59,7 +59,8 @@ extern "C" {
 #define SC_SEC_OPERATION_DERIVE         0x0004
 #define SC_SEC_OPERATION_WRAP		0x0005
 #define SC_SEC_OPERATION_UNWRAP		0x0006
-
+#define SC_SEC_OPERATION_ENCRYPT_SYM	0x0007
+#define SC_SEC_OPERATION_DECRYPT_SYM	0x0008
 /* sc_security_env flags */
 #define SC_SEC_ENV_ALG_REF_PRESENT	0x0001
 #define SC_SEC_ENV_FILE_REF_PRESENT	0x0002
@@ -814,6 +815,9 @@ struct sc_card_operations {
 	int (*wrap)(struct sc_card *card, u8 *out, size_t outlen);
 
 	int (*unwrap)(struct sc_card *card, const u8 *crgram, size_t crgram_len);
+
+	int (*encrypt_sym)(struct sc_card *card, const u8 *plaintext, size_t plaintext_len,
+			u8 *out, size_t *outlen);
 };
 
 typedef struct sc_card_driver {
@@ -1378,6 +1382,8 @@ int sc_reset_retry_counter(struct sc_card *card, unsigned int type,
 			   const u8 *newref, size_t newlen);
 int sc_build_pin(u8 *buf, size_t buflen, struct sc_pin_cmd_pin *pin, int pad);
 
+int sc_encrypt_sym(struct sc_card *card, const u8 *Data, size_t DataLen,
+		u8 *out, size_t *outlen);
 
 /********************************************************************/
 /*               ISO 7816-9 related functions                       */
