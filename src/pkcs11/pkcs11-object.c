@@ -49,6 +49,10 @@ static sc_pkcs11_mechanism_type_t find_mechanism = {
 	NULL,		/* derive */
 	NULL,		/* wrap */
 	NULL,		/* unwrap */
+	NULL,		/* encrypt init */
+	NULL,		/* encrypt */
+	NULL,		/* ecnrypt_update */
+	NULL,		/* encrypt_final */
 	NULL,		/* mech_data */
 	NULL,		/* free_mech_data */
 	NULL,		/* copy_mech_data */
@@ -831,7 +835,48 @@ C_EncryptInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		CK_MECHANISM_PTR pMechanism,	/* the encryption mechanism */
 		CK_OBJECT_HANDLE hKey)		/* handle of encryption key */
 {
-	return CKR_FUNCTION_NOT_SUPPORTED;
+	CK_BBOOL can_encrypt;
+	CK_KEY_TYPE key_type;
+	CK_ATTRIBUTE encrypt_attribute = {CKA_ENCRYPT, &can_encrypt, sizeof(can_encrypt)};
+	CK_ATTRIBUTE key_type_attr = {CKA_KEY_TYPE, &key_type, sizeof(key_type)};
+	struct sc_pkcs11_session *session;
+	struct sc_pkcs11_object *object;
+	CK_RV rv;
+
+	if (pMechanism == NULL_PTR)
+		return CKR_ARGUMENTS_BAD;
+
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
+
+	rv = get_object_from_session(hSession, hKey, &session, &object);
+	if (rv != CKR_OK) {
+		if (rv == CKR_OBJECT_HANDLE_INVALID)
+			rv = CKR_KEY_HANDLE_INVALID;
+		goto out;
+	}
+
+	if (object->ops->encrypt == NULL_PTR) {
+		rv = CKR_KEY_TYPE_INCONSISTENT;
+		goto out;
+	}
+
+	rv = object->ops->get_attribute(session, object, &encrypt_attribute);
+	if (rv != CKR_OK || !can_encrypt) {
+		rv = CKR_KEY_TYPE_INCONSISTENT;
+		goto out;
+	}
+	rv = object->ops->get_attribute(session, object, &key_type_attr);
+	if (rv != CKR_OK) {
+		rv = CKR_KEY_TYPE_INCONSISTENT;
+		goto out;
+	}
+	rv = sc_pkcs11_encr_init(session, pMechanism, object, key_type);
+out:
+	SC_LOG_RV("C_EncryptInit() = %s", rv);
+	sc_pkcs11_unlock();
+	return rv;
 }
 
 
@@ -841,7 +886,24 @@ CK_RV C_Encrypt(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		CK_BYTE_PTR pEncryptedData,	/* receives encrypted data */
 		CK_ULONG_PTR pulEncryptedDataLen)
 {				/* receives encrypted byte count */
-	return CKR_FUNCTION_NOT_SUPPORTED;
+	CK_RV rv;
+	struct sc_pkcs11_session *session;
+
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
+
+	rv = get_session(hSession, &session);
+	if (rv == CKR_OK) {
+		rv = restore_login_state(session->slot);
+		if (rv == CKR_OK)
+			rv = sc_pkcs11_encr(session, pData, ulDataLen, pEncryptedData, pulEncryptedDataLen);
+		rv = reset_login_state(session->slot, rv);
+	}
+
+	SC_LOG_RV("C_Encrypt() = %s", rv);
+	sc_pkcs11_unlock();
+	return rv;
 }
 
 CK_RV C_EncryptUpdate(CK_SESSION_HANDLE hSession,	/* the session's handle */
@@ -850,14 +912,45 @@ CK_RV C_EncryptUpdate(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		      CK_BYTE_PTR pEncryptedPart,	/* receives encrypted data */
 		      CK_ULONG_PTR pulEncryptedPartLen)
 {				/* receives encrypted byte count */
-	return CKR_FUNCTION_NOT_SUPPORTED;
+	CK_RV rv;
+	struct sc_pkcs11_session *session;
+
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
+
+	rv = get_session(hSession, &session);
+	if (rv == CKR_OK)
+		rv = sc_pkcs11_encr_update(session, pPart, ulPartLen,
+				pEncryptedPart, pulEncryptedPartLen);
+
+	SC_LOG_RV("C_EncryptUpdate() = %s", rv);
+	sc_pkcs11_unlock();
+	return rv;
 }
 
 CK_RV C_EncryptFinal(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		     CK_BYTE_PTR pLastEncryptedPart,	/* receives encrypted last part */
 		     CK_ULONG_PTR pulLastEncryptedPartLen)
 {				/* receives byte count */
-	return CKR_FUNCTION_NOT_SUPPORTED;
+	CK_RV rv;
+	struct sc_pkcs11_session *session;
+
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
+
+	rv = get_session(hSession, &session);
+	if (rv == CKR_OK) {
+		rv = restore_login_state(session->slot);
+		if (rv == CKR_OK)
+			rv = sc_pkcs11_encr_final(session, pLastEncryptedPart, pulLastEncryptedPartLen);
+		rv = reset_login_state(session->slot, rv);
+	}
+
+	SC_LOG_RV("C_EncryptFinal() = %s", rv);
+	sc_pkcs11_unlock();
+	return rv;
 }
 
 CK_RV C_DecryptInit(CK_SESSION_HANDLE hSession,	/* the session's handle */

@@ -249,7 +249,7 @@ static int format_senv(struct sc_pkcs15_card *p15card,
 			senv_out->algorithm_ref = prkey->field_length;
 			break;
 		case SC_PKCS15_TYPE_SKEY_GENERIC:
-			if (obj->type == SC_PKCS15_TYPE_SKEY_GENERIC && skey->key_type != CKK_AES)
+			if (skey->key_type != CKK_AES)
 				LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Key type not supported");
 			*alg_info_out = sc_card_find_alg(p15card->card, SC_ALGORITHM_AES,
 			skey->value_len, NULL);
@@ -780,6 +780,93 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 
 err:
 	sc_mem_secure_clear_free(buf, buflen);
+
+	LOG_FUNC_RETURN(ctx, r);
+}
+
+int
+sc_pkcs15_encrypt_sym(struct sc_pkcs15_card *p15card,
+		const struct sc_pkcs15_object *obj,
+		unsigned long flags,
+		const u8 *in, size_t inlen, u8 *out, size_t *outlen,
+		const u8 *param, size_t paramlen)
+{
+
+	sc_context_t *ctx = p15card->card->ctx;
+
+	int i, r;
+	sc_algorithm_info_t *alg_info = NULL;
+	sc_security_env_t senv;
+	sc_sec_env_param_t senv_param;
+	const struct sc_pkcs15_skey_info *skey;
+	unsigned long pad_flags = 0, sec_flags = 0;
+	int revalidated_cached_pin = 0;
+	sc_path_t path;
+
+	sc_log(ctx, "called with flags 0x%lX", flags);
+
+	skey = (const struct sc_pkcs15_skey_info *)obj->data;
+	if (!(skey->usage & SC_PKCS15_PRKEY_USAGE_ENCRYPT))
+		LOG_TEST_RET(ctx, SC_ERROR_NOT_ALLOWED, "This key cannot be used for encryption");
+
+	r = format_senv(p15card, obj, &senv, &alg_info);
+	LOG_TEST_RET(ctx, r, "Could not initialize security environment");
+	senv.operation = SC_SEC_OPERATION_ENCRYPT_SYM;
+
+	r = sc_get_encoding_flags(ctx, flags, alg_info->flags, &pad_flags, &sec_flags);
+	LOG_TEST_RET(ctx, r, "cannot encode security operation flags");
+	senv.algorithm_flags = sec_flags;
+
+	for (i = 0; i < SC_MAX_SUPPORTED_ALGORITHMS && senv.supported_algos[i].reference; i++) {
+		if ((senv.supported_algos[i].mechanism == CKM_AES_ECB && sec_flags == SC_ALGORITHM_AES_ECB) ||
+				(senv.supported_algos[i].mechanism == CKM_AES_CBC && sec_flags == SC_ALGORITHM_AES_CBC) ||
+				(senv.supported_algos[i].mechanism == CKM_AES_CBC_PAD && sec_flags == SC_ALGORITHM_AES_CBC_PAD)) {
+			senv.algorithm_ref = senv.supported_algos[i].algo_ref;
+			senv.flags |= SC_SEC_ENV_ALG_REF_PRESENT;
+			break;
+		}
+	}
+
+	if ((sec_flags & (SC_ALGORITHM_AES_CBC | SC_ALGORITHM_AES_CBC_PAD)) > 0) {
+		senv_param = (sc_sec_env_param_t){
+				SC_SEC_ENV_PARAM_IV, (void *)param, paramlen};
+		LOG_TEST_RET(ctx, sec_env_add_param(&senv, &senv_param), "failed to add IV to security environment");
+	}
+
+	LOG_TEST_RET(p15card->card->ctx, get_file_path(obj, &path), "Failed to get key file path.");
+
+	LOG_TEST_RET(p15card->card->ctx, r, "sc_lock() failed");
+
+	do {
+		r = SC_SUCCESS;
+		if (outlen == NULL) {
+			/* C_EncryptInit */
+			/* select key file and set sec env */
+			if (path.len != 0 || path.aid.len != 0) {
+				r = select_key_file(p15card, obj, &senv);
+				if (r < 0)
+					sc_log(p15card->card->ctx, "Unable to select key file");
+			}
+			if (r == SC_SUCCESS) {
+				r = sc_set_security_env(p15card->card, &senv, 0);
+				if (r < 0)
+					sc_log(p15card->card->ctx, "Unable to set security env");
+			}
+		}
+
+		if (r == SC_SUCCESS)
+			r = sc_encrypt_sym(p15card->card, in, inlen, out, outlen);
+
+		if (revalidated_cached_pin)
+			/* only re-validate once */
+			break;
+		if (r == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED) {
+			r = sc_pkcs15_pincache_revalidate(p15card, obj);
+			if (r < 0)
+				break;
+			revalidated_cached_pin = 1;
+		}
+	} while (revalidated_cached_pin);
 
 	LOG_FUNC_RETURN(ctx, r);
 }
