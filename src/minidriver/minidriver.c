@@ -1445,9 +1445,11 @@ md_fs_read_msroots_file(PCARD_DATA pCardData, struct md_file *file)
 	for(ii = 0; ii < cert_num; ii++)   {
 		struct sc_pkcs15_cert_info *cert_info = (struct sc_pkcs15_cert_info *) prkey_objs[ii]->data;
 		struct sc_pkcs15_cert *cert = NULL;
+		int private_obj;
 		PCCERT_CONTEXT wincert = NULL;
 		if (cert_info->authority) {
-			rv = sc_pkcs15_read_certificate(vs->p15card, cert_info, &cert);
+			private_obj = prkey_objs[ii]->flags & SC_PKCS15_CO_FLAG_PRIVATE;
+			rv = sc_pkcs15_read_certificate(vs->p15card, cert_info, private_obj, &cert);
 			if(rv)   {
 				logprintf(pCardData, 2, "Cannot read certificate idx:%i: sc-error %d\n", ii, rv);
 				continue;
@@ -1547,8 +1549,9 @@ md_fs_read_content(PCARD_DATA pCardData, char *parent, struct md_file *file)
 			struct sc_pkcs15_cert *cert = NULL;
 			struct sc_pkcs15_object *cert_obj = vs->p15_containers[idx].cert_obj;
 			struct sc_pkcs15_cert_info *cert_info = (struct sc_pkcs15_cert_info *)cert_obj->data;
+			int private_obj = cert_obj->flags & SC_PKCS15_CO_FLAG_PRIVATE;
 
-			rv = sc_pkcs15_read_certificate(vs->p15card, cert_info, &cert);
+			rv = sc_pkcs15_read_certificate(vs->p15card, cert_info, private_obj, &cert);
 			if(rv)   {
 				logprintf(pCardData, 2, "Cannot read certificate idx:%i: sc-error %d\n", idx, rv);
 				logprintf(pCardData, 2, "set cardcf from 'DATA' pkcs#15 object\n");
@@ -3563,9 +3566,10 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 
 	if (!pubkey_der.value && cont->cert_obj)   {
 		struct sc_pkcs15_cert *cert = NULL;
+		int private_obj = cont->cert_obj->flags & SC_PKCS15_CO_FLAG_PRIVATE;
 
 		logprintf(pCardData, 1, "now read certificate '%.*s'\n", (int) sizeof cont->cert_obj->label, cont->cert_obj->label);
-		rv = sc_pkcs15_read_certificate(vs->p15card, (struct sc_pkcs15_cert_info *)(cont->cert_obj->data), &cert);
+		rv = sc_pkcs15_read_certificate(vs->p15card, (struct sc_pkcs15_cert_info *)(cont->cert_obj->data), private_obj, &cert);
 		if(!rv)   {
 			rv = sc_pkcs15_encode_pubkey(vs->ctx, cert->key, &pubkey_der.value, &pubkey_der.len);
 			if (rv)   {
