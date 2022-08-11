@@ -34,7 +34,7 @@ struct hash_signature_info {
 };
 
 /* Also used for verification and decryption data */
-struct signature_data {
+struct operation_data {
 	struct sc_pkcs11_object *key;
 	struct hash_signature_info *info;
 	sc_pkcs11_operation_t *md;
@@ -42,14 +42,14 @@ struct signature_data {
 	unsigned int	buffer_len;
 };
 
-static struct signature_data *
-new_signature_data()
+static struct operation_data *
+new_operation_data()
 {
-	return calloc(1, sizeof(struct signature_data));
+	return calloc(1, sizeof(struct operation_data));
 }
 
 static void
-signature_data_release(struct signature_data *data)
+operation_data_release(struct operation_data *data)
 {
 	if (!data)
 		return;
@@ -59,7 +59,7 @@ signature_data_release(struct signature_data *data)
 }
 
 static CK_RV
-signature_data_buffer_append(struct signature_data *data,
+signature_data_buffer_append(struct operation_data *data,
 		const CK_BYTE *in, unsigned int in_len)
 {
 	if (!data)
@@ -493,12 +493,12 @@ sc_pkcs11_signature_init(sc_pkcs11_operation_t *operation,
 		struct sc_pkcs11_object *key)
 {
 	struct hash_signature_info *info;
-	struct signature_data *data;
+	struct operation_data *data;
 	CK_RV rv;
 	int can_do_it = 0;
 
 	LOG_FUNC_CALLED(context);
-	if (!(data = new_signature_data()))
+	if (!(data = new_operation_data()))
 		LOG_FUNC_RETURN(context, CKR_HOST_MEMORY);
 	data->info = NULL;
 	data->key = key;
@@ -515,7 +515,7 @@ sc_pkcs11_signature_init(sc_pkcs11_operation_t *operation,
 		}
 		else  {
 			/* Mechanism recognised but cannot be performed by pkcs#15 card, or some general error. */
-			signature_data_release(data);
+			operation_data_release(data);
 			LOG_FUNC_RETURN(context, (int) rv);
 		}
 	}
@@ -525,7 +525,7 @@ sc_pkcs11_signature_init(sc_pkcs11_operation_t *operation,
 		rv = key->ops->init_params(operation->session, &operation->mechanism);
 		if (rv != CKR_OK) {
 			/* Probably bad arguments */
-			signature_data_release(data);
+			operation_data_release(data);
 			LOG_FUNC_RETURN(context, (int) rv);
 		}
 	}
@@ -533,7 +533,7 @@ sc_pkcs11_signature_init(sc_pkcs11_operation_t *operation,
 	/* If this is a signature with hash operation,
 	 * and card cannot perform itself signature with hash operation,
 	 * set up the hash operation */
-	info = (struct hash_signature_info *) operation->type->mech_data;
+	info = (struct hash_signature_info *)operation->type->mech_data;
 	if (info != NULL && !can_do_it) {
 		/* Initialize hash operation */
 
@@ -544,7 +544,7 @@ sc_pkcs11_signature_init(sc_pkcs11_operation_t *operation,
 			rv = info->hash_type->md_init(data->md);
 		if (rv != CKR_OK) {
 			sc_pkcs11_release_operation(&data->md);
-			signature_data_release(data);
+			operation_data_release(data);
 			LOG_FUNC_RETURN(context, (int) rv);
 		}
 		data->info = info;
@@ -558,12 +558,12 @@ static CK_RV
 sc_pkcs11_signature_update(sc_pkcs11_operation_t *operation,
 		CK_BYTE_PTR pPart, CK_ULONG ulPartLen)
 {
-	struct signature_data *data;
+	struct operation_data *data;
 	CK_RV rv;
 
 	LOG_FUNC_CALLED(context);
 	sc_log(context, "data part length %li", ulPartLen);
-	data = (struct signature_data *) operation->priv_data;
+	data = (struct operation_data *)operation->priv_data;
 	if (data->md) {
 		rv = data->md->type->md_update(data->md, pPart, ulPartLen);
 		LOG_FUNC_RETURN(context, (int) rv);
@@ -578,11 +578,11 @@ static CK_RV
 sc_pkcs11_signature_final(sc_pkcs11_operation_t *operation,
 		CK_BYTE_PTR pSignature, CK_ULONG_PTR pulSignatureLen)
 {
-	struct signature_data *data;
+	struct operation_data *data;
 	CK_RV rv;
 
 	LOG_FUNC_CALLED(context);
-	data = (struct signature_data *) operation->priv_data;
+	data = (struct operation_data *)operation->priv_data;
 	if (data->md) {
 		sc_pkcs11_operation_t	*md = data->md;
 		CK_BYTE hash[64];
@@ -612,7 +612,7 @@ sc_pkcs11_signature_size(sc_pkcs11_operation_t *operation, CK_ULONG_PTR pLength)
 	CK_ATTRIBUTE attr_key_type = { CKA_KEY_TYPE, &key_type, sizeof(key_type) };
 	CK_RV rv;
 
-	key = ((struct signature_data *) operation->priv_data)->key;
+	key = ((struct operation_data *)operation->priv_data)->key;
 	/*
 	 * EC and GOSTR do not have CKA_MODULUS_BITS attribute.
 	 * But other code in framework treats them as if they do.
@@ -650,11 +650,11 @@ sc_pkcs11_signature_size(sc_pkcs11_operation_t *operation, CK_ULONG_PTR pLength)
 }
 
 static void
-sc_pkcs11_signature_release(sc_pkcs11_operation_t *operation)
+sc_pkcs11_operation_release(sc_pkcs11_operation_t *operation)
 {
 	if (!operation)
 	    return;
-	signature_data_release(operation->priv_data);
+	operation_data_release(operation->priv_data);
 }
 
 #ifdef ENABLE_OPENSSL
@@ -761,10 +761,10 @@ sc_pkcs11_verify_init(sc_pkcs11_operation_t *operation,
 		    struct sc_pkcs11_object *key)
 {
 	struct hash_signature_info *info;
-	struct signature_data *data;
+	struct operation_data *data;
 	CK_RV rv;
 
-	if (!(data = new_signature_data()))
+	if (!(data = new_operation_data()))
 		return CKR_HOST_MEMORY;
 
 	data->info = NULL;
@@ -819,9 +819,9 @@ static CK_RV
 sc_pkcs11_verify_update(sc_pkcs11_operation_t *operation,
 		    CK_BYTE_PTR pPart, CK_ULONG ulPartLen)
 {
-	struct signature_data *data;
+	struct operation_data *data;
 
-	data = (struct signature_data *) operation->priv_data;
+	data = (struct operation_data *)operation->priv_data;
 	if (data->md) {
 		sc_pkcs11_operation_t	*md = data->md;
 
@@ -837,7 +837,7 @@ static CK_RV
 sc_pkcs11_verify_final(sc_pkcs11_operation_t *operation,
 			CK_BYTE_PTR pSignature, CK_ULONG ulSignatureLen)
 {
-	struct signature_data *data;
+	struct operation_data *data;
 	struct sc_pkcs11_object *key;
 	unsigned char *pubkey_value = NULL;
 	CK_KEY_TYPE key_type;
@@ -847,7 +847,7 @@ sc_pkcs11_verify_final(sc_pkcs11_operation_t *operation,
 	CK_ATTRIBUTE attr_key_params = {CKA_GOSTR3410_PARAMS, &params, sizeof(params)};
 	CK_RV rv;
 
-	data = (struct signature_data *) operation->priv_data;
+	data = (struct operation_data *)operation->priv_data;
 
 	if (pSignature == NULL)
 		return CKR_ARGUMENTS_BAD;
@@ -1295,10 +1295,10 @@ static CK_RV
 sc_pkcs11_encrypt_init(sc_pkcs11_operation_t *operation,
 		struct sc_pkcs11_object *key)
 {
-	struct signature_data *data;
+	struct operation_data *data;
 	CK_RV rv;
 
-	if (!(data = new_signature_data()))
+	if (!(data = new_operation_data()))
 		return CKR_HOST_MEMORY;
 
 	data->key = key;
@@ -1326,7 +1326,7 @@ sc_pkcs11_encrypt(sc_pkcs11_operation_t *operation,
 		CK_BYTE_PTR pData, CK_ULONG ulDataLen,
 		CK_BYTE_PTR pEncryptedData, CK_ULONG_PTR pulEncryptedDataLen)
 {
-	struct signature_data *data;
+	struct operation_data *data;
 	struct sc_pkcs11_object *key;
 	CK_RV rv;
 	CK_ULONG ulEncryptedDataLen, ulLastEncryptedPartLen;
@@ -1338,7 +1338,7 @@ sc_pkcs11_encrypt(sc_pkcs11_operation_t *operation,
 	ulEncryptedDataLen = pulEncryptedDataLen ? *pulEncryptedDataLen : 0;
 	ulLastEncryptedPartLen = ulEncryptedDataLen;
 
-	data = (struct signature_data *)operation->priv_data;
+	data = (struct operation_data *)operation->priv_data;
 
 	key = data->key;
 
@@ -1372,7 +1372,7 @@ sc_pkcs11_encrypt_update(sc_pkcs11_operation_t *operation,
 		CK_BYTE_PTR pPart, CK_ULONG ulPartLen,
 		CK_BYTE_PTR pEncryptedPart, CK_ULONG_PTR pulEncryptedPartLen)
 {
-	struct signature_data *data;
+	struct operation_data *data;
 	struct sc_pkcs11_object *key;
 	CK_RV rv;
 	CK_ULONG ulEncryptedPartLen;
@@ -1383,7 +1383,7 @@ sc_pkcs11_encrypt_update(sc_pkcs11_operation_t *operation,
 
 	ulEncryptedPartLen = pulEncryptedPartLen ? *pulEncryptedPartLen : 0;
 
-	data = (struct signature_data *)operation->priv_data;
+	data = (struct operation_data *)operation->priv_data;
 
 	key = data->key;
 
@@ -1400,7 +1400,7 @@ sc_pkcs11_encrypt_final(sc_pkcs11_operation_t *operation,
 		CK_BYTE_PTR pLastEncryptedPart,
 		CK_ULONG_PTR pulLastEncryptedPartLen)
 {
-	struct signature_data *data;
+	struct operation_data *data;
 	struct sc_pkcs11_object *key;
 	CK_RV rv;
 	CK_ULONG ulLastEncryptedPartLen;
@@ -1411,7 +1411,7 @@ sc_pkcs11_encrypt_final(sc_pkcs11_operation_t *operation,
 
 	ulLastEncryptedPartLen = pulLastEncryptedPartLen ? *pulLastEncryptedPartLen : 0;
 
-	data = (struct signature_data *)operation->priv_data;
+	data = (struct operation_data *)operation->priv_data;
 
 	key = data->key;
 
@@ -1430,10 +1430,10 @@ static CK_RV
 sc_pkcs11_decrypt_init(sc_pkcs11_operation_t *operation,
 			struct sc_pkcs11_object *key)
 {
-	struct signature_data *data;
+	struct operation_data *data;
 	CK_RV rv;
 
-	if (!(data = new_signature_data()))
+	if (!(data = new_operation_data()))
 		return CKR_HOST_MEMORY;
 
 	data->key = key;
@@ -1459,10 +1459,10 @@ sc_pkcs11_decrypt(sc_pkcs11_operation_t *operation,
 		CK_BYTE_PTR pEncryptedData, CK_ULONG ulEncryptedDataLen,
 		CK_BYTE_PTR pData, CK_ULONG_PTR pulDataLen)
 {
-	struct signature_data *data;
+	struct operation_data *data;
 	struct sc_pkcs11_object *key;
 
-	data = (struct signature_data*) operation->priv_data;
+	data = (struct operation_data *)operation->priv_data;
 
 	key = data->key;
 	return key->ops->decrypt(operation->session,
@@ -1544,7 +1544,7 @@ sc_pkcs11_new_fw_mechanism(CK_MECHANISM_TYPE mech,
 	mt->copy_mech_data = copy_priv_data;
 	mt->obj_size = sizeof(sc_pkcs11_operation_t);
 
-	mt->release = sc_pkcs11_signature_release;
+	mt->release = sc_pkcs11_operation_release;
 
 	if (pInfo->flags & CKF_SIGN) {
 		mt->sign_init = sc_pkcs11_signature_init;
