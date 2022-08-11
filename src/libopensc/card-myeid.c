@@ -84,6 +84,13 @@ typedef struct myeid_private_data {
 	 after this pair of calls and must not be used elsewhere. */
 	const struct sc_security_env* sec_env;
 	int disable_hw_pkcs1_padding;
+	/* buffers for AES(DES) block cipher */
+	uint8_t sym_crypt_buffer[16];
+	uint8_t sym_plain_buffer[16];
+	uint8_t sym_crypt_buffer_len;
+	uint8_t sym_plain_buffer_len;
+	/* PSO for AES/DES need algo+flags from sec env */
+	unsigned int algorithm, algorithm_flags;
 } myeid_private_data_t;
 
 typedef struct myeid_card_caps {
@@ -713,6 +720,8 @@ static int myeid_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 	LOG_FUNC_RETURN(card->ctx, iso_ops->pin_cmd(card, data, tries_left));
 }
 
+#define IS_SYMETRIC_CRYPT(x) ((x) == SC_SEC_OPERATION_ENCRYPT_SYM || (x) == SC_SEC_OPERATION_DECRYPT_SYM)
+
 static int myeid_set_security_env_rsa(sc_card_t *card, const sc_security_env_t *env,
 		int se_num)
 {
@@ -756,6 +765,14 @@ static int myeid_set_security_env_rsa(sc_card_t *card, const sc_security_env_t *
 		apdu.p1 = 0x81;
 		apdu.p2 = 0xB8;
 		break;
+	case SC_SEC_OPERATION_ENCRYPT_SYM:
+		apdu.p1 = 0x81;
+		apdu.p2 = 0xB8;
+		break;
+	case SC_SEC_OPERATION_DECRYPT_SYM:
+		apdu.p1 = 0x41;
+		apdu.p2 = 0xB8;
+		break;
 	default:
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
@@ -774,9 +791,16 @@ static int myeid_set_security_env_rsa(sc_card_t *card, const sc_security_env_t *
 		memcpy(p, env->file_ref.value, 2);
 		p += 2;
 	}
+	/* symmetric operations: we need to set the key reference */
+	if (IS_SYMETRIC_CRYPT(env->operation)) {
+		*p++ = 0x83;
+		*p++ = 1;
+		*p++ = 0;
+	}
 	if (env->flags & SC_SEC_ENV_KEY_REF_PRESENT && env->operation != SC_SEC_OPERATION_UNWRAP &&
-		env->operation != SC_SEC_OPERATION_WRAP)
-	{
+			env->operation != SC_SEC_OPERATION_WRAP &&
+			env->operation != SC_SEC_OPERATION_ENCRYPT_SYM &&
+			env->operation != SC_SEC_OPERATION_DECRYPT_SYM) {
 		*p++ = 0x84;
 		*p++ = 1;
 		*p++ = 0;
@@ -795,11 +819,13 @@ static int myeid_set_security_env_rsa(sc_card_t *card, const sc_security_env_t *
 			break;
 	    }
 
-	if (env->operation ==  SC_SEC_OPERATION_UNWRAP || env->operation == SC_SEC_OPERATION_WRAP)
-	{
-	    /* add IV if present */
+	r = 0;
+	if (env->operation == SC_SEC_OPERATION_UNWRAP || env->operation == SC_SEC_OPERATION_WRAP ||
+			IS_SYMETRIC_CRYPT(env->operation)) {
+		/* add IV if present */
 		for (i = 0; i < SC_SEC_ENV_MAX_PARAMS; i++)
 			if (env->params[i].param_type == SC_SEC_ENV_PARAM_IV) {
+				r = 1;
 				*p++ = 0x87;
 				*p++ = (unsigned char) env->params[i].value_len;
 				if (p + env->params[i].value_len >= sbuf + SC_MAX_APDU_BUFFER_SIZE) {
@@ -811,6 +837,15 @@ static int myeid_set_security_env_rsa(sc_card_t *card, const sc_security_env_t *
 				break;
 			}
 	}
+	/* for AES_ECB we need to reset the IV but we respect if the IV is already present */
+	if (IS_SYMETRIC_CRYPT(env->operation) && env->algorithm == SC_ALGORITHM_AES &&
+			env->algorithm_flags == SC_ALGORITHM_AES_ECB && r == 0) {
+		*p++ = 0x87;
+		*p++ = 16;
+		memset(p, 0, 16);
+		p += 16;
+	}
+
 	r = p - sbuf;
 	apdu.lc = r;
 	apdu.datalen = r;
@@ -936,6 +971,10 @@ static int myeid_set_security_env(struct sc_card *card,
 	/* store security environment to differentiate between ECDH and RSA in decipher - Hannu*/
 	priv->sec_env = env;
 
+	/* for symmetric operation save algo and algo flags */
+	priv->algorithm_flags = env->algorithm_flags;
+	priv->algorithm = env->algorithm;
+
 	if (env->flags & SC_SEC_ENV_ALG_PRESENT)
 	{
 		sc_security_env_t tmp;
@@ -982,6 +1021,13 @@ static int myeid_set_security_env(struct sc_card *card,
 
 			if ((tmp.algorithm_flags & SC_ALGORITHM_AES_CBC_PAD) == SC_ALGORITHM_AES_CBC_PAD)
 				tmp.algorithm_ref |= 0x80;		/* set PKCS#7 padding */
+			/* Tag 0x80 algorithm_ref - value 0x80 or 0x8A is working only for UNWRAP/WRAP
+			 * AES is supported from version 4.0 but without pkcs#7 padding.
+			 * For SC_SEC_OPERATION_ENCRYPT_SYM and SC_SEC_OPERATION_DECRYPT_SYM we running
+			 * PKCS#7 in software, here we fix the algorithm_ref variable.
+			 */
+			if (IS_SYMETRIC_CRYPT(env->operation))
+				tmp.algorithm_ref &= ~0x80; /* do not handle padding in card */
 
 			/* from this point, there's no difference to RSA SE */
 			return myeid_set_security_env_rsa(card, &tmp, se_num);
@@ -1816,6 +1862,246 @@ static int myeid_finish(sc_card_t * card)
 	return SC_SUCCESS;
 }
 
+static int
+myeid_enc_dec_sym(struct sc_card *card, const u8 *data, size_t datalen,
+		u8 *out, size_t *outlen, int decipher)
+{
+
+	struct sc_context *ctx;
+
+	struct sc_apdu apdu;
+	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
+	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
+	u8 *sdata;
+	int r, padding = 0, cbc = 0;
+
+	size_t block_size;
+	size_t len, rest_len;
+	size_t return_len = 0;
+
+	size_t max_apdu_datalen;
+	size_t apdu_datalen;
+
+	assert(card != NULL);
+
+	ctx = card->ctx;
+	LOG_FUNC_CALLED(ctx);
+
+	myeid_private_data_t *priv;
+	priv = (myeid_private_data_t *)card->drv_data;
+
+	/* How many cipher blocks will fit in the APDU. We do not use the APDU chaining
+	 * mechanism from OpenSC, because we need the size of the APDU data block
+	 * to match a multiple of the cipher block size */
+
+	max_apdu_datalen = sc_get_max_send_size(card);
+	if (max_apdu_datalen > sc_get_max_recv_size(card))
+		max_apdu_datalen = sc_get_max_recv_size(card);
+
+	if (max_apdu_datalen > SC_MAX_APDU_BUFFER_SIZE)
+		max_apdu_datalen = SC_MAX_APDU_BUFFER_SIZE;
+
+	sc_log(ctx, "algorithm %d algorithm_flags %x", priv->algorithm, priv->algorithm_flags);
+
+	/* for C_Encrypt/C_EncryptUpdate/C_EncryptFinalize/C_Decrypt/C_DecryptUpdate/C_DecryptFinalize
+	 * the 'outlen' is always not NULL (src/pkcs11/framework-pkcs15.c).
+	 * For C_EncryptInit and C_DecrytpInit the 'outlen' is set to NULL
+	 */
+	if (outlen == NULL) {
+		/* C_EncryptInit/C_DecryptInit - clear buffers */
+		sc_log(ctx, "%s (symmetric key) initialized", decipher ? "C_DecryptInit" : "C_EncryptInit");
+		priv->sym_crypt_buffer_len = 0;
+		priv->sym_plain_buffer_len = 0;
+		return SC_SUCCESS;
+	}
+
+	switch (priv->algorithm) {
+	case SC_ALGORITHM_AES:
+		block_size = 16;
+		if (priv->algorithm_flags & SC_ALGORITHM_AES_ECB) {
+			padding = 0;
+			cbc = 0;
+		} else if (priv->algorithm_flags & SC_ALGORITHM_AES_CBC) {
+			padding = 0;
+			cbc = 1;
+		} else if (priv->algorithm_flags & SC_ALGORITHM_AES_CBC_PAD) {
+			padding = 1;
+			cbc = 1;
+		}
+		break;
+	default:
+		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
+	}
+
+	/* MyEID: ECB APDU must match exact cipher block size in CBC
+	 * mode up to 240 bytes can be handled in one APDU
+	 * round max_apdu_datalen to multiple of block_size (CBC mode) */
+
+	if (cbc)
+		max_apdu_datalen -= max_apdu_datalen % block_size;
+	else
+		max_apdu_datalen = block_size;
+
+	/* Maybe we have more input data (from previous PSO operation). */
+	rest_len = priv->sym_crypt_buffer_len;
+
+	/* no input data from application (this is C_EncryptFinalize/C_DecryptFinalize */
+	if (data == NULL) {
+		if (datalen != 0)
+			LOG_FUNC_RETURN(ctx, SC_ERROR_WRONG_LENGTH);
+		if (decipher) {
+			/* C_DecryptFinalize */
+			/* decrypted buffer size must match the block size */
+			if (priv->sym_plain_buffer_len != block_size)
+				LOG_FUNC_RETURN(ctx, SC_ERROR_WRONG_LENGTH);
+			/* do we have any encrypted data left? */
+			if (rest_len)
+				LOG_FUNC_RETURN(ctx, SC_ERROR_WRONG_LENGTH);
+
+			return_len = block_size;
+			if (padding) {
+				/* check padding */
+				uint8_t i, pad_byte = *(priv->sym_plain_buffer + block_size - 1);
+
+				sc_log(ctx, "Found padding byte %02x", pad_byte);
+				if (pad_byte == 0 || pad_byte > block_size)
+					LOG_FUNC_RETURN(ctx, SC_ERROR_WRONG_PADDING);
+				sdata = priv->sym_plain_buffer + block_size - pad_byte;
+				for (i = 0; i < pad_byte; i++)
+					if (sdata[i] != pad_byte)
+						LOG_FUNC_RETURN(ctx, SC_ERROR_WRONG_PADDING);
+				return_len = block_size - pad_byte;
+			}
+			*outlen = return_len;
+			if (return_len > *outlen)
+				LOG_FUNC_RETURN(ctx, SC_ERROR_BUFFER_TOO_SMALL);
+			memcpy(out, priv->sym_plain_buffer, return_len);
+			sc_log(ctx, "C_DecryptFinal %zu bytes", *outlen);
+			return SC_SUCCESS;
+		} else {
+			/* C_EncryptFinalize */
+			if (padding) {
+				uint8_t pad_byte = block_size - rest_len;
+				sc_log(ctx, "Generating padding, padding byte: %d", pad_byte);
+				sdata = priv->sym_crypt_buffer + rest_len;
+				memset(sdata, pad_byte, pad_byte);
+				rest_len = block_size;
+
+			} else if (rest_len) {
+				LOG_FUNC_RETURN(ctx, SC_ERROR_WRONG_LENGTH);
+			}
+			/* fall through - encipher last block */
+		}
+	}
+	/* check output buffer size */
+	len = datalen + rest_len;
+
+	sc_log(ctx, "datalen=%zu rest_len=%zu len=%zu outlen=%zu", datalen, rest_len, len, *outlen);
+	/* there is block_size bytes space that can be saved to next run */
+	len -= (len % block_size);
+
+	/* application can request buffer size or actual buffer size is too small */
+	*outlen = len;
+	if (out == NULL)
+		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+	/* application buffer is too small */
+	if (*outlen < len)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_BUFFER_TOO_SMALL);
+
+	/* main loop */
+	while (len >= block_size) {
+		if (!decipher)
+			sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x84, 0x80);
+		else
+			sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x80, 0x84);
+		apdu.cla = 0;
+
+		if (len > max_apdu_datalen)
+			apdu_datalen = max_apdu_datalen;
+		else
+			apdu_datalen = len;
+
+		if (cbc)
+			apdu.cla = 0x10;
+
+		len -= apdu_datalen;
+		sdata = sbuf;
+
+		apdu.le = apdu_datalen;
+		apdu.lc = apdu_datalen;
+		apdu.datalen = apdu_datalen;
+		apdu.data = sbuf;
+		apdu.resplen = sizeof(rbuf);
+		apdu.resp = rbuf;
+
+		/* do we have any data from the previous step ? */
+		if (rest_len) {
+			memcpy(sbuf, priv->sym_crypt_buffer, rest_len);
+			sdata += rest_len;
+			apdu_datalen -= rest_len;
+			priv->sym_crypt_buffer_len = 0;
+			rest_len = 0;
+		}
+		memcpy(sdata, data, apdu_datalen);
+		data += apdu_datalen;
+		datalen -= apdu_datalen;
+
+		r = sc_transmit_apdu(card, &apdu);
+		LOG_TEST_RET(ctx, r, "APDU transmit failed");
+		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+		LOG_TEST_RET(ctx, r, "decrypt_sym/encrypt_sym failed");
+		if (apdu.resplen != apdu.datalen)
+			LOG_FUNC_RETURN(ctx, SC_ERROR_WRONG_LENGTH);
+		memcpy(out, apdu.resp, apdu.resplen);
+		out += apdu.resplen;
+		return_len += apdu.resplen;
+	}
+	/* last block is stored in buffer and is returned to application
+	 * in next call to C_DecryptUpdate or C_DecryptFinal. This allow us
+	 * to compute how many bytes is to be returned after padding removal.
+	 * Whole handling of this is here, because "data" and "out" buffer
+	 * can be in the same place.
+	 */
+	if (decipher) {
+		uint8_t tmp_buf[16];
+		if (return_len >= block_size) {
+			/* save last block to temp buffer */
+			memcpy(tmp_buf, out - block_size, block_size);
+			if (priv->sym_plain_buffer_len) {
+				/* insert previous last block to output buffer */
+				sc_log(ctx, "inserting block from previous decrypt");
+				memmove(out - return_len + block_size, out - return_len, return_len - block_size);
+				memcpy(out - return_len, priv->sym_plain_buffer, block_size);
+			} else
+				return_len -= block_size;
+			/* save last (decrypted) block */
+			memcpy(priv->sym_plain_buffer, tmp_buf, block_size);
+			priv->sym_plain_buffer_len = block_size;
+
+		} else
+			priv->sym_plain_buffer_len = 0;
+	}
+	/* save rest of data for next run */
+	priv->sym_crypt_buffer_len = datalen;
+	sc_log(ctx, "rest data len = %zu", datalen);
+	memcpy(priv->sym_crypt_buffer, data, datalen);
+	sc_log(ctx, "return data len = %zu", return_len);
+	*outlen = return_len;
+	return SC_SUCCESS;
+}
+
+static int
+myeid_encrypt_sym(struct sc_card *card, const u8 *data, size_t datalen, u8 *out, size_t *outlen)
+{
+	return myeid_enc_dec_sym(card, data, datalen, out, outlen, 0);
+}
+/*
+static int
+myeid_decrypt_sym(struct sc_card *card, const u8 *data, size_t datalen, u8 *out, size_t *outlen)
+{
+	return myeid_enc_dec_sym(card, data, datalen, out, outlen, 1);
+}
+*/
 
 static struct sc_card_driver * sc_get_driver(void)
 {
@@ -1847,6 +2133,8 @@ static struct sc_card_driver * sc_get_driver(void)
 	myeid_ops.pin_cmd		= myeid_pin_cmd;
 	myeid_ops.wrap			= myeid_wrap_key;
 	myeid_ops.unwrap		= myeid_unwrap_key;
+	myeid_ops.encrypt_sym		= myeid_encrypt_sym;
+/*	myeid_ops.decrypt_sym		= myeid_decrypt_sym;*/
 	return &myeid_drv;
 }
 
