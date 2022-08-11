@@ -680,6 +680,12 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 				unsigned long alg_flags, const u8 *in,
 				size_t inlen, u8 *out, size_t outlen, void *pMechanism);
 
+int sc_pkcs15_encrypt_sym(struct sc_pkcs15_card *p15card,
+		const struct sc_pkcs15_object *obj,
+		unsigned long flags,
+		const u8 *in, size_t inlen, u8 *out, size_t *outlen,
+		const u8 *param, size_t paramlen);
+
 int sc_pkcs15_read_pubkey(struct sc_pkcs15_card *,
 		const struct sc_pkcs15_object *, struct sc_pkcs15_pubkey **);
 int sc_pkcs15_decode_pubkey_rsa(struct sc_context *,

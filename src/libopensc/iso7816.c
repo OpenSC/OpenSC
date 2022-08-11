@@ -1324,7 +1324,8 @@ static struct sc_card_operations iso_ops = {
 	NULL,			/* read_public_key */
 	NULL,			/* card_reader_lock_obtained */
 	NULL,			/* wrap */
-	NULL			/* unwrap */
+	NULL,			/* unwrap */
+	NULL			/* encrypt_sym */
 };
 
 static struct sc_card_driver iso_driver = {

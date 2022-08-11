@@ -3836,6 +3836,7 @@ struct sc_pkcs11_object_ops pkcs15_cert_ops = {
 	NULL,	/* sign */
 	NULL,	/* unwrap_key */
 	NULL,	/* decrypt */
+	NULL,	/* encrypt */
 	NULL,	/* derive */
 	NULL,	/* can_do */
 	NULL,	/* init_params */
@@ -4711,6 +4712,7 @@ struct sc_pkcs11_object_ops pkcs15_prkey_ops = {
 	pkcs15_prkey_sign,
 	pkcs15_prkey_unwrap,
 	pkcs15_prkey_decrypt,
+	NULL,	/* encrypt */
 	pkcs15_prkey_derive,
 	pkcs15_prkey_can_do,
 	pkcs15_prkey_init_params,
@@ -4970,6 +4972,7 @@ struct sc_pkcs11_object_ops pkcs15_pubkey_ops = {
 	NULL,	/* sign */
 	NULL,	/* unwrap_key */
 	NULL,	/* decrypt */
+	NULL,	/* ecrypt */
 	NULL,	/* derive */
 	NULL,	/* can_do */
 	NULL,	/* init_params */
@@ -5150,6 +5153,7 @@ struct sc_pkcs11_object_ops pkcs15_dobj_ops = {
 	NULL,	/* sign */
 	NULL,	/* unwrap_key */
 	NULL,	/* decrypt */
+	NULL,	/* encrypt */
 	NULL,	/* derive */
 	NULL,	/* can_do */
 	NULL,	/* init_params */
@@ -5215,6 +5219,7 @@ struct sc_pkcs11_object_ops pkcs15_profile_ops = {
 	NULL,	/* sign */
 	NULL,	/* unwrap_key */
 	NULL,	/* decrypt */
+	NULL,	/* encrypt */
 	NULL,	/* derive */
 	NULL,	/* can_do */
 	NULL,	/* init_params */
@@ -5338,6 +5343,10 @@ pkcs15_skey_get_attribute(struct sc_pkcs11_session *session,
 	case CKA_LOCAL:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
 		*(CK_BBOOL*)attr->pValue = (skey->info->access_flags & SC_PKCS15_PRKEY_ACCESS_LOCAL) != 0;
+		break;
+	case CKA_ALWAYS_AUTHENTICATE:
+		check_attribute_buffer(attr, sizeof(CK_BBOOL));
+		*(CK_BBOOL *)attr->pValue = skey->base.p15_object->user_consent >= 1 ? CK_TRUE : CK_FALSE;
 		break;
 	case CKA_OPENSC_ALWAYS_AUTH_ANY_OBJECT:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
@@ -5513,6 +5522,76 @@ pkcs15_skey_wrap(struct sc_pkcs11_session *session, void *obj,
 	return CKR_OK;
 }
 
+static CK_RV
+pkcs15_skey_encrypt(struct sc_pkcs11_session *session, void *obj,
+		CK_MECHANISM_PTR pMechanism,
+		CK_BYTE_PTR pData, CK_ULONG ulDataLen,
+		CK_BYTE_PTR pEncryptedData, CK_ULONG_PTR pulEncryptedDataLen)
+{
+	struct sc_pkcs11_card *p11card = session->slot->p11card;
+	struct pkcs15_fw_data *fw_data = NULL;
+	struct pkcs15_skey_object *skey = (struct pkcs15_skey_object *)obj;
+	int rv, flags = 0;
+	size_t lEncryptedDataLen, *lpEncryptedDataLen;
+
+	if (!p11card)
+		return sc_to_cryptoki_error(SC_ERROR_INVALID_CARD, "C_Encrypt...");
+	fw_data = (struct pkcs15_fw_data *)p11card->fws_data[session->slot->fw_data_idx];
+	if (!fw_data)
+		return sc_to_cryptoki_error(SC_ERROR_INTERNAL, "C_Encrypt...");
+	if (!fw_data->p15_card)
+		return sc_to_cryptoki_error(SC_ERROR_INVALID_CARD, "C_Encrypt...");
+
+	if (pMechanism == NULL) {
+		sc_log(context, "No mechanism specified\n");
+		return CKR_ARGUMENTS_BAD;
+	}
+
+	/* do not check NULL/0 in Data/EncryptedData here, this
+	   can be an init operation or final operation..*/
+
+	if (skey && !(skey->info->usage & SC_PKCS15_PRKEY_USAGE_ENCRYPT))
+		return CKR_KEY_FUNCTION_NOT_PERMITTED;
+	sc_log(context, "Using mechanism %lx.", pMechanism->mechanism);
+
+	switch (pMechanism->mechanism) {
+	case CKM_AES_ECB:
+		/* handle this in card driver
+		if (ulDataLen % 16)
+			return CKR_DATA_LEN_RANGE; */
+		flags |= SC_ALGORITHM_AES_ECB;
+		break;
+	case CKM_AES_CBC:
+		/* handle this in card driver
+		if (ulDataLen % 16)
+			return CKR_DATA_LEN_RANGE; */
+		flags |= SC_ALGORITHM_AES_CBC;
+		break;
+	case CKM_AES_CBC_PAD:
+		flags |= SC_ALGORITHM_AES_CBC_PAD;
+		break;
+	default:
+		return CKR_MECHANISM_INVALID;
+	}
+
+	rv = sc_lock(p11card->card);
+
+	if (rv < 0)
+		return sc_to_cryptoki_error(rv, "C_Encrypt...");
+
+	/* pointer CK_ULONG_PTR to size_t conversion */
+	lpEncryptedDataLen = pulEncryptedDataLen ? &lEncryptedDataLen : NULL;
+
+	rv = sc_pkcs15_encrypt_sym(fw_data->p15_card, skey->prv_p15obj, flags,
+			pData, ulDataLen, pEncryptedData, lpEncryptedDataLen,
+			pMechanism->pParameter, pMechanism->ulParameterLen);
+
+	if (pulEncryptedDataLen)
+		*pulEncryptedDataLen = *lpEncryptedDataLen;
+
+	sc_unlock(p11card->card);
+	return sc_to_cryptoki_error(rv, "C_Encrypt...");
+}
 
 /*
  *  Secret key objects, currently used only to retrieve derived session key
@@ -5527,6 +5606,7 @@ struct sc_pkcs11_object_ops pkcs15_skey_ops = {
 	NULL,	/* sign */
 	pkcs15_skey_unwrap,
 	NULL,	/* decrypt */
+	pkcs15_skey_encrypt,	/* encrypt */
 	NULL,	/* derive */
 	NULL,	/* can_do */
 	NULL,	/* init_params */

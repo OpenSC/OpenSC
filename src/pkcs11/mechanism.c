@@ -891,6 +891,132 @@ done:
 	return rv;
 }
 #endif
+/*
+ * Initialize a encrypting context. When we get here, we know
+ * the key object is capable of encrypt _something_
+ */
+CK_RV
+sc_pkcs11_encr_init(struct sc_pkcs11_session *session,
+		CK_MECHANISM_PTR pMechanism,
+		struct sc_pkcs11_object *key,
+		CK_KEY_TYPE key_type)
+{
+	struct sc_pkcs11_card *p11card;
+	sc_pkcs11_operation_t *operation;
+	sc_pkcs11_mechanism_type_t *mt;
+	CK_RV rv;
+
+	if (!session || !session->slot || !(p11card = session->slot->p11card))
+		return CKR_ARGUMENTS_BAD;
+
+	/* See if we support this mechanism type */
+	mt = sc_pkcs11_find_mechanism(p11card, pMechanism->mechanism, CKF_ENCRYPT);
+	if (mt == NULL)
+		return CKR_MECHANISM_INVALID;
+
+	/* See if compatible with key type */
+	rv = _validate_key_type(mt, key_type);
+	if (rv != CKR_OK)
+		LOG_FUNC_RETURN(context, (int)rv);
+
+	rv = session_start_operation(session, SC_PKCS11_OPERATION_ENCRYPT, mt, &operation);
+	if (rv != CKR_OK)
+		return rv;
+
+	memcpy(&operation->mechanism, pMechanism, sizeof(CK_MECHANISM));
+	if (pMechanism->pParameter) {
+		memcpy(&operation->mechanism_params, pMechanism->pParameter,
+				pMechanism->ulParameterLen);
+		operation->mechanism.pParameter = &operation->mechanism_params;
+	}
+	rv = mt->encrypt_init(operation, key);
+	if (rv != CKR_OK)
+		goto out;
+
+	/* Validate the mechanism parameters */
+	if (key->ops->init_params) {
+		rv = key->ops->init_params(operation->session, &operation->mechanism);
+		if (rv != CKR_OK)
+			goto out;
+	}
+	LOG_FUNC_RETURN(context, (int)rv);
+out:
+	session_stop_operation(session, SC_PKCS11_OPERATION_ENCRYPT);
+	LOG_FUNC_RETURN(context, (int)rv);
+}
+
+CK_RV
+sc_pkcs11_encr(struct sc_pkcs11_session *session,
+		CK_BYTE_PTR pData, CK_ULONG ulDataLen,
+		CK_BYTE_PTR pEncryptedData, CK_ULONG_PTR pulEncryptedDataLen)
+{
+	sc_pkcs11_operation_t *op;
+	CK_RV rv;
+
+	rv = session_get_operation(session, SC_PKCS11_OPERATION_ENCRYPT, &op);
+	if (rv != CKR_OK)
+		return rv;
+
+	rv = op->type->encrypt(op, pData, ulDataLen,
+			pEncryptedData, pulEncryptedDataLen);
+
+	/* application is requesting buffer size ? */
+	if (pEncryptedData == NULL) {
+		/* do not terminate session for CKR_OK */
+		if (rv == CKR_OK)
+			LOG_FUNC_RETURN(context, CKR_OK);
+	} else if (rv == CKR_BUFFER_TOO_SMALL)
+		LOG_FUNC_RETURN(context, CKR_BUFFER_TOO_SMALL);
+
+	session_stop_operation(session, SC_PKCS11_OPERATION_ENCRYPT);
+	LOG_FUNC_RETURN(context, (int)rv);
+}
+
+CK_RV
+sc_pkcs11_encr_update(struct sc_pkcs11_session *session,
+		CK_BYTE_PTR pData, CK_ULONG ulDataLen,
+		CK_BYTE_PTR pEncryptedData, CK_ULONG_PTR pulEncryptedDataLen)
+{
+	sc_pkcs11_operation_t *op;
+	CK_RV rv;
+
+	rv = session_get_operation(session, SC_PKCS11_OPERATION_ENCRYPT, &op);
+	if (rv != CKR_OK)
+		return rv;
+
+	rv = op->type->encrypt_update(op, pData, ulDataLen,
+			pEncryptedData, pulEncryptedDataLen);
+
+	/* terminate session for any error except CKR_BUFFER_TOO_SMALL */
+	if (rv != CKR_OK && rv != CKR_BUFFER_TOO_SMALL)
+		session_stop_operation(session, SC_PKCS11_OPERATION_ENCRYPT);
+	LOG_FUNC_RETURN(context, (int)rv);
+}
+
+CK_RV
+sc_pkcs11_encr_final(struct sc_pkcs11_session *session,
+		CK_BYTE_PTR pEncryptedData, CK_ULONG_PTR pulEncryptedDataLen)
+{
+	sc_pkcs11_operation_t *op;
+	CK_RV rv;
+
+	rv = session_get_operation(session, SC_PKCS11_OPERATION_ENCRYPT, &op);
+	if (rv != CKR_OK)
+		return rv;
+
+	rv = op->type->encrypt_final(op, pEncryptedData, pulEncryptedDataLen);
+
+	/* application is requesting buffer size ? */
+	if (pEncryptedData == NULL) {
+		/* do not terminate session for CKR_OK */
+		if (rv == CKR_OK)
+			LOG_FUNC_RETURN(context, CKR_OK);
+	} else if (rv == CKR_BUFFER_TOO_SMALL)
+		LOG_FUNC_RETURN(context, CKR_BUFFER_TOO_SMALL);
+
+	session_stop_operation(session, SC_PKCS11_OPERATION_ENCRYPT);
+	LOG_FUNC_RETURN(context, (int)rv);
+}
 
 /*
  * Initialize a decryption context. When we get here, we know
@@ -1065,8 +1191,6 @@ sc_pkcs11_unwrap(struct sc_pkcs11_session *session,
 	return rv;
 }
 
-
-
 /* Derive one key from another, and return results in created object */
 CK_RV
 sc_pkcs11_deri(struct sc_pkcs11_session *session,
@@ -1164,6 +1288,140 @@ out:
 	return rv;
 }
 
+/*
+ * Initialize a encrypt operation
+ */
+static CK_RV
+sc_pkcs11_encrypt_init(sc_pkcs11_operation_t *operation,
+		struct sc_pkcs11_object *key)
+{
+	struct signature_data *data;
+	CK_RV rv;
+
+	if (!(data = new_signature_data()))
+		return CKR_HOST_MEMORY;
+
+	data->key = key;
+
+	if (key->ops->can_do) {
+		rv = key->ops->can_do(operation->session, key, operation->type->mech, CKF_ENCRYPT);
+		if ((rv == CKR_OK) || (rv == CKR_FUNCTION_NOT_SUPPORTED)) {
+			/* Mechanism recognized and can be performed by pkcs#15 card or algorithm references not supported */
+		} else {
+			/* Mechanism cannot be performed by pkcs#15 card, or some general error. */
+			free(data);
+			LOG_FUNC_RETURN(context, (int)rv);
+		}
+	}
+
+	operation->priv_data = data;
+
+	/* The last parameter is NULL - this is call to INIT code in underlying functions */
+	return key->ops->encrypt(operation->session,
+			key, &operation->mechanism, NULL, 0, NULL, NULL);
+}
+
+static CK_RV
+sc_pkcs11_encrypt(sc_pkcs11_operation_t *operation,
+		CK_BYTE_PTR pData, CK_ULONG ulDataLen,
+		CK_BYTE_PTR pEncryptedData, CK_ULONG_PTR pulEncryptedDataLen)
+{
+	struct signature_data *data;
+	struct sc_pkcs11_object *key;
+	CK_RV rv;
+	CK_ULONG ulEncryptedDataLen, ulLastEncryptedPartLen;
+
+	/* PKCS#11: If pBuf is not NULL_PTR, then *pulBufLen must contain the size in bytes.. */
+	if (pEncryptedData && !pulEncryptedDataLen)
+		return CKR_ARGUMENTS_BAD;
+
+	ulEncryptedDataLen = pulEncryptedDataLen ? *pulEncryptedDataLen : 0;
+	ulLastEncryptedPartLen = ulEncryptedDataLen;
+
+	data = (struct signature_data *)operation->priv_data;
+
+	key = data->key;
+
+	/* Encrypt (Update) */
+	rv = key->ops->encrypt(operation->session, key, &operation->mechanism,
+			pData, ulDataLen, pEncryptedData, &ulEncryptedDataLen);
+
+	if (pulEncryptedDataLen)
+		*pulEncryptedDataLen = ulEncryptedDataLen;
+
+	if (rv != CKR_OK)
+		return rv;
+
+	/* recalculate buffer space */
+	if (ulEncryptedDataLen <= ulLastEncryptedPartLen)
+		ulLastEncryptedPartLen -= ulEncryptedDataLen;
+	else
+		ulLastEncryptedPartLen = 0;
+
+	/* EncryptFinalize */
+	rv = key->ops->encrypt(operation->session, key, &operation->mechanism,
+			NULL, 0, pEncryptedData + ulEncryptedDataLen, &ulLastEncryptedPartLen);
+
+	if (pulEncryptedDataLen)
+		*pulEncryptedDataLen = ulEncryptedDataLen + ulLastEncryptedPartLen;
+	return rv;
+}
+
+static CK_RV
+sc_pkcs11_encrypt_update(sc_pkcs11_operation_t *operation,
+		CK_BYTE_PTR pPart, CK_ULONG ulPartLen,
+		CK_BYTE_PTR pEncryptedPart, CK_ULONG_PTR pulEncryptedPartLen)
+{
+	struct signature_data *data;
+	struct sc_pkcs11_object *key;
+	CK_RV rv;
+	CK_ULONG ulEncryptedPartLen;
+
+	/* PKCS#11: If pBuf is not NULL_PTR, then *pulBufLen must contain the size in bytes.. */
+	if (pEncryptedPart && !pulEncryptedPartLen)
+		return CKR_ARGUMENTS_BAD;
+
+	ulEncryptedPartLen = pulEncryptedPartLen ? *pulEncryptedPartLen : 0;
+
+	data = (struct signature_data *)operation->priv_data;
+
+	key = data->key;
+
+	rv = key->ops->encrypt(operation->session, key, &operation->mechanism,
+			pPart, ulPartLen, pEncryptedPart, &ulEncryptedPartLen);
+
+	if (pulEncryptedPartLen)
+		*pulEncryptedPartLen = ulEncryptedPartLen;
+	return rv;
+}
+
+static CK_RV
+sc_pkcs11_encrypt_final(sc_pkcs11_operation_t *operation,
+		CK_BYTE_PTR pLastEncryptedPart,
+		CK_ULONG_PTR pulLastEncryptedPartLen)
+{
+	struct signature_data *data;
+	struct sc_pkcs11_object *key;
+	CK_RV rv;
+	CK_ULONG ulLastEncryptedPartLen;
+
+	/* PKCS#11: If pBuf is not NULL_PTR, then *pulBufLen must contain the size in bytes.. */
+	if (pLastEncryptedPart && !pulLastEncryptedPartLen)
+		return CKR_ARGUMENTS_BAD;
+
+	ulLastEncryptedPartLen = pulLastEncryptedPartLen ? *pulLastEncryptedPartLen : 0;
+
+	data = (struct signature_data *)operation->priv_data;
+
+	key = data->key;
+
+	rv = key->ops->encrypt(operation->session, key, &operation->mechanism,
+			NULL, 0, pLastEncryptedPart, &ulLastEncryptedPartLen);
+
+	if (pulLastEncryptedPartLen)
+		*pulLastEncryptedPartLen = ulLastEncryptedPartLen;
+	return rv;
+}
 
 /*
  * Initialize a decrypt operation
@@ -1311,6 +1569,12 @@ sc_pkcs11_new_fw_mechanism(CK_MECHANISM_TYPE mech,
 	if (pInfo->flags & CKF_DECRYPT) {
 		mt->decrypt_init = sc_pkcs11_decrypt_init;
 		mt->decrypt = sc_pkcs11_decrypt;
+	}
+	if (pInfo->flags & CKF_ENCRYPT) {
+		mt->encrypt_init = sc_pkcs11_encrypt_init;
+		mt->encrypt = sc_pkcs11_encrypt;
+		mt->encrypt_update = sc_pkcs11_encrypt_update;
+		mt->encrypt_final = sc_pkcs11_encrypt_final;
 	}
 
 	return mt;

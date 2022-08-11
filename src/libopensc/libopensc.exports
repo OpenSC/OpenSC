@@ -94,6 +94,7 @@ sc_do_log_noframe
 _sc_debug
 _sc_debug_hex
 sc_enum_apps
+sc_encrypt_sym
 sc_encode_oid
 sc_parse_ef_atr
 sc_establish_context
@@ -180,6 +181,7 @@ sc_pkcs15_encode_pukdf_entry
 sc_pkcs15_encode_skdf_entry
 sc_pkcs15_encode_tokeninfo
 sc_pkcs15_encode_unusedspace
+sc_pkcs15_encrypt_sym
 sc_pkcs15_erase_pubkey
 sc_pkcs15_dup_pubkey
 sc_pkcs15_find_cert_by_id

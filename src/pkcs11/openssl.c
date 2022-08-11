@@ -67,6 +67,7 @@ static sc_pkcs11_mechanism_type_t openssl_sha1_mech = {
 	NULL, NULL, NULL, NULL,	/* sign_* */
 	NULL, NULL, NULL,	/* verif_* */
 	NULL, NULL,		/* decrypt_* */
+	NULL, NULL, NULL, NULL, /* encrypt */
 	NULL,			/* derive */
 	NULL,			/* wrap */
 	NULL,			/* unwrap */
@@ -87,6 +88,7 @@ static sc_pkcs11_mechanism_type_t openssl_sha224_mech = {
 	NULL, NULL, NULL, NULL,	/* sign_* */
 	NULL, NULL, NULL,	/* verif_* */
 	NULL, NULL,		/* decrypt_* */
+	NULL, NULL, NULL, NULL, /* encrypt */
 	NULL,			/* derive */
 	NULL,			/* wrap */
 	NULL,			/* unwrap */
@@ -107,6 +109,7 @@ static sc_pkcs11_mechanism_type_t openssl_sha256_mech = {
 	NULL, NULL, NULL, NULL,	/* sign_* */
 	NULL, NULL, NULL,	/* verif_* */
 	NULL, NULL,		/* decrypt_* */
+	NULL, NULL, NULL, NULL, /* encrypt */
 	NULL,			/* derive */
 	NULL,			/* wrap */
 	NULL,			/* unwrap */
@@ -127,6 +130,7 @@ static sc_pkcs11_mechanism_type_t openssl_sha384_mech = {
 	NULL, NULL, NULL, NULL,	/* sign_* */
 	NULL, NULL, NULL,	/* verif_* */
 	NULL, NULL,		/* decrypt_* */
+	NULL, NULL, NULL, NULL, /* encrypt */
 	NULL,			/* derive */
 	NULL,			/* wrap */
 	NULL,			/* unwrap */
@@ -147,6 +151,7 @@ static sc_pkcs11_mechanism_type_t openssl_sha512_mech = {
 	NULL, NULL, NULL, NULL,	/* sign_* */
 	NULL, NULL, NULL,	/* verif_* */
 	NULL, NULL,		/* decrypt_* */
+	NULL, NULL, NULL, NULL, /* encrypt */
 	NULL,			/* derive */
 	NULL,			/* wrap */
 	NULL,			/* unwrap */
@@ -167,6 +172,7 @@ static sc_pkcs11_mechanism_type_t openssl_gostr3411_mech = {
 	NULL, NULL, NULL, NULL,	/* sign_* */
 	NULL, NULL, NULL,	/* verif_* */
 	NULL, NULL,		/* decrypt_* */
+	NULL, NULL, NULL, NULL, /* encrypt */
 	NULL,			/* derive */
 	NULL,			/* wrap */
 	NULL,			/* unwrap */
@@ -187,6 +193,7 @@ static sc_pkcs11_mechanism_type_t openssl_md5_mech = {
 	NULL, NULL, NULL, NULL,	/* sign_* */
 	NULL, NULL, NULL,	/* verif_* */
 	NULL, NULL,		/* decrypt_* */
+	NULL, NULL, NULL, NULL, /* encrypt */
 	NULL,			/* derive */
 	NULL,			/* wrap */
 	NULL,			/* unwrap */
@@ -207,6 +214,7 @@ static sc_pkcs11_mechanism_type_t openssl_ripemd160_mech = {
 	NULL, NULL, NULL, NULL,	/* sign_* */
 	NULL, NULL, NULL,	/* verif_* */
 	NULL, NULL,		/* decrypt_* */
+	NULL, NULL, NULL, NULL, /* encrypt */
 	NULL,			/* derive */
 	NULL,			/* wrap */
 	NULL,			/* unwrap */
