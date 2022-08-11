@@ -43,6 +43,8 @@ echo | ./OsEID-tool INIT
 ./OsEID-tool EC-SIGN-PKCS11-TEST
 ./OsEID-tool EC-ECDH-TEST
 ./OsEID-tool UNWRAP-WRAP-TEST
+./OsEID-tool DES-AES-UPLOAD-KEYS
+./OsEID-tool SYM-ENCRYPT-TEST
 popd
 
 # this does not work as we have random key IDs in here
