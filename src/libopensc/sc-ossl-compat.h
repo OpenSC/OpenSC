@@ -86,9 +86,11 @@ extern "C" {
 #if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
 #define RSA_PKCS1_OpenSSL		RSA_PKCS1_SSLeay
 
+#if defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER < 0x30500000L
 #define X509_get_extension_flags(x)	(x->ex_flags)
 #define X509_get_key_usage(x)		(x->ex_kusage)
 #define X509_get_extended_key_usage(x)	(x->ex_xkusage)
+#endif
 #if !defined(LIBRESSL_VERSION_NUMBER) || LIBRESSL_VERSION_NUMBER < 0x2050300fL
 #define X509_up_ref(cert)		CRYPTO_add(&cert->references, 1, CRYPTO_LOCK_X509)
 #endif
@@ -104,7 +106,9 @@ extern "C" {
 /* workaround unused value warning for a macro that does nothing */
 #if defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER >= 0x20700000L
 #define OPENSSL_malloc_init()
+#if LIBRESSL_VERSION_NUMBER < 0x30500000L
 #define FIPS_mode()                             (0)
+#endif
 #define EVP_sha3_224()                          (NULL)
 #define EVP_sha3_256()                          (NULL)
 #define EVP_sha3_384()                          (NULL)
