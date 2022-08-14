@@ -835,6 +835,7 @@ init_state(struct state *cur_state, struct state *new_state)
 static int
 do_card_driver(struct state *cur, int argc, char **argv)
 {
+	free(cur->profile->driver);
 	cur->profile->driver = strdup(argv[0]);
 	return 0;
 }
