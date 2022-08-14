@@ -125,7 +125,7 @@ iasecc_pkcs15_erase_card(struct sc_profile *profile, struct sc_pkcs15_card *p15c
 
 	LOG_FUNC_CALLED(ctx);
 
-	if (p15card->app->ddo.aid.len)   {
+	if (p15card->app && p15card->app->ddo.aid.len)   {
 		memset(&path, 0, sizeof(struct sc_path));
 		path.type = SC_PATH_TYPE_DF_NAME;
 		memcpy(path.value, p15card->app->ddo.aid.value, p15card->app->ddo.aid.len);
