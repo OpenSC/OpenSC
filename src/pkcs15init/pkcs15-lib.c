@@ -615,8 +615,7 @@ sc_pkcs15init_delete_by_path(struct sc_profile *profile, struct sc_pkcs15_card *
 
 			rv = sc_pkcs15init_authenticate(profile, p15card, parent, SC_AC_OP_DELETE);
 			sc_file_free(parent);
-			if (rv < 0)
-				sc_file_free(file);
+			sc_file_free(file);
 			LOG_TEST_RET(ctx, rv, "parent 'DELETE' authentication failed");
 		}
 		else {
