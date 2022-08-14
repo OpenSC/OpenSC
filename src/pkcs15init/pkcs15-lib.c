@@ -651,6 +651,7 @@ sc_pkcs15init_delete_by_path(struct sc_profile *profile, struct sc_pkcs15_card *
 
 	sc_log(ctx, "Now really delete file");
 	rv = sc_delete_file(p15card->card, &path);
+	sc_file_free(file);
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
@@ -4151,6 +4152,11 @@ sc_pkcs15init_update_file(struct sc_profile *profile,
 	else if (selected_file->size > datalen && need_to_zap) {
 		/* zero out the rest of the file - we may have shrunk
 		 * the file contents */
+		if (selected_file->size > MAX_FILE_SIZE) {
+			sc_file_free(selected_file);
+			LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
+		}
+
 		copy = calloc(1, selected_file->size);
 		if (copy == NULL) {
 			sc_file_free(selected_file);
