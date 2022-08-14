@@ -79,6 +79,8 @@ muscle_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *d
 		sc_file_free(file);
 		return r;
 	}
+	sc_file_free(file);
+
 	/* Create the application DF */
 	if ((r = sc_pkcs15init_create_file(profile, p15card, df)) < 0)
 		return r;
