@@ -374,7 +374,7 @@ static int gen_key(const char * key_info)
 		expc[2] = (u8) (expl >>8) & 0xff;
 		expc[1] = (u8) (expl >>16) & 0xff;
 		expc[0] = (u8) (expl >>24) & 0xff;
-		newkey_e =  BN_bin2bn(expc, 4, NULL);
+		newkey_e = BN_bin2bn(expc, 4, NULL);
 		free(keydata.pubkey);
 		keydata.pubkey_len = 0;
 
@@ -383,6 +383,8 @@ static int gen_key(const char * key_info)
 			fprintf(stderr, "gen_key unable to set RSA values");
 			EVP_PKEY_free(evpkey);
 			RSA_free(newkey);
+			BN_free(newkey_n);
+			BN_free(newkey_e);
 			return -1;
 		}
 
@@ -396,9 +398,13 @@ static int gen_key(const char * key_info)
 			OSSL_PARAM_BLD_push_BN(bld, "e", newkey_e) != 1 ||
 			!(params = OSSL_PARAM_BLD_to_param(bld))) {
 			OSSL_PARAM_BLD_free(bld);
+			BN_free(newkey_n);
+			BN_free(newkey_e);
 			return -1;
 		}
 		params = OSSL_PARAM_BLD_to_param(bld);
+		BN_free(newkey_n);
+		BN_free(newkey_e);
 
 		ctx = EVP_PKEY_CTX_new_from_name(NULL, "RSA", NULL);
 		if (!ctx ||
@@ -448,6 +454,10 @@ static int gen_key(const char * key_info)
 		x = BN_bin2bn(keydata.ecpoint + 1, i, NULL);
 		y = BN_bin2bn(keydata.ecpoint + 1 + i, i, NULL) ;
 		r = EC_POINT_set_affine_coordinates(ecgroup, ecpoint, x, y, NULL);
+
+		BN_free(x);
+		BN_free(y);
+
 		if (r == 0) {
 			fprintf(stderr, "EC_POINT_set_affine_coordinates_GFp failed\n");
 			EVP_PKEY_free(evpkey);
