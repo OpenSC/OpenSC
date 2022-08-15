@@ -447,10 +447,7 @@ static int gen_key(const char * key_info)
 		i = (keydata.ecpoint_len - 1)/2;
 		x = BN_bin2bn(keydata.ecpoint + 1, i, NULL);
 		y = BN_bin2bn(keydata.ecpoint + 1 + i, i, NULL) ;
-		r = EC_POINT_set_affine_coordinates_GFp(ecgroup, ecpoint, x, y, NULL);
-
-		free(keydata.ecpoint);
-		keydata.ecpoint_len = 0;
+		r = EC_POINT_set_affine_coordinates(ecgroup, ecpoint, x, y, NULL);
 		if (r == 0) {
 			fprintf(stderr, "EC_POINT_set_affine_coordinates_GFp failed\n");
 			EVP_PKEY_free(evpkey);
@@ -689,22 +686,6 @@ int main(int argc, char *argv[])
 			free(opt_apdus);
 		return 2;
 	}
-
-//#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
-//	OPENSSL_config(NULL);
-//#endif
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
-	OPENSSL_init_crypto(OPENSSL_INIT_LOAD_CRYPTO_STRINGS
-		| OPENSSL_INIT_ADD_ALL_CIPHERS
-		| OPENSSL_INIT_ADD_ALL_DIGESTS,
-		NULL);
-#else
-	/* OpenSSL magic */
-	OPENSSL_malloc_init();
-	ERR_load_crypto_strings();
-	OpenSSL_add_all_algorithms();
-
-#endif
 
 	if (out_file) {
 		bp = BIO_new(BIO_s_file());

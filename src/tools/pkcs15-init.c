@@ -453,22 +453,6 @@ main(int argc, char **argv)
 	int					r = 0;
 	struct sc_pkcs15_card *tmp_p15_data = NULL;
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-	OPENSSL_config(NULL);
-#endif
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L && !(defined LIBRESSL_VERSION_NUMBER)
-	/* Openssl 1.1.0 magic */
-	OPENSSL_init_crypto(OPENSSL_INIT_LOAD_CRYPTO_STRINGS
-		| OPENSSL_INIT_ADD_ALL_CIPHERS
-		| OPENSSL_INIT_ADD_ALL_DIGESTS
-		| OPENSSL_INIT_LOAD_CONFIG,
-		NULL);
-#else
-	/* OpenSSL magic */
-	OpenSSL_add_all_algorithms();
-	OPENSSL_malloc_init();
-#endif
-
 #ifdef RANDOM_POOL
 	if (!RAND_load_file(RANDOM_POOL, 32))
 		util_fatal("Unable to seed random number pool for key generation");
@@ -1344,19 +1328,15 @@ do_read_check_certificate(sc_pkcs15_cert_t *sc_oldcert,
 	/* Compare the public keys, there's no high level openssl function for this(?) */
 	/* Yes there is in 1.0.2 and above EVP_PKEY_cmp */
 
-
 	r = SC_ERROR_INVALID_ARGUMENTS;
 	if (oldpk_type == newpk_type)
 	{
-#if  OPENSSL_VERSION_NUMBER >= 0x10002000L
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L && !defined(LIBRESSL_VERSION_NUMBER)
 		if (EVP_PKEY_eq(oldpk, newpk) == 1)
-			r = 0;
 #else
-		if ((oldpk_type == EVP_PKEY_RSA) &&
-			!BN_cmp(EVP_PKEY_get0_RSA(oldpk)->n, EVP_PKEY_get0_RSA(newpk)->n) &&
-			!BN_cmp(EVP_PKEY_get0_RSA(oldpk)->e, EVP_PKEY_get0_RSA(newpk)->e))
-				r = 0;
+		if (EVP_PKEY_cmp(oldpk, newpk) == 1)
 #endif
+		r = 0;
 	}
 
 	EVP_PKEY_free(newpk);
@@ -2969,13 +2949,7 @@ next: ;
 static void
 ossl_print_errors(void)
 {
-	static int	loaded = 0;
 	long		err;
-
-	if (!loaded) {
-		ERR_load_crypto_strings();
-		loaded = 1;
-	}
 
 	while ((err = ERR_get_error()) != 0)
 		fprintf(stderr, "%s\n", ERR_error_string(err, NULL));

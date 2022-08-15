@@ -769,10 +769,6 @@ awp_encode_key_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *obj
 	int r = 0;
 
 	LOG_FUNC_CALLED(ctx);
-#if OPENSSL_VERSION_NUMBER < 0x30000000L
-	ERR_load_ERR_strings();
-#endif
-	ERR_load_crypto_strings();
 
 	key_info = (struct sc_pkcs15_prkey_info *)obj->data;
 
@@ -829,10 +825,6 @@ awp_encode_key_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *obj
 
 	sc_log(ctx,  "cosm_encode_key_info() label:%s",ki->label.value);
 done:
-#if OPENSSL_VERSION_NUMBER < 0x30000000L
-	ERR_load_ERR_strings();
-#endif
-	ERR_load_crypto_strings();
 	LOG_FUNC_RETURN(ctx, r);
 }
 
@@ -936,11 +928,6 @@ awp_encode_cert_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *ob
 	X509 *x = NULL;
 
 	LOG_FUNC_CALLED(ctx);
-
-#if OPENSSL_VERSION_NUMBER < 0x30000000L
-	ERR_load_ERR_strings();
-#endif
-	ERR_load_crypto_strings();
 
 	if (!obj || !ci)
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "AWP encode cert failed: invalid parameters");
@@ -1078,10 +1065,9 @@ awp_encode_cert_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *ob
 err:
 	ERR_print_errors_fp(stderr);
 	ERR_clear_error();
-	ERR_free_strings();
 	if (pubkey.exponent.data) free(pubkey.exponent.data);
 	if (pubkey.modulus.data) free(pubkey.modulus.data);
-	if (x) 		X509_free(x);
+	if (x) X509_free(x);
 	if (mem)	BIO_free(mem);
 	if (buff)	OPENSSL_free(buff);
 

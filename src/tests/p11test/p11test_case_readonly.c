@@ -25,6 +25,7 @@
 #include <openssl/md5.h>
 #include <openssl/ripemd.h>
 #include <openssl/rand.h>
+#include <openssl/evp.h>
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 # include <openssl/provider.h>
 #endif
@@ -229,7 +230,7 @@ int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 		return 0;
 	}
 
-	if (o->type != EVP_PK_RSA) {
+	if (o->type != EVP_PKEY_RSA) {
 		debug_print(" [SKIP %s ] Skip non-RSA key for encryption", o->id_str);
 		return 0;
 	}
@@ -392,7 +393,7 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 	CK_BYTE *cmp_message = NULL;
 	int cmp_message_length;
 
-	if (o->type == EVP_PK_RSA) {
+	if (o->type == EVP_PKEY_RSA) {
 		const EVP_MD *md = NULL;
 		EVP_MD_CTX *mdctx = NULL;
 		EVP_PKEY_CTX *ctx = NULL;
@@ -462,7 +463,7 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 		mech->result_flags |= FLAGS_SIGN_OPENSSL;
 		debug_print(" [  OK %s ] Signature is valid.", o->id_str);
 		return 1;
-	} else if (o->type == EVP_PK_EC) {
+	} else if (o->type == EVP_PKEY_EC) {
 		unsigned int nlen;
 		ECDSA_SIG *sig = ECDSA_SIG_new();
 		BIGNUM *r = NULL, *s = NULL;
@@ -642,7 +643,7 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 		return 0;
 	}
 
-	if (o->type != EVP_PK_EC && o->type != EVP_PK_RSA
+	if (o->type != EVP_PKEY_EC && o->type != EVP_PKEY_RSA
 #ifdef EVP_PKEY_ED25519
 			&& o->type != EVP_PKEY_ED25519
 #endif

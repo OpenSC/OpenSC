@@ -458,11 +458,6 @@ sc_pkcs15_prkey_attrs_from_cert(struct sc_pkcs15_card *p15card, struct sc_pkcs15
 
 	key_info = (struct sc_pkcs15_prkey_info *) key_object->data;
 
-#if OPENSSL_VERSION_NUMBER < 0x30000000L
-	ERR_load_ERR_strings();
-#endif
-	ERR_load_crypto_strings();
-
 	sc_log(ctx, "CertValue(%"SC_FORMAT_LEN_SIZE_T"u) %p",
 	       cert_object->content.len, cert_object->content.value);
 	mem = BIO_new_mem_buf(cert_object->content.value, cert_object->content.len);
@@ -501,7 +496,6 @@ sc_pkcs15_prkey_attrs_from_cert(struct sc_pkcs15_card *p15card, struct sc_pkcs15
 		OPENSSL_free(buff);
 
 	ERR_clear_error();
-	ERR_free_strings();
 
 	if (out_key_object)
 		*out_key_object = key_object;

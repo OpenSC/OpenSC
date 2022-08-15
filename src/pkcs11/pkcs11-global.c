@@ -37,7 +37,10 @@
 #include "sc-pkcs11.h"
 #include "ui/notify.h"
 
+#ifdef ENABLE_OPENSSL
+#include <openssl/crypto.h>
 #include "libopensc/sc-ossl-compat.h"
+#endif
 #ifdef ENABLE_OPENPACE
 #include <eac/eac.h>
 #endif
@@ -248,7 +251,7 @@ __attribute__((destructor))
 int module_close()
 {
 	sc_notify_close();
-#if defined(ENABLE_OPENSSL) && defined(OPENSSL_SECURE_MALLOC_SIZE)
+#if defined(ENABLE_OPENSSL) && defined(OPENSSL_SECURE_MALLOC_SIZE) && !defined(LIBRESSL_VERSION_NUMBER)
 	CRYPTO_secure_malloc_done();
 #endif
 #ifdef ENABLE_OPENPACE

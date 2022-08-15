@@ -57,13 +57,8 @@
 #ifdef DEBUG_SSL
 static void print_openssl_error(void)
 {
-	static int charge = 0;
 	long r;
 
-	if (!charge) {
-		ERR_load_crypto_strings();
-		charge = 1;
-	}
 	while ((r = ERR_get_error()) != 0)
 		fprintf(stderr, "%s\n", ERR_error_string(r, NULL));
 }
