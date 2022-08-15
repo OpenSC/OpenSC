@@ -38,7 +38,7 @@ extern "C" {
  * LIBRESSL_VERSION_NUMBER  0x3040200fL (changes with its versions)
  */
 
-#if defined(LIBRESSL_VERSION_NUMBER)
+#if defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER < 0x30500000L
 #define X509_get_extension_flags(x)	(x->ex_flags)
 #define X509_get_key_usage(x)		(x->ex_kusage)
 #define X509_get_extended_key_usage(x)	(x->ex_xkusage)
@@ -46,7 +46,9 @@ extern "C" {
 
 #if defined(LIBRESSL_VERSION_NUMBER)
 #define OPENSSL_malloc_init()			while(0) continue
+#if LIBRESSL_VERSION_NUMBER < 0x30500000L
 #define FIPS_mode()                             (0)
+#endif
 #define EVP_sha3_224()                          (NULL)
 #define EVP_sha3_256()                          (NULL)
 #define EVP_sha3_384()                          (NULL)
