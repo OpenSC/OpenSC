@@ -830,7 +830,7 @@ _iasecc_sm_read_binary(struct sc_card *card, unsigned int offs,
 
 		sc_log(ctx, "READ method/reference %X/%X", entry->method, entry->key_ref);
 		if ((entry->method == SC_AC_SCB) && (entry->key_ref & IASECC_SCB_METHOD_SM))   {
-			unsigned char se_num = (entry->method == SC_AC_SCB) ? (entry->key_ref & IASECC_SCB_METHOD_MASK_REF) : 0;
+			unsigned char se_num = entry->key_ref & IASECC_SCB_METHOD_MASK_REF;
 
 			rv = iasecc_sm_read_binary(card, se_num, offs, buff, count);
 			LOG_FUNC_RETURN(ctx, rv);
@@ -865,7 +865,7 @@ _iasecc_sm_update_binary(struct sc_card *card, unsigned int offs,
 
 		sc_log(ctx, "UPDATE method/reference %X/%X", entry->method, entry->key_ref);
 		if (entry->method == SC_AC_SCB && (entry->key_ref & IASECC_SCB_METHOD_SM))   {
-			unsigned char se_num = entry->method == SC_AC_SCB ? entry->key_ref & IASECC_SCB_METHOD_MASK_REF : 0;
+			unsigned char se_num = entry->key_ref & IASECC_SCB_METHOD_MASK_REF;
 
 			rv = iasecc_sm_update_binary(card, se_num, offs, buff, count);
 			LOG_FUNC_RETURN(ctx, rv);
@@ -1569,7 +1569,7 @@ iasecc_delete_file(struct sc_card *card, const struct sc_path *path)
 
 	sc_log(ctx, "DELETE method/reference %X/%X", entry->method, entry->key_ref);
 	if (entry->method == SC_AC_SCB && (entry->key_ref & IASECC_SCB_METHOD_SM))   {
-		unsigned char se_num = (entry->method == SC_AC_SCB) ? (entry->key_ref & IASECC_SCB_METHOD_MASK_REF) : 0;
+		unsigned char se_num = entry->key_ref & IASECC_SCB_METHOD_MASK_REF;
 		rv = iasecc_sm_delete_file(card, se_num, file->id);
 	}
 	else   {
