@@ -226,6 +226,10 @@ static int test_wrap(test_cert_t *o, token_info_t *info, test_cert_t *key, test_
 		ciphertext_len += len;
 		/* Now, decrypt with the PKCS#11 */
 		check_len = decrypt_message(key, info, ciphertext, ciphertext_len, &aes_mech, &check);
+		if (check_len < 0) {
+			fprintf(stderr, "  Cannot decrypt message\n");
+			return -1;
+		}
 
 		check_len = strip_pkcs7_padding(check, check_len, 16);
 		if (check_len <= 0) {
