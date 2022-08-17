@@ -455,6 +455,8 @@ static int gen_key(const char * key_info)
 		y = BN_bin2bn(keydata.ecpoint + 1 + i, i, NULL) ;
 		r = EC_POINT_set_affine_coordinates(ecgroup, ecpoint, x, y, NULL);
 
+		free(keydata.ecpoint);
+		keydata.ecpoint_len = 0;
 		BN_free(x);
 		BN_free(y);
 
