@@ -86,6 +86,9 @@
               <!-- install an alias for the Base smart card CSP. Using a different CSP in minidriver installation deactivate the plug and play feature
                   but not all other components like the pin change screen available after ctrl+alt+del.
                   It is because the "80000001" entry is still returning the minidriver dll.-->
+              <!-- PR #2523 no longer uses "Provider = OpenSC CSP", but existing certificates in cert store 
+	          may have "Provider = OpenSC CSP" so we continue to add it for backward compatibility.
+		  Run: "certutil -Silent -store -user My" and look for "Provider = OpenSC CSP". -->
               <Component Id="openscBaseCSP" Guid="*" Win64="$(var.Win64YesNo)">
                 <RegistryKey Root="HKLM" Key="SOFTWARE\Microsoft\Cryptography\Defaults\Provider\OpenSC CSP">
                   <RegistryValue Type="string" Name="Image Path" Value="basecsp.dll" KeyPath="yes"/>
