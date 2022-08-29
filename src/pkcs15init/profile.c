@@ -1694,6 +1694,7 @@ static void set_pin_defaults(struct sc_profile *profile, struct pin_info *pi)
 static int
 do_pin_file(struct state *cur, int argc, char **argv)
 {
+	free(cur->pin->file_name);
 	cur->pin->file_name = strdup(argv[0]);
 	return 0;
 }
