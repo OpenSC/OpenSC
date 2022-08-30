@@ -1542,16 +1542,15 @@ static int starcos_write_key(sc_card_t *card, sc_starcos_wkey_data *data)
 	tlen = data->key_len;
 	while (tlen != 0) {
 		/* transmit the key in chunks of STARCOS_WKEY_CSIZE bytes */
-		u8 clen = tlen < STARCOS_WKEY_CSIZE ? tlen : STARCOS_WKEY_CSIZE;
+		u8 c_len = tlen < STARCOS_WKEY_CSIZE ? tlen : STARCOS_WKEY_CSIZE;
 		sbuf[0] = 0xc2;
-		sbuf[1] = 3 + clen;
+		sbuf[1] = 3 + c_len;
 		sbuf[2] = data->kid;
 		sbuf[3] = (offset >> 8) & 0xff;
 		sbuf[4] = offset & 0xff;
-		memcpy(sbuf+5, p, clen);
-		len     = 5 + clen;
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xf4,
-			       data->mode, 0x00);
+		memcpy(sbuf+5, p, c_len);
+		len = 5 + c_len;
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xf4, data->mode, 0x00);
 		apdu.cla    |= 0x80;
 		apdu.lc      = len;
 		apdu.datalen = len;
@@ -1561,9 +1560,9 @@ static int starcos_write_key(sc_card_t *card, sc_starcos_wkey_data *data)
 		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 		if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
 			return sc_check_sw(card, apdu.sw1, apdu.sw2);
-		offset += clen;
-		p      += clen;
-		tlen   -= clen;
+		offset += c_len;
+		p      += c_len;
+		tlen   -= c_len;
 	}
 	return SC_SUCCESS;
 }
