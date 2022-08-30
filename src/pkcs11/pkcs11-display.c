@@ -172,7 +172,7 @@ print_generic(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_P
 			ascii_ptr++;
 		}
 
-		/* padd */
+		/* padding */
 		while (strlen(hex) < 3*16)
 			strcat(hex, "   ");
 		fprintf(f, "\n    %08X  %s %s", offset, hex, ascii);
