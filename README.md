@@ -4,6 +4,27 @@ Wiki is [available online](https://github.com/OpenSC/OpenSC/wiki)
 
 Please take a look at the documentation before trying to use OpenSC.
 
+Do NOT use any links from wiki to download the OpenSC because wiki can be modified by anybody, see
+[#2554](https://github.com/OpenSC/OpenSC/issues/2554). For downloading OpenSC, use the links here in README.
+
+# Downloads
+
+[OpenSC 0.22.0](https://github.com/OpenSC/OpenSC/releases/tag/0.22.0) is the latest stable version released on 10.08.2021. It is available as
+
+ * Windows installer
+   * [OpenSC-0.22.0_win64.msi](https://github.com/OpenSC/OpenSC/releases/download/0.22.0/OpenSC-0.22.0_win64.msi) for 64 bit programs
+   * [OpenSC-0.22.0_win32.msi](https://github.com/OpenSC/OpenSC/releases/download/0.22.0/OpenSC-0.22.0_win32.msi) for 32 bit programs
+ * [OpenSC-0.22.0.dmg](https://github.com/OpenSC/OpenSC/releases/download/0.22.0/OpenSC-0.22.0.dmg): macOS installer
+ * [opensc-0.22.0.tar.gz](https://github.com/OpenSC/OpenSC/releases/download/0.22.0/opensc-0.22.0.tar.gz): Source code distribution
+
+## Nightly build
+
+The latest source code is available through [GitHub](https://github.com/OpenSC/OpenSC/archive/master.zip).
+Nightly builds are available by their git hash in branches of [OpenSC/Nightly](https://github.com/OpenSC/Nightly).
+
+
+# Build and testing status
+
 [![Linux build](https://github.com/OpenSC/OpenSC/actions/workflows/linux.yml/badge.svg)](https://github.com/OpenSC/OpenSC/actions/workflows/linux.yml)
 [![OSX build](https://github.com/OpenSC/OpenSC/actions/workflows/macos.yml/badge.svg)](https://github.com/OpenSC/OpenSC/actions/workflows/macos.yml)
 [![AppVeyor CI Build Status](https://ci.appveyor.com/api/projects/status/github/OpenSC/OpenSC?branch=master&svg=true)](https://ci.appveyor.com/project/LudovicRousseau/OpenSC/branch/master)
