@@ -583,7 +583,6 @@ typedef struct sc_pkcs15_card {
 
 	struct sc_pkcs15_card_opts {
 		int use_file_cache;
-		int cache_private_data;
 		int use_pin_cache;
 		int pin_cache_counter;
 		int pin_cache_ignore_user_consent;
@@ -607,6 +606,11 @@ typedef struct sc_pkcs15_card {
 
 /* flags suitable for struct sc_pkcs15_card */
 #define SC_PKCS15_CARD_FLAG_EMULATED			0x02000000
+
+/* suitable for struct sc_pkcs15_card.opts.use_file_cache */
+#define SC_PKCS15_OPTS_CACHE_NO_FILES			0
+#define SC_PKCS15_OPTS_CACHE_PUBLIC_FILES		1
+#define SC_PKCS15_OPTS_CACHE_ALL_FILES			2
 
 /* suitable for struct sc_pkcs15_card.opts.private_certificate */
 #define SC_PKCS15_CARD_OPTS_PRIV_CERT_PROTECT		0
