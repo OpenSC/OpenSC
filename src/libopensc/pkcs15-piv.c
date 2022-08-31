@@ -765,7 +765,8 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		if (cert_der.value) {
 			cert_info.value.value = cert_der.value;
 			cert_info.value.len = cert_der.len;
-			if (!p15card->opts.use_file_cache || (private_obj && !p15card->opts.cache_private_data)) {
+			if (!p15card->opts.use_file_cache
+			    || (private_obj && !(p15card->opts.use_file_cache & SC_PKCS15_OPTS_CACHE_ALL_FILES))) {
 				cert_info.path.len = 0; /* use in mem cert from now on */
 			}
 		}
