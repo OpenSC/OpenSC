@@ -2370,7 +2370,8 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 	sc_log(ctx, "path=%s, index=%u, count=%d", sc_print_path(in_path), in_path->index, in_path->count);
 
 	r = -1; /* file state: not in cache */
-	if (p15card->opts.use_file_cache && (p15card->opts.cache_private_data || !private_data)) {
+	if (p15card->opts.use_file_cache
+	    && ((p15card->opts.use_file_cache & SC_PKCS15_OPTS_CACHE_ALL_FILES) || !private_data)) {
 		r = sc_pkcs15_read_cached_file(p15card, in_path, &data, &len);
 
 		if (!r && in_path->aid.len > 0 && in_path->len >= 2)   {
@@ -2458,7 +2459,8 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 
 		sc_file_free(file);
 
-		if (len && p15card->opts.use_file_cache && (p15card->opts.cache_private_data || !private_data)) {
+		if (len && p15card->opts.use_file_cache
+		    && ((p15card->opts.use_file_cache & SC_PKCS15_OPTS_CACHE_ALL_FILES) || !private_data)) {
 			sc_pkcs15_cache_file(p15card, in_path, data, len);
 		}
 	}
