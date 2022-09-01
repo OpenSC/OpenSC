@@ -2060,6 +2060,7 @@ sc_pkcs15_encode_df(struct sc_context *ctx, struct sc_pkcs15_card *p15card, stru
 		buf = p;
 		memcpy(buf + bufsize, tmp, tmpsize);
 		free(tmp);
+		tmp = NULL;
 		bufsize += tmpsize;
 	}
 	*buf_out = buf;
