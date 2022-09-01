@@ -4421,6 +4421,7 @@ sc_pkcs15init_read_info(struct sc_card *card, struct sc_profile *profile)
 	}
 	else   {
 		r = 0;
+		sc_file_free(file);
 	}
 
 	if (r >= 0)
