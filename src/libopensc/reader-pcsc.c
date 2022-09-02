@@ -672,7 +672,7 @@ static int pcsc_disconnect(sc_reader_t * reader)
 		LONG rv = priv->gpriv->SCardDisconnect(priv->pcsc_card, priv->gpriv->disconnect_action);
 		PCSC_TRACE(reader, "SCardDisconnect returned", rv);
 	}
-	reader->flags = 0;
+	reader->flags &= SC_READER_REMOVED;
 	return SC_SUCCESS;
 }
 
