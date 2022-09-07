@@ -35,7 +35,7 @@ p11test_SOURCES = p11test.c p11test_loader.c \
 	p11test_case_secret.c \
 	p11test_helpers.c
 p11test_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(CMOCKA_CFLAGS)
-p11test_LDADD = $(OPTIONAL_OPENSSL_LIBS) $(CMOCKA_LIBS)
+p11test_LDADD = $(OPTIONAL_OPENSSL_LIBS) $(CMOCKA_LIBS) $(LDL_LIBS)
 
 if WIN32
 p11test_SOURCES += $(top_builddir)/win32/versioninfo.rc
