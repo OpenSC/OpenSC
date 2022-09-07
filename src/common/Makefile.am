@@ -28,6 +28,7 @@ compat_getopt_main_LDADD = libcompat.la
 libpkcs11_la_SOURCES = libpkcs11.c
 
 libscdl_la_SOURCES = libscdl.c
+libscdl_la_LIBADD = $(LDL_LIBS)
 
 TIDY_FLAGS = $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
 TIDY_FILES = \
