@@ -466,9 +466,20 @@ AC_CHECK_LIB(
 
 if test "${WIN32}" = "no"; then
 	dnl dl support
-	AC_SEARCH_LIBS([dlopen], [dl dld], [], [
-		AC_MSG_ERROR([unable to find the dlopen() function])
-	])
+	AC_ARG_VAR([LDL_LIBS], [linker flags for ldl])
+	if test -z "${LDL_LIBS}"; then
+		AC_CHECK_LIB(
+			[dl],
+			[dlopen],
+			[LDL_LIBS="-ldl"],
+			AC_CHECK_LIB(
+				[dld],
+				[dlopen],
+				[LDL_LIBS="-ldld"],
+				AC_MSG_ERROR([unable to find the dlopen() function])
+			)
+		)
+	fi
 
 	dnl Special check for pthread support.
 	AX_PTHREAD(
@@ -1209,6 +1220,7 @@ Compiler flags:          ${CFLAGS}
 Linker flags:            ${LDFLAGS}
 Libraries:               ${LIBS}
 
+LDL_LIBS:                ${LDL_LIBS}
 READLINE_CFLAGS:         ${READLINE_CFLAGS}
 READLINE_LIBS:           ${READLINE_LIBS}
 ZLIB_CFLAGS:             ${ZLIB_CFLAGS}
