@@ -950,8 +950,8 @@ int sc_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
-int sc_read_record(sc_card_t *card, unsigned int rec_nr, u8 *buf,
-		   size_t count, unsigned long flags)
+int sc_read_record(sc_card_t *card, unsigned int rec_nr, unsigned int idx,
+		   u8 *buf ,size_t count, unsigned long flags)
 {
 	int r;
 
@@ -963,7 +963,7 @@ int sc_read_record(sc_card_t *card, unsigned int rec_nr, u8 *buf,
 	if (card->ops->read_record == NULL)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 
-	r = card->ops->read_record(card, rec_nr, buf, count, flags);
+	r = card->ops->read_record(card, rec_nr, idx, buf, count, flags);
 	if (r == SC_SUCCESS) {
 		r = count;
 	}
@@ -1013,8 +1013,8 @@ int sc_append_record(sc_card_t *card, const u8 * buf, size_t count,
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
-int sc_update_record(sc_card_t *card, unsigned int rec_nr, const u8 * buf,
-		     size_t count, unsigned long flags)
+int sc_update_record(sc_card_t *card, unsigned int rec_nr, unsigned int idx,
+		     const u8 * buf, size_t count, unsigned long flags)
 {
 	int r;
 
@@ -1026,7 +1026,7 @@ int sc_update_record(sc_card_t *card, unsigned int rec_nr, const u8 * buf,
 	if (card->ops->update_record == NULL)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 
-	r = card->ops->update_record(card, rec_nr, buf, count, flags);
+	r = card->ops->update_record(card, rec_nr, idx, buf, count, flags);
 	if (r == SC_SUCCESS) {
 		r = count;
 	}

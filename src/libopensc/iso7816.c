@@ -166,13 +166,13 @@ iso7816_read_binary(struct sc_card *card, unsigned int idx, u8 *buf, size_t coun
 
 
 static int
-iso7816_read_record(struct sc_card *card,
-		unsigned int rec_nr, u8 *buf, size_t count, unsigned long flags)
+iso7816_read_record(struct sc_card *card, unsigned int rec_nr, unsigned int idx,
+		u8 *buf, size_t count, unsigned long flags)
 {
 	struct sc_apdu apdu;
 	int r;
 
-	if (rec_nr > 0xFF)
+	if (rec_nr > 0xFF || idx != 0)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2, 0xB2, rec_nr, 0);
@@ -242,11 +242,14 @@ iso7816_append_record(struct sc_card *card,
 
 
 static int
-iso7816_update_record(struct sc_card *card, unsigned int rec_nr,
+iso7816_update_record(struct sc_card *card, unsigned int rec_nr, unsigned int idx,
 		const u8 *buf, size_t count, unsigned long flags)
 {
 	struct sc_apdu apdu;
 	int r;
+
+	if (rec_nr > 0xFF || idx != 0)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3, 0xDC, rec_nr, 0);
 	apdu.lc = count;

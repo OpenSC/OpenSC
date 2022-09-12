@@ -706,13 +706,13 @@ struct sc_card_operations {
 	int (*erase_binary)(struct sc_card *card, unsigned int idx,
 			    size_t count, unsigned long flags);
 
-	int (*read_record)(struct sc_card *card, unsigned int rec_nr,
+	int (*read_record)(struct sc_card *card, unsigned int rec_nr, unsigned int idx,
 			   u8 * buf, size_t count, unsigned long flags);
 	int (*write_record)(struct sc_card *card, unsigned int rec_nr,
 			    const u8 * buf, size_t count, unsigned long flags);
 	int (*append_record)(struct sc_card *card, const u8 * buf,
 			     size_t count, unsigned long flags);
-	int (*update_record)(struct sc_card *card, unsigned int rec_nr,
+	int (*update_record)(struct sc_card *card, unsigned int rec_nr, unsigned int idx,
 			     const u8 * buf, size_t count, unsigned long flags);
 
 	/* select_file: Does the equivalent of SELECT FILE command specified
@@ -1304,13 +1304,14 @@ int sc_erase_binary(struct sc_card *card, unsigned int idx,
  * Reads a record from the current (i.e. selected) file.
  * @param  card    struct sc_card object on which to issue the command
  * @param  rec_nr  SC_READ_RECORD_CURRENT or a record number starting from 1
+ * @param  idx     index within the record with the data to read
  * @param  buf     Pointer to a buffer for storing the data
  * @param  count   Number of bytes to read
  * @param  flags   flags (may contain a short file id of a file to select)
  * @retval number of bytes read or an error value
  */
-int sc_read_record(struct sc_card *card, unsigned int rec_nr, u8 * buf,
-		   size_t count, unsigned long flags);
+int sc_read_record(struct sc_card *card, unsigned int rec_nr, unsigned int idx,
+		   u8 * buf, size_t count, unsigned long flags);
 /**
  * Writes data to a record from the current (i.e. selected) file.
  * @param  card    struct sc_card object on which to issue the command
@@ -1336,13 +1337,14 @@ int sc_append_record(struct sc_card *card, const u8 * buf, size_t count,
  * Updates the data of a record from the current (i.e. selected) file.
  * @param  card    struct sc_card object on which to issue the command
  * @param  rec_nr  SC_READ_RECORD_CURRENT or a record number starting from 1
+ * @param  idx     index within the record with the data to read
  * @param  buf     buffer with to the new data to be written
  * @param  count   number of bytes to update
  * @param  flags   flags (may contain a short file id of a file to select)
  * @retval number of bytes written or an error value
  */
-int sc_update_record(struct sc_card *card, unsigned int rec_nr, const u8 * buf,
-		     size_t count, unsigned long flags);
+int sc_update_record(struct sc_card *card, unsigned int rec_nr, unsigned int idx,
+		     const u8 * buf, size_t count, unsigned long flags);
 int sc_delete_record(struct sc_card *card, unsigned int rec_nr);
 
 /* get/put data functions */

@@ -2515,7 +2515,7 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 				if (l > 256) {
 					l = 256;
 				}
-				r = sc_read_record(p15card->card, i, head, l, SC_RECORD_BY_REC_NR);
+				r = sc_read_record(p15card->card, i, 0, head, l, SC_RECORD_BY_REC_NR);
 				if (r == SC_ERROR_RECORD_NOT_FOUND)
 					break;
 				if (r < 0) {

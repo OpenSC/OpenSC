@@ -137,7 +137,7 @@ static int insert_key(
 		}
 		sc_log(ctx, 
 			"Searching for Key-Ref %02X\n", key_reference);
-		while ((r = sc_read_record(card, ++rec_no, buf, sizeof(buf), SC_RECORD_BY_REC_NR)) > 0) {
+		while ((r = sc_read_record(card, ++rec_no, 0, buf, sizeof(buf), SC_RECORD_BY_REC_NR)) > 0) {
 			int found = 0;
 			if (buf[0] != 0xA0 || r < 2)
 				continue;
@@ -240,7 +240,7 @@ static int insert_pin(
 		}
 		sc_log(ctx, 
 			"Searching for PIN-Ref %02X\n", pin_reference);
-		while ((r = sc_read_record(card, ++rec_no, buf, sizeof(buf), SC_RECORD_BY_REC_NR)) > 0) {
+		while ((r = sc_read_record(card, ++rec_no, 0, buf, sizeof(buf), SC_RECORD_BY_REC_NR)) > 0) {
 			int found = 0, fbz = -1;
 			if (r < 2 || buf[0] != 0xA0)
 				continue;

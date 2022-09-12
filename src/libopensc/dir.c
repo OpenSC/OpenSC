@@ -227,7 +227,7 @@ int sc_enum_apps(sc_card_t *card)
 		/* Arbitrary set '16' as maximal number of records to check out:
 		 * to avoid endless loop because of some incomplete cards/drivers */
 		for (rec_nr = 1; rec_nr < 16; rec_nr++) {
-			r = sc_read_record(card, rec_nr, buf, sizeof(buf), SC_RECORD_BY_REC_NR);
+			r = sc_read_record(card, rec_nr, 0, buf, sizeof(buf), SC_RECORD_BY_REC_NR);
 			if (r == SC_ERROR_RECORD_NOT_FOUND)
 				break;
 			LOG_TEST_RET(ctx, r, "read_record() failed");
@@ -361,7 +361,7 @@ static int update_single_record(sc_card_t *card, sc_app_info_t *app)
 	if (r)
 		return r;
 	if (app->rec_nr > 0)
-		r = sc_update_record(card, (unsigned int)app->rec_nr, rec, rec_size, SC_RECORD_BY_REC_NR);
+		r = sc_update_record(card, (unsigned int)app->rec_nr, 0, rec, rec_size, SC_RECORD_BY_REC_NR);
 	else if (app->rec_nr == 0) {
 		/* create new record entry */
 		r = sc_append_record(card, rec, rec_size, 0);
@@ -375,7 +375,7 @@ static int update_single_record(sc_card_t *card, sc_app_info_t *app)
 				if (card->app[i]->rec_nr > rec_nr)
 					rec_nr = card->app[i]->rec_nr;
 			rec_nr++;
-			r = sc_update_record(card, (unsigned int)rec_nr, rec, rec_size, SC_RECORD_BY_REC_NR);
+			r = sc_update_record(card, (unsigned int)rec_nr, 0, rec, rec_size, SC_RECORD_BY_REC_NR);
 		}
 	} else {
 		sc_log(card->ctx, "invalid record number\n");

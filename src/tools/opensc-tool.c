@@ -428,7 +428,7 @@ static int print_file(sc_card_t *in_card, const sc_file_t *file,
 			printf("Record %"SC_FORMAT_LEN_SIZE_T"u\n", rec_nr);
 			r = sc_lock(card);
 			if (r == SC_SUCCESS)
-				r = sc_read_record(in_card, rec_nr, buf, sizeof(buf), SC_RECORD_BY_REC_NR);
+				r = sc_read_record(in_card, rec_nr, 0, buf, sizeof(buf), SC_RECORD_BY_REC_NR);
 			sc_unlock(card);
 			if (r > 0)
 				util_hex_dump_asc(stdout, buf, r, 0);

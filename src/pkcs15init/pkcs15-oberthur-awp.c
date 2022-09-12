@@ -371,7 +371,7 @@ awp_update_container_entry (struct sc_pkcs15_card *p15card, struct sc_profile *p
 	else   {
 		rv = sc_select_file(p15card->card, &list_file->path, NULL);
 		if (!rv)
-			rv = sc_read_record(p15card->card, rec, buff, list_file->record_length, SC_RECORD_BY_REC_NR);
+			rv = sc_read_record(p15card->card, rec, 0, buff, list_file->record_length, SC_RECORD_BY_REC_NR);
 	}
 	if (rv < 0)   {
 		free(buff);
@@ -415,7 +415,7 @@ awp_update_container_entry (struct sc_pkcs15_card *p15card, struct sc_profile *p
 			rv = sc_append_record(p15card->card, buff, list_file->record_length, SC_RECORD_BY_REC_NR);
 	}
 	else   {
-		rv = sc_update_record(p15card->card, rec, buff, list_file->record_length, SC_RECORD_BY_REC_NR);
+		rv = sc_update_record(p15card->card, rec, 0, buff, list_file->record_length, SC_RECORD_BY_REC_NR);
 	}
 
 	free(buff);
@@ -477,7 +477,7 @@ awp_update_container(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 	for (rec=0; rec < file->record_count; rec++)   {
 		unsigned char tmp[256];
 
-		rv = sc_read_record(p15card->card, rec + 1, tmp, sizeof(tmp), SC_RECORD_BY_REC_NR);
+		rv = sc_read_record(p15card->card, rec + 1, 0, tmp, sizeof(tmp), SC_RECORD_BY_REC_NR);
 		if (rv >= AWP_CONTAINER_RECORD_LEN)
 			memcpy(list + rec*AWP_CONTAINER_RECORD_LEN, tmp, AWP_CONTAINER_RECORD_LEN);
 		else
@@ -1659,7 +1659,7 @@ awp_delete_from_container(struct sc_pkcs15_card *p15card,
 		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "AWP update container entry: allocation error");
 
 	for (rec = 1; rec <= (unsigned)file->record_count; rec++)   {
-		rv = sc_read_record(p15card->card, rec, buff, file->record_length, SC_RECORD_BY_REC_NR);
+		rv = sc_read_record(p15card->card, rec, 0, buff, file->record_length, SC_RECORD_BY_REC_NR);
 		if (rv < 0)   {
 			sc_log(ctx,  "AWP update container entry: read record error %i", rv);
 			break;
@@ -1697,7 +1697,7 @@ awp_delete_from_container(struct sc_pkcs15_card *p15card,
 				break;
 			}
 
-			rv = sc_update_record(p15card->card, rec, buff, rec_len, SC_RECORD_BY_REC_NR);
+			rv = sc_update_record(p15card->card, rec, 0, buff, rec_len, SC_RECORD_BY_REC_NR);
 			if (rv < 0)   {
 				sc_log(ctx,  "AWP update container entry: update record error %i", rv);
 				break;

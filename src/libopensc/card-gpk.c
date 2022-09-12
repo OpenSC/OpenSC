@@ -1095,7 +1095,7 @@ gpk_set_security_env(sc_card_t *card,
 	LOG_TEST_RET(card->ctx, r, "Failed to select PK file");
 
 	/* Read the sys record of the PK file to find out the key length */
-	r = sc_read_record(card, 1, sysrec, sizeof(sysrec),
+	r = sc_read_record(card, 1, 0, sysrec, sizeof(sysrec),
 			SC_RECORD_BY_REC_NR);
 	LOG_TEST_RET(card->ctx, r, "Failed to read PK sysrec");
 	if (r != 7 || sysrec[0] != 0) {

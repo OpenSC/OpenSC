@@ -819,7 +819,7 @@ do_cardos_extract_pubkey(sc_card_t *card, int nr, u8 tag,
 	u8	buf[256];
 	int	r, count;
 
-	r = sc_read_record(card, nr, buf, sizeof(buf), SC_RECORD_BY_REC_NR);
+	r = sc_read_record(card, nr, 0, buf, sizeof(buf), SC_RECORD_BY_REC_NR);
 	if (r < 0)
 		return r;
 	count = r - 4;

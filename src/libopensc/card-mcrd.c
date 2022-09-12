@@ -314,7 +314,7 @@ static int load_special_files(sc_card_t * card)
 
 	for (recno = 1;; recno++) {
 		u8 recbuf[256];
-		r = sc_read_record(card, recno, recbuf, sizeof(recbuf),
+		r = sc_read_record(card, recno, 0, recbuf, sizeof(recbuf),
 					SC_RECORD_BY_REC_NR);
 
 		if (r == SC_ERROR_RECORD_NOT_FOUND)
@@ -345,7 +345,7 @@ static int load_special_files(sc_card_t * card)
 
 	for (recno = 1;; recno++) {
 		u8 recbuf[256];
-		r = sc_read_record(card, recno, recbuf, sizeof(recbuf),
+		r = sc_read_record(card, recno, 0, recbuf, sizeof(recbuf),
 					SC_RECORD_BY_REC_NR);
 
 		if (r == SC_ERROR_RECORD_NOT_FOUND)
@@ -1155,7 +1155,7 @@ static int mcrd_pin_cmd(sc_card_t * card, struct sc_pin_cmd_data *data,
 			return SC_ERROR_INTERNAL;
 
 		/* read the number of tries left for the PIN */
-		r = sc_read_record (card, ref_to_record[data->pin_reference], buf, sizeof(buf), SC_RECORD_BY_REC_NR);
+		r = sc_read_record (card, ref_to_record[data->pin_reference], 0, buf, sizeof(buf), SC_RECORD_BY_REC_NR);
 		if (r < 0)
 			return SC_ERROR_INTERNAL;
 		if (buf[0] != 0x80 || buf[3] != 0x90)

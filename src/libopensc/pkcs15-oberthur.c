@@ -281,7 +281,7 @@ sc_oberthur_read_file(struct sc_pkcs15_card *p15card, const char *in_path,
 				rv = 0;
 				break;
 			}
-			rv = sc_read_record(card, rec, *out + offs + 2, rec_len, SC_RECORD_BY_REC_NR);
+			rv = sc_read_record(card, rec, 0, *out + offs + 2, rec_len, SC_RECORD_BY_REC_NR);
 			if (rv == SC_ERROR_RECORD_NOT_FOUND)   {
 				rv = 0;
 				break;

@@ -199,7 +199,7 @@ static int starcos_determine_pin_format34(sc_card_t *card, unsigned int * pin_fo
 	rv = sc_select_file(card, &path, &file);
 	LOG_TEST_RET(ctx, rv, "Cannot select EF.PWDD file");
 
-	if ( (rv = sc_read_record(card, rec_no, buf, sizeof(buf), SC_RECORD_BY_REC_NR)) > 0 ) {
+	if ( (rv = sc_read_record(card, rec_no, 0, buf, sizeof(buf), SC_RECORD_BY_REC_NR)) > 0 ) {
 		starcos_ctrl_ref_template ctrl_ref_template;
 		memset((void*)&ctrl_ref_template, 0, sizeof(ctrl_ref_template));
 		rv = starcos_parse_supported_sec_mechanisms(card, buf, rv, &ctrl_ref_template);
@@ -236,7 +236,7 @@ static int starcos_determine_pin_format35(sc_card_t *card, unsigned int * pin_fo
 	rv = sc_select_file(card, &path, &file);
 	LOG_TEST_RET(ctx, rv, "Cannot select EF.KEYD file");
 
-	while ( (rv = sc_read_record(card, rec_no++, buf, sizeof(buf), SC_RECORD_BY_REC_NR)) > 0 ) {
+	while ( (rv = sc_read_record(card, rec_no++, 0, buf, sizeof(buf), SC_RECORD_BY_REC_NR)) > 0 ) {
 		if ( buf[0] != TAG_STARCOS35_PIN_REFERENCE ) continue;
 
 		memset((void*)&ctrl_ref_template, 0, sizeof(ctrl_ref_template));
