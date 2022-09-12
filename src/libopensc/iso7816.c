@@ -165,31 +165,115 @@ iso7816_read_binary(struct sc_card *card, unsigned int idx, u8 *buf, size_t coun
 }
 
 
+const struct sc_asn1_entry c_asn1_do_data[] = {
+	{ "Offset Data Object", SC_ASN1_OCTET_STRING, SC_ASN1_APP|0x14, SC_ASN1_OPTIONAL, NULL, NULL },
+	{ "Discretionary Data Object", SC_ASN1_OCTET_STRING, SC_ASN1_APP|0x13, SC_ASN1_ALLOC|SC_ASN1_UNSIGNED, NULL, NULL },
+	{ NULL, 0, 0, 0, NULL, NULL }
+};
+
+int encode_do_data(struct sc_context *ctx,
+		unsigned int idx, const unsigned char *data, size_t data_len,
+		u8 **out, size_t *outlen)
+{
+	unsigned char offset_buffer[2];
+	size_t offset_buffer_len = sizeof offset_buffer;
+	struct sc_asn1_entry asn1_do_data[sizeof c_asn1_do_data / sizeof *c_asn1_do_data];
+	sc_copy_asn1_entry(c_asn1_do_data, asn1_do_data);
+
+	if (idx > 0xFFFF)
+		LOG_TEST_RET(ctx, SC_ERROR_INTERNAL, "Offset beyond 0xFFFF not supported");
+	offset_buffer[0] = (u8) (idx >> 8);
+	offset_buffer[1] = (u8) (idx & 0x00FF);
+	sc_format_asn1_entry(asn1_do_data + 0, offset_buffer, &offset_buffer_len, 1);
+
+	if (data && data_len) {
+		sc_format_asn1_entry(asn1_do_data + 1, (void *) &data, &data_len, 1);
+	} else {
+		sc_format_asn1_entry(asn1_do_data + 1, NULL, NULL, 0);
+	}
+
+	LOG_TEST_RET(ctx,
+			sc_asn1_encode(ctx, asn1_do_data, out, outlen),
+			"sc_asn1_encode() failed");
+
+	return SC_SUCCESS;
+}
+
+int decode_do_data(struct sc_context *ctx,
+		const unsigned char *encoded_data, size_t encoded_data_len,
+		u8 **out, size_t *outlen)
+{
+	struct sc_asn1_entry asn1_do_data[sizeof c_asn1_do_data / sizeof *c_asn1_do_data];
+	sc_copy_asn1_entry(c_asn1_do_data, asn1_do_data);
+
+	sc_format_asn1_entry(asn1_do_data + 0, NULL, NULL, 0);
+	sc_format_asn1_entry(asn1_do_data + 1, out, outlen, 0);
+
+	LOG_TEST_RET(ctx,
+			sc_asn1_decode(ctx, asn1_do_data, encoded_data, encoded_data_len, NULL, NULL),
+			"sc_asn1_decode() failed");
+
+	return SC_SUCCESS;
+}
+
 static int
 iso7816_read_record(struct sc_card *card, unsigned int rec_nr, unsigned int idx,
 		u8 *buf, size_t count, unsigned long flags)
 {
 	struct sc_apdu apdu;
 	int r;
+	/* XXX maybe use some bigger buffer */
+	unsigned char resp[SC_MAX_APDU_RESP_SIZE];
+	unsigned char *encoded_data = NULL, *decoded_data = NULL;
+	size_t encoded_data_len = 0, decoded_data_len = 0;
 
-	if (rec_nr > 0xFF || idx != 0)
+	if (rec_nr > 0xFF)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_2, 0xB2, rec_nr, 0);
-	apdu.le = count;
-	apdu.resplen = count;
-	apdu.resp = buf;
+	if (idx == 0) {
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_2, 0xB2, rec_nr, 0);
+		apdu.le = count;
+		apdu.resplen = count;
+		apdu.resp = buf;
+	} else {
+		r = encode_do_data(card->ctx, idx, NULL, 0, &encoded_data, &encoded_data_len);
+		LOG_TEST_GOTO_ERR(card->ctx, r, "Could not encode data objects");
+
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_2, 0xB3, rec_nr, 0);
+		apdu.lc = encoded_data_len;
+		apdu.datalen = encoded_data_len;
+		apdu.data = encoded_data;
+		apdu.le = sizeof resp;
+		apdu.resplen = sizeof resp;
+		apdu.resp = resp;
+	}
 	apdu.p2 = (flags & SC_RECORD_EF_ID_MASK) << 3;
 	if (flags & SC_RECORD_BY_REC_NR)
 		apdu.p2 |= 0x04;
 
 	fixup_transceive_length(card, &apdu);
 	r = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
-	if (apdu.resplen == 0)
-		LOG_FUNC_RETURN(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2));
+	LOG_TEST_GOTO_ERR(card->ctx, r, "APDU transmit failed");
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	LOG_TEST_GOTO_ERR(card->ctx, r, "Card returned error");
 
-	LOG_FUNC_RETURN(card->ctx, apdu.resplen);
+	if (idx == 0) {
+		r = apdu.resplen;
+	} else {
+		r = decode_do_data(card->ctx, apdu.resp, apdu.resplen,
+				&decoded_data, &decoded_data_len);
+		LOG_TEST_GOTO_ERR(card->ctx, r, "Could not decode data objects");
+		if (decoded_data_len <= count) {
+			count = decoded_data_len;
+		}
+		memcpy(buf, decoded_data, count);
+		r = count;
+	}
+
+err:
+	free(encoded_data);
+	free(decoded_data);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 
@@ -247,27 +331,41 @@ iso7816_update_record(struct sc_card *card, unsigned int rec_nr, unsigned int id
 {
 	struct sc_apdu apdu;
 	int r;
+	unsigned char *encoded_data = NULL;
+	size_t encoded_data_len = 0;
 
-	if (rec_nr > 0xFF || idx != 0)
+	if (rec_nr > 0xFF)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3, 0xDC, rec_nr, 0);
-	apdu.lc = count;
-	apdu.datalen = count;
-	apdu.data = buf;
+	if (idx == 0) {
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_3, 0xDC, rec_nr, 0);
+		apdu.lc = count;
+		apdu.datalen = count;
+		apdu.data = buf;
+	} else {
+		r = encode_do_data(card->ctx, idx, buf, count, &encoded_data, &encoded_data_len);
+		LOG_TEST_GOTO_ERR(card->ctx, r, "Could not encode data objects");
+
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_3, 0xDD, rec_nr, 0);
+		apdu.lc = encoded_data_len;
+		apdu.datalen = encoded_data_len;
+		apdu.data = encoded_data;
+	}
 	apdu.p2 = (flags & SC_RECORD_EF_ID_MASK) << 3;
 	if (flags & SC_RECORD_BY_REC_NR)
 		apdu.p2 |= 0x04;
 
 	fixup_transceive_length(card, &apdu);
 	r = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+	LOG_TEST_GOTO_ERR(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	LOG_TEST_RET(card->ctx, r, "Card returned error");
+	LOG_TEST_GOTO_ERR(card->ctx, r, "Card returned error");
+	r = count;
 
+err:
+	free(encoded_data);
 	LOG_FUNC_RETURN(card->ctx, count);
 }
-
 
 static int
 iso7816_write_binary(struct sc_card *card,
