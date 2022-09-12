@@ -702,7 +702,7 @@ gpk_pkfile_init_public(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file
 	for (n = 0; n < 6; n++)
 		sysrec[6] ^= sysrec[n];
 
-	r = sc_read_record(p15card->card, 1, buffer, sizeof(buffer),
+	r = sc_read_record(p15card->card, 1, 0, buffer, sizeof(buffer),
 			SC_RECORD_BY_REC_NR);
 	if (r >= 0) {
 		if (r != 7 || buffer[0] != 0) {
@@ -711,7 +711,7 @@ gpk_pkfile_init_public(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file
 			goto out;
 		}
 
-		r = sc_update_record(p15card->card, 1, sysrec, sizeof(sysrec),
+		r = sc_update_record(p15card->card, 1, 0, sysrec, sizeof(sysrec),
 				SC_RECORD_BY_REC_NR);
 	} else {
 		r = sc_append_record(p15card->card, sysrec, sizeof(sysrec), 0);
@@ -735,7 +735,7 @@ gpk_pkfile_update_public(struct sc_profile *profile,
 
 	/* If we've been given a key with public parts, write them now */
 	for (n = 2; n < 256; n++) {
-		r = sc_read_record(p15card->card, n, buffer, sizeof(buffer),
+		r = sc_read_record(p15card->card, n, 0, buffer, sizeof(buffer),
 				SC_RECORD_BY_REC_NR);
 		if (r < 0) {
 			r = 0;
@@ -755,7 +755,7 @@ gpk_pkfile_update_public(struct sc_profile *profile,
 		for (m = 0, found = 0; m < part->count; m++) {
 			pe = part->components + m;
 			if (pe->tag == tag) {
-				r = sc_update_record(p15card->card, n,
+				r = sc_update_record(p15card->card, n, 0,
 						pe->data, pe->size,
 						SC_RECORD_BY_REC_NR);
 				if (r < 0)
@@ -1046,7 +1046,7 @@ gpk_read_rsa_key(sc_card_t *card, struct sc_pkcs15_pubkey_rsa *rsa)
 		u8		buffer[256];
 		size_t		m;
 
-		r = sc_read_record(card, n, buffer, sizeof(buffer),
+		r = sc_read_record(card, n, 0, buffer, sizeof(buffer),
 				SC_RECORD_BY_REC_NR);
 		if (r < 1)
 			break;

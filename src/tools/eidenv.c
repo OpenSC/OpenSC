@@ -156,7 +156,7 @@ static void do_esteid(sc_card_t *card)
 
 		/* print the counters */
 		for (i = 1; i <= 4; i++) {
-			r = sc_read_record(card, i, buff, 128, SC_RECORD_BY_REC_NR);
+			r = sc_read_record(card, i, 0, buff, 128, SC_RECORD_BY_REC_NR);
 			if (r < 0)
 				goto out;
 			key_used[i - 1] = 0xffffff - ((unsigned char) buff[0xc] * 65536
@@ -180,7 +180,7 @@ static void do_esteid(sc_card_t *card)
 	}
 
 	for (i = 0; esteid_data[i].recno != 0; i++) {
-		r = sc_read_record(card, esteid_data[i].recno, buff, 50, SC_RECORD_BY_REC_NR);
+		r = sc_read_record(card, esteid_data[i].recno, 0, buff, 50, SC_RECORD_BY_REC_NR);
 		if (r < 0) {
 			fprintf (stderr, "Failed to read record %d from card: %s\n",
 						esteid_data[i].recno, sc_strerror (r));

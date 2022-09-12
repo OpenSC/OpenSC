@@ -271,7 +271,7 @@ static int sc_pkcs15emu_gemsafeGPK_init(sc_pkcs15_card_t *p15card)
 		r = sc_select_file(card, &path, NULL);
 		if (r < 0) 
 			continue;
-		r = sc_read_record(card, 1, sysrec, sizeof(sysrec), SC_RECORD_BY_REC_NR);
+		r = sc_read_record(card, 1, 0, sysrec, sizeof(sysrec), SC_RECORD_BY_REC_NR);
 		if (r != 7 || sysrec[0] != 0) {
 			continue;
 		}
@@ -292,7 +292,7 @@ static int sc_pkcs15emu_gemsafeGPK_init(sc_pkcs15_card_t *p15card)
 		sc_pkcs15_format_id("", &kinfo[num_keyinfo].id); 
 
 		sc_log(card->ctx, "reading modulus");
-		r = sc_read_record(card, 2, modulus_buf, 
+		r = sc_read_record(card, 2, 0, modulus_buf, 
 				kinfo[num_keyinfo].modulus_len+1, SC_RECORD_BY_REC_NR);
 		if (r < 0) 
 			continue;

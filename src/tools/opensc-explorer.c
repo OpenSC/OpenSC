@@ -803,7 +803,7 @@ static int read_and_print_record_file(sc_file_t *file, unsigned char sfi, unsign
 	for (rec = (wanted > 0) ? wanted : 1; wanted == 0 || wanted == rec; rec++) {
 		r = sc_lock(card);
 		if (r == SC_SUCCESS)
-			r = sc_read_record(card, rec, buf, sizeof(buf),
+			r = sc_read_record(card, rec, 0, buf, sizeof(buf),
 					SC_RECORD_BY_REC_NR | sfi);
 		else
 			r = SC_ERROR_READER_LOCKED;
@@ -1582,7 +1582,7 @@ static int do_get_record(int argc, char **argv)
 		goto err;
 	}
 
-	r = sc_read_record(card, rec, buf, sizeof(buf), SC_RECORD_BY_REC_NR);
+	r = sc_read_record(card, rec, 0, buf, sizeof(buf), SC_RECORD_BY_REC_NR);
 	if (r < 0)   {
 		fprintf(stderr, "Cannot read record %"SC_FORMAT_LEN_SIZE_T"u; return %i\n", rec, r);
 		goto err;
@@ -1710,7 +1710,7 @@ static int do_update_record(int argc, char **argv)
 		goto err;
 	}
 
-	r = sc_read_record(card, rec, buf, sizeof(buf), SC_RECORD_BY_REC_NR);
+	r = sc_read_record(card, rec, 0, buf, sizeof(buf), SC_RECORD_BY_REC_NR);
 	if (r < 0) {
 		fprintf(stderr, "Cannot read record %"SC_FORMAT_LEN_SIZE_T"u of %04X: %s\n",
 			rec, file->id, sc_strerror(r));
@@ -1732,7 +1732,7 @@ static int do_update_record(int argc, char **argv)
 
 	r = sc_lock(card);
 	if (r == SC_SUCCESS)
-		r = sc_update_record(card, rec, buf, buflen, SC_RECORD_BY_REC_NR);
+		r = sc_update_record(card, rec, 0, buf, buflen, SC_RECORD_BY_REC_NR);
 	sc_unlock(card);
 	if (r < 0) {
 		fprintf(stderr, "Cannot update record %"SC_FORMAT_LEN_SIZE_T"u of %04X: %s\n.",
@@ -2174,7 +2174,7 @@ static int do_asn1(int argc, char **argv)
 
 		r = sc_lock(card);
 		if (r == SC_SUCCESS)
-			r = sc_read_record(card, rec, buf, sizeof(buf), SC_RECORD_BY_REC_NR);
+			r = sc_read_record(card, rec, 0, buf, sizeof(buf), SC_RECORD_BY_REC_NR);
 		else
 			r = SC_ERROR_READER_LOCKED;
 		sc_unlock(card);

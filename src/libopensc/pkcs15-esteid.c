@@ -54,7 +54,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 	LOG_TEST_GOTO_ERR(card->ctx, r, "select esteid PD failed");
 
 	/* read the serial (document number) */
-	r = sc_read_record (card, SC_ESTEID_PD_DOCUMENT_NR, buff, sizeof(buff), SC_RECORD_BY_REC_NR);
+	r = sc_read_record (card, SC_ESTEID_PD_DOCUMENT_NR, 0, buff, sizeof(buff), SC_RECORD_BY_REC_NR);
 	LOG_TEST_GOTO_ERR(card->ctx, r, "read document number failed");
 	buff[MIN((size_t) r, (sizeof buff)-1)] = '\0';
 	set_string(&p15card->tokeninfo->serial_number, (const char *)buff);
@@ -136,7 +136,7 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 		memset(&pin_obj, 0, sizeof(pin_obj));
 
 		/* read the number of tries left for the PIN */
-		r = sc_read_record (card, (unsigned int) i + 1, buff, sizeof(buff), SC_RECORD_BY_REC_NR);
+		r = sc_read_record (card, (unsigned int) i + 1, 0, buff, sizeof(buff), SC_RECORD_BY_REC_NR);
 		if (r < 6)
 			goto err;
 
