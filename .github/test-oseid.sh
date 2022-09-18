@@ -44,7 +44,7 @@ echo | ./OsEID-tool INIT
 ./OsEID-tool EC-ECDH-TEST
 ./OsEID-tool UNWRAP-WRAP-TEST
 ./OsEID-tool DES-AES-UPLOAD-KEYS
-./OsEID-tool SYM-ENCRYPT-TEST
+./OsEID-tool SYM-CRYPT-TEST
 popd
 
 # this does not work as we have random key IDs in here
