@@ -2389,7 +2389,6 @@ pkcs15_create_private_key(struct sc_pkcs11_slot *slot, struct sc_profile *profil
 out:	return rv;
 }
 
-
 /*
  * Secret key objects can be stored on card, if the card supports them
  *
@@ -5620,6 +5619,83 @@ pkcs15_skey_encrypt(struct sc_pkcs11_session *session, void *obj,
 	return sc_to_cryptoki_error(rv, "C_Encrypt...");
 }
 
+static CK_RV
+pkcs15_skey_decrypt(struct sc_pkcs11_session *session, void *obj,
+		CK_MECHANISM_PTR pMechanism,
+		CK_BYTE_PTR pEncryptedData, CK_ULONG ulEncryptedDataLen,
+		CK_BYTE_PTR pData, CK_ULONG_PTR pulDataLen)
+{
+	struct sc_pkcs11_card *p11card = session->slot->p11card;
+	struct pkcs15_fw_data *fw_data = NULL;
+	struct pkcs15_skey_object *skey = (struct pkcs15_skey_object *)obj;
+	int rv, flags = 0;
+	size_t lDataLen, *lpDataLen;
+
+	if (!p11card)
+		return sc_to_cryptoki_error(SC_ERROR_INVALID_CARD, "C_Decrypt...");
+	fw_data = (struct pkcs15_fw_data *)p11card->fws_data[session->slot->fw_data_idx];
+	if (!fw_data)
+		return sc_to_cryptoki_error(SC_ERROR_INTERNAL, "C_Decrypt...");
+	if (!fw_data->p15_card)
+		return sc_to_cryptoki_error(SC_ERROR_INVALID_CARD, "C_Decrypt...");
+
+	if (pMechanism == NULL) {
+		sc_log(context, "No mechanism specified\n");
+		return CKR_ARGUMENTS_BAD;
+	}
+
+	/* do not check NULL/0 in Data/DecryptedData here, this
+	   can be an init operation or final operation..*/
+
+	if (skey && !(skey->info->usage & SC_PKCS15_PRKEY_USAGE_DECRYPT))
+		skey = NULL;
+
+	/* Please read comments in pkcs15_skey_unwrap() and pkcs15_skey_wrap() */
+
+	if (skey == NULL)
+		return CKR_KEY_FUNCTION_NOT_PERMITTED;
+
+	sc_log(context, "Using mechanism %lx.", pMechanism->mechanism);
+
+	switch (pMechanism->mechanism) {
+	case CKM_AES_ECB:
+		/* handle this in card driver
+		if (ulDataLen % 16)
+			return CKR_DATA_LEN_RANGE; */
+		flags |= SC_ALGORITHM_AES_ECB;
+		break;
+	case CKM_AES_CBC:
+		/* handle this in card driver
+		if (ulDataLen % 16)
+			return CKR_DATA_LEN_RANGE; */
+		flags |= SC_ALGORITHM_AES_CBC;
+		break;
+	case CKM_AES_CBC_PAD:
+		flags |= SC_ALGORITHM_AES_CBC_PAD;
+		break;
+	default:
+		return CKR_MECHANISM_INVALID;
+	}
+
+	rv = sc_lock(p11card->card);
+
+	if (rv < 0)
+		return sc_to_cryptoki_error(rv, "C_Decrypt...");
+
+	/* pointer CK_ULONG_PTR to size_t conversion */
+	lpDataLen = pulDataLen ? &lDataLen : NULL;
+
+	rv = sc_pkcs15_decrypt_sym(fw_data->p15_card, skey->prv_p15obj, flags,
+			pEncryptedData, ulEncryptedDataLen, pData, lpDataLen,
+			pMechanism->pParameter, pMechanism->ulParameterLen);
+
+	if (pulDataLen)
+		*pulDataLen = *lpDataLen;
+
+	sc_unlock(p11card->card);
+	return sc_to_cryptoki_error(rv, "C_Decrypt...");
+}
+
 /*
  *  Secret key objects, currently used only to retrieve derived session key
  */
@@ -5632,7 +5708,7 @@ struct sc_pkcs11_object_ops pkcs15_skey_ops = {
 	NULL,	/* get_size */
 	NULL,	/* sign */
 	pkcs15_skey_unwrap,
-	NULL,	/* decrypt */
+	pkcs15_skey_decrypt,	/* decrypt */
 	pkcs15_skey_encrypt,	/* encrypt */
 	NULL,	/* derive */
 	NULL,	/* can_do */
