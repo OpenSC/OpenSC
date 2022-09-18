@@ -5552,7 +5552,14 @@ pkcs15_skey_encrypt(struct sc_pkcs11_session *session, void *obj,
 	   can be an init operation or final operation..*/
 
 	if (skey && !(skey->info->usage & SC_PKCS15_PRKEY_USAGE_ENCRYPT))
+		skey = NULL;
+
+	/* TODO: should we look for a compatible key automatically? prv_next not implemented yet. */
+	/* skey = skey->prv_next; */
+
+	if (skey == NULL)
 		return CKR_KEY_FUNCTION_NOT_PERMITTED;
+
 	sc_log(context, "Using mechanism %lx.", pMechanism->mechanism);
 
 	switch (pMechanism->mechanism) {
