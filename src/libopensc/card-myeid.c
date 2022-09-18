@@ -2095,13 +2095,12 @@ myeid_encrypt_sym(struct sc_card *card, const u8 *data, size_t datalen, u8 *out,
 {
 	return myeid_enc_dec_sym(card, data, datalen, out, outlen, 0);
 }
-/*
+
 static int
 myeid_decrypt_sym(struct sc_card *card, const u8 *data, size_t datalen, u8 *out, size_t *outlen)
 {
 	return myeid_enc_dec_sym(card, data, datalen, out, outlen, 1);
 }
-*/
 
 static struct sc_card_driver * sc_get_driver(void)
 {
@@ -2134,7 +2133,7 @@ static struct sc_card_driver * sc_get_driver(void)
 	myeid_ops.wrap			= myeid_wrap_key;
 	myeid_ops.unwrap		= myeid_unwrap_key;
 	myeid_ops.encrypt_sym		= myeid_encrypt_sym;
-/*	myeid_ops.decrypt_sym		= myeid_decrypt_sym;*/
+	myeid_ops.decrypt_sym		= myeid_decrypt_sym;
 	return &myeid_drv;
 }
 
