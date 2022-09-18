@@ -818,6 +818,8 @@ struct sc_card_operations {
 
 	int (*encrypt_sym)(struct sc_card *card, const u8 *plaintext, size_t plaintext_len,
 			u8 *out, size_t *outlen);
+	int (*decrypt_sym)(struct sc_card *card, const u8 *EncryptedData, size_t EncryptedDataLen,
+			u8 *out, size_t *outlen);
 };
 
 typedef struct sc_card_driver {
@@ -1383,6 +1385,9 @@ int sc_reset_retry_counter(struct sc_card *card, unsigned int type,
 int sc_build_pin(u8 *buf, size_t buflen, struct sc_pin_cmd_pin *pin, int pad);
 
 int sc_encrypt_sym(struct sc_card *card, const u8 *Data, size_t DataLen,
+		u8 *out, size_t *outlen);
+
+int sc_decrypt_sym(struct sc_card *card, const u8 *EncryptedData, size_t EncryptedDataLen,
 		u8 *out, size_t *outlen);
 
 /********************************************************************/

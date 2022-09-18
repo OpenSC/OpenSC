@@ -46,6 +46,8 @@ static sc_pkcs11_mechanism_type_t find_mechanism = {
 	NULL,		/* verif_final */
 	NULL,		/* decrypt_init */
 	NULL,		/* decrypt */
+	NULL,		/* decrypt_update */
+	NULL,		/* decrypt_final */
 	NULL,		/* derive */
 	NULL,		/* wrap */
 	NULL,		/* unwrap */
@@ -1008,12 +1010,13 @@ out:
 	return rv;
 }
 
-CK_RV C_Decrypt(CK_SESSION_HANDLE hSession,	/* the session's handle */
-		CK_BYTE_PTR pEncryptedData,	/* input encrypted data */
-		CK_ULONG ulEncryptedDataLen,	/* count of bytes of input */
-		CK_BYTE_PTR pData,	/* receives decrypted output */
-		CK_ULONG_PTR pulDataLen)
-{				/* receives decrypted byte count */
+CK_RV
+C_Decrypt(CK_SESSION_HANDLE hSession,	     /* the session's handle */
+		CK_BYTE_PTR pEncryptedData,  /* input encrypted data */
+		CK_ULONG ulEncryptedDataLen, /* count of bytes of input */
+		CK_BYTE_PTR pData,	     /* receives decrypted output */
+		CK_ULONG_PTR pulDataLen)     /* receives decrypted byte count */
+{
 	CK_RV rv;
 	struct sc_pkcs11_session *session;
 
@@ -1036,20 +1039,56 @@ CK_RV C_Decrypt(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	return rv;
 }
 
-CK_RV C_DecryptUpdate(CK_SESSION_HANDLE hSession,	/* the session's handle */
-		      CK_BYTE_PTR pEncryptedPart,	/* input encrypted data */
-		      CK_ULONG ulEncryptedPartLen,	/* count of bytes of input */
-		      CK_BYTE_PTR pPart,	/* receives decrypted output */
-		      CK_ULONG_PTR pulPartLen)
-{				/* receives decrypted byte count */
-	return CKR_FUNCTION_NOT_SUPPORTED;
+CK_RV
+C_DecryptUpdate(CK_SESSION_HANDLE hSession,  /* the session's handle */
+		CK_BYTE_PTR pEncryptedPart,  /* input encrypted data */
+		CK_ULONG ulEncryptedPartLen, /* count of bytes of input */
+		CK_BYTE_PTR pPart,	     /* receives decrypted output */
+		CK_ULONG_PTR pulPartLen)     /* receives decrypted byte count */
+{
+	CK_RV rv;
+	struct sc_pkcs11_session *session;
+
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
+
+	rv = get_session(hSession, &session);
+	if (rv == CKR_OK)
+		rv = sc_pkcs11_decr_update(session, pEncryptedPart, ulEncryptedPartLen,
+				pPart, pulPartLen);
+
+	SC_LOG_RV("C_DecryptUpdate() = %s", rv);
+	sc_pkcs11_unlock();
+	return rv;
 }
 
-CK_RV C_DecryptFinal(CK_SESSION_HANDLE hSession,	/* the session's handle */
-		     CK_BYTE_PTR pLastPart,	/* receives decrypted output */
-		     CK_ULONG_PTR pulLastPartLen)
-{				/* receives decrypted byte count */
-	return CKR_FUNCTION_NOT_SUPPORTED;
+CK_RV
+C_DecryptFinal(CK_SESSION_HANDLE hSession,   /* the session's handle */
+		CK_BYTE_PTR pLastPart,	     /* receives decrypted output */
+		CK_ULONG_PTR pulLastPartLen) /* receives decrypted byte count */
+{
+	CK_RV rv;
+	struct sc_pkcs11_session *session;
+
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
+
+	rv = get_session(hSession, &session);
+	if (rv == CKR_OK) {
+		rv = restore_login_state(session->slot);
+		if (rv == CKR_OK) {
+			rv = sc_pkcs11_decr_final(session,
+					pLastPart,
+					pulLastPartLen);
+		}
+		rv = reset_login_state(session->slot, rv);
+	}
+
+	SC_LOG_RV("C_DecryptFinal() = %s", rv);
+	sc_pkcs11_unlock();
+	return rv;
 }
 
 CK_RV C_DigestEncryptUpdate(CK_SESSION_HANDLE hSession,	/* the session's handle */
