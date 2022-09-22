@@ -1784,6 +1784,23 @@ static int myeid_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
+static int
+myeid_get_change_counter(sc_card_t *card, size_t *change_counter)
+{
+	int r;
+	u8 rbuf[256];
+
+	LOG_FUNC_CALLED(card->ctx);
+
+	/* get change counter from card */
+	r = myeid_get_info(card, rbuf, sizeof(rbuf));
+	LOG_TEST_RET(card->ctx, r, "Get applet info failed");
+
+	*change_counter = rbuf[18] * 256 + rbuf[19];
+
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+
 /*
  Get information of features that the card supports. MyEID 4.x cards are available on different
  hardware and maximum key sizes cannot be determined simply from the version number anymore.
@@ -1846,6 +1863,9 @@ static int myeid_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 		break;
 	case SC_CARDCTL_GET_SERIALNR:
 		r = myeid_get_serialnr(card, (sc_serial_number_t *)ptr);
+		break;
+	case SC_CARDCTL_GET_CHANGE_COUNTER:
+		r = myeid_get_change_counter(card, (size_t *)ptr);
 		break;
 	case SC_CARDCTL_GET_DEFAULT_KEY:
 	case SC_CARDCTL_LIFECYCLE_SET:
