@@ -693,7 +693,7 @@ __pkcs15_create_cert_object(struct pkcs15_fw_data *fw_data, struct sc_pkcs15_obj
 		p15_cert = NULL;			/* will read cert when needed */
 	}
 	else    {
-		rv = sc_pkcs15_read_certificate(fw_data->p15_card, p15_info, &p15_cert);
+		rv = sc_pkcs15_read_certificate(fw_data->p15_card, p15_info, 0, &p15_cert);
 		if (rv < 0)
 			return rv;
 	}
@@ -1028,13 +1028,15 @@ check_cert_data_read(struct pkcs15_fw_data *fw_data, struct pkcs15_cert_object *
 {
 	struct pkcs15_pubkey_object *obj2;
 	int rv;
+	int private_obj;
 
 	if (!cert)
 		return SC_ERROR_OBJECT_NOT_FOUND;
 
 	if (cert->cert_data)
 		return 0;
-	rv = sc_pkcs15_read_certificate(fw_data->p15_card, cert->cert_info, &cert->cert_data);
+	private_obj = cert->cert_flags & SC_PKCS15_CO_FLAG_PRIVATE;
+	rv = sc_pkcs15_read_certificate(fw_data->p15_card, cert->cert_info, private_obj, &cert->cert_data);
 	if (rv < 0)
 		return rv;
 
@@ -5008,6 +5010,7 @@ pkcs15_dobj_get_value(struct sc_pkcs11_session *session,
 	struct pkcs15_fw_data *fw_data = NULL;
 	struct sc_card *card;
 	int rv;
+	int private_obj;
 
 	if (!p11card)
 		return sc_to_cryptoki_error(SC_ERROR_INVALID_CARD, "C_GetAttributeValue");
@@ -5030,7 +5033,8 @@ pkcs15_dobj_get_value(struct sc_pkcs11_session *session,
 	if (rv < 0)
 		return sc_to_cryptoki_error(rv, "C_GetAttributeValue");
 
-	rv = sc_pkcs15_read_data_object(fw_data->p15_card, dobj->info, out_data);
+	private_obj = dobj->data_flags;
+	rv = sc_pkcs15_read_data_object(fw_data->p15_card, dobj->info, private_obj, out_data);
 
 	sc_unlock(card);
 	if (rv < 0)

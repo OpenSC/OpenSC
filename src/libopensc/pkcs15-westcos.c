@@ -131,7 +131,7 @@ static int sc_pkcs15emu_westcos_init(sc_pkcs15_card_t * p15card)
 		cert_info.id.value[0] = 0x45;
 		cert_info.authority = 0;
 		cert_info.path = path;
-		r = sc_pkcs15_read_certificate(p15card, &cert_info, &cert);
+		r = sc_pkcs15_read_certificate(p15card, &cert_info, 0, &cert);
 		cert_obj.data = (void *) cert;
 		if (!r) {
 			strlcpy(cert_obj.label, "User certificate",

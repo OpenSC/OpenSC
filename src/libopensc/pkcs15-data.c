@@ -41,6 +41,7 @@
 int
 sc_pkcs15_read_data_object(struct sc_pkcs15_card *p15card,
 		const struct sc_pkcs15_data_info *info,
+		int private_obj,
 		struct sc_pkcs15_data **data_object_out)
 {
 	struct sc_context *ctx = p15card->card->ctx;
@@ -53,7 +54,7 @@ sc_pkcs15_read_data_object(struct sc_pkcs15_card *p15card,
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	if (!info->data.value)   {
-		r = sc_pkcs15_read_file(p15card, &info->path, (unsigned char **) &info->data.value, (size_t *) &info->data.len);
+		r = sc_pkcs15_read_file(p15card, &info->path, (unsigned char **) &info->data.value, (size_t *) &info->data.len, private_obj);
 		LOG_TEST_RET(ctx, r, "Cannot get DATA object data");
 	}
 

@@ -252,7 +252,7 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 		prkey_obj.flags = SC_PKCS15_CO_FLAG_PRIVATE;
 		sc_pkcs15_format_id(pins[0].id, &prkey_obj.auth_id);
 
-		r = sc_pkcs15_read_file(p15card, &cert_info.path, &cert_der.value, &cert_der.len);
+		r = sc_pkcs15_read_file(p15card, &cert_info.path, &cert_der.value, &cert_der.len, 0);
 
 		if (r) {
 			sc_log(card->ctx,  "No cert found,i=%d", i);
@@ -274,7 +274,7 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 		}
 
 		/* following will find the cached cert in cert_info */
-		r =  sc_pkcs15_read_certificate(p15card, &cert_info, &cert_out);
+		r =  sc_pkcs15_read_certificate(p15card, &cert_info, 0, &cert_out);
 		if (r < 0 || cert_out->key == NULL) {
 			sc_log(card->ctx,  "Failed to read/parse the certificate r=%d",r);
 			if (cert_out != NULL)

@@ -423,7 +423,8 @@ coolkey_get_public_key_from_certificate(sc_pkcs15_card_t *p15card, sc_cardctl_co
 	sc_pkcs15_cert_info_t cert_info;
 	sc_pkcs15_cert_t *cert_out = NULL;
 	sc_pkcs15_pubkey_t *key = NULL;
-	int r;
+	int r, private_obj;
+	unsigned int flags;
 
 	memset(&cert_info, 0, sizeof(cert_info));
 
@@ -431,7 +432,10 @@ coolkey_get_public_key_from_certificate(sc_pkcs15_card_t *p15card, sc_cardctl_co
 	if (r < 0) {
 		goto fail;
 	}
-	r = sc_pkcs15_read_certificate(p15card, &cert_info, &cert_out);
+
+	coolkey_get_flags(p15card->card, obj, &flags);
+	private_obj = flags & SC_PKCS15_CO_FLAG_PRIVATE;
+	r = sc_pkcs15_read_certificate(p15card, &cert_info, private_obj, &cert_out);
 	if (r < 0) {
 		goto fail;
 	}

@@ -1151,6 +1151,7 @@ is_cacert_already_present(struct sc_pkcs15init_certargs *args)
 
 	count = r;
 	for (i = 0; i < count; i++) {
+		int private_obj;
 		cinfo = (sc_pkcs15_cert_info_t *) objs[i]->data;
 
 		if (!cinfo->authority)
@@ -1160,7 +1161,8 @@ is_cacert_already_present(struct sc_pkcs15init_certargs *args)
 		/* XXX we should also match the usage field here */
 
 		/* Compare the DER representation of the certificates */
-		r = sc_pkcs15_read_certificate(g_p15card, cinfo, &cert);
+		private_obj = objs[i]->flags & SC_PKCS15_CO_FLAG_PRIVATE;
+		r = sc_pkcs15_read_certificate(g_p15card, cinfo, private_obj, &cert);
 		if (r < 0 || !cert)
 			continue;
 
@@ -1366,6 +1368,7 @@ do_update_certificate(struct sc_profile *profile)
 	sc_pkcs15_cert_t *oldcert = NULL;
 	sc_pkcs15_der_t newcert_raw;
 	int r;
+	int private_obj;
 
 	if (opt_objectid == NULL) {
 		util_error("no ID given for the cert: use --id");
@@ -1384,7 +1387,8 @@ do_update_certificate(struct sc_profile *profile)
 		return r;
 
 	certinfo = (sc_pkcs15_cert_info_t *) obj->data;
-	r = sc_pkcs15_read_certificate(g_p15card, certinfo, &oldcert);
+	private_obj = obj->flags & SC_PKCS15_CO_FLAG_PRIVATE;
+	r = sc_pkcs15_read_certificate(g_p15card, certinfo, private_obj, &oldcert);
 	if (r < 0)
 		goto err;
 
@@ -1481,12 +1485,14 @@ static int get_cert_info(sc_pkcs15_card_t *myp15card, sc_pkcs15_object_t *certob
 	sc_pkcs15_object_t *otherobj;
 	sc_pkcs15_cert_t *othercert = NULL;
 	int r;
+	int private_obj;
 
 	*issuercert = NULL;
 	*has_sibling = 0;
 	*stop = 0;
 
-	r = sc_pkcs15_read_certificate(myp15card, (sc_pkcs15_cert_info_t *) certobj->data, &cert);
+	private_obj = certobj->flags & SC_PKCS15_CO_FLAG_PRIVATE;
+	r = sc_pkcs15_read_certificate(myp15card, (sc_pkcs15_cert_info_t *) certobj->data, private_obj, &cert);
 	if (r < 0)
 		return r;
 
@@ -1502,7 +1508,9 @@ static int get_cert_info(sc_pkcs15_card_t *myp15card, sc_pkcs15_object_t *certob
 			sc_pkcs15_free_certificate(othercert);
 			othercert=NULL;
 		}
-		r = sc_pkcs15_read_certificate(myp15card, (sc_pkcs15_cert_info_t *) otherobj->data, &othercert);
+
+		private_obj = otherobj->flags & SC_PKCS15_CO_FLAG_PRIVATE;
+		r = sc_pkcs15_read_certificate(myp15card, (sc_pkcs15_cert_info_t *) otherobj->data, private_obj, &othercert);
 		if (r < 0 || !othercert)
 			goto done;
 		if ((cert->issuer_len == othercert->subject_len) &&

@@ -51,13 +51,15 @@ _iasecc_md_update_keyinfo(struct sc_pkcs15_card *p15card, struct sc_pkcs15_objec
 	struct sc_pkcs15_id id;
 	int rv, offs;
 	unsigned flags;
+	int private_obj;
 
 	LOG_FUNC_CALLED(ctx);
 
 	if (!dobj)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-	rv = sc_pkcs15_read_data_object(p15card, (struct sc_pkcs15_data_info *)dobj->data, &ddata);
+	private_obj = dobj->flags & SC_PKCS15_CO_FLAG_PRIVATE;
+	rv = sc_pkcs15_read_data_object(p15card, (struct sc_pkcs15_data_info *)dobj->data, private_obj, &ddata);
 	LOG_TEST_RET(ctx, rv, "Failed to read container DATA object data");
 
 	offs = 0;
@@ -184,12 +186,13 @@ _iasecc_parse_df(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *df)
 	count = rv;
 	for(ii=0; ii<count; ii++)   {
 		struct sc_pkcs15_data_info *dinfo = (struct sc_pkcs15_data_info *)dobjs[ii]->data;
+		int private_obj = dobjs[ii]->flags & SC_PKCS15_CO_FLAG_PRIVATE;
 
 		if (strcmp(dinfo->app_label, IASECC_GEMALTO_MD_APPLICATION_NAME))
 			continue;
 
 		if (!strcmp(dobjs[ii]->label, IASECC_GEMALTO_MD_DEFAULT_CONT_LABEL))   {
-			rv = sc_pkcs15_read_data_object(p15card, (struct sc_pkcs15_data_info *)dobjs[ii]->data, &default_guid);
+			rv = sc_pkcs15_read_data_object(p15card, (struct sc_pkcs15_data_info *)dobjs[ii]->data, private_obj, &default_guid);
 			LOG_TEST_RET(ctx, rv, "Failed to read 'default container' DATA object data");
 			break;
 		}

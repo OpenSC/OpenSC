@@ -749,8 +749,16 @@ app <em class="replaceable"><code>application</code></em> {
 					</span></dt><dd><p>
 							Whether to cache the card's files (e.g.
 							certificates) on disk in
-							<code class="option">file_cache_dir</code> (Default:
-							<code class="literal">false</code>).
+							<code class="option">file_cache_dir</code>.
+							Possible parameters:
+							</p><div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem"><p>
+									<code class="literal">yes</code>: Cache all files (public and private).
+								</p></li><li class="listitem"><p>
+									<code class="literal">public</code>: Cache only public files.
+								</p></li><li class="listitem"><p>
+									<code class="literal">no</code>: File caching disabled.
+								</p></li></ul></div><p>
+							(Default:<code class="literal">no</code>).
 						</p><p>
 							If caching is done by a system process, the
 							cached files may be placed inaccessible from

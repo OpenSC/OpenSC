@@ -1220,6 +1220,7 @@ sc_pkcs15_bind(struct sc_card *card, struct sc_aid *aid,
 	struct sc_context *ctx;
 	scconf_block *conf_block = NULL;
 	int r, emu_first, enable_emu;
+	const char *use_file_cache;
 	const char *private_certificate;
 
 	if (card == NULL || p15card_out == NULL) {
@@ -1235,7 +1236,8 @@ sc_pkcs15_bind(struct sc_card *card, struct sc_aid *aid,
 		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 
 	p15card->card = card;
-	p15card->opts.use_file_cache = 0;
+	p15card->opts.use_file_cache = SC_PKCS15_OPTS_CACHE_NO_FILES;
+	use_file_cache = "no";
 	p15card->opts.use_pin_cache = 1;
 	p15card->opts.pin_cache_counter = 10;
 	p15card->opts.pin_cache_ignore_user_consent = 0;
@@ -1249,13 +1251,22 @@ sc_pkcs15_bind(struct sc_card *card, struct sc_aid *aid,
 
 	conf_block = sc_get_conf_block(ctx, "framework", "pkcs15", 1);
 	if (conf_block) {
-		p15card->opts.use_file_cache = scconf_get_bool(conf_block, "use_file_caching", p15card->opts.use_file_cache);
+		use_file_cache = scconf_get_str(conf_block, "use_file_caching", use_file_cache);
 		p15card->opts.use_pin_cache = scconf_get_bool(conf_block, "use_pin_caching", p15card->opts.use_pin_cache);
 		p15card->opts.pin_cache_counter = scconf_get_int(conf_block, "pin_cache_counter", p15card->opts.pin_cache_counter);
 		p15card->opts.pin_cache_ignore_user_consent = scconf_get_bool(conf_block, "pin_cache_ignore_user_consent",
 				p15card->opts.pin_cache_ignore_user_consent);
 		private_certificate = scconf_get_str(conf_block, "private_certificate", private_certificate);
 	}
+
+	if (0 == strcmp(use_file_cache, "yes")) {
+		p15card->opts.use_file_cache = SC_PKCS15_OPTS_CACHE_ALL_FILES;
+	} else if (0 == strcmp(use_file_cache, "public")) {
+		p15card->opts.use_file_cache = SC_PKCS15_OPTS_CACHE_PUBLIC_FILES;
+	} else if (0 == strcmp(use_file_cache, "no")) {
+		p15card->opts.use_file_cache = SC_PKCS15_OPTS_CACHE_NO_FILES;
+	}
+
 	if (0 == strcmp(private_certificate, "protect")) {
 		p15card->opts.private_certificate = SC_PKCS15_CARD_OPTS_PRIV_CERT_PROTECT;
 	} else if (0 == strcmp(private_certificate, "ignore")) {
@@ -2101,7 +2112,7 @@ sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *df)
 		sc_log(ctx, "unknown DF type: %d", df->type);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
-	r = sc_pkcs15_read_file(p15card, &df->path, &buf, &bufsize);
+	r = sc_pkcs15_read_file(p15card, &df->path, &buf, &bufsize, 0);
 	LOG_TEST_RET(ctx, r, "pkcs15 read file failed");
 
 	p = buf;
@@ -2342,7 +2353,7 @@ sc_pkcs15_parse_unusedspace(const unsigned char *buf, size_t buflen, struct sc_p
 
 int
 sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_path,
-		unsigned char **buf, size_t *buflen)
+		unsigned char **buf, size_t *buflen, int private_data)
 {
 	struct sc_context *ctx;
 	struct sc_file *file = NULL;
@@ -2359,7 +2370,8 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 	sc_log(ctx, "path=%s, index=%u, count=%d", sc_print_path(in_path), in_path->index, in_path->count);
 
 	r = -1; /* file state: not in cache */
-	if (p15card->opts.use_file_cache) {
+	if (p15card->opts.use_file_cache
+	    && ((p15card->opts.use_file_cache & SC_PKCS15_OPTS_CACHE_ALL_FILES) || !private_data)) {
 		r = sc_pkcs15_read_cached_file(p15card, in_path, &data, &len);
 
 		if (!r && in_path->aid.len > 0 && in_path->len >= 2)   {
@@ -2447,7 +2459,8 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 
 		sc_file_free(file);
 
-		if (len && p15card->opts.use_file_cache) {
+		if (len && p15card->opts.use_file_cache
+		    && ((p15card->opts.use_file_cache & SC_PKCS15_OPTS_CACHE_ALL_FILES) || !private_data)) {
 			sc_pkcs15_cache_file(p15card, in_path, data, len);
 		}
 	}

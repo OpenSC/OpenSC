@@ -607,6 +607,11 @@ typedef struct sc_pkcs15_card {
 /* flags suitable for struct sc_pkcs15_card */
 #define SC_PKCS15_CARD_FLAG_EMULATED			0x02000000
 
+/* suitable for struct sc_pkcs15_card.opts.use_file_cache */
+#define SC_PKCS15_OPTS_CACHE_NO_FILES			0
+#define SC_PKCS15_OPTS_CACHE_PUBLIC_FILES		1
+#define SC_PKCS15_OPTS_CACHE_ALL_FILES			2
+
 /* suitable for struct sc_pkcs15_card.opts.private_certificate */
 #define SC_PKCS15_CARD_OPTS_PRIV_CERT_PROTECT		0
 #define SC_PKCS15_CARD_OPTS_PRIV_CERT_IGNORE		1
@@ -727,6 +732,7 @@ void sc_pkcs15_free_key_params(struct sc_pkcs15_key_params *params);
 
 int sc_pkcs15_read_data_object(struct sc_pkcs15_card *p15card,
 			       const struct sc_pkcs15_data_info *info,
+			       int private_obj,
 			       struct sc_pkcs15_data **data_object_out);
 int sc_pkcs15_find_data_object_by_id(struct sc_pkcs15_card *p15card,
 				     const struct sc_pkcs15_id *id,
@@ -742,6 +748,7 @@ void sc_pkcs15_free_data_object(struct sc_pkcs15_data *data_object);
 
 int sc_pkcs15_read_certificate(struct sc_pkcs15_card *card,
 			       const struct sc_pkcs15_cert_info *info,
+			       int private_obj,
 			       struct sc_pkcs15_cert **cert);
 void sc_pkcs15_free_certificate(struct sc_pkcs15_cert *cert);
 int sc_pkcs15_find_cert_by_id(struct sc_pkcs15_card *card,
@@ -913,7 +920,7 @@ void sc_pkcs15_free_object(struct sc_pkcs15_object *obj);
 /* Generic file i/o */
 int sc_pkcs15_read_file(struct sc_pkcs15_card *p15card,
 			const struct sc_path *path,
-			u8 **buf, size_t *buflen);
+			u8 **buf, size_t *buflen, int private_data);
 
 /* Caching functions */
 int sc_pkcs15_read_cached_file(struct sc_pkcs15_card *p15card,

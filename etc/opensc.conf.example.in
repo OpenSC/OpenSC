@@ -883,8 +883,8 @@ app default {
 		# inaccessible from the user account. Use a global caching directory if
 		# you wish to share the cached information.
 		#
-		# Default: false
-		# use_file_caching = true;
+		# Default: no
+		# use_file_caching = public;
 		#
 		# set a path for caching
 		# so you do not use the env variables and for pam_pkcs11
