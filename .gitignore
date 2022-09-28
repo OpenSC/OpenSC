@@ -97,7 +97,7 @@ win32/OpenSC.wixobj
 win32/OpenSC.wixpdb
 
 MacOSX/build-package
-MacOSX/Distribution.xml
+MacOSX/Distribution*.xml
 
 *.dmg
 *.pkg
