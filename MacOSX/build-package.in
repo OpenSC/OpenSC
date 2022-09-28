@@ -58,6 +58,9 @@ export CFLAGS="$CFLAGS -isysroot $SDK_PATH"
 if test -n "${BUILD_ARM}"; then
 	export CFLAGS="$CFLAGS -arch x86_64 -arch arm64"
 	export LDFLAGS="$LDFLAGS -arch x86_64 -arch arm64"
+	DISTRIBUTION_XML=MacOSX/Distribution_universal.xml
+else
+	DISTRIBUTION_XML=MacOSX/Distribution.xml
 fi
 export OBJCFLAGS=$CFLAGS
 
@@ -220,7 +223,7 @@ pkgbuild --root ${BUILDPATH}/target_token $COMPONENT_TOKEN --identifier org.open
 pkgbuild --root ${BUILDPATH}/target_startup --component-plist MacOSX/target_startup.plist --identifier org.opensc-project.startup --version @PACKAGE_VERSION@ --install-location / OpenSC-startup.pkg
 
 # Build product
-productbuild --distribution MacOSX/Distribution.xml --package-path . --resources MacOSX/resources "${imagedir}/OpenSC @PACKAGE_VERSION@.pkg"
+productbuild --distribution $DISTRIBUTION_XML --package-path . --resources MacOSX/resources "${imagedir}/OpenSC @PACKAGE_VERSION@.pkg"
 
 # Sign installer
 if test -n "${INSTALLER_SIGN_IDENTITY}"; then
