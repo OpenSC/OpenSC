@@ -93,7 +93,7 @@ gids_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
 npa_tool_SOURCES = npa-tool.c fread_to_eof.c util.c npa-tool-cmdline.c
 npa_tool_LDADD = $(top_builddir)/src/libopensc/libopensc.la \
 				 $(OPENPACE_LIBS)
-npa_tool_CFLAGS = -I$(top_srcdir)/src $(OPENPACE_CFLAGS) $(OPENSSL_CFLAGS)
+npa_tool_CFLAGS = -I$(top_srcdir)/src $(OPENPACE_CFLAGS)
 npa_tool_CFLAGS += -Wno-unused-but-set-variable
 if HAVE_UNKNOWN_WARNING_OPTION
 npa_tool_CFLAGS += -Wno-unknown-warning-option
