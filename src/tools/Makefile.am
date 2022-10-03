@@ -38,7 +38,7 @@ bin_PROGRAMS += cryptoflex-tool pkcs15-init netkey-tool piv-tool \
 endif
 
 # compile with $(PTHREAD_CFLAGS) to allow debugging with gdb
-AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(OPTIONAL_READLINE_CFLAGS) $(PTHREAD_CFLAGS)
+AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(OPTIONAL_READLINE_CFLAGS)
 AM_CPPFLAGS = -I$(top_srcdir)/src -D'DEFAULT_PKCS11_PROVIDER="$(DEFAULT_PKCS11_PROVIDER)"' -D'DEFAULT_ONEPIN_PKCS11_PROVIDER="$(DEFAULT_ONEPIN_PKCS11_PROVIDER)"'
 LIBS = \
 	$(top_builddir)/src/libopensc/libopensc.la \
