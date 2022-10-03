@@ -91,16 +91,15 @@ gids_tool_SOURCES = gids-tool.c util.c
 gids_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
 
 npa_tool_SOURCES = npa-tool.c fread_to_eof.c util.c npa-tool-cmdline.c
-npa_tool_LDADD = $(top_builddir)/src/libopensc/libopensc.la \
-				 $(OPENPACE_LIBS)
-npa_tool_CFLAGS = -$(OPENPACE_CFLAGS)
+npa_tool_LDADD = $(OPENPACE_LIBS)
+npa_tool_CFLAGS = $(OPENPACE_CFLAGS)
 npa_tool_CFLAGS += -Wno-unused-but-set-variable
 if HAVE_UNKNOWN_WARNING_OPTION
 npa_tool_CFLAGS += -Wno-unknown-warning-option
 endif
 
 opensc_notify_SOURCES = opensc-notify.c opensc-notify-cmdline.c
-opensc_notify_LDADD = $(top_builddir)/src/libopensc/libopensc.la $(OPTIONAL_NOTIFY_LIBS)
+opensc_notify_LDADD = $(OPTIONAL_NOTIFY_LIBS)
 opensc_notify_CFLAGS = $(PTHREAD_CFLAGS) $(OPTIONAL_NOTIFY_CFLAGS)
 opensc_notify_CFLAGS += -Wno-unused-but-set-variable
 if HAVE_UNKNOWN_WARNING_OPTION
@@ -108,7 +107,7 @@ opensc_notify_CFLAGS += -Wno-unknown-warning-option
 endif
 
 egk_tool_SOURCES = egk-tool.c util.c egk-tool-cmdline.c
-egk_tool_LDADD = $(top_builddir)/src/libopensc/libopensc.la $(OPTIONAL_ZLIB_LIBS)
+egk_tool_LDADD = $(OPTIONAL_ZLIB_LIBS)
 egk_tool_CFLAGS = $(OPTIONAL_ZLIB_CFLAGS)
 egk_tool_CFLAGS += -Wno-unused-but-set-variable
 if HAVE_UNKNOWN_WARNING_OPTION
@@ -116,7 +115,7 @@ egk_tool_CFLAGS += -Wno-unknown-warning-option
 endif
 
 goid_tool_SOURCES = goid-tool.c util.c fread_to_eof.c goid-tool-cmdline.c
-goid_tool_LDADD = $(top_builddir)/src/libopensc/libopensc.la $(OPENPACE_LIBS)
+goid_tool_LDADD = $(OPENPACE_LIBS)
 goid_tool_CFLAGS = $(OPENPACE_CFLAGS)
 goid_tool_CFLAGS += -Wno-unused-but-set-variable
 if HAVE_UNKNOWN_WARNING_OPTION
@@ -124,7 +123,6 @@ goid_tool_CFLAGS += -Wno-unknown-warning-option
 endif
 
 opensc_asn1_SOURCES = opensc-asn1.c fread_to_eof.c opensc-asn1-cmdline.c
-opensc_asn1_LDADD = $(top_builddir)/src/libopensc/libopensc.la
 opensc_asn1_CFLAGS = -Wno-unused-but-set-variable
 if HAVE_UNKNOWN_WARNING_OPTION
 opensc_asn1_CFLAGS += -Wno-unknown-warning-option
