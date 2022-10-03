@@ -124,8 +124,8 @@ goid_tool_CFLAGS += -Wno-unknown-warning-option
 endif
 
 opensc_asn1_SOURCES = opensc-asn1.c fread_to_eof.c opensc-asn1-cmdline.c
-opensc_asn1_LDADD = $(top_builddir)/src/libopensc/libopensc.la $(OPTIONAL_ZLIB_LIBS)
-opensc_asn1_CFLAGS = -I$(top_srcdir)/src $(OPTIONAL_ZLIB_CFLAGS)
+opensc_asn1_LDADD = $(top_builddir)/src/libopensc/libopensc.la
+opensc_asn1_CFLAGS = -I$(top_srcdir)/src
 opensc_asn1_CFLAGS += -Wno-unused-but-set-variable
 if HAVE_UNKNOWN_WARNING_OPTION
 opensc_asn1_CFLAGS += -Wno-unknown-warning-option
