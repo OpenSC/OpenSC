@@ -21,7 +21,6 @@
 #include "config.h"
 #endif
 
-#ifdef ENABLE_OPENPACE
 #include "fread_to_eof.h"
 #include "npa-tool-cmdline.h"
 #include "sm/sm-eac.h"
@@ -863,14 +862,4 @@ err:
 
 	return -r;
 }
-#else
 
-#include <stdio.h>
-
-int
-main (int argc, char **argv)
-{
-	fprintf(stderr, "OpenPACE is needed for npa-tool\n");
-	return 1;
-}
-#endif

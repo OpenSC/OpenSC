@@ -34,7 +34,10 @@ bin_PROGRAMS = opensc-tool opensc-explorer opensc-notify \
 	cardos-tool eidenv openpgp-tool iasecc-tool egk-tool opensc-asn1 goid-tool
 if ENABLE_OPENSSL
 bin_PROGRAMS += cryptoflex-tool pkcs15-init netkey-tool piv-tool \
-	westcos-tool sc-hsm-tool dnie-tool gids-tool npa-tool
+	westcos-tool sc-hsm-tool dnie-tool gids-tool
+if ENABLE_OPENPACE
+bin_PROGRAMS += npa-tool
+endif
 endif
 
 # compile with $(PTHREAD_CFLAGS) to allow debugging with gdb

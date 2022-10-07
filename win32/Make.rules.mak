@@ -81,7 +81,7 @@ OPENSSL_LIB = $(OPENSSL_DIR)\lib\VC\$(OPENSSL_STATIC_DIR)\libcrypto64MT.lib user
 !ENDIF
 
 PROGRAMS_OPENSSL = cryptoflex-tool.exe pkcs15-init.exe netkey-tool.exe piv-tool.exe \
-	westcos-tool.exe sc-hsm-tool.exe dnie-tool.exe gids-tool.exe npa-tool.exe
+	westcos-tool.exe sc-hsm-tool.exe dnie-tool.exe gids-tool.exe
 OPENSC_FEATURES = $(OPENSC_FEATURES) openssl
 CANDLEFLAGS = -dOpenSSL="$(OPENSSL_DIR)" $(CANDLEFLAGS)
 !ENDIF
@@ -126,6 +126,10 @@ OPENPACE_DIR = C:\openpace
 !ENDIF
 OPENPACE_INCL_DIR = /I$(OPENPACE_DIR)\src
 OPENPACE_LIB = $(OPENPACE_DIR)\src\libeac.lib
+!IF "$(OPENSSL_DEF)" == "/DENABLE_OPENSSL"
+# Build only when OpenPACE and OpenSSL are available
+PROGRAMS_OPENPACE = npa-tool.exe
+!ENDIF
 CANDLEFLAGS = -dOpenPACE="$(OPENPACE_DIR)" $(CANDLEFLAGS)
 !ENDIF
 
