@@ -28,7 +28,6 @@ noinst_HEADERS = util.h fread_to_eof.h \
 	egk-tool-cmdline.h goid-tool-cmdline.h npa-tool-cmdline.h \
 	opensc-asn1-cmdline.h opensc-notify-cmdline.h pkcs11-register-cmdline.h \
 	openpgp-tool-helpers.h
-noinst_PROGRAMS = sceac-example
 bin_PROGRAMS = opensc-tool opensc-explorer opensc-notify \
 	pkcs15-tool pkcs15-crypt pkcs11-tool pkcs11-register \
 	cardos-tool eidenv openpgp-tool iasecc-tool egk-tool opensc-asn1 goid-tool
@@ -38,6 +37,10 @@ bin_PROGRAMS += cryptoflex-tool pkcs15-init netkey-tool piv-tool \
 if ENABLE_OPENPACE
 bin_PROGRAMS += npa-tool
 endif
+endif
+
+if ENABLE_OPENPACE
+noinst_PROGRAMS = sceac-example
 endif
 
 # compile with $(PTHREAD_CFLAGS) to allow debugging with gdb
