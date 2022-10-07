@@ -26,7 +26,6 @@
 #include "config.h"
 #endif
 
-#ifdef ENABLE_OPENPACE
 #include "libopensc/sm.h"
 #include "sm/sm-iso.h"
 #include "sm/sm-eac.h"
@@ -134,10 +133,4 @@ err:
 
 	return -r;
 }
-#else
-int
-main (int argc, char **argv)
-{
-	return 1;
-}
-#endif
+
