@@ -2436,14 +2436,8 @@ piv_compute_signature(sc_card_t *card, const u8 * data, size_t datalen,
 {
 	piv_private_data_t * priv = PIV_DATA(card);
 	int r;
-	int i;
 	size_t nLen;
 	u8 rbuf[128]; /* For EC conversions  384 will fit */
-	const unsigned char *pseq, *pint, *ptemp, *pend;
-	unsigned int cla, tag;
-	size_t seqlen;
-	size_t intlen;
-	size_t templen;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -2463,40 +2457,12 @@ piv_compute_signature(sc_card_t *card, const u8 * data, size_t datalen,
 			r = SC_ERROR_INVALID_DATA;
 			goto err;
 		}
-		memset(out, 0, outlen);
 
 		r = piv_validate_general_authentication(card, data, datalen, rbuf, sizeof rbuf);
 		if (r < 0)
 			goto err;
-
-		pseq = rbuf;
-		r = sc_asn1_read_tag(&pseq, r, &cla, &tag, &seqlen);
-		if (pseq == NULL || r < 0 || seqlen == 0 || (cla|tag) != 0x30)
-			LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_INVALID_DATA, "Can't find 0x30");
-
-		pint = pseq;
-		pend = pseq + seqlen;
-		for (i = 0; i < 2; i++) {
-			r = sc_asn1_read_tag(&pint, (pend - pint), &cla, &tag, &intlen);
-			if (pint == NULL || r < 0 || intlen == 0 || (cla|tag) != 0x02)
-				LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_INVALID_DATA, "Can't find 0x02");
-			if (intlen > nLen + 1)
-				LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_INVALID_DATA,"Signature too long");
-
-			ptemp = pint;
-			templen = intlen;
-			if (intlen > nLen) { /* drop leading 00 if present */
-				if (*ptemp != 0x00) {
-					LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_INVALID_DATA,"Signature too long");
-				}
-				ptemp++;
-				templen--;
-			}
-			memcpy(out + nLen*i + nLen - templen, ptemp, templen);
-			pint += intlen; /* next integer */
-			
-		}
-		r = 2 * nLen;
+		
+		r = sc_asn1_decode_ecdsa_signature(card->ctx, rbuf, r, nLen, &out, outlen);
 	} else { /* RSA is all set */
 		r = piv_validate_general_authentication(card, data, datalen, out, outlen);
 	}

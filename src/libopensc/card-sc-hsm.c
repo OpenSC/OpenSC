@@ -1034,10 +1034,8 @@ static int sc_hsm_decode_ecdsa_signature(sc_card_t *card,
 					const u8 * data, size_t datalen,
 					u8 * out, size_t outlen) {
 
-	int i, r;
+	int r;
 	size_t fieldsizebytes;
-	const u8 *body, *tag;
-	size_t bodylen, taglen;
 
 	// Determine field size from length of signature
 	if (datalen <= 58) {			// 192 bit curve = 24 * 2 + 10 byte maximum DER signature
@@ -1060,41 +1058,7 @@ static int sc_hsm_decode_ecdsa_signature(sc_card_t *card,
 	       "Field size %"SC_FORMAT_LEN_SIZE_T"u, signature buffer size %"SC_FORMAT_LEN_SIZE_T"u",
 	       fieldsizebytes, outlen);
 
-	if (outlen < (fieldsizebytes * 2)) {
-		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_DATA, "output too small for EC signature");
-	}
-	memset(out, 0, outlen);
-
-	// Copied from card-piv.c. Thanks
-	body = sc_asn1_find_tag(card->ctx, data, datalen, 0x30, &bodylen);
-
-	for (i = 0; i<2; i++) {
-		if (body) {
-			tag = sc_asn1_find_tag(card->ctx, body,  bodylen, 0x02, &taglen);
-			if (tag) {
-				bodylen -= taglen - (tag - body);
-				body = tag + taglen;
-
-				if (taglen > fieldsizebytes) { /* drop leading 00 if present */
-					if (*tag != 0x00) {
-						r = SC_ERROR_INVALID_DATA;
-						goto err;
-					}
-					tag++;
-					taglen--;
-				}
-				memcpy(out + fieldsizebytes*i + fieldsizebytes - taglen , tag, taglen);
-			} else {
-				r = SC_ERROR_INVALID_DATA;
-				goto err;
-			}
-		} else  {
-			r = SC_ERROR_INVALID_DATA;
-			goto err;
-		}
-	}
-	r = 2 * fieldsizebytes;
-err:
+	r = sc_asn1_decode_ecdsa_signature(card->ctx, data, datalen, fieldsizebytes, &out, outlen);
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 

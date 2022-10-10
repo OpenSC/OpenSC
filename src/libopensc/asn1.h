@@ -127,6 +127,10 @@ int sc_asn1_sig_value_sequence_to_rs(struct sc_context *ctx,
 		const unsigned char *in, size_t inlen,
                 unsigned char *buf, size_t buflen);
 
+/* ECDSA signature decoding*/
+int sc_asn1_decode_ecdsa_signature(sc_context_t *ctx, const u8 *data, size_t datalen,
+		size_t fieldsize, u8 **out, size_t outlen);
+
 /* long form tags use these */
 /* Same as  SC_ASN1_TAG_* shifted left by 24 bits  */
 #define SC_ASN1_CLASS_MASK		0xC0000000
