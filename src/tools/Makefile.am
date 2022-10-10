@@ -28,15 +28,19 @@ noinst_HEADERS = util.h fread_to_eof.h \
 	egk-tool-cmdline.h goid-tool-cmdline.h npa-tool-cmdline.h \
 	opensc-asn1-cmdline.h opensc-notify-cmdline.h pkcs11-register-cmdline.h \
 	openpgp-tool-helpers.h
-bin_PROGRAMS = opensc-tool opensc-explorer opensc-notify \
+bin_PROGRAMS = opensc-tool opensc-explorer opensc-asn1 \
 	pkcs15-tool pkcs15-crypt pkcs11-tool pkcs11-register \
-	cardos-tool eidenv openpgp-tool iasecc-tool egk-tool opensc-asn1 goid-tool
+	cardos-tool eidenv openpgp-tool iasecc-tool egk-tool goid-tool
 if ENABLE_OPENSSL
 bin_PROGRAMS += cryptoflex-tool pkcs15-init netkey-tool piv-tool \
 	westcos-tool sc-hsm-tool dnie-tool gids-tool
 if ENABLE_OPENPACE
 bin_PROGRAMS += npa-tool
 endif
+endif
+
+if ENABLE_NOTIFY
+bin_PROGRAMS += opensc-notify
 endif
 
 if ENABLE_OPENPACE
