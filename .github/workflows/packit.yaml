@@ -1,0 +1,24 @@
+name: Packit
+on:
+  pull_request:
+    paths:
+      - '**.c'
+      - '**.h'
+      - '**.am'
+  push:
+
+jobs:
+  packit_srpm:
+    runs-on: ubuntu-latest
+    name: Packit SRPM
+    steps:
+        - uses: actions/checkout@v3
+          with:
+              fetch-depth: 0
+        - uses: packit/actions/srpm@main
+        - name: Upload build artifacts
+          uses: actions/upload-artifact@v2
+          with:
+              name: opensc-srpm
+              path:
+                  opensc*.src.rpm
