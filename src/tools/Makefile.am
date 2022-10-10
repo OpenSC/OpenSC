@@ -98,8 +98,7 @@ npa_tool_CFLAGS += -Wno-unknown-warning-option
 endif
 
 opensc_notify_SOURCES = opensc-notify.c opensc-notify-cmdline.c
-opensc_notify_LDADD = $(OPTIONAL_NOTIFY_LIBS)
-opensc_notify_CFLAGS = $(PTHREAD_CFLAGS) $(OPTIONAL_NOTIFY_CFLAGS)
+opensc_notify_CFLAGS = $(PTHREAD_CFLAGS)
 if HAVE_UNKNOWN_WARNING_OPTION
 opensc_notify_CFLAGS += -Wno-unknown-warning-option
 endif
