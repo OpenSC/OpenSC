@@ -6,8 +6,8 @@ include $(top_srcdir)/aminclude_static.am
 clean-local: code-coverage-clean
 distclean-local: code-coverage-dist-clean
 
-noinst_PROGRAMS = asn1 simpletlv cachedir pkcs15filter openpgp-tool hextobin
-TESTS = asn1 simpletlv cachedir pkcs15filter openpgp-tool hextobin
+noinst_PROGRAMS = asn1 simpletlv cachedir pkcs15filter openpgp-tool hextobin decode_ecdsa_signature
+TESTS = asn1 simpletlv cachedir pkcs15filter openpgp-tool hextobin decode_ecdsa_signature
 
 noinst_HEADERS = torture.h
 
@@ -27,6 +27,7 @@ cachedir_SOURCES = cachedir.c
 pkcs15filter_SOURCES = pkcs15-emulator-filter.c
 openpgp_tool_SOURCES = openpgp-tool.c $(top_builddir)/src/tools/openpgp-tool-helpers.c
 hextobin_SOURCES = hextobin.c
+decode_ecdsa_signature_SOURCES = decode_ecdsa_signature.c
 
 if ENABLE_ZLIB
 noinst_PROGRAMS += compression

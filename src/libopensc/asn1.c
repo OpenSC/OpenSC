@@ -2192,3 +2192,53 @@ err:
 
 	LOG_FUNC_RETURN(ctx, rv);
 }
+
+int sc_asn1_decode_ecdsa_signature(sc_context_t *ctx, const u8 *data, size_t datalen, size_t fieldsize, u8 **out, size_t outlen) {
+	int i, r;
+	const unsigned char *pseq, *pint, *pend;
+	unsigned int cla, tag;
+	size_t seqlen, intlen;
+
+	if (!ctx || !data || !out || !(*out)) {
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+	}
+	if (outlen < 2 * fieldsize) {
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Output too small for EC signature");
+	}
+
+	memset(*out, 0, outlen);
+
+	pseq = data;
+	r = sc_asn1_read_tag(&pseq, datalen, &cla, &tag, &seqlen);
+	if (pseq == NULL || r < 0 || seqlen == 0 || (cla | tag) != 0x30)
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Can not find 0x30 tag");
+
+	pint = pseq;
+	pend = pseq + seqlen;
+	for (i = 0; i < 2; i++) {
+		r = sc_asn1_read_tag(&pint, (pend - pint), &cla, &tag, &intlen);
+		if (pint == NULL || r < 0 || intlen == 0 || (cla | tag) != 0x02) {
+			r = SC_ERROR_INVALID_DATA;
+			LOG_TEST_GOTO_ERR(ctx, SC_ERROR_INVALID_DATA, "Can not find 0x02");
+		}
+
+		if (intlen == fieldsize + 1) { /* drop leading 00 if present */
+			if (*pint != 0x00) {
+				r = SC_ERROR_INVALID_DATA;
+				LOG_TEST_GOTO_ERR(ctx, SC_ERROR_INVALID_DATA, "Signature too long");
+			}
+			pint++;
+			intlen--;
+		}
+		if (intlen > fieldsize) {
+			r = SC_ERROR_INVALID_DATA;
+			LOG_TEST_GOTO_ERR(ctx, SC_ERROR_INVALID_DATA, "Signature too long");
+		}
+		memcpy(*out + fieldsize * i + fieldsize - intlen , pint, intlen);
+		pint += intlen; /* next integer */
+	}
+	r = 2 * fieldsize;
+err:
+	LOG_FUNC_RETURN(ctx, r);
+}
+
