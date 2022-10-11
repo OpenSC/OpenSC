@@ -1,5 +1,67 @@
 NEWS for OpenSC -- History of user visible changes
 
+# New in 0.23.0; 2022-10-11
+## General improvements
+* Support signing of data with a length of more than 512 bytes (#2314)
+* By default, disable support for old card drivers (#2391) and remove support for old drivers MioCOS and JCOP (#2374)
+* Bump minimal required OpenSSL version to 1.1.1 and add support for OpenSSL 3.0 (#2438, #2506)
+* Compatibility with LibreSSL (#2495, #2595)
+* Remove support for DSA (#2503)
+* Extend p11test to support symmetric keys (#2430)
+* Notice detached reader on macOS (#2418)
+* Support for OAEP padding (#2475, #2484)
+* Fix for PSS salt length (#2478)
+* Improve fuzzing by adding new tests (#2417, #2500, #2520, #2550)
+* Fixed various issues reported by OSS-Fuzz and Coverity regarding card drivers, PKCS#11 and PKCS#15 init
+* Fix issues with OpenPACE (#2472)
+* Containers support for local testing
+* Add support for encryption using symmetric keys (#2473)
+* Stop building support for Gost algorithms with OpenSSL 3.0 as they require deprecated API (#2586)
+* Fix detection of disconnected readers in PCSC (#2600)
+* Add configuration option for on-disk caching of private data (#2588)
+## PKCS#11
+* Implement `C_CreateObject` for EC keys and fix signature verification for `CKM_ECDSA_SHAx` cards (#2420)
+## pkcs11-tool
+* Add more elliptic curves (#2301)
+* Add support for symmetric encrypt and decrypt, wrap and unwrap operations, and initialization vector (#2268)
+* Fix consistent handling of secret key attributes (#2497)
+* Add support for signing and verifying with HMAC (#2385)
+* Add support for SHA3 (#2467)
+* Make object selectable via label (#2570)
+* Do not require an R/W session for some operations and add `--session-rw` option (#2579)
+## sc-hsm-tool
+* Add options for public key authentication (#2301)
+## Minidriver
+* Fix reinit of the card (#2525)
+* Add an entry for Italian CNS (e) (#2548)
+* Fix detection of ECC mechanisms (#2523)
+## NQ-Applet
+* Add support for the JCOP4 Cards with NQ-Applet (#2425)
+## ItaCNS
+* Add support for ItaCMS v1.1 (key length 2048) (#2371)
+## Belpic
+* Add support for applet v1.8 (#2455)
+## Starcos
+* Add ATR for V3.4 (#2464)
+* Add PKCS#15 emulator for 3.x cards with eSign app (#2544)
+## ePass2003
+* Fix PKCS#15 initialization (#2403)
+* Add support for FIPS (#2543)
+* Fix matching with newer versions and tokens initialized with OpenSC (#2575)
+## MyEID
+* Support logout operation (#2557)
+## GIDS
+* Fix decipher for TPM (#1881)
+## OpenPGP
+* Get the list of supported algorithms from algorithm information on the card (#2287)
+## nPA
+* Fix card detection (#2463)
+## Rutoken
+* Fix formatting rtecp cards (#2599)
+## PIV
+* Add new PIVKey ATRs for current cards (#2602)
+
+
 # New in 0.22.0; 2021-08-10
 ## General improvements
  * Use standard paths for file cache on Linux (#2148) and OSX (#2214)
