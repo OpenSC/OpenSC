@@ -519,7 +519,7 @@ if test "${enable_dnie_ui}" = "yes"; then
 fi
 
 case "${host}" in
-	*-*-darwin*)
+	*-*-darwin*|*-mingw*|*-winnt*|*-cygwin*)
 			have_notify="yes"
 		;;
 	*)
