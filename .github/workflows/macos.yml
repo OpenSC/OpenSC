@@ -12,8 +12,7 @@ on:
       - .github/build.sh
       - .github/push-artifacts.sh
       - '**.am'
-      - MacOSX/build-package.in
-      - 'MacOSX/Distribution*.xml.in'
+      - MacOSX/**
   push:
 
 jobs:
