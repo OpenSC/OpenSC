@@ -36,9 +36,13 @@ rm -f  /Library/LaunchAgents/org.opensc-project.mac.pkcs11-register.plist
 rm -f  /Library/LaunchAgents/org.opensc-project.mac.opensc-notify.plist
 rm -rf /System/Library/Security/tokend/OpenSC.tokend
 
-# Unload launchagents
-launchctl remove org.opensc-project.mac.pkcs11-register
-launchctl remove org.opensc-project.mac.opensc-notify
+# Remove LaunchAgents
+for label in \
+  org.opensc-project.mac.pkcs11-register \
+  org.opensc-project.mac.opensc-notify
+do
+  launchctl asuser "$(id -u "${SUDO_USER:-$USER}")" launchctl remove "$label"
+done
 
 # delete receipts on 10.6+
 pkgutil --forget org.opensc-project.mac             > /dev/null 2>/dev/null
