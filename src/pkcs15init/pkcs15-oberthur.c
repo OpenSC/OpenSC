@@ -1,7 +1,7 @@
 /*
  * Oberthur specific operation for PKCS #15 initialization
  *
- * Copyright (C) 2002  Juha Yrjölä <juha.yrjola@iki.fi>
+ * Copyright (C) 2002  Juha YrjÃ¶lÃ¤ <juha.yrjola@iki.fi>
  * Copyright (C) 2009  Viktor Tarasov <viktor.tarasov@opentrust.com>,
  *                     OpenTrust <www.opentrust.com>
  *
@@ -277,7 +277,7 @@ cosm_create_reference_data(struct sc_profile *profile, struct sc_pkcs15_card *p1
 	};
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
-	sc_log(ctx, 
+	sc_log(ctx,
 		 "pin lens %"SC_FORMAT_LEN_SIZE_T"u/%"SC_FORMAT_LEN_SIZE_T"u",
 		 pin_len, puk_len);
 	if (!pin || pin_len>0x40)
@@ -533,7 +533,7 @@ cosm_new_file(struct sc_profile *profile, struct sc_card *card,
 		file->ef_structure = structure;
 	}
 
-	sc_log(card->ctx, 
+	sc_log(card->ctx,
 		 "cosm_new_file() file size %"SC_FORMAT_LEN_SIZE_T"u; ef type %i/%i; id %04X",
 		 file->size, file->type, file->ef_structure, file->id);
 	*out = file;
