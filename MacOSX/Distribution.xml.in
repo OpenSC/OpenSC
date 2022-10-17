@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" standalone="no"?>
 <!--
 https://developer.apple.com/library/mac/documentation/DeveloperTools/Reference/DistributionDefinitionRef/
+https://developer.apple.com/library/mac/documentation/DeveloperTools/Reference/InstallerJavaScriptRef/
 -->
 <installer-gui-script minSpecVersion="2">
     <allowed-os-versions>
@@ -12,36 +13,15 @@ https://developer.apple.com/library/mac/documentation/DeveloperTools/Reference/D
     <options customize="allow" require-scripts="false" rootVolumeOnly="true"/>
     <script>
       <![CDATA[
-	function osx_before_catalina() {
-	 if((system.compareVersions(system.version.ProductVersion, '10.15')) == -1)
-	 {
-	  return true;
-	 }
-	 else
-	 {
-	  return false;
-	 }
-	}
-	function osx_after_catalina() {
-	 if((system.compareVersions(system.version.ProductVersion, '10.15')) >= 0)
-	 {
-	  return true;
-	 }
-	 else
-	 {
-	  return false;
-	 }
-	}
-	function osx_after_yosemite() {
-	 if((system.compareVersions(system.version.ProductVersion, '10.12')) >= 0)
-	 {
-	  return true;
-	 }
-	 else
-	 {
-	  return false;
-	 }
-	}
+    function osx_before_catalina() {
+      return system.compareVersions(system.version.ProductVersion, '10.15') < 0;
+    }
+    function osx_after_catalina() {
+      return system.compareVersions(system.version.ProductVersion, '10.15') >= 0;
+    }
+    function osx_after_yosemite() {
+      return system.compareVersions(system.version.ProductVersion, '10.12') >= 0;
+    }
       ]]>
     </script>
     <choices-outline>
