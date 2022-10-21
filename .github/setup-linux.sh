@@ -3,12 +3,7 @@
 set -ex -o xtrace
 
 # Generic dependencies
-DEPS="docbook-xsl xsltproc gengetopt help2man pcscd check pcsc-tools libtool make autoconf autoconf-archive automake pkg-config git xxd"
-
-# Add openssl or install openssl3.0
-if [ "$1" != "ossl3" -a "$2" != "ossl3" ]; then
-	DEPS="$DEPS openssl"
-fi
+DEPS="docbook-xsl xsltproc gengetopt help2man pcscd check pcsc-tools libtool make autoconf autoconf-archive automake pkg-config git xxd openssl"
 
 # 64bit or 32bit dependencies
 if [ "$1" == "ix86" ]; then
@@ -55,11 +50,6 @@ export DEBIAN_FRONTEND=noninteractive
 export DEBCONF_NONINTERACTIVE_SEEN=true
 sudo apt-get update
 sudo apt-get install -y build-essential $DEPS
-
-# install openssl 3.0 if needed
-if [ "$1" == "ossl3" -o "$2" == "ossl3" ]; then
-	./.github/setup-openssl.sh &> /tmp/openssl.log || cat /tmp/openssl.log
-fi
 
 # install libressl if needed
 if [ "$1" == "libressl" -o "$2" == "libressl" ]; then
