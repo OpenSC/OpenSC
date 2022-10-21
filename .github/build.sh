@@ -2,11 +2,7 @@
 
 set -ex -o xtrace
 
-if [ "$1" == "ossl3" -o "$2" == "ossl3" ]; then
-	export PKG_CONFIG_PATH=/usr/local/lib64/pkgconfig;
-else
-	export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig;
-fi
+export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig;
 
 if [ "$GITHUB_EVENT_NAME" == "pull_request" ]; then
 	PR_NUMBER=$(echo $GITHUB_REF | awk 'BEGIN { FS = "/" } ; { print $3 }')
@@ -61,11 +57,7 @@ fi
 
 # this is broken in old ubuntu
 if [ "$1" == "dist" ]; then
-	if [ "$1" == "ossl3" -o "$2" == "ossl3" ]; then
-		make distcheck DISTCHECK_CONFIGURE_FLAGS="--disable-strict CFLAGS=\"-Wall -Wextra -Wno-unused-parameter -Wstrict-aliasing=2\""
-	else
-		make distcheck
-	fi
+	make distcheck
 	make dist
 fi
 
