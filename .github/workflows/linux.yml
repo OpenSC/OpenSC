@@ -14,7 +14,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
       - run: .github/setup-linux.sh
@@ -79,7 +79,7 @@ jobs:
             win32/Output/OpenSC*.exe
 
   test-piv:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     needs: [build]
     steps:
       - uses: actions/checkout@v2
@@ -92,7 +92,7 @@ jobs:
       - run: .github/test-piv.sh
 
   test-isoapplet:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     needs: [build]
     steps:
       - uses: actions/checkout@v2
@@ -105,7 +105,7 @@ jobs:
       - run: .github/test-isoapplet.sh
 
   test-gidsapplet:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     needs: [build]
     steps:
       - uses: actions/checkout@v2
@@ -118,7 +118,7 @@ jobs:
       - run: .github/test-gidsapplet.sh
 
   test-openpgp:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     needs: [build]
     steps:
       - uses: actions/checkout@v2
@@ -131,7 +131,7 @@ jobs:
       - run: .github/test-openpgp.sh
 
   build-clang-tidy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     needs: [build]
     steps:
       - uses: actions/checkout@v2
@@ -144,7 +144,7 @@ jobs:
       - run: .github/build.sh
 
   test-cac:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     needs: [build]
     steps:
       - uses: actions/checkout@v2
@@ -157,7 +157,7 @@ jobs:
       - run: .github/test-cac.sh
 
   test-oseid:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     needs: [build]
     steps:
       - uses: actions/checkout@v2
