@@ -130,6 +130,9 @@ MD_REGISTRATION minidriver_registration[] = {
 	/* from card-cardos.c */
 	{TEXT("CardOS 4.0"),                      {0x3b,0xe2,0x00,0xff,0xc1,0x10,0x31,0xfe,0x55,0xc8,0x02,0x9c},
                                           12, {0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff}},
+	/* note: */
+	{TEXT("CardOS 4.2+"),                     {0x3b,0xf2,0x08,0x00,0x00,0xc1,0x00,0x31,0xfe,0x00,0x00,0x00,0x00},
+                                          13, {0xff,0xff,0x0f,0xff,0x00,0xff,0x00,0xff,0xff,0x00,0x00,0x00,0x00}},
 	{TEXT("Italian CNS (a)"),                 {0x3b,0xe9,0x00,0xff,0xc1,0x10,0x31,0xfe,0x55,0x00,0x64,0x05,0x00,0xc8,0x02,0x31,0x80,0x00,0x47},
                                           19, {0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff}},
 	{TEXT("Italian CNS (b)"),                 {0x3b,0xfb,0x98,0x00,0xff,0xc1,0x10,0x31,0xfe,0x55,0x00,0x64,0x05,0x20,0x47,0x03,0x31,0x80,0x00,0x90,0x00,0xf3},
@@ -321,6 +324,8 @@ VOID RegisterSmartCard(PMD_REGISTRATION registration)
 {
 	DWORD expanded_len = PATH_MAX;
 	TCHAR expanded_val[PATH_MAX];
+	BYTE  pbAtrReduced[256];
+	DWORD i;
 	PTSTR szPath = TEXT("C:\\Program Files\\OpenSC Project\\OpenSC\\minidriver\\opensc-minidriver.dll");
 
 	/* cope with x86 installation on x64 */
@@ -330,7 +335,17 @@ VOID RegisterSmartCard(PMD_REGISTRATION registration)
 	if (0 < expanded_len && expanded_len < sizeof expanded_val)
 		szPath = expanded_val;
 
-	RegisterCardWithKey(SC_DATABASE, registration->szName, szPath, registration->pbAtr, registration->dwAtrSize, registration->pbAtrMask );
+	/*
+	 * OpenSC definitions of ATR have been lax in "sc_atr_table" entries by allowing
+	 * 1 bits in the ATR that need to be 0 bits when used with Windows compare
+	 * Do the equivalent reduction of the table ATR done in card.c by "tbin[s] = (tbin[s] & mbin[s]);"
+	 * before adding to registry.
+	 */
+	for (i = 0; i < registration->dwAtrSize; i++) {
+		pbAtrReduced[i] = (registration->pbAtr[i] & registration->pbAtrMask[i]);
+	}
+
+	RegisterCardWithKey(SC_DATABASE, registration->szName, szPath, pbAtrReduced, registration->dwAtrSize, registration->pbAtrMask );
 }
 
 UINT WINAPI AddSmartCardConfiguration(MSIHANDLE hInstall)
