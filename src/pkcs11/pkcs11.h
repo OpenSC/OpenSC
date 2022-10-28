@@ -397,6 +397,7 @@ typedef unsigned long ck_attribute_type_t;
 #define CKA_TOKEN			(1UL)
 #define CKA_PRIVATE			(2UL)
 #define CKA_LABEL			(3UL)
+#define CKA_UNIQUE_ID		(4UL)
 #define CKA_APPLICATION			(0x10UL)
 #define CKA_VALUE			(0x11UL)
 #define CKA_OBJECT_ID			(0x12UL)

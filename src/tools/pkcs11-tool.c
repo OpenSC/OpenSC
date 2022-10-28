@@ -677,6 +677,7 @@ ATTR_METHOD(MODULUS_BITS, CK_ULONG);			/* getMODULUS_BITS */
 ATTR_METHOD(VALUE_LEN, CK_ULONG);			/* getVALUE_LEN */
 ATTR_METHOD(PROFILE_ID, CK_ULONG);			/* getPROFILE_ID */
 VARATTR_METHOD(LABEL, char);				/* getLABEL */
+VARATTR_METHOD(UNIQUE_ID, char);			/* getUNIQUE_ID */
 VARATTR_METHOD(APPLICATION, char);			/* getAPPLICATION */
 VARATTR_METHOD(ID, unsigned char);			/* getID */
 VARATTR_METHOD(OBJECT_ID, unsigned char);		/* getOBJECT_ID */
@@ -4851,6 +4852,7 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 	unsigned char	*id, *oid, *value;
 	const char      *sepa;
 	char		*label;
+	char		*unique_id;
 	int		pub = 1;
 	int		sec = 0;
 
@@ -5166,6 +5168,10 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 			printf("\n");
 		}
 	}
+	if ((unique_id = getUNIQUE_ID(sess, obj, NULL)) != NULL) {
+		printf("  Unique ID:  %s\n", unique_id);
+		free(unique_id);
+	}
 
 	suppress_warn = 0;
 }
@@ -5176,6 +5182,7 @@ static void show_cert(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 	CK_ULONG	size;
 	unsigned char	*id;
 	char		*label;
+	char		*unique_id;
 #if defined(ENABLE_OPENSSL)
 	unsigned char	*subject;
 	unsigned char	*serial_number;
@@ -5243,6 +5250,10 @@ static void show_cert(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 			printf("%02x", id[n]);
 		printf("\n");
 		free(id);
+	}
+	if ((unique_id = getUNIQUE_ID(sess, obj, NULL)) != NULL) {
+		printf("  Unique ID:  %s\n", unique_id);
+		free(unique_id);
 	}
 }
 
