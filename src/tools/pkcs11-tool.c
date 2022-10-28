@@ -167,6 +167,7 @@ enum {
 	OPT_PRIVATE,
 	OPT_SENSITIVE,
 	OPT_EXTRACTABLE,
+	OPT_UNDESTROYABLE,
 	OPT_TEST_HOTPLUG,
 	OPT_UNLOCK_PIN,
 	OPT_PUK,
@@ -272,6 +273,7 @@ static const struct option options[] = {
 	{ "private",		0, NULL,		OPT_PRIVATE },
 	{ "sensitive",		0, NULL,		OPT_SENSITIVE },
 	{ "extractable",	0, NULL,		OPT_EXTRACTABLE },
+	{ "undestroyable",	0, NULL,		OPT_UNDESTROYABLE },
 	{ "always-auth",	0, NULL,		OPT_ALWAYS_AUTH },
 	{ "test-ec",		0, NULL,		OPT_TEST_EC },
 #ifndef _WIN32
@@ -359,6 +361,7 @@ static const char *option_help[] = {
 	"Set the CKA_PRIVATE attribute (object is only viewable after a login)",
 	"Set the CKA_SENSITIVE attribute (object cannot be revealed in plaintext)",
 	"Set the CKA_EXTRACTABLE attribute (object can be extracted)",
+	"Set the CKA_DESTROYABLE attribute to false (object cannot be destroyed)",
 	"Set the CKA_ALWAYS_AUTHENTICATE attribute to a key object (require PIN verification for each use)",
 	"Test EC (best used with the --login or --pin option)",
 #ifndef _WIN32
@@ -413,6 +416,7 @@ static size_t		opt_allowed_mechanisms_len = 0;
 static int		opt_is_private = 0;
 static int		opt_is_sensitive = 0;
 static int		opt_is_extractable = 0;
+static int		opt_is_destroyable = 1;
 static int		opt_test_hotplug = 0;
 static int		opt_login_type = -1;
 static int		opt_key_usage_sign = 0;
@@ -1042,6 +1046,9 @@ int main(int argc, char * argv[])
 			break;
 		case OPT_EXTRACTABLE:
 			opt_is_extractable = 1;
+			break;
+		case OPT_UNDESTROYABLE:
+			opt_is_destroyable = 0;
 			break;
 		case OPT_TEST_HOTPLUG:
 			opt_test_hotplug = 1;
@@ -4005,6 +4012,10 @@ static int write_object(CK_SESSION_HANDLE session)
 			FILL_ATTR(cert_templ[n_cert_attr], CKA_ID, opt_object_id, opt_object_id_len);
 			n_cert_attr++;
 		}
+		if (opt_is_destroyable == 0) {
+			FILL_ATTR(cert_templ[n_cert_attr], CKA_DESTROYABLE, &_false, sizeof(_false));
+			n_cert_attr++;
+		}
 #ifdef ENABLE_OPENSSL
 		/* according to PKCS #11 CKA_SUBJECT MUST be specified */
 		FILL_ATTR(cert_templ[n_cert_attr], CKA_SUBJECT, cert.subject, cert.subject_len);
@@ -6082,7 +6093,7 @@ static EVP_PKEY *get_public_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE priv
 				return NULL;
 			}
 			OSSL_PARAM_BLD_free(bld);
-			
+
 			if (!(ctx = EVP_PKEY_CTX_new_from_name(NULL, "RSA", NULL)) ||
 				EVP_PKEY_fromdata_init(ctx) != 1 ||
 				EVP_PKEY_fromdata(ctx, &pkey, EVP_PKEY_PUBLIC_KEY, params) != 1) {
@@ -8154,7 +8165,7 @@ static struct mech_info	p11_mgf[] = {
       { CKG_MGF1_SHA3_256,	"MGF1-SHA3_256", NULL, MF_MGF },
       { CKG_MGF1_SHA3_384,	"MGF1-SHA3_384", NULL, MF_MGF },
       { CKG_MGF1_SHA3_512,	"MGF1-SHA3_512", NULL, MF_MGF },
-      
+
       { 0, NULL, NULL, MF_UNKNOWN }
 };
 
