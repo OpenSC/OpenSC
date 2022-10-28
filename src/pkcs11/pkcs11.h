@@ -450,6 +450,7 @@ typedef unsigned long ck_attribute_type_t;
 #define CKA_ALWAYS_SENSITIVE		(0x165UL)
 #define CKA_KEY_GEN_MECHANISM		(0x166UL)
 #define CKA_MODIFIABLE			(0x170UL)
+#define CKA_DESTROYABLE			(0x172UL)
 #define CKA_ECDSA_PARAMS		(0x180UL)
 #define CKA_EC_PARAMS			(0x180UL)
 #define CKA_EC_POINT			(0x181UL)
