@@ -683,6 +683,7 @@ VARATTR_METHOD(OBJECT_ID, unsigned char);		/* getOBJECT_ID */
 VARATTR_METHOD(MODULUS, CK_BYTE);			/* getMODULUS */
 #ifdef ENABLE_OPENSSL
 VARATTR_METHOD(SUBJECT, unsigned char);			/* getSUBJECT */
+VARATTR_METHOD(SERIAL_NUMBER, unsigned char);	/* getSERIAL_NUMBER */
 VARATTR_METHOD(PUBLIC_EXPONENT, CK_BYTE);		/* getPUBLIC_EXPONENT */
 #endif
 VARATTR_METHOD(VALUE, unsigned char);			/* getVALUE */
@@ -5177,6 +5178,7 @@ static void show_cert(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 	char		*label;
 #if defined(ENABLE_OPENSSL)
 	unsigned char	*subject;
+	unsigned char	*serial_number;
 #endif /* ENABLE_OPENSSL */
 
 	printf("Certificate Object; type = ");
@@ -5215,6 +5217,21 @@ static void show_cert(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 			BIO_free(bio);
 		}
 		free(subject);
+	}
+	if ((serial_number = getSERIAL_NUMBER(sess, obj, &size)) != NULL) {
+		ASN1_INTEGER* serial = NULL;
+		const unsigned char *tmp = serial_number;
+		serial = d2i_ASN1_INTEGER(NULL, &tmp, size);
+		if (serial) {
+			BIO *bio = BIO_new(BIO_s_file());
+			BIO_set_fp(bio, stdout, BIO_NOCLOSE);
+			BIO_printf(bio, "  serial:     ");
+			i2a_ASN1_INTEGER(bio, serial);
+			BIO_printf(bio, "\n");
+			BIO_free(bio);
+			ASN1_INTEGER_free(serial);
+		}
+		free(serial_number);
 	}
 #endif /* ENABLE_OPENSSL */
 
