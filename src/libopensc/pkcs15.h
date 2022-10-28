@@ -192,24 +192,6 @@ struct sc_pkcs15_prkey_rsa {
 	sc_pkcs15_bignum_t dmq1;
 };
 
-struct sc_pkcs15_pubkey_dsa {
-	sc_pkcs15_bignum_t pub;
-	sc_pkcs15_bignum_t p;
-	sc_pkcs15_bignum_t q;
-	sc_pkcs15_bignum_t g;
-};
-
-struct sc_pkcs15_prkey_dsa {
-	/* public components */
-	sc_pkcs15_bignum_t pub;
-	sc_pkcs15_bignum_t p;
-	sc_pkcs15_bignum_t q;
-	sc_pkcs15_bignum_t g;
-
-	/* private key */
-	sc_pkcs15_bignum_t priv;
-};
-
 struct sc_pkcs15_gost_parameters {
 	struct sc_object_id key;
 	struct sc_object_id hash;
@@ -253,7 +235,6 @@ struct sc_pkcs15_pubkey {
 	/* Decoded key */
 	union {
 		struct sc_pkcs15_pubkey_rsa rsa;
-		struct sc_pkcs15_pubkey_dsa dsa;
 		struct sc_pkcs15_pubkey_ec ec;
 		struct sc_pkcs15_pubkey_eddsa eddsa;
 		struct sc_pkcs15_pubkey_gostr3410 gostr3410;
@@ -267,7 +248,6 @@ struct sc_pkcs15_prkey {
 
 	union {
 		struct sc_pkcs15_prkey_rsa rsa;
-		struct sc_pkcs15_prkey_dsa dsa;
 		struct sc_pkcs15_prkey_ec ec;
 		struct sc_pkcs15_prkey_eddsa eddsa;
 		struct sc_pkcs15_prkey_gostr3410 gostr3410;
@@ -448,7 +428,6 @@ typedef struct sc_pkcs15_skey_info sc_pkcs15_skey_info_t;
 
 #define SC_PKCS15_TYPE_PRKEY			0x100
 #define SC_PKCS15_TYPE_PRKEY_RSA		0x101
-#define SC_PKCS15_TYPE_PRKEY_DSA		0x102
 #define SC_PKCS15_TYPE_PRKEY_GOSTR3410		0x103
 #define SC_PKCS15_TYPE_PRKEY_EC		0x104
 #define SC_PKCS15_TYPE_PRKEY_EDDSA		0x105
@@ -456,7 +435,6 @@ typedef struct sc_pkcs15_skey_info sc_pkcs15_skey_info_t;
 
 #define SC_PKCS15_TYPE_PUBKEY			0x200
 #define SC_PKCS15_TYPE_PUBKEY_RSA		0x201
-#define SC_PKCS15_TYPE_PUBKEY_DSA		0x202
 #define SC_PKCS15_TYPE_PUBKEY_GOSTR3410		0x203
 #define SC_PKCS15_TYPE_PUBKEY_EC		0x204
 #define SC_PKCS15_TYPE_PUBKEY_EDDSA		0x205
@@ -629,6 +607,11 @@ typedef struct sc_pkcs15_card {
 /* flags suitable for struct sc_pkcs15_card */
 #define SC_PKCS15_CARD_FLAG_EMULATED			0x02000000
 
+/* suitable for struct sc_pkcs15_card.opts.use_file_cache */
+#define SC_PKCS15_OPTS_CACHE_NO_FILES			0
+#define SC_PKCS15_OPTS_CACHE_PUBLIC_FILES		1
+#define SC_PKCS15_OPTS_CACHE_ALL_FILES			2
+
 /* suitable for struct sc_pkcs15_card.opts.private_certificate */
 #define SC_PKCS15_CARD_OPTS_PRIV_CERT_PROTECT		0
 #define SC_PKCS15_CARD_OPTS_PRIV_CERT_IGNORE		1
@@ -676,7 +659,7 @@ void sc_pkcs15_free_tokeninfo(struct sc_pkcs15_tokeninfo *tokeninfo);
 int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 		       const struct sc_pkcs15_object *prkey_obj,
 		       unsigned long flags,
-		       const u8 *in, size_t inlen, u8 *out, size_t outlen);
+		       const u8 *in, size_t inlen, u8 *out, size_t outlen, void *pMechanism);
 
 int sc_pkcs15_derive(struct sc_pkcs15_card *p15card,
 		       const struct sc_pkcs15_object *prkey_obj,
@@ -700,7 +683,13 @@ int sc_pkcs15_wrap(struct sc_pkcs15_card *p15card,
 int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 				const struct sc_pkcs15_object *prkey_obj,
 				unsigned long alg_flags, const u8 *in,
-				size_t inlen, u8 *out, size_t outlen);
+				size_t inlen, u8 *out, size_t outlen, void *pMechanism);
+
+int sc_pkcs15_encrypt_sym(struct sc_pkcs15_card *p15card,
+		const struct sc_pkcs15_object *obj,
+		unsigned long flags,
+		const u8 *in, size_t inlen, u8 *out, size_t *outlen,
+		const u8 *param, size_t paramlen);
 
 int sc_pkcs15_read_pubkey(struct sc_pkcs15_card *,
 		const struct sc_pkcs15_object *, struct sc_pkcs15_pubkey **);
@@ -708,10 +697,6 @@ int sc_pkcs15_decode_pubkey_rsa(struct sc_context *,
 		struct sc_pkcs15_pubkey_rsa *, const u8 *, size_t);
 int sc_pkcs15_encode_pubkey_rsa(struct sc_context *,
 		struct sc_pkcs15_pubkey_rsa *, u8 **, size_t *);
-int sc_pkcs15_decode_pubkey_dsa(struct sc_context *,
-		struct sc_pkcs15_pubkey_dsa *, const u8 *, size_t);
-int sc_pkcs15_encode_pubkey_dsa(struct sc_context *,
-		struct sc_pkcs15_pubkey_dsa *, u8 **, size_t *);
 int sc_pkcs15_decode_pubkey_gostr3410(struct sc_context *,
 		struct sc_pkcs15_pubkey_gostr3410 *, const u8 *, size_t);
 int sc_pkcs15_encode_pubkey_gostr3410(struct sc_context *,
@@ -747,6 +732,7 @@ void sc_pkcs15_free_key_params(struct sc_pkcs15_key_params *params);
 
 int sc_pkcs15_read_data_object(struct sc_pkcs15_card *p15card,
 			       const struct sc_pkcs15_data_info *info,
+			       int private_obj,
 			       struct sc_pkcs15_data **data_object_out);
 int sc_pkcs15_find_data_object_by_id(struct sc_pkcs15_card *p15card,
 				     const struct sc_pkcs15_id *id,
@@ -762,6 +748,7 @@ void sc_pkcs15_free_data_object(struct sc_pkcs15_data *data_object);
 
 int sc_pkcs15_read_certificate(struct sc_pkcs15_card *card,
 			       const struct sc_pkcs15_cert_info *info,
+			       int private_obj,
 			       struct sc_pkcs15_cert **cert);
 void sc_pkcs15_free_certificate(struct sc_pkcs15_cert *cert);
 int sc_pkcs15_find_cert_by_id(struct sc_pkcs15_card *card,
@@ -933,7 +920,7 @@ void sc_pkcs15_free_object(struct sc_pkcs15_object *obj);
 /* Generic file i/o */
 int sc_pkcs15_read_file(struct sc_pkcs15_card *p15card,
 			const struct sc_path *path,
-			u8 **buf, size_t *buflen);
+			u8 **buf, size_t *buflen, int private_data);
 
 /* Caching functions */
 int sc_pkcs15_read_cached_file(struct sc_pkcs15_card *p15card,

@@ -147,9 +147,9 @@ coolkey_find_matching_cert(sc_card_t *card, sc_cardctl_coolkey_object_t *in_obj,
 static int
 coolkey_get_attribute_ulong(sc_card_t *card, sc_cardctl_coolkey_object_t *obj, CK_ATTRIBUTE_TYPE type, CK_ULONG *value)
 {
-	const u8 *val;
-	size_t val_len;
-	u8 data_type;
+	const u8 *val = NULL;
+	size_t val_len = 0;
+	u8 data_type = 0;
 	int r;
 
 	r  = coolkey_get_attribute(card, obj, type, &val, &val_len, &data_type);
@@ -168,8 +168,8 @@ static int
 coolkey_get_attribute_boolean(sc_card_t *card, sc_cardctl_coolkey_object_t *obj, CK_ATTRIBUTE_TYPE attr_type)
 {
 	int r;
-	const u8 *val;
-	size_t val_len;
+	const u8 *val = NULL;
+	size_t val_len = 0;
 
 	r = coolkey_get_attribute(card, obj, attr_type, &val, &val_len, NULL);
 	if (r < 0) {
@@ -186,7 +186,7 @@ static int
 coolkey_get_attribute_bytes(sc_card_t *card, sc_cardctl_coolkey_object_t *obj, CK_ATTRIBUTE_TYPE type, u8 *data, size_t *data_len, size_t max_data_len)
 {
 	const u8 *val;
-	size_t val_len;
+	size_t val_len = 0;
 	int r;
 
 	r = coolkey_get_attribute(card, obj, type, &val, &val_len, NULL);
@@ -423,7 +423,8 @@ coolkey_get_public_key_from_certificate(sc_pkcs15_card_t *p15card, sc_cardctl_co
 	sc_pkcs15_cert_info_t cert_info;
 	sc_pkcs15_cert_t *cert_out = NULL;
 	sc_pkcs15_pubkey_t *key = NULL;
-	int r;
+	int r, private_obj;
+	unsigned int flags;
 
 	memset(&cert_info, 0, sizeof(cert_info));
 
@@ -431,7 +432,10 @@ coolkey_get_public_key_from_certificate(sc_pkcs15_card_t *p15card, sc_cardctl_co
 	if (r < 0) {
 		goto fail;
 	}
-	r = sc_pkcs15_read_certificate(p15card, &cert_info, &cert_out);
+
+	coolkey_get_flags(p15card->card, obj, &flags);
+	private_obj = flags & SC_PKCS15_CO_FLAG_PRIVATE;
+	r = sc_pkcs15_read_certificate(p15card, &cert_info, private_obj, &cert_out);
 	if (r < 0) {
 		goto fail;
 	}
@@ -461,6 +465,7 @@ coolkey_get_public_key(sc_pkcs15_card_t *p15card, sc_cardctl_coolkey_object_t *o
 
 static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 {
+	int use_pin_cache_backup = p15card->opts.use_pin_cache;
 	static const pindata pins[] = {
 		{ "1", NULL, "", 0x00,
 		  SC_PKCS15_PIN_TYPE_ASCII_NUMERIC,
@@ -492,7 +497,6 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 	 * stay logged in until it's been pulled from the reader, in which case you want to reauthenticate
 	 * anyway */
 	p15card->opts.use_pin_cache = 0;
-
 
 	/* get the token info from the card */
 	r = sc_card_ctl(card, SC_CARDCTL_COOLKEY_GET_TOKEN_INFO, p15card->tokeninfo);
@@ -531,13 +535,12 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 		pin_obj.flags = pins[i].obj_flags;
 
 		r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
-		if (r < 0)
-			LOG_FUNC_RETURN(card->ctx, r);
+		LOG_TEST_GOTO_ERR(card->ctx, r, "Can not add pin object.");
 	}
 
 	/* set other objects */
 	r = (card->ops->card_ctl)(card, SC_CARDCTL_COOLKEY_INIT_GET_OBJECTS, &count);
-	LOG_TEST_RET(card->ctx, r, "Can not initiate objects.");
+	LOG_TEST_GOTO_ERR(card->ctx, r, "Can not initiate objects.");
 
 	sc_log(card->ctx,  "Iterating over %d objects", count);
 	for (i = 0; i < count; i++) {
@@ -554,9 +557,7 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 		size_t len;
 
 		r = (card->ops->card_ctl)(card, SC_CARDCTL_COOLKEY_GET_NEXT_OBJECT, &coolkey_obj);
-		if (r < 0)
-			LOG_FUNC_RETURN(card->ctx, r);
-
+		LOG_TEST_GOTO_ERR(card->ctx, r, "Can not get next object from card.");
 		sc_log(card->ctx, "Loading object %d", i);
 		memset(&obj_obj, 0, sizeof(obj_obj));
 		/* coolkey applets have label only on the certificates,
@@ -643,6 +644,7 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 				obj_type = SC_PKCS15_TYPE_PUBKEY_EC;
 				pubkey_info.field_length = key->u.ec.params.field_length;
 			} else {
+				free(pubkey_info.direct.spki.value);
 				goto fail;
 			}
 			/* set the obj values */
@@ -680,7 +682,7 @@ fail:
 
 	}
 	r = (card->ops->card_ctl)(card, SC_CARDCTL_COOLKEY_FINAL_GET_OBJECTS, &count);
-	LOG_TEST_RET(card->ctx, r, "Can not finalize objects.");
+	LOG_TEST_GOTO_ERR(card->ctx, r, "Can not finalize objects.");
 
 	/* Iterate over all the created objects and fill missing labels */
 	for (obj = p15card->obj_list; obj != NULL; obj = obj->next) {
@@ -712,6 +714,12 @@ fail:
 	}
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+
+err:
+	sc_pkcs15_card_clear(p15card);
+	p15card->opts.use_pin_cache = use_pin_cache_backup;
+
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 int

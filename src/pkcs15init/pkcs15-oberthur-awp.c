@@ -769,10 +769,6 @@ awp_encode_key_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *obj
 	int r = 0;
 
 	LOG_FUNC_CALLED(ctx);
-#if OPENSSL_VERSION_NUMBER < 0x30000000L
-	ERR_load_ERR_strings();
-#endif
-	ERR_load_crypto_strings();
 
 	key_info = (struct sc_pkcs15_prkey_info *)obj->data;
 
@@ -829,10 +825,6 @@ awp_encode_key_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *obj
 
 	sc_log(ctx,  "cosm_encode_key_info() label:%s",ki->label.value);
 done:
-#if OPENSSL_VERSION_NUMBER < 0x30000000L
-	ERR_load_ERR_strings();
-#endif
-	ERR_load_crypto_strings();
 	LOG_FUNC_RETURN(ctx, r);
 }
 
@@ -936,11 +928,6 @@ awp_encode_cert_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *ob
 	X509 *x = NULL;
 
 	LOG_FUNC_CALLED(ctx);
-
-#if OPENSSL_VERSION_NUMBER < 0x30000000L
-	ERR_load_ERR_strings();
-#endif
-	ERR_load_crypto_strings();
 
 	if (!obj || !ci)
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "AWP encode cert failed: invalid parameters");
@@ -1078,10 +1065,9 @@ awp_encode_cert_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *ob
 err:
 	ERR_print_errors_fp(stderr);
 	ERR_clear_error();
-	ERR_free_strings();
 	if (pubkey.exponent.data) free(pubkey.exponent.data);
 	if (pubkey.modulus.data) free(pubkey.modulus.data);
-	if (x) 		X509_free(x);
+	if (x) X509_free(x);
 	if (mem)	BIO_free(mem);
 	if (buff)	OPENSSL_free(buff);
 
@@ -1469,11 +1455,12 @@ awp_update_df_create_prvkey(struct sc_pkcs15_card *p15card, struct sc_profile *p
 	rv = sc_pkcs15_find_cert_by_id(p15card, &key_info->id, &cert_obj);
 	if (!rv)   {
 		struct sc_pkcs15_cert_info *cert_info = (struct sc_pkcs15_cert_info *) cert_obj->data;
+		int private_obj = cert_obj->flags & SC_PKCS15_CO_FLAG_PRIVATE;
 
 		path = cert_info->path;
 		cc.cert_id = (path.value[path.len-1] & 0xFF) + (path.value[path.len-2] & 0xFF) * 0x100;
 
-		rv = sc_pkcs15_read_certificate(p15card, cert_info, &p15cert);
+		rv = sc_pkcs15_read_certificate(p15card, cert_info, private_obj, &p15cert);
 		SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_VERBOSE, rv, "AWP 'update private key' DF failed:  cannot get certificate");
 
 		rv = sc_pkcs15_allocate_object_content(ctx, cert_obj, p15cert->data.value, p15cert->data.len);

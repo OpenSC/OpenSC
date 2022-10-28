@@ -543,5 +543,6 @@ int sc_pkcs15emu_tcos_init_ex(
 	if(!detect_signtrust(p15card)) return SC_SUCCESS;
 	if(!detect_datev(p15card)) return SC_SUCCESS;
 
+	sc_pkcs15_card_clear(p15card);
 	return SC_ERROR_INTERNAL;
 }

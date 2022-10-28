@@ -1,5 +1,5 @@
 #!/bin/bash
-SOURCE_PATH=${SOURCE_PATH:-../}
+SOURCE_PATH=${SOURCE_PATH:-..}
 
 source $SOURCE_PATH/tests/common.sh
 

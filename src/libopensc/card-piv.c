@@ -239,25 +239,64 @@ static const struct sc_atr_table piv_atrs[] = {
 	{ "3B:D8:18:00:80:B1:FE:45:1F:07:80:31:C1:64:08:06:92:0F:D5", NULL, NULL, SC_CARD_TYPE_PIV_II_OBERTHUR, 0, NULL },
 	{ "3b:86:80:01:80:31:c1:52:41:1a:7e", NULL, NULL, SC_CARD_TYPE_PIV_II_OBERTHUR, 0, NULL }, /* contactless */
 
-
-	/* PIVKEY from Taligo */
-	/* PIVKEY T600 token and T800  on Feitian eJAVA */
-	{ "3B:FC:18:00:00:81:31:80:45:90:67:46:4A:00:64:2D:70:C1:72:FE:E0:FE", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
-
-	/* PIVKEY C910 */
+	/* Following PIVKEY entries are from Windows registry provided by gw@taglio.com 2022-09-05 */
+	/* PIVKEY PIVKey Feitian (02) */
+	{ "3b:9f:95:81:31:fe:9f:00:66:46:53:05:10:00:11:71:df:00:00:00:00:00:02", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
+	/* PIVKey Feitian (7C)  aka C910 contactless */
+	{ "3b:8c:80:01:90:67:46:4a:00:64:16:06:f2:72:7e:00:7c", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
+	/*PIVKey Feitian (E0)  aka C910 */
 	{ "3b:fc:18:00:00:81:31:80:45:90:67:46:4a:00:64:16:06:f2:72:7e:00:e0", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
-	{ "3b:8c:80:01:90:67:46:4a:00:64:16:06:f2:72:7e:00:7c", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL }, /* contactless */
-
-
-	/* PIVKEY C980 */
-	{ "3B:f9:96:00:00:81:31:fe:45:53:50:49:56:4b:45:59:37:30:28", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
-	{ "3b:89:80:01:53:50:49:56:4b:45:59:37:30:44", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL }, /* contactless */
+	/* PIVKey Feitian (FE)  aka PIVKEY T600 token and T800  on Feitian eJAVA */
+	{ "3b:fc:18:00:00:81:31:80:45:90:67:46:4a:00:64:2d:70:c1:72:fe:e0:fe", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
+	/* PIVKey JCOP241 (AD) */
+	{ "3b:f9:13:00:00:81:31:fe:45:53:50:49:56:4b:45:59:37:30:ad", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
+	/* PIVKey JCOP242R2 (16) */
+	{ "3b:88:80:01:50:49:56:4b:45:59:37:30:16", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
+	/* PIVKey JCOP242R2 (5E) */
+	{ "3b:88:80:01:4a:43:4f:50:76:32:34:31:5e", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
+	/* PIVKey JCOP242R2 (B7) */
+	{ "3b:f8:13:00:00:81:31:fe:45:4a:43:4f:50:76:32:34:31:b7", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
+	/* PIVKey JCOP3 (67) */
+	{ "3b:88:80:01:46:49:44:45:53:4d:4f:31:67", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
+	/* PIVKey JCOP3 (8E) */
+	{ "3b:f8:13:00:00:81:31:fe:45:46:49:44:45:53:4d:4f:31:8e", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
+	/* PIVKey JCOP31 (57) */
+	{ "3b:f9:18:00:ff:81:31:fe:45:4a:43:4f:50:33:31:56:32:32:57", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
+	/* PIVKey NXP JCOP (03) */
+	{ "3b:8a:80:01:01:50:49:56:4b:45:59:37:30:16:03", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
+	/* PIVKey NXP JCOP (FF)  aka CP70 */
+	{ "3b:f8:13:00:00:81:31:fe:45:50:49:56:4b:45:59:37:30:ff", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
+	/* PIVKey SLE78 (3B) */
+	{ "3b:8d:80:01:53:4c:4a:35:32:47:44:4c:31:32:38:43:52:3b", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
+	/* PIVKey SLE78 (6D) */
+	{ "3b:88:80:01:00:00:00:11:77:81:83:00:6d", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
+	/* PIVKey SLE78 (28) aka C980 */
+	{ "3b:f9:96:00:00:81:31:fe:45:53:50:49:56:4b:45:59:37:30:28", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
+	/* PIVKey SLE78 (44) aka C980 contactless */
+	{ "3b:89:80:01:53:50:49:56:4b:45:59:37:30:44", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
+	/* PIVKey SLE78 (57B) */
+	{ "3b:fd:96:00:00:81:31:fe:45:53:4c:4a:35:32:47:44:4c:31:32:38:43:52:57", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
+	/* PIVKey uTrust (01) ISO 14443 Type B without historical bytes */
+	{ "3b:80:80:01:01", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
+	/* PIVKey uTrust (73) */
+	{ "3b:96:11:81:21:75:75:54:72:75:73:74:73", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
+	/* PIVKey uTrust FIDO2 (73) */
+	{ "3b:96:11:81:21:75:75:54:72:75:73:74:73", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
 
 	/* ID-One PIV 2.4.1 on Cosmo V8.1 */
 	{ "3b:d6:96:00:81:b1:fe:45:1f:87:80:31:c1:52:41:1a:2a", NULL, NULL, SC_CARD_TYPE_PIV_II_OBERTHUR, 0, NULL },
 	{ "3b:86:80:01:80:31:c1:52:41:12:76", NULL, NULL, SC_CARD_TYPE_PIV_II_OBERTHUR, 0, NULL }, /* contactless */
 
 	{ NULL, NULL, NULL, 0, 0, NULL }
+};
+
+static struct piv_supported_ec_curves {
+	struct sc_object_id oid;
+	size_t size;
+} ec_curves[] = {
+	{{{1, 2, 840, 10045, 3, 1, 7, -1}},     256}, /* secp256r1, nistp256, prime256v1, ansiX9p256r1 */
+	{{{1, 3, 132, 0, 34, -1}},              384}, /* secp384r1, nistp384, prime384v1, ansiX9p384r1 */
+	{{{-1}}, 0} /* This entry must not be touched. */
 };
 
 /* all have same AID */
@@ -1778,7 +1817,7 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 		goto err;
 	}
 
-	EVP_CIPHER_CTX_cleanup(ctx);
+	EVP_CIPHER_CTX_reset(ctx);
 
 	if (!EVP_DecryptInit(ctx, cipher, key, NULL)) {
 		r = SC_ERROR_INTERNAL;
@@ -2397,14 +2436,8 @@ piv_compute_signature(sc_card_t *card, const u8 * data, size_t datalen,
 {
 	piv_private_data_t * priv = PIV_DATA(card);
 	int r;
-	int i;
 	size_t nLen;
 	u8 rbuf[128]; /* For EC conversions  384 will fit */
-	const unsigned char *pseq, *pint, *ptemp, *pend;
-	unsigned int cla, tag;
-	size_t seqlen;
-	size_t intlen;
-	size_t templen;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -2424,40 +2457,12 @@ piv_compute_signature(sc_card_t *card, const u8 * data, size_t datalen,
 			r = SC_ERROR_INVALID_DATA;
 			goto err;
 		}
-		memset(out, 0, outlen);
 
 		r = piv_validate_general_authentication(card, data, datalen, rbuf, sizeof rbuf);
 		if (r < 0)
 			goto err;
-
-		pseq = rbuf;
-		r = sc_asn1_read_tag(&pseq, r, &cla, &tag, &seqlen);
-		if (pseq == NULL || r < 0 || seqlen == 0 || (cla|tag) != 0x30)
-			LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_INVALID_DATA, "Can't find 0x30");
-
-		pint = pseq;
-		pend = pseq + seqlen;
-		for (i = 0; i < 2; i++) {
-			r = sc_asn1_read_tag(&pint, (pend - pint), &cla, &tag, &intlen);
-			if (pint == NULL || r < 0 || intlen == 0 || (cla|tag) != 0x02)
-				LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_INVALID_DATA, "Can't find 0x02");
-			if (intlen > nLen + 1)
-				LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_INVALID_DATA,"Signature too long");
-
-			ptemp = pint;
-			templen = intlen;
-			if (intlen > nLen) { /* drop leading 00 if present */
-				if (*ptemp != 0x00) {
-					LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_INVALID_DATA,"Signature too long");
-				}
-				ptemp++;
-				templen--;
-			}
-			memcpy(out + nLen*i + nLen - templen, ptemp, templen);
-			pint += intlen; /* next integer */
-			
-		}
-		r = 2 * nLen;
+		
+		r = sc_asn1_decode_ecdsa_signature(card->ctx, rbuf, r, nLen, &out, outlen);
 	} else { /* RSA is all set */
 		r = piv_validate_general_authentication(card, data, datalen, out, outlen);
 	}
@@ -3006,6 +3011,11 @@ piv_finish(sc_card_t *card)
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (priv) {
+		if (priv->context_specific) {
+			sc_log(card->ctx, "Clearing CONTEXT_SPECIFIC lock");
+			priv->context_specific = 0;
+			sc_unlock(card);
+		}
 		if (priv->w_buf)
 			free(priv->w_buf);
 		if (priv->offCardCertURL)
@@ -3452,12 +3462,14 @@ static int piv_init(sc_card_t *card)
 	_sc_card_add_rsa_alg(card, 3072, flags, 0); /* optional */
 
 	if (!(priv->card_issues & CI_NO_EC)) {
+		int i;
 		flags = SC_ALGORITHM_ECDSA_RAW | SC_ALGORITHM_ECDH_CDH_RAW | SC_ALGORITHM_ECDSA_HASH_NONE;
 		ext_flags = SC_ALGORITHM_EXT_EC_NAMEDCURVE | SC_ALGORITHM_EXT_EC_UNCOMPRESES;
 
-		_sc_card_add_ec_alg(card, 256, flags, ext_flags, NULL);
-		if (!(priv->card_issues & CI_NO_EC384))
-			_sc_card_add_ec_alg(card, 384, flags, ext_flags, NULL);
+		for (i = 0; ec_curves[i].oid.value[0] >= 0; i++) {
+			if (!(priv->card_issues & CI_NO_EC384 && ec_curves[i].size == 384))
+				_sc_card_add_ec_alg(card, ec_curves[i].size, flags, ext_flags, &ec_curves[i].oid);
+		}
 	}
 
 	if (!(priv->card_issues & CI_NO_RANDOM))

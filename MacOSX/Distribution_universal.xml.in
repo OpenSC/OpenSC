@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!--
+https://developer.apple.com/library/mac/documentation/DeveloperTools/Reference/DistributionDefinitionRef/
+https://developer.apple.com/library/mac/documentation/DeveloperTools/Reference/InstallerJavaScriptRef/
+-->
+<installer-gui-script minSpecVersion="2">
+    <allowed-os-versions>
+      <os-version min="10.10"/>
+    </allowed-os-versions>
+    <background file="background.jpg" mime-type="image/jpeg" scaling="tofit"/>
+    <welcome file="Welcome.html" mime-type="text/html"/>
+    <title>@PACKAGE_STRING@</title>
+    <options customize="allow" hostArchitectures="arm64,x86_64" require-scripts="false" rootVolumeOnly="true"/>
+    <script>
+      <![CDATA[
+    function osx_before_catalina() {
+      return system.compareVersions(system.version.ProductVersion, '10.15') < 0;
+    }
+    function osx_after_catalina() {
+      return system.compareVersions(system.version.ProductVersion, '10.15') >= 0;
+    }
+    function osx_after_yosemite() {
+      return system.compareVersions(system.version.ProductVersion, '10.12') >= 0;
+    }
+      ]]>
+    </script>
+    <choices-outline>
+        <line choice="default" />
+        <line choice="startup" />
+        <line choice="tokend" />
+        <line choice="token" />
+    </choices-outline>
+    <choice id="default" title="PKCS#11 module and smart card tools" enabled="false">
+        <pkg-ref id="org.opensc-project.mac">OpenSC.pkg</pkg-ref>
+    </choice>
+    <choice id="tokend" title="TokenD-based smart card driver" start_selected="osx_before_catalina()">
+        <pkg-ref id="org.opensc-project.tokend">OpenSC-tokend.pkg</pkg-ref>
+    </choice>
+    <choice id="token" title="CryptoTokenKit-based smart card driver" visible="osx_after_yosemite()" start_selected="osx_after_catalina()">
+        <pkg-ref id="org.opensc-project.mac.opensctoken">OpenSCToken.pkg</pkg-ref>
+    </choice>
+    <choice id="startup" title="Automatic startup items">
+        <pkg-ref id="org.opensc-project.startup">OpenSC-startup.pkg</pkg-ref>
+    </choice>
+</installer-gui-script>

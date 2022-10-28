@@ -122,7 +122,9 @@ static unsigned short muscle_parse_singleAcl(const sc_acl_entry_t* acl)
 		case SC_AC_UNKNOWN:
 			break;
 		case SC_AC_CHV:
-			acl_entry |= (1 << key); /* Assuming key 0 == SO */
+			/* Ignore shift with more bits that acl_entry has */
+			if ((size_t) key < sizeof(acl_entry) * 8)
+				acl_entry |= (1u << key); /* Assuming key 0 == SO */
 			break;
 		case SC_AC_AUT:
 		case SC_AC_TERM:
@@ -270,6 +272,7 @@ static int muscle_delete_mscfs_file(sc_card_t *card, mscfs_file_t *file_data)
 	msc_id id = file_data->objectId;
 	u8* oid = id.id;
 	int r;
+	file_data->deleteFile = 1;
 
 	if(!file_data->ef) {
 		int x;
@@ -285,13 +288,14 @@ static int muscle_delete_mscfs_file(sc_card_t *card, mscfs_file_t *file_data)
 			childFile = &fs->cache.array[x];
 			objectId = childFile->objectId;
 
-			if(0 == memcmp(oid + 2, objectId.id, 2)) {
+			if(0 == memcmp(oid + 2, objectId.id, 2) && !childFile->deleteFile) {
 				sc_log(card->ctx, 
 					"DELETING: %02X%02X%02X%02X\n",
 					objectId.id[0],objectId.id[1],
 					objectId.id[2],objectId.id[3]);
 				r = muscle_delete_mscfs_file(card, childFile);
 				if(r < 0) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,r);
+
 			}
 		}
 		oid[0] = oid[2];
@@ -322,6 +326,10 @@ static int muscle_delete_file(sc_card_t *card, const sc_path_t *path_in)
 
 	r = mscfs_loadFileInfo(fs, path_in->value, path_in->len, &file_data, NULL);
 	if(r < 0) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,r);
+	for(int x = 0; x < fs->cache.size; x++) {
+		mscfs_file_t *file = &fs->cache.array[x];
+		file->deleteFile = 0;
+	}
 	r = muscle_delete_mscfs_file(card, file_data);
 	mscfs_clear_cache(fs);
 	if(r < 0) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,r);
@@ -552,7 +560,9 @@ static int muscle_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *cmd,
 		case SC_AC_CHV: {
 			sc_apdu_t apdu;
 			int r;
-			msc_verify_pin_apdu(card, &apdu, buffer, bufferLength, cmd->pin_reference, cmd->pin1.data, cmd->pin1.len);
+			r = msc_verify_pin_apdu(card, &apdu, buffer, bufferLength, cmd->pin_reference, cmd->pin1.data, cmd->pin1.len);
+			if (r < 0)
+				return r;
 			cmd->apdu = &apdu;
 			cmd->pin1.offset = 5;
 			r = iso_ops->pin_cmd(card, cmd, tries_left);
@@ -572,7 +582,10 @@ static int muscle_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *cmd,
 		switch(cmd->pin_type) {
 		case SC_AC_CHV: {
 			sc_apdu_t apdu;
-			msc_change_pin_apdu(card, &apdu, buffer, bufferLength, cmd->pin_reference, cmd->pin1.data, cmd->pin1.len, cmd->pin2.data, cmd->pin2.len);
+			int r;
+			r = msc_change_pin_apdu(card, &apdu, buffer, bufferLength, cmd->pin_reference, cmd->pin1.data, cmd->pin1.len, cmd->pin2.data, cmd->pin2.len);
+			if (r < 0)
+				return r;
 			cmd->apdu = &apdu;
 			return iso_ops->pin_cmd(card, cmd, tries_left);
 		}
@@ -588,7 +601,10 @@ static int muscle_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *cmd,
 	switch(cmd->pin_type) {
 		case SC_AC_CHV: {
 			sc_apdu_t apdu;
-			msc_unblock_pin_apdu(card, &apdu, buffer, bufferLength, cmd->pin_reference, cmd->pin1.data, cmd->pin1.len);
+			int r;
+			r = msc_unblock_pin_apdu(card, &apdu, buffer, bufferLength, cmd->pin_reference, cmd->pin1.data, cmd->pin1.len);
+			if (r < 0)
+				return r;
 			cmd->apdu = &apdu;
 			return iso_ops->pin_cmd(card, cmd, tries_left);
 		}

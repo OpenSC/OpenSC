@@ -3,8 +3,8 @@ include $(top_srcdir)/win32/ltrc.inc
 MAINTAINERCLEANFILES = $(srcdir)/Makefile.in $(srcdir)/versioninfo-pkcs11.rc $(srcdir)/versioninfo-pkcs11-spy.rc
 EXTRA_DIST = Makefile.mak versioninfo-pkcs11.rc.in versioninfo-pkcs11-spy.rc.in opensc-pkcs11.pc.in opensc-pkcs11.dll.manifest onepin-opensc-pkcs11.dll.manifest
 
-lib_LTLIBRARIES = opensc-pkcs11.la pkcs11-spy.la onepin-opensc-pkcs11.la
 if ENABLE_SHARED
+lib_LTLIBRARIES = opensc-pkcs11.la pkcs11-spy.la onepin-opensc-pkcs11.la
 else
 noinst_LTLIBRARIES = libopensc-pkcs11.la
 endif
@@ -73,6 +73,11 @@ install-exec-hook:
 	for l in opensc-pkcs11.dll pkcs11-spy.dll; do \
 		mv "$(DESTDIR)$(libdir)/$$l" "$(DESTDIR)$(bindir)/$$l"; \
 	done
+
+uninstall-hook:
+	for l in opensc-pkcs11.dll pkcs11-spy.dll; do \
+		rm -f "$(DESTDIR)$(bindir)/$$l"; \
+	done
 else
 # see http://wiki.cacert.org/wiki/Pkcs11TaskForce
 install-exec-hook:
@@ -82,6 +87,11 @@ install-exec-hook:
 		$(LN_S) ../$$l "$(DESTDIR)$(pkcs11dir)/$$l"; \
 	done
 
+uninstall-hook:
+	for l in opensc-pkcs11$(DYN_LIB_EXT) onepin-opensc-pkcs11$(DYN_LIB_EXT) pkcs11-spy$(DYN_LIB_EXT); do \
+		rm -f "$(DESTDIR)$(pkcs11dir)/$$l"; \
+	done
+	rm -df "$(DESTDIR)$(pkcs11dir)" || true
 endif
 
 TIDY_FLAGS = $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) $(OPENSC_PKCS11_CFLAGS)

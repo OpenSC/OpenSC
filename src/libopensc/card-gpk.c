@@ -186,11 +186,6 @@ gpk_init(sc_card_t *card)
 			priv->offset_shift = 0;
 			priv->offset_mask = 0;
 		}
-		if (info[12] & 0x10) {
-			/* DSA supported - add algo information.
-			 * It's highly unlikely we'll ever see this.
-			 */
-		}
 		if (info[12] & 0x08) {
 			priv->locked = 1;
 		}
@@ -908,14 +903,14 @@ gpk_set_filekey(const u8 *key, const u8 *challenge,
 	if (!EVP_EncryptUpdate(ctx, kats, &outl, r_rn+4, 8))
 		r = SC_ERROR_INTERNAL;
 
-	if (!EVP_CIPHER_CTX_cleanup(ctx))
+	if (!EVP_CIPHER_CTX_reset(ctx))
 		r = SC_ERROR_INTERNAL;
 	if (r == SC_SUCCESS) {
-		EVP_CIPHER_CTX_init(ctx);
+		EVP_CIPHER_CTX_reset(ctx);
 		EVP_EncryptInit_ex(ctx, EVP_des_ede(), NULL, out, NULL);
 		if (!EVP_EncryptUpdate(ctx, kats+8, &outl, r_rn+4, 8))
 			r = SC_ERROR_INTERNAL;
-	if (!EVP_CIPHER_CTX_cleanup(ctx))
+	if (!EVP_CIPHER_CTX_reset(ctx))
 		r = SC_ERROR_INTERNAL;
 	}
 	memset(out, 0, sizeof(out));
@@ -925,7 +920,7 @@ gpk_set_filekey(const u8 *key, const u8 *challenge,
 	 * here? INVALID_ARGS doesn't seem quite right
 	 */
 	if (r == SC_SUCCESS) {
-		EVP_CIPHER_CTX_init(ctx);
+		EVP_CIPHER_CTX_reset(ctx);
 		EVP_EncryptInit_ex(ctx, EVP_des_ede(), NULL, kats, NULL);
 		if (!EVP_EncryptUpdate(ctx, out, &outl, challenge, 8))
 			r = SC_ERROR_INTERNAL;

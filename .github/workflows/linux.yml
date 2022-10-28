@@ -9,6 +9,7 @@ on:
       - .github/setup-linux.sh
       - .github/build.sh
       - .github/push-artifacts.sh
+      - '**.am'
   push:
 
 jobs:
@@ -18,6 +19,13 @@ jobs:
       - uses: actions/checkout@v2
       - run: .github/setup-linux.sh
       - run: .github/build.sh dist
+      - name: Upload test logs
+        uses: actions/upload-artifact@v2
+        if: failure()
+        with:
+          name: ubuntu-test-logs
+          path:
+            tests/*.log
       - uses: actions/cache@v2
         id: cache-build
         with:
@@ -29,12 +37,13 @@ jobs:
           name: opensc-build
           path:
             opensc*.tar.gz
-      - name: Upload test logs
-        uses: actions/upload-artifact@v2
-        with:
-          name: ubuntu-test-logs
-          path:
-            tests/*.log
+
+  build-no-shared:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: .github/setup-linux.sh
+      - run: .github/build.sh no-shared
 
   build-ix86:
     runs-on: ubuntu-latest
@@ -49,17 +58,18 @@ jobs:
       - uses: actions/checkout@v2
       - run: .github/setup-linux.sh
       - run: .github/build.sh
+      - name: Upload test logs
+        uses: actions/upload-artifact@v2
+        if: failure()
+        with:
+          name: ubuntu-18-test-logs
+          path:
+            tests/*.log
       - uses: actions/cache@v2
         id: cache-build
         with:
           path: ./*
           key: ${{ runner.os }}-18-${{ github.sha }}
-      - name: Upload test logs
-        uses: actions/upload-artifact@v2
-        with:
-          name: ubuntu-18-test-logs
-          path:
-            tests/*.log
 
   build-mingw:
     runs-on: ubuntu-latest
@@ -178,6 +188,114 @@ jobs:
       - run: .github/setup-linux.sh oseid
       - run: .github/test-oseid.sh
 
+  ##########################
+  ## OpenSSL 3.0 pipeline ##
+  ##########################
+  build-openssl-3:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: .github/setup-linux.sh ossl3
+      - run: .github/build.sh dist ossl3
+      - uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: openssl-3-logs
+          path: |
+            tests/*.log
+            config.log
+      - uses: actions/cache@v2
+        id: cache-build
+        if: ${{ success() }}
+        with:
+          path: ./*
+          key: ${{ runner.os }}-ossl3-${{ github.sha }}
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v2
+        if: ${{ success() }}
+        with:
+          name: opensc-build
+          path:
+            opensc*.tar.gz
+
+  test-cac-openssl-3:
+    runs-on: ubuntu-latest
+    needs: [build-openssl-3]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/cache@v3
+        id: cache-build
+        with:
+          path: ./*
+          key: ${{ runner.os }}-ossl3-${{ github.sha }}
+      - run: .github/setup-linux.sh cac ossl3
+      - run: .github/test-cac.sh
+
+  test-oseid-openssl-3:
+    runs-on: ubuntu-latest
+    needs: [build-openssl-3]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/cache@v3
+        id: cache-build
+        with:
+          path: ./*
+          key: ${{ runner.os }}-ossl3-${{ github.sha }}
+      - run: .github/setup-linux.sh oseid ossl3
+      - run: .github/test-oseid.sh
+
+  #######################
+  ## LibreSSL pipeline ##
+  #######################
+  build-libressl:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: .github/setup-linux.sh libressl
+      - run: .github/build.sh dist libressl
+      - uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: libressl-logs
+          path: |
+            tests/test-suite.log
+            config.log
+      - uses: actions/cache@v2
+        id: cache-build
+        if: ${{ success() }}
+        with:
+          path: ./*
+          key: ${{ runner.os }}-libressl-${{ github.sha }}
+
+  test-cac-libressl:
+    runs-on: ubuntu-latest
+    needs: [build-libressl]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/cache@v3
+        id: cache-build
+        with:
+          path: ./*
+          key: ${{ runner.os }}-libressl-${{ github.sha }}
+      - run: .github/setup-linux.sh cac libressl
+      - run: .github/test-cac.sh
+
+  test-oseid-libressl:
+    runs-on: ubuntu-latest
+    needs: [build-libressl]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/cache@v3
+        id: cache-build
+        with:
+          path: ./*
+          key: ${{ runner.os }}-libressl-${{ github.sha }}
+      - run: .github/setup-linux.sh oseid libressl
+      - run: .github/test-oseid.sh
+
+  ####################
+  ## Push artifacts ##
+  ####################
   push-artifacts:
     runs-on: ubuntu-latest
     needs: [build, build-mingw]

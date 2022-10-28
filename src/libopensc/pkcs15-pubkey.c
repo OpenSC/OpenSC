@@ -37,9 +37,12 @@
 #ifdef ENABLE_OPENSSL
 #include <openssl/bn.h>
 #include <openssl/rsa.h>
-#include <openssl/dsa.h>
 #include <openssl/evp.h>
 #include <openssl/err.h>
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+# include <openssl/core_names.h>
+# include <openssl/param_build.h>
+#endif
 #ifndef OPENSSL_NO_EC
 #include <openssl/ec.h>
 #endif
@@ -115,18 +118,6 @@ static const struct sc_asn1_entry c_asn1_ec_type_attr[C_ASN1_EC_TYPE_ATTR_SIZE] 
 		{ NULL, 0, 0, 0, NULL, NULL }
 };
 
-#define C_ASN1_DSAKEY_ATTR_SIZE 2
-static const struct sc_asn1_entry c_asn1_dsakey_attr[C_ASN1_DSAKEY_ATTR_SIZE] = {
-		{ "value", SC_ASN1_PATH, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
-		{ NULL, 0, 0, 0, NULL, NULL }
-};
-
-#define C_ASN1_DSA_TYPE_ATTR_SIZE 2
-static const struct sc_asn1_entry c_asn1_dsa_type_attr[C_ASN1_DSA_TYPE_ATTR_SIZE] = {
-		{ "publicDSAKeyAttributes", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
-		{ NULL, 0, 0, 0, NULL, NULL }
-};
-
 #define C_ASN1_GOST3410KEY_ATTR_SIZE 5
 static const struct sc_asn1_entry c_asn1_gostr3410key_attr[C_ASN1_GOST3410KEY_ATTR_SIZE] = {
 		{ "value", SC_ASN1_PATH, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
@@ -142,10 +133,9 @@ static const struct sc_asn1_entry c_asn1_gostr3410_type_attr[C_ASN1_GOST3410_TYP
 		{ NULL, 0, 0, 0, NULL, NULL }
 };
 
-#define C_ASN1_PUBKEY_CHOICE_SIZE 5
+#define C_ASN1_PUBKEY_CHOICE_SIZE 4
 static const struct sc_asn1_entry c_asn1_pubkey_choice[C_ASN1_PUBKEY_CHOICE_SIZE] = {
 		{ "publicRSAKey", SC_ASN1_PKCS15_OBJECT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
-		{ "publicDSAKey", SC_ASN1_PKCS15_OBJECT, 2 | SC_ASN1_CTX | SC_ASN1_CONS, 0, NULL, NULL },
 		{ "publicGOSTR3410Key", SC_ASN1_PKCS15_OBJECT, 4 | SC_ASN1_CTX | SC_ASN1_CONS, 0, NULL, NULL },
 		{ "publicECKey", SC_ASN1_PKCS15_OBJECT, 0 | SC_ASN1_CTX | SC_ASN1_CONS, 0, NULL, NULL },
 		/*TODO: -DEE not clear EC is needed here  as look like it is for pukdf */
@@ -224,8 +214,6 @@ int sc_pkcs15_decode_pukdf_entry(struct sc_pkcs15_card *p15card,
 	struct sc_asn1_entry asn1_eckey_value_choice[C_ASN1_ECKEY_VALUE_CHOICE_SIZE];
 	struct sc_asn1_entry asn1_eckey_attr[C_ASN1_ECKEY_ATTR_SIZE];
 	struct sc_asn1_entry asn1_ec_type_attr[C_ASN1_EC_TYPE_ATTR_SIZE];
-	struct sc_asn1_entry asn1_dsakey_attr[C_ASN1_DSAKEY_ATTR_SIZE];
-	struct sc_asn1_entry asn1_dsa_type_attr[C_ASN1_DSA_TYPE_ATTR_SIZE];
 	struct sc_asn1_entry asn1_gostr3410key_attr[C_ASN1_GOST3410KEY_ATTR_SIZE];
 	struct sc_asn1_entry asn1_gostr3410_type_attr[C_ASN1_GOST3410_TYPE_ATTR_SIZE];
 	struct sc_asn1_entry asn1_pubkey_choice[C_ASN1_PUBKEY_CHOICE_SIZE];
@@ -234,8 +222,6 @@ int sc_pkcs15_decode_pukdf_entry(struct sc_pkcs15_card *p15card,
 			asn1_com_pubkey_attr, asn1_rsa_type_attr };
 	struct sc_asn1_pkcs15_object eckey_obj = { obj, asn1_com_key_attr,
 			asn1_com_pubkey_attr, asn1_ec_type_attr };
-	struct sc_asn1_pkcs15_object dsakey_obj = { obj, asn1_com_key_attr,
-			asn1_com_pubkey_attr, asn1_dsa_type_attr };
 	struct sc_asn1_pkcs15_object gostr3410key_obj =  { obj, asn1_com_key_attr,
 			asn1_com_pubkey_attr, asn1_gostr3410_type_attr };
 
@@ -255,8 +241,6 @@ int sc_pkcs15_decode_pukdf_entry(struct sc_pkcs15_card *p15card,
 	sc_copy_asn1_entry(c_asn1_ec_type_attr, asn1_ec_type_attr);
 	sc_copy_asn1_entry(c_asn1_eckey_value_choice, asn1_eckey_value_choice);
 	sc_copy_asn1_entry(c_asn1_eckey_attr, asn1_eckey_attr);
-	sc_copy_asn1_entry(c_asn1_dsa_type_attr, asn1_dsa_type_attr);
-	sc_copy_asn1_entry(c_asn1_dsakey_attr, asn1_dsakey_attr);
 	sc_copy_asn1_entry(c_asn1_gostr3410_type_attr, asn1_gostr3410_type_attr);
 	sc_copy_asn1_entry(c_asn1_gostr3410key_attr, asn1_gostr3410key_attr);
 	sc_copy_asn1_entry(c_asn1_com_pubkey_attr, asn1_com_pubkey_attr);
@@ -265,9 +249,8 @@ int sc_pkcs15_decode_pukdf_entry(struct sc_pkcs15_card *p15card,
 	sc_format_asn1_entry(asn1_com_pubkey_attr + 0, &info->subject.value, &info->subject.len, 0);
 
 	sc_format_asn1_entry(asn1_pubkey_choice + 0, &rsakey_obj, NULL, 0);
-	sc_format_asn1_entry(asn1_pubkey_choice + 1, &dsakey_obj, NULL, 0);
-	sc_format_asn1_entry(asn1_pubkey_choice + 2, &gostr3410key_obj, NULL, 0);
-	sc_format_asn1_entry(asn1_pubkey_choice + 3, &eckey_obj, NULL, 0);
+	sc_format_asn1_entry(asn1_pubkey_choice + 1, &gostr3410key_obj, NULL, 0);
+	sc_format_asn1_entry(asn1_pubkey_choice + 2, &eckey_obj, NULL, 0);
 
 	sc_format_asn1_entry(asn1_rsa_type_attr + 0, asn1_rsakey_attr, NULL, 0);
 
@@ -283,10 +266,6 @@ int sc_pkcs15_decode_pukdf_entry(struct sc_pkcs15_card *p15card,
 	sc_format_asn1_entry(asn1_eckey_value_choice + 1, &der->value, &der->len, 0);
 
 	sc_format_asn1_entry(asn1_eckey_attr + 0, asn1_eckey_value_choice, NULL, 0);
-
-	sc_format_asn1_entry(asn1_dsa_type_attr + 0, asn1_dsakey_attr, NULL, 0);
-
-	sc_format_asn1_entry(asn1_dsakey_attr + 0, &info->path, NULL, 0);
 
 	sc_format_asn1_entry(asn1_gostr3410_type_attr + 0, asn1_gostr3410key_attr, NULL, 0);
 
@@ -314,7 +293,7 @@ int sc_pkcs15_decode_pukdf_entry(struct sc_pkcs15_card *p15card,
 	LOG_TEST_GOTO_ERR(ctx, r, "ASN.1 decoding failed");
 	if (asn1_pubkey_choice[0].flags & SC_ASN1_PRESENT) {
 		obj->type = SC_PKCS15_TYPE_PUBKEY_RSA;
-	} else if (asn1_pubkey_choice[2].flags & SC_ASN1_PRESENT) {
+	} else if (asn1_pubkey_choice[1].flags & SC_ASN1_PRESENT) {
 		obj->type = SC_PKCS15_TYPE_PUBKEY_GOSTR3410;
 		assert(info->modulus_length == 0);
 		info->modulus_length = SC_PKCS15_GOSTR3410_KEYSIZE;
@@ -331,11 +310,11 @@ int sc_pkcs15_decode_pukdf_entry(struct sc_pkcs15_card *p15card,
 		keyinfo_gostparams->gostr3411 = (unsigned int)gostr3410_params[1];
 		keyinfo_gostparams->gost28147 = (unsigned int)gostr3410_params[2];
 	}
-	else if (asn1_pubkey_choice[3].flags & SC_ASN1_PRESENT) {
+	else if (asn1_pubkey_choice[2].flags & SC_ASN1_PRESENT) {
 		obj->type = SC_PKCS15_TYPE_PUBKEY_EC;
 	}
 	else {
-		obj->type = SC_PKCS15_TYPE_PUBKEY_DSA;
+		goto err;
 	}
 
 	if (!p15card->app || !p15card->app->ddo.aid.len) {
@@ -390,8 +369,6 @@ sc_pkcs15_encode_pukdf_entry(struct sc_context *ctx, const struct sc_pkcs15_obje
 	struct sc_asn1_entry asn1_eckey_value_choice[C_ASN1_ECKEY_VALUE_CHOICE_SIZE];
 	struct sc_asn1_entry asn1_eckey_attr[C_ASN1_ECKEY_ATTR_SIZE];
 	struct sc_asn1_entry asn1_ec_type_attr[C_ASN1_EC_TYPE_ATTR_SIZE];
-	struct sc_asn1_entry asn1_dsakey_attr[C_ASN1_DSAKEY_ATTR_SIZE];
-	struct sc_asn1_entry asn1_dsa_type_attr[C_ASN1_DSA_TYPE_ATTR_SIZE];
 	struct sc_asn1_entry asn1_gostr3410key_attr[C_ASN1_GOST3410KEY_ATTR_SIZE];
 	struct sc_asn1_entry asn1_gostr3410_type_attr[C_ASN1_GOST3410_TYPE_ATTR_SIZE];
 	struct sc_asn1_entry asn1_pubkey_choice[C_ASN1_PUBKEY_CHOICE_SIZE];
@@ -404,9 +381,6 @@ sc_pkcs15_encode_pukdf_entry(struct sc_context *ctx, const struct sc_pkcs15_obje
 	struct sc_asn1_pkcs15_object eckey_obj = { (struct sc_pkcs15_object *) obj,
 			asn1_com_key_attr,
 			asn1_com_pubkey_attr, asn1_ec_type_attr };
-	struct sc_asn1_pkcs15_object dsakey_obj = { (struct sc_pkcs15_object *) obj,
-			asn1_com_key_attr,
-			asn1_com_pubkey_attr, asn1_dsa_type_attr };
 	struct sc_asn1_pkcs15_object gostr3410key_obj =  { (struct sc_pkcs15_object *) obj,
 			asn1_com_key_attr,
 			asn1_com_pubkey_attr, asn1_gostr3410_type_attr };
@@ -423,8 +397,6 @@ sc_pkcs15_encode_pukdf_entry(struct sc_context *ctx, const struct sc_pkcs15_obje
 	sc_copy_asn1_entry(c_asn1_ec_type_attr, asn1_ec_type_attr);
 	sc_copy_asn1_entry(c_asn1_eckey_value_choice, asn1_eckey_value_choice);
 	sc_copy_asn1_entry(c_asn1_eckey_attr, asn1_eckey_attr);
-	sc_copy_asn1_entry(c_asn1_dsa_type_attr, asn1_dsa_type_attr);
-	sc_copy_asn1_entry(c_asn1_dsakey_attr, asn1_dsakey_attr);
 	sc_copy_asn1_entry(c_asn1_gostr3410_type_attr, asn1_gostr3410_type_attr);
 	sc_copy_asn1_entry(c_asn1_gostr3410key_attr, asn1_gostr3410key_attr);
 	sc_copy_asn1_entry(c_asn1_com_pubkey_attr, asn1_com_pubkey_attr);
@@ -467,15 +439,8 @@ sc_pkcs15_encode_pukdf_entry(struct sc_context *ctx, const struct sc_pkcs15_obje
 		sc_format_asn1_entry(asn1_rsakey_attr + 0, asn1_rsakey_value_choice, NULL, 1);
 		sc_format_asn1_entry(asn1_rsakey_attr + 1, &pubkey->modulus_length, NULL, 1);
 		break;
-	case SC_PKCS15_TYPE_PUBKEY_DSA:
-		sc_format_asn1_entry(asn1_pubkey_choice + 1, &dsakey_obj, NULL, 1);
-
-		sc_format_asn1_entry(asn1_dsa_type_attr + 0, asn1_dsakey_attr, NULL, 1);
-
-		sc_format_asn1_entry(asn1_dsakey_attr + 0, &pubkey->path, NULL, 1);
-		break;
 	case SC_PKCS15_TYPE_PUBKEY_GOSTR3410:
-		sc_format_asn1_entry(asn1_pubkey_choice + 2, &gostr3410key_obj, NULL, 1);
+		sc_format_asn1_entry(asn1_pubkey_choice + 1, &gostr3410key_obj, NULL, 1);
 
 		sc_format_asn1_entry(asn1_gostr3410_type_attr + 0, asn1_gostr3410key_attr, NULL, 1);
 
@@ -491,7 +456,7 @@ sc_pkcs15_encode_pukdf_entry(struct sc_context *ctx, const struct sc_pkcs15_obje
 		}
 		break;
 	case SC_PKCS15_TYPE_PUBKEY_EC:
-		sc_format_asn1_entry(asn1_pubkey_choice + 3, &eckey_obj, NULL, 1);
+		sc_format_asn1_entry(asn1_pubkey_choice + 2, &eckey_obj, NULL, 1);
 
 		sc_format_asn1_entry(asn1_ec_type_attr + 0, asn1_eckey_attr, NULL, 1);
 
@@ -557,15 +522,6 @@ static struct sc_asn1_entry c_asn1_rsa_pub_coefficients[C_ASN1_RSA_PUB_COEFFICIE
 		{ "modulus",  SC_ASN1_OCTET_STRING, SC_ASN1_TAG_INTEGER, SC_ASN1_ALLOC|SC_ASN1_UNSIGNED, NULL, NULL },
 		{ "exponent", SC_ASN1_OCTET_STRING, SC_ASN1_TAG_INTEGER, SC_ASN1_ALLOC|SC_ASN1_UNSIGNED, NULL, NULL },
 		{ NULL, 0, 0, 0, NULL, NULL }
-};
-
-#define C_ASN1_DSA_PUB_COEFFICIENTS_SIZE 5
-static struct sc_asn1_entry c_asn1_dsa_pub_coefficients[C_ASN1_DSA_PUB_COEFFICIENTS_SIZE] = {
-		{ "publicKey",SC_ASN1_OCTET_STRING, SC_ASN1_TAG_INTEGER, SC_ASN1_ALLOC|SC_ASN1_UNSIGNED, NULL, NULL },
-		{ "paramP",   SC_ASN1_OCTET_STRING, SC_ASN1_TAG_INTEGER, SC_ASN1_ALLOC|SC_ASN1_UNSIGNED, NULL, NULL },
-		{ "paramQ",   SC_ASN1_OCTET_STRING, SC_ASN1_TAG_INTEGER, SC_ASN1_ALLOC|SC_ASN1_UNSIGNED, NULL, NULL },
-		{ "paramG",   SC_ASN1_OCTET_STRING, SC_ASN1_TAG_INTEGER, SC_ASN1_ALLOC|SC_ASN1_UNSIGNED, NULL, NULL },
-		{ NULL, 0, 0, 0, NULL, NULL },
 };
 
 #define C_ASN1_GOSTR3410_PUB_COEFFICIENTS_SIZE 2
@@ -634,56 +590,6 @@ sc_pkcs15_encode_pubkey_rsa(sc_context_t *ctx, struct sc_pkcs15_pubkey_rsa *key,
 
 
 int
-sc_pkcs15_decode_pubkey_dsa(sc_context_t *ctx, struct sc_pkcs15_pubkey_dsa *key,
-		const u8 *buf, size_t buflen)
-{
-	struct sc_asn1_entry asn1_public_key[C_ASN1_PUBLIC_KEY_SIZE];
-	struct sc_asn1_entry asn1_dsa_pub_coefficients[C_ASN1_DSA_PUB_COEFFICIENTS_SIZE];
-	int r;
-
-	LOG_FUNC_CALLED(ctx);
-	sc_copy_asn1_entry(c_asn1_public_key, asn1_public_key);
-	sc_copy_asn1_entry(c_asn1_dsa_pub_coefficients, asn1_dsa_pub_coefficients);
-
-	sc_format_asn1_entry(asn1_public_key + 0, asn1_dsa_pub_coefficients, NULL, 1);
-	sc_format_asn1_entry(asn1_dsa_pub_coefficients + 0, &key->pub.data, &key->pub.len, 0);
-	sc_format_asn1_entry(asn1_dsa_pub_coefficients + 1, &key->g.data, &key->g.len, 0);
-	sc_format_asn1_entry(asn1_dsa_pub_coefficients + 2, &key->p.data, &key->p.len, 0);
-	sc_format_asn1_entry(asn1_dsa_pub_coefficients + 3, &key->q.data, &key->q.len, 0);
-
-	r = sc_asn1_decode(ctx, asn1_public_key, buf, buflen, NULL, NULL);
-	LOG_TEST_RET(ctx, r, "ASN.1 decoding failed");
-
-	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
-}
-
-
-int
-sc_pkcs15_encode_pubkey_dsa(sc_context_t *ctx, struct sc_pkcs15_pubkey_dsa *key,
-		u8 **buf, size_t *buflen)
-{
-	struct sc_asn1_entry asn1_public_key[C_ASN1_PUBLIC_KEY_SIZE];
-	struct sc_asn1_entry asn1_dsa_pub_coefficients[C_ASN1_DSA_PUB_COEFFICIENTS_SIZE];
-	int r;
-
-	LOG_FUNC_CALLED(ctx);
-	sc_copy_asn1_entry(c_asn1_public_key, asn1_public_key);
-	sc_copy_asn1_entry(c_asn1_dsa_pub_coefficients, asn1_dsa_pub_coefficients);
-
-	sc_format_asn1_entry(asn1_public_key + 0, asn1_dsa_pub_coefficients, NULL, 1);
-	sc_format_asn1_entry(asn1_dsa_pub_coefficients + 0, key->pub.data, &key->pub.len, 1);
-	sc_format_asn1_entry(asn1_dsa_pub_coefficients + 1, key->g.data, &key->g.len, 1);
-	sc_format_asn1_entry(asn1_dsa_pub_coefficients + 2, key->p.data, &key->p.len, 1);
-	sc_format_asn1_entry(asn1_dsa_pub_coefficients + 3, key->q.data, &key->q.len, 1);
-
-	r = sc_asn1_encode(ctx, asn1_public_key, buf, buflen);
-	LOG_TEST_RET(ctx, r, "ASN.1 encoding failed");
-
-	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
-}
-
-
-int
 sc_pkcs15_decode_pubkey_gostr3410(sc_context_t *ctx, struct sc_pkcs15_pubkey_gostr3410 *key,
 		const u8 *buf, size_t buflen)
 {
@@ -732,7 +638,7 @@ sc_pkcs15_decode_pubkey_ec(sc_context_t *ctx,
 		const u8 *buf, size_t buflen)
 {
 	int r;
-	u8 * ecpoint_data;
+	u8 * ecpoint_data = NULL;
 	size_t ecpoint_len;
 	struct sc_asn1_entry asn1_ec_pointQ[C_ASN1_EC_POINTQ_SIZE];
 
@@ -740,11 +646,15 @@ sc_pkcs15_decode_pubkey_ec(sc_context_t *ctx,
 	sc_copy_asn1_entry(c_asn1_ec_pointQ, asn1_ec_pointQ);
 	sc_format_asn1_entry(asn1_ec_pointQ + 0, &ecpoint_data, &ecpoint_len, 1);
 	r = sc_asn1_decode(ctx, asn1_ec_pointQ, buf, buflen, NULL, NULL);
-	if (r < 0)
+	if (r < 0) {
+		free(ecpoint_data);
 		LOG_TEST_RET(ctx, r, "ASN.1 decoding failed");
+	}
 
-	if (*ecpoint_data != 0x04)
+	if (ecpoint_len == 0 || *ecpoint_data != 0x04) {
+		free(ecpoint_data);
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Supported only uncompressed EC pointQ value");
+	}
 
 	key->ecpointQ.len = ecpoint_len;
 	key->ecpointQ.value = ecpoint_data;
@@ -821,8 +731,6 @@ sc_pkcs15_encode_pubkey(sc_context_t *ctx, struct sc_pkcs15_pubkey *key,
 {
 	if (key->algorithm == SC_ALGORITHM_RSA)
 		return sc_pkcs15_encode_pubkey_rsa(ctx, &key->u.rsa, buf, len);
-	if (key->algorithm == SC_ALGORITHM_DSA)
-		return sc_pkcs15_encode_pubkey_dsa(ctx, &key->u.dsa, buf, len);
 	if (key->algorithm == SC_ALGORITHM_GOSTR3410)
 		return sc_pkcs15_encode_pubkey_gostr3410(ctx, &key->u.gostr3410, buf, len);
 	if (key->algorithm == SC_ALGORITHM_EC)
@@ -949,8 +857,6 @@ sc_pkcs15_decode_pubkey(sc_context_t *ctx, struct sc_pkcs15_pubkey *key,
 {
 	if (key->algorithm == SC_ALGORITHM_RSA)
 		return sc_pkcs15_decode_pubkey_rsa(ctx, &key->u.rsa, buf, len);
-	if (key->algorithm == SC_ALGORITHM_DSA)
-		return sc_pkcs15_decode_pubkey_dsa(ctx, &key->u.dsa, buf, len);
 	if (key->algorithm == SC_ALGORITHM_GOSTR3410)
 		return sc_pkcs15_decode_pubkey_gostr3410(ctx, &key->u.gostr3410, buf, len);
 	if (key->algorithm == SC_ALGORITHM_EC)
@@ -977,6 +883,7 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_obj
 	unsigned char *data = NULL;
 	size_t	len;
 	int	algorithm, r;
+	int	private_obj;
 
 	if (p15card == NULL || p15card->card == NULL || p15card->card->ops == NULL
 			|| obj == NULL || out == NULL) {
@@ -990,9 +897,6 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_obj
 	switch (obj->type) {
 	case SC_PKCS15_TYPE_PUBKEY_RSA:
 		algorithm = SC_ALGORITHM_RSA;
-		break;
-	case SC_PKCS15_TYPE_PUBKEY_DSA:
-		algorithm = SC_ALGORITHM_DSA;
 		break;
 	case SC_PKCS15_TYPE_PUBKEY_GOSTR3410:
 		algorithm = SC_ALGORITHM_GOSTR3410;
@@ -1048,7 +952,8 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_obj
 	}
 	else if (info->path.len)   {
 		sc_log(ctx, "Read from EF and decode");
-		r = sc_pkcs15_read_file(p15card, &info->path, &data, &len);
+		private_obj = obj->flags & SC_PKCS15_CO_FLAG_PRIVATE;
+		r = sc_pkcs15_read_file(p15card, &info->path, &data, &len, private_obj);
 		LOG_TEST_GOTO_ERR(ctx, r, "Failed to read public key file.");
 
 		if ((algorithm == SC_ALGORITHM_EC || algorithm == SC_ALGORITHM_EDDSA || algorithm == SC_ALGORITHM_XEDDSA)
@@ -1115,15 +1020,6 @@ sc_pkcs15_pubkey_from_prvkey(struct sc_context *ctx, struct sc_pkcs15_prkey *prv
 		rv = sc_pkcs15_dup_bignum(&pubkey->u.rsa.modulus, &prvkey->u.rsa.modulus);
 		if (!rv)
 			rv = sc_pkcs15_dup_bignum(&pubkey->u.rsa.exponent, &prvkey->u.rsa.exponent);
-		break;
-	case SC_ALGORITHM_DSA:
-		rv = sc_pkcs15_dup_bignum(&pubkey->u.dsa.pub, &prvkey->u.dsa.pub);
-		if (!rv)
-			rv = sc_pkcs15_dup_bignum(&pubkey->u.dsa.p, &prvkey->u.dsa.p);
-		if (!rv)
-			rv = sc_pkcs15_dup_bignum(&pubkey->u.dsa.q, &prvkey->u.dsa.q);
-		if (!rv)
-			rv = sc_pkcs15_dup_bignum(&pubkey->u.dsa.g, &prvkey->u.dsa.g);
 		break;
 	case SC_ALGORITHM_GOSTR3410:
 		break;
@@ -1206,15 +1102,6 @@ sc_pkcs15_dup_pubkey(struct sc_context *ctx, struct sc_pkcs15_pubkey *key, struc
 		if (!rv)
 			rv = sc_pkcs15_dup_bignum(&pubkey->u.rsa.exponent, &key->u.rsa.exponent);
 		break;
-	case SC_ALGORITHM_DSA:
-		rv = sc_pkcs15_dup_bignum(&pubkey->u.dsa.pub, &key->u.dsa.pub);
-		if (!rv)
-			rv = sc_pkcs15_dup_bignum(&pubkey->u.dsa.p, &key->u.dsa.p);
-		if (!rv)
-			rv = sc_pkcs15_dup_bignum(&pubkey->u.dsa.q, &key->u.dsa.q);
-		if (!rv)
-			rv = sc_pkcs15_dup_bignum(&pubkey->u.dsa.g, &key->u.dsa.g);
-		break;
 	case SC_ALGORITHM_GOSTR3410:
 		break;
 	case SC_ALGORITHM_EC:
@@ -1288,16 +1175,6 @@ sc_pkcs15_erase_pubkey(struct sc_pkcs15_pubkey *key)
 			free(key->u.rsa.modulus.data);
 		if (key->u.rsa.exponent.data)
 			free(key->u.rsa.exponent.data);
-		break;
-	case SC_ALGORITHM_DSA:
-		if (key->u.dsa.pub.data)
-			free(key->u.dsa.pub.data);
-		if (key->u.dsa.g.data)
-			free(key->u.dsa.g.data);
-		if (key->u.dsa.p.data)
-			free(key->u.dsa.p.data);
-		if (key->u.dsa.q.data)
-			free(key->u.dsa.q.data);
 		break;
 	case SC_ALGORITHM_GOSTR3410:
 		if (key->u.gostr3410.xy.data)
@@ -1717,50 +1594,93 @@ sc_pkcs15_convert_pubkey(struct sc_pkcs15_pubkey *pkcs15_key, void *evp_key)
 	switch (pk_type) {
 	case EVP_PKEY_RSA: {
 		struct sc_pkcs15_pubkey_rsa *dst = &pkcs15_key->u.rsa;
-		RSA *src = EVP_PKEY_get1_RSA(pk);
+		/* Get parameters */
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 		const BIGNUM *src_n, *src_e;
-
+		RSA *src = NULL;
+		if (!(src = EVP_PKEY_get1_RSA(pk)))
+			return SC_ERROR_INCOMPATIBLE_KEY;
 		RSA_get0_key(src, &src_n, &src_e, NULL);
-
+		if (!src_n || !src_e) {
+			free(src);
+			return SC_ERROR_INTERNAL;
+		}
+#else
+		BIGNUM *src_n = NULL, *src_e = NULL;
+		if (EVP_PKEY_get_bn_param(pk, OSSL_PKEY_PARAM_RSA_N, &src_n) != 1 ||
+			EVP_PKEY_get_bn_param(pk, OSSL_PKEY_PARAM_RSA_E, &src_e) != 1) {
+			BN_free(src_n);
+			return SC_ERROR_INTERNAL;
+		}
+#endif
+		/* Convert */
 		pkcs15_key->algorithm = SC_ALGORITHM_RSA;
-		if (!sc_pkcs15_convert_bignum(&dst->modulus, src_n) || !sc_pkcs15_convert_bignum(&dst->exponent, src_e))
+		if (!sc_pkcs15_convert_bignum(&dst->modulus, src_n) ||
+			!sc_pkcs15_convert_bignum(&dst->exponent, src_e)) {
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+			RSA_free(src);
+#else
+			BN_free(src_n); BN_free(src_e);
+#endif
 			return SC_ERROR_INVALID_DATA;
+		}
+
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 		RSA_free(src);
-		break;
-	}
-	case EVP_PKEY_DSA: {
-		struct sc_pkcs15_pubkey_dsa *dst = &pkcs15_key->u.dsa;
-		DSA *src = EVP_PKEY_get1_DSA(pk);
-		const BIGNUM *src_pub_key, *src_priv_key, *src_p, *src_q, *src_g;
-
-		DSA_get0_key(src, &src_pub_key, &src_priv_key);
-		DSA_get0_pqg(src, &src_p, &src_q, &src_g);
-
-		pkcs15_key->algorithm = SC_ALGORITHM_DSA;
-		sc_pkcs15_convert_bignum(&dst->pub, src_pub_key);
-		sc_pkcs15_convert_bignum(&dst->p, src_p);
-		sc_pkcs15_convert_bignum(&dst->q, src_q);
-		sc_pkcs15_convert_bignum(&dst->g, src_g);
-		DSA_free(src);
+#else
+		BN_free(src_n); BN_free(src_e);
+#endif
 		break;
 	}
 #if !defined(OPENSSL_NO_EC)
 	case NID_id_GostR3410_2001: {
 		struct sc_pkcs15_pubkey_gostr3410 *dst = &pkcs15_key->u.gostr3410;
-		EC_KEY *eckey = EVP_PKEY_get0(pk);
-		const EC_POINT *point;
 		BIGNUM *X, *Y;
 		int r = 0;
-
-		assert(eckey);
-		point = EC_KEY_get0_public_key(eckey);
-		if (!point)
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+		const EC_KEY *eckey = NULL;
+		const EC_POINT *point = NULL;
+		const EC_GROUP *group = NULL;
+		if (!(eckey = EVP_PKEY_get0(pk)))
+			return SC_ERROR_INCOMPATIBLE_KEY;
+		if (!(point = EC_KEY_get0_public_key(eckey)) ||
+			!(group = EC_KEY_get0_group(eckey)))
 			return SC_ERROR_INTERNAL;
+#else
+		EC_POINT *point = NULL;
+		EC_GROUP *group = NULL;
+		int nid = 0;
+		unsigned char *pub = NULL; size_t pub_len = 0;
+		char *group_name = NULL; size_t group_name_len = 0;
+		EVP_PKEY_get_octet_string_param(pk, OSSL_PKEY_PARAM_PUB_KEY, NULL, 0, &pub_len);
+		EVP_PKEY_get_group_name(pk, NULL, 0, &group_name_len);
+		if (!(pub = malloc(pub_len)) || !(group_name = malloc(group_name_len))) {
+			free(pub);
+			return SC_ERROR_OUT_OF_MEMORY;
+		}
+		if (EVP_PKEY_get_octet_string_param(pk, OSSL_PKEY_PARAM_PUB_KEY, pub, pub_len, NULL) != 1 ||
+			EVP_PKEY_get_group_name(pk, group_name, group_name_len, NULL) != 1) {
+			free(pub);
+			free(group_name);
+			return SC_ERROR_INTERNAL;
+		}
+		if ((nid = OBJ_sn2nid(group_name) == 0) ||
+			!(group = EC_GROUP_new_by_curve_name(nid)) ||
+			!(point = EC_POINT_new(group)) ||
+			EC_POINT_oct2point(group, point, pub, pub_len, NULL) != 1) {
+			free(pub);
+			free(group_name);
+			EC_POINT_free(point);
+			EC_GROUP_free(group);
+			return SC_ERROR_INTERNAL;
+		}
+		free(pub);
+		free(group_name);
+#endif
 		X = BN_new();
 		Y = BN_new();
-		if (X && Y && EC_KEY_get0_group(eckey))
-					r = EC_POINT_get_affine_coordinates_GFp(EC_KEY_get0_group(eckey),
-					point, X, Y, NULL);
+		if (X && Y && group)
+				r = EC_POINT_get_affine_coordinates(group, point, X, Y, NULL);
 		if (r == 1) {
 			dst->xy.len = BN_num_bytes(X) + BN_num_bytes(Y);
 			dst->xy.data = malloc(dst->xy.len);
@@ -1777,38 +1697,56 @@ sc_pkcs15_convert_pubkey(struct sc_pkcs15_pubkey *pkcs15_key, void *evp_key)
 		}
 		BN_free(X);
 		BN_free(Y);
+
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+		EC_GROUP_free(group);
+		EC_POINT_free(point);
+#endif
 		if (r != 1)
 			return SC_ERROR_INTERNAL;
 		break;
 	}
 	case EVP_PKEY_EC: {
 		struct sc_pkcs15_pubkey_ec *dst = &pkcs15_key->u.ec;
+		pkcs15_key->algorithm = SC_ALGORITHM_EC;
+		unsigned char buf[255]; size_t buflen = 255;
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 		const EC_KEY *src = NULL;
 		const EC_GROUP *grp = NULL;
-		unsigned char buf[255];
-		size_t buflen = 255;
-		int nid;
+		const EC_POINT *point = NULL;
+		int nid = 0;
 
-		src = EVP_PKEY_get0_EC_KEY(pk);
-		assert(src);
-		assert(EC_KEY_get0_public_key(src));
-
-		pkcs15_key->algorithm = SC_ALGORITHM_EC;
-		grp = EC_KEY_get0_group(src);
-		if(grp == 0)
+		if (!(src = EVP_PKEY_get0_EC_KEY(pk)))
 			return SC_ERROR_INCOMPATIBLE_KEY;
+		if (!(point = EC_KEY_get0_public_key(src)) ||
+			!(grp = EC_KEY_get0_group(src))) {
+			return SC_ERROR_INCOMPATIBLE_KEY;
+		 }
 
 		/* Decode EC_POINT from a octet string */
-		buflen = EC_POINT_point2oct(grp, (const EC_POINT *) EC_KEY_get0_public_key(src),
+		buflen = EC_POINT_point2oct(grp, point,
 				POINT_CONVERSION_UNCOMPRESSED, buf, buflen, NULL);
 
 		/* get curve name */
 		nid = EC_GROUP_get_curve_name(grp);
 		if(nid != 0) {
-			const char *name = OBJ_nid2sn(nid);
-			if (name)
-				dst->params.named_curve = strdup(name);
+			const char *group_name = OBJ_nid2sn(nid);
+			if (group_name)
+				dst->params.named_curve = strdup(group_name);
 		}
+#else
+		char group_name[256];
+		if (EVP_PKEY_get_octet_string_param(pk, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, buf, buflen, NULL) != 1)
+			return SC_ERROR_INTERNAL;
+		if (EVP_PKEY_get_group_name(pk, group_name, sizeof(group_name), NULL) != 1)
+			return SC_ERROR_INTERNAL;
+		dst->params.named_curve = strdup(group_name);
+		
+		/* Decode EC_POINT from a octet string */
+		if (EVP_PKEY_get_octet_string_param(pk, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, buf, buflen, &buflen) != 1) {
+			return SC_ERROR_INCOMPATIBLE_KEY;
+		}
+#endif
 
 		/* copy the public key */
 		if (buflen > 0) {

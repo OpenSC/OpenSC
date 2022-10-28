@@ -7,7 +7,7 @@ default: all
 TARGETS = opensc-tool.exe opensc-explorer.exe pkcs15-tool.exe pkcs15-crypt.exe \
 		pkcs11-tool.exe cardos-tool.exe eidenv.exe openpgp-tool.exe iasecc-tool.exe \
 		opensc-notify.exe egk-tool.exe goid-tool.exe paccess-tool.exe opensc-asn1.exe \
-		pkcs11-register.exe $(PROGRAMS_OPENSSL)
+		pkcs11-register.exe $(PROGRAMS_OPENSSL) $(PROGRAMS_OPENPACE)
 
 OBJECTS = util.obj versioninfo-tools.res
 
@@ -60,6 +60,11 @@ pkcs15-tool.exe: pkcs15-tool.obj $(TOPDIR)\src\pkcs11\pkcs11-display.obj
 openpgp-tool.exe: openpgp-tool-helpers.obj $(LIBS)
 	cl $(COPTS) /c $*.c
 	link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj openpgp-tool-helpers.obj $(OBJECTS) $(LIBS) gdi32.lib shell32.lib User32.lib ws2_32.lib shlwapi.lib
+	mt -manifest exe.manifest -outputresource:$@;1
+
+sc-hsm-tool.exe: sc-hsm-tool.obj fread_to_eof.obj $(OBJECTS) $(LIBS)
+	cl $(COPTS) /c $*.c
+	link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj sc-hsm-tool.obj fread_to_eof.obj $(OBJECTS) $(LIBS) $(OPENSSL_LIB) gdi32.lib shell32.lib User32.lib ws2_32.lib
 	mt -manifest exe.manifest -outputresource:$@;1
 
 .c.exe:

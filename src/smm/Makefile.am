@@ -11,14 +11,16 @@ LIBS = $(top_builddir)/src/sm/libsm.la \
 	$(top_builddir)/src/common/libcompat.la
 
 if ENABLE_OPENSSL
+if ENABLE_SHARED
 lib_LTLIBRARIES = libsmm-local.la
+endif
 endif
 
 libsmm_local_la_SOURCES = smm-local.c sm-module.h \
 	sm-global-platform.c sm-cwa14890.c \
 	sm-card-authentic.c sm-card-iasecc.c \
 	smm-local.exports
-libsmm_local_la_LIBADD = $(OPTIONAL_OPENSSL_LIBS) ../libopensc/libopensc.la
+libsmm_local_la_LIBADD = $(OPTIONAL_OPENSSL_LIBS)
 libsmm_local_la_LDFLAGS = -module -shared -no-undefined -version-info @OPENSC_LT_CURRENT@:@OPENSC_LT_REVISION@:@OPENSC_LT_AGE@
 
 # noinst_HEADERS = sm.h

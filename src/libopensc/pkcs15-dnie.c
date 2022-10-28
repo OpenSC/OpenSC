@@ -143,6 +143,7 @@ static int sc_pkcs15emu_dnie_init(sc_pkcs15_card_t * p15card)
 	size_t len = sizeof(buf);
 	int rv;
 	struct sc_pkcs15_cert_info *p15_info = NULL;
+	int use_pin_cache_backup = p15card->opts.use_pin_cache;
 
 	sc_context_t *ctx = p15card->card->ctx;
 	LOG_FUNC_CALLED(ctx);
@@ -171,38 +172,32 @@ static int sc_pkcs15emu_dnie_init(sc_pkcs15_card_t * p15card)
 	/* Set root path of this application */
 	sc_file_free(p15card->file_app);
 	p15card->file_app = sc_file_new();
-	if (NULL == p15card->file_app)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
+	if (NULL == p15card->file_app) {
+		rv = SC_ERROR_NOT_ENOUGH_MEMORY;
+		LOG_TEST_GOTO_ERR(ctx, rv, "Can not create file.");
+	}
 	sc_format_path("3F00", &p15card->file_app->path);
 
 	/* Load TokenInfo */
 	rv = dump_ef(p15card->card, "3F0050155032", buf, &len);
-	if (rv != SC_SUCCESS) {
-		sc_log(ctx, "Reading of EF.TOKENINFO failed: %d", rv);
-		LOG_FUNC_RETURN(ctx, rv);
-	}
+	LOG_TEST_GOTO_ERR(ctx, rv, "Reading of EF.TOKENINFO failed.");
+
 	rv = sc_pkcs15_parse_tokeninfo(p15card->card->ctx, p15card->tokeninfo,
 				       buf, len);
-	if (rv != SC_SUCCESS) {
-		sc_log(ctx, "Decoding of EF.TOKENINFO failed: %d", rv);
-		LOG_FUNC_RETURN(ctx, rv);
-	}
+	LOG_TEST_GOTO_ERR(ctx, rv, "Decoding of EF.TOKENINFO failed.");
 
 	/* Only accept the original stuff */
-	if (strcmp(p15card->tokeninfo->manufacturer_id, "DGP-FNMT") != 0)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_WRONG_CARD);
+	if (strcmp(p15card->tokeninfo->manufacturer_id, "DGP-FNMT") != 0) {
+		rv = SC_ERROR_WRONG_CARD;
+		LOG_TEST_GOTO_ERR(ctx, rv, "Wrong card.");
+	}
 
 	/* Load ODF */
 	rv = dump_ef(p15card->card, "3F0050155031", buf, &len);
-	if (rv != SC_SUCCESS) {
-		sc_log(ctx, "Reading of ODF failed: %d", rv);
-		LOG_FUNC_RETURN(ctx, rv);
-	}
+	LOG_TEST_GOTO_ERR(ctx, rv, "Reading of ODF failed.");
+
 	rv = parse_odf(buf, len, p15card);
-	if (rv != SC_SUCCESS) {
-		sc_log(ctx, "Decoding of ODF failed: %d", rv);
-		LOG_FUNC_RETURN(ctx, rv);
-	}
+	LOG_TEST_GOTO_ERR(ctx, rv, "Decoding of ODF failed.");
 
 	/* Decode EF.PrKDF, EF.PuKDF and EF.CDF */
 	for (df = p15card->df_list; df != NULL; df = df->next) {
@@ -270,6 +265,11 @@ static int sc_pkcs15emu_dnie_init(sc_pkcs15_card_t * p15card)
 	}
 	
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+
+err:
+	sc_pkcs15_card_clear(p15card);
+	p15card->opts.use_pin_cache = use_pin_cache_backup;
+	LOG_FUNC_RETURN(ctx, rv);
 }
 #endif
 

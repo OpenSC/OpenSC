@@ -111,16 +111,9 @@ static int do_convert_bignum(sc_pkcs15_bignum_t *dst, const BIGNUM *src)
 	return 1;
 }
 
-static int	charge = 0;
 static void print_openssl_error(void)
 {
 	long r;
-
-	if (!charge)
-	{
-		ERR_load_crypto_strings();
-		charge = 1;
-	}
 
 	while ((r = ERR_get_error()) != 0)
 		printf("%s\n", ERR_error_string(r, NULL));
@@ -368,7 +361,7 @@ int main(int argc, char *argv[])
 	sc_context_t *ctx = NULL;
 	sc_file_t *file = NULL;
 	sc_path_t path;
-	RSA	*rsa = NULL;
+	EVP_PKEY *pkey = NULL;
 	BIGNUM	*bn = NULL;
 	BIO	*mem = NULL;
 	static const char *pin = NULL;
@@ -578,32 +571,36 @@ int main(int argc, char *argv[])
 		struct sc_pkcs15_pubkey key;
 		struct sc_pkcs15_pubkey_rsa *dst = &(key.u.rsa);
 		u8 *pdata;
+		EVP_PKEY_CTX *pctx = NULL;
 
 		memset(&key, 0, sizeof(key));
 		key.algorithm = SC_ALGORITHM_RSA;
 
 		printf("Generate key of length %d.\n", keylen);
 
-		rsa = RSA_new();
 		bn = BN_new();
 		mem = BIO_new(BIO_s_mem());
+		pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, NULL);
 
-		if(rsa == NULL || bn == NULL || mem == NULL)
+		if(bn == NULL || mem == NULL || pctx == NULL)
 		{
 			printf("Not enough memory.\n");
+			if (pctx)
+				EVP_PKEY_CTX_free(pctx);
 			goto out;
 		}
 
-		if(!BN_set_word(bn, RSA_F4) ||
-			!RSA_generate_key_ex(rsa, keylen, bn, NULL))
+		if (EVP_PKEY_keygen_init(pctx) != 1 ||
+			EVP_PKEY_CTX_set_rsa_keygen_bits(pctx, keylen) != 1 ||
+			EVP_PKEY_keygen(pctx, &pkey) != 1)
 		{
-			printf("RSA_generate_key_ex return %ld\n", ERR_get_error());
+			printf("Key generation failed.\n");
+			EVP_PKEY_CTX_free(pctx);
 			goto out;
 		}
+		EVP_PKEY_CTX_free(pctx);
 
-		RSA_set_method(rsa, RSA_PKCS1_OpenSSL());
-
-		if(!i2d_RSAPrivateKey_bio(mem, rsa))
+		if(!i2d_PrivateKey_bio(mem, pkey))
 		{
 			printf("i2d_RSAPrivateKey_bio return %ld\n", ERR_get_error());
 			goto out;
@@ -667,17 +664,39 @@ int main(int argc, char *argv[])
 		if(r) goto out;
 
 		{
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 			const BIGNUM *rsa_n, *rsa_e;
-
+			RSA *rsa = NULL;
+			rsa = EVP_PKEY_get1_RSA(pkey);
 			RSA_get0_key(rsa, &rsa_n, &rsa_e, NULL);
-
-			if (!do_convert_bignum(&dst->modulus, rsa_n)
-			 || !do_convert_bignum(&dst->exponent, rsa_e))
+#else
+			BIGNUM *rsa_n = NULL, *rsa_e = NULL;
+			if (EVP_PKEY_get_bn_param(pkey, "n", &rsa_n) != 1 ||
+				EVP_PKEY_get_bn_param(pkey, "e", &rsa_e) != 1)
 			{
+				BN_free(rsa_n);
+			}
+#endif
+
+			if (!do_convert_bignum(&dst->modulus, rsa_n) ||
+				!do_convert_bignum(&dst->exponent, rsa_e))
+			{
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+				RSA_free(rsa);
+#else
+				BN_free(rsa_n);
+				BN_free(rsa_e);
+#endif
 				free(dst->modulus.data);
 				free(dst->exponent.data);
 				goto out;
 			}
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+			RSA_free(rsa);
+#else
+			BN_free(rsa_n);
+			BN_free(rsa_e);
+#endif
 		}
 
 		r = sc_pkcs15_encode_pubkey(ctx, &key, &pdata, &lg);
@@ -893,8 +912,8 @@ out:
 		BIO_free(mem);
 	if(bn)
 		BN_free(bn);
-	if(rsa)
-		RSA_free(rsa);
+	if(pkey)
+		EVP_PKEY_free(pkey);
 
 	if(file)
 		sc_file_free(file);

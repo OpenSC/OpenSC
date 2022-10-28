@@ -46,6 +46,7 @@
 						<para>Use <option>--pin-retry</option> to define the maximum number of wrong user PIN presentations.</para>
 						<para>Use with <option>--dkek-shares</option> to enable key wrap / unwrap.</para>
 						<para>Use with <option>--label</option> to define a token label</para>
+						<para>Use with <option>--public-key-auth</option> and <option>--required-pub-keys</option> to require public key authentication for login</para>
 					</listitem>
 				</varlistentry>
 
@@ -230,6 +231,74 @@
 						</para>
 					</listitem>
 				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--public-key-auth</option> <replaceable>total-number-of-public-keys</replaceable>,
+						<option>-K</option> <replaceable>total-number-of-public-keys</replaceable>
+					</term>
+					<listitem>
+						<para>Define the total number of public keys to use for public key authentication when using <option>--initialize</option>.
+							  <option>--public-key-auth</option> is optional, but if it's present, it must be used with <option>--required-pub-keys</option>.
+						</para>
+						<para>When the SmartCard-HSM is initialized with these options, it will require M-of-N public key authentication to be used, where
+							<option>--required-pub-keys</option> sets the M and <option>--public-key-auth</option> sets the N. After the initialization,
+							the user should use <option>--register-public-key</option> to register the N public keys before the SmartCard-HSM can be used.
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--required-pub-keys</option> <replaceable>required-number-of-public-keys</replaceable>,
+						<option>-n</option> <replaceable>required-number-of-public-keys</replaceable>
+					</term>
+					<listitem>
+						<para>Define the required number of public keys to use for public key authentication when using <option>--initialize</option>.
+							  This is the M in M-of-N public key authentication. See <option>--public-key-auth</option> for more information.
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--register-public-key</option> <replaceable>input-public-key-file</replaceable>,
+						<option>-g</option> <replaceable>input-public-key-file</replaceable>
+					</term>
+					<listitem>
+						<para>Register a public key to be used for M-of-N public key authentication. The file can be exported from
+							  a different SmartCard-HSM with <option>--export-for-pub-key-auth</option>. This can only be used when the
+							  SmartCard-HSM has been initialized with <option>--public-key-auth</option> and <option>--required-pub-keys</option>
+							  and fewer than N public keys have been registered. Use <option>--public-key-auth-status</option> to check the
+							  how many public keys have been registered.
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--export-for-pub-key-auth</option> <replaceable>output-public-key-file</replaceable>,
+						<option>-e</option> <replaceable>output-public-key-file</replaceable>
+					</term>
+					<listitem>
+						<para>Export a public key to be used for M-of-N public key authentication. This should be used with
+							  <option>--key-reference</option> to choose the key to export. The file should be registered on
+							  another SmartCard-HSM using <option>--register-public-key</option>.
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--public-key-auth-status</option>
+						<option>-S</option>
+					</term>
+					<listitem>
+						<para>Print the public key authentication status. This is only valid if the SmartCard-HSM was initialized
+							  to use M-of-N public key authentication.
+						</para>
+					</listitem>
+				</varlistentry>
 				
 				<varlistentry>
 					<term>
@@ -268,6 +337,13 @@
 		<para><command>sc-hsm-tool --wrap-key wrap-key.bin --key-reference 1 --pin 648219</command></para>
 		<para>Unwrap key into same or in different SmartCard-HSM with the same DKEK:</para>
 		<para><command>sc-hsm-tool --unwrap-key wrap-key.bin --key-reference 10 --pin 648219 --force</command></para>
+		<para>Initialize SmartCard-HSM to use M-of-N public key authentication with M=2 and N=5</para>
+		<para><command>sc-hsm-tool --initialize --required-pub-keys 2 --public-key-auth 5</command></para>
+		<para>Export a public key for M-of-N public key authentication to a file</para>
+		<para><command>sc-hsm-tool --key-reference 1 --export-for-pub-key-auth ./public_key1.asn1</command></para>
+		<para>Register a public key for M-of-N public key authentication from a file</para>
+		<para><command>sc-hsm-tool --register-public-key ./public_key1.asn1</command></para>
+
 	</refsect1>
 	
 	<refsect1>

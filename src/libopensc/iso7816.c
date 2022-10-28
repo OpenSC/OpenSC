@@ -1324,7 +1324,8 @@ static struct sc_card_operations iso_ops = {
 	NULL,			/* read_public_key */
 	NULL,			/* card_reader_lock_obtained */
 	NULL,			/* wrap */
-	NULL			/* unwrap */
+	NULL,			/* unwrap */
+	NULL			/* encrypt_sym */
 };
 
 static struct sc_card_driver iso_driver = {
@@ -1378,7 +1379,7 @@ int iso7816_read_binary_sfid(sc_card_t *card, unsigned char sfid,
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	if (r < 0 && r != SC_ERROR_FILE_END_REACHED)
 		goto err;
-	/* emulate the behaviour of sc_read_binary */
+	/* emulate the behaviour of iso7816_read_binary */
 	r = apdu.resplen;
 
 	while(1) {
@@ -1386,11 +1387,13 @@ int iso7816_read_binary_sfid(sc_card_t *card, unsigned char sfid,
 			*ef_len += r;
 			break;
 		}
-		if (r == 0 || r == SC_ERROR_FILE_END_REACHED)
-			break;
-		if (r < 0) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not read EF.");
-			goto err;
+		if (r <= 0) {
+			if (*ef_len > 0)
+				break;
+			else {
+				sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not read EF.");
+				goto err;
+			}
 		}
 		*ef_len += r;
 
@@ -1401,7 +1404,7 @@ int iso7816_read_binary_sfid(sc_card_t *card, unsigned char sfid,
 		}
 		*ef = p;
 
-		r = sc_read_binary(card, *ef_len,
+		r = iso7816_read_binary(card, *ef_len,
 				*ef + *ef_len, read, 0);
 	}
 

@@ -24,6 +24,11 @@
 #include <openssl/sha.h>
 #include <openssl/md5.h>
 #include <openssl/ripemd.h>
+#include <openssl/rand.h>
+#include <openssl/evp.h>
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+# include <openssl/provider.h>
+#endif
 
 #define MESSAGE_TO_SIGN "Simple message for signing & verifying. " \
 	"It needs to be little bit longer to fit also longer keys and allow the truncation.\n" \
@@ -50,6 +55,10 @@
 			"\xd3\x1a\x3f"
 #define BUFFER_SIZE		4096
 
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+OSSL_PROVIDER *legacy_provider = NULL;
+#endif
+
 const unsigned char *const_message = (unsigned char *) MESSAGE_TO_SIGN;
 
 static unsigned char *
@@ -57,13 +66,31 @@ rsa_x_509_pad_message(const unsigned char *message,
 	unsigned long *message_length, test_cert_t *o, int encrypt)
 {
 	int pad_message_length = (o->bits+7)/8;
-	unsigned char *pad_message = malloc(pad_message_length);
-	if (!encrypt)
-		RSA_padding_add_PKCS1_type_1(pad_message, pad_message_length,
-		    message, *message_length);
-	else
-		RSA_padding_add_PKCS1_type_2(pad_message, pad_message_length,
-		    message, *message_length);
+	unsigned char *pad_message = NULL;
+	size_t padding_len = pad_message_length - (*message_length) - 3;
+
+	if (pad_message_length - (*message_length) <= 11) {
+		debug_print("Can not pad message - buffer to small");
+		return NULL;
+	}
+	if ((pad_message = malloc(pad_message_length)) == NULL) {
+		fprintf(stderr, "System error: unable to allocate memory\n");
+		return NULL;
+	}
+
+	pad_message[0] = 0x00;
+	pad_message[pad_message_length - 1] = 0x00;
+	if (!encrypt) {
+		pad_message[1] = 0x01;
+		memset(pad_message + 2, 0xff, padding_len);
+	} else {
+		pad_message[1] = 0x02;
+		if (RAND_bytes(pad_message + 2, padding_len) != 1) {
+			debug_print("Can not generate random bytes.");
+		}
+	}
+	memcpy(pad_message + 2 + padding_len, message, (*message_length) * sizeof(unsigned char));
+
 	*message_length = pad_message_length;
 	return pad_message;
 }
@@ -71,15 +98,12 @@ rsa_x_509_pad_message(const unsigned char *message,
 int encrypt_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
     CK_ULONG message_length, test_mech_t *mech, unsigned char **enc_message)
 {
-	int rv, padding;
+	int rv = -1, padding;
+	size_t outlen = 0;
+	EVP_PKEY_CTX *ctx = NULL;
 
-	/* this works only for RSA keys */
-	if (o->key_type != CKK_RSA) {
-		debug_print("skip non-RSA key");
-		return -1;
-	}
-
-	*enc_message = malloc(RSA_size(o->key.rsa));
+	outlen = EVP_PKEY_size(o->key);
+	*enc_message = malloc(outlen);
 	if (*enc_message == NULL) {
 		debug_print("malloc returned null");
 		return -1;
@@ -87,15 +111,20 @@ int encrypt_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message
 
 	/* Prepare padding for RSA_X_509 */
 	padding = ((mech->mech == CKM_RSA_X_509) ? RSA_NO_PADDING : RSA_PKCS1_PADDING);
-	rv = RSA_public_encrypt(message_length, message,
-		*enc_message, o->key.rsa, padding);
-	if (rv < 0) {
+
+	ctx = EVP_PKEY_CTX_new(o->key, NULL);
+	if (!ctx || (rv = EVP_PKEY_encrypt_init(ctx)) <= 0 ||
+	    (rv = EVP_PKEY_CTX_set_rsa_padding(ctx, padding)) <= 0 ||
+	    (rv = EVP_PKEY_encrypt(ctx, *enc_message, &outlen, message, message_length)) <= 0) {
 		free(*enc_message);
 		*enc_message = NULL;
-		debug_print("RSA_public_encrypt: rv = 0x%.8X\n", rv);
+		EVP_PKEY_CTX_free(ctx);
+		fprintf(stderr, " [ ERROR %s ] OpenSSL encrypt failed: %s\n",
+			o->id_str, ERR_error_string(ERR_peek_last_error(), NULL));
 		return -1;
 	}
-	return rv;
+	EVP_PKEY_CTX_free(ctx);
+	return outlen;
 }
 
 int encrypt_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
@@ -201,8 +230,8 @@ int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 		return 0;
 	}
 
-	if (o->type != EVP_PK_RSA) {
-		debug_print(" [ KEY %s ] Skip non-RSA key for encryption", o->id_str);
+	if (o->type != EVP_PKEY_RSA) {
+		debug_print(" [SKIP %s ] Skip non-RSA key for encryption", o->id_str);
 		return 0;
 	}
 
@@ -218,11 +247,16 @@ int encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 		return 0;
 	}
 
-	if (mech->mech == CKM_RSA_X_509)
-		message = rsa_x_509_pad_message(const_message,
-			&message_length, o, 1);
-	else
+	if (mech->mech == CKM_RSA_X_509) {
+		if ((message = rsa_x_509_pad_message(const_message,
+			&message_length, o, 1)) == NULL) {
+			debug_print(" [SKIP %s ] Could not pad message", o->id_str);
+			return -1;
+		}
+	} else {
 		message = (CK_BYTE *) strdup(MESSAGE_TO_SIGN);
+	}
+
 
 	debug_print(" [ KEY %s ] Encrypt message using CKM_%s",
 		o->id_str, get_mechanism_name(mech->mech));
@@ -268,7 +302,14 @@ int sign_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 	CK_MECHANISM sign_mechanism = { mech->mech, mech->params, mech->params_len };
 	CK_ULONG sign_length = 0;
 	char *name;
-
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	if (!legacy_provider) {
+		if (!(legacy_provider = OSSL_PROVIDER_try_load(NULL, "legacy", 1))) {
+			debug_print(" [SKIP %s ] Failed to load legacy provider", o->id_str);
+			return 0;
+		}
+	}
+#endif
 	rv = fp->C_SignInit(info->session_handle, &sign_mechanism,
 		o->private_handle);
 	if (rv == CKR_KEY_TYPE_INCONSISTENT) {
@@ -278,8 +319,8 @@ int sign_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 		debug_print(" [SKIP %s ] Bad mechanism. Not supported?", o->id_str);
 		return 0;
 	} else if (rv != CKR_OK) {
-		debug_print("  C_SignInit: rv = 0x%.8lX\n", rv);
-		return -1;
+		debug_print(" [SKIP %s ] Not allowed to sign with this key?", o->id_str);
+		return 0;
 	}
 
 	always_authenticate(o, info);
@@ -352,96 +393,92 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 	CK_BYTE *cmp_message = NULL;
 	int cmp_message_length;
 
-	if (o->type == EVP_PK_RSA) {
-		int type;
-
-		/* raw RSA mechanism */
-		if (mech->mech == CKM_RSA_PKCS || mech->mech == CKM_RSA_X_509) {
-			CK_BYTE dec_message[BUFFER_SIZE];
-			int padding = ((mech->mech == CKM_RSA_X_509)
-				? RSA_NO_PADDING : RSA_PKCS1_PADDING);
-			int dec_message_length = RSA_public_decrypt(sign_length, sign,
-				dec_message, o->key.rsa, padding);
-			if (dec_message_length < 0) {
-				fprintf(stderr, "RSA_public_decrypt: rv = %d: %s\n", dec_message_length,
-					ERR_error_string(ERR_peek_last_error(), NULL));
-				return -1;
-			}
-			if (memcmp(dec_message, message, dec_message_length) == 0
-					&& dec_message_length == (int) message_length) {
-				debug_print(" [  OK %s ] Signature is valid.", o->id_str);
-				mech->result_flags |= FLAGS_SIGN_OPENSSL;
-				return 1;
-			} else {
-				fprintf(stderr, " [ ERROR %s ] Signature is not valid. Error: %s\n",
-					o->id_str, ERR_error_string(ERR_peek_last_error(), NULL));
-				return 0;
-			}
-		}
+	if (o->type == EVP_PKEY_RSA) {
+		const EVP_MD *md = NULL;
+		EVP_MD_CTX *mdctx = NULL;
+		EVP_PKEY_CTX *ctx = NULL;
+		int padding = RSA_PKCS1_PADDING;
 
 		/* Digest mechanisms */
 		switch (mech->mech) {
+		case CKM_RSA_X_509:
+			padding = RSA_NO_PADDING;
+			/* fall through */
+		case CKM_RSA_PKCS:
+			if ((ctx = EVP_PKEY_CTX_new(o->key, NULL)) == NULL ||
+			    (rv = EVP_PKEY_verify_init(ctx)) <= 0 ||
+			    (rv = EVP_PKEY_CTX_set_rsa_padding(ctx, padding)) <= 0 ||
+			    (rv = EVP_PKEY_verify(ctx, sign, sign_length, message, message_length)) != 1) {
+				fprintf(stderr, " [ ERROR %s ] Signature is not valid. Error: %s\n",
+					o->id_str, ERR_error_string(ERR_peek_last_error(), NULL));
+				EVP_PKEY_CTX_free(ctx);
+				return -1;
+			}
+			mech->result_flags |= FLAGS_SIGN_OPENSSL;
+			debug_print(" [  OK %s ] Signature is valid.", o->id_str);
+			return 1;
+			break;
 		case CKM_SHA1_RSA_PKCS:
-			cmp_message = SHA1(message, message_length, NULL);
-			cmp_message_length = SHA_DIGEST_LENGTH;
-			type = NID_sha1;
+			md = EVP_sha1();
 			break;
 		case CKM_SHA224_RSA_PKCS:
-			cmp_message = SHA224(message, message_length, NULL);
-			cmp_message_length = SHA224_DIGEST_LENGTH;
-			type = NID_sha224;
+			md = EVP_sha224();
 			break;
 		case CKM_SHA256_RSA_PKCS:
-			cmp_message = SHA256(message, message_length, NULL);
-			cmp_message_length = SHA256_DIGEST_LENGTH;
-			type = NID_sha256;
+			md = EVP_sha256();
 			break;
 		case CKM_SHA384_RSA_PKCS:
-			cmp_message = SHA384(message, message_length, NULL);
-			cmp_message_length = SHA384_DIGEST_LENGTH;
-			type = NID_sha384;
+			md = EVP_sha384();
 			break;
 		case CKM_SHA512_RSA_PKCS:
-			cmp_message = SHA512(message, message_length, NULL);
-			cmp_message_length = SHA512_DIGEST_LENGTH;
-			type = NID_sha512;
+			md = EVP_sha512();
 			break;
 		case CKM_MD5_RSA_PKCS:
-			cmp_message = MD5(message, message_length, NULL);
-			cmp_message_length = MD5_DIGEST_LENGTH;
-			type = NID_md5;
+			md = EVP_md5();
 			break;
 		case CKM_RIPEMD160_RSA_PKCS:
-			cmp_message = RIPEMD160(message, message_length, NULL);
-			cmp_message_length = RIPEMD160_DIGEST_LENGTH;
-			type = NID_ripemd160;
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+			if (!legacy_provider) {
+				if (!(legacy_provider = OSSL_PROVIDER_try_load(NULL, "legacy", 1))) {
+					debug_print(" [SKIP %s ] Failed to load legacy provider", o->id_str);
+					return 0;
+				}
+			}
+#endif
+			md = EVP_ripemd160();
 			break;
 		default:
 			debug_print(" [SKIP %s ] Skip verify of unknown mechanism", o->id_str);
 			return 0;
 		}
-		rv = RSA_verify(type, cmp_message, cmp_message_length,
-			sign, sign_length, o->key.rsa);
-		if (rv == 1) {
-			debug_print(" [  OK %s ] Signature is valid.", o->id_str);
-			mech->result_flags |= FLAGS_SIGN_OPENSSL;
-		 } else {
+
+		if ((mdctx = EVP_MD_CTX_new()) == NULL ||
+		    (rv = EVP_DigestVerifyInit(mdctx, NULL, md, NULL, o->key) <= 0) ||
+		    (rv = EVP_DigestVerify(mdctx, sign, sign_length, message, message_length)) != 1) {
 			fprintf(stderr, " [ ERROR %s ] Signature is not valid. Error: %s\n",
 				o->id_str, ERR_error_string(ERR_peek_last_error(), NULL));
+			EVP_MD_CTX_free(mdctx);
 			return -1;
 		}
-	} else if (o->type == EVP_PK_EC) {
+		mech->result_flags |= FLAGS_SIGN_OPENSSL;
+		debug_print(" [  OK %s ] Signature is valid.", o->id_str);
+		return 1;
+	} else if (o->type == EVP_PKEY_EC) {
 		unsigned int nlen;
 		ECDSA_SIG *sig = ECDSA_SIG_new();
 		BIGNUM *r = NULL, *s = NULL;
-		if (sig == NULL) {
-			fprintf(stderr, "ECDSA_SIG_new: failed");
+		EVP_PKEY_CTX *ctx = NULL;
+		ctx = EVP_PKEY_CTX_new(o->key, NULL);
+
+		if (!sig || !ctx) {
+			fprintf(stderr, "Verification failed");
 			return -1;
 		}
 		nlen = sign_length/2;
 		r = BN_bin2bn(&sign[0], nlen, NULL);
 		s = BN_bin2bn(&sign[nlen], nlen, NULL);
 		ECDSA_SIG_set0(sig, r, s);
+
 		switch (mech->mech) {
 		case CKM_ECDSA_SHA512:
 			cmp_message = SHA512(message, message_length, NULL);
@@ -467,24 +504,31 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 			debug_print(" [SKIP %s ] Skip verify of unknown mechanism", o->id_str);
 			return 0;
 		}
-		rv = ECDSA_do_verify(cmp_message, cmp_message_length, sig, o->key.ec);
+		int sig_asn1_len = 0;
+		unsigned char *sig_asn1 = NULL;
+		sig_asn1_len = i2d_ECDSA_SIG(sig, &sig_asn1);
+
+		if (EVP_PKEY_verify_init(ctx) != 1) {
+        	fprintf(stderr, "EVP_PKEY_verify_init\n");
+    	}
+
+		rv = EVP_PKEY_verify(ctx, sig_asn1, sig_asn1_len, cmp_message, cmp_message_length);
 		if (rv == 1) {
-			ECDSA_SIG_free(sig);
 			debug_print(" [  OK %s ] EC Signature of length %lu is valid.",
 				o->id_str, message_length);
 			mech->result_flags |= FLAGS_SIGN_OPENSSL;
 			return 1;
 		} else {
-			ECDSA_SIG_free(sig);
-			fprintf(stderr, " [FAIL %s ] ECDSA_do_verify: rv = %lu: %s\n", o->id_str,
+			fprintf(stderr, " [FAIL %s ] EVP_PKEY_verify: rv = %lu: %s\n", o->id_str,
 				rv, ERR_error_string(ERR_peek_last_error(), NULL));
 			return -1;
 		}
+#ifdef EVP_PKEY_ED25519
 	} else if (o->type == EVP_PKEY_ED25519) {
 		/* need to be created even though we do not do any MD */
 		EVP_MD_CTX *ctx = EVP_MD_CTX_create();
 
-		rv = EVP_DigestVerifyInit(ctx, NULL, NULL, NULL, o->key.pkey);
+		rv = EVP_DigestVerifyInit(ctx, NULL, NULL, NULL, o->key);
 		if (rv != 1) {
 			fprintf(stderr, " [FAIL %s ] EVP_DigestVerifyInit: rv = %lu: %s\n", o->id_str,
 				rv, ERR_error_string(ERR_peek_last_error(), NULL));
@@ -505,7 +549,7 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 			EVP_MD_CTX_free(ctx);
 			return -1;
 		}
-
+#endif
 	} else {
 		fprintf(stderr, " [ KEY %s ] Unknown type. Not verifying\n", o->id_str);
 	}
@@ -518,10 +562,11 @@ int verify_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 {
 	CK_RV rv;
 	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
-	CK_MECHANISM sign_mechanism = { mech->mech, mech->params, mech->params_len };
+	CK_MECHANISM sign_mechanism = { mech->mech, NULL_PTR, 0 };
+	static int verify_support = 1;
 	char *name;
 
-	if (!info->verify_support)
+	if (!verify_support)
 		goto openssl_verify;
 
 	/* try C_Verify() if it is supported */
@@ -529,7 +574,7 @@ int verify_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 		o->public_handle);
 	if (rv != CKR_OK) {
 		debug_print("   C_VerifyInit: rv = 0x%.8lX", rv);
-		info->verify_support = 0; /* avoid trying over and over again */
+		verify_support = 0; /* avoid trying over and over again */
 		goto openssl_verify;
 	}
 	if (multipart) {
@@ -558,11 +603,11 @@ int verify_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 	}
 	if (rv == CKR_OK) {
 		mech->result_flags |= FLAGS_SIGN;
-		debug_print(" [  OK %s ] Verification successful", o->id_str);
+		debug_print(" [  OK %s ] [PKCS11] Verification successful", o->id_str);
 		return 1;
 	}
 	debug_print("   %s: rv = 0x%.8lX", name, rv);
-	info->verify_support = 0; /* avoid trying over and over again */
+	verify_support = 0; /* avoid trying over and over again */
 
 openssl_verify:
 	debug_print(" [ KEY %s ] Falling back to openssl verification", o->id_str);
@@ -589,8 +634,7 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 	int rv = 0;
 
 	if (message_length > strlen(MESSAGE_TO_SIGN)) {
-		fail_msg("Truncate (%lu) is longer than the actual message (%lu)",
-			message_length, strlen(MESSAGE_TO_SIGN));
+		fail_msg("Truncate is longer than the actual message");
 		return -1;
 	}
 
@@ -599,7 +643,11 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 		return 0;
 	}
 
-	if (o->type != EVP_PK_EC && o->type != EVP_PK_RSA && o->type != EVP_PKEY_ED25519) {
+	if (o->type != EVP_PKEY_EC && o->type != EVP_PKEY_RSA
+#ifdef EVP_PKEY_ED25519
+			&& o->type != EVP_PKEY_ED25519
+#endif
+			) {
 		debug_print(" [SKIP %s ] Skip non-RSA and non-EC key", o->id_str);
 		return 0;
 	}

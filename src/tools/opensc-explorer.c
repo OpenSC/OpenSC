@@ -1858,7 +1858,7 @@ static int do_erase(int argc, char **argv)
 
 static int do_random(int argc, char **argv)
 {
-	unsigned char buffer[SC_MAX_EXT_APDU_BUFFER_SIZE];
+	unsigned char buffer[SC_MAX_EXT_APDU_BUFFER_SIZE] = {0};
 	int r, count;
 	const char *filename = NULL;
 	FILE *outf = NULL;
@@ -1908,7 +1908,9 @@ static int do_random(int argc, char **argv)
 
 	if (argc == 2) {
 		/* outf is guaranteed to be non-NULL */
-		size_t written = fwrite(buffer, 1, count, outf);
+		size_t written = 0;
+		if (count > 0)
+			written = fwrite(buffer, 1, count, outf);
 
 		if (written < (size_t) count)
 			perror(filename);
@@ -2472,7 +2474,7 @@ int main(int argc, char *argv[])
 		char *line;
 		int cargc;
 		char *cargv[260];
-		int multiple;
+		int multiple = 0;
 		struct command *cmd;
 		char prompt[3*SC_MAX_PATH_STRING_SIZE];
 

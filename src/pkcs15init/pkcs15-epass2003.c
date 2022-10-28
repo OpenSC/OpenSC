@@ -298,6 +298,8 @@ static int epass2003_pkcs15_key_reference(struct sc_profile *profile,
 					  struct sc_pkcs15_prkey_info *prkey)
 {
 	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
+	if (prkey->path.len == 0)
+		SC_FUNC_RETURN(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
 	prkey->key_reference = prkey->path.value[prkey->path.len - 1];
 	SC_FUNC_RETURN(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
 }
@@ -307,7 +309,7 @@ static int
 cosm_new_file(struct sc_profile *profile, struct sc_card *card,
 	      unsigned int type, unsigned int num, struct sc_file **out)
 {
-	struct sc_file *file;
+	struct sc_file *file = NULL;
 	const char *_template = NULL, *desc = NULL;
 	unsigned int structure = 0xFFFFFFFF;
 
@@ -317,12 +319,12 @@ cosm_new_file(struct sc_profile *profile, struct sc_card *card,
 	while (1) {
 		switch (type) {
 		case SC_PKCS15_TYPE_PRKEY_EC:
-			desc = "RSA private key";
+			desc = "EC private key";
 			_template = "private-key";
 			structure = SC_CARDCTL_OBERTHUR_KEY_EC_CRT;
 			break;
 		case SC_PKCS15_TYPE_PUBKEY_EC:
-			desc = "RSA public key";
+			desc = "EC public key";
 			_template = "public-key";
 			structure = SC_CARDCTL_OBERTHUR_KEY_EC_PUBLIC;
 			break;
@@ -335,10 +337,6 @@ cosm_new_file(struct sc_profile *profile, struct sc_card *card,
 			desc = "RSA public key";
 			_template = "public-key";
 			structure = SC_CARDCTL_OBERTHUR_KEY_RSA_PUBLIC;
-			break;
-		case SC_PKCS15_TYPE_PUBKEY_DSA:
-			desc = "DSA public key";
-			_template = "public-key";
 			break;
 		case SC_PKCS15_TYPE_PRKEY:
 			desc = "extractable private key";
@@ -375,6 +373,11 @@ cosm_new_file(struct sc_profile *profile, struct sc_card *card,
 			 "Profile doesn't define %s template '%s'\n", desc,
 			 _template);
 		return SC_ERROR_NOT_SUPPORTED;
+	}
+
+	if (file->path.len < 1) {
+		sc_file_free(file);
+		return SC_ERROR_INTERNAL;
 	}
 
 	file->id &= 0xFF00;

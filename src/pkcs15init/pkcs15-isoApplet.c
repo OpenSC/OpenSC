@@ -576,6 +576,11 @@ out:
 			pubkey->u.ec.params.der.value = NULL;
 			pubkey->u.ec.params.der.len = 0;
 		}
+		if(pubkey->u.ec.params.named_curve)
+		{
+			free(pubkey->u.ec.params.named_curve);
+			pubkey->u.ec.params.named_curve = NULL;
+		}
 		if(pubkey->u.ec.ecpointQ.value)
 		{
 			free(pubkey->u.ec.ecpointQ.value);

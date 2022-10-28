@@ -237,7 +237,7 @@ static int sign(struct sc_pkcs15_object *obj)
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
-	r = sc_pkcs15_compute_signature(p15card, obj, opt_crypt_flags, buf, c, out, len);
+	r = sc_pkcs15_compute_signature(p15card, obj, opt_crypt_flags, buf, c, out, len, NULL);
 	if (r < 0) {
 		fprintf(stderr, "Compute signature failed: %s\n", sc_strerror(r));
 		return 1;
@@ -284,7 +284,7 @@ static int decipher(struct sc_pkcs15_object *obj)
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
-	r = sc_pkcs15_decipher(p15card, obj, opt_crypt_flags & SC_ALGORITHM_RSA_PAD_PKCS1, buf, c, out, len);
+	r = sc_pkcs15_decipher(p15card, obj, opt_crypt_flags & SC_ALGORITHM_RSA_PAD_PKCS1, buf, c, out, len, NULL);
 	if (r < 0) {
 		fprintf(stderr, "Decrypt failed: %s\n", sc_strerror(r));
 		return 1;
@@ -389,8 +389,10 @@ int main(int argc, char *argv[])
 		c = getopt_long(argc, argv, "sck:r:i:o:f:Rp:vw", options, &long_optind);
 		if (c == -1)
 			break;
-		if (c == '?')
-			util_print_usage_and_die(app_name, options, option_help, NULL);
+		if (c == '?') {
+			util_print_usage(app_name, options, option_help, NULL);
+			return 2;
+		}
 		switch (c) {
 		case OPT_VERSION:
 			do_print_version = 1;
@@ -458,8 +460,10 @@ int main(int argc, char *argv[])
 			break;
 		}
 	}
-	if (action_count == 0)
-		util_print_usage_and_die(app_name, options, option_help, NULL);
+	if (action_count == 0) {
+		util_print_usage(app_name, options, option_help, NULL);
+		return 2;
+	}
 
 	if (do_print_version)   {
 		printf("%s\n", OPENSC_SCM_REVISION);
@@ -491,7 +495,8 @@ int main(int argc, char *argv[])
 		aid.len = sizeof(aid.value);
 		if (sc_hex_to_bin(opt_bind_to_aid, aid.value, &aid.len))   {
 			fprintf(stderr, "Invalid AID value: '%s'\n", opt_bind_to_aid);
-			return 1;
+			err = 1;
+			goto end;
 		}
 
 		r = sc_pkcs15_bind(card, &aid, &p15card);

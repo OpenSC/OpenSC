@@ -1,4 +1,4 @@
-version: 0.22.0.{build}
+version: 0.23.0.{build}
 
 platform:
   - x86
@@ -12,8 +12,8 @@ environment:
   GH_TOKEN:
     secure: aLu3tFc7lRJbotnmnHLx/QruIHc5rLaGm1RttoEdy4QILlPXzVkCZ6loYMz0sfrY
   PATH: C:\cygwin\bin;%PATH%
-  OPENPACE_VER: 1.1.1
-  ZLIB_VER_DOT: 1.2.11
+  OPENPACE_VER: 1.1.2
+  ZLIB_VER_DOT: 1.2.12
   matrix:
   # not compatible with OpenSSL 1.1.1:
   # - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2013
@@ -120,10 +120,10 @@ deploy_script:
   - bash -c "if [ \"$DO_PUSH_ARTIFACT\" = yes -a -z \"$APPVEYOR_PULL_REQUEST_NUMBER\" -a \"$APPVEYOR_REPO_NAME\" = \"OpenSC/OpenSC\" ]; then .github/push_artifacts.sh \"AppVeyor build ${APPVEYOR_BUILD_NUMBER}.${APPVEYOR_JOB_NUMBER}\"; fi"
 
 cache:
-  - C:\zlib -> appveyor.yml
-  - C:\zlib-Win32 -> appveyor.yml
-  - C:\zlib-Win64 -> appveyor.yml
-  - C:\openpace -> appveyor.yml
-  - C:\openpace-Win32 -> appveyor.yml
-  - C:\openpace-Win64 -> appveyor.yml
-  - cpdksetup.exe -> appveyor.yml
+  - C:\zlib -> .appveyor.yml
+  - C:\zlib-Win32 -> .appveyor.yml
+  - C:\zlib-Win64 -> .appveyor.yml
+  - C:\openpace -> .appveyor.yml
+  - C:\openpace-Win32 -> .appveyor.yml
+  - C:\openpace-Win64 -> .appveyor.yml
+  - cpdksetup.exe -> .appveyor.yml

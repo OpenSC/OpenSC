@@ -105,7 +105,10 @@ struct sc_pkcs11_object_ops {
 			CK_MECHANISM_PTR,
 			CK_BYTE_PTR pEncryptedData, CK_ULONG ulEncryptedDataLen,
 			CK_BYTE_PTR pData, CK_ULONG_PTR pulDataLen);
-
+	CK_RV (*encrypt)(struct sc_pkcs11_session *, void *,
+			CK_MECHANISM_PTR,
+			CK_BYTE_PTR pData, CK_ULONG ulDataLen,
+			CK_BYTE_PTR pEncryptedData, CK_ULONG_PTR pulEncryptedDataLen);
 	CK_RV (*derive)(struct sc_pkcs11_session *, void *,
 			CK_MECHANISM_PTR,
 			CK_BYTE_PTR pSeedData, CK_ULONG ulSeedDataLen,
@@ -258,6 +261,7 @@ enum {
 	SC_PKCS11_OPERATION_VERIFY,
 	SC_PKCS11_OPERATION_DIGEST,
 	SC_PKCS11_OPERATION_DECRYPT,
+	SC_PKCS11_OPERATION_ENCRYPT,
 	SC_PKCS11_OPERATION_DERIVE,
 	SC_PKCS11_OPERATION_WRAP,
 	SC_PKCS11_OPERATION_UNWRAP,
@@ -302,6 +306,16 @@ struct sc_pkcs11_mechanism_type {
 	CK_RV		  (*decrypt)(sc_pkcs11_operation_t *,
 					CK_BYTE_PTR, CK_ULONG,
 					CK_BYTE_PTR, CK_ULONG_PTR);
+	CK_RV		  (*encrypt_init)(sc_pkcs11_operation_t *,
+					struct sc_pkcs11_object *);
+	CK_RV		  (*encrypt)(sc_pkcs11_operation_t *,
+					CK_BYTE_PTR, CK_ULONG,
+					CK_BYTE_PTR, CK_ULONG_PTR);
+	CK_RV		  (*encrypt_update)(sc_pkcs11_operation_t *,
+					CK_BYTE_PTR, CK_ULONG,
+					CK_BYTE_PTR, CK_ULONG_PTR);
+	CK_RV		  (*encrypt_final)(sc_pkcs11_operation_t *,
+					CK_BYTE_PTR, CK_ULONG_PTR);
 	CK_RV		  (*derive)(sc_pkcs11_operation_t *,
 					struct sc_pkcs11_object *,
 					CK_BYTE_PTR, CK_ULONG,
@@ -319,6 +333,7 @@ struct sc_pkcs11_mechanism_type {
 	const void *  mech_data;
 	/* free mechanism specific data */
 	void		  (*free_mech_data)(const void *mech_data);
+	CK_RV		  (*copy_mech_data)(const void *mech_data, void **new_data);
 };
 typedef struct sc_pkcs11_mechanism_type sc_pkcs11_mechanism_type_t;
 
@@ -376,6 +391,7 @@ void strcpy_bp(u8 *dst, const char *src, size_t dstsize);
 CK_RV sc_to_cryptoki_error(int rc, const char *ctx);
 void sc_pkcs11_print_attrs(int level, const char *file, unsigned int line, const char *function,
 		const char *info, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount);
+void sc_pkcs11_card_free(struct sc_pkcs11_card *p11card);
 #define dump_template(level, info, pTemplate, ulCount) \
 		sc_pkcs11_print_attrs(level, FILENAME, __LINE__, __FUNCTION__, \
 				info, pTemplate, ulCount)
@@ -433,7 +449,7 @@ CK_RV attr_extract(CK_ATTRIBUTE_PTR, void *, size_t *);
 
 /* Generic Mechanism functions */
 CK_RV sc_pkcs11_register_mechanism(struct sc_pkcs11_card *,
-				sc_pkcs11_mechanism_type_t *);
+				sc_pkcs11_mechanism_type_t *, sc_pkcs11_mechanism_type_t **);
 CK_RV sc_pkcs11_get_mechanism_list(struct sc_pkcs11_card *,
 				CK_MECHANISM_TYPE_PTR, CK_ULONG_PTR);
 CK_RV sc_pkcs11_get_mechanism_info(struct sc_pkcs11_card *, CK_MECHANISM_TYPE,
@@ -454,6 +470,12 @@ CK_RV sc_pkcs11_verif_final(struct sc_pkcs11_session *, CK_BYTE_PTR, CK_ULONG);
 #endif
 CK_RV sc_pkcs11_decr_init(struct sc_pkcs11_session *, CK_MECHANISM_PTR, struct sc_pkcs11_object *, CK_KEY_TYPE);
 CK_RV sc_pkcs11_decr(struct sc_pkcs11_session *, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG_PTR);
+
+CK_RV sc_pkcs11_encr_init(struct sc_pkcs11_session *, CK_MECHANISM_PTR, struct sc_pkcs11_object *, CK_MECHANISM_TYPE);
+CK_RV sc_pkcs11_encr(struct sc_pkcs11_session *, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG_PTR);
+CK_RV sc_pkcs11_encr_update(struct sc_pkcs11_session *, CK_BYTE_PTR, CK_ULONG, CK_BYTE_PTR, CK_ULONG_PTR);
+CK_RV sc_pkcs11_encr_final(struct sc_pkcs11_session *, CK_BYTE_PTR, CK_ULONG_PTR);
+
 CK_RV sc_pkcs11_wrap(struct sc_pkcs11_session *,CK_MECHANISM_PTR, struct sc_pkcs11_object *, CK_KEY_TYPE, struct sc_pkcs11_object *, CK_BYTE_PTR, CK_ULONG_PTR);
 CK_RV sc_pkcs11_unwrap(struct sc_pkcs11_session *,CK_MECHANISM_PTR, struct sc_pkcs11_object *, CK_KEY_TYPE, CK_BYTE_PTR, CK_ULONG, struct sc_pkcs11_object *);
 CK_RV sc_pkcs11_deri(struct sc_pkcs11_session *, CK_MECHANISM_PTR,
@@ -463,7 +485,8 @@ sc_pkcs11_mechanism_type_t *sc_pkcs11_find_mechanism(struct sc_pkcs11_card *,
 				CK_MECHANISM_TYPE, unsigned int);
 sc_pkcs11_mechanism_type_t *sc_pkcs11_new_fw_mechanism(CK_MECHANISM_TYPE,
 				CK_MECHANISM_INFO_PTR, CK_KEY_TYPE,
-				const void *, void (*)(const void *));
+				const void *, void (*)(const void *), CK_RV (*)(const void *, void **));
+void sc_pkcs11_free_mechanism(sc_pkcs11_mechanism_type_t **mt);
 sc_pkcs11_operation_t *sc_pkcs11_new_operation(sc_pkcs11_session_t *,
 				sc_pkcs11_mechanism_type_t *);
 void sc_pkcs11_release_operation(sc_pkcs11_operation_t **);

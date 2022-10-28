@@ -181,13 +181,14 @@ static int format_le(size_t le, struct sc_asn1_entry *le_entry,
 
 static int prefix_buf(u8 prefix, u8 *buf, size_t buflen, u8 **cat)
 {
-	u8 *p;
+	u8 *p = NULL;
+	int ptr_same = *cat == buf;
 
 	p = realloc(*cat, buflen + 1);
 	if (!p)
 		return SC_ERROR_OUT_OF_MEMORY;
 
-	if (*cat == buf) {
+	if (ptr_same) {
 		memmove(p + 1, p, buflen);
 	} else {
 		/* Flawfinder: ignore */
@@ -476,9 +477,13 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 	if (apdu->cse & SC_APDU_EXT) {
 		sm_apdu->cse = SC_APDU_CASE_4_EXT;
 		sm_apdu->resplen = 4 + 2 + mac_len + 2 + 3 + ((apdu->resplen+1)/ctx->block_length+1)*ctx->block_length;
+		if (sm_apdu->resplen > SC_MAX_EXT_APDU_RESP_SIZE)
+			sm_apdu->resplen = SC_MAX_EXT_APDU_RESP_SIZE;
 	} else {
 		sm_apdu->cse = SC_APDU_CASE_4_SHORT;
 		sm_apdu->resplen = 4 + 2 + mac_len + 2 + 2 + ((apdu->resplen+1)/ctx->block_length+1)*ctx->block_length;
+		if (sm_apdu->resplen > SC_MAX_APDU_RESP_SIZE)
+			sm_apdu->resplen = SC_MAX_APDU_RESP_SIZE;
 	}
 	resp_data = calloc(sm_apdu->resplen, 1);
 	if (!resp_data) {

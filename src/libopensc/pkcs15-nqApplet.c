@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "internal.h"
 #include "opensc.h"
 #include "cards.h"
 #include "common/compat_strlcpy.h"
@@ -193,7 +194,7 @@ int sc_pkcs15emu_nqapplet_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
 	}
 
 	rv = add_nqapplet_objects(p15card);
-	LOG_TEST_RET(ctx, rv, "Failed to add PKCS15");
+	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add PKCS15");
 
 	if (aid != NULL) {
 		struct sc_file *file = sc_file_new();
@@ -209,16 +210,20 @@ int sc_pkcs15emu_nqapplet_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
 
 	p15card->tokeninfo = sc_pkcs15_tokeninfo_new();
 	if (p15card->tokeninfo == NULL) {
-		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "unable to create tokeninfo struct");
+		rv = SC_ERROR_OUT_OF_MEMORY;
+		LOG_TEST_GOTO_ERR(ctx, rv, "unable to create tokeninfo struct");
 	} else {
 		char serial_hex[SC_MAX_SERIALNR * 2 + 2];
 
 		sc_bin_to_hex(card->serialnr.value, card->serialnr.len, serial_hex, sizeof(serial_hex), 0);
-		p15card->tokeninfo->serial_number = strdup(serial_hex);
-		p15card->tokeninfo->label = strdup(name_Card);
-		p15card->tokeninfo->manufacturer_id = strdup(name_Vendor);
+		set_string(&p15card->tokeninfo->serial_number, serial_hex);
+		set_string(&p15card->tokeninfo->label, name_Card);
+		set_string(&p15card->tokeninfo->manufacturer_id, name_Vendor);
 		p15card->tokeninfo->flags = SC_PKCS15_TOKEN_READONLY;
 	}
 
-	return SC_SUCCESS;
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+err:
+	sc_pkcs15_card_clear(p15card);
+	LOG_FUNC_RETURN(ctx, rv);
 }

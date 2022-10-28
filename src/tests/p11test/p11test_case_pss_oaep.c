@@ -188,24 +188,45 @@ size_t get_hash_length(CK_MECHANISM_TYPE mech)
 CK_BYTE *hash_message(const CK_BYTE *message, size_t message_length,
     CK_MECHANISM_TYPE hash)
 {
+	CK_BYTE *out = NULL;
+	const EVP_MD *md = NULL;
+	size_t digest_len = 0;
+
 	switch (hash) {
 	case CKM_SHA224:
-		return SHA224(message, message_length, NULL);
+		digest_len = SHA224_DIGEST_LENGTH;
+		md = EVP_sha224();
+		break;
 
 	case CKM_SHA256:
-		return SHA256(message, message_length, NULL);
+		digest_len = SHA256_DIGEST_LENGTH;
+		md = EVP_sha256();
+		break;
 
 	case CKM_SHA384:
-		return SHA384(message, message_length, NULL);
+		digest_len = SHA384_DIGEST_LENGTH;
+		md = EVP_sha384();
+		break;
 
 	case CKM_SHA512:
-		return SHA512(message, message_length, NULL);
+		digest_len = SHA512_DIGEST_LENGTH;
+		md = EVP_sha512();
+		break;
 
 	case CKM_SHA_1:
 	default:
-		return SHA1(message, message_length, NULL);
-
+		digest_len = SHA_DIGEST_LENGTH;
+		md = EVP_sha1();
+		break;
 	}
+
+	out = malloc(digest_len);
+	if (!out ||
+		EVP_Digest(message, message_length, out, NULL, md, NULL) != 1) {
+		free(out);
+		return NULL;
+	}
+	return out;
 }
 
 int oaep_encrypt_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
@@ -216,20 +237,11 @@ int oaep_encrypt_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *me
 	EVP_PKEY_CTX *pctx = NULL;
 	const EVP_MD *md = EVP_md_null();
 	const EVP_MD *mgf1_md = EVP_md_null();
-	EVP_PKEY *key = NULL;
 
 	md = md_cryptoki_to_ossl(mech->hash);
 	mgf1_md = mgf_cryptoki_to_ossl(mech->mgf);
 
-	if ((key = EVP_PKEY_new()) == NULL
-		|| RSA_up_ref(o->key.rsa) < 1
-		|| EVP_PKEY_set1_RSA(key, o->key.rsa) != 1) {
-		fprintf(stderr, " [ ERROR %s ] Failed to initialize EVP_PKEY. Error: %s\n",
-			o->id_str, ERR_error_string(ERR_peek_last_error(), NULL));
-		goto out;
-	}
-
-	if ((pctx = EVP_PKEY_CTX_new(key, NULL)) == NULL
+	if ((pctx = EVP_PKEY_CTX_new(o->key, NULL)) == NULL
 		|| EVP_PKEY_encrypt_init(pctx) != 1
 		|| EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_PKCS1_OAEP_PADDING) != 1
 		|| EVP_PKEY_CTX_set_rsa_oaep_md(pctx, md) != 1
@@ -254,7 +266,6 @@ int oaep_encrypt_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *me
 	}
 out:
 	EVP_PKEY_CTX_free(pctx);
-	EVP_PKEY_free(key);
 	return enc_length;
 }
 
@@ -384,7 +395,7 @@ int oaep_encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *m
 		return 0;
 	}
 
-	if (o->type != EVP_PK_RSA) {
+	if (o->type != EVP_PKEY_RSA) {
 		debug_print(" [ KEY %s ] Skip non-RSA key for encryption", o->id_str);
 		return 0;
 	}
@@ -536,31 +547,23 @@ int pss_verify_message_openssl(test_cert_t *o, token_info_t *info,
 	CK_RV rv = -1;
 	EVP_PKEY_CTX *pctx = NULL;
 	const CK_BYTE *my_message;
+	CK_BYTE *free_message = NULL;
 	CK_ULONG my_message_length;
 	const EVP_MD *mgf_md = EVP_md_null();
 	const EVP_MD *md = EVP_md_null();
-	EVP_PKEY *key = NULL;
 
 	md = md_cryptoki_to_ossl(mech->hash);
 	mgf_md = mgf_cryptoki_to_ossl(mech->mgf);
 
 	if (mech->mech != CKM_RSA_PKCS_PSS) {
-		my_message = hash_message(message, message_length, mech->hash);
+		my_message = free_message = hash_message(message, message_length, mech->hash);
 		my_message_length = get_hash_length(mech->hash);
 	} else {
 		my_message = message;
 		my_message_length = message_length;
 	}
 
-	if ((key = EVP_PKEY_new()) == NULL
-		|| RSA_up_ref(o->key.rsa) < 1
-		|| EVP_PKEY_set1_RSA(key, o->key.rsa) != 1) {
-		fprintf(stderr, " [ ERROR %s ] Failed to initialize EVP_PKEY. Error: %s\n",
-			o->id_str, ERR_error_string(ERR_peek_last_error(), NULL));
-		goto out;
-	}
-
-	if ((pctx = EVP_PKEY_CTX_new(key, NULL)) == NULL
+	if ((pctx = EVP_PKEY_CTX_new(o->key, NULL)) == NULL
 		|| EVP_PKEY_verify_init(pctx) != 1
 		|| EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_PKCS1_PSS_PADDING) != 1
 		|| EVP_PKEY_CTX_set_signature_md(pctx, md) != 1
@@ -580,9 +583,9 @@ int pss_verify_message_openssl(test_cert_t *o, token_info_t *info,
 			o->id_str, ERR_error_string(ERR_peek_last_error(), NULL));
 		goto out;
 	}
+	free(free_message);
 out:
 	EVP_PKEY_CTX_free(pctx);
-	EVP_PKEY_free(key);
 	return rv;
 }
 
@@ -651,7 +654,7 @@ int pss_sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 		return 0;
 	}
 
-	if (o->type != EVP_PK_RSA) {
+	if (o->type != EVP_PKEY_RSA) {
 		debug_print(" [SKIP %s ] Skip non-RSA key", o->id_str);
 		return 0;
 	}
@@ -677,13 +680,17 @@ int pss_sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 		get_mgf_name(mech->mgf), mech->salt);
 	rv = pss_sign_message(o, info, message, message_length, mech, &sign);
 	if (rv <= 0) {
-		return rv;
+		goto out;
 	}
 	sign_length = (unsigned long) rv;
 
 	debug_print(" [ KEY %s ] Verify message signature", o->id_str);
 	rv = pss_verify_message(o, info, message, message_length, mech,
 		sign, sign_length);
+out:
+	if (mech->mech == CKM_RSA_PKCS_PSS) {
+		free(message);
+	}
 	free(sign);
 	return rv;
 }
@@ -820,7 +827,7 @@ void pss_oaep_test(void **state) {
 			continue;
 
 		/* Do not list non-RSA keys here */
-		if (o->type != EVP_PK_RSA)
+		if (o->type != EVP_PKEY_RSA)
 			continue;
 
 		printf("\n[%-6s] [%s]\n",

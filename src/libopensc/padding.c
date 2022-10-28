@@ -33,7 +33,7 @@
 #include <stdlib.h>
 
 #include "internal.h"
-
+#include "pkcs11/pkcs11.h"
 /* TODO doxygen comments */
 
 /*
@@ -184,6 +184,136 @@ sc_pkcs1_strip_02_padding(sc_context_t *ctx, const u8 *data, size_t len, u8 *out
 	LOG_FUNC_RETURN(ctx, len - n);
 }
 
+#ifdef ENABLE_OPENSSL
+static int mgf1(u8 *mask, size_t len, u8 *seed, size_t seedLen, const EVP_MD *dgst)
+{
+	int i;
+	size_t outlen = 0;
+	u8 cnt[4];
+	EVP_MD_CTX *md_ctx = NULL;
+	int mdlen;
+	u8 md[EVP_MAX_MD_SIZE];
+	int rv = 1;
+
+	if (!(md_ctx = EVP_MD_CTX_new()))
+		goto out;
+
+	mdlen = EVP_MD_size(dgst);
+	if (mdlen < 0)
+		goto out;
+
+	for (i = 0; outlen < len; i++) {
+		cnt[0] = (u8) ((i >> 24) & 255);
+		cnt[1] = (u8) ((i >> 16) & 255);
+		cnt[2] = (u8) ((i >> 8) & 255);
+		cnt[3] = (u8) ((i >> 0) & 255);
+		if (!EVP_DigestInit_ex(md_ctx, dgst, NULL)
+		    || !EVP_DigestUpdate(md_ctx, seed, seedLen)
+		    || !EVP_DigestUpdate(md_ctx, cnt, 4))
+			goto out;
+		if (outlen + mdlen <= len) {
+			if (!EVP_DigestFinal_ex(md_ctx, mask + outlen, NULL))
+				goto out;
+			outlen += mdlen;
+		} else {
+			if (!EVP_DigestFinal_ex(md_ctx, md, NULL))
+				goto out;
+			memcpy(mask + outlen, md, len - outlen);
+			outlen = len;
+		}
+	}
+	rv = 0;
+ out:
+	OPENSSL_cleanse(md, sizeof(md));
+	if (md_ctx)
+		EVP_MD_CTX_free(md_ctx);
+	return rv;
+}
+
+/* forward declarations */
+static const EVP_MD *mgf1_flag2md(unsigned int mgf1);
+static const EVP_MD *hash_flag2md(unsigned int hash);
+
+/* check/remove OAEP - RFC 8017 padding */
+int sc_pkcs1_strip_oaep_padding(sc_context_t *ctx, u8 *data, size_t len, unsigned long flags, uint8_t *param, size_t paramlen)
+{
+	size_t i,j;
+	size_t mdlen, dblen;
+	u8 seed[EVP_MAX_MD_SIZE];
+	const EVP_MD *mgf1_md, *hash_md;
+	u8 db[512];		/* up to RSA 4096 */
+	u8 label[EVP_MAX_MD_SIZE];
+	EVP_MD_CTX *md_ctx;
+	unsigned int hash_len = 0;
+
+	LOG_FUNC_CALLED(ctx);
+	if (data == NULL)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
+
+	/* https://www.rfc-editor.org/rfc/pdfrfc/rfc8017.txt.pdf, page 26, 3.a. */
+	hash_md = hash_flag2md(flags);
+	if (!hash_md)
+		return SC_ERROR_NOT_SUPPORTED;
+
+	memset(label, 0, sizeof(label));
+	if ((md_ctx = EVP_MD_CTX_new())) {
+		if (!EVP_DigestInit_ex(md_ctx, hash_md, NULL)
+		    || !EVP_DigestUpdate(md_ctx, param, paramlen)
+		    || !EVP_DigestFinal_ex(md_ctx, label, &hash_len))
+			hash_len = 0;
+		EVP_MD_CTX_free(md_ctx);
+	}
+	if (!hash_len)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
+
+	mgf1_md = mgf1_flag2md(flags);
+	if (!mgf1_md)
+		return SC_ERROR_NOT_SUPPORTED;
+
+	mdlen = EVP_MD_size(mgf1_md);
+
+	if (len < 2 * mdlen + 2)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_WRONG_PADDING);
+
+	if (*data != 0)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_WRONG_PADDING);
+
+	dblen = len - 1 - mdlen;
+	if (dblen > sizeof(db))
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
+
+	if (mgf1(seed, mdlen, data + mdlen + 1, dblen, mgf1_md))
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
+	for (i = 0; i < mdlen; i++)
+		seed[i] ^= data[i + 1];
+
+	if (mgf1(db, dblen, seed, mdlen, mgf1_md))
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
+	for (i = 0; i < dblen; i++) {
+		db[i] ^= data[i + mdlen + 1];
+		/* clear lHash' if same as lHash */
+		if (i < hash_len)
+			db[i] ^= label[i];
+	}
+	/* if the padding is correct, it is a concatenation:
+	 *   00...00 || 01 || plaintext
+	 * check padding but do not leak information about error:
+	 */
+	for (j = 0, i = 0; i < dblen;) {
+		j += db[i++] + 1;
+		if (i > mdlen) {
+			if (j == i + 1) {
+				/* OK correct padding found */
+				len = dblen - i;
+				memcpy(data, db + i, len);
+				LOG_FUNC_RETURN(ctx, len);
+			}
+		}
+	}
+	LOG_FUNC_RETURN(ctx, SC_ERROR_WRONG_PADDING);
+}
+#endif
+
 /* add/remove DigestInfo prefix */
 static int sc_pkcs1_add_digest_info_prefix(unsigned int algorithm,
 	const u8 *in, size_t in_len, u8 *out, size_t *out_len)
@@ -275,9 +405,11 @@ static const EVP_MD* mgf1_flag2md(unsigned int mgf1)
 	}
 }
 
+/* large enough up to RSA 4096 */
+#define PSS_MAX_SALT_SIZE 512
 /* add PKCS#1 v2.0 PSS padding */
 static int sc_pkcs1_add_pss_padding(unsigned int hash, unsigned int mgf1_hash,
-    const u8 *in, size_t in_len, u8 *out, size_t *out_len, size_t mod_bits)
+    const u8 *in, size_t in_len, u8 *out, size_t *out_len, size_t mod_bits, size_t sLen)
 {
 	/* hLen = sLen in our case */
 	int rv = SC_ERROR_INTERNAL, i, j, hlen, dblen, plen, round, mgf_rounds;
@@ -285,7 +417,7 @@ static int sc_pkcs1_add_pss_padding(unsigned int hash, unsigned int mgf1_hash,
 	const EVP_MD* md, *mgf1_md;
 	EVP_MD_CTX* ctx = NULL;
 	u8 buf[8];
-	u8 salt[EVP_MAX_MD_SIZE], mask[EVP_MAX_MD_SIZE];
+	u8 salt[PSS_MAX_SALT_SIZE], mask[EVP_MAX_MD_SIZE];
 	size_t mod_length = (mod_bits + 7) / 8;
 
 	if (*out_len < mod_length)
@@ -296,15 +428,16 @@ static int sc_pkcs1_add_pss_padding(unsigned int hash, unsigned int mgf1_hash,
 		return SC_ERROR_NOT_SUPPORTED;
 	hlen = EVP_MD_size(md);
 	dblen = mod_length - hlen - 1; /* emLen - hLen - 1 */
-	plen = mod_length - 2*hlen - 1;
+	plen = mod_length - sLen - hlen - 1;
 	if (in_len != (unsigned)hlen)
 		return SC_ERROR_INVALID_ARGUMENTS;
-	if (2 * (unsigned)hlen + 2 > mod_length)
+	if (sLen + (unsigned)hlen + 2 > mod_length)
 		/* RSA key too small for chosen hash (1296 bits or higher needed for
 		 * signing SHA-512 hashes) */
 		return SC_ERROR_NOT_SUPPORTED;
-
-	if (RAND_bytes(salt, hlen) != 1)
+	if (sLen > PSS_MAX_SALT_SIZE)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	if (RAND_bytes(salt, sLen) != 1)
 		return SC_ERROR_INTERNAL;
 
 	/* Hash M' to create H */
@@ -314,7 +447,7 @@ static int sc_pkcs1_add_pss_padding(unsigned int hash, unsigned int mgf1_hash,
 	if (EVP_DigestInit_ex(ctx, md, NULL) != 1 ||
 	    EVP_DigestUpdate(ctx, buf, 8) != 1 ||
 	    EVP_DigestUpdate(ctx, in, hlen) != 1 || /* mHash */
-	    EVP_DigestUpdate(ctx, salt, hlen) != 1) {
+	    EVP_DigestUpdate(ctx, salt, sLen) != 1) {
 		goto done;
 	}
 
@@ -322,7 +455,7 @@ static int sc_pkcs1_add_pss_padding(unsigned int hash, unsigned int mgf1_hash,
 	/* DB = PS || 0x01 || salt */
 	memset(out, 0x00, plen - 1); /* emLen - sLen - hLen - 2 */
 	out[plen - 1] = 0x01;
-	memcpy(out + plen, salt, hlen);
+	memcpy(out + plen, salt, sLen);
 	if (EVP_DigestFinal_ex(ctx, out + dblen, NULL) != 1) { /* H */
 		goto done;
 	}
@@ -395,7 +528,7 @@ static int hash_len2algo(size_t hash_len)
 
 /* general PKCS#1 encoding function */
 int sc_pkcs1_encode(sc_context_t *ctx, unsigned long flags,
-	const u8 *in, size_t in_len, u8 *out, size_t *out_len, size_t mod_bits)
+	const u8 *in, size_t in_len, u8 *out, size_t *out_len, size_t mod_bits, void *pMechanism)
 {
 	int    rv, i;
 	size_t tmp_len = *out_len;
@@ -403,6 +536,8 @@ int sc_pkcs1_encode(sc_context_t *ctx, unsigned long flags,
 	unsigned int hash_algo, pad_algo;
 	size_t mod_len = (mod_bits + 7) / 8;
 #ifdef ENABLE_OPENSSL
+	size_t sLen;
+	const EVP_MD* md;
 	unsigned int mgf1_hash;
 #endif
 
@@ -450,8 +585,21 @@ int sc_pkcs1_encode(sc_context_t *ctx, unsigned long flags,
 			 */
 			hash_algo = hash_len2algo(tmp_len);
 		}
+		/* sLen is by default same as hash length */
+		if (!(md = hash_flag2md(hash_algo)))
+			return SC_ERROR_NOT_SUPPORTED;
+		sLen = EVP_MD_size(md);
+		/* if application provide sLen, use it */
+		if (pMechanism != NULL) {
+			CK_MECHANISM *mech = (CK_MECHANISM *)pMechanism;
+			CK_RSA_PKCS_PSS_PARAMS *pss_params;
+			if (mech->pParameter && sizeof(CK_RSA_PKCS_PSS_PARAMS) == mech->ulParameterLen) {
+				pss_params = mech->pParameter;
+				sLen = pss_params->sLen;
+			}
+		}
 		rv = sc_pkcs1_add_pss_padding(hash_algo, mgf1_hash,
-		    tmp, tmp_len, out, out_len, mod_bits);
+		    tmp, tmp_len, out, out_len, mod_bits, sLen);
 #else
 		rv = SC_ERROR_NOT_SUPPORTED;
 #endif
@@ -497,11 +645,13 @@ int sc_get_encoding_flags(sc_context_t *ctx,
 	} else if ((caps & SC_ALGORITHM_RSA_RAW) &&
 				(iflags & SC_ALGORITHM_RSA_PAD_PKCS1
 				|| iflags & SC_ALGORITHM_RSA_PAD_PSS
+#ifdef ENABLE_OPENSSL
+				|| iflags & SC_ALGORITHM_RSA_PAD_OAEP
+#endif
 				|| iflags & SC_ALGORITHM_RSA_PAD_NONE)) {
 		/* Use the card's raw RSA capability on the padded input */
 		*sflags = SC_ALGORITHM_RSA_PAD_NONE;
 		*pflags = iflags;
-		/* TODO emulate the OAEP decryption */
 
 	} else if ((caps & (SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE)) &&
 			(iflags & SC_ALGORITHM_RSA_PAD_PKCS1)) {

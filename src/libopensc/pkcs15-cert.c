@@ -367,7 +367,7 @@ sc_pkcs15_pubkey_from_cert(struct sc_context *ctx,
 
 int
 sc_pkcs15_read_certificate(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_cert_info *info,
-		struct sc_pkcs15_cert **cert_out)
+		int private_obj, struct sc_pkcs15_cert **cert_out)
 {
 	struct sc_context *ctx = NULL;
 	struct sc_pkcs15_cert *cert = NULL;
@@ -384,7 +384,7 @@ sc_pkcs15_read_certificate(struct sc_pkcs15_card *p15card, const struct sc_pkcs1
 		sc_der_copy(&der, &info->value);
 	}
 	else if (info->path.len) {
-		r = sc_pkcs15_read_file(p15card, &info->path, &der.value, &der.len);
+		r = sc_pkcs15_read_file(p15card, &info->path, &der.value, &der.len, private_obj);
 		LOG_TEST_RET(ctx, r, "Unable to read certificate file.");
 	}
 	else   {
@@ -572,9 +572,6 @@ sc_pkcs15_alg_flags_from_algorithm(int algorithm)
 		       SC_PKCS15_PRKEY_USAGE_VERIFY | SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER |
 		       SC_PKCS15_PRKEY_USAGE_DECRYPT | SC_PKCS15_PRKEY_USAGE_UNWRAP |
 		       SC_PKCS15_PRKEY_USAGE_SIGN | SC_PKCS15_PRKEY_USAGE_SIGNRECOVER |
-		       SC_PKCS15_PRKEY_USAGE_NONREPUDIATION;
-	case SC_ALGORITHM_DSA:
-		return SC_PKCS15_PRKEY_USAGE_VERIFY| SC_PKCS15_PRKEY_USAGE_SIGN |
 		       SC_PKCS15_PRKEY_USAGE_NONREPUDIATION;
 #ifdef SC_ALGORITHM_DH
 	case SC_ALGORITHM_DH:

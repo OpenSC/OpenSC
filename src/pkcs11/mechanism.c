@@ -31,11 +31,10 @@ struct hash_signature_info {
 	CK_MECHANISM_TYPE	hash_mech;
 	CK_MECHANISM_TYPE	sign_mech;
 	sc_pkcs11_mechanism_type_t *hash_type;
-	sc_pkcs11_mechanism_type_t *sign_type;
 };
 
 /* Also used for verification and decryption data */
-struct signature_data {
+struct operation_data {
 	struct sc_pkcs11_object *key;
 	struct hash_signature_info *info;
 	sc_pkcs11_operation_t *md;
@@ -43,14 +42,14 @@ struct signature_data {
 	unsigned int	buffer_len;
 };
 
-static struct signature_data *
-new_signature_data()
+static struct operation_data *
+new_operation_data()
 {
-	return calloc(1, sizeof(struct signature_data));
+	return calloc(1, sizeof(struct operation_data));
 }
 
 static void
-signature_data_release(struct signature_data *data)
+operation_data_release(struct operation_data *data)
 {
 	if (!data)
 		return;
@@ -60,7 +59,7 @@ signature_data_release(struct signature_data *data)
 }
 
 static CK_RV
-signature_data_buffer_append(struct signature_data *data,
+signature_data_buffer_append(struct operation_data *data,
 		const CK_BYTE *in, unsigned int in_len)
 {
 	if (!data)
@@ -92,15 +91,43 @@ void _update_mech_info(CK_MECHANISM_INFO_PTR mech_info, CK_MECHANISM_INFO_PTR ne
 }
 
 /*
+ * Copy a mechanism
+ */
+static CK_RV
+sc_pkcs11_copy_mechanism(sc_pkcs11_mechanism_type_t *mt,
+				sc_pkcs11_mechanism_type_t **new_mt)
+{
+	int rv;
+
+	*new_mt = calloc(1, sizeof(sc_pkcs11_mechanism_type_t));
+	if (!(*new_mt))
+		return CKR_HOST_MEMORY;
+	
+	memcpy(*new_mt, mt, sizeof(sc_pkcs11_mechanism_type_t));
+	/* mech_data needs specific function for making copy*/
+	if (mt->copy_mech_data
+		&& (rv = mt->copy_mech_data(mt->mech_data, (void **) &(*new_mt)->mech_data)) != CKR_OK) {
+		free(*new_mt);
+		return rv;
+	}
+	
+	return CKR_OK;
+}
+
+/*
  * Register a mechanism
+ * Check whether the mechanism is already in p11card,
+ * if not, make a copy of the given mechanism and store it
+ * in p11card.
  */
 CK_RV
 sc_pkcs11_register_mechanism(struct sc_pkcs11_card *p11card,
-				sc_pkcs11_mechanism_type_t *mt)
+				sc_pkcs11_mechanism_type_t *mt, sc_pkcs11_mechanism_type_t **result_mt)
 {
 	sc_pkcs11_mechanism_type_t *existing_mt;
+	sc_pkcs11_mechanism_type_t *copy_mt = NULL;
 	sc_pkcs11_mechanism_type_t **p;
-	int i;
+	int i, rv;
 
 	if (mt == NULL)
 		return CKR_HOST_MEMORY;
@@ -111,7 +138,6 @@ sc_pkcs11_register_mechanism(struct sc_pkcs11_card *p11card,
 				/* Mechanism already registered with the same key_type,
 				 * just update it's info */
 				_update_mech_info(&existing_mt->mech_info, &mt->mech_info);
-				free(mt);
 				return CKR_OK;
 			}
 			if (existing_mt->key_types[i] < 0) {
@@ -125,12 +151,10 @@ sc_pkcs11_register_mechanism(struct sc_pkcs11_card *p11card,
 				if (i + 1 < MAX_KEY_TYPES) {
 					existing_mt->key_types[i + 1] = -1;
 				}
-				free(mt);
 				return CKR_OK;
 			}
 		}
 		sc_log(p11card->card->ctx, "Too many key types in mechanism 0x%lx, more than %d", mt->mech, MAX_KEY_TYPES);
-		free(mt);
 		return CKR_BUFFER_TOO_SMALL;
 	}
 
@@ -138,9 +162,16 @@ sc_pkcs11_register_mechanism(struct sc_pkcs11_card *p11card,
 			(p11card->nmechanisms + 2) * sizeof(*p));
 	if (p == NULL)
 		return CKR_HOST_MEMORY;
+	if ((rv = sc_pkcs11_copy_mechanism(mt, &copy_mt)) != CKR_OK) {
+		free(p);
+		return rv;
+	}
 	p11card->mechanisms = p;
-	p[p11card->nmechanisms++] = mt;
+	p[p11card->nmechanisms++] = copy_mt;
 	p[p11card->nmechanisms] = NULL;
+	/* Return registered mechanism for further use */
+	if (result_mt)
+		*result_mt = copy_mt;
 	return CKR_OK;
 }
 
@@ -462,12 +493,12 @@ sc_pkcs11_signature_init(sc_pkcs11_operation_t *operation,
 		struct sc_pkcs11_object *key)
 {
 	struct hash_signature_info *info;
-	struct signature_data *data;
+	struct operation_data *data;
 	CK_RV rv;
 	int can_do_it = 0;
 
 	LOG_FUNC_CALLED(context);
-	if (!(data = new_signature_data()))
+	if (!(data = new_operation_data()))
 		LOG_FUNC_RETURN(context, CKR_HOST_MEMORY);
 	data->info = NULL;
 	data->key = key;
@@ -484,7 +515,7 @@ sc_pkcs11_signature_init(sc_pkcs11_operation_t *operation,
 		}
 		else  {
 			/* Mechanism recognised but cannot be performed by pkcs#15 card, or some general error. */
-			signature_data_release(data);
+			operation_data_release(data);
 			LOG_FUNC_RETURN(context, (int) rv);
 		}
 	}
@@ -494,7 +525,7 @@ sc_pkcs11_signature_init(sc_pkcs11_operation_t *operation,
 		rv = key->ops->init_params(operation->session, &operation->mechanism);
 		if (rv != CKR_OK) {
 			/* Probably bad arguments */
-			signature_data_release(data);
+			operation_data_release(data);
 			LOG_FUNC_RETURN(context, (int) rv);
 		}
 	}
@@ -502,7 +533,7 @@ sc_pkcs11_signature_init(sc_pkcs11_operation_t *operation,
 	/* If this is a signature with hash operation,
 	 * and card cannot perform itself signature with hash operation,
 	 * set up the hash operation */
-	info = (struct hash_signature_info *) operation->type->mech_data;
+	info = (struct hash_signature_info *)operation->type->mech_data;
 	if (info != NULL && !can_do_it) {
 		/* Initialize hash operation */
 
@@ -513,7 +544,7 @@ sc_pkcs11_signature_init(sc_pkcs11_operation_t *operation,
 			rv = info->hash_type->md_init(data->md);
 		if (rv != CKR_OK) {
 			sc_pkcs11_release_operation(&data->md);
-			signature_data_release(data);
+			operation_data_release(data);
 			LOG_FUNC_RETURN(context, (int) rv);
 		}
 		data->info = info;
@@ -527,12 +558,12 @@ static CK_RV
 sc_pkcs11_signature_update(sc_pkcs11_operation_t *operation,
 		CK_BYTE_PTR pPart, CK_ULONG ulPartLen)
 {
-	struct signature_data *data;
+	struct operation_data *data;
 	CK_RV rv;
 
 	LOG_FUNC_CALLED(context);
 	sc_log(context, "data part length %li", ulPartLen);
-	data = (struct signature_data *) operation->priv_data;
+	data = (struct operation_data *)operation->priv_data;
 	if (data->md) {
 		rv = data->md->type->md_update(data->md, pPart, ulPartLen);
 		LOG_FUNC_RETURN(context, (int) rv);
@@ -547,11 +578,11 @@ static CK_RV
 sc_pkcs11_signature_final(sc_pkcs11_operation_t *operation,
 		CK_BYTE_PTR pSignature, CK_ULONG_PTR pulSignatureLen)
 {
-	struct signature_data *data;
+	struct operation_data *data;
 	CK_RV rv;
 
 	LOG_FUNC_CALLED(context);
-	data = (struct signature_data *) operation->priv_data;
+	data = (struct operation_data *)operation->priv_data;
 	if (data->md) {
 		sc_pkcs11_operation_t	*md = data->md;
 		CK_BYTE hash[64];
@@ -581,7 +612,7 @@ sc_pkcs11_signature_size(sc_pkcs11_operation_t *operation, CK_ULONG_PTR pLength)
 	CK_ATTRIBUTE attr_key_type = { CKA_KEY_TYPE, &key_type, sizeof(key_type) };
 	CK_RV rv;
 
-	key = ((struct signature_data *) operation->priv_data)->key;
+	key = ((struct operation_data *)operation->priv_data)->key;
 	/*
 	 * EC and GOSTR do not have CKA_MODULUS_BITS attribute.
 	 * But other code in framework treats them as if they do.
@@ -619,11 +650,11 @@ sc_pkcs11_signature_size(sc_pkcs11_operation_t *operation, CK_ULONG_PTR pLength)
 }
 
 static void
-sc_pkcs11_signature_release(sc_pkcs11_operation_t *operation)
+sc_pkcs11_operation_release(sc_pkcs11_operation_t *operation)
 {
 	if (!operation)
 	    return;
-	signature_data_release(operation->priv_data);
+	operation_data_release(operation->priv_data);
 }
 
 #ifdef ENABLE_OPENSSL
@@ -730,10 +761,10 @@ sc_pkcs11_verify_init(sc_pkcs11_operation_t *operation,
 		    struct sc_pkcs11_object *key)
 {
 	struct hash_signature_info *info;
-	struct signature_data *data;
+	struct operation_data *data;
 	CK_RV rv;
 
-	if (!(data = new_signature_data()))
+	if (!(data = new_operation_data()))
 		return CKR_HOST_MEMORY;
 
 	data->info = NULL;
@@ -788,9 +819,9 @@ static CK_RV
 sc_pkcs11_verify_update(sc_pkcs11_operation_t *operation,
 		    CK_BYTE_PTR pPart, CK_ULONG ulPartLen)
 {
-	struct signature_data *data;
+	struct operation_data *data;
 
-	data = (struct signature_data *) operation->priv_data;
+	data = (struct operation_data *)operation->priv_data;
 	if (data->md) {
 		sc_pkcs11_operation_t	*md = data->md;
 
@@ -806,7 +837,7 @@ static CK_RV
 sc_pkcs11_verify_final(sc_pkcs11_operation_t *operation,
 			CK_BYTE_PTR pSignature, CK_ULONG ulSignatureLen)
 {
-	struct signature_data *data;
+	struct operation_data *data;
 	struct sc_pkcs11_object *key;
 	unsigned char *pubkey_value = NULL;
 	CK_KEY_TYPE key_type;
@@ -816,7 +847,7 @@ sc_pkcs11_verify_final(sc_pkcs11_operation_t *operation,
 	CK_ATTRIBUTE attr_key_params = {CKA_GOSTR3410_PARAMS, &params, sizeof(params)};
 	CK_RV rv;
 
-	data = (struct signature_data *) operation->priv_data;
+	data = (struct operation_data *)operation->priv_data;
 
 	if (pSignature == NULL)
 		return CKR_ARGUMENTS_BAD;
@@ -860,6 +891,132 @@ done:
 	return rv;
 }
 #endif
+/*
+ * Initialize a encrypting context. When we get here, we know
+ * the key object is capable of encrypt _something_
+ */
+CK_RV
+sc_pkcs11_encr_init(struct sc_pkcs11_session *session,
+		CK_MECHANISM_PTR pMechanism,
+		struct sc_pkcs11_object *key,
+		CK_KEY_TYPE key_type)
+{
+	struct sc_pkcs11_card *p11card;
+	sc_pkcs11_operation_t *operation;
+	sc_pkcs11_mechanism_type_t *mt;
+	CK_RV rv;
+
+	if (!session || !session->slot || !(p11card = session->slot->p11card))
+		return CKR_ARGUMENTS_BAD;
+
+	/* See if we support this mechanism type */
+	mt = sc_pkcs11_find_mechanism(p11card, pMechanism->mechanism, CKF_ENCRYPT);
+	if (mt == NULL)
+		return CKR_MECHANISM_INVALID;
+
+	/* See if compatible with key type */
+	rv = _validate_key_type(mt, key_type);
+	if (rv != CKR_OK)
+		LOG_FUNC_RETURN(context, (int)rv);
+
+	rv = session_start_operation(session, SC_PKCS11_OPERATION_ENCRYPT, mt, &operation);
+	if (rv != CKR_OK)
+		return rv;
+
+	memcpy(&operation->mechanism, pMechanism, sizeof(CK_MECHANISM));
+	if (pMechanism->pParameter) {
+		memcpy(&operation->mechanism_params, pMechanism->pParameter,
+				pMechanism->ulParameterLen);
+		operation->mechanism.pParameter = &operation->mechanism_params;
+	}
+	rv = mt->encrypt_init(operation, key);
+	if (rv != CKR_OK)
+		goto out;
+
+	/* Validate the mechanism parameters */
+	if (key->ops->init_params) {
+		rv = key->ops->init_params(operation->session, &operation->mechanism);
+		if (rv != CKR_OK)
+			goto out;
+	}
+	LOG_FUNC_RETURN(context, (int)rv);
+out:
+	session_stop_operation(session, SC_PKCS11_OPERATION_ENCRYPT);
+	LOG_FUNC_RETURN(context, (int)rv);
+}
+
+CK_RV
+sc_pkcs11_encr(struct sc_pkcs11_session *session,
+		CK_BYTE_PTR pData, CK_ULONG ulDataLen,
+		CK_BYTE_PTR pEncryptedData, CK_ULONG_PTR pulEncryptedDataLen)
+{
+	sc_pkcs11_operation_t *op;
+	CK_RV rv;
+
+	rv = session_get_operation(session, SC_PKCS11_OPERATION_ENCRYPT, &op);
+	if (rv != CKR_OK)
+		return rv;
+
+	rv = op->type->encrypt(op, pData, ulDataLen,
+			pEncryptedData, pulEncryptedDataLen);
+
+	/* application is requesting buffer size ? */
+	if (pEncryptedData == NULL) {
+		/* do not terminate session for CKR_OK */
+		if (rv == CKR_OK)
+			LOG_FUNC_RETURN(context, CKR_OK);
+	} else if (rv == CKR_BUFFER_TOO_SMALL)
+		LOG_FUNC_RETURN(context, CKR_BUFFER_TOO_SMALL);
+
+	session_stop_operation(session, SC_PKCS11_OPERATION_ENCRYPT);
+	LOG_FUNC_RETURN(context, (int)rv);
+}
+
+CK_RV
+sc_pkcs11_encr_update(struct sc_pkcs11_session *session,
+		CK_BYTE_PTR pData, CK_ULONG ulDataLen,
+		CK_BYTE_PTR pEncryptedData, CK_ULONG_PTR pulEncryptedDataLen)
+{
+	sc_pkcs11_operation_t *op;
+	CK_RV rv;
+
+	rv = session_get_operation(session, SC_PKCS11_OPERATION_ENCRYPT, &op);
+	if (rv != CKR_OK)
+		return rv;
+
+	rv = op->type->encrypt_update(op, pData, ulDataLen,
+			pEncryptedData, pulEncryptedDataLen);
+
+	/* terminate session for any error except CKR_BUFFER_TOO_SMALL */
+	if (rv != CKR_OK && rv != CKR_BUFFER_TOO_SMALL)
+		session_stop_operation(session, SC_PKCS11_OPERATION_ENCRYPT);
+	LOG_FUNC_RETURN(context, (int)rv);
+}
+
+CK_RV
+sc_pkcs11_encr_final(struct sc_pkcs11_session *session,
+		CK_BYTE_PTR pEncryptedData, CK_ULONG_PTR pulEncryptedDataLen)
+{
+	sc_pkcs11_operation_t *op;
+	CK_RV rv;
+
+	rv = session_get_operation(session, SC_PKCS11_OPERATION_ENCRYPT, &op);
+	if (rv != CKR_OK)
+		return rv;
+
+	rv = op->type->encrypt_final(op, pEncryptedData, pulEncryptedDataLen);
+
+	/* application is requesting buffer size ? */
+	if (pEncryptedData == NULL) {
+		/* do not terminate session for CKR_OK */
+		if (rv == CKR_OK)
+			LOG_FUNC_RETURN(context, CKR_OK);
+	} else if (rv == CKR_BUFFER_TOO_SMALL)
+		LOG_FUNC_RETURN(context, CKR_BUFFER_TOO_SMALL);
+
+	session_stop_operation(session, SC_PKCS11_OPERATION_ENCRYPT);
+	LOG_FUNC_RETURN(context, (int)rv);
+}
 
 /*
  * Initialize a decryption context. When we get here, we know
@@ -1034,8 +1191,6 @@ sc_pkcs11_unwrap(struct sc_pkcs11_session *session,
 	return rv;
 }
 
-
-
 /* Derive one key from another, and return results in created object */
 CK_RV
 sc_pkcs11_deri(struct sc_pkcs11_session *session,
@@ -1133,6 +1288,140 @@ out:
 	return rv;
 }
 
+/*
+ * Initialize a encrypt operation
+ */
+static CK_RV
+sc_pkcs11_encrypt_init(sc_pkcs11_operation_t *operation,
+		struct sc_pkcs11_object *key)
+{
+	struct operation_data *data;
+	CK_RV rv;
+
+	if (!(data = new_operation_data()))
+		return CKR_HOST_MEMORY;
+
+	data->key = key;
+
+	if (key->ops->can_do) {
+		rv = key->ops->can_do(operation->session, key, operation->type->mech, CKF_ENCRYPT);
+		if ((rv == CKR_OK) || (rv == CKR_FUNCTION_NOT_SUPPORTED)) {
+			/* Mechanism recognized and can be performed by pkcs#15 card or algorithm references not supported */
+		} else {
+			/* Mechanism cannot be performed by pkcs#15 card, or some general error. */
+			free(data);
+			LOG_FUNC_RETURN(context, (int)rv);
+		}
+	}
+
+	operation->priv_data = data;
+
+	/* The last parameter is NULL - this is call to INIT code in underlying functions */
+	return key->ops->encrypt(operation->session,
+			key, &operation->mechanism, NULL, 0, NULL, NULL);
+}
+
+static CK_RV
+sc_pkcs11_encrypt(sc_pkcs11_operation_t *operation,
+		CK_BYTE_PTR pData, CK_ULONG ulDataLen,
+		CK_BYTE_PTR pEncryptedData, CK_ULONG_PTR pulEncryptedDataLen)
+{
+	struct operation_data *data;
+	struct sc_pkcs11_object *key;
+	CK_RV rv;
+	CK_ULONG ulEncryptedDataLen, ulLastEncryptedPartLen;
+
+	/* PKCS#11: If pBuf is not NULL_PTR, then *pulBufLen must contain the size in bytes.. */
+	if (pEncryptedData && !pulEncryptedDataLen)
+		return CKR_ARGUMENTS_BAD;
+
+	ulEncryptedDataLen = pulEncryptedDataLen ? *pulEncryptedDataLen : 0;
+	ulLastEncryptedPartLen = ulEncryptedDataLen;
+
+	data = (struct operation_data *)operation->priv_data;
+
+	key = data->key;
+
+	/* Encrypt (Update) */
+	rv = key->ops->encrypt(operation->session, key, &operation->mechanism,
+			pData, ulDataLen, pEncryptedData, &ulEncryptedDataLen);
+
+	if (pulEncryptedDataLen)
+		*pulEncryptedDataLen = ulEncryptedDataLen;
+
+	if (rv != CKR_OK)
+		return rv;
+
+	/* recalculate buffer space */
+	if (ulEncryptedDataLen <= ulLastEncryptedPartLen)
+		ulLastEncryptedPartLen -= ulEncryptedDataLen;
+	else
+		ulLastEncryptedPartLen = 0;
+
+	/* EncryptFinalize */
+	rv = key->ops->encrypt(operation->session, key, &operation->mechanism,
+			NULL, 0, pEncryptedData + ulEncryptedDataLen, &ulLastEncryptedPartLen);
+
+	if (pulEncryptedDataLen)
+		*pulEncryptedDataLen = ulEncryptedDataLen + ulLastEncryptedPartLen;
+	return rv;
+}
+
+static CK_RV
+sc_pkcs11_encrypt_update(sc_pkcs11_operation_t *operation,
+		CK_BYTE_PTR pPart, CK_ULONG ulPartLen,
+		CK_BYTE_PTR pEncryptedPart, CK_ULONG_PTR pulEncryptedPartLen)
+{
+	struct operation_data *data;
+	struct sc_pkcs11_object *key;
+	CK_RV rv;
+	CK_ULONG ulEncryptedPartLen;
+
+	/* PKCS#11: If pBuf is not NULL_PTR, then *pulBufLen must contain the size in bytes.. */
+	if (pEncryptedPart && !pulEncryptedPartLen)
+		return CKR_ARGUMENTS_BAD;
+
+	ulEncryptedPartLen = pulEncryptedPartLen ? *pulEncryptedPartLen : 0;
+
+	data = (struct operation_data *)operation->priv_data;
+
+	key = data->key;
+
+	rv = key->ops->encrypt(operation->session, key, &operation->mechanism,
+			pPart, ulPartLen, pEncryptedPart, &ulEncryptedPartLen);
+
+	if (pulEncryptedPartLen)
+		*pulEncryptedPartLen = ulEncryptedPartLen;
+	return rv;
+}
+
+static CK_RV
+sc_pkcs11_encrypt_final(sc_pkcs11_operation_t *operation,
+		CK_BYTE_PTR pLastEncryptedPart,
+		CK_ULONG_PTR pulLastEncryptedPartLen)
+{
+	struct operation_data *data;
+	struct sc_pkcs11_object *key;
+	CK_RV rv;
+	CK_ULONG ulLastEncryptedPartLen;
+
+	/* PKCS#11: If pBuf is not NULL_PTR, then *pulBufLen must contain the size in bytes.. */
+	if (pLastEncryptedPart && !pulLastEncryptedPartLen)
+		return CKR_ARGUMENTS_BAD;
+
+	ulLastEncryptedPartLen = pulLastEncryptedPartLen ? *pulLastEncryptedPartLen : 0;
+
+	data = (struct operation_data *)operation->priv_data;
+
+	key = data->key;
+
+	rv = key->ops->encrypt(operation->session, key, &operation->mechanism,
+			NULL, 0, pLastEncryptedPart, &ulLastEncryptedPartLen);
+
+	if (pulLastEncryptedPartLen)
+		*pulLastEncryptedPartLen = ulLastEncryptedPartLen;
+	return rv;
+}
 
 /*
  * Initialize a decrypt operation
@@ -1141,10 +1430,10 @@ static CK_RV
 sc_pkcs11_decrypt_init(sc_pkcs11_operation_t *operation,
 			struct sc_pkcs11_object *key)
 {
-	struct signature_data *data;
+	struct operation_data *data;
 	CK_RV rv;
 
-	if (!(data = new_signature_data()))
+	if (!(data = new_operation_data()))
 		return CKR_HOST_MEMORY;
 
 	data->key = key;
@@ -1170,10 +1459,10 @@ sc_pkcs11_decrypt(sc_pkcs11_operation_t *operation,
 		CK_BYTE_PTR pEncryptedData, CK_ULONG ulEncryptedDataLen,
 		CK_BYTE_PTR pData, CK_ULONG_PTR pulDataLen)
 {
-	struct signature_data *data;
+	struct operation_data *data;
 	struct sc_pkcs11_object *key;
 
-	data = (struct signature_data*) operation->priv_data;
+	data = (struct operation_data *)operation->priv_data;
 
 	key = data->key;
 	return key->ops->decrypt(operation->session,
@@ -1238,7 +1527,8 @@ sc_pkcs11_new_fw_mechanism(CK_MECHANISM_TYPE mech,
 				CK_MECHANISM_INFO_PTR pInfo,
 				CK_KEY_TYPE key_type,
 				const void *priv_data,
-				void (*free_priv_data)(const void *priv_data))
+				void (*free_priv_data)(const void *priv_data),
+				CK_RV (*copy_priv_data)(const void *mech_data, void **new_data))
 {
 	sc_pkcs11_mechanism_type_t *mt;
 
@@ -1251,9 +1541,10 @@ sc_pkcs11_new_fw_mechanism(CK_MECHANISM_TYPE mech,
 	mt->key_types[1] = -1;
 	mt->mech_data = priv_data;
 	mt->free_mech_data = free_priv_data;
+	mt->copy_mech_data = copy_priv_data;
 	mt->obj_size = sizeof(sc_pkcs11_operation_t);
 
-	mt->release = sc_pkcs11_signature_release;
+	mt->release = sc_pkcs11_operation_release;
 
 	if (pInfo->flags & CKF_SIGN) {
 		mt->sign_init = sc_pkcs11_signature_init;
@@ -1279,8 +1570,24 @@ sc_pkcs11_new_fw_mechanism(CK_MECHANISM_TYPE mech,
 		mt->decrypt_init = sc_pkcs11_decrypt_init;
 		mt->decrypt = sc_pkcs11_decrypt;
 	}
+	if (pInfo->flags & CKF_ENCRYPT) {
+		mt->encrypt_init = sc_pkcs11_encrypt_init;
+		mt->encrypt = sc_pkcs11_encrypt;
+		mt->encrypt_update = sc_pkcs11_encrypt_update;
+		mt->encrypt_final = sc_pkcs11_encrypt_final;
+	}
 
 	return mt;
+}
+
+void sc_pkcs11_free_mechanism(sc_pkcs11_mechanism_type_t **mt)
+{
+	if (!mt || !(*mt))
+		return;
+	if ((*mt)->free_mech_data)
+		(*mt)->free_mech_data((*mt)->mech_data);
+	free(*mt);
+	*mt = NULL;
 }
 
 /*
@@ -1300,6 +1607,19 @@ void free_info(const void *info)
 	free((void *) info);
 }
 
+CK_RV copy_hash_signature_info(const void *mech_data, void **new_data)
+{
+	if (mech_data == NULL || new_data == NULL)
+		return CKR_ARGUMENTS_BAD;
+
+	*new_data = calloc(1, sizeof(struct hash_signature_info));
+	if (!(*new_data))
+		return CKR_HOST_MEMORY;
+	
+	memcpy(*new_data, mech_data, sizeof(struct hash_signature_info));
+	return CKR_OK;
+}
+
 /*
  * Register a sign+hash algorithm derived from an algorithm supported
  * by the token + a software hash mechanism
@@ -1312,8 +1632,12 @@ sc_pkcs11_register_sign_and_hash_mechanism(struct sc_pkcs11_card *p11card,
 {
 	sc_pkcs11_mechanism_type_t *hash_type, *new_type;
 	struct hash_signature_info *info;
-	CK_MECHANISM_INFO mech_info = sign_type->mech_info;
+	CK_MECHANISM_INFO mech_info;
 	CK_RV rv;
+
+	if (!sign_type)
+		return CKR_MECHANISM_INVALID;
+	mech_info = sign_type->mech_info;
 
 	if (!(hash_type = sc_pkcs11_find_mechanism(p11card, hash_mech, CKF_DIGEST)))
 		return CKR_MECHANISM_INVALID;
@@ -1326,22 +1650,18 @@ sc_pkcs11_register_sign_and_hash_mechanism(struct sc_pkcs11_card *p11card,
 		return CKR_HOST_MEMORY;
 
 	info->mech = mech;
-	info->sign_type = sign_type;
 	info->hash_type = hash_type;
 	info->sign_mech = sign_type->mech;
 	info->hash_mech = hash_mech;
 
-	new_type = sc_pkcs11_new_fw_mechanism(mech, &mech_info, sign_type->key_types[0], info, free_info);
+	new_type = sc_pkcs11_new_fw_mechanism(mech, &mech_info, sign_type->key_types[0], info, free_info, copy_hash_signature_info);
 	if (!new_type) {
 		free_info(info);
 		return CKR_HOST_MEMORY;
 	}
 
-	rv = sc_pkcs11_register_mechanism(p11card, new_type);
-	if (CKR_OK != rv) {
-		new_type->free_mech_data(new_type->mech_data);
-		free(new_type);
-	}
+	rv = sc_pkcs11_register_mechanism(p11card, new_type, NULL);
+	sc_pkcs11_free_mechanism(&new_type);
 
 	return rv;
 }

@@ -22,4 +22,7 @@ customactions@LIBRARY_BITNESS@_la_LDFLAGS = $(AM_LDFLAGS) \
 
 install-exec-hook:
 	mv "$(DESTDIR)$(libdir)/customactions@LIBRARY_BITNESS@.dll" "$(DESTDIR)$(bindir)/"
+
+uninstall-hook:
+	rm -f "$(DESTDIR)$(bindir)/customactions@LIBRARY_BITNESS@.dll"
 endif

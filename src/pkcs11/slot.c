@@ -69,13 +69,15 @@ static struct sc_pkcs11_slot * reader_reclaim_slot(sc_reader_t *reader)
 	CK_UTF8CHAR slotDescription[64];
 	CK_UTF8CHAR manufacturerID[32];
 
+	if (reader == NULL)
+		return NULL;
 	strcpy_bp(slotDescription, reader->name, 64);
 	strcpy_bp(manufacturerID, reader->vendor, 32);
 
 	/* Locate a slot related to the reader */
 	for (i = 0; i<list_size(&virtual_slots); i++) {
 		sc_pkcs11_slot_t *slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, i);
-		if (slot->reader == NULL && reader != NULL
+		if (slot->reader == NULL
 				&& 0 == memcmp(slot->slot_info.slotDescription, slotDescription, 64)
 				&& 0 == memcmp(slot->slot_info.manufacturerID, manufacturerID, 32)
 				&& slot->slot_info.hardwareVersion.major == reader->version_major

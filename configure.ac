@@ -7,9 +7,9 @@ define([PRODUCT_TARNAME], [opensc])
 define([PRODUCT_BUGREPORT], [https://github.com/OpenSC/OpenSC/issues])
 define([PRODUCT_URL], [https://github.com/OpenSC/OpenSC])
 define([PACKAGE_VERSION_MAJOR], [0])
-define([PACKAGE_VERSION_MINOR], [22])
+define([PACKAGE_VERSION_MINOR], [23])
 define([PACKAGE_VERSION_FIX], [0])
-define([PACKAGE_SUFFIX], [])
+define([PACKAGE_SUFFIX], [-rc1])
 
 define([VS_FF_LEGAL_COPYRIGHT], [OpenSC Project])
 define([VS_FF_LEGAL_COMPANY_NAME], [OpenSC Project])
@@ -19,9 +19,9 @@ define([VS_FF_PRODUCT_NAME], [OpenSC smartcard framework])
 define([VS_FF_PRODUCT_UPDATES], [https://github.com/OpenSC/OpenSC/releases])
 define([VS_FF_PRODUCT_URL], [https://github.com/OpenSC/OpenSC])
 
-m4_sinclude(version.m4.ci)
+m4_sinclude(m4/version.m4.ci)
 
-m4_define([openssl_minimum_version], [1.0.1])
+m4_define([openssl_minimum_version], [1.1.1])
 
 AC_INIT([PRODUCT_NAME],[PACKAGE_VERSION_MAJOR.PACKAGE_VERSION_MINOR.PACKAGE_VERSION_FIX[]PACKAGE_SUFFIX],[PRODUCT_BUGREPORT],[PRODUCT_TARNAME],[PRODUCT_URL])
 AC_CONFIG_AUX_DIR([.])
@@ -45,7 +45,7 @@ OPENSC_VS_FF_PRODUCT_URL="VS_FF_PRODUCT_URL"
 #   (Code changed:                      REVISION++)
 #   (Oldest interface changed/removed:  OLDEST++)
 #   (Interfaces added:                  CURRENT++, REVISION=0)
-OPENSC_LT_CURRENT="8"
+OPENSC_LT_CURRENT="9"
 OPENSC_LT_OLDEST="8"
 OPENSC_LT_REVISION="0"
 OPENSC_LT_AGE="0"
@@ -466,9 +466,20 @@ AC_CHECK_LIB(
 
 if test "${WIN32}" = "no"; then
 	dnl dl support
-	AC_SEARCH_LIBS([dlopen], [dl dld], [], [
-		AC_MSG_ERROR([unable to find the dlopen() function])
-	])
+	AC_ARG_VAR([LDL_LIBS], [linker flags for ldl])
+	if test -z "${LDL_LIBS}"; then
+		AC_CHECK_LIB(
+			[dl],
+			[dlopen],
+			[LDL_LIBS="-ldl"],
+			AC_CHECK_LIB(
+				[dld],
+				[dlopen],
+				[LDL_LIBS="-ldld"],
+				AC_MSG_ERROR([unable to find the dlopen() function])
+			)
+		)
+	fi
 
 	dnl Special check for pthread support.
 	AX_PTHREAD(
@@ -519,7 +530,7 @@ if test "${enable_dnie_ui}" = "yes"; then
 fi
 
 case "${host}" in
-	*-*-darwin*)
+	*-*-darwin*|*-mingw*|*-winnt*|*-cygwin*)
 			have_notify="yes"
 		;;
 	*)
@@ -543,6 +554,10 @@ case "${host}" in
 							   have_notify="no"
 							   have_gio2="no"  ])
 			LIBS="$saved_LIBS"
+			if test "${have_gio2}" = "yes"; then
+				# we do not need lglib-2.0
+				GIO2_LIBS="-lgio-2.0 -lgobject-2.0"
+			fi
 		;;
 esac
 
@@ -737,6 +752,7 @@ AC_MSG_CHECKING([for EAC_CTX_init_pace])
 AC_TRY_LINK_FUNC(EAC_CTX_init_pace, [ AC_MSG_RESULT([yes]) ],
                  [ AC_MSG_WARN([Cannot link against libeac])
                  have_openpace="no" ])
+AC_CHECK_FUNCS([EAC_OBJ_nid2obj])
 
 CPPFLAGS="$saved_CPPFLAGS"
 LIBS="$saved_LIBS"
@@ -1083,6 +1099,7 @@ AM_CONDITIONAL([ENABLE_ZLIB], [test "${enable_zlib}" = "yes"])
 AM_CONDITIONAL([ENABLE_READLINE], [test "${enable_readline}" = "yes"])
 AM_CONDITIONAL([ENABLE_OPENSSL], [test "${enable_openssl}" = "yes"])
 AM_CONDITIONAL([ENABLE_OPENPACE], [test "${enable_openpace}" = "yes"])
+AM_CONDITIONAL([ENABLE_NOTIFY], [test "${enable_notify}" = "yes"])
 AM_CONDITIONAL([ENABLE_CRYPTOTOKENKIT], [test "${enable_cryptotokenkit}" = "yes"])
 AM_CONDITIONAL([ENABLE_OPENCT], [test "${enable_openct}" = "yes"])
 AM_CONDITIONAL([ENABLE_DOC], [test "${enable_doc}" = "yes"])
@@ -1099,6 +1116,8 @@ AM_CONDITIONAL([GIT_CHECKOUT], [test "${GIT_CHECKOUT}" = "yes"])
 AM_CONDITIONAL([ENABLE_FUZZING], [test "${enable_fuzzing}" = "yes"])
 AM_CONDITIONAL([ENABLE_SHARED], [test "${enable_shared}" = "yes"])
 AS_IF([test "${enable_shared}" = "yes"], [AC_DEFINE([ENABLE_SHARED], [1], [Enable shared libraries])])
+AM_CONDITIONAL([ENABLE_STATIC], [test "${enable_static}" = "yes"])
+AS_IF([test "${enable_static}" = "yes"], [AC_DEFINE([ENABLE_static], [1], [Enable static libraries])])
 
 if test "${enable_pedantic}" = "yes"; then
 	enable_strict="yes";
@@ -1147,6 +1166,7 @@ AC_CONFIG_FILES([
 	MacOSX/Makefile
 	MacOSX/build-package
 	MacOSX/Distribution.xml
+	MacOSX/Distribution_universal.xml
 	MacOSX/resources/Welcome.html
 ])
 
@@ -1205,6 +1225,7 @@ Compiler flags:          ${CFLAGS}
 Linker flags:            ${LDFLAGS}
 Libraries:               ${LIBS}
 
+LDL_LIBS:                ${LDL_LIBS}
 READLINE_CFLAGS:         ${READLINE_CFLAGS}
 READLINE_LIBS:           ${READLINE_LIBS}
 ZLIB_CFLAGS:             ${ZLIB_CFLAGS}

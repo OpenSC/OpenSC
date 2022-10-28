@@ -59,6 +59,7 @@ IMPLEMENT_ASN1_FUNCTIONS(ASN1_AUXILIARY_DATA)
 #include <eac/ca.h>
 #include <eac/cv_cert.h>
 #include <eac/eac.h>
+#include <eac/objects.h>
 #include <eac/pace.h>
 #include <eac/ta.h>
 #include <openssl/bio.h>
@@ -414,7 +415,11 @@ static int format_mse_cdata(struct sc_context *ctx, int protocol,
 	}
 
 	if (protocol) {
+#ifndef HAVE_EAC_OBJ_NID2OBJ
 		data->cryptographic_mechanism_reference = OBJ_nid2obj(protocol);
+#else
+		data->cryptographic_mechanism_reference = EAC_OBJ_nid2obj(protocol);
+#endif
 		if (!data->cryptographic_mechanism_reference) {
 			sc_debug(ctx, SC_LOG_DEBUG_VERBOSE, "Error setting Cryptographic mechanism reference of MSE:Set AT data");
 			r = SC_ERROR_INTERNAL;
@@ -1136,6 +1141,7 @@ int perform_pace(sc_card_t *card,
 		sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "EF.CardAccess", pace_output->ef_cardaccess,
 				pace_output->ef_cardaccess_length);
 
+		EAC_init();
 		eac_ctx = EAC_CTX_new();
 		if (!eac_ctx
 				|| !EAC_CTX_init_ef_cardaccess(pace_output->ef_cardaccess,
@@ -1164,8 +1170,9 @@ int perform_pace(sc_card_t *card,
 			r = SC_ERROR_OUT_OF_MEMORY;
 			goto err;
 		}
-		r = eac_gen_auth_1_encrypted_nonce(card, (u8 **) &enc_nonce->data,
-				&enc_nonce->length);
+		p = (u8 *) enc_nonce->data;
+		r = eac_gen_auth_1_encrypted_nonce(card, &p, &enc_nonce->length);
+		enc_nonce->data = (char *) p;
 		if (r < 0) {
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not get encrypted nonce from card "
 					"(General Authenticate step 1 failed).");
@@ -1198,8 +1205,10 @@ int perform_pace(sc_card_t *card,
 			r = SC_ERROR_INTERNAL;
 			goto err;
 		}
+		p = (u8 *) mdata_opp->data;
 		r = eac_gen_auth_2_map_nonce(card, (u8 *) mdata->data, mdata->length,
-				(u8 **) &mdata_opp->data, &mdata_opp->length);
+				&p, &mdata_opp->length);
+		mdata_opp->data = (char *) p;
 		if (r < 0) {
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not exchange mapping data with card "
 					"(General Authenticate step 2 failed).");
@@ -1224,8 +1233,10 @@ int perform_pace(sc_card_t *card,
 			r = SC_ERROR_INTERNAL;
 			goto err;
 		}
+		p = (u8 *) pub_opp->data;
 		r = eac_gen_auth_3_perform_key_agreement(card, (u8 *) pub->data, pub->length,
-				(u8 **) &pub_opp->data, &pub_opp->length);
+				&p, &pub_opp->length);
+		pub_opp->data = (char *) p;
 		if (r < 0) {
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not exchange ephemeral public key with card "
 					"(General Authenticate step 3 failed).");
@@ -1251,10 +1262,12 @@ int perform_pace(sc_card_t *card,
 			r = SC_ERROR_INTERNAL;
 			goto err;
 		}
+		p = (u8 *) token_opp->data;
 		r = eac_gen_auth_4_mutual_authentication(card, (u8 *) token->data, token->length,
-				(u8 **) &token_opp->data, &token_opp->length,
+				&p, &token_opp->length,
 				&pace_output->recent_car, &pace_output->recent_car_length,
 				&pace_output->previous_car, &pace_output->previous_car_length);
+		token_opp->data = (char *) p;
 
 		if (r < 0) {
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not exchange authentication token with card "
@@ -1513,6 +1526,7 @@ int perform_terminal_authentication(sc_card_t *card,
 		 * seems valid. */
 		card->caps |= SC_CARD_CAP_APDU_EXT;
 
+		EAC_init();
 		eac_ctx = EAC_CTX_new();
 		if (!eac_ctx
 				|| !EAC_CTX_init_ef_cardaccess(ef_cardaccess,

@@ -11,6 +11,8 @@ on:
       - .github/cleanup-macos.sh
       - .github/build.sh
       - .github/push-artifacts.sh
+      - '**.am'
+      - MacOSX/**
   push:
 
 jobs:

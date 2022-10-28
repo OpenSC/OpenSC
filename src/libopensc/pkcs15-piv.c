@@ -144,6 +144,8 @@ static int piv_get_guid(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_o
 	r = sc_card_ctl(p15card->card, SC_CARDCTL_GET_SERIALNR, &serialnr);
 	if (r)
 		return r;
+	if (serialnr.len > SC_MAX_SERIALNR)
+		return SC_ERROR_INTERNAL;
 
 	memset(guid_bin, 0, sizeof(guid_bin));
 	memset(out, 0, *out_size);
@@ -719,6 +721,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		struct sc_pkcs15_object    cert_obj;
 		sc_pkcs15_der_t   cert_der;
 		sc_pkcs15_cert_t *cert_out = NULL;
+		int private_obj;
 		
 		ckis[i].cert_found = 0;
 		ckis[i].key_alg = -1;
@@ -748,7 +751,8 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 			continue;
 		}
 
-		r = sc_pkcs15_read_file(p15card, &cert_info.path, &cert_der.value, &cert_der.len);
+		private_obj = cert_obj.flags & SC_PKCS15_CO_FLAG_PRIVATE;
+		r = sc_pkcs15_read_file(p15card, &cert_info.path, &cert_der.value, &cert_der.len, private_obj);
 
 		if (r) {
 			sc_log(card->ctx,  "No cert found,i=%d", i);
@@ -761,12 +765,13 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		if (cert_der.value) {
 			cert_info.value.value = cert_der.value;
 			cert_info.value.len = cert_der.len;
-			if (!p15card->opts.use_file_cache) {
+			if (!p15card->opts.use_file_cache
+			    || (private_obj && !(p15card->opts.use_file_cache & SC_PKCS15_OPTS_CACHE_ALL_FILES))) {
 				cert_info.path.len = 0; /* use in mem cert from now on */
 			}
 		}
 		/* following will find the cached cert in cert_info */
-		r =  sc_pkcs15_read_certificate(p15card, &cert_info, &cert_out);
+		r =  sc_pkcs15_read_certificate(p15card, &cert_info, private_obj, &cert_out);
 		if (r < 0 || cert_out == NULL || cert_out->key == NULL) {
 			sc_log(card->ctx,  "Failed to read/parse the certificate r=%d",r);
 			if (cert_out != NULL)
@@ -1217,6 +1222,7 @@ err:
 	for (i = 0; i < PIV_NUM_CERTS_AND_KEYS; i++) {
 		sc_pkcs15_free_pubkey(ckis[i].pubkey_from_cert);
 	}
+	sc_pkcs15_card_clear(p15card);
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 

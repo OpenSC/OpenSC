@@ -27,4 +27,7 @@ opensc_minidriver@LIBRARY_BITNESS@_la_LDFLAGS = $(AM_LDFLAGS) \
 if ENABLE_MINIDRIVER
 install-exec-hook:
 	mv "$(DESTDIR)$(libdir)/opensc-minidriver@LIBRARY_BITNESS@.dll" "$(DESTDIR)$(bindir)/"
+
+uninstall-hook:
+	rm -f "$(DESTDIR)$(bindir)/opensc-minidriver@LIBRARY_BITNESS@.dll"
 endif

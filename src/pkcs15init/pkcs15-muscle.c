@@ -49,8 +49,11 @@ static int muscle_erase_card(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 	sc_format_path("3F00", &path);
 	if ((r = sc_select_file(p15card->card, &path, &file)) < 0)
 		return r;
-	if ((r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_ERASE)) < 0)
+	if ((r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_ERASE)) < 0) {
+		sc_file_free(file);
 		return r;
+	}
+	sc_file_free(file);
 	if ((r = sc_delete_file(p15card->card, &path)) < 0)
 		return r;
 	return 0;
@@ -72,8 +75,12 @@ muscle_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *d
 	sc_format_path("3F00", &path);
 	if ((r = sc_select_file(p15card->card, &path, &file)) < 0)
 		return r;
-	if ((r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_CREATE)) < 0)
+	if ((r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_CREATE)) < 0) {
+		sc_file_free(file);
 		return r;
+	}
+	sc_file_free(file);
+
 	/* Create the application DF */
 	if ((r = sc_pkcs15init_create_file(profile, p15card, df)) < 0)
 		return r;
@@ -97,10 +104,13 @@ muscle_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 
 	if ((r = sc_select_file(p15card->card, &df->path, &file)) < 0)
 		return r;
-	if ((r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_WRITE)) < 0)
+	if ((r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_WRITE)) < 0) {
+		sc_file_free(file);
 		return r;
+	}
 
 	auth_info->attrs.pin.flags &= ~SC_PKCS15_PIN_FLAG_LOCAL;
+	sc_file_free(file);
 	return 0;
 }
 

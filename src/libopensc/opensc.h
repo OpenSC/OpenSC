@@ -59,7 +59,8 @@ extern "C" {
 #define SC_SEC_OPERATION_DERIVE         0x0004
 #define SC_SEC_OPERATION_WRAP		0x0005
 #define SC_SEC_OPERATION_UNWRAP		0x0006
-
+#define SC_SEC_OPERATION_ENCRYPT_SYM	0x0007
+#define SC_SEC_OPERATION_DECRYPT_SYM	0x0008
 /* sc_security_env flags */
 #define SC_SEC_ENV_ALG_REF_PRESENT	0x0001
 #define SC_SEC_ENV_FILE_REF_PRESENT	0x0002
@@ -75,8 +76,7 @@ extern "C" {
 
 /* PK algorithms */
 #define SC_ALGORITHM_RSA		0
-#define SC_ALGORITHM_DSA		1
-#define SC_ALGORITHM_EC			2
+#define SC_ALGORITHM_EC		2
 #define SC_ALGORITHM_GOSTR3410		3
 #define SC_ALGORITHM_EDDSA		4
 #define SC_ALGORITHM_XEDDSA		5
@@ -721,6 +721,16 @@ struct sc_card_operations {
 	int (*select_file)(struct sc_card *card, const struct sc_path *path,
 			   struct sc_file **file_out);
 	int (*get_response)(struct sc_card *card, size_t *count, u8 *buf);
+	/**
+	 * Get random data from the card
+	 *
+	 * Implementation of this call back is optional and may be NULL.
+	 *
+	 * @param  card   struct sc_card object on which to issue the command
+	 * @param  buf    buffer to be filled with random data
+	 * @param  count  number of random bytes to initialize
+	 * @return number of random bytes successfully initialized (i.e. `count` or less bytes) or an error code
+	 */
 	int (*get_challenge)(struct sc_card *card, u8 * buf, size_t count);
 
 	/*
@@ -805,6 +815,9 @@ struct sc_card_operations {
 	int (*wrap)(struct sc_card *card, u8 *out, size_t outlen);
 
 	int (*unwrap)(struct sc_card *card, const u8 *crgram, size_t crgram_len);
+
+	int (*encrypt_sym)(struct sc_card *card, const u8 *plaintext, size_t plaintext_len,
+			u8 *out, size_t *outlen);
 };
 
 typedef struct sc_card_driver {
@@ -1027,9 +1040,20 @@ sc_reader_t *sc_ctx_get_reader(sc_context_t *ctx, unsigned int i);
  * @param  ctx   pointer to a sc_context_t
  * @param  pcsc_context_handle pointer to the  new context_handle to use
  * @param  pcsc_card_handle pointer to the new card_handle to use
- * @return SC_SUCCESS on success and an error code otherwise.
+ * @return SC_SUCCESS or 1 on success and an error code otherwise.
+ *		a return of 1 indicates to call reinit_card_for, as
+ *		the reader has changed.
  */
 int sc_ctx_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcsc_card_handle);
+
+/**
+ * detect if the given handles are referencing `reader`
+ *
+ * 0 -> handles also point to `reader`
+ * 1 -> handles don't point to `reader`, but to a different reader
+ */
+int
+pcsc_check_reader_handles(sc_context_t *ctx, sc_reader_t *reader, void * pcsc_context_handle, void * pcsc_card_handle);
 
 /**
  * Returns a pointer to the specified sc_reader_t object
@@ -1320,7 +1344,7 @@ int sc_put_data(struct sc_card *, unsigned int, const u8 *, size_t);
 /**
  * Gets challenge from the card (normally random data).
  * @param  card    struct sc_card object on which to issue the command
- * @param  rndout  buffer for the returned random challenge
+ * @param  rndout  buffer for the returned random challenge. Note that the buffer may be only partially initialized on error.
  * @param  len     length of the challenge
  * @return SC_SUCCESS on success and an error code otherwise
  */
@@ -1358,6 +1382,8 @@ int sc_reset_retry_counter(struct sc_card *card, unsigned int type,
 			   const u8 *newref, size_t newlen);
 int sc_build_pin(u8 *buf, size_t buflen, struct sc_pin_cmd_pin *pin, int pad);
 
+int sc_encrypt_sym(struct sc_card *card, const u8 *Data, size_t DataLen,
+		u8 *out, size_t *outlen);
 
 /********************************************************************/
 /*               ISO 7816-9 related functions                       */

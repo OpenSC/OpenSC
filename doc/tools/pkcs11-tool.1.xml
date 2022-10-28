@@ -162,7 +162,13 @@
 					<term>
 						<option>--usage-decrypt</option>
 					</term>
-					<listitem><para>Specify 'decrypt' key usage flag (RSA only, set DECRYPT privkey, ENCRYPT in pubkey).</para></listitem>
+					<listitem>
+						<para>Specify 'decrypt' key usage flag.</para>
+						<para>
+							For RSA keys, sets DECRYPT in privkey and ENCRYPT in pubkey. For secret
+							keys, sets both DECRYPT and ENCRYPT.
+						</para>
+					</listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -226,6 +232,13 @@
 						<option>--list-interfaces</option>
 					</term>
 					<listitem><para>List interfaces of PKCS #11 3.0 library.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--session-rw</option>,
+					</term>
+					<listitem><para>Forces to open the PKCS#11 session with CKF_RW_SESSION.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -412,7 +425,9 @@
 					<listitem><para>Specify how many bytes of salt should
 					be used in RSA-PSS signatures. Accepts two special values:
 					"-1" means salt length equals to digest length,
-					"-2" means use maximum permissible length.
+					"-2" or "-3" means use maximum permissible length.
+					For verify operation "-2" means that the salt length is automatically recovered from signature.
+					The value "-2" for the verify operation is supported for opensc pkcs#11 module only.
 					Default is digest length (-1).</para></listitem>
 				</varlistentry>
 

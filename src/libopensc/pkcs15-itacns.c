@@ -198,6 +198,7 @@ static int itacns_add_cert(sc_pkcs15_card_t *p15card,
 #ifdef ENABLE_OPENSSL
 	X509 *x509;
 	sc_pkcs15_cert_t *cert;
+	int private_obj;
 #endif
 
 	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_NORMAL);
@@ -228,8 +229,8 @@ static int itacns_add_cert(sc_pkcs15_card_t *p15card,
 
 	/* If we have OpenSSL, read keyUsage */
 #ifdef ENABLE_OPENSSL
-
-	r = sc_pkcs15_read_certificate(p15card, &info, &cert);
+	private_obj = obj_flags & SC_PKCS15_CO_FLAG_PRIVATE;
+	r = sc_pkcs15_read_certificate(p15card, &info, private_obj, &cert);
 	LOG_TEST_RET(p15card->card->ctx, r,
 		"Could not read X.509 certificate");
 
@@ -493,6 +494,7 @@ static int itacns_add_data_files(sc_pkcs15_card_t *p15card)
 	sc_pkcs15_data_info_t dinfo;
 	struct sc_pkcs15_object *objs[32];
 	struct sc_pkcs15_data_info *cinfo;
+	int private_obj;
 
 	for(i=0; i < array_size; i++) {
 		sc_path_t path;
@@ -548,7 +550,8 @@ static int itacns_add_data_files(sc_pkcs15_card_t *p15card)
 		return SC_SUCCESS;
 	}
 
-	rv = sc_pkcs15_read_data_object(p15card, cinfo, &p15_personaldata);
+	private_obj = objs[i]->flags & SC_PKCS15_CO_FLAG_PRIVATE;
+	rv = sc_pkcs15_read_data_object(p15card, cinfo, private_obj, &p15_personaldata);
 	if (rv) {
 		sc_log(p15card->card->ctx,
 			"Could not read EF_DatiPersonali: "
@@ -825,7 +828,7 @@ static int itacns_init(sc_pkcs15_card_t *p15card)
 
 	/* Data files */
 	r = itacns_add_data_files(p15card);
-	LOG_TEST_RET(p15card->card->ctx, r,
+	LOG_TEST_GOTO_ERR(p15card->card->ctx, r,
 		"Could not add data files");
 
 	/*** Certificate and keys. ***/
@@ -833,7 +836,7 @@ static int itacns_init(sc_pkcs15_card_t *p15card)
 	r = itacns_check_and_add_keyset(p15card, "CNS0", cns0_secenv,
 		0, "3F0011001101", "3F003F01", NULL,
 		0x10, &found_certs);
-	LOG_TEST_RET(p15card->card->ctx, r,
+	LOG_TEST_GOTO_ERR(p15card->card->ctx, r,
 		"Could not add CNS0");
 	certificate_count += found_certs;
 
@@ -841,7 +844,7 @@ static int itacns_init(sc_pkcs15_card_t *p15card)
 	r = itacns_check_and_add_keyset(p15card, "CNS01", 0x21,
 		5, "3F002FFF8228", NULL, "3F002FFF0000",
 		0x10, &found_certs);
-	LOG_TEST_RET(p15card->card->ctx, r,
+	LOG_TEST_GOTO_ERR(p15card->card->ctx, r,
 		"Could not add CNS01");
 	certificate_count += found_certs;
 
@@ -849,7 +852,7 @@ static int itacns_init(sc_pkcs15_card_t *p15card)
 	r = itacns_check_and_add_keyset(p15card, "CNS1", 0x10,
 		0, "3F0014009010", "3F00140081108010", "3F0014008110",
 		0x1a, &found_certs);
-	LOG_TEST_RET(p15card->card->ctx, r,
+	LOG_TEST_GOTO_ERR(p15card->card->ctx, r,
 		"Could not add CNS1");
 	certificate_count += found_certs;
 
@@ -861,10 +864,14 @@ static int itacns_init(sc_pkcs15_card_t *p15card)
 	/* Back to Master File */
 	sc_format_path("3F00", &path);
 	r = sc_select_file(p15card->card, &path, NULL);
-	LOG_TEST_RET(p15card->card->ctx, r,
+	LOG_TEST_GOTO_ERR(p15card->card->ctx, r,
 		"Could not select master file again");
 
-	return r;
+	LOG_FUNC_RETURN(p15card->card->ctx, r);
+
+err:
+	sc_pkcs15_card_clear(p15card);
+	LOG_FUNC_RETURN(p15card->card->ctx, r);
 }
 
 int sc_pkcs15emu_itacns_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid)

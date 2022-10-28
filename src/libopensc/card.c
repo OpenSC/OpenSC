@@ -413,8 +413,6 @@ int sc_disconnect_card(sc_card_t *card)
 	ctx = card->ctx;
 	LOG_FUNC_CALLED(ctx);
 
-	if (card->lock_count != 0)
-		return SC_ERROR_NOT_ALLOWED;
 	if (card->ops->finish) {
 		int r = card->ops->finish(card);
 		if (r)
@@ -507,8 +505,17 @@ int sc_lock(sc_card_t *card)
 	}
 
 	/* give card driver a chance to do something when reader lock first obtained */
-	if (r == 0 && reader_lock_obtained == 1  && card->ops->card_reader_lock_obtained)
+	if (r == 0 && reader_lock_obtained == 1  && card->ops->card_reader_lock_obtained) {
 		r = card->ops->card_reader_lock_obtained(card, was_reset);
+		/* return value of card->reader->ops->lock is overwritten here
+		   by card->ops->card_reader_lock_obtained */
+		if (r != 0) {
+			/* unlock reader and get the card to its original state in case of failure*/
+			if (card->reader->ops->unlock != NULL)
+				r = card->reader->ops->unlock(card->reader);
+			card->lock_count--;
+		}
+	}
 
 	LOG_FUNC_RETURN(card->ctx, r);
 }
@@ -1452,8 +1459,10 @@ int sc_copy_ec_params(struct sc_ec_parameters *dst, struct sc_ec_parameters *src
 	dst->id = src->id;
 	if (src->der.value && src->der.len)   {
 		dst->der.value = malloc(src->der.len);
-		if (!dst->der.value)
+		if (!dst->der.value) {
+			free(dst->named_curve);
 			return SC_ERROR_OUT_OF_MEMORY;
+		}
 		memcpy(dst->der.value, src->der.value, src->der.len);
 		dst->der.len = src->der.len;
 	}

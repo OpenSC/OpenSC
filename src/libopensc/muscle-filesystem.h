@@ -34,6 +34,7 @@ typedef struct mscfs_file {
 	size_t size;
 	unsigned short read, write, delete;
 	int ef;
+	int deleteFile;
 } mscfs_file_t;
 
 typedef struct mscfs_cache {

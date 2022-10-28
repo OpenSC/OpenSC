@@ -136,8 +136,11 @@ static int sc_pkcs15emu_gids_init (sc_pkcs15_card_t * p15card)
 
 	if (p15card->tokeninfo->label == NULL) {
 		p15card->tokeninfo->label = strdup("GIDS card");
-		if (p15card->tokeninfo->label == NULL)
+		if (p15card->tokeninfo->label == NULL) {
+			free(p15card->tokeninfo->serial_number);
+			p15card->tokeninfo->serial_number = NULL;
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+		}
 	}
 
 	if ((p15card->tokeninfo->manufacturer_id != NULL) && !strcmp("(unknown)", p15card->tokeninfo->manufacturer_id)) {
@@ -147,8 +150,10 @@ static int sc_pkcs15emu_gids_init (sc_pkcs15_card_t * p15card)
 
 	if (p15card->tokeninfo->manufacturer_id == NULL) {
 		p15card->tokeninfo->manufacturer_id = strdup("www.mysmartlogon.com");
-		if (p15card->tokeninfo->manufacturer_id == NULL)
+		if (p15card->tokeninfo->manufacturer_id == NULL) {
+			sc_pkcs15_card_clear(p15card);
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+		}
 	}
 	if (p15card->card->type == SC_CARD_TYPE_GIDS_V2) {
 		p15card->tokeninfo->version = 2;
@@ -198,7 +203,7 @@ static int sc_pkcs15emu_gids_init (sc_pkcs15_card_t * p15card)
 	}
 
 	r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
-	LOG_TEST_RET(card->ctx, r, "unable to sc_pkcs15emu_add_pin_obj");
+	LOG_TEST_GOTO_ERR(card->ctx, r, "unable to sc_pkcs15emu_add_pin_obj");
 
 	if (has_puk) {
 		pin_info.auth_id.value[0] = 0x81;
@@ -209,11 +214,11 @@ static int sc_pkcs15emu_gids_init (sc_pkcs15_card_t * p15card)
 		strlcpy(pin_obj.label, "PUK", sizeof(pin_obj.label));
 		pin_obj.auth_id.len = 0;
 		r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
-		LOG_TEST_RET(card->ctx, r, "unable to sc_pkcs15emu_add_pin_obj with PUK");
+		LOG_TEST_GOTO_ERR(card->ctx, r, "unable to sc_pkcs15emu_add_pin_obj with PUK");
 	}
 
 	r = sc_card_ctl(card, SC_CARDCTL_GIDS_GET_ALL_CONTAINERS, &recordsnum);
-	LOG_TEST_RET(card->ctx, r, "sc_card_ctl SC_CARDCTL_GIDS_GET_ALL_CONTAINERS");
+	LOG_TEST_GOTO_ERR(card->ctx, r, "sc_card_ctl SC_CARDCTL_GIDS_GET_ALL_CONTAINERS");
 
 	for (i = 0; i < recordsnum; i++) {
 		sc_cardctl_gids_get_container_t container;
@@ -228,6 +233,9 @@ static int sc_pkcs15emu_gids_init (sc_pkcs15_card_t * p15card)
 		sc_pkcs15emu_gids_add_prkey(p15card, &container);
 	}
 	return SC_SUCCESS;
+err:
+	sc_pkcs15_card_clear(p15card);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 int sc_pkcs15emu_gids_init_ex(sc_pkcs15_card_t *p15card,

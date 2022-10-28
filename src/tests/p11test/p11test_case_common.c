@@ -85,8 +85,7 @@ add_object(test_certs_t *objects, CK_ATTRIBUTE key_id, CK_ATTRIBUTE label)
 	o->derive_pub = 0;
 	o->key_type = -1;
 	o->x509 = NULL; /* The "reuse" capability of d2i_X509() is strongly discouraged */
-	o->key.rsa = NULL;
-	o->key.ec = NULL;
+	o->key = NULL;
 	o->value = NULL;
 
 	/* Store the passed CKA_ID and CKA_LABEL */
@@ -123,7 +122,7 @@ add_supported_mechs(test_cert_t *o)
 {
 	size_t i;
 
-	if (o->type == EVP_PK_RSA) {
+	if (o->type == EVP_PKEY_RSA) {
 		if (token.num_rsa_mechs > 0 ) {
 			/* Get supported mechanisms by token */
 			o->num_mechs = token.num_rsa_mechs;
@@ -145,7 +144,7 @@ add_supported_mechs(test_cert_t *o)
 			o->mechs[0].usage_flags = CKF_SIGN | CKF_VERIFY
 				| CKF_ENCRYPT | CKF_DECRYPT;
 		}
-	} else if (o->type == EVP_PK_EC) {
+	} else if (o->type == EVP_PKEY_EC) {
 		if (token.num_ec_mechs > 0 ) {
 			o->num_mechs = token.num_ec_mechs;
 			for (i = 0; i < token.num_ec_mechs; i++) {
@@ -165,6 +164,7 @@ add_supported_mechs(test_cert_t *o)
 			o->mechs[0].result_flags = 0;
 			o->mechs[0].usage_flags = CKF_SIGN | CKF_VERIFY;
 		}
+#ifdef EVP_PKEY_ED25519
 	} else if (o->type == EVP_PKEY_ED25519) {
 		if (token.num_ed_mechs > 0 ) {
 			o->num_mechs = token.num_ed_mechs;
@@ -185,6 +185,8 @@ add_supported_mechs(test_cert_t *o)
 			o->mechs[0].result_flags = 0;
 			o->mechs[0].usage_flags = CKF_SIGN | CKF_VERIFY;
 		}
+#endif
+#ifdef EVP_PKEY_X25519
 	} else if (o->type == EVP_PKEY_X25519) {
 		if (token.num_montgomery_mechs > 0 ) {
 			o->num_mechs = token.num_montgomery_mechs;
@@ -205,6 +207,7 @@ add_supported_mechs(test_cert_t *o)
 			o->mechs[0].result_flags = 0;
 			o->mechs[0].usage_flags = CKF_DERIVE;
 		}
+#endif
 	/* Nothing in the above enum can be used for secret keys */
 	} else if (o->key_type == CKK_AES) {
 		if (token.num_aes_mechs > 0 ) {
@@ -256,30 +259,20 @@ int callback_certificates(test_certs_t *objects,
 	}
 
 	if (EVP_PKEY_base_id(evp) == EVP_PKEY_RSA) {
-		/* Extract public RSA key */
-		const RSA *rsa = EVP_PKEY_get0_RSA(evp);
-		if ((o->key.rsa = RSAPublicKey_dup((RSA *)rsa)) == NULL) {
-			fail_msg("RSAPublicKey_dup failed");
-			return -1;
-		}
-		o->type = EVP_PK_RSA;
+		o->key = evp;
+		o->type = EVP_PKEY_RSA;
 		o->bits = EVP_PKEY_bits(evp);
 
 	} else if (EVP_PKEY_base_id(evp) == EVP_PKEY_EC) {
-		/* Extract public EC key */
-		const EC_KEY *ec = EVP_PKEY_get0_EC_KEY(evp);
-		if ((o->key.ec = EC_KEY_dup(ec)) == NULL) {
-			fail_msg("EC_KEY_dup failed");
-			return -1;
-		}
-		o->type = EVP_PK_EC;
+		o->key = evp;
+		o->type = EVP_PKEY_EC;
 		o->bits = EVP_PKEY_bits(evp);
 
 	} else {
+		EVP_PKEY_free(evp);
 		fprintf(stderr, "[WARN %s ]evp->type = 0x%.4X (not RSA, EC)\n",
 			o->id_str, EVP_PKEY_id(evp));
 	}
-	EVP_PKEY_free(evp);
 
 	debug_print(" [  OK %s ] Certificate with label %s loaded successfully",
 		o->id_str, o->label);
@@ -344,6 +337,11 @@ int callback_public_keys(test_certs_t *objects,
 {
 	test_cert_t *o = NULL;
 	char *key_id;
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	EVP_PKEY_CTX *ctx = NULL;
+	OSSL_PARAM *params = NULL;
+	OSSL_PARAM_BLD *bld = NULL;
+#endif
 
 	/* Search for already stored certificate with same ID */
 	if ((o = search_certificate(objects, &(template[3]))) == NULL) {
@@ -378,30 +376,74 @@ int callback_public_keys(test_certs_t *objects,
 		BIGNUM *n = NULL, *e = NULL;
 		n = BN_bin2bn(template[4].pValue, template[4].ulValueLen, NULL);
 		e = BN_bin2bn(template[5].pValue, template[5].ulValueLen, NULL);
-		if (o->key.rsa != NULL) {
+		if (o->key != NULL) {
+			int rv;
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 			const BIGNUM *cert_n = NULL, *cert_e = NULL;
-			RSA_get0_key(o->key.rsa, &cert_n, &cert_e, NULL);
-			if (BN_cmp(cert_n, n) != 0 ||
-				BN_cmp(cert_e, e) != 0) {
-				debug_print(" [WARN %s ] Got different public key then from the certificate",
-					o->id_str);
+			RSA *rsa = EVP_PKEY_get0_RSA(o->key);
+			RSA_get0_key(rsa, &cert_n, &cert_e, NULL);
+#else
+			BIGNUM *cert_n = NULL, *cert_e = NULL;
+			if ((EVP_PKEY_get_bn_param(o->key, OSSL_PKEY_PARAM_RSA_N, &cert_n) != 1) ||
+			    (EVP_PKEY_get_bn_param(o->key, OSSL_PKEY_PARAM_RSA_E, &cert_e) != 1)) {
+				fprintf(stderr, "Failed to extract RSA key parameters");
+				BN_free(cert_n);
 				BN_free(n);
 				BN_free(e);
-				return -1;
+				return -1; 
 			}
+#endif
+			rv = BN_cmp(cert_n, n) == 0 && BN_cmp(cert_e, e) == 0;
+			if (rv == 1) {
+				o->verify_public = 1;
+			} else {
+				debug_print(" [WARN %s ] Got different public key then from the certificate",
+					o->id_str);
+			}
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+			BN_free(cert_n);
+			BN_free(cert_e);
+#endif
 			BN_free(n);
 			BN_free(e);
-			o->verify_public = 1;
 		} else { /* store the public key for future use */
-			o->type = EVP_PK_RSA;
-			o->key.rsa = RSA_new();
-			if (RSA_set0_key(o->key.rsa, n, e, NULL) != 1) {
+			o->type = EVP_PKEY_RSA;
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+			o->key = EVP_PKEY_new();
+			RSA *rsa = RSA_new();
+			if (RSA_set0_key(rsa, n, e, NULL) != 1 ||
+			    EVP_PKEY_set1_RSA(o->key, rsa) != 1) {
 				fail_msg("Unable to set key params");
 				return -1;
 			}
-			o->bits = RSA_bits(o->key.rsa);
-			n = NULL;
-			e = NULL;
+#else
+			if (!(ctx = EVP_PKEY_CTX_new_from_name(NULL, "RSA", NULL)) ||
+				!(bld = OSSL_PARAM_BLD_new()) ||
+				OSSL_PARAM_BLD_push_BN(bld, "n", n) != 1 ||
+				OSSL_PARAM_BLD_push_BN(bld, "e", e) != 1 ||
+				!(params = OSSL_PARAM_BLD_to_param(bld))) {
+				EVP_PKEY_CTX_free(ctx);
+				BN_free(n);
+				BN_free(e);
+				OSSL_PARAM_BLD_free(bld);
+				fail_msg("Unable to set key params");
+				return -1;
+			}
+			OSSL_PARAM_BLD_free(bld);
+			if (EVP_PKEY_fromdata_init(ctx) != 1 ||
+				EVP_PKEY_fromdata(ctx, &o->key, EVP_PKEY_PUBLIC_KEY, params) != 1) {
+				EVP_PKEY_CTX_free(ctx);
+				BN_free(n);
+				BN_free(e);
+				OSSL_PARAM_free(params);
+			 	fail_msg("Unable to store key");
+				return -1;
+			}
+			OSSL_PARAM_free(params);
+			BN_free(n);
+			BN_free(e);
+#endif
+			o->bits = EVP_PKEY_bits(o->key);
 		}
 	} else if (o->key_type == CKK_EC) {
 		ASN1_OBJECT *oid = NULL;
@@ -448,8 +490,9 @@ int callback_public_keys(test_certs_t *objects,
 			return -1;
 		}
 
-		ecpoint = EC_POINT_bn2point(ecgroup, bn, NULL, NULL);
+		ecpoint = EC_POINT_hex2point(ecgroup, BN_bn2hex(bn), NULL, NULL);
 		BN_free(bn);
+		
 		if (ecpoint == NULL) {
 			debug_print(" [WARN %s ] Can not convert EC_POINT from"
 				" BIGNUM to OpenSSL format", o->id_str);
@@ -457,11 +500,39 @@ int callback_public_keys(test_certs_t *objects,
 			return -1;
 		}
 
-		if (o->key.ec != NULL) {
-			const EC_GROUP *cert_group = EC_KEY_get0_group(o->key.ec);
-			const EC_POINT *cert_point = EC_KEY_get0_public_key(o->key.ec);
+		if (o->key != NULL) {
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+			EC_KEY *ec = EVP_PKEY_get0_EC_KEY(o->key);
+			const EC_GROUP *cert_group = EC_KEY_get0_group(ec);
+			const EC_POINT *cert_point = EC_KEY_get0_public_key(ec);
 			int cert_nid = EC_GROUP_get_curve_name(cert_group);
-
+#else
+			EC_GROUP *cert_group = NULL;
+			EC_POINT *cert_point = NULL;
+			char curve_name[80]; size_t curve_name_len = 0;
+			unsigned char pubkey[80]; size_t pubkey_len = 0;
+			int cert_nid = 0;
+			if (EVP_PKEY_get_group_name(o->key, curve_name, sizeof(curve_name), &curve_name_len) != 1 ||
+				(cert_nid = OBJ_txt2nid(curve_name)) == NID_undef ||
+				(cert_group = EC_GROUP_new_by_curve_name(cert_nid)) == NULL) {
+				fprintf(stderr, "Can not get EC_GROUP from EVP_PKEY");
+				EC_GROUP_free(ecgroup);
+				EC_POINT_free(ecpoint);
+				EC_GROUP_free(cert_group);
+				return -1;
+			}
+			cert_point = EC_POINT_new(cert_group);
+			if (!cert_point ||
+				EVP_PKEY_get_octet_string_param(o->key, OSSL_PKEY_PARAM_PUB_KEY, pubkey, sizeof(pubkey), &pubkey_len) != 1 ||
+				EC_POINT_oct2point(cert_group, cert_point, pubkey, pubkey_len, NULL) != 1) {
+				fprintf(stderr, "Can not get EC_POINT from EVP_PKEY");
+				EC_GROUP_free(ecgroup);
+				EC_POINT_free(ecpoint);
+				EC_POINT_free(cert_point);
+				EC_GROUP_free(cert_group);
+				return -1;
+			}
+#endif
 			if (cert_nid != nid ||
 				EC_GROUP_cmp(cert_group, ecgroup, NULL) != 0 ||
 				EC_POINT_cmp(ecgroup, cert_point, ecpoint, NULL) != 0) {
@@ -476,11 +547,51 @@ int callback_public_keys(test_certs_t *objects,
 			EC_POINT_free(ecpoint);
 			o->verify_public = 1;
 		} else { /* store the public key for future use */
-			o->type = EVP_PK_EC;
-			o->key.ec = EC_KEY_new_by_curve_name(nid);
-			EC_KEY_set_public_key(o->key.ec, ecpoint);
-			EC_KEY_set_group(o->key.ec, ecgroup);
+			o->type = EVP_PKEY_EC;
+			o->key = EVP_PKEY_new();
 			o->bits = EC_GROUP_get_degree(ecgroup);
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+			EC_KEY *ec = EC_KEY_new_by_curve_name(nid);
+			EC_KEY_set_public_key(ec, ecpoint);
+			EC_KEY_set_group(ec, ecgroup);
+			EVP_PKEY_set1_EC_KEY(o->key, ec);
+#else
+			ctx = EVP_PKEY_CTX_new_from_name(0, "EC", 0);
+			char curve_name[80]; size_t curve_name_len = 0;
+			unsigned char pubkey[80]; size_t pubkey_len = 0;
+			if (EVP_PKEY_get_group_name(o->key, curve_name, sizeof(curve_name), &curve_name_len)||
+				EVP_PKEY_get_octet_string_param(o->key, OSSL_PKEY_PARAM_PUB_KEY, pubkey, sizeof(pubkey), &pubkey_len) != 1) {
+				debug_print(" [WARN %s ] Can not get params from EVP_PKEY", o->id_str);
+				EC_GROUP_free(ecgroup);
+				EC_POINT_free(ecpoint);
+				return -1;
+			}
+			
+			if (!(bld = OSSL_PARAM_BLD_new()) ||
+				OSSL_PARAM_BLD_push_utf8_string(bld, "group", curve_name, curve_name_len) != 1 ||
+				OSSL_PARAM_BLD_push_octet_string(bld, "pub", pubkey, pubkey_len) != 1 ||
+				!(params = OSSL_PARAM_BLD_to_param(bld))) {
+				debug_print(" [WARN %s ] Can not set params from EVP_PKEY", o->id_str);
+				EC_GROUP_free(ecgroup);
+				EC_POINT_free(ecpoint);
+				OSSL_PARAM_BLD_free(bld);
+				EVP_PKEY_CTX_free(ctx);
+				return -1;
+			}
+			OSSL_PARAM_BLD_free(bld);
+
+			if (ctx == NULL || params == NULL ||
+				EVP_PKEY_fromdata_init(ctx) != 1 ||
+				EVP_PKEY_fromdata(ctx, &o->key, EVP_PKEY_PUBLIC_KEY, params) != 1) {
+				debug_print(" [WARN %s ] Can not set params for EVP_PKEY", o->id_str);
+				EC_GROUP_free(ecgroup);
+				EC_POINT_free(ecpoint);
+				EVP_PKEY_CTX_free(ctx);
+				return -1;
+			}
+			EVP_PKEY_CTX_free(ctx);
+			OSSL_PARAM_free(params);
+#endif
 		}
 	} else if (o->key_type == CKK_EC_EDWARDS
 		|| o->key_type == CKK_EC_MONTGOMERY) {
@@ -494,6 +605,7 @@ int callback_public_keys(test_certs_t *objects,
 		a = template[6].pValue;
 		if (d2i_ASN1_PRINTABLESTRING(&curve, &a, (long)template[6].ulValueLen) != NULL) {
 			switch (o->key_type) {
+#ifdef EVP_PKEY_ED25519
 			case CKK_EC_EDWARDS:
 				if (strcmp((char *)curve->data, "edwards25519")) {
 					debug_print(" [WARN %s ] Unknown curve name. "
@@ -501,6 +613,8 @@ int callback_public_keys(test_certs_t *objects,
 				}
 				evp_type = EVP_PKEY_ED25519;
 				break;
+#endif
+#ifdef EVP_PKEY_X25519
 			case CKK_EC_MONTGOMERY:
 				if (strcmp((char *)curve->data, "curve25519")) {
 					debug_print(" [WARN %s ] Unknown curve name. "
@@ -508,16 +622,20 @@ int callback_public_keys(test_certs_t *objects,
 				}
 				evp_type = EVP_PKEY_X25519;
 				break;
+#endif
 			default:
 				debug_print(" [WARN %s ] Unknown key type %lu", o->id_str, o->key_type);
 				return -1;
 			}
 			ASN1_PRINTABLESTRING_free(curve);
 		} else if (d2i_ASN1_OBJECT(&obj, &a, (long)template[6].ulValueLen) != NULL) {
+#if defined(EVP_PKEY_ED25519) || defined (EVP_PKEY_X25519)
 			int nid = OBJ_obj2nid(obj);
+#endif
 			ASN1_OBJECT_free(obj);
 
 			switch (o->key_type) {
+#ifdef EVP_PKEY_ED25519
 			case CKK_EC_EDWARDS:
 				if (nid != NID_ED25519) {
 					debug_print(" [WARN %s ] Unknown OID. "
@@ -525,6 +643,8 @@ int callback_public_keys(test_certs_t *objects,
 				}
 				evp_type = EVP_PKEY_ED25519;
 				break;
+#endif
+#ifdef EVP_PKEY_X25519
 			case CKK_EC_MONTGOMERY:
 				if (nid != NID_X25519) {
 					debug_print(" [WARN %s ] Unknown OID. "
@@ -532,6 +652,7 @@ int callback_public_keys(test_certs_t *objects,
 				}
 				evp_type = EVP_PKEY_X25519;
 				break;
+#endif
 			default:
 				debug_print(" [WARN %s ] Unknown key type %lu", o->id_str, o->key_type);
 				return -1;
@@ -561,13 +682,13 @@ int callback_public_keys(test_certs_t *objects,
 			ASN1_STRING_free(os);
 			return -1;
 		}
-		if (o->key.pkey != NULL) {
+		if (o->key != NULL) {
 			unsigned char *pub = NULL;
 			size_t publen = 0;
 
 			/* TODO check EVP_PKEY type */
 
-			if (EVP_PKEY_get_raw_public_key(o->key.pkey, NULL, &publen) != 1) {
+			if (EVP_PKEY_get_raw_public_key(o->key, NULL, &publen) != 1) {
 				debug_print(" [WARN %s ] Can not get size of the key", o->id_str);
 				ASN1_STRING_free(os);
 				return -1;
@@ -579,7 +700,7 @@ int callback_public_keys(test_certs_t *objects,
 				return -1;
 			}
 
-			if (EVP_PKEY_get_raw_public_key(o->key.pkey, pub, &publen) != 1 ||
+			if (EVP_PKEY_get_raw_public_key(o->key, pub, &publen) != 1 ||
 				publen != (size_t)os->length ||
 				memcmp(pub, os->data, publen) != 0) {
 				debug_print(" [WARN %s ] Got different public"
@@ -594,7 +715,7 @@ int callback_public_keys(test_certs_t *objects,
 			o->verify_public = 1;
 		} else { /* store the public key for future use */
 			o->type = evp_type;
-			o->key.pkey = key;
+			o->key = key;
 			o->bits = 255;
 		}
 		ASN1_STRING_free(os);
@@ -636,7 +757,7 @@ int callback_secret_keys(test_certs_t *objects,
 		? *((CK_BBOOL *) template[3].pValue) : CK_FALSE;
 	o->sign = (template[4].ulValueLen != (CK_ULONG) -1)
 		? *((CK_BBOOL *) template[4].pValue) : CK_FALSE;
-	o->decrypt = (template[5].ulValueLen != (CK_ULONG) -1)
+	o->encrypt = (template[5].ulValueLen != (CK_ULONG) -1)
 		? *((CK_BBOOL *) template[5].pValue) : CK_FALSE;
 	o->decrypt = (template[6].ulValueLen != (CK_ULONG) -1)
 		? *((CK_BBOOL *) template[6].pValue) : CK_FALSE;
@@ -854,16 +975,7 @@ void clean_all_objects(test_certs_t *objects) {
 		free(objects->data[i].label);
 		free(objects->data[i].value);
 		X509_free(objects->data[i].x509);
-		if (objects->data[i].key_type == CKK_RSA &&
-		    objects->data[i].key.rsa != NULL) {
-			RSA_free(objects->data[i].key.rsa);
-		} else if (objects->data[i].key_type == CKK_EC &&
-			objects->data[i].key.ec != NULL) {
-			EC_KEY_free(objects->data[i].key.ec);
-		} else if (objects->data[i].key_type == CKK_EC_EDWARDS &&
-			objects->data[i].key.pkey != NULL) {
-			EVP_PKEY_free(objects->data[i].key.pkey);
-		}
+		EVP_PKEY_free(objects->data[i].key);
 	}
 	free(objects->data);
 }

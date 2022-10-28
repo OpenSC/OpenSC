@@ -30,6 +30,7 @@
 
 const char *sc_strerror(int error)
 {
+	unsigned int error_index = 0;
 	const char *rdr_errors[] = {
 		"Generic reader error",
 		"No readers found",
@@ -49,7 +50,7 @@ const char *sc_strerror(int error)
 		"Reader reattached",
 		"Reader in use by another application"
 	};
-	const int rdr_base = -SC_ERROR_READER;
+	const unsigned int rdr_base = -SC_ERROR_READER;
 
 	const char *card_errors[] = {
 		"Card command failed",
@@ -74,7 +75,7 @@ const char *sc_strerror(int error)
 		"End of file/record reached before reading Le bytes",
 		"Reference data not usable"
 	};
-	const int card_base = -SC_ERROR_CARD_CMD_FAILED;
+	const unsigned int card_base = -SC_ERROR_CARD_CMD_FAILED;
 
 	const char *arg_errors[] = {
 		"Invalid arguments",
@@ -84,7 +85,7 @@ const char *sc_strerror(int error)
 		"Invalid PIN length",
 		"Invalid data",
 	};
-	const int arg_base = -SC_ERROR_INVALID_ARGUMENTS;
+	const unsigned int arg_base = -SC_ERROR_INVALID_ARGUMENTS;
 
 	const char *int_errors[] = {
 		"Internal error",
@@ -107,7 +108,7 @@ const char *sc_strerror(int error)
 		"Invalid Simple TLV object",
 		"Premature end of Simple TLV stream",
 	};
-	const int int_base = -SC_ERROR_INTERNAL;
+	const unsigned int int_base = -SC_ERROR_INTERNAL;
 
 	const char *p15i_errors[] = {
 		"Generic PKCS#15 initialization error",
@@ -122,7 +123,7 @@ const char *sc_strerror(int error)
 		"Invalid PIN reference",
 		"File too small",
 	};
-	const int p15i_base = -SC_ERROR_PKCS15INIT;
+	const unsigned int p15i_base = -SC_ERROR_PKCS15INIT;
 
 	const char *sm_errors[] = {
 		"Generic Secure Messaging error",
@@ -139,54 +140,53 @@ const char *sc_strerror(int error)
 		"SM session already active",
 		"Invalid checksum"
 	};
-	const int sm_base = -SC_ERROR_SM;
+	const unsigned int sm_base = -SC_ERROR_SM;
 
 	const char *misc_errors[] = {
 		"Unknown error",
 		"PKCS#15 compatible smart card not found",
 	};
-	const int misc_base = -SC_ERROR_UNKNOWN;
+	const unsigned int misc_base = -SC_ERROR_UNKNOWN;
 
 	const char *no_errors = "Success";
 	const char **errors = NULL;
-	int count = 0, err_base = 0;
+	unsigned int count = 0, err_base = 0;
 
 	if (!error)
 		return no_errors;
-	if (error < 0)
-		error = -error;
+	error_index = error < 0 ? -((long long int) error) : error;
 
-	if (error >= misc_base) {
+	if (error_index >= misc_base) {
 		errors = misc_errors;
 		count = DIM(misc_errors);
 		err_base = misc_base;
-	} else if (error >= sm_base) {
+	} else if (error_index >= sm_base) {
 		errors = sm_errors;
 		count = DIM(sm_errors);
 		err_base = sm_base;
-	} else if (error >= p15i_base) {
+	} else if (error_index >= p15i_base) {
 		errors = p15i_errors;
 		count = DIM(p15i_errors);
 		err_base = p15i_base;
-	} else if (error >= int_base) {
+	} else if (error_index >= int_base) {
 		errors = int_errors;
 		count = DIM(int_errors);
 		err_base = int_base;
-	} else if (error >= arg_base) {
+	} else if (error_index >= arg_base) {
 		errors = arg_errors;
 		count = DIM(arg_errors);
 		err_base = arg_base;
-	} else if (error >= card_base) {
+	} else if (error_index >= card_base) {
 		errors = card_errors;
 		count = DIM(card_errors);
 		err_base = card_base;
-	} else if (error >= rdr_base) {
+	} else if (error_index >= rdr_base) {
 		errors = rdr_errors;
 		count = DIM(rdr_errors);
 		err_base = rdr_base;
 	}
-	error -= err_base;
-	if (error >= count || count == 0)
+	error_index -= err_base;
+	if (error_index >= count)
 		return misc_errors[0];
-	return errors[error];
+	return errors[error_index];
 }
