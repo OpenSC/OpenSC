@@ -152,9 +152,9 @@ authentic_update_blob(struct sc_context *ctx, unsigned tag, unsigned char *data,
 
 
 static int
-authentic_parse_size(unsigned char *in, size_t *out)
+authentic_parse_size(unsigned char *in, size_t in_len, size_t *out)
 {
-	if (!in || !out)
+	if (!in || !out || in_len < 1)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	if (*in < 0x80)   {
@@ -162,10 +162,14 @@ authentic_parse_size(unsigned char *in, size_t *out)
 		return 1;
 	}
 	else if (*in == 0x81)   {
+		if (in_len < 2)
+			return SC_ERROR_INVALID_DATA;
 		*out = *(in + 1);
 		return 2;
 	}
 	else if (*in == 0x82)   {
+		if (in_len < 3)
+			return SC_ERROR_INVALID_DATA;
 		*out = *(in + 1) * 0x100 + *(in + 2);
 		return 3;
 	}
@@ -194,10 +198,16 @@ authentic_get_tagged_data(struct sc_context *ctx, unsigned char *in, size_t in_l
 			tag_len = 1;
 		}
 
-		size_len = authentic_parse_size(in + offs + tag_len, &size);
+		if (offs + tag_len >= in_len)
+			LOG_TEST_RET(ctx, SC_ERROR_INTERNAL, "parse error: invalid data");
+
+		size_len = authentic_parse_size(in + offs + tag_len, in_len - (offs + tag_len), &size);
 		LOG_TEST_RET(ctx, size_len, "parse error: invalid size data");
 
 		if (tag == in_tag)   {
+			if (offs + tag_len + size_len >= in_len)
+				LOG_TEST_RET(ctx, SC_ERROR_INTERNAL, "parse error: invalid data");
+
 			*out = in + offs + tag_len + size_len;
 			*out_len = size;
 
