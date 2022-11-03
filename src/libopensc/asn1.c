@@ -1679,6 +1679,38 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 	return 0;
 }
 
+static void sc_free_entry(struct sc_asn1_entry *asn1) {
+	int idx = 0;
+	struct sc_asn1_entry *entry = asn1;
+
+	if (!asn1)
+		return;
+
+	for (idx = 0; asn1[idx].name != NULL; idx++) {
+		entry = &asn1[idx];
+		switch (entry->type) {
+		case SC_ASN1_CHOICE:
+		case SC_ASN1_STRUCT:
+			sc_free_entry((struct sc_asn1_entry *) entry->parm);
+			break;
+		case SC_ASN1_OCTET_STRING:
+		case SC_ASN1_BIT_STRING_NI:
+		case SC_ASN1_BIT_STRING:
+		case SC_ASN1_GENERALIZEDTIME:
+		case SC_ASN1_PRINTABLESTRING:
+		case SC_ASN1_UTF8STRING:
+			if ((entry->flags & SC_ASN1_ALLOC) && (entry->flags & SC_ASN1_PRESENT)) {
+				u8 **buf = (u8 **)entry->parm;
+				free(*buf);
+				*buf = NULL;
+			}
+			break;
+		default:
+			break;
+		}
+	}
+}
+
 static int asn1_decode(sc_context_t *ctx, struct sc_asn1_entry *asn1,
 		       const u8 *in, size_t len, const u8 **newp, size_t *len_left,
 		       int choice, int depth)
@@ -1745,6 +1777,7 @@ static int asn1_decode(sc_context_t *ctx, struct sc_asn1_entry *asn1,
 				}
 				sc_debug(ctx, SC_LOG_DEBUG_ASN1, "next tag: %s\n", line);
 			}
+			sc_free_entry(asn1);
 			SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_ASN1, SC_ERROR_ASN1_OBJECT_NOT_FOUND);
 		}
 		r = asn1_decode_entry(ctx, entry, obj, objlen, depth);
