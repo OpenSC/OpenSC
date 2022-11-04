@@ -181,10 +181,13 @@ setcos_select_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	/* sc_pkcs15init_create_pin() starts checking if -1 is an acceptable
 	 * pin reference, which isn't for the SetCOS cards. And since the
 	 * value 1 has been assigned to the SO pin, we'll jump to 2. */
-	else if (auth_info->attrs.pin.reference <= 0)
+	else if (auth_info->attrs.pin.reference <= 0) {
+		if (auth_info_prof.attrs.pin.reference != 1)
+			return SC_ERROR_INVALID_PIN_REFERENCE;
 		auth_info->attrs.pin.reference = auth_info_prof.attrs.pin.reference + 1;
+	}
 
-	return 0;
+	return SC_SUCCESS;
 }
 
 /*
