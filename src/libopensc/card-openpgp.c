@@ -129,7 +129,7 @@ static pgp_ec_curves_t	ec_curves_gnuk[] = {
 
 static int		pgp_get_card_features(sc_card_t *card);
 static int		pgp_finish(sc_card_t *card);
-static void		pgp_iterate_blobs(pgp_blob_t *, int, void (*func)());
+static void		pgp_iterate_blobs(pgp_blob_t *, void (*func)());
 
 static int		pgp_get_blob(sc_card_t *card, pgp_blob_t *blob,
 				 unsigned int id, pgp_blob_t **ret);
@@ -947,7 +947,7 @@ pgp_finish(sc_card_t *card)
 
 		if (priv != NULL) {
 			/* delete fake file hierarchy */
-			pgp_iterate_blobs(priv->mf, 99, pgp_free_blob);
+			pgp_iterate_blobs(priv->mf, pgp_free_blob);
 
 			/* delete private data */
 			free(priv);
@@ -1150,18 +1150,16 @@ pgp_free_blob(pgp_blob_t *blob)
  * Internal: iterate through the blob tree, calling a function for each blob.
  */
 static void
-pgp_iterate_blobs(pgp_blob_t *blob, int level, void (*func)())
+pgp_iterate_blobs(pgp_blob_t *blob, void (*func)())
 {
 	if (blob) {
-		if (level > 0) {
-			pgp_blob_t *child = blob->files;
+		pgp_blob_t *child = blob->files;
 
-			while (child != NULL) {
-				pgp_blob_t *next = child->next;
+		while (child != NULL) {
+			pgp_blob_t *next = child->next;
 
-				pgp_iterate_blobs(child, level-1, func);
-				child = next;
-			}
+			pgp_iterate_blobs(child, func);
+			child = next;
 		}
 		func(blob);
 	}
@@ -1226,6 +1224,7 @@ pgp_enumerate_blob(sc_card_t *card, pgp_blob_t *blob)
 {
 	const u8	*in;
 	int		r;
+	sc_file_t	*file = NULL;
 
 	if (blob->files != NULL)
 		return SC_SUCCESS;
@@ -1282,9 +1281,15 @@ pgp_enumerate_blob(sc_card_t *card, pgp_blob_t *blob)
 
 		/* create fake file system hierarchy by
 		 * using constructed DOs as DF */
-		if ((new = pgp_new_blob(card, blob, tag, sc_file_new())) == NULL)
+		file = sc_file_new();
+		if ((new = pgp_new_blob(card, blob, tag, file)) == NULL) {
+			sc_file_free(file);
 			return SC_ERROR_OUT_OF_MEMORY;
-		pgp_set_blob(new, data, len);
+		}
+		if (pgp_set_blob(new, data, len) != SC_SUCCESS) {
+			sc_file_free(file);
+			return SC_ERROR_OUT_OF_MEMORY;
+		}
 		in = data + len;
 	}
 
