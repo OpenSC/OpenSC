@@ -130,6 +130,8 @@ static int entersafe_init_card(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 
 
 		 /* fill file by 0 */
+		 if (size > MAX_FILE_SIZE)
+			 LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_DATA, "Initialize EF(DIR) failed with file size too large");
 		 buff = calloc(1,size);
 		 if(!buff)
 			  SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,SC_SUCCESS);
