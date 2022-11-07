@@ -1978,7 +1978,12 @@ static struct block	root_ops = {
 static int
 check_macro_reference_loop(scconf_list *start, scconf_list *current, struct state *cur) {
 	sc_macro_t *mac = NULL;
-	const char *str = current->data;
+	const char *str = NULL;
+
+	if (!start || !current || !cur)
+		return 0;
+
+	str = current->data;
 	if (str[0] != '$')
 		return 0;
 	if (!(mac = find_macro(cur->profile, str + 1)))
