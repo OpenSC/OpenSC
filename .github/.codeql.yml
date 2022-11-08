@@ -1,0 +1,13 @@
+name: "CodeQL configuration file"
+
+paths:
+  - tests/
+  - src/tests/
+paths-ignore:
+  - 'src/tools/*-cmdline.*'
+
+query-filters:
+  - exclude:
+      # This reports all the uses of the DES, but this is needed for
+      # interoperability with cards not supporting AES
+      id: cpp/weak-cryptographic-algorithm
