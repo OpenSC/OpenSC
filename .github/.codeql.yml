@@ -1,10 +1,11 @@
 name: "CodeQL configuration file"
 
 paths:
-  - tests/
-  - src/tests/
+  - src/
 paths-ignore:
   - 'src/tools/*-cmdline.*'
+  - src/tests/
+  - tests/
 
 query-filters:
   - exclude:
