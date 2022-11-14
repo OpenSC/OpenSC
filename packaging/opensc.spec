@@ -117,7 +117,6 @@ rm -rf %{buildroot}%{_bindir}/pkcs11-register
 rm -rf %{buildroot}%{_mandir}/man1/pkcs11-register.1*
 
 # Remove the notification files
-rm %{buildroot}%{_bindir}/opensc-notify
 rm %{buildroot}%{_datadir}/applications/org.opensc.notify.desktop
 rm %{buildroot}%{_mandir}/man1/opensc-notify.1*
 

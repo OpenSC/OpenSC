@@ -1,6 +1,6 @@
 NEWS for OpenSC -- History of user visible changes
 
-# New in 0.23.0; 2022-10-11
+# New in 0.23.0; 2022-11-09
 ## General improvements
 * Support signing of data with a length of more than 512 bytes (#2314)
 * By default, disable support for old card drivers (#2391) and remove support for old drivers MioCOS and JCOP (#2374)
@@ -19,6 +19,8 @@ NEWS for OpenSC -- History of user visible changes
 * Stop building support for Gost algorithms with OpenSSL 3.0 as they require deprecated API (#2586)
 * Fix detection of disconnected readers in PCSC (#2600)
 * Add configuration option for on-disk caching of private data (#2588)
+* Skip building empty binaries when dependencies are missing and remove needless linking (#2617)
+* Define arm64 as a supported architecture in the Installer package (#2610)
 ## PKCS#11
 * Implement `C_CreateObject` for EC keys and fix signature verification for `CKM_ECDSA_SHAx` cards (#2420)
 ## pkcs11-tool
@@ -35,6 +37,7 @@ NEWS for OpenSC -- History of user visible changes
 * Fix reinit of the card (#2525)
 * Add an entry for Italian CNS (e) (#2548)
 * Fix detection of ECC mechanisms (#2523)
+* Fix ATRs before adding them to the windows registry (#2628)
 ## NQ-Applet
 * Add support for the JCOP4 Cards with NQ-Applet (#2425)
 ## ItaCNS

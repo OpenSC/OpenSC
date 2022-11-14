@@ -1,0 +1,5 @@
+name: Packit RPM build
+description: Action that provides Packit RPM build
+runs:
+  using: "docker"
+  image: "Dockerfile"
