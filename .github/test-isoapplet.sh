@@ -11,7 +11,7 @@ export LD_LIBRARY_PATH=/usr/local/lib
 
 # The ISO applet
 if [ ! -d IsoApplet ]; then
-	git clone https://github.com/swissbit-eis/IsoApplet.git
+	git clone https://github.com/philipWendland/IsoApplet.git
 	# enable IsoApplet key import patch
 	sed "s/DEF_PRIVATE_KEY_IMPORT_ALLOWED = false/DEF_PRIVATE_KEY_IMPORT_ALLOWED = true/g" -i IsoApplet/src/net/pwendland/javacard/pki/isoapplet/IsoApplet.java
 fi
