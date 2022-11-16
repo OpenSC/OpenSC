@@ -1207,7 +1207,8 @@ pkcs15_init_slot(struct sc_pkcs15_card *p15card, struct sc_pkcs11_slot *slot,
 						p15card->tokeninfo ? p15card->tokeninfo->label : "",
 						32);
 			}
-			slot->token_info.flags |= CKF_LOGIN_REQUIRED;
+			if (p15card->tokeninfo->flags & SC_PKCS15_TOKEN_LOGIN_REQUIRED)
+				slot->token_info.flags |= CKF_LOGIN_REQUIRED;
 		}
 	}
 
