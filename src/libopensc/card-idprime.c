@@ -46,8 +46,28 @@ static struct sc_card_driver idprime_drv = {
  * are not useful here */
 static const struct sc_atr_table idprime_atrs[] = {
 	{ "3b:7f:96:00:00:80:31:80:65:b0:84:41:3d:f6:12:0f:fe:82:90:00",
-	  "ff:ff:00:ff:ff:ff:ff:ff:ff:ff:00:00:00:00:ff:ff:ff:ff:ff:ff",
-	  "Gemalto IDPrime MD 8840, 3840, 3810, 840 and 830 Cards",
+	  "ff:ff:00:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:00:ff:ff:ff",
+	  "Gemalto IDPrime 3810",
+	  SC_CARD_TYPE_IDPRIME_3810, 0, NULL },
+	{ "3b:7f:96:00:00:80:31:80:65:b0:84:56:51:10:12:0f:fe:82:90:00",
+	  "ff:ff:00:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:00:ff:ff:ff",
+	  "Gemalto IDPrime 830",
+	  SC_CARD_TYPE_IDPRIME_830, 0, NULL },
+	{ "3b:7f:96:00:00:80:31:80:65:b0:84:61:60:fb:12:0f:fe:82:90:00",
+	  "ff:ff:00:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:00:ff:ff:ff",
+	  "Gemalto IDPrime 930/3930",
+	  SC_CARD_TYPE_IDPRIME_930, 0, NULL }, 
+	{ "3b:7f:96:00:00:80:31:80:65:b0:85:59:56:fb:12:0f:fe:82:90:00",
+	  "ff:ff:00:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:00:ff:ff:ff",
+	  "Gemalto IDPrime 940",
+	  SC_CARD_TYPE_IDPRIME_940, 0, NULL },
+	{ "3b:7f:96:00:00:80:31:80:65:b0:85:03:00:ef:12:0f:fe:82:90:00",
+	  "ff:ff:00:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:00:ff:ff:ff",
+	  "Gemalto IDPrime 840",
+	  SC_CARD_TYPE_IDPRIME_840, 0, NULL },
+	{ "3b:7f:96:00:00:80:31:80:65:b0:84:41:3d:f6:12:0f:fe:82:90:00",
+	  "ff:ff:00:ff:ff:ff:ff:ff:ff:ff:00:00:00:00:ff:ff:00:ff:ff:ff",
+	  "Gemalto IDPrime MD 8840, 3840, 3810, 840, 830 and MD 940 Cards",
 	  SC_CARD_TYPE_IDPRIME_GENERIC, 0, NULL },
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
@@ -196,7 +216,7 @@ static int idprime_process_index(sc_card_t *card, idprime_private_data_t *priv, 
 		if (((memcmp(&start[4], "ksc", 3) == 0) || memcmp(&start[4], "kxc", 3) == 0)
 			&& (memcmp(&start[12], "mscp", 5) == 0)) {
 			new_object.fd++;
-			if (card->type == SC_CARD_TYPE_IDPRIME_V1) {
+			if (card->type == SC_CARD_TYPE_IDPRIME_3810) {
 				/* The key reference is one bigger than the value found here for some reason */
 				new_object.key_reference = start[8] + 1;
 			} else {
@@ -205,13 +225,18 @@ static int idprime_process_index(sc_card_t *card, idprime_private_data_t *priv, 
 					key_id = start[8] - '0';
 				}
 				switch (card->type) {
-				case SC_CARD_TYPE_IDPRIME_V2:
+				case SC_CARD_TYPE_IDPRIME_830:
+					new_object.key_reference = 0x41 + key_id;
+					break;
+				case SC_CARD_TYPE_IDPRIME_930:
 					new_object.key_reference = 0x11 + key_id;
 					break;
-				case SC_CARD_TYPE_IDPRIME_V3:
-					new_object.key_reference = 0xF7 + key_id;
+				case SC_CARD_TYPE_IDPRIME_940:
+					new_object.key_reference = 0x60 + key_id;
 					break;
-				case SC_CARD_TYPE_IDPRIME_V4:
+				case SC_CARD_TYPE_IDPRIME_840:
+					new_object.key_reference = 0xf7 + key_id;
+					break
 				default:
 					new_object.key_reference = 0x56 + key_id;
 					break;
@@ -251,24 +276,19 @@ static int idprime_init(sc_card_t *card)
 	apdu.resplen = rbuflen;
 	apdu.le = rbuflen;
 	r = sc_transmit_apdu(card, &apdu);
-	card->type = SC_CARD_TYPE_IDPRIME_GENERIC;
 	if (r == SC_SUCCESS && apdu.resplen == CPLC_LENGTH) {
 		/* We are interested in the OS release level here */
 		switch (rbuf[11]) {
 		case 0x01:
-			card->type = SC_CARD_TYPE_IDPRIME_V1;
 			sc_log(card->ctx, "Detected IDPrime applet version 1");
 			break;
 		case 0x02:
-			card->type = SC_CARD_TYPE_IDPRIME_V2;
 			sc_log(card->ctx, "Detected IDPrime applet version 2");
 			break;
 		case 0x03:
-			card->type = SC_CARD_TYPE_IDPRIME_V3;
 			sc_log(card->ctx, "Detected IDPrime applet version 3");
 			break;
 		case 0x04:
-			card->type = SC_CARD_TYPE_IDPRIME_V4;
 			sc_log(card->ctx, "Detected IDPrime applet version 4");
 			break;
 		default:
@@ -303,17 +323,20 @@ static int idprime_init(sc_card_t *card)
 	card->drv_data = priv;
 
 	switch (card->type) {
-	case SC_CARD_TYPE_IDPRIME_V1:
-		card->name = "Gemalto IDPrime (OSv1)";
+	case SC_CARD_TYPE_IDPRIME_3810:
+		card->name = "Gemalto IDPrime 3810";
 		break;
-	case SC_CARD_TYPE_IDPRIME_V2:
-		card->name = "Gemalto IDPrime (OSv2)";
+	case SC_CARD_TYPE_IDPRIME_830:
+		card->name = "Gemalto IDPrime MD 830";
 		break;
-	case SC_CARD_TYPE_IDPRIME_V3:
-		card->name = "Gemalto IDPrime (OSv3)";
+	case SC_CARD_TYPE_IDPRIME_930:
+		card->name = "Gemalto IDPrime 930/3930";
 		break;
-	case SC_CARD_TYPE_IDPRIME_V4:
-		card->name = "Gemalto IDPrime (OSv4)";
+	case SC_CARD_TYPE_IDPRIME_940:
+		card->name = "Gemalto IDPrime 940";
+		break;
+	case SC_CARD_TYPE_IDPRIME_840:
+		card->name = "Gemalto IDPrime 840";
 		break;
 	case SC_CARD_TYPE_IDPRIME_GENERIC:
 	default:
@@ -333,6 +356,7 @@ static int idprime_init(sc_card_t *card)
 
 	_sc_card_add_rsa_alg(card, 1024, flags, 0);
 	_sc_card_add_rsa_alg(card, 2048, flags, 0);
+	_sc_card_add_rsa_alg(card, 4096, flags, 0);
 
 	card->caps |= SC_CARD_CAP_ISO7816_PIN_INFO;
 
