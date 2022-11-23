@@ -1427,6 +1427,22 @@ app <replaceable>application</replaceable> {
 										<literal>false</literal>)
 								</para></listitem>
 							</varlistentry>
+							<varlistentry>
+								<term>
+									<option>user_pin = <replaceable>name</replaceable>;</option>
+								</term>
+								<listitem><para>
+									Name of the User PIN object that will be used as the main PIN.
+								</para></listitem>
+							</varlistentry>
+							<varlistentry>
+								<term>
+									<option>sign_pin = <replaceable>name</replaceable>;</option>
+								</term>
+								<listitem><para>
+									Name of the PIN object that will be used for signing.
+								</para></listitem>
+							</varlistentry>
 						</variablelist>
 					</listitem>
 				</varlistentry>

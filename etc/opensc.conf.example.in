@@ -958,6 +958,8 @@ app default {
 		#
 		# - disable: do not expose application in PKCS15 framework
 		#            default 'false'
+		# - user_pin and sign_pin: labels of PIN objects that will be used as
+		#            user & sign PINs. Otherwise the first suitable one will be used.
 		application E828BD080FD25047656E65726963 {
 			type = generic;
 			model = "ECC Generic PKI";
