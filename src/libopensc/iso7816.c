@@ -1244,6 +1244,10 @@ iso7816_build_pin_apdu(struct sc_card *card, struct sc_apdu *apdu,
 		} else {
 			p1 |= 0x01;
 		}
+		if (p1 == 0x03) {
+			/* No data to send or to receive */
+			cse = SC_APDU_CASE_1;
+		}
 		break;
 	case SC_PIN_CMD_GET_INFO:
 		ins = 0x20;
