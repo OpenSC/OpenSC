@@ -2,6 +2,14 @@
 
 set -ex -o xtrace
 
+isoapplet_version="v0"
+isoapplet_branch="main"
+if [ $1=="v1" ]; then
+    isoapplet_branch="isoapplet-v1"
+    isoapplet_version="v1"
+fi
+
+
 # install the opensc
 sudo make install
 export LD_LIBRARY_PATH=/usr/local/lib
@@ -11,7 +19,7 @@ export LD_LIBRARY_PATH=/usr/local/lib
 
 # The ISO applet
 if [ ! -d IsoApplet ]; then
-	git clone https://github.com/philipWendland/IsoApplet.git
+	git clone https://github.com/philipWendland/IsoApplet.git --branch $isoapplet_branch
 	# enable IsoApplet key import patch
 	sed "s/DEF_PRIVATE_KEY_IMPORT_ALLOWED = false/DEF_PRIVATE_KEY_IMPORT_ALLOWED = true/g" -i IsoApplet/src/net/pwendland/javacard/pki/isoapplet/IsoApplet.java
 fi
@@ -85,7 +93,7 @@ rm /tmp/ECprivKey.pem /tmp/ECpubKey.pem /tmp/data.bin /tmp/data.sig
 
 kill -9 $PID
 
-if ! diff -u3 src/tests/p11test/isoapplet.json src/tests/p11test/isoapplet_ref.json; then
+if ! diff -u3 "src/tests/p11test/isoapplet.json src/tests/p11test/isoapplet_ref_${isoapplet_version.json}"; then
     echo "The output of p11test has changed (see diff above). If that is expected, update the reference file. Otherwise, fix the error."
     exit 1
 fi

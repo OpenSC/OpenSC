@@ -96,7 +96,7 @@ jobs:
       - run: .github/setup-linux.sh piv
       - run: .github/test-piv.sh
 
-  test-isoapplet:
+  test-isoapplet-v0:
     runs-on: ubuntu-20.04
     needs: [build]
     steps:
@@ -107,7 +107,20 @@ jobs:
           path: ./*
           key: ${{ runner.os }}-${{ github.sha }}
       - run: .github/setup-linux.sh isoapplet
-      - run: .github/test-isoapplet.sh
+      - run: .github/test-isoapplet.sh v0
+
+  test-isoapplet-v1:
+    runs-on: ubuntu-20.04
+    needs: [build]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        id: cache-build
+        with:
+          path: ./*
+          key: ${{ runner.os }}-${{ github.sha }}
+      - run: .github/setup-linux.sh isoapplet
+      - run: .github/test-isoapplet.sh v1
 
   test-gidsapplet:
     runs-on: ubuntu-20.04
