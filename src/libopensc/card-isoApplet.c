@@ -34,7 +34,8 @@
 #define ISOAPPLET_ALG_REF_RSA_SHA256_PAD_PSS 0x12
 #define ISOAPPLET_ALG_REF_RSA_SHA512_PAD_PSS 0x13
 
-#define ISOAPPLET_VERSION 0x0100
+#define ISOAPPLET_VERSION_V0 0x0060
+#define ISOAPPLET_VERSION_V1 0x0100
 
 #define ISOAPPLET_API_FEATURE_EXT_APDU 0x01
 #define ISOAPPLET_API_FEATURE_SECURE_RANDOM 0x02
@@ -162,44 +163,37 @@ isoApplet_match_card(sc_card_t *card)
 static int
 isoApplet_get_info(sc_card_t * card, struct isoApplet_drv_data * drvdata) {
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
-	sc_apdu_t apdu;
 	int rv;
 	sc_context_t * ctx = card->ctx;
 
-	/* Get response with P1P2 proprietary (get applet version and features) */
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xca, 0x01, 0x01);
-	apdu.resp = rbuf;
-	apdu.resplen = sizeof(rbuf);
-	apdu.le = 256;
+	rv = sc_get_data(card, 0x0101, rbuf, 3);
+	if(rv == SC_ERROR_INS_NOT_SUPPORTED) {
+		/* INS not supported. This is an older IsoApplet that might return the
+		 * applet information upon selection. For backward compatibility, try this. */
+		sc_apdu_t apdu;
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xa4, 0x04, 0x00);
+		apdu.lc = sizeof(isoApplet_aid);
+		apdu.data = isoApplet_aid;
+		apdu.datalen = sizeof(isoApplet_aid);
+		apdu.resp = rbuf;
+		apdu.resplen = sizeof(rbuf);
+		apdu.le = 256;
+		rv = sc_transmit_apdu(card, &apdu);
+		LOG_TEST_RET(ctx, rv, "APDU transmit failure.");
+		rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
+		LOG_TEST_RET(ctx, rv, "Error selecting applet.");
+		rv = (int) apdu.resplen;
+	}
 
-	rv = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(ctx, rv, "APDU transmit faiure.");
-	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	if(rv < 0) {
-		if(apdu.sw1 == 0x6D && apdu.sw2 == 0x00) {
-			/* INS not supported. This is an older IsoApplet that might return the
-			 * applet information upon selection. For backward compatibility, try this. */
-			sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xa4, 0x04, 0x00);
-			apdu.lc = sizeof(isoApplet_aid);
-			apdu.data = isoApplet_aid;
-			apdu.datalen = sizeof(isoApplet_aid);
-			apdu.resp = rbuf;
-			apdu.resplen = sizeof(rbuf);
-			apdu.le = 256;
-			rv = sc_transmit_apdu(card, &apdu);
-			LOG_TEST_RET(ctx, rv, "APDU transmit faiure.");
-			rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
-			LOG_TEST_RET(ctx, rv, "Error selecting applet.");
-		} else {
-			LOG_TEST_RET(ctx, rv, "Card returned error.");
-		}
+	if (rv < 0) {
+		LOG_TEST_RET(ctx, rv, "Card returned error.");
 	}
 
 	/* Fill up drvdata */
-	if(apdu.resplen >= 3)
+	if(rv >= 3)
 	{
-		drvdata->isoapplet_version = apdu.resp[0] << 8 | apdu.resp[1];
-		drvdata->isoapplet_features = apdu.resp[2];
+		drvdata->isoapplet_version = rbuf[0] << 8 | rbuf[1];
+		drvdata->isoapplet_features = rbuf[2];
 	}
 
 	return SC_SUCCESS;
@@ -226,19 +220,21 @@ isoApplet_init(sc_card_t *card)
 	r = isoApplet_get_info(card, drvdata);
 	LOG_TEST_RET(card->ctx, r, "Error obtaining information about applet.");
 
-	if((drvdata->isoapplet_version & 0xFF00) != (ISOAPPLET_VERSION & 0xFF00))
+
+	unsigned int major_version = drvdata->isoapplet_version & 0xFF00;
+	if(major_version != (ISOAPPLET_VERSION_V0 & 0xFF00) && major_version != (ISOAPPLET_VERSION_V1 & 0xFF00))
 	{
 		sc_log(card->ctx, "IsoApplet: Mismatching major API version. Not proceeding. "
-			   "API versions: Driver (%04X), applet (%04X). Please update accordingly.",
-			   ISOAPPLET_VERSION, drvdata->isoapplet_version);
+			   "API versions: Driver (%04X or %04X), applet (%04X). Please update accordingly.",
+			   ISOAPPLET_VERSION_V0, ISOAPPLET_VERSION_V1, drvdata->isoapplet_version);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_CARD);
 	}
-	else if(drvdata->isoapplet_version != ISOAPPLET_VERSION)
+	else if(drvdata->isoapplet_version != ISOAPPLET_VERSION_V0 && drvdata->isoapplet_version != ISOAPPLET_VERSION_V1)
 	{
 		sc_log(card->ctx, "IsoApplet: Mismatching minor version. Proceeding anyway. "
-			   "API versions: Driver (%04X), applet (%04X)."
+			   "API versions: Driver (%04X or %04X), applet (%04X)."
 			   "Please update accordingly whenever possible.",
-			   ISOAPPLET_VERSION, drvdata->isoapplet_version);
+			   ISOAPPLET_VERSION_V0, ISOAPPLET_VERSION_V1, drvdata->isoapplet_version);
 	}
 
 	if(drvdata->isoapplet_features & ISOAPPLET_API_FEATURE_EXT_APDU)
@@ -255,8 +251,12 @@ isoApplet_init(sc_card_t *card)
 		 * should be kept in sync with the explicit parameters in the pkcs15-init
 		 * driver. */
 		flags = 0;
-		flags |= SC_ALGORITHM_ECDSA_RAW;
-		flags |= SC_ALGORITHM_ECDSA_HASH_NONE;
+		if (major_version == (ISOAPPLET_VERSION_V0 & 0xFF00)) {
+			flags |= SC_ALGORITHM_ECDSA_HASH_SHA1;
+		} else { // ISOAPPLET_VERSION_V1
+			flags |= SC_ALGORITHM_ECDSA_RAW;
+			flags |= SC_ALGORITHM_ECDSA_HASH_NONE;
+		}
 		flags |= SC_ALGORITHM_ONBOARD_KEY_GEN;
 		ext_flags = SC_ALGORITHM_EXT_EC_UNCOMPRESES;
 		ext_flags |=  SC_ALGORITHM_EXT_EC_NAMEDCURVE;
@@ -1152,15 +1152,8 @@ isoApplet_set_security_env(sc_card_t *card,
 			break;
 
 		case SC_ALGORITHM_EC:
-			if( env->algorithm_flags & SC_ALGORITHM_ECDSA_RAW )
-			{
 				drvdata->sec_env_alg_ref = ISOAPPLET_ALG_REF_ECDSA;
 				drvdata->sec_env_ec_field_length = env->algorithm_ref;
-			}
-			else
-			{
-				LOG_TEST_RET(card->ctx, SC_ERROR_NOT_SUPPORTED, "IsoApplet only supports raw ECDSA.");
-			}
 			break;
 
 		default:
