@@ -267,7 +267,7 @@ done:
 static int idprime_init(sc_card_t *card)
 {
 	int r;
-	unsigned long flags;
+	unsigned long flags, ext_flags;
 	idprime_private_data_t *priv = NULL;
 	struct sc_apdu apdu;
 	u8 rbuf[CPLC_LENGTH];
@@ -363,6 +363,16 @@ static int idprime_init(sc_card_t *card)
 	    || card->type == SC_CARD_TYPE_IDPRIME_940) {
 		_sc_card_add_rsa_alg(card, 4096, flags, 0);
 	}
+
+	/* Set up algorithm info for EC */
+	flags = SC_ALGORITHM_ECDSA_RAW
+		| SC_ALGORITHM_ECDH_CDH_RAW
+		| (SC_ALGORITHM_ECDSA_HASH_SHA256 | SC_ALGORITHM_ECDSA_HASH_SHA384 | SC_ALGORITHM_ECDSA_HASH_SHA512)
+		;
+	ext_flags = 0; // TODO: fix flags
+	_sc_card_add_ec_alg(card, 256, flags, ext_flags, NULL);
+	_sc_card_add_ec_alg(card, 384, flags, ext_flags, NULL);
+	_sc_card_add_ec_alg(card, 521, flags, ext_flags, NULL);
 
 	card->caps |= SC_CARD_CAP_ISO7816_PIN_INFO;
 
