@@ -249,12 +249,8 @@ static int sc_pkcs15emu_idprime_init(sc_pkcs15_card_t *p15card)
 		sc_log(card->ctx, "cert %s: cert_usage=0x%x, pub_usage=0x%x priv_usage=0x%x\n",
 			sc_dump_hex(cert_info.id.value, cert_info.id.len),
 			usage, pubkey_info.usage, prkey_info.usage);
-		if (cert_out->key->algorithm != SC_ALGORITHM_RSA) {
-			sc_log(card->ctx, "unsupported key.algorithm %d", cert_out->key->algorithm);
-			sc_pkcs15_free_certificate(cert_out);
-			free(pubkey_info.direct.spki.value);
-			continue;
-		} else {
+
+		if (cert_out->key->algorithm == SC_ALGORITHM_RSA) {
 			pubkey_info.modulus_length = cert_out->key->u.rsa.modulus.len * 8;
 			prkey_info.modulus_length = cert_out->key->u.rsa.modulus.len * 8;
 			sc_log(card->ctx,  "adding rsa public key r=%d usage=%x",r, pubkey_info.usage);
@@ -269,6 +265,26 @@ static int sc_pkcs15emu_idprime_init(sc_pkcs15_card_t *p15card)
 			r = sc_pkcs15emu_add_rsa_prkey(p15card, &prkey_obj, &prkey_info);
 			if (r < 0)
 				goto fail;
+		} else if (cert_out->key->algorithm == SC_ALGORITHM_EC) {
+			pubkey_info.field_length = cert_out->key->u.ec.params.field_length;
+			prkey_info.field_length = cert_out->key->u.ec.params.field_length;
+			sc_log(card->ctx,  "adding ec public key r=%d usage=%x",r, pubkey_info.usage);
+			r = sc_pkcs15emu_add_ec_pubkey(p15card, &pubkey_obj, &pubkey_info);
+			if (r < 0) {
+				free(pubkey_info.direct.spki.value);
+				goto fail;
+			}
+			pubkey_info.direct.spki.value = NULL;
+			pubkey_info.direct.spki.len = 0;
+			sc_log(card->ctx,  "adding ec private key r=%d usage=%x",r, prkey_info.usage);
+			r = sc_pkcs15emu_add_ec_prkey(p15card, &prkey_obj, &prkey_info);
+			if (r < 0)
+				goto fail;
+		} else {
+			sc_log(card->ctx, "unsupported key.algorithm %d", cert_out->key->algorithm);
+			sc_pkcs15_free_certificate(cert_out);
+			free(pubkey_info.direct.spki.value);
+			continue;
 		}
 
 		cert_out->key = NULL;
