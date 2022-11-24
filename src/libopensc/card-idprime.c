@@ -239,7 +239,7 @@ static int idprime_process_index(sc_card_t *card, idprime_private_data_t *priv, 
 					break;
 				case SC_CARD_TYPE_IDPRIME_840:
 					new_object.key_reference = 0xf7 + key_id;
-					break
+					break;
 				default:
 					new_object.key_reference = 0x56 + key_id;
 					break;
@@ -348,7 +348,7 @@ static int idprime_init(sc_card_t *card)
 	}
 	card->cla = 0x00;
 
-	/* Set up algorithm info. */
+	/* Set up algorithm info for RSA. */
 	flags = SC_ALGORITHM_RSA_PAD_PKCS1
 		| SC_ALGORITHM_RSA_PAD_PSS
 		| SC_ALGORITHM_RSA_PAD_OAEP
@@ -359,7 +359,10 @@ static int idprime_init(sc_card_t *card)
 
 	_sc_card_add_rsa_alg(card, 1024, flags, 0);
 	_sc_card_add_rsa_alg(card, 2048, flags, 0);
-	_sc_card_add_rsa_alg(card, 4096, flags, 0);
+	if (card->type == SC_CARD_TYPE_IDPRIME_930
+	    || card->type == SC_CARD_TYPE_IDPRIME_940) {
+		_sc_card_add_rsa_alg(card, 4096, flags, 0);
+	}
 
 	card->caps |= SC_CARD_CAP_ISO7816_PIN_INFO;
 
