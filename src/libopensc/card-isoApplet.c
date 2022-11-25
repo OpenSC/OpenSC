@@ -158,7 +158,7 @@ isoApplet_match_card(sc_card_t *card)
 	}
 
 	return 1;
-	}
+}
 
 static int
 isoApplet_get_info(sc_card_t * card, struct isoApplet_drv_data * drvdata) {
@@ -576,8 +576,8 @@ isoApplet_ctl_generate_key(sc_card_t *card, sc_cardctl_isoApplet_genkey_t *args)
 {
 	int r;
 	sc_apdu_t apdu;
-	u8 rbuf[SC_MAX_EXT_APDU_BUFFER_SIZE];
-	u8 sbuf[SC_MAX_EXT_APDU_BUFFER_SIZE];
+	u8 rbuf[SC_MAX_EXT_APDU_RESP_SIZE];
+	u8 sbuf[SC_MAX_EXT_APDU_DATA_SIZE];
 	u8 *p;
 	const u8 *inner_tag_value;
 	const u8 *outer_tag_value;
@@ -645,7 +645,11 @@ isoApplet_ctl_generate_key(sc_card_t *card, sc_cardctl_isoApplet_genkey_t *args)
 
 	apdu.resp = rbuf;
 	apdu.resplen = sizeof(rbuf);
-	apdu.le = 256;
+	if (card->caps & SC_CARD_CAP_APDU_EXT) {
+		apdu.le = apdu.resplen;
+	} else {
+		apdu.le = 256;
+	}
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
@@ -769,7 +773,7 @@ static int
 isoApplet_put_data_prkey_rsa(sc_card_t *card, sc_cardctl_isoApplet_import_key_t *args)
 {
 	sc_apdu_t apdu;
-	u8 sbuf[SC_MAX_EXT_APDU_BUFFER_SIZE];
+	u8 sbuf[SC_MAX_EXT_APDU_DATA_SIZE];
 	u8 *p = NULL;
 	int r;
 	size_t tags_len;
@@ -894,7 +898,7 @@ static int
 isoApplet_put_data_prkey_ec(sc_card_t *card, sc_cardctl_isoApplet_import_key_t *args)
 {
 	sc_apdu_t apdu;
-	u8 sbuf[SC_MAX_EXT_APDU_BUFFER_SIZE];
+	u8 sbuf[SC_MAX_EXT_APDU_DATA_SIZE];
 	int r;
 	u8 *p;
 	size_t tags_len;
@@ -1152,8 +1156,8 @@ isoApplet_set_security_env(sc_card_t *card,
 			break;
 
 		case SC_ALGORITHM_EC:
-				drvdata->sec_env_alg_ref = ISOAPPLET_ALG_REF_ECDSA;
-				drvdata->sec_env_ec_field_length = env->algorithm_ref;
+			drvdata->sec_env_alg_ref = ISOAPPLET_ALG_REF_ECDSA;
+			drvdata->sec_env_ec_field_length = env->algorithm_ref;
 			break;
 
 		default:
@@ -1209,7 +1213,7 @@ isoApplet_compute_signature(struct sc_card *card,
 	struct sc_context *ctx = card->ctx;
 	struct isoApplet_drv_data *drvdata = DRVDATA(card);
 	/* No more than 256 byte are needed for the signature. The IsoApplet
-	* supports no larger key sizes than for RSA-2048 or EC:secp384r1 leading
+	* supports no larger key sizes than for RSA-4096 or EC:secp384r1 leading
 	* to 256 byte or 104 byte, respectively, in ASN.1 sequence. */
 	static u8 seqbuf[256];
 	size_t seqlen = sizeof(seqbuf);
