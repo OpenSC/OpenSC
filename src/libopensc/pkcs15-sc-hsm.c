@@ -1394,6 +1394,7 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 	pin_info.auth_id.value[0] = 1;
 	pin_info.path.aid = sc_hsm_aid;
 	pin_info.auth_type = SC_PKCS15_PIN_AUTH_TYPE_PIN;
+	pin_info.auth_method = SC_AC_CHV;
 	pin_info.attrs.pin.reference = 0x81;
 	pin_info.attrs.pin.flags = SC_PKCS15_PIN_FLAG_LOCAL|SC_PKCS15_PIN_FLAG_INITIALIZED|SC_PKCS15_PIN_FLAG_EXCHANGE_REF_DATA;
 	pin_info.attrs.pin.type = SC_PKCS15_PIN_TYPE_ASCII_NUMERIC;
@@ -1409,10 +1410,21 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 	strlcpy(pin_obj.label, "UserPIN", sizeof(pin_obj.label));
 	pin_obj.flags = SC_PKCS15_CO_FLAG_PRIVATE|SC_PKCS15_CO_FLAG_MODIFIABLE;
 
-	r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
-	if (r < 0) {
-		sc_pkcs15_card_clear(p15card);
-		LOG_FUNC_RETURN(card->ctx, r);
+	pin_obj.data = &pin_info;
+
+	r = sc_pkcs15_get_pin_info(p15card, &pin_obj);
+
+	if (r != SC_ERROR_DATA_OBJECT_NOT_FOUND) {
+		if (r < 0) {
+			sc_pkcs15_card_clear(p15card);
+			LOG_FUNC_RETURN(card->ctx, r);
+		}
+
+		r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
+		if (r < 0) {
+			sc_pkcs15_card_clear(p15card);
+			LOG_FUNC_RETURN(card->ctx, r);
+		}
 	}
 
 	memset(&pin_info, 0, sizeof(pin_info));
@@ -1422,8 +1434,9 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 	pin_info.auth_id.value[0] = 2;
 	pin_info.path.aid = sc_hsm_aid;
 	pin_info.auth_type = SC_PKCS15_PIN_AUTH_TYPE_PIN;
+	pin_info.auth_method = SC_AC_CHV;
 	pin_info.attrs.pin.reference = 0x88;
-	pin_info.attrs.pin.flags = SC_PKCS15_PIN_FLAG_LOCAL|SC_PKCS15_PIN_FLAG_INITIALIZED|SC_PKCS15_PIN_FLAG_UNBLOCK_DISABLED|SC_PKCS15_PIN_FLAG_SO_PIN;
+	pin_info.attrs.pin.flags = SC_PKCS15_PIN_FLAG_LOCAL|SC_PKCS15_PIN_FLAG_UNBLOCK_DISABLED|SC_PKCS15_PIN_FLAG_SO_PIN;
 	pin_info.attrs.pin.type = SC_PKCS15_PIN_TYPE_BCD;
 	pin_info.attrs.pin.min_length = 16;
 	pin_info.attrs.pin.stored_length = 0;
@@ -1434,6 +1447,21 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 
 	strlcpy(pin_obj.label, "SOPIN", sizeof(pin_obj.label));
 	pin_obj.flags = SC_PKCS15_CO_FLAG_PRIVATE;
+
+	pin_obj.data = &pin_info;
+
+	r = sc_pkcs15_get_pin_info(p15card, &pin_obj);
+
+	if (r != SC_ERROR_DATA_OBJECT_NOT_FOUND) {
+		pin_info.attrs.pin.flags |= SC_PKCS15_PIN_FLAG_INITIALIZED;
+	} else {
+		r = SC_SUCCESS;
+	}
+
+	if (r < 0) {
+		sc_pkcs15_card_clear(p15card);
+		LOG_FUNC_RETURN(card->ctx, r);
+	}
 
 	r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
 	if (r < 0) {
