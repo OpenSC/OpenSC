@@ -933,8 +933,10 @@ iso7816_set_security_env(struct sc_card *card,
 			goto err;
 		}
 	}
-	if (se_num <= 0)
-		return 0;
+	if (se_num <= 0) {
+		r = SC_SUCCESS;
+		goto err;
+	}
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0xF2, se_num);
 	r = sc_transmit_apdu(card, &apdu);
 	sc_unlock(card);
