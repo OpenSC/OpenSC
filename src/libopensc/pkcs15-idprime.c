@@ -261,8 +261,12 @@ static int sc_pkcs15emu_idprime_init(sc_pkcs15_card_t *p15card)
 			}
 			pubkey_info.direct.spki.value = NULL; /* moved to the pubkey object on p15card  */
 			pubkey_info.direct.spki.len = 0;
-			sc_log(card->ctx,  "adding rsa private key r=%d usage=%x",r, prkey_info.usage);
-			r = sc_pkcs15emu_add_rsa_prkey(p15card, &prkey_obj, &prkey_info);
+			if (prkey_info.key_reference >= 0) {
+				sc_log(card->ctx,  "adding rsa private key r=%d usage=%x",r, prkey_info.usage);
+				r = sc_pkcs15emu_add_rsa_prkey(p15card, &prkey_obj, &prkey_info);
+			} else {
+				sc_log(card->ctx,  "missing rsa private key r=%d usage=%x",r, prkey_info.usage);
+			}
 			if (r < 0)
 				goto fail;
 		} else if (cert_out->key->algorithm == SC_ALGORITHM_EC) {
@@ -276,8 +280,12 @@ static int sc_pkcs15emu_idprime_init(sc_pkcs15_card_t *p15card)
 			}
 			pubkey_info.direct.spki.value = NULL;
 			pubkey_info.direct.spki.len = 0;
-			sc_log(card->ctx,  "adding ec private key r=%d usage=%x",r, prkey_info.usage);
-			r = sc_pkcs15emu_add_ec_prkey(p15card, &prkey_obj, &prkey_info);
+			if (prkey_info.key_reference >= 0) {
+				sc_log(card->ctx,  "adding ec private key r=%d usage=%x",r, prkey_info.usage);
+				r = sc_pkcs15emu_add_ec_prkey(p15card, &prkey_obj, &prkey_info);
+			} else {
+				sc_log(card->ctx,  "missing ec private key r=%d usage=%x",r, prkey_info.usage);
+			}
 			if (r < 0)
 				goto fail;
 		} else {
