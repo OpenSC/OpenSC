@@ -82,6 +82,7 @@ static const sc_path_t idprime_path = {
 typedef struct idprime_object {
 	int fd;
 	unsigned char key_reference;
+	int valid_key_ref;
 	u8 df[2];
 	unsigned short length;
 } idprime_object_t;
@@ -179,6 +180,9 @@ static int idprime_process_index(sc_card_t *card, idprime_private_data_t *priv, 
 	int r = SC_ERROR_OUT_OF_MEMORY;
 	int i, num_entries;
 	idprime_object_t new_object;
+	idprime_object_t cert_object;
+	int prkey_id = -1;
+	int cert_id = -1;
 
 	buf = malloc(length);
 	if (buf == NULL) {
@@ -212,40 +216,102 @@ static int idprime_process_index(sc_card_t *card, idprime_private_data_t *priv, 
 		new_object.length = bebytes2ushort(&start[2]);
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "df=%s, len=%u",
 			sc_dump_hex(new_object.df, sizeof(new_object.df)), new_object.length);
-		/* in minidriver, mscp/kxcNN or kscNN lists certificates */
-		if (((memcmp(&start[4], "ksc", 3) == 0) || memcmp(&start[4], "kxc", 3) == 0)
-			&& (memcmp(&start[12], "mscp", 5) == 0)) {
-			new_object.fd++;
-			if (card->type == SC_CARD_TYPE_IDPRIME_3810) {
-				/* The key reference is one bigger than the value found here for some reason */
-				new_object.key_reference = start[8] + 1;
-			} else {
-				int key_id = 0;
-				if (start[8] >= '0' && start[8] <= '9') {
-					key_id = start[8] - '0';
-				}
-				switch (card->type) {
-				case SC_CARD_TYPE_IDPRIME_830:
-					new_object.key_reference = 0x41 + key_id;
-					break;
-				case SC_CARD_TYPE_IDPRIME_930:
-					new_object.key_reference = 0x11 + key_id;
-					break;
-				case SC_CARD_TYPE_IDPRIME_940:
-					new_object.key_reference = 0x60 + key_id;
-					break;
-				case SC_CARD_TYPE_IDPRIME_840:
-					new_object.key_reference = 0xf7 + key_id;
-					break;
-				default:
-					new_object.key_reference = 0x56 + key_id;
-					break;
-				}
-			}
-			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Found certificate with fd=%d, key_ref=%d",
-				new_object.fd, new_object.key_reference);
-			idprime_add_object_to_list(&priv->pki_list, &new_object);
 
+		if ((memcmp(&start[4], "priprk", 6) == 0)) {
+			if (cert_id != -1) {
+				/* No public key was found, add previous certificate */
+				/* If pubkey is missing, there should be also no private key */
+				if (prkey_id != -1) {
+					sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Certificate id=%d missing public key object", cert_id);
+				} else {
+					/* Here we know, that no pubkey or prkey was found for certificate */
+					sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Adding certificate with fd=%d, key_ref=%d",
+						cert_object.fd, cert_object.key_reference);
+					idprime_add_object_to_list(&priv->pki_list, &cert_object);
+				}
+				prkey_id = -1;
+				cert_id = -1;
+			}
+			/* Found private key, certificate and public key should have same id */
+			prkey_id = (start[10] - '0') * 10 + (start[11] - '0');
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Found private key with id=%d", prkey_id);
+			continue;
+		}
+		/* in minidriver, mscp/kxcNN or kscNN lists certificates */
+		else if (((memcmp(&start[4], "ksc", 3) == 0) || memcmp(&start[4], "kxc", 3) == 0)
+			&& (memcmp(&start[12], "mscp", 5) == 0)) {
+
+			if (cert_id != -1) {
+				/* Previously found certificate but no corresponding public key object */
+				/* If pubkey is missing, there should be also no private key */
+				if (prkey_id != -1) {
+					sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Certificate id=%d missing public key object", cert_id);
+				} else {
+					/* Here we know, that no pubkey or prkey was found for certificate */
+					sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Adding certificate with fd=%d, key_ref=%d",
+						cert_object.fd, cert_object.key_reference);
+					idprime_add_object_to_list(&priv->pki_list, &cert_object);
+				}
+				prkey_id = -1;
+				cert_id = -1;
+			}
+	
+			/* Continue with processing current certificate */
+			if (start[8] >= '0' && start[8] <= '9') {
+				cert_id = (start[7] - '0') * 10 + start[8] - '0';
+			}
+
+			new_object.fd++;
+			cert_object.valid_key_ref = 1;
+			switch (card->type) {
+			case SC_CARD_TYPE_IDPRIME_3810:
+				cert_object.key_reference = 0x31 + cert_id;
+				break;
+			case SC_CARD_TYPE_IDPRIME_830:
+				cert_object.key_reference = 0x41 + cert_id;
+				break;
+			case SC_CARD_TYPE_IDPRIME_930:
+				cert_object.key_reference = 0x11 + cert_id * 2;
+				break;
+			case SC_CARD_TYPE_IDPRIME_940:
+				cert_object.key_reference = 0x60 + cert_id;
+				break;
+			case SC_CARD_TYPE_IDPRIME_840:
+				cert_object.key_reference = 0xf7 + cert_id;
+				break;
+			default:
+				cert_object.key_reference = 0x56 + cert_id;
+				break;
+			}
+			cert_object.fd = new_object.fd;
+			cert_object.df[0] = new_object.df[0];
+			cert_object.df[1] = new_object.df[1];
+			cert_object.length = new_object.length;
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Found certificate with fd=%d, key_ref=%d",
+				cert_object.fd, cert_object.key_reference);
+		} else if ((memcmp(&start[4], "pubksc", 6) == 0) || (memcmp(&start[4], "pubkxc", 6) == 0)) {
+			/* Found public key on card*/
+			int pubkey_id = (start[10] - '0') * 10 + (start[11] - '0');
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Found public key with id=%d", pubkey_id);
+			
+			/* There should be already found certificate */
+			if (cert_id == -1) {
+				sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Public key (id=%d) without certificate", pubkey_id);
+				prkey_id = -1;
+				continue;
+			}
+			/* Certificate is on the card, check for corresponding private key */
+			if (prkey_id == -1 || cert_id != prkey_id || prkey_id != pubkey_id) {
+				/* Object is added, but missing private key */
+				cert_object.key_reference = -1;
+				cert_object.valid_key_ref = 0;
+				sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Certificate and public key without corresponding private key");
+			}
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Adding certificate with fd=%d, key_ref=%d",
+				cert_object.fd, cert_object.key_reference);
+			idprime_add_object_to_list(&priv->pki_list, &cert_object);
+			prkey_id = -1;
+			cert_id = -1;
 		/* This looks like non-standard extension listing pkcs11 token info label in my card */
 		} else if ((memcmp(&start[4], "tinfo", 6) == 0) && (memcmp(&start[12], "p11", 4) == 0)) {
 			memcpy(priv->tinfo_df, new_object.df, sizeof(priv->tinfo_df));
@@ -253,6 +319,18 @@ static int idprime_process_index(sc_card_t *card, idprime_private_data_t *priv, 
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Found p11/tinfo object");
 		}
 	}
+
+	if (cert_id != -1) {
+		/* Found certificate but no corresponding public key object */
+		if (prkey_id != -1) {
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Certificate id=%d missing public key object", cert_id);
+		} else {
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Adding certificate with fd=%d, key_ref=%d",
+				cert_object.fd, cert_object.key_reference);
+			idprime_add_object_to_list(&priv->pki_list, &cert_object);
+		}
+	}
+
 	r = SC_SUCCESS;
 done:
 	free(buf);
@@ -336,7 +414,7 @@ static int idprime_init(sc_card_t *card)
 		card->name = "Gemalto IDPrime 940";
 		break;
 	case SC_CARD_TYPE_IDPRIME_840:
-		card->name = "Gemalto IDPrime 840";
+		card->name = "Gemalto IDPrime MD 840";
 		break;
 	case SC_CARD_TYPE_IDPRIME_GENERIC:
 	default:
@@ -439,7 +517,10 @@ static int idprime_fill_prkey_info(list_t *list, idprime_object_t **entry, sc_pk
 	prkey_info->id.value[0] = ((*entry)->fd >> 8) & 0xff;
 	prkey_info->id.value[1] = (*entry)->fd & 0xff;
 	prkey_info->id.len = 2;
-	prkey_info->key_reference = (*entry)->key_reference;
+	if ((*entry)->valid_key_ref)
+		prkey_info->key_reference = (*entry)->key_reference;
+	else
+		prkey_info->key_reference = -1;
 	*entry = list_iterator_next(list);
 	return SC_SUCCESS;
 }
