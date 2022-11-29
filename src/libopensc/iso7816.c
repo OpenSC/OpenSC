@@ -1349,7 +1349,7 @@ int iso7816_read_binary_sfid(sc_card_t *card, unsigned char sfid,
 		u8 **ef, size_t *ef_len)
 {
 	int r;
-	size_t read = MAX_SM_APDU_RESP_SIZE;
+	size_t read;
 	sc_apdu_t apdu;
 	u8 *p;
 
@@ -1359,13 +1359,9 @@ int iso7816_read_binary_sfid(sc_card_t *card, unsigned char sfid,
 	}
 	*ef_len = 0;
 
-#if MAX_SM_APDU_RESP_SIZE > (0xff+1)
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_EXT,
+	read = card->max_recv_size;
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_2,
 			ISO_READ_BINARY, ISO_P1_FLAG_SFID|sfid, 0);
-#else
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT,
-			ISO_READ_BINARY, ISO_P1_FLAG_SFID|sfid, 0);
-#endif
 	p = realloc(*ef, read);
 	if (!p) {
 		r = SC_ERROR_OUT_OF_MEMORY;
@@ -1422,34 +1418,18 @@ int iso7816_write_binary_sfid(sc_card_t *card, unsigned char sfid,
 		u8 *ef, size_t ef_len)
 {
 	int r;
-	size_t write = MAX_SM_APDU_DATA_SIZE, wrote = 0;
+	size_t write, wrote = 0;
 	sc_apdu_t apdu;
-#ifdef ENABLE_SM
-	struct iso_sm_ctx *iso_sm_ctx;
-#endif
 
 	if (!card) {
 		r = SC_ERROR_INVALID_ARGUMENTS;
 		goto err;
 	}
 
-#ifdef ENABLE_SM
-	iso_sm_ctx = card->sm_ctx.info.cmd_data;
-	if (write > SC_MAX_APDU_BUFFER_SIZE-2
-			|| (card->sm_ctx.sm_mode == SM_MODE_TRANSMIT
-				&& write > (((SC_MAX_APDU_BUFFER_SIZE-2
-					/* for encrypted APDUs we usually get authenticated status
-					 * bytes (4B), a MAC (11B) and a cryptogram with padding
-					 * indicator (3B without data).  The cryptogram is always
-					 * padded to the block size. */
-					-18) / iso_sm_ctx->block_length)
-					* iso_sm_ctx->block_length - 1)))
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_EXT,
-				ISO_WRITE_BINARY, ISO_P1_FLAG_SFID|sfid, 0);
-	else
-#endif
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT,
-				ISO_WRITE_BINARY, ISO_P1_FLAG_SFID|sfid, 0);
+	write = card->max_send_size;
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3,
+			ISO_WRITE_BINARY, ISO_P1_FLAG_SFID|sfid, 0);
 
 	if (write > ef_len) {
 		apdu.datalen = ef_len;
