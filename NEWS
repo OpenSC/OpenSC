@@ -1,6 +1,6 @@
 NEWS for OpenSC -- History of user visible changes
 
-# New in 0.23.0; 2022-11-09
+# New in 0.23.0; 2022-11-29
 ## General improvements
 * Support signing of data with a length of more than 512 bytes (#2314)
 * By default, disable support for old card drivers (#2391) and remove support for old drivers MioCOS and JCOP (#2374)
@@ -11,11 +11,11 @@ NEWS for OpenSC -- History of user visible changes
 * Notice detached reader on macOS (#2418)
 * Support for OAEP padding (#2475, #2484)
 * Fix for PSS salt length (#2478)
-* Improve fuzzing by adding new tests (#2417, #2500, #2520, #2550)
+* Improve fuzzing by adding new tests (#2417, #2500, #2520, #2550, #2637)
 * Fixed various issues reported by OSS-Fuzz and Coverity regarding card drivers, PKCS#11 and PKCS#15 init
 * Fix issues with OpenPACE (#2472)
 * Containers support for local testing
-* Add support for encryption using symmetric keys (#2473)
+* Add support for encryption and decryption using symmetric keys (#2473, #2607)
 * Stop building support for Gost algorithms with OpenSSL 3.0 as they require deprecated API (#2586)
 * Fix detection of disconnected readers in PCSC (#2600)
 * Add configuration option for on-disk caching of private data (#2588)
@@ -31,6 +31,8 @@ NEWS for OpenSC -- History of user visible changes
 * Add support for SHA3 (#2467)
 * Make object selectable via label (#2570)
 * Do not require an R/W session for some operations and add `--session-rw` option (#2579)
+* Print more information: CKA_UNIQUE_ID attribute, SHA3 HMACs and serial number for certificates (#2644, #2643, #2641)
+* Add new option --undestroyable to create keys with CKA_DESTROYABLE=FALSE (#2645)
 ## sc-hsm-tool
 * Add options for public key authentication (#2301)
 ## Minidriver
@@ -53,10 +55,12 @@ NEWS for OpenSC -- History of user visible changes
 * Fix matching with newer versions and tokens initialized with OpenSC (#2575)
 ## MyEID
 * Support logout operation (#2557)
+* Support for symmetric encryption and decryption (#2473, #2607)
 ## GIDS
 * Fix decipher for TPM (#1881)
 ## OpenPGP
 * Get the list of supported algorithms from algorithm information on the card (#2287)
+* Support for 3 certificates with OpenPGP 3+ (#2103)
 ## nPA
 * Fix card detection (#2463)
 ## Rutoken

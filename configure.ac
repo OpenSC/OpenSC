@@ -9,7 +9,7 @@ define([PRODUCT_URL], [https://github.com/OpenSC/OpenSC])
 define([PACKAGE_VERSION_MAJOR], [0])
 define([PACKAGE_VERSION_MINOR], [23])
 define([PACKAGE_VERSION_FIX], [0])
-define([PACKAGE_SUFFIX], [-rc2])
+define([PACKAGE_SUFFIX], [])
 
 define([VS_FF_LEGAL_COPYRIGHT], [OpenSC Project])
 define([VS_FF_LEGAL_COMPANY_NAME], [OpenSC Project])
