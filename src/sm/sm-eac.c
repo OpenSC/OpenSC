@@ -2388,7 +2388,7 @@ int perform_pace(sc_card_t *card,
 		r = SC_ERROR_NOT_SUPPORTED;
 	}
 
-	return r;
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, r);
 }
 
 int perform_terminal_authentication(sc_card_t *card,
@@ -2396,19 +2396,19 @@ int perform_terminal_authentication(sc_card_t *card,
 		const unsigned char *privkey, size_t privkey_len,
 		const unsigned char *auxiliary_data, size_t auxiliary_data_len)
 {
-	return SC_ERROR_NOT_SUPPORTED;
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, SC_ERROR_NOT_SUPPORTED);
 }
 
 int perform_chip_authentication(sc_card_t *card,
 		unsigned char **ef_cardsecurity, size_t *ef_cardsecurity_len)
 {
-	return SC_ERROR_NOT_SUPPORTED;
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, SC_ERROR_NOT_SUPPORTED);
 }
 
 int perform_chip_authentication_ex(sc_card_t *card, void *eac_ctx,
 		unsigned char *picc_pubkey, size_t picc_pubkey_len)
 {
-	return SC_ERROR_NOT_SUPPORTED;
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, SC_ERROR_NOT_SUPPORTED);
 }
 
 #endif
