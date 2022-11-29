@@ -9,13 +9,14 @@ Do NOT use any links from wiki to download the OpenSC because wiki can be modifi
 
 # Downloads
 
-[OpenSC 0.22.0](https://github.com/OpenSC/OpenSC/releases/tag/0.22.0) is the latest stable version released on 10.08.2021. It is available as
+[OpenSC 0.23.0](https://github.com/OpenSC/OpenSC/releases/tag/0.23.0) is the latest stable version released on
+29.11.2022. It is available as
 
  * Windows installer
-   * [OpenSC-0.22.0_win64.msi](https://github.com/OpenSC/OpenSC/releases/download/0.22.0/OpenSC-0.22.0_win64.msi) for 64 bit programs
-   * [OpenSC-0.22.0_win32.msi](https://github.com/OpenSC/OpenSC/releases/download/0.22.0/OpenSC-0.22.0_win32.msi) for 32 bit programs
- * [OpenSC-0.22.0.dmg](https://github.com/OpenSC/OpenSC/releases/download/0.22.0/OpenSC-0.22.0.dmg): macOS installer
- * [opensc-0.22.0.tar.gz](https://github.com/OpenSC/OpenSC/releases/download/0.22.0/opensc-0.22.0.tar.gz): Source code distribution
+   * [OpenSC-0.23.0_win64.msi](https://github.com/OpenSC/OpenSC/releases/download/0.23.0/OpenSC-0.23.0_win64.msi) for 64 bit programs
+   * [OpenSC-0.23.0_win32.msi](https://github.com/OpenSC/OpenSC/releases/download/0.23.0/OpenSC-0.23.0_win32.msi) for 32 bit programs
+ * [OpenSC-0.23.0.dmg](https://github.com/OpenSC/OpenSC/releases/download/0.23.0/OpenSC-0.23.0.dmg): macOS installer
+ * [opensc-0.23.0.tar.gz](https://github.com/OpenSC/OpenSC/releases/download/0.23.0/opensc-0.23.0.tar.gz): Source code distribution
 
 ## Nightly build
 
