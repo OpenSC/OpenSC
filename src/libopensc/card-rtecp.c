@@ -173,7 +173,7 @@ static void set_acl_from_sec_attr(sc_card_t *card, sc_file_t *file)
 	{
 		method = sec_attr_to_method(file->sec_attr[1 + 6]);
 		key_ref = sec_attr_to_key_ref(file->sec_attr[1 + 6]);
-		sc_log(card->ctx, 
+		sc_log(card->ctx,
 			"SC_AC_OP_DELETE %i %lu\n",
 			(int)method, key_ref);
 		sc_file_add_acl_entry(file, SC_AC_OP_DELETE, method, key_ref);
@@ -182,7 +182,7 @@ static void set_acl_from_sec_attr(sc_card_t *card, sc_file_t *file)
 	{
 		method = sec_attr_to_method(file->sec_attr[1 + 0]);
 		key_ref = sec_attr_to_key_ref(file->sec_attr[1 + 0]);
-		sc_log(card->ctx, 
+		sc_log(card->ctx,
 			(file->type == SC_FILE_TYPE_DF) ?
 				"SC_AC_OP_CREATE %i %lu\n"
 				: "SC_AC_OP_READ %i %lu\n",
@@ -200,11 +200,11 @@ static void set_acl_from_sec_attr(sc_card_t *card, sc_file_t *file)
 		{
 			method = sec_attr_to_method(file->sec_attr[1 + 1]);
 			key_ref = sec_attr_to_key_ref(file->sec_attr[1 + 1]);
-			sc_log(card->ctx, 
+			sc_log(card->ctx,
 				"SC_AC_OP_UPDATE %i %lu\n",
 				(int)method, key_ref);
 			sc_file_add_acl_entry(file, SC_AC_OP_UPDATE, method, key_ref);
-			sc_log(card->ctx, 
+			sc_log(card->ctx,
 				"SC_AC_OP_WRITE %i %lu\n",
 				(int)method, key_ref);
 			sc_file_add_acl_entry(file, SC_AC_OP_WRITE, method, key_ref);
@@ -482,12 +482,12 @@ static int rtecp_change_reference_data(sc_card_t *card, unsigned int type,
 		const u8 *newref, size_t newlen, int *tries_left)
 {
 	sc_apdu_t apdu;
-	u8 rsf_length[2], *buf, *buf_end, *p; 
+	u8 rsf_length[2], *buf, *buf_end, *p;
 	size_t val_length, buf_length, max_transmit_length;
 	int transmits_num, r;
 
 	assert(card && card->ctx && newref);
-	sc_log(card->ctx, 
+	sc_log(card->ctx,
 		 "newlen = %"SC_FORMAT_LEN_SIZE_T"u\n", newlen);
 	if (newlen > 0xFFFF)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
@@ -496,7 +496,7 @@ static int rtecp_change_reference_data(sc_card_t *card, unsigned int type,
 		r = sc_verify(card, type, ref_qualifier, old, oldlen, tries_left);
 		LOG_TEST_RET(card->ctx, r, "Verify old pin failed");
 	}
-	
+
 	max_transmit_length = sc_get_max_send_size(card);
 	assert(max_transmit_length > 2);
 	/*
@@ -505,13 +505,13 @@ static int rtecp_change_reference_data(sc_card_t *card, unsigned int type,
 	 */
 	transmits_num = (2 + sizeof(rsf_length) + newlen) / (max_transmit_length - 2) + 1;
 	/* buffer length = size of 0x80 TLV + size of RSF-file + (size of Tag and Length)*(number of APDUs) */
-	buf_length = (2 + sizeof(rsf_length)) + newlen + 2*(transmits_num); 
+	buf_length = (2 + sizeof(rsf_length)) + newlen + 2*(transmits_num);
 	p = buf = (u8 *)malloc(buf_length);
 	if (buf == NULL)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
-	buf_end = buf + buf_length; 
+	buf_end = buf + buf_length;
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x24, 0x01, ref_qualifier);	
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x24, 0x01, ref_qualifier);
 	/* put 0x80 TLV */
 	rsf_length[0] = (newlen >> 8) & 0xFF;
 	rsf_length[1] = newlen & 0xFF;
@@ -563,7 +563,7 @@ static int rtecp_reset_retry_counter(sc_card_t *card, unsigned int type,
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(card->ctx, r, "Unblock card failed");
-	
+
 	if (newref && newlen)   {
         	u8 tmp[2], buf[SC_MAX_APDU_BUFFER_SIZE];
 		u8 *p = buf;
@@ -710,7 +710,7 @@ static int rtecp_card_ctl(sc_card_t *card, unsigned long request, void *data)
 		/* no call sc_debug (SC_FUNC_RETURN) */
 		return SC_ERROR_NOT_SUPPORTED;
 	default:
-		sc_log(card->ctx, 
+		sc_log(card->ctx,
 			"request = 0x%lx\n", request);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 	}
