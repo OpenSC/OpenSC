@@ -17,5 +17,5 @@ jobs:
       - uses: actions/checkout@v2
       - uses: codespell-project/actions-codespell@master
         with:
-          skip: compat_*
+          skip: ./src/tests/fuzzing/corpus,compat_*
           ignore_words_file: .github/codespell_ignore_words.txt
