@@ -741,7 +741,7 @@ static int rtecp_card_ctl(sc_card_t *card, unsigned long request, void *data)
 	}
 	else if (!r && request == SC_CARDCTL_GET_SERIALNR)
 	{
-		if (serial->len >= apdu.resplen)
+		if (apdu.resplen <= sizeof(serial->value))
 		{
 			memcpy(serial->value, apdu.resp, apdu.resplen);
 			serial->len = apdu.resplen;
