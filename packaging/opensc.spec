@@ -19,6 +19,7 @@ BuildRequires:  bash-completion
 BuildRequires:  zlib-devel
 # For tests
 BuildRequires:  libcmocka-devel
+BuildRequires:  vim-common
 BuildRequires:  softhsm
 BuildRequires:  openssl
 Requires:       pcsc-lite-libs%{?_isa}
@@ -44,7 +45,7 @@ every software/card that does so, too.
 
 # The test-pkcs11-tool-allowed-mechanisms already works in Fedora
 sed -i -e '/XFAIL_TESTS/,$ {
-  s/XFAIL_TESTS.*/XFAIL_TESTS=test-pkcs11-tool-test-threads.sh test-pkcs11-tool-test.sh test-pkcs11-tool-unwrap-wrap-test.sh/
+  s/XFAIL_TESTS.*/XFAIL_TESTS=test-pkcs11-tool-test-threads.sh test-pkcs11-tool-test.sh/
   q
 }' tests/Makefile.am
 
@@ -63,7 +64,7 @@ sed -i -e 's/opensc.conf/opensc-%{_arch}.conf/g' src/libopensc/Makefile.in
 sed -i -e 's|"/lib /usr/lib\b|"/%{_lib} %{_libdir}|' configure # lib64 rpaths
 %set_build_flags
 CFLAGS="$CFLAGS -Wstrict-aliasing=2 -Wno-deprecated-declarations"
-%configure --disable-static\
+%configure --disable-static \
   --disable-autostart-items \
   --disable-notify \
   --disable-assert \
