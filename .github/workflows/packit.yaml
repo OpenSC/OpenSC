@@ -6,6 +6,7 @@ on:
       - '**.h'
       - '**.am'
       - .github/workflows/packit.yaml
+      - packaging/opensc.spec
   push:
 
 jobs:
