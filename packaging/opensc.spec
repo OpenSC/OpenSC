@@ -70,8 +70,7 @@ CFLAGS="$CFLAGS -Wstrict-aliasing=2 -Wno-deprecated-declarations"
   --disable-assert \
   --enable-pcsc \
   --enable-cmocka \
-  --enable-sm \
-  --with-pcsc-provider=libpcsclite.so.1
+  --enable-sm
 %make_build
 
 
