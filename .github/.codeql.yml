@@ -1,12 +1,5 @@
 name: "CodeQL configuration file"
 
-paths:
-  - src/
-paths-ignore:
-  - 'src/tools/*-cmdline.*'
-  - src/tests/
-  - tests/
-
 query-filters:
   - exclude:
       # This reports all the uses of the DES, but this is needed for
