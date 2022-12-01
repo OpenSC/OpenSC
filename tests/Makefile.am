@@ -14,8 +14,9 @@ dist_noinst_SCRIPTS = common.sh \
                       test-pkcs11-tool-test-threads.sh \
                       test-pkcs11-tool-sign-verify.sh \
                       test-pkcs11-tool-allowed-mechanisms.sh \
-                      test-pkcs11-tool-sym-crypt-test.sh\
-                      test-pkcs11-tool-unwrap-wrap-test.sh
+                      test-pkcs11-tool-sym-crypt-test.sh \
+                      test-pkcs11-tool-unwrap-wrap-test.sh \
+                      test-pkcs11-tool-import.sh
 
 .NOTPARALLEL:
 TESTS = \
@@ -25,8 +26,9 @@ TESTS = \
         test-pkcs11-tool-test.sh \
         test-pkcs11-tool-test-threads.sh \
         test-pkcs11-tool-allowed-mechanisms.sh \
-        test-pkcs11-tool-sym-crypt-test.sh\
-        test-pkcs11-tool-unwrap-wrap-test.sh
+        test-pkcs11-tool-sym-crypt-test.sh \
+        test-pkcs11-tool-unwrap-wrap-test.sh \
+        test-pkcs11-tool-import.sh
 XFAIL_TESTS = \
         test-pkcs11-tool-test-threads.sh \
         test-pkcs11-tool-test.sh
