@@ -3641,10 +3641,8 @@ parse_rsa_pkey(EVP_PKEY *pkey, int private, struct rsakey_info *rsa)
 	const BIGNUM *r_dmp1, *r_dmq1, *r_iqmp;
 	r = EVP_PKEY_get1_RSA(pkey);
 	if (!r) {
-		if (private)
-			util_fatal("OpenSSL error during RSA private key parsing");
-		else
-			util_fatal("OpenSSL error during RSA public key parsing");
+		util_fatal("OpenSSL error during RSA %s key parsing: %s", private ? "private" : "public",
+			ERR_error_string(ERR_peek_last_error(), NULL));
 	}
 
 	RSA_get0_key(r, &r_n, &r_e, NULL);
@@ -3654,10 +3652,8 @@ parse_rsa_pkey(EVP_PKEY *pkey, int private, struct rsakey_info *rsa)
 	BIGNUM *r_dmp1 = NULL, *r_dmq1 = NULL, *r_iqmp = NULL;
 	if (EVP_PKEY_get_bn_param(pkey, OSSL_PKEY_PARAM_RSA_N, &r_n) != 1 ||
 		EVP_PKEY_get_bn_param(pkey, OSSL_PKEY_PARAM_RSA_E, &r_e) != 1) {
-		if (private)
-			util_fatal("OpenSSL error during RSA private key parsing");
-		else
-			util_fatal("OpenSSL error during RSA public key parsing");
+		util_fatal("OpenSSL error during RSA %s key parsing: %s", private ? "private" : "public",
+			ERR_error_string(ERR_peek_last_error(), NULL));
 	 }
 #endif
 	RSA_GET_BN(rsa, modulus, r_n);
@@ -3674,8 +3670,9 @@ parse_rsa_pkey(EVP_PKEY *pkey, int private, struct rsakey_info *rsa)
 			EVP_PKEY_get_bn_param(pkey, OSSL_PKEY_PARAM_RSA_FACTOR2, &r_q) != 1 ||
 			EVP_PKEY_get_bn_param(pkey, OSSL_PKEY_PARAM_RSA_EXPONENT1, &r_dmp1) != 1 ||
 			EVP_PKEY_get_bn_param(pkey, OSSL_PKEY_PARAM_RSA_EXPONENT2, &r_dmq1) != 1 ||
-			util_fatal("OpenSSL error during RSA private key parsing");
 			EVP_PKEY_get_bn_param(pkey, OSSL_PKEY_PARAM_RSA_COEFFICIENT1, &r_iqmp) != 1) {
+			util_fatal("OpenSSL error during RSA private key parsing: %s",
+				ERR_error_string(ERR_peek_last_error(), NULL));
 		}
 #endif
 		RSA_GET_BN(rsa, private_exponent, r_d);
