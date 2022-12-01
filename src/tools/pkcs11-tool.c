@@ -3669,13 +3669,13 @@ parse_rsa_pkey(EVP_PKEY *pkey, int private, struct rsakey_info *rsa)
 		RSA_get0_factors(r, &r_p, &r_q);
 		RSA_get0_crt_params(r, &r_dmp1, &r_dmq1, &r_iqmp);
 #else
-		if (EVP_PKEY_get_bn_param(pkey, OSSL_PKEY_PARAM_RSA_FACTOR1, &r_d) != 1 ||
+		if (EVP_PKEY_get_bn_param(pkey, OSSL_PKEY_PARAM_RSA_D, &r_d) != 1 ||
 			EVP_PKEY_get_bn_param(pkey, OSSL_PKEY_PARAM_RSA_FACTOR1, &r_p) != 1 ||
 			EVP_PKEY_get_bn_param(pkey, OSSL_PKEY_PARAM_RSA_FACTOR2, &r_q) != 1 ||
 			EVP_PKEY_get_bn_param(pkey, OSSL_PKEY_PARAM_RSA_EXPONENT1, &r_dmp1) != 1 ||
 			EVP_PKEY_get_bn_param(pkey, OSSL_PKEY_PARAM_RSA_EXPONENT2, &r_dmq1) != 1 ||
-			EVP_PKEY_get_bn_param(pkey, OSSL_PKEY_PARAM_RSA_EXPONENT3, &r_iqmp) != 1) {
 			util_fatal("OpenSSL error during RSA private key parsing");
+			EVP_PKEY_get_bn_param(pkey, OSSL_PKEY_PARAM_RSA_COEFFICIENT1, &r_iqmp) != 1) {
 		}
 #endif
 		RSA_GET_BN(rsa, private_exponent, r_d);
