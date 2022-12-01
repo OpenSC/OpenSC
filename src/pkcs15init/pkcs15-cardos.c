@@ -91,19 +91,23 @@ static void tlv_init(struct tlv *tlv, u8 *base, size_t size)
 	tlv->current = tlv->next = base;
 }
 
-static void tlv_next(struct tlv *tlv, u8 tag)
+static int tlv_next(struct tlv *tlv, u8 tag)
 {
-	assert(tlv->next + 2 < tlv->end);
+	if (tlv->next + 2 >= tlv->end)
+		return SC_ERROR_INTERNAL;
 	tlv->current = tlv->next;
 	*(tlv->next++) = tag;
 	*(tlv->next++) = 0;
+	return SC_SUCCESS;
 }
 
-static void tlv_add(struct tlv *tlv, u8 val)
+static int tlv_add(struct tlv *tlv, u8 val)
 {
-	assert(tlv->next + 1 < tlv->end);
+	if (tlv->next + 1 >= tlv->end)
+		return SC_ERROR_INTERNAL;
 	*(tlv->next++) = val;
 	tlv->current[1]++;
+	return SC_SUCCESS;
 }
 
 static size_t
@@ -497,49 +501,60 @@ cardos_store_pin(sc_profile_t *profile, sc_card_t *card,
 	tlv_init(&tlv, buffer, sizeof(buffer));
 
 	/* object address: class, id */
-	tlv_next(&tlv, 0x83);
-	tlv_add(&tlv, 0x00);		/* class byte: usage TEST, k=0 */
-	tlv_add(&tlv, auth_info->attrs.pin.reference & 0x7f);
+	if (tlv_next(&tlv, 0x83) != SC_SUCCESS
+	    || tlv_add(&tlv, 0x00) != SC_SUCCESS /* class byte: usage TEST, k=0 */
+	    || tlv_add(&tlv, auth_info->attrs.pin.reference & 0x7f) != SC_SUCCESS)
+		return SC_ERROR_INTERNAL;
 
 	/* parameters */
-	tlv_next(&tlv, 0x85);
-	tlv_add(&tlv, 0x02);		/* options byte */
+	if (tlv_next(&tlv, 0x85)
+	    || tlv_add(&tlv, 0x02) /* options byte */)
+		return SC_ERROR_INTERNAL;
+
 	hasverifyrc = cardos_have_verifyrc_package(card);
 	if (hasverifyrc == 1)
 		/* Use 9 byte OCI parameters to be able to set VerifyRC bit	*/
-		tlv_add(&tlv, 0x04);	/* options_2 byte with bit 2 set to return CurrentErrorCounter	*/
-	tlv_add(&tlv, attempts & 0xf);	/* flags byte */
-	tlv_add(&tlv, CARDOS_ALGO_PIN);	/* algorithm = pin-test */
-	tlv_add(&tlv, attempts & 0xf);	/* errcount = attempts */
+		if (tlv_add(&tlv, 0x04) != SC_SUCCESS /* options_2 byte with bit 2 set to return CurrentErrorCounter */)
+			return SC_ERROR_INTERNAL;
+	
+	if (tlv_add(&tlv, attempts & 0xf) != SC_SUCCESS /* flags byte */
+	    || tlv_add(&tlv, CARDOS_ALGO_PIN) != SC_SUCCESS /* algorithm = pin-test */
+	    || tlv_add(&tlv, attempts & 0xf) != SC_SUCCESS /* errcount = attempts */)
+		return SC_ERROR_INTERNAL;
 
 	/* usecount: not documented, but seems to work like this:
 	 *  -	value of 0xff means pin can be presented any number
 	 *	of times
 	 *  -	anything less: max # of times before BS object is blocked.
 	 */
-	tlv_add(&tlv, 0xff);
+	if (tlv_add(&tlv, 0xff) != SC_SUCCESS)
+		return SC_ERROR_INTERNAL;
 
 	/* DEK: not documented, no idea what it means */
-	tlv_add(&tlv, 0xff);
+	if (tlv_add(&tlv, 0xff) != SC_SUCCESS)
+		return SC_ERROR_INTERNAL;
 
 	/* ARA counter: number of times the test object can be used before
 	 *              another verification is required (~ user consent)
 	 *              (0x00 unlimited usage)
 	 */
-	tlv_add(&tlv, 0x00);
-
-	tlv_add(&tlv, minlen);			/* minlen */
+	if (tlv_add(&tlv, 0x00) != SC_SUCCESS
+	    || tlv_add(&tlv, minlen) != SC_SUCCESS /* minlen */)
+		return SC_ERROR_INTERNAL;
 
 	/* AC conditions */
-	tlv_next(&tlv, 0x86);
-	tlv_add(&tlv, 0x00);			/* use: always */
-	tlv_add(&tlv, auth_info->attrs.pin.reference);	/* change: PIN */
-	tlv_add(&tlv, puk_id);			/* unblock: PUK */
+	if (tlv_next(&tlv, 0x86) != SC_SUCCESS
+	    || tlv_add(&tlv, 0x00) != SC_SUCCESS /* use: always */
+	    || tlv_add(&tlv, auth_info->attrs.pin.reference) != SC_SUCCESS /* change: PIN */
+	    || tlv_add(&tlv, puk_id) != SC_SUCCESS /* unblock: PUK */)
+		return SC_ERROR_INTERNAL;
 
 	/* data: PIN */
-	tlv_next(&tlv, 0x8f);
+	if (tlv_next(&tlv, 0x8f) != SC_SUCCESS)
+		return SC_ERROR_INTERNAL;
 	while (pin_len--)
-		tlv_add(&tlv, *pin++);
+		if (tlv_add(&tlv, *pin++) != SC_SUCCESS)
+			return SC_ERROR_INTERNAL;
 
 	args.data = buffer;
 	args.len = tlv_len(&tlv);
@@ -565,20 +580,19 @@ cardos_create_sec_env(struct sc_profile *profile, sc_card_t *card,
 	int		r;
 
 	tlv_init(&tlv, buffer, sizeof(buffer));
-	tlv_next(&tlv, 0x83);
-	tlv_add(&tlv, se_id);
-
-	tlv_next(&tlv, 0x86);
-	tlv_add(&tlv, 0);
-	tlv_add(&tlv, 0);
-
-	tlv_next(&tlv, 0x8f);
-	tlv_add(&tlv, key_id);
-	tlv_add(&tlv, key_id);
-	tlv_add(&tlv, key_id);
-	tlv_add(&tlv, key_id);
-	tlv_add(&tlv, key_id);
-	tlv_add(&tlv, key_id);
+	if (tlv_next(&tlv, 0x83) != SC_SUCCESS
+	    || tlv_add(&tlv, se_id) != SC_SUCCESS
+	    || tlv_next(&tlv, 0x86) != SC_SUCCESS
+	    || tlv_add(&tlv, 0) != SC_SUCCESS
+	    || tlv_add(&tlv, 0) != SC_SUCCESS
+	    || tlv_next(&tlv, 0x8f) != SC_SUCCESS
+	    || tlv_add(&tlv, key_id) != SC_SUCCESS
+	    || tlv_add(&tlv, key_id) != SC_SUCCESS
+	    || tlv_add(&tlv, key_id) != SC_SUCCESS
+	    || tlv_add(&tlv, key_id) != SC_SUCCESS
+	    || tlv_add(&tlv, key_id) != SC_SUCCESS
+	    || tlv_add(&tlv, key_id) != SC_SUCCESS)
+		return SC_ERROR_INTERNAL;
 
 	args.data = buffer;
 	args.len = tlv_len(&tlv);
@@ -646,47 +660,55 @@ cardos_store_key_component(sc_card_t *card,
 	tlv_init(&tlv, buffer, sizeof(buffer));
 
 	/* Object address */
-	tlv_next(&tlv, 0x83);
-	tlv_add(&tlv, 0x20|num);	/* PSO, n-th component */
-	tlv_add(&tlv, key_id);
+	if (tlv_next(&tlv, 0x83) != SC_SUCCESS
+	    || tlv_add(&tlv, 0x20|num) != SC_SUCCESS /* PSO, n-th component */
+	    || tlv_add(&tlv, key_id) != SC_SUCCESS)
+		return SC_ERROR_INTERNAL;
 
 	/* Object parameters */
-	tlv_next(&tlv, 0x85);
-	tlv_add(&tlv, CARDOS_KEY_OPTIONS|(last? 0x00 : 0x20));
-	tlv_add(&tlv, CARDOS_KEY_FLAGS);
-	tlv_add(&tlv, algorithm);
-	tlv_add(&tlv, 0x00);
-	tlv_add(&tlv, 0xFF);	/* use count */
-	tlv_add(&tlv, 0xFF);	/* DEK (whatever this is) */
-	tlv_add(&tlv, 0x00);
-	tlv_add(&tlv, 0x00);
+	if (tlv_next(&tlv, 0x85) != SC_SUCCESS
+	    || tlv_add(&tlv, CARDOS_KEY_OPTIONS|(last? 0x00 : 0x20)) != SC_SUCCESS
+	    || tlv_add(&tlv, CARDOS_KEY_FLAGS) != SC_SUCCESS
+	    || tlv_add(&tlv, algorithm) != SC_SUCCESS
+	    || tlv_add(&tlv, 0x00) != SC_SUCCESS
+	    || tlv_add(&tlv, 0xFF) != SC_SUCCESS /* use count */
+	    || tlv_add(&tlv, 0xFF) != SC_SUCCESS /* DEK (whatever this is) */
+	    || tlv_add(&tlv, 0x00) != SC_SUCCESS
+	    || tlv_add(&tlv, 0x00) != SC_SUCCESS)
+		return SC_ERROR_INTERNAL;
 
 	/* AC bytes */
-	tlv_next(&tlv, 0x86);
-	tlv_add(&tlv, pin_id);	/* AC USE */
-	tlv_add(&tlv, pin_id);	/* AC CHANGE */
-	tlv_add(&tlv, pin_id);	/* UNKNOWN */
-	tlv_add(&tlv, 0);	/* rfu */
-	tlv_add(&tlv, 0);	/* rfu */
-	tlv_add(&tlv, 0);	/* rfu */
-	tlv_add(&tlv, 0);
+	if (tlv_next(&tlv, 0x86) != SC_SUCCESS
+	    || tlv_add(&tlv, pin_id) != SC_SUCCESS /* AC USE */
+	    || tlv_add(&tlv, pin_id) != SC_SUCCESS /* AC CHANGE */
+	    || tlv_add(&tlv, pin_id) != SC_SUCCESS /* UNKNOWN */
+	    || tlv_add(&tlv, 0) != SC_SUCCESS /* rfu */
+	    || tlv_add(&tlv, 0) != SC_SUCCESS /* rfu */
+	    || tlv_add(&tlv, 0) != SC_SUCCESS /* rfu */
+	    || tlv_add(&tlv, 0) != SC_SUCCESS)
+		return SC_ERROR_INTERNAL;
 
 #ifdef SET_SM_BYTES
 	/* it shouldn't be necessary to set the default value */
 	/* SM bytes */
-	tlv_next(&tlv, 0x8B);
+	if (tlv_next(&tlv, 0x8B) != SC_SUCCESS)
+		return SC_ERROR_INTERNAL;
 	for (n = 0; n < 16; n++)
-		tlv_add(&tlv, 0xFF);
+		if (tlv_add(&tlv, 0xFF) != SC_SUCCESS)
+			return SC_ERROR_INTERNAL;
 #endif
 
 	/* key component */
-	tlv_next(&tlv, 0x8f);
+	if (tlv_next(&tlv, 0x8f) != SC_SUCCESS)
+		return SC_ERROR_INTERNAL;
 	if (use_prefix != 0) {
-		tlv_add(&tlv, len+1);
-		tlv_add(&tlv, 0);
+		if (tlv_add(&tlv, len+1) != SC_SUCCESS
+		|| tlv_add(&tlv, 0) != SC_SUCCESS)
+			return SC_ERROR_INTERNAL;
 	}
 	while (len--)
-		tlv_add(&tlv, *data++);
+		if (tlv_add(&tlv, *data++) != SC_SUCCESS)
+			return SC_ERROR_INTERNAL;
 
 	args.data = buffer;
 	args.len = tlv_len(&tlv);
