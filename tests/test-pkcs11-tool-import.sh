@@ -12,15 +12,13 @@ if [[ ! -f $P11LIB ]]; then
 fi
 card_setup
 
-ID="0100"
-OPTS=""
 for KEYTYPE in "RSA" "EC"; do
     echo "======================================================="
     echo "Generate and import $KEYTYPE keys"
     echo "======================================================="
-    if [ "$KEYTYPE" == "RSA" ]; then
-        ID="0100"
-    elif [ "$KEYTYPE" == "EC" ]; then
+    ID="0100"
+    OPTS=""
+    if [ "$KEYTYPE" == "EC" ]; then
         ID="0200"
         OPTS="-pkeyopt ec_paramgen_curve:P-521"
     fi
