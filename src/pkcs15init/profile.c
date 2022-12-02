@@ -1976,12 +1976,15 @@ static struct block	root_ops = {
 };
 
 static int
-check_macro_reference_loop(scconf_list *start, scconf_list *current, struct state *cur) {
+check_macro_reference_loop(scconf_list *start, scconf_list *current, struct state *cur, int depth) {
 	sc_macro_t *mac = NULL;
 	const char *str = NULL;
 
 	if (!start || !current || !cur)
-		return 0;
+		return 1;
+
+	if (depth == 16)
+		return 1;
 
 	str = current->data;
 	if (str[0] != '$')
@@ -1990,7 +1993,7 @@ check_macro_reference_loop(scconf_list *start, scconf_list *current, struct stat
 		return 0;
 	if (!strcmp(mac->name, start->data + 1))
 		return 1;
-	return check_macro_reference_loop(start, mac->value, cur);
+	return check_macro_reference_loop(start, mac->value, cur, depth + 1);
 }
 
 static int
@@ -2024,7 +2027,7 @@ build_argv(struct state *cur, const char *cmdname,
 		if (list == mac->value) {
 			return SC_ERROR_SYNTAX_ERROR;
 		}
-		if (check_macro_reference_loop(list, mac->value, cur)) {
+		if (check_macro_reference_loop(list, mac->value, cur, 0)) {
 			return SC_ERROR_SYNTAX_ERROR;
 		}
 #ifdef DEBUG_PROFILE
