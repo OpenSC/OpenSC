@@ -31,8 +31,7 @@
 
 #define ISOAPPLET_ALG_REF_ECDSA 0x21
 #define ISOAPPLET_ALG_REF_RSA_PAD_PKCS1 0x11
-#define ISOAPPLET_ALG_REF_RSA_SHA256_PAD_PSS 0x12
-#define ISOAPPLET_ALG_REF_RSA_SHA512_PAD_PSS 0x13
+#define ISOAPPLET_ALG_REF_RSA_PAD_PSS 0x12
 
 #define ISOAPPLET_VERSION_V0 0x0060
 #define ISOAPPLET_VERSION_V1 0x0100
@@ -40,8 +39,7 @@
 #define ISOAPPLET_API_FEATURE_EXT_APDU 0x01
 #define ISOAPPLET_API_FEATURE_SECURE_RANDOM 0x02
 #define ISOAPPLET_API_FEATURE_ECC 0x04
-#define ISOAPPLET_API_FEATURE_RSA_SHA256_PSS 0x08
-#define ISOAPPLET_API_FEATURE_RSA_SHA512_PSS 0x10
+#define ISOAPPLET_API_FEATURE_RSA_PSS 0x08
 
 static const u8 isoApplet_aid[] = {0xf2,0x76,0xa2,0x88,0xbc,0xfb,0xa6,0x9d,0x34,0xf3,0x10,0x01};
 
@@ -272,14 +270,8 @@ isoApplet_init(sc_card_t *card)
 	flags = 0;
 	flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
 	flags |= SC_ALGORITHM_RSA_HASH_NONE;
-	flags |= SC_ALGORITHM_RSA_HASH_SHA256;
-	if(drvdata->isoapplet_features & ISOAPPLET_API_FEATURE_RSA_SHA256_PSS) {
+	if(drvdata->isoapplet_features & ISOAPPLET_API_FEATURE_RSA_PSS) {
 		flags |= SC_ALGORITHM_RSA_PAD_PSS;
-		flags |= SC_ALGORITHM_MGF1_SHA256;
-	}
-	if(drvdata->isoapplet_features & ISOAPPLET_API_FEATURE_RSA_SHA512_PSS) {
-		flags |= SC_ALGORITHM_RSA_PAD_PSS;
-		flags |= SC_ALGORITHM_MGF1_SHA512;
 	}
 	/* Key-generation: */
 	flags |= SC_ALGORITHM_ONBOARD_KEY_GEN;
@@ -1141,13 +1133,9 @@ isoApplet_set_security_env(sc_card_t *card,
 			{
 				drvdata->sec_env_alg_ref = ISOAPPLET_ALG_REF_RSA_PAD_PKCS1;
 			}
-			else if( env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PSS && env->algorithm_flags & SC_ALGORITHM_ECDSA_HASH_SHA256 )
+			else if( env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PSS )
 			{
-				drvdata->sec_env_alg_ref = ISOAPPLET_ALG_REF_RSA_SHA256_PAD_PSS;
-			}
-			else if( env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PSS && env->algorithm_flags & SC_ALGORITHM_ECDSA_HASH_SHA512 )
-			{
-				drvdata->sec_env_alg_ref = ISOAPPLET_ALG_REF_RSA_SHA512_PAD_PSS;
+				drvdata->sec_env_alg_ref = ISOAPPLET_ALG_REF_RSA_PAD_PSS;
 			}
 			else
 			{
@@ -1221,7 +1209,16 @@ isoApplet_compute_signature(struct sc_card *card,
 
 	LOG_FUNC_CALLED(ctx);
 
-	r = iso_ops->compute_signature(card, data, datalen, seqbuf, seqlen);
+	if (drvdata->sec_env_alg_ref == ISOAPPLET_ALG_REF_RSA_PAD_PSS) {
+		// For RSA-PSS signature schemes the IsoApplet expects only the hash.
+		u8 tmp[64]; // large enough for SHA512
+		size_t tmplen = sizeof(tmp);
+		sc_pkcs1_strip_digest_info_prefix(NULL, data, datalen, tmp, &tmplen);
+		r = iso_ops->compute_signature(card, tmp, tmplen, seqbuf, seqlen);
+	} else {
+		r = iso_ops->compute_signature(card, data, datalen, seqbuf, seqlen);
+	}
+
 	if(r < 0)
 	{
 		LOG_FUNC_RETURN(ctx, r);
