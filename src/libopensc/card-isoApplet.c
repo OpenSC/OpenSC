@@ -216,7 +216,7 @@ isoApplet_init(sc_card_t *card)
 
 	/* Obtain applet version and specific features */
 	r = isoApplet_get_info(card, drvdata);
-	LOG_TEST_RET(card->ctx, r, "Error obtaining information about applet.");
+	LOG_TEST_GOTO_ERR(card->ctx, r, "Error obtaining information about applet.");
 
 
 	unsigned int major_version = drvdata->isoapplet_version & 0xFF00;
@@ -225,7 +225,8 @@ isoApplet_init(sc_card_t *card)
 		sc_log(card->ctx, "IsoApplet: Mismatching major API version. Not proceeding. "
 			   "API versions: Driver (%04X or %04X), applet (%04X). Please update accordingly.",
 			   ISOAPPLET_VERSION_V0, ISOAPPLET_VERSION_V1, drvdata->isoapplet_version);
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_CARD);
+		r = SC_ERROR_INVALID_CARD;
+		goto err;
 	}
 	else if(drvdata->isoapplet_version != ISOAPPLET_VERSION_V0 && drvdata->isoapplet_version != ISOAPPLET_VERSION_V1)
 	{
@@ -279,6 +280,9 @@ isoApplet_init(sc_card_t *card)
 	_sc_card_add_rsa_alg(card, 2048, flags, 0);
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+err:
+	free(drvdata);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 /*
