@@ -685,6 +685,8 @@ sc_pkcs15init_rmdir(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 
 		path = df->path;
 		path.len += 2;
+		if (path.len > SC_MAX_PATH_SIZE)
+			return SC_ERROR_INTERNAL;
 
 		nfids = r / 2;
 		while (r >= 0 && nfids--) {
