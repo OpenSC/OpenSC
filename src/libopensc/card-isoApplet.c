@@ -201,6 +201,7 @@ static int
 isoApplet_init(sc_card_t *card)
 {
 	int i, r;
+	unsigned int major_version = 0;
 	unsigned long flags = 0;
 	unsigned long ext_flags = 0;
 	struct isoApplet_drv_data *drvdata;
@@ -218,8 +219,7 @@ isoApplet_init(sc_card_t *card)
 	r = isoApplet_get_info(card, drvdata);
 	LOG_TEST_GOTO_ERR(card->ctx, r, "Error obtaining information about applet.");
 
-
-	unsigned int major_version = drvdata->isoapplet_version & 0xFF00;
+	major_version = drvdata->isoapplet_version & 0xFF00;
 	if(major_version != (ISOAPPLET_VERSION_V0 & 0xFF00) && major_version != (ISOAPPLET_VERSION_V1 & 0xFF00))
 	{
 		sc_log(card->ctx, "IsoApplet: Mismatching major API version. Not proceeding. "
