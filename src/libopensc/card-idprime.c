@@ -235,6 +235,9 @@ static int idprime_process_index(sc_card_t *card, idprime_private_data_t *priv, 
 				prkey_id = -1;
 				cert_id = -1;
 			}
+			free(buf);
+			return SC_SUCCESS;
+
 			/* Found private key, certificate and public key should have same id */
 			prkey_id = (start[10] - '0') * 10 + (start[11] - '0');
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Found private key with id=%d", prkey_id);
@@ -277,7 +280,7 @@ static int idprime_process_index(sc_card_t *card, idprime_private_data_t *priv, 
 				cert_object.key_reference = 0x11 + cert_id * 2;
 				break;
 			case SC_CARD_TYPE_IDPRIME_940:
-				cert_object.key_reference = 0x60 + cert_id;
+				cert_object.key_reference = 0x62 + cert_id;
 				break;
 			case SC_CARD_TYPE_IDPRIME_840:
 				cert_object.key_reference = 0xf7 + cert_id;
@@ -443,14 +446,17 @@ static int idprime_init(sc_card_t *card)
 	}
 
 	/* Set up algorithm info for EC */
-	flags = SC_ALGORITHM_ECDSA_RAW
-		| SC_ALGORITHM_ECDH_CDH_RAW
-		| (SC_ALGORITHM_ECDSA_HASH_SHA256 | SC_ALGORITHM_ECDSA_HASH_SHA384 | SC_ALGORITHM_ECDSA_HASH_SHA512)
-		;
-	ext_flags = 0; // TODO: fix flags
-	_sc_card_add_ec_alg(card, 256, flags, ext_flags, NULL);
-	_sc_card_add_ec_alg(card, 384, flags, ext_flags, NULL);
-	_sc_card_add_ec_alg(card, 521, flags, ext_flags, NULL);
+	if (card->type == SC_CARD_TYPE_IDPRIME_940) {
+		flags = SC_ALGORITHM_ECDSA_RAW | SC_ALGORITHM_ECDSA_HASH_NONE;
+		ext_flags = SC_ALGORITHM_EXT_EC_F_P
+			| SC_ALGORITHM_EXT_EC_ECPARAMETERS
+			| SC_ALGORITHM_EXT_EC_NAMEDCURVE
+			| SC_ALGORITHM_EXT_EC_UNCOMPRESES
+			;
+		_sc_card_add_ec_alg(card, 256, flags, ext_flags, NULL);
+		_sc_card_add_ec_alg(card, 384, flags, ext_flags, NULL);
+		_sc_card_add_ec_alg(card, 521, flags, ext_flags, NULL);
+	}
 
 	card->caps |= SC_CARD_CAP_ISO7816_PIN_INFO;
 
@@ -788,7 +794,7 @@ idprime_set_security_env(struct sc_card *card,
 			} else if (env->algorithm_flags & SC_ALGORITHM_MGF1_SHA512) {
 				new_env.algorithm_ref = 0x65;
 			}
-		} else { /* RSA-PKCS */
+		} else if (env->algorithm_flags & (SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_PAD_OAEP)) {
 			if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA256) {
 				new_env.algorithm_ref = 0x42;
 			} else if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA384) {
@@ -798,6 +804,8 @@ idprime_set_security_env(struct sc_card *card,
 			} else { /* RSA-PKCS without hashing */
 				new_env.algorithm_ref = 0x02;
 			}
+		} else if (env->algorithm == SC_ALGORITHM_EC) {
+			new_env.algorithm_ref = 0x44;
 		}
 		break;
 	default:
