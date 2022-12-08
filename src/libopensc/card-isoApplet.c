@@ -1204,11 +1204,6 @@ isoApplet_compute_signature(struct sc_card *card,
 {
 	struct sc_context *ctx = card->ctx;
 	struct isoApplet_drv_data *drvdata = DRVDATA(card);
-	/* No more than 256 byte are needed for the signature. The IsoApplet
-	* supports no larger key sizes than for RSA-4096 or EC:secp384r1 leading
-	* to 256 byte or 104 byte, respectively, in ASN.1 sequence. */
-	u8 seqbuf[256];
-	size_t seqlen = sizeof(seqbuf);
 	int r;
 
 	LOG_FUNC_CALLED(ctx);
@@ -1218,41 +1213,37 @@ isoApplet_compute_signature(struct sc_card *card,
 		u8 tmp[64]; // large enough for SHA512
 		size_t tmplen = sizeof(tmp);
 		sc_pkcs1_strip_digest_info_prefix(NULL, data, datalen, tmp, &tmplen);
-		r = iso_ops->compute_signature(card, tmp, tmplen, seqbuf, seqlen);
-	} else {
+		r = iso_ops->compute_signature(card, tmp, tmplen, out, outlen);
+	} else if (drvdata->sec_env_alg_ref == ISOAPPLET_ALG_REF_ECDSA) {
+		/*
+		* The card returns ECDSA signatures as an ASN.1 sequence of integers R,S
+		* while PKCS#11 expects the raw concatenation of R,S for PKCS#11.
+		* We cannot expect the caller to provide an out buffer that is large enough for the ASN.1 sequence.
+		* Therefore, we allocate a temporary buffer for the card output, and then convert it to raw R,S.
+		* The card supports no curves with field sizes larger than 384bit (EC:secp384r1 which yields an ASN.1
+		* encoded signature of 104 byte:
+		*  R and S = 384 bit = 48 byte + 1 zero byte if the first bit is set (otherwise they are interpreted as negative).
+		*  Seq-Tag&Len (2 bytes) + R-Tag&Len (2 bytes) + R (49 bytes) + S-Tag&Len (2 bytes) + S (49 bytes)
+		*/
+		u8 seqbuf[104];
+		size_t seqlen = sizeof(seqbuf);
 		r = iso_ops->compute_signature(card, data, datalen, seqbuf, seqlen);
-	}
 
-	if(r < 0)
-	{
-		LOG_FUNC_RETURN(ctx, r);
-	}
-
-	/* If ECDSA was used, the ASN.1 sequence of integers R,S returned by the
-	 * card needs to be converted to the raw concatenation of R,S for PKCS#11. */
-	if(drvdata->sec_env_alg_ref == ISOAPPLET_ALG_REF_ECDSA)
-	{
-		u8* p = NULL;
-		size_t len = (drvdata->sec_env_ec_field_length + 7) / 8 * 2;
-
-		if (len > seqlen)
-			LOG_FUNC_RETURN(ctx, SC_ERROR_BUFFER_TOO_SMALL);
-
-		p = calloc(1,len);
-		if (!p)
-			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
-
-		r = sc_asn1_sig_value_sequence_to_rs(ctx, seqbuf, r, p, len);
-		if (!r)   {
-			memcpy(seqbuf, p, len);
-			r = len;
+		if (r < 0) {
+			LOG_FUNC_RETURN(ctx, r);
 		}
 
-		free(p);
+		/* Convert ASN.1 sequence of integers R,S to the raw concatenation of R,S for PKCS#11. */
+		size_t len = (drvdata->sec_env_ec_field_length + 7) / 8 * 2;
+		if (len > outlen)
+			LOG_FUNC_RETURN(ctx, SC_ERROR_BUFFER_TOO_SMALL);
+
+		r = sc_asn1_sig_value_sequence_to_rs(ctx, seqbuf, r, out, len);
+		LOG_TEST_RET(ctx, r, "Failed to convert ASN.1 signature to raw RS");
+		r = len;
+	} else {
+		r = iso_ops->compute_signature(card, data, datalen, out, outlen);
 	}
-	if ((size_t) r > outlen)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_BUFFER_TOO_SMALL);
-	memcpy(out, seqbuf, r);
 	LOG_FUNC_RETURN(ctx, r);
 }
 
