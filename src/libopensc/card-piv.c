@@ -2047,8 +2047,7 @@ static int piv_general_external_authenticate(sc_card_t *card,
 	}
 
 	/* Sanity check the lengths again */
-	tmplen = sc_asn1_put_tag(0x7C, NULL, tmplen, NULL, 0, NULL)
-		+ sc_asn1_put_tag(0x82, NULL, cypher_text_len, NULL, 0, NULL);
+	tmplen = sc_asn1_put_tag(0x7C, NULL, tmplen, NULL, 0, NULL);
 	if (output_len != (size_t)tmplen) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Allocated and computed lengths do not match! "
 			 "Expected %"SC_FORMAT_LEN_SIZE_T"d, found: %d\n", output_len, tmplen);
