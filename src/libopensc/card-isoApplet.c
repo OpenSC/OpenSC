@@ -40,6 +40,7 @@
 #define ISOAPPLET_API_FEATURE_SECURE_RANDOM 0x02
 #define ISOAPPLET_API_FEATURE_ECC 0x04
 #define ISOAPPLET_API_FEATURE_RSA_PSS 0x08
+#define ISOAPPLET_API_FEATURE_RSA_4096 0x20
 
 static const u8 isoApplet_aid[] = {0xf2,0x76,0xa2,0x88,0xbc,0xfb,0xa6,0x9d,0x34,0xf3,0x10,0x01};
 
@@ -278,6 +279,9 @@ isoApplet_init(sc_card_t *card)
 	flags |= SC_ALGORITHM_ONBOARD_KEY_GEN;
 	/* Modulus lengths: */
 	_sc_card_add_rsa_alg(card, 2048, flags, 0);
+	if (drvdata->isoapplet_features & ISOAPPLET_API_FEATURE_RSA_4096) {
+		_sc_card_add_rsa_alg(card, 4096, flags, 0);
+	}
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 err:
@@ -674,9 +678,11 @@ isoApplet_ctl_generate_key(sc_card_t *card, sc_cardctl_isoApplet_genkey_t *args)
 	{
 
 	case SC_ISOAPPLET_ALG_REF_RSA_GEN_2048:
+	case SC_ISOAPPLET_ALG_REF_RSA_GEN_4096:
 		/* Search for the modulus tag (81). */
 		inner_tag_value = sc_asn1_find_tag(card->ctx, outer_tag_value, outer_tag_len, (unsigned int) 0x81, &inner_tag_len);
-		if(inner_tag_value == NULL || inner_tag_len != 256)
+		const size_t expected_modulus_len = args->algorithm_ref == SC_ISOAPPLET_ALG_REF_RSA_GEN_2048 ? 256 : 512;
+		if(inner_tag_value == NULL || inner_tag_len != expected_modulus_len)
 		{
 			LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_DATA, "Card returned no or a invalid modulus.");
 		}

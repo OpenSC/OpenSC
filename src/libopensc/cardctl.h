@@ -1056,6 +1056,7 @@ typedef struct sc_cardctl_sc_hsm_pka_register {
  */
 
 #define SC_ISOAPPLET_ALG_REF_RSA_GEN_2048 0xF3
+#define SC_ISOAPPLET_ALG_REF_RSA_GEN_4096 0xF5
 #define SC_ISOAPPLET_ALG_REF_EC_GEN 0xEC
 
 typedef struct sc_cardctl_isoApplet_ec_parameters {
