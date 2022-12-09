@@ -534,6 +534,7 @@ int pss_sign_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 
 	if (rv != CKR_OK) {
 		free(*sign);
+		*sign = NULL;
 		fprintf(stderr, "  C_Sign: rv = 0x%.8lX\n", rv);
 		return -1;
 	}
