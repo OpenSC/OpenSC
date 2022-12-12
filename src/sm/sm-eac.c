@@ -2380,7 +2380,10 @@ int perform_pace(sc_card_t *card,
 {
 	int r;
 
-	if (card && card->reader
+	if (!card)
+	   return SC_ERROR_INVALID_ARGUMENTS;
+
+	if (card->reader
 			&& card->reader->capabilities & SC_READER_CAP_PACE_GENERIC
 			&& card->reader->ops->perform_pace) {
 		r = card->reader->ops->perform_pace(card->reader, &pace_input, pace_output);
