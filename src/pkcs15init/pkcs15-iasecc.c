@@ -1746,10 +1746,11 @@ iasecc_store_data_object(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 		if (ii == nn_objs)
 			break;
 		sc_file_free(file);
+		file = NULL;
 	}
 
 	if (indx == MAX_DATA_OBJS)
-		LOG_TEST_RET(ctx, SC_ERROR_TOO_MANY_OBJECTS, "iasecc_store_data_object() too many DATA objects.");
+		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_TOO_MANY_OBJECTS, "iasecc_store_data_object() too many DATA objects.");
 
 	do  {
 		const struct sc_acl_entry *acl;
@@ -1795,7 +1796,7 @@ iasecc_store_data_object(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 		LOG_TEST_GOTO_ERR(ctx, rv, "s_pkcs15init_store_data_object() delete pkcs15 file error");
 	}
 	else if (rv != SC_ERROR_FILE_NOT_FOUND)   {
-		LOG_TEST_RET(ctx, rv, "iasecc_store_data_object() select file error");
+		LOG_TEST_GOTO_ERR(ctx, rv, "iasecc_store_data_object() select file error");
 	}
 
 	rv = sc_pkcs15init_authenticate(profile, p15card, parent, SC_AC_OP_CREATE);
