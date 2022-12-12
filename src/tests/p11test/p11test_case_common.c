@@ -1220,10 +1220,21 @@ const char *get_mechanism_flag_name(int mech_id)
 char *convert_byte_string(unsigned char *id, unsigned long length)
 {
 	unsigned int i;
-	char *data = malloc(3 * length * sizeof(char) + 1);
-	for (i = 0; i < length; i++)
-		sprintf(&data[i*3], "%02X:", id[i]);
-	data[length*3-1] = '\0';
+	char *data;
+	if (length == 0) {
+		return NULL;
+	}
+
+	data = malloc(3 * length * sizeof(char) + 1);
+	if (data == NULL) {
+		return NULL;
+	}
+
+	for (i = 0; i < length; i++) {
+		sprintf(&data[i * 3], "%02X:", id[i]);
+	}
+
+	data[length * 3 - 1] = '\0';
 	return data;
 }
 
