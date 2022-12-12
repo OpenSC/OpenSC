@@ -492,7 +492,7 @@ int callback_public_keys(test_certs_t *objects,
 
 		ecpoint = EC_POINT_hex2point(ecgroup, BN_bn2hex(bn), NULL, NULL);
 		BN_free(bn);
-		
+
 		if (ecpoint == NULL) {
 			debug_print(" [WARN %s ] Can not convert EC_POINT from"
 				" BIGNUM to OpenSSL format", o->id_str);
@@ -566,7 +566,7 @@ int callback_public_keys(test_certs_t *objects,
 				EC_POINT_free(ecpoint);
 				return -1;
 			}
-			
+
 			if (!(bld = OSSL_PARAM_BLD_new()) ||
 				OSSL_PARAM_BLD_push_utf8_string(bld, "group", curve_name, curve_name_len) != 1 ||
 				OSSL_PARAM_BLD_push_octet_string(bld, "pub", pubkey, pubkey_len) != 1 ||
