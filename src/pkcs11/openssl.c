@@ -570,7 +570,7 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, unsigned int pubkey_len
 	 * PKCS#11 does not define CKA_VALUE for public keys, and different cards
 	 * return either the raw or spki versions as defined in PKCS#15
 	 * And we need to support more then just RSA.
-	 * We can use d2i_PUBKEY which works for SPKI and any key type. 
+	 * We can use d2i_PUBKEY which works for SPKI and any key type.
 	 */
 	pubkey_tmp = pubkey; /* pass in so pubkey pointer is not modified */
 
@@ -612,7 +612,7 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, unsigned int pubkey_len
 					res = -1;
 				}
 				free(signat_tmp);
-			} else 
+			} else
 				res = EVP_VerifyFinal(md_ctx, signat, signat_len, pkey);
 		} else {
 			res = -1;

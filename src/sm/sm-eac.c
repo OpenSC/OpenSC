@@ -47,7 +47,7 @@ char eac_default_flags = 0;
 
 /* 0x67
  * Auxiliary authenticated data */
-ASN1_ITEM_TEMPLATE(ASN1_AUXILIARY_DATA) = 
+ASN1_ITEM_TEMPLATE(ASN1_AUXILIARY_DATA) =
 	ASN1_EX_TEMPLATE_TYPE(
 			ASN1_TFLG_SEQUENCE_OF|ASN1_TFLG_IMPTAG|ASN1_TFLG_APPLICATION,
 			7, AuxiliaryAuthenticatedData, CVC_DISCRETIONARY_DATA_TEMPLATE)
@@ -524,7 +524,7 @@ static int eac_mse(sc_card_t *card,
 		r = SC_ERROR_INVALID_ARGUMENTS;
 		goto err;
 	}
-	
+
 	r = format_mse_cdata(card->ctx, protocol, key_reference1,
 			key_reference1_len, key_reference2, key_reference2_len,
 			eph_pub_key, eph_pub_key_len, auxiliary_data, auxiliary_data_len,
@@ -574,7 +574,7 @@ static int eac_mse_set_at_pace(sc_card_t *card, int protocol,
 {
 	int r, tries;
 	unsigned char key = secret_key;
-   
+
 	r = eac_mse_set_at(card, 0xC1, protocol, &key, sizeof key, NULL,
 			0, NULL, 0, NULL, 0, chat, sw1, sw2);
 	if (0 > r)
@@ -2053,7 +2053,7 @@ eac_sm_verify_authentication(sc_card_t *card, const struct iso_sm_ctx *ctx,
 		goto err;
 	}
 
-	my_mac = EAC_authenticate(eacsmctx->ctx, inbuf); 
+	my_mac = EAC_authenticate(eacsmctx->ctx, inbuf);
 	if (!my_mac) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
 				"Could not compute message authentication code (MAC) for verification.");
@@ -2308,7 +2308,7 @@ static int
 eac_sm_post_transmit(sc_card_t *card, const struct iso_sm_ctx *ctx,
 		sc_apdu_t *sm_apdu)
 {
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM,  
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM,
 			increment_ssc(ctx->priv_data));
 }
 
@@ -2320,7 +2320,7 @@ eac_sm_finish(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	if (!card)
 	   return SC_ERROR_INVALID_ARGUMENTS;
 	if(!ctx || !ctx->priv_data || !apdu)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM,  
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM,
 				SC_ERROR_INVALID_ARGUMENTS);
 	eacsmctx = ctx->priv_data;
 
