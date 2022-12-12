@@ -1652,8 +1652,12 @@ sc_pkcs15_convert_pubkey(struct sc_pkcs15_pubkey *pkcs15_key, void *evp_key)
 		int nid = 0;
 		unsigned char *pub = NULL; size_t pub_len = 0;
 		char *group_name = NULL; size_t group_name_len = 0;
-		EVP_PKEY_get_octet_string_param(pk, OSSL_PKEY_PARAM_PUB_KEY, NULL, 0, &pub_len);
-		EVP_PKEY_get_group_name(pk, NULL, 0, &group_name_len);
+		if (EVP_PKEY_get_octet_string_param(pk, OSSL_PKEY_PARAM_PUB_KEY, NULL, 0, &pub_len) != 1) {
+			return SC_ERROR_INTERNAL;
+		}
+		if (EVP_PKEY_get_group_name(pk, NULL, 0, &group_name_len) != 1) {
+			return SC_ERROR_INTERNAL;
+		}
 		if (!(pub = malloc(pub_len)) || !(group_name = malloc(group_name_len))) {
 			free(pub);
 			return SC_ERROR_OUT_OF_MEMORY;
