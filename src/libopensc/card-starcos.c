@@ -781,6 +781,8 @@ static int starcos_select_aid(sc_card_t *card,
 		file->namelen = len;
 		file->id = 0x0000;
 		file->magic = SC_FILE_MAGIC;
+
+		free(*file_out);
 		*file_out = file;
 	}
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
@@ -897,6 +899,7 @@ static int starcos_select_fid(sc_card_t *card,
 			file->size = 0;
 			file->namelen = 0;
 			file->magic = SC_FILE_MAGIC;
+			free(*file_out);
 			*file_out = file;
 		} else {
 			/* ok, assume we have a EF */
@@ -917,6 +920,7 @@ static int starcos_select_fid(sc_card_t *card,
 				return r;
 			}
 
+			free(*file_out);
 			*file_out = file;
 		}
 	}
