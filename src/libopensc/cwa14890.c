@@ -1008,7 +1008,7 @@ static int cwa_verify_internal_auth(sc_card_t * card,
 	if (EVP_PKEY_get_bn_param(icc_pubkey, OSSL_PKEY_PARAM_RSA_N, &icc_pubkey_n) != 1) {
 		msg = "Verify Signature: BN get param failed";
 		res = SC_ERROR_INTERNAL;
-		goto verify_internal_ok;
+		goto verify_internal_done;
 	}
 #endif
 	res = BN_sub(sigbn, icc_pubkey_n, bn);	/* eval N.ICC-SIG */
