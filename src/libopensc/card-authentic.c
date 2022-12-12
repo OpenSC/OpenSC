@@ -207,8 +207,7 @@ authentic_get_tagged_data(struct sc_context *ctx, unsigned char *in, size_t in_l
 		LOG_TEST_RET(ctx, size_len, "parse error: invalid size data");
 
 		if (tag == in_tag)   {
-			if (offs + tag_len + size_len >= in_len
-			    || in_len - (offs + tag_len + size_len) < size)
+			if (in_len - (offs + tag_len + size_len) < size)
 				LOG_TEST_RET(ctx, SC_ERROR_INTERNAL, "parse error: invalid data");
 
 			*out = in + offs + tag_len + size_len;
