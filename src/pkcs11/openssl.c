@@ -462,8 +462,10 @@ static CK_RV gostr3410_verify_data(const unsigned char *pubkey, unsigned int pub
 		if (r == 1 && EVP_PKEY_get0(pkey) != NULL)
 			group = EC_KEY_get0_group(EVP_PKEY_get0(pkey));
 #else
-		EVP_PKEY_get_utf8_string_param(pkey, OSSL_PKEY_PARAM_GROUP_NAME, group_name, sizeof(group_name), NULL);
-		group = EC_GROUP_new_by_curve_name(OBJ_txt2nid(group_name));
+		if (r == 1) {
+			EVP_PKEY_get_utf8_string_param(pkey, OSSL_PKEY_PARAM_GROUP_NAME, group_name, sizeof(group_name), NULL);
+			group = EC_GROUP_new_by_curve_name(OBJ_txt2nid(group_name));
+		}
 #endif
 		r = -1;
 		if (group)
