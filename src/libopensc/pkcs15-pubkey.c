@@ -1650,8 +1650,11 @@ sc_pkcs15_convert_pubkey(struct sc_pkcs15_pubkey *pkcs15_key, void *evp_key)
 		EC_POINT *point = NULL;
 		EC_GROUP *group = NULL;
 		int nid = 0;
-		unsigned char *pub = NULL; size_t pub_len = 0;
-		char *group_name = NULL; size_t group_name_len = 0;
+		unsigned char *pub = NULL;
+		size_t pub_len = 0;
+		char *group_name = NULL;
+		size_t group_name_len = 0;
+
 		if (EVP_PKEY_get_octet_string_param(pk, OSSL_PKEY_PARAM_PUB_KEY, NULL, 0, &pub_len) != 1) {
 			return SC_ERROR_INTERNAL;
 		}
@@ -1745,7 +1748,7 @@ sc_pkcs15_convert_pubkey(struct sc_pkcs15_pubkey *pkcs15_key, void *evp_key)
 		if (EVP_PKEY_get_group_name(pk, group_name, sizeof(group_name), NULL) != 1)
 			return SC_ERROR_INTERNAL;
 		dst->params.named_curve = strdup(group_name);
-		
+
 		/* Decode EC_POINT from a octet string */
 		if (EVP_PKEY_get_octet_string_param(pk, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, buf, buflen, &buflen) != 1) {
 			return SC_ERROR_INCOMPATIBLE_KEY;

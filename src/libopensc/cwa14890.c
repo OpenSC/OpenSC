@@ -1,10 +1,10 @@
 /**
  * cwa14890.c: Implementation of Secure Messaging according CWA-14890-1 and CWA-14890-2 standards.
- * 
+ *
  * Copyright (C) 2010 Juan Antonio Martinez <jonsito@terra.es>
  *
  * This work is derived from many sources at OpenSC Project site,
- * (see references) and the information made public by Spanish 
+ * (see references) and the information made public by Spanish
  * Direccion General de la Policia y de la Guardia Civil
  *
  * This library is free software; you can redistribute it and/or
@@ -142,7 +142,7 @@ static int cwa_increase_ssc(sc_card_t * card)
 /**
  * ISO 7816 padding.
  *
- * Adds an 0x80 at the end of buffer and as many zeroes to get len 
+ * Adds an 0x80 at the end of buffer and as many zeroes to get len
  * multiple of 8
  * Buffer must be long enough to store additional bytes
  *
@@ -393,7 +393,7 @@ static int cwa_verify_icc_certificates(sc_card_t * card,
 /**
  * Verify CVC certificates in SM establishment process.
  *
- * This is done by mean of 00 2A 00 AE 
+ * This is done by mean of 00 2A 00 AE
  * (Perform Security Operation: Verify Certificate )
  *
  * @param card pointer to card data
@@ -434,7 +434,7 @@ static int cwa_verify_cvc_certificate(sc_card_t * card,
  * Standard set_security_env() method has sc_security_env->buffer limited
  * to 8 bytes; so cannot send some of required SM commands.
  *
- * @param card pointer to card data 
+ * @param card pointer to card data
  * @param p1 apdu P1 parameter
  * @param p2 apdu P2 parameter
  * @param buffer raw data to be inserted in apdu
@@ -472,7 +472,7 @@ static int cwa_set_security_env(sc_card_t * card,
  *
  * Internal (Card) authentication (let the card verify sent ifd certs)
  *
- * @param card pointer to card data 
+ * @param card pointer to card data
  * @param sig signature buffer
  * @param dig_len signature buffer length
  * @param data data to be sent in apdu
@@ -513,7 +513,7 @@ static int cwa_internal_auth(sc_card_t * card, u8 * sig, size_t sig_len, u8 * da
 
 /**
  * Compose signature data for external auth according CWA-14890.
- * 
+ *
  * This code prepares data to be sent to ICC for external
  * authentication procedure
  *
@@ -541,11 +541,11 @@ static int cwa_prepare_external_auth(sc_card_t * card,
 	   PRND2 || - (74 bytes) random data to make buffer 128 bytes length
 	   Kifd  || - (32 bytes)- ifd random generated key
 	   sha1_hash(
-	   PRND2   ||  
-	   Kifd    || 
+	   PRND2   ||
+	   Kifd    ||
 	   RND.ICC || - (8 bytes) response to get_challenge() cmd
 	   SN.ICC  - (8 bytes) serial number from get_serialnr() cmd
-	   ) || 
+	   ) ||
 	   0xBC - iso 9796-2 padding
 	   ) - total: 128 bytes
 
@@ -723,7 +723,7 @@ static int cwa_prepare_external_auth(sc_card_t * card,
  *
  * Perform external (IFD) authenticate procedure (8.4.1.2)
  *
- * @param card pointer to card data 
+ * @param card pointer to card data
  * @param sig signature buffer
  * @param sig signature buffer length
  * @return SC_SUCCESS if OK: else error code
@@ -873,7 +873,7 @@ static int cwa_compare_signature(u8 * data, size_t dlen, u8 * ifd_data)
 	return res;
 }
 
-/** 
+/**
  * check the result of internal_authenticate operation.
  *
  * Checks icc received data from internal auth procedure against
@@ -943,7 +943,7 @@ static int cwa_verify_internal_auth(sc_card_t * card,
 		goto verify_internal_done;
 	}
 
-	/* 
+	/*
 	   We have received data with this format:
 	   sigbuf = E[PK.IFD.AUT](SIGMIN)
 	   SIGMIN = min ( SIG, N.ICC-SIG )
@@ -952,7 +952,7 @@ static int cwa_verify_internal_auth(sc_card_t * card,
 	   PRND1 ||
 	   Kicc  ||
 	   sha1_hash(PRND1 || Kicc || RND.IFD || SN.IFD) ||
-	   0xBC 
+	   0xBC
 	   )
 	   So we should reverse the process and try to get valid results
 	 */
@@ -991,8 +991,8 @@ static int cwa_verify_internal_auth(sc_card_t * card,
 		goto verify_internal_ok;
 
  verify_nicc_sig:
-	/* 
-	 * Arriving here means need to evaluate N.ICC-SIG 
+	/*
+	 * Arriving here means need to evaluate N.ICC-SIG
 	 * So convert buffers to bignums to operate
 	 */
 	bn = BN_bin2bn(buf1, len1, NULL);	/* create BN data */
@@ -1166,7 +1166,7 @@ int cwa_create_secure_channel(sc_card_t * card,
 		goto csc_end;
 	}
 
-	/* 
+	/*
 	 * Notice that this code inverts ICC and IFD certificate standard
 	 * checking sequence.
 	 */
@@ -1340,7 +1340,7 @@ int cwa_create_secure_channel(sc_card_t * card,
 		goto csc_end;
 	}
 
-	/* Internal (Card) authentication (let the card verify sent ifd certs) 
+	/* Internal (Card) authentication (let the card verify sent ifd certs)
 	   SN.IFD equals 8 lsb bytes of ifd.pubk ref according cwa14890 sec 8.4.1 */
 	sc_log(ctx, "Step 8.4.1.10: Perform Internal authentication");
 	res = provider->cwa_get_sn_ifd(card);
