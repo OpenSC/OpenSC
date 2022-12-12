@@ -847,7 +847,8 @@ int search_objects(test_certs_t *objects, token_info_t *info,
 			rv = fp->C_GetAttributeValue(info->session_handle, object_handles[i],
 				&(template[j]), 1);
 			if (rv == CKR_ATTRIBUTE_TYPE_INVALID ||
-			    rv == CKR_ATTRIBUTE_SENSITIVE) {
+			    rv == CKR_ATTRIBUTE_SENSITIVE ||
+			    rv == CKR_DEVICE_ERROR) {
 				continue;
 			} else if (rv != CKR_OK) {
 				fail_msg("C_GetAttributeValue: rv = 0x%.8lX\n", rv);
