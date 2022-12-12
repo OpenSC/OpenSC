@@ -97,7 +97,7 @@ sc_gp_get_session_key(struct sc_context *ctx, struct sm_gp_session *gp_session,
 		unsigned char *key)
 {
 	int out_len;
-	unsigned char *out;
+	unsigned char *out = NULL;
 	unsigned char deriv[16];
 
 	memcpy(deriv,		gp_session->card_challenge + 4,	4);
@@ -108,7 +108,6 @@ sc_gp_get_session_key(struct sc_context *ctx, struct sm_gp_session *gp_session,
 	if (sm_encrypt_des_ecb3(key, deriv, 16, &out, &out_len))   {
 		if (ctx)
 			sc_debug(ctx, SC_LOG_DEBUG_VERBOSE, "SM GP get session key: des_ecb3 encryption error");
-		free(out);
 		return NULL;
 	}
 	else if (out==NULL  || out_len!=16)   {

@@ -363,10 +363,8 @@ sm_encrypt_des_ecb3(unsigned char *key, unsigned char *data, int data_len,
 	int tmplen;
 #endif
 
-
 	if (!out || !out_len)
 		return -1;
-
 
 	*out_len = data_len + 7;
 	*out_len -= *out_len % 8;
@@ -385,29 +383,35 @@ sm_encrypt_des_ecb3(unsigned char *key, unsigned char *data, int data_len,
 	for (ii=0; ii<data_len; ii+=8)
 		DES_ecb2_encrypt( (sm_des_cblock *)(data + ii),
 				(sm_des_cblock *)(*out + ii), &ks, &ks2, DES_ENCRYPT);
+
+	return SC_SUCCESS;
 #else
 	cctx = EVP_CIPHER_CTX_new();
+	if (cctx == NULL) {
+		goto err;
+	}
 	if (!EVP_EncryptInit_ex2(cctx, EVP_des_ede_ecb(), key, NULL, NULL)) {
-		EVP_CIPHER_CTX_free(cctx);
-		return SC_ERROR_INTERNAL;
+		goto err;
 	}
 	/* Disable padding, otherwise it will fail to decrypt non-padded inputs */
 	EVP_CIPHER_CTX_set_padding(cctx, 0);
 	if (!EVP_EncryptUpdate(cctx, *out, &tmplen, data, data_len)) {
-		EVP_CIPHER_CTX_free(cctx);
-		return SC_ERROR_INTERNAL;
+		goto err;
 	}
 	*out_len = tmplen;
 
 	if (!EVP_EncryptFinal_ex(cctx, *out + *out_len, &tmplen)) {
-		EVP_CIPHER_CTX_free(cctx);
-		return SC_ERROR_INTERNAL;
+		goto err;
 	}
 	*out_len += tmplen;
 	EVP_CIPHER_CTX_free(cctx);
-#endif
+	return SC_SUCCESS;
 
-	return 0;
+err:
+	EVP_CIPHER_CTX_free(cctx);
+	free(*out);
+	return SC_ERROR_INTERNAL;
+#endif
 }
 
 
