@@ -99,6 +99,7 @@ typedef struct idprime_private_data {
 	idprime_object_t *pki_current;	/* current pki object _ctl function */
 	int tinfo_present;		/* Token Info Label object is present*/
 	u8 tinfo_df[2];			/* DF of object with Token Info Label */
+	unsigned long current_op;	/* current operation set by idprime_set_security_env */
 } idprime_private_data_t;
 
 /* For SimCList autocopy, we need to know the size of the data elements */
@@ -275,7 +276,6 @@ static int idprime_process_index(sc_card_t *card, idprime_private_data_t *priv, 
 				cert_object.key_reference = 0x11 + cert_id * 2;
 				break;
 			case SC_CARD_TYPE_IDPRIME_940:
-				/* offset should be 0x62 for other 940 card */
 				cert_object.key_reference = 0x60 + cert_id;
 				break;
 			case SC_CARD_TYPE_IDPRIME_840:
@@ -738,6 +738,7 @@ idprime_set_security_env(struct sc_card *card,
 {
 	int r;
 	struct sc_security_env new_env;
+	idprime_private_data_t *priv = card->drv_data;
 
 	if (card == NULL || env == NULL) {
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -774,6 +775,7 @@ idprime_set_security_env(struct sc_card *card,
 			} else if (env->algorithm_flags & SC_ALGORITHM_MGF1_SHA512) {
 				new_env.algorithm_ref = 0x65;
 			}
+			priv->current_op = SC_ALGORITHM_RSA;
 		} else if (env->algorithm_flags & (SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_PAD_OAEP)) {
 			if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA256) {
 				new_env.algorithm_ref = 0x42;
@@ -784,8 +786,10 @@ idprime_set_security_env(struct sc_card *card,
 			} else { /* RSA-PKCS without hashing */
 				new_env.algorithm_ref = 0x02;
 			}
+			priv->current_op = SC_ALGORITHM_RSA;
 		} else if (env->algorithm == SC_ALGORITHM_EC) {
 			new_env.algorithm_ref = 0x44;
+			priv->current_op = SC_ALGORITHM_EC;
 		}
 		break;
 	default:
@@ -805,9 +809,10 @@ idprime_compute_signature(struct sc_card *card,
 	int r;
 	struct sc_apdu apdu;
 	u8 *p;
-	u8 sbuf[128]; /* For SHA-512 we need 64 + 2 bytes */
+	u8 sbuf[128] = {0}; /* For SHA-512 we need 64 + 2 bytes */
 	u8 rbuf[4096]; /* needs work. for 3072 keys, needs 384+2 or so */
 	size_t rbuflen = sizeof(rbuf);
+	idprime_private_data_t *priv = card->drv_data;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -816,10 +821,17 @@ idprime_compute_signature(struct sc_card *card,
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 	}
 
+	/* The data for ECDSA should be padded to the length of a multiple of 8 */
+	size_t pad = 0;
+	if (priv->current_op == SC_ALGORITHM_EC && datalen % 8 != 0) {
+		pad = 8 - (datalen % 8);
+		datalen += pad;
+	}
+
 	p = sbuf;
 	*(p++) = 0x90;
 	*(p++) = datalen;
-	memcpy(p, data, datalen);
+	memcpy(p + pad, data, datalen - pad);
 	p += datalen;
 
 	/* INS: 0x2A  PERFORM SECURITY OPERATION
@@ -838,7 +850,7 @@ idprime_compute_signature(struct sc_card *card,
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	/* This just returns the passed data (hash code) (for verification?) */
-	if (apdu.resplen != datalen || memcmp(rbuf, data, datalen) != 0) {
+	if (apdu.resplen != datalen || memcmp(rbuf + pad, data, datalen - pad) != 0) {
 		sc_log(card->ctx, "The initial APDU did not return the same data");
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 	}
