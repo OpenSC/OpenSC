@@ -38,21 +38,11 @@
 #include <openssl/pkcs12.h>
 #include <openssl/x509v3.h>
 
-/*
- * OpenSSL-3.0.0 does not allow access to the SHA data
- * so this driver can not produces signatures
- * OpenSSL 1.1.1 uses EVP_MD_CTX_md_data
- * LibreSSL
- */
-
-#if defined(LIBRESSL_VERSION_NUMBER)
-# define  EVP_MD_CTX_md_data(x)  (x->md_data)
-#endif
-
 #include "internal.h"
 #include "asn1.h"
 #include "cardctl.h"
 #include "opensc.h"
+#include "sc-ossl-compat.h"
 /* #include "sm.h" */
 #include "pkcs15.h"
 /* #include "hash-strings.h" */
