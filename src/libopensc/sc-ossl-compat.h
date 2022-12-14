@@ -42,6 +42,7 @@ extern "C" {
 #define X509_get_extension_flags(x)	(x->ex_flags)
 #define X509_get_key_usage(x)		(x->ex_kusage)
 #define X509_get_extended_key_usage(x)	(x->ex_xkusage)
+#define EVP_MD_CTX_md_data(x)          (x->md_data)
 #endif
 
 #if defined(LIBRESSL_VERSION_NUMBER)
