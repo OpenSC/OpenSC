@@ -232,8 +232,6 @@ static int idprime_process_index(sc_card_t *card, idprime_private_data_t *priv, 
 				prkey_id = -1;
 				cert_id = -1;
 			}
-			free(buf);
-			return SC_SUCCESS;
 
 			/* Found private key, certificate and public key should have same id */
 			prkey_id = (start[10] - '0') * 10 + (start[11] - '0');
@@ -277,7 +275,8 @@ static int idprime_process_index(sc_card_t *card, idprime_private_data_t *priv, 
 				cert_object.key_reference = 0x11 + cert_id * 2;
 				break;
 			case SC_CARD_TYPE_IDPRIME_940:
-				cert_object.key_reference = 0x62 + cert_id;
+				/* offset should be 0x62 for other 940 card */
+				cert_object.key_reference = 0x60 + cert_id;
 				break;
 			case SC_CARD_TYPE_IDPRIME_840:
 				cert_object.key_reference = 0xf7 + cert_id;
