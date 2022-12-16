@@ -54,8 +54,10 @@ extern "C" {
 #define EVP_sha3_256()                          (NULL)
 #define EVP_sha3_384()                          (NULL)
 #define EVP_sha3_512()                          (NULL)
+#if LIBRESSL_VERSION_NUMBER < 0x3070000fL
 #define EVP_PKEY_new_raw_public_key(t, e, p, l) (NULL)
 #define EVP_PKEY_get_raw_public_key(p, pu, l)   (0)
+#endif
 #endif
 
 /* OpenSSL 1.1.1 has FIPS_mode function */
