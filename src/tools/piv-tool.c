@@ -347,6 +347,7 @@ static int gen_key(const char * key_info)
 		if (newkey == NULL) {
 			EVP_PKEY_free(evpkey);
 			free(keydata.pubkey);
+			free(keydata.exponent);
 			fprintf(stderr, "gen_key RSA_new failed %d\n",r);
 			return -1;
 		}
@@ -356,9 +357,10 @@ static int gen_key(const char * key_info)
 		OSSL_PARAM *params = NULL;
 #endif
 
-		if (!keydata.pubkey) {
+		if (!keydata.pubkey || !keydata.exponent) {
 			fprintf(stderr, "gen_key failed %d\n", r);
 			free(keydata.pubkey);
+			free(keydata.exponent);
 			EVP_PKEY_free(evpkey);
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 			RSA_free(newkey);
