@@ -103,6 +103,7 @@ int sc_pkcs15_is_emulation_only(sc_card_t *card)
 		case SC_CARD_TYPE_PIV_II_HIST:
 		case SC_CARD_TYPE_PIV_II_NEO:
 		case SC_CARD_TYPE_PIV_II_YUBIKEY4:
+		case SC_CARD_TYPE_PIV_II_SWISSBIT:
 		case SC_CARD_TYPE_ESTEID_2018:
 		case SC_CARD_TYPE_CARDOS_V5_0:
 		case SC_CARD_TYPE_CARDOS_V5_3:

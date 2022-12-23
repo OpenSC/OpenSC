@@ -115,6 +115,7 @@ enum {
 	PIV_OBJ_9306,
 	PIV_OBJ_9406,
 	PIV_OBJ_9506,
+	PIV_OBJ_PRIV,
 	PIV_OBJ_LAST_ENUM
 };
 
@@ -286,6 +287,9 @@ static const struct sc_atr_table piv_atrs[] = {
 	/* ID-One PIV 2.4.1 on Cosmo V8.1 */
 	{ "3b:d6:96:00:81:b1:fe:45:1f:87:80:31:c1:52:41:1a:2a", NULL, NULL, SC_CARD_TYPE_PIV_II_OBERTHUR, 0, NULL },
 	{ "3b:86:80:01:80:31:c1:52:41:12:76", NULL, NULL, SC_CARD_TYPE_PIV_II_OBERTHUR, 0, NULL }, /* contactless */
+
+	/* Swissbit iShield FIDO2 with PIV endpoint applet */
+	{ "3b:97:11:81:21:75:69:53:68:69:65:6c:64:05", NULL, NULL, SC_CARD_TYPE_PIV_II_SWISSBIT, 0, NULL },
 
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
@@ -493,6 +497,7 @@ static const struct piv_object piv_objects[] = {
 			"2.16.840.1.101.3.7.2.9999.119", 2, "\x94\x06", "\x94\x06", PIV_OBJECT_TYPE_PUBKEY},
 	{ PIV_OBJ_9506, "Pub 95 key ",
 			"2.16.840.1.101.3.7.2.9999.120", 2, "\x95\x06", "\x95\x06", PIV_OBJECT_TYPE_PUBKEY},
+	{ PIV_OBJ_PRIV, "Priv key ", "", 0, "", "\x50\x15", 0},
 	{ PIV_OBJ_LAST_ENUM, "", "", 0, "", "", 0}
 };
 // clang-format on
@@ -596,14 +601,15 @@ static int piv_generate_key(sc_card_t *card,
 	const u8 *tag;
 	u8 tagbuf[16];
 	u8 outdata[3]; /* we could also add tag 81 for exponent */
-	size_t taglen, i;
+	size_t taglen;
 	size_t out_len;
 	size_t in_len;
 	unsigned int cla_out, tag_out;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	keydata->exponent = 0;
+	keydata->exponent = NULL;
+	keydata->exponent_len = 0;
 	keydata->pubkey = NULL;
 	keydata->pubkey_len = 0;
 	keydata->ecparam = NULL; /* will show size as we only support 2 curves */
@@ -645,7 +651,6 @@ static int piv_generate_key(sc_card_t *card,
 
 	if (r >= 0) {
 		const u8 *cp;
-		keydata->exponent = 0;
 
 		cp = rbuf;
 		in_len = r;
@@ -664,16 +669,20 @@ static int piv_generate_key(sc_card_t *card,
 		if (keydata->key_bits > 0 ) {
 			tag = sc_asn1_find_tag(card->ctx, cp, in_len, 0x82, &taglen);
 			if (tag != NULL && taglen <= 4) {
-				keydata->exponent = 0;
-				for (i = 0; i < taglen;i++)
-					keydata->exponent = (keydata->exponent<<8) + tag[i];
+				keydata->exponent = malloc(taglen);
+				if (keydata->exponent == NULL)
+					LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+				keydata->exponent_len = taglen;
+				memcpy (keydata->exponent, tag, taglen);
 			}
 
 			tag = sc_asn1_find_tag(card->ctx, cp, in_len, 0x81, &taglen);
 			if (tag != NULL && taglen > 0) {
 				keydata->pubkey = malloc(taglen);
-				if (keydata->pubkey == NULL)
+				if (keydata->pubkey == NULL) {
+					free(keydata->exponent);
 					LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+				}
 				keydata->pubkey_len = taglen;
 				memcpy (keydata->pubkey, tag, taglen);
 			}
@@ -3063,6 +3072,8 @@ static int piv_match_card(sc_card_t *card)
 		case SC_CARD_TYPE_PIV_II_OBERTHUR_DUAL_CAC:
 		case SC_CARD_TYPE_PIV_II_OBERTHUR:
 		case SC_CARD_TYPE_PIV_II_PIVKEY:
+		case SC_CARD_TYPE_PIV_II_SWISSBIT_DUAL_CAC:
+		case SC_CARD_TYPE_PIV_II_SWISSBIT:
 			break;
 		default:
 			return 0; /* can not handle the card */
@@ -3112,6 +3123,8 @@ static int piv_match_card_continued(sc_card_t *card)
 		case SC_CARD_TYPE_PIV_II_OBERTHUR_DUAL_CAC:
 		case SC_CARD_TYPE_PIV_II_OBERTHUR:
 		case SC_CARD_TYPE_PIV_II_PIVKEY:
+		case SC_CARD_TYPE_PIV_II_SWISSBIT_DUAL_CAC:
+		case SC_CARD_TYPE_PIV_II_SWISSBIT:
 			type = card->type;
 			break;
 		default:
@@ -3251,6 +3264,7 @@ static int piv_match_card_continued(sc_card_t *card)
 			case SC_CARD_TYPE_PIV_II_GI_DE:
 			case SC_CARD_TYPE_PIV_II_GEMALTO:
 			case SC_CARD_TYPE_PIV_II_OBERTHUR:
+			case SC_CARD_TYPE_PIV_II_SWISSBIT:
 				iccc = piv_process_ccc(card);
 				sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d iccc:%d ccc_flags:%08x CI:%08x r:%d\n",
 						card->type, iccc, priv->ccc_flags, priv->card_issues, r);
@@ -3277,6 +3291,12 @@ static int piv_match_card_continued(sc_card_t *card)
 							priv->card_issues |= CI_DISCOVERY_USELESS;
 							priv->obj_cache[PIV_OBJ_DISCOVERY].flags |= PIV_OBJ_CACHE_NOT_PRESENT;
 							break;
+						case SC_CARD_TYPE_PIV_II_SWISSBIT_DUAL_CAC:
+						case SC_CARD_TYPE_PIV_II_SWISSBIT:
+							card->type =  SC_CARD_TYPE_PIV_II_SWISSBIT_DUAL_CAC;
+							priv->card_issues |= CI_DISCOVERY_USELESS;
+							priv->obj_cache[PIV_OBJ_DISCOVERY].flags |= PIV_OBJ_CACHE_NOT_PRESENT;
+							break;
 					}
 				}
 				break;
@@ -3285,6 +3305,7 @@ static int piv_match_card_continued(sc_card_t *card)
 			case SC_CARD_TYPE_PIV_II_GI_DE_DUAL_CAC:
 			case SC_CARD_TYPE_PIV_II_GEMALTO_DUAL_CAC:
 			case SC_CARD_TYPE_PIV_II_OBERTHUR_DUAL_CAC:
+			case SC_CARD_TYPE_PIV_II_SWISSBIT_DUAL_CAC:
 				priv->card_issues |= CI_DISCOVERY_USELESS;
 				priv->obj_cache[PIV_OBJ_DISCOVERY].flags |= PIV_OBJ_CACHE_NOT_PRESENT;
 				break;
@@ -3415,6 +3436,7 @@ static int piv_init(sc_card_t *card)
 		case SC_CARD_TYPE_PIV_II_GI_DE:
 		case SC_CARD_TYPE_PIV_II_OBERTHUR:
 		case SC_CARD_TYPE_PIV_II_GEMALTO:
+		case SC_CARD_TYPE_PIV_II_SWISSBIT:
 			priv->card_issues |= 0; /* could add others here */
 			break;
 
@@ -3425,6 +3447,7 @@ static int piv_init(sc_card_t *card)
 		case SC_CARD_TYPE_PIV_II_GI_DE_DUAL_CAC:
 		case SC_CARD_TYPE_PIV_II_GEMALTO_DUAL_CAC:
 		case SC_CARD_TYPE_PIV_II_OBERTHUR_DUAL_CAC:
+		case SC_CARD_TYPE_PIV_II_SWISSBIT_DUAL_CAC:
 			priv->card_issues |= CI_VERIFY_LC0_FAIL
 				| CI_PIV_AID_LOSE_STATE
 				| CI_NO_RANDOM
@@ -3466,7 +3489,11 @@ static int piv_init(sc_card_t *card)
 	 * piv-tool can still do this, just don't tell PKCS#11
 	 */
 
-	 flags = SC_ALGORITHM_RSA_RAW;
+	flags = SC_ALGORITHM_RSA_RAW;
+
+	if (card->type == SC_CARD_TYPE_PIV_II_SWISSBIT || card->type == SC_CARD_TYPE_PIV_II_SWISSBIT_DUAL_CAC) {
+		flags |= SC_ALGORITHM_ONBOARD_KEY_GEN;
+	}
 
 	_sc_card_add_rsa_alg(card, 1024, flags, 0); /* mandatory */
 	_sc_card_add_rsa_alg(card, 2048, flags, 0); /* optional */
