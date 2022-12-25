@@ -302,7 +302,6 @@ static int npa_unlock_esign(sc_card_t *card)
 	}
 
 	/* FIXME set flags with opensc.conf */
-	eac_default_flags |= EAC_FLAG_DISABLE_CHECK_ALL;
 	eac_default_flags |= EAC_FLAG_DISABLE_CHECK_TA;
 	eac_default_flags |= EAC_FLAG_DISABLE_CHECK_CA;
 

@@ -93,7 +93,6 @@ const char *gengetopt_args_info_help[] = {
   "  -b, --break                   Brute force PIN, CAN or PUK. Use together with\n                                  -p, -a or -u  (default=off)",
   "  -t, --translate=FILENAME      File with APDUs of HEX_STRINGs to send through\n                                  the secure channel  (default=`stdin')",
   "      --tr-03110v201            Force compliance to BSI TR-03110 version 2.01\n                                  (default=off)",
-  "      --disable-all-checks      Disable all checking of fly-by-data\n                                  (default=off)",
   "\nReport bugs to https://github.com/OpenSC/OpenSC/issues\n\nWritten by Frank Morgner <frankmorgner@gmail.com>",
     0
 };
@@ -174,7 +173,6 @@ void clear_given (struct gengetopt_args_info *args_info)
   args_info->break_given = 0 ;
   args_info->translate_given = 0 ;
   args_info->tr_03110v201_given = 0 ;
-  args_info->disable_all_checks_given = 0 ;
 }
 
 static
@@ -253,7 +251,6 @@ void clear_args (struct gengetopt_args_info *args_info)
   args_info->translate_arg = gengetopt_strdup ("stdin");
   args_info->translate_orig = NULL;
   args_info->tr_03110v201_flag = 0;
-  args_info->disable_all_checks_flag = 0;
   
 }
 
@@ -319,7 +316,6 @@ void init_args_info(struct gengetopt_args_info *args_info)
   args_info->break_help = gengetopt_args_info_help[56] ;
   args_info->translate_help = gengetopt_args_info_help[57] ;
   args_info->tr_03110v201_help = gengetopt_args_info_help[58] ;
-  args_info->disable_all_checks_help = gengetopt_args_info_help[59] ;
   
 }
 
@@ -638,8 +634,6 @@ cmdline_parser_dump(FILE *outfile, struct gengetopt_args_info *args_info)
     write_into_file(outfile, "translate", args_info->translate_orig, 0);
   if (args_info->tr_03110v201_given)
     write_into_file(outfile, "tr-03110v201", 0, 0 );
-  if (args_info->disable_all_checks_given)
-    write_into_file(outfile, "disable-all-checks", 0, 0 );
   
 
   i = EXIT_SUCCESS;
@@ -1225,7 +1219,6 @@ cmdline_parser_internal (
         { "break",	0, NULL, 'b' },
         { "translate",	1, NULL, 't' },
         { "tr-03110v201",	0, NULL, 0 },
-        { "disable-all-checks",	0, NULL, 0 },
         { 0,  0, 0, 0 }
       };
 
@@ -1863,18 +1856,6 @@ cmdline_parser_internal (
             if (update_arg((void *)&(args_info->tr_03110v201_flag), 0, &(args_info->tr_03110v201_given),
                 &(local_args_info.tr_03110v201_given), optarg, 0, 0, ARG_FLAG,
                 check_ambiguity, override, 1, 0, "tr-03110v201", '-',
-                additional_error))
-              goto failure;
-          
-          }
-          /* Disable all checking of fly-by-data.  */
-          else if (strcmp (long_options[option_index].name, "disable-all-checks") == 0)
-          {
-          
-          
-            if (update_arg((void *)&(args_info->disable_all_checks_flag), 0, &(args_info->disable_all_checks_given),
-                &(local_args_info.disable_all_checks_given), optarg, 0, 0, ARG_FLAG,
-                check_ambiguity, override, 1, 0, "disable-all-checks", '-',
                 additional_error))
               goto failure;
           

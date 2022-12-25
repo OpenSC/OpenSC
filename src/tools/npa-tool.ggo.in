@@ -214,9 +214,6 @@ option "translate"      t
 option "tr-03110v201"    -
     "Force compliance to BSI TR-03110 version 2.01"
     flag off
-option "disable-all-checks"   -
-    "Disable all checking of fly-by-data"
-    flag off
 
 text "
 Report bugs to @PACKAGE_BUGREPORT@

@@ -370,8 +370,6 @@ main (int argc, char **argv)
 	}
 	if (cmdline.tr_03110v201_flag)
 		tr_version = EAC_TR_VERSION_2_01;
-	if (cmdline.disable_all_checks_flag)
-		eac_default_flags |= EAC_FLAG_DISABLE_CHECK_ALL;
 	if (cmdline.disable_ta_checks_flag)
 		eac_default_flags |= EAC_FLAG_DISABLE_CHECK_TA;
 	if (cmdline.disable_ca_checks_flag)

@@ -166,8 +166,6 @@ struct gengetopt_args_info
   const char *translate_help; /**< @brief File with APDUs of HEX_STRINGs to send through the secure channel help description.  */
   int tr_03110v201_flag;	/**< @brief Force compliance to BSI TR-03110 version 2.01 (default=off).  */
   const char *tr_03110v201_help; /**< @brief Force compliance to BSI TR-03110 version 2.01 help description.  */
-  int disable_all_checks_flag;	/**< @brief Disable all checking of fly-by-data (default=off).  */
-  const char *disable_all_checks_help; /**< @brief Disable all checking of fly-by-data help description.  */
   
   unsigned int help_given ;	/**< @brief Whether help was given.  */
   unsigned int version_given ;	/**< @brief Whether version was given.  */
@@ -222,7 +220,6 @@ struct gengetopt_args_info
   unsigned int break_given ;	/**< @brief Whether break was given.  */
   unsigned int translate_given ;	/**< @brief Whether translate was given.  */
   unsigned int tr_03110v201_given ;	/**< @brief Whether tr-03110v201 was given.  */
-  unsigned int disable_all_checks_given ;	/**< @brief Whether disable-all-checks was given.  */
 
 } ;
 

@@ -178,9 +178,6 @@ int perform_chip_authentication(sc_card_t *card,
 int perform_chip_authentication_ex(sc_card_t *card, void *eacsmctx,
 		unsigned char *picc_pubkey, size_t picc_pubkey_len);
 
-/** @brief Disable all sanity checks done by OpenSC */
-#define EAC_FLAG_DISABLE_CHECK_ALL 1
-
 /** 
  * @brief Sends an MSE:Set AT to determine the number of remaining tries
  *
