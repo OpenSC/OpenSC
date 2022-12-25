@@ -674,7 +674,6 @@ static int eac_gen_auth_1_encrypted_nonce(sc_card_t *card,
 		r = SC_ERROR_OUT_OF_MEMORY;
 		goto err;
 	}
-	/* Flawfinder: ignore */
 	memcpy(*enc_nonce, p, l);
 	*enc_nonce_len = l;
 
@@ -760,7 +759,6 @@ static int eac_gen_auth_2_map_nonce(sc_card_t *card,
 		r = SC_ERROR_OUT_OF_MEMORY;
 		goto err;
 	}
-	/* Flawfinder: ignore */
 	memcpy(*map_data_out, p, l);
 	*map_data_out_len = l;
 
@@ -846,7 +844,6 @@ static int eac_gen_auth_3_perform_key_agreement(sc_card_t *card,
 		r = SC_ERROR_OUT_OF_MEMORY;
 		goto err;
 	}
-	/* Flawfinder: ignore */
 	memcpy(*eph_pub_key_out, p, l);
 	*eph_pub_key_out_len = l;
 
@@ -934,7 +931,6 @@ static int eac_gen_auth_4_mutual_authentication(sc_card_t *card,
 			r = SC_ERROR_OUT_OF_MEMORY;
 			goto err;
 		}
-		/* Flawfinder: ignore */
 		memcpy(*recent_car, r_data->cur_car->data, r_data->cur_car->length);
 		*recent_car_len = r_data->cur_car->length;
 	} else
@@ -947,7 +943,6 @@ static int eac_gen_auth_4_mutual_authentication(sc_card_t *card,
 			r = SC_ERROR_OUT_OF_MEMORY;
 			goto err;
 		}
-		/* Flawfinder: ignore */
 		memcpy(*prev_car, r_data->prev_car->data, r_data->prev_car->length);
 		*prev_car_len = r_data->prev_car->length;
 	} else
@@ -958,7 +953,6 @@ static int eac_gen_auth_4_mutual_authentication(sc_card_t *card,
 		r = SC_ERROR_OUT_OF_MEMORY;
 		goto err;
 	}
-	/* Flawfinder: ignore */
 	memcpy(*auth_token_out, p, l);
 	*auth_token_out_len = l;
 
@@ -977,7 +971,6 @@ get_psec(sc_card_t *card, const char *pin, size_t length_pin, enum s_type pin_id
 {
 	char *p = NULL;
 	PACE_SEC *r;
-	/* Flawfinder: ignore */
 	char buf[EAC_MAX_MRZ_LEN > 32 ? EAC_MAX_MRZ_LEN : 32];
 
 	if (!length_pin || !pin) {
@@ -1312,7 +1305,6 @@ int perform_pace(sc_card_t *card,
 		}
 		pace_output->id_icc = p;
 		pace_output->id_icc_length = comp_pub_opp->length;
-		/* Flawfinder: ignore */
 		memcpy(pace_output->id_icc, comp_pub_opp->data, comp_pub_opp->length);
 		sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "ID ICC", pace_output->id_icc,
 				pace_output->id_icc_length);
@@ -1328,7 +1320,6 @@ int perform_pace(sc_card_t *card,
 		}
 		pace_output->id_pcd = p;
 		pace_output->id_pcd_length = comp_pub->length;
-		/* Flawfinder: ignore */
 		memcpy(pace_output->id_pcd, comp_pub->data, comp_pub->length);
 		sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "ID PCD", pace_output->id_pcd,
 				pace_output->id_pcd_length);
@@ -1929,7 +1920,6 @@ eac_sm_encrypt(sc_card_t *card, const struct iso_sm_ctx *ctx,
 		goto err;
 	}
 	*enc = p;
-	/* Flawfinder: ignore */
 	memcpy(*enc, encbuf->data, encbuf->length);
 	r = encbuf->length;
 
@@ -1971,7 +1961,6 @@ eac_sm_decrypt(sc_card_t *card, const struct iso_sm_ctx *ctx,
 		goto err;
 	}
 	*data = p;
-	/* Flawfinder: ignore */
 	memcpy(*data, databuf->data, databuf->length);
 	r = databuf->length;
 
@@ -2019,7 +2008,6 @@ eac_sm_authenticate(sc_card_t *card, const struct iso_sm_ctx *ctx,
 		goto err;
 	}
 	*macdata = p;
-	/* Flawfinder: ignore */
 	memcpy(*macdata, macbuf->data, macbuf->length);
 	r = macbuf->length;
 
