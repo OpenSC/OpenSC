@@ -98,6 +98,7 @@ struct _sc_driver_entry {
 };
 
 static const struct _sc_driver_entry internal_card_drivers[] = {
+	{ "skeid",	(void *(*)(void)) sc_get_skeid_driver },
 	{ "cardos",	(void *(*)(void)) sc_get_cardos_driver },
 	{ "cyberflex",	(void *(*)(void)) sc_get_cyberflex_driver },
 	{ "gemsafeV1",	(void *(*)(void)) sc_get_gemsafeV1_driver },
