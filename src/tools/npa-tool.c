@@ -122,7 +122,8 @@ static void read_dg(sc_card_t *card, unsigned char sfid, const char *dg_str,
 		fprintf(stderr, "Could not read DG %02u %s (%s)\n",
 				sfid, dg_str, sc_strerror(r));
 	else {
-		char buf[0x200];
+		/* 32768 is the maximum size of dg according to ICAO Doc 9303 */
+		char buf[32768*5];
 		sc_hex_dump(*dg, *dg_len, buf, sizeof buf);
 		fprintf(stdout, "Read %s", buf);
 	}
@@ -712,9 +713,6 @@ main (int argc, char **argv)
 
 nopace:
 		if (cmdline.cv_certificate_given || cmdline.private_key_given) {
-			unsigned char eid_aid[] = { 0xE8, 0x07, 0x04, 0x00, 0x7f, 0x00, 0x07, 0x03, 0x02};
-			sc_path_t path;
-
 			r = perform_terminal_authentication(card,
 					(const unsigned char **) certs, certs_lens,
 					privkey, privkey_len, auxiliary_data, auxiliary_data_len);
@@ -726,67 +724,116 @@ nopace:
 			if (r < 0)
 				goto err;
 			printf("Performed Chip Authentication.\n");
-
-			sc_path_set(&path, SC_PATH_TYPE_DF_NAME, eid_aid, sizeof eid_aid, 0, 0);
-			r = sc_select_file(card, &path, NULL);
-			if (r < 0)
-				goto err;
-			printf("Selected eID application.\n");
 		}
 
-		if (cmdline.read_dg1_flag)
-			read_dg(card, 1, "Document Type", &dg, &dg_len);
-		if (cmdline.read_dg2_flag)
-			read_dg(card, 2, "Issuing State", &dg, &dg_len);
-		if (cmdline.read_dg3_flag)
-			read_dg(card, 3, "Date of Expiry", &dg, &dg_len);
-		if (cmdline.read_dg4_flag)
-			read_dg(card, 4, "Given Names", &dg, &dg_len);
-		if (cmdline.read_dg5_flag)
-			read_dg(card, 5, "Family Names", &dg, &dg_len);
-		if (cmdline.read_dg6_flag)
-			read_dg(card, 6, "Religious/Artistic Name", &dg, &dg_len);
-		if (cmdline.read_dg7_flag)
-			read_dg(card, 7, "Academic Title", &dg, &dg_len);
-		if (cmdline.read_dg8_flag)
-			read_dg(card, 8, "Date of Birth", &dg, &dg_len);
-		if (cmdline.read_dg9_flag)
-			read_dg(card, 9, "Place of Birth", &dg, &dg_len);
-		if (cmdline.read_dg10_flag)
-			read_dg(card, 10, "Nationality", &dg, &dg_len);
-		if (cmdline.read_dg11_flag)
-			read_dg(card, 11, "Sex", &dg, &dg_len);
-		if (cmdline.read_dg12_flag)
-			read_dg(card, 12, "Optional Data", &dg, &dg_len);
-		if (cmdline.read_dg13_flag)
-			read_dg(card, 13, "Birth Name", &dg, &dg_len);
-		if (cmdline.read_dg14_flag)
-			read_dg(card, 14, "DG 14", &dg, &dg_len);
-		if (cmdline.read_dg15_flag)
-			read_dg(card, 15, "DG 15", &dg, &dg_len);
-		if (cmdline.read_dg16_flag)
-			read_dg(card, 16, "DG 16", &dg, &dg_len);
-		if (cmdline.read_dg17_flag)
-			read_dg(card, 17, "Normal Place of Residence", &dg, &dg_len);
-		if (cmdline.read_dg18_flag)
-			read_dg(card, 18, "Community ID", &dg, &dg_len);
-		if (cmdline.read_dg19_flag)
-			read_dg(card, 19, "Residence Permit I", &dg, &dg_len);
-		if (cmdline.read_dg20_flag)
-			read_dg(card, 20, "Residence Permit II", &dg, &dg_len);
-		if (cmdline.read_dg21_flag)
-			read_dg(card, 21, "Optional Data", &dg, &dg_len);
+		const unsigned char eid_aid[] = { 0xE8, 0x07, 0x04, 0x00, 0x7f, 0x00, 0x07, 0x03, 0x02};
+		const unsigned char emrtd_aid[] = { 0xA0, 0x00, 0x00, 0x02, 0x47, 0x10, 0x01};
+		sc_path_t path;
+		switch (cmdline.application_arg) {
+			case application_arg_eMRTD:
+				sc_path_set(&path, SC_PATH_TYPE_DF_NAME, emrtd_aid, sizeof emrtd_aid, 0, 0);
+				r = sc_select_file(card, &path, NULL);
+				if (r < 0)
+					goto err;
+				printf("Selected eMRTD application.\n");
 
-		if (cmdline.write_dg17_given)
-			write_dg(card, 17, "Normal Place of Residence", cmdline.write_dg17_arg);
-		if (cmdline.write_dg18_given)
-			write_dg(card, 18, "Community ID", cmdline.write_dg18_arg);
-		if (cmdline.write_dg19_given)
-			write_dg(card, 19, "Residence Permit I", cmdline.write_dg19_arg);
-		if (cmdline.write_dg20_given)
-			write_dg(card, 20, "Residence Permit II", cmdline.write_dg20_arg);
-		if (cmdline.write_dg21_given)
-			write_dg(card, 21, "Optional Data", cmdline.write_dg21_arg);
+				if (cmdline.read_dg1_flag || cmdline.read_all_dgs_flag)
+					read_dg(card, 1, "Machine Readable Zone Information", &dg, &dg_len);
+				if (cmdline.read_dg2_flag || cmdline.read_all_dgs_flag)
+					read_dg(card, 2, "Encoded Identification Features - Face", &dg, &dg_len);
+				if (cmdline.read_dg3_flag || cmdline.read_all_dgs_flag)
+					read_dg(card, 3, "Additional Identification Feature - Finger(s)", &dg, &dg_len);
+				if (cmdline.read_dg4_flag || cmdline.read_all_dgs_flag)
+					read_dg(card, 4, "Additional Identification Feature - Iris(es)", &dg, &dg_len);
+				if (cmdline.read_dg5_flag || cmdline.read_all_dgs_flag)
+					read_dg(card, 5, "Iris(es)", &dg, &dg_len);
+				if (cmdline.read_dg6_flag || cmdline.read_all_dgs_flag)
+					read_dg(card, 6, "Reserved For Future Use", &dg, &dg_len);
+				if (cmdline.read_dg7_flag || cmdline.read_all_dgs_flag)
+					read_dg(card, 7, "Displayed Signature or Usual Mark", &dg, &dg_len);
+				if (cmdline.read_dg8_flag || cmdline.read_all_dgs_flag)
+					read_dg(card, 8, "Data Feature(s)", &dg, &dg_len);
+				if (cmdline.read_dg9_flag || cmdline.read_all_dgs_flag)
+					read_dg(card, 9, "Structure Feature(s)", &dg, &dg_len);
+				if (cmdline.read_dg10_flag || cmdline.read_all_dgs_flag)
+					read_dg(card, 10, "Substance Feature(s)", &dg, &dg_len);
+				if (cmdline.read_dg11_flag || cmdline.read_all_dgs_flag)
+					read_dg(card, 11, "Additional Personal Detail(s)", &dg, &dg_len);
+				if (cmdline.read_dg12_flag || cmdline.read_all_dgs_flag)
+					read_dg(card, 12, "Additional Document Detail(s)", &dg, &dg_len);
+				if (cmdline.read_dg13_flag || cmdline.read_all_dgs_flag)
+					read_dg(card, 13, "Optional Details(s)", &dg, &dg_len);
+				if (cmdline.read_dg14_flag || cmdline.read_all_dgs_flag)
+					read_dg(card, 14, "Security Options", &dg, &dg_len);
+				if (cmdline.read_dg15_flag || cmdline.read_all_dgs_flag)
+					read_dg(card, 15, "Active Authentication Public Key Info", &dg, &dg_len);
+				if (cmdline.read_dg16_flag || cmdline.read_all_dgs_flag)
+					read_dg(card, 16, "Person(s) to Notify", &dg, &dg_len);
+				break;
+
+			case application_arg_eID:
+			default:
+				sc_path_set(&path, SC_PATH_TYPE_DF_NAME, eid_aid, sizeof eid_aid, 0, 0);
+				r = sc_select_file(card, &path, NULL);
+				if (r < 0)
+					goto err;
+				printf("Selected eMRTD application.\n");
+
+				if (cmdline.read_dg1_flag || cmdline.read_all_dgs_flag)
+					read_dg(card, 1, "Document Type", &dg, &dg_len);
+				if (cmdline.read_dg2_flag || cmdline.read_all_dgs_flag)
+					read_dg(card, 2, "Issuing State", &dg, &dg_len);
+				if (cmdline.read_dg3_flag || cmdline.read_all_dgs_flag)
+					read_dg(card, 3, "Date of Expiry", &dg, &dg_len);
+				if (cmdline.read_dg4_flag || cmdline.read_all_dgs_flag)
+					read_dg(card, 4, "Given Names", &dg, &dg_len);
+				if (cmdline.read_dg5_flag || cmdline.read_all_dgs_flag)
+					read_dg(card, 5, "Family Names", &dg, &dg_len);
+				if (cmdline.read_dg6_flag || cmdline.read_all_dgs_flag)
+					read_dg(card, 6, "Religious/Artistic Name", &dg, &dg_len);
+				if (cmdline.read_dg7_flag || cmdline.read_all_dgs_flag)
+					read_dg(card, 7, "Academic Title", &dg, &dg_len);
+				if (cmdline.read_dg8_flag || cmdline.read_all_dgs_flag)
+					read_dg(card, 8, "Date of Birth", &dg, &dg_len);
+				if (cmdline.read_dg9_flag || cmdline.read_all_dgs_flag)
+					read_dg(card, 9, "Place of Birth", &dg, &dg_len);
+				if (cmdline.read_dg10_flag || cmdline.read_all_dgs_flag)
+					read_dg(card, 10, "Nationality", &dg, &dg_len);
+				if (cmdline.read_dg11_flag || cmdline.read_all_dgs_flag)
+					read_dg(card, 11, "Sex", &dg, &dg_len);
+				if (cmdline.read_dg12_flag || cmdline.read_all_dgs_flag)
+					read_dg(card, 12, "Optional Data", &dg, &dg_len);
+				if (cmdline.read_dg13_flag || cmdline.read_all_dgs_flag)
+					read_dg(card, 13, "Birth Name", &dg, &dg_len);
+				if (cmdline.read_dg14_flag || cmdline.read_all_dgs_flag)
+					read_dg(card, 14, "DG 14", &dg, &dg_len);
+				if (cmdline.read_dg15_flag || cmdline.read_all_dgs_flag)
+					read_dg(card, 15, "DG 15", &dg, &dg_len);
+				if (cmdline.read_dg16_flag || cmdline.read_all_dgs_flag)
+					read_dg(card, 16, "DG 16", &dg, &dg_len);
+				if (cmdline.read_dg17_flag || cmdline.read_all_dgs_flag)
+					read_dg(card, 17, "Normal Place of Residence", &dg, &dg_len);
+				if (cmdline.read_dg18_flag || cmdline.read_all_dgs_flag)
+					read_dg(card, 18, "Community ID", &dg, &dg_len);
+				if (cmdline.read_dg19_flag || cmdline.read_all_dgs_flag)
+					read_dg(card, 19, "Residence Permit I", &dg, &dg_len);
+				if (cmdline.read_dg20_flag || cmdline.read_all_dgs_flag)
+					read_dg(card, 20, "Residence Permit II", &dg, &dg_len);
+				if (cmdline.read_dg21_flag || cmdline.read_all_dgs_flag)
+					read_dg(card, 21, "Optional Data", &dg, &dg_len);
+
+				if (cmdline.write_dg17_given)
+					write_dg(card, 17, "Normal Place of Residence", cmdline.write_dg17_arg);
+				if (cmdline.write_dg18_given)
+					write_dg(card, 18, "Community ID", cmdline.write_dg18_arg);
+				if (cmdline.write_dg19_given)
+					write_dg(card, 19, "Residence Permit I", cmdline.write_dg19_arg);
+				if (cmdline.write_dg20_given)
+					write_dg(card, 20, "Residence Permit II", cmdline.write_dg20_arg);
+				if (cmdline.write_dg21_given)
+					write_dg(card, 21, "Optional Data", cmdline.write_dg21_arg);
+				break;
+		}
 
 		if (cmdline.older_than_given) {
 			unsigned char id_DateOfBirth[]  = {6, 9, 4, 0, 127, 0, 7, 3, 1, 4, 1};
