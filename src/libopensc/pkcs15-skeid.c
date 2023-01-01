@@ -58,8 +58,8 @@ static int sc_pkcs15emu_skeid_init(sc_pkcs15_card_t * p15card)
 
 	for (i = 0; i < 3; i++) {
 		const char *skeid_cert_names[3] = {
-			"Kvalifikovany certifikat",
-			"Podpisovy certifikat",
+			"Kvalifikovany certifikat pre elektronicky podpis",
+			"Certifikat pre elektronicky podpis",
 			"Sifrovaci certifikat"
 		};
 
@@ -90,7 +90,7 @@ static int sc_pkcs15emu_skeid_init(sc_pkcs15_card_t * p15card)
 	for (i = 0; i < 2; i++) {
 		const char *skeid_pin_names[2] = {
 			"BOK",
-			"KEP PIN"
+			"Podpisovy PIN"
 		};
 
 		const unsigned int skeid_pin_max_length[2] = {6, 10};
