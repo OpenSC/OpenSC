@@ -43,7 +43,7 @@ static int sc_pkcs15emu_skeid_init(sc_pkcs15_card_t * p15card)
 	char *buf;
 
 	set_string(&p15card->tokeninfo->label, "eID karta");
-	set_string(&p15card->tokeninfo->manufacturer_id, "Ministerstvo vnutra SR");
+	set_string(&p15card->tokeninfo->manufacturer_id, "Atos Information Technology GmbH");
 
 	sn_len = p15card->card->serialnr.len;
 	if (sn_len > 0) {
