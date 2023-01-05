@@ -94,8 +94,7 @@ static int skeid_get_serialnr(sc_card_t *card)
 		memcpy(card->serialnr.value, rbuf, 8);
 		card->serialnr.len = 8;
 	} else {
-		sc_log(card->ctx,  "unexpected response to GET DATA serial"
-			" number\n");
+		sc_log(card->ctx,  "unexpected response to GET DATA serial number");
 		return SC_ERROR_INTERNAL;
 	}
 	return SC_SUCCESS;
@@ -147,7 +146,7 @@ static int skeid_set_security_env(sc_card_t *card,
 	assert(card != NULL && env != NULL);
 
 	if (!(env->flags & SC_SEC_ENV_KEY_REF_PRESENT) || env->key_ref_len != 1) {
-		sc_log(card->ctx, "No or invalid key reference\n");
+		sc_log(card->ctx, "No or invalid key reference");
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
