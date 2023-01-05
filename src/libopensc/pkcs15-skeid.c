@@ -56,19 +56,20 @@ static int sc_pkcs15emu_skeid_init(sc_pkcs15_card_t * p15card)
 
 	p15card->tokeninfo->flags = SC_PKCS15_TOKEN_PRN_GENERATION | SC_PKCS15_TOKEN_READONLY;
 
+	/* add certificates */
+	const char *skeid_cert_names[3] = {
+		"Kvalifikovany certifikat pre elektronicky podpis",
+		"Certifikat pre elektronicky podpis",
+		"Sifrovaci certifikat"
+	};
+
+	const char *skeid_cert_paths[3] = {
+		"3f0001030201",
+		"3f0001030202",
+		"3f0001030203"
+	};
+
 	for (i = 0; i < 3; i++) {
-		const char *skeid_cert_names[3] = {
-			"Kvalifikovany certifikat pre elektronicky podpis",
-			"Certifikat pre elektronicky podpis",
-			"Sifrovaci certifikat"
-		};
-
-		const char *skeid_cert_paths[3] = {
-			"3f0001030201",
-			"3f0001030202",
-			"3f0001030203"
-		};
-
 		struct sc_pkcs15_cert_info cert_info;
 		struct sc_pkcs15_object cert_obj;
 
@@ -87,20 +88,20 @@ static int sc_pkcs15emu_skeid_init(sc_pkcs15_card_t * p15card)
 	}
 
 	/* add pins */
+	const char *skeid_pin_names[2] = {
+		"BOK",
+		"Podpisovy PIN"
+	};
+
+	const unsigned int skeid_pin_max_length[2] = {6, 10};
+	const unsigned int skeid_pin_max_tries[2] = {5, 3};
+	const int skeid_pin_ref[2] = {0x03, 0x87};
+	const char *skeid_pin_paths[2] = {"3F00", "3F000101"};
+
+	const unsigned int skeid_pin_flags[2] =	{SC_PKCS15_PIN_FLAG_CASE_SENSITIVE | SC_PKCS15_PIN_FLAG_EXCHANGE_REF_DATA | SC_PKCS15_PIN_FLAG_INITIALIZED,
+		SC_PKCS15_PIN_FLAG_CASE_SENSITIVE | SC_PKCS15_PIN_FLAG_LOCAL | SC_PKCS15_PIN_FLAG_EXCHANGE_REF_DATA | SC_PKCS15_PIN_FLAG_INITIALIZED};
+
 	for (i = 0; i < 2; i++) {
-		const char *skeid_pin_names[2] = {
-			"BOK",
-			"Podpisovy PIN"
-		};
-
-		const unsigned int skeid_pin_max_length[2] = {6, 10};
-		const unsigned int skeid_pin_max_tries[2] = {5, 3};
-		const int skeid_pin_ref[2] = {0x03, 0x87};
-		const char *skeid_pin_paths[2] = {"3F00", "3F000101"};
-
-		const unsigned int skeid_pin_flags[2] =	{SC_PKCS15_PIN_FLAG_CASE_SENSITIVE | SC_PKCS15_PIN_FLAG_EXCHANGE_REF_DATA | SC_PKCS15_PIN_FLAG_INITIALIZED,
-			SC_PKCS15_PIN_FLAG_CASE_SENSITIVE | SC_PKCS15_PIN_FLAG_LOCAL | SC_PKCS15_PIN_FLAG_EXCHANGE_REF_DATA | SC_PKCS15_PIN_FLAG_INITIALIZED};
-
 		struct sc_pkcs15_auth_info pin_info;
 		struct sc_pkcs15_object pin_obj;
 
@@ -128,23 +129,23 @@ static int sc_pkcs15emu_skeid_init(sc_pkcs15_card_t * p15card)
 	}
 
 	/* add private keys */
-	for (i = 0; i < 3; i++) {
-		const u8 prkey_pin[3] = {2, 1, 1};
-		const int prkey_ref[3] = {0x01, 0x34, 0x44};
-		const int prkey_usage[3] =
-			{ SC_PKCS15_PRKEY_USAGE_NONREPUDIATION | SC_PKCS15_PRKEY_USAGE_SIGN,
-			  SC_PKCS15_PRKEY_USAGE_SIGN,
-			  SC_PKCS15_PRKEY_USAGE_DECRYPT
-			};
-
-		const char *skeid_prkey_paths[3] = {"3F000101", "3F000102", "3F000102"};
-
-		const char *prkey_name[3] = {
-			"Podpisovy kluc (KEP)",
-			"Podpisovy kluc",
-			"Sifrovaci kluc",
+	const u8 skeid_prkey_pin[3] = {2, 1, 1};
+	const int skeid_prkey_ref[3] = {0x01, 0x34, 0x44};
+	const int skeid_prkey_usage[3] =
+		{ SC_PKCS15_PRKEY_USAGE_NONREPUDIATION | SC_PKCS15_PRKEY_USAGE_SIGN,
+		  SC_PKCS15_PRKEY_USAGE_SIGN,
+		  SC_PKCS15_PRKEY_USAGE_DECRYPT
 		};
 
+	const char *skeid_prkey_paths[3] = {"3F000101", "3F000102", "3F000102"};
+
+	const char *skeid_prkey_name[3] = {
+		"Podpisovy kluc (KEP)",
+		"Podpisovy kluc",
+		"Sifrovaci kluc",
+	};
+
+	for (i = 0; i < 3; i++) {
 		struct sc_pkcs15_prkey_info prkey_info;
 		struct sc_pkcs15_object prkey_obj;
 
@@ -154,15 +155,15 @@ static int sc_pkcs15emu_skeid_init(sc_pkcs15_card_t * p15card)
 		prkey_info.id.len = 1;
 		prkey_info.id.value[0] = i + 1;
 		prkey_info.native = 1;
-		prkey_info.key_reference = prkey_ref[i];
+		prkey_info.key_reference = skeid_prkey_ref[i];
 		prkey_info.modulus_length = 3072;
 		sc_format_path(skeid_prkey_paths[i], &prkey_info.path);
 
-		prkey_info.usage = prkey_usage[i];
+		prkey_info.usage = skeid_prkey_usage[i];
 
-		strlcpy(prkey_obj.label, prkey_name[i], sizeof(prkey_obj.label));
+		strlcpy(prkey_obj.label, skeid_prkey_name[i], sizeof(prkey_obj.label));
 		prkey_obj.auth_id.len = 1;
-		prkey_obj.auth_id.value[0] = prkey_pin[i];
+		prkey_obj.auth_id.value[0] = skeid_prkey_pin[i];
 		if (i == 0) prkey_obj.user_consent = 1;
 
 		prkey_obj.flags = SC_PKCS15_CO_FLAG_PRIVATE;
