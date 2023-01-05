@@ -98,6 +98,9 @@ struct _sc_driver_entry {
 };
 
 static const struct _sc_driver_entry internal_card_drivers[] = {
+	/* The card handled by skeid shares the ATR with other cards running CardOS 5.4.
+	 * In order to prevent the cardos driver from matching skeid cards, skeid driver
+	 * precedes cardos and matches no other CardOS 5.4 card. */
 	{ "skeid",	(void *(*)(void)) sc_get_skeid_driver },
 	{ "cardos",	(void *(*)(void)) sc_get_cardos_driver },
 	{ "cyberflex",	(void *(*)(void)) sc_get_cyberflex_driver },

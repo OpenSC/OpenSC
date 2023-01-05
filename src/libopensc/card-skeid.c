@@ -40,7 +40,11 @@ static struct sc_card_driver skeid_drv = {
 };
 
 static const struct sc_atr_table skeid_atrs[] = {
-	/* Slovak eID v3 - CardOS 5.4 */
+	/* Slovak eID v3 - CardOS 5.4
+	 *
+	 * The ATR was intentionally omitted from minidriver_registration[] within win32/customactions.cpp
+	 * as it is identical to that of CardOS v5.4 and therefore already included.
+	 * Any new ATR may need an entry in minidriver_registration[]. */
 	{"3b:d2:18:00:81:31:fe:58:c9:04:11", NULL, NULL, SC_CARD_TYPE_SKEID_V3, 0, NULL},
 	{NULL, NULL, NULL, 0, 0, NULL}
 };
