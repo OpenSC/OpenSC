@@ -53,7 +53,7 @@ char eac_default_flags = 0;
 #include <openssl/objects.h>
 
 
-/** @brief NPA secure messaging context */
+/** @brief EAC secure messaging context */
 struct eac_sm_ctx {
 	/** @brief EAC context */
 	EAC_CTX *ctx;
@@ -1146,12 +1146,6 @@ int perform_terminal_authentication(sc_card_t *card,
 
 		sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "EF.CardAccess", ef_cardaccess,
 				ef_cardaccess_length);
-
-		/* XXX Card capabilities should be determined by the OpenSC card driver. We
-		 * set it here to be able to use the nPA without patching OpenSC. By
-		 * now we have read the EF.CardAccess so the assumption to have an nPA
-		 * seems valid. */
-		card->caps |= SC_CARD_CAP_APDU_EXT;
 
 		EAC_init();
 		eac_ctx = EAC_CTX_new();
