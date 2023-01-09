@@ -181,7 +181,7 @@ int sc_pkcs15emu_skeid_init_ex(sc_pkcs15_card_t * p15card,
 	int r = SC_ERROR_WRONG_CARD;
 
 	if (p15card->card->type == SC_CARD_TYPE_SKEID_V3
-		&& (aid == NULL || aid->len == skeid_aid_qes.len && !memcmp(aid->value, &skeid_aid_qes.value, skeid_aid_qes.len)))
+		&& (aid == NULL || (aid->len == skeid_aid_qes.len && !memcmp(aid->value, &skeid_aid_qes.value, skeid_aid_qes.len))))
 		r = sc_pkcs15emu_skeid_init(p15card);
 
 	return r;
