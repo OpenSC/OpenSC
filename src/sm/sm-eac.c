@@ -57,8 +57,6 @@ char eac_default_flags = 0;
 struct eac_sm_ctx {
 	/** @brief EAC context */
 	EAC_CTX *ctx;
-	/** @brief Certificate Description given on initialization of PACE */
-	BUF_MEM *certificate_description;
 	/** @brief picc's compressed ephemeral public key of PACE */
 	BUF_MEM *id_icc;
 	/** @brief PCD's compressed ephemeral public key of CA */
@@ -95,8 +93,7 @@ static void eac_sm_clear_free(const struct iso_sm_ctx *ctx);
 
 
 static struct eac_sm_ctx *
-eac_sm_ctx_create(EAC_CTX *ctx, const unsigned char *certificate_description,
-		size_t certificate_description_length,
+eac_sm_ctx_create(EAC_CTX *ctx,
 		const unsigned char *id_icc, size_t id_icc_length)
 {
 	struct eac_sm_ctx *out = malloc(sizeof *out);
@@ -104,15 +101,6 @@ eac_sm_ctx_create(EAC_CTX *ctx, const unsigned char *certificate_description,
 		goto err;
 
 	out->ctx = ctx;
-
-	if (certificate_description && certificate_description_length) {
-		out->certificate_description =
-			BUF_MEM_create_init(certificate_description,
-					certificate_description_length);
-		if (!out->certificate_description)
-			goto err;
-	} else
-		out->certificate_description = NULL;
 
 	if (id_icc && id_icc_length) {
 		out->id_icc = BUF_MEM_create_init(id_icc, id_icc_length);
@@ -139,8 +127,6 @@ err:
 
 static int
 eac_sm_start(sc_card_t *card, EAC_CTX *eac_ctx,
-		const unsigned char *certificate_description,
-		size_t certificate_description_length,
 		const unsigned char *id_icc, size_t id_icc_length)
 {
 	int r;
@@ -158,7 +144,6 @@ eac_sm_start(sc_card_t *card, EAC_CTX *eac_ctx,
 	}
 
 	sctx->priv_data = eac_sm_ctx_create(eac_ctx,
-			certificate_description, certificate_description_length,
 			id_icc, id_icc_length);
 	if (!sctx->priv_data) {
 		r = SC_ERROR_OUT_OF_MEMORY;
@@ -977,9 +962,7 @@ int perform_pace(sc_card_t *card,
 		sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "ID PCD", pace_output->id_pcd,
 				pace_output->id_pcd_length);
 
-		r = eac_sm_start(card, eac_ctx, pace_input.certificate_description,
-				pace_input.certificate_description_length, pace_output->id_icc,
-				pace_output->id_icc_length);
+		r = eac_sm_start(card, eac_ctx, pace_output->id_icc, pace_output->id_icc_length);
 	}
 
 err:
@@ -1181,7 +1164,7 @@ int perform_terminal_authentication(sc_card_t *card,
 			goto err;
 		}
 
-		isosmctx->priv_data = eac_sm_ctx_create(eac_ctx, NULL, 0, NULL, 0);
+		isosmctx->priv_data = eac_sm_ctx_create(eac_ctx, NULL, 0);
 		if (!isosmctx->priv_data) {
 			r = SC_ERROR_INTERNAL;
 			goto err;
@@ -1520,7 +1503,7 @@ int perform_chip_authentication_ex(sc_card_t *card, void *eac_ctx,
 	}
 
 	if (card->sm_ctx.sm_mode != SM_MODE_TRANSMIT) {
-		r = eac_sm_start(card, ctx, NULL, 0, NULL, 0);
+		r = eac_sm_start(card, ctx, NULL, 0);
 	}
 
 err:
@@ -1788,8 +1771,6 @@ eac_sm_clear_free(const struct iso_sm_ctx *ctx)
 		struct eac_sm_ctx *eacsmctx = ctx->priv_data;
 		if (eacsmctx) {
 			EAC_CTX_clear_free(eacsmctx->ctx);
-			if (eacsmctx->certificate_description)
-				BUF_MEM_free(eacsmctx->certificate_description);
 			if (eacsmctx->id_icc)
 				BUF_MEM_free(eacsmctx->id_icc);
 			if (eacsmctx->eph_pub_key)
