@@ -142,7 +142,7 @@ endif
 cmdline:
 	@for f in *.ggo.in; do $(do_subst) < "$$f" > "$${f%.in}"; done
 	@for f in *.ggo;    do $(GENGETOPT) --file-name="$${f%.ggo}-cmdline" --output-dir=$(builddir) < "$$f"; done
-	$(AM_V_GEN)$(GENGETOPT) --file-name=opensc-asn1-cmdline --output-dir=$(builddir) < opensc-asn1.ggo --unamed-opts
+	$(AM_V_GEN)$(GENGETOPT) --file-name=opensc-asn1-cmdline --output-dir=$(builddir) --unamed-opts < opensc-asn1.ggo
 
 if WIN32
 LIBS += -lshlwapi
