@@ -696,7 +696,7 @@ C_GetMechanismInfo(CK_SLOT_ID  slotID, CK_MECHANISM_TYPE type,
 
 	enter("C_GetMechanismInfo");
 	spy_dump_ulong_in("slotID", slotID);
-	FPRINTF_LOOKUP_ENUM("[in] type = %s", MEC_T, type);
+	FPRINTF_LOOKUP_ENUM("[in] type = %s\n", MEC_T, type);
 
 	rv = po->C_GetMechanismInfo(slotID, type, pInfo);
 	if(rv == CKR_OK) {
