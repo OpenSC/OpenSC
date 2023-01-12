@@ -1069,19 +1069,10 @@ static int gids_read_binary(sc_card_t *card, unsigned int offset,
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_DATA);
 		}
 		if (buffer[0] == 1 && buffer[1] == 0) {
-			size_t expectedsize = buffer[2] + buffer[3] * 0x100;
-			data->buffersize = sizeof(data->buffer);
-			r = sc_decompress(data->buffer, &(data->buffersize), buffer+4, buffersize-4, COMPRESSION_ZLIB);
-			if (r != SC_SUCCESS) {
-				sc_log(card->ctx,  "Zlib error: %d", r);
-				LOG_FUNC_RETURN(card->ctx, r);
-			}
-			if (data->buffersize != expectedsize) {
-				sc_log(card->ctx, 
-					 "expected size: %"SC_FORMAT_LEN_SIZE_T"u real size: %"SC_FORMAT_LEN_SIZE_T"u",
-					 expectedsize, data->buffersize);
-				LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_DATA);
-			}
+			*flags |= SC_FILE_COMPRESSED;
+			/* compressed data are starting on position buffer + 4 */
+			data->buffersize = sizeof(data->buffer) - 4;
+			memcpy(data->buffer, buffer + 4, buffersize);
 		} else {
 			sc_log(card->ctx,  "unknown compression method %d", buffer[0] + (buffer[1] <<8));
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_DATA);
