@@ -49,9 +49,6 @@
 #include "internal.h"
 #include "simpletlv.h"
 #include "cardctl.h"
-#ifdef ENABLE_ZLIB
-#include "compression.h"
-#endif
 #include "iso7816.h"
 #include "card-cac-common.h"
 #include "pkcs15.h"
@@ -171,16 +168,9 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 
 	/* if the info byte is 1, then the cert is compressed, decompress it */
 	if ((cert_type & 0x3) == 1) {
-#ifdef ENABLE_ZLIB
-		r = sc_decompress_alloc(&priv->cache_buf, &priv->cache_buf_len,
-			cert_ptr, cert_len, COMPRESSION_AUTO);
-#else
-		sc_log(card->ctx, "CAC compression not supported, no zlib");
-		r = SC_ERROR_NOT_SUPPORTED;
-#endif
-		if (r)
-			goto done;
-	} else if (cert_len > 0) {
+		*flags |= SC_FILE_COMPRESSED;
+	}
+	if (cert_len > 0) {
 		priv->cache_buf = malloc(cert_len);
 		if (priv->cache_buf == NULL) {
 			r = SC_ERROR_OUT_OF_MEMORY;
