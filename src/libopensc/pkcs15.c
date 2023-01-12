@@ -42,6 +42,10 @@
 #include <sys/time.h>
 #endif
 
+#ifdef ENABLE_ZLIB
+#include "compression.h"
+#endif
+
 static const struct sc_asn1_entry c_asn1_twlabel[] = {
 	{ "twlabel", SC_ASN1_UTF8STRING, SC_ASN1_TAG_UTF8STRING, 0, NULL, NULL },
 	{ NULL, 0, 0, 0, NULL, NULL }
@@ -2395,6 +2399,23 @@ sc_pkcs15_parse_unusedspace(const unsigned char *buf, size_t buflen, struct sc_p
 	return 0;
 }
 
+static int decompress_file(sc_card_t *card, unsigned char *buf, size_t buflen, 
+		unsigned char **out, size_t *outlen)
+{
+	LOG_FUNC_CALLED(card->ctx);
+#ifdef ENABLE_ZLIB
+	int rv = SC_SUCCESS;
+
+	rv = sc_decompress_alloc(out, outlen, buf, buflen, COMPRESSION_AUTO);
+	if (rv != SC_SUCCESS) {
+		sc_log(card->ctx,  "Decompression failed: %d", rv);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_DATA);
+	}
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+#endif
+	sc_log(card->ctx, "Compression not supported, no zlib");
+	LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+}
 
 int
 sc_decode_do53(sc_context_t *ctx, u8 **data, size_t *data_len,
@@ -2550,12 +2571,25 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 			len = r;
 		}
 		else {
-			r = sc_read_binary(p15card->card, offset, data, len, 0);
+			unsigned long flags = 0;
+			r = sc_read_binary(p15card->card, offset, data, len, &flags);
 			if (r < 0) {
 				goto fail_unlock;
 			}
 			/* sc_read_binary may return less than requested */
 			len = r;
+
+			if (flags & SC_FILE_COMPRESSED) {
+				unsigned char *decompressed_buf = NULL;
+				size_t decompressed_len = 0;
+				r = decompress_file(p15card->card, data, len, &decompressed_buf, &decompressed_len);
+				if (r != SC_SUCCESS) {
+					goto fail_unlock;
+				}
+				free(data);
+				data = decompressed_buf;
+				len = decompressed_len;
+			}
 		}
 		sc_unlock(p15card->card);
 
