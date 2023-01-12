@@ -917,7 +917,7 @@ typedef struct sc_cardctl_piv_genkey_info_st {
 	unsigned int	key_algid;	/* RSA 5, 6, 7; EC 11, 14 */ 
 	unsigned int	key_bits;	/* RSA */
 	unsigned char *	exponent;	/* RSA */
-	unsigned long	exponent_len;	/* RSA */
+	unsigned int	exponent_len;	/* RSA */
 	unsigned char *	pubkey;		/* RSA */
 	unsigned int	pubkey_len;	/* RSA */
 	unsigned char * ecparam;        /* EC */
