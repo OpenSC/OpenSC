@@ -32,6 +32,7 @@ AlwaysBreakAfterReturnType: AllDefinitions
 ##  it can be allowed only after we will have some baseline
 ColumnLimit: 0
 #ColumnLimit: 110
+IndentCaseBlocks: true
 
 BreakBeforeBraces: Custom
 BraceWrapping:

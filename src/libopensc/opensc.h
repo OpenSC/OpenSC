@@ -36,8 +36,9 @@
 extern "C" {
 #endif
 
-#include "common/simclist.h"
 #include "config.h"
+
+#include "common/simclist.h"
 #include "libopensc/errors.h"
 #include "libopensc/types.h"
 #include "scconf/scconf.h"
