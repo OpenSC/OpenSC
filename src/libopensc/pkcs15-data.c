@@ -4,7 +4,7 @@
  * Copyright (C) 2002  Danny De Cock <daniel.decock@postbox.be>
  *
  * This source file was inspired by pkcs15-cert.c.
- * 
+ *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
@@ -37,7 +37,6 @@
 #include "pkcs15.h"
 #include "common/compat_strnlen.h"
 
-
 int
 sc_pkcs15_read_data_object(struct sc_pkcs15_card *p15card,
 		const struct sc_pkcs15_data_info *info,
@@ -53,8 +52,8 @@ sc_pkcs15_read_data_object(struct sc_pkcs15_card *p15card,
 	if (!info || !data_object_out)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-	if (!info->data.value)   {
-		r = sc_pkcs15_read_file(p15card, &info->path, (unsigned char **) &info->data.value, (size_t *) &info->data.len, private_obj);
+	if (!info->data.value) {
+		r = sc_pkcs15_read_file(p15card, &info->path, (unsigned char **)&info->data.value, (size_t *)&info->data.len, private_obj);
 		LOG_TEST_RET(ctx, r, "Cannot get DATA object data");
 	}
 

@@ -224,36 +224,27 @@ VOID RemoveKey(PTSTR szSubKey)
 	lResult = RegEnumKeyEx(hKey, 0, szName, &dwSize, NULL,
 							NULL, NULL, &ftWrite);
 
-	if (lResult == ERROR_SUCCESS)
-	{
+	if (lResult == ERROR_SUCCESS) {
 		DWORD dwIndex = 0;
 		do {
 			HKEY hTempKey = NULL;
 			dwIndex++;
 			lResult = RegOpenKeyEx (hKey, szName, 0, KEY_READ, &hTempKey);
-			if (lResult == ERROR_SUCCESS)
-			{
+			if (lResult == ERROR_SUCCESS) {
 				TCHAR szIB[MAX_PATH] = {0};
 				dwSize = MAX_PATH;
-				lResult = RegQueryValueEx(hTempKey, BASE_INSTALLED_BY_KEY, NULL, NULL, (PBYTE) szIB, &dwSize);
+				lResult = RegQueryValueEx(hTempKey, BASE_INSTALLED_BY_KEY, NULL, NULL, (PBYTE)szIB, &dwSize);
 				RegCloseKey(hTempKey);
-				if (lResult == ERROR_SUCCESS)
-				{
-					if ( _tcsstr(szIB, BASE_INSTALLED_BY_VALUE) != 0)
-					{
+				if (lResult == ERROR_SUCCESS) {
+					if (_tcsstr(szIB, BASE_INSTALLED_BY_VALUE) != 0) {
 						lResult = RegDeleteKey(hKey, szName);
-						if (lResult != ERROR_SUCCESS)
-						{
+						if (lResult != ERROR_SUCCESS) {
 							WcaLog(LOGMSG_STANDARD, "RegDeleteKey %S 0x%08X", szName, lResult);
-						}
-						else
-						{
+						} else {
 							dwIndex--;
 						}
 					}
-				}
-				else
-				{
+				} else {
 					WcaLog(LOGMSG_STANDARD, "RegQueryValueEx %S 0x%08X", szName, lResult);
 				}
 			}
@@ -305,13 +296,16 @@ void RegisterCardWithKey(PTSTR szKey, PTSTR szCard, PTSTR szPath, PBYTE pbATR, D
 	lResult = RegCreateKeyEx(hKey, szCard, 0,NULL,0,KEY_WRITE, NULL,&hTempKey,NULL);
 	if(!lResult)
 	{
-		RegSetValueEx( hTempKey,TEXT("Crypto Provider"),0, REG_SZ, (PBYTE)BASE_CSP,sizeof(BASE_CSP) - sizeof(TCHAR));
-		RegSetValueEx( hTempKey,TEXT("Smart Card Key Storage Provider"),0, REG_SZ, (PBYTE)BASE_KSP,sizeof(BASE_KSP) - sizeof(TCHAR));
-		RegSetValueEx( hTempKey,TEXT("80000001"),0, REG_SZ, (PBYTE)szPath,(DWORD) (sizeof(TCHAR) * _tcslen(szPath)));
-		RegSetValueEx( hTempKey,TEXT("ATR"),0, REG_BINARY, (PBYTE)pbATR, dwATRSize);
-		RegSetValueEx( hTempKey,TEXT("ATRMask"),0, REG_BINARY, (PBYTE)pbAtrMask, dwATRSize);
-		RegSetValueEx( hTempKey,BASE_INSTALLED_BY_KEY,0, REG_SZ, (PBYTE)BASE_INSTALLED_BY_VALUE,
-			sizeof(BASE_INSTALLED_BY_VALUE) - sizeof(TCHAR));
+		RegSetValueEx(hTempKey, TEXT("Crypto Provider"), 0, REG_SZ,
+				(PBYTE)BASE_CSP, sizeof(BASE_CSP) - sizeof(TCHAR));
+		RegSetValueEx(hTempKey, TEXT("Smart Card Key Storage Provider"), 0, REG_SZ,
+				(PBYTE)BASE_KSP, sizeof(BASE_KSP) - sizeof(TCHAR));
+		RegSetValueEx(hTempKey, TEXT("80000001"), 0, REG_SZ,
+				(PBYTE)szPath, (DWORD)(sizeof(TCHAR) * _tcslen(szPath)));
+		RegSetValueEx(hTempKey, TEXT("ATR"), 0, REG_BINARY, (PBYTE)pbATR, dwATRSize);
+		RegSetValueEx(hTempKey, TEXT("ATRMask"), 0, REG_BINARY, (PBYTE)pbAtrMask, dwATRSize);
+		RegSetValueEx(hTempKey, BASE_INSTALLED_BY_KEY, 0, REG_SZ, (PBYTE)BASE_INSTALLED_BY_VALUE,
+				sizeof(BASE_INSTALLED_BY_VALUE) - sizeof(TCHAR));
 		RegCloseKey(hTempKey);
 	}
 	else
@@ -346,7 +340,7 @@ VOID RegisterSmartCard(PMD_REGISTRATION registration)
 		pbAtrReduced[i] = (registration->pbAtr[i] & registration->pbAtrMask[i]);
 	}
 
-	RegisterCardWithKey(SC_DATABASE, registration->szName, szPath, pbAtrReduced, registration->dwAtrSize, registration->pbAtrMask );
+	RegisterCardWithKey(SC_DATABASE, registration->szName, szPath, pbAtrReduced, registration->dwAtrSize, registration->pbAtrMask);
 }
 
 UINT WINAPI AddSmartCardConfiguration(MSIHANDLE hInstall)

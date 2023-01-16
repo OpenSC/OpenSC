@@ -520,24 +520,24 @@ spy_dump_mechanism_in(const char *name, CK_MECHANISM_PTR pMechanism)
 static void
 print_ptr_in(const char *name, CK_VOID_PTR ptr)
 {
- 	fprintf(spy_output, "[in] %s = %p\n", name, ptr);
+	fprintf(spy_output, "[in] %s = %p\n", name, ptr);
 }
 
-#define FPRINTF_LOOKUP_ENUM(fmt, category, type)\
-do {\
-        const char *name = lookup_enum((category), (type));\
-        if (name)\
-                fprintf(spy_output, (fmt), (name));\
-        else {\
-                size_t needed = snprintf(NULL, 0, "0x%08lX", (type)) + 1;\
-                char *buffer = malloc(needed);\
-                if (buffer) {\
-                        sprintf(buffer, "0x%08lX", (type));\
-                        fprintf(spy_output, (fmt), buffer);\
-                        free(buffer);\
-                }\
-        }\
-} while(0)
+#define FPRINTF_LOOKUP_ENUM(fmt, category, type) \
+	do { \
+		const char *name = lookup_enum((category), (type)); \
+		if (name) \
+			fprintf(spy_output, (fmt), (name)); \
+		else { \
+			size_t needed = snprintf(NULL, 0, "0x%08lX", (type)) + 1; \
+			char *buffer = malloc(needed); \
+			if (buffer) { \
+				sprintf(buffer, "0x%08lX", (type)); \
+				fprintf(spy_output, (fmt), buffer); \
+				free(buffer); \
+			} \
+		} \
+	} while (0)
 
 CK_RV C_GetFunctionList
 (CK_FUNCTION_LIST_PTR_PTR ppFunctionList)

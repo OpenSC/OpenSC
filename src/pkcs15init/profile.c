@@ -2168,7 +2168,7 @@ sc_profile_find_file(struct sc_profile *pro,
 	unsigned int		len;
 	const u8			*value;
 
-	value = path ? path->value : (const u8*) "";
+	value = path ? path->value : (const u8 *)"";
 	len = path ? path->len : 0;
 	for (fi = pro->ef_list; fi; fi = fi->next) {
 		sc_path_t *fpath = &fi->file->path;
@@ -2376,7 +2376,7 @@ struct num_exp_ctx {
 	char **		argv;
 };
 
-static void	expr_eval(struct num_exp_ctx *, unsigned int *, unsigned int, int);
+static void expr_eval(struct num_exp_ctx *, unsigned int *, unsigned int, int);
 
 static void
 expr_fail(struct num_exp_ctx *ctx)
@@ -2548,16 +2548,28 @@ expr_eval(struct num_exp_ctx *ctx, unsigned int *vp, unsigned int pri, int openi
 
 		expr_eval(ctx, &right, new_pri + 1, opening_brackets);
 		switch (op) {
-		case '*': left *= right; break;
+		case '*':
+			left *= right;
+			break;
 		case '/':
 			if (right == 0)
 				expr_fail(ctx);
-			left /= right; break;
-		case '+': left += right; break;
-		case '-': left -= right; break;
-		case '&': left &= right; break;
-		case '|': left |= right; break;
-		default: expr_fail(ctx);
+			left /= right;
+			break;
+		case '+':
+			left += right;
+			break;
+		case '-':
+			left -= right;
+			break;
+		case '&':
+			left &= right;
+			break;
+		case '|':
+			left |= right;
+			break;
+		default:
+			expr_fail(ctx);
 		}
 	}
 

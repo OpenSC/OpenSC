@@ -121,7 +121,7 @@ gpk_match_card(sc_card_t *card)
 	if (i < 0) {
 		const u8 *hist_bytes = card->reader->atr_info.hist_bytes;
 
-		/* Gemplus GPK docs say we can use just the 
+		/* Gemplus GPK docs say we can use just the
 		 * FMN and PRN fields of the historical bytes
 		 * to recognize a GPK card
 		 *  See Table 43, pp. 188
@@ -529,8 +529,7 @@ gpk_select_id(sc_card_t *card, int kind, unsigned int fid,
 	u8		fbuf[2];
 	int		r;
 
-	sc_log(card->ctx, 
-		"gpk_select_id(0x%04X, kind=%u)\n", fid, kind);
+	sc_log(card->ctx, "gpk_select_id(0x%04X, kind=%u)\n", fid, kind);
 
 	fbuf[0] = fid >> 8;
 	fbuf[1] = fid & 0xff;
@@ -783,10 +782,8 @@ gpk_compute_crycks(sc_card_t *card, sc_apdu_t *apdu,
 static int
 gpk_verify_crycks(sc_card_t *card, sc_apdu_t *apdu, u8 *crycks)
 {
-	if (apdu->resplen < 3
-	 || memcmp(apdu->resp + apdu->resplen - 3, crycks, 3)) {
-		sc_log(card->ctx, 
-			"Invalid secure messaging reply\n");
+	if (apdu->resplen < 3 || memcmp(apdu->resp + apdu->resplen - 3, crycks, 3)) {
+		sc_log(card->ctx, "Invalid secure messaging reply\n");
 		return SC_ERROR_UNKNOWN_DATA_RECEIVED;
 	}
 	apdu->resplen -= 3;
@@ -808,8 +805,7 @@ gpk_create_file(sc_card_t *card, sc_file_t *file)
 	size_t		datalen, namelen;
 	int		r;
 
-	sc_log(card->ctx, 
-		"gpk_create_file(0x%04X)\n", file->id);
+	sc_log(card->ctx, "gpk_create_file(0x%04X)\n", file->id);
 
 	/* Prepare APDU */
 	memset(&apdu, 0, sizeof(apdu));
@@ -908,10 +904,10 @@ gpk_set_filekey(const u8 *key, const u8 *challenge,
 	if (r == SC_SUCCESS) {
 		EVP_CIPHER_CTX_reset(ctx);
 		EVP_EncryptInit_ex(ctx, EVP_des_ede(), NULL, out, NULL);
-		if (!EVP_EncryptUpdate(ctx, kats+8, &outl, r_rn+4, 8))
+		if (!EVP_EncryptUpdate(ctx, kats + 8, &outl, r_rn + 4, 8))
 			r = SC_ERROR_INTERNAL;
-	if (!EVP_CIPHER_CTX_reset(ctx))
-		r = SC_ERROR_INTERNAL;
+		if (!EVP_CIPHER_CTX_reset(ctx))
+			r = SC_ERROR_INTERNAL;
 	}
 	memset(out, 0, sizeof(out));
 
@@ -965,7 +961,7 @@ gpk_select_key(sc_card_t *card, int key_sfi, const u8 *buf, size_t buflen)
 	apdu.resp = resp;
 	apdu.resplen = sizeof(resp);
 	apdu.le = 12;
-	
+
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
@@ -1044,7 +1040,7 @@ gpk_set_security_env(sc_card_t *card,
 		/* Again, the following may not make any difference
 		 * because we don't do any hashing on-card. But
 		 * what the hell, we have all those nice macros,
-		 * so why not use them :) 
+		 * so why not use them :)
 		 */
 		if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA1) {
 			context = GPK_SIGN_RSA_SHA;
@@ -1237,9 +1233,8 @@ gpk_compute_signature(sc_card_t *card, const u8 *data,
 	int		r;
 
 	if (data_len > priv->sec_mod_len) {
-		sc_log(card->ctx, 
-			 "Data length (%"SC_FORMAT_LEN_SIZE_T"u) does not match key modulus %u.\n",
-			 data_len, priv->sec_mod_len);
+		sc_log(card->ctx, "Data length (%" SC_FORMAT_LEN_SIZE_T "u) does not match key modulus %u.\n",
+				data_len, priv->sec_mod_len);
 		return SC_ERROR_INTERNAL;
 	}
 	if (sizeof(cardsig) < priv->sec_mod_len)
@@ -1291,9 +1286,8 @@ gpk_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 	int		r;
 
 	if (inlen != priv->sec_mod_len) {
-		sc_log(card->ctx, 
-			 "Data length (%"SC_FORMAT_LEN_SIZE_T"u) does not match key modulus %u.\n",
-			 inlen, priv->sec_mod_len);
+		sc_log(card->ctx, "Data length (%" SC_FORMAT_LEN_SIZE_T "u) does not match key modulus %u.\n",
+				inlen, priv->sec_mod_len);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
@@ -1388,8 +1382,7 @@ gpk_lock(sc_card_t *card, struct sc_cardctl_gpk_lock *args)
 	u8		data[8], crycks[3], resp[3];
 	int		r;
 
-	sc_log(card->ctx, 
-		"gpk_lock(0x%04X, %u)\n", file->id, args->operation);
+	sc_log(card->ctx, "gpk_lock(0x%04X, %u)\n", file->id, args->operation);
 
 	memset(data, 0, sizeof(data));
 	data[0] = file->id >> 8;
@@ -1445,8 +1438,7 @@ gpk_pkfile_init(sc_card_t *card, struct sc_cardctl_gpk_pkinit *args)
 	sc_apdu_t	apdu;
 	int		r;
 
-	sc_log(card->ctx, 
-		"gpk_pkfile_init(%u)\n", args->privlen);
+	sc_log(card->ctx, "gpk_pkfile_init(%u)\n", args->privlen);
 
 	memset(&apdu, 0, sizeof(apdu));
 	apdu.cse = SC_APDU_CASE_1;
@@ -1473,12 +1465,9 @@ gpk_generate_key(sc_card_t *card, struct sc_cardctl_gpk_genkey *args)
 	int		r;
 	u8		buffer[256];
 
-	sc_log(card->ctx, 
-		"gpk_generate_key(%u)\n", args->privlen);
+	sc_log(card->ctx, "gpk_generate_key(%u)\n", args->privlen);
 	if (args->privlen != 512 && args->privlen != 1024) {
-		sc_log(card->ctx, 
-			"Key generation not supported for key length %d",
-			args->privlen);
+		sc_log(card->ctx, "Key generation not supported for key length %d", args->privlen);
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
@@ -1605,7 +1594,7 @@ static int gpk_get_info(sc_card_t *card, int p1, int p2, u8 *buf,
 	 * but the host failed to collect the results.
 	 *
 	 * Note the additional sc_lock/sc_unlock pair, which
-	 * is required to prevent sc_transmit_apdu from 
+	 * is required to prevent sc_transmit_apdu from
 	 * calling logout(), which in turn does a SELECT MF
 	 * without collecting the response :)
 	 */

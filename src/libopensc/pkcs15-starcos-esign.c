@@ -1,5 +1,5 @@
 /**
- * PKCS15 emulation layer for Giesecke & Devrient StarCOS 3.x cards 
+ * PKCS15 emulation layer for Giesecke & Devrient StarCOS 3.x cards
  * with eSign application
  *
  * Copyright (C) 2022, jozsefd
@@ -23,11 +23,11 @@
 #include <config.h>
 #endif
 
+#include "cards.h"
 #include "common/compat_strlcpy.h"
 #include "internal.h"
 #include "log.h"
 #include "pkcs15.h"
-#include "cards.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -134,7 +134,7 @@ add_app(sc_pkcs15_card_t *p15card, const container *containers, int container_co
 		sc_format_path(containers[i].certdata->path, &cert_info.path);
 
 		r = get_cert_size(card, &cert_info.path, &cert_size);
-		if ( r != SC_SUCCESS ) {
+		if (r != SC_SUCCESS) {
 			sc_log(card->ctx, "Failed to determine size of certificate %s, ignoring container", containers[i].certdata->label);
 			continue;
 		}
@@ -244,7 +244,7 @@ add_app(sc_pkcs15_card_t *p15card, const container *containers, int container_co
  * Depending on the card profile, some containers may be missing.
  * Both RSA keys are protected with the UserPIN. The app may have a PUK, not
  * supported by this emulator.
- * 
+ *
  * The issuer certificates are not included by default, define ENABLE_ESIGN_ISSUER_CONTAINERS
  * to enable them.
  */
@@ -254,8 +254,8 @@ starcos_add_esign_app(sc_pkcs15_card_t *p15card)
 	static cdata auth_cert = {"C.CH.AUT", 0, "3F00060843F1", "1", 0};
 	static cdata encr_cert = {"C.CH.ENC", 0, "3F0006084301", "2", 0};
 #ifdef ENABLE_ESIGN_ISSUER_CONTAINERS
-	const cdata auth_root_cert = { "C.RootCA_Auth", 1, "3F00060843F0", "3", 0 };
-	const cdata encr_root_cert = { "C.RootCA_Enc", 1, "3F0006084300", "4", 0 };
+	const cdata auth_root_cert = {"C.RootCA_Auth", 1, "3F00060843F0", "3", 0};
+	const cdata encr_root_cert = {"C.RootCA_Enc", 1, "3F0006084300", "4", 0};
 #endif
 
 	static prdata auth_key = {"1", "PrK.CH.AUT", 2048, USAGE_AUT, "3F000608", 0x81, "1", SC_PKCS15_CO_FLAG_PRIVATE};
@@ -273,8 +273,8 @@ starcos_add_esign_app(sc_pkcs15_card_t *p15card)
 			{"1", &auth_cert, auth, &auth_key},
 			{"2", &encr_cert, auth, &encr_key},
 #ifdef ENABLE_ESIGN_ISSUER_CONTAINERS
-			{ "3", &auth_root_cert, 0, 0 },
-			{ "4", &encr_root_cert, 0, 0 },
+			{"3", &auth_root_cert, 0, 0},
+			{"4", &encr_root_cert, 0, 0},
 #endif
 	};
 

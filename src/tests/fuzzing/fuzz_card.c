@@ -25,8 +25,8 @@
 
 #include "fuzzer_reader.h"
 
-
-int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
+int
+LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
 	sc_context_t     *ctx = NULL;
 	sc_card_t        *card = NULL;
@@ -47,7 +47,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 	if (size <= sizeof(unsigned long) + 1)
 		return 0;
 
-	flag = *((unsigned long *) data);
+	flag = *((unsigned long *)data);
 	len = *(data + sizeof(unsigned long));
 	data += (sizeof(unsigned long) + sizeof(uint8_t));
 	size -= (sizeof(unsigned long) + sizeof(uint8_t));

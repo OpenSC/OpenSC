@@ -75,19 +75,19 @@ static sc_card_t *card = NULL;
 static int interactive = 1;
 
 static const struct option options[] = {
-	{ "reader",		1, NULL, 'r' },
-	{ "card-driver",	1, NULL, 'c' },
-	{ "mf",			1, NULL, 'm' },
-	{ "wait",		0, NULL, 'w' },
-	{ "verbose",		0, NULL, 'v' },
-	{ NULL, 0, NULL, 0 }
+		{"reader",      1, NULL, 'r'},
+		{"card-driver", 1, NULL, 'c'},
+		{"mf",          1, NULL, 'm'},
+		{"wait",        0, NULL, 'w'},
+		{"verbose",     0, NULL, 'v'},
+		{NULL, 0, NULL, 0},
 };
 static const char *option_help[] = {
-	"Uses reader number <arg> [0]",
-	"Forces the use of driver <arg> [auto-detect; '?' for list]",
-	"Selects path <arg> on start-up, or none if empty [3F00]",
-	"Wait for card insertion",
-	"Verbose operation, may be used several times",
+		"Uses reader number <arg> [0]",
+		"Forces the use of driver <arg> [auto-detect; '?' for list]",
+		"Selects path <arg> on start-up, or none if empty [3F00]",
+		"Wait for card insertion",
+		"Verbose operation, may be used several times",
 };
 
 /* declare functions called by user commands */

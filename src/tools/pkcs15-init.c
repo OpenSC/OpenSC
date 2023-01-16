@@ -38,22 +38,22 @@
 #ifdef HAVE_STRING_H
 #include <string.h>
 #endif
-#include <openssl/opensslv.h>
 #include "libopensc/sc-ossl-compat.h"
+#include <openssl/bn.h>
 #include <openssl/conf.h>
-#include <openssl/evp.h>
-#include <openssl/pem.h>
+#include <openssl/crypto.h>
 #include <openssl/err.h>
+#include <openssl/evp.h>
+#include <openssl/opensslconf.h> /* for OPENSSL_NO_EC */
+#include <openssl/opensslv.h>
+#include <openssl/pem.h>
+#include <openssl/pkcs12.h>
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
-#include <openssl/bn.h>
-#include <openssl/pkcs12.h>
 #include <openssl/x509v3.h>
-#include <openssl/crypto.h>
-#include <openssl/opensslconf.h> /* for OPENSSL_NO_EC */
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
-# include <openssl/core_names.h>
-# include <openssl/param_build.h>
+#include <openssl/core_names.h>
+#include <openssl/param_build.h>
 #endif
 #ifndef OPENSSL_NO_EC
 #include <openssl/ec.h>
@@ -158,134 +158,134 @@ enum {
 	OPT_USE_PINPAD_DEPRECATED
 };
 
-const struct option	options[] = {
-	{ "version",		0, NULL,			OPT_VERSION },
-	{ "erase-card",		no_argument, NULL,		'E' },
-	{ "create-pkcs15",	no_argument, NULL,		'C' },
-	{ "store-pin",		no_argument, NULL,		'P' },
-	{ "generate-key",	required_argument, NULL,	'G' },
-	{ "store-private-key",	required_argument, NULL,	'S' },
-	{ "store-public-key",	required_argument, NULL,	OPT_PUBKEY },
-	{ "store-secret-key",	required_argument, NULL,	OPT_SECRKEY },
-	{ "store-certificate",	required_argument, NULL,	'X' },
-	{ "update-certificate",	required_argument, NULL,	'U' },
-	{ "store-data",		required_argument, NULL,	'W' },
-	{ "delete-objects",	required_argument, NULL,	'D' },
-	{ "change-attributes",	required_argument, NULL,	'A' },
-	{ "sanity-check",	no_argument, NULL,		OPT_SANITY_CHECK},
-	{ "erase-application",	required_argument, NULL,	OPT_ERASE_APPLICATION},
+const struct option options[] = {
+		{"version",		0, NULL,			OPT_VERSION},
+		{"erase-card",		no_argument, NULL,		'E'},
+		{"create-pkcs15",	no_argument, NULL,		'C'},
+		{"store-pin",		no_argument, NULL,		'P'},
+		{"generate-key",	required_argument, NULL,	'G'},
+		{"store-private-key",	required_argument, NULL,	'S'},
+		{"store-public-key",	required_argument, NULL,	OPT_PUBKEY},
+		{"store-secret-key",	required_argument, NULL,	OPT_SECRKEY},
+		{"store-certificate",	required_argument, NULL,	'X'},
+		{"update-certificate",	required_argument, NULL,	'U'},
+		{"store-data",		required_argument, NULL,	'W'},
+		{"delete-objects",	required_argument, NULL,	'D'},
+		{"change-attributes",	required_argument, NULL,	'A'},
+		{"sanity-check",	no_argument, NULL,		OPT_SANITY_CHECK},
+		{"erase-application",	required_argument, NULL,	OPT_ERASE_APPLICATION},
 
-	{ "reader",		required_argument, NULL,	'r' },
-	{ "pin",		required_argument, NULL,	OPT_PIN1 },
-	{ "puk",		required_argument, NULL,	OPT_PUK1 },
-	{ "so-pin",		required_argument, NULL,	OPT_PIN2 },
-	{ "so-puk",		required_argument, NULL,	OPT_PUK2 },
-	{ "no-so-pin",		no_argument,	   NULL,	OPT_NO_SOPIN },
-	{ "serial",		required_argument, NULL,	OPT_SERIAL },
-	{ "auth-id",		required_argument, NULL,	'a' },
-	{ "puk-id",		required_argument, NULL,	OPT_PUK_ID },
-	{ "verify-pin",         no_argument,	   NULL,	OPT_VERIFY_PIN },
-	{ "id",			required_argument, NULL,	'i' },
-	{ "label",		required_argument, NULL,	'l' },
-	{ "puk-label",		required_argument, NULL,	OPT_PUK_LABEL },
-	{ "secret-key-algorithm", required_argument, NULL,	OPT_SECRKEY_ALGO },
-	{ "public-key-label",	required_argument, NULL,	OPT_PUBKEY_LABEL },
-	{ "cert-label",		required_argument, NULL,	OPT_CERT_LABEL },
-	{ "application-name",	required_argument, NULL,	OPT_APPLICATION_NAME },
-	{ "application-id",	required_argument, NULL,	OPT_APPLICATION_ID },
-	{ "aid",		required_argument, NULL,        OPT_BIND_TO_AID },
-	{ "output-file",	required_argument, NULL,	'o' },
-	{ "format",		required_argument, NULL,	'f' },
-	{ "passphrase",		required_argument, NULL,	OPT_PASSPHRASE },
-	{ "authority",		no_argument,	   NULL,	OPT_AUTHORITY },
-	{ "key-usage",		required_argument, NULL,	'u' },
-	{ "finalize",		no_argument,       NULL,	'F' },
-	{ "update-last-update", no_argument,       NULL,        OPT_UPDATE_LAST_UPDATE},
-	{ "ignore-ca-certificates",no_argument,    NULL,	OPT_IGNORE_CA_CERTIFICATES},
-	{ "update-existing",	no_argument,       NULL,	OPT_UPDATE_EXISTING},
+		{"reader",		required_argument, NULL,	'r'},
+		{"pin",		required_argument, NULL,	OPT_PIN1},
+		{"puk",		required_argument, NULL,	OPT_PUK1},
+		{"so-pin",		required_argument, NULL,	OPT_PIN2},
+		{"so-puk",		required_argument, NULL,	OPT_PUK2},
+		{"no-so-pin",		no_argument,	   NULL,	OPT_NO_SOPIN},
+		{"serial",		required_argument, NULL,	OPT_SERIAL},
+		{"auth-id",		required_argument, NULL,	'a'},
+		{"puk-id",		required_argument, NULL,	OPT_PUK_ID},
+		{"verify-pin",         no_argument,	   NULL,	OPT_VERIFY_PIN},
+		{"id",			required_argument, NULL,	'i'},
+		{"label",		required_argument, NULL,	'l'},
+		{"puk-label",		required_argument, NULL,	OPT_PUK_LABEL},
+		{"secret-key-algorithm", required_argument, NULL,	OPT_SECRKEY_ALGO},
+		{"public-key-label",	required_argument, NULL,	OPT_PUBKEY_LABEL},
+		{"cert-label",		required_argument, NULL,	OPT_CERT_LABEL},
+		{"application-name",	required_argument, NULL,	OPT_APPLICATION_NAME},
+		{"application-id",	required_argument, NULL,	OPT_APPLICATION_ID},
+		{"aid",		required_argument, NULL,        OPT_BIND_TO_AID},
+		{"output-file",	required_argument, NULL,	'o'},
+		{"format",		required_argument, NULL,	'f'},
+		{"passphrase",		required_argument, NULL,	OPT_PASSPHRASE},
+		{"authority",		no_argument,	   NULL,	OPT_AUTHORITY},
+		{"key-usage",		required_argument, NULL,	'u'},
+		{"finalize",		no_argument,       NULL,	'F'},
+		{"update-last-update", no_argument,       NULL,        OPT_UPDATE_LAST_UPDATE},
+		{"ignore-ca-certificates",no_argument,    NULL,	OPT_IGNORE_CA_CERTIFICATES},
+		{"update-existing",	no_argument,       NULL,	OPT_UPDATE_EXISTING},
 
-	{ "extractable",	no_argument, NULL,		OPT_EXTRACTABLE },
-	{ "user-consent",	required_argument, NULL, OPT_USER_CONSENT},
-	{ "insecure",		no_argument, NULL,		OPT_INSECURE },
-	{ "use-default-transport-keys",
-				no_argument, NULL,		'T' },
-	{ "use-pinpad",		no_argument, NULL,		OPT_USE_PINPAD },
-	{ "no-prompt",		no_argument, NULL,		OPT_USE_PINPAD_DEPRECATED },
+		{"extractable",	no_argument, NULL,		OPT_EXTRACTABLE},
+		{"user-consent",	required_argument, NULL, OPT_USER_CONSENT},
+		{"insecure",		no_argument, NULL,		OPT_INSECURE},
+		{"use-default-transport-keys",
+		   		no_argument, NULL,		'T'},
+		{"use-pinpad",		no_argument, NULL,		OPT_USE_PINPAD},
+		{"no-prompt",		no_argument, NULL,		OPT_USE_PINPAD_DEPRECATED},
 
-	{ "profile",		required_argument, NULL,	'p' },
-	{ "card-profile",	required_argument, NULL,	'c' },
-	{ "md-container-guid",	required_argument, NULL,	OPT_MD_CONTAINER_GUID},
-	{ "wait",		no_argument, NULL,		'w' },
-	{ "help",		no_argument, NULL,		'h' },
-	{ "verbose",		no_argument, NULL,		'v' },
+		{"profile",		required_argument, NULL,	'p'},
+		{"card-profile",	required_argument, NULL,	'c'},
+		{"md-container-guid",	required_argument, NULL,	OPT_MD_CONTAINER_GUID},
+		{"wait",		no_argument, NULL,		'w'},
+		{"help",		no_argument, NULL,		'h'},
+		{"verbose",		no_argument, NULL,		'v'},
 
-	/* Hidden options for testing */
-	{ "assert-pristine",	no_argument, NULL,		OPT_ASSERT_PRISTINE },
-	{ "secret",		required_argument, NULL,	OPT_SECRET },
-	{ NULL, 0, NULL, 0 }
+		/* Hidden options for testing */
+		{"assert-pristine",	no_argument, NULL,		OPT_ASSERT_PRISTINE},
+		{"secret",		required_argument, NULL,	OPT_SECRET},
+		{NULL, 0, NULL, 0},
 };
-static const char *		option_help[] = {
-	"Print OpenSC package version",
-	"Erase the smart card",
-	"Creates a new PKCS #15 structure",
-	"Store a new PIN/PUK on the card",
-	"Generate a new key and store it on the card",
-	"Store private key",
-	"Store public key",
-	"Store secret key",
-	"Store an X.509 certificate",
-	"Update an X.509 certificate (careful with mail decryption certs!!)",
-	"Store a data object",
-	"Delete object(s) (use \"help\" for more information)",
-	"Change attribute(s) (use \"help\" for more information)",
-	"Card specific sanity check and possibly update procedure",
-	"Erase application with AID <arg>",
+static const char *option_help[] = {
+		"Print OpenSC package version",
+		"Erase the smart card",
+		"Creates a new PKCS #15 structure",
+		"Store a new PIN/PUK on the card",
+		"Generate a new key and store it on the card",
+		"Store private key",
+		"Store public key",
+		"Store secret key",
+		"Store an X.509 certificate",
+		"Update an X.509 certificate (careful with mail decryption certs!!)",
+		"Store a data object",
+		"Delete object(s) (use \"help\" for more information)",
+		"Change attribute(s) (use \"help\" for more information)",
+		"Card specific sanity check and possibly update procedure",
+		"Erase application with AID <arg>",
 
-	"Specify which reader to use",
-	"Specify PIN",
-	"Specify unblock PIN",
-	"Specify security officer (SO) PIN",
-	"Specify unblock PIN for SO PIN",
-	"Do not install a SO PIN, and do not prompt for it",
-	"Specify the serial number of the card",
-	"Specify ID of PIN to use/create",
-	"Specify ID of PUK to use/create",
-	"Verify PIN after card binding (use with --auth-id)",
-	"Specify ID of key/certificate",
-	"Specify label of PIN/key",
-	"Specify label of PUK",
-	"Specify secret key algorithm (use with --store-secret-key)",
-	"Specify public key label (use with --generate-key)",
-	"Specify user cert label (use with --store-private-key)",
-	"Specify application name of data object (use with --store-data-object)",
-	"Specify application id of data object (use with --store-data-object)",
-	"Specify AID of the on-card PKCS#15 application to be binded to (in hexadecimal form)",
-	"Output public portion of generated key to file",
-	"Specify key/cert file format: PEM (=default), DER or PKCS12",
-	"Specify passphrase for unlocking secret key",
-	"Mark certificate as a CA certificate",
-	"Specify X.509 key usage (use \"--key-usage help\" for more information)",
-	"Finish initialization phase of the smart card",
-	"Update 'lastUpdate' attribute of tokenInfo",
-	"When storing PKCS#12 ignore CA certificates",
-	"Store or update existing certificate",
+		"Specify which reader to use",
+		"Specify PIN",
+		"Specify unblock PIN",
+		"Specify security officer (SO) PIN",
+		"Specify unblock PIN for SO PIN",
+		"Do not install a SO PIN, and do not prompt for it",
+		"Specify the serial number of the card",
+		"Specify ID of PIN to use/create",
+		"Specify ID of PUK to use/create",
+		"Verify PIN after card binding (use with --auth-id)",
+		"Specify ID of key/certificate",
+		"Specify label of PIN/key",
+		"Specify label of PUK",
+		"Specify secret key algorithm (use with --store-secret-key)",
+		"Specify public key label (use with --generate-key)",
+		"Specify user cert label (use with --store-private-key)",
+		"Specify application name of data object (use with --store-data-object)",
+		"Specify application id of data object (use with --store-data-object)",
+		"Specify AID of the on-card PKCS#15 application to be binded to (in hexadecimal form)",
+		"Output public portion of generated key to file",
+		"Specify key/cert file format: PEM (=default), DER or PKCS12",
+		"Specify passphrase for unlocking secret key",
+		"Mark certificate as a CA certificate",
+		"Specify X.509 key usage (use \"--key-usage help\" for more information)",
+		"Finish initialization phase of the smart card",
+		"Update 'lastUpdate' attribute of tokenInfo",
+		"When storing PKCS#12 ignore CA certificates",
+		"Store or update existing certificate",
 
-	"Private key stored as an extractable key",
-	"Set userConsent. Default = 0",
-	"Insecure mode: do not require a PIN for private key",
-	"Do not ask for transport keys if the driver thinks it knows the key",
-	"Do not prompt the user; if no PINs supplied, pinpad will be used",
-	NULL,
+		"Private key stored as an extractable key",
+		"Set userConsent. Default = 0",
+		"Insecure mode: do not require a PIN for private key",
+		"Do not ask for transport keys if the driver thinks it knows the key",
+		"Do not prompt the user; if no PINs supplied, pinpad will be used",
+		NULL,
 
-	"Specify the general profile to use",
-	"Specify the card profile to use",
-	"For a new key specify GUID for a MD container",
-	"Wait for card insertion",
-	"Display this message",
-	"Verbose operation, may be used several times",
+		"Specify the general profile to use",
+		"Specify the card profile to use",
+		"For a new key specify GUID for a MD container",
+		"Wait for card insertion",
+		"Display this message",
+		"Verbose operation, may be used several times",
 
-	NULL,
-	NULL,
+		NULL,
+		NULL,
 };
 
 enum {
@@ -312,24 +312,24 @@ enum {
 	ACTION_MAX
 };
 static const char *action_names[] = {
-	"do nothing",
-	"verify that card is pristine",
-	"erase card",
-	"create PKCS #15 meta structure",
-	"delete object(s)",
-	"store PIN",
-	"generate key",
-	"store private key",
-	"store public key",
-	"store secret key",
-	"store certificate",
-	"update certificate",
-	"store data object",
-	"finalizing card",
-	"change attribute(s)",
-	"check card's sanity",
-	"update 'last-update'",
-	"erase application"
+		"do nothing",
+		"verify that card is pristine",
+		"erase card",
+		"create PKCS #15 meta structure",
+		"delete object(s)",
+		"store PIN",
+		"generate key",
+		"store private key",
+		"store public key",
+		"store secret key",
+		"store certificate",
+		"update certificate",
+		"store data object",
+		"finalizing card",
+		"change attribute(s)",
+		"check card's sanity",
+		"update 'last-update'",
+		"erase application",
 };
 
 #define MAX_CERTS		4
@@ -712,17 +712,17 @@ struct alg_spec {
 };
 
 static const struct alg_spec alg_types_sym[] = {
-	{ "des",	SC_ALGORITHM_DES,	64 },
-	{ "3des",	SC_ALGORITHM_3DES,	192 },
-	{ "aes",	SC_ALGORITHM_AES,	128 },
-	{ NULL, -1, 0 }
+		{"des", SC_ALGORITHM_DES, 64},
+		{"3des", SC_ALGORITHM_3DES, 192},
+		{"aes", SC_ALGORITHM_AES, 128},
+		{NULL, -1, 0},
 };
 
 static const struct alg_spec alg_types_asym[] = {
-	{ "rsa",	SC_ALGORITHM_RSA,	1024 },
-	{ "gost2001",	SC_ALGORITHM_GOSTR3410,	SC_PKCS15_GOSTR3410_KEYSIZE },
-	{ "ec",		SC_ALGORITHM_EC,	0 },
-	{ NULL, -1, 0 }
+		{"rsa", SC_ALGORITHM_RSA, 1024},
+		{"gost2001", SC_ALGORITHM_GOSTR3410, SC_PKCS15_GOSTR3410_KEYSIZE},
+		{"ec", SC_ALGORITHM_EC, 0},
+		{NULL, -1, 0},
 };
 
 static int
@@ -1492,7 +1492,7 @@ static int get_cert_info(sc_pkcs15_card_t *myp15card, sc_pkcs15_object_t *certob
 	*stop = 0;
 
 	private_obj = certobj->flags & SC_PKCS15_CO_FLAG_PRIVATE;
-	r = sc_pkcs15_read_certificate(myp15card, (sc_pkcs15_cert_info_t *) certobj->data, private_obj, &cert);
+	r = sc_pkcs15_read_certificate(myp15card, (sc_pkcs15_cert_info_t *)certobj->data, private_obj, &cert);
 	if (r < 0)
 		return r;
 
@@ -1510,7 +1510,7 @@ static int get_cert_info(sc_pkcs15_card_t *myp15card, sc_pkcs15_object_t *certob
 		}
 
 		private_obj = otherobj->flags & SC_PKCS15_CO_FLAG_PRIVATE;
-		r = sc_pkcs15_read_certificate(myp15card, (sc_pkcs15_cert_info_t *) otherobj->data, private_obj, &othercert);
+		r = sc_pkcs15_read_certificate(myp15card, (sc_pkcs15_cert_info_t *)otherobj->data, private_obj, &othercert);
 		if (r < 0 || !othercert)
 			goto done;
 		if ((cert->issuer_len == othercert->subject_len) &&

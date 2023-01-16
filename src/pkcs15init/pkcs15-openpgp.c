@@ -461,7 +461,7 @@ static int openpgp_store_data(struct sc_pkcs15_card *p15card, struct sc_profile 
 		/* OpenPGP card < v.3 does not support SELECT DATA calls */
 		if (p15card->card->type >= SC_CARD_TYPE_OPENPGP_V3) {
 			/* Mapping [3..1] passed --id to [0..2] for param */
-			u8 param = (u8) (2 - (cid->value[0] - 1));
+			u8 param = (u8)(2 - (cid->value[0] - 1));
 			/* check for unsigned underflow */
 			if (param > 2) {
 				LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
@@ -477,11 +477,9 @@ static int openpgp_store_data(struct sc_pkcs15_card *p15card, struct sc_profile 
 
 		LOG_TEST_RET(card->ctx, r, "Cannot select cert file");
 		r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_UPDATE);
-		sc_log(card->ctx,
-		       "Data to write is %"SC_FORMAT_LEN_SIZE_T"u long",
-		       content->len);
+		sc_log(card->ctx, "Data to write is %" SC_FORMAT_LEN_SIZE_T "u long", content->len);
 		if (r >= 0 && content->len)
-			r = sc_put_data(p15card->card, tag, (const unsigned char *) content->value, content->len);
+			r = sc_put_data(p15card->card, tag, (const unsigned char *)content->value, content->len);
 		break;
 
 	case SC_PKCS15_TYPE_DATA_OBJECT:

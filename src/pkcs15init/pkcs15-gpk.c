@@ -77,18 +77,17 @@ struct pkdata {
 /*
  * Local functions
  */
-static int	gpk_pkfile_create(sc_profile_t *, sc_pkcs15_card_t *, sc_file_t *);
-static int	gpk_encode_rsa_key(sc_profile_t *, sc_card_t *,
-			struct sc_pkcs15_prkey_rsa *, struct pkdata *,
-			struct sc_pkcs15_prkey_info *);
-static int	gpk_store_pk(struct sc_profile *, sc_pkcs15_card_t *,
-			sc_file_t *, struct pkdata *);
-static int	gpk_init_pinfile(sc_profile_t *, sc_pkcs15_card_t *, sc_file_t *);
-static int	gpk_pkfile_init_public(sc_profile_t *, sc_pkcs15_card_t *,
-			sc_file_t *, unsigned int, unsigned int, unsigned int);
-static int	gpk_pkfile_init_private(sc_card_t *, sc_file_t *, unsigned int);
-static int	gpk_read_rsa_key(sc_card_t *, struct sc_pkcs15_pubkey_rsa *);
-
+static int gpk_pkfile_create(sc_profile_t *, sc_pkcs15_card_t *, sc_file_t *);
+static int gpk_encode_rsa_key(sc_profile_t *, sc_card_t *,
+		struct sc_pkcs15_prkey_rsa *, struct pkdata *,
+		struct sc_pkcs15_prkey_info *);
+static int gpk_store_pk(struct sc_profile *, sc_pkcs15_card_t *,
+		sc_file_t *, struct pkdata *);
+static int gpk_init_pinfile(sc_profile_t *, sc_pkcs15_card_t *, sc_file_t *);
+static int gpk_pkfile_init_public(sc_profile_t *, sc_pkcs15_card_t *,
+		sc_file_t *, unsigned int, unsigned int, unsigned int);
+static int gpk_pkfile_init_private(sc_card_t *, sc_file_t *, unsigned int);
+static int gpk_read_rsa_key(sc_card_t *, struct sc_pkcs15_pubkey_rsa *);
 
 /*
  * Erase the card
@@ -98,11 +97,9 @@ gpk_erase_card(struct sc_profile *pro, sc_pkcs15_card_t *p15card)
 {
 	int	locked;
 
-	if (sc_card_ctl(p15card->card, SC_CARDCTL_GPK_IS_LOCKED, &locked) == 0
-	 && locked) {
-		sc_log(p15card->card->ctx, 
-			"This card is already personalized, unable to "
-			"create PKCS#15 structure.");
+	if (sc_card_ctl(p15card->card, SC_CARDCTL_GPK_IS_LOCKED, &locked) == 0 && locked) {
+		sc_log(p15card->card->ctx,
+				"This card is already personalized, unable to create PKCS#15 structure.");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	return sc_card_ctl(p15card->card, SC_CARDCTL_ERASE_CARD, NULL);
@@ -119,11 +116,9 @@ gpk_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df)
 	int		r, locked;
 
 	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
-	if (sc_card_ctl(p15card->card, SC_CARDCTL_GPK_IS_LOCKED, &locked) == 0
-			&& locked) {
-		sc_log(p15card->card->ctx, 
-			"This card is already personalized, unable to "
-			"create PKCS#15 structure.");
+	if (sc_card_ctl(p15card->card, SC_CARDCTL_GPK_IS_LOCKED, &locked) == 0 && locked) {
+		sc_log(p15card->card->ctx,
+				"This card is already personalized, unable to create PKCS#15 structure.");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
@@ -335,8 +330,7 @@ gpk_init_pinfile(struct sc_profile *profile, sc_pkcs15_card_t *p15card,
 	/* Create the PIN file. */
 	acl = sc_file_get_acl_entry(pinfile, SC_AC_OP_WRITE);
 	if (acl->method != SC_AC_NEVER) {
-		sc_log(p15card->card->ctx, 
-			"PIN file most be protected by WRITE=NEVER");
+		sc_log(p15card->card->ctx, "PIN file most be protected by WRITE=NEVER");
 		sc_file_free(pinfile);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
@@ -429,7 +423,8 @@ gpk_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_pkcs15_objec
 
 	switch (obj->type) {
 	case SC_PKCS15_TYPE_PRKEY_RSA:
-		algo = SC_ALGORITHM_RSA; break;
+		algo = SC_ALGORITHM_RSA;
+		break;
 	default:
 		sc_log(p15card->card->ctx,  "Unsupported public key algorithm");
 		return SC_ERROR_NOT_SUPPORTED;
@@ -504,15 +499,14 @@ gpk_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
                         sc_pkcs15_pubkey_t *pubkey)
 {
 	struct sc_cardctl_gpk_genkey args;
-	sc_pkcs15_prkey_info_t *key_info = (sc_pkcs15_prkey_info_t *) obj->data;
+	sc_pkcs15_prkey_info_t *key_info = (sc_pkcs15_prkey_info_t *)obj->data;
 	unsigned int    keybits;
 	sc_file_t	*keyfile;
 	int             r, n;
 
-	sc_log(p15card->card->ctx, 
-		 "path=%s, %"SC_FORMAT_LEN_SIZE_T"u bits\n",
-		 sc_print_path(&key_info->path),
-		 key_info->modulus_length);
+	sc_log(p15card->card->ctx, "path=%s, %" SC_FORMAT_LEN_SIZE_T "u bits\n",
+			sc_print_path(&key_info->path),
+			key_info->modulus_length);
 
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
 		sc_log(p15card->card->ctx,  "GPK supports generating only RSA keys.");
@@ -607,7 +601,9 @@ static int
 gpk_pkfile_keyalgo(unsigned int algo, unsigned char *p)
 {
 	switch (algo) {
-	case SC_ALGORITHM_RSA: *p = 0x00; return 0;
+	case SC_ALGORITHM_RSA:
+		*p = 0x00;
+		return 0;
 	}
 	return SC_ERROR_NOT_SUPPORTED;
 }
@@ -919,22 +915,20 @@ gpk_add_bignum(struct pkpart *part, unsigned int tag,
 	/* printf("TAG 0x%02x, len=%u\n", tag, comp->size); */
 }
 
-static int gpk_encode_rsa_key(sc_profile_t *profile, sc_card_t *card,
+static int
+gpk_encode_rsa_key(sc_profile_t *profile, sc_card_t *card,
 		struct sc_pkcs15_prkey_rsa *rsa, struct pkdata *p,
 		sc_pkcs15_prkey_info_t *info)
 {
 	if (!rsa->modulus.len || !rsa->exponent.len) {
-		sc_log(card->ctx, 
-			"incomplete RSA public key");
+		sc_log(card->ctx, "incomplete RSA public key");
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
 	/* Make sure the exponent is 0x10001 because that's
 	 * the only exponent supported by GPK4000 and GPK8000 */
-	if (rsa->exponent.len != 3
-	 || memcmp(rsa->exponent.data, "\001\000\001", 3)) {
-		sc_log(card->ctx, 
-			"unsupported RSA exponent");
+	if (rsa->exponent.len != 3 || memcmp(rsa->exponent.data, "\001\000\001", 3)) {
+		sc_log(card->ctx, "unsupported RSA exponent");
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
@@ -952,8 +946,7 @@ static int gpk_encode_rsa_key(sc_profile_t *profile, sc_card_t *card,
 	if (!rsa->p.len || !rsa->q.len || !rsa->dmp1.len || !rsa->dmq1.len || !rsa->iqmp.len) {
 		/* No or incomplete CRT information */
 		if (!rsa->d.len) {
-			sc_log(card->ctx, 
-				"incomplete RSA private key");
+			sc_log(card->ctx, "incomplete RSA private key");
 			return SC_ERROR_INVALID_ARGUMENTS;
 		}
 		gpk_add_bignum(&p->_private, 0x04, &rsa->d, 0);

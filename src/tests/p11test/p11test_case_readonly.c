@@ -27,7 +27,7 @@
 #include <openssl/ripemd.h>
 #include <openssl/sha.h>
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
-# include <openssl/provider.h>
+#include <openssl/provider.h>
 #endif
 
 #define MESSAGE_TO_SIGN "Simple message for signing & verifying. " \
@@ -633,7 +633,7 @@ sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech, CK_ULONG
 		return 0;
 	}
 
-	if (o->type != EVP_PKEY_RSA
+	if (o->type != EVP_PKEY_RSA &&
 #ifdef EVP_PKEY_ED25519
 			o->type != EVP_PKEY_ED25519 &&
 #endif

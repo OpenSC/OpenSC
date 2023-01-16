@@ -23,11 +23,11 @@
 #include "config.h"
 #endif
 
-#include "pkcs11/pkcs11.h"
-#include "pkcs11/pkcs11-opensc.h"
-#include "pkcs11/sc-pkcs11.h"
 #include "fuzzer_reader.h"
 #include "fuzzer_tool.h"
+#include "pkcs11/pkcs11-opensc.h"
+#include "pkcs11/pkcs11.h"
+#include "pkcs11/sc-pkcs11.h"
 
 #define SIG_LEN 512
 
@@ -48,8 +48,9 @@ unsigned char *opt_object_label[256];
 CK_BYTE opt_object_id[100];
 CK_MECHANISM_TYPE opt_allowed_mechanisms[20];
 
-#if FUZZING 
-static int fuzz_card_connect(const uint8_t *data, size_t size, sc_pkcs11_slot_t **slot_out)
+#if FUZZING
+static int
+fuzz_card_connect(const uint8_t *data, size_t size, sc_pkcs11_slot_t **slot_out)
 {
 	/* Works in the same manner as card_detect() for only one slot and card with virtual reader */
 	struct sc_pkcs11_card *p11card = NULL;
@@ -63,7 +64,7 @@ static int fuzz_card_connect(const uint8_t *data, size_t size, sc_pkcs11_slot_t 
 
 	/* Erase possible readers from context */
 	while (list_size(&context->readers)) {
-		sc_reader_t *rdr = (sc_reader_t *) list_get_at(&context->readers, 0);
+		sc_reader_t *rdr = (sc_reader_t *)list_get_at(&context->readers, 0);
 		_sc_delete_reader(context, rdr);
 	}
 	if (context->reader_driver->ops->finish != NULL)
@@ -81,7 +82,7 @@ static int fuzz_card_connect(const uint8_t *data, size_t size, sc_pkcs11_slot_t 
 
 	/* Locate a slot related to the reader */
 	for (size_t i = 0; i < list_size(&virtual_slots); i++) {
-		slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, i);
+		slot = (sc_pkcs11_slot_t *)list_get_at(&virtual_slots, i);
 		if (slot->reader == reader) {
 			p11card = slot->p11card;
 			break;
@@ -120,9 +121,9 @@ static int fuzz_card_connect(const uint8_t *data, size_t size, sc_pkcs11_slot_t 
 			goto fail;
 		free_p11card = 0;
 	}
-	
+
 	/* Bind rest of application*/
-	for (int j = 0; j < p11card->card->app_count; j++)   {
+	for (int j = 0; j < p11card->card->app_count; j++) {
 		struct sc_app_info *app_info = p11card->card->app[j];
 
 		if (app_generic && app_generic == p11card->card->app[j])
@@ -147,7 +148,8 @@ fail:
 }
 #endif
 
-static int fuzz_pkcs11_initialize(const uint8_t *data, size_t size, sc_pkcs11_slot_t **slot_out, CK_SESSION_HANDLE *session)
+static int
+fuzz_pkcs11_initialize(const uint8_t *data, size_t size, sc_pkcs11_slot_t **slot_out, CK_SESSION_HANDLE *session)
 {
 	p11 = &pkcs11_function_list_3_0;
 
@@ -156,13 +158,13 @@ static int fuzz_pkcs11_initialize(const uint8_t *data, size_t size, sc_pkcs11_sl
 
 	p11->C_Initialize(NULL);
 
-	#if FUZZING
+#if FUZZING
 	/* fuzz target can connect to real card via C_Initialize */
 	if (fuzz_card_connect(data, size, slot_out) != CKR_OK) {
 		p11->C_Finalize(NULL);
 		return CKR_GENERAL_ERROR;
 	}
-	#endif
+#endif
 
 	if (p11->C_OpenSession(0, CKF_SERIAL_SESSION | CKF_RW_SESSION, NULL, NULL, session) != CKR_OK) {
 		p11->C_Finalize(NULL);
@@ -171,7 +173,8 @@ static int fuzz_pkcs11_initialize(const uint8_t *data, size_t size, sc_pkcs11_sl
 	return CKR_OK;
 }
 
-static int set_mechanism(const uint8_t **data, size_t *size, CK_MECHANISM *mech)
+static int
+set_mechanism(const uint8_t **data, size_t *size, CK_MECHANISM *mech)
 {
 	if (*size < sizeof(unsigned long int))
 		return 1;
@@ -183,7 +186,8 @@ static int set_mechanism(const uint8_t **data, size_t *size, CK_MECHANISM *mech)
 	return 0;
 }
 
-static void test_change_pin(const unsigned char *data, size_t size)
+static void
+test_change_pin(const unsigned char *data, size_t size)
 {
 	CK_SESSION_HANDLE session;
 	CK_TOKEN_INFO     info;
@@ -200,10 +204,10 @@ static void test_change_pin(const unsigned char *data, size_t size)
 	if (fuzz_pkcs11_initialize(data, size, NULL, &session) != CKR_OK)
 		goto end;
 	p11->C_GetTokenInfo(0, &info);
-	p11->C_Login(session, login_type, (CK_UTF8CHAR *) pin, pin == NULL ? 0 : strlen(pin));
+	p11->C_Login(session, login_type, (CK_UTF8CHAR *)pin, pin == NULL ? 0 : strlen(pin));
 	p11->C_SetPIN(session,
-		(CK_UTF8CHAR *) pin, pin == NULL ? 0 : strlen(pin),
-		(CK_UTF8CHAR *) new_pin, new_pin == NULL ? 0 : strlen(new_pin));
+			(CK_UTF8CHAR *)pin, pin == NULL ? 0 : strlen(pin),
+			(CK_UTF8CHAR *)new_pin, new_pin == NULL ? 0 : strlen(new_pin));
 
 	p11->C_CloseSession(session);
 	p11->C_Finalize(NULL);
@@ -212,7 +216,8 @@ end:
 	free(pin);
 }
 
-static void test_init_pin(const unsigned char *data, size_t size)
+static void
+test_init_pin(const unsigned char *data, size_t size)
 {
 	CK_SESSION_HANDLE session;
 	CK_TOKEN_INFO     info;
@@ -229,8 +234,8 @@ static void test_init_pin(const unsigned char *data, size_t size)
 	if (fuzz_pkcs11_initialize(data, size, NULL, &session) != CKR_OK)
 		goto end;
 	p11->C_GetTokenInfo(0, &info);
-	p11->C_Login(session, login_type, (CK_UTF8CHAR *) so_pin, so_pin == NULL ? 0 : strlen(so_pin));
-	p11->C_InitPIN(session, (CK_UTF8CHAR *) pin, pin == NULL ? 0 : strlen(pin));
+	p11->C_Login(session, login_type, (CK_UTF8CHAR *)so_pin, so_pin == NULL ? 0 : strlen(so_pin));
+	p11->C_InitPIN(session, (CK_UTF8CHAR *)pin, pin == NULL ? 0 : strlen(pin));
 
 	p11->C_CloseSession(session);
 	p11->C_Finalize(NULL);
@@ -239,7 +244,8 @@ end:
 	free(so_pin);
 }
 
-static void test_init_token(const unsigned char *data, size_t size)
+static void
+test_init_token(const unsigned char *data, size_t size)
 {
 	CK_SESSION_HANDLE session;
 	char             *pin = NULL;
@@ -252,14 +258,14 @@ static void test_init_token(const unsigned char *data, size_t size)
 
 	if (!(pin = extract_word(&data, &size)))
 		goto end;
-	if (!(label = (unsigned char *) extract_word(&data, &size)))
+	if (!(label = (unsigned char *)extract_word(&data, &size)))
 		goto end;
-	label_len = strlen((char *) label);
+	label_len = strlen((char *)label);
 	memcpy(token_label, label, label_len < 33 ? label_len : 32);
 
 	if (fuzz_pkcs11_initialize(data, size, &slot, &session) != CKR_OK)
 		goto end;
-	p11->C_InitToken(slot->id, (CK_UTF8CHAR *) pin, pin == NULL ? 0 : strlen(pin), token_label);
+	p11->C_InitToken(slot->id, (CK_UTF8CHAR *)pin, pin == NULL ? 0 : strlen(pin), token_label);
 
 	p11->C_CloseSession(session);
 	p11->C_Finalize(NULL);
@@ -268,7 +274,8 @@ end:
 	free(label);
 }
 
-static void test_random(const unsigned char *data, size_t size)
+static void
+test_random(const unsigned char *data, size_t size)
 {
 	CK_SESSION_HANDLE session;
 	size_t            random_len = data[0];
@@ -284,7 +291,8 @@ static void test_random(const unsigned char *data, size_t size)
 	p11->C_Finalize(NULL);
 }
 
-static void test_digest_update(const uint8_t *data, size_t size)
+static void
+test_digest_update(const uint8_t *data, size_t size)
 {
 	CK_SESSION_HANDLE session;
 	const uint8_t    *dig_data = NULL;
@@ -326,7 +334,8 @@ end:
 	p11->C_Finalize(NULL);
 }
 
-void test_digest(const uint8_t *data, size_t size)
+void
+test_digest(const uint8_t *data, size_t size)
 {
 	CK_SESSION_HANDLE session;
 	const uint8_t    *ptr = NULL;
@@ -359,7 +368,8 @@ end:
 	free(dig_data);
 }
 
-static int fuzz_find_object(CK_SESSION_HANDLE sess, CK_OBJECT_CLASS cls,
+static int
+fuzz_find_object(CK_SESSION_HANDLE sess, CK_OBJECT_CLASS cls,
 		CK_OBJECT_HANDLE_PTR ret, const unsigned char *id, size_t id_len)
 {
 	/* taken from tools/pkcs11-tool.c */
@@ -373,7 +383,7 @@ static int fuzz_find_object(CK_SESSION_HANDLE sess, CK_OBJECT_CLASS cls,
 	nattrs++;
 	if (id) {
 		attrs[nattrs].type = CKA_ID;
-		attrs[nattrs].pValue = (void *) id;
+		attrs[nattrs].pValue = (void *)id;
 		attrs[nattrs].ulValueLen = id_len;
 		nattrs++;
 	}
@@ -390,7 +400,8 @@ static int fuzz_find_object(CK_SESSION_HANDLE sess, CK_OBJECT_CLASS cls,
 	return count;
 }
 
-static void test_sign(const uint8_t *data, size_t size)
+static void
+test_sign(const uint8_t *data, size_t size)
 {
 	CK_SESSION_HANDLE    session;
 	uint8_t              login_type = CKU_USER;
@@ -410,7 +421,8 @@ static void test_sign(const uint8_t *data, size_t size)
 	if (set_mechanism(&data, &size, &mech) || size < 3)
 		return;
 	login_type = data[0];
-	data++; size--;
+	data++;
+	size--;
 	if (!(pin = extract_word(&data, &size)))
 		return;
 	opt_id = data;
@@ -425,12 +437,12 @@ static void test_sign(const uint8_t *data, size_t size)
 	if (fuzz_pkcs11_initialize(data, size, NULL, &session) != CKR_OK)
 		goto end;
 	p11->C_GetTokenInfo(0, &info);
-	p11->C_Login(session, login_type, (CK_UTF8CHAR *) pin, strlen(pin));
+	p11->C_Login(session, login_type, (CK_UTF8CHAR *)pin, strlen(pin));
 	fuzz_find_object(session, CKO_PRIVATE_KEY, &key, opt_id_len ? opt_id : NULL, opt_id_len);
 
 	if (p11->C_SignInit(session, &mech, key) != CKR_OK)
 		goto fin;
-	p11->C_Login(session, CKU_CONTEXT_SPECIFIC, (CK_UTF8CHAR *) pin, strlen(pin));
+	p11->C_Login(session, CKU_CONTEXT_SPECIFIC, (CK_UTF8CHAR *)pin, strlen(pin));
 
 	if (sign_data_size <= sizeof(in_buffer)) {
 		memcpy(in_buffer, sign_data, sign_data_size);
@@ -457,7 +469,8 @@ end:
 	free(pin);
 }
 
-static void test_verify(const uint8_t *data, size_t size)
+static void
+test_verify(const uint8_t *data, size_t size)
 {
 	CK_SESSION_HANDLE    session;
 	CK_MECHANISM         mech = {0, NULL_PTR, 0};
@@ -476,7 +489,8 @@ static void test_verify(const uint8_t *data, size_t size)
 	if (set_mechanism(&data, &size, &mech) || size < 3)
 		return;
 	login_type = data[0];
-	data++; size--;
+	data++;
+	size--;
 	if (!(pin = extract_word(&data, &size)))
 		return;
 	opt_id = data;
@@ -496,10 +510,10 @@ static void test_verify(const uint8_t *data, size_t size)
 	if (fuzz_pkcs11_initialize(data, size, NULL, &session) != CKR_OK)
 		goto end;
 
-	p11->C_Login(session, login_type, (CK_UTF8CHAR *) pin, strlen(pin));
+	p11->C_Login(session, login_type, (CK_UTF8CHAR *)pin, strlen(pin));
 
-	if (!fuzz_find_object(session, CKO_PUBLIC_KEY, &key, opt_id_len ? opt_id : NULL, opt_id_len)
-		&& !fuzz_find_object(session, CKO_CERTIFICATE, &key, opt_id_len ? opt_id : NULL, opt_id_len))
+	if (!fuzz_find_object(session, CKO_PUBLIC_KEY, &key, opt_id_len ? opt_id : NULL, opt_id_len) &&
+			!fuzz_find_object(session, CKO_CERTIFICATE, &key, opt_id_len ? opt_id : NULL, opt_id_len))
 		goto fin;
 
 	if (p11->C_VerifyInit(session, &mech, key) != CKR_OK)
@@ -528,7 +542,8 @@ end:
 	free(pin);
 }
 
-static void test_decrypt(const uint8_t *data, size_t size)
+static void
+test_decrypt(const uint8_t *data, size_t size)
 {
 	CK_SESSION_HANDLE    session;
 	uint8_t              login_type = CKU_USER;
@@ -546,7 +561,8 @@ static void test_decrypt(const uint8_t *data, size_t size)
 	if (set_mechanism(&data, &size, &mech) || size < 3)
 		return;
 	login_type = data[0];
-	data++; size--;
+	data++;
+	size--;
 	if (!(pin = extract_word(&data, &size)))
 		return;
 	opt_id = data;
@@ -561,15 +577,15 @@ static void test_decrypt(const uint8_t *data, size_t size)
 	if (fuzz_pkcs11_initialize(data, size, NULL, &session) != CKR_OK)
 		goto end;
 
-	p11->C_Login(session, login_type, (CK_UTF8CHAR *) pin, strlen(pin));
-	if (!fuzz_find_object(session, CKO_PRIVATE_KEY, &key, opt_id_len ? opt_id : NULL, opt_id_len)
-		&& !fuzz_find_object(session, CKO_SECRET_KEY, &key, opt_id_len ? opt_id : NULL, opt_id_len))
+	p11->C_Login(session, login_type, (CK_UTF8CHAR *)pin, strlen(pin));
+	if (!fuzz_find_object(session, CKO_PRIVATE_KEY, &key, opt_id_len ? opt_id : NULL, opt_id_len) &&
+			!fuzz_find_object(session, CKO_SECRET_KEY, &key, opt_id_len ? opt_id : NULL, opt_id_len))
 		goto fin;
 
 	if (p11->C_DecryptInit(session, &mech, key) != CKR_OK)
 		goto fin;
 
-	p11->C_Login(session, CKU_CONTEXT_SPECIFIC, (CK_UTF8CHAR *) pin, strlen(pin));
+	p11->C_Login(session, CKU_CONTEXT_SPECIFIC, (CK_UTF8CHAR *)pin, strlen(pin));
 	out_len = sizeof(out_buffer);
 
 	memcpy(in_buffer, dec_data, dec_data_size);
@@ -581,7 +597,8 @@ end:
 	free(pin);
 }
 
-static void test_wrap(const uint8_t *data, size_t size)
+static void
+test_wrap(const uint8_t *data, size_t size)
 {
 	CK_SESSION_HANDLE    session;
 	uint8_t              login_type = CKU_USER;
@@ -599,7 +616,8 @@ static void test_wrap(const uint8_t *data, size_t size)
 	if (set_mechanism(&data, &size, &mech) || size < 3)
 		return;
 	login_type = data[0];
-	data++; size--;
+	data++;
+	size--;
 	if (!(pin = extract_word(&data, &size)))
 		return;
 	opt_id = data;
@@ -611,7 +629,7 @@ static void test_wrap(const uint8_t *data, size_t size)
 	if (fuzz_pkcs11_initialize(data, size, NULL, &session) != CKR_OK)
 		goto end;
 
-	p11->C_Login(session, login_type, (CK_UTF8CHAR *) pin, strlen(pin));
+	p11->C_Login(session, login_type, (CK_UTF8CHAR *)pin, strlen(pin));
 	if (!fuzz_find_object(session, CKO_SECRET_KEY, &hkey, hkey_id_len ? hkey_id : NULL, hkey_id_len))
 		goto fin;
 	if (!fuzz_find_object(session, CKO_PUBLIC_KEY, &hWrappingKey, opt_id_len ? opt_id : NULL, opt_id_len))
@@ -626,25 +644,27 @@ end:
 	free(pin);
 }
 
-#define FILL_ATTR(attr, typ, val, len) do { \
-	(attr).type=(typ); \
-	(attr).pValue=(val); \
-	(attr).ulValueLen=len; \
-} while(0)
+#define FILL_ATTR(attr, typ, val, len) \
+	do { \
+		(attr).type = (typ); \
+		(attr).pValue = (val); \
+		(attr).ulValueLen = len; \
+	} while (0)
 
-void fill_bool_attr(CK_ATTRIBUTE **keyTemplate, int *n_attr, int type, int value)
+void
+fill_bool_attr(CK_ATTRIBUTE **keyTemplate, int *n_attr, int type, int value)
 {
 	if (value) {
 		FILL_ATTR((*keyTemplate)[*n_attr], type, &_true, sizeof(_true));
-	}
-	else {
+	} else {
 		FILL_ATTR((*keyTemplate)[*n_attr], type, &_false, sizeof(_false));
 	}
-	
+
 	++(*n_attr);
 }
 
-int fill_key_template(CK_ATTRIBUTE **keyTemplate, int *n_attr, const uint8_t **data, size_t *size, CK_OBJECT_CLASS *class, int token)
+int
+fill_key_template(CK_ATTRIBUTE **keyTemplate, int *n_attr, const uint8_t **data, size_t *size, CK_OBJECT_CLASS *class, int token)
 {
 	const unsigned char *ptr = NULL;
 	size_t               ecparams_size = 0;
@@ -652,8 +672,8 @@ int fill_key_template(CK_ATTRIBUTE **keyTemplate, int *n_attr, const uint8_t **d
 	size_t               opt_object_id_len = 0;
 	size_t               opt_allowed_mechanisms_len = 0;
 	int bool_types[] = {CKA_MODULUS_BITS, CKA_PUBLIC_EXPONENT, CKA_VERIFY, CKA_SENSITIVE,
-						CKA_SIGN, CKA_ENCRYPT, CKA_DECRYPT, CKA_WRAP, CKA_UNWRAP,
-						CKA_DERIVE, CKA_PRIVATE, CKA_ALWAYS_AUTHENTICATE, CKA_EXTRACTABLE};
+			CKA_SIGN, CKA_ENCRYPT, CKA_DECRYPT, CKA_WRAP, CKA_UNWRAP,
+			CKA_DERIVE, CKA_PRIVATE, CKA_ALWAYS_AUTHENTICATE, CKA_EXTRACTABLE};
 
 	if (!(*keyTemplate = malloc(20 * sizeof(CK_ATTRIBUTE))))
 		return 1;
@@ -668,23 +688,26 @@ int fill_key_template(CK_ATTRIBUTE **keyTemplate, int *n_attr, const uint8_t **d
 			return 1;
 		if ((*data)[0] % 2) {
 			fill_bool_attr(keyTemplate, n_attr, bool_types[i], (*data)[1] % 2);
-			(*data)++; (*size)--;
+			(*data)++;
+			(*size)--;
 		}
-		(*data)++; (*size)--;
+		(*data)++;
+		(*size)--;
 	}
 
-	if (*size > 2 && (*data)[0] % 2 && *n_attr < 20){
+	if (*size > 2 && (*data)[0] % 2 && *n_attr < 20) {
 		/* ... | present -> 0/1 | value | ...*/
-		key_type = (CK_ULONG) (*data)[1];
+		key_type = (CK_ULONG)(*data)[1];
 		FILL_ATTR((*keyTemplate)[*n_attr], CKA_KEY_TYPE, &key_type, sizeof(key_type));
 		++(*n_attr);
 		(*data) += 2;
 		(*size) -= 2;
 	}
 
-	if (*size > 3 && (*data)[0] % 2 && *n_attr < 20){
+	if (*size > 3 && (*data)[0] % 2 && *n_attr < 20) {
 		/* ... | present -> 0/1 | len | len | data | ... */
-		(*data)++; (*size)--;
+		(*data)++;
+		(*size)--;
 		ptr = *data;
 		if ((ecparams_size = get_buffer(&ptr, *size, data, size, 256)) == 0)
 			return 1;
@@ -693,9 +716,10 @@ int fill_key_template(CK_ATTRIBUTE **keyTemplate, int *n_attr, const uint8_t **d
 		++(*n_attr);
 	}
 
-	if (*size > 3 && (*data)[0] % 2 && *n_attr < 20){
+	if (*size > 3 && (*data)[0] % 2 && *n_attr < 20) {
 		/* ... | present -> 0/1 | len | len | data | ... */
-		(*data)++; (*size)--;
+		(*data)++;
+		(*size)--;
 		ptr = *data;
 		if ((opt_object_label_size = get_buffer(&ptr, *size, data, size, 128)) == 0)
 			return 1;
@@ -704,9 +728,10 @@ int fill_key_template(CK_ATTRIBUTE **keyTemplate, int *n_attr, const uint8_t **d
 		++(*n_attr);
 	}
 
-	if (*size > 3 && (*data)[0] % 2 && *n_attr < 20){
+	if (*size > 3 && (*data)[0] % 2 && *n_attr < 20) {
 		/* ... | present -> 0/1 | len | len | data | ... */
-		(*data)++; (*size)--;
+		(*data)++;
+		(*size)--;
 		ptr = *data;
 		if ((opt_object_id_len = get_buffer(&ptr, *size, data, size, 100)) == 0)
 			return 1;
@@ -714,7 +739,7 @@ int fill_key_template(CK_ATTRIBUTE **keyTemplate, int *n_attr, const uint8_t **d
 		FILL_ATTR((*keyTemplate)[*n_attr], CKA_ID, opt_object_id, opt_object_id_len);
 		++(*n_attr);
 	}
-	if (*size > 4 && (*data)[0]  % 2 && *n_attr < 20){
+	if (*size > 4 && (*data)[0] % 2 && *n_attr < 20) {
 		/* ... | present -> 0/1 | len | mech1 | mech2 | ... | mechn | ... */
 		opt_allowed_mechanisms_len = (*data)[1] > 20 ? 20 : (*data)[1];
 		(*data) += 2;
@@ -734,7 +759,8 @@ int fill_key_template(CK_ATTRIBUTE **keyTemplate, int *n_attr, const uint8_t **d
 	return 0;
 }
 
-static void test_unwrap(const uint8_t *data, size_t size)
+static void
+test_unwrap(const uint8_t *data, size_t size)
 {
 	CK_SESSION_HANDLE    session;
 	CK_MECHANISM         mech = {0, NULL_PTR, 0};
@@ -755,7 +781,8 @@ static void test_unwrap(const uint8_t *data, size_t size)
 	if (set_mechanism(&data, &size, &mech) || size < 3)
 		goto end;
 	login_type = data[0];
-	data++; size--;
+	data++;
+	size--;
 	if (!(pin = extract_word(&data, &size)))
 		goto end;
 	opt_id = data;
@@ -766,14 +793,14 @@ static void test_unwrap(const uint8_t *data, size_t size)
 	memcpy(in_buffer, wrapped_key, wrapped_key_length);
 	pWrappedKey = in_buffer;
 
-	if (fill_key_template((CK_ATTRIBUTE **) &keyTemplate, &n_attr, &data, &size, &secret_key_class, true))
+	if (fill_key_template((CK_ATTRIBUTE **)&keyTemplate, &n_attr, &data, &size, &secret_key_class, true))
 		goto end;
 
 	/* Initialize */
 	if (fuzz_pkcs11_initialize(data, size, NULL, &session) != CKR_OK)
 		goto end;
 
-	p11->C_Login(session, login_type, (CK_UTF8CHAR *) pin, strlen(pin));
+	p11->C_Login(session, login_type, (CK_UTF8CHAR *)pin, strlen(pin));
 	/* Find keys*/
 	if (!fuzz_find_object(session, CKO_PRIVATE_KEY, &hUnwrappingKey, opt_id_len ? opt_id : NULL, opt_id_len))
 		if (!fuzz_find_object(session, CKO_SECRET_KEY, &hUnwrappingKey, opt_id_len ? opt_id : NULL, opt_id_len))
@@ -788,7 +815,8 @@ end:
 	free(keyTemplate);
 }
 
-static void test_derive(const uint8_t *data, size_t size)
+static void
+test_derive(const uint8_t *data, size_t size)
 {
 	CK_SESSION_HANDLE    session;
 	CK_OBJECT_HANDLE     key;
@@ -806,19 +834,20 @@ static void test_derive(const uint8_t *data, size_t size)
 	if (set_mechanism(&data, &size, &mech) || size < 3)
 		goto end;
 	login_type = data[0];
-	data++; size--;
+	data++;
+	size--;
 	if (!(pin = extract_word(&data, &size)))
 		goto end;
 	opt_id = data;
 	opt_id_len = get_buffer(&opt_id, size, &data, &size, 256);
-	if (fill_key_template((CK_ATTRIBUTE **) &keyTemplate, &n_attrs, &data, &size, &newkey_class, false))
+	if (fill_key_template((CK_ATTRIBUTE **)&keyTemplate, &n_attrs, &data, &size, &newkey_class, false))
 		goto end;
 
 	/* Initialize */
 	if (fuzz_pkcs11_initialize(data, size, NULL, &session) != CKR_OK)
 		goto end;
 
-	p11->C_Login(session, login_type, (CK_UTF8CHAR *) pin, strlen(pin));
+	p11->C_Login(session, login_type, (CK_UTF8CHAR *)pin, strlen(pin));
 	if (fuzz_find_object(session, CKO_PRIVATE_KEY, &key, opt_id_len ? opt_id : NULL, opt_id_len))
 		p11->C_DeriveKey(session, &mech, key, keyTemplate, n_attrs, &newkey);
 
@@ -829,7 +858,8 @@ end:
 	free(keyTemplate);
 }
 
-static void test_genkeypair(const uint8_t *data, size_t size)
+static void
+test_genkeypair(const uint8_t *data, size_t size)
 {
 	CK_SESSION_HANDLE session;
 	CK_OBJECT_HANDLE  hPublicKey;
@@ -848,22 +878,22 @@ static void test_genkeypair(const uint8_t *data, size_t size)
 	if (set_mechanism(&data, &size, &mech) || size < 3)
 		goto end;
 	login_type = data[0];
-	data++; size--;
+	data++;
+	size--;
 	if (!(pin = extract_word(&data, &size)))
 		goto end;
 
-	if (fill_key_template(&publicKeyTemplate, &n_pubkey_attr, &data, &size, &pubkey_class, true) != 0
-		|| fill_key_template(&privateKeyTemplate, &n_privkey_attr, &data, &size, &privkey_class, true) != 0)
+	if (fill_key_template(&publicKeyTemplate, &n_pubkey_attr, &data, &size, &pubkey_class, true) != 0 ||
+			fill_key_template(&privateKeyTemplate, &n_privkey_attr, &data, &size, &privkey_class, true) != 0)
 		goto end;
 
 	/* Initialize */
 	if (fuzz_pkcs11_initialize(data, size, NULL, &session) != CKR_OK)
 		goto end;
 
-	p11->C_Login(session, login_type, (CK_UTF8CHAR *) pin, strlen(pin));
+	p11->C_Login(session, login_type, (CK_UTF8CHAR *)pin, strlen(pin));
 	p11->C_GenerateKeyPair(session, &mech, publicKeyTemplate, n_pubkey_attr,
-						   privateKeyTemplate, n_privkey_attr,
-						   &hPublicKey, &hPrivateKey);
+			privateKeyTemplate, n_privkey_attr, &hPublicKey, &hPrivateKey);
 	p11->C_CloseSession(session);
 	p11->C_Finalize(NULL);
 
@@ -873,7 +903,8 @@ end:
 	free(publicKeyTemplate);
 }
 
-static void test_store_data(const uint8_t *data, size_t size)
+static void
+test_store_data(const uint8_t *data, size_t size)
 {
 	CK_SESSION_HANDLE session;
 	CK_OBJECT_HANDLE  data_obj;
@@ -900,7 +931,7 @@ static void test_store_data(const uint8_t *data, size_t size)
 	/* Extract content from fuzzing input*/
 	memset(contents, 0, sizeof(contents));
 	ptr = data;
-	if ((contents_len = get_buffer(&ptr, size, &data, &size, 5000)) == 0)	
+	if ((contents_len = get_buffer(&ptr, size, &data, &size, 5000)) == 0)
 		goto end;
 	memcpy(contents, ptr, contents_len);
 	contents[contents_len] = '\0';
@@ -913,13 +944,16 @@ static void test_store_data(const uint8_t *data, size_t size)
 	FILL_ATTR(data_templ[n_data_attr], CKA_VALUE, &contents, contents_len);
 	n_data_attr++;
 	fill_bool_attr(&data_templ, &n_data_attr, CKA_TOKEN, *data % 2);
-	data++; size--;
+	data++;
+	size--;
 	fill_bool_attr(&data_templ, &n_data_attr, CKA_PRIVATE, *data % 2);
-	data++; size--;
+	data++;
+	size--;
 
 	/* Get application id*/
-	if (data[0] % 2){
-		data++; size--;
+	if (data[0] % 2) {
+		data++;
+		size--;
 		ptr = data;
 		if ((app_id_len = get_buffer(&ptr, size, &data, &size, 256)) == 0)
 			goto end;
@@ -932,7 +966,7 @@ static void test_store_data(const uint8_t *data, size_t size)
 	if (fuzz_pkcs11_initialize(data, size, NULL, &session) != CKR_OK)
 		goto end;
 
-	p11->C_Login(session, login_type, (CK_UTF8CHAR *) pin, strlen(pin));
+	p11->C_Login(session, login_type, (CK_UTF8CHAR *)pin, strlen(pin));
 	p11->C_CreateObject(session, data_templ, n_data_attr, &data_obj);
 	p11->C_CloseSession(session);
 	p11->C_Finalize(NULL);
@@ -941,7 +975,8 @@ end:
 	free(pin);
 }
 
-static void test_store_cert(const uint8_t *data, size_t size)
+static void
+test_store_cert(const uint8_t *data, size_t size)
 {
 	CK_SESSION_HANDLE   session;
 	CK_OBJECT_CLASS     class = CKO_CERTIFICATE;
@@ -967,7 +1002,7 @@ static void test_store_cert(const uint8_t *data, size_t size)
 	/* Extract content from fuzzing input */
 	memset(contents, 0, sizeof(contents));
 	ptr = data;
-	if ((contents_len = get_buffer(&ptr, size, &data, &size, 5000)) == 0)	
+	if ((contents_len = get_buffer(&ptr, size, &data, &size, 5000)) == 0)
 		goto end;
 	memcpy(contents, ptr, contents_len);
 	contents[contents_len] = '\0';
@@ -982,15 +1017,17 @@ static void test_store_cert(const uint8_t *data, size_t size)
 	FILL_ATTR(cert_templ[n_cert_attr], CKA_CERTIFICATE_TYPE, &cert_type, sizeof(cert_type));
 	n_cert_attr++;
 	fill_bool_attr(&cert_templ, &n_cert_attr, CKA_TOKEN, *data % 2);
-	data++; size--;
+	data++;
+	size--;
 	fill_bool_attr(&cert_templ, &n_cert_attr, CKA_PRIVATE, *data % 2);
-	data++; size--;
+	data++;
+	size--;
 
 	/* Initialize */
 	if (fuzz_pkcs11_initialize(data, size, NULL, &session) != CKR_OK)
 		goto end;
 
-	p11->C_Login(session, login_type, (CK_UTF8CHAR *) pin, strlen(pin));
+	p11->C_Login(session, login_type, (CK_UTF8CHAR *)pin, strlen(pin));
 	p11->C_CreateObject(session, cert_templ, n_cert_attr, &cert_obj);
 	p11->C_CloseSession(session);
 	p11->C_Finalize(NULL);
@@ -999,7 +1036,8 @@ end:
 	free(cert_templ);
 }
 
-static void test_store_key(const uint8_t *data, size_t size)
+static void
+test_store_key(const uint8_t *data, size_t size)
 {
 	CK_SESSION_HANDLE session;
 	CK_OBJECT_CLASS   class = CKO_SECRET_KEY;
@@ -1016,7 +1054,8 @@ static void test_store_key(const uint8_t *data, size_t size)
 	if (size < 3)
 		return;
 	class = *data;
-	data++; size--;
+	data++;
+	size--;
 
 	/* Get PIN */
 	if (!(pin = extract_word(&data, &size)))
@@ -1028,9 +1067,10 @@ static void test_store_key(const uint8_t *data, size_t size)
 	if (size < 3)
 		goto end;
 	if (data[0] && n_key_attr < 20) {
-		data++; size--;
+		data++;
+		size--;
 		ptr = data;
-		if ((contents_len = get_buffer(&ptr, size, &data, &size, 5000)) == 0)	
+		if ((contents_len = get_buffer(&ptr, size, &data, &size, 5000)) == 0)
 			goto end;
 		memcpy(contents, ptr, contents_len);
 		FILL_ATTR(key_template[n_key_attr], CKA_VALUE, contents, contents_len);
@@ -1041,7 +1081,7 @@ static void test_store_key(const uint8_t *data, size_t size)
 	if (fuzz_pkcs11_initialize(data, size, NULL, &session) != CKR_OK)
 		goto end;
 
-	p11->C_Login(session, login_type, (CK_UTF8CHAR *) pin, strlen(pin));
+	p11->C_Login(session, login_type, (CK_UTF8CHAR *)pin, strlen(pin));
 	p11->C_CreateObject(session, key_template, n_key_attr, &key_obj);
 	p11->C_CloseSession(session);
 	p11->C_Finalize(NULL);
@@ -1050,26 +1090,27 @@ end:
 	free(key_template);
 }
 
-int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
+int
+LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
 	uint8_t operation = 0;
-	void (*func_ptr[])(const uint8_t*, size_t) = {
-		test_change_pin,
-		test_init_pin,
-		test_init_token,
-		test_random,
-		test_digest_update,
-		test_digest,
-		test_sign,
-		test_verify,
-		test_decrypt,
-		test_wrap,
-		test_unwrap,
-		test_derive,
-		test_genkeypair,
-		test_store_data,
-		test_store_cert,
-		test_store_key
+	void (*func_ptr[])(const uint8_t *, size_t) = {
+			test_change_pin,
+			test_init_pin,
+			test_init_token,
+			test_random,
+			test_digest_update,
+			test_digest,
+			test_sign,
+			test_verify,
+			test_decrypt,
+			test_wrap,
+			test_unwrap,
+			test_derive,
+			test_genkeypair,
+			test_store_data,
+			test_store_cert,
+			test_store_key,
 	};
 
 	if (size < 10)

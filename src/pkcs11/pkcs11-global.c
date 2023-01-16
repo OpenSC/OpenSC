@@ -38,8 +38,8 @@
 #include "ui/notify.h"
 
 #ifdef ENABLE_OPENSSL
-#include <openssl/crypto.h>
 #include "libopensc/sc-ossl-compat.h"
+#include <openssl/crypto.h>
 #endif
 #ifdef ENABLE_OPENPACE
 #include <eac/eac.h>

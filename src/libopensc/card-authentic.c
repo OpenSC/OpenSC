@@ -150,7 +150,6 @@ authentic_update_blob(struct sc_context *ctx, unsigned tag, unsigned char *data,
 	return SC_SUCCESS;
 }
 
-
 static int
 authentic_parse_size(unsigned char *in, size_t in_len, size_t *out)
 {

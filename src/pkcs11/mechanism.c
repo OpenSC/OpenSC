@@ -655,7 +655,7 @@ static void
 sc_pkcs11_operation_release(sc_pkcs11_operation_t *operation)
 {
 	if (!operation)
-	    return;
+		return;
 	operation_data_release(operation->priv_data);
 }
 

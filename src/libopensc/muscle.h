@@ -1,5 +1,5 @@
 /*
- * muscle.h: Support for MuscleCard Applet from musclecard.com 
+ * muscle.h: Support for MuscleCard Applet from musclecard.com
  *
  * Copyright (C) 2006, Identity Alliance, Thomas Harning <support@identityalliance.com>
  *
@@ -47,56 +47,53 @@ int msc_delete_object(sc_card_t *card, msc_id objectId, int zero);
 int msc_select_applet(sc_card_t *card, u8 *appletId, size_t appletIdLength);
 
 int msc_verify_pin(sc_card_t *card, int pinNumber, const u8 *pinValue, int pinLength, int *tries);
-int msc_verify_pin_apdu(sc_card_t *card, sc_apdu_t *apdu, u8* buffer, size_t bufferLength, int pinNumber, const u8 *pinValue, int pinLength);
+int msc_verify_pin_apdu(sc_card_t *card, sc_apdu_t *apdu, u8 *buffer, size_t bufferLength, int pinNumber, const u8 *pinValue, int pinLength);
 int msc_unblock_pin(sc_card_t *card, int pinNumber, const u8 *pukValue, int pukLength, int *tries);
-int msc_unblock_pin_apdu(sc_card_t *card, sc_apdu_t *apdu, u8* buffer, size_t bufferLength, int pinNumber, const u8 *pukValue, int pukLength);
+int msc_unblock_pin_apdu(sc_card_t *card, sc_apdu_t *apdu, u8 *buffer, size_t bufferLength, int pinNumber, const u8 *pukValue, int pukLength);
 int msc_change_pin(sc_card_t *card, int pinNumber, const u8 *pinValue, int pinLength, const u8 *newPin, int newPinLength, int *tries);
-int msc_change_pin_apdu(sc_card_t *card, sc_apdu_t *apdu, u8* buffer, size_t bufferLength, int pinNumber, const u8 *pinValue, int pinLength, const u8 *newPin, int newPinLength);
+int msc_change_pin_apdu(sc_card_t *card, sc_apdu_t *apdu, u8 *buffer, size_t bufferLength, int pinNumber, const u8 *pinValue, int pinLength, const u8 *newPin, int newPinLength);
 
 int msc_get_challenge(sc_card_t *card, unsigned short dataLength, unsigned short seedLength, u8 *seedData, u8 *outputData);
 
 int msc_generate_keypair(sc_card_t *card, int privateKey, int publicKey, int algorithm, int keySize, int options);
-int msc_extract_rsa_public_key(sc_card_t *card, 
-			int keyLocation,
-			size_t* modLength, 
-			u8** modulus,
-			size_t* expLength,
-			u8** exponent);
-int msc_extract_key(sc_card_t *card, 
-			int keyLocation);
-int msc_compute_crypt_init(sc_card_t *card, 
-			int keyLocation,
-			int cipherMode,
-			int cipherDirection,
-			const u8* initData,
-			u8* outputData,
-			size_t dataLength,
-			size_t* outputDataLength);
-int msc_compute_crypt_process(
-			sc_card_t *card, 
-			int keyLocation,
-			const u8* inputData,
-			u8* outputData,
-			size_t dataLength,
-			size_t* outputDataLength);
-int msc_compute_crypt_final(
-			sc_card_t *card, 
-			int keyLocation,
-			const u8* inputData,
-			u8* outputData,
-			size_t dataLength,
-			size_t* outputDataLength);
-int msc_compute_crypt(sc_card_t *card, 
-			int keyLocation,
-			int cipherMode,
-			int cipherDirection,
-			const u8* data,
-			u8* outputData,
-			size_t dataLength,
-			size_t outputDataLength);
+int msc_extract_rsa_public_key(sc_card_t *card,
+		int keyLocation,
+		size_t *modLength,
+		u8 **modulus,
+		size_t *expLength,
+		u8 **exponent);
+int msc_extract_key(sc_card_t *card,
+		int keyLocation);
+int msc_compute_crypt_init(sc_card_t *card,
+		int keyLocation,
+		int cipherMode,
+		int cipherDirection,
+		const u8 *initData,
+		u8 *outputData,
+		size_t dataLength,
+		size_t *outputDataLength);
+int msc_compute_crypt_process(sc_card_t *card,
+		int keyLocation,
+		const u8 *inputData,
+		u8 *outputData,
+		size_t dataLength,
+		size_t *outputDataLength);
+int msc_compute_crypt_final(sc_card_t *card,
+		int keyLocation,
+		const u8 *inputData,
+		u8 *outputData,
+		size_t dataLength,
+		size_t *outputDataLength);
+int msc_compute_crypt(sc_card_t *card,
+		int keyLocation,
+		int cipherMode,
+		int cipherDirection,
+		const u8 *data,
+		u8 *outputData,
+		size_t dataLength,
+		size_t outputDataLength);
 int msc_import_key(sc_card_t *card,
-	int keyLocation,
-	sc_cardctl_muscle_key_info_t *data);
-
+		int keyLocation,
+		sc_cardctl_muscle_key_info_t *data);
 
 #endif /*MUSCLE_H_*/

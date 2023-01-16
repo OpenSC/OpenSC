@@ -139,39 +139,38 @@ static struct profile_operations {
 	const char *name;
 	void *func;
 } profile_operations[] = {
-	{ "rutoken", (void *) sc_pkcs15init_get_rutoken_ops },
-	{ "gpk", (void *) sc_pkcs15init_get_gpk_ops },
-	{ "flex", (void *) sc_pkcs15init_get_cryptoflex_ops },
-	{ "cyberflex", (void *) sc_pkcs15init_get_cyberflex_ops },
-	{ "cardos", (void *) sc_pkcs15init_get_cardos_ops },
-	{ "etoken", (void *) sc_pkcs15init_get_cardos_ops }, /* legacy */
-	{ "starcos", (void *) sc_pkcs15init_get_starcos_ops },
-	{ "oberthur", (void *) sc_pkcs15init_get_oberthur_ops },
-	{ "openpgp", (void *) sc_pkcs15init_get_openpgp_ops },
-	{ "setcos", (void *) sc_pkcs15init_get_setcos_ops },
-	{ "incrypto34", (void *) sc_pkcs15init_get_incrypto34_ops },
-	{ "muscle", (void*) sc_pkcs15init_get_muscle_ops },
-	{ "asepcos", (void*) sc_pkcs15init_get_asepcos_ops },
-	{ "entersafe",(void*) sc_pkcs15init_get_entersafe_ops },
-	{ "epass2003",(void*) sc_pkcs15init_get_epass2003_ops },
-	{ "rutoken_ecp", (void *) sc_pkcs15init_get_rtecp_ops },
-	{ "rutoken_lite", (void *) sc_pkcs15init_get_rtecp_ops },
-	{ "westcos", (void *) sc_pkcs15init_get_westcos_ops },
-	{ "myeid", (void *) sc_pkcs15init_get_myeid_ops },
-	{ "sc-hsm", (void *) sc_pkcs15init_get_sc_hsm_ops },
-	{ "isoApplet", (void *) sc_pkcs15init_get_isoApplet_ops },
-	{ "gids", (void *) sc_pkcs15init_get_gids_ops },
+		{"rutoken", (void *)sc_pkcs15init_get_rutoken_ops},
+		{"gpk", (void *)sc_pkcs15init_get_gpk_ops},
+		{"flex", (void *)sc_pkcs15init_get_cryptoflex_ops},
+		{"cyberflex", (void *)sc_pkcs15init_get_cyberflex_ops},
+		{"cardos", (void *)sc_pkcs15init_get_cardos_ops},
+		{"etoken", (void *)sc_pkcs15init_get_cardos_ops}, /* legacy */
+		{"starcos", (void *)sc_pkcs15init_get_starcos_ops},
+		{"oberthur", (void *)sc_pkcs15init_get_oberthur_ops},
+		{"openpgp", (void *)sc_pkcs15init_get_openpgp_ops},
+		{"setcos", (void *)sc_pkcs15init_get_setcos_ops},
+		{"incrypto34", (void *)sc_pkcs15init_get_incrypto34_ops},
+		{"muscle", (void *)sc_pkcs15init_get_muscle_ops},
+		{"asepcos", (void *)sc_pkcs15init_get_asepcos_ops},
+		{"entersafe",(void *)sc_pkcs15init_get_entersafe_ops},
+		{"epass2003",(void *)sc_pkcs15init_get_epass2003_ops},
+		{"rutoken_ecp", (void *)sc_pkcs15init_get_rtecp_ops},
+		{"rutoken_lite", (void *)sc_pkcs15init_get_rtecp_ops},
+		{"westcos", (void *)sc_pkcs15init_get_westcos_ops},
+		{"myeid", (void *)sc_pkcs15init_get_myeid_ops},
+		{"sc-hsm", (void *)sc_pkcs15init_get_sc_hsm_ops},
+		{"isoApplet", (void *)sc_pkcs15init_get_isoApplet_ops},
+		{"gids", (void *)sc_pkcs15init_get_gids_ops},
 #ifdef ENABLE_OPENSSL
-	{ "authentic", (void *) sc_pkcs15init_get_authentic_ops },
-	{ "iasecc", (void *) sc_pkcs15init_get_iasecc_ops },
+		{"authentic", (void *)sc_pkcs15init_get_authentic_ops},
+		{"iasecc", (void *)sc_pkcs15init_get_iasecc_ops},
 #endif
-	{ NULL, NULL },
+		{NULL, NULL},
 };
 
-
 static struct sc_pkcs15init_callbacks callbacks = {
-	NULL,
-	NULL,
+		NULL,
+		NULL,
 };
 
 static void
@@ -617,8 +616,7 @@ sc_pkcs15init_delete_by_path(struct sc_profile *profile, struct sc_pkcs15_card *
 			sc_file_free(parent);
 			sc_file_free(file);
 			LOG_TEST_RET(ctx, rv, "parent 'DELETE' authentication failed");
-		}
-		else {
+		} else {
 			/* No 'DELETE' ACL of the file and not deleted for parent */
 			rv = SC_ERROR_INVALID_ARGUMENTS;
 			sc_file_free(file);
@@ -1540,9 +1538,10 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 	r = check_keygen_params_consistency(p15card->card, algorithm, &keygen_args->prkey_args, &keybits);
 	LOG_TEST_RET(ctx, r, "Invalid key size");
 
-	if (check_key_compatibility(p15card, algorithm, &keygen_args->prkey_args.key,
-				keygen_args->prkey_args.x509_usage, keybits,
-				SC_ALGORITHM_ONBOARD_KEY_GEN) != SC_SUCCESS) {
+	r = check_key_compatibility(p15card, algorithm, &keygen_args->prkey_args.key,
+			keygen_args->prkey_args.x509_usage, keybits,
+			SC_ALGORITHM_ONBOARD_KEY_GEN);
+	if (r != SC_SUCCESS) {
 		r = SC_ERROR_NOT_SUPPORTED;
 		LOG_TEST_GOTO_ERR(ctx, r, "Cannot generate key with the given parameters");
 	}
@@ -2036,7 +2035,7 @@ sc_pkcs15init_store_secret_key(struct sc_pkcs15_card *p15card, struct sc_profile
 		r = profile->ops->create_key(profile, p15card, object);
 	LOG_TEST_GOTO_ERR(ctx, r, "Card specific 'create key' failed");
 
-	/* If no key data, only an empty EF is created. 
+	/* If no key data, only an empty EF is created.
 	 * It can be used to receive an unwrapped key later. */
 	if (keyargs->key.data_len > 0) {
 		if (profile->ops->store_key) {
@@ -3455,7 +3454,7 @@ sc_pkcs15init_change_attrib(struct sc_pkcs15_card *p15card, struct sc_profile *p
 			struct sc_pkcs15_der new_data;
 			new_data.len = new_len;
 			new_data.value = (u8 *) new_value;
-			
+
 			/* save new data as a new data file on token */
 			r = sc_pkcs15init_store_data(p15card, profile, object, &new_data, &new_data_path);
 			profile->dirty = 1;
@@ -3472,7 +3471,7 @@ sc_pkcs15init_change_attrib(struct sc_pkcs15_card *p15card, struct sc_profile *p
 			info->data.len = new_len;
 			info->data.value = nv;
 			info->path = new_data_path;
-			
+
 			/* delete old data file from token */
 			r = sc_pkcs15init_delete_by_path(profile, p15card, &old_data_path);
 			LOG_TEST_RET(ctx, r, "Failed to delete old data");
@@ -4047,8 +4046,7 @@ do_select_parent(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 			*parent = NULL;
 		}
 		LOG_TEST_RET(ctx, r, "Cannot select parent DF");
-	}
-	else if (r == SC_SUCCESS && !strcmp(p15card->card->name, "STARCOS")) {
+	} else if (r == SC_SUCCESS && !strcmp(p15card->card->name, "STARCOS")) {
 		/* in case of starcos spk 2.3 SELECT FILE does not
 		 * give us the ACLs => ask the profile */
 		sc_file_free(*parent);

@@ -129,7 +129,7 @@ npa_load_options(sc_context_t *ctx, struct npa_drv_data *drv_data)
 					sc_log(ctx, "Warning: Could not read %s.\n", file);
 			}
 		}
-		
+
 		free(found_blocks);
 	}
 	r = SC_SUCCESS;
@@ -178,7 +178,7 @@ npa_get_cached_pace_params(sc_card_t *card, struct establish_pace_channel_input 
 
 	if (card->drv_data) {
 		drv_data = card->drv_data;
-		
+
 		if (pace_output) {
 			pace_output->ef_cardaccess = drv_data->ef_cardaccess;
 			pace_output->ef_cardaccess_length = drv_data->ef_cardaccess_length;
@@ -364,9 +364,9 @@ npa_init_apps(sc_card_t *card)
 	/* this initializes the internal structures with the data from
 	 * `dir_content_ref` */
 	const u8 *aids[] = {
-		(const u8 *)"\xa0\x00\x00\x02\x47\x10\x01",
-		(const u8 *)"\xe8\x07\x04\x00\x7f\x00\x07\x03\x02",
-		(const u8 *)"\xa0\x00\x00\x01\x67\x45\x53\x49\x47\x4e",
+			(const u8 *)"\xa0\x00\x00\x02\x47\x10\x01",
+			(const u8 *)"\xe8\x07\x04\x00\x7f\x00\x07\x03\x02",
+			(const u8 *)"\xa0\x00\x00\x01\x67\x45\x53\x49\x47\x4e",
 	};
 	const size_t lens[] = {7, 9, 10};
 	size_t i;

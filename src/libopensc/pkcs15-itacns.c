@@ -586,7 +586,6 @@ itacns_add_keyset(sc_pkcs15_card_t *p15card, const char *label, int sec_env, sc_
 	char pinlabel[16];
 	int fake_puk_authid, pin_flags;
 
-
 	/* Public key; not really needed */
 	/* FIXME: set usage according to the certificate. */
 	if (pubkey_path) {

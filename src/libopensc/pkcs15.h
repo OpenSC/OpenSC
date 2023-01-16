@@ -634,21 +634,21 @@ typedef struct sc_pkcs15_card {
  * SC_ERROR_PKCS15_APP_NOT_FOUND, if the card hasn't got a
  * valid PKCS #15 file structure. */
 int sc_pkcs15_bind(struct sc_card *card, struct sc_aid *aid,
-		   struct sc_pkcs15_card **pkcs15_card);
+		struct sc_pkcs15_card **pkcs15_card);
 /* sc_pkcs15_unbind:  Releases a PKCS #15 card object, and frees any
  * memory allocations done on the card object. */
 int sc_pkcs15_unbind(struct sc_pkcs15_card *card);
 int sc_pkcs15_bind_internal(struct sc_pkcs15_card *p15card, struct sc_aid *aid);
 
 int sc_pkcs15_get_objects(struct sc_pkcs15_card *card, unsigned int type,
-			  struct sc_pkcs15_object **ret, size_t ret_count);
+		struct sc_pkcs15_object **ret, size_t ret_count);
 int sc_pkcs15_get_objects_cond(struct sc_pkcs15_card *card, unsigned int type,
-			       int (* func)(struct sc_pkcs15_object *, void *),
-			       void *func_arg,
-			       struct sc_pkcs15_object **ret, size_t ret_count);
+		int (*func)(struct sc_pkcs15_object *, void *),
+		void *func_arg,
+		struct sc_pkcs15_object **ret, size_t ret_count);
 int sc_pkcs15_find_object_by_id(struct sc_pkcs15_card *, unsigned int,
-				const sc_pkcs15_id_t *,
-				struct sc_pkcs15_object **);
+		const sc_pkcs15_id_t *,
+		struct sc_pkcs15_object **);
 
 struct sc_pkcs15_card * sc_pkcs15_card_new(void);
 void sc_pkcs15_card_free(struct sc_pkcs15_card *p15card);
@@ -732,9 +732,9 @@ void sc_pkcs15_free_prkey(struct sc_pkcs15_prkey *prkey);
 void sc_pkcs15_free_key_params(struct sc_pkcs15_key_params *params);
 
 int sc_pkcs15_read_data_object(struct sc_pkcs15_card *p15card,
-			       const struct sc_pkcs15_data_info *info,
-			       int private_obj,
-			       struct sc_pkcs15_data **data_object_out);
+		const struct sc_pkcs15_data_info *info,
+		int private_obj,
+		struct sc_pkcs15_data **data_object_out);
 int sc_pkcs15_find_data_object_by_id(struct sc_pkcs15_card *p15card,
 				     const struct sc_pkcs15_id *id,
 				     struct sc_pkcs15_object **out);
@@ -748,164 +748,164 @@ int sc_pkcs15_find_data_object_by_name(struct sc_pkcs15_card *p15card,
 void sc_pkcs15_free_data_object(struct sc_pkcs15_data *data_object);
 
 int sc_pkcs15_read_certificate(struct sc_pkcs15_card *card,
-			       const struct sc_pkcs15_cert_info *info,
-			       int private_obj,
-			       struct sc_pkcs15_cert **cert);
+		const struct sc_pkcs15_cert_info *info,
+		int private_obj,
+		struct sc_pkcs15_cert **cert);
 void sc_pkcs15_free_certificate(struct sc_pkcs15_cert *cert);
 int sc_pkcs15_find_cert_by_id(struct sc_pkcs15_card *card,
-			      const struct sc_pkcs15_id *id,
-			      struct sc_pkcs15_object **out);
+		const struct sc_pkcs15_id *id,
+		struct sc_pkcs15_object **out);
 int sc_pkcs15_get_name_from_dn(struct sc_context *ctx,
-                              const u8 *dn, size_t dn_len,
-                              const struct sc_object_id *type,
-                              u8 **name, size_t *name_len);
+		const u8 *dn, size_t dn_len,
+		const struct sc_object_id *type,
+		u8 **name, size_t *name_len);
 int sc_pkcs15_map_usage(unsigned int cert_usage, int algorithm,
-			unsigned int *pub_usage_ptr, unsigned int *pr_usage_ptr,
-			int allow_nonrepudiation);
+		unsigned int *pub_usage_ptr, unsigned int *pr_usage_ptr,
+		int allow_nonrepudiation);
 int sc_pkcs15_get_extension(struct sc_context *ctx,
-                            struct sc_pkcs15_cert *cert,
-                            const struct sc_object_id *type,
-                            u8 **ext_val, size_t *ext_val_len,
-                            int *is_critical);
+		struct sc_pkcs15_cert *cert,
+		const struct sc_object_id *type,
+		u8 **ext_val, size_t *ext_val_len,
+		int *is_critical);
 int sc_pkcs15_get_bitstring_extension(struct sc_context *ctx,
-                                      struct sc_pkcs15_cert *cert,
-                                      const struct sc_object_id *type,
-                                      unsigned int *value,
-                                      int *is_critical);
+		struct sc_pkcs15_cert *cert,
+		const struct sc_object_id *type,
+		unsigned int *value,
+		int *is_critical);
 /* sc_pkcs15_create_cdf:  Creates a new certificate DF on a card pointed
  * by <card>.  Information about the file, such as the file ID, is read
  * from <file>.  <certs> has to be NULL-terminated. */
 int sc_pkcs15_create_cdf(struct sc_pkcs15_card *card,
-			 struct sc_file *file,
-			 const struct sc_pkcs15_cert_info **certs);
+		struct sc_file *file,
+		const struct sc_pkcs15_cert_info **certs);
 
 int sc_pkcs15_find_prkey_by_id(struct sc_pkcs15_card *card,
-			       const struct sc_pkcs15_id *id,
-			       struct sc_pkcs15_object **out);
+		const struct sc_pkcs15_id *id,
+		struct sc_pkcs15_object **out);
 int sc_pkcs15_find_prkey_by_id_usage(struct sc_pkcs15_card *card,
-			       const struct sc_pkcs15_id *id,
-			       unsigned int usage,
-			       struct sc_pkcs15_object **out);
+		const struct sc_pkcs15_id *id,
+		unsigned int usage,
+		struct sc_pkcs15_object **out);
 int sc_pkcs15_find_prkey_by_reference(struct sc_pkcs15_card *,
-			       const sc_path_t *, int,
-			       struct sc_pkcs15_object **);
+		const sc_path_t *, int,
+		struct sc_pkcs15_object **);
 int sc_pkcs15_find_pubkey_by_id(struct sc_pkcs15_card *card,
-			       const struct sc_pkcs15_id *id,
-			       struct sc_pkcs15_object **out);
+		const struct sc_pkcs15_id *id,
+		struct sc_pkcs15_object **out);
 int sc_pkcs15_find_skey_by_id(struct sc_pkcs15_card *card,
-			       const struct sc_pkcs15_id *id,
-			       struct sc_pkcs15_object **out);
+		const struct sc_pkcs15_id *id,
+		struct sc_pkcs15_object **out);
 
 int sc_pkcs15_verify_pin(struct sc_pkcs15_card *card,
-			 struct sc_pkcs15_object *pin_obj,
-			 const u8 *pincode, size_t pinlen);
+		struct sc_pkcs15_object *pin_obj,
+		const u8 *pincode, size_t pinlen);
 int sc_pkcs15_verify_pin_with_session_pin(struct sc_pkcs15_card *p15card,
-			 struct sc_pkcs15_object *pin_obj,
-			 const unsigned char *pincode, size_t pinlen,
-			 const unsigned char *sessionpin, size_t *sessionpinlen);
+		struct sc_pkcs15_object *pin_obj,
+		const unsigned char *pincode, size_t pinlen,
+		const unsigned char *sessionpin, size_t *sessionpinlen);
 int sc_pkcs15_change_pin(struct sc_pkcs15_card *card,
-			 struct sc_pkcs15_object *pin_obj,
-			 const u8 *oldpincode, size_t oldpinlen,
-			 const u8 *newpincode, size_t newpinlen);
+		struct sc_pkcs15_object *pin_obj,
+		const u8 *oldpincode, size_t oldpinlen,
+		const u8 *newpincode, size_t newpinlen);
 int sc_pkcs15_unblock_pin(struct sc_pkcs15_card *card,
-			 struct sc_pkcs15_object *pin_obj,
-			 const u8 *puk, size_t puklen,
-			 const u8 *newpin, size_t newpinlen);
+		struct sc_pkcs15_object *pin_obj,
+		const u8 *puk, size_t puklen,
+		const u8 *newpin, size_t newpinlen);
 int sc_pkcs15_get_pin_info(struct sc_pkcs15_card *card,
-			 struct sc_pkcs15_object *pin_obj);
+		struct sc_pkcs15_object *pin_obj);
 int sc_pkcs15_find_pin_by_auth_id(struct sc_pkcs15_card *card,
-				  const struct sc_pkcs15_id *id,
-				  struct sc_pkcs15_object **out);
+		const struct sc_pkcs15_id *id,
+		struct sc_pkcs15_object **out);
 int sc_pkcs15_find_pin_by_reference(struct sc_pkcs15_card *card,
-				    const sc_path_t *path, int reference,
-				    struct sc_pkcs15_object **out);
+		const sc_path_t *path, int reference,
+		struct sc_pkcs15_object **out);
 int sc_pkcs15_find_pin_by_type_and_reference(struct sc_pkcs15_card *card,
-				    const sc_path_t *path, unsigned auth_method,
-				    int reference,
-				    struct sc_pkcs15_object **out);
+		const sc_path_t *path, unsigned auth_method,
+		int reference,
+		struct sc_pkcs15_object **out);
 int sc_pkcs15_find_so_pin(struct sc_pkcs15_card *card,
-			struct sc_pkcs15_object **out);
+		struct sc_pkcs15_object **out);
 int sc_pkcs15_find_pin_by_flags(struct sc_pkcs15_card *p15card,
 		unsigned flags, unsigned mask, int *index,
 		struct sc_pkcs15_object **out);
 
 void sc_pkcs15_pincache_add(struct sc_pkcs15_card *, struct sc_pkcs15_object *,
-			const u8 *, size_t);
+		const u8 *, size_t);
 int sc_pkcs15_pincache_revalidate(struct sc_pkcs15_card *p15card,
-			const struct sc_pkcs15_object *obj);
+		const struct sc_pkcs15_object *obj);
 void sc_pkcs15_pincache_clear(struct sc_pkcs15_card *p15card);
 
 int sc_pkcs15_encode_dir(struct sc_context *ctx,
-			struct sc_pkcs15_card *card,
-			u8 **buf, size_t *buflen);
+		struct sc_pkcs15_card *card,
+		u8 **buf, size_t *buflen);
 int sc_pkcs15_parse_tokeninfo(struct sc_context *ctx,
-			sc_pkcs15_tokeninfo_t *ti,
-			const u8 *buf, size_t blen);
+		sc_pkcs15_tokeninfo_t *ti,
+		const u8 *buf, size_t blen);
 int sc_pkcs15_encode_tokeninfo(struct sc_context *ctx,
-			sc_pkcs15_tokeninfo_t *ti,
-			u8 **buf, size_t *buflen);
+		sc_pkcs15_tokeninfo_t *ti,
+		u8 **buf, size_t *buflen);
 int sc_pkcs15_encode_odf(struct sc_context *ctx,
-			struct sc_pkcs15_card *card,
-			u8 **buf, size_t *buflen);
+		struct sc_pkcs15_card *card,
+		u8 **buf, size_t *buflen);
 int sc_pkcs15_encode_df(struct sc_context *ctx,
-			struct sc_pkcs15_card *p15card,
-			struct sc_pkcs15_df *df,
-			u8 **buf, size_t *bufsize);
+		struct sc_pkcs15_card *p15card,
+		struct sc_pkcs15_df *df,
+		u8 **buf, size_t *bufsize);
 int sc_pkcs15_encode_cdf_entry(struct sc_context *ctx,
-			const struct sc_pkcs15_object *obj, u8 **buf,
-			size_t *bufsize);
+		const struct sc_pkcs15_object *obj, u8 **buf,
+		size_t *bufsize);
 int sc_pkcs15_encode_prkdf_entry(struct sc_context *ctx,
-			const struct sc_pkcs15_object *obj, u8 **buf,
-			size_t *bufsize);
+		const struct sc_pkcs15_object *obj, u8 **buf,
+		size_t *bufsize);
 int sc_pkcs15_encode_pukdf_entry(struct sc_context *ctx,
-			const struct sc_pkcs15_object *obj, u8 **buf,
-			size_t *bufsize);
+		const struct sc_pkcs15_object *obj, u8 **buf,
+		size_t *bufsize);
 int sc_pkcs15_encode_skdf_entry(struct sc_context *ctx,
-			const struct sc_pkcs15_object *obj, u8 **buf,
-			size_t *buflen);
+		const struct sc_pkcs15_object *obj, u8 **buf,
+		size_t *buflen);
 int sc_pkcs15_encode_dodf_entry(struct sc_context *ctx,
-			const struct sc_pkcs15_object *obj, u8 **buf,
-			size_t *bufsize);
+		const struct sc_pkcs15_object *obj, u8 **buf,
+		size_t *bufsize);
 int sc_pkcs15_encode_aodf_entry(struct sc_context *ctx,
-			const struct sc_pkcs15_object *obj, u8 **buf,
-			size_t *bufsize);
+		const struct sc_pkcs15_object *obj, u8 **buf,
+		size_t *bufsize);
 
 int sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card,
-		       struct sc_pkcs15_df *df);
+		struct sc_pkcs15_df *df);
 int sc_pkcs15_read_df(struct sc_pkcs15_card *p15card,
-		      struct sc_pkcs15_df *df);
+		struct sc_pkcs15_df *df);
 int sc_pkcs15_decode_cdf_entry(struct sc_pkcs15_card *p15card,
-			       struct sc_pkcs15_object *obj,
-			       const u8 **buf, size_t *bufsize);
+		struct sc_pkcs15_object *obj,
+		const u8 **buf, size_t *bufsize);
 int sc_pkcs15_decode_dodf_entry(struct sc_pkcs15_card *p15card,
-			       struct sc_pkcs15_object *obj,
-			       const u8 **buf, size_t *bufsize);
+		struct sc_pkcs15_object *obj,
+		const u8 **buf, size_t *bufsize);
 int sc_pkcs15_decode_aodf_entry(struct sc_pkcs15_card *p15card,
-			        struct sc_pkcs15_object *obj,
-			        const u8 **buf, size_t *bufsize);
+		struct sc_pkcs15_object *obj,
+		const u8 **buf, size_t *bufsize);
 int sc_pkcs15_decode_prkdf_entry(struct sc_pkcs15_card *p15card,
-				 struct sc_pkcs15_object *obj,
-				 const u8 **buf, size_t *bufsize);
+		struct sc_pkcs15_object *obj,
+		const u8 **buf, size_t *bufsize);
 int sc_pkcs15_decode_pukdf_entry(struct sc_pkcs15_card *p15card,
-				 struct sc_pkcs15_object *obj,
-				 const u8 **buf, size_t *bufsize);
+		struct sc_pkcs15_object *obj,
+		const u8 **buf, size_t *bufsize);
 int sc_pkcs15_decode_skdf_entry(struct sc_pkcs15_card *p15card,
-				 struct sc_pkcs15_object *obj,
-				 const u8 **buf, size_t *bufsize);
+		struct sc_pkcs15_object *obj,
+		const u8 **buf, size_t *bufsize);
 
 int sc_pkcs15_add_object(struct sc_pkcs15_card *p15card,
-			 struct sc_pkcs15_object *obj);
+		struct sc_pkcs15_object *obj);
 void sc_pkcs15_remove_object(struct sc_pkcs15_card *p15card,
-			     struct sc_pkcs15_object *obj);
+		struct sc_pkcs15_object *obj);
 int sc_pkcs15_add_df(struct sc_pkcs15_card *, unsigned int, const sc_path_t *);
 
 int sc_pkcs15_add_unusedspace(struct sc_pkcs15_card *p15card,
-		     const sc_path_t *path, const sc_pkcs15_id_t *auth_id);
-int sc_pkcs15_parse_unusedspace(const u8 * buf, size_t buflen,
-			struct sc_pkcs15_card *card);
+		const sc_path_t *path, const sc_pkcs15_id_t *auth_id);
+int sc_pkcs15_parse_unusedspace(const u8 *buf, size_t buflen,
+		struct sc_pkcs15_card *card);
 int sc_pkcs15_encode_unusedspace(struct sc_context *ctx,
-			 struct sc_pkcs15_card *p15card,
-			 u8 **buf, size_t *buflen);
+		struct sc_pkcs15_card *p15card,
+		u8 **buf, size_t *buflen);
 
 /* Deduce private key attributes from corresponding certificate */
 int sc_pkcs15_prkey_attrs_from_cert(struct sc_pkcs15_card *, struct sc_pkcs15_object *,
@@ -920,20 +920,20 @@ void sc_pkcs15_free_object(struct sc_pkcs15_object *obj);
 
 /* Generic file i/o */
 int sc_pkcs15_read_file(struct sc_pkcs15_card *p15card,
-			const struct sc_path *path,
-			u8 **buf, size_t *buflen, int private_data);
+		const struct sc_path *path,
+		u8 **buf, size_t *buflen, int private_data);
 
 /* Caching functions */
 int sc_pkcs15_read_cached_file(struct sc_pkcs15_card *p15card,
-                               const struct sc_path *path,
-                               u8 **buf, size_t *bufsize);
+		const struct sc_path *path,
+		u8 **buf, size_t *bufsize);
 int sc_pkcs15_cache_file(struct sc_pkcs15_card *p15card,
-			 const struct sc_path *path,
-			 const u8 *buf, size_t bufsize);
+		const struct sc_path *path,
+		const u8 *buf, size_t bufsize);
 
 /* PKCS #15 ID handling functions */
 int sc_pkcs15_compare_id(const struct sc_pkcs15_id *id1,
-			 const struct sc_pkcs15_id *id2);
+		const struct sc_pkcs15_id *id2);
 const char *sc_pkcs15_print_id(const struct sc_pkcs15_id *id);
 void sc_pkcs15_format_id(const char *id_in, struct sc_pkcs15_id *id_out);
 int sc_pkcs15_hex_string_to_id(const char *in, struct sc_pkcs15_id *out);
@@ -1001,36 +1001,36 @@ typedef struct sc_pkcs15_search_key {
 } sc_pkcs15_search_key_t;
 
 int sc_pkcs15_search_objects(struct sc_pkcs15_card *, sc_pkcs15_search_key_t *,
-			struct sc_pkcs15_object **, size_t);
+		struct sc_pkcs15_object **, size_t);
 
 extern int sc_pkcs15_bind_synthetic(struct sc_pkcs15_card *, struct sc_aid *);
 extern int sc_pkcs15_is_emulation_only(sc_card_t *);
 
 int sc_pkcs15emu_object_add(struct sc_pkcs15_card *, unsigned int,
-			const struct sc_pkcs15_object *, const void *);
+		const struct sc_pkcs15_object *, const void *);
 /* some wrapper functions for sc_pkcs15emu_object_add */
 int sc_pkcs15emu_add_pin_obj(struct sc_pkcs15_card *,
-	const struct sc_pkcs15_object *, const sc_pkcs15_auth_info_t *);
+		const struct sc_pkcs15_object *, const sc_pkcs15_auth_info_t *);
 int sc_pkcs15emu_add_rsa_prkey(struct sc_pkcs15_card *,
-	const struct sc_pkcs15_object *, const sc_pkcs15_prkey_info_t *);
+		const struct sc_pkcs15_object *, const sc_pkcs15_prkey_info_t *);
 int sc_pkcs15emu_add_rsa_pubkey(struct sc_pkcs15_card *,
-	const struct sc_pkcs15_object *, const sc_pkcs15_pubkey_info_t *);
+		const struct sc_pkcs15_object *, const sc_pkcs15_pubkey_info_t *);
 int sc_pkcs15emu_add_ec_prkey(struct sc_pkcs15_card *,
-	const struct sc_pkcs15_object *, const sc_pkcs15_prkey_info_t *);
+		const struct sc_pkcs15_object *, const sc_pkcs15_prkey_info_t *);
 int sc_pkcs15emu_add_ec_pubkey(struct sc_pkcs15_card *,
-	const struct sc_pkcs15_object *, const sc_pkcs15_pubkey_info_t *);
+		const struct sc_pkcs15_object *, const sc_pkcs15_pubkey_info_t *);
 int sc_pkcs15emu_add_eddsa_prkey(struct sc_pkcs15_card *,
-	const struct sc_pkcs15_object *, const sc_pkcs15_prkey_info_t *);
+		const struct sc_pkcs15_object *, const sc_pkcs15_prkey_info_t *);
 int sc_pkcs15emu_add_eddsa_pubkey(struct sc_pkcs15_card *,
-	const struct sc_pkcs15_object *, const sc_pkcs15_pubkey_info_t *);
+		const struct sc_pkcs15_object *, const sc_pkcs15_pubkey_info_t *);
 int sc_pkcs15emu_add_xeddsa_prkey(struct sc_pkcs15_card *,
-	const struct sc_pkcs15_object *, const sc_pkcs15_prkey_info_t *);
+		const struct sc_pkcs15_object *, const sc_pkcs15_prkey_info_t *);
 int sc_pkcs15emu_add_xeddsa_pubkey(struct sc_pkcs15_card *,
-	const struct sc_pkcs15_object *, const sc_pkcs15_pubkey_info_t *);
+		const struct sc_pkcs15_object *, const sc_pkcs15_pubkey_info_t *);
 int sc_pkcs15emu_add_x509_cert(struct sc_pkcs15_card *,
-	const struct sc_pkcs15_object *, const sc_pkcs15_cert_info_t *);
+		const struct sc_pkcs15_object *, const sc_pkcs15_cert_info_t *);
 int sc_pkcs15emu_add_data_object(struct sc_pkcs15_card *,
-	const struct sc_pkcs15_object *, const sc_pkcs15_data_info_t *);
+		const struct sc_pkcs15_object *, const sc_pkcs15_data_info_t *);
 
 #ifdef __cplusplus
 }

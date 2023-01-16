@@ -6,15 +6,36 @@ style with couple of modifications:
 
  * Tabs
    * Tabs are used instead of spaces
-   * Tab is 8 spaces wide
+   * Tab is 4 spaces wide
  * Spaces are used for indentation continuation
  * The maximum line width is 110 characters
- * Opening braces follow the condition/expression except for the functions
+    * if you go over few characters, its ok
+    * it does not make sense to wrap line at 60 characters though
+ * Opening braces follow the condition/expression except for the function definition (see example below)
+ * `case` keywords are not indented from the `switch` level (see example below)
+ * Line continuation is indented with 2 tabs (see example below)
+ * Includes are sorted alphabetically
+ * There are no trailing whitespaces. There is no trailing newline on the end of the file
+ * There is exactly one space around any operator. Example:
+   `out->counter[ii] = (md_data->Nh >> 8 * (hh_size - 1 - ii)) & 0xFF;`
+ * Explicit type cast should be attached to the variable without whitespace. Example:
+   `r = pgp_gen_key(card, (sc_cardctl_openpgp_keygen_info_t *)ptr);`
+ * There should be no spaces inside the braces for function arguments, conditions, cycles ... Example:
+   `if (!body || rbuf[0] != 0x7C) {`
+ * There should be spaces after keyword such as `if`, `while` and before opening brace. Example:
+   `do { ... } while (0);`
 
 Examples:
 
 ```
-void
+/* The arrays are indented with two tabs */
+static const char list[] = {
+		"the first item",           /* comments are aligned with spaces */
+		"second item",              /* here too */
+		"last with trailing comma", /* and the last comment */
+};
+
+static void
 function_name(int arg)
 {
 	int var = 0;
@@ -24,12 +45,28 @@ function_name(int arg)
 		var = do_something();
 	}
 	if (rc = call_some_function(arg) ||
-	    rc = call_some_other_long_funct(arg) ||
-	    rc = call_one_more_func(arg)) {
-		/* Note the Tab and 4 spaces on the line above ! */
+			rc = call_some_other_long_funct(arg) ||
+			rc = (int)call_one_more_func(arg)) {
 		return rc;
 	}
+
+	rc = call_some_func_with_many_arguments("Some long string which will not fit on one line",
+			var, var);
+	if (rc == 0) {
+		// do something
+	} else if (rc <= 0) {
+		// do other thing
+	} else {
+		// do something else
+	}
 	return var;
+
+	switch (e) {
+	case '1':
+		// command
+		break;
+	// ...
+	}
 }
 ```
 
@@ -40,6 +77,10 @@ only the parts of the code you changed in your branch
 ```
 $ git-clang-format --diff --commit upstream/master
 ```
+
+If you have an editor that supports the [EditorCofig](https://editorconfig.org/)
+it should help you to keep this formatting. If your editor does not support this
+natively, there is likely to be a plugin.
 
 # Testing locally
 

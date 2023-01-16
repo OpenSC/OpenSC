@@ -206,7 +206,7 @@ static int piv_get_guid(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_o
 		 */
 		memcpy(guid_bin, id.value, id.len);
 		memcpy(guid_bin + id.len, serialnr.value + 1, serialnr.len - 1);
-		
+
 		tlen = id.len + serialnr.len - 1; /* i.e. 16 */
 	} else {
 		/* not what was expected...  use default */
@@ -671,7 +671,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		r = sc_card_ctl(card, SC_CARDCTL_PIV_OBJECT_PRESENT, &obj_info.path);
 		if (r == 1)
 			continue; /* Not on card, do not define the object */
-			
+
 		strncpy(obj_info.app_label, objects[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
 		r = sc_format_oid(&obj_info.app_oid, objects[i].aoid);
 		if (r != SC_SUCCESS)
@@ -682,7 +682,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 
 		strncpy(obj_obj.label, objects[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
 		obj_obj.flags = objects[i].obj_flags;
-		
+
 		r = sc_pkcs15emu_object_add(p15card, SC_PKCS15_TYPE_DATA_OBJECT,
 			&obj_obj, &obj_info);
 		if (r < 0)
@@ -722,7 +722,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		sc_pkcs15_der_t   cert_der;
 		sc_pkcs15_cert_t *cert_out = NULL;
 		int private_obj;
-		
+
 		ckis[i].cert_found = 0;
 		ckis[i].key_alg = -1;
 		ckis[i].pubkey_found = 0;
@@ -736,7 +736,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 
 		memset(&cert_info, 0, sizeof(cert_info));
 		memset(&cert_obj,  0, sizeof(cert_obj));
-	
+
 		sc_pkcs15_format_id(certs[i].id, &cert_info.id);
 		cert_info.authority = certs[i].authority;
 		sc_format_path(certs[i].path, &cert_info.path);
@@ -766,12 +766,12 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 			cert_info.value.value = cert_der.value;
 			cert_info.value.len = cert_der.len;
 			if (!p15card->opts.use_file_cache
-			    || (private_obj && !(p15card->opts.use_file_cache & SC_PKCS15_OPTS_CACHE_ALL_FILES))) {
+					|| (private_obj && !(p15card->opts.use_file_cache & SC_PKCS15_OPTS_CACHE_ALL_FILES))) {
 				cert_info.path.len = 0; /* use in mem cert from now on */
 			}
 		}
 		/* following will find the cached cert in cert_info */
-		r =  sc_pkcs15_read_certificate(p15card, &cert_info, private_obj, &cert_out);
+		r = sc_pkcs15_read_certificate(p15card, &cert_info, private_obj, &cert_out);
 		if (r < 0 || cert_out == NULL || cert_out->key == NULL) {
 			sc_log(card->ctx,  "Failed to read/parse the certificate r=%d",r);
 			if (cert_out != NULL)
@@ -1010,7 +1010,6 @@ sc_log(card->ctx,  "DEE Adding pin %d label=%s",i, label);
 		strncpy(pubkey_obj.label, pubkeys[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
 
 		pubkey_obj.flags = pubkeys[i].obj_flags;
-		
 
 		if (pubkeys[i].auth_id)
 			sc_pkcs15_format_id(pubkeys[i].auth_id, &pubkey_obj.auth_id);
@@ -1023,9 +1022,9 @@ sc_log(card->ctx,  "DEE Adding pin %d label=%s",i, label);
 		 */
 		if (ckis[i].cert_found == 0 ) { /*  no cert found */
 			char * filename = NULL;
-			
+
 			sc_log(card->ctx, "No cert for this pub key i=%d",i);
-			
+
 			/*
 			 * If we used the piv-tool to generate a key,
 			 * we would have saved the public key as a file.
@@ -1033,8 +1032,7 @@ sc_log(card->ctx,  "DEE Adding pin %d label=%s",i, label);
 			 * After the certificate is loaded on the card,
 			 * the public key is extracted from the certificate.
 			 */
-	
-			
+
 			sc_log(card->ctx, "DEE look for env %s",
 					pubkeys[i].getenvname?pubkeys[i].getenvname:"NULL");
 
@@ -1045,7 +1043,7 @@ sc_log(card->ctx,  "DEE Adding pin %d label=%s",i, label);
 			sc_log(card->ctx, "DEE look for file %s", filename?filename:"NULL");
 			if (filename == NULL)
 				continue;
-			
+
 			sc_log(card->ctx, "Adding pubkey from file %s",filename);
 
 			r = sc_pkcs15_pubkey_from_spki_file(card->ctx,  filename, &p15_key);
@@ -1057,7 +1055,7 @@ sc_log(card->ctx,  "DEE Adding pin %d label=%s",i, label);
 			/* Lets also try another method. */
 			r = sc_pkcs15_encode_pubkey_as_spki(card->ctx, p15_key, &pubkey_info.direct.spki.value, &pubkey_info.direct.spki.len);
 			LOG_TEST_GOTO_ERR(card->ctx, r, "SPKI encode public key error");
-			
+
 			/* Only get here if no cert, and the the above found the
 			 * pub key file (actually the SPKI version). This only
 			 * happens when trying initializing a card and have set
@@ -1067,7 +1065,7 @@ sc_log(card->ctx,  "DEE Adding pin %d label=%s",i, label);
 			 */
 
 			pubkey_info.path.len = 0;
-			
+
 			ckis[i].key_alg = p15_key->algorithm;
 			switch (p15_key->algorithm) {
 				case SC_ALGORITHM_RSA:
@@ -1151,7 +1149,7 @@ sc_log(card->ctx,  "DEE Adding pin %d label=%s",i, label);
 
 		if (ckis[i].cert_found == 0 && ckis[i].pubkey_found == 0)
 			continue; /* i.e. no cert or pubkey */
-		
+
 		sc_pkcs15_format_id(prkeys[i].id, &prkey_info.id);
 		prkey_info.native        = 1;
 		prkey_info.key_reference = prkeys[i].ref;

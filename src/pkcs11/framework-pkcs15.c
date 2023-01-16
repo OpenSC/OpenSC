@@ -29,8 +29,8 @@
 #include "ui/notify.h"
 #include "common/compat_strnlen.h"
 #ifdef ENABLE_OPENSSL
-#include <openssl/sha.h>
 #include <openssl/crypto.h>
+#include <openssl/sha.h>
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 #include <openssl/evp.h>
 #endif
@@ -2674,8 +2674,8 @@ pkcs15_create_public_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 			break;
 		case CKA_EC_POINT:
 			if (key_type == CKK_EC) {
-				if (sc_pkcs15_decode_pubkey_ec(p11card->card->ctx, ec, attr->pValue,
-						attr->ulValueLen) < 0)
+				rc = sc_pkcs15_decode_pubkey_ec(p11card->card->ctx, ec, attr->pValue, attr->ulValueLen);
+				if (rc < 0)
 					return CKR_ATTRIBUTE_VALUE_INVALID;
 			}
 			break;
@@ -3617,8 +3617,8 @@ pkcs15_set_attrib(struct sc_pkcs11_session *session, struct sc_pkcs15_object *p1
 			ck_rv = CKR_ATTRIBUTE_READ_ONLY;
 			goto set_attr_done;
 		}
-		rv = sc_pkcs15init_change_attrib(fw_data->p15_card, profile, p15_object, 
-				P15_ATTR_TYPE_VALUE, attr->pValue, (unsigned int) attr->ulValueLen);
+		rv = sc_pkcs15init_change_attrib(fw_data->p15_card, profile, p15_object,
+				P15_ATTR_TYPE_VALUE, attr->pValue, (unsigned int)attr->ulValueLen);
 		break;
 	default:
 		ck_rv = CKR_ATTRIBUTE_READ_ONLY;
@@ -3828,20 +3828,20 @@ pkcs15_cert_cmp_attribute(struct sc_pkcs11_session *session,
 }
 
 struct sc_pkcs11_object_ops pkcs15_cert_ops = {
-	pkcs15_cert_release,
-	pkcs15_cert_set_attribute,
-	pkcs15_cert_get_attribute,
-	pkcs15_cert_cmp_attribute,
-	pkcs15_any_destroy,
-	NULL,	/* get_size */
-	NULL,	/* sign */
-	NULL,	/* unwrap_key */
-	NULL,	/* decrypt */
-	NULL,	/* encrypt */
-	NULL,	/* derive */
-	NULL,	/* can_do */
-	NULL,	/* init_params */
-	NULL	/* wrap_key */
+		pkcs15_cert_release,
+		pkcs15_cert_set_attribute,
+		pkcs15_cert_get_attribute,
+		pkcs15_cert_cmp_attribute,
+		pkcs15_any_destroy,
+		NULL, /* get_size */
+		NULL, /* sign */
+		NULL, /* unwrap_key */
+		NULL, /* decrypt */
+		NULL, /* encrypt */
+		NULL, /* derive */
+		NULL, /* can_do */
+		NULL, /* init_params */
+		NULL, /* wrap_key */
 };
 
 /*
@@ -4716,22 +4716,21 @@ pkcs15_prkey_init_params(struct sc_pkcs11_session *session,
 	return CKR_OK;
 }
 
-
 struct sc_pkcs11_object_ops pkcs15_prkey_ops = {
-	pkcs15_prkey_release,
-	pkcs15_prkey_set_attribute,
-	pkcs15_prkey_get_attribute,
-	sc_pkcs11_any_cmp_attribute,
-	pkcs15_any_destroy,
-	NULL,	/* get_size */
-	pkcs15_prkey_sign,
-	pkcs15_prkey_unwrap,
-	pkcs15_prkey_decrypt,
-	NULL,	/* encrypt */
-	pkcs15_prkey_derive,
-	pkcs15_prkey_can_do,
-	pkcs15_prkey_init_params,
-	NULL	/* wrap_key */
+		pkcs15_prkey_release,
+		pkcs15_prkey_set_attribute,
+		pkcs15_prkey_get_attribute,
+		sc_pkcs11_any_cmp_attribute,
+		pkcs15_any_destroy,
+		NULL, /* get_size */
+		pkcs15_prkey_sign,
+		pkcs15_prkey_unwrap,
+		pkcs15_prkey_decrypt,
+		NULL, /* encrypt */
+		pkcs15_prkey_derive,
+		pkcs15_prkey_can_do,
+		pkcs15_prkey_init_params,
+		NULL, /* wrap_key */
 };
 
 /*
@@ -4903,7 +4902,7 @@ pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session, void *object, CK_
 		return get_modulus_bits(pubkey->pub_data, attr);
 	case CKA_PUBLIC_EXPONENT:
 		return get_public_exponent(pubkey->pub_data, attr);
-	/* 
+	/*
 	 * PKCS#11 does not define a CKA_VALUE for a CKO_PUBLIC_KEY.
 	 * OpenSC does, but it is not consistent it what it returns
 	 * Internally to do verify, with OpenSSL, we need a SPKI that
@@ -4978,22 +4977,21 @@ pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session, void *object, CK_
 }
 
 struct sc_pkcs11_object_ops pkcs15_pubkey_ops = {
-	pkcs15_pubkey_release,
-	pkcs15_pubkey_set_attribute,
-	pkcs15_pubkey_get_attribute,
-	sc_pkcs11_any_cmp_attribute,
-	pkcs15_any_destroy,
-	NULL,	/* get_size */
-	NULL,	/* sign */
-	NULL,	/* unwrap_key */
-	NULL,	/* decrypt */
-	NULL,	/* ecrypt */
-	NULL,	/* derive */
-	NULL,	/* can_do */
-	NULL,	/* init_params */
-	NULL	/* wrap_key */
+		pkcs15_pubkey_release,
+		pkcs15_pubkey_set_attribute,
+		pkcs15_pubkey_get_attribute,
+		sc_pkcs11_any_cmp_attribute,
+		pkcs15_any_destroy,
+		NULL, /* get_size */
+		NULL, /* sign */
+		NULL, /* unwrap_key */
+		NULL, /* decrypt */
+		NULL, /* ecrypt */
+		NULL, /* derive */
+		NULL, /* can_do */
+		NULL, /* init_params */
+		NULL, /* wrap_key */
 };
-
 
 /* PKCS#15 Data Object*/
 static void
@@ -5161,20 +5159,20 @@ pkcs15_dobj_get_attribute(struct sc_pkcs11_session *session, void *object, CK_AT
 }
 
 struct sc_pkcs11_object_ops pkcs15_dobj_ops = {
-	pkcs15_dobj_release,
-	pkcs15_dobj_set_attribute,
-	pkcs15_dobj_get_attribute,
-	sc_pkcs11_any_cmp_attribute,
-	pkcs15_any_destroy,
-	NULL,	/* get_size */
-	NULL,	/* sign */
-	NULL,	/* unwrap_key */
-	NULL,	/* decrypt */
-	NULL,	/* encrypt */
-	NULL,	/* derive */
-	NULL,	/* can_do */
-	NULL,	/* init_params */
-	NULL	/* wrap_key */
+		pkcs15_dobj_release,
+		pkcs15_dobj_set_attribute,
+		pkcs15_dobj_get_attribute,
+		sc_pkcs11_any_cmp_attribute,
+		pkcs15_any_destroy,
+		NULL, /* get_size */
+		NULL, /* sign */
+		NULL, /* unwrap_key */
+		NULL, /* decrypt */
+		NULL, /* encrypt */
+		NULL, /* derive */
+		NULL, /* can_do */
+		NULL, /* init_params */
+		NULL, /* wrap_key */
 };
 
 /* PKCS#15 Data Object*/
@@ -5227,23 +5225,21 @@ pkcs15_profile_get_attribute(struct sc_pkcs11_session *session, void *object, CK
 	return CKR_OK;
 }
 struct sc_pkcs11_object_ops pkcs15_profile_ops = {
-	pkcs15_profile_release,
-	pkcs15_profile_set_attribute,
-	pkcs15_profile_get_attribute,
-	sc_pkcs11_any_cmp_attribute,
-	pkcs15_any_destroy,
-	NULL,	/* get_size */
-	NULL,	/* sign */
-	NULL,	/* unwrap_key */
-	NULL,	/* decrypt */
-	NULL,	/* encrypt */
-	NULL,	/* derive */
-	NULL,	/* can_do */
-	NULL,	/* init_params */
-	NULL	/* wrap_key */
+		pkcs15_profile_release,
+		pkcs15_profile_set_attribute,
+		pkcs15_profile_get_attribute,
+		sc_pkcs11_any_cmp_attribute,
+		pkcs15_any_destroy,
+		NULL, /* get_size */
+		NULL, /* sign */
+		NULL, /* unwrap_key */
+		NULL, /* decrypt */
+		NULL, /* encrypt */
+		NULL, /* derive */
+		NULL, /* can_do */
+		NULL, /* init_params */
+		NULL, /* wrap_key */
 };
-
-
 
 /* PKCS#15 Secret Key Objects */
 /* TODO Currently only session objects */
@@ -5698,20 +5694,20 @@ pkcs15_skey_decrypt(struct sc_pkcs11_session *session, void *obj,
  *  Secret key objects, currently used only to retrieve derived session key
  */
 struct sc_pkcs11_object_ops pkcs15_skey_ops = {
-	pkcs15_skey_release,
-	pkcs15_skey_set_attribute,
-	pkcs15_skey_get_attribute,
-	sc_pkcs11_any_cmp_attribute,
-	pkcs15_skey_destroy,
-	NULL,	/* get_size */
-	NULL,	/* sign */
-	pkcs15_skey_unwrap,
-	pkcs15_skey_decrypt,	/* decrypt */
-	pkcs15_skey_encrypt,	/* encrypt */
-	NULL,	/* derive */
-	NULL,	/* can_do */
-	NULL,	/* init_params */
-	pkcs15_skey_wrap /* wrap_key */
+		pkcs15_skey_release,
+		pkcs15_skey_set_attribute,
+		pkcs15_skey_get_attribute,
+		sc_pkcs11_any_cmp_attribute,
+		pkcs15_skey_destroy,
+		NULL, /* get_size */
+		NULL, /* sign */
+		pkcs15_skey_unwrap,
+		pkcs15_skey_decrypt, /* decrypt */
+		pkcs15_skey_encrypt, /* encrypt */
+		NULL,                /* derive */
+		NULL,                /* can_do */
+		NULL,                /* init_params */
+		pkcs15_skey_wrap,    /* wrap_key */
 };
 
 /*

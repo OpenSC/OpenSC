@@ -948,8 +948,8 @@ typedef struct CK_XEDDSA_PARAMS {
 typedef CK_XEDDSA_PARAMS *CK_XEDDSA_PARAMS_PTR;
 
 typedef struct CK_AES_CTR_PARAMS {
-    unsigned long ulCounterBits;
-    unsigned char cb[16];
+	unsigned long ulCounterBits;
+	unsigned char cb[16];
 } CK_AES_CTR_PARAMS;
 
 typedef CK_AES_CTR_PARAMS *CK_AES_CTR_PARAMS_PTR;
@@ -961,9 +961,9 @@ typedef ck_rv_t (*ck_notify_t) (ck_session_handle_t session,
 				ck_notification_t event, void *application);
 
 struct ck_interface {
-  char * pInterfaceName;
-  void * pFunctionList;
-  ck_flags_t flags;
+	char *pInterfaceName;
+	void *pFunctionList;
+	ck_flags_t flags;
 };
 
 #define CKF_INTERFACE_FORK_SAFE	(0x00000001UL)

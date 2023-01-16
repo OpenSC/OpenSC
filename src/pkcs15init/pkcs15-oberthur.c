@@ -277,10 +277,8 @@ cosm_create_reference_data(struct sc_profile *profile, struct sc_pkcs15_card *p1
 	};
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
-	sc_log(ctx,
-		 "pin lens %"SC_FORMAT_LEN_SIZE_T"u/%"SC_FORMAT_LEN_SIZE_T"u",
-		 pin_len, puk_len);
-	if (!pin || pin_len>0x40)
+	sc_log(ctx, "pin lens %" SC_FORMAT_LEN_SIZE_T "u/%" SC_FORMAT_LEN_SIZE_T "u", pin_len, puk_len);
+	if (!pin || pin_len > 0x40)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	if (puk && !puk_len)
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -477,12 +475,12 @@ static int
 cosm_new_file(struct sc_profile *profile, struct sc_card *card,
 		unsigned int type, unsigned int num, struct sc_file **out)
 {
-	struct sc_file	*file;
+	struct sc_file *file;
 	const char *_template = NULL, *desc = NULL;
 	unsigned int structure = 0xFFFFFFFF;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	sc_log(card->ctx,  "cosm_new_file() type %X; num %i",type, num);
+	sc_log(card->ctx, "cosm_new_file() type %X; num %i", type, num);
 	while (1) {
 		switch (type) {
 		case SC_PKCS15_TYPE_PRKEY_RSA:
@@ -513,17 +511,15 @@ cosm_new_file(struct sc_profile *profile, struct sc_card *card,
 		 * the generic class (SC_PKCS15_TYPE_CERT)
 		 */
 		if (!(type & ~SC_PKCS15_TYPE_CLASS_MASK)) {
-			sc_log(card->ctx,  "File type %X not supported by card driver",
-				type);
+			sc_log(card->ctx, "File type %X not supported by card driver", type);
 			return SC_ERROR_INVALID_ARGUMENTS;
 		}
 		type &= SC_PKCS15_TYPE_CLASS_MASK;
 	}
 
-	sc_log(card->ctx,  "cosm_new_file() template %s; num %i",_template, num);
+	sc_log(card->ctx, "cosm_new_file() template %s; num %i", _template, num);
 	if (sc_profile_get_file(profile, _template, &file) < 0) {
-		sc_log(card->ctx,  "Profile doesn't define %s template '%s'",
-				desc, _template);
+		sc_log(card->ctx, "Profile doesn't define %s template '%s'", desc, _template);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 	}
 
@@ -533,9 +529,8 @@ cosm_new_file(struct sc_profile *profile, struct sc_card *card,
 		file->ef_structure = structure;
 	}
 
-	sc_log(card->ctx,
-		 "cosm_new_file() file size %"SC_FORMAT_LEN_SIZE_T"u; ef type %i/%i; id %04X",
-		 file->size, file->type, file->ef_structure, file->id);
+	sc_log(card->ctx, "cosm_new_file() file size %" SC_FORMAT_LEN_SIZE_T "u; ef type %i/%i; id %04X",
+			file->size, file->type, file->ef_structure, file->id);
 	*out = file;
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);

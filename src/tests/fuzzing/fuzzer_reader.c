@@ -26,10 +26,10 @@ struct driver_data {
 
 static struct sc_reader_operations fuzz_ops = {0};
 static struct sc_reader_driver fuzz_drv = {
-	"Fuzzing reader",
-	"fuzz",
-	&fuzz_ops,
-	NULL
+		"Fuzzing reader",
+		"fuzz",
+		&fuzz_ops,
+		NULL,
 };
 
 void
@@ -143,25 +143,25 @@ fuzz_reader_transmit(sc_reader_t *reader, sc_apdu_t *apdu)
 static int
 fuzz_reader_lock(sc_reader_t *reader)
 {
-    return 0;
+	return 0;
 }
 
 static int
 fuzz_reader_unlock(sc_reader_t *reader)
 {
-    return 0;
+	return 0;
 }
 
 struct sc_reader_driver *
 sc_get_fuzz_driver(void)
 {
-    fuzz_ops.release = fuzz_reader_release;
-    fuzz_ops.connect = fuzz_reader_connect;
-    fuzz_ops.disconnect = fuzz_reader_disconnect;
-    fuzz_ops.transmit = fuzz_reader_transmit;
-    fuzz_ops.lock = fuzz_reader_lock;
-    fuzz_ops.unlock = fuzz_reader_unlock;
-    return &fuzz_drv;
+	fuzz_ops.release = fuzz_reader_release;
+	fuzz_ops.connect = fuzz_reader_connect;
+	fuzz_ops.disconnect = fuzz_reader_disconnect;
+	fuzz_ops.transmit = fuzz_reader_transmit;
+	fuzz_ops.lock = fuzz_reader_lock;
+	fuzz_ops.unlock = fuzz_reader_unlock;
+	return &fuzz_drv;
 }
 
 void
@@ -190,30 +190,31 @@ fuzz_add_reader(struct sc_context *ctx, const uint8_t *Data, size_t Size)
 	list_append(&ctx->readers, reader);
 }
 
-int fuzz_connect_card(sc_context_t *ctx, sc_card_t **card, sc_reader_t **reader_out,
-                      const uint8_t *data, size_t size)
+int
+fuzz_connect_card(sc_context_t *ctx, sc_card_t **card, sc_reader_t **reader_out,
+		const uint8_t *data, size_t size)
 {
-    struct sc_reader *reader = NULL;
+	struct sc_reader *reader = NULL;
 
-    /* Erase possible readers from ctx */
-    while (list_size(&ctx->readers)) {
-        sc_reader_t *rdr = (sc_reader_t *) list_get_at(&ctx->readers, 0);
-        _sc_delete_reader(ctx, rdr);
-    }
-    if (ctx->reader_driver->ops->finish != NULL)
-        ctx->reader_driver->ops->finish(ctx);
+	/* Erase possible readers from ctx */
+	while (list_size(&ctx->readers)) {
+		sc_reader_t *rdr = (sc_reader_t *)list_get_at(&ctx->readers, 0);
+		_sc_delete_reader(ctx, rdr);
+	}
+	if (ctx->reader_driver->ops->finish != NULL)
+		ctx->reader_driver->ops->finish(ctx);
 
-    /* Create virtual reader */
-    ctx->reader_driver = sc_get_fuzz_driver();
-    fuzz_add_reader(ctx, data, size);
-    reader = sc_ctx_get_reader(ctx, 0);
+	/* Create virtual reader */
+	ctx->reader_driver = sc_get_fuzz_driver();
+	fuzz_add_reader(ctx, data, size);
+	reader = sc_ctx_get_reader(ctx, 0);
 
-    /* Connect card */
-    if (sc_connect_card(reader, card))
-        return SC_ERROR_INTERNAL;
+	/* Connect card */
+	if (sc_connect_card(reader, card))
+		return SC_ERROR_INTERNAL;
 
-    if (reader_out)
-        *reader_out = reader;
+	if (reader_out)
+		*reader_out = reader;
 
-    return SC_SUCCESS;
+	return SC_SUCCESS;
 }

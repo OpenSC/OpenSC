@@ -235,7 +235,7 @@ static int myeid_init(struct sc_card *card)
 	priv->card_state = SC_FILE_STATUS_CREATION;
 	card->drv_data = priv;
 
-	/* Ensure that the MyEID applet is selected. */	
+	/* Ensure that the MyEID applet is selected. */
 	rv = myeid_select_aid(card, &myeid_aid, NULL, &resp_len);
 	LOG_TEST_GOTO_ERR(card->ctx, rv, "Failed to select MyEID applet.");
 
@@ -420,8 +420,8 @@ static void parse_sec_attr(struct sc_file *file, const u8 *buf, size_t len)
 	}
 }
 
-static int myeid_select_file(struct sc_card *card, const struct sc_path *in_path,
-		struct sc_file **file)
+static int
+myeid_select_file(struct sc_card *card, const struct sc_path *in_path, struct sc_file **file)
 {
 	int r;
 
@@ -434,7 +434,8 @@ static int myeid_select_file(struct sc_card *card, const struct sc_path *in_path
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
-static int myeid_logout(struct sc_card *card)
+static int
+myeid_logout(struct sc_card *card)
 {
 	sc_apdu_t apdu;
 	int r;
@@ -450,7 +451,8 @@ static int myeid_logout(struct sc_card *card)
 	LOG_FUNC_RETURN(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
 
-static int myeid_list_files(struct sc_card *card, u8 *buf, size_t buflen)
+static int
+myeid_list_files(struct sc_card *card, u8 *buf, size_t buflen)
 {
 	struct sc_apdu apdu;
 	int r;

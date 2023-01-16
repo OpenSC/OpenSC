@@ -125,7 +125,7 @@ iasecc_pkcs15_erase_card(struct sc_profile *profile, struct sc_pkcs15_card *p15c
 
 	LOG_FUNC_CALLED(ctx);
 
-	if (p15card->app && p15card->app->ddo.aid.len)   {
+	if (p15card->app && p15card->app->ddo.aid.len) {
 		memset(&path, 0, sizeof(struct sc_path));
 		path.type = SC_PATH_TYPE_DF_NAME;
 		memcpy(path.value, p15card->app->ddo.aid.value, p15card->app->ddo.aid.len);
@@ -136,7 +136,7 @@ iasecc_pkcs15_erase_card(struct sc_profile *profile, struct sc_pkcs15_card *p15c
 		LOG_TEST_RET(ctx, rv, "Erase application error: cannot select DDO AID");
 	}
 
-	for (df = p15card->df_list; df; df = df->next)   {
+	for (df = p15card->df_list; df; df = df->next) {
 		struct sc_pkcs15_object *objs[32];
 		unsigned obj_type = 0;
 		int ii;
@@ -155,12 +155,11 @@ iasecc_pkcs15_erase_card(struct sc_profile *profile, struct sc_pkcs15_card *p15c
 		rv = sc_pkcs15_get_objects(p15card, obj_type, objs, 32);
 		LOG_TEST_RET(ctx, rv, "Failed to get PKCS#15 objects to remove");
 
-		for (ii=0; ii<rv; ii++)   {
-			if (obj_type == SC_PKCS15_TYPE_CERT)   {
+		for (ii = 0; ii < rv; ii++) {
+			if (obj_type == SC_PKCS15_TYPE_CERT) {
 				struct sc_path path = ((struct sc_pkcs15_cert_info *)(objs[ii]->data))->path;
 				rv = sc_delete_file(p15card->card, &path);
-			}
-			else if (obj_type == SC_PKCS15_TYPE_DATA_OBJECT)   {
+			} else if (obj_type == SC_PKCS15_TYPE_DATA_OBJECT) {
 				struct sc_path path = ((struct sc_pkcs15_data_info *)(objs[ii]->data))->path;
 				rv = sc_delete_file(p15card->card, &path);
 			}

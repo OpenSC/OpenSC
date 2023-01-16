@@ -198,17 +198,17 @@ static int entersafe_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 		LOG_TEST_RET(card->ctx, ret, "Create GPKF failed");
 	}
 
-	{/* p15 efs */
-		const char * create_efs[] = {
-			"PKCS15-ODF",
-			"PKCS15-TokenInfo",
-			"PKCS15-UnusedSpace",
-			"PKCS15-AODF",
-			"PKCS15-PrKDF",
-			"PKCS15-PuKDF",
-			"PKCS15-CDF",
-			"PKCS15-DODF",
-			NULL,
+	{ /* p15 efs */
+		const char *create_efs[] = {
+				"PKCS15-ODF",
+				"PKCS15-TokenInfo",
+				"PKCS15-UnusedSpace",
+				"PKCS15-AODF",
+				"PKCS15-PrKDF",
+				"PKCS15-PuKDF",
+				"PKCS15-CDF",
+				"PKCS15-DODF",
+				NULL,
 		};
 		int i;
 		sc_file_t *file = 0;

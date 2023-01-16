@@ -505,7 +505,7 @@ int sc_lock(sc_card_t *card)
 	}
 
 	/* give card driver a chance to do something when reader lock first obtained */
-	if (r == 0 && reader_lock_obtained == 1  && card->ops->card_reader_lock_obtained) {
+	if (r == 0 && reader_lock_obtained == 1 && card->ops->card_reader_lock_obtained) {
 		r = card->ops->card_reader_lock_obtained(card, was_reset);
 		/* return value of card->reader->ops->lock is overwritten here
 		   by card->ops->card_reader_lock_obtained */

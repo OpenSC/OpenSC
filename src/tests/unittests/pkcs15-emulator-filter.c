@@ -32,15 +32,15 @@ func(sc_pkcs15_card_t *card, struct sc_aid *aid)
 
 // clang-format off
 struct sc_pkcs15_emulator_handler builtin[] = {
-	{ "openpgp",	&func },
-	{ "starcert",	&func },
-	{ NULL,	NULL }
+		{"openpgp", &func},
+		{"starcert", &func},
+		{NULL, NULL},
 };
 struct sc_pkcs15_emulator_handler old[] = {
-	{ "westcos",	&func },
-	{ "cardos",		&func },
-	{ "jcop",		&func },
-	{ NULL, NULL }
+		{"westcos", &func},
+		{"cardos", &func},
+		{"jcop", &func},
+		{NULL, NULL},
 };
 // clang-format on
 
@@ -487,38 +487,38 @@ int
 main(void)
 {
 	const struct CMUnitTest tests[] = {
-		/* add_emul */
-		cmocka_unit_test(torture_null_add_emul),
-		cmocka_unit_test(torture_name_add_emul),
-		cmocka_unit_test(torture_name_already_in_add_emul),
-		cmocka_unit_test(torture_full_add_emul),
-		cmocka_unit_test(torture_overfilled_add_emul),
-		cmocka_unit_test(torture_invalid_handler_name_add_emul),
-		cmocka_unit_test(torture_invalid_handler_func_add_emul),
-		cmocka_unit_test(torture_invalid_emulator_list_add_emul),
-		/* add_emul_list */
-		cmocka_unit_test(torture_null_add_emul_list),
-		cmocka_unit_test(torture_internal_add_emul_list),
-		cmocka_unit_test(torture_internal_already_name_add_emul_list),
-		cmocka_unit_test(torture_internal_already_name2_add_emul_list),
-		cmocka_unit_test(torture_full_add_emul_list),
-		cmocka_unit_test(torture_one_to_full_add_emul_list),
-		cmocka_unit_test(torture_overfilled_add_emul_list),
-		/* set_emulators */
-		cmocka_unit_test(torture_non_existing),
-		cmocka_unit_test(torture_internal_only),
-		cmocka_unit_test(torture_old_only),
-		cmocka_unit_test(torture_internal_name),
-		cmocka_unit_test(torture_old_name),
-		cmocka_unit_test(torture_internal_and_name),
-		cmocka_unit_test(torture_name_and_internal),
-		cmocka_unit_test(torture_internal_and_nonexisting),
-		cmocka_unit_test(torture_nonexisting_and_internal),
-		cmocka_unit_test(torture_null_set_emul),
-		cmocka_unit_test(torture_full_set_emul),
-		cmocka_unit_test(torture_one_to_full_set_emul),
-		cmocka_unit_test(torture_one_to_full2_set_emul),
-		cmocka_unit_test(torture_overfilled_set_emul),
+			/* add_emul */
+			cmocka_unit_test(torture_null_add_emul),
+			cmocka_unit_test(torture_name_add_emul),
+			cmocka_unit_test(torture_name_already_in_add_emul),
+			cmocka_unit_test(torture_full_add_emul),
+			cmocka_unit_test(torture_overfilled_add_emul),
+			cmocka_unit_test(torture_invalid_handler_name_add_emul),
+			cmocka_unit_test(torture_invalid_handler_func_add_emul),
+			cmocka_unit_test(torture_invalid_emulator_list_add_emul),
+			/* add_emul_list */
+			cmocka_unit_test(torture_null_add_emul_list),
+			cmocka_unit_test(torture_internal_add_emul_list),
+			cmocka_unit_test(torture_internal_already_name_add_emul_list),
+			cmocka_unit_test(torture_internal_already_name2_add_emul_list),
+			cmocka_unit_test(torture_full_add_emul_list),
+			cmocka_unit_test(torture_one_to_full_add_emul_list),
+			cmocka_unit_test(torture_overfilled_add_emul_list),
+			/* set_emulators */
+			cmocka_unit_test(torture_non_existing),
+			cmocka_unit_test(torture_internal_only),
+			cmocka_unit_test(torture_old_only),
+			cmocka_unit_test(torture_internal_name),
+			cmocka_unit_test(torture_old_name),
+			cmocka_unit_test(torture_internal_and_name),
+			cmocka_unit_test(torture_name_and_internal),
+			cmocka_unit_test(torture_internal_and_nonexisting),
+			cmocka_unit_test(torture_nonexisting_and_internal),
+			cmocka_unit_test(torture_null_set_emul),
+			cmocka_unit_test(torture_full_set_emul),
+			cmocka_unit_test(torture_one_to_full_set_emul),
+			cmocka_unit_test(torture_one_to_full2_set_emul),
+			cmocka_unit_test(torture_overfilled_set_emul),
 	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }

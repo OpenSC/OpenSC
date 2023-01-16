@@ -53,7 +53,7 @@ void
 fuzz_pkcs15init_bind(struct sc_card *card, struct sc_profile **result, const uint8_t *data, size_t size)
 {
 	struct sc_profile *profile = NULL;
-	const char	      *driver;
+	const char *driver;
 	struct sc_pkcs15init_operations *(*func)(void) = NULL;
 	int r = 0;
 

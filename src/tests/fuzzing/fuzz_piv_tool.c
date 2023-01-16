@@ -23,12 +23,12 @@
 #include "config.h"
 #endif
 
-#include "libopensc/internal.h"
-#include <stdlib.h>
-#include <string.h>
-#include <stdbool.h>
 #include "fuzzer_reader.h"
 #include "fuzzer_tool.h"
+#include "libopensc/internal.h"
+#include <stdbool.h>
+#include <stdlib.h>
+#include <string.h>
 #undef stderr
 #define stderr stdout
 
@@ -36,19 +36,21 @@
 #define main _main
 /* Connect to virtual reader instead of real card*/
 #define util_connect_card(ctx, card, id, do_wait, verbose) fuzz_util_connect_card(ctx, card)
-# include "tools/piv-tool.c"
+#include "tools/piv-tool.c"
 #undef main
 
 static const uint8_t *reader_data = NULL;
 static size_t reader_data_size = 0;
 
 /* Use instead of util_connect_card() */
-int fuzz_util_connect_card(struct sc_context *ctx, struct sc_card **card)
+int
+fuzz_util_connect_card(struct sc_context *ctx, struct sc_card **card)
 {
 	return fuzz_connect_card(ctx, card, NULL, reader_data, reader_data_size);
 }
 
-void initilize_global()
+void
+initilize_global()
 {
 	/* Global variables need to be reser between runs,
 	   fuzz target is called repetitively in one execution */
@@ -67,7 +69,8 @@ void initilize_global()
 	optopt = 0;
 }
 
-void test_load(char *op, const uint8_t *data, size_t size)
+void
+test_load(char *op, const uint8_t *data, size_t size)
 {
 	char *filename = NULL;
 	char *argv[] = {"./fuzz_piv", op, NULL /*ref*/, "-i", NULL /*filename*/, "-A", NULL /*admin*/, NULL};
@@ -102,19 +105,20 @@ void test_load(char *op, const uint8_t *data, size_t size)
 }
 
 /* Skip argv with option for output file */
-int present_outfile(int argc, char *argv[])
+int
+present_outfile(int argc, char *argv[])
 {
 	const struct option _options[] = {
-		{ "out",1, NULL,'o' },
-		{ NULL, 0, NULL, 0 }
+			{"out", 1, NULL, 'o'},
+			{NULL, 0, NULL, 0},
 	};
 	int c;
-	while ((c = getopt_long(argc, argv, "o:", _options, (int *) 0)) != -1) {
+	while ((c = getopt_long(argc, argv, "o:", _options, (int *)0)) != -1) {
 		switch (c) {
-			case 'o':
-				return 1;
-			default:
-				continue;
+		case 'o':
+			return 1;
+		default:
+			continue;
 		}
 	}
 	optind = 0;
@@ -122,7 +126,8 @@ int present_outfile(int argc, char *argv[])
 	return 0;
 }
 
-int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
+int
+LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
 	uint8_t operation = 0;
 	char *filename = NULL;
@@ -148,24 +153,24 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 	putenv(auth_path);
 
 	switch (operation) {
-		case 0:
-			test_load("-O", data, size);
-			break;
-		case 1:
-			test_load("-C", data, size);
-			break;
-		case 2:
-			test_load("-Z", data, size);
-			break;
-		default:
-			if (get_fuzzed_argv("./fuzz_piv", data, size, &argv, &argc, &reader_data, &reader_data_size) != 0)
-				goto err;
-			if (present_outfile(argc, argv)) {
-				free_arguments(argc, argv);
-				goto err;
-			}
-			_main(argc, argv);
+	case 0:
+		test_load("-O", data, size);
+		break;
+	case 1:
+		test_load("-C", data, size);
+		break;
+	case 2:
+		test_load("-Z", data, size);
+		break;
+	default:
+		if (get_fuzzed_argv("./fuzz_piv", data, size, &argv, &argc, &reader_data, &reader_data_size) != 0)
+			goto err;
+		if (present_outfile(argc, argv)) {
 			free_arguments(argc, argv);
+			goto err;
+		}
+		_main(argc, argv);
+		free_arguments(argc, argv);
 	}
 err:
 	reader_data = NULL;

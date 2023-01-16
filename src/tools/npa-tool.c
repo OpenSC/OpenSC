@@ -92,16 +92,16 @@ static int getline(char **lineptr, size_t *n, FILE *stream)
 typedef ASN1_AUXILIARY_DATA ASN1_AUXILIARY_DATA_NPA_TOOL;
 /* 0x67
  * Auxiliary authenticated data */
-ASN1_ITEM_TEMPLATE(ASN1_AUXILIARY_DATA_NPA_TOOL) = 
+ASN1_ITEM_TEMPLATE(ASN1_AUXILIARY_DATA_NPA_TOOL) =
 	ASN1_EX_TEMPLATE_TYPE(
 			ASN1_TFLG_SEQUENCE_OF|ASN1_TFLG_IMPTAG|ASN1_TFLG_APPLICATION,
 			7, AuxiliaryAuthenticatedData, CVC_DISCRETIONARY_DATA_TEMPLATE)
 ASN1_ITEM_TEMPLATE_END(ASN1_AUXILIARY_DATA_NPA_TOOL)
 IMPLEMENT_ASN1_FUNCTIONS(ASN1_AUXILIARY_DATA_NPA_TOOL)
 
-/** 
+/**
  * @brief Print binary data to a file stream
- * 
+ *
  * @param[in] file  File for printing
  * @param[in] label Label to prepend to the buffer
  * @param[in] data  Binary data
@@ -862,4 +862,3 @@ err:
 
 	return -r;
 }
-

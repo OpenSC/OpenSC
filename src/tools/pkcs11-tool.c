@@ -51,8 +51,8 @@
 #include <openssl/rsa.h>
 #include <openssl/pem.h>
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
-# include <openssl/core_names.h>
-# include <openssl/param_build.h>
+#include <openssl/core_names.h>
+#include <openssl/param_build.h>
 #include <openssl/provider.h>
 #endif
 #if !defined(OPENSSL_NO_EC) && !defined(OPENSSL_NO_ECDSA)
@@ -295,89 +295,89 @@ static const struct option options[] = {
 // clang-format on
 
 static const char *option_help[] = {
-	"Specify the module to load (default:" DEFAULT_PKCS11_PROVIDER ")",
-	"Show global token information",
-	"List available slots",
-	"List slots with tokens",
-	"List mechanisms supported by the token",
-	"Show objects on token",
-	"List interfaces of PKCS #11 3.0 library",
+		"Specify the module to load (default:" DEFAULT_PKCS11_PROVIDER ")",
+		"Show global token information",
+		"List available slots",
+		"List slots with tokens",
+		"List mechanisms supported by the token",
+		"Show objects on token",
+		"List interfaces of PKCS #11 3.0 library",
 
-	"Sign some data",
-	"Verify a signature of some data",
-	"Decrypt some data",
-	"Encrypt some data",
-	"Unwrap key",
-	"Wrap key",
-	"Hash some data",
-	"Derive a secret key using another key and some data",
-	"Derive ECDHpass DER encoded pubkey for compatibility with some PKCS#11 implementations",
-	"Specify mechanism (use -M for a list of supported mechanisms), or by hexadecimal, e.g., 0x80001234",
-	"Specify hash algorithm used with RSA-PKCS-PSS signature and RSA-PKCS-OAEP decryption",
-	"Specify MGF (Message Generation Function) used for RSA-PSS signature and RSA-OAEP decryption (possible values are MGF1-SHA1 to MGF1-SHA512)",
-	"Specify how many bytes should be used for salt in RSA-PSS signatures (default is digest size)",
+		"Sign some data",
+		"Verify a signature of some data",
+		"Decrypt some data",
+		"Encrypt some data",
+		"Unwrap key",
+		"Wrap key",
+		"Hash some data",
+		"Derive a secret key using another key and some data",
+		"Derive ECDHpass DER encoded pubkey for compatibility with some PKCS#11 implementations",
+		"Specify mechanism (use -M for a list of supported mechanisms), or by hexadecimal, e.g., 0x80001234",
+		"Specify hash algorithm used with RSA-PKCS-PSS signature and RSA-PKCS-OAEP decryption",
+		"Specify MGF (Message Generation Function) used for RSA-PSS signature and RSA-OAEP decryption (possible values are MGF1-SHA1 to MGF1-SHA512)",
+		"Specify how many bytes should be used for salt in RSA-PSS signatures (default is digest size)",
 
-	"Forces to open the PKCS#11 session with CKF_RW_SESSION",
-	"Log into the token first",
-	"Specify login type ('so', 'user', 'context-specific'; default:'user')",
-	"Supply User PIN on the command line (if used in scripts: careful!)",
-	"Supply User PUK on the command line",
-	"Supply new User PIN on the command line",
-	"Supply SO PIN on the command line (if used in scripts: careful!)",
-	"Initialize the token, its label and its SO PIN (use with --label and --so-pin)",
-	"Initialize the User PIN (use with --pin and --login)",
-	"Change User PIN",
-	"Unlock User PIN (without '--login' unlock in logged in session; otherwise '--login-type' has to be 'context-specific')",
-	"Key pair generation",
-	"Key generation",
-	"Specify the type and length (bytes if symmetric) of the key to create, for example rsa:1024, EC:prime256v1, EC:ed25519, EC:curve25519, GOSTR3410-2012-256:B, AES:16 or GENERIC:64",
-	"Specify 'sign' key usage flag (sets SIGN in privkey, sets VERIFY in pubkey)",
-	"Specify 'decrypt' key usage flag (sets DECRYPT in privkey and ENCRYPT in pubkey for RSA, sets both DECRYPT and ENCRYPT for secret keys)",
-	"Specify 'derive' key usage flag (EC only)",
-	"Specify 'wrap' key usage flag",
-	"Write an object (key, cert, data) to the card",
-	"Get object's CKA_VALUE attribute (use with --type)",
-	"Delete an object (use with --type cert/data/privkey/pubkey/secrkey)",
-	"Specify the application label of the data object (use with --type data)",
-	"Specify the application ID of the data object (use with --type data)",
-	"Specify the issuer in hexadecimal format (use with --type cert)",
-	"Specify the subject in hexadecimal format (use with --type cert/privkey/pubkey)",
-	"Specify the type of object (e.g. cert, privkey, pubkey, secrkey, data)",
-	"Specify the ID of the object",
-	"Specify the label of the object",
-	"Specify the ID of the slot to use",
-	"Specify the description of the slot to use",
-	"Specify the index of the slot to use",
-	"Specify the index of the object to use",
-	"Specify the token label of the slot to use",
-	"Set the CKA_ID of an object, <args>= the (new) CKA_ID",
-	"Use <arg> to create some attributes when writing an object",
-	"Specify the input file",
-	"Specify the file with signature for verification",
-	"Specify the output file",
-	"Format for ECDSA signature <arg>: 'rs' (default), 'sequence', 'openssl'",
-	"Specify the comma-separated list of allowed mechanisms when creating an object.",
+		"Forces to open the PKCS#11 session with CKF_RW_SESSION",
+		"Log into the token first",
+		"Specify login type ('so', 'user', 'context-specific'; default:'user')",
+		"Supply User PIN on the command line (if used in scripts: careful!)",
+		"Supply User PUK on the command line",
+		"Supply new User PIN on the command line",
+		"Supply SO PIN on the command line (if used in scripts: careful!)",
+		"Initialize the token, its label and its SO PIN (use with --label and --so-pin)",
+		"Initialize the User PIN (use with --pin and --login)",
+		"Change User PIN",
+		"Unlock User PIN (without '--login' unlock in logged in session; otherwise '--login-type' has to be 'context-specific')",
+		"Key pair generation",
+		"Key generation",
+		"Specify the type and length (bytes if symmetric) of the key to create, for example rsa:1024, EC:prime256v1, EC:ed25519, EC:curve25519, GOSTR3410-2012-256:B, AES:16 or GENERIC:64",
+		"Specify 'sign' key usage flag (sets SIGN in privkey, sets VERIFY in pubkey)",
+		"Specify 'decrypt' key usage flag (sets DECRYPT in privkey and ENCRYPT in pubkey for RSA, sets both DECRYPT and ENCRYPT for secret keys)",
+		"Specify 'derive' key usage flag (EC only)",
+		"Specify 'wrap' key usage flag",
+		"Write an object (key, cert, data) to the card",
+		"Get object's CKA_VALUE attribute (use with --type)",
+		"Delete an object (use with --type cert/data/privkey/pubkey/secrkey)",
+		"Specify the application label of the data object (use with --type data)",
+		"Specify the application ID of the data object (use with --type data)",
+		"Specify the issuer in hexadecimal format (use with --type cert)",
+		"Specify the subject in hexadecimal format (use with --type cert/privkey/pubkey)",
+		"Specify the type of object (e.g. cert, privkey, pubkey, secrkey, data)",
+		"Specify the ID of the object",
+		"Specify the label of the object",
+		"Specify the ID of the slot to use",
+		"Specify the description of the slot to use",
+		"Specify the index of the slot to use",
+		"Specify the index of the object to use",
+		"Specify the token label of the slot to use",
+		"Set the CKA_ID of an object, <args>= the (new) CKA_ID",
+		"Use <arg> to create some attributes when writing an object",
+		"Specify the input file",
+		"Specify the file with signature for verification",
+		"Specify the output file",
+		"Format for ECDSA signature <arg>: 'rs' (default), 'sequence', 'openssl'",
+		"Specify the comma-separated list of allowed mechanisms when creating an object.",
 
-	"Test (best used with the --login or --pin option)",
-	"Test hotplug capabilities (C_GetSlotList + C_WaitForSlotEvent)",
-	"Test Mozilla-like key pair gen and cert req, <arg>=certfile",
-	"Verbose operation. (Set OPENSC_DEBUG to enable OpenSC specific debugging)",
-	"Set the CKA_PRIVATE attribute (object is only viewable after a login)",
-	"Set the CKA_SENSITIVE attribute (object cannot be revealed in plaintext)",
-	"Set the CKA_EXTRACTABLE attribute (object can be extracted)",
-	"Set the CKA_DESTROYABLE attribute to false (object cannot be destroyed)",
-	"Set the CKA_ALWAYS_AUTHENTICATE attribute to a key object (require PIN verification for each use)",
-	"Test EC (best used with the --login or --pin option)",
+		"Test (best used with the --login or --pin option)",
+		"Test hotplug capabilities (C_GetSlotList + C_WaitForSlotEvent)",
+		"Test Mozilla-like key pair gen and cert req, <arg>=certfile",
+		"Verbose operation. (Set OPENSC_DEBUG to enable OpenSC specific debugging)",
+		"Set the CKA_PRIVATE attribute (object is only viewable after a login)",
+		"Set the CKA_SENSITIVE attribute (object cannot be revealed in plaintext)",
+		"Set the CKA_EXTRACTABLE attribute (object can be extracted)",
+		"Set the CKA_DESTROYABLE attribute to false (object cannot be destroyed)",
+		"Set the CKA_ALWAYS_AUTHENTICATE attribute to a key object (require PIN verification for each use)",
+		"Test EC (best used with the --login or --pin option)",
 #ifndef _WIN32
-	"Test forking and calling C_Initialize() in the child",
+		"Test forking and calling C_Initialize() in the child",
 #endif
-	"Call C_initialize() with CKF_OS_LOCKING_OK.",
+		"Call C_initialize() with CKF_OS_LOCKING_OK.",
 #if defined(_WIN32) || defined(HAVE_PTHREAD)
-	"Test threads. Multiple times to start additional threads, arg is string or 2 byte commands",
+		"Test threads. Multiple times to start additional threads, arg is string or 2 byte commands",
 #endif
-	"Generate given amount of random data",
-	"Allow using software mechanisms (without CKF_HW)",
-	"Initialization vector",
+		"Generate given amount of random data",
+		"Allow using software mechanisms (without CKF_HW)",
+		"Initialization vector",
 };
 
 static const char *	app_name = "pkcs11-tool"; /* for utils.c */
@@ -1333,7 +1333,7 @@ int main(int argc, char * argv[])
 			find_object_flags(session, mf_flags, &object,
 					opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, 0);
 		} else if (!find_object(session, CKO_PRIVATE_KEY, &object,
-					opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, 0))
+						opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, 0))
 			util_fatal("Private key not found");
 	}
 
@@ -1348,9 +1348,9 @@ int main(int argc, char * argv[])
 			find_object_flags(session, mf_flags, &object,
 					opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, 0);
 		} else if (!find_object(session, CKO_PRIVATE_KEY, &object,
-					opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, 0))
+						opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, 0))
 			if (!find_object(session, CKO_SECRET_KEY, &object,
-					opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, 0))
+						opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, 0))
 				util_fatal("Private/secret key not found");
 	}
 
@@ -1365,7 +1365,7 @@ int main(int argc, char * argv[])
 			find_object_flags(session, mf_flags, &object,
 					opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, 0);
 		} else if (!find_object(session, CKO_SECRET_KEY, &object,
-					opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, 0))
+						opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, 0))
 			util_fatal("Secret key not found");
 	}
 
@@ -2503,7 +2503,6 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		util_fatal("The hash-algorithm is applicable only to "
                "RSA-PKCS-OAEP mechanism");
 
-
 	/* set "default" MGF and hash algorithms. We can overwrite MGF later */
 	switch (opt_mechanism) {
 	case CKM_RSA_PKCS_OAEP:
@@ -3329,8 +3328,8 @@ unwrap_key(CK_SESSION_HANDLE session)
 	CK_ULONG key_length;
 	const char *length;
 	CK_ATTRIBUTE keyTemplate[20] = {
-		{CKA_CLASS, &secret_key_class, sizeof(secret_key_class)},
-		{CKA_TOKEN, &_true, sizeof(_true)},
+			{CKA_CLASS, &secret_key_class, sizeof(secret_key_class)},
+			{CKA_TOKEN, &_true, sizeof(_true)},
 	};
 	CK_OBJECT_HANDLE hSecretKey;
 	int n_attr = 2;
@@ -3344,9 +3343,9 @@ unwrap_key(CK_SESSION_HANDLE session)
 	CK_OBJECT_HANDLE hUnwrappingKey;
 
 	if (!find_object(session, CKO_PRIVATE_KEY, &hUnwrappingKey, opt_object_id_len ? opt_object_id : NULL,
-			opt_object_id_len, 0))
+				opt_object_id_len, 0))
 		if (!find_object(session, CKO_SECRET_KEY, &hUnwrappingKey,
-				opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, 0))
+					opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, 0))
 			util_fatal("Private/secret key not found");
 
 	if (!opt_mechanism_used)
@@ -3500,9 +3499,9 @@ wrap_key(CK_SESSION_HANDLE session)
 		util_fatal("Secret key (to be wrapped) not found");
 
 	if (!find_object(session, CKO_PUBLIC_KEY, &hWrappingKey, opt_object_id_len ? opt_object_id : NULL,
-			opt_object_id_len, 0))
+				opt_object_id_len, 0))
 		if (!find_object(session, CKO_SECRET_KEY, &hWrappingKey,
-				opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, 0))
+					opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, 0))
 			util_fatal("Public/secret key (wrapping key) not found");
 
 	rv = p11->C_WrapKey(session, &mechanism, hWrappingKey, hkey, pWrappedKey, &pulWrappedKeyLen);
@@ -3641,7 +3640,7 @@ parse_rsa_pkey(EVP_PKEY *pkey, int private, struct rsakey_info *rsa)
 	r = EVP_PKEY_get1_RSA(pkey);
 	if (!r) {
 		util_fatal("OpenSSL error during RSA %s key parsing: %s", private ? "private" : "public",
-			ERR_error_string(ERR_peek_last_error(), NULL));
+				ERR_error_string(ERR_peek_last_error(), NULL));
 	}
 
 	RSA_get0_key(r, &r_n, &r_e, NULL);
@@ -4479,12 +4478,9 @@ static int find_slot_by_token_label(const char *label, CK_SLOT_ID_PTR result)
 	return 0;
 }
 
-
-static int find_object_id_or_label(CK_SESSION_HANDLE sess, CK_OBJECT_CLASS cls,
-		CK_OBJECT_HANDLE_PTR ret,
-		const unsigned char *id, size_t id_len,
-		const char *label,
-		int obj_index)
+static int
+find_object_id_or_label(CK_SESSION_HANDLE sess, CK_OBJECT_CLASS cls, CK_OBJECT_HANDLE_PTR ret,
+		const unsigned char *id, size_t id_len, const char *label, int obj_index)
 {
 	CK_ATTRIBUTE attrs[3];
 	unsigned int nattrs = 0;
@@ -4498,13 +4494,13 @@ static int find_object_id_or_label(CK_SESSION_HANDLE sess, CK_OBJECT_CLASS cls,
 	nattrs++;
 	if (id && id_len) {
 		attrs[nattrs].type = CKA_ID;
-		attrs[nattrs].pValue = (void *) id;
+		attrs[nattrs].pValue = (void *)id;
 		attrs[nattrs].ulValueLen = id_len;
 		nattrs++;
 	}
 	if (label) {
 		attrs[nattrs].type = CKA_LABEL;
-		attrs[nattrs].pValue = (void *) label;
+		attrs[nattrs].pValue = (void *)label;
 		attrs[nattrs].ulValueLen = strlen(label);
 		nattrs++;
 	}
@@ -5252,7 +5248,7 @@ static void show_cert(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 		free(subject);
 	}
 	if ((serial_number = getSERIAL_NUMBER(sess, obj, &size)) != NULL) {
-		ASN1_INTEGER* serial = NULL;
+		ASN1_INTEGER *serial = NULL;
 		const unsigned char *tmp = serial_number;
 		serial = d2i_ASN1_INTEGER(NULL, &tmp, size);
 		if (serial) {
@@ -5880,23 +5876,23 @@ static int test_digest(CK_SESSION_HANDLE session)
 	CK_MECHANISM_TYPE firstMechType;
 	CK_SESSION_INFO sessionInfo;
 	CK_MECHANISM_TYPE mechTypes[] = {
-		CKM_MD5,
-		CKM_RIPEMD160,
-		CKM_SHA_1,
-		CKM_SHA256,
-		0xffffff
+			CKM_MD5,
+			CKM_RIPEMD160,
+			CKM_SHA_1,
+			CKM_SHA256,
+			0xffffff,
 	};
-	unsigned char  *digests[] = {
-		(unsigned char *) "\x7a\x08\xb0\x7e\x84\x64\x17\x03\xe5\xf2\xc8\x36\xaa\x59\xa1\x70",
-		(unsigned char *) "\xda\x79\xa5\x8f\xb8\x83\x3d\x61\xf6\x32\x16\x17\xe3\xfd\xf0\x56\x26\x5f\xb7\xcd",
-		(unsigned char *) "\x29\xb0\xe7\x87\x82\x71\x64\x5f\xff\xb7\xee\xc7\xdb\x4a\x74\x73\xa1\xc0\x0b\xc1",
-		(unsigned char *) "\x9c\xfe\x7f\xaf\xf7\x5\x42\x98\xca\x87\x55\x7e\x15\xa1\x2\x62\xde\x8d\x3e\xee\x77\x82\x74\x17\xfb\xdf\xea\x1c\x41\xb9\xec\x23",
+	unsigned char *digests[] = {
+			(unsigned char *)"\x7a\x08\xb0\x7e\x84\x64\x17\x03\xe5\xf2\xc8\x36\xaa\x59\xa1\x70",
+			(unsigned char *)"\xda\x79\xa5\x8f\xb8\x83\x3d\x61\xf6\x32\x16\x17\xe3\xfd\xf0\x56\x26\x5f\xb7\xcd",
+			(unsigned char *)"\x29\xb0\xe7\x87\x82\x71\x64\x5f\xff\xb7\xee\xc7\xdb\x4a\x74\x73\xa1\xc0\x0b\xc1",
+			(unsigned char *)"\x9c\xfe\x7f\xaf\xf7\x5\x42\x98\xca\x87\x55\x7e\x15\xa1\x2\x62\xde\x8d\x3e\xee\x77\x82\x74\x17\xfb\xdf\xea\x1c\x41\xb9\xec\x23",
 	};
 	CK_ULONG digestLens[] = {
-		16,
-		20,
-		20,
-		32,
+			16,
+			20,
+			20,
+			32,
 	};
 
 	rv = p11->C_GetSessionInfo(session, &sessionInfo);
@@ -7912,7 +7908,7 @@ get_iv(const char *iv_input, size_t *iv_size)
 
 	if (*iv_size != size)
 		fprintf(stderr, "Warning: IV string is too short, IV will be padded from the right "
-				"with zeros.\n");
+						"with zeros.\n");
 
 	return iv;
 }
@@ -8574,7 +8570,7 @@ static void * test_threads_run(void * pttd)
 				show_token(l_p11_slots[(*(pctest + 1) - '0')]);
 			} else {
 				fprintf(stderr, "Test thread %d slot not available, unable to call "
-						"C_GetTokenInfo\n",
+								"C_GetTokenInfo\n",
 						ttd->tnum);
 				rv = CKR_TOKEN_NOT_PRESENT;
 				break;

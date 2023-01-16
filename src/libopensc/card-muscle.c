@@ -123,7 +123,7 @@ static unsigned short muscle_parse_singleAcl(const sc_acl_entry_t* acl)
 			break;
 		case SC_AC_CHV:
 			/* Ignore shift with more bits that acl_entry has */
-			if ((size_t) key < sizeof(acl_entry) * 8)
+			if ((size_t)key < sizeof(acl_entry) * 8)
 				acl_entry |= (1u << key); /* Assuming key 0 == SO */
 			break;
 		case SC_AC_AUT:
@@ -280,22 +280,18 @@ static int muscle_delete_mscfs_file(sc_card_t *card, mscfs_file_t *file_data)
 		/* Delete children */
 		mscfs_check_cache(fs);
 
-		sc_log(card->ctx, 
-			"DELETING Children of: %02X%02X%02X%02X\n",
-			oid[0],oid[1],oid[2],oid[3]);
+		sc_log(card->ctx, "DELETING Children of: %02X%02X%02X%02X\n", oid[0], oid[1], oid[2], oid[3]);
 		for(x = 0; x < fs->cache.size; x++) {
 			msc_id objectId;
 			childFile = &fs->cache.array[x];
 			objectId = childFile->objectId;
 
-			if(0 == memcmp(oid + 2, objectId.id, 2) && !childFile->deleteFile) {
-				sc_log(card->ctx, 
-					"DELETING: %02X%02X%02X%02X\n",
-					objectId.id[0],objectId.id[1],
-					objectId.id[2],objectId.id[3]);
+			if (0 == memcmp(oid + 2, objectId.id, 2) && !childFile->deleteFile) {
+				sc_log(card->ctx, "DELETING: %02X%02X%02X%02X\n", objectId.id[0],
+						objectId.id[1], objectId.id[2], objectId.id[3]);
 				r = muscle_delete_mscfs_file(card, childFile);
-				if(r < 0) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,r);
-
+				if (r < 0)
+					SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 			}
 		}
 		oid[0] = oid[2];
@@ -325,8 +321,9 @@ static int muscle_delete_file(sc_card_t *card, const sc_path_t *path_in)
 	int r = 0;
 
 	r = mscfs_loadFileInfo(fs, path_in->value, path_in->len, &file_data, NULL);
-	if(r < 0) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,r);
-	for(int x = 0; x < fs->cache.size; x++) {
+	if (r < 0)
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
+	for (int x = 0; x < fs->cache.size; x++) {
 		mscfs_file_t *file = &fs->cache.array[x];
 		file->deleteFile = 0;
 	}
@@ -533,13 +530,12 @@ static int muscle_list_files(sc_card_t *card, u8 *buf, size_t bufLen)
 		u8* oid = fs->cache.array[x].objectId.id;
 		if (bufLen < 2)
 			break;
-		sc_log(card->ctx, 
-			"FILE: %02X%02X%02X%02X\n",
-			oid[0],oid[1],oid[2],oid[3]);
-		if(0 == memcmp(fs->currentPath, oid, 2)) {
+		sc_log(card->ctx, "FILE: %02X%02X%02X%02X\n", oid[0], oid[1], oid[2], oid[3]);
+		if (0 == memcmp(fs->currentPath, oid, 2)) {
 			buf[0] = oid[2];
 			buf[1] = oid[3];
-			if(buf[0] == 0x00 && buf[1] == 0x00) continue; /* No directories/null names outside of root */
+			if (buf[0] == 0x00 && buf[1] == 0x00)
+				continue; /* No directories/null names outside of root */
 			buf += 2;
 			count += 2;
 			bufLen -= 2;

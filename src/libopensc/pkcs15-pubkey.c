@@ -36,12 +36,12 @@
 
 #ifdef ENABLE_OPENSSL
 #include <openssl/bn.h>
-#include <openssl/rsa.h>
-#include <openssl/evp.h>
 #include <openssl/err.h>
+#include <openssl/evp.h>
+#include <openssl/rsa.h>
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
-# include <openssl/core_names.h>
-# include <openssl/param_build.h>
+#include <openssl/core_names.h>
+#include <openssl/param_build.h>
 #endif
 #ifndef OPENSSL_NO_EC
 #include <openssl/ec.h>
@@ -129,23 +129,23 @@ static const struct sc_asn1_entry c_asn1_gostr3410key_attr[C_ASN1_GOST3410KEY_AT
 
 #define C_ASN1_GOST3410_TYPE_ATTR_SIZE 2
 static const struct sc_asn1_entry c_asn1_gostr3410_type_attr[C_ASN1_GOST3410_TYPE_ATTR_SIZE] = {
-		{ "publicGOSTR3410KeyAttributes", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
-		{ NULL, 0, 0, 0, NULL, NULL }
+		{"publicGOSTR3410KeyAttributes", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL},
+		{NULL, 0, 0, 0, NULL, NULL},
 };
 
 #define C_ASN1_PUBKEY_CHOICE_SIZE 4
 static const struct sc_asn1_entry c_asn1_pubkey_choice[C_ASN1_PUBKEY_CHOICE_SIZE] = {
-		{ "publicRSAKey", SC_ASN1_PKCS15_OBJECT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
-		{ "publicGOSTR3410Key", SC_ASN1_PKCS15_OBJECT, 4 | SC_ASN1_CTX | SC_ASN1_CONS, 0, NULL, NULL },
-		{ "publicECKey", SC_ASN1_PKCS15_OBJECT, 0 | SC_ASN1_CTX | SC_ASN1_CONS, 0, NULL, NULL },
+		{"publicRSAKey", SC_ASN1_PKCS15_OBJECT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL},
+		{"publicGOSTR3410Key", SC_ASN1_PKCS15_OBJECT, 4 | SC_ASN1_CTX | SC_ASN1_CONS, 0, NULL, NULL},
+		{"publicECKey", SC_ASN1_PKCS15_OBJECT, 0 | SC_ASN1_CTX | SC_ASN1_CONS, 0, NULL, NULL},
 		/*TODO: -DEE not clear EC is needed here  as look like it is for pukdf */
-		{ NULL, 0, 0, 0, NULL, NULL }
+		{NULL, 0, 0, 0, NULL, NULL},
 };
 
 #define C_ASN1_PUBKEY_SIZE 2
 static const struct sc_asn1_entry c_asn1_pubkey[C_ASN1_PUBKEY_SIZE] = {
-		{ "publicKey",	SC_ASN1_CHOICE, 0, 0, NULL, NULL },
-		{ NULL, 0, 0, 0, NULL, NULL }
+		{"publicKey", SC_ASN1_CHOICE, 0, 0, NULL, NULL},
+		{NULL, 0, 0, 0, NULL, NULL},
 };
 
 int sc_pkcs15_pubkey_from_spki_sequence(sc_context_t *ctx, const u8 *buf, size_t buflen, sc_pkcs15_pubkey_t ** outpubkey);
@@ -218,12 +218,12 @@ int sc_pkcs15_decode_pukdf_entry(struct sc_pkcs15_card *p15card,
 	struct sc_asn1_entry asn1_gostr3410_type_attr[C_ASN1_GOST3410_TYPE_ATTR_SIZE];
 	struct sc_asn1_entry asn1_pubkey_choice[C_ASN1_PUBKEY_CHOICE_SIZE];
 	struct sc_asn1_entry asn1_pubkey[C_ASN1_PUBKEY_SIZE];
-	struct sc_asn1_pkcs15_object rsakey_obj = { obj, asn1_com_key_attr,
-			asn1_com_pubkey_attr, asn1_rsa_type_attr };
-	struct sc_asn1_pkcs15_object eckey_obj = { obj, asn1_com_key_attr,
-			asn1_com_pubkey_attr, asn1_ec_type_attr };
-	struct sc_asn1_pkcs15_object gostr3410key_obj =  { obj, asn1_com_key_attr,
-			asn1_com_pubkey_attr, asn1_gostr3410_type_attr };
+	struct sc_asn1_pkcs15_object rsakey_obj = {obj, asn1_com_key_attr,
+			asn1_com_pubkey_attr, asn1_rsa_type_attr};
+	struct sc_asn1_pkcs15_object eckey_obj = {obj, asn1_com_key_attr,
+			asn1_com_pubkey_attr, asn1_ec_type_attr};
+	struct sc_asn1_pkcs15_object gostr3410key_obj = {obj, asn1_com_key_attr,
+			asn1_com_pubkey_attr, asn1_gostr3410_type_attr};
 
 	info = calloc(1, sizeof *info);
 	if (info == NULL) {
@@ -374,14 +374,11 @@ sc_pkcs15_encode_pukdf_entry(struct sc_context *ctx, const struct sc_pkcs15_obje
 
 	struct sc_pkcs15_pubkey_info *pubkey = (struct sc_pkcs15_pubkey_info *) obj->data;
 	struct sc_asn1_pkcs15_object rsakey_obj = {
-		(struct sc_pkcs15_object *) obj, asn1_com_key_attr, asn1_com_pubkey_attr, asn1_rsa_type_attr
-	};
-	struct sc_asn1_pkcs15_object eckey_obj = { (struct sc_pkcs15_object *) obj,
-			asn1_com_key_attr,
-			asn1_com_pubkey_attr, asn1_ec_type_attr };
-	struct sc_asn1_pkcs15_object gostr3410key_obj =  { (struct sc_pkcs15_object *) obj,
-			asn1_com_key_attr,
-			asn1_com_pubkey_attr, asn1_gostr3410_type_attr };
+			(struct sc_pkcs15_object *)obj, asn1_com_key_attr, asn1_com_pubkey_attr, asn1_rsa_type_attr};
+	struct sc_asn1_pkcs15_object eckey_obj = {
+			(struct sc_pkcs15_object *)obj, asn1_com_key_attr, asn1_com_pubkey_attr, asn1_ec_type_attr};
+	struct sc_asn1_pkcs15_object gostr3410key_obj = {
+			(struct sc_pkcs15_object *)obj, asn1_com_key_attr, asn1_com_pubkey_attr, asn1_gostr3410_type_attr};
 	struct sc_pkcs15_keyinfo_gostparams *keyinfo_gostparams;
 	int r;
 	size_t af_len, usage_len;
@@ -563,10 +560,8 @@ sc_pkcs15_decode_pubkey_rsa(sc_context_t *ctx, struct sc_pkcs15_pubkey_rsa *key,
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
-
 int
-sc_pkcs15_encode_pubkey_rsa(sc_context_t *ctx, struct sc_pkcs15_pubkey_rsa *key,
-		u8 **buf, size_t *buflen)
+sc_pkcs15_encode_pubkey_rsa(sc_context_t *ctx, struct sc_pkcs15_pubkey_rsa *key, u8 **buf, size_t *buflen)
 {
 	struct sc_asn1_entry asn1_public_key[C_ASN1_PUBLIC_KEY_SIZE];
 	struct sc_asn1_entry asn1_rsa_pub_coefficients[C_ASN1_RSA_PUB_COEFFICIENTS_SIZE];
@@ -585,7 +580,6 @@ sc_pkcs15_encode_pubkey_rsa(sc_context_t *ctx, struct sc_pkcs15_pubkey_rsa *key,
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
-
 
 int
 sc_pkcs15_decode_pubkey_gostr3410(sc_context_t *ctx, struct sc_pkcs15_pubkey_gostr3410 *key,
@@ -636,7 +630,7 @@ sc_pkcs15_decode_pubkey_ec(sc_context_t *ctx,
 		const u8 *buf, size_t buflen)
 {
 	int r;
-	u8 * ecpoint_data = NULL;
+	u8 *ecpoint_data = NULL;
 	size_t ecpoint_len;
 	struct sc_asn1_entry asn1_ec_pointQ[C_ASN1_EC_POINTQ_SIZE];
 

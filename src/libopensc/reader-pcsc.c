@@ -386,7 +386,7 @@ static int refresh_attributes(sc_reader_t *reader)
 			}
 			LOG_FUNC_RETURN(reader->ctx, SC_SUCCESS);
 		}
-		
+
 		/* the system could not detect the reader. It means, the prevoiusly attached reader is disconnected. */
 		if (rv == (LONG)SCARD_E_UNKNOWN_READER ||
 #ifdef SCARD_E_NO_READERS_AVAILABLE
@@ -556,7 +556,6 @@ static int pcsc_reconnect(sc_reader_t * reader, DWORD action)
 			priv->gpriv->connect_exclusive ? SCARD_SHARE_EXCLUSIVE : SCARD_SHARE_SHARED,
 			protocol, action, &active_proto);
 
-	
 	PCSC_TRACE(reader, "SCardReconnect returned", rv);
 	if (rv != SCARD_S_SUCCESS) {
 		PCSC_TRACE(reader, "SCardReconnect failed", rv);
@@ -2502,10 +2501,11 @@ static void detect_protocol(sc_reader_t *reader, SCARDHANDLE card_handle)
 }
 
 int
-pcsc_check_reader_handles(sc_context_t *ctx, sc_reader_t *reader, void * pcsc_context_handle, void * pcsc_card_handle)
+pcsc_check_reader_handles(sc_context_t *ctx, sc_reader_t *reader, void *pcsc_context_handle, void *pcsc_card_handle)
 {
 	char reader_name[128];
 	DWORD reader_name_size = sizeof(reader_name);
+	DWORD rv;
 
 	if (NULL == reader)
 		return 1;
@@ -2514,10 +2514,9 @@ pcsc_check_reader_handles(sc_context_t *ctx, sc_reader_t *reader, void * pcsc_co
 	memset(reader_name, 0, sizeof(reader_name));
 
 	/* check if new handles are for the same reader as old handles */
-	if (SCARD_S_SUCCESS != priv->gpriv->SCardGetAttrib(*(SCARDHANDLE *)pcsc_card_handle,
-				SCARD_ATTR_DEVICE_SYSTEM_NAME_A, (LPBYTE)
-				reader_name, &reader_name_size)
-			|| strcmp(reader_name, reader->name) != 0) {
+	rv = priv->gpriv->SCardGetAttrib(*(SCARDHANDLE *)pcsc_card_handle, SCARD_ATTR_DEVICE_SYSTEM_NAME_A,
+			(LPBYTE)reader_name, &reader_name_size);
+	if (SCARD_S_SUCCESS != rv || strcmp(reader_name, reader->name) != 0) {
 		sc_log(ctx, "Reader name changed from \"%s\" to \"%s\"", reader->name, reader_name);
 
 		return 1;

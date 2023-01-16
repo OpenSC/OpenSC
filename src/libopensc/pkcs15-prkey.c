@@ -36,8 +36,8 @@
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
-# include <openssl/core_names.h>
-# include <openssl/param_build.h>
+#include <openssl/core_names.h>
+#include <openssl/param_build.h>
 #endif
 #ifndef OPENSSL_NO_EC
 #include <openssl/ec.h>
@@ -55,71 +55,71 @@
  */
 #define C_ASN1_SUPPORTED_ALGORITHMS_SIZE (SC_MAX_SUPPORTED_ALGORITHMS + 1)
 static const struct sc_asn1_entry c_asn1_supported_algorithms[C_ASN1_SUPPORTED_ALGORITHMS_SIZE] = {
-	{ "algorithmReference", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
-	{ "algorithmReference", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
-	{ "algorithmReference", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
-	{ "algorithmReference", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
-	{ "algorithmReference", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
-	{ "algorithmReference", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
-	{ "algorithmReference", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
-	{ "algorithmReference", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
-	{ "algorithmReference", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
-	{ "algorithmReference", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
-	{ "algorithmReference", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
-	{ "algorithmReference", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
-	{ "algorithmReference", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
-	{ "algorithmReference", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
-	{ "algorithmReference", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
-	{ "algorithmReference", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
-	{ NULL, 0, 0, 0, NULL, NULL }
+		{"algorithmReference", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL},
+		{"algorithmReference", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL},
+		{"algorithmReference", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL},
+		{"algorithmReference", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL},
+		{"algorithmReference", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL},
+		{"algorithmReference", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL},
+		{"algorithmReference", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL},
+		{"algorithmReference", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL},
+		{"algorithmReference", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL},
+		{"algorithmReference", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL},
+		{"algorithmReference", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL},
+		{"algorithmReference", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL},
+		{"algorithmReference", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL},
+		{"algorithmReference", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL},
+		{"algorithmReference", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL},
+		{"algorithmReference", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL},
+		{NULL, 0, 0, 0, NULL, NULL},
 };
 
 #define C_ASN1_COM_KEY_ATTR_SIZE 7
 static const struct sc_asn1_entry c_asn1_com_key_attr[C_ASN1_COM_KEY_ATTR_SIZE] = {
-	{ "iD",		 SC_ASN1_PKCS15_ID, SC_ASN1_TAG_OCTET_STRING, 0, NULL, NULL },
-	{ "usage",	 SC_ASN1_BIT_FIELD, SC_ASN1_TAG_BIT_STRING, 0, NULL, NULL },
-	{ "native",	 SC_ASN1_BOOLEAN, SC_ASN1_TAG_BOOLEAN, SC_ASN1_OPTIONAL, NULL, NULL },
-	{ "accessFlags", SC_ASN1_BIT_FIELD, SC_ASN1_TAG_BIT_STRING, SC_ASN1_OPTIONAL, NULL, NULL },
-	{ "keyReference",SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
-/* Absent in PKCS#15-v1.1 but present in ISO 7816-15(2004-01-15)*/
-	{ "algReference", SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_CTX | 1, SC_ASN1_OPTIONAL, NULL, NULL },
-	{ NULL, 0, 0, 0, NULL, NULL }
+		{"iD", SC_ASN1_PKCS15_ID, SC_ASN1_TAG_OCTET_STRING, 0, NULL, NULL},
+		{"usage", SC_ASN1_BIT_FIELD, SC_ASN1_TAG_BIT_STRING, 0, NULL, NULL},
+		{"native", SC_ASN1_BOOLEAN, SC_ASN1_TAG_BOOLEAN, SC_ASN1_OPTIONAL, NULL, NULL},
+		{"accessFlags", SC_ASN1_BIT_FIELD, SC_ASN1_TAG_BIT_STRING, SC_ASN1_OPTIONAL, NULL, NULL},
+		{"keyReference", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL},
+		/* Absent in PKCS#15-v1.1 but present in ISO 7816-15(2004-01-15)*/
+		{"algReference", SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_CTX | 1, SC_ASN1_OPTIONAL, NULL, NULL},
+		{NULL, 0, 0, 0, NULL, NULL},
 };
 
 #define C_ASN1_COM_PRKEY_ATTR_SIZE 2
 static const struct sc_asn1_entry c_asn1_com_prkey_attr[C_ASN1_COM_PRKEY_ATTR_SIZE] = {
-	{ "subjectName", SC_ASN1_OCTET_STRING, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS,
-		SC_ASN1_EMPTY_ALLOWED | SC_ASN1_ALLOC | SC_ASN1_OPTIONAL, NULL, NULL },
-	{ NULL, 0, 0, 0, NULL, NULL }
+		{"subjectName", SC_ASN1_OCTET_STRING, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS,
+				SC_ASN1_EMPTY_ALLOWED | SC_ASN1_ALLOC | SC_ASN1_OPTIONAL, NULL, NULL},
+		{NULL, 0, 0, 0, NULL, NULL},
 };
 
 #define C_ASN1_RSAKEY_ATTR_SIZE 4
 static const struct sc_asn1_entry c_asn1_rsakey_attr[] = {
-	{ "value",         SC_ASN1_PATH, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_EMPTY_ALLOWED, NULL, NULL },
-	{ "modulusLength", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, 0, NULL, NULL },
-	{ "keyInfo",	   SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
-	{ NULL, 0, 0, 0, NULL, NULL }
+		{"value", SC_ASN1_PATH, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_EMPTY_ALLOWED, NULL, NULL},
+		{"modulusLength", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, 0, NULL, NULL},
+		{"keyInfo", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL},
+		{NULL, 0, 0, 0, NULL, NULL},
 };
 
 #define C_ASN1_PRK_RSA_ATTR_SIZE 2
 static const struct sc_asn1_entry c_asn1_prk_rsa_attr[C_ASN1_PRK_RSA_ATTR_SIZE] = {
-	{ "privateRSAKeyAttributes", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
-	{ NULL, 0, 0, 0, NULL, NULL }
+		{"privateRSAKeyAttributes", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL},
+		{NULL, 0, 0, 0, NULL, NULL},
 };
 
 #define C_ASN1_GOSTR3410KEY_ATTR_SIZE 5
 static const struct sc_asn1_entry c_asn1_gostr3410key_attr[C_ASN1_GOSTR3410KEY_ATTR_SIZE] = {
-	{ "value",         SC_ASN1_PATH, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
-	{ "params_r3410",  SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, 0, NULL, NULL },
-	{ "params_r3411",  SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
-	{ "params_28147",  SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
-	{ NULL, 0, 0, 0, NULL, NULL }
+		{"value", SC_ASN1_PATH, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL},
+		{"params_r3410", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, 0, NULL, NULL},
+		{"params_r3411", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL},
+		{"params_28147", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL},
+		{NULL, 0, 0, 0, NULL, NULL},
 };
 
 #define C_ASN1_PRK_GOSTR3410_ATTR_SIZE 2
 static const struct sc_asn1_entry c_asn1_prk_gostr3410_attr[C_ASN1_PRK_GOSTR3410_ATTR_SIZE] = {
-	{ "privateGOSTR3410KeyAttributes", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
-	{ NULL, 0, 0, 0, NULL, NULL }
+		{"privateGOSTR3410KeyAttributes", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL},
+		{NULL, 0, 0, 0, NULL, NULL},
 };
 
 /*
@@ -129,30 +129,30 @@ static const struct sc_asn1_entry c_asn1_prk_gostr3410_attr[C_ASN1_PRK_GOSTR3410
  */
 #define C_ASN1_ECCKEY_ATTR 4
 static const struct sc_asn1_entry c_asn1_ecckey_attr[C_ASN1_ECCKEY_ATTR] = {
-	{ "value",	   SC_ASN1_PATH, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_EMPTY_ALLOWED, NULL, NULL },
-	{ "fieldSize",	   SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
-	{ "keyInfo",	   SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
-	{ NULL, 0, 0, 0, NULL, NULL }
+		{"value", SC_ASN1_PATH, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_EMPTY_ALLOWED, NULL, NULL},
+		{"fieldSize", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL},
+		{"keyInfo", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL},
+		{NULL, 0, 0, 0, NULL, NULL},
 };
 
 #define C_ASN1_PRK_ECC_ATTR 2
 static const struct sc_asn1_entry c_asn1_prk_ecc_attr[C_ASN1_PRK_ECC_ATTR] = {
-	{ "privateECCKeyAttributes", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
-	{ NULL, 0, 0, 0, NULL, NULL }
+		{"privateECCKeyAttributes", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL},
+		{NULL, 0, 0, 0, NULL, NULL},
 };
 
 #define C_ASN1_PRKEY_SIZE 4
 static const struct sc_asn1_entry c_asn1_prkey[C_ASN1_PRKEY_SIZE] = {
-	{ "privateRSAKey", SC_ASN1_PKCS15_OBJECT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL },
-	{ "privateECCKey", SC_ASN1_PKCS15_OBJECT,  0 | SC_ASN1_CTX | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL },
-	{ "privateGOSTR3410Key", SC_ASN1_PKCS15_OBJECT, 4 | SC_ASN1_CTX | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL },
-	{ NULL, 0, 0, 0, NULL, NULL }
+		{"privateRSAKey", SC_ASN1_PKCS15_OBJECT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL},
+		{"privateECCKey", SC_ASN1_PKCS15_OBJECT, 0 | SC_ASN1_CTX | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL},
+		{"privateGOSTR3410Key", SC_ASN1_PKCS15_OBJECT, 4 | SC_ASN1_CTX | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL},
+		{NULL, 0, 0, 0, NULL, NULL},
 };
 
-
-int sc_pkcs15_decode_prkdf_entry(struct sc_pkcs15_card *p15card,
-				 struct sc_pkcs15_object *obj,
-				 const u8 ** buf, size_t *buflen)
+int
+sc_pkcs15_decode_prkdf_entry(struct sc_pkcs15_card *p15card,
+		struct sc_pkcs15_object *obj,
+		const u8 **buf, size_t *buflen)
 {
 	sc_context_t *ctx = p15card->card->ctx;
 	struct sc_pkcs15_prkey_info info;
@@ -230,11 +230,9 @@ int sc_pkcs15_decode_prkdf_entry(struct sc_pkcs15_card *p15card,
 	LOG_TEST_GOTO_ERR(ctx, r, "PrKey DF ASN.1 decoding failed");
 	if (asn1_prkey[0].flags & SC_ASN1_PRESENT) {
 		obj->type = SC_PKCS15_TYPE_PRKEY_RSA;
-	}
-	else if (asn1_prkey[1].flags & SC_ASN1_PRESENT) {
+	} else if (asn1_prkey[1].flags & SC_ASN1_PRESENT) {
 		obj->type = SC_PKCS15_TYPE_PRKEY_EC;
-	}
-	else if (asn1_prkey[2].flags & SC_ASN1_PRESENT) {
+	} else if (asn1_prkey[2].flags & SC_ASN1_PRESENT) {
 		/* FIXME proper handling of gost parameters without the need of
 		 * allocating data here. this would also make sc_pkcs15_free_key_params
 		 * obsolete */
@@ -254,8 +252,7 @@ int sc_pkcs15_decode_prkdf_entry(struct sc_pkcs15_card *p15card,
 		keyinfo_gostparams->gostr3410 = gostr3410_params[0];
 		keyinfo_gostparams->gostr3411 = gostr3410_params[1];
 		keyinfo_gostparams->gost28147 = gostr3410_params[2];
-	}
-	else {
+	} else {
 		r = SC_ERROR_INVALID_ASN1_OBJECT;
 		LOG_TEST_GOTO_ERR(ctx, r, "Neither RSA or GOSTR3410 or ECC key in PrKDF entry.");
 	}
@@ -269,8 +266,7 @@ int sc_pkcs15_decode_prkdf_entry(struct sc_pkcs15_card *p15card,
 		if (r < 0) {
 			goto err;
 		}
-	}
-	else   {
+	} else {
 		info.path.aid = p15card->app->ddo.aid;
 	}
 	sc_log(ctx, "PrivKey path '%s'", sc_print_path(&info.path));
@@ -344,8 +340,10 @@ int sc_pkcs15_encode_prkdf_entry(sc_context_t *ctx, const struct sc_pkcs15_objec
 	struct sc_asn1_entry asn1_prkey[C_ASN1_PRKEY_SIZE];
 	struct sc_asn1_entry asn1_supported_algorithms[C_ASN1_SUPPORTED_ALGORITHMS_SIZE];
 	struct sc_asn1_pkcs15_object rsa_prkey_obj = {
-		(struct sc_pkcs15_object *) obj, asn1_com_key_attr,
-		asn1_com_prkey_attr, asn1_prk_rsa_attr
+			(struct sc_pkcs15_object *)obj,
+			asn1_com_key_attr,
+			asn1_com_prkey_attr,
+			asn1_prk_rsa_attr,
 	};
 	struct sc_asn1_pkcs15_object gostr3410_prkey_obj = {
 		(struct sc_pkcs15_object *) obj,

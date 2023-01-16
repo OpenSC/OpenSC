@@ -26,12 +26,13 @@
 #ifdef ENABLE_OPENSSL
 #include <openssl/err.h>
 
-#define ssl_error(ctx) { \
-	unsigned long _r; \
-	for (_r = ERR_get_error(); _r; _r = ERR_get_error()) { \
-		sc_debug(ctx, SC_LOG_DEBUG_VERBOSE, "%s", ERR_error_string(_r, NULL)); \
-	} \
-}
+#define ssl_error(ctx) \
+	do { \
+		unsigned long _r; \
+		for (_r = ERR_get_error(); _r; _r = ERR_get_error()) { \
+			sc_debug(ctx, SC_LOG_DEBUG_VERBOSE, "%s", ERR_error_string(_r, NULL)); \
+		} \
+	} while (0)
 #endif
 
 #endif

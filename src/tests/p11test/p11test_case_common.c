@@ -520,9 +520,10 @@ callback_public_keys(test_certs_t *objects, CK_ATTRIBUTE template[], unsigned in
 			unsigned char pubkey[80];
 			size_t pubkey_len = 0;
 			int cert_nid = 0;
-			if (EVP_PKEY_get_group_name(o->key, curve_name, sizeof(curve_name),
-						&curve_name_len) != 1 ||
-					(cert_nid = OBJ_txt2nid(curve_name)) == NID_undef ||
+			int rc;
+
+			rc = EVP_PKEY_get_group_name(o->key, curve_name, sizeof(curve_name), &curve_name_len);
+			if (rc != 1 || (cert_nid = OBJ_txt2nid(curve_name)) == NID_undef ||
 					(cert_group = EC_GROUP_new_by_curve_name(cert_nid)) == NULL) {
 				fprintf(stderr, "Can not get EC_GROUP from EVP_PKEY");
 				EC_GROUP_free(ecgroup);
@@ -911,59 +912,58 @@ search_for_all_objects(test_certs_t *objects, token_info_t *info)
 	};
 	CK_ULONG filter_size = 1;
 	CK_ATTRIBUTE attrs[] = {
-		{CKA_ID, NULL_PTR, 0},
-		{CKA_VALUE, NULL_PTR, 0},
-		{CKA_LABEL, NULL_PTR, 0},
-		{CKA_CERTIFICATE_TYPE, NULL_PTR, 0},
+			{CKA_ID, NULL_PTR, 0},
+			{CKA_VALUE, NULL_PTR, 0},
+			{CKA_LABEL, NULL_PTR, 0},
+			{CKA_CERTIFICATE_TYPE, NULL_PTR, 0},
 	};
 	CK_ULONG attrs_size = sizeof (attrs) / sizeof (CK_ATTRIBUTE);
 	CK_ATTRIBUTE private_attrs[] = {
-		{CKA_SIGN, NULL, 0}, // CK_BBOOL
-		{CKA_DECRYPT, NULL, 0}, // CK_BBOOL
-		{CKA_KEY_TYPE, NULL, 0}, // CKK_
-		{CKA_ID, NULL, 0}, // CK_BYTE_PTR
-		{CKA_ALWAYS_AUTHENTICATE, NULL, 0}, // CK_BBOOL
-		{CKA_UNWRAP, NULL, 0}, // CK_BBOOL
-		{CKA_DERIVE, NULL, 0}, // CK_BBOOL
-		{CKA_LABEL, NULL_PTR, 0}, // CK_BYTE_PTR
-		{CKA_EXTRACTABLE, NULL, 0}, // CK_BBOOL
+			{CKA_SIGN, NULL, 0},                // CK_BBOOL
+			{CKA_DECRYPT, NULL, 0},             // CK_BBOOL
+			{CKA_KEY_TYPE, NULL, 0},            // CKK_
+			{CKA_ID, NULL, 0},                  // CK_BYTE_PTR
+			{CKA_ALWAYS_AUTHENTICATE, NULL, 0}, // CK_BBOOL
+			{CKA_UNWRAP, NULL, 0},              // CK_BBOOL
+			{CKA_DERIVE, NULL, 0},              // CK_BBOOL
+			{CKA_LABEL, NULL_PTR, 0},           // CK_BYTE_PTR
+			{CKA_EXTRACTABLE, NULL, 0},         // CK_BBOOL
 	};
 	CK_ULONG private_attrs_size = sizeof (private_attrs) / sizeof (CK_ATTRIBUTE);
 	CK_ATTRIBUTE public_attrs[] = {
-		{CKA_VERIFY, NULL, 0}, // CK_BBOOL
-		{CKA_ENCRYPT, NULL, 0}, // CK_BBOOL
-		{CKA_KEY_TYPE, NULL, 0}, // CKK_
-		{CKA_ID, NULL, 0}, // CK_BYTE_PTR
-		{CKA_MODULUS, NULL, 0},
-		{CKA_PUBLIC_EXPONENT, NULL, 0},
-		{CKA_EC_PARAMS, NULL, 0},
-		{CKA_EC_POINT, NULL, 0},
-		{CKA_WRAP, NULL, 0}, // CK_BBOOL
-		{CKA_DERIVE, NULL, 0}, // CK_BBOOL
+			{CKA_VERIFY, NULL, 0},   // CK_BBOOL
+			{CKA_ENCRYPT, NULL, 0},  // CK_BBOOL
+			{CKA_KEY_TYPE, NULL, 0}, // CKK_
+			{CKA_ID, NULL, 0},       // CK_BYTE_PTR
+			{CKA_MODULUS, NULL, 0},
+			{CKA_PUBLIC_EXPONENT, NULL, 0},
+			{CKA_EC_PARAMS, NULL, 0},
+			{CKA_EC_POINT, NULL, 0},
+			{CKA_WRAP, NULL, 0},   // CK_BBOOL
+			{CKA_DERIVE, NULL, 0}, // CK_BBOOL
 	};
 	CK_ULONG public_attrs_size = sizeof (public_attrs) / sizeof (CK_ATTRIBUTE);
 	CK_ATTRIBUTE secret_attrs[] = {
-		{ CKA_KEY_TYPE, NULL, 0},
-		{ CKA_ID, NULL, 0},
-		{ CKA_TOKEN, NULL, 0}, // CK_BBOOL
-		{ CKA_SIGN, NULL, 0}, // CK_BBOOL
-		{ CKA_VERIFY, NULL, 0}, // CK_BBOOL
-		{ CKA_ENCRYPT, NULL, 0}, // CK_BBOOL
-		{ CKA_DECRYPT, NULL, 0}, // CK_BBOOL
-		{ CKA_DERIVE, NULL, 0}, // CK_BBOOL
-		{ CKA_WRAP, NULL, 0}, // CK_BBOOL
-		{ CKA_UNWRAP, NULL, 0}, // CK_BBOOL
-		{ CKA_VALUE, NULL, 0},
-		{ CKA_VALUE_LEN, NULL, 0},
-		{ CKA_EXTRACTABLE, NULL, 0}, // CK_BBOOL
-		{ CKA_LABEL, NULL_PTR, 0},
+			{CKA_KEY_TYPE, NULL, 0},
+			{CKA_ID, NULL, 0},
+			{CKA_TOKEN, NULL, 0},   // CK_BBOOL
+			{CKA_SIGN, NULL, 0},    // CK_BBOOL
+			{CKA_VERIFY, NULL, 0},  // CK_BBOOL
+			{CKA_ENCRYPT, NULL, 0}, // CK_BBOOL
+			{CKA_DECRYPT, NULL, 0}, // CK_BBOOL
+			{CKA_DERIVE, NULL, 0},  // CK_BBOOL
+			{CKA_WRAP, NULL, 0},    // CK_BBOOL
+			{CKA_UNWRAP, NULL, 0},  // CK_BBOOL
+			{CKA_VALUE, NULL, 0},
+			{CKA_VALUE_LEN, NULL, 0},
+			{CKA_EXTRACTABLE, NULL, 0}, // CK_BBOOL
+			{CKA_LABEL, NULL_PTR, 0},
 	};
 	CK_ULONG secret_attrs_size = sizeof(secret_attrs) / sizeof(CK_ATTRIBUTE);
 
 	debug_print("\nSearch for all certificates on the card");
 	search_objects(objects, info, filter, filter_size,
-		attrs, attrs_size, callback_certificates);
-
+			attrs, attrs_size, callback_certificates);
 
 	/* do the same thing with private keys (collect handles based on the collected IDs) */
 	debug_print("\nSearch for all private keys respective to the certificates");

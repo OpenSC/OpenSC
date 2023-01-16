@@ -1,4 +1,4 @@
-﻿/*
+/*
  * minidriver.c: OpenSC minidriver
  *
  * Copyright (C) 2009,2010 francois.leblanc@cev-sa.com
@@ -55,9 +55,9 @@
 #include "pkcs15init/pkcs15-init.h"
 
 #ifdef ENABLE_OPENSSL
+#include <openssl/crypto.h>
 #include <openssl/opensslv.h>
 #include <openssl/pem.h>
-#include <openssl/crypto.h>
 #endif
 
 #ifdef ENABLE_OPENPACE
@@ -3000,9 +3000,7 @@ static HRESULT CALLBACK md_dialog_proc(HWND hWnd, UINT message, WPARAM wParam, L
 	return S_FALSE;
 }
 
-
-
-static int 
+static int
 md_dialog_perform_pin_operation(PCARD_DATA pCardData, int operation, struct sc_pkcs15_card *p15card,
 		struct sc_pkcs15_object *pin_obj,
 		const u8 *pin1, size_t pin1len,
@@ -3037,7 +3035,7 @@ md_dialog_perform_pin_operation(PCARD_DATA pCardData, int operation, struct sc_p
 		return rv;
 	}
 
-	/* launch the UI in the same thread context than the parent and the function to perform in another thread context 
+	/* launch the UI in the same thread context than the parent and the function to perform in another thread context
 	this is the only way to display a modal dialog attached to a parent (hwndParent != 0) */
 	tc.hwndParent = pv->hwndParent;
 	tc.hInstance = g_inst;
@@ -3083,7 +3081,7 @@ md_dialog_perform_pin_operation(PCARD_DATA pCardData, int operation, struct sc_p
 	if (md_get_pinpad_dlg_timeout(pCardData) > 0) {
 		tc.dwFlags |= TDF_SHOW_PROGRESS_BAR | TDF_CALLBACK_TIMER;
 	}
-	
+
 	checked = !md_is_pinpad_dlg_enable_cancel(pCardData);
 	if (checked) {
 		tc.dwFlags |= TDF_VERIFICATION_FLAG_CHECKED;
@@ -3693,11 +3691,10 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 				pContainerInfo->pbSigPublicKey = (PBYTE)publicKey;
 				memcpy(((PBYTE)publicKey) + sizeof(BCRYPT_ECCKEY_BLOB),  pubkey_der.value + 3,  pubkey_der.len -3);
 
-				logprintf(pCardData, 3,
-					  "return info on ECC SIGN_CONTAINER_INDEX %u cbKey:%u dwMagic:%u\n",
-					  (unsigned int)bContainerIndex,
-					  (unsigned int)publicKey->cbKey,
-					  (unsigned int)publicKey->dwMagic);
+				logprintf(pCardData, 3, "return info on ECC SIGN_CONTAINER_INDEX %u cbKey:%u dwMagic:%u\n",
+						(unsigned int)bContainerIndex,
+						(unsigned int)publicKey->cbKey,
+						(unsigned int)publicKey->dwMagic);
 			}
 			if (cont->size_key_exchange)   {
 				sz = (DWORD) (sizeof(BCRYPT_ECCKEY_BLOB) +  pubkey_der.len -3);
@@ -3714,9 +3711,8 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 					dwMagic = BCRYPT_ECDH_PUBLIC_P521_MAGIC;
 					break;
 				default:
-					logprintf(pCardData, 3,
-						  "Unable to match the ECC public size to one of Microsoft algorithm %"SC_FORMAT_LEN_SIZE_T"u\n",
-						  cont->size_key_exchange);
+					logprintf(pCardData, 3, "Unable to match the ECC public size to one of Microsoft algorithm %" SC_FORMAT_LEN_SIZE_T "u\n",
+							cont->size_key_exchange);
 					ret = SCARD_F_INTERNAL_ERROR;
 					goto err;
 				}
@@ -3734,23 +3730,20 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 				pContainerInfo->pbKeyExPublicKey = (PBYTE)publicKey;
 				memcpy(((PBYTE)publicKey) + sizeof(BCRYPT_ECCKEY_BLOB),  pubkey_der.value + 3,  pubkey_der.len -3);
 
-				logprintf(pCardData, 3,
-					  "return info on ECC KEYX_CONTAINER_INDEX %u cbKey:%u dwMagic:%u\n",
-					  (unsigned int)bContainerIndex,
-					  (unsigned int)publicKey->cbKey,
-					  (unsigned int)publicKey->dwMagic);
+				logprintf(pCardData, 3, "return info on ECC KEYX_CONTAINER_INDEX %u cbKey:%u dwMagic:%u\n",
+						(unsigned int)bContainerIndex,
+						(unsigned int)publicKey->cbKey,
+						(unsigned int)publicKey->dwMagic);
 			}
 		}
 	}
-	logprintf(pCardData, 7, "returns container(idx:%u) info\n",
-		  (unsigned int)bContainerIndex);
+	logprintf(pCardData, 7, "returns container(idx:%u) info\n", (unsigned int)bContainerIndex);
 
-	logprintf(pCardData, 1,
-		  "CardGetContainerInfo bContainerIndex=%u, dwFlags=0x%08X, dwVersion=%lu, cbSigPublicKey=%lu, cbKeyExPublicKey=%lu\n",
-		  (unsigned int)bContainerIndex, (unsigned int)dwFlags,
-		  (unsigned long)pContainerInfo->dwVersion,
-		  (unsigned long)pContainerInfo->cbSigPublicKey,
-		  (unsigned long)pContainerInfo->cbKeyExPublicKey);
+	logprintf(pCardData, 1, "CardGetContainerInfo bContainerIndex=%u, dwFlags=0x%08X, dwVersion=%lu, cbSigPublicKey=%lu, cbKeyExPublicKey=%lu\n",
+			(unsigned int)bContainerIndex, (unsigned int)dwFlags,
+			(unsigned long)pContainerInfo->dwVersion,
+			(unsigned long)pContainerInfo->cbSigPublicKey,
+			(unsigned long)pContainerInfo->cbKeyExPublicKey);
 
 err:
 	free(pubkey_der.value);
@@ -4884,7 +4877,6 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 				goto err;
 		}
 	}
-	
 
 	/* Compute output size */
 	if ( prkey_info->modulus_length > 0) {
@@ -4955,8 +4947,7 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 
 		pInfo->cbSignedData = r;
 
-		
-		/*revert data only for RSA (Microsoft uses the big endian version while everyone is using little endian*/
+		/* revert data only for RSA (Microsoft uses the big endian version while everyone is using little endian */
 		if ( prkey_info->modulus_length > 0) {
 			for(i = 0; i < r; i++)
 				pInfo->pbSignedData[i] = pbuf[r-i-1];
@@ -4971,20 +4962,19 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 		loghex(pCardData, 7, pInfo->pbSignedData, pInfo->cbSignedData);
 	}
 
-	logprintf(pCardData, 3,
-		  "CardSignData, dwVersion=%lu, name=%S, hScard=0x%08"SC_FORMAT_LEN_SIZE_T"X, hSCardCtx=0x%08"SC_FORMAT_LEN_SIZE_T"X\n",
-		  (unsigned long)pCardData->dwVersion,
-		  NULLWSTR(pCardData->pwszCardName),
-		  (size_t)pCardData->hScard,
-		  (size_t)pCardData->hSCardCtx);
+	logprintf(pCardData, 3, "CardSignData, dwVersion=%lu, name=%S, hScard=0x%08" SC_FORMAT_LEN_SIZE_T "X, hSCardCtx=0x%08" SC_FORMAT_LEN_SIZE_T "X\n",
+			(unsigned long)pCardData->dwVersion,
+			NULLWSTR(pCardData->pwszCardName),
+			(size_t)pCardData->hScard,
+			(size_t)pCardData->hSCardCtx);
 
 err:
 	unlock(pCardData);
 	MD_FUNC_RETURN(pCardData, 1, dwret);
 }
 
-DWORD WINAPI CardConstructDHAgreement(__in PCARD_DATA pCardData,
-	__inout PCARD_DH_AGREEMENT_INFO pAgreementInfo)
+DWORD WINAPI
+CardConstructDHAgreement(__in PCARD_DATA pCardData, __inout PCARD_DH_AGREEMENT_INFO pAgreementInfo)
 {
 	DWORD dwret;
 	VENDOR_SPECIFIC *vs;
@@ -5126,13 +5116,12 @@ err:
 	MD_FUNC_RETURN(pCardData, 1, dwret);
 }
 
-
-DWORD WINAPI CardDeriveHashOrHMAC(__in PCARD_DATA pCardData,
-	__inout PCARD_DERIVE_KEY pAgreementInfo,
-	__in struct md_dh_agreement* agreement,
-	__in PWSTR szAlgorithm,
-	__in PBYTE pbHmacKey, __in DWORD dwHmacKeySize 
-	)
+DWORD WINAPI
+CardDeriveHashOrHMAC(__in PCARD_DATA pCardData,
+		__inout PCARD_DERIVE_KEY pAgreementInfo,
+		__in struct md_dh_agreement *agreement,
+		__in PWSTR szAlgorithm,
+		__in PBYTE pbHmacKey, __in DWORD dwHmacKeySize)
 {
 	DWORD dwReturn = 0;
 	/* CNG variables */
@@ -5258,11 +5247,12 @@ cleanup:
 /* Generic function to perform hash. Could have been OpenSSL but used BCrypt* functions.
 BCrypt is loaded as a delay load library. The dll can be loaded into Windows XP until this code is called.
 Hopefully, ECC is not available in Windows XP and BCrypt functions are not called */
-DWORD HashDataWithBCrypt(__in PCARD_DATA pCardData, BCRYPT_ALG_HANDLE hAlgorithm, 
-		PBYTE pbOuput, DWORD dwOutputSize, PBYTE pbSecret, DWORD dwSecretSize, 
+DWORD
+HashDataWithBCrypt(__in PCARD_DATA pCardData, BCRYPT_ALG_HANDLE hAlgorithm,
+		PBYTE pbOuput, DWORD dwOutputSize, PBYTE pbSecret, DWORD dwSecretSize,
 		PBYTE pbData1, DWORD dwDataSize1,
-		PBYTE pbData2, DWORD dwDataSize2, 
-		PBYTE pbData3, DWORD dwDataSize3 )
+		PBYTE pbData2, DWORD dwDataSize2,
+		PBYTE pbData3, DWORD dwDataSize3)
 {
 	DWORD dwReturn, dwSize, dwBufferSize;
 	BCRYPT_HASH_HANDLE hHash = NULL;
@@ -5379,41 +5369,40 @@ DWORD WINAPI DoTlsPrf(__in PCARD_DATA pCardData,
 		dwReturn = SCARD_E_NO_MEMORY;
 		goto cleanup;
 	}
-	
+
 	for (i = 0; i<dwNumberOfRounds; i++) {
 		/* A1, A2, ... */
 		if (i == 0) {
 			/* A(1) = HMAC_hash(secret, label + seed)*/
-			dwReturn = HashDataWithBCrypt(pCardData, hAlgorithm, 
-					pbAx, dwHashSize, pbSecret, dwSecretSize, 
+			dwReturn = HashDataWithBCrypt(pCardData, hAlgorithm,
+					pbAx, dwHashSize, pbSecret, dwSecretSize,
 					pbLabel, dwLabelSize,
-					pbSeed, 64, 
+					pbSeed, 64,
 					NULL, 0);
 		} else {
 			/* A(i) = HMAC_hash(secret, A(i-1))*/
-			dwReturn = HashDataWithBCrypt(pCardData, hAlgorithm, 
-					pbAx + i * dwHashSize, dwHashSize, pbSecret, dwSecretSize, 
-					pbAx + (i-1) * dwHashSize, dwHashSize,
-					NULL, 0, 
+			dwReturn = HashDataWithBCrypt(pCardData, hAlgorithm,
+					pbAx + i * dwHashSize, dwHashSize, pbSecret, dwSecretSize,
+					pbAx + (i - 1) * dwHashSize, dwHashSize,
+					NULL, 0,
 					NULL, 0);
 		}
 		if (dwReturn) {
-			logprintf(pCardData, 0,
-				  "CardDeriveKey: unable to hash %S 0x%08X\n",
-				  szAlgorithm, (unsigned int)dwReturn);
+			logprintf(pCardData, 0, "CardDeriveKey: unable to hash %S 0x%08X\n",
+					szAlgorithm, (unsigned int)dwReturn);
 			goto cleanup;
 		}
 		if (dwNumberOfRounds -1 == i) {
 			/* last round */
-			dwReturn = HashDataWithBCrypt(pCardData, hAlgorithm, 
-					pbBuffer, dwHashSize, pbSecret, dwSecretSize, 
+			dwReturn = HashDataWithBCrypt(pCardData, hAlgorithm,
+					pbBuffer, dwHashSize, pbSecret, dwSecretSize,
 					pbAx + i * dwHashSize, dwHashSize,
 					pbLabel, dwLabelSize,
 					pbSeed, 64);
 			memcpy(pbOutput + i * dwHashSize, pbBuffer, dwLastRoundSize);
 		} else {
-			dwReturn = HashDataWithBCrypt(pCardData, hAlgorithm, 
-					pbOutput + i * dwHashSize, dwHashSize, pbSecret, dwSecretSize, 
+			dwReturn = HashDataWithBCrypt(pCardData, hAlgorithm,
+					pbOutput + i * dwHashSize, dwHashSize, pbSecret, dwSecretSize,
 					pbAx + i * dwHashSize, dwHashSize,
 					pbLabel, dwLabelSize,
 					pbSeed, 64);
@@ -5606,7 +5595,7 @@ DWORD WINAPI CardDeriveKey(__in PCARD_DATA pCardData,
 	/* find the algorithm, checks parameters */
 
 	parameters = (NCryptBufferDesc*)pAgreementInfo->pParameterList;
-	
+
 	if (parameters) {
 		for (i = 0; i < parameters->cBuffers; i++) {
 			NCryptBuffer* buffer = parameters->pBuffers + i;
@@ -6574,7 +6563,7 @@ DWORD WINAPI CardSetProperty(__in   PCARD_DATA pCardData,
 		logprintf(pCardData, 3, "Saved parent window (%p)\n", vs->hwndParent);
 		MD_FUNC_RETURN(pCardData, 1, SCARD_S_SUCCESS);
 	}
-	
+
 	if (wcscmp(CP_PIN_CONTEXT_STRING, wszProperty) == 0) {
 		vs->wszPinContext = (PWSTR) pbData;
 		logprintf(pCardData, 3, "Saved PIN context string: %S\n", (PWSTR) pbData);

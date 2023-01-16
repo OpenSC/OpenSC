@@ -348,32 +348,28 @@ sc_pkcs15_encode_tokeninfo(sc_context_t *ctx, sc_pkcs15_tokeninfo_t *ti,
 		if (sc_hex_to_bin(ti->serial_number, serial, &serial_len) < 0)
 			return SC_ERROR_INVALID_ARGUMENTS;
 		sc_format_asn1_entry(asn1_toki_attrs + 1, serial, &serial_len, 1);
-	}
-	else   {
+	} else {
 		sc_format_asn1_entry(asn1_toki_attrs + 1, NULL, NULL, 0);
 	}
 
 	if (ti->manufacturer_id != NULL) {
 		mnfid_len = strlen(ti->manufacturer_id);
 		sc_format_asn1_entry(asn1_toki_attrs + 2, ti->manufacturer_id, &mnfid_len, 1);
-	}
-	else    {
+	} else {
 		sc_format_asn1_entry(asn1_toki_attrs + 2, NULL, NULL, 0);
 	}
 
 	if (ti->label != NULL) {
 		label_len = strlen(ti->label);
 		sc_format_asn1_entry(asn1_toki_attrs + 3, ti->label, &label_len, 1);
-	}
-	else   {
+	} else {
 		sc_format_asn1_entry(asn1_toki_attrs + 3, NULL, NULL, 0);
 	}
 
 	if (ti->flags) {
 		flags_len = sizeof(ti->flags);
 		sc_format_asn1_entry(asn1_toki_attrs + 5, &ti->flags, &flags_len, 1);
-	}
-	else   {
+	} else {
 		sc_format_asn1_entry(asn1_toki_attrs + 5, NULL, NULL, 0);
 	}
 
@@ -395,13 +391,11 @@ sc_pkcs15_encode_tokeninfo(sc_context_t *ctx, sc_pkcs15_tokeninfo_t *ti,
 	if (ti->last_update.path.len) {
 		sc_format_asn1_entry(asn1_last_update + 0, &ti->last_update.path, NULL, 1);
 		sc_format_asn1_entry(asn1_toki_attrs + 11, asn1_last_update, NULL, 1);
-	}
-	else if (ti->last_update.gtime != NULL) {
+	} else if (ti->last_update.gtime != NULL) {
 		last_upd_len = strlen(ti->last_update.gtime);
 		sc_format_asn1_entry(asn1_last_update + 0, ti->last_update.gtime, &last_upd_len, 1);
 		sc_format_asn1_entry(asn1_toki_attrs + 11, asn1_last_update, NULL, 1);
-	}
-	else   {
+	} else {
 		sc_format_asn1_entry(asn1_toki_attrs + 11, NULL, NULL, 0);
 	}
 	sc_format_asn1_entry(asn1_toki_attrs + 12, NULL, NULL, 0);
@@ -409,13 +403,11 @@ sc_pkcs15_encode_tokeninfo(sc_context_t *ctx, sc_pkcs15_tokeninfo_t *ti,
 	if (sc_valid_oid(&ti->profile_indication.oid))   {
 		sc_format_asn1_entry(asn1_profile_indication + 0, &ti->profile_indication.oid, NULL, 1);
 		sc_format_asn1_entry(asn1_toki_attrs + 13, asn1_profile_indication, NULL, 1);
-	}
-	else if (ti->profile_indication.name)   {
+	} else if (ti->profile_indication.name) {
 		pi_len = strlen(ti->profile_indication.name);
 		sc_format_asn1_entry(asn1_profile_indication + 1, ti->profile_indication.name, &pi_len, 1);
 		sc_format_asn1_entry(asn1_toki_attrs + 13, asn1_profile_indication, NULL, 1);
-	}
-	else    {
+	} else {
 		sc_format_asn1_entry(asn1_toki_attrs + 13, NULL, NULL, 0);
 	}
 
@@ -2351,7 +2343,6 @@ sc_pkcs15_parse_unusedspace(const unsigned char *buf, size_t buflen, struct sc_p
 	return 0;
 }
 
-
 int
 sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_path,
 		unsigned char **buf, size_t *buflen, int private_data)
@@ -2372,7 +2363,7 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 
 	r = -1; /* file state: not in cache */
 	if (p15card->opts.use_file_cache
-	    && ((p15card->opts.use_file_cache & SC_PKCS15_OPTS_CACHE_ALL_FILES) || !private_data)) {
+			&& ((p15card->opts.use_file_cache & SC_PKCS15_OPTS_CACHE_ALL_FILES) || !private_data)) {
 		r = sc_pkcs15_read_cached_file(p15card, in_path, &data, &len);
 
 		if (!r && in_path->aid.len > 0 && in_path->len >= 2)   {
@@ -2461,7 +2452,7 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 		sc_file_free(file);
 
 		if (len && p15card->opts.use_file_cache
-		    && ((p15card->opts.use_file_cache & SC_PKCS15_OPTS_CACHE_ALL_FILES) || !private_data)) {
+				&& ((p15card->opts.use_file_cache & SC_PKCS15_OPTS_CACHE_ALL_FILES) || !private_data)) {
 			sc_pkcs15_cache_file(p15card, in_path, data, len);
 		}
 	}

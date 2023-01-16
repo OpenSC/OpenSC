@@ -116,87 +116,87 @@ enum {
 static int	authenticate(sc_pkcs15_object_t *obj);
 
 static const struct option options[] = {
-	{ "version",		0, NULL,			OPT_PRINT_VERSION },
-	{ "list-info",	no_argument, NULL,		OPT_LIST_INFO },
-	{ "list-applications",	no_argument, NULL,		OPT_LIST_APPLICATIONS },
-	{ "read-certificate",	required_argument, NULL,	OPT_READ_CERT },
-	{ "list-certificates",	no_argument, NULL,		'c' },
-	{ "read-data-object",	required_argument, NULL,	'R' },
-	{ "raw",		no_argument, NULL,		OPT_RAW },
-	{ "list-data-objects",	no_argument, NULL,		'C' },
-	{ "list-pins",		no_argument, NULL,		OPT_LIST_PINS },
-	{ "list-secret-keys",	no_argument, NULL,		OPT_LIST_SKEYS },
-	{ "short",			no_argument, NULL,		's' },
-	{ "dump",		no_argument, NULL,		'D' },
-	{ "unblock-pin",	no_argument, NULL,		'u' },
-	{ "change-pin",		no_argument, NULL,		OPT_CHANGE_PIN },
-	{ "list-keys",		no_argument, NULL,		'k' },
-	{ "list-public-keys",	no_argument, NULL,		OPT_LIST_PUB },
-	{ "read-public-key",	required_argument, NULL,	OPT_READ_PUB },
+		{"version",		0, NULL,			OPT_PRINT_VERSION},
+		{"list-info",	no_argument, NULL,		OPT_LIST_INFO},
+		{"list-applications",	no_argument, NULL,		OPT_LIST_APPLICATIONS},
+		{"read-certificate",	required_argument, NULL,	OPT_READ_CERT},
+		{"list-certificates",	no_argument, NULL,		'c'},
+		{"read-data-object",	required_argument, NULL,	'R'},
+		{"raw",		no_argument, NULL,		OPT_RAW},
+		{"list-data-objects",	no_argument, NULL,		'C'},
+		{"list-pins",		no_argument, NULL,		OPT_LIST_PINS},
+		{"list-secret-keys",	no_argument, NULL,		OPT_LIST_SKEYS},
+		{"short",			no_argument, NULL,		's'},
+		{"dump",		no_argument, NULL,		'D'},
+		{"unblock-pin",	no_argument, NULL,		'u'},
+		{"change-pin",		no_argument, NULL,		OPT_CHANGE_PIN},
+		{"list-keys",		no_argument, NULL,		'k'},
+		{"list-public-keys",	no_argument, NULL,		OPT_LIST_PUB},
+		{"read-public-key",	required_argument, NULL,	OPT_READ_PUB},
 #if defined(ENABLE_OPENSSL) && (defined(_WIN32) || defined(HAVE_INTTYPES_H))
-	{ "read-ssh-key",	required_argument, NULL,	OPT_READ_SSH },
-	{ "rfc4716",		no_argument, NULL,		OPT_RFC4716 },
+		{"read-ssh-key",	required_argument, NULL,	OPT_READ_SSH},
+		{"rfc4716",		no_argument, NULL,		OPT_RFC4716},
 #endif
-	{ "test-update",	no_argument, NULL,		'T' },
-	{ "update",		no_argument, NULL,		'U' },
-	{ "reader",		required_argument, NULL,	OPT_READER },
-	{ "pin",		required_argument, NULL,	OPT_PIN },
-	{ "new-pin",		required_argument, NULL,	OPT_NEWPIN },
-	{ "puk",		required_argument, NULL,	OPT_PUK },
-	{ "verify-pin",		no_argument, NULL,		OPT_VERIFY_PIN },
-	{ "test-session-pin",	no_argument, NULL,		OPT_TEST_SESSION_PIN },
-	{ "output",		required_argument, NULL,	'o' },
-	{ "no-cache",		no_argument, NULL,		OPT_NO_CACHE },
-	{ "clear-cache",	no_argument, NULL,		OPT_CLEAR_CACHE },
-	{ "auth-id",		required_argument, NULL,	'a' },
-	{ "aid",		required_argument, NULL,	OPT_BIND_TO_AID },
-	{ "wait",		no_argument, NULL,		'w' },
-	{ "verbose",		no_argument, NULL,		'v' },
-	{ "use-pinpad",		no_argument, NULL,		OPT_USE_PINPAD },
-	{ "no-prompt",		no_argument, NULL,		OPT_USE_PINPAD_DEPRECATED },
-	{ NULL, 0, NULL, 0 }
+		{"test-update",	no_argument, NULL,		'T'},
+		{"update",		no_argument, NULL,		'U'},
+		{"reader",		required_argument, NULL,	OPT_READER},
+		{"pin",		required_argument, NULL,	OPT_PIN},
+		{"new-pin",		required_argument, NULL,	OPT_NEWPIN},
+		{"puk",		required_argument, NULL,	OPT_PUK},
+		{"verify-pin",		no_argument, NULL,		OPT_VERIFY_PIN},
+		{"test-session-pin",	no_argument, NULL,		OPT_TEST_SESSION_PIN},
+		{"output",		required_argument, NULL,	'o'},
+		{"no-cache",		no_argument, NULL,		OPT_NO_CACHE},
+		{"clear-cache",	no_argument, NULL,		OPT_CLEAR_CACHE},
+		{"auth-id",		required_argument, NULL,	'a'},
+		{"aid",		required_argument, NULL,	OPT_BIND_TO_AID},
+		{"wait",		no_argument, NULL,		'w'},
+		{"verbose",		no_argument, NULL,		'v'},
+		{"use-pinpad",		no_argument, NULL,		OPT_USE_PINPAD},
+		{"no-prompt",		no_argument, NULL,		OPT_USE_PINPAD_DEPRECATED},
+		{NULL, 0, NULL, 0}
 };
 
 static const char *option_help[] = {
-	"Print OpenSC package version",
-	"List card information",
-	"List the on-card PKCS#15 applications",
-	"Read certificate with ID <arg>",
-	"List certificates",
-	"Reads data object with OID, applicationName or label <arg>",
-	"Outputs raw 8 bit data to stdout. File output will not be affected by this, it always uses raw mode.",
-	"List data objects",
-	"List PIN codes",
-	"List secret keys",
-	"Output lists in compact format",
-	"List all card objects",
-	"Unblock PIN code",
-	"Change PIN or PUK code",
-	"List private keys",
-	"List public keys",
-	"Reads public key with ID <arg>",
+		"Print OpenSC package version",
+		"List card information",
+		"List the on-card PKCS#15 applications",
+		"Read certificate with ID <arg>",
+		"List certificates",
+		"Reads data object with OID, applicationName or label <arg>",
+		"Outputs raw 8 bit data to stdout. File output will not be affected by this, it always uses raw mode.",
+		"List data objects",
+		"List PIN codes",
+		"List secret keys",
+		"Output lists in compact format",
+		"List all card objects",
+		"Unblock PIN code",
+		"Change PIN or PUK code",
+		"List private keys",
+		"List public keys",
+		"Reads public key with ID <arg>",
 #if defined(ENABLE_OPENSSL) && (defined(_WIN32) || defined(HAVE_INTTYPES_H))
-	"Reads public key with ID <arg>, outputs ssh format",
-	"Outputs the public key in RFC 4716 format (requires --read-ssh-key)",
+		"Reads public key with ID <arg>, outputs ssh format",
+		"Outputs the public key in RFC 4716 format (requires --read-ssh-key)",
 #endif
-	"Test if the card needs a security update",
-	"Update the card with a security update",
-	"Uses reader number <arg>",
-	"Specify PIN",
-	"Specify New PIN (when changing or unblocking)",
-	"Specify Unblock PIN",
-	"Verify PIN after card binding (without 'auth-id' the first non-SO, non-Unblock PIN will be verified)",
-	"Equivalent to --verify-pin with additional session PIN generation",
-	"Outputs to file <arg>",
-	"Disable card caching",
-	"Clear card caching",
-	"The auth ID of the PIN to use",
-	"Specify AID of the on-card PKCS#15 application to bind to (in hexadecimal form)",
-	"Wait for card insertion",
-	"Verbose operation, may be used several times",
-	"Do not prompt the user; if no PINs supplied, pinpad will be used.",
-	NULL,
-	NULL
+		"Test if the card needs a security update",
+		"Update the card with a security update",
+		"Uses reader number <arg>",
+		"Specify PIN",
+		"Specify New PIN (when changing or unblocking)",
+		"Specify Unblock PIN",
+		"Verify PIN after card binding (without 'auth-id' the first non-SO, non-Unblock PIN will be verified)",
+		"Equivalent to --verify-pin with additional session PIN generation",
+		"Outputs to file <arg>",
+		"Disable card caching",
+		"Clear card caching",
+		"The auth ID of the PIN to use",
+		"Specify AID of the on-card PKCS#15 application to bind to (in hexadecimal form)",
+		"Wait for card insertion",
+		"Verbose operation, may be used several times",
+		"Do not prompt the user; if no PINs supplied, pinpad will be used.",
+		NULL,
+		NULL,
 };
 
 static sc_context_t *ctx = NULL;
@@ -207,18 +207,18 @@ struct _access_rule_text {
 	unsigned flag;
 	const char *label;
 } _access_rules_text[] = {
-	{SC_PKCS15_ACCESS_RULE_MODE_READ, "read"},
-	{SC_PKCS15_ACCESS_RULE_MODE_UPDATE, "update"},
-	{SC_PKCS15_ACCESS_RULE_MODE_EXECUTE, "execute"},
-	{SC_PKCS15_ACCESS_RULE_MODE_DELETE, "delete"},
-	{SC_PKCS15_ACCESS_RULE_MODE_ATTRIBUTE, "attribute"},
-	{SC_PKCS15_ACCESS_RULE_MODE_PSO_CDS, "pso_cds"},
-	{SC_PKCS15_ACCESS_RULE_MODE_PSO_VERIFY, "pso_verify"},
-	{SC_PKCS15_ACCESS_RULE_MODE_PSO_DECRYPT, "pso_decrypt"},
-	{SC_PKCS15_ACCESS_RULE_MODE_PSO_ENCRYPT, "pso_encrypt"},
-	{SC_PKCS15_ACCESS_RULE_MODE_INT_AUTH, "int_auth"},
-	{SC_PKCS15_ACCESS_RULE_MODE_EXT_AUTH, "ext_auth"},
-	{0, NULL},
+		{SC_PKCS15_ACCESS_RULE_MODE_READ, "read"},
+		{SC_PKCS15_ACCESS_RULE_MODE_UPDATE, "update"},
+		{SC_PKCS15_ACCESS_RULE_MODE_EXECUTE, "execute"},
+		{SC_PKCS15_ACCESS_RULE_MODE_DELETE, "delete"},
+		{SC_PKCS15_ACCESS_RULE_MODE_ATTRIBUTE, "attribute"},
+		{SC_PKCS15_ACCESS_RULE_MODE_PSO_CDS, "pso_cds"},
+		{SC_PKCS15_ACCESS_RULE_MODE_PSO_VERIFY, "pso_verify"},
+		{SC_PKCS15_ACCESS_RULE_MODE_PSO_DECRYPT, "pso_decrypt"},
+		{SC_PKCS15_ACCESS_RULE_MODE_PSO_ENCRYPT, "pso_encrypt"},
+		{SC_PKCS15_ACCESS_RULE_MODE_INT_AUTH, "int_auth"},
+		{SC_PKCS15_ACCESS_RULE_MODE_EXT_AUTH, "ext_auth"},
+		{0, NULL},
 };
 
 static const char *key_types[] = {"", "RSA", "", "GOSTR3410", "EC", "EDDSA", "XEDDSA", ""};
@@ -816,7 +816,7 @@ static int read_public_key(void)
 			if (verbose)
 				printf("Reading certificate with ID '%s'\n", opt_pubkey);
 			private_obj = obj->flags & SC_PKCS15_CO_FLAG_PRIVATE;
-			r = sc_pkcs15_read_certificate(p15card, (sc_pkcs15_cert_info_t *) obj->data, private_obj, &cert);
+			r = sc_pkcs15_read_certificate(p15card, (sc_pkcs15_cert_info_t *)obj->data, private_obj, &cert);
 		}
 		if (r >= 0)
 			pubkey = cert->key;
@@ -992,7 +992,7 @@ static int read_ssh_key(void)
 			if (verbose)
 				fprintf(stderr,"Reading certificate with ID '%s'\n", opt_pubkey);
 			private_obj = obj->flags & SC_PKCS15_CO_FLAG_PRIVATE;
-			r = sc_pkcs15_read_certificate(p15card, (sc_pkcs15_cert_info_t *) obj->data, private_obj, &cert);
+			r = sc_pkcs15_read_certificate(p15card, (sc_pkcs15_cert_info_t *)obj->data, private_obj, &cert);
 		}
 		if (r >= 0)
 			pubkey = cert->key;
@@ -1972,12 +1972,12 @@ static int test_update(sc_card_t *in_card)
 				break;
 			}
 			/* other tag */
-			i += 2 + rbuf[2+i+1]; /* length of this tag*/
-			if (2+i+1 >= apdu.resplen) {
+			i += 2 + rbuf[2 + i + 1]; /* length of this tag*/
+			if (2 + i + 1 >= apdu.resplen) {
 				break;
 			}
 		}
-		if (2+i+1 >= apdu.resplen || rbuf[2+i+1] < 9 || 2+i+2+9 > apdu.resplen) {
+		if (2 + i + 1 >= apdu.resplen || rbuf[2 + i + 1] < 9 || 2 + i + 2 + 9 > apdu.resplen) {
 			printf("select file returned short fci\n");
 			goto bad_fci;
 		}

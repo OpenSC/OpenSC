@@ -33,7 +33,7 @@
 #include <openssl/err.h>
 #include <openssl/bio.h>
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
- #include <openssl/encoder.h>
+#include <openssl/encoder.h>
 #endif
 #endif
 
@@ -181,9 +181,10 @@ static int westcos_pkcs15_create_pin(sc_profile_t *profile,
 /*
  * Create a new key file
  */
-static int westcos_pkcs15init_create_key(sc_profile_t *profile,
-						sc_pkcs15_card_t *p15card,
-						sc_pkcs15_object_t *obj)
+static int
+westcos_pkcs15init_create_key(sc_profile_t *profile,
+		sc_pkcs15_card_t *p15card,
+		sc_pkcs15_object_t *obj)
 {
 
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
@@ -197,10 +198,11 @@ static int westcos_pkcs15init_create_key(sc_profile_t *profile,
 /*
  * Store a private key
  */
-static int westcos_pkcs15init_store_key(sc_profile_t *profile,
-						sc_pkcs15_card_t *p15card,
-						sc_pkcs15_object_t *obj,
-						sc_pkcs15_prkey_t *key)
+static int
+westcos_pkcs15init_store_key(sc_profile_t *profile,
+		sc_pkcs15_card_t *p15card,
+		sc_pkcs15_object_t *obj,
+		sc_pkcs15_prkey_t *key)
 {
 	return SC_ERROR_NOT_SUPPORTED;
 }
@@ -208,10 +210,11 @@ static int westcos_pkcs15init_store_key(sc_profile_t *profile,
 /*
  * Generate key
  */
-static int westcos_pkcs15init_generate_key(sc_profile_t *profile,
-						sc_pkcs15_card_t *p15card,
-						sc_pkcs15_object_t *obj,
-						sc_pkcs15_pubkey_t *pubkey)
+static int
+westcos_pkcs15init_generate_key(sc_profile_t *profile,
+		sc_pkcs15_card_t *p15card,
+		sc_pkcs15_object_t *obj,
+		sc_pkcs15_pubkey_t *pubkey)
 {
 #ifndef ENABLE_OPENSSL
 	return SC_ERROR_NOT_SUPPORTED;
@@ -219,7 +222,7 @@ static int westcos_pkcs15init_generate_key(sc_profile_t *profile,
 	int r = SC_ERROR_UNKNOWN;
 	long lg;
 	u8 *p;
-	sc_pkcs15_prkey_info_t *key_info = (sc_pkcs15_prkey_info_t *) obj->data;
+	sc_pkcs15_prkey_info_t *key_info = (sc_pkcs15_prkey_info_t *)obj->data;
 	BIGNUM *bn = NULL;
 	BIO *mem = NULL;
 	EVP_PKEY *key = NULL;

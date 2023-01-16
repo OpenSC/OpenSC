@@ -39,8 +39,8 @@
 
 #include <openssl/rsa.h>
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
-# include <openssl/param_build.h>
-# include <openssl/params.h>
+#include <openssl/param_build.h>
+#include <openssl/params.h>
 #endif
 #if !defined(OPENSSL_NO_EC) && !defined(OPENSSL_NO_ECDSA)
 #include <openssl/ec.h>
@@ -74,36 +74,36 @@ enum {
 };
 
 static const struct option options[] = {
-	{ "serial",		0, NULL,	OPT_SERIAL  },
-	{ "name",		0, NULL,		'n' },
-	{ "admin",		1, NULL, 		'A' },
-	{ "genkey",		1, NULL,		'G' },
-	{ "object",		1, NULL,		'O' },
-	{ "cert",		1, NULL,		'C' },
-	{ "compresscert",	1, NULL,		'Z' },
-	{ "out",		1, NULL, 		'o' },
-	{ "in",			1, NULL, 		'i' },
-	{ "send-apdu",		1, NULL,		's' },
-	{ "reader",		1, NULL,		'r' },
-	{ "wait",		0, NULL,		'w' },
-	{ "verbose",		0, NULL,		'v' },
-	{ NULL, 0, NULL, 0 }
+		{"serial",		0, NULL,	OPT_SERIAL},
+		{"name",		0, NULL,		'n'},
+		{"admin",		1, NULL, 		'A'},
+		{"genkey",		1, NULL,		'G'},
+		{"object",		1, NULL,		'O'},
+		{"cert",		1, NULL,		'C'},
+		{"compresscert",	1, NULL,		'Z'},
+		{"out",		1, NULL, 		'o'},
+		{"in",			1, NULL, 		'i'},
+		{"send-apdu",		1, NULL,		's'},
+		{"reader",		1, NULL,		'r'},
+		{"wait",		0, NULL,		'w'},
+		{"verbose",		0, NULL,		'v'},
+		{NULL, 0, NULL, 0},
 };
 
 static const char *option_help[] = {
-	"Print the card serial number",
-	"Identify the card and print its name",
-	"Authenticate using default 3DES key",
-	"Generate key <ref>:<alg> 9A:06 on card, and output pubkey",
-	"Load an object <containerID> containerID as defined in 800-73 without leading 0x",
-	"Load a cert <ref> where <ref> is 9A,9C,9D or 9E",
-	"Load a cert that has been gzipped <ref>",
-	"Output file for cert or key",
-	"Input file for cert",
-	"Sends an APDU in format AA:BB:CC:DD:EE:FF...",
-	"Uses reader number <arg> [0]",
-	"Wait for a card to be inserted",
-	"Verbose operation, may be used several times",
+		"Print the card serial number",
+		"Identify the card and print its name",
+		"Authenticate using default 3DES key",
+		"Generate key <ref>:<alg> 9A:06 on card, and output pubkey",
+		"Load an object <containerID> containerID as defined in 800-73 without leading 0x",
+		"Load a cert <ref> where <ref> is 9A,9C,9D or 9E",
+		"Load a cert that has been gzipped <ref>",
+		"Output file for cert or key",
+		"Input file for cert",
+		"Sends an APDU in format AA:BB:CC:DD:EE:FF...",
+		"Uses reader number <arg> [0]",
+		"Wait for a card to be inserted",
+		"Verbose operation, may be used several times",
 };
 
 static sc_context_t *ctx = NULL;
@@ -542,7 +542,6 @@ static int gen_key(const char * key_info)
 		fprintf(stderr, "This build of OpenSSL does not support EC keys\n");
 		r = 1;
 #endif /* OPENSSL_NO_EC */
-
 	}
 	if (bp)
 		r = i2d_PUBKEY_bio(bp, evpkey);

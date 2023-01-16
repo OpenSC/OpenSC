@@ -1679,7 +1679,9 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 	return 0;
 }
 
-static void sc_free_entry(struct sc_asn1_entry *asn1) {
+static void
+sc_free_entry(struct sc_asn1_entry *asn1)
+{
 	int idx = 0;
 	struct sc_asn1_entry *entry = asn1;
 
@@ -1691,7 +1693,7 @@ static void sc_free_entry(struct sc_asn1_entry *asn1) {
 		switch (entry->type) {
 		case SC_ASN1_CHOICE:
 		case SC_ASN1_STRUCT:
-			sc_free_entry((struct sc_asn1_entry *) entry->parm);
+			sc_free_entry((struct sc_asn1_entry *)entry->parm);
 			break;
 		case SC_ASN1_OCTET_STRING:
 		case SC_ASN1_BIT_STRING_NI:
@@ -2225,7 +2227,9 @@ err:
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
-int sc_asn1_decode_ecdsa_signature(sc_context_t *ctx, const u8 *data, size_t datalen, size_t fieldsize, u8 **out, size_t outlen) {
+int
+sc_asn1_decode_ecdsa_signature(sc_context_t *ctx, const u8 *data, size_t datalen, size_t fieldsize, u8 **out, size_t outlen)
+{
 	int i, r;
 	const unsigned char *pseq, *pint, *pend;
 	unsigned int cla, tag;
@@ -2266,11 +2270,10 @@ int sc_asn1_decode_ecdsa_signature(sc_context_t *ctx, const u8 *data, size_t dat
 			r = SC_ERROR_INVALID_DATA;
 			LOG_TEST_GOTO_ERR(ctx, SC_ERROR_INVALID_DATA, "Signature too long");
 		}
-		memcpy(*out + fieldsize * i + fieldsize - intlen , pint, intlen);
+		memcpy(*out + fieldsize * i + fieldsize - intlen, pint, intlen);
 		pint += intlen; /* next integer */
 	}
 	r = 2 * fieldsize;
 err:
 	LOG_FUNC_RETURN(ctx, r);
 }
-

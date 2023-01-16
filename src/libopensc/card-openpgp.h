@@ -21,6 +21,8 @@
 #ifndef _CARD_OPENPGP_H
 #define _CARD_OPENPGP_H
 
+#include "internal.h"
+
 /*
  * The OpenPGP card doesn't have a file system, instead everything
  * is stored in data objects that are accessed through GET/PUT.

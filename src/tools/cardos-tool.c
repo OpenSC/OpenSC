@@ -57,26 +57,26 @@ static int verbose = 0;
 static char *opt_reader = NULL;
 
 static const struct option options[] = {
-	{"help",	0, NULL, 'h'},
-	{"info",	0, NULL, 'i'},
-	{"format",	0, NULL, 'f'},
-	{"startkey",	1, NULL, 's'},
-	{"change-startkey",	1, NULL, 'S'},
-	{"reader",	1, NULL, 'r'},
-	{"wait",	0, NULL, 'w'},
-	{"verbose",	0, NULL, 'v'},
-	{NULL, 0, NULL, 0}
+		{"help", 0, NULL, 'h'},
+		{"info", 0, NULL, 'i'},
+		{"format", 0, NULL, 'f'},
+		{"startkey", 1, NULL, 's'},
+		{"change-startkey", 1, NULL, 'S'},
+		{"reader", 1, NULL, 'r'},
+		{"wait", 0, NULL, 'w'},
+		{"verbose", 0, NULL, 'v'},
+		{NULL, 0, NULL, 0},
 };
 
 static const char *option_help[] = {
-	"Print this help message",
-	"Print information about this card",
-	"Format this card erasing all content",
-	"Specify startkey for format",
-	"Change Startkey with given APDU command",
-	"Uses reader number <arg> [0]",
-	"Wait for a card to be inserted",
-	"Verbose operation, may be used several times",
+		"Print this help message",
+		"Print information about this card",
+		"Format this card erasing all content",
+		"Specify startkey for format",
+		"Change Startkey with given APDU command",
+		"Uses reader number <arg> [0]",
+		"Wait for a card to be inserted",
+		"Verbose operation, may be used several times",
 };
 
 static sc_context_t *ctx = NULL;

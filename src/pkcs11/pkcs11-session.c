@@ -276,7 +276,7 @@ CK_RV C_GetSessionInfo(CK_SESSION_HANDLE hSession,	/* the session's handle */
 
 	slot = session->slot;
 	if (!sc_pkcs11_conf.atomic && slot->login_user >= 0 &&
-	    slot_get_logged_in_state(slot) == SC_PIN_STATE_LOGGED_OUT) {
+			slot_get_logged_in_state(slot) == SC_PIN_STATE_LOGGED_OUT) {
 		slot->login_user = -1;
 		sc_pkcs11_close_all_sessions(session->slot->id);
 		rv = CKR_SESSION_HANDLE_INVALID;

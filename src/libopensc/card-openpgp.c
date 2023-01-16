@@ -60,44 +60,47 @@ static const char default_cardname_v1[] = "OpenPGP card v1.x";
 static const char default_cardname_v2[] = "OpenPGP card v2.x";
 static const char default_cardname_v3[] = "OpenPGP card v3.x";
 
-
 static const struct sc_atr_table pgp_atrs[] = {
-	{ "3b:fa:13:00:ff:81:31:80:45:00:31:c1:73:c0:01:00:00:90:00:b1", NULL, default_cardname_v1, SC_CARD_TYPE_OPENPGP_V1, 0, NULL },
-	{ "3b:da:18:ff:81:b1:fe:75:1f:03:00:31:c5:73:c0:01:40:00:90:00:0c", NULL, default_cardname_v2, SC_CARD_TYPE_OPENPGP_V2, 0, NULL },
-	{
-		"3b:da:11:ff:81:b1:fe:55:1f:03:00:31:84:73:80:01:80:00:90:00:e4",
-		"ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:00:ff:ff:00",
-		"Gnuk v1.x.x (OpenPGP v2.0)", SC_CARD_TYPE_OPENPGP_GNUK, 0, NULL
-	},
-	{ "3b:fc:13:00:00:81:31:fe:15:59:75:62:69:6b:65:79:4e:45:4f:72:33:e1", NULL, "Yubikey NEO (OpenPGP v2.0)", SC_CARD_TYPE_OPENPGP_V2, 0, NULL },
-	{ "3b:f8:13:00:00:81:31:fe:15:59:75:62:69:6b:65:79:34:d4", NULL, "Yubikey 4 (OpenPGP v2.1)", SC_CARD_TYPE_OPENPGP_V2, 0, NULL },
-	{ "3b:fd:13:00:00:81:31:fe:15:80:73:c0:21:c0:57:59:75:62:69:4b:65:79:40", NULL, "Yubikey 5 (OpenPGP v3.4)", SC_CARD_TYPE_OPENPGP_V3, 0, NULL },
-	{ "3b:da:18:ff:81:b1:fe:75:1f:03:00:31:f5:73:c0:01:60:00:90:00:1c", NULL, default_cardname_v3, SC_CARD_TYPE_OPENPGP_V3, 0, NULL },
-	{ NULL, NULL, NULL, 0, 0, NULL }
+		{"3b:fa:13:00:ff:81:31:80:45:00:31:c1:73:c0:01:00:00:90:00:b1", NULL, default_cardname_v1, SC_CARD_TYPE_OPENPGP_V1, 0, NULL},
+		{"3b:da:18:ff:81:b1:fe:75:1f:03:00:31:c5:73:c0:01:40:00:90:00:0c", NULL, default_cardname_v2, SC_CARD_TYPE_OPENPGP_V2, 0, NULL},
+		{
+				"3b:da:11:ff:81:b1:fe:55:1f:03:00:31:84:73:80:01:80:00:90:00:e4",
+				"ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:00:ff:ff:00",
+				"Gnuk v1.x.x (OpenPGP v2.0)",
+				SC_CARD_TYPE_OPENPGP_GNUK,
+				0,
+				NULL,
+		},
+		{"3b:fc:13:00:00:81:31:fe:15:59:75:62:69:6b:65:79:4e:45:4f:72:33:e1", NULL, "Yubikey NEO (OpenPGP v2.0)", SC_CARD_TYPE_OPENPGP_V2, 0, NULL},
+		{"3b:f8:13:00:00:81:31:fe:15:59:75:62:69:6b:65:79:34:d4", NULL, "Yubikey 4 (OpenPGP v2.1)", SC_CARD_TYPE_OPENPGP_V2, 0, NULL},
+		{"3b:fd:13:00:00:81:31:fe:15:80:73:c0:21:c0:57:59:75:62:69:4b:65:79:40", NULL, "Yubikey 5 (OpenPGP v3.4)", SC_CARD_TYPE_OPENPGP_V3, 0, NULL},
+		{"3b:da:18:ff:81:b1:fe:75:1f:03:00:31:f5:73:c0:01:60:00:90:00:1c", NULL, default_cardname_v3, SC_CARD_TYPE_OPENPGP_V3, 0, NULL},
+		{NULL, NULL, NULL, 0, 0, NULL},
 };
-
 
 static struct sc_card_operations *iso_ops;
 static struct sc_card_operations pgp_ops;
 static struct sc_card_driver pgp_drv = {
-	"OpenPGP card",
-	"openpgp",
-	&pgp_ops,
-	NULL, 0, NULL
+		"OpenPGP card",
+		"openpgp",
+		&pgp_ops,
+		NULL,
+		0,
+		NULL,
 };
 
 static pgp_ec_curves_t ec_curves_openpgp34[] = {
-	/* OpenPGP 3.4+ Ed25519 and Curve25519 */
-	{{{1, 3, 6, 1, 4, 1, 3029, 1, 5, 1, -1}}, 256}, /* curve25519 for encryption => CKK_EC_MONTGOMERY */
-	{{{1, 3, 6, 1, 4, 1, 11591, 15, 1, -1}}, 256},  /* ed25519 for signatures => CKK_EC_EDWARDS */
-	/* v3.0+ supports: [RFC 4880 & 6637] 0x12 = ECDH, 0x13 = ECDSA */
-	{{{1, 2, 840, 10045, 3, 1, 7, -1}}, 256},      /* ansiX9p256r1 */
-	{{{1, 3, 132, 0, 34, -1}}, 384},               /* ansiX9p384r1 */
-	{{{1, 3, 132, 0, 35, -1}}, 521},               /* ansiX9p521r1 */
-	{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 7, -1}}, 256},  /* brainpoolP256r1 */
-	{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 11, -1}}, 384}, /* brainpoolP384r1 */
-	{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 13, -1}}, 512}, /* brainpoolP512r1 */
-	{{{-1}}, 0}                                    /* This entry must not be touched. */
+		/* OpenPGP 3.4+ Ed25519 and Curve25519 */
+		{{{1, 3, 6, 1, 4, 1, 3029, 1, 5, 1, -1}}, 256}, /* curve25519 for encryption => CKK_EC_MONTGOMERY */
+		{{{1, 3, 6, 1, 4, 1, 11591, 15, 1, -1}}, 256},  /* ed25519 for signatures => CKK_EC_EDWARDS */
+		/* v3.0+ supports: [RFC 4880 & 6637] 0x12 = ECDH, 0x13 = ECDSA */
+		{{{1, 2, 840, 10045, 3, 1, 7, -1}}, 256},      /* ansiX9p256r1 */
+		{{{1, 3, 132, 0, 34, -1}}, 384},               /* ansiX9p384r1 */
+		{{{1, 3, 132, 0, 35, -1}}, 521},               /* ansiX9p521r1 */
+		{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 7, -1}}, 256},  /* brainpoolP256r1 */
+		{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 11, -1}}, 384}, /* brainpoolP384r1 */
+		{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 13, -1}}, 512}, /* brainpoolP512r1 */
+		{{{-1}}, 0},                                   /* This entry must not be touched. */
 };
 
 static pgp_ec_curves_t *ec_curves_openpgp = ec_curves_openpgp34 + 2;
@@ -691,8 +694,8 @@ _pgp_add_algo(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t key_info, size_t
 		/* OpenPGP card spec 1.1 & 2.x, section 7.2.9 & 7.2.10 /
 		 * v3.x section 7.2.11 & 7.2.12 */
 		flags = SC_ALGORITHM_RSA_PAD_PKCS1 |
-			SC_ALGORITHM_RSA_HASH_NONE |
-			SC_ALGORITHM_ONBOARD_KEY_GEN; /* key gen on card */
+				SC_ALGORITHM_RSA_HASH_NONE |
+				SC_ALGORITHM_ONBOARD_KEY_GEN; /* key gen on card */
 
 		_sc_card_add_rsa_alg(card, key_info.u.rsa.modulus_len, flags, 0);
 		sc_log(card->ctx, "DO %zX: Added RSA algorithm, mod_len = %" SC_FORMAT_LEN_SIZE_T "u", do_num,
@@ -925,7 +928,6 @@ pgp_get_card_features(sc_card_t *card)
 				_pgp_add_algo(card, key_info, i);
 			}
 		}
-
 	}
 
 	LOG_FUNC_RETURN(card->ctx, handled_algos);
@@ -1763,7 +1765,6 @@ pgp_get_pubkey_pem(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 	LOG_FUNC_RETURN(card->ctx, (int)len);
 }
 
-
 /**
  * Internal: SELECT DATA - selects a DO within a DO tag with several instances
  * (supported since OpenPGP Card v3 for DO 7F21 only, see section 7.2.5 of the specification;
@@ -1772,10 +1773,11 @@ pgp_get_pubkey_pem(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
  * p1: number of an instance (DO 7F21: 0x00 for AUT, 0x01 for DEC and 0x02 for SIG)
  */
 static int
-pgp_select_data(sc_card_t *card, u8 p1){
-	sc_apdu_t	apdu;
-	u8	apdu_data[6];
-	int	r;
+pgp_select_data(sc_card_t *card, u8 p1)
+{
+	sc_apdu_t apdu;
+	u8 apdu_data[6];
+	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -1799,7 +1801,6 @@ pgp_select_data(sc_card_t *card, u8 p1){
 	LOG_TEST_RET(card->ctx, r, "Card returned error");
 	LOG_FUNC_RETURN(card->ctx, r);
 }
-
 
 /**
  * ABI: ISO 7816-4 GET DATA - get contents of a DO.
@@ -3541,20 +3542,20 @@ pgp_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 
 	switch(cmd) {
 	case SC_CARDCTL_GET_SERIALNR:
-		memmove((sc_serial_number_t *) ptr, &card->serialnr, sizeof(card->serialnr));
+		memmove((sc_serial_number_t *)ptr, &card->serialnr, sizeof(card->serialnr));
 		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 		break;
 	case SC_CARDCTL_OPENPGP_SELECT_DATA:
-		r = pgp_select_data(card, *((u8 *) ptr));
+		r = pgp_select_data(card, *((u8 *)ptr));
 		LOG_FUNC_RETURN(card->ctx, r);
 		break;
 #ifdef ENABLE_OPENSSL
 	case SC_CARDCTL_OPENPGP_GENERATE_KEY:
-		r = pgp_gen_key(card, (sc_cardctl_openpgp_keygen_info_t *) ptr);
+		r = pgp_gen_key(card, (sc_cardctl_openpgp_keygen_info_t *)ptr);
 		LOG_FUNC_RETURN(card->ctx, r);
 		break;
 	case SC_CARDCTL_OPENPGP_STORE_KEY:
-		r = pgp_store_key(card, (sc_cardctl_openpgp_keystore_info_t *) ptr);
+		r = pgp_store_key(card, (sc_cardctl_openpgp_keystore_info_t *)ptr);
 		LOG_FUNC_RETURN(card->ctx, r);
 		break;
 #endif /* ENABLE_OPENSSL */

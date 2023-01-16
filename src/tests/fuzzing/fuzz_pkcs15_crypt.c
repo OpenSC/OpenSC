@@ -23,32 +23,34 @@
 #include "config.h"
 #endif
 
-#include "libopensc/internal.h"
-#include <stdlib.h>
-#include <string.h>
-#include <stdbool.h>
 #include "fuzzer_reader.h"
 #include "fuzzer_tool.h"
+#include "libopensc/internal.h"
+#include <stdbool.h>
+#include <stdlib.h>
+#include <string.h>
 #undef stderr
 #define stderr stdout
 
 /* Rename main to call it in fuzz target */
 #define main _main
 #define util_connect_card_ex(ctx, card, id, do_wait, do_lock, verbose) fuzz_util_connect_card(ctx, card)
-# include "tools/pkcs15-crypt.c"
+#include "tools/pkcs15-crypt.c"
 #undef main
 
 static const uint8_t *reader_data = NULL;
 static size_t reader_data_size = 0;
 
 /* Use instead of util_connect_card() */
-int fuzz_util_connect_card(sc_context_t *ctx, sc_card_t **card)
+int
+fuzz_util_connect_card(sc_context_t *ctx, sc_card_t **card)
 {
 	opt_output = NULL; /* Do not create new outputfile */
 	return fuzz_connect_card(ctx, card, NULL, reader_data, reader_data_size);
 }
 
-void initialize_global()
+void
+initialize_global()
 {
 	/* Global variables need to be reser between runs,
 	   fuzz target is called repetitively in one execution */
@@ -68,11 +70,12 @@ void initialize_global()
 	optopt = 0;
 }
 
-void test_operation(char *op, char *pin, const uint8_t *data, size_t size, char *filename,
-					char *hash, char *format, char *aid, char *id, uint8_t pad)
+void
+test_operation(char *op, char *pin, const uint8_t *data, size_t size, char *filename,
+		char *hash, char *format, char *aid, char *id, uint8_t pad)
 {
 	char *argv[] = {"./fuzz_pkcs15_crypt", op, "-p", pin, "-i", filename,
-					hash, "-f", format, NULL, NULL, NULL, NULL, NULL, NULL};
+			hash, "-f", format, NULL, NULL, NULL, NULL, NULL, NULL};
 	int argc = 9;
 
 	if (aid) {
@@ -91,7 +94,8 @@ void test_operation(char *op, char *pin, const uint8_t *data, size_t size, char 
 	_main(argc, argv);
 }
 
-int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
+int
+LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
 	uint8_t operation = 0;
 	uint8_t hash = 0;
@@ -116,7 +120,8 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 	initialize_global();
 
 	operation = data[0] % 3;
-	data++; size--;
+	data++;
+	size--;
 
 	if (!(pin = extract_word(&data, &size)))
 		return 0;
@@ -137,11 +142,19 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 		/* Set options */
 		if (size < 5)
 			goto err;
-		hash = data[0] % 6; data++; size--;
-		pad = data[0] % 2; data++; size--;
-		format = data[0] % 3; data++; size--;
+		hash = data[0] % 6;
+		data++;
+		size--;
+		pad = data[0] % 2;
+		data++;
+		size--;
+		format = data[0] % 3;
+		data++;
+		size--;
 
-		aid = data[0] % 2; data++; size--;
+		aid = data[0] % 2;
+		data++;
+		size--;
 		if (aid) {
 			if (!(opt_aid = extract_word(&data, &size)))
 				goto err;
@@ -149,7 +162,9 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 		if (size < 3)
 			goto err;
 
-		id = data[0] % 2; data++; size--;
+		id = data[0] % 2;
+		data++;
+		size--;
 		if (id) {
 			if (!(opt_id = extract_word(&data, &size)))
 				goto err;
@@ -157,7 +172,8 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 
 		if (create_input_file(&filename, &data, &size) != 0)
 			goto err;
-		test_operation(operation == 1 ? "-c" : "-s", pin, data, size, filename, hash_options[hash], formats[format], opt_aid, opt_id, pad);
+		test_operation(operation == 1 ? "-c" : "-s", pin, data, size, filename, hash_options[hash],
+				formats[format], opt_aid, opt_id, pad);
 
 		remove_file(filename);
 	}

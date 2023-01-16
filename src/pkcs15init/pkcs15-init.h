@@ -425,8 +425,6 @@ extern int	sc_pkcs15init_unwrap_key(struct sc_pkcs15_card *p15card, struct sc_pr
 		struct sc_pkcs15_object *key, u8* wrapped_key, size_t wrapped_key_len,
 		struct sc_pkcs15init_skeyargs *keyargs, struct sc_pkcs15_object **res_obj);
 
-
-
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_gpk_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_cryptoflex_ops(void);
 extern struct sc_pkcs15init_operations *sc_pkcs15init_get_cyberflex_ops(void);

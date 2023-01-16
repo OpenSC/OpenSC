@@ -24,11 +24,11 @@
 #endif
 
 #include "fuzzer_reader.h"
-#include "libopensc/pkcs15.h"
 #include "libopensc/internal.h"
+#include "libopensc/pkcs15.h"
 
-
-int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
+int
+LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
 {
 	struct sc_context       *ctx = NULL;
 	struct sc_card          *card = NULL;

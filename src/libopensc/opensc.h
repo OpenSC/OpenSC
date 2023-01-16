@@ -1060,7 +1060,7 @@ int sc_ctx_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcsc
  * 1 -> handles don't point to `reader`, but to a different reader
  */
 int
-pcsc_check_reader_handles(sc_context_t *ctx, sc_reader_t *reader, void * pcsc_context_handle, void * pcsc_card_handle);
+pcsc_check_reader_handles(sc_context_t *ctx, sc_reader_t *reader, void *pcsc_context_handle, void *pcsc_card_handle);
 
 /**
  * Returns a pointer to the specified sc_reader_t object
@@ -1576,10 +1576,11 @@ int sc_base64_decode(const char *in, u8 *out, size_t outlen);
 void sc_mem_clear(void *ptr, size_t len);
 void *sc_mem_secure_alloc(size_t len);
 void sc_mem_secure_free(void *ptr, size_t len);
-#define sc_mem_secure_clear_free(ptr, len) do { \
-	sc_mem_clear(ptr, len); \
-	sc_mem_secure_free(ptr, len); \
-} while (0);
+#define sc_mem_secure_clear_free(ptr, len) \
+	do { \
+		sc_mem_clear(ptr, len); \
+		sc_mem_secure_free(ptr, len); \
+	} while (0);
 int sc_mem_reverse(unsigned char *buf, size_t len);
 
 int sc_get_cache_dir(sc_context_t *ctx, char *buf, size_t bufsize);

@@ -41,10 +41,9 @@
 #include "common/compat_strlcpy.h"
 #include "internal.h"
 #ifdef ENABLE_OPENSSL
-#include <openssl/crypto.h>
 #include "sc-ossl-compat.h"
+#include <openssl/crypto.h>
 #endif
-
 
 static int ignored_reader(sc_context_t *ctx, sc_reader_t *reader)
 {

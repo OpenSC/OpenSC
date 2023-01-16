@@ -1290,52 +1290,54 @@ no_match(struct sc_card *card)
 }
 
 static struct sc_card_operations iso_ops = {
-	no_match,
-	iso7816_init,	/* init   */
-	NULL,			/* finish */
-	iso7816_read_binary,
-	iso7816_write_binary,
-	iso7816_update_binary,
-	NULL,			/* erase_binary */
-	iso7816_read_record,
-	iso7816_write_record,
-	iso7816_append_record,
-	iso7816_update_record,
-	iso7816_select_file,
-	iso7816_get_response,
-	iso7816_get_challenge,
-	NULL,			/* verify */
-	NULL,			/* logout */
-	iso7816_restore_security_env,
-	iso7816_set_security_env,
-	iso7816_decipher,
-	iso7816_compute_signature,
-	NULL,			/* change_reference_data */
-	NULL,			/* reset_retry_counter   */
-	iso7816_create_file,
-	iso7816_delete_file,
-	NULL,			/* list_files */
-	iso7816_check_sw,
-	NULL,			/* card_ctl */
-	iso7816_process_fci,
-	iso7816_construct_fci,
-	iso7816_pin_cmd,
-	iso7816_get_data,
-	NULL,			/* put_data */
-	NULL,			/* delete_record */
-	NULL,			/* read_public_key */
-	NULL,			/* card_reader_lock_obtained */
-	NULL,			/* wrap */
-	NULL,			/* unwrap */
-	NULL,			/* encrypt_sym */
-	NULL			/* decrypt_sym */
+		no_match,
+		iso7816_init, /* init   */
+		NULL,         /* finish */
+		iso7816_read_binary,
+		iso7816_write_binary,
+		iso7816_update_binary,
+		NULL, /* erase_binary */
+		iso7816_read_record,
+		iso7816_write_record,
+		iso7816_append_record,
+		iso7816_update_record,
+		iso7816_select_file,
+		iso7816_get_response,
+		iso7816_get_challenge,
+		NULL, /* verify */
+		NULL, /* logout */
+		iso7816_restore_security_env,
+		iso7816_set_security_env,
+		iso7816_decipher,
+		iso7816_compute_signature,
+		NULL, /* change_reference_data */
+		NULL, /* reset_retry_counter   */
+		iso7816_create_file,
+		iso7816_delete_file,
+		NULL, /* list_files */
+		iso7816_check_sw,
+		NULL, /* card_ctl */
+		iso7816_process_fci,
+		iso7816_construct_fci,
+		iso7816_pin_cmd,
+		iso7816_get_data,
+		NULL, /* put_data */
+		NULL, /* delete_record */
+		NULL, /* read_public_key */
+		NULL, /* card_reader_lock_obtained */
+		NULL, /* wrap */
+		NULL, /* unwrap */
+		NULL, /* encrypt_sym */
+		NULL, /* decrypt_sym */
 };
 
 static struct sc_card_driver iso_driver = {
-	"ISO 7816 reference driver",
-	"iso7816",
-	&iso_ops,
-	NULL, 0, NULL
+		"ISO 7816 reference driver",
+		"iso7816",
+		&iso_ops,
+		NULL,
+		0,
+		NULL,
 };
 
 struct sc_card_driver * sc_get_iso7816_driver(void)

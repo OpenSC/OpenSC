@@ -84,14 +84,16 @@ static int	cardos_have_verifyrc_package(sc_card_t *card);
 #define CARDOS_ALGO_EXT_RSA_SIG_PURE	0x8a
 #define CARDOS_ALGO_PIN			0x87
 
-static void tlv_init(struct tlv *tlv, u8 *base, size_t size)
+static void
+tlv_init(struct tlv *tlv, u8 *base, size_t size)
 {
 	tlv->base = base;
 	tlv->end = base + size;
 	tlv->current = tlv->next = base;
 }
 
-static int tlv_next(struct tlv *tlv, u8 tag)
+static int
+tlv_next(struct tlv *tlv, u8 tag)
 {
 	if (tlv->next + 2 >= tlv->end)
 		return SC_ERROR_INTERNAL;
@@ -101,7 +103,8 @@ static int tlv_next(struct tlv *tlv, u8 tag)
 	return SC_SUCCESS;
 }
 
-static int tlv_add(struct tlv *tlv, u8 val)
+static int
+tlv_add(struct tlv *tlv, u8 val)
 {
 	if (tlv->next + 1 >= tlv->end)
 		return SC_ERROR_INTERNAL;
@@ -485,9 +488,7 @@ cardos_store_pin(sc_profile_t *profile, sc_card_t *card,
 	 * "no padding required". */
 	maxlen = MIN(profile->pin_maxlen, sizeof(pinpadded));
 	if (pin_len > maxlen) {
-		sc_log(card->ctx, 
-			 "invalid pin length: %"SC_FORMAT_LEN_SIZE_T"u (max %u)\n",
-			 pin_len, maxlen);
+		sc_log(card->ctx, "invalid pin length: %" SC_FORMAT_LEN_SIZE_T "u (max %u)\n", pin_len, maxlen);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	memcpy(pinpadded, pin, pin_len);
@@ -516,7 +517,7 @@ cardos_store_pin(sc_profile_t *profile, sc_card_t *card,
 		/* Use 9 byte OCI parameters to be able to set VerifyRC bit	*/
 		if (tlv_add(&tlv, 0x04) != SC_SUCCESS /* options_2 byte with bit 2 set to return CurrentErrorCounter */)
 			return SC_ERROR_INTERNAL;
-	
+
 	if (tlv_add(&tlv, attempts & 0xf) != SC_SUCCESS /* flags byte */
 	    || tlv_add(&tlv, CARDOS_ALGO_PIN) != SC_SUCCESS /* algorithm = pin-test */
 	    || tlv_add(&tlv, attempts & 0xf) != SC_SUCCESS /* errcount = attempts */)

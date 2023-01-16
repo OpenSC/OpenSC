@@ -47,7 +47,7 @@ static int set_sec_env(sc_card_t * card, const sc_security_env_t *env,
 	sc_security_env_t tenv = *env;
 	if (tenv.operation == SC_SEC_OPERATION_SIGN)
 		tenv.operation = SC_SEC_OPERATION_DECIPHER;
-	
+
 	if ((r =
 	     card->ops->restore_security_env(card, 0x40)) == SC_SUCCESS)
 		return set_security_env(card, &tenv, se_num);
@@ -145,30 +145,30 @@ static int sc_pkcs15emu_actalis_init(sc_pkcs15_card_t * p15card)
 
 	int i = 0, j = 0;
 	const char *certLabel[] = {
-		"User Non-repudiation Certificate",	/* "User Non-repudiation Certificate" */
-		"TSA Certificate",
-		"CA Certificate"
-	};	
+			"User Non-repudiation Certificate", /* "User Non-repudiation Certificate" */
+			"TSA Certificate",
+			"CA Certificate",
+	};
 	const char *certPath[] =
 	    { "3F00300060006002", "3F00300060006003", "3F00300060006004" };
 #endif
 
 	const char *keyPath = "3F00300040000008";
 	const char *pinDfName = "05040200";
-	
+
 	/* const int prkey_usage = SC_PKCS15_PRKEY_USAGE_NONREPUDIATION; */
 	const int authprkey_usage = SC_PKCS15_PRKEY_USAGE_SIGN
 				| SC_PKCS15_PRKEY_USAGE_SIGNRECOVER
 				| SC_PKCS15_PRKEY_USAGE_ENCRYPT
 				| SC_PKCS15_PRKEY_USAGE_DECRYPT;
-	    
+
 	const char *authPIN = "Authentication PIN";
 	/* const char *nonrepPIN = "Non-repudiation PIN"; */
 
 	const char *authPRKEY = "Authentication Key";
 	/* const char *nonrepPRKEY = "Non repudiation Key"; */
 
-	p15card->opts.use_file_cache = SC_PKCS15_OPTS_CACHE_ALL_FILES;	
+	p15card->opts.use_file_cache = SC_PKCS15_OPTS_CACHE_ALL_FILES;
 
 	/* Get Serial number */
 	sc_format_path("3F0030000001", &path);
@@ -195,9 +195,9 @@ static int sc_pkcs15emu_actalis_init(sc_pkcs15_card_t * p15card)
 	serial[8] = '\0';
 
 	/* Controllo che il serial number inizi per "H" */
-	if( serial[0] != 'H' ) 
+	if (serial[0] != 'H')
 		return SC_ERROR_WRONG_CARD;
-			
+
 	set_string(&p15card->tokeninfo->label, "Actalis");
 	set_string(&p15card->tokeninfo->manufacturer_id, "Actalis");
 	set_string(&p15card->tokeninfo->serial_number, (char *)serial);
@@ -263,24 +263,23 @@ static int sc_pkcs15emu_actalis_init(sc_pkcs15_card_t * p15card)
 		}
 	}
 #endif
-	
+
 	/* adding PINs & private keys */
 	flags = SC_PKCS15_PIN_FLAG_CASE_SENSITIVE |
-	    SC_PKCS15_PIN_FLAG_INITIALIZED |
-	    SC_PKCS15_PIN_FLAG_NEEDS_PADDING;	
-	
+			SC_PKCS15_PIN_FLAG_INITIALIZED |
+			SC_PKCS15_PIN_FLAG_NEEDS_PADDING;
+
 	sc_format_path(pinDfName, &path);
 	path.type = SC_PATH_TYPE_DF_NAME;
-	
+
 	id.value[0] = 1;
 	id.len = 1;
 	sc_pkcs15emu_add_pin(p15card, &id,
-			     authPIN, &path, 0x81,
-			     SC_PKCS15_PIN_TYPE_ASCII_NUMERIC,
-			     5, 8, flags, 3, 0,
-			     SC_PKCS15_CO_FLAG_MODIFIABLE |
-			     SC_PKCS15_CO_FLAG_PRIVATE);
-	
+			authPIN, &path, 0x81,
+			SC_PKCS15_PIN_TYPE_ASCII_NUMERIC,
+			5, 8, flags, 3, 0,
+			SC_PKCS15_CO_FLAG_MODIFIABLE | SC_PKCS15_CO_FLAG_PRIVATE);
+
 	sc_format_path(keyPath, &path);
 	id.value[0] = 1;
 	id.len = 1;
@@ -293,7 +292,7 @@ static int sc_pkcs15emu_actalis_init(sc_pkcs15_card_t * p15card)
 		       &path, 0x08,
 		       &auth_id,
 		       SC_PKCS15_CO_FLAG_PRIVATE);
-	
+
 	/* return to MF */
 	sc_format_path("3F00", &path);
 	sc_select_file(card, &path, NULL);
@@ -304,7 +303,7 @@ static int sc_pkcs15emu_actalis_init(sc_pkcs15_card_t * p15card)
 		card->ops->set_security_env  = set_sec_env;
 		card->ops->compute_signature = do_sign;
 	}
-	
+
 	return SC_SUCCESS;
 
 }
@@ -316,7 +315,7 @@ static int actalis_detect_card(sc_pkcs15_card_t * p15card)
 	/* check if we have the correct card OS */
 	if (strcmp(card->name, "CardOS M4"))
 		return SC_ERROR_WRONG_CARD;
-	
+
 	return SC_SUCCESS;
 }
 

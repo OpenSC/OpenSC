@@ -31,25 +31,23 @@
 #include "internal.h"
 #include "iso7816.h"
 
-// clang-format off
 static const struct sc_atr_table starcos_atrs[] = {
-	{ "3B:B7:94:00:c0:24:31:fe:65:53:50:4b:32:33:90:00:b4", NULL, NULL, SC_CARD_TYPE_STARCOS_GENERIC, 0, NULL },
-	{ "3B:B7:94:00:81:31:fe:65:53:50:4b:32:33:90:00:d1", NULL, NULL, SC_CARD_TYPE_STARCOS_GENERIC, 0, NULL },
-	{ "3b:b7:18:00:c0:3e:31:fe:65:53:50:4b:32:34:90:00:25", NULL, NULL, SC_CARD_TYPE_STARCOS_GENERIC, 0, NULL },
-	{ "3b:d8:18:ff:81:b1:fe:45:1f:03:80:64:04:1a:b4:03:81:05:61", NULL, NULL, SC_CARD_TYPE_STARCOS_V3_4, 0, NULL },
-	{ "3b:d3:96:ff:81:b1:fe:45:1f:07:80:81:05:2d", NULL, NULL, SC_CARD_TYPE_STARCOS_V3_4, 0, NULL },
-	{ "3B:9B:96:C0:0A:31:FE:45:80:67:04:1E:B5:01:00:89:4C:81:05:45", NULL, NULL, SC_CARD_TYPE_STARCOS_V3_5, 0, NULL },
-	{ "3B:DB:96:FF:81:31:FE:45:80:67:05:34:B5:02:01:C0:A1:81:05:3C", NULL, NULL, SC_CARD_TYPE_STARCOS_V3_5, 0, NULL },
-	{ "3B:D9:96:FF:81:31:FE:45:80:31:B8:73:86:01:C0:81:05:02", NULL, NULL, SC_CARD_TYPE_STARCOS_V3_5, 0, NULL },
-	{ "3B:DF:96:FF:81:31:FE:45:80:5B:44:45:2E:42:4E:4F:54:4B:31:31:31:81:05:A0", NULL, NULL, SC_CARD_TYPE_STARCOS_V3_5, 0, NULL },
-	{ "3B:DF:96:FF:81:31:FE:45:80:5B:44:45:2E:42:4E:4F:54:4B:31:30:30:81:05:A0", NULL, NULL, SC_CARD_TYPE_STARCOS_V3_5, 0, NULL },
-	{ "3B:D9:96:FF:81:31:FE:45:80:31:B8:73:86:01:E0:81:05:22", NULL, NULL, SC_CARD_TYPE_STARCOS_V3_5, 0, NULL },
-	{ "3B:D0:97:FF:81:B1:FE:45:1F:07:2B", NULL, NULL, SC_CARD_TYPE_STARCOS_V3_4, 0, NULL },
-	{ "3B:D0:96:FF:81:B1:FE:45:1F:07:2A", NULL, NULL, SC_CARD_TYPE_STARCOS_V3_4, 0, NULL },
-	{ "3b:df:96:ff:81:31:fe:45:80:5b:44:45:2e:42:41:5f:53:43:33:35:32:81:05:b5", NULL, NULL, SC_CARD_TYPE_STARCOS_V3_5_ESIGN, 0, NULL },
-	{ NULL, NULL, NULL, 0, 0, NULL }
+		{"3B:B7:94:00:c0:24:31:fe:65:53:50:4b:32:33:90:00:b4", NULL, NULL, SC_CARD_TYPE_STARCOS_GENERIC, 0, NULL},
+		{"3B:B7:94:00:81:31:fe:65:53:50:4b:32:33:90:00:d1", NULL, NULL, SC_CARD_TYPE_STARCOS_GENERIC, 0, NULL},
+		{"3b:b7:18:00:c0:3e:31:fe:65:53:50:4b:32:34:90:00:25", NULL, NULL, SC_CARD_TYPE_STARCOS_GENERIC, 0, NULL},
+		{"3b:d8:18:ff:81:b1:fe:45:1f:03:80:64:04:1a:b4:03:81:05:61", NULL, NULL, SC_CARD_TYPE_STARCOS_V3_4, 0, NULL},
+		{"3b:d3:96:ff:81:b1:fe:45:1f:07:80:81:05:2d", NULL, NULL, SC_CARD_TYPE_STARCOS_V3_4, 0, NULL},
+		{"3B:9B:96:C0:0A:31:FE:45:80:67:04:1E:B5:01:00:89:4C:81:05:45", NULL, NULL, SC_CARD_TYPE_STARCOS_V3_5, 0, NULL},
+		{"3B:DB:96:FF:81:31:FE:45:80:67:05:34:B5:02:01:C0:A1:81:05:3C", NULL, NULL, SC_CARD_TYPE_STARCOS_V3_5, 0, NULL},
+		{"3B:D9:96:FF:81:31:FE:45:80:31:B8:73:86:01:C0:81:05:02", NULL, NULL, SC_CARD_TYPE_STARCOS_V3_5, 0, NULL},
+		{"3B:DF:96:FF:81:31:FE:45:80:5B:44:45:2E:42:4E:4F:54:4B:31:31:31:81:05:A0", NULL, NULL, SC_CARD_TYPE_STARCOS_V3_5, 0, NULL},
+		{"3B:DF:96:FF:81:31:FE:45:80:5B:44:45:2E:42:4E:4F:54:4B:31:30:30:81:05:A0", NULL, NULL, SC_CARD_TYPE_STARCOS_V3_5, 0, NULL},
+		{"3B:D9:96:FF:81:31:FE:45:80:31:B8:73:86:01:E0:81:05:22", NULL, NULL, SC_CARD_TYPE_STARCOS_V3_5, 0, NULL},
+		{"3B:D0:97:FF:81:B1:FE:45:1F:07:2B", NULL, NULL, SC_CARD_TYPE_STARCOS_V3_4, 0, NULL},
+		{"3B:D0:96:FF:81:B1:FE:45:1F:07:2A", NULL, NULL, SC_CARD_TYPE_STARCOS_V3_4, 0, NULL},
+		{"3b:df:96:ff:81:31:fe:45:80:5b:44:45:2e:42:41:5f:53:43:33:35:32:81:05:b5", NULL, NULL, SC_CARD_TYPE_STARCOS_V3_5_ESIGN, 0, NULL},
+		{NULL, NULL, NULL, 0, 0, NULL},
 };
-// clang-format on
 
 static struct sc_card_operations starcos_ops;
 static struct sc_card_operations *iso_ops = NULL;
@@ -61,22 +59,21 @@ static struct sc_card_driver starcos_drv = {
 	NULL, 0, NULL
 };
 
-static const struct sc_card_error starcos_errors[] =
-{
-	{ 0x6600, SC_ERROR_INCORRECT_PARAMETERS, "Error setting the security env"},
-	{ 0x66F0, SC_ERROR_INCORRECT_PARAMETERS, "No space left for padding"},
-	{ 0x69F0, SC_ERROR_NOT_ALLOWED,          "Command not allowed"},
-	{ 0x6A89, SC_ERROR_FILE_ALREADY_EXISTS,  "Files exists"},
-	{ 0x6A8A, SC_ERROR_FILE_ALREADY_EXISTS,  "Application exists"},
-	{ 0x6F01, SC_ERROR_CARD_CMD_FAILED, "public key not complete"},
-	{ 0x6F02, SC_ERROR_CARD_CMD_FAILED, "data overflow"},
-	{ 0x6F03, SC_ERROR_CARD_CMD_FAILED, "invalid command sequence"},
-	{ 0x6F05, SC_ERROR_CARD_CMD_FAILED, "security environment invalid"},
-	{ 0x6F07, SC_ERROR_FILE_NOT_FOUND, "key part not found"},
-	{ 0x6F08, SC_ERROR_CARD_CMD_FAILED, "signature failed"},
-	{ 0x6F0A, SC_ERROR_INCORRECT_PARAMETERS, "key format does not match key length"},
-	{ 0x6F0B, SC_ERROR_INCORRECT_PARAMETERS, "length of key component inconsistent with algorithm"},
-	{ 0x6F81, SC_ERROR_CARD_CMD_FAILED, "system error"}
+static const struct sc_card_error starcos_errors[] = {
+		{0x6600, SC_ERROR_INCORRECT_PARAMETERS, "Error setting the security env"},
+		{0x66F0, SC_ERROR_INCORRECT_PARAMETERS, "No space left for padding"},
+		{0x69F0, SC_ERROR_NOT_ALLOWED, "Command not allowed"},
+		{0x6A89, SC_ERROR_FILE_ALREADY_EXISTS, "Files exists"},
+		{0x6A8A, SC_ERROR_FILE_ALREADY_EXISTS, "Application exists"},
+		{0x6F01, SC_ERROR_CARD_CMD_FAILED, "public key not complete"},
+		{0x6F02, SC_ERROR_CARD_CMD_FAILED, "data overflow"},
+		{0x6F03, SC_ERROR_CARD_CMD_FAILED, "invalid command sequence"},
+		{0x6F05, SC_ERROR_CARD_CMD_FAILED, "security environment invalid"},
+		{0x6F07, SC_ERROR_FILE_NOT_FOUND, "key part not found"},
+		{0x6F08, SC_ERROR_CARD_CMD_FAILED, "signature failed"},
+		{0x6F0A, SC_ERROR_INCORRECT_PARAMETERS, "key format does not match key length"},
+		{0x6F0B, SC_ERROR_INCORRECT_PARAMETERS, "length of key component inconsistent with algorithm"},
+		{0x6F81, SC_ERROR_CARD_CMD_FAILED, "system error"},
 };
 
 /* internal structure to save the current security environment */
@@ -270,9 +267,9 @@ static unsigned int starcos_determine_pin_encoding(sc_card_t *card)
 	unsigned int pin_format = PIN_FORMAT_DEFAULT;
 	unsigned int encoding = PIN_ENCODING_DETERMINE;
 
-	if ( IS_V34(card) ) {
+	if (IS_V34(card)) {
 		starcos_determine_pin_format34(card, &pin_format);
-	} else if ( IS_V35(card) ) {
+	} else if (IS_V35(card)) {
 		starcos_determine_pin_format35(card, &pin_format);
 	}
 
@@ -298,7 +295,9 @@ static unsigned int starcos_determine_pin_encoding(sc_card_t *card)
  * Returns 1 if an extended APDU can be sent to the card
  * with the given card reader. Otherwise returns 0.
  */
-static int starcos_probe_reader_for_ext_apdu(sc_card_t * card) {
+static int
+starcos_probe_reader_for_ext_apdu(sc_card_t *card)
+{
 	sc_apdu_t apdu;
 	int rv;
 	/* try to read STARCOS3X_PROBE_APDU_LENGTH bytes */
@@ -315,44 +314,47 @@ static int starcos_probe_reader_for_ext_apdu(sc_card_t * card) {
 	return (apdu.sw1 == 0x90 && apdu.sw2 == 0x00);
 }
 
-static int starcos_select_mf(sc_card_t * card) {
+static int
+starcos_select_mf(sc_card_t *card)
+{
 	sc_apdu_t apdu;
 	const u8 mf_buf[2] = {0x3f, 0x00};
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, 0x00, 0x0C);
 	apdu.le = 0;
 	apdu.lc = 2;
-	apdu.data    = mf_buf;
+	apdu.data = mf_buf;
 	apdu.datalen = 2;
 	apdu.resplen = 0;
 
 	return sc_transmit_apdu(card, &apdu);
 }
 
-static int starcos_select_aid(sc_card_t *card,
-			      const u8 aid[16], size_t len,
-			      sc_file_t **file_out);
+static int
+starcos_select_aid(sc_card_t *card, const u8 aid[16], size_t len, sc_file_t **file_out);
 
 /* returns 1 if the card has the eSign app with AID A0:00:00:02:45:53:69:67:6E
    otherwise returns 0
  */
-static int starcos_has_esign_app(sc_card_t * card) {
-	static const char * starcos_esign_aid = "A0:00:00:02:45:53:69:67:6E";
+static int
+starcos_has_esign_app(sc_card_t *card)
+{
+	static const char *starcos_esign_aid = "A0:00:00:02:45:53:69:67:6E";
 	int rv;
 
 	rv = starcos_select_mf(card);
-	if ( rv == SC_SUCCESS ) {
+	if (rv == SC_SUCCESS) {
 		u8 aid[SC_MAX_PATH_SIZE];
 		size_t len = sizeof(aid);
 
 		rv = sc_hex_to_bin(starcos_esign_aid, aid, &len);
 		LOG_TEST_RET(card->ctx, rv, "Failed to convert eSing AID");
 		rv = starcos_select_aid(card, aid, len, NULL);
-		if ( rv == SC_SUCCESS ) {
+		if (rv == SC_SUCCESS) {
 			starcos_select_mf(card);
 		}
 	}
-	return ( rv == SC_SUCCESS );
+	return (rv == SC_SUCCESS);
 }
 
 static int starcos_init(sc_card_t *card)
@@ -380,7 +382,7 @@ static int starcos_init(sc_card_t *card)
 
 	card->caps = SC_CARD_CAP_RNG;
 
-	if ( IS_V3x(card) ) {
+	if (IS_V3x(card)) {
 
 		flags |= SC_CARD_FLAG_RNG
 			| SC_ALGORITHM_RSA_HASH_SHA224
@@ -395,19 +397,19 @@ static int starcos_init(sc_card_t *card)
 		_sc_card_add_rsa_alg(card,1728, flags, 0x10001);
 		_sc_card_add_rsa_alg(card,1976, flags, 0x10001);
 		_sc_card_add_rsa_alg(card,2048, flags, 0x10001);
-		if ( IS_V34(card) ) {
+		if (IS_V34(card)) {
 			card->name = "STARCOS 3.4";
 			card->caps |= SC_CARD_CAP_ISO7816_PIN_INFO;
 		} else {
 			card->name = "STARCOS 3.5";
-			_sc_card_add_rsa_alg(card,3072, flags, 0x10001);
+			_sc_card_add_rsa_alg(card, 3072, flags, 0x10001);
 		}
 		card->max_send_size = 255;
 		card->max_recv_size = 256;
 	} else {
 		_sc_card_add_rsa_alg(card, 512, flags, 0x10001);
 		_sc_card_add_rsa_alg(card, 768, flags, 0x10001);
-		_sc_card_add_rsa_alg(card,1024, flags, 0x10001);
+		_sc_card_add_rsa_alg(card, 1024, flags, 0x10001);
 
 		/* we need read_binary&friends with max 128 bytes per read */
 		card->max_send_size = 128;
@@ -419,7 +421,7 @@ static int starcos_init(sc_card_t *card)
 		size_t max_send_size = 0;
 
 		/* Add max. length values from IAS/ECC specific issuer data */
-		if ( card->ef_atr->issuer_data_len >= 4 ) {
+		if (card->ef_atr->issuer_data_len >= 4) {
 			max_recv_size = bebytes2ushort(card->ef_atr->issuer_data);
 			max_send_size = bebytes2ushort(card->ef_atr->issuer_data + 2);
 		}
@@ -431,7 +433,7 @@ static int starcos_init(sc_card_t *card)
 			max_send_size = card->ef_atr->max_command_apdu;
 		}
 
-		if ( max_send_size > 256 && max_recv_size > 256 ) {
+		if (max_send_size > 256 && max_recv_size > 256) {
 			size_t max_recv_size_prev = card->max_recv_size;
 			size_t max_send_size_prev = card->max_send_size;
 			/* allow SC_CARD_CAP_APDU_EXT independent of ef_atr->caps, see IAS/ECC issuer data above */
@@ -441,9 +443,9 @@ static int starcos_init(sc_card_t *card)
 			/* the sent APDU should not exceed max_send_size including the 4 bytes of the APDU and 2 * 3 bytes Lc/Le */
 			card->max_send_size = max_send_size - 10;
 			/* probe reader for extended APDU support */
-			if ( starcos_probe_reader_for_ext_apdu(card) ) {
+			if (starcos_probe_reader_for_ext_apdu(card)) {
 				sc_log(card->ctx, "Successfully probed extended APDU, enabling extended APDU with max send/recv %d/%d",
-					(int)card->max_send_size, (int)card->max_recv_size);
+						(int)card->max_send_size, (int)card->max_recv_size);
 			} else {
 				card->caps &= ~(SC_CARD_CAP_APDU_EXT);
 				card->max_recv_size = max_recv_size_prev;
@@ -453,12 +455,12 @@ static int starcos_init(sc_card_t *card)
 		}
 	}
 
-	if ( ex_data->pin_encoding == PIN_ENCODING_DETERMINE ) {
+	if (ex_data->pin_encoding == PIN_ENCODING_DETERMINE) {
 		// about to determine PIN encoding
 		ex_data->pin_encoding = starcos_determine_pin_encoding(card);
 	}
 
-	if ( card->type == SC_CARD_TYPE_STARCOS_V3_4 && starcos_has_esign_app(card) ) {
+	if (card->type == SC_CARD_TYPE_STARCOS_V3_4 && starcos_has_esign_app(card)) {
 		card->type = SC_CARD_TYPE_STARCOS_V3_4_ESIGN;
 		sc_log(card->ctx, "Card has eSign app, card type changed to %d", card->type);
 	}
@@ -485,7 +487,7 @@ static int process_fci(sc_context_t *ctx, sc_file_t *file,
 	size_t taglen, len = buflen;
 	const u8 *tag = NULL, *p;
 
-	sc_log(ctx,  "processing FCI bytes\n");
+	sc_log(ctx, "processing FCI bytes\n");
 
 	if (buflen < 2)
 		return SC_ERROR_INTERNAL;
@@ -506,8 +508,7 @@ static int process_fci(sc_context_t *ctx, sc_file_t *file,
 	tag = sc_asn1_find_tag(ctx, p, len, 0x80, &taglen);
 	if (tag != NULL && taglen >= 2) {
 		int bytes = (tag[0] << 8) + tag[1];
-		sc_log(ctx,
-			"  bytes in file: %d\n", bytes);
+		sc_log(ctx, "  bytes in file: %d\n", bytes);
 		file->size = bytes;
 	}
 
@@ -555,24 +556,21 @@ static int process_fci(sc_context_t *ctx, sc_file_t *file,
 			}
 		}
 
-		sc_log(ctx,
-			"  type: %s\n", type);
-		sc_log(ctx,
-			"  EF structure: %s\n", structure);
+		sc_log(ctx, "  type: %s\n", type);
+		sc_log(ctx, "  EF structure: %s\n", structure);
 	}
 	file->magic = SC_FILE_MAGIC;
 
 	return SC_SUCCESS;
 }
 
-static int process_fci_v3_4(sc_context_t *ctx, sc_file_t *file,
-		       const u8 *buf, size_t buflen)
+static int
+process_fci_v3_4(sc_context_t *ctx, sc_file_t *file, const u8 *buf, size_t buflen)
 {
 	size_t taglen, len = buflen;
 	const u8 *tag = NULL, *p;
 
-	sc_log(ctx,
-		 "processing %"SC_FORMAT_LEN_SIZE_T"u FCI bytes\n", buflen);
+	sc_log(ctx, "processing %" SC_FORMAT_LEN_SIZE_T "u FCI bytes\n", buflen);
 
 	if (buflen < 2)
 		return SC_ERROR_INTERNAL;
@@ -595,20 +593,18 @@ static int process_fci_v3_4(sc_context_t *ctx, sc_file_t *file,
 	if (tag != NULL && taglen > 0 && taglen <= 16) {
 		memcpy(file->name, tag, taglen);
 		file->namelen = taglen;
-		sc_log(ctx,  "filename %s",
-			sc_dump_hex(file->name, file->namelen));
+		sc_log(ctx, "filename %s", sc_dump_hex(file->name, file->namelen));
 	}
 	return SC_SUCCESS;
 }
 
-static int process_fcp_v3_4(sc_context_t *ctx, sc_file_t *file,
-		       const u8 *buf, size_t buflen)
+static int
+process_fcp_v3_4(sc_context_t *ctx, sc_file_t *file, const u8 *buf, size_t buflen)
 {
 	size_t taglen, len = buflen;
 	const u8 *tag = NULL, *p;
 
-	sc_log(ctx,
-		 "processing %"SC_FORMAT_LEN_SIZE_T"u FCP bytes\n", buflen);
+	sc_log(ctx, "processing %" SC_FORMAT_LEN_SIZE_T "u FCP bytes\n", buflen);
 
 	if (buflen < 2)
 		return SC_ERROR_INTERNAL;
@@ -622,16 +618,14 @@ static int process_fcp_v3_4(sc_context_t *ctx, sc_file_t *file,
 	tag = sc_asn1_find_tag(ctx, p, len, 0x80, &taglen);
 	if (tag != NULL && taglen >= 2) {
 		int bytes = (tag[0] << 8) + tag[1];
-		sc_log(ctx,
-			"  bytes in file: %d\n", bytes);
+		sc_log(ctx, "  bytes in file: %d\n", bytes);
 		file->size = bytes;
 	}
 
 	tag = sc_asn1_find_tag(ctx, p, len, 0xc5, &taglen);
 	if (tag != NULL && taglen >= 2) {
 		int bytes = (tag[0] << 8) + tag[1];
-		sc_log(ctx,
-			"  bytes in file 2: %d\n", bytes);
+		sc_log(ctx, "  bytes in file 2: %d\n", bytes);
 		file->size = bytes;
 	}
 
@@ -684,10 +678,8 @@ static int process_fcp_v3_4(sc_context_t *ctx, sc_file_t *file,
 				break;
 			}
 		}
-		sc_log(ctx,
-			"  type: %s\n", type);
-		sc_log(ctx,
-			"  EF structure: %s\n", structure);
+		sc_log(ctx, "  type: %s\n", type);
+		sc_log(ctx, "  EF structure: %s\n", structure);
 		if (taglen >= 2) {
 			if (tag[1] != 0x41 || taglen != 5) {
 				SC_FUNC_RETURN(ctx, 2,SC_ERROR_INVALID_DATA);
@@ -695,25 +687,22 @@ static int process_fcp_v3_4(sc_context_t *ctx, sc_file_t *file,
 			/* formatted EF */
 			file->record_length = (tag[2] << 8) + tag[3];
 			file->record_count = tag[4];
-			sc_log(ctx,
-				"  rec_len: %"SC_FORMAT_LEN_SIZE_T"u  rec_cnt: %"SC_FORMAT_LEN_SIZE_T"u\n\n",
-				file->record_length, file->record_count);
+			sc_log(ctx, "  rec_len: %" SC_FORMAT_LEN_SIZE_T "u  rec_cnt: %" SC_FORMAT_LEN_SIZE_T "u\n\n",
+					file->record_length, file->record_count);
 		}
 	}
 
 	tag = sc_asn1_find_tag(ctx, p, len, 0x83, &taglen);
 	if (tag != NULL && taglen >= 2) {
 		file->id = (tag[0] << 8) | tag[1];
-		sc_log(ctx,  "  file identifier: 0x%02X%02X\n",
-			tag[0], tag[1]);
+		sc_log(ctx, "  file identifier: 0x%02X%02X\n", tag[0], tag[1]);
 	}
 
 	tag = sc_asn1_find_tag(ctx, p, len, 0x84, &taglen);
 	if (tag != NULL && taglen > 0 && taglen <= 16) {
 		memcpy(file->name, tag, taglen);
 		file->namelen = taglen;
-		sc_log(ctx,  "  filename %s",
-			sc_dump_hex(file->name, file->namelen));
+		sc_log(ctx, "  filename %s", sc_dump_hex(file->name, file->namelen));
 	}
 
 	tag = sc_asn1_find_tag(ctx, p, len, 0x8a, &taglen);
@@ -743,9 +732,8 @@ static int process_fcp_v3_4(sc_context_t *ctx, sc_file_t *file,
 	return SC_SUCCESS;
 }
 
-static int starcos_select_aid(sc_card_t *card,
-			      const u8 aid[16], size_t len,
-			      sc_file_t **file_out)
+static int
+starcos_select_aid(sc_card_t *card, const u8 aid[16], size_t len, sc_file_t **file_out)
 {
 	sc_apdu_t apdu;
 	int r;
@@ -790,9 +778,8 @@ static int starcos_select_aid(sc_card_t *card,
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
 }
 
-static int starcos_select_fid(sc_card_t *card,
-			      unsigned int id_hi, unsigned int id_lo,
-			      sc_file_t **file_out, int is_file)
+static int
+starcos_select_fid(sc_card_t *card, unsigned int id_hi, unsigned int id_lo, sc_file_t **file_out, int is_file)
 {
 	sc_apdu_t apdu;
 	u8 data[] = {id_hi & 0xff, id_lo & 0xff};
@@ -811,7 +798,7 @@ static int starcos_select_fid(sc_card_t *card,
 	apdu.data = (u8*)data;
 	apdu.datalen = 2;
 
-	if ( IS_V3x(card) ) {
+	if (IS_V3x(card)) {
 		if (id_hi == 0x3f && id_lo == 0x0) {
 			apdu.p1 = 0x0;
 			apdu.p2 = 0x0;
@@ -839,8 +826,7 @@ static int starcos_select_fid(sc_card_t *card,
 		apdu.le = 0;
 		r = sc_transmit_apdu(card, &apdu);
 		LOG_TEST_RET(card->ctx, r, "APDU re-transmit failed");
-	} else if ((IS_V3x(card))
-			&& apdu.p2 == 0x4 && apdu.sw1 == 0x6a && apdu.sw2 == 0x82) {
+	} else if ((IS_V3x(card)) && apdu.p2 == 0x4 && apdu.sw1 == 0x6a && apdu.sw2 == 0x82) {
 		/* not a file, could be a path */
 		bIsDF = 1;
 		apdu.p1 = 0x1;
@@ -905,7 +891,7 @@ static int starcos_select_fid(sc_card_t *card,
 			*file_out = file;
 		} else {
 			/* ok, assume we have a EF */
-			if ( IS_V3x(card) ) {
+			if (IS_V3x(card)) {
 				if (isFCP) {
 					r = process_fcp_v3_4(card->ctx, file, apdu.resp,
 							apdu.resplen);
@@ -935,12 +921,12 @@ static int starcos_select_file(sc_card_t *card,
 			       sc_file_t **file_out)
 {
 	u8 pathbuf[SC_MAX_PATH_SIZE], *path = pathbuf;
-	int    r, pathtype;
+	int r, pathtype;
 	size_t i, pathlen;
 	char pbuf[SC_MAX_PATH_STRING_SIZE];
 	/* option for path caching, it is deactivated by default,
 	   but it can be enabled by setting cache_valid to option: card->cache.valid */
-	int    cache_valid = 0;
+	int cache_valid = 0;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -948,14 +934,11 @@ static int starcos_select_file(sc_card_t *card,
 	if (r != SC_SUCCESS)
 		pbuf[0] = '\0';
 
-	sc_log(card->ctx,
-		 "current path (%s, %s): %s (len: %"SC_FORMAT_LEN_SIZE_T"u)\n",
-		 card->cache.current_path.type == SC_PATH_TYPE_DF_NAME ?
-		 "aid" : "path",
-		 cache_valid ? "valid" : "invalid", pbuf,
-		 card->cache.current_path.len);
+	sc_log(card->ctx, "current path (%s, %s): %s (len: %" SC_FORMAT_LEN_SIZE_T "u)\n",
+			card->cache.current_path.type == SC_PATH_TYPE_DF_NAME ? "aid" : "path",
+			cache_valid ? "valid" : "invalid", pbuf, card->cache.current_path.len);
 
-	if ( in_path->len > sizeof(pathbuf) ) {
+	if (in_path->len > sizeof(pathbuf)) {
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_BUFFER_TOO_SMALL);
 	}
 	memcpy(path, in_path->value, in_path->len);
@@ -964,7 +947,7 @@ static int starcos_select_file(sc_card_t *card,
 
 	if (in_path->aid.len) {
 		if (!pathlen) {
-			if ( in_path->aid.len > sizeof(pathbuf) ) {
+			if (in_path->aid.len > sizeof(pathbuf)) {
 				SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_BUFFER_TOO_SMALL);
 			}
 			memcpy(path, in_path->aid.value, in_path->aid.len);
@@ -985,15 +968,14 @@ static int starcos_select_file(sc_card_t *card,
 		}
 	}
 
-	if (pathtype == SC_PATH_TYPE_FILE_ID)
-	{	/* SELECT EF/DF with ID */
+	if (pathtype == SC_PATH_TYPE_FILE_ID) {
+		/* SELECT EF/DF with ID */
 		/* Select with 2byte File-ID */
 		if (pathlen != 2)
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,SC_ERROR_INVALID_ARGUMENTS);
 		return starcos_select_fid(card, path[0], path[1], file_out, 1);
-	}
-	else if (pathtype == SC_PATH_TYPE_DF_NAME)
-    {	/* SELECT DF with AID */
+	} else if (pathtype == SC_PATH_TYPE_DF_NAME) {
+		/* SELECT DF with AID */
 		/* Select with 1-16byte Application-ID */
 		if (cache_valid
 		    && card->cache.current_path.type == SC_PATH_TYPE_DF_NAME
@@ -1002,12 +984,9 @@ static int starcos_select_file(sc_card_t *card,
 		{
 			sc_log(card->ctx,  "cache hit\n");
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
-		}
-		else
+		} else
 			return starcos_select_aid(card, pathbuf, pathlen, file_out);
-	}
-	else if (pathtype == SC_PATH_TYPE_PATH)
-	{
+	} else if (pathtype == SC_PATH_TYPE_PATH) {
 		u8 n_pathbuf[SC_MAX_PATH_SIZE];
 		int bMatch = -1;
 
@@ -1017,19 +996,18 @@ static int starcos_select_file(sc_card_t *card,
 		 * at most 3 FID long (the last one being the FID
 		 * of a EF) => pathlen must be even and less than 6
 		 */
-		if (pathlen%2 != 0 || pathlen > 6 || pathlen <= 0)
+		if (pathlen % 2 != 0 || pathlen > 6 || pathlen <= 0)
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
 		/* if pathlen == 6 then the first FID must be MF (== 3F00) */
 		if (pathlen == 6 && ( path[0] != 0x3f || path[1] != 0x00 ))
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
 
-		if ( IS_V3x(card) ) {
+		if (IS_V3x(card)) {
 			/* unify path (the first FID should be MF) */
-			if (path[0] != 0x3f || path[1] != 0x00)
-			{
+			if (path[0] != 0x3f || path[1] != 0x00) {
 				n_pathbuf[0] = 0x3f;
 				n_pathbuf[1] = 0x00;
-				memcpy(n_pathbuf+2, path, pathlen);
+				memcpy(n_pathbuf + 2, path, pathlen);
 				path = n_pathbuf;
 				pathlen += 2;
 			}
@@ -1047,21 +1025,18 @@ static int starcos_select_file(sc_card_t *card,
 				    && card->cache.current_path.value[i+1] == path[i+1] )
 					bMatch += 2;
 
-			if ((IS_V3x(card))
-					&& bMatch > 0 && (size_t) bMatch < card->cache.current_path.len) {
+			if ((IS_V3x(card)) && bMatch > 0 && (size_t)bMatch < card->cache.current_path.len) {
 				/* we're in the wrong folder, start traversing from root */
 				bMatch = 0;
 				card->cache.current_path.len = 0;
 			}
 		}
 
-		if ( cache_valid && bMatch >= 0 )
-		{
-			if ( pathlen - bMatch == 2 )
+		if (cache_valid && bMatch >= 0) {
+			if (pathlen - bMatch == 2) {
 				/* we are in the right directory */
 				return starcos_select_fid(card, path[bMatch], path[bMatch+1], file_out, 1);
-			else if ( pathlen - bMatch > 2 )
-			{
+			} else if (pathlen - bMatch > 2) {
 				/* two more steps to go */
 				sc_path_t new_path;
 
@@ -1075,13 +1050,10 @@ static int starcos_select_file(sc_card_t *card,
 				memcpy(new_path.value, &(path[bMatch+2]), new_path.len);
 				/* final step: select file */
 				return starcos_select_file(card, &new_path, file_out);
-			}
-			else /* if (bMatch - pathlen == 0) */
-			{
+			} else /* if (bMatch - pathlen == 0) */ {
 				/* done: we are already in the
 				 * requested directory */
-				sc_log(card->ctx,
-					"cache hit\n");
+				sc_log(card->ctx, "cache hit\n");
 				/* copy file info (if necessary) */
 				if (file_out) {
 					sc_file_t *file = sc_file_new();
@@ -1100,9 +1072,7 @@ static int starcos_select_file(sc_card_t *card,
 				/* nothing left to do */
 				return SC_SUCCESS;
 			}
-		}
-		else
-		{
+		} else {
 			/* no usable cache */
 			for ( i=0; i<pathlen-2; i+=2 )
 			{
@@ -1111,9 +1081,9 @@ static int starcos_select_file(sc_card_t *card,
 			}
 			return starcos_select_fid(card, path[pathlen-2], path[pathlen-1], file_out, 1);
 		}
-	}
-	else
+	} else {
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
+	}
 }
 
 static int starcos_get_challenge(struct sc_card *card, unsigned char *rnd, size_t len)
@@ -1554,7 +1524,7 @@ static int starcos_write_key(sc_card_t *card, sc_starcos_wkey_data *data)
 		sbuf[2] = data->kid;
 		sbuf[3] = (offset >> 8) & 0xff;
 		sbuf[4] = offset & 0xff;
-		memcpy(sbuf+5, p, c_len);
+		memcpy(sbuf + 5, p, c_len);
 		len = 5 + c_len;
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xf4, data->mode, 0x00);
 		apdu.cla    |= 0x80;
@@ -1593,8 +1563,7 @@ static int starcos_gen_key(sc_card_t *card, sc_starcos_gen_key_data *data)
 	CHECK_NOT_SUPPORTED_V3_4(card);
 
 	/* generate key */
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x46,  0x00,
-			data->key_id);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x46, 0x00, data->key_id);
 	apdu.le      = 0;
 	sbuf[0] = (u8)(data->key_length >> 8);
 	sbuf[1] = (u8)(data->key_length);
@@ -1658,11 +1627,11 @@ static int starcos_set_security_env(sc_card_t *card,
 
 	p     = sbuf;
 
-	if ( IS_V3x(card) ) {
+	if (IS_V3x(card)) {
 		u8 algorithm_supported = (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1) ||
-								(env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PSS);
+				(env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PSS);
 		if (!algorithm_supported ||
-			!(env->flags & SC_SEC_ENV_KEY_REF_PRESENT) || env->key_ref_len != 1) {
+				!(env->flags & SC_SEC_ENV_KEY_REF_PRESENT) || env->key_ref_len != 1) {
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
 		}
 
@@ -1706,7 +1675,7 @@ static int starcos_set_security_env(sc_card_t *card,
 				*p++ = 0x89;
 				*p++ = 0x02;
 				*p++ = 0x11;
-				if ( IS_V34(card) )
+				if (IS_V34(card))
 					*p++ = 0x30;
 				else
 					*p++ = 0x31;
@@ -1826,12 +1795,11 @@ static int starcos_set_security_env(sc_card_t *card,
 try_authenticate:
 	/* try INTERNAL AUTHENTICATE */
 	if (operation == SC_SEC_OPERATION_AUTHENTICATE &&
-	    env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1) {
+			env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1) {
 		*p++ = 0x80;
 		*p++ = 0x01;
 		*p++ = 0x01;
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0x41,
-		               0xa4);
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0x41, 0xa4);
 		apdu.data    = sbuf;
 		apdu.datalen = p - sbuf;
 		apdu.lc      = p - sbuf;
@@ -1864,11 +1832,10 @@ static int starcos_compute_signature(sc_card_t *card,
 	if (ex_data->sec_ops == SC_SEC_OPERATION_SIGN) {
 		/* compute signature with the COMPUTE SIGNATURE command */
 
-		if ( IS_V3x(card) ) {
+		if (IS_V3x(card)) {
 			size_t tmp_len;
 
-			sc_format_apdu(card, &apdu, SC_APDU_CASE_4, 0x2A,
-					   0x9E, 0x9A);
+			sc_format_apdu(card, &apdu, SC_APDU_CASE_4, 0x2A, 0x9E, 0x9A);
 			apdu.resp = out;
 			apdu.resplen = outlen;
 			apdu.le = outlen;
@@ -1928,7 +1895,7 @@ static int starcos_compute_signature(sc_card_t *card,
 		}
 		if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 			size_t len = apdu.resplen > outlen ? outlen : apdu.resplen;
-			if ( out != apdu.resp ) {
+			if (out != apdu.resp) {
 				memcpy(out, apdu.resp, len);
 			}
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, len);
@@ -2009,7 +1976,7 @@ static int starcos_decipher(struct sc_card *card,
 		}
 	}
 
-	if ( IS_V3x(card) ) {
+	if (IS_V3x(card)) {
 		sc_apdu_t apdu;
 
 		u8 *sbuf = malloc(crgram_len + 1);
@@ -2056,23 +2023,20 @@ static int starcos_check_sw(sc_card_t *card, unsigned int sw1, unsigned int sw2)
 	const int err_count = sizeof(starcos_errors)/sizeof(starcos_errors[0]);
 	int i;
 
-	sc_log(card->ctx,
-		"sw1 = 0x%02x, sw2 = 0x%02x\n", sw1, sw2);
+	sc_log(card->ctx, "sw1 = 0x%02x, sw2 = 0x%02x\n", sw1, sw2);
 
 	if (sw1 == 0x90)
 		return SC_SUCCESS;
 	if (sw1 == 0x63 && (sw2 & ~0x0fU) == 0xc0 )
 	{
-		sc_log(card->ctx,  "Verification failed (remaining tries: %d)\n",
-		(sw2 & 0x0f));
+		sc_log(card->ctx, "Verification failed (remaining tries: %d)\n", (sw2 & 0x0f));
 		return SC_ERROR_PIN_CODE_INCORRECT;
 	}
 
 	/* check starcos error messages */
 	for (i = 0; i < err_count; i++)
-		if (starcos_errors[i].SWs == ((sw1 << 8) | sw2))
-		{
-			sc_log(card->ctx,  "%s\n", starcos_errors[i].errorstr);
+		if (starcos_errors[i].SWs == ((sw1 << 8) | sw2)) {
+			sc_log(card->ctx, "%s\n", starcos_errors[i].errorstr);
 			return starcos_errors[i].errorno;
 		}
 
@@ -2095,7 +2059,7 @@ static int starcos_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 		return SC_SUCCESS;
 	}
 
-	if ( IS_V3x(card) ) {
+	if (IS_V3x(card)) {
 		card->serialnr.len = SC_MAX_SERIALNR;
 		r = sc_parse_ef_gdo(card, card->serialnr.value, &card->serialnr.len, NULL, 0);
 		if (r < 0) {
@@ -2108,8 +2072,8 @@ static int starcos_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 		apdu.cla |= 0x80;
 		apdu.resp = rbuf;
 		apdu.resplen = sizeof(rbuf);
-		apdu.le   = 256;
-		apdu.lc   = 0;
+		apdu.le = 256;
+		apdu.lc = 0;
 		apdu.datalen = 0;
 		r = sc_transmit_apdu(card, &apdu);
 		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
@@ -2126,14 +2090,14 @@ static int starcos_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 	return SC_SUCCESS;
 }
 
-static int starcos_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
+static int
+starcos_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 {
 	sc_starcos_create_data *tmp;
 
-	switch (cmd)
-	{
+	switch (cmd) {
 	case SC_CARDCTL_STARCOS_CREATE_FILE:
-		tmp = (sc_starcos_create_data *) ptr;
+		tmp = (sc_starcos_create_data *)ptr;
 		if (tmp->type == SC_STARCOS_MF_DATA)
 			return starcos_create_mf(card, tmp);
 		else if (tmp->type == SC_STARCOS_DF_DATA)
@@ -2163,7 +2127,8 @@ static int starcos_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
  * Returning NOT_SUPPORTED would cause card reset, effectively invalidating
  * the security status.
  */
-static int starcos_logout_v3_x(sc_card_t *card)
+static int
+starcos_logout_v3_x(sc_card_t *card)
 {
 	int r = SC_ERROR_NOT_SUPPORTED;
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
@@ -2171,13 +2136,14 @@ static int starcos_logout_v3_x(sc_card_t *card)
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
 
-static int starcos_logout(sc_card_t *card)
+static int
+starcos_logout(sc_card_t *card)
 {
 	int r;
 	sc_apdu_t apdu;
 	const u8 mf_buf[2] = {0x3f, 0x00};
 
-	if ( IS_V3x(card) ) {
+	if (IS_V3x(card)) {
 		return starcos_logout_v3_x(card);
 	}
 
@@ -2200,14 +2166,14 @@ static int starcos_logout(sc_card_t *card)
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }
 
-static int starcos_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
-			    int *tries_left)
+static int
+starcos_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 {
 	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
 	starcos_ex_data * ex_data = (starcos_ex_data*)card->drv_data;
-	if ( IS_V3x(card) ) {
+	if (IS_V3x(card)) {
 		data->flags |= SC_PIN_CMD_NEED_PADDING;
 		data->pin1.encoding = ex_data->pin_encoding;
 	}

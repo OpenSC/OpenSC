@@ -29,9 +29,9 @@
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
-# include <openssl/decoder.h>
-# include <openssl/param_build.h>
-# include <openssl/params.h>
+#include <openssl/decoder.h>
+#include <openssl/param_build.h>
+#include <openssl/params.h>
 #endif
 
 #include "libopensc/pkcs15.h"
@@ -55,40 +55,40 @@ static const char *opt_appdf = NULL, *opt_prkeyf = NULL, *opt_pubkeyf = NULL;
 static u8 *pincode = NULL;
 
 static const struct option options[] = {
-	{ "list-keys",		0, NULL, 		'l' },
-	{ "create-key-files",	1, NULL,		'c' },
-	{ "create-pin-file",	1, NULL,		'P' },
-	{ "generate-key",	0, NULL,		'g' },
-	{ "read-key",		0, NULL,		'R' },
-	{ "verify-pin",		0, NULL,		'V' },
-	{ "key-num",		1, NULL,		'k' },
-	{ "app-df",		1, NULL,		'a' },
-	{ "prkey-file",		1, NULL,		'p' },
-	{ "pubkey-file",	1, NULL,		'u' },
-	{ "exponent",		1, NULL,		'e' },
-	{ "modulus-length",	1, NULL,		'm' },
-	{ "reader",		1, NULL,		'r' },
-	{ "wait",		0, NULL,		'w' },
-	{ "verbose",		0, NULL,		'v' },
-	{ NULL, 0, NULL, 0 }
+		{"list-keys", 0, NULL, 'l'},
+		{"create-key-files", 1, NULL, 'c'},
+		{"create-pin-file", 1, NULL, 'P'},
+		{"generate-key", 0, NULL, 'g'},
+		{"read-key", 0, NULL, 'R'},
+		{"verify-pin", 0, NULL, 'V'},
+		{"key-num", 1, NULL, 'k'},
+		{"app-df", 1, NULL, 'a'},
+		{"prkey-file", 1, NULL, 'p'},
+		{"pubkey-file", 1, NULL, 'u'},
+		{"exponent", 1, NULL, 'e'},
+		{"modulus-length", 1, NULL, 'm'},
+		{"reader", 1, NULL, 'r'},
+		{"wait", 0, NULL, 'w'},
+		{"verbose", 0, NULL, 'v'},
+		{NULL, 0, NULL, 0},
 };
 
 static const char *option_help[] = {
-	"Lists all keys in a public key file",
-	"Creates new RSA key files for <arg> keys",
-	"Creates a new CHV<arg> file",
-	"Generates a new RSA key pair",
-	"Reads a public key from the card",
-	"Verifies CHV1 before issuing commands",
-	"Selects which key number to operate on [1]",
-	"Selects the DF to operate in",
-	"Private key file",
-	"Public key file",
-	"The RSA exponent to use in key generation [3]",
-	"Modulus length to use in key generation [1024]",
-	"Uses reader <arg>",
-	"Wait for card insertion",
-	"Verbose operation, may be used several times",
+		"Lists all keys in a public key file",
+		"Creates new RSA key files for <arg> keys",
+		"Creates a new CHV<arg> file",
+		"Generates a new RSA key pair",
+		"Reads a public key from the card",
+		"Verifies CHV1 before issuing commands",
+		"Selects which key number to operate on [1]",
+		"Selects the DF to operate in",
+		"Private key file",
+		"Public key file",
+		"The RSA exponent to use in key generation [3]",
+		"Modulus length to use in key generation [1024]",
+		"Uses reader <arg>",
+		"Wait for card insertion",
+		"Verbose operation, may be used several times",
 };
 
 static sc_context_t *ctx = NULL;

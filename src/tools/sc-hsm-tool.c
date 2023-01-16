@@ -83,67 +83,67 @@ enum {
 
 // clang-format off
 static const struct option options[] = {
-	{ "initialize",				0, NULL,		'X' },
-	{ "create-dkek-share",		1, NULL,		'C' },
-	{ "import-dkek-share",		1, NULL,		'I' },
+		{"initialize",				0, NULL,		'X'},
+		{"create-dkek-share",		1, NULL,		'C'},
+		{"import-dkek-share",		1, NULL,		'I'},
 #ifdef PRINT_DKEK_SHARE
-	{ "print-dkek-share",		1, NULL,		'P' },
+		{"print-dkek-share",		1, NULL,		'P'},
 #endif
-	{ "wrap-key",				1, NULL,		'W' },
-	{ "unwrap-key",				1, NULL,		'U' },
-	{ "public-key-auth",		1, NULL,		'K' },
-	{ "required-pub-keys",		1, NULL,		'n' },
-	{ "export-for-pub-key-auth",1, NULL,		'e' },
-	{ "register-public-key",	1, NULL,		'g' },
-	{ "public-key-auth-status",	0, NULL,		'S' },
-	{ "dkek-shares",			1, NULL,		's' },
-	{ "so-pin",					1, NULL,		OPT_SO_PIN },
-	{ "pin",					1, NULL,		OPT_PIN },
-	{ "pin-retry",				1, NULL,		OPT_RETRY },
-	{ "bio-server1",			1, NULL,		OPT_BIO1 },
-	{ "bio-server2",			1, NULL,		OPT_BIO2 },
-	{ "password",				1, NULL,		OPT_PASSWORD },
-	{ "pwd-shares-threshold",	1, NULL,		OPT_PASSWORD_SHARES_THRESHOLD },
-	{ "pwd-shares-total",		1, NULL,		OPT_PASSWORD_SHARES_TOTAL },
-	{ "key-reference",			1, NULL,		'i' },
-	{ "label",					1, NULL,		'l' },
-	{ "force",					0, NULL,		'f' },
-	{ "reader",					1, NULL,		'r' },
-	{ "wait",					0, NULL,		'w' },
-	{ "verbose",				0, NULL,		'v' },
-	{ NULL, 0, NULL, 0 }
+		{"wrap-key",				1, NULL,		'W'},
+		{"unwrap-key",				1, NULL,		'U'},
+		{"public-key-auth",		1, NULL,		'K'},
+		{"required-pub-keys",		1, NULL,		'n'},
+		{"export-for-pub-key-auth",1, NULL,		'e'},
+		{"register-public-key",	1, NULL,		'g'},
+		{"public-key-auth-status",	0, NULL,		'S'},
+		{"dkek-shares",			1, NULL,		's'},
+		{"so-pin",					1, NULL,		OPT_SO_PIN},
+		{"pin",					1, NULL,		OPT_PIN},
+		{"pin-retry",				1, NULL,		OPT_RETRY},
+		{"bio-server1",			1, NULL,		OPT_BIO1},
+		{"bio-server2",			1, NULL,		OPT_BIO2},
+		{"password",				1, NULL,		OPT_PASSWORD},
+		{"pwd-shares-threshold",	1, NULL,		OPT_PASSWORD_SHARES_THRESHOLD},
+		{"pwd-shares-total",		1, NULL,		OPT_PASSWORD_SHARES_TOTAL},
+		{"key-reference",			1, NULL,		'i'},
+		{"label",					1, NULL,		'l'},
+		{"force",					0, NULL,		'f'},
+		{"reader",					1, NULL,		'r'},
+		{"wait",					0, NULL,		'w'},
+		{"verbose",				0, NULL,		'v'},
+		{NULL, 0, NULL, 0},
 };
 // clang-format on
 
 static const char *option_help[] = {
-	"Initialize token",
-	"Create DKEK key share and save to <filename>",
-	"Import DKEK key share <filename>",
+		"Initialize token",
+		"Create DKEK key share and save to <filename>",
+		"Import DKEK key share <filename>",
 #ifdef PRINT_DKEK_SHARE
-	"Print HEX of DKEK key share <filename>",
+		"Print HEX of DKEK key share <filename>",
 #endif
-	"Wrap key and save to <filename>",
-	"Unwrap key read from <filename>",
-	"Use public key authentication, set total number of public keys",
-	"Number of public keys required for authentication [1]",
-	"Export key for public key authentication",
-	"Register public key for public key authentication (PKA file)",
-	"Show status of public key authentication",
-	"Number of DKEK shares [No DKEK]",
-	"Define security officer PIN (SO-PIN)",
-	"Define user PIN",
-	"Define user PIN retry counter",
-	"AID of biometric server for template 1 (hex)",
-	"AID of biometric server for template 2 (hex)",
-	"Define password for DKEK share",
-	"Define threshold for number of password shares required for reconstruction",
-	"Define number of password shares",
-	"Key reference for key wrap/unwrap/export",
-	"Token label for --initialize",
-	"Force replacement of key and certificate",
-	"Uses reader number <arg> [0]",
-	"Wait for a card to be inserted",
-	"Verbose operation, may be used several times",
+		"Wrap key and save to <filename>",
+		"Unwrap key read from <filename>",
+		"Use public key authentication, set total number of public keys",
+		"Number of public keys required for authentication [1]",
+		"Export key for public key authentication",
+		"Register public key for public key authentication (PKA file)",
+		"Show status of public key authentication",
+		"Number of DKEK shares [No DKEK]",
+		"Define security officer PIN (SO-PIN)",
+		"Define user PIN",
+		"Define user PIN retry counter",
+		"AID of biometric server for template 1 (hex)",
+		"AID of biometric server for template 2 (hex)",
+		"Define password for DKEK share",
+		"Define threshold for number of password shares required for reconstruction",
+		"Define number of password shares",
+		"Key reference for key wrap/unwrap/export",
+		"Token label for --initialize",
+		"Force replacement of key and certificate",
+		"Uses reader number <arg> [0]",
+		"Wait for a card to be inserted",
+		"Verbose operation, may be used several times",
 };
 
 typedef struct {
@@ -589,7 +589,7 @@ initialize(sc_card_t *card, const char *so_pin, const char *user_pin, int retry_
 	}
 	if (required_pub_keys < 1 || required_pub_keys > 90) {
 		fprintf(stderr, "Number of public keys required for authentication must be between "
-				"1 and 90\n");
+						"1 and 90\n");
 		return -1;
 	}
 	if (num_of_pub_keys != -1 && required_pub_keys > num_of_pub_keys) {
@@ -2110,7 +2110,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (do_initialize) {
-		rc = initialize(card, opt_so_pin, opt_pin, opt_retry_counter, opt_bio1, opt_bio2,
+		r = initialize(card, opt_so_pin, opt_pin, opt_retry_counter, opt_bio1, opt_bio2,
 				opt_dkek_shares, opt_num_of_pub_keys, opt_required_pub_keys, opt_label);
 		if (r != SC_SUCCESS) {
 			goto fail;

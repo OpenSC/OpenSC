@@ -64,30 +64,30 @@ enum {
 };
 
 static const struct option options[] = {
-	{ "initialize",				0, NULL,		'X' },
-	{ "admin-key",			    1, NULL,		OPT_SO_PIN },
-	{ "pin",					1, NULL,		OPT_PIN },
-	{ "serial-number",          1, NULL,        OPT_SERIAL_NUMBER },
-	{ "unblock",                0, NULL,        'U' },
-	{ "change-admin-key",       0, NULL,        'C' },
-	{ "new-admin-key",          1, NULL,        OPT_NEW_KEY },
-	{ "reader",					1, NULL,		'r' },
-	{ "wait",					0, NULL,		'w' },
-	{ "verbose",				0, NULL,		'v' },
-	{ NULL, 0, NULL, 0 }
+		{"initialize",				0, NULL,		'X' },
+		{"admin-key",			    1, NULL,		OPT_SO_PIN },
+		{"pin",					1, NULL,		OPT_PIN },
+		{"serial-number",          1, NULL,        OPT_SERIAL_NUMBER },
+		{"unblock",                0, NULL,        'U' },
+		{"change-admin-key",       0, NULL,        'C' },
+		{"new-admin-key",          1, NULL,        OPT_NEW_KEY },
+		{"reader",					1, NULL,		'r' },
+		{"wait",					0, NULL,		'w' },
+		{"verbose",				0, NULL,		'v' },
+		{NULL, 0, NULL, 0 },
 };
 
 static const char *option_help[] = {
-	"Initialize token",
-	"Define the administrator key",
-	"Define user PIN",
-	"Define serial number",
-	"Unblock the user PIN after an administrator authentication",
-	"Change the administrator key",
-	"Define the new administrator key",
-	"Uses reader number <arg> [0]",
-	"Wait for a card to be inserted",
-	"Verbose operation, may be used several times",
+		"Initialize token",
+		"Define the administrator key",
+		"Define user PIN",
+		"Define serial number",
+		"Unblock the user PIN after an administrator authentication",
+		"Change the administrator key",
+		"Define the new administrator key",
+		"Uses reader number <arg> [0]",
+		"Wait for a card to be inserted",
+		"Verbose operation, may be used several times",
 };
 
 static int initialize(sc_card_t *card, const char *so_pin, const char *user_pin, const char* serial)
@@ -357,7 +357,7 @@ static int print_info(sc_card_t *card) {
 	gids_mf_record_t *records = (gids_mf_record_t *) (masterfile+1);
 	int recordcount;
 	int i;
-	
+
 	printf("===============================\n");
 	printf("Dumping the content of the card\n");
 	printf("===============================\n");

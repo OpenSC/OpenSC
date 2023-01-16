@@ -22,13 +22,13 @@
 #ifndef P11TEST_CASE_COMMON_H
 #define P11TEST_CASE_COMMON_H
 
-#include <openssl/x509.h>
-#include <openssl/rsa.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
+#include <openssl/rsa.h>
+#include <openssl/x509.h>
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
-# include <openssl/core_names.h>
-# include <openssl/param_build.h>
+#include <openssl/core_names.h>
+#include <openssl/param_build.h>
 #endif
 #include "p11test_common.h"
 

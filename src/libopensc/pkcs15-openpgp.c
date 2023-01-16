@@ -28,11 +28,11 @@
 #include <stdio.h>
 #include <assert.h>
 
+#include "card-openpgp.h"
 #include "common/compat_strlcpy.h"
 #include "internal.h"
-#include "pkcs15.h"
 #include "log.h"
-#include "card-openpgp.h"
+#include "pkcs15.h"
 
 static int sc_pkcs15emu_openpgp_add_data(sc_pkcs15_card_t *);
 
@@ -549,10 +549,10 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 	if (r < 0)
 		goto failed;
 
-	for(u8 i=0; i<PGP_MAX_NUM_CERTS; i++) {
+	for (u8 i = 0; i < PGP_MAX_NUM_CERTS; i++) {
 		struct sc_pkcs15_cert_info cert_info;
 		struct sc_pkcs15_object    cert_obj;
-		u8* buffer = malloc(MAX_OPENPGP_DO_SIZE);
+		u8 *buffer = malloc(MAX_OPENPGP_DO_SIZE);
 		int resp_len = 0;
 
 		if (buffer == NULL)

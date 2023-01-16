@@ -58,7 +58,6 @@ static struct {
 	{384, {{1, 3, 132, 0, 34, -1}}}
 };
 
-
 static int edo_match_card(sc_card_t* card) {
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (_sc_match_atr(card, edo_atrs, &card->type) >= 0) {

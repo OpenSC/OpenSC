@@ -46,10 +46,10 @@ torture_prettify(void **state, const struct expectation *cur,
 }
 
 const struct expectation expectations_algorithm[] = {
-	{"", 0, NULL},
-	{"\x12\x2b\x06\x01\x04\x01\x97\x55\x01\x05\x01", 11, "ECDH"},
-	{"\x01\x08\x00\x00\x20\x00", 6, "RSA2048"},
-	{NULL, 0, NULL}
+		{"", 0, NULL},
+		{"\x12\x2b\x06\x01\x04\x01\x97\x55\x01\x05\x01", 11, "ECDH"},
+		{"\x01\x08\x00\x00\x20\x00", 6, "RSA2048"},
+		{NULL, 0, NULL},
 };
 
 static void
@@ -59,12 +59,12 @@ torture_prettify_algorithm(void **state)
 }
 
 const struct expectation expectations_date[] = {
-    { "\x01\x02\x03", 3, NULL },
-    { "\x12\x34\x56\x78", 4, "1979-09-05 22:51:36" },
-    { "\x7f\xff\xff\xff", 4, "2038-01-19 03:14:07" },
-    /* XXX: probably not a feature */
-    { "\x80\x00\x00\x00", 4, "1901-12-13 20:45:52" },
-    { NULL, 0, NULL }
+		{"\x01\x02\x03", 3, NULL},
+		{"\x12\x34\x56\x78", 4, "1979-09-05 22:51:36"},
+		{"\x7f\xff\xff\xff", 4, "2038-01-19 03:14:07"},
+		/* XXX: probably not a feature */
+		{"\x80\x00\x00\x00", 4, "1901-12-13 20:45:52"},
+		{NULL, 0, NULL},
 };
 
 static void
@@ -74,9 +74,9 @@ torture_prettify_date(void **state)
 }
 
 const struct expectation expectations_version[] = {
-    { "\x01", 1, NULL },
-    { "\x03\x41", 2, "3.41" },
-    { NULL, 0, NULL }
+		{"\x01", 1, NULL},
+		{"\x03\x41", 2, "3.41"},
+		{NULL, 0, NULL},
 };
 
 static void
@@ -86,15 +86,15 @@ torture_prettify_version(void **state)
 }
 
 const struct expectation expectations_manufacturer[] = {
-    { "\x01", 1, NULL },
-    { "\xf5\x17", 2, "FSIJ" },
-    { "\xff\x00", 2, "unmanaged S/N range" },
-    { "\xff\x7f", 2, "unmanaged S/N range" },
-    { "\xff\xfe", 2, "unmanaged S/N range" },
-    { "\xff\xff", 2, "test card" },
-    /* Number picked by a fair dice roll among unregistered numbers */
-    { "\x81\x88", 2, "unknown" },
-    { NULL, 0, NULL }
+		{"\x01", 1, NULL},
+		{"\xf5\x17", 2, "FSIJ"},
+		{"\xff\x00", 2, "unmanaged S/N range"},
+		{"\xff\x7f", 2, "unmanaged S/N range"},
+		{"\xff\xfe", 2, "unmanaged S/N range"},
+		{"\xff\xff", 2, "test card"},
+		/* Number picked by a fair dice roll among unregistered numbers */
+		{"\x81\x88", 2, "unknown"},
+		{NULL, 0, NULL},
 };
 
 static void
@@ -104,10 +104,10 @@ torture_prettify_manufacturer(void **state)
 }
 
 const struct expectation expectations_serialnumber[] = {
-    { "\x00\x00\x00", 3, NULL },
-    { "\x12\x34\x56\x78", 4, "12345678" },
-    { "\x80\x00\x00\x00", 4, "80000000" },
-    { NULL, 0, NULL }
+		{"\x00\x00\x00", 3, NULL},
+		{"\x12\x34\x56\x78", 4, "12345678"},
+		{"\x80\x00\x00\x00", 4, "80000000"},
+		{NULL, 0, NULL},
 };
 
 static void
@@ -117,11 +117,11 @@ torture_prettify_serialnumber(void **state)
 }
 
 const struct expectation expectations_name[] = {
-    { "", 0, NULL },
-    { "John Doe", 8, "John Doe" },
-    { "John<Doe", 8, "John Doe" },
-    { "John<<Doe", 9, "John Doe" },
-    { NULL, 0, NULL }
+		{"", 0, NULL},
+		{"John Doe", 8, "John Doe"},
+		{"John<Doe", 8, "John Doe"},
+		{"John<<Doe", 9, "John Doe"},
+		{NULL, 0, NULL},
 };
 
 static void
@@ -131,11 +131,11 @@ torture_prettify_name(void **state)
 }
 
 const struct expectation expectations_language[] = {
-    { "", 0, NULL },
-    { "en", 2, "en" },
-    { "end", 3, "en" },
-    { "deen", 4, "de,en" },
-    { NULL, 0, NULL }
+		{"", 0, NULL},
+		{"en", 2, "en"},
+		{"end", 3, "en"},
+		{"deen", 4, "de,en"},
+		{NULL, 0, NULL},
 };
 
 static void
@@ -145,12 +145,12 @@ torture_prettify_language(void **state)
 }
 
 const struct expectation expectations_gender[] = {
-    { "", 0, NULL },
-    { "\x30", 1, "unknown" },
-    { "\x31", 1, "male" },
-    { "\x32", 1, "female" },
-    { "\x39", 1, "not announced" },
-    { NULL, 0, NULL }
+		{"", 0, NULL},
+		{"\x30", 1, "unknown"},
+		{"\x31", 1, "male"},
+		{"\x32", 1, "female"},
+		{"\x39", 1, "not announced"},
+		{NULL, 0, NULL},
 };
 
 static void
@@ -164,14 +164,14 @@ main(void)
 {
 	int rc;
 	struct CMUnitTest tests[] = {
-		cmocka_unit_test(torture_prettify_algorithm),
-		cmocka_unit_test(torture_prettify_date),
-		cmocka_unit_test(torture_prettify_version),
-		cmocka_unit_test(torture_prettify_manufacturer),
-		cmocka_unit_test(torture_prettify_serialnumber),
-		cmocka_unit_test(torture_prettify_name),
-		cmocka_unit_test(torture_prettify_language),
-		cmocka_unit_test(torture_prettify_gender),
+			cmocka_unit_test(torture_prettify_algorithm),
+			cmocka_unit_test(torture_prettify_date),
+			cmocka_unit_test(torture_prettify_version),
+			cmocka_unit_test(torture_prettify_manufacturer),
+			cmocka_unit_test(torture_prettify_serialnumber),
+			cmocka_unit_test(torture_prettify_name),
+			cmocka_unit_test(torture_prettify_language),
+			cmocka_unit_test(torture_prettify_gender),
 	};
 
 	rc = cmocka_run_group_tests(tests, NULL, NULL);

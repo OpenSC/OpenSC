@@ -29,31 +29,34 @@
 #define _XOPEN_SOURCE 500
 #endif
 
-#include <stdlib.h>
-#include <string.h>
-#include <stdbool.h>
-#include "libopensc/internal.h"
 #include "fuzzer_reader.h"
 #include "fuzzer_tool.h"
+#include "libopensc/internal.h"
+#include <stdbool.h>
+#include <stdlib.h>
+#include <string.h>
+
 #undef stderr
 #define stderr stdout
 
 /* Rename main to call it in fuzz target */
 #define main _main
 #define util_connect_card_ex(ctx, card, id, do_wait, do_lock, verbose) fuzz_util_connect_card(ctx, card)
-# include "tools/pkcs15-tool.c"
+#include "tools/pkcs15-tool.c"
 #undef main
 
 static const uint8_t *reader_data = NULL;
 static size_t reader_data_size = 0;
 
 /* Use instead of util_connect_card() */
-int fuzz_util_connect_card(sc_context_t *ctx, sc_card_t **card)
+int
+fuzz_util_connect_card(sc_context_t *ctx, sc_card_t **card)
 {
 	return fuzz_connect_card(ctx, card, NULL, reader_data, reader_data_size);
 }
 
-void initialize_global()
+void
+initialize_global()
 {
 	/* Global variables need to be reser between runs,
 	   fuzz target is called repetitively in one execution */
@@ -76,7 +79,8 @@ void initialize_global()
 	optopt = 0;
 }
 
-int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
+int
+LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
 	char **argv = NULL;
 	int argc = 0;

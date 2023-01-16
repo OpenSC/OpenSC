@@ -22,19 +22,21 @@
 #include "fuzzer_tool.h"
 #define MAX_ARGC 10000
 
-const uint8_t *get_word(const uint8_t *data, size_t size)
+const uint8_t *
+get_word(const uint8_t *data, size_t size)
 {
 	/* Words are separated by one zero byte,
 	   return pointer to the next word if there is one */
 	const uint8_t *ptr = data;
 	if (!data || size == 0 || *data == 0)
 		return NULL;
-	
+
 	ptr = memchr(data, 0, size - 1);
 	return ptr ? ++ptr : NULL;
 }
 
-char *extract_word(const uint8_t **data, size_t *size)
+char *
+extract_word(const uint8_t **data, size_t *size)
 {
 	/* Find word and return its copy (needs to be freed) */
 	char *result = NULL;
@@ -47,14 +49,15 @@ char *extract_word(const uint8_t **data, size_t *size)
 	if (!ptr)
 		return NULL;
 	result = strdup((const char *)*data);
-	*size -=(ptr - *data);
+	*size -= (ptr - *data);
 	*data = ptr;
 
 	return result;
 }
 
-int get_fuzzed_argv(const char *app_name, const uint8_t *data, size_t size,
-                    char ***argv_out, int *argc_out, const uint8_t **reader_data, size_t *reader_data_size)
+int
+get_fuzzed_argv(const char *app_name, const uint8_t *data, size_t size, char ***argv_out, int *argc_out,
+		const uint8_t **reader_data, size_t *reader_data_size)
 {
 	const uint8_t *ptr = data, *help_ptr = data;
 	size_t ptr_size = size;
@@ -62,7 +65,7 @@ int get_fuzzed_argv(const char *app_name, const uint8_t *data, size_t size,
 	int argc = 1;
 
 	/* Count arguments until double zero bytes occurs*/
-	while(*ptr != 0) {
+	while (*ptr != 0) {
 		ptr = get_word(help_ptr, ptr_size);
 		if (!ptr)
 			return -1;
@@ -74,7 +77,7 @@ int get_fuzzed_argv(const char *app_name, const uint8_t *data, size_t size,
 	if (argc > MAX_ARGC)
 		return -1;
 
-	argv = malloc((argc + 1) * sizeof(char*));
+	argv = malloc((argc + 1) * sizeof(char *));
 	if (!argv)
 		return -1;
 
@@ -94,7 +97,8 @@ int get_fuzzed_argv(const char *app_name, const uint8_t *data, size_t size,
 	return 0;
 }
 
-uint16_t get_buffer(const uint8_t **buf, size_t buf_len, const uint8_t **out, size_t *out_len, size_t max_size)
+uint16_t
+get_buffer(const uint8_t **buf, size_t buf_len, const uint8_t **out, size_t *out_len, size_t max_size)
 {
 	/* Split buf into two parts according to length stored in first two bytes */
 	uint16_t len = 0;
@@ -103,7 +107,7 @@ uint16_t get_buffer(const uint8_t **buf, size_t buf_len, const uint8_t **out, si
 		return 0;
 
 	/* Get length of the result buffer*/
-	len = *((uint16_t *) *buf) % max_size;
+	len = *((uint16_t *)*buf) % max_size;
 	(*buf) += 2;
 	buf_len -= 2;
 	if (buf_len <= len) {
@@ -118,14 +122,15 @@ uint16_t get_buffer(const uint8_t **buf, size_t buf_len, const uint8_t **out, si
 	return len;
 }
 
-int create_input_file(char **filename_out, const uint8_t **data, size_t *size)
+int
+create_input_file(char **filename_out, const uint8_t **data, size_t *size)
 {
 	const uint8_t *ptr = *data;
 	size_t file_size = 0, backup_size = *size;
 	int fd = 0;
 	size_t r = 0;
 	char *filename = NULL;
-	
+
 	/* Split data into file content and rest*/
 	file_size = get_buffer(&ptr, *size, data, size, 6000);
 	if (file_size == 0)
@@ -154,7 +159,8 @@ int create_input_file(char **filename_out, const uint8_t **data, size_t *size)
 	return 0;
 }
 
-void remove_file(char *filename)
+void
+remove_file(char *filename)
 {
 	if (filename) {
 		unlink(filename);
@@ -162,7 +168,8 @@ void remove_file(char *filename)
 	}
 }
 
-void free_arguments(int argc, char **argv)
+void
+free_arguments(int argc, char **argv)
 {
 	for (int i = 0; i < argc; i++) {
 		free(argv[i]);

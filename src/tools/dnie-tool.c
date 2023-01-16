@@ -54,28 +54,28 @@ static const char *app_name = "dnie-tool";
 #define	OP_GET_SERIALNR	8 /* Get SerialNumber */
 
 static const struct option options[] = {
-	{"reader",      1, NULL, 'r'},
-	{"wait",	0, NULL, 'w'},
-	{"pin",		1, NULL, 'p'},
-	{"idesp",       0, NULL, 'i'},
-	{"version",     0, NULL, 'V'},
-	{"data",	0, NULL, 'd'},
-	{"serial",      0, NULL, 's'},
-	{"all",	 	0, NULL, 'a'},
-	{"verbose",     0, NULL, 'v'},
-	{NULL,	  	0, NULL,  0 }
+		{"reader", 1, NULL, 'r'},
+		{"wait", 0, NULL, 'w'},
+		{"pin", 1, NULL, 'p'},
+		{"idesp", 0, NULL, 'i'},
+		{"version", 0, NULL, 'V'},
+		{"data", 0, NULL, 'd'},
+		{"serial", 0, NULL, 's'},
+		{"all", 0, NULL, 'a'},
+		{"verbose", 0, NULL, 'v'},
+		{NULL, 0, NULL, 0},
 };
 
 static const char *option_help[] = {
-	"Uses reader number <arg> [0]",
-	"Wait for a card to be inserted",
-	"Specify PIN",
-	"Retrieve IDESP",
-	"Gets DNIe software version",
-	"Show DNIe number, Name, and SurName",
-	"Show DNIe serial number",
-	"Display all the information available",
-	"Verbose operation, may be used several times",
+		"Uses reader number <arg> [0]",
+		"Wait for a card to be inserted",
+		"Specify PIN",
+		"Retrieve IDESP",
+		"Gets DNIe software version",
+		"Show DNIe number, Name, and SurName",
+		"Show DNIe serial number",
+		"Display all the information available",
+		"Verbose operation, may be used several times",
 };
 
 /*  Get DNIe device extra information  */
@@ -87,13 +87,13 @@ int main(int argc, char* argv[])
 	const char  *opt_reader = NULL;
 	int	     opt_operation = OP_NONE;
 	int	     verbose = 0;
-	
+
 	int err = 0;
 	sc_context_t *ctx = NULL;
 	sc_context_param_t ctx_param;
 	sc_card_t *card = NULL;
 	int c, r;
-	
+
 	char *data[] = { NULL, NULL, NULL, NULL, NULL };
 	sc_serial_number_t serial;
 
@@ -148,7 +148,7 @@ int main(int argc, char* argv[])
 		err = -1;
 		goto dnie_tool_end;
 	}
-	
+
 	if (util_connect_card(ctx, &card, opt_reader, opt_wait, verbose) ) {
 		fprintf(stderr, "Error: Cannot connect with card\n");
 		err = -1;

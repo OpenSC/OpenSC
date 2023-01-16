@@ -378,7 +378,7 @@ derive_tests(void **state)
 	unsigned int i;
 	int j;
 	int errors = 0;
-	token_info_t *info = (token_info_t *) *state;
+	token_info_t *info = (token_info_t *)*state;
 	test_certs_t objects;
 
 	test_certs_init(&objects);

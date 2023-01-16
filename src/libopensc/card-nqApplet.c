@@ -33,8 +33,9 @@
 
 /* card constants */
 static const struct sc_atr_table nqapplet_atrs[] = {
-	{"3b:d5:18:ff:81:91:fe:1f:c3:80:73:c8:21:10:0a", NULL, NULL, SC_CARD_TYPE_NQ_APPLET, 0, NULL},
-	{NULL, NULL, NULL, 0, 0, NULL}};
+		{"3b:d5:18:ff:81:91:fe:1f:c3:80:73:c8:21:10:0a", NULL, NULL, SC_CARD_TYPE_NQ_APPLET, 0, NULL},
+		{NULL, NULL, NULL, 0, 0, NULL},
+};
 
 static const u8 nqapplet_aid[] = {0xd2, 0x76, 0x00, 0x01, 0x80, 0xBA, 0x01, 0x44, 0x02, 0x01, 0x00};
 
@@ -53,25 +54,26 @@ struct nqapplet_driver_data {
 typedef struct nqapplet_driver_data *nqapplet_driver_data_ptr;
 
 static struct sc_card_driver nqapplet_driver = {
-	"NQ-Applet",          // name
-	"nqapplet",           // short name
-	&nqapplet_operations, // operations
-	NULL,                 // atr table
-	0,                    // nr of atr
-	NULL                  // dll?
+		"NQ-Applet",          // name
+		"nqapplet",           // short name
+		&nqapplet_operations, // operations
+		NULL,                 // atr table
+		0,                    // nr of atr
+		NULL,                 // dll?
 };
 
 static const struct sc_card_error nqapplet_errors[] = {
-	{0x6700, SC_ERROR_WRONG_LENGTH, "Invalid LC or LE"},
-	{0x6982, SC_ERROR_SECURITY_STATUS_NOT_SATISFIED, "Security status not satisfied"}, // TODO MK/DK??
-	{0x6985, SC_ERROR_NOT_ALLOWED, "Invalid PIN or key"},
-	{0x6986, SC_ERROR_NOT_ALLOWED, "Conditions of use not satisfied"},
-	{0x6A80, SC_ERROR_INVALID_ARGUMENTS, "Invalid parameters"},
-	{0x6A82, SC_ERROR_OBJECT_NOT_FOUND, "Data object not found"},
-	{0x6A84, SC_ERROR_NOT_ENOUGH_MEMORY, "Not enough memory"},
-	{0x6A86, SC_ERROR_INCORRECT_PARAMETERS, "Invalid P1 or P2"},
-	{0x6A88, SC_ERROR_INVALID_ARGUMENTS, "Wrong key ID"},
-	{0x6D00, SC_ERROR_FILE_NOT_FOUND, "Applet not found"}};
+		{0x6700, SC_ERROR_WRONG_LENGTH, "Invalid LC or LE"},
+		{0x6982, SC_ERROR_SECURITY_STATUS_NOT_SATISFIED, "Security status not satisfied"}, // TODO MK/DK??
+		{0x6985, SC_ERROR_NOT_ALLOWED, "Invalid PIN or key"},
+		{0x6986, SC_ERROR_NOT_ALLOWED, "Conditions of use not satisfied"},
+		{0x6A80, SC_ERROR_INVALID_ARGUMENTS, "Invalid parameters"},
+		{0x6A82, SC_ERROR_OBJECT_NOT_FOUND, "Data object not found"},
+		{0x6A84, SC_ERROR_NOT_ENOUGH_MEMORY, "Not enough memory"},
+		{0x6A86, SC_ERROR_INCORRECT_PARAMETERS, "Invalid P1 or P2"},
+		{0x6A88, SC_ERROR_INVALID_ARGUMENTS, "Wrong key ID"},
+		{0x6D00, SC_ERROR_FILE_NOT_FOUND, "Applet not found"},
+};
 
 /* convenience functions */
 
