@@ -231,8 +231,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 	if ((r = read_file(card, "006E:0073:00C4", c4data, sizeof(c4data))) < 0)
 		goto failed;
 	if (r != 7) {
-		sc_log(ctx,
-			"CHV status bytes have unexpected length (expected 7, got %d)\n", r);
+		sc_log(ctx, "CHV status bytes have unexpected length (expected 7, got %d)\n", r);
 		r = SC_ERROR_OBJECT_NOT_VALID;
 		goto failed;
 	}

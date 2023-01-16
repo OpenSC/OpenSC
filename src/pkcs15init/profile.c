@@ -1084,8 +1084,7 @@ template_sanity_check(struct state *cur, struct sc_profile *templ)
 				continue;
 
 			if (ffi_path.len < 2) {
-				parse_error(cur, "Template insane: file-path length should not be "
-						"less than 2 bytes");
+				parse_error(cur, "Template insane: file-path length should not be less than 2 bytes");
 				return 1;
 			}
 
@@ -1975,7 +1974,8 @@ static struct block	root_ops = {
 };
 
 static int
-check_macro_reference_loop(scconf_list *start, scconf_list *current, struct state *cur, int depth) {
+check_macro_reference_loop(scconf_list *start, scconf_list *current, struct state *cur, int depth)
+{
 	sc_macro_t *mac = NULL;
 	const char *str = NULL;
 

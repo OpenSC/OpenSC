@@ -588,7 +588,7 @@ sc_pkcs15_convert_prkey(struct sc_pkcs15_prkey *pkcs15_key, void *evp_key)
 #ifdef ENABLE_OPENSSL
 	EVP_PKEY *pk = (EVP_PKEY *)evp_key;
 	int pk_type;
-	 pk_type = EVP_PKEY_base_id(pk);
+	pk_type = EVP_PKEY_base_id(pk);
 
 	switch (pk_type) {
 	case EVP_PKEY_RSA: {
@@ -713,6 +713,7 @@ sc_pkcs15_convert_prkey(struct sc_pkcs15_prkey *pkcs15_key, void *evp_key)
 		EC_GROUP *grp = NULL;
 		BIGNUM *src_priv_key = NULL;
 		char grp_name[256];
+		int rc;
 
 		if (EVP_PKEY_get_bn_param(pk, OSSL_PKEY_PARAM_PRIV_KEY, &src_priv_key) != 1) {
 			return SC_ERROR_UNKNOWN;
@@ -758,8 +759,8 @@ sc_pkcs15_convert_prkey(struct sc_pkcs15_prkey *pkcs15_key, void *evp_key)
 			return SC_ERROR_INCOMPATIBLE_KEY;
 #else
 		/* Decode EC_POINT from a octet string */
-		if (EVP_PKEY_get_octet_string_param(pk, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, buf, buflen,
-					&buflen) != 1) {
+		rc = EVP_PKEY_get_octet_string_param(pk, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, buf, buflen, &buflen);
+		if (rc != 1) {
 			return SC_ERROR_INCOMPATIBLE_KEY;
 		}
 #endif
@@ -773,7 +774,7 @@ sc_pkcs15_convert_prkey(struct sc_pkcs15_prkey *pkcs15_key, void *evp_key)
 		/*
 		 * In OpenSC the field_length is in bits. Not all curves are a multiple of 8.
 		 * EC_POINT_point2oct handles this and returns octstrings that can handle
-		 * these curves. Get real field_length from OpenSSL. 
+		 * these curves. Get real field_length from OpenSSL.
 		 */
 		dst->params.field_length = EC_GROUP_get_degree(grp);
 

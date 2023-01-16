@@ -38,9 +38,9 @@
 #include <openssl/pkcs12.h>
 #include <openssl/x509v3.h>
 
-#include "internal.h"
 #include "asn1.h"
 #include "cardctl.h"
+#include "internal.h"
 #include "opensc.h"
 #include "sc-ossl-compat.h"
 /* #include "sm.h" */
@@ -3192,7 +3192,7 @@ iasecc_qsign_data_sha1(struct sc_context *ctx, const unsigned char *in, size_t i
 		sc_log(ctx, "EVP_DigestInit_ex failed");
 		goto err;
 	}
-	
+
 	md_data = EVP_MD_CTX_md_data(mdctx);
 	if (md_data == NULL) {
 		sc_log(ctx, "Failed to find md_data");

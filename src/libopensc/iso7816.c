@@ -688,7 +688,7 @@ iso7816_get_challenge(struct sc_card *card, u8 *rnd, size_t len)
 	if (len < apdu.resplen) {
 		return (int) len;
 	}
-   
+
 	return (int) apdu.resplen;
 }
 
@@ -1361,7 +1361,7 @@ int iso7816_read_binary_sfid(sc_card_t *card, unsigned char sfid,
 
 	read = card->max_recv_size;
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2,
-			ISO_READ_BINARY, ISO_P1_FLAG_SFID|sfid, 0);
+			ISO_READ_BINARY, ISO_P1_FLAG_SFID | sfid, 0);
 	p = realloc(*ef, read);
 	if (!p) {
 		r = SC_ERROR_OUT_OF_MEMORY;
@@ -1428,7 +1428,7 @@ int iso7816_write_binary_sfid(sc_card_t *card, unsigned char sfid,
 	write = card->max_send_size;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3,
-			ISO_WRITE_BINARY, ISO_P1_FLAG_SFID|sfid, 0);
+			ISO_WRITE_BINARY, ISO_P1_FLAG_SFID | sfid, 0);
 
 	if (write > ef_len) {
 		apdu.datalen = ef_len;

@@ -43,18 +43,18 @@ int debug_flag = 0;
 
 void display_usage() {
 	fprintf(stdout,
-	        " Usage:\n"
-	        "	./p11test [-m module_path] [-s slot_id] [-p pin]\n"
-	        "		-m module_path	Path to tested module (e.g. /usr/lib64/opensc-pkcs11.so)\n"
-	        "						Default is " DEFAULT_P11LIB "\n"
-	        "		-p pin			Application PIN\n"
-	        "		-s slot_id		Slot ID with the card\n"
-	        "		-i				Wait for the card before running the test "
-	        "(interactive)\n"
-	        "		-o				File to write a log in JSON\n"
-	        "		-v				Verbose log output\n"
-	        "		-h				This help\n"
-	        "\n");
+			" Usage:\n"
+			"	./p11test [-m module_path] [-s slot_id] [-p pin]\n"
+			"		-m module_path	Path to tested module (e.g. /usr/lib64/opensc-pkcs11.so)\n"
+			"						Default is " DEFAULT_P11LIB "\n"
+			"		-p pin			Application PIN\n"
+			"		-s slot_id		Slot ID with the card\n"
+			"		-i				Wait for the card before running the test "
+			"(interactive)\n"
+			"		-o				File to write a log in JSON\n"
+			"		-v				Verbose log output\n"
+			"		-h				This help\n"
+			"\n");
 }
 
 int main(int argc, char** argv) {

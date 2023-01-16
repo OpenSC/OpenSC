@@ -401,8 +401,7 @@ verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message, CK_
 			if ((ctx = EVP_PKEY_CTX_new(o->key, NULL)) == NULL ||
 					(rv = EVP_PKEY_verify_init(ctx)) <= 0 ||
 					(rv = EVP_PKEY_CTX_set_rsa_padding(ctx, padding)) <= 0 ||
-					(rv = EVP_PKEY_verify(ctx, sign, sign_length, message,
-							message_length)) != 1) {
+					(rv = EVP_PKEY_verify(ctx, sign, sign_length, message, message_length)) != 1) {
 				fprintf(stderr, " [ ERROR %s ] Signature is not valid. Error: %s\n",
 						o->id_str, ERR_error_string(ERR_peek_last_error(), NULL));
 				EVP_PKEY_CTX_free(ctx);

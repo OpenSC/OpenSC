@@ -2381,7 +2381,7 @@ int perform_pace(sc_card_t *card,
 	int r;
 
 	if (!card)
-	   return SC_ERROR_INVALID_ARGUMENTS;
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	if (card->reader
 			&& card->reader->capabilities & SC_READER_CAP_PACE_GENERIC

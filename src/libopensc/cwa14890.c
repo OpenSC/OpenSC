@@ -977,12 +977,12 @@ cwa_verify_internal_auth(sc_card_t *card, EVP_PKEY *icc_pubkey, EVP_PKEY *ifd_pr
 	if (res == SC_SUCCESS)
 		goto verify_internal_ok;
 
- verify_nicc_sig:
+verify_nicc_sig:
 	/*
 	 * Arriving here means need to evaluate N.ICC-SIG
 	 * So convert buffers to bignums to operate
 	 */
-	bn = BN_bin2bn(buf1, len1, NULL);	/* create BN data */
+	bn = BN_bin2bn(buf1, len1, NULL); /* create BN data */
 	sigbn = BN_new();
 	if (!bn || !sigbn) {
 		msg = "Verify Signature: cannot bignums creation error";

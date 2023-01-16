@@ -260,6 +260,7 @@ scconf_skip_block(scconf_parser *parser)
 void
 scconf_parse_token(scconf_parser *parser, int token_type, const char *token)
 {
+	char *stoken = NULL;
 	scconf_item *item;
 	int len;
 
@@ -281,9 +282,7 @@ scconf_parse_token(scconf_parser *parser, int token_type, const char *token)
 		}
 		item->value.comment = token ? strdup(token) : NULL;
 		break;
-	case TOKEN_TYPE_STRING: {
-		char *stoken = NULL;
-
+	case TOKEN_TYPE_STRING:
 		if ((parser->state & (STATE_VALUE | STATE_SET)) == (STATE_VALUE | STATE_SET)) {
 			scconf_parse_warning_expect(parser, ";");
 			scconf_parse_reset_state(parser);
@@ -326,7 +325,7 @@ scconf_parse_token(scconf_parser *parser, int token_type, const char *token)
 			free(stoken);
 		}
 		stoken = NULL;
-	} break;
+		break;
 	case TOKEN_TYPE_PUNCT:
 		switch (*token) {
 		case '{':

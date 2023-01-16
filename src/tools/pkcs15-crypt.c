@@ -284,8 +284,7 @@ static int decipher(struct sc_pkcs15_object *obj)
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
-	r = sc_pkcs15_decipher(p15card, obj, opt_crypt_flags & SC_ALGORITHM_RSA_PAD_PKCS1, buf, c, out, len,
-			NULL);
+	r = sc_pkcs15_decipher(p15card, obj, opt_crypt_flags & SC_ALGORITHM_RSA_PAD_PKCS1, buf, c, out, len, NULL);
 	if (r < 0) {
 		fprintf(stderr, "Decrypt failed: %s\n", sc_strerror(r));
 		return 1;
@@ -344,12 +343,12 @@ static int get_key(unsigned int usage, sc_pkcs15_object_t **result)
 			free(pincode);
 			return 5;
 		}
-		
+
 		/*
 		 * Do what PKCS#11 would do for keys requiring CKA_ALWAYS_AUTHENTICATE
-		 * and CKU_CONTEXT_SPECIFIC login to let driver know this verify will be followed by 
+		 * and CKU_CONTEXT_SPECIFIC login to let driver know this verify will be followed by
 		 * a crypto operation.  Card drivers can test for SC_AC_CONTEXT_SPECIFIC
-		 * to do any special handling. 
+		 * to do any special handling.
 		 */
 		if (key->user_consent && pin) {
 			int auth_meth_saved;

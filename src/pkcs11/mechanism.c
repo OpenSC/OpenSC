@@ -862,7 +862,6 @@ sc_pkcs11_verify_final(sc_pkcs11_operation_t *operation,
 	if (key_type != CKK_GOSTR3410)
 		attr.type = CKA_SPKI;
 
-
 	rv = key->ops->get_attribute(operation->session, key, &attr);
 	if (rv != CKR_OK)
 		return rv;

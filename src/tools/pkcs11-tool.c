@@ -3653,7 +3653,7 @@ parse_rsa_pkey(EVP_PKEY *pkey, int private, struct rsakey_info *rsa)
 			EVP_PKEY_get_bn_param(pkey, OSSL_PKEY_PARAM_RSA_E, &r_e) != 1) {
 		util_fatal("OpenSSL error during RSA %s key parsing: %s", private ? "private" : "public",
 				ERR_error_string(ERR_peek_last_error(), NULL));
-	 }
+	}
 #endif
 	RSA_GET_BN(rsa, modulus, r_n);
 	RSA_GET_BN(rsa, public_exponent, r_e);

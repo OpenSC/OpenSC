@@ -907,7 +907,7 @@ static int import_dkek_share(sc_card_t *card, const char *inf, int iter, const c
 
 static int print_dkek_share(sc_card_t *card, const char *inf, int iter, const char *password, int num_of_password_shares)
 {
-	// hex output can be used in the SCSH shell with the 
+	// hex output can be used in the SCSH shell with the
 	// decrypt_keyblob.js file
 	sc_cardctl_sc_hsm_dkek_t dkekinfo;
 	EVP_CIPHER_CTX *bn_ctx = NULL;
@@ -2109,22 +2109,35 @@ int main(int argc, char *argv[])
 		goto fail;
 	}
 
-	if (do_initialize && initialize(card, opt_so_pin, opt_pin, opt_retry_counter, opt_bio1, opt_bio2,
-						opt_dkek_shares, opt_num_of_pub_keys, opt_required_pub_keys,
-						opt_label))
-		goto fail;
+	if (do_initialize) {
+		rc = initialize(card, opt_so_pin, opt_pin, opt_retry_counter, opt_bio1, opt_bio2,
+				opt_dkek_shares, opt_num_of_pub_keys, opt_required_pub_keys, opt_label);
+		if (r != SC_SUCCESS) {
+			goto fail;
+		}
+	}
 
-	if (do_create_dkek_share && create_dkek_share(card, opt_filename, opt_iter, opt_password,
-						opt_password_shares_threshold, opt_password_shares_total))
-		goto fail;
+	if (do_create_dkek_share) {
+		r = create_dkek_share(card, opt_filename, opt_iter, opt_password,
+				opt_password_shares_threshold, opt_password_shares_total);
+		if (r != SC_SUCCESS) {
+			goto fail;
+		}
+	}
 
-	if (do_import_dkek_share && import_dkek_share(card, opt_filename, opt_iter, opt_password,
-						opt_password_shares_total))
-		goto fail;
+	if (do_import_dkek_share) {
+		r = import_dkek_share(card, opt_filename, opt_iter, opt_password, opt_password_shares_total);
+		if (r != SC_SUCCESS) {
+			goto fail;
+		}
+	}
 
-	if (do_print_dkek_share && print_dkek_share(card, opt_filename, opt_iter, opt_password,
-						opt_password_shares_total))
-		goto fail;
+	if (do_print_dkek_share) {
+		r = print_dkek_share(card, opt_filename, opt_iter, opt_password, opt_password_shares_total);
+		if (r != SC_SUCCESS) {
+			goto fail;
+		}
+	}
 
 	if (do_wrap_key && wrap_key(ctx, card, opt_key_reference, opt_filename, opt_pin))
 		goto fail;

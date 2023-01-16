@@ -180,9 +180,7 @@ set_acl_from_sec_attr(sc_card_t *card, sc_file_t *file)
 	{
 		method = sec_attr_to_method(file->sec_attr[1 + 6]);
 		key_ref = sec_attr_to_key_ref(file->sec_attr[1 + 6]);
-		sc_log(card->ctx,
-			"SC_AC_OP_DELETE %i %lu\n",
-			(int)method, key_ref);
+		sc_log(card->ctx, "SC_AC_OP_DELETE %i %lu\n", (int)method, key_ref);
 		sc_file_add_acl_entry(file, SC_AC_OP_DELETE, method, key_ref);
 	}
 	if (file->sec_attr[0] & 0x01) /* if AccessMode.0 */
@@ -496,8 +494,7 @@ rtecp_change_reference_data(sc_card_t *card, unsigned int type, int ref_qualifie
 	int transmits_num, r;
 
 	assert(card && card->ctx && newref);
-	sc_log(card->ctx,
-		 "newlen = %"SC_FORMAT_LEN_SIZE_T"u\n", newlen);
+	sc_log(card->ctx, "newlen = %"SC_FORMAT_LEN_SIZE_T"u\n", newlen);
 	if (newlen > 0xFFFF)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	if (type == SC_AC_CHV && old && oldlen != 0)
@@ -514,7 +511,7 @@ rtecp_change_reference_data(sc_card_t *card, unsigned int type, int ref_qualifie
 	 */
 	transmits_num = (2 + sizeof(rsf_length) + newlen) / (max_transmit_length - 2) + 1;
 	/* buffer length = size of 0x80 TLV + size of RSF-file + (size of Tag and Length)*(number of APDUs) */
-	buf_length = (2 + sizeof(rsf_length)) + newlen + 2*(transmits_num);
+	buf_length = (2 + sizeof(rsf_length)) + newlen + 2 * transmits_num;
 	p = buf = (u8 *)malloc(buf_length);
 	if (buf == NULL)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
@@ -717,48 +714,37 @@ rtecp_card_ctl(sc_card_t *card, unsigned long request, void *data)
 		apdu.le = 256;
 		break;
 	case SC_CARDCTL_LIFECYCLE_SET:
-		sc_log(card->ctx,  "%s\n",
-				"SC_CARDCTL_LIFECYCLE_SET not supported");
+		sc_log(card->ctx,  "%s\n", "SC_CARDCTL_LIFECYCLE_SET not supported");
 		/* no call sc_debug (SC_FUNC_RETURN) */
 		return SC_ERROR_NOT_SUPPORTED;
 	default:
-		sc_log(card->ctx,
-			"request = 0x%lx\n", request);
+		sc_log(card->ctx, "request = 0x%lx\n", request);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 	}
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	if (!r && request == SC_CARDCTL_RTECP_GENERATE_KEY)
-	{
+	if (!r && request == SC_CARDCTL_RTECP_GENERATE_KEY) {
 		if (genkey_data->type == SC_ALGORITHM_RSA &&
 				genkey_data->u.rsa.modulus_len >= apdu.resplen &&
-				genkey_data->u.rsa.exponent_len >= 3)
-		{
+				genkey_data->u.rsa.exponent_len >= 3) {
 			memcpy(genkey_data->u.rsa.modulus, apdu.resp, apdu.resplen);
 			genkey_data->u.rsa.modulus_len = apdu.resplen;
 			reverse(genkey_data->u.rsa.modulus,
 					genkey_data->u.rsa.modulus_len);
 			memcpy(genkey_data->u.rsa.exponent, "\x01\x00\x01", 3);
 			genkey_data->u.rsa.exponent_len = 3;
-		}
-		else if (genkey_data->type == SC_ALGORITHM_GOSTR3410 &&
-				genkey_data->u.gostr3410.xy_len >= apdu.resplen)
-		{
+		} else if (genkey_data->type == SC_ALGORITHM_GOSTR3410 &&
+				genkey_data->u.gostr3410.xy_len >= apdu.resplen) {
 			memcpy(genkey_data->u.gostr3410.xy, apdu.resp, apdu.resplen);
 			genkey_data->u.gostr3410.xy_len = apdu.resplen;
-		}
-		else
+		} else
 			r = SC_ERROR_BUFFER_TOO_SMALL;
-	}
-	else if (!r && request == SC_CARDCTL_GET_SERIALNR)
-	{
-		if (apdu.resplen <= sizeof(serial->value))
-		{
+	} else if (!r && request == SC_CARDCTL_GET_SERIALNR) {
+		if (apdu.resplen <= sizeof(serial->value)) {
 			memcpy(serial->value, apdu.resp, apdu.resplen);
 			serial->len = apdu.resplen;
-		}
-		else
+		} else
 			r = SC_ERROR_BUFFER_TOO_SMALL;
 	}
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);

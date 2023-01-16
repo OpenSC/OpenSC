@@ -1,4 +1,4 @@
-	/*
+/*
  * sm-common.c: Common cryptographic procedures related to
  *		Secure Messaging
  *

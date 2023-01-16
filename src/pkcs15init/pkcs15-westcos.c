@@ -245,9 +245,9 @@ static int westcos_pkcs15init_generate_key(sc_profile_t *profile,
 
 	if (BN_set_word(bn, RSA_F4) != 1 ||
 			EVP_PKEY_keygen_init(pctx) != 1 ||
-		    EVP_PKEY_CTX_set_rsa_keygen_bits(pctx, key_info->modulus_length) != 1 ||
+			EVP_PKEY_CTX_set_rsa_keygen_bits(pctx, key_info->modulus_length) != 1 ||
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
-		    EVP_PKEY_CTX_set1_rsa_keygen_pubexp(pctx, bn) != 1) {
+			EVP_PKEY_CTX_set1_rsa_keygen_pubexp(pctx, bn) != 1) {
 #else
 			EVP_PKEY_CTX_set_rsa_keygen_pubexp(pctx, bn) != 1) {
 #endif
