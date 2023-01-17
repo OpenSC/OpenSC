@@ -60,7 +60,7 @@ operation_data_release(struct operation_data *data)
 
 static CK_RV
 signature_data_buffer_append(struct operation_data *data,
-		const CK_BYTE *in, unsigned int in_len)
+		const CK_BYTE *in, CK_ULONG in_len)
 {
 	if (!data)
 		return CKR_ARGUMENTS_BAD;
@@ -97,7 +97,7 @@ static CK_RV
 sc_pkcs11_copy_mechanism(sc_pkcs11_mechanism_type_t *mt,
 				sc_pkcs11_mechanism_type_t **new_mt)
 {
-	int rv;
+	CK_RV rv;
 
 	*new_mt = calloc(1, sizeof(sc_pkcs11_mechanism_type_t));
 	if (!(*new_mt))
@@ -127,7 +127,8 @@ sc_pkcs11_register_mechanism(struct sc_pkcs11_card *p11card,
 	sc_pkcs11_mechanism_type_t *existing_mt;
 	sc_pkcs11_mechanism_type_t *copy_mt = NULL;
 	sc_pkcs11_mechanism_type_t **p;
-	int i, rv;
+	int i;
+	CK_RV rv;
 
 	if (mt == NULL)
 		return CKR_HOST_MEMORY;
