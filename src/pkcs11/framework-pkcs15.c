@@ -3265,7 +3265,7 @@ pkcs15_gen_keypair(struct sc_pkcs11_slot *slot, CK_MECHANISM_PTR pMechanism,
 		der->value = (unsigned char *) ptr;
 		if (rv != CKR_OK)   {
 			sc_unlock(p11card->card);
-			return sc_to_cryptoki_error(rv, "C_GenerateKeyPair");
+			return rv;
 		}
 
 		keygen_args.prkey_args.key.algorithm = SC_ALGORITHM_EC;
@@ -6279,10 +6279,10 @@ static CK_RV register_xeddsa_mechanisms(struct sc_pkcs11_card *p11card, int flag
 	return CKR_OK;
 }
 
-static int sc_pkcs11_register_aes_mechanisms(struct sc_pkcs11_card *p11card, int flags,
+static CK_RV sc_pkcs11_register_aes_mechanisms(struct sc_pkcs11_card *p11card, int flags,
 		CK_ULONG min_key_size, CK_ULONG max_key_size)
 {
-	int rc;
+	CK_RV rc;
 	CK_MECHANISM_INFO mech_info;
 	sc_pkcs11_mechanism_type_t *mt;
 	sc_card_t* card = p11card->card;
