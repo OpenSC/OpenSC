@@ -1221,9 +1221,9 @@ static int sc_hsm_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 		 * Create and destroy a dummy card to get this initialized.  Only do
 		 * this for `opensc-tool --serial` to avoid unnecessary card commands
 		 * in all other cases. */
-		sc_pkcs15_card_t p15card;
+		sc_pkcs15_card_t *p15card = NULL;
 		sc_pkcs15_bind(card, NULL, &p15card);
-		sc_pkcs15_card_clear(&p15card);
+		sc_pkcs15_card_clear(p15card);
 	}
 
 	if (!priv->serialno) {
