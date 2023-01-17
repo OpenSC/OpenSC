@@ -33,6 +33,9 @@
 #endif
 #include <time.h>
 #endif
+#ifdef HAVE_PTHREAD
+#include <pthread.h>
+#endif
 
 #define CRYPTOKI_EXPORTS
 #include "pkcs11-display.h"
