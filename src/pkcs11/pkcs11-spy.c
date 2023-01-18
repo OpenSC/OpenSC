@@ -32,6 +32,7 @@
 #include <sys/time.h>
 #endif
 #include <time.h>
+#include <unistd.h>
 #endif
 #ifdef HAVE_PTHREAD
 #include <pthread.h>
