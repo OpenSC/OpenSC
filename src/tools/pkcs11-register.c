@@ -106,7 +106,7 @@ get_next_profile_path(const char **profiles_ini, const char *home, const char *b
 		}
 		/* adjust format to respect the maximum length of profile_path */
 		char format[32];
-		if (0 > snprintf(format, sizeof(format), "Path=%%%ds", (int)(p_len-1))
+		if (0 > snprintf(format, sizeof(format), "Path=%%%d[^\n]", (int)(p_len-1))
 				|| 1 != sscanf(path, format, p))
 			continue;
 
