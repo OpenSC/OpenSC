@@ -72,13 +72,13 @@ modeoption "new-read-ac" -
     "Access condition for reading newly created DGs"
     values="always","never","ta","sm" default="sm" mode="pxs" optional dependon="create-dg"
 modeoption "new-read-ac-chatbit" -
-    "Required access bits in certificate's CHAT for reading newly created DGs"
+    "Required access bit in certificate's CHAT for reading newly created DGs"
     int mode="pxs" optional dependon="create-dg" multiple typestr="INDEX"
 modeoption "new-write-ac" -
     "Access condition for writing newly created DGs"
     values="always","never","ta","sm" default="sm" mode="pxs" optional dependon="create-dg"
 modeoption "new-write-ac-chatbit" -
-    "Required access bits in certificate's CHAT for reading newly created DGs"
+    "Required access bit in certificate's CHAT for reading newly created DGs"
     int mode="pxs" optional dependon="create-dg" multiple typestr="INDEX"
 
 text "
