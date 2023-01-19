@@ -94,7 +94,7 @@ rm /tmp/ECprivKey.pem /tmp/ECpubKey.pem /tmp/data.bin /tmp/data.sig
 
 kill -9 $PID
 
-if ! diff -u3 src/tests/p11test/isoapplet.json src/tests/p11test/isoapplet_ref_${isoapplet_version}.json; then
+if ! diff -u3 src/tests/p11test/isoapplet_ref_${isoapplet_version}.json src/tests/p11test/isoapplet.json; then
 	echo "The output of p11test has changed (see diff above). If that is expected, update the reference file. Otherwise, fix the error."
 	exit 1
 fi
