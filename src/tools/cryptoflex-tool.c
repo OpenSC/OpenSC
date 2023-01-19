@@ -55,22 +55,22 @@ static const char *opt_appdf = NULL, *opt_prkeyf = NULL, *opt_pubkeyf = NULL;
 static u8 *pincode = NULL;
 
 static const struct option options[] = {
-		{"list-keys", 0, NULL, 'l'},
+		{"list-keys",        0, NULL, 'l'},
 		{"create-key-files", 1, NULL, 'c'},
-		{"create-pin-file", 1, NULL, 'P'},
-		{"generate-key", 0, NULL, 'g'},
-		{"read-key", 0, NULL, 'R'},
-		{"verify-pin", 0, NULL, 'V'},
-		{"key-num", 1, NULL, 'k'},
-		{"app-df", 1, NULL, 'a'},
-		{"prkey-file", 1, NULL, 'p'},
-		{"pubkey-file", 1, NULL, 'u'},
-		{"exponent", 1, NULL, 'e'},
-		{"modulus-length", 1, NULL, 'm'},
-		{"reader", 1, NULL, 'r'},
-		{"wait", 0, NULL, 'w'},
-		{"verbose", 0, NULL, 'v'},
-		{NULL, 0, NULL, 0},
+		{"create-pin-file",  1, NULL, 'P'},
+		{"generate-key",     0, NULL, 'g'},
+		{"read-key",         0, NULL, 'R'},
+		{"verify-pin",       0, NULL, 'V'},
+		{"key-num",          1, NULL, 'k'},
+		{"app-df",           1, NULL, 'a'},
+		{"prkey-file",       1, NULL, 'p'},
+		{"pubkey-file",      1, NULL, 'u'},
+		{"exponent",         1, NULL, 'e'},
+		{"modulus-length",   1, NULL, 'm'},
+		{"reader",           1, NULL, 'r'},
+		{"wait",             0, NULL, 'w'},
+		{"verbose",          0, NULL, 'v'},
+		{NULL,               0, NULL, 0  },
 };
 
 static const char *option_help[] = {

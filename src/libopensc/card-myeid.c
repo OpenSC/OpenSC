@@ -1949,16 +1949,19 @@ myeid_enc_dec_sym(struct sc_card *card, const u8 *data, size_t datalen,
 
 	/* no input data from application (this is C_EncryptFinalize/C_DecryptFinalize */
 	if (data == NULL) {
-		if (datalen != 0)
+		if (datalen != 0) {
 			LOG_FUNC_RETURN(ctx, SC_ERROR_WRONG_LENGTH);
+		}
 		if (decipher) {
 			/* C_DecryptFinalize */
 			/* decrypted buffer size must match the block size */
-			if (priv->sym_plain_buffer_len != block_size)
+			if (priv->sym_plain_buffer_len != block_size) {
 				LOG_FUNC_RETURN(ctx, SC_ERROR_WRONG_LENGTH);
+			}
 			/* do we have any encrypted data left? */
-			if (rest_len)
+			if (rest_len) {
 				LOG_FUNC_RETURN(ctx, SC_ERROR_WRONG_LENGTH);
+			}
 
 			return_len = block_size;
 			if (padding) {
@@ -1966,17 +1969,21 @@ myeid_enc_dec_sym(struct sc_card *card, const u8 *data, size_t datalen,
 				uint8_t i, pad_byte = *(priv->sym_plain_buffer + block_size - 1);
 
 				sc_log(ctx, "Found padding byte %02x", pad_byte);
-				if (pad_byte == 0 || pad_byte > block_size)
+				if (pad_byte == 0 || pad_byte > block_size) {
 					LOG_FUNC_RETURN(ctx, SC_ERROR_WRONG_PADDING);
+				}
 				sdata = priv->sym_plain_buffer + block_size - pad_byte;
-				for (i = 0; i < pad_byte; i++)
-					if (sdata[i] != pad_byte)
+				for (i = 0; i < pad_byte; i++) {
+					if (sdata[i] != pad_byte) {
 						LOG_FUNC_RETURN(ctx, SC_ERROR_WRONG_PADDING);
+					}
+				}
 				return_len = block_size - pad_byte;
 			}
 			*outlen = return_len;
-			if (return_len > *outlen)
+			if (return_len > *outlen) {
 				LOG_FUNC_RETURN(ctx, SC_ERROR_BUFFER_TOO_SMALL);
+			}
 			memcpy(out, priv->sym_plain_buffer, return_len);
 			sc_log(ctx, "C_DecryptFinal %zu bytes", *outlen);
 			return SC_SUCCESS;

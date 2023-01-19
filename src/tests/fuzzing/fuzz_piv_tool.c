@@ -110,7 +110,7 @@ present_outfile(int argc, char *argv[])
 {
 	const struct option _options[] = {
 			{"out", 1, NULL, 'o'},
-			{NULL, 0, NULL, 0},
+			{NULL,  0, NULL, 0  },
 	};
 	int c;
 	while ((c = getopt_long(argc, argv, "o:", _options, (int *)0)) != -1) {

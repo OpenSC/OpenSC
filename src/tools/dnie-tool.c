@@ -54,16 +54,16 @@ static const char *app_name = "dnie-tool";
 #define	OP_GET_SERIALNR	8 /* Get SerialNumber */
 
 static const struct option options[] = {
-		{"reader", 1, NULL, 'r'},
-		{"wait", 0, NULL, 'w'},
-		{"pin", 1, NULL, 'p'},
-		{"idesp", 0, NULL, 'i'},
+		{"reader",  1, NULL, 'r'},
+		{"wait",    0, NULL, 'w'},
+		{"pin",     1, NULL, 'p'},
+		{"idesp",   0, NULL, 'i'},
 		{"version", 0, NULL, 'V'},
-		{"data", 0, NULL, 'd'},
-		{"serial", 0, NULL, 's'},
-		{"all", 0, NULL, 'a'},
+		{"data",    0, NULL, 'd'},
+		{"serial",  0, NULL, 's'},
+		{"all",     0, NULL, 'a'},
 		{"verbose", 0, NULL, 'v'},
-		{NULL, 0, NULL, 0},
+		{NULL,      0, NULL, 0  },
 };
 
 static const char *option_help[] = {

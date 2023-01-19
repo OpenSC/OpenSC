@@ -21,7 +21,7 @@
 
 #include "config.h"
 
-#ifdef ENABLE_OPENSSL		/* empty file without openssl */
+#ifdef ENABLE_OPENSSL /* empty file without openssl */
 #include <limits.h>
 #include <openssl/bn.h>
 #include <openssl/conf.h>

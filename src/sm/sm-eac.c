@@ -2319,9 +2319,8 @@ eac_sm_finish(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	struct eac_sm_ctx *eacsmctx;
 	if (!card)
 	   return SC_ERROR_INVALID_ARGUMENTS;
-	if(!ctx || !ctx->priv_data || !apdu)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM,
-				SC_ERROR_INVALID_ARGUMENTS);
+	if (!ctx || !ctx->priv_data || !apdu)
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, SC_ERROR_INVALID_ARGUMENTS);
 	eacsmctx = ctx->priv_data;
 
 	if (!(eacsmctx->flags & EAC_FLAG_DISABLE_CHECK_ALL)) {
@@ -2333,7 +2332,8 @@ eac_sm_finish(sc_card_t *card, const struct iso_sm_ctx *ctx,
 				/* Get Challenge
 				 * copy challenge to EAC context */
 
-				sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Saving MRTD's nonce to later verify Terminal's signature");
+				sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
+						"Saving MRTD's nonce to later verify Terminal's signature");
 
 				nonce = BUF_MEM_create_init(apdu->resp, apdu->resplen);
 				r = TA_STEP4_set_nonce(eacsmctx->ctx, nonce);

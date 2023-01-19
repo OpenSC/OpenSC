@@ -120,10 +120,10 @@ static const struct option options[] = {
 		{"version",   no_argument,       NULL, 'V'       },
 		{"erase",     no_argument,       NULL, 'E'       },
 		{"verify",    required_argument, NULL, OPT_VERIFY},
-		{"pin",       required_argument, NULL, OPT_PIN},
+		{"pin",       required_argument, NULL, OPT_PIN   },
 		{"del-key",   required_argument, NULL, OPT_DELKEY},
-		{"do",        required_argument, NULL, 'd'},
-		{NULL, 0, NULL, 0},
+		{"do",        required_argument, NULL, 'd'       },
+		{NULL,        0,                 NULL, 0         },
 };
 
 static const char *option_help[] = {
@@ -148,24 +148,24 @@ static const char *option_help[] = {
 };
 
 static const struct ef_name_map card_data[] = {
-		{"AID",           "OPENPGP_AID",          "3F00:004F", TYPE_HEX,  0, 16, NULL                 },
-		{"Version",       "OPENPGP_VERSION",      "3F00:004F", TYPE_HEX,  6,  2, prettify_version     },
-		{"Manufacturer",  "OPENPGP_MANUFACTURER", "3F00:004F", TYPE_HEX,  8,  2, prettify_manufacturer},
-		{"Serial number", "OPENPGP_SERIALNO",     "3F00:004F", TYPE_HEX, 10,  4, prettify_serialnumber},
-		{NULL, NULL, NULL, TYPE_NULL, 0, 0, NULL},
+		{"AID",           "OPENPGP_AID",          "3F00:004F", TYPE_HEX,  0,  16, NULL                 },
+		{"Version",       "OPENPGP_VERSION",      "3F00:004F", TYPE_HEX,  6,  2,  prettify_version     },
+		{"Manufacturer",  "OPENPGP_MANUFACTURER", "3F00:004F", TYPE_HEX,  8,  2,  prettify_manufacturer},
+		{"Serial number", "OPENPGP_SERIALNO",     "3F00:004F", TYPE_HEX,  10, 4,  prettify_serialnumber},
+		{NULL,            NULL,                    NULL,       TYPE_NULL, 0,  0,  NULL                 },
 };
 
 static const struct ef_name_map key_data[] = {
-		{"Aut Algorithm",   "OPENPGP_AUT_ALGORITHM", "3F00:006E:0073:00C3", TYPE_HEX,  0,  0, prettify_algorithm},
-		{"Aut Create Date", "OPENPGP_AUT_DATE",      "3F00:006E:0073:00CD", TYPE_HEX,  8,  4, prettify_date     },
-		{"Aut Fingerprint", "OPENPGP_AUT_FP",        "3F00:006E:0073:00C5", TYPE_HEX, 40, 20, NULL              },
-		{"Dec Algorithm",   "OPENPGP_DEC_ALGORITHM", "3F00:006E:0073:00C2", TYPE_HEX,  0,  0, prettify_algorithm},
-		{"Dec Create Date", "OPENPGP_DEC_DATE",      "3F00:006E:0073:00CD", TYPE_HEX,  4,  4, prettify_date     },
-		{"Dec Fingerprint", "OPENPGP_DEC_FP",        "3F00:006E:0073:00C5", TYPE_HEX, 20, 20, NULL              },
-		{"Sig Algorithm",   "OPENPGP_SIG_ALGORITHM", "3F00:006E:0073:00C1", TYPE_HEX,  0,  0, prettify_algorithm},
-		{"Sig Create Date", "OPENPGP_SIG_DATE",      "3F00:006E:0073:00CD", TYPE_HEX,  0,  4, prettify_date     },
-		{"Sig Fingerprint", "OPENPGP_SIG_FP",        "3F00:006E:0073:00C5", TYPE_HEX,  0, 20, NULL              },
-		{NULL, NULL, NULL, TYPE_NULL, 0, 0, NULL},
+		{"Aut Algorithm",   "OPENPGP_AUT_ALGORITHM", "3F00:006E:0073:00C3", TYPE_HEX,  0,  0,  prettify_algorithm},
+		{"Aut Create Date", "OPENPGP_AUT_DATE",      "3F00:006E:0073:00CD", TYPE_HEX,  8,  4,  prettify_date     },
+		{"Aut Fingerprint", "OPENPGP_AUT_FP",        "3F00:006E:0073:00C5", TYPE_HEX,  40, 20, NULL              },
+		{"Dec Algorithm",   "OPENPGP_DEC_ALGORITHM", "3F00:006E:0073:00C2", TYPE_HEX,  0,  0,  prettify_algorithm},
+		{"Dec Create Date", "OPENPGP_DEC_DATE",      "3F00:006E:0073:00CD", TYPE_HEX,  4,  4,  prettify_date     },
+		{"Dec Fingerprint", "OPENPGP_DEC_FP",        "3F00:006E:0073:00C5", TYPE_HEX,  20, 20, NULL              },
+		{"Sig Algorithm",   "OPENPGP_SIG_ALGORITHM", "3F00:006E:0073:00C1", TYPE_HEX,  0,  0,  prettify_algorithm},
+		{"Sig Create Date", "OPENPGP_SIG_DATE",      "3F00:006E:0073:00CD", TYPE_HEX,  0,  4,  prettify_date     },
+		{"Sig Fingerprint", "OPENPGP_SIG_FP",        "3F00:006E:0073:00C5", TYPE_HEX,  0,  20, NULL              },
+		{NULL,              NULL,                    NULL,                  TYPE_NULL, 0,  0,  NULL              },
 };
 
 static const struct ef_name_map user_data[] = {
@@ -178,7 +178,7 @@ static const struct ef_name_map user_data[] = {
 		{"DO 0102",  "OPENPGP_DO0102",  "3F00:0102",      TYPE_STRING, 0, 0, NULL             },
 //		{"DO 0103",  "OPENPGP_DO0103",  "3F00:0103",      TYPE_STRING, 0, 0, NULL             },
 //		{"DO 0104",  "OPENPGP_DO0104",  "3F00:0104",      TYPE_STRING, 0, 0, NULL             },
-		{NULL, NULL, NULL, TYPE_NULL, 0, 0, NULL},
+		{NULL,       NULL,              NULL,             TYPE_NULL,   0, 0, NULL             },
 };
 
 

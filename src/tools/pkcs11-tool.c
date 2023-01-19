@@ -3329,7 +3329,7 @@ unwrap_key(CK_SESSION_HANDLE session)
 	const char *length;
 	CK_ATTRIBUTE keyTemplate[20] = {
 			{CKA_CLASS, &secret_key_class, sizeof(secret_key_class)},
-			{CKA_TOKEN, &_true, sizeof(_true)},
+			{CKA_TOKEN, &_true,            sizeof(_true)           },
 	};
 	CK_OBJECT_HANDLE hSecretKey;
 	int n_attr = 2;

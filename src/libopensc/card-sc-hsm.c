@@ -724,12 +724,12 @@ sc_hsm_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 			u8 recvbuf[SC_MAX_APDU_BUFFER_SIZE];
 #ifdef ENABLE_SM
 			if (card->sm_ctx.sm_mode != SM_MODE_TRANSMIT) {
-				sc_log(card->ctx, 
+				sc_log(card->ctx,
 						"Session PIN generation only supported in SM");
 				LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 			}
 #else
-			sc_log(card->ctx, 
+			sc_log(card->ctx,
 					"Session PIN generation only supported in SM");
 			LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 #endif
@@ -740,7 +740,7 @@ sc_hsm_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 			apdu.le = 0;
 			if (sc_transmit_apdu(card, &apdu) != SC_SUCCESS
 					|| sc_check_sw(card, apdu.sw1, apdu.sw2) != SC_SUCCESS) {
-				sc_log(card->ctx, 
+				sc_log(card->ctx,
 						"Generating session PIN failed");
 				LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 			}
@@ -750,12 +750,12 @@ sc_hsm_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 							apdu.resplen);
 					data->pin2.len = apdu.resplen;
 				} else {
-					sc_log(card->ctx, 
+					sc_log(card->ctx,
 							"Buffer too small for session PIN");
 				}
 			}
 		} else {
-			sc_log(card->ctx, 
+			sc_log(card->ctx,
 					"Session PIN not supported for this PIN (0x%02X)",
 					data->pin_reference);
 		}
@@ -1209,7 +1209,7 @@ sc_hsm_initialize(sc_card_t *card, sc_cardctl_sc_hsm_init_param_t *params)
 	if (params->num_of_pub_keys > 0) {
 		*p++ = 0x93; // Use public key authentication
 		*p++ = 0x02;
-		*p++ = params->num_of_pub_keys; // Total number of public keys used for public authentication
+		*p++ = params->num_of_pub_keys;   // Total number of public keys used for public authentication
 		*p++ = params->required_pub_keys; // Number of public keys required for authentication
 	}
 

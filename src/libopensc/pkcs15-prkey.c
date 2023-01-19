@@ -71,19 +71,19 @@ static const struct sc_asn1_entry c_asn1_supported_algorithms[C_ASN1_SUPPORTED_A
 		{"algorithmReference", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL},
 		{"algorithmReference", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL},
 		{"algorithmReference", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL},
-		{NULL, 0, 0, 0, NULL, NULL},
+		{NULL,                 0,               0,                   0,                NULL, NULL},
 };
 
 #define C_ASN1_COM_KEY_ATTR_SIZE 7
 static const struct sc_asn1_entry c_asn1_com_key_attr[C_ASN1_COM_KEY_ATTR_SIZE] = {
-		{"iD", SC_ASN1_PKCS15_ID, SC_ASN1_TAG_OCTET_STRING, 0, NULL, NULL},
-		{"usage", SC_ASN1_BIT_FIELD, SC_ASN1_TAG_BIT_STRING, 0, NULL, NULL},
-		{"native", SC_ASN1_BOOLEAN, SC_ASN1_TAG_BOOLEAN, SC_ASN1_OPTIONAL, NULL, NULL},
-		{"accessFlags", SC_ASN1_BIT_FIELD, SC_ASN1_TAG_BIT_STRING, SC_ASN1_OPTIONAL, NULL, NULL},
-		{"keyReference", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL},
+		{"iD",           SC_ASN1_PKCS15_ID, SC_ASN1_TAG_OCTET_STRING,       0,                NULL, NULL},
+		{"usage",        SC_ASN1_BIT_FIELD, SC_ASN1_TAG_BIT_STRING,         0,                NULL, NULL},
+		{"native",       SC_ASN1_BOOLEAN,   SC_ASN1_TAG_BOOLEAN,            SC_ASN1_OPTIONAL, NULL, NULL},
+		{"accessFlags",  SC_ASN1_BIT_FIELD, SC_ASN1_TAG_BIT_STRING,         SC_ASN1_OPTIONAL, NULL, NULL},
+		{"keyReference", SC_ASN1_INTEGER,   SC_ASN1_TAG_INTEGER,            SC_ASN1_OPTIONAL, NULL, NULL},
 		/* Absent in PKCS#15-v1.1 but present in ISO 7816-15(2004-01-15)*/
-		{"algReference", SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_CTX | 1, SC_ASN1_OPTIONAL, NULL, NULL},
-		{NULL, 0, 0, 0, NULL, NULL},
+		{"algReference", SC_ASN1_STRUCT,    SC_ASN1_CONS | SC_ASN1_CTX | 1, SC_ASN1_OPTIONAL, NULL, NULL},
+		{NULL,           0,                 0,                              0,                NULL, NULL},
 };
 
 #define C_ASN1_COM_PRKEY_ATTR_SIZE 2
@@ -95,31 +95,31 @@ static const struct sc_asn1_entry c_asn1_com_prkey_attr[C_ASN1_COM_PRKEY_ATTR_SI
 
 #define C_ASN1_RSAKEY_ATTR_SIZE 4
 static const struct sc_asn1_entry c_asn1_rsakey_attr[] = {
-		{"value", SC_ASN1_PATH, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_EMPTY_ALLOWED, NULL, NULL},
-		{"modulusLength", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, 0, NULL, NULL},
-		{"keyInfo", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL},
-		{NULL, 0, 0, 0, NULL, NULL},
+		{"value",         SC_ASN1_PATH,    SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_EMPTY_ALLOWED, NULL, NULL},
+		{"modulusLength", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER,                 0,                     NULL, NULL},
+		{"keyInfo",       SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER,                 SC_ASN1_OPTIONAL,      NULL, NULL},
+		{NULL,            0,               0,                                   0,                     NULL, NULL},
 };
 
 #define C_ASN1_PRK_RSA_ATTR_SIZE 2
 static const struct sc_asn1_entry c_asn1_prk_rsa_attr[C_ASN1_PRK_RSA_ATTR_SIZE] = {
 		{"privateRSAKeyAttributes", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL},
-		{NULL, 0, 0, 0, NULL, NULL},
+		{NULL,                      0,              0,                                   0, NULL, NULL},
 };
 
 #define C_ASN1_GOSTR3410KEY_ATTR_SIZE 5
 static const struct sc_asn1_entry c_asn1_gostr3410key_attr[C_ASN1_GOSTR3410KEY_ATTR_SIZE] = {
-		{"value", SC_ASN1_PATH, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL},
-		{"params_r3410", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, 0, NULL, NULL},
-		{"params_r3411", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL},
-		{"params_28147", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL},
-		{NULL, 0, 0, 0, NULL, NULL},
+		{"value",        SC_ASN1_PATH,    SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0,                NULL, NULL},
+		{"params_r3410", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER,                 0,                NULL, NULL},
+		{"params_r3411", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER,                 SC_ASN1_OPTIONAL, NULL, NULL},
+		{"params_28147", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER,                 SC_ASN1_OPTIONAL, NULL, NULL},
+		{NULL,           0,               0,                                   0,                NULL, NULL},
 };
 
 #define C_ASN1_PRK_GOSTR3410_ATTR_SIZE 2
 static const struct sc_asn1_entry c_asn1_prk_gostr3410_attr[C_ASN1_PRK_GOSTR3410_ATTR_SIZE] = {
 		{"privateGOSTR3410KeyAttributes", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL},
-		{NULL, 0, 0, 0, NULL, NULL},
+		{NULL,                            0,              0,                                   0, NULL, NULL},
 };
 
 /*
@@ -129,24 +129,24 @@ static const struct sc_asn1_entry c_asn1_prk_gostr3410_attr[C_ASN1_PRK_GOSTR3410
  */
 #define C_ASN1_ECCKEY_ATTR 4
 static const struct sc_asn1_entry c_asn1_ecckey_attr[C_ASN1_ECCKEY_ATTR] = {
-		{"value", SC_ASN1_PATH, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_EMPTY_ALLOWED, NULL, NULL},
-		{"fieldSize", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL},
-		{"keyInfo", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL},
-		{NULL, 0, 0, 0, NULL, NULL},
+		{"value",     SC_ASN1_PATH,    SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_EMPTY_ALLOWED, NULL, NULL},
+		{"fieldSize", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER,                 SC_ASN1_OPTIONAL,      NULL, NULL},
+		{"keyInfo",   SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER,                 SC_ASN1_OPTIONAL,      NULL, NULL},
+		{NULL,        0,               0,                                   0,                     NULL, NULL},
 };
 
 #define C_ASN1_PRK_ECC_ATTR 2
 static const struct sc_asn1_entry c_asn1_prk_ecc_attr[C_ASN1_PRK_ECC_ATTR] = {
 		{"privateECCKeyAttributes", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL},
-		{NULL, 0, 0, 0, NULL, NULL},
+		{NULL,                      0,              0,                                   0, NULL, NULL},
 };
 
 #define C_ASN1_PRKEY_SIZE 4
 static const struct sc_asn1_entry c_asn1_prkey[C_ASN1_PRKEY_SIZE] = {
-		{"privateRSAKey", SC_ASN1_PKCS15_OBJECT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL},
-		{"privateECCKey", SC_ASN1_PKCS15_OBJECT, 0 | SC_ASN1_CTX | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL},
-		{"privateGOSTR3410Key", SC_ASN1_PKCS15_OBJECT, 4 | SC_ASN1_CTX | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL},
-		{NULL, 0, 0, 0, NULL, NULL},
+		{"privateRSAKey",       SC_ASN1_PKCS15_OBJECT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL},
+		{"privateECCKey",       SC_ASN1_PKCS15_OBJECT, 0 | SC_ASN1_CTX | SC_ASN1_CONS,      SC_ASN1_OPTIONAL, NULL, NULL},
+		{"privateGOSTR3410Key", SC_ASN1_PKCS15_OBJECT, 4 | SC_ASN1_CTX | SC_ASN1_CONS,      SC_ASN1_OPTIONAL, NULL, NULL},
+		{NULL,                  0,                     0,                                   0,                NULL, NULL},
 };
 
 int

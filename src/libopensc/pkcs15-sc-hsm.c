@@ -166,52 +166,52 @@ static struct ec_curve curves[] = {
 
 #define C_ASN1_CVC_PUBKEY_SIZE 10
 static const struct sc_asn1_entry c_asn1_cvc_pubkey[C_ASN1_CVC_PUBKEY_SIZE] = {
-		{"publicKeyOID", SC_ASN1_OBJECT, SC_ASN1_UNI | SC_ASN1_OBJECT, 0, NULL, NULL},
-		{"primeOrModulus", SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 1, SC_ASN1_OPTIONAL | SC_ASN1_ALLOC, NULL, NULL},
-		{"coefficientAorExponent", SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 2, SC_ASN1_OPTIONAL | SC_ASN1_ALLOC, NULL, NULL},
-		{"coefficientB", SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 3, SC_ASN1_OPTIONAL | SC_ASN1_ALLOC, NULL, NULL},
-		{"basePointG", SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 4, SC_ASN1_OPTIONAL | SC_ASN1_ALLOC, NULL, NULL},
-		{"order", SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 5, SC_ASN1_OPTIONAL | SC_ASN1_ALLOC, NULL, NULL},
-		{"publicPoint", SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 6, SC_ASN1_OPTIONAL | SC_ASN1_ALLOC, NULL, NULL},
-		{"cofactor", SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 7, SC_ASN1_OPTIONAL | SC_ASN1_ALLOC, NULL, NULL},
-		{"modulusSize", SC_ASN1_INTEGER, SC_ASN1_UNI | SC_ASN1_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL},
-		{NULL, 0, 0, 0, NULL, NULL},
+		{"publicKeyOID",           SC_ASN1_OBJECT,       SC_ASN1_UNI | SC_ASN1_OBJECT,  0,                                NULL, NULL},
+		{"primeOrModulus",         SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 1,               SC_ASN1_OPTIONAL | SC_ASN1_ALLOC, NULL, NULL},
+		{"coefficientAorExponent", SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 2,               SC_ASN1_OPTIONAL | SC_ASN1_ALLOC, NULL, NULL},
+		{"coefficientB",           SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 3,               SC_ASN1_OPTIONAL | SC_ASN1_ALLOC, NULL, NULL},
+		{"basePointG",             SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 4,               SC_ASN1_OPTIONAL | SC_ASN1_ALLOC, NULL, NULL},
+		{"order",                  SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 5,               SC_ASN1_OPTIONAL | SC_ASN1_ALLOC, NULL, NULL},
+		{"publicPoint",            SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 6,               SC_ASN1_OPTIONAL | SC_ASN1_ALLOC, NULL, NULL},
+		{"cofactor",               SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 7,               SC_ASN1_OPTIONAL | SC_ASN1_ALLOC, NULL, NULL},
+		{"modulusSize",            SC_ASN1_INTEGER,      SC_ASN1_UNI | SC_ASN1_INTEGER, SC_ASN1_OPTIONAL,                 NULL, NULL},
+		{NULL,                     0,                    0,                             0,                                NULL, NULL},
 };
 
 #define C_ASN1_CVC_BODY_SIZE 5
 static const struct sc_asn1_entry c_asn1_cvc_body[C_ASN1_CVC_BODY_SIZE] = {
-		{"certificateProfileIdentifier", SC_ASN1_INTEGER, SC_ASN1_APP | 0x1F29, 0, NULL, NULL},
-		{"certificationAuthorityReference", SC_ASN1_PRINTABLESTRING, SC_ASN1_APP | 2, SC_ASN1_OPTIONAL, NULL, NULL},
-		{"publicKey", SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_APP | 0x1F49, 0, NULL, NULL},
-		{"certificateHolderReference", SC_ASN1_PRINTABLESTRING, SC_ASN1_APP | 0x1F20, 0, NULL, NULL},
-		{NULL, 0, 0, 0, NULL, NULL},
+		{"certificateProfileIdentifier",    SC_ASN1_INTEGER,         SC_ASN1_APP | 0x1F29,                0,                NULL, NULL},
+		{"certificationAuthorityReference", SC_ASN1_PRINTABLESTRING, SC_ASN1_APP | 2,                     SC_ASN1_OPTIONAL, NULL, NULL},
+		{"publicKey",                       SC_ASN1_STRUCT,          SC_ASN1_CONS | SC_ASN1_APP | 0x1F49, 0,                NULL, NULL},
+		{"certificateHolderReference",      SC_ASN1_PRINTABLESTRING, SC_ASN1_APP | 0x1F20,                0,                NULL, NULL},
+		{NULL,                              0,                       0,                                   0,                NULL, NULL},
 };
 
 #define C_ASN1_CVCERT_SIZE 3
 static const struct sc_asn1_entry c_asn1_cvcert[C_ASN1_CVCERT_SIZE] = {
-		{"certificateBody", SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_APP | 0x1F4E, 0, NULL, NULL},
-		{"signature", SC_ASN1_OCTET_STRING, SC_ASN1_APP | 0x1F37, SC_ASN1_ALLOC, NULL, NULL},
-		{NULL, 0, 0, 0, NULL, NULL},
+		{"certificateBody", SC_ASN1_STRUCT,       SC_ASN1_CONS | SC_ASN1_APP | 0x1F4E, 0,             NULL, NULL},
+		{"signature",       SC_ASN1_OCTET_STRING, SC_ASN1_APP | 0x1F37,                SC_ASN1_ALLOC, NULL, NULL},
+		{NULL,              0,                    0,                                   0,             NULL, NULL},
 };
 
 #define C_ASN1_CVC_SIZE 2
 static const struct sc_asn1_entry c_asn1_cvc[C_ASN1_CVC_SIZE] = {
 		{"certificate", SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_APP | 0x1F21, 0, NULL, NULL},
-		{NULL, 0, 0, 0, NULL, NULL},
+		{NULL,          0,              0,                                   0, NULL, NULL},
 };
 
 #define C_ASN1_AUTHREQ_SIZE 4
 static const struct sc_asn1_entry c_asn1_authreq[C_ASN1_AUTHREQ_SIZE] = {
-		{"certificate", SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_APP | 0x1F21, 0, NULL, NULL},
-		{"outerCAR", SC_ASN1_PRINTABLESTRING, SC_ASN1_APP | 2, 0, NULL, NULL},
-		{"signature", SC_ASN1_OCTET_STRING, SC_ASN1_APP | 0x1F37, SC_ASN1_ALLOC, NULL, NULL},
-		{NULL, 0, 0, 0, NULL, NULL},
+		{"certificate", SC_ASN1_STRUCT,          SC_ASN1_CONS | SC_ASN1_APP | 0x1F21, 0,             NULL, NULL},
+		{"outerCAR",    SC_ASN1_PRINTABLESTRING, SC_ASN1_APP | 2,                     0,             NULL, NULL},
+		{"signature",   SC_ASN1_OCTET_STRING,    SC_ASN1_APP | 0x1F37,                SC_ASN1_ALLOC, NULL, NULL},
+		{NULL,          0,                       0,                                   0,             NULL, NULL},
 };
 
 #define C_ASN1_REQ_SIZE 2
 static const struct sc_asn1_entry c_asn1_req[C_ASN1_REQ_SIZE] = {
 		{"authenticatedrequest", SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_APP | 7, 0, NULL, NULL},
-		{NULL, 0, 0, 0, NULL, NULL},
+		{NULL,                   0,              0,                              0, NULL, NULL},
 };
 
 struct sc_object_id sc_hsm_public_key_oid = {
@@ -220,19 +220,19 @@ struct sc_object_id sc_hsm_public_key_oid = {
 
 #define C_ASN1_SC_HSM_PKA_NEW_SIZE 5
 static const struct sc_asn1_entry c_asn1_sc_hsm_pka_new_format[C_ASN1_SC_HSM_PKA_NEW_SIZE] = {
-		{"oid", SC_ASN1_OBJECT, SC_ASN1_TAG_UNIVERSAL | SC_ASN1_TAG_OBJECT, 0, NULL, NULL},
-		{"dicaCVC", SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_APP | 1, 0, NULL, NULL},
-		{"deviceCVC", SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_APP | 2, 0, NULL, NULL},
-		{"publicKey", SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_APP | 3, 0, NULL, NULL},
-		{NULL, 0, 0, 0, NULL, NULL},
+		{"oid",       SC_ASN1_OBJECT, SC_ASN1_TAG_UNIVERSAL | SC_ASN1_TAG_OBJECT, 0, NULL, NULL},
+		{"dicaCVC",   SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_APP | 1,             0, NULL, NULL},
+		{"deviceCVC", SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_APP | 2,             0, NULL, NULL},
+		{"publicKey", SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_APP | 3,             0, NULL, NULL},
+		{NULL,        0,              0,                                          0, NULL, NULL},
 };
 
 #define C_ASN1_SC_HSM_PKA_OLD_SIZE 4
 static const struct sc_asn1_entry c_asn1_sc_hsm_pka_old_format[C_ASN1_SC_HSM_PKA_OLD_SIZE] = {
-		{"publicKey", SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_APP | 7, 0, NULL, NULL},
+		{"publicKey",    SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_APP | 7,      0, NULL, NULL},
 		{"deviceCVCert", SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_APP | 0x1F21, 0, NULL, NULL},
-		{"dicaCVCert", SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_APP | 0x1F21, 0, NULL, NULL},
-		{NULL, 0, 0, 0, NULL, NULL},
+		{"dicaCVCert",   SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_APP | 0x1F21, 0, NULL, NULL},
+		{NULL,           0,              0,                                   0, NULL, NULL},
 };
 
 static int

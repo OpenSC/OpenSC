@@ -356,8 +356,7 @@ wrap_tests(void **state)
 				o->extractable ? "./" : "  ",
 				o->label);
 		printf("[ %s ] [%6lu]              [ [%s] ] [ [%s] ]\n",
-				(o->key_type == CKK_RSA ? "RSA " :
-						o->key_type == CKK_AES ? "AES " : " ?? "),
+				key_type_to_string(o->key_type),
 				o->bits,
 				o->wrap ? "./" : "  ",
 				o->unwrap ? "./" : "  ");

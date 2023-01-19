@@ -74,20 +74,20 @@ enum {
 };
 
 static const struct option options[] = {
-		{"serial",		0, NULL,	OPT_SERIAL},
-		{"name",		0, NULL,		'n'},
-		{"admin",		1, NULL, 		'A'},
-		{"genkey",		1, NULL,		'G'},
-		{"object",		1, NULL,		'O'},
-		{"cert",		1, NULL,		'C'},
-		{"compresscert",	1, NULL,		'Z'},
-		{"out",		1, NULL, 		'o'},
-		{"in",			1, NULL, 		'i'},
-		{"send-apdu",		1, NULL,		's'},
-		{"reader",		1, NULL,		'r'},
-		{"wait",		0, NULL,		'w'},
-		{"verbose",		0, NULL,		'v'},
-		{NULL, 0, NULL, 0},
+		{"serial",       0, NULL, OPT_SERIAL},
+		{"name",         0, NULL, 'n'       },
+		{"admin",        1, NULL, 'A'       },
+		{"genkey",       1, NULL, 'G'       },
+		{"object",       1, NULL, 'O'       },
+		{"cert",         1, NULL, 'C'       },
+		{"compresscert", 1, NULL, 'Z'       },
+		{"out",          1, NULL, 'o'       },
+		{"in",           1, NULL, 'i'       },
+		{"send-apdu",    1, NULL, 's'       },
+		{"reader",       1, NULL, 'r'       },
+		{"wait",         0, NULL, 'w'       },
+		{"verbose",      0, NULL, 'v'       },
+		{NULL,           0, NULL, 0         },
 };
 
 static const char *option_help[] = {

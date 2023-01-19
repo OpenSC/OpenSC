@@ -79,73 +79,73 @@ static const struct sc_asn1_entry c_asn1_com_pubkey_attr[C_ASN1_COM_PUBKEY_ATTR_
 
 #define C_ASN1_RSAKEY_VALUE_CHOICE_SIZE 3
 static const struct sc_asn1_entry c_asn1_rsakey_value_choice[C_ASN1_RSAKEY_VALUE_CHOICE_SIZE] = {
-		{ "path",       SC_ASN1_PATH, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_EMPTY_ALLOWED, NULL, NULL },
-		{ "direct",     SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 0 | SC_ASN1_CONS, SC_ASN1_OPTIONAL | SC_ASN1_ALLOC, NULL, NULL },
-		{ NULL, 0, 0, 0, NULL, NULL }
+		{"path",   SC_ASN1_PATH,         SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_EMPTY_ALLOWED,            NULL, NULL},
+		{"direct", SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 0 | SC_ASN1_CONS,      SC_ASN1_OPTIONAL | SC_ASN1_ALLOC, NULL, NULL},
+		{NULL,     0,                    0,                                   0,                                NULL, NULL}
 };
 
 #define C_ASN1_RSAKEY_ATTR_SIZE 4
 static const struct sc_asn1_entry c_asn1_rsakey_attr[C_ASN1_RSAKEY_ATTR_SIZE] = {
-		{ "value",	 SC_ASN1_CHOICE, 0, 0, NULL, NULL },
-		{ "modulusLength", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, 0, NULL, NULL },
-		{ "keyInfo",	   SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
-		{ NULL, 0, 0, 0, NULL, NULL }
+		{"value",         SC_ASN1_CHOICE,  0,                   0,                NULL, NULL},
+		{"modulusLength", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, 0,                NULL, NULL},
+		{"keyInfo",       SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL},
+		{NULL,            0,               0,                   0,                NULL, NULL},
 };
 
 #define C_ASN1_ECKEY_VALUE_CHOICE_SIZE 3
 static const struct sc_asn1_entry c_asn1_eckey_value_choice[C_ASN1_ECKEY_VALUE_CHOICE_SIZE] = {
-		{ "path",       SC_ASN1_PATH, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_EMPTY_ALLOWED, NULL, NULL },
-		{ "direct",     SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 0 | SC_ASN1_CONS, SC_ASN1_OPTIONAL | SC_ASN1_ALLOC, NULL, NULL },
-		{ NULL, 0, 0, 0, NULL, NULL }
+		{"path",   SC_ASN1_PATH,         SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_EMPTY_ALLOWED,            NULL, NULL},
+		{"direct", SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 0 | SC_ASN1_CONS,      SC_ASN1_OPTIONAL | SC_ASN1_ALLOC, NULL, NULL},
+		{NULL,     0,                    0,                                   0,                                NULL, NULL},
 };
 
 #define C_ASN1_ECKEY_ATTR_SIZE 3
 static const struct sc_asn1_entry c_asn1_eckey_attr[C_ASN1_ECKEY_ATTR_SIZE] = {
-		{ "value",	 SC_ASN1_CHOICE, 0, 0, NULL, NULL },
-		{ "keyInfo",	   SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
-		{ NULL, 0, 0, 0, NULL, NULL }
+		{"value",   SC_ASN1_CHOICE,  0,                   0,                NULL, NULL},
+		{"keyInfo", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL},
+		{NULL,      0,               0,                   0,                NULL, NULL},
 };
 
 #define C_ASN1_RSA_TYPE_ATTR_SIZE 2
 static const struct sc_asn1_entry c_asn1_rsa_type_attr[C_ASN1_RSA_TYPE_ATTR_SIZE] = {
-		{ "publicRSAKeyAttributes", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
-		{ NULL, 0, 0, 0, NULL, NULL }
+		{"publicRSAKeyAttributes", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL},
+		{NULL,                     0,              0,                                   0, NULL, NULL},
 };
 
 #define C_ASN1_EC_TYPE_ATTR_SIZE 2
 static const struct sc_asn1_entry c_asn1_ec_type_attr[C_ASN1_EC_TYPE_ATTR_SIZE] = {
-		{ "publicECKeyAttributes", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
-		{ NULL, 0, 0, 0, NULL, NULL }
+		{"publicECKeyAttributes", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL},
+		{NULL,                    0,              0,                                   0, NULL, NULL},
 };
 
 #define C_ASN1_GOST3410KEY_ATTR_SIZE 5
 static const struct sc_asn1_entry c_asn1_gostr3410key_attr[C_ASN1_GOST3410KEY_ATTR_SIZE] = {
-		{ "value", SC_ASN1_PATH, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
-		{ "params_r3410", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, 0, NULL, NULL },
-		{ "params_r3411", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
-		{ "params_28147", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, SC_ASN1_OPTIONAL, NULL, NULL },
-		{ NULL, 0, 0, 0, NULL, NULL }
+		{"value",        SC_ASN1_PATH,    SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0,                NULL, NULL},
+		{"params_r3410", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER,                 0,                NULL, NULL},
+		{"params_r3411", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER,                 SC_ASN1_OPTIONAL, NULL, NULL},
+		{"params_28147", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER,                 SC_ASN1_OPTIONAL, NULL, NULL},
+		{NULL,           0,               0,                                   0,                NULL, NULL},
 };
 
 #define C_ASN1_GOST3410_TYPE_ATTR_SIZE 2
 static const struct sc_asn1_entry c_asn1_gostr3410_type_attr[C_ASN1_GOST3410_TYPE_ATTR_SIZE] = {
 		{"publicGOSTR3410KeyAttributes", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL},
-		{NULL, 0, 0, 0, NULL, NULL},
+		{NULL,                           0,              0,                                   0, NULL, NULL},
 };
 
 #define C_ASN1_PUBKEY_CHOICE_SIZE 4
 static const struct sc_asn1_entry c_asn1_pubkey_choice[C_ASN1_PUBKEY_CHOICE_SIZE] = {
-		{"publicRSAKey", SC_ASN1_PKCS15_OBJECT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL},
-		{"publicGOSTR3410Key", SC_ASN1_PKCS15_OBJECT, 4 | SC_ASN1_CTX | SC_ASN1_CONS, 0, NULL, NULL},
-		{"publicECKey", SC_ASN1_PKCS15_OBJECT, 0 | SC_ASN1_CTX | SC_ASN1_CONS, 0, NULL, NULL},
+		{"publicRSAKey",       SC_ASN1_PKCS15_OBJECT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL},
+		{"publicGOSTR3410Key", SC_ASN1_PKCS15_OBJECT, 4 | SC_ASN1_CTX | SC_ASN1_CONS,      0, NULL, NULL},
+		{"publicECKey",        SC_ASN1_PKCS15_OBJECT, 0 | SC_ASN1_CTX | SC_ASN1_CONS,      0, NULL, NULL},
 		/*TODO: -DEE not clear EC is needed here  as look like it is for pukdf */
-		{NULL, 0, 0, 0, NULL, NULL},
+		{NULL,                 0,                     0,                                   0, NULL, NULL},
 };
 
 #define C_ASN1_PUBKEY_SIZE 2
 static const struct sc_asn1_entry c_asn1_pubkey[C_ASN1_PUBKEY_SIZE] = {
 		{"publicKey", SC_ASN1_CHOICE, 0, 0, NULL, NULL},
-		{NULL, 0, 0, 0, NULL, NULL},
+		{NULL,        0,              0, 0, NULL, NULL},
 };
 
 int sc_pkcs15_pubkey_from_spki_sequence(sc_context_t *ctx, const u8 *buf, size_t buflen, sc_pkcs15_pubkey_t ** outpubkey);

@@ -76,74 +76,73 @@ static int entersafe_init_card(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 	int ret;
 
 	{/* MF */
-		 sc_file_t *mf_file;
-		 sc_entersafe_create_data mf_data;
+		sc_file_t *mf_file;
+		sc_entersafe_create_data mf_data;
 
-		 SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+		SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-		 ret = sc_profile_get_file(profile, "MF", &mf_file);
-		 LOG_TEST_RET(card->ctx,ret,"Get MF info failed");
+		ret = sc_profile_get_file(profile, "MF", &mf_file);
+		LOG_TEST_RET(card->ctx, ret, "Get MF info failed");
 
-		 mf_data.type = SC_ENTERSAFE_MF_DATA;
-		 mf_data.data.df.file_id[0]=0x3F;
-		 mf_data.data.df.file_id[1]=0x00;
-		 mf_data.data.df.file_count=0x04;
-		 mf_data.data.df.flag=0x11;
-		 mf_data.data.df.ikf_size[0]=(mf_file->size>>8)&0xFF;
-		 mf_data.data.df.ikf_size[1]=mf_file->size&0xFF;
-		 mf_data.data.df.create_ac=0x10;
-		 mf_data.data.df.append_ac=0xC0;
-		 mf_data.data.df.lock_ac=0x10;
-		 memcpy(mf_data.data.df.aid,mf_file->name,mf_file->namelen);
-		 sc_file_free(mf_file);
+		mf_data.type = SC_ENTERSAFE_MF_DATA;
+		mf_data.data.df.file_id[0] = 0x3F;
+		mf_data.data.df.file_id[1] = 0x00;
+		mf_data.data.df.file_count = 0x04;
+		mf_data.data.df.flag = 0x11;
+		mf_data.data.df.ikf_size[0] = (mf_file->size >> 8) & 0xFF;
+		mf_data.data.df.ikf_size[1] = mf_file->size & 0xFF;
+		mf_data.data.df.create_ac = 0x10;
+		mf_data.data.df.append_ac = 0xC0;
+		mf_data.data.df.lock_ac = 0x10;
+		memcpy(mf_data.data.df.aid, mf_file->name, mf_file->namelen);
+		sc_file_free(mf_file);
 
-		 ret = sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_CREATE_FILE, &mf_data);
-		 LOG_TEST_RET(card->ctx,ret,"Create MF failed");
+		ret = sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_CREATE_FILE, &mf_data);
+		LOG_TEST_RET(card->ctx, ret, "Create MF failed");
 	}
 
 	{/* EF(DIR) */
-		 sc_file_t *dir_file;
-		 size_t fid,size;
-		 sc_entersafe_create_data ef_data;
-		 u8 *buff=0;
+		sc_file_t *dir_file;
+		size_t fid,size;
+		sc_entersafe_create_data ef_data;
+		u8 *buff = 0;
 
-		 /* get dir profile */
-		 ret = sc_profile_get_file(profile, "dir", &dir_file);
-		 LOG_TEST_RET(card->ctx,ret,"Get EF(DIR) info failed");
-		 fid=dir_file->id;
-		 size=dir_file->size;
-		 sc_file_free(dir_file);
+		/* get dir profile */
+		ret = sc_profile_get_file(profile, "dir", &dir_file);
+		LOG_TEST_RET(card->ctx, ret, "Get EF(DIR) info failed");
+		fid = dir_file->id;
+		size = dir_file->size;
+		sc_file_free(dir_file);
 
-		 ef_data.type=SC_ENTERSAFE_EF_DATA;
-		 ef_data.data.ef.file_id[0]=(fid>>8)&0xFF;
-		 ef_data.data.ef.file_id[1]=fid&0xFF;
-		 ef_data.data.ef.size[0]=(size>>8)&0xFF;
-		 ef_data.data.ef.size[1]=size&0xFF;
-		 ef_data.data.ef.attr[0]=0x00;
-		 ef_data.data.ef.attr[1]=0x00;
-		 ef_data.data.ef.name=0x00;
-		 memset(ef_data.data.ef.ac,0x10,sizeof(ef_data.data.ef.ac));
-		 memset(ef_data.data.ef.sm,0x00,sizeof(ef_data.data.ef.sm));
+		ef_data.type = SC_ENTERSAFE_EF_DATA;
+		ef_data.data.ef.file_id[0] = (fid >> 8) & 0xFF;
+		ef_data.data.ef.file_id[1] = fid & 0xFF;
+		ef_data.data.ef.size[0] = (size >> 8) & 0xFF;
+		ef_data.data.ef.size[1] = size & 0xFF;
+		ef_data.data.ef.attr[0] = 0x00;
+		ef_data.data.ef.attr[1] = 0x00;
+		ef_data.data.ef.name = 0x00;
+		memset(ef_data.data.ef.ac, 0x10, sizeof(ef_data.data.ef.ac));
+		memset(ef_data.data.ef.sm, 0x00, sizeof(ef_data.data.ef.sm));
 
-		 ret = sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_CREATE_FILE, &ef_data);
-		 LOG_TEST_RET(card->ctx,ret,"Create EF(DIR) failed");
+		ret = sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_CREATE_FILE, &ef_data);
+		LOG_TEST_RET(card->ctx, ret, "Create EF(DIR) failed");
 
 
-		 /* fill file by 0 */
-		 if (size > MAX_FILE_SIZE)
-			 LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_DATA, "Initialize EF(DIR) failed with file size too large");
-		 buff = calloc(1,size);
-		 if(!buff)
-			  SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,SC_SUCCESS);
-		 memset(buff,0,size);
+		/* fill file by 0 */
+		if (size > MAX_FILE_SIZE)
+			LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_DATA, "Initialize EF(DIR) failed with file size too large");
+		buff = calloc(1, size);
+		if (!buff)
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
+		memset(buff, 0, size);
 
-		 ret = sc_update_binary(card,0,buff,size,0);
-		 free(buff);
-		 LOG_TEST_RET(card->ctx,ret,"Initialize EF(DIR) failed");
+		ret = sc_update_binary(card, 0, buff, size, 0);
+		free(buff);
+		LOG_TEST_RET(card->ctx,ret,"Initialize EF(DIR) failed");
 	}
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,SC_SUCCESS);
-
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
 }
 
 static int entersafe_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
@@ -154,7 +153,7 @@ static int entersafe_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	{/* df */
+	do { /* df */
 		sc_entersafe_create_data df_data;
 
 		df_data.type = SC_ENTERSAFE_DF_DATA;
@@ -171,9 +170,9 @@ static int entersafe_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 
 		ret = sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_CREATE_FILE, &df_data);
 		LOG_TEST_RET(card->ctx, ret, "Create DF failed");
-	}
+	} while (0);
 
-	{/* GPKF */
+	do { /* GPKF */
 		sc_file_t *gpkf_file;
 		sc_entersafe_create_data ef_data;
 
@@ -196,9 +195,9 @@ static int entersafe_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 
 		ret = sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_CREATE_FILE, &ef_data);
 		LOG_TEST_RET(card->ctx, ret, "Create GPKF failed");
-	}
+	} while (0);
 
-	{ /* p15 efs */
+	do { /* p15 efs */
 		const char *create_efs[] = {
 				"PKCS15-ODF",
 				"PKCS15-TokenInfo",
@@ -239,12 +238,12 @@ static int entersafe_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 			ret = sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_CREATE_FILE, &tmp);
 			LOG_TEST_RET(card->ctx, ret, "Create pkcs15 file failed");
 		}
-	}
+	} while (0);
 
-	{/* Preinstall keys */
+	do { /* Preinstall keys */
 		ret = sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_PREINSTALL_KEYS, 0);
 		LOG_TEST_RET(card->ctx, ret, "Preinstall keys failed");
-	}
+	} while (0);
 
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,ret);
 }
@@ -374,7 +373,7 @@ entersafe_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_pkcs15_
 	if (r < 0)
 		return r;
 	acl_entry = sc_file_get_acl_entry(tfile, SC_AC_OP_UPDATE);
-	if (acl_entry->method  != SC_AC_NONE) {
+	if (acl_entry->method != SC_AC_NONE) {
 		r = sc_pkcs15init_authenticate(profile, p15card, tfile, SC_AC_OP_UPDATE);
 		if (r < 0)
 			r = SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;

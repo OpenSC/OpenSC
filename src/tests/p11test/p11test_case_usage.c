@@ -100,11 +100,7 @@ usage_test(void **state)
 			continue;
 
 		printf("[ %s ] [%6lu] [ %s ] [%s%s] [%s%s] [%s %s] [%s%s] [    %s   ]\n",
-				(o->key_type == CKK_RSA ? "RSA " :
-						o->key_type == CKK_EC ? " EC " :
-						o->key_type == CKK_EC_EDWARDS ? "EC_E" :
-						o->key_type == CKK_EC_MONTGOMERY ? "EC_M" :
-						o->key_type == CKK_AES ? "AES " : " ?? "),
+				key_type_to_string(o->key_type),
 				o->bits,
 				o->verify_public == 1 ? " ./ " : "    ",
 				o->sign ? "[./] " : "[  ] ",
@@ -119,11 +115,7 @@ usage_test(void **state)
 		P11TEST_DATA_ROW(info, 14,
 				's', o->id_str,
 				's', o->label,
-				's', (o->key_type == CKK_RSA ? "RSA" :
-						o->key_type == CKK_EC ? "EC" :
-						o->key_type == CKK_EC_EDWARDS ? "EC_E" :
-						o->key_type == CKK_EC_MONTGOMERY ? "EC_M" :
-						o->key_type == CKK_AES ? "AES" : " ?? "),
+				's', key_type_to_string(o->key_type),
 				'd', o->bits,
 				's', o->verify_public == 1 ? "YES" : "",
 				's', o->sign ? "YES" : "",

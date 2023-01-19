@@ -718,8 +718,8 @@ fill_object_pss_mechanisms(token_info_t *info, test_cert_t *o)
 		test_mech_t *source_mech = &token.rsa_mechs[j];
 
 		/* skip non-RSA-PSS mechs early */
-		if (!is_pss_mechanism(source_mech->mech) && 
-			source_mech->mech != CKM_RSA_PKCS_OAEP) {
+		if (!is_pss_mechanism(source_mech->mech) &&
+				source_mech->mech != CKM_RSA_PKCS_OAEP) {
 			continue;
 		}
 
@@ -845,14 +845,13 @@ pss_oaep_test(void **state)
 			o->id_str,
 			o->label);
 		printf("[ %s ] [%6lu] [ %s ]                               [%s%s] [%s%s]\n",
-			o->key_type == CKK_RSA ? "RSA " :
-				o->key_type == CKK_EC ? " EC " : " ?? ",
-			o->bits,
-			o->verify_public == 1 ? " ./ " : "    ",
-			o->sign ? "[./] " : "[  ] ",
-			o->verify ? " [./] " : " [  ] ",
-			o->encrypt ? "[./] " : "[  ] ",
-			o->decrypt ? " [./] " : " [  ] ");
+				key_type_to_string(o->key_type),
+				o->bits,
+				o->verify_public == 1 ? " ./ " : "    ",
+				o->sign ? "[./] " : "[  ] ",
+				o->verify ? " [./] " : " [  ] ",
+				o->encrypt ? "[./] " : "[  ] ",
+				o->decrypt ? " [./] " : " [  ] ");
 		if (!o->sign && !o->verify && !o->encrypt && !o->decrypt) {
 			printf("  no usable attributes found ... ignored\n");
 			continue;

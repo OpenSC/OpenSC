@@ -738,10 +738,7 @@ readonly_tests(void **state)
 				o->id_str,
 				o->label);
 		printf("[ %s ] [%6lu] [ %s ] [%s%s] [%s%s]\n",
-				(o->key_type == CKK_RSA ? "RSA " :
-						o->key_type == CKK_EC ? " EC " :
-						o->key_type == CKK_EC_EDWARDS ? "EC_E" :
-						o->key_type == CKK_EC_MONTGOMERY ? "EC_M" : " ?? "),
+				key_type_to_string(o->key_type),
 				o->bits,
 				o->verify_public == 1 ? " ./ " : "    ",
 				o->sign ? "[./] " : "[  ] ",

@@ -57,15 +57,15 @@ static int verbose = 0;
 static char *opt_reader = NULL;
 
 static const struct option options[] = {
-		{"help", 0, NULL, 'h'},
-		{"info", 0, NULL, 'i'},
-		{"format", 0, NULL, 'f'},
-		{"startkey", 1, NULL, 's'},
+		{"help",            0, NULL, 'h'},
+		{"info",            0, NULL, 'i'},
+		{"format",          0, NULL, 'f'},
+		{"startkey",        1, NULL, 's'},
 		{"change-startkey", 1, NULL, 'S'},
-		{"reader", 1, NULL, 'r'},
-		{"wait", 0, NULL, 'w'},
-		{"verbose", 0, NULL, 'v'},
-		{NULL, 0, NULL, 0},
+		{"reader",          1, NULL, 'r'},
+		{"wait",            0, NULL, 'w'},
+		{"verbose",         0, NULL, 'v'},
+		{NULL,              0, NULL, 0  },
 };
 
 static const char *option_help[] = {

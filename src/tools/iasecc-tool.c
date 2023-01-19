@@ -53,13 +53,13 @@ enum {
 };
 
 static const struct option options[] = {
-		{"reader", required_argument, NULL, OPT_READER},
-		{"aid", required_argument, NULL, OPT_BIND_TO_AID},
-		{"list-applications", no_argument, NULL, OPT_LIST_APPLICATIONS},
-		{"list-sdos", required_argument, NULL, OPT_LIST_SDOS},
-		{"wait", no_argument, NULL, 'w'},
-		{"verbose", no_argument, NULL, 'v'},
-		{NULL, 0, NULL, 0},
+		{"reader",            required_argument, NULL, OPT_READER           },
+		{"aid",               required_argument, NULL, OPT_BIND_TO_AID      },
+		{"list-applications", no_argument,       NULL, OPT_LIST_APPLICATIONS},
+		{"list-sdos",         required_argument, NULL, OPT_LIST_SDOS        },
+		{"wait",              no_argument,       NULL, 'w'                  },
+		{"verbose",           no_argument,       NULL, 'v'                  },
+		{NULL,                0,                 NULL, 0                    },
 };
 
 static const char *option_help[] = {

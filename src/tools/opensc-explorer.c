@@ -80,7 +80,7 @@ static const struct option options[] = {
 		{"mf",          1, NULL, 'm'},
 		{"wait",        0, NULL, 'w'},
 		{"verbose",     0, NULL, 'v'},
-		{NULL, 0, NULL, 0},
+		{NULL,          0, NULL, 0  },
 };
 static const char *option_help[] = {
 		"Uses reader number <arg> [0]",

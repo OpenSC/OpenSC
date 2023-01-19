@@ -912,52 +912,52 @@ search_for_all_objects(test_certs_t *objects, token_info_t *info)
 	};
 	CK_ULONG filter_size = 1;
 	CK_ATTRIBUTE attrs[] = {
-			{CKA_ID, NULL_PTR, 0},
-			{CKA_VALUE, NULL_PTR, 0},
-			{CKA_LABEL, NULL_PTR, 0},
+			{CKA_ID,               NULL_PTR, 0},
+			{CKA_VALUE,            NULL_PTR, 0},
+			{CKA_LABEL,            NULL_PTR, 0},
 			{CKA_CERTIFICATE_TYPE, NULL_PTR, 0},
 	};
 	CK_ULONG attrs_size = sizeof (attrs) / sizeof (CK_ATTRIBUTE);
 	CK_ATTRIBUTE private_attrs[] = {
-			{CKA_SIGN, NULL, 0},                // CK_BBOOL
-			{CKA_DECRYPT, NULL, 0},             // CK_BBOOL
-			{CKA_KEY_TYPE, NULL, 0},            // CKK_
-			{CKA_ID, NULL, 0},                  // CK_BYTE_PTR
+			{CKA_SIGN,                NULL, 0}, // CK_BBOOL
+			{CKA_DECRYPT,             NULL, 0}, // CK_BBOOL
+			{CKA_KEY_TYPE,            NULL, 0}, // CKK_
+			{CKA_ID,                  NULL, 0}, // CK_BYTE_PTR
 			{CKA_ALWAYS_AUTHENTICATE, NULL, 0}, // CK_BBOOL
-			{CKA_UNWRAP, NULL, 0},              // CK_BBOOL
-			{CKA_DERIVE, NULL, 0},              // CK_BBOOL
-			{CKA_LABEL, NULL_PTR, 0},           // CK_BYTE_PTR
-			{CKA_EXTRACTABLE, NULL, 0},         // CK_BBOOL
+			{CKA_UNWRAP,              NULL, 0}, // CK_BBOOL
+			{CKA_DERIVE,              NULL, 0}, // CK_BBOOL
+			{CKA_LABEL,               NULL, 0}, // CK_BYTE_PTR
+			{CKA_EXTRACTABLE,         NULL, 0}, // CK_BBOOL
 	};
 	CK_ULONG private_attrs_size = sizeof (private_attrs) / sizeof (CK_ATTRIBUTE);
 	CK_ATTRIBUTE public_attrs[] = {
-			{CKA_VERIFY, NULL, 0},   // CK_BBOOL
-			{CKA_ENCRYPT, NULL, 0},  // CK_BBOOL
-			{CKA_KEY_TYPE, NULL, 0}, // CKK_
-			{CKA_ID, NULL, 0},       // CK_BYTE_PTR
-			{CKA_MODULUS, NULL, 0},
+			{CKA_VERIFY,          NULL, 0}, // CK_BBOOL
+			{CKA_ENCRYPT,         NULL, 0}, // CK_BBOOL
+			{CKA_KEY_TYPE,        NULL, 0}, // CKK_
+			{CKA_ID,              NULL, 0}, // CK_BYTE_PTR
+			{CKA_MODULUS,         NULL, 0},
 			{CKA_PUBLIC_EXPONENT, NULL, 0},
-			{CKA_EC_PARAMS, NULL, 0},
-			{CKA_EC_POINT, NULL, 0},
-			{CKA_WRAP, NULL, 0},   // CK_BBOOL
-			{CKA_DERIVE, NULL, 0}, // CK_BBOOL
+			{CKA_EC_PARAMS,       NULL, 0},
+			{CKA_EC_POINT,        NULL, 0},
+			{CKA_WRAP,            NULL, 0}, // CK_BBOOL
+			{CKA_DERIVE,          NULL, 0}, // CK_BBOOL
 	};
 	CK_ULONG public_attrs_size = sizeof (public_attrs) / sizeof (CK_ATTRIBUTE);
 	CK_ATTRIBUTE secret_attrs[] = {
-			{CKA_KEY_TYPE, NULL, 0},
-			{CKA_ID, NULL, 0},
-			{CKA_TOKEN, NULL, 0},   // CK_BBOOL
-			{CKA_SIGN, NULL, 0},    // CK_BBOOL
-			{CKA_VERIFY, NULL, 0},  // CK_BBOOL
-			{CKA_ENCRYPT, NULL, 0}, // CK_BBOOL
-			{CKA_DECRYPT, NULL, 0}, // CK_BBOOL
-			{CKA_DERIVE, NULL, 0},  // CK_BBOOL
-			{CKA_WRAP, NULL, 0},    // CK_BBOOL
-			{CKA_UNWRAP, NULL, 0},  // CK_BBOOL
-			{CKA_VALUE, NULL, 0},
-			{CKA_VALUE_LEN, NULL, 0},
+			{CKA_KEY_TYPE,    NULL, 0},
+			{CKA_ID,          NULL, 0},
+			{CKA_TOKEN,       NULL, 0}, // CK_BBOOL
+			{CKA_SIGN,        NULL, 0}, // CK_BBOOL
+			{CKA_VERIFY,      NULL, 0}, // CK_BBOOL
+			{CKA_ENCRYPT,     NULL, 0}, // CK_BBOOL
+			{CKA_DECRYPT,     NULL, 0}, // CK_BBOOL
+			{CKA_DERIVE,      NULL, 0}, // CK_BBOOL
+			{CKA_WRAP,        NULL, 0}, // CK_BBOOL
+			{CKA_UNWRAP,      NULL, 0}, // CK_BBOOL
+			{CKA_VALUE,       NULL, 0},
+			{CKA_VALUE_LEN,   NULL, 0},
 			{CKA_EXTRACTABLE, NULL, 0}, // CK_BBOOL
-			{CKA_LABEL, NULL_PTR, 0},
+			{CKA_LABEL,       NULL, 0},
 	};
 	CK_ULONG secret_attrs_size = sizeof(secret_attrs) / sizeof(CK_ATTRIBUTE);
 
@@ -1240,6 +1240,7 @@ convert_byte_string(unsigned char *id, unsigned long length)
 {
 	unsigned int i;
 	char *data;
+
 	if (length == 0) {
 		return NULL;
 	}
@@ -1264,10 +1265,10 @@ write_data_row(token_info_t *info, int cols, ...)
 	int i, intval, type;
 	char *data;
 
-	cols = cols*2; /* shut GCC up */
+	cols = cols * 2; /* shut GCC up */
 	va_start(ap, cols);
 	fprintf(info->log.fd, "\n\t[");
-	for (i = 1; i <= cols; i+=2) {
+	for (i = 1; i <= cols; i += 2) {
 		if (i > 1)
 			fprintf(info->log.fd, ",");
 		type = va_arg(ap, int);
@@ -1292,4 +1293,23 @@ is_pss_mechanism(CK_MECHANISM_TYPE mech)
 		|| mech == CKM_SHA384_RSA_PKCS_PSS
 		|| mech == CKM_SHA512_RSA_PKCS_PSS
 		|| mech == CKM_SHA224_RSA_PKCS_PSS);
+}
+
+const char *
+key_type_to_string(CK_KEY_TYPE key_type)
+{
+	switch (key_type) {
+	case CKK_RSA:
+		return "RSA ";
+	case CKK_EC:
+		return " EC ";
+	case CKK_EC_EDWARDS:
+		return "EC_E";
+	case CKK_EC_MONTGOMERY:
+		return "EC_M";
+	case CKK_AES:
+		return "AES ";
+	default:
+		return " ?? ";
+	}
 }

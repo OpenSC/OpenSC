@@ -64,17 +64,17 @@ enum {
 };
 
 static const struct option options[] = {
-		{"initialize",				0, NULL,		'X' },
-		{"admin-key",			    1, NULL,		OPT_SO_PIN },
-		{"pin",					1, NULL,		OPT_PIN },
-		{"serial-number",          1, NULL,        OPT_SERIAL_NUMBER },
-		{"unblock",                0, NULL,        'U' },
-		{"change-admin-key",       0, NULL,        'C' },
-		{"new-admin-key",          1, NULL,        OPT_NEW_KEY },
-		{"reader",					1, NULL,		'r' },
-		{"wait",					0, NULL,		'w' },
-		{"verbose",				0, NULL,		'v' },
-		{NULL, 0, NULL, 0 },
+		{"initialize",       0, NULL, 'X'              },
+		{"admin-key",        1, NULL, OPT_SO_PIN       },
+		{"pin",              1, NULL, OPT_PIN          },
+		{"serial-number",    1, NULL, OPT_SERIAL_NUMBER},
+		{"unblock",          0, NULL, 'U'              },
+		{"change-admin-key", 0, NULL, 'C'              },
+		{"new-admin-key",    1, NULL, OPT_NEW_KEY      },
+		{"reader",           1, NULL, 'r'              },
+		{"wait",             0, NULL, 'w'              },
+		{"verbose",          0, NULL, 'v'              },
+		{NULL,               0, NULL, 0                },
 };
 
 static const char *option_help[] = {

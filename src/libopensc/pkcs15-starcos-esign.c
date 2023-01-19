@@ -270,11 +270,11 @@ starcos_add_esign_app(sc_pkcs15_card_t *p15card)
 	ppindata auth = (p15card->card->type == SC_CARD_TYPE_STARCOS_V3_5_ESIGN) ? &auth_pin_v35 : &auth_pin;
 
 	const container containers[] = {
-			{"1", &auth_cert, auth, &auth_key},
-			{"2", &encr_cert, auth, &encr_key},
+			{"1", &auth_cert,      auth, &auth_key},
+			{"2", &encr_cert,      auth, &encr_key},
 #ifdef ENABLE_ESIGN_ISSUER_CONTAINERS
-			{"3", &auth_root_cert, 0, 0},
-			{"4", &encr_root_cert, 0, 0},
+			{"3", &auth_root_cert, 0,    0        },
+			{"4", &encr_root_cert, 0,    0        },
 #endif
 	};
 

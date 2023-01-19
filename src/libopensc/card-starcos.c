@@ -32,21 +32,21 @@
 #include "iso7816.h"
 
 static const struct sc_atr_table starcos_atrs[] = {
-		{"3B:B7:94:00:c0:24:31:fe:65:53:50:4b:32:33:90:00:b4", NULL, NULL, SC_CARD_TYPE_STARCOS_GENERIC, 0, NULL},
-		{"3B:B7:94:00:81:31:fe:65:53:50:4b:32:33:90:00:d1", NULL, NULL, SC_CARD_TYPE_STARCOS_GENERIC, 0, NULL},
-		{"3b:b7:18:00:c0:3e:31:fe:65:53:50:4b:32:34:90:00:25", NULL, NULL, SC_CARD_TYPE_STARCOS_GENERIC, 0, NULL},
-		{"3b:d8:18:ff:81:b1:fe:45:1f:03:80:64:04:1a:b4:03:81:05:61", NULL, NULL, SC_CARD_TYPE_STARCOS_V3_4, 0, NULL},
-		{"3b:d3:96:ff:81:b1:fe:45:1f:07:80:81:05:2d", NULL, NULL, SC_CARD_TYPE_STARCOS_V3_4, 0, NULL},
-		{"3B:9B:96:C0:0A:31:FE:45:80:67:04:1E:B5:01:00:89:4C:81:05:45", NULL, NULL, SC_CARD_TYPE_STARCOS_V3_5, 0, NULL},
-		{"3B:DB:96:FF:81:31:FE:45:80:67:05:34:B5:02:01:C0:A1:81:05:3C", NULL, NULL, SC_CARD_TYPE_STARCOS_V3_5, 0, NULL},
-		{"3B:D9:96:FF:81:31:FE:45:80:31:B8:73:86:01:C0:81:05:02", NULL, NULL, SC_CARD_TYPE_STARCOS_V3_5, 0, NULL},
-		{"3B:DF:96:FF:81:31:FE:45:80:5B:44:45:2E:42:4E:4F:54:4B:31:31:31:81:05:A0", NULL, NULL, SC_CARD_TYPE_STARCOS_V3_5, 0, NULL},
-		{"3B:DF:96:FF:81:31:FE:45:80:5B:44:45:2E:42:4E:4F:54:4B:31:30:30:81:05:A0", NULL, NULL, SC_CARD_TYPE_STARCOS_V3_5, 0, NULL},
-		{"3B:D9:96:FF:81:31:FE:45:80:31:B8:73:86:01:E0:81:05:22", NULL, NULL, SC_CARD_TYPE_STARCOS_V3_5, 0, NULL},
-		{"3B:D0:97:FF:81:B1:FE:45:1F:07:2B", NULL, NULL, SC_CARD_TYPE_STARCOS_V3_4, 0, NULL},
-		{"3B:D0:96:FF:81:B1:FE:45:1F:07:2A", NULL, NULL, SC_CARD_TYPE_STARCOS_V3_4, 0, NULL},
+		{"3B:B7:94:00:c0:24:31:fe:65:53:50:4b:32:33:90:00:b4",                      NULL, NULL, SC_CARD_TYPE_STARCOS_GENERIC,    0, NULL},
+		{"3B:B7:94:00:81:31:fe:65:53:50:4b:32:33:90:00:d1",                         NULL, NULL, SC_CARD_TYPE_STARCOS_GENERIC,    0, NULL},
+		{"3b:b7:18:00:c0:3e:31:fe:65:53:50:4b:32:34:90:00:25",                      NULL, NULL, SC_CARD_TYPE_STARCOS_GENERIC,    0, NULL},
+		{"3b:d8:18:ff:81:b1:fe:45:1f:03:80:64:04:1a:b4:03:81:05:61",                NULL, NULL, SC_CARD_TYPE_STARCOS_V3_4,       0, NULL},
+		{"3b:d3:96:ff:81:b1:fe:45:1f:07:80:81:05:2d",                               NULL, NULL, SC_CARD_TYPE_STARCOS_V3_4,       0, NULL},
+		{"3B:9B:96:C0:0A:31:FE:45:80:67:04:1E:B5:01:00:89:4C:81:05:45",             NULL, NULL, SC_CARD_TYPE_STARCOS_V3_5,       0, NULL},
+		{"3B:DB:96:FF:81:31:FE:45:80:67:05:34:B5:02:01:C0:A1:81:05:3C",             NULL, NULL, SC_CARD_TYPE_STARCOS_V3_5,       0, NULL},
+		{"3B:D9:96:FF:81:31:FE:45:80:31:B8:73:86:01:C0:81:05:02",                   NULL, NULL, SC_CARD_TYPE_STARCOS_V3_5,       0, NULL},
+		{"3B:DF:96:FF:81:31:FE:45:80:5B:44:45:2E:42:4E:4F:54:4B:31:31:31:81:05:A0", NULL, NULL, SC_CARD_TYPE_STARCOS_V3_5,       0, NULL},
+		{"3B:DF:96:FF:81:31:FE:45:80:5B:44:45:2E:42:4E:4F:54:4B:31:30:30:81:05:A0", NULL, NULL, SC_CARD_TYPE_STARCOS_V3_5,       0, NULL},
+		{"3B:D9:96:FF:81:31:FE:45:80:31:B8:73:86:01:E0:81:05:22",                   NULL, NULL, SC_CARD_TYPE_STARCOS_V3_5,       0, NULL},
+		{"3B:D0:97:FF:81:B1:FE:45:1F:07:2B",                                        NULL, NULL, SC_CARD_TYPE_STARCOS_V3_4,       0, NULL},
+		{"3B:D0:96:FF:81:B1:FE:45:1F:07:2A",                                        NULL, NULL, SC_CARD_TYPE_STARCOS_V3_4,       0, NULL},
 		{"3b:df:96:ff:81:31:fe:45:80:5b:44:45:2e:42:41:5f:53:43:33:35:32:81:05:b5", NULL, NULL, SC_CARD_TYPE_STARCOS_V3_5_ESIGN, 0, NULL},
-		{NULL, NULL, NULL, 0, 0, NULL},
+		{NULL,                                                                      NULL, NULL, 0,                               0, NULL},
 };
 
 static struct sc_card_operations starcos_ops;
@@ -60,20 +60,20 @@ static struct sc_card_driver starcos_drv = {
 };
 
 static const struct sc_card_error starcos_errors[] = {
-		{0x6600, SC_ERROR_INCORRECT_PARAMETERS, "Error setting the security env"},
-		{0x66F0, SC_ERROR_INCORRECT_PARAMETERS, "No space left for padding"},
-		{0x69F0, SC_ERROR_NOT_ALLOWED, "Command not allowed"},
-		{0x6A89, SC_ERROR_FILE_ALREADY_EXISTS, "Files exists"},
-		{0x6A8A, SC_ERROR_FILE_ALREADY_EXISTS, "Application exists"},
-		{0x6F01, SC_ERROR_CARD_CMD_FAILED, "public key not complete"},
-		{0x6F02, SC_ERROR_CARD_CMD_FAILED, "data overflow"},
-		{0x6F03, SC_ERROR_CARD_CMD_FAILED, "invalid command sequence"},
-		{0x6F05, SC_ERROR_CARD_CMD_FAILED, "security environment invalid"},
-		{0x6F07, SC_ERROR_FILE_NOT_FOUND, "key part not found"},
-		{0x6F08, SC_ERROR_CARD_CMD_FAILED, "signature failed"},
-		{0x6F0A, SC_ERROR_INCORRECT_PARAMETERS, "key format does not match key length"},
+		{0x6600, SC_ERROR_INCORRECT_PARAMETERS, "Error setting the security env"                     },
+		{0x66F0, SC_ERROR_INCORRECT_PARAMETERS, "No space left for padding"                          },
+		{0x69F0, SC_ERROR_NOT_ALLOWED,          "Command not allowed"                                },
+		{0x6A89, SC_ERROR_FILE_ALREADY_EXISTS,  "Files exists"                                       },
+		{0x6A8A, SC_ERROR_FILE_ALREADY_EXISTS,  "Application exists"                                 },
+		{0x6F01, SC_ERROR_CARD_CMD_FAILED,      "public key not complete"                            },
+		{0x6F02, SC_ERROR_CARD_CMD_FAILED,      "data overflow"                                      },
+		{0x6F03, SC_ERROR_CARD_CMD_FAILED,      "invalid command sequence"                           },
+		{0x6F05, SC_ERROR_CARD_CMD_FAILED,      "security environment invalid"                       },
+		{0x6F07, SC_ERROR_FILE_NOT_FOUND,       "key part not found"                                 },
+		{0x6F08, SC_ERROR_CARD_CMD_FAILED,      "signature failed"                                   },
+		{0x6F0A, SC_ERROR_INCORRECT_PARAMETERS, "key format does not match key length"               },
 		{0x6F0B, SC_ERROR_INCORRECT_PARAMETERS, "length of key component inconsistent with algorithm"},
-		{0x6F81, SC_ERROR_CARD_CMD_FAILED, "system error"},
+		{0x6F81, SC_ERROR_CARD_CMD_FAILED,      "system error"                                       },
 };
 
 /* internal structure to save the current security environment */

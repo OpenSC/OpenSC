@@ -58,6 +58,7 @@
  *        3b:9f:95:81:31:fe:9f:00:66:46:53:05:23:00:25:71:df:00:00:00:00:00:05
  */
 
+// clang-format off
 static const struct sc_atr_table epass2003_atrs[] = {
 		/* This is a FIPS certified card using SCP01 security messaging. */
 		/* will match all the above */
@@ -71,6 +72,7 @@ static const struct sc_atr_table epass2003_atrs[] = {
 		},
 		{NULL, NULL, NULL, 0, 0, NULL},
 };
+// clang-format on
 
 static struct sc_card_operations *iso_ops = NULL;
 static struct sc_card_operations epass2003_ops;
@@ -127,65 +129,67 @@ typedef struct epass2003_exdata_st {
 		((unsigned long)x & 0x0000FF00)<<  8	| \
 		((unsigned long)x & 0x000000FF)<< 24)
 
+// clang-format off
 static const struct sc_card_error epass2003_errors[] = {
-		{0x6200, SC_ERROR_CARD_CMD_FAILED, "Warning: no information given, non-volatile memory is unchanged"},
-		{0x6281, SC_ERROR_CORRUPTED_DATA, "Part of returned data may be corrupted"},
-		{0x6282, SC_ERROR_FILE_END_REACHED, "End of file/record reached before reading Le bytes"},
-		{0x6283, SC_ERROR_CARD_CMD_FAILED, "Selected file invalidated"},
-		{0x6284, SC_ERROR_CARD_CMD_FAILED, "FCI not formatted according to ISO 7816-4"},
+		{0x6200, SC_ERROR_CARD_CMD_FAILED,               "Warning: no information given, non-volatile memory is unchanged"},
+		{0x6281, SC_ERROR_CORRUPTED_DATA,                "Part of returned data may be corrupted"},
+		{0x6282, SC_ERROR_FILE_END_REACHED,              "End of file/record reached before reading Le bytes"},
+		{0x6283, SC_ERROR_CARD_CMD_FAILED,               "Selected file invalidated"},
+		{0x6284, SC_ERROR_CARD_CMD_FAILED,               "FCI not formatted according to ISO 7816-4"},
 
-		{0x6300, SC_ERROR_PIN_CODE_INCORRECT, "Authentication failed"},
-		{0x63C1, SC_ERROR_PIN_CODE_INCORRECT, "Authentication failed. One tries left"},
-		{0x63C2, SC_ERROR_PIN_CODE_INCORRECT, "Authentication failed. Two tries left"},
-		{0x63C3, SC_ERROR_PIN_CODE_INCORRECT, "Authentication failed"},
-		{0x63C4, SC_ERROR_PIN_CODE_INCORRECT, "Authentication failed"},
-		{0x63C5, SC_ERROR_PIN_CODE_INCORRECT, "Authentication failed"},
-		{0x63C6, SC_ERROR_PIN_CODE_INCORRECT, "Authentication failed"},
-		{0x63C7, SC_ERROR_PIN_CODE_INCORRECT, "Authentication failed"},
-		{0x63C8, SC_ERROR_PIN_CODE_INCORRECT, "Authentication failed"},
-		{0x63C9, SC_ERROR_PIN_CODE_INCORRECT, "Authentication failed"},
-		{0x63CA, SC_ERROR_PIN_CODE_INCORRECT, "Authentication failed"},
+		{0x6300, SC_ERROR_PIN_CODE_INCORRECT,            "Authentication failed"},
+		{0x63C1, SC_ERROR_PIN_CODE_INCORRECT,            "Authentication failed. One tries left"},
+		{0x63C2, SC_ERROR_PIN_CODE_INCORRECT,            "Authentication failed. Two tries left"},
+		{0x63C3, SC_ERROR_PIN_CODE_INCORRECT,            "Authentication failed"},
+		{0x63C4, SC_ERROR_PIN_CODE_INCORRECT,            "Authentication failed"},
+		{0x63C5, SC_ERROR_PIN_CODE_INCORRECT,            "Authentication failed"},
+		{0x63C6, SC_ERROR_PIN_CODE_INCORRECT,            "Authentication failed"},
+		{0x63C7, SC_ERROR_PIN_CODE_INCORRECT,            "Authentication failed"},
+		{0x63C8, SC_ERROR_PIN_CODE_INCORRECT,            "Authentication failed"},
+		{0x63C9, SC_ERROR_PIN_CODE_INCORRECT,            "Authentication failed"},
+		{0x63CA, SC_ERROR_PIN_CODE_INCORRECT,            "Authentication failed"},
 
-		{0x6381, SC_ERROR_CARD_CMD_FAILED, "Warning: file filled up by last write"},
+		{0x6381, SC_ERROR_CARD_CMD_FAILED,               "Warning: file filled up by last write"},
 
-		{0x6581, SC_ERROR_MEMORY_FAILURE, "Memory failure"},
+		{0x6581, SC_ERROR_MEMORY_FAILURE,                "Memory failure"},
 
-		{0x6700, SC_ERROR_WRONG_LENGTH, "Wrong length"},
+		{0x6700, SC_ERROR_WRONG_LENGTH,                  "Wrong length"},
 
-		{0x6800, SC_ERROR_NO_CARD_SUPPORT, "Functions in CLA not supported"},
-		{0x6881, SC_ERROR_NO_CARD_SUPPORT, "Logical channel not supported"},
-		{0x6882, SC_ERROR_NO_CARD_SUPPORT, "Secure messaging not supported"},
+		{0x6800, SC_ERROR_NO_CARD_SUPPORT,               "Functions in CLA not supported"},
+		{0x6881, SC_ERROR_NO_CARD_SUPPORT,               "Logical channel not supported"},
+		{0x6882, SC_ERROR_NO_CARD_SUPPORT,               "Secure messaging not supported"},
 
-		{0x6900, SC_ERROR_NOT_ALLOWED, "Command not allowed"},
-		{0x6981, SC_ERROR_CARD_CMD_FAILED, "Command incompatible with file structure"},
+		{0x6900, SC_ERROR_NOT_ALLOWED,                   "Command not allowed"},
+		{0x6981, SC_ERROR_CARD_CMD_FAILED,               "Command incompatible with file structure"},
 		{0x6982, SC_ERROR_SECURITY_STATUS_NOT_SATISFIED, "Security status not satisfied"},
-		{0x6983, SC_ERROR_AUTH_METHOD_BLOCKED, "Authentication method blocked"},
-		{0x6984, SC_ERROR_REF_DATA_NOT_USABLE, "Referenced data not usable"},
-		{0x6985, SC_ERROR_NOT_ALLOWED, "Conditions of use not satisfied"},
-		{0x6986, SC_ERROR_NOT_ALLOWED, "Command not allowed (no current EF)"},
-		{0x6987, SC_ERROR_INCORRECT_PARAMETERS, "Expected SM data objects missing"},
-		{0x6988, SC_ERROR_INCORRECT_PARAMETERS, "SM data objects incorrect"},
+		{0x6983, SC_ERROR_AUTH_METHOD_BLOCKED,           "Authentication method blocked"},
+		{0x6984, SC_ERROR_REF_DATA_NOT_USABLE,           "Referenced data not usable"},
+		{0x6985, SC_ERROR_NOT_ALLOWED,                   "Conditions of use not satisfied"},
+		{0x6986, SC_ERROR_NOT_ALLOWED,                   "Command not allowed (no current EF)"},
+		{0x6987, SC_ERROR_INCORRECT_PARAMETERS,          "Expected SM data objects missing"},
+		{0x6988, SC_ERROR_INCORRECT_PARAMETERS,          "SM data objects incorrect"},
 
-		{0x6A00, SC_ERROR_INCORRECT_PARAMETERS, "Wrong parameter(s) P1-P2"},
-		{0x6A80, SC_ERROR_INCORRECT_PARAMETERS, "Incorrect parameters in the data field"},
-		{0x6A81, SC_ERROR_NO_CARD_SUPPORT, "Function not supported"},
-		{0x6A82, SC_ERROR_FILE_NOT_FOUND, "File not found"},
-		{0x6A83, SC_ERROR_RECORD_NOT_FOUND, "Record not found"},
-		{0x6A84, SC_ERROR_NOT_ENOUGH_MEMORY, "Not enough memory space in the file"},
-		{0x6A85, SC_ERROR_INCORRECT_PARAMETERS, "Lc inconsistent with TLV structure"},
-		{0x6A86, SC_ERROR_INCORRECT_PARAMETERS, "Incorrect parameters P1-P2"},
-		{0x6A87, SC_ERROR_INCORRECT_PARAMETERS, "Lc inconsistent with P1-P2"},
-		{0x6A88, SC_ERROR_DATA_OBJECT_NOT_FOUND, "Referenced data not found"},
-		{0x6A89, SC_ERROR_FILE_ALREADY_EXISTS, "File already exists"},
-		{0x6A8A, SC_ERROR_FILE_ALREADY_EXISTS, "DF name already exists"},
+		{0x6A00, SC_ERROR_INCORRECT_PARAMETERS,          "Wrong parameter(s) P1-P2"},
+		{0x6A80, SC_ERROR_INCORRECT_PARAMETERS,          "Incorrect parameters in the data field"},
+		{0x6A81, SC_ERROR_NO_CARD_SUPPORT,               "Function not supported"},
+		{0x6A82, SC_ERROR_FILE_NOT_FOUND,                "File not found"},
+		{0x6A83, SC_ERROR_RECORD_NOT_FOUND,              "Record not found"},
+		{0x6A84, SC_ERROR_NOT_ENOUGH_MEMORY,             "Not enough memory space in the file"},
+		{0x6A85, SC_ERROR_INCORRECT_PARAMETERS,          "Lc inconsistent with TLV structure"},
+		{0x6A86, SC_ERROR_INCORRECT_PARAMETERS,          "Incorrect parameters P1-P2"},
+		{0x6A87, SC_ERROR_INCORRECT_PARAMETERS,          "Lc inconsistent with P1-P2"},
+		{0x6A88, SC_ERROR_DATA_OBJECT_NOT_FOUND,         "Referenced data not found"},
+		{0x6A89, SC_ERROR_FILE_ALREADY_EXISTS,           "File already exists"},
+		{0x6A8A, SC_ERROR_FILE_ALREADY_EXISTS,           "DF name already exists"},
 
-		{0x6B00, SC_ERROR_INCORRECT_PARAMETERS, "Wrong parameter(s) P1-P2"},
-		{0x6D00, SC_ERROR_INS_NOT_SUPPORTED, "Instruction code not supported or invalid"},
-		{0x6E00, SC_ERROR_CLASS_NOT_SUPPORTED, "Class not supported"},
-		{0x6F00, SC_ERROR_CARD_CMD_FAILED, "No precise diagnosis"},
+		{0x6B00, SC_ERROR_INCORRECT_PARAMETERS,          "Wrong parameter(s) P1-P2"},
+		{0x6D00, SC_ERROR_INS_NOT_SUPPORTED,             "Instruction code not supported or invalid"},
+		{0x6E00, SC_ERROR_CLASS_NOT_SUPPORTED,           "Class not supported"},
+		{0x6F00, SC_ERROR_CARD_CMD_FAILED,               "No precise diagnosis"},
 
-		{0x9000, SC_SUCCESS, NULL},
+		{0x9000, SC_SUCCESS,                             NULL},
 };
+// clang-format on
 
 typedef struct sec_attr_to_acl_entries {
 	unsigned int file_type;         /* file->type */

@@ -3178,12 +3178,11 @@ iasecc_qsign_data_sha1(struct sc_context *ctx, const unsigned char *in, size_t i
 
 	LOG_FUNC_CALLED(ctx);
 
-	if (!in || !in_len || !out)
+	if (!in || !in_len || !out) {
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+	}
 
-	sc_log(ctx,
-	       "sc_pkcs15_get_qsign_data() input data length %"SC_FORMAT_LEN_SIZE_T"u",
-	       in_len);
+	sc_log(ctx, "sc_pkcs15_get_qsign_data() input data length %" SC_FORMAT_LEN_SIZE_T "u", in_len);
 	memset(out, 0, sizeof(struct iasecc_qsign_data));
 
 	md = EVP_get_digestbyname("SHA1");
@@ -3211,9 +3210,11 @@ iasecc_qsign_data_sha1(struct sc_context *ctx, const unsigned char *in, size_t i
 	hh[3] = &md_data->h3;
 	hh[4] = &md_data->h4;
 
-	for (jj = 0; jj < hh_num; jj++)
-		for (ii = 0; ii < hh_size; ii++)
+	for (jj = 0; jj < hh_num; jj++) {
+		for (ii = 0; ii < hh_size; ii++) {
 			out->pre_hash[jj * hh_size + ii] = ((*hh[jj] >> 8 * (hh_size - 1 - ii)) & 0xFF);
+		}
+	}
 	out->pre_hash_size = SHA_DIGEST_LENGTH;
 	sc_log(ctx, "Pre SHA1:%s", sc_dump_hex(out->pre_hash, out->pre_hash_size));
 
@@ -3222,8 +3223,9 @@ iasecc_qsign_data_sha1(struct sc_context *ctx, const unsigned char *in, size_t i
 		out->counter[ii] = (md_data->Nh >> 8 * (hh_size - 1 - ii)) & 0xFF;
 		out->counter[hh_size + ii] = (pre_hash_Nl >> 8 * (hh_size - 1 - ii)) & 0xFF;
 	}
-	for (ii = 0, out->counter_long = 0; ii < (int)sizeof(out->counter); ii++)
-		out->counter_long = out->counter_long*0x100 + out->counter[ii];
+	for (ii = 0, out->counter_long = 0; ii < (int)sizeof(out->counter); ii++) {
+		out->counter_long = out->counter_long * 0x100 + out->counter[ii];
+	}
 	sc_log(ctx, "Pre counter(%li):%s", out->counter_long, sc_dump_hex(out->counter, sizeof(out->counter)));
 
 	if (md_data->num) {
@@ -3278,9 +3280,7 @@ iasecc_qsign_data_sha256(struct sc_context *ctx, const unsigned char *in, size_t
 	if (!in || !in_len || !out)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-	sc_log(ctx,
-	       "sc_pkcs15_get_qsign_data() input data length %"SC_FORMAT_LEN_SIZE_T"u",
-	       in_len);
+	sc_log(ctx, "sc_pkcs15_get_qsign_data() input data length %" SC_FORMAT_LEN_SIZE_T "u", in_len);
 	memset(out, 0, sizeof(struct iasecc_qsign_data));
 
 	md = EVP_get_digestbyname("SHA256");
@@ -3302,9 +3302,11 @@ iasecc_qsign_data_sha256(struct sc_context *ctx, const unsigned char *in, size_t
 		goto err;
 	}
 
-	for (jj = 0; jj < hh_num; jj++)
-		for (ii = 0; ii < hh_size; ii++)
+	for (jj = 0; jj < hh_num; jj++) {
+		for (ii = 0; ii < hh_size; ii++) {
 			out->pre_hash[jj * hh_size + ii] = ((md_data->h[jj] >> 8 * (hh_size - 1 - ii)) & 0xFF);
+		}
+	}
 	out->pre_hash_size = SHA256_DIGEST_LENGTH;
 	sc_log(ctx, "Pre hash:%s", sc_dump_hex(out->pre_hash, out->pre_hash_size));
 
@@ -3313,8 +3315,9 @@ iasecc_qsign_data_sha256(struct sc_context *ctx, const unsigned char *in, size_t
 		out->counter[ii] = (md_data->Nh >> 8 * (hh_size - 1 - ii)) & 0xFF;
 		out->counter[hh_size + ii] = (pre_hash_Nl >> 8 * (hh_size - 1 - ii)) & 0xFF;
 	}
-	for (ii = 0, out->counter_long = 0; ii < (int)sizeof(out->counter); ii++)
+	for (ii = 0, out->counter_long = 0; ii < (int)sizeof(out->counter); ii++) {
 		out->counter_long = out->counter_long * 0x100 + out->counter[ii];
+	}
 	sc_log(ctx, "Pre counter(%li):%s", out->counter_long, sc_dump_hex(out->counter, sizeof(out->counter)));
 
 	if (md_data->num) {
@@ -3336,8 +3339,9 @@ iasecc_qsign_data_sha256(struct sc_context *ctx, const unsigned char *in, size_t
 	goto end;
 
 err:
-	if (ctx->debug > 0 && ctx->debug_file != 0)
+	if (ctx->debug > 0 && ctx->debug_file != 0) {
 		ERR_print_errors_fp(ctx->debug_file);
+	}
 end:
 	EVP_MD_CTX_free(mdctx);
 
