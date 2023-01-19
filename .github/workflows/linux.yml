@@ -11,6 +11,7 @@ on:
       - .github/build.sh
       - .github/push-artifacts.sh
       - '**.am'
+      - doc/**
   push:
 
 permissions:
