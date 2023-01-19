@@ -107,55 +107,91 @@
 	[
 		"RSA_PKCS",
 		"2048",
-		"2048",
+		"4096",
 		"0x00002A01"
 	],
 	[
 		"SHA1_RSA_PKCS",
 		"2048",
-		"2048",
+		"4096",
 		"0x00002800"
 	],
 	[
 		"SHA224_RSA_PKCS",
 		"2048",
-		"2048",
+		"4096",
 		"0x00002800"
 	],
 	[
 		"SHA256_RSA_PKCS",
 		"2048",
-		"2048",
+		"4096",
 		"0x00002800"
 	],
 	[
 		"SHA384_RSA_PKCS",
 		"2048",
-		"2048",
+		"4096",
 		"0x00002800"
 	],
 	[
 		"SHA512_RSA_PKCS",
 		"2048",
-		"2048",
+		"4096",
 		"0x00002800"
 	],
 	[
 		"MD5_RSA_PKCS",
 		"2048",
-		"2048",
+		"4096",
 		"0x00002800"
 	],
 	[
 		"RIPEMD160_RSA_PKCS",
 		"2048",
+		"4096",
+		"0x00002800"
+	],
+	[
+		"RSA_PKCS_PSS",
 		"2048",
+		"4096",
+		"0x00002801"
+	],
+	[
+		"SHA1_RSA_PKCS_PSS",
+		"2048",
+		"4096",
+		"0x00002800"
+	],
+	[
+		"SHA224_RSA_PKCS_PSS",
+		"2048",
+		"4096",
+		"0x00002800"
+	],
+	[
+		"SHA256_RSA_PKCS_PSS",
+		"2048",
+		"4096",
+		"0x00002800"
+	],
+	[
+		"SHA384_RSA_PKCS_PSS",
+		"2048",
+		"4096",
+		"0x00002800"
+	],
+	[
+		"SHA512_RSA_PKCS_PSS",
+		"2048",
+		"4096",
 		"0x00002800"
 	],
 	[
 		"RSA_PKCS_KEY_PAIR_GEN",
 		"2048",
-		"2048",
+		"4096",
 		"CKF_GENERATE_KEY_PAIR"
 	]],
 	"result": "pass"
@@ -384,7 +420,80 @@
 },
 {
 	"test_id": "pss_oaep_test",
-	"result": "unknown"
+	"data": [
+	[
+		"KEY ID",
+		"MECHANISM",
+		"HASH",
+		"MGF",
+		"SALT",
+		"SIGN&VERIFY WORKS",
+		"ENCRYPT&DECRYPT WORKS"
+	],
+	[
+		"01",
+		"SHA1_RSA_PKCS_PSS",
+		"SHA_1",
+		"MGF1_SHA_1",
+		"-2",
+		"YES",
+		""
+	],
+	[
+		"01",
+		"SHA256_RSA_PKCS_PSS",
+		"SHA256",
+		"MGF1_SHA256",
+		"-2",
+		"YES",
+		""
+	],
+	[
+		"01",
+		"SHA256_RSA_PKCS_PSS",
+		"SHA256",
+		"MGF1_SHA256",
+		"-1",
+		"YES",
+		""
+	],
+	[
+		"01",
+		"SHA384_RSA_PKCS_PSS",
+		"SHA384",
+		"MGF1_SHA384",
+		"-2",
+		"YES",
+		""
+	],
+	[
+		"01",
+		"SHA384_RSA_PKCS_PSS",
+		"SHA384",
+		"MGF1_SHA384",
+		"-1",
+		"YES",
+		""
+	],
+	[
+		"01",
+		"SHA512_RSA_PKCS_PSS",
+		"SHA512",
+		"MGF1_SHA512",
+		"-2",
+		"YES",
+		""
+	],
+	[
+		"01",
+		"SHA512_RSA_PKCS_PSS",
+		"SHA512",
+		"MGF1_SHA512",
+		"-1",
+		"YES",
+		""
+	]],
+	"result": "pass"
 },
 {
 	"test_id": "derive_tests",
