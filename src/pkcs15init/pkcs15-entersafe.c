@@ -523,6 +523,7 @@ static struct sc_pkcs15init_operations sc_pkcs15init_entersafe_operations = {
 	NULL,				/* create_domain */
 	entersafe_pin_reference,
 	entersafe_create_pin,
+	NULL,				/* select_object_path */
 	entersafe_key_reference,
 	entersafe_create_key,
 	entersafe_store_key,

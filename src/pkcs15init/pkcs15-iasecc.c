@@ -1865,6 +1865,7 @@ sc_pkcs15init_iasecc_operations = {
 	NULL,					/* create_domain */
 	NULL,					/* select_pin_reference */
 	NULL,					/* create_pin */
+	NULL,					/* select_object_path */
 	iasecc_pkcs15_select_key_reference,
 	iasecc_pkcs15_create_key,
 	iasecc_pkcs15_store_key,

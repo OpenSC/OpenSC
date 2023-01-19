@@ -115,7 +115,6 @@ enum {
 	PIV_OBJ_9306,
 	PIV_OBJ_9406,
 	PIV_OBJ_9506,
-	PIV_OBJ_PRIV_SWISSBIT_2900,
 	PIV_OBJ_LAST_ENUM
 };
 
@@ -497,7 +496,6 @@ static const struct piv_object piv_objects[] = {
 			"2.16.840.1.101.3.7.2.9999.119", 2, "\x94\x06", "\x94\x06", PIV_OBJECT_TYPE_PUBKEY},
 	{ PIV_OBJ_9506, "Pub 95 key ",
 			"2.16.840.1.101.3.7.2.9999.120", 2, "\x95\x06", "\x95\x06", PIV_OBJECT_TYPE_PUBKEY},
-	{ PIV_OBJ_PRIV_SWISSBIT_2900, "Priv key ", "", 0, "", "\x29\x00", 0},
 	{ PIV_OBJ_LAST_ENUM, "", "", 0, "", "", 0}
 };
 // clang-format on
@@ -2537,13 +2535,6 @@ static int piv_select_file(sc_card_t *card, const sc_path_t *in_path,
 	 */
 
 	if (memcmp(path, "\x3F\x00", 2) == 0) {
-		if (pathlen > 2) {
-			path += 2;
-			pathlen -= 2;
-		}
-	}
-
-	if (memcmp(path, "\x50\x15", 2) == 0) {
 		if (pathlen > 2) {
 			path += 2;
 			pathlen -= 2;

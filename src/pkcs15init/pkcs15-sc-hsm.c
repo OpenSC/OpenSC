@@ -619,6 +619,7 @@ sc_pkcs15init_sc_hsm_operations = {
 	NULL,						/* create_domain */
 	NULL,						/* select_pin_reference */
 	NULL,						/* create_pin */
+	NULL,						/* select object path */
 	NULL,						/* select key reference */
 	sc_hsm_create_key,
 	sc_hsm_store_key,

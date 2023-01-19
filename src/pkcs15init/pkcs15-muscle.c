@@ -306,6 +306,7 @@ static struct sc_pkcs15init_operations sc_pkcs15init_muscle_operations = {
 	NULL,				/* create_domain */
 	muscle_select_pin_reference,	/* select pin reference */
 	muscle_create_pin,		/* Create PIN */
+	NULL,				/* select_object_path */
 	muscle_select_key_reference,	/* select_key_reference */
 	muscle_create_key,		/* create_key */
 	muscle_store_key,		/* store_key */

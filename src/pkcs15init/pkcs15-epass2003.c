@@ -787,6 +787,7 @@ static struct sc_pkcs15init_operations sc_pkcs15init_epass2003_operations = {
 	NULL,			/* create_domain */
 	epass2003_pkcs15_pin_reference,
 	epass2003_pkcs15_create_pin,
+	NULL,			/* select_object_path */
 	epass2003_pkcs15_key_reference,
 	epass2003_pkcs15_create_key,
 	epass2003_pkcs15_store_key,

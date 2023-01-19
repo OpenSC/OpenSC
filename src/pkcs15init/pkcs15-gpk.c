@@ -1073,6 +1073,7 @@ static struct sc_pkcs15init_operations sc_pkcs15init_gpk_operations = {
 	NULL,				/* create_domain */
 	gpk_select_pin_reference,
 	gpk_create_pin,
+	NULL,				/* select_object_path */
 	NULL,				/* select_key_reference */
 	gpk_create_key,
 	gpk_store_key,

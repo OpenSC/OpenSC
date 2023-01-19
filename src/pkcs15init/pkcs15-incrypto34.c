@@ -683,6 +683,7 @@ static struct sc_pkcs15init_operations sc_pkcs15init_incrypto34_operations = {
 	NULL,				/* create_domain */
 	incrypto34_select_pin_reference,
 	incrypto34_create_pin,
+	NULL,				/* select_object_path */
 	incrypto34_select_key_reference,
 	incrypto34_create_key,
 	incrypto34_store_key,

@@ -787,6 +787,7 @@ static struct sc_pkcs15init_operations sc_pkcs15init_isoApplet_operations =
 	NULL,                           /* create_domain */
 	isoApplet_select_pin_reference, /* pin_reference*/
 	isoApplet_create_pin,           /* create_pin */
+	NULL,                           /* select_object_path */
 	isoApplet_select_key_reference, /* key_reference */
 	isoApplet_create_key,           /* create_key */
 	isoApplet_store_key,            /* store_key */

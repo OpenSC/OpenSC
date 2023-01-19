@@ -314,6 +314,7 @@ static struct sc_pkcs15init_operations sc_pkcs15init_rutoken_operations = {
 	NULL,                           /* create_domain */
 	rutoken_select_pin_reference,   /* select_pin_reference */
 	rutoken_create_pin,             /* create_pin */
+	NULL,                           /* select_object_path */
 	NULL,                           /* select_key_reference */
 	NULL,                           /* create_key */
 	NULL,                           /* store_key */

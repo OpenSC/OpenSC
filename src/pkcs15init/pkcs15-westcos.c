@@ -352,6 +352,7 @@ static struct sc_pkcs15init_operations sc_pkcs15init_westcos_operations = {
 	NULL,					/* create_domain */
 	westcos_pkcs15_select_pin_reference,	/* select_pin_reference */
 	westcos_pkcs15_create_pin,		/* create_pin */
+	NULL,					/* select_object_path */
 	NULL,					/* select_key_reference */
 	westcos_pkcs15init_create_key,		/* create_key */
 	westcos_pkcs15init_store_key,		/* store_key */
