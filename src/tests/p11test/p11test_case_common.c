@@ -45,7 +45,7 @@ always_authenticate(test_cert_t *o, token_info_t *info)
 	}
 
 	rv = info->function_pointer->C_Login(info->session_handle,
-		CKU_CONTEXT_SPECIFIC, info->pin, info->pin_length);
+			CKU_CONTEXT_SPECIFIC, info->pin, info->pin_length);
 	if (rv != CKR_OK) {
 		fail_msg(" [ SKIP %s ] Re-authentication failed", o->id_str);
 		exit(1);
@@ -111,7 +111,7 @@ search_certificate(test_certs_t *objects, CK_ATTRIBUTE *id)
 	unsigned int i = 0;
 
 	while (i < objects->count && (objects->data[i].key_id_size != id->ulValueLen ||
-		memcmp(objects->data[i].key_id, id->pValue, id->ulValueLen) != 0))
+			memcmp(objects->data[i].key_id, id->pValue, id->ulValueLen) != 0))
 		i++;
 
 	if (i == objects->count)
@@ -126,7 +126,7 @@ add_supported_mechs(test_cert_t *o)
 	size_t i;
 
 	if (o->type == EVP_PKEY_RSA) {
-		if (token.num_rsa_mechs > 0 ) {
+		if (token.num_rsa_mechs > 0) {
 			/* Get supported mechanisms by token */
 			o->num_mechs = token.num_rsa_mechs;
 			for (i = 0; i < token.num_rsa_mechs; i++) {
@@ -134,8 +134,7 @@ add_supported_mechs(test_cert_t *o)
 				o->mechs[i].params = token.rsa_mechs[i].params;
 				o->mechs[i].params_len = token.rsa_mechs[i].params_len;
 				o->mechs[i].result_flags = 0;
-				o->mechs[i].usage_flags =
-					token.rsa_mechs[i].usage_flags;
+				o->mechs[i].usage_flags = token.rsa_mechs[i].usage_flags;
 			}
 		} else {
 			/* Use the default list */
@@ -144,19 +143,17 @@ add_supported_mechs(test_cert_t *o)
 			o->mechs[0].params = NULL;
 			o->mechs[0].params_len = 0;
 			o->mechs[0].result_flags = 0;
-			o->mechs[0].usage_flags = CKF_SIGN | CKF_VERIFY
-				| CKF_ENCRYPT | CKF_DECRYPT;
+			o->mechs[0].usage_flags = CKF_SIGN | CKF_VERIFY | CKF_ENCRYPT | CKF_DECRYPT;
 		}
 	} else if (o->type == EVP_PKEY_EC) {
-		if (token.num_ec_mechs > 0 ) {
+		if (token.num_ec_mechs > 0) {
 			o->num_mechs = token.num_ec_mechs;
 			for (i = 0; i < token.num_ec_mechs; i++) {
 				o->mechs[i].mech = token.ec_mechs[i].mech;
 				o->mechs[i].params = token.ec_mechs[i].params;
 				o->mechs[i].params_len = token.ec_mechs[i].params_len;
 				o->mechs[i].result_flags = 0;
-				o->mechs[i].usage_flags =
-					token.ec_mechs[i].usage_flags;
+				o->mechs[i].usage_flags = token.ec_mechs[i].usage_flags;
 			}
 		} else {
 			/* Use the default list */
@@ -169,15 +166,14 @@ add_supported_mechs(test_cert_t *o)
 		}
 #ifdef EVP_PKEY_ED25519
 	} else if (o->type == EVP_PKEY_ED25519) {
-		if (token.num_ed_mechs > 0 ) {
+		if (token.num_ed_mechs > 0) {
 			o->num_mechs = token.num_ed_mechs;
 			for (i = 0; i < token.num_ed_mechs; i++) {
 				o->mechs[i].mech = token.ed_mechs[i].mech;
 				o->mechs[i].params = token.ed_mechs[i].params;
 				o->mechs[i].params_len = token.ed_mechs[i].params_len;
 				o->mechs[i].result_flags = 0;
-				o->mechs[i].usage_flags =
-					token.ed_mechs[i].usage_flags;
+				o->mechs[i].usage_flags = token.ed_mechs[i].usage_flags;
 			}
 		} else {
 			/* Use the default list */
@@ -191,15 +187,14 @@ add_supported_mechs(test_cert_t *o)
 #endif
 #ifdef EVP_PKEY_X25519
 	} else if (o->type == EVP_PKEY_X25519) {
-		if (token.num_montgomery_mechs > 0 ) {
+		if (token.num_montgomery_mechs > 0) {
 			o->num_mechs = token.num_montgomery_mechs;
 			for (i = 0; i < token.num_montgomery_mechs; i++) {
 				o->mechs[i].mech = token.montgomery_mechs[i].mech;
 				o->mechs[i].params = token.montgomery_mechs[i].params;
 				o->mechs[i].params_len = token.montgomery_mechs[i].params_len;
 				o->mechs[i].result_flags = 0;
-				o->mechs[i].usage_flags =
-					token.montgomery_mechs[i].usage_flags;
+				o->mechs[i].usage_flags = token.montgomery_mechs[i].usage_flags;
 			}
 		} else {
 			/* Use the default list */
@@ -275,11 +270,10 @@ callback_certificates(test_certs_t *objects, CK_ATTRIBUTE template[], unsigned i
 	} else {
 		EVP_PKEY_free(evp);
 		fprintf(stderr, "[WARN %s ]evp->type = 0x%.4X (not RSA, EC)\n",
-			o->id_str, EVP_PKEY_id(evp));
+				o->id_str, EVP_PKEY_id(evp));
 	}
 
-	debug_print(" [  OK %s ] Certificate with label %s loaded successfully",
-		o->id_str, o->label);
+	debug_print(" [  OK %s ] Certificate with label %s loaded successfully", o->id_str, o->label);
 	return 0;
 }
 
@@ -295,8 +289,7 @@ callback_private_keys(test_certs_t *objects, CK_ATTRIBUTE template[], unsigned i
 
 	/* Search for already stored certificate with same ID */
 	if ((o = search_certificate(objects, &(template[3]))) == NULL) {
-		key_id = convert_byte_string(template[3].pValue,
-			template[3].ulValueLen);
+		key_id = convert_byte_string(template[3].pValue, template[3].ulValueLen);
 		fprintf(stderr, "Can't find certificate for private key with ID %s\n", key_id);
 		free(key_id);
 
@@ -330,7 +323,7 @@ callback_private_keys(test_certs_t *objects, CK_ATTRIBUTE template[], unsigned i
 		? *((CK_BBOOL *) template[8].pValue) : CK_FALSE;
 
 	debug_print(" [  OK %s ] Private key loaded successfully S:%d D:%d T:%02lX",
-		o->id_str, o->sign, o->decrypt, o->key_type);
+			o->id_str, o->sign, o->decrypt, o->key_type);
 	return 0;
 }
 
@@ -464,21 +457,18 @@ callback_public_keys(test_certs_t *objects, CK_ATTRIBUTE template[], unsigned in
 		p = template[6].pValue;
 		oid = d2i_ASN1_OBJECT(NULL, &p, template[6].ulValueLen);
 		if (oid == NULL) {
-			debug_print(" [WARN %s ] Failed to convert EC_PARAMS"
-				" to OpenSSL format", o->id_str);
+			debug_print(" [WARN %s ] Failed to convert EC_PARAMS to OpenSSL format", o->id_str);
 			return -1;
 		}
 		nid = OBJ_obj2nid(oid);
 		ASN1_OBJECT_free(oid);
 		if (nid == NID_undef) {
-			debug_print(" [WARN %s ] Failed to convert EC_PARAMS"
-				" to NID", o->id_str);
+			debug_print(" [WARN %s ] Failed to convert EC_PARAMS to NID", o->id_str);
 			return -1;
 		}
 		ecgroup = EC_GROUP_new_by_curve_name(nid);
 		if (ecgroup == NULL) {
-			debug_print(" [WARN %s ] Failed to create new EC_GROUP"
-				" from NID", o->id_str);
+			debug_print(" [WARN %s ] Failed to create new EC_GROUP from NID", o->id_str);
 			return -1;
 		}
 		EC_GROUP_set_asn1_flag(ecgroup, OPENSSL_EC_NAMED_CURVE);
@@ -490,8 +480,7 @@ callback_public_keys(test_certs_t *objects, CK_ATTRIBUTE template[], unsigned in
 		bn = BN_bin2bn(pub, pub_len, NULL);
 		ASN1_STRING_free(s);
 		if (bn == NULL) {
-			debug_print(" [WARN %s ] Can not convert EC_POINT from"
-				" PKCS#11 to BIGNUM", o->id_str);
+			debug_print(" [WARN %s ] Can not convert EC_POINT from PKCS#11 to BIGNUM", o->id_str);
 			EC_GROUP_free(ecgroup);
 			return -1;
 		}
@@ -500,8 +489,7 @@ callback_public_keys(test_certs_t *objects, CK_ATTRIBUTE template[], unsigned in
 		BN_free(bn);
 
 		if (ecpoint == NULL) {
-			debug_print(" [WARN %s ] Can not convert EC_POINT from"
-				" BIGNUM to OpenSSL format", o->id_str);
+			debug_print(" [WARN %s ] Can not convert EC_POINT from BIGNUM to OpenSSL format", o->id_str);
 			EC_GROUP_free(ecgroup);
 			return -1;
 		}
@@ -546,8 +534,8 @@ callback_public_keys(test_certs_t *objects, CK_ATTRIBUTE template[], unsigned in
 			}
 #endif
 			if (cert_nid != nid ||
-				EC_GROUP_cmp(cert_group, ecgroup, NULL) != 0 ||
-				EC_POINT_cmp(ecgroup, cert_point, ecpoint, NULL) != 0) {
+					EC_GROUP_cmp(cert_group, ecgroup, NULL) != 0 ||
+					EC_POINT_cmp(ecgroup, cert_point, ecpoint, NULL) != 0) {
 				debug_print(" [WARN %s ] Got different public key then from the certificate",
 						o->id_str);
 				EC_GROUP_free(ecgroup);
@@ -607,8 +595,7 @@ callback_public_keys(test_certs_t *objects, CK_ATTRIBUTE template[], unsigned in
 			OSSL_PARAM_free(params);
 #endif
 		}
-	} else if (o->key_type == CKK_EC_EDWARDS
-		|| o->key_type == CKK_EC_MONTGOMERY) {
+	} else if (o->key_type == CKK_EC_EDWARDS || o->key_type == CKK_EC_MONTGOMERY) {
 		EVP_PKEY *key = NULL;
 		ASN1_PRINTABLESTRING *curve = NULL;
 		ASN1_OBJECT *obj = NULL;
@@ -622,8 +609,8 @@ callback_public_keys(test_certs_t *objects, CK_ATTRIBUTE template[], unsigned in
 #ifdef EVP_PKEY_ED25519
 			case CKK_EC_EDWARDS:
 				if (strcmp((char *)curve->data, "edwards25519")) {
-					debug_print(" [WARN %s ] Unknown curve name. "
-						" expected edwards25519, got %s", o->id_str, curve->data);
+					debug_print(" [WARN %s ] Unknown curve name.  expected edwards25519, got %s",
+							o->id_str, curve->data);
 				}
 				evp_type = EVP_PKEY_ED25519;
 				break;
@@ -631,8 +618,8 @@ callback_public_keys(test_certs_t *objects, CK_ATTRIBUTE template[], unsigned in
 #ifdef EVP_PKEY_X25519
 			case CKK_EC_MONTGOMERY:
 				if (strcmp((char *)curve->data, "curve25519")) {
-					debug_print(" [WARN %s ] Unknown curve name. "
-						" expected curve25519, got %s", o->id_str, curve->data);
+					debug_print(" [WARN %s ] Unknown curve name. expected curve25519, got %s",
+							o->id_str, curve->data);
 				}
 				evp_type = EVP_PKEY_X25519;
 				break;
@@ -652,8 +639,8 @@ callback_public_keys(test_certs_t *objects, CK_ATTRIBUTE template[], unsigned in
 #ifdef EVP_PKEY_ED25519
 			case CKK_EC_EDWARDS:
 				if (nid != NID_ED25519) {
-					debug_print(" [WARN %s ] Unknown OID. "
-						" expected NID_ED25519 (%d), got %d", o->id_str, NID_ED25519, nid);
+					debug_print(" [WARN %s ] Unknown OID. expected NID_ED25519 (%d), got %d",
+							o->id_str, NID_ED25519, nid);
 				}
 				evp_type = EVP_PKEY_ED25519;
 				break;
@@ -661,8 +648,8 @@ callback_public_keys(test_certs_t *objects, CK_ATTRIBUTE template[], unsigned in
 #ifdef EVP_PKEY_X25519
 			case CKK_EC_MONTGOMERY:
 				if (nid != NID_X25519) {
-					debug_print(" [WARN %s ] Unknown OID. "
-						" expected NID_X25519 (%d), got %d", o->id_str, NID_X25519, nid);
+					debug_print(" [WARN %s ] Unknown OID. expected NID_X25519 (%d), got %d",
+							o->id_str, NID_X25519, nid);
 				}
 				evp_type = EVP_PKEY_X25519;
 				break;
@@ -672,8 +659,7 @@ callback_public_keys(test_certs_t *objects, CK_ATTRIBUTE template[], unsigned in
 				return -1;
 			}
 		} else {
-			debug_print(" [WARN %s ] Failed to convert EC_PARAMS"
-				" to curve name or object id", o->id_str);
+			debug_print(" [WARN %s ] Failed to convert EC_PARAMS to curve name or object id", o->id_str);
 			return -1;
 		}
 
@@ -688,9 +674,7 @@ callback_public_keys(test_certs_t *objects, CK_ATTRIBUTE template[], unsigned in
 			debug_print(" [WARN %s ] Invalid length of EC_POINT value", o->id_str);
 			return -1;
 		}
-		key = EVP_PKEY_new_raw_public_key(evp_type, NULL,
-			(const uint8_t *)os->data,
-			os->length);
+		key = EVP_PKEY_new_raw_public_key(evp_type, NULL, (const uint8_t *)os->data, os->length);
 		if (key == NULL) {
 			debug_print(" [WARN %s ] Out of memory", o->id_str);
 			ASN1_STRING_free(os);
@@ -717,9 +701,7 @@ callback_public_keys(test_certs_t *objects, CK_ATTRIBUTE template[], unsigned in
 			if (EVP_PKEY_get_raw_public_key(o->key, pub, &publen) != 1 ||
 					publen != (size_t)os->length ||
 					memcmp(pub, os->data, publen) != 0) {
-				debug_print(" [WARN %s ] Got different public"
-					"key then from the certificate",
-					o->id_str);
+				debug_print(" [WARN %s ] Got different public key then from the certificate", o->id_str);
 				free(pub);
 				ASN1_STRING_free(os);
 				return -1;
@@ -734,15 +716,14 @@ callback_public_keys(test_certs_t *objects, CK_ATTRIBUTE template[], unsigned in
 		}
 		ASN1_STRING_free(os);
 	} else {
-		debug_print(" [WARN %s ] unknown key. Key type: %02lX",
-			o->id_str, o->key_type);
+		debug_print(" [WARN %s ] unknown key. Key type: %02lX", o->id_str, o->key_type);
 		return -1;
 	}
 
 	add_supported_mechs(o);
 
 	debug_print(" [  OK %s ] Public key loaded successfully V:%d E:%d T:%02lX",
-		o->id_str, o->verify, o->encrypt, o->key_type);
+			o->id_str, o->verify, o->encrypt, o->key_type);
 	return 0;
 }
 
@@ -821,7 +802,7 @@ search_objects(test_certs_t *objects, token_info_t *info, CK_ATTRIBUTE filter[],
 		return -1;
 	}
 
-	while(1) {
+	while (1) {
 		rv = fp->C_FindObjects(info->session_handle, &object_handle, 1, &object_count);
 		if (object_count == 0)
 			break;
@@ -835,19 +816,19 @@ search_objects(test_certs_t *objects, token_info_t *info, CK_ATTRIBUTE filter[],
 			objects_length += 4; // do not realloc after each row
 			new_object_handles = realloc(object_handles, objects_length * sizeof(CK_OBJECT_HANDLE));
 			if (new_object_handles == NULL) {
-		 		fail_msg("Realloc failed. Need to store object handles.\n");
+				fail_msg("Realloc failed. Need to store object handles.\n");
 				goto out;
 			}
 			object_handles = new_object_handles;
 		}
 		object_handles[i++] = object_handle;
 	}
-	objects_length = i; //terminate list of handles
+	objects_length = i; // terminate list of handles
 
 	rv = fp->C_FindObjectsFinal(info->session_handle);
 	if (rv != CKR_OK) {
 		fprintf(stderr, "C_FindObjectsFinal: rv = 0x%.8lX\n", rv);
- 		fail_msg("Could not find certificate.\n");
+		fail_msg("Could not find certificate.\n");
 		goto out;
 	}
 
@@ -859,8 +840,7 @@ search_objects(test_certs_t *objects, token_info_t *info, CK_ATTRIBUTE filter[],
 			template[j].pValue = NULL;
 			template[j].ulValueLen = 0;
 
-			rv = fp->C_GetAttributeValue(info->session_handle, object_handles[i], &(template[j]),
-					1);
+			rv = fp->C_GetAttributeValue(info->session_handle, object_handles[i], &(template[j]), 1);
 			if (rv == CKR_ATTRIBUTE_TYPE_INVALID ||
 					rv == CKR_ATTRIBUTE_SENSITIVE ||
 					rv == CKR_DEVICE_ERROR) {
@@ -881,8 +861,7 @@ search_objects(test_certs_t *objects, token_info_t *info, CK_ATTRIBUTE filter[],
 				}
 			}
 			/* Call again to get actual attribute */
-			rv = fp->C_GetAttributeValue(info->session_handle, object_handles[i],
-				&(template[j]), 1);
+			rv = fp->C_GetAttributeValue(info->session_handle, object_handles[i], &(template[j]), 1);
 			if (rv != CKR_OK) {
 				fail_msg("C_GetAttributeValue: rv = 0x%.8lX\n", rv);
 				goto out;
@@ -917,7 +896,7 @@ search_for_all_objects(test_certs_t *objects, token_info_t *info)
 			{CKA_LABEL,            NULL_PTR, 0},
 			{CKA_CERTIFICATE_TYPE, NULL_PTR, 0},
 	};
-	CK_ULONG attrs_size = sizeof (attrs) / sizeof (CK_ATTRIBUTE);
+	CK_ULONG attrs_size = sizeof(attrs) / sizeof(CK_ATTRIBUTE);
 	CK_ATTRIBUTE private_attrs[] = {
 			{CKA_SIGN,                NULL, 0}, // CK_BBOOL
 			{CKA_DECRYPT,             NULL, 0}, // CK_BBOOL
@@ -929,7 +908,7 @@ search_for_all_objects(test_certs_t *objects, token_info_t *info)
 			{CKA_LABEL,               NULL, 0}, // CK_BYTE_PTR
 			{CKA_EXTRACTABLE,         NULL, 0}, // CK_BBOOL
 	};
-	CK_ULONG private_attrs_size = sizeof (private_attrs) / sizeof (CK_ATTRIBUTE);
+	CK_ULONG private_attrs_size = sizeof(private_attrs) / sizeof(CK_ATTRIBUTE);
 	CK_ATTRIBUTE public_attrs[] = {
 			{CKA_VERIFY,          NULL, 0}, // CK_BBOOL
 			{CKA_ENCRYPT,         NULL, 0}, // CK_BBOOL
@@ -942,7 +921,7 @@ search_for_all_objects(test_certs_t *objects, token_info_t *info)
 			{CKA_WRAP,            NULL, 0}, // CK_BBOOL
 			{CKA_DERIVE,          NULL, 0}, // CK_BBOOL
 	};
-	CK_ULONG public_attrs_size = sizeof (public_attrs) / sizeof (CK_ATTRIBUTE);
+	CK_ULONG public_attrs_size = sizeof(public_attrs) / sizeof(CK_ATTRIBUTE);
 	CK_ATTRIBUTE secret_attrs[] = {
 			{CKA_KEY_TYPE,    NULL, 0},
 			{CKA_ID,          NULL, 0},
@@ -983,7 +962,9 @@ search_for_all_objects(test_certs_t *objects, token_info_t *info)
 			callback_secret_keys);
 }
 
-void clean_all_objects(test_certs_t *objects) {
+void
+clean_all_objects(test_certs_t *objects)
+{
 	unsigned int i;
 	for (i = 0; i < objects->count; i++) {
 		free(objects->data[i].key_id);
@@ -1000,180 +981,181 @@ const char *
 get_mechanism_name(int mech_id)
 {
 	switch (mech_id) {
-		case CKM_RSA_PKCS:
-			return "RSA_PKCS";
-		case CKM_SHA1_RSA_PKCS:
-			return "SHA1_RSA_PKCS";
-		case CKM_SHA224_RSA_PKCS:
-			return "SHA224_RSA_PKCS";
-		case CKM_SHA256_RSA_PKCS:
-			return "SHA256_RSA_PKCS";
-		case CKM_SHA384_RSA_PKCS:
-			return "SHA384_RSA_PKCS";
-		case CKM_SHA512_RSA_PKCS:
-			return "SHA512_RSA_PKCS";
-		case CKM_RSA_X_509:
-			return "RSA_X_509";
-		case CKM_ECDSA:
-			return "ECDSA";
-		case CKM_ECDSA_SHA1:
-			return "ECDSA_SHA1";
-		case CKM_ECDSA_SHA224:
-			return "ECDSA_SHA224";
-		case CKM_ECDSA_SHA256:
-			return "ECDSA_SHA256";
-		case CKM_ECDSA_SHA384:
-			return "ECDSA_SHA384";
-		case CKM_ECDSA_SHA512:
-			return "ECDSA_SHA512";
-		case CKM_EDDSA:
-			return "EDDSA";
-		case CKM_XEDDSA:
-			return "XEDDSA";
-		case CKM_ECDH1_DERIVE:
-			return "ECDH1_DERIVE";
-		case CKM_ECDH1_COFACTOR_DERIVE:
-			return "ECDH1_COFACTOR_DERIVE";
-		case CKM_EC_KEY_PAIR_GEN:
-			return "EC_KEY_PAIR_GEN";
-		case CKM_EC_EDWARDS_KEY_PAIR_GEN:
-			return "EC_EDWARDS_KEY_PAIR_GEN";
-		case CKM_RSA_PKCS_KEY_PAIR_GEN:
-			return "RSA_PKCS_KEY_PAIR_GEN";
-		case CKM_GENERIC_SECRET_KEY_GEN:
-			return "GENERIC_SECRET_KEY_GEN";
-		case CKM_MD5_RSA_PKCS:
-			return "MD5_RSA_PKCS";
-		case CKM_RIPEMD160_RSA_PKCS:
-			return "RIPEMD160_RSA_PKCS";
-		case CKM_RSA_PKCS_PSS:
-			return "RSA_PKCS_PSS";
-		case CKM_SHA1_RSA_PKCS_PSS:
-			return "SHA1_RSA_PKCS_PSS";
-		case CKM_SHA224_RSA_PKCS_PSS:
-			return "SHA224_RSA_PKCS_PSS";
-		case CKM_SHA256_RSA_PKCS_PSS:
-			return "SHA256_RSA_PKCS_PSS";
-		case CKM_SHA384_RSA_PKCS_PSS:
-			return "SHA384_RSA_PKCS_PSS";
-		case CKM_SHA512_RSA_PKCS_PSS:
-			return "SHA512_RSA_PKCS_PSS";
-		case CKM_MD5_HMAC:
-			return "MD5_HMAC";
-		case CKM_SHA_1_HMAC:
-			return "SHA_1_HMAC";
-		case CKM_SHA224_HMAC:
-			return "SHA224_HMAC";
-		case CKM_SHA256_HMAC:
-			return "SHA256_HMAC";
-		case CKM_SHA384_HMAC:
-			return "SHA384_HMAC";
-		case CKM_SHA512_HMAC:
-			return "SHA512_HMAC";
-		case CKM_RSA_PKCS_OAEP:
-			return "RSA_PKCS_OAEP";
-		case CKM_RIPEMD160:
-			return "RIPEMD160";
-		case CKM_GOSTR3411:
-			return "GOSTR3411";
-		case CKM_MD5:
-			return "MD5";
-		case CKM_SHA_1:
-			return "SHA_1";
-		case CKM_SHA224:
-			return "SHA224";
-		case CKM_SHA256:
-			return "SHA256";
-		case CKM_SHA384:
-			return "SHA384";
-		case CKM_SHA512:
-			return "SHA512";
-		case CKM_SHA3_256:
-			return "SHA3_256";
-		case CKM_SHA3_224:
-			return "SHA3_224";
-		case CKM_SHA3_384:
-			return "SHA3_384";
-		case CKM_SHA3_512:
-			return "SHA3_512";
-		case CKM_AES_ECB:
-			return "AES_ECB";
-		case CKM_AES_ECB_ENCRYPT_DATA:
-			return "AES_ECB_ENCRYPT_DATA";
-		case CKM_AES_KEY_GEN:
-			return "AES_KEY_GEN";
-		case CKM_AES_CBC:
-			return "AES_CBC";
-		case CKM_AES_CBC_ENCRYPT_DATA:
-			return "AES_CBC_ENCRYPT_DATA";
-		case CKM_AES_CBC_PAD:
-			return "AES_CBC_PAD";
-		case CKM_AES_MAC:
-			return "AES_MAC";
-		case CKM_AES_MAC_GENERAL:
-			return "AES_MAC_GENERAL";
-		case CKM_AES_CFB64:
-			return "AES_CFB64";
-		case CKM_AES_CFB8:
-			return "AES_CFB8";
-		case CKM_AES_CFB128:
-			return "AES_CFB128";
-		case CKM_AES_OFB:
-			return "AES_OFB";
-		case CKM_AES_CTR:
-			return "AES_CTR";
-		case CKM_AES_GCM:
-			return "AES_GCM";
-		case CKM_AES_CCM:
-			return "AES_CCM";
-		case CKM_AES_CTS:
-			return "AES_CTS";
-		case CKM_AES_CMAC:
-			return "AES_CMAC";
-		case CKM_AES_CMAC_GENERAL:
-			return "AES_CMAC_GENERAL";
-		case CKM_DES3_CMAC:
-			return "DES3_CMAC";
-		case CKM_DES3_CMAC_GENERAL:
-			return "DES3_CMAC_GENERAL";
-		case CKM_DES3_ECB:
-			return "DES3_ECB";
-		case CKM_DES3_CBC:
-			return "DES3_CBC";
-		case CKM_DES3_CBC_PAD:
-			return "DES3_CBC_PAD";
-		case CKM_DES3_CBC_ENCRYPT_DATA:
-			return "DES3_CBC_ENCRYPT_DATA";
-		case CKM_AES_XCBC_MAC:
-			return "AES_XCBC_MAC";
-		case CKM_AES_XCBC_MAC_96:
-			return "AES_XCBC_MAC_96";
-		case CKM_AES_KEY_WRAP:
-			return "AES_KEY_WRAP";
-		case CKM_AES_KEY_WRAP_PAD:
-			return "AES_KEY_WRAP_PAD";
-		default:
-			sprintf(name_buffer, "0x%.8X", mech_id);
-			return name_buffer;
+	case CKM_RSA_PKCS:
+		return "RSA_PKCS";
+	case CKM_SHA1_RSA_PKCS:
+		return "SHA1_RSA_PKCS";
+	case CKM_SHA224_RSA_PKCS:
+		return "SHA224_RSA_PKCS";
+	case CKM_SHA256_RSA_PKCS:
+		return "SHA256_RSA_PKCS";
+	case CKM_SHA384_RSA_PKCS:
+		return "SHA384_RSA_PKCS";
+	case CKM_SHA512_RSA_PKCS:
+		return "SHA512_RSA_PKCS";
+	case CKM_RSA_X_509:
+		return "RSA_X_509";
+	case CKM_ECDSA:
+		return "ECDSA";
+	case CKM_ECDSA_SHA1:
+		return "ECDSA_SHA1";
+	case CKM_ECDSA_SHA224:
+		return "ECDSA_SHA224";
+	case CKM_ECDSA_SHA256:
+		return "ECDSA_SHA256";
+	case CKM_ECDSA_SHA384:
+		return "ECDSA_SHA384";
+	case CKM_ECDSA_SHA512:
+		return "ECDSA_SHA512";
+	case CKM_EDDSA:
+		return "EDDSA";
+	case CKM_XEDDSA:
+		return "XEDDSA";
+	case CKM_ECDH1_DERIVE:
+		return "ECDH1_DERIVE";
+	case CKM_ECDH1_COFACTOR_DERIVE:
+		return "ECDH1_COFACTOR_DERIVE";
+	case CKM_EC_KEY_PAIR_GEN:
+		return "EC_KEY_PAIR_GEN";
+	case CKM_EC_EDWARDS_KEY_PAIR_GEN:
+		return "EC_EDWARDS_KEY_PAIR_GEN";
+	case CKM_RSA_PKCS_KEY_PAIR_GEN:
+		return "RSA_PKCS_KEY_PAIR_GEN";
+	case CKM_GENERIC_SECRET_KEY_GEN:
+		return "GENERIC_SECRET_KEY_GEN";
+	case CKM_MD5_RSA_PKCS:
+		return "MD5_RSA_PKCS";
+	case CKM_RIPEMD160_RSA_PKCS:
+		return "RIPEMD160_RSA_PKCS";
+	case CKM_RSA_PKCS_PSS:
+		return "RSA_PKCS_PSS";
+	case CKM_SHA1_RSA_PKCS_PSS:
+		return "SHA1_RSA_PKCS_PSS";
+	case CKM_SHA224_RSA_PKCS_PSS:
+		return "SHA224_RSA_PKCS_PSS";
+	case CKM_SHA256_RSA_PKCS_PSS:
+		return "SHA256_RSA_PKCS_PSS";
+	case CKM_SHA384_RSA_PKCS_PSS:
+		return "SHA384_RSA_PKCS_PSS";
+	case CKM_SHA512_RSA_PKCS_PSS:
+		return "SHA512_RSA_PKCS_PSS";
+	case CKM_MD5_HMAC:
+		return "MD5_HMAC";
+	case CKM_SHA_1_HMAC:
+		return "SHA_1_HMAC";
+	case CKM_SHA224_HMAC:
+		return "SHA224_HMAC";
+	case CKM_SHA256_HMAC:
+		return "SHA256_HMAC";
+	case CKM_SHA384_HMAC:
+		return "SHA384_HMAC";
+	case CKM_SHA512_HMAC:
+		return "SHA512_HMAC";
+	case CKM_RSA_PKCS_OAEP:
+		return "RSA_PKCS_OAEP";
+	case CKM_RIPEMD160:
+		return "RIPEMD160";
+	case CKM_GOSTR3411:
+		return "GOSTR3411";
+	case CKM_MD5:
+		return "MD5";
+	case CKM_SHA_1:
+		return "SHA_1";
+	case CKM_SHA224:
+		return "SHA224";
+	case CKM_SHA256:
+		return "SHA256";
+	case CKM_SHA384:
+		return "SHA384";
+	case CKM_SHA512:
+		return "SHA512";
+	case CKM_SHA3_256:
+		return "SHA3_256";
+	case CKM_SHA3_224:
+		return "SHA3_224";
+	case CKM_SHA3_384:
+		return "SHA3_384";
+	case CKM_SHA3_512:
+		return "SHA3_512";
+	case CKM_AES_ECB:
+		return "AES_ECB";
+	case CKM_AES_ECB_ENCRYPT_DATA:
+		return "AES_ECB_ENCRYPT_DATA";
+	case CKM_AES_KEY_GEN:
+		return "AES_KEY_GEN";
+	case CKM_AES_CBC:
+		return "AES_CBC";
+	case CKM_AES_CBC_ENCRYPT_DATA:
+		return "AES_CBC_ENCRYPT_DATA";
+	case CKM_AES_CBC_PAD:
+		return "AES_CBC_PAD";
+	case CKM_AES_MAC:
+		return "AES_MAC";
+	case CKM_AES_MAC_GENERAL:
+		return "AES_MAC_GENERAL";
+	case CKM_AES_CFB64:
+		return "AES_CFB64";
+	case CKM_AES_CFB8:
+		return "AES_CFB8";
+	case CKM_AES_CFB128:
+		return "AES_CFB128";
+	case CKM_AES_OFB:
+		return "AES_OFB";
+	case CKM_AES_CTR:
+		return "AES_CTR";
+	case CKM_AES_GCM:
+		return "AES_GCM";
+	case CKM_AES_CCM:
+		return "AES_CCM";
+	case CKM_AES_CTS:
+		return "AES_CTS";
+	case CKM_AES_CMAC:
+		return "AES_CMAC";
+	case CKM_AES_CMAC_GENERAL:
+		return "AES_CMAC_GENERAL";
+	case CKM_DES3_CMAC:
+		return "DES3_CMAC";
+	case CKM_DES3_CMAC_GENERAL:
+		return "DES3_CMAC_GENERAL";
+	case CKM_DES3_ECB:
+		return "DES3_ECB";
+	case CKM_DES3_CBC:
+		return "DES3_CBC";
+	case CKM_DES3_CBC_PAD:
+		return "DES3_CBC_PAD";
+	case CKM_DES3_CBC_ENCRYPT_DATA:
+		return "DES3_CBC_ENCRYPT_DATA";
+	case CKM_AES_XCBC_MAC:
+		return "AES_XCBC_MAC";
+	case CKM_AES_XCBC_MAC_96:
+		return "AES_XCBC_MAC_96";
+	case CKM_AES_KEY_WRAP:
+		return "AES_KEY_WRAP";
+	case CKM_AES_KEY_WRAP_PAD:
+		return "AES_KEY_WRAP_PAD";
+	default:
+		sprintf(name_buffer, "0x%.8X", mech_id);
+		return name_buffer;
 	}
 }
 
-const char *get_mgf_name(int mgf_id)
+const char *
+get_mgf_name(int mgf_id)
 {
 	switch (mgf_id) {
-		case CKG_MGF1_SHA1:
-			return "MGF1_SHA_1";
-		case CKG_MGF1_SHA224:
-			return "MGF1_SHA224";
-		case CKG_MGF1_SHA256:
-			return "MGF1_SHA256";
-		case CKG_MGF1_SHA384:
-			return "MGF1_SHA384";
-		case CKG_MGF1_SHA512:
-			return "MGF1_SHA512";
-		default:
-			sprintf(name_buffer, "0x%.8X", mgf_id);
-			return name_buffer;
+	case CKG_MGF1_SHA1:
+		return "MGF1_SHA_1";
+	case CKG_MGF1_SHA224:
+		return "MGF1_SHA224";
+	case CKG_MGF1_SHA256:
+		return "MGF1_SHA256";
+	case CKG_MGF1_SHA384:
+		return "MGF1_SHA384";
+	case CKG_MGF1_SHA512:
+		return "MGF1_SHA512";
+	default:
+		sprintf(name_buffer, "0x%.8X", mgf_id);
+		return name_buffer;
 	}
 }
 
@@ -1181,57 +1163,57 @@ const char *
 get_mechanism_flag_name(int mech_id)
 {
 	switch (mech_id) {
-		case CKF_HW:
-			return "CKF_HW";
-		case CKF_MESSAGE_ENCRYPT:
-			return "CKF_MESSAGE_ENCRYPT";
-		case CKF_MESSAGE_DECRYPT:
-			return "CKF_MESSAGE_DECRYPT";
-		case CKF_MESSAGE_SIGN:
-			return "CKF_MESSAGE_SIGN";
-		case CKF_MESSAGE_VERIFY:
-			return "CKF_MESSAGE_VERIFY";
-		case CKF_MULTI_MESSAGE:
-			return "CKF_MULTI_MESSAGE";
-		case CKF_ENCRYPT:
-			return "CKF_ENCRYPT";
-		case CKF_DECRYPT:
-			return "CKF_DECRYPT";
-		case CKF_DIGEST:
-			return "CKF_DIGEST";
-		case CKF_SIGN:
-			return "CKF_SIGN";
-		case CKF_SIGN_RECOVER:
-			return "CKF_SIGN_RECOVER";
-		case CKF_VERIFY:
-			return "CKF_VERIFY";
-		case CKF_VERIFY_RECOVER:
-			return "CKF_VERIFY_RECOVER";
-		case CKF_GENERATE:
-			return "CKF_GENERATE";
-		case CKF_GENERATE_KEY_PAIR:
-			return "CKF_GENERATE_KEY_PAIR";
-		case CKF_WRAP:
-			return "CKF_WRAP";
-		case CKF_UNWRAP:
-			return "CKF_UNWRAP";
-		case CKF_DERIVE:
-			return "CKF_DERIVE";
-		case CKF_EC_F_P:
-			return "CKF_EC_F_P";
-		case CKF_EC_F_2M:
-			return "CKF_EC_F_2M";
-		case CKF_EC_NAMEDCURVE:
-			return "CKF_EC_NAMEDCURVE";
-		case CKF_EC_UNCOMPRESS:
-			return "CKF_EC_UNCOMPRESS";
-		case CKF_EC_COMPRESS:
-			return "CKF_EC_COMPRESS";
-		case CKF_EC_ECPARAMETERS:
-			return "CKF_EC_ECPARAMETERS";
-		default:
-			sprintf(flag_buffer, "0x%.8X", mech_id);
-			return flag_buffer;
+	case CKF_HW:
+		return "CKF_HW";
+	case CKF_MESSAGE_ENCRYPT:
+		return "CKF_MESSAGE_ENCRYPT";
+	case CKF_MESSAGE_DECRYPT:
+		return "CKF_MESSAGE_DECRYPT";
+	case CKF_MESSAGE_SIGN:
+		return "CKF_MESSAGE_SIGN";
+	case CKF_MESSAGE_VERIFY:
+		return "CKF_MESSAGE_VERIFY";
+	case CKF_MULTI_MESSAGE:
+		return "CKF_MULTI_MESSAGE";
+	case CKF_ENCRYPT:
+		return "CKF_ENCRYPT";
+	case CKF_DECRYPT:
+		return "CKF_DECRYPT";
+	case CKF_DIGEST:
+		return "CKF_DIGEST";
+	case CKF_SIGN:
+		return "CKF_SIGN";
+	case CKF_SIGN_RECOVER:
+		return "CKF_SIGN_RECOVER";
+	case CKF_VERIFY:
+		return "CKF_VERIFY";
+	case CKF_VERIFY_RECOVER:
+		return "CKF_VERIFY_RECOVER";
+	case CKF_GENERATE:
+		return "CKF_GENERATE";
+	case CKF_GENERATE_KEY_PAIR:
+		return "CKF_GENERATE_KEY_PAIR";
+	case CKF_WRAP:
+		return "CKF_WRAP";
+	case CKF_UNWRAP:
+		return "CKF_UNWRAP";
+	case CKF_DERIVE:
+		return "CKF_DERIVE";
+	case CKF_EC_F_P:
+		return "CKF_EC_F_P";
+	case CKF_EC_F_2M:
+		return "CKF_EC_F_2M";
+	case CKF_EC_NAMEDCURVE:
+		return "CKF_EC_NAMEDCURVE";
+	case CKF_EC_UNCOMPRESS:
+		return "CKF_EC_UNCOMPRESS";
+	case CKF_EC_COMPRESS:
+		return "CKF_EC_COMPRESS";
+	case CKF_EC_ECPARAMETERS:
+		return "CKF_EC_ECPARAMETERS";
+	default:
+		sprintf(flag_buffer, "0x%.8X", mech_id);
+		return flag_buffer;
 	}
 }
 
@@ -1276,7 +1258,7 @@ write_data_row(token_info_t *info, int cols, ...)
 			intval = va_arg(ap, int);
 			fprintf(info->log.fd, "\n\t\t\"%d\"", intval);
 		} else if (type == 's') {
-			data = va_arg(ap, char*);
+			data = va_arg(ap, char *);
 			fprintf(info->log.fd, "\n\t\t\"%s\"", data);
 		}
 	}
