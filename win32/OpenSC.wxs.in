@@ -118,9 +118,6 @@
               <Component Id="opensc_pkcs11.dll" Guid="*" Win64="$(var.Win64YesNo)">
                 <File Source="$(var.SOURCE_DIR)\src\pkcs11\opensc-pkcs11.dll" Vital="yes"/>
               </Component>
-              <Component Id="onepin_opensc_pkcs11.dll" Guid="*" Win64="$(var.Win64YesNo)">
-                <File Source="$(var.SOURCE_DIR)\src\pkcs11\onepin-opensc-pkcs11.dll" Vital="yes"/>
-              </Component>
             </Directory>
 
             <!-- Tools have their own folder -->
@@ -367,7 +364,6 @@
       </Feature>
       <Feature Id="OpenSC_pkcs11" Level="1" Title="PKCS#11 module" Description="Security module that can be used by most cross-platform software, for example Firefox, Thunderbird, OpenVPN, etc.">
         <ComponentRef Id="opensc_pkcs11.dll"/>
-        <ComponentRef Id="onepin_opensc_pkcs11.dll"/>
       </Feature>
       <Feature Id="PKCS11_spy" Level="1" Title="PKCS#11 Spy module" Description="PKCS#11 module for debugging library invocations.">
         <ComponentRef Id="pkcs11_spy.dll"/>
