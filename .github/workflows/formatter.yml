@@ -15,6 +15,9 @@ jobs:
     - uses: actions/checkout@v2
       with:
         fetch-depth: 100
-    - uses: yshui/git-clang-format-lint@master
+    # Uses old alpine with old clang
+    # https://github.com/yshui/git-clang-format-lint/pull/4
+    # - uses: yshui/git-clang-format-lint@master
+    - uses: Jakuje/git-clang-format-lint@patch-2
       #with:
       #  base: origin/master
