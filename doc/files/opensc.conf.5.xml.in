@@ -1468,10 +1468,13 @@ app <replaceable>application</replaceable> {
 						<option>slots_per_card = <replaceable>num</replaceable>;</option>
 					</term>
 					<listitem><para>
-							Maximum number of slots per smart card (Default:
-							<literal>4</literal>).  If the card has fewer keys
+							Maximum number of PIN slots per smart card (Default:
+							<literal>4</literal>).  If the card has fewer PINs
 							than defined here, the remaining number of slots
-							will be empty.
+							will be empty. For Firefox, the <option>slots_per_card</option>
+							is set to <literal>1</literal>, because the browser has issues
+							handling multiple PINs. Typically, this effectively disables
+							signature PINs and keys in Firefox.
 					</para></listitem>
 				</varlistentry>
 				<varlistentry>
