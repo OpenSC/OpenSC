@@ -49,7 +49,7 @@ is_string_valid_atr(const char *atr_str)
 }
 
 int util_connect_reader (sc_context_t *ctx, sc_reader_t **reader,
-	const char *reader_id, int do_wait, int verbose)
+	const char *reader_id, int do_wait)
 {
 	struct sc_reader *found = NULL;
 	int r;
@@ -58,11 +58,6 @@ int util_connect_reader (sc_context_t *ctx, sc_reader_t **reader,
 	setbuf(stdout, NULL);
 
 	sc_notify_init();
-
-	if (verbose) {
-		ctx->debug = verbose;
-		sc_ctx_log_to_file(ctx, "stderr");
-	}
 
 	if (do_wait) {
 		unsigned int event = 0;
@@ -163,16 +158,16 @@ autofound:
 }
 int
 util_connect_card_ex(sc_context_t *ctx, sc_card_t **cardp,
-		 const char *reader_id, int do_wait, int do_lock, int verbose)
+		 const char *reader_id, int do_wait, int do_lock)
 {
 	struct sc_reader *reader = NULL;
 	struct sc_card *card = NULL;
 	int r;
 
-	r = util_connect_reader(ctx, &reader, reader_id, do_wait, verbose);
+	r = util_connect_reader(ctx, &reader, reader_id, do_wait);
 	if(r)
 		return r;
-	if (verbose)
+	if (ctx->debug)
 		printf("Connecting to card in reader %s...\n", reader->name);
 	r = sc_connect_card(reader, &card);
 	if (r < 0) {
@@ -180,7 +175,7 @@ util_connect_card_ex(sc_context_t *ctx, sc_card_t **cardp,
 		return r;
 	}
 
-	if (verbose)
+	if (ctx->debug)
 		printf("Using card driver %s.\n", card->driver->name);
 
 	if (do_lock) {
@@ -198,9 +193,9 @@ util_connect_card_ex(sc_context_t *ctx, sc_card_t **cardp,
 
 int
 util_connect_card(sc_context_t *ctx, sc_card_t **cardp,
-		 const char *reader_id, int do_wait, int verbose)
+		 const char *reader_id, int do_wait)
 {
-	return util_connect_card_ex(ctx, cardp, reader_id, do_wait, 1, verbose);
+	return util_connect_card_ex(ctx, cardp, reader_id, do_wait, 1);
 }
 
 void util_print_binary(FILE *f, const u8 *buf, int count)

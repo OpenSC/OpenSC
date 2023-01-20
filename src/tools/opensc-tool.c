@@ -811,6 +811,9 @@ int main(int argc, char *argv[])
 	memset(&ctx_param, 0, sizeof(ctx_param));
 	ctx_param.ver      = 0;
 	ctx_param.app_name = app_name;
+	ctx_param.debug    = verbose;
+	if (verbose)
+		ctx_param.debug_file = stderr;
 
 	r = sc_context_create(&ctx, &ctx_param);
 	if (r) {
@@ -843,7 +846,7 @@ int main(int argc, char *argv[])
 	if (action_count <= 0)
 		goto end;
 
-	err = util_connect_reader(ctx, &reader, opt_reader, opt_wait, verbose);
+	err = util_connect_reader(ctx, &reader, opt_reader, opt_wait);
 	if (err) {
 		fprintf(stderr, "Failed to connect to reader: %s\n", sc_strerror(err));
 		err = 1;

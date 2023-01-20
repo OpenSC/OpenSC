@@ -855,6 +855,9 @@ main(int argc, char **argv)
     memset(&ctx_param, 0, sizeof(ctx_param));
     ctx_param.ver      = 0;
     ctx_param.app_name = app_name;
+    ctx_param.debug    = cmdline.verbose_given;
+    if (cmdline.verbose_given > 1)
+        ctx_param.debug_file = stderr;
 
     r = sc_context_create(&ctx, &ctx_param);
     if (r) {
@@ -862,16 +865,11 @@ main(int argc, char **argv)
         exit(1);
     }
 
-    if (cmdline.verbose_given > 1) {
-        ctx->debug = cmdline.verbose_given;
-        sc_ctx_log_to_file(ctx, "stderr");
-    }
-
     r = sc_set_card_driver(ctx, "default");
     SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_VERBOSE_TOOL, r,
             "Error selecting card driver.");
 
-    r = util_connect_card_ex(ctx, &card, cmdline.reader_arg, 0, 0, cmdline.verbose_given);
+    r = util_connect_card_ex(ctx, &card, cmdline.reader_arg, 0, 0);
     SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_VERBOSE_TOOL, r,
             "Error connecting to card.");
 

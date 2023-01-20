@@ -35,7 +35,7 @@
 /* Rename main for calling in fuzz target */
 #define main _main
 /* Connect to virtual reader instead of real card*/
-#define util_connect_card(ctx, card, id, do_wait, verbose) fuzz_util_connect_card(ctx, card)
+#define util_connect_card(ctx, card, id, do_wait) fuzz_util_connect_card(ctx, card)
 # include "tools/piv-tool.c"
 #undef main
 

@@ -49,10 +49,10 @@ void util_warn(const char *fmt, ...);
 void util_error(const char *fmt, ...);
 NORETURN void util_fatal(const char *fmt, ...);
 
-int util_connect_reader (sc_context_t *ctx, sc_reader_t **reader, const char *reader_id, int do_wait, int verbose);
+int util_connect_reader (sc_context_t *ctx, sc_reader_t **reader, const char *reader_id, int do_wait);
 /* All singing all dancing card connect routine */
-int util_connect_card_ex(struct sc_context *, struct sc_card **, const char *reader_id, int do_wait, int do_lock, int verbose);
-int util_connect_card(struct sc_context *, struct sc_card **, const char *reader_id, int do_wait, int verbose);
+int util_connect_card_ex(struct sc_context *, struct sc_card **, const char *reader_id, int do_wait, int do_lock);
+int util_connect_card(struct sc_context *, struct sc_card **, const char *reader_id, int do_wait);
 
 int util_getpass (char **lineptr, size_t *n, FILE *stream);
 

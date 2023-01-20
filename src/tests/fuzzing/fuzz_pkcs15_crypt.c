@@ -34,7 +34,7 @@
 
 /* Rename main to call it in fuzz target */
 #define main _main
-#define util_connect_card_ex(ctx, card, id, do_wait, do_lock, verbose) fuzz_util_connect_card(ctx, card)
+#define util_connect_card_ex(ctx, card, id, do_wait, do_lock) fuzz_util_connect_card(ctx, card)
 # include "tools/pkcs15-crypt.c"
 #undef main
 

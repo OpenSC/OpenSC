@@ -987,6 +987,8 @@ typedef struct {
 	unsigned long flags;
 	/** mutex functions to use (optional) */
 	sc_thread_context_t *thread_ctx;
+	int debug;
+	FILE *debug_file;
 } sc_context_param_t;
 
 /**

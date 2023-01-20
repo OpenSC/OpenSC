@@ -529,6 +529,9 @@ int main(int argc, char * argv[])
 
 	memset(&ctx_param, 0, sizeof(sc_context_param_t));
 	ctx_param.app_name = app_name;
+	ctx_param.debug    = verbose;
+	if (verbose)
+		ctx_param.debug_file = stderr;
 
 	r = sc_context_create(&ctx, &ctx_param);
 	if (r != SC_SUCCESS) {
@@ -536,7 +539,7 @@ int main(int argc, char * argv[])
 		exit(1);
 	}
 
-	r = util_connect_card(ctx, &card, opt_reader, opt_wait, verbose);
+	r = util_connect_card(ctx, &card, opt_reader, opt_wait);
 	if (r != SC_SUCCESS) {
 		if (r < 0) {
 			fprintf(stderr, "Failed to connect to card: %s\n", sc_strerror(err));

@@ -945,6 +945,17 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 #endif
 
 	process_config_file(ctx, &opts);
+
+	/* overwrite with caller's parameters if explicitly given */
+	if (parm->debug) {
+		ctx->debug = parm->debug;
+	}
+	if (parm->debug_file) {
+		if (ctx->debug_file && (ctx->debug_file != stderr && ctx->debug_file != stdout))
+			fclose(ctx->debug_file);
+		ctx->debug_file = parm->debug_file;
+	}
+
 	sc_log(ctx, "==================================="); /* first thing in the log */
 	sc_log(ctx, "OpenSC version: %s", sc_get_version());
 	sc_log(ctx, "Configured for %s (%s)", ctx->app_name, ctx->exe_path);

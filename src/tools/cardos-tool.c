@@ -1187,6 +1187,10 @@ int main(int argc, char *argv[])
 	memset(&ctx_param, 0, sizeof(ctx_param));
 	ctx_param.ver      = 0;
 	ctx_param.app_name = app_name;
+	ctx_param.debug    = verbose;
+	if (verbose)
+		ctx_param.debug_file = stderr;
+
 	r = sc_context_create(&ctx, &ctx_param);
 	if (r) {
 		fprintf(stderr, "Failed to establish context: %s\n",
@@ -1202,7 +1206,7 @@ int main(int argc, char *argv[])
 		goto end;
 	}
 
-	err = util_connect_card(ctx, &card, opt_reader, opt_wait, verbose);
+	err = util_connect_card(ctx, &card, opt_reader, opt_wait);
 	if (err)
 		goto end;
 
