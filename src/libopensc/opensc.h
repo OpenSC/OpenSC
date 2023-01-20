@@ -873,6 +873,7 @@ typedef struct sc_context {
 	scconf_context *conf;
 	scconf_block *conf_blocks[3];
 	char *app_name;
+	char *exe_path;
 	int debug;
 	unsigned long flags;
 

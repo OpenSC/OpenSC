@@ -698,15 +698,16 @@ md_get_config_bool(PCARD_DATA pCardData, char *flag_name, BOOL ret_default)
 static BOOL
 md_is_pinpad_dlg_enable_cancel(PCARD_DATA pCardData)
 {
-	TCHAR path[MAX_PATH]={0};
+	VENDOR_SPECIFIC *vs;
 
 	logprintf(pCardData, 2, "Is cancelling the PIN pad dialog enabled?\n");
 
-	if (GetModuleFileName(NULL, path, ARRAYSIZE(path))) {
+	vs = (VENDOR_SPECIFIC*) pCardData->pvVendorSpecific;
+	if (vs && vs->ctx && vs->ctx->exe_path) {
 		DWORD enable_cancel;
 		size_t sz = sizeof enable_cancel;
 
-		if (SC_SUCCESS == sc_ctx_win32_get_config_value(NULL, path,
+		if (SC_SUCCESS == sc_ctx_win32_get_config_value(NULL, vs->ctx->exe_path,
 					SUBKEY_ENABLE_CANCEL,
 					(char *)(&enable_cancel), &sz)) {
 			switch (enable_cancel) {
@@ -3107,8 +3108,7 @@ md_dialog_perform_pin_operation(PCARD_DATA pCardData, int operation, struct sc_p
 	result = TaskDialogIndirect(&tc, NULL, NULL, &user_checked);
 
 	if (user_checked != checked) {
-		TCHAR path[MAX_PATH]={0};
-		if (GetModuleFileName(NULL, path, ARRAYSIZE(path))) {
+		if (pv && pv->ctx && pv->ctx->exe_path) {
 			HKEY hKey;
 			LSTATUS lstatus = RegOpenKeyExA(HKEY_CURRENT_USER,
 					SUBKEY_ENABLE_CANCEL, 0, KEY_WRITE, &hKey);
@@ -3122,7 +3122,7 @@ md_dialog_perform_pin_operation(PCARD_DATA pCardData, int operation, struct sc_p
 				if (user_checked == FALSE) {
 					enable_cancel = 1;
 				}
-				lstatus = RegSetValueEx(hKey, path, 0, REG_DWORD,
+				lstatus = RegSetValueEx(hKey, pv->ctx->exe_path, 0, REG_DWORD,
 						(const BYTE*)&enable_cancel, sizeof(enable_cancel));
 				RegCloseKey(hKey);
 			}
