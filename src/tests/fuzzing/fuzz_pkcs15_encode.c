@@ -80,8 +80,8 @@ int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
 	sc_pkcs15_encode_unusedspace(ctx, p15card, &unused_space, &unused_space_len);
 	free(unused_space);
 
-	sc_pkcs15_card_free(p15card);
 err:
+	sc_pkcs15_card_free(p15card);
 	sc_disconnect_card(card);
 	sc_release_context(ctx);
 
