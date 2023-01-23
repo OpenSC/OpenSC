@@ -88,18 +88,31 @@ typedef struct idprime_object {
 } idprime_object_t;
 
 /*
+ * IDPrime Container structure
+ * Simplification of auxiliary data from aux-data.c
+ */
+#define MAX_CONTAINER_NAME_LEN 39
+#define CONTAINER_OBJ_LEN 86
+typedef struct idprime_container {
+	int index;								/* Index of the container */
+	char guid[MAX_CONTAINER_NAME_LEN + 1];	/* Container name */
+	struct idprime_container *next;
+} idprime_container_t;
+
+/*
  * IDPrime private data per card state
  */
 typedef struct idprime_private_data {
-	u8 *cache_buf;			/* cached version of the currently selected file */
-	size_t cache_buf_len;		/* length of the cached selected file */
-	int cached;			/* is the cached selected file valid */
-	size_t file_size;		/* this is real file size since IDPrime is quite strict about lengths */
-	list_t pki_list;		/* list of pki containers */
-	idprime_object_t *pki_current;	/* current pki object _ctl function */
-	int tinfo_present;		/* Token Info Label object is present*/
-	u8 tinfo_df[2];			/* DF of object with Token Info Label */
-	unsigned long current_op;	/* current operation set by idprime_set_security_env */
+	u8 *cache_buf;				/* cached version of the currently selected file */
+	size_t cache_buf_len;			/* length of the cached selected file */
+	int cached;				/* is the cached selected file valid */
+	size_t file_size;			/* this is real file size since IDPrime is quite strict about lengths */
+	list_t pki_list;			/* list of pki containers */
+	idprime_object_t *pki_current;		/* current pki object _ctl function */
+	int tinfo_present;			/* Token Info Label object is present*/
+	u8 tinfo_df[2];				/* DF of object with Token Info Label */
+	unsigned long current_op;		/* current operation set by idprime_set_security_env */
+	idprime_container_t *containers;	/* list of private key containers */
 } idprime_private_data_t;
 
 /* For SimCList autocopy, we need to know the size of the data elements */
@@ -107,10 +120,21 @@ static size_t idprime_list_meter(const void *el) {
 	return sizeof(idprime_object_t);
 }
 
+static void idprime_free_containermap(idprime_container_t *containers)
+{
+	idprime_container_t *next = NULL;
+	while (containers) {
+		next = containers->next;
+		free(containers);
+		containers = next;
+	}
+}
+
 void idprime_free_private_data(idprime_private_data_t *priv)
 {
 	free(priv->cache_buf);
 	list_destroy(&priv->pki_list);
+	idprime_free_containermap(priv->containers);
 	free(priv);
 	return;
 }
@@ -147,6 +171,121 @@ static int idprime_select_idprime(sc_card_t *card)
 	return iso_ops->select_file(card, &idprime_path, NULL);
 }
 
+/* This select container map file, which is useful for certificate indexes on the card */
+static int idprime_select_containermap(sc_card_t *card)
+{
+	int r;
+	sc_file_t *file = NULL;
+	sc_path_t index_path;
+
+	/* First, we need to make sure the IDPrime AID is selected */
+	r = idprime_select_idprime(card);
+	if (r != SC_SUCCESS) {
+		LOG_FUNC_RETURN(card->ctx, r);
+	}
+
+	/* Returns FCI with expected length of data */
+	sc_format_path("0204", &index_path);
+	r = iso_ops->select_file(card, &index_path, &file);
+	if (r == SC_SUCCESS) {
+		r = file->size;
+	}
+	sc_file_free(file);
+	/* Ignore too large files */
+	if (r <= 0 ||  r > MAX_FILE_SIZE) {
+		r = SC_ERROR_INVALID_DATA;
+	}
+	return r;
+}
+
+static int idprime_process_containermap(sc_card_t *card, idprime_container_t **containers, int length)
+{
+	u8 *buf = NULL;
+	int r = SC_ERROR_OUT_OF_MEMORY;
+	int i, max_entries;
+	idprime_container_t *current = NULL;
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	if (!containers) {
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+	}
+
+	buf = malloc(length);
+	if (buf == NULL) {
+		goto done;
+	}
+
+	r = 0;
+	do {
+		if (length == r) {
+			r = SC_ERROR_NOT_ENOUGH_MEMORY;
+			goto done;
+		}
+		const int got = iso_ops->read_binary(card, r, buf + r, CONTAINER_OBJ_LEN, 0);
+		if (got < 1) {
+			r = SC_ERROR_WRONG_LENGTH;
+			goto done;
+		}
+
+		r += got;
+		/* Try to read chunks of container size and stop when container looks empty */
+	} while(length - r > 0 && buf[(r / CONTAINER_OBJ_LEN - 1) * CONTAINER_OBJ_LEN] != 0);
+	max_entries = r / CONTAINER_OBJ_LEN;
+
+	for (i = 0; i < max_entries; i++) {
+		u8 *start = &buf[i * CONTAINER_OBJ_LEN];
+		if (start[0] == 0) /* Empty record */
+			goto end;
+
+		idprime_container_t *new_container = calloc(1, sizeof(idprime_container_t));
+		if (!new_container) {
+			r = SC_ERROR_NOT_ENOUGH_MEMORY;
+			goto done;
+		}
+		new_container->index = i;
+
+		/* Reading UNICODE characters but skipping second byte */
+		int j = 0;
+		for (j = 0; j < MAX_CONTAINER_NAME_LEN + 1; j++) {
+			if (start[2 * j] == 0)
+				break;
+			new_container->guid[j] = start[2 * j];
+		}
+
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Found container with index=%d, guid=%s", new_container->index, new_container->guid);
+
+		/* Chain containers */
+		if (!current) {
+			*containers = new_container;
+		} else {
+			current->next = new_container;
+		}
+		current = new_container;
+	}
+
+end:
+	r = SC_SUCCESS;
+done:
+	free(buf);
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+
+static idprime_container_t *idprime_search_container(int index, idprime_container_t *containers)
+{
+	idprime_container_t *current = containers;
+	if (index < 0 || !containers) {
+		return NULL;
+	}
+	while(current) {
+		if (current->index == index) {
+			return current;
+		}
+		current = current->next;
+	}
+	return NULL;
+}
+
 /* This select some index file, which is useful for enumerating other files
  * on the card */
 static int idprime_select_index(sc_card_t *card)
@@ -181,9 +320,12 @@ static int idprime_process_index(sc_card_t *card, idprime_private_data_t *priv, 
 	int r = SC_ERROR_OUT_OF_MEMORY;
 	int i, num_entries;
 	idprime_object_t new_object;
-	idprime_object_t cert_object;
-	int prkey_id = -1;
-	int cert_id = -1;
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	if (!priv->containers) {
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+	}
 
 	buf = malloc(length);
 	if (buf == NULL) {
@@ -217,119 +359,58 @@ static int idprime_process_index(sc_card_t *card, idprime_private_data_t *priv, 
 		new_object.length = bebytes2ushort(&start[2]);
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "df=%s, len=%u",
 			sc_dump_hex(new_object.df, sizeof(new_object.df)), new_object.length);
-
-		if ((memcmp(&start[4], "priprk", 6) == 0)) {
-			if (cert_id != -1) {
-				/* No public key was found, add previous certificate */
-				/* If pubkey is missing, there should be also no private key */
-				if (prkey_id != -1) {
-					sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Certificate id=%d missing public key object", cert_id);
-				} else {
-					/* Here we know, that no pubkey or prkey was found for certificate */
-					sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Adding certificate with fd=%d, key_ref=%d",
-						cert_object.fd, cert_object.key_reference);
-					idprime_add_object_to_list(&priv->pki_list, &cert_object);
-				}
-				prkey_id = -1;
-				cert_id = -1;
-			}
-
-			/* Found private key, certificate and public key should have same id */
-			prkey_id = (start[10] - '0') * 10 + (start[11] - '0');
-			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Found private key with id=%d", prkey_id);
-			continue;
-		}
 		/* in minidriver, mscp/kxcNN or kscNN lists certificates */
-		else if (((memcmp(&start[4], "ksc", 3) == 0) || memcmp(&start[4], "kxc", 3) == 0)
+		if (((memcmp(&start[4], "ksc", 3) == 0) || memcmp(&start[4], "kxc", 3) == 0)
 			&& (memcmp(&start[12], "mscp", 5) == 0)) {
+			int cert_id = 0;
+			idprime_container_t *container = NULL;
 
-			if (cert_id != -1) {
-				/* Previously found certificate but no corresponding public key object */
-				/* If pubkey is missing, there should be also no private key */
-				if (prkey_id != -1) {
-					sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Certificate id=%d missing public key object", cert_id);
-				} else {
-					/* Here we know, that no pubkey or prkey was found for certificate */
-					sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Adding certificate with fd=%d, key_ref=%d",
-						cert_object.fd, cert_object.key_reference);
-					idprime_add_object_to_list(&priv->pki_list, &cert_object);
-				}
-				prkey_id = -1;
-				cert_id = -1;
-			}
-	
-			/* Continue with processing current certificate */
 			if (start[8] >= '0' && start[8] <= '9') {
 				cert_id = (start[7] - '0') * 10 + start[8] - '0';
 			}
-
 			new_object.fd++;
-			cert_object.valid_key_ref = 1;
-			switch (card->type) {
-			case SC_CARD_TYPE_IDPRIME_3810:
-				cert_object.key_reference = 0x31 + cert_id;
-				break;
-			case SC_CARD_TYPE_IDPRIME_830:
-				cert_object.key_reference = 0x41 + cert_id;
-				break;
-			case SC_CARD_TYPE_IDPRIME_930:
-				cert_object.key_reference = 0x11 + cert_id * 2;
-				break;
-			case SC_CARD_TYPE_IDPRIME_940:
-				cert_object.key_reference = 0x60 + cert_id;
-				break;
-			case SC_CARD_TYPE_IDPRIME_840:
-				cert_object.key_reference = 0xf7 + cert_id;
-				break;
-			default:
-				cert_object.key_reference = 0x56 + cert_id;
-				break;
-			}
-			cert_object.fd = new_object.fd;
-			cert_object.df[0] = new_object.df[0];
-			cert_object.df[1] = new_object.df[1];
-			cert_object.length = new_object.length;
-			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Found certificate with fd=%d, key_ref=%d",
-				cert_object.fd, cert_object.key_reference);
-		} else if ((memcmp(&start[4], "pubksc", 6) == 0) || (memcmp(&start[4], "pubkxc", 6) == 0)) {
-			/* Found public key on card*/
-			int pubkey_id = (start[10] - '0') * 10 + (start[11] - '0');
-			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Found public key with id=%d", pubkey_id);
-			
-			/* There should be already found certificate */
-			if (cert_id == -1) {
-				sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Public key (id=%d) without certificate", pubkey_id);
-				prkey_id = -1;
+			new_object.key_reference = -1;
+			new_object.valid_key_ref = 0;
+
+			container = idprime_search_container(cert_id, priv->containers);
+			if (!container) {
+				/* Object is added, but missing private key */
+				sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "No corresponding container with private key found for certificate with id=%d", cert_id);
+				sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Adding certificate with fd=%d", new_object.fd);
+				idprime_add_object_to_list(&priv->pki_list, &new_object);
 				continue;
 			}
-			/* Certificate is on the card, check for corresponding private key */
-			if (prkey_id == -1 || cert_id != prkey_id || prkey_id != pubkey_id) {
-				/* Object is added, but missing private key */
-				cert_object.key_reference = -1;
-				cert_object.valid_key_ref = 0;
-				sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Certificate and public key without corresponding private key");
+
+			switch (card->type) {
+			case SC_CARD_TYPE_IDPRIME_3810:
+				new_object.key_reference = 0x31 + cert_id;
+				break;
+			case SC_CARD_TYPE_IDPRIME_830:
+				new_object.key_reference = 0x41 + cert_id;
+				break;
+			case SC_CARD_TYPE_IDPRIME_930:
+				new_object.key_reference = 0x11 + cert_id * 2;
+				break;
+			case SC_CARD_TYPE_IDPRIME_940:
+				new_object.key_reference = 0x60 + cert_id;
+				break;
+			case SC_CARD_TYPE_IDPRIME_840:
+				new_object.key_reference = 0xf7 + cert_id;
+				break;
+			default:
+				new_object.key_reference = 0x56 + cert_id;
+				break;
 			}
-			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Adding certificate with fd=%d, key_ref=%d",
-				cert_object.fd, cert_object.key_reference);
-			idprime_add_object_to_list(&priv->pki_list, &cert_object);
-			prkey_id = -1;
-			cert_id = -1;
+			new_object.valid_key_ref = 1;
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Found certificate with fd=%d, key_ref=%d corresponding to container \"%s\"",
+				new_object.fd, new_object.key_reference, container->guid);
+			idprime_add_object_to_list(&priv->pki_list, &new_object);
+
 		/* This looks like non-standard extension listing pkcs11 token info label in my card */
 		} else if ((memcmp(&start[4], "tinfo", 6) == 0) && (memcmp(&start[12], "p11", 4) == 0)) {
 			memcpy(priv->tinfo_df, new_object.df, sizeof(priv->tinfo_df));
 			priv->tinfo_present = 1;
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Found p11/tinfo object");
-		}
-	}
-
-	if (cert_id != -1) {
-		/* Found certificate but no corresponding public key object */
-		if (prkey_id != -1) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Certificate id=%d missing public key object", cert_id);
-		} else {
-			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Adding certificate with fd=%d, key_ref=%d",
-				cert_object.fd, cert_object.key_reference);
-			idprime_add_object_to_list(&priv->pki_list, &cert_object);
 		}
 	}
 
@@ -349,6 +430,8 @@ static int idprime_init(sc_card_t *card)
 	struct sc_apdu apdu;
 	u8 rbuf[CPLC_LENGTH];
 	size_t rbuflen = sizeof(rbuf);
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	/* We need to differentiate the OS version since they behave slightly differently */
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2, 0xCA, 0x9F, 0x7F);
@@ -381,18 +464,34 @@ static int idprime_init(sc_card_t *card)
 			r, apdu.resplen);
 	}
 
-	/* Now, select and process the index file */
-	r = idprime_select_index(card);
+	priv = idprime_new_private_data();
+	if (!priv) {
+		return SC_ERROR_OUT_OF_MEMORY;
+	}
+
+	/* Select and process container file */
+	r = idprime_select_containermap(card);
 	if (r <= 0) {
+		idprime_free_private_data(priv);
 		LOG_FUNC_RETURN(card->ctx, r);
 	}
 
 	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Index file found");
 
-	priv = idprime_new_private_data();
-	if (!priv) {
-		return SC_ERROR_OUT_OF_MEMORY;
+	r = idprime_process_containermap(card, &priv->containers, r);
+	if (r != SC_SUCCESS) {
+		idprime_free_private_data(priv);
+		LOG_FUNC_RETURN(card->ctx, r);
 	}
+
+	/* Select and process the index file */
+	r = idprime_select_index(card);
+	if (r <= 0) {
+		idprime_free_private_data(priv);
+		LOG_FUNC_RETURN(card->ctx, r);
+	}
+
+	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Index file found");
 
 	r = idprime_process_index(card, priv, r);
 	if (r != SC_SUCCESS) {
