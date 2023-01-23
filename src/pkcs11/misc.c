@@ -499,7 +499,7 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t * ctx)
 
 	conf_block = sc_get_conf_block(ctx, "pkcs11", NULL, 1);
 	if (!conf_block)
-		return;
+		goto out;
 
 	/* contains the defaults, if there is a "pkcs11" config block */
 	conf->max_virtual_slots = scconf_get_int(conf_block, "max_virtual_slots", conf->max_virtual_slots);
@@ -535,6 +535,7 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t * ctx)
 	}
 	free(tmp);
 
+out:
 	sc_log(ctx, "PKCS#11 options: max_virtual_slots=%d slots_per_card=%d "
 		 "lock_login=%d atomic=%d pin_unblock_style=%d "
 		 "create_slots_flags=0x%X",
