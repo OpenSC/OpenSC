@@ -113,6 +113,36 @@ static int sc_pkcs15emu_idprime_init(sc_pkcs15_card_t *p15card)
 	r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
 	LOG_TEST_GOTO_ERR(card->ctx, r, "Can not add pin object");
 
+	/* set signature pin for 940 cards */
+	if (card->type == SC_CARD_TYPE_IDPRIME_940) {
+		const char sig_pin_label[] = "Digital Signature PIN";
+		const char *sig_pin_id = "83";
+		sc_log(card->ctx,  "IDPrime adding Digital Signature pin...");
+		memset(&pin_info, 0, sizeof(pin_info));
+		memset(&pin_obj,  0, sizeof(pin_obj));
+
+		pin_info.auth_type = SC_PKCS15_PIN_AUTH_TYPE_PIN;
+		sc_pkcs15_format_id(sig_pin_id, &pin_info.auth_id);
+		pin_info.attrs.pin.reference     = 0x83;
+		pin_info.attrs.pin.flags         = SC_PKCS15_PIN_FLAG_INITIALIZED;
+		pin_info.attrs.pin.type          = SC_PKCS15_PIN_TYPE_ASCII_NUMERIC;
+		pin_info.attrs.pin.min_length    = 4;
+		pin_info.attrs.pin.stored_length = 0;
+		pin_info.attrs.pin.max_length    = 16;
+		pin_info.tries_left    = -1;
+
+		pin_info.attrs.pin.flags |= SC_PKCS15_PIN_FLAG_NEEDS_PADDING;
+		pin_info.attrs.pin.stored_length = 16;
+		pin_info.attrs.pin.pad_char = 0x00;
+
+		sc_log(card->ctx,  "IDPrime Adding Digital Signature pin with label=%s", sig_pin_label);
+		strncpy(pin_obj.label, pin_label, SC_PKCS15_MAX_LABEL_SIZE - 1);
+		pin_obj.flags = SC_PKCS15_CO_FLAG_PRIVATE;
+
+		r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
+		LOG_TEST_GOTO_ERR(card->ctx, r, "Can not add Digital Signature pin object");
+	}
+
 	/*
 	 * get token name if provided
 	 */
@@ -172,6 +202,8 @@ static int sc_pkcs15emu_idprime_init(sc_pkcs15_card_t *p15card)
 		snprintf(pubkey_obj.label, SC_PKCS15_MAX_LABEL_SIZE, PUBKEY_LABEL_TEMPLATE, i+1);
 		snprintf(prkey_obj.label, SC_PKCS15_MAX_LABEL_SIZE, PRIVKEY_LABEL_TEMPLATE, i+1);
 		prkey_obj.flags = SC_PKCS15_CO_FLAG_PRIVATE;
+
+		/* Diferentiate somehow between objects accesible with normal and with digital signature pin */
 		sc_pkcs15_format_id(pin_id, &prkey_obj.auth_id);
 
 		r = sc_pkcs15_read_file(p15card, &cert_info.path, &cert_der.value, &cert_der.len, 0);
