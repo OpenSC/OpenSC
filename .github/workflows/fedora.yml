@@ -1,0 +1,36 @@
+name: Fedora Linux
+
+on:
+  pull_request:
+    paths:
+      - '**.c'
+      - '**.h'
+      - .github/workflows/fedora.yml
+      - .github/setup-fedora.sh
+      - .github/build.sh
+      - .github/push-artifacts.sh
+      - '**.am'
+      - doc/**
+  push:
+
+permissions:
+  contents: read  #  to fetch code (actions/checkout)
+
+jobs:
+  fedora:
+    runs-on: ubuntu-latest
+    container:
+      image: fedora:latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: .github/setup-fedora.sh
+      - run: .github/build.sh dist
+
+  fedora-ix86:
+    runs-on: ubuntu-latest
+    container:
+      image: fedora:latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: .github/setup-fedora.sh ix86
+      - run: .github/build.sh ix86
