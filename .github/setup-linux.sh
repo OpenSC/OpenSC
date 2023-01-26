@@ -2,12 +2,12 @@
 
 set -ex -o xtrace
 
+WINE_DEPS=""
 # Generic dependencies
 DEPS="docbook-xsl xsltproc gengetopt help2man pcscd check pcsc-tools libtool make autoconf autoconf-archive automake pkg-config git xxd openssl"
 
 # 64bit or 32bit dependencies
 if [ "$1" == "ix86" ]; then
-	sudo dpkg --add-architecture i386
 	DEPS="$DEPS gcc-multilib libpcsclite-dev:i386 libcmocka-dev:i386 libssl-dev:i386 zlib1g-dev:i386 libreadline-dev:i386 softhsm2:i386"
 else
 	DEPS="$DEPS libpcsclite-dev libcmocka-dev libssl-dev zlib1g-dev libreadline-dev softhsm2"
@@ -27,27 +27,28 @@ elif [ "$1" == "piv" -o "$1" == "isoapplet" -o "$1" == "gidsapplet" -o "$1" == "
 elif [ "$1" == "mingw" -o "$1" == "mingw32" ]; then
 	# Note, that this list is somehow magic and adding libwine, libwine:i386 or wine64
 	# will make the following sections break without any useful logs. See GH#2458
-	DEPS="$DEPS wine wine32 xvfb wget"
-	sudo dpkg --add-architecture i386
+	WINE_DEPS="wine wine32 xvfb wget"
 	if [ "$1" == "mingw" ]; then
-		DEPS="$DEPS binutils-mingw-w64-x86-64 gcc-mingw-w64-x86-64 mingw-w64"
+		WINE_DEPS="$WINE_DEPS binutils-mingw-w64-x86-64 gcc-mingw-w64-x86-64 mingw-w64"
 	elif [ "$1" == "mingw32" ]; then
-		DEPS="$DEPS binutils-mingw-w64-i686 gcc-mingw-w64-i686"
+		WINE_DEPS="$WINE_DEPS binutils-mingw-w64-i686 gcc-mingw-w64-i686"
 	fi
 fi
 
-# The Github's Ubuntu images since 20211122.1 are broken
+# The Github Ubuntu images since 20211122.1 are broken
 # https://github.com/actions/virtual-environments/issues/4589
 if [ "$1" == "mingw" -o "$1" == "mingw32" -o "$1" == "ix86" ]; then
 	sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list
 	sudo apt-get update -qq
 	sudo apt-get purge -yqq libmono* moby* mono* php* libgdiplus libpcre2-posix3 libzip4
+	sudo dpkg --add-architecture i386
 fi
 
 # make sure we do not get prompts
 export DEBIAN_FRONTEND=noninteractive
 export DEBCONF_NONINTERACTIVE_SEEN=true
-sudo apt-get update
+sudo apt-get update -qq
+
 sudo apt-get install -y build-essential $DEPS
 
 # install libressl if needed
@@ -56,6 +57,7 @@ if [ "$1" == "libressl" -o "$2" == "libressl" ]; then
 fi
 
 if [ "$1" == "mingw" -o "$1" == "mingw32" ]; then
+	sudo apt-get install -y $WINE_DEPS
 	if [ ! -f "$(winepath 'C:/Program Files/Inno Setup 5/ISCC.exe')" ]; then
 		/sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_99.pid --make-pidfile --background --exec /usr/bin/Xvfb -- :99 -ac -screen 0 1280x1024x16
 		export DISPLAY=:99.0
