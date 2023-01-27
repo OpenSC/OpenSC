@@ -2,14 +2,17 @@
 
 set -ex -o xtrace
 
-isoapplet_version="v0"
-isoapplet_branch="main"
-isoapplet_pkgdir="net/pwendland/javacard/pki/isoapplet"
-if [ "$1" = "v1" ]; then
-	isoapplet_branch="isoapplet-v1"
-	isoapplet_version="v1"
-	isoapplet_pkgdir="xyz/wendland/javacard/pki/isoapplet"
+isoapplet_version="$1"
+if [ "$isoapplet_version" = "v0" ]; then
+	isoapplet_branch="main-javacard-v2.2.2"
+elif [ "$isoapplet_version" = "v1" ]; then
+	isoapplet_branch="main"
+else
+	echo "Unknown IsoApplet version: $isoapplet_version"
+	exit 1
 fi
+
+isoapplet_pkgdir="xyz/wendland/javacard/pki/isoapplet"
 
 # install the opensc
 sudo make install
