@@ -4,6 +4,7 @@
  *
  * Copyright (C) 2005,2006,2007,2008,2009,2010
  *               Douglas E. Engert <deengert@anl.gov>
+ * Copyright (C) 2020 Douglas E. Engert <deengert@gmail.com>
  *               2004, Nils Larsch <larsch@trustcenter.de>
  * Copyright (C) 2006, Identity Alliance,
  *               Thomas Harning <thomas.harning@identityalliance.com>
@@ -236,8 +237,8 @@ static int piv_detect_card(sc_pkcs15_card_t *p15card)
 	sc_card_t *card = p15card->card;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	if (card->type < SC_CARD_TYPE_PIV_II_GENERIC
-		|| card->type >= SC_CARD_TYPE_PIV_II_GENERIC+1000)
+	if (card->type < SC_CARD_TYPE_PIV_II_BASE
+		|| card->type >= SC_CARD_TYPE_PIV_II_BASE + 1000)
 		return SC_ERROR_INVALID_CARD;
 	return SC_SUCCESS;
 }
@@ -320,21 +321,30 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 			"2.16.840.1.101.3.7.2.16.19", NULL, "1013", 0},
 	{"34", "Retired X.509 Certificate for Key Management 20",
 			"2.16.840.1.101.3.7.2.16.20", NULL, "1014", 0},
+	/* new in 800-73-4 */
+	{"35", "Biometric Information Templates Group Template",
+			"2.16.840.1.101.3.7.2.16.22", NULL, "1016", 0},
+	{"36", "Secure Messaging Certificate Signer",
+			"2.16.840.1.101.3.7.2.16.23", NULL, "1017", 0},
+	{"37", "Pairing Code Reference Data Container",
+			"2.16.840.1.101.3.7.2.16.24", NULL, "1018", SC_PKCS15_CO_FLAG_PRIVATE},
 	{NULL, NULL, NULL, NULL, NULL, 0}
 	};
 	// clang-format on
-	/*
-	 * NIST 800-73-1 lifted the restriction on
+	/* NIST 800-73-1 lifted the restriction on
 	 * requiring pin protected certs. Thus the default is to
 	 * not require this.
+	 *
+	 * Certs will be pulled out from the cert objects 
+	 * But there may be extra certs (SM Signer cert) that do
+	 * not have a private keys on the card. These certs must be last
 	 */
-	/* certs will be pulled out from the cert objects */
-	/* the number of cert, pubkey and prkey triplets */
 
-#define PIV_NUM_CERTS_AND_KEYS 24
+#define PIV_NUM_CERTS 25
+#define PIV_NUM_KEYS  24
 
 	// clang-format off
-	static const cdata certs[PIV_NUM_CERTS_AND_KEYS] = {
+	static const cdata certs[PIV_NUM_CERTS] = {
 		{"01", "Certificate for PIV Authentication", "0101cece", 0, 0},
 		{"02", "Certificate for Digital Signature", "0100cece", 0, 0},
 		{"03", "Certificate for Key Management", "0102cece", 0, 0},
@@ -358,7 +368,8 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		{"21", "Retired Certificate for Key Management 17", "1011cece", 0, 0},
 		{"22", "Retired Certificate for Key Management 18", "1012cece", 0, 0},
 		{"23", "Retired Certificate for Key Management 19", "1013cece", 0, 0},
-		{"24", "Retired Certificate for Key Management 20", "1014cece", 0, 0}
+		{"24", "Retired Certificate for Key Management 20", "1014cece", 0, 0},
+		{"25", "Secure Messaging Certificate Signer",   "1017cece", 0, 0} /* no keys on card */
 	};
 	// clang-format on
 
@@ -395,7 +406,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 	 * RSA and EC have different sets of usage
 	 */
 	// clang-format off
-	static const pubdata pubkeys[PIV_NUM_CERTS_AND_KEYS] = {
+	static const pubdata pubkeys[PIV_NUM_KEYS] = {
 		{ "01", "PIV AUTH pubkey",
 			 	/*RSA*/SC_PKCS15_PRKEY_USAGE_ENCRYPT |
 			 		SC_PKCS15_PRKEY_USAGE_WRAP |
@@ -505,11 +516,14 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 	// clang-format on
 
 /*
- * note some of the SC_PKCS15_PRKEY values are dependent
+ * Note some of the SC_PKCS15_PRKEY values are dependent
  * on the key algorithm, and will be reset.
+ 
+ * No SM Signer private Key on card
+ * The 04 SM ECC CVC pubkey is in response to SELECT AID
  */
 	// clang-format off
-	static const prdata prkeys[PIV_NUM_CERTS_AND_KEYS] = {
+	static const prdata prkeys[PIV_NUM_KEYS] = {
 		{ "01", "PIV AUTH key",
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_DECRYPT |
 					SC_PKCS15_PRKEY_USAGE_UNWRAP |
@@ -614,6 +628,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_DECRYPT | SC_PKCS15_PRKEY_USAGE_UNWRAP,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_DERIVE,
 			"", 0x95, "01", SC_PKCS15_CO_FLAG_PRIVATE, 0}
+		/* SM Signer certificate does not have private key on card */
 	};
 	// clang-format on
 
@@ -621,7 +636,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 	sc_card_t *card = p15card->card;
 	sc_serial_number_t serial;
 	char buf[SC_MAX_SERIALNR * 2 + 1];
-	common_key_info ckis[PIV_NUM_CERTS_AND_KEYS];
+	common_key_info ckis[PIV_NUM_CERTS];
 	int follows_nist_fascn = 0;
 	char *token_name = NULL;
 
@@ -685,6 +700,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		
 		r = sc_pkcs15emu_object_add(p15card, SC_PKCS15_TYPE_DATA_OBJECT,
 			&obj_obj, &obj_info);
+
 		if (r < 0)
 			LOG_FUNC_RETURN(card->ctx, r);
 /* TODO
@@ -716,7 +732,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 	 */
 	/* set certs */
 	sc_log(card->ctx,  "PIV-II adding certs...");
-	for (i = 0; i < PIV_NUM_CERTS_AND_KEYS; i++) {
+	for (i = 0; i < PIV_NUM_CERTS; i++) {
 		struct sc_pkcs15_cert_info cert_info;
 		struct sc_pkcs15_object    cert_obj;
 		sc_pkcs15_der_t   cert_der;
@@ -991,7 +1007,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 	 * at a later time. The piv-tool can stash  pubkey in file
 	 */
 	sc_log(card->ctx,  "PIV-II adding pub keys...");
-	for (i = 0; i < PIV_NUM_CERTS_AND_KEYS; i++) {
+	for (i = 0; i < PIV_NUM_KEYS; i++) {
 		struct sc_pkcs15_pubkey_info pubkey_info;
 		struct sc_pkcs15_object     pubkey_obj;
 		struct sc_pkcs15_pubkey *p15_key = NULL;
@@ -1141,7 +1157,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 
 	/* set private keys */
 	sc_log(card->ctx,  "PIV-II adding private keys...");
-	for (i = 0; i < PIV_NUM_CERTS_AND_KEYS; i++) {
+	for (i = 0; i < PIV_NUM_KEYS; i++) {
 		struct sc_pkcs15_prkey_info prkey_info;
 		struct sc_pkcs15_object     prkey_obj;
 
@@ -1218,7 +1234,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 err:
-	for (i = 0; i < PIV_NUM_CERTS_AND_KEYS; i++) {
+	for (i = 0; i < PIV_NUM_CERTS; i++) {
 		sc_pkcs15_free_pubkey(ckis[i].pubkey_from_cert);
 	}
 	sc_pkcs15_card_clear(p15card);
