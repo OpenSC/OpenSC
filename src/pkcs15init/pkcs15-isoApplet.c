@@ -362,17 +362,17 @@ isoApplet_generate_key_rsa(sc_pkcs15_prkey_info_t *key_info, sc_card_t *card,
 
 	/* Check key size: */
 	keybits = key_info->modulus_length;
-	if (keybits != 2048)
+	if (keybits != 2048 && keybits != 4096)
 	{
 		rv = SC_ERROR_INVALID_ARGUMENTS;
-		sc_log(card->ctx, "%s: RSA private key length is unsupported, correct length is 2048", sc_strerror(rv));
+		sc_log(card->ctx, "%s: RSA private key length is unsupported, correct length is 2048 or 4096", sc_strerror(rv));
 		goto err;
 	}
 
 	/* Generate the key.
 	 * Note: key size is not explicitly passed to the card.
-	 * It assumes 2048 along with the algorithm reference. */
-	args.algorithm_ref = SC_ISOAPPLET_ALG_REF_RSA_GEN_2048;
+	 * Its derived from the algorithm reference. */
+	args.algorithm_ref = keybits == 2048 ? SC_ISOAPPLET_ALG_REF_RSA_GEN_2048 : SC_ISOAPPLET_ALG_REF_RSA_GEN_4096;
 	args.priv_key_ref = key_info->key_reference;
 
 	args.pubkey.rsa.modulus.len = keybits / 8;

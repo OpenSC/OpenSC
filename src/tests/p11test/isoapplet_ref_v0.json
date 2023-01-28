@@ -196,6 +196,12 @@
 		"RSA_PKCS",
 		"",
 		"YES"
+	],
+	[
+		"03",
+		"ECDSA_SHA1",
+		"YES",
+		""
 	]],
 	"result": "pass"
 },
@@ -251,8 +257,7 @@
 },
 {
 	"test_id": "ec_sign_size_test",
-	"fail_reason": "Some signatures were not verified successfully. Please review the log",
-	"result": "fail"
+	"result": "pass"
 },
 {
 	"test_id": "usage_test",

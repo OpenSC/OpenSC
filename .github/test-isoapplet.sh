@@ -2,6 +2,15 @@
 
 set -ex -o xtrace
 
+isoapplet_version="v0"
+isoapplet_branch="main"
+isoapplet_pkgdir="net/pwendland/javacard/pki/isoapplet"
+if [ "$1" = "v1" ]; then
+	isoapplet_branch="isoapplet-v1"
+	isoapplet_version="v1"
+	isoapplet_pkgdir="xyz/wendland/javacard/pki/isoapplet"
+fi
+
 # install the opensc
 sudo make install
 export LD_LIBRARY_PATH=/usr/local/lib
@@ -11,13 +20,13 @@ export LD_LIBRARY_PATH=/usr/local/lib
 
 # The ISO applet
 if [ ! -d IsoApplet ]; then
-	git clone https://github.com/philipWendland/IsoApplet.git
+	git clone https://github.com/philipWendland/IsoApplet.git --branch $isoapplet_branch --depth 1
 	# enable IsoApplet key import patch
-	sed "s/DEF_PRIVATE_KEY_IMPORT_ALLOWED = false/DEF_PRIVATE_KEY_IMPORT_ALLOWED = true/g" -i IsoApplet/src/net/pwendland/javacard/pki/isoapplet/IsoApplet.java
+	sed "s/DEF_PRIVATE_KEY_IMPORT_ALLOWED = false/DEF_PRIVATE_KEY_IMPORT_ALLOWED = true/g" -i "IsoApplet/src/${isoapplet_pkgdir}/IsoApplet.java"
 fi
-javac -classpath jcardsim/target/jcardsim-3.0.5-SNAPSHOT.jar IsoApplet/src/net/pwendland/javacard/pki/isoapplet/*.java
+javac -classpath jcardsim/target/jcardsim-3.0.5-SNAPSHOT.jar IsoApplet/src/${isoapplet_pkgdir}/*.java
 echo "com.licel.jcardsim.card.applet.0.AID=F276A288BCFBA69D34F31001" > isoapplet_jcardsim.cfg
-echo "com.licel.jcardsim.card.applet.0.Class=net.pwendland.javacard.pki.isoapplet.IsoApplet" >> isoapplet_jcardsim.cfg
+echo "com.licel.jcardsim.card.applet.0.Class=${isoapplet_pkgdir//\//.}.IsoApplet" >> isoapplet_jcardsim.cfg
 echo "com.licel.jcardsim.card.ATR=3B80800101" >> isoapplet_jcardsim.cfg
 echo "com.licel.jcardsim.vsmartcard.host=localhost" >> isoapplet_jcardsim.cfg
 echo "com.licel.jcardsim.vsmartcard.port=35963" >> isoapplet_jcardsim.cfg
@@ -65,7 +74,7 @@ pkcs11-tool -l -t -p 123456
 # run the tests
 pushd src/tests/p11test/
 sleep 5
-./p11test -s 0 -p 123456 -o isoapplet.json || true # ec_sign_size_test is failing here
+./p11test -s 0 -p 123456 -o isoapplet.json
 popd
 
 # random data to be signed
@@ -85,4 +94,7 @@ rm /tmp/ECprivKey.pem /tmp/ECpubKey.pem /tmp/data.bin /tmp/data.sig
 
 kill -9 $PID
 
-diff -u3 src/tests/p11test/isoapplet{_ref,}.json
+if ! diff -u3 src/tests/p11test/isoapplet_ref_${isoapplet_version}.json src/tests/p11test/isoapplet.json; then
+	echo "The output of p11test has changed (see diff above). If that is expected, update the reference file. Otherwise, fix the error."
+	exit 1
+fi
