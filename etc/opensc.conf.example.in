@@ -226,6 +226,44 @@ app default {
 		# in the 'pkcs11' section below
 	}
 
+	card_driver PIV-II {
+		# "piv_max_object_size"
+		# defines the buffer size used to read PIV objects
+		# Although NIST sp800-73-4 lists object sizes, these are not hard limits.
+		# Other PIV-like cards may have larger objects.
+		# Maximum: 65535
+		# Minimum: 16384
+		# Default: 16384
+		# piv_max_object_size = 16384;
+		# May be set via environment: PIV_MAX_OBJECT_SIZE=16384
+
+		# "piv_use_sm"
+		# NIST sp800-73-4 supports Secure Messaging (SM), an optional feature.
+		#
+		# "piv_use_sm" may be set to:
+		#	never - Don't use it. Card will react the same as cards without SM.
+		#	always - Always use SM if card supports it for contact and contactless
+		#	default - If card supports SM use for contactless (NFC) and for PIN, crypto,
+		#                 and sensitive objects with contact.
+		# piv_use_sm = "default";
+		# May be set via environment: PIV_USE_SM=default
+
+		# "piv_pairing_code"
+		# Virtual Contact Interface (VCI) an optional feature, to allow
+		# contactless access to card as if it was using the contact reader.
+		# VCI requires SM. It may also require a pairing code which may be printed on the
+		# card, given to card owner when card issued or available from the card when used
+		# with a contact reader. Contact your card issuing agency for details on what your
+		# card supports.
+		# Pairing code can be set in opensc.conf or via environment (recommended).
+		# It is an 8 digit string.
+		# Default: no pairing code.
+		# piv_pairing_code = 12345678;
+		# May be set via environment: PIV_PAIRING_CODE=12345678
+
+		# Environment variables override opensc.conf
+	}
+
 	# In addition to the built-in list of known cards in the
 	# card driver, you can configure a new card for the driver
 	# using the card_atr block. The goal is to centralize
