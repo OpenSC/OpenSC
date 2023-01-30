@@ -175,8 +175,7 @@ static int sc_pkcs15emu_skeid_init(sc_pkcs15_card_t * p15card)
 	LOG_FUNC_RETURN(p15card->card->ctx, SC_SUCCESS);
 }
 
-int sc_pkcs15emu_skeid_init_ex(sc_pkcs15_card_t * p15card,
-			struct sc_aid *aid)
+int sc_pkcs15emu_skeid_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
 {
 	int r = SC_ERROR_WRONG_CARD;
 
