@@ -22,7 +22,7 @@ jobs:
   build:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - run: .github/setup-macos.sh
         env:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
@@ -33,7 +33,7 @@ jobs:
           DEVELOPMENT_TEAM: ${{ secrets.DEVELOPMENT_TEAM }}
           INSTALLER_SIGN_IDENTITY: ${{ secrets.INSTALLER_SIGN_IDENTITY }}
       - name: Cache build artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: opensc-build-macos
           path:
@@ -47,9 +47,9 @@ jobs:
     runs-on: macos-latest
     needs: [build]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Pull build artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: opensc-build-macos
       - run: git config --global user.email "builds@github.com"

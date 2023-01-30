@@ -22,7 +22,7 @@ jobs:
     container:
       image: fedora:latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - run: .github/setup-fedora.sh
       - run: .github/build.sh dist
 
@@ -31,6 +31,6 @@ jobs:
     container:
       image: fedora:latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - run: .github/setup-fedora.sh ix86
       - run: .github/build.sh ix86
