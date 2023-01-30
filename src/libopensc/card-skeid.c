@@ -154,6 +154,9 @@ static int skeid_set_security_env(sc_card_t *card,
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
+	/* here we follow the behaviour of the proprietary driver accompanying the card
+	 * where security operations are preceded by MSE RESTORE rather than MSE SET
+	 */
 	key_id = env->key_ref[0];
 	r = sc_restore_security_env(card, key_id);
 

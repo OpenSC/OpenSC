@@ -130,6 +130,8 @@ static int sc_pkcs15emu_skeid_init(sc_pkcs15_card_t * p15card)
 
 	/* add private keys */
 	const u8 skeid_prkey_pin[3] = {2, 1, 1};
+
+	/* store seIdentifier rather than keyReference */
 	const int skeid_prkey_ref[3] = {0x01, 0x34, 0x44};
 	const int skeid_prkey_usage[3] =
 		{ SC_PKCS15_PRKEY_USAGE_NONREPUDIATION | SC_PKCS15_PRKEY_USAGE_SIGN,
