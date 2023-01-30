@@ -800,6 +800,53 @@ app <replaceable>application</replaceable> {
 			</variablelist>
 		</refsect2>
 
+		<refsect2 id="piv">
+			<title>Configuration Options for PIV Card</title>
+			<variablelist>
+				<varlistentry>
+					<term>
+						<option>piv_max_object_size = <replaceable>num</replaceable>;</option>
+					</term>
+					<listitem><para>
+						Max size of a PIV object. The default of 16384 bytes should
+						work for most cards. It might be overwritten by
+						<literal>PIV_MAX_OBJECT_SIZE</literal> environment variable.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>piv_use_sm = <replaceable>name</replaceable>;</option>
+					</term>
+					<listitem><para>
+						Use optional secure messaging as define by NIST SP 800-73-4
+					<replaceable>name</replaceable> is one of:
+					<itemizedlist>
+						<listitem><para><literal>always</literal>
+							- Use secure messaging for commands.
+						</para></listitem>
+						<listitem><para><literal>never</literal>
+							- Used for debugging.  Card may still require use of secure messaging.
+						</para></listitem>
+					</itemizedlist>
+						Ignored if card does not support secure messaging.
+						Default is use secure messaging as required by card issuer
+						policies which are different for contact and contactless.
+						It might be overwritten by <literal>PIV_USE_SM</literal>
+						environment variable.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term><option>piv_pairing_code = <replaceable>num</replaceable>;</option>
+					</term>
+					<listitem><para>
+						Ignored if card does not support piv_pairing_code.
+						Card issuer may require a pairing code be used especially over contactless
+						reader. Not normally used in conf file because pairing code is card specific.
+						Use <literal>PIV_PAIRING_CODE</literal> environment variable.
+					</para></listitem>
+				</varlistentry>
+			</variablelist>
+		</refsect2>
+
 		<refsect2 id="card_atr">
 			<title>Configuration based on ATR</title>
 			<para>
@@ -1779,6 +1826,18 @@ app <replaceable>application</replaceable> {
 						<application>piv-tool</application>.
 				</para></listitem>
 			</varlistentry>
+			<varlistentry>
+				<term>
+					<envar>PIV_MAX_OBJECT</envar>,
+					<envar>PIV_USE_SM</envar>,
+					<envar>PIV_PAIRING_CODE</envar>
+				</term>
+				<listitem><para>
+						PIV configuration during initialization
+						See Configuration Options for PIV Card.
+				</para></listitem>
+			</varlistentry>
+
 		</variablelist>
 	</refsect1>
 
