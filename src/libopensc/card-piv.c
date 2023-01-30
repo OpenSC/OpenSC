@@ -61,6 +61,7 @@
 #if defined(ENABLE_OPENSSL) && defined(ENABLE_SM) && !defined(OPENSSL_NO_EC) && !defined(LIBRESSL_VERSION_NUMBER) && OPENSSL_VERSION_NUMBER >= 0x10100000L
 #define ENABLE_PIV_SM
 #include <openssl/cmac.h>
+#include "compression.h"
 #endif
 
 #include "internal.h"
@@ -182,6 +183,13 @@ enum {
 #define PIV_CS_CS7		0x2E
 
 #ifdef ENABLE_PIV_SM
+/* TODO temp to test with or without LIBCTX PR */
+#ifdef USE_OPENSSL3_LIBCTX
+#define PIV_LIBCTX card->ctx->ossl3ctx->libctx
+#else
+#define PIV_LIBCTX NULL
+#endif
+
 	/* Table 14 and other constants */
 	typedef struct cipher_suite {
 		u8 id; /* taken from AID "AC" tag */
@@ -853,6 +861,26 @@ static int piv_is_expected_tag(unsigned int cla, unsigned int tag, unsigned int 
 }
 
 #ifdef ENABLE_PIV_SM
+static void piv_inc(u8 *counter, size_t size);
+static int piv_encode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu);
+static int piv_get_sm_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t **sm_apdu);
+static int piv_free_sm_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t **sm_apdu);
+static int piv_get_asn1_obj(sc_context_t *ctx, void *arg,  const u8 *obj, size_t len, int depth);
+static int piv_sm_open(struct sc_card *card);
+static int piv_decode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu);
+static int piv_sm_close(sc_card_t *card);
+static void piv_clear_cvc_content(piv_cvc_t *cvc);
+static void piv_clear_sm_session(piv_sm_session_t *session);
+static int piv_decode_cvc(sc_card_t * card, u8 **buf, size_t *buflen, piv_cvc_t *cvc);
+static int piv_parse_pairing_code(sc_card_t *card, const char *option);
+static int Q2OS(int fsize, u8 *Q, size_t Qlen, u8 * OS, size_t *OSlen);
+static int piv_send_vci_pairing_code(struct sc_card *card, u8 *paring_code);
+static int piv_sm_verify_sig(struct sc_card *card, const EVP_MD *type,
+		EVP_PKEY *pkey, u8 *data, size_t data_size,
+		unsigned char *sig, size_t siglen);
+static int piv_sm_verify_certs(struct sc_card *card);
+
+
 static void piv_inc(u8 *counter, size_t size)
 {
 	unsigned int c = 1;
@@ -915,7 +943,7 @@ static int piv_encode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu
 		goto err;
 	}
 #else
-	mac = EVP_MAC_fetch(NULL, "cmac", NULL);
+	mac = EVP_MAC_fetch(PIV_LIBCTX, "cmac", NULL);
 	cmac_params_n = 0;
 	cmac_params[cmac_params_n++] = OSSL_PARAM_construct_utf8_string("cipher", cs->cipher_cbc_name, 0);
 	cmac_params[cmac_params_n] = OSSL_PARAM_construct_end();
@@ -1142,9 +1170,7 @@ static int piv_get_sm_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t **sm_apd
 
 	r = piv_encode_apdu(card, plain, *sm_apdu);
 	if (r < 0 && *sm_apdu) {
-		free((*sm_apdu)->resp);
-		free(*sm_apdu);
-		*sm_apdu = NULL;
+		piv_free_sm_apdu(card, NULL, sm_apdu);
 	}
 
 	LOG_FUNC_RETURN(card->ctx, r);
@@ -1224,6 +1250,11 @@ static int piv_decode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu
 		goto err;
 	}
 
+	/* if no data returned clear plain resplen */
+	if (!(asn1_sm_response[0].flags & SC_ASN1_PRESENT)) {
+		plain->resplen = 0;
+	}
+
 	if ((asn1_sm_response[1].flags & SC_ASN1_PRESENT) == 0
 			|| (asn1_sm_response[2].flags & SC_ASN1_PRESENT) == 0) {
 		sc_log(card->ctx,"SM missing status or R-MAC");
@@ -1247,7 +1278,7 @@ static int piv_decode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu
 		goto err;
 	}
 #else
-	mac = EVP_MAC_fetch(NULL, "cmac", NULL);
+	mac = EVP_MAC_fetch(PIV_LIBCTX, "cmac", NULL);
 	cmac_params[cmac_params_n++] = OSSL_PARAM_construct_utf8_string("cipher", cs->cipher_cbc_name, 0);
 	cmac_params[cmac_params_n] = OSSL_PARAM_construct_end();
 	if (mac == NULL || (cmac_ctx = EVP_MAC_CTX_new(mac)) == NULL) {
@@ -1309,7 +1340,7 @@ static int piv_decode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu
 		p = ee.value;
 		inlen = ee.len;
 		if (inlen < 17 || *p != 0x01) { /*padding indicator is required */
-			sc_log(card->ctx, "SM padding indicatior not 0x01");
+			sc_log(card->ctx, "SM padding indicator not 0x01");
 			r = SC_ERROR_SM_AUTHENTICATION_FAILED;
 			goto err;
 		}
@@ -1330,7 +1361,7 @@ static int piv_decode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu
 		 */
 
 		inlen -= 16;
-		if (plain->resplen < (unsigned) inlen) {
+		if (plain->resplen < (unsigned) inlen || plain->resp == NULL) {
 			sc_log(card->ctx, "SM response will not fit in resp,resplen");
 			r = SC_ERROR_SM_AUTHENTICATION_FAILED;
 			goto err;
@@ -1354,7 +1385,7 @@ static int piv_decode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu
 		}
 
 		/* unpad last block and get bytes in last block */
-		for (i = 15; i >=  0 ; i--) {
+		for (i = 15; i >  0 ; i--) {
 			if (lastb[i] == 0x80)
 				break;
 			if (lastb[i] == 0x00)
@@ -1543,7 +1574,11 @@ static int piv_decode_cvc(sc_card_t * card, u8 **buf, size_t *buflen,
 	sc_format_asn1_entry(asn1_piv_cvc, &asn1_piv_cvc_body, NULL, 1);
 
 	r = sc_asn1_decode(card->ctx, asn1_piv_cvc, *buf, *buflen, NULL, NULL) ; /*(const u8 **) &buf_tmp, &len);*/
-	LOG_TEST_RET(card->ctx, r, "Could not decode card verifiable certificate");
+	if (r < 0) {
+		piv_clear_cvc_content(cvc);
+		sc_log(card->ctx, "Could not decode card verifiable certificate");
+		LOG_FUNC_RETURN(card->ctx, r);
+	}
 
 	cvc->signaturelen = signaturebits / 8;
 
@@ -1577,7 +1612,7 @@ static int piv_decode_cvc(sc_card_t * card, u8 **buf, size_t *buflen,
 }
 
 
-int piv_parse_pairing_code(sc_card_t *card, const char *option)
+static int piv_parse_pairing_code(sc_card_t *card, const char *option)
 {
 	size_t i;
 
@@ -1618,7 +1653,7 @@ static int piv_load_options(sc_card_t *card)
 			if (priv->max_object_size < PIV_MAX_OBJECT_SIZE)
 				priv->max_object_size = PIV_MAX_OBJECT_SIZE;
 			else
-				priv->max_object_size = MAX_FILE_SIZE; /* conserative value if error */
+				priv->max_object_size = MAX_FILE_SIZE; /* conservative value if error */
 		} else
 			piv_max_object_size_found = 1;
 		sc_log(card->ctx," priv->max_object_size:%d", priv->max_object_size);
@@ -1926,8 +1961,10 @@ static int piv_sm_verify_certs(struct sc_card *card)
 	piv_private_data_t * priv = PIV_DATA(card);
 	cipher_suite_t *cs = priv->cs;
 	int r = 0;
-	const u8 *cert_blob  = {0};
+	u8 *cert_blob_unzipped = NULL; /* free */
+	u8 *cert_blob = NULL; /* do not free */
 	size_t cert_bloblen = 0;
+
 	u8 *rbuf; /* do not free*/
 	size_t rbuflen;
 	X509 *cert = NULL;
@@ -1957,7 +1994,7 @@ static int piv_sm_verify_certs(struct sc_card *card)
 	/*
 	 * Get the PIV_OBJ_SM_CERT_SIGNER and optional sm_in_cvc in cache
 	 * both are in same object. Rbuf, and rbuflen are needed but not used here
-	 * sm_cvc and sm_in_cvc both have EC_keys sm_in_cvc may have RSA sginature
+	 * sm_cvc and sm_in_cvc both have EC_keys sm_in_cvc may have RSA signature
 	 */
 	r = piv_get_cached_data(card, PIV_OBJ_SM_CERT_SIGNER, &rbuf, &rbuflen);
 	if (r < 0) {
@@ -1973,15 +2010,33 @@ static int piv_sm_verify_certs(struct sc_card *card)
 	priv->sm_flags |= PIV_SM_FLAGS_SM_CERT_SIGNER_PRESENT; /* set for debugging */
 
 	/* get PIV_OBJ_SM_CERT_SIGNER cert DER  from cache */
-	cert_blob = priv->obj_cache[PIV_OBJ_SM_CERT_SIGNER].internal_obj_data;
-	cert_bloblen = priv->obj_cache[PIV_OBJ_SM_CERT_SIGNER].internal_obj_len;
+	if (priv->obj_cache[PIV_OBJ_SM_CERT_SIGNER].flags & PIV_OBJ_CACHE_COMPRESSED) {
+#ifdef ENABLE_ZLIB
+		if (SC_SUCCESS != sc_decompress_alloc(&cert_blob_unzipped, &cert_bloblen,
+				priv->obj_cache[PIV_OBJ_SM_CERT_SIGNER].internal_obj_data,
+				priv->obj_cache[PIV_OBJ_SM_CERT_SIGNER].internal_obj_len,
+				COMPRESSION_AUTO)) {
+			sc_log(card->ctx, "PIV decompression of SM CERT_SIGNER failed");
+			r = SC_ERROR_OBJECT_NOT_VALID;
+			goto err;
+		}
+		cert_blob = cert_blob_unzipped;
+#else
+		sc_log(card->ctx, "PIV compression not supported, no zlib");
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+#endif
+	
+	} else {
+		cert_blob = priv->obj_cache[PIV_OBJ_SM_CERT_SIGNER].internal_obj_data;
+		cert_bloblen = priv->obj_cache[PIV_OBJ_SM_CERT_SIGNER].internal_obj_len;
+	}
 
 	if (cert_blob == NULL || cert_bloblen == 0) {
 		r = SC_ERROR_SM_AUTHENTICATION_FAILED;
 		goto err;
 	}
 
-	if ((cert = d2i_X509(NULL, &cert_blob, cert_bloblen)) == NULL
+	if ((cert = d2i_X509(NULL, (const u8 **)&cert_blob, cert_bloblen)) == NULL
 			|| (cert_pkey = X509_get0_pubkey(cert)) == NULL) {
 		sc_log(card->ctx,"OpenSSL failed to get pubkey from SM_CERT_SIGNER");
 		piv_log_openssl(card->ctx);
@@ -2021,7 +2076,7 @@ static int piv_sm_verify_certs(struct sc_card *card)
 				priv->sm_in_cvc.publicPoint, priv->sm_in_cvc.publicPointlen);
 		params[params_n] = OSSL_PARAM_construct_end();
 
-		if (!(in_cvc_pkey_ctx = EVP_PKEY_CTX_new_from_name(NULL, "EC", NULL))
+		if (!(in_cvc_pkey_ctx = EVP_PKEY_CTX_new_from_name(PIV_LIBCTX, "EC", NULL))
 				|| !EVP_PKEY_fromdata_init(in_cvc_pkey_ctx)
 				|| !EVP_PKEY_fromdata(in_cvc_pkey_ctx, &in_cvc_pkey, EVP_PKEY_PUBLIC_KEY, params)
 				|| !in_cvc_pkey) {
@@ -2065,6 +2120,8 @@ static int piv_sm_verify_certs(struct sc_card *card)
 	 */
 err:
 	X509_free(cert);
+	free(cert_blob_unzipped);
+
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 	EC_GROUP_free(in_cvc_group);
 	EC_POINT_free(in_cvc_point);
@@ -2088,7 +2145,6 @@ static int piv_sm_open(struct sc_card *card)
 	piv_private_data_t * priv = PIV_DATA(card);
 	cipher_suite_t *cs = priv->cs;
 	int r = 0;
-	int rc = 0;
 	int i;
 	int reps;
 	u8 CBh;
@@ -2221,7 +2277,7 @@ static int piv_sm_open(struct sc_card *card)
 	eph_params[eph_params_n++] = OSSL_PARAM_construct_utf8_string( "group", cs->curve_group, 0);
 	eph_params[eph_params_n++] = OSSL_PARAM_construct_utf8_string( "point-format","uncompressed", 0);
 	eph_params[eph_params_n] = OSSL_PARAM_construct_end();
-	if (!(eph_ctx = EVP_PKEY_CTX_new_from_name(NULL, "EC", NULL))  /* TODO should be FIPS */
+	if (!(eph_ctx = EVP_PKEY_CTX_new_from_name(PIV_LIBCTX, "EC", NULL))  /* TODO should be FIPS */
 			|| !EVP_PKEY_keygen_init(eph_ctx)
 			|| !EVP_PKEY_CTX_set_params(eph_ctx, eph_params)
 			|| !EVP_PKEY_generate(eph_ctx, &eph_pkey)
@@ -2585,7 +2641,7 @@ static int piv_sm_open(struct sc_card *card)
 			goto err;
 		}
 #else
-		mac = EVP_MAC_fetch(NULL, "cmac", NULL);
+		mac = EVP_MAC_fetch(PIV_LIBCTX, "cmac", NULL);
 		cmac_params[cmac_params_n++] = OSSL_PARAM_construct_utf8_string("cipher", cs->cipher_cbc_name, 0);
 
 		cmac_params[cmac_params_n] = OSSL_PARAM_construct_end();
@@ -2602,13 +2658,13 @@ static int piv_sm_open(struct sc_card *card)
 		}
 #endif
 
-		rc = memcmp(AuthCryptogram, Check_AuthCryptogram, cs->AuthCryptogramlen);
-		if (rc == 0) {
+		if (0 == memcmp(AuthCryptogram, Check_AuthCryptogram, cs->AuthCryptogramlen)) {
 			sc_log(card->ctx,"AuthCryptogram compare");
 			r = 0;
 		} else {
 			sc_log(card->ctx,"AuthCryptogram compare failed");
 			r = SC_ERROR_SM_AUTHENTICATION_FAILED;
+			goto err;
 		}
 	}
 
@@ -5255,6 +5311,7 @@ static int piv_match_card(sc_card_t *card)
 	/* user provided card type must be one we know */
 	switch (card->type) {
 		case -1:
+		case SC_CARD_TYPE_PIV_II_BASE:
 		case SC_CARD_TYPE_PIV_II_GENERIC:
 		case SC_CARD_TYPE_PIV_II_HIST:
 		case SC_CARD_TYPE_PIV_II_NEO:
@@ -5270,7 +5327,6 @@ static int piv_match_card(sc_card_t *card)
 		case SC_CARD_TYPE_PIV_II_800_73_4:
 			break;
 		default:
-			/* User can not set SC_CARD_TYPE_PIV_II_BASE */
 			return 0; /* can not handle the card */
 	}
 
@@ -5460,7 +5516,7 @@ static int piv_match_card_continued(sc_card_t *card)
 		goto err;
 	}
 
-	 /*  TODO Move up as discovery is useless Get Yubico version. Assumes all Yubikey cards are identified via ATR Historic bytes */
+	 /* Assumes all Yubikey cards are identified via ATR Historic bytes */
 	switch (card->type) {
 		case SC_CARD_TYPE_PIV_II_NEO:
 		case SC_CARD_TYPE_PIV_II_YUBIKEY4:
@@ -5531,17 +5587,20 @@ static int piv_match_card_continued(sc_card_t *card)
 	}
 	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d r2:%d CI:%08x r:%d\n", card->type, r2, priv->card_issues, r);
 
-	/* AID also says if SM is supported or not */
+	/* Read AID if needed for these cards types */
 	if (!(priv->init_flags & PIV_INIT_AID_PARSED)) {
 		switch(card->type) {
 			case SC_CARD_TYPE_PIV_II_BASE:
 			case SC_CARD_TYPE_PIV_II_800_73_4:
 				r2 = piv_find_aid(card);
-				if (priv->init_flags & PIV_INIT_AID_AC) {
-					card->type = SC_CARD_TYPE_PIV_II_800_73_4;
-				}
 		}
 	}
+
+	/* If SM is supported, set SC_CARD_TYPE_PIV_II_800_73_4 */
+	if (priv->init_flags & PIV_INIT_AID_AC) {
+		card->type = SC_CARD_TYPE_PIV_II_800_73_4;
+	}
+
 	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d r2:%d CI:%08x r:%d\n", card->type, r2, priv->card_issues, r);
 
 #ifdef ENABLE_PIV_SM
@@ -5550,6 +5609,7 @@ static int piv_match_card_continued(sc_card_t *card)
 		card->type = SC_CARD_TYPE_PIV_II_800_73_4;
 	}
 #endif
+	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d r2:%d CI:%08x r:%d\n", card->type, r2, priv->card_issues, r);
 
 	/*
 	 * Set card_issues flags based card->type and version numbers if available.
