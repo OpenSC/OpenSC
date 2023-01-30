@@ -88,6 +88,7 @@ typedef struct idprime_object {
 	int valid_key_ref;
 	u8 df[2];
 	unsigned short length;
+	int pin_index;
 } idprime_object_t;
 
 /*
@@ -103,6 +104,17 @@ typedef struct idprime_container {
 } idprime_container_t;
 
 /*
+ * IDPrime key reference structure
+ */
+#define KEYREF_OBJ_LEN 8
+typedef struct idprime_keyref {
+	int index;								/* Index of the key reference */
+	int pin_index;							/* Index of the auth pin used for accessing key */
+	unsigned char key_reference;			/* Key reference used for accessing key */
+	struct idprime_keyref *next;
+} idprime_keyref_t;
+
+/*
  * IDPrime private data per card state
  */
 typedef struct idprime_private_data {
@@ -116,6 +128,7 @@ typedef struct idprime_private_data {
 	u8 tinfo_df[2];				/* DF of object with Token Info Label */
 	unsigned long current_op;		/* current operation set by idprime_set_security_env */
 	idprime_container_t *containers;	/* list of private key containers */
+	idprime_keyref_t *keyrefmap;		/* list of key references for private keys */
 } idprime_private_data_t;
 
 /* For SimCList autocopy, we need to know the size of the data elements */
@@ -133,11 +146,23 @@ static void idprime_free_containermap(idprime_container_t *containers)
 	}
 }
 
+
+static void idprime_free_keyref(idprime_keyref_t *keyrefmap)
+{
+	idprime_keyref_t *next = NULL;
+	while (keyrefmap) {
+		next = keyrefmap->next;
+		free(keyrefmap);
+		keyrefmap = next;
+	}
+}
+
 void idprime_free_private_data(idprime_private_data_t *priv)
 {
 	free(priv->cache_buf);
 	list_destroy(&priv->pki_list);
 	idprime_free_containermap(priv->containers);
+	idprime_free_keyref(priv->keyrefmap);
 	free(priv);
 	return;
 }
@@ -289,6 +314,107 @@ static idprime_container_t *idprime_search_container(int index, idprime_containe
 	return NULL;
 }
 
+static int idprime_select_keyrefmap(sc_card_t *card)
+{
+	int r;
+	sc_file_t *file = NULL;
+	sc_path_t index_path;
+
+	/* First, we need to make sure the IDPrime AID is selected */
+	r = idprime_select_idprime(card);
+	if (r != SC_SUCCESS) {
+		LOG_FUNC_RETURN(card->ctx, r);
+	}
+
+	/* Returns FCI with expected length of data */
+	sc_format_path("0005", &index_path);
+	r = iso_ops->select_file(card, &index_path, &file);
+	if (r == SC_SUCCESS) {
+		r = file->size;
+	}
+	sc_file_free(file);
+	/* Ignore too large files */
+	if (r <= 0 ||  r > MAX_FILE_SIZE) {
+		r = SC_ERROR_INVALID_DATA;
+	}
+	return r;
+}
+
+static int idprime_process_keyrefmap(sc_card_t *card, idprime_keyref_t **keyrefmap, int length)
+{
+	u8 *buf = NULL;
+	int r = SC_ERROR_OUT_OF_MEMORY;
+	int i, max_entries;
+	idprime_keyref_t *current = NULL;
+
+	if (!keyrefmap) {
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+	}
+
+	buf = malloc(length);
+	if (buf == NULL) {
+		goto done;
+	}
+
+	r = 0;
+	do {
+		if (length == r) {
+			r = SC_ERROR_NOT_ENOUGH_MEMORY;
+			goto done;
+		}
+		const int got = iso_ops->read_binary(card, r, buf + r, length - r, 0);
+		if (got < 1) {
+			r = SC_ERROR_WRONG_LENGTH;
+			goto done;
+		}
+
+		r += got;
+	} while(length - r > 0);
+	max_entries = r / KEYREF_OBJ_LEN;
+
+	for (i = 0; i < max_entries; i++) {
+		u8 *start = &buf[i * KEYREF_OBJ_LEN];
+		if (start[0] == 0) /* Empty key ref */
+			continue;
+
+		idprime_keyref_t *new_keyref = calloc(1, sizeof(idprime_keyref_t));
+		if (!new_keyref) {
+			r = SC_ERROR_NOT_ENOUGH_MEMORY;
+			goto done;
+		}
+		new_keyref->index = start[2];
+		new_keyref->key_reference = start[1];
+		new_keyref->pin_index = start[0];
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Found key reference with index=%d, pin=%d, keyref=%d", new_keyref->index, new_keyref->pin_index, new_keyref->key_reference);
+
+		if (!current) {
+			*keyrefmap = new_keyref;
+		} else {
+			current->next = new_keyref;
+		}
+		current = new_keyref;
+	}
+	r = SC_SUCCESS;
+done:
+	free(buf);
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+
+static idprime_keyref_t *idprime_get_keyreference(int index, idprime_keyref_t *keyrefmap)
+{
+	idprime_keyref_t *current = keyrefmap;
+	if (index < 0 || !keyrefmap) {
+		return NULL;
+	}
+	while(current) {
+		if (current->index == index) {
+			return current;
+		}
+		current = current->next;
+	}
+	return NULL;
+}
+
 /* This select some index file, which is useful for enumerating other files
  * on the card */
 static int idprime_select_index(sc_card_t *card)
@@ -326,7 +452,7 @@ static int idprime_process_index(sc_card_t *card, idprime_private_data_t *priv, 
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	if (!priv->containers) {
+	if (!priv->containers || (card->type == SC_CARD_TYPE_IDPRIME_940 && !priv->keyrefmap)) {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 
@@ -374,6 +500,7 @@ static int idprime_process_index(sc_card_t *card, idprime_private_data_t *priv, 
 			new_object.fd++;
 			new_object.key_reference = -1;
 			new_object.valid_key_ref = 0;
+			new_object.pin_index = 1;
 
 			container = idprime_search_container(cert_id, priv->containers);
 			if (!container) {
@@ -394,9 +521,16 @@ static int idprime_process_index(sc_card_t *card, idprime_private_data_t *priv, 
 			case SC_CARD_TYPE_IDPRIME_930:
 				new_object.key_reference = 0x11 + cert_id * 2;
 				break;
-			case SC_CARD_TYPE_IDPRIME_940:
-				new_object.key_reference = 0x60 + cert_id;
-				break;
+			case SC_CARD_TYPE_IDPRIME_940: {
+					idprime_keyref_t *keyref = idprime_get_keyreference(cert_id, priv->keyrefmap);
+					if (!keyref) {
+						sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "No corresponding key reference found for certificate with id=%d, skipping", cert_id);
+						continue;
+					}
+					new_object.key_reference = keyref->key_reference;
+					new_object.pin_index = keyref->pin_index;
+					break;
+				}
 			case SC_CARD_TYPE_IDPRIME_840:
 				new_object.key_reference = 0xf7 + cert_id;
 				break;
@@ -485,6 +619,18 @@ static int idprime_init(sc_card_t *card)
 	if (r != SC_SUCCESS) {
 		idprime_free_private_data(priv);
 		LOG_FUNC_RETURN(card->ctx, r);
+	}
+
+	if (card->type == SC_CARD_TYPE_IDPRIME_940) {
+		if ((r = idprime_select_keyrefmap(card)) <= 0) {
+			idprime_free_private_data(priv);
+			LOG_FUNC_RETURN(card->ctx, r);
+		}
+		
+		if ((r = idprime_process_keyrefmap(card, &priv->keyrefmap, r)) != SC_SUCCESS) {
+			idprime_free_private_data(priv);
+			LOG_FUNC_RETURN(card->ctx, r);
+		}
 	}
 
 	/* Select and process the index file */
@@ -624,6 +770,9 @@ static int idprime_fill_prkey_info(list_t *list, idprime_object_t **entry, sc_pk
 	prkey_info->id.value[0] = ((*entry)->fd >> 8) & 0xff;
 	prkey_info->id.value[1] = (*entry)->fd & 0xff;
 	prkey_info->id.len = 2;
+	prkey_info->pin_id = "11";
+	if ((*entry)->pin_index != 1)
+		prkey_info->pin_id = "83";
 	if ((*entry)->valid_key_ref)
 		prkey_info->key_reference = (*entry)->key_reference;
 	else

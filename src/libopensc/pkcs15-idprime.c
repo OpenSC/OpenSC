@@ -203,8 +203,9 @@ static int sc_pkcs15emu_idprime_init(sc_pkcs15_card_t *p15card)
 		snprintf(prkey_obj.label, SC_PKCS15_MAX_LABEL_SIZE, PRIVKEY_LABEL_TEMPLATE, i+1);
 		prkey_obj.flags = SC_PKCS15_CO_FLAG_PRIVATE;
 
-		/* Diferentiate somehow between objects accesible with normal and with digital signature pin */
-		sc_pkcs15_format_id(pin_id, &prkey_obj.auth_id);
+		/* Differentiate between objects accessible with normal and with digital signature pin */
+		sc_pkcs15_format_id(prkey_info.pin_id, &prkey_obj.auth_id);
+		sc_log(card->ctx,  "Pin ID r=%s", prkey_info.pin_id);
 
 		r = sc_pkcs15_read_file(p15card, &cert_info.path, &cert_der.value, &cert_der.len, 0);
 
