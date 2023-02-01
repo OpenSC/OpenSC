@@ -60,6 +60,8 @@ static int sc_pkcs15emu_idprime_init(sc_pkcs15_card_t *p15card)
 	struct sc_pkcs15_object   pin_obj;
 	const char pin_label[] = "PIN";
 	const char *pin_id = "11";
+	const char sig_pin_label[] = "Digital Signature PIN";
+	const char *sig_pin_id = "83";
 
 	/* oid for key usage */
 	static const struct sc_object_id usage_type = {{ 2, 5, 29, 15, -1 }};
@@ -115,8 +117,6 @@ static int sc_pkcs15emu_idprime_init(sc_pkcs15_card_t *p15card)
 
 	/* set signature pin for 940 cards */
 	if (card->type == SC_CARD_TYPE_IDPRIME_940) {
-		const char sig_pin_label[] = "Digital Signature PIN";
-		const char *sig_pin_id = "83";
 		sc_log(card->ctx,  "IDPrime adding Digital Signature pin...");
 		memset(&pin_info, 0, sizeof(pin_info));
 		memset(&pin_obj,  0, sizeof(pin_obj));
@@ -174,7 +174,10 @@ static int sc_pkcs15emu_idprime_init(sc_pkcs15_card_t *p15card)
 		struct sc_pkcs15_object prkey_obj;
 		sc_pkcs15_der_t cert_der;
 		sc_pkcs15_cert_t *cert_out = NULL;
+		char *pin_id = NULL;
 
+		r = (card->ops->card_ctl)(card, SC_CARDCTL_IDPRIME_FINAL_GET_PIN_ID, &pin_id);
+		LOG_TEST_GOTO_ERR(card->ctx, r, "Can not get PIN id of next object ");
 		r = (card->ops->card_ctl)(card, SC_CARDCTL_IDPRIME_GET_NEXT_OBJECT, &prkey_info);
 		LOG_TEST_GOTO_ERR(card->ctx, r, "Can not get next object");
 
@@ -204,8 +207,11 @@ static int sc_pkcs15emu_idprime_init(sc_pkcs15_card_t *p15card)
 		prkey_obj.flags = SC_PKCS15_CO_FLAG_PRIVATE;
 
 		/* Differentiate between objects accessible with normal and with digital signature pin */
-		sc_pkcs15_format_id(prkey_info.pin_id, &prkey_obj.auth_id);
-		sc_log(card->ctx,  "Pin ID r=%s", prkey_info.pin_id);
+		sc_pkcs15_format_id(pin_id, &prkey_obj.auth_id);
+		sc_log(card->ctx,  "Pin ID r=%s", pin_id);
+
+		if (memcmp(pin_id, sig_pin_id, 2) == 0)
+			prkey_obj.user_consent = 1;
 
 		r = sc_pkcs15_read_file(p15card, &cert_info.path, &cert_der.value, &cert_der.len, 0);
 
