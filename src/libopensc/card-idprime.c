@@ -770,14 +770,23 @@ static int idprime_fill_prkey_info(list_t *list, idprime_object_t **entry, sc_pk
 	prkey_info->id.value[0] = ((*entry)->fd >> 8) & 0xff;
 	prkey_info->id.value[1] = (*entry)->fd & 0xff;
 	prkey_info->id.len = 2;
-	prkey_info->pin_id = "11";
-	if ((*entry)->pin_index != 1)
-		prkey_info->pin_id = "83";
 	if ((*entry)->valid_key_ref)
 		prkey_info->key_reference = (*entry)->key_reference;
 	else
 		prkey_info->key_reference = -1;
 	*entry = list_iterator_next(list);
+	return SC_SUCCESS;
+}
+
+/* get PIN id of the current object on the list */
+static int idprime_get_pin_id(list_t *list, idprime_object_t **entry, char **pin_id)
+{
+	if (pin_id == NULL || entry == NULL) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+	*pin_id = "11"; // normal PIN id
+	if ((*entry)->pin_index != 1)
+		*pin_id = "83"; // signature PIN id
 	return SC_SUCCESS;
 }
 
@@ -889,6 +898,9 @@ static int idprime_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 				(sc_pkcs15_prkey_info_t *)ptr);
 		case SC_CARDCTL_IDPRIME_FINAL_GET_OBJECTS:
 			return idprime_final_iterator(&priv->pki_list);
+		case SC_CARDCTL_IDPRIME_FINAL_GET_PIN_ID:
+			return idprime_get_pin_id(&priv->pki_list, &priv->pki_current,
+				(char **)ptr);
 	}
 
 	LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
