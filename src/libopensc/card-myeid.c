@@ -1446,7 +1446,7 @@ static int myeid_wrap_key(struct sc_card *card, u8 *out, size_t outlen)
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0x2A, 0x84, 0x00);
 	apdu.resp = rbuf;
 	apdu.resplen = sizeof(rbuf);
-	apdu.le = 0;
+	apdu.le = sizeof(rbuf) <= 256 ? sizeof(rbuf) : 256;
 	apdu.lc = 0;
 
 	r = sc_transmit_apdu(card, &apdu);
