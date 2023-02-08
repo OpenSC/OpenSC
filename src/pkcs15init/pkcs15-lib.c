@@ -708,6 +708,8 @@ sc_pkcs15init_rmdir(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 
 	/* Select the parent DF */
 	path = df->path;
+	if (path.len <= 2)
+		return SC_ERROR_INVALID_ARGUMENTS;
 	path.len -= 2;
 	r = sc_select_file(p15card->card, &path, &parent);
 	if (r < 0)
