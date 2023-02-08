@@ -384,7 +384,7 @@ int main(int argc, char *argv[])
 				opt_wait = 1;
 				break;
 			case 'g':
-				if(keylen == 0) keylen = 1536;
+				if(keylen == 0) keylen = 2048;
 				break;
 			case 'o':
 				overwrite = 1;
