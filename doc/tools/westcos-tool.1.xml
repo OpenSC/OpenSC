@@ -75,7 +75,7 @@
 					<listitem><para>Generate a private key on the card. The card must not have
 					been finalized and a PIN must be installed (i.e. the file for the PIN must
 					have been created, see option <option>-i</option>).
-					By default the key length is 1536 bits. User authentication is required for
+					By default the key length is 2048 bits. User authentication is required for
 					this operation. </para></listitem>
 				</varlistentry>
 
