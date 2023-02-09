@@ -2031,7 +2031,8 @@ coolkey_process_combined_object(sc_card_t *card, coolkey_private_data_t *priv, u
 	decompressed_header = (coolkey_decompressed_header_t *)decompressed_object;
 
 	if (decompressed_object_len < sizeof(coolkey_decompressed_header_t)) {
-		return SC_ERROR_CORRUPTED_DATA;
+		r = SC_ERROR_CORRUPTED_DATA;
+		goto done;
 	}
 	object_offset = bebytes2ushort(decompressed_header->object_offset);
 	object_count = bebytes2ushort(decompressed_header->object_count);
