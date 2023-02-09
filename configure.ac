@@ -554,10 +554,8 @@ case "${host}" in
 							   have_notify="no"
 							   have_gio2="no"  ])
 			LIBS="$saved_LIBS"
-			if test "${have_gio2}" = "yes"; then
-				# we do not need lglib-2.0
-				GIO2_LIBS="-lgio-2.0 -lgobject-2.0"
-			fi
+			# we do not need glib-2.0
+			GIO2_LIBS=$(echo "$GIO2_LIBS" | sed 's/-lglib-2.0//g')
 		;;
 esac
 
