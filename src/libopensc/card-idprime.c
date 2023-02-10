@@ -494,7 +494,7 @@ static int idprime_process_index(sc_card_t *card, idprime_private_data_t *priv, 
 			int cert_id = 0;
 			idprime_container_t *container = NULL;
 
-			if (start[8] >= '0' && start[8] <= '9') {
+			if (start[7] >= '0' && start[7] <= '9' && start[8] >= '0' && start[8] <= '9') {
 				cert_id = (start[7] - '0') * 10 + start[8] - '0';
 			}
 			new_object.fd++;
