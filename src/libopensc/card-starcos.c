@@ -782,7 +782,6 @@ static int starcos_select_aid(sc_card_t *card,
 		file->id = 0x0000;
 		file->magic = SC_FILE_MAGIC;
 
-		free(*file_out);
 		*file_out = file;
 	}
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
@@ -899,7 +898,6 @@ static int starcos_select_fid(sc_card_t *card,
 			file->size = 0;
 			file->namelen = 0;
 			file->magic = SC_FILE_MAGIC;
-			free(*file_out);
 			*file_out = file;
 		} else {
 			/* ok, assume we have a EF */
@@ -920,7 +918,6 @@ static int starcos_select_fid(sc_card_t *card,
 				return r;
 			}
 
-			free(*file_out);
 			*file_out = file;
 		}
 	}
@@ -973,7 +970,7 @@ static int starcos_select_file(sc_card_t *card,
 				|| card->cache.current_path.type != SC_PATH_TYPE_DF_NAME
 				|| card->cache.current_path.len != pathlen
 				|| memcmp(card->cache.current_path.value, in_path->aid.value, in_path->aid.len) != 0 ) {
-				r = starcos_select_aid(card, in_path->aid.value, in_path->aid.len, file_out);
+				r = starcos_select_aid(card, in_path->aid.value, in_path->aid.len, NULL);
 				LOG_TEST_RET(card->ctx, r, "Could not select AID!");
 			}
 
@@ -988,10 +985,11 @@ static int starcos_select_file(sc_card_t *card,
 		/* Select with 2byte File-ID */
 		if (pathlen != 2)
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,SC_ERROR_INVALID_ARGUMENTS);
-		return starcos_select_fid(card, path[0], path[1], file_out, 1);
+		r = starcos_select_fid(card, path[0], path[1], file_out, 1);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 	}
 	else if (pathtype == SC_PATH_TYPE_DF_NAME)
-    {	/* SELECT DF with AID */
+	{	/* SELECT DF with AID */
 		/* Select with 1-16byte Application-ID */
 		if (cache_valid
 		    && card->cache.current_path.type == SC_PATH_TYPE_DF_NAME
@@ -1002,7 +1000,10 @@ static int starcos_select_file(sc_card_t *card,
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
 		}
 		else
-			return starcos_select_aid(card, pathbuf, pathlen, file_out);
+		{
+			r = starcos_select_aid(card, pathbuf, pathlen, file_out);
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
+		}
 	}
 	else if (pathtype == SC_PATH_TYPE_PATH)
 	{
@@ -1056,8 +1057,11 @@ static int starcos_select_file(sc_card_t *card,
 		if ( cache_valid && bMatch >= 0 )
 		{
 			if ( pathlen - bMatch == 2 )
+			{
 				/* we are in the right directory */
-				return starcos_select_fid(card, path[bMatch], path[bMatch+1], file_out, 1);
+				r = starcos_select_fid(card, path[bMatch], path[bMatch+1], file_out, 1);
+				SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
+			}
 			else if ( pathlen - bMatch > 2 )
 			{
 				/* two more steps to go */
@@ -1072,7 +1076,8 @@ static int starcos_select_file(sc_card_t *card,
 				new_path.len  = pathlen - bMatch-2;
 				memcpy(new_path.value, &(path[bMatch+2]), new_path.len);
 				/* final step: select file */
-				return starcos_select_file(card, &new_path, file_out);
+				r = starcos_select_file(card, &new_path, file_out);
+				SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 			}
 			else /* if (bMatch - pathlen == 0) */
 			{
@@ -1096,7 +1101,7 @@ static int starcos_select_file(sc_card_t *card,
 					*file_out = file;
 				}
 				/* nothing left to do */
-				return SC_SUCCESS;
+				SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
 			}
 		}
 		else
@@ -1107,7 +1112,8 @@ static int starcos_select_file(sc_card_t *card,
 				r = starcos_select_fid(card, path[i], path[i+1], NULL, 0);
 				LOG_TEST_RET(card->ctx, r, "SELECT FILE (DF-ID) failed");
 			}
-			return starcos_select_fid(card, path[pathlen-2], path[pathlen-1], file_out, 1);
+			r = starcos_select_fid(card, path[pathlen-2], path[pathlen-1], file_out, 1);
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 		}
 	}
 	else
