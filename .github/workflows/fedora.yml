@@ -11,6 +11,7 @@ on:
       - .github/push-artifacts.sh
       - '**.am'
       - doc/**
+      - configure.ac
   push:
 
 permissions:
