@@ -1135,6 +1135,8 @@ authentic_create_file(struct sc_card *card, struct sc_file *file)
 
 	if (card->cache.valid  && card->cache.current_df)   {
 		const struct sc_acl_entry *entry = sc_file_get_acl_entry(card->cache.current_df, SC_AC_OP_CREATE);
+		if (!entry)
+			LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
 
 		sc_log(ctx, "CREATE method/reference %X/%X", entry->method, entry->key_ref);
 		if (entry->method == SC_AC_SCB)
