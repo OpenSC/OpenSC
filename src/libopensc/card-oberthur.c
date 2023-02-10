@@ -1802,8 +1802,11 @@ auth_pin_reset_oberthur_style(struct sc_card *card, unsigned int type,
 	rv = iso_ops->select_file(card, &tmp_path, &tmp_file);
 	LOG_TEST_RET(card->ctx, rv, "select PUK file");
 
-	if (!tmp_file || tmp_file->size < OBERTHUR_AUTH_MAX_LENGTH_PUK)
+	if (!tmp_file || tmp_file->size < OBERTHUR_AUTH_MAX_LENGTH_PUK) {
+		sc_file_free(tmp_file);
 		LOG_TEST_RET(card->ctx, SC_ERROR_FILE_TOO_SMALL, "Oberthur style 'PIN RESET' failed");
+	}
+	sc_file_free(tmp_file);
 
 	rv = iso_ops->read_binary(card, 0, puk, OBERTHUR_AUTH_MAX_LENGTH_PUK, 0);
 	LOG_TEST_RET(card->ctx, rv, "read PUK file error");
