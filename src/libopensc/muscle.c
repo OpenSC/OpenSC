@@ -181,6 +181,9 @@ int msc_partial_update_object(sc_card_t *card, msc_id objectId, int offset, cons
 	sc_apdu_t apdu;
 	int r;
 
+	if (dataLength + 9 > MSC_MAX_APDU)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x54, 0x00, 0x00);
 	apdu.lc = dataLength + 9;
 	if (card->ctx->debug >= 2)
