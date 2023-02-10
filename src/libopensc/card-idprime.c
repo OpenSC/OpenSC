@@ -199,8 +199,8 @@ static int idprime_select_idprime(sc_card_t *card)
 	return iso_ops->select_file(card, &idprime_path, NULL);
 }
 
-/* This select container map file, which is useful for certificate indexes on the card */
-static int idprime_select_containermap(sc_card_t *card)
+/* Select file by string path */
+static int idprime_select_file_by_path(sc_card_t *card, const char *str_path)
 {
 	int r;
 	sc_file_t *file = NULL;
@@ -213,17 +213,19 @@ static int idprime_select_containermap(sc_card_t *card)
 	}
 
 	/* Returns FCI with expected length of data */
-	sc_format_path("0204", &index_path);
+	sc_format_path(str_path, &index_path);
 	r = iso_ops->select_file(card, &index_path, &file);
-	if (r == SC_SUCCESS) {
-		r = file->size;
+
+	if (r != SC_SUCCESS) {
+		LOG_FUNC_RETURN(card->ctx, r);
 	}
+	r = file->size;
 	sc_file_free(file);
 	/* Ignore too large files */
-	if (r <= 0 ||  r > MAX_FILE_SIZE) {
+	if (r > MAX_FILE_SIZE) {
 		r = SC_ERROR_INVALID_DATA;
 	}
-	return r;
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 static int idprime_process_containermap(sc_card_t *card, idprime_container_t **containers, int length)
@@ -314,32 +316,6 @@ static idprime_container_t *idprime_search_container(int index, idprime_containe
 	return NULL;
 }
 
-static int idprime_select_keyrefmap(sc_card_t *card)
-{
-	int r;
-	sc_file_t *file = NULL;
-	sc_path_t index_path;
-
-	/* First, we need to make sure the IDPrime AID is selected */
-	r = idprime_select_idprime(card);
-	if (r != SC_SUCCESS) {
-		LOG_FUNC_RETURN(card->ctx, r);
-	}
-
-	/* Returns FCI with expected length of data */
-	sc_format_path("0005", &index_path);
-	r = iso_ops->select_file(card, &index_path, &file);
-	if (r == SC_SUCCESS) {
-		r = file->size;
-	}
-	sc_file_free(file);
-	/* Ignore too large files */
-	if (r <= 0 ||  r > MAX_FILE_SIZE) {
-		r = SC_ERROR_INVALID_DATA;
-	}
-	return r;
-}
-
 static int idprime_process_keyrefmap(sc_card_t *card, idprime_keyref_t **keyrefmap, int length)
 {
 	u8 *buf = NULL;
@@ -413,34 +389,6 @@ static idprime_keyref_t *idprime_get_keyreference(int index, idprime_keyref_t *k
 		current = current->next;
 	}
 	return NULL;
-}
-
-/* This select some index file, which is useful for enumerating other files
- * on the card */
-static int idprime_select_index(sc_card_t *card)
-{
-	int r;
-	sc_file_t *file = NULL;
-	sc_path_t index_path;
-
-	/* First, we need to make sure the IDPrime AID is selected */
-	r = idprime_select_idprime(card);
-	if (r != SC_SUCCESS) {
-		LOG_FUNC_RETURN(card->ctx, r);
-	}
-
-	/* Returns FCI with expected length of data */
-	sc_format_path("0101", &index_path);
-	r = iso_ops->select_file(card, &index_path, &file);
-	if (r == SC_SUCCESS) {
-		r = file->size;
-	}
-	sc_file_free(file);
-	/* Ignore too large files */
-	if (r <= 0 ||  r > MAX_FILE_SIZE) {
-		r = SC_ERROR_INVALID_DATA;
-	}
-	return r;
 }
 
 static int idprime_process_index(sc_card_t *card, idprime_private_data_t *priv, int length)
@@ -607,7 +555,7 @@ static int idprime_init(sc_card_t *card)
 	}
 
 	/* Select and process container file */
-	r = idprime_select_containermap(card);
+	r = idprime_select_file_by_path(card, "0204");;
 	if (r <= 0) {
 		idprime_free_private_data(priv);
 		LOG_FUNC_RETURN(card->ctx, r);
@@ -622,7 +570,7 @@ static int idprime_init(sc_card_t *card)
 	}
 
 	if (card->type == SC_CARD_TYPE_IDPRIME_940) {
-		if ((r = idprime_select_keyrefmap(card)) <= 0) {
+		if ((r = idprime_select_file_by_path(card, "0005")) <= 0) {
 			idprime_free_private_data(priv);
 			LOG_FUNC_RETURN(card->ctx, r);
 		}
@@ -634,7 +582,7 @@ static int idprime_init(sc_card_t *card)
 	}
 
 	/* Select and process the index file */
-	r = idprime_select_index(card);
+	r = idprime_select_file_by_path(card, "0101");
 	if (r <= 0) {
 		idprime_free_private_data(priv);
 		LOG_FUNC_RETURN(card->ctx, r);
@@ -729,8 +677,8 @@ static int idprime_match_card(sc_card_t *card)
 	if (i < 0)
 		return 0;
 
-	r = idprime_select_index(card);
-	return (r > 0);
+	r = idprime_select_file_by_path(card, "0101");
+	LOG_FUNC_RETURN(card->ctx, r > 0);
 }
 
 /* initialize getting a list and return the number of elements in the list */
