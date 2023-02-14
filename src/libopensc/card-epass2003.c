@@ -267,10 +267,13 @@ epass2003_check_sw(struct sc_card *card, unsigned int sw1, unsigned int sw2)
 static int
 sc_transmit_apdu_t(sc_card_t *card, sc_apdu_t *apdu)
 {
+	size_t resplen = apdu->resplen;
 	int r = sc_transmit_apdu(card, apdu);
 	if ( ((0x69 == apdu->sw1) && (0x85 == apdu->sw2)) || ((0x69 == apdu->sw1) && (0x88 == apdu->sw2)))
 	{
 		epass2003_refresh(card);
+		/* renew old resplen */
+		apdu->resplen = resplen;
 		r = sc_transmit_apdu(card, apdu);
 	}
 	return r;
