@@ -65,6 +65,20 @@ extern "C" {
 #define FIPS_mode()                             EVP_default_properties_is_fips_enabled(NULL)
 #endif
 
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+
+#define USE_OPENSSL3_LIBCTX
+
+#include <openssl/provider.h>
+#include <openssl/crypto.h>
+
+typedef struct ossl3ctx {
+	OSSL_LIB_CTX *libctx;
+	OSSL_PROVIDER *defprov;
+} ossl3ctx_t;
+
+#endif
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

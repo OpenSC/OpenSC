@@ -867,6 +867,8 @@ typedef struct {
 #define SC_CTX_FLAG_DISABLE_POPUPS			0x00000010
 #define SC_CTX_FLAG_DISABLE_COLORS			0x00000020
 
+typedef struct ossl3ctx ossl3ctx_t;
+
 typedef struct sc_context {
 	scconf_context *conf;
 	scconf_block *conf_blocks[3];
@@ -888,6 +890,10 @@ typedef struct sc_context {
 
 	sc_thread_context_t	*thread_ctx;
 	void *mutex;
+
+#ifdef ENABLE_OPENSSL
+	ossl3ctx_t *ossl3ctx;
+#endif
 
 	unsigned int magic;
 } sc_context_t;

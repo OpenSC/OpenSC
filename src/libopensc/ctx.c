@@ -804,6 +804,40 @@ int sc_context_repair(sc_context_t **ctx_out)
 	return SC_SUCCESS;
 }
 
+#ifdef USE_OPENSSL3_LIBCTX
+static int sc_openssl3_init(sc_context_t *ctx)
+{
+	ctx->ossl3ctx = calloc(1, sizeof(ossl3ctx_t));
+	if (ctx->ossl3ctx == NULL)
+		return SC_ERROR_OUT_OF_MEMORY;
+	ctx->ossl3ctx->libctx = OSSL_LIB_CTX_new();
+	if (ctx->ossl3ctx->libctx == NULL) {
+		return SC_ERROR_INTERNAL;
+	}
+	ctx->ossl3ctx->defprov = OSSL_PROVIDER_load(ctx->ossl3ctx->libctx,
+						    "default");
+	if (ctx->ossl3ctx->defprov == NULL) {
+		OSSL_LIB_CTX_free(ctx->ossl3ctx->libctx);
+		free(ctx->ossl3ctx);
+		ctx->ossl3ctx = NULL;
+		return SC_ERROR_INTERNAL;
+	}
+	return SC_SUCCESS;
+}
+
+static void sc_openssl3_deinit(sc_context_t *ctx)
+{
+	if (ctx->ossl3ctx == NULL)
+		return;
+	if (ctx->ossl3ctx->defprov)
+		OSSL_PROVIDER_unload(ctx->ossl3ctx->defprov);
+	if (ctx->ossl3ctx->libctx)
+		OSSL_LIB_CTX_free(ctx->ossl3ctx->libctx);
+	free(ctx->ossl3ctx);
+	ctx->ossl3ctx = NULL;
+}
+#endif
+
 int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 {
 	sc_context_t		*ctx;
@@ -857,6 +891,15 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 	process_config_file(ctx, &opts);
 	sc_log(ctx, "==================================="); /* first thing in the log */
 	sc_log(ctx, "opensc version: %s", sc_get_version());
+
+#ifdef USE_OPENSSL3_LIBCTX
+	r = sc_openssl3_init(ctx);
+	if (r != SC_SUCCESS) {
+		del_drvs(&opts);
+		sc_release_context(ctx);
+		return r;
+	}
+#endif
 
 #ifdef ENABLE_PCSC
 	ctx->reader_driver = sc_get_pcsc_driver();
@@ -923,7 +966,6 @@ int sc_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_reader_t **
 	return SC_ERROR_NOT_SUPPORTED;
 }
 
-
 int sc_release_context(sc_context_t *ctx)
 {
 	unsigned int i;
@@ -948,6 +990,9 @@ int sc_release_context(sc_context_t *ctx)
 		if (drv->dll)
 			sc_dlclose(drv->dll);
 	}
+#ifdef USE_OPENSSL3_LIBCTX
+	sc_openssl3_deinit(ctx);
+#endif
 	if (ctx->preferred_language != NULL)
 		free(ctx->preferred_language);
 	if (ctx->mutex != NULL) {
