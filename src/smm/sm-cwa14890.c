@@ -71,7 +71,7 @@ sm_cwa_get_mac(struct sc_context *ctx, unsigned char *key, sm_des_cblock *icv,
 	sc_debug(ctx, SC_LOG_DEBUG_SM, "sm_cwa_get_mac() data to MAC(%i) %s", in_len, sc_dump_hex(buf, in_len));
 	sc_debug(ctx, SC_LOG_DEBUG_SM, "sm_cwa_get_mac() ICV %s", sc_dump_hex((unsigned char *)icv, 8));
 
-	DES_cbc_cksum_3des_emv96(buf, out, in_len, key, icv);
+	DES_cbc_cksum_3des_emv96(ctx, buf, out, in_len, key, icv);
 
 	free(buf);
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
