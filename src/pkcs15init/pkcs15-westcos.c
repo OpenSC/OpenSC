@@ -235,7 +235,11 @@ static int westcos_pkcs15init_generate_key(sc_profile_t *profile,
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, NULL);
+#else
+	pctx = EVP_PKEY_CTX_new_from_name(profile->card->ctx->ossl3ctx->libctx, "RSA", NULL);
+#endif
 	mem = BIO_new(BIO_s_mem());
 	bn = BN_new();
 	if (pctx == NULL || mem == NULL || bn == NULL) {
