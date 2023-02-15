@@ -98,6 +98,17 @@ static inline EVP_PKEY_CTX *_sc_evp_pkey_ctx_new(ossl3ctx_t *ctx,
 #define sc_evp_pkey_ctx_new(ctx, pkey) \
 	_sc_evp_pkey_ctx_new((ctx)->ossl3ctx, pkey)
 
+static inline EVP_CIPHER *_sc_evp_cipher(ossl3ctx_t *ctx, const char *algorithm)
+{
+	return EVP_CIPHER_fetch(ctx->libctx, algorithm, NULL);
+}
+#define sc_evp_cipher(ctx, alg) _sc_evp_cipher((ctx)->ossl3ctx, alg)
+
+static inline void sc_evp_cipher_free(EVP_CIPHER *cipher)
+{
+	EVP_CIPHER_free(cipher);
+}
+
 #else /* OPENSSL < 3 */
 
 #include <openssl/evp.h>
@@ -115,6 +126,16 @@ static inline void sc_evp_md_free(EVP_MD *md)
 static inline EVP_PKEY_CTX *sc_evp_pkey_ctx_new(void *unused, EVP_PKEY *pkey)
 {
 	return EVP_PKEY_CTX_new(pkey, NULL);
+}
+
+static inline EVP_CIPHER *sc_evp_cipher(void *unused, const char *algorithm)
+{
+	return (EVP_CIPHER *)EVP_get_cipherbyname(algorithm);
+}
+
+static inline void sc_evp_cipher_free(EVP_CIPHER *cipher)
+{
+	return;
 }
 
 #endif
