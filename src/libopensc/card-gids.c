@@ -1959,14 +1959,9 @@ static int gids_authenticate_admin(sc_card_t *card, u8* key) {
 	u8 buffer3[16+16+8];
 	int buffer3size = 40;
 	sc_apdu_t apdu;
-	const EVP_CIPHER *cipher;
+	EVP_CIPHER *cipher;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	// this is CBC instead of ECB
-	cipher = EVP_des_ede3_cbc();
-	if (!cipher) {
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
-	}
 
 	// select the admin key
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3, INS_MANAGE_SECURITY_ENVIRONMENT, 0xC1, 0xA4);
@@ -2008,23 +2003,28 @@ static int gids_authenticate_admin(sc_card_t *card, u8* key) {
 	if (ctx == NULL) {
 	    LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 	}
-
+	cipher = sc_evp_cipher(card->ctx, "DES-EDE3-CBC");
 	if (!EVP_EncryptInit(ctx, cipher, key, NULL)) {
 		EVP_CIPHER_CTX_free(ctx);
+		sc_evp_cipher_free(cipher);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 	}
 	EVP_CIPHER_CTX_set_padding(ctx,0);
 	if (!EVP_EncryptUpdate(ctx, buffer2, &buffer2size, buffer, sizeof(buffer))) {
 		EVP_CIPHER_CTX_free(ctx);
+		sc_evp_cipher_free(cipher);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 	}
 
 	if(!EVP_EncryptFinal(ctx, buffer2+buffer2size, &buffer2size)) {
 		EVP_CIPHER_CTX_free(ctx);
+		sc_evp_cipher_free(cipher);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 	}
 	EVP_CIPHER_CTX_free(ctx);
 	ctx = NULL;
+	sc_evp_cipher_free(cipher);
+	cipher = NULL;
 	// send it to the card
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4, INS_GENERAL_AUTHENTICATE, 0x00, 0x00);
 	apdu.lc = sizeof(apduSendReponse);
@@ -2047,36 +2047,48 @@ static int gids_authenticate_admin(sc_card_t *card, u8* key) {
 	if (ctx == NULL) {
 	    LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 	}
+	cipher = sc_evp_cipher(card->ctx, "DES-EDE3-CBC");
 	if (!EVP_DecryptInit(ctx, cipher, key, NULL)) {
+		sc_evp_cipher_free(cipher);
 		EVP_CIPHER_CTX_free(ctx);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 	}
 	EVP_CIPHER_CTX_set_padding(ctx,0);
 	if (!EVP_DecryptUpdate(ctx, buffer3, &buffer3size, apdu.resp + 4, apdu.resplen - 4)) {
 		sc_log(card->ctx,  "unable to decrypt data");
+		sc_evp_cipher_free(cipher);
 		EVP_CIPHER_CTX_free(ctx);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_PIN_CODE_INCORRECT);
 	}
 	if(!EVP_DecryptFinal(ctx, buffer3+buffer3size, &buffer3size)) {
 		sc_log(card->ctx,  "unable to decrypt final data");
+		sc_evp_cipher_free(cipher);
 		EVP_CIPHER_CTX_free(ctx);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_PIN_CODE_INCORRECT);
 	}
 	sc_log(card->ctx,  "data has been decrypted using the key");
 	if (memcmp(buffer3, randomR1, 16) != 0) {
 		sc_log(card->ctx,  "R1 doesn't match");
+		sc_evp_cipher_free(cipher);
+		EVP_CIPHER_CTX_free(ctx);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_PIN_CODE_INCORRECT);
 	}
 	if (memcmp(buffer3 + 16, randomR2, 16) != 0) {
 		sc_log(card->ctx,  "R2 doesn't match");
+		sc_evp_cipher_free(cipher);
+		EVP_CIPHER_CTX_free(ctx);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_PIN_CODE_INCORRECT);
 	}
 	if (buffer[39] != 0x80) {
 		sc_log(card->ctx,  "Padding not found");
+		sc_evp_cipher_free(cipher);
+		EVP_CIPHER_CTX_free(ctx);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_PIN_CODE_INCORRECT);
 	}
 	EVP_CIPHER_CTX_free(ctx);
 	ctx = NULL;
+	sc_evp_cipher_free(cipher);
+	cipher = NULL;
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 #endif
