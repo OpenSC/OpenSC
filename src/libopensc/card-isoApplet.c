@@ -33,7 +33,7 @@
 #define ISOAPPLET_ALG_REF_RSA_PAD_PKCS1 0x11
 #define ISOAPPLET_ALG_REF_RSA_PAD_PSS 0x12
 
-#define ISOAPPLET_VERSION_V0 0x0060
+#define ISOAPPLET_VERSION_V0 0x0006
 #define ISOAPPLET_VERSION_V1 0x0100
 
 #define ISOAPPLET_API_FEATURE_EXT_APDU 0x01
@@ -232,7 +232,7 @@ isoApplet_init(sc_card_t *card)
 	else if(drvdata->isoapplet_version != ISOAPPLET_VERSION_V0 && drvdata->isoapplet_version != ISOAPPLET_VERSION_V1)
 	{
 		sc_log(card->ctx, "IsoApplet: Mismatching minor version. Proceeding anyway. "
-			   "API versions: Driver (%04X or %04X), applet (%04X)."
+			   "API versions: Driver (%04X or %04X), applet (%04X). "
 			   "Please update accordingly whenever possible.",
 			   ISOAPPLET_VERSION_V0, ISOAPPLET_VERSION_V1, drvdata->isoapplet_version);
 	}
