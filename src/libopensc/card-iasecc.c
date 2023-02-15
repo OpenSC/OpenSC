@@ -3169,7 +3169,7 @@ iasecc_qsign_data_sha1(struct sc_context *ctx, const unsigned char *in, size_t i
 
 	int r = SC_ERROR_INTERNAL;
 	EVP_MD_CTX *mdctx = NULL;
-	const EVP_MD *md = NULL;
+	EVP_MD *md = NULL;
 	SHA_CTX *md_data = NULL;
 	unsigned int md_out_len;
 	SHA_LONG pre_hash_Nl, *hh[5] = {NULL, NULL, NULL, NULL, NULL};
@@ -3186,9 +3186,9 @@ iasecc_qsign_data_sha1(struct sc_context *ctx, const unsigned char *in, size_t i
 	       in_len);
 	memset(out, 0, sizeof(struct iasecc_qsign_data));
 
-	md = EVP_get_digestbyname("SHA1");
+	md = sc_evp_md(ctx, "SHA1");
 	mdctx = EVP_MD_CTX_new();
-        if (EVP_DigestInit_ex(mdctx, md, NULL) != 1) {
+	if (EVP_DigestInit_ex(mdctx, md, NULL) != 1) {
 		sc_log(ctx, "EVP_DigestInit_ex failed");
 		goto err;
 	}
@@ -3250,6 +3250,7 @@ err:
 		ERR_print_errors_fp(ctx->debug_file);
 end:
 	EVP_MD_CTX_free(mdctx);
+	sc_evp_md_free(md);
 
 	LOG_FUNC_RETURN(ctx, r);
 
@@ -3267,7 +3268,7 @@ iasecc_qsign_data_sha256(struct sc_context *ctx, const unsigned char *in, size_t
 
 	int r = SC_ERROR_INTERNAL;
 	EVP_MD_CTX *mdctx = NULL;
-	const EVP_MD *md = NULL;
+	EVP_MD *md = NULL;
 	SHA256_CTX *md_data;
 	unsigned int md_out_len;
 
@@ -3284,7 +3285,7 @@ iasecc_qsign_data_sha256(struct sc_context *ctx, const unsigned char *in, size_t
 	       in_len);
 	memset(out, 0, sizeof(struct iasecc_qsign_data));
 
-	md = EVP_get_digestbyname("SHA256");
+	md = sc_evp_md(ctx, "SHA256");
 	mdctx = EVP_MD_CTX_new();
 	if (EVP_DigestInit_ex(mdctx, md, NULL) != 1) {
 		sc_log(ctx, "EVP_DigestInit_ex failed");
@@ -3342,6 +3343,7 @@ err:
 		ERR_print_errors_fp(ctx->debug_file);
 end:
 	EVP_MD_CTX_free(mdctx);
+	sc_evp_md_free(md);
 
 	LOG_FUNC_RETURN(ctx, r);
 
