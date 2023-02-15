@@ -1428,17 +1428,27 @@ static int piv_write_binary(sc_card_t *card, unsigned int idx,
  */
 
 #ifdef ENABLE_OPENSSL
-static const EVP_CIPHER *get_cipher_for_algo(int alg_id)
+static EVP_CIPHER *get_cipher_for_algo(sc_card_t *card, int alg_id)
 {
+	const char *algo;
 	switch (alg_id) {
-		case 0x0: return EVP_des_ede3_ecb();
-		case 0x1: return EVP_des_ede3_ecb(); /* 2TDES */
-		case 0x3: return EVP_des_ede3_ecb();
-		case 0x8: return EVP_aes_128_ecb();
-		case 0xA: return EVP_aes_192_ecb();
-		case 0xC: return EVP_aes_256_ecb();
+		case 0x0:
+		case 0x1: /* 2TDES */
+		case 0x3:
+			algo = "DES-EDE3-ECB";
+			break;
+		case 0x8:
+			algo = "AES-128-ECB";
+			break;
+		case 0xA:
+			algo = "AES-192-ECB";
+			break;
+		case 0xC:
+			algo = "AES-256-ECB";
+			break;
 		default: return NULL;
 	}
+	return sc_evp_cipher(card->ctx, algo);
 }
 
 static int get_keylen(unsigned int alg_id, size_t *size)
@@ -1604,7 +1614,7 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 	EVP_CIPHER_CTX * ctx = NULL;
 
 	u8 sbuf[255];
-	const EVP_CIPHER *cipher;
+	EVP_CIPHER *cipher = NULL;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -1614,7 +1624,7 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 		goto err;
 	}
 
-	cipher = get_cipher_for_algo(alg_id);
+	cipher = get_cipher_for_algo(card, alg_id);
 	if(!cipher) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Invalid cipher selector, none found for:  %02x\n", alg_id);
 		r = SC_ERROR_INVALID_ARGUMENTS;
@@ -1850,6 +1860,7 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 	r = SC_SUCCESS;
 
 err:
+	sc_evp_cipher_free(cipher);
 	if (ctx)
 		EVP_CIPHER_CTX_free(ctx);
 	if (locked)
@@ -1897,7 +1908,7 @@ static int piv_general_external_authenticate(sc_card_t *card,
 	size_t cypher_text_len = 0;
 	u8 sbuf[255];
 	EVP_CIPHER_CTX * ctx = NULL;
-	const EVP_CIPHER *cipher;
+	EVP_CIPHER *cipher = NULL;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -1909,7 +1920,7 @@ static int piv_general_external_authenticate(sc_card_t *card,
 
 	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Selected cipher for algorithm id: %02x\n", alg_id);
 
-	cipher = get_cipher_for_algo(alg_id);
+	cipher = get_cipher_for_algo(card, alg_id);
 	if(!cipher) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Invalid cipher selector, none found for:  %02x\n", alg_id);
 		r = SC_ERROR_INVALID_ARGUMENTS;
@@ -2059,6 +2070,7 @@ static int piv_general_external_authenticate(sc_card_t *card,
 	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Got response  challenge\n");
 
 err:
+	sc_evp_cipher_free(cipher);
 	if (ctx)
 		EVP_CIPHER_CTX_free(ctx);
 
