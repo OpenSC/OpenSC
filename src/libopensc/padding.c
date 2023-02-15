@@ -231,8 +231,8 @@ static int mgf1(u8 *mask, size_t len, u8 *seed, size_t seedLen, const EVP_MD *dg
 }
 
 /* forward declarations */
-static const EVP_MD *mgf1_flag2md(unsigned int mgf1);
-static const EVP_MD *hash_flag2md(unsigned int hash);
+static EVP_MD *mgf1_flag2md(sc_context_t *ctx, unsigned int mgf1);
+static EVP_MD *hash_flag2md(sc_context_t *ctx, unsigned int hash);
 
 /* check/remove OAEP - RFC 8017 padding */
 int sc_pkcs1_strip_oaep_padding(sc_context_t *ctx, u8 *data, size_t len, unsigned long flags, uint8_t *param, size_t paramlen)
@@ -240,7 +240,7 @@ int sc_pkcs1_strip_oaep_padding(sc_context_t *ctx, u8 *data, size_t len, unsigne
 	size_t i,j;
 	size_t mdlen, dblen;
 	u8 seed[EVP_MAX_MD_SIZE];
-	const EVP_MD *mgf1_md, *hash_md;
+	EVP_MD *mgf1_md = NULL, *hash_md = NULL;
 	u8 db[512];		/* up to RSA 4096 */
 	u8 label[EVP_MAX_MD_SIZE];
 	EVP_MD_CTX *md_ctx;
@@ -251,7 +251,7 @@ int sc_pkcs1_strip_oaep_padding(sc_context_t *ctx, u8 *data, size_t len, unsigne
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
 
 	/* https://www.rfc-editor.org/rfc/pdfrfc/rfc8017.txt.pdf, page 26, 3.a. */
-	hash_md = hash_flag2md(flags);
+	hash_md = hash_flag2md(ctx, flags);
 	if (!hash_md)
 		return SC_ERROR_NOT_SUPPORTED;
 
@@ -263,32 +263,45 @@ int sc_pkcs1_strip_oaep_padding(sc_context_t *ctx, u8 *data, size_t len, unsigne
 			hash_len = 0;
 		EVP_MD_CTX_free(md_ctx);
 	}
+	sc_evp_md_free(hash_md);
+	hash_md = NULL;
 	if (!hash_len)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
 
-	mgf1_md = mgf1_flag2md(flags);
+	mgf1_md = mgf1_flag2md(ctx, flags);
 	if (!mgf1_md)
 		return SC_ERROR_NOT_SUPPORTED;
 
 	mdlen = EVP_MD_size(mgf1_md);
 
-	if (len < 2 * mdlen + 2)
+	if (len < 2 * mdlen + 2) {
+		sc_evp_md_free(mgf1_md);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_WRONG_PADDING);
+	}
 
-	if (*data != 0)
+	if (*data != 0) {
+		sc_evp_md_free(mgf1_md);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_WRONG_PADDING);
+	}
 
 	dblen = len - 1 - mdlen;
-	if (dblen > sizeof(db))
+	if (dblen > sizeof(db)) {
+		sc_evp_md_free(mgf1_md);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
+	}
 
-	if (mgf1(seed, mdlen, data + mdlen + 1, dblen, mgf1_md))
+	if (mgf1(seed, mdlen, data + mdlen + 1, dblen, mgf1_md)) {
+		sc_evp_md_free(mgf1_md);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
+	}
 	for (i = 0; i < mdlen; i++)
 		seed[i] ^= data[i + 1];
 
-	if (mgf1(db, dblen, seed, mdlen, mgf1_md))
+	if (mgf1(db, dblen, seed, mdlen, mgf1_md)) {
+		sc_evp_md_free(mgf1_md);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
+	}
+	sc_evp_md_free(mgf1_md);
 	for (i = 0; i < dblen; i++) {
 		db[i] ^= data[i + mdlen + 1];
 		/* clear lHash' if same as lHash */
@@ -369,37 +382,37 @@ int sc_pkcs1_strip_digest_info_prefix(unsigned int *algorithm,
 
 #ifdef ENABLE_OPENSSL
 
-static const EVP_MD* hash_flag2md(unsigned int hash)
+static EVP_MD* hash_flag2md(sc_context_t *ctx, unsigned int hash)
 {
 	switch (hash & SC_ALGORITHM_RSA_HASHES) {
 	case SC_ALGORITHM_RSA_HASH_SHA1:
-		return EVP_sha1();
+		return sc_evp_md(ctx, "SHA1");
 	case SC_ALGORITHM_RSA_HASH_SHA224:
-		return EVP_sha224();
+		return sc_evp_md(ctx, "SHA224");
 	case SC_ALGORITHM_RSA_HASH_SHA256:
-		return EVP_sha256();
+		return sc_evp_md(ctx, "SHA256");
 	case SC_ALGORITHM_RSA_HASH_SHA384:
-		return EVP_sha384();
+		return sc_evp_md(ctx, "SHA384");
 	case SC_ALGORITHM_RSA_HASH_SHA512:
-		return EVP_sha512();
+		return sc_evp_md(ctx, "SHA512");
 	default:
 		return NULL;
 	}
 }
 
-static const EVP_MD* mgf1_flag2md(unsigned int mgf1)
+static EVP_MD* mgf1_flag2md(sc_context_t *ctx, unsigned int mgf1)
 {
 	switch (mgf1 & SC_ALGORITHM_MGF1_HASHES) {
 	case SC_ALGORITHM_MGF1_SHA1:
-		return EVP_sha1();
+		return sc_evp_md(ctx, "SHA1");
 	case SC_ALGORITHM_MGF1_SHA224:
-		return EVP_sha224();
+		return sc_evp_md(ctx, "SHA224");
 	case SC_ALGORITHM_MGF1_SHA256:
-		return EVP_sha256();
+		return sc_evp_md(ctx, "SHA256");
 	case SC_ALGORITHM_MGF1_SHA384:
-		return EVP_sha384();
+		return sc_evp_md(ctx, "SHA384");
 	case SC_ALGORITHM_MGF1_SHA512:
-		return EVP_sha512();
+		return sc_evp_md(ctx, "SHA512");
 	default:
 		return NULL;
 	}
@@ -408,13 +421,13 @@ static const EVP_MD* mgf1_flag2md(unsigned int mgf1)
 /* large enough up to RSA 4096 */
 #define PSS_MAX_SALT_SIZE 512
 /* add PKCS#1 v2.0 PSS padding */
-static int sc_pkcs1_add_pss_padding(unsigned int hash, unsigned int mgf1_hash,
+static int sc_pkcs1_add_pss_padding(sc_context_t *scctx, unsigned int hash, unsigned int mgf1_hash,
     const u8 *in, size_t in_len, u8 *out, size_t *out_len, size_t mod_bits, size_t sLen)
 {
 	/* hLen = sLen in our case */
 	int rv = SC_ERROR_INTERNAL, i, j, hlen, dblen, plen, round, mgf_rounds;
 	int mgf1_hlen;
-	const EVP_MD* md, *mgf1_md;
+	EVP_MD* md = NULL, *mgf1_md = NULL;
 	EVP_MD_CTX* ctx = NULL;
 	u8 buf[8];
 	u8 salt[PSS_MAX_SALT_SIZE], mask[EVP_MAX_MD_SIZE];
@@ -423,22 +436,30 @@ static int sc_pkcs1_add_pss_padding(unsigned int hash, unsigned int mgf1_hash,
 	if (*out_len < mod_length)
 		return SC_ERROR_BUFFER_TOO_SMALL;
 
-	md = hash_flag2md(hash);
+	md = hash_flag2md(scctx, hash);
 	if (md == NULL)
 		return SC_ERROR_NOT_SUPPORTED;
 	hlen = EVP_MD_size(md);
 	dblen = mod_length - hlen - 1; /* emLen - hLen - 1 */
 	plen = mod_length - sLen - hlen - 1;
-	if (in_len != (unsigned)hlen)
+	if (in_len != (unsigned)hlen) {
+		sc_evp_md_free(md);
 		return SC_ERROR_INVALID_ARGUMENTS;
-	if (sLen + (unsigned)hlen + 2 > mod_length)
+	}
+	if (sLen + (unsigned)hlen + 2 > mod_length) {
 		/* RSA key too small for chosen hash (1296 bits or higher needed for
 		 * signing SHA-512 hashes) */
+		sc_evp_md_free(md);
 		return SC_ERROR_NOT_SUPPORTED;
-	if (sLen > PSS_MAX_SALT_SIZE)
+	}
+	if (sLen > PSS_MAX_SALT_SIZE) {
+		sc_evp_md_free(md);
 		return SC_ERROR_INVALID_ARGUMENTS;
-	if (RAND_bytes(salt, sLen) != 1)
+	}
+	if (RAND_bytes(salt, sLen) != 1) {
+		sc_evp_md_free(md);
 		return SC_ERROR_INTERNAL;
+	}
 
 	/* Hash M' to create H */
 	if (!(ctx = EVP_MD_CTX_create()))
@@ -464,7 +485,7 @@ static int sc_pkcs1_add_pss_padding(unsigned int hash, unsigned int mgf1_hash,
 	 *  *the first part is masked later */
 
 	/* Construct the DB mask block by block and XOR it in. */
-	mgf1_md = mgf1_flag2md(mgf1_hash);
+	mgf1_md = mgf1_flag2md(scctx, mgf1_hash);
 	if (mgf1_md == NULL)
 		return SC_ERROR_NOT_SUPPORTED;
 	mgf1_hlen = EVP_MD_size(mgf1_md);
@@ -499,6 +520,8 @@ static int sc_pkcs1_add_pss_padding(unsigned int hash, unsigned int mgf1_hash,
 done:
 	OPENSSL_cleanse(salt, sizeof(salt));
 	OPENSSL_cleanse(mask, sizeof(mask));
+	sc_evp_md_free(md);
+	sc_evp_md_free(mgf1_md);
 	if (ctx) {
 		EVP_MD_CTX_destroy(ctx);
 	}
@@ -537,7 +560,7 @@ int sc_pkcs1_encode(sc_context_t *ctx, unsigned long flags,
 	size_t mod_len = (mod_bits + 7) / 8;
 #ifdef ENABLE_OPENSSL
 	size_t sLen;
-	const EVP_MD* md;
+	EVP_MD* md = NULL;
 	unsigned int mgf1_hash;
 #endif
 
@@ -586,9 +609,10 @@ int sc_pkcs1_encode(sc_context_t *ctx, unsigned long flags,
 			hash_algo = hash_len2algo(tmp_len);
 		}
 		/* sLen is by default same as hash length */
-		if (!(md = hash_flag2md(hash_algo)))
+		if (!(md = hash_flag2md(ctx, hash_algo)))
 			return SC_ERROR_NOT_SUPPORTED;
 		sLen = EVP_MD_size(md);
+		sc_evp_md_free(md);
 		/* if application provide sLen, use it */
 		if (pMechanism != NULL) {
 			CK_MECHANISM *mech = (CK_MECHANISM *)pMechanism;
@@ -598,7 +622,7 @@ int sc_pkcs1_encode(sc_context_t *ctx, unsigned long flags,
 				sLen = pss_params->sLen;
 			}
 		}
-		rv = sc_pkcs1_add_pss_padding(hash_algo, mgf1_hash,
+		rv = sc_pkcs1_add_pss_padding(ctx, hash_algo, mgf1_hash,
 		    tmp, tmp_len, out, out_len, mod_bits, sLen);
 #else
 		rv = SC_ERROR_NOT_SUPPORTED;
