@@ -733,6 +733,7 @@ gpk_compute_crycks(sc_card_t *card, sc_apdu_t *apdu,
 	unsigned int	len = 0, i;
 	int             r = SC_SUCCESS, outl;
 	EVP_CIPHER_CTX  *ctx = NULL;
+	EVP_CIPHER      *alg = NULL;
 
 	ctx = EVP_CIPHER_CTX_new();
 	if (ctx == NULL)
@@ -756,7 +757,8 @@ gpk_compute_crycks(sc_card_t *card, sc_apdu_t *apdu,
 	/* Set IV */
 	memset(in, 0x00, 8);
 
-	EVP_EncryptInit_ex(ctx, EVP_des_ede_cbc(), NULL, priv->key, in);
+	alg = sc_evp_cipher(card->ctx, "DES-EDE-CBC");
+	EVP_EncryptInit_ex(ctx, alg, NULL, priv->key, in);
 	for (i = 0; i < len; i += 8) {
 		if (!EVP_EncryptUpdate(ctx, out, &outl, &block[i], 8)) {
 			r = SC_ERROR_INTERNAL;
@@ -764,6 +766,7 @@ gpk_compute_crycks(sc_card_t *card, sc_apdu_t *apdu,
 		}
 	}
 	EVP_CIPHER_CTX_free(ctx);
+	sc_evp_cipher_free(alg);
 
 	memcpy((u8 *) (apdu->data + apdu->datalen), out + 5, 3);
 	apdu->datalen += 3;
@@ -885,11 +888,12 @@ gpk_create_file(sc_card_t *card, sc_file_t *file)
  * Set the secure messaging key following a Select FileKey
  */
 static int
-gpk_set_filekey(const u8 *key, const u8 *challenge,
+gpk_set_filekey(sc_card_t *card, const u8 *key, const u8 *challenge,
 		const u8 *r_rn, u8 *kats)
 {
 	int			r = SC_SUCCESS, outl;
 	EVP_CIPHER_CTX		* ctx = NULL;
+	EVP_CIPHER		* alg = NULL;
 	u8                      out[16];
 
 	memcpy(out, key+8, 8);
@@ -899,7 +903,8 @@ gpk_set_filekey(const u8 *key, const u8 *challenge,
 	if (ctx == NULL)
 		return SC_ERROR_INTERNAL;
 
-	EVP_EncryptInit_ex(ctx, EVP_des_ede(), NULL, key, NULL);
+	alg = sc_evp_cipher(card->ctx, "DES-EDE");
+	EVP_EncryptInit_ex(ctx, alg, NULL, key, NULL);
 	if (!EVP_EncryptUpdate(ctx, kats, &outl, r_rn+4, 8))
 		r = SC_ERROR_INTERNAL;
 
@@ -907,7 +912,7 @@ gpk_set_filekey(const u8 *key, const u8 *challenge,
 		r = SC_ERROR_INTERNAL;
 	if (r == SC_SUCCESS) {
 		EVP_CIPHER_CTX_reset(ctx);
-		EVP_EncryptInit_ex(ctx, EVP_des_ede(), NULL, out, NULL);
+		EVP_EncryptInit_ex(ctx, alg, NULL, out, NULL);
 		if (!EVP_EncryptUpdate(ctx, kats+8, &outl, r_rn+4, 8))
 			r = SC_ERROR_INTERNAL;
 	if (!EVP_CIPHER_CTX_reset(ctx))
@@ -921,13 +926,14 @@ gpk_set_filekey(const u8 *key, const u8 *challenge,
 	 */
 	if (r == SC_SUCCESS) {
 		EVP_CIPHER_CTX_reset(ctx);
-		EVP_EncryptInit_ex(ctx, EVP_des_ede(), NULL, kats, NULL);
+		EVP_EncryptInit_ex(ctx, alg, NULL, kats, NULL);
 		if (!EVP_EncryptUpdate(ctx, out, &outl, challenge, 8))
 			r = SC_ERROR_INTERNAL;
 		if (memcmp(r_rn, out+4, 4) != 0)
 			r = SC_ERROR_INVALID_ARGUMENTS;
 	}
 
+	sc_evp_cipher_free(alg);
 	if (ctx)
 	    EVP_CIPHER_CTX_free(ctx);
 
@@ -974,7 +980,7 @@ gpk_select_key(sc_card_t *card, int key_sfi, const u8 *buf, size_t buflen)
 	if (apdu.resplen != 12) {
 		r = SC_ERROR_UNKNOWN_DATA_RECEIVED;
 	} else
-	if ((r = gpk_set_filekey(buf, rnd, resp, priv->key)) == 0) {
+	if ((r = gpk_set_filekey(card, buf, rnd, resp, priv->key)) == 0) {
 		priv->key_set = 1;
 		priv->key_reference = key_sfi;
 	}
@@ -1521,6 +1527,7 @@ gpk_pkfile_load(sc_card_t *card, struct sc_cardctl_gpk_pkload *args)
 	u8		temp[256];
 	int		r = SC_SUCCESS, outl;
 	EVP_CIPHER_CTX  * ctx;
+	EVP_CIPHER      * alg;
 
 	sc_log(card->ctx,  "gpk_pkfile_load(fid=%04x, len=%d, datalen=%d)\n",
 			args->file->id, args->len, args->datalen);
@@ -1549,6 +1556,7 @@ gpk_pkfile_load(sc_card_t *card, struct sc_cardctl_gpk_pkload *args)
 		return SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
 	}
 
+	alg = sc_evp_cipher(card->ctx, "DES-EDE");
 	EVP_EncryptInit_ex(ctx, EVP_des_ede(), NULL, priv->key, NULL);
 	for (n = 0; n < args->datalen; n += 8) {
 		if (!EVP_EncryptUpdate(ctx, temp+n, &outl, args->data + n, 8)) {
@@ -1556,6 +1564,7 @@ gpk_pkfile_load(sc_card_t *card, struct sc_cardctl_gpk_pkload *args)
 			break;
 		}
 	}
+	sc_evp_cipher_free(alg);
 	if (ctx)
 		EVP_CIPHER_CTX_free(ctx);
 	if (r != SC_SUCCESS)
