@@ -822,6 +822,11 @@ static int sc_openssl3_init(sc_context_t *ctx)
 		ctx->ossl3ctx = NULL;
 		return SC_ERROR_INTERNAL;
 	}
+	ctx->ossl3ctx->legacyprov = OSSL_PROVIDER_load(ctx->ossl3ctx->libctx,
+						       "legacy");
+	if (ctx->ossl3ctx->legacyprov == NULL) {
+		sc_log(ctx, "Failed to load OpenSSL Legacy provider");
+	}
 	return SC_SUCCESS;
 }
 
@@ -829,6 +834,8 @@ static void sc_openssl3_deinit(sc_context_t *ctx)
 {
 	if (ctx->ossl3ctx == NULL)
 		return;
+	if (ctx->ossl3ctx->legacyprov)
+		OSSL_PROVIDER_unload(ctx->ossl3ctx->legacyprov);
 	if (ctx->ossl3ctx->defprov)
 		OSSL_PROVIDER_unload(ctx->ossl3ctx->defprov);
 	if (ctx->ossl3ctx->libctx)

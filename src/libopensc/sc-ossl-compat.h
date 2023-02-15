@@ -76,6 +76,7 @@ extern "C" {
 typedef struct ossl3ctx {
 	OSSL_LIB_CTX *libctx;
 	OSSL_PROVIDER *defprov;
+	OSSL_PROVIDER *legacyprov;
 } ossl3ctx_t;
 
 static inline EVP_MD *_sc_evp_md(ossl3ctx_t *ctx, const char *algorithm)
