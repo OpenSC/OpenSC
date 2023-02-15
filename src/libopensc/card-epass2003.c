@@ -238,7 +238,7 @@ static const sec_attr_to_acl_entries_t sec_attr_to_acl_entry[] = {
 static int epass2003_transmit_apdu(struct sc_card *card, struct sc_apdu *apdu);
 static int epass2003_select_file(struct sc_card *card, const sc_path_t * in_path, sc_file_t ** file_out);
 int epass2003_refresh(struct sc_card *card);
-static int hash_data(const unsigned char *data, size_t datalen, unsigned char *hash, unsigned int mechanismType);
+static int hash_data(struct sc_card *card, const unsigned char *data, size_t datalen, unsigned char *hash, unsigned int mechanismType);
 
 static int
 epass2003_check_sw(struct sc_card *card, unsigned int sw1, unsigned int sw2)
@@ -337,8 +337,8 @@ out:
 }
 
 static int
-aes128_encrypt_cmac_ft(const unsigned char *key, int keysize,
-        const unsigned char *input, size_t length, unsigned char *output,unsigned char *iv) 
+aes128_encrypt_cmac_ft(struct sc_card *card, const unsigned char *key, int keysize,
+	const unsigned char *input, size_t length, unsigned char *output,unsigned char *iv) 
 {
 	unsigned char data1[32] = {0}; 
 	unsigned char data2[32] = {0}; 
@@ -354,10 +354,13 @@ aes128_encrypt_cmac_ft(const unsigned char *key, int keysize,
 	int r = SC_ERROR_INTERNAL;
 	unsigned char out[32] = {0}; 
 	unsigned char iv0[EVP_MAX_IV_LENGTH] = {0}; 
-	r = openssl_enc(EVP_aes_128_ecb(), key, iv0, data1, 16, out);
-	if( r != SC_SUCCESS)
+	EVP_CIPHER *alg = sc_evp_cipher(card->ctx, "AES-128-ECB");
+	r = openssl_enc(alg, key, iv0, data1, 16, out);
+	if (r != SC_SUCCESS) {
+		sc_evp_cipher_free(alg);
 		return r;
-	
+	}
+
 	check = out[0];
 	enc1 = BN_new();
 	lenc1 = BN_new();
@@ -396,12 +399,14 @@ aes128_encrypt_cmac_ft(const unsigned char *key, int keysize,
 	for (int i=0;i<16;i++){
 		data2[i]=data2[i]^k2Bin[offset + i];
 	}
-	return openssl_enc(EVP_aes_128_cbc(), key, iv, data2, 16, output);
+	r = openssl_enc(alg, key, iv, data2, 16, output);
+	sc_evp_cipher_free(alg);
+	return r;
 }
 
 static int
-aes128_encrypt_cmac(const unsigned char *key, int keysize,
-        const unsigned char *input, size_t length, unsigned char *output)
+aes128_encrypt_cmac(struct sc_card *card, const unsigned char *key, int keysize,
+	const unsigned char *input, size_t length, unsigned char *output)
 {
 	size_t mactlen = 0;
 	int r = SC_ERROR_INTERNAL;
@@ -424,7 +429,7 @@ aes128_encrypt_cmac(const unsigned char *key, int keysize,
 err:
 	CMAC_CTX_free(ctx);
 #else
-	EVP_MAC *mac = EVP_MAC_fetch(NULL, "cmac", NULL);
+	EVP_MAC *mac = EVP_MAC_fetch(card->ctx->ossl3ctx->libctx, "cmac", NULL);
 	if(mac == NULL){    
 		return r;
 	}
@@ -456,36 +461,50 @@ err:
 }
 
 static int
-aes128_encrypt_ecb(const unsigned char *key, int keysize,
+aes128_encrypt_ecb(struct sc_card *card, const unsigned char *key, int keysize,
 		const unsigned char *input, size_t length, unsigned char *output)
 {
 	unsigned char iv[EVP_MAX_IV_LENGTH] = { 0 };
-	return openssl_enc(EVP_aes_128_ecb(), key, iv, input, length, output);
+	EVP_CIPHER *alg = sc_evp_cipher(card->ctx, "AES-128-ECB");
+	int r;
+	r = openssl_enc(alg, key, iv, input, length, output);
+	sc_evp_cipher_free(alg);
+	return r;
 }
 
 
 static int
-aes128_encrypt_cbc(const unsigned char *key, int keysize, unsigned char iv[16],
+aes128_encrypt_cbc(struct sc_card *card, const unsigned char *key, int keysize, unsigned char iv[16],
 		const unsigned char *input, size_t length, unsigned char *output)
 {
-	return openssl_enc(EVP_aes_128_cbc(), key, iv, input, length, output);
+	EVP_CIPHER *alg = sc_evp_cipher(card->ctx, "AES-128-CBC");
+	int r;
+	r = openssl_enc(alg, key, iv, input, length, output);
+	sc_evp_cipher_free(alg);
+	return r;
 }
 
 
 static int
-aes128_decrypt_cbc(const unsigned char *key, int keysize, unsigned char iv[16],
+aes128_decrypt_cbc(struct sc_card *card, const unsigned char *key, int keysize, unsigned char iv[16],
 		const unsigned char *input, size_t length, unsigned char *output)
 {
-	return openssl_dec(EVP_aes_128_cbc(), key, iv, input, length, output);
+	EVP_CIPHER *alg = sc_evp_cipher(card->ctx, "AES-128-CBC");
+	int r;
+	r = openssl_dec(alg, key, iv, input, length, output);
+	sc_evp_cipher_free(alg);
+	return r;
 }
 
 
 static int
-des3_encrypt_ecb(const unsigned char *key, int keysize,
+des3_encrypt_ecb(struct sc_card *card, const unsigned char *key, int keysize,
 		const unsigned char *input, int length, unsigned char *output)
 {
 	unsigned char iv[EVP_MAX_IV_LENGTH] = { 0 };
 	unsigned char bKey[24] = { 0 };
+	EVP_CIPHER *alg = sc_evp_cipher(card->ctx, "DES-EDE3");
+	int r;
 
 	if (keysize == 16) {
 		memcpy(&bKey[0], key, 16);
@@ -495,15 +514,19 @@ des3_encrypt_ecb(const unsigned char *key, int keysize,
 		memcpy(&bKey[0], key, 24);
 	}
 
-	return openssl_enc(EVP_des_ede3(), bKey, iv, input, length, output);
+	r = openssl_enc(alg, bKey, iv, input, length, output);
+	sc_evp_cipher_free(alg);
+	return r;
 }
 
 
 static int
-des3_encrypt_cbc(const unsigned char *key, int keysize, unsigned char iv[EVP_MAX_IV_LENGTH],
+des3_encrypt_cbc(struct sc_card *card, const unsigned char *key, int keysize, unsigned char iv[EVP_MAX_IV_LENGTH],
 		const unsigned char *input, size_t length, unsigned char *output)
 {
 	unsigned char bKey[24] = { 0 };
+	EVP_CIPHER *alg = sc_evp_cipher(card->ctx, "DES-EDE3-CBC");
+	int r;
 
 	if (keysize == 16) {
 		memcpy(&bKey[0], key, 16);
@@ -513,15 +536,20 @@ des3_encrypt_cbc(const unsigned char *key, int keysize, unsigned char iv[EVP_MAX
 		memcpy(&bKey[0], key, 24);
 	}
 
-	return openssl_enc(EVP_des_ede3_cbc(), bKey, iv, input, length, output);
+	r = openssl_enc(EVP_des_ede3_cbc(), bKey, iv, input, length, output);
+	sc_evp_cipher_free(alg);
+	return r;
 }
 
 
 static int
-des3_decrypt_cbc(const unsigned char *key, int keysize, unsigned char iv[EVP_MAX_IV_LENGTH],
+des3_decrypt_cbc(struct sc_card *card, const unsigned char *key, int keysize, unsigned char iv[EVP_MAX_IV_LENGTH],
 		const unsigned char *input, size_t length, unsigned char *output)
 {
 	unsigned char bKey[24] = { 0 };
+	EVP_CIPHER *alg = sc_evp_cipher(card->ctx, "DES-EDE3-CBC");
+	int r;
+
 	if (keysize == 16) {
 		memcpy(&bKey[0], key, 16);
 		memcpy(&bKey[16], key, 8);
@@ -530,23 +558,35 @@ des3_decrypt_cbc(const unsigned char *key, int keysize, unsigned char iv[EVP_MAX
 		memcpy(&bKey[0], key, 24);
 	}
 
-	return openssl_dec(EVP_des_ede3_cbc(), bKey, iv, input, length, output);
+	r = openssl_dec(alg, bKey, iv, input, length, output);
+	sc_evp_cipher_free(alg);
+	return r;
 }
 
 
 static int
-des_encrypt_cbc(const unsigned char *key, int keysize, unsigned char iv[EVP_MAX_IV_LENGTH],
+des_encrypt_cbc(struct sc_card *card, const unsigned char *key, int keysize, unsigned char iv[EVP_MAX_IV_LENGTH],
 		const unsigned char *input, size_t length, unsigned char *output)
 {
-	return openssl_enc(EVP_des_cbc(), key, iv, input, length, output);
+	EVP_CIPHER *alg = sc_evp_cipher(card->ctx, "DES-CBC");
+	int r;
+
+	r = openssl_enc(alg, key, iv, input, length, output);
+	sc_evp_cipher_free(alg);
+	return r;
 }
 
 
 static int
-des_decrypt_cbc(const unsigned char *key, int keysize, unsigned char iv[EVP_MAX_IV_LENGTH],
+des_decrypt_cbc(struct sc_card *card, const unsigned char *key, int keysize, unsigned char iv[EVP_MAX_IV_LENGTH],
 		const unsigned char *input, size_t length, unsigned char *output)
 {
-	return openssl_dec(EVP_des_cbc(), key, iv, input, length, output);
+	EVP_CIPHER *alg = sc_evp_cipher(card->ctx, "DES-CBC");
+	int r;
+
+	r = openssl_dec(alg, key, iv, input, length, output);
+	sc_evp_cipher_free(alg);
+	return r;
 }
 
 
@@ -585,15 +625,25 @@ err:
 
 
 static int
-sha1_digest(const unsigned char *input, size_t length, unsigned char *output)
+sha1_digest(struct sc_card *card, const unsigned char *input, size_t length, unsigned char *output)
 {
-	return openssl_dig(EVP_sha1(), input, length, output);
+	EVP_MD *md = sc_evp_md(card->ctx, "SHA1");
+	int r;
+
+	r = openssl_dig(md, input, length, output);
+	sc_evp_md_free(md);
+	return r;
 }
 
 static int
-sha256_digest(const unsigned char *input, size_t length, unsigned char *output)
+sha256_digest(struct sc_card *card, const unsigned char *input, size_t length, unsigned char *output)
 {
-	return openssl_dig(EVP_sha256(), input, length, output);
+	EVP_MD *md = sc_evp_md(card->ctx, "SHA256");
+	int r;
+
+	r = openssl_dig(md, input, length, output);
+	sc_evp_md_free(md);
+	return r;
 }
 
 
@@ -658,22 +708,22 @@ gen_init_key(struct sc_card *card, unsigned char *key_enc, unsigned char *key_ma
 	/* Step 2,3 - Create S-ENC/S-MAC Session Key */
 	if (KEY_TYPE_AES == key_type) {
 		if(isFips){
-        	    	r = aes128_encrypt_cmac(key_enc, 128, data, 32, exdata->sk_enc);
+		    	r = aes128_encrypt_cmac(card, key_enc, 128, data, 32, exdata->sk_enc);
             		LOG_TEST_RET(card->ctx, r, "aes128_encrypt_cmac enc failed");
             		memset(&data[11], 0x06, 1);
-            		r = aes128_encrypt_cmac(key_mac, 128, data, 32, exdata->sk_mac);
+	    		r = aes128_encrypt_cmac(card, key_mac, 128, data, 32, exdata->sk_mac);
             		LOG_TEST_RET(card->ctx, r, "aes128_encrypt_cmac mac  failed");
         	}else{
-			r = aes128_encrypt_ecb(key_enc, 16, data, 16, exdata->sk_enc);
+			r = aes128_encrypt_ecb(card, key_enc, 16, data, 16, exdata->sk_enc);
 			LOG_TEST_RET(card->ctx, r, "aes128_encrypt_ecb enc  failed");
-			r = aes128_encrypt_ecb(key_mac, 16, data, 16, exdata->sk_mac);
+			r = aes128_encrypt_ecb(card, key_mac, 16, data, 16, exdata->sk_mac);
 			LOG_TEST_RET(card->ctx, r, "aes128_encrypt_ecb mac  failed");
 		}
 	}
 	else {
-		r = des3_encrypt_ecb(key_enc, 16, data, 16, exdata->sk_enc);
+		r = des3_encrypt_ecb(card, key_enc, 16, data, 16, exdata->sk_enc);
 		LOG_TEST_RET(card->ctx, r, "des3_encrypt_ecb failed");
-		r = des3_encrypt_ecb(key_mac, 16, data, 16, exdata->sk_mac);
+		r = des3_encrypt_ecb(card, key_mac, 16, data, 16, exdata->sk_mac);
 		LOG_TEST_RET(card->ctx, r, "des3_encrypt_ecb failed");
 	}
 
@@ -693,14 +743,14 @@ gen_init_key(struct sc_card *card, unsigned char *key_enc, unsigned char *key_ma
 	if (KEY_TYPE_AES == key_type)
 	{
 		if(isFips){
-			r = aes128_encrypt_cmac(exdata->sk_enc, 128, data, 32, cryptogram);
+			r = aes128_encrypt_cmac(card, exdata->sk_enc, 128, data, 32, cryptogram);
 		}
 		else{
-			r = aes128_encrypt_cbc(exdata->sk_enc, 16, iv, data, 16 + blocksize, cryptogram);
+			r = aes128_encrypt_cbc(card, exdata->sk_enc, 16, iv, data, 16 + blocksize, cryptogram);
 		}
 	}
 	else
-		r = des3_encrypt_cbc(exdata->sk_enc, 16, iv, data, 16 + blocksize, cryptogram);
+		r = des3_encrypt_cbc(card, exdata->sk_enc, 16, iv, data, 16 + blocksize, cryptogram);
 
 	LOG_TEST_RET(card->ctx, r, "calculate host cryptogram failed");
 
@@ -758,13 +808,13 @@ verify_init_key(struct sc_card *card, unsigned char *ran_key, unsigned char key_
 	/* calculate host cryptogram */
 	if (KEY_TYPE_AES == key_type) {
 		if(isFips){
-			r = aes128_encrypt_cmac(exdata->sk_enc, 128, data, 32, cryptogram);
+			r = aes128_encrypt_cmac(card, exdata->sk_enc, 128, data, 32, cryptogram);
 		}
 		else{
-			r = aes128_encrypt_cbc(exdata->sk_enc, 16, iv, data, 16 + blocksize,cryptogram);
+			r = aes128_encrypt_cbc(card, exdata->sk_enc, 16, iv, data, 16 + blocksize,cryptogram);
 		}
 	} else {
-		r = des3_encrypt_cbc(exdata->sk_enc, 16, iv, data, 16 + blocksize,cryptogram);
+		r = des3_encrypt_cbc(card, exdata->sk_enc, 16, iv, data, 16 + blocksize,cryptogram);
 	}
 
 	LOG_TEST_RET(card->ctx, r, "calculate host cryptogram  failed");
@@ -783,14 +833,14 @@ verify_init_key(struct sc_card *card, unsigned char *ran_key, unsigned char key_
 	memset(iv, 0x00, 16);
 	if (KEY_TYPE_AES == key_type) {
 		if(isFips){
-			r = aes128_encrypt_cmac(exdata->sk_mac, 128, data, 13, mac);
+			r = aes128_encrypt_cmac(card, exdata->sk_mac, 128, data, 13, mac);
 		}
 		else{
-			r = aes128_encrypt_cbc(exdata->sk_mac, 16, iv, data, 16, mac);
+			r = aes128_encrypt_cbc(card, exdata->sk_mac, 16, iv, data, 16, mac);
 		}
 		i = 0;
 	} else {
-		r = des3_encrypt_cbc(exdata->sk_mac, 16, iv, data, 16, mac);
+		r = des3_encrypt_cbc(card, exdata->sk_mac, 16, iv, data, 16, mac);
 		i = 8;
 	}
 
@@ -923,10 +973,10 @@ construct_data_tlv(struct sc_card *card, struct sc_apdu *apdu, unsigned char *ap
 
 	/* encrypt Data */
 	if (KEY_TYPE_AES == key_type) {
-		r = aes128_encrypt_cbc(exdata->sk_enc, 16, iv, pad, pad_len, apdu_buf + block_size + tlv_more);
+		r = aes128_encrypt_cbc(card, exdata->sk_enc, 16, iv, pad, pad_len, apdu_buf + block_size + tlv_more);
 		LOG_TEST_RET(card->ctx, r, "aes128_encrypt_cbc failed");
 	} else {
-		r = des3_encrypt_cbc(exdata->sk_enc, 16, iv, pad, pad_len, apdu_buf + block_size + tlv_more);
+		r = des3_encrypt_cbc(card, exdata->sk_enc, 16, iv, pad, pad_len, apdu_buf + block_size + tlv_more);
 		LOG_TEST_RET(card->ctx, r, "des3_encrypt_cbc failed");
 	}
 
@@ -1018,7 +1068,7 @@ construct_mac_tlv(struct sc_card *card, unsigned char *apdu_buf, size_t data_tlv
             		{
                 		apdu_buf[i]=apdu_buf[i]^icv[i];
             		}
-            		r = aes128_encrypt_cmac(exdata->sk_mac, 128, apdu_buf, data_tlv_len+le_tlv_len+block_size, mac);
+	    		r = aes128_encrypt_cmac(card, exdata->sk_mac, 128, apdu_buf, data_tlv_len+le_tlv_len+block_size, mac);
             		LOG_TEST_RET(card->ctx, r, "aes128_encrypt_cmac failed");
             		memcpy(mac_tlv+2, &mac[0/*ulmacLen-16*/], 8);
             		for (int j=0;j<4;j++)
@@ -1027,7 +1077,7 @@ construct_mac_tlv(struct sc_card *card, unsigned char *apdu_buf, size_t data_tlv
             		}
         	}
 		else{
-			r = aes128_encrypt_cbc(exdata->sk_mac, 16, icv, apdu_buf, mac_len, mac);
+			r = aes128_encrypt_cbc(card, exdata->sk_mac, 16, icv, apdu_buf, mac_len, mac);
 			LOG_TEST_RET(card->ctx, r, "aes128_encrypt_cbc failed");
 			memcpy(mac_tlv + 2, &mac[mac_len - 16], 8);
 		}
@@ -1035,12 +1085,12 @@ construct_mac_tlv(struct sc_card *card, unsigned char *apdu_buf, size_t data_tlv
 	else {
 		unsigned char iv[EVP_MAX_IV_LENGTH] = { 0 };
 		unsigned char tmp[8] = { 0 };
-		r = des_encrypt_cbc(exdata->sk_mac, 8, icv, apdu_buf, mac_len, mac);
+		r = des_encrypt_cbc(card, exdata->sk_mac, 8, icv, apdu_buf, mac_len, mac);
 		LOG_TEST_RET(card->ctx, r, "des_encrypt_cbc 1 failed");
-		r = des_decrypt_cbc(&exdata->sk_mac[8], 8, iv, &mac[mac_len - 8], 8, tmp);
+		r = des_decrypt_cbc(card, &exdata->sk_mac[8], 8, iv, &mac[mac_len - 8], 8, tmp);
 		LOG_TEST_RET(card->ctx, r, "des_decrypt_cbc failed");
 		memset(iv, 0x00, sizeof iv);
-		r = des_encrypt_cbc(exdata->sk_mac, 8, iv, tmp, 8, mac_tlv + 2);
+		r = des_encrypt_cbc(card, exdata->sk_mac, 8, iv, tmp, 8, mac_tlv + 2);
 		LOG_TEST_RET(card->ctx, r, "des_encrypt_cbc 2 failed");
 	}
 
@@ -1051,7 +1101,7 @@ construct_mac_tlv(struct sc_card *card, unsigned char *apdu_buf, size_t data_tlv
 /* MAC(TLV case 1) */
 static int
 construct_mac_tlv_case1(struct sc_card *card, unsigned char *apdu_buf, size_t data_tlv_len, size_t le_tlv_len,
-        unsigned char *mac_tlv, size_t * mac_tlv_len, const unsigned char key_type)
+	unsigned char *mac_tlv, size_t * mac_tlv_len, const unsigned char key_type)
 {
     int r;
     size_t block_size = 4;
@@ -1100,13 +1150,13 @@ construct_mac_tlv_case1(struct sc_card *card, unsigned char *apdu_buf, size_t da
     if (KEY_TYPE_AES == key_type) {
         if(exdata->bFipsCertification)
         {
-            r = aes128_encrypt_cmac_ft(exdata->sk_mac, 128, apdu_buf,data_tlv_len+le_tlv_len+block_size, mac, &icv[0]);
+            r = aes128_encrypt_cmac_ft(card, exdata->sk_mac, 128, apdu_buf,data_tlv_len+le_tlv_len+block_size, mac, &icv[0]);
             LOG_TEST_RET(card->ctx, r, "aes128_encrypt_cmac_ft failed");
             memcpy(mac_tlv+2, &mac[0/*ulmacLen-16*/], 8);
         }
         else
         {
-            r = aes128_encrypt_cbc(exdata->sk_mac, 16, icv, apdu_buf, mac_len, mac);
+	    r = aes128_encrypt_cbc(card, exdata->sk_mac, 16, icv, apdu_buf, mac_len, mac);
             LOG_TEST_RET(card->ctx, r, "aes128_encrypt_cbc failed");
             memcpy(mac_tlv + 2, &mac[mac_len - 16], 8);
         }
@@ -1115,12 +1165,12 @@ construct_mac_tlv_case1(struct sc_card *card, unsigned char *apdu_buf, size_t da
     {
         unsigned char iv[EVP_MAX_IV_LENGTH] = { 0 };
         unsigned char tmp[8] = { 0 };
-        r = des_encrypt_cbc(exdata->sk_mac, 8, icv, apdu_buf, mac_len, mac);
+	r = des_encrypt_cbc(card, exdata->sk_mac, 8, icv, apdu_buf, mac_len, mac);
         LOG_TEST_RET(card->ctx, r, "des_encrypt_cbc  failed");
-        r = des_decrypt_cbc(&exdata->sk_mac[8], 8, iv, &mac[mac_len - 8], 8, tmp);
+	r = des_decrypt_cbc(card, &exdata->sk_mac[8], 8, iv, &mac[mac_len - 8], 8, tmp);
         LOG_TEST_RET(card->ctx, r, "des_decrypt_cbc failed");
         memset(iv, 0x00, sizeof iv);
-        r = des_encrypt_cbc(exdata->sk_mac, 8, iv, tmp, 8, mac_tlv + 2);
+	r = des_encrypt_cbc(card, exdata->sk_mac, 8, iv, tmp, 8, mac_tlv + 2);
         LOG_TEST_RET(card->ctx, r, "des_encrypt_cbc failed");
     }
 
@@ -1329,9 +1379,9 @@ decrypt_response(struct sc_card *card, unsigned char *in, size_t inlen, unsigned
 
 	/* decrypt */
 	if (KEY_TYPE_AES == exdata->smtype)
-		aes128_decrypt_cbc(exdata->sk_enc, 16, iv, &in[i], cipher_len - 1, plaintext);
+		aes128_decrypt_cbc(card, exdata->sk_enc, 16, iv, &in[i], cipher_len - 1, plaintext);
 	else
-		des3_decrypt_cbc(exdata->sk_enc, 16, iv, &in[i], cipher_len - 1, plaintext);
+		des3_decrypt_cbc(card, exdata->sk_enc, 16, iv, &in[i], cipher_len - 1, plaintext);
 
 	/* unpadding */
 	while (0x80 != plaintext[cipher_len - 2] && (cipher_len > 2))
@@ -2118,7 +2168,7 @@ static int epass2003_decipher(struct sc_card *card, const u8 * data, size_t data
 	{
 		if(exdata->ecAlgFlags & SC_ALGORITHM_ECDSA_HASH_SHA1)
 		{
-			r = hash_data(data, datalen, sbuf, SC_ALGORITHM_ECDSA_HASH_SHA1);
+			r = hash_data(card, data, datalen, sbuf, SC_ALGORITHM_ECDSA_HASH_SHA1);
 			LOG_TEST_RET(card->ctx, r, "hash_data failed"); 
 			sc_format_apdu(card, &apdu, SC_APDU_CASE_3,0x2A, 0x9E, 0x9A);
 			apdu.data = sbuf;
@@ -2127,7 +2177,7 @@ static int epass2003_decipher(struct sc_card *card, const u8 * data, size_t data
 		}
 		else if (exdata->ecAlgFlags & SC_ALGORITHM_ECDSA_HASH_SHA256)
 		{
-			r = hash_data(data, datalen, sbuf, SC_ALGORITHM_ECDSA_HASH_SHA256);
+			r = hash_data(card, data, datalen, sbuf, SC_ALGORITHM_ECDSA_HASH_SHA256);
 			LOG_TEST_RET(card->ctx, r, "hash_data failed");
 			sc_format_apdu(card, &apdu, SC_APDU_CASE_3,0x2A, 0x9E, 0x9A);
 			apdu.data = sbuf;
@@ -2717,7 +2767,7 @@ internal_write_rsa_key(struct sc_card *card, unsigned short fid, struct sc_pkcs1
 
 
 static int
-hash_data(const unsigned char *data, size_t datalen, unsigned char *hash, unsigned int mechanismType)
+hash_data(struct sc_card *card, const unsigned char *data, size_t datalen, unsigned char *hash, unsigned int mechanismType)
 {
 
 	if ((NULL == data) || (NULL == hash))
@@ -2728,7 +2778,7 @@ hash_data(const unsigned char *data, size_t datalen, unsigned char *hash, unsign
 		unsigned char data_hash[24] = { 0 };
 		size_t len = 0;
 
-		sha1_digest(data, datalen, data_hash);
+		sha1_digest(card, data, datalen, data_hash);
 		len = REVERSE_ORDER4(datalen);
 		memcpy(&data_hash[20], &len, 4);
 		memcpy(hash, data_hash, 24);
@@ -2738,7 +2788,7 @@ hash_data(const unsigned char *data, size_t datalen, unsigned char *hash, unsign
 		unsigned char data_hash[36] = { 0 };
 		size_t len = 0;
 
-		sha256_digest(data, datalen, data_hash);
+		sha256_digest(card, data, datalen, data_hash);
 		len = REVERSE_ORDER4(datalen);
 		memcpy(&data_hash[32], &len, 4);
 		memcpy(hash, data_hash, 36);
@@ -2819,7 +2869,7 @@ internal_install_pin(struct sc_card *card, sc_epass2003_wkey_data * pin)
 	int r;
 	unsigned char hash[HASH_LEN] = { 0 };
 
-	r = hash_data(pin->key_data.es_secret.key_val, pin->key_data.es_secret.key_len, hash, SC_ALGORITHM_ECDSA_HASH_SHA1);
+	r = hash_data(card, pin->key_data.es_secret.key_val, pin->key_data.es_secret.key_len, hash, SC_ALGORITHM_ECDSA_HASH_SHA1);
 	LOG_TEST_RET(card->ctx, r, "hash data failed");
 
 	r = install_secret_key(card, 0x04, pin->key_data.es_secret.kid,
@@ -3165,10 +3215,10 @@ external_key_auth(struct sc_card *card, unsigned char kid,
 	r = sc_get_challenge(card, random, 8);
 	LOG_TEST_RET(card->ctx, r, "get challenge external_key_auth failed");
 
-	r = hash_data(data, datalen, hash, SC_ALGORITHM_ECDSA_HASH_SHA1);
+	r = hash_data(card, data, datalen, hash, SC_ALGORITHM_ECDSA_HASH_SHA1);
 	LOG_TEST_RET(card->ctx, r, "hash data failed");
 
-	des3_encrypt_cbc(hash, HASH_LEN, iv, random, 8, tmp_data);
+	des3_encrypt_cbc(card, hash, HASH_LEN, iv, random, 8, tmp_data);
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x82, 0x01, 0x80 | kid);
 	apdu.lc = apdu.datalen = 8;
 	apdu.data = tmp_data;
@@ -3192,7 +3242,7 @@ update_secret_key(struct sc_card *card, unsigned char ktype, unsigned char kid,
 	unsigned char tmp_data[256] = { 0 };
 	unsigned char maxtries = 0;
 
-	r = hash_data(data, datalen, hash, SC_ALGORITHM_ECDSA_HASH_SHA1);
+	r = hash_data(card, data, datalen, hash, SC_ALGORITHM_ECDSA_HASH_SHA1);
 	LOG_TEST_RET(card->ctx, r, "hash data failed");
 
 	r = get_external_key_maxtries(card, &maxtries);
