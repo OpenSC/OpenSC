@@ -71,13 +71,53 @@ extern "C" {
 
 #include <openssl/provider.h>
 #include <openssl/crypto.h>
+#include <openssl/evp.h>
 
 typedef struct ossl3ctx {
 	OSSL_LIB_CTX *libctx;
 	OSSL_PROVIDER *defprov;
 } ossl3ctx_t;
 
+static inline EVP_MD *_sc_evp_md(ossl3ctx_t *ctx, const char *algorithm)
+{
+	return EVP_MD_fetch(ctx->libctx, algorithm, NULL);
+}
+#define sc_evp_md(ctx, alg) _sc_evp_md((ctx)->ossl3ctx, alg)
+
+static inline void sc_evp_md_free(EVP_MD *md)
+{
+	EVP_MD_free(md);
+}
+
+static inline EVP_PKEY_CTX *_sc_evp_pkey_ctx_new(ossl3ctx_t *ctx,
+						 EVP_PKEY *pkey)
+{
+	return EVP_PKEY_CTX_new_from_pkey(ctx->libctx, pkey, NULL);
+}
+#define sc_evp_pkey_ctx_new(ctx, pkey) \
+	_sc_evp_pkey_ctx_new((ctx)->ossl3ctx, pkey)
+
+#else /* OPENSSL < 3 */
+
+#include <openssl/evp.h>
+
+static inline EVP_MD *sc_evp_md(void *unused, const char *algorithm)
+{
+	return (EVP_MD *)EVP_get_digestbyname(algorithm);
+}
+
+static inline void sc_evp_md_free(EVP_MD *md)
+{
+	return;
+}
+
+static inline EVP_PKEY_CTX *sc_evp_pkey_ctx_new(void *unused, EVP_PKEY *pkey)
+{
+	return EVP_PKEY_CTX_new(pkey, NULL);
+}
+
 #endif
+
 
 #ifdef __cplusplus
 }
