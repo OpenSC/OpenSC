@@ -259,7 +259,7 @@ static struct auth_info *	new_key(struct sc_profile *,
 				unsigned int, unsigned int);
 static void		set_pin_defaults(struct sc_profile *,
 				struct pin_info *);
-static void		new_macro(sc_profile_t *, const char *, scconf_list *);
+static int		new_macro(sc_profile_t *, const char *, scconf_list *);
 static sc_macro_t *	find_macro(sc_profile_t *, const char *);
 
 static sc_file_t *
@@ -1826,6 +1826,7 @@ process_macros(struct state *cur, struct block *info,
 {
 	scconf_item	*item;
 	const char	*name;
+	int		 r;
 
 	for (item = blk->items; item; item = item->next) {
 		name = item->key;
@@ -1834,27 +1835,33 @@ process_macros(struct state *cur, struct block *info,
 #ifdef DEBUG_PROFILE
 		printf("Defining %s\n", name);
 #endif
-		new_macro(cur->profile, name, item->value.list);
+		r = new_macro(cur->profile, name, item->value.list);
+		if (r != SC_SUCCESS)
+			return r;
 	}
 
-	return 0;
+	return SC_SUCCESS;
 }
 
-static void
+static int
 new_macro(sc_profile_t *profile, const char *name, scconf_list *value)
 {
 	sc_macro_t	*mac;
 
+	if (!profile || !name || !value)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	if ((mac = find_macro(profile, name)) == NULL) {
 		mac = calloc(1, sizeof(*mac));
 		if (mac == NULL)
-			return;
+			return SC_ERROR_OUT_OF_MEMORY;
 		mac->name = strdup(name);
 		mac->next = profile->macro_list;
 		profile->macro_list = mac;
 	}
 
 	mac->value = value;
+	return SC_SUCCESS;
 }
 
 static sc_macro_t *
