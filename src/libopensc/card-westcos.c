@@ -659,6 +659,7 @@ static int westcos_get_crypte_challenge(sc_card_t * card, const u8 * key,
 	int r;
 #ifdef ENABLE_OPENSSL
 	EVP_CIPHER_CTX *cctx = NULL;
+	EVP_CIPHER *alg = NULL;
 	int tmplen = 0;
 	if ((cctx = EVP_CIPHER_CTX_new()) == NULL)
 		return SC_ERROR_INTERNAL;
@@ -671,19 +672,25 @@ static int westcos_get_crypte_challenge(sc_card_t * card, const u8 * key,
 	if (r)
 		return r;
 #ifdef ENABLE_OPENSSL
-	if (EVP_EncryptInit_ex(cctx, EVP_des_ede_ecb(), NULL, key, NULL) != 1 ||
+	if ((cctx = EVP_CIPHER_CTX_new()) == NULL)
+		return SC_ERROR_INTERNAL;
+	alg = sc_evp_cipher(card->ctx, "DES-EDE-ECB");
+	if (EVP_EncryptInit_ex(cctx, alg, NULL, key, NULL) != 1 ||
 		EVP_CIPHER_CTX_set_padding(cctx,0) != 1 ||
 		EVP_EncryptUpdate(cctx, result, &tmplen, buf, *len) != 1) {
 		EVP_CIPHER_CTX_free(cctx);
+		sc_evp_cipher_free(alg);
 		return SC_ERROR_INTERNAL;
 	}
 	*len = tmplen;
 	if (EVP_EncryptFinal_ex(cctx, result + tmplen, &tmplen)  != 1) {
 		EVP_CIPHER_CTX_free(cctx);
+		sc_evp_cipher_free(alg);
 		return SC_ERROR_INTERNAL;
     }
 	*len += tmplen;
 	EVP_CIPHER_CTX_free(cctx);
+	sc_evp_cipher_free(alg);
 	return SC_SUCCESS;
 #else
 	return SC_ERROR_NOT_SUPPORTED;
@@ -1185,7 +1192,11 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 		idx += r;
 	} while (1);
 	BIO_set_mem_eof_return(mem, -1);
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	if (!(pkey = d2i_PrivateKey_bio(mem, NULL))) {
+#else
+	if (!(pkey = d2i_PrivateKey_ex_bio(mem, NULL, card->ctx->ossl3ctx->libctx, NULL))) {
+#endif
 		sc_log(card->ctx, 
 			"RSA key invalid, %lu\n", ERR_get_error());
 		r = SC_ERROR_UNKNOWN;
