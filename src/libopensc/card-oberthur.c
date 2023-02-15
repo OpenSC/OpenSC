@@ -1336,6 +1336,7 @@ auth_update_component(struct sc_card *card, struct auth_update_component_info *a
 		const unsigned char in[8] = {0,0,0,0,0,0,0,0};
 		unsigned char out[8];
 		EVP_CIPHER_CTX  * ctx = NULL;
+		EVP_CIPHER *alg = NULL;
 
 		if (args->len!=8 && args->len!=24)
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
@@ -1346,11 +1347,13 @@ auth_update_component(struct sc_card *card, struct auth_update_component_info *a
 
 		p2 = 0;
 		if (args->len == 24)
-			EVP_EncryptInit_ex(ctx, EVP_des_ede(), NULL, args->data, NULL);
+			alg = sc_evp_cipher(card->ctx, "DES-EDE");
 		else
-			EVP_EncryptInit_ex(ctx, EVP_des_ecb(), NULL, args->data, NULL);
+			alg = sc_evp_cipher(card->ctx, "DES-ECB");
+		EVP_EncryptInit_ex(ctx, alg, NULL, args->data, NULL);
 		rv = EVP_EncryptUpdate(ctx, out, &outl, in, 8);
 		EVP_CIPHER_CTX_free(ctx);
+		sc_evp_cipher_free(alg);
 		if (rv == 0) {
 			sc_log(card->ctx, "OpenSSL encryption error.");
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
