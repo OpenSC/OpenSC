@@ -49,10 +49,6 @@
 # include <openssl/provider.h>
 #endif
 
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
-	static OSSL_PROVIDER *legacy_provider = NULL;
-#endif
-
 #define MAX_RESP_BUFFER_SIZE 2048
 
 /**
@@ -1618,16 +1614,6 @@ int cwa_encode_apdu(sc_card_t * card,
 	tmplen = 0;
 	key = sm_session->session_mac;
 
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
-	if (!legacy_provider) {
-		if (!(legacy_provider = OSSL_PROVIDER_try_load(NULL, "legacy", 1))) {
-			msg = "Failed to load legacy provider";
-			res = SC_ERROR_INTERNAL;
-			goto encode_end;
-		}
-	}
-#endif
-
 	if (EVP_EncryptInit_ex(cctx, EVP_des_ecb(), NULL, key, NULL) != 1 ||
 		EVP_CIPHER_CTX_set_padding(cctx, 0) != 1) {
 		msg = "Error in DES ECB encryption";
@@ -1859,16 +1845,6 @@ int cwa_decode_response(sc_card_t * card,
 	}
 	/* set up key for mac computing */
 	key = sm_session->session_mac;
-
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
-	if (!legacy_provider) {
-		if (!(legacy_provider = OSSL_PROVIDER_try_load(NULL, "legacy", 1))) {
-			msg = "Failed to load legacy provider";
-			res = SC_ERROR_INTERNAL;
-			goto response_decode_end;
-		}
-	}
-#endif
 
 	if (EVP_EncryptInit_ex(cctx, EVP_des_ecb(), NULL, key, NULL) != 1 ||
 		EVP_CIPHER_CTX_set_padding(cctx, 0) != 1) {
