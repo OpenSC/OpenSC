@@ -59,6 +59,7 @@ pid_t initialized_pid = (pid_t)-1;
 static int in_finalize = 0;
 extern CK_FUNCTION_LIST pkcs11_function_list;
 extern CK_FUNCTION_LIST_3_0 pkcs11_function_list_3_0;
+int nesting = 0;
 
 #ifdef PKCS11_THREAD_LOCKING
 
@@ -306,12 +307,21 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs)
 	in_finalize = 0;
 #endif
 
+	/* protect from nesting */
+	nesting++;
+	if (nesting > 1) {
+		sc_log(context, "C_Initialize(): Nested init detected");
+		nesting--;
+		return CKR_GENERAL_ERROR;
+	}
+
 	/* protect from multiple threads tryng to setup locking */
 	C_INITIALIZE_M_LOCK
 
 	if (context != NULL) {
 		sc_log(context, "C_Initialize(): Cryptoki already initialized\n");
 		C_INITIALIZE_M_UNLOCK
+		nesting--;
 		return CKR_CRYPTOKI_ALREADY_INITIALIZED;
 	}
 
@@ -366,6 +376,7 @@ out:
 	/* protect from multiple threads tryng to setup locking */
 	C_INITIALIZE_M_UNLOCK
 
+	nesting--;
 	return rv;
 }
 
