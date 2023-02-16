@@ -308,20 +308,24 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs)
 #endif
 
 	/* protect from nesting */
+	C_INITIALIZE_M_LOCK
 	nesting++;
 	if (nesting > 1) {
 		sc_log(context, "C_Initialize(): Nested init detected");
 		nesting--;
+		C_INITIALIZE_M_UNLOCK
 		return CKR_GENERAL_ERROR;
 	}
+	C_INITIALIZE_M_UNLOCK
+	/* protect from nesting */
 
 	/* protect from multiple threads tryng to setup locking */
 	C_INITIALIZE_M_LOCK
 
 	if (context != NULL) {
 		sc_log(context, "C_Initialize(): Cryptoki already initialized\n");
-		C_INITIALIZE_M_UNLOCK
 		nesting--;
+		C_INITIALIZE_M_UNLOCK
 		return CKR_CRYPTOKI_ALREADY_INITIALIZED;
 	}
 
@@ -374,9 +378,9 @@ out:
 	}
 
 	/* protect from multiple threads tryng to setup locking */
+	nesting--;
 	C_INITIALIZE_M_UNLOCK
 
-	nesting--;
 	return rv;
 }
 
