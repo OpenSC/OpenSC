@@ -531,7 +531,6 @@ static struct sc_pkcs15init_operations sc_pkcs15init_openpgp_operations = {
 	NULL,				/* create_domain */
 	openpgp_select_pin_reference,
 	openpgp_create_pin,
-	NULL,				/* select object path */
 	NULL,				/* select key reference */
 	openpgp_create_key,
 	openpgp_store_key,

@@ -905,7 +905,6 @@ static struct sc_pkcs15init_operations sc_pkcs15init_cryptoflex_operations = {
 	cflex_create_domain,
 	cflex_select_pin_reference,
 	cflex_create_pin,
-	NULL,				/* select_object_path */
 	NULL,				/* select_key_reference */
 	cflex_create_key,
 	cflex_store_key,
@@ -925,7 +924,6 @@ static struct sc_pkcs15init_operations sc_pkcs15init_cyberflex_operations = {
 	cflex_create_domain,
 	cflex_select_pin_reference,
 	cflex_create_pin,
-	NULL,				/* select_object_path */
 	NULL,				/* select_key_reference */
 	cflex_create_key,
 	cflex_store_key,

@@ -864,7 +864,6 @@ sc_pkcs15init_oberthur_operations = {
 	NULL,				/* create_domain */
 	cosm_select_pin_reference,
 	cosm_create_pin,
-	NULL,				/* select_object_path */
 	NULL,				/* select_key_reference */
 	cosm_create_key,		/* create_key */
 	cosm_store_key,			/* store_key */

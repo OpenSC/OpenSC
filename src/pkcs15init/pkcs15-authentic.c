@@ -903,7 +903,6 @@ sc_pkcs15init_authentic_operations = {
 	NULL,					/* create_domain */
 	NULL,					/* select_pin_reference */
 	authentic_pkcs15_create_pin,
-	NULL,					/* select_object_path */
 	authentic_pkcs15_select_key_reference,
 	authentic_pkcs15_create_key,
 	authentic_pkcs15_store_key,

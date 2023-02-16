@@ -686,7 +686,6 @@ static struct sc_pkcs15init_operations sc_pkcs15init_rtecp_operations = {
 	NULL,                           /* create_domain */
 	rtecp_select_pin_reference,     /* select_pin_reference */
 	rtecp_create_pin,               /* create_pin */
-	NULL,                           /* select_object_path */
 	rtecp_select_key_reference,     /* select_key_reference */
 	rtecp_create_key,               /* create_key */
 	rtecp_store_key,                /* store_key */

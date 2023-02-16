@@ -584,7 +584,6 @@ static struct sc_pkcs15init_operations sc_pkcs15init_setcos_operations = {
 	NULL,				/* create_domain */
 	setcos_select_pin_reference,	/* select_pin_reference */
 	setcos_create_pin,		/* create_pin */
-	NULL, 				/* select_object_path */
 	NULL, 				/* select_key_reference */
 	setcos_create_key,		/* create_key */
 	setcos_store_key,		/* store_key  */

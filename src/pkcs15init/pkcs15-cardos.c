@@ -924,7 +924,6 @@ static struct sc_pkcs15init_operations sc_pkcs15init_cardos_operations = {
 	NULL,				/* create_domain */
 	cardos_select_pin_reference,
 	cardos_create_pin,
-	NULL,				/* select_object_path */
 	cardos_select_key_reference,
 	cardos_create_key,
 	cardos_store_key,

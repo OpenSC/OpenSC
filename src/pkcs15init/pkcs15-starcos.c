@@ -929,7 +929,6 @@ static struct sc_pkcs15init_operations sc_pkcs15init_starcos_operations = {
 	NULL,				/* create_domain */
 	starcos_pin_reference,
 	starcos_create_pin,
-	NULL,				/* select_object_path */
 	starcos_key_reference,
 	starcos_create_key,
 	starcos_store_key,

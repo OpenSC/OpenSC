@@ -958,7 +958,6 @@ static struct sc_pkcs15init_operations sc_pkcs15init_myeid_operations = {
 	NULL, /* create_domain */
 	myeid_select_pin_reference,
 	myeid_create_pin,
-	NULL, /* select_object_path */
 	NULL, /* select_key_reference */
 	myeid_create_key,
 	myeid_store_key,

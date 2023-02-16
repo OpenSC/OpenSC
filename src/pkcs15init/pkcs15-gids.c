@@ -170,7 +170,6 @@ static struct sc_pkcs15init_operations sc_pkcs15init_gids_operations =
 	NULL,                           /* create_domain */
 	NULL,                           /* pin_reference*/
 	NULL,                           /* create_pin */
-	NULL,                           /* select_object_path */
 	gids_select_key_reference, /* key_reference */
 	gids_create_key,           /* create_key */
 	gids_store_key,            /* store_key */

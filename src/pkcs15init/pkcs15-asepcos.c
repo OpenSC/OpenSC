@@ -810,7 +810,6 @@ static struct sc_pkcs15init_operations sc_pkcs15init_asepcos_operations = {
 	NULL,				/* create_domain */
 	asepcos_select_pin_reference,
 	asepcos_create_pin,
-	NULL,				/* select object path */
 	NULL,				/* select key reference */
 	asepcos_create_key,
 	asepcos_store_key,

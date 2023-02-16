@@ -89,12 +89,6 @@ struct sc_pkcs15init_operations {
 			const unsigned char *, size_t);
 
 	/*
-	 * Select a object path
-	 */
-	int	(*select_object_path)(struct sc_profile *, struct sc_pkcs15_card *,
-			struct sc_pkcs15_object *);
-
-	/*
 	 * Select a reference for a private key object
 	 */
 	int	(*select_key_reference)(struct sc_profile *, struct sc_pkcs15_card *,

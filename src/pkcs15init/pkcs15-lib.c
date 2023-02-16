@@ -1325,11 +1325,7 @@ sc_pkcs15init_init_prkdf(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 		key_info->modulus_length = 0;
 	}
 
-	if (profile->ops->select_object_path) {
-		r = profile->ops->select_object_path(profile, p15card, object);
-	} else {
-		r = select_object_path(p15card, profile, object, &key_info->path);
-	}
+	r = select_object_path(p15card, profile, object, &key_info->path);
 	LOG_TEST_GOTO_ERR(ctx, r, "Failed to select private key object path");
 
 	/* See if we need to select a key reference for this object */
