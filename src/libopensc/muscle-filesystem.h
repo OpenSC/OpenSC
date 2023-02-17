@@ -58,7 +58,7 @@ void mscfs_clear_cache(mscfs_t* fs);
 int mscfs_push_file(mscfs_t* fs, mscfs_file_t *file);
 int mscfs_update_cache(mscfs_t* fs);
 
-void mscfs_check_cache(mscfs_t* fs);
+int mscfs_check_cache(mscfs_t* fs);
 
 int mscfs_lookup_path(mscfs_t* fs, const u8 *path, int pathlen, msc_id* objectId, int isDirectory);
 

@@ -78,9 +78,12 @@ static int mscfs_is_ignored(mscfs_t* fs, msc_id objectId)
 	return ignored;
 }
 
+#define MAX_FILES 10000
 int mscfs_push_file(mscfs_t* fs, mscfs_file_t *file)
 {
 	mscfs_cache_t *cache = &fs->cache;
+	if (cache->size >= MAX_FILES)
+		return SC_ERROR_INTERNAL;
 	if(!cache->array || cache->size == cache->totalSize) {
 		int length = cache->totalSize + MSCFS_CACHE_INCREMENT;
 		mscfs_file_t *oldArray;
@@ -96,7 +99,7 @@ int mscfs_push_file(mscfs_t* fs, mscfs_file_t *file)
 	}
 	cache->array[cache->size] = *file;
 	cache->size++;
-	return 0;
+	return SC_SUCCESS;
 }
 
 int mscfs_update_cache(mscfs_t* fs) {
@@ -122,7 +125,9 @@ int mscfs_update_cache(mscfs_t* fs) {
 				file.ef = 1; /* File is a working elementary file */
 			}
 			
-			mscfs_push_file(fs, &file);
+			r = mscfs_push_file(fs, &file);
+			if (r != SC_SUCCESS)
+				return r;
 		}
 		r = fs->listFile(&file, 0, fs->udata);
 		if(r == 0)
@@ -133,11 +138,13 @@ int mscfs_update_cache(mscfs_t* fs) {
 	return fs->cache.size;
 }
 
-void mscfs_check_cache(mscfs_t* fs)
+int mscfs_check_cache(mscfs_t* fs)
 {
+	int r = SC_SUCCESS;
 	if(!fs->cache.array) {
-		mscfs_update_cache(fs);
+		r = mscfs_update_cache(fs);
 	}
+	return r;
 }
 
 int mscfs_lookup_path(mscfs_t* fs, const u8 *path, int pathlen, msc_id* objectId, int isDirectory)
@@ -216,7 +223,9 @@ int mscfs_loadFileInfo(mscfs_t* fs, const u8 *path, int pathlen, mscfs_file_t **
 	}
 	
 	/* Obtain file information while checking if it exists */
-	mscfs_check_cache(fs);
+	rc = mscfs_check_cache(fs);
+	if (rc < 0)
+		return rc;
 	if(idx) *idx = -1;
 	for(x = 0; x < fs->cache.size; x++) {
 		*file_data = &fs->cache.array[x];
