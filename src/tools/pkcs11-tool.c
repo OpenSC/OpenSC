@@ -73,8 +73,13 @@
 #include "util.h"
 #include "libopensc/sc-ossl-compat.h"
 
+/* pkcs11-tool uses libopensc routines that do not use an sc_context
+ * but does use some OpenSSL routines
+ */
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 	static OSSL_PROVIDER *legacy_provider = NULL;
+	static OSSL_PROVIDER *default_provider = NULL;
+	static OSSL_LIB_CTX *osslctx = NULL;
 #endif
 
 #ifdef _WIN32
@@ -751,6 +756,19 @@ int main(int argc, char * argv[])
 		util_fatal("Cannot set FMODE to O_BINARY");
 	if(_setmode(_fileno(stdin), _O_BINARY ) == -1)
 		util_fatal("Cannot set FMODE to O_BINARY");
+#endif
+
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+		if (!osslctx) {
+			if (!(osslctx = OSSL_LIB_CTX_new())) {
+				util_fatal("Failed to create OpenSSL OSSL_LIB_CTX\n");
+			}
+		}
+		if (!default_provider) {
+			if (!(default_provider = OSSL_PROVIDER_load(osslctx, "default"))) {
+				util_fatal("Failed to load OpenSSL \"default\" provider\n");
+			}
+		}
 #endif
 
 	while (1) {
@@ -3600,15 +3618,32 @@ do_read_key(unsigned char *data, size_t data_len, int private, EVP_PKEY **key)
 
 	if (private) {
 		if (!strstr((char *)data, "-----BEGIN "))
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+			*key = d2i_PrivateKey_ex_bio(mem, NULL, osslctx, NULL);
+#else
 			*key = d2i_PrivateKey_bio(mem, NULL);
+#endif
 		else
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+			*key = PEM_read_bio_PrivateKey_ex(mem, NULL, NULL, NULL, osslctx, NULL);
+#else
 			*key = PEM_read_bio_PrivateKey(mem, NULL, NULL, NULL);
+#endif
 	}
 	else {
 		if (!strstr((char *)data, "-----BEGIN "))
+		/* TODO following is in OpenSSL master not 3.0.8 */
+#if OPENSSL_VERSION_NUMBER >= 0x30200000L
+			*key = d2i_PUBKEY_ex_bio(mem, NULL, osslctx, NULL);
+#else
 			*key = d2i_PUBKEY_bio(mem, NULL);
+#endif
 		else
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+			*key = PEM_read_bio_PUBKEY_ex(mem, NULL, NULL, NULL, osslctx, NULL);
+#else
 			*key = PEM_read_bio_PUBKEY(mem, NULL, NULL, NULL);
+#endif
 	}
 
 	BIO_free(mem);
@@ -3767,7 +3802,7 @@ parse_gost_pkey(EVP_PKEY *pkey, int private, struct gostkey_info *gost)
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 		point = EC_KEY_get0_public_key(src);
 #else
-		group = EC_GROUP_new_by_curve_name(nid);
+		group = EC_GROUP_new_by_curve_name_ex(osslctx, NULL, nid);
 		EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_PUB_KEY, NULL, 0, &pubkey_len);
 		if (!(pubkey = malloc(pubkey_len)) ||
 			EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_PUB_KEY, pubkey, pubkey_len, NULL) != 1 ||
@@ -4755,7 +4790,12 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 	if (BIO_read_filename(bio_in, opt_input) <= 0)
 		util_fatal("Cannot open %s: %m", opt_input);
 
+#if OPENSSL_VERSION_NUMBER >= 0x30200000L
+/* TODO following is in OpenSSL master not  3.0.8 */
+	pkey = d2i_PUBKEY_ex_bio(bio_in, NULL, osslctx, NULL);
+#else
 	pkey = d2i_PUBKEY_bio(bio_in, NULL);
+#endif
 
 	if (!pkey)
 		util_fatal("Cannot read EC key from %s", opt_input);
@@ -5576,7 +5616,7 @@ static int read_object(CK_SESSION_HANDLE session)
 				util_fatal("cannot convert RSA public key to DER");
 			RSA_free(rsa);
 #else
-			ctx = EVP_PKEY_CTX_new_from_name(NULL, "RSA", NULL);
+			ctx = EVP_PKEY_CTX_new_from_name(osslctx, "RSA", NULL);
 			if (!ctx)
 				util_fatal("out of memory");
 			if (!(bld = OSSL_PARAM_BLD_new()) ||
@@ -5630,6 +5670,7 @@ static int read_object(CK_SESSION_HANDLE session)
 					util_fatal("cannot parse EC_PARAMS");
 				EVP_PKEY_assign_EC_KEY(pkey, ec);
 #else
+/* TODO needs debugging */
 				if (!d2i_KeyParams(EVP_PKEY_EC, &pkey, &a, len))
 					util_fatal("cannot parse EC_PARAMS");
 #endif
@@ -5691,7 +5732,7 @@ static int read_object(CK_SESSION_HANDLE session)
 				ASN1_STRING_free(os);
 			free(value);
 
-			if (!(ctx = EVP_PKEY_CTX_new_from_name(NULL, "EC", NULL)) ||
+			if (!(ctx = EVP_PKEY_CTX_new_from_name(osslctx, "EC", NULL)) ||
 				EVP_PKEY_fromdata_init(ctx) != 1) {
 					OSSL_PARAM_free(p);
 					EVP_PKEY_CTX_free(ctx);
@@ -6142,7 +6183,7 @@ static EVP_PKEY *get_public_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE priv
 			}
 			OSSL_PARAM_BLD_free(bld);
 
-			if (!(ctx = EVP_PKEY_CTX_new_from_name(NULL, "RSA", NULL)) ||
+			if (!(ctx = EVP_PKEY_CTX_new_from_name(osslctx, "RSA", NULL)) ||
 				EVP_PKEY_fromdata_init(ctx) != 1 ||
 				EVP_PKEY_fromdata(ctx, &pkey, EVP_PKEY_PUBLIC_KEY, params) != 1) {
 				fprintf(stderr, "public key not extractable\n");
@@ -7026,7 +7067,11 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 	}
 
 	EVP_PKEY_CTX *ctx;
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	ctx = EVP_PKEY_CTX_new_from_pkey(osslctx, pkey, NULL);
+#else
 	ctx = EVP_PKEY_CTX_new(pkey, NULL);
+#endif
 	if (!ctx) {
 		EVP_PKEY_free(pkey);
 		printf("EVP_PKEY_CTX_new failed, returning\n");
