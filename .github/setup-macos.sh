@@ -2,7 +2,7 @@
 
 set -ex -o xtrace
 
-brew install automake gengetopt help2man
+brew install automake gengetopt help2man pkgconfig
 
 # openSCToken
 export PATH="/usr/local/opt/ccache/libexec:$PATH"
