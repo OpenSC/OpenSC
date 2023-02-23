@@ -3632,7 +3632,17 @@ do_read_key(unsigned char *data, size_t data_len, int private, EVP_PKEY **key)
 	}
 	else {
 		if (!strstr((char *)data, "-----BEGIN "))
-		/* TODO following is in OpenSSL master not 3.0.8 */
+		/*
+		 * d2i_PUBKEY_ex_bio is in OpenSSL master not not 3.1 as of 02/23/2023
+		 * as 820723dde0  originally written 2022-05-29 
+		 * related issues:
+		 * https://github.com/openssl/openssl/issues/18372 
+		 * https://github.com/openssl/openssl/issues/18372#issuecomment-1134336570
+		 *	Says using the default provider should work
+		 * https://github.com/openssl/openssl/pull/18427
+		 * https://github.com/beldmit/openssl/commit/1ca99e04d1113268da6a8a8d1f99962b29910910
+		 *	committed Dec 26, 2022 
+		*/
 #if OPENSSL_VERSION_NUMBER >= 0x30200000L
 			*key = d2i_PUBKEY_ex_bio(mem, NULL, osslctx, NULL);
 #else
