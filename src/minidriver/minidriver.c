@@ -6381,8 +6381,18 @@ DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData,
 		if (dwFlags >= MD_MAX_PINS)
 			MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 
-		if (!vs->pin_objs[dwFlags])
+		if (!vs->pin_objs[dwFlags]) {
+			if (dwFlags == ROLE_EVERYONE) {
+				p->PinPurpose = PrimaryCardPin;
+				p->PinCachePolicy.dwVersion = PIN_CACHE_POLICY_CURRENT_VERSION;
+				p->PinCachePolicy.PinCachePolicyType = PinCacheNone;
+				p->PinCachePolicy.dwPinCachePolicyInfo = 0;
+				p->dwChangePermission = 0;
+				p->dwUnblockPermission = 0;
+				MD_FUNC_RETURN(pCardData, 1, SC_SUCCESS);
+			}
 			MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
+		}
 
 		p->PinType = vs->reader->capabilities & SC_READER_CAP_PIN_PAD
 			|| vs->p15card->card->caps & SC_CARD_CAP_PROTECTED_AUTHENTICATION_PATH
