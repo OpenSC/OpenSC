@@ -20,7 +20,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: macos-latest
+    runs-on: macos-12
     steps:
       - uses: actions/checkout@v3
       - run: .github/setup-macos.sh
@@ -44,7 +44,7 @@ jobs:
           PASS_SECRETS_TAR_ENC: ${{ secrets.PASS_SECRETS_TAR_ENC }}
 
   push-artifacts:
-    runs-on: macos-latest
+    runs-on: macos-12
     needs: [build]
     steps:
       - uses: actions/checkout@v3
