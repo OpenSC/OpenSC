@@ -6381,7 +6381,7 @@ DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData,
 		if (dwFlags >= MD_MAX_PINS)
 			MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 
-		if (!vs->pin_objs[dwFlags])
+		if (dwFlags != ROLE_EVERYONE && vs->pin_objs[dwFlags] == NULL)
 			MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 
 		p->PinType = vs->reader->capabilities & SC_READER_CAP_PIN_PAD
@@ -6389,6 +6389,18 @@ DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData,
 			? ExternalPinType : AlphaNumericPinType;
 		p->dwFlags = 0;
 		switch (dwFlags)   {
+			case ROLE_EVERYONE:
+				logprintf(pCardData, 2,
+					"returning info on PIN ROLE_EVERYONE [%lu]\n",
+					(unsigned long)dwFlags);
+				p->PinType = 0;   /* There is no pin, so don't need reader capabilities */
+				p->PinPurpose = 0; /* It can not be PrimaryCardPin */
+				p->PinCachePolicy.dwVersion = PIN_CACHE_POLICY_CURRENT_VERSION;
+				p->PinCachePolicy.PinCachePolicyType = PinCacheNone;
+				p->PinCachePolicy.dwPinCachePolicyInfo = 0;
+				p->dwChangePermission = 0;
+				break;
+
 			case ROLE_ADMIN:
 				logprintf(pCardData, 2,
 					  "returning info on PIN ROLE_ADMIN ( Unblock ) [%lu]\n",
