@@ -551,13 +551,15 @@ static int idprime_init(sc_card_t *card)
 
 	priv = idprime_new_private_data();
 	if (!priv) {
-		return SC_ERROR_OUT_OF_MEMORY;
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 	}
 
 	/* Select and process container file */
 	r = idprime_select_file_by_path(card, "0204");;
 	if (r <= 0) {
 		idprime_free_private_data(priv);
+		if (r == 0)
+			r = SC_ERROR_INVALID_DATA;
 		LOG_FUNC_RETURN(card->ctx, r);
 	}
 
@@ -572,6 +574,8 @@ static int idprime_init(sc_card_t *card)
 	if (card->type == SC_CARD_TYPE_IDPRIME_940) {
 		if ((r = idprime_select_file_by_path(card, "0005")) <= 0) {
 			idprime_free_private_data(priv);
+			if (r == 0)
+				r = SC_ERROR_INVALID_DATA;
 			LOG_FUNC_RETURN(card->ctx, r);
 		}
 		
@@ -585,6 +589,8 @@ static int idprime_init(sc_card_t *card)
 	r = idprime_select_file_by_path(card, "0101");
 	if (r <= 0) {
 		idprime_free_private_data(priv);
+		if (r == 0)
+			r = SC_ERROR_INVALID_DATA;
 		LOG_FUNC_RETURN(card->ctx, r);
 	}
 
