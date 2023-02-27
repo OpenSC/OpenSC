@@ -4696,7 +4696,7 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 	ALG_ID hashAlg;
 	sc_pkcs15_prkey_info_t *prkey_info;
 	BYTE dataToSign[0x200];
-	int opt_crypt_flags;
+	int opt_crypt_flags = 0;
 	size_t dataToSignLen = sizeof(dataToSign);
 	sc_pkcs15_object_t *pkey;
 
@@ -4788,7 +4788,7 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 		 * padding and use the value in aiHashAlg. */
 		logprintf(pCardData, 3, "CARD_PADDING_INFO_PRESENT not set\n");
 
-		opt_crypt_flags = SC_ALGORITHM_RSA_PAD_PKCS1;
+		opt_crypt_flags = SC_ALGORITHM_RSA_PAD_PKCS1;  /* turn off later if key is EC */
 		if (hashAlg == CALG_MD5)
 			opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_MD5;
 		else if (hashAlg == CALG_SHA1)
@@ -4912,6 +4912,7 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 				dwret = SCARD_E_INVALID_VALUE;
 				goto err;
 		}
+		opt_crypt_flags &= ~SC_ALGORITHM_RSA_PADS; /* EC does not use this */
 	} else {
 		logprintf(pCardData, 0, "invalid private key\n");
 		dwret = SCARD_E_INVALID_VALUE;
