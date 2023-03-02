@@ -229,7 +229,7 @@ static int idprime_process_containermap(sc_card_t *card, idprime_container_t **c
 {
 	u8 *buf = NULL;
 	int r = SC_ERROR_OUT_OF_MEMORY;
-	int i, max_entries;
+	int i, max_entries, container_index;
 	idprime_container_t *current = NULL;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
@@ -245,19 +245,22 @@ static int idprime_process_containermap(sc_card_t *card, idprime_container_t **c
 
 	r = 0;
 	do {
+		/* Read at most CONTAINER_OBJ_LEN bytes */
+		int read_length = length - r > CONTAINER_OBJ_LEN ? CONTAINER_OBJ_LEN : length - r;
 		if (length == r) {
 			r = SC_ERROR_NOT_ENOUGH_MEMORY;
 			goto done;
 		}
-		const int got = iso_ops->read_binary(card, r, buf + r, CONTAINER_OBJ_LEN, 0);
+		const int got = iso_ops->read_binary(card, r, buf + r, read_length, 0);
 		if (got < 1) {
 			r = SC_ERROR_WRONG_LENGTH;
 			goto done;
 		}
 
 		r += got;
-		/* Try to read chunks of container size and stop when container looks empty */
-	} while(length - r > 0 && buf[(r / CONTAINER_OBJ_LEN - 1) * CONTAINER_OBJ_LEN] != 0);
+		/* Try to read chunks of container size and stop when last container looks empty */
+		container_index = r > CONTAINER_OBJ_LEN ? (r / CONTAINER_OBJ_LEN - 1) * CONTAINER_OBJ_LEN : 0;
+	} while(length - r > 0 && buf[container_index] != 0);
 	max_entries = r / CONTAINER_OBJ_LEN;
 
 	for (i = 0; i < max_entries; i++) {
