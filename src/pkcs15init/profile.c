@@ -1575,7 +1575,10 @@ do_acl(struct state *cur, int argc, char **argv)
 	while (argc--) {
 		unsigned int	op, method, id;
 
+		if (strlen(*argv) >= sizeof(oper))
+			goto bad;
 		strlcpy(oper, *argv++, sizeof(oper));
+
 		if ((what = strchr(oper, '=')) == NULL)
 			goto bad;
 		*what++ = '\0';
@@ -2287,6 +2290,9 @@ get_authid(struct state *cur, const char *value,
 		*num = 0;
 		return get_uint(cur, value, type);
 	}
+
+	if (strlen(value) >= sizeof(temp))
+		return 1;
 
 	n = strcspn(value, "0123456789x");
 	strlcpy(temp, value, (sizeof(temp) > n) ? n + 1 : sizeof(temp));
