@@ -192,7 +192,7 @@ static int encode_mse_cdata(struct sc_context *ctx, int protocol,
 
 	struct sc_asn1_entry capdu_eac_mse[] = {
 		{ "Cryptographic mechanism reference",
-			SC_ASN1_OCTET_STRING, SC_ASN1_CTX|0x00, 0, NULL, NULL },
+			SC_ASN1_OCTET_STRING, SC_ASN1_CTX|0x00, SC_ASN1_OPTIONAL, NULL, NULL },
 		{ "Reference of a public key / secret key",
 			SC_ASN1_OCTET_STRING, SC_ASN1_CTX|0x03, SC_ASN1_OPTIONAL, NULL, NULL },
 		{ "Reference of a private key / Reference for computing a session key",
