@@ -39,7 +39,7 @@ struct operation_data {
 	struct hash_signature_info *info;
 	sc_pkcs11_operation_t *md;
 	CK_BYTE			*buffer;
-	unsigned int	buffer_len;
+	CK_ULONG		buffer_len;
 };
 
 static struct operation_data *
@@ -67,7 +67,7 @@ signature_data_buffer_append(struct operation_data *data,
 	if (in_len == 0)
 		return CKR_OK;
 
-	unsigned int new_len = data->buffer_len + in_len;
+	CK_ULONG new_len = data->buffer_len + in_len;
 	CK_BYTE *new_buffer = sc_mem_secure_alloc(new_len);
 	if (!new_buffer)
 		return CKR_HOST_MEMORY;
@@ -193,7 +193,7 @@ _validate_key_type(sc_pkcs11_mechanism_type_t *mech, CK_KEY_TYPE key_type) {
  * Look up a mechanism
  */
 sc_pkcs11_mechanism_type_t *
-sc_pkcs11_find_mechanism(struct sc_pkcs11_card *p11card, CK_MECHANISM_TYPE mech, unsigned int flags)
+sc_pkcs11_find_mechanism(struct sc_pkcs11_card *p11card, CK_MECHANISM_TYPE mech, CK_FLAGS flags)
 {
 	sc_pkcs11_mechanism_type_t *mt;
 	unsigned int n;
@@ -881,10 +881,10 @@ sc_pkcs11_verify_final(sc_pkcs11_operation_t *operation,
 			goto done;
 	}
 
-	rv = sc_pkcs11_verify_data(pubkey_value, (unsigned int) attr.ulValueLen,
+	rv = sc_pkcs11_verify_data(pubkey_value, attr.ulValueLen,
 		params, sizeof(params),
 		&operation->mechanism, data->md,
-		data->buffer, data->buffer_len, pSignature, (unsigned int) ulSignatureLen);
+		data->buffer, data->buffer_len, pSignature, ulSignatureLen);
 
 done:
 	free(pubkey_value);

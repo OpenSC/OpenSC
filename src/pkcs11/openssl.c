@@ -442,10 +442,10 @@ static void reverse(unsigned char *buf, size_t len)
 	}
 }
 
-static CK_RV gostr3410_verify_data(const unsigned char *pubkey, unsigned int pubkey_len,
-		const unsigned char *params, unsigned int params_len,
-		unsigned char *data, unsigned int data_len,
-		unsigned char *signat, unsigned int signat_len)
+static CK_RV gostr3410_verify_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len,
+		const CK_BYTE_PTR params, CK_ULONG params_len,
+		CK_BYTE_PTR data, CK_ULONG data_len,
+		CK_BYTE_PTR signat, CK_ULONG signat_len)
 {
 	EVP_PKEY *pkey;
 	EVP_PKEY_CTX *pkey_ctx = NULL;
@@ -499,8 +499,10 @@ static CK_RV gostr3410_verify_data(const unsigned char *pubkey, unsigned int pub
 		}
 #endif
 		r = -1;
-		if (group)
-			octet = d2i_ASN1_OCTET_STRING(NULL, &pubkey, (long)pubkey_len);
+		if (group && pubkey_len <= LONG_MAX) {
+			const unsigned char *p = pubkey;
+			octet = d2i_ASN1_OCTET_STRING(NULL, &p, (long)pubkey_len);
+		}
 		if (group && octet) {
 			reverse(octet->data, octet->length);
 			Y = BN_bin2bn(octet->data, octet->length / 2, NULL);
@@ -573,11 +575,11 @@ static CK_RV gostr3410_verify_data(const unsigned char *pubkey, unsigned int pub
  * If a hash function was used, we can make a big shortcut by
  *   finishing with EVP_VerifyFinal().
  */
-CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, unsigned int pubkey_len,
-			const unsigned char *pubkey_params, unsigned int pubkey_params_len,
+CK_RV sc_pkcs11_verify_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len,
+			const CK_BYTE_PTR pubkey_params, CK_ULONG pubkey_params_len,
 			CK_MECHANISM_PTR mech, sc_pkcs11_operation_t *md,
-			unsigned char *data, unsigned int data_len,
-			unsigned char *signat, unsigned int signat_len)
+			CK_BYTE_PTR data, CK_ULONG data_len,
+			CK_BYTE_PTR signat, CK_ULONG signat_len)
 {
 	int res;
 	CK_RV rv = CKR_GENERAL_ERROR;
@@ -636,15 +638,17 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, unsigned int pubkey_len
 				int r;
 				r = sc_asn1_sig_value_rs_to_sequence(NULL, signat,
 						signat_len, &signat_tmp, &signat_len_tmp);
-				if (r == 0) {
-					res = EVP_VerifyFinal(md_ctx, signat_tmp, signat_len_tmp, pkey);
+				if (r == 0 && signat_len_tmp < UINT_MAX) {
+					res = EVP_VerifyFinal(md_ctx, signat_tmp, (unsigned int) signat_len_tmp, pkey);
 				} else {
-					sc_log(context, "sc_asn1_sig_value_rs_to_sequence failed r:%d",r);
+					sc_log(context, "sc_asn1_sig_value_rs_to_sequence failed r:%d "
+							"or output too long signat_len_tmp:%"SC_FORMAT_LEN_SIZE_T"u",
+							r, signat_len_tmp);
 					res = -1;
 				}
 				free(signat_tmp);
 			} else
-				res = EVP_VerifyFinal(md_ctx, signat, signat_len, pkey);
+				res = EVP_VerifyFinal(md_ctx, signat, (unsigned int) signat_len, pkey);
 		} else {
 			res = -1;
 		}
@@ -898,10 +902,10 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, unsigned int pubkey_len
 			/* special mode - autodetect sLen from signature */
 			/* https://github.com/openssl/openssl/blob/master/crypto/rsa/rsa_pss.c */
 			/* there is no way to pass negative value here, we using maximal value for this */
-			if (((CK_ULONG) 1 ) << (sizeof(CK_ULONG) * CHAR_BIT -1) == param->sLen)
+			if (((CK_ULONG) 1 ) << (sizeof(CK_ULONG) * CHAR_BIT -1) == param->sLen || param->sLen > INT_MAX)
 				sLen = RSA_PSS_SALTLEN_AUTO;
 			else
-				sLen = param->sLen;
+				sLen = (int) param->sLen;
 
 			if ((ctx = sc_evp_pkey_ctx_new(context, pkey)) == NULL ||
 				EVP_PKEY_verify_init(ctx) != 1 ||
