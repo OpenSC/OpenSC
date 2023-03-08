@@ -134,6 +134,9 @@ cosm_delete_file(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 
 	/* Select the parent DF */
 	path = df->path;
+	if (path.len < 2) {
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+	}
 	path.len -= 2;
 
 	rv = sc_select_file(p15card->card, &path, &parent);
