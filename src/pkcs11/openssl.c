@@ -605,8 +605,8 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, unsigned int pubkey_len
 				int r;
 				r = sc_asn1_sig_value_rs_to_sequence(NULL, signat,
 						signat_len, &signat_tmp, &signat_len_tmp);
-				if (r == 0) {
-					res = EVP_VerifyFinal(md_ctx, signat_tmp, signat_len_tmp, pkey);
+				if (r == 0 && signat_len_tmp < UINT_MAX) {
+					res = EVP_VerifyFinal(md_ctx, signat_tmp, (unsigned int) signat_len_tmp, pkey);
 				} else {
 					sc_log(context, "sc_asn1_sig_value_rs_to_sequence failed r:%d",r);
 					res = -1;
@@ -860,10 +860,10 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, unsigned int pubkey_len
 			/* special mode - autodetect sLen from signature */
 			/* https://github.com/openssl/openssl/blob/master/crypto/rsa/rsa_pss.c */
 			/* there is no way to pass negative value here, we using maximal value for this */
-			if (((CK_ULONG) 1 ) << (sizeof(CK_ULONG) * CHAR_BIT -1) == param->sLen)
+			if (((CK_ULONG) 1 ) << (sizeof(CK_ULONG) * CHAR_BIT -1) == param->sLen || param->sLen > INT_MAX)
 				sLen = RSA_PSS_SALTLEN_AUTO;
 			else
-				sLen = param->sLen;
+				sLen = (int) param->sLen;
 
 			if ((ctx = EVP_PKEY_CTX_new(pkey, NULL)) == NULL ||
 				EVP_PKEY_verify_init(ctx) != 1 ||
