@@ -759,16 +759,12 @@ int main(int argc, char * argv[])
 #endif
 
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
-		if (!osslctx) {
-			if (!(osslctx = OSSL_LIB_CTX_new())) {
-				util_fatal("Failed to create OpenSSL OSSL_LIB_CTX\n");
-			}
-		}
-		if (!default_provider) {
-			if (!(default_provider = OSSL_PROVIDER_load(osslctx, "default"))) {
-				util_fatal("Failed to load OpenSSL \"default\" provider\n");
-			}
-		}
+	if (!(osslctx = OSSL_LIB_CTX_new())) {
+		util_fatal("Failed to create OpenSSL OSSL_LIB_CTX\n");
+	}
+	if (!(default_provider = OSSL_PROVIDER_load(osslctx, "default"))) {
+		util_fatal("Failed to load OpenSSL \"default\" provider\n");
+	}
 #endif
 
 	while (1) {
@@ -3633,15 +3629,8 @@ do_read_key(unsigned char *data, size_t data_len, int private, EVP_PKEY **key)
 	else {
 		if (!strstr((char *)data, "-----BEGIN "))
 		/*
-		 * d2i_PUBKEY_ex_bio is in OpenSSL master not not 3.1 as of 02/23/2023
-		 * as 820723dde0  originally written 2022-05-29 
-		 * related issues:
-		 * https://github.com/openssl/openssl/issues/18372 
-		 * https://github.com/openssl/openssl/issues/18372#issuecomment-1134336570
-		 *	Says using the default provider should work
-		 * https://github.com/openssl/openssl/pull/18427
-		 * https://github.com/beldmit/openssl/commit/1ca99e04d1113268da6a8a8d1f99962b29910910
-		 *	committed Dec 26, 2022 
+		 * d2i_PUBKEY_ex_bio is in OpenSSL master of 02/23/2023
+		 * committed Dec 26, 2022 expected in 3.2.0 
 		*/
 #if OPENSSL_VERSION_NUMBER >= 0x30200000L
 			*key = d2i_PUBKEY_ex_bio(mem, NULL, osslctx, NULL);
@@ -4801,7 +4790,6 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 		util_fatal("Cannot open %s: %m", opt_input);
 
 #if OPENSSL_VERSION_NUMBER >= 0x30200000L
-/* TODO following is in OpenSSL master not  3.0.8 */
 	pkey = d2i_PUBKEY_ex_bio(bio_in, NULL, osslctx, NULL);
 #else
 	pkey = d2i_PUBKEY_bio(bio_in, NULL);
@@ -5680,7 +5668,6 @@ static int read_object(CK_SESSION_HANDLE session)
 					util_fatal("cannot parse EC_PARAMS");
 				EVP_PKEY_assign_EC_KEY(pkey, ec);
 #else
-/* TODO needs debugging */
 				if (!d2i_KeyParams(EVP_PKEY_EC, &pkey, &a, len))
 					util_fatal("cannot parse EC_PARAMS");
 #endif
