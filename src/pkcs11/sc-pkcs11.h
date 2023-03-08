@@ -489,7 +489,7 @@ CK_RV sc_pkcs11_deri(struct sc_pkcs11_session *, CK_MECHANISM_PTR,
 				struct sc_pkcs11_object *, CK_KEY_TYPE,
 				CK_SESSION_HANDLE, CK_OBJECT_HANDLE, struct sc_pkcs11_object *);
 sc_pkcs11_mechanism_type_t *sc_pkcs11_find_mechanism(struct sc_pkcs11_card *,
-				CK_MECHANISM_TYPE, unsigned int);
+				CK_MECHANISM_TYPE, CK_FLAGS);
 sc_pkcs11_mechanism_type_t *sc_pkcs11_new_fw_mechanism(CK_MECHANISM_TYPE,
 				CK_MECHANISM_INFO_PTR, CK_KEY_TYPE,
 				const void *, void (*)(const void *), CK_RV (*)(const void *, void **));
@@ -506,11 +506,11 @@ CK_RV sc_pkcs11_register_sign_and_hash_mechanism(struct sc_pkcs11_card *,
 				sc_pkcs11_mechanism_type_t *);
 
 #ifdef ENABLE_OPENSSL
-CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, unsigned int pubkey_len,
-	const unsigned char *pubkey_params, unsigned int pubkey_params_len,
+CK_RV sc_pkcs11_verify_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len,
+	const CK_BYTE_PTR pubkey_params, CK_ULONG pubkey_params_len,
 	CK_MECHANISM_PTR mech, sc_pkcs11_operation_t *md,
-	unsigned char *inp, unsigned int inp_len,
-	unsigned char *signat, unsigned int signat_len);
+	CK_BYTE_PTR inp, CK_ULONG inp_len,
+	CK_BYTE_PTR signat, CK_ULONG signat_len);
 #endif
 
 /* Load configuration defaults */
