@@ -899,7 +899,7 @@ CK_RV sc_pkcs11_verify_data(const unsigned char *pubkey, unsigned int pubkey_len
 			/* https://github.com/openssl/openssl/blob/master/crypto/rsa/rsa_pss.c */
 			/* there is no way to pass negative value here, we using maximal value for this */
 			if (((CK_ULONG) 1 ) << (sizeof(CK_ULONG) * CHAR_BIT -1) == param->sLen)
-				sLen = -2;
+				sLen = RSA_PSS_SALTLEN_AUTO;
 			else
 				sLen = param->sLen;
 
