@@ -3993,6 +3993,7 @@ sc_pkcs15init_authenticate(struct sc_profile *profile, struct sc_pkcs15_card *p1
 
 	for (; r == 0 && acl; acl = acl->next) {
 		if (acl->method == SC_AC_NEVER)   {
+			sc_file_free(file_tmp);
 			LOG_TEST_RET(ctx, SC_ERROR_SECURITY_STATUS_NOT_SATISFIED, "Authentication failed: never allowed");
 		}
 		else if (acl->method == SC_AC_NONE)   {
