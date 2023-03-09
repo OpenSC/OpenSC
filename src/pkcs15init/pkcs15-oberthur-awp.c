@@ -325,13 +325,13 @@ awp_create_container(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 
 	rv = awp_new_file(p15card, profile, COSM_CONTAINER_LIST, 0, &clist, NULL);
 	LOG_TEST_RET(ctx, rv, "Create container failed");
-	sc_log(ctx,  "contaner cfile(rcount:%"SC_FORMAT_LEN_SIZE_T"u,rlength:%"SC_FORMAT_LEN_SIZE_T"u)", clist->record_count, clist->record_length);
+	sc_log(ctx,  "container cfile(rcount:%"SC_FORMAT_LEN_SIZE_T"u,rlength:%"SC_FORMAT_LEN_SIZE_T"u)", clist->record_count, clist->record_length);
 
 	rv = sc_select_file(p15card->card, &clist->path, &file);
 	LOG_TEST_RET(ctx, rv, "Create container failed: cannot select container's list");
 	file->record_length = clist->record_length;
 
-	sc_log(ctx,  "contaner file(rcount:%"SC_FORMAT_LEN_SIZE_T"u,rlength:%"SC_FORMAT_LEN_SIZE_T"u)", file->record_count, file->record_length);
+	sc_log(ctx,  "container file(rcount:%"SC_FORMAT_LEN_SIZE_T"u,rlength:%"SC_FORMAT_LEN_SIZE_T"u)", file->record_count, file->record_length);
 	sc_log(ctx,  "Append new record %"SC_FORMAT_LEN_SIZE_T"u for private key", file->record_count + 1);
 
 	rv = awp_create_container_record(p15card, profile, file, acc);
@@ -1649,10 +1649,10 @@ awp_delete_from_container(struct sc_pkcs15_card *p15card,
 	sc_log(ctx,  "update container entry (type:%X,file-id:%X)", type, file_id);
 
 	rv = awp_new_file(p15card, profile, COSM_CONTAINER_LIST, 0, &clist, NULL);
-	LOG_TEST_RET(ctx, rv, "AWP update contaner entry: cannot get allocate AWP file");
+	LOG_TEST_RET(ctx, rv, "AWP update container entry: cannot get allocate AWP file");
 
 	rv = sc_select_file(p15card->card, &clist->path, &file);
-	LOG_TEST_RET(ctx, rv, "AWP update contaner entry: cannot select container list file");
+	LOG_TEST_RET(ctx, rv, "AWP update container entry: cannot select container list file");
 
 	buff = malloc(file->record_length);
 	if (!buff)
@@ -1661,7 +1661,7 @@ awp_delete_from_container(struct sc_pkcs15_card *p15card,
 	for (rec = 1; rec <= (unsigned)file->record_count; rec++)   {
 		rv = sc_read_record(p15card->card, rec, buff, file->record_length, SC_RECORD_BY_REC_NR);
 		if (rv < 0)   {
-			sc_log(ctx,  "AWP update contaner entry: read record error %i", rv);
+			sc_log(ctx,  "AWP update container entry: read record error %i", rv);
 			break;
 		}
 		rec_len = rv;
@@ -1680,26 +1680,26 @@ awp_delete_from_container(struct sc_pkcs15_card *p15card,
 		if (!memcmp(buff,"\0\0\0\0\0\0\0\0\0\0\0\0",12))   {
 			rv = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_ERASE);
 			if (rv < 0)   {
-				sc_log(ctx,  "AWP update contaner entry: 'erase' authentication error %i", rv);
+				sc_log(ctx,  "AWP update container entry: 'erase' authentication error %i", rv);
 				break;
 			}
 
 			rv = sc_delete_record(p15card->card, rec);
 			if (rv < 0)   {
-				sc_log(ctx,  "AWP update contaner entry: delete record error %i", rv);
+				sc_log(ctx,  "AWP update container entry: delete record error %i", rv);
 				break;
 			}
 		}
 		else   {
 			rv = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_UPDATE);
 			if (rv < 0)   {
-				sc_log(ctx,  "AWP update contaner entry: 'update' authentication error %i", rv);
+				sc_log(ctx,  "AWP update container entry: 'update' authentication error %i", rv);
 				break;
 			}
 
 			rv = sc_update_record(p15card->card, rec, buff, rec_len, SC_RECORD_BY_REC_NR);
 			if (rv < 0)   {
-				sc_log(ctx,  "AWP update contaner entry: update record error %i", rv);
+				sc_log(ctx,  "AWP update container entry: update record error %i", rv);
 				break;
 			}
 		}
