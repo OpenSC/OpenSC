@@ -3572,8 +3572,8 @@ static int piv_write_binary(sc_card_t *card, unsigned int idx,
 			r = piv_put_data(card, enumtag, priv->w_buf, priv->w_buf_len);
 			break;
 	}
-	/* if it worked, will cache it */
-	if (r >= 0 && priv->w_buf) {
+	/* if it worked, will cache it unless its a certificate */
+	if (r >= 0 && priv->w_buf && (flags & 0x0f) != 1) {
 		priv->obj_cache[enumtag].flags |= PIV_OBJ_CACHE_VALID;
 		priv->obj_cache[enumtag].obj_data = priv->w_buf;
 		priv->obj_cache[enumtag].obj_len = priv->w_buf_len;
