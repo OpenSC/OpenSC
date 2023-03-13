@@ -363,7 +363,7 @@ static int idprime_process_keyrefmap(sc_card_t *card, idprime_keyref_t **keyrefm
 		}
 		new_keyref->index = start[2];
 		new_keyref->key_reference = start[1];
-		new_keyref->pin_index = start[0];
+		new_keyref->pin_index = start[7];
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Found key reference with index=%d, pin=%d, keyref=%d", new_keyref->index, new_keyref->pin_index, new_keyref->key_reference);
 
 		if (!current) {
