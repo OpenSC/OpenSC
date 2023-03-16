@@ -782,7 +782,7 @@ static int sc_hsm_logout(sc_card_t * card)
 }
 
 
-
+/* NOTE: idx is an offset into the card's file, not into buf */
 static int sc_hsm_read_binary(sc_card_t *card,
 			       unsigned int idx, u8 *buf, size_t count,
 			       unsigned long flags)
@@ -823,7 +823,7 @@ static int sc_hsm_read_binary(sc_card_t *card,
 }
 
 
-
+/* NOTE: idx is an offset into the card's file, not into buf */
 static int sc_hsm_write_ef(sc_card_t *card,
 			       int fid,
 			       unsigned int idx, const u8 *buf, size_t count)
@@ -848,7 +848,8 @@ static int sc_hsm_write_ef(sc_card_t *card,
 	// 8 bytes are required for T54(4) and T53(4)
 	size_t blk_size = card->max_send_size - 8;
 	size_t to_send = 0;
-	size_t offset = (size_t) idx;
+	size_t file_offset = (size_t) idx;
+	size_t offset = 0;
 	do {
 		len = 0;
 		to_send = bytes_left >= blk_size ? blk_size : bytes_left;
@@ -856,8 +857,8 @@ static int sc_hsm_write_ef(sc_card_t *card,
 		// ASN1 0x54 offset
 		*p++ = 0x54;
 		*p++ = 0x02;
-		*p++ = (offset >> 8) & 0xFF;
-		*p++ = offset & 0xFF;
+		*p++ = (file_offset >> 8) & 0xFF;
+		*p++ = file_offset & 0xFF;
 		// ASN1 0x53 to_send
 		*p++ = 0x53;
 		if (to_send < 128) {
@@ -890,6 +891,7 @@ static int sc_hsm_write_ef(sc_card_t *card,
 
 		bytes_left -= to_send;
 		offset += to_send;
+		file_offset += to_send;
 	} while (0 < bytes_left);
 
 err:
