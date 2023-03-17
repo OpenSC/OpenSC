@@ -278,7 +278,8 @@ static int muscle_delete_mscfs_file(sc_card_t *card, mscfs_file_t *file_data)
 		int x;
 		mscfs_file_t *childFile;
 		/* Delete children */
-		mscfs_check_cache(fs);
+		r = mscfs_check_cache(fs);
+		if(r < 0) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 
 		sc_log(card->ctx, 
 			"DELETING Children of: %02X%02X%02X%02X\n",
@@ -377,7 +378,8 @@ static int select_item(sc_card_t *card, const sc_path_t *path_in, sc_file_t ** f
 	int objectIndex;
 	u8* oid;
 
-	mscfs_check_cache(fs);
+	r = mscfs_check_cache(fs);
+	if(r < 0) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 	r = mscfs_loadFileInfo(fs, path_in->value, path_in->len, &file_data, &objectIndex);
 	if(r < 0) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,r);
 
@@ -524,10 +526,11 @@ static int muscle_list_files(sc_card_t *card, u8 *buf, size_t bufLen)
 {
 	muscle_private_t* priv = MUSCLE_DATA(card);
 	mscfs_t *fs = priv->fs;
-	int x;
+	int x, r;
 	int count = 0;
 
-	mscfs_check_cache(priv->fs);
+	r = mscfs_check_cache(priv->fs);
+	if(r < 0) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 
 	for(x = 0; x < fs->cache.size; x++) {
 		u8* oid = fs->cache.array[x].objectId.id;
