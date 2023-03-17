@@ -431,6 +431,21 @@ AC_CHECK_FUNCS([ \
 	strnlen sigaction
 ])
 
+#
+# Check for __builtin_uadd_overflow
+#
+AC_MSG_CHECKING([compiler support for __builtin_*_overflow()])
+AC_LINK_IFELSE(
+    [AC_LANG_PROGRAM(
+         [[#include <limits.h>]],
+         [[return (__builtin_uadd_overflow(UINT_MAX, UINT_MAX, &(unsigned int){ 0 }));]]
+     )],
+    [AC_MSG_RESULT([yes])
+     AC_DEFINE([HAVE_BUILTIN_OVERFLOW], [1], [define if the compiler supports __builtin_*_overflow().])
+    ],
+    [AC_MSG_RESULT([no])
+    ])
+
 # Do not check for strlcpy and strlcat in Linux because it is not implemented
 # and autotools can not detect it in AC_CHECK_DECLS because build does not fail
 # in this test.

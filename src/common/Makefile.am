@@ -8,7 +8,7 @@ dist_noinst_DATA = \
 	LICENSE.compat_getopt compat_getopt.txt \
 	compat_getopt_main.c \
 	README.compat_strlcpy compat_strlcpy.3
-noinst_HEADERS = compat_strlcat.h compat_strlcpy.h compat_strnlen.h compat_getpass.h compat_getopt.h simclist.h libpkcs11.h libscdl.h
+noinst_HEADERS = compat_strlcat.h compat_strlcpy.h compat_strnlen.h compat_getpass.h compat_getopt.h simclist.h libpkcs11.h libscdl.h compat_overflow.h
 
 AM_CPPFLAGS = -I$(top_srcdir)/src
 
@@ -21,6 +21,7 @@ libcompat_la_SOURCES = \
 	compat_getopt.c \
 	compat_report_rangecheckfailure.c \
 	compat___iob_func.c \
+	compat_overflow.c \
 	simclist.c
 
 compat_getopt_main_LDADD = libcompat.la
@@ -40,6 +41,7 @@ TIDY_FILES = \
 	compat_getopt.h compat_getopt.c \
 	compat_report_rangecheckfailure.c \
 	compat___iob_func.c \
+	compat_overflow.h compat_overflow.c \
 	simclist.c simclist.h \
 	libpkcs11.c libscdl.c
 
