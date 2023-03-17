@@ -1987,8 +1987,8 @@ static struct block	root_ops = {
 
 static int
 check_macro_reference_loop(char *start, char *str, struct state *cur, int depth) {
-	sc_macro_t *mac = NULL;
-	char *mac_name = NULL;
+	sc_macro_t *macro = NULL;
+	char *name = NULL;
 
 	if (!start || !str || !cur)
 		return 1;
@@ -1996,13 +1996,13 @@ check_macro_reference_loop(char *start, char *str, struct state *cur, int depth)
 	if (depth == 16)
 		return 1;
 
-	if (!(mac_name = strchr(str, '$')))
+	if (!(name = strchr(str, '$')))
 		return 0;
-	if (!(mac = find_macro(cur->profile, mac_name + 1)))
+	if (!(macro = find_macro(cur->profile, name + 1)))
 		return 0;
-	if (!strcmp(mac->name, start + 1))
+	if (!strcmp(macro->name, start + 1))
 		return 1;
-	return check_macro_reference_loop(start, mac->value->data, cur, depth + 1);
+	return check_macro_reference_loop(start, macro->value->data, cur, depth + 1);
 }
 
 static int
@@ -2011,7 +2011,7 @@ build_argv(struct state *cur, const char *cmdname,
 {
 	unsigned int	argc;
 	const char	*str;
-	sc_macro_t	*mac;
+	sc_macro_t	*macro;
 	int		r;
 
 	for (argc = 0; list; list = list->next) {
@@ -2023,10 +2023,10 @@ build_argv(struct state *cur, const char *cmdname,
 		str = list->data;
 		if (str[0] != '$') {
 			/* When str contains macro inside, macro reference loop needs to be checked */
-			char *mac_name = NULL;
-			if ((mac_name = strchr(str, '$'))) {
-				if ((mac = find_macro(cur->profile, mac_name + 1))
-				    && check_macro_reference_loop(mac_name + 1, mac->value->data, cur, 0)) {
+			char *macro_name = NULL;
+			if ((macro_name = strchr(str, '$'))) {
+				if ((macro = find_macro(cur->profile, macro_name + 1))
+				    && check_macro_reference_loop(macro_name + 1, macro->value->data, cur, 0)) {
 					return SC_ERROR_SYNTAX_ERROR;
 				}
 			}
@@ -2036,16 +2036,16 @@ build_argv(struct state *cur, const char *cmdname,
 		}
 
 		/* Expand macro reference */
-		if (!(mac = find_macro(cur->profile, str + 1))) {
+		if (!(macro = find_macro(cur->profile, str + 1))) {
 			parse_error(cur, "%s: unknown macro \"%s\"",
 					cmdname, str);
 			return SC_ERROR_SYNTAX_ERROR;
 		}
 
-		if (list == mac->value) {
+		if (list == macro->value) {
 			return SC_ERROR_SYNTAX_ERROR;
 		}
-		if (check_macro_reference_loop(list->data, mac->value->data, cur, 0)) {
+		if (check_macro_reference_loop(list->data, macro->value->data, cur, 0)) {
 			return SC_ERROR_SYNTAX_ERROR;
 		}
 #ifdef DEBUG_PROFILE
@@ -2058,7 +2058,7 @@ build_argv(struct state *cur, const char *cmdname,
 			printf("\n");
 		}
 #endif
-		r = build_argv(cur, cmdname, mac->value,
+		r = build_argv(cur, cmdname, macro->value,
 				argv + argc, max - argc);
 		if (r < 0)
 			return r;
