@@ -24,6 +24,7 @@
 #include <string.h>
 
 #include "sc-pkcs11.h"
+#include "common/compat_overflow.h"
 
 /* Also used for verification data */
 struct hash_signature_info {
@@ -67,7 +68,9 @@ signature_data_buffer_append(struct operation_data *data,
 	if (in_len == 0)
 		return CKR_OK;
 
-	CK_ULONG new_len = data->buffer_len + in_len;
+	CK_ULONG new_len;
+	if (__builtin_uaddl_overflow(data->buffer_len, in_len, &new_len))
+		return CKR_ARGUMENTS_BAD;
 	CK_BYTE *new_buffer = sc_mem_secure_alloc(new_len);
 	if (!new_buffer)
 		return CKR_HOST_MEMORY;
