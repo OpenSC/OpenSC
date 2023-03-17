@@ -1538,8 +1538,8 @@ _add_public_objects(struct sc_pkcs11_slot *slot, struct pkcs15_fw_data *fw_data)
 		if (obj->p15_object->flags & SC_PKCS15_CO_FLAG_PRIVATE) {
 			/* If we found some non-accessible public object,
 			 * we can no longer claim Public Ceritificate Token conformance */
-			if (obj->p15_object->type & SC_PKCS15_TYPE_PUBKEY ||
-				obj->p15_object->type & SC_PKCS15_TYPE_CERT) {
+			if ((obj->p15_object->type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_PUBKEY ||
+				(obj->p15_object->type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_CERT) {
 				public_certificates = 0;
 			}
 			continue;
