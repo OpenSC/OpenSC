@@ -56,6 +56,7 @@ struct sc_pkcs15_emulator_handler builtin_emulators[] = {
 	{ "coolkey",    sc_pkcs15emu_coolkey_init_ex	},
 	{ "din66291",   sc_pkcs15emu_din_66291_init_ex	},
 	{ "esteid2018", sc_pkcs15emu_esteid2018_init_ex	},
+	{ "skeid",      sc_pkcs15emu_skeid_init_ex      },
 	{ "cardos",     sc_pkcs15emu_cardos_init_ex	},
 	{ "nqapplet",   sc_pkcs15emu_nqapplet_init_ex },
 	{ "esign",      sc_pkcs15emu_starcos_esign_init_ex },
@@ -109,6 +110,7 @@ int sc_pkcs15_is_emulation_only(sc_card_t *card)
 		case SC_CARD_TYPE_NQ_APPLET:
 		case SC_CARD_TYPE_STARCOS_V3_4_ESIGN:
 		case SC_CARD_TYPE_STARCOS_V3_5_ESIGN:
+		case SC_CARD_TYPE_SKEID_V3:
 
 			return 1;
 		default:
