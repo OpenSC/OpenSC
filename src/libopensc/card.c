@@ -491,6 +491,12 @@ int sc_lock(sc_card_t *card)
 	if (r == 0)
 		card->lock_count++;
 
+	r2 = sc_mutex_unlock(card->ctx, card->mutex);
+	if (r2 != SC_SUCCESS) {
+		sc_log(card->ctx, "unable to release card->mutex lock");
+		r = r != SC_SUCCESS ? r : r2;
+	}
+
 	if (r == 0 && was_reset > 0) {
 #ifdef ENABLE_SM
 		if (card->sm_ctx.ops.open)
@@ -498,23 +504,10 @@ int sc_lock(sc_card_t *card)
 #endif
 	}
 
-	r2 = sc_mutex_unlock(card->ctx, card->mutex);
-	if (r2 != SC_SUCCESS) {
-		sc_log(card->ctx, "unable to release card->mutex lock");
-		r = r != SC_SUCCESS ? r : r2;
-	}
-
 	/* give card driver a chance to do something when reader lock first obtained */
 	if (r == 0 && reader_lock_obtained == 1  && card->ops->card_reader_lock_obtained) {
-		r = card->ops->card_reader_lock_obtained(card, was_reset);
-		/* return value of card->reader->ops->lock is overwritten here
-		   by card->ops->card_reader_lock_obtained */
-		if (r != 0) {
-			/* unlock reader and get the card to its original state in case of failure*/
-			if (card->reader->ops->unlock != NULL)
-				r = card->reader->ops->unlock(card->reader);
-			card->lock_count--;
-		}
+		if (SC_SUCCESS != card->ops->card_reader_lock_obtained(card, was_reset))
+			sc_log(card->ctx, "card_reader_lock_obtained failed");
 	}
 
 	LOG_FUNC_RETURN(card->ctx, r);
