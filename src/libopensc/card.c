@@ -531,10 +531,10 @@ int sc_unlock(sc_card_t *card)
 
 	r = sc_mutex_lock(card->ctx, card->mutex);
 	if (r != SC_SUCCESS)
-		return r;
+		LOG_FUNC_RETURN(card->ctx, r);
 
 	if (card->lock_count < 1) {
-		return SC_ERROR_INVALID_ARGUMENTS;
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	if (--card->lock_count == 0) {
 		if (card->flags & SC_CARD_FLAG_KEEP_ALIVE) {
