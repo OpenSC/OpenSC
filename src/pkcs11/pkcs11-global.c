@@ -291,27 +291,31 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs)
 {
 	CK_RV rv;
 #if !defined(_WIN32)
-	pid_t current_pid = getpid();
+	pid_t current_pid;
 #endif
 	int rc;
 	sc_context_param_t ctx_opts;
 
 #if !defined(_WIN32)
 	/* Handle fork() exception */
+	C_INITIALIZE_M_LOCK
+	current_pid = getpid();
 	if (current_pid != initialized_pid) {
-		if (context)
+		if (context && CKR_OK == sc_pkcs11_lock()) {
 			context->flags |= SC_CTX_FLAG_TERMINATE;
+			sc_pkcs11_unlock();
+		}
 		C_Finalize(NULL_PTR);
 	}
 	initialized_pid = current_pid;
 	in_finalize = 0;
+	C_INITIALIZE_M_UNLOCK
 #endif
 
 	/* protect from nesting */
 	C_INITIALIZE_M_LOCK
 	nesting++;
 	if (nesting > 1) {
-		sc_log(context, "C_Initialize(): Nested init detected");
 		nesting--;
 		C_INITIALIZE_M_UNLOCK
 		return CKR_GENERAL_ERROR;
@@ -323,7 +327,10 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs)
 	C_INITIALIZE_M_LOCK
 
 	if (context != NULL) {
-		sc_log(context, "C_Initialize(): Cryptoki already initialized\n");
+		if (CKR_OK == sc_pkcs11_lock()) {
+			sc_log(context, "C_Initialize(): Cryptoki already initialized\n");
+			sc_pkcs11_unlock();
+		}
 		nesting--;
 		C_INITIALIZE_M_UNLOCK
 		return CKR_CRYPTOKI_ALREADY_INITIALIZED;
