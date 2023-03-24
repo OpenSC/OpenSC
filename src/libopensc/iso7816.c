@@ -136,7 +136,7 @@ iso7816_check_sw(struct sc_card *card, unsigned int sw1, unsigned int sw2)
 
 
 static int
-iso7816_read_binary(struct sc_card *card, unsigned int idx, u8 *buf, size_t count, unsigned long flags)
+iso7816_read_binary(struct sc_card *card, unsigned int idx, u8 *buf, size_t count, unsigned long *flags)
 {
 	struct sc_context *ctx = card->ctx;
 	struct sc_apdu apdu;

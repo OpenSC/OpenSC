@@ -726,7 +726,7 @@ err:
 
 static int
 iasecc_read_binary(struct sc_card *card, unsigned int offs,
-		unsigned char *buf, size_t count, unsigned long flags)
+		unsigned char *buf, size_t count, unsigned long *flags)
 {
 	struct sc_context *ctx = card->ctx;
 	struct sc_apdu apdu;

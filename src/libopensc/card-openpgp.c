@@ -1577,7 +1577,7 @@ pgp_get_challenge(struct sc_card *card, u8 *rnd, size_t len)
  */
 static int
 pgp_read_binary(sc_card_t *card, unsigned int idx,
-		u8 *buf, size_t count, unsigned long flags)
+		u8 *buf, size_t count, unsigned long *flags)
 {
 	struct pgp_priv_data *priv = DRVDATA(card);
 	pgp_blob_t	*blob;

@@ -2110,7 +2110,7 @@ auth_update_binary(struct sc_card *card, unsigned int offset,
 
 static int
 auth_read_binary(struct sc_card *card, unsigned int offset,
-		unsigned char *buf, size_t count, unsigned long flags)
+		unsigned char *buf, size_t count, unsigned long *flags)
 {
 	int rv;
 	struct sc_pkcs15_bignum bn[2];
@@ -2125,7 +2125,7 @@ auth_read_binary(struct sc_card *card, unsigned int offset,
 
 	sc_log(card->ctx,
 	       "offset %i; size %"SC_FORMAT_LEN_SIZE_T"u; flags 0x%lX",
-	       offset, count, flags);
+	       offset, count, *flags);
 	sc_log(card->ctx,"last selected : magic %X; ef %X",
 			auth_current_ef->magic, auth_current_ef->ef_structure);
 

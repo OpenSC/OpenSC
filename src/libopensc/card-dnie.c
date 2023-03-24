@@ -1078,7 +1078,7 @@ static int dnie_fill_cache(sc_card_t * card,unsigned long *flags)
  */
 static int dnie_read_binary(struct sc_card *card,
 			    unsigned int idx,
-			    u8 * buf, size_t count, unsigned long flags)
+			    u8 * buf, size_t count, unsigned long *flags)
 {
 	int res = 0;
 	sc_context_t *ctx = NULL;

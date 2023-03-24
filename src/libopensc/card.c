@@ -617,7 +617,7 @@ int sc_delete_file(sc_card_t *card, const sc_path_t *path)
 }
 
 int sc_read_binary(sc_card_t *card, unsigned int idx,
-		   unsigned char *buf, size_t count, unsigned long flags)
+		   unsigned char *buf, size_t count, unsigned long *flags)
 {
 	size_t max_le = sc_get_max_recv_size(card);
 	size_t todo = count;

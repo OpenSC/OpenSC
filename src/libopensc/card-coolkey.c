@@ -1175,7 +1175,7 @@ fail:
  * translate the objects into their PKCS #15 equivalent data structures.
  */
 static int coolkey_read_binary(sc_card_t *card, unsigned int idx,
-		u8 *buf, size_t count, unsigned long flags)
+		u8 *buf, size_t count, unsigned long *flags)
 {
 	coolkey_private_data_t * priv = COOLKEY_DATA(card);
 	int r = 0, len;

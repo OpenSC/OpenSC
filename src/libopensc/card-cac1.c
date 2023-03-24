@@ -122,7 +122,7 @@ static int cac_cac1_get_certificate(sc_card_t *card, u8 **out_buf, size_t *out_l
  * as well as set that we want the cert from the object.
  */
 static int cac_read_binary(sc_card_t *card, unsigned int idx,
-		unsigned char *buf, size_t count, unsigned long flags)
+		unsigned char *buf, size_t count, unsigned long *flags)
 {
 	cac_private_data_t * priv = CAC_DATA(card);
 	int r = 0;

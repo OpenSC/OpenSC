@@ -1139,7 +1139,7 @@ piv_cache_internal_data(sc_card_t *card, int enumtag)
  * as well as set that we want the cert from the object.
  */
 static int
-piv_read_binary(sc_card_t *card, unsigned int idx, unsigned char *buf, size_t count, unsigned long flags)
+piv_read_binary(sc_card_t *card, unsigned int idx, unsigned char *buf, size_t count, unsigned long *flags)
 {
 	piv_private_data_t * priv = PIV_DATA(card);
 	int enumtag;

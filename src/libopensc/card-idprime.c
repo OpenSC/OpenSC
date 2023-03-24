@@ -555,7 +555,7 @@ static int idprime_select_file(sc_card_t *card, const sc_path_t *in_path, sc_fil
 
 // used to read existing certificates
 static int idprime_read_binary(sc_card_t *card, unsigned int offset,
-	unsigned char *buf, size_t count, unsigned long flags)
+	unsigned char *buf, size_t count, unsigned long *flags)
 {
 	struct idprime_private_data *priv = card->drv_data;
 	int r = 0;

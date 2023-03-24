@@ -678,7 +678,7 @@ done:
  */
 static int
 gpk_read_binary(sc_card_t *card, unsigned int offset,
-		u8 *buf, size_t count, unsigned long flags)
+		u8 *buf, size_t count, unsigned long *flags)
 {
 	struct gpk_private_data *priv = DRVDATA(card);
 

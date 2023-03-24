@@ -658,7 +658,7 @@ struct sc_card_operations {
 	 * @see sc_read_binary()
 	 */
 	int (*read_binary)(struct sc_card *card, unsigned int idx,
-			u8 * buf, size_t count, unsigned long flags);
+			u8 * buf, size_t count, unsigned long *flags);
 	/**
 	 * @brief Write data to a binary EF with a single command
 	 *
@@ -1250,7 +1250,7 @@ int sc_list_files(struct sc_card *card, u8 *buf, size_t buflen);
  * @return number of bytes read or an error code
  */
 int sc_read_binary(struct sc_card *card, unsigned int idx, u8 * buf,
-		   size_t count, unsigned long flags);
+		   size_t count, unsigned long *flags);
 /**
  * @brief Write data to a binary EF
  *

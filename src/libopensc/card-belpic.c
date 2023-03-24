@@ -296,7 +296,7 @@ static int belpic_select_file(sc_card_t *card,
 }
 
 static int belpic_read_binary(sc_card_t *card,
-			      unsigned int idx, u8 * buf, size_t count, unsigned long flags)
+			      unsigned int idx, u8 * buf, size_t count, unsigned long *flags)
 {
 	int r;
 

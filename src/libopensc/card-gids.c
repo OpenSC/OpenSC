@@ -1048,7 +1048,7 @@ gids_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left
 
 // used to read existing certificates
 static int gids_read_binary(sc_card_t *card, unsigned int offset,
-		unsigned char *buf, size_t count, unsigned long flags) {
+		unsigned char *buf, size_t count, unsigned long *flags) {
 	struct gids_private_data *data = (struct gids_private_data *) card->drv_data;
 	struct sc_context *ctx = card->ctx;
 	int r;
