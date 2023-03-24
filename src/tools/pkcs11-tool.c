@@ -765,6 +765,7 @@ int main(int argc, char * argv[])
 	if (!(default_provider = OSSL_PROVIDER_load(osslctx, "default"))) {
 		util_fatal("Failed to load OpenSSL \"default\" provider\n");
 	}
+	legacy_provider = OSSL_PROVIDER_try_load(NULL, "legacy", 1);
 #endif
 
 	while (1) {
@@ -6040,10 +6041,8 @@ static int test_digest(CK_SESSION_HANDLE session)
 #endif
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 		if (!legacy_provider) {
-			if (!(legacy_provider = OSSL_PROVIDER_try_load(NULL, "legacy", 1))) {
-				printf("Failed to load legacy provider\n");
-				return errors;
-			}
+			printf("Failed to load legacy provider\n");
+			return errors;
 		}
 #endif
 	for (; mechTypes[i] != 0xffffff; i++) {
@@ -6247,10 +6246,8 @@ static int sign_verify_openssl(CK_SESSION_HANDLE session,
 #endif
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L && !defined(OPENSSL_NO_RIPEMD)
 	if (!legacy_provider) {
-		if (!(legacy_provider = OSSL_PROVIDER_try_load(NULL, "legacy", 1))) {
-			printf("Failed to load legacy provider");
-			return errors;
-		}
+		printf("Failed to load legacy provider");
+		return errors;
 	}
 #endif
 
