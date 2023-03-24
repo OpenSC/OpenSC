@@ -1175,11 +1175,6 @@ int main(int argc, char * argv[])
 	if (do_list_interfaces)
 		list_interfaces();
 
-#if defined(_WIN32) || defined(HAVE_PTHREAD)
-	if (do_test_threads)
-		test_threads();
-#endif
-
 	rv = p11->C_Initialize(c_initialize_args_ptr);
 
 #if defined(_WIN32) || defined(HAVE_PTHREAD)
@@ -1506,8 +1501,13 @@ end:
 	}
 
 #if defined(_WIN32) || defined(HAVE_PTHREAD)
-	if (do_test_threads)
+	if (do_test_threads) {
+		/* running threading tests is deliberately placed after opt_slot was
+		 * initialized so that the command line options allow detailed
+		 * configuration when running with `--test-threads LT` */
+		test_threads();
 		test_threads_cleanup();
+	}
 #endif /* defined(_WIN32) || defined(HAVE_PTHREAD) */
 
 	if (p11)
@@ -1847,7 +1847,7 @@ static int login(CK_SESSION_HANDLE session, int login_type)
 
 	rv = p11->C_Login(session, login_type,
 			(CK_UTF8CHAR *) pin, pin == NULL ? 0 : strlen(pin));
-	if (rv != CKR_OK)
+	if (rv != CKR_OK && rv != CKR_USER_ALREADY_LOGGED_IN)
 		p11_fatal("C_Login", rv);
 	if (pin_allocated)
 		free(pin);
@@ -8570,8 +8570,8 @@ static void * test_threads_run(void * pttd)
 #endif
 		}
 
-		/* IN - C_Initialize with NULL args */
 		else if (*pctest == 'I') {
+			/* IN - C_Initialize with NULL args */
 			if (*(pctest + 1) == 'N') {
 				fprintf(stderr, "Test thread %d C_Initialize(NULL)\n", ttd->tnum);
 				rv = p11->C_Initialize(NULL);
@@ -8632,6 +8632,24 @@ static void * test_threads_run(void * pttd)
 				fprintf(stderr, "Test thread %d slot not available, unable to call C_GetTokenInfo\n", ttd->tnum);
 				rv = CKR_TOKEN_NOT_PRESENT;
 				break;
+			}
+		}
+
+		/* LT login and test, just like as if `--login --test` was specified.
+		 * May be combined with `--pin=123456` */
+		else if (*pctest == 'L' && *(pctest + 1) == 'T') {
+			CK_SESSION_HANDLE session = CK_INVALID_HANDLE;
+
+			rv = p11->C_OpenSession(opt_slot, CKF_SERIAL_SESSION|CKF_RW_SESSION, NULL, NULL, &session);
+			if (rv == CKR_OK) {
+				if (opt_login_type == -1)
+					opt_login_type = CKU_USER;
+				login(session, opt_login_type);
+
+				if (p11_test(session))
+					rv = CKR_GENERAL_ERROR;
+				else
+					rv = CKR_OK;
 			}
 		}
 
