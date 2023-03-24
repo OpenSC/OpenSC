@@ -552,13 +552,13 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo)
 	const char *name;
 	CK_RV rv;
 
-	sc_log(context, "C_GetTokenInfo(%lx)", slotID);
 	if (pInfo == NULL_PTR)
 		return CKR_ARGUMENTS_BAD;
 
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
 		return rv;
+	sc_log(context, "C_GetTokenInfo(%lx)", slotID);
 
 	rv = slot_get_token(slotID, &slot);
 	if (rv != CKR_OK)   {
@@ -610,14 +610,15 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo)
 		}
 	}
 	memcpy(pInfo, &slot->token_info, sizeof(CK_TOKEN_INFO));
-out:
-	sc_pkcs11_unlock();
 
+out:
 	name = lookup_enum(RV_T, rv);
 	if (name)
 		sc_log(context, "C_GetTokenInfo(%lx) returns %s", slotID, name);
 	else
 		sc_log(context, "C_GetTokenInfo(%lx) returns 0x%08lX", slotID, rv);
+	sc_pkcs11_unlock();
+
 	return rv;
 }
 
