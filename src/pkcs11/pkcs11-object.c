@@ -1448,8 +1448,8 @@ CK_RV C_GenerateRandom(CK_SESSION_HANDLE hSession,	/* the session's handle */
 			rv = slot->p11card->framework->get_random(slot, RandomData, ulRandomLen);
 	}
 
-	sc_pkcs11_unlock();
 	SC_LOG_RV("C_GenerateRandom() = %s", rv);
+	sc_pkcs11_unlock();
 	return rv;
 }
 
