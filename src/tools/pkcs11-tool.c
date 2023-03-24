@@ -456,8 +456,6 @@ static pthread_t test_threads_handles[MAX_TEST_THREADS];
 struct test_threads_data {
 	int tnum;
 	char * tests;
-	volatile int state;
-	volatile CK_RV rv;
 };
 static struct test_threads_data test_threads_datas[MAX_TEST_THREADS];
 static int test_threads_num = 0;
@@ -8539,11 +8537,9 @@ static DWORD WINAPI test_threads_run(_In_ LPVOID pttd)
 static void * test_threads_run(void * pttd)
 #endif
 {
-	int r = 0;
 	CK_RV rv = CKR_OK;
 	CK_INFO info;
 	int l_slots = 0;
-	int state = 0;
 	CK_ULONG l_p11_num_slots = 0;
 	CK_SLOT_ID_PTR l_p11_slots = NULL;
 	char * pctest;
@@ -8555,8 +8551,6 @@ static void * test_threads_run(void * pttd)
 
 	/* series of two character commands */
 	while (pctest && *pctest && *(pctest + 1)) {
-		ttd->state = state++;
-
 		/*  Pn - pause where n is 0 to 9 iseconds */
 		if (*pctest == 'P' && *(pctest + 1) >= '0' && *(pctest + 1) <= '9') {
 			fprintf(stderr, "Test thread %d pauseing for %d seconds\n", ttd->tnum, (*(pctest + 1) - '0'));
@@ -8572,14 +8566,12 @@ static void * test_threads_run(void * pttd)
 			if (*(pctest + 1) == 'N') {
 				fprintf(stderr, "Test thread %d C_Initialize(NULL)\n", ttd->tnum);
 				rv = p11->C_Initialize(NULL);
-				ttd->rv = rv;
 				fprintf(stderr, "Test thread %d C_Initialize returned %s\n", ttd->tnum, CKR2Str(rv));
 			}
 			/* IL C_Initialize with CKF_OS_LOCKING_OK */
 			else if (*(pctest + 1) == 'L') {
 				fprintf(stderr, "Test thread %d C_Initialize CKF_OS_LOCKING_OK \n", ttd->tnum);
 				rv = p11->C_Initialize(&c_initialize_args_OS);
-				ttd->rv = rv;
 				fprintf(stderr, "Test thread %d C_Initialize  returned %s\n", ttd->tnum, CKR2Str(rv));
 			}
 			else
@@ -8590,7 +8582,6 @@ static void * test_threads_run(void * pttd)
 		else if (*pctest == 'G' && *(pctest + 1) == 'I') {
 			fprintf(stderr, "Test thread %d C_GetInfo\n", ttd->tnum);
 			rv = p11->C_GetInfo(&info);
-			ttd->rv = rv;
 			fprintf(stderr, "Test thread %d C_GetInfo returned %s\n", ttd->tnum, CKR2Str(rv));
 		}
 
@@ -8598,7 +8589,6 @@ static void * test_threads_run(void * pttd)
 		else if (*pctest == 'S' && *(pctest + 1) == 'L') {
 			fprintf(stderr, "Test thread %d C_GetSlotList to get l_p11_num_slots\n", ttd->tnum);
 			rv = p11->C_GetSlotList(1, NULL, &l_p11_num_slots);
-			ttd->rv = rv;
 			fprintf(stderr, "Test thread %d C_GetSlotList returned %s\n", ttd->tnum, CKR2Str(rv));
 			fprintf(stderr, "Test thread %d l_p11_num_slots:%ld\n", ttd->tnum, l_p11_num_slots);
 			if (rv == CKR_OK) {
@@ -8611,7 +8601,6 @@ static void * test_threads_run(void * pttd)
 					}
 					fprintf(stderr, "Test thread %d C_GetSlotList\n", ttd->tnum);
 					rv = p11->C_GetSlotList(1, l_p11_slots, &l_p11_num_slots);
-					ttd->rv = rv;
 					fprintf(stderr, "Test thread %d C_GetSlotList returned %s\n", ttd->tnum, CKR2Str(rv));
 					fprintf(stderr, "Test thread %d l_p11_num_slots:%ld\n", ttd->tnum, l_p11_num_slots);
 					if (rv == CKR_OK && l_p11_num_slots && l_p11_slots)
@@ -8653,7 +8642,6 @@ static void * test_threads_run(void * pttd)
 		else {
 		err:
 			rv = CKR_GENERAL_ERROR; /* could be vendor error, */
-			ttd->rv = rv;
 			fprintf(stderr, "Test thread %d Unknown test '%c%c'\n", ttd->tnum, *pctest, *(pctest + 1));
 			break;
 		}
@@ -8671,9 +8659,7 @@ static void * test_threads_run(void * pttd)
 	}
 
 	free(l_p11_slots);
-	fprintf(stderr, "Test thread %d returning rv = %d\n", ttd->tnum, r);
-	ttd->state = -1; /* done */
-	ttd->rv = rv;
+	fprintf(stderr, "Test thread %d returning rv:%s\n", ttd->tnum, CKR2Str(rv));
 #ifdef _WIN32
 	ExitThread(0);
 #else
@@ -8684,55 +8670,16 @@ static void * test_threads_run(void * pttd)
 static int test_threads_cleanup()
 {
 
-	int i, j;
-	int ended = 0;
-	int ended_ok = 0;
+	int i;
 
 	fprintf(stderr,"test_threads cleanup starting\n");
-	for (j = 0; j < 4; j++) {
-		ended = 0;
-		ended_ok = 0;
-
-		for (i = 0; i < test_threads_num; i++) {
-			if (test_threads_datas[i].state == -1) {
-				ended++;
-			}
-			if (test_threads_datas[i].rv == CKR_OK) {
-				ended_ok++;
-			}
-		}
-
-		if (ended == test_threads_num) {
-			fprintf(stderr,"test_threads all threads have ended %s\n",
-					(ended_ok == test_threads_num)? "with CKR_OK": "some errors");
-			break;
-		} else {
-			fprintf(stderr,"test_threads threads stills active:%d\n", (test_threads_num - ended));
-			for (i = 0; i < test_threads_num; i++) {
-				fprintf(stderr,"test_threads thread:%d state:%d, rv:%s\n",
-					i, test_threads_datas[i].state, CKR2Str(test_threads_datas[i].rv));
-			}
-			fprintf(stderr,"\ntest_threads waiting for 30 seconds ...\n");
-#ifdef _WIN32
-			Sleep(30*1000);
-#else
-			sleep(30);
-#endif
-		}
-	}
 
 	for (i = 0; i < test_threads_num; i++) {
-		fprintf(stderr,"test_threads thread:%d state:%d, rv:%s\n",
-			i, test_threads_datas[i].state, CKR2Str(test_threads_datas[i].rv));
-		if (test_threads_datas[i].state == -1) {
 #ifdef _WIN32
-			TerminateThread(test_threads_handles[i], 0);
+		WaitForSingleObject(test_threads_handles[i], INFINITE);
 #else
-			pthread_join(test_threads_handles[i], NULL);
-		} else {
-			pthread_cancel(test_threads_handles[i]);
+		pthread_join(test_threads_handles[i], NULL);
 #endif
-		}
 	}
 
 	fprintf(stderr,"test_threads cleanup finished\n");
