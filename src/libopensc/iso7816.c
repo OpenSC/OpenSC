@@ -242,7 +242,7 @@ iso7816_read_record(struct sc_card *card, unsigned int rec_nr, unsigned int idx,
 		r = encode_do_data(card->ctx, idx, NULL, 0, &encoded_data, &encoded_data_len);
 		LOG_TEST_GOTO_ERR(card->ctx, r, "Could not encode data objects");
 
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_2, 0xB3, rec_nr, 0);
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_4, 0xB3, rec_nr, 0);
 		apdu.lc = encoded_data_len;
 		apdu.datalen = encoded_data_len;
 		apdu.data = encoded_data;
