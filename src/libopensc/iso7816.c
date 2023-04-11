@@ -167,7 +167,7 @@ iso7816_read_binary(struct sc_card *card, unsigned int idx, u8 *buf, size_t coun
 
 const struct sc_asn1_entry c_asn1_do_data[] = {
 	{ "Offset Data Object", SC_ASN1_OCTET_STRING, SC_ASN1_APP|0x14, SC_ASN1_OPTIONAL, NULL, NULL },
-	{ "Discretionary Data Object", SC_ASN1_OCTET_STRING, SC_ASN1_APP|0x13, SC_ASN1_ALLOC|SC_ASN1_UNSIGNED, NULL, NULL },
+	{ "Discretionary Data Object", SC_ASN1_OCTET_STRING, SC_ASN1_APP|0x13, SC_ASN1_ALLOC|SC_ASN1_UNSIGNED|SC_ASN1_OPTIONAL, NULL, NULL },
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
@@ -212,6 +212,9 @@ int decode_do_data(struct sc_context *ctx,
 	LOG_TEST_RET(ctx,
 			sc_asn1_decode(ctx, asn1_do_data, encoded_data, encoded_data_len, NULL, NULL),
 			"sc_asn1_decode() failed");
+
+	if (!(asn1_do_data[1].flags & SC_ASN1_PRESENT))
+		return SC_ERROR_INVALID_ASN1_OBJECT;
 
 	return SC_SUCCESS;
 }
