@@ -288,9 +288,7 @@ static int gen_key(const char * key_info)
 	u8 buf[2];
 	size_t buflen = 2;
 	sc_cardctl_piv_genkey_info_t
-		keydata = {0, 0, 0, 0, NULL, 0, NULL, 0, NULL, 0};
-	unsigned long expl;
-	u8 expc[4];
+		keydata = {0, 0, 0, NULL, 0, NULL, 0, NULL, 0, NULL, 0};
 #if !defined(OPENSSL_NO_EC)
 	int nid = -1;
 #endif
@@ -349,6 +347,7 @@ static int gen_key(const char * key_info)
 		if (newkey == NULL) {
 			EVP_PKEY_free(evpkey);
 			free(keydata.pubkey);
+			free(keydata.exponent);
 			fprintf(stderr, "gen_key RSA_new failed %d\n",r);
 			return -1;
 		}
@@ -358,9 +357,10 @@ static int gen_key(const char * key_info)
 		OSSL_PARAM *params = NULL;
 #endif
 
-		if (!keydata.pubkey) {
+		if (!keydata.pubkey || !keydata.exponent) {
 			fprintf(stderr, "gen_key failed %d\n", r);
 			free(keydata.pubkey);
+			free(keydata.exponent);
 			EVP_PKEY_free(evpkey);
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 			RSA_free(newkey);
@@ -369,14 +369,11 @@ static int gen_key(const char * key_info)
 		}
 
 		newkey_n = BN_bin2bn(keydata.pubkey, keydata.pubkey_len, NULL);
-		expl = keydata.exponent;
-		expc[3] = (u8) expl & 0xff;
-		expc[2] = (u8) (expl >>8) & 0xff;
-		expc[1] = (u8) (expl >>16) & 0xff;
-		expc[0] = (u8) (expl >>24) & 0xff;
-		newkey_e = BN_bin2bn(expc, 4, NULL);
+		newkey_e =  BN_bin2bn(keydata.exponent, keydata.exponent_len, NULL);
 		free(keydata.pubkey);
 		keydata.pubkey_len = 0;
+		free(keydata.exponent);
+		keydata.exponent_len = 0;
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 		if (RSA_set0_key(newkey, newkey_n, newkey_e, NULL) != 1) {
