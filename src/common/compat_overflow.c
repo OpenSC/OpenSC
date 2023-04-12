@@ -41,4 +41,5 @@
 ADD_OVERFLOW(__builtin_uadd_overflow,   unsigned,           UINT_MAX)
 ADD_OVERFLOW(__builtin_uaddl_overflow,  unsigned long,      ULONG_MAX)
 ADD_OVERFLOW(__builtin_uaddll_overflow, unsigned long long, ULLONG_MAX)
+ADD_OVERFLOW(__builtin_zuadd_overflow,  size_t,             SIZE_MAX)
 #endif
