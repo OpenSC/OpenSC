@@ -33,6 +33,12 @@
 bool __builtin_uadd_overflow  (unsigned x, unsigned y, unsigned *sum);
 bool __builtin_uaddl_overflow (unsigned long x, unsigned long y, unsigned long *sum);
 bool __builtin_uaddll_overflow(unsigned long long x, unsigned long long y, unsigned long long *sum);
+
+bool __builtin_zuadd_overflow (size_t x, size_t y, size_t *sum);
+#else
+
+#define __builtin_zuadd_overflow __builtin_add_overflow
+
 #endif
 /* TODO
 bool __builtin_usub_overflow  (unsigned x, unsigned y, unsigned *diff);
