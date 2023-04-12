@@ -129,7 +129,7 @@ static pgp_ec_curves_t	ec_curves_gnuk[] = {
 
 static int		pgp_get_card_features(sc_card_t *card);
 static int		pgp_finish(sc_card_t *card);
-static void		pgp_iterate_blobs(pgp_blob_t *, void (*func)());
+static void		pgp_free_blobs(pgp_blob_t *);
 
 static int		pgp_get_blob(sc_card_t *card, pgp_blob_t *blob,
 				 unsigned int id, pgp_blob_t **ret);
@@ -947,7 +947,7 @@ pgp_finish(sc_card_t *card)
 
 		if (priv != NULL) {
 			/* delete fake file hierarchy */
-			pgp_iterate_blobs(priv->mf, pgp_free_blob);
+			pgp_free_blobs(priv->mf);
 
 			/* delete private data */
 			free(priv);
@@ -1147,10 +1147,10 @@ pgp_free_blob(pgp_blob_t *blob)
 
 
 /**
- * Internal: iterate through the blob tree, calling a function for each blob.
+ * Internal: iterate through the blob tree, calling pgp_free_blob for each blob.
  */
 static void
-pgp_iterate_blobs(pgp_blob_t *blob, void (*func)())
+pgp_free_blobs(pgp_blob_t *blob)
 {
 	if (blob) {
 		pgp_blob_t *child = blob->files;
@@ -1158,10 +1158,10 @@ pgp_iterate_blobs(pgp_blob_t *blob, void (*func)())
 		while (child != NULL) {
 			pgp_blob_t *next = child->next;
 
-			pgp_iterate_blobs(child, func);
+			pgp_free_blobs(child);
 			child = next;
 		}
-		func(blob);
+		pgp_free_blob(blob);
 	}
 }
 
