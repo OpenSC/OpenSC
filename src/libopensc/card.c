@@ -652,6 +652,12 @@ int sc_read_binary(sc_card_t *card, unsigned int idx,
 		r = card->ops->read_binary(card, idx, buf, chunk, flags);
 		if (r == 0 || r == SC_ERROR_FILE_END_REACHED)
 			break;
+		if (r < 0 && todo != count) {
+			/* the last command failed, but previous ones succeeded.
+			 * Let's just return what we've successfully read. */
+			sc_log(card->ctx, "Subsequent read failed with %d, returning what was read successfully.", r);
+			break;
+		}
 		if ((idx > SIZE_MAX - (size_t) r)
 				|| (size_t) r > todo) {
 			/* `idx + r` or `todo - r` would overflow */
@@ -970,6 +976,12 @@ int sc_read_record(sc_card_t *card, unsigned int rec_nr, unsigned int idx,
 		r = card->ops->read_record(card, rec_nr, idx, buf, chunk, flags);
 		if (r == 0 || r == SC_ERROR_FILE_END_REACHED)
 			break;
+		if (r < 0 && todo != count) {
+			/* the last command failed, but previous ones succeeded.
+			 * Let's just return what we've successfully read. */
+			sc_log(card->ctx, "Subsequent read failed with %d, returning what was read successfully.", r);
+			break;
+		}
 		if ((idx > SIZE_MAX - (size_t) r) || (size_t) r > todo) {
 			/* `idx + r` or `todo - r` would overflow */
 			r = SC_ERROR_OFFSET_TOO_LARGE;
