@@ -1182,6 +1182,9 @@ int main(int argc, char *argv[])
 			util_print_usage_and_die(app_name, options, option_help, NULL);
 		}
 	}
+	
+	if(action_count == 0)
+		util_print_usage_and_die(app_name, options, option_help, NULL);
 
 	/* create sc_context_t object */
 	memset(&ctx_param, 0, sizeof(ctx_param));
