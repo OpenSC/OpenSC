@@ -211,6 +211,21 @@ app default {
 		#can = 123456;
 	}
 
+	card_driver eoi {
+		# CAN is required to establish connection
+		# with the card. When using contact reader
+		# it is read (and decrypted) from the card.
+		# When using contactless reader, CAN has to
+		# be specified here or using the EOI_CAN
+		# environment variable.
+		#can = 123456;
+		#
+		# To hide unneeded slots it's also
+		# recommended to set
+		#   create_slots_for_pins = "user,sign";
+		# in the 'pkcs11' section below
+	}
+
 	# In addition to the built-in list of known cards in the
 	# card driver, you can configure a new card for the driver
 	# using the card_atr block. The goal is to centralize
@@ -958,6 +973,8 @@ app default {
 		#
 		# - disable: do not expose application in PKCS15 framework
 		#            default 'false'
+		# - user_pin and sign_pin: labels of PIN objects that will be used as
+		#            user & sign PINs. Otherwise the first suitable one will be used.
 		application E828BD080FD25047656E65726963 {
 			type = generic;
 			model = "ECC Generic PKI";
@@ -977,6 +994,21 @@ app default {
 		application E828BD080FD2500000040201 {
 			type = protected;
 			model = "Adèle Admin-2";
+		}
+
+		# Slovenian eID - low level (pinless, "Prijava brez PIN-a")
+		application E828BD080F014E585031 {
+			model = "ChipDocLite";
+			disable = true;
+			user_pin = "Norm PIN";
+		}
+
+		# Slovenian eID - high level (QES, "Podpis in prijava")
+		application E828BD080F014E585030 {
+			model = "ChipDocLite";
+			# disable = true;
+			user_pin = "Norm PIN";
+			sign_pin = "Sig PIN";
 		}
 	}
 }

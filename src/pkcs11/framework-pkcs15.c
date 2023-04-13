@@ -1208,7 +1208,8 @@ pkcs15_init_slot(struct sc_pkcs15_card *p15card, struct sc_pkcs11_slot *slot,
 						p15card->tokeninfo ? p15card->tokeninfo->label : "",
 						32);
 			}
-			slot->token_info.flags |= CKF_LOGIN_REQUIRED;
+			if (p15card->tokeninfo->flags & SC_PKCS15_TOKEN_LOGIN_REQUIRED)
+				slot->token_info.flags |= CKF_LOGIN_REQUIRED;
 		}
 	}
 
@@ -1397,13 +1398,23 @@ out:
 
 
 struct sc_pkcs15_object *
-_get_auth_object_by_name(struct sc_pkcs15_card *p15card, char *name)
+_get_auth_object_by_name(struct sc_pkcs15_card *p15card, char *name, char *label)
 {
 	struct sc_pkcs15_object *out = NULL;
 	int rv = SC_ERROR_OBJECT_NOT_FOUND;
 
 	/* please keep me in sync with md_get_pin_by_role() in minidriver */
-	if (!strcmp(name, "UserPIN"))   {
+
+	/* If 'label' is set, then search for PIN with that label */
+	if (label) {
+		struct sc_pkcs15_id id;
+		strncpy((char*)id.value, label, sizeof(id.value) - 1);
+		id.len = strlen(label);
+		if (id.len > sizeof(id.value))
+			id.len = sizeof(id.value);
+		rv = sc_pkcs15_find_pin_by_auth_id(p15card, &id, &out);
+	} 
+	else if (!strcmp(name, "UserPIN"))   {
 		/* Try to get 'global' PIN; if no, get the 'local' one */
 		rv = sc_pkcs15_find_pin_by_flags(p15card, SC_PKCS15_PIN_TYPE_FLAGS_PIN_GLOBAL,
 				SC_PKCS15_PIN_TYPE_FLAGS_MASK, NULL, &out);
@@ -1579,6 +1590,8 @@ pkcs15_create_tokens(struct sc_pkcs11_card *p11card, struct sc_app_info *app_inf
 	unsigned int cs_flags = sc_pkcs11_conf.create_slots_flags;
 	CK_RV rv;
 	int rc, i, idx;
+	scconf_block *conf_block = NULL;
+	char *user_pin = NULL, *sign_pin = NULL;
 
 	if (p11card) {
 		sc_log(context, "create PKCS#15 tokens; fws:%p,%p,%p", p11card->fws_data[0], p11card->fws_data[1], p11card->fws_data[2]);
@@ -1596,10 +1609,27 @@ pkcs15_create_tokens(struct sc_pkcs11_card *p11card, struct sc_app_info *app_inf
 	}
 	sc_log(context, "Use FW data with index %i; fw_data->p15_card %p", idx, fw_data->p15_card);
 
+	conf_block = sc_get_conf_block(p11card->card->ctx, "framework", "pkcs15", 1);
+	if (conf_block && app_info)   {
+		scconf_block **blocks = NULL;
+		char str_path[SC_MAX_AID_STRING_SIZE];
+
+		memset(str_path, 0, sizeof(str_path));
+		sc_bin_to_hex(app_info->path.value, app_info->path.len, str_path, sizeof(str_path), 0);
+		blocks = scconf_find_blocks(p11card->card->ctx->conf, conf_block, "application", str_path);
+		if (blocks)   {
+			if (blocks[0]) {
+				user_pin = (char *)scconf_get_str(blocks[0], "user_pin", NULL);
+				sign_pin = (char *)scconf_get_str(blocks[0], "sign_pin", NULL);
+			}
+			free(blocks);
+		}
+	}
+
 	/* Try to identify UserPIN and SignPIN by their symbolic name */
-	auth_user_pin = _get_auth_object_by_name(fw_data->p15_card, "UserPIN");
+	auth_user_pin = _get_auth_object_by_name(fw_data->p15_card, "UserPIN", user_pin);
 	if (cs_flags & SC_PKCS11_SLOT_FOR_PIN_SIGN)
-		auth_sign_pin = _get_auth_object_by_name(fw_data->p15_card, "SignPIN");
+		auth_sign_pin = _get_auth_object_by_name(fw_data->p15_card, "SignPIN", sign_pin);
 	sc_log(context, "Flags:0x%X; Auth User/Sign PINs %p/%p", cs_flags, auth_user_pin, auth_sign_pin);
 
 	/* Add PKCS#15 objects of the known types to the framework data */

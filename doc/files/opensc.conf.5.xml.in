@@ -297,6 +297,9 @@ app <replaceable>application</replaceable> {
 									<literal>edo</literal>: See <xref linkend="edo"/>
 							</para></listitem>
 							<listitem><para>
+									<literal>eoi</literal>: See <xref linkend="eoi"/>
+							</para></listitem>
+							<listitem><para>
 									<literal>myeid</literal>: See <xref linkend="myeid"/>
 							</para></listitem>
 							<listitem><para>
@@ -767,6 +770,28 @@ app <replaceable>application</replaceable> {
 							It might be overwritten by <literal>EDO_CAN</literal>
 							environment variable. Currently, it is not
 							possible to set it in any other way.
+					</para></listitem>
+				</varlistentry>
+			</variablelist>
+		</refsect2>
+
+		<refsect2 id="eoi">
+			<title>Configuration Options for Slovenian eID Card</title>
+			<variablelist>
+				<varlistentry>
+					<term>
+						<option>can = <replaceable>value</replaceable>;</option>
+					</term>
+					<listitem><para>
+							CAN (Card Access Number – 6 digit number
+							printed on the right bottom corner of the
+							front side of the document) is required
+							to establish connection with the card.
+							It might be overwritten by <literal>EOI_CAN</literal>
+							environment variable. As CAN is also stored on the card
+							(in encrypted form) it can be used to automatically establish
+							secure connection, but only if the card is accessed over the
+							contact interface.
 					</para></listitem>
 				</varlistentry>
 			</variablelist>
@@ -1425,6 +1450,22 @@ app <replaceable>application</replaceable> {
 										Do not expose application in PKCS#15
 										framework (Default:
 										<literal>false</literal>)
+								</para></listitem>
+							</varlistentry>
+							<varlistentry>
+								<term>
+									<option>user_pin = <replaceable>name</replaceable>;</option>
+								</term>
+								<listitem><para>
+									Name of the User PIN object that will be used as the main PIN.
+								</para></listitem>
+							</varlistentry>
+							<varlistentry>
+								<term>
+									<option>sign_pin = <replaceable>name</replaceable>;</option>
+								</term>
+								<listitem><para>
+									Name of the PIN object that will be used for signing.
 								</para></listitem>
 							</varlistentry>
 						</variablelist>

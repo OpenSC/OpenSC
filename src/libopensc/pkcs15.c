@@ -2184,6 +2184,10 @@ sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *df)
 			sc_log(ctx, "%s: Error adding object", sc_strerror(r));
 			goto ret;
 		}
+		while (bufsize > 0 && *p == 00) {
+			bufsize--;
+			p++;
+		}
 	};
 
 	if (r > 0)
