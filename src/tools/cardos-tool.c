@@ -1183,7 +1183,7 @@ int main(int argc, char *argv[])
 		}
 	}
 	
-	if(action_count == 0)
+	if (action_count == 0)
 		util_print_usage_and_die(app_name, options, option_help, NULL);
 
 	/* create sc_context_t object */
