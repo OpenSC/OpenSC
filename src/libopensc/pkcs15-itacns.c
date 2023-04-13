@@ -62,14 +62,15 @@ const char * itacns_mask_manufacturers[] = {
 	"Gemplus",
 	"Ghirlanda",
 	"Giesecke & Devrient",
-	"Oberthur Card Systems",
+	"IDEMIA (Oberthur)",
 	"Orga",
 	"Axalto",
 	"Siemens",
 	"STIncard",
 	"GEP",
 	"EPS Corp",
-	"Athena"
+	"Athena",
+	"Gemalto",
 };
 
 const char * iso7816_ic_manufacturers[] = {
@@ -221,11 +222,6 @@ static int itacns_add_cert(sc_pkcs15_card_t *p15card,
 		info.path = *path;
 
 	strlcpy(obj.label, label, sizeof(obj.label));
-	obj.flags = obj_flags;
-
-	r = sc_pkcs15emu_add_x509_cert(p15card, &obj, &info);
-	LOG_TEST_RET(p15card->card->ctx, r,
-		"Could not add X.509 certificate");
 
 	/* If we have OpenSSL, read keyUsage */
 #ifdef ENABLE_OPENSSL
@@ -254,14 +250,14 @@ static int itacns_add_cert(sc_pkcs15_card_t *p15card,
 	}
 	OPENSSL_free(x509);
 
-	return SC_SUCCESS;
-
-#else /* ENABLE_OPENSSL */
-
-	return SC_SUCCESS;
-
 #endif /* ENABLE_OPENSSL */
 
+	obj.flags = obj_flags;
+	r = sc_pkcs15emu_add_x509_cert(p15card, &obj, &info);
+	LOG_TEST_RET(p15card->card->ctx, r,
+		"Could not add X.509 certificate");
+
+	return r;
 }
 
 static int itacns_add_pubkey(sc_pkcs15_card_t *p15card,
@@ -853,6 +849,14 @@ static int itacns_init(sc_pkcs15_card_t *p15card)
 		0, "3F0014009010", "3F00140081108010", "3F0014008110",
 		0x1a, &found_certs);
 	LOG_TEST_GOTO_ERR(p15card->card->ctx, r,
+		"Could not add CNS1");
+	certificate_count += found_certs;
+
+	/* Idemia card */
+	r = itacns_check_and_add_keyset(p15card, "CNS1", 0x02,
+		0, "3F00140090012002", "3F0011001102", "3F0014009002",
+		0x10, &found_certs);
+	LOG_TEST_RET(p15card->card->ctx, r,
 		"Could not add CNS1");
 	certificate_count += found_certs;
 
