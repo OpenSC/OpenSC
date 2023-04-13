@@ -7375,31 +7375,31 @@ static int test_random(CK_SESSION_HANDLE session)
 		printf("  seeding (C_SeedRandom) not supported\n");
 	else if (rv != CKR_OK) {
 		p11_perror("C_SeedRandom", rv);
-		return 1;
+		errors++;
 	}
 
 	rv = p11->C_GenerateRandom(session, buf1, 10);
 	if (rv != CKR_OK) {
 		p11_perror("C_GenerateRandom", rv);
-		return 1;
+		errors++;
 	}
 
 	rv = p11->C_GenerateRandom(session, buf1, 100);
 	if (rv != CKR_OK) {
 		p11_perror("C_GenerateRandom(buf1,100)", rv);
-		return 1;
+		errors++;
 	}
 
 	rv = p11->C_GenerateRandom(session, buf1, 0);
 	if (rv != CKR_OK) {
 		p11_perror("C_GenerateRandom(buf1,0)", rv);
-		return 1;
+		errors++;
 	}
 
 	rv = p11->C_GenerateRandom(session, buf2, 100);
 	if (rv != CKR_OK) {
 		p11_perror("C_GenerateRandom(buf2,100)", rv);
-		return 1;
+		errors++;
 	}
 
 	if (memcmp(buf1, buf2, 100) == 0) {
@@ -7407,9 +7407,10 @@ static int test_random(CK_SESSION_HANDLE session)
 		errors++;
 	}
 
-	printf("  seems to be OK\n");
+	if (!errors)
+		printf("  seems to be OK\n");
 
-	return 0;
+	return errors;
 }
 
 static int test_card_detection(int wait_for_event)
