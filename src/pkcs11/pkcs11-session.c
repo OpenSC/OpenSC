@@ -277,7 +277,7 @@ CK_RV C_GetSessionInfo(CK_SESSION_HANDLE hSession,	/* the session's handle */
 
 	slot = session->slot;
 	card_status = slot_get_card_state(slot);
-	if (card_status != SC_READER_CARD_PRESENT) {
+	if (!(card_status & SC_READER_CARD_PRESENT)) {
 		/* Card was removed or reinserted, invalidate all sessions */
 		slot->login_user = -1;
 		sc_pkcs11_close_all_sessions(session->slot->id);

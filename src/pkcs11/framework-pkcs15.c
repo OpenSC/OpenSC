@@ -1420,12 +1420,7 @@ int slot_get_card_state(struct sc_pkcs11_slot *slot)
 
 	if ((rv = sc_detect_card_presence(p15card->card->reader)) <= 0)
 		goto out;
-	if (rv & SC_READER_CARD_CHANGED)
-		return SC_READER_CARD_CHANGED;
-	else if (rv & SC_READER_REMOVED)
-		return SC_READER_REMOVED;
-	else if (rv & SC_READER_CARD_PRESENT)
-		return SC_READER_CARD_PRESENT;
+	return rv;
 out:
 	return 0;
 }
