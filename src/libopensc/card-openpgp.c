@@ -1780,12 +1780,17 @@ pgp_get_pubkey_pem(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
  * p1: number of an instance (DO 7F21: 0x00 for AUT, 0x01 for DEC and 0x02 for SIG)
  */
 static int
-pgp_select_data(sc_card_t *card, u8 p1){
+pgp_select_data(sc_card_t *card, u8 p1)
+{
 	sc_apdu_t	apdu;
 	u8	apdu_data[6];
 	int	r;
+	struct pgp_priv_data *priv = DRVDATA(card);
 
 	LOG_FUNC_CALLED(card->ctx);
+
+	if (priv->bcd_version < OPENPGP_CARD_3_0)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 
 	sc_log(card->ctx, "select data with: %u", p1);
 
@@ -2179,8 +2184,7 @@ pgp_set_security_env(sc_card_t *card,
 	/* The SC_SEC_ENV_ALG_PRESENT is set always so let it pass for GNUK */
 	if ((env->flags & SC_SEC_ENV_ALG_PRESENT)
 		&& (env->algorithm != SC_ALGORITHM_RSA)
-		&& (priv->bcd_version < OPENPGP_CARD_3_0)
-		&& (card->type != SC_CARD_TYPE_OPENPGP_GNUK))
+		&& (priv->bcd_version < OPENPGP_CARD_3_0))
 		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
 				"only RSA algorithm supported");
 
@@ -2944,13 +2948,13 @@ pgp_update_card_algorithms(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *ke
 {
 	sc_algorithm_info_t *algo;
 	u8 id = key_info->key_id;
+	struct pgp_priv_data *priv = DRVDATA(card);
 
 	LOG_FUNC_CALLED(card->ctx);
 
 	/* protect incompatible cards against non-RSA */
 	if (key_info->algorithm != SC_OPENPGP_KEYALGO_RSA
-		&& card->type < SC_CARD_TYPE_OPENPGP_V3
-		&& card->type != SC_CARD_TYPE_OPENPGP_GNUK)
+		&& priv->bcd_version < OPENPGP_CARD_3_0)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 
 	if (id > card->algorithm_count) {
@@ -2992,13 +2996,13 @@ pgp_gen_key(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_info)
 	size_t apdu_le;
 	size_t resplen = 0;
 	int r = SC_SUCCESS;
+	struct pgp_priv_data *priv = DRVDATA(card);
 
 	LOG_FUNC_CALLED(card->ctx);
 
 	/* protect incompatible cards against non-RSA */
 	if (key_info->algorithm != SC_OPENPGP_KEYALGO_RSA
-		&& card->type < SC_CARD_TYPE_OPENPGP_V3
-		&& card->type != SC_CARD_TYPE_OPENPGP_GNUK)
+		&& priv->bcd_version < OPENPGP_CARD_3_0)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 	if (key_info->algorithm == SC_OPENPGP_KEYALGO_EDDSA
 		&& card->type != SC_CARD_TYPE_OPENPGP_GNUK)
@@ -3358,13 +3362,13 @@ pgp_store_key(sc_card_t *card, sc_cardctl_openpgp_keystore_info_t *key_info)
 	u8 *data = NULL;
 	size_t len = 0;
 	int r;
+	struct pgp_priv_data *priv = DRVDATA(card);
 
 	LOG_FUNC_CALLED(card->ctx);
 
 	/* protect incompatible cards against non-RSA */
 	if (key_info->algorithm != SC_OPENPGP_KEYALGO_RSA
-		&& card->type < SC_CARD_TYPE_OPENPGP_V3
-		&& card->type != SC_CARD_TYPE_OPENPGP_GNUK)
+		&& priv->bcd_version < OPENPGP_CARD_3_0)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 
 	/* Validate */
