@@ -5555,7 +5555,7 @@ static int read_object(CK_SESSION_HANDLE session)
 		nn_attrs++;
 	}
 
-	rv = find_object_with_attributes(session, &obj, attrs, nn_attrs, 0);
+	rv = find_object_with_attributes(session, &obj, attrs, nn_attrs, opt_object_index);
 	if (rv != CKR_OK)
 		p11_fatal("find_object_with_attributes()", rv);
 	else if (obj==CK_INVALID_HANDLE)
