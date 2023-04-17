@@ -35,6 +35,10 @@ elif [ "$1" == "mingw" -o "$1" == "mingw32" ]; then
 	fi
 fi
 
+if [ "$1" == "meson" ]; then
+	DEPS="$DEPS meson"
+fi
+
 # The Github Ubuntu images since 20211122.1 are broken
 # https://github.com/actions/virtual-environments/issues/4589
 if [ "$1" == "mingw" -o "$1" == "mingw32" -o "$1" == "ix86" ]; then
