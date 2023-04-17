@@ -69,7 +69,7 @@ thread_dep = dependency('threads', required: false)
 zlib_dep = dependency('zlib', required: false)
 openssl_dep = dependency('openssl', required: false)
 readline_dep = dependency('readline', required: false)
-dl_dep = dependency('dl')
+dl_dep = cc.find_library('dl', required : false)
 openpace_dep = dependency('libeac', required: false)
 
 cdata.set('ENABLE_READLINE', readline_dep.found())
