@@ -132,9 +132,6 @@
 /* Have PTHREAD_PRIO_INHERIT. */
 #mesondefine HAVE_PTHREAD_PRIO_INHERIT
 
-/* Define to 1 if you have the <readline/readline.h> header file. */
-#mesondefine HAVE_READLINE_READLINE_H
-
 /* Define to 1 if you have the `sigaction' function. */
 #mesondefine HAVE_SIGACTION
 

@@ -20,4 +20,5 @@ pkcs11_lib = static_library('pkcs11',
 scdl_lib = static_library('scdl',
     'libscdl.c',
     include_directories: core_inc,
+    dependencies: [dl_dep],
     )

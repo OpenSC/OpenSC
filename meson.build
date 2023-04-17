@@ -52,6 +52,8 @@ check_functions = [
     ['HAVE_STRERROR', 'strerror', '#include<string.h>'],
 #   check token ['HAVE_STRNLEN']
 #   check token ['HAVE_VPRINTF']
+    ['HAVE_STRERROR', 'strerror', '#include<string.h>'],
+    ['HAVE_BUILTIN_OVERFLOW', '__builtin_uadd_overflow', ''],
 ]
 
 foreach f : check_functions
@@ -67,12 +69,12 @@ thread_dep = dependency('threads')
 zlib_dep = dependency('zlib', required: false)
 openssl_dep = dependency('openssl', required: false)
 readline_dep = dependency('readline', required: false)
+dl_dep = dependency('dl')
 
-cdata.set10('ENABLE_READLINE', readline_dep.found())
-cdata.set('HAVE_READLINE_READLINE_H', readline_dep.found())
-cdata.set10('ENABLE_ZLIB', zlib_dep.found())
+cdata.set('ENABLE_READLINE', readline_dep.found())
+cdata.set('ENABLE_ZLIB', zlib_dep.found())
 cdata.set('HAVE_ZLIB_H', zlib_dep.found())
-cdata.set10('ENABLE_OPENSSL', openssl_dep.found())
+cdata.set('ENABLE_OPENSSL', openssl_dep.found())
 cdata.set('HAVE_OPENSSL_CRYPTO_H', openssl_dep.found())
 
 version_str = meson.project_version()
