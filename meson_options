@@ -1,0 +1,1 @@
+option('sm', type : 'boolean', value : true, description : 'secure messaging support and SM modules')

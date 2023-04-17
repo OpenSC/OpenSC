@@ -65,17 +65,20 @@ endforeach
 cdata.set_quoted('SC_PKCS15_PROFILE_DIRECTORY', get_option('prefix') / get_option('datadir') / 'opensc')
 cdata.set('SIZEOF_VOID_P', cc.sizeof('void*'))
 
-thread_dep = dependency('threads')
+thread_dep = dependency('threads', required: false)
 zlib_dep = dependency('zlib', required: false)
 openssl_dep = dependency('openssl', required: false)
 readline_dep = dependency('readline', required: false)
 dl_dep = dependency('dl')
+openpace_dep = dependency('libeac', required: false)
 
 cdata.set('ENABLE_READLINE', readline_dep.found())
 cdata.set('ENABLE_ZLIB', zlib_dep.found())
 cdata.set('HAVE_ZLIB_H', zlib_dep.found())
 cdata.set('ENABLE_OPENSSL', openssl_dep.found())
 cdata.set('HAVE_OPENSSL_CRYPTO_H', openssl_dep.found())
+cdata.set('ENABLE_OPENPACE', openpace_dep.found())
+cdata.set('ENABLE_SM', get_option('sm').enabled())
 
 version_str = meson.project_version()
 varr = version_str.split('.')

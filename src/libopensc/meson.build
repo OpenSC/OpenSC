@@ -115,5 +115,5 @@ opensc_lib = shared_library('opensc',
     'aux-data.c',
     link_with: [pkcs15init_lib, notify_lib, scdl_lib, sm_lib, scconf_lib, compat_lib],
     include_directories: core_inc,
-    dependencies: [zlib_dep],
+    dependencies: [zlib_dep, openssl_dep, openpace_dep],
 )

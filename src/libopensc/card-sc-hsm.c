@@ -1886,7 +1886,7 @@ static int sc_hsm_init(struct sc_card *card)
 	priv->EF_C_DevAut = NULL;
 	priv->EF_C_DevAut_len = 0;
 
-#ifdef ENABLE_OPENPACE
+#if defined(ENABLE_OPENPACE) && defined(ENABLE_SM)
 	EAC_init();
 #ifdef _WIN32
 	expanded_len = ExpandEnvironmentStringsA(CVCDIR, expanded_val, sizeof expanded_val);

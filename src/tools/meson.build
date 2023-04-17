@@ -71,7 +71,7 @@ executable('egk-tool', 'egk-tool.c',  'util.c', 'egk-tool-cmdline.c',
 executable('goid-tool', 'goid-tool.c',  'util.c', 'goid-tool-cmdline.c', 'fread_to_eof.c',
     include_directories: core_inc,
     link_with: [opensc_lib],
-    dependencies: [],
+    dependencies: [openssl_dep, openpace_dep],
 )
 
 if openssl_dep.found()
@@ -121,5 +121,19 @@ if openssl_dep.found()
         include_directories: core_inc,
         link_with: [opensc_lib],
         dependencies: openssl_dep,
+    )
+endif
+
+if openpace_dep.found()
+    executable('npa-tool', 'npa-tool.c', 'fread_to_eof.c', 'util.c', 'npa-tool-cmdline.c',
+        include_directories: core_inc,
+        link_with: [opensc_lib],
+        dependencies: [openssl_dep, openpace_dep],
+    )
+
+    executable('sceac-example.c', 'sceac-example.c',
+        include_directories: core_inc,
+        link_with: [opensc_lib],
+        dependencies: [openssl_dep, openpace_dep],
     )
 endif
