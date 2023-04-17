@@ -84,6 +84,19 @@ jobs:
           path:
             win32/Output/OpenSC*.exe
 
+  build-meson:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: .github/setup-linux.sh
+      - run: .github/build-meson.sh
+      - name: Cache build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: opensc-build-meson-ubuntu
+          path:
+            build
+
   test-piv:
     runs-on: ubuntu-20.04
     needs: [build]

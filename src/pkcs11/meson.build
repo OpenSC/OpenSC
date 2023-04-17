@@ -15,6 +15,7 @@ pkcs11_mod = shared_module('opensc-pkcs11',
     pkcs11_sources,
     include_directories: core_inc,
     dependencies: [openssl_dep, openpace_dep],
+    install: true,
 )
 
 pkcs11_mod = shared_module('onepin-opensc-pkcs11',
@@ -22,4 +23,5 @@ pkcs11_mod = shared_module('onepin-opensc-pkcs11',
     c_args: ['-DMODULE_APP_NAME="onepin-opensc-pkcs11"'],
     include_directories: core_inc,
     dependencies: [openssl_dep, openpace_dep],
+    install: true,
 )
