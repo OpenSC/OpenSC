@@ -10,7 +10,9 @@ export LD_LIBRARY_PATH=/usr/local/lib
 . .github/setup-java.sh
 
 # GidsApplet
-git clone https://github.com/vletoux/GidsApplet.git;
+if [ ! -d "GidsApplet" ]; then
+	git clone https://github.com/vletoux/GidsApplet.git;
+fi
 javac -classpath jcardsim/target/jcardsim-3.0.5-SNAPSHOT.jar GidsApplet/src/com/mysmartlogon/gidsApplet/*.java;
 echo "com.licel.jcardsim.card.applet.0.AID=A000000397425446590201" > gids_jcardsim.cfg;
 echo "com.licel.jcardsim.card.applet.0.Class=com.mysmartlogon.gidsApplet.GidsApplet" >> gids_jcardsim.cfg;

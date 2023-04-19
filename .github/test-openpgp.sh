@@ -10,7 +10,9 @@ export LD_LIBRARY_PATH=/usr/local/lib
 . .github/setup-java.sh
 
 # The OpenPGP applet
-git clone --recursive https://github.com/Yubico/ykneo-openpgp.git;
+if [ ! -d "ykneo-openpgp" ]; then
+	git clone --recursive https://github.com/Yubico/ykneo-openpgp.git;
+fi
 pushd ykneo-openpgp;
 ant -DJAVACARD_HOME=${JC_HOME};
 popd

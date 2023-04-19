@@ -20,15 +20,18 @@ popd
 # yubico-piv-tool is needed for PIV Applet management
 if [ ! -d "yubico-piv-tool" ]; then
 	git clone https://github.com/Yubico/yubico-piv-tool.git
+	pushd yubico-piv-tool
+	if [ ! -d "build" ]; then
+		mkdir build
+		pushd build
+		cmake .. && make
+		popd
+	fi
+	popd
 fi
-pushd yubico-piv-tool
-if [ ! -d "build" ]; then
-	mkdir build
-fi
-pushd build
-cmake .. && make && sudo make install
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib/x86_64-linux-gnu
-popd
+pushd yubico-piv-tool/build
+	sudo make install
+	export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib/x86_64-linux-gnu
 popd
 
 

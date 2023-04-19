@@ -12,9 +12,12 @@ export LD_LIBRARY_PATH=/usr/local/lib
 # libcacard
 if [ ! -d "libcacard" ]; then
 	git clone https://gitlab.freedesktop.org/spice/libcacard.git
+	pushd libcacard
+	./autogen.sh --prefix=/usr && make -j2
+	popd
 fi
 pushd libcacard
-./autogen.sh --prefix=/usr && make -j2 && sudo make install
+sudo make install
 popd
 
 # prepare pcscd
@@ -23,9 +26,11 @@ popd
 # virt_cacard
 if [ ! -d "virt_cacard" ]; then
 	git clone https://github.com/Jakuje/virt_cacard.git
+	pushd virt_cacard
+	./autogen.sh && ./configure && make
+	popd
 fi
 pushd virt_cacard
-./autogen.sh && ./configure && make
 ./setup-softhsm2.sh
 export SOFTHSM2_CONF=$PWD/softhsm2.conf
 # register cleanup function on exit
