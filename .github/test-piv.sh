@@ -2,6 +2,8 @@
 
 set -ex -o xtrace
 
+source .github/setup-valgrind.sh
+
 # install the opensc
 sudo make install
 export LD_LIBRARY_PATH=/usr/local/lib
@@ -43,8 +45,8 @@ popd
 java -noverify -cp PivApplet/bin/:jcardsim/target/jcardsim-3.0.5-SNAPSHOT.jar com.licel.jcardsim.remote.VSmartCard PivApplet/test/jcardsim.cfg >/dev/null &
 PID=$!
 sleep 5
-opensc-tool --card-driver default --send-apdu 80b80000120ba000000308000010000100050000020F0F7f
-opensc-tool -n
+$VALGRIND opensc-tool --card-driver default --send-apdu 80b80000120ba000000308000010000100050000020F0F7f
+$VALGRIND opensc-tool -n
 
 PIN="123456"
 yubico-piv-tool -v 9999 -r 'Virtual PCD 00 00' -P "$PIN" -s 9e -a generate -A RSA2048 | tee 9e.pub
@@ -55,6 +57,6 @@ yubico-piv-tool -v 9999 -r 'Virtual PCD 00 00' -P "$PIN" -s 9a -a generate -A EC
 yubico-piv-tool -v 9999 -r 'Virtual PCD 00 00' -P "$PIN" -s 9a -S'/CN=bar/OU=test/O=example.com/' -averify -aselfsign < 9a.pub | tee 9a.cert
 yubico-piv-tool -v 9999 -r 'Virtual PCD 00 00' -P "$PIN" -s 9a -aimport-certificate < 9a.cert
 
-pkcs11-tool -l -O -p "$PIN"
-pkcs11-tool -l -t -p "$PIN"
+$VALGRIND pkcs11-tool -l -O -p "$PIN"
+$VALGRIND pkcs11-tool -l -t -p "$PIN"
 kill -9 $PID

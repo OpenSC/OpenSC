@@ -1,9 +1,10 @@
 #!/bin/bash
 ## from OpenSC/src/tests/p11test/runtest.sh
+BUILD_PATH=${BUILD_PATH:-..}
 
 SOPIN="12345678"
 PIN="123456"
-PKCS11_TOOL="$BUILD_PATH/src/tools/pkcs11-tool"
+PKCS11_TOOL="$VALGRIND $BUILD_PATH/src/tools/pkcs11-tool"
 
 softhsm_paths="/usr/local/lib/softhsm/libsofthsm2.so \
 	/usr/lib/softhsm/libsofthsm2.so
@@ -60,6 +61,9 @@ function generate_key() {
 
 function softhsm_initialize() {
 	echo "directories.tokendir = .tokens/" > .softhsm2.conf
+	if [ -d ".tokens" ]; then
+		rm -rf ".tokens"
+	fi
 	mkdir ".tokens"
 	export SOFTHSM2_CONF=".softhsm2.conf"
 	# Init token
