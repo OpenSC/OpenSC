@@ -2,6 +2,8 @@
 
 set -ex -o xtrace
 
+source .github/setup-valgrind.sh
+
 # install the opensc
 sudo make install
 export LD_LIBRARY_PATH=/usr/local/lib
@@ -29,7 +31,7 @@ echo "com.licel.jcardsim.vsmartcard.port=35963" >> gids_jcardsim.cfg;
 java -noverify -cp GidsApplet/src/:jcardsim/target/jcardsim-3.0.5-SNAPSHOT.jar com.licel.jcardsim.remote.VSmartCard gids_jcardsim.cfg >/dev/null &
 PID=$!;
 sleep 5;
-opensc-tool --card-driver default --send-apdu 80b80000190bA0000003974254465902010bA00000039742544659020100;
-opensc-tool -n;
-gids-tool --initialize --pin 123456 --admin-key 000000000000000000000000000000000000000000000000 --serial 00000000000000000000000000000000;
+$VALGRIND opensc-tool --card-driver default --send-apdu 80b80000190bA0000003974254465902010bA00000039742544659020100;
+$VALGRIND opensc-tool -n;
+$VALGRIND gids-tool --initialize --pin 123456 --admin-key 000000000000000000000000000000000000000000000000 --serial 00000000000000000000000000000000;
 kill -9 $PID

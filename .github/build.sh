@@ -34,7 +34,7 @@ if [ "$1" == "mingw" -o "$1" == "mingw32" ]; then
 	unset CC
 	unset CXX
 	./configure --host=$HOST --with-completiondir=/tmp --disable-openssl --disable-readline --disable-zlib --disable-notify --prefix=$PWD/win32/opensc || cat config.log;
-	make -j 2 V=1
+	make -j 4 V=1
 	# no point in running tests on mingw
 else
 	if [ "$1" == "ix86" ]; then
@@ -43,15 +43,29 @@ else
 	fi
 	# normal procedure
 
-	if [ "$1" == "no-shared" ]; then
+	if [ "$1" == "valgrind" ]; then
+		./configure --disable-notify --enable-valgrind
+	elif [ "$1" == "no-shared" ]; then
 		./configure --disable-shared
 	else
 		./configure --disable-dependency-tracking
 	fi
-	make -j 2 V=1
+	make -j 4 V=1
 	# 32b build has some issues to find openssl correctly
-	if [ "$1" != "ix86" ]; then
+	if [ "$1" == "valgrind" ]; then
+		make check-valgrind-memcheck
+		RV=$?
+		source .github/dump-logs.sh
+		if [ $RV -ne 0 ]; then
+			exit $RV
+		fi
+	elif [ "$1" != "ix86" ]; then
 		make check
+		RV=$?
+		source .github/dump-logs.sh
+		if [ $RV -ne 0 ]; then
+			exit $RV
+		fi
 	fi
 fi
 

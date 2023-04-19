@@ -149,6 +149,8 @@ AX_CODE_COVERAGE()
 AX_CHECK_COMPILE_FLAG([-Wunknown-warning-option], [have_unknown_warning_option="yes"], [have_unknown_warning_option="no"])
 AM_CONDITIONAL([HAVE_UNKNOWN_WARNING_OPTION], [test "${have_unknown_warning_option}" = "yes"])
 
+AX_VALGRIND_CHECK()
+
 AC_ARG_ENABLE(
 	[fuzzing],
 	[AS_HELP_STRING([--enable-fuzzing],[enable compile of fuzzing tests @<:@disabled@:>@, note that CC, CFLAGS and FUZZING_LIBS should be set accordingly, e.g. to something like CC="clang" CFLAGS="-fsanitize=fuzzer-no-link" FUZZING_LIBS="-fsanitize=fuzzer"])],

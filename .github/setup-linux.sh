@@ -4,7 +4,7 @@ set -ex -o xtrace
 
 WINE_DEPS=""
 # Generic dependencies
-DEPS="docbook-xsl xsltproc gengetopt help2man pcscd check pcsc-tools libtool make autoconf autoconf-archive automake pkg-config git xxd openssl"
+DEPS="docbook-xsl xsltproc gengetopt help2man pcscd check pcsc-tools libtool make autoconf autoconf-archive automake pkg-config git xxd openssl valgrind"
 
 # 64bit or 32bit dependencies
 if [ "$1" == "ix86" ]; then
