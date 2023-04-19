@@ -49,8 +49,8 @@ yubico-piv-tool -v 9999 -r 'Virtual PCD 00 00' -P "$PIN" -s 9e -S'/CN=barCard/OU
 yubico-piv-tool -v 9999 -r 'Virtual PCD 00 00' -P "$PIN" -s 9e -aimport-certificate <9e.cert
 
 yubico-piv-tool -v 9999 -r 'Virtual PCD 00 00' -P "$PIN" -s 9a -a generate -A ECCP256 | tee 9a.pub
-yubico-piv-tool -v 9999 -r 'Virtual PCD 00 00' -P "$PIN" -s 9a -S'/CN=bar/OU=test/O=example.com/' -averify -aselfsign < 9a.pub | tee 9e.cert
-yubico-piv-tool -v 9999 -r 'Virtual PCD 00 00' -P "$PIN" -s 9a -aimport-certificate < 9e.cert
+yubico-piv-tool -v 9999 -r 'Virtual PCD 00 00' -P "$PIN" -s 9a -S'/CN=bar/OU=test/O=example.com/' -averify -aselfsign < 9a.pub | tee 9a.cert
+yubico-piv-tool -v 9999 -r 'Virtual PCD 00 00' -P "$PIN" -s 9a -aimport-certificate < 9a.cert
 
 pkcs11-tool -l -O -p "$PIN"
 pkcs11-tool -l -t -p "$PIN"
