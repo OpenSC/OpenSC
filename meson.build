@@ -78,7 +78,35 @@ cdata.set('HAVE_ZLIB_H', zlib_dep.found())
 cdata.set('ENABLE_OPENSSL', openssl_dep.found())
 cdata.set('HAVE_OPENSSL_CRYPTO_H', openssl_dep.found())
 cdata.set('ENABLE_OPENPACE', openpace_dep.found())
-cdata.set('ENABLE_SM', get_option('sm').enabled())
+if openpace_dep.found()
+  x509dir = get_option('x509dir')
+  if x509dir == ''
+    x509dir = openpace_dep.get_pkgconfig_variable('x509dir')
+  endif
+  if x509dir == '' and host_machine.system() == 'windows'
+    x509dir='%PROGRAMFILES%\\OpenSC Project\\OpenSC\\x509'
+  endif
+  cdata.set_quoted('X509DIR', x509dir)
+
+  cvcdir = get_option('x509dir')
+  if cvcdir == ''
+    cvcdir = openpace_dep.get_pkgconfig_variable('cvcdir')
+  endif
+  if cvcdir == '' and host_machine.system() == 'windows'
+    cvcdir='%PROGRAMFILES%\\OpenSC Project\\OpenSC\\cvc'
+  endif
+  cdata.set_quoted('CVCDIR', cvcdir)
+endif
+cdata.set('ENABLE_SM', get_option('sm'))
+if get_option('sm')
+  if host_machine.system() == 'windows'
+    cdata.set_quoted('DEFAULT_SM_MODULE_PATH', '%PROGRAMFILES%\\OpenSC Project\\OpenSC\\tools')
+    cdata.set_quoted('DEFAULT_SM_MODULE', 'smm-local.dll')
+  else
+    cdata.set_quoted('DEFAULT_SM_MODULE_PATH', get_option('prefix')/get_option('libdir'))
+    cdata.set_quoted('DEFAULT_SM_MODULE', 'libsmm-local.so')
+  endif
+endif
 
 version_str = meson.project_version()
 varr = version_str.split('.')
@@ -90,8 +118,14 @@ cdata.set_quoted('OPENSC_VS_FF_COMPANY_NAME', 'OpenSC Project')
 cdata.set_quoted('OPENSC_VS_FF_PRODUCT_NAME', 'OpenSC smartcard framework')
 cdata.set_quoted('OPENSC_SCM_REVISION', 'FIXME')
 cdata.set_quoted('OPENSC_FEATURES', 'FIXME')
-cdata.set_quoted('DEFAULT_PKCS11_PROVIDER', get_option('prefix') / 'lib/opensc-pkcs11.so')
-cdata.set_quoted('DEFAULT_ONEPIN_PKCS11_PROVIDER', get_option('prefix') / 'lib/onepin-opensc-pkcs11.so')
+if host_machine.system() == 'windows'
+  cdata.set_quoted('DEFAULT_PKCS11_PROVIDER', '%PROGRAMFILES%\\OpenSC Project\\OpenSC\\pkcs11\\opensc-pkcs11.dll')
+  cdata.set_quoted('DEFAULT_ONEPIN_PKCS11_PROVIDER', '%PROGRAMFILES%\\OpenSC Project\\OpenSC\\pkcs11\\onepin-opensc-pkcs11.dll')
+else
+  # how to replace DYN_LIB_EXT ?
+  cdata.set_quoted('DEFAULT_PKCS11_PROVIDER', get_option('prefix') / get_option('libdir') / 'opensc-pkcs11.so')
+  cdata.set_quoted('DEFAULT_ONEPIN_PKCS11_PROVIDER', get_option('prefix') / get_option('libdir') / 'onepin-opensc-pkcs11.so')
+endif
 
 cdata.set_quoted('VERSION', version_str)
 cdata.set_quoted('PACKAGE', 'opensc')

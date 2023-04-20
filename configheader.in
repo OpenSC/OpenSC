@@ -6,6 +6,9 @@
 /* CVC directory */
 #mesondefine CVCDIR
 
+/* X.509 directory */
+#mesondefine X509DIR
+
 /* Default PC/SC provider */
 #mesondefine DEFAULT_PCSC_PROVIDER
 
@@ -302,9 +305,6 @@
 # endif
 #endif
 
-/* CVC directory */
-#mesondefine X509DIR
-
 /* Define to empty if `const' does not conform to ANSI C. */
 #mesondefine const
 
@@ -330,3 +330,7 @@
 #mesondefine DEFAULT_PKCS11_PROVIDER
 
 #mesondefine DEFAULT_ONEPIN_PKCS11_PROVIDER
+
+#mesondefine DEFAULT_SM_MODULE_PATH
+
+#mesondefine DEFAULT_SM_MODULE

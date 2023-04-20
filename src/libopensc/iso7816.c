@@ -1387,7 +1387,7 @@ static int iso7816_get_data(struct sc_card *card, unsigned int tag,  u8 *buf, si
 static int
 iso7816_init(struct sc_card *card)
 {
-#if ENABLE_SM
+#ifdef ENABLE_SM
 	memset(&card->sm_ctx, 0, sizeof card->sm_ctx);
 #endif
 	return SC_SUCCESS;

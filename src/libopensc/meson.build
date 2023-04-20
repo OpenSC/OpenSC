@@ -113,7 +113,7 @@ opensc_lib = shared_library('opensc',
     'compression.c',
     'sm.c',
     'aux-data.c',
-    link_with: [pkcs15init_lib, notify_lib, scdl_lib, sm_lib, scconf_lib, compat_lib],
+    link_with: [pkcs15init_lib, notify_lib, scdl_lib, sm_lib, scconf_lib, compat_lib, smeac_lib],
     include_directories: core_inc,
     dependencies: [zlib_dep, openssl_dep, openpace_dep],
 )
