@@ -666,7 +666,7 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 		memcpy(pInfo, &slot->slot_info, sizeof(CK_SLOT_INFO));
 
 	sc_log(context, "C_GetSlotInfo() flags 0x%lX", pInfo->flags);
-	
+
 	name = lookup_enum(RV_T, rv);
 	if (name)
 		sc_log(context, "C_GetSlotInfo(0x%lx) = %s", slotID, name);

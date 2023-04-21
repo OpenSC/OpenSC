@@ -2043,7 +2043,7 @@ sc_pkcs15init_store_secret_key(struct sc_pkcs15_card *p15card, struct sc_profile
 		r = profile->ops->create_key(profile, p15card, object);
 	LOG_TEST_GOTO_ERR(ctx, r, "Card specific 'create key' failed");
 
-	/* If no key data, only an empty EF is created. 
+	/* If no key data, only an empty EF is created.
 	 * It can be used to receive an unwrapped key later. */
 	if (keyargs->key.data_len > 0) {
 		if (profile->ops->store_key) {
@@ -3462,7 +3462,7 @@ sc_pkcs15init_change_attrib(struct sc_pkcs15_card *p15card, struct sc_profile *p
 			struct sc_pkcs15_der new_data;
 			new_data.len = new_len;
 			new_data.value = (u8 *) new_value;
-			
+
 			/* save new data as a new data file on token */
 			r = sc_pkcs15init_store_data(p15card, profile, object, &new_data, &new_data_path);
 			profile->dirty = 1;
@@ -3479,7 +3479,7 @@ sc_pkcs15init_change_attrib(struct sc_pkcs15_card *p15card, struct sc_profile *p
 			info->data.len = new_len;
 			info->data.value = nv;
 			info->path = new_data_path;
-			
+
 			/* delete old data file from token */
 			r = sc_pkcs15init_delete_by_path(profile, p15card, &old_data_path);
 			LOG_TEST_RET(ctx, r, "Failed to delete old data");
