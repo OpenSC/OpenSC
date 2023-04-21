@@ -8,7 +8,7 @@ RUN export DEBIAN_FRONTEND=noninteractive; \
     echo 'tzdata tzdata/Zones/Etc select UTC' | debconf-set-selections; \
     apt-get install -y --no-install-recommends tzdata sudo
 WORKDIR /src
-RUN /src/.github/setup-linux.sh cac
+RUN /src/.github/setup-linux.sh gidsapplet
 RUN /src/.github/build.sh
-#CMD /src/.github/test-cac.sh
-CMD /src/.github/test-cac.sh valgrind
+#CMD /src/.github/test-gidsapplet.sh
+CMD /src/.github/test-gidsapplet.sh valgrind
