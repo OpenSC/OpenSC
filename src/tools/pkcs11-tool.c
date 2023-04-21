@@ -7419,7 +7419,7 @@ static int test_random(CK_SESSION_HANDLE session)
 		errors++;
 	}
 
-	if (memcmp(buf1, buf2, 100) == 0) {
+	if (errors == 0 && memcmp(buf1, buf2, 100) == 0) {
 		printf("  ERR: C_GenerateRandom returned twice the same value!!!\n");
 		errors++;
 	}
