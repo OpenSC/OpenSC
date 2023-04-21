@@ -2444,7 +2444,8 @@ pkcs15_create_private_key(struct sc_pkcs11_slot *slot, struct sc_profile *profil
 
 	rv = CKR_OK;
 
-out:	return rv;
+out:
+	return rv;
 }
 
 /*
