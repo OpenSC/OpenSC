@@ -1605,18 +1605,9 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 
 	/* Generate the private key on card */
 	r = profile->ops->create_key(profile, p15card, object);
-	if (r < 0 && algorithm == SC_ALGORITHM_EC) {
-		/* pubkey->alg_id->algorithm is not set yet, needs to be freed independently */
-		free(pubkey_args.key.u.ec.params.der.value);
-		free(pubkey_args.key.u.ec.params.named_curve);
-	}
 	LOG_TEST_GOTO_ERR(ctx, r, "Cannot generate key: create key failed");
 
 	r = profile->ops->generate_key(profile, p15card, object, &pubkey_args.key);
-	if (r < 0 && algorithm == SC_ALGORITHM_EC) {
-		free(pubkey_args.key.u.ec.params.der.value);
-		free(pubkey_args.key.u.ec.params.named_curve);
-	}
 	LOG_TEST_GOTO_ERR(ctx, r, "Failed to generate key");
 
 	/* update PrKDF entry */
@@ -1628,8 +1619,6 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 		memset(&iid, 0, sizeof(iid));
 		r = sc_pkcs15init_select_intrinsic_id(p15card, profile, SC_PKCS15_TYPE_PUBKEY, &iid, &pubkey_args.key);
 		if (r < 0 && algorithm == SC_ALGORITHM_EC) {
-			free(pubkey_args.key.u.ec.params.der.value);
-			free(pubkey_args.key.u.ec.params.named_curve);
 			free(pubkey_args.key.u.ec.ecpointQ.value); /* allocated in profile->ops->generate_key */
 		}
 		LOG_TEST_GOTO_ERR(ctx, r, "Select intrinsic ID error");
@@ -1642,10 +1631,6 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 	if (!pubkey->alg_id)   {
 		pubkey->alg_id = calloc(1, sizeof(struct sc_algorithm_id));
 		if (!pubkey->alg_id) {
-			if (algorithm == SC_ALGORITHM_EC) {
-				free(pubkey_args.key.u.ec.params.der.value);
-				free(pubkey_args.key.u.ec.params.named_curve);
-			}
 			r = SC_ERROR_OUT_OF_MEMORY;
 			LOG_TEST_GOTO_ERR(ctx, r, "Can not allocate memory for algorithm id");
 		}
@@ -1677,14 +1662,15 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 		*res_obj = object;
 	object = NULL;
 
-	sc_pkcs15_erase_pubkey(pubkey);
-
 	profile->dirty = 1;
 
 err:
 	sc_pkcs15_erase_pubkey(pubkey);
 	sc_pkcs15_free_object(object);
 	if (algorithm == SC_ALGORITHM_EC) {
+		/* Allocated in sc_copy_ec_params() */
+		free(pubkey_args.key.u.ec.params.der.value);
+		free(pubkey_args.key.u.ec.params.named_curve);
 		/* allocated in check_keygen_params_consistency() */
 		free(keygen_args->prkey_args.key.u.ec.params.der.value);
 		keygen_args->prkey_args.key.u.ec.params.der.value = NULL;
