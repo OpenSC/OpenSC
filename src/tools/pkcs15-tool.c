@@ -1587,6 +1587,7 @@ static int list_pins(void)
 		printf("Card has %d Authentication object(s).\n\n", r);
 
 	for (i = 0; i < r; i++) {
+		sc_pkcs15_get_pin_info(p15card, objs[i]);
 		print_pin_info(objs[i]);
 		printf("\n");
 	}
