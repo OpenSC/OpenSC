@@ -1176,7 +1176,6 @@ pkcs15_init_slot(struct sc_pkcs15_card *p15card, struct sc_pkcs11_slot *slot,
 			size_t pin_len = 0;
 			if (auth->label[0] && strncmp(auth->label, "PIN", 4) != 0)
 				pin_len = strlen(auth->label);
-
 			if (pin_len) {
 				size_t tokeninfo_len = 0;
 				if (p15card->tokeninfo && p15card->tokeninfo->label)
@@ -1207,6 +1206,13 @@ pkcs15_init_slot(struct sc_pkcs15_card *p15card, struct sc_pkcs11_slot *slot,
 				strcpy_bp(slot->token_info.label,
 						p15card->tokeninfo ? p15card->tokeninfo->label : "",
 						32);
+			}
+			/* Some applications (NSS) do not like the colons in the
+			 * TOKEN_INFO label so replace them here */
+			for (int i = 0; i < 32; i++) {
+				if (slot->token_info.label[i] == ':') {
+					slot->token_info.label[i] = '.';
+				}
 			}
 			if (p15card->tokeninfo->flags & SC_PKCS15_TOKEN_LOGIN_REQUIRED)
 				slot->token_info.flags |= CKF_LOGIN_REQUIRED;
@@ -1413,7 +1419,7 @@ _get_auth_object_by_name(struct sc_pkcs15_card *p15card, char *name, char *label
 		if (id.len > sizeof(id.value))
 			id.len = sizeof(id.value);
 		rv = sc_pkcs15_find_pin_by_auth_id(p15card, &id, &out);
-	} 
+	}
 	else if (!strcmp(name, "UserPIN"))   {
 		/* Try to get 'global' PIN; if no, get the 'local' one */
 		rv = sc_pkcs15_find_pin_by_flags(p15card, SC_PKCS15_PIN_TYPE_FLAGS_PIN_GLOBAL,
@@ -3649,7 +3655,7 @@ pkcs15_set_attrib(struct sc_pkcs11_session *session, struct sc_pkcs15_object *p1
 			ck_rv = CKR_ATTRIBUTE_READ_ONLY;
 			goto set_attr_done;
 		}
-		rv = sc_pkcs15init_change_attrib(fw_data->p15_card, profile, p15_object, 
+		rv = sc_pkcs15init_change_attrib(fw_data->p15_card, profile, p15_object,
 				P15_ATTR_TYPE_VALUE, attr->pValue, (unsigned int) attr->ulValueLen);
 		break;
 	default:
@@ -4936,7 +4942,7 @@ pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session, void *object, CK_
 		return get_modulus_bits(pubkey->pub_data, attr);
 	case CKA_PUBLIC_EXPONENT:
 		return get_public_exponent(pubkey->pub_data, attr);
-	/* 
+	/*
 	 * PKCS#11 does not define a CKA_VALUE for a CKO_PUBLIC_KEY.
 	 * OpenSC does, but it is not consistent it what it returns
 	 * Internally to do verify, with OpenSSL, we need a SPKI that
