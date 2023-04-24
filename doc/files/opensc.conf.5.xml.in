@@ -74,6 +74,9 @@ app <replaceable>application</replaceable> {
 			specifies one of:
 			<itemizedlist>
 				<listitem><para>
+						<literal><replaceable>filename</replaceable></literal>: Configuration block for the application with specified file path.
+				</para></listitem>
+				<listitem><para>
 						<literal>default</literal>: The fall-back configuration block for all applications
 				</para></listitem>
 				<listitem><para>
@@ -1471,10 +1474,10 @@ app <replaceable>application</replaceable> {
 							Maximum number of PIN slots per smart card (Default:
 							<literal>4</literal>).  If the card has fewer PINs
 							than defined here, the remaining number of slots
-							will be empty. For Firefox, the <option>slots_per_card</option>
-							is set to <literal>1</literal>, because the browser has issues
-							handling multiple PINs. Typically, this effectively disables
-							signature PINs and keys in Firefox.
+                            will be empty. For Firefox, Chrome and Chromium, the
+							<option>slots_per_card</option> is set to <literal>1</literal>,
+							to avoid prompting for unrelated PINs.  Typically, this
+							effectively disables signature PINs and keys.
 					</para></listitem>
 				</varlistentry>
 				<varlistentry>

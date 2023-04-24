@@ -871,7 +871,7 @@ typedef struct ossl3ctx ossl3ctx_t;
 
 typedef struct sc_context {
 	scconf_context *conf;
-	scconf_block *conf_blocks[3];
+	scconf_block *conf_blocks[4];
 	char *app_name;
 	char *exe_path;
 	int debug;

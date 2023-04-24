@@ -733,6 +733,10 @@ static void process_config_file(sc_context_t *ctx, struct _sc_ctx_options *opts)
 	}
 	/* needs to be after the log file is known */
 	sc_log(ctx, "Used configuration file '%s'", conf_path);
+	blocks = scconf_find_blocks(ctx->conf, NULL, "app", ctx->exe_path);
+	if (blocks && blocks[0])
+		ctx->conf_blocks[count++] = blocks[0];
+	free(blocks);
 	blocks = scconf_find_blocks(ctx->conf, NULL, "app", ctx->app_name);
 	if (blocks && blocks[0])
 		ctx->conf_blocks[count++] = blocks[0];
@@ -743,7 +747,7 @@ static void process_config_file(sc_context_t *ctx, struct _sc_ctx_options *opts)
 			ctx->conf_blocks[count] = blocks[0];
 		free(blocks);
 	}
-	/* Above we add 2 blocks at most, but conf_blocks has 3 elements,
+	/* Above we add 3 blocks at most, but conf_blocks has 4 elements,
 	 * so at least one is NULL */
 	for (i = 0; ctx->conf_blocks[i]; i++)
 		load_parameters(ctx, ctx->conf_blocks[i], opts);
