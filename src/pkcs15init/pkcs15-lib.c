@@ -1539,6 +1539,9 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 	int algorithm = keygen_args->prkey_args.key.algorithm;
 
 	LOG_FUNC_CALLED(ctx);
+
+	memset(&pubkey_args, 0, sizeof(pubkey_args));
+
 	/* check supported key size */
 	r = check_keygen_params_consistency(p15card->card,
 		algorithm, &keygen_args->prkey_args,
@@ -1585,7 +1588,6 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 	/* Set up the PuKDF info. The public key will be filled in
 	 * by the card driver's generate_key function called below.
 	 * Auth.ID of the public key object is left empty. */
-	memset(&pubkey_args, 0, sizeof(pubkey_args));
 	pubkey_args.id = keygen_args->prkey_args.id;
 	pubkey_args.label = keygen_args->pubkey_label ? keygen_args->pubkey_label : object->label;
 	pubkey_args.usage = keygen_args->prkey_args.usage;
@@ -1598,7 +1600,6 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 	}
 	else if (algorithm == SC_ALGORITHM_EC)   {
 		/* needs to be freed in case of failure when pubkey is not set yet */
-		pubkey_args.key.u.ec.params = keygen_args->prkey_args.key.u.ec.params;
 		r = sc_copy_ec_params(&pubkey_args.key.u.ec.params, &keygen_args->prkey_args.key.u.ec.params);
 		LOG_TEST_GOTO_ERR(ctx, r, "Cannot allocate EC parameters");
 	}
@@ -1618,9 +1619,6 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 		 * if intrinsic ID can be calculated -- overwrite the native one */
 		memset(&iid, 0, sizeof(iid));
 		r = sc_pkcs15init_select_intrinsic_id(p15card, profile, SC_PKCS15_TYPE_PUBKEY, &iid, &pubkey_args.key);
-		if (r < 0 && algorithm == SC_ALGORITHM_EC) {
-			free(pubkey_args.key.u.ec.ecpointQ.value); /* allocated in profile->ops->generate_key */
-		}
 		LOG_TEST_GOTO_ERR(ctx, r, "Select intrinsic ID error");
 
 		if (iid.len)
@@ -1665,15 +1663,17 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 	profile->dirty = 1;
 
 err:
-	sc_pkcs15_erase_pubkey(pubkey);
 	sc_pkcs15_free_object(object);
 	if (algorithm == SC_ALGORITHM_EC) {
 		/* Allocated in sc_copy_ec_params() */
-		free(pubkey_args.key.u.ec.params.der.value);
 		free(pubkey_args.key.u.ec.params.named_curve);
+		free(pubkey_args.key.u.ec.params.der.value);
 		/* allocated in check_keygen_params_consistency() */
 		free(keygen_args->prkey_args.key.u.ec.params.der.value);
 		keygen_args->prkey_args.key.u.ec.params.der.value = NULL;
+		/* can be allocated in driver-specific generate_key() */
+		free(pubkey_args.key.u.ec.ecpointQ.value);
+		pubkey_args.key.u.ec.ecpointQ.value = NULL;
 	}
 	LOG_FUNC_RETURN(ctx, r);
 }
@@ -1869,9 +1869,10 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card, struct sc_profile
 	case SC_ALGORITHM_EC:
 		type = SC_PKCS15_TYPE_PUBKEY_EC;
 
-		key.u.ec.params = keyargs->key.u.ec.params;
+		r = sc_copy_ec_params(&key.u.ec.params, &keyargs->key.u.ec.params);
+		LOG_TEST_RET(ctx, r, "Failed to copy EC public key parameters");
 		r = sc_pkcs15_fix_ec_parameters(ctx, &key.u.ec.params);
-		LOG_TEST_RET(ctx, r, "Failed to fix EC public key parameters");
+		LOG_TEST_GOTO_ERR(ctx, r, "Failed to fix EC public key parameters");
 
 		keybits = key.u.ec.params.field_length;
 		break;
@@ -1921,6 +1922,15 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card, struct sc_profile
 			}
 			key_info->params.len = key.u.ec.params.der.len;
 			memcpy(key_info->params.data, key.u.ec.params.der.value, key.u.ec.params.der.len);
+		}
+		if (keyargs->key.u.ec.ecpointQ.value) {
+			key.u.ec.ecpointQ.value = malloc(keyargs->key.u.ec.ecpointQ.len);
+			if (!key.u.ec.ecpointQ.value) {
+				r = SC_ERROR_OUT_OF_MEMORY;
+				LOG_TEST_GOTO_ERR(ctx, r, "Cannot allocate EC params");
+			}
+			key.u.ec.ecpointQ.len = key.u.ec.ecpointQ.len;
+			memcpy(key.u.ec.ecpointQ.value, keyargs->key.u.ec.ecpointQ.value, key.u.ec.ecpointQ.len);
 		}
 	}
 
@@ -1979,6 +1989,7 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card, struct sc_profile
 	profile->dirty = 1;
 
 err:
+	sc_pkcs15_erase_pubkey(&key);
 	sc_pkcs15_free_object(object);
 	LOG_FUNC_RETURN(ctx, r);
 }
