@@ -958,8 +958,8 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		pin_info.attrs.pin.stored_length = pins[i].storedlen;
 		pin_info.attrs.pin.max_length    = pins[i].maxlen;
 		pin_info.attrs.pin.pad_char      = pins[i].pad_char;
+		pin_info.tries_left              = pins[i].tries_left;
 		sc_format_path(pins[i].path, &pin_info.path);
-		pin_info.tries_left    = -1;
 
 		label = pins[i].label;
 		if (i == 0 &&
@@ -970,7 +970,6 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 			pin_info.attrs.pin.flags &= ~SC_PKCS15_PIN_FLAG_LOCAL;
 			label = "Global PIN";
 		}
-sc_log(card->ctx,  "DEE Adding pin %d label=%s",i, label);
 		strncpy(pin_obj.label, label, SC_PKCS15_MAX_LABEL_SIZE - 1);
 		pin_obj.flags = pins[i].obj_flags;
 		if (i == 0 && pin_info.attrs.pin.reference == 0x80) {

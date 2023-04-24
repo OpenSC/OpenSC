@@ -3203,7 +3203,6 @@ static int piv_match_card_continued(sc_card_t *card)
 	priv->pin_preference = 0x80; /* 800-73-3 part 1, table 3 */
 	/* TODO Dual CAC/PIV are bases on 800-73-1 where priv->pin_preference = 0. need to check later */
 	priv->logged_in = SC_PIN_STATE_UNKNOWN;
-	priv->tries_left = 10; /* will assume OK at start */
 	priv->pstate = PIV_STATE_MATCH;
 
 	/* Some objects will only be present if History object says so */
