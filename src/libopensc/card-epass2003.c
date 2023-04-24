@@ -370,7 +370,7 @@ aes128_encrypt_cmac_ft(struct sc_card *card, const unsigned char *key, int keysi
 	BN_bin2bn(out,16,enc1);
 	BN_lshift1(lenc1,enc1);
 	BN_bn2bin(lenc1,k1Bin);
-	if(check > 0x80){
+	if(check & 0x80){
 		offset = 1; 
 		k1Bin[15+offset] ^= 0x87; 
 	}
@@ -386,7 +386,7 @@ aes128_encrypt_cmac_ft(struct sc_card *card, const unsigned char *key, int keysi
 	offset = 0;
 	BN_lshift1(lenc2,enc2);
 	BN_bn2bin(lenc2,k2Bin);
-	if(check > 0x80){
+	if(check & 0x80){
 		offset = 1;
 		k2Bin[15+offset] ^= 0x87;
 	}
@@ -3308,9 +3308,13 @@ epass2003_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries
 		LOG_TEST_RET(card->ctx, r, "verify pin failed");
 	}
 	else if (data->cmd == SC_PIN_CMD_CHANGE || data->cmd == SC_PIN_CMD_UNBLOCK) { /* change */
+		r = external_key_auth(card, kid, (unsigned char *)data->pin1.data,
+				data->pin1.len);
+		LOG_TEST_RET(card->ctx, r, "verify pin failed");
+		
 		r = update_secret_key(card, 0x04, kid, data->pin2.data,
 				(unsigned long)data->pin2.len);
-		LOG_TEST_RET(card->ctx, r, "verify pin failed");
+		LOG_TEST_RET(card->ctx, r, "change pin failed");
 	}
 	else {
 		r = external_key_auth(card, kid, (unsigned char *)data->pin1.data,
