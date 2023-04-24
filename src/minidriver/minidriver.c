@@ -5871,9 +5871,6 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 		}
 	}
 
-	if(pcAttemptsRemaining)
-		(*pcAttemptsRemaining) = (DWORD) -1;
-
 	auth_info = (struct sc_pkcs15_auth_info *)pin_obj->data;
 	/* save the pin type */
 	auth_method = auth_info->auth_method;
@@ -5947,6 +5944,16 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 	/* restore the pin type */
 	auth_info->auth_method = auth_method;
 
+	if(pcAttemptsRemaining) {
+		if (0 > auth_info->tries_left) {
+			/* Card modules that do not support a count of remaining
+			 * authentication attempts should return a value of 1 for this
+			 * parameter if the value 1 */
+			(*pcAttemptsRemaining) = 1;
+		} else
+			(*pcAttemptsRemaining) = auth_info->tries_left;
+	}
+
 	if (r)   {
 		logprintf(pCardData, 1, "PIN code verification failed: %s; tries left %i\n", sc_strerror(r), auth_info->tries_left);
 
@@ -5955,9 +5962,6 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 				(*pcAttemptsRemaining) = 0;
 			MD_FUNC_RETURN(pCardData, 1, SCARD_W_CHV_BLOCKED);
 		}
-
-		if(pcAttemptsRemaining)
-			(*pcAttemptsRemaining) = auth_info->tries_left;
 		MD_FUNC_RETURN(pCardData, 1, md_translate_OpenSC_to_Windows_error(r, SCARD_W_WRONG_CHV));
 	}
 
@@ -6064,9 +6068,6 @@ DWORD WINAPI CardChangeAuthenticatorEx(__in PCARD_DATA pCardData,
 
 	pin_obj = vs->pin_objs[dwTargetPinId];
 
-	if(pcAttemptsRemaining)
-		(*pcAttemptsRemaining) = (DWORD) -1;
-
 	/* FIXME: this does not enforce dwAuthenticatingPinId */
 	rv = md_dialog_perform_pin_operation(pCardData,
 					     (dwFlags & PIN_CHANGE_FLAG_UNBLOCK ?
@@ -6077,6 +6078,16 @@ DWORD WINAPI CardChangeAuthenticatorEx(__in PCARD_DATA pCardData,
 					     cbAuthenticatingPinData,
 					     pbTargetData, &target_len,
 					     DisplayPinpadUI, dwTargetPinId);
+
+	if(pcAttemptsRemaining) {
+		if (0 > auth_info->tries_left) {
+			/* Card modules that do not support a count of remaining
+			 * authentication attempts should return a value of 1 for this
+			 * parameter if the value 1 */
+			(*pcAttemptsRemaining) = 1;
+		} else
+			(*pcAttemptsRemaining) = auth_info->tries_left;
+	}
 
 	if (rv)   {
 		logprintf(pCardData, 2, "Failed to %s %s PIN: '%s' (%i)\n",
@@ -6089,8 +6100,6 @@ DWORD WINAPI CardChangeAuthenticatorEx(__in PCARD_DATA pCardData,
 			MD_FUNC_RETURN(pCardData, 1, SCARD_W_CHV_BLOCKED);
 		}
 
-		if(pcAttemptsRemaining)
-			(*pcAttemptsRemaining) = auth_info->tries_left;
 		MD_FUNC_RETURN(pCardData, 1, md_translate_OpenSC_to_Windows_error(rv, SCARD_W_WRONG_CHV));
 	}
 
