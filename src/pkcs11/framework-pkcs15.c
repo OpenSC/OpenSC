@@ -2433,6 +2433,13 @@ pkcs15_create_private_key(struct sc_pkcs11_slot *slot, struct sc_profile *profil
 	}
 
 	rc = sc_pkcs15init_store_private_key(fw_data->p15_card, profile, &args, &key_obj);
+	/* free args now */
+	if (key_type == CKK_EC) {
+		/* allocated above */
+		free(ec->params.der.value);
+		/* in sc_pkcs15_fix_ec_parameters() */
+		free(ec->params.named_curve);
+	}
 	if (rc < 0) {
 		rv = sc_to_cryptoki_error(rc, "C_CreateObject");
 		goto out;
@@ -2770,6 +2777,15 @@ pkcs15_create_public_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 	}
 
 	rc = sc_pkcs15init_store_public_key(fw_data->p15_card, profile, &args, &key_obj);
+	/* free args now */
+	if (key_type == CKK_EC) {
+		/* allocated above */
+		free(ec->params.der.value);
+		/* in sc_pkcs15_fix_ec_parameters() */
+		free(ec->params.named_curve);
+		/* in sc_pkcs15_decode_pubkey_ec() */
+		free(ec->ecpointQ.value);
+	}
 	if (rc < 0)
 		return sc_to_cryptoki_error(rc, "C_CreateObject");
 
