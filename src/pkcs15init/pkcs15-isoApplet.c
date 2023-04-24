@@ -548,6 +548,7 @@ isoApplet_generate_key_ec(const sc_pkcs15_prkey_info_t *key_info, sc_card_t *car
 	memcpy(pubkey->u.ec.ecpointQ.value, args.pubkey.ec.ecPointQ.value, args.pubkey.ec.ecPointQ.len);
 
 	/* The OID is also written to the pubkey->u.ec.params */
+	free(pubkey->u.ec.params.der.value);
 	pubkey->u.ec.params.der.value = malloc(alg_id_params->der.len);
 	if(!pubkey->u.ec.params.der.value)
 	{
