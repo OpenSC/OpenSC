@@ -367,7 +367,7 @@ iso7816_update_record(struct sc_card *card, unsigned int rec_nr, unsigned int id
 
 err:
 	free(encoded_data);
-	LOG_FUNC_RETURN(card->ctx, count);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 static int
@@ -467,7 +467,7 @@ iso7816_process_fci(struct sc_card *card, struct sc_file *file,
 						file->size = size;
 					}
 				}
-				
+
 				sc_log(ctx, "  bytes in file: %"SC_FORMAT_LEN_SIZE_T"u", file->size);
 				break;
 
@@ -802,7 +802,7 @@ iso7816_get_challenge(struct sc_card *card, u8 *rnd, size_t len)
 	if (len < apdu.resplen) {
 		return (int) len;
 	}
-   
+
 	return (int) apdu.resplen;
 }
 
