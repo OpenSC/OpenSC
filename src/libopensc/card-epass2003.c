@@ -1330,6 +1330,109 @@ epass2003_sm_wrap_apdu(struct sc_card *card, struct sc_apdu *plain, struct sc_ap
 	return SC_SUCCESS;
 }
 
+static int
+epass2003_check_response_mac_and_sw(struct sc_card *card, struct sc_apdu *sm)
+{
+	unsigned char iv[16];
+	unsigned char *data = NULL, *mac = NULL;
+	size_t blocksize, mac_len;
+	int ret = -1;
+	size_t taglen;
+	const u8 *tag;
+	epass2003_exdata *exdata;
+	unsigned char *in = sm->resp;
+	unsigned char *alt_in;
+	size_t inlen = sm->resplen;
+	size_t len_correction;
+
+	/* card/ctx/drv_data is already checked by caller */
+	exdata = (epass2003_exdata *)card->drv_data;
+
+	/* The SM must contain at least TLV encoded SW and MAC fields. */
+	if (inlen < 14 )
+		return ret;
+
+	/* compare BER-TLV encoded SW (TAG 0x99) and raw SW */
+	alt_in = in;
+	tag = sc_asn1_find_tag(card->ctx, alt_in, inlen, 0x99, &taglen);
+	if (tag == NULL || taglen != 2) {
+		/*
+		 * It seems that the EPASS2003 firmware has some problem with BER-TLV encoding.
+		 * Instead of (correct) TLV 87 81 81 [01 .. ..] incorrect TLV 87 81 [01 .. ..]
+		 * is returned. There seems to be some proprietary fix for the faulty encoding
+		 * in the decrypt_response() function, similar fix here:
+		 */
+		if (0x01 == in[2] && 0x82 != in[1]) {
+			sc_log(card->ctx, "Workaround, wrong BER-TLV ?");
+			len_correction = in[1] + 2;
+			if (inlen < len_correction)
+				return ret;
+			inlen -= len_correction;
+			alt_in += len_correction;
+			tag = sc_asn1_find_tag(card->ctx, alt_in, inlen, 0x99, &taglen);
+			if (tag == NULL || taglen != 2)
+				return ret;
+		} else
+			return ret;
+	}
+	if (sm->sw1 != tag[0] || sm->sw2 != tag[1])
+		return ret;
+
+	/* no documentation/real hardware to test, the response is accepted without MAC check */
+	if (exdata->bFipsCertification) {
+		sc_log(card->ctx, "Warning, MAC is not checked");
+		return 0;
+	}
+	tag = sc_asn1_find_tag(card->ctx, alt_in, inlen, 0x8e, &taglen);
+	if (tag == NULL || taglen != 8)
+		return ret;
+
+	if (KEY_TYPE_AES == exdata->smtype)
+		blocksize = 16;
+	else
+		blocksize = 8;
+
+	mac_len = tag - in - 2;
+	if (NULL == (data = calloc(1, mac_len + blocksize)))
+		goto end;
+	if (NULL == (mac = malloc(mac_len + blocksize)))
+		goto end;
+
+	/* copy response to buffer and append padding */
+	memcpy(data, in, mac_len);
+	data[mac_len++] = 0x80;
+
+	if (mac_len % blocksize)
+		mac_len += (blocksize - (mac_len % blocksize));
+
+	/* calculate MAC */
+	memcpy(iv, exdata->icv_mac, blocksize);
+
+	if (KEY_TYPE_AES == exdata->smtype) {
+		if (aes128_encrypt_cbc(card, exdata->sk_mac, 16, iv, data, mac_len, mac))
+			goto end;
+	} else {
+		uint8_t tmp[8];
+		uint8_t iv0[EVP_MAX_IV_LENGTH];
+		if (des_encrypt_cbc(card, exdata->sk_mac, 8, iv, data, mac_len, mac))
+			goto end;
+		memset(iv0, 0, EVP_MAX_IV_LENGTH);
+		if (des_decrypt_cbc(card, &exdata->sk_mac[8], 8, iv0, &mac[mac_len - 8], 8, tmp))
+			goto end;
+		memset(iv0, 0, EVP_MAX_IV_LENGTH);
+		if (des_encrypt_cbc(card, exdata->sk_mac, 8, iv0, tmp, 8, &mac[mac_len - 8]))
+			goto end;
+	}
+	/* compare MAC */
+	if (!memcmp(tag, mac + mac_len - blocksize, 8))
+		ret = 0;
+end:
+	if (data)
+		free(data);
+	if (mac)
+		free(mac);
+	return ret;
+}
 
 /* According to GlobalPlatform Card Specification's SCP01
  * decrypt APDU response from
@@ -1414,6 +1517,13 @@ epass2003_sm_unwrap_apdu(struct sc_card *card, struct sc_apdu *sm, struct sc_apd
 
 	LOG_FUNC_CALLED(card->ctx);
 
+	/* verify MAC, and check if SW1,2 match SW1,2 encapsulated in SM */
+	if (exdata->sm) {
+		if (epass2003_check_response_mac_and_sw(card, sm)) {
+			sc_log(card->ctx, "MAC or SW incorrect");
+			return SC_ERROR_CARD_CMD_FAILED;
+		}
+	}
 	r = sc_check_sw(card, sm->sw1, sm->sw2);
 	if (r == SC_SUCCESS) {
 		if (exdata->sm) {
