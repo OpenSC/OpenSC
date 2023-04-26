@@ -101,4 +101,4 @@ TIDY_FILES = \
 			 framework-pkcs15init.c debug.c
 
 check-local:
-	if [ -x "$(CLANGTIDY)" ]; then clang-tidy -config='' --checks='$(TIDY_CHECKS)' -header-filter=.* $(addprefix $(srcdir)/,$(TIDY_FILES)) -- $(TIDY_FLAGS); fi
+	if [ -x "$(CLANGTIDY)" ]; then clang-tidy -config='' --checks='$(TIDY_CHECKS)' --warnings-as-errors='$(TIDY_CHECKS)' -header-filter=.* $(addprefix $(srcdir)/,$(TIDY_FILES)) -- $(TIDY_FLAGS); fi
