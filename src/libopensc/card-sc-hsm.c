@@ -851,7 +851,6 @@ static int sc_hsm_write_ef(sc_card_t *card,
 	size_t file_offset = (size_t) idx;
 	size_t offset = 0;
 	do {
-		len = 0;
 		to_send = bytes_left >= blk_size ? blk_size : bytes_left;
 		p = cmdbuff;
 		// ASN1 0x54 offset
