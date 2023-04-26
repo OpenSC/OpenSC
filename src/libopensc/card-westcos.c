@@ -661,8 +661,6 @@ static int westcos_get_crypte_challenge(sc_card_t * card, const u8 * key,
 	EVP_CIPHER_CTX *cctx = NULL;
 	EVP_CIPHER *alg = NULL;
 	int tmplen = 0;
-	if ((cctx = EVP_CIPHER_CTX_new()) == NULL)
-		return SC_ERROR_INTERNAL;
 #endif
 	u8 buf[8];
 	if ((*len) < sizeof(buf))
