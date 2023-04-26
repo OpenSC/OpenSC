@@ -1973,6 +1973,9 @@ myeid_enc_dec_sym(struct sc_card *card, const u8 *data, size_t datalen,
 				return_len = block_size - pad_byte;
 			}
 			*outlen = return_len;
+			/* application can request buffer size or actual buffer size is too small */
+			if (out == NULL)
+				LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 			if (return_len > *outlen)
 				LOG_FUNC_RETURN(ctx, SC_ERROR_BUFFER_TOO_SMALL);
 			memcpy(out, priv->sym_plain_buffer, return_len);
@@ -2042,10 +2045,11 @@ myeid_enc_dec_sym(struct sc_card *card, const u8 *data, size_t datalen,
 			priv->sym_crypt_buffer_len = 0;
 			rest_len = 0;
 		}
-		memcpy(sdata, data, apdu_datalen);
-		data += apdu_datalen;
-		datalen -= apdu_datalen;
-
+		if (data) {
+			memcpy(sdata, data, apdu_datalen);
+			data += apdu_datalen;
+			datalen -= apdu_datalen;
+		}
 		r = sc_transmit_apdu(card, &apdu);
 		LOG_TEST_RET(ctx, r, "APDU transmit failed");
 		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
@@ -2084,7 +2088,8 @@ myeid_enc_dec_sym(struct sc_card *card, const u8 *data, size_t datalen,
 	/* save rest of data for next run */
 	priv->sym_crypt_buffer_len = datalen;
 	sc_log(ctx, "rest data len = %zu", datalen);
-	memcpy(priv->sym_crypt_buffer, data, datalen);
+	if (data)
+		memcpy(priv->sym_crypt_buffer, data, datalen);
 	sc_log(ctx, "return data len = %zu", return_len);
 	*outlen = return_len;
 	return SC_SUCCESS;
