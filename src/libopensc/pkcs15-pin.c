@@ -465,7 +465,7 @@ int sc_pkcs15_verify_pin_with_session_pin(struct sc_pkcs15_card *p15card,
 			*sessionpinlen = 0;
 		}
 	}
-	pin_info->tries_left = data.pin1.tries_left;
+	auth_info->tries_left = data.pin1.tries_left;
 
 	if (auth_info->auth_type == SC_PKCS15_PIN_AUTH_TYPE_PIN
 			&& auth_info->auth_method != SC_AC_SESSION) {
