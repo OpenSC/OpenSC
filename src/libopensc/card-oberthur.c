@@ -2125,7 +2125,7 @@ auth_read_binary(struct sc_card *card, unsigned int offset,
 
 	sc_log(card->ctx,
 	       "offset %i; size %"SC_FORMAT_LEN_SIZE_T"u; flags 0x%lX",
-	       offset, count, *flags);
+	       offset, count, flags ? *flags : 0);
 	sc_log(card->ctx,"last selected : magic %X; ef %X",
 			auth_current_ef->magic, auth_current_ef->ef_structure);
 
