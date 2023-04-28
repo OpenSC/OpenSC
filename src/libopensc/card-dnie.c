@@ -1048,7 +1048,8 @@ static int dnie_fill_cache(sc_card_t * card,unsigned long *flags)
 
  read_done:
 	if (dnie_is_compressed(card, buffer, len)) {
-		*flags |= SC_FILE_COMPRESSED_ZLIB;
+		if (flags)
+			*flags |= SC_FILE_COMPRESSED_ZLIB;
 		buffer += 8;
 		len -= 8;
 	}
