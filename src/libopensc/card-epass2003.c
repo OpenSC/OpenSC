@@ -39,9 +39,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <openssl/evp.h>
-#include <openssl/sha.h>
 #include <openssl/cmac.h>
+#include <openssl/rand.h>
+#include <openssl/sha.h>
 
 #include "internal.h"
 #include "asn1.h"
@@ -101,9 +101,7 @@ static unsigned char g_init_key_mac[16] = {
 	0x0D, 0x0E, 0x0F, 0x10
 };
 
-static unsigned char g_random[8] = {
-	0xBF, 0xC3, 0x29, 0x11, 0xC7, 0x18, 0xC3, 0x40
-};
+static unsigned char g_random[8];
 
 typedef struct epass2003_exdata_st {
 	unsigned char sm;		/* SM_PLAIN or SM_SCP01 */
@@ -671,6 +669,9 @@ gen_init_key(struct sc_card *card, unsigned char *key_enc, unsigned char *key_ma
 	isFips = exdata->bFipsCertification;
 
 	LOG_FUNC_CALLED(card->ctx);
+
+	if (1 != RAND_bytes(g_random, sizeof(g_random)))
+		return SC_ERROR_INTERNAL;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x50, 0x00, 0x00);
 	apdu.cla = 0x80;
