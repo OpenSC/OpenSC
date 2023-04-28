@@ -2412,9 +2412,10 @@ static int decompress_file(sc_card_t *card, unsigned char *buf, size_t buflen,
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_DATA);
 	}
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
-#endif
+#else
 	sc_log(card->ctx, "Compression not supported, no zlib");
 	LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+#endif
 }
 
 int
