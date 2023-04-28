@@ -226,7 +226,9 @@ typedef struct sc_acl_entry {
 #define SC_FILE_EF_CYCLIC_TLV		0x07
 
 /* Data compression */
-#define SC_FILE_COMPRESSED		0x08
+#define SC_FILE_COMPRESSED_AUTO		0x08
+#define SC_FILE_COMPRESSED_ZLIB		0x09
+#define SC_FILE_COMPRESSED_GZIP		0x0a
 
 /* File status flags */
 /* ISO7816-4: Unless otherwise specified, the security attributes are valid for the operational state.*/

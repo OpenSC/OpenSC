@@ -2400,13 +2400,22 @@ sc_pkcs15_parse_unusedspace(const unsigned char *buf, size_t buflen, struct sc_p
 }
 
 static int decompress_file(sc_card_t *card, unsigned char *buf, size_t buflen, 
-		unsigned char **out, size_t *outlen)
+		unsigned char **out, size_t *outlen, unsigned long flags)
 {
 	LOG_FUNC_CALLED(card->ctx);
 #ifdef ENABLE_ZLIB
 	int rv = SC_SUCCESS;
+	int method = 0;
 
-	rv = sc_decompress_alloc(out, outlen, buf, buflen, COMPRESSION_AUTO);
+	if (flags & SC_FILE_COMPRESSED_GZIP) {
+		method = COMPRESSION_GZIP;
+	} else if (flags & SC_FILE_COMPRESSED_ZLIB) {
+		method = COMPRESSION_ZLIB;
+	} else {
+		method = COMPRESSION_AUTO;
+	}
+
+	rv = sc_decompress_alloc(out, outlen, buf, buflen, method);
 	if (rv != SC_SUCCESS) {
 		sc_log(card->ctx,  "Decompression failed: %d", rv);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_DATA);
@@ -2580,10 +2589,12 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 			/* sc_read_binary may return less than requested */
 			len = r;
 
-			if (flags & SC_FILE_COMPRESSED) {
+			if (flags & SC_FILE_COMPRESSED_AUTO
+			    || flags & SC_FILE_COMPRESSED_ZLIB
+			    || flags & SC_FILE_COMPRESSED_GZIP) {
 				unsigned char *decompressed_buf = NULL;
 				size_t decompressed_len = 0;
-				r = decompress_file(p15card->card, data, len, &decompressed_buf, &decompressed_len);
+				r = decompress_file(p15card->card, data, len, &decompressed_buf, &decompressed_len, flags);
 				if (r != SC_SUCCESS) {
 					goto fail_unlock;
 				}

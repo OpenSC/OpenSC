@@ -1194,7 +1194,7 @@ piv_read_binary(sc_card_t *card, unsigned int idx, unsigned char *buf, size_t co
 		rbuf = priv->obj_cache[enumtag].internal_obj_data;
 		rbuflen = priv->obj_cache[enumtag].internal_obj_len;
 		if (priv->obj_cache[enumtag].flags & PIV_OBJ_CACHE_COMPRESSED) {
-			*flags |= SC_FILE_COMPRESSED;
+			*flags |= SC_FILE_COMPRESSED_AUTO;
 		}
 	} else {
 		rbuf = priv->obj_cache[enumtag].obj_data;
