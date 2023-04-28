@@ -3347,6 +3347,8 @@ unwrap_key(CK_SESSION_HANDLE session)
 		{CKA_CLASS, &secret_key_class, sizeof(secret_key_class)},
 		{CKA_TOKEN, &_true, sizeof(_true)},
 	};
+	CK_BYTE object_id[100];
+	size_t id_len;
 	CK_OBJECT_HANDLE hSecretKey;
 	int n_attr = 2;
 	CK_RV rv;
@@ -3450,9 +3452,6 @@ unwrap_key(CK_SESSION_HANDLE session)
 	}
 
 	if (opt_application_id != NULL) {
-		CK_BYTE object_id[100];
-		size_t id_len;
-
 		id_len = sizeof(object_id);
 		if (!sc_hex_to_bin(opt_application_id, object_id, &id_len)) {
 			FILL_ATTR(keyTemplate[n_attr], CKA_ID, object_id, id_len);
