@@ -14,8 +14,7 @@ fi
 
 sudo dnf install -y $DEPS
 
-# The test-pkcs11-tool-unwrap-wrap-test.sh is broken in Fedora for some reason
 sed -i -e '/XFAIL_TESTS/,$ {
-  s/XFAIL_TESTS.*/XFAIL_TESTS=test-pkcs11-tool-test-threads.sh test-pkcs11-tool-test.sh test-pkcs11-tool-unwrap-wrap-test.sh/
+  s/XFAIL_TESTS.*/XFAIL_TESTS=test-pkcs11-tool-test-threads.sh test-pkcs11-tool-test.sh/
   q
 }' tests/Makefile.am
