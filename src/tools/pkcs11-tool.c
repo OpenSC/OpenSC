@@ -4039,7 +4039,11 @@ static int write_object(CK_SESSION_HANDLE session)
 		FILL_ATTR(cert_templ[1], CKA_VALUE, contents, contents_len);
 		FILL_ATTR(cert_templ[2], CKA_CLASS, &clazz, sizeof(clazz));
 		FILL_ATTR(cert_templ[3], CKA_CERTIFICATE_TYPE, &cert_type, sizeof(cert_type));
-		FILL_ATTR(cert_templ[4], CKA_PRIVATE, &_false, sizeof(_false));
+		if (opt_is_private == 1) {
+			FILL_ATTR(cert_templ[4], CKA_PRIVATE, &_true, sizeof(_true));
+		} else {
+			FILL_ATTR(cert_templ[4], CKA_PRIVATE, &_false, sizeof(_false));
+		}
 		n_cert_attr = 5;
 
 		if (opt_object_label != NULL) {
