@@ -509,7 +509,7 @@ static void test_verify(const uint8_t *data, size_t size)
 		memcpy(in_buffer, verify_data, verify_data_size);
 		p11->C_Verify(session, in_buffer, verify_data_size, sig_buffer, sig_len);
 	} else {
-		while (size > 0) {
+		while (verify_data_size > 0) {
 			to_process = verify_data_size < sizeof(in_buffer) ? verify_data_size : sizeof(in_buffer);
 			verify_data_size -= to_process;
 			memcpy(in_buffer, data, to_process);
