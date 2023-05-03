@@ -53,7 +53,12 @@ sudo apt-get install -y build-essential $DEPS
 
 # install libressl if needed
 if [ "$1" == "libressl" -o "$2" == "libressl" ]; then
-	./.github/setup-libressl.sh &> /tmp/libressl.log || cat /tmp/libressl.log
+	./.github/setup-libressl.sh &> /tmp/libressl.log
+	RET=$?
+	if [ $RET -ne 0 ]; then
+		cat /tmp/libressl.log
+		exit $RET
+	fi
 fi
 
 if [ "$1" == "mingw" -o "$1" == "mingw32" ]; then
