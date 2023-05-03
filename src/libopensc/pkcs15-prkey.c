@@ -242,7 +242,7 @@ int sc_pkcs15_decode_prkdf_entry(struct sc_pkcs15_card *p15card,
 #ifdef ENABLE_OPENSSL
 		if (!info.field_length && ec_domain_len) {
 			const unsigned char *p = ec_domain;
-			const ASN1_OBJECT *object = d2i_ASN1_OBJECT(NULL, &p, ec_domain_len);
+			ASN1_OBJECT *object = d2i_ASN1_OBJECT(NULL, &p, ec_domain_len);
 			int nid;
 			const EC_GROUP *group;
 			if (!object) {
@@ -250,6 +250,7 @@ int sc_pkcs15_decode_prkdf_entry(struct sc_pkcs15_card *p15card,
 				goto err;
 			}
 			nid = OBJ_obj2nid(object);
+			ASN1_OBJECT_free(object);
 			if (nid == NID_undef) {
 				r = SC_ERROR_OBJECT_NOT_FOUND;
 				goto err;
