@@ -1047,15 +1047,25 @@ static int dnie_fill_cache(sc_card_t * card,unsigned long *flags)
 	}
 
  read_done:
+ 	free((void *)apdu.data);
+	if (apdu.resp != tmp)
+		free(apdu.resp);
+
 	if (dnie_is_compressed(card, buffer, len)) {
 		if (flags)
 			*flags |= SC_FILE_COMPRESSED_ZLIB;
-		buffer += 8;
+		/* Remove first 8 bytes with compression info*/
 		len -= 8;
+		p = malloc(len);
+		if (!p) {
+			free(buffer);
+			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+		}
+		memcpy(p, buffer + 8, len);
+		free(buffer);
+		buffer = p;
 	}
-	free((void *)apdu.data);
-	if (apdu.resp != tmp)
-		free(apdu.resp);
+
 
 	/* ok: as final step, set correct cache data into dnie_priv structures */
 	GET_DNIE_PRIV_DATA(card)->cache = buffer;
