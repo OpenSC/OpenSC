@@ -590,7 +590,8 @@ static int idprime_read_binary(sc_card_t *card, unsigned int offset,
 			/* Data will be decompressed later */
 			data_buffer += 4;
 			r = priv->file_size - 4;
-			*flags |= SC_FILE_COMPRESSED_AUTO;
+			if (flags)
+				*flags |= SC_FILE_COMPRESSED_AUTO;
 		}
 		priv->cache_buf = malloc(r);
 		if (priv->cache_buf == NULL) {

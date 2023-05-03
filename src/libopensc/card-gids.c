@@ -1069,7 +1069,8 @@ static int gids_read_binary(sc_card_t *card, unsigned int offset,
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_DATA);
 		}
 		if (buffer[0] == 1 && buffer[1] == 0) {
-			*flags |= SC_FILE_COMPRESSED_ZLIB;
+			if (flags)
+				*flags |= SC_FILE_COMPRESSED_ZLIB;
 			/* compressed data are starting on position buffer + 4 */
 			data->buffersize = sizeof(data->buffer) - 4;
 			memcpy(data->buffer, buffer + 4, buffersize);

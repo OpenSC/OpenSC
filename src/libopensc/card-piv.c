@@ -1193,7 +1193,7 @@ piv_read_binary(sc_card_t *card, unsigned int idx, unsigned char *buf, size_t co
 	if (priv->return_only_cert || piv_objects[enumtag].flags & PIV_OBJECT_TYPE_PUBKEY) {
 		rbuf = priv->obj_cache[enumtag].internal_obj_data;
 		rbuflen = priv->obj_cache[enumtag].internal_obj_len;
-		if (priv->obj_cache[enumtag].flags & PIV_OBJ_CACHE_COMPRESSED) {
+		if ((priv->obj_cache[enumtag].flags & PIV_OBJ_CACHE_COMPRESSED) && flags) {
 			*flags |= SC_FILE_COMPRESSED_AUTO;
 		}
 	} else {
