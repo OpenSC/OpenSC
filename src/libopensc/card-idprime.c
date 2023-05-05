@@ -81,7 +81,7 @@ static const sc_path_t idprime_path = {
 /* data structures to store meta data about IDPrime objects */
 typedef struct idprime_object {
 	int fd;
-	unsigned char key_reference;
+	int key_reference;
 	int valid_key_ref;
 	u8 df[2];
 	unsigned short length;
@@ -106,7 +106,7 @@ typedef struct idprime_container {
 typedef struct idprime_keyref {
 	uint8_t index;					/* Index of the key reference */
 	uint8_t pin_index;				/* Index of the auth pin used for accessing key */
-	unsigned char key_reference;	/* Key reference used for accessing key */
+	int key_reference;	/* Key reference used for accessing key */
 } idprime_keyref_t;
 
 /*
