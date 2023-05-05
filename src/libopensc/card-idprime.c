@@ -361,8 +361,8 @@ static int idprime_process_keyrefmap(sc_card_t *card, idprime_private_data_t *pr
 		new_keyref.pin_index = start[7];
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Found key reference with index=%d, pin=%d, keyref=%d", new_keyref.index, new_keyref.pin_index, new_keyref.key_reference);
 
-		if (idprime_add_keyref_to_list(&priv->keyrefmap, &new_keyref) != SC_SUCCESS) {
-			LOG_FUNC_RETURN(card->ctx, r);
+		if ((r = idprime_add_keyref_to_list(&priv->keyrefmap, &new_keyref)) != SC_SUCCESS) {
+			goto done;
 		}
 	}
 	r = SC_SUCCESS;
