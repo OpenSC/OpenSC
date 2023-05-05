@@ -100,7 +100,6 @@ typedef struct idprime_object {
 typedef struct idprime_container {
 	int index;								/* Index of the container */
 	char guid[MAX_CONTAINER_NAME_LEN + 1];	/* Container name */
-	struct idprime_container *next;
 } idprime_container_t;
 
 /*
@@ -111,7 +110,6 @@ typedef struct idprime_keyref {
 	int index;								/* Index of the key reference */
 	int pin_index;							/* Index of the auth pin used for accessing key */
 	unsigned char key_reference;			/* Key reference used for accessing key */
-	struct idprime_keyref *next;
 } idprime_keyref_t;
 
 /*
