@@ -299,7 +299,7 @@ static int idprime_process_containermap(sc_card_t *card, idprime_private_data_t 
 		u8 *start = &buf[i * CONTAINER_OBJ_LEN];
 		idprime_container_t new_container;
 		if (start[0] == 0) /* Empty record */
-			goto end;
+			break;
 
 		new_container.index = i;
 		/* Reading UNICODE characters but skipping second byte */
@@ -317,7 +317,6 @@ static int idprime_process_containermap(sc_card_t *card, idprime_private_data_t 
 		}
 	}
 
-end:
 	r = SC_SUCCESS;
 done:
 	free(buf);
