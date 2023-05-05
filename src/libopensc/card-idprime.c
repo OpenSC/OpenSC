@@ -98,7 +98,7 @@ typedef struct idprime_object {
 #define MAX_CONTAINER_NAME_LEN 39
 #define CONTAINER_OBJ_LEN 86
 typedef struct idprime_container {
-	int index;								/* Index of the container */
+	uint8_t index;							/* Index of the container */
 	char guid[MAX_CONTAINER_NAME_LEN + 1];	/* Container name */
 } idprime_container_t;
 
@@ -107,9 +107,9 @@ typedef struct idprime_container {
  */
 #define KEYREF_OBJ_LEN 8
 typedef struct idprime_keyref {
-	int index;								/* Index of the key reference */
-	int pin_index;							/* Index of the auth pin used for accessing key */
-	unsigned char key_reference;			/* Key reference used for accessing key */
+	uint8_t index;					/* Index of the key reference */
+	uint8_t pin_index;				/* Index of the auth pin used for accessing key */
+	unsigned char key_reference;	/* Key reference used for accessing key */
 } idprime_keyref_t;
 
 /*
@@ -149,20 +149,13 @@ static int idprime_add_container_to_list(list_t *list, const idprime_container_t
 	return SC_SUCCESS;
 }
 
-static int idprime_list_compare_containers(const void *a, const void *b)
-{
-	if (a == NULL || b == NULL)
-		return 1;
-	return ((idprime_container_t *) a)->index == ((idprime_container_t *) b)->index;
-}
-
 static int idprime_container_list_seeker(const void *el, const void *key)
 {
 	const idprime_container_t *container = (idprime_container_t *)el;
 
 	if ((el == NULL) || (key == NULL))
 		return 0;
-	if (container->index == *(int*)key)
+	if (container->index == *(uint8_t *)key)
 		return 1;
 	return 0;
 }
@@ -174,20 +167,13 @@ static int idprime_add_keyref_to_list(list_t *list, const idprime_keyref_t *keyr
 	return SC_SUCCESS;
 }
 
-static int idprime_list_compare_keyrefs(const void *a, const void *b)
-{
-	if (a == NULL || b == NULL)
-		return 1;
-	return ((idprime_keyref_t *) a)->index == ((idprime_keyref_t *) b)->index;
-}
-
 static int idprime_keyref_list_seeker(const void *el, const void *key)
 {
 	const idprime_keyref_t *keyref = (idprime_keyref_t *)el;
 
 	if ((el == NULL) || (key == NULL))
 		return 0;
-	if (keyref->index == *(int*)key)
+	if (keyref->index == *(uint8_t *)key)
 		return 1;
 	return 0;
 }
@@ -219,7 +205,6 @@ idprime_private_data_t *idprime_new_private_data(void)
 
 	/* Initialize container list */
 	if (list_init(&priv->containers) != 0 ||
-	    list_attributes_comparator(&priv->containers, idprime_list_compare_containers) != 0 ||
 	    list_attributes_copy(&priv->containers, idprime_container_list_meter, 1) != 0 ||
 	    list_attributes_seeker(&priv->containers, idprime_container_list_seeker) != 0) {
 		idprime_free_private_data(priv);
@@ -228,7 +213,6 @@ idprime_private_data_t *idprime_new_private_data(void)
 
 	/* Initialize keyref list */
 	if (list_init(&priv->keyrefmap) != 0 ||
-	    list_attributes_comparator(&priv->keyrefmap, idprime_list_compare_keyrefs) != 0 ||
 	    list_attributes_copy(&priv->keyrefmap, idprime_keyref_list_meter, 1) != 0 ||
 	    list_attributes_seeker(&priv->keyrefmap, idprime_keyref_list_seeker) != 0) {
 		idprime_free_private_data(priv);
@@ -284,7 +268,8 @@ static int idprime_process_containermap(sc_card_t *card, idprime_private_data_t 
 {
 	u8 *buf = NULL;
 	int r = SC_ERROR_OUT_OF_MEMORY;
-	int i, max_entries, container_index;
+	int i;
+	uint8_t max_entries, container_index;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -319,7 +304,6 @@ static int idprime_process_containermap(sc_card_t *card, idprime_private_data_t 
 		if (start[0] == 0) /* Empty record */
 			goto end;
 
-	
 		new_container.index = i;
 		/* Reading UNICODE characters but skipping second byte */
 		int j = 0;
@@ -439,7 +423,7 @@ static int idprime_process_index(sc_card_t *card, idprime_private_data_t *priv, 
 		/* in minidriver, mscp/kxcNN or kscNN lists certificates */
 		if (((memcmp(&start[4], "ksc", 3) == 0) || memcmp(&start[4], "kxc", 3) == 0)
 			&& (memcmp(&start[12], "mscp", 5) == 0)) {
-			int cert_id = 0;
+			uint8_t cert_id = 0;
 			idprime_container_t *container = NULL;
 
 			if (start[7] >= '0' && start[7] <= '9' && start[8] >= '0' && start[8] <= '9') {
