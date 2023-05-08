@@ -2702,7 +2702,7 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 		ushort2bebytes(p, (unsigned short)key_info->u.rsa.modulus_len);
 		p += 2;
 		memcpy(p, key_info->u.rsa.modulus, (BYTES4BITS(key_info->u.rsa.modulus_len)));
-		p += (key_info->u.rsa.modulus_len >> 3);
+		p += (BYTES4BITS(key_info->u.rsa.modulus_len));
 		ushort2bebytes(++p, (unsigned short)key_info->u.rsa.exponent_len);
 		p += 2;
 		memcpy(p, key_info->u.rsa.exponent, (BYTES4BITS(key_info->u.rsa.exponent_len)));
