@@ -12,12 +12,12 @@ Successful build of fuzz targets requires `./configure` run with correctly set C
 
 Example configuration for libFuzzer:
 ```
-./configure --disable-optimization --disable-shared --disable-pcsc --enable-ctapi --enable-fuzzing CC=clang CFLAGS=-fsanitize=fuzzer-no-link FUZZING_LIBS=-fuzzer
+./configure --disable-optimization --disable-shared --disable-pcsc --enable-ctapi --enable-fuzzing CC=clang CFLAGS=-fsanitize=fuzzer-no-link FUZZING_LIBS=-fsanitize=fuzzer
 ```
 
 To add some of the LLVM Sanitizers, modify `FUZZING_LIBS`:  
 ```
-FUZZING_LIBS=-fuzzer,address,undefined
+FUZZING_LIBS=-fsanitize=fuzzer,address,undefined
 ```
 Sanitizers can also be modified by [flags](https://github.com/google/sanitizers/wiki/SanitizerCommonFlags).
 
