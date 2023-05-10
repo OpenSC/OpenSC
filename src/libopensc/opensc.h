@@ -652,7 +652,7 @@ struct sc_card_operations {
 	 * @param  idx    index within the file with the data to read
 	 * @param  buf    buffer to the read data
 	 * @param  count  number of bytes to read
-	 * @param  flags  flags for the READ BINARY command (currently not used)
+	 * @param  flags  flags for the READ BINARY command (optional)
 	 * @return number of bytes read or an error code
 	 *
 	 * @see sc_read_binary()
