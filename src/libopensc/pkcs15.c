@@ -2407,9 +2407,9 @@ static int decompress_file(sc_card_t *card, unsigned char *buf, size_t buflen,
 	int rv = SC_SUCCESS;
 	int method = 0;
 
-	if (flags & SC_FILE_COMPRESSED_GZIP) {
+	if (flags & SC_FILE_FLAG_COMPRESSED_GZIP) {
 		method = COMPRESSION_GZIP;
-	} else if (flags & SC_FILE_COMPRESSED_ZLIB) {
+	} else if (flags & SC_FILE_FLAG_COMPRESSED_ZLIB) {
 		method = COMPRESSION_ZLIB;
 	} else {
 		method = COMPRESSION_AUTO;
@@ -2589,9 +2589,9 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 			/* sc_read_binary may return less than requested */
 			len = r;
 
-			if (flags & SC_FILE_COMPRESSED_AUTO
-			    || flags & SC_FILE_COMPRESSED_ZLIB
-			    || flags & SC_FILE_COMPRESSED_GZIP) {
+			if (flags & SC_FILE_FLAG_COMPRESSED_AUTO
+			    || flags & SC_FILE_FLAG_COMPRESSED_ZLIB
+			    || flags & SC_FILE_FLAG_COMPRESSED_GZIP) {
 				unsigned char *decompressed_buf = NULL;
 				size_t decompressed_len = 0;
 				r = decompress_file(p15card->card, data, len, &decompressed_buf, &decompressed_len, flags);

@@ -574,7 +574,7 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 		}
 		/* if the info byte is 1, then the cert is compressed, decompress it */
 		if ((cert_type & 0x3) == 1 && flags) {
-			*flags |= SC_FILE_COMPRESSED_AUTO;
+			*flags |= SC_FILE_FLAG_COMPRESSED_AUTO;
 		}
 		if (cert_len > 0) {
 			priv->cache_buf = malloc(cert_len);

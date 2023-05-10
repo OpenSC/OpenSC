@@ -1053,7 +1053,7 @@ static int dnie_fill_cache(sc_card_t * card,unsigned long *flags)
 
 	if (dnie_is_compressed(card, buffer, len)) {
 		if (flags)
-			*flags |= SC_FILE_COMPRESSED_ZLIB;
+			*flags |= SC_FILE_FLAG_COMPRESSED_ZLIB;
 		/* Remove first 8 bytes with compression info*/
 		len -= 8;
 		p = malloc(len);
