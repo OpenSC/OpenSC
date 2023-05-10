@@ -835,7 +835,7 @@ static int idprime_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 				(sc_pkcs15_prkey_info_t *)ptr);
 		case SC_CARDCTL_IDPRIME_FINAL_GET_OBJECTS:
 			return idprime_final_iterator(&priv->pki_list);
-		case SC_CARDCTL_IDPRIME_FINAL_GET_PIN_ID:
+		case SC_CARDCTL_IDPRIME_GET_PIN_ID:
 			return idprime_get_pin_id(&priv->pki_list, &priv->pki_current,
 				(char **)ptr);
 	}
