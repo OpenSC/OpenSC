@@ -6295,7 +6295,7 @@ static int test_cipher(CK_SESSION_HANDLE session)
 
 		for (CK_ULONG ctlen = 0; ctlen < cipher_algs[i].ctsz;) {
 
-			CK_ULONG isize = min(cipher_algs[i].ctsz - ctlen, CIPHER_CHUNK);
+			CK_ULONG isize = MIN(cipher_algs[i].ctsz - ctlen, CIPHER_CHUNK);
 			CK_ULONG osize = sizeof(ptext1) - poff;
 
 			fct = "C_DecryptUpdate";
