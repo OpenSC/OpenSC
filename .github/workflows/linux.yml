@@ -52,7 +52,7 @@ jobs:
       - run: .github/build.sh no-shared
 
   build-ix86:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v3
       - run: .github/setup-linux.sh ix86
