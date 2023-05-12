@@ -96,6 +96,8 @@ extern CK_FUNCTION_LIST_3_0 pkcs11_function_list_3_0;
 #define MAX_TEST_THREADS 10
 #endif
 
+#define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
+
 #define NEED_SESSION_RO	0x01
 #define NEED_SESSION_RW	0x02
 
@@ -3630,7 +3632,7 @@ do_read_key(unsigned char *data, size_t data_len, int private, EVP_PKEY **key)
 		if (!strstr((char *)data, "-----BEGIN "))
 		/*
 		 * d2i_PUBKEY_ex_bio is in OpenSSL master of 02/23/2023
-		 * committed Dec 26, 2022 expected in 3.2.0 
+		 * committed Dec 26, 2022 expected in 3.2.0
 		*/
 #if OPENSSL_VERSION_NUMBER >= 0x30200000L
 			*key = d2i_PUBKEY_ex_bio(mem, NULL, osslctx, NULL);
@@ -6139,36 +6141,36 @@ static int test_cipher(CK_SESSION_HANDLE session)
 	CK_SESSION_INFO sessionInfo;
 	static struct {
 		CK_MECHANISM_TYPE type;
-		uint8_t     *key;
+		uint8_t     key[32];
 		CK_ULONG    keysz;
 		CK_KEY_TYPE keytype;
-		uint8_t     *iv;
+		uint8_t     iv[16];
 		CK_ULONG    ivsz;
-		uint8_t     *plaintext;
+		uint8_t     plaintext[128];
 		CK_ULONG    ptsz;
-		uint8_t     *ciphertext;
+		uint8_t     ciphertext[128];
 		CK_ULONG    ctsz;
 	} cipher_algs[] = {
 		{
 			.type =       CKM_AES_ECB,
-			.key =        "\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f",
+			.key =        {0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x09,0x0a,0x0b,0x0c,0x0d,0x0e,0x0f},
 			.keysz =      16,
 			.keytype =    CKK_AES,
-			.plaintext =  "\x00\x11\x22\x33\x44\x55\x66\x77\x88\x99\xaa\xbb\xcc\xdd\xee\xff",
+			.plaintext =  {0x00,0x11,0x22,0x33,0x44,0x55,0x66,0x77,0x88,0x99,0xaa,0xbb,0xcc,0xdd,0xee,0xff},
 			.ptsz =       16,
-			.ciphertext = "\x69\xc4\xe0\xd8\x6a\x7b\x04\x30\xd8\xcd\xb7\x80\x70\xb4\xc5\x5a",
+			.ciphertext = {0x69,0xc4,0xe0,0xd8,0x6a,0x7b,0x04,0x30,0xd8,0xcd,0xb7,0x80,0x70,0xb4,0xc5,0x5a},
 			.ctsz =       16,
 		},
 		{
 			.type =       CKM_AES_CBC,
-			.key =        "\x2b\x7e\x15\x16\x28\xae\xd2\xa6\xab\xf7\x15\x88\x09\xcf\x4f\x3c",
+			.key =        {0x2b,0x7e,0x15,0x16,0x28,0xae,0xd2,0xa6,0xab,0xf7,0x15,0x88,0x09,0xcf,0x4f,0x3c},
 			.keysz =      16,
 			.keytype =    CKK_AES,
-			.iv =         "\x76\x49\xab\xac\x81\x19\xb2\x46\xce\xe9\x8e\x9b\x12\xe9\x19\x7d",
+			.iv =         {0x76,0x49,0xab,0xac,0x81,0x19,0xb2,0x46,0xce,0xe9,0x8e,0x9b,0x12,0xe9,0x19,0x7d},
 			.ivsz =       16,
-			.plaintext =  "\xae\x2d\x8a\x57\x1e\x03\xac\x9c\x9e\xb7\x6f\xac\x45\xaf\x8e\x51",
+			.plaintext =  {0xae,0x2d,0x8a,0x57,0x1e,0x03,0xac,0x9c,0x9e,0xb7,0x6f,0xac,0x45,0xaf,0x8e,0x51},
 			.ptsz =       16,
-			.ciphertext = "\x50\x86\xcb\x9b\x50\x72\x19\xee\x95\xdb\x11\x3a\x91\x76\x78\xb2",
+			.ciphertext = {0x50,0x86,0xcb,0x9b,0x50,0x72,0x19,0xee,0x95,0xdb,0x11,0x3a,0x91,0x76,0x78,0xb2},
 			.ctsz =       16,
 		},
 	};
@@ -6220,7 +6222,7 @@ static int test_cipher(CK_SESSION_HANDLE session)
 #define CIPHER_CHUNK (13) /* used to split input in sizes which are not block aligned */
 		for (CK_ULONG ptlen = 0; ptlen < cipher_algs[i].ptsz;) {
 
-			CK_ULONG isize = min(cipher_algs[i].ptsz - ptlen, CIPHER_CHUNK);
+			CK_ULONG isize = MIN(cipher_algs[i].ptsz - ptlen, CIPHER_CHUNK);
 			CK_ULONG osize = sizeof(ctext1) - coff;
 
 			fct = "C_EncryptUpdate";
