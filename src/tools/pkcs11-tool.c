@@ -96,7 +96,9 @@ extern CK_FUNCTION_LIST_3_0 pkcs11_function_list_3_0;
 #define MAX_TEST_THREADS 10
 #endif
 
-#define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
+#ifndef MIN
+# define MIN(a, b)	(((a) < (b))? (a) : (b))
+#endif
 
 #define NEED_SESSION_RO	0x01
 #define NEED_SESSION_RW	0x02
