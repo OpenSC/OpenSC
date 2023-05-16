@@ -86,7 +86,7 @@ static int rtecp_init(sc_card_t *card)
 	unsigned long flags;
 
 	if (!card || !card->ctx)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	card->cla = 0;
 
@@ -171,7 +171,6 @@ static void set_acl_from_sec_attr(sc_card_t *card, sc_file_t *file)
 		|| file->sec_attr_len != SC_RTECP_SEC_ATTR_SIZE
 		|| 1 + 6 >= SC_RTECP_SEC_ATTR_SIZE)
 	{
-		sc_log(card->ctx, "Invalid arguments for set_acl_from_sec_attr()\n");
 		return;
 	}
 
@@ -226,7 +225,7 @@ static int set_sec_attr_from_acl(sc_card_t *card, sc_file_t *file)
 
 	if (!card || !card->ctx || !file
 		|| file->sec_attr || file->sec_attr_len != 0)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	if (1 + 6 >= sizeof(sec_attr))
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INTERNAL);
@@ -289,10 +288,10 @@ static int rtecp_select_file(sc_card_t *card,
 	sc_file_t *file = NULL;
 	int r = SC_SUCCESS;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-
 	if (!card || !card->ctx || !in_path)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	switch (in_path->type)
 	{
@@ -333,7 +332,7 @@ static int rtecp_verify(sc_card_t *card, unsigned int type, int ref_qualifier,
 	(void)type; /* no warning */
 
 	if (!card || !card->ctx || !data)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	for (;;)
 	{
@@ -371,7 +370,7 @@ static int rtecp_logout(sc_card_t *card)
 	int r;
 
 	if (!card || !card->ctx)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x40, 0, 0);
 	apdu.cla = 0x80;
@@ -403,7 +402,7 @@ static int rtecp_cipher(sc_card_t *card, const u8 *data, size_t data_len,
 	int r;
 
 	if (!card || !card->ctx || !data || !out)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	buf_out = malloc(out_len + 2);
 	buf = malloc(data_len);
@@ -461,7 +460,7 @@ static int rtecp_decipher(sc_card_t *card,
 	int r;
 
 	if (!card || !card->ctx || !data || !out)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	if (card->type == SC_CARD_TYPE_RUTOKEN_LITE
 			|| card->type == SC_CARD_TYPE_RUTOKEN_LITE_SC)
@@ -478,7 +477,7 @@ static int rtecp_compute_signature(sc_card_t *card,
 	int r;
 
 	if (!card || !card->ctx || !data || !out)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	if (card->type == SC_CARD_TYPE_RUTOKEN_LITE
 			|| card->type == SC_CARD_TYPE_RUTOKEN_LITE_SC)
@@ -499,7 +498,7 @@ static int rtecp_change_reference_data(sc_card_t *card, unsigned int type,
 	int transmits_num, r;
 
 	if (!card || !card->ctx || !newref)
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	sc_log(card->ctx,
 		 "newlen = %"SC_FORMAT_LEN_SIZE_T"u\n", newlen);
@@ -578,7 +577,7 @@ static int rtecp_reset_retry_counter(sc_card_t *card, unsigned int type,
 	(void)type, (void)puk, (void)puklen; /* no warning */
 
 	if (!card || !card->ctx)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x2C, 0x03, ref_qualifier);
 	r = sc_transmit_apdu(card, &apdu);
@@ -615,7 +614,7 @@ static int rtecp_create_file(sc_card_t *card, sc_file_t *file)
 	int r;
 
 	if (!card || !card->ctx || !file)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	if (file->sec_attr_len == 0)
 	{
@@ -636,7 +635,7 @@ static int rtecp_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 	int r;
 
 	if (!card || !card->ctx || !buf)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xA4, 0, 0);
 	for (;;)
@@ -702,7 +701,7 @@ static int rtecp_card_ctl(sc_card_t *card, unsigned long request, void *data)
 	int r;
 
 	if (!card || !card->ctx)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	switch (request)
 	{
@@ -787,7 +786,7 @@ static int rtecp_construct_fci(sc_card_t *card, const sc_file_t *file,
 
 	if (!card || !card->ctx || !file || !out || !outlen
 		|| (*outlen < (size_t)(p - out) + 2))
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	*p++ = 0x6F; /* FCI template */
 	p++; /* for length */
