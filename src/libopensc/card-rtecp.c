@@ -123,7 +123,7 @@ static void reverse(unsigned char *buf, size_t len)
 	unsigned char tmp;
 	size_t i;
 
-	if ((!buf && len != 0) || (buf && len == 0))
+	if (!buf && len != 0)
 		return;
 
 	for (i = 0; i < len / 2; ++i)
@@ -226,9 +226,6 @@ static int set_sec_attr_from_acl(sc_card_t *card, sc_file_t *file)
 	if (!card || !card->ctx || !file
 		|| file->sec_attr || file->sec_attr_len != 0)
 		return SC_ERROR_INVALID_ARGUMENTS;
-
-	if (1 + 6 >= sizeof(sec_attr))
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INTERNAL);
 
 	entry = sc_file_get_acl_entry(file, SC_AC_OP_DELETE);
 	if (entry)
