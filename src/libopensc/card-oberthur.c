@@ -554,12 +554,15 @@ auth_select_file(struct sc_card *card, const struct sc_path *in_path,
 			}
 		}
 		else if (path.len - offs == 0 && file_out)  {
-			if (sc_compare_path(&path, &auth_current_df->path))
+			if (sc_compare_path(&path, &auth_current_df->path) && file_out) {
+				sc_file_free(*file_out);
 				sc_file_dup(file_out, auth_current_df);
-			else  if (auth_current_ef)
+			} else  if (auth_current_ef && file_out) {
+				sc_file_free(*file_out);
 				sc_file_dup(file_out, auth_current_ef);
-			else
+			} else {
 				LOG_TEST_RET(card->ctx, SC_ERROR_INTERNAL, "No current EF");
+			}
 		}
 	}
 
