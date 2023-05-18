@@ -177,6 +177,7 @@ static void torture_compression_decompress_alloc_valid(void **state)
 	assert_int_equal(rv, SC_SUCCESS);
 	assert_int_equal(buflen, 5);
 	assert_memory_equal(buf, "test\x0a", 5);
+	free(buf);
 }
 
 static void torture_compression_decompress_alloc_invalid_suffix(void **state)
@@ -194,6 +195,7 @@ static void torture_compression_decompress_alloc_invalid_suffix(void **state)
 	assert_int_equal(rv, SC_SUCCESS); /* TODO Is this fine? */
 	assert_int_equal(buflen, 5);
 	assert_memory_equal(buf, "test\x0a", 5);
+	free(buf);
 }
 
 

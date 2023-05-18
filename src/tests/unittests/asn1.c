@@ -304,6 +304,7 @@ static void torture_asn1_decode_entry_octet_string_short(void **state)
 	assert_int_equal(rv, SC_SUCCESS);
 	assert_int_equal(resultlen, sizeof(octet_string));
 	assert_memory_equal(result, octet_string, resultlen);
+	free(result);
 }
 
 /* In case of we expect UNSIGNED value from this, the parser already takes
@@ -329,6 +330,7 @@ static void torture_asn1_decode_entry_octet_string_unsigned(void **state)
 	assert_int_equal(rv, SC_SUCCESS);
 	assert_int_equal(resultlen, sizeof(octet_string) -1);
 	assert_memory_equal(result, octet_string + 1, resultlen);
+	free(result);
 }
 
 static void torture_asn1_decode_entry_octet_string_pre_allocated(void **state)
@@ -415,6 +417,7 @@ static void torture_asn1_decode_entry_bit_string_short(void **state)
 	assert_int_equal(rv, SC_SUCCESS);
 	assert_int_equal(resultlen, 8);
 	assert_memory_equal(exp_result, result, resultlen/8);
+	free(result);
 }
 
 /* This modification does not invert the bit order */
@@ -437,6 +440,7 @@ static void torture_asn1_decode_entry_bit_string_ni(void **state)
 	assert_int_equal(rv, SC_SUCCESS);
 	assert_int_equal(resultlen, 8);
 	assert_memory_equal(bit_string + 1, result, resultlen/8);
+	free(result);
 }
 
 static void torture_asn1_put_tag_short(void **state)
@@ -592,6 +596,7 @@ static void torture_asn1_encode_simple(void **state)
 	/* Context is not needed */
 	rv = sc_asn1_encode(NULL, asn1, &outptr, &outlen);
 	assert_int_equal(rv, SC_SUCCESS);
+	free(outptr);
 }
 
 int main(void)
