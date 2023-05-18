@@ -527,15 +527,19 @@ static int rtecp_change_reference_data(sc_card_t *card, unsigned int type,
 	rsf_length[0] = (newlen >> 8) & 0xFF;
 	rsf_length[1] = newlen & 0xFF;
 
-	if (buf_end - p < (int)(2 + sizeof(rsf_length)))
+	if (buf_end - p < (int)(2 + sizeof(rsf_length))) {
+		free(buf);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
+	}
 
 	sc_asn1_put_tag(0x80, rsf_length, sizeof(rsf_length), p, buf_end - p, &p);
 	/* put 0xA5 TLVs (one or more); each transmit must begin with 0xA5 TLV */
 	while (newlen)
 	{
-		if (buf_end - p < (int)(newlen + 2))
+		if (buf_end - p < (int)(newlen + 2)) {
+			free(buf);
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
+		}
 		if ((p - buf) % max_transmit_length + newlen + 2 > max_transmit_length)
 			val_length = max_transmit_length - (p - buf) % max_transmit_length - 2;
 		else
@@ -543,8 +547,10 @@ static int rtecp_change_reference_data(sc_card_t *card, unsigned int type,
 		/* not using sc_asn1_put_tag(...) because rtecp do not support asn1 properly (when val_length > 127) */
 		*p++ = 0xA5;
 		*p++ = (u8)val_length;
-		if (val_length > newlen)
+		if (val_length > newlen) {
+			free(buf);
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
+		}
 		memcpy(p, newref, val_length);
 		p += val_length;
 		newref += val_length;
