@@ -213,7 +213,6 @@ static void torture_one_to_full_add_emul_list(void **state)
 	assert_int_equal(rv, SC_ERROR_TOO_MANY_OBJECTS);
 	assert_ptr_equal(filtered_emulators.list_of_handlers[SC_MAX_PKCS15_EMULATORS - 1], &old[0]);
 	assert_int_equal(filtered_emulators.ccount, SC_MAX_PKCS15_EMULATORS);
-	assert_ptr_not_equal(filtered_emulators.list_of_handlers[SC_MAX_PKCS15_EMULATORS], &old[0]);
 }
 
 static void torture_overfilled_add_emul_list(void **state)
@@ -288,6 +287,7 @@ static void torture_internal_name(void **state)
 	assert_int_equal(rv, SC_SUCCESS);
 	assert_ptr_equal(&builtin[0], filtered_emulators.list_of_handlers[0]);
 	assert_null(filtered_emulators.list_of_handlers[1]);
+	free(list.data);
 }
 
 static void torture_old_name(void **state)
@@ -301,6 +301,7 @@ static void torture_old_name(void **state)
 	assert_int_equal(rv, SC_SUCCESS);
 	assert_ptr_equal(&old[0], filtered_emulators.list_of_handlers[0]);
 	assert_null(filtered_emulators.list_of_handlers[1]);
+	free(list.data);
 }
 
 static void torture_internal_and_name(void **state)
@@ -434,6 +435,7 @@ static void torture_one_to_full2_set_emul(void **state)
 	assert_ptr_equal(filtered_emulators.list_of_handlers[SC_MAX_PKCS15_EMULATORS - 1], &old[1]);
 	assert_null(filtered_emulators.list_of_handlers[SC_MAX_PKCS15_EMULATORS]);
 	assert_int_equal(filtered_emulators.ccount, SC_MAX_PKCS15_EMULATORS);
+	free(list1.data);
 }
 
 static void torture_overfilled_set_emul(void **state)
@@ -448,6 +450,7 @@ static void torture_overfilled_set_emul(void **state)
 
 	rv = set_emulators(NULL, &filtered_emulators, &list1, builtin, old);
 	assert_int_equal(rv, SC_ERROR_INVALID_ARGUMENTS);
+	free(list1.data);
 }
 
 int main(void)
