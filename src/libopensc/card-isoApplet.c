@@ -1218,8 +1218,13 @@ isoApplet_compute_signature(struct sc_card *card,
 		// For RSA-PSS signature schemes the IsoApplet expects only the hash.
 		u8 tmp[64]; // large enough for SHA512
 		size_t tmplen = sizeof(tmp);
-		sc_pkcs1_strip_digest_info_prefix(NULL, data, datalen, tmp, &tmplen);
-		r = iso_ops->compute_signature(card, tmp, tmplen, out, outlen);
+		r = sc_pkcs1_strip_digest_info_prefix(NULL, data, datalen, tmp, &tmplen);
+		if (r == SC_SUCCESS) {
+			r = iso_ops->compute_signature(card, tmp, tmplen, out, outlen);
+		} else {
+			/* No digest info present? Use the value as it is */
+			r = iso_ops->compute_signature(card, data, datalen, out, outlen);
+		}
 	} else if (drvdata->sec_env_alg_ref == ISOAPPLET_ALG_REF_ECDSA) {
 		/*
 		* The card returns ECDSA signatures as an ASN.1 sequence of integers R,S
