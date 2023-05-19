@@ -373,7 +373,7 @@ struct sc_pkcs15_prkey_info {
 	unsigned int usage, access_flags;
 	int native, key_reference;
 	/* convert to union if other types are supported */
-	size_t modulus_length; /* RSA */
+	size_t modulus_length; /* RSA, in bits */
 	size_t field_length;   /* EC in bits */
 
 	unsigned int algo_refs[SC_MAX_SUPPORTED_ALGORITHMS];
