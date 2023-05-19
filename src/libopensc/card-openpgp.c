@@ -2697,15 +2697,23 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 
 	/* RSA */
 	if (key_info->algorithm == SC_OPENPGP_KEYALGO_RSA) {
+		unsigned short bytes_length = 0;
+
 		*p = 1; /* Algorithm ID, RSA */
 		p += 1;
+
+		/* Modulus */
+		bytes_length = BYTES4BITS(key_info->u.rsa.modulus_len);
 		ushort2bebytes(p, (unsigned short)key_info->u.rsa.modulus_len);
 		p += 2;
-		memcpy(p, key_info->u.rsa.modulus, (BYTES4BITS(key_info->u.rsa.modulus_len)));
-		p += (key_info->u.rsa.modulus_len >> 3);
-		ushort2bebytes(++p, (unsigned short)key_info->u.rsa.exponent_len);
+		memcpy(p, key_info->u.rsa.modulus, bytes_length);
+		p += bytes_length;
+
+		/* Exponent */
+		bytes_length = BYTES4BITS(key_info->u.rsa.exponent_len);
+		ushort2bebytes(p, (unsigned short)key_info->u.rsa.exponent_len);
 		p += 2;
-		memcpy(p, key_info->u.rsa.exponent, (BYTES4BITS(key_info->u.rsa.exponent_len)));
+		memcpy(p, key_info->u.rsa.exponent, bytes_length);
 	}
 	/* ECC */
 	else if (key_info->algorithm == SC_OPENPGP_KEYALGO_ECDH
