@@ -3657,8 +3657,10 @@ pgp_delete_file(sc_card_t *card, const sc_path_t *path)
 	blob = priv->current;
 
 	/* don't try to delete MF */
-	if (blob == priv->mf)
+	if (blob == priv->mf) {
+		sc_file_free(file);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+	}
 
 	if (card->type != SC_CARD_TYPE_OPENPGP_GNUK &&
 		(file->id == DO_SIGN_SYM || file->id == DO_ENCR_SYM || file->id == DO_AUTH_SYM)) {
@@ -3678,6 +3680,7 @@ pgp_delete_file(sc_card_t *card, const sc_path_t *path)
 		/* call pgp_put_data() with zero-sized NULL-buffer to zap the DO contents */
 		r = pgp_put_data(card, file->id, NULL, 0);
 	}
+	sc_file_free(file);
 
 	/* set "current" blob to parent */
 	priv->current = blob->parent;
