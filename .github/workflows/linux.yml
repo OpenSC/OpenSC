@@ -30,8 +30,9 @@ jobs:
         if: failure()
         with:
           name: ubuntu-test-logs
-          path:
+          path: |
             tests/*.log
+            src/tests/unittests/*.log
       - uses: actions/cache@v3
         id: cache-build
         with:
@@ -201,8 +202,9 @@ jobs:
         if: failure()
         with:
           name: ubuntu-22-test-logs
-          path:
+          path: |
             tests/*.log
+            src/tests/unittests/*.log
       - uses: actions/cache@v3
         id: cache-build
         if: ${{ success() }}
