@@ -520,6 +520,7 @@ int do_genkey(sc_card_t *card, u8 in_key_id, const char *keytype)
 		if (sc_select_file(card, &path, &file) >= 0) {
 			u8 attrs[6];	/* algorithm attrs DO for RSA is <= 6 bytes */
 
+			sc_file_free(file);
 			r = sc_read_binary(card, 0, attrs, sizeof(attrs), 0);
 			if (r >= 5 && attrs[0] == SC_OPENPGP_KEYALGO_RSA) {
 				expolen = (unsigned short) attrs[3] << 8
@@ -554,6 +555,7 @@ int do_genkey(sc_card_t *card, u8 in_key_id, const char *keytype)
 
 	sc_format_path("006E007300C5", &path);
 	r = sc_select_file(card, &path, &file);
+	sc_file_free(file);
 	if (r < 0) {
 		util_error("failed to retrieve fingerprints: %s", sc_strerror(r));
 		return EXIT_FAILURE;
