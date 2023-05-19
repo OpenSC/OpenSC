@@ -583,8 +583,8 @@ int pss_verify_message_openssl(test_cert_t *o, token_info_t *info,
 			o->id_str, ERR_error_string(ERR_peek_last_error(), NULL));
 		goto out;
 	}
-	free(free_message);
 out:
+	free(free_message);
 	EVP_PKEY_CTX_free(pctx);
 	return rv;
 }
@@ -709,7 +709,7 @@ void fill_object_pss_mechanisms(token_info_t *info, test_cert_t *o)
 		test_mech_t *source_mech = &token.rsa_mechs[j];
 
 		/* skip non-RSA-PSS mechs early */
-		if (!is_pss_mechanism(source_mech->mech) && 
+		if (!is_pss_mechanism(source_mech->mech) &&
 			source_mech->mech != CKM_RSA_PKCS_OAEP) {
 			continue;
 		}
