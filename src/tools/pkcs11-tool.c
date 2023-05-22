@@ -5739,8 +5739,6 @@ static int read_object(CK_SESSION_HANDLE session)
 					util_fatal("cannot set OSSL_PARAM");
 			}
 			OSSL_PARAM_BLD_free(bld);
-			OSSL_PARAM_free(old);
-			OSSL_PARAM_free(new);
 			if (success)
 				ASN1_STRING_free(os);
 			free(value);
@@ -5758,6 +5756,8 @@ static int read_object(CK_SESSION_HANDLE session)
 					EVP_PKEY_CTX_free(ctx);
 					util_fatal("cannot create EVP_PKEY");
 			}
+			OSSL_PARAM_free(old);
+			OSSL_PARAM_free(new);
 
 #endif
 			if (!i2d_PUBKEY_bio(pout, pkey))
