@@ -45,7 +45,6 @@ function generate_key() {
 	# Generate key pair
 	$PKCS11_TOOL --keypairgen --key-type="$TYPE" --login --pin=$PIN \
 		--module="$P11LIB" --label="$LABEL" --id=$ID
-
 	if [[ "$?" -ne "0" ]]; then
 		echo "Couldn't generate $TYPE key pair"
 		return 1
@@ -54,6 +53,10 @@ function generate_key() {
 	# Extract public key from the card
 	$PKCS11_TOOL --read-object --id $ID --type pubkey --output-file $ID.der \
 		--module="$P11LIB"
+	if [[ "$?" -ne "0" ]]; then
+		echo "Couldn't read generated $TYPE public key"
+		return 1
+	fi
 
 	# convert it to more digestible PEM format
 	if [[ ${TYPE:0:3} == "RSA" ]]; then
@@ -79,13 +82,13 @@ function card_setup() {
 	softhsm_initialize
 
 	# Generate 1024b RSA Key pair
-	generate_key "RSA:1024" "01" "RSA_auth"
+	generate_key "RSA:1024" "01" "RSA_auth" || return 1
 	# Generate 2048b RSA Key pair
-	generate_key "RSA:2048" "02" "RSA2048"
+	generate_key "RSA:2048" "02" "RSA2048" || return 1
 	# Generate 256b ECC Key pair
-	generate_key "EC:secp256r1" "03" "ECC_auth"
+	generate_key "EC:secp256r1" "03" "ECC_auth" || return 1
 	# Generate 521b ECC Key pair
-	generate_key "EC:secp521r1" "04" "ECC521"
+	generate_key "EC:secp521r1" "04" "ECC521" || return 1
 	# Generate an HMAC:SHA256 key
 	$PKCS11_TOOL --keygen --key-type="GENERIC:64" --login --pin=$PIN \
 		--module="$P11LIB" --label="HMAC-SHA256"

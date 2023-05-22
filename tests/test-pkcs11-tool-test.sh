@@ -15,6 +15,7 @@ fi
 grep "Ubuntu 18.04" /etc/issue && echo "WARNING: Not supported on Ubuntu 18.04" && exit 77
 
 card_setup
+assert $? "Failed to set up card"
 
 echo "======================================================="
 echo "Test"
