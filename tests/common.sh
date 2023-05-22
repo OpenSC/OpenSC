@@ -2,6 +2,11 @@
 ## from OpenSC/src/tests/p11test/runtest.sh
 BUILD_PATH=${BUILD_PATH:-..}
 
+# run valgrind with all the switches we are interested in
+if [ -n "$VALGRIND" -a -n "$LOG_COMPILER" ]; then
+    VALGRIND="$LOG_COMPILER"
+fi
+
 SOPIN="12345678"
 PIN="123456"
 PKCS11_TOOL="$VALGRIND $BUILD_PATH/src/tools/pkcs11-tool"
