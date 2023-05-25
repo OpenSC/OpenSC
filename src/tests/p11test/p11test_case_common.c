@@ -409,15 +409,29 @@ int callback_public_keys(test_certs_t *objects,
 		} else { /* store the public key for future use */
 			o->type = EVP_PKEY_RSA;
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
-			o->key = EVP_PKEY_new();
 			RSA *rsa = RSA_new();
-			if (RSA_set0_key(rsa, n, e, NULL) != 1 ||
-			    EVP_PKEY_set1_RSA(o->key, rsa) != 1) {
-				RSA_free(rsa);
-				fail_msg("Unable to set key params");
+			if (rsa == NULL) {
+				fail_msg("Unable to allocate RSA key");
 				return -1;
 			}
-			RSA_free(rsa);
+			o->key = EVP_PKEY_new();
+			if (o->key == NULL) {
+				fail_msg("Unable to allocate EVP_PKEY");
+				RSA_free(rsa);
+				return -1;
+			}
+			if (RSA_set0_key(rsa, n, e, NULL) != 1) {
+				fail_msg("Unable set RSA key params");
+				EVP_PKEY_free(o->key);
+				RSA_free(rsa);
+				return -1;
+			}
+			if (EVP_PKEY_assign_RSA(o->key, rsa) != 1) {
+				EVP_PKEY_free(o->key);
+				RSA_free(rsa);
+				fail_msg("Unable to assign RSA to EVP_PKEY");
+				return -1;
+			}
 #else
 			if (!(ctx = EVP_PKEY_CTX_new_from_name(NULL, "RSA", NULL)) ||
 				!(bld = OSSL_PARAM_BLD_new()) ||
