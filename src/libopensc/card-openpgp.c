@@ -2845,10 +2845,7 @@ pgp_update_pubkey_blob(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_in
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	r = sc_pkcs15_encode_pubkey(card->ctx, &p15pubkey, &data, &len);
-	if (r != 0) {
-		free(data);
-		LOG_TEST_RET(card->ctx, r, "Cannot encode pubkey");
-	}
+	LOG_TEST_RET(card->ctx, r, "Cannot encode pubkey");
 
 	sc_log(card->ctx, "Updating blob %04X's content.", blob_id);
 	r = pgp_set_blob(pk_blob, data, len);
