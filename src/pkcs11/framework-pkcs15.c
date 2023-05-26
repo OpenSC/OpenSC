@@ -1401,6 +1401,28 @@ out:
 	return logged_in;
 }
 
+int slot_get_card_state(struct sc_pkcs11_slot *slot)
+{
+	struct pkcs15_fw_data *fw_data = NULL;
+	struct sc_pkcs15_card *p15card = NULL;
+	int rv = 0;
+
+	if (slot->p11card == NULL) {
+		return 0;
+	}
+
+	fw_data = (struct pkcs15_fw_data *) slot->p11card->fws_data[slot->fw_data_idx];
+	if (!fw_data)
+		return 0;
+	p15card = fw_data->p15_card;
+	if (!p15card)
+		return 0;
+
+	if ((rv = sc_detect_card_presence(p15card->card->reader)) <= 0)
+		return 0;
+	return rv;
+}
+
 
 struct sc_pkcs15_object *
 _get_auth_object_by_name(struct sc_pkcs15_card *p15card, char *name, char *label)
