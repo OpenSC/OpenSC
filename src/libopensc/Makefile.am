@@ -50,7 +50,7 @@ libopensc_la_SOURCES_BASE = \
 	card-dnie.c cwa14890.c cwa-dnie.c \
 	card-isoApplet.c card-masktech.c card-gids.c card-jpki.c \
 	card-npa.c card-esteid2018.c card-idprime.c \
-	card-edo.c card-nqApplet.c card-skeid.c card-eoi.c \
+	card-edo.c card-nqApplet.c card-skeid.c card-eoi.c card-skeid4.c \
 	\
 	pkcs15-openpgp.c pkcs15-starcert.c pkcs15-cardos.c \
 	pkcs15-tcos.c pkcs15-esteid.c pkcs15-gemsafeGPK.c \
@@ -59,7 +59,7 @@ libopensc_la_SOURCES_BASE = \
 	pkcs15-oberthur.c pkcs15-itacns.c pkcs15-gemsafeV1.c pkcs15-sc-hsm.c \
 	pkcs15-coolkey.c pkcs15-din-66291.c pkcs15-idprime.c pkcs15-nqApplet.c \
 	pkcs15-dnie.c pkcs15-gids.c pkcs15-iasecc.c pkcs15-jpki.c pkcs15-esteid2018.c \
-	pkcs15-starcos-esign.c pkcs15-skeid.c pkcs15-eoi.c compression.c sm.c \
+	pkcs15-starcos-esign.c pkcs15-skeid.c pkcs15-eoi.c pkcs15-skeid4.c compression.c sm.c \
 	aux-data.c
 
 if ENABLE_CRYPTOTOKENKIT
@@ -133,7 +133,7 @@ TIDY_FILES = \
 	cwa14890.c cwa-dnie.c \
 	card-isoApplet.c card-masktech.c card-jpki.c \
 	card-npa.c card-esteid2018.c card-idprime.c \
-	card-edo.c card-nqApplet.c card-skeid.c card-eoi.c \
+	card-edo.c card-nqApplet.c card-skeid.c card-eoi.c card-skeid4.c \
 	\
 	pkcs15-openpgp.c pkcs15-cardos.c \
 	pkcs15-tcos.c pkcs15-esteid.c \
@@ -142,7 +142,7 @@ TIDY_FILES = \
 	pkcs15-oberthur.c pkcs15-itacns.c pkcs15-sc-hsm.c \
 	pkcs15-coolkey.c pkcs15-din-66291.c pkcs15-idprime.c pkcs15-nqApplet.c \
 	pkcs15-dnie.c pkcs15-gids.c pkcs15-iasecc.c pkcs15-jpki.c pkcs15-esteid2018.c \
-	pkcs15-starcos-esign.c pkcs15-skeid.c compression.c sm.c \
+	pkcs15-starcos-esign.c pkcs15-skeid.c pkcs15-skeid4.c compression.c sm.c \
 	aux-data.c \
 	#$(SOURCES)
 

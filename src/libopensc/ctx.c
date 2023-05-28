@@ -131,6 +131,7 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 #if defined(ENABLE_SM) && defined(ENABLE_OPENPACE)
 	{ "edo",        (void *(*)(void)) sc_get_edo_driver },
 #endif
+	{ "skeid4",	(void *(*)(void)) sc_get_skeid4_driver },
 
 /* Here should be placed drivers that need some APDU transactions in the
  * driver's `match_card()` function. */
