@@ -61,17 +61,6 @@ jobs:
           path: |
             tests/*.log
             src/tests/unittests/*.log
-      - uses: actions/cache@v3
-        id: cache-build
-        with:
-          path: ./*
-          key: ${{ runner.os }}-${{ github.sha }}
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: opensc-build
-          path:
-            opensc*.tar.gz
 
   build-no-shared:
     runs-on: ubuntu-latest
