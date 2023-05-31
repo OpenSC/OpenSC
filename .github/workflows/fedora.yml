@@ -5,10 +5,8 @@ on:
     paths:
       - '**.c'
       - '**.h'
+      - '**.sh'
       - .github/workflows/fedora.yml
-      - .github/setup-fedora.sh
-      - .github/build.sh
-      - .github/push-artifacts.sh
       - '**.am'
       - doc/**
       - configure.ac

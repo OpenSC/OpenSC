@@ -5,6 +5,7 @@ on:
       - '**.c'
       - '**.h'
       - '**.am'
+      - '**.sh'
       - .github/workflows/packit.yaml
       - packaging/opensc.spec
       - configure.ac
