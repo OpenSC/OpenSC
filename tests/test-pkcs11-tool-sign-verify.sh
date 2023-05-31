@@ -12,7 +12,6 @@ if [[ ! -f $P11LIB ]]; then
 fi
 card_setup
 assert $? "Failed to set up card"
-echo "data to sign (max 100 bytes)" > data
 
 echo "======================================================="
 echo "Test RSA keys"
@@ -20,8 +19,12 @@ echo "======================================================="
 for HASH in "" "SHA1" "SHA224" "SHA256" "SHA384" "SHA512"; do
     for SIGN_KEY in "01" "02"; do
         METHOD="RSA-PKCS"
+        # RSA-PKCS works only on small data - generate small data:
+        head -c 64 </dev/urandom > data
         if [[ ! -z $HASH ]]; then
             METHOD="$HASH-$METHOD"
+            # hash- methods should work on data > 512 bytes
+            head -c 1024 </dev/urandom > data
         fi
         echo
         echo "======================================================="
@@ -47,6 +50,8 @@ for HASH in "" "SHA1" "SHA224" "SHA256" "SHA384" "SHA512"; do
         rm data.sig
 
         METHOD="$METHOD-PSS"
+        # -PSS methods should work on data > 512 bytes; generate data:
+        head -c 1024 </dev/urandom > data
         if [[ "$HASH" == "SHA512" ]]; then
             continue; # This one is broken
         fi
@@ -95,6 +100,8 @@ for HASH in "" "SHA1" "SHA224" "SHA256" "SHA384" "SHA512"; do
         continue;
     fi
     METHOD="RSA-PKCS"
+    # RSA-PKCS works only on small data - generate small data:
+    head -c 64 </dev/urandom > data
     for ENC_KEY in "01" "02"; do
         echo
         echo "======================================================="
@@ -117,6 +124,8 @@ done
 echo "======================================================="
 echo "Test ECDSA keys"
 echo "======================================================="
+# operations with ECDSA keys should work on data > 512 bytes; generate data:
+head -c 1024 </dev/urandom > data
 for SIGN_KEY in "03" "04"; do
     METHOD="ECDSA"
 
