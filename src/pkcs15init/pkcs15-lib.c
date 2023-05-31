@@ -1929,7 +1929,7 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card, struct sc_profile
 				r = SC_ERROR_OUT_OF_MEMORY;
 				LOG_TEST_GOTO_ERR(ctx, r, "Cannot allocate EC params");
 			}
-			key.u.ec.ecpointQ.len = key.u.ec.ecpointQ.len;
+			key.u.ec.ecpointQ.len = keyargs->key.u.ec.ecpointQ.len;
 			memcpy(key.u.ec.ecpointQ.value, keyargs->key.u.ec.ecpointQ.value, key.u.ec.ecpointQ.len);
 		}
 	}
