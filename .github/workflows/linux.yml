@@ -6,11 +6,8 @@ on:
     paths:
       - '**.c'
       - '**.h'
+      - '**.sh'
       - .github/workflows/linux.yml
-      - .github/setup-linux.sh
-      - .github/setup-libressl.sh
-      - .github/build.sh
-      - .github/push-artifacts.sh
       - '**.am'
       - doc/**
       - configure.ac
