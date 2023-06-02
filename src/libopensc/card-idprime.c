@@ -713,7 +713,7 @@ static int idprime_fill_prkey_info(list_t *list, idprime_object_t **entry, sc_pk
 }
 
 /* get PIN id of the current object on the list */
-static int idprime_get_pin_id(list_t *list, idprime_object_t **entry, char **pin_id)
+static int idprime_get_pin_id(list_t *list, idprime_object_t **entry, const char **pin_id)
 {
 	if (pin_id == NULL || entry == NULL) {
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -834,7 +834,7 @@ static int idprime_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 			return idprime_final_iterator(&priv->pki_list);
 		case SC_CARDCTL_IDPRIME_GET_PIN_ID:
 			return idprime_get_pin_id(&priv->pki_list, &priv->pki_current,
-				(char **)ptr);
+				(const char **)ptr);
 	}
 
 	LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
