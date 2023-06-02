@@ -312,8 +312,8 @@ static int idprime_process_containermap(sc_card_t *card, idprime_private_data_t 
 
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Found container with index=%d, guid=%s", new_container.index, new_container.guid);
 
-		if (idprime_add_container_to_list(&priv->containers, &new_container) != SC_SUCCESS) {
-			LOG_FUNC_RETURN(card->ctx, r);
+		if ((r = idprime_add_container_to_list(&priv->containers, &new_container)) != SC_SUCCESS) {
+			goto done;
 		}
 	}
 
