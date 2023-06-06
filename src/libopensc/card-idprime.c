@@ -64,6 +64,9 @@ typedef struct idprime_object {
 	unsigned char key_reference;
 	u8 df[2];
 	unsigned short length;
+	u8 key_id[8];
+	u8 key_len;
+	u8 key_label[64];
 } idprime_object_t;
 
 /*
@@ -153,6 +156,166 @@ static int idprime_select_index(sc_card_t *card)
 	return r;
 }
 
+
+static int idprime_pubfile_skip_tag(sc_card_t *card, uint8_t *buf, int len)
+{
+	if (len <= 10)
+		return -1;
+
+	if (*buf == 0x08) { /* key_id is 8 bytes */
+		return 0;
+	}
+
+#if 0
+	/* kept this in case some tag is needed in the future */
+	static const char *types[] = {
+		"\x06" "C:country",
+		"\x0A" "O:organization",
+		"\x61" "organizationIdentifier",
+		"\x07" "L:location",
+		"\x04" "G:lastname",
+		"\x2a" "S:firstname",
+		"\x03" "CN:common name",
+		"\x05" "serialNumber",
+		NULL
+	};
+	char unknown[16];
+	sprintf(unknown, "Unknown %02x", buf[8]);
+	const char *type = unknown;
+	for(int i = 0; types[i]; i++) {
+		if (types[i][0] == buf[8]) {
+			type = &types[i][1];
+			break;
+		}
+	}
+
+	uint8_t *str_end = buf + 11 + buf[10]; // 10 bytes + 1 byte (length) + length
+	uint8_t old = *str_end;
+	*str_end = 0;
+	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "pubfile tag '%s'='%s'", type, buf + 11);
+	*str_end = old;
+#endif
+
+	/* mask and val might need tweaking... don't know what they contain */
+	static const char *mask = "\xFF\x00\xFF\x00\xFF\xFF\xFF\xFF\x00\xE0";
+	static const char *val  = "\x31\x00\x30\x00\x06\x03\x55\x04\x00\x00";
+	for (int i = 0; i < 10; i++) {
+		if ((buf[i] & mask[i]) != (val[i] & mask[i])) {
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+					"WARNING: unexpected pubfile sequence '%s'", sc_dump_hex(buf, 10));
+			break; /* not going to fail, just log it */
+		}
+	}
+	/* byte before string and length was always 0x0C or 0x13 */
+	if (buf[9] != 0x0C && buf[9] != 0x13) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
+				"WARNING: unexpected pubfile sequence '%s'", sc_dump_hex(buf, 10));
+		return -1;
+	}
+
+	return 11 + buf[10];
+}
+
+static int idprime_pubfile_extract(sc_card_t *card, idprime_object_t *obj, uint8_t *buf, int len)
+{
+	if (len <= 16)
+		return -1;
+
+	int label_len = buf[16];
+	/* 16 bytes + 1 byte (length) + length */
+	const int blk_len = 17 + label_len;
+	if (len <= blk_len)
+		return -1;
+
+	/* copy key label */
+	if (label_len >= (int)sizeof(obj->key_label))
+		label_len = (int)sizeof(obj->key_label) - 1;
+	memcpy(obj->key_label, buf + 17, label_len);
+	obj->key_label[label_len] = 0;
+
+	buf += blk_len;
+	len -= blk_len;
+
+	/* skip some bytes - buf[7] was seen with values 1 (skip 5 bytes) and 2 (skip 3 bytes) */
+	if (len <= 7)
+		return -1;
+	if (buf[7] == 1) {
+		buf += 27;
+		len -= 27;
+	} else {
+		buf += 25;
+		len -= 25;
+	}
+
+	/* iterate through certificate tags - key_id is located after them */
+	for (;;) {
+		const int skip = idprime_pubfile_skip_tag(card, buf, len);
+		if (skip < 0)
+			return -1;
+		if (skip) {
+			buf += skip;
+			len -= skip;
+		} else {
+			if (len <= 9)
+				return -1;
+			/* copy key id - first byte is length: 8 bytes */
+			memcpy(obj->key_id, buf + 1, 8);
+			obj->key_len = 8;
+			return 0;
+		}
+	}
+}
+
+static int idprime_pubfile_get_keyinfo(sc_card_t *card, u8 *pubfile_df, idprime_object_t *obj)
+{
+	sc_path_t tinfo_path = {"\x00\x00", 2, 0, 0, SC_PATH_TYPE_PATH, {"", 0}};
+	sc_file_t *file = NULL;
+	u8 *file_data = NULL;
+	int r;
+
+	LOG_FUNC_CALLED(card->ctx);
+
+	*obj->key_label = 0;
+	*obj->key_id = 0;
+
+	if (obj == NULL || pubfile_df == NULL)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
+	/* select file */
+	memcpy(tinfo_path.value, pubfile_df, 2);
+	r = iso_ops->select_file(card, &tinfo_path, &file);
+	if (r != SC_SUCCESS)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+	const size_t file_size = file->size;
+	sc_file_free(file);
+	if (file_size == 0)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+
+	/* read whole file */
+	file_data = malloc(file_size);
+	if (file_data == NULL)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+
+	r = 0;
+	do {
+		const int got = iso_ops->read_binary(card, r, file_data + r, file_size - r, 0);
+		if (got < 1) {
+			free(file_data);
+			LOG_FUNC_RETURN(card->ctx, got);
+		}
+		r += got;
+	} while ((size_t)r < file_size);
+
+	/* data offsets */
+	if (idprime_pubfile_extract(card, obj, file_data, file_size) < 0) {
+		free(file_data);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OBJECT_NOT_FOUND);
+	}
+
+	free(file_data);
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+}
+
 static int idprime_process_index(sc_card_t *card, idprime_private_data_t *priv, int length)
 {
 	u8 *buf = NULL;
@@ -185,6 +348,55 @@ static int idprime_process_index(sc_card_t *card, idprime_private_data_t *priv, 
 	for (i = 0; i < num_entries; i++) {
 		u8 *start = &buf[i*21+1];
 
+		/* object's filename */
+		const u8 file_type = start[3] & 0xF0; // hmmm...
+		const u8 file_len = start[3] & 0x0F; // matches filename length in some cases
+		/*
+df=0201, len=16
+Skipping object with type=10|0, name=cardid, data=02010010636172646964000000000000 0000000003
+df=0202, len=6
+Skipping object with type=0|6, name=cardcf, data=02020006636172646366000000000000 0000000001
+df=0203, len=8
+Skipping object with type=0|8, name=cardapps, data=02030008636172646170707300000000 0000000001
+df=0204, len=172
+Skipping object with type=a0|c, name=cmapfilemscp, data=020400AC636D617066696C656D736370 0000000001
+df=0205, len=331
+Skipping object with type=40|b, name=pubpuk00p11, data=0205014B70756270756B303070313100 0000000001
+df=0206, len=342
+Skipping object with type=50|6, name=priprk00p11, data=0206015670726970726B303070313100 0000000001
+df=0208, len=1512
+Found certificate with fd=1, key_ref=245(f5), type=e0|8, name=kxc00, data=020805E86B786330300000006D736370 0000000001
+	label=MLADEN MILINKOVIĆ
+df=0209, len=357
+Skipping object with type=60|5, name=pubkxc00p11, data=020901657075626B7863303070313100 0000000001
+df=0207, len=1326
+Found certificate with fd=2, key_ref=245(f5), type=20|e, name=kxc10, data=0207052E6B786331300000006D736370 0000000001
+	label=CN=Fina Root CA, O=Financijska agencija, C=HR
+df=020A, len=2682
+Skipping object with type=70|a, name=msroots, data=020A0A7A6D73726F6F7473006D736370 0000000001
+df=020B, len=263
+Skipping object with type=0|7, name=pubkxc10p11, data=020B01077075626B7863313070313100 0000000001
+df=020C, len=1545
+Found certificate with fd=3, key_ref=246(f6), type=0|9, name=kxc11, data=020C06096B786331310000006D736370 0000000001
+	label=RDC CA 2015
+df=020D, len=228
+Skipping object with type=e0|4, name=pubkxc11p11, data=020D00E47075626B7863313170313100 0000000001
+df=020E, len=331
+Skipping object with type=40|b, name=pubpuk01p11, data=020E014B70756270756B303170313100 0000000001
+df=020F, len=342
+Skipping object with type=50|6, name=priprk01p11, data=020F015670726970726B303170313100 0000000001
+df=0211, len=1577
+Found certificate with fd=4, key_ref=246(f6), type=20|9, name=ksc01, data=021106296B736330310000006D736370 0000000001
+	label=MLADEN MILINKOVIĆ
+df=0212, len=356
+Skipping object with type=60|4, name=pubksc01p11, data=021201647075626B7363303170313100 0000000001
+df=0210, len=34
+Found p11/tinfo object with type=20|2, name=tinfo, data=0210002274696E666F00000070313100 0000000001
+		*/
+		char filename[18];
+		strncpy(filename, (char *)&start[4], 17);
+		filename[17] = 0;
+
 		/* First two bytes specify the object DF */
 		new_object.df[0] = start[0];
 		new_object.df[1] = start[1];
@@ -209,7 +421,9 @@ static int idprime_process_index(sc_card_t *card, idprime_private_data_t *priv, 
 					new_object.key_reference = 0x11 + key_id;
 					break;
 				case SC_CARD_TYPE_IDPRIME_V3:
-					new_object.key_reference = 0xF7 + key_id;
+					//new_object.key_reference = 0xF7 + key_id; // how it was
+					//new_object.key_reference = 0xF5 + key_id; // mine IDBridge K30
+					new_object.key_reference = 0xF0 + start[2];
 					break;
 				case SC_CARD_TYPE_IDPRIME_V4:
 				default:
@@ -217,15 +431,41 @@ static int idprime_process_index(sc_card_t *card, idprime_private_data_t *priv, 
 					break;
 				}
 			}
-			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Found certificate with fd=%d, key_ref=%d",
-				new_object.fd, new_object.key_reference);
-			idprime_add_object_to_list(&priv->pki_list, &new_object);
 
+			/* find pubfile that belongs to this certificate and fetch key_id/label */
+			static u8 pub[] = "pubxxxNNp11";
+			memcpy(&pub[3], &start[4], 5);
+			*new_object.key_id = 0;
+			new_object.key_len = 0;
+
+			for (int pki = 0; pki < num_entries; pki++) {
+				u8 *pub_start = &buf[pki * 21 + 1];
+				if (memcmp(&pub_start[4], pub, 11) == 0) {
+					idprime_pubfile_get_keyinfo(card, pub_start, &new_object);
+					break;
+				}
+			}
+			if (new_object.key_len == 0) {
+				new_object.key_id[0] = (new_object.fd >> 8) & 0xff;
+				new_object.key_id[1] = new_object.fd & 0xff;
+				new_object.key_len = 2;
+			}
+
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Found certificate with fd=%d, key_ref=%d(%02x), type=%x|%x, name=%s, data=%s\n\tlabel=%s",
+				new_object.fd, new_object.key_reference, new_object.key_reference, file_type, file_len, filename,
+				sc_dump_hex(start, 21), new_object.key_label);
+
+			idprime_add_object_to_list(&priv->pki_list, &new_object);
 		/* This looks like non-standard extension listing pkcs11 token info label in my card */
 		} else if ((memcmp(&start[4], "tinfo", 6) == 0) && (memcmp(&start[12], "p11", 4) == 0)) {
 			memcpy(priv->tinfo_df, new_object.df, sizeof(priv->tinfo_df));
 			priv->tinfo_present = 1;
-			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Found p11/tinfo object");
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Found p11/tinfo object with type=%x|%x, name=%s, data=%s",
+				file_type, file_len, filename, sc_dump_hex(start, 21));
+
+		} else {
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Skipping object with type=%x|%x, name=%s, data=%s",
+				file_type, file_len, filename, sc_dump_hex(start, 21));
 		}
 	}
 	r = SC_SUCCESS;
@@ -398,11 +638,13 @@ static int idprime_fill_prkey_info(list_t *list, idprime_object_t **entry, sc_pk
 	/* Do not specify the length -- it will be read from the FCI */
 	prkey_info->path.count = -1;
 
-	/* TODO figure out the IDs as the original driver? */
-	prkey_info->id.value[0] = ((*entry)->fd >> 8) & 0xff;
-	prkey_info->id.value[1] = (*entry)->fd & 0xff;
-	prkey_info->id.len = 2;
+	memcpy(prkey_info->id.value, (*entry)->key_id, (*entry)->key_len);
+	prkey_info->id.len = (*entry)->key_len;
 	prkey_info->key_reference = (*entry)->key_reference;
+
+	/* TODO: this is ugly - pkcs15-idprime will set it to NULL */
+	prkey_info->aux_data = (*entry)->key_label[0] ? (void *)(*entry)->key_label : NULL;
+
 	*entry = list_iterator_next(list);
 	return SC_SUCCESS;
 }
