@@ -312,7 +312,7 @@ itacns_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 
 static int itacns_read_binary(sc_card_t *card,
 			       unsigned int idx, u8 *buf, size_t count,
-			       unsigned long flags)
+			       unsigned long *flags)
 {
 	size_t already_read = 0;
 	int requested;

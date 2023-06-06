@@ -38,7 +38,6 @@
 #include "opensc.h"
 #include "cardctl.h"
 #include "internal.h"
-#include "compression.h"
 #include "cwa14890.h"
 #include "cwa-dnie.h"
 
@@ -904,34 +903,32 @@ static int dnie_finish(struct sc_card *card)
 /* ISO 7816-4 functions */
 
 /**
- * Uncompress data if in compressed format.
+ * Check whether data are compressed.
  *
  * @param card pointer to sc_card_t structure
  * @param from buffer to get data from
- * @param len pointer to buffer length
- * @return uncompressed or original buffer; len points to new buffer length
- *        on error return null
+ * @param len buffer length
+ * @return 1 if data are compressed, 0 otherwise; len points to expected length of decompressed data
  */
-static u8 *dnie_uncompress(sc_card_t * card, u8 * from, size_t *len)
+
+static int dnie_is_compressed(sc_card_t * card, u8 * from, size_t len)
 {
-	u8 *upt = from;
 #ifdef ENABLE_ZLIB
-	int res = SC_SUCCESS;
 	size_t uncompressed = 0L;
 	size_t compressed = 0L;
 
 	if (!card || !card->ctx || !from || !len)
-		return NULL;
+		return 0;
 	LOG_FUNC_CALLED(card->ctx);
 
 	/* if data size not enough for compression header assume uncompressed */
-	if (*len < 8)
+	if (len < 8)
 		goto compress_exit;
 	/* evaluate compressed an uncompressed sizes (little endian format) */
 	uncompressed = lebytes2ulong(from);
 	compressed = lebytes2ulong(from + 4);
 	/* if compressed size doesn't match data length assume not compressed */
-	if (compressed != (*len) - 8)
+	if (compressed != len - 8)
 		goto compress_exit;
 	/* if compressed size greater than uncompressed, assume uncompressed data */
 	if (uncompressed < compressed)
@@ -940,32 +937,14 @@ static u8 *dnie_uncompress(sc_card_t * card, u8 * from, size_t *len)
 	if (uncompressed > MAX_FILE_SIZE)
 		goto compress_exit;
 
-	sc_log(card->ctx, "Data seems to be compressed. calling uncompress");
-	/* ok: data seems to be compressed */
-	upt = calloc(uncompressed, sizeof(u8));
-	if (!upt) {
-		sc_log(card->ctx, "alloc() for uncompressed buffer failed");
-		return NULL;
-	}
-	*len = uncompressed;
-	res = sc_decompress(upt,	/* try to uncompress by calling sc_xx routine */
-			    len,
-			    from + 8, (size_t) compressed, COMPRESSION_ZLIB);
-	if (res != SC_SUCCESS) {
-		sc_log(card->ctx, "Uncompress() failed or data not compressed");
-		goto compress_exit;	/* assume not need uncompression */
-	}
-	/* Done; update buffer len and return pt to uncompressed data */
-	sc_log_hex(card->ctx, "Compressed data", from + 8, compressed);
-	sc_log_hex(card->ctx, "Uncompressed data", upt, uncompressed);
- compress_exit:
-
+	sc_log(card->ctx, "Data seems to be compressed.");
+	return 1;
+compress_exit:
 #endif
 
-	sc_log(card->ctx, "uncompress: returning with%s de-compression ",
-	       (upt == from) ? "out" : "");
-	return upt;
-}
+	sc_log(card->ctx, "Data not compressed.");
+	return 0;
+}	
 
 /**
  * Fill file cache for read_binary() operation.
@@ -985,14 +964,14 @@ static u8 *dnie_uncompress(sc_card_t * card, u8 * from, size_t *len)
  * @param card Pointer to card structure
  * @return SC_SUCCESS if OK; else error code
  */
-static int dnie_fill_cache(sc_card_t * card)
+static int dnie_fill_cache(sc_card_t * card,unsigned long *flags)
 {
 	u8 tmp[MAX_RESP_BUFFER_SIZE];
 	sc_apdu_t apdu;
 	size_t count = 0;
 	size_t len = 0;
 	u8 *buffer = NULL;
-	u8 *pt = NULL, *p;
+	u8 *p;
 	sc_context_t *ctx = NULL;
 
 	if (!card || !card->ctx)
@@ -1068,21 +1047,28 @@ static int dnie_fill_cache(sc_card_t * card)
 	}
 
  read_done:
-	/* no more data to read: check if data is compressed */
-	pt = dnie_uncompress(card, buffer, &len);
-	free((void *)apdu.data);
+ 	free((void *)apdu.data);
 	if (apdu.resp != tmp)
 		free(apdu.resp);
-	if (pt == NULL) {
-		sc_log(ctx, "Uncompress process failed");
+
+	if (dnie_is_compressed(card, buffer, len)) {
+		if (flags)
+			*flags |= SC_FILE_FLAG_COMPRESSED_ZLIB;
+		/* Remove first 8 bytes with compression info*/
+		len -= 8;
+		p = malloc(len);
+		if (!p) {
+			free(buffer);
+			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+		}
+		memcpy(p, buffer + 8, len);
 		free(buffer);
-		LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
+		buffer = p;
 	}
-	if (pt != buffer)
-		free(buffer);
+
 
 	/* ok: as final step, set correct cache data into dnie_priv structures */
-	GET_DNIE_PRIV_DATA(card)->cache = pt;
+	GET_DNIE_PRIV_DATA(card)->cache = buffer;
 	GET_DNIE_PRIV_DATA(card)->cachelen = len;
 	sc_log(ctx,
 	       "fill_cache() done. length '%"SC_FORMAT_LEN_SIZE_T"u' bytes",
@@ -1105,7 +1091,7 @@ static int dnie_fill_cache(sc_card_t * card)
  */
 static int dnie_read_binary(struct sc_card *card,
 			    unsigned int idx,
-			    u8 * buf, size_t count, unsigned long flags)
+			    u8 * buf, size_t count, unsigned long *flags)
 {
 	int res = 0;
 	sc_context_t *ctx = NULL;
@@ -1117,7 +1103,7 @@ static int dnie_read_binary(struct sc_card *card,
 	LOG_FUNC_CALLED(ctx);
 	if (idx == 0 || GET_DNIE_PRIV_DATA(card)->cache == NULL) {
 		/* on first block or no cache, try to fill */
-		res = dnie_fill_cache(card);
+		res = dnie_fill_cache(card, flags);
 		if (res < 0) {
 			sc_log(ctx, "Cannot fill cache. using iso_read_binary()");
 			return iso_ops->read_binary(card, idx, buf, count, flags);

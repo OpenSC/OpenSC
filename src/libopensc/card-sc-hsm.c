@@ -785,7 +785,7 @@ static int sc_hsm_logout(sc_card_t * card)
 /* NOTE: idx is an offset into the card's file, not into buf */
 static int sc_hsm_read_binary(sc_card_t *card,
 			       unsigned int idx, u8 *buf, size_t count,
-			       unsigned long flags)
+			       unsigned long *flags)
 {
 	sc_context_t *ctx = card->ctx;
 	sc_apdu_t apdu;

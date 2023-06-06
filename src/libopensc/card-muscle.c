@@ -198,7 +198,7 @@ static int muscle_create_file(sc_card_t *card, sc_file_t *file)
 	return r;
 }
 
-static int muscle_read_binary(sc_card_t *card, unsigned int idx, u8* buf, size_t count, unsigned long flags)
+static int muscle_read_binary(sc_card_t *card, unsigned int idx, u8* buf, size_t count, unsigned long *flags)
 {
 	mscfs_t *fs = MUSCLE_FS(card);
 	int r;

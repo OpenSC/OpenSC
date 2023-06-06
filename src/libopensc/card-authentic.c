@@ -841,7 +841,7 @@ authentic_select_file(struct sc_card *card, const struct sc_path *path,
 
 static int
 authentic_read_binary(struct sc_card *card, unsigned int idx,
-		unsigned char *buf, size_t count, unsigned long flags)
+		unsigned char *buf, size_t count, unsigned long *flags)
 {
 	struct sc_context *ctx = card->ctx;
 	struct sc_apdu apdu;

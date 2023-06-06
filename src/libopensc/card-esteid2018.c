@@ -143,7 +143,7 @@ static int esteid_select_file(struct sc_card *card, const struct sc_path *in_pat
 }
 
 // temporary hack, overload 6B00 SW processing
-static int esteid_read_binary(struct sc_card *card, unsigned int idx, u8 *buf, size_t count, unsigned long flags) {
+static int esteid_read_binary(struct sc_card *card, unsigned int idx, u8 *buf, size_t count, unsigned long *flags) {
 	int r;
 	int (*saved)(struct sc_card *, unsigned int, unsigned int) = card->ops->check_sw;
 	LOG_FUNC_CALLED(card->ctx);

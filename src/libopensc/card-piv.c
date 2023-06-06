@@ -50,9 +50,6 @@
 #include "internal.h"
 #include "asn1.h"
 #include "cardctl.h"
-#ifdef ENABLE_ZLIB
-#include "compression.h"
-#endif
 #include "simpletlv.h"
 
 enum {
@@ -131,6 +128,7 @@ enum {
  */
 
 #define PIV_OBJ_CACHE_VALID			1
+#define PIV_OBJ_CACHE_COMPRESSED	2
 #define PIV_OBJ_CACHE_NOT_PRESENT	8
 
 typedef struct piv_obj_cache {
@@ -1096,27 +1094,14 @@ piv_cache_internal_data(sc_card_t *card, int enumtag)
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_FILE_NOT_FOUND);
 
 		if(compressed) {
-#ifdef ENABLE_ZLIB
-			size_t len;
-			u8* newBuf = NULL;
-
-			if(SC_SUCCESS != sc_decompress_alloc(&newBuf, &len, tag, taglen, COMPRESSION_AUTO))
-				LOG_FUNC_RETURN(card->ctx, SC_ERROR_OBJECT_NOT_VALID);
-
-			priv->obj_cache[enumtag].internal_obj_data = newBuf;
-			priv->obj_cache[enumtag].internal_obj_len = len;
-#else
-			sc_log(card->ctx, "PIV compression not supported, no zlib");
-			LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
-#endif
+			priv->obj_cache[enumtag].flags |= PIV_OBJ_CACHE_COMPRESSED;
 		}
-		else {
-			if (!(priv->obj_cache[enumtag].internal_obj_data = malloc(taglen)))
-				LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+		/* internal certificate remains compressed */
+		if (!(priv->obj_cache[enumtag].internal_obj_data = malloc(taglen)))
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 
-			memcpy(priv->obj_cache[enumtag].internal_obj_data, tag, taglen);
-			priv->obj_cache[enumtag].internal_obj_len = taglen;
-		}
+		memcpy(priv->obj_cache[enumtag].internal_obj_data, tag, taglen);
+		priv->obj_cache[enumtag].internal_obj_len = taglen;
 
 	/* convert pub key to internal */
 /* TODO: -DEE need to fix ...  would only be used if we cache the pub key, but we don't today */
@@ -1154,7 +1139,7 @@ piv_cache_internal_data(sc_card_t *card, int enumtag)
  * as well as set that we want the cert from the object.
  */
 static int
-piv_read_binary(sc_card_t *card, unsigned int idx, unsigned char *buf, size_t count, unsigned long flags)
+piv_read_binary(sc_card_t *card, unsigned int idx, unsigned char *buf, size_t count, unsigned long *flags)
 {
 	piv_private_data_t * priv = PIV_DATA(card);
 	int enumtag;
@@ -1208,6 +1193,9 @@ piv_read_binary(sc_card_t *card, unsigned int idx, unsigned char *buf, size_t co
 	if (priv->return_only_cert || piv_objects[enumtag].flags & PIV_OBJECT_TYPE_PUBKEY) {
 		rbuf = priv->obj_cache[enumtag].internal_obj_data;
 		rbuflen = priv->obj_cache[enumtag].internal_obj_len;
+		if ((priv->obj_cache[enumtag].flags & PIV_OBJ_CACHE_COMPRESSED) && flags) {
+			*flags |= SC_FILE_FLAG_COMPRESSED_AUTO;
+		}
 	} else {
 		rbuf = priv->obj_cache[enumtag].obj_data;
 		rbuflen = priv->obj_cache[enumtag].obj_len;

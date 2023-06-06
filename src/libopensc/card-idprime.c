@@ -28,9 +28,6 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
-#ifdef ENABLE_ZLIB
-#include "compression.h"
-#endif
 
 #include "cardctl.h"
 #include "pkcs15.h"
@@ -550,8 +547,6 @@ static int idprime_select_file(sc_card_t *card, const sc_path_t *in_path, sc_fil
 		if (len == HEADER_LEN && data[0] == 0x01 && data[1] == 0x00) {
 			/* Cache the real file size for the caching read_binary() */
 			priv->file_size = (*file_out)->size;
-			/* Fix the information in the file structure to not confuse upper layers */
-			(*file_out)->size = (data[3]<<8) | data[2];
 		}
 	}
 	/* Return the exit code of the select command */
@@ -560,7 +555,7 @@ static int idprime_select_file(sc_card_t *card, const sc_path_t *in_path, sc_fil
 
 // used to read existing certificates
 static int idprime_read_binary(sc_card_t *card, unsigned int offset,
-	unsigned char *buf, size_t count, unsigned long flags)
+	unsigned char *buf, size_t count, unsigned long *flags)
 {
 	struct idprime_private_data *priv = card->drv_data;
 	int r = 0;
@@ -576,6 +571,7 @@ static int idprime_read_binary(sc_card_t *card, unsigned int offset,
 
 		// this function is called to read and uncompress the certificate
 		u8 buffer[SC_MAX_EXT_APDU_BUFFER_SIZE];
+		u8 *data_buffer = buffer;
 		if (sizeof(buffer) < count || sizeof(buffer) < priv->file_size) {
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 		}
@@ -591,33 +587,18 @@ static int idprime_read_binary(sc_card_t *card, unsigned int offset,
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_DATA);
 		}
 		if (buffer[0] == 1 && buffer[1] == 0) {
-#ifdef ENABLE_ZLIB
-			size_t expectedsize = buffer[2] + buffer[3] * 0x100;
-			r = sc_decompress_alloc(&priv->cache_buf, &(priv->cache_buf_len),
-				buffer+4, priv->file_size-4, COMPRESSION_AUTO);
-			if (r != SC_SUCCESS) {
-				sc_log(card->ctx, "Zlib error: %d", r);
-				LOG_FUNC_RETURN(card->ctx, r);
-			}
-			if (priv->cache_buf_len != expectedsize) {
-				sc_log(card->ctx,
-					 "expected size: %"SC_FORMAT_LEN_SIZE_T"u real size: %"SC_FORMAT_LEN_SIZE_T"u",
-					 expectedsize, priv->cache_buf_len);
-				LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_DATA);
-			}
-#else
-			sc_log(card->ctx, "compression not supported, no zlib");
-			return SC_ERROR_NOT_SUPPORTED;
-#endif /* ENABLE_ZLIB */
-		} else {
-			/* assuming uncompressed certificate */
-			priv->cache_buf = malloc(r);
-			if (priv->cache_buf == NULL) {
-				return SC_ERROR_OUT_OF_MEMORY;
-			}
-			memcpy(priv->cache_buf, buffer, r);
-			priv->cache_buf_len = r;
+			/* Data will be decompressed later */
+			data_buffer += 4;
+			r = priv->file_size - 4;
+			if (flags)
+				*flags |= SC_FILE_FLAG_COMPRESSED_AUTO;
 		}
+		priv->cache_buf = malloc(r);
+		if (priv->cache_buf == NULL) {
+			return SC_ERROR_OUT_OF_MEMORY;
+		}
+		memcpy(priv->cache_buf, data_buffer, r);
+		priv->cache_buf_len = r;
 		priv->cached = 1;
 	}
 	if (offset >= priv->cache_buf_len) {

@@ -423,7 +423,7 @@ out:
 
 static int entersafe_read_binary(sc_card_t *card,
 								 unsigned int idx, u8 *buf, size_t count,
-								 unsigned long flags)
+								 unsigned long *flags)
 {
 	sc_apdu_t apdu;
 	u8 recvbuf[SC_MAX_APDU_BUFFER_SIZE];
