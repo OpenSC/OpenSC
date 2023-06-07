@@ -244,7 +244,7 @@ int sc_pkcs15_decode_prkdf_entry(struct sc_pkcs15_card *p15card,
 			const unsigned char *p = ec_domain;
 			ASN1_OBJECT *object = d2i_ASN1_OBJECT(NULL, &p, ec_domain_len);
 			int nid;
-			const EC_GROUP *group;
+			EC_GROUP *group;
 			if (!object) {
 				r = SC_ERROR_INVALID_ASN1_OBJECT;
 				goto err;
@@ -261,6 +261,7 @@ int sc_pkcs15_decode_prkdf_entry(struct sc_pkcs15_card *p15card,
 				goto err;
 			}
 			info.field_length = EC_GROUP_order_bits(group);
+			EC_GROUP_free(group);
 			if (!info.field_length) {
 				r = SC_ERROR_CORRUPTED_DATA;
 				goto err;
@@ -627,7 +628,7 @@ sc_pkcs15_convert_prkey(struct sc_pkcs15_prkey *pkcs15_key, void *evp_key)
 	switch (pk_type) {
 	case EVP_PKEY_RSA: {
 		struct sc_pkcs15_prkey_rsa *dst = &pkcs15_key->u.rsa;
-		
+
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 		const BIGNUM *src_n, *src_e, *src_d, *src_p, *src_q, *src_iqmp, *src_dmp1, *src_dmq1;
 		RSA *src = NULL;
@@ -791,7 +792,7 @@ sc_pkcs15_convert_prkey(struct sc_pkcs15_prkey *pkcs15_key, void *evp_key)
 		/*
 		 * In OpenSC the field_length is in bits. Not all curves are a multiple of 8.
 		 * EC_POINT_point2oct handles this and returns octstrings that can handle
-		 * these curves. Get real field_length from OpenSSL. 
+		 * these curves. Get real field_length from OpenSSL.
 		 */
 		dst->params.field_length = EC_GROUP_get_degree(grp);
 
