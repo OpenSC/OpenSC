@@ -56,7 +56,7 @@ static const struct sc_atr_table idprime_atrs[] = {
 	{ "3b:7f:96:00:00:80:31:80:65:b0:84:61:60:fb:12:0f:fe:82:90:00",
 	  "ff:ff:00:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:00:00:ff:ff:ff",
 	  "Gemalto IDPrime 930/3930",
-	  SC_CARD_TYPE_IDPRIME_930, 0, NULL }, 
+	  SC_CARD_TYPE_IDPRIME_930, 0, NULL },
 	{ "3b:7f:96:00:00:80:31:80:65:b0:85:59:56:fb:12:0f:fe:82:90:00",
 	  "ff:ff:00:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:00:00:ff:ff:ff",
 	  "Gemalto IDPrime 940",
@@ -355,7 +355,7 @@ static int idprime_process_keyrefmap(sc_card_t *card, idprime_private_data_t *pr
 		u8 *start = &buf[i * KEYREF_OBJ_LEN];
 		if (start[0] == 0) /* Empty key ref */
 			continue;
-	
+
 		new_keyref.index = start[2];
 		new_keyref.key_reference = start[1];
 		new_keyref.pin_index = start[7];
@@ -558,7 +558,7 @@ static int idprime_init(sc_card_t *card)
 				r = SC_ERROR_INVALID_DATA;
 			LOG_FUNC_RETURN(card->ctx, r);
 		}
-		
+
 		if ((r = idprime_process_keyrefmap(card, priv, r)) != SC_SUCCESS) {
 			idprime_free_private_data(priv);
 			LOG_FUNC_RETURN(card->ctx, r);
@@ -935,13 +935,15 @@ idprime_set_security_env(struct sc_card *card,
 {
 	int r;
 	struct sc_security_env new_env;
-	idprime_private_data_t *priv = card->drv_data;
+	idprime_private_data_t *priv = NULL;
 
 	if (card == NULL || env == NULL) {
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	priv = card->drv_data;
 
 	/* The card requires algorithm reference here */
 	new_env = *env;
