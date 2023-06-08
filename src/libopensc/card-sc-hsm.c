@@ -36,6 +36,17 @@
 
 #include "card-sc-hsm.h"
 
+#ifdef ENABLE_SM
+#ifdef ENABLE_OPENPACE
+#include "sm/sm-eac.h"
+#include <eac/cv_cert.h>
+#include <eac/eac.h>
+#include <eac/ta.h>
+#include <openssl/bio.h>
+#include <openssl/crypto.h>
+#endif
+#endif
+
 
 /* Static reference to ISO driver */
 static const struct sc_card_operations *iso_ops = NULL;
@@ -476,12 +487,6 @@ static int sc_hsm_soc_biomatch(sc_card_t *card, struct sc_pin_cmd_data *data,
 
 #ifdef ENABLE_SM
 #ifdef ENABLE_OPENPACE
-#include "sm/sm-eac.h"
-#include <eac/cv_cert.h>
-#include <eac/eac.h>
-#include <eac/ta.h>
-#include <openssl/bio.h>
-#include <openssl/crypto.h>
 
 static int sc_hsm_perform_chip_authentication(sc_card_t *card)
 {
