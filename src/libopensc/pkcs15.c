@@ -1241,6 +1241,7 @@ const char *pkcs15_get_default_use_file_cache(struct sc_card *card)
 		"jpki",
 		"MaskTech",
 		"mcrd",
+		"myeid",
 		"npa",
 		"nqapplet",
 		"tcos",
