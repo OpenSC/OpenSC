@@ -176,7 +176,7 @@ static int sc_pkcs15emu_idprime_init(sc_pkcs15_card_t *p15card)
 		sc_pkcs15_cert_t *cert_out = NULL;
 		const char *pin_id = NULL;
 
-		r = (card->ops->card_ctl)(card, SC_CARDCTL_IDPRIME_GET_PIN_ID, &pin_id);
+		r = (card->ops->card_ctl)(card, SC_CARDCTL_IDPRIME_GET_PIN_ID, (void *) &pin_id);
 		LOG_TEST_GOTO_ERR(card->ctx, r, "Can not get PIN id of next object ");
 		r = (card->ops->card_ctl)(card, SC_CARDCTL_IDPRIME_GET_NEXT_OBJECT, &prkey_info);
 		LOG_TEST_GOTO_ERR(card->ctx, r, "Can not get next object");
