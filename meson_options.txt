@@ -1,0 +1,3 @@
+option('sm', type : 'boolean', value : true, description : 'secure messaging support and SM modules')
+option('cvcdir', type : 'string', description : 'CVC directory')
+option('x509dir', type : 'string', description : 'X.509 directory')

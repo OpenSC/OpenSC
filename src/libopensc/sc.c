@@ -955,7 +955,7 @@ void sc_mem_clear(void *ptr, size_t len)
 		SecureZeroMemory(ptr, len);
 #elif HAVE_EXPLICIT_BZERO
 		explicit_bzero(ptr, len);
-#elif ENABLE_OPENSSL
+#elif defined(ENABLE_OPENSSL)
 		OPENSSL_cleanse(ptr, len);
 #else
 		memset(ptr, 0, len);
