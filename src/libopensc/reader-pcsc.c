@@ -375,13 +375,27 @@ static int refresh_attributes(sc_reader_t *reader)
 
 	if (rv != SCARD_S_SUCCESS) {
 		if (rv == (LONG)SCARD_E_TIMEOUT) {
-			/* Timeout, no change from previous recorded state. Make sure that
-			 * changed flag is not set. */
-			reader->flags &= ~SC_READER_CARD_CHANGED;
+			DWORD readers_len = 0, cstate = 0, prot, atr_len = SC_MAX_ATR_SIZE;
+			unsigned char atr[SC_MAX_ATR_SIZE];
+
 			/* Make sure to preserve the CARD_PRESENT flag if the reader was
 			 * reattached and we called the refresh_attributes too recently */
 			if (priv->reader_state.dwEventState & SCARD_STATE_PRESENT) {
 				reader->flags |= SC_READER_CARD_PRESENT;
+			}
+
+			rv = priv->gpriv->SCardStatus(priv->pcsc_card, NULL, &readers_len, &cstate, &prot, atr, &atr_len);
+			if (priv->pcsc_card != 0
+					&& (rv == (LONG)SCARD_W_REMOVED_CARD || rv == (LONG)SCARD_E_INVALID_VALUE || rv == (LONG)SCARD_E_INVALID_HANDLE)) {
+				/* When reader is removed between two subsequent calls to refresh_attributes,
+				 * SCardGetStatusChange does not notice the change - set it here */
+				reader->flags |= SC_READER_CARD_CHANGED;
+				/* If this happens, card must be reconnected, otherwise SCardGetStatusChange() will still return timeout
+				 * and card handle will be invalid. */
+			} else {
+				/* Otherwise timeout denotes no change from previous recorded state. Make sure that
+				 * changed flag is not set. */
+				reader->flags &= ~SC_READER_CARD_CHANGED;
 			}
 			LOG_FUNC_RETURN(reader->ctx, SC_SUCCESS);
 		}
