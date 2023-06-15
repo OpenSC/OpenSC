@@ -409,7 +409,13 @@ static int refresh_attributes(sc_reader_t *reader)
 				|| rv == (LONG)SCARD_E_NO_READERS_AVAILABLE
 #endif
 				|| rv == (LONG)SCARD_E_SERVICE_STOPPED) {
- 			reader->flags &= ~(SC_READER_CARD_PRESENT);
+			/* Set flag when state changes */
+			if (reader->flags & SC_READER_REMOVED) {
+				reader->flags &= ~SC_READER_CARD_CHANGED;
+			} else {
+				reader->flags |= SC_READER_CARD_CHANGED;
+			}
+			reader->flags &= ~SC_READER_CARD_PRESENT;
 			reader->flags |= SC_READER_REMOVED;
 			priv->gpriv->removed_reader = reader;
  			SC_FUNC_RETURN(reader->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
@@ -434,7 +440,7 @@ static int refresh_attributes(sc_reader_t *reader)
 		SC_FUNC_RETURN(reader->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
 	}
 
-	reader->flags &= ~(SC_READER_CARD_CHANGED|SC_READER_CARD_INUSE|SC_READER_CARD_EXCLUSIVE);
+	reader->flags &= ~(SC_READER_CARD_CHANGED | SC_READER_CARD_INUSE | SC_READER_CARD_EXCLUSIVE);
 
 	if (state & SCARD_STATE_PRESENT) {
 		reader->flags |= SC_READER_CARD_PRESENT;
