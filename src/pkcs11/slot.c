@@ -404,8 +404,8 @@ card_detect_all(void)
 			 * https://bugzilla.mozilla.org/show_bug.cgi?id=1613632 */
 
 			/* Instead, remove the relation between reader and slot */
-			for (j = 0; j<list_size(&virtual_slots); j++) {
-				sc_pkcs11_slot_t *slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, j);
+			for (j = 0; j < list_size(&virtual_slots); j++) {
+				sc_pkcs11_slot_t *slot = (sc_pkcs11_slot_t *)list_get_at(&virtual_slots, j);
 				if (slot->reader == reader) {
 					slot->reader = NULL;
 				}
@@ -413,8 +413,8 @@ card_detect_all(void)
 		} else {
 			/* Locate a slot related to the reader */
 			int found = 0;
-			for (j = 0; j<list_size(&virtual_slots); j++) {
-				sc_pkcs11_slot_t *slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, j);
+			for (j = 0; j < list_size(&virtual_slots); j++) {
+				sc_pkcs11_slot_t *slot = (sc_pkcs11_slot_t *)list_get_at(&virtual_slots, j);
 				if (slot->reader == reader) {
 					found = 1;
 					break;
@@ -428,6 +428,17 @@ card_detect_all(void)
 				}
 			}
 			card_detect(reader);
+
+			/* If reader was removed, card_removed() was already called in card_detect(),
+			 * remove only relation between reader and slot. */
+			if (reader->flags & SC_READER_REMOVED) {
+				for (j = 0; j < list_size(&virtual_slots); j++) {
+					sc_pkcs11_slot_t *slot = (sc_pkcs11_slot_t *)list_get_at(&virtual_slots, j);
+					if (slot->reader == reader) {
+						slot->reader = NULL;
+					}
+				}
+			}
 		}
 	}
 	sc_log(context, "All cards detected");
