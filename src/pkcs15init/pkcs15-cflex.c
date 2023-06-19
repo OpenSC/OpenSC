@@ -56,6 +56,9 @@ cflex_delete_file(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *d
         int             r = 0;
         /* Select the parent DF */
         path = df->path;
+		if (path.len < 2) {
+			return SC_ERROR_INVALID_ARGUMENTS;
+		}
         path.len -= 2;
         r = sc_select_file(p15card->card, &path, &parent);
         if (r < 0)
