@@ -191,13 +191,16 @@ authentic_pkcs15_erase_card(struct sc_profile *profile, struct sc_pkcs15_card *p
 		rv = sc_erase_binary(p15card->card, 0, file->size, 0);
 		if (rv == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED)   {
 			rv = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_UPDATE);
+			if (rv < 0)
+				sc_file_free(file);
+
 			LOG_TEST_RET(ctx, rv, "'UPDATE' authentication failed");
 
 			rv = sc_erase_binary(p15card->card, 0, file->size, 0);
 		}
-		LOG_TEST_RET(ctx, rv, "Binary erase error");
 
 		sc_file_free(file);
+		LOG_TEST_RET(ctx, rv, "Binary erase error");
 
 		profile->dirty = 1;
 	}
