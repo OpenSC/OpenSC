@@ -54,6 +54,8 @@
 
 #define TEMPLATE_FILEID_MIN_DIFF	0x20
 
+#define WORD_SIZE	64
+
 /*
 #define DEBUG_PROFILE
 */
@@ -1985,24 +1987,44 @@ static struct block	root_ops = {
    "root",		process_block,	NULL,		root_blocks
 };
 
+static void
+get_inner_word(char *str, char word[WORD_SIZE]) {
+	char *inner = NULL;
+	size_t len = 0;
+
+	inner = str;
+	while (isalnum((unsigned char)*inner) || *inner == '-' || *inner == '_') {
+		inner++;
+		len++;
+	}
+	len = len >= WORD_SIZE ? WORD_SIZE - 1 : len;
+	memcpy(word, str, len);
+	word[len] = '\0';
+}
+
+/*
+ * Checks for a reference loop in macro definitions.
+ * Function returns 1 if a reference loop is detected, 0 otherwise.
+ */
 static int
-check_macro_reference_loop(char *start, char *str, struct state *cur, int depth) {
+check_macro_reference_loop(const char *start_name, char *value, sc_profile_t *profile, int depth) {
 	sc_macro_t *macro = NULL;
 	char *name = NULL;
+	char word[WORD_SIZE];
 
-	if (!start || !str || !cur)
+	if (!start_name || !value || !profile || depth == 16)
 		return 1;
 
-	if (depth == 16)
-		return 1;
-
-	if (!(name = strchr(str, '$')))
+	if (!(name = strchr(value, '$')))
 		return 0;
-	if (!(macro = find_macro(cur->profile, name + 1)))
+
+	/* Extract the macro name from the string*/
+	get_inner_word(name + 1, word);
+	if (!(macro = find_macro(profile, word)))
 		return 0;
-	if (!strcmp(macro->name, start + 1))
+	if (!strcmp(macro->name, start_name + 1))
 		return 1;
-	return check_macro_reference_loop(start, macro->value->data, cur, depth + 1);
+	return check_macro_reference_loop(start_name, macro->value->data, profile, depth + 1);
 }
 
 static int
@@ -2025,8 +2047,11 @@ build_argv(struct state *cur, const char *cmdname,
 			/* When str contains macro inside, macro reference loop needs to be checked */
 			char *macro_name = NULL;
 			if ((macro_name = strchr(str, '$'))) {
-				if ((macro = find_macro(cur->profile, macro_name + 1))
-				    && check_macro_reference_loop(macro_name + 1, macro->value->data, cur, 0)) {
+				/* Macro does not to start at the first position */
+				char word[WORD_SIZE];
+				get_inner_word(macro_name + 1, word);
+				if ((macro = find_macro(cur->profile, word))
+				    && check_macro_reference_loop(word, macro->value->data, cur->profile, 0)) {
 					return SC_ERROR_SYNTAX_ERROR;
 				}
 			}
@@ -2045,7 +2070,7 @@ build_argv(struct state *cur, const char *cmdname,
 		if (list == macro->value) {
 			return SC_ERROR_SYNTAX_ERROR;
 		}
-		if (check_macro_reference_loop(list->data, macro->value->data, cur, 0)) {
+		if (check_macro_reference_loop(list->data, macro->value->data, cur->profile, 0)) {
 			return SC_ERROR_SYNTAX_ERROR;
 		}
 #ifdef DEBUG_PROFILE
@@ -2390,7 +2415,7 @@ struct num_exp_ctx {
 	jmp_buf		error;
 
 	int		j;
-	char		word[64];
+	char		word[WORD_SIZE];
 
 	char *		unget;
 	char *		str;
