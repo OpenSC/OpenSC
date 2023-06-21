@@ -307,19 +307,6 @@ sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *pi
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_PIN_REFERENCE);
 	auth_info = (struct sc_pkcs15_auth_info *)pin_obj->data;
 
-	/*
-	 * if pin cache is disabled, we can get here with no PIN data.
-	 * in this case, to avoid error or unnecessary pin prompting on pinpad,
-	 * check if the PIN has been already verified and the access condition
-	 * is still open on card.
-	 */
-	if (pinlen == 0) {
-	    r = sc_pkcs15_get_pin_info(p15card, pin_obj);
-
-	    if (r == SC_SUCCESS && auth_info->logged_in == SC_PIN_STATE_LOGGED_IN)
-		LOG_FUNC_RETURN(ctx, r);
-	}
-
 	r = _validate_pin(p15card, auth_info, pinlen);
 
 	if (r)
