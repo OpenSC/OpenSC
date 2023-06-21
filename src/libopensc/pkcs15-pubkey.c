@@ -351,6 +351,8 @@ int sc_pkcs15_decode_pukdf_entry(struct sc_pkcs15_card *p15card,
 err:
 	if (r < 0) {
 		sc_pkcs15_free_pubkey_info(info);
+		if (der->len)
+			free(der->value);
 	}
 
 	LOG_FUNC_RETURN(ctx, r);
