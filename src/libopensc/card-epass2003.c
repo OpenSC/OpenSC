@@ -3446,6 +3446,23 @@ epass2003_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries
 	return r;
 }
 
+static int
+epass2003_logout(struct sc_card *card)
+{
+	epass2003_exdata *exdata = NULL;
+
+	if (!card->drv_data) 
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	exdata = (epass2003_exdata *)card->drv_data;
+	if (exdata->sm) {
+		sc_sm_stop(card);
+		return epass2003_refresh(card);
+	}
+
+	return SC_ERROR_NOT_SUPPORTED;
+}
+
 static struct sc_card_driver *sc_get_driver(void)
 {
 	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
@@ -3475,6 +3492,7 @@ static struct sc_card_driver *sc_get_driver(void)
 	epass2003_ops.pin_cmd = epass2003_pin_cmd;
 	epass2003_ops.check_sw = epass2003_check_sw;
 	epass2003_ops.get_challenge = epass2003_get_challenge;
+	epass2003_ops.logout = epass2003_logout;
 	return &epass2003_drv;
 }
 
