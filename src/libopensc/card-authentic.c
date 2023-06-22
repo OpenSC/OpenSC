@@ -2314,6 +2314,17 @@ authentic_sm_get_wrapped_apdu(struct sc_card *card, struct sc_apdu *plain, struc
 }
 #endif
 
+int authentic_logout(sc_card_t *card)
+{
+	int r = SC_ERROR_NOT_SUPPORTED;
+
+	if (card->type == SC_CARD_TYPE_OBERTHUR_AUTHENTIC_3_2) {
+		r = authentic_select_aid(card, aid_AuthentIC_3_2, sizeof(aid_AuthentIC_3_2), NULL, NULL);
+	}
+
+	return r;
+}
+
 static struct sc_card_driver *
 sc_get_driver(void)
 {
