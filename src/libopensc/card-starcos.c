@@ -1211,7 +1211,7 @@ static int starcos_process_acl(sc_card_t *card, sc_file_t *file,
 			memcpy(p, file->name, (u8)file->namelen);
 			p   += 16;
 		} else {
-			/* (mis)use the fid as aid */
+			/* use the fid as aid */
 			*p++ = 2;
 			memset(p, 0, 16);
 			*p++ = (file->id >> 8) & 0xff;
