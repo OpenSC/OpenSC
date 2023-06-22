@@ -2160,18 +2160,9 @@ static int starcos_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 	}
 }
 
-/**
- * starcos_logout_v3_x()
- * StarCOS 3.x cards will not clear the security status by selecting MF.
- * Returning NOT_SUPPORTED would cause card reset, effectively invalidating
- * the security status.
- */
 static int starcos_logout_v3_x(sc_card_t *card)
 {
-	int r = SC_ERROR_NOT_SUPPORTED;
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_NORMAL);
-
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
+	return SC_ERROR_NOT_SUPPORTED;
 }
 
 static int starcos_logout(sc_card_t *card)
