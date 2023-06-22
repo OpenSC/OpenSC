@@ -361,6 +361,11 @@ static int jpki_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
+static int jpki_logout(sc_card_t *card)
+{
+	return jpki_select_ap(card);
+}
+
 static struct sc_card_driver *
 sc_get_driver(void)
 {
@@ -375,6 +380,7 @@ sc_get_driver(void)
 	jpki_ops.set_security_env = jpki_set_security_env;
 	jpki_ops.compute_signature = jpki_compute_signature;
 	jpki_ops.card_reader_lock_obtained = jpki_card_reader_lock_obtained;
+	jpki_ops.logout = jpki_logout;
 
 	return &jpki_drv;
 }
