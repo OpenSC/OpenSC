@@ -1852,6 +1852,12 @@ static int cac_init(sc_card_t *card)
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
+static int cac_logout(sc_card_t *card)
+{
+	int index;
+	return cac_find_first_pki_applet(card, &index);
+}
+
 static int cac_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 {
 	/* CAC, like PIV needs Extra validation of (new) PIN during
@@ -1923,6 +1929,7 @@ static struct sc_card_driver * sc_get_driver(void)
 	cac_ops.decipher =  cac_decipher;
 	cac_ops.card_ctl = cac_card_ctl;
 	cac_ops.pin_cmd = cac_pin_cmd;
+	cac_ops.logout = cac_logout;
 
 	return &cac_drv;
 }
