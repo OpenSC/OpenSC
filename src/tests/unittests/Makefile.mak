@@ -1,10 +1,11 @@
 TOPDIR = ..\..\..
 
-TARGETS = asn1 compression pkcs15filter
+TARGETS = asn1 compression pkcs15filter check_macro_reference_loop
 
 OBJECTS = asn1.obj \
 	compression.obj \
-	pkcs15-emulator-filter.obj
+	pkcs15-emulator-filter.obj \
+	check_macro_reference_loop.obj
 	$(TOPDIR)\win32\versioninfo.res
 
 all: $(TARGETS)
