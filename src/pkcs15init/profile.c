@@ -1987,13 +1987,20 @@ static struct block	root_ops = {
    "root",		process_block,	NULL,		root_blocks
 };
 
+static int
+is_macro_character(char c) {
+	if (isalnum(c) || c == '-' || c == '_')
+		return 1;
+	return 0;
+}
+
 static void
 get_inner_word(char *str, char word[WORD_SIZE]) {
 	char *inner = NULL;
 	size_t len = 0;
 
 	inner = str;
-	while (isalnum((unsigned char)*inner) || *inner == '-' || *inner == '_') {
+	while (is_macro_character(*inner)) {
 		inner++;
 		len++;
 	}
@@ -2472,7 +2479,7 @@ __expr_get(struct num_exp_ctx *ctx, int eof_okay)
 	}
 	else if (*s == '$') {
 		expr_put(ctx, *s++);
-		while (isalnum((unsigned char)*s) || *s == '-' || *s == '_')
+		while (is_macro_character(*s))
 			expr_put(ctx, *s++);
 	}
 	else if (strchr("*/+-()|&", *s)) {
