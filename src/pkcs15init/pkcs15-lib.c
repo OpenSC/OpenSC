@@ -1664,6 +1664,7 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 
 err:
 	sc_pkcs15_free_object(object);
+	free(pubkey_args.key.alg_id);
 	if (algorithm == SC_ALGORITHM_EC) {
 		/* Allocated in sc_copy_ec_params() */
 		free(pubkey_args.key.u.ec.params.named_curve);
