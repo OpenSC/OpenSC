@@ -2010,28 +2010,31 @@ get_inner_word(char *str, char word[WORD_SIZE]) {
 }
 
 /*
- * Checks for a reference loop in macro definitions.
+ * Checks for a reference loop for macro named start_name in macro definitions.
  * Function returns 1 if a reference loop is detected, 0 otherwise.
  */
 static int
-check_macro_reference_loop(const char *start_name, char *value, sc_profile_t *profile, int depth) {
-	sc_macro_t *macro = NULL;
+check_macro_reference_loop(const char *start_name, sc_macro_t *macro, sc_profile_t *profile, int depth) {
+	char *macro_value = NULL;
 	char *name = NULL;
 	char word[WORD_SIZE];
 
-	if (!start_name || !value || !profile || depth == 16)
+	if (!start_name || !macro || !profile || depth == 16)
 		return 1;
 
-	if (!(name = strchr(value, '$')))
+	/* Find name in macro value */
+	macro_value = macro->value->data;
+	if (!(name = strchr(macro_value, '$')))
 		return 0;
-
-	/* Extract the macro name from the string*/
+	/* Extract the macro name from the string */
 	get_inner_word(name + 1, word);
+	/* Find whether name corresponds to some other macro */
 	if (!(macro = find_macro(profile, word)))
 		return 0;
-	if (!strcmp(macro->name, start_name + 1))
+	/* Check for loop */
+	if (!strcmp(macro->name, start_name))
 		return 1;
-	return check_macro_reference_loop(start_name, macro->value->data, profile, depth + 1);
+	return check_macro_reference_loop(start_name, macro, profile, depth + 1);
 }
 
 static int
@@ -2058,7 +2061,7 @@ build_argv(struct state *cur, const char *cmdname,
 				char word[WORD_SIZE];
 				get_inner_word(macro_name + 1, word);
 				if ((macro = find_macro(cur->profile, word))
-				    && check_macro_reference_loop(word, macro->value->data, cur->profile, 0)) {
+				    && check_macro_reference_loop(macro->name, macro, cur->profile, 0)) {
 					return SC_ERROR_SYNTAX_ERROR;
 				}
 			}
@@ -2077,7 +2080,7 @@ build_argv(struct state *cur, const char *cmdname,
 		if (list == macro->value) {
 			return SC_ERROR_SYNTAX_ERROR;
 		}
-		if (check_macro_reference_loop(list->data, macro->value->data, cur->profile, 0)) {
+		if (check_macro_reference_loop(macro->name, macro, cur->profile, 0)) {
 			return SC_ERROR_SYNTAX_ERROR;
 		}
 #ifdef DEBUG_PROFILE
