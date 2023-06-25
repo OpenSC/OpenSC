@@ -69,6 +69,10 @@ static const struct sc_atr_table idprime_atrs[] = {
 	  "ff:ff:00:ff:ff:ff:ff:ff:ff:ff:00:00:00:00:ff:00:00:ff:ff:ff",
 	  "Gemalto IDPrime MD 8840, 3840, 3810, 840, 830 and MD 940 Cards",
 	  SC_CARD_TYPE_IDPRIME_GENERIC, 0, NULL },
+	{ "3b:ff:96:00:00:81:31:fe:43:80:31:80:65:b0:85:59:56:fb:12:0f:fe:82:90:00:00",
+	  "ff:ff:00:ff:ff:ff:ff:00:ff:ff:ff:ff:ff:ff:00:00:00:00:ff:ff:ff:ff:ff:ff:00",
+	  "Gemalto IDPrime MD 8840, 3840, 3810, 840 and 830 Cards",
+	  SC_CARD_TYPE_IDPRIME_GENERIC, 0, NULL },
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
