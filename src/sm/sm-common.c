@@ -444,16 +444,18 @@ sm_decrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
 	EVP_CIPHER *alg = NULL;
 	int tmplen;
 #endif
+	size_t decrypted_len;
+	unsigned char *decrypted;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_SM);
 	if (!out || !out_len)
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "SM decrypt_des_cbc3: invalid input arguments");
 
-	*out_len = data_len + 7;
-	*out_len -= *out_len % 8;
+	decrypted_len = data_len + 7;
+	decrypted_len -= decrypted_len % 8;
 
-	*out = malloc(*out_len);
-	if (!(*out))
+	decrypted = malloc(decrypted_len);
+	if (!(decrypted))
 		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "SM decrypt_des_cbc3: allocation error");
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
@@ -465,33 +467,38 @@ sm_decrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
 
 	for (st=0; st<data_len; st+=8)
 		DES_3cbc_encrypt((sm_des_cblock *)(data + st),
-				(sm_des_cblock *)(*out + st), 8, &ks, &ks2, &icv, DES_DECRYPT);
+				(sm_des_cblock *)(decrypted + st), 8, &ks, &ks2, &icv, DES_DECRYPT);
 #else
 	cctx = EVP_CIPHER_CTX_new();
 	alg = sc_evp_cipher(ctx, "DES-EDE-CBC");
 	if (!EVP_DecryptInit_ex2(cctx, alg, key, icv, NULL)) {
 		EVP_CIPHER_CTX_free(cctx);
 		sc_evp_cipher_free(alg);
+		free(decrypted);
 		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_SM, SC_ERROR_INTERNAL);
 	}
 	/* Disable padding, otherwise it will fail to decrypt non-padded inputs */
 	EVP_CIPHER_CTX_set_padding(cctx, 0);
-	if (!EVP_DecryptUpdate(cctx, *out, &tmplen, data, data_len)) {
+	if (!EVP_DecryptUpdate(cctx, decrypted, &tmplen, data, data_len)) {
 		EVP_CIPHER_CTX_free(cctx);
 		sc_evp_cipher_free(alg);
+		free(decrypted);
 		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_SM, SC_ERROR_INTERNAL);
 	}
-	*out_len = tmplen;
+	decrypted_len = tmplen;
 
-	if (!EVP_DecryptFinal_ex(cctx, *out + *out_len, &tmplen)) {
+	if (!EVP_DecryptFinal_ex(cctx, decrypted + decrypted_len, &tmplen)) {
 		EVP_CIPHER_CTX_free(cctx);
 		sc_evp_cipher_free(alg);
+		free(decrypted);
 		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_SM, SC_ERROR_INTERNAL);
 	}
-	*out_len += tmplen;
+	decrypted_len += tmplen;
 	EVP_CIPHER_CTX_free(cctx);
 	sc_evp_cipher_free(alg);
 #endif
+	*out = decrypted;
+	*out_len = decrypted_len;
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_SM, SC_SUCCESS);
 }
 
