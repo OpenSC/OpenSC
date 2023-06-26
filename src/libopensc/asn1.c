@@ -2098,6 +2098,8 @@ sc_der_copy(sc_pkcs15_der_t *dst, const sc_pkcs15_der_t *src)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	memset(dst, 0, sizeof(*dst));
 	if (src->len) {
+		if (!src->value)
+			return SC_ERROR_INVALID_ARGUMENTS;
 		dst->value = malloc(src->len);
 		if (!dst->value)
 			return SC_ERROR_OUT_OF_MEMORY;
