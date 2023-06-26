@@ -507,7 +507,7 @@ static int gen_key(const char * key_info)
 		EC_POINT_free(ecpoint);
 
 		if (!(bld = OSSL_PARAM_BLD_new()) ||
-			OSSL_PARAM_BLD_push_utf8_string(bld, "group", group_name, sizeof(group_name)) != 1 ||
+			OSSL_PARAM_BLD_push_utf8_string(bld, "group", group_name, strlen(group_name)) != 1 ||
 			OSSL_PARAM_BLD_push_octet_string(bld, "pub", buf, len) != 1 ||
 			!(params = OSSL_PARAM_BLD_to_param(bld))) {
 			OSSL_PARAM_BLD_free(bld);
