@@ -1202,7 +1202,7 @@ static int sc_hsm_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 		 * this for `opensc-tool --serial` to avoid unnecessary card commands
 		 * in all other cases. */
 		sc_pkcs15_card_t *p15card = NULL;
-		sc_pkcs15_bind(card, NULL, &p15card);
+		(void)sc_pkcs15_bind(card, NULL, &p15card);
 		sc_pkcs15_unbind(p15card);
 	}
 
