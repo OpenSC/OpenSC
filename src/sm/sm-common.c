@@ -563,6 +563,7 @@ sm_encrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
 	alg = sc_evp_cipher(ctx, "DES-EDE-CBC");
 	if (!EVP_EncryptInit_ex2(cctx, alg, key, icv, NULL)) {
 		free(*out);
+		free(data);
 		EVP_CIPHER_CTX_free(cctx);
 		sc_evp_cipher_free(alg);
 		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_SM, SC_ERROR_INTERNAL);
@@ -571,6 +572,7 @@ sm_encrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
 	EVP_CIPHER_CTX_set_padding(cctx, 0);
 	if (!EVP_EncryptUpdate(cctx, *out, &tmplen, data, data_len)) {
 		free(*out);
+		free(data);
 		EVP_CIPHER_CTX_free(cctx);
 		sc_evp_cipher_free(alg);
 		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_SM, SC_ERROR_INTERNAL);
@@ -579,6 +581,7 @@ sm_encrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
 
 	if (!EVP_EncryptFinal_ex(cctx, *out + *out_len, &tmplen)) {
 		free(*out);
+		free(data);
 		EVP_CIPHER_CTX_free(cctx);
 		sc_evp_cipher_free(alg);
 		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_SM, SC_ERROR_INTERNAL);
