@@ -1986,18 +1986,20 @@ myeid_enc_dec_sym(struct sc_card *card, const u8 *data, size_t datalen,
 				sc_log(ctx, "Found padding byte %02x", pad_byte);
 				if (pad_byte == 0 || pad_byte > block_size)
 					LOG_FUNC_RETURN(ctx, SC_ERROR_WRONG_PADDING);
-				sdata = priv->sym_plain_buffer + block_size - pad_byte;
+				sdata = priv->sym_plain_buffer + block_size;
 				for (i = 0; i < pad_byte; i++)
-					if (sdata[i] != pad_byte)
+					if (*(--sdata) != pad_byte)
 						LOG_FUNC_RETURN(ctx, SC_ERROR_WRONG_PADDING);
 				return_len = block_size - pad_byte;
 			}
-			*outlen = return_len;
 			/* application can request buffer size or actual buffer size is too small */
-			if (out == NULL)
+			if (out == NULL) {
+				*outlen = return_len;
 				LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+			}
 			if (return_len > *outlen)
 				LOG_FUNC_RETURN(ctx, SC_ERROR_BUFFER_TOO_SMALL);
+			*outlen = return_len;
 			memcpy(out, priv->sym_plain_buffer, return_len);
 			sc_log(ctx, "C_DecryptFinal %zu bytes", *outlen);
 			return SC_SUCCESS;
