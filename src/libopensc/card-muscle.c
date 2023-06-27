@@ -81,10 +81,6 @@ static int muscle_match_card(sc_card_t *card)
 	u8 response[64];
 	int r;
 
-	/* Since we send an APDU, the card's logout function may be called...
-	 * however it's not always properly nulled out... */
-	card->ops->logout = NULL;
-
 	if (msc_select_applet(card, muscleAppletId, sizeof muscleAppletId) == 1) {
 		/* Muscle applet is present, check the protocol version to be sure */
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_2, 0x3C, 0x00, 0x00);

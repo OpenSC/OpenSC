@@ -3089,10 +3089,6 @@ static int piv_match_card_continued(sc_card_t *card)
 	piv_private_data_t *priv = NULL;
 	int saved_type = card->type;
 
-	/* Since we send an APDU, the card's logout function may be called...
-	 * however it may be in dirty memory */
-	card->ops->logout = NULL;
-
 	/* piv_match_card may be called with card->type, set by opensc.conf */
 	/* user provide card type must be one we know */
 	switch (card->type) {
