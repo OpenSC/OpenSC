@@ -7230,8 +7230,12 @@ BOOL APIENTRY DllMain( HINSTANCE hinstDLL,
 	case DLL_PROCESS_DETACH:
 		sc_notify_close();
 		if (lpReserved == NULL) {
-#if defined(ENABLE_OPENSSL) && defined(OPENSSL_SECURE_MALLOC_SIZE) && !defined(LIBRESSL_VERSION_NUMBER)
+#if defined(ENABLE_OPENSSL)
+#if defined(OPENSSL_SECURE_MALLOC_SIZE) && !defined(LIBRESSL_VERSION_NUMBER)
 			CRYPTO_secure_malloc_done();
+#else
+			OPENSSL_cleanup();
+#endif
 #endif
 #ifdef ENABLE_OPENPACE
 			EAC_cleanup();
