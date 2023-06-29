@@ -200,7 +200,7 @@ void do_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
                 | SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE
                 | SC_PKCS15_PRKEY_ACCESS_LOCAL;
 
-    for (int i = 1; i < 2; i++) {
+    for (int i = 0; i < 2; i++) {
         keygen_args.prkey_args.key.algorithm = algorithms[i];
         if (algorithms[i] == SC_ALGORITHM_EC) /* strdup called also in parse_alg_spec() */
             keygen_args.prkey_args.key.u.ec.params.named_curve = strdup("prime256v1");
