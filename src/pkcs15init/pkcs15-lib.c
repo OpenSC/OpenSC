@@ -1664,17 +1664,11 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 
 err:
 	sc_pkcs15_free_object(object);
-	free(pubkey_args.key.alg_id);
+	sc_pkcs15_erase_pubkey(&pubkey_args.key);
 	if (algorithm == SC_ALGORITHM_EC) {
-		/* Allocated in sc_copy_ec_params() */
-		free(pubkey_args.key.u.ec.params.named_curve);
-		free(pubkey_args.key.u.ec.params.der.value);
 		/* allocated in check_keygen_params_consistency() */
 		free(keygen_args->prkey_args.key.u.ec.params.der.value);
 		keygen_args->prkey_args.key.u.ec.params.der.value = NULL;
-		/* can be allocated in driver-specific generate_key() */
-		free(pubkey_args.key.u.ec.ecpointQ.value);
-		pubkey_args.key.u.ec.ecpointQ.value = NULL;
 	}
 	LOG_FUNC_RETURN(ctx, r);
 }
@@ -1855,15 +1849,42 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card, struct sc_profile
 	if (!keyargs)
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Store public key aborted");
 
-	/* Create a copy of the key first */
+	/* Create shallow a copy of the key first */
 	key = keyargs->key;
 
+	/* Copy algorithm id structure */
+	if (keyargs->key.alg_id) {
+		key.alg_id = calloc(1, sizeof(struct sc_algorithm_id));
+		if (!key.alg_id)
+			LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Can not allocate memory for algorithm id");
+
+		key.alg_id->algorithm = keyargs->key.alg_id->algorithm;
+		memcpy(&key.alg_id->oid, &keyargs->key.alg_id->oid, sizeof(struct sc_object_id));
+	}
+
+	/* Copy algorithm related parameters */
 	switch (key.algorithm) {
 	case SC_ALGORITHM_RSA:
+		key.u.rsa.modulus.data = NULL;
+		key.u.rsa.exponent.data = NULL;
+		// copy RSA params
+		if (!(key.u.rsa.modulus.data = malloc(keyargs->key.u.rsa.modulus.len)))
+			LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Failed to copy RSA public key parameters");
+		memcpy(key.u.rsa.modulus.data, keyargs->key.u.rsa.modulus.data, keyargs->key.u.rsa.modulus.len);
+		if (!(key.u.rsa.exponent.data = malloc(keyargs->key.u.rsa.exponent.len))) {
+			r = SC_ERROR_OUT_OF_MEMORY;
+			LOG_TEST_GOTO_ERR(ctx, r, "Failed to copy RSA public key parameters");
+		}
+		memcpy(key.u.rsa.exponent.data, keyargs->key.u.rsa.exponent.data, keyargs->key.u.rsa.exponent.len);
 		keybits = sc_pkcs15init_keybits(&key.u.rsa.modulus);
 		type = SC_PKCS15_TYPE_PUBKEY_RSA;
 		break;
 	case SC_ALGORITHM_GOSTR3410:
+		key.u.gostr3410.xy.data = NULL;
+		// copy GOSTR params
+		if (!(key.u.gostr3410.xy.data = malloc(keyargs->key.u.gostr3410.xy.len)))
+			LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Failed to copy GOSTR public key parameters");
+		memcpy(key.u.gostr3410.xy.data, keyargs->key.u.gostr3410.xy.data, keyargs->key.u.gostr3410.xy.len);
 		keybits = SC_PKCS15_GOSTR3410_KEYSIZE;
 		type = SC_PKCS15_TYPE_PUBKEY_GOSTR3410;
 		break;
