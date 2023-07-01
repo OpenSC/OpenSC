@@ -290,7 +290,7 @@ sc_pkcs11_register_openssl_mechanisms(struct sc_pkcs11_card *p11card)
 			ENGINE_free(e);
 			e = NULL;
 		}
-#endif /* !OPENSSL_NO_STATIC_ENGINE && !OPENSSL_NO_GOST */
+#endif /* !OPENSSL_NO_STATIC_ENGINE && !OPENSSL_NO_GOST && !LIBRESSL_VERSION_NUMBER */
 	}
 	if (e) {
 		ENGINE_set_default(e, ENGINE_METHOD_ALL);
