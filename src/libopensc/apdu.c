@@ -402,8 +402,8 @@ sc_set_le_and_transmit(struct sc_card *card, struct sc_apdu *apdu, size_t olen)
 	apdu->resplen = olen;
 	apdu->le      = nlen;
 #ifndef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
-	/* Belpic V1 applets have a problem: if the card sends a 6C XX (only XX bytes available), 
-	 * and we resend the command too soon (i.e. the reader is too fast), the card doesn't respond. 
+	/* Belpic V1 applets have a problem: if the card sends a 6C XX (only XX bytes available),
+	 * and we resend the command too soon (i.e. the reader is too fast), the card doesn't respond.
 	 * So we build in a delay. */
 	if (card->type == SC_CARD_TYPE_BELPIC_EID)
 		msleep(40);
@@ -587,9 +587,8 @@ int sc_transmit_apdu(sc_card_t *card, sc_apdu_t *apdu)
 				 *      secure messaging is used */
 				plen          = max_send_size;
 				tapdu.cla    |= 0x10;
+				/* the intermediate APDU don't expect response data */
 				tapdu.le      = 0;
-				/* the intermediate APDU don't expect data */
-				tapdu.lc      = 0;
 				tapdu.resplen = 0;
 				tapdu.resp    = NULL;
 			} else {
