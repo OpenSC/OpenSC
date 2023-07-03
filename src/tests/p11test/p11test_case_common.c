@@ -782,7 +782,7 @@ int callback_secret_keys(test_certs_t *objects,
 		? *((CK_KEY_TYPE *) template[0].pValue) : (CK_KEY_TYPE) -1;
 	o->sign = (template[3].ulValueLen == sizeof(CK_BBOOL))
 		? *((CK_BBOOL *) template[3].pValue) : CK_FALSE;
-	o->sign = (template[4].ulValueLen == sizeof(CK_BBOOL))
+	o->verify = (template[4].ulValueLen == sizeof(CK_BBOOL))
 		? *((CK_BBOOL *) template[4].pValue) : CK_FALSE;
 	o->encrypt = (template[5].ulValueLen == sizeof(CK_BBOOL))
 		? *((CK_BBOOL *) template[5].pValue) : CK_FALSE;
