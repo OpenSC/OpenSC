@@ -61,7 +61,12 @@
 #include "gp.h"
 #include "../pkcs11/pkcs11.h"
 
-
+#ifdef _MSC_VER
+#define PACKED
+#pragma pack(push,1)
+#elif defined(__GNUC__)
+#define PACKED __attribute__ ((__packed__))
+#endif
 
 #define COOLKEY_MAX_SIZE 4096		/* arbitrary, just needs to be 'large enough' */
 
@@ -190,7 +195,7 @@ typedef struct coolkey_decompressed_header {
 	u8 object_count[2];
 	u8 token_name_length;
 	u8 token_name[255];      /* arbitrary size up to token_name_length */
-} coolkey_decompressed_header_t;
+} PACKED coolkey_decompressed_header_t;
 
 /*
  * header for an object. There are 2 types of object headers, v1 and v0.
@@ -237,6 +242,13 @@ typedef struct coolkey_attribute_header {
 	u8 attribute_data_type;    /* the Type of data stored */
 	/* optional attribute data, or attribute len+data, depending on the value of data_type */
 } coolkey_attribute_header_t;
+
+#ifdef _MSC_VER
+#undef PACKED
+#pragma pack(pop)
+#elif defined(__GNUC__)
+#undef PACKED
+#endif
 
 /* values for attribute_data_type */
 #define COOLKEY_ATTR_TYPE_STRING      0
@@ -869,7 +881,7 @@ coolkey_number_of_error_codes = sizeof(coolkey_error_codes)/sizeof(coolkey_error
 
 static int coolkey_check_sw(sc_card_t *card, unsigned int sw1, unsigned int sw2)
 {
-	sc_log(card->ctx, 
+	sc_log(card->ctx,
 		"sw1 = 0x%02x, sw2 = 0x%02x\n", sw1, sw2);
 
 	if (sw1 == 0x90 && sw2 == 0x00)
@@ -916,7 +928,7 @@ static int coolkey_apdu_io(sc_card_t *card, int cla, int ins, int p1, int p2,
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	sc_log(card->ctx, 
+	sc_log(card->ctx,
 		 "%02x %02x %02x %"SC_FORMAT_LEN_SIZE_T"u : %"SC_FORMAT_LEN_SIZE_T"u %"SC_FORMAT_LEN_SIZE_T"u\n",
 		 ins, p1, p2, sendbuflen, card->max_send_size,
 		 card->max_recv_size);
@@ -981,14 +993,14 @@ static int coolkey_apdu_io(sc_card_t *card, int cla, int ins, int p1, int p2,
 		 apdu.resplen = 0;
 	}
 
-	sc_log(card->ctx, 
+	sc_log(card->ctx,
 		 "calling sc_transmit_apdu flags=%lx le=%"SC_FORMAT_LEN_SIZE_T"u, resplen=%"SC_FORMAT_LEN_SIZE_T"u, resp=%p",
 		 apdu.flags, apdu.le, apdu.resplen, apdu.resp);
 
 	/* with new adpu.c and chaining, this actually reads the whole object */
 	r = sc_transmit_apdu(card, &apdu);
 
-	sc_log(card->ctx, 
+	sc_log(card->ctx,
 		 "result r=%d apdu.resplen=%"SC_FORMAT_LEN_SIZE_T"u sw1=%02x sw2=%02x",
 		 r, apdu.resplen, apdu.sw1, apdu.sw2);
 
@@ -1188,7 +1200,7 @@ static int coolkey_read_binary(sc_card_t *card, unsigned int idx,
 
 	/* if we've already read the data, just return it */
 	if (priv->obj->data) {
-		sc_log(card->ctx, 
+		sc_log(card->ctx,
 			 "returning cached value idx=%u count=%"SC_FORMAT_LEN_SIZE_T"u",
 			 idx, count);
 		len = MIN(count, priv->obj->length-idx);
@@ -1196,7 +1208,7 @@ static int coolkey_read_binary(sc_card_t *card, unsigned int idx,
 		LOG_FUNC_RETURN(card->ctx, len);
 	}
 
-	sc_log(card->ctx, 
+	sc_log(card->ctx,
 		 "clearing cache idx=%u count=%"SC_FORMAT_LEN_SIZE_T"u",
 		 idx, count);
 
@@ -1631,7 +1643,7 @@ static int coolkey_set_security_env(sc_card_t *card, const sc_security_env_t *en
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	sc_log(card->ctx, 
+	sc_log(card->ctx,
 		 "flags=%08lx op=%d alg=%d algf=%08x algr=%08x kr0=%02x, krfl=%"SC_FORMAT_LEN_SIZE_T"u\n",
 		 env->flags, env->operation, env->algorithm,
 		 env->algorithm_flags, env->algorithm_ref, env->key_ref[0],
@@ -1792,7 +1804,7 @@ static int coolkey_ecc_op(sc_card_t *card,
 	u8 key_number;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	sc_log(card->ctx, 
+	sc_log(card->ctx,
 		 "datalen=%"SC_FORMAT_LEN_SIZE_T"u outlen=%"SC_FORMAT_LEN_SIZE_T"u\n",
 		 datalen, outlen);
 
@@ -2044,13 +2056,13 @@ coolkey_process_combined_object(sc_card_t *card, coolkey_private_data_t *priv, u
 	 */
 	/* make sure token_name doesn't overrun the buffer */
 	if (decompressed_header->token_name_length +
-		offsetof(coolkey_decompressed_header_t,token_name) > decompressed_object_len) {
+		offsetof(coolkey_decompressed_header_t, token_name) > decompressed_object_len) {
 		r = SC_ERROR_CORRUPTED_DATA;
 		goto done;
 	}
 	/* make sure it doesn't overlap the object space */
 	if (decompressed_header->token_name_length +
-		offsetof(coolkey_decompressed_header_t,token_name) > object_offset) {
+		offsetof(coolkey_decompressed_header_t, token_name) > object_offset) {
 		r = SC_ERROR_CORRUPTED_DATA;
 		goto done;
 	}
