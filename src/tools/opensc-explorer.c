@@ -2092,7 +2092,7 @@ static int do_asn1(int argc, char **argv)
 	sc_path_t path;
 	sc_file_t *file = NULL;
 	int not_current = 1;
-	u8 buf[SC_MAX_EXT_APDU_DATA_SIZE];
+	u8 buf[SC_MAX_EXT_APDU_DATA_SIZE] = {0};
 
 	if (argc > 3)
 		return usage(do_asn1);
@@ -2138,6 +2138,8 @@ static int do_asn1(int argc, char **argv)
 		r = sc_lock(card);
 		if (r == SC_SUCCESS)
 			r = sc_read_binary(card, 0, buf, MIN(size, sizeof(buf)), 0);
+		else
+			r = SC_ERROR_READER_LOCKED;
 		sc_unlock(card);
 		if (r < 0) {
 			check_ret(r, SC_AC_OP_READ, "read failed", file);
