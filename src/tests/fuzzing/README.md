@@ -12,12 +12,12 @@ Successful build of fuzz targets requires `./configure` run with correctly set C
 
 Example configuration for libFuzzer:
 ```
-./configure --disable-optimization --disable-shared --disable-pcsc --enable-ctapi --enable-fuzzing CC=clang CFLAGS=-fsanitize=fuzzer-no-link FUZZING_LIBS=-fuzzer
+./configure --disable-optimization --disable-shared --disable-pcsc --enable-ctapi --enable-fuzzing CC=clang CFLAGS=-fsanitize=fuzzer-no-link FUZZING_LIBS=-fsanitize=fuzzer
 ```
 
-To add some of the LLVM Sanitizers, modify `FUZZING_LIBS`:  
+To add some of the LLVM Sanitizers, modify `FUZZING_LIBS`:
 ```
-FUZZING_LIBS=-fuzzer,address,undefined
+FUZZING_LIBS=-fsanitize=fuzzer,address,undefined
 ```
 Sanitizers can also be modified by [flags](https://github.com/google/sanitizers/wiki/SanitizerCommonFlags).
 
@@ -29,13 +29,41 @@ Example of testing without fuzzing:
 ./fuzz_pkcs15_reader ./input_file
 ```
 
+## Reproducing issues
+Some of the issues are not reproducible when build outside of the fuzzing images. In that case, the safest
+option is to reproduce them with the python/docker helpers provided by [oss-fuzz](https://github.com/google/oss-fuzz/).
+You can build latest fuzzers in the oss-fuzz containers with the following steps:
+```
+python3 infra/helper.py pull_images
+python3 infra/helper.py build_image opensc
+python3 infra/helper.py build_fuzzers opensc
+```
+After that, you can download reproducer from the oss-fuzz dashboard and run it locally in the container:
+```
+python3 infra/helper.py reproduce opensc fuzz_pkcs15_decode /path/to/testcase
+```
+
+### Expanding incomplete backtraces
+Sometimes the backtrace visible in the oss-fuzz dashboard is not useful, for example showing only part of the
+trace ending inside of (outdated) openssl code:
+```
+Direct leak of 168 byte(s) in 1 object(s) allocated from:
+	    #0 0x5318e6 in malloc /src/llvm-project/compiler-rt/lib/asan/asan_malloc_linux.cpp:69:3
+	    #1 0x7faca8714c0d in CRYPTO_zalloc
+```
+In that case, you can use the address sanitizer option `fast_unwind_on_malloc=0` in `ASAN_OPTIONS` environment
+variable to expand this trace, for example:
+```
+python3 infra/helper.py reproduce -eASAN_OPTIONS='fast_unwind_on_malloc=0' opensc fuzz_pkcs15_decode testcase
+```
+
 ## Fuzzing
 ### libFuzzer
 See libFuzzer [documentation](https://llvm.org/docs/LibFuzzer.html) for details.
 
 Fuzzing with a predefined corpus can be run like this:
 ```
-./fuzz_pkcs15_reader corpus/fuzz_pkcs15_reader 
+./fuzz_pkcs15_reader corpus/fuzz_pkcs15_reader
 ```
 Newly generated input files are stored in the corpus directory.
 

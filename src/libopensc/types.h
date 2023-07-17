@@ -15,7 +15,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #ifndef _OPENSC_TYPES_H
@@ -224,6 +224,11 @@ typedef struct sc_acl_entry {
 #define SC_FILE_EF_LINEAR_VARIABLE_TLV	0x05
 #define SC_FILE_EF_CYCLIC		0x06
 #define SC_FILE_EF_CYCLIC_TLV		0x07
+
+/* File flags */
+#define SC_FILE_FLAG_COMPRESSED_AUTO		0x01
+#define SC_FILE_FLAG_COMPRESSED_ZLIB		0x02
+#define SC_FILE_FLAG_COMPRESSED_GZIP		0x04
 
 /* File status flags */
 /* ISO7816-4: Unless otherwise specified, the security attributes are valid for the operational state.*/

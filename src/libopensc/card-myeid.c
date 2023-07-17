@@ -15,7 +15,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #if HAVE_CONFIG_H
@@ -1784,6 +1784,23 @@ static int myeid_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
+static int
+myeid_get_change_counter(sc_card_t *card, size_t *change_counter)
+{
+	int r;
+	u8 rbuf[256];
+
+	LOG_FUNC_CALLED(card->ctx);
+
+	/* get change counter from card */
+	r = myeid_get_info(card, rbuf, sizeof(rbuf));
+	LOG_TEST_RET(card->ctx, r, "Get applet info failed");
+
+	*change_counter = rbuf[18] * 256 + rbuf[19];
+
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+
 /*
  Get information of features that the card supports. MyEID 4.x cards are available on different
  hardware and maximum key sizes cannot be determined simply from the version number anymore.
@@ -1846,6 +1863,9 @@ static int myeid_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 		break;
 	case SC_CARDCTL_GET_SERIALNR:
 		r = myeid_get_serialnr(card, (sc_serial_number_t *)ptr);
+		break;
+	case SC_CARDCTL_GET_CHANGE_COUNTER:
+		r = myeid_get_change_counter(card, (size_t *)ptr);
 		break;
 	case SC_CARDCTL_GET_DEFAULT_KEY:
 	case SC_CARDCTL_LIFECYCLE_SET:
@@ -1966,15 +1986,20 @@ myeid_enc_dec_sym(struct sc_card *card, const u8 *data, size_t datalen,
 				sc_log(ctx, "Found padding byte %02x", pad_byte);
 				if (pad_byte == 0 || pad_byte > block_size)
 					LOG_FUNC_RETURN(ctx, SC_ERROR_WRONG_PADDING);
-				sdata = priv->sym_plain_buffer + block_size - pad_byte;
+				sdata = priv->sym_plain_buffer + block_size;
 				for (i = 0; i < pad_byte; i++)
-					if (sdata[i] != pad_byte)
+					if (*(--sdata) != pad_byte)
 						LOG_FUNC_RETURN(ctx, SC_ERROR_WRONG_PADDING);
 				return_len = block_size - pad_byte;
 			}
-			*outlen = return_len;
+			/* application can request buffer size or actual buffer size is too small */
+			if (out == NULL) {
+				*outlen = return_len;
+				LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+			}
 			if (return_len > *outlen)
 				LOG_FUNC_RETURN(ctx, SC_ERROR_BUFFER_TOO_SMALL);
+			*outlen = return_len;
 			memcpy(out, priv->sym_plain_buffer, return_len);
 			sc_log(ctx, "C_DecryptFinal %zu bytes", *outlen);
 			return SC_SUCCESS;
@@ -2042,10 +2067,11 @@ myeid_enc_dec_sym(struct sc_card *card, const u8 *data, size_t datalen,
 			priv->sym_crypt_buffer_len = 0;
 			rest_len = 0;
 		}
-		memcpy(sdata, data, apdu_datalen);
-		data += apdu_datalen;
-		datalen -= apdu_datalen;
-
+		if (data) {
+			memcpy(sdata, data, apdu_datalen);
+			data += apdu_datalen;
+			datalen -= apdu_datalen;
+		}
 		r = sc_transmit_apdu(card, &apdu);
 		LOG_TEST_RET(ctx, r, "APDU transmit failed");
 		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
@@ -2084,7 +2110,8 @@ myeid_enc_dec_sym(struct sc_card *card, const u8 *data, size_t datalen,
 	/* save rest of data for next run */
 	priv->sym_crypt_buffer_len = datalen;
 	sc_log(ctx, "rest data len = %zu", datalen);
-	memcpy(priv->sym_crypt_buffer, data, datalen);
+	if (data)
+		memcpy(priv->sym_crypt_buffer, data, datalen);
 	sc_log(ctx, "return data len = %zu", return_len);
 	*outlen = return_len;
 	return SC_SUCCESS;

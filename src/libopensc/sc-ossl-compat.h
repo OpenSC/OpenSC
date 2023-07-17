@@ -15,7 +15,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #ifndef _SC_OSSL_COMPAT_H
@@ -50,10 +50,12 @@ extern "C" {
 #if LIBRESSL_VERSION_NUMBER < 0x30500000L
 #define FIPS_mode()                             (0)
 #endif
+#ifndef EVP_sha3_224
 #define EVP_sha3_224()                          (NULL)
 #define EVP_sha3_256()                          (NULL)
 #define EVP_sha3_384()                          (NULL)
 #define EVP_sha3_512()                          (NULL)
+#endif
 #if LIBRESSL_VERSION_NUMBER < 0x3070000fL
 #define EVP_PKEY_new_raw_public_key(t, e, p, l) (NULL)
 #define EVP_PKEY_get_raw_public_key(p, pu, l)   (0)

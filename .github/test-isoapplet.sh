@@ -2,6 +2,8 @@
 
 set -ex -o xtrace
 
+source .github/setup-valgrind.sh
+
 isoapplet_version="$1"
 if [ "$isoapplet_version" = "v0" ]; then
 	isoapplet_branch="main-javacard-v2.2.2"
@@ -45,7 +47,7 @@ PID=$!
 sleep 5
 
 # Does OpenSC see the uninitialized card?
-pkcs11-tool -L | tee opensc.log
+$VALGRIND pkcs11-tool -L | tee opensc.log
 # report as "token not recognized"
 grep "(token not recognized)" opensc.log
 
@@ -63,35 +65,35 @@ OPENSC_CONF=opensc.conf pkcs11-tool -L | tee opensc.log
 # report as "token not recognized"
 grep "uninitialized" opensc.log
 
-opensc-tool --card-driver default --send-apdu 80b800001a0cf276a288bcfba69d34f310010cf276a288bcfba69d34f3100100
-opensc-tool -n
-pkcs15-init --create-pkcs15 --so-pin 123456 --so-puk 0123456789abcdef
-pkcs15-tool --change-pin --pin 123456 --new-pin 654321
-pkcs15-tool --unblock-pin --puk 0123456789abcdef --new-pin 123456
-pkcs15-init --generate-key rsa/2048     --id 1 --key-usage decrypt,sign --auth-id FF --pin 123456
-pkcs15-init --generate-key rsa/2048     --id 2 --key-usage decrypt      --auth-id FF --pin 123456
-pkcs15-init --generate-key ec/secp256r1 --id 3 --key-usage sign         --auth-id FF --pin 123456
-pkcs15-tool -D
-pkcs11-tool -l -t -p 123456
+$VALGRIND opensc-tool --card-driver default --send-apdu 80b800001a0cf276a288bcfba69d34f310010cf276a288bcfba69d34f3100100
+$VALGRIND opensc-tool -n
+$VALGRIND pkcs15-init --create-pkcs15 --so-pin 123456 --so-puk 0123456789abcdef
+$VALGRIND pkcs15-tool --change-pin --pin 123456 --new-pin 654321
+$VALGRIND pkcs15-tool --unblock-pin --puk 0123456789abcdef --new-pin 123456
+$VALGRIND pkcs15-init --generate-key rsa/2048     --id 1 --key-usage decrypt,sign --auth-id FF --pin 123456
+$VALGRIND pkcs15-init --generate-key rsa/2048     --id 2 --key-usage decrypt      --auth-id FF --pin 123456
+$VALGRIND pkcs15-init --generate-key ec/secp256r1 --id 3 --key-usage sign         --auth-id FF --pin 123456
+$VALGRIND pkcs15-tool -D
+$VALGRIND pkcs11-tool -l -t -p 123456
 
 # run the tests
 pushd src/tests/p11test/
 sleep 5
-./p11test -s 0 -p 123456 -o isoapplet.json
+$VALGRIND ./p11test -s 0 -p 123456 -o isoapplet.json
 popd
 
 # random data to be signed
 dd if=/dev/random of=/tmp/data.bin bs=300 count=1
 # sign & verify using secp256r1 key
-pkcs11-tool -l -p 123456 -s -m ECDSA-SHA1 -d 3 -i /tmp/data.bin -o /tmp/data.sig
-pkcs11-tool --verify -m ECDSA-SHA1 -d 3 -i /tmp/data.bin --signature-file /tmp/data.sig
+$VALGRIND pkcs11-tool -l -p 123456 -s -m ECDSA-SHA1 -d 3 -i /tmp/data.bin -o /tmp/data.sig
+$VALGRIND pkcs11-tool --verify -m ECDSA-SHA1 -d 3 -i /tmp/data.bin --signature-file /tmp/data.sig
 # import, sign & verify using another secp256r1 key
 openssl ecparam -name secp256r1 -genkey -noout -out /tmp/ECprivKey.pem
 openssl ec -in /tmp/ECprivKey.pem -pubout -out /tmp/ECpubKey.pem
-pkcs11-tool -l -p 123456 -w /tmp/ECprivKey.pem -y privkey -d 4
-pkcs11-tool -l -p 123456 -w /tmp/ECpubKey.pem -y pubkey -d 4
-pkcs11-tool -l -p 123456 -s -m ECDSA-SHA1 -d 4 -i /tmp/data.bin -o /tmp/data.sig
-pkcs11-tool --verify -m ECDSA-SHA1 -d 4 -i /tmp/data.bin --signature-file /tmp/data.sig
+$VALGRIND pkcs11-tool -l -p 123456 -w /tmp/ECprivKey.pem -y privkey -d 4
+$VALGRIND pkcs11-tool -l -p 123456 -w /tmp/ECpubKey.pem -y pubkey -d 4
+$VALGRIND pkcs11-tool -l -p 123456 -s -m ECDSA-SHA1 -d 4 -i /tmp/data.bin -o /tmp/data.sig
+$VALGRIND pkcs11-tool --verify -m ECDSA-SHA1 -d 4 -i /tmp/data.bin --signature-file /tmp/data.sig
 # cleanup
 rm /tmp/ECprivKey.pem /tmp/ECpubKey.pem /tmp/data.bin /tmp/data.sig
 

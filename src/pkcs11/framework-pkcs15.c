@@ -15,7 +15,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #include "config.h"
@@ -1159,7 +1159,6 @@ pkcs15_init_slot(struct sc_pkcs15_card *p15card, struct sc_pkcs11_slot *slot,
 			size_t pin_len = 0;
 			if (auth->label[0] && strncmp(auth->label, "PIN", 4) != 0)
 				pin_len = strlen(auth->label);
-
 			if (pin_len) {
 				size_t tokeninfo_len = 0;
 				if (p15card->tokeninfo && p15card->tokeninfo->label)
@@ -1190,6 +1189,13 @@ pkcs15_init_slot(struct sc_pkcs15_card *p15card, struct sc_pkcs11_slot *slot,
 				strcpy_bp(slot->token_info.label,
 						p15card->tokeninfo ? p15card->tokeninfo->label : "",
 						32);
+			}
+			/* Some applications (NSS) do not like the colons in the
+			 * TOKEN_INFO label so replace them here */
+			for (int i = 0; i < 32; i++) {
+				if (slot->token_info.label[i] == ':') {
+					slot->token_info.label[i] = '.';
+				}
 			}
 			slot->token_info.flags |= CKF_LOGIN_REQUIRED;
 		}
@@ -1378,15 +1384,47 @@ out:
 	return logged_in;
 }
 
+int slot_get_card_state(struct sc_pkcs11_slot *slot)
+{
+	struct pkcs15_fw_data *fw_data = NULL;
+	struct sc_pkcs15_card *p15card = NULL;
+	int rv = 0;
+
+	if (slot->p11card == NULL) {
+		return 0;
+	}
+
+	fw_data = (struct pkcs15_fw_data *) slot->p11card->fws_data[slot->fw_data_idx];
+	if (!fw_data)
+		return 0;
+	p15card = fw_data->p15_card;
+	if (!p15card)
+		return 0;
+
+	if ((rv = sc_detect_card_presence(p15card->card->reader)) <= 0)
+		return 0;
+	return rv;
+}
+
 
 struct sc_pkcs15_object *
-_get_auth_object_by_name(struct sc_pkcs15_card *p15card, char *name)
+_get_auth_object_by_name(struct sc_pkcs15_card *p15card, char *name, char *label)
 {
 	struct sc_pkcs15_object *out = NULL;
 	int rv = SC_ERROR_OBJECT_NOT_FOUND;
 
 	/* please keep me in sync with md_get_pin_by_role() in minidriver */
-	if (!strcmp(name, "UserPIN"))   {
+
+	/* If 'label' is set, then search for PIN with that label */
+	if (label) {
+		struct sc_pkcs15_id id;
+		strncpy((char*)id.value, label, sizeof(id.value) - 1);
+		id.len = strlen(label);
+		if (id.len > sizeof(id.value))
+			id.len = sizeof(id.value);
+		rv = sc_pkcs15_find_pin_by_auth_id(p15card, &id, &out);
+	}
+	else if (!strcmp(name, "UserPIN"))   {
 		/* Try to get 'global' PIN; if no, get the 'local' one */
 		rv = sc_pkcs15_find_pin_by_flags(p15card, SC_PKCS15_PIN_TYPE_FLAGS_PIN_GLOBAL,
 				SC_PKCS15_PIN_TYPE_FLAGS_MASK, NULL, &out);
@@ -1562,6 +1600,8 @@ pkcs15_create_tokens(struct sc_pkcs11_card *p11card, struct sc_app_info *app_inf
 	unsigned int cs_flags = sc_pkcs11_conf.create_slots_flags;
 	CK_RV rv;
 	int rc, i, idx;
+	scconf_block *conf_block = NULL;
+	char *user_pin = NULL, *sign_pin = NULL;
 
 	if (p11card) {
 		sc_log(context, "create PKCS#15 tokens; fws:%p,%p,%p", p11card->fws_data[0], p11card->fws_data[1], p11card->fws_data[2]);
@@ -1579,10 +1619,27 @@ pkcs15_create_tokens(struct sc_pkcs11_card *p11card, struct sc_app_info *app_inf
 	}
 	sc_log(context, "Use FW data with index %i; fw_data->p15_card %p", idx, fw_data->p15_card);
 
+	conf_block = sc_get_conf_block(p11card->card->ctx, "framework", "pkcs15", 1);
+	if (conf_block && app_info)   {
+		scconf_block **blocks = NULL;
+		char str_path[SC_MAX_AID_STRING_SIZE];
+
+		memset(str_path, 0, sizeof(str_path));
+		sc_bin_to_hex(app_info->path.value, app_info->path.len, str_path, sizeof(str_path), 0);
+		blocks = scconf_find_blocks(p11card->card->ctx->conf, conf_block, "application", str_path);
+		if (blocks)   {
+			if (blocks[0]) {
+				user_pin = (char *)scconf_get_str(blocks[0], "user_pin", NULL);
+				sign_pin = (char *)scconf_get_str(blocks[0], "sign_pin", NULL);
+			}
+			free(blocks);
+		}
+	}
+
 	/* Try to identify UserPIN and SignPIN by their symbolic name */
-	auth_user_pin = _get_auth_object_by_name(fw_data->p15_card, "UserPIN");
+	auth_user_pin = _get_auth_object_by_name(fw_data->p15_card, "UserPIN", user_pin);
 	if (cs_flags & SC_PKCS11_SLOT_FOR_PIN_SIGN)
-		auth_sign_pin = _get_auth_object_by_name(fw_data->p15_card, "SignPIN");
+		auth_sign_pin = _get_auth_object_by_name(fw_data->p15_card, "SignPIN", sign_pin);
 	sc_log(context, "Flags:0x%X; Auth User/Sign PINs %p/%p", cs_flags, auth_user_pin, auth_sign_pin);
 
 	/* Add PKCS#15 objects of the known types to the framework data */
@@ -2359,6 +2416,13 @@ pkcs15_create_private_key(struct sc_pkcs11_slot *slot, struct sc_profile *profil
 	}
 
 	rc = sc_pkcs15init_store_private_key(fw_data->p15_card, profile, &args, &key_obj);
+	/* free args now */
+	if (key_type == CKK_EC) {
+		/* allocated above */
+		free(ec->params.der.value);
+		/* in sc_pkcs15_fix_ec_parameters() */
+		free(ec->params.named_curve);
+	}
 	if (rc < 0) {
 		rv = sc_to_cryptoki_error(rc, "C_CreateObject");
 		goto out;
@@ -2370,7 +2434,8 @@ pkcs15_create_private_key(struct sc_pkcs11_slot *slot, struct sc_profile *profil
 
 	rv = CKR_OK;
 
-out:	return rv;
+out:
+	return rv;
 }
 
 /*
@@ -2695,6 +2760,15 @@ pkcs15_create_public_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 	}
 
 	rc = sc_pkcs15init_store_public_key(fw_data->p15_card, profile, &args, &key_obj);
+	/* free args now */
+	if (key_type == CKK_EC) {
+		/* allocated above */
+		free(ec->params.der.value);
+		/* in sc_pkcs15_fix_ec_parameters() */
+		free(ec->params.named_curve);
+		/* in sc_pkcs15_decode_pubkey_ec() */
+		free(ec->ecpointQ.value);
+	}
 	if (rc < 0)
 		return sc_to_cryptoki_error(rc, "C_CreateObject");
 
@@ -3602,7 +3676,7 @@ pkcs15_set_attrib(struct sc_pkcs11_session *session, struct sc_pkcs15_object *p1
 			ck_rv = CKR_ATTRIBUTE_READ_ONLY;
 			goto set_attr_done;
 		}
-		rv = sc_pkcs15init_change_attrib(fw_data->p15_card, profile, p15_object, 
+		rv = sc_pkcs15init_change_attrib(fw_data->p15_card, profile, p15_object,
 				P15_ATTR_TYPE_VALUE, attr->pValue, (unsigned int) attr->ulValueLen);
 		break;
 	default:
@@ -4889,7 +4963,7 @@ pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session, void *object, CK_
 		return get_modulus_bits(pubkey->pub_data, attr);
 	case CKA_PUBLIC_EXPONENT:
 		return get_public_exponent(pubkey->pub_data, attr);
-	/* 
+	/*
 	 * PKCS#11 does not define a CKA_VALUE for a CKO_PUBLIC_KEY.
 	 * OpenSC does, but it is not consistent it what it returns
 	 * Internally to do verify, with OpenSSL, we need a SPKI that

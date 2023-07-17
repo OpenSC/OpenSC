@@ -15,7 +15,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #include "config.h"
@@ -252,8 +252,12 @@ __attribute__((destructor))
 int module_close()
 {
 	sc_notify_close();
-#if defined(ENABLE_OPENSSL) && defined(OPENSSL_SECURE_MALLOC_SIZE) && !defined(LIBRESSL_VERSION_NUMBER)
+#if defined(ENABLE_OPENSSL)
+#if defined(OPENSSL_SECURE_MALLOC_SIZE) && !defined(LIBRESSL_VERSION_NUMBER)
 	CRYPTO_secure_malloc_done();
+#else
+	OPENSSL_cleanup();
+#endif
 #endif
 #ifdef ENABLE_OPENPACE
 	EAC_cleanup();
@@ -666,7 +670,7 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 		memcpy(pInfo, &slot->slot_info, sizeof(CK_SLOT_INFO));
 
 	sc_log(context, "C_GetSlotInfo() flags 0x%lX", pInfo->flags);
-	
+
 	name = lookup_enum(RV_T, rv);
 	if (name)
 		sc_log(context, "C_GetSlotInfo(0x%lx) = %s", slotID, name);

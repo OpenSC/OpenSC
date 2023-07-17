@@ -15,7 +15,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #if HAVE_CONFIG_H
@@ -46,6 +46,7 @@ static int generate_cache_filename(struct sc_pkcs15_card *p15card,
 	char *last_update = NULL;
 	int  r;
 	unsigned u;
+	size_t change_counter;
 
 	if (p15card->tokeninfo->serial_number == NULL
 			&& (p15card->card->uid.len == 0
@@ -72,6 +73,9 @@ static int generate_cache_filename(struct sc_pkcs15_card *p15card,
 					p15card->card->uid.value,
 					p15card->card->uid.len), last_update);
 	}
+
+	if (SC_SUCCESS == sc_card_ctl(p15card->card, SC_CARDCTL_GET_CHANGE_COUNTER, &change_counter))
+		snprintf(dir + strlen(dir), sizeof(dir) - strlen(dir), "_%" SC_FORMAT_LEN_SIZE_T "u", change_counter);
 
 	if (path->aid.len &&
 		(path->type == SC_PATH_TYPE_FILE_ID || path->type == SC_PATH_TYPE_PATH))   {

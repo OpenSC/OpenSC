@@ -6,8 +6,14 @@ include $(top_srcdir)/aminclude_static.am
 clean-local: code-coverage-clean
 distclean-local: code-coverage-dist-clean
 
-noinst_PROGRAMS = asn1 simpletlv cachedir pkcs15filter openpgp-tool hextobin decode_ecdsa_signature
-TESTS = asn1 simpletlv cachedir pkcs15filter openpgp-tool hextobin decode_ecdsa_signature
+@VALGRIND_CHECK_RULES@
+#VALGRIND_SUPPRESSIONS_FILES = $(top_srcdir)/tests/opensc.supp
+VALGRIND_FLAGS = --num-callers=30 -q --keep-debuginfo=yes --gen-suppressions=all
+# to avoid false positive leaks from pcsclite
+TESTS_ENVIRONMENT = LD_PRELOAD='/usr/lib/x86_64-linux-gnu/libpcsclite.so.1'
+
+noinst_PROGRAMS = asn1 simpletlv cachedir pkcs15filter openpgp-tool hextobin decode_ecdsa_signature check_macro_reference_loop
+TESTS = asn1 simpletlv cachedir pkcs15filter openpgp-tool hextobin decode_ecdsa_signature check_macro_reference_loop
 
 noinst_HEADERS = torture.h
 
@@ -28,6 +34,7 @@ pkcs15filter_SOURCES = pkcs15-emulator-filter.c
 openpgp_tool_SOURCES = openpgp-tool.c $(top_builddir)/src/tools/openpgp-tool-helpers.c
 hextobin_SOURCES = hextobin.c
 decode_ecdsa_signature_SOURCES = decode_ecdsa_signature.c
+check_macro_reference_loop = check_macro_reference_loop.c
 
 if ENABLE_ZLIB
 noinst_PROGRAMS += compression

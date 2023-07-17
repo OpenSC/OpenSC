@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #if HAVE_CONFIG_H
@@ -364,7 +364,7 @@ static int refresh_attributes(sc_reader_t *reader)
 	if (reader->ctx->flags & SC_CTX_FLAG_TERMINATE)
 		return SC_ERROR_NOT_ALLOWED;
 
-	if (priv->reader_state.szReader == NULL || reader->ctx->flags & SC_READER_REMOVED) {
+	if (priv->reader_state.szReader == NULL || reader->flags & SC_READER_REMOVED) {
 		priv->reader_state.szReader = reader->name;
 		priv->reader_state.dwCurrentState = SCARD_STATE_UNAWARE;
 		priv->reader_state.dwEventState = SCARD_STATE_UNAWARE;
@@ -394,6 +394,8 @@ static int refresh_attributes(sc_reader_t *reader)
 #endif
 				|| rv == (LONG)SCARD_E_SERVICE_STOPPED) {
  			reader->flags &= ~(SC_READER_CARD_PRESENT);
+			reader->flags |= SC_READER_REMOVED;
+			priv->gpriv->removed_reader = reader;
  			SC_FUNC_RETURN(reader->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
  		}
 

@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #if HAVE_CONFIG_H
@@ -556,14 +556,9 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 		memset(&cert_info, 0, sizeof(cert_info));
 		memset(&cert_obj,  0, sizeof(cert_obj));
 
-		/* only try to SELECT DATA for OpenPGP >= v3 */
-		if (card->type >= SC_CARD_TYPE_OPENPGP_V3) {
-			r = sc_card_ctl(card, SC_CARDCTL_OPENPGP_SELECT_DATA, &i);
-			if (r < 0) {
-				free(buffer);
-				LOG_TEST_RET(card->ctx, r, "Failed OpenPGP - select data");
-			}
-		}
+		/* try to SELECT DATA. Will only work for OpenPGP >= v3, errors are non-critical */
+		sc_card_ctl(card, SC_CARDCTL_OPENPGP_SELECT_DATA, &i);
+
 		sc_format_path(certs[i].path, &cert_info.path);
 
 		/* Certificate ID. We use the same ID as the authentication key */

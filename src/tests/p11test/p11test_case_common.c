@@ -409,11 +409,27 @@ int callback_public_keys(test_certs_t *objects,
 		} else { /* store the public key for future use */
 			o->type = EVP_PKEY_RSA;
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
-			o->key = EVP_PKEY_new();
 			RSA *rsa = RSA_new();
-			if (RSA_set0_key(rsa, n, e, NULL) != 1 ||
-			    EVP_PKEY_set1_RSA(o->key, rsa) != 1) {
-				fail_msg("Unable to set key params");
+			if (rsa == NULL) {
+				fail_msg("Unable to allocate RSA key");
+				return -1;
+			}
+			o->key = EVP_PKEY_new();
+			if (o->key == NULL) {
+				fail_msg("Unable to allocate EVP_PKEY");
+				RSA_free(rsa);
+				return -1;
+			}
+			if (RSA_set0_key(rsa, n, e, NULL) != 1) {
+				fail_msg("Unable set RSA key params");
+				EVP_PKEY_free(o->key);
+				RSA_free(rsa);
+				return -1;
+			}
+			if (EVP_PKEY_assign_RSA(o->key, rsa) != 1) {
+				EVP_PKEY_free(o->key);
+				RSA_free(rsa);
+				fail_msg("Unable to assign RSA to EVP_PKEY");
 				return -1;
 			}
 #else
@@ -449,8 +465,9 @@ int callback_public_keys(test_certs_t *objects,
 		ASN1_OBJECT *oid = NULL;
 		ASN1_OCTET_STRING *s = NULL;
 		const unsigned char *pub, *p;
+		char *hex = NULL;
 		BIGNUM *bn = NULL;
-		EC_POINT *ecpoint;
+		EC_POINT *ecpoint = NULL;
 		EC_GROUP *ecgroup = NULL;
 		int nid, pub_len;
 
@@ -490,9 +507,16 @@ int callback_public_keys(test_certs_t *objects,
 			return -1;
 		}
 
-		ecpoint = EC_POINT_hex2point(ecgroup, BN_bn2hex(bn), NULL, NULL);
+		hex = BN_bn2hex(bn);
 		BN_free(bn);
-
+		if (hex == NULL) {
+			debug_print(" [WARN %s ] Can not convert EC_POINT from"
+				" BIGNUM hex representation", o->id_str);
+			EC_GROUP_free(ecgroup);
+			return -1;
+		}
+		ecpoint = EC_POINT_hex2point(ecgroup, hex, NULL, NULL);
+		OPENSSL_free(hex);
 		if (ecpoint == NULL) {
 			debug_print(" [WARN %s ] Can not convert EC_POINT from"
 				" BIGNUM to OpenSSL format", o->id_str);
@@ -553,8 +577,11 @@ int callback_public_keys(test_certs_t *objects,
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 			EC_KEY *ec = EC_KEY_new_by_curve_name(nid);
 			EC_KEY_set_public_key(ec, ecpoint);
+			EC_POINT_free(ecpoint);
 			EC_KEY_set_group(ec, ecgroup);
+			EC_GROUP_free(ecgroup);
 			EVP_PKEY_set1_EC_KEY(o->key, ec);
+			EC_KEY_free(ec);
 #else
 			ctx = EVP_PKEY_CTX_new_from_name(0, "EC", 0);
 			char curve_name[80]; size_t curve_name_len = 0;
@@ -755,7 +782,7 @@ int callback_secret_keys(test_certs_t *objects,
 		? *((CK_KEY_TYPE *) template[0].pValue) : (CK_KEY_TYPE) -1;
 	o->sign = (template[3].ulValueLen == sizeof(CK_BBOOL))
 		? *((CK_BBOOL *) template[3].pValue) : CK_FALSE;
-	o->sign = (template[4].ulValueLen == sizeof(CK_BBOOL))
+	o->verify = (template[4].ulValueLen == sizeof(CK_BBOOL))
 		? *((CK_BBOOL *) template[4].pValue) : CK_FALSE;
 	o->encrypt = (template[5].ulValueLen == sizeof(CK_BBOOL))
 		? *((CK_BBOOL *) template[5].pValue) : CK_FALSE;

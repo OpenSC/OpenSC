@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #ifndef _OPENSC_CARDCTL_H
@@ -41,6 +41,7 @@ enum {
 	SC_CARDCTL_LIFECYCLE_GET,
 	SC_CARDCTL_LIFECYCLE_SET,
 	SC_CARDCTL_GET_SERIALNR,
+	SC_CARDCTL_GET_CHANGE_COUNTER,
 	SC_CARDCTL_GET_SE_INFO,
 	SC_CARDCTL_GET_CHV_REFERENCE_IN_SE,
 	SC_CARDCTL_PKCS11_INIT_TOKEN,
@@ -305,6 +306,7 @@ enum {
 	SC_CARDCTL_IDPRIME_GET_NEXT_OBJECT,
 	SC_CARDCTL_IDPRIME_FINAL_GET_OBJECTS,
 	SC_CARDCTL_IDPRIME_GET_TOKEN_NAME,
+	SC_CARDCTL_IDPRIME_GET_PIN_ID,
 
 };
 

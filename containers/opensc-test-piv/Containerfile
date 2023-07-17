@@ -1,4 +1,4 @@
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 RUN apt update
 # Install sudo to mimic Github Actions runnner
 # Install tzdata to avoid messing up with interactive prompts later
@@ -10,4 +10,5 @@ RUN export DEBIAN_FRONTEND=noninteractive; \
 WORKDIR /src
 RUN /src/.github/setup-linux.sh piv
 RUN /src/.github/build.sh
-CMD /src/.github/test-piv.sh
+#CMD /src/.github/test-piv.sh
+CMD /src/.github/test-piv.sh valgrind

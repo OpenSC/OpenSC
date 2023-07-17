@@ -15,7 +15,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #if HAVE_CONFIG_H
@@ -143,7 +143,7 @@ static int esteid_select_file(struct sc_card *card, const struct sc_path *in_pat
 }
 
 // temporary hack, overload 6B00 SW processing
-static int esteid_read_binary(struct sc_card *card, unsigned int idx, u8 *buf, size_t count, unsigned long flags) {
+static int esteid_read_binary(struct sc_card *card, unsigned int idx, u8 *buf, size_t count, unsigned long *flags) {
 	int r;
 	int (*saved)(struct sc_card *, unsigned int, unsigned int) = card->ops->check_sw;
 	LOG_FUNC_CALLED(card->ctx);

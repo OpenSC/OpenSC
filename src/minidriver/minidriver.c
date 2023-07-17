@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 /*
@@ -483,6 +483,52 @@ check_card_reader_status(PCARD_DATA pCardData, const char *name)
 }
 
 static DWORD
+get_pin_by_name(PCARD_DATA pCardData, struct sc_pkcs15_card *p15card, int role, struct sc_pkcs15_object **ret_obj)
+{
+	scconf_block *conf_block = NULL;
+	scconf_block **blocks = NULL;
+	char *pin_type;
+	char str_path[SC_MAX_AID_STRING_SIZE];
+	char *pin = NULL;
+	struct sc_pkcs15_id id;
+
+	MD_FUNC_CALLED(pCardData, 1);
+
+	switch (role) {
+		case  ROLE_USER:
+			pin_type = "user_pin";
+			break;
+		case MD_ROLE_USER_SIGN:
+			pin_type = "sign_pin";
+			break;
+		default:
+			MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
+	}
+
+	conf_block = sc_get_conf_block(p15card->card->ctx, "framework", "pkcs15", 1);
+	if (!conf_block)
+		MD_FUNC_RETURN(pCardData, 1, SCARD_F_INTERNAL_ERROR);
+
+	memset(str_path, 0, sizeof(str_path));
+	sc_bin_to_hex(p15card->app->path.value, p15card->app->path.len, str_path, sizeof(str_path), 0);
+	blocks = scconf_find_blocks(p15card->card->ctx->conf, conf_block, "application", str_path);
+	if (blocks)   {
+		if (blocks[0]) {
+			pin = (char *)scconf_get_str(blocks[0], pin_type, NULL);
+		}
+		free(blocks);
+	}
+	if (!pin)
+		MD_FUNC_RETURN(pCardData, 1, SCARD_F_INTERNAL_ERROR);
+
+	strncpy((char*)id.value, pin, sizeof(id.value) - 1);
+	id.len = strlen(pin);
+	if (id.len > sizeof(id.value))
+		id.len = sizeof(id.value);
+	MD_FUNC_RETURN(pCardData, 1, sc_pkcs15_find_pin_by_auth_id(p15card, &id, ret_obj) ? SCARD_F_INTERNAL_ERROR : SCARD_S_SUCCESS);
+}
+
+static DWORD
 md_get_pin_by_role(PCARD_DATA pCardData, PIN_ID role, struct sc_pkcs15_object **ret_obj)
 {
 	VENDOR_SPECIFIC *vs;
@@ -496,6 +542,10 @@ md_get_pin_by_role(PCARD_DATA pCardData, PIN_ID role, struct sc_pkcs15_object **
 	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
 	if (!ret_obj)
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
+
+	rv = get_pin_by_name(pCardData, vs->p15card, role, ret_obj);
+	if (!rv)
+		goto out;
 
 	/* please keep me in sync with _get_auth_object_by_name() in pkcs11/framework-pkcs15.c */
 	if (role == ROLE_USER) {
@@ -546,6 +596,7 @@ md_get_pin_by_role(PCARD_DATA pCardData, PIN_ID role, struct sc_pkcs15_object **
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_UNSUPPORTED_FEATURE);
 	}
 
+out:
 	if (rv)
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_UNSUPPORTED_FEATURE);
 
@@ -7179,8 +7230,12 @@ BOOL APIENTRY DllMain( HINSTANCE hinstDLL,
 	case DLL_PROCESS_DETACH:
 		sc_notify_close();
 		if (lpReserved == NULL) {
-#if defined(ENABLE_OPENSSL) && defined(OPENSSL_SECURE_MALLOC_SIZE) && !defined(LIBRESSL_VERSION_NUMBER)
+#if defined(ENABLE_OPENSSL)
+#if defined(OPENSSL_SECURE_MALLOC_SIZE) && !defined(LIBRESSL_VERSION_NUMBER)
 			CRYPTO_secure_malloc_done();
+#else
+			OPENSSL_cleanup();
+#endif
 #endif
 #ifdef ENABLE_OPENPACE
 			EAC_cleanup();

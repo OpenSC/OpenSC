@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #if HAVE_CONFIG_H
@@ -39,9 +39,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <openssl/evp.h>
-#include <openssl/sha.h>
 #include <openssl/cmac.h>
+#include <openssl/rand.h>
+#include <openssl/sha.h>
 
 #include "internal.h"
 #include "asn1.h"
@@ -101,9 +101,7 @@ static unsigned char g_init_key_mac[16] = {
 	0x0D, 0x0E, 0x0F, 0x10
 };
 
-static unsigned char g_random[8] = {
-	0xBF, 0xC3, 0x29, 0x11, 0xC7, 0x18, 0xC3, 0x40
-};
+static unsigned char g_random[8];
 
 typedef struct epass2003_exdata_st {
 	unsigned char sm;		/* SM_PLAIN or SM_SCP01 */
@@ -370,7 +368,7 @@ aes128_encrypt_cmac_ft(struct sc_card *card, const unsigned char *key, int keysi
 	BN_bin2bn(out,16,enc1);
 	BN_lshift1(lenc1,enc1);
 	BN_bn2bin(lenc1,k1Bin);
-	if(check > 0x80){
+	if(check & 0x80){
 		offset = 1; 
 		k1Bin[15+offset] ^= 0x87; 
 	}
@@ -386,7 +384,7 @@ aes128_encrypt_cmac_ft(struct sc_card *card, const unsigned char *key, int keysi
 	offset = 0;
 	BN_lshift1(lenc2,enc2);
 	BN_bn2bin(lenc2,k2Bin);
-	if(check > 0x80){
+	if(check & 0x80){
 		offset = 1;
 		k2Bin[15+offset] ^= 0x87;
 	}
@@ -671,6 +669,9 @@ gen_init_key(struct sc_card *card, unsigned char *key_enc, unsigned char *key_ma
 	isFips = exdata->bFipsCertification;
 
 	LOG_FUNC_CALLED(card->ctx);
+
+	if (1 != RAND_bytes(g_random, sizeof(g_random)))
+		return SC_ERROR_INTERNAL;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x50, 0x00, 0x00);
 	apdu.cla = 0x80;
@@ -1329,6 +1330,109 @@ epass2003_sm_wrap_apdu(struct sc_card *card, struct sc_apdu *plain, struct sc_ap
 	return SC_SUCCESS;
 }
 
+static int
+epass2003_check_response_mac_and_sw(struct sc_card *card, struct sc_apdu *sm)
+{
+	unsigned char iv[16];
+	unsigned char *data = NULL, *mac = NULL;
+	size_t blocksize, mac_len;
+	int ret = -1;
+	size_t taglen;
+	const u8 *tag;
+	epass2003_exdata *exdata;
+	unsigned char *in = sm->resp;
+	unsigned char *alt_in;
+	size_t inlen = sm->resplen;
+	size_t len_correction;
+
+	/* card/ctx/drv_data is already checked by caller */
+	exdata = (epass2003_exdata *)card->drv_data;
+
+	/* The SM must contain at least TLV encoded SW and MAC fields. */
+	if (inlen < 14 )
+		return ret;
+
+	/* compare BER-TLV encoded SW (TAG 0x99) and raw SW */
+	alt_in = in;
+	tag = sc_asn1_find_tag(card->ctx, alt_in, inlen, 0x99, &taglen);
+	if (tag == NULL || taglen != 2) {
+		/*
+		 * It seems that the EPASS2003 firmware has some problem with BER-TLV encoding.
+		 * Instead of (correct) TLV 87 81 81 [01 .. ..] incorrect TLV 87 81 [01 .. ..]
+		 * is returned. There seems to be some proprietary fix for the faulty encoding
+		 * in the decrypt_response() function, similar fix here:
+		 */
+		if (0x01 == in[2] && 0x82 != in[1]) {
+			sc_log(card->ctx, "Workaround, wrong BER-TLV ?");
+			len_correction = in[1] + 2;
+			if (inlen < len_correction)
+				return ret;
+			inlen -= len_correction;
+			alt_in += len_correction;
+			tag = sc_asn1_find_tag(card->ctx, alt_in, inlen, 0x99, &taglen);
+			if (tag == NULL || taglen != 2)
+				return ret;
+		} else
+			return ret;
+	}
+	if (sm->sw1 != tag[0] || sm->sw2 != tag[1])
+		return ret;
+
+	/* no documentation/real hardware to test, the response is accepted without MAC check */
+	if (exdata->bFipsCertification) {
+		sc_log(card->ctx, "Warning, MAC is not checked");
+		return 0;
+	}
+	tag = sc_asn1_find_tag(card->ctx, alt_in, inlen, 0x8e, &taglen);
+	if (tag == NULL || taglen != 8)
+		return ret;
+
+	if (KEY_TYPE_AES == exdata->smtype)
+		blocksize = 16;
+	else
+		blocksize = 8;
+
+	mac_len = tag - in - 2;
+	if (NULL == (data = calloc(1, mac_len + blocksize)))
+		goto end;
+	if (NULL == (mac = malloc(mac_len + blocksize)))
+		goto end;
+
+	/* copy response to buffer and append padding */
+	memcpy(data, in, mac_len);
+	data[mac_len++] = 0x80;
+
+	if (mac_len % blocksize)
+		mac_len += (blocksize - (mac_len % blocksize));
+
+	/* calculate MAC */
+	memcpy(iv, exdata->icv_mac, blocksize);
+
+	if (KEY_TYPE_AES == exdata->smtype) {
+		if (aes128_encrypt_cbc(card, exdata->sk_mac, 16, iv, data, mac_len, mac))
+			goto end;
+	} else {
+		uint8_t tmp[8];
+		uint8_t iv0[EVP_MAX_IV_LENGTH];
+		if (des_encrypt_cbc(card, exdata->sk_mac, 8, iv, data, mac_len, mac))
+			goto end;
+		memset(iv0, 0, EVP_MAX_IV_LENGTH);
+		if (des_decrypt_cbc(card, &exdata->sk_mac[8], 8, iv0, &mac[mac_len - 8], 8, tmp))
+			goto end;
+		memset(iv0, 0, EVP_MAX_IV_LENGTH);
+		if (des_encrypt_cbc(card, exdata->sk_mac, 8, iv0, tmp, 8, &mac[mac_len - 8]))
+			goto end;
+	}
+	/* compare MAC */
+	if (!memcmp(tag, mac + mac_len - blocksize, 8))
+		ret = 0;
+end:
+	if (data)
+		free(data);
+	if (mac)
+		free(mac);
+	return ret;
+}
 
 /* According to GlobalPlatform Card Specification's SCP01
  * decrypt APDU response from
@@ -1413,6 +1517,13 @@ epass2003_sm_unwrap_apdu(struct sc_card *card, struct sc_apdu *sm, struct sc_apd
 
 	LOG_FUNC_CALLED(card->ctx);
 
+	/* verify MAC, and check if SW1,2 match SW1,2 encapsulated in SM */
+	if (exdata->sm) {
+		if (epass2003_check_response_mac_and_sw(card, sm)) {
+			sc_log(card->ctx, "MAC or SW incorrect");
+			return SC_ERROR_CARD_CMD_FAILED;
+		}
+	}
 	r = sc_check_sw(card, sm->sw1, sm->sw2);
 	if (r == SC_SUCCESS) {
 		if (exdata->sm) {
@@ -3308,9 +3419,13 @@ epass2003_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries
 		LOG_TEST_RET(card->ctx, r, "verify pin failed");
 	}
 	else if (data->cmd == SC_PIN_CMD_CHANGE || data->cmd == SC_PIN_CMD_UNBLOCK) { /* change */
+		r = external_key_auth(card, kid, (unsigned char *)data->pin1.data,
+				data->pin1.len);
+		LOG_TEST_RET(card->ctx, r, "verify pin failed");
+		
 		r = update_secret_key(card, 0x04, kid, data->pin2.data,
 				(unsigned long)data->pin2.len);
-		LOG_TEST_RET(card->ctx, r, "verify pin failed");
+		LOG_TEST_RET(card->ctx, r, "change pin failed");
 	}
 	else {
 		r = external_key_auth(card, kid, (unsigned char *)data->pin1.data,

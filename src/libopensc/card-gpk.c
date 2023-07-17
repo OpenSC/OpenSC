@@ -15,7 +15,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #if HAVE_CONFIG_H
@@ -678,7 +678,7 @@ done:
  */
 static int
 gpk_read_binary(sc_card_t *card, unsigned int offset,
-		u8 *buf, size_t count, unsigned long flags)
+		u8 *buf, size_t count, unsigned long *flags)
 {
 	struct gpk_private_data *priv = DRVDATA(card);
 

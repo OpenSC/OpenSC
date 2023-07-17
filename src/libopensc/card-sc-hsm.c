@@ -18,7 +18,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #if HAVE_CONFIG_H
@@ -35,6 +35,17 @@
 #include "types.h"
 
 #include "card-sc-hsm.h"
+
+#ifdef ENABLE_SM
+#ifdef ENABLE_OPENPACE
+#include "sm/sm-eac.h"
+#include <eac/cv_cert.h>
+#include <eac/eac.h>
+#include <eac/ta.h>
+#include <openssl/bio.h>
+#include <openssl/crypto.h>
+#endif
+#endif
 
 
 /* Static reference to ISO driver */
@@ -476,12 +487,6 @@ static int sc_hsm_soc_biomatch(sc_card_t *card, struct sc_pin_cmd_data *data,
 
 #ifdef ENABLE_SM
 #ifdef ENABLE_OPENPACE
-#include "sm/sm-eac.h"
-#include <eac/cv_cert.h>
-#include <eac/eac.h>
-#include <eac/ta.h>
-#include <openssl/bio.h>
-#include <openssl/crypto.h>
 
 static int sc_hsm_perform_chip_authentication(sc_card_t *card)
 {
@@ -785,7 +790,7 @@ static int sc_hsm_logout(sc_card_t * card)
 /* NOTE: idx is an offset into the card's file, not into buf */
 static int sc_hsm_read_binary(sc_card_t *card,
 			       unsigned int idx, u8 *buf, size_t count,
-			       unsigned long flags)
+			       unsigned long *flags)
 {
 	sc_context_t *ctx = card->ctx;
 	sc_apdu_t apdu;
@@ -851,7 +856,6 @@ static int sc_hsm_write_ef(sc_card_t *card,
 	size_t file_offset = (size_t) idx;
 	size_t offset = 0;
 	do {
-		len = 0;
 		to_send = bytes_left >= blk_size ? blk_size : bytes_left;
 		p = cmdbuff;
 		// ASN1 0x54 offset
@@ -1198,7 +1202,7 @@ static int sc_hsm_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 		 * this for `opensc-tool --serial` to avoid unnecessary card commands
 		 * in all other cases. */
 		sc_pkcs15_card_t *p15card = NULL;
-		sc_pkcs15_bind(card, NULL, &p15card);
+		(void)sc_pkcs15_bind(card, NULL, &p15card);
 		sc_pkcs15_unbind(p15card);
 	}
 

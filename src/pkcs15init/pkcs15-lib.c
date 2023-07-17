@@ -26,7 +26,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #include "config.h"
@@ -1539,6 +1539,9 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 	int algorithm = keygen_args->prkey_args.key.algorithm;
 
 	LOG_FUNC_CALLED(ctx);
+
+	memset(&pubkey_args, 0, sizeof(pubkey_args));
+
 	/* check supported key size */
 	r = check_keygen_params_consistency(p15card->card,
 		algorithm, &keygen_args->prkey_args,
@@ -1585,11 +1588,11 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 	/* Set up the PuKDF info. The public key will be filled in
 	 * by the card driver's generate_key function called below.
 	 * Auth.ID of the public key object is left empty. */
-	memset(&pubkey_args, 0, sizeof(pubkey_args));
 	pubkey_args.id = keygen_args->prkey_args.id;
 	pubkey_args.label = keygen_args->pubkey_label ? keygen_args->pubkey_label : object->label;
 	pubkey_args.usage = keygen_args->prkey_args.usage;
 	pubkey_args.x509_usage = keygen_args->prkey_args.x509_usage;
+	pubkey_args.key.algorithm = algorithm;
 
 	if (algorithm == SC_ALGORITHM_GOSTR3410)   {
 		pubkey_args.params.gost = keygen_args->prkey_args.params.gost;
@@ -1598,25 +1601,15 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 	}
 	else if (algorithm == SC_ALGORITHM_EC)   {
 		/* needs to be freed in case of failure when pubkey is not set yet */
-		pubkey_args.key.u.ec.params = keygen_args->prkey_args.key.u.ec.params;
 		r = sc_copy_ec_params(&pubkey_args.key.u.ec.params, &keygen_args->prkey_args.key.u.ec.params);
 		LOG_TEST_GOTO_ERR(ctx, r, "Cannot allocate EC parameters");
 	}
 
 	/* Generate the private key on card */
 	r = profile->ops->create_key(profile, p15card, object);
-	if (r < 0 && algorithm == SC_ALGORITHM_EC) {
-		/* pubkey->alg_id->algorithm is not set yet, needs to be freed independently */
-		free(pubkey_args.key.u.ec.params.der.value);
-		free(pubkey_args.key.u.ec.params.named_curve);
-	}
 	LOG_TEST_GOTO_ERR(ctx, r, "Cannot generate key: create key failed");
 
 	r = profile->ops->generate_key(profile, p15card, object, &pubkey_args.key);
-	if (r < 0 && algorithm == SC_ALGORITHM_EC) {
-		free(pubkey_args.key.u.ec.params.der.value);
-		free(pubkey_args.key.u.ec.params.named_curve);
-	}
 	LOG_TEST_GOTO_ERR(ctx, r, "Failed to generate key");
 
 	/* update PrKDF entry */
@@ -1627,11 +1620,6 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 		 * if intrinsic ID can be calculated -- overwrite the native one */
 		memset(&iid, 0, sizeof(iid));
 		r = sc_pkcs15init_select_intrinsic_id(p15card, profile, SC_PKCS15_TYPE_PUBKEY, &iid, &pubkey_args.key);
-		if (r < 0 && algorithm == SC_ALGORITHM_EC) {
-			free(pubkey_args.key.u.ec.params.der.value);
-			free(pubkey_args.key.u.ec.params.named_curve);
-			free(pubkey_args.key.u.ec.ecpointQ.value); /* allocated in profile->ops->generate_key */
-		}
 		LOG_TEST_GOTO_ERR(ctx, r, "Select intrinsic ID error");
 
 		if (iid.len)
@@ -1642,10 +1630,6 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 	if (!pubkey->alg_id)   {
 		pubkey->alg_id = calloc(1, sizeof(struct sc_algorithm_id));
 		if (!pubkey->alg_id) {
-			if (algorithm == SC_ALGORITHM_EC) {
-				free(pubkey_args.key.u.ec.params.der.value);
-				free(pubkey_args.key.u.ec.params.named_curve);
-			}
 			r = SC_ERROR_OUT_OF_MEMORY;
 			LOG_TEST_GOTO_ERR(ctx, r, "Can not allocate memory for algorithm id");
 		}
@@ -1677,13 +1661,11 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 		*res_obj = object;
 	object = NULL;
 
-	sc_pkcs15_erase_pubkey(pubkey);
-
 	profile->dirty = 1;
 
 err:
-	sc_pkcs15_erase_pubkey(pubkey);
 	sc_pkcs15_free_object(object);
+	sc_pkcs15_erase_pubkey(&pubkey_args.key);
 	if (algorithm == SC_ALGORITHM_EC) {
 		/* allocated in check_keygen_params_consistency() */
 		free(keygen_args->prkey_args.key.u.ec.params.der.value);
@@ -1868,24 +1850,52 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card, struct sc_profile
 	if (!keyargs)
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Store public key aborted");
 
-	/* Create a copy of the key first */
+	/* Create shallow a copy of the key first */
 	key = keyargs->key;
 
+	/* Copy algorithm id structure */
+	if (keyargs->key.alg_id) {
+		key.alg_id = calloc(1, sizeof(struct sc_algorithm_id));
+		if (!key.alg_id)
+			LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Can not allocate memory for algorithm id");
+
+		key.alg_id->algorithm = keyargs->key.alg_id->algorithm;
+		memcpy(&key.alg_id->oid, &keyargs->key.alg_id->oid, sizeof(struct sc_object_id));
+	}
+
+	/* Copy algorithm related parameters */
 	switch (key.algorithm) {
 	case SC_ALGORITHM_RSA:
+		key.u.rsa.modulus.data = NULL;
+		key.u.rsa.exponent.data = NULL;
+		// copy RSA params
+		if (!(key.u.rsa.modulus.data = malloc(keyargs->key.u.rsa.modulus.len)))
+			LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Failed to copy RSA public key parameters");
+		memcpy(key.u.rsa.modulus.data, keyargs->key.u.rsa.modulus.data, keyargs->key.u.rsa.modulus.len);
+		if (!(key.u.rsa.exponent.data = malloc(keyargs->key.u.rsa.exponent.len))) {
+			r = SC_ERROR_OUT_OF_MEMORY;
+			LOG_TEST_GOTO_ERR(ctx, r, "Failed to copy RSA public key parameters");
+		}
+		memcpy(key.u.rsa.exponent.data, keyargs->key.u.rsa.exponent.data, keyargs->key.u.rsa.exponent.len);
 		keybits = sc_pkcs15init_keybits(&key.u.rsa.modulus);
 		type = SC_PKCS15_TYPE_PUBKEY_RSA;
 		break;
 	case SC_ALGORITHM_GOSTR3410:
+		key.u.gostr3410.xy.data = NULL;
+		// copy GOSTR params
+		if (!(key.u.gostr3410.xy.data = malloc(keyargs->key.u.gostr3410.xy.len)))
+			LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Failed to copy GOSTR public key parameters");
+		memcpy(key.u.gostr3410.xy.data, keyargs->key.u.gostr3410.xy.data, keyargs->key.u.gostr3410.xy.len);
 		keybits = SC_PKCS15_GOSTR3410_KEYSIZE;
 		type = SC_PKCS15_TYPE_PUBKEY_GOSTR3410;
 		break;
 	case SC_ALGORITHM_EC:
 		type = SC_PKCS15_TYPE_PUBKEY_EC;
 
-		key.u.ec.params = keyargs->key.u.ec.params;
+		r = sc_copy_ec_params(&key.u.ec.params, &keyargs->key.u.ec.params);
+		LOG_TEST_RET(ctx, r, "Failed to copy EC public key parameters");
 		r = sc_pkcs15_fix_ec_parameters(ctx, &key.u.ec.params);
-		LOG_TEST_RET(ctx, r, "Failed to fix EC public key parameters");
+		LOG_TEST_GOTO_ERR(ctx, r, "Failed to fix EC public key parameters");
 
 		keybits = key.u.ec.params.field_length;
 		break;
@@ -1935,6 +1945,15 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card, struct sc_profile
 			}
 			key_info->params.len = key.u.ec.params.der.len;
 			memcpy(key_info->params.data, key.u.ec.params.der.value, key.u.ec.params.der.len);
+		}
+		if (keyargs->key.u.ec.ecpointQ.value) {
+			key.u.ec.ecpointQ.value = malloc(keyargs->key.u.ec.ecpointQ.len);
+			if (!key.u.ec.ecpointQ.value) {
+				r = SC_ERROR_OUT_OF_MEMORY;
+				LOG_TEST_GOTO_ERR(ctx, r, "Cannot allocate EC params");
+			}
+			key.u.ec.ecpointQ.len = keyargs->key.u.ec.ecpointQ.len;
+			memcpy(key.u.ec.ecpointQ.value, keyargs->key.u.ec.ecpointQ.value, key.u.ec.ecpointQ.len);
 		}
 	}
 
@@ -1993,6 +2012,7 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card, struct sc_profile
 	profile->dirty = 1;
 
 err:
+	sc_pkcs15_erase_pubkey(&key);
 	sc_pkcs15_free_object(object);
 	LOG_FUNC_RETURN(ctx, r);
 }
@@ -2043,7 +2063,7 @@ sc_pkcs15init_store_secret_key(struct sc_pkcs15_card *p15card, struct sc_profile
 		r = profile->ops->create_key(profile, p15card, object);
 	LOG_TEST_GOTO_ERR(ctx, r, "Card specific 'create key' failed");
 
-	/* If no key data, only an empty EF is created. 
+	/* If no key data, only an empty EF is created.
 	 * It can be used to receive an unwrapped key later. */
 	if (keyargs->key.data_len > 0) {
 		if (profile->ops->store_key) {
@@ -3462,7 +3482,7 @@ sc_pkcs15init_change_attrib(struct sc_pkcs15_card *p15card, struct sc_profile *p
 			struct sc_pkcs15_der new_data;
 			new_data.len = new_len;
 			new_data.value = (u8 *) new_value;
-			
+
 			/* save new data as a new data file on token */
 			r = sc_pkcs15init_store_data(p15card, profile, object, &new_data, &new_data_path);
 			profile->dirty = 1;
@@ -3479,7 +3499,7 @@ sc_pkcs15init_change_attrib(struct sc_pkcs15_card *p15card, struct sc_profile *p
 			info->data.len = new_len;
 			info->data.value = nv;
 			info->path = new_data_path;
-			
+
 			/* delete old data file from token */
 			r = sc_pkcs15init_delete_by_path(profile, p15card, &old_data_path);
 			LOG_TEST_RET(ctx, r, "Failed to delete old data");

@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #include "config.h"
@@ -290,7 +290,7 @@ sc_pkcs11_register_openssl_mechanisms(struct sc_pkcs11_card *p11card)
 			ENGINE_free(e);
 			e = NULL;
 		}
-#endif /* !OPENSSL_NO_STATIC_ENGINE && !OPENSSL_NO_GOST */
+#endif /* !OPENSSL_NO_STATIC_ENGINE && !OPENSSL_NO_GOST && !LIBRESSL_VERSION_NUMBER */
 	}
 	if (e) {
 		ENGINE_set_default(e, ENGINE_METHOD_ALL);

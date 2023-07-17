@@ -4,7 +4,7 @@ set -ex -o xtrace
 
 WINE_DEPS=""
 # Generic dependencies
-DEPS="docbook-xsl xsltproc gengetopt help2man pcscd check pcsc-tools libtool make autoconf autoconf-archive automake pkg-config git xxd openssl"
+DEPS="docbook-xsl xsltproc gengetopt help2man pcscd check pcsc-tools libtool make autoconf autoconf-archive automake pkg-config git xxd openssl valgrind"
 
 # 64bit or 32bit dependencies
 if [ "$1" == "ix86" ]; then
@@ -27,7 +27,7 @@ elif [ "$1" == "piv" -o "$1" == "isoapplet" -o "$1" == "gidsapplet" -o "$1" == "
 elif [ "$1" == "mingw" -o "$1" == "mingw32" ]; then
 	# Note, that this list is somehow magic and adding libwine, libwine:i386 or wine64
 	# will make the following sections break without any useful logs. See GH#2458
-	WINE_DEPS="wine wine32 xvfb wget"
+	WINE_DEPS="wine wine32 xvfb wget libc6:i386 libgcc-s1:i386 libstdc++6:i386"
 	if [ "$1" == "mingw" ]; then
 		WINE_DEPS="$WINE_DEPS binutils-mingw-w64-x86-64 gcc-mingw-w64-x86-64 mingw-w64"
 	elif [ "$1" == "mingw32" ]; then
@@ -53,11 +53,16 @@ sudo apt-get install -y build-essential $DEPS
 
 # install libressl if needed
 if [ "$1" == "libressl" -o "$2" == "libressl" ]; then
-	./.github/setup-libressl.sh &> /tmp/libressl.log || cat /tmp/libressl.log
+	./.github/setup-libressl.sh &> /tmp/libressl.log
+	RET=$?
+	if [ $RET -ne 0 ]; then
+		cat /tmp/libressl.log
+		exit $RET
+	fi
 fi
 
 if [ "$1" == "mingw" -o "$1" == "mingw32" ]; then
-	sudo apt-get install -y $WINE_DEPS
+	sudo apt-get install --allow-downgrades  -y $WINE_DEPS
 	if [ ! -f "$(winepath 'C:/Program Files/Inno Setup 5/ISCC.exe')" ]; then
 		/sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_99.pid --make-pidfile --background --exec /usr/bin/Xvfb -- :99 -ac -screen 0 1280x1024x16
 		export DISPLAY=:99.0

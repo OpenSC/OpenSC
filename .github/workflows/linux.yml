@@ -1,3 +1,4 @@
+---
 name: Linux
 
 on:
@@ -5,11 +6,8 @@ on:
     paths:
       - '**.c'
       - '**.h'
+      - '**.sh'
       - .github/workflows/linux.yml
-      - .github/setup-linux.sh
-      - .github/setup-libressl.sh
-      - .github/build.sh
-      - .github/push-artifacts.sh
       - '**.am'
       - doc/**
       - configure.ac
@@ -17,6 +15,7 @@ on:
 
 permissions:
   contents: read  #  to fetch code (actions/checkout)
+
 
 jobs:
   build:
@@ -30,8 +29,9 @@ jobs:
         if: failure()
         with:
           name: ubuntu-test-logs
-          path:
+          path: |
             tests/*.log
+            src/tests/unittests/*.log
       - uses: actions/cache@v3
         id: cache-build
         with:
@@ -44,15 +44,30 @@ jobs:
           path:
             opensc*.tar.gz
 
+  valgrind:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: .github/setup-linux.sh
+      - run: .github/build.sh valgrind
+      - name: Upload test logs
+        uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: ubuntu-valgrind-logs
+          path: |
+            tests/*.log
+            src/tests/unittests/*.log
+
   build-no-shared:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - run: .github/setup-linux.sh
-      - run: .github/build.sh no-shared
+      - run: .github/build.sh no-shared valgrind
 
   build-ix86:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v3
       - run: .github/setup-linux.sh ix86
@@ -96,6 +111,7 @@ jobs:
           key: ${{ runner.os }}-${{ github.sha }}
       - run: .github/setup-linux.sh piv
       - run: .github/test-piv.sh
+      - run: .github/test-piv.sh valgrind
 
   test-isoapplet-v0:
     runs-on: ubuntu-20.04
@@ -109,6 +125,7 @@ jobs:
           key: ${{ runner.os }}-${{ github.sha }}
       - run: .github/setup-linux.sh isoapplet
       - run: .github/test-isoapplet.sh v0
+      - run: .github/test-isoapplet.sh v0 valgrind
 
   test-isoapplet-v1:
     runs-on: ubuntu-20.04
@@ -122,6 +139,7 @@ jobs:
           key: ${{ runner.os }}-${{ github.sha }}
       - run: .github/setup-linux.sh isoapplet
       - run: .github/test-isoapplet.sh v1
+      - run: .github/test-isoapplet.sh v1 valgrind
 
   test-gidsapplet:
     runs-on: ubuntu-20.04
@@ -135,6 +153,7 @@ jobs:
           key: ${{ runner.os }}-${{ github.sha }}
       - run: .github/setup-linux.sh gidsapplet
       - run: .github/test-gidsapplet.sh
+      - run: .github/test-gidsapplet.sh valgrind
 
   test-openpgp:
     runs-on: ubuntu-20.04
@@ -148,6 +167,7 @@ jobs:
           key: ${{ runner.os }}-${{ github.sha }}
       - run: .github/setup-linux.sh openpgp
       - run: .github/test-openpgp.sh
+      - run: .github/test-openpgp.sh valgrind
 
   build-clang-tidy:
     runs-on: ubuntu-20.04
@@ -174,6 +194,7 @@ jobs:
           key: ${{ runner.os }}-${{ github.sha }}
       - run: .github/setup-linux.sh cac
       - run: .github/test-cac.sh
+      - run: .github/test-cac.sh valgrind
 
   test-oseid:
     runs-on: ubuntu-20.04
@@ -196,13 +217,14 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - run: .github/setup-linux.sh
-      - run: .github/build.sh dist
+      - run: .github/build.sh dist valgrind
       - uses: actions/upload-artifact@v3
         if: failure()
         with:
           name: ubuntu-22-test-logs
-          path:
+          path: |
             tests/*.log
+            src/tests/unittests/*.log
       - uses: actions/cache@v3
         id: cache-build
         if: ${{ success() }}
@@ -229,6 +251,7 @@ jobs:
           key: ${{ runner.os }}-22-${{ github.sha }}
       - run: .github/setup-linux.sh cac
       - run: .github/test-cac.sh
+      - run: .github/test-cac.sh valgrind
 
   test-oseid-ubuntu-22:
     runs-on: ubuntu-22.04
@@ -251,7 +274,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - run: .github/setup-linux.sh libressl
-      - run: .github/build.sh dist libressl
+      - run: .github/build.sh dist libressl valgrind
       - uses: actions/upload-artifact@v3
         if: failure()
         with:
@@ -278,6 +301,7 @@ jobs:
           key: ${{ runner.os }}-libressl-${{ github.sha }}
       - run: .github/setup-linux.sh cac libressl
       - run: .github/test-cac.sh
+      - run: .github/test-cac.sh valgrind
 
   test-oseid-libressl:
     runs-on: ubuntu-latest

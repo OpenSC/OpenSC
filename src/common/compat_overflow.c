@@ -1,5 +1,5 @@
 /*
- * compat_overflow.h: Reimplementation of GCC/Clang's built-in
+ * compat_overflow.c: Reimplementation of GCC/Clang's built-in
  * functions to perform arithmetic with overflow checking
  *
  * Copyright (C) Frank Morgner <frankmorgner@gmail.com>
@@ -18,7 +18,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 #if HAVE_CONFIG_H
 #include "config.h"
@@ -41,4 +41,5 @@
 ADD_OVERFLOW(__builtin_uadd_overflow,   unsigned,           UINT_MAX)
 ADD_OVERFLOW(__builtin_uaddl_overflow,  unsigned long,      ULONG_MAX)
 ADD_OVERFLOW(__builtin_uaddll_overflow, unsigned long long, ULLONG_MAX)
+ADD_OVERFLOW(__builtin_zuadd_overflow,  size_t,             SIZE_MAX)
 #endif

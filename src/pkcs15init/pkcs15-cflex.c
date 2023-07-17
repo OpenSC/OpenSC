@@ -15,7 +15,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #include "config.h"
@@ -56,6 +56,9 @@ cflex_delete_file(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *d
         int             r = 0;
         /* Select the parent DF */
         path = df->path;
+		if (path.len < 2) {
+			return SC_ERROR_INVALID_ARGUMENTS;
+		}
         path.len -= 2;
         r = sc_select_file(p15card->card, &path, &parent);
         if (r < 0)

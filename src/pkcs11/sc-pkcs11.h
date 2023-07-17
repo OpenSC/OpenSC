@@ -15,7 +15,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #ifndef __sc_pkcs11_h__
@@ -413,6 +413,7 @@ CK_RV slot_token_removed(CK_SLOT_ID id);
 CK_RV slot_allocate(struct sc_pkcs11_slot **, struct sc_pkcs11_card *);
 CK_RV slot_find_changed(CK_SLOT_ID_PTR idp, int mask);
 int slot_get_logged_in_state(struct sc_pkcs11_slot *slot);
+int slot_get_card_state(struct sc_pkcs11_slot *slot);
 
 /* Login tracking functions */
 CK_RV restore_login_state(struct sc_pkcs11_slot *slot);

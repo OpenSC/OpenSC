@@ -1,7 +1,7 @@
 /*
  * card-westcos.c: support for westcos card
  *
- * Copyright (C) 2009 francois.leblanc@cev-sa.com 
+ * Copyright (C) 2009 francois.leblanc@cev-sa.com
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -15,7 +15,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #if HAVE_CONFIG_H
@@ -84,7 +84,7 @@ static int westcos_get_default_key(sc_card_t * card,
 {
 	const char *default_key = NULL;
 	size_t i;
-	sc_log(card->ctx, 
+	sc_log(card->ctx,
 		 "westcos_get_default_key:data->method=%d, data->key_ref=%d\n",
 		 data->method, data->key_ref);
 	if (data->method != SC_AC_AUT || data->key_ref != 0)
@@ -115,7 +115,7 @@ static unsigned short westcos_update_crc(unsigned char ch, unsigned short *lpwCr
 	return (*lpwCrc);
 }
 
-static void westcos_compute_aetb_crc(int CRCType, 
+static void westcos_compute_aetb_crc(int CRCType,
 					unsigned char *Data,
 					size_t Length,
 					unsigned char * TransmitFirst,
@@ -180,9 +180,9 @@ static int westcos_match_card(sc_card_t * card)
 	i = _sc_match_atr(card, westcos_atrs, &card->type);
 	if (i < 0)
 		return 0;
-	
+
 	/* JAVACARD, look for westcos applet */
-	if (i == 1) { 
+	if (i == 1) {
 		int r;
 		sc_apdu_t apdu;
 		u8 aid[] = {
@@ -202,7 +202,7 @@ static int westcos_match_card(sc_card_t * card)
 		if (r)
 			return 0;
 	}
-	
+
 	return 1;
 }
 
@@ -215,12 +215,12 @@ static int westcos_init(sc_card_t * card)
 
 	if (card == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
-		
+
 	card->drv_data = malloc(sizeof(priv_data_t));
 	if (card->drv_data == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	memset(card->drv_data, 0, sizeof(priv_data_t));
-	
+
 	priv_data = (priv_data_t *) card->drv_data;
 
 	default_key =
@@ -243,13 +243,13 @@ static int westcos_init(sc_card_t * card)
 	if (card->type & JAVACARD) {
 		priv_data->flags |= JAVACARD;
 	}
-	
+
 	/* check for crypto component */
 	if(card->atr.value[9] == 0xD0)
 	{
 		priv_data->flags |= RSA_CRYPTO_COMPONENT;
 	}
-	
+
 	card->cla = 0x00;
 	card->max_send_size = 240;
 	card->max_recv_size = 240;
@@ -305,13 +305,13 @@ static int westcos_process_fci(sc_card_t * card, sc_file_t * file,
 	tag = sc_asn1_find_tag(ctx, p, len, 0x83, &taglen);
 	if (tag != NULL && taglen == 2) {
 		file->id = (tag[0] << 8) | tag[1];
-		sc_log(card->ctx, 
+		sc_log(card->ctx,
 			"  file identifier: 0x%02X%02X\n", tag[0], tag[1]);
 	}
 	tag = sc_asn1_find_tag(ctx, p, len, 0x80, &taglen);
 	if (tag != NULL && taglen >= 2) {
 		int bytes = (tag[0] << 8) + tag[1];
-		sc_log(card->ctx, 
+		sc_log(card->ctx,
 			"  bytes in file: %d\n", bytes);
 		file->size = bytes;
 	}
@@ -319,7 +319,7 @@ static int westcos_process_fci(sc_card_t * card, sc_file_t * file,
 		tag = sc_asn1_find_tag(ctx, p, len, 0x81, &taglen);
 		if (tag != NULL && taglen >= 2) {
 			int bytes = (tag[0] << 8) + tag[1];
-			sc_log(card->ctx, 
+			sc_log(card->ctx,
 				"  bytes in file: %d\n", bytes);
 			file->size = bytes;
 		}
@@ -330,7 +330,7 @@ static int westcos_process_fci(sc_card_t * card, sc_file_t * file,
 			unsigned char byte = tag[0];
 			const char *type;
 			file->shareable = 0;
-			sc_log(card->ctx, 
+			sc_log(card->ctx,
 				"  shareable: %s\n",
 				 (file->shareable) ? "yes" : "no");
 			file->ef_structure = SC_FILE_EF_UNKNOWN;
@@ -357,9 +357,9 @@ static int westcos_process_fci(sc_card_t * card, sc_file_t * file,
 			default:
 				type = "unknown";
 			}
-			sc_log(card->ctx, 
+			sc_log(card->ctx,
 				"  type: %s\n", type);
-			sc_log(card->ctx, 
+			sc_log(card->ctx,
 				"  EF structure: %d\n", file->ef_structure);
 		}
 	}
@@ -599,7 +599,7 @@ static int westcos_create_file(sc_card_t *card, struct sc_file *file)
 		p1 = (file->id) / 256;
 		p2 = (file->id) % 256;
 	}
-	sc_log(card->ctx, 
+	sc_log(card->ctx,
 		 "create file %s, id %X size %"SC_FORMAT_LEN_SIZE_T"u\n",
 		 file->path.value, file->id, file->size);
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xE0, p1, p2);
@@ -668,8 +668,6 @@ static int westcos_get_crypte_challenge(sc_card_t * card, const u8 * key,
 	EVP_CIPHER_CTX *cctx = NULL;
 	EVP_CIPHER *alg = NULL;
 	int tmplen = 0;
-	if ((cctx = EVP_CIPHER_CTX_new()) == NULL)
-		return SC_ERROR_INTERNAL;
 #endif
 	u8 buf[8];
 	if ((*len) < sizeof(buf))
@@ -714,7 +712,7 @@ static int westcos_pin_cmd(sc_card_t * card, struct sc_pin_cmd_data *data,
 	int pad = 0, use_pin_pad = 0, ins, p1 = 0;
 	if (card == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
-	sc_log(card->ctx, 
+	sc_log(card->ctx,
 		 "westcos_pin_cmd:data->pin_type=%X, data->cmd=%X\n",
 		 data->pin_type, data->cmd);
 	if (tries_left)
@@ -886,7 +884,7 @@ static int westcos_card_ctl(sc_card_t * card, unsigned long cmd, void *ptr)
 	priv_data_t *priv_data = NULL;
 	if (card == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
-	sc_log(card->ctx, 
+	sc_log(card->ctx,
 		"westcos_card_ctl cmd = %lX\n", cmd);
 	priv_data = (priv_data_t *) card->drv_data;
 	switch (cmd) {
@@ -1071,11 +1069,11 @@ static int westcos_set_security_env(sc_card_t *card,
 	priv_data_t *priv_data = NULL;
 	if (card == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
-	sc_log(card->ctx, 
+	sc_log(card->ctx,
 		"westcos_set_security_env\n");
 	priv_data = (priv_data_t *) card->drv_data;
 	priv_data->env = *env;
-	
+
 	if(priv_data->flags & RSA_CRYPTO_COMPONENT)
 	{
 		sc_apdu_t apdu;
@@ -1090,7 +1088,7 @@ static int westcos_set_security_env(sc_card_t *card,
 		r = sc_path_print((char *)buf, sizeof(buf), &(env->file_ref));
 		if(r)
 			return r;
-			
+
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0xf0, mode);
 		apdu.cla = 0x00;
 		apdu.lc = strlen((char *)buf);
@@ -1109,7 +1107,7 @@ static int westcos_restore_security_env(sc_card_t *card, int se_num)
 {
 	if (card == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
-	sc_log(card->ctx, 
+	sc_log(card->ctx,
 		"westcos_restore_security_env\n");
 	return 0;
 }
@@ -1134,7 +1132,7 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 	if (card == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
-	sc_log(card->ctx, 
+	sc_log(card->ctx,
 		 "westcos_sign_decipher outlen=%"SC_FORMAT_LEN_SIZE_T"u\n",
 		 outlen);
 
@@ -1151,7 +1149,7 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 	if(priv_data->flags & RSA_CRYPTO_COMPONENT)
 	{
 		sc_apdu_t apdu;
-		
+
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x00, mode);
 		apdu.datalen = data_len;
 		apdu.data = data;
@@ -1159,14 +1157,14 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 		apdu.le = outlen > 240 ? 240 : outlen;
 		apdu.resp = out;
 		apdu.resplen = outlen;
-		
+
 		r = sc_transmit_apdu(card, &apdu);
 		if (r)
 			goto out2;
 		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 		if(r)
 			goto out2;
-		
+
 		/* correct */
 		r = apdu.resplen;
 		goto out2;
@@ -1190,7 +1188,7 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 		alire = min(((keyfile->size) - idx), sizeof(buf));
 		if (alire <= 0)
 			break;
-		sc_log(card->ctx, 
+		sc_log(card->ctx,
 			"idx = %d, alire=%d\n", idx, alire);
 		r = sc_read_binary(card, idx, buf, alire, 0);
 		if (r < 0)
@@ -1204,7 +1202,7 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 #else
 	if (!(pkey = d2i_PrivateKey_ex_bio(mem, NULL, card->ctx->ossl3ctx->libctx, NULL))) {
 #endif
-		sc_log(card->ctx, 
+		sc_log(card->ctx,
 			"RSA key invalid, %lu\n", ERR_get_error());
 		r = SC_ERROR_UNKNOWN;
 		goto out;
@@ -1230,7 +1228,7 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 #ifdef DEBUG_SSL
 			print_openssl_error();
 #endif
-			sc_log(card->ctx, 
+			sc_log(card->ctx,
 				"Decipher error %lu\n", ERR_get_error());
 			r = SC_ERROR_UNKNOWN;
 			goto out;
@@ -1245,7 +1243,7 @@ static int westcos_sign_decipher(int mode, sc_card_t *card,
 #ifdef DEBUG_SSL
 			print_openssl_error();
 #endif
-			sc_log(card->ctx, 
+			sc_log(card->ctx,
 				"Signature error %lu\n", ERR_get_error());
 			r = SC_ERROR_UNKNOWN;
 			goto out;

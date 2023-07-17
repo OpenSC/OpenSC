@@ -18,7 +18,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  *
  * best view with tabstop=4
  */
@@ -554,12 +554,15 @@ auth_select_file(struct sc_card *card, const struct sc_path *in_path,
 			}
 		}
 		else if (path.len - offs == 0 && file_out)  {
-			if (sc_compare_path(&path, &auth_current_df->path))
+			if (sc_compare_path(&path, &auth_current_df->path) && file_out) {
+				sc_file_free(*file_out);
 				sc_file_dup(file_out, auth_current_df);
-			else  if (auth_current_ef)
+			} else  if (auth_current_ef && file_out) {
+				sc_file_free(*file_out);
 				sc_file_dup(file_out, auth_current_ef);
-			else
+			} else {
 				LOG_TEST_RET(card->ctx, SC_ERROR_INTERNAL, "No current EF");
+			}
 		}
 	}
 
@@ -2110,7 +2113,7 @@ auth_update_binary(struct sc_card *card, unsigned int offset,
 
 static int
 auth_read_binary(struct sc_card *card, unsigned int offset,
-		unsigned char *buf, size_t count, unsigned long flags)
+		unsigned char *buf, size_t count, unsigned long *flags)
 {
 	int rv;
 	struct sc_pkcs15_bignum bn[2];
@@ -2125,7 +2128,7 @@ auth_read_binary(struct sc_card *card, unsigned int offset,
 
 	sc_log(card->ctx,
 	       "offset %i; size %"SC_FORMAT_LEN_SIZE_T"u; flags 0x%lX",
-	       offset, count, flags);
+	       offset, count, flags ? *flags : 0);
 	sc_log(card->ctx,"last selected : magic %X; ef %X",
 			auth_current_ef->magic, auth_current_ef->ef_structure);
 

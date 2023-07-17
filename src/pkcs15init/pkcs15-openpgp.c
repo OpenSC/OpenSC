@@ -15,7 +15,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #include "config.h"
@@ -235,7 +235,7 @@ static int openpgp_generate_key_rsa(sc_card_t *card, sc_pkcs15_object_t *obj,
 
 	/* Prepare buffer */
 	key_info.u.rsa.modulus_len = required->modulus_length;
-	key_info.u.rsa.modulus = calloc(required->modulus_length >> 3, 1);
+	key_info.u.rsa.modulus = calloc(BYTES4BITS(required->modulus_length), 1);
 	if (key_info.u.rsa.modulus == NULL)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
 
@@ -252,18 +252,18 @@ static int openpgp_generate_key_rsa(sc_card_t *card, sc_pkcs15_object_t *obj,
 
 	pubkey->algorithm = SC_ALGORITHM_RSA;
 	sc_log(ctx, "Set output modulus info");
-	pubkey->u.rsa.modulus.len = key_info.u.rsa.modulus_len;
-	pubkey->u.rsa.modulus.data = calloc(key_info.u.rsa.modulus_len, 1);
+	pubkey->u.rsa.modulus.len = BYTES4BITS(key_info.u.rsa.modulus_len);
+	pubkey->u.rsa.modulus.data = calloc(pubkey->u.rsa.modulus.len, 1);
 	if (pubkey->u.rsa.modulus.data == NULL)
 		goto err;
-	memcpy(pubkey->u.rsa.modulus.data, key_info.u.rsa.modulus, key_info.u.rsa.modulus_len);
+	memcpy(pubkey->u.rsa.modulus.data, key_info.u.rsa.modulus, BYTES4BITS(key_info.u.rsa.modulus_len));
 
 	sc_log(ctx, "Set output exponent info");
-	pubkey->u.rsa.exponent.len = key_info.u.rsa.exponent_len;
-	pubkey->u.rsa.exponent.data = calloc(BYTES4BITS(key_info.u.rsa.exponent_len), 1);
+	pubkey->u.rsa.exponent.len = BYTES4BITS(key_info.u.rsa.exponent_len);
+	pubkey->u.rsa.exponent.data = calloc(pubkey->u.rsa.exponent.len, 1);
 	if (pubkey->u.rsa.exponent.data == NULL)
 		goto err;
-	memcpy(pubkey->u.rsa.exponent.data, key_info.u.rsa.exponent, BYTES4BITS(key_info.u.rsa.exponent_len));
+	memcpy(pubkey->u.rsa.exponent.data, key_info.u.rsa.exponent, pubkey->u.rsa.exponent.len);
 
 err:
 	free(key_info.u.rsa.modulus);

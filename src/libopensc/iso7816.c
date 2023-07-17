@@ -15,7 +15,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #include "config.h"
@@ -136,7 +136,7 @@ iso7816_check_sw(struct sc_card *card, unsigned int sw1, unsigned int sw2)
 
 
 static int
-iso7816_read_binary(struct sc_card *card, unsigned int idx, u8 *buf, size_t count, unsigned long flags)
+iso7816_read_binary(struct sc_card *card, unsigned int idx, u8 *buf, size_t count, unsigned long *flags)
 {
 	struct sc_context *ctx = card->ctx;
 	struct sc_apdu apdu;
@@ -167,7 +167,7 @@ iso7816_read_binary(struct sc_card *card, unsigned int idx, u8 *buf, size_t coun
 
 const struct sc_asn1_entry c_asn1_do_data[] = {
 	{ "Offset Data Object", SC_ASN1_OCTET_STRING, SC_ASN1_APP|0x14, SC_ASN1_OPTIONAL, NULL, NULL },
-	{ "Discretionary Data Object", SC_ASN1_OCTET_STRING, SC_ASN1_APP|0x13, SC_ASN1_ALLOC|SC_ASN1_UNSIGNED, NULL, NULL },
+	{ "Discretionary Data Object", SC_ASN1_OCTET_STRING, SC_ASN1_APP|0x13, SC_ASN1_ALLOC|SC_ASN1_UNSIGNED|SC_ASN1_OPTIONAL, NULL, NULL },
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
@@ -213,6 +213,9 @@ int decode_do_data(struct sc_context *ctx,
 			sc_asn1_decode(ctx, asn1_do_data, encoded_data, encoded_data_len, NULL, NULL),
 			"sc_asn1_decode() failed");
 
+	if (!(asn1_do_data[1].flags & SC_ASN1_PRESENT))
+		return SC_ERROR_INVALID_ASN1_OBJECT;
+
 	return SC_SUCCESS;
 }
 
@@ -239,7 +242,7 @@ iso7816_read_record(struct sc_card *card, unsigned int rec_nr, unsigned int idx,
 		r = encode_do_data(card->ctx, idx, NULL, 0, &encoded_data, &encoded_data_len);
 		LOG_TEST_GOTO_ERR(card->ctx, r, "Could not encode data objects");
 
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_2, 0xB3, rec_nr, 0);
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_4, 0xB3, rec_nr, 0);
 		apdu.lc = encoded_data_len;
 		apdu.datalen = encoded_data_len;
 		apdu.data = encoded_data;
@@ -364,7 +367,7 @@ iso7816_update_record(struct sc_card *card, unsigned int rec_nr, unsigned int id
 
 err:
 	free(encoded_data);
-	LOG_FUNC_RETURN(card->ctx, count);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 static int
@@ -464,7 +467,7 @@ iso7816_process_fci(struct sc_card *card, struct sc_file *file,
 						file->size = size;
 					}
 				}
-				
+
 				sc_log(ctx, "  bytes in file: %"SC_FORMAT_LEN_SIZE_T"u", file->size);
 				break;
 
@@ -799,7 +802,7 @@ iso7816_get_challenge(struct sc_card *card, u8 *rnd, size_t len)
 	if (len < apdu.resplen) {
 		return (int) len;
 	}
-   
+
 	return (int) apdu.resplen;
 }
 
@@ -1243,6 +1246,10 @@ iso7816_build_pin_apdu(struct sc_card *card, struct sc_apdu *apdu,
 			len += r;
 		} else {
 			p1 |= 0x01;
+		}
+		if (p1 == 0x03) {
+			/* No data to send or to receive */
+			cse = SC_APDU_CASE_1;
 		}
 		break;
 	case SC_PIN_CMD_GET_INFO:

@@ -11,7 +11,7 @@ if [[ ! -f $P11LIB ]]; then
     exit 77;
 fi
 card_setup
-echo "data to sign (max 100 bytes)" > data
+assert $? "Failed to set up card"
 
 echo "======================================================="
 echo "Test RSA keys"
@@ -19,8 +19,12 @@ echo "======================================================="
 for HASH in "" "SHA1" "SHA224" "SHA256" "SHA384" "SHA512"; do
     for SIGN_KEY in "01" "02"; do
         METHOD="RSA-PKCS"
+        # RSA-PKCS works only on small data - generate small data:
+        head -c 64 </dev/urandom > data
         if [[ ! -z $HASH ]]; then
             METHOD="$HASH-$METHOD"
+            # hash- methods should work on data > 512 bytes
+            head -c 1024 </dev/urandom > data
         fi
         echo
         echo "======================================================="
@@ -46,6 +50,8 @@ for HASH in "" "SHA1" "SHA224" "SHA256" "SHA384" "SHA512"; do
         rm data.sig
 
         METHOD="$METHOD-PSS"
+        # -PSS methods should work on data > 512 bytes; generate data:
+        head -c 1024 </dev/urandom > data
         if [[ "$HASH" == "SHA512" ]]; then
             continue; # This one is broken
         fi
@@ -94,6 +100,8 @@ for HASH in "" "SHA1" "SHA224" "SHA256" "SHA384" "SHA512"; do
         continue;
     fi
     METHOD="RSA-PKCS"
+    # RSA-PKCS works only on small data - generate small data:
+    head -c 64 </dev/urandom > data
     for ENC_KEY in "01" "02"; do
         echo
         echo "======================================================="
@@ -116,6 +124,8 @@ done
 echo "======================================================="
 echo "Test ECDSA keys"
 echo "======================================================="
+# operations with ECDSA keys should work on data > 512 bytes; generate data:
+head -c 1024 </dev/urandom > data
 for SIGN_KEY in "03" "04"; do
     METHOD="ECDSA"
 
@@ -156,10 +166,12 @@ for MECHANISM in "SHA-1-HMAC" "SHA256-HMAC" "SHA384-HMAC" "SHA512-HMAC"; do
 	echo "$MECHANISM: Sign & Verify (KEY (First Found))"
 	echo "======================================================="
 
-	$PKCS11_TOOL --login --pin=1234 --sign --mechanism=$MECHANISM \
+	$PKCS11_TOOL --login --pin=$PIN --sign --mechanism=$MECHANISM \
 		--input-file=data.msg --output-file=data.sig --module $P11LIB
-	$PKCS11_TOOL --login --pin=1234 --verify --mechanism=$MECHANISM \
+	assert $? "Failed to Sign data"
+	$PKCS11_TOOL --login --pin=$PIN --verify --mechanism=$MECHANISM \
 		--input-file=data.msg --signature-file=data.sig --module $P11LIB
+	assert $? "Failed to Verify signature using pkcs11-tool"
 	rm data.sig
 done;
 

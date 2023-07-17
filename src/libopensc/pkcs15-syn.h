@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #ifndef PKCS15_SYN_H
@@ -58,6 +58,7 @@ int sc_pkcs15emu_cardos_init_ex(sc_pkcs15_card_t *p15card,	struct sc_aid *);
 int sc_pkcs15emu_nqapplet_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *);
 int sc_pkcs15emu_starcos_esign_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *);
 int sc_pkcs15emu_skeid_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *);
+int sc_pkcs15emu_eoi_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *);
 
 struct sc_pkcs15_emulator_handler {
 	const char *name;

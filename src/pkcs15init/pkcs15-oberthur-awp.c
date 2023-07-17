@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  *
  *  best view with tabstop=4
  *
@@ -643,6 +643,7 @@ awp_update_object_list(struct sc_pkcs15_card *p15card, struct sc_profile *profil
 	unsigned char *buff = NULL;
 	int rv;
 	unsigned ii;
+	unsigned long flags;
 
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx,  "type %i, num %i", type, num);
@@ -722,7 +723,8 @@ awp_update_object_list(struct sc_pkcs15_card *p15card, struct sc_profile *profil
 	if (rv < 0)
 		goto done;
 
-	rv = sc_read_binary(p15card->card, 0, buff, lst_file->size, lst_file->ef_structure);
+	flags = lst_file->ef_structure;
+	rv = sc_read_binary(p15card->card, 0, buff, lst_file->size, &flags);
 	if (rv < 0)
 		goto done;
 

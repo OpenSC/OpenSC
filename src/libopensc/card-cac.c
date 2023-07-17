@@ -23,7 +23,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #if HAVE_CONFIG_H
@@ -49,9 +49,6 @@
 #include "internal.h"
 #include "simpletlv.h"
 #include "cardctl.h"
-#ifdef ENABLE_ZLIB
-#include "compression.h"
-#endif
 #include "iso7816.h"
 #include "card-cac-common.h"
 #include "pkcs15.h"
@@ -453,7 +450,7 @@ fail:
  * as well as set that we want the cert from the object.
  */
 static int cac_read_binary(sc_card_t *card, unsigned int idx,
-		unsigned char *buf, size_t count, unsigned long flags)
+		unsigned char *buf, size_t count, unsigned long *flags)
 {
 	cac_private_data_t * priv = CAC_DATA(card);
 	int r = 0;
@@ -576,17 +573,10 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 			}
 		}
 		/* if the info byte is 1, then the cert is compressed, decompress it */
-		if ((cert_type & 0x3) == 1) {
-#ifdef ENABLE_ZLIB
-			r = sc_decompress_alloc(&priv->cache_buf, &priv->cache_buf_len,
-				cert_ptr, cert_len, COMPRESSION_AUTO);
-#else
-			sc_log(card->ctx, "CAC compression not supported, no zlib");
-			r = SC_ERROR_NOT_SUPPORTED;
-#endif
-			if (r)
-				goto done;
-		} else if (cert_len > 0) {
+		if ((cert_type & 0x3) == 1 && flags) {
+			*flags |= SC_FILE_FLAG_COMPRESSED_AUTO;
+		}
+		if (cert_len > 0) {
 			priv->cache_buf = malloc(cert_len);
 			if (priv->cache_buf == NULL) {
 				r = SC_ERROR_OUT_OF_MEMORY;

@@ -15,7 +15,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 /*     About the Belpic (Belgian Personal Identity Card) card
@@ -296,7 +296,7 @@ static int belpic_select_file(sc_card_t *card,
 }
 
 static int belpic_read_binary(sc_card_t *card,
-			      unsigned int idx, u8 * buf, size_t count, unsigned long flags)
+			      unsigned int idx, u8 * buf, size_t count, unsigned long *flags)
 {
 	int r;
 

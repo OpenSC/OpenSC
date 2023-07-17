@@ -18,7 +18,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #include "config.h"
@@ -198,6 +198,8 @@ static int cardos_info(void)
 	} else if (apdu.resp[0] == 0xc9 &&
 			(apdu.resp[1] == 0x02 || apdu.resp[1] == 0x03)) {
 		printf(" (that's CardOS V5.3)\n");
+	} else if (apdu.resp[0] == 0xc9 && apdu.resp[1] == 0x04) {
+		printf(" (that's CardOS V5.4)\n");
 	} else {
 		printf(" (unknown Version)\n");
 	}
@@ -1182,6 +1184,9 @@ int main(int argc, char *argv[])
 			util_print_usage_and_die(app_name, options, option_help, NULL);
 		}
 	}
+	
+	if (action_count == 0)
+		util_print_usage_and_die(app_name, options, option_help, NULL);
 
 	/* create sc_context_t object */
 	memset(&ctx_param, 0, sizeof(ctx_param));

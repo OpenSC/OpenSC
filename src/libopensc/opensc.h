@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 /**
@@ -652,13 +652,13 @@ struct sc_card_operations {
 	 * @param  idx    index within the file with the data to read
 	 * @param  buf    buffer to the read data
 	 * @param  count  number of bytes to read
-	 * @param  flags  flags for the READ BINARY command (currently not used)
+	 * @param  flags  flags for the READ BINARY command (optional)
 	 * @return number of bytes read or an error code
 	 *
 	 * @see sc_read_binary()
 	 */
 	int (*read_binary)(struct sc_card *card, unsigned int idx,
-			u8 * buf, size_t count, unsigned long flags);
+			u8 * buf, size_t count, unsigned long *flags);
 	/**
 	 * @brief Write data to a binary EF with a single command
 	 *
@@ -1253,7 +1253,7 @@ int sc_list_files(struct sc_card *card, u8 *buf, size_t buflen);
  * @return number of bytes read or an error code
  */
 int sc_read_binary(struct sc_card *card, unsigned int idx, u8 * buf,
-		   size_t count, unsigned long flags);
+		   size_t count, unsigned long *flags);
 /**
  * @brief Write data to a binary EF
  *

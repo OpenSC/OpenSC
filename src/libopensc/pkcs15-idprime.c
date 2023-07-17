@@ -19,7 +19,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #if HAVE_CONFIG_H
@@ -60,6 +60,8 @@ static int sc_pkcs15emu_idprime_init(sc_pkcs15_card_t *p15card)
 	struct sc_pkcs15_object   pin_obj;
 	const char pin_label[] = "PIN";
 	const char *pin_id = "11";
+	const char sig_pin_label[] = "Digital Signature PIN";
+	const char *sig_pin_id = "83";
 
 	/* oid for key usage */
 	static const struct sc_object_id usage_type = {{ 2, 5, 29, 15, -1 }};
@@ -98,8 +100,9 @@ static int sc_pkcs15emu_idprime_init(sc_pkcs15_card_t *p15card)
 	pin_info.attrs.pin.max_length    = 16;
 	pin_info.tries_left    = -1;
 
-	if (card->type == SC_CARD_TYPE_IDPRIME_V3 ||
-			card->type == SC_CARD_TYPE_IDPRIME_V4) {
+	if (card->type == SC_CARD_TYPE_IDPRIME_840
+	    || card->type == SC_CARD_TYPE_IDPRIME_940
+	    || card->type == SC_CARD_TYPE_IDPRIME_GENERIC) {
 		pin_info.attrs.pin.flags |= SC_PKCS15_PIN_FLAG_NEEDS_PADDING;
 		pin_info.attrs.pin.stored_length = 16;
 		pin_info.attrs.pin.pad_char = 0x00;
@@ -111,6 +114,34 @@ static int sc_pkcs15emu_idprime_init(sc_pkcs15_card_t *p15card)
 
 	r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
 	LOG_TEST_GOTO_ERR(card->ctx, r, "Can not add pin object");
+
+	/* set signature pin for 940 cards */
+	if (card->type == SC_CARD_TYPE_IDPRIME_940) {
+		sc_log(card->ctx,  "IDPrime adding Digital Signature pin...");
+		memset(&pin_info, 0, sizeof(pin_info));
+		memset(&pin_obj,  0, sizeof(pin_obj));
+
+		pin_info.auth_type = SC_PKCS15_PIN_AUTH_TYPE_PIN;
+		sc_pkcs15_format_id(sig_pin_id, &pin_info.auth_id);
+		pin_info.attrs.pin.reference     = 0x83;
+		pin_info.attrs.pin.flags         = SC_PKCS15_PIN_FLAG_INITIALIZED;
+		pin_info.attrs.pin.type          = SC_PKCS15_PIN_TYPE_ASCII_NUMERIC;
+		pin_info.attrs.pin.min_length    = 4;
+		pin_info.attrs.pin.stored_length = 0;
+		pin_info.attrs.pin.max_length    = 16;
+		pin_info.tries_left    = -1;
+
+		pin_info.attrs.pin.flags |= SC_PKCS15_PIN_FLAG_NEEDS_PADDING;
+		pin_info.attrs.pin.stored_length = 16;
+		pin_info.attrs.pin.pad_char = 0x00;
+
+		sc_log(card->ctx,  "IDPrime Adding Digital Signature pin with label=%s", sig_pin_label);
+		strncpy(pin_obj.label, pin_label, SC_PKCS15_MAX_LABEL_SIZE - 1);
+		pin_obj.flags = SC_PKCS15_CO_FLAG_PRIVATE;
+
+		r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
+		LOG_TEST_GOTO_ERR(card->ctx, r, "Can not add Digital Signature pin object");
+	}
 
 	/*
 	 * get token name if provided
@@ -143,7 +174,10 @@ static int sc_pkcs15emu_idprime_init(sc_pkcs15_card_t *p15card)
 		struct sc_pkcs15_object prkey_obj;
 		sc_pkcs15_der_t cert_der;
 		sc_pkcs15_cert_t *cert_out = NULL;
+		const char *pin_id = NULL;
 
+		r = (card->ops->card_ctl)(card, SC_CARDCTL_IDPRIME_GET_PIN_ID, (void *) &pin_id);
+		LOG_TEST_GOTO_ERR(card->ctx, r, "Can not get PIN id of next object ");
 		r = (card->ops->card_ctl)(card, SC_CARDCTL_IDPRIME_GET_NEXT_OBJECT, &prkey_info);
 		LOG_TEST_GOTO_ERR(card->ctx, r, "Can not get next object");
 
@@ -171,7 +205,13 @@ static int sc_pkcs15emu_idprime_init(sc_pkcs15_card_t *p15card)
 		snprintf(pubkey_obj.label, SC_PKCS15_MAX_LABEL_SIZE, PUBKEY_LABEL_TEMPLATE, i+1);
 		snprintf(prkey_obj.label, SC_PKCS15_MAX_LABEL_SIZE, PRIVKEY_LABEL_TEMPLATE, i+1);
 		prkey_obj.flags = SC_PKCS15_CO_FLAG_PRIVATE;
+
+		/* Differentiate between objects accessible with normal and with digital signature pin */
 		sc_pkcs15_format_id(pin_id, &prkey_obj.auth_id);
+		sc_log(card->ctx,  "Pin ID r=%s", pin_id);
+
+		if (memcmp(pin_id, sig_pin_id, 2) == 0)
+			prkey_obj.user_consent = 1;
 
 		r = sc_pkcs15_read_file(p15card, &cert_info.path, &cert_der.value, &cert_der.len, 0);
 
@@ -248,12 +288,8 @@ static int sc_pkcs15emu_idprime_init(sc_pkcs15_card_t *p15card)
 		sc_log(card->ctx, "cert %s: cert_usage=0x%x, pub_usage=0x%x priv_usage=0x%x\n",
 			sc_dump_hex(cert_info.id.value, cert_info.id.len),
 			usage, pubkey_info.usage, prkey_info.usage);
-		if (cert_out->key->algorithm != SC_ALGORITHM_RSA) {
-			sc_log(card->ctx, "unsupported key.algorithm %d", cert_out->key->algorithm);
-			sc_pkcs15_free_certificate(cert_out);
-			free(pubkey_info.direct.spki.value);
-			continue;
-		} else {
+
+		if (cert_out->key->algorithm == SC_ALGORITHM_RSA) {
 			pubkey_info.modulus_length = cert_out->key->u.rsa.modulus.len * 8;
 			prkey_info.modulus_length = cert_out->key->u.rsa.modulus.len * 8;
 			sc_log(card->ctx,  "adding rsa public key r=%d usage=%x",r, pubkey_info.usage);
@@ -264,10 +300,38 @@ static int sc_pkcs15emu_idprime_init(sc_pkcs15_card_t *p15card)
 			}
 			pubkey_info.direct.spki.value = NULL; /* moved to the pubkey object on p15card  */
 			pubkey_info.direct.spki.len = 0;
-			sc_log(card->ctx,  "adding rsa private key r=%d usage=%x",r, prkey_info.usage);
-			r = sc_pkcs15emu_add_rsa_prkey(p15card, &prkey_obj, &prkey_info);
+			if (prkey_info.key_reference >= 0) {
+				sc_log(card->ctx,  "adding rsa private key r=%d usage=%x",r, prkey_info.usage);
+				r = sc_pkcs15emu_add_rsa_prkey(p15card, &prkey_obj, &prkey_info);
+			} else {
+				sc_log(card->ctx,  "missing rsa private key r=%d usage=%x",r, prkey_info.usage);
+			}
 			if (r < 0)
 				goto fail;
+		} else if (cert_out->key->algorithm == SC_ALGORITHM_EC) {
+			pubkey_info.field_length = cert_out->key->u.ec.params.field_length;
+			prkey_info.field_length = cert_out->key->u.ec.params.field_length;
+			sc_log(card->ctx,  "adding ec public key r=%d usage=%x",r, pubkey_info.usage);
+			r = sc_pkcs15emu_add_ec_pubkey(p15card, &pubkey_obj, &pubkey_info);
+			if (r < 0) {
+				free(pubkey_info.direct.spki.value);
+				goto fail;
+			}
+			pubkey_info.direct.spki.value = NULL;
+			pubkey_info.direct.spki.len = 0;
+			if (prkey_info.key_reference >= 0) {
+				sc_log(card->ctx,  "adding ec private key r=%d usage=%x",r, prkey_info.usage);
+				r = sc_pkcs15emu_add_ec_prkey(p15card, &prkey_obj, &prkey_info);
+			} else {
+				sc_log(card->ctx,  "missing ec private key r=%d usage=%x",r, prkey_info.usage);
+			}
+			if (r < 0)
+				goto fail;
+		} else {
+			sc_log(card->ctx, "unsupported key.algorithm %d", cert_out->key->algorithm);
+			sc_pkcs15_free_certificate(cert_out);
+			free(pubkey_info.direct.spki.value);
+			continue;
 		}
 
 		cert_out->key = NULL;

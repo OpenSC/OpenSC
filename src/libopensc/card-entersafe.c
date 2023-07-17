@@ -11,7 +11,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 /* Initially written by Weitao Sun (weitao@ftsafe.com) 2008 */
@@ -423,7 +423,7 @@ out:
 
 static int entersafe_read_binary(sc_card_t *card,
 								 unsigned int idx, u8 *buf, size_t count,
-								 unsigned long flags)
+								 unsigned long *flags)
 {
 	sc_apdu_t apdu;
 	u8 recvbuf[SC_MAX_APDU_BUFFER_SIZE];

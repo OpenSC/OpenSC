@@ -15,7 +15,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #ifndef _OPENSC_PKCS15_H
@@ -373,7 +373,7 @@ struct sc_pkcs15_prkey_info {
 	unsigned int usage, access_flags;
 	int native, key_reference;
 	/* convert to union if other types are supported */
-	size_t modulus_length; /* RSA */
+	size_t modulus_length; /* RSA, in bits */
 	size_t field_length;   /* EC in bits */
 
 	unsigned int algo_refs[SC_MAX_SUPPORTED_ALGORITHMS];

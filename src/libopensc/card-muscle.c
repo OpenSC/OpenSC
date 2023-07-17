@@ -15,7 +15,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #if HAVE_CONFIG_H
@@ -198,7 +198,7 @@ static int muscle_create_file(sc_card_t *card, sc_file_t *file)
 	return r;
 }
 
-static int muscle_read_binary(sc_card_t *card, unsigned int idx, u8* buf, size_t count, unsigned long flags)
+static int muscle_read_binary(sc_card_t *card, unsigned int idx, u8* buf, size_t count, unsigned long *flags)
 {
 	mscfs_t *fs = MUSCLE_FS(card);
 	int r;

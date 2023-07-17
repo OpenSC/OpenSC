@@ -15,7 +15,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #include "config.h"
@@ -3347,6 +3347,8 @@ unwrap_key(CK_SESSION_HANDLE session)
 		{CKA_CLASS, &secret_key_class, sizeof(secret_key_class)},
 		{CKA_TOKEN, &_true, sizeof(_true)},
 	};
+	CK_BYTE object_id[100];
+	size_t id_len;
 	CK_OBJECT_HANDLE hSecretKey;
 	int n_attr = 2;
 	CK_RV rv;
@@ -3450,9 +3452,6 @@ unwrap_key(CK_SESSION_HANDLE session)
 	}
 
 	if (opt_application_id != NULL) {
-		CK_BYTE object_id[100];
-		size_t id_len;
-
 		id_len = sizeof(object_id);
 		if (!sc_hex_to_bin(opt_application_id, object_id, &id_len)) {
 			FILL_ATTR(keyTemplate[n_attr], CKA_ID, object_id, id_len);
@@ -3588,7 +3587,7 @@ static void	parse_certificate(struct x509cert_info *cert,
 		util_fatal("issuer name too long");
 	/* green light, actually do it */
 	p = cert->issuer;
-	n =i2d_X509_NAME(X509_get_issuer_name(x), &p);
+	n = i2d_X509_NAME(X509_get_issuer_name(x), &p);
 	cert->issuer_len = n;
 
 	/* check length first */
@@ -3601,6 +3600,8 @@ static void	parse_certificate(struct x509cert_info *cert,
 	p = cert->serialnum;
 	n = i2d_ASN1_INTEGER(X509_get_serialNumber(x), &p);
 	cert->serialnum_len = n;
+
+	X509_free(x);
 }
 
 static int
@@ -3629,7 +3630,7 @@ do_read_key(unsigned char *data, size_t data_len, int private, EVP_PKEY **key)
 		if (!strstr((char *)data, "-----BEGIN "))
 		/*
 		 * d2i_PUBKEY_ex_bio is in OpenSSL master of 02/23/2023
-		 * committed Dec 26, 2022 expected in 3.2.0 
+		 * committed Dec 26, 2022 expected in 3.2.0
 		*/
 #if OPENSSL_VERSION_NUMBER >= 0x30200000L
 			*key = d2i_PUBKEY_ex_bio(mem, NULL, osslctx, NULL);
@@ -3905,6 +3906,12 @@ parse_ec_pkey(EVP_PKEY *pkey, int private, struct gostkey_info *gost)
 	return 0;
 }
 #endif
+static void gost_info_free(struct gostkey_info gost)
+{
+	OPENSSL_free(gost.param_oid.value);
+	OPENSSL_free(gost.public.value);
+	OPENSSL_free(gost.private.value);
+}
 #endif
 
 #define MAX_OBJECT_SIZE	5000
@@ -4039,7 +4046,11 @@ static int write_object(CK_SESSION_HANDLE session)
 		FILL_ATTR(cert_templ[1], CKA_VALUE, contents, contents_len);
 		FILL_ATTR(cert_templ[2], CKA_CLASS, &clazz, sizeof(clazz));
 		FILL_ATTR(cert_templ[3], CKA_CERTIFICATE_TYPE, &cert_type, sizeof(cert_type));
-		FILL_ATTR(cert_templ[4], CKA_PRIVATE, &_false, sizeof(_false));
+		if (opt_is_private == 1) {
+			FILL_ATTR(cert_templ[4], CKA_PRIVATE, &_true, sizeof(_true));
+		} else {
+			FILL_ATTR(cert_templ[4], CKA_PRIVATE, &_false, sizeof(_false));
+		}
 		n_cert_attr = 5;
 
 		if (opt_object_label != NULL) {
@@ -4434,6 +4445,11 @@ static int write_object(CK_SESSION_HANDLE session)
 		printf("Created secret key:\n");
 		show_object(session, seckey_obj);
 	}
+
+#ifdef ENABLE_OPENSSL
+	gost_info_free(gost);
+	EVP_PKEY_free(evp_key);
+#endif /* ENABLE_OPENSSL */
 
 	if (oid_buf)
 		free(oid_buf);
@@ -5307,6 +5323,7 @@ static void show_cert(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 			X509_NAME_print(bio, name, XN_FLAG_RFC2253);
 			printf("\n");
 			BIO_free(bio);
+			X509_NAME_free(name);
 		}
 		free(subject);
 	}
@@ -5555,7 +5572,7 @@ static int read_object(CK_SESSION_HANDLE session)
 		nn_attrs++;
 	}
 
-	rv = find_object_with_attributes(session, &obj, attrs, nn_attrs, 0);
+	rv = find_object_with_attributes(session, &obj, attrs, nn_attrs, opt_object_index);
 	if (rv != CKR_OK)
 		p11_fatal("find_object_with_attributes()", rv);
 	else if (obj==CK_INVALID_HANDLE)
@@ -5722,8 +5739,6 @@ static int read_object(CK_SESSION_HANDLE session)
 					util_fatal("cannot set OSSL_PARAM");
 			}
 			OSSL_PARAM_BLD_free(bld);
-			OSSL_PARAM_free(old);
-			OSSL_PARAM_free(new);
 			if (success)
 				ASN1_STRING_free(os);
 			free(value);
@@ -5741,6 +5756,8 @@ static int read_object(CK_SESSION_HANDLE session)
 					EVP_PKEY_CTX_free(ctx);
 					util_fatal("cannot create EVP_PKEY");
 			}
+			OSSL_PARAM_free(old);
+			OSSL_PARAM_free(new);
 
 #endif
 			if (!i2d_PUBKEY_bio(pout, pkey))
@@ -7375,41 +7392,42 @@ static int test_random(CK_SESSION_HANDLE session)
 		printf("  seeding (C_SeedRandom) not supported\n");
 	else if (rv != CKR_OK) {
 		p11_perror("C_SeedRandom", rv);
-		return 1;
+		errors++;
 	}
 
 	rv = p11->C_GenerateRandom(session, buf1, 10);
 	if (rv != CKR_OK) {
 		p11_perror("C_GenerateRandom", rv);
-		return 1;
+		errors++;
 	}
 
 	rv = p11->C_GenerateRandom(session, buf1, 100);
 	if (rv != CKR_OK) {
 		p11_perror("C_GenerateRandom(buf1,100)", rv);
-		return 1;
+		errors++;
 	}
 
 	rv = p11->C_GenerateRandom(session, buf1, 0);
 	if (rv != CKR_OK) {
 		p11_perror("C_GenerateRandom(buf1,0)", rv);
-		return 1;
+		errors++;
 	}
 
 	rv = p11->C_GenerateRandom(session, buf2, 100);
 	if (rv != CKR_OK) {
 		p11_perror("C_GenerateRandom(buf2,100)", rv);
-		return 1;
+		errors++;
 	}
 
-	if (memcmp(buf1, buf2, 100) == 0) {
+	if (errors == 0 && memcmp(buf1, buf2, 100) == 0) {
 		printf("  ERR: C_GenerateRandom returned twice the same value!!!\n");
 		errors++;
 	}
 
-	printf("  seems to be OK\n");
+	if (!errors)
+		printf("  seems to be OK\n");
 
-	return 0;
+	return errors;
 }
 
 static int test_card_detection(int wait_for_event)

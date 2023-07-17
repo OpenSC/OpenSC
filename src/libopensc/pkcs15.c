@@ -15,7 +15,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #ifdef HAVE_CONFIG_H
@@ -40,6 +40,10 @@
 
 #ifdef HAVE_SYS_TIME_H
 #include <sys/time.h>
+#endif
+
+#ifdef ENABLE_ZLIB
+#include "compression.h"
 #endif
 
 static const struct sc_asn1_entry c_asn1_twlabel[] = {
@@ -1237,6 +1241,7 @@ const char *pkcs15_get_default_use_file_cache(struct sc_card *card)
 		"jpki",
 		"MaskTech",
 		"mcrd",
+		"myeid",
 		"npa",
 		"nqapplet",
 		"tcos",
@@ -2184,6 +2189,10 @@ sc_pkcs15_parse_df(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *df)
 			sc_log(ctx, "%s: Error adding object", sc_strerror(r));
 			goto ret;
 		}
+		while (bufsize > 0 && *p == 00) {
+			bufsize--;
+			p++;
+		}
 	};
 
 	if (r > 0)
@@ -2391,6 +2400,33 @@ sc_pkcs15_parse_unusedspace(const unsigned char *buf, size_t buflen, struct sc_p
 	return 0;
 }
 
+static int decompress_file(sc_card_t *card, unsigned char *buf, size_t buflen, 
+		unsigned char **out, size_t *outlen, unsigned long flags)
+{
+	LOG_FUNC_CALLED(card->ctx);
+#ifdef ENABLE_ZLIB
+	int rv = SC_SUCCESS;
+	int method = 0;
+
+	if (flags & SC_FILE_FLAG_COMPRESSED_GZIP) {
+		method = COMPRESSION_GZIP;
+	} else if (flags & SC_FILE_FLAG_COMPRESSED_ZLIB) {
+		method = COMPRESSION_ZLIB;
+	} else {
+		method = COMPRESSION_AUTO;
+	}
+
+	rv = sc_decompress_alloc(out, outlen, buf, buflen, method);
+	if (rv != SC_SUCCESS) {
+		sc_log(card->ctx,  "Decompression failed: %d", rv);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_DATA);
+	}
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+#else
+	sc_log(card->ctx, "Compression not supported, no zlib");
+	LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+#endif
+}
 
 int
 sc_decode_do53(sc_context_t *ctx, u8 **data, size_t *data_len,
@@ -2546,12 +2582,27 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 			len = r;
 		}
 		else {
-			r = sc_read_binary(p15card->card, offset, data, len, 0);
+			unsigned long flags = 0;
+			r = sc_read_binary(p15card->card, offset, data, len, &flags);
 			if (r < 0) {
 				goto fail_unlock;
 			}
 			/* sc_read_binary may return less than requested */
 			len = r;
+
+			if (flags & SC_FILE_FLAG_COMPRESSED_AUTO
+			    || flags & SC_FILE_FLAG_COMPRESSED_ZLIB
+			    || flags & SC_FILE_FLAG_COMPRESSED_GZIP) {
+				unsigned char *decompressed_buf = NULL;
+				size_t decompressed_len = 0;
+				r = decompress_file(p15card->card, data, len, &decompressed_buf, &decompressed_len, flags);
+				if (r != SC_SUCCESS) {
+					goto fail_unlock;
+				}
+				free(data);
+				data = decompressed_buf;
+				len = decompressed_len;
+			}
 		}
 		sc_unlock(p15card->card);
 

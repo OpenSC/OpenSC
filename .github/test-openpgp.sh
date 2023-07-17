@@ -2,6 +2,8 @@
 
 set -ex -o xtrace
 
+source .github/setup-valgrind.sh
+
 # install the opensc
 sudo make install
 export LD_LIBRARY_PATH=/usr/local/lib
@@ -10,7 +12,9 @@ export LD_LIBRARY_PATH=/usr/local/lib
 . .github/setup-java.sh
 
 # The OpenPGP applet
-git clone --recursive https://github.com/Yubico/ykneo-openpgp.git;
+if [ ! -d "ykneo-openpgp" ]; then
+	git clone --recursive https://github.com/Yubico/ykneo-openpgp.git;
+fi
 pushd ykneo-openpgp;
 ant -DJAVACARD_HOME=${JC_HOME};
 popd
@@ -29,9 +33,9 @@ echo "com.licel.jcardsim.vsmartcard.port=35963" >> openpgp_jcardsim.cfg;
 java -noverify -cp ykneo-openpgp/applet/bin:jcardsim/target/jcardsim-3.0.5-SNAPSHOT.jar com.licel.jcardsim.remote.VSmartCard openpgp_jcardsim.cfg >/dev/null &
 PID=$!;
 sleep 5;
-opensc-tool --card-driver default --send-apdu 80b800002210D276000124010200000000000001000010D276000124010200000000000001000000;
-opensc-tool -n;
-openpgp-tool --verify CHV3 --pin 12345678 --gen-key 2;
-pkcs15-init --verify --auth-id 3 --pin 12345678 --delete-objects privkey,pubkey --id 2 --generate-key rsa/2048;
-pkcs11-tool -l -t -p 123456;
+$VALGRIND opensc-tool --card-driver default --send-apdu 80b800002210D276000124010200000000000001000010D276000124010200000000000001000000;
+$VALGRIND opensc-tool -n;
+$VALGRIND openpgp-tool --verify CHV3 --pin 12345678 --gen-key 2;
+$VALGRIND pkcs15-init --verify --auth-id 3 --pin 12345678 --delete-objects privkey,pubkey --id 2 --generate-key rsa/2048;
+$VALGRIND pkcs11-tool -l -t -p 123456;
 kill -9 $PID

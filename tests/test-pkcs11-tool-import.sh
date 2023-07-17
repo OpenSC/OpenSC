@@ -11,6 +11,7 @@ if [[ ! -f $P11LIB ]]; then
     exit 77;
 fi
 card_setup
+assert $? "Failed to set up card"
 
 for KEYTYPE in "RSA" "EC"; do
     echo "======================================================="

@@ -15,7 +15,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 /**
  * @file
@@ -50,7 +50,112 @@ extern "C" {
 /** @brief Padding indicator: use no padding */
 #define SM_NO_PADDING  0x02
 
-/** @brief Secure messaging context */
+/** @brief Secure messaging context
+ *
+ * This module provides *encoding and decoding* of secure messaging APDUs. The
+ * actual cryptographic operations need to be specified via the call backs of
+ * `struct iso_sm_ctx`.
+ *
+ *
+ * Initialization of ISO 7816 Secure Messaging:
+ *   1. Create the secure messaging context with iso_sm_ctx_create()
+ *   2. Customize `struct iso_sm_ctx` with the needed cryptographic callbacks
+ *      and data
+ *   3. Run `iso_sm_start()`, which enables `SM_MODE_TRANSMIT`, so that all
+ *      subsequent calls to sc_transmit_apdu() will be encrypted transparently.
+ *      Memory ownership of `struct iso_sm_ctx` is transferred to the internal
+ *      secure messaging context.
+ *
+ *
+ * Deinitialization of ISO 7816 Secure Messaging:
+ *   1. Run `sc_sm_stop()`
+ *   2. `clear_free()` hook is called
+ *   3. `struct iso_sm_ctx` is `free()`d
+ *
+ *
+ * Sending and receiving ISO 7816 Secure Messaging data:
+ *   1. Call `sc_transmit_apdu()` with an unencrypted APDU
+ *   2. `pre_transmit()` hook is called
+ *   3. Command APDU is encrypted (see workflow below)
+ *   4. Encrypted APDU is sent to the card
+ *   5. `post_transmit()` hook is called
+ *   6. Encrypted response is decrypted (see workflow below)
+ *   7. `finish()` hook is called
+ *
+ *
+ * Workflow for encrypting a command APDU:
+ *
+ *                              ┌───────────────┬────┬──────┬────┐
+ *                              │     Header    │    │      │    │
+ *  ▶ Unencrypted command APDU  │ CLA,INS,P1,P2 │ Lc │ Data │ Le │
+ *                              └───────────────┴────┴──────┴────┘
+ *                             ╱               ╱     │       ╲
+ * 1. Add padding to `block_size` according to `padding_indicator`
+ *                           ╱               ╱       │         ╲
+ *                          ╱               ╱        ▼          ◢
+ *                         ╱               ╱         ┌───────────┐
+ *                        ╱               ╱          │Padded Data│
+ *                       ╱               ╱           └───────────┘
+ *                      ╱               ╱            │            ╲
+ * 2. Data encryption  ╱               ╱             │ `encrypt()` ╲
+ *                    ╱               ╱              ▼              ◢
+ *                   ╱ ┌────┬──────┬─────────────────┬───────────────┬────┬──────┬──┐
+ *                  ╱  │0x87│Length│Padding Indicator│Encrypted Data │0x97│Length│Le│
+ *                 ╱   └────┴──────┴─────────────────┴───────────────┴────┴──────┴──┘
+ *                ╱    │         ╱                                                   ╲
+ *               ╱     │        ╱                                                     ╲
+ *              ╱      │       ╱                                                       ╲
+ * 3. Add padding to header and formatted encrypted data according to `padding_indicator`
+ *            ╱        │     ╱                                                           ╲
+ *           ╱         │    ╱                                                             ╲
+ *          ╱          │   ╱                                                               ╲
+ *         ╱           │  ╱                                                                 ╲
+ *        ◣            ▼ ◣                                                                   ◢
+ *       ┌─────────────┬────┬──────┬─────────────────┬───────────────┬────┬──────┬──┬─────────┐
+ *       │Padded Header│0x87│Length│Padding Indicator│Encrypted Data │0x97│Length│Le│ Padding │
+ *       └─────────────┴────┴──────┴─────────────────┴───────────────┴────┴──────┴──┴─────────┘
+ *        ╲                                                                                   │
+ *          ────────────────────────────────────────────────────────────────                  │
+ * 4. MAC calculation                                                        `authenticate()` │
+ *                                                                                      ╲     │
+ *                                                                                       ◢    ▼
+ * ┌────────┬────┬────┬──────┬─────────────────┬───────────────┬────┬──────┬──┬────┬──────┬───┬──────┐
+ * │ Header │ Lc │0x87│Length│Padding Indicator│Encrypted Data │0x97│Length│Le│0x8E│Length│MAC│ 0x00 │
+ * └────────┴────┴────┴──────┴─────────────────┴───────────────┴────┴──────┴──┴────┴──────┴───┴──────┘
+ *  ▶ Encrypted command APDU
+ *
+ *
+ * Workflow for decrypting a response APDU
+ *
+ *  ▶ Encrypted response APDU
+ *          ┌────┬──────┬─────────────────┬──────────────┬────┬────┬───────┬────┬──────┬───┬─────────┐
+ *          │0x87│Length│Padding Indicator│Encrypted Data│0x99│0x02│SW1/SW2│0x8E│Length│MAC│ SW1/SW2 │
+ *          └────┴──────┴─────────────────┴──────────────┴────┴────┴───────┴────┴──────┴───┴─────────┘
+ *           ╲                            │              │                ╱           ╱     ╲
+ *            ◢                           │              │               ◣           ◣       ◢
+ *             ┌────────────────────────────────────────────────────────┐           ┌─────────┐
+ *             │                     `mac_data`                         │           │  `mac`  │
+ *             └────────────────────────────────────────────────────────┘           └─────────┘
+ *                                        │              │               ╲         ╱
+ *                                        │              │                ◢       ◣
+ * 1. MAC verification                    │              │          `verify_authenticate()`
+ *                                        ▼              ▼
+ *                                        ┌──────────────┐
+ *                                        │Encrypted Data│
+ *                                        └──────────────┘
+ * 2. Decrypt data                        │ `decrypt()` ╱
+ *                                        ▼            ◣
+ *                                        ┌───────────┐
+ *                                        │Padded Data│
+ *                                        └───────────┘
+ *                                        │          ╱
+ * 3. Remove padding from data according to `padding_indicator`
+ *                                        │        ╱
+ *                                        ▼       ◣
+ *                                        ┌──────┬─────────┐
+ *  ▶ Unencrypted response APDU           │ Data │ SW1/SW2 │
+ *                                        └──────┴─────────┘
+ **/
 struct iso_sm_ctx {
 	/** @brief data of the specific crypto implementation */
 	void *priv_data;
@@ -60,10 +165,10 @@ struct iso_sm_ctx {
 	/** @brief Pad to this block length */
 	size_t block_length;
 
-	/** @brief Call back function for authentication of data */
+	/** @brief Call back function for authentication of data, i.e. MAC creation */
 	int (*authenticate)(sc_card_t *card, const struct iso_sm_ctx *ctx,
 			const u8 *data, size_t datalen, u8 **outdata);
-	/** @brief Call back function for verifying authentication data */
+	/** @brief Call back function for verifying authentication data, i.e. MAC verification */
 	int (*verify_authentication)(sc_card_t *card, const struct iso_sm_ctx *ctx,
 			const u8 *mac, size_t maclen,
 			const u8 *macdata, size_t macdatalen);
@@ -75,10 +180,12 @@ struct iso_sm_ctx {
 	int (*decrypt)(sc_card_t *card, const struct iso_sm_ctx *ctx,
 			const u8 *enc, size_t enclen, u8 **data);
 
-	/** @brief Call back function for actions before encoding and encryption of \a apdu */
+	/** @brief Call back function for actions before encoding and encryption of \a apdu,
+	 * e.g. for incrementing a send sequence counter */
 	int (*pre_transmit)(sc_card_t *card, const struct iso_sm_ctx *ctx,
 			sc_apdu_t *apdu);
-	/** @brief Call back function for actions before decryption and decoding of \a sm_apdu */
+	/** @brief Call back function for actions before decryption and decoding of \a sm_apdu,
+	 * e.g. for incrementing a send sequence counter */
 	int (*post_transmit)(sc_card_t *card, const struct iso_sm_ctx *ctx,
 			sc_apdu_t *sm_apdu);
 	/** @brief Call back function for actions after decrypting SM protected APDU */

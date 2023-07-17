@@ -15,7 +15,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #if HAVE_CONFIG_H
@@ -158,6 +158,9 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "npa",	(void *(*)(void)) sc_get_npa_driver },
 	{ "cac1",	(void *(*)(void)) sc_get_cac1_driver },
 	{ "nqapplet",	(void *(*)(void)) sc_get_nqApplet_driver },
+#if defined(ENABLE_SM) && defined(ENABLE_OPENPACE)
+	{ "eOI",	(void *(*)(void)) sc_get_eoi_driver },
+#endif
 	/* The default driver should be last, as it handles all the
 	 * unrecognized cards. */
 	{ "default",	(void *(*)(void)) sc_get_default_driver },
