@@ -813,6 +813,7 @@ app <replaceable>application</replaceable> {
 						<literal>PIV_MAX_OBJECT_SIZE</literal> environment variable.
 					</para></listitem>
 				</varlistentry>
+				<!-- Commented out until PIV SM is built be default
 				<varlistentry>
 					<term><option>piv_use_sm = <replaceable>name</replaceable>;</option>
 					</term>
@@ -844,6 +845,7 @@ app <replaceable>application</replaceable> {
 						Use <literal>PIV_PAIRING_CODE</literal> environment variable.
 					</para></listitem>
 				</varlistentry>
+				-->
 			</variablelist>
 		</refsect2>
 
