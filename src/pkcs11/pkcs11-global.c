@@ -252,12 +252,8 @@ __attribute__((destructor))
 int module_close()
 {
 	sc_notify_close();
-#if defined(ENABLE_OPENSSL)
-#if defined(OPENSSL_SECURE_MALLOC_SIZE) && !defined(LIBRESSL_VERSION_NUMBER)
+#if defined(ENABLE_OPENSSL) && defined(OPENSSL_SECURE_MALLOC_SIZE) && !defined(LIBRESSL_VERSION_NUMBER)
 	CRYPTO_secure_malloc_done();
-#else
-	OPENSSL_cleanup();
-#endif
 #endif
 #ifdef ENABLE_OPENPACE
 	EAC_cleanup();
