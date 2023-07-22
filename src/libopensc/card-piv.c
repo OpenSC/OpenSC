@@ -3048,8 +3048,6 @@ piv_get_data(sc_card_t * card, int enumtag, u8 **buf, size_t *buf_len)
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	/* assert(enumtag >= 0 && enumtag < PIV_OBJ_LAST_ENUM); */
-
 	sc_log(card->ctx, "#%d, %s", enumtag, piv_objects[enumtag].name);
 
 	r = sc_lock(card); /* do check len and get data in same transaction */
@@ -6080,9 +6078,11 @@ piv_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 	if (priv->pin_cmd_verify_sw1 == 0x69 && priv->pin_cmd_verify_sw2 == 0x82
 			&& priv->init_flags & PIV_INIT_CONTACTLESS
 			&& card->type == SC_CARD_TYPE_PIV_II_800_73_4) {
+				sc_log(card->ctx, "Token does not support pin verify over contacless reader");
 				/* TODO maybe true for other contactless cards */
 				r = SC_ERROR_NOT_SUPPORTED;
 	}
+
 
 	/* if verify failed, release the lock */
 	if (data->cmd == SC_PIN_CMD_VERIFY && r < 0 &&  priv->context_specific) {
