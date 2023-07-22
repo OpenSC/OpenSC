@@ -340,6 +340,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 	 * not have a private keys on the card. These certs must be last
 	 */
 
+	/* Any certs on card without private key must be last */
 #define PIV_NUM_CERTS 25
 #define PIV_NUM_KEYS  24
 
@@ -943,8 +944,10 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 				sc_log(card->ctx,  "Unsupported key.algorithm %d", cert_out->key->algorithm);
 				ckis[i].pubkey_len = 0; /* set some value for now */
 		}
-		ckis[i].pubkey_from_cert = cert_out->key;
-		cert_out->key = NULL;
+		if (i < PIV_NUM_KEYS) { /* Only save pub key if card can have private key */
+			ckis[i].pubkey_from_cert = cert_out->key;
+			cert_out->key = NULL;
+		}
 		sc_pkcs15_free_certificate(cert_out);
 
 		r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
