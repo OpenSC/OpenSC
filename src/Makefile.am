@@ -3,7 +3,11 @@ EXTRA_DIST = Makefile.mak
 
 # Order IS important
 SUBDIRS = common scconf ui pkcs15init sm \
-		  libopensc pkcs11 tools minidriver tests
+		  libopensc pkcs11 tools minidriver
+
+if ENABLE_TESTS
+SUBDIRS += tests
+endif
 
 if ENABLE_SM
 SUBDIRS += smm
