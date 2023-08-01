@@ -302,6 +302,12 @@ static int edo_init(sc_card_t* card) {
 }
 
 
+static int edo_logout(sc_card_t* card) {
+	sc_sm_stop(card);
+	return edo_unlock(card);
+}
+
+
 struct sc_card_driver* sc_get_edo_driver(void) {
 	edo_ops = *sc_get_iso7816_driver()->ops;
 	edo_ops.match_card = edo_match_card;
@@ -309,6 +315,7 @@ struct sc_card_driver* sc_get_edo_driver(void) {
 	edo_ops.select_file = edo_select_file;
 	edo_ops.set_security_env = edo_set_security_env;
 	edo_ops.compute_signature = edo_compute_signature;
+	edo_ops.logout = edo_logout;
 
 	return &edo_drv;
 }

@@ -81,10 +81,6 @@ static int muscle_match_card(sc_card_t *card)
 	u8 response[64];
 	int r;
 
-	/* Since we send an APDU, the card's logout function may be called...
-	 * however it's not always properly nulled out... */
-	card->ops->logout = NULL;
-
 	if (msc_select_applet(card, muscleAppletId, sizeof muscleAppletId) == 1) {
 		/* Muscle applet is present, check the protocol version to be sure */
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_2, 0x3C, 0x00, 0x00);
@@ -856,6 +852,19 @@ static int muscle_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
+static int muscle_logout(sc_card_t *card)
+{
+	int r = SC_ERROR_NOT_SUPPORTED;
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	if (msc_select_applet(card, muscleAppletId, sizeof muscleAppletId) == 1) {
+		r = SC_SUCCESS;
+	}
+
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+
 
 static struct sc_card_driver * sc_get_driver(void)
 {
@@ -884,6 +893,7 @@ static struct sc_card_driver * sc_get_driver(void)
 	muscle_ops.delete_file = muscle_delete_file;
 	muscle_ops.list_files = muscle_list_files;
 	muscle_ops.card_reader_lock_obtained = muscle_card_reader_lock_obtained;
+	muscle_ops.logout = muscle_logout;
 
 	return &muscle_drv;
 }

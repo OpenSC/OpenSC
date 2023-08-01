@@ -306,6 +306,10 @@ static int esteid_finish(sc_card_t *card) {
 	return 0;
 }
 
+static int esteid_logout(sc_card_t *card) {
+	return gp_select_aid(card, &IASECC_AID);
+}
+
 struct sc_card_driver *sc_get_esteid2018_driver(void) {
 	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
 
@@ -323,6 +327,7 @@ struct sc_card_driver *sc_get_esteid2018_driver(void) {
 	esteid_ops.set_security_env = esteid_set_security_env;
 	esteid_ops.compute_signature = esteid_compute_signature;
 	esteid_ops.pin_cmd = esteid_pin_cmd;
+	esteid_ops.logout = esteid_logout;
 
 	return &esteid2018_driver;
 }

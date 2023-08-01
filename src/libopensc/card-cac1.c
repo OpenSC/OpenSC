@@ -488,9 +488,6 @@ static int cac_match_card(sc_card_t *card)
 {
 	int r;
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	/* Since we send an APDU, the card's logout function may be called...
-	 * however it may be in dirty memory */
-	card->ops->logout = NULL;
 
 	r = cac_find_and_initialize(card, 0);
 	return (r == SC_SUCCESS); /* never match */
@@ -519,6 +516,12 @@ static int cac_init(sc_card_t *card)
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
+static int cac_logout(sc_card_t *card)
+{
+	int index;
+	return cac_find_first_pki_applet(card, &index);
+}
+
 static struct sc_card_operations cac_ops;
 
 static struct sc_card_driver cac1_drv = {
@@ -540,6 +543,7 @@ static struct sc_card_driver * sc_get_driver(void)
 
 	cac_ops.select_file =  cac_select_file; /* need to record object type */
 	cac_ops.read_binary = cac_read_binary;
+	cac_ops.logout = cac_logout;
 
 	return &cac1_drv;
 }

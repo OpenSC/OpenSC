@@ -2189,11 +2189,11 @@ static int piv_is_object_present(sc_card_t *card, u8 *ptr)
  * or the global pin for the card 0x00. Look at Discovery object to get this.
  * called by pkcs15-piv.c  via cardctl when setting up the pins.
  */
-static int piv_get_pin_preference(sc_card_t *card, int *ptr)
+static int piv_get_pin_preference(sc_card_t *card, int *pin_ref)
 {
 	piv_private_data_t * priv = PIV_DATA(card);
 
-	*ptr = priv->pin_preference;
+	*pin_ref = priv->pin_preference;
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
@@ -3089,10 +3089,6 @@ static int piv_match_card_continued(sc_card_t *card)
 	piv_private_data_t *priv = NULL;
 	int saved_type = card->type;
 
-	/* Since we send an APDU, the card's logout function may be called...
-	 * however it may be in dirty memory */
-	card->ops->logout = NULL;
-
 	/* piv_match_card may be called with card->type, set by opensc.conf */
 	/* user provide card type must be one we know */
 	switch (card->type) {
@@ -3760,12 +3756,18 @@ piv_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 
 static int piv_logout(sc_card_t *card)
 {
-	int r = SC_ERROR_NOT_SUPPORTED; /* TODO Some PIV cards may support a logout */
-	/* piv_private_data_t * priv = PIV_DATA(card); */
+	int r = SC_ERROR_NOT_SUPPORTED;
+	piv_private_data_t * priv = PIV_DATA(card);
 
 	LOG_FUNC_CALLED(card->ctx);
 
-	/* TODO 800-73-3 does not define a logout, 800-73-4 does */
+	if (priv) {
+		/* logout defined since 800-73-4 */
+		r = iso7816_logout(card, priv->pin_preference);
+		if (r == SC_SUCCESS) {
+			priv->logged_in = SC_PIN_STATE_LOGGED_OUT;
+		}
+	}
 
 	LOG_FUNC_RETURN(card->ctx, r);
 }

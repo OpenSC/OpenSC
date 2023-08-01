@@ -582,6 +582,13 @@ static int gemsafe_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
+static int gemsafe_logout(sc_card_t *card)
+{
+	gemsafe_exdata *exdata = (gemsafe_exdata *)card->drv_data;
+
+	return gp_select_applet(card, exdata->aid, exdata->aid_len);
+}
+
 static struct sc_card_driver *sc_get_driver(void)
 {
 	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
@@ -602,6 +609,7 @@ static struct sc_card_driver *sc_get_driver(void)
 	gemsafe_ops.process_fci	= gemsafe_process_fci;
 	gemsafe_ops.pin_cmd		 = iso_ops->pin_cmd;
 	gemsafe_ops.card_reader_lock_obtained = gemsafe_card_reader_lock_obtained;
+	gemsafe_ops.logout = gemsafe_logout;
 
 	return &gemsafe_drv;
 }

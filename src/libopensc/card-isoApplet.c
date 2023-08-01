@@ -1287,6 +1287,11 @@ static int isoApplet_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
+static int isoApplet_logout(sc_card_t *card)
+{
+	return isoApplet_select_applet(card, isoApplet_aid, sizeof(isoApplet_aid));
+}
+
 static struct sc_card_driver *sc_get_driver(void)
 {
 	sc_card_driver_t *iso_drv = sc_get_iso7816_driver();
@@ -1310,6 +1315,7 @@ static struct sc_card_driver *sc_get_driver(void)
 	isoApplet_ops.compute_signature = isoApplet_compute_signature;
 	isoApplet_ops.get_challenge = isoApplet_get_challenge;
 	isoApplet_ops.card_reader_lock_obtained = isoApplet_card_reader_lock_obtained;
+	isoApplet_ops.logout = isoApplet_logout;
 
 	/* unsupported functions */
 	isoApplet_ops.write_binary = NULL;

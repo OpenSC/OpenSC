@@ -166,6 +166,26 @@ static int westcos_finish(sc_card_t * card)
 	return 0;
 }
 
+static int select_westcos_applet(sc_card_t *card)
+{
+	int r;
+	sc_apdu_t apdu;
+	u8 aid[] = {
+		0xA0, 0x00, 0xCE, 0x00, 0x07, 0x01
+	};
+	sc_format_apdu(card, &apdu,
+			SC_APDU_CASE_3_SHORT, 0xA4, 0x04,
+			0);
+	apdu.cla = 0x00;
+	apdu.lc = sizeof(aid);
+	apdu.datalen = sizeof(aid);
+	apdu.data = aid;
+	r = sc_transmit_apdu(card, &apdu);
+	if (r)
+		return r;
+	return sc_check_sw(card, apdu.sw1, apdu.sw2);
+}
+
 static int westcos_match_card(sc_card_t * card)
 {
 	int i;
@@ -176,23 +196,7 @@ static int westcos_match_card(sc_card_t * card)
 
 	/* JAVACARD, look for westcos applet */
 	if (i == 1) {
-		int r;
-		sc_apdu_t apdu;
-		u8 aid[] = {
-			0xA0, 0x00, 0xCE, 0x00, 0x07, 0x01
-		};
-		sc_format_apdu(card, &apdu,
-				SC_APDU_CASE_3_SHORT, 0xA4, 0x04,
-				0);
-		apdu.cla = 0x00;
-		apdu.lc = sizeof(aid);
-		apdu.datalen = sizeof(aid);
-		apdu.data = aid;
-		r = sc_transmit_apdu(card, &apdu);
-		if (r)
-			return 0;
-		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-		if (r)
+		if (select_westcos_applet(card))
 			return 0;
 	}
 
@@ -1266,6 +1270,11 @@ static int westcos_decipher(sc_card_t *card, const u8 * crgram,
 	return westcos_sign_decipher(1, card, crgram, crgram_len, out, outlen);
 }
 
+static int westcos_logout(sc_card_t *card)
+{
+	return select_westcos_applet(card);
+}
+
 struct sc_card_driver *sc_get_westcos_driver(void)
 {
 	if (iso_ops == NULL)
@@ -1297,6 +1306,7 @@ struct sc_card_driver *sc_get_westcos_driver(void)
 	westcos_ops.process_fci = westcos_process_fci;
 	westcos_ops.construct_fci = NULL;
 	westcos_ops.pin_cmd = westcos_pin_cmd;
+	westcos_ops.logout = westcos_logout;
 
 	return &westcos_drv;
 }
