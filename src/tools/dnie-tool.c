@@ -133,6 +133,9 @@ int main(int argc, char* argv[])
 
 	memset(&ctx_param, 0, sizeof(ctx_param));
 	ctx_param.app_name = app_name;
+	ctx_param.debug    = verbose;
+	if (verbose)
+		ctx_param.debug_file = stderr;
 	r = sc_context_create(&ctx, &ctx_param);
 	if (r) {
 		fprintf(stderr, "Error: Failed to establish context: %s\n",
@@ -149,7 +152,7 @@ int main(int argc, char* argv[])
 		goto dnie_tool_end;
 	}
 	
-	if (util_connect_card(ctx, &card, opt_reader, opt_wait, verbose) ) {
+	if (util_connect_card(ctx, &card, opt_reader, opt_wait) ) {
 		fprintf(stderr, "Error: Cannot connect with card\n");
 		err = -1;
 		goto dnie_tool_end;

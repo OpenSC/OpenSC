@@ -37,6 +37,10 @@
 #include <io.h>
 #endif
 
+#ifdef __APPLE__
+#include <libproc.h>
+#endif
+
 #include "common/libscdl.h"
 #include "common/compat_strlcpy.h"
 #include "internal.h"
@@ -732,6 +736,10 @@ static void process_config_file(sc_context_t *ctx, struct _sc_ctx_options *opts)
 	}
 	/* needs to be after the log file is known */
 	sc_log(ctx, "Used configuration file '%s'", conf_path);
+	blocks = scconf_find_blocks(ctx->conf, NULL, "app", ctx->exe_path);
+	if (blocks && blocks[0])
+		ctx->conf_blocks[count++] = blocks[0];
+	free(blocks);
 	blocks = scconf_find_blocks(ctx->conf, NULL, "app", ctx->app_name);
 	if (blocks && blocks[0])
 		ctx->conf_blocks[count++] = blocks[0];
@@ -742,7 +750,7 @@ static void process_config_file(sc_context_t *ctx, struct _sc_ctx_options *opts)
 			ctx->conf_blocks[count] = blocks[0];
 		free(blocks);
 	}
-	/* Above we add 2 blocks at most, but conf_blocks has 3 elements,
+	/* Above we add 3 blocks at most, but conf_blocks has 4 elements,
 	 * so at least one is NULL */
 	for (i = 0; ctx->conf_blocks[i]; i++)
 		load_parameters(ctx, ctx->conf_blocks[i], opts);
@@ -852,6 +860,41 @@ static void sc_openssl3_deinit(sc_context_t *ctx)
 }
 #endif
 
+static char *get_exe_path()
+{
+	/* Find the executable's path which runs this code.
+	 * See https://github.com/gpakosz/whereami/ for
+	 * potentially more platforms */
+	char exe_path[PATH_MAX] = "unknown executable path";
+	int path_found = 0;
+
+#if   defined(_WIN32)
+	if (0 < GetModuleFileNameA(NULL, exe_path, sizeof exe_path))
+		path_found = 1;
+#elif defined(__APPLE__)
+	if (0 < proc_pidpath(getpid(), exe_path, sizeof exe_path))
+		path_found = 1;
+#elif defined(__linux__) || defined(__CYGWIN__)
+	if (NULL != realpath("/proc/self/exe", exe_path))
+		path_found = 1;
+#endif
+
+#if defined(HAVE_GETPROGNAME)
+	if (!path_found) {
+		/* getprogname is unreliable and typically only returns the basename.
+		 * However, this should be enough for our purposes */
+		const char *prog = getprogname();
+		if (prog)
+			strlcpy(exe_path, prog, sizeof exe_path);
+	}
+#else
+	/* avoid warning "set but not used" */
+	(void) path_found;
+#endif
+
+	return strdup(exe_path);
+}
+
 int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 {
 	sc_context_t		*ctx;
@@ -873,6 +916,12 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 	else
 		ctx->app_name = strdup("default");
 	if (ctx->app_name == NULL) {
+		sc_release_context(ctx);
+		return SC_ERROR_OUT_OF_MEMORY;
+	}
+
+	ctx->exe_path = get_exe_path();
+	if (ctx->exe_path == NULL) {
 		sc_release_context(ctx);
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
@@ -903,8 +952,20 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 #endif
 
 	process_config_file(ctx, &opts);
+
+	/* overwrite with caller's parameters if explicitly given */
+	if (parm->debug) {
+		ctx->debug = parm->debug;
+	}
+	if (parm->debug_file) {
+		if (ctx->debug_file && (ctx->debug_file != stderr && ctx->debug_file != stdout))
+			fclose(ctx->debug_file);
+		ctx->debug_file = parm->debug_file;
+	}
+
 	sc_log(ctx, "==================================="); /* first thing in the log */
-	sc_log(ctx, "opensc version: %s", sc_get_version());
+	sc_log(ctx, "OpenSC version: %s", sc_get_version());
+	sc_log(ctx, "Configured for %s (%s)", ctx->app_name, ctx->exe_path);
 
 #ifdef USE_OPENSSL3_LIBCTX
 	r = sc_openssl3_init(ctx);
@@ -1020,10 +1081,9 @@ int sc_release_context(sc_context_t *ctx)
 		scconf_free(ctx->conf);
 	if (ctx->debug_file && (ctx->debug_file != stdout && ctx->debug_file != stderr))
 		fclose(ctx->debug_file);
-	if (ctx->debug_filename != NULL)
-		free(ctx->debug_filename);
-	if (ctx->app_name != NULL)
-		free(ctx->app_name);
+	free(ctx->debug_filename);
+	free(ctx->app_name);
+	free(ctx->exe_path);
 	list_destroy(&ctx->readers);
 	sc_mem_clear(ctx, sizeof(*ctx));
 	free(ctx);

@@ -2177,6 +2177,8 @@ int main(int argc, char *argv[])
 			memset(&ctx_param, 0, sizeof(ctx_param));
 			ctx_param.ver      = 0;
 			ctx_param.app_name = app_name;
+			if (verbose)
+				ctx_param.debug_file = stderr;
 
 			if (SC_SUCCESS == sc_context_create(&ctx, &ctx_param)) {
 				/* attempt to connect reader, on error, -r is used for read-certificate operation */
@@ -2360,6 +2362,9 @@ int main(int argc, char *argv[])
 	memset(&ctx_param, 0, sizeof(ctx_param));
 	ctx_param.ver      = 0;
 	ctx_param.app_name = app_name;
+	ctx_param.debug    = verbose;
+	if (verbose)
+		ctx_param.debug_file = stderr;
 
 	r = sc_context_create(&ctx, &ctx_param);
 	if (r) {
@@ -2373,7 +2378,7 @@ int main(int argc, char *argv[])
 		action_count--;
 	}
 
-	err = util_connect_card_ex(ctx, &card, opt_reader, opt_wait, 0, verbose);
+	err = util_connect_card_ex(ctx, &card, opt_reader, opt_wait, 0);
 	if (err)
 		goto end;
 

@@ -1,10 +1,10 @@
 include $(top_srcdir)/win32/ltrc.inc
 
 MAINTAINERCLEANFILES = $(srcdir)/Makefile.in $(srcdir)/versioninfo-pkcs11.rc $(srcdir)/versioninfo-pkcs11-spy.rc
-EXTRA_DIST = Makefile.mak versioninfo-pkcs11.rc.in versioninfo-pkcs11-spy.rc.in opensc-pkcs11.pc.in opensc-pkcs11.dll.manifest onepin-opensc-pkcs11.dll.manifest
+EXTRA_DIST = Makefile.mak versioninfo-pkcs11.rc.in versioninfo-pkcs11-spy.rc.in opensc-pkcs11.pc.in opensc-pkcs11.dll.manifest
 
 if ENABLE_SHARED
-lib_LTLIBRARIES = opensc-pkcs11.la pkcs11-spy.la onepin-opensc-pkcs11.la
+lib_LTLIBRARIES = opensc-pkcs11.la pkcs11-spy.la
 else
 noinst_LTLIBRARIES = libopensc-pkcs11.la
 endif
@@ -43,13 +43,6 @@ libopensc_pkcs11_la_CFLAGS = $(OPENSC_PKCS11_CFLAGS)
 libopensc_pkcs11_la_LIBADD = $(OPENSC_PKCS11_LIBS)
 libopensc_pkcs11_la_LDFLAGS = $(AM_LDFLAGS)
 
-onepin_opensc_pkcs11_la_SOURCES = $(OPENSC_PKCS11_SRC) $(OPENSC_PKCS11_INC)
-onepin_opensc_pkcs11_la_CFLAGS = -DMODULE_APP_NAME=\"onepin-opensc-pkcs11\" $(OPENSC_PKCS11_CFLAGS)
-onepin_opensc_pkcs11_la_LIBADD = $(OPENSC_PKCS11_LIBS)
-onepin_opensc_pkcs11_la_LDFLAGS = $(AM_LDFLAGS) \
-        -export-symbols "$(srcdir)/pkcs11.exports" \
-        -module -shared -avoid-version -no-undefined
-
 pkcs11_spy_la_SOURCES = pkcs11-spy.c pkcs11-display.c pkcs11-display.h pkcs11.exports
 pkcs11_spy_la_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(OPENSC_PKCS11_PTHREAD_CFLAGS)
 pkcs11_spy_la_LIBADD = \
@@ -81,6 +74,8 @@ uninstall-hook:
 else
 # see http://wiki.cacert.org/wiki/Pkcs11TaskForce
 install-exec-hook:
+	rm -f "$(DESTDIR)$(libdir)/onepin-opensc-pkcs11$(DYN_LIB_EXT)"
+	$(LN_S) "$(DESTDIR)$(libdir)/opensc-pkcs11$(DYN_LIB_EXT)" "$(DESTDIR)$(libdir)/onepin-opensc-pkcs11$(DYN_LIB_EXT)"
 	$(MKDIR_P) "$(DESTDIR)$(pkcs11dir)"
 	for l in opensc-pkcs11$(DYN_LIB_EXT) onepin-opensc-pkcs11$(DYN_LIB_EXT) pkcs11-spy$(DYN_LIB_EXT); do \
 		rm -f "$(DESTDIR)$(pkcs11dir)/$$l"; \
@@ -92,6 +87,7 @@ uninstall-hook:
 		rm -f "$(DESTDIR)$(pkcs11dir)/$$l"; \
 	done
 	rm -df "$(DESTDIR)$(pkcs11dir)" || true
+	rm -f "$(DESTDIR)$(libdir)/onepin-opensc-pkcs11$(DYN_LIB_EXT)"
 endif
 
 TIDY_FLAGS = $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) $(OPENSC_PKCS11_CFLAGS)

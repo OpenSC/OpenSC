@@ -871,8 +871,9 @@ typedef struct ossl3ctx ossl3ctx_t;
 
 typedef struct sc_context {
 	scconf_context *conf;
-	scconf_block *conf_blocks[3];
+	scconf_block *conf_blocks[4];
 	char *app_name;
+	char *exe_path;
 	int debug;
 	unsigned long flags;
 
@@ -986,6 +987,8 @@ typedef struct {
 	unsigned long flags;
 	/** mutex functions to use (optional) */
 	sc_thread_context_t *thread_ctx;
+	int debug;
+	FILE *debug_file;
 } sc_context_param_t;
 
 /**

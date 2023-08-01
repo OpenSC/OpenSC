@@ -82,15 +82,22 @@ static struct sc_card_driver westcos_drv = {
 static int westcos_get_default_key(sc_card_t * card,
 				   struct sc_cardctl_default_key *data)
 {
-	const char *default_key;
+	const char *default_key = NULL;
+	size_t i;
 	sc_log(card->ctx,
 		 "westcos_get_default_key:data->method=%d, data->key_ref=%d\n",
 		 data->method, data->key_ref);
 	if (data->method != SC_AC_AUT || data->key_ref != 0)
 		return SC_ERROR_NO_DEFAULT_KEY;
-	default_key =
-	    scconf_get_str(card->ctx->conf_blocks[0], "westcos_default_key",
-			   DEFAULT_TRANSPORT_KEY);
+
+	for (i = 0; card->ctx->conf_blocks[i]; i++) {
+		default_key = scconf_get_str(card->ctx->conf_blocks[i], "westcos_default_key", NULL);
+		if (default_key)
+			break;
+	}
+	if (!default_key)
+		default_key = DEFAULT_TRANSPORT_KEY;
+
 	return sc_hex_to_bin(default_key, data->key_data, &data->len);
 }
 

@@ -235,11 +235,6 @@ add_module_firefox(const char *module_path, const char *module_name, const char 
 #endif
 	};
 
-	if (0 == strcmp(module_path, default_pkcs11_provider)) {
-		module_path = default_onepin_pkcs11_provider;
-		exclude_module_path = default_pkcs11_provider;
-	}
-
 	add_module_mozilla(locations, sizeof locations/sizeof *locations,
 			module_path, module_name, exclude_module_path);
 }

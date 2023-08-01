@@ -1138,7 +1138,7 @@ app opensc-pkcs11 {
 	}
 }
 
-app onepin-opensc-pkcs11 {
+app "C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe" {
 	pkcs11 {
 		slots_per_card = 1;
 	}

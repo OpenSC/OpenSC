@@ -647,6 +647,9 @@ open_reader_and_card(char *reader)
 	memset(&ctx_param, 0, sizeof(ctx_param));
 	ctx_param.ver      = 0;
 	ctx_param.app_name = app_name;
+	ctx_param.debug    = verbose;
+	if (verbose)
+		ctx_param.debug_file = stderr;
 
 	r = sc_context_create(&g_ctx, &ctx_param);
 	if (r) {
@@ -654,7 +657,7 @@ open_reader_and_card(char *reader)
 		return 0;
 	}
 
-	if (util_connect_card_ex(g_ctx, &g_card, reader, opt_wait, 0, verbose))
+	if (util_connect_card_ex(g_ctx, &g_card, reader, opt_wait, 0))
 		return 0;
 
 	return 1;

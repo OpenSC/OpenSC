@@ -448,6 +448,31 @@ CK_RV attr_find_var(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, CK_ULONG type,
 	return attr_extract(pTemplate, ptr, sizep);
 }
 
+static int is_nss_browser(sc_context_t * ctx)
+{
+	const char *basename;
+#ifdef _WIN32
+	const char sep = '\\';
+#else
+	const char sep = '/';
+#endif
+	if (!ctx || !ctx->exe_path)
+		return 0;
+
+	basename = strrchr(ctx->exe_path, sep);
+	if (!basename)
+		basename = ctx->exe_path;
+	else
+		/* discard the separator */
+		basename += sizeof(char);
+
+	if (strstr(basename, "chromium") || strstr(basename, "chrome")
+			|| strstr(basename, "firefox"))
+		return 1;
+
+	return 0;
+}
+
 void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t * ctx)
 {
 	scconf_block *conf_block = NULL;
@@ -456,7 +481,11 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t * ctx)
 
 	/* Set defaults */
 	conf->max_virtual_slots = 16;
-	if (strcmp(ctx->app_name, "onepin-opensc-pkcs11") == 0) {
+	if (is_nss_browser(ctx)) {
+		/* NSS verifies *every* PIN even though only a single one would be
+		 * needed to use one specific key. In known NSS browsers, we set
+		 * slots_per_card to `1` to only look at the authentication PIN, i.e.
+		 * ignoring a potential signature PIN. */
 		conf->slots_per_card = 1;
 	} else {
 		conf->slots_per_card = 4;
@@ -470,7 +499,7 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t * ctx)
 
 	conf_block = sc_get_conf_block(ctx, "pkcs11", NULL, 1);
 	if (!conf_block)
-		return;
+		goto out;
 
 	/* contains the defaults, if there is a "pkcs11" config block */
 	conf->max_virtual_slots = scconf_get_int(conf_block, "max_virtual_slots", conf->max_virtual_slots);
@@ -506,6 +535,7 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t * ctx)
 	}
 	free(tmp);
 
+out:
 	sc_log(ctx, "PKCS#11 options: max_virtual_slots=%d slots_per_card=%d "
 		 "lock_login=%d atomic=%d pin_unblock_style=%d "
 		 "create_slots_flags=0x%X",

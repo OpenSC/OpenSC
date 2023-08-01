@@ -119,7 +119,7 @@
                 <File Source="$(var.SOURCE_DIR)\src\pkcs11\opensc-pkcs11.dll" Vital="yes"/>
               </Component>
               <Component Id="onepin_opensc_pkcs11.dll" Guid="*" Win64="$(var.Win64YesNo)">
-                <File Source="$(var.SOURCE_DIR)\src\pkcs11\onepin-opensc-pkcs11.dll" Vital="yes"/>
+                <File Name="onepin-opensc-pkcs11.dll" Source="$(var.SOURCE_DIR)\src\pkcs11\opensc-pkcs11.dll" Vital="yes"/>
               </Component>
             </Directory>
 
