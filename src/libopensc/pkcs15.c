@@ -548,17 +548,18 @@ sc_pkcs15_get_lastupdate(struct sc_pkcs15_card *p15card)
 		return NULL;
 
 	size = file->size ? file->size : 1024;
+	sc_file_free(file);
 
 	content = calloc(size, 1);
 	if (!content)
 		return NULL;
 
 	r = sc_read_binary(p15card->card, 0, content, size, 0);
-	if (r < 0)
+	if (r < 0) {
+		free(content);
 		return NULL;
+	}
 	content_len = r;
-
-	sc_file_free(file);
 
 	sc_copy_asn1_entry(c_asn1_last_update, asn1_last_update);
 	sc_format_asn1_entry(asn1_last_update + 0, last_update, &lupdate_len, 0);
