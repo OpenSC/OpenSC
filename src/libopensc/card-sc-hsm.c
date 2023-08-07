@@ -1007,6 +1007,10 @@ static int sc_hsm_set_security_env(sc_card_t *card,
 				priv->algorithm = ALGO_RSA_PKCS1;
 			}
 		} else if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PSS) {
+			if ((env->algorithm_flags & SC_ALGORITHM_RSA_HASHES) &&
+					(((env->algorithm_flags & SC_ALGORITHM_MGF1_HASHES) >> 8) != (env->algorithm_flags & SC_ALGORITHM_RSA_HASHES))) {
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+			}
 			priv->algorithm = ALGO_RSA_PSS;
 		} else {
 			if (env->operation == SC_SEC_OPERATION_DECIPHER) {
