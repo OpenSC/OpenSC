@@ -351,8 +351,12 @@ int sc_pkcs15_decode_pukdf_entry(struct sc_pkcs15_card *p15card,
 err:
 	if (r < 0) {
 		sc_pkcs15_free_pubkey_info(info);
-		if (der->len)
+		if (der->len) {
 			free(der->value);
+			/* der points to obj->content */
+			obj->content.value = NULL;
+			obj->content.len = 0;
+		}
 	}
 
 	LOG_FUNC_RETURN(ctx, r);
