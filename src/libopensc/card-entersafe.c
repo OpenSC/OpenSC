@@ -1423,12 +1423,18 @@ static int entersafe_gen_key(sc_card_t *card, sc_entersafe_gen_key_data *data)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_OUT_OF_MEMORY);
 
 	p=rbuf;
-	if (*p!='E')
+	if (*p!='E') {
+		free(data->modulus);
+		data->modulus = NULL;
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_DATA);
+	}
 	p+=2+p[1];
 	/* N */
-	if (*p!='N')
+	if (*p!='N') {
+		free(data->modulus);
+		data->modulus = NULL;
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_DATA);
+	}
 	++p;
 	if(*p++>0x80)
 	{
