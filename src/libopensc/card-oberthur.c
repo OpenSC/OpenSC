@@ -534,6 +534,11 @@ auth_select_file(struct sc_card *card, const struct sc_path *in_path,
 				memcpy(&tmp_path, &auth_current_df->path,  sizeof(struct sc_path));
 				tmp_path.type = SC_PATH_TYPE_PARENT;
 
+				if (file_out) {
+					sc_file_free(*file_out);
+					*file_out = NULL;
+				}
+
 				rv = auth_select_file (card, &tmp_path, file_out);
 				LOG_TEST_RET(card->ctx, rv, "select file failed");
 			}
@@ -548,6 +553,11 @@ auth_select_file(struct sc_card *card, const struct sc_path *in_path,
 
 			for (ii=0; ii < path.len - offs; ii+=2)   {
 				memcpy(tmp_path.value, path.value + offs + ii, 2);
+
+				if (file_out) {
+					sc_file_free(*file_out);
+					*file_out = NULL;
+				}
 
 				rv = auth_select_file(card, &tmp_path, file_out);
 				LOG_TEST_RET(card->ctx, rv, "select file failed");
