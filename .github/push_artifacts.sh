@@ -33,7 +33,7 @@ git commit --message "$1"
 i=0
 while [ $i -le 10 ] && ! git push --quiet --set-upstream origin "${BRANCH}"
 do
-    sleep $[ ( $RANDOM % 32 )  + 1 ]s
+    sleep $[ ( $RANDOM % 32 )  + 1 ]
     git pull --rebase origin --strategy-option ours "${BRANCH}"
     i=$(( $i + 1 ))
 done
