@@ -512,7 +512,7 @@ static void test_verify(const uint8_t *data, size_t size)
 		while (verify_data_size > 0) {
 			to_process = verify_data_size < sizeof(in_buffer) ? verify_data_size : sizeof(in_buffer);
 			verify_data_size -= to_process;
-			memcpy(in_buffer, data, to_process);
+			memcpy(in_buffer, verify_data, to_process);
 			verify_data += to_process;
 
 			if (p11->C_VerifyUpdate(session, in_buffer, to_process) != CKR_OK)
