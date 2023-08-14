@@ -803,16 +803,6 @@ app <replaceable>application</replaceable> {
 		<refsect2 id="piv">
 			<title>Configuration Options for PIV Card</title>
 			<variablelist>
-				<varlistentry>
-					<term>
-						<option>piv_max_object_size = <replaceable>num</replaceable>;</option>
-					</term>
-					<listitem><para>
-						Max size of a PIV object. The default of 16384 bytes should
-						work for most cards. It might be overwritten by
-						<literal>PIV_MAX_OBJECT_SIZE</literal> environment variable.
-					</para></listitem>
-				</varlistentry>
 				<!-- Commented out until PIV SM is built be default
 				<varlistentry>
 					<term><option>piv_use_sm = <replaceable>name</replaceable>;</option>
@@ -1830,7 +1820,6 @@ app <replaceable>application</replaceable> {
 			</varlistentry>
 			<varlistentry>
 				<term>
-					<envar>PIV_MAX_OBJECT</envar>,
 					<envar>PIV_USE_SM</envar>,
 					<envar>PIV_PAIRING_CODE</envar>
 				</term>
