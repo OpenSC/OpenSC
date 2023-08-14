@@ -13,10 +13,18 @@ fi
 card_setup
 assert $? "Failed to set up card"
 
+# get informaation about OS
+source /etc/os-release || true
+
 echo "======================================================="
 echo "Test RSA keys"
 echo "======================================================="
 for HASH in "" "SHA1" "SHA224" "SHA256" "SHA384" "SHA512"; do
+    RETOSSL="0"
+
+    if [[ "$ID" == "rhel" || "$ID_LIKE" =~ ".*rhel.*" ]] && [[ "$VERSION" -gt 8 ]] && [[ "$HASH" == "SHA1" ]]; then
+        RETOSSL="1"
+    fi
     for SIGN_KEY in "01" "02"; do
         METHOD="RSA-PKCS"
         # RSA-PKCS works only on small data - generate small data:
@@ -43,7 +51,11 @@ for HASH in "" "SHA1" "SHA224" "SHA256" "SHA384" "SHA512"; do
             openssl dgst -keyform PEM -verify $SIGN_KEY.pub -${HASH,,*} \
                    -signature data.sig data
         fi
-        assert $? "Failed to Verify signature using OpenSSL"
+        if [[ "$RETOSSL" == "0" ]]; then
+            assert $? "Failed to Verify signature using OpenSSL"
+        elif [[ "$?" == "0" ]]; then
+            assert 1 "Unexpectedly Verified signature using OpenSSL"
+        fi
 
         # pkcs11-tool verification
         $PKCS11_TOOL --id $SIGN_KEY --verify -m $METHOD --module $P11LIB \
@@ -87,7 +99,11 @@ for HASH in "" "SHA1" "SHA224" "SHA256" "SHA384" "SHA512"; do
         openssl dgst -keyform PEM -verify $SIGN_KEY.pub $VERIFY_DGEST \
                -sigopt rsa_padding_mode:pss  $VERIFY_OPTS -sigopt rsa_pss_saltlen:-1 \
                -signature data.sig data
-        assert $? "Failed to Verify signature using openssl"
+        if [[ "$RETOSSL" == "0" ]]; then
+            assert $? "Failed to Verify signature using openssl"
+        elif [[ "$?" == "0" ]]; then
+            assert 1 "Unexpectedly Verified signature using OpenSSL"
+        fi
 
         # pkcs11-tool verification
         $PKCS11_TOOL --id $SIGN_KEY --verify -m $METHOD --module $P11LIB \
