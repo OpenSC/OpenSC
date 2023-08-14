@@ -37,6 +37,8 @@ for HASH in "" "SHA1" "SHA224" "SHA256" "SHA384" "SHA512"; do
         # OpenSSL verification
         if [[ -z $HASH ]]; then
             openssl rsautl -verify -inkey $SIGN_KEY.pub -in data.sig -pubin
+            # pkeyutl does not work with libressl
+            #openssl pkeyutl -verify -inkey $SIGN_KEY.pub -in data -sigfile data.sig -pubin
         else
             openssl dgst -keyform PEM -verify $SIGN_KEY.pub -${HASH,,*} \
                    -signature data.sig data
@@ -110,6 +112,9 @@ for HASH in "" "SHA1" "SHA224" "SHA256" "SHA384" "SHA512"; do
         # OpenSSL Encryption
         openssl rsautl -encrypt -inkey $ENC_KEY.pub -in data \
                -pubin -out data.crypt
+        # pkeyutl does not work with libressl
+        #openssl pkeyutl -encrypt -inkey $ENC_KEY.pub -in data \
+        #       -pubin -out data.crypt
         assert $? "Failed to encrypt data using OpenSSL"
         $PKCS11_TOOL --id $ENC_KEY --decrypt -p $PIN -m $METHOD \
                --module $P11LIB --input-file data.crypt > data.decrypted
