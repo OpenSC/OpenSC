@@ -227,20 +227,7 @@ app default {
 	}
 
 	card_driver PIV-II {
-		# *NOTE* The following are only useble if OpenSC is configured with --enable-piv-sm
-		# The names and locations are likely to change in the future
-		# See: https://github.com/OpenSC/OpenSC/pull/2053/files#r1267388721
-
-		# "piv_use_sm"
-		# NIST sp800-73-4 supports Secure Messaging (SM), an optional feature.
-		#
-		# "piv_use_sm" may be set to:
-		#	never - Don't use it. Card will react the same as cards without SM.
-		#	always - Always use SM if card supports it for contact and contactless
-		#	default - If card supports SM use for contactless (NFC) and for PIN, crypto,
-		#                 and sensitive objects with contact.
-		# piv_use_sm = "default";
-		# May be set via environment: PIV_USE_SM=default
+		# *NOTE* The following are only useable if OpenSC is configured with --enable-piv-sm
 
 		# "piv_pairing_code"
 		# Virtual Contact Interface (VCI) an optional feature, to allow
