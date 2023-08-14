@@ -75,7 +75,7 @@ CFLAGS="$CFLAGS -Wstrict-aliasing=2 -Wno-deprecated-declarations"
 
 
 %check
-make check
+make check || (cat tests/*.log src/tests/unittests/*.log && exit 1)
 
 
 %install
