@@ -5304,11 +5304,15 @@ static int piv_match_card(sc_card_t *card)
 			return 0; /* can not handle the card */
 	}
 
+	r = sc_lock(card);
+	if (r < 0)
+		return 0;
 	/* its one we know, or we can test for it in piv_init */
 	r = piv_match_card_continued(card);
+	sc_unlock(card);
+
 	if (r < 0 || !card->drv_data) {
 		/* clean up what we left in card */
-		sc_unlock(card);
 		piv_finish(card);
 		return 0; /* match failed */
 	}
@@ -5326,14 +5330,6 @@ static int piv_match_card_continued(sc_card_t *card)
 	int saved_type = card->type;
 	sc_apdu_t apdu;
 	u8 yubico_version_buf[3] = {0};
-
-	r = sc_lock(card); /* hold until match or init is complete */
-	if (r != SC_SUCCESS) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "sc_lock failed\n");
-		piv_finish(card);
-		card->type = saved_type;
-		LOG_FUNC_RETURN(card->ctx, r);
-	}
 
 	/* piv_match_card may be called with card->type, set by opensc.conf */
 	/* User provided card type must be one we know */
@@ -5694,7 +5690,6 @@ static int piv_match_card_continued(sc_card_t *card)
 err:
 	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d r2:%d CI:%08x r:%d\n", card->type, r2, priv->card_issues, r);
 	/* don't match. Does not have a PIV applet. */
-	sc_unlock(card);
 	piv_finish(card);
 	card->type = saved_type;
 	LOG_FUNC_RETURN(card->ctx, r);
@@ -5709,6 +5704,9 @@ static int piv_init(sc_card_t *card)
 	unsigned long ext_flags;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	r = sc_lock(card); /* hold until match or init is complete */
+	LOG_TEST_RET(card->ctx, r, "sc_lock failed");
 
 	/* piv_match_card_continued called from card match should have left card->drv_data */
 	if (priv == NULL) {
@@ -5830,7 +5828,7 @@ static int piv_init(sc_card_t *card)
 	piv_process_history(card);
 
 	priv->pstate=PIV_STATE_NORMAL;
-	sc_unlock(card) ; /* obtained in piv_match_card_continued */
+	sc_unlock(card);
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
