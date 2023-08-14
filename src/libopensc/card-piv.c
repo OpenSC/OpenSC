@@ -156,7 +156,6 @@ enum {
 #define PIV_OBJ_CACHE_VALID		1
 #define PIV_OBJ_CACHE_COMPRESSED	2
 #define PIV_OBJ_CACHE_NOT_PRESENT	8
-#define PIV_MAX_OBJECT_SIZE	16384
 
 typedef struct piv_obj_cache {
 	u8* obj_data;
@@ -1642,26 +1641,10 @@ static int piv_load_options(sc_card_t *card)
 	scconf_block **found_blocks, *block;
 
 	const char *option = NULL;
-	int piv_max_object_size_found = 0;
 #ifdef ENABLE_PIV_SM
 	int piv_pairing_code_found = 0;
 	int piv_use_sm_found = 0;
 #endif
-
-	option = getenv("PIV_MAX_OBJECT_SIZE");
-	if (option && option[0] != '\0') {
-		sc_log(card->ctx, "getenv(\"PIV_MAX_OBJECT_SIZE\")=\"%s\"", option);
-		priv->max_object_size = atoi(option);
-		if (priv->max_object_size < PIV_MAX_OBJECT_SIZE || priv->max_object_size > MAX_FILE_SIZE) {
-			sc_log(card->ctx,"Invalid max_object_size: \"%d\"", priv->max_object_size);
-			if (priv->max_object_size < PIV_MAX_OBJECT_SIZE)
-				priv->max_object_size = PIV_MAX_OBJECT_SIZE;
-			else
-				priv->max_object_size = MAX_FILE_SIZE; /* conservative value if error */
-		} else
-			piv_max_object_size_found = 1;
-		sc_log(card->ctx," priv->max_object_size:%d", priv->max_object_size);
-	}
 
 #ifdef ENABLE_PIV_SM
 	/* pairing code is 8 decimal digits and is card specific */
@@ -1738,22 +1721,6 @@ static int piv_load_options(sc_card_t *card)
 				}
 			}
 #endif
-			/*
-			 * Largest object defined in NIST sp800-73-3 and sp800-73-4 is 12710 bytes
-			 * If for some reason future cards have larger objects, the buffer size can be changed.
-			 * (This not not max_read_size)
-			 */
-			if (piv_max_object_size_found == 0) {
-				priv->max_object_size =  scconf_get_int(block, "piv_max_object_size", PIV_MAX_OBJECT_SIZE);
-				if (priv->max_object_size < PIV_MAX_OBJECT_SIZE || priv->max_object_size > MAX_FILE_SIZE) {
-					sc_log(card->ctx,"Invalid max_object_size:=\"%d\"", priv->max_object_size);
-					if (priv->max_object_size < PIV_MAX_OBJECT_SIZE)
-						priv->max_object_size = PIV_MAX_OBJECT_SIZE;
-					else
-						priv->max_object_size = MAX_FILE_SIZE;
-				}
-				sc_log(card->ctx,"piv_max_object_size: %d",priv->max_object_size);
-			}
 		}
 		free(found_blocks);
 	 }
@@ -5470,7 +5437,12 @@ static int piv_match_card_continued(sc_card_t *card)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 
 	card->drv_data = priv; /* will free if no match, or pass on to piv_init */
-	priv->max_object_size = PIV_MAX_OBJECT_SIZE; /* may be reset later */
+	/*
+	 * Largest object defined in NIST sp800-73-3 and sp800-73-4 is 12710 bytes
+	 * If for some reason future cards have larger objects, this value needs to
+	 * be increased here.
+	 */
+	priv->max_object_size = MAX_FILE_SIZE;
 	priv->selected_obj = -1;
 	priv->pin_preference = 0x80; /* 800-73-3 part 1, table 3 */
 	/* TODO Dual CAC/PIV are bases on 800-73-1 where priv->pin_preference = 0. need to check later */
