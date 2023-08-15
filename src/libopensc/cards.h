@@ -278,6 +278,7 @@ enum {
 	/* Slovak eID cards */
 	SC_CARD_TYPE_SKEID_BASE = 40000,
 	SC_CARD_TYPE_SKEID_V3,
+	SC_CARD_TYPE_SKEID_V4,
 
 	/* eOI cards */
 	SC_CARD_TYPE_EOI = 41000,
@@ -328,6 +329,7 @@ extern sc_card_driver_t *sc_get_edo_driver(void);
 extern sc_card_driver_t *sc_get_nqApplet_driver(void);
 extern sc_card_driver_t *sc_get_skeid_driver(void);
 extern sc_card_driver_t *sc_get_eoi_driver(void);
+extern sc_card_driver_t *sc_get_skeid4_driver(void);
 
 #ifdef __cplusplus
 }

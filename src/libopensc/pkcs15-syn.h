@@ -59,6 +59,7 @@ int sc_pkcs15emu_nqapplet_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *);
 int sc_pkcs15emu_starcos_esign_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *);
 int sc_pkcs15emu_skeid_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *);
 int sc_pkcs15emu_eoi_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *);
+int sc_pkcs15emu_skeid4_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *);
 
 struct sc_pkcs15_emulator_handler {
 	const char *name;
