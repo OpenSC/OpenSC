@@ -611,8 +611,7 @@
 
 				<varlistentry>
 					<term>
-						<option>--sanity-check</option>,
-						<option>-T</option>
+						<option>--sanity-check</option>
 					</term>
 					<listitem>
 						<para>
