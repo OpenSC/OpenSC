@@ -1636,12 +1636,12 @@ static int piv_parse_pairing_code(sc_card_t *card, const char *option)
 static int piv_load_options(sc_card_t *card)
 {
 	int r;
-	piv_private_data_t * priv = PIV_DATA(card);
 	size_t i, j;
 	scconf_block **found_blocks, *block;
 
-	const char *option = NULL;
 #ifdef ENABLE_PIV_SM
+	piv_private_data_t * priv = PIV_DATA(card);
+	const char *option = NULL;
 	int piv_pairing_code_found = 0;
 	int piv_use_sm_found = 0;
 #endif
@@ -6114,7 +6114,7 @@ piv_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 
 static int piv_logout(sc_card_t *card)
 {
-	int r = SC_ERROR_NOT_SUPPORTED;
+	int r = SC_ERROR_INTERNAL;
 	piv_private_data_t * priv = PIV_DATA(card);
 
 	LOG_FUNC_CALLED(card->ctx);

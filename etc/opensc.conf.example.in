@@ -227,7 +227,7 @@ app default {
 	}
 
 	card_driver PIV-II {
-		# *NOTE* The following are only useable if OpenSC is configured with --enable-piv-sm
+		# *NOTE* The following are only usable if OpenSC is configured with --enable-piv-sm
 
 		# "piv_pairing_code"
 		# Virtual Contact Interface (VCI) an optional feature, to allow
