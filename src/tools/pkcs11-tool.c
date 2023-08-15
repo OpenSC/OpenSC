@@ -96,8 +96,14 @@ extern CK_FUNCTION_LIST_3_0 pkcs11_function_list_3_0;
 #define MAX_TEST_THREADS 10
 #endif
 
+#ifndef MIN
+# define MIN(a, b)	(((a) < (b))? (a) : (b))
+#endif
+
 #define NEED_SESSION_RO	0x01
 #define NEED_SESSION_RW	0x02
+
+#define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
 
 static struct ec_curve_info {
 	const char *name;
@@ -6118,6 +6124,266 @@ static int test_digest(CK_SESSION_HANDLE session)
 	return errors;
 }
 
+static CK_RV test_load_cipher_key(CK_SESSION_HANDLE session, uint8_t *key, size_t keysize,
+	CK_KEY_TYPE keytype, CK_OBJECT_HANDLE *hkey)
+{
+	CK_OBJECT_CLASS class = CKO_SECRET_KEY;
+	CK_KEY_TYPE keyType = keytype;
+	CK_UTF8CHAR label[] = "testkey";
+	CK_BBOOL _true = CK_TRUE;
+	CK_ULONG keylen = (CK_ULONG)keysize;
+	CK_ATTRIBUTE template[] = {
+		{ CKA_CLASS, &class, sizeof(class) },
+		{ CKA_KEY_TYPE, &keyType, sizeof(keyType) },
+		{ CKA_LABEL, label, sizeof(label)-1 },
+		{ CKA_ENCRYPT, &_true, sizeof(_true) },
+		{ CKA_DECRYPT, &_true, sizeof(_true) },
+		{ CKA_VALUE, key, keysize },
+		{ CKA_VALUE_LEN, &keylen, sizeof(keylen) },
+	};
+
+	/* create a session key only */
+	return p11->C_CreateObject(session, template, ARRAY_SIZE(template), hkey);
+}
+
+static void test_delete_cipher_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE hkey)
+{
+	p11->C_DestroyObject(session, hkey);
+}
+
+static int test_cipher(CK_SESSION_HANDLE session)
+{
+	CK_RV rv;
+	CK_SESSION_INFO sessionInfo;
+	static struct {
+		CK_MECHANISM_TYPE type;
+		uint8_t     key[32];
+		CK_ULONG    keysz;
+		CK_KEY_TYPE keytype;
+		uint8_t     iv[16];
+		CK_ULONG    ivsz;
+		uint8_t     plaintext[128];
+		CK_ULONG    ptsz;
+		uint8_t     ciphertext[128];
+		CK_ULONG    ctsz;
+	} cipher_algs[] = {
+		{
+			.type =       CKM_AES_ECB,
+			.key =        {0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x09,0x0a,0x0b,0x0c,0x0d,0x0e,0x0f},
+			.keysz =      16,
+			.keytype =    CKK_AES,
+			.plaintext =  {0x00,0x11,0x22,0x33,0x44,0x55,0x66,0x77,0x88,0x99,0xaa,0xbb,0xcc,0xdd,0xee,0xff},
+			.ptsz =       16,
+			.ciphertext = {0x69,0xc4,0xe0,0xd8,0x6a,0x7b,0x04,0x30,0xd8,0xcd,0xb7,0x80,0x70,0xb4,0xc5,0x5a},
+			.ctsz =       16,
+		},
+		{
+			.type =       CKM_AES_CBC,
+			.key =        {0x2b,0x7e,0x15,0x16,0x28,0xae,0xd2,0xa6,0xab,0xf7,0x15,0x88,0x09,0xcf,0x4f,0x3c},
+			.keysz =      16,
+			.keytype =    CKK_AES,
+			.iv =         {0x76,0x49,0xab,0xac,0x81,0x19,0xb2,0x46,0xce,0xe9,0x8e,0x9b,0x12,0xe9,0x19,0x7d},
+			.ivsz =       16,
+			.plaintext =  {0xae,0x2d,0x8a,0x57,0x1e,0x03,0xac,0x9c,0x9e,0xb7,0x6f,0xac,0x45,0xaf,0x8e,0x51},
+			.ptsz =       16,
+			.ciphertext = {0x50,0x86,0xcb,0x9b,0x50,0x72,0x19,0xee,0x95,0xdb,0x11,0x3a,0x91,0x76,0x78,0xb2},
+			.ctsz =       16,
+		},
+	};
+	int errors = 0;
+	int supported = 0;
+
+	rv = p11->C_GetSessionInfo(session, &sessionInfo);
+	if (rv != CKR_OK) {
+		p11_fatal("C_GetSessionInfo", rv);
+	}
+
+	/* encryption */
+	for (size_t i = 0; i < ARRAY_SIZE(cipher_algs); ++i) {
+
+		CK_OBJECT_HANDLE hkey = CK_INVALID_HANDLE;
+		CK_MECHANISM mech = {
+			.mechanism = cipher_algs[i].type,
+			.pParameter = cipher_algs[i].iv,
+			.ulParameterLen = cipher_algs[i].ivsz,
+		};
+		const char *fct;
+		uint8_t ptext1[128] = {0};
+		uint8_t ptext2[128] = {0};
+		uint8_t ctext1[128] = {0};
+		uint8_t ctext2[128] = {0};
+		CK_ULONG coff = 0;
+		CK_ULONG poff = 0;
+
+		rv = test_load_cipher_key(session, cipher_algs[i].key, cipher_algs[i].keysz, cipher_algs[i].keytype, &hkey);
+		if (rv != CKR_OK) {
+			continue;
+		}
+
+		/* Testing Encryption */
+
+		fct = "C_EncryptInit";
+		rv = p11->C_EncryptInit(session, &mech, hkey);
+		if (rv == CKR_MECHANISM_INVALID)
+			continue;	/* mechanism not implemented, don't test */
+		if (rv != CKR_OK) {
+			goto cipher_clup;
+		}
+		++supported;
+		if (supported == 1) {
+			printf("Ciphers:\n");
+		}
+		printf("  %s: ", p11_mechanism_to_name(mech.mechanism));
+
+#define CIPHER_CHUNK (13) /* used to split input in sizes which are not block aligned */
+		for (CK_ULONG ptlen = 0; ptlen < cipher_algs[i].ptsz;) {
+
+			CK_ULONG isize = MIN(cipher_algs[i].ptsz - ptlen, CIPHER_CHUNK);
+			CK_ULONG osize = sizeof(ctext1) - coff;
+
+			fct = "C_EncryptUpdate";
+			rv = p11->C_EncryptUpdate(session, cipher_algs[i].plaintext + ptlen, isize,
+				ctext1 + coff, &osize);
+			if (rv == CKR_FUNCTION_NOT_SUPPORTED) {
+				printf("  Note: C_EncryptUpdate(), C_EncryptFinal() not supported\n");
+				break;
+			}
+			if (rv != CKR_OK) {
+				goto cipher_clup;
+			}
+
+			/* move offsets */
+			ptlen += isize;
+			coff += osize;
+		}
+
+		/* Only do final if update is supported */
+		if (rv == CKR_OK) {
+			CK_ULONG osize = sizeof(ctext1) - coff;
+			fct = "C_EncryptFinal";
+			rv = p11->C_EncryptFinal(session, ctext1 + coff, &osize);
+			if (rv != CKR_OK) {
+				goto cipher_clup;
+			}
+
+			/* compare values for match */
+			if (memcmp(ctext1, cipher_algs[i].ciphertext, cipher_algs[i].ctsz) != 0) {
+				printf("ERR: wrong ciphertext value\n");
+				rv = CKR_GENERAL_ERROR;
+				goto cipher_clup;
+			}
+		}
+
+		/* Second test is encrypt one shot */
+		fct = "C_EncryptInit";
+		rv = p11->C_EncryptInit(session, &mech, hkey);
+		if (rv != CKR_OK) {
+			goto cipher_clup;
+		}
+
+		coff = sizeof(ctext2);
+		fct = "C_Encrypt";
+		rv = p11->C_Encrypt(session, cipher_algs[i].plaintext, cipher_algs[i].ptsz,
+			ctext2, &coff);
+		if (rv == CKR_FUNCTION_NOT_SUPPORTED) {
+			printf("  Note: C_Encrypt() not supported\n");
+			goto cipher_clup;
+		}
+
+		/* compare values for match */
+		if (memcmp(ctext2, cipher_algs[i].ciphertext, cipher_algs[i].ctsz) != 0) {
+			printf("ERR: wrong ciphertext value\n");
+			rv = CKR_GENERAL_ERROR;
+			goto cipher_clup;
+		}
+
+		/* Testing Decryption */
+
+		fct = "C_DecryptInit";
+		rv = p11->C_DecryptInit(session, &mech, hkey);
+		if (rv == CKR_MECHANISM_INVALID)
+			continue;	/* mechanism not implemented, don't test */
+		if (rv != CKR_OK) {
+			goto cipher_clup;
+		}
+
+		for (CK_ULONG ctlen = 0; ctlen < cipher_algs[i].ctsz;) {
+
+			CK_ULONG isize = MIN(cipher_algs[i].ctsz - ctlen, CIPHER_CHUNK);
+			CK_ULONG osize = sizeof(ptext1) - poff;
+
+			fct = "C_DecryptUpdate";
+			rv = p11->C_DecryptUpdate(session, cipher_algs[i].ciphertext + ctlen, isize,
+				ptext1 + poff, &osize);
+			if (rv == CKR_FUNCTION_NOT_SUPPORTED) {
+				printf("  Note: C_DecryptUpdate(), C_DecryptFinal() not supported\n");
+				break;
+			}
+			if (rv != CKR_OK) {
+				goto cipher_clup;
+			}
+
+			/* move offsets */
+			ctlen += isize;
+			poff += osize;
+		}
+
+		/* Only do final if update is supported */
+		if (rv == CKR_OK) {
+			CK_ULONG osize = sizeof(ptext1) - poff;
+			fct = "C_DecryptFinal";
+			rv = p11->C_DecryptFinal(session, ptext1 + poff, &osize);
+			if (rv != CKR_OK) {
+				goto cipher_clup;
+			}
+
+			/* compare values for match */
+			if (memcmp(ptext1, cipher_algs[i].plaintext, cipher_algs[i].ptsz) != 0) {
+				printf("ERR: wrong plaintext value\n");
+				rv = CKR_GENERAL_ERROR;
+				goto cipher_clup;
+			}
+		}
+
+		/* Second test is decrypt one shot */
+		fct = "C_DecryptInit";
+		rv = p11->C_DecryptInit(session, &mech, hkey);
+		if (rv != CKR_OK) {
+			goto cipher_clup;
+		}
+
+		poff = sizeof(ptext2);
+		fct = "C_Decrypt";
+		rv = p11->C_Decrypt(session, cipher_algs[i].ciphertext, cipher_algs[i].ctsz,
+			ptext2, &poff);
+		if (rv == CKR_FUNCTION_NOT_SUPPORTED) {
+			printf("  Note: C_Decrypt() not supported\n");
+			goto cipher_clup;
+		}
+
+		/* compare values for match */
+		if (memcmp(ptext2, cipher_algs[i].plaintext, cipher_algs[i].ptsz) != 0) {
+			printf("ERR: wrong plaintext value\n");
+			rv = CKR_GENERAL_ERROR;
+			goto cipher_clup;
+		}
+
+cipher_clup:
+		test_delete_cipher_key(session, hkey);
+		if (rv != CKR_OK) {
+			p11_fatal(fct, rv);
+		} else {
+			printf("OK\n");
+		}
+	}
+
+	if (supported == 0) {
+		fprintf(stderr, "Ciphers: not implemented\n");
+	}
+
+	return errors;
+}
+
 #ifdef ENABLE_OPENSSL
 static EVP_PKEY *get_public_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE privKeyObject)
 {
@@ -7470,6 +7736,8 @@ static int p11_test(CK_SESSION_HANDLE session)
 	errors += test_random(session);
 
 	errors += test_digest(session);
+
+	errors += test_cipher(session);
 
 	errors += test_signature(session);
 
