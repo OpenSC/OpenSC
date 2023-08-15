@@ -50,7 +50,8 @@ extern "C" {
 #if LIBRESSL_VERSION_NUMBER < 0x30500000L
 #define FIPS_mode()                             (0)
 #endif
-#ifndef EVP_sha3_224
+/* OpenSSL 1.1.1 has EVP_sha3_* */
+#if defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER < 0x30800000L
 #define EVP_sha3_224()                          (NULL)
 #define EVP_sha3_256()                          (NULL)
 #define EVP_sha3_384()                          (NULL)
