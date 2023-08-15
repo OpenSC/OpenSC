@@ -74,8 +74,9 @@ uninstall-hook:
 else
 # see http://wiki.cacert.org/wiki/Pkcs11TaskForce
 install-exec-hook:
-	rm -f "$(DESTDIR)$(libdir)/onepin-opensc-pkcs11$(DYN_LIB_EXT)"
-	$(LN_S) "$(DESTDIR)$(libdir)/opensc-pkcs11$(DYN_LIB_EXT)" "$(DESTDIR)$(libdir)/onepin-opensc-pkcs11$(DYN_LIB_EXT)"
+	cd $(DESTDIR)$(libdir) && \
+	  rm -f "onepin-opensc-pkcs11$(DYN_LIB_EXT)" && \
+	  $(LN_S) "opensc-pkcs11$(DYN_LIB_EXT)" "onepin-opensc-pkcs11$(DYN_LIB_EXT)"
 	$(MKDIR_P) "$(DESTDIR)$(pkcs11dir)"
 	for l in opensc-pkcs11$(DYN_LIB_EXT) onepin-opensc-pkcs11$(DYN_LIB_EXT) pkcs11-spy$(DYN_LIB_EXT); do \
 		rm -f "$(DESTDIR)$(pkcs11dir)/$$l"; \
