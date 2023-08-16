@@ -186,7 +186,6 @@ enum {
 #define PIV_CS_CS7		0x2E
 
 #ifdef ENABLE_PIV_SM
-/* TODO temp to test with or without LIBCTX PR */
 #ifdef USE_OPENSSL3_LIBCTX
 #define PIV_LIBCTX card->ctx->ossl3ctx->libctx
 #else
@@ -222,7 +221,7 @@ enum {
 		const EVP_CIPHER *(*cipher_ecb)(void);
 		char *cipher_cbc_name;
 		char *cipher_ecb_name;
-		char *curve_group; /* curve name TODO or is this just p-256 or p-384?*/
+		char *curve_group;
 	} cipher_suite_t;
 
 // clang-fromat off
@@ -429,7 +428,7 @@ typedef struct piv_private_data {
 	unsigned int init_flags;
 	u8  csID; /* 800-73-4 Cipher Suite ID 0x27 or 0x2E */
 #ifdef ENABLE_PIV_SM
-	cipher_suite_t *cs; /* active cypher_suite */
+	cipher_suite_t *cs; /* active cipher_suite */
 	piv_cvc_t sm_cvc;  /* 800-73-4:  SM CVC Table 15 */
 	piv_cvc_t sm_in_cvc; /* Intermediate CVC Table 16 */
 	unsigned long  sm_flags;
@@ -461,8 +460,8 @@ struct piv_aid {
  * key History object, certs and keys and Iris objects.
  * These can be discovered using GET DATA
 
- * 800-73-4 Has many changs, including optional Secure Messaging,
- * optional Virtial Contact Interface and pairing code.
+ * 800-73-4 Has many changes, including optional Secure Messaging,
+ * optional Virtual Contact Interface and pairing code.
  */
 
 /* ATRs of cards known to have PIV applet. But must still be tested for a PIV applet */
@@ -849,19 +848,6 @@ static int piv_cache_internal_data(sc_card_t *card, int enumtag);
 static int piv_logout(sc_card_t *card);
 static int piv_match_card_continued(sc_card_t *card);
 static int piv_obj_cache_free_entry(sc_card_t *card, int enumtag, int flags);
-
-/* compare  sc_asn1_read_tag to expected tag_long */
-/*  after #2079  can be converted to  inline  "if ((cla<<24 ! tag) == tag_long))" */
-static int piv_is_expected_tag(unsigned int cla, unsigned int tag, unsigned int tag_long)
-{
-	unsigned int tag_read = tag;
-
-	/* UNIVERSAL is 0,  PRIVATE is both APPLICATION and CONTEXT */
-	tag_read |= ((cla & SC_ASN1_TAG_APPLICATION) ? SC_ASN1_APP : 0);
-	tag_read |= ((cla & SC_ASN1_TAG_CONTEXT) ? SC_ASN1_CTX : 0);
-	tag_read |= ((cla & SC_ASN1_TAG_CONSTRUCTED) ? SC_ASN1_CONS : 0);
-	return  (tag_read == tag_long);
-}
 
 #ifdef ENABLE_PIV_SM
 static void piv_inc(u8 *counter, size_t size);
@@ -1253,7 +1239,7 @@ static int piv_decode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu
 		goto err;
 	}
 
-	/* if no data returned clear plain resplen */
+	/* no SM data results in no plain text data */
 	if (!(asn1_sm_response[0].flags & SC_ASN1_PRESENT)) {
 		plain->resplen = 0;
 	}
@@ -1644,9 +1630,7 @@ static int piv_load_options(sc_card_t *card)
 	const char *option = NULL;
 	int piv_pairing_code_found = 0;
 	int piv_use_sm_found = 0;
-#endif
 
-#ifdef ENABLE_PIV_SM
 	/* pairing code is 8 decimal digits and is card specific */
 	if ((option = getenv("PIV_PAIRING_CODE")) != NULL) {
 		sc_log(card->ctx,"getenv(\"PIV_PAIRING_CODE\") found");
@@ -3081,7 +3065,7 @@ piv_get_data(sc_card_t * card, int enumtag, u8 **buf, size_t *buf_len)
 		r_tag = sc_asn1_read_tag(&body, r, &cla_out, &tag_out, &bodylen);
 		if (r_tag != SC_SUCCESS
 				|| body == NULL
-				|| !piv_is_expected_tag(cla_out, tag_out, piv_objects[enumtag].resp_tag)) {
+				|| ((cla_out << 24 | tag_out) != piv_objects[enumtag].resp_tag)) {
 			sc_log(card->ctx, "invalid tag or length r_tag:%d body:%p", r_tag, body);
 			r = SC_ERROR_FILE_NOT_FOUND;
 			goto err;
@@ -4075,7 +4059,7 @@ static int piv_general_external_authenticate(sc_card_t *card,
 	u8 *p;
 	u8 rbuf[4096];
 	u8 *key = NULL;
-	u8 *cypher_text = NULL;
+	u8 *cipher_text = NULL;
 	u8 *output_buf = NULL;
 	const u8 *body = NULL;
 	const u8 *challenge_data = NULL;
@@ -4083,7 +4067,7 @@ static int piv_general_external_authenticate(sc_card_t *card,
 	size_t output_len;
 	size_t challenge_len;
 	size_t keylen = 0;
-	size_t cypher_text_len = 0;
+	size_t cipher_text_len = 0;
 	u8 sbuf[255];
 	EVP_CIPHER_CTX * ctx = NULL;
 	EVP_CIPHER *cipher = NULL;
@@ -4166,35 +4150,35 @@ static int piv_general_external_authenticate(sc_card_t *card,
 		goto err;
 	}
 
-	cypher_text = malloc(challenge_len);
-	if (!cypher_text) {
+	cipher_text = malloc(challenge_len);
+	if (!cipher_text) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not allocate buffer for cipher text\n");
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
 
 	EVP_CIPHER_CTX_set_padding(ctx,0);
-	if (!EVP_EncryptUpdate(ctx, cypher_text, &outlen, challenge_data, challenge_len)) {
+	if (!EVP_EncryptUpdate(ctx, cipher_text, &outlen, challenge_data, challenge_len)) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Encrypt update fail\n");
 		piv_log_openssl(card->ctx);
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
-	cypher_text_len += outlen;
+	cipher_text_len += outlen;
 
-	if (!EVP_EncryptFinal(ctx, cypher_text + cypher_text_len, &outlen)) {
+	if (!EVP_EncryptFinal(ctx, cipher_text + cipher_text_len, &outlen)) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Final fail\n");
 		piv_log_openssl(card->ctx);
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
-	cypher_text_len += outlen;
+	cipher_text_len += outlen;
 
 	/*
 	 * Actually perform the sanity check on lengths plaintext length vs
 	 * encrypted length
 	 */
-	if (cypher_text_len != (size_t)tmplen) {
+	if (cipher_text_len != (size_t)tmplen) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Length test fail\n");
 		piv_log_openssl(card->ctx);
 		r = SC_ERROR_INTERNAL;
@@ -4221,7 +4205,7 @@ static int piv_general_external_authenticate(sc_card_t *card,
 	 * memcopy the body past the 7C<len> portion
 	 * Transmit
 	 */
-	tmplen = sc_asn1_put_tag(0x82, NULL, cypher_text_len, NULL, 0, NULL);
+	tmplen = sc_asn1_put_tag(0x82, NULL, cipher_text_len, NULL, 0, NULL);
 	if (tmplen <= 0) {
 		r = SC_ERROR_INTERNAL;
 		goto err;
@@ -4233,7 +4217,7 @@ static int piv_general_external_authenticate(sc_card_t *card,
 	}
 
 	/* Build the 0x82 TLV and append to the 7C<len> tag */
-	r = sc_asn1_put_tag(0x82, cypher_text, cypher_text_len, p, output_len - (p - output_buf), &p);
+	r = sc_asn1_put_tag(0x82, cipher_text, cipher_text_len, p, output_len - (p - output_buf), &p);
 	if (r != SC_SUCCESS) {
 		goto err;
 	}
@@ -4263,8 +4247,8 @@ err:
 		free(key);
 	}
 
-	if (cypher_text)
-		free(cypher_text);
+	if (cipher_text)
+		free(cipher_text);
 
 	if (output_buf)
 		free(output_buf);
@@ -4878,7 +4862,7 @@ static int piv_parse_ccc(sc_card_t *card, u8* rbuf, size_t rbuflen)
 	if ((r = sc_asn1_read_tag(&body, rbuflen, &cla_out, &tag_out,  &bodylen)) != SC_SUCCESS
 			|| body == NULL
 			|| bodylen == 0
-			|| !piv_is_expected_tag(cla_out, tag_out, piv_objects[PIV_OBJ_CCC].resp_tag)) {
+			|| ((cla_out << 24 | tag_out) != piv_objects[PIV_OBJ_CCC].resp_tag)) {
 		sc_log(card->ctx, "DER problem %d",r);
 		r = SC_ERROR_INVALID_ASN1_OBJECT;
 		goto err;
@@ -5034,7 +5018,7 @@ piv_process_history(sc_card_t *card)
 	if (rbuflen != 0) {
 		body = rbuf;
 		if ((r = sc_asn1_read_tag(&body, rbuflen, &cla_out, &tag_out,  &bodylen)) != SC_SUCCESS
-				|| !piv_is_expected_tag(cla_out, tag_out, piv_objects[PIV_OBJ_HISTORY].resp_tag)) {
+				|| ((cla_out << 24 | tag_out) != piv_objects[PIV_OBJ_HISTORY].resp_tag)) {
 			sc_log(card->ctx, "DER problem %d",r);
 			r = SC_ERROR_INVALID_ASN1_OBJECT;
 			goto err;
@@ -5438,7 +5422,7 @@ static int piv_match_card_continued(sc_card_t *card)
 	 * If for some reason future cards have larger objects, this value needs to
 	 * be increased here.
 	 */
-	priv->max_object_size = MAX_FILE_SIZE;
+	priv->max_object_size = MAX_FILE_SIZE - 256; /* fix SM apdu resplen issue */
 	priv->selected_obj = -1;
 	priv->pin_preference = 0x80; /* 800-73-3 part 1, table 3 */
 	/* TODO Dual CAC/PIV are bases on 800-73-1 where priv->pin_preference = 0. need to check later */
