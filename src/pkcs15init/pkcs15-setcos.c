@@ -349,6 +349,10 @@ setcos_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 
 	/* Replace the path of instantiated key template by the path from the object data. */
 	memcpy(&file->path, &key_info->path, sizeof(file->path));
+	if (file->path.len < 2) {
+		sc_file_free(file);
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Invalid path");
+	}
 	file->id = file->path.value[file->path.len - 2] * 0x100
 			+ file->path.value[file->path.len - 1];
 
