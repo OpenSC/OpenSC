@@ -531,7 +531,9 @@ cosm_new_file(struct sc_profile *profile, struct sc_card *card,
 	}
 
 	file->id |= (num & 0xFF);
-	file->path.value[file->path.len-1] |= (num & 0xFF);
+	if (file->path.len) {
+		file->path.value[file->path.len - 1] |= (num & 0xFF);
+	}
 	if (file->type == SC_FILE_TYPE_INTERNAL_EF)   {
 		file->ef_structure = structure;
 	}
