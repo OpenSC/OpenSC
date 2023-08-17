@@ -532,7 +532,7 @@ sc_pkcs15_get_lastupdate(struct sc_pkcs15_card *p15card)
 	struct sc_context *ctx  = p15card->card->ctx;
 	struct sc_file *file = NULL;
 	struct sc_asn1_entry asn1_last_update[C_ASN1_LAST_UPDATE_SIZE];
-	unsigned char *content, last_update[32];
+	unsigned char *content, last_update[32] = {0};
 	size_t lupdate_len = sizeof(last_update) - 1;
 	int r, content_len;
 	size_t size;
@@ -569,9 +569,11 @@ sc_pkcs15_get_lastupdate(struct sc_pkcs15_card *p15card)
 	if (r < 0)
 		return NULL;
 
-	p15card->tokeninfo->last_update.gtime = strdup((char *)last_update);
-	if (!p15card->tokeninfo->last_update.gtime)
-		return NULL;
+	if (asn1_last_update[0].flags & SC_ASN1_PRESENT) {
+		p15card->tokeninfo->last_update.gtime = strdup((char *)last_update);
+		if (!p15card->tokeninfo->last_update.gtime)
+			return NULL;
+	}
 done:
 	sc_log(ctx, "lastUpdate.gtime '%s'", p15card->tokeninfo->last_update.gtime);
 	return p15card->tokeninfo->last_update.gtime;
@@ -2401,7 +2403,7 @@ sc_pkcs15_parse_unusedspace(const unsigned char *buf, size_t buflen, struct sc_p
 	return 0;
 }
 
-static int decompress_file(sc_card_t *card, unsigned char *buf, size_t buflen, 
+static int decompress_file(sc_card_t *card, unsigned char *buf, size_t buflen,
 		unsigned char **out, size_t *outlen, unsigned long flags)
 {
 	LOG_FUNC_CALLED(card->ctx);
@@ -2509,13 +2511,13 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 			} else {
 				len = MAX_FILE_SIZE;
 			}
-			
+
 			if ((in_path->index <= 0) || (in_path->index > (int)(file->record_count))) {
 				sc_log(ctx, "  record number out of bounds: %d", in_path->index);
 				r = SC_ERROR_RECORD_NOT_FOUND;
 				goto fail_unlock;
 			}
-		
+
 		} else {
 
 			if (in_path->count < 0) {
