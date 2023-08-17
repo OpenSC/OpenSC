@@ -646,8 +646,7 @@ sc_profile_add_file(sc_profile_t *profile, const char *name, sc_file_t *file)
 	LOG_FUNC_CALLED(ctx);
 	if (!path.len)   {
 		parent = profile->df_info;
-		        }
-        else   {
+	} else {
 		path.len -= 2;
 		parent = sc_profile_find_file_by_path(profile, &path);
 	}
