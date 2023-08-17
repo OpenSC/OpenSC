@@ -364,6 +364,7 @@ setcos_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		LOG_TEST_RET(ctx, r, "Failed to delete private key file");
 	} else if (r != SC_ERROR_FILE_NOT_FOUND) {
 		sc_file_free(file);
+		file = NULL;
 		LOG_TEST_RET(ctx, r, "Select private key file error");
 	}
 
