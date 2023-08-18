@@ -464,7 +464,7 @@ int callback_public_keys(test_certs_t *objects,
 	} else if (o->key_type == CKK_EC) {
 		int ec_error = 1;
 		ASN1_OBJECT *oid = NULL;
-		ASN1_OCTET_STRING *s = NULL;
+		ASN1_OCTET_STRING *pub_asn1 = NULL;
 		const unsigned char *pub, *p;
 		char *hex = NULL;
 		BIGNUM *bn = NULL;
@@ -500,11 +500,11 @@ int callback_public_keys(test_certs_t *objects,
 		EC_GROUP_set_asn1_flag(ecgroup, OPENSSL_EC_NAMED_CURVE);
 
 		p = template[7].pValue;
-		s = d2i_ASN1_OCTET_STRING(NULL, &p, template[7].ulValueLen);
-		pub = ASN1_STRING_get0_data(s);
-		pub_len = ASN1_STRING_length(s);
+		pub_asn1 = d2i_ASN1_OCTET_STRING(NULL, &p, template[7].ulValueLen);
+		pub = ASN1_STRING_get0_data(pub_asn1);
+		pub_len = ASN1_STRING_length(pub_asn1);
 		bn = BN_bin2bn(pub, pub_len, NULL);
-		ASN1_STRING_free(s);
+		ASN1_STRING_free(pub_asn1);
 		if (bn == NULL) {
 			debug_print(" [WARN %s ] Cannot convert EC_POINT from"
 				" PKCS#11 to BIGNUM", o->id_str);
