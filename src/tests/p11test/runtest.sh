@@ -129,15 +129,15 @@ function card_setup() {
 			;;
 		"myeid")
 			GENERATE_KEYS=0 # we generate them directly here
-			P11LIB="../pkcs11/.libs/opensc-pkcs11.so"
-			PKCS15_INIT --erase-card --so-pin $SOPIN
-			PKCS15_INIT -C --pin $PIN --puk $SOPIN --so-pin $SOPIN --so-puk $SOPIN
-			PKCS15_INIT -P -a 1 -l "Basic PIN" --pin $PIN --puk $PIN
-			INIT=$PKCS15_INIT --auth-id 01 --so-pin $SOPIN --pin $PIN
-			INIT --generate-key ec:prime256v1 --id 01 --label="EC key"
-			INIT --generate-key rsa:2048 --id 02 --label="RSA key" --key-usage=sign,decrypt
-			INIT --store-secret-key /dev/urandom --secret-key-algorithm aes:256 --extractable --id 03 --label="AES key" --key-usage=sign,decrypt
-			PKCS15_INIT -F
+			P11LIB="../../pkcs11/.libs/opensc-pkcs11.so"
+			$PKCS15_INIT --erase-card --so-pin $SOPIN
+			$PKCS15_INIT -C --pin $PIN --puk $SOPIN --so-pin $SOPIN --so-puk $SOPIN
+			$PKCS15_INIT -P -a 1 -l "Basic PIN" --pin $PIN --puk $PIN
+			INIT="$PKCS15_INIT --auth-id 01 --so-pin $SOPIN --pin $PIN"
+			$INIT --generate-key ec:prime256v1 --id 01 --label="EC key"
+			$INIT --generate-key rsa:2048 --id 02 --label="RSA key" --key-usage=sign,decrypt
+			$INIT --store-secret-key /dev/urandom --secret-key-algorithm aes:256 --extractable --id 03 --label="AES key" --key-usage=sign,decrypt
+			$PKCS15_INIT -F
 			;;
 		*)
 			echo "Error: Missing argument."
