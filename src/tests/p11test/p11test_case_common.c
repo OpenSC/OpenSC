@@ -567,8 +567,6 @@ int callback_public_keys(test_certs_t *objects,
 				EC_POINT_free(ecpoint);
 				return -1;
 			}
-			EC_GROUP_free(ecgroup);
-			EC_POINT_free(ecpoint);
 			o->verify_public = 1;
 		} else { /* store the public key for future use */
 			o->type = EVP_PKEY_EC;
@@ -577,9 +575,7 @@ int callback_public_keys(test_certs_t *objects,
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 			EC_KEY *ec = EC_KEY_new_by_curve_name(nid);
 			EC_KEY_set_public_key(ec, ecpoint);
-			EC_POINT_free(ecpoint);
 			EC_KEY_set_group(ec, ecgroup);
-			EC_GROUP_free(ecgroup);
 			EVP_PKEY_set1_EC_KEY(o->key, ec);
 			EC_KEY_free(ec);
 #else
@@ -620,6 +616,8 @@ int callback_public_keys(test_certs_t *objects,
 			OSSL_PARAM_free(params);
 #endif
 		}
+		EC_GROUP_free(ecgroup);
+		EC_POINT_free(ecpoint);
 	} else if (o->key_type == CKK_EC_EDWARDS
 		|| o->key_type == CKK_EC_MONTGOMERY) {
 		EVP_PKEY *key = NULL;
