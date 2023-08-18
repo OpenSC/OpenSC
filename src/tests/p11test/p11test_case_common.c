@@ -557,16 +557,11 @@ int callback_public_keys(test_certs_t *objects,
 			EC_KEY_free(ec);
 #else
 			ctx = EVP_PKEY_CTX_new_from_name(0, "EC", 0);
-			unsigned char pubkey[80]; size_t pubkey_len = 0;
-			if (EVP_PKEY_get_octet_string_param(o->key, OSSL_PKEY_PARAM_PUB_KEY, pubkey, sizeof(pubkey), &pubkey_len) != 1) {
-				debug_print(" [WARN %s ] Cannot get params from EVP_PKEY", o->id_str);
-				goto ec_out;
-			}
 
 			const char *curve_name = OBJ_nid2sn(nid);
 			if (!(bld = OSSL_PARAM_BLD_new()) ||
 				OSSL_PARAM_BLD_push_utf8_string(bld, "group", curve_name, strlen(curve_name)) != 1 ||
-				OSSL_PARAM_BLD_push_octet_string(bld, "pub", pubkey, pubkey_len) != 1 ||
+				OSSL_PARAM_BLD_push_octet_string(bld, "pub", pub, pub_len) != 1 ||
 				!(params = OSSL_PARAM_BLD_to_param(bld))) {
 				debug_print(" [WARN %s ] Cannot set params from EVP_PKEY", o->id_str);
 				goto ec_out;
