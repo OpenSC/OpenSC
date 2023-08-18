@@ -466,8 +466,6 @@ int callback_public_keys(test_certs_t *objects,
 		ASN1_OBJECT *oid = NULL;
 		ASN1_OCTET_STRING *pub_asn1 = NULL;
 		const unsigned char *pub, *p;
-		char *hex = NULL;
-		BIGNUM *bn = NULL;
 		EC_POINT *ecpoint = NULL;
 		EC_GROUP *ecgroup = NULL;
 		int nid, pub_len;
@@ -503,26 +501,14 @@ int callback_public_keys(test_certs_t *objects,
 		pub_asn1 = d2i_ASN1_OCTET_STRING(NULL, &p, template[7].ulValueLen);
 		pub = ASN1_STRING_get0_data(pub_asn1);
 		pub_len = ASN1_STRING_length(pub_asn1);
-		bn = BN_bin2bn(pub, pub_len, NULL);
-		ASN1_STRING_free(pub_asn1);
-		if (bn == NULL) {
-			debug_print(" [WARN %s ] Cannot convert EC_POINT from"
-				" PKCS#11 to BIGNUM", o->id_str);
+
+		if (!(ecpoint = EC_POINT_new(ecgroup))) {
+			debug_print(" [WARN %s ] Cannot allocate EC_POINT", o->id_str);
 			goto ec_out;
 		}
 
-		hex = BN_bn2hex(bn);
-		BN_free(bn);
-		if (hex == NULL) {
-			debug_print(" [WARN %s ] Cannot convert EC_POINT from"
-				" BIGNUM hex representation", o->id_str);
-			goto ec_out;
-		}
-		ecpoint = EC_POINT_hex2point(ecgroup, hex, NULL, NULL);
-		OPENSSL_free(hex);
-		if (ecpoint == NULL) {
-			debug_print(" [WARN %s ] Cannot convert EC_POINT from"
-				" BIGNUM to OpenSSL format", o->id_str);
+		if (EC_POINT_oct2point(ecgroup, ecpoint, pub, pub_len, NULL) != 1) {
+			debug_print(" [WARN %s ] Cannot parse EC_POINT", o->id_str);
 			goto ec_out;
 		}
 
@@ -599,6 +585,7 @@ int callback_public_keys(test_certs_t *objects,
 		ec_error = 0;
 
 	ec_out:
+		ASN1_STRING_free(pub_asn1);
 		EC_GROUP_free(ecgroup);
 		EC_POINT_free(ecpoint);
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
