@@ -1410,7 +1410,9 @@ sc_pkcs11_encrypt(sc_pkcs11_operation_t *operation,
 
 	/* EncryptFinalize */
 	rv = key->ops->encrypt(operation->session, key, &operation->mechanism,
-			NULL, 0, pEncryptedData + ulEncryptedDataLen, &ulLastEncryptedPartLen);
+			NULL, 0,
+			pEncryptedData ? pEncryptedData + ulEncryptedDataLen : NULL,
+			&ulLastEncryptedPartLen);
 
 	if (pulEncryptedDataLen)
 		*pulEncryptedDataLen = ulEncryptedDataLen + ulLastEncryptedPartLen;
@@ -1545,7 +1547,8 @@ sc_pkcs11_decrypt(sc_pkcs11_operation_t *operation,
 
 	/* DecryptFinalize */
 	rv = key->ops->decrypt(operation->session, key, &operation->mechanism,
-			NULL, 0, pData + ulDataLen, &ulLastDataLen);
+			NULL, 0, pData ? pData + ulDataLen : NULL,
+			&ulLastDataLen);
 	if (pulDataLen)
 		*pulDataLen = ulDataLen + ulLastDataLen;
 	return rv;
