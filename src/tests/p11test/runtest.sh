@@ -136,7 +136,8 @@ function card_setup() {
 			INIT="$PKCS15_INIT --auth-id 01 --so-pin $SOPIN --pin $PIN"
 			$INIT --generate-key ec:prime256v1 --id 01 --label="EC key" --key-usage=sign,keyAgreement
 			$INIT --generate-key rsa:2048 --id 02 --label="RSA key" --key-usage=sign,decrypt
-			$INIT --store-secret-key /dev/urandom --secret-key-algorithm aes:256 --extractable --id 03 --label="AES key" --key-usage=sign,decrypt
+			$INIT --store-secret-key /dev/urandom --secret-key-algorithm aes:256 --extractable --id 03 --label="AES256 key" --key-usage=sign,decrypt
+			$INIT --store-secret-key /dev/urandom --secret-key-algorithm aes:128 --extractable --id 04 --label="AES128 key" --key-usage=sign,decrypt
 			$PKCS15_INIT -F
 			;;
 		*)
