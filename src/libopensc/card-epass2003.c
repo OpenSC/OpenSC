@@ -128,17 +128,17 @@ static const struct sc_card_error epass2003_errors[] = {
 	{ 0x6283, SC_ERROR_CARD_CMD_FAILED,	"Selected file invalidated" },
 	{ 0x6284, SC_ERROR_CARD_CMD_FAILED,	"FCI not formatted according to ISO 7816-4" },
 
-	{ 0x6300, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed"}, 
-	{ 0x63C1, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed. One tries left"}, 
-	{ 0x63C2, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed. Two tries left"}, 
-	{ 0x63C3, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed"}, 
-	{ 0x63C4, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed"}, 
-	{ 0x63C5, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed"}, 
-	{ 0x63C6, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed"}, 
-	{ 0x63C7, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed"}, 
-	{ 0x63C8, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed"}, 
-	{ 0x63C9, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed"}, 
-	{ 0x63CA, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed"}, 
+	{ 0x6300, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed"},
+	{ 0x63C1, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed. One tries left"},
+	{ 0x63C2, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed. Two tries left"},
+	{ 0x63C3, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed"},
+	{ 0x63C4, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed"},
+	{ 0x63C5, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed"},
+	{ 0x63C6, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed"},
+	{ 0x63C7, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed"},
+	{ 0x63C8, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed"},
+	{ 0x63C9, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed"},
+	{ 0x63CA, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed"},
 
 	{ 0x6381, SC_ERROR_CARD_CMD_FAILED,	"Warning: file filled up by last write" },
 
@@ -339,22 +339,22 @@ out:
 
 static int
 aes128_encrypt_cmac_ft(struct sc_card *card, const unsigned char *key, int keysize,
-	const unsigned char *input, size_t length, unsigned char *output,unsigned char *iv) 
+	const unsigned char *input, size_t length, unsigned char *output,unsigned char *iv)
 {
-	unsigned char data1[32] = {0}; 
-	unsigned char data2[32] = {0}; 
-	unsigned char k1Bin[32] = {0}; 
-	unsigned char k2Bin[32] = {0}; 
+	unsigned char data1[32] = {0};
+	unsigned char data2[32] = {0};
+	unsigned char k1Bin[32] = {0};
+	unsigned char k2Bin[32] = {0};
 
-	unsigned char check = 0; 
-	BIGNUM *enc1,*lenc1; 
-	BIGNUM *enc2,*lenc2; 
+	unsigned char check = 0;
+	BIGNUM *enc1,*lenc1;
+	BIGNUM *enc2,*lenc2;
 
     // k1
-	int offset = 0; 
+	int offset = 0;
 	int r = SC_ERROR_INTERNAL;
-	unsigned char out[32] = {0}; 
-	unsigned char iv0[EVP_MAX_IV_LENGTH] = {0}; 
+	unsigned char out[32] = {0};
+	unsigned char iv0[EVP_MAX_IV_LENGTH] = {0};
 	EVP_CIPHER *alg = sc_evp_cipher(card->ctx, "AES-128-ECB");
 	r = openssl_enc(alg, key, iv0, data1, 16, out);
 	if (r != SC_SUCCESS) {
@@ -369,8 +369,8 @@ aes128_encrypt_cmac_ft(struct sc_card *card, const unsigned char *key, int keysi
 	BN_lshift1(lenc1,enc1);
 	BN_bn2bin(lenc1,k1Bin);
 	if(check & 0x80){
-		offset = 1; 
-		k1Bin[15+offset] ^= 0x87; 
+		offset = 1;
+		k1Bin[15+offset] ^= 0x87;
 	}
 	BN_free(enc1);
 	BN_free(lenc1);
@@ -390,7 +390,7 @@ aes128_encrypt_cmac_ft(struct sc_card *card, const unsigned char *key, int keysi
 	}
 	BN_free(enc2);
 	BN_free(lenc2);
-    //padding 
+    //padding
 	if(length < 16){
 		memcpy(&data2[0],input,length);
 		data2[length] = 0x80;
@@ -416,7 +416,7 @@ aes128_encrypt_cmac(struct sc_card *card, const unsigned char *key, int keysize,
 	if(ctx == NULL) {
 		return SC_ERROR_INTERNAL;
 	}
-	
+
 	if(!CMAC_Init(ctx, key,keysize/8, EVP_aes_128_cbc(), NULL)) {
 		goto err;
 	}
@@ -431,11 +431,11 @@ err:
 	CMAC_CTX_free(ctx);
 #else
 	EVP_MAC *mac = EVP_MAC_fetch(card->ctx->ossl3ctx->libctx, "cmac", NULL);
-	if(mac == NULL){    
+	if(mac == NULL){
 		return r;
 	}
 
-	OSSL_PARAM params[2] = {0}; 
+	OSSL_PARAM params[2] = {0};
 	params[0] = OSSL_PARAM_construct_utf8_string("cipher","aes-128-cbc", 0);
 	params[1] = OSSL_PARAM_construct_end();
 
@@ -443,16 +443,16 @@ err:
 	if(ctx == NULL){
 		EVP_MAC_CTX_free(ctx);
 		return r;
-	}    
+	}
 	if(!EVP_MAC_init(ctx, (const unsigned char *)key, keysize/8,params)){
 		goto err;
 	}
 	if(!EVP_MAC_update(ctx, input,length)){
-		goto err; 
+		goto err;
 	}
-	if(!EVP_MAC_final(ctx, output, &mactlen, 16)) {    
-		goto err; 
-	}    
+	if(!EVP_MAC_final(ctx, output, &mactlen, 16)) {
+		goto err;
+	}
 	r = SC_SUCCESS;
 err:
 	EVP_MAC_CTX_free(ctx);
@@ -604,7 +604,7 @@ openssl_dig(const EVP_MD * digest, const unsigned char *input, size_t length,
 		r = SC_ERROR_OUT_OF_MEMORY;
 		goto err;
 	}
-		
+
 	EVP_MD_CTX_init(ctx);
 	if (!EVP_DigestInit_ex(ctx, digest, NULL)
 			|| !EVP_DigestUpdate(ctx, input, length)) {
@@ -661,10 +661,10 @@ gen_init_key(struct sc_card *card, unsigned char *key_enc, unsigned char *key_ma
 	unsigned char cryptogram[256] = { 0 };	/* host cryptogram */
 	unsigned char iv[16] = { 0 };
 	epass2003_exdata *exdata = NULL;
-	
-	if (!card->drv_data) 
+
+	if (!card->drv_data)
 		return SC_ERROR_INVALID_ARGUMENTS;
-	
+
 	exdata = (epass2003_exdata *)card->drv_data;
 	isFips = exdata->bFipsCertification;
 
@@ -785,13 +785,13 @@ verify_init_key(struct sc_card *card, unsigned char *ran_key, unsigned char key_
 	unsigned char isFips;
 	epass2003_exdata *exdata = NULL;
 
-	if (!card->drv_data) 
+	if (!card->drv_data)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	exdata = (epass2003_exdata *)card->drv_data;
 	isFips = exdata->bFipsCertification;
 
 	LOG_FUNC_CALLED(card->ctx);
-	
+
 	if(isFips)
 	{
 		memset(data,0x00,15);
@@ -888,7 +888,7 @@ mutual_auth(struct sc_card *card, unsigned char *key_enc,
 	unsigned char ran_key[8] = { 0 };
 	epass2003_exdata *exdata = NULL;
 
-	if (!card->drv_data) 
+	if (!card->drv_data)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	exdata = (epass2003_exdata *)card->drv_data;
 
@@ -916,7 +916,7 @@ epass2003_refresh(struct sc_card *card)
 	int r = SC_SUCCESS;
 	epass2003_exdata *exdata = NULL;
 
-	if (!card->drv_data) 
+	if (!card->drv_data)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	exdata = (epass2003_exdata *)card->drv_data;
@@ -945,7 +945,7 @@ construct_data_tlv(struct sc_card *card, struct sc_apdu *apdu, unsigned char *ap
 	epass2003_exdata *exdata = NULL;
 	int r = 0;
 
-	if (!card->drv_data) 
+	if (!card->drv_data)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	exdata = (epass2003_exdata *)card->drv_data;
@@ -1029,7 +1029,7 @@ construct_mac_tlv(struct sc_card *card, unsigned char *apdu_buf, size_t data_tlv
 	int i = (KEY_TYPE_AES == key_type ? 15 : 7);
 	epass2003_exdata *exdata = NULL;
 
-	if (!card->drv_data) 
+	if (!card->drv_data)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	exdata = (epass2003_exdata *)card->drv_data;
@@ -1207,7 +1207,7 @@ encode_apdu(struct sc_card *card, struct sc_apdu *plain, struct sc_apdu *sm,
 	mac_tlv[0] = 0x8E;
 	mac_tlv[1] = 8;
 	/* size_t plain_le = 0; */
-	if (!card->drv_data) 
+	if (!card->drv_data)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	exdata = (epass2003_exdata*)card->drv_data;
 	block_size = (KEY_TYPE_DES == exdata->smtype ? 16 : 8);
@@ -1236,7 +1236,7 @@ encode_apdu(struct sc_card *card, struct sc_apdu *plain, struct sc_apdu *sm,
 		if (0 != construct_le_tlv(plain, apdu_buf, data_tlv_len, le_tlv,
 				     &le_tlv_len, exdata->smtype))
 			return -1;
-	
+
 	if(exdata->bFipsCertification && plain->lc == 0 && apdu_buf[1] == 0x82 && apdu_buf[2] == 0x01){
 		if(0 != construct_mac_tlv_case1(card, apdu_buf, data_tlv_len, le_tlv_len, mac_tlv, &mac_tlv_len, exdata->smtype))
 			return -1;
@@ -1289,10 +1289,10 @@ epass2003_sm_wrap_apdu(struct sc_card *card, struct sc_apdu *plain, struct sc_ap
 	unsigned char buf[4096] = { 0 };	/* APDU buffer */
 	size_t buf_len = sizeof(buf);
 	epass2003_exdata *exdata = NULL;
-	
-	if (!card->drv_data) 
+
+	if (!card->drv_data)
 		return SC_ERROR_INVALID_ARGUMENTS;
-	
+
 	exdata = (epass2003_exdata *)card->drv_data;
 
 	LOG_FUNC_CALLED(card->ctx);
@@ -1454,7 +1454,7 @@ decrypt_response(struct sc_card *card, unsigned char *in, size_t inlen, unsigned
 	unsigned char plaintext[4096] = { 0 };
 	epass2003_exdata *exdata = NULL;
 
-	if (!card->drv_data) 
+	if (!card->drv_data)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	exdata = (epass2003_exdata *)card->drv_data;
@@ -1510,7 +1510,7 @@ epass2003_sm_unwrap_apdu(struct sc_card *card, struct sc_apdu *sm, struct sc_apd
 	size_t len = 0;
 	epass2003_exdata *exdata = NULL;
 
-	if (!card->drv_data) 
+	if (!card->drv_data)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	exdata = (epass2003_exdata *)card->drv_data;
@@ -1655,7 +1655,7 @@ get_data(struct sc_card *card, unsigned char type, unsigned char *data, size_t d
 	size_t resplen = SC_MAX_APDU_BUFFER_SIZE;
 	epass2003_exdata *exdata = NULL;
 
-	if (!card->drv_data) 
+	if (!card->drv_data)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	exdata = (epass2003_exdata *)card->drv_data;
@@ -1742,7 +1742,7 @@ epass2003_init(struct sc_card *card)
 		exdata->smtype = KEY_TYPE_DES;
 
 	if (0x84 == data[14]) {
-		if (0x00 == data[16]) { 
+		if (0x00 == data[16]) {
 			exdata->sm = SM_PLAIN;
 		}
 	}
@@ -2210,7 +2210,7 @@ epass2003_set_security_env(struct sc_card *card, const sc_security_env_t * env, 
 	}
 	else if(env->algorithm == SC_ALGORITHM_RSA)
 	{
-		exdata->currAlg = SC_ALGORITHM_RSA; 
+		exdata->currAlg = SC_ALGORITHM_RSA;
 		apdu.p2 = 0xB8;
 		sc_log(card->ctx, "setenv RSA Algorithm alg_flags = %0x\n",env->algorithm_flags);
 	}
@@ -2270,12 +2270,12 @@ static int epass2003_decipher(struct sc_card *card, const u8 * data, size_t data
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE] = { 0 };
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE] = { 0 };
 	epass2003_exdata *exdata = NULL;
-	
+
 	LOG_FUNC_CALLED(card->ctx);
-	
+
 	if (!card->drv_data)
 		return SC_ERROR_INVALID_ARGUMENTS;
-	
+
 	exdata = (epass2003_exdata *)card->drv_data;
 
 	if(exdata->currAlg == SC_ALGORITHM_EC)
@@ -2283,7 +2283,7 @@ static int epass2003_decipher(struct sc_card *card, const u8 * data, size_t data
 		if(exdata->ecAlgFlags & SC_ALGORITHM_ECDSA_HASH_SHA1)
 		{
 			r = hash_data(card, data, datalen, sbuf, SC_ALGORITHM_ECDSA_HASH_SHA1);
-			LOG_TEST_RET(card->ctx, r, "hash_data failed"); 
+			LOG_TEST_RET(card->ctx, r, "hash_data failed");
 			sc_format_apdu(card, &apdu, SC_APDU_CASE_3,0x2A, 0x9E, 0x9A);
 			apdu.data = sbuf;
 			apdu.lc = 0x14;
@@ -2406,7 +2406,7 @@ sec_attr_to_entry(struct sc_card *card, sc_file_t *file, int indx)
 
 			break;
 	}
-	
+
 	for (i = 0; i < (int)(sizeof(sec_attr_to_acl_entry) / sizeof(sec_attr_to_acl_entries_t)); i++) {
 		const sec_attr_to_acl_entries_t *e = &sec_attr_to_acl_entry[i];
 
@@ -2718,7 +2718,7 @@ epass2003_construct_fci(struct sc_card *card, const sc_file_t * file,
 			buf[ii] = rv;
 		}
 		sc_asn1_put_tag(0x86, buf, sizeof(ops), p, *outlen - (p - out), &p);
-		if(file->size == 256)	
+		if(file->size == 256)
 		{
 			out[4]= 0x13;
 		}
@@ -2730,7 +2730,7 @@ epass2003_construct_fci(struct sc_card *card, const sc_file_t * file,
 		file->ef_structure == SC_CARDCTL_OBERTHUR_KEY_EC_PUBLIC) {
 		unsigned char data[2] = {0x00, 0x66};
 		sc_asn1_put_tag(0x87, data, sizeof(data), p, *outlen - (p - out), &p);
-		if(file->size == 256)	
+		if(file->size == 256)
 		{
 			out[4]= 0x14;
 		}
@@ -3128,7 +3128,7 @@ epass2003_gen_key(struct sc_card *card, sc_epass2003_gen_key_data * data)
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 		}
 		else
-		{	
+		{
 			memcpy(data->modulus, rbuf, len);
 		}
 	}
@@ -3292,7 +3292,7 @@ get_external_key_retries(struct sc_card *card, unsigned char kid, unsigned char 
 	return r;
 }
 
-static int 
+static int
 epass2003_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 {
 	u8 rbuf[16];
@@ -3422,7 +3422,7 @@ epass2003_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries
 		r = external_key_auth(card, kid, (unsigned char *)data->pin1.data,
 				data->pin1.len);
 		LOG_TEST_RET(card->ctx, r, "verify pin failed");
-		
+
 		r = update_secret_key(card, 0x04, kid, data->pin2.data,
 				(unsigned long)data->pin2.len);
 		LOG_TEST_RET(card->ctx, r, "change pin failed");
@@ -3451,7 +3451,7 @@ epass2003_logout(struct sc_card *card)
 {
 	epass2003_exdata *exdata = NULL;
 
-	if (!card->drv_data) 
+	if (!card->drv_data)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	exdata = (epass2003_exdata *)card->drv_data;
