@@ -2204,6 +2204,7 @@ epass2003_set_security_env(struct sc_card *card, const sc_security_env_t * env, 
 		}
 		else
 		{
+			r = SC_ERROR_NOT_SUPPORTED;
 			sc_log(card->ctx, "%0x Alg Not Support! ", env->algorithm_flags);
 			goto err;
 		}
