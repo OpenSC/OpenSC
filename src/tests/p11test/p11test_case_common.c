@@ -506,7 +506,7 @@ int callback_public_keys(test_certs_t *objects,
 		bn = BN_bin2bn(pub, pub_len, NULL);
 		ASN1_STRING_free(s);
 		if (bn == NULL) {
-			debug_print(" [WARN %s ] Can not convert EC_POINT from"
+			debug_print(" [WARN %s ] Cannot convert EC_POINT from"
 				" PKCS#11 to BIGNUM", o->id_str);
 			goto ec_out;
 		}
@@ -514,14 +514,14 @@ int callback_public_keys(test_certs_t *objects,
 		hex = BN_bn2hex(bn);
 		BN_free(bn);
 		if (hex == NULL) {
-			debug_print(" [WARN %s ] Can not convert EC_POINT from"
+			debug_print(" [WARN %s ] Cannot convert EC_POINT from"
 				" BIGNUM hex representation", o->id_str);
 			goto ec_out;
 		}
 		ecpoint = EC_POINT_hex2point(ecgroup, hex, NULL, NULL);
 		OPENSSL_free(hex);
 		if (ecpoint == NULL) {
-			debug_print(" [WARN %s ] Can not convert EC_POINT from"
+			debug_print(" [WARN %s ] Cannot convert EC_POINT from"
 				" BIGNUM to OpenSSL format", o->id_str);
 			goto ec_out;
 		}
@@ -539,14 +539,14 @@ int callback_public_keys(test_certs_t *objects,
 			if (EVP_PKEY_get_group_name(o->key, curve_name, sizeof(curve_name), &curve_name_len) != 1 ||
 				(cert_nid = OBJ_txt2nid(curve_name)) == NID_undef ||
 				(cert_group = EC_GROUP_new_by_curve_name(cert_nid)) == NULL) {
-				fprintf(stderr, "Can not get EC_GROUP from EVP_PKEY");
+				fprintf(stderr, "Cannot get EC_GROUP from EVP_PKEY");
 				goto ec_out;
 			}
 			cert_point = EC_POINT_new(cert_group);
 			if (!cert_point ||
 				EVP_PKEY_get_octet_string_param(o->key, OSSL_PKEY_PARAM_PUB_KEY, pubkey, sizeof(pubkey), &pubkey_len) != 1 ||
 				EC_POINT_oct2point(cert_group, cert_point, pubkey, pubkey_len, NULL) != 1) {
-				fprintf(stderr, "Can not get EC_POINT from EVP_PKEY");
+				fprintf(stderr, "Cannot get EC_POINT from EVP_PKEY");
 				goto ec_out;
 			}
 #endif
@@ -575,7 +575,7 @@ int callback_public_keys(test_certs_t *objects,
 			unsigned char pubkey[80]; size_t pubkey_len = 0;
 			if (EVP_PKEY_get_group_name(o->key, curve_name, sizeof(curve_name), &curve_name_len)||
 				EVP_PKEY_get_octet_string_param(o->key, OSSL_PKEY_PARAM_PUB_KEY, pubkey, sizeof(pubkey), &pubkey_len) != 1) {
-				debug_print(" [WARN %s ] Can not get params from EVP_PKEY", o->id_str);
+				debug_print(" [WARN %s ] Cannot get params from EVP_PKEY", o->id_str);
 				goto ec_out;
 			}
 
@@ -583,14 +583,14 @@ int callback_public_keys(test_certs_t *objects,
 				OSSL_PARAM_BLD_push_utf8_string(bld, "group", curve_name, curve_name_len) != 1 ||
 				OSSL_PARAM_BLD_push_octet_string(bld, "pub", pubkey, pubkey_len) != 1 ||
 				!(params = OSSL_PARAM_BLD_to_param(bld))) {
-				debug_print(" [WARN %s ] Can not set params from EVP_PKEY", o->id_str);
+				debug_print(" [WARN %s ] Cannot set params from EVP_PKEY", o->id_str);
 				goto ec_out;
 			}
 
 			if (ctx == NULL || params == NULL ||
 				EVP_PKEY_fromdata_init(ctx) != 1 ||
 				EVP_PKEY_fromdata(ctx, &o->key, EVP_PKEY_PUBLIC_KEY, params) != 1) {
-				debug_print(" [WARN %s ] Can not set params for EVP_PKEY", o->id_str);
+				debug_print(" [WARN %s ] Cannot set params for EVP_PKEY", o->id_str);
 				goto ec_out;
 			}
 #endif
@@ -685,7 +685,7 @@ int callback_public_keys(test_certs_t *objects,
 		a = template[7].pValue;
 		os = d2i_ASN1_OCTET_STRING(NULL, &a, (long)template[7].ulValueLen);
 		if (!os) {
-			debug_print(" [WARN %s ] Can not decode EC_POINT", o->id_str);
+			debug_print(" [WARN %s ] Cannot decode EC_POINT", o->id_str);
 			return -1;
 		}
 		if (os->length != 32) {
@@ -707,7 +707,7 @@ int callback_public_keys(test_certs_t *objects,
 			/* TODO check EVP_PKEY type */
 
 			if (EVP_PKEY_get_raw_public_key(o->key, NULL, &publen) != 1) {
-				debug_print(" [WARN %s ] Can not get size of the key", o->id_str);
+				debug_print(" [WARN %s ] Cannot get size of the key", o->id_str);
 				ASN1_STRING_free(os);
 				return -1;
 			}

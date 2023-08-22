@@ -70,7 +70,7 @@ rsa_x_509_pad_message(const unsigned char *message,
 	size_t padding_len = pad_message_length - (*message_length) - 3;
 
 	if (pad_message_length - (*message_length) <= 11) {
-		debug_print("Can not pad message - buffer to small");
+		debug_print("Cannot pad message - buffer too small");
 		return NULL;
 	}
 	if ((pad_message = malloc(pad_message_length)) == NULL) {
@@ -86,7 +86,7 @@ rsa_x_509_pad_message(const unsigned char *message,
 	} else {
 		pad_message[1] = 0x02;
 		if (RAND_bytes(pad_message + 2, padding_len) != 1) {
-			debug_print("Can not generate random bytes.");
+			debug_print("Cannot generate random bytes.");
 		}
 	}
 	memcpy(pad_message + 2 + padding_len, message, (*message_length) * sizeof(unsigned char));
