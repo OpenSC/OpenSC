@@ -281,7 +281,7 @@ int test_derive(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 	if (pctx == NULL ||
 		EVP_PKEY_derive_init(pctx) != 1 ||
 		EVP_PKEY_derive_set_peer(pctx, o->key) != 1) {
-		debug_print(" [ KEY %s ] Can not derive key", o->id_str);
+		debug_print(" [ KEY %s ] Cannot derive key", o->id_str);
 		EVP_PKEY_free(evp_pkey);
 		return 1;
 	}
@@ -346,7 +346,7 @@ int test_derive(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 #else
 	if (EVP_PKEY_get_octet_string_param(evp_pkey, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, pub, pub_len, NULL) != 1) {
 #endif
-		debug_print(" [ KEY %s ] Can not get public key", o->id_str);
+		debug_print(" [ KEY %s ] Cannot get public key", o->id_str);
 		EVP_PKEY_free(evp_pkey);
 		free(secret);
 		free(pub);
