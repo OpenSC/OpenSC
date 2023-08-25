@@ -301,14 +301,14 @@ static int idprime_process_containermap(sc_card_t *card, idprime_private_data_t 
 
 	for (i = 0; i < max_entries; i++) {
 		u8 *start = &buf[i * CONTAINER_OBJ_LEN];
-		idprime_container_t new_container;
+		idprime_container_t new_container = {0};
 		if (start[0] == 0) /* Empty record */
 			break;
 
 		new_container.index = i;
 		/* Reading UNICODE characters but skipping second byte */
 		int j = 0;
-		for (j = 0; j < MAX_CONTAINER_NAME_LEN + 1; j++) {
+		for (j = 0; j < MAX_CONTAINER_NAME_LEN; j++) {
 			if (start[2 * j] == 0)
 				break;
 			new_container.guid[j] = start[2 * j];
