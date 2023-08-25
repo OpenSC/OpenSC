@@ -546,12 +546,15 @@ authentic_pkcs15_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p
 	key_info->key_reference |= AUTHENTIC_OBJECT_REF_FLAG_LOCAL;
 
 	rv = sc_select_file(card, &file_p_prvkey->path, &parent);
+	if (rv != SC_SUCCESS)
+		sc_file_free(file_p_prvkey);
 	LOG_TEST_RET(ctx, rv, "DF for the private objects not defined");
 
 	rv = sc_pkcs15init_authenticate(profile, p15card, parent, SC_AC_OP_CRYPTO);
-	LOG_TEST_RET(ctx, rv, "SC_AC_OP_CRYPTO authentication failed for parent DF");
-
 	sc_file_free(parent);
+	if (rv != SC_SUCCESS)
+		sc_file_free(file_p_prvkey);
+	LOG_TEST_RET(ctx, rv, "SC_AC_OP_CRYPTO authentication failed for parent DF");
 
 	key_info->access_flags = SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE
 		| SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE
@@ -560,6 +563,7 @@ authentic_pkcs15_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p
 	rv = authentic_sdo_allocate_prvkey(profile, card, key_info, &sdo);
 	if (rv != SC_SUCCESS || sdo == NULL) {
 		sc_log(ctx, "IasEcc: init SDO private key failed");
+		sc_file_free(file_p_prvkey);
 		LOG_FUNC_RETURN(ctx, rv);
 	}
 
@@ -596,7 +600,9 @@ authentic_pkcs15_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to allocate PrvKey SDO as object content");
 
 err:
-	free(sdo);
+	if (sdo == NULL || sdo->file != file_p_prvkey)
+		sc_file_free(file_p_prvkey);
+	authentic_free_sdo_data(sdo);
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
