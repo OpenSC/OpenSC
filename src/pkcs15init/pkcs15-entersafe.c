@@ -472,7 +472,7 @@ static int entersafe_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15ca
 static int entersafe_sanity_check(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 {
 	struct sc_context *ctx = p15card->card->ctx;
-	struct sc_pkcs15_auth_info profile_auth;
+	struct sc_pkcs15_auth_info profile_auth = {0};
 	struct sc_pkcs15_object *objs[32];
 	int rv, nn, ii, update_df = 0;
 

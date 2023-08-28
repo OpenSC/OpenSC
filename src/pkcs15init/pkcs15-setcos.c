@@ -42,7 +42,7 @@ static int setcos_create_pin_internal(sc_profile_t *, sc_pkcs15_card_t *,
 static int
 setcos_puk_retries(sc_profile_t *profile, int pin_ref)
 {
-	sc_pkcs15_auth_info_t auth_info;
+	sc_pkcs15_auth_info_t auth_info = {0};
 
 	auth_info.auth_type = SC_PKCS15_PIN_AUTH_TYPE_PIN;
 	auth_info.attrs.pin.reference = 1; /* Default SO PIN ref. */
@@ -169,19 +169,19 @@ static int
 setcos_select_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_pkcs15_auth_info_t *auth_info)
 {
-	sc_pkcs15_auth_info_t auth_info_prof;
+	sc_pkcs15_auth_info_t auth_info_prof = {0};
 
 	auth_info_prof.attrs.pin.reference = 1; /* Default SO PIN ref. */
 	auth_info_prof.auth_type = SC_PKCS15_PIN_AUTH_TYPE_PIN;
 	sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PIN, &auth_info_prof);
 
 	/* For the SO pin, we take the first available pin reference = 1 */
-	if (auth_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN)
+	if (auth_info != NULL && auth_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN)
 		auth_info->attrs.pin.reference = auth_info_prof.attrs.pin.reference;
 	/* sc_pkcs15init_create_pin() starts checking if -1 is an acceptable
 	 * pin reference, which isn't for the SetCOS cards. And since the
 	 * value 1 has been assigned to the SO pin, we'll jump to 2. */
-	else if (auth_info->attrs.pin.reference <= 0) {
+	else if (auth_info != NULL && auth_info->attrs.pin.reference <= 0) {
 		if (auth_info_prof.attrs.pin.reference != 1)
 			return SC_ERROR_INVALID_PIN_REFERENCE;
 		auth_info->attrs.pin.reference = auth_info_prof.attrs.pin.reference + 1;

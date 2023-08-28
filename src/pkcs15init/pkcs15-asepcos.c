@@ -223,7 +223,7 @@ static int asepcos_do_store_pin(sc_profile_t *profile, sc_card_t *card,
 	u8  buf[64], sbuf[64], *p = buf, *q = sbuf;
 	int r, akn = 0;
 
-	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+	if (auth_info == NULL || auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
 		return SC_ERROR_OBJECT_NOT_VALID;
 
 	/* outer tag */
@@ -318,7 +318,7 @@ static int asepcos_do_store_pin(sc_profile_t *profile, sc_card_t *card,
  */
 static int have_onepin(sc_profile_t *profile)
 {
-        sc_pkcs15_auth_info_t sopin;
+        sc_pkcs15_auth_info_t sopin = {0};
 
         sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PIN, &sopin);
 
@@ -354,7 +354,7 @@ static int asepcos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	if (!pin || !pin_len)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
-	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+	if (auth_info == NULL || auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
         	return SC_ERROR_OBJECT_NOT_VALID;
 
 	pid = (auth_info->attrs.pin.reference & 0xff) | (((tpath.len >> 1) - 1) << 16);
@@ -393,7 +393,7 @@ static int asepcos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		/* Create PUK (if specified). Note: we need to create the PUK
 		 * the PIN as the PUK fileid is used in the PIN acl.
 		 */
-		struct sc_pkcs15_auth_info puk_ainfo;
+		struct sc_pkcs15_auth_info puk_ainfo = {0};
 
 		if (auth_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN)
 			sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PUK, &puk_ainfo);

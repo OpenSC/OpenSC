@@ -900,7 +900,7 @@ iso7816_create_file(struct sc_card *card, sc_file_t *file)
 static int
 iso7816_get_response(struct sc_card *card, size_t *count, u8 *buf)
 {
-	struct sc_apdu apdu;
+	struct sc_apdu apdu = {0};
 	int r;
 	size_t rlen;
 
