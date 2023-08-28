@@ -224,7 +224,7 @@ incrypto34_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		return r;
 
 	if (puk && puk_len) {
-		struct sc_pkcs15_auth_info puk_ainfo;
+		struct sc_pkcs15_auth_info puk_ainfo = {0};
 
 		sc_profile_get_pin_info(profile,
 				SC_PKCS15INIT_USER_PUK, &puk_ainfo);

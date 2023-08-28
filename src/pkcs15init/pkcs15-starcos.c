@@ -83,7 +83,7 @@ static int starcos_init_card(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 	sc_file_t	*mf_file, *isf_file, *ipf_file;
 	sc_path_t	tpath;
 	u8		*p = mf_data.data.mf.header, tmp = 0;
-	sc_pkcs15_auth_info_t sopin;
+	sc_pkcs15_auth_info_t sopin = {0};
 
 	/* test if we already have a MF */
 	memset(&tpath, 0, sizeof(sc_path_t));
@@ -180,7 +180,7 @@ static int starcos_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_starcos_create_data df_data, ipf_data;
 	sc_file_t	*isf_file, *ipf_file;
 	u8		*p = df_data.data.df.header, tmp = 0;
-	sc_pkcs15_auth_info_t sopin;
+	sc_pkcs15_auth_info_t sopin = {0};
 
 	sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PIN, &sopin);
 
@@ -255,7 +255,7 @@ static int starcos_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 
 static int have_onepin(sc_profile_t *profile)
 {
-	sc_pkcs15_auth_info_t sopin;
+	sc_pkcs15_auth_info_t sopin = {0};
 
 	sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PIN, &sopin);
 
@@ -428,7 +428,7 @@ static int starcos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		return r;
 
 	if (puk && puk_len) {
-		sc_pkcs15_auth_info_t puk_info;
+		sc_pkcs15_auth_info_t puk_info = {0};
 
 		if (puk_len > 8)
 			return SC_ERROR_INVALID_ARGUMENTS;

@@ -312,7 +312,7 @@ myeid_create_pin(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	unsigned char data[20];
 	struct sc_cardctl_myeid_data_obj data_obj;
 	struct sc_pkcs15_auth_info *auth_info = (struct sc_pkcs15_auth_info *) pin_obj->data;
-	struct sc_pkcs15_auth_info puk_ainfo;
+	struct sc_pkcs15_auth_info puk_ainfo = {0};
 	int r;
 
 	LOG_FUNC_CALLED(ctx);

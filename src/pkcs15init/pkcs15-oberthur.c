@@ -271,7 +271,7 @@ cosm_create_reference_data(struct sc_profile *profile, struct sc_pkcs15_card *p1
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_card *card = p15card->card;
-	struct sc_pkcs15_auth_info profile_auth_pin, profile_auth_puk;
+	struct sc_pkcs15_auth_info profile_auth_pin = {0}, profile_auth_puk = {0};
 	struct sc_cardctl_oberthur_createpin_info args;
 	int rv;
 	unsigned char oberthur_puk[16] = {

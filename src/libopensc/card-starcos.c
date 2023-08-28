@@ -1388,7 +1388,7 @@ static int starcos_erase_card(sc_card_t *card)
 {	/* restore the delivery state */
 	int r;
 	u8  sbuf[2];
-	sc_apdu_t apdu;
+	sc_apdu_t apdu = {0};
 
 	sbuf[0] = 0x3f;
 	sbuf[1] = 0x00;

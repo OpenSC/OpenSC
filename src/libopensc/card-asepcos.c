@@ -336,7 +336,7 @@ static int asepcos_akn_to_fileid(sc_card_t *card, sc_cardctl_asepcos_akn2fileid_
 {
 	int r;
 	u8  sbuf[32], rbuf[SC_MAX_APDU_BUFFER_SIZE];
-	sc_apdu_t apdu;
+	sc_apdu_t apdu = {0};
 
 	sbuf[0] = p->akn & 0xff;
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x28, 0x02, 0x01);
@@ -365,7 +365,7 @@ static int asepcos_set_sec_attributes(sc_card_t *card, const u8 *data, size_t le
 	int is_ef)
 {
 	int r, type = is_ef != 0 ? 0x02 : 0x04;
-	sc_apdu_t apdu;
+	sc_apdu_t apdu = {0};
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x8a, type, 0xab);
 	apdu.cla    |= 0x80;
@@ -537,7 +537,7 @@ static int asepcos_create_file(sc_card_t *card, sc_file_t *file)
 {
 	if (file->type == SC_FILE_TYPE_DF) {
 		int r, type;
-		sc_apdu_t apdu;
+		sc_apdu_t apdu = {0};
 		u8  sbuf[SC_MAX_APDU_BUFFER_SIZE], *p = &sbuf[0];
 
 		*p++ = (file->id >> 8) & 0xff;

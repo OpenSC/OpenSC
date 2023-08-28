@@ -1014,6 +1014,9 @@ sc_pkcs15init_store_puk(struct sc_pkcs15_card *p15card,
 	auth_info = (struct sc_pkcs15_auth_info *) pin_obj->data;
 
 	sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PUK, auth_info);
+	if (auth_info == NULL)
+		LOG_TEST_RET(ctx, SC_ERROR_OBJECT_NOT_FOUND, "Failed to retrieve auth_info");
+
 	auth_info->auth_id = args->puk_id;
 
 	/* Now store the PINs */
@@ -1078,6 +1081,9 @@ sc_pkcs15init_store_pin(struct sc_pkcs15_card *p15card, struct sc_profile *profi
 	auth_info = (struct sc_pkcs15_auth_info *) pin_obj->data;
 
 	sc_profile_get_pin_info(profile, SC_PKCS15INIT_USER_PIN, auth_info);
+	if (auth_info == NULL)
+		LOG_TEST_RET(ctx, SC_ERROR_OBJECT_NOT_FOUND, "Failed to retrieve auth_info");
+
 	auth_info->auth_id = args->auth_id;
 
 	/* Now store the PINs */
@@ -3255,7 +3261,7 @@ sc_pkcs15init_update_any_df(struct sc_pkcs15_card *p15card,
 	struct sc_card	*card = p15card->card;
 	struct sc_file	*file = NULL;
 	unsigned char	*buf = NULL;
-	size_t		bufsize;
+	size_t		bufsize = 0;
 	int		update_odf = is_new, r = 0;
 
 	LOG_FUNC_CALLED(ctx);
@@ -3429,7 +3435,7 @@ sc_pkcs15init_change_attrib(struct sc_pkcs15_card *p15card, struct sc_profile *p
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_card	*card = p15card->card;
 	unsigned char	*buf = NULL;
-	size_t		bufsize;
+	size_t		bufsize = 0;
 	int		df_type, r = 0;
 	struct sc_pkcs15_df *df;
 	struct sc_pkcs15_id new_id = *((struct sc_pkcs15_id *) new_value);
@@ -4397,6 +4403,9 @@ sc_pkcs15init_qualify_pin(struct sc_card *card, const char *pin_name,
 	struct sc_pkcs15_pin_attributes *pin_attrs;
 
 	LOG_FUNC_CALLED(ctx);
+	if (auth_info == NULL)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_OBJECT_NOT_FOUND);
+
 	if (pin_len == 0 || auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 
