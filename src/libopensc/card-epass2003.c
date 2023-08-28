@@ -2303,8 +2303,8 @@ static int epass2003_decipher(struct sc_card *card, const u8 * data, size_t data
 		{
 			sc_format_apdu(card, &apdu, SC_APDU_CASE_3,0x2A, 0x9E, 0x9A);
 			apdu.data = data;
-			apdu.lc = 0x20;
-			apdu.datalen = 0x20;
+			apdu.lc = datalen;
+			apdu.datalen = datalen;
 		}
 		else
 		{
