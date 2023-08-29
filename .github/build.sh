@@ -43,13 +43,17 @@ else
 	fi
 	# normal procedure
 
-	if [ "$1" == "valgrind" ]; then
-		./configure --disable-notify --enable-valgrind
-	elif [ "$1" == "no-shared" ]; then
-		./configure --disable-shared
-	else
-		./configure --disable-dependency-tracking
+	CONFIGURE_FLAGS="--disable-dependency-tracking"
+	if [ "$1" == "piv-sm" ]; then
+		CONFIGURE_FLAGS="$CONFIGURE_FLAGS --enable-piv-sm"
 	fi
+	if [ "$1" == "valgrind" -o "$2" == "valgrind" ]; then
+		CONFIGURE_FLAGS="$CONFIGURE_FLAGS --disable-notify --enable-valgrind"
+	fi
+	if [ "$1" == "no-shared" ]; then
+		CONFIGURE_FLAGS="$CONFIGURE_FLAGS --disable-shared"
+	fi
+	./configure $CONFIGURE_FLAGS
 	make -j 4 V=1
 	# 32b build has some issues to find openssl correctly
 	if [ "$1" == "valgrind" ]; then
@@ -70,7 +74,7 @@ else
 fi
 
 # this is broken in old ubuntu
-if [ "$1" == "dist" ]; then
+if [ "$1" == "dist" -o "$2" == "dist" ]; then
 	make distcheck
 	make dist
 fi
