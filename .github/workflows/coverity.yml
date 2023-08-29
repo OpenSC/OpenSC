@@ -16,7 +16,7 @@ jobs:
     - uses: actions/checkout@v3
     - run: .github/setup-linux.sh
     - run: ./bootstrap
-    - run: ./configure  --disable-dependency-tracking
+    - run: ./configure  --disable-dependency-tracking --enable-piv-sm
     - uses: vapier/coverity-scan-action@v0
       with:
         project: OpenSC%2FOpenSC

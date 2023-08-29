@@ -99,6 +99,26 @@ jobs:
           path:
             win32/Output/OpenSC*.exe
 
+  build-piv-sm:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v3
+      - run: .github/setup-linux.sh
+      - run: .github/build.sh piv-sm dist
+      - name: Upload test logs
+        uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: ubuntu-piv-sm-test-logs
+          path: |
+            tests/*.log
+            src/tests/unittests/*.log
+      - uses: actions/cache@v3
+        id: cache-build
+        with:
+          path: ./*
+          key: ${{ runner.os }}-piv-sm-${{ github.sha }}
+
   test-piv:
     runs-on: ubuntu-20.04
     needs: [build]
@@ -109,6 +129,20 @@ jobs:
         with:
           path: ./*
           key: ${{ runner.os }}-${{ github.sha }}
+      - run: .github/setup-linux.sh piv
+      - run: .github/test-piv.sh
+      - run: .github/test-piv.sh valgrind
+
+  test-piv-sm:
+    runs-on: ubuntu-20.04
+    needs: [build-piv-sm]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/cache@v3
+        id: cache-build
+        with:
+          path: ./*
+          key: ${{ runner.os }}-piv-sm-${{ github.sha }}
       - run: .github/setup-linux.sh piv
       - run: .github/test-piv.sh
       - run: .github/test-piv.sh valgrind
@@ -238,6 +272,40 @@ jobs:
           name: opensc-build
           path:
             opensc*.tar.gz
+
+  build-ubuntu-22-piv-sm:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+      - run: .github/setup-linux.sh
+      - run: .github/build.sh piv-sm dist valgrind
+      - uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: ubuntu-22-piv-sm-test-logs
+          path: |
+            tests/*.log
+            src/tests/unittests/*.log
+      - uses: actions/cache@v3
+        id: cache-build
+        if: ${{ success() }}
+        with:
+          path: ./*
+          key: ${{ runner.os }}-22-piv-sm-${{ github.sha }}
+
+  test-piv-sm-ubuntu-22:
+    runs-on: ubuntu-22.04
+    needs: [build-ubuntu-22-piv-sm]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/cache@v3
+        id: cache-build
+        with:
+          path: ./*
+          key: ${{ runner.os }}-22-piv-sm-${{ github.sha }}
+      - run: .github/setup-linux.sh piv
+      - run: .github/test-piv.sh
+      - run: .github/test-piv.sh valgrind
 
   test-cac-ubuntu-22:
     runs-on: ubuntu-22.04
