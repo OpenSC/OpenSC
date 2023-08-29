@@ -204,7 +204,7 @@ iasecc_sdo_free(struct sc_card *card, struct iasecc_sdo *sdo)
 
 
 static int
-iasecc_crt_parse(struct sc_card *card, unsigned char *data, struct iasecc_se_info *se)
+iasecc_crt_parse(struct sc_card *card, unsigned char *data, size_t data_len, struct iasecc_se_info *se)
 {
 	struct sc_context *ctx = card->ctx;
 	struct sc_crt crt;
@@ -212,11 +212,16 @@ iasecc_crt_parse(struct sc_card *card, unsigned char *data, struct iasecc_se_inf
 
 	sc_log(ctx, "iasecc_crt_parse(0x%X) called", *data);
 
+	if (data_len < 2)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
+
 	memset(&crt, 0, sizeof(crt));
 	crt.tag = *(data + 0);
 	len = *(data + 1);
 
 	for(offs = 2; offs < len + 2; offs += 3)   {
+		if ((size_t) offs + 2 >= data_len)
+			LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
 		sc_log(ctx, "iasecc_crt_parse(0x%X) CRT %X -> %X", *data, *(data + offs), *(data + offs + 2));
 		if (*(data + offs) == IASECC_CRT_TAG_USAGE)   {
 			crt.usage = *(data + offs + 2);
@@ -368,7 +373,7 @@ iasecc_se_parse(struct sc_card *card, unsigned char *data, size_t data_len, stru
 
 	offs = 1 + size_size;
 	for (; offs < data_len;)   {
-		rv = iasecc_crt_parse(card, data + offs, se);
+		rv = iasecc_crt_parse(card, data + offs, data_len - offs, se);
 		LOG_TEST_RET(ctx, rv, "parse error: invalid SE data");
 
 		offs += rv;
