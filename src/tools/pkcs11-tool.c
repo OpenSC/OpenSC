@@ -6456,6 +6456,8 @@ static EVP_PKEY *get_public_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE priv
 				fprintf(stderr, "public key not extractable\n");
 				OSSL_PARAM_BLD_free(bld);
 				OSSL_PARAM_free(params);
+				BN_free(rsa_n);
+				BN_free(rsa_e);
 				return NULL;
 			}
 			OSSL_PARAM_BLD_free(bld);
@@ -6464,10 +6466,16 @@ static EVP_PKEY *get_public_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE priv
 				EVP_PKEY_fromdata_init(ctx) != 1 ||
 				EVP_PKEY_fromdata(ctx, &pkey, EVP_PKEY_PUBLIC_KEY, params) != 1) {
 				fprintf(stderr, "public key not extractable\n");
+				EVP_PKEY_CTX_free(ctx);
 				OSSL_PARAM_free(params);
+				BN_free(rsa_n);
+				BN_free(rsa_e);
 				return NULL;
 			}
+			EVP_PKEY_CTX_free(ctx);
 			OSSL_PARAM_free(params);
+			BN_free(rsa_n);
+			BN_free(rsa_e);
 #endif
 			return pkey;
 		case CKK_DSA:
