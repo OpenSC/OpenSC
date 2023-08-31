@@ -520,7 +520,7 @@ iasecc_sdo_allocate_prvkey(struct sc_profile *profile, struct sc_card *card,
 		sc_log(ctx, "non_repudiation %i", *(sdo->docp.non_repudiation.value + 0));
 		sc_log(ctx, "compulsory 0x%X", *(sdo->data.prv_key.compulsory.value + 0));
 	}
-	else   {
+	else if (rv < 0) {
 		iasecc_sdo_free(card, sdo);
 		LOG_TEST_RET(ctx, rv, "IasEcc: error while getting private key SDO data");
 	}
@@ -593,7 +593,7 @@ iasecc_sdo_allocate_pubkey(struct sc_profile *profile, struct sc_card *card, str
 		sdo->data.pub_key.compulsory.tag = IASECC_SDO_PUBKEY_TAG_COMPULSORY;
 		sdo->data.pub_key.compulsory.size = 1;
 	}
-	else   {
+	else if (rv < 0) {
 		iasecc_sdo_free(card, sdo);
 		LOG_TEST_RET(ctx, rv, "iasecc_sdo_allocate_pubkey() error while getting public key SDO data");
 	}
