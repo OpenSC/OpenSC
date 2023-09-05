@@ -7,6 +7,7 @@ NEWS for OpenSC -- History of user visible changes
   * CVE-2021-42780 Use after return in insert_pin function
   * CVE-2021-42781 Heap buffer overflow in pkcs15-oberthur.c
   * CVE-2021-42782 Stack buffer overflow issues in various places
+  * CVE-2021-34193 is a duplicate CVE covering the 5 individual CVEs listed above
 
 # New in 0.23.0; 2022-11-29
 ## General improvements
