@@ -1,5 +1,14 @@
 NEWS for OpenSC -- History of user visible changes
 
+# Addendum for 0.22.0; 2023-09-01
+* fixed security problems
+  * CVE-2021-42778 Heap double free in sc_pkcs15_free_tokeninfo
+  * CVE-2021-42779 Heap use after free in sc_file_valid
+  * CVE-2021-42780 Use after return in insert_pin function
+  * CVE-2021-42781 Heap buffer overflow in pkcs15-oberthur.c
+  * CVE-2021-42782 Stack buffer overflow issues in various places
+  * CVE-2021-34193 is a duplicate CVE covering the 5 individual CVEs listed above
+
 # New in 0.23.0; 2022-11-29
 ## General improvements
 * Support signing of data with a length of more than 512 bytes (#2314)
