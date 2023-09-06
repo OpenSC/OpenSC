@@ -1239,11 +1239,6 @@ static int piv_decode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu
 		goto err;
 	}
 
-	/* no SM data results in no plain text data */
-	if (!(asn1_sm_response[0].flags & SC_ASN1_PRESENT)) {
-		plain->resplen = 0;
-	}
-
 	if ((asn1_sm_response[1].flags & SC_ASN1_PRESENT) == 0
 			|| (asn1_sm_response[2].flags & SC_ASN1_PRESENT) == 0) {
 		sc_log(card->ctx,"SM missing status or R-MAC");
@@ -1325,10 +1320,12 @@ static int piv_decode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu
 	}
 
 	/* some commands do not have response data */
-	if (ee.value != NULL) {
+	if (ee.value == NULL) {
+		plain->resplen = 0;
+	} else {
 		p = ee.value;
 		inlen = ee.len;
-		if (inlen < 17 || *p != 0x01) { /*padding indicator is required */
+		if (inlen < 17 || *p != 0x01) { /*padding and padding indicator are required */
 			sc_log(card->ctx, "SM padding indicator not 0x01");
 			r = SC_ERROR_SM_AUTHENTICATION_FAILED;
 			goto err;
