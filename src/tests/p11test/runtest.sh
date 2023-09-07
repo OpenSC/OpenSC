@@ -21,10 +21,11 @@
 #set -x
 SOPIN="12345678"
 PIN="123456"
-export GNUTLS_PIN=$PIN 
+export GNUTLS_PIN=$PIN
 GENERATE_KEYS=1
 PKCS11_TOOL="../../tools/pkcs11-tool";
 PKCS15_INIT="../../tools/pkcs15-init";
+SC_HSM_TOOL="../../tools/sc-hsm-tool";
 
 function generate_sym() {
 	TYPE="$1"
@@ -140,10 +141,19 @@ function card_setup() {
 			$INIT --store-secret-key /dev/urandom --secret-key-algorithm aes:128 --extractable --id 04 --label="AES128 key" --key-usage=sign,decrypt
 			$PKCS15_INIT -F
 			;;
+		"sc-hsm")
+			GENERATE_KEYS=0 # we generate them directly here
+			SOPIN="3537363231383830"
+			PIN="648219"
+			P11LIB="../../pkcs11/.libs/opensc-pkcs11.so"
+			$SC_HSM_TOOL --initialize --so-pin $SOPIN --pin $PIN
+			$PKCS11_TOOL --module $P11LIB -l --pin $PIN --keypairgen --key-type rsa:2048 --id 10 --label="RSA key"
+			$PKCS11_TOOL --module $P11LIB -l --pin $PIN --keypairgen --key-type EC:prime256v1 --label "EC key"
+			;;
 		*)
 			echo "Error: Missing argument."
 			echo "    Usage:"
-			echo "        runtest.sh [softhsm|opencryptoki|myeid|readonly [pkcs-library.so]]"
+			echo "        runtest.sh [softhsm|opencryptoki|myeid|sc-hsm|readonly [pkcs-library.so]]"
 			exit 1;
 			;;
 	esac
