@@ -195,6 +195,7 @@ int sc_pkcs15_cache_file(struct sc_pkcs15_card *p15card,
 {
 	char fname[PATH_MAX];
 	int r;
+	long len;
 	FILE *f;
 	size_t c;
 
@@ -202,22 +203,33 @@ int sc_pkcs15_cache_file(struct sc_pkcs15_card *p15card,
 	if (r != 0)
 		return r;
 
-	f = fopen(fname, "wb");
+	f = fopen(fname, "ab");
 	/* If the open failed because the cache directory does
 	 * not exist, create it and a re-try the fopen() call.
 	 */
 	if (f == NULL && errno == ENOENT) {
 		if ((r = sc_make_cache_dir(p15card->card->ctx)) < 0)
 			return r;
-		f = fopen(fname, "wb");
+		f = fopen(fname, "ab");
 	}
 	if (f == NULL)
 		return 0;
 
+	/* we opened the file for appending so we should be at the end of file.
+	 * The ftell() will give use the length of the file */
+	len = ftell(f);
+	if (len > path->index) {
+		/* override previous cache records on this location */
+		fseek(f, path->index, SEEK_SET);
+	} else if (path->index > len) {
+		/* We miss some bytes so we will not cache this chunk */
+		return 0;
+	}
+
 	c = fwrite(buf, 1, bufsize, f);
 	fclose(f);
 	if (c != bufsize) {
-		sc_log(p15card->card->ctx, 
+		sc_log(p15card->card->ctx,
 			 "fwrite() wrote only %"SC_FORMAT_LEN_SIZE_T"u bytes",
 			 c);
 		unlink(fname);
