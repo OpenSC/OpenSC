@@ -38,12 +38,14 @@ void ec_sign_size_test(void **state) {
 
 	debug_print("\nCheck functionality of Sign&Verify on different data lengths");
 	for (i = 0; i < objects.count; i++) {
+		int curve_len = 0;
 		switch (objects.data[i].key_type) {
 		case CKK_EC:
 			/* This tests just couple of sizes around the curve length
 			 * to verify they are properly truncated on input */
-			min = (objects.data[i].bits + 7) / 8 - 2;
-			max = (objects.data[i].bits + 7) / 8 + 2;
+			curve_len = (objects.data[i].bits + 7) / 8;
+			min = curve_len - 2;
+			max = curve_len + 2;
 			inc = 1;
 			break;
 		case CKK_EC_EDWARDS:
@@ -60,9 +62,13 @@ void ec_sign_size_test(void **state) {
 		// sanity: Test all mechanisms
 		if (objects.data[i].sign && objects.data[i].verify) {
 			for (j = 0; j < objects.data[i].num_mechs; j++) {
+				test_mech_t *m = &(objects.data[i].mechs[j]);
 				for (l = min; l < max; l += inc) {
-					rv = sign_verify_test(&(objects.data[i]), info,
-						&(objects.data[i].mechs[j]), l, 0);
+					/* Skip inputs not matching digest sizes for raw ECDSA as the card
+					 * will likely reject them as not valid hash outputs */
+					if (m->mech == CKM_ECDSA && (l != 20 && l != 28 && l != 32 && l != 48 && l != 64))
+						continue;
+					rv = sign_verify_test(&(objects.data[i]), info, m, l, 0);
 					if (rv == -1)
 						errors++;
 				}
