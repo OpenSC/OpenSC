@@ -1044,7 +1044,7 @@ static int sc_pkcs15emu_sc_hsm_add_pubkey(sc_pkcs15_card_t *p15card, u8 *efbin, 
 	} else {
 		/* TODO fix if support of non multiple of 8 curves are added */
 		pubkey_info.field_length = cvc.primeOrModuluslen << 3;
-		pubkey_info.usage = SC_PKCS15_PRKEY_USAGE_VERIFY;
+		pubkey_info.usage = SC_PKCS15_PRKEY_USAGE_VERIFY|SC_PKCS15_PRKEY_USAGE_DERIVE;
 		r = sc_pkcs15emu_add_ec_pubkey(p15card, &pubkey_obj, &pubkey_info);
 	}
 	if (r < 0)
