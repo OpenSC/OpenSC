@@ -455,6 +455,7 @@ int callback_public_keys(test_certs_t *objects,
 			 	fail_msg("Unable to store key");
 				return -1;
 			}
+			EVP_PKEY_CTX_free(ctx);
 			OSSL_PARAM_free(params);
 			BN_free(n);
 			BN_free(e);

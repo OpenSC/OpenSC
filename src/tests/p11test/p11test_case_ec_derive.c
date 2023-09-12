@@ -227,7 +227,7 @@ int test_derive(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 	int nid = 0;
-	const EC_GROUP *group = NULL;
+	EC_GROUP *group = NULL;
 	const EC_POINT *publickey = NULL;
 	EC_KEY *key = NULL;
 #endif
@@ -343,7 +343,7 @@ int test_derive(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 	pub_len = EC_POINT_point2oct(group, publickey,
 		POINT_CONVERSION_UNCOMPRESSED, pub, pub_len, NULL);
-
+	EC_GROUP_free(group);
 	if (pub_len == 0) {
 #else
 	if (EVP_PKEY_get_octet_string_param(evp_pkey, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, pub, pub_len, NULL) != 1) {
