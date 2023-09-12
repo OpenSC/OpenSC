@@ -2,6 +2,8 @@
 
 set -ex -o xtrace
 
+source .github/setup-valgrind.sh
+
 # install the opensc
 sudo make install
 export LD_LIBRARY_PATH=/usr/local/lib

@@ -242,6 +242,7 @@ jobs:
           key: ${{ runner.os }}-${{ github.sha }}
       - run: .github/setup-linux.sh oseid
       - run: .github/test-oseid.sh
+      - run: .github/test-oseid.sh valgrind
 
   ############################################
   ## Ubuntu 22.04 with OpenSSL 3.0 pipeline ##
@@ -333,6 +334,7 @@ jobs:
           key: ${{ runner.os }}-22-${{ github.sha }}
       - run: .github/setup-linux.sh oseid
       - run: .github/test-oseid.sh
+      - run: .github/test-oseid.sh valgrind
 
   #######################
   ## LibreSSL pipeline ##
@@ -383,6 +385,7 @@ jobs:
           key: ${{ runner.os }}-libressl-${{ github.sha }}
       - run: .github/setup-linux.sh oseid libressl
       - run: .github/test-oseid.sh
+      - run: .github/test-oseid.sh valgrind
 
   ####################
   ## Push artifacts ##
