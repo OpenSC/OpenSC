@@ -199,6 +199,7 @@ int decrypt_message(test_cert_t *o, token_info_t *info, CK_BYTE *enc_message,
 		enc_message_length, *dec_message, &dec_message_length);
 	if (rv != CKR_OK) {
 		free(*dec_message);
+		*dec_message = NULL;
 		debug_print("  C_Decrypt: rv = 0x%.8lX\n", rv);
 		return -1;
 	}

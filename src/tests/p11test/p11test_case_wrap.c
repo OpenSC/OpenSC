@@ -171,8 +171,9 @@ static int test_wrap(test_cert_t *o, token_info_t *info, test_cert_t *key, test_
 		} else {
 			fprintf(stderr, " [ ERROR %s ] Wrapped key does not match\n", o->id_str);
 			return -1;
-		}
-	} else {*/
+		}*/
+		free(plain);
+	} else {
 		EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
 		const EVP_CIPHER *cipher = NULL;
 		unsigned char plaintext[42];
@@ -186,17 +187,23 @@ static int test_wrap(test_cert_t *o, token_info_t *info, test_cert_t *key, test_
 
 		/* First, do the encryption dance with OpenSSL */
 		if (ctx == NULL) {
+			free(plain);
+			EVP_CIPHER_CTX_free(ctx);
 			fprintf(stderr, "  EVP_CIPHER_CTX_new failed\n");
 			return -1;
 		}
 
 		rv = RAND_bytes(plaintext, plaintext_len);
 		if (rv != 1) {
+			free(plain);
+			EVP_CIPHER_CTX_free(ctx);
 			fprintf(stderr, "  RAND_bytes failed\n");
 			return -1;
 		}
 
 		if (key->key_type != CKK_AES) {
+			free(plain);
+			EVP_CIPHER_CTX_free(ctx);
 			debug_print(" [SKIP %s ] Only AES for now", o->id_str);
 			return 1;
 		}
@@ -205,20 +212,26 @@ static int test_wrap(test_cert_t *o, token_info_t *info, test_cert_t *key, test_
 		} else if (plain_len == 16) {
 			cipher = EVP_aes_128_cbc();
 		} else {
+			free(plain);
+			EVP_CIPHER_CTX_free(ctx);
 			fprintf(stderr, "  Invalid key length %lu", plain_len);
 			return -1;
 		}
 		rv = EVP_EncryptInit_ex(ctx, cipher, NULL, plain, iv);
+		free(plain);
 		if (rv != 1) {
+			EVP_CIPHER_CTX_free(ctx);
 			fprintf(stderr, "  EVP_EncryptInit_ex failed\n");
 			return -1;
 		}
 		rv = EVP_EncryptUpdate(ctx, ciphertext, &ciphertext_len, plaintext, plaintext_len);
 		if (rv != 1) {
+			EVP_CIPHER_CTX_free(ctx);
 			fprintf(stderr, "  EVP_EncryptUpdate failed\n");
 			return -1;
 		}
 		rv = EVP_EncryptFinal_ex(ctx, ciphertext + ciphertext_len, &len);
+		EVP_CIPHER_CTX_free(ctx);
 		if (rv != 1) {
 			fprintf(stderr, "  EVP_EncryptFinal_ex failed\n");
 			return -1;
@@ -233,10 +246,12 @@ static int test_wrap(test_cert_t *o, token_info_t *info, test_cert_t *key, test_
 
 		check_len = strip_pkcs7_padding(check, check_len, 16);
 		if (check_len <= 0) {
+			free(check);
 			fprintf(stderr, "  Failed to strip PKCS#7 padding\n");
 			return -1;
 		}
 		if (check_len == plaintext_len && memcmp(plaintext, check, plaintext_len) == 0) {
+			free(check);
 			debug_print(" [  OK %s ] Decrypted message matches", o->id_str);
 		} else {
 			printf(" [ ERROR %s ] Decrypted message does not match (%d, %d)\n", o->id_str,
@@ -250,6 +265,7 @@ static int test_wrap(test_cert_t *o, token_info_t *info, test_cert_t *key, test_
 				printf(":%x", check[i]);
 			}
 			printf("\n");
+			free(check);
 			return -1;
 		}
 	}
