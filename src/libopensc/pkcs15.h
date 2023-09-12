@@ -921,6 +921,7 @@ void sc_pkcs15_free_pubkey_info(sc_pkcs15_pubkey_info_t *key);
 void sc_pkcs15_free_cert_info(sc_pkcs15_cert_info_t *cert);
 void sc_pkcs15_free_data_info(sc_pkcs15_data_info_t *data);
 void sc_pkcs15_free_auth_info(sc_pkcs15_auth_info_t *auth_info);
+void sc_pkcs15_free_skey_info(sc_pkcs15_skey_info_t *key);
 void sc_pkcs15_free_object(struct sc_pkcs15_object *obj);
 
 /* Generic file i/o */
