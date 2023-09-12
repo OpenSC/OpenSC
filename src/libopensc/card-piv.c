@@ -150,7 +150,7 @@ enum {
  * If the file listed in the history object offCardCertURL was found,
  * its certs will be read into the cache and PIV_OBJ_CACHE_VALID set
  * and PIV_OBJ_CACHE_NOT_PRESENT unset.
- * 
+ *
  */
 
 #define PIV_OBJ_CACHE_VALID		1
@@ -1521,9 +1521,12 @@ static int piv_decode_cvc(sc_card_t * card, u8 **buf, size_t *buflen,
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
+	if (buf == NULL || *buf == NULL || cvc == NULL) {
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+	}
+
 	/* If already read and matches previous version return SC_SUCCESS */
-	if (cvc->der.value && (cvc->der.len == *buflen) && buf && *buf
-			&& (memcmp(cvc->der.value, *buf, *buflen) == 0))
+	if (cvc->der.value && (cvc->der.len == *buflen) && (memcmp(cvc->der.value, *buf, *buflen) == 0))
 		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 
 	piv_clear_cvc_content(cvc);
@@ -1982,7 +1985,7 @@ static int piv_sm_verify_certs(struct sc_card *card)
 		sc_log(card->ctx, "PIV compression not supported, no zlib");
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 #endif
-	
+
 	} else {
 		cert_blob = priv->obj_cache[PIV_OBJ_SM_CERT_SIGNER].internal_obj_data;
 		cert_bloblen = priv->obj_cache[PIV_OBJ_SM_CERT_SIGNER].internal_obj_len;
@@ -3138,7 +3141,7 @@ piv_get_cached_data(sc_card_t * card, int enumtag, u8 **buf, size_t *buf_len)
 	 * If we know it can not be on the card  i.e. History object
 	 * has been read, and we know what other certs may or
 	 * may not be on the card. We can avoid extra overhead
-	 * Also used if object on card was not parsable 
+	 * Also used if object on card was not parsable
 	 */
 
 	if (priv->obj_cache[enumtag].flags & PIV_OBJ_CACHE_NOT_PRESENT) {
@@ -4636,7 +4639,7 @@ piv_compute_signature(sc_card_t *card, const u8 * data, size_t datalen,
 		r = piv_validate_general_authentication(card, data, datalen, rbuf, sizeof rbuf);
 		if (r < 0)
 			goto err;
-		
+
 		r = sc_asn1_decode_ecdsa_signature(card->ctx, rbuf, r, nLen, &out, outlen);
 	} else { /* RSA is all set */
 		r = piv_validate_general_authentication(card, data, datalen, out, outlen);
@@ -5260,7 +5263,7 @@ piv_finish(sc_card_t *card)
 static int piv_match_card(sc_card_t *card)
 {
 	int r = 0;
-	
+
 	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d\n", card->type);
 	/* piv_match_card may be called with card->type, set by opensc.conf */
 	/* user provided card type must be one we know */
@@ -5466,7 +5469,7 @@ static int piv_match_card_continued(sc_card_t *card)
 		piv_obj_cache_free_entry(card, PIV_OBJ_DISCOVERY, 0); /* don't cache  on failure */
 		r = piv_find_aid(card);
 	}
-	
+
 	/*if both fail, its not a PIV card */
 	if (r < 0) {
 		goto err;
@@ -6188,7 +6191,7 @@ static int piv_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 
 	if (r < 0) /* bad error return will show up in sc_lock as error*/
 		goto err;
-	
+
 	if (was_reset > 0)
 		priv->logged_in =  SC_PIN_STATE_UNKNOWN;
 
