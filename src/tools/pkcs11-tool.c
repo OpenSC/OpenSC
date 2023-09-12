@@ -4941,6 +4941,7 @@ derive_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
 		}
 
 		rv = write(fd, value, value_len);
+		free(value);
 		if (rv < 0)
 			util_fatal("Failed to write to %s: %m", opt_output);
 
@@ -5643,11 +5644,15 @@ static int read_object(CK_SESSION_HANDLE session)
 				OSSL_PARAM_BLD_push_BN(bld, "n", rsa_n) != 1 ||
 				OSSL_PARAM_BLD_push_BN(bld, "e", rsa_e) != 1 ||
 				!(params = OSSL_PARAM_BLD_to_param(bld))) {
+				BN_free(rsa_n);
+				BN_free(rsa_e);
 				OSSL_PARAM_BLD_free(bld);
 				EVP_PKEY_CTX_free(ctx);
 				OSSL_PARAM_free(params);
 			 	util_fatal("cannot set RSA values");
 			}
+			BN_free(rsa_n);
+			BN_free(rsa_e);
 			OSSL_PARAM_BLD_free(bld);
 			if (EVP_PKEY_fromdata_init(ctx) != 1 ||
 				EVP_PKEY_fromdata(ctx, &pkey, EVP_PKEY_PUBLIC_KEY, params) != 1) {
