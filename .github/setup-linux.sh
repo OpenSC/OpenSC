@@ -59,6 +59,19 @@ if [ "$1" == "libressl" -o "$2" == "libressl" ]; then
 		cat /tmp/libressl.log
 		exit $RET
 	fi
+else
+	# install debug symbols
+	sudo apt-get install -y lsb-core ubuntu-dbgsym-keyring
+	echo "deb http://ddebs.ubuntu.com $(lsb_release -cs) main restricted universe multiverse
+deb http://ddebs.ubuntu.com $(lsb_release -cs)-updates main restricted universe multiverse
+deb http://ddebs.ubuntu.com $(lsb_release -cs)-proposed main restricted universe multiverse" | \
+	sudo tee -a /etc/apt/sources.list.d/ddebs.list
+	sudo apt-get update -qq
+	DEP="libssl1.1-dbgsym"
+	if [ -f "/usr/lib/x86_64-linux-gnu/libssl.so.3" ]; then
+		DEP="libssl3-dbgsym"
+	fi
+	sudo apt-get install -y openssl-dbgsym "$DEP"
 fi
 
 if [ "$1" == "mingw" -o "$1" == "mingw32" ]; then
