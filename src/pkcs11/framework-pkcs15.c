@@ -5742,6 +5742,7 @@ pkcs15_skey_decrypt(struct sc_pkcs11_session *session, void *obj,
 		return sc_to_cryptoki_error(rv, "C_Decrypt...");
 
 	/* pointer CK_ULONG_PTR to size_t conversion */
+	lDataLen = pulDataLen ? *pulDataLen : 0;
 	lpDataLen = pulDataLen ? &lDataLen : NULL;
 
 	rv = sc_pkcs15_decrypt_sym(fw_data->p15_card, skey->prv_p15obj, flags,
