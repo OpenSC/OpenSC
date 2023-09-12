@@ -639,7 +639,8 @@ sc_pkcs15_convert_prkey(struct sc_pkcs15_prkey *pkcs15_key, void *evp_key)
 		RSA_get0_factors(src, &src_p, &src_q);
 		RSA_get0_crt_params(src, &src_dmp1, &src_dmq1, &src_iqmp);
 #else
-		BIGNUM *src_n = NULL, *src_e = NULL, *src_d = NULL, *src_p = NULL, *src_q= NULL, *src_iqmp = NULL, *src_dmp1 = NULL, *src_dmq1 = NULL;
+		BIGNUM *src_n = NULL, *src_e = NULL, *src_d = NULL, *src_p = NULL, *src_q = NULL;
+		BIGNUM *src_iqmp = NULL, *src_dmp1 = NULL, *src_dmq1 = NULL;
 		if (EVP_PKEY_get_bn_param(pk, OSSL_PKEY_PARAM_RSA_N, &src_n) != 1 ||
 			EVP_PKEY_get_bn_param(pk, OSSL_PKEY_PARAM_RSA_E, &src_e) != 1 ||
 			EVP_PKEY_get_bn_param(pk, OSSL_PKEY_PARAM_RSA_D, &src_d) != 1 ||
@@ -648,8 +649,11 @@ sc_pkcs15_convert_prkey(struct sc_pkcs15_prkey *pkcs15_key, void *evp_key)
 			EVP_PKEY_get_bn_param(pk, OSSL_PKEY_PARAM_RSA_EXPONENT1, &src_dmp1) != 1 ||
 			EVP_PKEY_get_bn_param(pk, OSSL_PKEY_PARAM_RSA_EXPONENT2, &src_dmq1) != 1 ||
 			EVP_PKEY_get_bn_param(pk, OSSL_PKEY_PARAM_RSA_COEFFICIENT1, &src_iqmp) != 1) {
-			BN_free(src_n); BN_free(src_e); BN_free(src_d);
-			BN_free(src_p); BN_free(src_q);
+			BN_free(src_n);
+			BN_free(src_e);
+			BN_free(src_d);
+			BN_free(src_p);
+			BN_free(src_q);
 			BN_free(src_dmp1); BN_free(src_dmq1);
 			return SC_ERROR_UNKNOWN;
 		}
@@ -661,9 +665,14 @@ sc_pkcs15_convert_prkey(struct sc_pkcs15_prkey *pkcs15_key, void *evp_key)
 			!sc_pkcs15_convert_bignum(&dst->p, src_p) ||
 			!sc_pkcs15_convert_bignum(&dst->q, src_q)) {
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
-			BN_free(src_n); BN_free(src_e); BN_free(src_d);
-			BN_free(src_p); BN_free(src_q);
-			BN_free(src_iqmp); BN_free(src_dmp1); BN_free(src_dmq1);
+			BN_free(src_n);
+			BN_free(src_e);
+			BN_free(src_d);
+			BN_free(src_p);
+			BN_free(src_q);
+			BN_free(src_iqmp);
+			BN_free(src_dmp1);
+			BN_free(src_dmq1);
 #else
 			RSA_free(src);
 #endif
@@ -677,9 +686,14 @@ sc_pkcs15_convert_prkey(struct sc_pkcs15_prkey *pkcs15_key, void *evp_key)
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 		RSA_free(src);
 #else
-		BN_free(src_n); BN_free(src_e); BN_free(src_d);
-		BN_free(src_p); BN_free(src_q);
-		BN_free(src_iqmp); BN_free(src_dmp1); BN_free(src_dmq1);
+		BN_free(src_n);
+		BN_free(src_e);
+		BN_free(src_d);
+		BN_free(src_p);
+		BN_free(src_q);
+		BN_free(src_iqmp);
+		BN_free(src_dmp1);
+		BN_free(src_dmq1);
 #endif
 		break;
 		}
