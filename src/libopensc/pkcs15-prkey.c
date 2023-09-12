@@ -543,7 +543,7 @@ sc_pkcs15_prkey_attrs_from_cert(struct sc_pkcs15_card *p15card, struct sc_pkcs15
 
 
 void
-sc_pkcs15_free_prkey(struct sc_pkcs15_prkey *key)
+sc_pkcs15_erase_prkey(struct sc_pkcs15_prkey *key)
 {
 	if (!key)
 		return;
@@ -582,6 +582,14 @@ sc_pkcs15_free_prkey(struct sc_pkcs15_prkey *key)
 	}
 }
 
+void
+sc_pkcs15_free_prkey(struct sc_pkcs15_prkey *key)
+{
+	if (!key)
+		return;
+	sc_pkcs15_erase_prkey(key);
+	free(key);
+}
 
 void sc_pkcs15_free_prkey_info(sc_pkcs15_prkey_info_t *key)
 {
