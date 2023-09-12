@@ -27,7 +27,7 @@ echo "CHANNELID         1" >> tmp/reader.conf
 sudo mv tmp/reader.conf /etc/reader.conf.d/reader.conf
 cat /etc/reader.conf.d/reader.conf
 popd
- 
+
 sudo /etc/init.d/pcscd restart
 
 # Needed for tput to not report warnings
@@ -50,10 +50,10 @@ echo | ./OsEID-tool INIT
 popd
 
 # this does not work as we have random key IDs in here
-#pushd src/tests/p11test/
-#./p11test -s 0 -p 11111111 -o oseid.json || true
+pushd src/tests/p11test/
+$VALGRIND ./p11test -s 0 -p 11111111 -o oseid.json || true
 #diff -u3 oseid_ref.json oseid.json
-#popd
+popd
 
 # cleanup -- this would break later uses of pcscd
 kill -9 $PID
