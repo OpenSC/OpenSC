@@ -1760,6 +1760,15 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card, struct sc_profil
 	int keybits, r = 0;
 
 	LOG_FUNC_CALLED(ctx);
+
+	if (keyargs->key.algorithm == SC_ALGORITHM_EC) {
+		/* Do this before copying the key below, otherwise we would leak the memory
+		 * if some fixing would happen in check_key_compatibility() or elsewhere.
+		 * This should have been done in the sc_pkcs15_convert_prkey()
+		 * or earlier, but the context is not available at that point */
+		r = sc_pkcs15_fix_ec_parameters(ctx, &keyargs->key.u.ec.params);
+		LOG_TEST_RET(ctx, r, "failed to fix EC parameters");
+	}
 	/* Create a copy of the key first */
 	key = keyargs->key;
 
@@ -1769,7 +1778,8 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card, struct sc_profil
 	keybits = prkey_bits(p15card, &key);
 	LOG_TEST_RET(ctx, keybits, "Invalid private key size");
 
-	/* Now check whether the card is able to handle this key */
+	/* Now check whether the card is able to handle this key
+	 * this already modifies the local shallow copy of the key structure! */
 	if (check_key_compatibility(p15card, key.algorithm, &key, keyargs->x509_usage, keybits, 0) != SC_SUCCESS) {
 		/* Make sure the caller explicitly tells us to store
 		 * the key as extractable. */

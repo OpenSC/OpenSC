@@ -1030,8 +1030,10 @@ do_store_private_key(struct sc_profile *profile)
 	}
 
 	r = sc_pkcs15_convert_prkey(&args.key, pkey);
-	if (r < 0)
+	if (r < 0) {
+		EVP_PKEY_free(pkey);
 		return r;
+	}
 	init_gost_params(&args.params.gost, pkey);
 
 	if (ncerts) {
@@ -1067,10 +1069,15 @@ do_store_private_key(struct sc_profile *profile)
 	args.access_flags |= SC_PKCS15_PRKEY_ACCESS_SENSITIVE;
 
 	r = sc_lock(g_p15card->card);
-	if (r < 0)
-		return r;
-	r = sc_pkcs15init_store_private_key(g_p15card, profile, &args, NULL);
 	if (r < 0) {
+		EVP_PKEY_free(pkey);
+		sc_pkcs15_erase_prkey(&(args.key));
+		return r;
+	}
+	r = sc_pkcs15init_store_private_key(g_p15card, profile, &args, NULL);
+	sc_pkcs15_erase_prkey(&(args.key));
+	if (r < 0) {
+		EVP_PKEY_free(pkey);
 		sc_unlock(g_p15card->card);
 		return r;
 	}
@@ -1089,8 +1096,11 @@ do_store_private_key(struct sc_profile *profile)
 		memset(&cargs, 0, sizeof(cargs));
 
 		/* Encode the cert */
-		if ((r = do_convert_cert(&cargs.der_encoded, cert[i])) < 0)
+		if ((r = do_convert_cert(&cargs.der_encoded, cert[i])) < 0) {
+			EVP_PKEY_free(pkey);
+			sc_unlock(g_p15card->card);
 			return r;
+		}
 
 		X509_check_purpose(cert[i], -1, -1);
 		cargs.x509_usage = X509_get_key_usage(cert[i]);
@@ -1133,6 +1143,7 @@ next_cert:
 	if (ncerts == 0)
 		r = do_store_public_key(profile, pkey);
 
+	EVP_PKEY_free(pkey);
 	sc_unlock(g_p15card->card);
 	return r;
 }
@@ -1208,9 +1219,12 @@ do_store_public_key(struct sc_profile *profile, EVP_PKEY *pkey)
 	}
 	if (r >= 0) {
 		r = sc_lock(g_p15card->card);
-		if (r < 0)
+		if (r < 0) {
+			sc_pkcs15_erase_pubkey(&(args.key));
 			return r;
+		}
 		r = sc_pkcs15init_store_public_key(g_p15card, profile, &args, &dummy);
+		sc_pkcs15_erase_pubkey(&(args.key));
 		sc_unlock(g_p15card->card);
 	}
 
@@ -1286,6 +1300,7 @@ do_store_certificate(struct sc_profile *profile)
 	r = do_read_certificate(opt_infile, opt_format, &cert);
 	if (r >= 0)
 		r = do_convert_cert(&args.der_encoded, cert);
+	X509_free(cert);
 	if (r >= 0) {
 		r = sc_lock(g_p15card->card);
 		if (r < 0)

@@ -562,14 +562,10 @@ sc_pkcs15_erase_prkey(struct sc_pkcs15_prkey *key)
 		free(key->u.gostr3410.d.data);
 		break;
 	case SC_ALGORITHM_EC:
-		if (key->u.ec.params.der.value)
-			free(key->u.ec.params.der.value);
-		if (key->u.ec.params.named_curve)
-			free(key->u.ec.params.named_curve);
-		if (key->u.ec.privateD.data)
-			free(key->u.ec.privateD.data);
-		if (key->u.ec.ecpointQ.value)
-			free(key->u.ec.ecpointQ.value);
+		free(key->u.ec.params.der.value);
+		free(key->u.ec.params.named_curve);
+		free(key->u.ec.privateD.data);
+		free(key->u.ec.ecpointQ.value);
 		break;
 	case SC_ALGORITHM_EDDSA:
 		free(key->u.eddsa.pubkey.value);
@@ -790,6 +786,7 @@ sc_pkcs15_convert_prkey(struct sc_pkcs15_prkey *pkcs15_key, void *evp_key)
 		}
 #else
 		dst->params.named_curve = strdup(grp_name);
+		BN_free(src_priv_key);
 #endif
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
@@ -817,6 +814,9 @@ sc_pkcs15_convert_prkey(struct sc_pkcs15_prkey *pkcs15_key, void *evp_key)
 		 * these curves. Get real field_length from OpenSSL.
 		 */
 		dst->params.field_length = EC_GROUP_get_degree(grp);
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+		EC_GROUP_free(grp);
+#endif
 
 		/* Octetstring may need leading zeros if BN is to short */
 		if (dst->privateD.len < (dst->params.field_length + 7) / 8)   {
