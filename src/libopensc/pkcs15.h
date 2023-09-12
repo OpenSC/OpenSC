@@ -734,6 +734,7 @@ int sc_pkcs15_pubkey_from_spki_fields(struct sc_context *,
 int sc_pkcs15_encode_prkey(struct sc_context *,
 		struct sc_pkcs15_prkey *, u8 **, size_t *);
 void sc_pkcs15_free_prkey(struct sc_pkcs15_prkey *prkey);
+void sc_pkcs15_erase_prkey(struct sc_pkcs15_prkey *prkey);
 void sc_pkcs15_free_key_params(struct sc_pkcs15_key_params *params);
 
 int sc_pkcs15_read_data_object(struct sc_pkcs15_card *p15card,
