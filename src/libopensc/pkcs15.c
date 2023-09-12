@@ -1986,6 +1986,9 @@ sc_pkcs15_free_object(struct sc_pkcs15_object *obj)
 	case SC_PKCS15_TYPE_CERT:
 		sc_pkcs15_free_cert_info((sc_pkcs15_cert_info_t *)obj->data);
 		break;
+	case SC_PKCS15_TYPE_SKEY:
+		sc_pkcs15_free_skey_info((sc_pkcs15_skey_info_t *)obj->data);
+		break;
 	case SC_PKCS15_TYPE_DATA_OBJECT:
 		sc_pkcs15_free_data_info((sc_pkcs15_data_info_t *)obj->data);
 		break;
