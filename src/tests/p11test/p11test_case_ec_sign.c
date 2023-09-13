@@ -63,6 +63,10 @@ void ec_sign_size_test(void **state) {
 		if (objects.data[i].sign && objects.data[i].verify) {
 			for (j = 0; j < objects.data[i].num_mechs; j++) {
 				test_mech_t *m = &(objects.data[i].mechs[j]);
+				if ((m->usage_flags & CKF_SIGN) == 0) {
+					/* Skip non-signature mechanisms (for example derive ones) */
+					continue;
+				}
 				for (l = min; l < max; l += inc) {
 					/* Skip inputs not matching digest sizes for raw ECDSA as the card
 					 * will likely reject them as not valid hash outputs */
