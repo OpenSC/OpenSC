@@ -776,7 +776,7 @@ void pss_oaep_test(void **state) {
 
 	search_for_all_objects(&objects, info);
 
-	debug_print("\nCheck functionality of Sign&Verify and/or Encrypt&Decrypt");
+	debug_print("\nCheck functionality of Sign&Verify and/or Encrypt&Decrypt with RSA/OAEP mechanisms");
 	for (i = 0; i < objects.count; i++) {
 		test_cert_t *o = &objects.data[i];
 		/* do the Sign&Verify and/or Encrypt&Decrypt */
