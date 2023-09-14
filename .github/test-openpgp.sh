@@ -38,4 +38,17 @@ $VALGRIND opensc-tool -n;
 $VALGRIND openpgp-tool --verify CHV3 --pin 12345678 --gen-key 2;
 $VALGRIND pkcs15-init --verify --auth-id 3 --pin 12345678 --delete-objects privkey,pubkey --id 2 --generate-key rsa/2048;
 $VALGRIND pkcs11-tool -l -t -p 123456;
+
+# generate new keys and run p11test
+$VALGRIND openpgp-tool --verify CHV3 --pin 12345678 --gen-key 1;
+$VALGRIND openpgp-tool --verify CHV3 --pin 12345678 --gen-key 3;
+pushd src/tests/p11test/
+sleep 5
+# signing key 1 is on slot 1
+$VALGRIND ./p11test -v -s 0 -p 123456 -o openpgp_s0.json
+$VALGRIND ./p11test -v -s 1 -p 123456 -o openpgp_s1.json
+popd
+diff -u3 src/tests/p11test/openpgp_s0{_ref,}.json
+diff -u3 src/tests/p11test/openpgp_s1{_ref,}.json
+
 kill -9 $PID
