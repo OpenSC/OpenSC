@@ -49,6 +49,9 @@ extern "C" {
 #define SM_ISO_PADDING 0x01
 /** @brief Padding indicator: use no padding */
 #define SM_NO_PADDING  0x02
+/** @brief Padding indicator: use NIST sp800-73-4 */ 
+#define SM_NIST_PADDING 0x04
+
 
 /** @brief Secure messaging context
  *
@@ -162,6 +165,12 @@ struct iso_sm_ctx {
 
 	/** @brief Padding-content indicator byte (ISO 7816-4 Table 30) */
 	u8 padding_indicator;
+	/** @brief if 1 use tag 87 */
+	u8 padding_tag;
+	/** @brief if 1 do not pad data to to be mac'ed */
+	u8  do_not_pad_macdata;
+	/** @brief do_not_split_apdu into multiple apdus */
+	u8  use_sm_chaining;
 	/** @brief Pad to this block length */
 	size_t block_length;
 
