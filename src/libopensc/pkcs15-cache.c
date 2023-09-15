@@ -220,9 +220,14 @@ int sc_pkcs15_cache_file(struct sc_pkcs15_card *p15card,
 	len = ftell(f);
 	if (len > path->index) {
 		/* override previous cache records on this location */
-		fseek(f, path->index, SEEK_SET);
+		r = fseek(f, path->index, SEEK_SET);
+		if (r != 0) {
+			fclose(f);
+			return 0;
+		}
 	} else if (path->index > len) {
 		/* We miss some bytes so we will not cache this chunk */
+		fclose(f);
 		return 0;
 	}
 
