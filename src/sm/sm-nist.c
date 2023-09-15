@@ -1434,6 +1434,8 @@ sm_nist_start(sc_card_t *card, sm_nist_params_t *params)
 
 		if (params->flags & NIST_SM_FLAGS_SM_CERT_SIGNER_COMPRESSED) {
 #ifdef ENABLE_ZLIB
+			cert_blob = NULL;
+			cert_blob_len = 0;
 			if (SC_SUCCESS != sc_decompress_alloc(&cert_blob, &cert_blob_len,
 					params->signer_cert_der, params->signer_cert_der_len, COMPRESSION_AUTO)) {
 				sc_log(card->ctx, "PIV decompression of SM CERT_SIGNER failed");
@@ -1499,13 +1501,6 @@ sm_nist_start(sc_card_t *card, sm_nist_params_t *params)
 	}
 
 	card->sm_ctx.sm_mode = SM_MODE_TRANSMIT;
-
-	/* TODO delete 
-	 * sm-iso does not set an operation for sm_open which in our case
-	 * is sm_nist_open. which we will control from calling driver.
-	 * so unset sm_mode
-	 */
-	//	card->sm_ctx.sm_mode = SM_MODE_NONE;
 
 err:
 	free(cert_blob);
@@ -1662,7 +1657,6 @@ sm_nist_decrypt(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	r = (int)enclen;
 
 err:
-	
 	EVP_CIPHER_CTX_free(ed_ctx);
 
 	free(out);
