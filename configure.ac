@@ -261,6 +261,14 @@ AC_ARG_ENABLE(
 	[enable_piv_sm="no"]
 )
 
+# WIP change to force use of  sm-nist  for PIV SM
+AC_ARG_ENABLE(
+	[nist-sm],
+	[AS_HELP_STRING([--enable-nist-sm],[enable SM in PIV card driver using sm/sm_nist  linkage @<:@disabled@:>@])],
+	,
+	[enable_nist_sm="yes"]
+)
+
 AC_ARG_ENABLE(
 	[man],
 	[AS_HELP_STRING([--disable-man],[disable installation of manuals @<:@enabled for none Windows@:>@])],
@@ -871,6 +879,10 @@ if  test "${enable_piv_sm}" = "yes"; then
 	fi
 fi
 
+if  test "${enable_nist_sm}" = "yes"; then
+	AC_DEFINE([ENABLE_NIST_SM], [1], [Enable NIST SM])
+fi
+
 if test "${enable_openct}" = "yes"; then
 	PKG_CHECK_MODULES(
 		[OPENCT],
@@ -1258,6 +1270,7 @@ SM support:              ${enable_sm}
 SM default module:       ${DEFAULT_SM_MODULE}
 SM default path:         $(eval eval eval echo "${DEFAULT_SM_MODULE_PATH}")
 PIV SM support:          ${enable_piv_sm}
+PIV SM use sm-nist:	 ${enable_nist_sm}
 DNIe UI support:         ${enable_dnie_ui}
 Notification support:    ${enable_notify}
 Code coverage:           ${enable_code_coverage}
