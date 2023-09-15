@@ -917,6 +917,10 @@ iso7816_get_response(struct sc_card *card, size_t *count, u8 *buf)
 	apdu.resp    = buf;
 	/* don't call GET RESPONSE recursively */
 	apdu.flags  |= SC_APDU_FLAGS_NO_GET_RESP;
+#if ENABLE_SM
+	if (card->sm_ctx.sm_flags & SM_FLAGS_GET_RESPONSE_IN_CLEAR)
+		apdu.flags |= SC_APDU_FLAGS_NO_SM;
+#endif /* ENABLE_SM */
 
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");

@@ -3,11 +3,12 @@
 MAINTAINERCLEANFILES = Makefile.in
 EXTRA_DIST = Makefile.mak
 
-noinst_LTLIBRARIES = libsmiso.la libsmeac.la
+noinst_LTLIBRARIES = libsmiso.la libsmeac.la libsmnist.la
 
 noinst_HEADERS = \
 		 sm-iso-internal.h \
 		 sm-iso.h \
+		 sm-nist.h \
 		 sm-eac.h
 
 if ENABLE_OPENSSL
@@ -25,5 +26,9 @@ libsm_la_CFLAGS = $(OPENSSL_CFLAGS)
 libsmiso_la_SOURCES = sm-iso.c
 
 libsmeac_la_SOURCES = sm-eac.c
-libsmeac_la_LIBADD = $(OPENPACE_LIBS) $(OPENSSL_LIBS) libsmiso.la
+libsmeac_la_LIBADD = $(OPENPACE_LIBS) $(OPENSSL_LIBS)
 libsmeac_la_CFLAGS = $(OPENPACE_CFLAGS) $(OPENSSL_CFLAGS) -I$(top_srcdir)/src
+
+libsmnist_la_SOURCES = sm-nist.c
+libsmnist_la_LIBADD = $(OPENSSL_LIBS)
+libsmnist_la_CFLAGS = $(OPENSSL_CFLAGS) -I$(top_srcdir)/src
