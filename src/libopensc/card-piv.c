@@ -762,6 +762,42 @@ static int piv_ai_map_find_by_id(sc_card_t *card, u8);
 
 #ifdef PIV_SM_NIST
 static int
+piv_sm_nist_pre_transmit_callback(sc_card_t *card, sc_apdu_t *apdu)
+{
+	int r = 0;
+	/* piv_private_data_t *priv = PIV_DATA(card) */;
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	sc_debug(card->ctx, SC_LOG_DEBUG_SM, "callback for ins: %2.2x", apdu->ins);
+
+	/* May need additional cases */
+	switch (apdu->ins) {
+	case 0xC0: /* GET RESPONSE */
+		r = SC_ERROR_SM_NOT_APPLIED;
+		break;
+	case 0xCB: /* GET DATA piv_get_data may have already set in clear */
+		break;
+	case 0xDB: /* PUT DATA */
+		/* TODO need tests like for GET DATA */
+		break;
+	case 0x20: /* VERIFY */
+		break;
+	case 0x24: /* CHANGE REFERENCE DATA */
+		break;
+	case 0x86: /* GENERAL AUTHENTICATE */
+	case 0x87: /* GENERAL AUTHENTICATE */
+		break;
+	default: /* just issue the plain apdu */
+		sc_debug(card->ctx, SC_LOG_DEBUG_SM, "Found non PIV ins:%2.2x", apdu->ins);
+		r = SC_ERROR_SM_NOT_APPLIED;
+		break;
+	}
+
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, r);
+}
+
+static int
 piv_parse_pairing_code(sc_card_t *card, const char *option)
 {
 	size_t i;
@@ -3766,6 +3802,9 @@ piv_finish(sc_card_t *card)
 			piv_obj_cache_free_entry(card, i, 0);
 		}
 
+#ifdef PIV_SM_NIST
+		free(priv->sm_params.signer_cert_der);
+#endif /* PIV_SM_NIST */
 		free(priv);
 		card->drv_data = NULL; /* priv */
 	}
@@ -4418,7 +4457,6 @@ piv_init(sc_card_t *card)
 
 			priv->sm_params.csID = priv->csID;
 
-			/* set our call back */
 			priv->sm_params.sm_nist_pre_transmit_callback = piv_sm_nist_pre_transmit_callback;
 			r = sm_nist_start(card, &priv->sm_params);
 			sc_log(card->ctx, "sm_nist_start returned:%d", r);
@@ -4494,7 +4532,7 @@ piv_check_sw(struct sc_card *card, unsigned int sw1, unsigned int sw2)
 			}
 		}
 	}
-
+	
 #ifdef PIV_SM_NIST
 	/* Note 6982 is map to SC_ERROR_SM_NO_SESSION_KEYS but iso maps it to SC_ERROR_SECURITY_STATUS_NOT_SATISFIED */
 	/* we do this because 6982 could also mean a verify is not allowed over contactless without VCI */
@@ -4781,6 +4819,12 @@ piv_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 		goto err;
 	}
 
+	if (priv->init_flags & PIV_INIT_IN_READER_LOCK_OBTAINED) {
+		sc_log(card->ctx, "Recursive call, return");
+		r = 0;
+		goto err;
+	}
+
 	priv->init_flags |= PIV_INIT_IN_READER_LOCK_OBTAINED;
 
 #ifdef PIV_SM_NIST
@@ -4789,7 +4833,17 @@ piv_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 		r = sm_nist_check_sm_working(card, &priv->sm_params, was_reset, piv_aids[0].value, piv_aids[0].len_short,
 				priv->pin_preference, &priv->logged_in, &priv->tries_left);
 	}
+//<<<<<<< HEAD
 	else
+//=======
+
+	if (r < 0 || was_reset > 0) {
+		u8 temp[SC_MAX_APDU_BUFFER_SIZE];
+		size_t templen = sizeof(temp);
+
+		r = iso7816_select_aid(card, piv_aids[0].value, piv_aids[0].len_short, temp, &templen);
+	}
+//>>>>>>> 8d675acfc (card-piv.c sm-nist.c sm-nist.h - use the sm-nist_pre_transmit_callback changes)
 #endif /* PIV_SM_NIST */
 	{
 		/* first see if AID is active AID by reading discovery object '7E' */
