@@ -5310,7 +5310,11 @@ struct sc_pkcs11_object_ops pkcs15_profile_ops = {
 static void
 pkcs15_skey_release(void *object)
 {
-	__pkcs15_release_object((struct pkcs15_any_object *)object);
+	struct pkcs15_skey_object *skey = (struct pkcs15_skey_object *) object;
+	struct sc_pkcs15_skey_info *skey_info = skey->info;
+	if (__pkcs15_release_object((struct pkcs15_any_object *)object) == 0)
+		if (skey_info)
+			sc_pkcs15_free_skey_info(skey_info);
 }
 
 
