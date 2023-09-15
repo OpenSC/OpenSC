@@ -576,6 +576,7 @@ sc_pkcs15_erase_prkey(struct sc_pkcs15_prkey *key)
 		key->u.eddsa.value.len = 0;
 		break;
 	}
+	sc_mem_clear(key, sizeof(*key));
 }
 
 void
