@@ -39,7 +39,7 @@
 #endif
 
 #ifdef ENABLE_OPENSSL
-	/* openssl needed for card administration */
+	/* openssl needed for card administration and SM */
 #include <openssl/evp.h>
 #include <openssl/pem.h>
 #include <openssl/rand.h>
@@ -1728,6 +1728,11 @@ static int piv_load_options(sc_card_t *card)
 		for (j = 0, block = found_blocks[j]; block; j++, block = found_blocks[j]) {
 
 #if defined(ENABLE_NIST_SM) || defined(ENABLE_PIV_SM)
+
+/*
+ * FIXME TODO - Names and locations of piv_pairing_code and piv_use_sm are likely to change in the future.
+ * See https://github.com/OpenSC/OpenSC/pull/2053/files#r1267388721
+ */
 			/*
 			 * "piv_use_sm" if card supports NIST sp800-73-4 sm, when should it be used
 			 * never - use card like 800-73-3, i.e. contactless is very limited on
