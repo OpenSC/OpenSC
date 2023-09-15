@@ -36,8 +36,6 @@
 #include <string.h>
 #include <ctype.h>
 
-#ifdef ENABLE_OPENSSL
-// TODO test if correct versions of openssl
 #if defined(ENABLE_OPENSSL) && defined(ENABLE_SM) && !defined(OPENSSL_NO_EC) && !defined(LIBRESSL_VERSION_NUMBER) && OPENSSL_VERSION_NUMBER >= 0x10100000L
 #else
 #undef ENABLE_PIV_SM
@@ -282,7 +280,7 @@ static int nist_sm_post_transmit(sc_card_t *card, const struct iso_sm_ctx *ctx,
 		sc_apdu_t *sm_apdu);
 static int nist_sm_finish(sc_card_t *card, const struct iso_sm_ctx *ctx,
 		sc_apdu_t *apdu);
-static void nist_sm_clear_free(struct iso_sm_ctx *ctx);
+static void nist_sm_clear_free(const struct iso_sm_ctx *ctx);
 
 static void piv_inc(u8 *counter, size_t size);
 //static int piv_encode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu);
@@ -2541,7 +2539,7 @@ nist_sm_finish(sc_card_t *card, const struct iso_sm_ctx *ctx,
 }
 
 static void
-nist_sm_clear_free(struct iso_sm_ctx *ctx)
+nist_sm_clear_free(const struct iso_sm_ctx *ctx)
 {
 	if (ctx) {
 		struct piv_private_data *priv = PIV_PRIV_FROM(ctx);
@@ -2552,7 +2550,7 @@ nist_sm_clear_free(struct iso_sm_ctx *ctx)
 			piv_clear_cvc_content(&priv->sm_in_cvc);
 			piv_clear_cvc_content(&priv->sm_cvc);
 			free(priv);
-			ctx->priv_data = NULL;
+			/* TODO IS this needed? ctx->priv_data = NULL; */
 		}
 	}
 }
