@@ -5198,7 +5198,7 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 		printf("%sdecrypt", sepa);
 		sepa = ", ";
 	}
-	if (!pub && getSIGN(sess, obj)) {
+	if ((!pub || sec) && getSIGN(sess, obj)) {
 		printf("%ssign", sepa);
 		sepa = ", ";
 	}
