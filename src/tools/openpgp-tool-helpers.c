@@ -22,6 +22,7 @@
 
 #include <stdio.h>
 #include <time.h>
+#include "common/compat_strnlen.h"
 #include "openpgp-tool-helpers.h"
 #include "util.h"
 
