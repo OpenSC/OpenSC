@@ -1778,13 +1778,13 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 			recvbuf ? SC_APDU_CASE_4_SHORT: SC_APDU_CASE_3_SHORT,
 			ins, p1, p2);
 	apdu.flags |= SC_APDU_FLAGS_CHAINING;
-//TODO  #endif /* defined(ENABLE_NIST_SM) || defined(ENABLE_PIV_SM) */
+//TODO REMOVE 20230916  #endif /* defined(ENABLE_NIST_SM) || defined(ENABLE_PIV_SM) */
 #if defined(ENABLE_NIST_SM) || defined(ENABLE_PIV_SM)
 	if (card->sm_ctx.sm_mode != SM_MODE_NONE) {
 		/* tell apdu.c to not do the chaining, let the SM get_apdu do it */
 		apdu.flags |= SC_APDU_FLAGS_SM_CHAINING;
 	}
-#endif /* ENABLE_PIV_SM */
+#endif /* defined(ENABLE_PIV_SM) || defined(ENABLE_PIV_SM) */
 	apdu.lc = sendbuflen;
 	apdu.datalen = sendbuflen;
 	apdu.data = sendbuf;
@@ -3071,8 +3071,6 @@ piv_get_data(sc_card_t * card, int enumtag, u8 **buf, size_t *buf_len)
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	/* assert(enumtag >= 0 && enumtag < PIV_OBJ_LAST_ENUM); */
-
 	sc_log(card->ctx, "#%d, %s", enumtag, piv_objects[enumtag].name);
 
 	r = sc_lock(card); /* do check len and get data in same transaction */
@@ -3129,7 +3127,7 @@ piv_get_data(sc_card_t * card, int enumtag, u8 **buf, size_t *buf_len)
 		priv->sm_flags |= PIV_SM_GET_DATA_IN_CLEAR;
 	}
 
-#endif /* ENABLE_PIV_SM */
+#endif /* defined(ENABLE_NIST_SM) || defined(ENABLE_PIV_SM) */
 	r = piv_general_io(card, 0xCB, 0x3F, 0xFF, tagbuf,  p - tagbuf, *buf, *buf_len);
 	if (r > 0) {
 		int r_tag;
@@ -5707,7 +5705,7 @@ static int piv_match_card_continued(sc_card_t *card)
 	if ((priv->pin_policy & (PIV_PP_OCC | PIV_PP_VCI_IMPL | PIV_PP_VCI_WITHOUT_PC)) != 0) {
 		card->type = SC_CARD_TYPE_PIV_II_800_73_4;
 	}
-#endif
+#endif /* defined(ENABLE_NIST_SM) || defined(ENABLE_PIV_SM) */
 	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d r2:%d CI:%08x r:%d\n", card->type, r2, priv->card_issues, r);
 
 	/*
@@ -5922,7 +5920,7 @@ static int piv_init(sc_card_t *card)
 	if (priv->csID
 #ifdef ENABLE_PIV_SM
 	&& priv->cs != NULL
-#endif
+#endif /* ENABLE_PIV_SM */
 		) {
 		/*
 		 * TODO look closer at reset of card by other process
@@ -5965,7 +5963,7 @@ static int piv_init(sc_card_t *card)
 			/* force reading of signer cert now. Either works and saves addresses or not */
 			r = piv_get_cached_data(card, PIV_OBJ_SM_CERT_SIGNER, &signer_cert, &signer_cert_len);
 			r = piv_cache_internal_data(card,PIV_OBJ_SM_CERT_SIGNER);
-		
+
 			r = sm_nist_start(card, priv->cert_signer_der, priv->cert_signer_len,
 					priv->sm_in_cvc_der, priv->sm_in_cvc_len,
 					&priv->sm_flags,
@@ -6011,7 +6009,7 @@ static int piv_check_sw(struct sc_card *card, unsigned int sw1, unsigned int sw2
 	int r;
 #if defined(ENABLE_NIST_SM) || defined(ENABLE_PIV_SM)
 	int i;
-#endif /* defined(ENABLE_NIST_SM) || defined(ENABLE_PIV_SM) */ 
+#endif /* defined(ENABLE_NIST_SM) || defined(ENABLE_PIV_SM) */
 
 	piv_private_data_t * priv = PIV_DATA(card);
 
@@ -6286,7 +6284,6 @@ static int piv_logout(sc_card_t *card)
 {
 	int r = SC_ERROR_INTERNAL;
 	piv_private_data_t * priv = PIV_DATA(card);
-	sc_apdu_t  apdu;
 
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -6298,14 +6295,13 @@ static int piv_logout(sc_card_t *card)
 			 LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 	}
 	if (priv) {
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x20, 0xFF, priv->pin_preference);
-		r = sc_transmit_apdu(card, &apdu);
+		/* logout defined since 800-73-4 */
+		r = iso7816_logout(card, priv->pin_preference);
 		if (r == SC_SUCCESS) {
 			priv->logged_in = SC_PIN_STATE_LOGGED_OUT;
 		}
 	}
-	/* disregard the return code */
-	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 /*
@@ -6370,7 +6366,8 @@ static int piv_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 			sc_log(card->ctx,"SC_ERROR_SM_INVALID_SESSION_KEY || PIV_SM_FLAGS_DEFER_OPEN");
 #ifdef ENABLE_PIV_SM
 			piv_sm_open(card);
-#endif /* ENABLE_PIV_SM   fix for ENABLE_NIST_SM */
+#endif /* ENABLE_PIV_SM */
+/* TODO  20230916 - need to tell sm-nist.c to do piv_sm_open */
 			r = piv_find_discovery(card);
 			}
 #endif /* defined(ENABLE_NIST_SM) || defined(ENABLE_PIV_SM) */
