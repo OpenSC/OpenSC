@@ -38,7 +38,6 @@
 
 #if defined(ENABLE_OPENSSL) && defined(ENABLE_SM) && !defined(OPENSSL_NO_EC) && !defined(LIBRESSL_VERSION_NUMBER) && OPENSSL_VERSION_NUMBER >= 0x10100000L
 #else
-#undef ENABLE_PIV_SM
 #undef ENABLE_NIST_SM
 #endif
 
@@ -1215,8 +1214,6 @@ err:
 
 	LOG_FUNC_RETURN(card->ctx, r);
 }
-// TODO why here #endif /* ENABLE_PIV_SM */
-
 
 static void piv_inc(u8 *counter, size_t size)
 {
@@ -2557,4 +2554,4 @@ nist_sm_clear_free(const struct iso_sm_ctx *ctx)
 
 #else  /* correct versions of OpenSSL or not enabled */
 //TODO add dummy  nist_sm_start 
-#endif
+#endif /* ENABLE_NIST_SM */
