@@ -1588,11 +1588,6 @@ static int piv_decode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu
 		goto err;
 	}
 
-	/* if no data returned clear plain resplen */
-	if (!(asn1_sm_response[0].flags & SC_ASN1_PRESENT)) {
-		plain->resplen = 0;
-	}
-
 	if ((asn1_sm_response[1].flags & SC_ASN1_PRESENT) == 0
 			|| (asn1_sm_response[2].flags & SC_ASN1_PRESENT) == 0) {
 		sc_log(card->ctx,"SM missing status or R-MAC");
@@ -1674,10 +1669,12 @@ static int piv_decode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu
 	}
 
 	/* some commands do not have response data */
-	if (ee.value != NULL) {
+	if (ee.value == NULL) {
+		plain->resplen = 0;
+	} else {
 		p = ee.value;
 		inlen = ee.len;
-		if (inlen < 17 || *p != 0x01) { /*padding indicator is required */
+		if (inlen < 17 || *p != 0x01) { /*padding and padding indicator are required */
 			sc_log(card->ctx, "SM padding indicator not 0x01");
 			r = SC_ERROR_SM_AUTHENTICATION_FAILED;
 			goto err;
@@ -1824,14 +1821,13 @@ static int piv_sm_close(sc_card_t *card)
 	piv_private_data_t * priv = NULL;
 	struct iso_sm_ctx * ctx = NULL;
 
-	
 	if (!card)
 		return SC_ERROR_INVALID_ARGUMENTS;
-	
+
 	ctx = card->sm_ctx.info.cmd_data;
 	if (!ctx)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, SC_ERROR_INVALID_ARGUMENTS);
-	
+
 	priv = (piv_private_data_t *)ctx->priv_data;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
@@ -1886,6 +1882,8 @@ static int piv_decode_cvc(sc_card_t * card, u8 **buf, size_t *buflen,
 	size_t signaturebits;
 
 	if (!card  ||  !buf || !*buf || !cvc)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	/* If already read and matches previous version return SC_SUCCESS */
@@ -1971,7 +1969,6 @@ static int nist_parse_pairing_code(sc_card_t *card, const char *option)
 	if (!card)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
-// TODO should limit to PIV_PAIRING_CODE_LEN
 	if (strlen(option) != PIV_PAIRING_CODE_LEN) {
 		sc_log(card->ctx, "pairing code length invalid must be %d", PIV_PAIRING_CODE_LEN);
 		return SC_ERROR_INVALID_ARGUMENTS;
