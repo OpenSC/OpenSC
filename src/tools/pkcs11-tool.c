@@ -4765,19 +4765,19 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 	CK_MECHANISM mech;
 	CK_OBJECT_CLASS newkey_class= CKO_SECRET_KEY;
 	CK_KEY_TYPE newkey_type = CKK_GENERIC_SECRET;
-	CK_BBOOL true = TRUE;
-	CK_BBOOL false = FALSE;
+	CK_BBOOL _true = TRUE;
+	CK_BBOOL _false = FALSE;
 	CK_OBJECT_HANDLE newkey = 0;
 	CK_ATTRIBUTE newkey_template[20] = {
-		{CKA_TOKEN, &false, sizeof(false)}, /* session only object */
+		{CKA_TOKEN, &_false, sizeof(_false)}, /* session only object */
 		{CKA_CLASS, &newkey_class, sizeof(newkey_class)},
 		{CKA_KEY_TYPE, &newkey_type, sizeof(newkey_type)},
-		{CKA_SENSITIVE, &false, sizeof(false)},
-		{CKA_EXTRACTABLE, &true, sizeof(true)},
-		{CKA_ENCRYPT, &true, sizeof(true)},
-		{CKA_DECRYPT, &true, sizeof(true)},
-		{CKA_WRAP, &true, sizeof(true)},
-		{CKA_UNWRAP, &true, sizeof(true)}
+		{CKA_SENSITIVE, &_false, sizeof(_false)},
+		{CKA_EXTRACTABLE, &_true, sizeof(_true)},
+		{CKA_ENCRYPT, &_true, sizeof(_true)},
+		{CKA_DECRYPT, &_true, sizeof(_true)},
+		{CKA_WRAP, &_true, sizeof(_true)},
+		{CKA_UNWRAP, &_true, sizeof(_true)}
 	};
 	int n_attrs = 9;
 	CK_ECDH1_DERIVE_PARAMS ecdh_parms;
