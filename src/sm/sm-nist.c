@@ -435,7 +435,6 @@ static int piv_sm_verify_certs(struct sc_card *card)
 
 	u8 *rbuf; /* do not free*/
 	size_t rbuflen;
-// TODO remove	X509 *cert = NULL;
 	EVP_PKEY *cert_pkey =  NULL; /* do not free */
 	EVP_PKEY *in_cvc_pkey = NULL;
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
@@ -547,6 +546,9 @@ static int piv_sm_verify_certs(struct sc_card *card)
 	 *			(yes for security)
 	 */
 err:
+// TODO 230919 check these 2 free are needed
+	X509_free(cert);
+	free(cert_blob_unzipped);
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 	EC_GROUP_free(in_cvc_group);
@@ -625,7 +627,8 @@ err:
 }
 
 
- /* NIST SP800-73-4  4.1 The key Establishment Protocol
+/*
+ * NIST SP800-73-4  4.1 The key Establishment Protocol
  * Variable names and Steps  are based on Client Application (h)
  * and PIV Card Application (icc)
  * Capital leters used for variable, and lower case for subscript names
@@ -635,7 +638,7 @@ static int piv_sm_open(struct sc_card *card)
 {
 	piv_private_data_t * priv = PIV_PRIV_FROM_CARD;
 	struct iso_sm_ctx *sctx = NULL;
-	cipher_suite_t *cs = NULL;
+	cipher_suite_t *cs = priv->cs;
 	int r = 0;
 	int i;
 	int reps;
@@ -714,8 +717,6 @@ static int piv_sm_open(struct sc_card *card)
 	u8 IDsicc[8]; /* will only use 8 bytes for step H6 */
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-
-	cs = priv->cs;
 
 	/*
 	 * The SM routines try and call this on their own.
@@ -1459,7 +1460,7 @@ err:
 
 	LOG_FUNC_RETURN(card->ctx, r);
 }
-#endif
+#endif /* TODO is this needed */
 
 #if 0
 static int piv_get_sm_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t **sm_apdu)
