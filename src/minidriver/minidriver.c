@@ -4747,7 +4747,7 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 	ALG_ID hashAlg;
 	sc_pkcs15_prkey_info_t *prkey_info;
 	BYTE dataToSign[0x200];
-	int opt_crypt_flags;
+	int opt_crypt_flags = 0;
 	size_t dataToSignLen = sizeof(dataToSign);
 	sc_pkcs15_object_t *pkey;
 
@@ -4839,7 +4839,7 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 		 * padding and use the value in aiHashAlg. */
 		logprintf(pCardData, 3, "CARD_PADDING_INFO_PRESENT not set\n");
 
-		opt_crypt_flags = SC_ALGORITHM_RSA_PAD_PKCS1;
+		opt_crypt_flags = SC_ALGORITHM_RSA_PAD_PKCS1;  /* turn off later if key is EC */
 		if (hashAlg == CALG_MD5)
 			opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_MD5;
 		else if (hashAlg == CALG_SHA1)
@@ -4963,6 +4963,7 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 				dwret = SCARD_E_INVALID_VALUE;
 				goto err;
 		}
+		opt_crypt_flags &= ~SC_ALGORITHM_RSA_PADS; /* EC does not use this */
 	} else {
 		logprintf(pCardData, 0, "invalid private key\n");
 		dwret = SCARD_E_INVALID_VALUE;
@@ -6432,7 +6433,7 @@ DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData,
 		if (dwFlags >= MD_MAX_PINS)
 			MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 
-		if (!vs->pin_objs[dwFlags])
+		if (dwFlags != ROLE_EVERYONE && vs->pin_objs[dwFlags] == NULL)
 			MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 
 		p->PinType = vs->reader->capabilities & SC_READER_CAP_PIN_PAD
@@ -6440,6 +6441,18 @@ DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData,
 			? ExternalPinType : AlphaNumericPinType;
 		p->dwFlags = 0;
 		switch (dwFlags)   {
+			case ROLE_EVERYONE:
+				logprintf(pCardData, 2,
+					"returning info on PIN ROLE_EVERYONE [%lu]\n",
+					(unsigned long)dwFlags);
+				p->PinType = 0;   /* There is no pin, so don't need reader capabilities */
+				p->PinPurpose = 0; /* It can not be PrimaryCardPin */
+				p->PinCachePolicy.dwVersion = PIN_CACHE_POLICY_CURRENT_VERSION;
+				p->PinCachePolicy.PinCachePolicyType = PinCacheNone;
+				p->PinCachePolicy.dwPinCachePolicyInfo = 0;
+				p->dwChangePermission = 0;
+				break;
+
 			case ROLE_ADMIN:
 				logprintf(pCardData, 2,
 					  "returning info on PIN ROLE_ADMIN ( Unblock ) [%lu]\n",
