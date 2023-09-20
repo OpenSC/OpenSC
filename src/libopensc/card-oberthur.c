@@ -989,6 +989,7 @@ auth_create_file(struct sc_card *card, struct sc_file *file)
 		tmp_path.len = 2;
 		rv = auth_select_file(card, &tmp_path, &df_file);
 		sc_log(card->ctx, "rv %i", rv);
+		sc_file_free(df_file);
 	}
 
 	sc_file_free(auth_current_ef);
@@ -1355,7 +1356,7 @@ auth_update_component(struct sc_card *card, struct auth_update_component_info *a
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 		ctx = EVP_CIPHER_CTX_new();
-		if (ctx == NULL) 
+		if (ctx == NULL)
 		    LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 
 		p2 = 0;
