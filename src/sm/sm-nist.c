@@ -429,7 +429,6 @@ static int piv_sm_verify_certs(struct sc_card *card)
 	piv_private_data_t * priv = PIV_PRIV_FROM_CARD;
 	cipher_suite_t *cs = priv->cs;
 	int r = 0;
-	u8 *cert_blob_unzipped = NULL; /* free */
 	u8 *cert_blob = NULL; /* do not free */
 	size_t cert_bloblen = 0;
 
@@ -546,9 +545,6 @@ static int piv_sm_verify_certs(struct sc_card *card)
 	 *			(yes for security)
 	 */
 err:
-// TODO 230919 check these 2 free are needed
-	X509_free(cert);
-	free(cert_blob_unzipped);
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 	EC_GROUP_free(in_cvc_group);
