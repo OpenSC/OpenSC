@@ -59,7 +59,7 @@ if [ "$1" == "libressl" -o "$2" == "libressl" ]; then
 		cat /tmp/libressl.log
 		exit $RET
 	fi
-else
+elif [ "$1" == "debug" -o "$2" == "debug" ]; then
 	# install debug symbols
 	sudo apt-get install -y lsb-core ubuntu-dbgsym-keyring
 	echo "deb http://ddebs.ubuntu.com $(lsb_release -cs) main restricted universe multiverse
