@@ -34,6 +34,22 @@
 #include <fcntl.h>
 #endif
 
+/*
+ * References:
+ *
+ * Speicherstrukturen der eGK für Gesundheitsanwendungen version 1.6.0 from 18.03.2008
+ * https://fachportal.gematik.de/fileadmin/user_upload/fachportal/files/Spezifikationen/Basis-Rollout/Elektronische_Gesundheitskarte/gematik_eGK_Speicherstrukturen_V1_6_0.pdf
+ *
+ * Spezifikation der elektronischen Gesundheitskarte eGK-Objektsystem version 4.5.0 from 02.10.2019
+ * https://fachportal.gematik.de/fachportal-import/files/gemSpec_eGK_ObjSys_G2_1_V4.5.0.pdf
+ *
+ * Speicherstrukturen der eGK für die Fachanwendung VSDM version 1.2.1 from 19.02.2021
+ * https://fachportal.gematik.de/fachportal-import/files/gemSpec_eGK_Fach_VSDM_V1.2.1.pdf
+ *
+ * Speicherstrukturen der eGK für die Fachanwendung AMTS version 1.2.0 from 26.10.2018
+ * https://www.vesta-gematik.de/standard/formhandler/324/gemSpec_eGK_Fach_AMTS_V1_2_0.pdf
+ */
+
 #ifdef ENABLE_ZLIB
 #include <zlib.h>
 
