@@ -45,12 +45,12 @@ struct gengetopt_args_info
   unsigned int verbose_min; /**< @brief Use (several times) to be more verbose's minimum occurreces */
   unsigned int verbose_max; /**< @brief Use (several times) to be more verbose's maximum occurreces */
   const char *verbose_help; /**< @brief Use (several times) to be more verbose help description.  */
-  int pd_flag;	/**< @brief Show 'Persönliche Versicherungsdaten' (XML) (default=off).  */
-  const char *pd_help; /**< @brief Show 'Persönliche Versicherungsdaten' (XML) help description.  */
-  int vd_flag;	/**< @brief Show 'Allgemeine Versicherungsdaten' (XML) (default=off).  */
-  const char *vd_help; /**< @brief Show 'Allgemeine Versicherungsdaten' (XML) help description.  */
-  int gvd_flag;	/**< @brief Show 'Geschützte Versicherungsdaten' (XML) (default=off).  */
-  const char *gvd_help; /**< @brief Show 'Geschützte Versicherungsdaten' (XML) help description.  */
+  int pd_flag;	/**< @brief Show 'Persönliche Versichertendaten' (XML) (default=off).  */
+  const char *pd_help; /**< @brief Show 'Persönliche Versichertendaten' (XML) help description.  */
+  int vd_flag;	/**< @brief Show 'Allgemeine Versichertendaten' (XML) (default=off).  */
+  const char *vd_help; /**< @brief Show 'Allgemeine Versichertendaten' (XML) help description.  */
+  int gvd_flag;	/**< @brief Show 'Geschützte Versichertendaten' (XML) (default=off).  */
+  const char *gvd_help; /**< @brief Show 'Geschützte Versichertendaten' (XML) help description.  */
   int vsd_status_flag;	/**< @brief Show 'Versichertenstammdaten-Status' (default=off).  */
   const char *vsd_status_help; /**< @brief Show 'Versichertenstammdaten-Status' help description.  */
   

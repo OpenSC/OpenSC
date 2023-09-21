@@ -38,10 +38,10 @@ const char *gengetopt_args_info_help[] = {
   "  -V, --version        Print version and exit",
   "  -r, --reader=STRING  Number of the reader to use. By default, the first\n                         reader with a present card is used. If the argument is\n                         an ATR, the reader with a matching card will be\n                         chosen.",
   "  -v, --verbose        Use (several times) to be more verbose",
-  "\nHealth Care Application (HCA):",
-  "      --pd             Show 'Persönliche Versicherungsdaten' (XML)\n                         (default=off)",
-  "      --vd             Show 'Allgemeine Versicherungsdaten' (XML)\n                         (default=off)",
-  "      --gvd            Show 'Geschützte Versicherungsdaten' (XML)\n                         (default=off)",
+  "\n'Gesundheitsanwendung', Health Care Application (HCA):",
+  "      --pd             Show 'Persönliche Versichertendaten' (XML)\n                         (default=off)",
+  "      --vd             Show 'Allgemeine Versichertendaten' (XML)  (default=off)",
+  "      --gvd            Show 'Geschützte Versichertendaten' (XML)\n                         (default=off)",
   "      --vsd-status     Show 'Versichertenstammdaten-Status'  (default=off)",
   "\nReport bugs to https://github.com/OpenSC/OpenSC/issues\n\nWritten by Frank Morgner <frankmorgner@gmail.com>",
     0
@@ -625,7 +625,7 @@ cmdline_parser_internal (
           break;
 
         case 0:	/* Long option with no short option */
-          /* Show 'Persönliche Versicherungsdaten' (XML).  */
+          /* Show 'Persönliche Versichertendaten' (XML).  */
           if (strcmp (long_options[option_index].name, "pd") == 0)
           {
           
@@ -637,7 +637,7 @@ cmdline_parser_internal (
               goto failure;
           
           }
-          /* Show 'Allgemeine Versicherungsdaten' (XML).  */
+          /* Show 'Allgemeine Versichertendaten' (XML).  */
           else if (strcmp (long_options[option_index].name, "vd") == 0)
           {
           
@@ -649,7 +649,7 @@ cmdline_parser_internal (
               goto failure;
           
           }
-          /* Show 'Geschützte Versicherungsdaten' (XML).  */
+          /* Show 'Geschützte Versichertendaten' (XML).  */
           else if (strcmp (long_options[option_index].name, "gvd") == 0)
           {
           
