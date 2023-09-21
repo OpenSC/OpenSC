@@ -811,7 +811,11 @@ static int starcos_select_fid(sc_card_t *card,
 	if ( IS_V3x(card) ) {
 		if (id_hi == 0x3f && id_lo == 0x0) {
 			apdu.p1 = 0x0;
-			apdu.p2 = 0x0;
+			apdu.p2 = 0x0C;
+			apdu.le = 0;
+			apdu.resplen = 0;
+			apdu.resp = NULL;
+			apdu.cse = SC_APDU_CASE_3_SHORT;
 			isMF = 1;
 		} else if (file_out || is_file) {
 			// last component (i.e. file or path)
@@ -891,7 +895,7 @@ static int starcos_select_fid(sc_card_t *card,
 		file->id   = (id_hi << 8) + id_lo;
 		file->path = card->cache.current_path;
 
-		if (bIsDF) {
+		if (bIsDF || isMF) {
 			/* we have a DF */
 			file->type = SC_FILE_TYPE_DF;
 			file->ef_structure = SC_FILE_EF_UNKNOWN;
@@ -975,7 +979,8 @@ static int starcos_select_file(sc_card_t *card,
 		/* Select with 2byte File-ID */
 		if (pathlen != 2)
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,SC_ERROR_INVALID_ARGUMENTS);
-		r = starcos_select_fid(card, path[0], path[1], file_out, 1);
+		r = starcos_select_fid(card, path[0],
+				path[1], path[0] == 0x3F && path[1] == 0x00 ? NULL : file_out, 1);
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 	}
 	else if (pathtype == SC_PATH_TYPE_DF_NAME)
