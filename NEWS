@@ -1,5 +1,68 @@
 NEWS for OpenSC -- History of user visible changes
 
+# New in 0.24.0; 2023-10-XX
+## Security
+* CVE-2023-40660: Fix Potential PIN bypass (#2806, frankmorgner/OpenSCToken#50, #2807)
+* CVE-2023-40661: Important dynamic analyzers reports
+* CVE-2023-4535: Out-of-bounds read in MyEID driver handling encryption using symmetric keys (f1993dc4)
+## General improvements
+* Fix compatibility of EAC with OpenSSL 3.0 (#2674)
+* Enable `use_file_cache` by default (#2501)
+* Use custom libctx with OpenSSL >= 3.0 (#2712, #2715)
+* Fix record-based files (#2604)
+* Fix several race conditions (#2735)
+* Run tests under Valgrind (#2756)
+* Test signing of data bigger than 512 bytes (#2789)
+* Update to OpenPACE 1.1.3 (#2796)
+* Implement logout for some of the card drivers (#2807)
+* Fixed various issues reported by OSS-Fuzz and Coverity regarding card drivers, PKCS#11 and PKCS#15 init
+## PKCS#11
+* Check card presence state in `C_GetSessionInfo` (#2740)
+* Remove `onepin-opensc-pkcs11` module (#2681)
+* Do not use colons in the token info label (#2760)
+## PKCS#15
+* Honor cache offsets when writing file cache (#2858)
+## Minidriver
+* Fix for private keys that do not need a PIN (#2722)
+## pkcs11-tool
+* Fix RSA key import with OpenSSL 3.0 (#2656)
+* Add support for attribute filtering when listing objects (#2687)
+* Add support for `--private` flag when writing certificates (#2768)
+* Add support for non-AEAD ciphers to the test mode (#2780)
+* Show CKA_SIGN attribute for secret keys (#2862)
+## westcos-tool
+* Generate 2k RSA keys by default (b53fc5cd)
+## pkcs11-register
+* Disable autostart on Linux by default (#2680)
+## IDPrime
+* Add support for IDPrime MD 830, 930 and 940 (#2666)
+* Add support for SafeNet eToken 5110 token (#2812)
+## EPass2003
+* Change of PIN requires verification of the PIN (#2759)
+* Fix incorrect CMAC computation for subkeys (#2759, issue #2734)
+* Use true random number for mutual authentication for SM (#2766)
+* Add verification of data coming from the token in the secure messaging mode (#2772)
+## OpenPGP
+* Fix select data command (#2753, issue #2752)
+## eOI
+* Add support for Slovenian eID card (eOI) (#2646)
+## Italian CNS
+* Add support for IDEMIA (Oberthur) tokens (#2483)
+## PIV
+* Add support for Swissbit iShield FIDO2 Authenticator (#2671)
+* Implement PIV secure messaging (#2053)
+## SkeID
+* Add support for Slovak eID cards (#2672)
+## isoApplet
+* Support ECDSA with off-card hashing (#2642)
+## MyEID
+* Fix WRAP operation when using T0 (#2695)
+* Identify changes on the card and enable `use_file_cache` (#2798)
+## SC-HSM
+* Add support for `opensc-tool --serial` (#2675)
+* Fix unwrapping of 4096 keys with handling reader limits (#2682)
+* Indicate supported hashes and MGF1s (#2827)
+
 # Addendum for 0.22.0; 2023-09-01
 * fixed security problems
   * CVE-2021-42778 Heap double free in sc_pkcs15_free_tokeninfo
