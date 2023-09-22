@@ -576,6 +576,12 @@ static int piv_sm_general_io(sc_card_t *card, int ins, int p1, int p2,
 			ins, p1, p2);
 	apdu.flags |= SC_APDU_FLAGS_CHAINING;
 
+//	if (card->sm_ctx.sm_mode != SM_MODE_NONE) {
+		/* tell apdu.c to not do the chaining, let the SM get_apdu do it */
+		apdu.flags |= SC_APDU_FLAGS_SM_CHAINING;
+//	}
+
+
 	apdu.lc = sendbuflen;
 	apdu.datalen = sendbuflen;
 	apdu.data = sendbuf;
@@ -2099,6 +2105,7 @@ int sm_nist_start(sc_card_t *card,
 	sctx->padding_indicator = SM_ISO_PADDING;
 	sctx->padding_tag = 1;
 	sctx->do_not_pad_macdata = 1;
+	sctx->use_sm_chaining = 1;
 	sctx->block_length = 16; /* 800-73-4 uses 16 for both cipher suites */
 
 	r = iso_sm_start(card, sctx);
