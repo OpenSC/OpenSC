@@ -498,8 +498,22 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 	} else {
 		sm_apdu->cse = SC_APDU_CASE_4_SHORT;
 		sm_apdu->resplen = 4 + 2 + mac_len + 2 + 2 + ((apdu->resplen+1)/ctx->block_length+1)*ctx->block_length;
+
+		/*
+		 * TODO 230920 could use a flag to make this choice 
+		 * get_response can be used to read larger responses,
+		 * so use max size which also needs to include longer tag for data.
+		 */
+		
+		if (apdu->resplen >= 128)
+			sm_apdu->resplen++; /* extra tag length byte */
+		if (apdu->resplen >= SC_MAX_APDU_RESP_SIZE)
+			sm_apdu->resplen++; /* one more extra tag length byte */
+
 		if (sm_apdu->resplen > SC_MAX_APDU_RESP_SIZE)
-			sm_apdu->resplen = SC_MAX_APDU_RESP_SIZE;
+			sm_apdu->le = SC_MAX_APDU_RESP_SIZE;
+		else
+			sm_apdu->le = sm_apdu->resplen;
 	}
 	resp_data = calloc(1, sm_apdu->resplen);
 	if (!resp_data) {
