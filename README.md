@@ -47,3 +47,5 @@ Build and test status of specific cards:
 | [GidsApplet](https://github.com/vletoux/GidsApplet/)                | [![GIDS](https://github.com/OpenSC/OpenSC/actions/workflows/linux.yml/badge.svg)](https://github.com/OpenSC/OpenSC/actions/workflows/linux.yml) |
 | [IsoApplet](https://github.com/philipWendland/IsoApplet/)           | [![IsoApplet](https://github.com/OpenSC/OpenSC/actions/workflows/linux.yml/badge.svg)](https://github.com/OpenSC/OpenSC/actions/workflows/linux.yml) |
 | [OsEID (MyEID)](https://sourceforge.net/projects/oseid/)            | [![OsEID (MyEID)](https://github.com/OpenSC/OpenSC/actions/workflows/linux.yml/badge.svg)](https://github.com/OpenSC/OpenSC/actions/workflows/linux.yml) |
+| SmartCardHSM                                                        | [![SmartCardHSM](https://gitlab.com/redhat-crypto/OpenSC/badges/sc-hsm/pipeline.svg)](https://gitlab.com/redhat-crypto/OpenSC/pipelines) |
+| ePass2003                                                           | [![ePass2003](https://gitlab.com/redhat-crypto/OpenSC/badges/epass2003/pipeline.svg)](https://gitlab.com/redhat-crypto/OpenSC/pipelines) |
