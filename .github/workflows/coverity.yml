@@ -12,6 +12,9 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      HAS_COVERITY_SCAN_TOKEN: ${{ secrets.COVERITY_SCAN_TOKEN != '' }}
+    if: env.HAS_COVERITY_SCAN_TOKEN == 'true'
     steps:
     - uses: actions/checkout@v3
     - run: .github/setup-linux.sh
