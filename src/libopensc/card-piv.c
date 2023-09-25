@@ -1885,7 +1885,7 @@ static int piv_send_vci_pairing_code(struct sc_card *card, u8 *paring_code)
 		LOG_FUNC_RETURN(card->ctx, r);
 	}
 
-	sm_apdu.flags += SC_APDU_FLAGS_NO_SM; /* run as is */
+	sm_apdu.flags |= SC_APDU_FLAGS_NO_SM; /* run as is */
 	r = sc_transmit_apdu(card, &sm_apdu);
 	if (r < 0) {
 		free(sm_apdu.resp);
@@ -3104,6 +3104,9 @@ piv_get_data(sc_card_t * card, int enumtag, u8 **buf, size_t *buf_len)
 
 #endif /* defined(ENABLE_NIST_SM) || defined(ENABLE_PIV_SM) */
 	r = piv_general_io(card, 0xCB, 0x3F, 0xFF, tagbuf,  p - tagbuf, *buf, *buf_len);
+#if defined(ENABLE_PIV_SM)
+	priv->sm_flags &= ~PIV_SM_GET_DATA_IN_CLEAR; /* reset */
+#endif /* defined(ENABLE_PIV_SM) */
 	if (r > 0) {
 		int r_tag;
 		unsigned int cla_out, tag_out;

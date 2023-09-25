@@ -365,7 +365,7 @@ static int piv_send_vci_pairing_code(struct sc_card *card, u8 *paring_code)
 		LOG_FUNC_RETURN(card->ctx, r);
 	}
 
-	sm_apdu.flags += SC_APDU_FLAGS_NO_SM; /* run as is */
+	sm_apdu.flags |= SC_APDU_FLAGS_NO_SM; /* run as is */
 	r = sc_transmit_apdu(card, &sm_apdu);
 	if (r < 0) {
 		free(sm_apdu.resp);
@@ -596,9 +596,9 @@ static int piv_sm_general_io(sc_card_t *card, int ins, int p1, int p2,
 	apdu.resp =  recvbuf;
 
 	saved_sm_mode = card->sm_ctx.sm_mode;
-	if (card->sm_ctx.sm_mode != SM_MODE_NONE) {
-		card->sm_ctx.sm_mode = SM_MODE_NONE;
-	}
+//	if (card->sm_ctx.sm_mode != SM_MODE_NONE) {
+//		card->sm_ctx.sm_mode = SM_MODE_NONE;
+//	}
 
 	/* with new adpu.c and chaining, this actually reads the whole object */
 	r = sc_transmit_apdu(card, &apdu);
@@ -1821,6 +1821,7 @@ int sm_nist_start(sc_card_t *card,
 	sctx->padding_tag = 1;
 	sctx->do_not_pad_macdata = 1;
 	sctx->use_sm_chaining = 1;
+	sctx->get_response_in_clear = 1;
 	sctx->block_length = 16; /* 800-73-4 uses 16 for both cipher suites */
 
 	r = iso_sm_start(card, sctx);
@@ -2192,7 +2193,7 @@ static int
 nist_sm_pre_transmit(sc_card_t *card, const struct iso_sm_ctx *ctx,
 		sc_apdu_t *apdu)
 {
-	int r;
+	int r = 0;
 
 	piv_private_data_t *priv;
 
@@ -2204,10 +2205,26 @@ nist_sm_pre_transmit(sc_card_t *card, const struct iso_sm_ctx *ctx,
 
 	priv = (piv_private_data_t *)ctx->priv_data;
 
-//	r = increment_ssc(ctx->priv_data);
-
-	r = 0;
-err:
+// TODO 230923 to make more general, may need more work
+	switch (apdu->ins) {
+		case 0xCB: /* GET_DATA */
+			if (*priv->sm_flags & PIV_SM_GET_DATA_IN_CLEAR) {
+				*priv->sm_flags &= ~PIV_SM_GET_DATA_IN_CLEAR;
+				r = SC_ERROR_SM_NOT_APPLIED;
+			}
+			break;
+		case 0x20: /* VERIFY */
+			break;
+		case 0x24: /* CHANGE REFERENCE DATA */
+			break;
+		case 0x87: /* GENERAL AUTHENTICATE */
+			break;
+		case 0xC0: /* GET RESPONSE */
+			r = SC_ERROR_SM_NOT_APPLIED;
+			break;
+		default: /* just issue the plain apdu */
+			r = SC_ERROR_SM_NOT_APPLIED;
+	}
 
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, r);
 }

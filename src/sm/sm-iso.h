@@ -171,6 +171,8 @@ struct iso_sm_ctx {
 	u8  do_not_pad_macdata;
 	/** @brief do_not_split_apdu into multiple apdus */
 	u8  use_sm_chaining;
+	/** @brief get response is always in clear */
+	u8  get_response_in_clear;
 	/** @brief Pad to this block length */
 	size_t block_length;
 
