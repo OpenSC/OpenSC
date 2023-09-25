@@ -14,13 +14,13 @@ jobs:
     runs-on: ubuntu-latest
     env:
       HAS_COVERITY_SCAN_TOKEN: ${{ secrets.COVERITY_SCAN_TOKEN != '' }}
-    if: env.HAS_COVERITY_SCAN_TOKEN == 'true'
     steps:
     - uses: actions/checkout@v3
     - run: .github/setup-linux.sh
     - run: ./bootstrap
     - run: ./configure  --disable-dependency-tracking --enable-piv-sm
     - uses: vapier/coverity-scan-action@v0
+      if: ${{ env.HAS_COVERITY_SCAN_TOKEN == 'true' }}
       with:
         project: OpenSC%2FOpenSC
         token: ${{ secrets.COVERITY_SCAN_TOKEN }}
