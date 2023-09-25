@@ -297,13 +297,16 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 
 	sc_copy_asn1_entry(c_sm_capdu, sm_capdu);
 
-	sm_apdu = malloc(sizeof(sc_apdu_t));
+	sm_apdu = calloc(1, sizeof(sc_apdu_t));
 	if (!sm_apdu) {
 		r = SC_ERROR_OUT_OF_MEMORY;
 		goto err;
 	}
 	sm_apdu->control = apdu->control;
 	sm_apdu->flags = apdu->flags;
+	if (ctx->use_sm_chaining)
+		sm_apdu->flags &= ~SC_APDU_FLAGS_SM_CHAINING; /* do not add to sm_apdu */
+
 	sm_apdu->cla = apdu->cla|0x0C;
 	sm_apdu->ins = apdu->ins;
 	sm_apdu->p1 = apdu->p1;
@@ -314,9 +317,6 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 		goto err;
 	}
 	mac_data_len = r;
-
-	if (ctx->use_sm_chaining)
-		sm_apdu->flags |= SC_APDU_FLAGS_SM_CHAINING;
 
 	switch (apdu->cse) {
 		case SC_APDU_CASE_1:
@@ -485,6 +485,11 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 	sm_apdu->data = sm_data;
 	sm_apdu->datalen = sm_data_len;
 	sm_apdu->lc = sm_data_len;
+	if (ctx->use_sm_chaining && sm_apdu->datalen > 255) {
+		sm_apdu->flags |= SC_APDU_FLAGS_CHAINING;
+		sm_apdu->cse = (apdu->cse & ~SC_APDU_SHORT_MASK) | SC_APDU_CASE_4_SHORT;
+	}
+
 	sm_apdu->le = 0;
 	/* for encrypted APDUs we usually get authenticated status bytes (4B), a
 	 * MAC (2B without data) and a cryptogram with padding indicator (2B tag
@@ -499,17 +504,16 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 		sm_apdu->cse = SC_APDU_CASE_4_SHORT;
 		sm_apdu->resplen = 4 + 2 + mac_len + 2 + 2 + ((apdu->resplen+1)/ctx->block_length+1)*ctx->block_length;
 
-		/*
-		 * TODO 230920 could use a flag to make this choice 
-		 * get_response can be used to read larger responses,
-		 * so use max size which also needs to include longer tag for data.
-		 */
-		
-		if (apdu->resplen >= 128)
-			sm_apdu->resplen++; /* extra tag length byte */
-		if (apdu->resplen >= SC_MAX_APDU_RESP_SIZE)
-			sm_apdu->resplen++; /* one more extra tag length byte */
+		if (ctx->use_sm_chaining) { /* both chaining and get response are short */
+			sm_apdu->flags |= SC_APDU_FLAGS_NO_SM;
 
+			// TODO 230923 these may not be needed
+			if (sm_apdu->resplen >= 128)
+				sm_apdu->resplen++; /* extra tag length byte */
+			if (sm_apdu->resplen >= SC_MAX_APDU_RESP_SIZE)
+				sm_apdu->resplen++; /* one more extra tag length byte */
+		}
+	
 		if (sm_apdu->resplen > SC_MAX_APDU_RESP_SIZE)
 			sm_apdu->le = SC_MAX_APDU_RESP_SIZE;
 		else
