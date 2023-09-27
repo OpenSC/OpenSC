@@ -384,10 +384,6 @@ static int idprime_process_index(sc_card_t *card, idprime_private_data_t *priv, 
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	if (card->type == SC_CARD_TYPE_IDPRIME_940 && list_empty(&priv->keyrefmap)) {
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
-	}
-
 	buf = malloc(length);
 	if (buf == NULL) {
 		goto done;
