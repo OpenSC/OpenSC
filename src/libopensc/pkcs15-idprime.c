@@ -136,7 +136,7 @@ static int sc_pkcs15emu_idprime_init(sc_pkcs15_card_t *p15card)
 		pin_info.attrs.pin.pad_char = 0x00;
 
 		sc_log(card->ctx,  "IDPrime Adding Digital Signature pin with label=%s", sig_pin_label);
-		strncpy(pin_obj.label, pin_label, SC_PKCS15_MAX_LABEL_SIZE - 1);
+		strncpy(pin_obj.label, sig_pin_label, SC_PKCS15_MAX_LABEL_SIZE - 1);
 		pin_obj.flags = SC_PKCS15_CO_FLAG_PRIVATE;
 
 		r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
@@ -347,7 +347,7 @@ fail:
 	LOG_TEST_GOTO_ERR(card->ctx, r, "Can not finalize cert objects.");
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
-	
+
 err:
 	sc_pkcs15_card_clear(p15card);
 	LOG_FUNC_RETURN(card->ctx, r);
