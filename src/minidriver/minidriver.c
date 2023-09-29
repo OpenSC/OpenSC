@@ -38,7 +38,6 @@
 #include <windows.h>
 #include <Commctrl.h>
 #include <timeapi.h>
-#include "cardmod.h"
 
 #include "common/compat_strlcpy.h"
 #include "libopensc/asn1.h"
@@ -619,14 +618,9 @@ md_get_config_str(PCARD_DATA pCardData, enum ui_str id)
 
 	vs = (VENDOR_SPECIFIC*) pCardData->pvVendorSpecific;
 	if (vs->ctx && vs->reader) {
-		const char *preferred_language = NULL;
 		struct sc_atr atr;
 		atr.len = pCardData->cbAtr;
 		memcpy(atr.value, pCardData->pbAtr, atr.len);
-		if (vs->p15card && vs->p15card->tokeninfo
-				&& vs->p15card->tokeninfo->preferred_language) {
-			preferred_language = vs->p15card->tokeninfo->preferred_language;
-		}
 		ret = ui_get_str(vs->ctx, &atr, vs->p15card, id);
 	}
 
@@ -3008,7 +3002,6 @@ static HRESULT CALLBACK md_dialog_proc(HWND hWnd, UINT message, WPARAM wParam, L
 					param = GetWindowLongPtr(hWnd, GWLP_USERDATA);
 					if (param) {
 						PCARD_DATA pCardData = (PCARD_DATA)((LONG_PTR*)param)[7];
-						VENDOR_SPECIFIC* vs = (VENDOR_SPECIFIC*) pCardData->pvVendorSpecific;
 
 						int timeout = md_get_pinpad_dlg_timeout(pCardData);
 						if (timeout > 0) {
@@ -3062,7 +3055,6 @@ md_dialog_perform_pin_operation(PCARD_DATA pCardData, int operation, struct sc_p
 {
 	LONG_PTR parameter[12];
 	INT_PTR result = 0;
-	HWND hWndDlg = 0;
 	TASKDIALOGCONFIG tc = {0};
 	int rv = 0;
 	BOOL checked, user_checked;

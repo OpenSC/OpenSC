@@ -68,7 +68,6 @@ void sc_notify_close(void)
 
 #include "common/compat_strlcpy.h"
 #include "invisible_window.h"
-#include "wchar_from_char_str.h"
 #include <shellapi.h>
 #include <shlwapi.h>
 
