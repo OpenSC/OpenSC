@@ -1210,7 +1210,6 @@ app <replaceable>application</replaceable> {
 							</itemizedlist>
 							(Default: <literal>public</literal>
 							for the following card drivers
-							<literal>akis</literal>,
 							<literal>atrust-acos</literal>,
 							<literal>belpic</literal>,
 							<literal>cac1</literal>,

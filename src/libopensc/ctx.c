@@ -169,7 +169,6 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 };
 
 static const struct _sc_driver_entry old_card_drivers[] = {
-	{ "akis",       (void *(*)(void)) sc_get_akis_driver },
 	{ "asepcos",    (void *(*)(void)) sc_get_asepcos_driver },
 	{ "atrust-acos",(void *(*)(void)) sc_get_atrust_acos_driver },
 	{ "flex",       (void *(*)(void)) sc_get_cryptoflex_driver },
