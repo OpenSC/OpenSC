@@ -1023,7 +1023,7 @@ md_fs_find_directory(PCARD_DATA pCardData, struct md_directory *parent, char *na
 
 static DWORD
 md_fs_add_directory(PCARD_DATA pCardData, struct md_directory **head, char *name,
-		CARD_FILE_ACCESS_CONDITION acl,
+		CARD_DIRECTORY_ACCESS_CONDITION acl,
 		struct md_directory **out)
 {
 	struct md_directory *new_dir = NULL;
@@ -2184,7 +2184,7 @@ md_fs_init(PCARD_DATA pCardData)
 	if (dwret != SCARD_S_SUCCESS)
 		goto ret_cleanup;
 
-	dwret = md_fs_add_directory(pCardData, &(vs->root.subdirs), "mscp", UserCreateDeleteDirAc, &mscp);
+	dwret = md_fs_add_directory(pCardData, &(vs->root.subdirs), "mscp", (CARD_DIRECTORY_ACCESS_CONDITION)UserCreateDeleteDirAc, &mscp);
 	if (dwret != SCARD_S_SUCCESS)
 		goto ret_cleanup;
 
