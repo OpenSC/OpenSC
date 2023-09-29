@@ -36,8 +36,12 @@
 #include <time.h>
 
 #include <windows.h>
-#include <Commctrl.h>
+#include <commctrl.h>
+#ifdef __MINGW32__
+#include <mmsystem.h>
+#else
 #include <timeapi.h>
+#endif
 
 #include "common/compat_strlcpy.h"
 #include "libopensc/asn1.h"
