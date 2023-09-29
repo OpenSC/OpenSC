@@ -84,7 +84,7 @@
 #define MD_FUNC_RETURN(pCardData, level, ...) do { \
 	DWORD _ret = __VA_ARGS__; \
 	logprintf(pCardData, level,\
-		"MD_Function:%s:%d returning with: 0x%08X\n", __FUNCTION__, __LINE__, _ret); \
+		"MD_Function:%s:%d returning with: 0x%08X\n", __FUNCTION__, __LINE__, (unsigned)_ret); \
 	return _ret; \
 	} while(0)
 
@@ -433,8 +433,8 @@ check_card_reader_status(PCARD_DATA pCardData, const char *name)
 	if(!vs)
 		MD_FUNC_RETURN(pCardData, 3, SCARD_E_INVALID_PARAMETER);
 
-	logprintf(pCardData, 7, "sizeof(size_t):%d sizeof(ULONG_PTR):%d sizeof(__int3264):%d sizeof pCardData->hSCardCtx:%d\n",
-		sizeof(size_t), sizeof(ULONG_PTR), sizeof(__int3264), sizeof pCardData->hSCardCtx);
+	logprintf(pCardData, 7, "sizeof(size_t):%u sizeof(ULONG_PTR):%u sizeof(__int3264):%u sizeof pCardData->hSCardCtx:%u\n",
+		(unsigned)sizeof(size_t), (unsigned)sizeof(ULONG_PTR), (unsigned)sizeof(__int3264), (unsigned)sizeof(pCardData->hSCardCtx));
 
 	logprintf(pCardData, 1, "pCardData->hSCardCtx:0x%08"SC_FORMAT_LEN_SIZE_T"X hScard:0x%08"SC_FORMAT_LEN_SIZE_T"X\n",
 		(size_t)pCardData->hSCardCtx,
