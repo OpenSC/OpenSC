@@ -154,10 +154,6 @@ enum {
 	SC_CARD_TYPE_ASEPCOS_GENERIC,
 	SC_CARD_TYPE_ASEPCOS_JAVA,
 
-	/* TUBITAK UEKAE cards */
-	SC_CARD_TYPE_AKIS_BASE = 18000,
-	SC_CARD_TYPE_AKIS_GENERIC,
-
 	/* EnterSafe cards */
 	SC_CARD_TYPE_ENTERSAFE_BASE = 19000,
 	SC_CARD_TYPE_ENTERSAFE_3K,
@@ -303,7 +299,6 @@ extern sc_card_driver_t *sc_get_incrypto34_driver(void);
 extern sc_card_driver_t *sc_get_piv_driver(void);
 extern sc_card_driver_t *sc_get_muscle_driver(void);
 extern sc_card_driver_t *sc_get_asepcos_driver(void);
-extern sc_card_driver_t *sc_get_akis_driver(void);
 extern sc_card_driver_t *sc_get_entersafe_driver(void);
 extern sc_card_driver_t *sc_get_rutoken_driver(void);
 extern sc_card_driver_t *sc_get_rtecp_driver(void);

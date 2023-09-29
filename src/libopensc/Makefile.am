@@ -43,7 +43,7 @@ libopensc_la_SOURCES_BASE = \
 	card-oberthur.c card-belpic.c card-atrust-acos.c \
 	card-entersafe.c card-epass2003.c card-coolkey.c card-incrypto34.c \
 	card-piv.c card-cac-common.c card-cac.c card-cac1.c \
-	card-muscle.c card-asepcos.c card-akis.c card-gemsafeV1.c card-rutoken.c \
+	card-muscle.c card-asepcos.c card-gemsafeV1.c card-rutoken.c \
 	card-rtecp.c card-westcos.c card-myeid.c \
 	card-itacns.c card-authentic.c \
 	card-iasecc.c iasecc-sdo.c iasecc-sm.c card-sc-hsm.c \
@@ -126,7 +126,7 @@ TIDY_FILES = \
 	card-oberthur.c card-belpic.c card-atrust-acos.c \
 	card-entersafe.c card-epass2003.c card-coolkey.c card-incrypto34.c \
 	card-cac-common.c card-cac.c card-cac1.c \
-	card-muscle.c card-asepcos.c card-akis.c card-gemsafeV1.c card-rutoken.c \
+	card-muscle.c card-asepcos.c card-gemsafeV1.c card-rutoken.c \
 	card-rtecp.c card-westcos.c card-myeid.c \
 	card-itacns.c card-authentic.c \
 	card-iasecc.c iasecc-sdo.c iasecc-sm.c card-sc-hsm.c \

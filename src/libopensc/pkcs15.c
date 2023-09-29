@@ -1227,7 +1227,6 @@ const char *pkcs15_get_default_use_file_cache(struct sc_card *card)
 	 * The following list was initialized with the cards that can't be modified
 	 * with OpenSC i.e. which don't have a profile/driver for pkcs15-init. */
 	const char *card_drivers_with_file_cache[] = {
-		"akis",
 		"atrust-acos",
 		"belpic",
 		"cac1",
