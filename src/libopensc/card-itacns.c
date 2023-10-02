@@ -339,7 +339,8 @@ static int itacns_list_files(sc_card_t *card, u8 *buf, size_t buflen) {
 		== ITACNS_MASKMAN_SIEMENS)) {
 		list_ops = sc_get_cardos_driver()->ops;
 	} else {
-		list_ops = sc_get_incrypto34_driver()->ops;
+		// incrypto34 no longer supported
+		return SC_ERROR_NO_CARD_SUPPORT;
 	}
 	return list_ops->list_files(card, buf, buflen);
 }
