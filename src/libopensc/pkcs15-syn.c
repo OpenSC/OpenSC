@@ -66,7 +66,6 @@ struct sc_pkcs15_emulator_handler builtin_emulators[] = {
 };
 
 struct sc_pkcs15_emulator_handler old_emulators[] = {
-	{ "westcos",	sc_pkcs15emu_westcos_init_ex	},
 	{ "atrust-acos",sc_pkcs15emu_atrust_acos_init_ex},
 	{ "actalis",	sc_pkcs15emu_actalis_init_ex	},
 	{ "tccardos",	sc_pkcs15emu_tccardos_init_ex	},
