@@ -48,17 +48,6 @@ enum {
 	SC_CARDCTL_PKCS11_INIT_PIN,
 
 	/*
-	 * GPK specific calls
-	 */
-	SC_CARDCTL_GPK_BASE = _CTL_PREFIX('G', 'P', 'K'),
-	SC_CARDCTL_GPK_VARIANT,
-	SC_CARDCTL_GPK_LOCK,
-	SC_CARDCTL_GPK_PKINIT,
-	SC_CARDCTL_GPK_PKLOAD,
-	SC_CARDCTL_GPK_IS_LOCKED,
-	SC_CARDCTL_GPK_GENERATE_KEY,
-
-	/*
 	 * Cryptoflex specific calls
 	 */
 	SC_CARDCTL_CRYPTOFLEX_BASE = _CTL_PREFIX('C', 'F', 'X'),
@@ -351,41 +340,6 @@ typedef struct sc_cardctl_pkcs11_init_pin {
 struct sc_cardctl_parsed_token_info {
 	unsigned int flags;
 	struct sc_pkcs15_tokeninfo * tokeninfo;
-};
-
-/*
- * GPK lock file.
- * Parent DF of file must be selected.
- */
-struct sc_cardctl_gpk_lock {
-	struct sc_file *	file;
-	unsigned int		operation;
-};
-
-/*
- * GPK initialize private key file.
- * Parent DF must be selected.
- */
-struct sc_cardctl_gpk_pkinit {
-	struct sc_file *	file;
-	unsigned int		privlen;
-};
-
-/*
- * GPK load private key portion.
- */
-struct sc_cardctl_gpk_pkload {
-	struct sc_file *	file;
-	u8 *			data;
-	unsigned int		len;
-	unsigned int		datalen;
-};
-
-struct sc_cardctl_gpk_genkey {
-	unsigned int		fid;
-	unsigned int		privlen;
-	unsigned char *		pubkey;
-	unsigned int		pubkey_len;
 };
 
 /*

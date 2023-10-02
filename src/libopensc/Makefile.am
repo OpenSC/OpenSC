@@ -37,7 +37,7 @@ libopensc_la_SOURCES_BASE = \
 	\
 	ctbcs.c reader-ctapi.c reader-pcsc.c reader-openct.c reader-tr03119.c \
 	\
-	card-setcos.c card-flex.c card-gpk.c \
+	card-setcos.c card-flex.c \
 	card-cardos.c card-tcos.c card-default.c \
 	card-mcrd.c card-starcos.c card-openpgp.c \
 	card-oberthur.c card-belpic.c card-atrust-acos.c \
@@ -53,7 +53,7 @@ libopensc_la_SOURCES_BASE = \
 	card-edo.c card-nqApplet.c card-skeid.c card-eoi.c \
 	\
 	pkcs15-openpgp.c pkcs15-starcert.c pkcs15-cardos.c \
-	pkcs15-tcos.c pkcs15-esteid.c pkcs15-gemsafeGPK.c \
+	pkcs15-tcos.c pkcs15-esteid.c \
 	pkcs15-actalis.c pkcs15-atrust-acos.c pkcs15-tccardos.c pkcs15-piv.c \
 	pkcs15-cac.c pkcs15-esinit.c pkcs15-westcos.c pkcs15-pteid.c \
 	pkcs15-oberthur.c pkcs15-itacns.c pkcs15-gemsafeV1.c pkcs15-sc-hsm.c \
@@ -120,7 +120,7 @@ TIDY_FILES = \
 	\
 	ctbcs.c reader-ctapi.c reader-pcsc.c reader-openct.c reader-tr03119.c \
 	\
-	card-setcos.c card-flex.c card-gpk.c \
+	card-setcos.c card-flex.c \
 	card-cardos.c card-tcos.c card-default.c \
 	card-mcrd.c card-starcos.c \
 	card-oberthur.c card-belpic.c card-atrust-acos.c \

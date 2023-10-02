@@ -56,18 +56,6 @@ enum {
 	SC_CARD_TYPE_FLEX_MULTI,
 	SC_CARD_TYPE_FLEX_CYBER,
 
-	/* gpk driver */
-	SC_CARD_TYPE_GPK_BASE = 3000,
-	SC_CARD_TYPE_GPK_GENERIC,
-	SC_CARD_TYPE_GPK_GPK4000_su256 = 3040,
-	SC_CARD_TYPE_GPK_GPK4000_s,
-	SC_CARD_TYPE_GPK_GPK4000_sp,
-	SC_CARD_TYPE_GPK_GPK4000_sdo,
-	SC_CARD_TYPE_GPK_GPK8000 = 3080,
-	SC_CARD_TYPE_GPK_GPK8000_8K,
-	SC_CARD_TYPE_GPK_GPK8000_16K,
-	SC_CARD_TYPE_GPK_GPK16000 = 3160,
-
 	/* mcrd driver */
 	SC_CARD_TYPE_MCRD_BASE = 5000,
 	SC_CARD_TYPE_MCRD_GENERIC,
@@ -285,7 +273,6 @@ extern sc_card_driver_t *sc_get_default_driver(void);
 extern sc_card_driver_t *sc_get_cardos_driver(void);
 extern sc_card_driver_t *sc_get_cryptoflex_driver(void);
 extern sc_card_driver_t *sc_get_cyberflex_driver(void);
-extern sc_card_driver_t *sc_get_gpk_driver(void);
 extern sc_card_driver_t *sc_get_gemsafeV1_driver(void);
 extern sc_card_driver_t *sc_get_mcrd_driver(void);
 extern sc_card_driver_t *sc_get_setcos_driver(void);
