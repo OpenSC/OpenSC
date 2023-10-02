@@ -35,7 +35,6 @@ struct sc_pkcs15_emulator_handler builtin[] = {
 	{ NULL,	NULL }
 };
 struct sc_pkcs15_emulator_handler old[] = {
-	{ "westcos",	&func },
 	{ "cardos",		&func },
 	{ "jcop",		&func },
 	{ NULL, NULL }
@@ -319,7 +318,7 @@ static void torture_internal_and_name(void **state)
 	for (i = 0; builtin[i].name; i++) {
 		assert_ptr_equal(&builtin[i], filtered_emulators.list_of_handlers[i]);
 	}
-	assert_ptr_equal(&old[1], filtered_emulators.list_of_handlers[i]);
+	assert_ptr_equal(&old[0], filtered_emulators.list_of_handlers[i]);
 	assert_null(filtered_emulators.list_of_handlers[i + 1]);
 }
 

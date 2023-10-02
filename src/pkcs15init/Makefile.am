@@ -20,7 +20,6 @@ dist_pkgdata_DATA = \
 	epass2003.profile \
 	rutoken_ecp.profile \
 	rutoken_lite.profile \
-	westcos.profile \
 	myeid.profile \
 	authentic.profile \
 	iasecc.profile \
@@ -35,7 +34,6 @@ AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS)
 
 libpkcs15init_la_SOURCES = \
 	pkcs15-lib.c profile.c \
-	pkcs15-westcos.c \
 	pkcs15-cflex.c \
 	pkcs15-cardos.c pkcs15-starcos.c \
 	pkcs15-setcos.c pkcs15-muscle.c \
