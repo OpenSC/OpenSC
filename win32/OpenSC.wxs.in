@@ -231,9 +231,6 @@
                 <Component Id="flex.profile" Guid="*" Win64="$(var.Win64YesNo)">
                   <File Source="$(var.SOURCE_DIR)\src\pkcs15init\flex.profile"/>
                 </Component>
-                <Component Id="gpk.profile" Guid="*" Win64="$(var.Win64YesNo)">
-                  <File Source="$(var.SOURCE_DIR)\src\pkcs15init\gpk.profile"/>
-                </Component>
                 <Component Id="incrypto34.profile" Guid="*" Win64="$(var.Win64YesNo)">
                   <File Source="$(var.SOURCE_DIR)\src\pkcs15init\incrypto34.profile"/>
                 </Component>
@@ -406,7 +403,6 @@
           <ComponentRef Id="npa_tool.exe"/>
           <ComponentRef Id="cyberflex.profile"/>
           <ComponentRef Id="flex.profile"/>
-          <ComponentRef Id="gpk.profile"/>
           <ComponentRef Id="incrypto34.profile"/>
           <ComponentRef Id="muscle.profile"/>
           <ComponentRef Id="pkcs15.profile"/>

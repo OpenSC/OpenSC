@@ -14,7 +14,7 @@ OBJECTS			= \
 	\
 	ctbcs.obj reader-ctapi.obj reader-pcsc.obj reader-openct.obj reader-tr03119.obj \
 	\
-	card-setcos.obj card-flex.obj card-gpk.obj \
+	card-setcos.obj card-flex.obj \
 	card-cardos.obj card-tcos.obj card-default.obj \
 	card-mcrd.obj card-starcos.obj card-openpgp.obj \
 	card-oberthur.obj card-belpic.obj card-atrust-acos.obj \
@@ -31,7 +31,7 @@ OBJECTS			= \
 	card-edo.obj card-nqApplet.obj card-skeid.obj card-eoi.obj \
 	\
 	pkcs15-openpgp.obj pkcs15-starcert.obj pkcs15-cardos.obj \
-	pkcs15-tcos.obj pkcs15-esteid.obj pkcs15-gemsafeGPK.obj \
+	pkcs15-tcos.obj pkcs15-esteid.obj \
 	pkcs15-actalis.obj pkcs15-atrust-acos.obj pkcs15-tccardos.obj pkcs15-piv.obj \
 	pkcs15-cac.obj pkcs15-esinit.obj pkcs15-westcos.obj pkcs15-pteid.obj pkcs15-din-66291.obj \
 	pkcs15-oberthur.obj pkcs15-itacns.obj pkcs15-gemsafeV1.obj pkcs15-sc-hsm.obj \

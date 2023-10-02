@@ -8,7 +8,6 @@ noinst_HEADERS = profile.h pkcs15-init.h pkcs15-oberthur.h pkcs15-iasecc.h
 dist_pkgdata_DATA = \
 	cyberflex.profile \
 	flex.profile \
-	gpk.profile \
 	cardos.profile \
 	incrypto34.profile \
 	oberthur.profile \
@@ -38,7 +37,7 @@ AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS)
 libpkcs15init_la_SOURCES = \
 	pkcs15-lib.c profile.c \
 	pkcs15-westcos.c \
-	pkcs15-gpk.c pkcs15-cflex.c \
+	pkcs15-cflex.c \
 	pkcs15-cardos.c pkcs15-starcos.c \
 	pkcs15-setcos.c pkcs15-incrypto34.c pkcs15-muscle.c \
 	pkcs15-asepcos.c pkcs15-rutoken.c \

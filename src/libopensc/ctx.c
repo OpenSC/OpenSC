@@ -172,9 +172,6 @@ static const struct _sc_driver_entry old_card_drivers[] = {
 	{ "asepcos",    (void *(*)(void)) sc_get_asepcos_driver },
 	{ "atrust-acos",(void *(*)(void)) sc_get_atrust_acos_driver },
 	{ "flex",       (void *(*)(void)) sc_get_cryptoflex_driver },
-#ifdef ENABLE_OPENSSL
-    { "gpk",        (void *(*)(void)) sc_get_gpk_driver },
-#endif
 	{ "incrypto34", (void *(*)(void)) sc_get_incrypto34_driver },
 	{ "westcos",    (void *(*)(void)) sc_get_westcos_driver },
 	{ NULL, NULL }
