@@ -26,6 +26,8 @@ if [ "$RUNNER_OS" == "macOS" ]; then
 fi
 
 if [ "$1" == "mingw" -o "$1" == "mingw32" ]; then
+	mkdir -p src/minidriver/CNG
+	wget https://raw.githubusercontent.com/open-eid/minidriver/master/cardmod.h -O src/minidriver/CNG/cardmod.h
 	if [ "$1" == "mingw" ]; then
 		HOST=x86_64-w64-mingw32
 	elif [ "$1" == "mingw32" ]; then
@@ -33,7 +35,9 @@ if [ "$1" == "mingw" -o "$1" == "mingw32" ]; then
 	fi
 	unset CC
 	unset CXX
-	./configure --host=$HOST --with-completiondir=/tmp --disable-openssl --disable-readline --disable-zlib --disable-notify --prefix=$PWD/win32/opensc || cat config.log;
+	CFLAGS="-I$PWD/src/minidriver/CNG -Wno-error=unknown-pragmas" \
+	CPPFLAGS="-DNTDDI_VERSION=0x06010000" \
+	./configure --host=$HOST --with-completiondir=/tmp --disable-openssl --disable-readline --disable-zlib --enable-minidriver --enable-notify --prefix=$PWD/win32/opensc || cat config.log;
 	make -j 4 V=1
 	# no point in running tests on mingw
 else
