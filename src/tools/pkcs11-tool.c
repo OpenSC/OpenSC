@@ -674,7 +674,9 @@ ATTR_METHOD(MODIFIABLE, CK_BBOOL);			/* getMODIFIABLE */
 ATTR_METHOD(ENCRYPT, CK_BBOOL);				/* getENCRYPT */
 ATTR_METHOD(DECRYPT, CK_BBOOL);				/* getDECRYPT */
 ATTR_METHOD(SIGN, CK_BBOOL);				/* getSIGN */
+ATTR_METHOD(SIGN_RECOVER, CK_BBOOL);		/* getSIGN_RECOVER */
 ATTR_METHOD(VERIFY, CK_BBOOL);				/* getVERIFY */
+ATTR_METHOD(VERIFY_RECOVER, CK_BBOOL);		/* getVERIFY_RECOVER */
 ATTR_METHOD(WRAP, CK_BBOOL);				/* getWRAP */
 ATTR_METHOD(UNWRAP, CK_BBOOL);				/* getUNWRAP */
 ATTR_METHOD(DERIVE, CK_BBOOL);				/* getDERIVE */
@@ -5203,6 +5205,10 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 		printf("%ssign", sepa);
 		sepa = ", ";
 	}
+	if ((!pub || sec) && getSIGN_RECOVER(sess, obj)) {
+		printf("%ssignRecover", sepa);
+		sepa = ", ";
+	}
 
 	suppress_warn = 1;
 	if (!pub && getOPENSC_NON_REPUDIATION(sess, obj)) {
@@ -5213,6 +5219,10 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 
 	if (pub && getVERIFY(sess, obj)) {
 		printf("%sverify", sepa);
+		sepa = ", ";
+	}
+	if (pub && getVERIFY_RECOVER(sess, obj)) {
+		printf("%sverifyRecover", sepa);
 		sepa = ", ";
 	}
 	if ((pub || sec) && getWRAP(sess, obj)) {
