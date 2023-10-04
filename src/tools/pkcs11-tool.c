@@ -5205,7 +5205,7 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 		printf("%ssign", sepa);
 		sepa = ", ";
 	}
-	if ((!pub || sec) && getSIGN_RECOVER(sess, obj)) {
+	if (!pub && getSIGN_RECOVER(sess, obj)) {
 		printf("%ssignRecover", sepa);
 		sepa = ", ";
 	}
