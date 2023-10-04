@@ -1095,7 +1095,7 @@ static int starcos_process_acl(sc_card_t *card, sc_file_t *file,
 		*p++ = data->data.mf.header[14];
 		/* if sm is required use combined mode */
 		if (file->acl[SC_AC_OP_CREATE] && (sc_file_get_acl_entry(file, SC_AC_OP_CREATE))->method & SC_AC_PRO)
-			tmp = 0x03;	/* combinde mode */
+			tmp = 0x03;	/* combined mode */
 		else
 			tmp = 0x00;	/* no sm */
 		*p++ = tmp;	/* use the same sm mode for all ops */

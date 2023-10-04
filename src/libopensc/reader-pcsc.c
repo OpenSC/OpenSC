@@ -387,7 +387,7 @@ static int refresh_attributes(sc_reader_t *reader)
 			LOG_FUNC_RETURN(reader->ctx, SC_SUCCESS);
 		}
 
-		/* the system could not detect the reader. It means, the prevoiusly attached reader is disconnected. */
+		/* the system could not detect the reader. It means, the previously attached reader is disconnected. */
 		if (rv == (LONG)SCARD_E_UNKNOWN_READER
 #ifdef SCARD_E_NO_READERS_AVAILABLE
 				|| rv == (LONG)SCARD_E_NO_READERS_AVAILABLE
@@ -1649,7 +1649,7 @@ static int pcsc_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_re
 	else {
 		rgReaderStates = (SCARD_READERSTATE *)(*reader_states);
 		for (num_watch = 0; rgReaderStates[num_watch].szReader; num_watch++)
-			sc_log(ctx, "re-use reader '%s'", rgReaderStates[num_watch].szReader);
+			sc_log(ctx, "reuse reader '%s'", rgReaderStates[num_watch].szReader);
 	}
 #ifndef _WIN32
 	/* Establish a new context, assuming that it is called from a different thread with pcsc-lite */

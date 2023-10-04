@@ -467,7 +467,7 @@ pgp_init(sc_card_t *card)
 		priv->ec_curves = ec_curves_openpgp;
 	}
 
-	/* change file path to MF for re-use in MF */
+	/* change file path to MF for reuse in MF */
 	sc_format_path("3f00", &file->path);
 
 	/* set up the root of our fake file tree */
