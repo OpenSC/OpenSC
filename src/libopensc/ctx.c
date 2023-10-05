@@ -108,7 +108,6 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	 * precedes cardos and matches no other CardOS 5.4 card. */
 	{ "skeid",	(void *(*)(void)) sc_get_skeid_driver },
 	{ "cardos",	(void *(*)(void)) sc_get_cardos_driver },
-	{ "cyberflex",	(void *(*)(void)) sc_get_cyberflex_driver },
 	{ "gemsafeV1",	(void *(*)(void)) sc_get_gemsafeV1_driver },
 	{ "starcos",	(void *(*)(void)) sc_get_starcos_driver },
 	{ "tcos",	(void *(*)(void)) sc_get_tcos_driver },
@@ -171,6 +170,7 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 static const struct _sc_driver_entry old_card_drivers[] = {
 	{ "asepcos",    (void *(*)(void)) sc_get_asepcos_driver },
 	{ "atrust-acos",(void *(*)(void)) sc_get_atrust_acos_driver },
+	{ "cyberflex",	(void *(*)(void)) sc_get_cyberflex_driver },
 	{ "flex",       (void *(*)(void)) sc_get_cryptoflex_driver },
 	{ NULL, NULL }
 };
