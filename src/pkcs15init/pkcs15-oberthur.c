@@ -625,20 +625,24 @@ cosm_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	LOG_TEST_RET(ctx, rv, "Cannot generate key: 'CREATE' authentication failed");
 
 	sc_file_free(tmpf);
+	tmpf = NULL;
 
 	rv = sc_select_file(p15card->card, &key_info->path, &prkf);
 	LOG_TEST_RET(ctx, rv, "Failed to generate key: cannot select private key file");
 
 	/* In the private key DF create the temporary public RSA file. */
 	rv = cosm_get_temporary_public_key_file(p15card->card, prkf, &tmpf);
-	if (rv != SC_SUCCESS)
+	if (rv != SC_SUCCESS) {
 		sc_file_free(prkf);
-	LOG_TEST_RET(ctx, rv, "Error while getting temporary public key file");
+		LOG_TEST_RET(ctx, rv, "Error while getting temporary public key file");
+	}
 
 	rv = sc_pkcs15init_create_file(profile, p15card, tmpf);
-	if (rv != SC_SUCCESS)
+	if (rv != SC_SUCCESS) {
 		sc_file_free(prkf);
-	LOG_TEST_RET(ctx, rv, "cosm_generate_key() failed to create temporary public key EF");
+		sc_file_free(tmpf);
+		LOG_TEST_RET(ctx, rv, "cosm_generate_key() failed to create temporary public key EF");
+	}
 
 	memset(&args, 0, sizeof(args));
 	args.id_prv = prkf->id;
