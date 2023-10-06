@@ -257,7 +257,7 @@ setcos_new_file(sc_profile_t *profile, sc_card_t *card,
 	unsigned int num, /* number of objects of this type already on the card */
 	sc_file_t **out)
 {
-	sc_file_t *file;
+	sc_file_t *file = NULL;
 	sc_path_t *p;
 	char name[64];
 	const char *tag;
@@ -374,9 +374,9 @@ setcos_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 
 	/* Now create the key file */
 	r = sc_pkcs15init_create_file(profile, p15card, file);
+	sc_file_free(file);
 	LOG_TEST_RET(ctx, r, "Cannot create private key file");
 
-	sc_file_free(file);
 	LOG_FUNC_RETURN(ctx, r);
 }
 
