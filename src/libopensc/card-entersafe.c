@@ -1374,8 +1374,9 @@ static int entersafe_gen_key(sc_card_t *card, sc_entersafe_gen_key_data *data)
 	int	r;
 	size_t len = data->key_length >> 3;
 	sc_apdu_t apdu;
-	u8 rbuf[300];
+	u8 rbuf[300] = {0};
 	u8 sbuf[4],*p;
+	size_t plen = 0;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -1418,40 +1419,49 @@ static int entersafe_gen_key(sc_card_t *card, sc_entersafe_gen_key_data *data)
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	LOG_TEST_RET(card->ctx, sc_check_sw(card,apdu.sw1,apdu.sw2),"EnterSafe get pukey failed");
 
-	data->modulus = malloc(len);
-	if (!data->modulus)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_OUT_OF_MEMORY);
-
-	p=rbuf;
-	if (*p!='E') {
-		free(data->modulus);
-		data->modulus = NULL;
+	p = rbuf;
+	plen = apdu.resplen;
+	if (*p != 'E') {
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_DATA);
 	}
-	p+=2+p[1];
+	if ((size_t)(p - rbuf) + 2 + p[1] >= plen) {
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_DATA);
+	}
+	p += 2 + p[1];
 	/* N */
-	if (*p!='N') {
-		free(data->modulus);
-		data->modulus = NULL;
+	if (*p != 'N') {
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_DATA);
+	}
+	if ((size_t)(p - rbuf) + 2 >= plen) {
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_DATA);
 	}
 	++p;
-	if(*p++>0x80)
+	if (*p++ > 0x80)
 	{
-		 u8 len_bytes=(*(p-1))&0x0f;
-		 size_t module_len=0;
-		 while(len_bytes!=0)
+		u8 len_bytes = (*(p - 1)) & 0x0f;
+		size_t module_len = 0;
+		if ((size_t)(p - rbuf) + len_bytes >= plen) {
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_DATA);
+		}
+		 while (len_bytes != 0)
 		 {
-			  module_len=module_len<<8;
-			  module_len+=*p++;
+			  module_len = module_len << 8;
+			  module_len += *p++;
 			  --len_bytes;
 		 }
 	}
 
-	entersafe_reverse_buffer(p,len);
-	memcpy(data->modulus,p,len);
+	if ((p - rbuf) + len >= plen) {
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_DATA);
+	}
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,SC_SUCCESS);
+	data->modulus = malloc(len);
+	if (!data->modulus)
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_OUT_OF_MEMORY);
+	entersafe_reverse_buffer(p, len);
+	memcpy(data->modulus, p, len);
+
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
 }
 
 static int entersafe_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
