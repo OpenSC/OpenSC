@@ -36,7 +36,7 @@
 #include "iasecc.h"
 #include "iasecc-sdo.h"
 
-static int iasecc_parse_size(unsigned char *data, size_t *out);
+static int iasecc_parse_size(unsigned char *data, size_t data_len, size_t *out);
 
 
 static int
@@ -330,7 +330,7 @@ iasecc_se_parse(struct sc_card *card, unsigned char *data, size_t data_len, stru
 	LOG_FUNC_CALLED(ctx);
 
 	if (*data == IASECC_SDO_TEMPLATE_TAG)   {
-		size_size = iasecc_parse_size(data + 1, &size);
+		size_size = iasecc_parse_size(data + 1, data_len - 1, &size);
 		LOG_TEST_RET(ctx, size_size, "parse error: invalid size data of IASECC_SDO_TEMPLATE");
 
 		data += size_size + 1;
@@ -345,7 +345,7 @@ iasecc_se_parse(struct sc_card *card, unsigned char *data, size_t data_len, stru
 		if ((*(data + 1) & 0x7F) != IASECC_SDO_CLASS_SE)
 			 LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
 
-		size_size = iasecc_parse_size(data + 3, &size);
+		size_size = iasecc_parse_size(data + 3, data_len - 3, &size);
 		LOG_TEST_RET(ctx, size_size, "parse error: invalid SDO SE data size");
 
 		if (data_len != size + size_size + 3)
@@ -365,7 +365,7 @@ iasecc_se_parse(struct sc_card *card, unsigned char *data, size_t data_len, stru
 		LOG_FUNC_RETURN(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
 	}
 
-	size_size = iasecc_parse_size(data + 1, &size);
+	size_size = iasecc_parse_size(data + 1, data_len - 1, &size);
 	LOG_TEST_RET(ctx, size_size, "parse error: invalid size data");
 
 	if (data_len != size + size_size + 1)
@@ -387,17 +387,17 @@ iasecc_se_parse(struct sc_card *card, unsigned char *data, size_t data_len, stru
 
 
 static int
-iasecc_parse_size(unsigned char *data, size_t *out)
+iasecc_parse_size(unsigned char *data, size_t data_len, size_t *out)
 {
-	if (*data < 0x80)   {
+	if (*data < 0x80 && data_len > 0) {
 		*out = *data;
 		return 1;
 	}
-	else if (*data == 0x81)   {
+	else if (*data == 0x81 && data_len > 1) {
 		*out = *(data + 1);
 		return 2;
 	}
-	else if (*data == 0x82)   {
+	else if (*data == 0x82 && data_len > 2) {
 		*out = *(data + 1) * 0x100 + *(data + 2);
 		return 3;
 	}
@@ -407,14 +407,18 @@ iasecc_parse_size(unsigned char *data, size_t *out)
 
 
 static int
-iasecc_parse_get_tlv(struct sc_card *card, unsigned char *data, struct iasecc_extended_tlv *tlv)
+iasecc_parse_get_tlv(struct sc_card *card, unsigned char *data, size_t data_len, struct iasecc_extended_tlv *tlv)
 {
 	struct sc_context *ctx = card->ctx;
 	size_t size_len, tag_len;
 
 	memset(tlv, 0, sizeof(*tlv));
 	sc_log(ctx, "iasecc_parse_get_tlv() called for tag 0x%X", *data);
+	if (data_len < 1)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
 	if ((*data == 0x7F) || (*data == 0x5F))   {
+		if (data_len < 2)
+			LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
 		tlv->tag = *data * 0x100 + *(data + 1);
 		tag_len = 2;
 	}
@@ -424,8 +428,11 @@ iasecc_parse_get_tlv(struct sc_card *card, unsigned char *data, struct iasecc_ex
 	}
 
 	sc_log(ctx, "iasecc_parse_get_tlv() tlv->tag 0x%X", tlv->tag);
-	size_len = iasecc_parse_size(data + tag_len, &tlv->size);
+	size_len = iasecc_parse_size(data + tag_len, data_len - tag_len, &tlv->size);
 	LOG_TEST_RET(ctx, size_len, "parse error: invalid size data");
+	if (tag_len + size_len + tlv->size > data_len) {
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
+	}
 
 	tlv->value = calloc(1, tlv->size);
 	if (!tlv->value)
@@ -452,7 +459,7 @@ iasecc_parse_chv(struct sc_card *card, unsigned char *data, size_t data_len, str
 	while(offs < data_len)   {
 		struct iasecc_extended_tlv tlv;
 
-		rv = iasecc_parse_get_tlv(card, data + offs, &tlv);
+		rv = iasecc_parse_get_tlv(card, data + offs, data_len - offs, &tlv);
 		LOG_TEST_RET(ctx, rv, "iasecc_parse_chv() get and parse TLV error");
 
 		sc_log(ctx,
@@ -486,7 +493,7 @@ iasecc_parse_prvkey(struct sc_card *card, unsigned char *data, size_t data_len, 
 	while(offs < data_len)   {
 		struct iasecc_extended_tlv tlv;
 
-		rv = iasecc_parse_get_tlv(card, data + offs, &tlv);
+		rv = iasecc_parse_get_tlv(card, data + offs, data_len - offs, &tlv);
 		LOG_TEST_RET(ctx, rv, "iasecc_parse_prvkey() get and parse TLV error");
 
 		sc_log(ctx,
@@ -516,7 +523,7 @@ iasecc_parse_pubkey(struct sc_card *card, unsigned char *data, size_t data_len, 
 	while(offs < data_len)   {
 		struct iasecc_extended_tlv tlv;
 
-		rv = iasecc_parse_get_tlv(card, data + offs, &tlv);
+		rv = iasecc_parse_get_tlv(card, data + offs, data_len - offs, &tlv);
 		LOG_TEST_RET(ctx, rv, "iasecc_parse_pubkey() get and parse TLV error");
 
 		sc_log(ctx,
@@ -554,7 +561,7 @@ iasecc_parse_keyset(struct sc_card *card, unsigned char *data, size_t data_len, 
 	while(offs < data_len)   {
 		struct iasecc_extended_tlv tlv;
 
-		rv = iasecc_parse_get_tlv(card, data + offs, &tlv);
+		rv = iasecc_parse_get_tlv(card, data + offs, data_len - offs, &tlv);
 		LOG_TEST_RET(ctx, rv, "iasecc_parse_keyset() get and parse TLV error");
 
 		sc_log(ctx,
@@ -586,7 +593,7 @@ iasecc_parse_docp(struct sc_card *card, unsigned char *data, size_t data_len, st
 	while(offs < data_len)   {
 		struct iasecc_extended_tlv tlv;
 
-		rv = iasecc_parse_get_tlv(card, data + offs, &tlv);
+		rv = iasecc_parse_get_tlv(card, data + offs, data_len - offs, &tlv);
 		LOG_TEST_RET(ctx, rv, "iasecc_parse_get_tlv() get and parse TLV error");
 
 		sc_log(ctx,
@@ -641,7 +648,7 @@ iasecc_parse_docp(struct sc_card *card, unsigned char *data, size_t data_len, st
 
 
 static int
-iasecc_sdo_parse_data(struct sc_card *card, unsigned char *data, struct iasecc_sdo *sdo)
+iasecc_sdo_parse_data(struct sc_card *card, unsigned char *data, size_t data_len, struct iasecc_sdo *sdo)
 {
 	struct sc_context *ctx = card->ctx;
 	struct iasecc_extended_tlv tlv;
@@ -650,7 +657,7 @@ iasecc_sdo_parse_data(struct sc_card *card, unsigned char *data, struct iasecc_s
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "iasecc_sdo_parse_data() class %X; ref %X", sdo->sdo_class, sdo->sdo_ref);
 
-	tlv_size = iasecc_parse_get_tlv(card, data, &tlv);
+	tlv_size = iasecc_parse_get_tlv(card, data, data_len, &tlv);
 	LOG_TEST_RET(ctx, tlv_size, "parse error: get TLV");
 
 	sc_log(ctx, "iasecc_sdo_parse_data() tlv.tag 0x%X", tlv.tag);
@@ -735,7 +742,7 @@ iasecc_sdo_parse(struct sc_card *card, unsigned char *data, size_t data_len, str
 	LOG_FUNC_CALLED(ctx);
 
 	if (*data == IASECC_SDO_TEMPLATE_TAG)   {
-		size_size = iasecc_parse_size(data + 1, &size);
+		size_size = iasecc_parse_size(data + 1, data_len - 1, &size);
 		LOG_TEST_RET(ctx, size_size, "parse error: invalid size data of IASECC_SDO_TEMPLATE");
 
 		data += size_size + 1;
@@ -754,7 +761,7 @@ iasecc_sdo_parse(struct sc_card *card, unsigned char *data, size_t data_len, str
 	if (sdo->sdo_ref != (*(data + 2) & 0x3F))
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
 
-	size_size = iasecc_parse_size(data + 3, &size);
+	size_size = iasecc_parse_size(data + 3, data_len - 3, &size);
 	LOG_TEST_RET(ctx, size_size, "parse error: invalid size data");
 
 	if (data_len != size + size_size + 3)
@@ -766,7 +773,7 @@ iasecc_sdo_parse(struct sc_card *card, unsigned char *data, size_t data_len, str
 
 	offs = 3 + size_size;
 	for (; offs < data_len;)   {
-		rv = iasecc_sdo_parse_data(card, data + offs, sdo);
+		rv = iasecc_sdo_parse_data(card, data + offs, data_len - offs, sdo);
 		LOG_TEST_RET(ctx, rv, "parse error: invalid SDO data");
 
 		offs += rv;
@@ -812,7 +819,7 @@ iasecc_sdo_allocate_and_parse(struct sc_card *card, unsigned char *data, size_t 
 	if (data_len == 3)
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 
-	size_size = iasecc_parse_size(data + 3, &size);
+	size_size = iasecc_parse_size(data + 3, data_len - 3, &size);
 	LOG_TEST_RET(ctx, size_size, "parse error: invalid size data");
 
 	if (data_len != size + size_size + 3)
@@ -824,7 +831,7 @@ iasecc_sdo_allocate_and_parse(struct sc_card *card, unsigned char *data, size_t 
 
 	offs = 3 + size_size;
 	for (; offs < data_len;)   {
-		rv = iasecc_sdo_parse_data(card, data + offs, sdo);
+		rv = iasecc_sdo_parse_data(card, data + offs, data_len - offs, sdo);
 		LOG_TEST_RET(ctx, rv, "parse error: invalid SDO data");
 
 		offs += rv;
@@ -1222,7 +1229,7 @@ iasecc_sdo_parse_card_answer(struct sc_context *ctx, unsigned char *data, size_t
 
 	memset(out, 0, sizeof(*out));
 	for (offs=0; offs<data_len; )   {
-		size_size = iasecc_parse_size(data + 1, &size);
+		size_size = iasecc_parse_size(data + 1, data_len - 1, &size);
 
 		if (*(data + offs) == IASECC_CARD_ANSWER_TAG_DATA )   {
 			if (size > sizeof(out->data))
@@ -1293,7 +1300,7 @@ iasecc_docp_copy(struct sc_context *ctx, struct iasecc_sdo_docp *in, struct iase
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	if (!in || !out) 
+	if (!in || !out)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	memset(out, 0, sizeof(struct iasecc_sdo_docp));
