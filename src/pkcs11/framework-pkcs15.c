@@ -6660,7 +6660,7 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 	}
 
 	if (rsa_flags & SC_ALGORITHM_ONBOARD_KEY_GEN) {
-		mech_info.flags = CKF_GENERATE_KEY_PAIR;
+		mech_info.flags = CKF_HW | CKF_GENERATE_KEY_PAIR;
 		mt = sc_pkcs11_new_fw_mechanism(CKM_RSA_PKCS_KEY_PAIR_GEN, &mech_info, CKK_RSA, NULL, NULL, NULL);
 		if (!mt)
 			return CKR_HOST_MEMORY;
