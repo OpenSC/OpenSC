@@ -143,22 +143,22 @@ iasecc_sdo_convert_acl(struct sc_card *card, struct iasecc_sdo *sdo,
 void
 iasecc_sdo_free_fields(struct sc_card *card, struct iasecc_sdo *sdo)
 {
-	if (sdo->docp.tries_maximum.value)
-		free(sdo->docp.tries_maximum.value);
-	if (sdo->docp.tries_remaining.value)
-		free(sdo->docp.tries_remaining.value);
-	if (sdo->docp.usage_remaining.value)
-		free(sdo->docp.usage_remaining.value);
-	if (sdo->docp.non_repudiation.value)
-		free(sdo->docp.non_repudiation.value);
-	if (sdo->docp.acls_contact.value)
-		free(sdo->docp.acls_contact.value);
-	if (sdo->docp.size.value)
-		free(sdo->docp.size.value);
-	if (sdo->docp.name.value)
-		free(sdo->docp.name.value);
-	if (sdo->docp.issuer_data.value)
-		free(sdo->docp.issuer_data.value);
+	free(sdo->docp.tries_maximum.value);
+	sdo->docp.tries_maximum.value = NULL;
+	free(sdo->docp.tries_remaining.value);
+	sdo->docp.tries_remaining.value = NULL;
+	free(sdo->docp.usage_remaining.value);
+	sdo->docp.usage_remaining.value = NULL;
+	free(sdo->docp.non_repudiation.value);
+	sdo->docp.non_repudiation.value = NULL;
+	free(sdo->docp.acls_contact.value);
+	sdo->docp.acls_contact.value = NULL;
+	free(sdo->docp.size.value);
+	sdo->docp.size.value = NULL;
+	free(sdo->docp.name.value);
+	sdo->docp.name.value = NULL;
+	free(sdo->docp.issuer_data.value);
+	sdo->docp.issuer_data.value = NULL;
 
 	if (sdo->sdo_class == IASECC_SDO_CLASS_RSA_PUBLIC)   {
 		if (sdo->data.pub_key.n.value)
@@ -608,30 +608,39 @@ iasecc_parse_docp(struct sc_card *card, unsigned char *data, size_t data_len, st
 			LOG_TEST_RET(ctx, _rv, "parse error: cannot parse DOCP");
 		}
 		else if (tlv.tag == IASECC_DOCP_TAG_ACLS_CONTACT)   {
+			free(sdo->docp.acls_contact.value);
 			sdo->docp.acls_contact = tlv;
 		}
 		else if (tlv.tag == IASECC_DOCP_TAG_ACLS_CONTACTLESS)   {
+			free(sdo->docp.acls_contactless.value);
 			sdo->docp.acls_contactless = tlv;
 		}
 		else if (tlv.tag == IASECC_DOCP_TAG_SIZE)   {
+			free(sdo->docp.size.value);
 			sdo->docp.size = tlv;
 		}
 		else if (tlv.tag == IASECC_DOCP_TAG_NAME)   {
+			free(sdo->docp.name.value);
 			sdo->docp.name = tlv;
 		}
 		else if (tlv.tag == IASECC_DOCP_TAG_ISSUER_DATA)   {
+			free(sdo->docp.issuer_data.value);
 			sdo->docp.issuer_data = tlv;
 		}
 		else if (tlv.tag == IASECC_DOCP_TAG_NON_REPUDIATION)   {
+			free(sdo->docp.non_repudiation.value);
 			sdo->docp.non_repudiation = tlv;
 		}
 		else if (tlv.tag == IASECC_DOCP_TAG_USAGE_REMAINING)   {
+			free(sdo->docp.usage_remaining.value);
 			sdo->docp.usage_remaining = tlv;
 		}
 		else if (tlv.tag == IASECC_DOCP_TAG_TRIES_MAXIMUM)   {
+			free(sdo->docp.tries_maximum.value);
 			sdo->docp.tries_maximum = tlv;
 		}
 		else if (tlv.tag == IASECC_DOCP_TAG_TRIES_REMAINING)   {
+			free(sdo->docp.tries_remaining.value);
 			sdo->docp.tries_remaining = tlv;
 		}
 		else   {
@@ -673,15 +682,19 @@ iasecc_sdo_parse_data(struct sc_card *card, unsigned char *data, size_t data_len
 		LOG_TEST_RET(ctx, rv, "parse error: cannot parse DOCP");
 	}
 	else if (tlv.tag == IASECC_DOCP_TAG_NON_REPUDIATION)   {
+		free(sdo->docp.non_repudiation.value);
 		sdo->docp.non_repudiation = tlv;
 	}
 	else if (tlv.tag == IASECC_DOCP_TAG_USAGE_REMAINING)   {
+		free(sdo->docp.usage_remaining.value);
 		sdo->docp.usage_remaining = tlv;
 	}
 	else if (tlv.tag == IASECC_DOCP_TAG_TRIES_MAXIMUM)   {
+		free(sdo->docp.tries_maximum.value);
 		sdo->docp.tries_maximum = tlv;
 	}
 	else if (tlv.tag == IASECC_DOCP_TAG_TRIES_REMAINING)   {
+		free(sdo->docp.tries_remaining.value);
 		sdo->docp.tries_remaining = tlv;
 	}
 	else if (tlv.tag == IASECC_SDO_CHV_TAG)   {
