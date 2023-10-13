@@ -66,97 +66,97 @@
 		"RSA_X_509",
 		"1024",
 		"3072",
-		"0x00002A01"
+		"CKF_HW,CKF_DECRYPT,CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"RSA_PKCS",
 		"1024",
 		"3072",
-		"0x00002A01"
+		"CKF_HW,CKF_DECRYPT,CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"SHA1_RSA_PKCS",
 		"1024",
 		"3072",
-		"0x00002800"
+		"CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"SHA224_RSA_PKCS",
 		"1024",
 		"3072",
-		"0x00002800"
+		"CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"SHA256_RSA_PKCS",
 		"1024",
 		"3072",
-		"0x00002800"
+		"CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"SHA384_RSA_PKCS",
 		"1024",
 		"3072",
-		"0x00002800"
+		"CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"SHA512_RSA_PKCS",
 		"1024",
 		"3072",
-		"0x00002800"
+		"CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"MD5_RSA_PKCS",
 		"1024",
 		"3072",
-		"0x00002800"
+		"CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"RIPEMD160_RSA_PKCS",
 		"1024",
 		"3072",
-		"0x00002800"
+		"CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"RSA_PKCS_PSS",
 		"1024",
 		"3072",
-		"0x00002801"
+		"CKF_HW,CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"SHA1_RSA_PKCS_PSS",
 		"1024",
 		"3072",
-		"0x00002800"
+		"CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"SHA224_RSA_PKCS_PSS",
 		"1024",
 		"3072",
-		"0x00002800"
+		"CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"SHA256_RSA_PKCS_PSS",
 		"1024",
 		"3072",
-		"0x00002800"
+		"CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"SHA384_RSA_PKCS_PSS",
 		"1024",
 		"3072",
-		"0x00002800"
+		"CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"SHA512_RSA_PKCS_PSS",
 		"1024",
 		"3072",
-		"0x00002800"
+		"CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"RSA_PKCS_OAEP",
 		"1024",
 		"3072",
-		"0x00000201"
+		"CKF_HW,CKF_DECRYPT"
 	]],
 	"result": "pass"
 },

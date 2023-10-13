@@ -29,7 +29,6 @@ void supported_mechanisms_test(void **state) {
 	CK_ULONG mechanism_count, i;
 	CK_MECHANISM_TYPE_PTR mechanism_list;
 	CK_MECHANISM_INFO_PTR mechanism_info;
-	CK_FLAGS j;
 	test_mech_t *mech = NULL;
 
 	P11TEST_START(info);
@@ -171,20 +170,17 @@ void supported_mechanisms_test(void **state) {
 			's', "MAX KEY",
 			's', "FLAGS");
 		for (i = 0; i < mechanism_count; i++) {
-			printf("[%-21s] [%4lu][%4lu] [%10s]",
+			printf("[%-21s] [%4lu][%4lu] [0x%.8lX]",
 				get_mechanism_name(mechanism_list[i]),
 				mechanism_info[i].ulMinKeySize,
 				mechanism_info[i].ulMaxKeySize,
-				get_mechanism_flag_name(mechanism_info[i].flags));
+				mechanism_info[i].flags);
 			P11TEST_DATA_ROW(info, 4,
 				's', get_mechanism_name(mechanism_list[i]),
 				'd', mechanism_info[i].ulMinKeySize,
 				'd', mechanism_info[i].ulMaxKeySize,
-				's', get_mechanism_flag_name(mechanism_info[i].flags));
-			for (j = 1; j <= CKF_EC_COMPRESS; j = j<<1)
-				if ((mechanism_info[i].flags & j) != 0)
-					printf(" %s", get_mechanism_flag_name(j));
-			printf("\n");
+				's', get_mechanism_all_flag_name(mechanism_info[i].flags));
+			printf(" %s\n", get_mechanism_all_flag_name(mechanism_info[i].flags));
 		}
 		free(mechanism_list);
 		free(mechanism_info);

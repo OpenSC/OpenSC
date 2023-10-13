@@ -1218,6 +1218,25 @@ const char *get_mechanism_flag_name(int mech_id)
 	}
 }
 
+const char *
+get_mechanism_all_flag_name(int mech_id)
+{
+	CK_FLAGS j;
+	static char f_buffer[80];
+
+	f_buffer[0] = '\0';
+	for (j = 1; j <= CKF_EC_COMPRESS; j = j << 1)
+		/* append the name of the mechanism (only for known mechanisms) */
+		if ((mech_id & j) != 0 && strncmp("0x", get_mechanism_flag_name(j), 2)) {
+			snprintf(f_buffer + strlen(f_buffer),
+					sizeof(f_buffer) - strlen(f_buffer), "%s,", get_mechanism_flag_name(j));
+		}
+	/* remove comma at end of string */
+	if ((strlen(f_buffer) > 0) && f_buffer[strlen(f_buffer) - 1] == ',')
+		f_buffer[strlen(f_buffer) - 1] = '\0';
+	return f_buffer;
+}
+
 char *convert_byte_string(unsigned char *id, unsigned long length)
 {
 	unsigned int i;
