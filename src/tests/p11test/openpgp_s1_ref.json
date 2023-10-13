@@ -66,55 +66,55 @@
 		"RSA_PKCS",
 		"2048",
 		"2048",
-		"0x00002A01"
+		"CKF_HW,CKF_DECRYPT,CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"SHA1_RSA_PKCS",
 		"2048",
 		"2048",
-		"0x00002800"
+		"CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"SHA224_RSA_PKCS",
 		"2048",
 		"2048",
-		"0x00002800"
+		"CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"SHA256_RSA_PKCS",
 		"2048",
 		"2048",
-		"0x00002800"
+		"CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"SHA384_RSA_PKCS",
 		"2048",
 		"2048",
-		"0x00002800"
+		"CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"SHA512_RSA_PKCS",
 		"2048",
 		"2048",
-		"0x00002800"
+		"CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"MD5_RSA_PKCS",
 		"2048",
 		"2048",
-		"0x00002800"
+		"CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"RIPEMD160_RSA_PKCS",
 		"2048",
 		"2048",
-		"0x00002800"
+		"CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"RSA_PKCS_KEY_PAIR_GEN",
 		"2048",
 		"2048",
-		"CKF_GENERATE_KEY_PAIR"
+		"CKF_HW,CKF_GENERATE_KEY_PAIR"
 	]],
 	"result": "pass"
 },

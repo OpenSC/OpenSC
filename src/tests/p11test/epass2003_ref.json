@@ -63,124 +63,148 @@
 		"CKF_DIGEST"
 	],
 	[
+		"ECDSA",
+		"256",
+		"256",
+		"CKF_HW,CKF_SIGN,CKF_VERIFY"
+	],
+	[
+		"ECDSA_SHA224",
+		"256",
+		"256",
+		"CKF_SIGN,CKF_VERIFY"
+	],
+	[
+		"ECDSA_SHA384",
+		"256",
+		"256",
+		"CKF_SIGN,CKF_VERIFY"
+	],
+	[
+		"ECDSA_SHA512",
+		"256",
+		"256",
+		"CKF_SIGN,CKF_VERIFY"
+	],
+	[
 		"ECDSA_SHA1",
 		"256",
 		"256",
-		"0x00002801"
+		"CKF_HW,CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"ECDSA_SHA256",
 		"256",
 		"256",
-		"0x00002801"
+		"CKF_HW,CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"EC_KEY_PAIR_GEN",
 		"256",
 		"256",
-		"0x00010001"
+		"CKF_HW,CKF_GENERATE_KEY_PAIR"
 	],
 	[
 		"RSA_X_509",
 		"512",
 		"2048",
-		"0x00002A01"
+		"CKF_HW,CKF_DECRYPT,CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"RSA_PKCS",
 		"512",
 		"2048",
-		"0x00002A01"
+		"CKF_HW,CKF_DECRYPT,CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"SHA1_RSA_PKCS",
 		"512",
 		"2048",
-		"0x00002800"
+		"CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"SHA224_RSA_PKCS",
 		"512",
 		"2048",
-		"0x00002800"
+		"CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"SHA256_RSA_PKCS",
 		"512",
 		"2048",
-		"0x00002800"
+		"CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"SHA384_RSA_PKCS",
 		"512",
 		"2048",
-		"0x00002800"
+		"CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"SHA512_RSA_PKCS",
 		"512",
 		"2048",
-		"0x00002800"
+		"CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"MD5_RSA_PKCS",
 		"512",
 		"2048",
-		"0x00002800"
+		"CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"RIPEMD160_RSA_PKCS",
 		"512",
 		"2048",
-		"0x00002800"
+		"CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"RSA_PKCS_PSS",
 		"512",
 		"2048",
-		"0x00002801"
+		"CKF_HW,CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"SHA1_RSA_PKCS_PSS",
 		"512",
 		"2048",
-		"0x00002800"
+		"CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"SHA224_RSA_PKCS_PSS",
 		"512",
 		"2048",
-		"0x00002800"
+		"CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"SHA256_RSA_PKCS_PSS",
 		"512",
 		"2048",
-		"0x00002800"
+		"CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"SHA384_RSA_PKCS_PSS",
 		"512",
 		"2048",
-		"0x00002800"
+		"CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"SHA512_RSA_PKCS_PSS",
 		"512",
 		"2048",
-		"0x00002800"
+		"CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"RSA_PKCS_OAEP",
 		"512",
 		"2048",
-		"0x00000201"
+		"CKF_HW,CKF_DECRYPT"
 	],
 	[
 		"RSA_PKCS_KEY_PAIR_GEN",
 		"512",
 		"2048",
-		"CKF_GENERATE_KEY_PAIR"
+		"CKF_HW,CKF_GENERATE_KEY_PAIR"
 	]],
 	"result": "pass"
 },
@@ -265,6 +289,12 @@
 	],
 	[
 		"03",
+		"ECDSA",
+		"YES",
+		""
+	],
+	[
+		"03",
 		"ECDSA_SHA1",
 		"YES",
 		""
@@ -334,7 +364,8 @@
 },
 {
 	"test_id": "ec_sign_size_test",
-	"result": "pass"
+	"fail_reason": "Some signatures were not verified successfully. Please review the log",
+	"result": "fail"
 },
 {
 	"test_id": "usage_test",
