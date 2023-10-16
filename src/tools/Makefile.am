@@ -56,8 +56,8 @@ LIBS = \
 	$(top_builddir)/src/common/libcompat.la
 
 sceac_example_SOURCES = sceac-example.c
-sceac_example_LDADD = $(top_builddir)/src/libopensc/libopensc.la $(OPENPACE_LIBS)
-sceac_example_CFLAGS = -I$(top_srcdir)/src $(OPENPACE_CFLAGS)
+sceac_example_LDADD = $(top_builddir)/src/libopensc/libopensc.la $(OPTIONAL_OPENSSL_LIBS) $(OPENPACE_LIBS)
+sceac_example_CFLAGS = -I$(top_srcdir)/src $(OPTIONAL_OPENSSL_CFLAGS) $(OPENPACE_CFLAGS)
 
 opensc_tool_SOURCES = opensc-tool.c util.c
 piv_tool_SOURCES = piv-tool.c util.c
@@ -101,8 +101,8 @@ gids_tool_SOURCES = gids-tool.c util.c
 gids_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
 
 npa_tool_SOURCES = npa-tool.c fread_to_eof.c util.c npa-tool-cmdline.c
-npa_tool_LDADD = $(OPENPACE_LIBS)
-npa_tool_CFLAGS = $(OPENPACE_CFLAGS)
+npa_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS) $(OPENPACE_LIBS)
+npa_tool_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(OPENPACE_CFLAGS)
 if HAVE_UNKNOWN_WARNING_OPTION
 npa_tool_CFLAGS += -Wno-unknown-warning-option
 endif
