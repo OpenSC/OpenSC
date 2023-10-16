@@ -7233,11 +7233,15 @@ BOOL APIENTRY DllMain( HINSTANCE hinstDLL,
 	{
 	case DLL_PROCESS_ATTACH:
 		g_inst = hinstDLL;
+#ifdef ENABLE_NOTIFY
 		sc_notify_instance = hinstDLL;
 		sc_notify_init();
+#endif
 		break;
 	case DLL_PROCESS_DETACH:
+#ifdef ENABLE_NOTIFY
 		sc_notify_close();
+#endif
 		if (lpReserved == NULL) {
 #if defined(ENABLE_OPENSSL) && defined(OPENSSL_SECURE_MALLOC_SIZE) && !defined(LIBRESSL_VERSION_NUMBER)
 			CRYPTO_secure_malloc_done();
