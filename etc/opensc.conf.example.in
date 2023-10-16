@@ -19,7 +19,7 @@ app default {
 	# Special values 'stdout' and 'stderr' are recognized.
 	# Default: stderr
 	#
-	# debug_file = @DEBUG_FILE@
+	# debug_file = @DEBUG_FILE@;
 
 	# PKCS#15 initialization / personalization
 	# profiles directory for pkcs15-init.
