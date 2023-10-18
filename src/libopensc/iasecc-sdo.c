@@ -144,56 +144,36 @@ void
 iasecc_sdo_free_fields(struct sc_card *card, struct iasecc_sdo *sdo)
 {
 	free(sdo->docp.tries_maximum.value);
-	sdo->docp.tries_maximum.value = NULL;
 	free(sdo->docp.tries_remaining.value);
-	sdo->docp.tries_remaining.value = NULL;
 	free(sdo->docp.usage_remaining.value);
-	sdo->docp.usage_remaining.value = NULL;
 	free(sdo->docp.non_repudiation.value);
-	sdo->docp.non_repudiation.value = NULL;
 	free(sdo->docp.acls_contact.value);
-	sdo->docp.acls_contact.value = NULL;
 	free(sdo->docp.size.value);
-	sdo->docp.size.value = NULL;
 	free(sdo->docp.name.value);
-	sdo->docp.name.value = NULL;
 	free(sdo->docp.issuer_data.value);
-	sdo->docp.issuer_data.value = NULL;
 
 	if (sdo->sdo_class == IASECC_SDO_CLASS_RSA_PUBLIC)   {
-		if (sdo->data.pub_key.n.value)
-			free(sdo->data.pub_key.n.value);
-		if (sdo->data.pub_key.e.value)
-			free(sdo->data.pub_key.e.value);
-		if (sdo->data.pub_key.compulsory.value)
-			free(sdo->data.pub_key.compulsory.value);
-		if (sdo->data.pub_key.chr.value)
-			free(sdo->data.pub_key.chr.value);
-		if (sdo->data.pub_key.cha.value)
-			free(sdo->data.pub_key.cha.value);
+		free(sdo->data.pub_key.n.value);
+		free(sdo->data.pub_key.e.value);
+		free(sdo->data.pub_key.compulsory.value);
+		free(sdo->data.pub_key.chr.value);
+		free(sdo->data.pub_key.cha.value);
 	}
 	else if (sdo->sdo_class == IASECC_SDO_CLASS_RSA_PRIVATE)   {
-		if (sdo->data.prv_key.p.value)
-			free(sdo->data.prv_key.p.value);
-		if (sdo->data.prv_key.q.value)
-			free(sdo->data.prv_key.q.value);
-		if (sdo->data.prv_key.iqmp.value)
-			free(sdo->data.prv_key.iqmp.value);
-		if (sdo->data.prv_key.dmp1.value)
-			free(sdo->data.prv_key.dmp1.value);
-		if (sdo->data.prv_key.dmq1.value)
-			free(sdo->data.prv_key.dmq1.value);
-		if (sdo->data.prv_key.compulsory.value)
-			free(sdo->data.prv_key.compulsory.value);
+		free(sdo->data.prv_key.p.value);
+		free(sdo->data.prv_key.q.value);
+		free(sdo->data.prv_key.iqmp.value);
+		free(sdo->data.prv_key.dmp1.value);
+		free(sdo->data.prv_key.dmq1.value);
+		free(sdo->data.prv_key.compulsory.value);
 	}
 	else if (sdo->sdo_class == IASECC_SDO_CLASS_CHV)   {
-		if (sdo->data.chv.size_max.value)
-			free(sdo->data.chv.size_max.value);
-		if (sdo->data.chv.size_min.value)
-			free(sdo->data.chv.size_min.value);
-		if (sdo->data.chv.value.value)
-			free(sdo->data.chv.value.value);
+		free(sdo->data.chv.size_max.value);
+		free(sdo->data.chv.size_min.value);
+		free(sdo->data.chv.value.value);
 	}
+	/* invalidate all the other members too */
+	memset(sdo, 0, sizeof(struct iasecc_sdo));
 }
 
 

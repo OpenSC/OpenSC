@@ -2352,16 +2352,17 @@ iasecc_keyset_change(struct sc_card *card, struct sc_pin_cmd_data *data, int *tr
 	if (sdo.docp.acls_contact.size == 0)
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Bewildered ... there are no ACLs");
 	scb = sdo.docp.scbs[IASECC_ACLS_KEYSET_PUT_DATA];
+
+	memset(&update, 0, sizeof(update));
+	update.magic = SC_CARDCTL_IASECC_SDO_MAGIC_PUT_DATA;
+	update.sdo_class = sdo.sdo_class;
+	update.sdo_ref = sdo.sdo_ref;
 	iasecc_sdo_free_fields(card, &sdo);
 
 	sc_log(ctx, "SCB:0x%X", scb);
 	if (!(scb & IASECC_SCB_METHOD_SM))
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Other then protected by SM, the keyset change is not supported");
 
-	memset(&update, 0, sizeof(update));
-	update.magic = SC_CARDCTL_IASECC_SDO_MAGIC_PUT_DATA;
-	update.sdo_class = sdo.sdo_class;
-	update.sdo_ref = sdo.sdo_ref;
 
 	update.fields[0].parent_tag = IASECC_SDO_KEYSET_TAG;
 	update.fields[0].tag = IASECC_SDO_KEYSET_TAG_MAC;
@@ -3192,7 +3193,7 @@ iasecc_qsign_data_sha1(struct sc_context *ctx, const unsigned char *in, size_t i
 		sc_log(ctx, "EVP_DigestInit_ex failed");
 		goto err;
 	}
-	
+
 	md_data = EVP_MD_CTX_md_data(mdctx);
 	if (md_data == NULL) {
 		sc_log(ctx, "Failed to find md_data");
