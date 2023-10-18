@@ -84,6 +84,26 @@ void ShowContextMenu(HWND hwnd, POINT pt);
 // we need commctrl v6 for LoadIconMetric()
 #include <commctrl.h>
 
+static int GetMonitorScalingRatio(void)
+{
+	POINT pt = { 0, 0 };
+	HMONITOR monitor;
+	MONITORINFOEX info = { .cbSize = sizeof(MONITORINFOEX) };
+	DEVMODE devmode = { .dmSize = sizeof(DEVMODE) };
+	monitor = MonitorFromPoint(pt, MONITOR_DEFAULTTOPRIMARY);
+	if (!monitor)
+		goto err;
+	if (!GetMonitorInfo(monitor, (LPMONITORINFO)&info))
+		goto err;
+	if (!EnumDisplaySettings(info.szDevice, ENUM_CURRENT_SETTINGS, &devmode))
+		goto err;
+	if (info.rcMonitor.left == info.rcMonitor.right)
+		goto err;
+	return 100*devmode.dmPelsWidth/(info.rcMonitor.right - info.rcMonitor.left);
+err:
+	return 100;
+}
+
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	switch (message) {
@@ -111,7 +131,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 				case WM_CONTEXTMENU:
 					{
-						POINT const pt = { LOWORD(wParam), HIWORD(wParam) };
+						int scaling = GetMonitorScalingRatio();
+						POINT const pt = { 100*LOWORD(wParam)/scaling, 100*HIWORD(wParam)/scaling };
 						ShowContextMenu(hwnd, pt);
 					}
 					break;
