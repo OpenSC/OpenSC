@@ -68,7 +68,7 @@ struct pkcs15_fw_data {
 	struct pkcs15_any_object *	objects[MAX_OBJECTS];
 	unsigned int			num_objects;
 	unsigned int			locked;
-	unsigned char user_puk[64];
+	unsigned char *user_puk;
 	unsigned int user_puk_len;
 };
 
@@ -1780,9 +1780,16 @@ pkcs15_login(struct sc_pkcs11_slot *slot, CK_USER_TYPE userType,
 				rc = lock_card(fw_data);
 
 			if (sc_pkcs11_conf.pin_unblock_style == SC_PKCS11_PIN_UNBLOCK_SO_LOGGED_INITPIN)   {
-				if (ulPinLen && ulPinLen < sizeof(fw_data->user_puk))   {
-					memcpy(fw_data->user_puk, pPin, ulPinLen);
-					fw_data->user_puk_len = (unsigned int) ulPinLen;
+				if (ulPinLen)   {
+					unsigned char *user_puk = sc_mem_secure_alloc(ulPinLen);
+					if (user_puk) {
+						memcpy(user_puk, pPin, ulPinLen);
+
+						sc_mem_secure_clear_free(fw_data->user_puk, fw_data->user_puk_len);
+
+						fw_data->user_puk = user_puk;
+						fw_data->user_puk_len = (unsigned int) ulPinLen;
+					}
 				}
 			}
 
@@ -1939,7 +1946,8 @@ pkcs15_logout(struct sc_pkcs11_slot *slot)
 	if (!fw_data->p15_card)
 		return sc_to_cryptoki_error(SC_ERROR_INVALID_CARD, "C_Logout");
 
-	memset(fw_data->user_puk, 0, sizeof(fw_data->user_puk));
+	sc_mem_secure_clear_free(fw_data->user_puk, fw_data->user_puk_len);
+	fw_data->user_puk = NULL;
 	fw_data->user_puk_len = 0;
 
 	sc_pkcs15_pincache_clear(fw_data->p15_card);
