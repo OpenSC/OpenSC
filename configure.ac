@@ -445,7 +445,7 @@ AC_FUNC_VPRINTF
 AC_CHECK_FUNCS([ \
 	getpass gettimeofday getline memset mkdir \
 	strdup strerror memset_s explicit_bzero \
-	strnlen sigaction
+	strnlen strndup sigaction
 ])
 
 #

@@ -36,6 +36,7 @@
 
 #include "sc-pkcs11.h"
 #include "ui/notify.h"
+#include "common/compat_strndup.h"
 
 #ifdef ENABLE_OPENSSL
 #include <openssl/crypto.h>
@@ -730,10 +731,17 @@ CK_RV C_InitToken(CK_SLOT_ID slotID,
 	CK_RV rv;
 	unsigned int i;
 
+	/* pLabel is not required to be NUL-terminated */
+	pLabel = (CK_CHAR_PTR)strndup((char*)pLabel, 32);
+	if (!pLabel)
+		return CKR_HOST_MEMORY;
+
 	sc_log(context, "C_InitToken(pLabel='%s') called", pLabel);
 	rv = sc_pkcs11_lock();
-	if (rv != CKR_OK)
+	if (rv != CKR_OK) {
+		free(pLabel);
 		return rv;
+	}
 
 	rv = slot_get_token(slotID, &slot);
 	if (rv != CKR_OK)   {
@@ -766,6 +774,7 @@ CK_RV C_InitToken(CK_SLOT_ID slotID,
 out:
 	sc_pkcs11_unlock();
 	sc_log(context, "C_InitToken(pLabel='%s') returns 0x%lX", pLabel, rv);
+	free(pLabel);
 	return rv;
 }
 
