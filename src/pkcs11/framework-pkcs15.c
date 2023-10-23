@@ -1927,7 +1927,9 @@ pkcs15_logout(struct sc_pkcs11_slot *slot)
 	struct sc_pkcs11_card *p11card = slot->p11card;
 	struct pkcs15_fw_data *fw_data = NULL;
 	CK_RV ret = CKR_OK;
+#if !(defined(SW_PIN_LOGOUT_ONLY) && SW_PIN_LOGOUT_ONLY == 1)
 	int rc;
+#endif
 
 	if (!p11card)
 		return sc_to_cryptoki_error(SC_ERROR_INVALID_CARD, "C_Logout");
