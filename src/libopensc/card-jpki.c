@@ -242,6 +242,9 @@ jpki_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 
 	switch (data->cmd) {
 	case SC_PIN_CMD_VERIFY:
+		/* detect overloaded APDU with SC_PIN_CMD_GET_INFO */
+		if (data->pin1.len == 0)
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_PIN_LENGTH);
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_3, 0x20, 0x00, 0x80);
 		apdu.data = data->pin1.data;
 		apdu.datalen = data->pin1.len;
