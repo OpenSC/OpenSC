@@ -1202,7 +1202,7 @@ iso7816_build_pin_apdu(struct sc_card *card, struct sc_apdu *apdu,
 	case SC_PIN_CMD_VERIFY:
 		ins = 0x20;
 		/* detect overloaded APDU with SC_PIN_CMD_GET_INFO */
-		if (data->pin1.len == 0)
+		if (data->pin1.len == 0 && !use_pin_pad)
 			return SC_ERROR_INVALID_PIN_LENGTH;
 		if ((r = sc_build_pin(buf, buf_len, &data->pin1, pad)) < 0)
 			return r;
