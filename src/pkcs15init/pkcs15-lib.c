@@ -3958,6 +3958,22 @@ sc_pkcs15init_verify_secret(struct sc_profile *profile, struct sc_pkcs15_card *p
 
 found:
 	if (pin_obj)   {
+		/*
+		 * If pin cache is disabled or the reader is using pinpad, we can get here
+		 * with no PIN data. This is ok as we can not asynchronously invoke the prompt
+		 * (unless the pinpad is in use).
+		 * In this case, check if the PIN has been already verified and
+		 * the access condition is still open on card.
+		 */
+		if (pinsize == 0) {
+			r = sc_pkcs15_get_pin_info(p15card, pin_obj);
+			/* update local copy of auth info */
+			memcpy(&auth_info, pin_obj->data, sizeof(auth_info));
+
+			if (r == SC_SUCCESS && auth_info.logged_in == SC_PIN_STATE_LOGGED_IN)
+				LOG_FUNC_RETURN(ctx, r);
+		}
+
 		r = sc_pkcs15_verify_pin(p15card, pin_obj, use_pinpad || pinsize == 0 ? NULL : pinbuf, use_pinpad ? 0 : pinsize);
 		LOG_TEST_RET(ctx, r, "Cannot validate pkcs15 PIN");
 	}
