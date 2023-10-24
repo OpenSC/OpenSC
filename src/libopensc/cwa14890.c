@@ -358,17 +358,24 @@ static int cwa_verify_icc_certificates(sc_card_t * card,
 	/* verify sub_ca_cert against root_ca_key */
 	res = X509_verify(sub_ca_cert, root_ca_key);
 	if (!res) {
+		sc_log_openssl(ctx);
 		msg = "Cannot verify icc Sub-CA certificate";
 		res = SC_ERROR_SM_AUTHENTICATION_FAILED;
 		goto verify_icc_certificates_end;
 	}
 
 	/* extract sub_ca_key from sub_ca_cert */
-	sub_ca_key = X509_get_pubkey(sub_ca_cert);
+	if (!(sub_ca_key = X509_get_pubkey(sub_ca_cert))) {
+		sc_log_openssl(ctx);
+		msg = "Cannot extract public key icc Sub-CA certificate";
+		res = SC_ERROR_INTERNAL;
+		goto verify_icc_certificates_end;
+	}
 
 	/* verify icc_cert against sub_ca_key */
 	res = X509_verify(icc_cert, sub_ca_key);
 	if (!res) {
+		sc_log_openssl(ctx);
 		msg = "Cannot verify icc certificate";
 		res = SC_ERROR_SM_AUTHENTICATION_FAILED;
 		goto verify_icc_certificates_end;
@@ -381,8 +388,9 @@ static int cwa_verify_icc_certificates(sc_card_t * card,
 		EVP_PKEY_free(root_ca_key);
 	if (sub_ca_key)
 		EVP_PKEY_free(sub_ca_key);
-	if (res != SC_SUCCESS)
+	if (res != SC_SUCCESS) {
 		sc_log(ctx, "%s", msg);
+	}
 	LOG_FUNC_RETURN(ctx, res);
 }
 
@@ -599,6 +607,7 @@ static int cwa_prepare_external_auth(sc_card_t * card,
 	buf3[0] = 0x6A;		/* iso padding */
 	if (RAND_bytes(buf3 + 1, 74) != 1 ||		  /* pRND */
 			RAND_bytes(sm->ifd.k, 32) != 1) { /* Kifd */
+		sc_log_openssl(ctx);
 		msg = "prepare external auth: random data error";
 		res = SC_ERROR_INTERNAL;
 		goto prepare_external_auth_end;
@@ -617,9 +626,10 @@ static int cwa_prepare_external_auth(sc_card_t * card,
 	/* decrypt with ifd private key */
 	pctx = EVP_PKEY_CTX_new(ifd_privkey, NULL);
 	if (!pctx ||
-		EVP_PKEY_decrypt_init(pctx) != 1 ||
-		EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_NO_PADDING) != 1 ||
+			EVP_PKEY_decrypt_init(pctx) != 1 ||
+			EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_NO_PADDING) != 1 ||
 		EVP_PKEY_decrypt(pctx, buf2, &len2, buf3, 128) != 1) {
+		sc_log_openssl(ctx);
 		msg = "Prepare external auth: ifd_privk decrypt failed";
 		res = SC_ERROR_SM_ENCRYPT_FAILED;
 		EVP_PKEY_CTX_free(pctx);
@@ -632,6 +642,7 @@ static int cwa_prepare_external_auth(sc_card_t * card,
 	bn = BN_bin2bn(buf2, (int)len2, NULL);
 	bnsub = BN_new();
 	if (!bn || !bnsub) {
+		sc_log_openssl(ctx);
 		msg = "Prepare external auth: BN creation failed";
 		res = SC_ERROR_INTERNAL;
 		goto prepare_external_auth_end;
@@ -640,6 +651,7 @@ static int cwa_prepare_external_auth(sc_card_t * card,
 	RSA_get0_key(rsa_ifd_privkey, &ifd_privkey_n, NULL, NULL);
 #else
 	if (EVP_PKEY_get_bn_param(ifd_privkey, OSSL_PKEY_PARAM_RSA_N, &ifd_privkey_n) != 1) {
+		sc_log_openssl(ctx);
 		msg = "Prepare external auth: BN get param failed";
 		res = SC_ERROR_INTERNAL;
 		goto prepare_external_auth_end;
@@ -648,18 +660,21 @@ static int cwa_prepare_external_auth(sc_card_t * card,
 
 	res = BN_sub(bnsub, ifd_privkey_n, bn);	/* eval N.IFD-SIG */
 	if (res == 0) {		/* 1:success 0 fail */
+		sc_log_openssl(ctx);
 		msg = "Prepare external auth: BN sigmin evaluation failed";
 		res = SC_ERROR_INTERNAL;
 		goto prepare_external_auth_end;
 	}
 	bnres = (BN_cmp(bn, bnsub) < 0) ? bn : bnsub;	/* choose min(SIG,N.IFD-SIG) */
 	if (BN_num_bytes(bnres) > 128) {
+		sc_log_openssl(ctx);
 		msg = "Prepare external auth: BN sigmin result is too big";
 		res = SC_ERROR_INTERNAL;
 		goto prepare_external_auth_end;
 	}
 	len3 = BN_bn2bin(bnres, buf3);	/* convert result back into buf3 */
 	if (len3 <= 0) {
+		sc_log_openssl(ctx);
 		msg = "Prepare external auth: BN to buffer conversion failed";
 		res = SC_ERROR_INTERNAL;
 		goto prepare_external_auth_end;
@@ -668,10 +683,11 @@ static int cwa_prepare_external_auth(sc_card_t * card,
 	/* re-encrypt result with icc public key */
 	pctx = EVP_PKEY_CTX_new(icc_pubkey, NULL);
 	if (!pctx ||
-		EVP_PKEY_encrypt_init(pctx) != 1 ||
-		EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_NO_PADDING) != 1 ||
-		EVP_PKEY_encrypt(pctx, buf1, &len1, buf3, 128) != 1 ||
-		(size_t) len1 != sig_len) {
+			EVP_PKEY_encrypt_init(pctx) != 1 ||
+			EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_NO_PADDING) != 1 ||
+			EVP_PKEY_encrypt(pctx, buf1, &len1, buf3, 128) != 1 ||
+			(size_t)len1 != sig_len) {
+		sc_log_openssl(ctx);
 		msg = "Prepare external auth: icc_pubk encrypt failed";
 		res = SC_ERROR_SM_ENCRYPT_FAILED;
 		EVP_PKEY_CTX_free(pctx);
@@ -684,10 +700,8 @@ static int cwa_prepare_external_auth(sc_card_t * card,
 	res = SC_SUCCESS;
 
  prepare_external_auth_end:
-	if (bn)
-		BN_free(bn);
-	if (bnsub)
-		BN_free(bnsub);
+	BN_free(bn);
+	BN_free(bnsub);
 	if (buf1) {
 		sc_mem_clear(buf1, 128);
 		free(buf1);
@@ -704,17 +718,14 @@ static int cwa_prepare_external_auth(sc_card_t * card,
 		sc_mem_clear(sha_buf, 74 + 32 + 8 + 1 + 7);
 		free(sha_buf);
 	}
-	if (sha_data) {
-		free(sha_data);
-	}
+	free(sha_data);
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
-	if (ifd_privkey_n) {
-		BN_clear_free(ifd_privkey_n);
-	}
+	BN_clear_free(ifd_privkey_n);
 #endif
 
-	if (res != SC_SUCCESS)
+	if (res != SC_SUCCESS) {
 		sc_log(ctx, "%s", msg);
+	}
 	LOG_FUNC_RETURN(ctx, res);
 }
 
@@ -823,9 +834,7 @@ static int cwa_compute_session_keys(sc_card_t * card)
 		sc_mem_clear(data, 32 + 4);
 		free(data);
 	}
-	if (sha_data) {
-		free(sha_data);
-	}
+	free(sha_data);
 	if (res != SC_SUCCESS)
 		sc_log(ctx, "%s", msg);
 	else {
@@ -866,10 +875,8 @@ static int cwa_compare_signature(u8 * data, size_t dlen, u8 * ifd_data)
 	if (memcmp(data + 127 - SHA_DIGEST_LENGTH, sha, SHA_DIGEST_LENGTH) == 0)
 		res = SC_SUCCESS;
  compare_signature_end:
-	if (buf)
-		free(buf);
-	if (sha)
-		free(sha);
+	free(buf);
+	free(sha);
 	return res;
 }
 
@@ -960,9 +967,10 @@ static int cwa_verify_internal_auth(sc_card_t * card,
 	/* decrypt data with our ifd priv key */
 	pctx = EVP_PKEY_CTX_new(ifd_privkey, NULL);
 	if (!pctx ||
-		EVP_PKEY_decrypt_init(pctx) != 1 ||
-		EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_NO_PADDING) != 1 ||
-		EVP_PKEY_decrypt(pctx, buf1, &len1, sig, sig_len) != 1) {
+			EVP_PKEY_decrypt_init(pctx) != 1 ||
+			EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_NO_PADDING) != 1 ||
+			EVP_PKEY_decrypt(pctx, buf1, &len1, sig, sig_len) != 1) {
+		sc_log_openssl(ctx);
 		msg = "Verify Signature: decrypt with ifd privk failed";
 		res = SC_ERROR_SM_ENCRYPT_FAILED;
 		EVP_PKEY_CTX_free(pctx);
@@ -976,10 +984,11 @@ static int cwa_verify_internal_auth(sc_card_t * card,
 	/* evaluate DS[SK.ICC.AUTH](SIG) trying to decrypt with icc pubk */
 	pctx = EVP_PKEY_CTX_new(icc_pubkey, NULL);
 	if (!pctx ||
-		EVP_PKEY_encrypt_init(pctx) != 1 ||
-		EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_NO_PADDING) != 1 ||
-		EVP_PKEY_encrypt(pctx, buf3, &len3, buf1, len1) != 1) {
+			EVP_PKEY_encrypt_init(pctx) != 1 ||
+			EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_NO_PADDING) != 1 ||
+			EVP_PKEY_encrypt(pctx, buf3, &len3, buf1, len1) != 1) {
 		EVP_PKEY_CTX_free(pctx);
+		sc_log_openssl(ctx);
 		goto verify_nicc_sig;	/* evaluate N.ICC-SIG and retry */
 	}
 
@@ -997,6 +1006,7 @@ static int cwa_verify_internal_auth(sc_card_t * card,
 	bn = BN_bin2bn(buf1, (int)len1, NULL);	/* create BN data */
 	sigbn = BN_new();
 	if (!bn || !sigbn) {
+		sc_log_openssl(ctx);
 		msg = "Verify Signature: cannot bignums creation error";
 		res = SC_ERROR_OUT_OF_MEMORY;
 		goto verify_internal_done;
@@ -1005,6 +1015,7 @@ static int cwa_verify_internal_auth(sc_card_t * card,
 	RSA_get0_key(rsa_icc_pubkey, &icc_pubkey_n, NULL, NULL);
 #else
 	if (EVP_PKEY_get_bn_param(icc_pubkey, OSSL_PKEY_PARAM_RSA_N, &icc_pubkey_n) != 1) {
+		sc_log_openssl(ctx);
 		msg = "Verify Signature: BN get param failed";
 		res = SC_ERROR_INTERNAL;
 		goto verify_internal_done;
@@ -1012,12 +1023,14 @@ static int cwa_verify_internal_auth(sc_card_t * card,
 #endif
 	res = BN_sub(sigbn, icc_pubkey_n, bn);	/* eval N.ICC-SIG */
 	if (!res) {
+		sc_log_openssl(ctx);
 		msg = "Verify Signature: evaluation of N.ICC-SIG failed";
 		res = SC_ERROR_INTERNAL;
 		goto verify_internal_done;
 	}
 	len2 = BN_bn2bin(sigbn, buf2);	/* copy result to buffer */
 	if (len2 <= 0) {
+		sc_log_openssl(ctx);
 		msg = "Verify Signature: cannot convert bignum to buffer";
 		res = SC_ERROR_INTERNAL;
 		goto verify_internal_done;
@@ -1029,6 +1042,7 @@ static int cwa_verify_internal_auth(sc_card_t * card,
 		EVP_PKEY_encrypt_init(pctx) != 1 ||
 		EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_NO_PADDING) != 1 ||
 		EVP_PKEY_encrypt(pctx, buf3, &len3, buf2, len2) != 1) {
+		sc_log_openssl(ctx);
 		msg = "Verify Signature: cannot get valid SIG data";
 		res = SC_ERROR_INVALID_DATA;
 		EVP_PKEY_CTX_free(pctx);
@@ -1048,22 +1062,17 @@ static int cwa_verify_internal_auth(sc_card_t * card,
 	memcpy(sm->icc.k, buf3 + 1 + 74, 32);	/* extract Kicc from buf3 */
 	res = SC_SUCCESS;
  verify_internal_done:
-	if (buf1)
-		free(buf1);
-	if (buf2)
-		free(buf2);
-	if (buf3)
-		free(buf3);
-	if (bn)
-		BN_free(bn);
-	if (sigbn)
-		BN_free(sigbn);
+	free(buf1);
+	free(buf2);
+	free(buf3);
+	BN_free(bn);
+	BN_free(sigbn);
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
-	if (icc_pubkey_n)
-		BN_clear_free(icc_pubkey_n);
+	BN_clear_free(icc_pubkey_n);
 #endif
-	if (res != SC_SUCCESS)
+	if (res != SC_SUCCESS) {
 		sc_log(ctx, "%s", msg);
+	}
 	LOG_FUNC_RETURN(ctx, res);
 }
 
@@ -1212,7 +1221,12 @@ int cwa_create_secure_channel(sc_card_t * card,
 	}
 
 	/* Extract public key from ICC certificate */
-	icc_pubkey = X509_get_pubkey(icc_cert);
+	if (!(icc_pubkey = X509_get_pubkey(icc_cert))) {
+		res = SC_ERROR_INTERNAL;
+		sc_log_openssl(ctx);
+		msg = "Cannot extract public key from ICC certificate";
+		goto csc_end;
+	}
 
 	/* Select Root CA in card for ifd certificate verification */
 	sc_log(ctx,
@@ -1427,14 +1441,10 @@ int cwa_create_secure_channel(sc_card_t * card,
 	res = SC_SUCCESS;
  csc_end:
 	free(tlv);
-	if (icc_cert)
-		X509_free(icc_cert);
-	if (ca_cert)
-		X509_free(ca_cert);
-	if (icc_pubkey)
-		EVP_PKEY_free(icc_pubkey);
-	if (ifd_privkey)
-		EVP_PKEY_free(ifd_privkey);
+	X509_free(icc_cert);
+	X509_free(ca_cert);
+	EVP_PKEY_free(icc_pubkey);
+	EVP_PKEY_free(ifd_privkey);
 	/* setup SM state according result */
 	if (res != SC_SUCCESS) {
 		sc_log(ctx, "%s", msg);
@@ -1572,10 +1582,11 @@ int cwa_encode_apdu(sc_card_t * card,
 
 		alg = sc_evp_cipher(card->ctx, "DES-EDE-CBC");
 
-		if (EVP_EncryptInit_ex(cctx, alg, NULL, key, iv) != 1 ||
-			EVP_CIPHER_CTX_set_padding(cctx, 0) != 1 ||
-			EVP_EncryptUpdate(cctx, cryptbuf + 1, &dlen, msgbuf, dlen) != 1 ||
-			EVP_EncryptFinal_ex(cctx, cryptbuf + 1 + dlen, &tmplen) != 1) {
+		if (!alg ||
+				EVP_EncryptInit_ex(cctx, alg, NULL, key, iv) != 1 ||
+				EVP_CIPHER_CTX_set_padding(cctx, 0) != 1 ||
+				EVP_EncryptUpdate(cctx, cryptbuf + 1, &dlen, msgbuf, dlen) != 1 ||
+				EVP_EncryptFinal_ex(cctx, cryptbuf + 1 + dlen, &tmplen) != 1) {
 			msg = "Error in encrypting APDU";
 			res = SC_ERROR_INTERNAL;
 			goto encode_end;
@@ -1627,12 +1638,13 @@ int cwa_encode_apdu(sc_card_t * card,
 
 	sc_evp_cipher_free(alg);
 	alg = sc_evp_cipher(card->ctx, "DES-ECB");
-	if (EVP_EncryptInit_ex(cctx, alg, NULL, key, NULL) != 1 ||
-		EVP_CIPHER_CTX_set_padding(cctx, 0) != 1) {
+	if (!alg ||
+			EVP_EncryptInit_ex(cctx, alg, NULL, key, NULL) != 1 ||
+			EVP_CIPHER_CTX_set_padding(cctx, 0) != 1) {
 		msg = "Error in DES ECB encryption";
 		res = SC_ERROR_INTERNAL;
 		goto encode_end;
-	 }
+	}
 
 	for (i = 0; i < cclen; i += 8) {	/* divide data in 8 byte blocks */
 		/* compute DES */
@@ -1655,10 +1667,11 @@ int cwa_encode_apdu(sc_card_t * card,
 	sc_evp_cipher_free(alg);
 	alg = sc_evp_cipher(card->ctx, "DES-EDE-ECB");
 
-	if (EVP_EncryptInit_ex(cctx, alg, NULL, key, NULL) != 1 ||
-		EVP_CIPHER_CTX_set_padding(cctx, 0) != 1 ||
-		EVP_EncryptUpdate(cctx, macbuf, &tmplen, macbuf, 8) != 1 ||
-		EVP_EncryptFinal_ex(cctx, macbuf + tmplen, &tmplen) != 1) {
+	if (!alg ||
+			EVP_EncryptInit_ex(cctx, alg, NULL, key, NULL) != 1 ||
+			EVP_CIPHER_CTX_set_padding(cctx, 0) != 1 ||
+			EVP_EncryptUpdate(cctx, macbuf, &tmplen, macbuf, 8) != 1 ||
+			EVP_EncryptFinal_ex(cctx, macbuf + tmplen, &tmplen) != 1) {
 		msg = "Error in 3DEC ECB encryption";
 		res = SC_ERROR_INTERNAL;
 		goto encode_end;
@@ -1684,16 +1697,16 @@ int cwa_encode_apdu(sc_card_t * card,
 
 err:
 encode_end:
-	if (apdubuf)
-		free(apdubuf);
+	free(apdubuf);
 	if (from->resp != to->resp)
 		free(to->resp);
 encode_end_apdu_valid:
 	sc_evp_cipher_free(alg);
-	if (cctx)
-		EVP_CIPHER_CTX_free(cctx);
-	if (msg)
+	EVP_CIPHER_CTX_free(cctx);
+	if (msg) {
+		sc_log_openssl(ctx);
 		sc_log(ctx, "%s", msg);
+	}
 	free(msgbuf);
 	free(cryptbuf);
 	free(ccbuf);
@@ -1739,8 +1752,10 @@ int cwa_decode_response(sc_card_t * card,
 	unsigned char *key = NULL;
 	int tmplen = 0;
 
-	if ((cctx = EVP_CIPHER_CTX_new()) == NULL)
+	if ((cctx = EVP_CIPHER_CTX_new()) == NULL) {
+		sc_log_openssl(ctx);
 		return SC_ERROR_INTERNAL;
+	}
 
 	/* mandatory check */
 	if (!card || !card->ctx || !provider)
@@ -1865,17 +1880,20 @@ int cwa_decode_response(sc_card_t * card,
 	key = sm_session->session_mac;
 
 	alg = sc_evp_cipher(card->ctx, "DES-ECB");
-	if (EVP_EncryptInit_ex(cctx, alg, NULL, key, NULL) != 1 ||
-		EVP_CIPHER_CTX_set_padding(cctx, 0) != 1) {
+	if (!alg ||
+			EVP_EncryptInit_ex(cctx, alg, NULL, key, NULL) != 1 ||
+			EVP_CIPHER_CTX_set_padding(cctx, 0) != 1) {
+		sc_log_openssl(ctx);
 		msg = "Error in DES ECB encryption";
 		res = SC_ERROR_INTERNAL;
 		goto response_decode_end;
-	 }
+	}
 
 	memcpy(macbuf, sm_session->ssc, 8);	/* start with computed SSC */
 	for (i = 0; i < cclen; i += 8) {	/* divide data in 8 byte blocks */
 		/* compute DES */
 		if (EVP_EncryptUpdate(cctx, macbuf, &tmplen, macbuf, 8) != 1) {
+			sc_log_openssl(ctx);
 			msg = "Error in DES ECB encryption";
 			res = SC_ERROR_INTERNAL;
 			goto response_decode_end;
@@ -1885,6 +1903,7 @@ int cwa_decode_response(sc_card_t * card,
 			macbuf[j] ^= ccbuf[i + j];
 	}
 	if (EVP_EncryptFinal_ex(cctx, macbuf + tmplen, &tmplen) != 1) {
+		sc_log_openssl(ctx);
 		msg = "Error in DES ECB encryption";
 		res = SC_ERROR_INTERNAL;
 		goto response_decode_end;
@@ -1894,10 +1913,12 @@ int cwa_decode_response(sc_card_t * card,
 	sc_evp_cipher_free(alg);
 	alg = sc_evp_cipher(card->ctx, "DES-EDE-ECB");
 
-	if (EVP_EncryptInit_ex(cctx, alg, NULL, key, NULL) != 1 ||
-		EVP_CIPHER_CTX_set_padding(cctx, 0) != 1 ||
-		EVP_EncryptUpdate(cctx, macbuf, &tmplen, macbuf, 8) != 1 ||
-		EVP_EncryptFinal_ex(cctx, macbuf + tmplen, &tmplen) != 1) {
+	if (!alg ||
+			EVP_EncryptInit_ex(cctx, alg, NULL, key, NULL) != 1 ||
+			EVP_CIPHER_CTX_set_padding(cctx, 0) != 1 ||
+			EVP_EncryptUpdate(cctx, macbuf, &tmplen, macbuf, 8) != 1 ||
+			EVP_EncryptFinal_ex(cctx, macbuf + tmplen, &tmplen) != 1) {
+		sc_log_openssl(ctx);
 		msg = "Error in 3DEC ECB encryption";
 		res = SC_ERROR_INTERNAL;
 		goto response_decode_end;
@@ -1953,10 +1974,12 @@ int cwa_decode_response(sc_card_t * card,
 		sc_evp_cipher_free(alg);
 		alg = sc_evp_cipher(card->ctx, "DES-EDE-CBC");
 
-		if (EVP_DecryptInit_ex(cctx, alg, NULL, key, iv) != 1 ||
-			EVP_CIPHER_CTX_set_padding(cctx, 0) != 1 ||
-			EVP_DecryptUpdate(cctx, apdu->resp, &dlen, &e_tlv->data[1], (int)(e_tlv->len - 1)) != 1 ||
-			EVP_DecryptFinal_ex(cctx, apdu->resp + dlen, &tmplen) != 1) {
+		if (!alg ||
+				EVP_DecryptInit_ex(cctx, alg, NULL, key, iv) != 1 ||
+				EVP_CIPHER_CTX_set_padding(cctx, 0) != 1 ||
+				EVP_DecryptUpdate(cctx, apdu->resp, &dlen, &e_tlv->data[1], (int)(e_tlv->len - 1)) != 1 ||
+				EVP_DecryptFinal_ex(cctx, apdu->resp + dlen, &tmplen) != 1) {
+			sc_log_openssl(ctx);
 			res = SC_ERROR_INTERNAL;
 			msg = "Can not decrypt 3DES CBC";
 			goto response_decode_end;
@@ -1984,10 +2007,8 @@ int cwa_decode_response(sc_card_t * card,
  response_decode_end:
 	sc_evp_cipher_free(alg);
  	EVP_CIPHER_CTX_free(cctx);
-	if (buffer)
-		free(buffer);
-	if (ccbuf)
-		free(ccbuf);
+	free(buffer);
+	free(ccbuf);
 	if (msg) {
 		sc_log(ctx, "%s", msg);
 	} else {
