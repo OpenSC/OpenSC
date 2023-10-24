@@ -624,6 +624,7 @@ get_psec(sc_card_t *card, const char *pin, size_t length_pin, enum s_type pin_id
 			return NULL;
 		}
 		if (0 > EVP_read_pw_string_min(p, 0, EAC_MAX_MRZ_LEN, buf, 0)) {
+			sc_log_openssl(card->ctx);
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not read %s.\n",
 					eac_secret_name(pin_id));
 			return NULL;
