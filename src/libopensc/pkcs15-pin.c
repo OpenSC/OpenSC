@@ -307,6 +307,7 @@ sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *pi
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_PIN_REFERENCE);
 	auth_info = (struct sc_pkcs15_auth_info *)pin_obj->data;
 
+	/* Check the provided pin matches pin requirements */
 	r = _validate_pin(p15card, auth_info, pinlen);
 
 	if (r)
