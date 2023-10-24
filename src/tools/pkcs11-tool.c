@@ -6794,6 +6794,8 @@ static int test_signature(CK_SESSION_HANDLE sess)
 	rv = p11->C_SignInit(sess, &ck_mech, privKeyObject);
 	if (rv != CKR_OK)
 		p11_fatal("C_SignInit", rv);
+	if ((getCLASS(sess, privKeyObject) == CKO_PRIVATE_KEY) && getALWAYS_AUTHENTICATE(sess, privKeyObject))
+		login(sess,CKU_CONTEXT_SPECIFIC);
 
 	sigLen2 = 1;		/* too short */
 	rv = p11->C_Sign(sess, data, dataLen, sig2, &sigLen2);
