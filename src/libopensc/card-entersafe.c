@@ -198,7 +198,7 @@ static int entersafe_cipher_apdu(sc_card_t *card, sc_apdu_t *apdu,
 								 u8 *key, size_t keylen,
 								 u8 *buff, size_t buffsize)
 {
-	 EVP_CIPHER_CTX * ctx = NULL;
+	EVP_CIPHER_CTX * ctx = NULL;
 	EVP_CIPHER *alg = NULL;
 
 	 u8 iv[8]={0};
@@ -218,29 +218,38 @@ static int entersafe_cipher_apdu(sc_card_t *card, sc_apdu_t *apdu,
 	 buff[apdu->lc+1]=0x80;
 
 	 ctx = EVP_CIPHER_CTX_new();
-	 if (ctx == NULL)
+	 if (ctx == NULL) {
+		 sc_log_openssl(card->ctx);
 		 LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+	 }
 	 EVP_CIPHER_CTX_set_padding(ctx,0);
 
 	if (keylen == 8) {
 	 	alg = sc_evp_cipher(card->ctx, "DES-ECB");
-		EVP_EncryptInit_ex(ctx, alg, NULL, key, iv);
 	} else if (keylen == 16) {
 	 	alg = sc_evp_cipher(card->ctx, "DES-EDE");
-		EVP_EncryptInit_ex(ctx, alg, NULL, key, iv);
 	} else {
 		EVP_CIPHER_CTX_free(ctx);
 		  LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 	}
 
-	 len = (int)apdu->lc;
-	 if(!EVP_EncryptUpdate(ctx, buff, &len, buff, (int)buffsize)){
+	if (EVP_EncryptInit_ex(ctx, alg, NULL, key, iv) != 1) {
+		sc_log_openssl(card->ctx);
 		sc_evp_cipher_free(alg);
 		EVP_CIPHER_CTX_free(ctx);
-		  sc_log(card->ctx,  "entersafe encryption error.");
-		  LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
-	 }
-	 apdu->lc = len;
+		sc_log(card->ctx, "entersafe encryption error.");
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
+	}
+
+	len = (int)apdu->lc;
+	if (!EVP_EncryptUpdate(ctx, buff, &len, buff, (int)buffsize)) {
+		sc_log_openssl(card->ctx);
+		sc_evp_cipher_free(alg);
+		EVP_CIPHER_CTX_free(ctx);
+		sc_log(card->ctx, "entersafe encryption error.");
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
+	}
+	apdu->lc = len;
 
 	sc_evp_cipher_free(alg);
 	 EVP_CIPHER_CTX_free(ctx);
@@ -304,15 +313,44 @@ static int entersafe_mac_apdu(sc_card_t *card, sc_apdu_t *apdu,
 	 tmp_rounded[4]+=4;
 	 tmp_rounded[tmpsize]=0x80;
 
-	 /* block_size-1 blocks*/
-	 ctx = EVP_CIPHER_CTX_new();
-	 if (ctx == NULL) {
-		r =  SC_ERROR_OUT_OF_MEMORY;
+	/* block_size-1 blocks*/
+	ctx = EVP_CIPHER_CTX_new();
+	if (ctx == NULL) {
+		r = SC_ERROR_OUT_OF_MEMORY;
+		sc_log_openssl(card->ctx);
 		goto out;
-	 }
-	 EVP_CIPHER_CTX_set_padding(ctx,0);
+	}
+	EVP_CIPHER_CTX_set_padding(ctx, 0);
 	alg = sc_evp_cipher(card->ctx, "DES-CBC");
-	EVP_EncryptInit_ex(ctx, alg, NULL, key, iv);
+	if (!alg ||
+		EVP_EncryptInit_ex(ctx, alg, NULL, key, iv) != 1) {
+		r = SC_ERROR_INTERNAL;
+		sc_log_openssl(card->ctx);
+		goto out;
+	}
+
+	if (tmpsize_rounded > 8) {
+		if (!EVP_EncryptUpdate(ctx, tmp_rounded, &outl, tmp_rounded, (int)tmpsize_rounded - 8)) {
+			r = SC_ERROR_INTERNAL;
+			sc_log_openssl(card->ctx);
+			goto out;
+		}
+	}
+	/* last block */
+	if (keylen == 8) {
+		if (!EVP_EncryptUpdate(ctx, tmp_rounded + outl, &outl, tmp_rounded + outl, 8)) {
+			r = SC_ERROR_INTERNAL;
+			sc_log_openssl(card->ctx);
+			goto out;
+		}
+	} else {
+		if (EVP_EncryptInit_ex(ctx, EVP_des_ede_cbc(), NULL, key, tmp_rounded + outl - 8) ||
+			!EVP_EncryptUpdate(ctx, tmp_rounded + outl, &outl, tmp_rounded + outl, 8)) {
+			r = SC_ERROR_INTERNAL;
+			sc_log_openssl(card->ctx);
+			goto out;
+		}
+	}
 
 	 if(tmpsize_rounded>8){
 		if (!EVP_EncryptUpdate(ctx, tmp_rounded, &outl, tmp_rounded, (int)tmpsize_rounded - 8)) {
@@ -330,8 +368,8 @@ static int entersafe_mac_apdu(sc_card_t *card, sc_apdu_t *apdu,
 	 }
 	 else
 	 {
-		  EVP_EncryptInit_ex(ctx, EVP_des_ede_cbc(), NULL, key,tmp_rounded+outl-8);
-		  if(!EVP_EncryptUpdate(ctx,tmp_rounded+outl,&outl,tmp_rounded+outl,8)){
+		  if (EVP_EncryptInit_ex(ctx, EVP_des_ede_cbc(), NULL, key, tmp_rounded + outl - 8) != 1 ||
+		  		!EVP_EncryptUpdate(ctx,tmp_rounded+outl,&outl,tmp_rounded+outl,8)){
 			   r = SC_ERROR_INTERNAL;
 			   goto out;
 		  }
@@ -345,14 +383,10 @@ static int entersafe_mac_apdu(sc_card_t *card, sc_apdu_t *apdu,
 	 apdu->datalen=apdu->lc;
 
 out:
-	 if(tmp)
-		  free(tmp);
-	 if(tmp_rounded)
-		  free(tmp_rounded);
-	 if (ctx) {
-		sc_evp_cipher_free(alg);
-		EVP_CIPHER_CTX_free(ctx);
-	}
+	free(tmp);
+	free(tmp_rounded);
+	sc_evp_cipher_free(alg);
+	EVP_CIPHER_CTX_free(ctx);
 
 	 SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
