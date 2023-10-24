@@ -38,13 +38,6 @@
 /* #include "hash-strings.h" */
 #include "authentic.h"
 
-#include <openssl/bn.h>
-#include <openssl/pem.h>
-#include <openssl/err.h>
-#include <openssl/rand.h>
-#include <openssl/rsa.h>
-#include <openssl/pkcs12.h>
-#include <openssl/x509v3.h>
 #include <openssl/sha.h>
 
 #define AUTHENTIC_CARD_DEFAULT_FLAGS ( 0		\
