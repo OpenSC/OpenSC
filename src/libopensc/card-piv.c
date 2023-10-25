@@ -41,15 +41,12 @@
 #ifdef ENABLE_OPENSSL
 	/* openssl needed for card administration and SM */
 #include <openssl/evp.h>
-#include <openssl/bio.h>
 #include <openssl/pem.h>
 #include <openssl/rand.h>
-#include <openssl/rsa.h>
 #include <openssl/sha.h>
 #if !defined(OPENSSL_NO_EC)
 #include <openssl/ec.h>
 #endif
-#include <openssl/err.h>
 #endif
 
 /* 800-73-4 SM and VCI need: ECC, SM and real OpenSSL >= 1.1 */
@@ -952,8 +949,8 @@ static int piv_encode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu
 			|| EVP_EncryptUpdate(ed_ctx, IV, &outli, priv->sm_session.enc_counter, 16) != 1
 			|| EVP_EncryptFinal_ex(ed_ctx, discard, &outdl) != 1
 			|| outdl != 0) {
-		sc_log(card->ctx,"SM encode failed in OpenSSL");
 		sc_log_openssl(card->ctx);
+		sc_log(card->ctx,"SM encode failed in OpenSSL");
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
@@ -1029,8 +1026,8 @@ static int piv_encode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu
 				|| EVP_EncryptUpdate(ed_ctx, p + outl, &outll, pad, padlen) != 1
 				|| EVP_EncryptFinal_ex(ed_ctx, discard, &outdl) != 1
 				|| outdl != 0) {  /* should not happen */
-			sc_log(card->ctx,"SM _encode failed in OpenSSL");
 			sc_log_openssl(card->ctx);
+			sc_log(card->ctx,"SM _encode failed in OpenSSL");
 			r = SC_ERROR_INTERNAL;
 			goto err;
 		}
@@ -2650,9 +2647,10 @@ static int piv_sm_open(struct sc_card *card)
 
 err:
 	priv->sm_flags &= ~PIV_SM_FLAGS_DEFER_OPEN;
-	if (r != 0)
-		 memset(&priv->sm_session, 0, sizeof(piv_sm_session_t));
-	sc_log_openssl(card->ctx); /* catch any not logged above */
+	if (r != 0) {
+		memset(&priv->sm_session, 0, sizeof(piv_sm_session_t));
+		sc_log_openssl(card->ctx); /* catch any not logged above */
+	}
 
 	sc_unlock(card);
 
@@ -3896,6 +3894,7 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 
 	r = RAND_bytes(nonce, (int)witness_len);
 	if(!r) {
+		sc_log_openssl(card->ctx);
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
 			 "Generating random for nonce (%"SC_FORMAT_LEN_SIZE_T"u : %"SC_FORMAT_LEN_SIZE_T"u)\n",
 			 witness_len, plain_text_len);
