@@ -651,6 +651,7 @@ npa_reset_retry_counter(sc_card_t *card, enum s_type pin_id,
 			if (0 > EVP_read_pw_string_min(p,
 						EAC_MIN_PIN_LEN, EAC_MAX_PIN_LEN+1,
 						"Please enter your new PIN: ", 0)) {
+				sc_log_openssl(card->ctx);
 				sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not read new PIN.\n");
 				free(p);
 				return SC_ERROR_INTERNAL;
