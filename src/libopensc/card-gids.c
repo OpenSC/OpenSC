@@ -1901,9 +1901,10 @@ static int gids_initialize(sc_card_t *card, sc_cardctl_gids_init_param_t* param)
 	}
 	if (i < 0) {
 		// set a random cardid if not set
-		r = RAND_bytes(param->cardid, sizeof(param->cardid));
-		LOG_TEST_RET(card->ctx, r, "unable to set a random serial number");
-
+		if (RAND_bytes(param->cardid, sizeof(param->cardid)) != 1) {
+			sc_log_openssl(card->ctx);
+			LOG_TEST_RET(card->ctx, SC_ERROR_INTERNAL, "unable to set a random serial number");
+		}
 	}
 #endif
 	r = gids_put_DO(card, CARDID_FI, CARDID_DO, param->cardid, sizeof(param->cardid));
@@ -1965,8 +1966,10 @@ static int gids_authenticate_admin(sc_card_t *card, u8* key) {
 	LOG_TEST_RET(card->ctx,  sc_check_sw(card, apdu.sw1, apdu.sw2), "invalid return");
 
 	// generate a challenge
-	r = RAND_bytes(randomR1, 16);
-	LOG_TEST_RET(card->ctx, r, "unable to set computer random");
+	if (RAND_bytes(randomR1, 16) != 1) {
+		sc_log_openssl(card->ctx);
+		LOG_TEST_RET(card->ctx, SC_ERROR_INTERNAL, "unable to set computer random");
+	}
 
 	// send it to the card
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4, INS_GENERAL_AUTHENTICATE, 0x00, 0x00);
@@ -1981,8 +1984,11 @@ static int gids_authenticate_admin(sc_card_t *card, u8* key) {
 	LOG_TEST_RET(card->ctx,  sc_check_sw(card, apdu.sw1, apdu.sw2), "invalid return");
 
 	// compute the half size of the mutual authentication secret
-	r = RAND_bytes(z1, 7);
-	LOG_TEST_RET(card->ctx, r, "unable to set computer random");
+	if (RAND_bytes(z1, 7) != 1) {
+		sc_log_openssl(card->ctx);
+		LOG_TEST_RET(card->ctx, SC_ERROR_INTERNAL, "unable to set computer random");
+	}
+
 	// set the padding
 	z1[7] = 0x80;
 
@@ -1993,22 +1999,26 @@ static int gids_authenticate_admin(sc_card_t *card, u8* key) {
 	// init crypto
 	ctx = EVP_CIPHER_CTX_new();
 	if (ctx == NULL) {
+		sc_log_openssl(card->ctx);
 	    LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 	}
 	cipher = sc_evp_cipher(card->ctx, "DES-EDE3-CBC");
 	if (!EVP_EncryptInit(ctx, cipher, key, NULL)) {
+		sc_log_openssl(card->ctx);
 		EVP_CIPHER_CTX_free(ctx);
 		sc_evp_cipher_free(cipher);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 	}
 	EVP_CIPHER_CTX_set_padding(ctx,0);
 	if (!EVP_EncryptUpdate(ctx, buffer2, &buffer2size, buffer, sizeof(buffer))) {
+		sc_log_openssl(card->ctx);
 		EVP_CIPHER_CTX_free(ctx);
 		sc_evp_cipher_free(cipher);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 	}
 
 	if(!EVP_EncryptFinal(ctx, buffer2+buffer2size, &buffer2size)) {
+		sc_log_openssl(card->ctx);
 		EVP_CIPHER_CTX_free(ctx);
 		sc_evp_cipher_free(cipher);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
@@ -2041,18 +2051,21 @@ static int gids_authenticate_admin(sc_card_t *card, u8* key) {
 	}
 	cipher = sc_evp_cipher(card->ctx, "DES-EDE3-CBC");
 	if (!EVP_DecryptInit(ctx, cipher, key, NULL)) {
+		sc_log_openssl(card->ctx);
 		sc_evp_cipher_free(cipher);
 		EVP_CIPHER_CTX_free(ctx);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 	}
 	EVP_CIPHER_CTX_set_padding(ctx,0);
 	if (!EVP_DecryptUpdate(ctx, buffer3, &buffer3size, apdu.resp + 4, (int)apdu.resplen - 4)) {
+		sc_log_openssl(card->ctx);
 		sc_log(card->ctx,  "unable to decrypt data");
 		sc_evp_cipher_free(cipher);
 		EVP_CIPHER_CTX_free(ctx);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_PIN_CODE_INCORRECT);
 	}
 	if(!EVP_DecryptFinal(ctx, buffer3+buffer3size, &buffer3size)) {
+		sc_log_openssl(card->ctx);
 		sc_log(card->ctx,  "unable to decrypt final data");
 		sc_evp_cipher_free(cipher);
 		EVP_CIPHER_CTX_free(ctx);
@@ -2060,18 +2073,21 @@ static int gids_authenticate_admin(sc_card_t *card, u8* key) {
 	}
 	sc_log(card->ctx,  "data has been decrypted using the key");
 	if (memcmp(buffer3, randomR1, 16) != 0) {
+		sc_log_openssl(card->ctx);
 		sc_log(card->ctx,  "R1 doesn't match");
 		sc_evp_cipher_free(cipher);
 		EVP_CIPHER_CTX_free(ctx);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_PIN_CODE_INCORRECT);
 	}
 	if (memcmp(buffer3 + 16, randomR2, 16) != 0) {
+		sc_log_openssl(card->ctx);
 		sc_log(card->ctx,  "R2 doesn't match");
 		sc_evp_cipher_free(cipher);
 		EVP_CIPHER_CTX_free(ctx);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_PIN_CODE_INCORRECT);
 	}
 	if (buffer[39] != 0x80) {
+		sc_log_openssl(card->ctx);
 		sc_log(card->ctx,  "Padding not found");
 		sc_evp_cipher_free(cipher);
 		EVP_CIPHER_CTX_free(ctx);
