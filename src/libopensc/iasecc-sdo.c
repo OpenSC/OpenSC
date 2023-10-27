@@ -371,15 +371,15 @@ iasecc_se_parse(struct sc_card *card, unsigned char *data, size_t data_len, stru
 static int
 iasecc_parse_size(unsigned char *data, size_t data_len, size_t *out)
 {
-	if (*data < 0x80 && data_len > 0) {
+	if (data_len > 0 && *data < 0x80) {
 		*out = *data;
 		return 1;
 	}
-	else if (*data == 0x81 && data_len > 1) {
+	else if (data_len > 1 && *data == 0x81) {
 		*out = *(data + 1);
 		return 2;
 	}
-	else if (*data == 0x82 && data_len > 2) {
+	else if (data_len > 2 && *data == 0x82) {
 		*out = *(data + 1) * 0x100 + *(data + 2);
 		return 3;
 	}
