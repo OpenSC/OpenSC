@@ -1654,6 +1654,11 @@ static int pcsc_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_re
 #else
 			rgReaderStates[num_watch].szReader = "\\\\?PnP?\\Notification";
 			rgReaderStates[num_watch].dwCurrentState = SCARD_STATE_UNAWARE;
+#ifdef _WIN32
+			/* Windows expects number of readers in HiWord of dwCurrentState.
+			 * See https://stackoverflow.com/questions/16370909. */
+			rgReaderStates[num_watch].dwCurrentState |= (num_watch << 16);
+#endif
 			rgReaderStates[num_watch].dwEventState = SCARD_STATE_UNAWARE;
 			num_watch++;
 			sc_log(ctx, "Trying to detect new readers");
@@ -1720,6 +1725,13 @@ static int pcsc_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_re
 			prev_state = rsp->dwCurrentState;
 			state = rsp->dwEventState;
 			rsp->dwCurrentState = rsp->dwEventState;
+#ifdef _WIN32
+			if (!strcmp(rsp->szReader, "\\\\?PnP?\\Notification")) {
+				/* Windows expects number of readers in HiWord of dwCurrentState.
+				 * See https://stackoverflow.com/questions/16370909. */
+				rsp->dwCurrentState |= ((num_watch - 1) << 16);
+			}
+#endif
 			if (state & SCARD_STATE_CHANGED) {
 				/* check for hotplug events */
 				if (!strcmp(rsp->szReader, "\\\\?PnP?\\Notification")) {
