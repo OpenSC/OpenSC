@@ -1383,7 +1383,8 @@ static int myeid_transmit_decipher(struct sc_card *card, u8 p1, u8 p2,
 		apdu.le = MIN(card->max_recv_size, crgram_len);
 	}
 
-	if (p2 == 0x86 && crgram_len == 256 && priv && !priv->cap_chaining) {
+	/* In MyEID 4.5.x, unwrapping with 2K RSA using APDU chaining doesn't work properly. Split the APDU in the old way in this case. */
+	if (p2 == 0x86 && crgram_len == 256 && priv && (!priv->cap_chaining || (card->version.fw_major == 45 && priv->sec_env != NULL && priv->sec_env->operation == SC_SEC_OPERATION_UNWRAP))) {
 		r = myeid_transmit_decipher_pi_split(card, &apdu, sbuf);
 	} else {
 		apdu.flags |= SC_APDU_FLAGS_CHAINING;
