@@ -467,7 +467,8 @@ static int is_nss_browser(sc_context_t * ctx)
 		basename += sizeof(char);
 
 	if (strstr(basename, "chromium") || strstr(basename, "chrome")
-			|| strstr(basename, "firefox") || strstr(basename, "msedge"))
+			|| strstr(basename, "firefox") || strstr(basename, "msedge")
+			|| strstr(basename, "thunderbird"))
 		return 1;
 
 	return 0;
