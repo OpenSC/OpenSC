@@ -34,16 +34,6 @@
 #include <errno.h>
 #include <stdio.h>
 
-#include <openssl/bn.h>
-#include <openssl/evp.h>
-#include <openssl/pem.h>
-#include <openssl/err.h>
-#include <openssl/rand.h>
-#include <openssl/sha.h>
-#include <openssl/rsa.h>
-#include <openssl/x509.h>
-#include <openssl/pkcs12.h>
-
 #include "libopensc/opensc.h"
 #include "libopensc/cardctl.h"
 #include "libopensc/log.h"
