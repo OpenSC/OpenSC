@@ -2611,6 +2611,7 @@ static int
 prkey_fixup_rsa(struct sc_pkcs15_card *p15card, struct sc_pkcs15_prkey_rsa *key)
 {
 	struct sc_context *ctx = p15card->card->ctx;
+	int r = SC_SUCCESS;
 
 	if (!key->modulus.len || !key->exponent.len || !key->d.len || !key->p.len || !key->q.len) {
 		sc_log(ctx, "Missing private RSA coefficient");
@@ -2629,9 +2630,10 @@ prkey_fixup_rsa(struct sc_pkcs15_card *p15card, struct sc_pkcs15_prkey_rsa *key)
 	 /* We don't really need an RSA structure, only the BIGNUMs */
 
 	if (!key->dmp1.len || !key->dmq1.len || !key->iqmp.len) {
-		BIGNUM *aux;
-		BN_CTX *bn_ctx;
-		BIGNUM *rsa_n, *rsa_e, *rsa_d, *rsa_p, *rsa_q, *rsa_dmp1, *rsa_dmq1, *rsa_iqmp;
+		BIGNUM *aux = NULL;
+		BN_CTX *bn_ctx = NULL;
+		BIGNUM *rsa_n = NULL, *rsa_e = NULL, *rsa_d = NULL, *rsa_p = NULL,
+		       *rsa_q = NULL, *rsa_dmp1 = NULL, *rsa_dmq1 = NULL, *rsa_iqmp = NULL;
 
 		rsa_n = BN_bin2bn(key->modulus.data, (int)key->modulus.len, NULL);
 		rsa_e = BN_bin2bn(key->exponent.data, (int)key->exponent.len, NULL);
@@ -2642,19 +2644,31 @@ prkey_fixup_rsa(struct sc_pkcs15_card *p15card, struct sc_pkcs15_prkey_rsa *key)
 		rsa_dmq1 = BN_new();
 		rsa_iqmp = BN_new();
 
+		if (!rsa_n || !rsa_e || !rsa_d || !rsa_p || !rsa_q ||
+				!rsa_dmp1 || !rsa_dmq1 || !rsa_iqmp) {
+			sc_log_openssl(ctx);
+			r = SC_ERROR_INTERNAL;
+			goto end;
+		}
+
 		aux = BN_new();
 		bn_ctx = BN_CTX_new();
 
-		BN_sub(aux, rsa_q, BN_value_one());
-		BN_mod(rsa_dmq1, rsa_d, aux, bn_ctx);
+		if (!aux || !bn_ctx) {
+			sc_log_openssl(ctx);
+			r = SC_ERROR_INTERNAL;
+			goto end;
+		}
 
-		BN_sub(aux, rsa_p, BN_value_one());
-		BN_mod(rsa_dmp1, rsa_d, aux, bn_ctx);
-
-		BN_mod_inverse(rsa_iqmp, rsa_q, rsa_p, bn_ctx);
-
-		BN_clear_free(aux);
-		BN_CTX_free(bn_ctx);
+		if (BN_sub(aux, rsa_q, BN_value_one()) != 1 ||
+				BN_mod(rsa_dmq1, rsa_d, aux, bn_ctx) != 1 ||
+				BN_sub(aux, rsa_p, BN_value_one()) != 1 ||
+				BN_mod(rsa_dmp1, rsa_d, aux, bn_ctx) != 1 ||
+				!BN_mod_inverse(rsa_iqmp, rsa_q, rsa_p, bn_ctx)) {
+			sc_log_openssl(ctx);
+			r = SC_ERROR_INTERNAL;
+			goto end;
+		}
 
 		/* Do not replace, only fill in missing */
 		if (key->dmp1.data == NULL) {
@@ -2685,7 +2699,7 @@ prkey_fixup_rsa(struct sc_pkcs15_card *p15card, struct sc_pkcs15_prkey_rsa *key)
 				key->iqmp.len = 0;
 			}
 		}
-
+end:
 		BN_clear_free(rsa_n);
 		BN_clear_free(rsa_e);
 		BN_clear_free(rsa_d);
@@ -2694,10 +2708,11 @@ prkey_fixup_rsa(struct sc_pkcs15_card *p15card, struct sc_pkcs15_prkey_rsa *key)
 		BN_clear_free(rsa_dmp1);
 		BN_clear_free(rsa_dmq1);
 		BN_clear_free(rsa_iqmp);
-
+		BN_clear_free(aux);
+		BN_CTX_free(bn_ctx);
 	}
 #endif
-	return 0;
+	return r;
 }
 
 
