@@ -26,7 +26,6 @@
 #include "libopensc/log.h"
 #include "libopensc/opensc.h"
 #include "sm-eac.h"
-#include "sslutil.h"
 #include <stdlib.h>
 #include <string.h>
 

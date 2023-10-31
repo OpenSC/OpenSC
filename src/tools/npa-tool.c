@@ -24,7 +24,6 @@
 #include "fread_to_eof.h"
 #include "npa-tool-cmdline.h"
 #include "sm/sm-eac.h"
-#include "sm/sslutil.h"
 #include "util.h"
 #include <eac/pace.h>
 #include <eac/objects.h>
