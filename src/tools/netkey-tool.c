@@ -29,6 +29,7 @@
 
 #include <getopt.h>
 #include "libopensc/opensc.h"
+#include "libopensc/log.h"
 
 static struct {
 	const char *path;
@@ -144,12 +145,25 @@ static void show_certs(sc_card_t *card)
 			printf(", Len=%d\n", (q[2]<<8)|q[3]);
 			if((c=d2i_X509(NULL,&q,f->size))){
 				char buf2[2000];
-				X509_NAME_get_text_by_NID(X509_get_subject_name(c), NID_commonName, buf2,sizeof(buf2));
+				if (X509_NAME_get_text_by_NID(X509_get_subject_name(c), NID_commonName, buf2, sizeof(buf2)) < 0) {
+					sc_log_openssl(card->ctx);
+					printf("  Invalid Subject-CN\n");
+					X509_free(c);
+					continue;
+				}
 				printf("  Subject-CN: %s\n", buf2);
-				X509_NAME_get_text_by_NID(X509_get_issuer_name(c), NID_commonName, buf2,sizeof(buf2));
+				if (X509_NAME_get_text_by_NID(X509_get_issuer_name(c), NID_commonName, buf2, sizeof(buf2)) < 0) {
+					sc_log_openssl(card->ctx);
+					printf("  Invalid Issuer-CN\n");
+					X509_free(c);
+					continue;
+				}
 				printf("  Issuer-CN:  %s\n", buf2);
 				X509_free(c);
-			} else printf("  Invalid Certificate-Data\n");
+			} else {
+				sc_log_openssl(card->ctx);
+				printf("  Invalid Certificate-Data\n");
+			}
 		} else printf(", empty\n");
 	}
 }
@@ -339,6 +353,7 @@ static void handle_readcert(sc_card_t *card, long cert, char *file)
 	q=buf;
 	if(q[0]==0x30 && q[1]==0x82 && q[4]==6 && q[5]<10 && q[q[5]+6]==0x30 && q[q[5]+7]==0x82) q+=q[5]+6;
 	if((c=d2i_X509(NULL,&q,len))==NULL){
+		sc_log_openssl(card->ctx);
 		printf("cardfile contains %d bytes which are not a certificate\n", len);
 		return;
 	}
@@ -346,8 +361,12 @@ static void handle_readcert(sc_card_t *card, long cert, char *file)
 	if((fp=fopen(file,"w"))==NULL) printf("Cannot open file, %s\n", strerror(errno));
 	else {
 		fprintf(fp,"Certificate %ld from Netkey E4 card\n\n", cert);
-		PEM_write_X509(fp,c);
-		printf("OK\n");
+		if (PEM_write_X509(fp, c) != 1) {
+			sc_log_openssl(card->ctx);
+			printf("Cannot write certificate %ld\n", cert);
+		} else {
+			printf("OK\n");
+		}
 	}
 	X509_free(c);
 }
