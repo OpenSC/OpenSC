@@ -947,12 +947,16 @@ awp_encode_cert_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *ob
 	ci->label.len = strlen(obj->label);
 
 	mem = BIO_new_mem_buf(obj->content.value, (int)obj->content.len);
-	if (!mem)
+	if (!mem) {
+		sc_log_openssl(ctx);
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "AWP encode cert failed: invalid data");
+	}
 
 	x = d2i_X509_bio(mem, NULL);
-	if (!x)
+	if (!x) {
+		sc_log_openssl(ctx);
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "AWP encode cert failed: x509 parse error");
+	}
 
 	buff = OPENSSL_malloc(i2d_X509(x,NULL) + EVP_MAX_MD_SIZE);
 	if (!buff)
@@ -975,6 +979,7 @@ awp_encode_cert_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *ob
 	ptr = buff;
 	r = i2d_X509_NAME(X509_get_subject_name(x),&ptr);
 	if (r<=0) {
+		sc_log_openssl(ctx);
 		r = SC_ERROR_INTERNAL;
 		LOG_TEST_GOTO_ERR(ctx, r, "AWP encode cert failed: cannot get SubjectName");
 	}
@@ -993,6 +998,7 @@ awp_encode_cert_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *ob
 	ptr = buff;
 	r = i2d_X509_NAME(X509_get_issuer_name(x),&ptr);
 	if (r <= 0) {
+		sc_log_openssl(ctx);
 		r = SC_ERROR_INTERNAL;
 		LOG_TEST_GOTO_ERR(ctx, r, "AWP encode cert failed: cannot get IssuerName");
 	}
