@@ -780,7 +780,6 @@ static int recreate_password_from_shares(char **pwd, int *pwdlen, int num_of_pas
 	clearScreen();
 
 	r = reconstructSecret(shares, num_of_password_shares, prime, secret);
-
 	if (r < 0) {
 		printf("\nError during reconstruction of secret. Wrong shares?\n");
 		cleanUpShares(shares, num_of_password_shares);
@@ -850,6 +849,7 @@ static int import_dkek_share(sc_card_t *card, const char *inf, int iter, const c
 			printf("\n");
 		} else {
 			r = recreate_password_from_shares(&pwd, &pwdlen, num_of_password_shares);
+			sc_log_openssl(card->ctx);
 			if (r < 0) {
 				return -1;
 			}
@@ -869,16 +869,16 @@ static int import_dkek_share(sc_card_t *card, const char *inf, int iter, const c
 	}
 
 	bn_ctx = EVP_CIPHER_CTX_new();
-	EVP_DecryptInit_ex(bn_ctx, EVP_aes_256_cbc(), NULL, key, iv);
-	if (!EVP_DecryptUpdate(bn_ctx, outbuff, &outlen, filebuff + 16, sizeof(filebuff) - 16)) {
+	if (!bn_ctx ||
+			!EVP_DecryptInit_ex(bn_ctx, EVP_aes_256_cbc(), NULL, key, iv) ||
+			!EVP_DecryptUpdate(bn_ctx, outbuff, &outlen, filebuff + 16, sizeof(filebuff) - 16) ||
+			!EVP_DecryptFinal_ex(bn_ctx, outbuff + outlen, &r)) {
+		sc_log_openssl(card->ctx);
+		EVP_CIPHER_CTX_free(bn_ctx);
 		fprintf(stderr, "Error decrypting DKEK share. Password correct ?\n");
 		return -1;
 	}
-
-	if (!EVP_DecryptFinal_ex(bn_ctx, outbuff + outlen, &r)) {
-		fprintf(stderr, "Error decrypting DKEK share. Password correct ?\n");
-		return -1;
-	}
+	EVP_CIPHER_CTX_free(bn_ctx);
 
 	memset(&dkekinfo, 0, sizeof(dkekinfo));
 	memcpy(dkekinfo.dkek_share, outbuff, sizeof(dkekinfo.dkek_share));
@@ -889,7 +889,6 @@ static int import_dkek_share(sc_card_t *card, const char *inf, int iter, const c
 	r = sc_card_ctl(card, SC_CARDCTL_SC_HSM_IMPORT_DKEK_SHARE, (void *)&dkekinfo);
 
 	OPENSSL_cleanse(&dkekinfo.dkek_share, sizeof(dkekinfo.dkek_share));
-	EVP_CIPHER_CTX_free(bn_ctx);
 
 	if (r == SC_ERROR_INS_NOT_SUPPORTED) {			// Not supported or not initialized for key shares
 		fprintf(stderr, "Not supported by card or card not initialized for key share usage\n");
@@ -970,16 +969,16 @@ static int print_dkek_share(sc_card_t *card, const char *inf, int iter, const ch
 	}
 
 	bn_ctx = EVP_CIPHER_CTX_new();
-	EVP_DecryptInit_ex(bn_ctx, EVP_aes_256_cbc(), NULL, key, iv);
-	if (!EVP_DecryptUpdate(bn_ctx, outbuff, &outlen, filebuff + 16, sizeof(filebuff) - 16)) {
+	if (!bn_ctx ||
+			!EVP_DecryptInit_ex(bn_ctx, EVP_aes_256_cbc(), NULL, key, iv) ||
+			!EVP_DecryptUpdate(bn_ctx, outbuff, &outlen, filebuff + 16, sizeof(filebuff) - 16) ||
+			!EVP_DecryptFinal_ex(bn_ctx, outbuff + outlen, &r)) {
+		sc_log_openssl(card->ctx);
+		EVP_CIPHER_CTX_free(bn_ctx);
 		fprintf(stderr, "Error decrypting DKEK share. Password correct ?\n");
 		return -1;
 	}
-
-	if (!EVP_DecryptFinal_ex(bn_ctx, outbuff + outlen, &r)) {
-		fprintf(stderr, "Error decrypting DKEK share. Password correct ?\n");
-		return -1;
-	}
+	EVP_CIPHER_CTX_free(bn_ctx);
 
 	memset(&dkekinfo, 0, sizeof(dkekinfo));
 	memcpy(dkekinfo.dkek_share, outbuff, sizeof(dkekinfo.dkek_share));
@@ -996,7 +995,6 @@ static int print_dkek_share(sc_card_t *card, const char *inf, int iter, const ch
 	printf("\n\n");
 
 	OPENSSL_cleanse(&dkekinfo.dkek_share, sizeof(dkekinfo.dkek_share));
-	EVP_CIPHER_CTX_free(bn_ctx);
 
 	if (r == SC_ERROR_INS_NOT_SUPPORTED) {			// Not supported or not initialized for key shares
 		fprintf(stderr, "Not supported by card or card not initialized for key share usage\n");
@@ -1123,6 +1121,8 @@ static int generate_pwd_shares(sc_card_t *card, char **pwd, int *pwdlen, int pas
 	r = sc_get_challenge(card, rngseed, SEED_LENGTH);
 	if (r < 0) {
 		printf("Error generating random seed failed with %s", sc_strerror(r));
+		BN_clear_free(prime);
+		BN_clear_free(secret);
 		OPENSSL_cleanse(*pwd, *pwdlen);
 		free(*pwd);
 		return r;
@@ -1130,6 +1130,9 @@ static int generate_pwd_shares(sc_card_t *card, char **pwd, int *pwdlen, int pas
 
 	r = generatePrime(prime, secret, 64, rngseed, SEED_LENGTH);
 	if (r < 0) {
+		sc_log_openssl(card->ctx);
+		BN_clear_free(prime);
+		BN_clear_free(secret);
 		printf("Error generating valid prime number. Please try again.");
 		OPENSSL_cleanse(*pwd, *pwdlen);
 		free(*pwd);
@@ -1140,7 +1143,10 @@ static int generate_pwd_shares(sc_card_t *card, char **pwd, int *pwdlen, int pas
 	shares = malloc(password_shares_total * sizeof(secret_share_t));
 
 	if (!shares || 0 > createShares(secret, password_shares_threshold, password_shares_total, prime, shares)) {
+		sc_log_openssl(card->ctx);
 		printf("Error generating Shares. Please try again.");
+		BN_clear_free(prime);
+		BN_clear_free(secret);
 		OPENSSL_cleanse(*pwd, *pwdlen);
 		free(*pwd);
 		free(shares);
@@ -1239,16 +1245,16 @@ static int create_dkek_share(sc_card_t *card, const char *outf, int iter, const 
 	}
 
 	c_ctx = EVP_CIPHER_CTX_new();
-	EVP_EncryptInit_ex(c_ctx, EVP_aes_256_cbc(), NULL, key, iv);
-	if (!EVP_EncryptUpdate(c_ctx, filebuff + 16, &outlen, dkek_share, sizeof(dkek_share))) {
+	if (!c_ctx ||
+			!EVP_EncryptInit_ex(c_ctx, EVP_aes_256_cbc(), NULL, key, iv) ||
+			!EVP_EncryptUpdate(c_ctx, filebuff + 16, &outlen, dkek_share, sizeof(dkek_share)) ||
+			!EVP_EncryptFinal_ex(c_ctx, filebuff + 16 + outlen, &r)) {
+		sc_log_openssl(card->ctx);
+		EVP_CIPHER_CTX_free(c_ctx);
 		fprintf(stderr, "Error encrypting DKEK share\n");
 		return -1;
 	}
-
-	if (!EVP_EncryptFinal_ex(c_ctx, filebuff + 16 + outlen, &r)) {
-		fprintf(stderr, "Error encrypting DKEK share\n");
-		return -1;
-	}
+	EVP_CIPHER_CTX_free(c_ctx);
 
 	out = fopen(outf, "wb");
 
@@ -1266,7 +1272,6 @@ static int create_dkek_share(sc_card_t *card, const char *outf, int iter, const 
 	fclose(out);
 
 	OPENSSL_cleanse(filebuff, sizeof(filebuff));
-	EVP_CIPHER_CTX_free(c_ctx);
 
 	printf("DKEK share created and saved to %s\n", outf);
 	return 0;
