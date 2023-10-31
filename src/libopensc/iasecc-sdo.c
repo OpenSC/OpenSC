@@ -148,6 +148,7 @@ iasecc_sdo_free_fields(struct sc_card *card, struct iasecc_sdo *sdo)
 	free(sdo->docp.usage_remaining.value);
 	free(sdo->docp.non_repudiation.value);
 	free(sdo->docp.acls_contact.value);
+	free(sdo->docp.acls_contactless.value);
 	free(sdo->docp.size.value);
 	free(sdo->docp.name.value);
 	free(sdo->docp.issuer_data.value);
