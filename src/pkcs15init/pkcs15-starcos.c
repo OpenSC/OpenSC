@@ -675,8 +675,10 @@ static int starcos_write_pukey(sc_profile_t *profile, sc_card_t *card,
 		return SC_ERROR_OUT_OF_MEMORY;
 	/* read the complete IPF */
 	r = sc_read_binary(card, 0, buf, len, 0);
-	if (r < 0 || r != (int)len)
+	if (r < 0 || r != (int)len) {
+		free(buf);
 		return r;
+	}
 	/* get/fix number of keys */
 	num_keys = buf[0];
 	if (num_keys == 0xff)
@@ -709,8 +711,10 @@ static int starcos_write_pukey(sc_profile_t *profile, sc_card_t *card,
 	/* updated IPF (XXX: currently append only) */
 	num_keys++;
 	r = sc_update_binary(card, 0, &num_keys, 1, 0);
-	if (r < 0)
+	if (r < 0) {
+		free(buf);
 		return r;
+	}
 	endpos = starcos_ipf_get_lastpos(buf, len);
 	free(buf);
 	return sc_update_binary(card, endpos, key, keylen + 12, 0);
