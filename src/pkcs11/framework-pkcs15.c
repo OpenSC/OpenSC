@@ -5280,6 +5280,10 @@ pkcs15_profile_get_attribute(struct sc_pkcs11_session *session, void *object, CK
 		check_attribute_buffer(attr, sizeof(CK_ULONG));
 		*(CK_ULONG*)attr->pValue = pobj->profile_id;
 		break;
+	case CKA_TOKEN:
+		check_attribute_buffer(attr, sizeof(CK_BBOOL));
+		*(CK_BBOOL*)attr->pValue = CK_TRUE;
+		break;
 	default:
 		return CKR_ATTRIBUTE_TYPE_INVALID;
 	}
