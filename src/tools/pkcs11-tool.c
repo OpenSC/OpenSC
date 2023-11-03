@@ -390,6 +390,7 @@ static const char *option_help[] = {
 	"Allow using software mechanisms (without CKF_HW)",
 	"Initialization vector",
 	"Additional authenticated data for AEAD methods",
+	"GCM tag size in bytes (default: 16)",
 };
 
 static const char *	app_name = "pkcs11-tool"; /* for utils.c */
@@ -2599,7 +2600,7 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		iv = get_iv(opt_iv, &iv_size);
 		gcm_params.pIv = iv;
 		gcm_params.ulIvLen = iv_size;
-		gcm_params.ulIvBits = iv_size * 8;
+		gcm_params.ulIvBits = iv_size * 8; // no one seems to know what this is for
 
 		aad_size = 0;
 		aad = get_aad(opt_aad_file, &aad_size);
@@ -2742,7 +2743,7 @@ static void encrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		iv = get_iv(opt_iv, &iv_size);
 		gcm_params.pIv = iv;
 		gcm_params.ulIvLen = iv_size;
-		gcm_params.ulIvBits = iv_size * 8;
+		gcm_params.ulIvBits = iv_size * 8; // no one seems to know what this is for
 
 		aad_size = 0;
 		aad = get_aad(opt_aad_file, &aad_size);
