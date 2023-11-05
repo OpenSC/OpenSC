@@ -2531,6 +2531,13 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	CK_BYTE_PTR aad = NULL;
 	size_t      aad_size = 0;
 
+	// AEAD ciphers such as AES-GCM don't return decrypted data until the entire
+	// ciphertext is decrypted, so we load the entire ciphertext into a buffer
+	// and decrypt it all at once.
+	int            use_aead_buffer = FALSE;
+	unsigned char* aead_in_buffer = NULL;
+	unsigned char* aead_out_buffer = NULL;
+
 	if (!opt_mechanism_used)
 		if (!find_mechanism(slot, CKF_DECRYPT|opt_allow_sw, NULL, 0, &opt_mechanism))
 			util_fatal("Decrypt mechanism not supported");
@@ -2596,6 +2603,7 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		mech.ulParameterLen = iv_size;
 		break;
 	case CKM_AES_GCM:
+		use_aead_buffer = TRUE;
 		iv_size = 16;
 		iv = get_iv(opt_iv, &iv_size);
 		gcm_params.pIv = iv;
@@ -2652,14 +2660,37 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			util_fatal("failed to open %s: %m", opt_output);
 	}
 
-	r = read(fd_in, in_buffer, sizeof(in_buffer));
-	in_len = r;
+	if (use_aead_buffer) {
+		in_len = lseek(fd_in, 0, SEEK_END);
+		aead_in_buffer = calloc(sizeof(CK_BYTE), in_len);
+		if (aead_in_buffer == NULL)
+			util_fatal("calloc failed: %m");
+		lseek(fd_in, 0, SEEK_SET);
+		r = read(fd_in, aead_in_buffer, in_len);
+	} else {
+		r = read(fd_in, in_buffer, sizeof(in_buffer));
+		in_len = r;
+	}
 
 	if (r < 0)
 		util_fatal("Cannot read from %s: %m", opt_input);
 
 	rv = CKR_CANCEL;
-	if (r < (int) sizeof(in_buffer)) {
+	if (use_aead_buffer) {
+		rv = p11->C_DecryptInit(session, &mech, key);
+		if (rv != CKR_OK)
+			p11_fatal("C_DecryptInit", rv);
+		if ((getCLASS(session, key) == CKO_PRIVATE_KEY) && getALWAYS_AUTHENTICATE(session, key))
+			login(session, CKU_CONTEXT_SPECIFIC);
+		out_len = sizeof(out_buffer);
+		rv = p11->C_Decrypt(session, aead_in_buffer, in_len, NULL, &out_len);
+		if (rv != CKR_OK)
+			p11_fatal("C_Decrypt", rv);
+		aead_out_buffer = calloc(sizeof(CK_BYTE), out_len);
+		if (aead_out_buffer == NULL)
+			util_fatal("calloc failed: %m");
+		rv = p11->C_Decrypt(session, aead_in_buffer, in_len, aead_out_buffer, &out_len);
+	} else if (r < (int) sizeof(in_buffer)) {
 		out_len = sizeof(out_buffer);
 		rv = p11->C_DecryptInit(session, &mech, key);
 		if (rv != CKR_OK)
@@ -2691,7 +2722,11 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			p11_fatal("C_DecryptFinal", rv);
 	}
 	if (out_len) {
-		r = write(fd_out, out_buffer, out_len);
+		if (use_aead_buffer) {
+			r = write(fd_out, aead_out_buffer, out_len);
+		} else {
+			r = write(fd_out, out_buffer, out_len);
+		}
 		if (r != (int) out_len)
 			util_fatal("Cannot write to %s: %m", opt_output);
 	}
