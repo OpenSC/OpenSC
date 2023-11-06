@@ -272,8 +272,8 @@ static int pkcs11_get_pin_callback(struct sc_profile *profile, int id,
 }
 #endif
 
-/* Returns WF data corresponding to the given application or,
- * if application info is not supplied, returns first available WF data. */
+/* Returns FW data corresponding to the given application or,
+ * if application info is not supplied, returns first available FW data. */
 static struct pkcs15_fw_data *
 get_fw_data(struct sc_pkcs11_card *p11card, struct sc_app_info *app_info, int *out_idx)
 {
@@ -1910,13 +1910,26 @@ pkcs15_login(struct sc_pkcs11_slot *slot, CK_USER_TYPE userType,
 }
 
 
+/**
+ * Unlike OpenSC minidriver and OpenSCToken, the OpenSC PKCS#11 module does
+ * not benefit on an external PIN status tracking. Since the OpenSC module is
+ * incapable of detecting whether or not it is executed in concurrently
+ * running processes, it cannot simply logout of a token as it may conflict
+ * with a login session of a different process. If `SW_PIN_LOGOUT_ONLY` is
+ * set to `1`, the OpenSC PKCS#11 module will rely on its PIN tracking in
+ * software only without actually logging out of the token.
+ */
+#define SW_PIN_LOGOUT_ONLY 1
+
 static CK_RV
 pkcs15_logout(struct sc_pkcs11_slot *slot)
 {
 	struct sc_pkcs11_card *p11card = slot->p11card;
 	struct pkcs15_fw_data *fw_data = NULL;
 	CK_RV ret = CKR_OK;
+#if !(defined(SW_PIN_LOGOUT_ONLY) && SW_PIN_LOGOUT_ONLY == 1)
 	int rc;
+#endif
 
 	if (!p11card)
 		return sc_to_cryptoki_error(SC_ERROR_INVALID_CARD, "C_Logout");
@@ -1931,6 +1944,9 @@ pkcs15_logout(struct sc_pkcs11_slot *slot)
 
 	sc_pkcs15_pincache_clear(fw_data->p15_card);
 
+#if defined(SW_PIN_LOGOUT_ONLY) && SW_PIN_LOGOUT_ONLY == 1
+	sc_log(context, "Clearing PIN state without calling sc_logout()");
+#else
 	rc = sc_logout(fw_data->p15_card->card);
 
 	/* Ignore missing card specific logout functions. #302 */
@@ -1945,6 +1961,7 @@ pkcs15_logout(struct sc_pkcs11_slot *slot)
 		if (rc != SC_SUCCESS)
 			ret = sc_to_cryptoki_error(rc, "C_Logout");
 	}
+#endif
 
 	/* TODO DEE free any session objects ? */
 
