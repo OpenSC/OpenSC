@@ -226,6 +226,7 @@ struct sc_pkcs11_slot {
 	struct sc_app_info *app_info;	/* Application associated to slot */
 	list_t logins;			/* tracks all calls to C_Login if atomic operations are requested */
 	int flags;
+	struct pkcs15_any_object *profile; /* keeps track of the profile object */
 };
 typedef struct sc_pkcs11_slot sc_pkcs11_slot_t;
 

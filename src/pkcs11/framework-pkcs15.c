@@ -1474,12 +1474,38 @@ _get_auth_object_by_name(struct sc_pkcs15_card *p15card, char *name, char *label
 	return rv ? NULL : out;
 }
 
+/* If all certificates and public keys are visible, we can claim conformance
+ * to Public Certificate Token profile, making life easier for many applications
+ * saying, they do not need to login to see all keys available */
+static void _add_profile_object(struct sc_pkcs11_slot *slot, struct pkcs15_fw_data *fw_data, int public_certificates)
+{
+	/* Public Certificates Token in PKCS #11 3.0 */
+	struct pkcs15_any_object *any_pobj = NULL;
+	int rv;
+
+	if (slot->profile) {
+		struct pkcs15_profile_object *pobj = (struct pkcs15_profile_object *)slot->profile;;
+		/* already exists -- downgrade if we found some non-public certificates */
+		if (pobj->profile_id == CKP_PUBLIC_CERTIFICATES_TOKEN && !public_certificates) {
+			pobj->profile_id = CKP_AUTHENTICATION_TOKEN;
+		}
+		return;
+	}
+
+	rv = __pkcs15_create_profile_object(fw_data, public_certificates, &any_pobj);
+	if (rv != CKR_OK || any_pobj == NULL) {
+		return;
+	}
+	pkcs15_add_object(slot, any_pobj, NULL);
+	slot->profile = any_pobj;
+}
 
 static void
 _add_pin_related_objects(struct sc_pkcs11_slot *slot, struct sc_pkcs15_object *pin_obj,
 		struct pkcs15_fw_data *fw_data, struct pkcs15_fw_data *move_to_fw)
 {
 	struct sc_pkcs15_auth_info *pin_info = (struct sc_pkcs15_auth_info *)pin_obj->data;
+	int public_certificates = 1;
 	unsigned i;
 
 	sc_log(context, "Add objects related to PIN('%.*s',ID:%s)", (int) sizeof pin_obj->label, pin_obj->label, sc_pkcs15_print_id(&pin_info->auth_id));
@@ -1511,6 +1537,7 @@ _add_pin_related_objects(struct sc_pkcs11_slot *slot, struct sc_pkcs15_object *p
 		else if (is_cert(obj)) {
 			sc_log(context, "Slot:%p Adding cert object %d to PIN '%.*s'", slot, i, (int) sizeof pin_obj->label, pin_obj->label);
 			pkcs15_add_object(slot, obj, NULL);
+			public_certificates = 0;
 		}
 		else if (is_skey(obj)) {
 			sc_log(context, "Slot:%p Adding secret key object %d to PIN '%.*s'", slot, i, (int) sizeof pin_obj->label, pin_obj->label);
@@ -1531,16 +1558,14 @@ _add_pin_related_objects(struct sc_pkcs11_slot *slot, struct sc_pkcs15_object *p
 			fw_data->num_objects--;
 		}
 	}
+	_add_profile_object(slot, fw_data, public_certificates);
 }
 
 
 static void
 _add_public_objects(struct sc_pkcs11_slot *slot, struct pkcs15_fw_data *fw_data)
 {
-	/* Public Certificates Token in PKCS #11 3.0 */
-	struct pkcs15_any_object *pobj = NULL;
 	int public_certificates = 1;
-	CK_RV rv;
 	unsigned i;
 
 	if (slot == NULL || fw_data == NULL)
@@ -1579,17 +1604,8 @@ _add_public_objects(struct sc_pkcs11_slot *slot, struct pkcs15_fw_data *fw_data)
 			obj->p15_object->type);
 		pkcs15_add_object(slot, obj, NULL);
 	}
-
-	/* If all certificates and public keys are visible, we can claim conformance
-	 * to Public Certificate Token profile, making life easier for many applications
-	 * saying, they do not need to login to see all keys available */
-	rv = __pkcs15_create_profile_object(fw_data, public_certificates, &pobj);
-	if (rv != CKR_OK || pobj == NULL) {
-		return;
-	}
-	pkcs15_add_object(slot, pobj, NULL);
+	_add_profile_object(slot, fw_data, public_certificates);
 }
-
 
 static CK_RV
 pkcs15_create_tokens(struct sc_pkcs11_card *p11card, struct sc_app_info *app_info)
