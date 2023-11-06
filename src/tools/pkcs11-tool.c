@@ -212,7 +212,7 @@ enum {
 	OPT_LIST_INTERFACES,
 	OPT_IV,
 	OPT_AAD_FILE,
-	OPT_TAG_SIZE
+	OPT_TAG_LEN
 };
 
 static const struct option options[] = {
@@ -300,7 +300,7 @@ static const struct option options[] = {
 	{ "allow-sw",		0, NULL,		OPT_ALLOW_SW },
 	{ "iv",			1, NULL,			OPT_IV },
 	{ "aad-file",		1, NULL,		OPT_AAD_FILE },
-	{ "tag-size",	1, NULL,			OPT_TAG_SIZE },
+	{ "tag-len",	1, NULL,			OPT_TAG_LEN },
 
 	{ NULL, 0, NULL, 0 }
 };
@@ -390,7 +390,7 @@ static const char *option_help[] = {
 	"Allow using software mechanisms (without CKF_HW)",
 	"Initialization vector",
 	"Additional authenticated data for AEAD methods",
-	"Authentication tag size in bytes (default: 16)",
+	"Authentication tag length in bytes (default: 16)",
 };
 
 static const char *	app_name = "pkcs11-tool"; /* for utils.c */
@@ -451,7 +451,7 @@ static int		opt_always_auth = 0;
 static CK_FLAGS		opt_allow_sw = CKF_HW;
 static const char *	opt_iv = NULL;
 static const char *	opt_aad_file = NULL;
-static int		opt_tag_size = 16;
+static int		opt_tag_len = 16;
 
 static void *module = NULL;
 static CK_FUNCTION_LIST_3_0_PTR p11 = NULL;
@@ -1158,8 +1158,8 @@ int main(int argc, char * argv[])
 		case OPT_AAD_FILE:
 			opt_aad_file = optarg;
 			break;
-		case OPT_TAG_SIZE:
-			opt_tag_size = strtoul(optarg, NULL, 0);
+		case OPT_TAG_LEN:
+			opt_tag_len = strtoul(optarg, NULL, 0);
 			break;
 		default:
 			util_print_usage_and_die(app_name, options, option_help, NULL);
@@ -2615,7 +2615,7 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		gcm_params.pAAD = aad;
 		gcm_params.ulAADLen = aad_size;
 
-		gcm_params.ulTagBits = opt_tag_size * 8;
+		gcm_params.ulTagBits = opt_tag_len * 8;
 
 		mech.pParameter = &gcm_params;
 		mech.ulParameterLen = sizeof(gcm_params);
@@ -2785,7 +2785,7 @@ static void encrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		gcm_params.pAAD = aad;
 		gcm_params.ulAADLen = aad_size;
 
-		gcm_params.ulTagBits = opt_tag_size * 8;
+		gcm_params.ulTagBits = opt_tag_len * 8;
 
 		mech.pParameter = &gcm_params;
 		mech.ulParameterLen = sizeof(gcm_params);
