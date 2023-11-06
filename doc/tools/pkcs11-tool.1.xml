@@ -700,6 +700,22 @@
 					</para></listitem>
 				</varlistentry>
 
+				<varlistentry>
+					<term>
+						<option>--aad-file</option> <replaceable>filename</replaceable>
+					</term>
+					<listitem><para>Optional file containing additional authenticated data
+					for AEAD methods.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--tag-len</option> <replaceable>bytes</replaceable>
+					</term>
+					<listitem><para>Length of the authentication tag appended to the end
+					of the ciphertext when using AEAD methods.</para></listitem>
+				</varlistentry>
+
 			</variablelist>
 		</para>
 	</refsect1>
