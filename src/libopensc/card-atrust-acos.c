@@ -2,7 +2,7 @@
  * atrust-acos.c: Support for A-Trust ACOS based cards
  *
  * Copyright (C) 2005  Franz Brandl <brandl@a-trust.at> based on work from
- *                     Jörn Zukowski <zukowski@trustcenter.de> and 
+ *                     Jörn Zukowski <zukowski@trustcenter.de> and
  *                     Nils Larsch   <larsch@trustcenter.de>, TrustCenter AG
  *
  * This library is free software; you can redistribute it and/or
@@ -75,14 +75,14 @@ typedef struct atrust_acos_ex_data_st {
 static int atrust_acos_match_card(struct sc_card *card)
 {
 	int		i, match = 0;
-  
 
-	for (i = 0; atrust_acos_atrs[i] != NULL; i++) 
+
+	for (i = 0; atrust_acos_atrs[i] != NULL; i++)
 	{
 		u8 defatr[SC_MAX_ATR_SIZE];
 		size_t len = sizeof(defatr);
 		const char *atrp = atrust_acos_atrs[i];
-      
+
 		if (sc_hex_to_bin(atrp, defatr, &len))
 			continue;
 		/* we may only verify part of ATR since */
@@ -116,7 +116,7 @@ static int atrust_acos_init(struct sc_card *card)
 
 	/* set the supported algorithm */
 
-	flags = SC_ALGORITHM_RSA_PAD_PKCS1 
+	flags = SC_ALGORITHM_RSA_PAD_PKCS1
 		| SC_ALGORITHM_RSA_HASH_NONE
 		| SC_ALGORITHM_RSA_HASH_SHA1
 		| SC_ALGORITHM_RSA_HASH_MD5
@@ -152,7 +152,7 @@ static int process_fci(struct sc_context *ctx, struct sc_file *file,
 
 	size_t taglen, len = buflen;
 	const u8 *tag = NULL, *p;
-  
+
 	sc_log(ctx,  "processing FCI bytes\n");
 
 	if (buflen < 2)
@@ -170,7 +170,7 @@ static int process_fci(struct sc_context *ctx, struct sc_file *file,
 	file->shareable = 0;
 	file->record_length = 0;
 	file->size = 0;
-  
+
 	/* get file size */
 	tag = sc_asn1_find_tag(ctx, p, len, 0x80, &taglen);
 	if (tag != NULL && taglen >= 2) {
@@ -252,9 +252,9 @@ static int atrust_acos_select_aid(struct sc_card *card,
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	/* check return value */
-	if (!(apdu.sw1 == 0x90 && apdu.sw2 == 0x00) && apdu.sw1 != 0x61 )
+	if (!(apdu.sw1 == 0x90 && apdu.sw2 == 0x00) && apdu.sw1 != 0x61)
     		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
-  
+
 	/* update cache */
 	card->cache.current_path.type = SC_PATH_TYPE_DF_NAME;
 	card->cache.current_path.len = len;
@@ -269,7 +269,7 @@ static int atrust_acos_select_aid(struct sc_card *card,
 		file->path.len = 0;
 		file->size = 0;
 		/* AID */
-		for (i = 0; i < len; i++)  
+		for (i = 0; i < len; i++)
 			file->name[i] = aid[i];
 		file->namelen = len;
 		file->id = 0x0000;
@@ -362,7 +362,7 @@ static int atrust_acos_select_fid(struct sc_card *card,
 			*file_out = file;
 		} else {
 			/* ok, assume we have a EF */
-			r = process_fci(card->ctx, file, apdu.resp, 
+			r = process_fci(card->ctx, file, apdu.resp,
 					apdu.resplen);
 			if (r != SC_SUCCESS) {
 				sc_file_free(file);
@@ -392,7 +392,7 @@ static int atrust_acos_select_file(struct sc_card *card,
 	if (r != SC_SUCCESS)
 		pbuf[0] = '\0';
 
-	sc_log(card->ctx, 
+	sc_log(card->ctx,
 		 "current path (%s, %s): %s (len: %"SC_FORMAT_LEN_SIZE_T"u)\n",
 		 card->cache.current_path.type == SC_PATH_TYPE_DF_NAME ?
 		 "aid" : "path",
@@ -412,7 +412,7 @@ static int atrust_acos_select_file(struct sc_card *card,
 	else if (in_path->type == SC_PATH_TYPE_DF_NAME)
       	{	/* SELECT DF with AID */
 		/* Select with 1-16byte Application-ID */
-		if (card->cache.valid 
+		if (card->cache.valid
 		    && card->cache.current_path.type == SC_PATH_TYPE_DF_NAME
 		    && card->cache.current_path.len == pathlen
 		    && memcmp(card->cache.current_path.value, pathbuf, pathlen) == 0 )
@@ -447,18 +447,18 @@ static int atrust_acos_select_file(struct sc_card *card,
 			n_pathbuf[1] = 0x00;
 			memcpy(n_pathbuf+2, path, pathlen);
 			path = n_pathbuf;
-			pathlen += 2; 
+			pathlen += 2;
 		}
-	
+
 		/* check current working directory */
-		if (card->cache.valid 
+		if (card->cache.valid
 		    && card->cache.current_path.type == SC_PATH_TYPE_PATH
 		    && card->cache.current_path.len >= 2
 		    && card->cache.current_path.len <= pathlen )
 		{
 			bMatch = 0;
 			for (i=0; i < card->cache.current_path.len; i+=2)
-				if (card->cache.current_path.value[i] == path[i] 
+				if (card->cache.current_path.value[i] == path[i]
 				    && card->cache.current_path.value[i+1] == path[i+1] )
 					bMatch += 2;
 		}
@@ -472,12 +472,12 @@ static int atrust_acos_select_file(struct sc_card *card,
 			{
 				/* two more steps to go */
 				sc_path_t new_path;
-	
+
 				/* first step: change directory */
 				r = atrust_acos_select_fid(card, path[bMatch], path[bMatch+1], NULL);
 				LOG_TEST_RET(card->ctx, r, "SELECT FILE (DF-ID) failed");
-	
-				memset(&new_path, 0, sizeof(sc_path_t));	
+
+				memset(&new_path, 0, sizeof(sc_path_t));
 				new_path.type = SC_PATH_TYPE_PATH;
 				new_path.len  = pathlen - bMatch-2;
 				memcpy(new_path.value, &(path[bMatch+2]), new_path.len);
@@ -620,7 +620,7 @@ static int atrust_acos_set_security_env(struct sc_card *card,
 		apdu.datalen = p - sbuf;
 		apdu.lc      = p - sbuf;
 		apdu.le      = 0;
-		/* we don't know whether to use 
+		/* we don't know whether to use
 		 * COMPUTE SIGNATURE or INTERNAL AUTHENTICATE */
 		r = sc_transmit_apdu(card, &apdu);
 		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
@@ -636,12 +636,12 @@ static int atrust_acos_set_security_env(struct sc_card *card,
 	}
 try_authenticate:
 	/* try INTERNAL AUTHENTICATE */
-	if (operation == SC_SEC_OPERATION_AUTHENTICATE && 
+	if (operation == SC_SEC_OPERATION_AUTHENTICATE &&
 	    env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1) {
 		*p++ = 0x80;
 		*p++ = 0x01;
 		*p++ = 0x01;
-		
+
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0x41, 0xa4);
 		apdu.data    = sbuf;
 		apdu.datalen = p - sbuf;
@@ -676,7 +676,7 @@ static int atrust_acos_compute_signature(struct sc_card *card,
 
 	if (ex_data->sec_ops == SC_SEC_OPERATION_SIGN) {
 		/* compute signature with the COMPUTE SIGNATURE command */
-		
+
 		/* set the hash value     */
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x2A,
 			       0x90, 0x81);
@@ -690,7 +690,7 @@ static int atrust_acos_compute_signature(struct sc_card *card,
 		r = sc_transmit_apdu(card, &apdu);
 		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 		if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, 
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,
 				       sc_check_sw(card, apdu.sw1, apdu.sw2));
 
 		/* call COMPUTE SIGNATURE */
@@ -776,7 +776,7 @@ static int atrust_acos_decipher(struct sc_card *card,
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x80, 0x86);
 	apdu.resp = rbuf;
 	apdu.resplen = sizeof(rbuf);
-	
+
 	sbuf[0] = 0; /* padding indicator byte, 0x00 = No further indication */
 	memcpy(sbuf + 1, crgram, crgram_len);
 	apdu.data = sbuf;
@@ -802,7 +802,7 @@ static int atrust_acos_check_sw(struct sc_card *card, unsigned int sw1,
 {
 
 	sc_log(card->ctx,  "sw1 = 0x%02x, sw2 = 0x%02x\n", sw1, sw2);
-  
+
 	if (sw1 == 0x90)
 		return SC_SUCCESS;
 	if (sw1 == 0x63 && (sw2 & ~0x0fU) == 0xc0 )
@@ -811,7 +811,7 @@ static int atrust_acos_check_sw(struct sc_card *card, unsigned int sw1,
 		(sw2 & 0x0f));
 		return SC_ERROR_PIN_CODE_INCORRECT;
 	}
-  
+
 	/* iso error */
 	return iso_ops->check_sw(card, sw1, sw2);
 }
@@ -879,7 +879,7 @@ static int atrust_acos_logout(struct sc_card *card)
 	apdu.data    = mf_buf;
 	apdu.datalen = 2;
 	apdu.resplen = 0;
-	
+
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU re-transmit failed");
 
@@ -899,7 +899,7 @@ static struct sc_card_driver * sc_get_driver(void)
 	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
 	if (iso_ops == NULL)
 		iso_ops = iso_drv->ops;
-  
+
 	atrust_acos_ops = *iso_drv->ops;
 	atrust_acos_ops.match_card = atrust_acos_match_card;
 	atrust_acos_ops.init   = atrust_acos_init;
@@ -913,7 +913,7 @@ static struct sc_card_driver * sc_get_driver(void)
 	atrust_acos_ops.decipher    = atrust_acos_decipher;
 	atrust_acos_ops.card_ctl    = atrust_acos_card_ctl;
 	atrust_acos_ops.logout      = atrust_acos_logout;
-  
+
 	return &atrust_acos_drv;
 }
 

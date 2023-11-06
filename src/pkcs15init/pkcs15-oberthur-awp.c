@@ -171,7 +171,7 @@ awp_new_file(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 				ifile->path.value[ifile->path.len-2] |= 0x01;
 			}
 
-			sc_log(ctx, 
+			sc_log(ctx,
 				 "info_file(id:%04X,size:%"SC_FORMAT_LEN_SIZE_T"u,rlen:%"SC_FORMAT_LEN_SIZE_T"u)",
 				 ifile->id, ifile->size, ifile->record_length);
 			*info_out = ifile;
@@ -182,7 +182,7 @@ awp_new_file(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 	}
 
 	if (ofile)   {
-		sc_log(ctx, 
+		sc_log(ctx,
 			 "obj file %04X; size %"SC_FORMAT_LEN_SIZE_T"u; ",
 			 ofile->id, ofile->size);
 		if (obj_out)
@@ -353,7 +353,7 @@ awp_update_container_entry (struct sc_pkcs15_card *p15card, struct sc_profile *p
 	unsigned char *buff = NULL;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, 
+	sc_log(ctx,
 		 "update container entry(type:%X,id %i,rec %"SC_FORMAT_LEN_SIZE_T"u,offs %i",
 		 type, file_id, rec, offs);
 	sc_log(ctx,  "container file(file-id:%X,rlen:%"SC_FORMAT_LEN_SIZE_T"u,rcount:%"SC_FORMAT_LEN_SIZE_T"u)",
@@ -736,7 +736,7 @@ awp_update_object_list(struct sc_pkcs15_card *p15card, struct sc_profile *profil
 		goto done;
 	}
 
-	sc_log(ctx, 
+	sc_log(ctx,
 		 "ii %i, rv %i; %X; %"SC_FORMAT_LEN_SIZE_T"u",
 		 ii, rv, file->id, file->size);
 	*(buff + ii) = COSM_LIST_TAG;
@@ -787,14 +787,14 @@ awp_encode_key_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *obj
 
 	ki->label.value = (unsigned char *)strdup(obj->label);
 	ki->label.len = strlen(obj->label);
-	sc_log(ctx, 
+	sc_log(ctx,
 		 "cosm_encode_key_info() label(%u):%s",
 		 ki->label.len, ki->label.value);
 
 	/*
 	 * Oberthur saves modulus value without tag and length.
 	 */
-	sc_log(ctx, 
+	sc_log(ctx,
 		 "pubkey->modulus.len %"SC_FORMAT_LEN_SIZE_T"u",
 		 pubkey->modulus.len);
 	ki->modulus.value = malloc(pubkey->modulus.len);
@@ -936,7 +936,7 @@ awp_encode_cert_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *ob
 
 	cert_info = (struct sc_pkcs15_cert_info *)obj->data;
 
-	sc_log(ctx, 
+	sc_log(ctx,
 		 "Encode cert(%s,id:%s,der(%p,%"SC_FORMAT_LEN_SIZE_T"u))",
 		 obj->label, sc_pkcs15_print_id(&cert_info->id),
 		 obj->content.value, obj->content.len);
@@ -1019,9 +1019,9 @@ awp_encode_cert_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *ob
 	 * serial number
 	 */
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-	
-	/* TODO the der encoding of a ANS1_INTEGER is a TLV, the original code only as using the 
-	 * i2c_ASN1_INTEGER which is not in OpenSSL 1.1  
+
+	/* TODO the der encoding of a ANS1_INTEGER is a TLV, the original code only as using the
+	 * i2c_ASN1_INTEGER which is not in OpenSSL 1.1
 	 * It was adding the tag V_ASN1_INTEGER and the one byte length back in in effect creating
 	 * a DER encoded ASN1_INTEGER
 	 * So we can simplify the code and make compatible with OpenSSL 1.1. This needs to be tested
@@ -1118,7 +1118,7 @@ awp_encode_data_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *ob
 
 	data_info = (struct sc_pkcs15_data_info *)obj->data;
 
-	sc_log(ctx, 
+	sc_log(ctx,
 		 "Encode data(%s,id:%s,der(%p,%"SC_FORMAT_LEN_SIZE_T"u))",
 		 obj->label, sc_pkcs15_print_id(&data_info->id),
 		 obj->content.value, obj->content.len);
@@ -1395,7 +1395,7 @@ awp_update_df_create_cert(struct sc_pkcs15_card *p15card, struct sc_profile *pro
 	LOG_TEST_RET(ctx, rv, "COSM new file error");
 
 	memset(&icert, 0, sizeof(icert));
-	sc_log(ctx, 
+	sc_log(ctx,
 		 "Cert Der(%p,%"SC_FORMAT_LEN_SIZE_T"u)", der.value, der.len);
 	rv = awp_encode_cert_info(p15card, obj, &icert);
 	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_VERBOSE, rv, "'Create Cert' update DF failed: cannot encode info");
@@ -1485,7 +1485,7 @@ awp_update_df_create_prvkey(struct sc_pkcs15_card *p15card, struct sc_profile *p
 	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_VERBOSE, rv, "New private key info file error");
 
 	pubkey.algorithm = SC_ALGORITHM_RSA;
-	sc_log(ctx, 
+	sc_log(ctx,
 		 "PrKey Der(%p,%"SC_FORMAT_LEN_SIZE_T"u)", der.value, der.len);
 	rv = sc_pkcs15_decode_pubkey(ctx, &pubkey, der.value, der.len);
 	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_VERBOSE, rv, "AWP 'update private key' DF failed: decode public key error");
@@ -1540,7 +1540,7 @@ awp_update_df_create_pubkey(struct sc_pkcs15_card *p15card, struct sc_profile *p
 	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_VERBOSE, rv, "New public key info file error");
 
 	pubkey.algorithm = SC_ALGORITHM_RSA;
-	sc_log(ctx, 
+	sc_log(ctx,
 		 "PrKey Der(%p,%"SC_FORMAT_LEN_SIZE_T"u)", der.value, der.len);
 	rv = sc_pkcs15_decode_pubkey(ctx, &pubkey, der.value, der.len);
 	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_VERBOSE, rv, "AWP 'update public key' DF failed: decode public key error");

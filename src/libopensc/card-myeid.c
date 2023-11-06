@@ -235,7 +235,7 @@ static int myeid_init(struct sc_card *card)
 	priv->card_state = SC_FILE_STATUS_CREATION;
 	card->drv_data = priv;
 
-	/* Ensure that the MyEID applet is selected. */	
+	/* Ensure that the MyEID applet is selected. */
 	rv = myeid_select_aid(card, &myeid_aid, NULL, &resp_len);
 	LOG_TEST_GOTO_ERR(card->ctx, rv, "Failed to select MyEID applet.");
 

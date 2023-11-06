@@ -1,4 +1,4 @@
-/* Copyright (C) 2001, 2002  Juha Yrjölä <juha.yrjola@iki.fi> 
+/* Copyright (C) 2001, 2002  Juha Yrjölä <juha.yrjola@iki.fi>
  * All rights reserved.
  *
  * PKCS#15 PIN code test

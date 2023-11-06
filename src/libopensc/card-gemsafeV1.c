@@ -294,7 +294,7 @@ static int gemsafe_setacl(sc_card_t *card, sc_file_t *file, const u8 *data,
 			cond = *p++;
 		else
 			cond = 0xff;
-		sc_log(ctx, 
+		sc_log(ctx,
 			"DF security byte CREATE DF: %02x\n", cond);
 		r = gemsafe_sc2acl(file, SC_AC_OP_CREATE, cond);
 		if (r < 0)
@@ -303,7 +303,7 @@ static int gemsafe_setacl(sc_card_t *card, sc_file_t *file, const u8 *data,
 			cond = *p;
 		else
 			cond = 0xff;
-		sc_log(ctx, 
+		sc_log(ctx,
 			"DF security byte CREATE EF: %02x\n", cond);
 		/* XXX: opensc doesn't currently separate access conditions for
 		 * CREATE EF and CREATE DF, this should be changed */
@@ -317,7 +317,7 @@ static int gemsafe_setacl(sc_card_t *card, sc_file_t *file, const u8 *data,
 			cond = *p++;
 		else
 			cond = 0xff;
-		sc_log(ctx, 
+		sc_log(ctx,
 			"EF security byte UPDATE/ERASE BINARY: %02x\n", cond);
 		r = gemsafe_sc2acl(file, SC_AC_OP_UPDATE, cond);
 		if (r < 0)
@@ -332,7 +332,7 @@ static int gemsafe_setacl(sc_card_t *card, sc_file_t *file, const u8 *data,
 			cond = *p;
 		else
 			cond = 0xff;
-		sc_log(ctx, 
+		sc_log(ctx,
 			"EF security byte READ BINARY: %02x\n", cond);
 		r = gemsafe_sc2acl(file, SC_AC_OP_READ, cond);
 		if (r < 0)
@@ -356,7 +356,7 @@ static int gemsafe_process_fci(struct sc_card *card, struct sc_file *file,
 	r = iso_ops->process_fci(card, file, buf, len);
 	if (r < 0)
 		return r;
-	sc_log(ctx, 
+	sc_log(ctx,
 		"processing GemSAFE V1 specific FCI information\n");
 
 
@@ -464,7 +464,7 @@ static int gemsafe_compute_signature(struct sc_card *card, const u8 * data,
 
 	/* the card can sign 36 bytes of free form data */
 	if (data_len > 36) {
-		sc_log(ctx, 
+		sc_log(ctx,
 			 "error: input data too long: %"SC_FORMAT_LEN_SIZE_T"u bytes\n",
 			 data_len);
 		return SC_ERROR_INVALID_ARGUMENTS;

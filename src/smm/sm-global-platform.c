@@ -317,7 +317,7 @@ sm_gp_encrypt_command_data(struct sc_context *ctx, unsigned char *session_key,
 	}
 
 	len = in_len + 8;
-	len -= (len%8);
+	len -= (len % 8);
 
 	data = calloc(1, len);
 	if (!data)

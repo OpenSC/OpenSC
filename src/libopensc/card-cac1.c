@@ -136,7 +136,7 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 
 	/* if we didn't return it all last time, return the remainder */
 	if (priv->cached) {
-		sc_log(card->ctx, 
+		sc_log(card->ctx,
 			"returning cached value idx=%d count=%"SC_FORMAT_LEN_SIZE_T"u",
 			idx, count);
 		if (idx > priv->cache_buf_len) {
@@ -147,7 +147,7 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 		LOG_FUNC_RETURN(card->ctx, len);
 	}
 
-	sc_log(card->ctx, 
+	sc_log(card->ctx,
 		"clearing cache idx=%d count=%"SC_FORMAT_LEN_SIZE_T"u",
 		idx, count);
 	free(priv->cache_buf);

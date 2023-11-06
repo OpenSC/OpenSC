@@ -234,7 +234,7 @@ static int itacns_set_security_env(sc_card_t *card,
 	sc_apdu_t apdu;
 	u8	data[3];
 	int	key_id, r;
-	
+
 	/* Do not complain about se_num; the argument is part of the API. */
 	(void) se_num;
 
@@ -456,12 +456,12 @@ static int itacns_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 	len = file->size;
 	sc_file_free(file);
 
-	//Returned file->size should be 16. 
-	//We choose to not consider it as critical, because some cards 
+	//Returned file->size should be 16.
+	//We choose to not consider it as critical, because some cards
 	//do not return FCI/FCP templates that include the file size.
 	//Notify abnormal length anyway.
 	if (len != 16) {
-		sc_log(card->ctx, 
+		sc_log(card->ctx,
 				"Unexpected file length of EF_IDCarta (%lu)\n",
 				(unsigned long) len);
 	}

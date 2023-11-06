@@ -141,56 +141,56 @@ static int rutoken_init(sc_card_t *card)
 
 static const struct sc_card_error rutoken_errors[] = {
 
-	{ 0x6300, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed"}, 
-	{ 0x63C1, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed. One tries left"}, 
-	{ 0x63C2, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed. Two tries left"}, 
-	{ 0x63C3, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed"}, 
-	{ 0x63C4, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed"}, 
-	{ 0x63C5, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed"}, 
-	{ 0x63C6, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed"}, 
-	{ 0x63C7, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed"}, 
-	{ 0x63C8, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed"}, 
-	{ 0x63C9, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed"}, 
-	{ 0x63CA, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed"}, 
-	{ 0x63CB, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed"}, 
-	{ 0x63CC, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed"}, 
-	{ 0x63CD, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed"}, 
-	{ 0x63CE, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed"}, 
-	{ 0x63CF, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed"}, 
+	{ 0x6300, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed"},
+	{ 0x63C1, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed. One tries left"},
+	{ 0x63C2, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed. Two tries left"},
+	{ 0x63C3, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed"},
+	{ 0x63C4, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed"},
+	{ 0x63C5, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed"},
+	{ 0x63C6, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed"},
+	{ 0x63C7, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed"},
+	{ 0x63C8, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed"},
+	{ 0x63C9, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed"},
+	{ 0x63CA, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed"},
+	{ 0x63CB, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed"},
+	{ 0x63CC, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed"},
+	{ 0x63CD, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed"},
+	{ 0x63CE, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed"},
+	{ 0x63CF, SC_ERROR_PIN_CODE_INCORRECT,  "Authentication failed"},
 
-	{ 0x6400, SC_ERROR_CARD_CMD_FAILED,     "Aborting"}, 
+	{ 0x6400, SC_ERROR_CARD_CMD_FAILED,     "Aborting"},
 
-	{ 0x6500, SC_ERROR_MEMORY_FAILURE,      "Memory failure"}, 
-	{ 0x6581, SC_ERROR_MEMORY_FAILURE,      "Memory failure"}, 
+	{ 0x6500, SC_ERROR_MEMORY_FAILURE,      "Memory failure"},
+	{ 0x6581, SC_ERROR_MEMORY_FAILURE,      "Memory failure"},
 
-	{ 0x6700, SC_ERROR_WRONG_LENGTH,        "Lc or Le invalid"}, 
+	{ 0x6700, SC_ERROR_WRONG_LENGTH,        "Lc or Le invalid"},
 
-	{ 0x6883, SC_ERROR_CARD_CMD_FAILED,     "The finishing command of a chain is expected"}, 
+	{ 0x6883, SC_ERROR_CARD_CMD_FAILED,     "The finishing command of a chain is expected"},
 
-	{ 0x6982, SC_ERROR_SECURITY_STATUS_NOT_SATISFIED, "Required access right not granted"}, 
-	{ 0x6983, SC_ERROR_AUTH_METHOD_BLOCKED, "DO blocked"}, 
-	{ 0x6985, SC_ERROR_CARD_CMD_FAILED,     "Command not allowed (unsuitable conditions)"}, 
-	{ 0x6986, SC_ERROR_INCORRECT_PARAMETERS,"No current EF selected"}, 
+	{ 0x6982, SC_ERROR_SECURITY_STATUS_NOT_SATISFIED, "Required access right not granted"},
+	{ 0x6983, SC_ERROR_AUTH_METHOD_BLOCKED, "DO blocked"},
+	{ 0x6985, SC_ERROR_CARD_CMD_FAILED,     "Command not allowed (unsuitable conditions)"},
+	{ 0x6986, SC_ERROR_INCORRECT_PARAMETERS,"No current EF selected"},
 
-	{ 0x6A80, SC_ERROR_INCORRECT_PARAMETERS,"Invalid parameters in data field"}, 
-	{ 0x6A81, SC_ERROR_NOT_SUPPORTED,       "Function/mode not supported"}, 
-	{ 0x6A82, SC_ERROR_FILE_NOT_FOUND,      "File (DO) not found"}, 
-	{ 0x6A84, SC_ERROR_CARD_CMD_FAILED,     "Not enough memory space in the token"}, 
-	{ 0x6A86, SC_ERROR_INCORRECT_PARAMETERS,"P1 or P2 invalid"}, 
-	{ 0x6A89, SC_ERROR_FILE_ALREADY_EXISTS, "File (DO) already exists"}, 
+	{ 0x6A80, SC_ERROR_INCORRECT_PARAMETERS,"Invalid parameters in data field"},
+	{ 0x6A81, SC_ERROR_NOT_SUPPORTED,       "Function/mode not supported"},
+	{ 0x6A82, SC_ERROR_FILE_NOT_FOUND,      "File (DO) not found"},
+	{ 0x6A84, SC_ERROR_CARD_CMD_FAILED,     "Not enough memory space in the token"},
+	{ 0x6A86, SC_ERROR_INCORRECT_PARAMETERS,"P1 or P2 invalid"},
+	{ 0x6A89, SC_ERROR_FILE_ALREADY_EXISTS, "File (DO) already exists"},
 
-	{ 0x6B00, SC_ERROR_INCORRECT_PARAMETERS,"Out of maximum file length"}, 
+	{ 0x6B00, SC_ERROR_INCORRECT_PARAMETERS,"Out of maximum file length"},
 
-	{ 0x6C00, SC_ERROR_WRONG_LENGTH,        "Le does not fit the data to be sent"}, 
+	{ 0x6C00, SC_ERROR_WRONG_LENGTH,        "Le does not fit the data to be sent"},
 
-	{ 0x6D00, SC_ERROR_INS_NOT_SUPPORTED,   "Ins invalid (not supported)"}, 
+	{ 0x6D00, SC_ERROR_INS_NOT_SUPPORTED,   "Ins invalid (not supported)"},
 
 	/* Own class of an error*/
-	{ 0x6F01, SC_ERROR_CARD_CMD_FAILED,     "Rutoken has the exchange protocol which is not supported by the USB-driver (newer, than in the driver)"}, 
-	{ 0x6F83, SC_ERROR_CARD_CMD_FAILED,     "Infringement of the exchange protocol with Rutoken is revealed"}, 
-	{ 0x6F84, SC_ERROR_CARD_CMD_FAILED,     "Rutoken is busy by processing of other command"}, 
-	{ 0x6F85, SC_ERROR_CARD_CMD_FAILED,     "In the current folder the maximum quantity of file system objects is already created"}, 
-	{ 0x6F86, SC_ERROR_CARD_CMD_FAILED,     "Invalid access right. Already login"}, 
+	{ 0x6F01, SC_ERROR_CARD_CMD_FAILED,     "Rutoken has the exchange protocol which is not supported by the USB-driver (newer, than in the driver)"},
+	{ 0x6F83, SC_ERROR_CARD_CMD_FAILED,     "Infringement of the exchange protocol with Rutoken is revealed"},
+	{ 0x6F84, SC_ERROR_CARD_CMD_FAILED,     "Rutoken is busy by processing of other command"},
+	{ 0x6F85, SC_ERROR_CARD_CMD_FAILED,     "In the current folder the maximum quantity of file system objects is already created"},
+	{ 0x6F86, SC_ERROR_CARD_CMD_FAILED,     "Invalid access right. Already login"},
 
 	{ 0x9000, SC_SUCCESS,                  NULL}
 };
@@ -571,7 +571,7 @@ static int set_sec_attr_from_acl(sc_card_t *card, sc_file_t *file)
 		{
 			/* AccessMode.[conv_attr[i].sec_attr_pos] */
 			attr[0] |= 1 << conv_attr[i].sec_attr_pos;
-			sc_log(card->ctx, 
+			sc_log(card->ctx,
 				 "AccessMode.%"SC_FORMAT_LEN_SIZE_T"u, attr[0]=0x%x",
 				 conv_attr[i].sec_attr_pos, attr[0]);
 			attr[1 + conv_attr[i].sec_attr_pos] = (u8)entry->method;
@@ -618,12 +618,12 @@ static int rutoken_delete_file(sc_card_t *card, const sc_path_t *path)
 	sc_apdu_t apdu;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	if (!path || path->type != SC_PATH_TYPE_FILE_ID || (path->len != 0 && path->len != 2)) 
+	if (!path || path->type != SC_PATH_TYPE_FILE_ID || (path->len != 0 && path->len != 2))
 	{
 		sc_log(card->ctx,  "File type has to be SC_PATH_TYPE_FILE_ID\n");
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
-	if (path->len == sizeof(sbuf)) 
+	if (path->len == sizeof(sbuf))
 	{
 		sbuf[1] = path->value[0];
 		sbuf[0] = path->value[1];
@@ -763,8 +763,8 @@ static int rutoken_restore_security_env(sc_card_t *card, int se_num)
 	LOG_FUNC_RETURN(card->ctx, ret);
 }
 
-static int rutoken_set_security_env(sc_card_t *card, 
-			const sc_security_env_t *env, 
+static int rutoken_set_security_env(sc_card_t *card,
+			const sc_security_env_t *env,
 			int se_num)
 {
 	sc_apdu_t apdu;
@@ -856,7 +856,7 @@ static int rutoken_key_gen(sc_card_t *card, sc_DOHdrV2_t *pHdr)
 	     (pHdr->OTID.byObjectType != SC_RUTOKEN_TYPE_KEY) ||
 	     (pHdr->OP.byObjectFlags & SC_RUTOKEN_FLAGS_COMPACT_DO) ||
 	     (pHdr->OP.byObjectFlags & SC_RUTOKEN_FLAGS_FULL_OPEN_DO) ||
-	     (pHdr->OTID.byObjectID < SC_RUTOKEN_DO_ALL_MIN_ID) || 
+	     (pHdr->OTID.byObjectID < SC_RUTOKEN_DO_ALL_MIN_ID) ||
 	     (pHdr->OTID.byObjectID > SC_RUTOKEN_DO_NOCHV_MAX_ID_V2)
 	)
 	{
@@ -888,11 +888,11 @@ static int rutoken_create_do(sc_card_t *card, sc_DO_V2_t * pDO)
 	     ((pDO->HDR.OTID.byObjectType & SC_RUTOKEN_TYPE_CHV) &&
 	      (pDO->HDR.OTID.byObjectID != SC_RUTOKEN_DEF_ID_GCHV_USER) &&
 	      (pDO->HDR.OTID.byObjectID != SC_RUTOKEN_DEF_ID_GCHV_ADMIN)) ||
-	     ((pDO->HDR.OTID.byObjectType == SC_RUTOKEN_ALLTYPE_GOST) && 
+	     ((pDO->HDR.OTID.byObjectType == SC_RUTOKEN_ALLTYPE_GOST) &&
 	      (pDO->HDR.wDOBodyLen != SC_RUTOKEN_DEF_LEN_DO_GOST)) ||
 	     ((pDO->HDR.OTID.byObjectType == SC_RUTOKEN_ALLTYPE_SE) &&
 	      (pDO->HDR.wDOBodyLen != SC_RUTOKEN_DEF_LEN_DO_SE)) ||
-	     (pDO->HDR.OTID.byObjectID < SC_RUTOKEN_DO_ALL_MIN_ID) || 
+	     (pDO->HDR.OTID.byObjectID < SC_RUTOKEN_DO_ALL_MIN_ID) ||
 	     (pDO->HDR.OTID.byObjectID > SC_RUTOKEN_DO_NOCHV_MAX_ID_V2) ||
 	     ((pDO->HDR.OP.byObjectFlags & SC_RUTOKEN_FLAGS_COMPACT_DO) &&
 	      (pDO->HDR.wDOBodyLen > SC_RUTOKEN_COMPACT_DO_MAX_LEN)) ||
@@ -927,7 +927,7 @@ static int rutoken_get_do_info(sc_card_t *card, sc_DO_INFO_t * pInfo)
 
 	LOG_FUNC_CALLED(card->ctx);
 	if ((pInfo->SelType != select_first) &&
-	    ((pInfo->DoId < SC_RUTOKEN_DO_ALL_MIN_ID) || 
+	    ((pInfo->DoId < SC_RUTOKEN_DO_ALL_MIN_ID) ||
 	     (pInfo->DoId > SC_RUTOKEN_DO_NOCHV_MAX_ID_V2)))
 	{
 		ret = SC_ERROR_INVALID_ARGUMENTS;
@@ -972,7 +972,7 @@ static int rutoken_delete_do(sc_card_t *card, u8 *pId)
 	int ret;
 
 	LOG_FUNC_CALLED(card->ctx);
-	if ((*pId < SC_RUTOKEN_DO_ALL_MIN_ID) || 
+	if ((*pId < SC_RUTOKEN_DO_ALL_MIN_ID) ||
 	    (*pId > SC_RUTOKEN_DO_NOCHV_MAX_ID_V2))
 	{
 		ret = SC_ERROR_INVALID_ARGUMENTS;
@@ -1002,7 +1002,7 @@ static int rutoken_cipher_p(sc_card_t *card, const u8 * crgram, size_t crgram_le
 	sc_apdu_t apdu;
 
 	LOG_FUNC_CALLED(card->ctx);
-	sc_log(card->ctx, 
+	sc_log(card->ctx,
 		 ": crgram_len %"SC_FORMAT_LEN_SIZE_T"u; outlen %"SC_FORMAT_LEN_SIZE_T"u",
 		 crgram_len, outlen);
 
@@ -1047,7 +1047,7 @@ static int rutoken_cipher_p(sc_card_t *card, const u8 * crgram, size_t crgram_le
 			}
 		}
 	} while (ret == SC_SUCCESS  &&  crgram_len != 0);
-	sc_log(card->ctx, 
+	sc_log(card->ctx,
 		 "len out cipher %"SC_FORMAT_LEN_SIZE_T"u\n",
 		 outlen - outlen_tail);
 	if (ret == SC_SUCCESS)
@@ -1057,16 +1057,16 @@ static int rutoken_cipher_p(sc_card_t *card, const u8 * crgram, size_t crgram_le
 
 /*  Launcher for cipher  */
 
-static int rutoken_cipher_gost(sc_card_t *card, 
+static int rutoken_cipher_gost(sc_card_t *card,
 			struct sc_rutoken_decipherinfo *ptr, char is_encipher)
 {
 	int ret;
 
 	if (is_encipher)
-		ret = rutoken_cipher_p(card, ptr->inbuf, ptr->inlen, 
+		ret = rutoken_cipher_p(card, ptr->inbuf, ptr->inlen,
 				ptr->outbuf, ptr->outlen, 0x86, 0x80, 0);
 	else
-		ret = rutoken_cipher_p(card, ptr->inbuf, ptr->inlen, 
+		ret = rutoken_cipher_p(card, ptr->inbuf, ptr->inlen,
 				ptr->outbuf, ptr->outlen, 0x80, 0x86, 1);
 	if (ret > 0)
 	{
@@ -1079,8 +1079,8 @@ static int rutoken_cipher_gost(sc_card_t *card,
 
 }
 
-static int rutoken_compute_mac_gost(sc_card_t *card, 
-			const u8 *in, size_t ilen, 
+static int rutoken_compute_mac_gost(sc_card_t *card,
+			const u8 *in, size_t ilen,
 			u8 *out, size_t olen)
 {
 	const size_t signing_chunk = 248;
@@ -1119,8 +1119,8 @@ static int rutoken_compute_mac_gost(sc_card_t *card,
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, ret);
 }
 
-static int rutoken_compute_signature(struct sc_card *card, 
-			const u8 * data, size_t datalen, 
+static int rutoken_compute_signature(struct sc_card *card,
+			const u8 * data, size_t datalen,
 			u8 * out, size_t outlen)
 {
 	int ret;
@@ -1221,7 +1221,7 @@ static int rutoken_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 
 	if (ret == SC_SUCCESS)
 	{
-		switch (cmd) 
+		switch (cmd)
 		{
 		case SC_CARDCTL_RUTOKEN_CREATE_DO:
 			ret = rutoken_create_do(card, ptr);

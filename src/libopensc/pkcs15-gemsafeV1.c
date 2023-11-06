@@ -410,7 +410,7 @@ static int sc_pkcs15emu_gemsafeV1_init( sc_pkcs15_card_t *p15card)
 		 */
 		if ( p15card->card->flags & 0x0F) {
 			key_ref = p15card->card->flags & 0x0F;
-			sc_log(p15card->card->ctx, 
+			sc_log(p15card->card->ctx,
 				 "Overriding key_ref %d with %d\n",
 				 gemsafe_prkeys[i].ref, key_ref);
 		} else

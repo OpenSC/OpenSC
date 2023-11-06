@@ -330,8 +330,8 @@ static int cardos_init(sc_card_t *card)
 #ifdef _WIN32
 			/* Windows does not support PCSC PART_10 and may have forced reader to 255/256
 			 * https://github.com/OpenSC/OpenSC/commit/eddea6f3c2d3dafc2c09eba6695c745a61b5186f
-			 * may have reset this. if so, will override and force extended 
-			 * Most, if not all, cardos cards do extended, but not chaining 
+			 * may have reset this. if so, will override and force extended
+			 * Most, if not all, cardos cards do extended, but not chaining
 			 */
 			if (card->reader->max_send_size == 255 && card->reader->max_recv_size == 256) {
 				sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "resetting reader to use data_field_length");
@@ -416,61 +416,61 @@ static int cardos_finish(sc_card_t *card)
 static const struct sc_card_error cardos_errors[] = {
 /* some error inside the card */
 /* i.e. nothing you can do */
-{ 0x6581, SC_ERROR_MEMORY_FAILURE,	"EEPROM error; command aborted"}, 
+{ 0x6581, SC_ERROR_MEMORY_FAILURE,	"EEPROM error; command aborted"},
 { 0x6fff, SC_ERROR_CARD_CMD_FAILED,	"internal assertion error"},
-{ 0x6700, SC_ERROR_WRONG_LENGTH,	"LC invalid"}, 
-{ 0x6985, SC_ERROR_CARD_CMD_FAILED,	"no random number available"}, 
-{ 0x6f81, SC_ERROR_CARD_CMD_FAILED,	"file invalid, maybe checksum error"}, 
-{ 0x6f82, SC_ERROR_CARD_CMD_FAILED,	"not enough memory in xram"}, 
-{ 0x6f84, SC_ERROR_CARD_CMD_FAILED,	"general protection fault"}, 
+{ 0x6700, SC_ERROR_WRONG_LENGTH,	"LC invalid"},
+{ 0x6985, SC_ERROR_CARD_CMD_FAILED,	"no random number available"},
+{ 0x6f81, SC_ERROR_CARD_CMD_FAILED,	"file invalid, maybe checksum error"},
+{ 0x6f82, SC_ERROR_CARD_CMD_FAILED,	"not enough memory in xram"},
+{ 0x6f84, SC_ERROR_CARD_CMD_FAILED,	"general protection fault"},
 
 /* the card doesn't know this combination of ins+cla+p1+p2 */
 /* i.e. command will never work */
-{ 0x6881, SC_ERROR_NO_CARD_SUPPORT,	"logical channel not supported"}, 
-{ 0x6a86, SC_ERROR_INCORRECT_PARAMETERS,"p1/p2 invalid"}, 
-{ 0x6d00, SC_ERROR_INS_NOT_SUPPORTED,	"ins invalid"}, 
-{ 0x6e00, SC_ERROR_CLASS_NOT_SUPPORTED,	"class invalid (hi nibble)"}, 
+{ 0x6881, SC_ERROR_NO_CARD_SUPPORT,	"logical channel not supported"},
+{ 0x6a86, SC_ERROR_INCORRECT_PARAMETERS,"p1/p2 invalid"},
+{ 0x6d00, SC_ERROR_INS_NOT_SUPPORTED,	"ins invalid"},
+{ 0x6e00, SC_ERROR_CLASS_NOT_SUPPORTED,	"class invalid (hi nibble)"},
 
 /* known command, but incorrectly used */
 /* i.e. command could work, but you need to change something */
-{ 0x6981, SC_ERROR_CARD_CMD_FAILED,	"command cannot be used for file structure"}, 
-{ 0x6a80, SC_ERROR_INCORRECT_PARAMETERS,"invalid parameters in data field"}, 
-{ 0x6a81, SC_ERROR_NOT_SUPPORTED,	"function/mode not supported"}, 
-{ 0x6a85, SC_ERROR_INCORRECT_PARAMETERS,"lc does not fit the tlv structure"}, 
-{ 0x6986, SC_ERROR_INCORRECT_PARAMETERS,"no current ef selected"}, 
-{ 0x6a87, SC_ERROR_INCORRECT_PARAMETERS,"lc does not fit p1/p2"}, 
-{ 0x6c00, SC_ERROR_WRONG_LENGTH,	"le does not fit the data to be sent"}, 
-{ 0x6f83, SC_ERROR_CARD_CMD_FAILED,	"command must not be used in transaction"}, 
+{ 0x6981, SC_ERROR_CARD_CMD_FAILED,	"command cannot be used for file structure"},
+{ 0x6a80, SC_ERROR_INCORRECT_PARAMETERS,"invalid parameters in data field"},
+{ 0x6a81, SC_ERROR_NOT_SUPPORTED,	"function/mode not supported"},
+{ 0x6a85, SC_ERROR_INCORRECT_PARAMETERS,"lc does not fit the tlv structure"},
+{ 0x6986, SC_ERROR_INCORRECT_PARAMETERS,"no current ef selected"},
+{ 0x6a87, SC_ERROR_INCORRECT_PARAMETERS,"lc does not fit p1/p2"},
+{ 0x6c00, SC_ERROR_WRONG_LENGTH,	"le does not fit the data to be sent"},
+{ 0x6f83, SC_ERROR_CARD_CMD_FAILED,	"command must not be used in transaction"},
 
 /* (something) not found */
-{ 0x6987, SC_ERROR_INCORRECT_PARAMETERS,"key object for sm not found"}, 
-{ 0x6f86, SC_ERROR_CARD_CMD_FAILED,	"key object not found"}, 
-{ 0x6a82, SC_ERROR_FILE_NOT_FOUND,	"file not found"}, 
-{ 0x6a83, SC_ERROR_RECORD_NOT_FOUND,	"record not found"}, 
-{ 0x6a88, SC_ERROR_CARD_CMD_FAILED,	"object not found"}, 
+{ 0x6987, SC_ERROR_INCORRECT_PARAMETERS,"key object for sm not found"},
+{ 0x6f86, SC_ERROR_CARD_CMD_FAILED,	"key object not found"},
+{ 0x6a82, SC_ERROR_FILE_NOT_FOUND,	"file not found"},
+{ 0x6a83, SC_ERROR_RECORD_NOT_FOUND,	"record not found"},
+{ 0x6a88, SC_ERROR_CARD_CMD_FAILED,	"object not found"},
 
 /* (something) invalid */
-{ 0x6884, SC_ERROR_CARD_CMD_FAILED,	"chaining error"}, 
-{ 0x6984, SC_ERROR_CARD_CMD_FAILED,	"bs object has invalid format"}, 
-{ 0x6988, SC_ERROR_INCORRECT_PARAMETERS,"key object used for sm has invalid format"}, 
+{ 0x6884, SC_ERROR_CARD_CMD_FAILED,	"chaining error"},
+{ 0x6984, SC_ERROR_CARD_CMD_FAILED,	"bs object has invalid format"},
+{ 0x6988, SC_ERROR_INCORRECT_PARAMETERS,"key object used for sm has invalid format"},
 
 /* (something) deactivated */
 { 0x6283, SC_ERROR_CARD_CMD_FAILED,	"file is deactivated"	},
-{ 0x6983, SC_ERROR_AUTH_METHOD_BLOCKED,	"bs object blocked"}, 
+{ 0x6983, SC_ERROR_AUTH_METHOD_BLOCKED,	"bs object blocked"},
 
 /* access denied */
-{ 0x6300, SC_ERROR_SECURITY_STATUS_NOT_SATISFIED,"authentication failed"}, 
-{ 0x6982, SC_ERROR_SECURITY_STATUS_NOT_SATISFIED,"required access right not granted"}, 
+{ 0x6300, SC_ERROR_SECURITY_STATUS_NOT_SATISFIED,"authentication failed"},
+{ 0x6982, SC_ERROR_SECURITY_STATUS_NOT_SATISFIED,"required access right not granted"},
 
 /* other errors */
-{ 0x6a84, SC_ERROR_CARD_CMD_FAILED,	"not enough memory"}, 
+{ 0x6a84, SC_ERROR_CARD_CMD_FAILED,	"not enough memory"},
 
 /* command ok, execution failed */
-{ 0x6f00, SC_ERROR_CARD_CMD_FAILED,	"technical error (see eToken developers guide)"}, 
+{ 0x6f00, SC_ERROR_CARD_CMD_FAILED,	"technical error (see eToken developers guide)"},
 
 /* no error, maybe a note */
-{ 0x9000, SC_SUCCESS,		NULL}, 
-{ 0x9001, SC_SUCCESS,		"success, but eeprom weakness detected"}, 
+{ 0x9000, SC_SUCCESS,		NULL},
+{ 0x9001, SC_SUCCESS,		"success, but eeprom weakness detected"},
 { 0x9850, SC_SUCCESS,		"over/underflow using in/decrease"}
 };
 
@@ -478,10 +478,10 @@ static int cardos_check_sw(sc_card_t *card, unsigned int sw1, unsigned int sw2)
 {
 	const int err_count = sizeof(cardos_errors)/sizeof(cardos_errors[0]);
 	int i;
-			        
+
 	for (i = 0; i < err_count; i++) {
 		if (cardos_errors[i].SWs == ((sw1 << 8) | sw2)) {
-			if ( cardos_errors[i].errorstr ) 
+			if ( cardos_errors[i].errorstr )
 				sc_log(card->ctx,  "%s\n",
 				 	cardos_errors[i].errorstr);
 			return cardos_errors[i].errorno;
@@ -890,7 +890,7 @@ static int cardos_create_file(sc_card_t *card, sc_file_t *file)
 			sc_log(card->ctx,  "unable to create FCP");
 			return r;
 		}
-	
+
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xE0, 0x00, 0x00);
 		apdu.lc      = len;
 		apdu.datalen = len;
@@ -958,7 +958,7 @@ cardos_set_security_env(sc_card_t *card,
 	/* key_ref includes card mechanism and key number
 	 * But newer cards appear to get this some other way,
 	 * We can use flags passed to know what OpenSC expects from the card
-	 * and have derived what these machanisums are. 
+	 * and have derived what these machanisums are.
 	 * Newer cards may change how this is done
 	 */
 
@@ -1105,9 +1105,9 @@ cardos_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 
 	/* sec_env has algorithm_flags set from sc_get_encoding_flags sec_flags
-	 * If flags are set correctly we don't need to test anything 
-	 * TODO this assumes RSA is  PSS, PKCS1 or RAW and we are passing 
-	 * the correct data. Should work for ECDSA too.    
+	 * If flags are set correctly we don't need to test anything
+	 * TODO this assumes RSA is  PSS, PKCS1 or RAW and we are passing
+	 * the correct data. Should work for ECDSA too.
 	 * use for V5 cards and TODO should for older cards too
 	 */
 	if (card->type == SC_CARD_TYPE_CARDOS_V5_0 || card->type == SC_CARD_TYPE_CARDOS_V5_3) {
@@ -1220,7 +1220,7 @@ cardos_decipher(struct sc_card *card,
 		/*
 		 * 5.3 supports RAW as well as PKCS1 and PSS
 		 * description may strip padding if card supports it
-		 * with cards that support RAW, it always appears to 
+		 * with cards that support RAW, it always appears to
 		 * drop first 00 that is start of padding.
 		 */
 
@@ -1314,7 +1314,7 @@ cardos_lifecycle_set(sc_card_t *card, int *mode)
 	target = *mode;
 
 	r = cardos_lifecycle_get(card, &current);
-	
+
 	if (r != SC_SUCCESS)
 		return r;
 

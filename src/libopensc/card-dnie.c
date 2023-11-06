@@ -4,7 +4,7 @@
  * Copyright (C) 2010 Juan Antonio Martinez <jonsito@terra.es>
  *
  * This work is derived from many sources at OpenSC Project site,
- * (see references) and the information made public for Spanish 
+ * (see references) and the information made public for Spanish
  * Direccion General de la Policia y de la Guardia Civil
  *
  * This library is free software; you can redistribute it and/or
@@ -59,9 +59,9 @@
 #define USER_CONSENT_TITLE "Confirm"
 
 extern int dnie_read_file(
-	sc_card_t * card, 
-	const sc_path_t * path, 
-	sc_file_t ** file, 
+	sc_card_t * card,
+	const sc_path_t * path,
+	sc_file_t ** file,
 	u8 ** buffer, size_t * length);
 
 #define DNIE_CHIP_NAME "DNIe: Spanish eID card"
@@ -74,7 +74,7 @@ extern int dnie_read_file(
 /**
  * SW internal apdu response table.
  *
- * Override APDU response error codes from iso7816.c to allow 
+ * Override APDU response error codes from iso7816.c to allow
  * handling of SM specific error
  */
 static const struct sc_card_error dnie_errors[] = {
@@ -84,7 +84,7 @@ static const struct sc_card_error dnie_errors[] = {
 	{0, 0, NULL}
 };
 
-/* 
+/*
  * DNIe ATR info from DGP web page
  *
 Tag Value Meaning
@@ -408,7 +408,7 @@ static sc_card_driver_t dnie_driver = {
  */
 #ifdef ENABLE_DNIE_UI
 static int dnie_get_environment(
-	sc_card_t * card, 
+	sc_card_t * card,
 	ui_context_t * ui_context)
 {
 	int i;
@@ -441,13 +441,13 @@ static int dnie_get_environment(
 
 /************************** cardctl defined operations *******************/
 
-/** 
+/**
  * Generate a public/private key pair.
  *
- * Manual says that generate_keys() is a reserved operation; that is: 
- * only can be done at DGP offices. But several authors talk about 
+ * Manual says that generate_keys() is a reserved operation; that is:
+ * only can be done at DGP offices. But several authors talk about
  * this operation is available also outside. So need to test :-)
- * Notice that write operations are not supported, so we can't use 
+ * Notice that write operations are not supported, so we can't use
  * created keys to generate and store new certificates into the card.
  * TODO: copy code from card-jcop.c::jcop_generate_keys()
  * @param card pointer to card info data
@@ -507,10 +507,10 @@ data_found:
  * No need to enter pin nor use Secure Channel
  *
  * Notice that this is done by mean of a dirty trick: instead
- * of parsing ASN1 data on EF(CDF), 
+ * of parsing ASN1 data on EF(CDF),
  * we look for desired OID patterns in binary array
  *
- * @param card pointer to card info data 
+ * @param card pointer to card info data
  * @param data where to store function results (number,name,surname,idesp,version)
  * @return SC_SUCCESS if ok, else error code
  */
@@ -556,8 +556,8 @@ static int dnie_get_info(sc_card_t * card, char *data[])
 	sc_file_free(file);
 	file = NULL;
 	if (buffer) {
-		free(buffer); 
-		buffer=NULL; 
+		free(buffer);
+		buffer=NULL;
 		bufferlen=0;
 	}
 	res = dnie_read_file(card, &path, &file, &buffer, &bufferlen);
@@ -579,11 +579,11 @@ get_info_ph3:
 	sc_file_free(file);
 	file = NULL;
 	if (buffer) {
-		free(buffer); 
-		buffer=NULL; 
+		free(buffer);
+		buffer=NULL;
 		bufferlen=0;
 	}
-	/* 
+	/*
 	* Some old DNIe cards seems not to include SW version file,
  	* so let this code fail without notice
  	*/
@@ -813,7 +813,7 @@ static int dnie_sm_get_wrapped_apdu(struct sc_card *card,
 		}
 
 		*sm_apdu = apdu;
-	} else 
+	} else
 		*sm_apdu = plain;
 
 	apdu = NULL;
@@ -846,7 +846,7 @@ static int dnie_init(struct sc_card *card)
 
 	/* create and initialize cwa-dnie provider*/
 	provider = dnie_get_cwa_provider(card);
-	if (!provider) 
+	if (!provider)
 	    LOG_TEST_RET(card->ctx, SC_ERROR_INTERNAL, "Error initializing cwa-dnie provider");
 
 	/** Secure messaging initialization section **/
@@ -883,7 +883,7 @@ static int dnie_init(struct sc_card *card)
  * De-initialization routine.
  *
  * Called when the card object is being freed.  finish() has to
- * deallocate all possible private data. 
+ * deallocate all possible private data.
  *
  * @param card Pointer to card driver data structure
  * @return SC_SUCCESS if ok; else error code
@@ -944,7 +944,7 @@ compress_exit:
 
 	sc_log(card->ctx, "Data not compressed.");
 	return 0;
-}	
+}
 
 /**
  * Fill file cache for read_binary() operation.
@@ -954,10 +954,10 @@ compress_exit:
  *
  * DNIe card stores user certificates in compressed format. so we need
  * some way to detect and uncompress on-the-fly compressed files, to
- * let read_binary() work transparently. 
- * This is the main goal of this routine: create an in-memory buffer 
- * for read_binary operation, filling this buffer on first read_binary() 
- * call, and uncompress data if compression detected. Further 
+ * let read_binary() work transparently.
+ * This is the main goal of this routine: create an in-memory buffer
+ * for read_binary operation, filling this buffer on first read_binary()
+ * call, and uncompress data if compression detected. Further
  * read_binary() calls then make use of cached data, instead
  * of accessing the card
  *
@@ -1141,7 +1141,7 @@ static int dnie_compose_and_send_apdu(sc_card_t *card, const u8 *path, size_t pa
 
 	LOG_FUNC_CALLED(ctx);
 
-	dnie_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xA4, p1, 0, 
+	dnie_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xA4, p1, 0,
 					sc_get_max_recv_size(card), pathlen,
 					rbuf, sizeof(rbuf), path, pathlen);
 	if (p1 == 3)
@@ -1188,8 +1188,8 @@ static int dnie_compose_and_send_apdu(sc_card_t *card, const u8 *path, size_t pa
  *   in ISO7816-4. Stores information about the selected file to
  *   <file>, if not NULL.
  *
- * SELECT file in DNIe is a bit tricky: 
- * - only handles some types: 
+ * SELECT file in DNIe is a bit tricky:
+ * - only handles some types:
  * -- <strong>SC_PATH_TYPE_FILE_ID</strong> 2-byte long file ID
  * -- <strong>SC_PATH_TYPE_DF_NAME</strong> named DF's
  * -- <strong>SC_PATH_TYPE_PARENT</strong>  jump to parent DF of current EF/DF - undocumented in DNIe manual
@@ -1226,8 +1226,8 @@ static int dnie_select_file(struct sc_card *card,
 	switch (in_path->type) {
 	case SC_PATH_TYPE_FILE_ID:
 		/* pathlen must be of len=2 */
-		/* 
-		 * gscriptor shows that DNIe also handles 
+		/*
+		 * gscriptor shows that DNIe also handles
 		 * Select child DF (p1=1) and Select EF (p1=2),
 		 * but we'll use P1=0 as general solution for all cases
 		 *
@@ -1312,8 +1312,8 @@ static int dnie_select_file(struct sc_card *card,
  * NOTE:
  * Official driver redundantly sets SM before execute this command
  * No reason to do it, as is needed to do SM handshake...
- * Also: official driver reads in blocks of 20 bytes. 
- * Why? Manual and iso-7816-4 states that only 8 bytes 
+ * Also: official driver reads in blocks of 20 bytes.
+ * Why? Manual and iso-7816-4 states that only 8 bytes
  * are required... so we will obey Manual
  *
  * @param card Pointer to card Structure
@@ -1367,11 +1367,11 @@ static int dnie_logout(struct sc_card *card)
 	LOG_FUNC_CALLED(card->ctx);
 	if (card->sm_ctx.sm_mode != SM_MODE_NONE) {
 		/* mark the channel as closed */
-		result = cwa_create_secure_channel(card, 
+		result = cwa_create_secure_channel(card,
 			GET_DNIE_PRIV_DATA(card)->cwa_provider, CWA_SM_OFF);
 		LOG_TEST_RET(card->ctx, result, "Cannot close the secure channel");
 		/* request the Master File to provoke an SM error and close the channel */
-		result = dnie_compose_and_send_apdu(card, (const u8 *) DNIE_MF_NAME, 
+		result = dnie_compose_and_send_apdu(card, (const u8 *) DNIE_MF_NAME,
 			sizeof(DNIE_MF_NAME) - 1, 4, &file);
 		if (result == SC_ERROR_SM)
 			result = SC_SUCCESS;
@@ -1387,8 +1387,8 @@ static int dnie_logout(struct sc_card *card)
  *
  * Initializes the security environment on card
  *   according to <env>, and stores the environment as <se_num> on the
- *   card. If se_num <= 0, the environment will not be stored. 
- *   Notice that OpenDNIe SM handling requires a buffer longer than 
+ *   card. If se_num <= 0, the environment will not be stored.
+ *   Notice that OpenDNIe SM handling requires a buffer longer than
  *   provided for this command; so special apdu is used in cwa code
  *
  * @param card Pointer to card driver Structure
@@ -1439,7 +1439,7 @@ static int dnie_set_security_env(struct sc_card *card,
 		LOG_TEST_RET(card->ctx, result, "Unsupported algorithm");
 		if ((env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA1) == 0) {
 			result = SC_ERROR_NOT_SUPPORTED;
-			/* TODO: 
+			/* TODO:
 			 * Manual says that only RSA with SHA1 is supported, but found
 			 * some docs where states that SHA256 is also handled
 			 */
@@ -1493,7 +1493,7 @@ static int dnie_set_security_env(struct sc_card *card,
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 
-	/* Notice that Manual states that DNIE only allows handle of 
+	/* Notice that Manual states that DNIE only allows handle of
 	 * current security environment, so se_num is ignored, and
 	 * store sec env apdu (00 22 F2 se_num) command will not be issued */
 
@@ -1519,7 +1519,7 @@ static int dnie_set_security_env(struct sc_card *card,
  * ADD: seems that DNIe supports a minimal cipher/decipher operation
  * but restricted to 1024 data chunks . Need more info and tests
  *
- * @param card Pointer to Card Driver Structure 
+ * @param card Pointer to Card Driver Structure
  * @param crgram cryptogram to be (de)ciphered
  * @param crgram_len cryptogram length
  * @param out where to store result
@@ -1552,7 +1552,7 @@ static int dnie_decipher(struct sc_card *card,
 	 * (90 74 40 keyID). This code uses standard 00 2A 80 8x one)
 	 * as shown in card-atrust-acos.c and card-jcop.c
 	 */
-	dnie_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 
+	dnie_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT,
 			0x2A,	/* INS: 0x2A  perform security operation */
 			0x80,	/* P1: Response is plain value */
 			0x86,	/* P2: 8x: Padding indicator byte followed by cryptogram */
@@ -1576,11 +1576,11 @@ static int dnie_decipher(struct sc_card *card,
 /**
  * OpenDNIe implementation of Compute_Signature() card driver operation.
  *
- * Generates a digital signature on the card.  
- * This function handles the process of hash + sign 
+ * Generates a digital signature on the card.
+ * This function handles the process of hash + sign
  * with previously selected keys (by mean of set_security environment
  *
- * AS iso7816 and DNIe Manual states there are 3 ways to perform 
+ * AS iso7816 and DNIe Manual states there are 3 ways to perform
  * this operation:
  *
  * - (plaintext) Hash on plaintext + sign
@@ -1625,11 +1625,11 @@ static int dnie_compute_signature(struct sc_card *card,
 		result = dnie_ask_user_consent(card,user_consent_title,user_consent_message);
 		LOG_TEST_RET(card->ctx, result, "User consent denied");
 	}
-#endif    
+#endif
 
 	/*
-	   Seems that OpenSC already provides pkcs#1 v1.5 DigestInfo structure 
-	   with pre-calculated hash. So no need to to any Hash calculation, 
+	   Seems that OpenSC already provides pkcs#1 v1.5 DigestInfo structure
+	   with pre-calculated hash. So no need to to any Hash calculation,
 
 	   So just extract 15+20 DigestInfo+Hash info from ASN.1 provided
 	   data and feed them into sign() command
@@ -1723,7 +1723,7 @@ static int dnie_list_files(sc_card_t * card, u8 * buf, size_t buflen)
 				sc_log(card->ctx, "List file '%02X%02X' failed",
 				       id1, id2);
 				/* if file not found, continue; else abort */
-				if (res != SC_ERROR_FILE_NOT_FOUND) 
+				if (res != SC_ERROR_FILE_NOT_FOUND)
 					LOG_FUNC_RETURN(card->ctx, res);
 				continue;
 			}
@@ -1732,8 +1732,8 @@ static int dnie_list_files(sc_card_t * card, u8 * buf, size_t buflen)
 			/* store id into buffer */
 			*(buf + count++) = data[0];
 			*(buf + count++) = data[1];
-			/* TODO: 
-			* if found file is a DF go back to parent DF 
+			/* TODO:
+			* if found file is a DF go back to parent DF
 			* to continue search */
 		}
 	}
@@ -1843,7 +1843,7 @@ static int dnie_card_ctl(struct sc_card *card,
  * the read_binary() file cache work
  *
  * Extract real file length from compressed file is done by mean of
- * reading 8 first bytes for uncompressed/compressed length. 
+ * reading 8 first bytes for uncompressed/compressed length.
  * Lengths are provided as two 4-byte little endian numbers
  *
  * Implemented just like a direct read binary apdu bypassing dnie file cache
@@ -1892,7 +1892,7 @@ static int dnie_read_header(struct sc_card *card)
 	return 0;
 }
 
-/** 
+/**
  *  Access control list bytes for proprietary DNIe FCI response for DF's.
  *  based in information from official DNIe Driver
  *  Parsing code based on itacns card driver
@@ -1903,7 +1903,7 @@ static int df_acl[] = {		/* to handle DF's */
 	-1			/* !hey!, what about 5th byte of FCI info? */
 };
 
-/** 
+/**
  *  Access control list bytes for proprietary DNIe FCI response for EF's.
  *  based in information from official DNIe Driver
  *  Parsing code based on itacns card driver
@@ -1925,7 +1925,7 @@ static int ef_acl[] = {		/* to handle EF's */
  * @param file currently selected EF or DF
  * @param buf received FCI data
  * @param buflen FCI length
- * @return SC_SUCCESS if OK; else error code 
+ * @return SC_SUCCESS if OK; else error code
  */
 static int dnie_process_fci(struct sc_card *card,
 			    struct sc_file *file, const u8 * buf, size_t buflen)
@@ -1942,7 +1942,7 @@ static int dnie_process_fci(struct sc_card *card,
 	res = iso_ops->process_fci(card, file, buf, buflen);
 	LOG_TEST_RET(ctx, res, "iso7816_process_fci() failed");
 	/* if tag 0x85 is received, then file->prop_attr_len should be filled
-	 * by sc_file_set_prop_attr() code. So check and set data according manual 
+	 * by sc_file_set_prop_attr() code. So check and set data according manual
 	 * Note errata at pg 35 of Manual  about DF identifier (should be 0x38) */
 	if (file->prop_attr_len == 0) {	/* no proprietary tag (0x85) received */
 		res = SC_SUCCESS;
@@ -2000,15 +2000,15 @@ static int dnie_process_fci(struct sc_card *card,
 	}
 
 	/* bytes 1 and 2 stores file ID */
-	file->id = ( ( 0xff & (int)file->prop_attr[1] ) << 8 ) | 
+	file->id = ( ( 0xff & (int)file->prop_attr[1] ) << 8 ) |
 			( 0xff & (int)file->prop_attr[2] ) ;
 
 	/* bytes 3 and 4 states file length */
-	file->size = ( ( 0xff & (int)file->prop_attr[3] ) << 8 ) | 
+	file->size = ( ( 0xff & (int)file->prop_attr[3] ) << 8 ) |
 			( 0xff & (int)file->prop_attr[4] ) ;
 
 	/* bytes 5 to 9 states security attributes */
-	/* NOTE: 
+	/* NOTE:
 	 * seems that these 5 bytes are handled according iso7816-9 sect 8.
 	 * but sadly that each card uses their own bits :-(
 	 * Moreover: Manual talks on 5 bytes, but official driver only uses 4
@@ -2026,8 +2026,8 @@ static int dnie_process_fci(struct sc_card *card,
 					      SC_AC_KEY_REF_NONE);
 			break;
 		case 0x10:
-			/* this tag is omitted in official code 
-			   case 0x20: 
+			/* this tag is omitted in official code
+			   case 0x20:
 			 */
 		case 0x30:
 			sc_file_add_acl_entry(file, *(op + n), SC_AC_CHV,
@@ -2047,8 +2047,8 @@ static int dnie_process_fci(struct sc_card *card,
 			break;
 		}
 	}
-	/* NOTE: Following bytes are described at DNIe manual pg 36, but No 
-	   documentation about what to do with following data is provided... 
+	/* NOTE: Following bytes are described at DNIe manual pg 36, but No
+	   documentation about what to do with following data is provided...
 	   logs suggest that they are neither generated nor handled.
 
 	   UPDATE: these additional bytes are received when FileDescriptor tag
@@ -2058,7 +2058,7 @@ static int dnie_process_fci(struct sc_card *card,
 		sc_log(card->ctx,
 		       "Processing flags for Cryptographic key files");
 		/* byte 10 (if present) shows Control Flags for security files */
-		/* bytes 11 and 12 (if present) states Control bytes for 
+		/* bytes 11 and 12 (if present) states Control bytes for
 		   RSA crypto files */
 		/* TODO: write when know what to do */
 	}
@@ -2081,7 +2081,7 @@ static int dnie_process_fci(struct sc_card *card,
 /**
  * Change PIN.
  *
- * Not implemented yet, as current availability for DNIe user driver 
+ * Not implemented yet, as current availability for DNIe user driver
  * is unknown
  *
  * @param card Pointer to Card Driver data structure
@@ -2098,7 +2098,7 @@ static int dnie_pin_change(struct sc_card *card, struct sc_pin_cmd_data * data)
 	LOG_FUNC_RETURN(card->ctx,SC_ERROR_NOT_SUPPORTED);
 }
 
-/** 
+/**
  * Verify PIN.
  *
  * Initialize SM and send pin verify CHV1 command to DNIe
@@ -2190,8 +2190,8 @@ static int dnie_pin_cmd(struct sc_card *card,
 		return SC_ERROR_INVALID_ARGUMENTS;
 	LOG_FUNC_CALLED(card->ctx);
 
-	/* 
-	* some flags and settings from documentation 
+	/*
+	* some flags and settings from documentation
 	* No (easy) way to handle pinpad through SM, so disable it
 	*/
 	data->flags &= ~SC_PIN_CMD_NEED_PADDING; /* no pin padding */
@@ -2240,7 +2240,7 @@ static int dnie_pin_cmd(struct sc_card *card,
 /**
  * Internal function to initialize card driver function pointers.
  *
- * This is done by getting a copy for iso7816 card operations, 
+ * This is done by getting a copy for iso7816 card operations,
  * and replace every DNIe specific functions
  *
  * @return DNIe card driver data, or null on failure

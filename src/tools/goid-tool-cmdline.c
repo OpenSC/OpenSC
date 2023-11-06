@@ -160,7 +160,7 @@ void clear_args (struct gengetopt_args_info *args_info)
   args_info->new_write_ac_orig = NULL;
   args_info->new_write_ac_chatbit_arg = NULL;
   args_info->new_write_ac_chatbit_orig = NULL;
-  
+
 }
 
 static
@@ -217,7 +217,7 @@ void init_args_info(struct gengetopt_args_info *args_info)
   args_info->new_write_ac_chatbit_help = gengetopt_args_info_help[29] ;
   args_info->new_write_ac_chatbit_min = 0;
   args_info->new_write_ac_chatbit_max = 0;
-  
+
 }
 
 void
@@ -273,7 +273,7 @@ void
 cmdline_parser_params_init(struct cmdline_parser_params *params)
 {
   if (params)
-    { 
+    {
       params->override = 0;
       params->initialize = 1;
       params->check_required = 1;
@@ -285,9 +285,9 @@ cmdline_parser_params_init(struct cmdline_parser_params *params)
 struct cmdline_parser_params *
 cmdline_parser_params_create(void)
 {
-  struct cmdline_parser_params *params = 
+  struct cmdline_parser_params *params =
     (struct cmdline_parser_params *)malloc(sizeof(struct cmdline_parser_params));
-  cmdline_parser_params_init(params);  
+  cmdline_parser_params_init(params);
   return params;
 }
 
@@ -317,7 +317,7 @@ struct generic_list
 };
 
 /**
- * @brief add a node at the head of the list 
+ * @brief add a node at the head of the list
  */
 static void add_node(struct generic_list **list) {
   struct generic_list *new_node = (struct generic_list *) malloc (sizeof (struct generic_list));
@@ -397,8 +397,8 @@ cmdline_parser_release (struct gengetopt_args_info *args_info)
   free_string_field (&(args_info->new_write_ac_orig));
   free_multiple_field (args_info->new_write_ac_chatbit_given, (void *)(args_info->new_write_ac_chatbit_arg), &(args_info->new_write_ac_chatbit_orig));
   args_info->new_write_ac_chatbit_arg = 0;
-  
-  
+
+
 
   clear_given (args_info);
 }
@@ -445,7 +445,7 @@ write_into_file(FILE *outfile, const char *opt, const char *arg, const char *val
   int found = -1;
   if (arg) {
     if (values) {
-      found = check_possible_values(arg, values);      
+      found = check_possible_values(arg, values);
     }
     if (found >= 0)
       fprintf(outfile, "%s=\"%s\" # %s\n", opt, arg, values[found]);
@@ -460,7 +460,7 @@ static void
 write_multiple_into_file(FILE *outfile, int len, const char *opt, char **arg, const char *values[])
 {
   int i;
-  
+
   for (i = 0; i < len; ++i)
     write_into_file(outfile, opt, (arg ? arg[i] : 0), values);
 }
@@ -519,7 +519,7 @@ cmdline_parser_dump(FILE *outfile, struct gengetopt_args_info *args_info)
   if (args_info->new_write_ac_given)
     write_into_file(outfile, "new-write-ac", args_info->new_write_ac_orig, cmdline_parser_new_write_ac_values);
   write_multiple_into_file(outfile, args_info->new_write_ac_chatbit_given, "new-write-ac-chatbit", args_info->new_write_ac_chatbit_orig, 0);
-  
+
 
   i = EXIT_SUCCESS;
   return i;
@@ -605,8 +605,8 @@ get_multiple_arg_token(const char *arg)
   j = 0;
   while (arg[i] && (j < len-1))
     {
-      if (arg[i] == '\\' && 
-	  arg[ i + 1 ] && 
+      if (arg[i] == '\\' &&
+	  arg[ i + 1 ] &&
 	  arg[ i + 1 ] == ',')
         ++i;
 
@@ -698,7 +698,7 @@ check_multiple_option_occurrences(const char *prog_name, unsigned int option_giv
             }
         }
     }
-    
+
   return error_occurred;
 }
 int
@@ -719,7 +719,7 @@ cmdline_parser_ext (int argc, char **argv, struct gengetopt_args_info *args_info
       cmdline_parser_free (args_info);
       exit (EXIT_FAILURE);
     }
-  
+
   return result;
 }
 
@@ -728,7 +728,7 @@ cmdline_parser2 (int argc, char **argv, struct gengetopt_args_info *args_info, i
 {
   int result;
   struct cmdline_parser_params params;
-  
+
   params.override = override;
   params.initialize = initialize;
   params.check_required = check_required;
@@ -742,7 +742,7 @@ cmdline_parser2 (int argc, char **argv, struct gengetopt_args_info *args_info, i
       cmdline_parser_free (args_info);
       exit (EXIT_FAILURE);
     }
-  
+
   return result;
 }
 
@@ -759,7 +759,7 @@ cmdline_parser_required (struct gengetopt_args_info *args_info, const char *prog
       cmdline_parser_free (args_info);
       exit (EXIT_FAILURE);
     }
-  
+
   return result;
 }
 
@@ -772,38 +772,38 @@ cmdline_parser_required2 (struct gengetopt_args_info *args_info, const char *pro
   /* checks for required options */
   if (check_multiple_option_occurrences(prog_name, args_info->verbose_given, args_info->verbose_min, args_info->verbose_max, "'--verbose' ('-v')"))
      error_occurred = 1;
-  
+
   if (args_info->soc_mode_counter && check_multiple_option_occurrences(prog_name, args_info->new_bio_given, args_info->new_bio_min, args_info->new_bio_max, "'--new-bio'"))
      error_occurred = 1;
-  
+
   if (args_info->pxs_mode_counter && check_multiple_option_occurrences(prog_name, args_info->certificate_given, args_info->certificate_min, args_info->certificate_max, "'--certificate' ('-c')"))
      error_occurred = 1;
-  
+
   if (args_info->pxs_mode_counter && check_multiple_option_occurrences(prog_name, args_info->read_dg_given, args_info->read_dg_min, args_info->read_dg_max, "'--read-dg'"))
      error_occurred = 1;
-  
+
   if (args_info->pxs_mode_counter && check_multiple_option_occurrences(prog_name, args_info->out_file_given, args_info->out_file_min, args_info->out_file_max, "'--out-file'"))
      error_occurred = 1;
-  
+
   if (args_info->pxs_mode_counter && check_multiple_option_occurrences(prog_name, args_info->write_dg_given, args_info->write_dg_min, args_info->write_dg_max, "'--write-dg'"))
      error_occurred = 1;
-  
+
   if (args_info->pxs_mode_counter && check_multiple_option_occurrences(prog_name, args_info->in_file_given, args_info->in_file_min, args_info->in_file_max, "'--in-file'"))
      error_occurred = 1;
-  
+
   if (args_info->pxs_mode_counter && check_multiple_option_occurrences(prog_name, args_info->delete_dg_given, args_info->delete_dg_min, args_info->delete_dg_max, "'--delete-dg'"))
      error_occurred = 1;
-  
+
   if (args_info->pxs_mode_counter && check_multiple_option_occurrences(prog_name, args_info->create_dg_given, args_info->create_dg_min, args_info->create_dg_max, "'--create-dg'"))
      error_occurred = 1;
-  
+
   if (args_info->pxs_mode_counter && check_multiple_option_occurrences(prog_name, args_info->new_read_ac_chatbit_given, args_info->new_read_ac_chatbit_min, args_info->new_read_ac_chatbit_max, "'--new-read-ac-chatbit'"))
      error_occurred = 1;
-  
+
   if (args_info->pxs_mode_counter && check_multiple_option_occurrences(prog_name, args_info->new_write_ac_chatbit_given, args_info->new_write_ac_chatbit_min, args_info->new_write_ac_chatbit_max, "'--new-write-ac-chatbit'"))
      error_occurred = 1;
-  
-  
+
+
   /* checks for dependences among options */
   if (args_info->certificate_given && ! args_info->key_given)
     {
@@ -867,7 +867,7 @@ static char *package_name = 0;
  */
 static
 int update_arg(void *field, char **orig_field,
-               unsigned int *field_given, unsigned int *prev_given, 
+               unsigned int *field_given, unsigned int *prev_given,
                char *value, const char *possible_values[],
                const char *default_value,
                cmdline_parser_arg_type arg_type,
@@ -888,11 +888,11 @@ int update_arg(void *field, char **orig_field,
   if (!multiple_option && prev_given && (*prev_given || (check_ambiguity && *field_given)))
     {
       if (short_opt != '-')
-        fprintf (stderr, "%s: `--%s' (`-%c') option given more than once%s\n", 
+        fprintf (stderr, "%s: `--%s' (`-%c') option given more than once%s\n",
                package_name, long_opt, short_opt,
                (additional_error ? additional_error : ""));
       else
-        fprintf (stderr, "%s: `--%s' option given more than once%s\n", 
+        fprintf (stderr, "%s: `--%s' option given more than once%s\n",
                package_name, long_opt,
                (additional_error ? additional_error : ""));
       return 1; /* failure */
@@ -901,16 +901,16 @@ int update_arg(void *field, char **orig_field,
   if (possible_values && (found = check_possible_values((value ? value : default_value), possible_values)) < 0)
     {
       if (short_opt != '-')
-        fprintf (stderr, "%s: %s argument, \"%s\", for option `--%s' (`-%c')%s\n", 
+        fprintf (stderr, "%s: %s argument, \"%s\", for option `--%s' (`-%c')%s\n",
           package_name, (found == -2) ? "ambiguous" : "invalid", value, long_opt, short_opt,
           (additional_error ? additional_error : ""));
       else
-        fprintf (stderr, "%s: %s argument, \"%s\", for option `--%s'%s\n", 
+        fprintf (stderr, "%s: %s argument, \"%s\", for option `--%s'%s\n",
           package_name, (found == -2) ? "ambiguous" : "invalid", value, long_opt,
           (additional_error ? additional_error : ""));
       return 1; /* failure */
     }
-    
+
   if (field_given && *field_given && ! override)
     return 0;
   if (prev_given)
@@ -995,7 +995,7 @@ int update_multiple_arg_temp(struct generic_list **list,
     {
       add_node (list);
       if (update_arg((void *)&((*list)->arg), &((*list)->orig), 0,
-          prev_given, multi_token, possible_values, default_value, 
+          prev_given, multi_token, possible_values, default_value,
           arg_type, 0, 1, 1, 1, long_opt, short_opt, additional_error)) {
         if (multi_token) free(multi_token);
         return 1; /* failure */
@@ -1057,11 +1057,11 @@ void update_multiple_arg(void *field, char ***orig_field,
     default:
       break;
     };
-    
+
     for (i = (prev_given - 1); i >= 0; --i)
       {
         tmp = list;
-        
+
         switch(arg_type) {
         case ARG_INT:
           (*((int **)field))[i + field_given] = tmp->arg.int_arg; break;
@@ -1069,7 +1069,7 @@ void update_multiple_arg(void *field, char ***orig_field,
           (*((char ***)field))[i + field_given] = tmp->arg.string_arg; break;
         default:
           break;
-        }        
+        }
         (*orig_field) [i + field_given] = list->orig;
         list = list->next;
         free (tmp);
@@ -1080,7 +1080,7 @@ void update_multiple_arg(void *field, char ***orig_field,
       case ARG_INT:
         if (! *((int **)field)) {
           *((int **)field) = (int *)malloc (sizeof (int));
-          (*((int **)field))[0] = default_value->int_arg; 
+          (*((int **)field))[0] = default_value->int_arg;
         }
         break;
       case ARG_STRING:
@@ -1104,7 +1104,7 @@ static int check_modes(
                        int given2[], const char *options2[])
 {
   int i = 0, j = 0, errors = 0;
-  
+
   while (given1[i] >= 0) {
     if (given1[i]) {
       while (given2[j] >= 0) {
@@ -1118,7 +1118,7 @@ static int check_modes(
     }
     ++i;
   }
-  
+
   return errors;
 }
 
@@ -1140,14 +1140,14 @@ cmdline_parser_internal (
   struct generic_list * new_write_ac_chatbit_list = NULL;
   int error_occurred = 0;
   struct gengetopt_args_info local_args_info;
-  
+
   int override;
   int initialize;
   int check_required;
   int check_ambiguity;
-  
+
   package_name = argv[0];
-  
+
   /* TODO: Why is this here? It is not used anywhere. */
   override = params->override;
   FIX_UNUSED(override);
@@ -1221,325 +1221,325 @@ cmdline_parser_internal (
           exit (EXIT_SUCCESS);
 
         case 'r':	/* Number of the reader to use. By default, the first reader with a present card is used. If the argument is an ATR, the reader with a matching card will be chosen..  */
-        
-        
-          if (update_arg( (void *)&(args_info->reader_arg), 
+
+
+          if (update_arg( (void *)&(args_info->reader_arg),
                &(args_info->reader_orig), &(args_info->reader_given),
               &(local_args_info.reader_given), optarg, 0, 0, ARG_STRING,
               check_ambiguity, override, 0, 0,
               "reader", 'r',
               additional_error))
             goto failure;
-        
+
           break;
         case 'v':	/* Use (several times) to be more verbose.  */
-        
+
           local_args_info.verbose_given++;
-        
+
           break;
         case 'p':	/* Verify PIN.  */
-        
-        
-          if (update_arg( 0 , 
+
+
+          if (update_arg( 0 ,
                0 , &(args_info->verify_pin_given),
               &(local_args_info.verify_pin_given), optarg, 0, 0, ARG_NO,
               check_ambiguity, override, 0, 0,
               "verify-pin", 'p',
               additional_error))
             goto failure;
-        
+
           break;
         case 'b':	/* Verify finger print.  */
-        
-        
-          if (update_arg( 0 , 
+
+
+          if (update_arg( 0 ,
                0 , &(args_info->verify_bio_given),
               &(local_args_info.verify_bio_given), optarg, 0, 0, ARG_NO,
               check_ambiguity, override, 0, 0,
               "verify-bio", 'b',
               additional_error))
             goto failure;
-        
+
           break;
         case 'c':	/* Use (several times) to pass CV certificates.  */
           args_info->pxs_mode_counter += 1;
-        
-          if (update_multiple_arg_temp(&certificate_list, 
+
+          if (update_multiple_arg_temp(&certificate_list,
               &(local_args_info.certificate_given), optarg, 0, 0, ARG_STRING,
               "certificate", 'c',
               additional_error))
             goto failure;
-        
+
           break;
         case 'k':	/* Private key for the CV certificate.  */
           args_info->pxs_mode_counter += 1;
-        
-        
-          if (update_arg( (void *)&(args_info->key_arg), 
+
+
+          if (update_arg( (void *)&(args_info->key_arg),
                &(args_info->key_orig), &(args_info->key_given),
               &(local_args_info.key_given), optarg, 0, 0, ARG_STRING,
               check_ambiguity, override, 0, 0,
               "key", 'k',
               additional_error))
             goto failure;
-        
+
           break;
 
         case 0:	/* Long option with no short option */
           /* Verify PIN or finger print (user's choice).  */
           if (strcmp (long_options[option_index].name, "verify-pin-or-bio") == 0)
           {
-          
-          
-            if (update_arg( 0 , 
+
+
+            if (update_arg( 0 ,
                  0 , &(args_info->verify_pin_or_bio_given),
                 &(local_args_info.verify_pin_or_bio_given), optarg, 0, 0, ARG_NO,
                 check_ambiguity, override, 0, 0,
                 "verify-pin-or-bio", '-',
                 additional_error))
               goto failure;
-          
+
           }
           /* Change PIN.  */
           else if (strcmp (long_options[option_index].name, "new-pin") == 0)
           {
             args_info->soc_mode_counter += 1;
-          
-          
-            if (update_arg( 0 , 
+
+
+            if (update_arg( 0 ,
                  0 , &(args_info->new_pin_given),
                 &(local_args_info.new_pin_given), optarg, 0, 0, ARG_NO,
                 check_ambiguity, override, 0, 0,
                 "new-pin", '-',
                 additional_error))
               goto failure;
-          
+
           }
           /* Use (several times) to change one or more biometric templates.  */
           else if (strcmp (long_options[option_index].name, "new-bio") == 0)
           {
             args_info->soc_mode_counter += 1;
-          
+
             local_args_info.new_bio_given++;
-          
+
           }
           /* Dump Information about the SoCManager's configuration.  */
           else if (strcmp (long_options[option_index].name, "info") == 0)
           {
             args_info->soc_mode_counter += 1;
-          
-          
-            if (update_arg( 0 , 
+
+
+            if (update_arg( 0 ,
                  0 , &(args_info->info_given),
                 &(local_args_info.info_given), optarg, 0, 0, ARG_NO,
                 check_ambiguity, override, 0, 0,
                 "info", '-',
                 additional_error))
               goto failure;
-          
+
           }
           /* Print the card ID.  */
           else if (strcmp (long_options[option_index].name, "print-cardid") == 0)
           {
             args_info->pxs_mode_counter += 1;
-          
-          
-            if (update_arg( 0 , 
+
+
+            if (update_arg( 0 ,
                  0 , &(args_info->print_cardid_given),
                 &(local_args_info.print_cardid_given), optarg, 0, 0, ARG_NO,
                 check_ambiguity, override, 0, 0,
                 "print-cardid", '-',
                 additional_error))
               goto failure;
-          
+
           }
           /* Write the specified card ID.  */
           else if (strcmp (long_options[option_index].name, "write-cardid") == 0)
           {
             args_info->pxs_mode_counter += 1;
-          
-          
-            if (update_arg( (void *)&(args_info->write_cardid_arg), 
+
+
+            if (update_arg( (void *)&(args_info->write_cardid_arg),
                  &(args_info->write_cardid_orig), &(args_info->write_cardid_given),
                 &(local_args_info.write_cardid_given), optarg, 0, 0, ARG_STRING,
                 check_ambiguity, override, 0, 0,
                 "write-cardid", '-',
                 additional_error))
               goto failure;
-          
+
           }
           /* Print the PAccess ID.  */
           else if (strcmp (long_options[option_index].name, "print-paccessid") == 0)
           {
             args_info->pxs_mode_counter += 1;
-          
-          
-            if (update_arg( 0 , 
+
+
+            if (update_arg( 0 ,
                  0 , &(args_info->print_paccessid_given),
                 &(local_args_info.print_paccessid_given), optarg, 0, 0, ARG_NO,
                 check_ambiguity, override, 0, 0,
                 "print-paccessid", '-',
                 additional_error))
               goto failure;
-          
+
           }
           /* Write the specified PAccess ID.  */
           else if (strcmp (long_options[option_index].name, "write-paccessid") == 0)
           {
             args_info->pxs_mode_counter += 1;
-          
-          
-            if (update_arg( (void *)&(args_info->write_paccessid_arg), 
+
+
+            if (update_arg( (void *)&(args_info->write_paccessid_arg),
                  &(args_info->write_paccessid_orig), &(args_info->write_paccessid_given),
                 &(local_args_info.write_paccessid_given), optarg, 0, 0, ARG_STRING,
                 check_ambiguity, override, 0, 0,
                 "write-paccessid", '-',
                 additional_error))
               goto failure;
-          
+
           }
           /* Read the specified data group; use several times to read out multiple files.  */
           else if (strcmp (long_options[option_index].name, "read-dg") == 0)
           {
             args_info->pxs_mode_counter += 1;
-          
-            if (update_multiple_arg_temp(&read_dg_list, 
+
+            if (update_multiple_arg_temp(&read_dg_list,
                 &(local_args_info.read_dg_given), optarg, 0, 0, ARG_INT,
                 "read-dg", '-',
                 additional_error))
               goto failure;
-          
+
           }
           /* Write output to a file instead of printing it; use once for each use of `--read-dg'.  */
           else if (strcmp (long_options[option_index].name, "out-file") == 0)
           {
             args_info->pxs_mode_counter += 1;
-          
-            if (update_multiple_arg_temp(&out_file_list, 
+
+            if (update_multiple_arg_temp(&out_file_list,
                 &(local_args_info.out_file_given), optarg, 0, 0, ARG_STRING,
                 "out-file", '-',
                 additional_error))
               goto failure;
-          
+
           }
           /* Write the specified data group; use several times to write multiple files.  */
           else if (strcmp (long_options[option_index].name, "write-dg") == 0)
           {
             args_info->pxs_mode_counter += 1;
-          
-            if (update_multiple_arg_temp(&write_dg_list, 
+
+            if (update_multiple_arg_temp(&write_dg_list,
                 &(local_args_info.write_dg_given), optarg, 0, 0, ARG_INT,
                 "write-dg", '-',
                 additional_error))
               goto failure;
-          
+
           }
           /* Read input from a file; use once for each use of `--write-dg'.  */
           else if (strcmp (long_options[option_index].name, "in-file") == 0)
           {
             args_info->pxs_mode_counter += 1;
-          
-            if (update_multiple_arg_temp(&in_file_list, 
+
+            if (update_multiple_arg_temp(&in_file_list,
                 &(local_args_info.in_file_given), optarg, 0, 0, ARG_STRING,
                 "in-file", '-',
                 additional_error))
               goto failure;
-          
+
           }
           /* Delete the specified data group; use several times to delete multiple files.  */
           else if (strcmp (long_options[option_index].name, "delete-dg") == 0)
           {
             args_info->pxs_mode_counter += 1;
-          
-            if (update_multiple_arg_temp(&delete_dg_list, 
+
+            if (update_multiple_arg_temp(&delete_dg_list,
                 &(local_args_info.delete_dg_given), optarg, 0, 0, ARG_INT,
                 "delete-dg", '-',
                 additional_error))
               goto failure;
-          
+
           }
           /* Create the specified data group; use several times to create multiple files.  */
           else if (strcmp (long_options[option_index].name, "create-dg") == 0)
           {
             args_info->pxs_mode_counter += 1;
-          
-            if (update_multiple_arg_temp(&create_dg_list, 
+
+            if (update_multiple_arg_temp(&create_dg_list,
                 &(local_args_info.create_dg_given), optarg, 0, 0, ARG_INT,
                 "create-dg", '-',
                 additional_error))
               goto failure;
-          
+
           }
           /* File size of newly created DGs.  */
           else if (strcmp (long_options[option_index].name, "new-size") == 0)
           {
             args_info->pxs_mode_counter += 1;
-          
-          
-            if (update_arg( (void *)&(args_info->new_size_arg), 
+
+
+            if (update_arg( (void *)&(args_info->new_size_arg),
                  &(args_info->new_size_orig), &(args_info->new_size_given),
                 &(local_args_info.new_size_given), optarg, 0, "256", ARG_INT,
                 check_ambiguity, override, 0, 0,
                 "new-size", '-',
                 additional_error))
               goto failure;
-          
+
           }
           /* Access condition for reading newly created DGs.  */
           else if (strcmp (long_options[option_index].name, "new-read-ac") == 0)
           {
             args_info->pxs_mode_counter += 1;
-          
-          
-            if (update_arg( (void *)&(args_info->new_read_ac_arg), 
+
+
+            if (update_arg( (void *)&(args_info->new_read_ac_arg),
                  &(args_info->new_read_ac_orig), &(args_info->new_read_ac_given),
                 &(local_args_info.new_read_ac_given), optarg, cmdline_parser_new_read_ac_values, "sm", ARG_STRING,
                 check_ambiguity, override, 0, 0,
                 "new-read-ac", '-',
                 additional_error))
               goto failure;
-          
+
           }
           /* Required access bits in certificate's CHAT for reading newly created DGs.  */
           else if (strcmp (long_options[option_index].name, "new-read-ac-chatbit") == 0)
           {
             args_info->pxs_mode_counter += 1;
-          
-            if (update_multiple_arg_temp(&new_read_ac_chatbit_list, 
+
+            if (update_multiple_arg_temp(&new_read_ac_chatbit_list,
                 &(local_args_info.new_read_ac_chatbit_given), optarg, 0, 0, ARG_INT,
                 "new-read-ac-chatbit", '-',
                 additional_error))
               goto failure;
-          
+
           }
           /* Access condition for writing newly created DGs.  */
           else if (strcmp (long_options[option_index].name, "new-write-ac") == 0)
           {
             args_info->pxs_mode_counter += 1;
-          
-          
-            if (update_arg( (void *)&(args_info->new_write_ac_arg), 
+
+
+            if (update_arg( (void *)&(args_info->new_write_ac_arg),
                  &(args_info->new_write_ac_orig), &(args_info->new_write_ac_given),
                 &(local_args_info.new_write_ac_given), optarg, cmdline_parser_new_write_ac_values, "sm", ARG_STRING,
                 check_ambiguity, override, 0, 0,
                 "new-write-ac", '-',
                 additional_error))
               goto failure;
-          
+
           }
           /* Required access bits in certificate's CHAT for reading newly created DGs.  */
           else if (strcmp (long_options[option_index].name, "new-write-ac-chatbit") == 0)
           {
             args_info->pxs_mode_counter += 1;
-          
-            if (update_multiple_arg_temp(&new_write_ac_chatbit_list, 
+
+            if (update_multiple_arg_temp(&new_write_ac_chatbit_list,
                 &(local_args_info.new_write_ac_chatbit_given), optarg, 0, 0, ARG_INT,
                 "new-write-ac-chatbit", '-',
                 additional_error))
               goto failure;
-          
+
           }
-          
+
           break;
         case '?':	/* Invalid option.  */
           /* `getopt_long' already printed an error message.  */
@@ -1611,7 +1611,7 @@ cmdline_parser_internal (
   local_args_info.new_read_ac_chatbit_given = 0;
   args_info->new_write_ac_chatbit_given += local_args_info.new_write_ac_chatbit_given;
   local_args_info.new_write_ac_chatbit_given = 0;
-  
+
   if (args_info->pxs_mode_counter && args_info->soc_mode_counter) {
     int pxs_given[] = {args_info->certificate_given, args_info->key_given, args_info->print_cardid_given, args_info->write_cardid_given, args_info->print_paccessid_given, args_info->write_paccessid_given, args_info->read_dg_given, args_info->out_file_given, args_info->write_dg_given, args_info->in_file_given, args_info->delete_dg_given, args_info->create_dg_given, args_info->new_size_given, args_info->new_read_ac_given, args_info->new_read_ac_chatbit_given, args_info->new_write_ac_given, args_info->new_write_ac_chatbit_given,  -1};
     const char *pxs_desc[] = {"--certificate", "--key", "--print-cardid", "--write-cardid", "--print-paccessid", "--write-paccessid", "--read-dg", "--out-file", "--write-dg", "--in-file", "--delete-dg", "--create-dg", "--new-size", "--new-read-ac", "--new-read-ac-chatbit", "--new-write-ac", "--new-write-ac-chatbit",  0};
@@ -1619,7 +1619,7 @@ cmdline_parser_internal (
     const char *soc_desc[] = {"--new-pin", "--new-bio", "--info",  0};
     error_occurred += check_modes(pxs_given, pxs_desc, soc_given, soc_desc);
   }
-  
+
   if (check_required)
     {
       error_occurred += cmdline_parser_required2 (args_info, argv[0], additional_error);
@@ -1642,7 +1642,7 @@ failure:
   free_list (create_dg_list, 0 );
   free_list (new_read_ac_chatbit_list, 0 );
   free_list (new_write_ac_chatbit_list, 0 );
-  
+
   cmdline_parser_release (&local_args_info);
   return (EXIT_FAILURE);
 }

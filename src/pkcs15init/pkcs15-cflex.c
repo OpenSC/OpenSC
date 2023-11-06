@@ -292,7 +292,7 @@ cflex_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_pkcs15_obj
 	case 1024: size = 326; break;
 	case 2048: size = 646; break;
 	default:
-		sc_log(p15card->card->ctx, 
+		sc_log(p15card->card->ctx,
 			 "Unsupported key size %"SC_FORMAT_LEN_SIZE_T"u\n",
 			 key_info->modulus_length);
 		r = SC_ERROR_INVALID_ARGUMENTS;
