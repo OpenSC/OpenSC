@@ -1,5 +1,5 @@
 /*
- * muscle-filesystem.c: Support for MuscleCard Applet from musclecard.com 
+ * muscle-filesystem.c: Support for MuscleCard Applet from musclecard.com
  *
  * Copyright (C) 2006, Identity Alliance, Thomas Harning <support@identityalliance.com>
  *
@@ -124,7 +124,7 @@ int mscfs_update_cache(mscfs_t* fs) {
 			} else  {
 				file.ef = 1; /* File is a working elementary file */
 			}
-			
+
 			r = mscfs_push_file(fs, &file);
 			if (r != SC_SUCCESS)
 				return r;
@@ -221,7 +221,7 @@ int mscfs_loadFileInfo(mscfs_t* fs, const u8 *path, int pathlen, mscfs_file_t **
 	if (rc != SC_SUCCESS) {
 		return rc;
 	}
-	
+
 	/* Obtain file information while checking if it exists */
 	rc = mscfs_check_cache(fs);
 	if (rc < 0)
@@ -246,16 +246,16 @@ int mscfs_loadFileInfo(mscfs_t* fs, const u8 *path, int pathlen, mscfs_file_t **
 		ROOT_FILE.size = 0;
 		/* Faked Root ID */
 		ROOT_FILE.objectId = rootId;
-		
+
 		ROOT_FILE.read = 0;
 		ROOT_FILE.write = 0x02; /* User Pin access */
 		ROOT_FILE.delete = 0x02;
-		
+
 		*file_data = &ROOT_FILE;
 		if(idx) *idx = -2;
 	} else if(*file_data == NULL) {
 		return MSCFS_FILE_NOT_FOUND;
 	}
-	
+
 	return 0;
 }

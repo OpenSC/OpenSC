@@ -485,7 +485,7 @@ cardos_store_pin(sc_profile_t *profile, sc_card_t *card,
 	 * "no padding required". */
 	maxlen = MIN(profile->pin_maxlen, sizeof(pinpadded));
 	if (pin_len > maxlen) {
-		sc_log(card->ctx, 
+		sc_log(card->ctx,
 			 "invalid pin length: %"SC_FORMAT_LEN_SIZE_T"u (max %u)\n",
 			 pin_len, maxlen);
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -516,7 +516,7 @@ cardos_store_pin(sc_profile_t *profile, sc_card_t *card,
 		/* Use 9 byte OCI parameters to be able to set VerifyRC bit	*/
 		if (tlv_add(&tlv, 0x04) != SC_SUCCESS /* options_2 byte with bit 2 set to return CurrentErrorCounter */)
 			return SC_ERROR_INTERNAL;
-	
+
 	if (tlv_add(&tlv, attempts & 0xf) != SC_SUCCESS /* flags byte */
 	    || tlv_add(&tlv, CARDOS_ALGO_PIN) != SC_SUCCESS /* algorithm = pin-test */
 	    || tlv_add(&tlv, attempts & 0xf) != SC_SUCCESS /* errcount = attempts */)

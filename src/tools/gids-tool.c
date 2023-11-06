@@ -357,7 +357,7 @@ static int print_info(sc_card_t *card) {
 	gids_mf_record_t *records = (gids_mf_record_t *) (masterfile+1);
 	int recordcount;
 	int i;
-	
+
 	printf("===============================\n");
 	printf("Dumping the content of the card\n");
 	printf("===============================\n");

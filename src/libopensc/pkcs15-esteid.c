@@ -123,12 +123,12 @@ sc_pkcs15emu_esteid_init (sc_pkcs15_card_t * p15card)
 			"PIN1",
 			"PIN2",
 			"PUK" };
-			
+
 		static const unsigned int esteid_pin_min[3] = {4, 5, 8};
 		static const int esteid_pin_ref[3] = {1, 2, 0};
 		static const u8 esteid_pin_authid[3] = {1, 2, 3};
 		static const unsigned int esteid_pin_flags[3] = {0, 0, SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN};
-		
+
 		struct sc_pkcs15_auth_info pin_info;
 		struct sc_pkcs15_object pin_obj;
 

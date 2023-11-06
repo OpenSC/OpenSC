@@ -547,7 +547,7 @@ static int sm_decrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 		if (r < 0) {
 			goto err;
 		}
-		
+
 		r = ctx->verify_authentication(card, ctx, mac, mac_len,
 				mac_data, r);
 		if (r < 0)

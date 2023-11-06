@@ -1669,7 +1669,7 @@ extern const char *sc_get_version(void);
 
 extern sc_card_driver_t *sc_get_iso7816_driver(void);
 
-/** 
+/**
  * @brief Read a complete EF by short file identifier.
  *
  * @param[in]     card   card
@@ -1736,7 +1736,7 @@ iso7816_build_pin_apdu(struct sc_card *card, struct sc_apdu *apdu,
 /**
  * Free a buffer returned by OpenSC.
  * Use this instead your C libraries free() to free memory allocated by OpenSC.
- * For more details see <https://github.com/OpenSC/OpenSC/issues/2054> 
+ * For more details see <https://github.com/OpenSC/OpenSC/issues/2054>
  *
  * @param[in] p the buffer
  */

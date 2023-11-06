@@ -126,7 +126,7 @@ int sc_restore_security_env(sc_card_t *card, int se_num)
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
 
-int sc_verify(sc_card_t *card, unsigned int type, int ref, 
+int sc_verify(sc_card_t *card, unsigned int type, int ref,
 	      const u8 *pin, size_t pinlen, int *tries_left)
 {
 	struct sc_pin_cmd_data data;

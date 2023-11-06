@@ -261,7 +261,7 @@ static int cac_apdu_io(sc_card_t *card, int ins, int p1, int p2,
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	sc_log(card->ctx, 
+	sc_log(card->ctx,
 		 "%02x %02x %02x %"SC_FORMAT_LEN_SIZE_T"u : %"SC_FORMAT_LEN_SIZE_T"u %"SC_FORMAT_LEN_SIZE_T"u\n",
 		 ins, p1, p2, sendbuflen, card->max_send_size,
 		 card->max_recv_size);
@@ -300,14 +300,14 @@ static int cac_apdu_io(sc_card_t *card, int ins, int p1, int p2,
 		 apdu.resplen = 0;
 	}
 
-	sc_log(card->ctx, 
+	sc_log(card->ctx,
 		 "calling sc_transmit_apdu flags=%lx le=%"SC_FORMAT_LEN_SIZE_T"u, resplen=%"SC_FORMAT_LEN_SIZE_T"u, resp=%p",
 		 apdu.flags, apdu.le, apdu.resplen, apdu.resp);
 
 	/* with new adpu.c and chaining, this actually reads the whole object */
 	r = sc_transmit_apdu(card, &apdu);
 
-	sc_log(card->ctx, 
+	sc_log(card->ctx,
 		 "result r=%d apdu.resplen=%"SC_FORMAT_LEN_SIZE_T"u sw1=%02x sw2=%02x",
 		 r, apdu.resplen, apdu.sw1, apdu.sw2);
 	if (r < 0) {
@@ -466,7 +466,7 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 
 	/* if we didn't return it all last time, return the remainder */
 	if (priv->cached) {
-		sc_log(card->ctx, 
+		sc_log(card->ctx,
 			 "returning cached value idx=%d count=%"SC_FORMAT_LEN_SIZE_T"u",
 			 idx, count);
 		if (idx > priv->cache_buf_len) {
@@ -477,7 +477,7 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 		LOG_FUNC_RETURN(card->ctx, len);
 	}
 
-	sc_log(card->ctx, 
+	sc_log(card->ctx,
 		 "clearing cache idx=%d count=%"SC_FORMAT_LEN_SIZE_T"u",
 		 idx, count);
 	if (priv->cache_buf) {
@@ -538,7 +538,7 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 
 	case CAC_OBJECT_TYPE_CERT:
 		/* read file */
-		sc_log(card->ctx, 
+		sc_log(card->ctx,
 			 " obj= cert_file, val_len=%"SC_FORMAT_LEN_SIZE_T"u (0x%04"SC_FORMAT_LEN_SIZE_T"x)",
 			 val_len, val_len);
 		cert_len = 0;
@@ -767,7 +767,7 @@ static int cac_rsa_op(sc_card_t *card,
 	size_t rbuflen, outplen;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	sc_log(card->ctx, 
+	sc_log(card->ctx,
 		 "datalen=%"SC_FORMAT_LEN_SIZE_T"u outlen=%"SC_FORMAT_LEN_SIZE_T"u\n",
 		 datalen, outlen);
 

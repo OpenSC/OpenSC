@@ -51,11 +51,11 @@ typedef struct pdata_st {
 	unsigned int maxlen;
 	unsigned int minlen;
 	unsigned int storedlen;
-	int         flags;	
+	int         flags;
 	int         tries_left;
 	const char  pad_char;
 	int         obj_flags;
-} pindata; 
+} pindata;
 
 typedef struct prdata_st {
 	const char *id;
@@ -88,14 +88,14 @@ static int get_cert_len(sc_card_t *card, sc_path_t *path)
 	if (r < 0)
 		return 0;
 	r = sc_read_binary(card, 0, buf, sizeof(buf), 0);
-	if (r < 0)	
+	if (r < 0)
 		return 0;
 	if (buf[0] != 0x30 || buf[1] != 0x82)
 		return 0;
 	path->index = 0;
 	path->count = ((((size_t) buf[2]) << 8) | buf[3]) + 4;
 	return 1;
-} 
+}
 
 static int starcert_detect_card(sc_pkcs15_card_t *p15card)
 {
@@ -115,7 +115,7 @@ static int starcert_detect_card(sc_pkcs15_card_t *p15card)
 	r = sc_read_binary(card, 0, buf, 64, 0);
 	if (r != 64)
 		return SC_ERROR_WRONG_CARD;
-	if (memcmp(buf + 24, STARCERT, strlen(STARCERT))) 
+	if (memcmp(buf + 24, STARCERT, strlen(STARCERT)))
 		return SC_ERROR_WRONG_CARD;
 
 	return SC_SUCCESS;
@@ -252,7 +252,7 @@ static int sc_pkcs15emu_starcert_init(sc_pkcs15_card_t *p15card)
 		if (r < 0)
 			goto err;
 	}
-		
+
 	/* select the application DF */
 	sc_format_path("3F00DF01", &path);
 	r = sc_select_file(card, &path, &file);

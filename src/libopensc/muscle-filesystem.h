@@ -1,5 +1,5 @@
 /*
- * muscle-filesystem.h: Support for MuscleCard Applet from musclecard.com 
+ * muscle-filesystem.h: Support for MuscleCard Applet from musclecard.com
  *
  * Copyright (C) 2006, Identity Alliance, Thomas Harning <support@identityalliance.com>
  *

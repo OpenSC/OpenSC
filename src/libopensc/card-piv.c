@@ -6060,10 +6060,10 @@ piv_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 
 	/* If verify worked, we are logged_in */
 	if (data->cmd == SC_PIN_CMD_VERIFY) {
-	    if (r >= 0)
-		priv->logged_in = SC_PIN_STATE_LOGGED_IN;
-	    else
-		priv->logged_in = SC_PIN_STATE_LOGGED_OUT;
+		if (r >= 0)
+			priv->logged_in = SC_PIN_STATE_LOGGED_IN;
+		else
+			priv->logged_in = SC_PIN_STATE_LOGGED_OUT;
 	}
 
 	/* Some cards never return 90 00  for SC_PIN_CMD_GET_INFO even if the card state is verified */
@@ -6075,8 +6075,8 @@ piv_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 			data->pin1.logged_in =  priv->logged_in; /* use what ever we saw last */
 		} else if (priv->card_issues & CI_VERIFY_LC0_FAIL
 			&& priv->pin_cmd_verify_sw1 == 0x63U ) { /* can not use modified return codes from iso->drv->pin_cmd */
-				/* try another method, looking at a protected object this may require adding one of these to NEO */
-			    r = piv_check_protected_objects(card);
+			/* try another method, looking at a protected object this may require adding one of these to NEO */
+			r = piv_check_protected_objects(card);
 			if (r == SC_SUCCESS)
 				data->pin1.logged_in = SC_PIN_STATE_LOGGED_IN;
 			else if (r ==  SC_ERROR_PIN_CODE_INCORRECT) {

@@ -50,7 +50,7 @@ static int sc_pkcs15emu_gids_add_prkey(sc_pkcs15_card_t * p15card, sc_cardctl_gi
 	sc_pkcs15_object_t cert_obj;
 	int r;
 	char ch_tmp[10];
-	sc_log(card->ctx, 
+	sc_log(card->ctx,
 		"Got args: containerIndex=%"SC_FORMAT_LEN_SIZE_T"x\n",
 		 container->containernum);
 

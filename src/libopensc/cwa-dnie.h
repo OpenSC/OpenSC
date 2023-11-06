@@ -2,7 +2,7 @@
  * cwa-dnie.h: CWA specifics for DNIe
  *
  * This work is derived from many sources at OpenSC Project site,
- * (see references), and the information made public for Spanish 
+ * (see references), and the information made public for Spanish
  * Direccion General de la Policia y de la Guardia Civil
  *
  * This library is free software; you can redistribute it and/or
@@ -90,7 +90,7 @@ typedef struct dnie_channel_data {
 #endif
      dnie_channel_data_t *channel_data; /* Configuration data for the secure channel */
  } dnie_private_data_t;
- 
+
 /**
  * DNIe Card Driver private data
  */

@@ -130,7 +130,7 @@ static int sc_decompress_gzip(u8* out, size_t* outLen, const u8* in, size_t inLe
 	if (*outLen == 0) {
 		return SC_ERROR_UNKNOWN_DATA_RECEIVED;
 	}
-	return zerr_to_opensc(err);	
+	return zerr_to_opensc(err);
 }
 
 int sc_compress(u8* out, size_t* outLen, const u8* in, size_t inLen, int method) {
@@ -168,7 +168,7 @@ int sc_decompress(u8* out, size_t* outLen, const u8* in, size_t inLen, int metho
 	}
 	switch (method) {
 	case COMPRESSION_ZLIB:
-		zlib_outlen = *outLen;	
+		zlib_outlen = *outLen;
 		rc = zerr_to_opensc(uncompress(out, &zlib_outlen, in, inLen));
 		*outLen = zlib_outlen;
 		return rc;

@@ -260,7 +260,7 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 		}
 		cert_info.path.count = cert_der.len;
 
-		sc_log(card->ctx, 
+		sc_log(card->ctx,
 			 "cert len=%"SC_FORMAT_LEN_SIZE_T"u, cert_info.path.count=%d r=%d\n",
 			 cert_der.len, cert_info.path.count, r);
 		sc_log_hex(card->ctx, "cert", cert_der.value, cert_der.len);

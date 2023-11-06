@@ -513,8 +513,7 @@ static CK_RV gostr3410_verify_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len
 			ASN1_OCTET_STRING_free(octet);
 			P = EC_POINT_new(group);
 			if (P && X && Y)
-						r = EC_POINT_set_affine_coordinates(group,
-						P, X, Y, NULL);
+				r = EC_POINT_set_affine_coordinates(group, P, X, Y, NULL);
 			BN_free(X);
 			BN_free(Y);
 

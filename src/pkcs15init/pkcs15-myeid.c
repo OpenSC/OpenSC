@@ -797,16 +797,16 @@ myeid_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		case SC_PKCS15_TYPE_PRKEY_EC:
 			/* EC is supported in MyEID v > 3.5. TODO: set correct return value if older MyEID version. */
 			/* Here the information about curve is not available, that's why supported algorithm is checked
-			   without curve OID. */						
-                    
+			   without curve OID. */
+
 			if(key_info->field_length != 0)
 				keybits = key_info->field_length;
 			else
 				key_info->field_length = keybits;
-			
+
 			if (sc_card_find_ec_alg(p15card->card, keybits, NULL) == NULL)
 				LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Unsupported EC key size");
-			
+
 			break;
 		default:
 			LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Unsupported key type");

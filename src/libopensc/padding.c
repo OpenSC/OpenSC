@@ -102,7 +102,7 @@ static int sc_pkcs1_add_01_padding(const u8 *in, size_t in_len,
 	memmove(out + i, in, in_len);
 	*out++ = 0x00;
 	*out++ = 0x01;
-	
+
 	memset(out, 0xFF, i - 3);
 	out += i - 3;
 	*out = 0x00;
@@ -362,7 +362,7 @@ int sc_pkcs1_strip_digest_info_prefix(unsigned int *algorithm,
 		size_t    hdr_len  = digest_info_prefix[i].hdr_len,
 		          hash_len = digest_info_prefix[i].hash_len;
 		const u8 *hdr      = digest_info_prefix[i].hdr;
-		
+
 		if (in_len == (hdr_len + hash_len) &&
 		    !memcmp(in_dat, hdr, hdr_len)) {
 			if (algorithm)

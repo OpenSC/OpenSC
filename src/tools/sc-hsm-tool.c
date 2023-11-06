@@ -907,7 +907,7 @@ static int import_dkek_share(sc_card_t *card, const char *inf, int iter, const c
 
 static int print_dkek_share(sc_card_t *card, const char *inf, int iter, const char *password, int num_of_password_shares)
 {
-	// hex output can be used in the SCSH shell with the 
+	// hex output can be used in the SCSH shell with the
 	// decrypt_keyblob.js file
 	sc_cardctl_sc_hsm_dkek_t dkekinfo;
 	EVP_CIPHER_CTX *bn_ctx = NULL;
