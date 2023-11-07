@@ -29,16 +29,16 @@ if test "$FORCE_OPENSSL_BUILD" == "1" || ! pkg-config libcrypto --atleast-versio
 	if ! test -e $BUILDPATH/openssl_bin/$PREFIX/lib/pkgconfig; then
 		# Build OpenSSL manually, because Apple's binaries are deprecated
 		if ! test -e openssl; then
-			git clone --depth=1 https://github.com/openssl/openssl.git -b OpenSSL_1_1_1-stable
+			git clone --depth=1 https://github.com/openssl/openssl.git -b openssl-3.0
 		fi
 		cd openssl
-		MACHINE=x86_64 ./config no-shared --prefix=$PREFIX
+		./Configure darwin64-x86_64 no-shared --prefix=$PREFIX enable-ec_nistp_64_gcc_128
 		make clean
 		make -j 4
 		make DESTDIR=$BUILDPATH/openssl_bin install_sw
 		if test -n "${BUILD_ARM}"; then
 			make clean
-			MACHINE=arm64 KERNEL_BITS=64 ./config no-shared --prefix=$PREFIX
+			./Configure darwin64-arm64 no-shared --prefix=$PREFIX enable-ec_nistp_64_gcc_128
 			make -j 4
 			make DESTDIR=$BUILDPATH/openssl_arm64 install_sw
 			lipo -create $BUILDPATH/openssl_arm64/$PREFIX/lib/libcrypto.a $BUILDPATH/openssl_bin/$PREFIX/lib/libcrypto.a -output libcrypto.a
