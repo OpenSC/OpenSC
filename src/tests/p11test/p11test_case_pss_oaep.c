@@ -788,6 +788,10 @@ void pss_oaep_test(void **state) {
 				o->id_str);
 			continue;
 		}
+		/* Do not list non-RSA keys here */
+		if (o->type != EVP_PKEY_RSA)
+			continue;
+
 		fill_object_pss_mechanisms(info, o);
 		for (j = 0; j < o->num_mechs; j++)
 			if (o->mechs[j].mech != CKM_RSA_PKCS_OAEP)
