@@ -6672,7 +6672,7 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 
 	if (rsa_flags & SC_ALGORITHM_RSA_PAD_PSS) {
 		CK_FLAGS old_flags = mech_info.flags;
-		mech_info.flags &= ~(CKF_DECRYPT|CKF_ENCRYPT);
+		mech_info.flags &= ~(CKF_DECRYPT|CKF_ENCRYPT|CKF_WRAP|CKF_UNWRAP);
 		mt = sc_pkcs11_new_fw_mechanism(CKM_RSA_PKCS_PSS, &mech_info, CKK_RSA, NULL, NULL, NULL);
 		rc = sc_pkcs11_register_mechanism(p11card, mt, &registered_mt);
 		sc_pkcs11_free_mechanism(&mt);
