@@ -199,7 +199,7 @@ card_setup "$@"
 make p11test || exit
 if [[ "$PKCS11SPY" != "" ]]; then
 	export PKCS11SPY="$P11LIB"
-	$VALGRIND ./p11test -m ../../pkcs11/.libs/pkcs11-spy.so -p $PIN &> /tmp/spy.log
+	$VALGRIND ./p11test -v -m ../../pkcs11/.libs/pkcs11-spy.so -p $PIN &> /tmp/spy.log
 	echo "Output stored in /tmp/spy.log"
 else
 	$VALGRIND ./p11test -v -m "$P11LIB" -o test.json -p $PIN
