@@ -214,7 +214,6 @@ test_wrap(test_cert_t *o, token_info_t *info, test_cert_t *key, test_mech_t *mec
 	/* AES mechanisms */
 	case CKM_AES_CBC:
 	case CKM_AES_CBC_PAD:
-	case CKM_AES_ECB:
 		mech->params = &iv;
 		mech->params_len = sizeof(iv);
 		break;
@@ -226,6 +225,7 @@ test_wrap(test_cert_t *o, token_info_t *info, test_cert_t *key, test_mech_t *mec
 		mech->params = &gcm_params;
 		mech->params_len = sizeof(gcm_params);
 		break;
+	case CKM_AES_ECB:
 	case CKM_AES_KEY_WRAP:
 	case CKM_AES_KEY_WRAP_PAD:
 		/* Nothing special ... */
