@@ -4865,11 +4865,11 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 				opt_crypt_flags = SC_ALGORITHM_RSA_PAD_PKCS1;
 				BCRYPT_PKCS1_PADDING_INFO *pkcs1_pinf = (BCRYPT_PKCS1_PADDING_INFO *)pInfo->pPaddingInfo;
 
-				if (!pkcs1_pinf->pszAlgId || wcscmp(pkcs1_pinf->pszAlgId, L"SHAMD5") == 0) {
-					/* hashAlg = CALG_SSL3_SHAMD5; */
-					logprintf(pCardData, 3, "Using CALG_SSL3_SHAMD5  hashAlg\n");
+				if (!pkcs1_pinf->pszAlgId)
+					opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_NONE;
+				else if (wcscmp(pkcs1_pinf->pszAlgId, L"SHAMD5") == 0)
 					opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_MD5_SHA1;
-				} else if (wcscmp(pkcs1_pinf->pszAlgId, BCRYPT_MD5_ALGORITHM) == 0)
+				else if (wcscmp(pkcs1_pinf->pszAlgId, BCRYPT_MD5_ALGORITHM) == 0)
 					opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_MD5;
 				else if (wcscmp(pkcs1_pinf->pszAlgId, BCRYPT_SHA1_ALGORITHM) == 0)
 					opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA1;
