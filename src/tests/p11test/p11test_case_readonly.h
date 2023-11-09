@@ -37,3 +37,6 @@ int encrypt_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
     CK_ULONG message_length, test_mech_t *mech, unsigned char **enc_message);
 int decrypt_message(test_cert_t *o, token_info_t *info, CK_BYTE *enc_message,
     CK_ULONG enc_message_length, test_mech_t *mech, unsigned char **dec_message);
+
+unsigned char *rsa_x_509_pad_message(const unsigned char *message, unsigned long *message_length,
+		test_cert_t *o, int encrypt);

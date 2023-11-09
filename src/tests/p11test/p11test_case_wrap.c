@@ -19,6 +19,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "p11test_case_wrap.h"
+#include "p11test_case_readonly.h"
 
 #include <openssl/evp.h>
 #include <openssl/rand.h>
@@ -345,14 +346,21 @@ test_unwrap_aes(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 	CK_RSA_PKCS_OAEP_PARAMS oaep_params = {CKM_SHA_1, CKG_MGF1_SHA1, CKZ_DATA_SPECIFIED, NULL, 0};
 	CK_BYTE key[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
 			0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f};
+	CK_BYTE *key_padded = key;
+	CK_ULONG key_len = sizeof(key);
+	CK_ULONG key_padded_len = sizeof(key_padded);
 	CK_OBJECT_CLASS keyClass = CKO_SECRET_KEY;
 	CK_KEY_TYPE keyType = CKK_AES;
 	CK_BBOOL true = CK_TRUE;
+	CK_BYTE new_id[] = {0x00, 0xff, 0x42};
 	CK_ATTRIBUTE template[] = {
 			{CKA_CLASS, &keyClass, sizeof(keyClass)},
 			{CKA_KEY_TYPE, &keyType, sizeof(keyType)},
 			{CKA_ENCRYPT, &true, sizeof(true)},
-			{CKA_DECRYPT, &true, sizeof(true)}
+			{CKA_DECRYPT, &true, sizeof(true)},
+			{CKA_TOKEN, &true, sizeof(true)},
+			{CKA_ID, &new_id, sizeof(new_id)},
+			{CKA_VALUE_LEN, &key_len, sizeof(key_len)}, /* keep this one last! */
 	};
 	CK_ULONG template_len = sizeof(template) / sizeof(template[0]);
 	size_t wrapped_len;
@@ -379,8 +387,20 @@ test_unwrap_aes(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 		mech->params_len = sizeof(oaep_params);
 		/* fall through */
 	case CKM_RSA_X_509:
+		if ((key_padded = rsa_x_509_pad_message(key, &key_padded_len, o, 1)) == NULL) {
+			debug_print(" [ERROR %s ] Could not pad message", o->id_str);
+			return 1;
+		}
+		/* fall through */
 	case CKM_RSA_PKCS:
-		wrapped_len = encrypt_message(o, info, key, sizeof(key), mech, &wrapped);
+		wrapped_len = encrypt_message(o, info, key_padded, key_padded_len, mech, &wrapped);
+		if (wrapped_len <= 0) {
+			if (key != key_padded) {
+				free(key_padded);
+			}
+			debug_print(" [ERROR %s ] Failed to encrypt message with public key to unwrap", o->id_str);
+			return 1;
+		}
 		break;
 	/* AES mechanisms: TODO
 	case CKM_AES_CBC:
@@ -411,8 +431,18 @@ test_unwrap_aes(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 	mechanism.ulParameterLen = mech->params_len;
 	rv = fp->C_UnwrapKey(info->session_handle, &mechanism, o->private_handle, wrapped, wrapped_len,
 			template, template_len, &tmp_key.private_handle);
+	if (rv == CKR_ATTRIBUTE_READ_ONLY) {
+		/* The SoftHSM chokes on CKA_VALUE_LEN but MyEID requires it so first try with the attribute and retry
+		 * without to make softhsm happy */
+		template_len--;
+		rv = fp->C_UnwrapKey(info->session_handle, &mechanism, o->private_handle, wrapped,
+				wrapped_len, template, template_len, &tmp_key.private_handle);
+	}
 	free(wrapped);
 	if (rv != CKR_OK) {
+		if (key != key_padded) {
+			free(key_padded);
+		}
 		mech->params = NULL;
 		mech->params_len = 0;
 		fprintf(stderr, "  C_UnwrapKey: rv = 0x%.8lX\n", rv);
@@ -433,6 +463,9 @@ test_unwrap_aes(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 	tmp_key.extractable = CK_TRUE;
 	tmp_key.bits = CK_TRUE;
 	rv = check_encrypt_decrypt_secret(key, sizeof(key), &tmp_key, info);
+	if (key != key_padded) {
+		free(key_padded);
+	}
 	if (rv != 0) {
 		fprintf(stderr, " [ ERROR %s ] Decrypted message does not match\n", o->id_str);
 		return -1;
