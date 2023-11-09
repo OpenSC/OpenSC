@@ -37,7 +37,121 @@ strip_pkcs7_padding(const unsigned char *message, unsigned long message_length,
 	return (int)message_length - pad_length;
 }
 
-static int test_wrap(test_cert_t *o, token_info_t *info, test_cert_t *key, test_mech_t *mech)
+/* Perform encryption and decryption of a secret key using a PKCS#11 key referenced
+ * in the  pkcs11_key  object. The encryption is done in openssl and decryption in token.
+
+ *
+ * Returns
+ *  * 0 for successful Encrypt&Decrypt sequence
+ *  * -1 for failure
+ *  * 1 for skipped test (unsupported key type)
+ */
+static int
+check_encrypt_decrypt_secret(CK_BYTE *plain_key, CK_ULONG plain_key_len, test_cert_t *pkcs11_key,
+		token_info_t *info)
+{
+	CK_BYTE iv[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+			0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f};
+	EVP_CIPHER_CTX *ctx;
+	const EVP_CIPHER *cipher = NULL;
+	unsigned char plaintext[42];
+	int plaintext_len = sizeof(plaintext);
+	unsigned char ciphertext[100];
+	int ciphertext_len = sizeof(ciphertext);
+	test_mech_t aes_mech = {.mech = CKM_AES_CBC, .params = &iv, .params_len = sizeof(iv)};
+	unsigned char *check = NULL;
+	int check_len = 0;
+	int rv, len;
+
+	if (pkcs11_key->key_type != CKK_AES) {
+		fprintf(stderr, "  AES supported only\n");
+		return 1;
+	}
+
+	/* First, do the encryption dance with OpenSSL */
+	ctx = EVP_CIPHER_CTX_new();
+	if (ctx == NULL) {
+		EVP_CIPHER_CTX_free(ctx);
+		fprintf(stderr, "  EVP_CIPHER_CTX_new failed\n");
+		return -1;
+	}
+
+	rv = RAND_bytes(plaintext, plaintext_len);
+	if (rv != 1) {
+		EVP_CIPHER_CTX_free(ctx);
+		fprintf(stderr, "  RAND_bytes failed\n");
+		return -1;
+	}
+
+	if (plain_key_len == 32) {
+		cipher = EVP_aes_256_cbc();
+	} else if (plain_key_len == 16) {
+		cipher = EVP_aes_128_cbc();
+	} else {
+		EVP_CIPHER_CTX_free(ctx);
+		fprintf(stderr, "  Invalid key length %lu", plain_key_len);
+		return -1;
+	}
+	rv = EVP_EncryptInit_ex(ctx, cipher, NULL, plain_key, iv);
+	if (rv != 1) {
+		EVP_CIPHER_CTX_free(ctx);
+		fprintf(stderr, "  EVP_EncryptInit_ex failed\n");
+		return -1;
+	}
+	rv = EVP_EncryptUpdate(ctx, ciphertext, &ciphertext_len, plaintext, plaintext_len);
+	if (rv != 1) {
+		EVP_CIPHER_CTX_free(ctx);
+		fprintf(stderr, "  EVP_EncryptUpdate failed\n");
+		return -1;
+	}
+	rv = EVP_EncryptFinal_ex(ctx, ciphertext + ciphertext_len, &len);
+	EVP_CIPHER_CTX_free(ctx);
+	if (rv != 1) {
+		fprintf(stderr, "  EVP_EncryptFinal_ex failed\n");
+		return -1;
+	}
+	ciphertext_len += len;
+	/* Now, decrypt with the PKCS#11 */
+	check_len = decrypt_message(pkcs11_key, info, ciphertext, ciphertext_len, &aes_mech, &check);
+	if (check_len < 0) {
+		fprintf(stderr, "  Cannot decrypt message\n");
+		return -1;
+	}
+
+	check_len = strip_pkcs7_padding(check, check_len, 16);
+	if (check_len <= 0) {
+		free(check);
+		fprintf(stderr, "  Failed to strip PKCS#7 padding\n");
+		return -1;
+	}
+	if (check_len == plaintext_len && memcmp(plaintext, check, plaintext_len) == 0) {
+		free(check);
+		return 0;
+	}
+	/* else error */
+	fprintf(stderr, "  Decrypted message does not match (%d, %d)\n", check_len, plaintext_len);
+	fprintf(stderr, "\nplaintext:\n");
+	for (int i = 0; i < plaintext_len; i++) {
+		fprintf(stderr, ":%x", plaintext[i]);
+	}
+	fprintf(stderr, "\ncheck:\n");
+	for (int i = 0; i < check_len; i++) {
+		fprintf(stderr, ":%x", check[i]);
+	}
+	fprintf(stderr, "\n");
+	free(check);
+	return -1;
+}
+
+/* Perform key wrapping of a secret or private key on token  key  using a public key referenced
+ * in the  o  object. The wrapped key is then decrypted to verify the operation was successful, if possible.
+ *
+ * Returns
+ *  * 0 for successful Wrapping or skipped test
+ *  * 1 for failure
+ */
+static int
+test_wrap(test_cert_t *o, token_info_t *info, test_cert_t *key, test_mech_t *mech)
 {
 	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
 	CK_MECHANISM mechanism = { mech->mech, NULL_PTR, 0 };
@@ -65,47 +179,58 @@ static int test_wrap(test_cert_t *o, token_info_t *info, test_cert_t *key, test_
 
 	if (o->private_handle == CK_INVALID_HANDLE) {
 		debug_print(" [SKIP %s ] Missing private key", o->id_str);
-		return 1;
+		return 0;
 	}
 
 	if (o->key_type != CKK_RSA && o->key_type != CKK_AES) {
-		debug_print(" [ KEY %s ] Skip non-RSA and non-AES key for wrapping", o->id_str);
-		return 1;
+		debug_print(" [ SKIP %s ] Skip non-RSA and non-AES key for wrapping", o->id_str);
+		return 0;
 	}
 
 	debug_print(" [ KEY %s ] Wrap a key [%s] using CKM_%s", o->id_str, key->id_str,
 	            get_mechanism_name(mech->mech));
 	/* RSA mechanisms */
-	if (mech->mech == CKM_RSA_X_509) {
+	switch (mech->mech) {
+	case CKM_RSA_X_509:
 		if (o->bits < key->bits) {
 			debug_print(" [SKIP %s ] The wrapping key too small", o->id_str);
-			return 1;
+			return 0;
 		}
-	} else if (mech->mech == CKM_RSA_PKCS) {
+		break;
+	case CKM_RSA_PKCS:
 		if (o->bits - 11 < key->bits) {
 			debug_print(" [SKIP %s ] The wrapping key too small", o->id_str);
-			return 1;
+			return 0;
 		}
-	} else if (mech->mech == CKM_RSA_PKCS_OAEP) {
+		break;
+	case CKM_RSA_PKCS_OAEP:
 		if (o->bits - 2 - 2*SHA_DIGEST_LENGTH < key->bits) {
 			debug_print(" [SKIP %s ] The wrapping key too small", o->id_str);
-			return 1;
+			return 0;
 		}
 		mech->params = &oaep_params;
 		mech->params_len = sizeof(oaep_params);
+		break;
 	/* AES mechanisms */
-	} else if (mech->mech == CKM_AES_CBC || mech->mech == CKM_AES_CBC_PAD || mech->mech == CKM_AES_ECB) {
+	case CKM_AES_CBC:
+	case CKM_AES_CBC_PAD:
+	case CKM_AES_ECB:
 		mech->params = &iv;
 		mech->params_len = sizeof(iv);
-	} else if (mech->mech == CKM_AES_CTR) {
+		break;
+	case CKM_AES_CTR:
 		mech->params = &ctr_params;
 		mech->params_len = sizeof(ctr_params);
-	} else if (mech->mech == CKM_AES_GCM) {
+		break;
+	case CKM_AES_GCM:
 		mech->params = &gcm_params;
 		mech->params_len = sizeof(gcm_params);
-	} else if (mech->mech == CKM_AES_KEY_WRAP || mech->mech == CKM_AES_KEY_WRAP_PAD) {
+		break;
+	case CKM_AES_KEY_WRAP:
+	case CKM_AES_KEY_WRAP_PAD:
 		/* Nothing special ... */
-	} else {
+		break;
+	default:
 		debug_print(" [ KEY %s ] Unknown wrapping mechanism %s",
 		            o->id_str, get_mechanism_name(mech->mech));
 		return 1;
@@ -120,28 +245,37 @@ static int test_wrap(test_cert_t *o, token_info_t *info, test_cert_t *key, test_
 		mech->params = NULL;
 		mech->params_len = 0;
 		fprintf(stderr, "  C_WrapKey: rv = 0x%.8lX\n", rv);
-		return -1;
+		return 1;
 	}
 	wrapped = malloc(wrapped_len);
 	if (wrapped == NULL) {
 		mech->params = NULL;
 		mech->params_len = 0;
 		fprintf(stderr, "%s: malloc failed", __func__);
-		return -1;
+		return 1;
 	}
-	/* Wrap the key using public RSA key through PKCS#11 */
+	/* Wrap the key using public key through PKCS#11 */
 	rv = fp->C_WrapKey(info->session_handle, &mechanism, o->public_handle, key->private_handle,
 	                   wrapped, &wrapped_len);
+	if (rv == CKR_KEY_NOT_WRAPPABLE) {
+		/* nothing we can do about this: skip */
+		mech->params = NULL;
+		mech->params_len = 0;
+		fprintf(stderr, " [SKIP %s ] CKR_KEY_NOT_WRAPPABLE\n", o->id_str);
+		free(wrapped);
+		return 0;
+	}
 	if (rv != CKR_OK) {
 		mech->params = NULL;
 		mech->params_len = 0;
 		fprintf(stderr, "  C_WrapKey: rv = 0x%.8lX\n", rv);
 		free(wrapped);
-		return -1;
+		return 1;
 	}
 
 	if (mech->mech == CKM_AES_KEY_WRAP || mech->mech == CKM_AES_KEY_WRAP_PAD) {
 		/* good enough for now -- I dont know how to check these */
+		free(wrapped);
 		goto out;
 	}
 	/* OK, we have wrapped key. Now, check it is really the key on the card.
@@ -155,7 +289,7 @@ static int test_wrap(test_cert_t *o, token_info_t *info, test_cert_t *key, test_
 	mech->params_len = 0;
 	if (rv <= 0) {
 		debug_print(" [ KEY %s ] Unable to decrypt the wrapped key", o->id_str);
-		return -1;
+		return 1;
 	}
 	plain_len = rv;
 	/*
@@ -165,108 +299,30 @@ static int test_wrap(test_cert_t *o, token_info_t *info, test_cert_t *key, test_
 	 *  2) We encrypt something with a assumed key and decrypt it with the card key
 	 */
 	if (key->value) {
-/*
 		if (plain_len == key->bits/8 && memcmp(plain, key->value, plain_len) == 0) {
 			debug_print(" [  OK %s ] Wrapped key recovered correctly", o->id_str);
 		} else {
 			fprintf(stderr, " [ ERROR %s ] Wrapped key does not match\n", o->id_str);
-			return -1;
-		}*/
-		free(plain);
-	} else {
-		EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
-		const EVP_CIPHER *cipher = NULL;
-		unsigned char plaintext[42];
-		int plaintext_len = sizeof(plaintext);
-		unsigned char ciphertext[100];
-		int ciphertext_len = sizeof(ciphertext);
-		test_mech_t aes_mech = {.mech = CKM_AES_CBC, .params = &iv, .params_len = sizeof(iv)};
-		unsigned char *check = NULL;
-		int check_len = 0;
-		int rv, len;
-
-		/* First, do the encryption dance with OpenSSL */
-		if (ctx == NULL) {
-			free(plain);
-			EVP_CIPHER_CTX_free(ctx);
-			fprintf(stderr, "  EVP_CIPHER_CTX_new failed\n");
-			return -1;
-		}
-
-		rv = RAND_bytes(plaintext, plaintext_len);
-		if (rv != 1) {
-			free(plain);
-			EVP_CIPHER_CTX_free(ctx);
-			fprintf(stderr, "  RAND_bytes failed\n");
-			return -1;
-		}
-
-		if (key->key_type != CKK_AES) {
-			free(plain);
-			EVP_CIPHER_CTX_free(ctx);
-			debug_print(" [SKIP %s ] Only AES for now", o->id_str);
+			fprintf(stderr, "\nplaintext:\n");
+			for (unsigned long i = 0; i < plain_len; i++) {
+				fprintf(stderr, ":%x", plain[i]);
+			}
+			fprintf(stderr, "\nkey->value:\n");
+			for (unsigned long i = 0; i < key->bits / 8; i++) {
+				fprintf(stderr, ":%x", key->value[i]);
+			}
+			fprintf(stderr, "\n");
 			return 1;
 		}
-		if (plain_len == 32) {
-			cipher = EVP_aes_256_cbc();
-		} else if (plain_len == 16) {
-			cipher = EVP_aes_128_cbc();
-		} else {
-			free(plain);
-			EVP_CIPHER_CTX_free(ctx);
-			fprintf(stderr, "  Invalid key length %lu", plain_len);
-			return -1;
-		}
-		rv = EVP_EncryptInit_ex(ctx, cipher, NULL, plain, iv);
 		free(plain);
-		if (rv != 1) {
-			EVP_CIPHER_CTX_free(ctx);
-			fprintf(stderr, "  EVP_EncryptInit_ex failed\n");
-			return -1;
-		}
-		rv = EVP_EncryptUpdate(ctx, ciphertext, &ciphertext_len, plaintext, plaintext_len);
-		if (rv != 1) {
-			EVP_CIPHER_CTX_free(ctx);
-			fprintf(stderr, "  EVP_EncryptUpdate failed\n");
-			return -1;
-		}
-		rv = EVP_EncryptFinal_ex(ctx, ciphertext + ciphertext_len, &len);
-		EVP_CIPHER_CTX_free(ctx);
-		if (rv != 1) {
-			fprintf(stderr, "  EVP_EncryptFinal_ex failed\n");
-			return -1;
-		}
-		ciphertext_len += len;
-		/* Now, decrypt with the PKCS#11 */
-		check_len = decrypt_message(key, info, ciphertext, ciphertext_len, &aes_mech, &check);
-		if (check_len < 0) {
-			fprintf(stderr, "  Cannot decrypt message\n");
-			return -1;
-		}
-
-		check_len = strip_pkcs7_padding(check, check_len, 16);
-		if (check_len <= 0) {
-			free(check);
-			fprintf(stderr, "  Failed to strip PKCS#7 padding\n");
-			return -1;
-		}
-		if (check_len == plaintext_len && memcmp(plaintext, check, plaintext_len) == 0) {
-			free(check);
+	} else {
+		rv = check_encrypt_decrypt_secret(plain, plain_len, key, info);
+		free(plain);
+		if (rv == 0) {
 			debug_print(" [  OK %s ] Decrypted message matches", o->id_str);
 		} else {
-			printf(" [ ERROR %s ] Decrypted message does not match (%d, %d)\n", o->id_str,
-			       check_len, plaintext_len);
-			printf("\nplaintext:\n");
-			for (int i = 0; i < plaintext_len; i++) {
-				printf(":%x", plaintext[i]);
-			}
-			printf("\ncheck:\n");
-			for (int i = 0; i < check_len; i++) {
-				printf(":%x", check[i]);
-			}
-			printf("\n");
-			free(check);
-			return -1;
+			fprintf(stderr, " [ ERROR %s ] Decrypted message does not match\n", o->id_str);
+			return 1;
 		}
 	}
 
@@ -280,7 +336,114 @@ out:
 	return 0;
 }
 
-void wrap_tests(void **state)
+static int
+test_unwrap_aes(test_cert_t *o, token_info_t *info, test_mech_t *mech)
+{
+	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
+	CK_MECHANISM mechanism = {mech->mech, NULL_PTR, 0};
+	/* SoftHSM supports only SHA1 with OAEP encryption */
+	CK_RSA_PKCS_OAEP_PARAMS oaep_params = {CKM_SHA_1, CKG_MGF1_SHA1, CKZ_DATA_SPECIFIED, NULL, 0};
+	CK_BYTE key[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+			0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f};
+	CK_OBJECT_CLASS keyClass = CKO_SECRET_KEY;
+	CK_KEY_TYPE keyType = CKK_AES;
+	CK_BBOOL true = CK_TRUE;
+	CK_ATTRIBUTE template[] = {
+			{CKA_CLASS, &keyClass, sizeof(keyClass)},
+			{CKA_KEY_TYPE, &keyType, sizeof(keyType)},
+			{CKA_ENCRYPT, &true, sizeof(true)},
+			{CKA_DECRYPT, &true, sizeof(true)}
+	};
+	CK_ULONG template_len = sizeof(template) / sizeof(template[0]);
+	size_t wrapped_len;
+	CK_BYTE *wrapped = NULL;
+	test_cert_t tmp_key = {0};
+	CK_RV rv;
+
+	if (o->private_handle == CK_INVALID_HANDLE) {
+		debug_print(" [SKIP %s ] Missing private key", o->id_str);
+		return 1;
+	}
+
+	if (o->key_type != CKK_RSA && o->key_type != CKK_AES) {
+		debug_print(" [ KEY %s ] Skip non-RSA and non-AES key for wrapping", o->id_str);
+		return 1;
+	}
+
+	debug_print(" [ KEY %s ] Unwrap a AES key using CKM_%s", o->id_str, get_mechanism_name(mech->mech));
+
+	/* Wrap/encrypt the key and set up the parameters */
+	switch (mech->mech) {
+	case CKM_RSA_PKCS_OAEP:
+		mech->params = &oaep_params;
+		mech->params_len = sizeof(oaep_params);
+		/* fall through */
+	case CKM_RSA_X_509:
+	case CKM_RSA_PKCS:
+		wrapped_len = encrypt_message(o, info, key, sizeof(key), mech, &wrapped);
+		break;
+	/* AES mechanisms: TODO
+	case CKM_AES_CBC:
+	case CKM_AES_CBC_PAD:
+	case CKM_AES_ECB:
+		mech->params = &iv;
+		mech->params_len = sizeof(iv);
+		break;
+	case CKM_AES_CTR:
+		mech->params = &ctr_params;
+		mech->params_len = sizeof(ctr_params);
+		break;
+	case CKM_AES_GCM:
+		mech->params = &gcm_params;
+		mech->params_len = sizeof(gcm_params);
+		break;
+	case CKM_AES_KEY_WRAP:
+	case:CKM_AES_KEY_WRAP_PAD:
+		// Nothing special ...
+		break; */
+	default:
+		debug_print(" [ KEY %s ] Unknown wrapping mechanism %s", o->id_str,
+				get_mechanism_name(mech->mech));
+		return 1;
+	}
+
+	mechanism.pParameter = mech->params;
+	mechanism.ulParameterLen = mech->params_len;
+	rv = fp->C_UnwrapKey(info->session_handle, &mechanism, o->private_handle, wrapped, wrapped_len,
+			template, template_len, &tmp_key.private_handle);
+	free(wrapped);
+	if (rv != CKR_OK) {
+		mech->params = NULL;
+		mech->params_len = 0;
+		fprintf(stderr, "  C_UnwrapKey: rv = 0x%.8lX\n", rv);
+		return -1;
+	}
+
+	/* now, check the key */
+	/* Simple test might be the attempt to encrypt some data with the key and check it can be decrypted with
+	 * the plaintext secret */
+	tmp_key.public_handle = tmp_key.private_handle;
+	tmp_key.key_type = CKK_AES;
+	tmp_key.sign = CK_TRUE;
+	tmp_key.verify = CK_TRUE;
+	tmp_key.encrypt = CK_TRUE;
+	tmp_key.decrypt = CK_TRUE;
+	tmp_key.wrap = CK_TRUE;
+	tmp_key.unwrap = CK_TRUE;
+	tmp_key.extractable = CK_TRUE;
+	tmp_key.bits = CK_TRUE;
+	rv = check_encrypt_decrypt_secret(key, sizeof(key), &tmp_key, info);
+	if (rv != 0) {
+		fprintf(stderr, " [ ERROR %s ] Decrypted message does not match\n", o->id_str);
+		return -1;
+	}
+	debug_print(" [  OK %s ] Decrypted message matches", o->id_str);
+	mech->result_flags |= FLAGS_UNWRAP_SYM;
+	return 0;
+}
+
+void
+wrap_tests(void **state)
 {
 	unsigned int i;
 	size_t j;
@@ -336,6 +499,7 @@ void wrap_tests(void **state)
 				if (aes_key) {
 					errors += test_wrap(o, info, aes_key, &(o->mechs[j]));
 				}
+				errors += test_unwrap_aes(o, info, &(o->mechs[j]));
 				break;
 			case CKK_AES:
 				/* We probably can not wrap one key with itself */
@@ -347,6 +511,7 @@ void wrap_tests(void **state)
 				if (rsa_key) {
 					errors += test_wrap(o, info, rsa_key, &(o->mechs[j]));
 				}
+				// errors += test_unwrap_aes(o, info, &(o->mechs[j]));
 				break;
 			default:
 				/* Other keys do not support derivation */
