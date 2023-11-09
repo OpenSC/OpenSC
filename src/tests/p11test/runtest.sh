@@ -130,8 +130,9 @@ function card_setup() {
 			;;
 		"myeid")
 			GENERATE_KEYS=0 # we generate them directly here
+			PKCS15_INIT="env OPENSC_CONF=myeid_opensc.conf $PKCS15_INIT"
 			P11LIB="../../pkcs11/.libs/opensc-pkcs11.so"
-			$PKCS15_INIT --erase-card --so-pin $SOPIN
+			$PKCS15_INIT --erase-card
 			$PKCS15_INIT -C --pin $PIN --puk $SOPIN --so-pin $SOPIN --so-puk $SOPIN
 			$PKCS15_INIT -P -a 1 -l "Basic PIN" --pin $PIN --puk $PIN
 			INIT="$PKCS15_INIT --auth-id 01 --so-pin $SOPIN --pin $PIN"
