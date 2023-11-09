@@ -54,7 +54,14 @@ check_encrypt_decrypt_secret(CK_BYTE *plain_key, CK_ULONG plain_key_len, test_ce
 			0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f};
 	EVP_CIPHER_CTX *ctx;
 	const EVP_CIPHER *cipher = NULL;
-	unsigned char plaintext[42];
+	unsigned char plaintext[42] = {
+		0x42, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48, 0x49,
+		0x4a, 0x4b, 0x4c, 0x4d, 0x4e, 0x4f, 0x50, 0x51,
+		0x52, 0x53, 0x54, 0x55, 0x56, 0x57, 0x58, 0x59,
+		0x5a, 0x5b, 0x5c, 0x5d, 0x5e, 0x5f, 0x60, 0x61,
+		0x62, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68, 0x69,
+		0x6a, 0x6b,
+	};
 	int plaintext_len = sizeof(plaintext);
 	unsigned char ciphertext[100];
 	int ciphertext_len = sizeof(ciphertext);
@@ -73,13 +80,6 @@ check_encrypt_decrypt_secret(CK_BYTE *plain_key, CK_ULONG plain_key_len, test_ce
 	if (ctx == NULL) {
 		EVP_CIPHER_CTX_free(ctx);
 		fprintf(stderr, "  EVP_CIPHER_CTX_new failed\n");
-		return -1;
-	}
-
-	rv = RAND_bytes(plaintext, plaintext_len);
-	if (rv != 1) {
-		EVP_CIPHER_CTX_free(ctx);
-		fprintf(stderr, "  RAND_bytes failed\n");
 		return -1;
 	}
 
