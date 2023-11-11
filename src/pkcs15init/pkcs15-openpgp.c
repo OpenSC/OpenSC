@@ -423,7 +423,7 @@ static int openpgp_store_data(struct sc_pkcs15_card *p15card, struct sc_profile 
 {
 	sc_card_t *card = p15card->card;
 	sc_context_t *ctx = card->ctx;
-	sc_file_t *file;
+	sc_file_t *file = NULL;
 	sc_pkcs15_cert_info_t *cinfo;
 	sc_pkcs15_id_t *cid;
 	sc_pkcs15_data_info_t *dinfo;
@@ -520,7 +520,7 @@ static int openpgp_store_data(struct sc_pkcs15_card *p15card, struct sc_profile 
 	default:
 		r = SC_ERROR_NOT_IMPLEMENTED;
 	}
-
+	sc_file_free(file);
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
