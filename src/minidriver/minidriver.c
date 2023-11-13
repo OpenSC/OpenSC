@@ -4653,9 +4653,9 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 					  "sc_pkcs15_decipher: DECRYPT-INFO dwVersion=%lu\n",
 					  (unsigned long)pInfo->dwVersion);
 				if (pInfo->dwPaddingType == CARD_PADDING_PKCS1)   {
-					size_t temp = pInfo->cbData;
+					unsigned int temp = pInfo->cbData;
 					logprintf(pCardData, 2, "sc_pkcs15_decipher: stripping PKCS1 padding\n");
-					r = sc_pkcs1_strip_02_padding(vs->ctx, pbuf2, pInfo->cbData, pbuf2, &temp);
+					r = sc_pkcs1_strip_02_padding_constant_time(vs->ctx, prkey_info->modulus_length / 8, pbuf2, pInfo->cbData, pbuf2, &temp);
 					pInfo->cbData = (DWORD) temp;
 					if (r < 0)   {
 						logprintf(pCardData, 2, "Cannot strip PKCS1 padding: %i\n", r);

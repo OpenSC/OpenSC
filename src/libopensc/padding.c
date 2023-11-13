@@ -32,9 +32,12 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include "common/constant-time.h"
 #include "internal.h"
 #include "pkcs11/pkcs11.h"
 /* TODO doxygen comments */
+
+#define SC_PKCS1_PADDING_MIN_SIZE 11
 
 /*
  * Prefixes for pkcs-v1 signatures
@@ -143,45 +146,82 @@ sc_pkcs1_strip_01_padding(struct sc_context *ctx, const u8 *in_dat, size_t in_le
 	return SC_SUCCESS;
 }
 
-
-/* remove pkcs1 BT02 padding (adding BT02 padding is currently not
- * needed/implemented) */
+/* Remove pkcs1 BT02 padding (adding BT02 padding is currently not
+ * needed/implemented) in constant-time.
+ * Original source: https://github.com/openssl/openssl/blob/9890cc42daff5e2d0cad01ac4bf78c391f599a6e/crypto/rsa/rsa_pk1.c#L171 */
 int
-sc_pkcs1_strip_02_padding(sc_context_t *ctx, const u8 *data, size_t len, u8 *out, size_t *out_len)
+sc_pkcs1_strip_02_padding_constant_time(sc_context_t *ctx, unsigned int n, const u8 *data, unsigned int data_len, u8 *out, unsigned int *out_len)
 {
-	unsigned int	n = 0;
-
+	unsigned int i = 0;
+	u8 *msg, *msg_orig = NULL;
+	unsigned int good, found_zero_byte, mask;
+	unsigned int zero_index = 0, msg_index, mlen = -1, len = 0;
 	LOG_FUNC_CALLED(ctx);
-	if (data == NULL || len < 3)
+
+	if (data == NULL || data_len <= 0 || data_len > n || n < SC_PKCS1_PADDING_MIN_SIZE)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
 
-	/* skip leading zero byte */
-	if (*data == 0) {
-		data++;
-		len--;
+	msg = msg_orig = calloc(n, sizeof(u8));
+	if (msg == NULL)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
+
+	/*
+	 * We can not check length of input data straight away and still we need to read
+	 * from input even when the input is not as long as needed to keep the time constant.
+	 * If data has wrong size, it is padded by zeroes from left and the following checks
+	 * do not pass.
+	 */
+	len = data_len;
+	for (data += len, msg += n, i = 0; i < n; i++) {
+		mask = ~constant_time_is_zero(len);
+		len -= 1 & mask;
+		data -= 1 & mask;
+		*--msg = *data & mask;
 	}
-	if (data[0] != 0x02)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_WRONG_PADDING);
-	/* skip over padding bytes */
-	for (n = 1; n < len && data[n]; n++)
-		;
-	/* Must be at least 8 pad bytes */
-	if (n >= len || n < 9)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_WRONG_PADDING);
-	n++;
-	if (out == NULL)
-		/* just check the padding */
-		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+	// check first byte to be 0x00
+	good = constant_time_is_zero(msg[0]);
+	// check second byte to be 0x02
+	good &= constant_time_eq(msg[1], 2);
 
-	/* Now move decrypted contents to head of buffer */
-	if (*out_len < len - n)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
-	*out_len = len - n;
-	memmove(out, data + n, *out_len);
+	// find zero byte after random data in padding
+	found_zero_byte = 0;
+	for (i = 2; i < n; i++) {
+		unsigned int equals0 = constant_time_is_zero(msg[i]);
+		zero_index = constant_time_select(~found_zero_byte & equals0, i, zero_index);
+		found_zero_byte |= equals0;
+	}
 
-	sc_log(ctx, "stripped output(%"SC_FORMAT_LEN_SIZE_T"u): %s", len - n,
-	       sc_dump_hex(out, len - n));
-	LOG_FUNC_RETURN(ctx, (int)(len - n));
+	// zero_index stands for index of last found zero
+	good &= constant_time_ge(zero_index, 2 + 8);
+
+	// start of the actual message in data
+	msg_index = zero_index + 1;
+
+	// length of message
+	mlen = data_len - msg_index;
+
+	// check that message fits into out buffer
+	good &= constant_time_ge(*out_len, mlen);
+
+	// move the result in-place by |num|-SC_PKCS1_PADDING_MIN_SIZE-|mlen| bytes to the left.
+	*out_len = constant_time_select(constant_time_lt(n - SC_PKCS1_PADDING_MIN_SIZE, *out_len),
+			n - SC_PKCS1_PADDING_MIN_SIZE, *out_len);
+	for (msg_index = 1; msg_index < n - SC_PKCS1_PADDING_MIN_SIZE; msg_index <<= 1) {
+		mask = ~constant_time_eq(msg_index & (n - SC_PKCS1_PADDING_MIN_SIZE - mlen), 0);
+		for (i = SC_PKCS1_PADDING_MIN_SIZE; i < n - msg_index; i++)
+			msg[i] = constant_time_select_8(mask, msg[i + msg_index], msg[i]);
+	}
+	// move message into out buffer, if good
+	for (i = 0; i < *out_len; i++) {
+		unsigned int msg_index;
+		// when out is longer than message in data, use some bogus index in msg
+		mask = good & constant_time_lt(i, mlen);
+		msg_index = constant_time_select(mask, i + SC_PKCS1_PADDING_MIN_SIZE, 0); // to now overflow msg buffer
+		out[i] = constant_time_select_8(mask, msg[msg_index], out[i]);
+	}
+
+	free(msg_orig);
+	return constant_time_select(good, mlen, SC_ERROR_WRONG_PADDING);
 }
 
 #ifdef ENABLE_OPENSSL

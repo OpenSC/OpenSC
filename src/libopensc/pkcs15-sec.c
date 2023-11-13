@@ -308,8 +308,9 @@ int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 
 	/* Strip any padding */
 	if (pad_flags & SC_ALGORITHM_RSA_PAD_PKCS1) {
-		size_t s = r;
-		r = sc_pkcs1_strip_02_padding(ctx, out, s, out, &s);
+		int s = r;
+		int key_size = alg_info->key_length;
+		r = sc_pkcs1_strip_02_padding_constant_time(ctx, key_size / 8, out, s, out, &s);
 		LOG_TEST_RET(ctx, r, "Invalid PKCS#1 padding");
 	}
 #ifdef ENABLE_OPENSSL
