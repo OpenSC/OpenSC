@@ -2013,27 +2013,36 @@ get_inner_word(char *str, char word[WORD_SIZE]) {
  * Function returns 1 if a reference loop is detected, 0 otherwise.
  */
 static int
-check_macro_reference_loop(const char *start_name, sc_macro_t *macro, sc_profile_t *profile, int depth) {
-	char *macro_value = NULL;
+check_macro_reference_loop(const char *start_name, sc_macro_t *macro, sc_profile_t *profile, int depth)
+{
+	scconf_list *value;
 	char *name = NULL;
+	sc_macro_t	*m;
 	char word[WORD_SIZE];
 
 	if (!start_name || !macro || !profile || depth == 16)
 		return 1;
 
-	/* Find name in macro value */
-	macro_value = macro->value->data;
-	if (!(name = strchr(macro_value, '$')))
-		return 0;
-	/* Extract the macro name from the string */
-	get_inner_word(name + 1, word);
-	/* Find whether name corresponds to some other macro */
-	if (!(macro = find_macro(profile, word)))
-		return 0;
-	/* Check for loop */
-	if (!strcmp(macro->name, start_name))
-		return 1;
-	return check_macro_reference_loop(start_name, macro, profile, depth + 1);
+	/* For some reason, the macro value is a list where we need to check for references */
+	for (value = macro->value; value != NULL; value = value->next) {
+		/* Find name in macro value */
+		char *macro_value = value->data;
+		if (!(name = strchr(macro_value, '$')))
+			continue;
+		/* Extract the macro name from the string */
+		get_inner_word(name + 1, word);
+		/* Find whether name corresponds to some other macro */
+		if (!(m = find_macro(profile, word)))
+			continue;
+		/* Check for loop */
+		if (!strcmp(m->name, start_name))
+			return 1;
+		/* Reference loop was found to the original macro name */
+		if (check_macro_reference_loop(start_name, m, profile, depth + 1) == 1) {
+			return 1;
+		}
+	}
+	return 0;
 }
 
 static int
