@@ -603,6 +603,7 @@ err:
 	if (sdo == NULL || sdo->file != file_p_prvkey)
 		sc_file_free(file_p_prvkey);
 	authentic_free_sdo_data(sdo);
+	free(sdo);
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
