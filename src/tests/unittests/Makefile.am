@@ -14,8 +14,10 @@ VALGRIND_FLAGS = --num-callers=30 -q --keep-debuginfo=yes --gen-suppressions=all
 TESTS_ENVIRONMENT = LD_PRELOAD='/usr/lib/x86_64-linux-gnu/libpcsclite.so.1'
 endif
 
-noinst_PROGRAMS = asn1 simpletlv cachedir pkcs15filter openpgp-tool hextobin decode_ecdsa_signature check_macro_reference_loop
-TESTS = asn1 simpletlv cachedir pkcs15filter openpgp-tool hextobin decode_ecdsa_signature check_macro_reference_loop
+noinst_PROGRAMS = asn1 simpletlv cachedir pkcs15filter openpgp-tool hextobin \
+	decode_ecdsa_signature check_macro_reference_loop strip_pkcs1_2_padding
+TESTS = asn1 simpletlv cachedir pkcs15filter openpgp-tool hextobin \
+	decode_ecdsa_signature check_macro_reference_loop strip_pkcs1_2_padding
 
 noinst_HEADERS = torture.h
 
@@ -37,6 +39,7 @@ openpgp_tool_SOURCES = openpgp-tool.c $(top_builddir)/src/tools/openpgp-tool-hel
 hextobin_SOURCES = hextobin.c
 decode_ecdsa_signature_SOURCES = decode_ecdsa_signature.c
 check_macro_reference_loop = check_macro_reference_loop.c
+strip_pkcs1_2_padding = strip_pkcs1_2_padding.c
 
 if ENABLE_ZLIB
 noinst_PROGRAMS += compression
