@@ -8,7 +8,8 @@ dist_noinst_DATA = \
 	LICENSE.compat_getopt compat_getopt.txt \
 	compat_getopt_main.c \
 	README.compat_strlcpy compat_strlcpy.3
-noinst_HEADERS = compat_strlcat.h compat_strlcpy.h compat_strnlen.h compat_getpass.h compat_getopt.h simclist.h libpkcs11.h libscdl.h compat_overflow.h
+noinst_HEADERS = compat_strlcat.h compat_strlcpy.h compat_strnlen.h compat_getpass.h \
+	compat_getopt.h simclist.h libpkcs11.h libscdl.h compat_overflow.h constant-time.h
 
 AM_CPPFLAGS = -I$(top_srcdir)/src
 
@@ -43,7 +44,8 @@ TIDY_FILES = \
 	compat___iob_func.c \
 	compat_overflow.h compat_overflow.c \
 	simclist.c simclist.h \
-	libpkcs11.c libscdl.c
+	libpkcs11.c libscdl.c \
+	constant-time.h
 
 check-local:
 	if [ -x "$(CLANGTIDY)" ]; then clang-tidy -config='' --checks='$(TIDY_CHECKS)' --warnings-as-errors='$(TIDY_CHECKS)' -header-filter=.* $(addprefix $(srcdir)/,$(TIDY_FILES)) -- $(TIDY_FLAGS); fi
