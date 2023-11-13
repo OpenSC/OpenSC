@@ -454,13 +454,16 @@ iasecc_parse_chv(struct sc_card *card, unsigned char *data, size_t data_len, str
 		       "iasecc_parse_chv() get and parse TLV returned %i; tag %X; size %"SC_FORMAT_LEN_SIZE_T"u",
 		       rv, tlv.tag, tlv.size);
 
-		if (tlv.tag == IASECC_SDO_CHV_TAG_SIZE_MAX)
+		if (tlv.tag == IASECC_SDO_CHV_TAG_SIZE_MAX) {
+			free(chv->size_max.value);
 			chv->size_max = tlv;
-		else if (tlv.tag == IASECC_SDO_CHV_TAG_SIZE_MIN)
+		} else if (tlv.tag == IASECC_SDO_CHV_TAG_SIZE_MIN) {
+			free(chv->size_min.value);
 			chv->size_min = tlv;
-		else if (tlv.tag == IASECC_SDO_CHV_TAG_VALUE)
+		} else if (tlv.tag == IASECC_SDO_CHV_TAG_VALUE) {
+			free(chv->value.value);
 			chv->value = tlv;
-		else {
+		} else {
 			free(tlv.value);
 			LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "parse error: non CHV SDO tag");
 		}
@@ -490,9 +493,10 @@ iasecc_parse_prvkey(struct sc_card *card, unsigned char *data, size_t data_len, 
 		       "iasecc_parse_prvkey() get and parse TLV returned %i; tag %X; size %"SC_FORMAT_LEN_SIZE_T"u",
 		       rv, tlv.tag, tlv.size);
 
-		if (tlv.tag == IASECC_SDO_PRVKEY_TAG_COMPULSORY)
+		if (tlv.tag == IASECC_SDO_PRVKEY_TAG_COMPULSORY) {
+			free(prvkey->compulsory.value);
 			prvkey->compulsory = tlv;
-		else {
+		} else {
 			free(tlv.value);
 			LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "parse error: non PrvKey SDO tag");
 		}
@@ -522,17 +526,22 @@ iasecc_parse_pubkey(struct sc_card *card, unsigned char *data, size_t data_len, 
 		       "iasecc_parse_pubkey() get and parse TLV returned %i; tag %X; size %"SC_FORMAT_LEN_SIZE_T"u",
 		       rv, tlv.tag, tlv.size);
 
-		if (tlv.tag == IASECC_SDO_PUBKEY_TAG_N)
+		if (tlv.tag == IASECC_SDO_PUBKEY_TAG_N) {
+			free(pubkey->n.value);
 			pubkey->n = tlv;
-		else if (tlv.tag == IASECC_SDO_PUBKEY_TAG_E)
+		} else if (tlv.tag == IASECC_SDO_PUBKEY_TAG_E) {
+			free(pubkey->e.value);
 			pubkey->e = tlv;
-		else if (tlv.tag == IASECC_SDO_PUBKEY_TAG_CHR)
+		} else if (tlv.tag == IASECC_SDO_PUBKEY_TAG_CHR) {
+			free(pubkey->chr.value);
 			pubkey->chr = tlv;
-		else if (tlv.tag == IASECC_SDO_PUBKEY_TAG_CHA)
+		} else if (tlv.tag == IASECC_SDO_PUBKEY_TAG_CHA) {
+			free(pubkey->cha.value);
 			pubkey->cha = tlv;
-		else if (tlv.tag == IASECC_SDO_PUBKEY_TAG_COMPULSORY)
+		} else if (tlv.tag == IASECC_SDO_PUBKEY_TAG_COMPULSORY) {
+			free(pubkey->compulsory.value);
 			pubkey->compulsory = tlv;
-		else {
+		} else {
 			free(tlv.value);
 			LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "parse error: non PubKey SDO tag");
 		}
@@ -562,9 +571,10 @@ iasecc_parse_keyset(struct sc_card *card, unsigned char *data, size_t data_len, 
 		       "iasecc_parse_prvkey() get and parse TLV returned %i; tag %X; size %"SC_FORMAT_LEN_SIZE_T"u",
 		       rv, tlv.tag, tlv.size);
 
-		if (tlv.tag == IASECC_SDO_KEYSET_TAG_COMPULSORY)
+		if (tlv.tag == IASECC_SDO_KEYSET_TAG_COMPULSORY) {
+			free(keyset->compulsory.value);
 			keyset->compulsory = tlv;
-		else {
+		} else {
 			free(tlv.value);
 			LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "parse error: non KeySet SDO tag");
 		}
