@@ -99,6 +99,31 @@ static void torture_macro_loop_inner_string(void **state)
 	assert_int_equal(r, 1);
 }
 
+static void torture_macro_loop_indirect(void **state)
+{
+	scconf_list value1 = { .data = "$x" };
+	scconf_list value2 = { .data = "-$x" };
+	sc_macro_t macro2 = { .name = "o", .value = &value2 };
+	sc_macro_t macro1 = { .name = "x", .value = &value1, .next = &macro2 };
+	sc_profile_t profile = { .macro_list = &macro1 };
+
+	int r = check_macro_reference_loop("o", &macro2, &profile, 10);
+	assert_int_equal(r, 1);
+}
+
+static void torture_macro_loop_indirect_multivalue(void **state)
+{
+	scconf_list value3 = { .data = "-$x" };
+	scconf_list value2 = { .data = "1", .next = &value3 };
+	scconf_list value1 = { .data = "$x" };
+	sc_macro_t macro2 = { .name = "o", .value = &value2 };
+	sc_macro_t macro1 = { .name = "x", .value = &value1, .next = &macro2 };
+	sc_profile_t profile = { .macro_list = &macro1 };
+
+	int r = check_macro_reference_loop("o", &macro2, &profile, 10);
+	assert_int_equal(r, 1);
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
@@ -107,7 +132,9 @@ int main(void)
 		cmocka_unit_test(torture_one_macro_loop),
 		cmocka_unit_test(torture_long_macro_loop),
 		cmocka_unit_test(torture_long_macro_loop_too_deep),
-		cmocka_unit_test(torture_macro_loop_inner_string)
+		cmocka_unit_test(torture_macro_loop_inner_string),
+		cmocka_unit_test(torture_macro_loop_indirect),
+		cmocka_unit_test(torture_macro_loop_indirect_multivalue),
 	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }
