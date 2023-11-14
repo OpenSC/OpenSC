@@ -3259,6 +3259,8 @@ pkcs15_gen_keypair(struct sc_pkcs11_slot *slot, CK_MECHANISM_PTR pMechanism,
 	int		rc;
 	CK_RV rv = CKR_OK;
 	CK_BBOOL always_auth = CK_FALSE;
+	CK_BBOOL sensitive = CK_FALSE;
+	CK_BBOOL extractable = CK_FALSE;
 
 	sc_log(context, "Key pair generation, mech = 0x%0lx",
 		   pMechanism->mechanism);
@@ -3409,6 +3411,24 @@ pkcs15_gen_keypair(struct sc_pkcs11_slot *slot, CK_MECHANISM_PTR pMechanism,
 	if (rv == CKR_OK && always_auth == CK_TRUE) {
 		keygen_args.prkey_args.user_consent = 1;
 	}
+
+	/* set EXTRACTABLE and SENSITIVESE flags */
+	len = sizeof(extractable);
+	rv = attr_find(pPrivTpl, ulPrivCnt, CKA_EXTRACTABLE, &extractable, &len);
+	if (rv == CKR_OK && extractable == CK_TRUE)
+		keygen_args.prkey_args.access_flags |= SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE;
+	else
+		keygen_args.prkey_args.access_flags |= SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE;
+
+	len = sizeof(sensitive);
+	rv = attr_find(pPrivTpl, ulPrivCnt, CKA_SENSITIVE, &sensitive, &len);
+	if (rv == CKR_OK && sensitive == CK_TRUE) {
+		keygen_args.prkey_args.access_flags |= SC_PKCS15_PRKEY_ACCESS_SENSITIVE;
+		keygen_args.prkey_args.access_flags |= SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE;
+	}
+
+	/* This is called form C_GenerateKey, key is alwways LOCAL (PKCS#11 v3.0 section 4.7.2) */
+	keygen_args.prkey_args.access_flags |= SC_PKCS15_PRKEY_ACCESS_LOCAL;
 
 	/* 3.a Try on-card key pair generation */
 
@@ -4067,7 +4087,7 @@ pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 		break;
 	case CKA_EXTRACTABLE:
 		check_attribute_buffer(attr, sizeof(CK_BBOOL));
-		*(CK_BBOOL*)attr->pValue = FALSE;
+		*(CK_BBOOL *)attr->pValue = (prkey->prv_info->access_flags & SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE) != 0;
 		break;
 	case CKA_LABEL:
 		len = strnlen(prkey->prv_p15obj->label, sizeof prkey->prv_p15obj->label);
