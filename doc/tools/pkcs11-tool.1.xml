@@ -714,9 +714,21 @@
 			in DER format from smart card:
 				<programlisting>pkcs11-tool --read-object --id KEY_ID --type cert --output-file cert.der</programlisting>
 
+			Write certificate to token:
+				<programlisting> pkcs11-tool --login --write-object certificate.der --type cert</programlisting>
+
 			To convert the certificate in DER format to PEM format, use OpenSSL
 			tools:
 				<programlisting>openssl x509 -inform DER -in cert.der -outform PEM > cert.pem</programlisting>
+
+			Generate new RSA Key pair:
+				<programlisting>pkcs11-tool --login --keypairgen --key-type RSA:2048</programlisting>
+
+			Generate new extractable RSA Key pair:
+				<programlisting>pkcs11-tool --login --keypairgen --key-type RSA:2048 --extractable</programlisting>
+
+			List private keys:
+				<programlisting>pkcs11-tool --login --list-objects --type privkey</programlisting>
 
 			To sign some data stored in file <replaceable>data</replaceable>
 			using the private key with ID <replaceable>ID</replaceable> and
@@ -725,11 +737,19 @@
 
 			To encrypt file using the AES key with ID 85 and using mechanism AES-CBC with padding:
 				<programlisting>
-pkcs11-tool --encrypt --id 85 -m AES-CBC-PAD \
+pkcs11-tool --login --encrypt --id 85 -m AES-CBC-PAD \
  --iv "00000000000000000000000000000000" \
  -i file.txt -o encrypted_file.data
 				</programlisting>
-
+			Use the key with ID 75 using mechanism AES-CBC-PAD, with initialization vector
+			"00000000000000000000000000000000" to wrap the key with ID 76 into output file
+			<replaceable>exported_aes.key</replaceable>
+				<programlisting>
+pkcs11-tool --login --wrap --id 75 --mechanism AES-CBC-PAD \
+ --iv "00000000000000000000000000000000" \
+ --application-id 76 \
+ --output-file exported_aes.key
+				</programlisting>
 			Use the key with ID 22 and mechanism RSA-PKCS to unwrap key from file
 			<replaceable>aes_wrapped.key</replaceable>. After a successful unwrap operation,
 			a new AES key is created on token. ID of this key is set to 90 and label of this
@@ -737,7 +757,7 @@ pkcs11-tool --encrypt --id 85 -m AES-CBC-PAD \
 			Note: for the MyEID card, the AES key size must be present in key
 			specification i.e. AES:16
 				<programlisting>
-pkcs11-tool --unwrap --mechanism RSA-PKCS --id 22 \
+pkcs11-tool --login --unwrap --mechanism RSA-PKCS --id 22 \
   -i aes_wrapped.key --key-type AES: \
   --application-id 90 --applicatin-label unwrapped-key
 				</programlisting>
