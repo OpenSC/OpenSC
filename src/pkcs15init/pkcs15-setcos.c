@@ -287,6 +287,10 @@ setcos_new_file(sc_profile_t *profile, sc_card_t *card,
 	file->id += num;
 	p = &file->path;
 	*p = profile->df_info->file->path;
+	if (p->len + 2 > SC_MAX_PATH_SIZE) {
+		sc_file_free(file);
+		return SC_ERROR_INVALID_DATA;
+	}
 	p->value[p->len++] = (u8) (file->id / 256);
 	p->value[p->len++] = (u8) (file->id % 256);
 
