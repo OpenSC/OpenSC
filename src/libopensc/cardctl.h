@@ -833,6 +833,7 @@ typedef struct sc_epass2003_gen_key_data_st {
 	 int pukey_id;
 	 size_t key_length;
 	 u8 *modulus;
+	 int modulus_len;
 } sc_epass2003_gen_key_data;
 
 

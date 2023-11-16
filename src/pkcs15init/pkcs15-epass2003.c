@@ -638,10 +638,11 @@ static int epass2003_pkcs15_generate_key(struct sc_profile *profile,
 	gendat.pukey_id = pukf->id;
 	gendat.key_length = keybits;
 	gendat.modulus = NULL;
+	gendat.modulus_len = 0;
 	r = sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_GENERATE_KEY, &gendat);
 	SC_TEST_GOTO_ERR(card->ctx, SC_LOG_DEBUG_VERBOSE, r,
 		    "generate RSA key pair failed");
-	
+
 	if (!gendat.modulus) {
 		r = SC_ERROR_OUT_OF_MEMORY;
 		goto err;
@@ -679,8 +680,8 @@ static int epass2003_pkcs15_generate_key(struct sc_profile *profile,
 		}
 
 		pubkey->u.ec.ecpointQ.value[0] = 0x04;
-		memcpy(&pubkey->u.ec.ecpointQ.value[1], gendat.modulus, 64);
-		pubkey->u.ec.ecpointQ.len = 65;
+		memcpy(&pubkey->u.ec.ecpointQ.value[1], gendat.modulus, gendat.modulus_len);
+		pubkey->u.ec.ecpointQ.len = gendat.modulus_len;
 
 		free(pubkey->u.ec.params.named_curve);
 		pubkey->u.ec.params.named_curve = NULL; 

@@ -3082,11 +3082,21 @@ epass2003_gen_key(struct sc_card *card, sc_epass2003_gen_key_data * data)
 	if (len < apdu.resplen)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-	if(256 == len)
+	if(256 == len) /* ECC 256 bit */
 	{
-		int xCoordinateLen = rbuf[1];
-		int yCoordinateLen = rbuf[2+xCoordinateLen+1];
-		unsigned char * tmp =(u8 *)malloc(xCoordinateLen + yCoordinateLen);
+		size_t xCoordinateLen = rbuf[1];
+		size_t yCoordinateLen;
+		unsigned char *tmp;
+
+		if (2 + xCoordinateLen + 1 >= apdu.resplen) {
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_DATA);
+		}
+		yCoordinateLen = rbuf[2 + xCoordinateLen + 1];
+		if (2 + xCoordinateLen + 2 + yCoordinateLen >= apdu.resplen) {
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_DATA);
+		}
+		data->modulus_len = xCoordinateLen + yCoordinateLen;
+		tmp = (u8 *)malloc(data->modulus_len);
 		if(!tmp)
 		{
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
@@ -3109,17 +3119,7 @@ epass2003_gen_key(struct sc_card *card, sc_epass2003_gen_key_data * data)
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OBJECT_NOT_VALID);
 		}
 
-		data->modulus = (u8 *) malloc(xCoordinateLen + yCoordinateLen);
-		if (!data->modulus)
-		{
-			free(tmp);
-			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
-		}
-		else
-		{
-			memcpy(data->modulus, tmp, xCoordinateLen+yCoordinateLen);
-			free(tmp);
-		}
+		data->modulus = tmp;
 	}
 	else
 	{
