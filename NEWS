@@ -1,6 +1,6 @@
 NEWS for OpenSC -- History of user visible changes
 
-# New in 0.24.0; 2023-10-XX
+# New in 0.24.0; 2023-11-XX
 ## Security
 * CVE-2023-40660: Fix Potential PIN bypass (#2806, frankmorgner/OpenSCToken#50, #2807)
 * CVE-2023-40661: Important dynamic analyzers reports
@@ -15,21 +15,33 @@ NEWS for OpenSC -- History of user visible changes
 * Test signing of data bigger than 512 bytes (#2789)
 * Update to OpenPACE 1.1.3 (#2796)
 * Implement logout for some of the card drivers (#2807)
+* Fix wrong popup position of opensc-notify (#2901)
 * Fixed various issues reported by OSS-Fuzz and Coverity regarding card drivers, PKCS#11 and PKCS#15 init
 ## PKCS#11
 * Check card presence state in `C_GetSessionInfo` (#2740)
 * Remove `onepin-opensc-pkcs11` module (#2681)
 * Do not use colons in the token info label (#2760)
+* Present profile objects in all slots with the CKA_TOKEN attribute to resolve issues with NSS (#2928, #2924)
+* Use secure memory for PUK (#2906)
+* Don't logout to preserve concurrent access from different processes (#2907)
+* Add more examples to manual page (#2936)
+* Present profile objects in all virtual slots (#2928)
+* Provide CKA_TOKEN attribute for profile objects (#2924)
 ## PKCS#15
 * Honor cache offsets when writing file cache (#2858)
+* Prevent needless amount of PIN prompts from pkcs15init layer (#2916)
+* Propagate CKA_EXTRACTABLE and SC_PKCS15_PRKEY_ACCESS_SENSITIVE from and back to PKCS#11 (#2936)
 ## Minidriver
 * Fix for private keys that do not need a PIN (#2722)
+* Unbreak decipher when the first null byte of PKCS#1.5 padding is missing (#2939)
 ## pkcs11-tool
 * Fix RSA key import with OpenSSL 3.0 (#2656)
 * Add support for attribute filtering when listing objects (#2687)
 * Add support for `--private` flag when writing certificates (#2768)
 * Add support for non-AEAD ciphers to the test mode (#2780)
 * Show CKA_SIGN attribute for secret keys (#2862)
+* Do not attempt to read CKA_ALWAYS_AUTHENTICATE on secret keys (#2864, #2913)
+* Show Sign/VerifyRecover attributes (2888)
 ## westcos-tool
 * Generate 2k RSA keys by default (b53fc5cd)
 ## pkcs11-register
@@ -37,13 +49,16 @@ NEWS for OpenSC -- History of user visible changes
 ## IDPrime
 * Add support for IDPrime MD 830, 930 and 940 (#2666)
 * Add support for SafeNet eToken 5110 token (#2812)
+* Process index even without keyrefmap and use correct label for second PIN (#2878)
 ## EPass2003
 * Change of PIN requires verification of the PIN (#2759)
 * Fix incorrect CMAC computation for subkeys (#2759, issue #2734)
 * Use true random number for mutual authentication for SM (#2766)
 * Add verification of data coming from the token in the secure messaging mode (#2772)
+* Avoid success when using unsupported digest and fix data length for RAW ECDSA signatures (#2845)
 ## OpenPGP
 * Fix select data command (#2753, issue #2752)
+* Unbreak ed/curve25519 support (#2892)
 ## eOI
 * Add support for Slovenian eID card (eOI) (#2646)
 ## Italian CNS
@@ -58,6 +73,7 @@ NEWS for OpenSC -- History of user visible changes
 ## MyEID
 * Fix WRAP operation when using T0 (#2695)
 * Identify changes on the card and enable `use_file_cache` (#2798)
+* Workaround for unwrapping using 2K RSA key (#2921)
 ## SC-HSM
 * Add support for `opensc-tool --serial` (#2675)
 * Fix unwrapping of 4096 keys with handling reader limits (#2682)
@@ -121,6 +137,7 @@ NEWS for OpenSC -- History of user visible changes
 ## Starcos
 * Add ATR for V3.4 (#2464)
 * Add PKCS#15 emulator for 3.x cards with eSign app (#2544)
+* Add (fix) support for eGK v 2.1 (#2871)
 ## ePass2003
 * Fix PKCS#15 initialization (#2403)
 * Add support for FIPS (#2543)
