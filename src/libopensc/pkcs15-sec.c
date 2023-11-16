@@ -308,10 +308,10 @@ int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 
 	/* Strip any padding */
 	if (pad_flags & SC_ALGORITHM_RSA_PAD_PKCS1) {
-		int s = r;
-		int key_size = alg_info->key_length;
+		unsigned int s = r;
+		unsigned int key_size = (unsigned int)alg_info->key_length;
 		r = sc_pkcs1_strip_02_padding_constant_time(ctx, key_size / 8, out, s, out, &s);
-		LOG_TEST_RET(ctx, r, "Invalid PKCS#1 padding");
+		/* for keeping PKCS#1 v1.5 depadding constant-time, do not log error here */
 	}
 #ifdef ENABLE_OPENSSL
 	if (pad_flags & SC_ALGORITHM_RSA_PAD_OAEP)
@@ -333,7 +333,8 @@ int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 		LOG_TEST_RET(ctx, r, "Invalid OAEP padding");
 	}
 #endif
-	LOG_FUNC_RETURN(ctx, r);
+	/* do not log error code to prevent side channel attack */
+	return r;
 }
 
 /* derive one key from another. RSA can use decipher, so this is for only ECDH
