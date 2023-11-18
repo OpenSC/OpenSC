@@ -370,7 +370,8 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		{"22", "Retired Certificate for Key Management 18", "1012cece", 0, 0},
 		{"23", "Retired Certificate for Key Management 19", "1013cece", 0, 0},
 		{"24", "Retired Certificate for Key Management 20", "1014cece", 0, 0},
-		{"25", "Secure Messaging Certificate Signer",   "1017cece", 0, 0} /* no keys on card */
+		/* Yubikey Attestation uses "25" but not read via GET_DATA */
+		{"81", "Secure Messaging Certificate Signer",   "1017cece", 0, 0} /* no keys on card */
 	};
 	// clang-format on
 
