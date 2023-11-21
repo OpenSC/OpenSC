@@ -1,0 +1,251 @@
+/*
+ * card-dtrust.c: Support for (CardOS based) D-Trust Signature Cards
+ *
+ * Copyright (C) 2023 Mario Haustein <mario.haustein@hrz.tu-chemnitz.de>
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+ *
+ * based on card-cardos.c
+ */
+
+#if HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#include <stdlib.h>
+#include <string.h>
+#include "internal.h"
+#include "asn1.h"
+
+static const struct sc_card_operations *iso_ops = NULL;
+
+static struct sc_card_operations dtrust_ops;
+static struct sc_card_driver dtrust_drv =
+{
+	"D-Trust Signature Card",
+	"dtrust",
+	&dtrust_ops,
+	NULL, 0, NULL
+};
+
+static const struct sc_atr_table dtrust_atrs[] =
+{
+	/* D-Trust Signature Card v4.1 and v4.4 - CardOS 5.4
+	 *
+	 * The ATR was intentionally omitted from minidriver_registration[] within win32/customactions.cpp
+	 * as it is identical to that of CardOS v5.4 and therefore already included.
+	 * Any new ATR may need an entry in minidriver_registration[]. */
+	{ "3b:d2:18:00:81:31:fe:58:c9:04:11", NULL, NULL, SC_CARD_TYPE_DTRUST_V4_1_STD, 0, NULL },
+	{ NULL,                               NULL, NULL, 0,                            0, NULL }
+};
+
+static int _dtrust_match_cardos(sc_card_t *card)
+{
+	int r;
+	size_t prodlen;
+	u8 buf[32];
+
+	/* check OS version */
+	r = sc_get_data(card, 0x0182, buf, 32);
+	LOG_TEST_RET(card->ctx, r, "OS version check failed");
+
+	if(r != 2 || buf[0] != 0xc9 || buf[1] != 0x04)
+		return SC_ERROR_WRONG_CARD;
+
+	/* check product name */
+	r = sc_get_data(card, 0x0180, buf, 32);
+	LOG_TEST_RET(card->ctx, r, "Product name check failed");
+
+	prodlen = (size_t)r;
+	if(prodlen != strlen("CardOS V5.4     2019") + 1 ||
+	   memcmp(buf, "CardOS V5.4     2019", prodlen))
+		return SC_ERROR_WRONG_CARD;
+
+	return SC_SUCCESS;
+}
+
+static int _dtrust_match_profile(sc_card_t * card)
+{
+	sc_path_t cia_path;
+	int r;
+	u8 buf[SC_MAX_APDU_BUFFER_SIZE];
+	size_t slen, plen;
+	const u8 *sp, *pp;
+	char *name;
+
+
+	sc_format_path("5032", &cia_path);
+	cia_path.aid.len = sizeof(cia_path.aid.value);
+        r = sc_hex_to_bin("E8:28:BD:08:0F:A0:00:00:01:67:45:53:49:47:4E", (u8*)&cia_path.aid.value, &cia_path.aid.len);
+	LOG_TEST_RET(card->ctx, r, "Formatting AID failed");
+
+	r = sc_select_file(card, &cia_path, NULL);
+	LOG_TEST_RET(card->ctx, r, "Selecting CIA path failed");
+
+	r = sc_read_binary(card, 0, buf, SC_MAX_APDU_BUFFER_SIZE, NULL);
+	LOG_TEST_RET(card->ctx, r, "Reading CIA information failed");
+
+	sp = sc_asn1_find_tag(card->ctx, buf, r, 0x30, &slen);
+	if(sp == NULL)
+		return SC_ERROR_WRONG_CARD;
+
+	/* check vendor */
+	pp = sc_asn1_find_tag(card->ctx, sp, slen, 0x0c, &plen);
+	if(pp == NULL)
+		return SC_ERROR_WRONG_CARD;
+
+	if(plen != 16 || memcmp(pp, "D-TRUST GmbH (C)", 16))
+		return SC_ERROR_WRONG_CARD;
+
+	/* check profile */
+	pp = sc_asn1_find_tag(card->ctx, sp, slen, 0x80, &plen);
+	if(pp == NULL)
+		return SC_ERROR_WRONG_CARD;
+
+	/*
+	 * The profile string contains (two) additional characters. They depend
+	 * on the production process, but aren't relevant for determining the
+	 * card profile.
+	 */
+	if(plen >= 27 && !memcmp(pp, "D-TRUST Card 4.1 Std. RSA 2", 27))
+		card->type = SC_CARD_TYPE_DTRUST_V4_1_STD;
+	else if(plen >= 28 && !memcmp(pp, "D-TRUST Card 4.1 Multi ECC 2", 28))
+		card->type = SC_CARD_TYPE_DTRUST_V4_1_MULTI;
+	else if(plen >= 27 && !memcmp(pp, "D-TRUST Card 4.1 M100 ECC 2", 27))
+		card->type = SC_CARD_TYPE_DTRUST_V4_1_M100;
+	else if(plen >= 27 && !memcmp(pp, "D-TRUST Card 4.4 Std. RSA 2", 27))
+		card->type = SC_CARD_TYPE_DTRUST_V4_4_STD;
+	else if(plen >= 28 && !memcmp(pp, "D-TRUST Card 4.4 Multi ECC 2", 28))
+		card->type = SC_CARD_TYPE_DTRUST_V4_4_MULTI;
+	else
+		return SC_ERROR_WRONG_CARD;
+
+	name = malloc(plen + 1);
+	if(name == NULL)
+		return SC_ERROR_OUT_OF_MEMORY;
+	memcpy(name, pp, plen);
+	name[plen] = '\0';
+	card->name = name;
+
+	sc_log(card->ctx, "found %s", card->name);
+
+	return SC_SUCCESS;
+}
+
+static int dtrust_match_card(sc_card_t *card)
+{
+	if(_sc_match_atr(card, dtrust_atrs, &card->type) < 0)
+		return 0;
+
+	if(_dtrust_match_cardos(card) != SC_SUCCESS)
+		return 0;
+
+	if(_dtrust_match_profile(card) != SC_SUCCESS)
+		return 0;
+
+	sc_log(card->ctx, "D-Trust Signature Card (CardOS 5.4)");
+
+	return 1;
+}
+
+static int _dtrust_get_serialnr(sc_card_t *card)
+{
+	int r;
+	u8 buf[32];
+
+	r = sc_get_data(card, 0x0181, buf, 32);
+	LOG_TEST_RET(card->ctx, r, "querying serial number failed");
+
+	if(r != 8)
+	{
+		sc_log(card->ctx, "unexpected response to GET DATA serial number");
+		return SC_ERROR_INTERNAL;
+	}
+
+	/* cache serial number */
+	memcpy(card->serialnr.value, buf, 8);
+	card->serialnr.len = 8;
+
+	return SC_SUCCESS;
+}
+
+static int dtrust_init(sc_card_t *card)
+{
+	const unsigned long flags = SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE;
+	const size_t data_field_length = 437;
+	int r;
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	card->cla = 0x00;
+
+	r = _dtrust_get_serialnr(card);
+	LOG_TEST_RET(card->ctx, r, "Error reading serial number.");
+
+	card->caps |= SC_CARD_CAP_APDU_EXT | SC_CARD_CAP_ISO7816_PIN_INFO;
+
+	card->max_send_size = data_field_length - 6;
+#ifdef _WIN32
+	/* see card-cardos.c */
+	if(card->reader->max_send_size == 255 && card->reader->max_recv_size == 256)
+	{
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "resetting reader to use data_field_length");
+		card->reader->max_send_size = data_field_length - 6;
+		card->reader->max_recv_size = data_field_length - 3;
+	}
+#endif
+
+	card->max_send_size = sc_get_max_send_size(card); /* see card-cardos.c */
+	card->max_recv_size = data_field_length - 2;
+	card->max_recv_size = sc_get_max_recv_size(card);
+
+	r = _sc_card_add_rsa_alg(card, 3072, flags, 0);
+
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+
+static int dtrust_finish(sc_card_t *card)
+{
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	free((char*)card->name);
+
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+}
+
+static int dtrust_logout(sc_card_t *card)
+{
+	sc_path_t path;
+	int r;
+
+	sc_format_path("3F00", &path);
+	r = sc_select_file(card, &path, NULL);
+
+	return r;
+}
+
+struct sc_card_driver * sc_get_dtrust_driver(void)
+{
+	if(iso_ops == NULL)
+		iso_ops = sc_get_iso7816_driver()->ops;
+
+	dtrust_ops = *iso_ops;
+	dtrust_ops.match_card = dtrust_match_card;
+	dtrust_ops.init = dtrust_init;
+	dtrust_ops.finish = dtrust_finish;
+	dtrust_ops.logout = dtrust_logout;
+
+	return &dtrust_drv;
+}
