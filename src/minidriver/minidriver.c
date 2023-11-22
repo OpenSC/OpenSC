@@ -44,6 +44,7 @@
 #endif
 
 #include "common/compat_strlcpy.h"
+#include "common/constant-time.h"
 #include "libopensc/asn1.h"
 #include "libopensc/cardctl.h"
 #include "libopensc/opensc.h"
@@ -4534,13 +4535,15 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 
 {
 	DWORD dwret;
-	int r, opt_crypt_flags = 0;
+	int r, opt_crypt_flags = 0, good = 0;
 	unsigned ui;
 	VENDOR_SPECIFIC *vs;
 	struct sc_pkcs15_prkey_info *prkey_info;
 	BYTE *pbuf = NULL, *pbuf2 = NULL;
 	struct sc_pkcs15_object *pkey = NULL;
 	struct sc_algorithm_info *alg_info = NULL;
+	unsigned int wrong_padding = 0;
+	unsigned int pbufLen = 0;
 
 	MD_FUNC_CALLED(pCardData, 1);
 
@@ -4641,11 +4644,11 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 		goto err;
 	}
 
+	pbufLen = pInfo->cbData;
 	if (alg_info->flags & SC_ALGORITHM_RSA_RAW)   {
 		logprintf(pCardData, 2, "sc_pkcs15_decipher: using RSA-RAW mechanism\n");
 		r = sc_pkcs15_decipher(vs->p15card, pkey, opt_crypt_flags | SC_ALGORITHM_RSA_RAW, pbuf, pInfo->cbData, pbuf2, pInfo->cbData, NULL);
-		logprintf(pCardData, 2, "sc_pkcs15_decipher returned %d\n", r);
-
+		/* do not log return value to not leak it */
 		if (r > 0) {
 			/* Need to handle padding */
 			if (pInfo->dwVersion >= CARD_RSA_KEY_DECRYPT_INFO_VERSION_TWO) {
@@ -4657,13 +4660,9 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 					logprintf(pCardData, 2, "sc_pkcs15_decipher: stripping PKCS1 padding\n");
 					r = sc_pkcs1_strip_02_padding_constant_time(vs->ctx, prkey_info->modulus_length / 8, pbuf2, pInfo->cbData, pbuf2, &temp);
 					pInfo->cbData = (DWORD) temp;
-					if (r < 0)   {
-						logprintf(pCardData, 2, "Cannot strip PKCS1 padding: %i\n", r);
-						pCardData->pfnCspFree(pbuf);
-						pCardData->pfnCspFree(pbuf2);
-						dwret = SCARD_F_INTERNAL_ERROR;
-						goto err;
-					}
+					wrong_padding = constant_time_eq_s(r, SC_ERROR_WRONG_PADDING);
+					/* continue without returning error to not leak that padding is wrong
+					   to prevent time side-channel leak for Marvin attack*/
 				}
 				else if (pInfo->dwPaddingType == CARD_PADDING_OAEP)   {
 					/* TODO: Handle OAEP padding if present - can call PFN_CSP_UNPAD_DATA */
@@ -4711,28 +4710,38 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 		goto err;
 	}
 
-	if ( r < 0)   {
+	good = constant_time_eq_s(r, 0);
+	/* if no error or padding error, do not return here to prevent Marvin attack */
+	if (!(good | wrong_padding) && r < 0)   {
 		logprintf(pCardData, 2, "sc_pkcs15_decipher error(%i): %s\n", r, sc_strerror(r));
 		pCardData->pfnCspFree(pbuf);
 		pCardData->pfnCspFree(pbuf2);
 		dwret = md_translate_OpenSC_to_Windows_error(r, SCARD_E_INVALID_VALUE);
 		goto err;
 	}
+	dwret = constant_time_select_s(good, SCARD_S_SUCCESS, SCARD_F_INTERNAL_ERROR);
 
 	logprintf(pCardData, 2, "decrypted data(%lu):\n",
 		  (unsigned long)pInfo->cbData);
 	loghex(pCardData, 7, pbuf2, pInfo->cbData);
 
 	/*inversion donnees */
-	for(ui = 0; ui < pInfo->cbData; ui++)
-		pInfo->pbData[ui] = pbuf2[pInfo->cbData-ui-1];
+	/* copy data in constant-time way to prevent leak */
+	for (ui = 0; ui < pbufLen; ui++) {
+		unsigned int mask, msg_index, inv_ui;
+		mask = good & constant_time_lt_s(ui, pInfo->cbData); /* ui should be in the bounds of pbuf2 */
+		inv_ui = pInfo->cbData - ui - 1;
+		msg_index = constant_time_select_s(mask, inv_ui, 0);
+		pInfo->pbData[ui] = constant_time_select_8(mask, pbuf2[msg_index], pInfo->pbData[ui]);
+	}
 
 	pCardData->pfnCspFree(pbuf);
 	pCardData->pfnCspFree(pbuf2);
 
 err:
 	unlock(pCardData);
-	MD_FUNC_RETURN(pCardData, 1, dwret);
+	/* do not log return value to not leak it */
+	return dwret;
 }
 
 
