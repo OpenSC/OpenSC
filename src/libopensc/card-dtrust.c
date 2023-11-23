@@ -51,6 +51,16 @@ static const struct sc_atr_table dtrust_atrs[] =
 	{ NULL,                               NULL, NULL, 0,                            0, NULL }
 };
 
+static struct dtrust_supported_ec_curves
+{
+	struct sc_object_id oid;
+	size_t size;
+} dtrust_curves[] =
+{
+	{ .oid = {{ 1, 2, 840, 10045, 3, 1, 7, -1 }}, .size = 256 },	/* secp256r1 */
+	{ .oid = {{ -1 }},                            .size =   0 },
+};
+
 static int _dtrust_match_cardos(sc_card_t *card)
 {
 	int r;
@@ -183,9 +193,9 @@ static int _dtrust_get_serialnr(sc_card_t *card)
 
 static int dtrust_init(sc_card_t *card)
 {
-	const unsigned long flags = SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE;
-	const size_t data_field_length = 437;
 	int r;
+	const size_t data_field_length = 437;
+	unsigned long flags, ext_flags;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -211,7 +221,44 @@ static int dtrust_init(sc_card_t *card)
 	card->max_recv_size = data_field_length - 2;
 	card->max_recv_size = sc_get_max_recv_size(card);
 
-	r = _sc_card_add_rsa_alg(card, 3072, flags, 0);
+	flags = 0;
+	r = SC_ERROR_WRONG_CARD;
+
+	switch(card->type)
+	{
+	case SC_CARD_TYPE_DTRUST_V4_1_STD:
+	case SC_CARD_TYPE_DTRUST_V4_4_STD:
+		flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
+		flags |= SC_ALGORITHM_RSA_PAD_PSS;
+		flags |= SC_ALGORITHM_RSA_PAD_OAEP;
+		flags |= SC_ALGORITHM_RSA_HASH_SHA256;
+		flags |= SC_ALGORITHM_RSA_HASH_SHA384;
+		flags |= SC_ALGORITHM_RSA_HASH_SHA512;
+		flags |= SC_ALGORITHM_MGF1_SHA256;
+		flags |= SC_ALGORITHM_MGF1_SHA384;
+		flags |= SC_ALGORITHM_MGF1_SHA512;
+
+		_sc_card_add_rsa_alg(card, 3072, flags, 0);
+
+		r = SC_SUCCESS;
+		break;
+
+	/* Untested due to lacking hardware */
+	case SC_CARD_TYPE_DTRUST_V4_1_MULTI:
+	case SC_CARD_TYPE_DTRUST_V4_1_M100:
+	case SC_CARD_TYPE_DTRUST_V4_4_MULTI:
+		flags |= SC_ALGORITHM_ECDH_CDH_RAW;
+		flags |= SC_ALGORITHM_ECDSA_HASH_SHA256;
+		ext_flags = SC_ALGORITHM_EXT_EC_NAMEDCURVE;
+		for(unsigned int i = 0; dtrust_curves[i].oid.value[0] >= 0; i++)
+		{
+			_sc_card_add_ec_alg(card, dtrust_curves[i].size,
+				flags, ext_flags, &dtrust_curves[i].oid);
+		}
+
+		r = SC_SUCCESS;
+		break;
+	}
 
 	LOG_FUNC_RETURN(card->ctx, r);
 }
