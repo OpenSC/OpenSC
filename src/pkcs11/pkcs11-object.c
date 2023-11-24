@@ -1034,7 +1034,8 @@ C_Decrypt(CK_SESSION_HANDLE hSession,	     /* the session's handle */
 		rv = reset_login_state(session->slot, rv);
 	}
 
-	SC_LOG_RV("C_Decrypt() = %s", rv);
+	/* do not log error code to prevent side channel attack */
+	SC_LOG("C_Decrypt()");
 	sc_pkcs11_unlock();
 	return rv;
 }
@@ -1058,7 +1059,8 @@ C_DecryptUpdate(CK_SESSION_HANDLE hSession,  /* the session's handle */
 		rv = sc_pkcs11_decr_update(session, pEncryptedPart, ulEncryptedPartLen,
 				pPart, pulPartLen);
 
-	SC_LOG_RV("C_DecryptUpdate() = %s", rv);
+	/* do not log error code to prevent side channel attack */
+	SC_LOG("C_DecryptUpdate()");
 	sc_pkcs11_unlock();
 	return rv;
 }
@@ -1086,7 +1088,8 @@ C_DecryptFinal(CK_SESSION_HANDLE hSession,   /* the session's handle */
 		rv = reset_login_state(session->slot, rv);
 	}
 
-	SC_LOG_RV("C_DecryptFinal() = %s", rv);
+	/* do not log error code to prevent side channel attack */
+	SC_LOG("C_DecryptFinal()");
 	sc_pkcs11_unlock();
 	return rv;
 }
