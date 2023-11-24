@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "common/constant-time.h"
 #include "sc-pkcs11.h"
 
 #define DUMP_TEMPLATE_MAX	32
@@ -174,7 +175,7 @@ CK_RV reset_login_state(struct sc_pkcs11_slot *slot, CK_RV rv)
 			slot->p11card->framework->logout(slot);
 		}
 
-		if (rv == CKR_USER_NOT_LOGGED_IN) {
+		if (constant_time_eq_s(rv, CKR_USER_NOT_LOGGED_IN)) {
 			slot->login_user = -1;
 			pop_all_login_states(slot);
 		}
