@@ -310,7 +310,27 @@ static int dtrust_set_security_env(sc_card_t *card,
 	switch(env->operation)
 	{
 	case SC_SEC_OPERATION_DECIPHER:
-		return SC_ERROR_NOT_IMPLEMENTED;
+		if(env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1)
+		{
+			se_num = 0x31;
+		}
+		else if(env->algorithm_flags & SC_ALGORITHM_RSA_PAD_OAEP)
+		{
+			switch(env->algorithm_flags & SC_ALGORITHM_MGF1_HASHES)
+			{
+			case SC_ALGORITHM_MGF1_SHA256: se_num = 0x32; break;
+			case SC_ALGORITHM_MGF1_SHA384: se_num = 0x33; break;
+			case SC_ALGORITHM_MGF1_SHA512: se_num = 0x34; break;
+
+			default:
+				return SC_ERROR_NOT_SUPPORTED;
+			}
+		}
+		else
+		{
+			return SC_ERROR_NOT_SUPPORTED;
+		}
+		break;
 
 	case SC_SEC_OPERATION_SIGN:
 		if(env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1)
