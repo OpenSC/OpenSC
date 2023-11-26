@@ -40,6 +40,12 @@ static struct sc_card_driver dtrust_drv =
 	NULL, 0, NULL
 };
 
+/* internal structure to save the current security environment */
+struct dtrust_drv_data_t
+{
+	const sc_security_env_t *env;
+};
+
 static const struct sc_atr_table dtrust_atrs[] =
 {
 	/* D-Trust Signature Card v4.1 and v4.4 - CardOS 5.4
@@ -201,6 +207,10 @@ static int dtrust_init(sc_card_t *card)
 
 	card->cla = 0x00;
 
+	card->drv_data = calloc(1, sizeof(struct dtrust_drv_data_t));
+	if(card->drv_data == NULL)
+		return SC_ERROR_OUT_OF_MEMORY;
+
 	r = _dtrust_get_serialnr(card);
 	LOG_TEST_RET(card->ctx, r, "Error reading serial number.");
 
@@ -268,8 +278,138 @@ static int dtrust_finish(sc_card_t *card)
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	free((char*)card->name);
+	free(card->drv_data);
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+}
+
+static int dtrust_set_security_env(sc_card_t *card,
+		const sc_security_env_t *env,
+		int se_num)
+{
+	struct dtrust_drv_data_t *drv_data;
+
+	if (card == NULL || env == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	drv_data = card->drv_data;
+	drv_data->env = env;
+
+	if(!(env->flags & SC_SEC_ENV_KEY_REF_PRESENT) || env->key_ref_len != 1)
+	{
+		sc_log(card->ctx, "No or invalid key reference");
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+
+	/*
+	 * The card does not support to set a security environment. Instead a
+	 * predefined template has to be loaded via MSE RESTORE which depends
+	 * on the algorithm used.
+	 */
+
+	switch(env->operation)
+	{
+	case SC_SEC_OPERATION_DECIPHER:
+		return SC_ERROR_NOT_IMPLEMENTED;
+
+	case SC_SEC_OPERATION_SIGN:
+		if(env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1)
+		{
+			switch(env->algorithm_flags & SC_ALGORITHM_RSA_HASHES)
+			{
+			case SC_ALGORITHM_RSA_HASH_SHA256: se_num = 0x25; break;
+			case SC_ALGORITHM_RSA_HASH_SHA384: se_num = 0x26; break;
+			case SC_ALGORITHM_RSA_HASH_SHA512: se_num = 0x27; break;
+
+			default:
+				return SC_ERROR_NOT_SUPPORTED;
+			}
+		}
+		else if(env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PSS)
+		{
+			/*
+			 * According to the specification the message digest has
+			 * to match the hash function used for the PSS scheme.
+			 * We don't enforce this constraint here as the output
+			 * is valid in all cases as long as the message digest
+			 * is calculated in software and not on the card.
+			 */
+
+			switch(env->algorithm_flags & SC_ALGORITHM_MGF1_HASHES)
+			{
+			case SC_ALGORITHM_MGF1_SHA256: se_num = 0x19; break;
+			case SC_ALGORITHM_MGF1_SHA384: se_num = 0x1A; break;
+			case SC_ALGORITHM_MGF1_SHA512: se_num = 0x1B; break;
+
+			default:
+				return SC_ERROR_NOT_SUPPORTED;
+			}
+		}
+		else
+		{
+			return SC_ERROR_NOT_SUPPORTED;
+		}
+		break;
+
+	default:
+		return SC_ERROR_NOT_SUPPORTED;
+	}
+
+	return iso_ops->restore_security_env(card, se_num);
+}
+
+static int dtrust_compute_signature(struct sc_card *card, const u8 * data,
+		 size_t data_len, u8 * out, size_t outlen)
+{
+	struct dtrust_drv_data_t *drv_data;
+	unsigned long flags;
+	size_t buflen = 0, tmplen;
+	u8 *buf = NULL;
+	int r;
+
+
+	drv_data = card->drv_data;
+	flags = drv_data->env->algorithm_flags;
+
+	/*
+	 * PKCS#1 padded signatures require some special handling. When using
+	 * the PKCS#1 scheme, first a digest info OID is prepended to the
+	 * message digest. Afterward this resulting octet string is padded to
+	 * the length of the key modulus. The card performs padding, but
+	 * requires the digest info to be prepended in software.
+	 */
+
+	/* Only PKCS#1 signature scheme requires special handling */
+	if(!(flags & SC_ALGORITHM_RSA_PAD_PKCS1))
+		return iso_ops->compute_signature(card, data, data_len, out, outlen);
+
+	/*
+	 * We have to clear the padding flag, because padding is done in
+	 * hardware. We are keeping the hash algorithm flags, to ensure the
+	 * digest info is prepended before padding.
+	 */
+	flags &= ~SC_ALGORITHM_RSA_PAD_PKCS1;
+	flags |= SC_ALGORITHM_RSA_PAD_NONE;
+
+	/* 32 Bytes should be enough to prepend the digest info */
+	buflen = data_len + 32;
+	buf = sc_mem_secure_alloc(buflen);
+	if(buf == NULL)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+
+	tmplen = buflen;
+
+	/* Prepend digest info */
+	r = sc_pkcs1_encode(card->ctx, flags, data, data_len, buf, &tmplen, 0, NULL);
+	LOG_TEST_GOTO_ERR(card->ctx, r, "Prepending digest info failed");
+
+	/* Do padding in hardware and compute signature */
+	r = iso_ops->compute_signature(card, buf, tmplen, out, outlen);
+
+err:
+	sc_mem_secure_clear_free(buf, buflen);
+
+	return r;
 }
 
 static int dtrust_logout(sc_card_t *card)
@@ -292,6 +432,8 @@ struct sc_card_driver * sc_get_dtrust_driver(void)
 	dtrust_ops.match_card = dtrust_match_card;
 	dtrust_ops.init = dtrust_init;
 	dtrust_ops.finish = dtrust_finish;
+	dtrust_ops.set_security_env = dtrust_set_security_env;
+	dtrust_ops.compute_signature = dtrust_compute_signature;
 	dtrust_ops.logout = dtrust_logout;
 
 	return &dtrust_drv;
