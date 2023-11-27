@@ -45,7 +45,8 @@ asn1_decode_des_params(sc_context_t *ctx, void **paramp,
 {
 	struct sc_asn1_entry asn1_des_iv[2];
 	u8	iv[8];
-	int	ivlen = 8, r;
+	size_t ivlen = 8;
+	int r;
 
 	sc_copy_asn1_entry(c_asn1_des_iv, asn1_des_iv);
 	sc_format_asn1_entry(asn1_des_iv + 0, iv, &ivlen, 0);
