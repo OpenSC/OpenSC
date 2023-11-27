@@ -727,13 +727,32 @@ CK_RV C_InitToken(CK_SLOT_ID slotID,
 {
 	struct sc_pkcs11_session *session;
 	struct sc_pkcs11_slot *slot;
+	unsigned char *label, *cpo;
 	CK_RV rv;
 	unsigned int i;
 
-	sc_log(context, "C_InitToken(pLabel='%s') called", pLabel);
+	/* Strip trailing whitespace and null terminate the label.
+	 * Keep the fixed-length buffer though as some other layers or drivers (SC-HSM)
+	 * might expect the length is fixed! */
+	label = malloc(33);
+	if (label == NULL) {
+		sc_log(context, "Failed to allocate label memory");
+		return CKR_HOST_MEMORY;
+	}
+	memcpy(label, pLabel, 32);
+	label[32] = 0;
+	cpo = label + 31;
+	while ((cpo >= label) && (*cpo == ' ')) {
+		*cpo = 0;
+		cpo--;
+	}
+
+	sc_log(context, "C_InitToken(pLabel='%s') called", label);
 	rv = sc_pkcs11_lock();
-	if (rv != CKR_OK)
+	if (rv != CKR_OK) {
+		free(label);
 		return rv;
+	}
 
 	rv = slot_get_token(slotID, &slot);
 	if (rv != CKR_OK)   {
@@ -757,7 +776,7 @@ CK_RV C_InitToken(CK_SLOT_ID slotID,
 		}
 	}
 
-	rv = slot->p11card->framework->init_token(slot, slot->fw_data, pPin, ulPinLen, pLabel);
+	rv = slot->p11card->framework->init_token(slot, slot->fw_data, pPin, ulPinLen, label);
 	if (rv == CKR_OK) {
 		/* Now we should re-bind all tokens so they get the
 		 * corresponding function vector and flags */
@@ -765,7 +784,8 @@ CK_RV C_InitToken(CK_SLOT_ID slotID,
 
 out:
 	sc_pkcs11_unlock();
-	sc_log(context, "C_InitToken(pLabel='%s') returns 0x%lX", pLabel, rv);
+	sc_log(context, "C_InitToken(pLabel='%s') returns 0x%lX", label, rv);
+	free(label);
 	return rv;
 }
 
