@@ -124,6 +124,25 @@ static void torture_macro_loop_indirect_multivalue(void **state)
 	assert_int_equal(r, 1);
 }
 
+#if 0
+/* A reproducer for https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=64549
+ * This can no longer happen as the non-printable macro names are now ignored while they are defined
+ */
+static void torture_macro_loop_indirect_nonprintable(void **state)
+{
+	scconf_list value3 = { .data = "$\270\270x\001" };
+	scconf_list value2 = { .data = "$e" };
+	scconf_list value1 = { .data = "$e" };
+	sc_macro_t macro3 = { .name = "e", .value = &value3 };
+	sc_macro_t macro2 = { .name = "osi", .value = &value2, .next = &macro3};
+	sc_macro_t macro1 = { .name = "\270\270x\001", .value = &value1, .next = &macro2 };
+	sc_profile_t profile = { .macro_list = &macro1 };
+
+	int r = check_macro_reference_loop("osi", &macro2, &profile, 10);
+	assert_int_equal(r, 1);
+}
+#endif /* 0 */
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
