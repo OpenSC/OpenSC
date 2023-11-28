@@ -263,6 +263,7 @@ static void		set_pin_defaults(struct sc_profile *,
 				struct pin_info *);
 static int		new_macro(sc_profile_t *, const char *, scconf_list *);
 static sc_macro_t *	find_macro(sc_profile_t *, const char *);
+static int		is_macro_character(char c);
 
 static sc_file_t *
 init_file(unsigned int type)
@@ -1833,9 +1834,22 @@ process_macros(struct state *cur, struct block *info,
 	int		 r;
 
 	for (item = blk->items; item; item = item->next) {
+		char *s = item->key;
 		name = item->key;
 		if (item->type != SCCONF_ITEM_TYPE_VALUE || !name)
 			continue;
+
+		/* make sure the macro name consist only of allowed characters.
+		 * This is not guaranteed by the tokenizer */
+		while (is_macro_character(*s)) {
+			s++;
+		}
+		if (*s != '\0') {
+#ifdef DEBUG_PROFILE
+			printf("Invalid macro name %s\n", name);
+#endif
+			return SC_ERROR_SYNTAX_ERROR;
+		}
 #ifdef DEBUG_PROFILE
 		printf("Defining %s\n", name);
 #endif
