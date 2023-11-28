@@ -57,6 +57,7 @@ else
 	if [ "$1" == "no-shared" ]; then
 		CONFIGURE_FLAGS="$CONFIGURE_FLAGS --disable-shared"
 	fi
+	export CFLAGS="-DDEBUG_PROFILE=1 $CFLAGS"
 	./configure $CONFIGURE_FLAGS
 	make -j 4 V=1
 	# 32b build has some issues to find openssl correctly
