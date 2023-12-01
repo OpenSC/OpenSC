@@ -42,17 +42,13 @@ static const struct sc_atr_table mcrd_atrs[] = {
 	  "D-Trust", SC_CARD_TYPE_MCRD_GENERIC, 0, NULL},
 	{"3b:ff:11:00:ff:80:b1:fe:45:1f:03:00:68:d2:76:00:00:28:ff:05:1e:31:80:00:90:00:a6", NULL,
 	  "D-Trust", SC_CARD_TYPE_MCRD_GENERIC, 0, NULL},
-	{"3b:fe:18:00:00:80:31:fe:45:80:31:80:66:40:90:a4:16:2a:00:83:0f:90:00:ef", NULL, "EstEID 3.5 warm", SC_CARD_TYPE_MCRD_ESTEID_V30, 0, NULL},
-	{"3b:fa:18:00:00:80:31:fe:45:fe:65:49:44:20:2f:20:50:4b:49:03", NULL, "EstEID 3.5 cold", SC_CARD_TYPE_MCRD_ESTEID_V30, 0, NULL },
-	{"3b:f8:18:00:00:80:31:fe:45:fe:41:5a:45:20:44:49:54:33", NULL, "AzeDIT 3.5 cold", SC_CARD_TYPE_MCRD_ESTEID_V30, 0, NULL },
 	{NULL, NULL, NULL, 0, 0, NULL}
 };
 
-static const struct sc_aid EstEID_v35_AID = { {0xD2, 0x33, 0x00, 0x00, 0x00, 0x45, 0x73, 0x74, 0x45, 0x49, 0x44, 0x20, 0x76, 0x33, 0x35}, 15 };
 
 static struct sc_card_operations mcrd_ops;
 static struct sc_card_driver mcrd_drv = {
-	"MICARDO 2.1 / EstEID 3.0 - 3.5",
+	"MICARDO 2.1",
 	"mcrd",
 	&mcrd_ops,
 	NULL, 0, NULL
@@ -71,7 +67,6 @@ enum {
 #define MFID 0x3F00
 #define EF_KeyD 0x0013		/* File with extra key information. */
 #define EF_Rule 0x0030		/* Default ACL file. */
-#define SC_ESTEID_KEYREF_FILE_RECLEN 21
 
 #define MAX_CURPATH 10
 
@@ -179,7 +174,7 @@ static void clear_special_files(struct df_info_s *dfi)
 	}
 }
 
-/* Some functionality straight from the EstEID manual.
+/*
  * Official notice: Refer to the Micardo 2.1 Public manual.
  * Sad side: not available without a NDA.
  */
@@ -210,14 +205,9 @@ static int mcrd_delete_ref_to_signkey(sc_card_t * card)
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
 
-static int is_esteid_card(sc_card_t *card)
-{
-	return card->type == SC_CARD_TYPE_MCRD_ESTEID_V30 ? 1 : 0;
-}
-
 static int mcrd_match_card(sc_card_t * card)
 {
-	int i = 0, r = 0;
+	int i = 0;
 
 	i = _sc_match_atr(card, mcrd_atrs, &card->type);
 	if (i >= 0) {
@@ -225,13 +215,6 @@ static int mcrd_match_card(sc_card_t * card)
 		return 1;
 	}
 
-	LOG_FUNC_CALLED(card->ctx);
-	r = gp_select_aid(card, &EstEID_v35_AID);
-	if (r >= 0) {
-		sc_log(card->ctx, "AID found");
-		card->type = SC_CARD_TYPE_MCRD_ESTEID_V30;
-		return 1;
-	}
 	return 0;
 }
 
@@ -247,27 +230,15 @@ static int mcrd_init(sc_card_t * card)
 	card->cla = 0x00;
 	card->caps = SC_CARD_CAP_RNG;
 
-	if (is_esteid_card(card)) {
-		unsigned long ext_flags = SC_ALGORITHM_EXT_EC_NAMEDCURVE | SC_ALGORITHM_EXT_EC_UNCOMPRESES;
-		flags = SC_ALGORITHM_ECDSA_RAW | SC_ALGORITHM_ECDH_CDH_RAW | SC_ALGORITHM_ECDSA_HASH_NONE;
-		_sc_card_add_ec_alg(card, 384, flags, ext_flags, NULL);
-		// Force EstEID 3.5 card recv size 255 with T=0 to avoid recursive read binary
-		// sc_read_binary cannot handle recursive 61 00 calls
-		if (card->reader && card->reader->active_protocol == SC_PROTO_T0)
-			card->max_recv_size = 255;
-	} else {
-		flags = SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE;
-		_sc_card_add_rsa_alg(card, 512, flags, 0);
-		_sc_card_add_rsa_alg(card, 768, flags, 0);
-		_sc_card_add_rsa_alg(card, 1024, flags, 0);
-	}
+	flags = SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE;
+	_sc_card_add_rsa_alg(card, 512, flags, 0);
+	_sc_card_add_rsa_alg(card, 768, flags, 0);
+	_sc_card_add_rsa_alg(card, 1024, flags, 0);
 
 	if (SC_SUCCESS != sc_select_file (card, sc_get_mf_path(), NULL))
 		sc_log(card->ctx, "Warning: select MF failed");
 
-	/* Not needed for the fixed EstEID profile */
-	if (!is_esteid_card(card))
-		load_special_files(card);
+	load_special_files(card);
 
 	return SC_SUCCESS;
 }
@@ -582,7 +553,7 @@ static void process_fcp(sc_card_t * card, sc_file_t * file,
 
 	/* Security attributes, reference to expanded format. */
 	tag = sc_asn1_find_tag(ctx, p, len, 0x8B, &taglen);
-	if (tag && taglen && !is_esteid_card(card)) {
+	if (tag && taglen) {
 		process_arr(card, tag, taglen);
 	} else if ((tag = sc_asn1_find_tag(ctx, p, len, 0xA1, &taglen))
 			&& taglen) {
@@ -638,11 +609,7 @@ do_select(sc_card_t * card, u8 kind,
 		*file = sc_file_new();
 		if (!*file)
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
-		/* EstEID v3.0 cards are buggy and sometimes return a double 0x62 tag */
-		if (card->type == SC_CARD_TYPE_MCRD_ESTEID_V30 && apdu.resp[2] == 0x62)
-			process_fcp(card, *file, apdu.resp + 4, apdu.resp[3]);
-		else
-			process_fcp(card, *file, apdu.resp + 2, apdu.resp[1]);
+		process_fcp(card, *file, apdu.resp + 2, apdu.resp[1]);
 		return SC_SUCCESS;
 	}
 
@@ -719,7 +686,7 @@ select_down(sc_card_t * card,
 		priv->curpathlen++;
 	}
 	priv->is_ef = found_ef;
-	if (!found_ef && !is_esteid_card(card))
+	if (!found_ef)
 		load_special_files(card);
 
 	return 0;
@@ -957,7 +924,7 @@ mcrd_select_file(sc_card_t * card, const sc_path_t * path, sc_file_t ** file)
    values gathered from peeking actual signing operations using a
    different system.
    It has been generalized [?] and modified by information coming from
-   openpgp card implementation, EstEID 'manual' and some other sources. -mp
+   openpgp card implementation and some other sources. -mp
    */
 static int mcrd_set_security_env(sc_card_t * card,
 				 const sc_security_env_t * env, int se_num)
@@ -974,8 +941,7 @@ static int mcrd_set_security_env(sc_card_t * card,
 
 	/* some sanity checks */
 	if (env->flags & SC_SEC_ENV_ALG_PRESENT) {
-		if (env->algorithm != SC_ALGORITHM_RSA &&
-			(is_esteid_card(card) && env->algorithm != SC_ALGORITHM_EC))
+		if (env->algorithm != SC_ALGORITHM_RSA)
 			return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	if (!(env->flags & SC_SEC_ENV_KEY_REF_PRESENT)
@@ -996,9 +962,6 @@ static int mcrd_set_security_env(sc_card_t * card,
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	priv->sec_env = *env;
-	if (is_esteid_card(card)) {
-		return 0;
-	}
 
 	sbuf[3] = env->key_ref[0];
 	switch (env->operation) {
@@ -1133,38 +1096,9 @@ static int mcrd_decipher(struct sc_card *card,
 static int mcrd_pin_cmd(sc_card_t * card, struct sc_pin_cmd_data *data,
 			int *tries_left)
 {
-	int r;
 	LOG_FUNC_CALLED(card->ctx);
 	data->pin1.offset = 5;
 	data->pin2.offset = 5;
-
-	if (is_esteid_card(card) && data->cmd == SC_PIN_CMD_GET_INFO) {
-		sc_path_t tmppath;
-		u8 buf[16];
-		unsigned int ref_to_record[] = {3,1,2};
-
-		/* the file with key pin info (tries left) 4.5 EF_PwdC */
-		/* XXX: cheat the file path cache by always starting fresh from MF */
-		r = sc_select_file (card, sc_get_mf_path(), NULL);
-		if (r < 0)
-			return SC_ERROR_INTERNAL;
-
-		sc_format_path ("3f000016", &tmppath);
-		r = sc_select_file (card, &tmppath, NULL);
-		if (r < 0)
-			return SC_ERROR_INTERNAL;
-
-		/* read the number of tries left for the PIN */
-		r = sc_read_record (card, ref_to_record[data->pin_reference], 0, buf, sizeof(buf), SC_RECORD_BY_REC_NR);
-		if (r < 0)
-			return SC_ERROR_INTERNAL;
-		if (buf[0] != 0x80 || buf[3] != 0x90)
-			return SC_ERROR_INTERNAL;
-		data->pin1.tries_left = buf[5];
-		data->pin1.max_tries = buf[2];
-		data->pin1.logged_in = SC_PIN_STATE_UNKNOWN;
-		return SC_SUCCESS;
-	}
 
 	if (card->type == SC_CARD_TYPE_MCRD_GENERIC) {
 		sc_log(card->ctx, "modify pin reference for D-Trust\n");
@@ -1176,11 +1110,7 @@ static int mcrd_pin_cmd(sc_card_t * card, struct sc_pin_cmd_data *data,
 
 static int mcrd_logout(sc_card_t * card)
 {
-	if (card->type == SC_CARD_TYPE_MCRD_ESTEID_V30) {
-		return gp_select_aid(card, &EstEID_v35_AID);
-	} else {
-		return SC_ERROR_NOT_SUPPORTED;
-	}
+	return SC_ERROR_NOT_SUPPORTED;
 }
 
 /* Driver binding */

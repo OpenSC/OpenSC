@@ -1,5 +1,5 @@
 /*
- * eidenv.c: EstEID utility
+ * eidenv.c: Belpic utility
  *
  * Copyright (C) 2004 Martin Paljak <martin@martinpaljak.net>
  *
@@ -55,34 +55,10 @@ static const struct option options[] = {
 /* Probably not used, but needed to build on Windows */
 static const char *app_name = "eidenv";
 
-static struct {
-	const char *name;
-	const char *env_name;
-	int recno;
-} esteid_data[] = {
-	{"Surname", "ESTEID_SURNAME", 1},
-	{"Given names 1", "ESTEID_GIVEN_NAMES1", 2},
-	{"Given names 2", "ESTEID_GIVEN_NAMES2", 3},
-	{"Sex", "ESTEID_SEX", 4},
-	{"Citizenship", "ESTEID_CITIZENSHIP", 5},
-	{"Date of birth", "ESTEID_DATE_OF_BIRTH", 6},
-	{"Personal ID code", "ESTEID_PERSONAL_ID", 7},
-	{"Document number", "ESTEID_DOCUMENT_NR", 8},
-	{"Expiry date", "ESTEID_EXPIRY_DATE", 9},
-	{"Place of birth", "ESTEID_PLACE_OF_BIRTH", 10},
-	{"Issuing date", "ESTEID_ISSUING_DATE", 11},
-	{"Permit type", "ESTEID_PERMIT_TYPE", 12},
-	{"Remark 1", "ESTEID_REMARK1", 13},
-	{"Remark 2", "ESTEID_REMARK2", 14},
-	{"Remark 3", "ESTEID_REMARK3", 15},
-	{"Remark 4", "ESTEID_REMARK4", 16},
-	{NULL, NULL, 0}
-};
-
 static void show_version(void)
 {
 	fprintf(stderr,
-		"eidenv - EstEID utility version " PACKAGE_VERSION "\n"
+		"eidenv - Belpic utility version " PACKAGE_VERSION "\n"
 		"\n"
 		"Copyright (c) 2004 Martin Paljak <martin@martinpaljak.net>\n"
 		"Licensed under LGPL v2\n");
@@ -137,75 +113,6 @@ static void decode_options(int argc, char **argv)
 			exit(EXIT_FAILURE);
 		}
 	}
-}
-
-static void do_esteid(sc_card_t *card)
-{
-	sc_path_t path;
-	int r, i;
-	unsigned char buff[512];
-
-	if (stats) {
-		int key_used[4];
-		sc_format_path("3f00eeee0013", &path);
-		r = sc_select_file(card, &path, NULL);
-		if (r) {
-			fprintf(stderr, "Failed to select key counters: %s\n", sc_strerror(r));
-			goto out;
-		}
-
-		/* print the counters */
-		for (i = 1; i <= 4; i++) {
-			r = sc_read_record(card, i, 0, buff, 128, SC_RECORD_BY_REC_NR);
-			if (r < 0)
-				goto out;
-			key_used[i - 1] = 0xffffff - ((unsigned char) buff[0xc] * 65536
-									+ (unsigned char) buff[0xd] * 256
-									+ (unsigned char) buff[0xe]);
-		}
-		for (i = 0; i < 2; i++) {
-			printf("Key generation #%d usage:\n\tsign: %d\n\tauth: %d\n",
-					 i, key_used[i], key_used[i + 2]);
-		}
-		exit_status = EXIT_SUCCESS;
-		goto out;
-	}
-
-	/* Or just read the datafile */
-	sc_format_path("3f00eeee5044", &path);
-	r = sc_select_file(card, &path, NULL);
-	if (r) {
-		fprintf(stderr, "Failed to select DF: %s\n", sc_strerror(r));
-		goto out;
-	}
-
-	for (i = 0; esteid_data[i].recno != 0; i++) {
-		r = sc_read_record(card, esteid_data[i].recno, 0, buff, 50, SC_RECORD_BY_REC_NR);
-		if (r < 0) {
-			fprintf (stderr, "Failed to read record %d from card: %s\n",
-						esteid_data[i].recno, sc_strerror (r));
-			goto out;
-		}
-		buff[r] = '\0';
-		if (exec_program) {
-			unsigned char * cp;
-			cp = malloc(strlen(esteid_data[i].env_name) +
-				strlen((char *) buff) + 2);
-			if (cp) {
-				strcpy((char *) cp,esteid_data[i].env_name);
-				strcat((char *) cp,"=");
-				strcat((char *) cp,(char *) buff);
-				putenv((char *) cp);
-			}
-		} else {
-			printf("%s: %s\n", esteid_data[i].name, buff);
-		}
-	}
-
-	exit_status = EXIT_SUCCESS;
-
-out:
-	return;
 }
 
 /* Select and read a transparent EF */
@@ -409,12 +316,10 @@ int main(int argc, char **argv)
 	}
 
 	/* Check card type */
-	if (card->type == SC_CARD_TYPE_MCRD_ESTEID_V30)
-		do_esteid(card);
-	else if (card->type == SC_CARD_TYPE_BELPIC_EID)
+	if (card->type == SC_CARD_TYPE_BELPIC_EID)
 		do_belpic(card);
 	else {
-		fprintf(stderr, "Not an EstEID or Belpic card!\n");
+		fprintf(stderr, "Not an Belpic card!\n");
 		goto out;
 	}
 

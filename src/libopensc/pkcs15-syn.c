@@ -40,7 +40,6 @@ struct sc_pkcs15_emulator_handler builtin_emulators[] = {
 	{ "openpgp",	sc_pkcs15emu_openpgp_init_ex	},
 	{ "starcert",	sc_pkcs15emu_starcert_init_ex	},
 	{ "tcos",	sc_pkcs15emu_tcos_init_ex	},
-	{ "esteid",	sc_pkcs15emu_esteid_init_ex	},
 	{ "itacns",	sc_pkcs15emu_itacns_init_ex	},
 	{ "PIV-II",     sc_pkcs15emu_piv_init_ex	},
 	{ "cac",        sc_pkcs15emu_cac_init_ex	},
@@ -85,7 +84,6 @@ static const char *exfunc_name  = "sc_pkcs15_init_func_ex";
 int sc_pkcs15_is_emulation_only(sc_card_t *card)
 {
 	switch (card->type) {
-		case SC_CARD_TYPE_MCRD_ESTEID_V30:
 		case SC_CARD_TYPE_GEMSAFEV1_PTEID:
 		case SC_CARD_TYPE_OPENPGP_V1:
 		case SC_CARD_TYPE_OPENPGP_V2:
