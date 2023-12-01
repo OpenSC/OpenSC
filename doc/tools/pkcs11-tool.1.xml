@@ -447,7 +447,7 @@
 					<term>
 						<option>--slot</option> <replaceable>id</replaceable>
 					</term>
-					<listitem><para>Specify the id of the slot to use.</para></listitem>
+					<listitem><para>Specify the id of the slot to use (accepts HEX format with 0x.. prefix or decimal number).</para></listitem>
 				</varlistentry>
 
 				<varlistentry>

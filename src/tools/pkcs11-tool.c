@@ -352,7 +352,7 @@ static const char *option_help[] = {
 	"Specify the type of object (e.g. cert, privkey, pubkey, secrkey, data)",
 	"Specify the ID of the object",
 	"Specify the label of the object",
-	"Specify the ID of the slot to use",
+	"Specify the ID of the slot to use (accepts HEX format with 0x.. prefix or decimal number)",
 	"Specify the description of the slot to use",
 	"Specify the index of the slot to use",
 	"Specify the index of the object to use",
