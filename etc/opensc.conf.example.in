@@ -956,7 +956,7 @@ app default {
 		#
 		# Prefer pkcs15 emulation code before
 		# the normal pkcs15 processing.
-		# Some cards (like esteid and pteid) work in emu-only mode,
+		# Some cards (like pteid) work in emu-only mode,
 		# and do not depend on this option.
 		#
 		# Default: no
