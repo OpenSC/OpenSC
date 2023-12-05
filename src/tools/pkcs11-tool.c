@@ -5042,12 +5042,15 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 			}
 		}
 		break;
+	case CKK_EC:
 	case CKK_EC_EDWARDS:
 	case CKK_EC_MONTGOMERY:
 		if (key_type == CKK_EC_EDWARDS) {
 			printf("; EC_EDWARDS");
-		} else {
+		} else if (key_type == CKK_EC_MONTGOMERY) {
 			printf("; EC_MONTGOMERY");
+		} else {
+			printf("; EC");
 		}
 		if (pub) {
 			unsigned char *bytes = NULL;
@@ -5055,7 +5058,24 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 			unsigned int n;
 
 			bytes = getEC_POINT(sess, obj, &size);
-			ksize = 255; /* for now, we support only 255b curves */
+			if (key_type == CKK_EC) {
+				/*
+				* (We only support uncompressed for now)
+				* Uncompressed EC_POINT is DER OCTET STRING of "04||x||y"
+				* So a "256" bit key has x and y of 32 bytes each
+				* something like: "04 41 04||x||y"
+				* Do simple size calculation based on DER encoding
+				*/
+				if ((size - 2) <= 127)
+					ksize = (size - 3) * 4;
+				else if ((size - 3) <= 255)
+					ksize = (size - 4) * 4;
+				else
+					ksize = (size - 5) * 4;
+			} else {
+				/* This should be 255 for ed25519 and 448 for ed448 curves so roughly */
+				ksize = size * 8;
+			}
 
 			printf("  EC_POINT %u bits\n", ksize);
 			if (bytes) {
@@ -5077,14 +5097,18 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 					for (n = 0; n < size; n++)
 						printf("%02x", bytes[n]);
 
-					sc_init_oid(&oid);
-					if (size > 2 && sc_asn1_decode_object_id(bytes + 2, size - 2, &oid) == SC_SUCCESS) {
-						printf(" (OID %i", oid.value[0]);
-						if (oid.value[0] >= 0)
-							for (n = 1; (n < SC_MAX_OBJECT_ID_OCTETS)
-									&& (oid.value[n] >= 0); n++)
-								printf(".%i", oid.value[n]);
-						printf(")");
+					if (size > 2 && bytes[0] == 0x06) { // OID
+						sc_init_oid(&oid);
+						if (sc_asn1_decode_object_id(bytes + 2, size - 2, &oid) == SC_SUCCESS) {
+							printf(" (OID %i", oid.value[0]);
+							if (oid.value[0] >= 0)
+								for (n = 1; (n < SC_MAX_OBJECT_ID_OCTETS)
+										&& (oid.value[n] >= 0); n++)
+									printf(".%i", oid.value[n]);
+							printf(")");
+						}
+					} else if (size > 2 && bytes[0] == 0x13) { // Printable string
+						printf(" (PrintableString %.*s)", bytes[1], bytes+2);
 					}
 					printf("\n");
 
@@ -5094,52 +5118,6 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 		} else {
 			printf("\n");
 		}
-		break;
-	case CKK_EC:
-		printf("; EC");
-		if (pub) {
-			unsigned char *bytes = NULL;
-			unsigned int n;
-			int ksize;
-
-			bytes = getEC_POINT(sess, obj, &size);
-			/*
-			 * (We only support uncompressed for now)
-			 * Uncompressed EC_POINT is DER OCTET STRING of "04||x||y"
-			 * So a "256" bit key has x and y of 32 bytes each
-			 * something like: "04 41 04||x||y"
-			 * Do simple size calculation based on DER encoding
-			 */
-			if ((size - 2) <= 127)
-				ksize = (size - 3) * 4;
-			else if ((size - 3) <= 255)
-				ksize = (size - 4) * 4;
-			else
-				ksize = (size - 5) * 4;
-
-			printf("  EC_POINT %d bits\n", ksize);
-			if (bytes) {
-				if ((CK_LONG)size > 0) { /* Will print the point here */
-					printf("  EC_POINT:   ");
-					for (n = 0; n < size; n++)
-						printf("%02x", bytes[n]);
-					printf("\n");
-				}
-				free(bytes);
-			}
-			bytes = NULL;
-			bytes = getEC_PARAMS(sess, obj, &size);
-			if (bytes){
-				if ((CK_LONG)size > 0) {
-					printf("  EC_PARAMS:  ");
-					for (n = 0; n < size; n++)
-						printf("%02x", bytes[n]);
-					printf("\n");
-				}
-				free(bytes);
-			}
-		} else
-			printf("\n");
 		break;
 	case CKK_GENERIC_SECRET:
 	case CKK_AES:
