@@ -4852,12 +4852,10 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 		{CKA_KEY_TYPE, &newkey_type, sizeof(newkey_type)},
 		{CKA_SENSITIVE, &_false, sizeof(_false)},
 		{CKA_EXTRACTABLE, &_true, sizeof(_true)},
-		{CKA_ENCRYPT, &_true, sizeof(_true)},
-		{CKA_DECRYPT, &_true, sizeof(_true)},
 		{CKA_WRAP, &_true, sizeof(_true)},
 		{CKA_UNWRAP, &_true, sizeof(_true)}
 	};
-	int n_attrs = 9;
+	int n_attrs = 7;
 	CK_ECDH1_DERIVE_PARAMS ecdh_parms;
 	CK_RV rv;
 	BIO *bio_in = NULL;
