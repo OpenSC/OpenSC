@@ -4249,6 +4249,8 @@ static int write_object(CK_SESSION_HANDLE session)
 				type = CKK_AES;
 			else if (strncasecmp(opt_key_type, "DES3:", strlen("DES3:")) == 0)
 				type = CKK_DES3;
+			else if (strncasecmp(opt_key_type, "GENERIC:", strlen("GENERIC:")) == 0)
+				type = CKK_GENERIC_SECRET;
 			else
 				util_fatal("Unknown key type: 0x%lX", type);
 		}
