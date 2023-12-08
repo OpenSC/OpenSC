@@ -26,28 +26,30 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include "internal.h"
+
 #include "asn1.h"
+#include "internal.h"
 
 static const struct sc_card_operations *iso_ops = NULL;
 
 static struct sc_card_operations dtrust_ops;
-static struct sc_card_driver dtrust_drv =
-{
+
+// clang-format off
+static struct sc_card_driver dtrust_drv = {
 	"D-Trust Signature Card",
 	"dtrust",
 	&dtrust_ops,
 	NULL, 0, NULL
 };
+// clang-format on
 
 /* internal structure to save the current security environment */
-struct dtrust_drv_data_t
-{
+struct dtrust_drv_data_t {
 	const sc_security_env_t *env;
 };
 
-static const struct sc_atr_table dtrust_atrs[] =
-{
+// clang-format off
+static const struct sc_atr_table dtrust_atrs[] = {
 	/* D-Trust Signature Card v4.1 and v4.4 - CardOS 5.4
 	 *
 	 * The ATR was intentionally omitted from minidriver_registration[] within win32/customactions.cpp
@@ -56,18 +58,20 @@ static const struct sc_atr_table dtrust_atrs[] =
 	{ "3b:d2:18:00:81:31:fe:58:c9:04:11", NULL, NULL, SC_CARD_TYPE_DTRUST_V4_1_STD, 0, NULL },
 	{ NULL,                               NULL, NULL, 0,                            0, NULL }
 };
+// clang-format on
 
-static struct dtrust_supported_ec_curves
-{
+// clang-format off
+static struct dtrust_supported_ec_curves {
 	struct sc_object_id oid;
 	size_t size;
-} dtrust_curves[] =
-{
+} dtrust_curves[] = {
 	{ .oid = {{ 1, 2, 840, 10045, 3, 1, 7, -1 }}, .size = 256 },	/* secp256r1 */
 	{ .oid = {{ -1 }},                            .size =   0 },
 };
+// clang-format on
 
-static int _dtrust_match_cardos(sc_card_t *card)
+static int
+_dtrust_match_cardos(sc_card_t *card)
 {
 	int r;
 	size_t prodlen;
@@ -77,7 +81,7 @@ static int _dtrust_match_cardos(sc_card_t *card)
 	r = sc_get_data(card, 0x0182, buf, 32);
 	LOG_TEST_RET(card->ctx, r, "OS version check failed");
 
-	if(r != 2 || buf[0] != 0xc9 || buf[1] != 0x04)
+	if (r != 2 || buf[0] != 0xc9 || buf[1] != 0x04)
 		return SC_ERROR_WRONG_CARD;
 
 	/* check product name */
@@ -85,14 +89,14 @@ static int _dtrust_match_cardos(sc_card_t *card)
 	LOG_TEST_RET(card->ctx, r, "Product name check failed");
 
 	prodlen = (size_t)r;
-	if(prodlen != strlen("CardOS V5.4     2019") + 1 ||
-	   memcmp(buf, "CardOS V5.4     2019", prodlen))
+	if (prodlen != strlen("CardOS V5.4     2019") + 1 || memcmp(buf, "CardOS V5.4     2019", prodlen))
 		return SC_ERROR_WRONG_CARD;
 
 	return SC_SUCCESS;
 }
 
-static int _dtrust_match_profile(sc_card_t * card)
+static int
+_dtrust_match_profile(sc_card_t *card)
 {
 	sc_path_t cia_path;
 	int r;
@@ -101,10 +105,9 @@ static int _dtrust_match_profile(sc_card_t * card)
 	const u8 *sp, *pp;
 	char *name;
 
-
 	sc_format_path("5032", &cia_path);
 	cia_path.aid.len = sizeof(cia_path.aid.value);
-        r = sc_hex_to_bin("E8:28:BD:08:0F:A0:00:00:01:67:45:53:49:47:4E", (u8*)&cia_path.aid.value, &cia_path.aid.len);
+	r = sc_hex_to_bin("E8:28:BD:08:0F:A0:00:00:01:67:45:53:49:47:4E", (u8 *)&cia_path.aid.value, &cia_path.aid.len);
 	LOG_TEST_RET(card->ctx, r, "Formatting AID failed");
 
 	r = sc_select_file(card, &cia_path, NULL);
@@ -114,20 +117,20 @@ static int _dtrust_match_profile(sc_card_t * card)
 	LOG_TEST_RET(card->ctx, r, "Reading CIA information failed");
 
 	sp = sc_asn1_find_tag(card->ctx, buf, r, 0x30, &slen);
-	if(sp == NULL)
+	if (sp == NULL)
 		return SC_ERROR_WRONG_CARD;
 
 	/* check vendor */
 	pp = sc_asn1_find_tag(card->ctx, sp, slen, 0x0c, &plen);
-	if(pp == NULL)
+	if (pp == NULL)
 		return SC_ERROR_WRONG_CARD;
 
-	if(plen != 16 || memcmp(pp, "D-TRUST GmbH (C)", 16))
+	if (plen != 16 || memcmp(pp, "D-TRUST GmbH (C)", 16))
 		return SC_ERROR_WRONG_CARD;
 
 	/* check profile */
 	pp = sc_asn1_find_tag(card->ctx, sp, slen, 0x80, &plen);
-	if(pp == NULL)
+	if (pp == NULL)
 		return SC_ERROR_WRONG_CARD;
 
 	/*
@@ -135,21 +138,21 @@ static int _dtrust_match_profile(sc_card_t * card)
 	 * on the production process, but aren't relevant for determining the
 	 * card profile.
 	 */
-	if(plen >= 27 && !memcmp(pp, "D-TRUST Card 4.1 Std. RSA 2", 27))
+	if (plen >= 27 && !memcmp(pp, "D-TRUST Card 4.1 Std. RSA 2", 27))
 		card->type = SC_CARD_TYPE_DTRUST_V4_1_STD;
-	else if(plen >= 28 && !memcmp(pp, "D-TRUST Card 4.1 Multi ECC 2", 28))
+	else if (plen >= 28 && !memcmp(pp, "D-TRUST Card 4.1 Multi ECC 2", 28))
 		card->type = SC_CARD_TYPE_DTRUST_V4_1_MULTI;
-	else if(plen >= 27 && !memcmp(pp, "D-TRUST Card 4.1 M100 ECC 2", 27))
+	else if (plen >= 27 && !memcmp(pp, "D-TRUST Card 4.1 M100 ECC 2", 27))
 		card->type = SC_CARD_TYPE_DTRUST_V4_1_M100;
-	else if(plen >= 27 && !memcmp(pp, "D-TRUST Card 4.4 Std. RSA 2", 27))
+	else if (plen >= 27 && !memcmp(pp, "D-TRUST Card 4.4 Std. RSA 2", 27))
 		card->type = SC_CARD_TYPE_DTRUST_V4_4_STD;
-	else if(plen >= 28 && !memcmp(pp, "D-TRUST Card 4.4 Multi ECC 2", 28))
+	else if (plen >= 28 && !memcmp(pp, "D-TRUST Card 4.4 Multi ECC 2", 28))
 		card->type = SC_CARD_TYPE_DTRUST_V4_4_MULTI;
 	else
 		return SC_ERROR_WRONG_CARD;
 
 	name = malloc(plen + 1);
-	if(name == NULL)
+	if (name == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	memcpy(name, pp, plen);
 	name[plen] = '\0';
@@ -160,15 +163,16 @@ static int _dtrust_match_profile(sc_card_t * card)
 	return SC_SUCCESS;
 }
 
-static int dtrust_match_card(sc_card_t *card)
+static int
+dtrust_match_card(sc_card_t *card)
 {
-	if(_sc_match_atr(card, dtrust_atrs, &card->type) < 0)
+	if (_sc_match_atr(card, dtrust_atrs, &card->type) < 0)
 		return 0;
 
-	if(_dtrust_match_cardos(card) != SC_SUCCESS)
+	if (_dtrust_match_cardos(card) != SC_SUCCESS)
 		return 0;
 
-	if(_dtrust_match_profile(card) != SC_SUCCESS)
+	if (_dtrust_match_profile(card) != SC_SUCCESS)
 		return 0;
 
 	sc_log(card->ctx, "D-Trust Signature Card (CardOS 5.4)");
@@ -176,7 +180,8 @@ static int dtrust_match_card(sc_card_t *card)
 	return 1;
 }
 
-static int _dtrust_get_serialnr(sc_card_t *card)
+static int
+_dtrust_get_serialnr(sc_card_t *card)
 {
 	int r;
 	u8 buf[32];
@@ -184,8 +189,7 @@ static int _dtrust_get_serialnr(sc_card_t *card)
 	r = sc_get_data(card, 0x0181, buf, 32);
 	LOG_TEST_RET(card->ctx, r, "querying serial number failed");
 
-	if(r != 8)
-	{
+	if (r != 8) {
 		sc_log(card->ctx, "unexpected response to GET DATA serial number");
 		return SC_ERROR_INTERNAL;
 	}
@@ -197,7 +201,8 @@ static int _dtrust_get_serialnr(sc_card_t *card)
 	return SC_SUCCESS;
 }
 
-static int dtrust_init(sc_card_t *card)
+static int
+dtrust_init(sc_card_t *card)
 {
 	int r;
 	const size_t data_field_length = 437;
@@ -208,7 +213,7 @@ static int dtrust_init(sc_card_t *card)
 	card->cla = 0x00;
 
 	card->drv_data = calloc(1, sizeof(struct dtrust_drv_data_t));
-	if(card->drv_data == NULL)
+	if (card->drv_data == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 
 	r = _dtrust_get_serialnr(card);
@@ -219,8 +224,7 @@ static int dtrust_init(sc_card_t *card)
 	card->max_send_size = data_field_length - 6;
 #ifdef _WIN32
 	/* see card-cardos.c */
-	if(card->reader->max_send_size == 255 && card->reader->max_recv_size == 256)
-	{
+	if (card->reader->max_send_size == 255 && card->reader->max_recv_size == 256) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "resetting reader to use data_field_length");
 		card->reader->max_send_size = data_field_length - 6;
 		card->reader->max_recv_size = data_field_length - 3;
@@ -234,8 +238,7 @@ static int dtrust_init(sc_card_t *card)
 	flags = 0;
 	r = SC_ERROR_WRONG_CARD;
 
-	switch(card->type)
-	{
+	switch (card->type) {
 	case SC_CARD_TYPE_DTRUST_V4_1_STD:
 	case SC_CARD_TYPE_DTRUST_V4_4_STD:
 		flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
@@ -260,10 +263,8 @@ static int dtrust_init(sc_card_t *card)
 		flags |= SC_ALGORITHM_ECDH_CDH_RAW;
 		flags |= SC_ALGORITHM_ECDSA_HASH_SHA256;
 		ext_flags = SC_ALGORITHM_EXT_EC_NAMEDCURVE;
-		for(unsigned int i = 0; dtrust_curves[i].oid.value[0] >= 0; i++)
-		{
-			_sc_card_add_ec_alg(card, dtrust_curves[i].size,
-				flags, ext_flags, &dtrust_curves[i].oid);
+		for (unsigned int i = 0; dtrust_curves[i].oid.value[0] >= 0; i++) {
+			_sc_card_add_ec_alg(card, dtrust_curves[i].size, flags, ext_flags, &dtrust_curves[i].oid);
 		}
 
 		r = SC_SUCCESS;
@@ -273,17 +274,19 @@ static int dtrust_init(sc_card_t *card)
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
-static int dtrust_finish(sc_card_t *card)
+static int
+dtrust_finish(sc_card_t *card)
 {
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	free((char*)card->name);
+	free((char *)card->name);
 	free(card->drv_data);
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
-static int dtrust_set_security_env(sc_card_t *card,
+static int
+dtrust_set_security_env(sc_card_t *card,
 		const sc_security_env_t *env,
 		int se_num)
 {
@@ -295,8 +298,7 @@ static int dtrust_set_security_env(sc_card_t *card,
 	drv_data = card->drv_data;
 	drv_data->env = env;
 
-	if(!(env->flags & SC_SEC_ENV_KEY_REF_PRESENT) || env->key_ref_len != 1)
-	{
+	if (!(env->flags & SC_SEC_ENV_KEY_REF_PRESENT) || env->key_ref_len != 1) {
 		sc_log(card->ctx, "No or invalid key reference");
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
@@ -307,46 +309,47 @@ static int dtrust_set_security_env(sc_card_t *card,
 	 * on the algorithm used.
 	 */
 
-	switch(env->operation)
-	{
+	switch (env->operation) {
 	case SC_SEC_OPERATION_DECIPHER:
-		if(env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1)
-		{
+		if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1) {
 			se_num = 0x31;
-		}
-		else if(env->algorithm_flags & SC_ALGORITHM_RSA_PAD_OAEP)
-		{
-			switch(env->algorithm_flags & SC_ALGORITHM_MGF1_HASHES)
-			{
-			case SC_ALGORITHM_MGF1_SHA256: se_num = 0x32; break;
-			case SC_ALGORITHM_MGF1_SHA384: se_num = 0x33; break;
-			case SC_ALGORITHM_MGF1_SHA512: se_num = 0x34; break;
+		} else if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_OAEP) {
+			switch (env->algorithm_flags & SC_ALGORITHM_MGF1_HASHES) {
+			case SC_ALGORITHM_MGF1_SHA256:
+				se_num = 0x32;
+				break;
+			case SC_ALGORITHM_MGF1_SHA384:
+				se_num = 0x33;
+				break;
+			case SC_ALGORITHM_MGF1_SHA512:
+				se_num = 0x34;
+				break;
 
 			default:
 				return SC_ERROR_NOT_SUPPORTED;
 			}
-		}
-		else
-		{
+		} else {
 			return SC_ERROR_NOT_SUPPORTED;
 		}
 		break;
 
 	case SC_SEC_OPERATION_SIGN:
-		if(env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1)
-		{
-			switch(env->algorithm_flags & SC_ALGORITHM_RSA_HASHES)
-			{
-			case SC_ALGORITHM_RSA_HASH_SHA256: se_num = 0x25; break;
-			case SC_ALGORITHM_RSA_HASH_SHA384: se_num = 0x26; break;
-			case SC_ALGORITHM_RSA_HASH_SHA512: se_num = 0x27; break;
+		if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1) {
+			switch (env->algorithm_flags & SC_ALGORITHM_RSA_HASHES) {
+			case SC_ALGORITHM_RSA_HASH_SHA256:
+				se_num = 0x25;
+				break;
+			case SC_ALGORITHM_RSA_HASH_SHA384:
+				se_num = 0x26;
+				break;
+			case SC_ALGORITHM_RSA_HASH_SHA512:
+				se_num = 0x27;
+				break;
 
 			default:
 				return SC_ERROR_NOT_SUPPORTED;
 			}
-		}
-		else if(env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PSS)
-		{
+		} else if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PSS) {
 			/*
 			 * According to the specification the message digest has
 			 * to match the hash function used for the PSS scheme.
@@ -355,18 +358,21 @@ static int dtrust_set_security_env(sc_card_t *card,
 			 * is calculated in software and not on the card.
 			 */
 
-			switch(env->algorithm_flags & SC_ALGORITHM_MGF1_HASHES)
-			{
-			case SC_ALGORITHM_MGF1_SHA256: se_num = 0x19; break;
-			case SC_ALGORITHM_MGF1_SHA384: se_num = 0x1A; break;
-			case SC_ALGORITHM_MGF1_SHA512: se_num = 0x1B; break;
+			switch (env->algorithm_flags & SC_ALGORITHM_MGF1_HASHES) {
+			case SC_ALGORITHM_MGF1_SHA256:
+				se_num = 0x19;
+				break;
+			case SC_ALGORITHM_MGF1_SHA384:
+				se_num = 0x1A;
+				break;
+			case SC_ALGORITHM_MGF1_SHA512:
+				se_num = 0x1B;
+				break;
 
 			default:
 				return SC_ERROR_NOT_SUPPORTED;
 			}
-		}
-		else
-		{
+		} else {
 			return SC_ERROR_NOT_SUPPORTED;
 		}
 		break;
@@ -378,15 +384,15 @@ static int dtrust_set_security_env(sc_card_t *card,
 	return iso_ops->restore_security_env(card, se_num);
 }
 
-static int dtrust_compute_signature(struct sc_card *card, const u8 * data,
-		 size_t data_len, u8 * out, size_t outlen)
+static int
+dtrust_compute_signature(struct sc_card *card, const u8 *data,
+		size_t data_len, u8 *out, size_t outlen)
 {
 	struct dtrust_drv_data_t *drv_data;
 	unsigned long flags;
 	size_t buflen = 0, tmplen;
 	u8 *buf = NULL;
 	int r;
-
 
 	drv_data = card->drv_data;
 	flags = drv_data->env->algorithm_flags;
@@ -400,7 +406,7 @@ static int dtrust_compute_signature(struct sc_card *card, const u8 * data,
 	 */
 
 	/* Only PKCS#1 signature scheme requires special handling */
-	if(!(flags & SC_ALGORITHM_RSA_PAD_PKCS1))
+	if (!(flags & SC_ALGORITHM_RSA_PAD_PKCS1))
 		return iso_ops->compute_signature(card, data, data_len, out, outlen);
 
 	/*
@@ -414,7 +420,7 @@ static int dtrust_compute_signature(struct sc_card *card, const u8 * data,
 	/* 32 Bytes should be enough to prepend the digest info */
 	buflen = data_len + 32;
 	buf = sc_mem_secure_alloc(buflen);
-	if(buf == NULL)
+	if (buf == NULL)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 
 	tmplen = buflen;
@@ -432,7 +438,8 @@ err:
 	return r;
 }
 
-static int dtrust_logout(sc_card_t *card)
+static int
+dtrust_logout(sc_card_t *card)
 {
 	sc_path_t path;
 	int r;
@@ -443,9 +450,10 @@ static int dtrust_logout(sc_card_t *card)
 	return r;
 }
 
-struct sc_card_driver * sc_get_dtrust_driver(void)
+struct sc_card_driver *
+sc_get_dtrust_driver(void)
 {
-	if(iso_ops == NULL)
+	if (iso_ops == NULL)
 		iso_ops = sc_get_iso7816_driver()->ops;
 
 	dtrust_ops = *iso_ops;
