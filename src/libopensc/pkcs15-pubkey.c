@@ -542,13 +542,6 @@ static struct sc_asn1_entry c_asn1_ec_pointQ[C_ASN1_EC_POINTQ_SIZE] = {
 		{ NULL, 0, 0, 0, NULL, NULL }
 };
 
-#define C_ASN1_EDDSA_PUBKEY_SIZE 2
-static struct sc_asn1_entry c_asn1_eddsa_pubkey[C_ASN1_EDDSA_PUBKEY_SIZE] = {
-		{ "pubkey", SC_ASN1_OCTET_STRING, SC_ASN1_TAG_OCTET_STRING, SC_ASN1_ALLOC, NULL, NULL },
-		{ NULL, 0, 0, 0, NULL, NULL }
-};
-
-
 int
 sc_pkcs15_decode_pubkey_rsa(sc_context_t *ctx, struct sc_pkcs15_pubkey_rsa *key,
 		const u8 *buf, size_t buflen)
@@ -690,46 +683,26 @@ sc_pkcs15_encode_pubkey_ec(sc_context_t *ctx, struct sc_pkcs15_pubkey_ec *key,
 }
 
 /*
- * EdDSA keys are just byte strings. For now only
- * for Ed25519 keys 32B length are supported
+all "ec" keys uses same pubkey format, keep this external entrypoint
+ * keys are just byte strings.
  */
 int
 sc_pkcs15_decode_pubkey_eddsa(sc_context_t *ctx,
-		struct sc_pkcs15_pubkey_eddsa *key,
+		struct sc_pkcs15_pubkey_ec *key,
 		const u8 *buf, size_t buflen)
 {
-	int r;
-	u8 * pubkey = NULL;
-	size_t pubkey_len;
-	struct sc_asn1_entry asn1_eddsa_pubkey[C_ASN1_EDDSA_PUBKEY_SIZE];
-
-	LOG_FUNC_CALLED(ctx);
-	sc_copy_asn1_entry(c_asn1_eddsa_pubkey, asn1_eddsa_pubkey);
-	sc_format_asn1_entry(asn1_eddsa_pubkey + 0, &pubkey, &pubkey_len, 1);
-	r = sc_asn1_decode(ctx, asn1_eddsa_pubkey, buf, buflen, NULL, NULL);
-	if (r < 0)
-		LOG_TEST_RET(ctx, r, "ASN.1 decoding failed");
-
-	key->pubkey.len = pubkey_len;
-	key->pubkey.value = pubkey;
-
-	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+	return sc_pkcs15_decode_pubkey_ec(ctx, key, buf, buflen);
 }
 
+/*
+ * all "ec" keys uses same pubkey format, keep this external entrypoint
+ */
 int
-sc_pkcs15_encode_pubkey_eddsa(sc_context_t *ctx, struct sc_pkcs15_pubkey_eddsa *key,
+sc_pkcs15_encode_pubkey_eddsa(sc_context_t *ctx, struct sc_pkcs15_pubkey_ec *key,
 		u8 **buf, size_t *buflen)
 {
-	struct sc_asn1_entry asn1_eddsa_pubkey[C_ASN1_EDDSA_PUBKEY_SIZE];
-
-	LOG_FUNC_CALLED(ctx);
-	sc_copy_asn1_entry(c_asn1_eddsa_pubkey, asn1_eddsa_pubkey);
-	sc_format_asn1_entry(asn1_eddsa_pubkey + 0, key->pubkey.value, &key->pubkey.len, 1);
-
-	LOG_FUNC_RETURN(ctx,
-			sc_asn1_encode(ctx, asn1_eddsa_pubkey, buf, buflen));
+	return sc_pkcs15_encode_pubkey_ec(ctx, key, buf, buflen);
 }
-
 
 int
 sc_pkcs15_encode_pubkey(sc_context_t *ctx, struct sc_pkcs15_pubkey *key,
@@ -739,11 +712,8 @@ sc_pkcs15_encode_pubkey(sc_context_t *ctx, struct sc_pkcs15_pubkey *key,
 		return sc_pkcs15_encode_pubkey_rsa(ctx, &key->u.rsa, buf, len);
 	if (key->algorithm == SC_ALGORITHM_GOSTR3410)
 		return sc_pkcs15_encode_pubkey_gostr3410(ctx, &key->u.gostr3410, buf, len);
-	if (key->algorithm == SC_ALGORITHM_EC)
+	if (key->algorithm == SC_ALGORITHM_EC || key->algorithm == SC_ALGORITHM_EDDSA || key->algorithm == SC_ALGORITHM_XEDDSA)
 		return sc_pkcs15_encode_pubkey_ec(ctx, &key->u.ec, buf, len);
-	if (key->algorithm == SC_ALGORITHM_EDDSA ||
-		key->algorithm == SC_ALGORITHM_XEDDSA) /* XXX encoding is the same here */
-		return sc_pkcs15_encode_pubkey_eddsa(ctx, &key->u.eddsa, buf, len);
 
 	sc_log(ctx, "Encoding of public key type %lu not supported", key->algorithm);
 	LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
@@ -789,6 +759,8 @@ sc_pkcs15_encode_pubkey_as_spki(sc_context_t *ctx, struct sc_pkcs15_pubkey *pubk
 
 	switch (pubkey->algorithm) {
 	case SC_ALGORITHM_EC:
+	case SC_ALGORITHM_EDDSA:
+	case SC_ALGORITHM_XEDDSA:
 		/*
 		 * most keys, but not EC have only one encoding.
 		 * For a SPKI, the ecpoint is placed directly in the
@@ -826,14 +798,6 @@ sc_pkcs15_encode_pubkey_as_spki(sc_context_t *ctx, struct sc_pkcs15_pubkey *pubk
 		r = sc_pkcs15_encode_pubkey(ctx, pubkey, &pkey.value, &pkey.len);
 		key_len = pkey.len * 8;
 		break;
-	case SC_ALGORITHM_EDDSA:
-	case SC_ALGORITHM_XEDDSA:
-		/* For a SPKI, the pubkey is placed directly in the BIT STRING */
-		pkey.value = malloc(pubkey->u.eddsa.pubkey.len);
-		memcpy(pkey.value, pubkey->u.eddsa.pubkey.value, pubkey->u.eddsa.pubkey.len);
-		// Should be pkey.len = 0 there?
-		key_len = pubkey->u.eddsa.pubkey.len * 8;
-		break;
 	default:
 		r = sc_pkcs15_encode_pubkey(ctx, pubkey, &pkey.value, &pkey.len);
 		key_len = pkey.len * 8;
@@ -865,11 +829,8 @@ sc_pkcs15_decode_pubkey(sc_context_t *ctx, struct sc_pkcs15_pubkey *key,
 		return sc_pkcs15_decode_pubkey_rsa(ctx, &key->u.rsa, buf, len);
 	if (key->algorithm == SC_ALGORITHM_GOSTR3410)
 		return sc_pkcs15_decode_pubkey_gostr3410(ctx, &key->u.gostr3410, buf, len);
-	if (key->algorithm == SC_ALGORITHM_EC)
+	if (key->algorithm == SC_ALGORITHM_EC  || key->algorithm == SC_ALGORITHM_EDDSA || key->algorithm == SC_ALGORITHM_XEDDSA)
 		return sc_pkcs15_decode_pubkey_ec(ctx, &key->u.ec, buf, len);
-	if (key->algorithm == SC_ALGORITHM_EDDSA ||
-		key->algorithm == SC_ALGORITHM_XEDDSA)
-		return sc_pkcs15_decode_pubkey_eddsa(ctx, &key->u.eddsa, buf, len);
 
 	sc_log(ctx, "Decoding of public key type %lu not supported", key->algorithm);
 	return SC_ERROR_NOT_SUPPORTED;
@@ -1030,6 +991,13 @@ sc_pkcs15_pubkey_from_prvkey(struct sc_context *ctx, struct sc_pkcs15_prkey *prv
 	case SC_ALGORITHM_GOSTR3410:
 		break;
 	case SC_ALGORITHM_EC:
+	case SC_ALGORITHM_EDDSA:
+	case SC_ALGORITHM_XEDDSA:
+		/* Copy pubkey */
+		if (prvkey->u.ec.ecpointQ.value == NULL || prvkey->u.ec.ecpointQ.len <= 0) {
+			sc_pkcs15_free_pubkey(pubkey);
+			LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
+		}
 		pubkey->u.ec.ecpointQ.value = malloc(prvkey->u.ec.ecpointQ.len);
 		if (!pubkey->u.ec.ecpointQ.value) {
 			sc_pkcs15_free_pubkey(pubkey);
@@ -1037,22 +1005,6 @@ sc_pkcs15_pubkey_from_prvkey(struct sc_context *ctx, struct sc_pkcs15_prkey *prv
 		}
 		memcpy(pubkey->u.ec.ecpointQ.value, prvkey->u.ec.ecpointQ.value, prvkey->u.ec.ecpointQ.len);
 		pubkey->u.ec.ecpointQ.len = prvkey->u.ec.ecpointQ.len;
-		break;
-	case SC_ALGORITHM_EDDSA:
-	case SC_ALGORITHM_XEDDSA:
-		/* Copy pubkey */
-		if (prvkey->u.eddsa.pubkey.value == NULL || prvkey->u.eddsa.pubkey.len <= 0) {
-			sc_pkcs15_free_pubkey(pubkey);
-			LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
-		}
-		pubkey->u.eddsa.pubkey.value = malloc(prvkey->u.eddsa.pubkey.len);
-		if (!pubkey->u.eddsa.pubkey.value) {
-			sc_pkcs15_free_pubkey(pubkey);
-			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
-		}
-		memcpy(pubkey->u.eddsa.pubkey.value, prvkey->u.eddsa.pubkey.value, prvkey->u.eddsa.pubkey.len);
-		pubkey->u.eddsa.pubkey.len = prvkey->u.eddsa.pubkey.len;
-
 		break;
 	default:
 		sc_log(ctx, "Unsupported private key algorithm");
@@ -1111,6 +1063,8 @@ sc_pkcs15_dup_pubkey(struct sc_context *ctx, struct sc_pkcs15_pubkey *key, struc
 	case SC_ALGORITHM_GOSTR3410:
 		break;
 	case SC_ALGORITHM_EC:
+	case SC_ALGORITHM_EDDSA:
+	case SC_ALGORITHM_XEDDSA:
 		pubkey->u.ec.ecpointQ.value = malloc(key->u.ec.ecpointQ.len);
 		if (!pubkey->u.ec.ecpointQ.value) {
 			rv = SC_ERROR_OUT_OF_MEMORY;
@@ -1136,18 +1090,6 @@ sc_pkcs15_dup_pubkey(struct sc_context *ctx, struct sc_pkcs15_pubkey *key, struc
 			sc_log(ctx, "named_curve parameter missing");
 			rv = SC_ERROR_NOT_SUPPORTED;
 		}
-
-		break;
-	case SC_ALGORITHM_EDDSA:
-	case SC_ALGORITHM_XEDDSA:
-		/* Copy pubkey */
-		pubkey->u.eddsa.pubkey.value = malloc(key->u.eddsa.pubkey.len);
-		if (!pubkey->u.eddsa.pubkey.value) {
-			rv = SC_ERROR_OUT_OF_MEMORY;
-			break;
-		}
-		memcpy(pubkey->u.eddsa.pubkey.value, key->u.eddsa.pubkey.value, key->u.eddsa.pubkey.len);
-		pubkey->u.eddsa.pubkey.len = key->u.eddsa.pubkey.len;
 
 		break;
 	default:
@@ -1187,18 +1129,14 @@ sc_pkcs15_erase_pubkey(struct sc_pkcs15_pubkey *key)
 			free(key->u.gostr3410.xy.data);
 		break;
 	case SC_ALGORITHM_EC:
+	case SC_ALGORITHM_EDDSA:
+	case SC_ALGORITHM_XEDDSA:
 		if (key->u.ec.params.der.value)
 			free(key->u.ec.params.der.value);
 		if (key->u.ec.params.named_curve)
 			free(key->u.ec.params.named_curve);
 		if (key->u.ec.ecpointQ.value)
 			free(key->u.ec.ecpointQ.value);
-		break;
-	case SC_ALGORITHM_EDDSA:
-	case SC_ALGORITHM_XEDDSA:
-		free(key->u.eddsa.pubkey.value);
-		key->u.eddsa.pubkey.value = NULL;
-		key->u.eddsa.pubkey.len = 0;
 		break;
 	}
 	sc_mem_clear(key, sizeof(*key));
@@ -1402,9 +1340,9 @@ sc_pkcs15_pubkey_from_spki_fields(struct sc_context *ctx, struct sc_pkcs15_pubke
 	} else if (pk_alg.algorithm == SC_ALGORITHM_EDDSA ||
 		   pk_alg.algorithm == SC_ALGORITHM_XEDDSA) {
 		/* EDDSA/XEDDSA public key is not encapsulated into BIT STRING -- it's a BIT STRING */
-		pubkey->u.eddsa.pubkey.value = malloc(pk.len);
-		memcpy(pubkey->u.eddsa.pubkey.value, pk.value, pk.len);
-		pubkey->u.eddsa.pubkey.len = pk.len;
+		pubkey->u.ec.ecpointQ.value = malloc(pk.len);
+		memcpy(pubkey->u.ec.ecpointQ.value, pk.value, pk.len);
+		pubkey->u.ec.ecpointQ.len = pk.len;
 	} else {
 		/* Public key is expected to be encapsulated into BIT STRING */
 		r = sc_pkcs15_decode_pubkey(ctx, pubkey, pk.value, pk.len);
@@ -1511,11 +1449,14 @@ static struct ec_curve_info {
 
 		{"ed25519",		"1.3.6.1.4.1.11591.15.1", "06092B06010401DA470F01", 255},
 		{"curve25519",		"1.3.6.1.4.1.3029.1.5.1", "060A2B060104019755010501", 255},
+		{"Ed25519",             "1.3.101.112", "06032b6570", 255},
+		{"X25519",              "1.3.101.110", "06032b656e", 255},
 
 		{NULL, NULL, NULL, 0}, /* Do not touch this */
 };
 
 
+/* TODO DEE add changes for mapping  */
 int
 sc_pkcs15_fix_ec_parameters(struct sc_context *ctx, struct sc_ec_parameters *ecparams)
 {
