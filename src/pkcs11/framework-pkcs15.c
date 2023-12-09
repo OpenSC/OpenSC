@@ -3385,7 +3385,7 @@ pkcs15_gen_keypair(struct sc_pkcs11_slot *slot, CK_MECHANISM_PTR pMechanism,
 			keybits = 1024; /* Default key size */
 		/* TODO: check allowed values of keybits */
 	}
-	else if (keytype == CKK_EC)   {
+	else if (keytype == CKK_EC ||  keytype == CKK_EC_EDWARDS || keytype == CKK_EC_MONTGOMERY)   {
 		struct sc_lv_data *der = &keygen_args.prkey_args.key.u.ec.params.der;
 		void *ptr = NULL;
 
@@ -3397,26 +3397,22 @@ pkcs15_gen_keypair(struct sc_pkcs11_slot *slot, CK_MECHANISM_PTR pMechanism,
 			return rv;
 		}
 
+	}
+
+	if (keytype == CKK_EC) {
 		keygen_args.prkey_args.key.algorithm = SC_ALGORITHM_EC;
 		pub_args.key.algorithm               = SC_ALGORITHM_EC;
 	}
 	else if (keytype == CKK_EC_EDWARDS) {
-		/* TODO Validate EC_PARAMS contains curveName "edwards25519" or "edwards448" (from RFC 8032)
-		 * or id-Ed25519 or id-Ed448 (or equivalent OIDs in oId field) (from RFC 8410)
-		 * otherwise return CKR_CURVE_NOT_SUPPORTED
-		 */
 		keygen_args.prkey_args.key.algorithm = SC_ALGORITHM_EDDSA;
+		keygen_args.prkey_args.usage |= SC_PKCS15_PRKEY_USAGE_SIGN;
 		pub_args.key.algorithm               = SC_ALGORITHM_EDDSA;
-		return CKR_CURVE_NOT_SUPPORTED;
 	}
 	else if (keytype == CKK_EC_MONTGOMERY) {
-		/* TODO Validate EC_PARAMS contains curveName "curve25519" or "curve448" (from RFC 7748)
-		 * or id-X25519 or id-X448 (or equivalent OIDs in oId field) (from RFC 8410)
-		 * otherwise return CKR_CURVE_NOT_SUPPORTED
-		 */
 		keygen_args.prkey_args.key.algorithm = SC_ALGORITHM_XEDDSA;
+		/* Can not sign. To created a cert, see: openssl x509 -force_pubkey */
+		keygen_args.prkey_args.usage |= SC_PKCS15_PRKEY_USAGE_DERIVE;
 		pub_args.key.algorithm               = SC_ALGORITHM_XEDDSA;
-		return CKR_CURVE_NOT_SUPPORTED;
 	}
 	else   {
 		/* CKA_KEY_TYPE is set, but keytype isn't correct */
@@ -6017,7 +6013,7 @@ get_ec_pubkey_point(struct sc_pkcs15_pubkey *key, CK_ATTRIBUTE_PTR attr)
 	switch (key->algorithm) {
 	case SC_ALGORITHM_EDDSA:
 	case SC_ALGORITHM_XEDDSA:
-		rc = sc_pkcs15_encode_pubkey_eddsa(context, &key->u.eddsa, &value, &value_len);
+		rc = sc_pkcs15_encode_pubkey_eddsa(context, &key->u.ec, &value, &value_len);
 		if (rc != SC_SUCCESS)
 			return sc_to_cryptoki_error(rc, NULL);
 
