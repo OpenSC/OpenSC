@@ -1709,8 +1709,8 @@ pgp_get_pubkey_pem(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 				/* In EDDSA key case we do not have to care about OIDs
 				 * as we support only one for now */
 				p15pubkey.algorithm = SC_ALGORITHM_EDDSA;
-				p15pubkey.u.eddsa.pubkey.value = pubkey_blob->data;
-				p15pubkey.u.eddsa.pubkey.len = pubkey_blob->len;
+				p15pubkey.u.ec.ecpointQ.value = pubkey_blob->data;
+				p15pubkey.u.ec.ecpointQ.len = pubkey_blob->len;
 				/* PKCS#11 3.0: 2.3.5 Edwards EC public keys only support the use
 				 * of the curveName selection to specify a curve name as defined
 				 * in [RFC 8032] */
@@ -1720,8 +1720,8 @@ pgp_get_pubkey_pem(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 				/* This yields either EC(DSA) key or EC_MONTGOMERY (curve25519) key */
 				if (sc_compare_oid(&key_info.u.ec.oid, &curve25519_oid)) {
 					p15pubkey.algorithm = SC_ALGORITHM_XEDDSA;
-					p15pubkey.u.eddsa.pubkey.value = pubkey_blob->data;
-					p15pubkey.u.eddsa.pubkey.len = pubkey_blob->len;
+					p15pubkey.u.ec.ecpointQ.value = pubkey_blob->data;
+					p15pubkey.u.ec.ecpointQ.len = pubkey_blob->len;
 					/* PKCS#11 3.0 2.3.7 Montgomery EC public keys only support
 					 * the use of the curveName selection to specify a curve
 					 * name as defined in [RFC7748] */
@@ -1762,14 +1762,12 @@ pgp_get_pubkey_pem(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 		p15pubkey.u.rsa.modulus.len = 0;
 		p15pubkey.u.rsa.exponent.data  = NULL;
 		p15pubkey.u.rsa.exponent.len = 0;
-	} else if (p15pubkey.algorithm == SC_ALGORITHM_EC) {
+	} else if (p15pubkey.algorithm == SC_ALGORITHM_EC
+			|| p15pubkey.algorithm == SC_ALGORITHM_EDDSA
+			|| p15pubkey.algorithm == SC_ALGORITHM_XEDDSA) {
 		p15pubkey.u.ec.ecpointQ.value = NULL;
 		p15pubkey.u.ec.ecpointQ.len = 0;
 		/* p15pubkey.u.ec.params.der and named_curve will be freed by sc_pkcs15_erase_pubkey */
-	} else if (p15pubkey.algorithm == SC_ALGORITHM_EDDSA
-		|| p15pubkey.algorithm == SC_ALGORITHM_XEDDSA) {
-		p15pubkey.u.eddsa.pubkey.value = NULL;
-		p15pubkey.u.eddsa.pubkey.len = 0;
 	}
 	sc_pkcs15_erase_pubkey(&p15pubkey);
 
