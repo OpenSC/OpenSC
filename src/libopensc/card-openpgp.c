@@ -89,8 +89,8 @@ static struct sc_card_driver pgp_drv = {
 
 static pgp_ec_curves_t  ec_curves_openpgp34[] = {
 	/* OpenPGP 3.4+ Ed25519 and Curve25519 */
-	{{{1, 3, 6, 1, 4, 1, 3029, 1, 5, 1, -1}}, 256}, /* curve25519 for encryption => CKK_EC_MONTGOMERY */
-	{{{1, 3, 6, 1, 4, 1, 11591, 15, 1, -1}}, 256}, /* ed25519 for signatures => CKK_EC_EDWARDS */
+	{{{1, 3, 6, 1, 4, 1, 3029, 1, 5, 1, -1}}, 255}, /* curve25519 for encryption => CKK_EC_MONTGOMERY */
+	{{{1, 3, 6, 1, 4, 1, 11591, 15, 1, -1}}, 255}, /* ed25519 for signatures => CKK_EC_EDWARDS */
 	/* v3.0+ supports: [RFC 4880 & 6637] 0x12 = ECDH, 0x13 = ECDSA */
 	{{{1, 2, 840, 10045, 3, 1, 7, -1}}, 256}, /* ansiX9p256r1 */
 	{{{1, 3, 132, 0, 34, -1}}, 384}, /* ansiX9p384r1 */
@@ -109,8 +109,8 @@ struct sc_object_id curve25519_oid = {{1, 3, 6, 1, 4, 1, 3029, 1, 5, 1, -1}};
 static pgp_ec_curves_t	ec_curves_gnuk[] = {
 	{{{1, 2, 840, 10045, 3, 1, 7, -1}}, 256}, /* ansiX9p256r1 */
 	{{{1, 3, 132, 0, 10, -1}}, 256}, /* secp256k1 */
-	{{{1, 3, 6, 1, 4, 1, 3029, 1, 5, 1, -1}}, 256}, /* curve25519 for encryption => CKK_EC_MONTGOMERY */
-	{{{1, 3, 6, 1, 4, 1, 11591, 15, 1, -1}}, 256}, /* ed25519 for signatures => CKK_EC_EDWARDS */
+	{{{1, 3, 6, 1, 4, 1, 3029, 1, 5, 1, -1}}, 255}, /* curve25519 for encryption => CKK_EC_MONTGOMERY */
+	{{{1, 3, 6, 1, 4, 1, 11591, 15, 1, -1}}, 255}, /* ed25519 for signatures => CKK_EC_EDWARDS */
 	{{{-1}}, 0} /* This entry must not be touched. */
 };
 
@@ -687,7 +687,7 @@ int _pgp_handle_curve25519(sc_card_t *card,
 	* OpenPGP card supports only derivation using these
 	* keys as far as I know */
 	_sc_card_add_xeddsa_alg(card, key_info.u.ec.key_length,
-	    SC_ALGORITHM_ECDH_CDH_RAW, 0, &key_info.u.ec.oid);
+	    SC_ALGORITHM_ECDH_CDH_RAW | SC_ALGORITHM_ONBOARD_KEY_GEN, 0, &key_info.u.ec.oid);
 	sc_log(card->ctx, "DO %uX: Added XEDDSA algorithm (%d), mod_len = %zu",
 	    do_num, SC_ALGORITHM_XEDDSA, key_info.u.ec.key_length);
 	return 1;
@@ -739,7 +739,7 @@ int _pgp_add_algo(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t key_info, un
 		if (_pgp_handle_curve25519(card, key_info, do_num))
 			break;
 		_sc_card_add_eddsa_alg(card, key_info.u.ec.key_length,
-			SC_ALGORITHM_EDDSA_RAW, 0, &key_info.u.ec.oid);
+			SC_ALGORITHM_EDDSA_RAW | SC_ALGORITHM_ONBOARD_KEY_GEN, 0, &key_info.u.ec.oid);
 
 		sc_log(card->ctx, "DO %uX: Added EDDSA algorithm (%d), mod_len = %zu" ,
 			do_num, key_info.algorithm, key_info.u.ec.key_length);
@@ -3040,10 +3040,8 @@ pgp_gen_key(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_info)
 
 	/* protect incompatible cards against non-RSA */
 	if (key_info->algorithm != SC_OPENPGP_KEYALGO_RSA
+		&& card->type != SC_CARD_TYPE_OPENPGP_GNUK
 		&& priv->bcd_version < OPENPGP_CARD_3_0)
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
-	if (key_info->algorithm == SC_OPENPGP_KEYALGO_EDDSA
-		&& card->type != SC_CARD_TYPE_OPENPGP_GNUK)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 
 	/* set Control Reference Template for key */
