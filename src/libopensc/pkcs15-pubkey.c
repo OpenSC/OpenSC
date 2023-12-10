@@ -683,7 +683,7 @@ sc_pkcs15_encode_pubkey_ec(sc_context_t *ctx, struct sc_pkcs15_pubkey_ec *key,
 }
 
 /*
-all "ec" keys uses same pubkey format, keep this external entrypoint
+ * all "ec" keys uses same pubkey format, keep this external entrypoint
  * keys are just byte strings.
  */
 int
@@ -1449,47 +1449,84 @@ static struct ec_curve_info {
 		{"secp192k1",		"1.3.132.0.31", "06052B8104001F", 192},
 		{"secp256k1",		"1.3.132.0.10", "06052B8104000A", 256},
 
-		{"ed25519",		"1.3.6.1.4.1.11591.15.1", "06092B06010401DA470F01", 255},
-		{"curve25519",		"1.3.6.1.4.1.3029.1.5.1", "060A2B060104019755010501", 255},
-		{"Ed25519",             "1.3.101.112", "06032b6570", 255},
+		/* OpenPGP extensions by Yubikey and GNUK are not defined in RFCs but we know the oid written to card */
+
+		{"edwards25519",	"1.3.6.1.4.1.11591.15.1", "06092B06010401DA470F01", 255},
+		{"curve25519",		"1.3.6.1.4.1.3029.1.5.1", "060a2B060104019755010501", 255},
+
+		/* RFC 8410 defined curves */
 		{"X25519",              "1.3.101.110", "06032b656e", 255},
+		{"X448",		"1.3.101.111", "06032b656f", 448},
+		{"Ed25519",             "1.3.101.112", "06032b6570", 255},
+		{"Ed448",		"1.3.101.113", "06032b6571", 448},
+		/* GnuPG openpgp curves as used in gnupg-card are equivalent to RFC8410 OIDs */
+		{"cv25519",		"1.3.101.110", "06032b656e", 255},
+		{"ed25519",		"1.3.101.112", "06032b6570", 255},
+
 
 		{NULL, NULL, NULL, 0}, /* Do not touch this */
 };
 
 
-/* TODO DEE add changes for mapping  */
 int
 sc_pkcs15_fix_ec_parameters(struct sc_context *ctx, struct sc_ec_parameters *ecparams)
 {
 	int rv, ii;
+	int mapped = 0;
 
 	LOG_FUNC_CALLED(ctx);
 
 	/* In PKCS#11 EC parameters arrives in DER encoded form */
-	if (ecparams->der.value && ecparams->der.len)   {
-		for (ii=0; ec_curve_infos[ii].name; ii++)   {
-			struct sc_object_id id;
-			unsigned char *buf = NULL;
-			size_t len = 0;
+	if (ecparams->der.value && ecparams->der.len && ecparams->der.len > 2) {
+		switch (ecparams->der.value[0]) {
+			case 0x06:  /* OID */
+				for (ii=0; ec_curve_infos[ii].name; ii++) {
+					struct sc_object_id id;
+					unsigned char *buf = NULL;
+					size_t len = 0;
 
-			sc_format_oid(&id, ec_curve_infos[ii].oid_str);
-			sc_encode_oid (ctx, &id, &buf, &len);
+					sc_format_oid(&id, ec_curve_infos[ii].oid_str);
+					sc_encode_oid (ctx, &id, &buf, &len);
 
-			if (ecparams->der.len == len && !memcmp(ecparams->der.value, buf, len))   {
-				free(buf);
+					if (ecparams->der.len == len && !memcmp(ecparams->der.value, buf, len)) {
+						free(buf);
+						break;
+					}
+					free(buf);
+				}
 				break;
-			}
 
-			free(buf);
+			case 0x13:  /* printable string  max of 127 */
+				if (ecparams->der.value[1] != ecparams->der.len - 2) {
+					sc_log(ctx, "Unsupported ec params");
+					LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
+				}
+				for (ii=0; ec_curve_infos[ii].name; ii++) {
+					size_t len = strlen(ec_curve_infos[ii].name);
+					if (ecparams->der.len - 2 != len
+						|| memcmp(ec_curve_infos[ii].name, ecparams->der.value + 2, len) != 0)
+						continue;
+					/* force replacement of printable string to allow mapping */
+					mapped = 1;
+					break;
+				}
+				break;
+
+			default:
+				sc_log(ctx, "Unsupported ec params");
+				LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 		}
 
-		/* TODO: support of explicit EC parameters form */
 		if (!ec_curve_infos[ii].name)
 			LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Unsupported named curve");
 
 		sc_log(ctx, "Found known curve '%s'", ec_curve_infos[ii].name);
-		if (!ecparams->named_curve)   {
+		if (mapped) {
+			free(ecparams->named_curve);
+			ecparams->named_curve = NULL;
+		}
+			
+		if (!ecparams->named_curve) {
 			ecparams->named_curve = strdup(ec_curve_infos[ii].name);
 			if (!ecparams->named_curve)
 				LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
@@ -1497,21 +1534,33 @@ sc_pkcs15_fix_ec_parameters(struct sc_context *ctx, struct sc_ec_parameters *ecp
 			sc_log(ctx, "Curve name: '%s'", ecparams->named_curve);
 		}
 
-		if (!sc_valid_oid(&ecparams->id))
+		if (!sc_valid_oid(&ecparams->id) || mapped)
 			sc_format_oid(&ecparams->id, ec_curve_infos[ii].oid_str);
 
 		ecparams->field_length = ec_curve_infos[ii].size;
 		sc_log(ctx, "Curve length %"SC_FORMAT_LEN_SIZE_T"u",
 		       ecparams->field_length);
+		if (mapped) {
+			/* replace the printable string version with the mapped oid */
+			free(ecparams->der.value);
+			ecparams->der.len = strlen(ec_curve_infos[ii].oid_encoded) / 2;
+			ecparams->der.value = malloc(ecparams->der.len);
+			if (!ecparams->der.value)
+				LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+			if (sc_hex_to_bin(ec_curve_infos[ii].oid_encoded, ecparams->der.value, &ecparams->der.len) < 0) {
+				free(ecparams->der.value);
+				LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+			}
+		}
 	}
-	else if (ecparams->named_curve)   {	/* it can be name of curve or OID in ASCII form */
-		for (ii=0; ec_curve_infos[ii].name; ii++)   {
+	else if (ecparams->named_curve) {	/* it can be name of curve or OID in ASCII form */
+		for (ii=0; ec_curve_infos[ii].name; ii++) {
 			if (!strcmp(ec_curve_infos[ii].name, ecparams->named_curve))
 				break;
 			if (!strcmp(ec_curve_infos[ii].oid_str, ecparams->named_curve))
 				break;
 		}
-		if (!ec_curve_infos[ii].name)   {
+		if (!ec_curve_infos[ii].name) {
 			sc_log(ctx, "Named curve '%s' not supported", ecparams->named_curve);
 			LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 		}
