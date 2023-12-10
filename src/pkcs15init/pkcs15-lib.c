@@ -1304,9 +1304,12 @@ sc_pkcs15init_init_prkdf(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 		keyinfo_gostparams->gostr3411 = keyargs->params.gost.gostr3411;
 		keyinfo_gostparams->gost28147 = keyargs->params.gost.gost28147;
 	}
-	else if (key->algorithm == SC_ALGORITHM_EC)  {
+	else if (key->algorithm == SC_ALGORITHM_EC
+				|| key->algorithm == SC_ALGORITHM_EDDSA
+				|| key->algorithm == SC_ALGORITHM_XEDDSA)  {
 		/* keyargs->key.u.ec.params.der.value is allocated in keyargs, which is on stack */
 		struct sc_ec_parameters *ecparams = &keyargs->key.u.ec.params;
+
 		new_ecparams = calloc(1, sizeof(struct sc_ec_parameters));
 		if (!new_ecparams) {
 			r = SC_ERROR_OUT_OF_MEMORY;
@@ -1604,7 +1607,9 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 		r = sc_copy_gost_params(&(pubkey_args.key.u.gostr3410.params), &(keygen_args->prkey_args.key.u.gostr3410.params));
 		LOG_TEST_GOTO_ERR(ctx, r, "Cannot allocate GOST parameters");
 	}
-	else if (algorithm == SC_ALGORITHM_EC)   {
+	else if (algorithm == SC_ALGORITHM_EC
+				|| algorithm == SC_ALGORITHM_EDDSA
+				|| algorithm == SC_ALGORITHM_XEDDSA)   {
 		/* needs to be freed in case of failure when pubkey is not set yet */
 		r = sc_copy_ec_params(&pubkey_args.key.u.ec.params, &keygen_args->prkey_args.key.u.ec.params);
 		LOG_TEST_GOTO_ERR(ctx, r, "Cannot allocate EC parameters");
@@ -2519,7 +2524,9 @@ check_keygen_params_consistency(struct sc_card *card,
 	struct sc_context *ctx = card->ctx;
 	int i, rv;
 
-	if (alg == SC_ALGORITHM_EC && prkey)   {
+	if (prkey && (alg == SC_ALGORITHM_EC
+			|| alg == SC_ALGORITHM_EDDSA
+			|| alg == SC_ALGORITHM_XEDDSA))   {
 		struct sc_ec_parameters *ecparams = &prkey->key.u.ec.params;
 
 		rv = sc_pkcs15_fix_ec_parameters(ctx, ecparams);
@@ -2542,7 +2549,9 @@ check_keygen_params_consistency(struct sc_card *card,
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 	}
 
-	if (alg == SC_ALGORITHM_EC && prkey)
+	if (prkey && (alg == SC_ALGORITHM_EC
+			|| alg == SC_ALGORITHM_EDDSA
+			|| alg == SC_ALGORITHM_XEDDSA))
 		/* allocated in sc_pkcs15_fix_ec_parameters */
 		free(prkey->key.u.ec.params.der.value);
 
@@ -2772,6 +2781,10 @@ key_pkcs15_algo(struct sc_pkcs15_card *p15card, unsigned long algorithm)
 		return SC_PKCS15_TYPE_PRKEY_GOSTR3410;
 	case SC_ALGORITHM_EC:
 		return SC_PKCS15_TYPE_PRKEY_EC;
+	case SC_ALGORITHM_EDDSA:
+		return SC_PKCS15_TYPE_PRKEY_EDDSA;
+	case SC_ALGORITHM_XEDDSA:
+		return SC_PKCS15_TYPE_PRKEY_XEDDSA;
 	case SC_ALGORITHM_DES:
 		return SC_PKCS15_TYPE_SKEY_DES;
 	case SC_ALGORITHM_3DES:
