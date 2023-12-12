@@ -909,7 +909,9 @@ static int idprime_read_binary(sc_card_t *card, unsigned int offset,
 			r = priv->file_size - 4;
 			if (flags)
 				*flags |= SC_FILE_FLAG_COMPRESSED_AUTO;
-		}
+		} else {
+ 	 	 	r = priv->file_size;
+ 	 	}
 		priv->cache_buf = malloc(r);
 		if (priv->cache_buf == NULL) {
 			return SC_ERROR_OUT_OF_MEMORY;
