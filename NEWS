@@ -1,6 +1,6 @@
 NEWS for OpenSC -- History of user visible changes
 
-# New in 0.24.0; 2023-11-XX
+# New in 0.24.0; 2023-12-13
 ## Security
 * CVE-2023-40660: Fix Potential PIN bypass (#2806, frankmorgner/OpenSCToken#50, #2807)
 * CVE-2023-40661: Important dynamic analyzers reports
