@@ -27,6 +27,7 @@ NEWS for OpenSC -- History of user visible changes
 * Add more examples to manual page (#2936)
 * Present profile objects in all virtual slots (#2928)
 * Provide CKA_TOKEN attribute for profile objects (#2924)
+* Improve --slot parameter documentation (#2951)
 ## PKCS#15
 * Honor cache offsets when writing file cache (#2858)
 * Prevent needless amount of PIN prompts from pkcs15init layer (#2916)
@@ -41,7 +42,8 @@ NEWS for OpenSC -- History of user visible changes
 * Add support for non-AEAD ciphers to the test mode (#2780)
 * Show CKA_SIGN attribute for secret keys (#2862)
 * Do not attempt to read CKA_ALWAYS_AUTHENTICATE on secret keys (#2864, #2913)
-* Show Sign/VerifyRecover attributes (2888)
+* Show Sign/VerifyRecover attributes (#2888)
+* Add option to import generic keys (#2955)
 ## westcos-tool
 * Generate 2k RSA keys by default (b53fc5cd)
 ## pkcs11-register
@@ -50,6 +52,7 @@ NEWS for OpenSC -- History of user visible changes
 * Add support for IDPrime MD 830, 930 and 940 (#2666)
 * Add support for SafeNet eToken 5110 token (#2812)
 * Process index even without keyrefmap and use correct label for second PIN (#2878)
+* Add support for Gemalto IDPrime 940C (#2941)
 ## EPass2003
 * Change of PIN requires verification of the PIN (#2759)
 * Fix incorrect CMAC computation for subkeys (#2759, issue #2734)
