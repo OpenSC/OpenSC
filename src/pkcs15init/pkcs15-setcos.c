@@ -464,7 +464,10 @@ setcos_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 
 	/* Authenticate */
 	r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_UPDATE);
-	LOG_TEST_RET(ctx, r, "No authorisation to store private key");
+	if (r != SC_SUCCESS) {
+		sc_file_free(file);
+		LOG_TEST_RET(ctx, r, "No authorisation to store private key");
+	}
 
 	/* Fill in data structure */
 	memset(&args, 0, sizeof(args));
@@ -475,7 +478,10 @@ setcos_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 
 	/* Generate/store rsa key  */
 	r = sc_card_ctl(p15card->card, SC_CARDCTL_SETCOS_GENERATE_STORE_KEY, &args);
-	LOG_TEST_RET(ctx, r, "Card control 'GENERATE_STORE_KEY' failed");
+	if (r != SC_SUCCESS) {
+		sc_file_free(file);
+		LOG_TEST_RET(ctx, r, "Card control 'GENERATE_STORE_KEY' failed");
+	}
 
 	/* Key pair generation -> collect public key info */
 	if (pubkey != NULL) {
@@ -488,6 +494,7 @@ setcos_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 
 		/* Get public key modulus */
 		r = sc_select_file(p15card->card, &file->path, NULL);
+		sc_file_free(file);
 		LOG_TEST_RET(ctx, r, "Cannot get key modulus: select key file failed");
 
 		data_obj.P1 = 0x01;
@@ -506,9 +513,10 @@ setcos_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 			LOG_TEST_RET(ctx, SC_ERROR_PKCS15INIT, "Failed to generate key");
 		}
 		memcpy (pubkey->u.rsa.modulus.data, &raw_pubkey[2], pubkey->u.rsa.modulus.len);
+	} else {
+		sc_file_free(file);
 	}
 
-	sc_file_free(file);
 	return r;
 }
 
