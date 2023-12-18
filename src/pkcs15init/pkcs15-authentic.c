@@ -868,7 +868,7 @@ authentic_emu_update_tokeninfo(struct sc_profile *profile, struct sc_pkcs15_card
 	rv = sc_select_file(p15card->card, &path, &file);
 	if (!rv) {
 		rv = sc_get_challenge(p15card->card, buffer, sizeof(buffer));
-		if (!rv) {
+		if (rv < 0) {
 			sc_file_free(file);
 			LOG_TEST_RET(ctx, rv, "Get challenge error");
 		}
