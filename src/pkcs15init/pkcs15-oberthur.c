@@ -619,13 +619,15 @@ cosm_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	LOG_TEST_RET(ctx, rv, "Cannot generate key: failed to select private object DF");
 
 	rv = sc_pkcs15init_authenticate(profile, p15card, tmpf, SC_AC_OP_CRYPTO);
-	LOG_TEST_RET(ctx, rv, "Cannot generate key: 'CRYPTO' authentication failed");
+	if (rv != SC_SUCCESS) {
+		sc_file_free(tmpf);
+		LOG_TEST_RET(ctx, rv, "Cannot generate key: 'CRYPTO' authentication failed");
+	}
 
 	rv = sc_pkcs15init_authenticate(profile, p15card, tmpf, SC_AC_OP_CREATE);
-	LOG_TEST_RET(ctx, rv, "Cannot generate key: 'CREATE' authentication failed");
-
 	sc_file_free(tmpf);
 	tmpf = NULL;
+	LOG_TEST_RET(ctx, rv, "Cannot generate key: 'CREATE' authentication failed");
 
 	rv = sc_select_file(p15card->card, &key_info->path, &prkf);
 	LOG_TEST_RET(ctx, rv, "Failed to generate key: cannot select private key file");
