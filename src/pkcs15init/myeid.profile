@@ -94,6 +94,7 @@ filesystem {
         DF PKCS15-AppDF {
  	        type      = DF;
 	        file-id   = 5015;
+	        aid       = A0:00:00:00:63:50:4B:43:53:2D:31:35;
             acl       = DELETE=$PIN, CREATE=$PIN;
 	    
             EF PKCS15-ODF {
