@@ -26,7 +26,7 @@ files.html: $(srcdir)/files.xml $(wildcard $(srcdir)/*.5.xml) opensc.conf.5.xml
 
 %.5: $(srcdir)/%.5.xml
 	$(AM_V_GEN)sed -e 's|@pkgdatadir[@]|$(pkgdatadir)|g' < $< \
-	| $(XSLTPROC) --nonet --path "$(srcdir)/..:$(xslstylesheetsdir)/manpages" --xinclude -o $@ man.xsl $< 2>/dev/null
+	| $(XSLTPROC) --nonet --path "$(srcdir)/..:$(xslstylesheetsdir)/manpages" --xinclude -o $@ man.xsl - 2>/dev/null
 
 clean-local:
 	-rm -rf $(html_DATA) $(man5_MANS) opensc.conf.5.xml
