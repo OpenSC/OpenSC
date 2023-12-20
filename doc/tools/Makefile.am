@@ -18,7 +18,7 @@ tools.html: $(srcdir)/tools.xml $(wildcard $(srcdir)/*.1.xml)
 
 %.1: $(srcdir)/%.1.xml
 	$(AM_V_GEN)sed -e 's|@pkgdatadir[@]|$(pkgdatadir)|g' < $< \
-	| $(XSLTPROC) --nonet --path "$(srcdir)/..:$(xslstylesheetsdir)/manpages" --xinclude -o $@ man.xsl $< 2>/dev/null
+	| $(XSLTPROC) --nonet --path "$(srcdir)/..:$(xslstylesheetsdir)/manpages" --xinclude -o $@ man.xsl - 2>/dev/null
 
 %: $(srcdir)/%.1.xml
 	$(AM_V_GEN)cat $(srcdir)/completion-template \
