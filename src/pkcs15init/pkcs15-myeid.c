@@ -708,9 +708,8 @@ myeid_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	LOG_TEST_RET(ctx, r, "Cannot store MyEID key: select key file failed");
 
 	r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_UPDATE);
-	LOG_TEST_RET(ctx, r, "No authorisation to store MyEID private key");
-
 	sc_file_free(file);
+	LOG_TEST_RET(ctx, r, "No authorisation to store MyEID private key");
 
 	/* Fill in data structure */
 	memset(&args, 0, sizeof (args));
