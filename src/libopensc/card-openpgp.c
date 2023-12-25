@@ -1771,6 +1771,42 @@ pgp_get_pubkey_pem(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 	LOG_FUNC_RETURN(card->ctx, (int)len);
 }
 
+/**
+ * Internal: Same as pgp_select_data, but with Yubikey workaround
+ * https://github.com/Yubico/yubikey-manager/issues/403
+ *
+ * p1: number of an instance (DO 7F21: 0x00 for AUT, 0x01 for DEC and 0x02 for SIG)
+ */
+static int
+pgp_select_data_yubikey(sc_card_t *card, u8 p1)
+{
+	sc_apdu_t	apdu;
+	u8	apdu_data[7];
+	int	r;
+
+	LOG_FUNC_CALLED(card->ctx);
+
+	sc_log(card->ctx, "select data with: %u (Yubikey workaround)", p1);
+	// Yubikey wants another length
+	apdu_data[0] = 0x06;
+	// create apdu data (taken from spec: SELECT DATA 7.2.5.)
+	apdu_data[1] = 0x60;
+	apdu_data[2] = 0x04;
+	apdu_data[3] = 0x5c;
+	apdu_data[4] = 0x02;
+	apdu_data[5] = 0x7f;
+	apdu_data[6] = 0x21;
+
+	// apdu, cla, ins, p1, p2, data, datalen, resp, resplen
+	sc_format_apdu_ex(&apdu, 0x00, 0xA5, p1, 0x04, apdu_data, sizeof(apdu_data), NULL, 0);
+
+	// transmit apdu
+	r = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	LOG_TEST_RET(card->ctx, r, "Card returned error");
+	LOG_FUNC_RETURN(card->ctx, r);
+}
 
 /**
  * Internal: SELECT DATA - selects a DO within a DO tag with several instances
@@ -1809,6 +1845,9 @@ pgp_select_data(sc_card_t *card, u8 p1)
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	// If parameters are incorrect, let's try to read it again, with Yubikey parameters
+	if (r == SC_ERROR_INCORRECT_PARAMETERS)
+		return pgp_select_data_yubikey(card, p1);
 	LOG_TEST_RET(card->ctx, r, "Card returned error");
 	LOG_FUNC_RETURN(card->ctx, r);
 }
