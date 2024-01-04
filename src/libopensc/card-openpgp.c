@@ -71,7 +71,7 @@ static const struct sc_atr_table pgp_atrs[] = {
 	},
 	{ "3b:fc:13:00:00:81:31:fe:15:59:75:62:69:6b:65:79:4e:45:4f:72:33:e1", NULL, "Yubikey NEO (OpenPGP v2.0)", SC_CARD_TYPE_OPENPGP_V2, 0, NULL },
 	{ "3b:f8:13:00:00:81:31:fe:15:59:75:62:69:6b:65:79:34:d4", NULL, "Yubikey 4 (OpenPGP v2.1)", SC_CARD_TYPE_OPENPGP_V2, 0, NULL },
-	{ "3b:fd:13:00:00:81:31:fe:15:80:73:c0:21:c0:57:59:75:62:69:4b:65:79:40", NULL, "Yubikey 5 (OpenPGP v3.4)", SC_CARD_TYPE_OPENPGP_V3, 0, NULL },
+	{ "3b:fd:13:00:00:81:31:fe:15:80:73:c0:21:c0:57:59:75:62:69:4b:65:79:40", NULL, "Yubikey 5 (OpenPGP v3.4)", SC_CARD_TYPE_OPENPGP_V3, SC_CARD_FLAG_YUBIKEY_SELECT, NULL },
 	{ "3b:da:18:ff:81:b1:fe:75:1f:03:00:31:f5:73:c0:01:60:00:90:00:1c", NULL, default_cardname_v3, SC_CARD_TYPE_OPENPGP_V3, 0, NULL },
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
@@ -311,6 +311,7 @@ pgp_match_card(sc_card_t *card)
 	i = _sc_match_atr(card, pgp_atrs, &card->type);
 	if (i >= 0) {
 		card->name = pgp_atrs[i].name;
+		card->flags = pgp_atrs[i].flags;
 		LOG_FUNC_RETURN(card->ctx, 1);
 	}
 	else {
@@ -1772,43 +1773,6 @@ pgp_get_pubkey_pem(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 }
 
 /**
- * Internal: Same as pgp_select_data, but with Yubikey workaround
- * https://github.com/Yubico/yubikey-manager/issues/403
- *
- * p1: number of an instance (DO 7F21: 0x00 for AUT, 0x01 for DEC and 0x02 for SIG)
- */
-static int
-pgp_select_data_yubikey(sc_card_t *card, u8 p1)
-{
-	sc_apdu_t	apdu;
-	u8	apdu_data[7];
-	int	r;
-
-	LOG_FUNC_CALLED(card->ctx);
-
-	sc_log(card->ctx, "select data with: %u (Yubikey workaround)", p1);
-	// Yubikey wants another length
-	apdu_data[0] = 0x06;
-	// create apdu data (taken from spec: SELECT DATA 7.2.5.)
-	apdu_data[1] = 0x60;
-	apdu_data[2] = 0x04;
-	apdu_data[3] = 0x5c;
-	apdu_data[4] = 0x02;
-	apdu_data[5] = 0x7f;
-	apdu_data[6] = 0x21;
-
-	// apdu, cla, ins, p1, p2, data, datalen, resp, resplen
-	sc_format_apdu_ex(&apdu, 0x00, 0xA5, p1, 0x04, apdu_data, sizeof(apdu_data), NULL, 0);
-
-	// transmit apdu
-	r = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
-	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	LOG_TEST_RET(card->ctx, r, "Card returned error");
-	LOG_FUNC_RETURN(card->ctx, r);
-}
-
-/**
  * Internal: SELECT DATA - selects a DO within a DO tag with several instances
  * (supported since OpenPGP Card v3 for DO 7F21 only, see section 7.2.5 of the specification;
  *  this enables us to store multiple Card holder certificates in DO 7F21)
@@ -1845,13 +1809,81 @@ pgp_select_data(sc_card_t *card, u8 p1)
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	// If parameters are incorrect, let's try to read it again, with Yubikey parameters
-	if (r == SC_ERROR_INCORRECT_PARAMETERS)
-		return pgp_select_data_yubikey(card, p1);
 	LOG_TEST_RET(card->ctx, r, "Card returned error");
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
+/**
+ * Internal: Get Yubikey firmware version
+ *
+ */
+static int
+pgp_yubikey_get_version(sc_card_t *card, unsigned long* version)
+{
+	sc_apdu_t	apdu;
+	u8 resp_buf[3];
+	int	r;
+
+	LOG_FUNC_CALLED(card->ctx);
+
+	// apdu, cla, ins, p1, p2, data, datalen, resp, resplen
+	sc_format_apdu_ex(&apdu, 0x00, 0xF1, 0x00, 0x00, NULL, 0, resp_buf, sizeof(resp_buf));
+
+	r = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	LOG_TEST_RET(card->ctx, r, "Card returned error");
+	sc_log(card->ctx, "detected Yubikey version %d.%d.%d", resp_buf[0], resp_buf[1], resp_buf[2]);
+	*version = (unsigned long)resp_buf[0] << 16
+                | (unsigned long)resp_buf[1] << 8
+                | (unsigned long)resp_buf[2];
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+
+/**
+ * Internal: Same as pgp_select_data, but with Yubikey workaround
+ * https://github.com/Yubico/yubikey-manager/issues/403
+ *
+ * p1: number of an instance (DO 7F21: 0x00 for AUT, 0x01 for DEC and 0x02 for SIG)
+ */
+static int
+pgp_select_data_yubikey(sc_card_t *card, u8 p1)
+{
+	unsigned long version;
+	sc_apdu_t	apdu;
+	u8	apdu_data[7];
+	int	r;
+
+	LOG_FUNC_CALLED(card->ctx);
+
+	r = pgp_yubikey_get_version(card, &version);
+	LOG_TEST_RET(card->ctx, r, "Cannot read Yubikey version");
+
+	// only versions of firmware 5.4.3 and earlier are affected
+	if (version > 0x050403)
+		LOG_FUNC_RETURN(card->ctx, pgp_select_data(card, p1));
+
+	sc_log(card->ctx, "select data with: %u (Yubikey workaround)", p1);
+	// Yubikey wants another length
+	apdu_data[0] = 0x06;
+	// create apdu data (taken from spec: SELECT DATA 7.2.5.)
+	apdu_data[1] = 0x60;
+	apdu_data[2] = 0x04;
+	apdu_data[3] = 0x5c;
+	apdu_data[4] = 0x02;
+	apdu_data[5] = 0x7f;
+	apdu_data[6] = 0x21;
+
+	// apdu, cla, ins, p1, p2, data, datalen, resp, resplen
+	sc_format_apdu_ex(&apdu, 0x00, 0xA5, p1, 0x04, apdu_data, sizeof(apdu_data), NULL, 0);
+
+	// transmit apdu
+	r = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	LOG_TEST_RET(card->ctx, r, "Card returned error");
+	LOG_FUNC_RETURN(card->ctx, r);
+}
 
 /**
  * ABI: ISO 7816-4 GET DATA - get contents of a DO.
@@ -3609,7 +3641,10 @@ pgp_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 		break;
 	case SC_CARDCTL_OPENPGP_SELECT_DATA:
-		r = pgp_select_data(card, *((u8 *) ptr));
+		if (card->flags & SC_CARD_FLAG_YUBIKEY_SELECT)
+		    r = pgp_select_data_yubikey(card, *((u8 *) ptr));
+		else
+		    r = pgp_select_data(card, *((u8 *) ptr));
 		LOG_FUNC_RETURN(card->ctx, r);
 		break;
 #ifdef ENABLE_OPENSSL

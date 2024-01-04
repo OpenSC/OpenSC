@@ -539,6 +539,8 @@ struct sc_reader_operations {
 #define SC_CARD_FLAG_RNG		0x00000002
 #define SC_CARD_FLAG_KEEP_ALIVE	0x00000004
 
+#define SC_CARD_FLAG_YUBIKEY_SELECT	0x00010000
+
 /*
  * Card capabilities
  */
