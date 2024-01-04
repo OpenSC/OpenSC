@@ -109,13 +109,15 @@ extern "C" {
  * must support at least one of them, and exactly one of them must be selected
  * for a given operation. */
 #define SC_ALGORITHM_RSA_RAW		0x00000001
-#define SC_ALGORITHM_RSA_PADS		0x0000003F
+#define SC_ALGORITHM_RSA_PADS		0x000000FF
 #define SC_ALGORITHM_RSA_PAD_NONE	0x00000001
-#define SC_ALGORITHM_RSA_PAD_PKCS1	0x00000002 /* PKCS#1 v1.5 padding */
 #define SC_ALGORITHM_RSA_PAD_ANSI	0x00000004
 #define SC_ALGORITHM_RSA_PAD_ISO9796	0x00000008
 #define SC_ALGORITHM_RSA_PAD_PSS	0x00000010 /* PKCS#1 v2.0 PSS */
 #define SC_ALGORITHM_RSA_PAD_OAEP	0x00000020 /* PKCS#1 v2.0 OAEP */
+#define SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01	0x00000040 /* PKCS#1 v1.5 padding type 1 */
+#define SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_02	0x00000080 /* PKCS#1 v1.5 padding type 2 */
+#define SC_ALGORITHM_RSA_PAD_PKCS1	(SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01 | SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_02) /* PKCS#1 v1.5 (type 1 or 2) */
 
 /* If the card is willing to produce a cryptogram with the following
  * hash values, set these flags accordingly.  The interpretation of the hash
@@ -897,6 +899,7 @@ typedef struct sc_context {
 #endif
 
 	unsigned int magic;
+	int disable_hw_pkcs1_padding;
 } sc_context_t;
 
 /* APDU handling functions */

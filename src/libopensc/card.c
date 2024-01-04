@@ -1256,6 +1256,13 @@ int _sc_card_add_rsa_alg(sc_card_t *card, size_t key_length,
 	info.algorithm = SC_ALGORITHM_RSA;
 	info.key_length = key_length;
 	info.flags = flags;
+	/* disable particular PKCS1 v1.5 padding type if also RAW is supported on card */
+	if ((info.flags & (SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_RAW)) == (SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_RAW)) {
+		if (card->ctx->disable_hw_pkcs1_padding & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01)
+			info.flags &= ~SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01;
+		if (card->ctx->disable_hw_pkcs1_padding & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_02)
+			info.flags &= ~SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_02;
+	}
 	info.u._rsa.exponent = exponent;
 
 	return _sc_card_add_algorithm(card, &info);
