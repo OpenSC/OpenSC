@@ -253,6 +253,25 @@ app <em class="replaceable"><code>application</code></em> {
 					</p><p>
 						For details see <a class="xref" href="#card_atr" title="Configuration based on ATR">the section called &#8220;Configuration based on ATR&#8221;</a>.
 					</p></dd><dt><span class="term">
+						<code class="option">disable_hw_pkcs1_padding = <em class="replaceable"><code>value</code></em>;</code>
+					</span></dt><dd><p>
+						Disabling PKCS#1 v1.5 padding in HW when card supports doing raw RSA operations.
+						Known parameters:
+					</p><div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem"><p>
+									<code class="literal">no</code>:
+									PKCS#1 v1.5 padding is enabled in HW when card supports it.
+							</p></li><li class="listitem"><p>
+									<code class="literal">sign</code>: PKCS#1 v1.5 padding
+									is disabled only for signatures (PKCS#1 v1.5 type 1).
+							</p></li><li class="listitem"><p>
+									<code class="literal">decipher</code>: PKCS#1 v1.5 padding
+									is disabled only for decryption (PKCS#1 v1.5 type 2).
+							</p></li><li class="listitem"><p>
+									<code class="literal">both</code>: PKCS#1 v1.5 padding
+									is disabled both for signatures and decryption (PKCS#1 v1.5 type 1 and 2).
+							</p></li></ul></div><p>
+							(Default: <code class="literal">decipher</code>).
+					</p></dd><dt><span class="term">
 					<code class="option">secure_messaging <em class="replaceable"><code>name</code></em> {
 						<em class="replaceable"><code>block_contents</code></em>
 						}
@@ -459,6 +478,9 @@ app <em class="replaceable"><code>application</code></em> {
 							card driver will do everything
 							necessary before sending the data
 							(hash code) to the card.
+						</p><p>
+							PKCS#1 v1.5 padding in HW can be globally disabled by option <code class="option">disable_hw_pkcs1_padding</code>.
+							When the global option is used to disable padding, the padding will be disabled even though the MyEID-specific option does not turn it off.
 					</p></dd></dl></div></div><div class="refsect2"><a name="npa"></a><h3>Configuration Options for German ID Card</h3><div class="variablelist"><dl class="variablelist"><dt><span class="term">
 						<code class="option">can = <em class="replaceable"><code>value</code></em>;</code>
 					</span></dt><dd><p>

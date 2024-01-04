@@ -332,6 +332,33 @@ app <replaceable>application</replaceable> {
 			</varlistentry>
 			<varlistentry>
 				<term>
+					<option>disable_hw_pkcs1_padding = <replaceable>value</replaceable>;</option>
+				</term>
+				<listitem><para>
+						Disabling PKCS#1 v1.5 padding in HW when card supports doing raw RSA operations.
+						Known parameters:
+						<itemizedlist>
+							<listitem><para>
+									<literal>no</literal>: PKCS#1 v1.5 padding is enabled in HW when card supports it.
+							</para></listitem>
+							<listitem><para>
+									<literal>sign</literal>: PKCS#1 v1.5 padding
+								is disabled only for signatures (PKCS#1 v1.5 type 1).
+							</para></listitem>
+							<listitem><para>
+									<literal>decipher</literal>: PKCS#1 v1.5 padding
+								is disabled only for decryption (PKCS#1 v1.5 type 2).
+							</para></listitem>
+							<listitem><para>
+									<literal>both</literal>: PKCS#1 v1.5 padding
+								is disabled both for signatures and decryption (PKCS#1 v1.5 type 1 and 2).
+							</para></listitem>
+						</itemizedlist>
+						(Default: <literal>decipher</literal>).
+				</para></listitem>
+			</varlistentry>
+			<varlistentry>
+				<term>
 					<option>secure_messaging <replaceable>name</replaceable> {
 						<replaceable>block_contents</replaceable>
 						}
@@ -673,6 +700,9 @@ app <replaceable>application</replaceable> {
 							card driver will do everything
 							necessary before sending the data
 							(hash code) to the card.
+					</para><para>
+							PKCS#1 v1.5 padding in HW can be globally disabled by option <literal>disable_hw_pkcs1_padding</literal>.
+							When the global option is used to disable padding, the padding will be disabled even though the MyEID-specific option does not turn it off.
 					</para></listitem>
 				</varlistentry>
 
