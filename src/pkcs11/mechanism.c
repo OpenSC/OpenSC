@@ -23,8 +23,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "sc-pkcs11.h"
 #include "common/compat_overflow.h"
+#include "common/constant-time.h"
+#include "sc-pkcs11.h"
 
 /* Also used for verification data */
 struct hash_signature_info {
@@ -1093,7 +1094,9 @@ sc_pkcs11_decr(struct sc_pkcs11_session *session,
 	rv = op->type->decrypt(op, pEncryptedData, ulEncryptedDataLen,
 	                       pData, pulDataLen);
 
-	if (rv != CKR_BUFFER_TOO_SMALL && pData != NULL)
+	/* terminate session for any return value except CKR_BUFFER_TOO_SMALL,
+	 * perform check in time side-channel free way to prevent Marvin attack */
+	if (!constant_time_eq_s(rv, CKR_BUFFER_TOO_SMALL) && pData != NULL)
 		session_stop_operation(session, SC_PKCS11_OPERATION_DECRYPT);
 
 	return rv;
@@ -1114,10 +1117,12 @@ sc_pkcs11_decr_update(struct sc_pkcs11_session *session,
 	rv = op->type->decrypt_update(op, pEncryptedData, ulEncryptedDataLen,
 			pData, pulDataLen);
 
-	/* terminate session for any error except CKR_BUFFER_TOO_SMALL */
-	if (rv != CKR_OK && rv != CKR_BUFFER_TOO_SMALL)
+	/* terminate session for any return value except CKR_BUFFER_TOO_SMALL,
+	 * perform check in time side-channel free way to prevent Marvin attack */
+	if (~constant_time_eq_s(rv, CKR_OK) & ~constant_time_eq_s(rv, CKR_BUFFER_TOO_SMALL))
 		session_stop_operation(session, SC_PKCS11_OPERATION_DECRYPT);
-	LOG_FUNC_RETURN(context, (int)rv);
+	/* do not log error code to prevent side channel attack */
+	return rv;
 }
 
 CK_RV
@@ -1535,6 +1540,10 @@ sc_pkcs11_decrypt(sc_pkcs11_operation_t *operation,
 
 	if (pulDataLen)
 		*pulDataLen = ulDataLen;
+
+	/* Skip DecryptFinalize for PKCS#1 v1.5 padding to prevent time side-channel leakage */
+	if (((CK_MECHANISM_PTR)&operation->mechanism)->mechanism == CKM_RSA_PKCS)
+		return rv;
 
 	if (rv != CKR_OK)
 		return rv;
