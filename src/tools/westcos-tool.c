@@ -298,7 +298,7 @@ static int cert2der(X509 *in_cert, u8 **value)
 static int create_file_cert(sc_card_t *card)
 {
 	int r;
-	int size = 0;
+	size_t size = 0;
 	sc_path_t path;
 	sc_file_t *file = NULL;
 

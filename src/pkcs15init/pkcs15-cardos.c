@@ -474,7 +474,8 @@ cardos_store_pin(sc_profile_t *profile, sc_card_t *card,
 	unsigned char	buffer[256];
 	unsigned char	pinpadded[256];
 	struct tlv	tlv;
-	unsigned int	attempts, minlen, maxlen;
+	unsigned int	attempts, maxlen;
+	u8 minlen;
 	int		r, hasverifyrc;
 
 	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
@@ -496,7 +497,7 @@ cardos_store_pin(sc_profile_t *profile, sc_card_t *card,
 	pin = pinpadded;
 
 	attempts = auth_info->tries_left;
-	minlen = auth_info->attrs.pin.min_length;
+	minlen = (u8)auth_info->attrs.pin.min_length;
 
 	tlv_init(&tlv, buffer, sizeof(buffer));
 

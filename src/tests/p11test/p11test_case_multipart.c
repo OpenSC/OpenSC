@@ -25,7 +25,8 @@ void multipart_tests(void **state) {
 
 	token_info_t *info = (token_info_t *) *state;
 	unsigned int i;
-	int used, j;
+	int used;
+	size_t j;
 	test_certs_t objects;
 
 	test_certs_init(&objects);

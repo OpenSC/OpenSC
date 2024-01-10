@@ -589,7 +589,7 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 			memset(&prkey_info, 0, sizeof(prkey_info));
 			coolkey_get_id(card, &coolkey_obj, &prkey_info.id);
 			prkey_info.path = coolkey_obj.path;
-			prkey_info.key_reference = coolkey_obj.id;
+			prkey_info.key_reference = (int)coolkey_obj.id;
 			prkey_info.native = 1;
 			coolkey_get_usage(card, &coolkey_obj, &prkey_info.usage);
 			coolkey_get_access(card, &coolkey_obj, &prkey_info.access_flags);
@@ -634,7 +634,7 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 			coolkey_get_id(card, &coolkey_obj, &pubkey_info.id);
 			pubkey_info.path = coolkey_obj.path;
 			pubkey_info.native = 1;
-			pubkey_info.key_reference = coolkey_obj.id;
+			pubkey_info.key_reference = (int)coolkey_obj.id;
 			coolkey_get_usage(card, &coolkey_obj, &pubkey_info.usage);
 			coolkey_get_access(card, &coolkey_obj, &pubkey_info.access_flags);
 			if (key_type == CKK_RSA) {

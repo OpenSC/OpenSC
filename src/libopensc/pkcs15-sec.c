@@ -252,7 +252,7 @@ static int format_senv(struct sc_pkcs15_card *p15card,
 			if (skey->key_type != CKK_AES)
 				LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Key type not supported");
 			*alg_info_out = sc_card_find_alg(p15card->card, SC_ALGORITHM_AES,
-			skey->value_len, NULL);
+					skey->value_len, NULL);
 			if (*alg_info_out == NULL) {
 				sc_log(ctx,
 				"Card does not support AES with key length %"SC_FORMAT_LEN_SIZE_T"u",
@@ -657,7 +657,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	/* if the card has SC_ALGORITHM_NEED_USAGE set, and the
 	 * key is for signing and decryption, we need to emulate signing */
 
-	sc_log(ctx, "supported algorithm flags 0x%X, private key usage 0x%X", alg_info->flags, prkey->usage);
+	sc_log(ctx, "supported algorithm flags 0x%lX, private key usage 0x%X", alg_info->flags, prkey->usage);
 	if (obj->type == SC_PKCS15_TYPE_PRKEY_RSA) {
 		if ((alg_info->flags & SC_ALGORITHM_NEED_USAGE) &&
 			((prkey->usage & USAGE_ANY_SIGN) &&
@@ -728,7 +728,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	/* senv now has flags card or driver will do */
 	senv.algorithm_flags = sec_flags;
 
-	sc_log(ctx, "DEE flags:0x%8.8lx alg_info->flags:0x%8.8x pad:0x%8.8lx sec:0x%8.8lx",
+	sc_log(ctx, "DEE flags:0x%8.8lx alg_info->flags:0x%8.8lx pad:0x%8.8lx sec:0x%8.8lx",
 		flags, alg_info->flags, pad_flags, sec_flags);
 
 	/* add the padding bytes (if necessary) */
@@ -775,7 +775,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	if (obj->type == SC_PKCS15_TYPE_PRKEY_RSA && (unsigned)r < modlen) {
 		memmove(out + modlen - r, out, r);
 		memset(out, 0, modlen - r);
-		r = modlen;
+		r = (int)modlen;
 	}
 
 err:

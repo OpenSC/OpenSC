@@ -754,7 +754,7 @@ parse_alg_spec(const struct alg_spec *types, const char *spec, unsigned int *key
 		if (isalpha((unsigned char)*spec) && algorithm == SC_ALGORITHM_EC && prkey) {
 			prkey->u.ec.params.named_curve = strdup(spec);
 		} else {
-			*keybits = strtoul(spec, &end, 10);
+			*keybits = (unsigned)strtoul(spec, &end, 10);
 			if (*end) {
 				util_error("Invalid number of key bits \"%s\"", spec);
 				return SC_ERROR_INVALID_ARGUMENTS;
@@ -990,8 +990,8 @@ failed:	fprintf(stderr, "Failed to read PIN: %s\n", sc_strerror(r));
 
 static void sc_pkcs15_inc_id(sc_pkcs15_id_t *id)
 {
-	int len;
-	for (len = id->len - 1; len >= 0; len--) {
+	long len;
+	for (len = (long)id->len - 1; len >= 0; len--) {
 		if (id->value[len]++ != 0xFF)
 			break;
 	}
@@ -1947,7 +1947,7 @@ parse_secret(struct secret *secret, const char *arg)
 		str += 3;
 		if (!isdigit((unsigned char)str[3]))
 			goto parse_err;
-		secret->reference = strtoul(str, &str, 10);
+		secret->reference = (int)strtoul(str, &str, 10);
 		if (*str != '\0')
 			goto parse_err;
 	}
@@ -2192,7 +2192,8 @@ get_key_callback(struct sc_profile *profile,
 
 		prompt = "Please enter key";
 		if (def_key_size && def_key_size < 64) {
-			unsigned int	j, k = 0;
+			unsigned int	j;
+			size_t k = 0;
 
 			sprintf(buffer, "%s [", prompt);
 			k = strlen(buffer);
@@ -2254,7 +2255,7 @@ static int pass_cb(char *buf, int len, int flags, void *d)
 			return 0;
 	}
 
-	plen = strlen(pass);
+	plen = (int)strlen(pass);
 	if (plen <= 0)
 		return 0;
 	if (plen > len)
@@ -2593,7 +2594,8 @@ parse_objects(const char *list, unsigned int action)
 	};
 
 	while (1) {
-		int	len, n;
+		int	n;
+		size_t len;
 
 		while (*list == ',')
 			list++;
@@ -2625,7 +2627,7 @@ parse_objects(const char *list, unsigned int action)
 			}
 		}
 		if (del_flags[n].name == NULL) {
-			fprintf(stderr, "Unknown argument for --delete-objects: %.*s\n", len, list);
+			fprintf(stderr, "Unknown argument for --delete-objects: %.*s\n", (int)len, list);
 			exit(0);
 		}
 		list += len;
@@ -2663,7 +2665,8 @@ parse_x509_usage(const char *list, unsigned int *res)
 	};
 
 	while (1) {
-		int	len, n, match = 0;
+		int	n, match = 0;
+		size_t len;
 
 		while (*list == ',')
 			list++;
@@ -2698,12 +2701,12 @@ parse_x509_usage(const char *list, unsigned int *res)
 		}
 		if (match == 0) {
 			fprintf(stderr,
-				"Unknown X.509 key usage %.*s\n", len, list);
+				"Unknown X.509 key usage %.*s\n", (int)len, list);
 			exit(1);
 		}
 		if (match > 1) {
 			fprintf(stderr,
-				"Ambiguous X.509 key usage %.*s\n", len, list);
+				"Ambiguous X.509 key usage %.*s\n", (int)len, list);
 			exit(1);
 		}
 		list += len;

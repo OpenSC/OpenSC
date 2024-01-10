@@ -1073,7 +1073,7 @@ static int dnie_fill_cache(sc_card_t * card,unsigned long *flags)
 	sc_log(ctx,
 	       "fill_cache() done. length '%"SC_FORMAT_LEN_SIZE_T"u' bytes",
 	       len);
-	LOG_FUNC_RETURN(ctx,len);
+	LOG_FUNC_RETURN(ctx, (int)len);
 }
 
 /**
@@ -1093,7 +1093,8 @@ static int dnie_read_binary(struct sc_card *card,
 			    unsigned int idx,
 			    u8 * buf, size_t count, unsigned long *flags)
 {
-	int res = 0;
+	size_t res = 0;
+	int rc;
 	sc_context_t *ctx = NULL;
 	/* preliminary checks */
 	if (!card || !card->ctx || !buf || (count <= 0))
@@ -1103,8 +1104,8 @@ static int dnie_read_binary(struct sc_card *card,
 	LOG_FUNC_CALLED(ctx);
 	if (idx == 0 || GET_DNIE_PRIV_DATA(card)->cache == NULL) {
 		/* on first block or no cache, try to fill */
-		res = dnie_fill_cache(card, flags);
-		if (res < 0) {
+		rc = dnie_fill_cache(card, flags);
+		if (rc < 0) {
 			sc_log(ctx, "Cannot fill cache. using iso_read_binary()");
 			return iso_ops->read_binary(card, idx, buf, count, flags);
 		}
@@ -1113,8 +1114,8 @@ static int dnie_read_binary(struct sc_card *card,
 		return 0;	/* at eof */
 	res = MIN(count, GET_DNIE_PRIV_DATA(card)->cachelen - idx);	/* eval how many bytes to read */
 	memcpy(buf, GET_DNIE_PRIV_DATA(card)->cache + idx, res);	/* copy data from buffer */
-	sc_log(ctx, "dnie_read_binary() '%d' bytes", res);
-	LOG_FUNC_RETURN(ctx, res);
+	sc_log(ctx, "dnie_read_binary() '%zu' bytes", res);
+	LOG_FUNC_RETURN(ctx, (int)res);
 }
 
 /**
@@ -1215,7 +1216,7 @@ static int dnie_select_file(struct sc_card *card,
 	int res = SC_SUCCESS;
 	sc_context_t *ctx = NULL;
 	unsigned char tmp_path[sizeof(DNIE_MF_NAME)];
-	int reminder = 0;
+	size_t reminder = 0;
 
 	if (!card || !card->ctx || !in_path)
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -1604,7 +1605,7 @@ static int dnie_compute_signature(struct sc_card *card,
 				  u8 * out, size_t outlen)
 {
 	int result = SC_SUCCESS;
-	int result_resplen = 0;
+	size_t result_resplen = 0;
 	struct sc_apdu apdu;
 	u8 rbuf[MAX_RESP_BUFFER_SIZE];	/* to receive sign response */
 
@@ -1656,11 +1657,11 @@ static int dnie_compute_signature(struct sc_card *card,
 
 	/* ok: copy result from buffer */
 	result_resplen = apdu.resplen;
-	if ((int)outlen<result_resplen)
+	if (outlen < result_resplen)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	memcpy(out, apdu.resp, result_resplen);
 	/* and return response length */
-	LOG_FUNC_RETURN(card->ctx, result_resplen);
+	LOG_FUNC_RETURN(card->ctx, (int)result_resplen);
 }
 
 /*

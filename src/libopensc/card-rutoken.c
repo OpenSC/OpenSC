@@ -301,7 +301,7 @@ static int rutoken_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 		apdu.data = previd;
 		apdu.datalen = sizeof(previd);
 	}
-	LOG_FUNC_RETURN(card->ctx, len);
+	LOG_FUNC_RETURN(card->ctx, (int)len);
 }
 
 static void set_acl_from_sec_attr(sc_card_t *card, sc_file_t *file)
@@ -1155,7 +1155,7 @@ static int rutoken_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 	}
 	memcpy(rnd, rbuf, out_len);
 
-	LOG_FUNC_RETURN(card->ctx, out_len);
+	LOG_FUNC_RETURN(card->ctx, (int)out_len);
 }
 
 static int rutoken_get_serial(sc_card_t *card, sc_serial_number_t *serial)

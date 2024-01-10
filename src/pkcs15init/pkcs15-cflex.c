@@ -328,7 +328,7 @@ cflex_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	struct sc_cardctl_cryptoflex_genkey_info args;
 	sc_card_t *card = p15card->card;
 	sc_pkcs15_prkey_info_t *key_info = (sc_pkcs15_prkey_info_t *) obj->data;
-	unsigned int	keybits;
+	size_t	keybits;
 	unsigned char	raw_pubkey[256];
 	sc_file_t	*prkf = NULL, *pukf = NULL;
 	int		r;
@@ -410,7 +410,7 @@ cflex_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	if (r < 0)
 		goto out;
 
-	r = sc_pkcs15init_update_file(profile, p15card, prkf, keybuf, size);
+	r = sc_pkcs15init_update_file(profile, p15card, prkf, keybuf, (unsigned)size);
 	if (r < 0)
 		goto out;
 
@@ -422,7 +422,7 @@ cflex_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	if (r < 0)
 		goto out;
 
-	r = sc_pkcs15init_update_file(profile, p15card, pukf, keybuf, size);
+	r = sc_pkcs15init_update_file(profile, p15card, pukf, keybuf, (unsigned)size);
 
 out:	sc_file_free(prkf);
 	sc_file_free(pukf);

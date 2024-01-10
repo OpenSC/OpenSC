@@ -357,7 +357,7 @@ static int asepcos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	if (auth_info == NULL || auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
         	return SC_ERROR_OBJECT_NOT_VALID;
 
-	pid = (auth_info->attrs.pin.reference & 0xff) | (((tpath.len >> 1) - 1) << 16);
+	pid = (auth_info->attrs.pin.reference & 0xff) | (int)(((tpath.len >> 1) - 1) << 16);
 
 	/* get the ACL of the application DF */
 	r = sc_select_file(card, &df->path, &tfile);
@@ -565,7 +565,8 @@ static int asepcos_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_pkcs15_object_t *obj)
 {
 	sc_pkcs15_prkey_info_t *kinfo = (sc_pkcs15_prkey_info_t *) obj->data;
-	int       r, len;
+	int       r;
+	size_t    len;
 	u8        buf[512], *p = buf;
 	size_t    blen = kinfo->modulus_length / 8;
 	int       afileid = -1,
@@ -654,7 +655,8 @@ static int asepcos_do_store_rsa_key(sc_pkcs15_card_t *p15card, sc_profile_t *pro
 	sc_pkcs15_object_t *obj, sc_pkcs15_prkey_info_t *kinfo,
 	struct sc_pkcs15_prkey_rsa *key)
 {
-	int       r, klen;
+	int       r;
+	size_t    klen;
 	u8        buf[512], *p = buf;
 	sc_path_t tpath;
 	sc_cardctl_asepcos_change_key_t	ckdata;

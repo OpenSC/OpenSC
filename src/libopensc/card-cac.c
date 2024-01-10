@@ -154,7 +154,7 @@ typedef struct {
 } cac_properties_object_t;
 
 typedef struct {
-	unsigned int num_objects;
+	size_t num_objects;
 	cac_properties_object_t objects[CAC_MAX_OBJECTS];
 } cac_properties_t;
 
@@ -332,7 +332,7 @@ static int cac_apdu_io(sc_card_t *card, int ins, int p1, int p2,
 			memcpy(*recvbuf, rbuf, apdu.resplen);
 		}
 		*recvbuflen =  apdu.resplen;
-		r = *recvbuflen;
+		r = (int)*recvbuflen;
 	}
 
 err:
@@ -474,7 +474,7 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 		}
 		len = MIN(count, priv->cache_buf_len-idx);
 		memcpy(buf, &priv->cache_buf[idx], len);
-		LOG_FUNC_RETURN(card->ctx, len);
+		LOG_FUNC_RETURN(card->ctx, (int)len);
 	}
 
 	sc_log(card->ctx,
@@ -605,7 +605,7 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 	priv->cached = 1;
 	len = MIN(count, priv->cache_buf_len-idx);
 	memcpy(buf, &priv->cache_buf[idx], len);
-	r = len;
+	r = (int)len;
 done:
 	if (tl)
 		free(tl);
@@ -735,8 +735,8 @@ static int cac_set_security_env(sc_card_t *card, const sc_security_env_t *env, i
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	sc_log(card->ctx, 
-		 "flags=%08lx op=%d alg=%d algf=%08x algr=%08x kr0=%02x, krfl=%"SC_FORMAT_LEN_SIZE_T"u\n",
+	sc_log(card->ctx,
+		 "flags=%08lx op=%d alg=%lu algf=%08lx algr=%08lx kr0=%02x, krfl=%"SC_FORMAT_LEN_SIZE_T"u\n",
 		 env->flags, env->operation, env->algorithm,
 		 env->algorithm_flags, env->algorithm_ref, env->key_ref[0],
 		 env->key_ref_len);
@@ -792,8 +792,8 @@ static int cac_rsa_op(sc_card_t *card,
 			break;
 		}
 		if (rbuflen != 0) {
-			int n = MIN(rbuflen, outplen);
-			memcpy(outp,rbuf, n);
+			size_t n = MIN(rbuflen, outplen);
+			memcpy(outp, rbuf, n);
 			outp += n;
 			outplen -= n;
 		}
@@ -811,14 +811,14 @@ static int cac_rsa_op(sc_card_t *card,
 		goto err;
 	}
 	if (rbuflen != 0) {
-		int n = MIN(rbuflen, outplen);
-		memcpy(outp,rbuf, n);
+		size_t n = MIN(rbuflen, outplen);
+		memcpy(outp, rbuf, n);
 		/*outp += n;     unused */
 		outplen -= n;
 	}
 	free(rbuf);
 	rbuf = NULL;
-	r = outlen-outplen;
+	r = (int)(outlen - outplen);
 
 err:
 	sc_unlock(card);
@@ -1025,7 +1025,7 @@ static int cac_get_properties(sc_card_t *card, cac_properties_t *prop)
 	free(rbuf);
 	/* sanity */
 	if (i != prop->num_objects)
-		sc_log(card->ctx, "The announced number of objects (%u) "
+		sc_log(card->ctx, "The announced number of objects (%zu) "
 		    "did not match reality (%"SC_FORMAT_LEN_SIZE_T"u)",
 		    prop->num_objects, i);
 	prop->num_objects = i;
@@ -1047,7 +1047,8 @@ static int cac_select_file_by_type(sc_card_t *card, const sc_path_t *in_path, sc
 	struct sc_apdu apdu;
 	unsigned char buf[SC_MAX_APDU_BUFFER_SIZE];
 	unsigned char pathbuf[SC_MAX_PATH_SIZE], *path = pathbuf;
-	int r, pathlen, pathtype;
+	int r, pathtype;
+	size_t pathlen;
 	struct sc_file *file = NULL;
 	cac_private_data_t * priv = CAC_DATA(card);
 
@@ -1243,7 +1244,7 @@ static int cac_select_ACA(sc_card_t *card)
 	return cac_select_file_by_type(card, &cac_ACA_Path, NULL);
 }
 
-static int cac_path_from_cardurl(sc_card_t *card, sc_path_t *path, cac_card_url_t *val, int len)
+static int cac_path_from_cardurl(sc_card_t *card, sc_path_t *path, cac_card_url_t *val, size_t len)
 {
 	if (len < 10) {
 		return SC_ERROR_INVALID_DATA;
@@ -1329,7 +1330,7 @@ static int cac_parse_aid(sc_card_t *card, cac_private_data_t *priv, const u8 *ai
 	return SC_SUCCESS;
 }
 
-static int cac_parse_cardurl(sc_card_t *card, cac_private_data_t *priv, cac_card_url_t *val, int len)
+static int cac_parse_cardurl(sc_card_t *card, cac_private_data_t *priv, cac_card_url_t *val, size_t len)
 {
 	cac_object_t new_object;
 	const cac_object_t *obj;
@@ -1868,7 +1869,7 @@ static int cac_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries
 	int rv;
 
 	if (data->cmd == SC_PIN_CMD_CHANGE) {
-		int i = 0;
+		size_t i = 0;
 		if (data->pin2.len < 6) {
 			return SC_ERROR_INVALID_PIN_LENGTH;
 		}

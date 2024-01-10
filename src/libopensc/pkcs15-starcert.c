@@ -93,7 +93,7 @@ static int get_cert_len(sc_card_t *card, sc_path_t *path)
 	if (buf[0] != 0x30 || buf[1] != 0x82)
 		return 0;
 	path->index = 0;
-	path->count = ((((size_t) buf[2]) << 8) | buf[3]) + 4;
+	path->count = ((buf[2] << 8) | buf[3]) + 4;
 	return 1;
 }
 

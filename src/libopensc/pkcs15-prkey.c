@@ -494,7 +494,7 @@ sc_pkcs15_prkey_attrs_from_cert(struct sc_pkcs15_card *p15card, struct sc_pkcs15
 
 	sc_log(ctx, "CertValue(%"SC_FORMAT_LEN_SIZE_T"u) %p",
 	       cert_object->content.len, cert_object->content.value);
-	mem = BIO_new_mem_buf(cert_object->content.value, cert_object->content.len);
+	mem = BIO_new_mem_buf(cert_object->content.value, (int)cert_object->content.len);
 	if (!mem)
 		LOG_TEST_RET(ctx, SC_ERROR_INTERNAL, "MEM buffer allocation error");
 

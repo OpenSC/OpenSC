@@ -251,7 +251,8 @@ static int belpic_select_file(sc_card_t *card,
 {
 	sc_apdu_t apdu;
 	u8 pathbuf[SC_MAX_PATH_SIZE], *path = pathbuf;
-	int r, pathlen;
+	int r;
+	size_t pathlen;
 	sc_file_t *file = NULL;
 
 	assert(card != NULL && in_path != NULL);
@@ -340,7 +341,7 @@ static int belpic_set_security_env(sc_card_t *card,
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	int r;
 
-	sc_log(card->ctx,  "belpic_set_security_env(), keyRef = 0x%0x, algo = 0x%0x\n",
+	sc_log(card->ctx,  "belpic_set_security_env(), keyRef = 0x%0x, algo = 0x%0lx\n",
 		 *env->key_ref, env->algorithm_flags);
 
 	assert(card != NULL && env != NULL);
@@ -358,7 +359,7 @@ static int belpic_set_security_env(sc_card_t *card,
 		else if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_MD5)
 			sbuf[2] = 0x04;
 		else {
-			sc_log(card->ctx,  "Set Sec Env: unsupported algo 0X%0X\n",
+			sc_log(card->ctx,  "Set Sec Env: unsupported algo 0X%0lX\n",
 				 env->algorithm_flags);
 			return SC_ERROR_INVALID_ARGUMENTS;
 		}

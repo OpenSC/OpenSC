@@ -224,7 +224,7 @@ struct sc_pkcs15init_prkeyargs {
 	char *label;
 	unsigned char *guid;
 	size_t guid_len;
-	unsigned long		usage;
+	unsigned int		usage;
 	unsigned long		x509_usage;
 	unsigned int		flags;
 	unsigned int		access_flags;
@@ -246,7 +246,7 @@ struct sc_pkcs15init_pubkeyargs {
 	struct sc_pkcs15_id	id;
 	struct sc_pkcs15_id	auth_id;
 	const char *		label;
-	unsigned long		usage;
+	unsigned int		usage;
 	unsigned long		x509_usage;
 
 	union {
@@ -270,7 +270,7 @@ struct sc_pkcs15init_skeyargs {
 	struct sc_pkcs15_id	id;
 	struct sc_pkcs15_id	auth_id;
 	const char *		label;
-	unsigned long		usage;
+	unsigned int		usage;
 	unsigned int		flags;
 	unsigned int		access_flags;
 	unsigned long		algorithm; /* User requested algorithm */
@@ -383,7 +383,7 @@ extern int	sc_pkcs15init_update_certificate(struct sc_pkcs15_card *,
 extern int	sc_pkcs15init_create_file(struct sc_profile *,
 				struct sc_pkcs15_card *, struct sc_file *);
 extern int	sc_pkcs15init_update_file(struct sc_profile *,
-				struct sc_pkcs15_card *, struct sc_file *, void *, unsigned int);
+				struct sc_pkcs15_card *, struct sc_file *, void *, size_t);
 extern int	sc_pkcs15init_authenticate(struct sc_profile *, struct sc_pkcs15_card *,
 				struct sc_file *, int);
 extern int	sc_pkcs15init_fixup_file(struct sc_profile *, struct sc_pkcs15_card *,

@@ -335,7 +335,7 @@ int sc_build_pin(u8 *buf, size_t buflen, struct sc_pin_cmd_pin *pin, int pad)
 		}
 	}
 
-	return i;
+	return (int)i;
 }
 
 int

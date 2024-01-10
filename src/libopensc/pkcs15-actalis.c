@@ -237,7 +237,7 @@ static int sc_pkcs15emu_actalis_init(sc_pkcs15_card_t * p15card)
 				continue;
 			}
 			cpath.index = 0;
-			cpath.count = len;
+			cpath.count = (int)len;
 
 			sc_pkcs15_cache_file(p15card, &cpath, cert, len);
 			id.value[0] = j + 1;

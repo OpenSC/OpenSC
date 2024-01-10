@@ -62,7 +62,7 @@ static int sc_pkcs15emu_gids_add_prkey(sc_pkcs15_card_t * p15card, sc_cardctl_gi
 	prkey_info.modulus_length    = container->module_length;
 	prkey_info.usage             = container->prvusage;
 	prkey_info.native            = 1;
-	prkey_info.key_reference     = 0x81 + container->containernum;
+	prkey_info.key_reference     = (int)(0x81 + container->containernum);
 
 	strlcpy(prkey_obj.label, container->label, sizeof(prkey_obj.label));
 	prkey_obj.flags = SC_PKCS15_CO_FLAG_PRIVATE;

@@ -719,7 +719,7 @@ coolkey_v1_get_object_length(u8 *obj, size_t buf_len)
 
 	len = sizeof(coolkey_combined_object_header_t);
 	if (buf_len <= len) {
-		return buf_len;
+		return (int)buf_len;
 	}
 	attribute_count = bebytes2ushort(object_head->attribute_count);
 	buf_len -= len;
@@ -731,7 +731,7 @@ coolkey_v1_get_object_length(u8 *obj, size_t buf_len)
 		current_attribute += attribute_len;
 		buf_len -= attribute_len;
 	}
-	return len;
+	return (int)len;
 }
 
 /*
@@ -753,7 +753,7 @@ typedef struct coolkey_private_data {
 	sc_cardctl_coolkey_object_t *obj;	/* pointer to the current selected object */
 	list_t objects_list;			/* list of objects on the token */
 	unsigned short key_id;			/* key id set by select */
-	int	algorithm;			/* saved from set_security_env */
+	unsigned long algorithm;			/* saved from set_security_env */
 	int operation;				/* saved from set_security_env */
 } coolkey_private_data_t;
 
@@ -1024,7 +1024,7 @@ static int coolkey_apdu_io(sc_card_t *card, int cla, int ins, int p1, int p2,
 			memcpy(*recvbuf, rbuf, apdu.resplen);
 		}
 		*recvbuflen =  apdu.resplen;
-		r = *recvbuflen;
+		r = (int)*recvbuflen;
 	}
 
 err:
@@ -1136,7 +1136,7 @@ static int coolkey_read_object(sc_card_t *card, unsigned long object_id, size_t 
 		left -= len;
 	} while (left != 0);
 
-	return out_len;
+	return (int)out_len;
 
 fail:
 	LOG_FUNC_RETURN(card->ctx, r);
@@ -1174,7 +1174,7 @@ static int coolkey_write_object(sc_card_t *card, unsigned long object_id,
 		left -= operation_len;
 	} while (left != 0);
 
-	return buf_len - left;
+	return (int)(buf_len - left);
 
 fail:
 	return r;
@@ -1190,7 +1190,8 @@ static int coolkey_read_binary(sc_card_t *card, unsigned int idx,
 		u8 *buf, size_t count, unsigned long *flags)
 {
 	coolkey_private_data_t * priv = COOLKEY_DATA(card);
-	int r = 0, len;
+	int r = 0;
+	size_t len;
 	u8 *data = NULL;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
@@ -1205,7 +1206,7 @@ static int coolkey_read_binary(sc_card_t *card, unsigned int idx,
 			 idx, count);
 		len = MIN(count, priv->obj->length-idx);
 		memcpy(buf, &priv->obj->data[idx], len);
-		LOG_FUNC_RETURN(card->ctx, len);
+		LOG_FUNC_RETURN(card->ctx, (int)len);
 	}
 
 	sc_log(card->ctx,
@@ -1232,7 +1233,7 @@ static int coolkey_read_binary(sc_card_t *card, unsigned int idx,
 	/* OK we've read the data, now copy the required portion out to the callers buffer */
 	len = MIN(count, priv->obj->length-idx);
 	memcpy(buf, &data[idx], len);
-	r = len;
+	r = (int)len;
 	/* cache the data in the object */
 	priv->obj->data=data;
 	data = NULL;
@@ -1644,7 +1645,7 @@ static int coolkey_set_security_env(sc_card_t *card, const sc_security_env_t *en
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	sc_log(card->ctx,
-		 "flags=%08lx op=%d alg=%d algf=%08x algr=%08x kr0=%02x, krfl=%"SC_FORMAT_LEN_SIZE_T"u\n",
+		 "flags=%08lx op=%d alg=%lu algf=%08lx algr=%08lx kr0=%02x, krfl=%"SC_FORMAT_LEN_SIZE_T"u\n",
 		 env->flags, env->operation, env->algorithm,
 		 env->algorithm_flags, env->algorithm_ref, env->key_ref[0],
 		 env->key_ref_len);
@@ -1782,7 +1783,7 @@ static int coolkey_rsa_op(sc_card_t *card, const u8 * data, size_t datalen,
 		}
 		out_length = MIN(out_length, max_out_len);
 		memcpy(out, buf + 2, out_length);
-		r = out_length;
+		r = (int)out_length;
 	}
 
 done:

@@ -375,7 +375,7 @@ int test_derive(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 
 void derive_tests(void **state) {
 	unsigned int i;
-	int j;
+	size_t j;
 	int errors = 0;
 	token_info_t *info = (token_info_t *) *state;
 	test_certs_t objects;

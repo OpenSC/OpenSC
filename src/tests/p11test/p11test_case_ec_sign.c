@@ -22,7 +22,9 @@
 
 void ec_sign_size_test(void **state) {
 	unsigned int i;
-	int min, max, inc, j, l, errors = 0, rv;
+	unsigned long min, max, l;
+	int inc, errors = 0, rv;
+	size_t j;
 	token_info_t *info = (token_info_t *) *state;
 	test_certs_t objects;
 
@@ -38,7 +40,7 @@ void ec_sign_size_test(void **state) {
 
 	debug_print("\nCheck functionality of Sign&Verify on different data lengths");
 	for (i = 0; i < objects.count; i++) {
-		int curve_len = 0;
+		unsigned long curve_len = 0;
 		switch (objects.data[i].key_type) {
 		case CKK_EC:
 			/* This tests just couple of sizes around the curve length

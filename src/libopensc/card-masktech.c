@@ -104,7 +104,7 @@ static int masktech_set_security_env(sc_card_t *card,
                                      int se_num)
 {
 	struct masktech_private_data *private_data;
-	sc_log(card->ctx,  "masktech_set_security_env(), keyRef = 0x%0x, algo = 0x%0x\n",
+	sc_log(card->ctx,  "masktech_set_security_env(), keyRef = 0x%0x, algo = 0x%0lx\n",
 		 *env->key_ref, env->algorithm_flags);
 
 	private_data = (struct masktech_private_data *) card->drv_data;
@@ -198,7 +198,7 @@ static int masktech_decipher(sc_card_t *card,
 		size_t len = apdu.resplen > outlen ? outlen : apdu.resplen;
 
 		memcpy(out, apdu.resp, len);
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, len);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, (int)len);
 	}
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }

@@ -106,27 +106,27 @@ static int	sc_pkcs15init_update_lastupdate(struct sc_pkcs15_card *,
 			struct sc_profile *profile);
 static int	sc_pkcs15init_update_odf(struct sc_pkcs15_card *,
 			struct sc_profile *profile);
-static int	sc_pkcs15init_map_usage(unsigned long, int);
+static unsigned int	sc_pkcs15init_map_usage(unsigned long, int);
 static int	do_select_parent(struct sc_profile *, struct sc_pkcs15_card *,
 			struct sc_file *, struct sc_file **);
 static int	sc_pkcs15init_create_pin(struct sc_pkcs15_card *, struct sc_profile *,
 			struct sc_pkcs15_object *, struct sc_pkcs15init_pinargs *);
 static int	check_keygen_params_consistency(struct sc_card *card,
-			unsigned int alg, struct sc_pkcs15init_prkeyargs *prkey,
+			unsigned long alg, struct sc_pkcs15init_prkeyargs *prkey,
 			unsigned int *keybits);
-static int	check_key_compatibility(struct sc_pkcs15_card *, unsigned int,
-			struct sc_pkcs15_prkey *, unsigned int,
-			unsigned int, unsigned int);
+static int	check_key_compatibility(struct sc_pkcs15_card *, unsigned long,
+			struct sc_pkcs15_prkey *, unsigned long,
+			size_t, unsigned long);
 static int	prkey_fixup(struct sc_pkcs15_card *, struct sc_pkcs15_prkey *);
 static int	prkey_bits(struct sc_pkcs15_card *, struct sc_pkcs15_prkey *);
-static int	key_pkcs15_algo(struct sc_pkcs15_card *, unsigned int);
+static int	key_pkcs15_algo(struct sc_pkcs15_card *, unsigned long);
 static int	select_id(struct sc_pkcs15_card *, int, struct sc_pkcs15_id *);
 static int	select_object_path(struct sc_pkcs15_card *, struct sc_profile *,
 			struct sc_pkcs15_object *, struct sc_path *);
 static int	sc_pkcs15init_get_pin_path(struct sc_pkcs15_card *,
 			struct sc_pkcs15_id *, struct sc_path *);
 static int	sc_pkcs15init_qualify_pin(struct sc_card *, const char *,
-			unsigned int, struct sc_pkcs15_auth_info *);
+			size_t, struct sc_pkcs15_auth_info *);
 static struct	sc_pkcs15_df * find_df_by_type(struct sc_pkcs15_card *,
 			unsigned int);
 static int	sc_pkcs15init_read_info(struct sc_card *card, struct sc_profile *);
@@ -1382,7 +1382,7 @@ sc_pkcs15init_init_skdf(struct sc_pkcs15_card *p15card, struct sc_profile *profi
 	struct sc_pkcs15_object *object = NULL;
 	const char	*label;
 	unsigned int	usage;
-	unsigned int	keybits = keyargs->value_len;
+	unsigned long	keybits = keyargs->value_len;
 	int		r = 0, key_type;
 
 	LOG_FUNC_CALLED(ctx);
@@ -1539,7 +1539,7 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 	struct sc_pkcs15_prkey_info *key_info = NULL;
 	struct sc_pkcs15_pubkey *pubkey = NULL;
 	int r, caller_supplied_id = 0;
-	int algorithm = keygen_args->prkey_args.key.algorithm;
+	unsigned long algorithm = keygen_args->prkey_args.key.algorithm;
 
 	LOG_FUNC_CALLED(ctx);
 
@@ -1686,7 +1686,7 @@ sc_pkcs15init_generate_secret_key(struct sc_pkcs15_card *p15card, struct sc_prof
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_object *object = NULL;
-	unsigned int keybits = skey_args->value_len;
+	unsigned int keybits = (unsigned int)skey_args->value_len;
 	int r;
 
 	LOG_FUNC_CALLED(ctx);
@@ -1856,7 +1856,9 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card, struct sc_profile
 	struct sc_pkcs15_pubkey key;
 	struct sc_path	*path;
 	const char	*label;
-	unsigned int	keybits, type = 0, usage;
+	unsigned int	type = 0;
+	unsigned int usage;
+	size_t keybits;
 	int		r;
 
 	LOG_FUNC_CALLED(ctx);
@@ -2468,7 +2470,7 @@ static sc_usage_map x509_to_pkcs15_public_key_usage[16] = {
 };
 
 
-static int
+static unsigned int
 sc_pkcs15init_map_usage(unsigned long x509_usage, int _private)
 {
 	unsigned int	p15_usage = 0, n;
@@ -2490,7 +2492,8 @@ sc_pkcs15init_map_usage(unsigned long x509_usage, int _private)
 static size_t
 sc_pkcs15init_keybits(struct sc_pkcs15_bignum *bn)
 {
-	unsigned int	mask, bits;
+	unsigned int	mask;
+	size_t bits;
 
 	if (!bn || !bn->len)
 		return 0;
@@ -2506,7 +2509,7 @@ sc_pkcs15init_keybits(struct sc_pkcs15_bignum *bn)
  */
 static int
 check_keygen_params_consistency(struct sc_card *card,
-		unsigned int alg, struct sc_pkcs15init_prkeyargs *prkey,
+		unsigned long alg, struct sc_pkcs15init_prkeyargs *prkey,
 		unsigned int *keybits)
 {
 	struct sc_context *ctx = card->ctx;
@@ -2520,7 +2523,7 @@ check_keygen_params_consistency(struct sc_card *card,
 
 		sc_log(ctx, "EC parameters: %s", sc_dump_hex(ecparams->der.value, ecparams->der.len));
 		if (!*keybits)
-			*keybits = ecparams->field_length;
+			*keybits = (unsigned int)ecparams->field_length;
 	}
 
 	for (i = 0; i < card->algorithm_count; i++) {
@@ -2547,9 +2550,9 @@ check_keygen_params_consistency(struct sc_card *card,
  * Check whether the card has native crypto support for this key.
  */
 static int
-check_key_compatibility(struct sc_pkcs15_card *p15card, unsigned int alg,
-		struct sc_pkcs15_prkey *prkey, unsigned int x509_usage,
-		unsigned int key_length, unsigned int flags)
+check_key_compatibility(struct sc_pkcs15_card *p15card, unsigned long alg,
+		struct sc_pkcs15_prkey *prkey, unsigned long x509_usage,
+		size_t key_length, unsigned long flags)
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_algorithm_info *info;
@@ -2626,11 +2629,11 @@ prkey_fixup_rsa(struct sc_pkcs15_card *p15card, struct sc_pkcs15_prkey_rsa *key)
 		BN_CTX *bn_ctx;
 		BIGNUM *rsa_n, *rsa_e, *rsa_d, *rsa_p, *rsa_q, *rsa_dmp1, *rsa_dmq1, *rsa_iqmp;
 
-		rsa_n = BN_bin2bn(key->modulus.data, key->modulus.len, NULL);
-		rsa_e = BN_bin2bn(key->exponent.data, key->exponent.len, NULL);
-		rsa_d = BN_bin2bn(key->d.data, key->d.len, NULL);
-		rsa_p = BN_bin2bn(key->p.data, key->p.len, NULL);
-		rsa_q = BN_bin2bn(key->q.data, key->q.len, NULL);
+		rsa_n = BN_bin2bn(key->modulus.data, (int)key->modulus.len, NULL);
+		rsa_e = BN_bin2bn(key->exponent.data, (int)key->exponent.len, NULL);
+		rsa_d = BN_bin2bn(key->d.data, (int)key->d.len, NULL);
+		rsa_p = BN_bin2bn(key->p.data, (int)key->p.len, NULL);
+		rsa_q = BN_bin2bn(key->q.data, (int)key->q.len, NULL);
 		rsa_dmp1 = BN_new();
 		rsa_dmq1 = BN_new();
 		rsa_iqmp = BN_new();
@@ -2715,7 +2718,7 @@ prkey_bits(struct sc_pkcs15_card *p15card, struct sc_pkcs15_prkey *key)
 
 	switch (key->algorithm) {
 	case SC_ALGORITHM_RSA:
-		return sc_pkcs15init_keybits(&key->u.rsa.modulus);
+		return (int)sc_pkcs15init_keybits(&key->u.rsa.modulus);
 	case SC_ALGORITHM_GOSTR3410:
 		if (sc_pkcs15init_keybits(&key->u.gostr3410.d) > SC_PKCS15_GOSTR3410_KEYSIZE) {
 			sc_log(ctx,
@@ -2731,7 +2734,7 @@ prkey_bits(struct sc_pkcs15_card *p15card, struct sc_pkcs15_prkey *key)
 			sc_log(ctx, "Invalid EC key length");
 			return SC_ERROR_OBJECT_NOT_VALID;
 		}
-		return key->u.ec.params.field_length;
+		return (int)key->u.ec.params.field_length;
 	}
 	sc_log(ctx, "Unsupported key algorithm.");
 	return SC_ERROR_NOT_SUPPORTED;
@@ -2739,7 +2742,7 @@ prkey_bits(struct sc_pkcs15_card *p15card, struct sc_pkcs15_prkey *key)
 
 
 static int
-key_pkcs15_algo(struct sc_pkcs15_card *p15card, unsigned int algorithm)
+key_pkcs15_algo(struct sc_pkcs15_card *p15card, unsigned long algorithm)
 {
 	struct sc_context *ctx = p15card->card->ctx;
 
@@ -2874,7 +2877,7 @@ sc_pkcs15init_select_intrinsic_id(struct sc_pkcs15_card *p15card, struct sc_prof
 
 done:
 	memcpy(id_out, &id, sizeof(*id_out));
-	rv = id_out->len;
+	rv = (int)id_out->len;
 
 err:
 	if (id_data)
@@ -3293,7 +3296,7 @@ sc_pkcs15init_update_any_df(struct sc_pkcs15_card *p15card,
 		 * every time we parse the CDF.
 		 */
 		if (profile->pkcs15.encode_df_length) {
-			df->path.count = bufsize;
+			df->path.count = (int)bufsize;
 			df->path.index = 0;
 			update_odf = 1;
 		}
@@ -3705,7 +3708,7 @@ sc_pkcs15init_update_certificate(struct sc_pkcs15_card *p15card,
 			r = SC_ERROR_OUT_OF_MEMORY;
 			goto done;
 		}
-		r = sc_update_binary(p15card->card, certlen, tmp, file->size - certlen, 0);
+		r = sc_update_binary(p15card->card, (unsigned int)certlen, tmp, file->size - certlen, 0);
 		free(tmp);
 		if (r < 0)
 			sc_log(ctx, "Update cert file error");
@@ -3716,7 +3719,7 @@ sc_pkcs15init_update_certificate(struct sc_pkcs15_card *p15card,
 		path = &((struct sc_pkcs15_cert_info *)obj->data)->path;
 		if (file->size != certlen) {
 			path->index = 0;
-			path->count = certlen;
+			path->count = (int)certlen;
 		}
 		else   {
 			path->count = -1;
@@ -3886,7 +3889,7 @@ sc_pkcs15init_verify_secret(struct sc_profile *profile, struct sc_pkcs15_card *p
 		struct sc_path tmp_path = *path;
 		int iter;
 		r = SC_ERROR_OBJECT_NOT_FOUND;
-		for (iter = tmp_path.len/2; iter >= 0 && r == SC_ERROR_OBJECT_NOT_FOUND; iter--, tmp_path.len -= 2) {
+		for (iter = (int)tmp_path.len/2; iter >= 0 && r == SC_ERROR_OBJECT_NOT_FOUND; iter--, tmp_path.len -= 2) {
 			r = sc_pkcs15_find_pin_by_type_and_reference(p15card,
 					tmp_path.len ? &tmp_path : NULL,
 					type, reference, &pin_obj);
@@ -4163,7 +4166,7 @@ err:
 int
 sc_pkcs15init_update_file(struct sc_profile *profile,
 		struct sc_pkcs15_card *p15card, struct sc_file *file,
-		void *data, unsigned int datalen)
+		void *data, size_t datalen)
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_file	*selected_file = NULL;
@@ -4174,7 +4177,7 @@ sc_pkcs15init_update_file(struct sc_profile *profile,
 	if (!file)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-	sc_log(ctx, "path:%s; datalen:%i", sc_print_path(&file->path), datalen);
+	sc_log(ctx, "path:%s; datalen:%zu", sc_print_path(&file->path), datalen);
 
 	r = sc_select_file(p15card->card, &file->path, &selected_file);
 	if (!r)   {
@@ -4197,7 +4200,7 @@ sc_pkcs15init_update_file(struct sc_profile *profile,
 
 	if (selected_file->size < datalen) {
 		sc_log(ctx,
-		       "File %s too small (require %u, have %"SC_FORMAT_LEN_SIZE_T"u)",
+		       "File %s too small (require %zu, have %"SC_FORMAT_LEN_SIZE_T"u)",
 		       sc_print_path(&file->path), datalen,
 		       selected_file->size);
 		sc_file_free(selected_file);
@@ -4420,7 +4423,7 @@ sc_pkcs15init_sanity_check(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 
 static int
 sc_pkcs15init_qualify_pin(struct sc_card *card, const char *pin_name,
-		unsigned int pin_len, struct sc_pkcs15_auth_info *auth_info)
+		size_t pin_len, struct sc_pkcs15_auth_info *auth_info)
 {
 	struct sc_context *ctx = card->ctx;
 	struct sc_pkcs15_pin_attributes *pin_attrs;
@@ -4587,9 +4590,9 @@ do_encode_string(unsigned char **memp, unsigned char *end,
 		unsigned char tag, const char *s)
 {
 	unsigned char	*p = *memp;
-	int	n;
+	size_t	n;
 
-	n = s? strlen(s) : 0;
+	n = s ? strlen(s) : 0;
 	if (n > 255)
 		return SC_ERROR_BUFFER_TOO_SMALL;
 	if (p + 2 + n > end)
@@ -4651,7 +4654,7 @@ sc_pkcs15init_write_info(struct sc_pkcs15_card *p15card,
 		r = do_encode_string(&p, end, OPENSC_INFO_TAG_OPTION, profile->options[n]);
 
 	if (r >= 0)
-		r = sc_pkcs15init_update_file(profile, p15card, file, buffer, file->size);
+		r = sc_pkcs15init_update_file(profile, p15card, file, buffer, (unsigned int)file->size);
 
 	sc_file_free(file);
 	return r;

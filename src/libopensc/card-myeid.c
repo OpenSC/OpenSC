@@ -90,7 +90,7 @@ typedef struct myeid_private_data {
 	uint8_t sym_crypt_buffer_len;
 	uint8_t sym_plain_buffer_len;
 	/* PSO for AES/DES need algo+flags from sec env */
-	unsigned int algorithm, algorithm_flags;
+	unsigned long algorithm, algorithm_flags;
 } myeid_private_data_t;
 
 typedef struct myeid_card_caps {
@@ -467,7 +467,7 @@ static int myeid_list_files(struct sc_card *card, u8 *buf, size_t buflen)
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.resplen == 0)
 		return sc_check_sw(card, apdu.sw1, apdu.sw2);
-	return apdu.resplen;
+	return (int)apdu.resplen;
 }
 
 static int myeid_process_fci(struct sc_card *card, struct sc_file *file,
@@ -703,7 +703,7 @@ static int myeid_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 
 	LOG_FUNC_CALLED(card->ctx);
 
-	sc_log(card->ctx, "ref (%d), pin1 len(%d), pin2 len (%d)\n",
+	sc_log(card->ctx, "ref (%d), pin1 len(%zu), pin2 len (%zu)\n",
 			data->pin_reference, data->pin1.len, data->pin2.len);
 
 	if(data->pin1.len > 8 || data->pin2.len > 8)
@@ -729,7 +729,7 @@ static int myeid_set_security_env_rsa(sc_card_t *card, const sc_security_env_t *
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 *p;
 	int r;
-	size_t i;
+	size_t i, sz;
 	sc_path_t *target_file;
 
 	assert(card != NULL && env != NULL);
@@ -846,11 +846,12 @@ static int myeid_set_security_env_rsa(sc_card_t *card, const sc_security_env_t *
 		p += 16;
 	}
 
-	r = p - sbuf;
-	apdu.lc = r;
-	apdu.datalen = r;
+	sz = p - sbuf;
+	apdu.lc = sz;
+	apdu.datalen = sz;
 	apdu.data = sbuf;
 	apdu.resplen = 0;
+	r = (int)sz;
 	if (apdu.datalen != 0)
 	{
 		r = sc_transmit_apdu(card, &apdu);
@@ -878,6 +879,7 @@ static int myeid_set_security_env_ec(sc_card_t *card, const sc_security_env_t *e
 	sc_apdu_t apdu;
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 *p;
+	size_t sz;
 	int r;
 
 	assert(card != NULL && env != NULL);
@@ -933,11 +935,12 @@ static int myeid_set_security_env_ec(sc_card_t *card, const sc_security_env_t *e
 		*p++ = 1;
 		*p++ = 0;
 	}
-	r = p - sbuf;
-	apdu.lc = r;
-	apdu.datalen = r;
+	sz = p - sbuf;
+	apdu.lc = sz;
+	apdu.datalen = sz;
 	apdu.data = sbuf;
 	apdu.resplen = 0;
+	r = (int)sz;
 	if (apdu.datalen != 0)
 	{
 		r = sc_transmit_apdu(card, &apdu);
@@ -1100,7 +1103,7 @@ myeid_convert_ec_signature(struct sc_context *ctx, size_t s_len, unsigned char *
 
 	memmove(data, buf, buflen);
 	free(buf);
-	return buflen;
+	return (int)buflen;
 }
 /* MyEID cards before version 4.5 do not support RAW RSA signature for 2048 bit RSA keys.
  * (Source: MyEID reference manual 2.1.4)
@@ -1161,9 +1164,9 @@ myeid_compute_raw_2048_signature(struct sc_card *card, const u8 * data, size_t d
 		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 		if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
-			int len = apdu.resplen > outlen ? outlen : apdu.resplen;
+			size_t len = apdu.resplen > outlen ? outlen : apdu.resplen;
 			memcpy(out, apdu.resp, len);
-			LOG_FUNC_RETURN(card->ctx, len);
+			LOG_FUNC_RETURN(card->ctx, (int)len);
 		}
 	}
 	LOG_FUNC_RETURN(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2));
@@ -1188,7 +1191,7 @@ myeid_compute_signature(struct sc_card *card, const u8 * data, size_t datalen,
 	LOG_FUNC_CALLED(ctx);
 
 	priv = (myeid_private_data_t*) card->drv_data;
-	sc_log(ctx, "key type %i, key length %i", priv->sec_env->algorithm, priv->sec_env->algorithm_ref);
+	sc_log(ctx, "key type %lu, key length %lu", priv->sec_env->algorithm, priv->sec_env->algorithm_ref);
 
 	if (priv->sec_env->algorithm == SC_ALGORITHM_EC ) {
 
@@ -1236,7 +1239,7 @@ myeid_compute_signature(struct sc_card *card, const u8 * data, size_t datalen,
 		LOG_FUNC_RETURN(ctx, SC_ERROR_BUFFER_TOO_SMALL);
 
 	memcpy(out, apdu.resp, apdu.resplen);
-	LOG_FUNC_RETURN(ctx, apdu.resplen);
+	LOG_FUNC_RETURN(ctx, (int)apdu.resplen);
 }
 
 
@@ -1306,7 +1309,7 @@ int myeid_ecdh_derive(struct sc_card *card, const u8* pubkey, size_t pubkey_len,
 
 	memcpy(out, rbuf, apdu.resplen);
 
-	LOG_FUNC_RETURN(card->ctx, apdu.resplen);
+	LOG_FUNC_RETURN(card->ctx, (int)apdu.resplen);
 }
 
 static int myeid_transmit_decipher_pi_split(struct sc_card *card, struct sc_apdu *apdu, u8 *sbuf)
@@ -1401,7 +1404,7 @@ static int myeid_transmit_decipher(struct sc_card *card, u8 p1, u8 p2,
 	} else {
 		outlen = 0;
 	}
-	LOG_FUNC_RETURN(card->ctx, outlen);
+	LOG_FUNC_RETURN(card->ctx, (int)outlen);
 }
 
 static int myeid_decipher(struct sc_card *card, const u8 * crgram,
@@ -1458,7 +1461,7 @@ static int myeid_wrap_key(struct sc_card *card, u8 *out, size_t outlen)
 	if (apdu.resplen <= outlen && out != NULL)
 		memcpy(out, apdu.resp, apdu.resplen);
 
-	LOG_FUNC_RETURN(ctx, apdu.resplen);
+	LOG_FUNC_RETURN(ctx, (int)apdu.resplen);
 }
 
 static int myeid_unwrap_key(struct sc_card *card, const u8 *crgram, size_t crgram_len)
@@ -1559,7 +1562,7 @@ static int myeid_getdata(struct sc_card *card, struct sc_cardctl_myeid_data_obj*
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
-static int myeid_loadkey(sc_card_t *card, unsigned mode, u8* value, int value_len)
+static int myeid_loadkey(sc_card_t *card, unsigned mode, u8 *value, size_t value_len)
 {
 	myeid_private_data_t *priv = (myeid_private_data_t *) card->drv_data;
 	sc_apdu_t apdu;
@@ -1922,7 +1925,7 @@ myeid_enc_dec_sym(struct sc_card *card, const u8 *data, size_t datalen,
 	if (max_apdu_datalen > SC_MAX_APDU_BUFFER_SIZE)
 		max_apdu_datalen = SC_MAX_APDU_BUFFER_SIZE;
 
-	sc_log(ctx, "algorithm %d algorithm_flags %x", priv->algorithm, priv->algorithm_flags);
+	sc_log(ctx, "algorithm %lu algorithm_flags %lx", priv->algorithm, priv->algorithm_flags);
 
 	/* for C_Encrypt/C_EncryptUpdate/C_EncryptFinalize/C_Decrypt/C_DecryptUpdate/C_DecryptFinalize
 	 * the 'outlen' is always not NULL (src/pkcs11/framework-pkcs15.c).

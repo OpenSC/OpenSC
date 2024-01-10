@@ -236,7 +236,7 @@ DES_cbc_cksum_3des_emv96(struct sc_context *ctx,
 	}
 	/* Disable padding, otherwise it will fail to decrypt non-padded inputs */
 	EVP_CIPHER_CTX_set_padding(cctx, 0);
-	if (!EVP_EncryptUpdate(cctx, outv, &tmplen, in, l)) {
+	if (!EVP_EncryptUpdate(cctx, outv, &tmplen, in, (int)l)) {
 		EVP_CIPHER_CTX_free(cctx);
 		sc_evp_cipher_free(alg);
 		return SC_ERROR_INTERNAL;
@@ -479,7 +479,7 @@ sm_decrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
 	}
 	/* Disable padding, otherwise it will fail to decrypt non-padded inputs */
 	EVP_CIPHER_CTX_set_padding(cctx, 0);
-	if (!EVP_DecryptUpdate(cctx, decrypted, &tmplen, data, data_len)) {
+	if (!EVP_DecryptUpdate(cctx, decrypted, &tmplen, data, (int)data_len)) {
 		EVP_CIPHER_CTX_free(cctx);
 		sc_evp_cipher_free(alg);
 		free(decrypted);
@@ -577,7 +577,7 @@ sm_encrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
 	}
 	/* Disable padding, otherwise it will fail to decrypt non-padded inputs */
 	EVP_CIPHER_CTX_set_padding(cctx, 0);
-	if (!EVP_EncryptUpdate(cctx, *out, &tmplen, data, data_len)) {
+	if (!EVP_EncryptUpdate(cctx, *out, &tmplen, data, (int)data_len)) {
 		free(*out);
 		free(data);
 		EVP_CIPHER_CTX_free(cctx);
@@ -606,12 +606,12 @@ sm_encrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
 void
 sm_incr_ssc(unsigned char *ssc, size_t ssc_len)
 {
-	int ii;
+	long ii;
 
 	if (!ssc)
 		return;
 
-	for (ii = ssc_len - 1; ii >= 0; ii--)   {
+	for (ii = (long)ssc_len - 1; ii >= 0; ii--) {
 		*(ssc + ii) += 1;
 		if (*(ssc + ii) != 0)
 			break;

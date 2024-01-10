@@ -229,7 +229,7 @@ struct sc_pkcs15_prkey_gostr3410 {
 };
 
 struct sc_pkcs15_pubkey {
-	int algorithm;
+	unsigned long algorithm;
 	struct sc_algorithm_id * alg_id;
 
 	/* Decoded key */
@@ -243,7 +243,7 @@ struct sc_pkcs15_pubkey {
 typedef struct sc_pkcs15_pubkey sc_pkcs15_pubkey_t;
 
 struct sc_pkcs15_prkey {
-	unsigned int algorithm;
+	unsigned long algorithm;
 /* TODO do we need:	struct sc_algorithm_id * alg_id; */
 
 	union {
@@ -765,7 +765,7 @@ int sc_pkcs15_get_name_from_dn(struct sc_context *ctx,
                               const u8 *dn, size_t dn_len,
                               const struct sc_object_id *type,
                               u8 **name, size_t *name_len);
-int sc_pkcs15_map_usage(unsigned int cert_usage, int algorithm,
+int sc_pkcs15_map_usage(unsigned int cert_usage, unsigned long algorithm,
 			unsigned int *pub_usage_ptr, unsigned int *pr_usage_ptr,
 			int allow_nonrepudiation);
 int sc_pkcs15_get_extension(struct sc_context *ctx,

@@ -161,10 +161,10 @@ static char * get_pin(struct sc_pkcs15_object *obj)
 	}
 }
 
-static int read_input(u8 *buf, int buflen)
+static size_t read_input(u8 *buf, int buflen)
 {
 	FILE *inf;
-	int c;
+	size_t c;
 
 	if (opt_input==NULL) {
 		inf = stdin;
@@ -172,21 +172,21 @@ static int read_input(u8 *buf, int buflen)
 		inf = fopen(opt_input, "rb");
 		if (inf == NULL) {
 			fprintf(stderr, "Unable to open '%s' for reading.\n", opt_input);
-			return -1;
+			return 0;
 		}
 	}
 	c = fread(buf, 1, buflen, inf);
 	if (inf!=stdin) {
 		fclose(inf);
 	}
-	if (c < 0) {
+	if (c <= 0) {
 		perror("read");
-		return -1;
+		return 0;
 	}
 	return c;
 }
 
-static int write_output(const u8 *buf, int len)
+static int write_output(const u8 *buf, size_t len)
 {
 	FILE *outf;
 	int output_binary = (opt_output == NULL && opt_raw == 0 ? 0 : 1);
@@ -215,14 +215,15 @@ static int sign(struct sc_pkcs15_object *obj)
 {
 	u8 buf[1024], out[1024];
 	struct sc_pkcs15_prkey_info *key = (struct sc_pkcs15_prkey_info *) obj->data;
-	int r, c, len;
+	int r;
+	size_t c, len;
 
 	if (opt_input == NULL) {
 		fprintf(stderr, "No input file specified. Reading from stdin\n");
 	}
 
 	c = read_input(buf, sizeof(buf));
-	if (c < 0)
+	if (c <= 0)
 		return 2;
 	len = sizeof(out);
 	if (obj->type == SC_PKCS15_TYPE_PRKEY_RSA
@@ -269,13 +270,14 @@ static int sign(struct sc_pkcs15_object *obj)
 static int decipher(struct sc_pkcs15_object *obj)
 {
 	u8 buf[1024], out[1024];
-	int r, c, len;
+	int r, len;
+	size_t c;
 
 	if (opt_input == NULL) {
 		fprintf(stderr, "No input file specified. Reading from stdin\n");
 	}
 	c = read_input(buf, sizeof(buf));
-	if (c < 0)
+	if (c <= 0)
 		return 2;
 
 	len = sizeof(out);

@@ -315,19 +315,20 @@ static int itacns_read_binary(sc_card_t *card,
 			       unsigned long *flags)
 {
 	size_t already_read = 0;
-	int requested;
+	size_t requested;
 	int r;
 	while(1) {
 		requested = count - already_read;
 		if(requested > ITACNS_MAX_PAYLOAD)
 			requested = ITACNS_MAX_PAYLOAD;
-		r = default_ops->read_binary(card, idx+already_read,
+		r = default_ops->read_binary(card, (unsigned)(idx + already_read),
 			&buf[already_read], requested, flags);
-		if(r < 0) return r;
+		if(r < 0)
+			return r;
 		already_read += r;
-		if (r == 0 || r < requested || already_read == count) {
+		if (r == 0 || (size_t)r < requested || already_read == count) {
 			/* We have finished */
-			return already_read;
+			return (int)already_read;
 		}
 	}
 }

@@ -128,7 +128,7 @@ static void print_prkey(const struct sc_pkcs15_object *obj)
 		}
 	printf("\n");
 	if (obj->type == SC_PKCS15_TYPE_PRKEY_RSA)
-		printf("\tModLength   : %lu\n", 
+		printf("\tModLength   : %lu\n",
 			(unsigned long) prkey->modulus_length);
 	printf("\tKey ref     : %d\n", prkey->key_reference);
 	printf("\tNative      : %s\n", prkey->native ? "yes" : "no");

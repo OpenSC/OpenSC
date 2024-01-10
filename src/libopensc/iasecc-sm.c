@@ -91,7 +91,8 @@ iasecc_sm_transmit_apdus(struct sc_card *card, struct sc_remote_data *rdata,
 {
 	struct sc_context *ctx = card->ctx;
 	struct sc_remote_apdu *rapdu = rdata->data;
-	int rv = SC_SUCCESS, offs = 0;
+	int rv = SC_SUCCESS;
+	size_t offs = 0;
 
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "iasecc_sm_transmit_apdus() rdata-length %i", rdata->length);
@@ -105,7 +106,7 @@ iasecc_sm_transmit_apdus(struct sc_card *card, struct sc_remote_data *rdata,
 			LOG_TEST_RET(ctx, rv, "iasecc_sm_transmit_apdus() fatal error %i");
 
 		if (out && out_len && (rapdu->flags & SC_REMOTE_APDU_FLAG_RETURN_ANSWER))   {
-			int len = rapdu->apdu.resplen > (*out_len - offs) ? (*out_len - offs) : rapdu->apdu.resplen;
+			size_t len = rapdu->apdu.resplen > (*out_len - offs) ? (*out_len - offs) : rapdu->apdu.resplen;
 
 			memcpy(out + offs, rapdu->apdu.resp, len);
 			offs += len;
@@ -454,7 +455,7 @@ iasecc_sm_pin_verify(struct sc_card *card, unsigned se_num, struct sc_pin_cmd_da
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "iasecc_sm_pin_verify() SE#%i, PIN(ref:%i,len:%i)", se_num, data->pin_reference, data->pin1.len);
+	sc_log(ctx, "iasecc_sm_pin_verify() SE#%i, PIN(ref:%i,len:%zu)", se_num, data->pin_reference, data->pin1.len);
 
 	rv = iasecc_sm_initialize(card, se_num, SM_CMD_PIN_VERIFY);
 	LOG_TEST_RET(ctx, rv, "iasecc_sm_pin_verify() SM INITIALIZE failed");
@@ -526,7 +527,7 @@ iasecc_sm_pin_reset(struct sc_card *card, unsigned se_num, struct sc_pin_cmd_dat
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "iasecc_sm_pin_reset() SE#%i, PIN(ref:%i,len:%i)", se_num, data->pin_reference, data->pin2.len);
+	sc_log(ctx, "iasecc_sm_pin_reset() SE#%i, PIN(ref:%i,len:%zu)", se_num, data->pin_reference, data->pin2.len);
 
 	rv = iasecc_sm_initialize(card, se_num, SM_CMD_PIN_RESET);
 	LOG_TEST_RET(ctx, rv, "iasecc_sm_pin_reset() SM INITIALIZE failed");
@@ -658,7 +659,7 @@ iasecc_sm_update_binary(struct sc_card *card, unsigned se_num, size_t offs,
 	LOG_TEST_RET(ctx, rv, "iasecc_sm_update_binary() SM release failed");
 
 	rdata.free(&rdata);
-	LOG_FUNC_RETURN(ctx, count);
+	LOG_FUNC_RETURN(ctx, (int)count);
 #else
 	LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "built without support of Secure-Messaging");
 	return SC_ERROR_NOT_SUPPORTED;

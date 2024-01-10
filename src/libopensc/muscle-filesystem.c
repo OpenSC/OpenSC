@@ -147,7 +147,7 @@ int mscfs_check_cache(mscfs_t* fs)
 	return r;
 }
 
-int mscfs_lookup_path(mscfs_t* fs, const u8 *path, int pathlen, msc_id* objectId, int isDirectory)
+int mscfs_lookup_path(mscfs_t* fs, const u8 *path, size_t pathlen, msc_id* objectId, int isDirectory)
 {
 	u8* oid = objectId->id;
 	if ((pathlen & 1) != 0) /* not divisible by 2 */
@@ -188,7 +188,7 @@ int mscfs_lookup_path(mscfs_t* fs, const u8 *path, int pathlen, msc_id* objectId
 		oid[2] = path[2];
 		oid[3] = path[3];
 	}
-	
+
 	return 0;
 }
 
@@ -212,7 +212,7 @@ int mscfs_check_selection(mscfs_t *fs, int requiredItem)
 	return 0;
 }
 
-int mscfs_loadFileInfo(mscfs_t* fs, const u8 *path, int pathlen, mscfs_file_t **file_data, int* idx)
+int mscfs_loadFileInfo(mscfs_t* fs, const u8 *path, size_t pathlen, mscfs_file_t **file_data, int* idx)
 {
 	msc_id fullPath = {{0, 0, 0, 0}};
 	int x, rc;

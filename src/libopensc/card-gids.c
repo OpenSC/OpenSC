@@ -465,7 +465,7 @@ static int gids_create_file(sc_card_t *card, char* directory, char* filename) {
 	struct gids_private_data* privatedata = (struct gids_private_data*) card->drv_data;
 	int fileIdentifier, dataObjectIdentifier;
 	size_t records;
-	int offset;
+	size_t offset;
 	gids_mf_record_t* record;
 
 	r = gids_find_available_DO(card, privatedata->masterfile, privatedata->masterfilesize, &fileIdentifier, &dataObjectIdentifier);
@@ -883,7 +883,7 @@ gids_decipher(struct sc_card *card,
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
-		LOG_FUNC_RETURN(card->ctx, apdu.resplen);
+		LOG_FUNC_RETURN(card->ctx, (int)apdu.resplen);
 
 	LOG_FUNC_RETURN(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
@@ -2046,7 +2046,7 @@ static int gids_authenticate_admin(sc_card_t *card, u8* key) {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 	}
 	EVP_CIPHER_CTX_set_padding(ctx,0);
-	if (!EVP_DecryptUpdate(ctx, buffer3, &buffer3size, apdu.resp + 4, apdu.resplen - 4)) {
+	if (!EVP_DecryptUpdate(ctx, buffer3, &buffer3size, apdu.resp + 4, (int)apdu.resplen - 4)) {
 		sc_log(card->ctx,  "unable to decrypt data");
 		sc_evp_cipher_free(cipher);
 		EVP_CIPHER_CTX_free(ctx);

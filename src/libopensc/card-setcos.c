@@ -627,7 +627,7 @@ static int setcos_set_security_env2(sc_card_t *card,
 		memcpy(p, env->key_ref, env->key_ref_len);
 		p += env->key_ref_len;
 	}
-	r = p - sbuf;
+	r = (int)(p - sbuf);
 	apdu.lc = r;
 	apdu.datalen = r;
 	apdu.data = sbuf;
@@ -808,7 +808,7 @@ static void parse_sec_attr_44(sc_file_t *file, const u8 *buf, size_t len)
 			/* Get KeyNumber if available */
 			if(iKeyLen) {
 				int iSC;
-				if (len < 1+(size_t)iACLen)
+				if (len < 1 + iACLen)
 					break;
 				iSC = buf[iOffset+iACLen];
 
@@ -868,7 +868,7 @@ static void parse_sec_attr_44(sc_file_t *file, const u8 *buf, size_t len)
 			}
 
 			/* Encryption key present ? */
-			iPinCount = iACLen > 0 ? iACLen - 1 : 0;
+			iPinCount = iACLen > 0 ? (int)iACLen - 1 : 0;
 
 			if (buf[iOffset] & 0x20) {
 				int iSC;
@@ -956,7 +956,7 @@ static int setcos_list_files(sc_card_t *card, u8 * buf, size_t buflen)
 		return 0; /* no files found */
 	if (apdu.resplen == 0)
 		return sc_check_sw(card, apdu.sw1, apdu.sw2);
-	return apdu.resplen;
+	return (int)apdu.resplen;
 }
 
 static int setcos_process_fci(sc_card_t *card, sc_file_t *file,

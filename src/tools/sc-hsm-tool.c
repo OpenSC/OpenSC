@@ -737,7 +737,7 @@ static int recreate_password_from_shares(char **pwd, int *pwdlen, int num_of_pas
 	}
 	binlen = 64;
 	sc_hex_to_bin(inbuf, bin, &binlen);
-	BN_bin2bn(bin, binlen, prime);
+	BN_bin2bn(bin, (int)binlen, prime);
 
 	sp = shares;
 	for (i = 0; i < num_of_password_shares; i++) {
@@ -772,7 +772,7 @@ static int recreate_password_from_shares(char **pwd, int *pwdlen, int num_of_pas
 		}
 		binlen = 64;
 		sc_hex_to_bin(inbuf, bin, &binlen);
-		BN_bin2bn(bin, binlen, (sp->y));
+		BN_bin2bn(bin, (int)binlen, (sp->y));
 
 		sp++;
 	}
@@ -846,7 +846,7 @@ static int import_dkek_share(sc_card_t *card, const char *inf, int iter, const c
 		if (num_of_password_shares == -1) {
 			printf("Enter password to decrypt DKEK share : ");
 			util_getpass(&pwd, NULL, stdin);
-			pwdlen = strlen(pwd);
+			pwdlen = (int)strlen(pwd);
 			printf("\n");
 		} else {
 			r = recreate_password_from_shares(&pwd, &pwdlen, num_of_password_shares);
@@ -857,7 +857,7 @@ static int import_dkek_share(sc_card_t *card, const char *inf, int iter, const c
 
 	} else {
 		pwd = (char *) password;
-		pwdlen = strlen(password);
+		pwdlen = (int)strlen(password);
 	}
 
 	printf("Deciphering DKEK share, please wait...\n");
@@ -947,7 +947,7 @@ static int print_dkek_share(sc_card_t *card, const char *inf, int iter, const ch
 		if (num_of_password_shares == -1) {
 			printf("Enter password to decrypt DKEK share : ");
 			util_getpass(&pwd, NULL, stdin);
-			pwdlen = strlen(pwd);
+			pwdlen = (int)strlen(pwd);
 			printf("\n");
 		} else {
 			r = recreate_password_from_shares(&pwd, &pwdlen, num_of_password_shares);
@@ -958,7 +958,7 @@ static int print_dkek_share(sc_card_t *card, const char *inf, int iter, const ch
 
 	} else {
 		pwd = (char *) password;
-		pwdlen = strlen(password);
+		pwdlen = (int)strlen(password);
 	}
 
 	printf("Deciphering DKEK share, please wait...\n");
@@ -1039,7 +1039,7 @@ static void ask_for_password(char **pwd, int *pwdlen)
 			printf("Passwords do not match. Please retry.\n");
 			continue;
 		}
-		*pwdlen = strlen(*pwd);
+		*pwdlen = (int)strlen(*pwd);
 		break;
 	}
 
@@ -1208,7 +1208,7 @@ static int create_dkek_share(sc_card_t *card, const char *outf, int iter, const 
 
 	} else {
 		pwd = (char *) password;
-		pwdlen = strlen(password);
+		pwdlen = (int)strlen(password);
 	}
 
 	if (r < 0) {
@@ -1404,7 +1404,7 @@ static int wrap_key(sc_context_t *ctx, sc_card_t *card, int keyid, const char *o
 			fprintf(stderr, "Error reading PRKD file %s. Skipping.\n", sc_strerror(ef_prkd_len));
 			ef_prkd_len = 0;
 		} else {
-			ef_prkd_len = determineLength(ef_prkd, ef_prkd_len);
+			ef_prkd_len = (int)determineLength(ef_prkd, ef_prkd_len);
 		}
 	}
 
@@ -1423,7 +1423,7 @@ static int wrap_key(sc_context_t *ctx, sc_card_t *card, int keyid, const char *o
 			fprintf(stderr, "Error reading certificate %s. Skipping\n", sc_strerror(ef_cert_len));
 			ef_cert_len = 0;
 		} else {
-			ef_cert_len = determineLength(ef_cert, ef_cert_len);
+			ef_cert_len = (int)determineLength(ef_cert, ef_cert_len);
 		}
 	}
 
@@ -1708,7 +1708,8 @@ static int export_key(sc_card_t *card, int keyid, const char *outf)
 	u8 dev_aut_cert[MAX_CERT];
 	u8 dica[MAX_CERT];
 	u8 tag = SC_ASN1_TAG_CONSTRUCTED | SC_ASN1_TAG_SEQUENCE; /* 0x30 */
-	int r = 0, ef_cert_len, dev_aut_cert_len, dica_len, total_certs_len;
+	int r = 0, ef_cert_len, total_certs_len;
+	size_t dev_aut_cert_len, dica_len;
 	u8 *data = NULL, *out = NULL, *ptr;
 	size_t datalen, outlen;
 
@@ -1734,7 +1735,7 @@ static int export_key(sc_card_t *card, int keyid, const char *outf)
 		fprintf(stderr, "Error reading certificate %s. Skipping\n", sc_strerror(ef_cert_len));
 		ef_cert_len = 0;
 	} else {
-		ef_cert_len = determineLength(ef_cert, ef_cert_len);
+		ef_cert_len = (int)determineLength(ef_cert, ef_cert_len);
 	}
 
 	/* C_DevAut */
@@ -1954,10 +1955,10 @@ int main(int argc, char *argv[])
 			action_count++;
 			break;
 		case 'K':
-			opt_num_of_pub_keys = atol(optarg);
+			opt_num_of_pub_keys = (int)atol(optarg);
 			break;
 		case 'n':
-			opt_required_pub_keys = atol(optarg);
+			opt_required_pub_keys = (int)atol(optarg);
 			break;
 		case 'e':
 			do_export_key = 1;
@@ -1983,7 +1984,7 @@ int main(int argc, char *argv[])
 			util_get_pin(optarg, &opt_pin);
 			break;
 		case OPT_RETRY:
-			opt_retry_counter = atol(optarg);
+			opt_retry_counter = (int)atol(optarg);
 			break;
 		case OPT_BIO1:
 			opt_bio1 = optarg;
@@ -1992,19 +1993,19 @@ int main(int argc, char *argv[])
 			opt_bio2 = optarg;
 			break;
 		case OPT_PASSWORD_SHARES_THRESHOLD:
-			opt_password_shares_threshold = atol(optarg);
+			opt_password_shares_threshold = (int)atol(optarg);
 			break;
 		case OPT_PASSWORD_SHARES_TOTAL:
-			opt_password_shares_total = atol(optarg);
+			opt_password_shares_total = (int)atol(optarg);
 			break;
 		case 's':
-			opt_dkek_shares = atol(optarg);
+			opt_dkek_shares = (int)atol(optarg);
 			break;
 		case 'f':
 			opt_force = 1;
 			break;
 		case 'i':
-			opt_key_reference = atol(optarg);
+			opt_key_reference = (int)atol(optarg);
 			break;
 		case 'r':
 			opt_reader = optarg;

@@ -236,7 +236,7 @@ muscle_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_pkcs15_prkey_info_t *key_info = (sc_pkcs15_prkey_info_t *) obj->data;
 	sc_card_t *card = p15card->card;
 	sc_file_t* prkf;
-	unsigned int	keybits;
+	size_t	keybits;
 	int		r;
 
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {

@@ -149,7 +149,7 @@ static int muscle_create_directory(sc_card_t *card, sc_file_t *file)
 	u8* oid = objectId.id;
 	unsigned id = file->id;
 	unsigned short read_perm = 0, write_perm = 0, delete_perm = 0;
-	int objectSize;
+	size_t objectSize;
 	int r;
 	if(id == 0) /* No null name files */
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -174,7 +174,7 @@ static int muscle_create_directory(sc_card_t *card, sc_file_t *file)
 static int muscle_create_file(sc_card_t *card, sc_file_t *file)
 {
 	mscfs_t *fs = MUSCLE_FS(card);
-	int objectSize = file->size;
+	size_t objectSize = file->size;
 	unsigned short read_perm = 0, write_perm = 0, delete_perm = 0;
 	msc_id objectId;
 	int r;
@@ -236,7 +236,7 @@ static int muscle_update_binary(sc_card_t *card, unsigned int idx, const u8* buf
 		oid[2] = oid[3] = 0;
 	}
 	if(file->size < idx + count) {
-		int newFileSize = idx + count;
+		size_t newFileSize = idx + count;
 		u8* buffer = malloc(newFileSize);
 		if(buffer == NULL) LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 
@@ -369,7 +369,7 @@ static int select_item(sc_card_t *card, const sc_path_t *path_in, sc_file_t ** f
 {
 	mscfs_t *fs = MUSCLE_FS(card);
 	mscfs_file_t *file_data = NULL;
-	int pathlen = path_in->len;
+	size_t pathlen = path_in->len;
 	int r = 0;
 	int objectIndex;
 	u8* oid;

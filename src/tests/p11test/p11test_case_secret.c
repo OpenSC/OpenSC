@@ -30,13 +30,13 @@ static unsigned char *
 pkcs7_pad_message(const unsigned char *message, unsigned long message_length,
                   unsigned long block_len, unsigned long *out_len)
 {
-	int pad_length = block_len - (message_length % block_len);
+	unsigned long pad_length = block_len - (message_length % block_len);
 	unsigned char *pad_message = malloc(message_length + pad_length);
 	if (pad_message == NULL) {
 		return NULL;
 	}
 	memcpy(pad_message, message, message_length);
-	memset(pad_message + message_length, pad_length, pad_length);
+	memset(pad_message + message_length, (int)pad_length, pad_length);
 	*out_len = message_length + pad_length;
 	return pad_message;
 }
@@ -220,7 +220,7 @@ int test_secret_sign_verify(test_cert_t *o, token_info_t *info, test_mech_t *mec
 void secret_tests(void **state)
 {
 	unsigned int i;
-	int j;
+	size_t j;
 	int errors = 0;
 	token_info_t *info = (token_info_t *) *state;
 	test_certs_t objects;

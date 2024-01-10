@@ -296,7 +296,7 @@ openssl_enc(const EVP_CIPHER * cipher, const unsigned char *key, const unsigned 
 	EVP_EncryptInit_ex(ctx, cipher, NULL, key, iv_tmp);
 	EVP_CIPHER_CTX_set_padding(ctx, 0);
 
-	if (!EVP_EncryptUpdate(ctx, output, &outl, input, length))
+	if (!EVP_EncryptUpdate(ctx, output, &outl, input, (int)length))
 		goto out;
 
 	if (!EVP_EncryptFinal_ex(ctx, output + outl, &outl_tmp))
@@ -326,7 +326,7 @@ openssl_dec(const EVP_CIPHER * cipher, const unsigned char *key, const unsigned 
 	EVP_DecryptInit_ex(ctx, cipher, NULL, key, iv_tmp);
 	EVP_CIPHER_CTX_set_padding(ctx, 0);
 
-	if (!EVP_DecryptUpdate(ctx, output, &outl, input, length))
+	if (!EVP_DecryptUpdate(ctx, output, &outl, input, (int)length))
 		goto out;
 
 	if (!EVP_DecryptFinal_ex(ctx, output + outl, &outl_tmp))
@@ -1850,7 +1850,8 @@ epass2003_select_fid_(struct sc_card *card, sc_path_t * in_path, sc_file_t ** fi
 	struct sc_apdu apdu;
 	u8 buf[SC_MAX_APDU_BUFFER_SIZE] = { 0 };
 	u8 pathbuf[SC_MAX_PATH_SIZE], *path = pathbuf;
-	int r, pathlen;
+	int r;
+	size_t pathlen;
 	sc_file_t *file = NULL;
 
 	r = epass2003_hook_path(in_path, 1);
@@ -2180,7 +2181,7 @@ epass2003_set_security_env(struct sc_card *card, const sc_security_env_t * env, 
 	fid += (unsigned short)(0x20 * (env->key_ref[0] & 0xff));
 	*p++ = fid >> 8;
 	*p++ = fid & 0xff;
-	r = p - sbuf;
+	r = (int)(p - sbuf);
 	apdu.lc = r;
 	apdu.datalen = r;
 	apdu.data = sbuf;
@@ -2207,7 +2208,7 @@ epass2003_set_security_env(struct sc_card *card, const sc_security_env_t * env, 
 		else
 		{
 			r = SC_ERROR_NOT_SUPPORTED;
-			sc_log(card->ctx, "%0x Alg Not Support! ", env->algorithm_flags);
+			sc_log(card->ctx, "%0lx Alg Not Support! ", env->algorithm_flags);
 			goto err;
 		}
 	}
@@ -2215,11 +2216,11 @@ epass2003_set_security_env(struct sc_card *card, const sc_security_env_t * env, 
 	{
 		exdata->currAlg = SC_ALGORITHM_RSA;
 		apdu.p2 = 0xB8;
-		sc_log(card->ctx, "setenv RSA Algorithm alg_flags = %0x\n",env->algorithm_flags);
+		sc_log(card->ctx, "setenv RSA Algorithm alg_flags = %0lx\n",env->algorithm_flags);
 	}
 	else
 	{
-		sc_log(card->ctx, "%0x Alg Not Support! ", env->algorithm);
+		sc_log(card->ctx, "%0lx Alg Not Support! ", env->algorithm);
 	}
 
 	if (se_num > 0) {
@@ -2321,7 +2322,7 @@ static int epass2003_decipher(struct sc_card *card, const u8 * data, size_t data
 		if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 			size_t len = apdu.resplen > outlen ? outlen : apdu.resplen;
 			memcpy(out, apdu.resp, len);
-			LOG_FUNC_RETURN(card->ctx, len);
+			LOG_FUNC_RETURN(card->ctx, (int)len);
 		}
 		LOG_FUNC_RETURN(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2));
 	}
@@ -2356,7 +2357,7 @@ static int epass2003_decipher(struct sc_card *card, const u8 * data, size_t data
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 		size_t len = apdu.resplen > outlen ? outlen : apdu.resplen;
 		memcpy(out, apdu.resp, len);
-		LOG_FUNC_RETURN(card->ctx, len);
+		LOG_FUNC_RETURN(card->ctx, (int)len);
 	}
 
 	LOG_FUNC_RETURN(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2));
@@ -2834,7 +2835,7 @@ epass2003_list_files(struct sc_card *card, unsigned char *buf, size_t buflen)
 	buflen = buflen < apdu.resplen ? buflen : apdu.resplen;
 	memcpy(buf, rbuf, buflen);
 
-	LOG_FUNC_RETURN(card->ctx, buflen);
+	LOG_FUNC_RETURN(card->ctx, (int)buflen);
 }
 
 

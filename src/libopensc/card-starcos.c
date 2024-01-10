@@ -83,7 +83,7 @@ static const struct sc_card_error starcos_errors[] =
 typedef struct starcos_ex_data_st {
 	int    sec_ops;	/* the currently selected security operation,
 			 * i.e. SC_SEC_OPERATION_AUTHENTICATE etc. */
-	unsigned int    fix_digestInfo;
+	unsigned long    fix_digestInfo;
 	unsigned int    pin_encoding;
 } starcos_ex_data;
 
@@ -1845,7 +1845,7 @@ static int starcos_compute_signature(sc_card_t *card,
 			if ( out != apdu.resp ) {
 				memcpy(out, apdu.resp, len);
 			}
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, len);
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, (int)len);
 		}
 	} else if (ex_data->sec_ops == SC_SEC_OPERATION_AUTHENTICATE) {
 		size_t tmp_len;
@@ -1879,7 +1879,7 @@ static int starcos_compute_signature(sc_card_t *card,
 			size_t len = apdu.resplen > outlen ? outlen : apdu.resplen;
 
 			memcpy(out, apdu.resp, len);
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, len);
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, (int)len);
 		}
 	} else
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
@@ -1949,7 +1949,7 @@ static int starcos_decipher(struct sc_card *card,
 		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 		if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
-			r = apdu.resplen;
+			r = (int)apdu.resplen;
 		else
 			r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	} else {

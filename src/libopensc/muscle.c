@@ -46,7 +46,7 @@ int msc_list_objects(sc_card_t* card, u8 next, mscfs_file_t* file) {
 	r = sc_transmit_apdu(card, &apdu);
 	if (r)
 		return r;
-	
+
 	if(apdu.sw1 == 0x9C && apdu.sw2 == 0x12) {
 		return 0;
 	}
@@ -56,7 +56,7 @@ int msc_list_objects(sc_card_t* card, u8 next, mscfs_file_t* file) {
 	if(apdu.resplen == 0) /* No more left */
 		return 0;
 	if (apdu.resplen != 14) {
-		sc_log(card->ctx, 
+		sc_log(card->ctx,
 			 "expected 14 bytes, got %"SC_FORMAT_LEN_SIZE_T"u.\n",
 			 apdu.resplen);
 		return SC_ERROR_UNKNOWN_DATA_RECEIVED;
@@ -89,11 +89,11 @@ int msc_partial_read_object(sc_card_t *card, msc_id objectId, int offset, u8 *da
 	apdu.lc = 9;
 	apdu.le = dataLength;
 	apdu.resplen = dataLength;
-	apdu.resp = data; 
+	apdu.resp = data;
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if(apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
-		return dataLength;
+		return (int)dataLength;
 	if(apdu.sw1 == 0x9C) {
 		if(apdu.sw2 == 0x07) {
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_FILE_NOT_FOUND);
@@ -104,23 +104,23 @@ int msc_partial_read_object(sc_card_t *card, msc_id objectId, int offset, u8 *da
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
 		}
 	}
-	sc_log(card->ctx, 
+	sc_log(card->ctx,
 		"got strange SWs: 0x%02X 0x%02X\n", apdu.sw1, apdu.sw2);
-	return dataLength;
-	
+	return (int)dataLength;
+
 }
 
 int msc_read_object(sc_card_t *card, msc_id objectId, int offset, u8 *data, size_t dataLength)
 {
 	int r;
-	size_t i;
+	unsigned int i;
 	size_t max_read_unit = MSC_MAX_READ;
 
 	for(i = 0; i < dataLength; i += max_read_unit) {
 		r = msc_partial_read_object(card, objectId, offset + i, data + i, MIN(dataLength - i, max_read_unit));
 		LOG_TEST_RET(card->ctx, r, "Error in partial object read");
 	}
-	return dataLength;
+	return (int)dataLength;
 }
 
 int msc_zero_object(sc_card_t *card, msc_id objectId, size_t dataLength)
@@ -156,7 +156,7 @@ int msc_create_object(sc_card_t *card, msc_id objectId, size_t objectSize, unsig
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if(apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
-		return objectSize;
+		return (int)objectSize;
 	if(apdu.sw1 == 0x9C) {
 		if(apdu.sw2 == 0x01) {
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_MEMORY_FAILURE);
@@ -171,11 +171,11 @@ int msc_create_object(sc_card_t *card, msc_id objectId, size_t objectSize, unsig
 		     apdu.sw1, apdu.sw2);
 	}
 	msc_zero_object(card, objectId, objectSize);
-	return objectSize;
+	return (int)objectSize;
 }
 
 /* Update up to MSC_MAX_READ - 9 bytes */
-int msc_partial_update_object(sc_card_t *card, msc_id objectId, int offset, const u8 *data, size_t dataLength)
+int msc_partial_update_object(sc_card_t *card, msc_id objectId, size_t offset, const u8 *data, size_t dataLength)
 {
 	u8 buffer[MSC_MAX_APDU];
 	sc_apdu_t apdu;
@@ -187,10 +187,10 @@ int msc_partial_update_object(sc_card_t *card, msc_id objectId, int offset, cons
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x54, 0x00, 0x00);
 	apdu.lc = dataLength + 9;
 	if (card->ctx->debug >= 2)
-		sc_log(card->ctx, 
-			 "WRITE: Offset: %x\tLength: %"SC_FORMAT_LEN_SIZE_T"u\n",
+		sc_log(card->ctx,
+			 "WRITE: Offset: %zx\tLength: %"SC_FORMAT_LEN_SIZE_T"u\n",
 			 offset, dataLength);
-	
+
 	memcpy(buffer, objectId.id, 4);
 	ulong2bebytes(buffer + 4, offset);
 	buffer[8] = (u8)dataLength;
@@ -200,7 +200,7 @@ int msc_partial_update_object(sc_card_t *card, msc_id objectId, int offset, cons
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if(apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
-		return dataLength;
+		return (int)dataLength;
 	if(apdu.sw1 == 0x9C) {
 		if(apdu.sw2 == 0x07) {
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_FILE_NOT_FOUND);
@@ -215,7 +215,7 @@ int msc_partial_update_object(sc_card_t *card, msc_id objectId, int offset, cons
 		sc_log(card->ctx,  "got strange SWs: 0x%02X 0x%02X\n",
 		     apdu.sw1, apdu.sw2);
 	}
-	return dataLength;
+	return (int)dataLength;
 }
 
 int msc_update_object(sc_card_t *card, msc_id objectId, int offset, const u8 *data, size_t dataLength)
@@ -227,7 +227,7 @@ int msc_update_object(sc_card_t *card, msc_id objectId, int offset, const u8 *da
 		r = msc_partial_update_object(card, objectId, offset + i, data + i, MIN(dataLength - i, max_write_unit));
 		LOG_TEST_RET(card->ctx, r, "Error in partial object update");
 	}
-	return dataLength;
+	return (int)dataLength;
 }
 
 int msc_delete_object(sc_card_t *card, msc_id objectId, int zero)
@@ -268,17 +268,17 @@ int msc_select_applet(sc_card_t *card, u8 *appletId, size_t appletIdLength)
 	apdu.datalen = appletIdLength;
 	apdu.resplen = 0;
 	apdu.le = 0;
-	
+
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if(apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
 		return 1;
-	
+
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,  SC_ERROR_CARD_CMD_FAILED);
 }
 
 /* Truncate the nulls at the end of a PIN, useful in padding is unnecessarily added */
-static void truncatePinNulls(const u8* pin, int *pinLength) {
+static void truncatePinNulls(const u8* pin, size_t *pinLength) {
 	for(; *pinLength > 0; (*pinLength)--) {
 		if(pin[*pinLength - 1]) break;
 	}
@@ -313,12 +313,12 @@ int msc_verify_pin(sc_card_t *card, int pinNumber, const u8 *pinValue, int pinLe
 	} else if(apdu.sw1 == 0x69 && apdu.sw2 == 0x83) {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_AUTH_METHOD_BLOCKED);
 	}
-	
+
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,  SC_ERROR_PIN_CODE_INCORRECT);
 }
 
 /* USE ISO_VERIFY due to tries return */
-int msc_verify_pin_apdu(sc_card_t *card, sc_apdu_t *apdu, u8* buffer, size_t bufferLength, int pinNumber, const u8 *pinValue, int pinLength)
+int msc_verify_pin_apdu(sc_card_t *card, sc_apdu_t *apdu, u8* buffer, size_t bufferLength, int pinNumber, const u8 *pinValue, size_t pinLength)
 {
 	if (!buffer || bufferLength < (size_t)pinLength || pinLength > MSC_MAX_PIN_LENGTH)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
@@ -361,11 +361,11 @@ int msc_unblock_pin(sc_card_t *card, int pinNumber, const u8 *pukValue, int pukL
 	} else if(apdu.sw1 == 0x69 && apdu.sw2 == 0x83) {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_AUTH_METHOD_BLOCKED);
 	}
-	
+
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,  SC_ERROR_PIN_CODE_INCORRECT);
 }
 
-int msc_unblock_pin_apdu(sc_card_t *card, sc_apdu_t *apdu, u8* buffer, size_t bufferLength, int pinNumber, const u8 *pukValue, int pukLength)
+int msc_unblock_pin_apdu(sc_card_t *card, sc_apdu_t *apdu, u8* buffer, size_t bufferLength, int pinNumber, const u8 *pukValue, size_t pukLength)
 {
 	if (!buffer || bufferLength < (size_t)pukLength || pukLength > MSC_MAX_PIN_LENGTH)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
@@ -409,7 +409,7 @@ int msc_change_pin(sc_card_t *card, int pinNumber, const u8 *pinValue, int pinLe
 }
 
 /* USE ISO_VERIFY due to tries return */
-int msc_change_pin_apdu(sc_card_t *card, sc_apdu_t *apdu, u8* buffer, size_t bufferLength, int pinNumber, const u8 *pinValue, int pinLength, const u8 *newPin, int newPinLength)
+int msc_change_pin_apdu(sc_card_t *card, sc_apdu_t *apdu, u8* buffer, size_t bufferLength, int pinNumber, const u8 *pinValue, size_t pinLength, const u8 *newPin, size_t newPinLength)
 {
 	u8 *ptr;
 	if (pinLength > MSC_MAX_PIN_LENGTH || newPinLength > MSC_MAX_PIN_LENGTH
@@ -512,7 +512,7 @@ int msc_get_challenge(sc_card_t *card, unsigned short dataLength, unsigned short
 	}
 }
 
-int msc_generate_keypair(sc_card_t *card, int privateKey, int publicKey, int algorithm, int keySize, int options)
+int msc_generate_keypair(sc_card_t *card, int privateKey, int publicKey, int algorithm, size_t keySize, int options)
 {
 	sc_apdu_t apdu;
 	u8 buffer[16]; /* Key pair payload length */
@@ -861,7 +861,7 @@ int msc_compute_crypt(sc_card_t *card,
 	inPtr += toSend;
 	outPtr += received;
 
-	toSend = MIN(left, MSC_MAX_APDU - 5);
+	toSend = MIN((int)left, MSC_MAX_APDU - 5);
 	/* If the card supports extended APDUs, or the data fits in
            one normal APDU, use it for the data exchange */
 	if (left < (MSC_MAX_SEND - 4) || (card->caps & SC_CARD_CAP_APDU_EXT) != 0) {
@@ -883,7 +883,7 @@ int msc_compute_crypt(sc_card_t *card,
 	}
 	outPtr += received;
 
-	return outPtr - outputData; /* Amt received */
+	return (int)(outPtr - outputData); /* Amt received */
 }
 
 /* USED IN KEY ITEM WRITING */
@@ -899,7 +899,7 @@ int msc_import_key(sc_card_t *card,
 		writeAcl = 0x0002,
 		use = 0x0002,
 		keySize = data->keySize;
-	int bufferSize = 0;
+	size_t bufferSize = 0;
 	u8 *buffer, *p;
 	u8 apduBuffer[6];
 	sc_apdu_t apdu;

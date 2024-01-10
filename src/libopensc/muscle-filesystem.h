@@ -60,12 +60,12 @@ int mscfs_update_cache(mscfs_t* fs);
 
 int mscfs_check_cache(mscfs_t* fs);
 
-int mscfs_lookup_path(mscfs_t* fs, const u8 *path, int pathlen, msc_id* objectId, int isDirectory);
+int mscfs_lookup_path(mscfs_t* fs, const u8 *path, size_t pathlen, msc_id* objectId, int isDirectory);
 
 int mscfs_lookup_local(mscfs_t* fs, const int id, msc_id* objectId);
 /* -1 any, 0 DF, 1 EF */
 int mscfs_check_selection(mscfs_t *fs, int requiredItem);
-int mscfs_loadFileInfo(mscfs_t* fs, const u8 *path, int pathlen, mscfs_file_t **file_data, int* index);
+int mscfs_loadFileInfo(mscfs_t* fs, const u8 *path, size_t pathlen, mscfs_file_t **file_data, int* index);
 
 
 #endif

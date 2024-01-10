@@ -67,8 +67,8 @@ typedef struct cdata_st {
 	char	   *label;
 	int	    authority;
 	const char *path;
-	size_t	    index;
-	size_t	    count;
+	int	    index;
+	int	    count;
 	const char *id;
 	int         obj_flags;
 } cdata;
@@ -166,7 +166,8 @@ static int gemsafe_get_cert_len(sc_card_t *card)
 	u8 *iptr;
 	struct sc_path path;
 	struct sc_file *file;
-	size_t objlen, certlen;
+	size_t objlen;
+	int certlen;
 	unsigned int ind, i=0;
 
 	sc_format_path(GEMSAFE_PATH, &path);
@@ -236,7 +237,7 @@ static int gemsafe_get_cert_len(sc_card_t *card)
 	 */
 	iptr = ibuf + GEMSAFE_READ_QUANTUM;
 	while ((size_t)(iptr - ibuf) < objlen) {
-		r = sc_read_binary(card, iptr - ibuf, iptr,
+		r = sc_read_binary(card, (unsigned)(iptr - ibuf), iptr,
 				   MIN(GEMSAFE_READ_QUANTUM, objlen - (iptr - ibuf)), 0);
 		if (r < 0) {
 			sc_log(card->ctx, "Could not read cert object");
@@ -259,9 +260,9 @@ static int gemsafe_get_cert_len(sc_card_t *card)
 			/* DER cert len is encoded this way */
 			if (ind+3 >= sizeof ibuf)
 				return SC_ERROR_INVALID_DATA;
-			certlen = ((((size_t) ibuf[ind+2]) << 8) | ibuf[ind+3]) + 4;
+			certlen = ((((int)ibuf[ind + 2]) << 8) | ibuf[ind + 3]) + 4;
 			sc_log(card->ctx,
-			       "Found certificate of key container %d at offset %d, len %"SC_FORMAT_LEN_SIZE_T"u",
+			       "Found certificate of key container %d at offset %d, len %d",
 			       i+1, ind, certlen);
 			gemsafe_cert[i].index = ind;
 			gemsafe_cert[i].count = certlen;

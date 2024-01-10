@@ -186,7 +186,7 @@ static BIGNUM * cf2bn(const u8 *buf, size_t bufsize, BIGNUM *num)
 
 	invert_buf(tmp, buf, bufsize);
 
-	return BN_bin2bn(tmp, bufsize, num);
+	return BN_bin2bn(tmp, (int)bufsize, num);
 }
 
 static int bn2cf(const BIGNUM *num, u8 *buf)
@@ -206,7 +206,7 @@ static int parse_public_key(const u8 *key, size_t keysize, EVP_PKEY *pkey)
 {
 	const u8 *p = key;
 	BIGNUM *n, *e;
-	int base;
+	size_t base;
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 	RSA *rsa = NULL;
 #else
@@ -295,7 +295,7 @@ static int parse_private_key(const u8 *key, size_t keysize, EVP_PKEY *pkey)
 {
 	const u8 *p = key;
 	BIGNUM *bn_p, *q, *dmp1, *dmq1, *iqmp;
-	int base;
+	size_t base;
 	BIGNUM *rsa_d = NULL;
 	int rv = 0;
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
@@ -977,7 +977,7 @@ static int update_public_key(const u8 *key, size_t keysize)
 		fprintf(stderr, "Unable to select public key file: %s\n", sc_strerror(r));
 		return 2;
 	}
-	idx = keysize * (opt_key_num-1);
+	idx = (int)keysize * (opt_key_num - 1);
 	r = sc_update_binary(card, idx, key, keysize, 0);
 	if (r < 0) {
 		fprintf(stderr, "Unable to write public key: %s\n", sc_strerror(r));
@@ -1000,7 +1000,7 @@ static int update_private_key(const u8 *key, size_t keysize)
 		fprintf(stderr, "Unable to select private key file: %s\n", sc_strerror(r));
 		return 2;
 	}
-	idx = keysize * (opt_key_num-1);
+	idx = (int)keysize * (opt_key_num - 1);
 	r = sc_update_binary(card, idx, key, keysize, 0);
 	if (r < 0) {
 		fprintf(stderr, "Unable to write private key: %s\n", sc_strerror(r));

@@ -843,7 +843,8 @@ cosm_emu_update_tokeninfo(struct sc_profile *profile, struct sc_pkcs15_card *p15
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_file *file = NULL;
-	int rv, flags = 0, label_len;
+	int rv, flags = 0;
+	size_t label_len;
 	unsigned char *buf = NULL;
 
 	SC_FUNC_CALLED(ctx, 1);

@@ -312,7 +312,8 @@ int
 iasecc_se_parse(struct sc_card *card, unsigned char *data, size_t data_len, struct iasecc_se_info *se)
 {
 	struct sc_context *ctx = card->ctx;
-	size_t size, offs, size_size;
+	size_t size, offs;
+	int size_size;
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
@@ -324,7 +325,7 @@ iasecc_se_parse(struct sc_card *card, unsigned char *data, size_t data_len, stru
 		data += size_size + 1;
 		data_len = size;
 		sc_log(ctx,
-		       "IASECC_SDO_TEMPLATE: size %"SC_FORMAT_LEN_SIZE_T"u, size_size %"SC_FORMAT_LEN_SIZE_T"u",
+		       "IASECC_SDO_TEMPLATE: size %"SC_FORMAT_LEN_SIZE_T"u, size_size %d",
 		       size, size_size);
 
 		if (*data != IASECC_SDO_TAG_HEADER)
@@ -342,7 +343,7 @@ iasecc_se_parse(struct sc_card *card, unsigned char *data, size_t data_len, stru
 		data += 3 + size_size;
 		data_len = size;
 		sc_log(ctx,
-		       "IASECC_SDO_TEMPLATE SE: size %"SC_FORMAT_LEN_SIZE_T"u, size_size %"SC_FORMAT_LEN_SIZE_T"u",
+		       "IASECC_SDO_TEMPLATE SE: size %"SC_FORMAT_LEN_SIZE_T"u, size_size %d",
 		       size, size_size);
 	}
 
@@ -398,7 +399,7 @@ static int
 iasecc_parse_get_tlv(struct sc_card *card, unsigned char *data, size_t data_len, struct iasecc_extended_tlv *tlv)
 {
 	struct sc_context *ctx = card->ctx;
-	size_t size_len, tag_len;
+	int size_len, tag_len;
 
 	memset(tlv, 0, sizeof(*tlv));
 	sc_log(ctx, "iasecc_parse_get_tlv() called for tag 0x%X", *data);
@@ -432,7 +433,7 @@ iasecc_parse_get_tlv(struct sc_card *card, unsigned char *data, size_t data_len,
 	sc_log(ctx,
 	       "iasecc_parse_get_tlv() parsed %"SC_FORMAT_LEN_SIZE_T"u bytes",
 	       tag_len + size_len + tlv->size);
-	return tag_len + size_len + tlv->size;
+	return (int)(tag_len + size_len + tlv->size);
 }
 
 
@@ -753,7 +754,8 @@ int
 iasecc_sdo_parse(struct sc_card *card, unsigned char *data, size_t data_len, struct iasecc_sdo *sdo)
 {
 	struct sc_context *ctx = card->ctx;
-	size_t size, offs, size_size;
+	size_t size, offs;
+	int size_size;
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
@@ -765,7 +767,7 @@ iasecc_sdo_parse(struct sc_card *card, unsigned char *data, size_t data_len, str
 		data += size_size + 1;
 		data_len = size;
 		sc_log(ctx,
-		       "IASECC_SDO_TEMPLATE: size %"SC_FORMAT_LEN_SIZE_T"u, size_size %"SC_FORMAT_LEN_SIZE_T"u",
+		       "IASECC_SDO_TEMPLATE: size %"SC_FORMAT_LEN_SIZE_T"u, size_size %d",
 		       size, size_size);
 	}
 
@@ -785,7 +787,7 @@ iasecc_sdo_parse(struct sc_card *card, unsigned char *data, size_t data_len, str
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "parse error: invalid SDO data size");
 
 	sc_log(ctx,
-	       "sz %"SC_FORMAT_LEN_SIZE_T"u, sz_size %"SC_FORMAT_LEN_SIZE_T"u",
+	       "sz %"SC_FORMAT_LEN_SIZE_T"u, sz_size %d",
 	       size, size_size);
 
 	offs = 3 + size_size;
@@ -816,7 +818,8 @@ iasecc_sdo_allocate_and_parse(struct sc_card *card, unsigned char *data, size_t 
 {
 	struct sc_context *ctx = card->ctx;
 	struct iasecc_sdo *sdo = NULL;
-	size_t size, offs, size_size;
+	size_t size, offs;
+	int size_size;
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
@@ -846,7 +849,7 @@ iasecc_sdo_allocate_and_parse(struct sc_card *card, unsigned char *data, size_t 
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "parse error: invalid SDO data size");
 
 	sc_log(ctx,
-	       "sz %"SC_FORMAT_LEN_SIZE_T"u, sz_size %"SC_FORMAT_LEN_SIZE_T"u",
+	       "sz %"SC_FORMAT_LEN_SIZE_T"u, sz_size %d",
 	       size, size_size);
 
 	offs = 3 + size_size;
@@ -873,7 +876,7 @@ iasecc_update_blob(struct sc_context *ctx, struct iasecc_extended_tlv *tlv,
 		unsigned char **blob, size_t *blob_size)
 {
 	unsigned char *pp = NULL;
-	int offs = 0, sz;
+	size_t offs = 0, sz;
 
 	if (tlv->size == 0)
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
@@ -1056,7 +1059,7 @@ iasecc_sdo_encode_create(struct sc_context *ctx, struct iasecc_sdo *sdo, unsigne
 	if (out)
 		sc_debug(ctx, SC_LOG_DEBUG_ASN1,"Create data: %s", sc_dump_hex(*out, out_len));
 
-	LOG_FUNC_RETURN(ctx, out_len);
+	LOG_FUNC_RETURN(ctx, (int)out_len);
 }
 
 
@@ -1109,7 +1112,7 @@ iasecc_sdo_encode_update_field(struct sc_context *ctx, unsigned char sdo_class, 
 
 	sc_debug(ctx, SC_LOG_DEBUG_ASN1,"Data: %s", sc_dump_hex(tlv->value, tlv->size));
 	sc_debug(ctx, SC_LOG_DEBUG_ASN1,"Encoded: %s", sc_dump_hex(*out, out_len));
-	LOG_FUNC_RETURN(ctx, out_len);
+	LOG_FUNC_RETURN(ctx, (int)out_len);
 }
 
 

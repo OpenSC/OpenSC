@@ -540,7 +540,8 @@ myeid_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	struct sc_pkcs15_object *pin_object = NULL;
 	struct sc_pkcs15_auth_info *pkcs15_auth_info = NULL;
 	unsigned char sec_attrs[] = {0xFF, 0xFF, 0xFF};
-	int r, ef_structure = 0, keybits = 0, pin_reference = -1;
+	int r, ef_structure = 0, pin_reference = -1;
+	size_t keybits = 0;
 	unsigned char prop_info[] = {0x00, 0x00};
 	int extractable = FALSE;
 
@@ -608,7 +609,7 @@ myeid_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Cannot determine key file");
 	}
 
-	sc_log(ctx, "Key file size %d", keybits);
+	sc_log(ctx, "Key file size %zu", keybits);
 	file->size = keybits;
 	file->ef_structure = ef_structure;
 
@@ -780,7 +781,7 @@ myeid_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	int r;
 	unsigned int cla,tag;
 	size_t taglen;
-	size_t keybits = key_info->modulus_length;
+	unsigned int keybits = (unsigned int)key_info->modulus_length;
 	u8 raw_pubkey[MYEID_MAX_RSA_KEY_LEN / 8];
 	u8* dataptr;
 
@@ -800,7 +801,7 @@ myeid_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 			   without curve OID. */
 
 			if(key_info->field_length != 0)
-				keybits = key_info->field_length;
+				keybits = (unsigned int)key_info->field_length;
 			else
 				key_info->field_length = keybits;
 

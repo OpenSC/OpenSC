@@ -491,8 +491,8 @@ static int rtecp_change_reference_data(sc_card_t *card, unsigned int type,
 {
 	sc_apdu_t apdu;
 	u8 rsf_length[2], *buf, *buf_end, *p;
-	size_t val_length, buf_length, max_transmit_length;
-	int transmits_num, r;
+	size_t val_length, buf_length, max_transmit_length, transmits_num;
+	int r;
 
 	if (!card || !card->ctx || !newref)
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -692,7 +692,7 @@ static int rtecp_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 		apdu.data = previd;
 		apdu.datalen = sizeof(previd);
 	}
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, len);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, (int)len);
 }
 
 static int rtecp_card_ctl(sc_card_t *card, unsigned long request, void *data)
