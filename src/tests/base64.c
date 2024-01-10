@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
 	}
 	len = sc_base64_decode((const char *) buf, outbuf, sizeof(outbuf));
 	if (len < 0) {
-		fprintf(stderr, "Base64 decoding failed: %s\n", sc_strerror(len));	
+		fprintf(stderr, "Base64 decoding failed: %s\n", sc_strerror(len));
 		goto err;
 	}
 	fwrite(outbuf, len, 1, stdout);

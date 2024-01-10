@@ -328,7 +328,7 @@ static int nqapplet_decipher(struct sc_card *card, const u8 *data, size_t cb_dat
 	LOG_TEST_RET(card->ctx, rv, "APDU transmit failed");
 
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
-		rv = apdu.resplen;
+		rv = (int)apdu.resplen;
 	} else if (apdu.sw1 == 0x61) {
 		rv = apdu.sw2 == 0 ? 256 : apdu.sw2;
 	} else {
@@ -362,7 +362,7 @@ static int nqapplet_compute_signature(struct sc_card *card, const u8 *data, size
 	LOG_TEST_RET(card->ctx, rv, "APDU transmit failed");
 
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
-		rv = apdu.resplen;
+		rv = (int)apdu.resplen;
 	} else if (apdu.sw1 == 0x61) {
 		rv = apdu.sw2 == 0 ? 256 : apdu.sw2;
 	} else {
@@ -403,7 +403,7 @@ static int nqapplet_get_data(struct sc_card *card, unsigned int id, u8 *resp, si
 	LOG_TEST_RET(card->ctx, rv, "APDU transmit failed");
 
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
-		rv = apdu.resplen;
+		rv = (int)apdu.resplen;
 	} else if (apdu.sw1 == 0x61) {
 		rv = apdu.sw2 == 0 ? 256 : apdu.sw2;
 	} else if (apdu.sw1 == 0x62 && apdu.sw2 == 0x82) {

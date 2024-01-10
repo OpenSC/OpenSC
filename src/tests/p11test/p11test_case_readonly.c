@@ -65,7 +65,7 @@ static unsigned char *
 rsa_x_509_pad_message(const unsigned char *message,
 	unsigned long *message_length, test_cert_t *o, int encrypt)
 {
-	int pad_message_length = (o->bits+7)/8;
+	unsigned long pad_message_length = (o->bits+7)/8;
 	unsigned char *pad_message = NULL;
 	size_t padding_len = pad_message_length - (*message_length) - 3;
 
@@ -85,7 +85,7 @@ rsa_x_509_pad_message(const unsigned char *message,
 		memset(pad_message + 2, 0xff, padding_len);
 	} else {
 		pad_message[1] = 0x02;
-		if (RAND_bytes(pad_message + 2, padding_len) != 1) {
+		if (RAND_bytes(pad_message + 2, (int)padding_len) != 1) {
 			debug_print("Cannot generate random bytes.");
 		}
 	}
@@ -124,7 +124,7 @@ int encrypt_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message
 		return -1;
 	}
 	EVP_PKEY_CTX_free(ctx);
-	return outlen;
+	return (int)outlen;
 }
 
 int encrypt_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
@@ -163,7 +163,7 @@ int encrypt_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 	rv = fp->C_Encrypt(info->session_handle, message, message_length,
 		*enc_message, &enc_message_length);
 	if (rv == CKR_OK) {
-		return enc_message_length;
+		return (int)enc_message_length;
 	}
 	debug_print("   C_Encrypt: rv = 0x%.8lX", rv);
 
@@ -327,7 +327,7 @@ int sign_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 	always_authenticate(o, info);
 
 	if (multipart) {
-		int part = message_length / 3;
+		unsigned long part = message_length / 3;
 		rv = fp->C_SignUpdate(info->session_handle, message, part);
 		if (rv == CKR_MECHANISM_INVALID) {
 			fprintf(stderr, "  Multipart Signature not supported with CKM_%s\n",
@@ -383,7 +383,7 @@ int sign_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 		fprintf(stderr, "  %s: rv = 0x%.8lX\n", name, rv);
 		return -1;
 	}
-	return sign_length;
+	return (int)sign_length;
 }
 
 int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
@@ -392,7 +392,7 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 {
 	CK_RV rv;
 	CK_BYTE *cmp_message = NULL;
-	int cmp_message_length;
+	unsigned long cmp_message_length;
 
 	if (o->type == EVP_PKEY_RSA) {
 		const EVP_MD *md = NULL;
@@ -465,7 +465,7 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 		debug_print(" [  OK %s ] Signature is valid.", o->id_str);
 		return 1;
 	} else if (o->type == EVP_PKEY_EC) {
-		unsigned int nlen;
+		int nlen;
 		ECDSA_SIG *sig = ECDSA_SIG_new();
 		BIGNUM *r = NULL, *s = NULL;
 		EVP_PKEY_CTX *ctx = NULL;
@@ -475,7 +475,7 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 			fprintf(stderr, "Verification failed");
 			return -1;
 		}
-		nlen = sign_length/2;
+		nlen = (int)sign_length / 2;
 		r = BN_bin2bn(&sign[0], nlen, NULL);
 		s = BN_bin2bn(&sign[nlen], nlen, NULL);
 		ECDSA_SIG_set0(sig, r, s);
@@ -579,7 +579,7 @@ int verify_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 		goto openssl_verify;
 	}
 	if (multipart) {
-		int part = message_length / 3;
+		unsigned long part = message_length / 3;
 		/* First part */
 		rv = fp->C_VerifyUpdate(info->session_handle, message, part);
 		if (rv != CKR_OK) {
@@ -691,7 +691,8 @@ void readonly_tests(void **state) {
 
 	token_info_t *info = (token_info_t *) *state;
 	unsigned int i;
-	int used, j;
+	int used;
+	size_t j;
 	test_certs_t objects;
 
 	test_certs_init(&objects);

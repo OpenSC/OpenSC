@@ -76,7 +76,7 @@ static int string_need_quotes(const char *str)
 static char *scconf_list_get_string(scconf_list * list)
 {
 	char *buffer = NULL, *tmp;
-	int datalen, len, alloc_len, quote;
+	size_t datalen, len, alloc_len, quote;
 
 	if (!list) {
 		return strdup("");

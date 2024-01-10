@@ -526,10 +526,16 @@ static CK_RV gostr3410_verify_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len
 			buf_len = EC_POINT_point2oct(group, P, POINT_CONVERSION_COMPRESSED, NULL, 0, NULL);
 			if (!(buf = malloc(buf_len)))
 				r = -1;
-			if (r == 1 && P)
-				r = EC_POINT_point2oct(group, P, POINT_CONVERSION_COMPRESSED, buf, buf_len, NULL);
+			if (r == 1 && P) {
+				size_t len = EC_POINT_point2oct(group, P, POINT_CONVERSION_COMPRESSED, buf,
+						buf_len, NULL);
+				if (len == 0) {
+					r = -1;
+				}
+			}
 
-			if (EVP_PKEY_todata(pkey, EVP_PKEY_KEYPAIR, &old_params) != 1 ||
+			if (r != 1 ||
+				EVP_PKEY_todata(pkey, EVP_PKEY_KEYPAIR, &old_params) != 1 ||
 				!(bld = OSSL_PARAM_BLD_new()) ||
 				OSSL_PARAM_BLD_push_octet_string(bld, "pub", buf, buf_len) != 1 ||
 				!(new_params = OSSL_PARAM_BLD_to_param(bld)) ||

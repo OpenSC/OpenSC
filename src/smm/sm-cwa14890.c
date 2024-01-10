@@ -273,7 +273,7 @@ sm_cwa_initialize(struct sc_context *ctx, struct sm_info *sm_info, struct sc_rem
 	       sc_dump_hex(encrypted, encrypted_len));
 
 	memcpy(buf, encrypted, encrypted_len);
-	offs = encrypted_len;
+	offs = (int)encrypted_len;
 
 	rv = sm_cwa_get_mac(ctx, cwa_keyset->mac, &icv, buf, offs, &cblock, 1);
 	LOG_TEST_GOTO_ERR(ctx, rv, "sm_ecc_get_mac() failed");
@@ -306,8 +306,8 @@ sm_cwa_securize_apdu(struct sc_context *ctx, struct sm_info *sm_info, struct sc_
 	unsigned char sbuf[0x400];
 	sm_des_cblock cblock, icv;
 	unsigned char *encrypted = NULL, edfb_data[0x200], mac_data[0x200];
-	size_t encrypted_len, edfb_len = 0, mac_len = 0, offs;
-	int rv;
+	size_t encrypted_len, edfb_len = 0, offs;
+	int rv, mac_len = 0;
 
 	LOG_FUNC_CALLED(ctx);
 	sc_debug(ctx, SC_LOG_DEBUG_SM,
@@ -366,9 +366,9 @@ sm_cwa_securize_apdu(struct sc_context *ctx, struct sm_info *sm_info, struct sc_
 		mac_data[offs++] = apdu->le;
 	/* } */
 
-	mac_len = offs;
-	sc_debug(ctx, SC_LOG_DEBUG_SM, "securize APDU: MAC data(len:%"SC_FORMAT_LEN_SIZE_T"u,%s)",
-	       mac_len, sc_dump_hex(mac_data, mac_len));
+	mac_len = (int)offs;
+	sc_debug(ctx, SC_LOG_DEBUG_SM, "securize APDU: MAC data(len:%d,%s)",
+	       mac_len, sc_dump_hex(mac_data, offs));
 
 	memset(icv, 0, sizeof(icv));
 	rv = sm_cwa_get_mac(ctx, session_data->session_mac, &icv, mac_data, mac_len, &cblock, 0);

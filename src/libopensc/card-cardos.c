@@ -557,7 +557,7 @@ get_next_part:
 		}
 	}
 
-	r = fids;
+	r = (int)fids;
 
 	LOG_FUNC_RETURN(card->ctx, r);
 }
@@ -653,7 +653,7 @@ static int cardos_select_file(sc_card_t *card,
 			      sc_file_t **file)
 {
 	int r;
-	
+
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	r = iso_ops->select_file(card, in_path, file);
 	if (r >= 0 && file)
@@ -1082,7 +1082,7 @@ do_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, apdu.resplen);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, (int)apdu.resplen);
 	else
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }

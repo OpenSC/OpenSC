@@ -371,7 +371,7 @@ awp_update_container_entry (struct sc_pkcs15_card *p15card, struct sc_profile *p
 	else   {
 		rv = sc_select_file(p15card->card, &list_file->path, NULL);
 		if (!rv)
-			rv = sc_read_record(p15card->card, rec, 0, buff, list_file->record_length, SC_RECORD_BY_REC_NR);
+			rv = sc_read_record(p15card->card, (unsigned int)rec, 0, buff, list_file->record_length, SC_RECORD_BY_REC_NR);
 	}
 	if (rv < 0)   {
 		free(buff);
@@ -415,7 +415,7 @@ awp_update_container_entry (struct sc_pkcs15_card *p15card, struct sc_profile *p
 			rv = sc_append_record(p15card->card, buff, list_file->record_length, SC_RECORD_BY_REC_NR);
 	}
 	else   {
-		rv = sc_update_record(p15card->card, rec, 0, buff, list_file->record_length, SC_RECORD_BY_REC_NR);
+		rv = sc_update_record(p15card->card, (unsigned int)rec, 0, buff, list_file->record_length, SC_RECORD_BY_REC_NR);
 	}
 
 	free(buff);
@@ -431,7 +431,8 @@ awp_update_container(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 	struct sc_file *clist = NULL, *file = NULL;
 	struct sc_path  private_path;
 	int rv = 0;
-	size_t rec, rec_offs;
+	size_t rec;
+	int rec_offs;
 	unsigned char *list = NULL;
 
 	LOG_FUNC_CALLED(ctx);
@@ -477,7 +478,7 @@ awp_update_container(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 	for (rec=0; rec < file->record_count; rec++)   {
 		unsigned char tmp[256];
 
-		rv = sc_read_record(p15card->card, rec + 1, 0, tmp, sizeof(tmp), SC_RECORD_BY_REC_NR);
+		rv = sc_read_record(p15card->card, (unsigned int)rec + 1, 0, tmp, sizeof(tmp), SC_RECORD_BY_REC_NR);
 		if (rv >= AWP_CONTAINER_RECORD_LEN)
 			memcpy(list + rec*AWP_CONTAINER_RECORD_LEN, tmp, AWP_CONTAINER_RECORD_LEN);
 		else
@@ -488,8 +489,8 @@ awp_update_container(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 		for (rec_offs=0; !rv && rec_offs<12; rec_offs+=6)   {
 			int offs;
 
-			sc_log(ctx,  "rec %"SC_FORMAT_LEN_SIZE_T"u; rec_offs %"SC_FORMAT_LEN_SIZE_T"u", rec, rec_offs);
-			offs = rec*AWP_CONTAINER_RECORD_LEN + rec_offs;
+			sc_log(ctx,  "rec %zu; rec_offs %d", rec, rec_offs);
+			offs = (int)rec*AWP_CONTAINER_RECORD_LEN + rec_offs;
 			if (*(list + offs + 2))   {
 				unsigned char *buff = NULL;
 				int id_offs;
@@ -788,7 +789,7 @@ awp_encode_key_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *obj
 	ki->label.value = (unsigned char *)strdup(obj->label);
 	ki->label.len = strlen(obj->label);
 	sc_log(ctx,
-		 "cosm_encode_key_info() label(%u):%s",
+		 "cosm_encode_key_info() label(%zu):%s",
 		 ki->label.len, ki->label.value);
 
 	/*
@@ -945,7 +946,7 @@ awp_encode_cert_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *ob
 	ci->label.value = (unsigned char *)strdup(obj->label);
 	ci->label.len = strlen(obj->label);
 
-	mem = BIO_new_mem_buf(obj->content.value, obj->content.len);
+	mem = BIO_new_mem_buf(obj->content.value, (int)obj->content.len);
 	if (!mem)
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "AWP encode cert failed: invalid data");
 
@@ -1039,7 +1040,7 @@ awp_encode_cert_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *ob
 		ci->serial.len = i2d_ASN1_INTEGER(X509_get_serialNumber(x), &ci->serial.value);
 	}
 	/* if len == 0, and value == NULL, then the cert did not have a serial number.*/
-	sc_log(ctx,  "cert. serial encoded length %i", ci->serial.len);
+	sc_log(ctx,  "cert. serial encoded length %zu", ci->serial.len);
 
 #else
 	do   {

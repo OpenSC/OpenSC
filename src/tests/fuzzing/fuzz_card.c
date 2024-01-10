@@ -78,7 +78,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 
 	/* Put data */
 	fuzz_get_chunk(reader, &ptr, &ptr_size);
-	sc_put_data(card, flag, ptr, ptr_size);
+	sc_put_data(card, (unsigned int)flag, ptr, ptr_size);
 
 	/* List files */
 	sc_list_files(card, files, sizeof(files));

@@ -59,9 +59,9 @@ int uncompress_gzip(void* uncompressed, size_t *uncompressed_len,
 	z_stream stream;
 	memset(&stream, 0, sizeof stream);
 	stream.total_in = compressed_len;
-	stream.avail_in = compressed_len;
+	stream.avail_in = (unsigned)compressed_len;
 	stream.total_out = *uncompressed_len;
-	stream.avail_out = *uncompressed_len;
+	stream.avail_out = (unsigned)*uncompressed_len;
 	stream.next_in = (Bytef *) compressed;
 	stream.next_out = (Bytef *) uncompressed;
 

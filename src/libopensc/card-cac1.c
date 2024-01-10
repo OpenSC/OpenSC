@@ -103,7 +103,7 @@ static int cac_cac1_get_certificate(sc_card_t *card, u8 **out_buf, size_t *out_l
 	if (r < 0) {
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 	}
-	r = size - left;
+	r = (int)(size - left);
 	if (*out_buf == NULL) {
 		*out_buf = malloc(r);
 		if (*out_buf == NULL) {
@@ -144,7 +144,7 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 		}
 		len = MIN(count, priv->cache_buf_len-idx);
 		memcpy(buf, &priv->cache_buf[idx], len);
-		LOG_FUNC_RETURN(card->ctx, len);
+		LOG_FUNC_RETURN(card->ctx, (int)len);
 	}
 
 	sc_log(card->ctx,
@@ -185,7 +185,7 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 	len = MIN(count, priv->cache_buf_len-idx);
 	if (len && priv->cache_buf)
 		memcpy(buf, &priv->cache_buf[idx], len);
-	r = len;
+	r = (int)len;
 done:
 	if (val)
 		free(val);
@@ -206,7 +206,8 @@ static int cac_select_file_by_type(sc_card_t *card, const sc_path_t *in_path, sc
 	struct sc_apdu apdu;
 	unsigned char buf[SC_MAX_APDU_BUFFER_SIZE];
 	unsigned char pathbuf[SC_MAX_PATH_SIZE], *path = pathbuf;
-	int r, pathlen, pathtype;
+	int r, pathtype;
+	size_t pathlen;
 	struct sc_file *file = NULL;
 	cac_private_data_t * priv = CAC_DATA(card);
 

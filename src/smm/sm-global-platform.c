@@ -302,7 +302,8 @@ sm_gp_encrypt_command_data(struct sc_context *ctx, unsigned char *session_key,
 		const unsigned char *in, size_t in_len, unsigned char **out, size_t *out_len)
 {
 	unsigned char *data = NULL;
-	int rv, len;
+	int rv;
+	size_t len;
 
 	if (!out || !out_len)
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "SM GP encrypt command data error");
@@ -391,7 +392,7 @@ sm_gp_securize_apdu(struct sc_context *ctx, struct sm_info *sm_info,
 
 	memcpy(buff + 5, apdu_data, apdu->datalen);
 
-	rv = sm_gp_get_mac(ctx, gp_session->session_mac, &gp_session->mac_icv, buff, 5 + apdu->datalen, &mac);
+	rv = sm_gp_get_mac(ctx, gp_session->session_mac, &gp_session->mac_icv, buff, 5 + (int)apdu->datalen, &mac);
 	LOG_TEST_GOTO_ERR(ctx, rv, "SM GP securize APDU: get MAC error");
 
 	if (gp_level == SM_GP_SECURITY_MAC)   {

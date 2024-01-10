@@ -124,20 +124,21 @@ static int list_sdos(char *sdo_tag)
 {
 	struct iasecc_sdo sdo;
 	struct iasecc_se_info se;
-	unsigned sdo_class = 0;
+	unsigned char sdo_class = 0;
+	long sdo_class_l;
 	int rv, ii, jj;
 
 	if (!sdo_tag)
 		goto usage;
 
 	if (*sdo_tag == 'x' || *sdo_tag == 'X')
-		sdo_class = strtol(sdo_tag + 1, NULL, 16);
+		sdo_class_l = strtol(sdo_tag + 1, NULL, 16);
 	else if ((strlen(sdo_tag) > 2) && (*(sdo_tag + 1) == 'x' || *(sdo_tag + 1) == 'X'))
-		sdo_class = strtol(sdo_tag + 2, NULL, 16);
+		sdo_class_l = strtol(sdo_tag + 2, NULL, 16);
 	else
-		sdo_class = strtol(sdo_tag, NULL, 10);
+		sdo_class_l = strtol(sdo_tag, NULL, 10);
 
-	sdo_class &= 0x7F;
+	sdo_class = sdo_class_l & 0x7F;
 	if (sdo_class == IASECC_SDO_CLASS_SE)   {
 		for (ii=1; ii<0x20; ii++)   {
 			memset(&se, 0, sizeof(se));

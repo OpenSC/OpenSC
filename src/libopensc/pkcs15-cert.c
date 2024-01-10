@@ -300,7 +300,7 @@ sc_pkcs15_get_extension(struct sc_context *ctx, struct sc_pkcs15_cert *cert,
 			if (is_critical)
 				*is_critical = critical;
 
-			r = val_len;
+			r = (int)val_len;
 			LOG_FUNC_RETURN(ctx, r);
 		}
 		if (val) {
@@ -564,7 +564,7 @@ sc_pkcs15_encode_cdf_entry(sc_context_t *ctx, const struct sc_pkcs15_object *obj
  * the public and private key usages
  */
 static unsigned int
-sc_pkcs15_alg_flags_from_algorithm(int algorithm)
+sc_pkcs15_alg_flags_from_algorithm(unsigned long algorithm)
 {
 	switch (algorithm) {
 	case SC_ALGORITHM_RSA:
@@ -606,7 +606,7 @@ sc_pkcs15_alg_flags_from_algorithm(int algorithm)
 
 /* map a cert usage and algorithm to public and private key usages */
 int
-sc_pkcs15_map_usage(unsigned int cert_usage, int algorithm,
+sc_pkcs15_map_usage(unsigned int cert_usage, unsigned long algorithm,
 	unsigned int *pub_usage_ptr, unsigned int *pr_usage_ptr,
 	int allow_nonrepudiation)
 {

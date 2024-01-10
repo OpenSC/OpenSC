@@ -290,7 +290,7 @@ jpki_set_security_env(sc_card_t * card,
 
 	LOG_FUNC_CALLED(card->ctx);
 	sc_log(card->ctx,
-	       "flags=%08lx op=%d alg=%d algf=%08x algr=%08x kr0=%02x, krfl=%"SC_FORMAT_LEN_SIZE_T"u",
+	       "flags=%08lx op=%d alg=%lu algf=%08lx algr=%08lx kr0=%02x, krfl=%"SC_FORMAT_LEN_SIZE_T"u",
 	       env->flags, env->operation, env->algorithm,
 	       env->algorithm_flags, env->algorithm_ref, env->key_ref[0],
 	       env->key_ref_len);
@@ -345,7 +345,7 @@ jpki_compute_signature(sc_card_t * card,
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 	}
 	memcpy(out, resp, apdu.resplen);
-	LOG_FUNC_RETURN(card->ctx, apdu.resplen);
+	LOG_FUNC_RETURN(card->ctx, (int)apdu.resplen);
 }
 
 static int jpki_card_reader_lock_obtained(sc_card_t *card, int was_reset)

@@ -667,7 +667,7 @@ pgp_parse_algo_attr_blob(sc_card_t *card, const pgp_blob_t *blob,
 }
 
 int _pgp_handle_curve25519(sc_card_t *card,
-	sc_cardctl_openpgp_keygen_info_t key_info, size_t do_num)
+	sc_cardctl_openpgp_keygen_info_t key_info, unsigned int do_num)
 {
 	if (!sc_compare_oid(&key_info.u.ec.oid, &curve25519_oid))
 		return 0;
@@ -677,12 +677,12 @@ int _pgp_handle_curve25519(sc_card_t *card,
 	* keys as far as I know */
 	_sc_card_add_xeddsa_alg(card, key_info.u.ec.key_length,
 	    SC_ALGORITHM_ECDH_CDH_RAW, 0, &key_info.u.ec.oid);
-	sc_log(card->ctx, "DO %zX: Added XEDDSA algorithm (%d), mod_len = %d",
+	sc_log(card->ctx, "DO %uX: Added XEDDSA algorithm (%d), mod_len = %zu",
 	    do_num, SC_ALGORITHM_XEDDSA, key_info.u.ec.key_length);
 	return 1;
 }
 
-int _pgp_add_algo(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t key_info, size_t do_num)
+int _pgp_add_algo(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t key_info, unsigned int do_num)
 {
 	unsigned long flags = 0, ext_flags = 0;
 
@@ -696,7 +696,7 @@ int _pgp_add_algo(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t key_info, si
 			SC_ALGORITHM_ONBOARD_KEY_GEN;	/* key gen on card */
 
 		_sc_card_add_rsa_alg(card, key_info.u.rsa.modulus_len, flags, 0);
-		sc_log(card->ctx, "DO %zX: Added RSA algorithm, mod_len = %"
+		sc_log(card->ctx, "DO %uX: Added RSA algorithm, mod_len = %"
 			SC_FORMAT_LEN_SIZE_T"u",
 			do_num, key_info.u.rsa.modulus_len);
 		break;
@@ -719,7 +719,7 @@ int _pgp_add_algo(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t key_info, si
 
 		_sc_card_add_ec_alg(card, key_info.u.ec.key_length, flags, ext_flags,
 			&key_info.u.ec.oid);
-		sc_log(card->ctx, "DO %zX: Added EC algorithm (%d), mod_len = %d" ,
+		sc_log(card->ctx, "DO %uX: Added EC algorithm (%d), mod_len = %zu" ,
 			do_num, key_info.algorithm, key_info.u.ec.key_length);
 		break;
 	case SC_OPENPGP_KEYALGO_EDDSA:
@@ -730,11 +730,11 @@ int _pgp_add_algo(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t key_info, si
 		_sc_card_add_eddsa_alg(card, key_info.u.ec.key_length,
 			SC_ALGORITHM_EDDSA_RAW, 0, &key_info.u.ec.oid);
 
-		sc_log(card->ctx, "DO %zX: Added EDDSA algorithm (%d), mod_len = %d" ,
+		sc_log(card->ctx, "DO %uX: Added EDDSA algorithm (%d), mod_len = %zu" ,
 			do_num, key_info.algorithm, key_info.u.ec.key_length);
 		break;
 	default:
-		sc_log(card->ctx, "DO %zX: Unknown algorithm ID (%d)" ,
+		sc_log(card->ctx, "DO %uX: Unknown algorithm ID (%d)" ,
 			do_num, key_info.algorithm);
 		/* return "false" if we do not understand algo */
 		return 0;
@@ -753,7 +753,7 @@ pgp_get_card_features(sc_card_t *card)
 	struct pgp_priv_data *priv = DRVDATA(card);
 	u8 *hist_bytes = card->reader->atr_info.hist_bytes;
 	size_t hist_bytes_len = card->reader->atr_info.hist_bytes_len;
-	size_t i;
+	unsigned int i;
 	pgp_blob_t *blob, *blob6e, *blob73, *blobfa;
 	int handled_algos = 0;
 
@@ -922,7 +922,7 @@ pgp_get_card_features(sc_card_t *card)
 		for (i = 0x00c1; i <= 0x00c3; i++) {
 			sc_cardctl_openpgp_keygen_info_t key_info;
 
-			sc_log(card->ctx, "Parsing algorithm attributes DO %zX" , i);
+			sc_log(card->ctx, "Parsing algorithm attributes DO %uX" , i);
 
 			/* OpenPGP card spec 1.1 & 2.x section 4.3.3.6 / v3.x section 4.4.3.7 */
 			if ((pgp_get_blob(card, blob73, i, &blob) >= 0) &&
@@ -1888,7 +1888,7 @@ gnuk_write_certificate(sc_card_t *card, const u8 *buf, size_t length)
 		       i+1, i*256, plen);
 
 		/* 1st chunk: P1 = 0x85, further chunks: P1 = chunk no */
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xD6, (i == 0) ? 0x85 : i, 0);
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xD6, (i == 0) ? 0x85 : (int)i, 0);
 		apdu.flags |= SC_APDU_FLAGS_CHAINING;
 		apdu.data = part;
 		apdu.datalen = apdu.lc = plen;

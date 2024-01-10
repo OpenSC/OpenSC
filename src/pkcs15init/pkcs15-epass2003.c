@@ -505,7 +505,7 @@ static int epass2003_pkcs15_generate_key(struct sc_profile *profile,
 	sc_epass2003_gen_key_data gendat;
 	struct sc_pkcs15_prkey_info *key_info =
 	    (struct sc_pkcs15_prkey_info *)obj->data;
-	size_t idx = key_info->key_reference;
+	int idx = key_info->key_reference;
 	size_t keybits = key_info->modulus_length;
 	struct sc_file *tfile = NULL, *pukf = NULL;
 	struct sc_path path;
@@ -542,7 +542,7 @@ static int epass2003_pkcs15_generate_key(struct sc_profile *profile,
 		    "create key: failed to create key file");
 
 	sc_log(card->ctx,
-		 "index %"SC_FORMAT_LEN_SIZE_T"u; keybits %"SC_FORMAT_LEN_SIZE_T"u\n",
+		 "index %u; keybits %"SC_FORMAT_LEN_SIZE_T"u\n",
 		 idx, keybits);
 	if (keybits < 1024 || keybits > 2048 || (keybits % 0x20)) {
 		if(obj->type == SC_PKCS15_TYPE_PRKEY_EC && keybits == 256)

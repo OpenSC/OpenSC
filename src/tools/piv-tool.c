@@ -368,8 +368,8 @@ static int gen_key(const char * key_info)
 			return -1;
 		}
 
-		newkey_n = BN_bin2bn(keydata.pubkey, keydata.pubkey_len, NULL);
-		newkey_e =  BN_bin2bn(keydata.exponent, keydata.exponent_len, NULL);
+		newkey_n = BN_bin2bn(keydata.pubkey, (int)keydata.pubkey_len, NULL);
+		newkey_e =  BN_bin2bn(keydata.exponent, (int)keydata.exponent_len, NULL);
 		free(keydata.pubkey);
 		keydata.pubkey_len = 0;
 		free(keydata.exponent);
@@ -447,7 +447,7 @@ static int gen_key(const char * key_info)
 		ecpoint = EC_POINT_new(ecgroup);
 
 		/* PIV returns 04||x||y  and x and y are the same size */
-		i = (keydata.ecpoint_len - 1)/2;
+		i = (int)(keydata.ecpoint_len - 1)/2;
 		x = BN_bin2bn(keydata.ecpoint + 1, i, NULL);
 		y = BN_bin2bn(keydata.ecpoint + 1 + i, i, NULL) ;
 		r = EC_POINT_set_affine_coordinates(ecgroup, ecpoint, x, y, NULL);
@@ -552,7 +552,8 @@ static int send_apdu(void)
 	sc_apdu_t apdu;
 	u8 buf[SC_MAX_APDU_BUFFER_SIZE+3];
 	u8 rbuf[8192];
-	size_t len0, r;
+	size_t len0, i;
+	int r;
 	int c;
 
 	for (c = 0; c < opt_apdu_count; c++) {
@@ -569,8 +570,8 @@ static int send_apdu(void)
 		apdu.resplen = sizeof(rbuf);
 
 		printf("Sending: ");
-		for (r = 0; r < len0; r++)
-			printf("%02X ", buf[r]);
+		for (i = 0; i < len0; i++)
+			printf("%02X ", buf[i]);
 		printf("\n");
 		r = sc_transmit_apdu(card, &apdu);
 		if (r) {

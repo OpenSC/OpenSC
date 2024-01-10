@@ -1064,7 +1064,7 @@ static int mcrd_compute_signature(sc_card_t * card,
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
 
 	sc_log(card->ctx,
-		 "Will compute signature (%d) for %"SC_FORMAT_LEN_SIZE_T"u (0x%02"SC_FORMAT_LEN_SIZE_T"x) bytes using key %d algorithm %d flags %d\n",
+		 "Will compute signature (%d) for %"SC_FORMAT_LEN_SIZE_T"u (0x%02"SC_FORMAT_LEN_SIZE_T"x) bytes using key %d algorithm %lu flags %lu\n",
 		 env->operation, datalen, datalen, env->key_ref[0],
 		 env->algorithm, env->algorithm_flags);
 
@@ -1101,8 +1101,8 @@ static int mcrd_decipher(struct sc_card *card,
 	if (crgram_len > 255)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
 
-	sc_log(card->ctx, 
-		 "Will derive (%d) for %"SC_FORMAT_LEN_SIZE_T"u (0x%02"SC_FORMAT_LEN_SIZE_T"x) bytes using key %d algorithm %d flags %d\n",
+	sc_log(card->ctx,
+		 "Will derive (%d) for %"SC_FORMAT_LEN_SIZE_T"u (0x%02"SC_FORMAT_LEN_SIZE_T"x) bytes using key %d algorithm %lu flags %lu\n",
 		 env->operation, crgram_len, crgram_len, env->key_ref[0],
 		 env->algorithm, env->algorithm_flags);
 

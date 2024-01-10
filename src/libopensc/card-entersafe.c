@@ -233,8 +233,8 @@ static int entersafe_cipher_apdu(sc_card_t *card, sc_apdu_t *apdu,
 		  LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 	}
 
-	 len = apdu->lc;
-	 if(!EVP_EncryptUpdate(ctx, buff, &len, buff, buffsize)){
+	 len = (int)apdu->lc;
+	 if(!EVP_EncryptUpdate(ctx, buff, &len, buff, (int)buffsize)){
 		sc_evp_cipher_free(alg);
 		EVP_CIPHER_CTX_free(ctx);
 		  sc_log(card->ctx,  "entersafe encryption error.");
@@ -315,7 +315,7 @@ static int entersafe_mac_apdu(sc_card_t *card, sc_apdu_t *apdu,
 	EVP_EncryptInit_ex(ctx, alg, NULL, key, iv);
 
 	 if(tmpsize_rounded>8){
-		  if(!EVP_EncryptUpdate(ctx,tmp_rounded,&outl,tmp_rounded,tmpsize_rounded-8)){
+		if (!EVP_EncryptUpdate(ctx, tmp_rounded, &outl, tmp_rounded, (int)tmpsize_rounded - 8)) {
 			   r = SC_ERROR_INTERNAL;
 			   goto out;
 		  }
@@ -362,8 +362,7 @@ static int entersafe_transmit_apdu(sc_card_t *card, sc_apdu_t *apdu,
 								   int cipher,int mac)
 {
 	 u8 *cipher_data=0,*mac_data=0;
-	 size_t cipher_data_size,mac_data_size;
-	 int blocks;
+	 size_t cipher_data_size, mac_data_size, blocks;
 	 int r=SC_SUCCESS;
 	 u8 *sbuf=NULL;
 	 size_t ssize=0;
@@ -446,7 +445,7 @@ static int entersafe_read_binary(sc_card_t *card,
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 	memcpy(buf, recvbuf, apdu.resplen);
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, apdu.resplen);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, (int)apdu.resplen);
 }
 
 static int entersafe_update_binary(sc_card_t *card,
@@ -471,7 +470,7 @@ static int entersafe_update_binary(sc_card_t *card,
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2),
 		    "Card returned error");
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, count);
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, (int)count);
 }
 
 
@@ -977,7 +976,7 @@ static int entersafe_compute_with_prkey(sc_card_t *card,
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 		size_t len = apdu.resplen > outlen ? outlen : apdu.resplen;
 		memcpy(out, apdu.resp, len);
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, len);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, (int)len);
 	}
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
@@ -1228,18 +1227,16 @@ static int entersafe_write_rsa_key_factor(sc_card_t *card,
 			 case 0x4:
 			 case 0x5:
 				 {
-					 if( data.len > 32 && data.len < 64 )
-					 {
-						 for(r = data.len ; r < 64 ; r ++)
-							 sbuff[r] = 0;
-						 data.len = 64;
-					 }
-					 else if( data.len > 64 && data.len < 128 )
-					 {
-						 for(r = data.len ; r < 128 ; r ++)
-							 sbuff[r] = 0;
-						 data.len = 128;
-					 }
+					size_t i;
+					if (data.len > 32 && data.len < 64) {
+						for (i = data.len; i < 64; i++)
+							sbuff[i] = 0;
+						data.len = 64;
+					} else if (data.len > 64 && data.len < 128) {
+						for (i = data.len; i < 128; i++)
+							sbuff[i] = 0;
+						data.len = 128;
+					}
 				 }
 				 break;
 			 default:

@@ -862,7 +862,8 @@ authentic_emu_update_tokeninfo(struct sc_profile *profile, struct sc_pkcs15_card
 	struct sc_file *file = NULL;
 	struct sc_path path;
 	unsigned char buffer[8];
-	int rv,len;
+	int rv;
+	size_t len;
 
 	sc_format_path(AUTHENTIC_CACHE_TIMESTAMP_PATH, &path);
 	rv = sc_select_file(p15card->card, &path, &file);

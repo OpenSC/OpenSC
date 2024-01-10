@@ -101,8 +101,8 @@ typedef struct common_key_info_st {
 	int cert_found;
 	int pubkey_found;
 	int pubkey_from_file;
-	int key_alg;
-	unsigned int pubkey_len;
+	unsigned long key_alg;
+	size_t pubkey_len;
 	unsigned int cert_keyUsage; /* x509 key usage as defined in certificate */
 	int cert_keyUsage_present; /* 1 if keyUsage found in certificate */
 	int pub_usage;
@@ -928,7 +928,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 				break;
 
 			default:
-				sc_log(card->ctx,  "Unsupported key.algorithm %d", cert_out->key->algorithm);
+				sc_log(card->ctx, "Unsupported key.algorithm %lu", cert_out->key->algorithm);
 				ckis[i].pubkey_len = 0; /* set some value for now */
 		}
 		if (i < PIV_NUM_KEYS) { /* Only save pub key if card can have private key */
@@ -1088,7 +1088,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 					ckis[i].pubkey_from_file = 1;
 					break;
 				default:
-					sc_log(card->ctx, "Unsupported key_alg %d",p15_key->algorithm);
+					sc_log(card->ctx, "Unsupported key_alg %lu", p15_key->algorithm);
 					continue;
 			}
 			pubkey_obj.emulated = p15_key;
@@ -1103,7 +1103,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 			ckis[i].pubkey_from_cert = NULL;
 		}
 
-		sc_log(card->ctx, "adding pubkey for %d keyalg=%d",i, ckis[i].key_alg);
+		sc_log(card->ctx, "adding pubkey for %d keyalg=%lu", i, ckis[i].key_alg);
 		switch (ckis[i].key_alg) {
 			case SC_ALGORITHM_RSA:
 				if (ckis[i].cert_keyUsage_present) {
@@ -1137,11 +1137,11 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 				ckis[i].pubkey_found = 1;
 				break;
 			default:
-				sc_log(card->ctx, "key_alg %d not supported", ckis[i].key_alg);
+				sc_log(card->ctx, "key_alg %lu not supported", ckis[i].key_alg);
 				continue;
 		}
 		sc_log(card->ctx, "USAGE: cert_keyUsage_present:%d usage:0x%8.8x",
-				ckis[i].cert_keyUsage_present ,pubkey_info.usage);
+				ckis[i].cert_keyUsage_present, pubkey_info.usage);
 	}
 
 
@@ -1208,15 +1208,15 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 					prkey_info.usage  |= prkeys[i].usage_ec;
 				}
 				prkey_info.field_length = ckis[i].pubkey_len;
-				sc_log(card->ctx,  "DEE added key_alg %2.2x prkey_obj.flags %8.8x",
+				sc_log(card->ctx, "DEE added key_alg %2.2lx prkey_obj.flags %8.8x",
 					 ckis[i].key_alg, prkey_obj.flags);
 				r = sc_pkcs15emu_add_ec_prkey(p15card, &prkey_obj, &prkey_info);
 				break;
 			default:
-				sc_log(card->ctx,  "Unsupported key_alg %d", ckis[i].key_alg);
+				sc_log(card->ctx, "Unsupported key_alg %lu", ckis[i].key_alg);
 				r = 0; /* we just skip this one */
 		}
-		sc_log(card->ctx, "USAGE: cert_keyUsage_present:%d usage:0x%8.8x", ckis[i].cert_keyUsage_present ,prkey_info.usage);
+		sc_log(card->ctx, "USAGE: cert_keyUsage_present:%d usage:0x%8.8x", ckis[i].cert_keyUsage_present, prkey_info.usage);
 		LOG_TEST_GOTO_ERR(card->ctx, r, "Failed to add Private key");
 	}
 

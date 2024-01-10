@@ -445,7 +445,7 @@ static int gemsafe_set_security_env(struct sc_card *card,
 		}
 	}
 	if (!(se_env.flags & SC_SEC_ENV_ALG_REF_PRESENT))
-		sc_log(ctx,  "unknown algorithm flags '%x'\n", se_env.algorithm_flags);
+		sc_log(ctx, "unknown algorithm flags '%lx'\n", se_env.algorithm_flags);
 
 	se_env.flags &= ~SC_SEC_ENV_FILE_REF_PRESENT;
 	return iso_ops->set_security_env(card, &se_env, se_num);
@@ -454,7 +454,8 @@ static int gemsafe_set_security_env(struct sc_card *card,
 static int gemsafe_compute_signature(struct sc_card *card, const u8 * data,
 	size_t data_len, u8 * out, size_t outlen)
 {
-	int r, len;
+	int r;
+	size_t len;
 	struct sc_apdu apdu;
 	u8 rbuf[MAX_RESP_BUFFER_SIZE];
 	u8 sbuf[MAX_RESP_BUFFER_SIZE];
@@ -512,7 +513,7 @@ static int gemsafe_compute_signature(struct sc_card *card, const u8 * data,
 		len = apdu.resplen > outlen ? outlen : apdu.resplen;
 
 		memcpy(out, apdu.resp, len);
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, len);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, (int)len);
 	}
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
@@ -541,10 +542,10 @@ static int gemsafe_decipher(struct sc_card *card, const u8 * crgram,
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
-		int len = apdu.resplen > outlen ? outlen : apdu.resplen;
+		size_t len = apdu.resplen > outlen ? outlen : apdu.resplen;
 
 		memcpy(out, apdu.resp, len);
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, len);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, (int)len);
 	}
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }

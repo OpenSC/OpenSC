@@ -61,7 +61,7 @@ static struct sc_card_driver tcos_drv = {
 static const struct sc_card_operations *iso_ops = NULL;
 
 typedef struct tcos_data_st {
-	unsigned int pad_flags;
+	unsigned long pad_flags;
 	unsigned int next_sign;
 } tcos_data;
 
@@ -338,7 +338,8 @@ static int tcos_select_file(sc_card_t *card,
 	sc_apdu_t apdu;
 	sc_file_t *file=NULL;
 	u8 buf[SC_MAX_APDU_BUFFER_SIZE], pathbuf[SC_MAX_PATH_SIZE], *path = pathbuf;
-	int r, pathlen;
+	int r;
+	size_t pathlen;
 
 	assert(card != NULL && in_path != NULL);
 	ctx=card->ctx;
@@ -611,7 +612,7 @@ static int tcos_compute_signature(sc_card_t *card, const u8 * data, size_t datal
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 		size_t len = apdu.resplen>outlen ? outlen : apdu.resplen;
 		memcpy(out, apdu.resp, len);
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, len);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, (int)len);
 	}
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
@@ -666,7 +667,7 @@ static int tcos_decipher(sc_card_t *card, const u8 * crgram, size_t crgram_len, 
 		}
 		if (offset < len)
 		    memcpy(out, apdu.resp + offset, len - offset);
-		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, len - offset);
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, (int)(len - offset));
 	}
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }

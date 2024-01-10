@@ -1080,7 +1080,7 @@ sc_pkcs15_bind_internal(struct sc_pkcs15_card *p15card, struct sc_aid *aid)
 	if (p15card->opts.use_file_cache) {
 		err = sc_pkcs15_read_cached_file(p15card, &tmppath, &buf, &len);
 		if (err == SC_SUCCESS)
-			err = len;
+			err = (int)len;
 	}
 	if (err < 0) {
 		err = sc_read_binary(card, 0, buf, len, 0);
@@ -1154,7 +1154,7 @@ sc_pkcs15_bind_internal(struct sc_pkcs15_card *p15card, struct sc_aid *aid)
 	if (p15card->opts.use_file_cache) {
 		err = sc_pkcs15_read_cached_file(p15card, &tmppath, &buf, &len);
 		if (err == SC_SUCCESS)
-			err = len;
+			err = (int)len;
 	}
 	if (err < 0) {
 		err = sc_read_binary(card, 0, buf, len, 0);
@@ -1462,7 +1462,7 @@ __sc_pkcs15_search_objects(struct sc_pkcs15_card *p15card, unsigned int class_ma
 			break;
 	}
 
-	return match_count;
+	return (int)match_count;
 }
 
 
@@ -2579,7 +2579,7 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 			len = head-data;
 		}
 		else if (file->ef_structure == SC_FILE_EF_LINEAR_VARIABLE) {
-			r = sc_read_record(p15card->card, in_path->index, offset, data, len, SC_RECORD_BY_REC_NR);
+			r = sc_read_record(p15card->card, in_path->index, (unsigned)offset, data, len, SC_RECORD_BY_REC_NR);
 			if (r < 0) {
 				goto fail_unlock;
 			}
@@ -2588,7 +2588,7 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 		}
 		else {
 			unsigned long flags = 0;
-			r = sc_read_binary(p15card->card, offset, data, len, &flags);
+			r = sc_read_binary(p15card->card, (unsigned)offset, data, len, &flags);
 			if (r < 0) {
 				goto fail_unlock;
 			}
@@ -2982,7 +2982,8 @@ sc_pkcs15_get_object_guid(struct sc_pkcs15_card *p15card, const struct sc_pkcs15
 	struct sc_serial_number serialnr;
 	struct sc_pkcs15_id  id;
 	unsigned char guid_bin[SC_PKCS15_MAX_ID_SIZE + SC_MAX_SERIALNR];
-	int rv, guid_bin_size;
+	int rv;
+	size_t guid_bin_size;
 
 	LOG_FUNC_CALLED(ctx);
 	if(!out || !out_size)

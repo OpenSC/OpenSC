@@ -107,7 +107,7 @@ void dnie_change_cwa_provider_to_pin(sc_card_t * card);
 void dnie_change_cwa_provider_to_secure(sc_card_t * card);
 
 void dnie_format_apdu(sc_card_t *card, sc_apdu_t *apdu,
-                       int cse, int ins, int p1, int p2, int le, int lc,
+                       int cse, int ins, int p1, int p2, size_t le, size_t lc,
                        unsigned char * resp, size_t resplen,
                        const unsigned char * data, size_t datalen);
 

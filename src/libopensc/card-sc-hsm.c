@@ -265,9 +265,9 @@ static int sc_hsm_match_card(struct sc_card *card)
 
 	// Validate that card returns a FCP with a proprietary tag 85 with value longer than 2 byte (Fixes #1377)
 	if (file != NULL) {
-		i = file->prop_attr_len;
+		size_t sz = file->prop_attr_len;
 		sc_file_free(file);
-		if (i < 2) {
+		if (sz < 2) {
 			return 0;
 		}
 	}
@@ -820,7 +820,7 @@ static int sc_hsm_read_binary(sc_card_t *card,
 		LOG_TEST_RET(ctx, r, "Check SW error");
 	}
 
-	LOG_FUNC_RETURN(ctx, apdu.resplen);
+	LOG_FUNC_RETURN(ctx, (int)apdu.resplen);
 }
 
 
@@ -897,7 +897,7 @@ static int sc_hsm_write_ef(sc_card_t *card,
 err:
 	free(cmdbuff);
 
-	LOG_FUNC_RETURN(ctx, count);
+	LOG_FUNC_RETURN(ctx, (int)count);
 }
 
 
@@ -941,7 +941,7 @@ static int sc_hsm_list_files(sc_card_t *card, u8 * buf, size_t buflen)
 	else
 		memcpy(buf, recvbuf, apdu.resplen);
 
-	LOG_FUNC_RETURN(card->ctx, apdu.resplen);
+	LOG_FUNC_RETURN(card->ctx, (int)apdu.resplen);
 }
 
 
@@ -1119,7 +1119,7 @@ static int sc_hsm_compute_signature(sc_card_t *card,
 				LOG_FUNC_RETURN(card->ctx, len);
 			}
 		} else {
-			len = apdu.resplen > outlen ? outlen : apdu.resplen;
+			len = (int)(apdu.resplen > outlen ? outlen : apdu.resplen);
 			memcpy(out, apdu.resp, len);
 		}
 		LOG_FUNC_RETURN(card->ctx, len);
@@ -1164,11 +1164,11 @@ static int sc_hsm_decipher(sc_card_t *card, const u8 * crgram, size_t crgram_len
 			assert(apdu.resplen > 0);
 			len = apdu.resplen - 1 > outlen ? outlen : apdu.resplen - 1;
 			memcpy(out, apdu.resp + 1, len);
-			LOG_FUNC_RETURN(card->ctx, len);
+			LOG_FUNC_RETURN(card->ctx, (int)len);
 		} else {
 			len = apdu.resplen > outlen ? outlen : apdu.resplen;
 			memcpy(out, apdu.resp, len);
-			LOG_FUNC_RETURN(card->ctx, len);
+			LOG_FUNC_RETURN(card->ctx, (int)len);
 		}
 	}
 	else

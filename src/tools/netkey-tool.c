@@ -235,8 +235,8 @@ static void show_card(sc_card_t    *card)
 }
 
 
-static void handle_change( sc_card_t *card, int        pin1, int        pin2,
-	int        do_change, u8        *newpin, int        newlen)
+static void
+handle_change(sc_card_t *card, long pin1, long pin2, int do_change, u8 *newpin, size_t newlen)
 {
 	sc_path_t p;
 	sc_file_t *f;
@@ -271,26 +271,27 @@ static void handle_change( sc_card_t *card, int        pin1, int        pin2,
 }
 
 
-static void handle_nullpin(sc_card_t *card, u8 *newpin, int newlen)
+static void handle_nullpin(sc_card_t *card, u8 *newpin, size_t newlen)
 {
 	sc_path_t p;
 	sc_file_t *f;
 	struct sc_apdu a;
 	u8 ref, buf[40];
-	int i;
+	size_t i;
+	int r;
 
 	printf("\nSetting initial PIN-value: ");
 
 	sc_format_path(pinlist[0].path,&p);
-	if((i=sc_select_file(card,&p,&f))<0){
-		printf("\nCannot select %s, %s\n", pinlist[0].label, sc_strerror(i));
+	if ((r = sc_select_file(card, &p, &f)) < 0) {
+		printf("\nCannot select %s, %s\n", pinlist[0].label, sc_strerror(r));
 		return;
 	}
 	ref=f->prop_attr[2];
 
 	sc_format_apdu(card, &a, SC_APDU_CASE_1, 0x20, 0x00, f->prop_attr[2]);
-	if((i=sc_transmit_apdu(card, &a))<0){
-		printf("sc_transmit_apdu() failed, %s\n", sc_strerror(i));
+	if ((r = sc_transmit_apdu(card, &a)) < 0) {
+		printf("sc_transmit_apdu() failed, %s\n", sc_strerror(r));
 		return;
 	}
 	if(a.sw1!=0x69 && a.sw2!=0x85){
@@ -302,8 +303,8 @@ static void handle_nullpin(sc_card_t *card, u8 *newpin, int newlen)
 	for(i=0;i<6;++i) buf[i]=0;
 	for(i=0;i<newlen;++i) buf[6+i]=newpin[i];
 	a.data=buf, a.lc=a.datalen=6+newlen;
-	if((i=sc_transmit_apdu(card, &a))<0){
-		printf("sc_transmit_apdu() failed, %s\n", sc_strerror(i));
+	if ((r = sc_transmit_apdu(card, &a)) < 0) {
+		printf("sc_transmit_apdu() failed, %s\n", sc_strerror(r));
 		return;
 	}
 	if(a.sw1!=0x90 && a.sw2!=0x00){
@@ -314,7 +315,7 @@ static void handle_nullpin(sc_card_t *card, u8 *newpin, int newlen)
 }
 
 
-static void handle_readcert(sc_card_t *card, int cert, char *file)
+static void handle_readcert(sc_card_t *card, long cert, char *file)
 {
 	sc_path_t p;
 	sc_file_t *f;
@@ -324,7 +325,7 @@ static void handle_readcert(sc_card_t *card, int cert, char *file)
 	const u8 *q;
 	int i, len;
 
-	printf("\nReading Card-Certificate %d: ", cert); fflush(stdout);
+	printf("\nReading Card-Certificate %ld: ", cert); fflush(stdout);
 
 	sc_format_path(certlist[cert].path,&p);
 	if((i=sc_select_file(card,&p,&f))<0){
@@ -344,7 +345,7 @@ static void handle_readcert(sc_card_t *card, int cert, char *file)
 	printf("Writing Cert to %s: ", file); fflush(stdout);
 	if((fp=fopen(file,"w"))==NULL) printf("Cannot open file, %s\n", strerror(errno));
 	else {
-		fprintf(fp,"Certificate %d from Netkey E4 card\n\n", cert);
+		fprintf(fp,"Certificate %ld from Netkey E4 card\n\n", cert);
 		PEM_write_X509(fp,c);
 		printf("OK\n");
 	}
@@ -352,7 +353,7 @@ static void handle_readcert(sc_card_t *card, int cert, char *file)
 }
 
 
-static void handle_writecert(sc_card_t *card, int cert, char *file)
+static void handle_writecert(sc_card_t *card, long cert, char *file)
 {
 	sc_path_t p;
 	sc_file_t *f;
@@ -373,7 +374,7 @@ static void handle_writecert(sc_card_t *card, int cert, char *file)
 		printf("file does not contain PEM-encoded certificate\n");
 		return;
 	}
-	printf("OK\nStoring Cert into Card-Certificate %d: ", cert); fflush(stdout);
+	printf("OK\nStoring Cert into Card-Certificate %ld: ", cert); fflush(stdout);
 	q=buf;
 	len=i2d_X509(c,NULL);
 	if(len>0 && len<=(int)sizeof(buf))
@@ -397,10 +398,13 @@ static void handle_writecert(sc_card_t *card, int cert, char *file)
 }
 
 
-static int pin_string2int(char *s) {
-	size_t i;
+static long pin_string2int(char *s)
+{
+	long i;
 
-	for(i=0;i<sizeof(pinlist)/sizeof(pinlist[0]);++i) if(!strcasecmp(pinlist[i].name,s)) return i;
+	for (i = 0; (size_t)i < sizeof(pinlist) / sizeof(pinlist[0]); ++i)
+		if (!strcasecmp(pinlist[i].name, s))
+			return i;
 	return -1;
 }
 
@@ -443,7 +447,8 @@ int main(
 	int do_help=0, do_unblock=0, do_change=0, do_nullpin=0, do_readcert=0, do_writecert=0;
 	u8 newpin[32];
 	char *certfile=NULL, *p;
-	int r, oerr=0, reader=0, debug=0, pin_nr=-1, cert_nr=-1;
+	int r, oerr=0, reader=0, debug=0;
+	long pin_nr=-1, cert_nr=-1;
 	size_t i, newlen=0;
 
 	while ((r = getopt_long(argc, argv, "hvr:p:u:0:1:", options, NULL)) != -1) {
@@ -511,12 +516,12 @@ int main(
 	}
 	if(optind==argc-3 && !strcmp(argv[optind],"cert")){
 		++optind;
-		cert_nr=strtol(argv[optind],&p,10);
+		cert_nr = strtol(argv[optind], &p, 10);
 		if(argv[optind][0] && !*p && cert_nr>=0 && cert_nr<(int)(sizeof(certlist)/sizeof(certlist[0]))){
 			do_readcert=1, certfile=argv[optind+1];
 		} else {
 			do_writecert=1, certfile=argv[optind];
-			cert_nr=strtol(argv[optind+1],&p,10);
+			cert_nr = strtol(argv[optind + 1], &p, 10);
 			if(!argv[optind][0] || *p || cert_nr<0 || cert_nr>=(int)(sizeof(certlist)/sizeof(certlist[0]))) ++oerr;
 		}
 		optind+=2;
@@ -574,7 +579,7 @@ int main(
 	show_card(card);
 
 	if(do_unblock || do_change){
-		int i1=pinlist[pin_nr].p1, i2=pinlist[pin_nr].p2;
+		long i1 = pinlist[pin_nr].p1, i2 = pinlist[pin_nr].p2;
 
 		if((do_unblock || !pinlist[pin_nr].len) &&
 		   (i1<0 || !pinlist[i1].len) && (i2<0 || !pinlist[i2].len)
@@ -598,9 +603,9 @@ int main(
 	if(do_readcert) handle_readcert(card, cert_nr, certfile);
 	if(do_writecert){
 		if(certlist[cert_nr].readonly){
-			fprintf(stderr, "\nReadonly-Certificate %d cannot be changed\n", cert_nr);
+			fprintf(stderr, "\nReadonly-Certificate %ld cannot be changed\n", cert_nr);
 		} else if(!pinlist[0].len && !pinlist[3].len){
-			fprintf(stderr, "\nNeed %s or %s to change Card-Certificate %d\n",
+			fprintf(stderr, "\nNeed %s or %s to change Card-Certificate %ld\n",
 				pinlist[0].label, pinlist[3].label, cert_nr
 			);
 		} else handle_writecert(card, cert_nr, certfile);

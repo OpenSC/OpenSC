@@ -158,10 +158,10 @@ iso7816_read_binary(struct sc_card *card, unsigned int idx, u8 *buf, size_t coun
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	if (r == SC_ERROR_FILE_END_REACHED)
-		LOG_FUNC_RETURN(ctx, apdu.resplen);
+		LOG_FUNC_RETURN(ctx, (int)apdu.resplen);
 	LOG_TEST_RET(ctx, r, "Check SW error");
 
-	LOG_FUNC_RETURN(ctx, apdu.resplen);
+	LOG_FUNC_RETURN(ctx, (int)apdu.resplen);
 }
 
 
@@ -261,7 +261,7 @@ iso7816_read_record(struct sc_card *card, unsigned int rec_nr, unsigned int idx,
 	LOG_TEST_GOTO_ERR(card->ctx, r, "Card returned error");
 
 	if (idx == 0) {
-		r = apdu.resplen;
+		r = (int)apdu.resplen;
 	} else {
 		r = decode_do_data(card->ctx, apdu.resp, apdu.resplen,
 				&decoded_data, &decoded_data_len);
@@ -270,7 +270,7 @@ iso7816_read_record(struct sc_card *card, unsigned int rec_nr, unsigned int idx,
 			count = decoded_data_len;
 		}
 		memcpy(buf, decoded_data, count);
-		r = count;
+		r = (int)count;
 	}
 
 err:
@@ -301,7 +301,7 @@ iso7816_write_record(struct sc_card *card, unsigned int rec_nr,
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
-	LOG_FUNC_RETURN(card->ctx, count);
+	LOG_FUNC_RETURN(card->ctx, (int)count);
 }
 
 
@@ -324,7 +324,7 @@ iso7816_append_record(struct sc_card *card,
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
-	LOG_FUNC_RETURN(card->ctx, count);
+	LOG_FUNC_RETURN(card->ctx, (int)count);
 }
 
 
@@ -363,7 +363,7 @@ iso7816_update_record(struct sc_card *card, unsigned int rec_nr, unsigned int id
 	LOG_TEST_GOTO_ERR(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_GOTO_ERR(card->ctx, r, "Card returned error");
-	r = count;
+	r = (int)count;
 
 err:
 	free(encoded_data);
@@ -394,7 +394,7 @@ iso7816_write_binary(struct sc_card *card,
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
-	LOG_FUNC_RETURN(card->ctx, count);
+	LOG_FUNC_RETURN(card->ctx, (int)count);
 }
 
 
@@ -421,7 +421,7 @@ iso7816_update_binary(struct sc_card *card,
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
-	LOG_FUNC_RETURN(card->ctx, count);
+	LOG_FUNC_RETURN(card->ctx, (int)count);
 }
 
 
@@ -633,7 +633,8 @@ iso7816_select_file(struct sc_card *card, const struct sc_path *in_path, struct 
 	struct sc_apdu apdu;
 	unsigned char buf[SC_MAX_APDU_BUFFER_SIZE];
 	unsigned char pathbuf[SC_MAX_PATH_SIZE], *path = pathbuf;
-	int r, pathlen, pathtype;
+	int r, pathtype;
+	size_t pathlen;
 	int select_mf = 0;
 	struct sc_file *file = NULL;
 	const u8 *buffer;
@@ -1026,7 +1027,7 @@ iso7816_set_security_env(struct sc_card *card,
 		memcpy(p, env->key_ref, env->key_ref_len);
 		p += env->key_ref_len;
 	}
-	r = p - sbuf;
+	r = (int)(p - sbuf);
 	apdu.lc = r;
 	apdu.datalen = r;
 	apdu.data = sbuf;
@@ -1117,7 +1118,7 @@ iso7816_compute_signature(struct sc_card *card,
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
-		LOG_FUNC_RETURN(card->ctx, apdu.resplen);
+		LOG_FUNC_RETURN(card->ctx, (int)apdu.resplen);
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(card->ctx, r, "Card returned error");
@@ -1168,7 +1169,7 @@ iso7816_decipher(struct sc_card *card,
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
-		LOG_FUNC_RETURN(card->ctx, apdu.resplen);
+		LOG_FUNC_RETURN(card->ctx, (int)apdu.resplen);
 	else
 		LOG_FUNC_RETURN(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
@@ -1384,7 +1385,7 @@ static int iso7816_get_data(struct sc_card *card, unsigned int tag,  u8 *buf, si
 	if (apdu.resplen > len)
 		r = SC_ERROR_WRONG_LENGTH;
 	else
-		r = apdu.resplen;
+		r = (int)apdu.resplen;
 
 	LOG_FUNC_RETURN(card->ctx, r);
 }
@@ -1497,7 +1498,7 @@ int iso7816_read_binary_sfid(sc_card_t *card, unsigned char sfid,
 	if (r < 0 && r != SC_ERROR_FILE_END_REACHED)
 		goto err;
 	/* emulate the behaviour of iso7816_read_binary */
-	r = apdu.resplen;
+	r = (int)apdu.resplen;
 
 	while(1) {
 		if (r >= 0 && ((size_t) r) != read) {
@@ -1521,11 +1522,10 @@ int iso7816_read_binary_sfid(sc_card_t *card, unsigned char sfid,
 		}
 		*ef = p;
 
-		r = iso7816_read_binary(card, *ef_len,
-				*ef + *ef_len, read, 0);
+		r = iso7816_read_binary(card, (unsigned)*ef_len, *ef + *ef_len, read, 0);
 	}
 
-	r = *ef_len;
+	r = (int)*ef_len;
 
 err:
 	return r;
@@ -1562,7 +1562,7 @@ int iso7816_write_binary_sfid(sc_card_t *card, unsigned char sfid,
 	r = sc_transmit_apdu(card, &apdu);
 	/* emulate the behaviour of sc_write_binary */
 	if (r >= 0)
-		r = apdu.datalen;
+		r = (int)apdu.datalen;
 
 	while (1) {
 		if (r < 0 || ((size_t) r) > ef_len) {
@@ -1576,10 +1576,10 @@ int iso7816_write_binary_sfid(sc_card_t *card, unsigned char sfid,
 		if (wrote >= ef_len)
 			break;
 
-		r = sc_write_binary(card, wrote, ef, write, 0);
+		r = sc_write_binary(card, (unsigned)wrote, ef, write, 0);
 	}
 
-	r = wrote;
+	r = (int)wrote;
 
 err:
 	return r;
@@ -1632,7 +1632,7 @@ int iso7816_update_binary_sfid(sc_card_t *card, unsigned char sfid,
 	r = sc_transmit_apdu(card, &apdu);
 	/* emulate the behaviour of sc_write_binary */
 	if (r >= 0)
-		r = apdu.datalen;
+		r = (int)apdu.datalen;
 
 	while (1) {
 		if (r < 0 || ((size_t) r) > ef_len) {
@@ -1646,10 +1646,10 @@ int iso7816_update_binary_sfid(sc_card_t *card, unsigned char sfid,
 		if (wrote >= ef_len)
 			break;
 
-		r = sc_update_binary(card, wrote, ef, write, 0);
+		r = sc_update_binary(card, (unsigned)wrote, ef, write, 0);
 	}
 
-	r = wrote;
+	r = (int)wrote;
 
 err:
 	return r;

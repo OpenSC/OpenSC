@@ -39,7 +39,7 @@ static int sc_pkcs15emu_skeid_init(sc_pkcs15_card_t * p15card)
 {
 	int r;
 	int i;
-	int sn_len;
+	size_t sn_len;
 	char *buf;
 
 	set_string(&p15card->tokeninfo->label, "eID karta");

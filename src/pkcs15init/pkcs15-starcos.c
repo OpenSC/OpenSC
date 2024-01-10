@@ -611,7 +611,7 @@ static int starcos_encode_pukey(struct sc_pkcs15_prkey_rsa *rsa, u8 *buf,
 	if (!rsa) {
 		if (!buf)
 			/* if buf == NULL return length of the encoded key */
-			return (int) 12 + (kinfo->modulus_length >> 3);
+			return 12 + (int)(kinfo->modulus_length >> 3);
 		*p++ = 0x06;			/* length key header */
 		*p++ = 0x01; 			/* CHA byte */
 		*p++ = 0x01;
@@ -622,11 +622,11 @@ static int starcos_encode_pukey(struct sc_pkcs15_prkey_rsa *rsa, u8 *buf,
 		*p = (u8) kinfo->key_reference;	/* CHA byte */
 	} else {
 		/* encode normal public key  */
-		size_t	mod_len = rsa->modulus.len  & 0xff,
-			exp_len = rsa->exponent.len & 0xff;
+		int	mod_len = (int)rsa->modulus.len  & 0xff,
+			exp_len = (int)rsa->exponent.len & 0xff;
 
 		if (!buf)
-			return (int) 8 + mod_len + exp_len + 1;
+			return 8 + mod_len + exp_len + 1;
 
 		*p++ = 0x06;			/* length key header */
 		*p++ = 0x01; 			/* CHA byte */
@@ -717,7 +717,7 @@ static int starcos_write_pukey(sc_profile_t *profile, sc_card_t *card,
 	}
 	endpos = starcos_ipf_get_lastpos(buf, len);
 	free(buf);
-	return sc_update_binary(card, endpos, key, keylen + 12, 0);
+	return sc_update_binary(card, (unsigned)endpos, key, keylen + 12, 0);
 }
 
 static int starcos_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,

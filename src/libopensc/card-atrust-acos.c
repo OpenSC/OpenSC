@@ -67,7 +67,7 @@ static struct sc_card_driver atrust_acos_drv = {
 typedef struct atrust_acos_ex_data_st {
 	int    sec_ops;	/* the currently selected security operation,
 			 * i.e. SC_SEC_OPERATION_AUTHENTICATE etc. */
-	unsigned int    fix_digestInfo;
+	unsigned long    fix_digestInfo;
 } atrust_acos_ex_data;
 
 /*****************************************************************************/
@@ -707,7 +707,7 @@ static int atrust_acos_compute_signature(struct sc_card *card,
 		if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 			size_t len = apdu.resplen > outlen ? outlen : apdu.resplen;
 			memcpy(out, apdu.resp, len);
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, len);
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, (int)len);
 		}
 	} else if (ex_data->sec_ops == SC_SEC_OPERATION_AUTHENTICATE) {
 		size_t tmp_len;
@@ -742,7 +742,7 @@ static int atrust_acos_compute_signature(struct sc_card *card,
 			size_t len = apdu.resplen > outlen ? outlen : apdu.resplen;
 
 			memcpy(out, apdu.resp, len);
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, len);
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, (int)len);
 		}
 	} else
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
@@ -789,7 +789,7 @@ static int atrust_acos_decipher(struct sc_card *card,
 		size_t len = apdu.resplen > outlen ? outlen : apdu.resplen;
 
 		memcpy(out, apdu.resp, len);
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, len);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, (int)len);
 	}
 
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));

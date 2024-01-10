@@ -86,9 +86,9 @@ static int sc_compress_gzip(u8* out, size_t* outLen, const u8* in, size_t inLen)
 	memset(&gz, 0, sizeof(gz));
 
 	gz.next_in = (u8*)in;
-	gz.avail_in = inLen;
+	gz.avail_in = (unsigned)inLen;
 	gz.next_out = out;
-	gz.avail_out = *outLen;
+	gz.avail_out = (unsigned)*outLen;
 
 	err = deflateInit2(&gz, Z_BEST_COMPRESSION, Z_DEFLATED, window_size, 9, Z_DEFAULT_STRATEGY);
 	if(err != Z_OK) return zerr_to_opensc(err);
@@ -111,9 +111,9 @@ static int sc_decompress_gzip(u8* out, size_t* outLen, const u8* in, size_t inLe
 	memset(&gz, 0, sizeof(gz));
 
 	gz.next_in = (u8*)in;
-	gz.avail_in = inLen;
+	gz.avail_in = (unsigned)inLen;
 	gz.next_out = out;
-	gz.avail_out = *outLen;
+	gz.avail_out = (unsigned)*outLen;
 
 	*outLen = 0;
 
@@ -193,9 +193,9 @@ static int sc_decompress_zlib_alloc(u8** out, size_t* outLen, const u8* in, size
 
 	if (!out || !outLen)
 		return SC_ERROR_INVALID_ARGUMENTS;
-	
+
 	gz.next_in = (u8*)in;
-	gz.avail_in = inLen;
+	gz.avail_in = (unsigned)inLen;
 
 	err = inflateInit2(&gz, window_size);
 	if (err != Z_OK)
@@ -214,7 +214,7 @@ static int sc_decompress_zlib_alloc(u8** out, size_t* outLen, const u8* in, size
 		}
 		*out = buf;
 		gz.next_out = buf + *outLen;
-		gz.avail_out = bufferSize - *outLen;
+		gz.avail_out = (unsigned)(bufferSize - *outLen);
 
 		err = inflate(&gz, Z_FULL_FLUSH);
 		if (err != Z_STREAM_END && err != Z_OK) {

@@ -651,7 +651,7 @@ static int cryptoflex_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 		count += 2;
 		buflen -= 2;
 	}
-	return count;
+	return (int)count;
 }
 
 /*
@@ -661,9 +661,9 @@ static int cyberflex_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 {
 	sc_apdu_t apdu;
 	u8 rbuf[6];
-	int r;
-	size_t count = 0, p2 = 0;
-	
+	int r, p2 = 0;
+	size_t count = 0;
+
 	while (buflen > 2) {
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xA8, 0, ++p2);
 		apdu.le = 6;
@@ -688,7 +688,7 @@ static int cyberflex_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 		count += 2;
 		buflen -= 2;
 	}
-	return count;
+	return (int)count;
 }
 
 static int flex_delete_file(sc_card_t *card, const sc_path_t *path)
@@ -907,7 +907,7 @@ static int flex_create_file(sc_card_t *card, sc_file_t *file)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	if (file->type != SC_FILE_TYPE_DF && file->ef_structure != SC_FILE_EF_TRANSPARENT)
-		rec_nr = file->record_count;
+		rec_nr = (int)file->record_count;
 	else
 		rec_nr = 0;
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xE0, 0x00, rec_nr);
@@ -1032,7 +1032,7 @@ cryptoflex_compute_signature(sc_card_t *card, const u8 *data,
 	LOG_TEST_RET(card->ctx, r, "Card returned error");
 	for (i = 0; i < apdu.resplen; i++)
 		out[i] = sbuf[apdu.resplen-1-i];
-	return apdu.resplen;
+	return (int)apdu.resplen;
 }
 
 static int
@@ -1071,7 +1071,7 @@ cyberflex_compute_signature(sc_card_t *card, const u8 *data,
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(card->ctx, r, "Card returned error");
-	return apdu.resplen;
+	return (int)apdu.resplen;
 }
 
 static int flex_decipher(sc_card_t *card,
@@ -1123,7 +1123,7 @@ static int flex_generate_key(sc_card_t *card, struct sc_cardctl_cryptoflex_genke
 	case 1024:	p2 = 0x80; break;
 	case 2048:	p2 = 0x00; break;
 	default:
-		sc_log(card->ctx,  "Illegal key length: %d\n", data->key_bits);
+		sc_log(card->ctx,  "Illegal key length: %zu\n", data->key_bits);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
@@ -1147,7 +1147,7 @@ static int flex_generate_key(sc_card_t *card, struct sc_cardctl_cryptoflex_genke
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
-	data->pubkey_len = apdu.resplen;
+	data->pubkey_len = (unsigned)apdu.resplen;
 	return 0;
 }
 

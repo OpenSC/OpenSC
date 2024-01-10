@@ -745,7 +745,7 @@ sc_pkcs15_encode_pubkey(sc_context_t *ctx, struct sc_pkcs15_pubkey *key,
 		key->algorithm == SC_ALGORITHM_XEDDSA) /* XXX encoding is the same here */
 		return sc_pkcs15_encode_pubkey_eddsa(ctx, &key->u.eddsa, buf, len);
 
-	sc_log(ctx, "Encoding of public key type %u not supported", key->algorithm);
+	sc_log(ctx, "Encoding of public key type %lu not supported", key->algorithm);
 	LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 }
 
@@ -777,7 +777,7 @@ sc_pkcs15_encode_pubkey_as_spki(sc_context_t *ctx, struct sc_pkcs15_pubkey *pubk
 	pkey.value =  NULL;
 	pkey.len = 0;
 
-	sc_log(ctx, "Encoding public key with algorithm %i", pubkey->algorithm);
+	sc_log(ctx, "Encoding public key with algorithm %lu", pubkey->algorithm);
 	if (!pubkey->alg_id)   {
 		pubkey->alg_id = calloc(1, sizeof(struct sc_algorithm_id));
 		if (!pubkey->alg_id)
@@ -871,7 +871,7 @@ sc_pkcs15_decode_pubkey(sc_context_t *ctx, struct sc_pkcs15_pubkey *key,
 		key->algorithm == SC_ALGORITHM_XEDDSA)
 		return sc_pkcs15_decode_pubkey_eddsa(ctx, &key->u.eddsa, buf, len);
 
-	sc_log(ctx, "Decoding of public key type %u not supported", key->algorithm);
+	sc_log(ctx, "Decoding of public key type %lu not supported", key->algorithm);
 	return SC_ERROR_NOT_SUPPORTED;
 }
 
@@ -949,7 +949,7 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_obj
 	else if (p15card->card->ops->read_public_key)   {
 		sc_log(ctx, "Call card specific 'read-public-key' handle");
 		r = p15card->card->ops->read_public_key(p15card->card, algorithm,
-				(struct sc_path *)&info->path, info->key_reference, info->modulus_length,
+				(struct sc_path *)&info->path, info->key_reference, (unsigned)info->modulus_length,
 				&data, &len);
 		LOG_TEST_GOTO_ERR(ctx, r, "Card specific 'read-public' procedure failed.");
 
@@ -1289,7 +1289,7 @@ sc_pkcs15_read_der_file(sc_context_t *ctx, char * filename,
 	memcpy(rbuf, tagbuf, len); /* copy first or only part */
 	if (rbuflen > len) {
 		/* read rest of file */
-		ssize_t sz = read(f, rbuf + len, rbuflen - len);
+		sz = read(f, rbuf + len, rbuflen - len);
 		if (sz < (ssize_t)(rbuflen - len)) {
 			r = SC_ERROR_INVALID_ASN1_OBJECT;
 			free (rbuf);
@@ -1365,7 +1365,7 @@ sc_pkcs15_pubkey_from_spki_fields(struct sc_context *ctx, struct sc_pkcs15_pubke
 	memcpy(pubkey->alg_id, &pk_alg, sizeof(struct sc_algorithm_id));
 	pubkey->algorithm = pk_alg.algorithm;
 	pk_alg.params = NULL;
-	sc_log(ctx, "DEE pk_alg.algorithm=%d", pk_alg.algorithm);
+	sc_log(ctx, "DEE pk_alg.algorithm=%lu", pk_alg.algorithm);
 
 	pk.len = (pk.len + 7)/8;	/* convert number of bits to bytes */
 

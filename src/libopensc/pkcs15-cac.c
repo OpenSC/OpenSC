@@ -258,7 +258,7 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 			sc_log(card->ctx,  "No cert found,i=%d", i);
 			continue;
 		}
-		cert_info.path.count = cert_der.len;
+		cert_info.path.count = (int)cert_der.len;
 
 		sc_log(card->ctx,
 			 "cert len=%"SC_FORMAT_LEN_SIZE_T"u, cert_info.path.count=%d r=%d\n",
@@ -327,7 +327,7 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 				sc_dump_hex(cert_info.id.value, cert_info.id.len),
 				 usage, pubkey_info.usage, prkey_info.usage);
 		if (cert_out->key->algorithm != SC_ALGORITHM_RSA) {
-			sc_log(card->ctx, "unsupported key.algorithm %d", cert_out->key->algorithm);
+			sc_log(card->ctx, "unsupported key.algorithm %lu", cert_out->key->algorithm);
 			sc_pkcs15_free_certificate(cert_out);
 			free(pubkey_info.direct.spki.value);
 			continue;

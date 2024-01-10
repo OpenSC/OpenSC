@@ -250,7 +250,7 @@ void scconf_skip_block(scconf_parser * parser)
 void scconf_parse_token(scconf_parser * parser, int token_type, const char *token)
 {
 	scconf_item *item;
-	int len;
+	size_t len;
 
 	if (parser->error) {
 		/* fatal error */

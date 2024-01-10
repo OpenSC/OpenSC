@@ -109,7 +109,8 @@ authentic_update_blob(struct sc_context *ctx, unsigned tag, unsigned char *data,
 		unsigned char **blob, size_t *blob_size)
 {
 	unsigned char *pp = NULL;
-	int offs = 0, sz;
+	int offs = 0;
+	size_t sz;
 
 	if (data_len == 0)
 		return SC_SUCCESS;
@@ -182,6 +183,7 @@ authentic_get_tagged_data(struct sc_context *ctx, unsigned char *in, size_t in_l
 		unsigned in_tag, unsigned char **out, size_t *out_len)
 {
 	size_t size_len, tag_len, offs, size;
+	int rv;
 	unsigned tag;
 
 	if (!out || !out_len)
@@ -202,8 +204,9 @@ authentic_get_tagged_data(struct sc_context *ctx, unsigned char *in, size_t in_l
 		if (offs + tag_len >= in_len)
 			LOG_TEST_RET(ctx, SC_ERROR_INTERNAL, "parse error: invalid data");
 
-		size_len = authentic_parse_size(in + offs + tag_len, in_len - (offs + tag_len), &size);
-		LOG_TEST_RET(ctx, size_len, "parse error: invalid size data");
+		rv = authentic_parse_size(in + offs + tag_len, in_len - (offs + tag_len), &size);
+		LOG_TEST_RET(ctx, rv, "parse error: invalid size data");
+		size_len = rv;
 
 		if (tag == in_tag)   {
 			if (in_len - (offs + tag_len + size_len) < size)
@@ -699,7 +702,7 @@ authentic_reduce_path(struct sc_card *card, struct sc_path *path)
 	in_path.len -= offs;
 	*path = in_path;
 
-	LOG_FUNC_RETURN(ctx, offs);
+	LOG_FUNC_RETURN(ctx, (int)offs);
 }
 
 
@@ -758,7 +761,8 @@ authentic_select_file(struct sc_card *card, const struct sc_path *path,
 	struct sc_apdu apdu;
 	struct sc_path lpath;
 	unsigned char rbuf[SC_MAX_APDU_BUFFER_SIZE];
-	int pathlen, rv;
+	size_t pathlen;
+	int rv;
 
 	LOG_FUNC_CALLED(ctx);
 	authentic_debug_select_file(card, path);
@@ -873,7 +877,7 @@ authentic_read_binary(struct sc_card *card, unsigned int idx,
 
 	if (rv)   {
 		LOG_TEST_RET(ctx, SC_ERROR_INTERNAL, "authentic_read_binary() failed");
-		LOG_FUNC_RETURN(ctx, count);
+		LOG_FUNC_RETURN(ctx, (int)count);
 	}
 
 	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
@@ -881,7 +885,7 @@ authentic_read_binary(struct sc_card *card, unsigned int idx,
 		count = ret_count;
 
 	LOG_TEST_RET(ctx, rv, "authentic_read_binary() failed");
-	LOG_FUNC_RETURN(ctx, count);
+	LOG_FUNC_RETURN(ctx, (int)count);
 }
 
 
@@ -918,13 +922,13 @@ authentic_write_binary(struct sc_card *card, unsigned int idx,
 	if (rv)
 	{
 		LOG_TEST_RET(ctx, SC_ERROR_INTERNAL, "authentic_write_binary() failed");
-		LOG_FUNC_RETURN(ctx, count);
+		LOG_FUNC_RETURN(ctx, (int)count);
 	}
 
 	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
 
 	LOG_TEST_RET(ctx, rv, "authentic_write_binary() failed");
-	LOG_FUNC_RETURN(ctx, count);
+	LOG_FUNC_RETURN(ctx, (int)count);
 }
 
 
@@ -961,13 +965,13 @@ authentic_update_binary(struct sc_card *card, unsigned int idx,
 	if (rv)
 	{
 		LOG_TEST_RET(ctx, SC_ERROR_INTERNAL, "authentic_update_binary() failed");
-		LOG_FUNC_RETURN(ctx, count);
+		LOG_FUNC_RETURN(ctx, (int)count);
 	}
 
 	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
 
 	LOG_TEST_RET(ctx, rv, "authentic_update_binary() failed");
-	LOG_FUNC_RETURN(ctx, count);
+	LOG_FUNC_RETURN(ctx, (int)count);
 }
 
 
@@ -1105,7 +1109,7 @@ authentic_fcp_encode(struct sc_card *card, struct sc_file *file, unsigned char *
 		memcpy(out, buf, offs);
 	}
 
-	LOG_FUNC_RETURN(ctx, offs);
+	LOG_FUNC_RETURN(ctx, (int)offs);
 }
 
 
@@ -1126,8 +1130,9 @@ authentic_create_file(struct sc_card *card, struct sc_file *file)
 
 	authentic_debug_select_file(card, &file->path);
 
-	sbuf_len = authentic_fcp_encode(card, file, sbuf + 2, sizeof(sbuf)-2);
-	LOG_TEST_RET(ctx, sbuf_len, "FCP encode error");
+	rv = authentic_fcp_encode(card, file, sbuf + 2, sizeof(sbuf)-2);
+	LOG_TEST_RET(ctx, rv, "FCP encode error");
+	sbuf_len = rv;
 
 	sbuf[0] = ISO7816_TAG_FCP;
 	sbuf[1] = sbuf_len;
@@ -1243,7 +1248,7 @@ authentic_chv_verify(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd,
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "CHV PIN reference %i, pin1(%p,len:%i)", pin_cmd->pin_reference, pin1->data, pin1->len);
+	sc_log(ctx, "CHV PIN reference %i, pin1(%p,len:%zu)", pin_cmd->pin_reference, pin1->data, pin1->len);
 
 	if (pin1->data && !pin1->len)   {
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x20, 0, pin_cmd->pin_reference);
@@ -1321,7 +1326,7 @@ authentic_pin_verify(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd)
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "PIN(type:%X,reference:%X,data:%p,length:%i)",
+	sc_log(ctx, "PIN(type:%X,reference:%X,data:%p,length:%zu)",
 			pin_cmd->pin_type, pin_cmd->pin_reference, pin_cmd->pin1.data, pin_cmd->pin1.len);
 
 	if (pin_cmd->pin1.data && !pin_cmd->pin1.len)   {
@@ -1345,7 +1350,7 @@ authentic_pin_verify(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd)
 	rv = authentic_pin_get_policy(card, pin_cmd, NULL);
 	LOG_TEST_RET(ctx, rv, "Get 'PIN policy' error");
 
-	if (pin_cmd->pin1.len > (int)pin_cmd->pin1.max_length)
+	if (pin_cmd->pin1.len > pin_cmd->pin1.max_length)
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_PIN_LENGTH, "PIN policy check failed");
 
 	pin_cmd->pin1.tries_left = -1;
@@ -1430,7 +1435,7 @@ authentic_pin_change(struct sc_card *card, struct sc_pin_cmd_data *data, int *tr
 		LOG_FUNC_RETURN(ctx, rv);
 	}
 
-	if (card->max_send_size && (data->pin1.len + data->pin2.len > (int)card->max_send_size))
+	if (card->max_send_size && (data->pin1.len + data->pin2.len > card->max_send_size))
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_PIN_LENGTH, "APDU transmit failed");
 
 	memset(pin_data, data->pin1.pad_char, sizeof(pin_data));
@@ -1562,7 +1567,7 @@ authentic_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data, int *tri
 	int rv, ii;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "reset PIN (ref:%i,lengths %i/%i)", data->pin_reference, data->pin1.len, data->pin2.len);
+	sc_log(ctx, "reset PIN (ref:%i,lengths %zu/%zu)", data->pin_reference, data->pin1.len, data->pin2.len);
 
 	memset(prv_data->pins_sha1[data->pin_reference], 0, sizeof(prv_data->pins_sha1[0]));
 
@@ -1644,8 +1649,8 @@ authentic_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries
 
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "PIN-CMD:%X,PIN(type:%X,ret:%i)", data->cmd, data->pin_type, data->pin_reference);
-	sc_log(ctx, "PIN1(%p,len:%i,tries-left:%i)", data->pin1.data, data->pin1.len, data->pin1.tries_left);
-	sc_log(ctx, "PIN2(%p,len:%i)", data->pin2.data, data->pin2.len);
+	sc_log(ctx, "PIN1(%p,len:%zu,tries-left:%i)", data->pin1.data, data->pin1.len, data->pin1.tries_left);
+	sc_log(ctx, "PIN2(%p,len:%zu)", data->pin2.data, data->pin2.len);
 
 	switch (data->cmd)   {
 	case SC_PIN_CMD_VERIFY:
@@ -1718,7 +1723,7 @@ authentic_get_challenge(struct sc_card *card, unsigned char *rnd, size_t len)
 	}
 	memcpy(rnd, rbuf, out_len);
 
-	LOG_FUNC_RETURN(card->ctx, out_len);
+	LOG_FUNC_RETURN(card->ctx, (int)out_len);
 }
 
 
@@ -1992,7 +1997,7 @@ authentic_set_security_env(struct sc_card *card,
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "set SE#%i(op:0x%X,algo:0x%X,algo_ref:0x%X,flags:0x%X), key_ref:0x%X",
+	sc_log(ctx, "set SE#%i(op:0x%X,algo:0x%lX,algo_ref:0x%lX,flags:0x%lX), key_ref:0x%X",
 			se_num, env->operation, env->algorithm, env->algorithm_ref, env->algorithm_flags, env->key_ref[0]);
 	switch (env->operation)  {
 	case SC_SEC_OPERATION_SIGN:
@@ -2054,7 +2059,7 @@ authentic_decipher(struct sc_card *card, const unsigned char *in, size_t in_len,
 		out_len = apdu.resplen;
 
 	memcpy(out, apdu.resp, out_len);
-	rv = out_len;
+	rv = (int)out_len;
 
 	LOG_FUNC_RETURN(ctx, rv);
 }
@@ -2151,7 +2156,7 @@ authentic_sm_acl_init (struct sc_card *card, struct sm_info *sm_info, int cmd,
 
 static int
 authentic_sm_execute (struct sc_card *card, struct sm_info *sm_info,
-		unsigned char *data, int data_len, unsigned char *out, size_t len)
+		unsigned char *data, size_t data_len, unsigned char *out, size_t len)
 {
 	struct sc_context *ctx = card->ctx;
 	struct sc_remote_data rdata;

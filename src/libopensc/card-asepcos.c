@@ -464,7 +464,7 @@ static int asepcos_decipher(sc_card_t *card, const u8 * crgram, size_t crgram_le
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
-	return apdu.resplen;
+	return (int)apdu.resplen;
 }
 
 /* compute the signature. Currently the RSA ENCRYPT DECRYPT command
@@ -504,7 +504,7 @@ static int asepcos_compute_signature(sc_card_t *card, const u8 *data, size_t dat
 		return SC_ERROR_BUFFER_TOO_SMALL;
 	memcpy(out, apdu.resp, apdu.resplen);
 
-	return apdu.resplen;
+	return (int)apdu.resplen;
 }
 
 /* activates the EF/DF specified in the file id.

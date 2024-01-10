@@ -154,7 +154,7 @@ static int sc_hsm_determine_free_id(struct sc_pkcs15_card *p15card, u8 range)
 
 
 
-static int sc_hsm_encode_gakp_rsa(struct sc_pkcs15_card *p15card, sc_cvc_t *cvc, int keysize) {
+static int sc_hsm_encode_gakp_rsa(struct sc_pkcs15_card *p15card, sc_cvc_t *cvc, size_t keysize) {
 	struct sc_object_id rsa15withSHA256 = { { 0,4,0,127,0,7,2,2,2,1,2,-1 } };
 
 	LOG_FUNC_CALLED(p15card->card->ctx);
@@ -167,7 +167,7 @@ static int sc_hsm_encode_gakp_rsa(struct sc_pkcs15_card *p15card, sc_cvc_t *cvc,
 	memcpy(cvc->coefficientAorExponent, pubexp, sizeof(pubexp));
 
 	cvc->pukoid = rsa15withSHA256;
-	cvc->modulusSize = keysize;
+	cvc->modulusSize = (int)keysize;
 
 	LOG_FUNC_RETURN(p15card->card->ctx, SC_SUCCESS);
 }

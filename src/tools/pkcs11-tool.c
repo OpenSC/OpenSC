@@ -563,7 +563,7 @@ static int		gen_key(CK_SLOT_ID slot, CK_SESSION_HANDLE, CK_OBJECT_HANDLE *, cons
 static int		unwrap_key(CK_SESSION_HANDLE session);
 static int		wrap_key(CK_SESSION_HANDLE session);
 
-static int		write_object(CK_SESSION_HANDLE session);
+static CK_RV		write_object(CK_SESSION_HANDLE session);
 static int		read_object(CK_SESSION_HANDLE session);
 static int		delete_object(CK_SESSION_HANDLE session);
 static void		set_id_attr(CK_SESSION_HANDLE session);
@@ -578,7 +578,7 @@ static int		find_object(CK_SESSION_HANDLE, CK_OBJECT_CLASS,
 static int		find_object_flags(CK_SESSION_HANDLE, uint16_t flags,
 				CK_OBJECT_HANDLE_PTR,
 				const unsigned char *, size_t id_len, int obj_index);
-static int		find_mechanism(CK_SLOT_ID, CK_FLAGS, CK_MECHANISM_TYPE_PTR, size_t, CK_MECHANISM_TYPE_PTR);
+static CK_ULONG		find_mechanism(CK_SLOT_ID, CK_FLAGS, CK_MECHANISM_TYPE_PTR, size_t, CK_MECHANISM_TYPE_PTR);
 static int		find_slot_by_description(const char *, CK_SLOT_ID_PTR);
 static int		find_slot_by_token_label(const char *, CK_SLOT_ID_PTR);
 static void		get_token_info(CK_SLOT_ID, CK_TOKEN_INFO_PTR);
@@ -2086,7 +2086,7 @@ static int unlock_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess, int login_type)
 }
 
 /* return digest length in bytes */
-static unsigned long hash_length(const int hash) {
+static unsigned long hash_length(const unsigned long hash) {
 	unsigned long sLen = 0;
 	switch (hash) {
 	case  CKM_SHA_1:
@@ -3557,15 +3557,15 @@ wrap_key(CK_SESSION_HANDLE session)
 
 #ifdef ENABLE_OPENSSL
 static void	parse_certificate(struct x509cert_info *cert,
-		unsigned char *data, int len, unsigned char *contents,
-		int *contents_len)
+		unsigned char *data, ssize_t len, unsigned char *contents,
+		ssize_t *contents_len)
 {
 	X509 *x = NULL;
 	unsigned char *p;
 	int n;
 
 	if (strstr((char *)data, "-----BEGIN CERTIFICATE-----")) {
-		BIO *mem = BIO_new_mem_buf(data, len);
+		BIO *mem = BIO_new_mem_buf(data, (int)len);
 		x = PEM_read_bio_X509(mem, NULL, NULL, NULL);
 		/* Update what is written to the card to be DER encoded */
 		if (contents != NULL) {
@@ -3624,7 +3624,7 @@ static void	parse_certificate(struct x509cert_info *cert,
 static int
 do_read_key(unsigned char *data, size_t data_len, int private, EVP_PKEY **key)
 {
-	BIO *mem = BIO_new_mem_buf(data, data_len);;
+	BIO *mem = BIO_new_mem_buf(data, (int)data_len);
 
 	if (!key)
 		return -1;
@@ -3910,7 +3910,7 @@ parse_ec_pkey(EVP_PKEY *pkey, int private, struct gostkey_info *gost)
 		if (!gost->public.value)
 			return -1;
 		point = gost->public.value;
-		ASN1_put_object(&point, 0, point_len, V_ASN1_OCTET_STRING, V_ASN1_UNIVERSAL);
+		ASN1_put_object(&point, 0, (int)point_len, V_ASN1_OCTET_STRING, V_ASN1_UNIVERSAL);
 		header_len = point-gost->public.value;
 		memcpy(point, buf, point_len);
 		gost->public.len = header_len+point_len;
@@ -3935,14 +3935,14 @@ static void gost_info_free(struct gostkey_info gost)
 
 /* Currently for certificates (-type cert), private keys (-type privkey),
    public keys (-type pubkey) and data objects (-type data). */
-static int write_object(CK_SESSION_HANDLE session)
+static CK_RV write_object(CK_SESSION_HANDLE session)
 {
 	CK_BBOOL _true = TRUE;
 	CK_BBOOL _false = FALSE;
 	unsigned char contents[MAX_OBJECT_SIZE + 1];
-	int contents_len = 0;
+	ssize_t contents_len = 0;
 	unsigned char certdata[MAX_OBJECT_SIZE];
-	int certdata_len = 0;
+	ssize_t certdata_len = 0;
 	FILE *f;
 	CK_OBJECT_HANDLE cert_obj, privkey_obj, pubkey_obj, seckey_obj, data_obj;
 	CK_ATTRIBUTE cert_templ[20], privkey_templ[30], pubkey_templ[20], seckey_templ[20], data_templ[20];
@@ -4594,7 +4594,7 @@ done:
 		*ret = CK_INVALID_HANDLE;
 	p11->C_FindObjectsFinal(sess);
 
-	return count;
+	return (int)count;
 }
 
 static int find_object(CK_SESSION_HANDLE sess, CK_OBJECT_CLASS cls,
@@ -4660,7 +4660,7 @@ done:
 }
 
 
-static int
+static CK_ULONG
 find_mechanism(CK_SLOT_ID slot, CK_FLAGS flags,
 		CK_MECHANISM_TYPE_PTR list, size_t list_len,
 		CK_MECHANISM_TYPE_PTR result)
@@ -4671,7 +4671,7 @@ find_mechanism(CK_SLOT_ID slot, CK_FLAGS flags,
 	count = get_mechanisms(slot, &mechs, flags);
 	if (count)   {
 		if (list && list_len)   {
-			unsigned ii = list_len, jj;
+			size_t ii = list_len, jj;
 
 			for (jj=0; jj<count; jj++)   {
 				for (ii=0; ii<list_len; ii++)
@@ -4880,7 +4880,7 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 		octet = ASN1_OCTET_STRING_new();
 		if (octet == NULL)
 		    util_fatal("ASN1_OCTET_STRING_new failure\n");
-		ASN1_OCTET_STRING_set(octet, buf, buf_size);
+		ASN1_OCTET_STRING_set(octet, buf, (int)buf_size);
 		der_size = i2d_ASN1_OCTET_STRING(octet, NULL);
 		derp = der = (unsigned char *) malloc(der_size);
 		if (der == NULL)
@@ -5064,7 +5064,7 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 		}
 		if (pub) {
 			unsigned char *bytes = NULL;
-			int ksize;
+			unsigned long ksize;
 			unsigned int n;
 
 			bytes = getEC_POINT(sess, obj, &size);
@@ -5087,7 +5087,7 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 				ksize = size * 8;
 			}
 
-			printf("  EC_POINT %u bits\n", ksize);
+			printf("  EC_POINT %lu bits\n", ksize);
 			if (bytes) {
 				if ((CK_LONG)size > 0) { /* Will print the point here */
 					printf("  EC_POINT:   ");
@@ -5617,14 +5617,14 @@ static int read_object(CK_SESSION_HANDLE session)
 				util_fatal("out of memory");
 #endif
 			if ((value = getMODULUS(session, obj, &len))) {
-				if (!(rsa_n = BN_bin2bn(value, len, NULL)))
+				if (!(rsa_n = BN_bin2bn(value, (int)len, NULL)))
 					util_fatal("cannot parse MODULUS");
 				free(value);
 			} else
 				util_fatal("cannot obtain MODULUS");
 
 			if ((value = getPUBLIC_EXPONENT(session, obj, &len))) {
-				if (!(rsa_e = BN_bin2bn(value, len, NULL)))
+				if (!(rsa_e = BN_bin2bn(value, (int)len, NULL)))
 					util_fatal("cannot parse PUBLIC_EXPONENT");
 				free(value);
 			} else
@@ -6445,8 +6445,8 @@ static EVP_PKEY *get_public_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE priv
 					free(exp);
 				return NULL;
 			}
-			rsa_n = BN_bin2bn(mod, modLen, NULL);
-			rsa_e =	BN_bin2bn(exp, expLen, NULL);
+			rsa_n = BN_bin2bn(mod, (int)modLen, NULL);
+			rsa_e =	BN_bin2bn(exp, (int)expLen, NULL);
 			free(mod);
 			free(exp);
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
@@ -6580,7 +6580,7 @@ static int sign_verify_openssl(CK_SESSION_HANDLE session,
 	else {
 		if (EVP_VerifyInit(md_ctx, evp_mds[evp_md_index])
 				&& EVP_VerifyUpdate(md_ctx, verifyData, verifyDataLen)) {
-			err = EVP_VerifyFinal(md_ctx, sig1, sigLen1, pkey);
+			err = EVP_VerifyFinal(md_ctx, sig1, (unsigned)sigLen1, pkey);
 		} else {
 			err = -1;
 		}
@@ -6612,7 +6612,7 @@ static int test_signature(CK_SESSION_HANDLE sess)
 	CK_MECHANISM    ck_mech = { CKM_MD5, NULL, 0 };
 	CK_MECHANISM_TYPE firstMechType;
 	CK_SESSION_INFO sessionInfo;
-	CK_ULONG        i, j;
+	int i, j;
 	unsigned char   data[512]; /* FIXME: Will not work for keys above 4096 bits */
 	CK_ULONG        modLenBytes = 0;
 	CK_ULONG        dataLen;
@@ -6671,7 +6671,7 @@ static int test_signature(CK_SESSION_HANDLE sess)
 
 	printf("Signatures (currently only for RSA)\n");
 	for (j = 0; find_object(sess, CKO_PRIVATE_KEY, &privKeyObject, NULL, 0, j); j++) {
-		printf("  testing key %ld ", j);
+		printf("  testing key %d ", j);
 		if ((label = getLABEL(sess, privKeyObject, NULL)) != NULL) {
 			printf("(%s) ", label);
 			free(label);
@@ -6986,7 +6986,8 @@ static int sign_verify(CK_SESSION_HANDLE session,
 
 static int test_verify(CK_SESSION_HANDLE sess)
 {
-	int key_len, i, errors = 0;
+	int i, errors = 0;
+	CK_ULONG key_len;
 	CK_OBJECT_HANDLE priv_key, pub_key;
 	CK_MECHANISM_TYPE first_mech_type;
 	CK_SESSION_INFO sessionInfo;
@@ -7044,13 +7045,13 @@ static int test_verify(CK_SESSION_HANDLE sess)
 		}
 
 		key_len = (get_private_key_length(sess, priv_key) + 7) / 8;
-		if(!key_len) {
+		if (!key_len || key_len > INT_MAX) {
 			printf(" -- can't get the modulus length, skipping\n");
 			continue;
 		}
 		printf("\n");
 
-		errors += sign_verify(sess, priv_key, key_len, pub_key, i != 0);
+		errors += sign_verify(sess, priv_key, (int)key_len, pub_key, i != 0);
 	}
 
 	if (i == 0)
@@ -7245,7 +7246,7 @@ static int test_unwrap(CK_SESSION_HANDLE sess)
 static int encrypt_decrypt(CK_SESSION_HANDLE session,
 		CK_MECHANISM_TYPE mech_type,
 		CK_OBJECT_HANDLE privKeyObject,
-		char *param, unsigned long param_len)
+		char *param, int param_len)
 {
 	EVP_PKEY       *pkey;
 	unsigned char	orig_data[512];
@@ -7507,7 +7508,7 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 			oaep_params.source = CKZ_DATA_SPECIFIED;
 			oaep_params.pSourceData = param;
 			oaep_params.ulSourceDataLen = param_len;
-			fprintf(stderr, "encoding parameter (Label) present, length %ld\n", param_len);
+			fprintf(stderr, "encoding parameter (Label) present, length %d\n", param_len);
 		} else {
 			fprintf(stderr, "encoding parameter (Label) not present\n");
 		}
@@ -7577,7 +7578,8 @@ static int test_decrypt(CK_SESSION_HANDLE sess)
 	CK_OBJECT_HANDLE pubKeyObject, privKeyObject;
 	CK_MECHANISM_TYPE *mechs = NULL;
 	CK_SESSION_INFO sessionInfo;
-	CK_ULONG        j, num_mechs = 0, id_len;
+	CK_ULONG        num_mechs = 0, id_len;
+	int j;
 #ifdef ENABLE_OPENSSL
 	CK_ULONG        n;
 #endif
@@ -7599,7 +7601,7 @@ static int test_decrypt(CK_SESSION_HANDLE sess)
 
 	printf("Decryption (currently only for RSA)\n");
 	for (j = 0; find_object(sess, CKO_PRIVATE_KEY, &privKeyObject, NULL, 0, j); j++) {
-		printf("  testing key %ld", j);
+		printf("  testing key %d", j);
 		if ((label = getLABEL(sess, privKeyObject, NULL)) != NULL) {
 			printf(" (%s)", label);
 			free(label);

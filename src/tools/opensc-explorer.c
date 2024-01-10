@@ -1030,11 +1030,11 @@ static int do_info(int argc, char **argv)
 	}
 
 	for (i = 0; ac_ops != NULL && ac_ops[i].str != NULL; i++) {
-		int len = strlen(ac_ops[i].str);
+		size_t len = strlen(ac_ops[i].str);
 
 		printf("ACL for %s:%*s %s\n",
 			ac_ops[i].str,
-			(15 > len) ? (15 - len) : 0, "",
+			(15 > len) ? (int)(15 - len) : 0, "",
 			util_acl_to_str(sc_file_get_acl_entry(file, ac_ops[i].id)));
 	}
 
@@ -1178,7 +1178,7 @@ static int do_pininfo(int argc, char **argv)
 	int r, tries_left = -1;
 	size_t i;
 	struct sc_pin_cmd_data data;
-	int prefix_len = 0;
+	size_t prefix_len = 0;
 
 	if (argc != 1)
 		return usage(do_pininfo);
@@ -1241,7 +1241,7 @@ static int do_verify(int argc, char **argv)
 	u8 buf[SC_MAX_PIN_SIZE];
 	size_t buflen = sizeof(buf), i;
 	struct sc_pin_cmd_data data;
-	int prefix_len = 0;
+	size_t prefix_len = 0;
 
 	if (argc < 1 || argc > 2)
 		return usage(do_verify);
@@ -1489,15 +1489,15 @@ static int do_get(int argc, char **argv)
 	count = file->size;
 	while (count) {
 		/* FIXME sc_read_binary does this kind of fetching in a loop already */
-		int c = count > sizeof(buf) ? sizeof(buf) : count;
+		size_t c = count > sizeof(buf) ? sizeof(buf) : count;
 
 		r = sc_read_binary(card, idx, buf, c, 0);
 		if (r < 0) {
 			check_ret(r, SC_AC_OP_READ, "Read failed", file);
 			goto err;
 		}
-		if ((r != c) && (card->type != SC_CARD_TYPE_BELPIC_EID)) {
-			fprintf(stderr, "Expecting %d, got only %d bytes.\n", c, r);
+		if (((size_t)r != c) && (card->type != SC_CARD_TYPE_BELPIC_EID)) {
+			fprintf(stderr, "Expecting %zu, got only %d bytes.\n", c, r);
 			goto err;
 		}
 		if ((r == 0) && (card->type == SC_CARD_TYPE_BELPIC_EID))
@@ -1531,7 +1531,8 @@ static int do_get_record(int argc, char **argv)
 {
 	u8 buf[SC_MAX_EXT_APDU_RESP_SIZE];
 	int r, err = 1;
-	size_t rec, count = 0;
+	size_t count = 0;
+	unsigned long rec;
 	sc_path_t path;
 	sc_file_t *file = NULL;
 	char *filename;
@@ -1578,13 +1579,13 @@ static int do_get_record(int argc, char **argv)
 	/* fail on out of bound record index:
 	 * must be > 0 and if record_count is set <= record_count */
 	if (rec < 1 || (file->record_count > 0 && rec > file->record_count)) {
-		fprintf(stderr, "Invalid record number %"SC_FORMAT_LEN_SIZE_T"u\n", rec);
+		fprintf(stderr, "Invalid record number %lu\n", rec);
 		goto err;
 	}
 
-	r = sc_read_record(card, rec, 0, buf, sizeof(buf), SC_RECORD_BY_REC_NR);
+	r = sc_read_record(card, (unsigned)rec, 0, buf, sizeof(buf), SC_RECORD_BY_REC_NR);
 	if (r < 0)   {
-		fprintf(stderr, "Cannot read record %"SC_FORMAT_LEN_SIZE_T"u; return %i\n", rec, r);
+		fprintf(stderr, "Cannot read record %lu; return %i\n", rec, r);
 		goto err;
 	}
 
@@ -1626,7 +1627,7 @@ static int do_update_binary(int argc, char **argv)
 	u8 buf[SC_MAX_EXT_APDU_DATA_SIZE];
 	size_t buflen = sizeof(buf);
 	int r, err = 1;
-	int offs;
+	unsigned long offs;
 	sc_path_t path;
 	sc_file_t *file;
 
@@ -1658,14 +1659,14 @@ static int do_update_binary(int argc, char **argv)
 
 	r = sc_lock(card);
 	if (r == SC_SUCCESS)
-		r = sc_update_binary(card, offs, buf, buflen, 0);
+		r = sc_update_binary(card, (unsigned)offs, buf, buflen, 0);
 	sc_unlock(card);
 	if (r < 0) {
 		fprintf(stderr, "Cannot update %04X: %s\n", file->id, sc_strerror(r));
 		goto err;
 	}
 
-	printf("Total of %d bytes written to %04X at offset %d.\n",
+	printf("Total of %d bytes written to %04X at offset %lu.\n",
 	       r, file->id, offs);
 
 	err = 0;
@@ -1710,7 +1711,7 @@ static int do_update_record(int argc, char **argv)
 		goto err;
 	}
 
-	r = sc_read_record(card, rec, 0, buf, sizeof(buf), SC_RECORD_BY_REC_NR);
+	r = sc_read_record(card, (unsigned)rec, 0, buf, sizeof(buf), SC_RECORD_BY_REC_NR);
 	if (r < 0) {
 		fprintf(stderr, "Cannot read record %"SC_FORMAT_LEN_SIZE_T"u of %04X: %s\n",
 			rec, file->id, sc_strerror(r));
@@ -1732,7 +1733,7 @@ static int do_update_record(int argc, char **argv)
 
 	r = sc_lock(card);
 	if (r == SC_SUCCESS)
-		r = sc_update_record(card, rec, 0, buf, buflen, SC_RECORD_BY_REC_NR);
+		r = sc_update_record(card, (unsigned)rec, 0, buf, buflen, SC_RECORD_BY_REC_NR);
 	sc_unlock(card);
 	if (r < 0) {
 		fprintf(stderr, "Cannot update record %"SC_FORMAT_LEN_SIZE_T"u of %04X: %s\n.",
@@ -1785,7 +1786,7 @@ static int do_put(int argc, char **argv)
 	}
 	count = file->size;
 	while (count) {
-		int c = count > sizeof(buf) ? sizeof(buf) : count;
+		size_t c = count > sizeof(buf) ? sizeof(buf) : count;
 
 		sz = fread(buf, 1, c, inf);
 		if (sz < 0) {
@@ -1802,8 +1803,8 @@ static int do_put(int argc, char **argv)
 			check_ret(r, SC_AC_OP_READ, "Update failed", file);
 			goto err;
 		}
-		if (r != c) {
-			fprintf(stderr, "Expecting %d, wrote only %d bytes.\n", c, r);
+		if ((size_t)r != c) {
+			fprintf(stderr, "Expecting %zu, wrote only %d bytes.\n", c, r);
 			goto err;
 		}
 		idx += c;
@@ -2259,11 +2260,11 @@ static int do_help(int argc, char **argv)
 				match++;
 		}
 		if (match || !argc) {
-			int len = strlen(cmd->name) + strlen(cmd->args);
+			size_t len = strlen(cmd->name) + strlen(cmd->args);
 
 			printf("  %s %s%*s  %s\n",
 				cmd->name, cmd->args,
-				(len > 40) ? 0 : (40 - len), "",
+				(len > 40) ? 0 : (int)(40 - len), "",
 				cmd->help);
 		}
 	}

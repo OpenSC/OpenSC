@@ -154,7 +154,7 @@ const char *sc_strerror(int error)
 
 	if (!error)
 		return no_errors;
-	error_index = error < 0 ? -((long long int) error) : error;
+	error_index = error < 0 ? (unsigned)(-(long long int)error) : (unsigned)error;
 
 	if (error_index >= misc_base) {
 		errors = misc_errors;

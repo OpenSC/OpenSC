@@ -70,7 +70,7 @@ typedef struct {
 	/* generic parameters used for example for secret keys */
 	void *params;
 	unsigned long params_len;
-	int usage_flags;
+	unsigned long usage_flags;
 	int result_flags;
 } test_mech_t;
 

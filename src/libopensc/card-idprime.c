@@ -260,12 +260,13 @@ static int idprime_select_file_by_path(sc_card_t *card, const char *str_path)
 	if (r != SC_SUCCESS) {
 		LOG_FUNC_RETURN(card->ctx, r);
 	}
-	r = file->size;
-	sc_file_free(file);
 	/* Ignore too large files */
-	if (r > MAX_FILE_SIZE) {
+	if (file->size > MAX_FILE_SIZE) {
 		r = SC_ERROR_INVALID_DATA;
+	} else {
+		r = (int)file->size;
 	}
+	sc_file_free(file);
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
@@ -877,14 +878,15 @@ static int idprime_read_binary(sc_card_t *card, unsigned int offset,
 	struct idprime_private_data *priv = card->drv_data;
 	int r = 0;
 	int size;
+	size_t sz;
 
 	sc_log(card->ctx, "called; %"SC_FORMAT_LEN_SIZE_T"u bytes at offset %d",
 		count, offset);
 
 	if (!priv->cached && offset == 0) {
 		/* Read what was reported by FCI from select command */
-		int left = priv->file_size;
-		size_t read = 0;
+		size_t left = priv->file_size;
+		unsigned read = 0;
 
 		// this function is called to read and uncompress the certificate
 		u8 buffer[SC_MAX_EXT_APDU_BUFFER_SIZE];
@@ -906,18 +908,18 @@ static int idprime_read_binary(sc_card_t *card, unsigned int offset,
 		if (buffer[0] == 1 && buffer[1] == 0) {
 			/* Data will be decompressed later */
 			data_buffer += 4;
-			r = priv->file_size - 4;
+			sz = priv->file_size - 4;
 			if (flags)
 				*flags |= SC_FILE_FLAG_COMPRESSED_AUTO;
 		} else {
- 	 	 	r = priv->file_size;
- 	 	}
-		priv->cache_buf = malloc(r);
+			sz = priv->file_size;
+		}
+		priv->cache_buf = malloc(sz);
 		if (priv->cache_buf == NULL) {
 			return SC_ERROR_OUT_OF_MEMORY;
 		}
-		memcpy(priv->cache_buf, data_buffer, r);
-		priv->cache_buf_len = r;
+		memcpy(priv->cache_buf, data_buffer, sz);
+		priv->cache_buf_len = sz;
 		priv->cached = 1;
 	}
 	if (offset >= priv->cache_buf_len) {
@@ -1072,7 +1074,7 @@ idprime_compute_signature(struct sc_card *card,
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
-		LOG_FUNC_RETURN(card->ctx, apdu.resplen);
+		LOG_FUNC_RETURN(card->ctx, (int)apdu.resplen);
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(card->ctx, r, "Card returned error");
@@ -1131,7 +1133,7 @@ idprime_decipher(struct sc_card *card,
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
-		LOG_FUNC_RETURN(card->ctx, apdu.resplen);
+		LOG_FUNC_RETURN(card->ctx, (int)apdu.resplen);
 	else
 		LOG_FUNC_RETURN(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }

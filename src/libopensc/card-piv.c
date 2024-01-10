@@ -401,7 +401,7 @@ typedef struct piv_private_data {
 	int return_only_cert; /* return the cert from the object */
 	int rwb_state; /* first time -1, 0, in middle, 1 at eof */
 	int operation; /* saved from set_security_env */
-	int algorithm; /* saved from set_security_env */
+	unsigned long algorithm; /* saved from set_security_env */
 	int key_ref; /* saved from set_security_env and */
 	int alg_id;  /* used in decrypt, signature, derive */
 	int key_size; /*  RSA: modulus_bits EC: field_length in bits */
@@ -1788,7 +1788,7 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 		goto err;
 	}
 
-	r = apdu.resplen;
+	r = (int)apdu.resplen;
 
 err:
 	sc_unlock(card);
@@ -2980,7 +2980,7 @@ static int piv_read_obj_from_file(sc_card_t * card, char * filename,
 			goto err;
 		}
 	}
-	r = rbuflen;
+	r = (int)rbuflen;
 	*buf_len = rbuflen;
 err:
 	if (f >= 0)
@@ -3136,7 +3136,7 @@ piv_get_cached_data(sc_card_t * card, int enumtag, u8 **buf, size_t *buf_len)
 		}
 		*buf = priv->obj_cache[enumtag].obj_data;
 		*buf_len = priv->obj_cache[enumtag].obj_len;
-		r = *buf_len;
+		r = (int)*buf_len;
 		goto ok;
 	}
 
@@ -3382,7 +3382,7 @@ piv_read_binary(sc_card_t *card, unsigned int idx, unsigned char *buf, size_t co
 		priv->rwb_state = 1;
 	} else {
 		memcpy(buf, rbuf + idx, count);
-		r = count;
+		r = (int)count;
 	}
 
 err:
@@ -3548,7 +3548,7 @@ static int piv_write_binary(sc_card_t *card, unsigned int idx,
 
 	/* if this was not the last chunk, return to get rest */
 	if (idx + count < priv->w_buf_len)
-		LOG_FUNC_RETURN(card->ctx, count);
+		LOG_FUNC_RETURN(card->ctx, (int)count);
 
 	priv-> rwb_state = 1; /* at end of object */
 
@@ -3558,7 +3558,7 @@ static int piv_write_binary(sc_card_t *card, unsigned int idx,
 			break;
 		case 2: /* pubkey to be added to cache, it should have 0x53 and 0x99 tags. */
 		/* TODO: -DEE this is not fully implemented and not used */
-			r = priv->w_buf_len;
+			r = (int)priv->w_buf_len;
 			break;
 		default:
 			r = piv_put_data(card, enumtag, priv->w_buf, priv->w_buf_len);
@@ -3850,7 +3850,7 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 	EVP_CIPHER_CTX_set_padding(ctx,0);
 
 	p = plain_text;
-	if (!EVP_DecryptUpdate(ctx, p, &N, witness_data, witness_len)) {
+	if (!EVP_DecryptUpdate(ctx, p, &N, witness_data, (int)witness_len)) {
 		piv_log_openssl(card->ctx);
 		r = SC_ERROR_INTERNAL;
 		goto err;
@@ -3890,7 +3890,7 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 	}
 	nonce_len = witness_len;
 
-	r = RAND_bytes(nonce, witness_len);
+	r = RAND_bytes(nonce, (int)witness_len);
 	if(!r) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
 			 "Generating random for nonce (%"SC_FORMAT_LEN_SIZE_T"u : %"SC_FORMAT_LEN_SIZE_T"u)\n",
@@ -3999,7 +3999,7 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 	EVP_CIPHER_CTX_set_padding(ctx,0);
 
 	tmp = decrypted_reponse;
-	if (!EVP_DecryptUpdate(ctx, tmp, &N, challenge_response, challenge_response_len)) {
+	if (!EVP_DecryptUpdate(ctx, tmp, &N, challenge_response, (int)challenge_response_len)) {
 		piv_log_openssl(card->ctx);
 		r = SC_ERROR_INTERNAL;
 		goto err;
@@ -4056,7 +4056,7 @@ static int piv_general_external_authenticate(sc_card_t *card,
 {
 	int r;
 #ifdef ENABLE_OPENSSL
-	int tmplen;
+	size_t tmplen;
 	int outlen;
 	int locked = 0;
 	u8 *p;
@@ -4161,7 +4161,7 @@ static int piv_general_external_authenticate(sc_card_t *card,
 	}
 
 	EVP_CIPHER_CTX_set_padding(ctx,0);
-	if (!EVP_EncryptUpdate(ctx, cipher_text, &outlen, challenge_data, challenge_len)) {
+	if (!EVP_EncryptUpdate(ctx, cipher_text, &outlen, challenge_data, (int)challenge_len)) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Encrypt update fail\n");
 		piv_log_openssl(card->ctx);
 		r = SC_ERROR_INTERNAL;
@@ -4181,7 +4181,7 @@ static int piv_general_external_authenticate(sc_card_t *card,
 	 * Actually perform the sanity check on lengths plaintext length vs
 	 * encrypted length
 	 */
-	if (cipher_text_len != (size_t)tmplen) {
+	if (cipher_text_len != tmplen) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Length test fail\n");
 		piv_log_openssl(card->ctx);
 		r = SC_ERROR_INTERNAL;
@@ -4229,7 +4229,7 @@ static int piv_general_external_authenticate(sc_card_t *card,
 	tmplen = sc_asn1_put_tag(0x7C, NULL, tmplen, NULL, 0, NULL);
 	if (output_len != (size_t)tmplen) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Allocated and computed lengths do not match! "
-			 "Expected %"SC_FORMAT_LEN_SIZE_T"d, found: %d\n", output_len, tmplen);
+			 "Expected %"SC_FORMAT_LEN_SIZE_T"d, found: %zu\n", output_len, tmplen);
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
@@ -4482,7 +4482,7 @@ piv_set_security_env(sc_card_t *card, const sc_security_env_t *env, int se_num)
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	sc_log(card->ctx,
-			"flags=%08lx op=%d alg=%d algf=%08x algr=%08x kr0=%02x, krfl=%"SC_FORMAT_LEN_SIZE_T"u",
+			"flags=%08lx op=%d alg=%lu algf=%08lx algr=%08lx kr0=%02x, krfl=%"SC_FORMAT_LEN_SIZE_T"u",
 			env->flags, env->operation, env->algorithm, env->algorithm_flags,
 			env->algorithm_ref, env->key_ref[0], env->key_ref_len);
 
@@ -4605,7 +4605,7 @@ static int piv_validate_general_authentication(sc_card_t *card,
 	}
 
 	memcpy(out, p2, taglen);
-	r = taglen;
+	r = (int)taglen;
 
 err:
 	LOG_FUNC_RETURN(card->ctx, r);
@@ -4678,7 +4678,7 @@ static int piv_select_file(sc_card_t *card, const sc_path_t *in_path,
 	int r;
 	int i;
 	const u8 *path;
-	int pathlen;
+	size_t pathlen;
 	sc_file_t *file = NULL;
 	u8 * rbuf = NULL;
 	size_t rbuflen = 0;
@@ -5969,7 +5969,7 @@ piv_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	sc_log(card->ctx, "piv_pin_cmd tries_left=%d, logged_in=%d", priv->tries_left, priv->logged_in);
 	if (data->cmd == SC_PIN_CMD_CHANGE) {
-		int i = 0;
+		size_t i = 0;
 		if (data->pin2.len < 6) {
 			return SC_ERROR_INVALID_PIN_LENGTH;
 		}

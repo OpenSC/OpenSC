@@ -181,7 +181,7 @@ sc_pkcs1_strip_02_padding(sc_context_t *ctx, const u8 *data, size_t len, u8 *out
 
 	sc_log(ctx, "stripped output(%"SC_FORMAT_LEN_SIZE_T"u): %s", len - n,
 	       sc_dump_hex(out, len - n));
-	LOG_FUNC_RETURN(ctx, len - n);
+	LOG_FUNC_RETURN(ctx, (int)(len - n));
 }
 
 #ifdef ENABLE_OPENSSL
@@ -231,8 +231,8 @@ static int mgf1(u8 *mask, size_t len, u8 *seed, size_t seedLen, const EVP_MD *dg
 }
 
 /* forward declarations */
-static EVP_MD *mgf1_flag2md(sc_context_t *ctx, unsigned int mgf1);
-static EVP_MD *hash_flag2md(sc_context_t *ctx, unsigned int hash);
+static EVP_MD *mgf1_flag2md(sc_context_t *ctx, unsigned long mgf1);
+static EVP_MD *hash_flag2md(sc_context_t *ctx, unsigned long hash);
 
 /* check/remove OAEP - RFC 8017 padding */
 int sc_pkcs1_strip_oaep_padding(sc_context_t *ctx, u8 *data, size_t len, unsigned long flags, uint8_t *param, size_t paramlen)
@@ -319,7 +319,7 @@ int sc_pkcs1_strip_oaep_padding(sc_context_t *ctx, u8 *data, size_t len, unsigne
 				/* OK correct padding found */
 				len = dblen - i;
 				memcpy(data, db + i, len);
-				LOG_FUNC_RETURN(ctx, len);
+				LOG_FUNC_RETURN(ctx, (int)len);
 			}
 		}
 	}
@@ -382,7 +382,7 @@ int sc_pkcs1_strip_digest_info_prefix(unsigned int *algorithm,
 
 #ifdef ENABLE_OPENSSL
 
-static EVP_MD* hash_flag2md(sc_context_t *ctx, unsigned int hash)
+static EVP_MD* hash_flag2md(sc_context_t *ctx, unsigned long hash)
 {
 	switch (hash & SC_ALGORITHM_RSA_HASHES) {
 	case SC_ALGORITHM_RSA_HASH_SHA1:
@@ -400,7 +400,7 @@ static EVP_MD* hash_flag2md(sc_context_t *ctx, unsigned int hash)
 	}
 }
 
-static EVP_MD* mgf1_flag2md(sc_context_t *ctx, unsigned int mgf1)
+static EVP_MD* mgf1_flag2md(sc_context_t *ctx, unsigned long mgf1)
 {
 	switch (mgf1 & SC_ALGORITHM_MGF1_HASHES) {
 	case SC_ALGORITHM_MGF1_SHA1:
@@ -425,7 +425,8 @@ static int sc_pkcs1_add_pss_padding(sc_context_t *scctx, unsigned int hash, unsi
     const u8 *in, size_t in_len, u8 *out, size_t *out_len, size_t mod_bits, size_t sLen)
 {
 	/* hLen = sLen in our case */
-	int rv = SC_ERROR_INTERNAL, i, j, hlen, dblen, plen, round, mgf_rounds;
+	int rv = SC_ERROR_INTERNAL, j, hlen;
+	size_t dblen, plen, round, mgf_rounds, i;
 	int mgf1_hlen;
 	EVP_MD* md = NULL, *mgf1_md = NULL;
 	EVP_MD_CTX* ctx = NULL;
@@ -456,7 +457,7 @@ static int sc_pkcs1_add_pss_padding(sc_context_t *scctx, unsigned int hash, unsi
 		sc_evp_md_free(md);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
-	if (RAND_bytes(salt, sLen) != 1) {
+	if (RAND_bytes(salt, (unsigned)sLen) != 1) {
 		sc_evp_md_free(md);
 		return SC_ERROR_INTERNAL;
 	}

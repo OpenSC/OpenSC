@@ -533,10 +533,10 @@ sc_asn1_encode_algorithm_id(struct sc_context *ctx, u8 **buf, size_t *len,
 	u8 *tmp;
 
 	LOG_FUNC_CALLED(ctx);
-        sc_log(ctx, "type of algorithm to encode: %i", id->algorithm);
+        sc_log(ctx, "type of algorithm to encode: %lu", id->algorithm);
 	alg_info = sc_asn1_get_algorithm_info(id);
 	if (alg_info == NULL) {
-		sc_log(ctx, "Cannot encode unknown algorithm %u", id->algorithm);
+		sc_log(ctx, "Cannot encode unknown algorithm %lu", id->algorithm);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 

@@ -52,7 +52,7 @@ static const u8 bin_table[128] = {
         0x31,0x32,0x33,0xFF,0xFF,0xFF,0xFF,0xFF,
 };
 
-static void to_base64(unsigned int i, u8 *out, unsigned int fillers)
+static void to_base64(unsigned int i, u8 *out, size_t fillers)
 {
 	unsigned int s = 18, c;
 
@@ -66,7 +66,7 @@ static void to_base64(unsigned int i, u8 *out, unsigned int fillers)
 	}
 }
 
-static int from_base64(const char *in, unsigned int *out, int *skip)
+static int from_base64(const char *in, unsigned int *out, size_t *skip)
 {
 	unsigned int res = 0, c, s = 18;
 	const char *in0 = in;
@@ -129,7 +129,7 @@ int sc_base64_encode(const u8 *in, size_t len, u8 *out, size_t outlen, size_t li
 	if (len) {
 		if (outlen < 4)
 			return SC_ERROR_BUFFER_TOO_SMALL;
-		to_base64(i, out, 3-len);
+		to_base64(i, out, 3 - len);
 		out += 4;
 		outlen -= 4;
 		chars += 4;
@@ -150,7 +150,8 @@ int sc_base64_encode(const u8 *in, size_t len, u8 *out, size_t outlen, size_t li
 
 int sc_base64_decode(const char *in, u8 *out, size_t outlen)
 {
-	int len = 0, r = 0, skip = 0;
+	int len = 0, r = 0;
+	size_t skip = 0;
 	unsigned int i = 0;
 
 	while ((r = from_base64(in, &i, &skip)) > 0) {

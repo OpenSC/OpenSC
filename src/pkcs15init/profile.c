@@ -1471,7 +1471,7 @@ do_aid(struct state *cur, int argc, char **argv)
 {
 	struct sc_file	*file = NULL;
 	const char	*name = argv[0];
-	unsigned int	len;
+	size_t len;
 	int		res = 0;
 
 	if (!cur->file) {
@@ -1501,7 +1501,7 @@ do_exclusive_aid(struct state *cur, int argc, char **argv)
 {
 	struct sc_file	*file = NULL;
 	const char	*name = argv[0];
-	unsigned int	len;
+	size_t len;
 	int		res = 0;
 
 	if (!cur->file) {
@@ -2241,7 +2241,7 @@ sc_profile_find_file(struct sc_profile *pro,
 		const sc_path_t *path, const char *name)
 {
 	struct file_info	*fi;
-	unsigned int		len;
+	size_t				len;
 	const u8			*value;
 
 	value = path ? path->value : (const u8*) "";
@@ -2366,17 +2366,23 @@ static int
 get_uint(struct state *cur, const char *value, unsigned int *vp)
 {
 	char	*ep;
+	unsigned long tmp;
 
 	if (strstr(value, "0x") == value)
-		*vp = strtoul(value + 2, &ep, 16);
+		tmp = strtoul(value + 2, &ep, 16);
 	else if (strstr(value, "x") == value)
-		*vp = strtoul(value + 1, &ep, 16);
+		tmp = strtoul(value + 1, &ep, 16);
 	else
-		*vp = strtoul(value, &ep, 0);
+		tmp = strtoul(value, &ep, 0);
 	if (*ep != '\0') {
 		parse_error(cur, "invalid integer argument \"%s\"\n", value);
 		return 1;
 	}
+	if (tmp > INT_MAX) {
+		parse_error(cur, "the number \"%s\" is too large\n", value);
+		return 1;
+	}
+	*vp = (int)tmp;
 	return 0;
 }
 
@@ -2560,10 +2566,14 @@ expr_term(struct num_exp_ctx *ctx, unsigned int *vp, int opening_brackets)
 	}
 	else if (isdigit((unsigned char)*tok)) {
 		char	*ep;
+		unsigned long tmp;
 
-		*vp = strtoul(tok, &ep, 0);
+		tmp = strtoul(tok, &ep, 0);
 		if (*ep)
 			expr_fail(ctx);
+		if (tmp > UINT_MAX)
+			expr_fail(ctx);
+		*vp = (unsigned int)tmp;
 	}
 	else if (*tok == '$') {
 		sc_macro_t	*mac;

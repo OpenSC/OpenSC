@@ -402,46 +402,46 @@ static int print_info(sc_card_t *card) {
 			printf("Unable to find the container file (mscp\\cmapfile)\n");
 		} else {
 			PCONTAINER_MAP_RECORD cmaprecords = (PCONTAINER_MAP_RECORD) cmapfile;
-			int cmaprecordnum = (cmapfilesize / sizeof(CONTAINER_MAP_RECORD));
-			int keymaprecordnum = -1;
+			size_t cmaprecordnum = (cmapfilesize / sizeof(CONTAINER_MAP_RECORD));
+			size_t keymaprecordnum = -1;
 			struct gids_keymap_record* keymaprecord = ((struct gids_keymap_record*)(keymap +1));
 			if (cmaprecordnum == 0) {
 				printf("   no container found\n");
 			} else {
+				size_t j;
 				r = gids_get_DO(card, KEYMAP_FI, KEYMAP_DO, keymap, &keymapsize);
 				if (r < 0) {
 					printf("   the keymap couldn't be found\n");
 				} else {
 					keymaprecordnum = (keymapsize - 1) / sizeof(struct gids_keymap_record);
 				}
-				for (i = 0; i < cmaprecordnum; i++) {
+				for (j = 0; j < cmaprecordnum; j++) {
 #ifdef _WIN32
-					wprintf(L"      guid:                    %ls\n", cmaprecords[i].wszGuid);
+					wprintf(L"      guid:                    %ls\n", cmaprecords[j].wszGuid);
 #else
 					/* avoid converting Windows' WCHAR to Unix' wchar_t by simply dumping the content */
-					util_hex_dump(stdout,
-							(unsigned char *) cmaprecords[i].wszGuid,
-							sizeof cmaprecords[i].wszGuid, "");
+					util_hex_dump(stdout, (unsigned char *)cmaprecords[j].wszGuid,
+							sizeof cmaprecords[j].wszGuid, "");
 #endif
 					printf("      bFlags:                  ");
-					if (cmaprecords[i].bFlags & CONTAINER_MAP_VALID_CONTAINER) {
+					if (cmaprecords[j].bFlags & CONTAINER_MAP_VALID_CONTAINER) {
 						printf("Valid container");
-						if (cmaprecords[i].bFlags & CONTAINER_MAP_DEFAULT_CONTAINER) {
+						if (cmaprecords[j].bFlags & CONTAINER_MAP_DEFAULT_CONTAINER) {
 							printf(",Default container");
 						}
 					} else {
 						printf("Empty container");
 					}
 					printf("\n");
-					printf("      wSigKeySizeBits:         %d\n", cmaprecords[i].wSigKeySizeBits);
-					printf("      wKeyExchangeKeySizeBits: %d\n", cmaprecords[i].wKeyExchangeKeySizeBits);
-					if (i < keymaprecordnum) {
+					printf("      wSigKeySizeBits:         %d\n", cmaprecords[j].wSigKeySizeBits);
+					printf("      wKeyExchangeKeySizeBits: %d\n", cmaprecords[j].wKeyExchangeKeySizeBits);
+					if (j < keymaprecordnum) {
 						printf("      key info:\n");
-						printf("         state:                %d\n", keymaprecord[i].state);
-						printf("         algid:                %d\n", keymaprecord[i].algid);
-						printf("         keyref:               0x%x\n", keymaprecord[i].keyref);
+						printf("         state:                %d\n", keymaprecord[j].state);
+						printf("         algid:                %d\n", keymaprecord[j].algid);
+						printf("         keyref:               0x%x\n", keymaprecord[j].keyref);
 						printf("         key type:             ");
-						switch(keymaprecord[i].keytype) {
+						switch(keymaprecord[j].keytype) {
 						case 0:
 							printf("none\n");
 							break;

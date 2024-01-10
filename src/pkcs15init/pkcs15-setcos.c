@@ -331,7 +331,8 @@ setcos_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_prkey_info *key_info = (struct sc_pkcs15_prkey_info *)object->data;
 	struct sc_file *file = NULL;
-	int keybits = key_info->modulus_length, r;
+	size_t keybits = key_info->modulus_length;
+	int r;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 	if (object->type != SC_PKCS15_TYPE_PRKEY_RSA)
@@ -397,7 +398,8 @@ setcos_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	struct sc_pkcs15_prkey_info *key_info = (struct sc_pkcs15_prkey_info *)object->data;
 	struct sc_cardctl_setcos_gen_store_key_info args;
 	struct sc_file *file = NULL;
-	int r, keybits = key_info->modulus_length;
+	int r;
+	size_t keybits = key_info->modulus_length;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 	if (object->type != SC_PKCS15_TYPE_PRKEY_RSA)

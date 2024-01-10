@@ -34,7 +34,7 @@ strip_pkcs7_padding(const unsigned char *message, unsigned long message_length,
 		return 0;
 	}
 
-	return message_length - pad_length;
+	return (int)message_length - pad_length;
 }
 
 static int test_wrap(test_cert_t *o, token_info_t *info, test_cert_t *key, test_mech_t *mech)
@@ -283,7 +283,7 @@ out:
 void wrap_tests(void **state)
 {
 	unsigned int i;
-	int j;
+	size_t j;
 	int errors = 0;
 	token_info_t *info = (token_info_t *) *state;
 	test_certs_t objects;
