@@ -1642,7 +1642,8 @@ static int starcos_set_security_env(sc_card_t *card,
 		if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 
-		if (env->algorithm_flags == SC_ALGORITHM_RSA_PAD_PKCS1) {
+		if ((operation == SC_SEC_OPERATION_SIGN && env->algorithm_flags == SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01)
+			|| (operation == SC_SEC_OPERATION_DECIPHER && env->algorithm_flags == SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_02)) {
 			// input data will be already padded
 			ex_data->fix_digestInfo = 0;
 		} else {
@@ -1664,7 +1665,7 @@ static int starcos_set_security_env(sc_card_t *card,
 	}
 	pp = p;
 	if (operation == SC_SEC_OPERATION_DECIPHER){
-		if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1) {
+		if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_02) {
 			*p++ = 0x80;
 			*p++ = 0x01;
 			*p++ = 0x02;
@@ -1684,7 +1685,7 @@ static int starcos_set_security_env(sc_card_t *card,
 	}
 	/* try COMPUTE SIGNATURE */
 	if (operation == SC_SEC_OPERATION_SIGN && (
-	    env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1 ||
+	    env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01 ||
 	    env->algorithm_flags & SC_ALGORITHM_RSA_PAD_ISO9796)) {
 		if (env->flags & SC_SEC_ENV_ALG_REF_PRESENT) {
 			*p++ = 0x80;
@@ -1695,7 +1696,7 @@ static int starcos_set_security_env(sc_card_t *card,
 			/* set the method to use based on the algorithm_flags */
 			*p++ = 0x80;
 			*p++ = 0x01;
-			if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1) {
+			if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01) {
 				if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA1)
 					*p++ = 0x12;
 				else if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_RIPEMD160)

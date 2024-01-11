@@ -392,7 +392,7 @@ static u8 gemsafe_flags2algref(struct sc_card *card, const struct sc_security_en
 	if (env->operation == SC_SEC_OPERATION_SIGN) {
 		if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA256)
 			ret = GEMSAFEV3_ALG_REF_SHA256;
-		else if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1)
+		else if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01)
 			ret = (card->type == SC_CARD_TYPE_GEMSAFEV1_PTEID ||
 			       card->type == SC_CARD_TYPE_GEMSAFEV1_SEEID) ?
 			      GEMSAFEV3_ALG_REF_FREEFORM :
@@ -400,7 +400,7 @@ static u8 gemsafe_flags2algref(struct sc_card *card, const struct sc_security_en
 		else if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_ISO9796)
 			ret = 0x11;
 	} else if (env->operation == SC_SEC_OPERATION_DECIPHER) {
-		if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1)
+		if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_02)
 			ret = (card->type == SC_CARD_TYPE_GEMSAFEV1_PTEID ||
 			       card->type == SC_CARD_TYPE_GEMSAFEV1_SEEID) ?
 			      GEMSAFEV3_ALG_REF_FREEFORM :

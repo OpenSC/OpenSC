@@ -1810,7 +1810,7 @@ iasecc_set_security_env(struct sc_card *card,
 
 	aflags = env->algorithm_flags;
 
-	if (!(aflags & SC_ALGORITHM_RSA_PAD_PKCS1))
+	if (!(aflags & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01))
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Only supported signature with PKCS1 padding");
 
 	if (operation == SC_SEC_OPERATION_SIGN)   {
@@ -1842,7 +1842,7 @@ iasecc_set_security_env(struct sc_card *card,
 	       env->algorithm_flags, prv->key_size);
 	switch (operation)  {
 	case SC_SEC_OPERATION_SIGN:
-		if (!(env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1))
+		if (!(env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01))
 			LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Need RSA_PKCS1 specified");
 
 		if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA256)   {
