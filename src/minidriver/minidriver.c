@@ -4675,9 +4675,9 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 			}
 		}
 	}
-	else if (alg_info->flags & SC_ALGORITHM_RSA_PAD_PKCS1)   {
+	else if (alg_info->flags & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_02)   {
 		logprintf(pCardData, 2, "sc_pkcs15_decipher: using RSA_PAD_PKCS1 mechanism\n");
-		r = sc_pkcs15_decipher(vs->p15card, pkey, opt_crypt_flags | SC_ALGORITHM_RSA_PAD_PKCS1,
+		r = sc_pkcs15_decipher(vs->p15card, pkey, opt_crypt_flags | SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_02,
 				pbuf, pInfo->cbData, pbuf2, pInfo->cbData, NULL);
 		logprintf(pCardData, 2, "sc_pkcs15_decipher returned %d\n", r);
 		if (r > 0) {
@@ -4844,7 +4844,7 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 		 * padding and use the value in aiHashAlg. */
 		logprintf(pCardData, 3, "CARD_PADDING_INFO_PRESENT not set\n");
 
-		opt_crypt_flags = SC_ALGORITHM_RSA_PAD_PKCS1;  /* turn off later if key is EC */
+		opt_crypt_flags = SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01; /* turn off later if key is EC */
 		if (hashAlg == CALG_MD5)
 			opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_MD5;
 		else if (hashAlg == CALG_SHA1)
@@ -4871,7 +4871,7 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 				break;
 
 			case CARD_PADDING_PKCS1:
-				opt_crypt_flags = SC_ALGORITHM_RSA_PAD_PKCS1;
+				opt_crypt_flags = SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01;
 				BCRYPT_PKCS1_PADDING_INFO *pkcs1_pinf = (BCRYPT_PKCS1_PADDING_INFO *)pInfo->pPaddingInfo;
 
 				if (!pkcs1_pinf->pszAlgId || wcscmp(pkcs1_pinf->pszAlgId, L"SHAMD5") == 0) {

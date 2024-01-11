@@ -53,7 +53,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
             size_t i;
 
             int decipher_flags[] = {SC_ALGORITHM_RSA_RAW,
-                SC_ALGORITHM_RSA_PAD_PKCS1, SC_ALGORITHM_RSA_PAD_ANSI,
+                SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_02, SC_ALGORITHM_RSA_PAD_ANSI,
                 SC_ALGORITHM_RSA_PAD_ISO9796};
             for (i = 0; i < sizeof decipher_flags/sizeof *decipher_flags; i++) {
                 sc_pkcs15_decipher(p15card, obj, decipher_flags[i],
@@ -96,7 +96,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
             }
 
             int signature_flags[] = {SC_ALGORITHM_RSA_RAW,
-                SC_ALGORITHM_RSA_PAD_PKCS1, SC_ALGORITHM_RSA_PAD_ANSI,
+                SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01, SC_ALGORITHM_RSA_PAD_ANSI,
                 SC_ALGORITHM_RSA_PAD_ISO9796,
                 SC_ALGORITHM_RSA_PAD_PSS|SC_ALGORITHM_MGF1_SHA1,
                 SC_ALGORITHM_RSA_PAD_PSS|SC_ALGORITHM_MGF1_SHA256,

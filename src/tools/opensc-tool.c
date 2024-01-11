@@ -578,19 +578,21 @@ static int list_algorithms(void)
 		{ 0, NULL }
 	};
 	const id2str_t rsa_flag_names[] = {
-		{ SC_ALGORITHM_RSA_PAD_PKCS1,      "pkcs1"     },
-		{ SC_ALGORITHM_RSA_PAD_ANSI,       "ansi"      },
-		{ SC_ALGORITHM_RSA_PAD_PSS,        "pss"       },
-		{ SC_ALGORITHM_RSA_PAD_OAEP,       "oaep"      },
-		{ SC_ALGORITHM_RSA_PAD_ISO9796,    "iso9796"   },
-		{ SC_ALGORITHM_RSA_HASH_SHA1,      "sha1"      },
-		{ SC_ALGORITHM_RSA_HASH_MD5,       "MD5"       },
-		{ SC_ALGORITHM_RSA_HASH_MD5_SHA1,  "md5-sha1"  },
-		{ SC_ALGORITHM_RSA_HASH_RIPEMD160, "ripemd160" },
-		{ SC_ALGORITHM_RSA_HASH_SHA256,    "sha256"    },
-		{ SC_ALGORITHM_RSA_HASH_SHA384,    "sha384"    },
-		{ SC_ALGORITHM_RSA_HASH_SHA512,    "sha512"    },
-		{ SC_ALGORITHM_RSA_HASH_SHA224,    "sha224"    },
+		{ SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01, "pkcs1-type1" },
+		{ SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_02, "pkcs1-type2" },
+		{ SC_ALGORITHM_RSA_PAD_PKCS1,         "pkcs1"       },
+		{ SC_ALGORITHM_RSA_PAD_ANSI,          "ansi"        },
+		{ SC_ALGORITHM_RSA_PAD_PSS,           "pss"         },
+		{ SC_ALGORITHM_RSA_PAD_OAEP,          "oaep"        },
+		{ SC_ALGORITHM_RSA_PAD_ISO9796,       "iso9796"     },
+		{ SC_ALGORITHM_RSA_HASH_SHA1,         "sha1"        },
+		{ SC_ALGORITHM_RSA_HASH_MD5,          "MD5"         },
+		{ SC_ALGORITHM_RSA_HASH_MD5_SHA1,     "md5-sha1"    },
+		{ SC_ALGORITHM_RSA_HASH_RIPEMD160,    "ripemd160"   },
+		{ SC_ALGORITHM_RSA_HASH_SHA256,       "sha256"      },
+		{ SC_ALGORITHM_RSA_HASH_SHA384,       "sha384"      },
+		{ SC_ALGORITHM_RSA_HASH_SHA512,       "sha512"      },
+		{ SC_ALGORITHM_RSA_HASH_SHA224,       "sha224"      },
 		{ 0, NULL }
 	};
 	// clang-format on

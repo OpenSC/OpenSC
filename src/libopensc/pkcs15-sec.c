@@ -307,7 +307,7 @@ int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 	LOG_TEST_RET(ctx, r, "use_key() failed");
 
 	/* Strip any padding */
-	if (pad_flags & SC_ALGORITHM_RSA_PAD_PKCS1) {
+	if (pad_flags & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_02) {
 		unsigned int s = r;
 		unsigned int key_size = (unsigned int)alg_info->key_length;
 		r = sc_pkcs1_strip_02_padding_constant_time(ctx, key_size / 8, out, s, out, &s);
@@ -693,10 +693,10 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 		 * succeed by stripping padding if the card only offers higher-level
 		 * signature operations.  The only thing we can strip is the DigestInfo
 		 * block from PKCS1 padding. */
-		if ((flags == (SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE)) &&
-		    !(alg_info->flags & SC_ALGORITHM_RSA_RAW) &&
-		    !(alg_info->flags & SC_ALGORITHM_RSA_HASH_NONE) &&
-		    (alg_info->flags & SC_ALGORITHM_RSA_PAD_PKCS1)) {
+		if ((flags == (SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01 | SC_ALGORITHM_RSA_HASH_NONE)) &&
+			!(alg_info->flags & SC_ALGORITHM_RSA_RAW) &&
+			!(alg_info->flags & SC_ALGORITHM_RSA_HASH_NONE) &&
+			(alg_info->flags & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01)) {
 			unsigned int algo;
 			size_t tmplen = buflen;
 

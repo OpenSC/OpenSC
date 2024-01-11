@@ -4289,28 +4289,28 @@ pkcs15_prkey_sign(struct sc_pkcs11_session *session, void *obj,
 
 	switch (pMechanism->mechanism) {
 	case CKM_RSA_PKCS:
-		flags = SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE;
+		flags = SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01 | SC_ALGORITHM_RSA_HASH_NONE;
 		break;
 	case CKM_MD5_RSA_PKCS:
-		flags = SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_MD5;
+		flags = SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01 | SC_ALGORITHM_RSA_HASH_MD5;
 		break;
 	case CKM_SHA1_RSA_PKCS:
-		flags = SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_SHA1;
+		flags = SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01 | SC_ALGORITHM_RSA_HASH_SHA1;
 		break;
 	case CKM_SHA224_RSA_PKCS:
-		flags = SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_SHA224;
+		flags = SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01 | SC_ALGORITHM_RSA_HASH_SHA224;
 		break;
 	case CKM_SHA256_RSA_PKCS:
-		flags = SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_SHA256;
+		flags = SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01 | SC_ALGORITHM_RSA_HASH_SHA256;
 		break;
 	case CKM_SHA384_RSA_PKCS:
-		flags = SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_SHA384;
+		flags = SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01 | SC_ALGORITHM_RSA_HASH_SHA384;
 		break;
 	case CKM_SHA512_RSA_PKCS:
-		flags = SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_SHA512;
+		flags = SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01 | SC_ALGORITHM_RSA_HASH_SHA512;
 		break;
 	case CKM_RIPEMD160_RSA_PKCS:
-		flags = SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_RIPEMD160;
+		flags = SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01 | SC_ALGORITHM_RSA_HASH_RIPEMD160;
 		break;
 	case CKM_RSA_X_509:
 		flags = SC_ALGORITHM_RSA_RAW;
@@ -4485,7 +4485,7 @@ pkcs15_prkey_unwrap(struct sc_pkcs11_session *session, void *obj,
 	/* Select the proper padding mechanism */
 	switch (pMechanism->mechanism) {
 	case CKM_RSA_PKCS:
-		flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
+		flags |= SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_02;
 		break;
 	case CKM_RSA_X_509:
 		flags |= SC_ALGORITHM_RSA_RAW;
@@ -4562,7 +4562,7 @@ pkcs15_prkey_decrypt(struct sc_pkcs11_session *session, void *obj,
 	/* Select the proper padding mechanism */
 	switch (pMechanism->mechanism) {
 	case CKM_RSA_PKCS:
-		flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
+		flags |= SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_02;
 		break;
 	case CKM_RSA_X_509:
 		flags |= SC_ALGORITHM_RSA_RAW;
