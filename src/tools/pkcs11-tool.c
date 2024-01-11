@@ -2173,6 +2173,28 @@ static int unlock_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess, int login_type)
 	return 0;
 }
 
+/* return matching ec_curve_info or NULL based on ec_params */
+static const struct ec_curve_info *
+match_ec_curve_by_params(const unsigned char *ec_params, CK_ULONG ec_params_size)
+{
+	char ecpbuf[64];
+
+	if (ec_params_size > (sizeof(ecpbuf) / 2)) {
+		util_fatal("Invalid EC params");
+	}
+
+	sc_bin_to_hex(ec_params, ec_params_size, ecpbuf, sizeof(ecpbuf), 0);
+
+	for (size_t i = 0; ec_curve_infos[i].name != NULL; ++i) {
+
+		if (strcmp(ec_curve_infos[i].ec_params, ecpbuf) == 0) {
+			return &ec_curve_infos[i];
+		}
+	}
+
+	return NULL;
+}
+
 /* return digest length in bytes */
 static unsigned long hash_length(const unsigned long hash) {
 	unsigned long sLen = 0;
@@ -2359,6 +2381,9 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	CK_MECHANISM	mech;
 	CK_RSA_PKCS_PSS_PARAMS pss_params;
 	CK_MAC_GENERAL_PARAMS mac_gen_param;
+	CK_EDDSA_PARAMS eddsa_params = {
+			.phFlag = CK_FALSE,
+	};
 	CK_RV		rv;
 	CK_ULONG	sig_len;
 	int		fd;
@@ -2373,6 +2398,29 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	memset(&mech, 0, sizeof(mech));
 	mech.mechanism = opt_mechanism;
 	hashlen = parse_pss_params(session, key, &mech, &pss_params);
+
+	/* support pure EdDSA only */
+	if (opt_mechanism == CKM_EDDSA) {
+		const struct ec_curve_info *curve;
+		unsigned char *ec_params;
+		CK_ULONG ec_params_size = 0;
+
+		ec_params = getEC_PARAMS(session, key, &ec_params_size);
+		if (ec_params == NULL) {
+			util_fatal("Key has no EC_PARAMS attribute");
+		}
+
+		curve = match_ec_curve_by_params(ec_params, ec_params_size);
+		if (curve == NULL) {
+			util_fatal("Unknown or unsupported EC curve used in key");
+		}
+
+		/* Ed448: need the params defined but default to false */
+		if (curve->size == 448) {
+			mech.pParameter = &eddsa_params;
+			mech.ulParameterLen = (CK_ULONG)sizeof(eddsa_params);
+		}
+	}
 
 	if (opt_input == NULL)
 		fd = 0;
@@ -2477,6 +2525,9 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	CK_MECHANISM	mech;
 	CK_RSA_PKCS_PSS_PARAMS pss_params;
 	CK_MAC_GENERAL_PARAMS mac_gen_param;
+	CK_EDDSA_PARAMS eddsa_params = {
+			.phFlag = CK_FALSE,
+	};
 	CK_RV		rv;
 	CK_ULONG	sig_len;
 	int		fd, fd2;
@@ -2502,6 +2553,30 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			fprintf(stderr, "Warning, requesting salt length recovery from signature (supported only in in opensc pkcs11 module).\n");
 		}
 	}
+
+	/* support pure EdDSA only */
+	if (opt_mechanism == CKM_EDDSA) {
+		const struct ec_curve_info *curve;
+		unsigned char *ec_params;
+		CK_ULONG ec_params_size = 0;
+
+		ec_params = getEC_PARAMS(session, key, &ec_params_size);
+		if (ec_params == NULL) {
+			util_fatal("Key has no EC_PARAMS attribute");
+		}
+
+		curve = match_ec_curve_by_params(ec_params, ec_params_size);
+		if (curve == NULL) {
+			util_fatal("Unknown or unsupported EC curve used in key");
+		}
+
+		/* Ed448: need the params defined but default to false */
+		if (curve->size == 448) {
+			mech.pParameter = &eddsa_params;
+			mech.ulParameterLen = (CK_ULONG)sizeof(eddsa_params);
+		}
+	}
+
 	/* Open a signature file */
 	if (opt_signature_file == NULL)
 		util_fatal("No file with signature provided. Use --signature-file");
