@@ -352,7 +352,7 @@ static int belpic_set_security_env(sc_card_t *card,
 		apdu.p2 = 0xB6;
 		sbuf[0] = 0x04;	/* length of the following data */
 		sbuf[1] = 0x80;	/* tag for algorithm reference */
-		if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1)
+		if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01)
 			sbuf[2] = 0x01;
 		else if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA1)
 			sbuf[2] = 0x02;

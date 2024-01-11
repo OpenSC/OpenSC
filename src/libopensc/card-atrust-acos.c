@@ -560,7 +560,7 @@ static int atrust_acos_set_security_env(struct sc_card *card,
 	}
 	pp = p;
 	if (operation == SC_SEC_OPERATION_DECIPHER){
-		if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1) {
+		if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_02) {
 			*p++ = 0x80;
 			*p++ = 0x01;
 			*p++ = 0x02;
@@ -580,7 +580,7 @@ static int atrust_acos_set_security_env(struct sc_card *card,
 	}
 	/* try COMPUTE SIGNATURE */
 	if (operation == SC_SEC_OPERATION_SIGN && (
-	    env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1 ||
+	    env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01 ||
 	    env->algorithm_flags & SC_ALGORITHM_RSA_PAD_ISO9796)) {
 		if (env->flags & SC_SEC_ENV_ALG_REF_PRESENT) {
 			*p++ = 0x80;
@@ -591,7 +591,7 @@ static int atrust_acos_set_security_env(struct sc_card *card,
 			/* set the method to use based on the algorithm_flags */
 			*p++ = 0x80;
 			*p++ = 0x01;
-			if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1) {
+			if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01) {
 				if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA1)
 					*p++ = 0x12;
 				else if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_RIPEMD160)

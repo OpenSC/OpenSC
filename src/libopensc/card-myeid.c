@@ -997,7 +997,8 @@ static int myeid_set_security_env(struct sc_card *card,
 				tmp.algorithm_ref = 0x00;
 				/* potential FIXME: return an error, if an unsupported
 				* pad or hash was requested, although this shouldn't happen */
-				if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1)
+				if ((env->operation == SC_SEC_OPERATION_SIGN && env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01)
+					|| (env->operation == SC_SEC_OPERATION_DECIPHER && env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_02))
 					tmp.algorithm_ref = 0x02;
 				if (tmp.algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA1)
 					tmp.algorithm_ref |= 0x10;

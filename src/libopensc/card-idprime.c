@@ -985,7 +985,7 @@ idprime_set_security_env(struct sc_card *card,
 				new_env.algorithm_ref = 0x65;
 			}
 			priv->current_op = SC_ALGORITHM_RSA;
-		} else if (env->algorithm_flags & (SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_PAD_OAEP)) {
+		} else if (env->algorithm_flags & (SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01 | SC_ALGORITHM_RSA_PAD_OAEP)) {
 			if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA256) {
 				new_env.algorithm_ref = 0x42;
 			} else if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA384) {

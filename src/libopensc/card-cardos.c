@@ -1002,7 +1002,10 @@ cardos_set_security_env(sc_card_t *card,
 			data[7] = 0x01;
 			data[8] = key_id & 0xF0;
 			apdu.lc = apdu.datalen = 9;
-		} else if (priv->sec_env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1) {
+		} else if ((env->operation == SC_SEC_OPERATION_SIGN
+						&& priv->sec_env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01)
+					|| (env->operation == SC_SEC_OPERATION_DECIPHER
+						&& priv->sec_env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_02)) {
 			/* TODO this may only apply to c903 cards */
 			/* TODO or only for cards without any supported_algos or EIDComplient only */
 			data[6] = 0x80;
