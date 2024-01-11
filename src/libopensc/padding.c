@@ -613,7 +613,7 @@ int sc_pkcs1_encode(sc_context_t *ctx, unsigned long flags,
 		pad_algo = SC_ALGORITHM_RSA_PAD_NONE;
 	sc_log(ctx, "hash algorithm 0x%X, pad algorithm 0x%X", hash_algo, pad_algo);
 
-	if ((pad_algo == SC_ALGORITHM_RSA_PAD_PKCS1 || pad_algo == SC_ALGORITHM_RSA_PAD_NONE) &&
+	if ((pad_algo == SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01 || pad_algo == SC_ALGORITHM_RSA_PAD_NONE) &&
 	    hash_algo != SC_ALGORITHM_RSA_HASH_NONE) {
 		i = sc_pkcs1_add_digest_info_prefix(hash_algo, in, in_len, out, &tmp_len);
 		if (i != SC_SUCCESS) {
@@ -632,7 +632,7 @@ int sc_pkcs1_encode(sc_context_t *ctx, unsigned long flags,
 			memcpy(out, tmp, tmp_len);
 		*out_len = tmp_len;
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
-	case SC_ALGORITHM_RSA_PAD_PKCS1:
+	case SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01:
 		/* add pkcs1 bt01 padding */
 		rv = sc_pkcs1_add_01_padding(tmp, tmp_len, out, out_len, mod_len);
 		LOG_FUNC_RETURN(ctx, rv);
@@ -718,11 +718,16 @@ int sc_get_encoding_flags(sc_context_t *ctx,
 		*sflags = SC_ALGORITHM_RSA_PAD_NONE;
 		*pflags = iflags;
 
-	} else if ((caps & (SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE)) &&
-			(iflags & SC_ALGORITHM_RSA_PAD_PKCS1)) {
+	} else if ((caps & (SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01 | SC_ALGORITHM_RSA_HASH_NONE)) &&
+			(iflags & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01)) {
 		/* A corner case - the card can partially do PKCS1, if we prepend the
 		 * DigestInfo bit it will do the rest. */
-		*sflags = SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE;
+		*sflags = SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01 | SC_ALGORITHM_RSA_HASH_NONE;
+		*pflags = iflags & SC_ALGORITHM_RSA_HASHES;
+
+	} else if ((caps & (SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_02 | SC_ALGORITHM_RSA_HASH_NONE)) &&
+			(iflags & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_02)) {
+		*sflags = SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_02 | SC_ALGORITHM_RSA_HASH_NONE;
 		*pflags = iflags & SC_ALGORITHM_RSA_HASHES;
 
 	} else if ((iflags & SC_ALGORITHM_AES) == SC_ALGORITHM_AES) { /* TODO: seems like this constant does not belong to the same set of flags used form asymmetric algos. Fix this! */

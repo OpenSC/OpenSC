@@ -227,7 +227,7 @@ static int sign(struct sc_pkcs15_object *obj)
 		return 2;
 	len = sizeof(out);
 	if (obj->type == SC_PKCS15_TYPE_PRKEY_RSA
-			&& !(opt_crypt_flags & SC_ALGORITHM_RSA_PAD_PKCS1)
+			&& !(opt_crypt_flags & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01)
 			&& (size_t)c != key->modulus_length/8) {
 		fprintf(stderr, "Input has to be exactly %lu bytes, when using no padding.\n",
 			(unsigned long) key->modulus_length/8);
@@ -286,7 +286,7 @@ static int decipher(struct sc_pkcs15_object *obj)
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
-	r = sc_pkcs15_decipher(p15card, obj, opt_crypt_flags & SC_ALGORITHM_RSA_PAD_PKCS1, buf, c, out, len, NULL);
+	r = sc_pkcs15_decipher(p15card, obj, opt_crypt_flags & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_02, buf, c, out, len, NULL);
 	if (r < 0) {
 		fprintf(stderr, "Decrypt failed: %s\n", sc_strerror(r));
 		return 1;
