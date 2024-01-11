@@ -151,6 +151,8 @@ static int sc_hsm_select_file_ex(sc_card_t *card,
 	sc_hsm_private_data_t *priv = (sc_hsm_private_data_t *) card->drv_data;
 	sc_file_t *file = NULL;
 	sc_path_t cpath;
+	size_t card_max_recv_size = card->max_recv_size;
+	size_t reader_max_recv_size = card->reader->max_recv_size;
 
 	if (file_out == NULL) {				// Versions before 0.16 of the SmartCard-HSM do not support P2='0C'
 		rv = sc_hsm_select_file_ex(card, in_path, forceselect, &file);
@@ -184,7 +186,11 @@ static int sc_hsm_select_file_ex(sc_card_t *card,
 				&& in_path->aid.len == sc_hsm_aid.len
 				&& !memcmp(in_path->aid.value, sc_hsm_aid.value, sc_hsm_aid.len))) {
 		if (!priv || (priv->dffcp == NULL) || forceselect) {
+			/* Force use of Le = 0x00 in iso7816_select_file as required by SC-HSM */
+			card->max_recv_size = card->reader->max_recv_size = SC_READER_SHORT_APDU_MAX_RECV_SIZE;
 			rv = (*iso_ops->select_file)(card, in_path, file_out);
+			card->max_recv_size = card_max_recv_size;
+			card->reader->max_recv_size = reader_max_recv_size;
 			LOG_TEST_RET(card->ctx, rv, "Could not select SmartCard-HSM application");
 
 			if (priv) {
@@ -213,14 +219,24 @@ static int sc_hsm_select_file_ex(sc_card_t *card,
 			*file_out = file;
 			return SC_SUCCESS;
 		} else {
+			/* Force use of Le = 0x00 in iso7816_select_file as required by SC-HSM */
+			card->max_recv_size = card->reader->max_recv_size = SC_READER_SHORT_APDU_MAX_RECV_SIZE;
 			sc_path_t truncated;
 			memcpy(&truncated, in_path, sizeof truncated);
 			truncated.len = in_path->len - 2;
 			memcpy(truncated.value, in_path->value+2, truncated.len);
-			return (*iso_ops->select_file)(card, &truncated, file_out);
+			rv = (*iso_ops->select_file)(card, &truncated, file_out);
+			card->max_recv_size = card_max_recv_size;
+			card->reader->max_recv_size = reader_max_recv_size;
+			return rv;
 		}
 	}
-	return (*iso_ops->select_file)(card, in_path, file_out);
+	/* Force use of Le = 0x00 in iso7816_select_file as required by SC-HSM */
+	card->max_recv_size = card->reader->max_recv_size = 256;
+	rv = (*iso_ops->select_file)(card, in_path, file_out);
+	card->max_recv_size = card_max_recv_size;
+	card->reader->max_recv_size = reader_max_recv_size;
+	return rv;
 }
 
 
