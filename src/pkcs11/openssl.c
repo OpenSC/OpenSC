@@ -526,7 +526,7 @@ static CK_RV gostr3410_verify_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len
 			if (!(buf = malloc(buf_len)))
 				r = -1;
 			if (r == 1 && P)
-				r = EC_POINT_point2oct(group, P, POINT_CONVERSION_COMPRESSED, buf, buf_len, NULL);
+				buf_len = EC_POINT_point2oct(group, P, POINT_CONVERSION_COMPRESSED, buf, buf_len, NULL);
 
 			if (EVP_PKEY_todata(pkey, EVP_PKEY_KEYPAIR, &old_params) != 1 ||
 				!(bld = OSSL_PARAM_BLD_new()) ||
