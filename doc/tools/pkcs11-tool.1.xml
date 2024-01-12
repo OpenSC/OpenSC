@@ -734,6 +734,8 @@
 			using the private key with ID <replaceable>ID</replaceable> and
 			using the RSA-PKCS mechanism:
 				<programlisting>pkcs11-tool --sign --id ID --mechanism RSA-PKCS --input-file data --output-file data.sig</programlisting>
+			The same is also possible by piping the data from stdin rather than specifying a input file:
+				<programlisting>dd if=data bs=128 count=1 | pkcs11-tool --sign --id ID --mechanism RSA-PKCS --pin=$PIN > data.sig</programlisting>
 
 			To encrypt file using the AES key with ID 85 and using mechanism AES-CBC with padding:
 				<programlisting>
