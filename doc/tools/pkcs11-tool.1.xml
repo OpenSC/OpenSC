@@ -761,6 +761,11 @@ pkcs11-tool --login --unwrap --mechanism RSA-PKCS --id 22 \
   -i aes_wrapped.key --key-type AES: \
   --application-id 90 --applicatin-label unwrapped-key
 				</programlisting>
+
+			Use the SO-PIN to initialize or re-set the PIN:
+				<programlisting>
+pkcs11-tool --login --login-type so --init-pin
+				</programlisting>
 		</para>
 	</refsect1>
 
