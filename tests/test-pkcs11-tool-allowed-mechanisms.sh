@@ -21,7 +21,7 @@ echo "======================================================="
 ID="05"
 MECHANISMS="RSA-PKCS,SHA1-RSA-PKCS,RSA-PKCS-PSS"
 # Generate key pair
-$PKCS11_TOOL --keypairgen --key-type="RSA:" --login --pin=$PIN \
+$PKCS11_TOOL --keypairgen --key-type="RSA:1024" --login --pin=$PIN \
 	--module="$P11LIB" --label="test" --id="$ID" \
 	--allowed-mechanisms="$MECHANISMS,SHA384-RSA-PKCS"
 assert $? "Failed to Generate RSA key pair"
