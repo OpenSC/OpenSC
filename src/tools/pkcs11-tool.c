@@ -2918,8 +2918,13 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 				if (!strcmp(ec_curve_infos[ii].oid, type + 3))
 					break;
 			}
-			if (!ec_curve_infos[ii].name)
-				util_fatal("Unknown EC key params '%s'", type + 3);
+			if (!ec_curve_infos[ii].name) {
+				fprintf(stderr, "EC key parameters may be specified by their canonic name or object identifier. Possible values are:\n");
+				for (ii = 0; ec_curve_infos[ii].name; ii++) {
+					fprintf(stderr, "%s (%s)\n", ec_curve_infos[ii].name, ec_curve_infos[ii].oid);
+				}
+				util_fatal("Unknown EC key parameter '%s'", type + 3);
+			}
 
 			switch (ec_curve_infos[ii].mechanism) {
 			case CKM_EC_EDWARDS_KEY_PAIR_GEN:
