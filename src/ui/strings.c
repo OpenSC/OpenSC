@@ -19,6 +19,7 @@
  */
 
 #include "libopensc/internal.h"
+#include "libopensc/log.h"
 #include "ui/strings.h"
 #include <locale.h>
 #include <stdlib.h>
@@ -163,14 +164,22 @@ const char *ui_get_str(struct sc_context *ctx, struct sc_atr *atr,
 		LANGID langid = GetUserDefaultUILanguage();
 		if ((langid & LANG_GERMAN) == LANG_GERMAN) {
 			lang = DE;
+			sc_log(ctx, "Using the system's language for user messages (German).");
 		}
 #else
+		const char *language = getenv("LANGUAGE");
 		/* LANGUAGE supersedes locale */
-		if (!find_lang_str(getenv("LANGUAGE"), &lang)) {
+		if (!find_lang_str(language, &lang)) {
 			/* XXX Should we use LC_MESSAGES instead? */
-			find_lang_str(setlocale(LC_ALL, ""), &lang);
+			language = setlocale(LC_ALL, "");
+			if (find_lang_str(language, &lang))
+				sc_log(ctx, "Using the system's native environment locale for user messages (%s).", language);
+		} else {
+			sc_log(ctx, "Using the system's LANGUAGE for user messages (%s).", language);
 		}
 #endif
+	} else {
+		sc_log(ctx, "Using the token's preferred language for user messages (%s).", p15card->tokeninfo->preferred_language);
 	}
 
 	/* load default strings */
