@@ -287,8 +287,7 @@ static int openpgp_generate_key_ec(sc_card_t *card, sc_pkcs15_object_t *obj,
 	sc_pkcs15_prkey_info_t *required = (sc_pkcs15_prkey_info_t *)obj->data;
 	sc_pkcs15_id_t *kid = &(required->id);
 	const struct sc_ec_parameters *info_ec =
-	    (struct sc_ec_parameters *) required->params.data;
-	unsigned int i;
+			(struct sc_ec_parameters *)required->params.data;
 	int r;
 
 	LOG_FUNC_CALLED(ctx);
@@ -322,7 +321,7 @@ static int openpgp_generate_key_ec(sc_card_t *card, sc_pkcs15_object_t *obj,
 	/* TODO DEE not sure id test for der.len >2 is needed */
 	/* copying info_ec.id works for any EC ECDH EdDSA keys */
 	if (info_ec->der.len > 2)
-		key_info.u.ec.oid = info_ec->id;  /* copy sc_object_id */
+		key_info.u.ec.oid = info_ec->id; /* copy sc_object_id */
 	else
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
