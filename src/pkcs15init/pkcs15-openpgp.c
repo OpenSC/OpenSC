@@ -288,7 +288,6 @@ static int openpgp_generate_key_ec(sc_card_t *card, sc_pkcs15_object_t *obj,
 	sc_pkcs15_id_t *kid = &(required->id);
 	const struct sc_ec_parameters *info_ec =
 	    (struct sc_ec_parameters *) required->params.data;
-	unsigned int i;
 	int r;
 
 	LOG_FUNC_CALLED(ctx);
