@@ -3922,6 +3922,57 @@ parse_ec_pkey(EVP_PKEY *pkey, int private, struct gostkey_info *gost)
 
 	return 0;
 }
+static int
+parse_ed_pkey(EVP_PKEY *pkey, int pk_type, int private, struct gostkey_info *gost)
+{
+	static unsigned char ec_params_ed25519[] = {0x06, 0x03, 0x2b, 0x65, 0x70};
+	static unsigned char ec_params_ed448[] = {0x06, 0x03, 0x2b, 0x65, 0x71};
+	unsigned char *ec_params = (pk_type == EVP_PKEY_ED25519) ? ec_params_ed25519 : ec_params_ed448;
+	size_t ec_params_size = (pk_type == EVP_PKEY_ED25519) ? sizeof(ec_params_ed25519) : sizeof(ec_params_ed448);
+	unsigned char *key;
+	size_t key_size;
+
+	/* set EC_PARAMS value */
+	gost->param_oid.value = OPENSSL_malloc(ec_params_size);
+	if (gost->param_oid.value == NULL) {
+		return -1;
+	}
+	gost->param_oid.len = ec_params_size;
+	memcpy(gost->param_oid.value, ec_params, ec_params_size);
+
+	if (private) {
+		if (EVP_PKEY_get_raw_private_key(pkey, NULL, &key_size) != 1) {
+			return -1;
+		}
+	} else {
+		if (EVP_PKEY_get_raw_public_key(pkey, NULL, &key_size) != 1) {
+			return -1;
+		}
+	}
+
+	key = OPENSSL_malloc(key_size);
+	if (key == NULL) {
+		return -1;
+	}
+
+	if (private) {
+		if (EVP_PKEY_get_raw_private_key(pkey, key, &key_size) != 1) {
+			OPENSSL_free(key);
+			return -1;
+		}
+		gost->private.value = key;
+		gost->private.len = key_size;
+	} else {
+		if (EVP_PKEY_get_raw_public_key(pkey, key, &key_size) != 1) {
+			OPENSSL_free(key);
+			return -1;
+		}
+		gost->public.value = key;
+		gost->public.len = key_size;
+	}
+
+	return 0;
+}
 #endif
 static void gost_info_free(struct gostkey_info gost)
 {
@@ -4041,6 +4092,13 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 		} else if (pk_type == EVP_PKEY_EC) {
 			rv = parse_ec_pkey(evp_key, is_private, &gost);
 			type = CKK_EC;
+#ifdef EVP_PKEY_ED448
+		} else if ((pk_type == EVP_PKEY_ED25519) || (pk_type == EVP_PKEY_ED448)) {
+#else
+		} else if (pk_type == EVP_PKEY_ED25519) {
+#endif
+			rv = parse_ed_pkey(evp_key, pk_type, is_private, &gost);
+			type = CKK_EC_EDWARDS;
 		}
 #endif
 		else
@@ -4171,8 +4229,12 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 			n_privkey_attr++;
 		}
 #if !defined(OPENSSL_NO_EC)
-		else if (pk_type == EVP_PKEY_EC)   {
-			type = CKK_EC;
+#ifdef EVP_PKEY_ED448
+		else if ((pk_type == EVP_PKEY_EC) || (pk_type == EVP_PKEY_ED25519) || (pk_type == EVP_PKEY_ED448)) {
+#else
+		else if ((pk_type == EVP_PKEY_EC) || (pk_type == EVP_PKEY_ED25519)) {
+#endif
+			type = (pk_type == EVP_PKEY_EC) ? CKK_EC : CKK_EC_EDWARDS;
 
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_KEY_TYPE, &type, sizeof(type));
 			n_privkey_attr++;
@@ -4208,6 +4270,12 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 #if !defined(OPENSSL_NO_EC)
 		else if (pk_type == EVP_PKEY_EC)
 			type = CKK_EC;
+#ifdef EVP_PKEY_ED448
+		else if ((pk_type == EVP_PKEY_ED25519) || (pk_type == EVP_PKEY_ED448))
+#else
+		else if (pk_type == EVP_PKEY_ED25519)
+#endif
+			type = CKK_EC_EDWARDS;
 		else if (pk_type == NID_id_GostR3410_2001)
 			type = CKK_GOSTR3410;
 #endif
@@ -4271,8 +4339,12 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 			n_pubkey_attr++;
 		}
 #if !defined(OPENSSL_NO_EC)
-		else if (pk_type == EVP_PKEY_EC)   {
-			type = CKK_EC;
+#ifdef EVP_PKEY_ED448
+		else if ((pk_type == EVP_PKEY_EC) || (pk_type == EVP_PKEY_ED25519) || (pk_type == EVP_PKEY_ED448)) {
+#else
+		else if ((pk_type == EVP_PKEY_EC) || (pk_type == EVP_PKEY_ED25519)) {
+#endif
+			type = (pk_type == EVP_PKEY_EC) ? CKK_EC : CKK_EC_EDWARDS;
 
 			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_KEY_TYPE, &type, sizeof(type));
 			n_pubkey_attr++;
