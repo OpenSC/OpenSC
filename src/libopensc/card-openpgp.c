@@ -101,6 +101,12 @@ static pgp_ec_curves_t  ec_curves_openpgp34[] = {
 	{{{-1}}, 0} /* This entry must not be touched. */
 };
 
+static pgp_ec_curves_alt_t ec_curves_alt[] = {
+	{{{1, 3, 6, 1, 4, 1, 3029, 1, 5, 1, -1}}, {{1 ,3 ,101, 110, -1}}, 255}, /* curve25519 CKK_EC_MONTGOMERY X25519 */
+	{{{1, 3, 6, 1, 4, 1, 11591, 15, 1, -1}}, {{1, 3, 101, 112, -1}}, 255}, /* ed25519 CKK_EC_EDWARDS Ed25519 */
+	{{{-1}}, {{-1}}, 0} /* This entry must not be touched. */
+};
+
 static pgp_ec_curves_t *ec_curves_openpgp = ec_curves_openpgp34 + 2;
 
 struct sc_object_id curve25519_oid = {{1, 3, 6, 1, 4, 1, 3029, 1, 5, 1, -1}};
@@ -2500,7 +2506,7 @@ static int
 pgp_update_new_algo_attr(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_info)
 {
 	struct pgp_priv_data *priv = DRVDATA(card);
-	pgp_blob_t *algo_blob;
+	pgp_blob_t *algo_blob = NULL;
 	const unsigned int tag = 0x00C0 | key_info->key_id;
 	u8 *data;
 	size_t data_len;
@@ -2514,19 +2520,46 @@ pgp_update_new_algo_attr(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_
 
 	if (priv->ext_caps & EXT_CAP_ALG_ATTR_CHANGEABLE) {
 		/* ECDSA and ECDH */
+		/* TODO -DEE could map new OIDs to old OID needed for card here */
 		if (key_info->algorithm == SC_OPENPGP_KEYALGO_ECDH
 				|| key_info->algorithm == SC_OPENPGP_KEYALGO_ECDSA
 				|| key_info->algorithm == SC_OPENPGP_KEYALGO_EDDSA){
-			data_len = key_info->u.ec.oid_len+1;
+			/* Note OpenPGP or current cards do not support 448 size keys yet */
+			unsigned char *aoid = NULL; /* ASN1 */
+			size_t aoid_len;
+			struct sc_object_id *scoid = NULL;
+
+			scoid = &key_info->u.ec.oid;
+			/* 
+			 * Current OpenPGP cards use pre RFC8410 OIDs for ECDH and EdDSA
+			 * so convert to older versions of the OIDs. 
+			 * TODO if newer cards or OpenPGP specs accept RFC8410 code 
+			 * will be needed here to not do the conversion
+			 */
+			for (i = 0; ec_curves_alt[i].oid.value[0] > 0; i++) {
+				if (sc_compare_oid(scoid, &ec_curves_alt[i].oid_alt)) {
+					scoid = &ec_curves_alt[i].oid;
+					break;
+				}
+			}
+			
+			r = sc_encode_oid(card->ctx, scoid, &aoid, &aoid_len);
+			LOG_TEST_RET(card->ctx, r, "invalid ec oid");
+			if (aoid == NULL || aoid_len < 3 || aoid[1] > 127) {
+				free(aoid);
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
+			}
+
+			data_len = aoid_len + 1 - 2; /* +1 for algorithm -2 drop 06 len */
 			data = malloc(data_len);
-			if (!data)
+			if (!data) {
+				free(aoid);
 				LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
+			}
 
 			data[0] = key_info->algorithm;
-			/* oid.value is type int, therefore we need to loop over the values */
-			for (i=0; i < key_info->u.ec.oid_len; i++){
-				data[i+1] = key_info->u.ec.oid.value[i];
-			}
+			for (i = 0; i < aoid_len - 2; i++)
+				data[i+1] = aoid[i+2];
 		}
 
 		/* RSA */
