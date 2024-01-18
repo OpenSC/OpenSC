@@ -571,6 +571,8 @@ cflex_create_pin_file(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	 * necessary */
 	ndummies = cflex_create_dummy_chvs(profile, p15card,
 				file, SC_AC_OP_UPDATE, dummies);
+	if (ndummies < 0)
+		sc_file_free(file);
 	LOG_TEST_RET(ctx, ndummies, "Unable to create dummy CHV file");
 
 	if (!unprotected)   {
@@ -584,8 +586,9 @@ cflex_create_pin_file(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		pin_cmd.pin1.len = sizeof(dummy_pin_value);
 
 		r = sc_pin_cmd(p15card->card, &pin_cmd, NULL);
+		if (r != SC_SUCCESS)
+			sc_file_free(file);
 		LOG_TEST_RET(ctx, r, "Cannot verify dummy PIN");
-
 	};
 
 	if (ref == 2)   {
@@ -596,6 +599,8 @@ cflex_create_pin_file(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	}
 
 	r = sc_pkcs15init_create_file(profile, p15card, file);
+	if (r != SC_SUCCESS)
+		sc_file_free(file);
 	LOG_TEST_RET(ctx, r, "Failed to create PIN file");
 
 	r = sc_update_binary(p15card->card, 0, buffer, 23, 0);
