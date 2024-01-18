@@ -1554,8 +1554,10 @@ iasecc_delete_file(struct sc_card *card, const struct sc_path *path)
 	LOG_TEST_RET(ctx, rv, "Cannot select file to delete");
 
 	entry = sc_file_get_acl_entry(file, SC_AC_OP_DELETE);
-	if (!entry)
+	if (!entry) {
+		sc_file_free(file);
 		LOG_TEST_RET(ctx, SC_ERROR_OBJECT_NOT_FOUND, "Cannot delete file: no 'DELETE' acl");
+	}
 
 	sc_log(ctx, "DELETE method/reference %X/%X", entry->method, entry->key_ref);
 	if (entry->method == SC_AC_SCB && (entry->key_ref & IASECC_SCB_METHOD_SM))   {
