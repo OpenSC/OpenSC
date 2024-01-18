@@ -1672,7 +1672,7 @@ C_GetInterface(CK_UTF8CHAR_PTR pInterfaceName, CK_VERSION_PTR pVersion,
 		(flags & CKF_INTERFACE_FORK_SAFE ? "CKF_INTERFACE_FORK_SAFE" : ""));
 	if (po->version.major >= 3) {
 		rv = po->C_GetInterface(pInterfaceName, pVersion, ppInterface, flags);
-		if (ppInterface != NULL) {
+		if (rv == CKR_OK && ppInterface != NULL) {
 			spy_interface_function_list(*ppInterface);
 		}
 	} else {
