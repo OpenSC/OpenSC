@@ -2508,7 +2508,7 @@ do_read_data_object(const char *name, u8 **out, size_t *outlen, size_t expected)
 {
 	FILE *inf;
 	size_t filesize = expected ? expected : determine_filesize(name);
-	int c;
+	ssize_t sz;
 
 	*out = malloc(filesize);
 	if (*out == NULL)
@@ -2520,9 +2520,9 @@ do_read_data_object(const char *name, u8 **out, size_t *outlen, size_t expected)
                 fprintf(stderr, "Unable to open '%s' for reading.\n", name);
                 return SC_ERROR_FILE_NOT_FOUND;
         }
-        c = fread(*out, 1, filesize, inf);
+        sz = fread(*out, 1, filesize, inf);
         fclose(inf);
-        if (c < 0) {
+        if (sz < 0) {
                 perror("read");
                 return SC_ERROR_FILE_NOT_FOUND;
         }

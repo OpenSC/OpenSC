@@ -1762,6 +1762,7 @@ static int do_put(int argc, char **argv)
 	sc_file_t *file = NULL;
 	const char *filename;
 	FILE *inf = NULL;
+	ssize_t sz;
 
 	if (argc < 1 || argc > 2)
 		return usage(do_put);
@@ -1786,13 +1787,13 @@ static int do_put(int argc, char **argv)
 	while (count) {
 		int c = count > sizeof(buf) ? sizeof(buf) : count;
 
-		r = fread(buf, 1, c, inf);
-		if (r < 0) {
+		sz = fread(buf, 1, c, inf);
+		if (sz < 0) {
 			perror("fread");
 			goto err;
 		}
-		if (r != c)
-			count = c = r;
+		if ((size_t)sz != c)
+			count = c = sz;
 		r = sc_lock(card);
 		if (r == SC_SUCCESS)
 			r = sc_update_binary(card, idx, buf, c, 0);

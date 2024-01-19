@@ -1241,6 +1241,7 @@ sc_pkcs15_read_der_file(sc_context_t *ctx, char * filename,
 	const u8 * body = NULL;
 	size_t bodylen;
 	unsigned int cla_out, tag_out;
+	ssize_t sz;
 
 	LOG_FUNC_CALLED(ctx);
 	if (!buf || !buflen)
@@ -1255,13 +1256,13 @@ sc_pkcs15_read_der_file(sc_context_t *ctx, char * filename,
 		goto out;
 	}
 
-	r = read(f, tagbuf, sizeof(tagbuf)); /* get tag and length */
-	if (r < 2) {
+	sz = read(f, tagbuf, sizeof(tagbuf)); /* get tag and length */
+	if (sz < 2) {
 		sc_log(ctx, "Problem with '%s'", filename);
 		r =  SC_ERROR_DATA_OBJECT_NOT_FOUND;
 		goto out;
 	}
-	len = r;
+	len = sz;
 
 	body = tagbuf;
 	r = sc_asn1_read_tag(&body, len, &cla_out, &tag_out, &bodylen);
@@ -1288,8 +1289,8 @@ sc_pkcs15_read_der_file(sc_context_t *ctx, char * filename,
 	memcpy(rbuf, tagbuf, len); /* copy first or only part */
 	if (rbuflen > len) {
 		/* read rest of file */
-		r = read(f, rbuf + len, rbuflen - len);
-		if (r < (int)(rbuflen - len)) {
+		ssize_t sz = read(f, rbuf + len, rbuflen - len);
+		if (sz < (ssize_t)(rbuflen - len)) {
 			r = SC_ERROR_INVALID_ASN1_OBJECT;
 			free (rbuf);
 			rbuf = NULL;
@@ -1299,7 +1300,7 @@ sc_pkcs15_read_der_file(sc_context_t *ctx, char * filename,
 	*buflen = rbuflen;
 	*buf = rbuf;
 	rbuf = NULL;
-	r = rbuflen;
+	r = (int)rbuflen;
 out:
 	if (f >= 0)
 		close(f);
