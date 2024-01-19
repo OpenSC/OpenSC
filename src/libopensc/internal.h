@@ -33,6 +33,15 @@ extern "C" {
 #include <assert.h>
 #ifdef _WIN32
 #include <windows.h>
+
+# ifdef _MSC_VER
+#  ifndef _SSIZE_T_DEFINED
+#   undef ssize_t
+#   include <BaseTsd.h>
+    typedef _W64 SSIZE_T ssize_t;
+#   define _SSIZE_T_DEFINED
+#  endif /* _SSIZE_T_DEFINED */
+# endif /* _MSC_VER */
 #endif
 
 #include "common/simclist.h"

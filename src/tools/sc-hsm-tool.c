@@ -1530,8 +1530,10 @@ static int unwrap_key(sc_card_t *card, int keyid, const char *inf, const char *p
 	u8 fid[2];
 	char *lpin = NULL;
 	unsigned int cla, tag;
-	int r, keybloblen;
+	int r;
+	size_t keybloblen;
 	size_t len, olen, prkd_len, cert_len;
+	ssize_t sz;
 
 	if ((keyid < 1) || (keyid > 255)) {
 		fprintf(stderr, "Invalid key reference (must be 0 < keyid <= 255)\n");
@@ -1550,12 +1552,13 @@ static int unwrap_key(sc_card_t *card, int keyid, const char *inf, const char *p
 		return -1;
 	}
 
-	keybloblen = fread(keyblob, 1, sizeof(keyblob), in);
+	sz = fread(keyblob, 1, sizeof(keyblob), in);
 	fclose(in);
-	if (keybloblen < 0) {
+	if (sz < 0) {
 		perror(inf);
 		return -1;
 	}
+	keybloblen = sz;
 
 	ptr = keyblob;
 	if ((sc_asn1_read_tag(&ptr, keybloblen, &cla, &tag, &len) != SC_SUCCESS)
