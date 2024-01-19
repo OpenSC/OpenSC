@@ -45,8 +45,8 @@ extern "C" {
 # endif /* _SSIZE_T_DEFINED */
 #endif /* _MSC_VER */
 
-void util_print_binary(FILE *f, const u8 *buf, int count);
-void util_hex_dump(FILE *f, const u8 *in, int len, const char *sep);
+void util_print_binary(FILE *f, const u8 *buf, size_t count);
+void util_hex_dump(FILE *f, const u8 *in, size_t len, const char *sep);
 void util_hex_dump_asc(FILE *f, const u8 *in, size_t count, int addr);
 void util_print_usage(const char *app_name, const struct option options[],
 	const char *option_help[], const char *args);
