@@ -101,11 +101,14 @@ int encrypt_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message
 	size_t outlen = 0;
 	EVP_PKEY_CTX *ctx = NULL;
 
-	outlen = EVP_PKEY_size(o->key);
-	*enc_message = malloc(outlen);
+	/* allocate the buffer if none provided */
 	if (*enc_message == NULL) {
-		debug_print("malloc returned null");
-		return -1;
+		outlen = EVP_PKEY_size(o->key);
+		*enc_message = malloc(outlen);
+		if (*enc_message == NULL) {
+			debug_print("malloc returned null");
+			return -1;
+		}
 	}
 
 	/* Prepare padding for RSA_X_509 */
