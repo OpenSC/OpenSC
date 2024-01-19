@@ -6,9 +6,18 @@ if [ -x "/bin/sudo" ]; then
 	SUDO="sudo"
 fi
 
+if [ -f "/etc/fedora-release" ]; then
+	. .github/setup-fedora.sh
+	exit 0
+fi
+
 WINE_DEPS=""
 # Generic dependencies
 DEPS="docbook-xsl xsltproc gengetopt help2man pcscd check pcsc-tools libtool make autoconf autoconf-archive automake pkg-config git xxd openssl valgrind"
+
+if [ "$1" == "clang" ]; then
+	DEPS="$DEPS clang"
+fi
 
 # 64bit or 32bit dependencies
 if [ "$1" == "ix86" ]; then

@@ -1,0 +1,81 @@
+---
+name: Linux (latest, strict)
+
+on:
+  pull_request:
+    paths:
+      - '**.c'
+      - '**.h'
+      - '**.sh'
+      - .github/workflows/linux.yml
+      - '**.am'
+      - doc/**
+      - configure.ac
+  push:
+
+permissions:
+  contents: read  #  to fetch code (actions/checkout)
+
+# -Wno-incompatible-library-redeclaration -- strlcat and strlcpy compat
+#     functions make the build fail with
+#        incompatible redeclaration of library function 'strlcat'
+#     even if there is no implementation in Linux.
+#     Worth investigating
+# -Wno-strict-prototypes -- is needed for the configure to pass
+#     otherwise it fails detect dlopen()
+# -Wno-variadic-macros -- we are ok using the GNU extension in log.c
+# -Wno-gnu-zero-variadic-macro-arguments -- related
+# -Wno-incompatible-pointer-types-discards-qualifiers -- again with logging
+# -Wno-unused-function -- the inline compat functions for openssl
+#     are included in files where they are needed and clang does not like it
+# -Wformat-pedantic - this complains about missing casts to (void *) which is
+#     pointles
+# -Wno-pedantic -- this complains about void and function pointers casts
+# -Wno-incompatible-function-pointer-types -- this looks just buggy as it
+#   complains about missing const, which is there
+env:
+  CLANG_CFLAGS: -Wshorten-64-to-32
+  CFLAGS: >-
+    -pedantic -Werror -Wall
+    -Wno-strict-prototypes -Wno-empty-translation-unit
+    -Wno-incompatible-library-redeclaration
+    -Wno-variadic-macros -Wno-unused-function
+    -Wno-incompatible-pointer-types-discards-qualifiers
+    -Wno-gnu-zero-variadic-macro-arguments
+    -Wno-format-pedantic
+    -Wno-pedantic
+    -Wno-incompatible-function-pointer-types
+
+
+jobs:
+  build-strict:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        name: [fedora, debian, ubuntu]
+        compiler: [clang, gcc]
+        include:
+          - name: fedora
+            container: fedora:rawhide
+          - name: debian
+            container: debian:sid
+          - name: ubuntu
+            container: ubuntu:latest
+    container: ${{ matrix.container }}
+    steps:
+      - uses: actions/checkout@v3
+      - run: .github/setup-linux.sh ${{ matrix.compiler }}
+      - run: .github/build.sh dist
+        env:
+          CC: ${{ matrix.compiler }}
+          CFLAGS: ${{ env.CFLAGS }} ${{ matrix.compiler == 'clang' && env.CLANG_CFLAGS || '' }}
+      - name: Upload test logs
+        uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: ${{ matrix.name }}-strict-test-logs
+          path: |
+            config.log
+            tests/*.log
+            src/tests/unittests/*.log
