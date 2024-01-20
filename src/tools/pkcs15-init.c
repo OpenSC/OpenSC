@@ -720,23 +720,40 @@ static const struct alg_spec alg_types_sym[] = {
 	{ NULL, -1, 0 }
 };
 
+/* RSA can have a number , default is 2048 */
+/* EC require a curve name */
+/* EDDSA and XEDDSA  without a size require a size or curve name or OID */
+/* other EDDSA and XEDDSA can be used  alone */
 static const struct alg_spec alg_types_asym[] = {
-	{ "rsa",	SC_ALGORITHM_RSA,	1024 },
+	{ "rsa",	SC_ALGORITHM_RSA,	2048 }, /* new default */
 	{ "gost2001",	SC_ALGORITHM_GOSTR3410,	SC_PKCS15_GOSTR3410_KEYSIZE },
 	{ "ec",		SC_ALGORITHM_EC,	0 },
-	{ "eddsa",	SC_ALGORITHM_EDDSA,	0 },
+	{ "EdDSA",	SC_ALGORITHM_EDDSA,	0 }, /* RFC 8410 section 8 */
 	{ "xeddsa",	SC_ALGORITHM_XEDDSA,	0 },
+	{ "ECDH",	SC_ALGORITHM_XEDDSA,    0 }, /*  RFC 8410 section 8 */
+	/*  RFC 8410 */
+	{ "Ed25519",	SC_ALGORITHM_EDDSA,	255 }, /* RFC 8410 and gunpg */
+	{ "Ed448",	SC_ALGORITHM_EDDSA,	448 },
+	{ "X25519",	SC_ALGORITHM_XEDDSA,	255 },
+	{ "X448",	SC_ALGORITHM_XEDDSA,	448 },
+	/* used by Yubikey and GNUK */
+	{ "edwards25519", SC_ALGORITHM_EDDSA,	255 },
+	{ "curve25519", SC_ALGORITHM_XEDDSA,	255 },
+	/* gnupg */
+	{ "cv25519",	SC_ALGORITHM_XEDDSA,	255 },
+
 	{ NULL, -1, 0 }
 };
 
 static int
 parse_alg_spec(const struct alg_spec *types, const char *spec, unsigned int *keybits, struct sc_pkcs15_prkey *prkey)
 {
-	int i, algorithm = -1;
+	int i, types_idx = -1, algorithm = -1;
 	char *end;
 
 	for (i = 0; types[i].spec; i++) {
 		if (!strncasecmp(spec, types[i].spec, strlen(types[i].spec))) {
+			types_idx = i; /* save index of types array */
 			algorithm = types[i].algorithm;
 			*keybits = types[i].keybits;
 			spec += strlen(types[i].spec);
@@ -750,12 +767,19 @@ parse_alg_spec(const struct alg_spec *types, const char *spec, unsigned int *key
 
 	if (*spec == '/' || *spec == '-' || *spec == ':')
 		spec++;
+	
+	/* if we have everything for EDDSA or XEDDSA */
+	if (*spec == 0x00 && *keybits && (algorithm == SC_ALGORITHM_EDDSA || SC_ALGORITHM_XEDDSA) && prkey) {
+		prkey->u.ec.params.named_curve = strdup(types[types_idx].spec); /* correct case */
+		*keybits =  types[types_idx].keybits;
+		return algorithm;
+	}
 
 	if (*spec)   {
 		if (isalpha((unsigned char)*spec)
 				&& (algorithm == SC_ALGORITHM_EC || algorithm == SC_ALGORITHM_EDDSA || SC_ALGORITHM_XEDDSA)
 				&& prkey) {
-			prkey->u.ec.params.named_curve = strdup(spec);
+			prkey->u.ec.params.named_curve = strdup(types[types_idx].spec); /* copy correct case */
 		} else {
 			*keybits = (unsigned)strtoul(spec, &end, 10);
 			if (*end) {
