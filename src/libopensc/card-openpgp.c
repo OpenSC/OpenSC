@@ -101,11 +101,13 @@ static pgp_ec_curves_t  ec_curves_openpgp34[] = {
 	{{{-1}}, 0} /* This entry must not be touched. */
 };
 
+#ifdef ENABLE_OPENSSL
 static pgp_ec_curves_alt_t ec_curves_alt[] = {
 	{{{1, 3, 6, 1, 4, 1, 3029, 1, 5, 1, -1}}, {{1 ,3 ,101, 110, -1}}, 255}, /* curve25519 CKK_EC_MONTGOMERY X25519 */
 	{{{1, 3, 6, 1, 4, 1, 11591, 15, 1, -1}}, {{1, 3, 101, 112, -1}}, 255}, /* ed25519 CKK_EC_EDWARDS Ed25519 */
 	{{{-1}}, {{-1}}, 0} /* This entry must not be touched. */
 };
+#endif /* ENABLE_OPENSSL */
 
 static pgp_ec_curves_t *ec_curves_openpgp = ec_curves_openpgp34 + 2;
 
@@ -2536,7 +2538,7 @@ pgp_update_new_algo_attr(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_
 			 * TODO if newer cards or OpenPGP specs accept RFC8410 code 
 			 * will be needed here to not do the conversion
 			 */
-			for (i = 0; ec_curves_alt[i].oid.value[0] > 0; i++) {
+			for (i = 0; ec_curves_alt[i].size > 0; i++) {
 				if (sc_compare_oid(scoid, &ec_curves_alt[i].oid_alt)) {
 					scoid = &ec_curves_alt[i].oid;
 					break;
