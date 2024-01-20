@@ -165,11 +165,13 @@ typedef struct _pgp_ec_curves {
 	size_t size;
 } pgp_ec_curves_t;
 
+#ifdef ENABLE_OPENSSL
 typedef struct _pgp_ec_curves_alt {
 	struct sc_object_id oid;
 	struct sc_object_id oid_alt; /* RFC8410 OIDs to be mapped to oid */
 	size_t size;
 } pgp_ec_curves_alt_t;
+#endif /* ENABLE_OPENSSL */
 
 #define DRVDATA(card)        ((struct pgp_priv_data *) ((card)->drv_data))
 
