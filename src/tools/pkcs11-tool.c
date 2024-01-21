@@ -158,7 +158,7 @@ static struct ec_curve_info {
 	{"X25519",  "1.3.101.110", "06032b656e", 255, CKM_EC_MONTGOMERY_KEY_PAIR_GEN}, /* RFC 4810 send by OID */
 	{"X448",    "1.3.101.111", "06032b656f", 448, CKM_EC_MONTGOMERY_KEY_PAIR_GEN}, /* RFC 4810 send by OID */
 	{"Ed25519", "1.3.101.112", "06032b6570", 255, CKM_EC_EDWARDS_KEY_PAIR_GEN}, /* RFC 4810 send by OID */
-	{"Ed488",   "1.3.101.113", "06032b6570", 488, CKM_EC_EDWARDS_KEY_PAIR_GEN}, /* RFC 4810 send by OID */
+	{"Ed448",   "1.3.101.113", "06032b6571", 448, CKM_EC_EDWARDS_KEY_PAIR_GEN}, /* RFC 4810 send by OID */
 
 	/* GnuPG openpgp curves as used in gnupg-card are equivalent to RFC8410 OIDs */
 	{"cv25519", "1.3.101.110", "06032b656e", 255, CKM_EC_MONTGOMERY_KEY_PAIR_GEN},
@@ -4964,7 +4964,9 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 			buf_size = EC_POINT_point2oct(ecgroup, ecpoint, POINT_CONVERSION_UNCOMPRESSED, buf, buf_size, NULL);
 			break;
 		case EVP_PKEY_X25519:
+#if defined(EVP_PKEY_X448)
 		case EVP_PKEY_X448:
+#endif
 			EVP_PKEY_get_raw_public_key(pkey, NULL, &buf_size);
 			if (buf_size == 0)
 				util_fatal("Unable to get of peer key\n");
@@ -4994,7 +4996,9 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 				util_fatal("Peer key %s not usable with %s", "CKK_EC", p11_mechanism_to_name(mech_mech));
 			break;
 		case EVP_PKEY_X25519:  /* "CKK_EC_MONTGOMERY */
+#if defined(EVP_PKEY_X448)
 		case EVP_PKEY_X448:
+#endif
 			if (mech_mech != CKM_ECDH1_DERIVE)
 				util_fatal("Peer key %s not usable with %s", "CKK_EC_MONTGOMERY", p11_mechanism_to_name(mech_mech));
 			break;
