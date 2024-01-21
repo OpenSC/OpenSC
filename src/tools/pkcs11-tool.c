@@ -5702,8 +5702,17 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 				else
 					ksize = (size - 5) * 4;
 			} else {
-				/* This should be 255 for ed25519 and 448 for ed448 curves so roughly */
-				ksize = size * 8;
+				/* 
+				 * EDDSA and XEDDSA in PKCS11 are in bit strings.
+				 *  need to drop '03' tag, len (in bytes) and 00 bits in last byte. 
+				 */
+				 if ((size - 3) < 127)
+					ksize = (size - 3) * 8;
+				 else if ((size - 4) <= 255)
+					ksize = (size - 4) * 8;
+				else 
+					ksize = (size - 5) * 8;
+
 			}
 
 			printf("  EC_POINT %lu bits\n", ksize);
