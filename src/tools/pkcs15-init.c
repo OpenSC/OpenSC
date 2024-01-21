@@ -724,6 +724,8 @@ static const struct alg_spec alg_types_asym[] = {
 	{ "rsa",	SC_ALGORITHM_RSA,	1024 },
 	{ "gost2001",	SC_ALGORITHM_GOSTR3410,	SC_PKCS15_GOSTR3410_KEYSIZE },
 	{ "ec",		SC_ALGORITHM_EC,	0 },
+	{ "eddsa",	SC_ALGORITHM_EDDSA,	0 },
+	{ "xeddsa",	SC_ALGORITHM_XEDDSA,	0 },
 	{ NULL, -1, 0 }
 };
 
@@ -750,7 +752,9 @@ parse_alg_spec(const struct alg_spec *types, const char *spec, unsigned int *key
 		spec++;
 
 	if (*spec)   {
-		if (isalpha((unsigned char)*spec) && algorithm == SC_ALGORITHM_EC && prkey) {
+		if (isalpha((unsigned char)*spec)
+				&& (algorithm == SC_ALGORITHM_EC || algorithm == SC_ALGORITHM_EDDSA || SC_ALGORITHM_XEDDSA)
+				&& prkey) {
 			prkey->u.ec.params.named_curve = strdup(spec);
 		} else {
 			*keybits = (unsigned)strtoul(spec, &end, 10);
