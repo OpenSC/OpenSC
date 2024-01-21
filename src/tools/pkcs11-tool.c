@@ -5312,7 +5312,9 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 			buf_size = EC_POINT_point2oct(ecgroup, ecpoint, POINT_CONVERSION_UNCOMPRESSED, buf, buf_size, NULL);
 			break;
 		case EVP_PKEY_X25519:
+#if defined(EVP_PKEY_X448)
 		case EVP_PKEY_X448:
+#endif
 			EVP_PKEY_get_raw_public_key(pkey, NULL, &buf_size);
 			if (buf_size == 0)
 				util_fatal("Unable to get of peer key\n");
@@ -5342,7 +5344,9 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 				util_fatal("Peer key %s not usable with %s", "CKK_EC", p11_mechanism_to_name(mech_mech));
 			break;
 		case EVP_PKEY_X25519:  /* "CKK_EC_MONTGOMERY */
+#if defined(EVP_PKEY_X448)
 		case EVP_PKEY_X448:
+#endif
 			if (mech_mech != CKM_ECDH1_DERIVE)
 				util_fatal("Peer key %s not usable with %s", "CKK_EC_MONTGOMERY", p11_mechanism_to_name(mech_mech));
 			break;
