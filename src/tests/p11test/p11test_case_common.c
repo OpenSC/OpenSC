@@ -536,8 +536,10 @@ int callback_public_keys(test_certs_t *objects,
 			const EC_POINT *cert_point = EC_KEY_get0_public_key(ec);
 			int cert_nid = EC_GROUP_get_curve_name(cert_group);
 #else
-			char curve_name[80]; size_t curve_name_len = 0;
-			unsigned char pubkey[80]; size_t pubkey_len = 0;
+			char curve_name[80];
+			size_t curve_name_len = 0;
+			unsigned char pubkey[256];
+			size_t pubkey_len = 0;
 			int cert_nid = 0;
 			if (EVP_PKEY_get_group_name(o->key, curve_name, sizeof(curve_name), &curve_name_len) != 1 ||
 				(cert_nid = OBJ_txt2nid(curve_name)) == NID_undef ||
