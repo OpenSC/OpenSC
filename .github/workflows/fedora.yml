@@ -24,6 +24,14 @@ jobs:
       - uses: actions/checkout@v3
       - run: .github/setup-fedora.sh
       - run: .github/build.sh dist
+      - name: Upload test logs
+        uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: fedora-test-logs
+          path: |
+            tests/*.log
+            src/tests/unittests/*.log
 
   fedora-ix86:
     runs-on: ubuntu-latest
