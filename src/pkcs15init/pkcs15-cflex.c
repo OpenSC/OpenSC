@@ -604,12 +604,11 @@ cflex_create_pin_file(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	LOG_TEST_RET(ctx, r, "Failed to create PIN file");
 
 	r = sc_update_binary(p15card->card, 0, buffer, 23, 0);
-	LOG_TEST_RET(ctx, r, "Failed to update PIN file");
-
 	if (r < 0 || file_ret == NULL)
 		sc_file_free(file);
 	else
 		*file_ret = file;
+	LOG_TEST_RET(ctx, r, "Failed to update PIN file");
 
 	/* Delete the dummy CHV files */
 	cflex_delete_dummy_chvs(profile, p15card, ndummies, dummies);
