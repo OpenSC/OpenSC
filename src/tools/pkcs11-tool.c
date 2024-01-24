@@ -8251,7 +8251,7 @@ static CK_BYTE_PTR get_iv(const char *iv_input, size_t *iv_size)
 		return NULL;
 	}
 
-	iv = calloc(sizeof(CK_BYTE), *iv_size);
+	iv = calloc(*iv_size, sizeof(CK_BYTE));
 	if (!iv) {
 		fprintf(stderr, "Warning, out of memory, IV will not be used.\n");
 		*iv_size = 0;

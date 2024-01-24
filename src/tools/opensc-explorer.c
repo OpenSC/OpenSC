@@ -772,7 +772,7 @@ static int read_and_print_binary_file(sc_file_t *file)
 	size_t size = (file->size > 0) ? file->size : SC_MAX_EXT_APDU_RESP_SIZE;
 	int r, ret = -1;
 
-	buf = calloc(size, 1);
+	buf = calloc(1, size);
 	if (buf == NULL)
 		return -1;
 

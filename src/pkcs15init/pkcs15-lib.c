@@ -3703,7 +3703,7 @@ sc_pkcs15init_update_certificate(struct sc_pkcs15_card *p15card,
 
 	/* Fill the remaining space in the EF (if any) with zeros */
 	if (certlen < file->size) {
-		unsigned char *tmp = calloc(file->size - certlen, 1);
+		unsigned char *tmp = calloc(1, file->size - certlen);
 		if (tmp == NULL) {
 			r = SC_ERROR_OUT_OF_MEMORY;
 			goto done;

@@ -583,9 +583,9 @@ int paccess_main(struct sc_context *ctx, sc_card_t *card, struct gengetopt_args_
                     SC_ERROR_INVALID_ARGUMENTS, "Could not parse private key.\n");
         }
 
-        certs = calloc(sizeof *certs, cmdline->certificate_given + 1);
-        certs_lens = calloc(sizeof *certs_lens,
-                cmdline->certificate_given + 1);
+        certs = calloc(cmdline->certificate_given + 1, sizeof *certs);
+        certs_lens = calloc(cmdline->certificate_given + 1,
+                sizeof *certs_lens);
         if (!certs || !certs_lens) {
             SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_VERBOSE_TOOL, SC_ERROR_NOT_ENOUGH_MEMORY,
                     "Internal error.");
