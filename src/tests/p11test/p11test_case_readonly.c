@@ -708,35 +708,34 @@ void readonly_tests(void **state) {
 		/* do the Sign&Verify and/or Encrypt&Decrypt */
 		used = 0;
 		if (o->private_handle == CK_INVALID_HANDLE) {
-			debug_print(" [SKIP %s ] Missing private key",
-				o->id_str);
+			debug_print(" [SKIP %s ] Missing private key", o->id_str);
 			continue;
 		}
 		/* XXX some keys do not have appropriate flags, but we can use them
 		 * or vice versa */
-		//if (o->sign && o->verify)
-			for (j = 0; j < o->num_mechs; j++) {
-				test_mech_t *m = &(objects.data[i].mechs[j]);
-				if ((m->usage_flags & CKF_SIGN) == 0) {
-					/* Skip non-signature mechanisms (for example derive ones) */
-					continue;
-				}
-				used |= sign_verify_test(o, info, m, 32, 0);
+		// if (o->sign && o->verify)
+		for (j = 0; j < o->num_mechs; j++) {
+			test_mech_t *m = &(objects.data[i].mechs[j]);
+			if ((m->usage_flags & CKF_SIGN) == 0) {
+				/* Skip non-signature mechanisms (for example derive ones) */
+				continue;
 			}
+			used |= sign_verify_test(o, info, m, 32, 0);
+		}
 
-		//if (o->encrypt && o->decrypt)
-			for (j = 0; j < o->num_mechs; j++) {
-				test_mech_t *m = &(objects.data[i].mechs[j]);
-				if ((m->usage_flags & CKF_DECRYPT) == 0) {
-					/* Skip non-decrypt mechanisms (for example derive ones) */
-					continue;
-				}
-				used |= encrypt_decrypt_test(o, info, m, 32, 0);
+		// if (o->encrypt && o->decrypt)
+		for (j = 0; j < o->num_mechs; j++) {
+			test_mech_t *m = &(objects.data[i].mechs[j]);
+			if ((m->usage_flags & CKF_DECRYPT) == 0) {
+				/* Skip non-decrypt mechanisms (for example derive ones) */
+				continue;
 			}
+			used |= encrypt_decrypt_test(o, info, m, 32, 0);
+		}
 
 		if (!used) {
-			debug_print(" [ WARN %s ] Private key with unknown purpose T:%02lX",
-			o->id_str, o->key_type);
+			debug_print(" [WARN %s ] Private key with unknown purpose T:%02lX", o->id_str,
+					o->key_type);
 		}
 	}
 

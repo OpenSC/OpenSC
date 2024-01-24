@@ -98,43 +98,43 @@ void usage_test(void **state) {
 			continue;
 
 		printf("[ %s ] [%6lu] [ %s ] [%s%s] [%s%s] [%s %s] [%s%s] [    %s   ]\n",
-			(o->key_type == CKK_RSA ? "RSA " :
-				o->key_type == CKK_EC ? " EC " :
-				o->key_type == CKK_EC_EDWARDS ? "EC_E" :
-				o->key_type == CKK_EC_MONTGOMERY ? "EC_M" :
-				o->key_type == CKK_AES ? "AES " :
-				o->key_type == CKK_GENERIC_SECRET ? "GEN " : " ?? "),
-			o->bits,
-			o->verify_public == 1 ? " ./ " : "    ",
-			o->sign ? "[./] " : "[  ] ",
-			o->verify ? " [./] " : " [  ] ",
-			o->encrypt ? "[./] " : "[  ] ",
-			o->decrypt ? " [./] " : " [  ] ",
-			o->wrap ? "[./]" : "[  ]",
-			o->unwrap ? "[./]" : "[  ]",
-			o->derive_pub ? "[./]" : "[  ]",
-			o->derive_priv ? "[./]" : "[  ]",
-			o->always_auth ? "[./]" : "[  ]");
+				(o->key_type == CKK_RSA ? "RSA " : o->key_type == CKK_EC ? " EC "
+						: o->key_type == CKK_EC_EDWARDS ? "EC_E"
+						: o->key_type == CKK_EC_MONTGOMERY ? "EC_M"
+						: o->key_type == CKK_AES ? "AES "
+						: o->key_type == CKK_GENERIC_SECRET ? "GEN "
+											: " ?? "),
+				o->bits,
+				o->verify_public == 1 ? " ./ " : "    ",
+				o->sign ? "[./] " : "[  ] ",
+				o->verify ? " [./] " : " [  ] ",
+				o->encrypt ? "[./] " : "[  ] ",
+				o->decrypt ? " [./] " : " [  ] ",
+				o->wrap ? "[./]" : "[  ]",
+				o->unwrap ? "[./]" : "[  ]",
+				o->derive_pub ? "[./]" : "[  ]",
+				o->derive_priv ? "[./]" : "[  ]",
+				o->always_auth ? "[./]" : "[  ]");
 		P11TEST_DATA_ROW(info, 14,
-			's', o->id_str,
-			's', o->label,
-			's', (o->key_type == CKK_RSA ? "RSA" :
-				o->key_type == CKK_EC ? "EC" :
-				o->key_type == CKK_EC_EDWARDS ? "EC_E" :
-				o->key_type == CKK_EC_MONTGOMERY ? "EC_M" :
-				o->key_type == CKK_AES ? "AES" :
-				o->key_type == CKK_GENERIC_SECRET ? "GEN" : " ?? "),
-			'd', o->bits,
-			's', o->verify_public == 1 ? "YES" : "",
-			's', o->sign ? "YES" : "",
-			's', o->verify ? "YES" : "",
-			's', o->encrypt ? "YES" : "",
-			's', o->decrypt ? "YES" : "",
-			's', o->wrap ? "YES" : "",
-			's', o->unwrap ? "YES" : "",
-			's', o->derive_pub ? "YES" : "",
-			's', o->derive_priv ? "YES" : "",
-			's', o->always_auth ? "YES" : "");
+				's', o->id_str,
+				's', o->label,
+				's', (o->key_type == CKK_RSA ? "RSA" : o->key_type == CKK_EC ? "EC"
+						: o->key_type == CKK_EC_EDWARDS ? "EC_E"
+						: o->key_type == CKK_EC_MONTGOMERY ? "EC_M"
+						: o->key_type == CKK_AES ? "AES"
+						: o->key_type == CKK_GENERIC_SECRET ? "GEN"
+										: " ?? "),
+				'd', o->bits,
+				's', o->verify_public == 1 ? "YES" : "",
+				's', o->sign ? "YES" : "",
+				's', o->verify ? "YES" : "",
+				's', o->encrypt ? "YES" : "",
+				's', o->decrypt ? "YES" : "",
+				's', o->wrap ? "YES" : "",
+				's', o->unwrap ? "YES" : "",
+				's', o->derive_pub ? "YES" : "",
+				's', o->derive_priv ? "YES" : "",
+				's', o->always_auth ? "YES" : "");
 	}
 	printf(" Public == Cert -----^       ^-----^       ^-----^       ^----^      ^---^\n");
 	printf(" Sign & Verify Attributes ------'             |            |           |\n");
