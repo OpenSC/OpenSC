@@ -37,18 +37,18 @@ pkcs11_derive(test_cert_t *o, token_info_t * info,
 	CK_BBOOL _true = TRUE;
 	CK_BBOOL _false = FALSE;
 	CK_ATTRIBUTE template[] = {
-		{CKA_TOKEN, &_false, sizeof(_false)}, /* session only object */
-		{CKA_CLASS, &newkey_class, sizeof(newkey_class)},
-		{CKA_ID, &newkey_id, sizeof(newkey_id)},
-		{CKA_LABEL, &newkey_label, sizeof(newkey_label)},
-		{CKA_KEY_TYPE, &newkey_type, sizeof(newkey_type)},
-		{CKA_VALUE_LEN, &newkey_len, sizeof(newkey_len)},
-		{CKA_SENSITIVE, &_false, sizeof(_false)},
-		{CKA_EXTRACTABLE, &_true, sizeof(_true)},
-		{CKA_ENCRYPT, &_true, sizeof(_true)},
-		{CKA_DECRYPT, &_true, sizeof(_true)},
-		{CKA_WRAP, &_true, sizeof(_true)},
-		{CKA_UNWRAP, &_true, sizeof(_true)}
+			{CKA_TOKEN, &_false, sizeof(_false)}, /* session only object */
+			{CKA_CLASS, &newkey_class, sizeof(newkey_class)},
+			{CKA_ID, &newkey_id, sizeof(newkey_id)},
+			{CKA_LABEL, &newkey_label, sizeof(newkey_label)},
+			{CKA_KEY_TYPE, &newkey_type, sizeof(newkey_type)},
+			{CKA_VALUE_LEN, &newkey_len, sizeof(newkey_len)},
+			{CKA_SENSITIVE, &_false, sizeof(_false)},
+			{CKA_EXTRACTABLE, &_true, sizeof(_true)},
+			{CKA_ENCRYPT, &_true, sizeof(_true)},
+			{CKA_DECRYPT, &_true, sizeof(_true)},
+			{CKA_WRAP, &_true, sizeof(_true)},
+			{CKA_UNWRAP, &_true, sizeof(_true)},
 	};
 	CK_ATTRIBUTE get_value = {CKA_VALUE, NULL_PTR, 0};
 	CK_ULONG template_len = 10;
