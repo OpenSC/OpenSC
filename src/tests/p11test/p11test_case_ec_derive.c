@@ -389,22 +389,21 @@ void derive_tests(void **state) {
 	for (i = 0; i < objects.count; i++) {
 		test_cert_t *o = &objects.data[i];
 		/* Ignore if there is missing private key */
-		if (objects.data[i].private_handle == CK_INVALID_HANDLE)
+		if (o->private_handle == CK_INVALID_HANDLE) {
 			continue;
+		}
 
 		for (j = 0; j < o->num_mechs; j++) {
-			if ((o->mechs[j].usage_flags & CKF_DERIVE) == 0 ||
-				! o->derive_priv)
+			if ((o->mechs[j].usage_flags & CKF_DERIVE) == 0 || !o->derive_priv) {
 				continue;
+			}
 
 			switch (o->key_type) {
 			case CKK_EC:
-				errors += test_derive(&(objects.data[i]), info,
-					&(o->mechs[j]));
+				errors += test_derive(o, info, &(o->mechs[j]));
 				break;
 			case CKK_EC_MONTGOMERY:
-				errors += test_derive_x25519(&(objects.data[i]), info,
-					&(o->mechs[j]));
+				errors += test_derive_x25519(o, info, &(o->mechs[j]));
 				break;
 			default:
 				/* Other keys do not support derivation */
