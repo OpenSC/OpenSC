@@ -60,15 +60,29 @@ test_cert_t *
 add_object(test_certs_t *objects, CK_ATTRIBUTE key_id, CK_ATTRIBUTE label)
 {
 	test_cert_t *o = NULL;
-	objects->count = objects->count + 1;
-	if (objects->count > objects->alloc_count) {
+	unsigned int i;
+
+	if (objects->count + 1 > objects->alloc_count) {
 		objects->alloc_count += 8;
 		objects->data = realloc(objects->data, objects->alloc_count * sizeof(test_cert_t));
 		if (objects->data == NULL)
 			return NULL;
 	}
 
-	o = &(objects->data[objects->count - 1]);
+	/* SoftHSM is stupid returning objects in random order. Sort here by key ID
+	 * to provide deterministic JSON output */
+	for (i = 0; i < objects->count; i++) {
+		size_t len = MIN(objects->data[i].key_id_size, key_id.ulValueLen);
+		if (memcmp(key_id.pValue, objects->data[i].key_id, len) <= 0) {
+			break;
+		}
+	}
+	if (i < objects->count) {
+		memmove(&objects->data[i + 1], &objects->data[i], (objects->count - i) * sizeof(test_cert_t));
+	}
+	objects->count = objects->count + 1;
+
+	o = &(objects->data[i]);
 	o->private_handle = CK_INVALID_HANDLE;
 	o->public_handle = CK_INVALID_HANDLE;
 	o->always_auth = 0;
