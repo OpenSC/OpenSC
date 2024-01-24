@@ -86,6 +86,8 @@ char *convert_byte_string(unsigned char *id, unsigned long length);
 
 int is_pss_mechanism(CK_MECHANISM_TYPE mech);
 
+CK_RV destroy_tmp_object(token_info_t *info, CK_OBJECT_HANDLE o);
+
 // TODO sanitize inputs
 
 #define P11TEST_START(info) if (info->log.fd) { \
