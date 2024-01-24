@@ -761,6 +761,12 @@ int callback_secret_keys(test_certs_t *objects,
 {
 	test_cert_t *o = NULL;
 
+	/* Ignore objects with empty ID and label that are left in SoftHSM after deriving key even after
+	 * destroying them */
+	if (template[13].ulValueLen == 0 && template[1].ulValueLen == 0) {
+		return 0;
+	}
+
 	if ((o = add_object(objects, template[1], template[13])) == NULL)
 		return -1;
 
