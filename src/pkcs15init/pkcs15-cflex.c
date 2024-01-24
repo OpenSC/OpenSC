@@ -586,7 +586,7 @@ cflex_create_pin_file(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		pin_cmd.pin1.len = sizeof(dummy_pin_value);
 
 		r = sc_pin_cmd(p15card->card, &pin_cmd, NULL);
-		if (r != SC_SUCCESS)
+		if (r < 0)
 			sc_file_free(file);
 		LOG_TEST_RET(ctx, r, "Cannot verify dummy PIN");
 	};
@@ -599,7 +599,7 @@ cflex_create_pin_file(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	}
 
 	r = sc_pkcs15init_create_file(profile, p15card, file);
-	if (r != SC_SUCCESS)
+	if (r < 0)
 		sc_file_free(file);
 	LOG_TEST_RET(ctx, r, "Failed to create PIN file");
 
