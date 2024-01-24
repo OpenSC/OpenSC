@@ -102,7 +102,8 @@ void usage_test(void **state) {
 				o->key_type == CKK_EC ? " EC " :
 				o->key_type == CKK_EC_EDWARDS ? "EC_E" :
 				o->key_type == CKK_EC_MONTGOMERY ? "EC_M" :
-				o->key_type == CKK_AES ? "AES " : " ?? "),
+				o->key_type == CKK_AES ? "AES " :
+				o->key_type == CKK_GENERIC_SECRET ? "GEN " : " ?? "),
 			o->bits,
 			o->verify_public == 1 ? " ./ " : "    ",
 			o->sign ? "[./] " : "[  ] ",
@@ -121,7 +122,8 @@ void usage_test(void **state) {
 				o->key_type == CKK_EC ? "EC" :
 				o->key_type == CKK_EC_EDWARDS ? "EC_E" :
 				o->key_type == CKK_EC_MONTGOMERY ? "EC_M" :
-				o->key_type == CKK_AES ? "AES" : " ?? "),
+				o->key_type == CKK_AES ? "AES" :
+				o->key_type == CKK_GENERIC_SECRET ? "GEN" : " ?? "),
 			'd', o->bits,
 			's', o->verify_public == 1 ? "YES" : "",
 			's', o->sign ? "YES" : "",
