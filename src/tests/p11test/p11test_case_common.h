@@ -32,6 +32,8 @@
 #endif
 #include "p11test_common.h"
 
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
+
 typedef struct {
 	unsigned char	*key_id;
 	CK_ULONG	key_id_size;
