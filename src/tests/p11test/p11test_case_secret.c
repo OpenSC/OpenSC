@@ -237,6 +237,8 @@ void secret_tests(void **state)
 	debug_print("Check operations on secret keys.\n");
 	for (i = 0; i < objects.count; i++) {
 		test_cert_t *o = &objects.data[i];
+		if (o->key_type != CKK_AES)
+			continue;
 		/* Ignore if there is missing private key */
 		if (o->private_handle == CK_INVALID_HANDLE)
 			continue;
