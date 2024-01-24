@@ -492,7 +492,7 @@ authentic_init(struct sc_card *card)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_CARD);
 
 	card->cla  = 0x00;
-	card->drv_data = (struct authentic_private_data *) calloc(sizeof(struct authentic_private_data), 1);
+	card->drv_data = (struct authentic_private_data *) calloc(1, sizeof(struct authentic_private_data));
 	if (!card->drv_data)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 

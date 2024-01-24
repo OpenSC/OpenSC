@@ -894,7 +894,7 @@ static int sc_pkcs15emu_sc_hsm_get_ec_public_key(struct sc_context *ctx, sc_cvc_
 		return SC_ERROR_OUT_OF_MEMORY;
 
 	ecp->der.len = oid->len + 2;
-	ecp->der.value = calloc(ecp->der.len, 1);
+	ecp->der.value = calloc(1, ecp->der.len);
 	if (!ecp->der.value) {
 		free(ecp);
 		return SC_ERROR_OUT_OF_MEMORY;
@@ -1374,7 +1374,7 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 	len -= 5;
 
 	free(p15card->tokeninfo->serial_number);
-	p15card->tokeninfo->serial_number = calloc(len + 1, 1);
+	p15card->tokeninfo->serial_number = calloc(1, len + 1);
 	if (p15card->tokeninfo->serial_number == NULL) {
 		sc_pkcs15_card_clear(p15card);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);

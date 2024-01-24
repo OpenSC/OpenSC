@@ -808,7 +808,7 @@ sc_pkcs15_encode_pubkey_as_spki(sc_context_t *ctx, struct sc_pkcs15_pubkey *pubk
 			if (!ec_params)
 				LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 			ec_params->type = 1;
-			ec_params->der.value = calloc(pubkey->u.ec.params.der.len, 1);
+			ec_params->der.value = calloc(1, pubkey->u.ec.params.der.len);
 			if (!ec_params->der.value) {
 				free(ec_params);
 				LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);

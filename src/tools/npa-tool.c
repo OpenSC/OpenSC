@@ -575,9 +575,9 @@ main (int argc, char **argv)
 				exit(1);
 			}
 
-			certs = calloc(sizeof *certs, cmdline.cv_certificate_given + 1);
-			certs_lens = calloc(sizeof *certs_lens,
-					cmdline.cv_certificate_given + 1);
+			certs = calloc(cmdline.cv_certificate_given + 1, sizeof *certs);
+			certs_lens = calloc(cmdline.cv_certificate_given + 1,
+					 sizeof *certs_lens);
 			if (!certs || !certs_lens) {
 				r = SC_ERROR_OUT_OF_MEMORY;
 				goto err;

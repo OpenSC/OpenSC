@@ -286,7 +286,7 @@ asn1_decode_ec_params(sc_context_t *ctx, void **paramp,
 	if (r < 0)
 		return r;
 
-	ecp = calloc(sizeof(struct sc_ec_parameters), 1);
+	ecp = calloc(1, sizeof(struct sc_ec_parameters));
 	if (ecp == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 

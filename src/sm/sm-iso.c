@@ -482,7 +482,7 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 		if (sm_apdu->resplen > SC_MAX_APDU_RESP_SIZE)
 			sm_apdu->resplen = SC_MAX_APDU_RESP_SIZE;
 	}
-	resp_data = calloc(sm_apdu->resplen, 1);
+	resp_data = calloc(1, sm_apdu->resplen);
 	if (!resp_data) {
 		r = SC_ERROR_OUT_OF_MEMORY;
 		goto err;

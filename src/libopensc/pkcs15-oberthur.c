@@ -262,7 +262,7 @@ sc_oberthur_read_file(struct sc_pkcs15_card *p15card, const char *in_path,
 	else
 		sz = (file->record_length + 2) * file->record_count;
 
-	*out = calloc(sz, 1);
+	*out = calloc(1, sz);
 	if (*out == NULL) {
 		sc_file_free(file);
 		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot read oberthur file");
@@ -419,7 +419,7 @@ sc_oberthur_parse_containers (struct sc_pkcs15_card *p15card,
 		if (*(buff + offs) != 'R')
 			return SC_ERROR_INVALID_DATA;
 
-		cont = (struct container *)calloc(sizeof(struct container), 1);
+		cont = (struct container *)calloc(1, sizeof(struct container));
 		if (!cont)
 			return SC_ERROR_OUT_OF_MEMORY;
 

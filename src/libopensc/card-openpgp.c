@@ -972,7 +972,7 @@ pgp_set_blob(pgp_blob_t *blob, const u8 *data, size_t len)
 	blob->status = 0;
 
 	if (len > 0) {
-		void *tmp = calloc(len, 1);
+		void *tmp = calloc(1, len);
 
 		if (tmp == NULL)
 			return SC_ERROR_OUT_OF_MEMORY;
@@ -2684,7 +2684,7 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 	sc_log(card->ctx, "pk_packet_len is %"SC_FORMAT_LEN_SIZE_T"u", pk_packet_len);
 
 	fp_buffer_len = 3 + pk_packet_len;
-	p = fp_buffer = calloc(fp_buffer_len, 1);
+	p = fp_buffer = calloc(1, fp_buffer_len);
 	if (p == NULL)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
 
@@ -3064,7 +3064,7 @@ pgp_gen_key(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_info)
 
 	/* buffer to receive response */
 	apdu.resplen = (resplen > 0) ? resplen : apdu_le;
-	apdu.resp = calloc(apdu.resplen, 1);
+	apdu.resp = calloc(1, apdu.resplen);
 	if (apdu.resp == NULL) {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
 	}
@@ -3250,7 +3250,7 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_keystore_info
 		 * e.g. from '01 00 01' to '00 01 00 01' */
 		if (key_info->u.rsa.e_len < SC_OPENPGP_MAX_EXP_BITS) {
 			/* create new buffer */
-			p = calloc(max_e_len_bytes, 1);
+			p = calloc(1, max_e_len_bytes);
 			if (!p)
 				LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
 
@@ -3324,7 +3324,7 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_keystore_info
 	/* data part's length for Extended Header list */
 	len = 2 + tlvlen_7f48 + tlvlen_5f48;
 	/* set data part content */
-	data = calloc(len, 1);
+	data = calloc(1, len);
 	if (data == NULL)
 		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_NOT_ENOUGH_MEMORY, "Not enough memory");
 

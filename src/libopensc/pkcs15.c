@@ -550,7 +550,7 @@ sc_pkcs15_get_lastupdate(struct sc_pkcs15_card *p15card)
 	size = file->size ? file->size : 1024;
 	sc_file_free(file);
 
-	content = calloc(size, 1);
+	content = calloc(1, size);
 	if (!content)
 		return NULL;
 

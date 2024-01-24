@@ -534,9 +534,9 @@ int do_genkey(sc_card_t *card, u8 in_key_id, const char *keytype)
 		key_info.key_id = in_key_id;
 		key_info.algorithm = SC_OPENPGP_KEYALGO_RSA;
 		key_info.u.rsa.modulus_len = keylen;
-		key_info.u.rsa.modulus = calloc(BYTES4BITS(keylen), 1);
+		key_info.u.rsa.modulus = calloc(1, BYTES4BITS(keylen));
 		key_info.u.rsa.exponent_len = expolen;
-		key_info.u.rsa.exponent = calloc(BYTES4BITS(expolen), 1);
+		key_info.u.rsa.exponent = calloc(1, BYTES4BITS(expolen));
 		key_info.u.rsa.keyformat = keyformat;
 
 		r = sc_card_ctl(card, SC_CARDCTL_OPENPGP_GENERATE_KEY, &key_info);
