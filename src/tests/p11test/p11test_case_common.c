@@ -544,14 +544,14 @@ int callback_public_keys(test_certs_t *objects,
 			if (EVP_PKEY_get_group_name(o->key, curve_name, sizeof(curve_name), &curve_name_len) != 1 ||
 				(cert_nid = OBJ_txt2nid(curve_name)) == NID_undef ||
 				(cert_group = EC_GROUP_new_by_curve_name(cert_nid)) == NULL) {
-				fprintf(stderr, "Cannot get EC_GROUP from EVP_PKEY");
+				debug_print(" [WARN %s ] Cannot get EC_GROUP from EVP_PKEY", o->id_str);
 				goto ec_out;
 			}
 			cert_point = EC_POINT_new(cert_group);
 			if (!cert_point ||
 				EVP_PKEY_get_octet_string_param(o->key, OSSL_PKEY_PARAM_PUB_KEY, pubkey, sizeof(pubkey), &pubkey_len) != 1 ||
 				EC_POINT_oct2point(cert_group, cert_point, pubkey, pubkey_len, NULL) != 1) {
-				fprintf(stderr, "Cannot get EC_POINT from EVP_PKEY");
+				debug_print(" [WARN %s ] Cannot get EC_POINT from EVP_PKEY", o->id_str);
 				goto ec_out;
 			}
 #endif
@@ -609,7 +609,10 @@ int callback_public_keys(test_certs_t *objects,
 		EC_POINT_free(cert_point);
 #endif
 
-		if (ec_error) return -1;
+		if (ec_error) {
+			debug_print(" [WARN %s ] Failed to check EC public key", o->id_str);
+			return -1;
+		}
 
 	} else if (o->key_type == CKK_EC_EDWARDS
 		|| o->key_type == CKK_EC_MONTGOMERY) {
