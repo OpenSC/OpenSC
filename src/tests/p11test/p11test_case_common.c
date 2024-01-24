@@ -1313,3 +1313,10 @@ int is_pss_mechanism(CK_MECHANISM_TYPE mech)
 		|| mech == CKM_SHA512_RSA_PKCS_PSS
 		|| mech == CKM_SHA224_RSA_PKCS_PSS);
 }
+
+CK_RV
+destroy_tmp_object(token_info_t *info, CK_OBJECT_HANDLE h)
+{
+	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
+	return fp->C_DestroyObject(info->session_handle, h);
+}

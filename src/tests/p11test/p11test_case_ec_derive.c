@@ -32,11 +32,15 @@ pkcs11_derive(test_cert_t *o, token_info_t * info,
 	CK_OBJECT_CLASS newkey_class = CKO_SECRET_KEY;
 	CK_KEY_TYPE newkey_type = CKK_GENERIC_SECRET;
 	CK_ULONG newkey_len = (o->bits + 7) / 8;
+	CK_BYTE newkey_id[] = {0x00, 0xff, 0x31};
+	CK_BYTE newkey_label[] = {"Derived key"};
 	CK_BBOOL _true = TRUE;
 	CK_BBOOL _false = FALSE;
 	CK_ATTRIBUTE template[] = {
 		{CKA_TOKEN, &_false, sizeof(_false)}, /* session only object */
 		{CKA_CLASS, &newkey_class, sizeof(newkey_class)},
+		{CKA_ID, &newkey_id, sizeof(newkey_id)},
+		{CKA_LABEL, &newkey_label, sizeof(newkey_label)},
 		{CKA_KEY_TYPE, &newkey_type, sizeof(newkey_type)},
 		{CKA_VALUE_LEN, &newkey_len, sizeof(newkey_len)},
 		{CKA_SENSITIVE, &_false, sizeof(_false)},
@@ -69,17 +73,20 @@ pkcs11_derive(test_cert_t *o, token_info_t * info,
 		&get_value, 1);
 	if (rv != CKR_OK) {
 		fail_msg("C_GetAttributeValue: rv = 0x%.8lX\n", rv);
+		destroy_tmp_object(info, newkey);
 		return 0;
 	}
 
 	get_value.pValue = malloc(get_value.ulValueLen);
 	if (get_value.pValue == NULL) {
 		fail_msg("malloc failed");
+		destroy_tmp_object(info, newkey);
 		return 0;
 	}
 
 	rv = fp->C_GetAttributeValue(info->session_handle, newkey,
 		&get_value, 1);
+	destroy_tmp_object(info, newkey);
 	if (rv != CKR_OK) {
 		fail_msg("C_GetAttributeValue: rv = 0x%.8lX\n", rv);
 		return 0;

@@ -353,6 +353,7 @@ test_unwrap_aes(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 	CK_KEY_TYPE keyType = CKK_AES;
 	CK_BBOOL true = CK_TRUE;
 	CK_BYTE new_id[] = {0x00, 0xff, 0x42};
+	CK_BYTE new_label[] = "Unwrapped key";
 	CK_ATTRIBUTE template[] = {
 			{CKA_CLASS, &keyClass, sizeof(keyClass)},
 			{CKA_KEY_TYPE, &keyType, sizeof(keyType)},
@@ -360,6 +361,7 @@ test_unwrap_aes(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 			{CKA_DECRYPT, &true, sizeof(true)},
 			{CKA_TOKEN, &true, sizeof(true)},
 			{CKA_ID, &new_id, sizeof(new_id)},
+			{CKA_LABEL, &new_label, sizeof(new_label)},
 			{CKA_VALUE_LEN, &key_len, sizeof(key_len)}, /* keep this one last! */
 	};
 	CK_ULONG template_len = sizeof(template) / sizeof(template[0]);
@@ -466,6 +468,7 @@ test_unwrap_aes(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 	if (key != key_padded) {
 		free(key_padded);
 	}
+	destroy_tmp_object(info, tmp_key.private_handle);
 	if (rv != 0) {
 		fprintf(stderr, " [ ERROR %s ] Decrypted message does not match\n", o->id_str);
 		return -1;
