@@ -31,7 +31,7 @@ pkcs11_derive(test_cert_t *o, token_info_t * info,
 	CK_OBJECT_HANDLE newkey;
 	CK_OBJECT_CLASS newkey_class = CKO_SECRET_KEY;
 	CK_KEY_TYPE newkey_type = CKK_GENERIC_SECRET;
-	CK_ULONG newkey_len = o->bits / 8;
+	CK_ULONG newkey_len = (o->bits + 7) / 8;
 	CK_BBOOL _true = TRUE;
 	CK_BBOOL _false = FALSE;
 	CK_ATTRIBUTE template[] = {
