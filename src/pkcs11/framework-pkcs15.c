@@ -3505,6 +3505,7 @@ pkcs15_skey_destroy(struct sc_pkcs11_session *session, void *object)
 	struct pkcs15_any_object *any_obj = (struct pkcs15_any_object*) object;
 	struct sc_pkcs11_card *p11card = session->slot->p11card;
 	struct pkcs15_fw_data *fw_data = NULL;
+	struct sc_pkcs15_object *p15obj = any_obj->p15_object;
 	int rv;
 
 	if (!p11card)
@@ -3515,6 +3516,11 @@ pkcs15_skey_destroy(struct sc_pkcs11_session *session, void *object)
 	if (!fw_data->p15_card)
 		return sc_to_cryptoki_error(SC_ERROR_INVALID_CARD, "C_GenerateKeyPair");
 
+	if (p15obj->session_object) {
+		struct sc_pkcs15_skey_info *skey_info = ((struct pkcs15_skey_object *)any_obj)->info;
+		sc_pkcs15_free_skey_info(skey_info);
+		free(p15obj);
+	}
 	/* TODO assuming this is a session only object. */
 	rv = sc_lock(p11card->card);
 	if (rv < 0)
