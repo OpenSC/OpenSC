@@ -98,6 +98,7 @@ supported_mechanisms_test(void **state)
 					|| mechanism_list[i] == CKM_SHA256_RSA_PKCS_PSS
 					|| mechanism_list[i] == CKM_SHA384_RSA_PKCS_PSS
 					|| mechanism_list[i] == CKM_SHA512_RSA_PKCS_PSS
+					|| mechanism_list[i] == CKM_SHA224_RSA_PKCS_PSS
 					|| mechanism_list[i] == CKM_RSA_PKCS_OAEP) {
 				if (token.num_rsa_mechs < MAX_MECHS) {
 					insert_mechanism(token.rsa_mechs, &token.num_rsa_mechs,
