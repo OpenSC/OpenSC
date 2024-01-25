@@ -350,8 +350,9 @@ jobs:
         with:
           name: libressl-logs
           path: |
-            tests/test-suite.log
             config.log
+            tests/*.log
+            src/tests/unittests/*.log
       - uses: actions/cache@v3
         id: cache-build
         if: ${{ success() }}
