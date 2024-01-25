@@ -145,13 +145,19 @@
 	],
 	[
 		"03",
+		"MD5_RSA_PKCS",
+		"YES",
+		""
+	],
+	[
+		"03",
 		"SHA1_RSA_PKCS",
 		"YES",
 		""
 	],
 	[
 		"03",
-		"SHA224_RSA_PKCS",
+		"RIPEMD160_RSA_PKCS",
 		"YES",
 		""
 	],
@@ -175,13 +181,7 @@
 	],
 	[
 		"03",
-		"MD5_RSA_PKCS",
-		"YES",
-		""
-	],
-	[
-		"03",
-		"RIPEMD160_RSA_PKCS",
+		"SHA224_RSA_PKCS",
 		"YES",
 		""
 	]],
@@ -202,12 +202,17 @@
 	],
 	[
 		"03",
+		"MD5_RSA_PKCS",
+		"YES"
+	],
+	[
+		"03",
 		"SHA1_RSA_PKCS",
 		"YES"
 	],
 	[
 		"03",
-		"SHA224_RSA_PKCS",
+		"RIPEMD160_RSA_PKCS",
 		"YES"
 	],
 	[
@@ -227,12 +232,7 @@
 	],
 	[
 		"03",
-		"MD5_RSA_PKCS",
-		"YES"
-	],
-	[
-		"03",
-		"RIPEMD160_RSA_PKCS",
+		"SHA224_RSA_PKCS",
 		"YES"
 	]],
 	"result": "pass"
