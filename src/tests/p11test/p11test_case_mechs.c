@@ -21,7 +21,32 @@
 
 #include "p11test_case_mechs.h"
 
-void supported_mechanisms_test(void **state) {
+/*
+ * insert mechanism name with flags to the list of test mechanisms
+ * again, sort them by value to keep JSON format same as different softhsm
+ * versions return the mechanisms in different order */
+void
+insert_mechanism(test_mech_t *mech_list, size_t *mech_list_len, CK_MECHANISM_TYPE mechanism, CK_MECHANISM_INFO info)
+{
+	size_t i;
+
+	for (i = 0; i < *mech_list_len; i++) {
+		if (mechanism <= mech_list[i].mech) {
+			break;
+		}
+	}
+	if (i < *mech_list_len) {
+		memmove(&mech_list[i + 1], &mech_list[i], (*mech_list_len - i) * sizeof(test_mech_t));
+	}
+	*mech_list_len = *mech_list_len + 1;
+
+	mech_list[i].mech = mechanism;
+	mech_list[i].usage_flags = info.flags;
+}
+
+void
+supported_mechanisms_test(void **state)
+{
 	token_info_t *info = (token_info_t *) *state;
 	CK_FUNCTION_LIST_PTR function_pointer = info->function_pointer;
 
@@ -29,7 +54,6 @@ void supported_mechanisms_test(void **state) {
 	CK_ULONG mechanism_count, i;
 	CK_MECHANISM_TYPE_PTR mechanism_list;
 	CK_MECHANISM_INFO_PTR mechanism_info;
-	test_mech_t *mech = NULL;
 
 	P11TEST_START(info);
 	rv = function_pointer->C_GetMechanismList(info->slot_id, NULL_PTR,
@@ -76,9 +100,8 @@ void supported_mechanisms_test(void **state) {
 					|| mechanism_list[i] == CKM_SHA512_RSA_PKCS_PSS
 					|| mechanism_list[i] == CKM_RSA_PKCS_OAEP) {
 				if (token.num_rsa_mechs < MAX_MECHS) {
-					mech = &token.rsa_mechs[token.num_rsa_mechs++];
-					mech->mech = mechanism_list[i];
-					mech->usage_flags = mechanism_info[i].flags;
+					insert_mechanism(token.rsa_mechs, &token.num_rsa_mechs,
+							mechanism_list[i], mechanism_info[i]);
 				} else
 					P11TEST_FAIL(info, "Too many RSA mechanisms (%d)", MAX_MECHS);
 			}
@@ -94,9 +117,8 @@ void supported_mechanisms_test(void **state) {
 					|| mechanism_list[i] == CKM_ECDH1_COFACTOR_DERIVE
 					|| mechanism_list[i] == CKM_ECMQV_DERIVE) {
 				if (token.num_ec_mechs < MAX_MECHS) {
-					mech = &token.ec_mechs[token.num_ec_mechs++];
-					mech->mech = mechanism_list[i];
-					mech->usage_flags = mechanism_info[i].flags;
+					insert_mechanism(token.ec_mechs, &token.num_ec_mechs,
+							mechanism_list[i], mechanism_info[i]);
 				} else
 					P11TEST_FAIL(info, "Too many EC mechanisms (%d)", MAX_MECHS);
 			}
@@ -104,9 +126,8 @@ void supported_mechanisms_test(void **state) {
 			/* We list all known edwards EC curve mechanisms */
 			if (mechanism_list[i] == CKM_EDDSA) {
 				if (token.num_ed_mechs < MAX_MECHS) {
-					mech = &token.ed_mechs[token.num_ed_mechs++];
-					mech->mech = mechanism_list[i];
-					mech->usage_flags = mechanism_info[i].flags;
+					insert_mechanism(token.ed_mechs, &token.num_ed_mechs,
+							mechanism_list[i], mechanism_info[i]);
 				} else
 					P11TEST_FAIL(info, "Too many edwards EC mechanisms (%d)", MAX_MECHS);
 			}
@@ -115,9 +136,8 @@ void supported_mechanisms_test(void **state) {
 			if (mechanism_list[i] == CKM_XEDDSA
 					|| mechanism_list[i] == CKM_ECDH1_DERIVE) {
 				if (token.num_montgomery_mechs < MAX_MECHS) {
-					mech = &token.montgomery_mechs[token.num_montgomery_mechs++];
-					mech->mech = mechanism_list[i];
-					mech->usage_flags = mechanism_info[i].flags;
+					insert_mechanism(token.montgomery_mechs, &token.num_montgomery_mechs,
+							mechanism_list[i], mechanism_info[i]);
 				} else
 					P11TEST_FAIL(info, "Too many montgomery EC mechanisms (%d)", MAX_MECHS);
 			}
@@ -145,18 +165,16 @@ void supported_mechanisms_test(void **state) {
 			    mechanism_list[i] == CKM_AES_XCBC_MAC ||
 			    mechanism_list[i] == CKM_AES_XCBC_MAC_96) {
 				if (token.num_aes_mechs < MAX_MECHS) {
-					mech = &token.aes_mechs[token.num_aes_mechs++];
-					mech->mech = mechanism_list[i];
-					mech->usage_flags = mechanism_info[i].flags;
+					insert_mechanism(token.aes_mechs, &token.num_aes_mechs,
+							mechanism_list[i], mechanism_info[i]);
 				} else
 					P11TEST_FAIL(info, "Too many AES mechanisms (%d)", MAX_MECHS);
 			}
 
 			if ((mechanism_info[i].flags & CKF_GENERATE_KEY_PAIR) != 0) {
 				if (token.num_keygen_mechs < MAX_MECHS) {
-					mech = &token.keygen_mechs[token.num_keygen_mechs++];
-					mech->mech = mechanism_list[i];
-					mech->usage_flags = mechanism_info[i].flags;
+					insert_mechanism(token.keygen_mechs, &token.num_keygen_mechs,
+							mechanism_list[i], mechanism_info[i]);
 				} else
 					P11TEST_FAIL(info, "Too many KEYGEN mechanisms (%d)", MAX_MECHS);
 			}
