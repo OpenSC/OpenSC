@@ -694,6 +694,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		if (r != SC_SUCCESS)
 			LOG_FUNC_RETURN(card->ctx, r);
 
+		/* We can not read all the objects, as some need the PIN! */
 		if (objects[i].auth_id)
 			sc_pkcs15_format_id(objects[i].auth_id, &obj_obj.auth_id);
 
@@ -705,21 +706,6 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 
 		if (r < 0)
 			LOG_FUNC_RETURN(card->ctx, r);
-/* TODO
- * PIV key 9C requires the pin verify be done just before any
- * crypto operation using the key.
- *
- * Nss 3.12.7 does not check the CKA_ALWAYS_AUTHENTICATE attribute of a key
- * and will do a C_FindObjects with only CKA_VALUE looking for a certificate
- * it had found earlier after c_Login. The template does not add CKA_TYPE=cert.
- * This will cause the card-piv to read all the objects and will reset
- * the security status for the 9C key.
- * Mozilla Bug 357025
- * Mozilla Bug 613507
- * on 5/16/2012, both scheduled for NSS 3.14
- *
- * We can not read all the objects, as some need the PIN!
- */
 	}
 
 	/*
