@@ -212,7 +212,9 @@ enum {
 	OPT_OBJECT_INDEX,
 	OPT_ALLOW_SW,
 	OPT_LIST_INTERFACES,
-	OPT_IV
+	OPT_IV,
+	OPT_AAD_FILE,
+	OPT_TAG_LEN
 };
 
 // clang-format off
@@ -299,7 +301,9 @@ static const struct option options[] = {
 #endif
 	{ "generate-random",	1, NULL,		OPT_GENERATE_RANDOM },
 	{ "allow-sw",		0, NULL,		OPT_ALLOW_SW },
-	{ "iv",			1, NULL,		OPT_IV },
+	{ "iv",			1, NULL,			OPT_IV },
+	{ "aad-file",		1, NULL,		OPT_AAD_FILE },
+	{ "tag-len",	1, NULL,			OPT_TAG_LEN },
 
 	{ NULL, 0, NULL, 0 }
 };
@@ -389,6 +393,8 @@ static const char *option_help[] = {
 	"Generate given amount of random data",
 	"Allow using software mechanisms (without CKF_HW)",
 	"Initialization vector",
+	"Additional authenticated data for AEAD methods",
+	"Authentication tag length in bytes (default: 16)",
 };
 
 static const char *	app_name = "pkcs11-tool"; /* for utils.c */
@@ -448,6 +454,8 @@ static int		opt_salt_len_given = 0; /* 0 - not given, 1 - given with input param
 static int		opt_always_auth = 0;
 static CK_FLAGS		opt_allow_sw = CKF_HW;
 static const char *	opt_iv = NULL;
+static const char *	opt_aad_file = NULL;
+static int		opt_tag_len = 16;
 
 static void *module = NULL;
 static CK_FUNCTION_LIST_3_0_PTR p11 = NULL;
@@ -601,6 +609,7 @@ static const char *	CKR2Str(CK_ULONG res);
 static int		p11_test(CK_SESSION_HANDLE session);
 static int test_card_detection(int);
 static CK_BYTE_PTR	get_iv(const char * iv_input, size_t *iv_size);
+static CK_BYTE_PTR	get_aad(const char *aad_file_input, size_t *aad_size);
 static void		pseudo_randomize(unsigned char *data, size_t dataLen);
 static CK_SESSION_HANDLE test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
 static void		test_ec(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
@@ -1149,6 +1158,12 @@ int main(int argc, char * argv[])
 			break;
 		case OPT_IV:
 			opt_iv = optarg;
+			break;
+		case OPT_AAD_FILE:
+			opt_aad_file = optarg;
+			break;
+		case OPT_TAG_LEN:
+			opt_tag_len = strtoul(optarg, NULL, 0);
 			break;
 		default:
 			util_print_usage_and_die(app_name, options, option_help, NULL);
@@ -2509,6 +2524,7 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 {
 	unsigned char	in_buffer[1024], out_buffer[1024];
 	CK_MECHANISM	mech;
+	CK_GCM_PARAMS   gcm_params;
 	CK_RV		rv;
 	CK_RSA_PKCS_OAEP_PARAMS oaep_params;
 	CK_ULONG	in_len, out_len;
@@ -2516,6 +2532,15 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	int		r;
 	CK_BYTE_PTR	iv = NULL;
 	size_t		iv_size = 0;
+	CK_BYTE_PTR aad = NULL;
+	size_t      aad_size = 0;
+
+	// AEAD ciphers such as AES-GCM don't return decrypted data until the entire
+	// ciphertext is decrypted, so we load the entire ciphertext into a buffer
+	// and decrypt it all at once.
+	int            use_aead_buffer = FALSE;
+	unsigned char* aead_in_buffer = NULL;
+	unsigned char* aead_out_buffer = NULL;
 
 	if (!opt_mechanism_used)
 		if (!find_mechanism(slot, CKF_DECRYPT|opt_allow_sw, NULL, 0, &opt_mechanism))
@@ -2581,6 +2606,24 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		mech.pParameter = iv;
 		mech.ulParameterLen = iv_size;
 		break;
+	case CKM_AES_GCM:
+		use_aead_buffer = TRUE;
+		iv_size = 16;
+		iv = get_iv(opt_iv, &iv_size);
+		gcm_params.pIv = iv;
+		gcm_params.ulIvLen = iv_size;
+		gcm_params.ulIvBits = iv_size * 8; // no one seems to know what this is for
+
+		aad_size = 0;
+		aad = get_aad(opt_aad_file, &aad_size);
+		gcm_params.pAAD = aad;
+		gcm_params.ulAADLen = aad_size;
+
+		gcm_params.ulTagBits = opt_tag_len * 8;
+
+		mech.pParameter = &gcm_params;
+		mech.ulParameterLen = sizeof(gcm_params);
+		break;
 	default:
 		util_fatal("Mechanism %s illegal or not supported\n", p11_mechanism_to_name(opt_mechanism));
 	}
@@ -2621,14 +2664,37 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			util_fatal("failed to open %s: %m", opt_output);
 	}
 
-	r = read(fd_in, in_buffer, sizeof(in_buffer));
-	in_len = r;
+	if (use_aead_buffer) {
+		in_len = lseek(fd_in, 0, SEEK_END);
+		aead_in_buffer = calloc(sizeof(CK_BYTE), in_len);
+		if (aead_in_buffer == NULL)
+			util_fatal("calloc failed: %m");
+		lseek(fd_in, 0, SEEK_SET);
+		r = read(fd_in, aead_in_buffer, in_len);
+	} else {
+		r = read(fd_in, in_buffer, sizeof(in_buffer));
+		in_len = r;
+	}
 
 	if (r < 0)
 		util_fatal("Cannot read from %s: %m", opt_input);
 
 	rv = CKR_CANCEL;
-	if (r < (int) sizeof(in_buffer)) {
+	if (use_aead_buffer) {
+		rv = p11->C_DecryptInit(session, &mech, key);
+		if (rv != CKR_OK)
+			p11_fatal("C_DecryptInit", rv);
+		if ((getCLASS(session, key) == CKO_PRIVATE_KEY) && getALWAYS_AUTHENTICATE(session, key))
+			login(session, CKU_CONTEXT_SPECIFIC);
+		out_len = sizeof(out_buffer);
+		rv = p11->C_Decrypt(session, aead_in_buffer, in_len, NULL, &out_len);
+		if (rv != CKR_OK)
+			p11_fatal("C_Decrypt", rv);
+		aead_out_buffer = calloc(sizeof(CK_BYTE), out_len);
+		if (aead_out_buffer == NULL)
+			util_fatal("calloc failed: %m");
+		rv = p11->C_Decrypt(session, aead_in_buffer, in_len, aead_out_buffer, &out_len);
+	} else if (r < (int) sizeof(in_buffer)) {
 		out_len = sizeof(out_buffer);
 		rv = p11->C_DecryptInit(session, &mech, key);
 		if (rv != CKR_OK)
@@ -2660,7 +2726,11 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			p11_fatal("C_DecryptFinal", rv);
 	}
 	if (out_len) {
-		r = write(fd_out, out_buffer, out_len);
+		if (use_aead_buffer) {
+			r = write(fd_out, aead_out_buffer, out_len);
+		} else {
+			r = write(fd_out, out_buffer, out_len);
+		}
 		if (r != (int) out_len)
 			util_fatal("Cannot write to %s: %m", opt_output);
 	}
@@ -2677,12 +2747,15 @@ static void encrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 {
 	unsigned char	in_buffer[1024], out_buffer[1024];
 	CK_MECHANISM	mech;
+	CK_GCM_PARAMS   gcm_params;
 	CK_RV		rv;
 	CK_ULONG	in_len, out_len;
 	int		fd_in, fd_out;
 	int		r;
 	CK_BYTE_PTR	iv = NULL;
 	size_t		iv_size = 0;
+	CK_BYTE_PTR	aad = NULL;
+	size_t		aad_size = 0;
 
 	if (!opt_mechanism_used)
 		if (!find_mechanism(slot, CKF_ENCRYPT | opt_allow_sw, NULL, 0, &opt_mechanism))
@@ -2703,6 +2776,23 @@ static void encrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		iv = get_iv(opt_iv, &iv_size);
 		mech.pParameter = iv;
 		mech.ulParameterLen = iv_size;
+		break;
+	case CKM_AES_GCM:
+		iv_size = 16;
+		iv = get_iv(opt_iv, &iv_size);
+		gcm_params.pIv = iv;
+		gcm_params.ulIvLen = iv_size;
+		gcm_params.ulIvBits = iv_size * 8; // no one seems to know what this is for
+
+		aad_size = 0;
+		aad = get_aad(opt_aad_file, &aad_size);
+		gcm_params.pAAD = aad;
+		gcm_params.ulAADLen = aad_size;
+
+		gcm_params.ulTagBits = opt_tag_len * 8;
+
+		mech.pParameter = &gcm_params;
+		mech.ulParameterLen = sizeof(gcm_params);
 		break;
 	default:
 		util_fatal("Mechanism %s illegal or not supported\n", p11_mechanism_to_name(opt_mechanism));
@@ -8269,6 +8359,51 @@ static CK_BYTE_PTR get_iv(const char *iv_input, size_t *iv_size)
 		fprintf(stderr, "Warning: IV string is too short, IV will be padded from the right by zeros.\n");
 
 	return iv;
+}
+static CK_BYTE_PTR get_aad(const char *aad_file_input, size_t *aad_size)
+{
+	*aad_size = 0;
+	/* no AAD filepath supplied on command line */
+	if (!aad_file_input) {
+		return NULL;
+	}
+	if (strlen(aad_file_input) == 0) {
+		fprintf(stderr, "Warning: AAD filepath empty, AAD will not be used.\n");
+		return NULL;
+	}
+
+	FILE* aad_file = fopen(aad_file_input, "rb");
+	if (!aad_file) {
+		fprintf(stderr, "Warning: Couldn't open AAD file, AAD will not be used.\n");
+		return NULL;
+	}
+
+	fseek(aad_file, 0, SEEK_END);
+	size_t size = ftell(aad_file);
+	if (size == 0) {
+		fprintf(stderr, "Warning: AAD file is empty, AAD will not be used.\n");
+		return NULL;
+	}
+	fseek(aad_file, 0, SEEK_SET);
+
+	CK_BYTE_PTR aad = calloc(sizeof(CK_BYTE), size);
+	if (!aad) {
+		fprintf(stderr, "Warning: Out of memory, AAD will not be used.\n");
+		fclose(aad_file);
+		return NULL;
+	}
+
+	size_t read = fread(aad, 1, size, aad_file);
+	fclose(aad_file);
+	if (read != size) {
+		fprintf(stderr, "Warning: Couldn't read all of the AAD file, AAD will not be used.\n");
+		free(aad);
+		return NULL;
+	}
+
+	*aad_size = size;
+
+	return aad;
 }
 
 static void pseudo_randomize(unsigned char *data, size_t dataLen)
