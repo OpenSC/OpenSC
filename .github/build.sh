@@ -4,6 +4,10 @@ set -ex -o xtrace
 
 export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig;
 
+if [ -x "/bin/sudo" ]; then
+	SUDO="sudo"
+fi
+
 if [ "$GITHUB_EVENT_NAME" == "pull_request" ]; then
 	PR_NUMBER=$(echo $GITHUB_REF | awk 'BEGIN { FS = "/" } ; { print $3 }')
 	if [ "$GITHUB_BASE_REF" == "master" ]; then
@@ -84,7 +88,7 @@ if [ "$1" == "dist" -o "$2" == "dist" ]; then
 	make dist
 fi
 
-sudo make install
+$SUDO make install
 if [ "$1" == "mingw" -o "$1" == "mingw32" ]; then
 	# pack installed files
 	wine "C:/Program Files/Inno Setup 5/ISCC.exe" win32/OpenSC.iss
