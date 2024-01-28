@@ -4905,6 +4905,7 @@ pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session, void *object, CK_
 		case CKA_MODULUS_BITS:
 		case CKA_VALUE:
 		case CKA_SPKI:
+		case CKA_PUBLIC_KEY_INFO:
 		case CKA_PUBLIC_EXPONENT:
 		case CKA_EC_PARAMS:
 		case CKA_EC_POINT:
@@ -5031,8 +5032,11 @@ pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session, void *object, CK_
 	 */
 	case CKA_VALUE:
 	case CKA_SPKI:
+	case CKA_PUBLIC_KEY_INFO:
+	
 
-		if (attr->type != CKA_SPKI && pubkey->pub_info && pubkey->pub_info->direct.raw.value && pubkey->pub_info->direct.raw.len)   {
+		if (attr->type != CKA_SPKI && attr->type != CKA_PUBLIC_KEY_INFO
+				&& pubkey->pub_info && pubkey->pub_info->direct.raw.value && pubkey->pub_info->direct.raw.len)   {
 			check_attribute_buffer(attr, pubkey->pub_info->direct.raw.len);
 			memcpy(attr->pValue, pubkey->pub_info->direct.raw.value, pubkey->pub_info->direct.raw.len);
 		}
@@ -5044,7 +5048,7 @@ pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session, void *object, CK_
 			unsigned char *value = NULL;
 			size_t len;
 
-			if (attr->type != CKA_SPKI) {
+			if (attr->type != CKA_SPKI && attr->type != CKA_PUBLIC_KEY_INFO) {
 				if (sc_pkcs15_encode_pubkey(context, pubkey->pub_data, &value, &len))
 					return sc_to_cryptoki_error(SC_ERROR_INTERNAL, "C_GetAttributeValue");
 				} else {
@@ -5067,7 +5071,8 @@ pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session, void *object, CK_
 
 			free(value);
 		}
-		else if (attr->type != CKA_SPKI && pubkey->base.p15_object && pubkey->base.p15_object->content.value && pubkey->base.p15_object->content.len)   {
+		else if (attr->type != CKA_SPKI && attr->type != CKA_PUBLIC_KEY_INFO
+				&& pubkey->base.p15_object && pubkey->base.p15_object->content.value && pubkey->base.p15_object->content.len)   {
 			check_attribute_buffer(attr, pubkey->base.p15_object->content.len);
 			memcpy(attr->pValue, pubkey->base.p15_object->content.value, pubkey->base.p15_object->content.len);
 		}
