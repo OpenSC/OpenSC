@@ -597,8 +597,12 @@ static int cwa_prepare_external_auth(sc_card_t * card,
 
 	/* compose buffer data */
 	buf3[0] = 0x6A;		/* iso padding */
-	RAND_bytes(buf3 + 1, 74);	/* pRND */
-	RAND_bytes(sm->ifd.k, 32);	/* Kifd */
+	if (RAND_bytes(buf3 + 1, 74) != 1 ||		  /* pRND */
+			RAND_bytes(sm->ifd.k, 32) != 1) { /* Kifd */
+		msg = "prepare external auth: random data error";
+		res = SC_ERROR_INTERNAL;
+		goto prepare_external_auth_end;
+	}
 	memcpy(buf3 + 1 + 74, sm->ifd.k, 32);	/* copy Kifd into buffer */
 	/* prepare data to be hashed */
 	memcpy(sha_buf, buf3 + 1, 74);	/* copy pRND into sha_buf */
@@ -1344,7 +1348,12 @@ int cwa_create_secure_channel(sc_card_t * card,
 		msg = "Cannot get ifd serial number from provider";
 		goto csc_end;
 	}
-	RAND_bytes(sm->ifd.rnd, 8);	/* generate 8 random bytes */
+	/* generate 8 random bytes */
+	if (RAND_bytes(sm->ifd.rnd, 8) != 1) {
+		msg = "Cannot generate random data";
+		res = SC_ERROR_INTERNAL;
+		goto csc_end;
+	}
 	memcpy(rndbuf, sm->ifd.rnd, 8);	/* insert RND.IFD into rndbuf */
 	memcpy(rndbuf + 8, sm->ifd.sn, 8);	/* insert SN.IFD into rndbuf */
 	res = cwa_internal_auth(card, sig, 128, rndbuf, 16);
