@@ -5219,15 +5219,17 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 	CK_BBOOL _true = TRUE;
 	CK_BBOOL _false = FALSE;
 	CK_OBJECT_HANDLE newkey = 0;
+//clang-format off
 	CK_ATTRIBUTE newkey_template[20] = {
-		{CKA_TOKEN, &_false, sizeof(_false)}, /* session only object */
-		{CKA_CLASS, &newkey_class, sizeof(newkey_class)},
-		{CKA_KEY_TYPE, &newkey_type, sizeof(newkey_type)},
-		{CKA_SENSITIVE, &_false, sizeof(_false)},
-		{CKA_EXTRACTABLE, &_true, sizeof(_true)},
-		{CKA_WRAP, &_true, sizeof(_true)},
-		{CKA_UNWRAP, &_true, sizeof(_true)}
-	};
+			{CKA_TOKEN,	&_false,	sizeof(_false)	    }, /* session only object */
+			{CKA_CLASS,	&newkey_class,	sizeof(newkey_class)},
+			{CKA_KEY_TYPE,  &newkey_type,	sizeof(newkey_type) },
+			{CKA_SENSITIVE,	&_false,	sizeof(_false)      },
+			{CKA_EXTRACTABLE, &_true,	sizeof(_true)       },
+			{CKA_WRAP,	&_true,		sizeof(_true)	    },
+			{CKA_UNWRAP,	&_true,		sizeof(_true)	    },
+	   };
+//clang-format on
 	int n_attrs = 7;
 	CK_ECDH1_DERIVE_PARAMS ecdh_parms;
 	CK_RV rv;
@@ -5271,29 +5273,27 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 
 	key_id = EVP_PKEY_id(pkey);
 
-	switch(key_id) {
-		case EVP_PKEY_EC: /* CKK_EC*/
+	switch (key_id) {
+	case EVP_PKEY_EC: /* CKK_EC*/
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
-			eckey = EVP_PKEY_get0_EC_KEY(pkey);
-			ecpoint = EC_KEY_get0_public_key(eckey);
-			ecgroup = EC_KEY_get0_group(eckey);
+		eckey = EVP_PKEY_get0_EC_KEY(pkey);
+		ecpoint = EC_KEY_get0_public_key(eckey);
+		ecgroup = EC_KEY_get0_group(eckey);
 
-			if (!ecpoint || !ecgroup)
-				util_fatal("Failed to parse peer EC key from %s", opt_input);
+		if (!ecpoint || !ecgroup)
+			util_fatal("Failed to parse peer EC key from %s", opt_input);
 #else
-			if (EVP_PKEY_get_group_name(pkey, name, sizeof(name), &len) != 1
-					|| (nid = OBJ_txt2nid(name)) == NID_undef
-					|| (ecgroup = EC_GROUP_new_by_curve_name(nid)) == NULL)
-				util_fatal("Failed to parse peer EC key from %s", opt_input);
+		if (EVP_PKEY_get_group_name(pkey, name, sizeof(name), &len) != 1 || (nid = OBJ_txt2nid(name)) == NID_undef || (ecgroup = EC_GROUP_new_by_curve_name(nid)) == NULL)
+			util_fatal("Failed to parse peer EC key from %s", opt_input);
 #endif
 
-			/* both eckeys must be same curve */
-			key_len = BYTES4BITS(EC_GROUP_get_degree(ecgroup));
-			FILL_ATTR(newkey_template[n_attrs], CKA_VALUE_LEN, &key_len, sizeof(key_len));
-			n_attrs++;
-			break;
-		}
+		/* both eckeys must be same curve */
+		key_len = BYTES4BITS(EC_GROUP_get_degree(ecgroup));
+		FILL_ATTR(newkey_template[n_attrs], CKA_VALUE_LEN, &key_len, sizeof(key_len));
+		n_attrs++;
+		break;
+	}
 
 	if (opt_allowed_mechanisms_len > 0) {
 		FILL_ATTR(newkey_template[n_attrs],
@@ -5303,28 +5303,28 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 	}
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
-	switch(key_id) {
-		case EVP_PKEY_EC:
-			buf_size = EC_POINT_point2oct(ecgroup, ecpoint, POINT_CONVERSION_UNCOMPRESSED, NULL,	    0, NULL);
-			buf = (unsigned char *)malloc(buf_size);
-			if (buf == NULL)
-				util_fatal("malloc() failure\n");
-			buf_size = EC_POINT_point2oct(ecgroup, ecpoint, POINT_CONVERSION_UNCOMPRESSED, buf, buf_size, NULL);
-			break;
-		case EVP_PKEY_X25519:
+	switch (key_id) {
+	case EVP_PKEY_EC:
+		buf_size = EC_POINT_point2oct(ecgroup, ecpoint, POINT_CONVERSION_UNCOMPRESSED, NULL, 0, NULL);
+		buf = (unsigned char *)malloc(buf_size);
+		if (buf == NULL)
+			util_fatal("malloc() failure\n");
+		buf_size = EC_POINT_point2oct(ecgroup, ecpoint, POINT_CONVERSION_UNCOMPRESSED, buf, buf_size, NULL);
+		break;
+	case EVP_PKEY_X25519:
 #if defined(EVP_PKEY_X448)
-		case EVP_PKEY_X448:
+	case EVP_PKEY_X448:
 #endif
-			EVP_PKEY_get_raw_public_key(pkey, NULL, &buf_size);
-			if (buf_size == 0)
-				util_fatal("Unable to get of peer key\n");
-			buf = (unsigned char *)malloc(buf_size);
-			if (buf == NULL)
-				util_fatal("malloc() failure\n");
-			EVP_PKEY_get_raw_public_key(pkey, buf, &buf_size);
-			break;
-		default:
-			util_fatal("Unknown EVP_PKEY_id\n");
+		EVP_PKEY_get_raw_public_key(pkey, NULL, &buf_size);
+		if (buf_size == 0)
+			util_fatal("Unable to get of peer key\n");
+		buf = (unsigned char *)malloc(buf_size);
+		if (buf == NULL)
+			util_fatal("malloc() failure\n");
+		EVP_PKEY_get_raw_public_key(pkey, buf, &buf_size);
+		break;
+	default:
+		util_fatal("Unknown EVP_PKEY_id\n");
 	}
 #else
 	EC_GROUP_free(ecgroup);
@@ -5339,21 +5339,21 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 #endif
 
 	switch (key_id) {
-		case EVP_PKEY_EC: /* CKK_EC*/
-			if (mech_mech != CKM_ECDH1_DERIVE && mech_mech != CKM_ECDH1_COFACTOR_DERIVE)
-				util_fatal("Peer key %s not usable with %s", "CKK_EC", p11_mechanism_to_name(mech_mech));
-			break;
-		case EVP_PKEY_X25519:  /* "CKK_EC_MONTGOMERY */
+	case EVP_PKEY_EC: /* CKK_EC*/
+		if (mech_mech != CKM_ECDH1_DERIVE && mech_mech != CKM_ECDH1_COFACTOR_DERIVE)
+			util_fatal("Peer key %s not usable with %s", "CKK_EC", p11_mechanism_to_name(mech_mech));
+		break;
+	case EVP_PKEY_X25519: /* "CKK_EC_MONTGOMERY */
 #if defined(EVP_PKEY_X448)
-		case EVP_PKEY_X448:
+	case EVP_PKEY_X448:
 #endif
-			if (mech_mech != CKM_ECDH1_DERIVE)
-				util_fatal("Peer key %s not usable with %s", "CKK_EC_MONTGOMERY", p11_mechanism_to_name(mech_mech));
-			break;
-		default:
-			util_fatal("Peer key not usable with derive or unknown %i", key_id);
-			break;
-		}
+		if (mech_mech != CKM_ECDH1_DERIVE)
+			util_fatal("Peer key %s not usable with %s", "CKK_EC_MONTGOMERY", p11_mechanism_to_name(mech_mech));
+		break;
+	default:
+		util_fatal("Peer key not usable with derive or unknown %i", key_id);
+		break;
+	}
 
 	if (opt_derive_pass_der) {
 		octet = ASN1_OCTET_STRING_new();
@@ -5550,10 +5550,10 @@ derive_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
 		if (!find_mechanism(slot, CKF_DERIVE|opt_allow_sw, NULL, 0, &opt_mechanism))
 			util_fatal("Derive mechanism not supported");
 
-	switch(key_type) {
-		case CKK_EC:
-		case CKK_EC_MONTGOMERY:
-			derived_key = derive_ec_key(session, key, opt_mechanism);
+	switch (key_type) {
+	case CKK_EC:
+	case CKK_EC_MONTGOMERY:
+		derived_key = derive_ec_key(session, key, opt_mechanism);
 		break;
 	case CKM_HKDF_DERIVE:
 		derived_key = derive_hkdf(session, key);
@@ -5683,39 +5683,50 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 		}
 		if (pub) {
 			unsigned char *bytes = NULL;
-			unsigned long ksize;
+			unsigned long ksize = 0;
 			unsigned int n;
+			unsigned long body_len = 0;
 
-			bytes = getEC_POINT(sess, obj, &size);
-			if (key_type == CKK_EC) {
+			bytes = getEC_POINT(sess, obj, &ksize);
+			/*
+			 * simple parse of DER BIT STRING 0x03 or OCTET STRING 0x04
+			 * good to 65K bytes
+			 */
+			if (ksize > 3 && (bytes[0] == 0x03 || bytes[0] == 0x04)) {
+				if (bytes[1] <= 127 && ksize == (unsigned long)(bytes[1] + 2)) {
+					body_len = ksize - 2;
+				} else if (bytes[1] == 0x81 && size == ((unsigned long)bytes[2] + 3)) {
+					body_len = ksize - 3;
+				} else if (bytes[1] == 0x82 && size == ((unsigned long)(bytes[2] << 8) + (unsigned long)bytes[3] + 4)) {
+					body_len = ksize - 4;
+				}
+			}
+			/* With BIT STRING remove unused bits in last byte indicator */
+			if (body_len > 0 && bytes[0] == 0x03)
+				body_len--;
+
+			if (key_type == CKK_EC && body_len > 0) {
 				/*
-				* (We only support uncompressed for now)
-				* Uncompressed EC_POINT is DER OCTET STRING of "04||x||y"
-				* So a "256" bit key has x and y of 32 bytes each
-				* something like: "04 41 04||x||y"
-				* Do simple size calculation based on DER encoding
-				*/
-				if ((size - 2) <= 127)
-					ksize = (size - 3) * 4;
-				else if ((size - 3) <= 255)
-					ksize = (size - 4) * 4;
-				else
-					ksize = (size - 5) * 4;
-			} else {
-				/* 
-				 * EDDSA and XEDDSA in PKCS11 are in bit strings.
-				 *  need to drop '03' tag, len (in bytes) and 00 bits in last byte. 
+				 * (We only support uncompressed for now)
+				 * Uncompressed EC_POINT is DER OCTET STRING
+				 * or DER BIT STRING "04||x||y"
+				 * So a "256" bit key has x and y of 32 bytes each
+				 * something like: "03 42 00 04|x|y" or  "04 41 04||x||y"
+				 * Do simple size calculation based on DER encoding
 				 */
-				 if ((size - 3) < 127)
-					ksize = (size - 3) * 8;
-				 else if ((size - 4) <= 255)
-					ksize = (size - 4) * 8;
-				else 
-					ksize = (size - 5) * 8;
-
+				ksize = (body_len - 1) * 4;
+			} else if (body_len > 0) {
+				/*
+				 * EDDSA and XEDDSA in PKCS11 and only one coordinate
+				 */
+				ksize = (body_len) * 8;
 			}
 
-			printf("  EC_POINT %lu bits\n", ksize);
+			if (ksize)
+				printf("  EC_POINT %lu bits\n", ksize);
+			else
+				printf("  EC_POINT size unknown");
+
 			if (bytes) {
 				if ((CK_LONG)size > 0) { /* Will print the point here */
 					printf("  EC_POINT:   ");
