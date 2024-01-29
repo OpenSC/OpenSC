@@ -5193,8 +5193,6 @@ piv_process_history(sc_card_t *card)
 			r = piv_cache_internal_data(card, enumtag);
 			sc_log(card->ctx, "got internal r=%d",r);
 
-			certobj = NULL;
-
 			sc_log(card->ctx,
 			       "Added from off card file #%d %p:%"SC_FORMAT_LEN_SIZE_T"u 0x%02X",
 			       enumtag,
