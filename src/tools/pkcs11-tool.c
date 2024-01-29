@@ -5188,37 +5188,51 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 			unsigned char *bytes = NULL;
 			unsigned long ksize;
 			unsigned int n;
+			int body_len = 0;
 
 			bytes = getEC_POINT(sess, obj, &size);
-			if (key_type == CKK_EC) {
+			/*
+			 * simple parse of DER BIT STRING 0x03 or OCTET STRING 0x04
+			 * good to 65K bytes  
+			 */
+			if (size > 3 && (bytes[0] == 0x03 || bytes[0] == 0x04)) {
+				if (bytes[1] <= 127 && size == bytes[1] + 2) {
+					body_len = size - 2;
+				} else
+				if (bytes[1] = 0x81 && size == bytes[2] + 3) {
+					body_len = size - 3;
+				} else
+				if (bytes[1] = 0x82 && size == bytes[2] << 8 + bytes[3] + 4) {
+					body_len = size - 4;
+				}
+			}
+			/* With BIT STRING remove unused bits in last byte indicator */
+			if (body_len > 0 && bytes[0] == 0x03)
+				body_len--;
+
+			if (key_type == CKK_EC && body_len > 0) {
 				/*
 				* (We only support uncompressed for now)
-				* Uncompressed EC_POINT is DER OCTET STRING of "04||x||y"
+				* Uncompressed EC_POINT is DER OCTET STRING 
+				* or DER BIT STRING "04||x||y"
 				* So a "256" bit key has x and y of 32 bytes each
-				* something like: "04 41 04||x||y"
+				* something like: "03 42 00 04|x|y" or  "04 41 04||x||y"
 				* Do simple size calculation based on DER encoding
 				*/
-				if ((size - 2) <= 127)
-					ksize = (size - 3) * 4;
-				else if ((size - 3) <= 255)
-					ksize = (size - 4) * 4;
-				else
-					ksize = (size - 5) * 4;
-			} else {
+				ksize = (body_len - 1) * 4;
+			} else
+			if (body_len > 0) {
 				/* 
-				 * EDDSA and XEDDSA in PKCS11 are in bit strings.
-				 *  need to drop '03' tag, len (in bytes) and 00 bits in last byte. 
+				 * EDDSA and XEDDSA in PKCS11 and only one coordinate
 				 */
-				 if ((size - 3) < 127)
-					ksize = (size - 3) * 8;
-				 else if ((size - 4) <= 255)
-					ksize = (size - 4) * 8;
-				else 
-					ksize = (size - 5) * 8;
-
+				ksize = (body_len) * 8;
 			}
 
-			printf("  EC_POINT %lu bits\n", ksize);
+			if (ksize)
+				printf("  EC_POINT %lu bits\n", ksize);
+			else
+				printf("  EC_POINT size unknown");
+
 			if (bytes) {
 				if ((CK_LONG)size > 0) { /* Will print the point here */
 					printf("  EC_POINT:   ");
