@@ -984,7 +984,6 @@ static int cwa_verify_internal_auth(sc_card_t * card,
 	}
 
 	EVP_PKEY_CTX_free(pctx);
-	pctx = NULL;
 
 	res = cwa_compare_signature(buf3, len3, ifdbuf);
 	if (res == SC_SUCCESS)
