@@ -481,6 +481,15 @@ static int idprime_process_index(sc_card_t *card, idprime_private_data_t *priv, 
 			memcpy(priv->tinfo_df, new_object.df, sizeof(priv->tinfo_df));
 			priv->tinfo_present = 1;
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Found p11/tinfo object");
+		} else if ((memcmp(&start[4], "cmapfile", 8) == 0) && (memcmp(&start[12], "mscp", 4) == 0)) {
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Found mscp/cmapfile object %s",
+					(start[0] == 02 && start[1] == 04 ? "(already processed)" : "(in non-standard path!)"));
+		} else if (memcmp(&start[4], "cardapps", 8) == 0) {
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Found cardapps object");
+		} else if (memcmp(&start[4], "cardid", 6) == 0) {
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Found cardid object");
+		} else if (memcmp(&start[4], "cardcf", 6) == 0) {
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Found cardcf object");
 		}
 	}
 
