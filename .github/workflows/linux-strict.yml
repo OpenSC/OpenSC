@@ -74,7 +74,7 @@ jobs:
         uses: actions/upload-artifact@v3
         if: failure()
         with:
-          name: ${{ matrix.name }}-strict-test-logs
+          name: ${{ matrix.name }}-%{{ matrix.compiler }}-strict-test-logs
           path: |
             config.log
             tests/*.log
