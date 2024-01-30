@@ -84,7 +84,7 @@ deb http://ddebs.ubuntu.com $(lsb_release -cs)-proposed main restricted universe
 	if [ -f "/usr/lib/x86_64-linux-gnu/libssl.so.3" ]; then
 		DEP="libssl3-dbgsym"
 	fi
-	$SUDO apt-get install -y openssl-dbgsym "$DEP"
+	$SUDO apt-get install -y openssl-dbgsym "$DEP" softhsm2-dbgsym
 fi
 
 if [ "$1" == "mingw" -o "$1" == "mingw32" ]; then
