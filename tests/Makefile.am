@@ -12,8 +12,8 @@ AM_TESTS_ENVIRONMENT = \
 
 @VALGRIND_CHECK_RULES@
 if VALGRIND_ENABLED
-#VALGRIND_SUPPRESSIONS_FILES = opensc.supp
-#EXTRA_DIST = opensc.supp
+VALGRIND_SUPPRESSIONS_FILES = $(srcdir)/opensc.supp
+EXTRA_DIST += opensc.supp
 VALGRIND_FLAGS = --num-callers=30 -q --keep-debuginfo=yes --gen-suppressions=all
 # Do not run the bash scripts under valgrind
 LOG_COMPILER = $(LOG_VALGRIND)
