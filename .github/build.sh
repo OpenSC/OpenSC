@@ -11,17 +11,20 @@ fi
 if [ "$GITHUB_EVENT_NAME" == "pull_request" ]; then
 	PR_NUMBER=$(echo $GITHUB_REF | awk 'BEGIN { FS = "/" } ; { print $3 }')
 	if [ "$GITHUB_BASE_REF" == "master" ]; then
-		./bootstrap.ci -s "-pr$PR_NUMBER"
+		SUFFIX="-pr$PR_NUMBER"
 	else
-		./bootstrap.ci -s "$GITHUB_BASE_REF-pr$PR_NUMBER"
+		SUFFIX="$GITHUB_BASE_REF-pr$PR_NUMBER"
 	fi
 else
 	BRANCH=$(echo $GITHUB_REF | awk 'BEGIN { FS = "/" } ; { print $3 }')
-	if [ "$BRANCH" == "master" ]; then
-		./bootstrap
-	else
-		./bootstrap.ci -s "$BRANCH"
+	if [ "$BRANCH" != "master" ]; then
+		SUFFIX="$BRANCH"
 	fi
+fi
+if [ -n "$SUFFIX" ]; then
+	./bootstrap.ci -s "$SUFFIX"
+else
+	./bootstrap
 fi
 
 if [ "$RUNNER_OS" == "macOS" ]; then
@@ -66,25 +69,36 @@ else
 	make -j 4 V=1
 	# 32b build has some issues to find openssl correctly
 	if [ "$1" == "valgrind" ]; then
+		set +e
 		make check-valgrind-memcheck
 		RV=$?
-		source .github/dump-logs.sh
 		if [ $RV -ne 0 ]; then
+			./.github/dump-logs.sh
 			exit $RV
 		fi
+		set -e
 	elif [ "$1" != "ix86" ]; then
+		set +e
 		make check
 		RV=$?
-		source .github/dump-logs.sh
 		if [ $RV -ne 0 ]; then
+			./.github/dump-logs.sh
 			exit $RV
 		fi
+		set -e
 	fi
 fi
 
 # this is broken in old ubuntu
 if [ "$1" == "dist" -o "$2" == "dist" ]; then
+	set +e
 	make distcheck
+	RV=$?
+	if [ $RV -ne 0 ]; then
+		./.github/dump-logs.sh $SUFFIX
+		exit $RV
+	fi
+	set -e
 	make dist
 fi
 
