@@ -259,15 +259,13 @@ static int pcsc_internal_transmit(sc_reader_t *reader,
 		rv = priv->gpriv->SCardTransmit(card, &sSendPci, sendbuf, dwSendLength,
 				   &sRecvPci, recvbuf, &dwRecvLength);
 	} else {
-		if (priv->gpriv->SCardControlOLD != NULL) {
+		if (!priv->gpriv->SCardControlOLD) {
 			rv = priv->gpriv->SCardControlOLD(card, sendbuf, dwSendLength,
 				  recvbuf, &dwRecvLength);
 		}
-		else {
-			if (priv->gpriv->SCardControl != NULL) {
-				rv = priv->gpriv->SCardControl(card, (DWORD) control, sendbuf, dwSendLength,
-						recvbuf, dwRecvLength, &dwRecvLength);
-			}
+		else if (!priv->gpriv->SCardControl) {
+			rv = priv->gpriv->SCardControl(card, (DWORD) control, sendbuf, dwSendLength,
+					recvbuf, dwRecvLength, &dwRecvLength);
 		}
 	}
 
@@ -1139,7 +1137,7 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 	sc_context_t *ctx = reader->ctx;
 	struct pcsc_global_private_data *gpriv = (struct pcsc_global_private_data *) ctx->reader_drv_data;
 	struct pcsc_private_data *priv = reader->drv_data;
-	DWORD rcount, i;
+	DWORD rcount = 0, i;
 	u8 buf[256];
 	LONG rv;
 	const char *log_disabled = "but it's disabled in configuration file";
@@ -1149,7 +1147,7 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 
 	sc_log(ctx, "Requesting reader features ... ");
 
-	if (gpriv->SCardControl != NULL) {
+	if (gpriv->SCardControl) {
 		rv = gpriv->SCardControl(card_handle, CM_IOCTL_GET_FEATURE_REQUEST, NULL, 0, buf, sizeof(buf), &rcount);
 		if (rv != SCARD_S_SUCCESS) {
 			PCSC_TRACE(reader, "SCardControl failed", rv);
