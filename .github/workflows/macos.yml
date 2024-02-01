@@ -41,6 +41,24 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           PASS_SECRETS_TAR_ENC: ${{ secrets.PASS_SECRETS_TAR_ENC }}
 
+  build-m1:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v3
+      - run: .github/setup-macos.sh
+        env:
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          PASS_SECRETS_TAR_ENC: ${{ secrets.PASS_SECRETS_TAR_ENC }}
+      - run: .github/build.sh
+        env:
+          CODE_SIGN_IDENTITY: ${{ secrets.CODE_SIGN_IDENTITY }}
+          DEVELOPMENT_TEAM: ${{ secrets.DEVELOPMENT_TEAM }}
+          INSTALLER_SIGN_IDENTITY: ${{ secrets.INSTALLER_SIGN_IDENTITY }}
+      - run: .github/cleanup-macos.sh
+        env:
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          PASS_SECRETS_TAR_ENC: ${{ secrets.PASS_SECRETS_TAR_ENC }}
+
   push-artifacts:
     runs-on: macos-12
     needs: [build]
