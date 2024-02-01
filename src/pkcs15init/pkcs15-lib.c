@@ -923,11 +923,13 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 	}
 
 	if (args->label) {
-		if (p15card->tokeninfo->label)
-			free(p15card->tokeninfo->label);
+		free(p15card->tokeninfo->label);
 		p15card->tokeninfo->label = strdup(args->label);
 	}
-	app->label = strdup(p15card->tokeninfo->label);
+	if (p15card->tokeninfo->label)
+		app->label = strdup(p15card->tokeninfo->label);
+	else
+		app->label = strdup("Token");
 
 	/* See if we've set an SO PIN */
 	r = sc_pkcs15init_add_object(p15card, profile, SC_PKCS15_AODF, pin_obj);
