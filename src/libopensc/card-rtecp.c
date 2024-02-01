@@ -107,6 +107,7 @@ static int rtecp_init(sc_card_t *card)
 	_sc_card_add_rsa_alg(card, 1536, flags, 0);
 	_sc_card_add_rsa_alg(card, 1792, flags, 0);
 	_sc_card_add_rsa_alg(card, 2048, flags, 0);
+	_sc_card_add_rsa_alg(card, 4096, flags, 0);
 
 	memset(&info, 0, sizeof(info));
 	info.algorithm = SC_ALGORITHM_GOSTR3410;
@@ -698,10 +699,12 @@ static int rtecp_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 static int rtecp_card_ctl(sc_card_t *card, unsigned long request, void *data)
 {
 	sc_apdu_t apdu;
-	u8 buf[SC_MAX_APDU_BUFFER_SIZE];
+	u8 buf[512];
 	sc_rtecp_genkey_data_t *genkey_data = data;
 	sc_serial_number_t *serial = data;
 	int r;
+
+	const unsigned char rsa_prop[] = {0xA6, 0x06, 0x94, 0x04, 0x01, 0x00, 0x01, 0x00};
 
 	if (!card || !card->ctx)
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -733,6 +736,12 @@ static int rtecp_card_ctl(sc_card_t *card, unsigned long request, void *data)
 		apdu.resp = buf;
 		apdu.resplen = sizeof(buf);
 		apdu.le = 256;
+		if (genkey_data->type == SC_ALGORITHM_RSA) {
+			apdu.cse = SC_APDU_CASE_4_SHORT;
+			apdu.data = rsa_prop;
+			apdu.datalen = sizeof(rsa_prop);
+			apdu.lc = sizeof(rsa_prop);
+		}
 		break;
 	case SC_CARDCTL_LIFECYCLE_SET:
 		sc_log(card->ctx,  "%s\n",
