@@ -7,7 +7,7 @@
 # You need to install the following packages from homebrew or macports or fink:
 # autoconf automake libtool pkg-config help2man gengetopt
 
-export MACOSX_DEPLOYMENT_TARGET="10.10"
+export MACOSX_DEPLOYMENT_TARGET="10.13"
 FORCE_OPENSSL_BUILD="1"
 
 set -ex
