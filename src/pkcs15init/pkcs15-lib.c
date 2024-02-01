@@ -923,8 +923,7 @@ sc_pkcs15init_add_app(struct sc_card *card, struct sc_profile *profile,
 	}
 
 	if (args->label) {
-		if (p15card->tokeninfo->label)
-			free(p15card->tokeninfo->label);
+		free(p15card->tokeninfo->label);
 		p15card->tokeninfo->label = strdup(args->label);
 	}
 	if (p15card->tokeninfo->label)
