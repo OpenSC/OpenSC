@@ -419,6 +419,7 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 			}
 			mech->result_flags |= FLAGS_SIGN_OPENSSL;
 			debug_print(" [  OK %s ] Signature is valid.", o->id_str);
+			EVP_PKEY_CTX_free(ctx);
 			return 1;
 			break;
 		case CKM_SHA1_RSA_PKCS:
@@ -465,6 +466,7 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 		}
 		mech->result_flags |= FLAGS_SIGN_OPENSSL;
 		debug_print(" [  OK %s ] Signature is valid.", o->id_str);
+		EVP_MD_CTX_free(mdctx);
 		return 1;
 	} else if (o->type == EVP_PKEY_EC) {
 		int nlen;
@@ -475,6 +477,8 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 
 		if (!sig || !ctx) {
 			fprintf(stderr, "Verification failed");
+			EVP_PKEY_CTX_free(ctx);
+			ECDSA_SIG_free(sig);
 			return -1;
 		}
 		nlen = (int)sign_length / 2;
@@ -505,17 +509,22 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 			break;
 		default:
 			debug_print(" [SKIP %s ] Skip verify of unknown mechanism", o->id_str);
+			EVP_PKEY_CTX_free(ctx);
+			ECDSA_SIG_free(sig);
 			return 0;
 		}
 		int sig_asn1_len = 0;
 		unsigned char *sig_asn1 = NULL;
 		sig_asn1_len = i2d_ECDSA_SIG(sig, &sig_asn1);
+		ECDSA_SIG_free(sig);
 
 		if (EVP_PKEY_verify_init(ctx) != 1) {
-        	fprintf(stderr, "EVP_PKEY_verify_init\n");
-    	}
+			fprintf(stderr, "EVP_PKEY_verify_init\n");
+		}
 
 		rv = EVP_PKEY_verify(ctx, sig_asn1, sig_asn1_len, cmp_message, cmp_message_length);
+		OPENSSL_free(sig_asn1);
+		EVP_PKEY_CTX_free(ctx);
 		if (rv == 1) {
 			debug_print(" [  OK %s ] EC Signature of length %lu is valid.",
 				o->id_str, message_length);
