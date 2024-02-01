@@ -119,7 +119,7 @@ build_script:
 
 deploy:
 - provider: Webhook
-  url: https://app.signpath.io/API/v1/8d2463fe-39bd-4a41-bb72-f008b4b1fe17/Integrations/AppVeyor?ProjectSlug=OpenSC&SigningPolicySlug=test-signing&ArtifactConfigurationSlug=initial
+  url: https://app.signpath.io/API/v1/8d2463fe-39bd-4a41-bb72-f008b4b1fe17/Integrations/AppVeyor?ProjectSlug=OpenSC&SigningPolicySlug=release-signing&ArtifactConfigurationSlug=initial
   authorization:
      secure: 73Qvk9MbD7M7ZcoO6NnSH7zDA+9wSKZqNc602b1UeA5v6GsDyEvpCOlzJ9VvBcUuePTKBRsZ+uGQYKsddABgQA==
 
