@@ -2200,16 +2200,10 @@ epass2003_set_security_env(struct sc_card *card, const sc_security_env_t * env, 
 			sbuf[2] = 0x92;
 			exdata->ecAlgFlags = SC_ALGORITHM_ECDSA_HASH_SHA256;
 		}
-		else if (env->algorithm_flags & SC_ALGORITHM_ECDSA_HASH_NONE)
+		else
 		{
 			sbuf[2] = 0x92;
 			exdata->ecAlgFlags = SC_ALGORITHM_ECDSA_HASH_NONE;
-		}
-		else
-		{
-			r = SC_ERROR_NOT_SUPPORTED;
-			sc_log(card->ctx, "%0lx Alg Not Support! ", env->algorithm_flags);
-			goto err;
 		}
 	}
 	else if(env->algorithm == SC_ALGORITHM_RSA)
