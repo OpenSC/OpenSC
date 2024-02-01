@@ -238,7 +238,7 @@ static int pcsc_internal_transmit(sc_reader_t *reader,
 	struct pcsc_private_data *priv = reader->drv_data;
 	SCARD_IO_REQUEST sSendPci, sRecvPci;
 	DWORD dwSendLength, dwRecvLength;
-	LONG rv;
+	LONG rv = SCARD_E_INVALID_VALUE;
 	SCARDHANDLE card;
 
 	LOG_FUNC_CALLED(reader->ctx);
@@ -259,13 +259,13 @@ static int pcsc_internal_transmit(sc_reader_t *reader,
 		rv = priv->gpriv->SCardTransmit(card, &sSendPci, sendbuf, dwSendLength,
 				   &sRecvPci, recvbuf, &dwRecvLength);
 	} else {
-		if (priv->gpriv->SCardControlOLD != NULL) {
+		if (!priv->gpriv->SCardControlOLD) {
 			rv = priv->gpriv->SCardControlOLD(card, sendbuf, dwSendLength,
 				  recvbuf, &dwRecvLength);
 		}
-		else {
-			rv = priv->gpriv->SCardControl(card, (DWORD) control, sendbuf, dwSendLength,
-				  recvbuf, dwRecvLength, &dwRecvLength);
+		} else if (!priv->gpriv->SCardControl) {
+			rv = priv->gpriv->SCardControl(card, (DWORD)control, sendbuf, dwSendLength,
+					recvbuf, dwRecvLength, &dwRecvLength);
 		}
 	}
 
@@ -1016,7 +1016,7 @@ static unsigned long part10_detect_pace_capabilities(sc_reader_t *reader, SCARDH
 	if (!priv)
 		goto err;
 
-	if (priv->pace_ioctl && priv->gpriv) {
+	if (priv->pace_ioctl && priv->gpriv && priv->gpriv->SCardControl) {
 		if (SCARD_S_SUCCESS != priv->gpriv->SCardControl(card_handle,
 					priv->pace_ioctl, pace_capabilities_buf,
 					sizeof pace_capabilities_buf, rbuf, sizeof(rbuf),
@@ -1075,7 +1075,7 @@ static size_t part10_detect_max_data(sc_reader_t *reader, SCARDHANDLE card_handl
 	if (!priv)
 		goto err;
 
-	if (priv->get_tlv_properties && priv->gpriv) {
+	if (priv->get_tlv_properties && priv->gpriv && priv->gpriv->SCardControl) {
 		if (SCARD_S_SUCCESS != priv->gpriv->SCardControl(card_handle,
 				priv->get_tlv_properties, NULL, 0, rbuf, sizeof(rbuf), &rcount)) {
 			sc_log(reader->ctx, "PC/SC v2 part 10: Get TLV properties failed!");
@@ -1108,7 +1108,7 @@ static int part10_get_vendor_product(struct sc_reader *reader,
 	if (!priv)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
-	if (priv->get_tlv_properties && priv->gpriv) {
+	if (priv->get_tlv_properties && priv->gpriv && priv->gpriv->SCardControl) {
 		if (SCARD_S_SUCCESS != priv->gpriv->SCardControl(card_handle,
 					priv->get_tlv_properties, NULL, 0, rbuf, sizeof(rbuf),
 					&rcount)) {
@@ -1137,7 +1137,7 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 	sc_context_t *ctx = reader->ctx;
 	struct pcsc_global_private_data *gpriv = (struct pcsc_global_private_data *) ctx->reader_drv_data;
 	struct pcsc_private_data *priv = reader->drv_data;
-	DWORD rcount, i;
+	DWORD rcount = 0, i;
 	u8 buf[256];
 	LONG rv;
 	const char *log_disabled = "but it's disabled in configuration file";
@@ -1147,13 +1147,12 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 
 	sc_log(ctx, "Requesting reader features ... ");
 
-	if (gpriv->SCardControl == NULL)
-		return;
-
-	rv = gpriv->SCardControl(card_handle, CM_IOCTL_GET_FEATURE_REQUEST, NULL, 0, buf, sizeof(buf), &rcount);
-	if (rv != SCARD_S_SUCCESS) {
-		PCSC_TRACE(reader, "SCardControl failed", rv);
-		return;
+	if (gpriv->SCardControl) {
+		rv = gpriv->SCardControl(card_handle, CM_IOCTL_GET_FEATURE_REQUEST, NULL, 0, buf, sizeof(buf), &rcount);
+		if (rv != SCARD_S_SUCCESS) {
+			PCSC_TRACE(reader, "SCardControl failed", rv);
+			return;
+		}
 	}
 
 	if ((rcount % sizeof(PCSC_TLV_STRUCTURE)) != 0
@@ -1221,7 +1220,7 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 	}
 
 	/* Detect display */
-	if (priv->pin_properties_ioctl) {
+	if (priv->pin_properties_ioctl && gpriv->SCardControl) {
 		rcount = sizeof(buf);
 		rv = gpriv->SCardControl(card_handle, priv->pin_properties_ioctl,
 			NULL, 0, buf, sizeof(buf), &rcount);
