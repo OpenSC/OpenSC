@@ -543,6 +543,19 @@ static int idprime_init(sc_card_t *card)
 			r, apdu.resplen);
 	}
 
+	/* Proprietary data -- Applet version */
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_2, 0xCA, 0xDF, 0x30);
+	apdu.resp = rbuf;
+	apdu.resplen = rbuflen;
+	apdu.le = rbuflen;
+	r = sc_transmit_apdu(card, &apdu);
+	if (r == SC_SUCCESS && apdu.resplen >= 10) {
+		/* Ber-TLV encoded */
+		if (rbuf[0] == 0xDF && rbuf[1] == 0x30 && rbuf[2] == apdu.resplen - 3) {
+			sc_log(card->ctx, "IDPrime Java Applet version %.*s", (int)apdu.resplen - 3, rbuf + 3);
+		}
+	}
+
 	priv = idprime_new_private_data();
 	if (!priv) {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
