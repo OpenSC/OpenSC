@@ -4660,7 +4660,7 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 					logprintf(pCardData, 2, "sc_pkcs15_decipher: stripping PKCS1 padding\n");
 					r = sc_pkcs1_strip_02_padding_constant_time(vs->ctx, prkey_info->modulus_length / 8, pbuf2, pInfo->cbData, pbuf2, &temp);
 					pInfo->cbData = (DWORD) temp;
-					wrong_padding = constant_time_eq_s(r, SC_ERROR_WRONG_PADDING);
+					wrong_padding = constant_time_eq_i(r, SC_ERROR_WRONG_PADDING);
 					/* continue without returning error to not leak that padding is wrong
 					   to prevent time side-channel leak for Marvin attack*/
 				}
@@ -4710,7 +4710,7 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 		goto err;
 	}
 
-	good = constant_time_eq_s(r, 0);
+	good = constant_time_eq_i(r, 0);
 	/* if no error or padding error, do not return here to prevent Marvin attack */
 	if (!(good | wrong_padding) && r < 0)   {
 		logprintf(pCardData, 2, "sc_pkcs15_decipher error(%i): %s\n", r, sc_strerror(r));

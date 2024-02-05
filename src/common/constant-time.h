@@ -125,4 +125,10 @@ constant_time_eq_s(size_t a, size_t b)
 	return constant_time_is_zero_s(a ^ b);
 }
 
+static constant_inline unsigned int
+constant_time_eq_i(int a, int b)
+{
+	return constant_time_eq((unsigned int)a, (unsigned int)b);
+}
+
 #endif /* CONSTANT_TIME_H */
