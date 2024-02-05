@@ -1,5 +1,44 @@
 NEWS for OpenSC -- History of user visible changes
 
+# New in 0.25.0; 2024-02-XX
+## Security
+* [CVE-2023-5992](https://github.com/OpenSC/OpenSC/wiki/CVE-2023-5992): Side-channel leaks while stripping encryption PKCS#1.5 padding in OpenSC (#2948)
+* [CVE-2024-1454](https://github.com/OpenSC/OpenSC/wiki/CVE-2024-1454): Potential use-after-free in AuthentIC driver during card enrollment in pkcs15init (#2962)
+
+## General improvements
+* Update OpenSSL 1.1.1 to 3.0 in MacOS build (#2930)
+* Remove support for old card drivers Akis, GPK, Incrypto34 and Westcos, disable Cyberflex driver (#2885)
+* Fix 64b to 32b conversions (#2993)
+* Improvements for the p11test (#2991)
+* Fix reader initialization without SCardControl (#3007)
+* Make RSA PKCS#1 v1.5 depadding constant-time (#2948)
+* Add option for disabling PKCS#1 v1.5 depadding (type 01 and 02) on the card (#2975)
+* Enable MSI signing via Signpath CI integration for Windows (#2799)
+* Fixed various issues reported by OSS-Fuzz and Coverity in drivers, PKCS#11 and PKCS#15 layer
+
+## minidriver
+* Fix wrong hash selection (#2932)
+
+## pkcs11-tool
+* Simplify printing EC keys parameters (#2960)
+* Add option to import GENERIC key (#2955)
+* Add support for importing Ed25518/448 keys (#2985)
+## IDPrime
+* Support uncompressed certificates on IDPrime 940 (#2958)
+* Enhance IDPrime logging (#3003)
+## D-Trust Signature Cards
+* Add support for RSA D-Trust Signature Card 4.1 and 4.4 (#2943)
+## EstEID
+* Remove expired EstEID 3.* card support (#2950)
+## ePass2003
+* Allow SW implementation with more SHA2 hashes and ECDSA (#3012)
+## SmartCard-HSM
+* Fix SELECT APDU command (#2978)
+## MyEID
+* Update for PKCS#15 profile (#2965)
+## Rutoken
+* Support for RSA 4096 key algorithm (#3011)
+
 # New in 0.24.0; 2023-12-13
 ## Security
 * CVE-2023-40660: Fix Potential PIN bypass (#2806, frankmorgner/OpenSCToken#50, #2807)
