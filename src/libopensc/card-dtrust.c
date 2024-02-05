@@ -311,7 +311,7 @@ dtrust_set_security_env(sc_card_t *card,
 
 	switch (env->operation) {
 	case SC_SEC_OPERATION_DECIPHER:
-		if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1) {
+		if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_02) {
 			se_num = 0x31;
 		} else if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_OAEP) {
 			switch (env->algorithm_flags & SC_ALGORITHM_MGF1_HASHES) {
@@ -334,7 +334,7 @@ dtrust_set_security_env(sc_card_t *card,
 		break;
 
 	case SC_SEC_OPERATION_SIGN:
-		if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1) {
+		if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01) {
 			switch (env->algorithm_flags & SC_ALGORITHM_RSA_HASHES) {
 			case SC_ALGORITHM_RSA_HASH_SHA256:
 				se_num = 0x25;
