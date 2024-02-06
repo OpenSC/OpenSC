@@ -123,14 +123,14 @@ static int load_object(const char * object_id, const char * object_file)
 	int r = -1;
 	struct stat stat_buf;
 
-    if(!object_file || (fp=fopen(object_file, "rb")) == NULL){
-        printf("Cannot open object file, %s %s\n",
-			(object_file)?object_file:"", strerror(errno));
+	if (!object_file || (fp = fopen(object_file, "rb")) == NULL) {
+		printf("Cannot open object file, %s %s\n",
+				(object_file) ? object_file : "", strerror(errno));
 		goto err;
-    }
+	}
 
 	if (0 != stat(object_file, &stat_buf)) {
-		printf("unable to read file %s\n",object_file);
+		printf("unable to read file %s\n", object_file);
 		goto err;
 	}
 	derlen = stat_buf.st_size;
@@ -146,7 +146,7 @@ static int load_object(const char * object_id, const char * object_file)
 	}
 	/* check if tag and length are valid */
 	body = (u8 *)sc_asn1_find_tag(card->ctx, der, derlen, 0x53, &bodylen);
-	if (body == NULL || derlen != body  - der +  bodylen) {
+	if (body == NULL || derlen != body - der + bodylen) {
 		fprintf(stderr, "object tag or length not valid\n");
 		goto err;
 	}
@@ -185,20 +185,20 @@ static int load_cert(const char * cert_id, const char * cert_file,
 	int r = -1;
 
 	if (!cert_file) {
-        printf("Missing cert file\n");
+		printf("Missing cert file\n");
 		goto err;
 	}
 
-    if((fp=fopen(cert_file, "rb"))==NULL){
-        printf("Cannot open cert file, %s %s\n",
+	if ((fp = fopen(cert_file, "rb")) == NULL) {
+		printf("Cannot open cert file, %s %s\n",
 				cert_file, strerror(errno));
-        goto err;
-    }
+		goto err;
+	}
 	if (compress) { /* file is gzipped already */
 		struct stat stat_buf;
 
 		if (0 != stat(cert_file, &stat_buf)) {
-			printf("unable to read file %s\n",cert_file);
+			printf("unable to read file %s\n", cert_file);
 			goto err;
 		}
 		derlen = stat_buf.st_size;
@@ -209,16 +209,16 @@ static int load_cert(const char * cert_id, const char * cert_file,
 			goto err;
 		}
 		if (1 != fread(der, derlen, 1, fp)) {
-			printf("unable to read file %s\n",cert_file);
+			printf("unable to read file %s\n", cert_file);
 			goto err;
 		}
 	} else {
 		cert = PEM_read_X509(fp, &cert, NULL, NULL);
-    	if(cert == NULL){
+		if (cert == NULL) {
 			sc_log_openssl(ctx);
 			printf("file %s does not contain PEM-encoded certificate\n", cert_file);
 			goto err;
-    	}
+		}
 
 		derlen = i2d_X509(cert, NULL);
 		der = malloc(derlen);
@@ -248,7 +248,7 @@ static int load_cert(const char * cert_id, const char * cert_file,
 	}
 	/* we pass length  and  8 bits of flag to card-piv.c write_binary */
 	/* pass in its a cert and if needs compress */
-	r = sc_write_binary(card, 0, der, derlen, (derlen<<8) | (compress<<4) | 1);
+	r = sc_write_binary(card, 0, der, derlen, (derlen << 8) | (compress << 4) | 1);
 
 err:
 	free(der);
@@ -270,7 +270,6 @@ static int admin_mode(const char* admin_info)
 			(sc_hex_to_bin(admin_info+2, opts+1, &buflen) == 0) &&
 			buflen == 2) {
 		opts[0] = admin_info[0];
-
 	} else {
 		fprintf(stderr, " admin_mode params <M|A>:<keyref>:<alg>\n");
 		return -1;
@@ -415,9 +414,9 @@ static int gen_key(const char * key_info)
 		}
 #else
 		if (!(bld = OSSL_PARAM_BLD_new()) ||
-			OSSL_PARAM_BLD_push_BN(bld, "n", newkey_n) != 1 ||
-			OSSL_PARAM_BLD_push_BN(bld, "e", newkey_e) != 1 ||
-			!(params = OSSL_PARAM_BLD_to_param(bld))) {
+				OSSL_PARAM_BLD_push_BN(bld, "n", newkey_n) != 1 ||
+				OSSL_PARAM_BLD_push_BN(bld, "e", newkey_e) != 1 ||
+				!(params = OSSL_PARAM_BLD_to_param(bld))) {
 			sc_log_openssl(ctx);
 			OSSL_PARAM_BLD_free(bld);
 			BN_free(newkey_n);
@@ -473,7 +472,7 @@ static int gen_key(const char * key_info)
 		ecpoint = EC_POINT_new(ecgroup);
 
 		/* PIV returns 04||x||y  and x and y are the same size */
-		i = (int)(keydata.ecpoint_len - 1)/2;
+		i = (int)(keydata.ecpoint_len - 1) / 2;
 		x = BN_bin2bn(keydata.ecpoint + 1, i, NULL);
 		y = BN_bin2bn(keydata.ecpoint + 1 + i, i, NULL) ;
 		if (!x || !y) {
@@ -553,9 +552,9 @@ static int gen_key(const char * key_info)
 		EC_POINT_free(ecpoint);
 
 		if (!(bld = OSSL_PARAM_BLD_new()) ||
-			OSSL_PARAM_BLD_push_utf8_string(bld, "group", group_name, strlen(group_name)) != 1 ||
-			OSSL_PARAM_BLD_push_octet_string(bld, "pub", buf, len) != 1 ||
-			!(params = OSSL_PARAM_BLD_to_param(bld))) {
+				OSSL_PARAM_BLD_push_utf8_string(bld, "group", group_name, strlen(group_name)) != 1 ||
+				OSSL_PARAM_BLD_push_octet_string(bld, "pub", buf, len) != 1 ||
+				!(params = OSSL_PARAM_BLD_to_param(bld))) {
 			sc_log_openssl(ctx);
 			OSSL_PARAM_BLD_free(bld);
 			free(buf);
@@ -566,8 +565,8 @@ static int gen_key(const char * key_info)
 
 		cctx = EVP_PKEY_CTX_new_from_name(NULL, "EC", NULL);
 		if (!cctx ||
-			EVP_PKEY_fromdata_init(cctx) != 1 ||
-			EVP_PKEY_fromdata(cctx, &evpkey, EVP_PKEY_KEYPAIR, params) != 1) {
+				EVP_PKEY_fromdata_init(cctx) != 1 ||
+				EVP_PKEY_fromdata(cctx, &evpkey, EVP_PKEY_KEYPAIR, params) != 1) {
 			sc_log_openssl(ctx);
 			fprintf(stderr, "gen_key unable to gen EC key");
 			EVP_PKEY_CTX_free(cctx);
@@ -749,7 +748,7 @@ int main(int argc, char *argv[])
 	if (out_file) {
 		bp = BIO_new(BIO_s_file());
 		if (!BIO_write_filename(bp, (char *)out_file))
-		    goto end;
+			goto end;
 	} else {
 		bp = BIO_new(BIO_s_file());
 		BIO_set_fp(bp,stdout,BIO_NOCLOSE);
