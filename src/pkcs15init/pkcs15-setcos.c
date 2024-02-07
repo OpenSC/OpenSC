@@ -202,7 +202,7 @@ setcos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	sc_pkcs15_auth_info_t *auth_info = (sc_pkcs15_auth_info_t *) pin_obj->data;
-	sc_file_t *pinfile = NULL;
+	sc_file_t *pinfile = NULL, *tmp_pinfile = NULL;
 	int r, ignore_ac = 0;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
@@ -210,11 +210,12 @@ setcos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
 		return SC_ERROR_OBJECT_NOT_VALID;
 
-        /* Create the global pin file if it doesn't exist yet */
-	r = sc_profile_get_file(profile, "pinfile", &pinfile);
+	/* Create the global pin file if it doesn't exist yet */
+	r = sc_profile_get_file(profile, "pinfile", &tmp_pinfile);
 	LOG_TEST_RET(ctx, r, "No 'pinfile' template in profile");
 
-	r = sc_select_file(p15card->card, &pinfile->path, &pinfile);
+	r = sc_select_file(p15card->card, &tmp_pinfile->path, &pinfile);
+	sc_file_free(tmp_pinfile);
 	LOG_TEST_RET(ctx, r, "Cannot select 'pinfile'");
 
 	sc_log(ctx,  "pinfile->status:%X", pinfile->status);
@@ -230,6 +231,7 @@ setcos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	/* If pinfile is in 'Creation' state and SOPIN has been created,
 	 * change status of MF and 'pinfile' to 'Operational:Activated'
 	 */
+	sc_file_free(pinfile);
 	if (ignore_ac && (auth_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN))   {
 		sc_file_t *mf = profile->mf_info->file;
 
@@ -242,8 +244,6 @@ setcos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		r = sc_card_ctl(p15card->card, SC_CARDCTL_SETCOS_ACTIVATE_FILE, NULL);
 		LOG_TEST_RET(ctx, r, "Cannot set MF into the activated state");
 	}
-
-	sc_file_free(pinfile);
 
 	LOG_FUNC_RETURN(ctx, r);
 }
