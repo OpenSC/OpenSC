@@ -291,6 +291,7 @@ static int eoi_init(sc_card_t* card) {
 					strlcpy(privdata->can, can, sizeof(privdata->can));
 			}
 		}
+		free(found_blocks);
 	}
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
