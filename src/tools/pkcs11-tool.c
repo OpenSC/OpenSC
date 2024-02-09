@@ -2618,6 +2618,7 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			unsigned char rs_buffer[512];
 			bytes = getEC_POINT(session, key, &len);
 			free(bytes);
+			/* TODO DEE EDDSA and EC_POINT returned in BIT STRING needs some work */
 			/*
 			 * (We only support uncompressed for now)
 			 * Uncompressed EC_POINT is DER OCTET STRING of "04||x||y"
@@ -5693,9 +5694,11 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 			if (ksize > 3 && (bytes[0] == 0x03 || bytes[0] == 0x04)) {
 				if (bytes[1] <= 127 && ksize == (unsigned long)(bytes[1] + 2)) {
 					body_len = ksize - 2;
-				} else if (bytes[1] == 0x81 && size == ((unsigned long)bytes[2] + 3)) {
+				} else
+				if (bytes[1] == 0x81 && size == ((unsigned long)bytes[2] + 3)) {
 					body_len = ksize - 3;
-				} else if (bytes[1] == 0x82 && size == ((unsigned long)(bytes[2] << 8) + (unsigned long)bytes[3] + 4)) {
+				} else
+				if (bytes[1] == 0x82 && size == ((unsigned long)(bytes[2] << 8) + (unsigned long)bytes[3] + 4)) {
 					body_len = ksize - 4;
 				}
 			}
@@ -6385,6 +6388,7 @@ static int read_object(CK_SESSION_HANDLE session)
 
 			value = getEC_POINT(session, obj, &len);
 			/* PKCS#11-compliant modules should return ASN1_OCTET_STRING */
+			/* TODO DEE Should be returned encoded in BIT STRING, Need to accept both */
 			a = value;
 			os = d2i_ASN1_OCTET_STRING(NULL, &a, (long)len);
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
@@ -6491,6 +6495,7 @@ static int read_object(CK_SESSION_HANDLE session)
 
 			value = getEC_POINT(session, obj, &len);
 			/* PKCS#11-compliant modules should return ASN1_OCTET_STRING */
+			/* TODO DEE should be in BIT STRING accept both */
 			a = value;
 			os = d2i_ASN1_OCTET_STRING(NULL, &a, (long)len);
 			if (!os) {
@@ -8644,6 +8649,7 @@ static void test_ec(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		return;
 	}
 	getEC_POINT(session, pub_key, &ec_point_len);
+	/* TODO only looking at length of encoded EC_POINT. May be in BIT STRING or OCTET STRING */
 	if (ec_point_len < 5 || ec_point_len > 10000) {
 		printf("ERR: GetAttribute(pubkey, CKA_EC_POINT) doesn't seem to work\n");
 		return;

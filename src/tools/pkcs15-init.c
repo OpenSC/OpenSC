@@ -769,7 +769,7 @@ parse_alg_spec(const struct alg_spec *types, const char *spec, unsigned int *key
 		spec++;
 	
 	/* if we have everything for EDDSA or XEDDSA */
-	if (*spec == 0x00 && *keybits && (algorithm == SC_ALGORITHM_EDDSA || SC_ALGORITHM_XEDDSA) && prkey) {
+	if (*spec == 0x00 && *keybits && (algorithm == SC_ALGORITHM_EDDSA || algorithm == SC_ALGORITHM_XEDDSA) && prkey) {
 		prkey->u.ec.params.named_curve = strdup(types[types_idx].spec); /* correct case */
 		*keybits =  types[types_idx].keybits;
 		return algorithm;
@@ -777,7 +777,11 @@ parse_alg_spec(const struct alg_spec *types, const char *spec, unsigned int *key
 
 	if (*spec)   {
 		if (isalpha((unsigned char)*spec)
-				&& (algorithm == SC_ALGORITHM_EC || algorithm == SC_ALGORITHM_EDDSA || SC_ALGORITHM_XEDDSA)
+			&& algorithm == SC_ALGORITHM_EC && prkey)
+			prkey->u.ec.params.named_curve = strdup(spec);
+		else 
+		if (isalpha((unsigned char)*spec)
+				&& (algorithm == SC_ALGORITHM_EDDSA || algorithm == SC_ALGORITHM_XEDDSA)
 				&& prkey) {
 			prkey->u.ec.params.named_curve = strdup(types[types_idx].spec); /* copy correct case */
 		} else {
