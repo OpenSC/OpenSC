@@ -536,9 +536,13 @@ static struct sc_asn1_entry c_asn1_gostr3410_pub_coefficients[C_ASN1_GOSTR3410_P
 		{ NULL, 0, 0, 0, NULL, NULL }
 };
 
-#define C_ASN1_EC_POINTQ_SIZE 2
+
+/* older incorrect implementation may have encoded as OCTET STRING */
+/* accept either */
+#define C_ASN1_EC_POINTQ_SIZE 3
 static struct sc_asn1_entry c_asn1_ec_pointQ[C_ASN1_EC_POINTQ_SIZE] = {
-		{ "ecpointQ", SC_ASN1_OCTET_STRING, SC_ASN1_TAG_OCTET_STRING, SC_ASN1_ALLOC, NULL, NULL },
+		{ "ecpointQ", SC_ASN1_BIT_STRING_NI, SC_ASN1_TAG_BIT_STRING, SC_ASN1_OPTIONAL | SC_ASN1_ALLOC, NULL, NULL },
+		{ "ecpointQ-OS",SC_ASN1_OCTET_STRING, SC_ASN1_TAG_OCTET_STRING, SC_ASN1_OPTIONAL | SC_ASN1_ALLOC, NULL, NULL },
 		{ NULL, 0, 0, 0, NULL, NULL }
 };
 
@@ -629,7 +633,8 @@ sc_pkcs15_encode_pubkey_gostr3410(sc_context_t *ctx,
 }
 
 /*
- * We are storing the ec_pointQ as u8 string. not as DER
+ * We are storing the ec_pointQ as u8 string not as DER
+ * Will accept either BIT STRING or OCTET STRING
  */
 int
 sc_pkcs15_decode_pubkey_ec(sc_context_t *ctx,
@@ -644,13 +649,15 @@ sc_pkcs15_decode_pubkey_ec(sc_context_t *ctx,
 	LOG_FUNC_CALLED(ctx);
 	sc_copy_asn1_entry(c_asn1_ec_pointQ, asn1_ec_pointQ);
 	sc_format_asn1_entry(asn1_ec_pointQ + 0, &ecpoint_data, &ecpoint_len, 1);
-	r = sc_asn1_decode(ctx, asn1_ec_pointQ, buf, buflen, NULL, NULL);
-	if (r < 0) {
+	sc_format_asn1_entry(asn1_ec_pointQ + 1, &ecpoint_data, &ecpoint_len, 1);
+	r = sc_asn1_decode_choice(ctx, asn1_ec_pointQ, buf, buflen, NULL, NULL);
+	if (r < 0 || ecpoint_len == 0) {
 		free(ecpoint_data);
+		/* TODO DEE fix if r == 0 */
 		LOG_TEST_RET(ctx, r, "ASN.1 decoding failed");
 	}
 
-	if (ecpoint_len == 0 || *ecpoint_data != 0x04) {
+	if (*ecpoint_data != 0x04) {
 		free(ecpoint_data);
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Supported only uncompressed EC pointQ value");
 	}
@@ -658,11 +665,6 @@ sc_pkcs15_decode_pubkey_ec(sc_context_t *ctx,
 	key->ecpointQ.len = ecpoint_len;
 	key->ecpointQ.value = ecpoint_data;
 
-	/*
-	 * Only get here if raw point is stored in pkcs15 without curve name
-	 * spki has the curvename, so we can get the field_length
-	 * Following only true for curves that are multiple of 8
-	 */
 	key->params.field_length = (ecpoint_len - 1)/2 * 8;
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
@@ -673,10 +675,19 @@ sc_pkcs15_encode_pubkey_ec(sc_context_t *ctx, struct sc_pkcs15_pubkey_ec *key,
 		u8 **buf, size_t *buflen)
 {
 	struct sc_asn1_entry asn1_ec_pointQ[C_ASN1_EC_POINTQ_SIZE];
+	size_t  key_len;
+	volatile int gdb_test = 0; /* so can reset via gdb for testing old way OS*/
 
 	LOG_FUNC_CALLED(ctx);
 	sc_copy_asn1_entry(c_asn1_ec_pointQ, asn1_ec_pointQ);
-	sc_format_asn1_entry(asn1_ec_pointQ + 0, key->ecpointQ.value, &key->ecpointQ.len, 1);
+
+	if (gdb_test == 0) {
+		key_len  = key->ecpointQ.len * 8; /* encode in bit string */
+		sc_format_asn1_entry(asn1_ec_pointQ + 0, key->ecpointQ.value, &key_len, 1);
+	} else {
+		key_len  = key->ecpointQ.len;
+		sc_format_asn1_entry(asn1_ec_pointQ + 1, key->ecpointQ.value, &key_len, 1);
+	}
 
 	LOG_FUNC_RETURN(ctx,
 			sc_asn1_encode(ctx, asn1_ec_pointQ, buf, buflen));
@@ -685,13 +696,34 @@ sc_pkcs15_encode_pubkey_ec(sc_context_t *ctx, struct sc_pkcs15_pubkey_ec *key,
 /*
  * all "ec" keys uses same pubkey format, keep this external entrypoint
  * keys are just byte strings.
+ *  will accept in either BIT STRING or OCTET STRING
  */
 int
 sc_pkcs15_decode_pubkey_eddsa(sc_context_t *ctx,
 		struct sc_pkcs15_pubkey_ec *key,
 		const u8 *buf, size_t buflen)
 {
-	return sc_pkcs15_decode_pubkey_ec(ctx, key, buf, buflen);
+	int r;
+	u8 * ecpoint_data = NULL;
+	size_t ecpoint_len;
+	struct sc_asn1_entry asn1_ec_pointQ[C_ASN1_EC_POINTQ_SIZE];
+
+	LOG_FUNC_CALLED(ctx);
+	sc_copy_asn1_entry(c_asn1_ec_pointQ, asn1_ec_pointQ);
+	sc_format_asn1_entry(asn1_ec_pointQ + 0, &ecpoint_data, &ecpoint_len, 1);
+	sc_format_asn1_entry(asn1_ec_pointQ + 1, &ecpoint_data, &ecpoint_len, 1);
+	r = sc_asn1_decode_choice(ctx, asn1_ec_pointQ, buf, buflen, NULL, NULL);
+	if (r < 0 || ecpoint_data == NULL) {
+		free(ecpoint_data);
+		/* TODO DEE fix if r == 0 */
+		LOG_TEST_RET(ctx, r, "ASN.1 decoding failed");
+	}
+
+	key->ecpointQ.len = ecpoint_len;
+	key->ecpointQ.value = ecpoint_data;
+	key->params.field_length = ecpoint_len * 8;
+		
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
 /*
@@ -701,6 +733,7 @@ int
 sc_pkcs15_encode_pubkey_eddsa(sc_context_t *ctx, struct sc_pkcs15_pubkey_ec *key,
 		u8 **buf, size_t *buflen)
 {
+	/* same format */
 	return sc_pkcs15_encode_pubkey_ec(ctx, key, buf, buflen);
 }
 
@@ -712,8 +745,10 @@ sc_pkcs15_encode_pubkey(sc_context_t *ctx, struct sc_pkcs15_pubkey *key,
 		return sc_pkcs15_encode_pubkey_rsa(ctx, &key->u.rsa, buf, len);
 	if (key->algorithm == SC_ALGORITHM_GOSTR3410)
 		return sc_pkcs15_encode_pubkey_gostr3410(ctx, &key->u.gostr3410, buf, len);
-	if (key->algorithm == SC_ALGORITHM_EC || key->algorithm == SC_ALGORITHM_EDDSA || key->algorithm == SC_ALGORITHM_XEDDSA)
+	if (key->algorithm == SC_ALGORITHM_EC)
 		return sc_pkcs15_encode_pubkey_ec(ctx, &key->u.ec, buf, len);
+	if (key->algorithm == SC_ALGORITHM_EDDSA || key->algorithm == SC_ALGORITHM_XEDDSA)
+		return sc_pkcs15_encode_pubkey_eddsa(ctx, &key->u.ec, buf, len);
 
 	sc_log(ctx, "Encoding of public key type %lu not supported", key->algorithm);
 	LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
@@ -829,8 +864,10 @@ sc_pkcs15_decode_pubkey(sc_context_t *ctx, struct sc_pkcs15_pubkey *key,
 		return sc_pkcs15_decode_pubkey_rsa(ctx, &key->u.rsa, buf, len);
 	if (key->algorithm == SC_ALGORITHM_GOSTR3410)
 		return sc_pkcs15_decode_pubkey_gostr3410(ctx, &key->u.gostr3410, buf, len);
-	if (key->algorithm == SC_ALGORITHM_EC  || key->algorithm == SC_ALGORITHM_EDDSA || key->algorithm == SC_ALGORITHM_XEDDSA)
+	if (key->algorithm == SC_ALGORITHM_EC)
 		return sc_pkcs15_decode_pubkey_ec(ctx, &key->u.ec, buf, len);
+	if (key->algorithm == SC_ALGORITHM_EDDSA || key->algorithm == SC_ALGORITHM_XEDDSA)
+		return sc_pkcs15_decode_pubkey_eddsa(ctx, &key->u.ec, buf, len);
 
 	sc_log(ctx, "Decoding of public key type %lu not supported", key->algorithm);
 	return SC_ERROR_NOT_SUPPORTED;
