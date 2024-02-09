@@ -2892,7 +2892,7 @@ pgp_update_pubkey_blob(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_in
 		memset(&p15pubkey, 0, sizeof(p15pubkey));
 		p15pubkey.algorithm = SC_ALGORITHM_EC;
 		p15pubkey.u.ec.ecpointQ.value = key_info->u.ec.ecpoint;
-		p15pubkey.u.ec.ecpointQ.len = key_info->u.ec.ecpoint_len;
+		p15pubkey.u.ec.ecpointQ.len = BYTES4BITS(key_info->u.ec.ecpoint_len);
 	}
 	else
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
