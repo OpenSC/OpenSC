@@ -259,10 +259,10 @@ static int pcsc_internal_transmit(sc_reader_t *reader,
 		rv = priv->gpriv->SCardTransmit(card, &sSendPci, sendbuf, dwSendLength,
 				   &sRecvPci, recvbuf, &dwRecvLength);
 	} else {
-		if (!priv->gpriv->SCardControlOLD) {
+		if (priv->gpriv->SCardControlOLD) {
 			rv = priv->gpriv->SCardControlOLD(card, sendbuf, dwSendLength,
 				  recvbuf, &dwRecvLength);
-		} else if (!priv->gpriv->SCardControl) {
+		} else if (priv->gpriv->SCardControl) {
 			rv = priv->gpriv->SCardControl(card, (DWORD)control, sendbuf, dwSendLength,
 					recvbuf, dwRecvLength, &dwRecvLength);
 		}
