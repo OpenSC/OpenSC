@@ -40,7 +40,8 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #if !defined(HAVE_DECL_STRLCPY) || !HAVE_DECL_STRLCPY
 #include <stddef.h>
-size_t strlcpy(char *dst, const char *src, size_t siz);
+#define strlcpy _strlcpy
+size_t _strlcpy(char *dst, const char *src, size_t siz);
 #else
 #include <string.h>
 #endif
