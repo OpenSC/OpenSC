@@ -357,6 +357,27 @@ pgp_match_card(sc_card_t *card)
 }
 
 
+/* populate MF - add matching blobs listed in the pgp_objects table */
+int populate_blobs_to_mf(sc_card_t *card, struct pgp_priv_data *priv)
+{
+	pgp_do_info_t	*info;
+	for (info = priv->pgp_objects; (info != NULL) && (info->id > 0); info++) {
+		if (((info->access & READ_MASK) != READ_NEVER) && (info->get_fn != NULL)) {
+			pgp_blob_t *child = NULL;
+			sc_file_t *file = sc_file_new();
+
+			child = pgp_new_blob(card, priv->mf, info->id, file);
+
+			/* catch out of memory condition */
+			if (child == NULL) {
+				sc_file_free(file);
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+			}
+		}
+	}
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+}
+
 /**
  * ABI: initialize driver & allocate private data.
  */
@@ -366,7 +387,6 @@ pgp_init(sc_card_t *card)
 	struct pgp_priv_data *priv;
 	sc_path_t	path;
 	sc_file_t	*file = NULL;
-	pgp_do_info_t	*info;
 	int		r, i;
 
 	LOG_FUNC_CALLED(card->ctx);
@@ -483,19 +503,10 @@ pgp_init(sc_card_t *card)
 	/* select MF */
 	priv->current = priv->mf;
 
-	/* populate MF - add matching blobs listed in the pgp_objects table */
-	for (info = priv->pgp_objects; (info != NULL) && (info->id > 0); info++) {
-		if (((info->access & READ_MASK) != READ_NEVER) && (info->get_fn != NULL)) {
-			pgp_blob_t *child = NULL;
-
-			child = pgp_new_blob(card, priv->mf, info->id, sc_file_new());
-
-			/* catch out of memory condition */
-			if (child == NULL) {
-				pgp_finish(card);
-				LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
-			}
-		}
+	r = populate_blobs_to_mf(card, priv);
+	if (r < 0) {
+		pgp_finish(card);
+		LOG_FUNC_RETURN(card->ctx, r);
 	}
 
 	/* get card_features from ATR & DOs */
@@ -3549,6 +3560,18 @@ pgp_erase_card(sc_card_t *card)
 		default:
 			LOG_TEST_RET(card->ctx, SC_ERROR_NO_CARD_SUPPORT,
 					"Card does not offer life cycle management");
+	}
+
+	if (r == SC_SUCCESS && priv->mf) {
+		pgp_blob_t *new_mf = pgp_new_blob(card, NULL, priv->mf->id, priv->mf->file);
+		if (new_mf == NULL) {
+			LOG_TEST_RET(card->ctx, SC_ERROR_INTERNAL, "Failed to allocate the new MF blob");
+		}
+		priv->mf->file = NULL;
+
+		pgp_free_blobs(priv->mf);
+		priv->mf = new_mf;
+		populate_blobs_to_mf(card, priv);
 	}
 
 	LOG_FUNC_RETURN(card->ctx, r);
