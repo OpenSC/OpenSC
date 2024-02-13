@@ -148,3 +148,5 @@ src/tests/fuzzing/fuzz_pkcs15init
 src/tests/fuzzing/fuzz_scconf_parse_string
 
 version.m4.ci
+openssl_arm64
+openssl_bin
