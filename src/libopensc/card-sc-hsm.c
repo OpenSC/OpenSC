@@ -232,7 +232,7 @@ static int sc_hsm_select_file_ex(sc_card_t *card,
 		}
 	}
 	/* Force use of Le = 0x00 in iso7816_select_file as required by SC-HSM */
-	card->max_recv_size = card->reader->max_recv_size = 256;
+	card->max_recv_size = card->reader->max_recv_size = SC_READER_SHORT_APDU_MAX_RECV_SIZE;
 	rv = (*iso_ops->select_file)(card, in_path, file_out);
 	card->max_recv_size = card_max_recv_size;
 	card->reader->max_recv_size = reader_max_recv_size;
