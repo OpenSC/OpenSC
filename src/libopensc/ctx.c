@@ -107,6 +107,10 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	 * In order to prevent the cardos driver from matching skeid cards, skeid driver
 	 * precedes cardos and matches no other CardOS 5.4 card. */
 	{ "skeid",	(void *(*)(void)) sc_get_skeid_driver },
+	/* The card handled by dtrust shares the ATR with other cards running CardOS 5.4.
+	 * In order to prevent the cardos driver from matching dtrust cards, dtrust driver
+	 * precedes cardos and matches no other CardOS 5.4 card. */
+	{ "dtrust",	(void *(*)(void)) sc_get_dtrust_driver },
 	{ "cardos",	(void *(*)(void)) sc_get_cardos_driver },
 	{ "gemsafeV1",	(void *(*)(void)) sc_get_gemsafeV1_driver },
 	{ "starcos",	(void *(*)(void)) sc_get_starcos_driver },
