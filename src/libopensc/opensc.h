@@ -1377,8 +1377,8 @@ int sc_decipher(struct sc_card *card, const u8 * crgram, size_t crgram_len,
 		u8 * out, size_t outlen);
 int sc_compute_signature(struct sc_card *card, const u8 * data,
 			 size_t data_len, u8 * out, size_t outlen);
-int sc_verify(struct sc_card *card, unsigned int type, int ref, const u8 *buf,
-	      size_t buflen, int *tries_left);
+int sc_verify(struct sc_card *card, unsigned int type, int ref, const u8 *pin,
+		size_t pinlen, int *tries_left);
 /**
  * Resets the security status of the card (i.e. withdraw all granted
  * access rights). Note: not all card operating systems support a logout
