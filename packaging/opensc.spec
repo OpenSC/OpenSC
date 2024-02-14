@@ -158,6 +158,7 @@ rm %{buildroot}%{_mandir}/man1/opensc-notify.1*
 %{_bindir}/westcos-tool
 %{_bindir}/egk-tool
 %{_bindir}/goid-tool
+%{_bindir}/dtrust-tool
 %{_libdir}/lib*.so.*
 %{_libdir}/opensc-pkcs11.so
 %{_libdir}/pkcs11-spy.so
@@ -187,4 +188,5 @@ rm %{buildroot}%{_mandir}/man1/opensc-notify.1*
 %{_mandir}/man1/westcos-tool.1*
 %{_mandir}/man1/dnie-tool.1*
 %{_mandir}/man1/egk-tool.1*
+%{_mandir}/man1/dtrust-tool.1*
 %{_mandir}/man5/pkcs15-profile.5*
