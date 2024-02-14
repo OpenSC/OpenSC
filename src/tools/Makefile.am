@@ -30,7 +30,8 @@ noinst_HEADERS = util.h fread_to_eof.h \
 	openpgp-tool-helpers.h
 bin_PROGRAMS = opensc-tool opensc-explorer opensc-asn1 \
 	pkcs15-tool pkcs15-crypt pkcs11-tool pkcs11-register \
-	cardos-tool eidenv openpgp-tool iasecc-tool egk-tool goid-tool
+	cardos-tool eidenv openpgp-tool iasecc-tool egk-tool goid-tool \
+	dtrust-tool
 if ENABLE_OPENSSL
 bin_PROGRAMS += cryptoflex-tool pkcs15-init netkey-tool piv-tool \
 	westcos-tool sc-hsm-tool dnie-tool gids-tool
@@ -126,6 +127,8 @@ goid_tool_CFLAGS = $(OPENPACE_CFLAGS)
 if HAVE_UNKNOWN_WARNING_OPTION
 goid_tool_CFLAGS += -Wno-unknown-warning-option
 endif
+
+dtrust_tool_SOURCES = dtrust-tool.c util.c
 
 opensc_asn1_SOURCES = opensc-asn1.c fread_to_eof.c opensc-asn1-cmdline.c
 if HAVE_UNKNOWN_WARNING_OPTION
