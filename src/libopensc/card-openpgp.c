@@ -2494,7 +2494,7 @@ pgp_update_new_algo_attr(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_
 	pgp_blob_t *algo_blob;
 	const unsigned int tag = 0x00C0 | key_info->key_id;
 	u8 *data;
-	int data_len;
+	size_t data_len;
 	int r = SC_SUCCESS;
 	unsigned int i;
 
