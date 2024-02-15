@@ -7198,7 +7198,7 @@ static int wrap_unwrap(CK_SESSION_HANDLE session,
 
 	/* Try to decrypt */
 	key = getVALUE(session, cipherKeyObject, &key_len_ul);
-	key_len = key_len_ul;
+	key_len = (int)key_len_ul;
 	if (key == NULL) {
 		fprintf(stderr, "Could not get unwrapped key\n");
 		return 1;
