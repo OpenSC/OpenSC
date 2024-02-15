@@ -182,6 +182,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 {
 	sc_card_t	*card = p15card->card;
 	sc_context_t	*ctx = card->ctx;
+	struct pgp_priv_data *priv = DRVDATA(card);
 	char		string[256];
 	u8		c4data[10];
 	u8		c5data[100];
@@ -402,6 +403,10 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 
 			case SC_OPENPGP_KEYALGO_RSA:
 				if (cxdata_len >= 3) {
+					/* with Authentication key, can only decrypt if can change MSE */
+					if (i == 2 && !(priv->ext_caps & EXT_CAP_MSE)) {
+						prkey_info.usage &= ~PGP_ENC_PRKEY_USAGE;
+					}
 					prkey_info.modulus_length = bebytes2ushort(cxdata + 1);
 					r = sc_pkcs15emu_add_rsa_prkey(p15card, &prkey_obj, &prkey_info);
 					break;
@@ -526,6 +531,10 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 				break;
 			case SC_OPENPGP_KEYALGO_RSA:
 				if (cxdata_len >= 3) {
+					/* with Authentication pubkey, can only encrypt if can change MSE */
+					if (i == 2 && !(priv->ext_caps & EXT_CAP_MSE)) {
+						pubkey_info.usage &= ~PGP_ENC_PUBKEY_USAGE;
+					}
 					pubkey_info.modulus_length = bebytes2ushort(cxdata + 1);
 					r = sc_pkcs15emu_add_rsa_pubkey(p15card, &pubkey_obj, &pubkey_info);
 					break;
