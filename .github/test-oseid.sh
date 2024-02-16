@@ -28,7 +28,9 @@ sudo mv tmp/reader.conf /etc/reader.conf.d/reader.conf
 cat /etc/reader.conf.d/reader.conf
 popd
 
-sudo /etc/init.d/pcscd restart
+# prepare pcscd
+. .github/restart-pcscd.sh
+
 
 # Needed for tput to not report warnings
 export TERM=xterm-256color
@@ -65,7 +67,5 @@ $VALGRIND ./p11test -s 0 -p 11111111 -o oseid.json
 diff -u3 oseid_ref.json oseid.json
 popd
 
-# cleanup -- this would break later uses of pcscd
-kill -9 $PID
 rm oseid/src/card_mem
 sudo rm /etc/reader.conf.d/reader.conf
