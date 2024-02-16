@@ -240,7 +240,7 @@ int sc_pkcs15_decode_prkdf_entry(struct sc_pkcs15_card *p15card,
 	else if (asn1_prkey[1].flags & SC_ASN1_PRESENT) {
 		obj->type = SC_PKCS15_TYPE_PRKEY_EC;
 #ifdef ENABLE_OPENSSL
-		if (!info.field_length && ec_domain_len) {
+		if (!(asn1_ecckey_attr[1].flags & SC_ASN1_PRESENT) && (asn1_ecckey_attr[3].flags & SC_ASN1_PRESENT)) {
 			const unsigned char *p = ec_domain;
 			ASN1_OBJECT *object = d2i_ASN1_OBJECT(NULL, &p, ec_domain_len);
 			int nid;
