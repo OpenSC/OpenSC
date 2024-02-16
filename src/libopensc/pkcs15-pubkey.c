@@ -676,12 +676,12 @@ sc_pkcs15_encode_pubkey_ec(sc_context_t *ctx, struct sc_pkcs15_pubkey_ec *key,
 {
 	struct sc_asn1_entry asn1_ec_pointQ[C_ASN1_EC_POINTQ_SIZE];
 	size_t  key_len;
-	volatile int gdb_test = 0; /* so can reset via gdb for testing old way OS*/
+	volatile int gdb_test = 0; /* so can reset via gdb for testing new  way */
 
 	LOG_FUNC_CALLED(ctx);
 	sc_copy_asn1_entry(c_asn1_ec_pointQ, asn1_ec_pointQ);
 
-	if (gdb_test == 0) {
+	if (gdb_test == 1) {
 		key_len  = key->ecpointQ.len * 8; /* encode in bit string */
 		sc_format_asn1_entry(asn1_ec_pointQ + 0, key->ecpointQ.value, &key_len, 1);
 	} else {
