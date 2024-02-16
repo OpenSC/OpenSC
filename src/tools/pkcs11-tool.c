@@ -7258,7 +7258,7 @@ static int test_unwrap(CK_SESSION_HANDLE sess)
 	CK_OBJECT_HANDLE privKeyObject;
 	CK_MECHANISM_TYPE firstMechType;
 	CK_SESSION_INFO sessionInfo;
-	CK_ULONG        j;
+	int             j;
 	char 		*label;
 
 	rv = p11->C_GetSessionInfo(sess, &sessionInfo);
@@ -7276,7 +7276,7 @@ static int test_unwrap(CK_SESSION_HANDLE sess)
 
 	printf("Key unwrap (currently only for RSA)\n");
 	for (j = 0; find_object(sess, CKO_PRIVATE_KEY, &privKeyObject, NULL, 0, j); j++) {
-		printf("  testing key %ld ", j);
+		printf("  testing key %d ", j);
 		if ((label = getLABEL(sess, privKeyObject, NULL)) != NULL) {
 			printf("(%s) ", label);
 			free(label);
