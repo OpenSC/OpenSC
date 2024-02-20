@@ -707,6 +707,9 @@
 	<refsect1>
 		<title>Examples</title>
 		<para>
+			Perform a basic functionality test of the card:
+				<programlisting>pkcs11-tool --test --login</programlisting>
+
 			To list all certificates on the smart card:
 				<programlisting>pkcs11-tool --list-objects --type cert</programlisting>
 
@@ -727,6 +730,16 @@
 			Generate new extractable RSA Key pair:
 				<programlisting>pkcs11-tool --login --keypairgen --key-type RSA:2048 --extractable</programlisting>
 
+			Generate an elliptic curve key pair with OpenSSL and import it to the card as <varname>$ID</varname>:
+				<programlisting>openssl genpkey -out EC_private.der -outform DER \
+ -algorithm EC -pkeyopt ec_paramgen_curve:P-521
+pkcs11-tool --write-object EC_private.der --id "$ID" \
+ --type privkey --label "EC private key" -p "$PIN"
+openssl pkey -in EC_private.der -out EC_public.der \
+ -pubout -inform DER -outform DER
+pkcs11-tool --write-object EC_public.der --id "$ID" \
+ --type pubkey  --label "EC public key" -p $PIN</programlisting>
+
 			List private keys:
 				<programlisting>pkcs11-tool --login --list-objects --type privkey</programlisting>
 
@@ -737,12 +750,21 @@
 			The same is also possible by piping the data from stdin rather than specifying a input file:
 				<programlisting>dd if=data bs=128 count=1 | pkcs11-tool --sign --id ID --mechanism RSA-PKCS --pin=$PIN > data.sig</programlisting>
 
+			Verify the signed data:
+<programlisting>pkcs11-tool --id ID --verify -m RSA-PKCS --input-file data --signature-file data.sig</programlisting>
+
 			To encrypt file using the AES key with ID 85 and using mechanism AES-CBC with padding:
 				<programlisting>
 pkcs11-tool --login --encrypt --id 85 -m AES-CBC-PAD \
  --iv "00000000000000000000000000000000" \
  -i file.txt -o encrypted_file.data
+			Decipher the encrypted file:
 				</programlisting>
+pkcs11-tool --login --decrypt --id 85 -m AES-CBC-PAD \
+ --iv "00000000000000000000000000000000" \
+--i encrypted_file.data -o decrypted.txt
+				</programlisting>
+
 			Use the key with ID 75 using mechanism AES-CBC-PAD, with initialization vector
 			"00000000000000000000000000000000" to wrap the key with ID 76 into output file
 			<replaceable>exported_aes.key</replaceable>
