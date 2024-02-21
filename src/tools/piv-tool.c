@@ -532,6 +532,7 @@ static int gen_key(const char * key_info)
 		EVP_PKEY_CTX_free(ctx);
 		OSSL_PARAM_free(params);
 #endif
+#else  /* OPENSSL_NO_EC */
 		fprintf(stderr, "This build of OpenSSL does not support EC keys\n");
 		r = 1;
 #endif /* OPENSSL_NO_EC */
