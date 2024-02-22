@@ -3085,11 +3085,11 @@ epass2003_gen_key(struct sc_card *card, sc_epass2003_gen_key_data * data)
 		size_t yCoordinateLen;
 		unsigned char *tmp;
 
-		if (2 + xCoordinateLen + 1 >= apdu.resplen) {
+		if (2 + xCoordinateLen + 1 > apdu.resplen) {
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_DATA);
 		}
 		yCoordinateLen = rbuf[2 + xCoordinateLen + 1];
-		if (2 + xCoordinateLen + 2 + yCoordinateLen >= apdu.resplen) {
+		if (2 + xCoordinateLen + 2 + yCoordinateLen > apdu.resplen) {
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_DATA);
 		}
 		data->modulus_len = xCoordinateLen + yCoordinateLen;

@@ -671,7 +671,7 @@ static int epass2003_pkcs15_generate_key(struct sc_profile *profile,
 		struct sc_ec_parameters *ecparams = (struct
 				sc_ec_parameters *)key_info->params.data;
 		pubkey->algorithm = SC_ALGORITHM_EC;
-		pubkey->u.ec.ecpointQ.value = (u8 *) malloc(65);
+		pubkey->u.ec.ecpointQ.value = (u8 *)malloc(gendat.modulus_len + 1);
 		if (!pubkey->u.ec.ecpointQ.value) {
 			r = SC_ERROR_OUT_OF_MEMORY;
 			goto err;
@@ -679,7 +679,7 @@ static int epass2003_pkcs15_generate_key(struct sc_profile *profile,
 
 		pubkey->u.ec.ecpointQ.value[0] = 0x04;
 		memcpy(&pubkey->u.ec.ecpointQ.value[1], gendat.modulus, gendat.modulus_len);
-		pubkey->u.ec.ecpointQ.len = gendat.modulus_len;
+		pubkey->u.ec.ecpointQ.len = gendat.modulus_len + 1;
 		free(gendat.modulus);
 
 		free(pubkey->u.ec.params.named_curve);
