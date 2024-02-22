@@ -24,7 +24,7 @@ PIN="123456"
 export GNUTLS_PIN=$PIN
 GENERATE_KEYS=1
 PKCS11_TOOL="../../tools/pkcs11-tool";
-PKCS15_INIT="../../tools/pkcs15-init";
+PKCS15_INIT="env OPENSC_CONF=p11test_opensc.conf ../../tools/pkcs15-init"
 SC_HSM_TOOL="../../tools/sc-hsm-tool";
 
 function generate_sym() {
@@ -130,7 +130,6 @@ function card_setup() {
 			;;
 		"myeid")
 			GENERATE_KEYS=0 # we generate them directly here
-			PKCS15_INIT="env OPENSC_CONF=myeid_opensc.conf $PKCS15_INIT"
 			P11LIB="../../pkcs11/.libs/opensc-pkcs11.so"
 			$PKCS15_INIT --erase-card
 			$PKCS15_INIT -C --pin $PIN --puk $SOPIN --so-pin $SOPIN --so-puk $SOPIN
@@ -150,6 +149,18 @@ function card_setup() {
 			$SC_HSM_TOOL --initialize --so-pin $SOPIN --pin $PIN
 			$PKCS11_TOOL --module $P11LIB -l --pin $PIN --keypairgen --key-type rsa:2048 --id 10 --label="RSA key"
 			$PKCS11_TOOL --module $P11LIB -l --pin $PIN --keypairgen --key-type EC:prime256v1 --label "EC key"
+			;;
+		"epass2003")
+			GENERATE_KEYS=0 # we generate them directly here
+			P11LIB="../../pkcs11/.libs/opensc-pkcs11.so"
+			PIN="987654"
+			SOPIN="1234567890"
+			$PKCS15_INIT --erase-card -T
+			$PKCS15_INIT --create-pkcs15 -T -p pkcs15+onepin --pin $PIN --puk 1234567890
+			INIT="$PKCS15_INIT --auth-id 01 --so-pin $SOPIN --pin $PIN"
+			$INIT --generate-key ec:prime256v1 --id 01 --label="EC key" --key-usage=sign,keyAgreement
+			$INIT --generate-key rsa:2048 --id 02 --label="RSA key" --key-usage=sign,decrypt
+			$PKCS15_INIT -F
 			;;
 		*)
 			echo "Error: Missing argument."
