@@ -668,6 +668,18 @@
 
 				<varlistentry>
 					<term>
+						<option>--auth-id</option> <replaceable>filename</replaceable>,
+						<option>-a</option> <replaceable>filename</replaceable>
+					</term>
+					<listitem>
+						<para>
+							Specify ID of PIN to use/create
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
 						<option>--puk-id</option> <replaceable>ID</replaceable>
 					</term>
 					<listitem>
