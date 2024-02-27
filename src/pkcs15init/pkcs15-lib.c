@@ -1654,6 +1654,8 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 		r = profile->ops->emu_store_data(p15card, profile, object, NULL, NULL);
 		if (r == SC_ERROR_NOT_IMPLEMENTED)
 			r = SC_SUCCESS;
+		if (r < 0)
+			sc_pkcs15_remove_object(p15card, object);
 		LOG_TEST_GOTO_ERR(ctx, r, "Card specific 'store data' failed");
 	}
 
