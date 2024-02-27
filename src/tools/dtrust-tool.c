@@ -145,6 +145,10 @@ unlock_transport_protection(sc_card_t *card)
 	data.cmd = SC_PIN_CMD_CHANGE;
 	data.pin_type = SC_AC_CHV;
 	data.pin_reference = 0x87;
+	data.pin1.min_length = 5;
+	data.pin1.max_length = 5;
+	data.pin2.min_length = 6;
+	data.pin2.max_length = 12;
 
 	if (card->reader->capabilities & SC_READER_CAP_PIN_PAD) {
 		printf("Please enter PINs on the reader's pin pad.\n");
