@@ -60,6 +60,8 @@ test-driver
 *.exp
 *.res
 *.ggo
+*-cmdline.c
+*-cmdline.h
 ChangeLog
 
 doc/tools/*-tool
