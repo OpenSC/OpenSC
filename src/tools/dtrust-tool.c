@@ -177,12 +177,11 @@ unlock_transport_protection(sc_card_t *card)
 			fprintf(stderr, "New signature PINs doesn't match.\n");
 			goto fail_qespin2;
 		}
+		data.pin1.data = (u8 *)tpin;
+		data.pin1.len = strlen(tpin);
+		data.pin2.data = (u8 *)qespin1;
+		data.pin2.len = strlen(qespin1);
 	}
-
-	data.pin1.data = (u8 *)tpin;
-	data.pin1.len = strlen(tpin);
-	data.pin2.data = (u8 *)qespin1;
-	data.pin2.len = strlen(qespin1);
 
 	r = sc_pin_cmd(card, &data, &tries_left);
 
