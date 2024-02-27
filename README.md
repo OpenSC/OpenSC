@@ -1,23 +1,23 @@
 # OpenSC documentation
 
+Manual pages for the [OpenSC command line tools](htmlpreview.github.io/?https://github.com/OpenSC/OpenSC/blob/master/doc/tools/tools.html) as well as for the [OpenSC configuration files](http://htmlpreview.github.io/?https://github.com/OpenSC/OpenSC/blob/master/doc/files/files.html) are available online and typically distributed along with your installation.
 
-Wiki is [available online](https://github.com/OpenSC/OpenSC/wiki)
-
-Please take a look at the documentation before trying to use OpenSC.
-
-Do NOT use any links from wiki to download the OpenSC because wiki can be modified by anybody, see
-[#2554](https://github.com/OpenSC/OpenSC/issues/2554). For downloading OpenSC, use the links here in README.
+The [OpenSC Wiki](https://github.com/OpenSC/OpenSC/wiki) includes, among others, information for:
+ * [Windows Quick Start](https://github.com/OpenSC/OpenSC/wiki/Windows-Quick-Start)
+ * [macOS Quick Start](https://github.com/OpenSC/OpenSC/wiki/macOS-Quick-Start)
+ * [Compiling and Installing on Unix flavors](https://github.com/OpenSC/OpenSC/wiki/Compiling-and-Installing-on-Unix-flavors)
+ * [Frequently Asked Questions](https://github.com/OpenSC/OpenSC/wiki/Frequently-Asked-Questions)
+ * More user and developer provided documentation
 
 # Downloads
 
-[OpenSC 0.24.0](https://github.com/OpenSC/OpenSC/releases/tag/0.24.0) is the latest stable version released on
-13.12.2023. It is available as
+## Latest release
 
- * Windows installer
-   * [OpenSC-0.24.0_win64.msi](https://github.com/OpenSC/OpenSC/releases/download/0.24.0/OpenSC-0.24.0_win64.msi) for 64 bit programs
-   * [OpenSC-0.24.0_win32.msi](https://github.com/OpenSC/OpenSC/releases/download/0.24.0/OpenSC-0.24.0_win32.msi) for 32 bit programs
- * [OpenSC-0.24.0.dmg](https://github.com/OpenSC/OpenSC/releases/download/0.24.0/OpenSC-0.24.0.dmg): macOS installer
- * [opensc-0.24.0.tar.gz](https://github.com/OpenSC/OpenSC/releases/download/0.24.0/opensc-0.24.0.tar.gz): Source code distribution
+The [latest stable version of OpenSC](https://github.com/OpenSC/OpenSC/releases/latest) is available on Github.  It is available as
+
+ * Windows installer for 64 bit and 32 bit programs (`OpenSC*_win64.msi` and `OpenSC*_win32.msi`)
+ * macOS installer (`OpenSC*.dmg`)
+ * Source code distribution (`opensc*.tar.gz`)
 
 ## Nightly build
 
@@ -38,7 +38,7 @@ Nightly builds are available by their git hash in branches of [OpenSC/Nightly](h
 Build and test status of specific cards:
 
 | Cards                                                               | Status                                                                                                                            |
-|---------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------|
+|----------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------|
 | CAC                                                                 | [![CAC](https://gitlab.com/redhat-crypto/OpenSC/badges/cac/pipeline.svg)](https://gitlab.com/redhat-crypto/OpenSC/pipelines)      |
 | [virt_CACard](https://github.com/Jakuje/virt_cacard)                | [![virt_CACard](https://github.com/OpenSC/OpenSC/actions/workflows/linux.yml/badge.svg)](https://github.com/OpenSC/OpenSC/actions/workflows/linux.yml) |
 | [Coolkey](https://github.com/dogtagpki/coolkey/tree/master/applet)  | [![Coolkey](https://gitlab.com/redhat-crypto/OpenSC/badges/coolkey/pipeline.svg)](https://gitlab.com/redhat-crypto/OpenSC/pipelines) |
