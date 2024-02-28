@@ -12,7 +12,7 @@
 		<refname>dnie-tool</refname>
 		<refpurpose>displays information about DNIe based security tokens</refpurpose>
 	</refnamediv>
-	
+
 	<refsynopsisdiv>
 		<cmdsynopsis>
 			<command>dnie-tool</command>
@@ -109,7 +109,7 @@
 				</varlistentry>
 				<varlistentry>
 					<term>
-						<option>--wait</option>, 
+						<option>--wait</option>,
 						<option>-w</option>
 					</term>
 					<listitem><para>Causes <command>dnie-tool</command> to wait for the token to be inserted into reader.</para>
@@ -120,14 +120,14 @@
 						<option>--verbose</option>,
 						<option>-v</option>
 					</term>
-					<listitem><para>Causes <command>dnie-tool</command> to be more verbose. 
+					<listitem><para>Causes <command>dnie-tool</command> to be more verbose.
 					Specify this flag several times
 to enable debug output in the opensc library.</para></listitem>
 				</varlistentry>
 			</variablelist>
 		</para>
 	</refsect1>
-	
+
 	<refsect1>
 		<title>Authors</title>
 		<para><command>dnie-tool</command> was written by
