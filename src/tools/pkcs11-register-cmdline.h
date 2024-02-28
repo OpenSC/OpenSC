@@ -42,9 +42,9 @@ struct gengetopt_args_info
   char * module_arg;	/**< @brief Specify the module to load (default='OpenSC's PKCS#11 module').  */
   char * module_orig;	/**< @brief Specify the module to load original value given at command line.  */
   const char *module_help; /**< @brief Specify the module to load help description.  */
-  int skip_chrome_flag;	/**< @brief Don't install module to Chrome (default=off).  */
+  int skip_chrome_flag;	/**< @brief Don't install module to Chrome (default=on).  */
   const char *skip_chrome_help; /**< @brief Don't install module to Chrome help description.  */
-  int skip_firefox_flag;	/**< @brief Don't install module to Firefox (default=off).  */
+  int skip_firefox_flag;	/**< @brief Don't install module to Firefox (default=on).  */
   const char *skip_firefox_help; /**< @brief Don't install module to Firefox help description.  */
   int skip_thunderbird_flag;	/**< @brief Don't install module to Thunderbird (default=off).  */
   const char *skip_thunderbird_help; /**< @brief Don't install module to Thunderbird help description.  */
