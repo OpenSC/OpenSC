@@ -148,6 +148,8 @@ AX_CODE_COVERAGE()
 
 AX_CHECK_COMPILE_FLAG([-Wunknown-warning-option], [have_unknown_warning_option="yes"], [have_unknown_warning_option="no"])
 AM_CONDITIONAL([HAVE_UNKNOWN_WARNING_OPTION], [test "${have_unknown_warning_option}" = "yes"])
+AX_CHECK_COMPILE_FLAG([-Wshorten-64-to-32], [have_shorten_warning_option="yes"], [have_shorten_warning_option="no"])
+AM_CONDITIONAL([HAVE_SHORTEN_WARNING_OPTION], [test "${have_shorten_warning_option}" = "yes"])
 
 AX_VALGRIND_CHECK()
 

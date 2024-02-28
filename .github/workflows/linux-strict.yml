@@ -34,7 +34,6 @@ permissions:
 # -Wno-incompatible-function-pointer-types -- this looks just buggy as it
 #   complains about missing const, which is there
 env:
-  CLANG_CFLAGS: -Wshorten-64-to-32
   CFLAGS: >-
     -pedantic -Werror -Wall
     -Wno-strict-prototypes -Wno-empty-translation-unit

@@ -107,11 +107,17 @@ npa_tool_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(OPENPACE_CFLAGS)
 if HAVE_UNKNOWN_WARNING_OPTION
 npa_tool_CFLAGS += -Wno-unknown-warning-option
 endif
+if HAVE_SHORTEN_WARNING_OPTION
+npa_tool_CFLAGS += -Wno-shorten-64-to-32
+endif
 
 opensc_notify_SOURCES = opensc-notify.c opensc-notify-cmdline.c
 opensc_notify_CFLAGS = $(PTHREAD_CFLAGS)
 if HAVE_UNKNOWN_WARNING_OPTION
 opensc_notify_CFLAGS += -Wno-unknown-warning-option
+endif
+if HAVE_SHORTEN_WARNING_OPTION
+opensc_notify_CFLAGS += -Wno-shorten-64-to-32
 endif
 
 egk_tool_SOURCES = egk-tool.c util.c egk-tool-cmdline.c
@@ -120,6 +126,9 @@ egk_tool_CFLAGS = $(OPTIONAL_ZLIB_CFLAGS)
 if HAVE_UNKNOWN_WARNING_OPTION
 egk_tool_CFLAGS += -Wno-unknown-warning-option
 endif
+if HAVE_SHORTEN_WARNING_OPTION
+egk_tool_CFLAGS += -Wno-shorten-64-to-32
+endif
 
 goid_tool_SOURCES = goid-tool.c util.c fread_to_eof.c goid-tool-cmdline.c
 goid_tool_LDADD = $(OPENPACE_LIBS)
@@ -127,18 +136,29 @@ goid_tool_CFLAGS = $(OPENPACE_CFLAGS)
 if HAVE_UNKNOWN_WARNING_OPTION
 goid_tool_CFLAGS += -Wno-unknown-warning-option
 endif
+if HAVE_SHORTEN_WARNING_OPTION
+goid_tool_CFLAGS += -Wno-shorten-64-to-32
+endif
 
 dtrust_tool_SOURCES = dtrust-tool.c util.c
 
 opensc_asn1_SOURCES = opensc-asn1.c fread_to_eof.c opensc-asn1-cmdline.c
+opensc_asn1_CFLAGS =
 if HAVE_UNKNOWN_WARNING_OPTION
-opensc_asn1_CFLAGS = -Wno-unknown-warning-option
+opensc_asn1_CFLAGS += -Wno-unknown-warning-option
+endif
+if HAVE_SHORTEN_WARNING_OPTION
+opensc_asn1_CFLAGS += -Wno-shorten-64-to-32
 endif
 
 pkcs11_register_SOURCES = pkcs11-register.c fread_to_eof.c pkcs11-register-cmdline.c
 pkcs11_register_LDADD =	$(top_builddir)/src/common/libpkcs11.la
+pkcs11_register_CFLAGS =
 if HAVE_UNKNOWN_WARNING_OPTION
-pkcs11_register_CFLAGS = -Wno-unknown-warning-option
+pkcs11_register_CFLAGS += -Wno-unknown-warning-option
+endif
+if HAVE_SHORTEN_WARNING_OPTION
+pkcs11_register_CFLAGS += -Wno-shorten-64-to-32
 endif
 
 .PHONY: cmdline
