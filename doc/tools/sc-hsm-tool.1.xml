@@ -62,10 +62,10 @@
 						<para>Use <option>--pwd-shares-threshold</option> and <option>--pwd-shares-total</option> to randomly generate a password and split is using a (t, n) threshold scheme.</para>
 					</listitem>
 				</varlistentry>
-				
+
 				<varlistentry>
 					<term>
-						<option>--import-dkek-share</option> <replaceable>filename</replaceable>, 
+						<option>--import-dkek-share</option> <replaceable>filename</replaceable>,
 						<option>-I</option> <replaceable>filename</replaceable>
 					</term>
 					<listitem>
@@ -74,10 +74,10 @@
 						<para>Use <option>--pwd-shares-total</option> to specify the number of shares that should be entered to reconstruct the password.</para>
 					</listitem>
 				</varlistentry>
-				
+
 				<varlistentry>
 					<term>
-						<option>--wrap-key</option> <replaceable>filename</replaceable>, 
+						<option>--wrap-key</option> <replaceable>filename</replaceable>,
 						<option>-W</option> <replaceable>filename</replaceable>
 					</term>
 					<listitem>
@@ -86,39 +86,39 @@
 						<para>Use <option>--pin</option> to provide the user PIN on the command line.</para>
 					</listitem>
 				</varlistentry>
-				
+
 				<varlistentry>
 					<term>
-						<option>--unwrap-key</option> <replaceable>filename</replaceable>, 
+						<option>--unwrap-key</option> <replaceable>filename</replaceable>,
 						<option>-U</option> <replaceable>filename</replaceable>
 					</term>
 					<listitem>
 						<para>Read wrapped key, description and certificate from file and import into SmartCard-HSM
 						     under the key reference given in <option>--key-reference</option>.</para>
-						<para>Determine the key reference using the output of <command>pkcs15-tool -D</command>.</para>				     
+						<para>Determine the key reference using the output of <command>pkcs15-tool -D</command>.</para>
 						<para>Use <option>--pin</option> to provide a user PIN on the command line.</para>
 						<para>Use <option>--force</option> to remove any key, key description or certificate in the way.</para>
 					</listitem>
 				</varlistentry>
-				
+
 				<varlistentry>
 					<term>
-						<option>--dkek-shares</option> <replaceable>number-of-shares</replaceable>, 
+						<option>--dkek-shares</option> <replaceable>number-of-shares</replaceable>,
 						<option>-s</option> <replaceable>number-of-shares</replaceable>
 					</term>
 					<listitem>
 						<para>Define the number of DKEK shares to use for recreating the DKEK.</para>
-						<para>This is an optional parameter. Using <option>--initialize</option> without 
-						      <option>--dkek-shares</option> will disable the DKEK completely.</para>				     
+						<para>This is an optional parameter. Using <option>--initialize</option> without
+						      <option>--dkek-shares</option> will disable the DKEK completely.</para>
 						<para>Using <option>--dkek-shares</option> with 0 shares requests the SmartCard-HSM to
 						      generate a random DKEK. Keys wrapped with this DKEK can only be unwrapped in the
-						      same SmartCard-HSM.</para>		
+						      same SmartCard-HSM.</para>
 						<para>After using <option>--initialize</option> with one or more DKEK shares, the
 						      SmartCard-HSM will remain in the initialized state until all DKEK shares have
-						      been imported. During this phase no new keys can be generated or imported.</para>		     
+						      been imported. During this phase no new keys can be generated or imported.</para>
 					</listitem>
 				</varlistentry>
-				
+
 				<varlistentry>
 					<term>
 						<option>--pin</option> <replaceable>pin</replaceable>,
@@ -142,7 +142,7 @@
 						</para>
 					</listitem>
 				</varlistentry>
-				
+
 				<varlistentry>
 					<term>
 						<option>--pin-retry</option> <replaceable>value</replaceable>
@@ -181,7 +181,7 @@
 						<replaceable>VARIABLE</replaceable> is used.</para>
 					</listitem>
 				</varlistentry>
-				
+
 				<varlistentry>
 					<term>
 						<option>--pwd-shares-threshold</option> <replaceable>value</replaceable>
@@ -190,7 +190,7 @@
 						<para>Define threshold for number of password shares required for reconstruction.</para>
 					</listitem>
 				</varlistentry>
-				
+
 				<varlistentry>
 					<term>
 						<option>--pwd-shares-total</option> <replaceable>value</replaceable>
@@ -199,7 +199,7 @@
 						<para>Define number of password shares.</para>
 					</listitem>
 				</varlistentry>
-				
+
 				<varlistentry>
 					<term>
 						<option>--force</option>
@@ -208,7 +208,7 @@
 						<para>Force removal of existing key, description and certificate.</para>
 					</listitem>
 				</varlistentry>
-				
+
 				<varlistentry>
 					<term>
 						<option>--label</option> <replaceable>label</replaceable>,
@@ -216,7 +216,7 @@
 					</term>
 					<listitem><para>Define the token label to be used in --initialize.</para></listitem>
 				</varlistentry>
-				
+
 				<varlistentry>
 					<term>
 						<option>--reader</option> <replaceable>arg</replaceable>,
@@ -299,7 +299,7 @@
 						</para>
 					</listitem>
 				</varlistentry>
-				
+
 				<varlistentry>
 					<term>
 						<option>--wait</option>,
@@ -307,7 +307,7 @@
 					</term>
 					<listitem><para>Wait for a card to be inserted</para></listitem>
 				</varlistentry>
-				
+
 				<varlistentry>
 					<term>
 						<option>--verbose</option>,
@@ -345,7 +345,7 @@
 		<para><command>sc-hsm-tool --register-public-key ./public_key1.asn1</command></para>
 
 	</refsect1>
-	
+
 	<refsect1>
 		<title>See also</title>
 		<para>

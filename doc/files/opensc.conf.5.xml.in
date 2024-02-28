@@ -154,7 +154,7 @@ app <replaceable>application</replaceable> {
 				</term>
 				<listitem><para>
 						PKCS#15 initialization/personalization profiles
-						directory for 
+						directory for
 						<citerefentry>
 							<refentrytitle>pkcs15-init</refentrytitle>
 							<manvolnum>1</manvolnum>.
@@ -1306,8 +1306,8 @@ app <replaceable>application</replaceable> {
 						<para>
                             The PIV-II card driver supports the history object's
                             list of retired keys and certificates if they are
-							readable in the file cache directory. 
-							If the specified object's URL is 
+							readable in the file cache directory.
+							If the specified object's URL is
 							<literal>"http://"</literal><replaceable>DNS name</replaceable><literal>"/"</literal><replaceable>ASCII-HEX OffCardKeyHistoryFile</replaceable>,
 							then the searches for the file name
 							<replaceable>OffCardKeyHistoryFile</replaceable>
