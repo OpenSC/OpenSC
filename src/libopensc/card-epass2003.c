@@ -956,6 +956,8 @@ construct_data_tlv(struct sc_card *card, struct sc_apdu *apdu, unsigned char *ap
 	epass2003_exdata *exdata = NULL;
 	int r = 0;
 
+	LOG_FUNC_CALLED(card->ctx);
+
 	if (!card->drv_data)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
@@ -1038,6 +1040,8 @@ construct_mac_tlv(struct sc_card *card, unsigned char *apdu_buf, size_t data_tlv
 	int i = (KEY_TYPE_AES == key_type ? 15 : 7);
 	epass2003_exdata *exdata = NULL;
 
+	LOG_FUNC_CALLED(card->ctx);
+
 	if (!card->drv_data)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
@@ -1076,6 +1080,7 @@ construct_mac_tlv(struct sc_card *card, unsigned char *apdu_buf, size_t data_tlv
 			for (int i = 0; i < 16; i++) {
 				apdu_buf[i] = apdu_buf[i] ^ icv[i];
 			}
+			sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "SM data input - aes128_encrypt_cmac", apdu_buf, data_tlv_len+le_tlv_len+block_size);
 			r = aes128_encrypt_cmac(card, exdata->sk_mac, 128, apdu_buf, data_tlv_len + le_tlv_len + block_size, mac);
 			LOG_TEST_RET(card->ctx, r, "aes128_encrypt_cmac failed");
 			memcpy(mac_tlv + 2, &mac[0 /*ulmacLen-16*/], 8);
@@ -1083,6 +1088,7 @@ construct_mac_tlv(struct sc_card *card, unsigned char *apdu_buf, size_t data_tlv
 				apdu_buf[j] = apdu_buf[j] ^ icv[j];
 			}
 		} else {
+			sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "SM data input - aes128_encrypt_cbc", apdu_buf, mac_len);
 			r = aes128_encrypt_cbc(card, exdata->sk_mac, 16, icv, apdu_buf, mac_len, mac);
 			LOG_TEST_RET(card->ctx, r, "aes128_encrypt_cbc failed");
 			memcpy(mac_tlv + 2, &mac[mac_len - 16], 8);
@@ -1090,11 +1096,14 @@ construct_mac_tlv(struct sc_card *card, unsigned char *apdu_buf, size_t data_tlv
 	} else {
 		unsigned char iv[EVP_MAX_IV_LENGTH] = {0};
 		unsigned char tmp[8] = {0};
+		sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "SM data input - case1 des_encrypt_cbc-1", apdu_buf, mac_len);
 		r = des_encrypt_cbc(card, exdata->sk_mac, 8, icv, apdu_buf, mac_len, mac);
 		LOG_TEST_RET(card->ctx, r, "des_encrypt_cbc 1 failed");
+		sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "SM data input case1 - des_encrypt_cbc-2", &mac[mac_len - 8], 8);
 		r = des_decrypt_cbc(card, &exdata->sk_mac[8], 8, iv, &mac[mac_len - 8], 8, tmp);
 		LOG_TEST_RET(card->ctx, r, "des_decrypt_cbc failed");
 		memset(iv, 0x00, sizeof iv);
+		sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "SM data input case1 - des_encrypt_cbc-3",  tmp, 8);
 		r = des_encrypt_cbc(card, exdata->sk_mac, 8, iv, tmp, 8, mac_tlv + 2);
 		LOG_TEST_RET(card->ctx, r, "des_encrypt_cbc 2 failed");
 	}
@@ -1103,7 +1112,7 @@ construct_mac_tlv(struct sc_card *card, unsigned char *apdu_buf, size_t data_tlv
 	return 0;
 }
 
-/* MAC(TLV case 1) */
+/* MAC(TLV case 1 */
 static int
 construct_mac_tlv_case1(struct sc_card *card, unsigned char *apdu_buf, size_t data_tlv_len, size_t le_tlv_len,
 	unsigned char *mac_tlv, size_t * mac_tlv_len, const unsigned char key_type)
@@ -1114,8 +1123,9 @@ construct_mac_tlv_case1(struct sc_card *card, unsigned char *apdu_buf, size_t da
 	size_t mac_len;
 	int i = (KEY_TYPE_AES == key_type ? 15 : 7);
 	unsigned char icv[16] = {0};
-
 	epass2003_exdata *exdata = NULL;
+
+	LOG_FUNC_CALLED(card->ctx);
 
 	if (!card->drv_data)
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -1148,12 +1158,14 @@ construct_mac_tlv_case1(struct sc_card *card, unsigned char *apdu_buf, size_t da
 	memcpy(icv, exdata->icv_mac, 16);
 	if (KEY_TYPE_AES == key_type) {
 		if (exdata->bFipsCertification) {
+			sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "SM data input case1 - aes128_encrypt_cmac_ft", apdu_buf, data_tlv_len+le_tlv_len+block_size);
 			r = aes128_encrypt_cmac_ft(card, exdata->sk_mac, 128, apdu_buf, data_tlv_len + le_tlv_len + block_size, mac, &icv[0]);
 			LOG_TEST_RET(card->ctx, r, "aes128_encrypt_cmac_ft failed");
 			memcpy(mac_tlv + 2, &mac[0 /*ulmacLen-16*/], 8);
 		} else {
 			if (mac_len < 16)
 				LOG_TEST_RET(card->ctx, SC_ERROR_INTERNAL, "incorrect mac length");
+			sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "SM data input case1 - aes128_encrypt_cbc", apdu_buf, mac_len);
 			r = aes128_encrypt_cbc(card, exdata->sk_mac, 16, icv, apdu_buf, mac_len, mac);
 			LOG_TEST_RET(card->ctx, r, "aes128_encrypt_cbc failed");
 			memcpy(mac_tlv + 2, &mac[mac_len - 16], 8);
@@ -1163,11 +1175,14 @@ construct_mac_tlv_case1(struct sc_card *card, unsigned char *apdu_buf, size_t da
 		unsigned char tmp[8] = {0};
 		if (mac_len < 8)
 			LOG_TEST_RET(card->ctx, SC_ERROR_INTERNAL, "incorrect mac length");
+		sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "SM data input - case1 des_encrypt_cbc-1", apdu_buf, mac_len);
 		r = des_encrypt_cbc(card, exdata->sk_mac, 8, icv, apdu_buf, mac_len, mac);
 		LOG_TEST_RET(card->ctx, r, "des_encrypt_cbc  failed");
+		sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "SM data input case1 - des_encrypt_cbc-2", &mac[mac_len - 8], 8);
 		r = des_decrypt_cbc(card, &exdata->sk_mac[8], 8, iv, &mac[mac_len - 8], 8, tmp);
 		LOG_TEST_RET(card->ctx, r, "des_decrypt_cbc failed");
 		memset(iv, 0x00, sizeof iv);
+		sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "SM data input case1 - des_encrypt_cbc-3",  tmp, 8);
 		r = des_encrypt_cbc(card, exdata->sk_mac, 8, iv, tmp, 8, mac_tlv + 2);
 		LOG_TEST_RET(card->ctx, r, "des_encrypt_cbc failed");
 	}
@@ -1205,6 +1220,8 @@ encode_apdu(struct sc_card *card, struct sc_apdu *plain, struct sc_apdu *sm,
 		return SC_ERROR_INVALID_ARGUMENTS;
 	exdata = (epass2003_exdata*)card->drv_data;
 	block_size = (KEY_TYPE_DES == exdata->smtype ? 16 : 8);
+
+	LOG_FUNC_CALLED(card->ctx);
 
 	sm->cse = SC_APDU_CASE_4_SHORT;
 	apdu_buf[0] = (unsigned char)plain->cla;
@@ -1269,6 +1286,8 @@ encode_apdu(struct sc_card *card, struct sc_apdu *plain, struct sc_apdu *sm,
 
 	*apdu_buf_len += 4 + tmp_lc + data_tlv_len + le_tlv_len + mac_tlv_len + tmp_le;
 	/* sm->le = calc_le(plain_le); */
+
+	sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "SM DATA to MAC", apdu_buf, *apdu_buf_len);
 	return 0;
 }
 
