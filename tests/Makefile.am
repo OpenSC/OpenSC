@@ -47,11 +47,11 @@ TESTS = \
         test-pkcs11-tool-sym-crypt-test.sh \
         test-pkcs11-tool-unwrap-wrap-test.sh \
         test-pkcs11-tool-import.sh
-XFAIL_TESTS = \
-        test-pkcs11-tool-test-threads.sh \
-        test-pkcs11-tool-test.sh
 if ENABLE_TESTS
 if ENABLE_SHARED
 TESTS += test-p11test.sh
 endif
 endif
+XFAIL_TESTS = \
+        test-pkcs11-tool-test-threads.sh \
+        test-pkcs11-tool-test.sh
