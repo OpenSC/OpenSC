@@ -1,6 +1,6 @@
 NEWS for OpenSC -- History of user visible changes
 
-# New in 0.25.0; 2024-02-XX
+# New in 0.25.0; 2024-03-06
 ## Security
 * [CVE-2023-5992](https://github.com/OpenSC/OpenSC/wiki/CVE-2023-5992): Side-channel leaks while stripping encryption PKCS#1.5 padding in OpenSC (#2948)
 * [CVE-2024-1454](https://github.com/OpenSC/OpenSC/wiki/CVE-2024-1454): Potential use-after-free in AuthentIC driver during card enrollment in pkcs15init (#2962)
@@ -23,21 +23,27 @@ NEWS for OpenSC -- History of user visible changes
 * Simplify printing EC keys parameters (#2960)
 * Add option to import GENERIC key (#2955)
 * Add support for importing Ed25518/448 keys (#2985)
+## drust-tool
+* Add tool for D-Trust cards (#3026, #3051)
 ## IDPrime
 * Support uncompressed certificates on IDPrime 940 (#2958)
 * Enhance IDPrime logging (#3003)
+* Add SafeNet 5110+ FIPS token support (#3048)
 ## D-Trust Signature Cards
 * Add support for RSA D-Trust Signature Card 4.1 and 4.4 (#2943)
 ## EstEID
 * Remove expired EstEID 3.* card support (#2950)
 ## ePass2003
 * Allow SW implementation with more SHA2 hashes and ECDSA (#3012)
+* Fix EC key generation (#3045)
 ## SmartCard-HSM
 * Fix SELECT APDU command (#2978)
 ## MyEID
 * Update for PKCS#15 profile (#2965)
 ## Rutoken
 * Support for RSA 4096 key algorithm (#3011)
+## OpenPGP
+* Fix decryption requiting Manage Security Environment for authentication key (#3042)
 
 # New in 0.24.0; 2023-12-13
 ## Security
