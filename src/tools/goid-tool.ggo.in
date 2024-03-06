@@ -49,37 +49,37 @@ modeoption "write-paccessid" -
     string mode="pxs" optional typestr="PACCESSID"
 modeoption "read-dg" -
     "Read the specified data group; use several times to read out multiple files"
-    int mode="pxs" optional multiple typestr="ID"
+    short mode="pxs" optional multiple typestr="ID"
 modeoption "out-file" -
     "Write output to a file instead of printing it; use once for each use of `--read-dg'"
     string mode="pxs" optional multiple typestr="FILENAME"
 modeoption "write-dg" -
     "Write the specified data group; use several times to write multiple files"
-    int mode="pxs" optional multiple typestr="ID"
+    short mode="pxs" optional multiple typestr="ID"
 modeoption "in-file" -
     "Read input from a file; use once for each use of `--write-dg'"
     string mode="pxs" optional multiple typestr="FILENAME"
 modeoption "delete-dg" -
     "Delete the specified data group; use several times to delete multiple files"
-    int mode="pxs" optional multiple typestr="ID"
+    short mode="pxs" optional multiple typestr="ID"
 modeoption "create-dg" -
     "Create the specified data group; use several times to create multiple files"
-    int mode="pxs" optional multiple typestr="ID"
+    short mode="pxs" optional multiple typestr="ID"
 modeoption "new-size" -
     "File size of newly created DGs"
-    int mode="pxs" optional dependon="create-dg" typestr="SIZE" default="256"
+    short mode="pxs" optional dependon="create-dg" typestr="SIZE" default="256"
 modeoption "new-read-ac" -
     "Access condition for reading newly created DGs"
     values="always","never","ta","sm" default="sm" mode="pxs" optional dependon="create-dg"
 modeoption "new-read-ac-chatbit" -
     "Required access bit in certificate's CHAT for reading newly created DGs"
-    int mode="pxs" optional dependon="create-dg" multiple typestr="INDEX"
+    short mode="pxs" optional dependon="create-dg" multiple typestr="INDEX"
 modeoption "new-write-ac" -
     "Access condition for writing newly created DGs"
     values="always","never","ta","sm" default="sm" mode="pxs" optional dependon="create-dg"
 modeoption "new-write-ac-chatbit" -
     "Required access bit in certificate's CHAT for reading newly created DGs"
-    int mode="pxs" optional dependon="create-dg" multiple typestr="INDEX"
+    short mode="pxs" optional dependon="create-dg" multiple typestr="INDEX"
 
 text "
 Report bugs to @PACKAGE_BUGREPORT@
