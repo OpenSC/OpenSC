@@ -69,7 +69,7 @@ const char *gengetopt_args_info_help[] = {
 
 typedef enum {ARG_NO
   , ARG_STRING
-  , ARG_INT
+  , ARG_SHORT
 } cmdline_parser_arg_type;
 
 static
@@ -303,7 +303,7 @@ free_string_field (char **s)
 
 /** @brief generic value variable */
 union generic_value {
-    int int_arg;
+    short short_arg;
     char *string_arg;
     const char *default_string_arg;
 };
@@ -921,8 +921,8 @@ int update_arg(void *field, char **orig_field,
     val = possible_values[found];
 
   switch(arg_type) {
-  case ARG_INT:
-    if (val) *((int *)field) = (int)strtol (val, &stop_char, 0);
+  case ARG_SHORT:
+    if (val) *((short *)field) = (short)strtol (val, &stop_char, 0);
     break;
   case ARG_STRING:
     if (val) {
@@ -938,7 +938,7 @@ int update_arg(void *field, char **orig_field,
 
   /* check numeric conversion */
   switch(arg_type) {
-  case ARG_INT:
+  case ARG_SHORT:
     if (val && !(stop_char && *stop_char == '\0')) {
       fprintf(stderr, "%s: invalid numeric value: %s\n", package_name, val);
       return 1; /* failure */
@@ -1050,8 +1050,8 @@ void update_multiple_arg(void *field, char ***orig_field,
     *orig_field = (char **) realloc (*orig_field, (field_given + prev_given) * sizeof (char *));
 
     switch(arg_type) {
-    case ARG_INT:
-      *((int **)field) = (int *)realloc (*((int **)field), (field_given + prev_given) * sizeof (int)); break;
+    case ARG_SHORT:
+      *((short **)field) = (short *)realloc (*((short **)field), (field_given + prev_given) * sizeof (short)); break;
     case ARG_STRING:
       *((char ***)field) = (char **)realloc (*((char ***)field), (field_given + prev_given) * sizeof (char *)); break;
     default:
@@ -1063,8 +1063,8 @@ void update_multiple_arg(void *field, char ***orig_field,
         tmp = list;
         
         switch(arg_type) {
-        case ARG_INT:
-          (*((int **)field))[i + field_given] = tmp->arg.int_arg; break;
+        case ARG_SHORT:
+          (*((short **)field))[i + field_given] = tmp->arg.short_arg; break;
         case ARG_STRING:
           (*((char ***)field))[i + field_given] = tmp->arg.string_arg; break;
         default:
@@ -1077,10 +1077,10 @@ void update_multiple_arg(void *field, char ***orig_field,
   } else { /* set the default value */
     if (default_value && ! field_given) {
       switch(arg_type) {
-      case ARG_INT:
-        if (! *((int **)field)) {
-          *((int **)field) = (int *)malloc (sizeof (int));
-          (*((int **)field))[0] = default_value->int_arg; 
+      case ARG_SHORT:
+        if (! *((short **)field)) {
+          *((short **)field) = (short *)malloc (sizeof (short));
+          (*((short **)field))[0] = default_value->short_arg;
         }
         break;
       case ARG_STRING:
@@ -1404,7 +1404,7 @@ cmdline_parser_internal (
             args_info->pxs_mode_counter += 1;
           
             if (update_multiple_arg_temp(&read_dg_list, 
-                &(local_args_info.read_dg_given), optarg, 0, 0, ARG_INT,
+                &(local_args_info.read_dg_given), optarg, 0, 0, ARG_SHORT,
                 "read-dg", '-',
                 additional_error))
               goto failure;
@@ -1428,7 +1428,7 @@ cmdline_parser_internal (
             args_info->pxs_mode_counter += 1;
           
             if (update_multiple_arg_temp(&write_dg_list, 
-                &(local_args_info.write_dg_given), optarg, 0, 0, ARG_INT,
+                &(local_args_info.write_dg_given), optarg, 0, 0, ARG_SHORT,
                 "write-dg", '-',
                 additional_error))
               goto failure;
@@ -1452,7 +1452,7 @@ cmdline_parser_internal (
             args_info->pxs_mode_counter += 1;
           
             if (update_multiple_arg_temp(&delete_dg_list, 
-                &(local_args_info.delete_dg_given), optarg, 0, 0, ARG_INT,
+                &(local_args_info.delete_dg_given), optarg, 0, 0, ARG_SHORT,
                 "delete-dg", '-',
                 additional_error))
               goto failure;
@@ -1464,7 +1464,7 @@ cmdline_parser_internal (
             args_info->pxs_mode_counter += 1;
           
             if (update_multiple_arg_temp(&create_dg_list, 
-                &(local_args_info.create_dg_given), optarg, 0, 0, ARG_INT,
+                &(local_args_info.create_dg_given), optarg, 0, 0, ARG_SHORT,
                 "create-dg", '-',
                 additional_error))
               goto failure;
@@ -1478,7 +1478,7 @@ cmdline_parser_internal (
           
             if (update_arg( (void *)&(args_info->new_size_arg), 
                  &(args_info->new_size_orig), &(args_info->new_size_given),
-                &(local_args_info.new_size_given), optarg, 0, "256", ARG_INT,
+                &(local_args_info.new_size_given), optarg, 0, "256", ARG_SHORT,
                 check_ambiguity, override, 0, 0,
                 "new-size", '-',
                 additional_error))
@@ -1506,7 +1506,7 @@ cmdline_parser_internal (
             args_info->pxs_mode_counter += 1;
           
             if (update_multiple_arg_temp(&new_read_ac_chatbit_list, 
-                &(local_args_info.new_read_ac_chatbit_given), optarg, 0, 0, ARG_INT,
+                &(local_args_info.new_read_ac_chatbit_given), optarg, 0, 0, ARG_SHORT,
                 "new-read-ac-chatbit", '-',
                 additional_error))
               goto failure;
@@ -1533,7 +1533,7 @@ cmdline_parser_internal (
             args_info->pxs_mode_counter += 1;
           
             if (update_multiple_arg_temp(&new_write_ac_chatbit_list, 
-                &(local_args_info.new_write_ac_chatbit_given), optarg, 0, 0, ARG_INT,
+                &(local_args_info.new_write_ac_chatbit_given), optarg, 0, 0, ARG_SHORT,
                 "new-write-ac-chatbit", '-',
                 additional_error))
               goto failure;
@@ -1559,7 +1559,7 @@ cmdline_parser_internal (
   update_multiple_arg((void *)&(args_info->read_dg_arg),
     &(args_info->read_dg_orig), args_info->read_dg_given,
     local_args_info.read_dg_given, 0,
-    ARG_INT, read_dg_list);
+    ARG_SHORT, read_dg_list);
   update_multiple_arg((void *)&(args_info->out_file_arg),
     &(args_info->out_file_orig), args_info->out_file_given,
     local_args_info.out_file_given, 0,
@@ -1567,7 +1567,7 @@ cmdline_parser_internal (
   update_multiple_arg((void *)&(args_info->write_dg_arg),
     &(args_info->write_dg_orig), args_info->write_dg_given,
     local_args_info.write_dg_given, 0,
-    ARG_INT, write_dg_list);
+    ARG_SHORT, write_dg_list);
   update_multiple_arg((void *)&(args_info->in_file_arg),
     &(args_info->in_file_orig), args_info->in_file_given,
     local_args_info.in_file_given, 0,
@@ -1575,19 +1575,19 @@ cmdline_parser_internal (
   update_multiple_arg((void *)&(args_info->delete_dg_arg),
     &(args_info->delete_dg_orig), args_info->delete_dg_given,
     local_args_info.delete_dg_given, 0,
-    ARG_INT, delete_dg_list);
+    ARG_SHORT, delete_dg_list);
   update_multiple_arg((void *)&(args_info->create_dg_arg),
     &(args_info->create_dg_orig), args_info->create_dg_given,
     local_args_info.create_dg_given, 0,
-    ARG_INT, create_dg_list);
+    ARG_SHORT, create_dg_list);
   update_multiple_arg((void *)&(args_info->new_read_ac_chatbit_arg),
     &(args_info->new_read_ac_chatbit_orig), args_info->new_read_ac_chatbit_given,
     local_args_info.new_read_ac_chatbit_given, 0,
-    ARG_INT, new_read_ac_chatbit_list);
+    ARG_SHORT, new_read_ac_chatbit_list);
   update_multiple_arg((void *)&(args_info->new_write_ac_chatbit_arg),
     &(args_info->new_write_ac_chatbit_orig), args_info->new_write_ac_chatbit_given,
     local_args_info.new_write_ac_chatbit_given, 0,
-    ARG_INT, new_write_ac_chatbit_list);
+    ARG_SHORT, new_write_ac_chatbit_list);
 
   args_info->verbose_given += local_args_info.verbose_given;
   local_args_info.verbose_given = 0;

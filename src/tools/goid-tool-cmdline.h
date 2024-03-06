@@ -69,7 +69,7 @@ struct gengetopt_args_info
   char * write_paccessid_arg;	/**< @brief Write the specified PAccess ID.  */
   char * write_paccessid_orig;	/**< @brief Write the specified PAccess ID original value given at command line.  */
   const char *write_paccessid_help; /**< @brief Write the specified PAccess ID help description.  */
-  int* read_dg_arg;	/**< @brief Read the specified data group; use several times to read out multiple files.  */
+  short* read_dg_arg;	/**< @brief Read the specified data group; use several times to read out multiple files.  */
   char ** read_dg_orig;	/**< @brief Read the specified data group; use several times to read out multiple files original value given at command line.  */
   unsigned int read_dg_min; /**< @brief Read the specified data group; use several times to read out multiple files's minimum occurreces */
   unsigned int read_dg_max; /**< @brief Read the specified data group; use several times to read out multiple files's maximum occurreces */
@@ -79,7 +79,7 @@ struct gengetopt_args_info
   unsigned int out_file_min; /**< @brief Write output to a file instead of printing it; use once for each use of `--read-dg''s minimum occurreces */
   unsigned int out_file_max; /**< @brief Write output to a file instead of printing it; use once for each use of `--read-dg''s maximum occurreces */
   const char *out_file_help; /**< @brief Write output to a file instead of printing it; use once for each use of `--read-dg' help description.  */
-  int* write_dg_arg;	/**< @brief Write the specified data group; use several times to write multiple files.  */
+  short* write_dg_arg;	/**< @brief Write the specified data group; use several times to write multiple files.  */
   char ** write_dg_orig;	/**< @brief Write the specified data group; use several times to write multiple files original value given at command line.  */
   unsigned int write_dg_min; /**< @brief Write the specified data group; use several times to write multiple files's minimum occurreces */
   unsigned int write_dg_max; /**< @brief Write the specified data group; use several times to write multiple files's maximum occurreces */
@@ -89,23 +89,23 @@ struct gengetopt_args_info
   unsigned int in_file_min; /**< @brief Read input from a file; use once for each use of `--write-dg''s minimum occurreces */
   unsigned int in_file_max; /**< @brief Read input from a file; use once for each use of `--write-dg''s maximum occurreces */
   const char *in_file_help; /**< @brief Read input from a file; use once for each use of `--write-dg' help description.  */
-  int* delete_dg_arg;	/**< @brief Delete the specified data group; use several times to delete multiple files.  */
+  short* delete_dg_arg;	/**< @brief Delete the specified data group; use several times to delete multiple files.  */
   char ** delete_dg_orig;	/**< @brief Delete the specified data group; use several times to delete multiple files original value given at command line.  */
   unsigned int delete_dg_min; /**< @brief Delete the specified data group; use several times to delete multiple files's minimum occurreces */
   unsigned int delete_dg_max; /**< @brief Delete the specified data group; use several times to delete multiple files's maximum occurreces */
   const char *delete_dg_help; /**< @brief Delete the specified data group; use several times to delete multiple files help description.  */
-  int* create_dg_arg;	/**< @brief Create the specified data group; use several times to create multiple files.  */
+  short* create_dg_arg;	/**< @brief Create the specified data group; use several times to create multiple files.  */
   char ** create_dg_orig;	/**< @brief Create the specified data group; use several times to create multiple files original value given at command line.  */
   unsigned int create_dg_min; /**< @brief Create the specified data group; use several times to create multiple files's minimum occurreces */
   unsigned int create_dg_max; /**< @brief Create the specified data group; use several times to create multiple files's maximum occurreces */
   const char *create_dg_help; /**< @brief Create the specified data group; use several times to create multiple files help description.  */
-  int new_size_arg;	/**< @brief File size of newly created DGs (default='256').  */
+  short new_size_arg;	/**< @brief File size of newly created DGs (default='256').  */
   char * new_size_orig;	/**< @brief File size of newly created DGs original value given at command line.  */
   const char *new_size_help; /**< @brief File size of newly created DGs help description.  */
   char * new_read_ac_arg;	/**< @brief Access condition for reading newly created DGs (default='sm').  */
   char * new_read_ac_orig;	/**< @brief Access condition for reading newly created DGs original value given at command line.  */
   const char *new_read_ac_help; /**< @brief Access condition for reading newly created DGs help description.  */
-  int* new_read_ac_chatbit_arg;	/**< @brief Required access bit in certificate's CHAT for reading newly created DGs.  */
+  short* new_read_ac_chatbit_arg;	/**< @brief Required access bit in certificate's CHAT for reading newly created DGs.  */
   char ** new_read_ac_chatbit_orig;	/**< @brief Required access bit in certificate's CHAT for reading newly created DGs original value given at command line.  */
   unsigned int new_read_ac_chatbit_min; /**< @brief Required access bit in certificate's CHAT for reading newly created DGs's minimum occurreces */
   unsigned int new_read_ac_chatbit_max; /**< @brief Required access bit in certificate's CHAT for reading newly created DGs's maximum occurreces */
@@ -113,7 +113,7 @@ struct gengetopt_args_info
   char * new_write_ac_arg;	/**< @brief Access condition for writing newly created DGs (default='sm').  */
   char * new_write_ac_orig;	/**< @brief Access condition for writing newly created DGs original value given at command line.  */
   const char *new_write_ac_help; /**< @brief Access condition for writing newly created DGs help description.  */
-  int* new_write_ac_chatbit_arg;	/**< @brief Required access bit in certificate's CHAT for reading newly created DGs.  */
+  short* new_write_ac_chatbit_arg;	/**< @brief Required access bit in certificate's CHAT for reading newly created DGs.  */
   char ** new_write_ac_chatbit_orig;	/**< @brief Required access bit in certificate's CHAT for reading newly created DGs original value given at command line.  */
   unsigned int new_write_ac_chatbit_min; /**< @brief Required access bit in certificate's CHAT for reading newly created DGs's minimum occurreces */
   unsigned int new_write_ac_chatbit_max; /**< @brief Required access bit in certificate's CHAT for reading newly created DGs's maximum occurreces */
