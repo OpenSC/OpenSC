@@ -1,6 +1,10 @@
 # OpenSC documentation
 
-Manual pages for the [OpenSC command line tools](htmlpreview.github.io/?https://github.com/OpenSC/OpenSC/blob/master/doc/tools/tools.html) as well as for the [OpenSC configuration files](http://htmlpreview.github.io/?https://github.com/OpenSC/OpenSC/blob/master/doc/files/files.html) are available online and typically distributed along with your installation.
+Manual pages for the
+[OpenSC command line tools](https://htmlpreview.github.io/?https://github.com/OpenSC/OpenSC/blob/master/doc/tools/tools.html)
+as well as for the
+[OpenSC configuration files](https://htmlpreview.github.io/?https://github.com/OpenSC/OpenSC/blob/master/doc/files/files.html)
+are available online and typically distributed along with your installation.
 
 The [OpenSC Wiki](https://github.com/OpenSC/OpenSC/wiki) includes, among others, information for:
  * [Windows Quick Start](https://github.com/OpenSC/OpenSC/wiki/Windows-Quick-Start)
