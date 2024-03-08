@@ -33,7 +33,7 @@ Nightly builds are available by their git hash in branches of [OpenSC/Nightly](h
 
 [![Linux build](https://github.com/OpenSC/OpenSC/actions/workflows/linux.yml/badge.svg)](https://github.com/OpenSC/OpenSC/actions/workflows/linux.yml)
 [![OSX build](https://github.com/OpenSC/OpenSC/actions/workflows/macos.yml/badge.svg)](https://github.com/OpenSC/OpenSC/actions/workflows/macos.yml)
-[![AppVeyor CI Build Status](https://ci.appveyor.com/api/projects/status/github/OpenSC/OpenSC?branch=master&svg=true)](https://ci.appveyor.com/project/LudovicRousseau/OpenSC/branch/master)
+[![AppVeyor CI Build Status](https://ci.appveyor.com/api/projects/status/github/OpenSC/OpenSC?branch=master&svg=true)](https://ci.appveyor.com/project/frankmorgner/opensc/branch/master)
 [![Coverity Scan Status](https://scan.coverity.com/projects/4026/badge.svg)](https://scan.coverity.com/projects/4026)
 [![CodeQL](https://github.com/OpenSC/OpenSC/actions/workflows/codeql.yml/badge.svg?event=push)](https://github.com/OpenSC/OpenSC/actions/workflows/codeql.yml)
 [![Fuzzing Status](https://oss-fuzz-build-logs.storage.googleapis.com/badges/opensc.svg)](https://bugs.chromium.org/p/oss-fuzz/issues/list?sort=-opened&can=1&q=proj:opensc)
