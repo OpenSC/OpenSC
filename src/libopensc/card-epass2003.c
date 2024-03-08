@@ -404,6 +404,8 @@ aes128_encrypt_cmac_ft(struct sc_card *card, const unsigned char *key, int keysi
 	for (int i = 0; i < 16; i++) {
 		data2[i] = data2[i] ^ k2Bin[offset + i];
 	}
+	sc_evp_cipher_free(alg);
+	alg = sc_evp_cipher(card->ctx, "AES-128-CBC");
 	r = openssl_enc(alg, key, iv, data2, 16, output);
 	sc_evp_cipher_free(alg);
 	if (r != SC_SUCCESS)
