@@ -342,7 +342,7 @@ out:
 	return r;
 }
 
-/* NIST SP 800-38B 6.2 MAC Generation */ 
+/* NIST SP 800-38B 6.2 MAC Generation but uses AES-128-ECB for k1 and k2 */ 
 static int
 aes128_encrypt_cmac_ft(struct sc_card *card, const unsigned char *key, int keysize,
 	const unsigned char *input, size_t length, unsigned char *output,unsigned char *iv)
@@ -1206,18 +1206,10 @@ construct_mac_tlv_case1(struct sc_card *card, unsigned char *apdu_buf, size_t da
         if(exdata->bFipsCertification)
         {
             sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "SM data input case1 - aes128_encrypt_cmac_ft", apdu_buf, data_tlv_len+le_tlv_len+block_size);
-//            		for (int i=0;i<16;i++)
-//            		{
-//                		apdu_buf[i]=apdu_buf[i]^icv[i];
-//            		}
             sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "SM data input case1 - ^icv aes128_encrypt_cmac_ft", apdu_buf, data_tlv_len+le_tlv_len+block_size);
             r = aes128_encrypt_cmac_ft(card, exdata->sk_mac, 128, apdu_buf,data_tlv_len+le_tlv_len+block_size, mac, &icv[0]);
             LOG_TEST_RET(card->ctx, r, "aes128_encrypt_cmac_ft failed");
             memcpy(mac_tlv+2, &mac[0/*ulmacLen-16*/], 8);
-//            		for (int j=0;j<4;j++)
-//            		{
-//                		apdu_buf[j]=apdu_buf[j]^icv[j];
-//            		}
         }
         else
         {
