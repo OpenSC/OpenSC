@@ -339,7 +339,7 @@ out:
 	return r;
 }
 
-/* NIST SP 800-38B 6.2 MAC Generation */ 
+/* NIST SP 800-38B 6.2 MAC Generation but uses AES-128-ECB for k1 and k2 */ 
 static int
 aes128_encrypt_cmac_ft(struct sc_card *card, const unsigned char *key, int keysize,
 	const unsigned char *input, size_t length, unsigned char *output,unsigned char *iv)
@@ -1163,6 +1163,7 @@ construct_mac_tlv_case1(struct sc_card *card, unsigned char *apdu_buf, size_t da
 
 	/* calculate MAC */
 	memset(icv, 0, sizeof(icv));
+<<<<<<< HEAD
 	memcpy(icv, exdata->icv_mac, 16);
 	if (KEY_TYPE_AES == key_type) {
 		if (exdata->bFipsCertification) {
@@ -1194,6 +1195,41 @@ construct_mac_tlv_case1(struct sc_card *card, unsigned char *apdu_buf, size_t da
 		r = des_encrypt_cbc(card, exdata->sk_mac, 8, iv, tmp, 8, mac_tlv + 2);
 		LOG_TEST_RET(card->ctx, r, "des_encrypt_cbc failed");
 	}
+=======
+    memcpy(icv, exdata->icv_mac, 16);
+    if (KEY_TYPE_AES == key_type) {
+        if(exdata->bFipsCertification)
+        {
+            sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "SM data input case1 - aes128_encrypt_cmac_ft", apdu_buf, data_tlv_len+le_tlv_len+block_size);
+            sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "SM data input case1 - ^icv aes128_encrypt_cmac_ft", apdu_buf, data_tlv_len+le_tlv_len+block_size);
+            r = aes128_encrypt_cmac_ft(card, exdata->sk_mac, 128, apdu_buf,data_tlv_len+le_tlv_len+block_size, mac, &icv[0]);
+            LOG_TEST_RET(card->ctx, r, "aes128_encrypt_cmac_ft failed");
+            memcpy(mac_tlv+2, &mac[0/*ulmacLen-16*/], 8);
+        }
+        else
+        {
+	    sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "SM data input case1 - aes128_encrypt_cbc", apdu_buf, mac_len);
+	    r = aes128_encrypt_cbc(card, exdata->sk_mac, 16, icv, apdu_buf, mac_len, mac);
+            LOG_TEST_RET(card->ctx, r, "aes128_encrypt_cbc failed");
+            memcpy(mac_tlv + 2, &mac[mac_len - 16], 8);
+        }
+    }
+    else
+    {
+        unsigned char iv[EVP_MAX_IV_LENGTH] = { 0 };
+        unsigned char tmp[8] = { 0 };
+	sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "SM data input - case1 des_encrypt_cbc-1", apdu_buf, mac_len);
+	r = des_encrypt_cbc(card, exdata->sk_mac, 8, icv, apdu_buf, mac_len, mac);
+        LOG_TEST_RET(card->ctx, r, "des_encrypt_cbc  failed");
+	sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "SM data input case1 - des_encrypt_cbc-2", &mac[mac_len - 8], 8);
+	r = des_decrypt_cbc(card, &exdata->sk_mac[8], 8, iv, &mac[mac_len - 8], 8, tmp);
+        LOG_TEST_RET(card->ctx, r, "des_decrypt_cbc failed");
+        memset(iv, 0x00, sizeof iv);
+	sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "SM data input case1 - des_encrypt_cbc-3",  tmp, 8);
+	r = des_encrypt_cbc(card, exdata->sk_mac, 8, iv, tmp, 8, mac_tlv + 2);
+        LOG_TEST_RET(card->ctx, r, "des_encrypt_cbc failed");
+    }
+>>>>>>> 65edad800 (fixup card-epass2003.c  cleanup)
 
 	*mac_tlv_len = 2 + 8;
 	return 0;
