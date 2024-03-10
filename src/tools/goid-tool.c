@@ -453,7 +453,7 @@ err:
 }
 
 int
-paccess_get_security_attributes(struct sc_context *ctx, const char *ac, short* chatbits, size_t chatbits_len, u8 sec_attr[2])
+paccess_get_security_attributes(struct sc_context *ctx, const char *ac, short *chatbits, size_t chatbits_len, u8 sec_attr[2])
 {
     int ok = 0;
     memset(sec_attr, 0, 2);
