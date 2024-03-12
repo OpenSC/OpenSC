@@ -218,7 +218,6 @@ static CK_RV	get_ec_pubkey_point(struct sc_pkcs15_pubkey *, CK_ATTRIBUTE_PTR);
 static CK_RV	get_ec_pubkey_params(struct sc_pkcs15_pubkey *, CK_ATTRIBUTE_PTR);
 static int	lock_card(struct pkcs15_fw_data *);
 static int	unlock_card(struct pkcs15_fw_data *);
-static int	reselect_app_df(sc_pkcs15_card_t *p15card);
 
 #ifdef USE_PKCS15_INIT
 static CK_RV	set_gost3410_params(struct sc_pkcs15init_prkeyargs *,
@@ -4263,7 +4262,7 @@ pkcs15_prkey_sign(struct sc_pkcs11_session *session, void *obj,
 	struct sc_pkcs11_card *p11card = session->slot->p11card;
 	struct pkcs15_fw_data *fw_data = NULL;
 	CK_RV rv;
-	int flags = 0, prkey_has_path = 0, rc;
+	int flags = 0, rc;
 	unsigned sign_flags = SC_PKCS15_PRKEY_USAGE_SIGN | SC_PKCS15_PRKEY_USAGE_SIGNRECOVER
 			| SC_PKCS15_PRKEY_USAGE_NONREPUDIATION;
 
@@ -4283,9 +4282,6 @@ pkcs15_prkey_sign(struct sc_pkcs11_session *session, void *obj,
 
 	if (prkey == NULL)
 		return CKR_KEY_FUNCTION_NOT_PERMITTED;
-
-	if (prkey->prv_info->path.len || prkey->prv_info->path.aid.len)
-		prkey_has_path = 1;
 
 	switch (pMechanism->mechanism) {
 	case CKM_RSA_PKCS:
@@ -4421,17 +4417,6 @@ pkcs15_prkey_sign(struct sc_pkcs11_session *session, void *obj,
 	       flags, ulDataLen, *pulDataLen);
 	rc = sc_pkcs15_compute_signature(fw_data->p15_card, prkey->prv_p15obj, flags,
 			pData, ulDataLen, pSignature, *pulDataLen, pMechanism);
-	if (rc < 0 && !sc_pkcs11_conf.lock_login && !prkey_has_path) {
-		/* If private key PKCS#15 object do not have 'path' attribute,
-		 * and if PKCS#11 login session is not locked,
-		 * the compute signature could fail because of concurrent access to the card
-		 * by other application that could change the current DF.
-		 * In this particular case try to 'reselect' application DF.
-		 */
-		if (reselect_app_df(fw_data->p15_card) == SC_SUCCESS)
-			rc = sc_pkcs15_compute_signature(fw_data->p15_card, prkey->prv_p15obj, flags,
-					pData, ulDataLen, pSignature, *pulDataLen, pMechanism);
-	}
 
 	sc_unlock(p11card->card);
 
@@ -4521,7 +4506,7 @@ pkcs15_prkey_decrypt(struct sc_pkcs11_session *session, void *obj,
 	struct pkcs15_fw_data *fw_data = NULL;
 	struct pkcs15_prkey_object *prkey;
 	unsigned char decrypted[512]; /* FIXME: Will not work for keys above 4096 bits */
-	int rv, flags = 0, prkey_has_path = 0;
+	int rv, flags = 0;
 	CK_ULONG mask, good, rv_pkcs11;
 
 	if (pulDataLen == NULL) {
@@ -4555,9 +4540,6 @@ pkcs15_prkey_decrypt(struct sc_pkcs11_session *session, void *obj,
 		prkey = prkey->prv_next;
 	if (prkey == NULL)
 		return CKR_KEY_FUNCTION_NOT_PERMITTED;
-
-	if (prkey->prv_info->path.len || prkey->prv_info->path.aid.len)
-		prkey_has_path = 1;
 
 	/* Select the proper padding mechanism */
 	switch (pMechanism->mechanism) {
@@ -4611,13 +4593,6 @@ pkcs15_prkey_decrypt(struct sc_pkcs11_session *session, void *obj,
 	rv = sc_pkcs15_decipher(fw_data->p15_card, prkey->prv_p15obj, flags,
 			pEncryptedData, ulEncryptedDataLen, decrypted, sizeof(decrypted), pMechanism);
 
-	/* skip for PKCS#1 v1.5 padding prevent side channel attack */
-	if (!(flags & SC_ALGORITHM_RSA_PAD_PKCS1) &&
-			rv < 0 && !sc_pkcs11_conf.lock_login && !prkey_has_path)
-		if (reselect_app_df(fw_data->p15_card) == SC_SUCCESS)
-			rv = sc_pkcs15_decipher(fw_data->p15_card, prkey->prv_p15obj, flags,
-					pEncryptedData, ulEncryptedDataLen, decrypted, sizeof(decrypted), pMechanism);
-
 	sc_unlock(p11card->card);
 
 	sc_log(context, "Decryption complete.");
@@ -4670,7 +4645,7 @@ pkcs15_prkey_derive(struct sc_pkcs11_session *session, void *obj,
 	struct sc_pkcs11_card *p11card = session->slot->p11card;
 	struct pkcs15_fw_data *fw_data = NULL;
 	struct pkcs15_prkey_object *prkey = (struct pkcs15_prkey_object *) obj;
-	int	need_unlock = 0, prkey_has_path = 0;
+	int	need_unlock = 0;
 	int	rv, flags = 0;
 	CK_BYTE_PTR pSeedData = NULL;
 	CK_ULONG ulSeedDataLen = 0;
@@ -4691,9 +4666,6 @@ pkcs15_prkey_derive(struct sc_pkcs11_session *session, void *obj,
 
 	if (prkey == NULL)
 		return CKR_KEY_FUNCTION_NOT_PERMITTED;
-
-	if (prkey->prv_info->path.len || prkey->prv_info->path.aid.len)
-		prkey_has_path = 1;
 
 	if (pData != NULL && *pulDataLen > 0) { /* TODO DEE only test for NULL? */
 		need_unlock = 1;
@@ -4721,10 +4693,6 @@ pkcs15_prkey_derive(struct sc_pkcs11_session *session, void *obj,
 	size_t len = *pulDataLen;
 	rv = sc_pkcs15_derive(fw_data->p15_card, prkey->prv_p15obj, flags,
 			pSeedData, ulSeedDataLen, pData, &len);
-	if (rv < 0 && !sc_pkcs11_conf.lock_login && !prkey_has_path && need_unlock)
-		if (reselect_app_df(fw_data->p15_card) == SC_SUCCESS)
-			rv = sc_pkcs15_derive(fw_data->p15_card, prkey->prv_p15obj, flags,
-					pSeedData, ulSeedDataLen, pData, &len);
 	*pulDataLen = len;
 
 	/* this may have been a request for size */
@@ -6802,19 +6770,4 @@ unlock_card(struct pkcs15_fw_data *fw_data)
 		fw_data->locked--;
 	}
 	return 0;
-}
-
-
-static int
-reselect_app_df(sc_pkcs15_card_t *p15card)
-{
-	int r = SC_SUCCESS;
-
-	if (p15card->file_app != NULL) {
-		/* if the application df (of the pkcs15 application) is specified select it */
-		sc_path_t *tpath = &p15card->file_app->path;
-		sc_log(p15card->card->ctx, "reselect application df");
-		r = sc_select_file(p15card->card, tpath, NULL);
-	}
-	return r;
 }
