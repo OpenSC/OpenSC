@@ -394,7 +394,7 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 {
 	CK_RV rv;
 	CK_BYTE *cmp_message = NULL;
-	unsigned long cmp_message_length;
+	unsigned int cmp_message_length;
 
 	if (o->type == EVP_PKEY_RSA) {
 		const EVP_MD *md = NULL;
@@ -437,6 +437,18 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 		case CKM_SHA512_RSA_PKCS:
 			md = EVP_sha512();
 			break;
+		case CKM_SHA3_224_RSA_PKCS:
+			md = EVP_sha3_224();
+			break;
+		case CKM_SHA3_256_RSA_PKCS:
+			md = EVP_sha3_256();
+			break;
+		case CKM_SHA3_384_RSA_PKCS:
+			md = EVP_sha3_384();
+			break;
+		case CKM_SHA3_512_RSA_PKCS:
+			md = EVP_sha3_512();
+			break;
 		case CKM_MD5_RSA_PKCS:
 			md = EVP_md5();
 			break;
@@ -470,6 +482,7 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 		return 1;
 	} else if (o->type == EVP_PKEY_EC) {
 		int nlen;
+		const EVP_MD *md = NULL;
 		ECDSA_SIG *sig = ECDSA_SIG_new();
 		BIGNUM *r = NULL, *s = NULL;
 		EVP_PKEY_CTX *ctx = NULL;
@@ -488,24 +501,32 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 
 		switch (mech->mech) {
 		case CKM_ECDSA_SHA512:
-			cmp_message = SHA512(message, message_length, NULL);
-			cmp_message_length = SHA512_DIGEST_LENGTH;
+			md = EVP_sha512();
 			break;
 		case CKM_ECDSA_SHA384:
-			cmp_message = SHA384(message, message_length, NULL);
-			cmp_message_length = SHA384_DIGEST_LENGTH;
+			md = EVP_sha384();
 			break;
 		case CKM_ECDSA_SHA256:
-			cmp_message = SHA256(message, message_length, NULL);
-			cmp_message_length = SHA256_DIGEST_LENGTH;
+			md = EVP_sha256();
 			break;
 		case CKM_ECDSA_SHA1:
-			cmp_message = SHA1(message, message_length, NULL);
-			cmp_message_length = SHA_DIGEST_LENGTH;
+			md = EVP_sha1();
 			break;
 		case CKM_ECDSA:
 			cmp_message = message;
-			cmp_message_length = message_length;
+			cmp_message_length = (unsigned)message_length;
+			break;
+		case CKM_ECDSA_SHA3_224:
+			md = EVP_sha3_224();
+			break;
+		case CKM_ECDSA_SHA3_256:
+			md = EVP_sha3_256();
+			break;
+		case CKM_ECDSA_SHA3_384:
+			md = EVP_sha3_384();
+			break;
+		case CKM_ECDSA_SHA3_512:
+			md = EVP_sha3_512();
 			break;
 		default:
 			debug_print(" [SKIP %s ] Skip verify of unknown mechanism", o->id_str);
@@ -518,12 +539,31 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 		sig_asn1_len = i2d_ECDSA_SIG(sig, &sig_asn1);
 		ECDSA_SIG_free(sig);
 
+		if (md != NULL) {
+			cmp_message = malloc(EVP_MAX_MD_SIZE);
+			if (cmp_message == NULL) {
+				fprintf(stderr, "malloc failed\n");
+				return -1;
+			}
+			rv = EVP_Digest(message, message_length, cmp_message, &cmp_message_length, md, NULL);
+			if (rv != 1) {
+				fprintf(stderr, "EVP_Digest failed\n");
+				free(cmp_message);
+				return -1;
+			}
+		}
+
 		if (EVP_PKEY_verify_init(ctx) != 1) {
 			fprintf(stderr, "EVP_PKEY_verify_init\n");
+			free(cmp_message);
+			return -1;
 		}
 
 		rv = EVP_PKEY_verify(ctx, sig_asn1, sig_asn1_len, cmp_message, cmp_message_length);
 		OPENSSL_free(sig_asn1);
+		if (md != NULL) {
+			free(cmp_message);
+		}
 		EVP_PKEY_CTX_free(ctx);
 		if (rv == 1) {
 			debug_print(" [  OK %s ] EC Signature of length %lu is valid.",

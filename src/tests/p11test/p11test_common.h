@@ -31,7 +31,8 @@
 #include "pkcs11/pkcs11.h"
 #include "libopensc/sc-ossl-compat.h"
 
-#define MAX_MECHS 200
+#define MAX_MECHS     256
+#define MAX_PSS_MECHS 1024
 
 #define debug_print(fmt, ...) \
 	do { \

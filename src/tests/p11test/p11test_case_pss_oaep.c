@@ -34,7 +34,7 @@ size_t global_message_length = sizeof(SHORT_MESSAGE_TO_SIGN);
 const CK_MECHANISM_TYPE *
 get_oaep_mechanism_hashes(CK_MECHANISM_TYPE mech)
 {
-	static CK_MECHANISM_TYPE h[6];
+	static CK_MECHANISM_TYPE h[10];
 
 	switch (mech) {
 	case CKM_RSA_PKCS_OAEP:
@@ -43,7 +43,11 @@ get_oaep_mechanism_hashes(CK_MECHANISM_TYPE mech)
 		h[2] = CKM_SHA256;
 		h[3] = CKM_SHA384;
 		h[4] = CKM_SHA512;
-		h[5] = -1;
+		h[5] = CKM_SHA3_224;
+		h[6] = CKM_SHA3_256;
+		h[7] = CKM_SHA3_384;
+		h[8] = CKM_SHA3_512;
+		h[9] = -1;
 		break;
 
 	default:
@@ -56,7 +60,7 @@ get_oaep_mechanism_hashes(CK_MECHANISM_TYPE mech)
 const CK_MECHANISM_TYPE *
 get_pss_mechanism_hashes(CK_MECHANISM_TYPE mech)
 {
-	static CK_MECHANISM_TYPE h[6];
+	static CK_MECHANISM_TYPE h[10];
 
 	switch (mech) {
 	case CKM_RSA_PKCS_PSS:
@@ -65,7 +69,11 @@ get_pss_mechanism_hashes(CK_MECHANISM_TYPE mech)
 		h[2] = CKM_SHA256;
 		h[3] = CKM_SHA384;
 		h[4] = CKM_SHA512;
-		h[5] = -1;
+		h[5] = CKM_SHA3_224;
+		h[6] = CKM_SHA3_256;
+		h[7] = CKM_SHA3_384;
+		h[8] = CKM_SHA3_512;
+		h[9] = -1;
 		break;
 
 	case CKM_SHA1_RSA_PKCS_PSS:
@@ -93,6 +101,26 @@ get_pss_mechanism_hashes(CK_MECHANISM_TYPE mech)
 		h[1] = -1;
 		break;
 
+	case CKM_SHA3_224_RSA_PKCS_PSS:
+		h[0] = CKM_SHA3_224;
+		h[1] = -1;
+		break;
+
+	case CKM_SHA3_256_RSA_PKCS_PSS:
+		h[0] = CKM_SHA3_256;
+		h[1] = -1;
+		break;
+
+	case CKM_SHA3_384_RSA_PKCS_PSS:
+		h[0] = CKM_SHA3_384;
+		h[1] = -1;
+		break;
+
+	case CKM_SHA3_512_RSA_PKCS_PSS:
+		h[0] = CKM_SHA3_512;
+		h[1] = -1;
+		break;
+
 	default:
 		h[0] = -1;
 		break;
@@ -113,13 +141,19 @@ get_mechanism_hashes(CK_MECHANISM_TYPE mech)
 const CK_RSA_PKCS_MGF_TYPE *
 get_mgfs(void)
 {
-	static CK_RSA_PKCS_MGF_TYPE h[6];
+	static CK_RSA_PKCS_MGF_TYPE h[10];
+
 	h[0] = CKG_MGF1_SHA1;
 	h[1] = CKG_MGF1_SHA224;
 	h[2] = CKG_MGF1_SHA256;
 	h[3] = CKG_MGF1_SHA384;
 	h[4] = CKG_MGF1_SHA512;
-	h[5] = -1;
+	h[5] = CKG_MGF1_SHA3_224;
+	h[6] = CKG_MGF1_SHA3_256;
+	h[7] = CKG_MGF1_SHA3_384;
+	h[8] = CKG_MGF1_SHA3_512;
+	h[9] = -1;
+
 	return h;
 }
 
@@ -137,6 +171,18 @@ const EVP_MD *mgf_cryptoki_to_ossl(CK_RSA_PKCS_MGF_TYPE mgf)
 
 	case CKG_MGF1_SHA512:
 		return EVP_sha512();
+
+	case CKG_MGF1_SHA3_224:
+		return EVP_sha3_224();
+
+	case CKG_MGF1_SHA3_256:
+		return EVP_sha3_256();
+
+	case CKG_MGF1_SHA3_384:
+		return EVP_sha3_384();
+
+	case CKG_MGF1_SHA3_512:
+		return EVP_sha3_512();
 
 	case CKG_MGF1_SHA1:
 	default:
@@ -161,6 +207,18 @@ const EVP_MD *md_cryptoki_to_ossl(CK_MECHANISM_TYPE hash)
 	case CKM_SHA512:
 		return EVP_sha512();
 
+	case CKM_SHA3_224:
+		return EVP_sha3_224();
+
+	case CKM_SHA3_256:
+		return EVP_sha3_256();
+
+	case CKM_SHA3_384:
+		return EVP_sha3_384();
+
+	case CKM_SHA3_512:
+		return EVP_sha3_512();
+
 	case CKM_SHA_1:
 	default:
 		return EVP_sha1();
@@ -179,6 +237,14 @@ size_t get_hash_length(CK_MECHANISM_TYPE mech)
 		return SHA384_DIGEST_LENGTH;
 	case CKM_SHA512:
 		return SHA512_DIGEST_LENGTH;
+	case CKM_SHA3_224:
+		return 224 / 8;
+	case CKM_SHA3_256:
+		return 256 / 8;
+	case CKM_SHA3_384:
+		return 384 / 8;
+	case CKM_SHA3_512:
+		return 512 / 8;
 	default:
 	case CKM_SHA_1:
 		return SHA_DIGEST_LENGTH;
@@ -211,6 +277,26 @@ CK_BYTE *hash_message(const CK_BYTE *message, size_t message_length,
 	case CKM_SHA512:
 		digest_len = SHA512_DIGEST_LENGTH;
 		md = EVP_sha512();
+		break;
+
+	case CKM_SHA3_224:
+		digest_len = 224 / 8;
+		md = EVP_sha3_224();
+		break;
+
+	case CKM_SHA3_256:
+		digest_len = 256 / 8;
+		md = EVP_sha3_256();
+		break;
+
+	case CKM_SHA3_384:
+		digest_len = 384 / 8;
+		md = EVP_sha3_384();
+		break;
+
+	case CKM_SHA3_512:
+		digest_len = 512 / 8;
+		md = EVP_sha3_512();
 		break;
 
 	case CKM_SHA_1:
@@ -735,10 +821,8 @@ void fill_object_pss_mechanisms(token_info_t *info, test_cert_t *o)
 					mech->usage_flags =
 						source_mech->usage_flags;
 					mech->result_flags = 0;
-					if (n >= MAX_MECHS)
-						P11TEST_FAIL(info,
-							"Too many mechanisms (%d)",
-							MAX_MECHS);
+					if (n >= MAX_PSS_MECHS)
+						P11TEST_FAIL(info, "Too many mechanisms (%d)", MAX_PSS_MECHS);
 				}
 			}
 		}
@@ -816,8 +900,8 @@ void pss_oaep_test(void **state) {
 
 	/* print summary */
 	printf("[KEY ID] [LABEL]\n");
-	printf("[ TYPE ] [ SIZE ] [PUBLIC]                               [SIGN&VERIFY] [ENC&DECRYPT]\n");
-	printf("[ MECHANISM              ] [ HASH ] [    MGF    ] [SALT] [   WORKS   ] [   WORKS   ]\n");
+	printf("[ TYPE ] [ SIZE ] [PUBLIC]                                   [SIGN&VERIFY] [ENC&DECRYPT]\n");
+	printf("[ MECHANISM              ] [  HASH  ] [     MGF     ] [SALT] [   WORKS   ] [   WORKS   ]\n");
 	P11TEST_DATA_ROW(info, 7,
 		's', "KEY ID",
 		's', "MECHANISM",
@@ -840,30 +924,27 @@ void pss_oaep_test(void **state) {
 		printf("\n[%-6s] [%s]\n",
 			o->id_str,
 			o->label);
-		printf("[ %s ] [%6lu] [ %s ]                               [%s%s] [%s%s]\n",
-			o->key_type == CKK_RSA ? "RSA " :
-				o->key_type == CKK_EC ? " EC " : " ?? ",
-			o->bits,
-			o->verify_public == 1 ? " ./ " : "    ",
-			o->sign ? "[./] " : "[  ] ",
-			o->verify ? " [./] " : " [  ] ",
-			o->encrypt ? "[./] " : "[  ] ",
-			o->decrypt ? " [./] " : " [  ] ");
+		printf("[ %s ] [%6lu] [ %s ]                                   [%s%s] [%s%s]\n",
+				o->key_type == CKK_RSA ? "RSA " : " ?? ",
+				o->bits,
+				o->verify_public == 1 ? " ./ " : "    ",
+				o->sign ? "[./] " : "[  ] ",
+				o->verify ? " [./] " : " [  ] ",
+				o->encrypt ? "[./] " : "[  ] ",
+				o->decrypt ? " [./] " : " [  ] ");
 		if (!o->sign && !o->verify && !o->encrypt && !o->decrypt) {
 			printf("  no usable attributes found ... ignored\n");
 			continue;
 		}
 		for (j = 0; j < o->num_mechs; j++) {
 			test_mech_t *mech = &o->mechs[j];
-			printf("  [ %-20s ] [%-6s] [%-11s] [%4d] [   %s    ] [   %s    ]\n",
-				get_mechanism_name(mech->mech),
-				get_mechanism_name(mech->hash),
-				get_mgf_name(mech->mgf),
-				mech->salt,
-				mech->result_flags & FLAGS_SIGN_ANY
-				? "[./]" : "    ",
-				mech->result_flags & FLAGS_DECRYPT_ANY
-				? "[./]" : "    ");
+			printf("  [ %-20s ] [%-8s] [%-13s] [%4d] [   %s    ] [   %s    ]\n",
+					get_mechanism_name(mech->mech),
+					get_mechanism_name(mech->hash),
+					get_mgf_name(mech->mgf),
+					mech->salt,
+					mech->result_flags & FLAGS_SIGN_ANY ? "[./]" : "    ",
+					mech->result_flags & FLAGS_DECRYPT_ANY ? "[./]" : "    ");
 			if ((mech->result_flags & FLAGS_SIGN_ANY) == 0 &&
 				(mech->result_flags & FLAGS_DECRYPT_ANY) == 0)
 				continue; /* skip empty rows for export */
@@ -879,13 +960,13 @@ void pss_oaep_test(void **state) {
 				? "YES" : "");
 		}
 	}
-	printf(" Public == Cert ----------^                                ^  ^  ^       ^  ^  ^\n");
-	printf(" Sign Attribute -------------------------------------------'  |  |       |  |  |\n");
-	printf(" Sign&Verify functionality -----------------------------------'  |       |  |  |\n");
-	printf(" Verify Attribute -----------------------------------------------'       |  |  |\n");
-	printf(" Encrypt Attribute ------------------------------------------------------'  |  |\n");
-	printf(" Encrypt & Decrypt functionality -------------------------------------------'  |\n");
-	printf(" Decrypt Attribute ------------------------------------------------------------'\n");
+	printf(" Public == Cert ----------^                                    ^  ^  ^       ^  ^  ^\n");
+	printf(" Sign Attribute -----------------------------------------------'  |  |       |  |  |\n");
+	printf(" Sign&Verify functionality ---------------------------------------'  |       |  |  |\n");
+	printf(" Verify Attribute ---------------------------------------------------'       |  |  |\n");
+	printf(" Encrypt Attribute ----------------------------------------------------------'  |  |\n");
+	printf(" Encrypt & Decrypt functionality -----------------------------------------------'  |\n");
+	printf(" Decrypt Attribute ----------------------------------------------------------------'\n");
 
 	clean_all_objects(&objects);
 	P11TEST_PASS(info);
