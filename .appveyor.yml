@@ -66,8 +66,8 @@ install:
   - ps: >-
       If (!(Test-Path C:\gengetopt )) {
         appveyor DownloadFile "https://ftp.gnu.org/gnu/gengetopt/gengetopt-${env:GENGETOPT_VER}.tar.xz" -FileName gengetopt.tar.xz
-        7z x gengetopt.tar.xz -oC:\
-        Rename-Item -path "c:\gengetopt-${env:GENGETOPT_VER}" -newName "gengetopt"
+        tar xJf gengetopt.tar.xz
+        Rename-Item -path "gengetopt-${env:GENGETOPT_VER}" -newName "c:\gengetopt"
       }
   - echo "Using %APPVEYOR_BUILD_WORKER_IMAGE% with %VCVARSALL%"
   - call "%VCVARSALL%" %Platform%
