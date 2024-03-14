@@ -68,10 +68,11 @@
 #include "compression.h"
 #endif
 
-#include "internal.h"
 #include "asn1.h"
 #include "cardctl.h"
+#include "internal.h"
 #include "simpletlv.h"
+#include "ui/notify.h"
 
 enum {
 	PIV_OBJ_CCC = 0,
@@ -422,6 +423,16 @@ typedef struct piv_private_data {
 	unsigned int card_issues; /* card_issues flags for this card */
 	int object_test_verify; /* Can test this object to set verification state of card */
 	int yubico_version; /* 3 byte version number of NEO or Yubikey4  as integer */
+	struct {
+		struct {
+			u8 pin_policy;
+			u8 touch_policy;
+		} pin;
+		struct {
+			u8 pin_policy;
+			u8 touch_policy;
+		} puk;
+	} yk_metadata;
 	unsigned int ccc_flags;	    /* From  CCC indicate if CAC card */
 	unsigned int pin_policy; /* from discovery */
 	unsigned int init_flags;
@@ -5682,6 +5693,49 @@ err:
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
+static void
+piv_yk_metadata_get_policy(sc_context_t *ctx, u8 *buf, size_t buflen, u8 *pin, u8 *touch)
+{
+	size_t policylen;
+	const u8 *policy = sc_asn1_find_tag(ctx, buf, buflen, 0x02, &policylen);
+	if (policy && policylen == 2) {
+		if (pin)
+			*pin = policy[0];
+		if (touch)
+			*touch = policy[1];
+	} else {
+		/* The default behaviour is used */
+		if (pin)
+			*pin = 0x00;
+		if (touch)
+			*touch = 0x00;
+	}
+}
+
+static void
+piv_yk_init_metadata(sc_card_t *card)
+{
+	sc_apdu_t apdu;
+	u8 resp[100];
+	piv_private_data_t *priv = PIV_DATA(card);
+
+	if (priv->yubico_version < 0x00050300)
+		return;
+
+	sc_format_apdu_ex(&apdu, 0x00, 0xF7, 0x00, 0x80, NULL, 0, resp, sizeof resp);
+	if (SC_SUCCESS == sc_transmit_apdu(card, &apdu) && SC_SUCCESS == sc_check_sw(card, apdu.sw1, apdu.sw2)) {
+		piv_yk_metadata_get_policy(card->ctx, resp, apdu.resplen,
+				&priv->yk_metadata.pin.pin_policy,
+				&priv->yk_metadata.pin.touch_policy);
+	}
+
+	sc_format_apdu_ex(&apdu, 0x00, 0xF7, 0x00, 0x81, NULL, 0, resp, sizeof resp);
+	if (SC_SUCCESS == sc_transmit_apdu(card, &apdu) && SC_SUCCESS == sc_check_sw(card, apdu.sw1, apdu.sw2)) {
+		piv_yk_metadata_get_policy(card->ctx, resp, apdu.resplen,
+				&priv->yk_metadata.puk.pin_policy,
+				&priv->yk_metadata.puk.touch_policy);
+	}
+}
 
 static int piv_init(sc_card_t *card)
 {
@@ -5813,6 +5867,8 @@ static int piv_init(sc_card_t *card)
 	 * keys and certs. "piv like" cards may or may not have history
 	 */
 	piv_process_history(card);
+
+	piv_yk_init_metadata(card);
 
 	priv->pstate=PIV_STATE_NORMAL;
 	sc_unlock(card);
@@ -6025,6 +6081,18 @@ piv_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 			sc_log(card->ctx, "sc_lock failed");
 			return r;
 		}
+	}
+
+	if (data->cmd == SC_PIN_CMD_VERIFY) {
+		const char *title = "Touch your Yubikey to continue";
+		if (data->pin_reference == 0x80 && priv->yk_metadata.pin.touch_policy == 0x02)
+			sc_notify(title, "Touching the token is required for verifying the PIN");
+		else if (data->pin_reference == 0x80 && priv->yk_metadata.pin.touch_policy == 0x03)
+			sc_notify(title, "Touching the token is required for verifying the PIN (needed again after 15 seconds)");
+		else if (data->pin_reference == 0x81 && priv->yk_metadata.pin.touch_policy == 0x02)
+			sc_notify(title, "Touching the token is required for verifying the PUK");
+		else if (data->pin_reference == 0x81 && priv->yk_metadata.pin.touch_policy == 0x03)
+			sc_notify(title, "Touching the token is required for verifying the PUK (needed again after 15 seconds)");
 	}
 
 	priv->pin_cmd_verify = 1; /* tell piv_check_sw its a verify to save sw1, sw2 */
