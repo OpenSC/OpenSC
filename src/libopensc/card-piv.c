@@ -4386,6 +4386,15 @@ static int piv_get_pin_preference(sc_card_t *card, int *pin_ref)
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
+static int
+piv_yk_pin_policy(sc_card_t *card, u8 *pin_policy)
+{
+	piv_private_data_t *priv = PIV_DATA(card);
+
+	*pin_policy = priv->yk_metadata.pin.pin_policy;
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+}
+
 static int piv_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 {
 	piv_private_data_t * priv = PIV_DATA(card);
@@ -4422,6 +4431,9 @@ static int piv_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 			break;
 		case SC_CARDCTL_PIV_OBJECT_PRESENT:
 			return piv_is_object_present(card, ptr);
+			break;
+		case SC_CARDCTL_PIV_YK_PIN_POLICY:
+			return piv_yk_pin_policy(card, ptr);
 			break;
 	}
 

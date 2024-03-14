@@ -1166,8 +1166,24 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		prkey_obj.flags = prkeys[i].obj_flags;
 		prkey_obj.user_consent = prkeys[i].user_consent; /* only Sign key */
 
-		if (prkeys[i].auth_id)
-			sc_pkcs15_format_id(prkeys[i].auth_id, &prkey_obj.auth_id);
+		if (prkeys[i].auth_id) {
+			/* The default behaviour for that key is used */
+			u8 pin_policy = 0x00;
+
+			if (strcmp("01", prkeys[i].auth_id) == 0) {
+				sc_card_ctl(p15card->card, SC_CARDCTL_PIV_YK_PIN_POLICY, &pin_policy);
+				if (pin_policy == 0x02)
+					/* PIN is checked once for the session */
+					prkey_obj.user_consent = 0;
+				else if (pin_policy == 0x03)
+					/* PIN is verified just before operation */
+					prkey_obj.user_consent = 1;
+			}
+
+			/* PIN is never checked for operations if PIN policy is set to 0x01 */
+			if (pin_policy != 0x01)
+				sc_pkcs15_format_id(prkeys[i].auth_id, &prkey_obj.auth_id);
+		}
 
 		/*
 		 * When no cert is present and a pubkey in a file was found,
