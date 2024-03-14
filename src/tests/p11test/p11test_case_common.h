@@ -58,7 +58,7 @@ typedef struct {
 	CK_ULONG 	 bits;
 	char 		*value;
 	int			verify_public;
-	test_mech_t	mechs[MAX_MECHS];
+	test_mech_t	mechs[MAX_PSS_MECHS];
 	size_t			num_mechs;
 } test_cert_t;
 

@@ -84,22 +84,30 @@ supported_mechanisms_test(void **state)
 			/* store mechanisms list for later tests */
 
 			/* List all known RSA mechanisms */
-			if (mechanism_list[i] == CKM_RSA_X_509
-					|| mechanism_list[i] == CKM_RSA_PKCS
-					|| mechanism_list[i] == CKM_MD5_RSA_PKCS
-					|| mechanism_list[i] == CKM_RIPEMD160_RSA_PKCS
-					|| mechanism_list[i] == CKM_SHA1_RSA_PKCS
-					|| mechanism_list[i] == CKM_SHA224_RSA_PKCS
-					|| mechanism_list[i] == CKM_SHA256_RSA_PKCS
-					|| mechanism_list[i] == CKM_SHA384_RSA_PKCS
-					|| mechanism_list[i] == CKM_SHA512_RSA_PKCS
-					|| mechanism_list[i] == CKM_RSA_PKCS_PSS
-					|| mechanism_list[i] == CKM_SHA1_RSA_PKCS_PSS
-					|| mechanism_list[i] == CKM_SHA256_RSA_PKCS_PSS
-					|| mechanism_list[i] == CKM_SHA384_RSA_PKCS_PSS
-					|| mechanism_list[i] == CKM_SHA512_RSA_PKCS_PSS
-					|| mechanism_list[i] == CKM_SHA224_RSA_PKCS_PSS
-					|| mechanism_list[i] == CKM_RSA_PKCS_OAEP) {
+			if (mechanism_list[i] == CKM_RSA_X_509 ||
+					mechanism_list[i] == CKM_RSA_PKCS ||
+					mechanism_list[i] == CKM_MD5_RSA_PKCS ||
+					mechanism_list[i] == CKM_RIPEMD160_RSA_PKCS ||
+					mechanism_list[i] == CKM_SHA1_RSA_PKCS ||
+					mechanism_list[i] == CKM_SHA224_RSA_PKCS ||
+					mechanism_list[i] == CKM_SHA256_RSA_PKCS ||
+					mechanism_list[i] == CKM_SHA384_RSA_PKCS ||
+					mechanism_list[i] == CKM_SHA512_RSA_PKCS ||
+					mechanism_list[i] == CKM_SHA3_224_RSA_PKCS ||
+					mechanism_list[i] == CKM_SHA3_256_RSA_PKCS ||
+					mechanism_list[i] == CKM_SHA3_384_RSA_PKCS ||
+					mechanism_list[i] == CKM_SHA3_512_RSA_PKCS ||
+					mechanism_list[i] == CKM_RSA_PKCS_PSS ||
+					mechanism_list[i] == CKM_SHA1_RSA_PKCS_PSS ||
+					mechanism_list[i] == CKM_SHA256_RSA_PKCS_PSS ||
+					mechanism_list[i] == CKM_SHA384_RSA_PKCS_PSS ||
+					mechanism_list[i] == CKM_SHA512_RSA_PKCS_PSS ||
+					mechanism_list[i] == CKM_SHA224_RSA_PKCS_PSS ||
+					mechanism_list[i] == CKM_SHA3_224_RSA_PKCS_PSS ||
+					mechanism_list[i] == CKM_SHA3_256_RSA_PKCS_PSS ||
+					mechanism_list[i] == CKM_SHA3_384_RSA_PKCS_PSS ||
+					mechanism_list[i] == CKM_SHA3_512_RSA_PKCS_PSS ||
+					mechanism_list[i] == CKM_RSA_PKCS_OAEP) {
 				if (token.num_rsa_mechs < MAX_MECHS) {
 					insert_mechanism(token.rsa_mechs, &token.num_rsa_mechs,
 							mechanism_list[i], mechanism_info[i]);
@@ -108,15 +116,19 @@ supported_mechanisms_test(void **state)
 			}
 
 			/* We list all known EC mechanisms */
-			if (mechanism_list[i] == CKM_ECDSA
-					|| mechanism_list[i] == CKM_ECDSA_SHA1
-					|| mechanism_list[i] == CKM_ECDSA_SHA256
-					|| mechanism_list[i] == CKM_ECDSA_SHA384
-					|| mechanism_list[i] == CKM_ECDSA_SHA512
+			if (mechanism_list[i] == CKM_ECDSA ||
+					mechanism_list[i] == CKM_ECDSA_SHA1 ||
+					mechanism_list[i] == CKM_ECDSA_SHA256 ||
+					mechanism_list[i] == CKM_ECDSA_SHA384 ||
+					mechanism_list[i] == CKM_ECDSA_SHA512 ||
+					mechanism_list[i] == CKM_ECDSA_SHA3_224 ||
+					mechanism_list[i] == CKM_ECDSA_SHA3_256 ||
+					mechanism_list[i] == CKM_ECDSA_SHA3_384 ||
+					mechanism_list[i] == CKM_ECDSA_SHA3_512 ||
 					/* Including derive mechanisms */
-					|| mechanism_list[i] == CKM_ECDH1_DERIVE
-					|| mechanism_list[i] == CKM_ECDH1_COFACTOR_DERIVE
-					|| mechanism_list[i] == CKM_ECMQV_DERIVE) {
+					mechanism_list[i] == CKM_ECDH1_DERIVE ||
+					mechanism_list[i] == CKM_ECDH1_COFACTOR_DERIVE ||
+					mechanism_list[i] == CKM_ECMQV_DERIVE) {
 				if (token.num_ec_mechs < MAX_MECHS) {
 					insert_mechanism(token.ec_mechs, &token.num_ec_mechs,
 							mechanism_list[i], mechanism_info[i]);
