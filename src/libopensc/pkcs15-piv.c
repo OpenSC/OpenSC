@@ -1150,6 +1150,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 	for (i = 0; i < PIV_NUM_KEYS; i++) {
 		struct sc_pkcs15_prkey_info prkey_info;
 		struct sc_pkcs15_object     prkey_obj;
+		u8 pin_policy = prkeys[i].ref;
 
 		memset(&prkey_info, 0, sizeof(prkey_info));
 		memset(&prkey_obj,  0, sizeof(prkey_obj));
@@ -1166,8 +1167,21 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		prkey_obj.flags = prkeys[i].obj_flags;
 		prkey_obj.user_consent = prkeys[i].user_consent; /* only Sign key */
 
-		if (prkeys[i].auth_id)
+		sc_card_ctl(p15card->card, SC_CARDCTL_PIV_YK_PIN_POLICY, &pin_policy);
+		switch (pin_policy) {
+		case 0x02:
+			/* PIN is checked once for the session */
+			prkey_obj.user_consent = 0;
+			break;
+		case 0x03:
+			/* PIN is verified just before operation */
+			prkey_obj.user_consent = 1;
+		}
+		/* PIN is never checked for operations if PIN policy is set to 0x01 */
+		if (prkeys[i].auth_id && pin_policy != 0x01)
 			sc_pkcs15_format_id(prkeys[i].auth_id, &prkey_obj.auth_id);
+		else
+			prkey_obj.flags &= ~SC_PKCS15_CO_FLAG_PRIVATE;
 
 		/*
 		 * When no cert is present and a pubkey in a file was found,
