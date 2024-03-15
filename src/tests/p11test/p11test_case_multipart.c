@@ -51,9 +51,17 @@ void multipart_tests(void **state) {
 		/* XXX some keys do not have appropriate flags, but we can use them
 		 * or vice versa */
 		//if (objects.data[i].sign && objects.data[i].verify)
-			for (j = 0; j < objects.data[i].num_mechs; j++)
-				used |= sign_verify_test(&(objects.data[i]), info,
+		for (j = 0; j < objects.data[i].num_mechs; j++) {
+			switch (objects.data[i].mechs[j].mech) {
+			case CKM_RSA_X_509:
+			case CKM_RSA_PKCS:
+			case CKM_RSA_PKCS_PSS:
+				/* these should not support multi-part operations */
+				continue;
+			}
+			used |= sign_verify_test(&(objects.data[i]), info,
 					&(objects.data[i].mechs[j]), 32, 1);
+		}
 
 		if (!used) {
 			debug_print(" [ WARN %s ] Private key with unknown purpose T:%02lX",
@@ -91,6 +99,14 @@ void multipart_tests(void **state) {
 		}
 		for (j = 0; j < o->num_mechs; j++) {
 			test_mech_t *mech = &o->mechs[j];
+
+			switch (mech->mech) {
+			case CKM_RSA_X_509:
+			case CKM_RSA_PKCS:
+			case CKM_RSA_PKCS_PSS:
+				/* these do not support multi-part operations */
+				continue;
+			}
 			if ((mech->usage_flags & CKF_SIGN) == 0) {
 				/* not applicable mechanisms are skipped */
 				continue;
