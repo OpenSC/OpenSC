@@ -620,7 +620,7 @@ failed:
 }
 
 // see https://stackoverflow.com/a/10536254 for explanation
-#define LEN_MAX_INT_AS_STR (3*sizeof(int)+2)
+#define LEN_MAX_INT_AS_STR (3 * sizeof(int) + 2)
 
 static int
 sc_pkcs15emu_openpgp_add_data(sc_pkcs15_card_t *p15card)
@@ -633,8 +633,8 @@ sc_pkcs15emu_openpgp_add_data(sc_pkcs15_card_t *p15card)
 	for (i = 1; i <= PGP_NUM_PRIVDO; i++) {
 		sc_pkcs15_data_info_t dat_info;
 		sc_pkcs15_object_t dat_obj;
-		char name[6+LEN_MAX_INT_AS_STR];
-		char path[7+LEN_MAX_INT_AS_STR];
+		char name[6 + LEN_MAX_INT_AS_STR];
+		char path[7 + LEN_MAX_INT_AS_STR];
 		u8 content[254];
 		memset(&dat_info, 0, sizeof(dat_info));
 		memset(&dat_obj, 0, sizeof(dat_obj));
