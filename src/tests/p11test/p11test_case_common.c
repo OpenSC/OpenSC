@@ -261,6 +261,11 @@ int callback_certificates(test_certs_t *objects,
 	if (*(CK_CERTIFICATE_TYPE *)template[3].pValue != CKC_X_509)
 		return 0;
 
+	/* Ignore objects with empty ID -- we don't know what to do with them */
+	if (template[0].ulValueLen == 0) {
+		return 0;
+	}
+
 	if ((o = add_object(objects, template[0], template[2])) == NULL)
 		return -1;
 
@@ -303,6 +308,11 @@ int callback_private_keys(test_certs_t *objects,
 {
 	test_cert_t *o = NULL;
 	char *key_id;
+
+	/* Ignore objects with empty ID -- we don't know what to do with them */
+	if (template[3].ulValueLen == 0) {
+		return 0;
+	}
 
 	/* Search for already stored certificate with same ID */
 	if ((o = search_certificate(objects, &(template[3]))) == NULL) {
@@ -763,7 +773,7 @@ int callback_secret_keys(test_certs_t *objects,
 
 	/* Ignore objects with empty ID and label that are left in SoftHSM after deriving key even after
 	 * destroying them */
-	if (template[13].ulValueLen == 0 && template[1].ulValueLen == 0) {
+	if (template[13].pValue == NULL || template[1].pValue == NULL) {
 		return 0;
 	}
 
@@ -803,7 +813,9 @@ int callback_secret_keys(test_certs_t *objects,
 		template[10].pValue = NULL;
 	}
 
-	o->bits = template[11].ulValueLen > 0 ? *((CK_ULONG *) template[11].pValue)*8 : 0;
+	if (template[11].pValue != NULL && template[11].ulValueLen > 0) {
+		o->bits = *((CK_ULONG *)template[11].pValue) * 8;
+	}
 
 	add_supported_mechs(o);
 
