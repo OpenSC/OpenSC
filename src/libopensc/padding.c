@@ -154,13 +154,15 @@ sc_pkcs1_strip_02_padding_constant_time(sc_context_t *ctx, unsigned int n, const
 {
 	unsigned int i = 0;
 	u8 *msg, *msg_orig = NULL;
-	unsigned int good, found_zero_byte, mask;
+	unsigned int good, found_zero_byte, mask, tmp_outlen;
 	unsigned int zero_index = 0, msg_index, mlen = -1, len = 0;
 	LOG_FUNC_CALLED(ctx);
 
-	if (data == NULL || data_len <= 0 || data_len > n || n < SC_PKCS1_PADDING_MIN_SIZE)
+	if (data == NULL || data_len <= 0 || data_len > n ||
+			n < SC_PKCS1_PADDING_MIN_SIZE || out_len == NULL)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
 
+	tmp_outlen = *out_len;
 	msg = msg_orig = calloc(n, sizeof(u8));
 	if (msg == NULL)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
@@ -201,18 +203,18 @@ sc_pkcs1_strip_02_padding_constant_time(sc_context_t *ctx, unsigned int n, const
 	mlen = data_len - msg_index;
 
 	// check that message fits into out buffer
-	good &= constant_time_ge(*out_len, mlen);
+	good &= constant_time_ge(tmp_outlen, mlen);
 
 	// move the result in-place by |num|-SC_PKCS1_PADDING_MIN_SIZE-|mlen| bytes to the left.
-	*out_len = constant_time_select(constant_time_lt(n - SC_PKCS1_PADDING_MIN_SIZE, *out_len),
-			n - SC_PKCS1_PADDING_MIN_SIZE, *out_len);
+	tmp_outlen = constant_time_select(constant_time_lt(n - SC_PKCS1_PADDING_MIN_SIZE, tmp_outlen),
+			n - SC_PKCS1_PADDING_MIN_SIZE, tmp_outlen);
 	for (msg_index = 1; msg_index < n - SC_PKCS1_PADDING_MIN_SIZE; msg_index <<= 1) {
 		mask = ~constant_time_eq(msg_index & (n - SC_PKCS1_PADDING_MIN_SIZE - mlen), 0);
 		for (i = SC_PKCS1_PADDING_MIN_SIZE; i < n - msg_index; i++)
 			msg[i] = constant_time_select_8(mask, msg[i + msg_index], msg[i]);
 	}
 	// move message into out buffer, if good
-	for (i = 0; i < *out_len; i++) {
+	for (i = 0; i < tmp_outlen; i++) {
 		unsigned int msg_index;
 		// when out is longer than message in data, use some bogus index in msg
 		mask = good & constant_time_lt(i, mlen);
@@ -220,6 +222,7 @@ sc_pkcs1_strip_02_padding_constant_time(sc_context_t *ctx, unsigned int n, const
 		out[i] = constant_time_select_8(mask, msg[msg_index], out[i]);
 	}
 
+	*out_len = constant_time_select(good, mlen, *out_len);
 	free(msg_orig);
 	return constant_time_select(good, mlen, SC_ERROR_WRONG_PADDING);
 }
