@@ -17,6 +17,7 @@ BuildRequires:  docbook-style-xsl
 BuildRequires:  autoconf automake libtool gcc
 BuildRequires:  bash-completion
 BuildRequires:  zlib-devel
+BuildRequires:  gengetopt
 # For tests
 BuildRequires:  libcmocka-devel
 BuildRequires:  vim-common
