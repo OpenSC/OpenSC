@@ -299,14 +299,17 @@ int sc_pkcs1_strip_oaep_padding(sc_context_t *ctx, u8 *data, size_t len, unsigne
 	if ((md_ctx = EVP_MD_CTX_new())) {
 		if (!EVP_DigestInit_ex(md_ctx, hash_md, NULL)
 		    || !EVP_DigestUpdate(md_ctx, param, paramlen)
-		    || !EVP_DigestFinal_ex(md_ctx, label, &hash_len))
+		    || !EVP_DigestFinal_ex(md_ctx, label, &hash_len)) {
+			sc_log_openssl(ctx);
 			hash_len = 0;
+		}
 		EVP_MD_CTX_free(md_ctx);
 	}
 	sc_evp_md_free(hash_md);
 	hash_md = NULL;
-	if (!hash_len)
+	if (!hash_len) {
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
+	}
 
 	mgf1_md = mgf1_flag2md(ctx, flags);
 	if (!mgf1_md)
@@ -331,6 +334,7 @@ int sc_pkcs1_strip_oaep_padding(sc_context_t *ctx, u8 *data, size_t len, unsigne
 	}
 
 	if (mgf1(seed, mdlen, data + mdlen + 1, dblen, mgf1_md)) {
+		sc_log_openssl(ctx);
 		sc_evp_md_free(mgf1_md);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
 	}
@@ -338,6 +342,7 @@ int sc_pkcs1_strip_oaep_padding(sc_context_t *ctx, u8 *data, size_t len, unsigne
 		seed[i] ^= data[i + 1];
 
 	if (mgf1(db, dblen, seed, mdlen, mgf1_md)) {
+		sc_log_openssl(ctx);
 		sc_evp_md_free(mgf1_md);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
 	}
@@ -478,8 +483,10 @@ static int sc_pkcs1_add_pss_padding(sc_context_t *scctx, unsigned int hash, unsi
 		return SC_ERROR_BUFFER_TOO_SMALL;
 
 	md = hash_flag2md(scctx, hash);
-	if (md == NULL)
+	if (md == NULL) {
+		sc_log_openssl(scctx);
 		return SC_ERROR_NOT_SUPPORTED;
+	}
 	hlen = EVP_MD_size(md);
 	dblen = mod_length - hlen - 1; /* emLen - hLen - 1 */
 	plen = mod_length - sLen - hlen - 1;
@@ -498,6 +505,7 @@ static int sc_pkcs1_add_pss_padding(sc_context_t *scctx, unsigned int hash, unsi
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	if (RAND_bytes(salt, (unsigned)sLen) != 1) {
+		sc_log_openssl(scctx);
 		sc_evp_md_free(md);
 		return SC_ERROR_INTERNAL;
 	}
@@ -510,6 +518,7 @@ static int sc_pkcs1_add_pss_padding(sc_context_t *scctx, unsigned int hash, unsi
 	    EVP_DigestUpdate(ctx, buf, 8) != 1 ||
 	    EVP_DigestUpdate(ctx, in, hlen) != 1 || /* mHash */
 	    EVP_DigestUpdate(ctx, salt, sLen) != 1) {
+		sc_log_openssl(scctx);
 		goto done;
 	}
 
@@ -519,6 +528,7 @@ static int sc_pkcs1_add_pss_padding(sc_context_t *scctx, unsigned int hash, unsi
 	out[plen - 1] = 0x01;
 	memcpy(out + plen, salt, sLen);
 	if (EVP_DigestFinal_ex(ctx, out + dblen, NULL) != 1) { /* H */
+		sc_log_openssl(scctx);
 		goto done;
 	}
 	out[dblen + hlen] = 0xBC;
@@ -527,8 +537,10 @@ static int sc_pkcs1_add_pss_padding(sc_context_t *scctx, unsigned int hash, unsi
 
 	/* Construct the DB mask block by block and XOR it in. */
 	mgf1_md = mgf1_flag2md(scctx, mgf1_hash);
-	if (mgf1_md == NULL)
-		return SC_ERROR_NOT_SUPPORTED;
+	if (mgf1_md == NULL) {
+		sc_log_openssl(scctx);
+		goto done;
+	}
 	mgf1_hlen = EVP_MD_size(mgf1_md);
 
 	mgf_rounds = (dblen + mgf1_hlen - 1) / mgf1_hlen; /* round up */
@@ -541,6 +553,7 @@ static int sc_pkcs1_add_pss_padding(sc_context_t *scctx, unsigned int hash, unsi
 		    EVP_DigestUpdate(ctx, out + dblen, hlen) != 1 || /* H (Z parameter of MGF1) */
 		    EVP_DigestUpdate(ctx, buf, 4) != 1 || /* C */
 		    EVP_DigestFinal_ex(ctx, mask, NULL) != 1) {
+			sc_log_openssl(scctx);
 			goto done;
 		}
 		/* this is no longer part of the MGF1, but actually
@@ -650,8 +663,10 @@ int sc_pkcs1_encode(sc_context_t *ctx, unsigned long flags,
 			hash_algo = hash_len2algo(tmp_len);
 		}
 		/* sLen is by default same as hash length */
-		if (!(md = hash_flag2md(ctx, hash_algo)))
+		if (!(md = hash_flag2md(ctx, hash_algo))) {
+			sc_log_openssl(ctx);
 			return SC_ERROR_NOT_SUPPORTED;
+		}
 		sLen = EVP_MD_size(md);
 		sc_evp_md_free(md);
 		/* if application provide sLen, use it */

@@ -27,11 +27,6 @@
 #endif
 #include <errno.h>
 #include <string.h>
-#ifdef ENABLE_OPENSSL
-#include <openssl/evp.h>
-#include <openssl/rsa.h>
-#include <openssl/dsa.h>
-#endif
 
 #include "common/compat_getpass.h"
 #include "libopensc/internal.h"

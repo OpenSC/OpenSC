@@ -34,11 +34,6 @@
 #include <string.h>
 #include <stdio.h>
 
-#ifdef ENABLE_OPENSSL
-#include <openssl/x509.h>
-#include <openssl/x509v3.h>
-#endif
-
 #include "internal.h"
 #include "pkcs15.h"
 #include "log.h"
@@ -240,7 +235,10 @@ static int itacns_add_cert(sc_pkcs15_card_t *p15card,
 	}
 
 	sc_pkcs15_free_certificate(cert);
-	if (!x509) return SC_SUCCESS;
+	if (!x509) {
+		sc_log_openssl(p15card->card->ctx);
+		return SC_SUCCESS;
+	}
 	X509_check_purpose(x509, -1, 0);
 
 	if(X509_get_extension_flags(x509) & EXFLAG_KUSAGE) {

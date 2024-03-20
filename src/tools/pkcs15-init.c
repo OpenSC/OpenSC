@@ -118,7 +118,6 @@ static int	do_read_public_key(const char *, const char *, EVP_PKEY **);
 static int	do_read_certificate(const char *, const char *, X509 **);
 static char *	cert_common_name(X509 *x509);
 static void	parse_commandline(int argc, char **argv);
-static void	ossl_print_errors(void);
 static int	verify_pin(struct sc_pkcs15_card *, char *);
 
 enum {
@@ -1032,6 +1031,7 @@ do_store_private_key(struct sc_profile *profile)
 	r = sc_pkcs15_convert_prkey(&args.key, pkey);
 	if (r < 0) {
 		EVP_PKEY_free(pkey);
+		sc_log_openssl(g_ctx);
 		return r;
 	}
 	init_gost_params(&args.params.gost, pkey);
@@ -1214,6 +1214,7 @@ do_store_public_key(struct sc_profile *profile, EVP_PKEY *pkey)
 	}
 	if (r >= 0) {
 		r = sc_pkcs15_convert_pubkey(&args.key, pkey);
+		sc_log_openssl(g_ctx);
 		if (r >= 0)
 			init_gost_params(&args.params.gost, pkey);
 	}
@@ -1320,7 +1321,7 @@ do_read_check_certificate(sc_pkcs15_cert_t *sc_oldcert,
 	const char *filename, const char *format, sc_pkcs15_der_t *newcert_raw)
 {
 	X509 *oldcert, *newcert;
-	EVP_PKEY *oldpk, *newpk;
+	EVP_PKEY *oldpk = NULL, *newpk = NULL;
 	int oldpk_type, newpk_type;
 	const u8 *ptr;
 	int r;
@@ -1329,8 +1330,10 @@ do_read_check_certificate(sc_pkcs15_cert_t *sc_oldcert,
 	ptr = sc_oldcert->data.value;
 	oldcert = d2i_X509(NULL, &ptr, sc_oldcert->data.len);
 
-	if (oldcert == NULL)
+	if (oldcert == NULL) {
+		sc_log_openssl(g_ctx);
 		return SC_ERROR_INTERNAL;
+	}
 
 	/* Read the new cert from file and get it's public key */
 	r = do_read_certificate(filename, format, &newcert);
@@ -1341,6 +1344,13 @@ do_read_check_certificate(sc_pkcs15_cert_t *sc_oldcert,
 
 	oldpk = X509_get_pubkey(oldcert);
 	newpk = X509_get_pubkey(newcert);
+	if (!oldpk || !newpk) {
+		EVP_PKEY_free(newpk);
+		EVP_PKEY_free(oldpk);
+		X509_free(oldcert);
+		sc_log_openssl(g_ctx);
+		return SC_ERROR_INTERNAL;
+	}
 
 	oldpk_type = EVP_PKEY_base_id(oldpk);
 	newpk_type = EVP_PKEY_base_id(newpk);
@@ -2276,7 +2286,7 @@ do_read_pem_private_key(const char *filename, const char *passphrase,
 	*key = PEM_read_bio_PrivateKey(bio, NULL, pass_cb, (char *) passphrase);
 	BIO_free(bio);
 	if (*key == NULL) {
-		ossl_print_errors();
+		sc_log_openssl(g_ctx);
 		return SC_ERROR_CANNOT_LOAD_KEY;
 	}
 	return 0;
@@ -2330,7 +2340,8 @@ do_read_pkcs12_private_key(const char *filename, const char *passphrase,
 	*key = user_key;
 	return ncerts;
 
-error:	ossl_print_errors();
+error:
+	sc_log_openssl(g_ctx);
 	return SC_ERROR_CANNOT_LOAD_KEY;
 }
 
@@ -2396,7 +2407,7 @@ do_read_pem_public_key(const char *filename)
 	pk = PEM_read_bio_PUBKEY(bio, NULL, NULL, NULL);
 	BIO_free(bio);
 	if (pk == NULL)
-		ossl_print_errors();
+		sc_log_openssl(g_ctx);
 	return pk;
 }
 
@@ -2412,7 +2423,7 @@ do_read_der_public_key(const char *filename)
 	pk = d2i_PUBKEY_bio(bio, NULL);
 	BIO_free(bio);
 	if (pk == NULL)
-		ossl_print_errors();
+		sc_log_openssl(g_ctx);
 	return pk;
 }
 
@@ -2449,7 +2460,7 @@ do_read_pem_certificate(const char *filename)
 	xp = PEM_read_bio_X509(bio, NULL, NULL, NULL);
 	BIO_free(bio);
 	if (xp == NULL)
-		ossl_print_errors();
+		sc_log_openssl(g_ctx);
 	return xp;
 }
 
@@ -2465,7 +2476,7 @@ do_read_der_certificate(const char *filename)
 	xp = d2i_X509_bio(bio, NULL);
 	BIO_free(bio);
 	if (xp == NULL)
-		ossl_print_errors();
+		sc_log_openssl(g_ctx);
 	return xp;
 }
 
@@ -2482,8 +2493,10 @@ do_read_certificate(const char *name, const char *format, X509 **out)
 		      format);
 	}
 
-	if (!*out)
+	if (!*out) {
+		sc_log_openssl(g_ctx);
 		util_fatal("Unable to read certificate from %s\n", name);
+	}
 	return 0;
 }
 
@@ -2542,20 +2555,28 @@ cert_common_name(X509 *x509)
 	int idx, out_len = 0;
 
 	idx = X509_NAME_get_index_by_NID(X509_get_subject_name(x509), NID_commonName, -1);
-	if (idx < 0)
+	if (idx < 0) {
+		sc_log_openssl(g_ctx);
 		return NULL;
+	}
 
 	ne = X509_NAME_get_entry(X509_get_subject_name(x509), idx);
-	if (!ne)
-	       return NULL;
+	if (!ne) {
+		sc_log_openssl(g_ctx);
+		return NULL;
+	}
 
 	a_str = X509_NAME_ENTRY_get_data(ne);
-	if (!a_str)
+	if (!a_str) {
+		sc_log_openssl(g_ctx);
 		return NULL;
+	}
 
 	out_len = ASN1_STRING_to_UTF8(&tmp, a_str);
-	if (!tmp)
+	if (!tmp) {
+		sc_log_openssl(g_ctx);
 		return NULL;
+	}
 
 	out = calloc(1, out_len + 1);
 	if (out)
@@ -2970,18 +2991,6 @@ parse_commandline(int argc, char **argv)
 
 next: ;
 	}
-}
-
-/*
- * OpenSSL helpers
- */
-static void
-ossl_print_errors(void)
-{
-	long		err;
-
-	while ((err = ERR_get_error()) != 0)
-		fprintf(stderr, "%s\n", ERR_error_string(err, NULL));
 }
 
 /*

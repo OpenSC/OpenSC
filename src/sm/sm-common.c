@@ -204,6 +204,7 @@ DES_cbc_cksum_3des_emv96(struct sc_context *ctx,
 	if (l > 8) {
 		alg = sc_evp_cipher(ctx, "DES-CBC");
 		if (!EVP_EncryptInit_ex2(cctx, alg, key, iv, NULL)) {
+			sc_log_openssl(ctx);
 			EVP_CIPHER_CTX_free(cctx);
 			sc_evp_cipher_free(alg);
 			return SC_ERROR_INTERNAL;
@@ -212,12 +213,14 @@ DES_cbc_cksum_3des_emv96(struct sc_context *ctx,
 		EVP_CIPHER_CTX_set_padding(cctx, 0);
 		for (; l > 8; l -= 8, in += 8) {
 			if (!EVP_EncryptUpdate(cctx, outv, &tmplen, in, 8)) {
+				sc_log_openssl(ctx);
 				EVP_CIPHER_CTX_free(cctx);
 				sc_evp_cipher_free(alg);
 				return SC_ERROR_INTERNAL;
 			}
 		}
 		if (!EVP_EncryptFinal_ex(cctx, outv + tmplen, &tmplen)) {
+			sc_log_openssl(ctx);
 			EVP_CIPHER_CTX_free(cctx);
 			sc_evp_cipher_free(alg);
 			return SC_ERROR_INTERNAL;
@@ -230,6 +233,7 @@ DES_cbc_cksum_3des_emv96(struct sc_context *ctx,
 	memcpy(tmpout, outv, 4);
 	alg = sc_evp_cipher(ctx, "DES-EDE-CBC");
 	if (!EVP_EncryptInit_ex2(cctx, alg, key, outv, NULL)) {
+		sc_log_openssl(ctx);
 		EVP_CIPHER_CTX_free(cctx);
 		sc_evp_cipher_free(alg);
 		return SC_ERROR_INTERNAL;
@@ -237,11 +241,13 @@ DES_cbc_cksum_3des_emv96(struct sc_context *ctx,
 	/* Disable padding, otherwise it will fail to decrypt non-padded inputs */
 	EVP_CIPHER_CTX_set_padding(cctx, 0);
 	if (!EVP_EncryptUpdate(cctx, outv, &tmplen, in, (int)l)) {
+		sc_log_openssl(ctx);
 		EVP_CIPHER_CTX_free(cctx);
 		sc_evp_cipher_free(alg);
 		return SC_ERROR_INTERNAL;
 	}
 	if (!EVP_EncryptFinal_ex(cctx, outv + tmplen, &tmplen)) {
+		sc_log_openssl(ctx);
 		EVP_CIPHER_CTX_free(cctx);
 		sc_evp_cipher_free(alg);
 		return SC_ERROR_INTERNAL;
@@ -327,6 +333,7 @@ DES_cbc_cksum_3des(struct sc_context *ctx,
 	cctx = EVP_CIPHER_CTX_new();
 	alg = sc_evp_cipher(ctx, "DES-EDE-CBC");
 	if (!EVP_EncryptInit_ex2(cctx, alg, key, iv, NULL)) {
+		sc_log_openssl(ctx);
 		EVP_CIPHER_CTX_free(cctx);
 		sc_evp_cipher_free(alg);
 		return SC_ERROR_INTERNAL;
@@ -335,12 +342,14 @@ DES_cbc_cksum_3des(struct sc_context *ctx,
 	EVP_CIPHER_CTX_set_padding(cctx, 0);
 	for (; l > 0; l -= 8, in += 8) {
 		if (!EVP_EncryptUpdate(cctx, outv, &tmplen, in, 8)) {
+			sc_log_openssl(ctx);
 			EVP_CIPHER_CTX_free(cctx);
 			sc_evp_cipher_free(alg);
 			return SC_ERROR_INTERNAL;
 		}
 	}
 	if (!EVP_EncryptFinal_ex(cctx, outv + tmplen, &tmplen)) {
+		sc_log_openssl(ctx);
 		EVP_CIPHER_CTX_free(cctx);
 		sc_evp_cipher_free(alg);
 		return SC_ERROR_INTERNAL;
@@ -420,6 +429,7 @@ sm_encrypt_des_ecb3(struct sc_context *ctx,
 	return SC_SUCCESS;
 
 err:
+	sc_log_openssl(ctx);
 	EVP_CIPHER_CTX_free(cctx);
 	sc_evp_cipher_free(alg);
 	free(*out);
@@ -472,6 +482,7 @@ sm_decrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
 	cctx = EVP_CIPHER_CTX_new();
 	alg = sc_evp_cipher(ctx, "DES-EDE-CBC");
 	if (!EVP_DecryptInit_ex2(cctx, alg, key, icv, NULL)) {
+		sc_log_openssl(ctx);
 		EVP_CIPHER_CTX_free(cctx);
 		sc_evp_cipher_free(alg);
 		free(decrypted);
@@ -480,6 +491,7 @@ sm_decrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
 	/* Disable padding, otherwise it will fail to decrypt non-padded inputs */
 	EVP_CIPHER_CTX_set_padding(cctx, 0);
 	if (!EVP_DecryptUpdate(cctx, decrypted, &tmplen, data, (int)data_len)) {
+		sc_log_openssl(ctx);
 		EVP_CIPHER_CTX_free(cctx);
 		sc_evp_cipher_free(alg);
 		free(decrypted);
@@ -488,6 +500,7 @@ sm_decrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
 	decrypted_len = tmplen;
 
 	if (!EVP_DecryptFinal_ex(cctx, decrypted + decrypted_len, &tmplen)) {
+		sc_log_openssl(ctx);
 		EVP_CIPHER_CTX_free(cctx);
 		sc_evp_cipher_free(alg);
 		free(decrypted);
@@ -569,6 +582,7 @@ sm_encrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
 	cctx = EVP_CIPHER_CTX_new();
 	alg = sc_evp_cipher(ctx, "DES-EDE-CBC");
 	if (!EVP_EncryptInit_ex2(cctx, alg, key, icv, NULL)) {
+		sc_log_openssl(ctx);
 		free(*out);
 		free(data);
 		EVP_CIPHER_CTX_free(cctx);
@@ -578,6 +592,7 @@ sm_encrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
 	/* Disable padding, otherwise it will fail to decrypt non-padded inputs */
 	EVP_CIPHER_CTX_set_padding(cctx, 0);
 	if (!EVP_EncryptUpdate(cctx, *out, &tmplen, data, (int)data_len)) {
+		sc_log_openssl(ctx);
 		free(*out);
 		free(data);
 		EVP_CIPHER_CTX_free(cctx);
@@ -587,6 +602,7 @@ sm_encrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
 	*out_len = tmplen;
 
 	if (!EVP_EncryptFinal_ex(cctx, *out + *out_len, &tmplen)) {
+		sc_log_openssl(ctx);
 		free(*out);
 		free(data);
 		EVP_CIPHER_CTX_free(cctx);

@@ -3195,20 +3195,23 @@ iasecc_qsign_data_sha1(struct sc_context *ctx, const unsigned char *in, size_t i
 	md = sc_evp_md(ctx, "SHA1");
 	mdctx = EVP_MD_CTX_new();
 	if (EVP_DigestInit_ex(mdctx, md, NULL) != 1) {
+		sc_log_openssl(ctx);
 		sc_log(ctx, "EVP_DigestInit_ex failed");
-		goto err;
+		goto end;
 	}
 
 	md_data = EVP_MD_CTX_md_data(mdctx);
 	if (md_data == NULL) {
+		sc_log_openssl(ctx);
 		sc_log(ctx, "Failed to find md_data");
 		r = SC_ERROR_NOT_SUPPORTED;
-		goto err;
+		goto end;
 	}
 
 	if (EVP_DigestUpdate(mdctx, in, in_len) != 1) {
+		sc_log_openssl(ctx);
 		sc_log(ctx, "EVP_DigestUpdate failed");
-		goto err;
+		goto end;
 	}
 
 	hh[0] = &md_data->h0;
@@ -3241,19 +3244,16 @@ iasecc_qsign_data_sha1(struct sc_context *ctx, const unsigned char *in, size_t i
 	}
 
 	if (EVP_DigestFinal_ex(mdctx, out->hash, &md_out_len) != 1) {
+		sc_log_openssl(ctx);
 		sc_log(ctx, "EVP_DigestFinal_ex failed");
-		goto err;
+		goto end;
 	}
 
 	out->hash_size = SHA_DIGEST_LENGTH;
 	sc_log(ctx, "Expected digest %s\n", sc_dump_hex(out->hash, out->hash_size));
 
 	r = SC_SUCCESS;
-	goto end;
 
-err:
-	if (ctx->debug > 0 && ctx->debug_file != 0)
-		ERR_print_errors_fp(ctx->debug_file);
 end:
 	EVP_MD_CTX_free(mdctx);
 	sc_evp_md_free(md);
@@ -3294,20 +3294,23 @@ iasecc_qsign_data_sha256(struct sc_context *ctx, const unsigned char *in, size_t
 	md = sc_evp_md(ctx, "SHA256");
 	mdctx = EVP_MD_CTX_new();
 	if (EVP_DigestInit_ex(mdctx, md, NULL) != 1) {
+		sc_log_openssl(ctx);
 		sc_log(ctx, "EVP_DigestInit_ex failed");
-		goto err;
+		goto end;
 	}
 
 	md_data = EVP_MD_CTX_md_data(mdctx);
 	if (md_data == NULL) {
+		sc_log_openssl(ctx);
 		sc_log(ctx, "Failed to find md_data");
 		r = SC_ERROR_NOT_SUPPORTED;
-		goto err;
+		goto end;
 	}
 
 	if (EVP_DigestUpdate(mdctx, in, in_len) != 1) {
+		sc_log_openssl(ctx);
 		sc_log(ctx, "EVP_DigestUpdate failed");
-		goto err;
+		goto end;
 	}
 
 	for (jj=0; jj<hh_num; jj++)
@@ -3334,19 +3337,16 @@ iasecc_qsign_data_sha256(struct sc_context *ctx, const unsigned char *in, size_t
 	}
 
 	if (EVP_DigestFinal_ex(mdctx, out->hash, &md_out_len) != 1) {
+		sc_log_openssl(ctx);
 		sc_log(ctx, "EVP_DigestFinal_ex failed");
-		goto err;
+		goto end;
 	}
 
 	out->hash_size = SHA256_DIGEST_LENGTH;
 	sc_log(ctx, "Expected digest %s\n", sc_dump_hex(out->hash, out->hash_size));
 
 	r = SC_SUCCESS;
-	goto end;
 
-err:
-	if (ctx->debug > 0 && ctx->debug_file != 0)
-		ERR_print_errors_fp(ctx->debug_file);
 end:
 	EVP_MD_CTX_free(mdctx);
 	sc_evp_md_free(md);

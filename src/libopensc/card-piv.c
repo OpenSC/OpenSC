@@ -41,21 +41,13 @@
 #ifdef ENABLE_OPENSSL
 	/* openssl needed for card administration and SM */
 #include <openssl/evp.h>
-#include <openssl/bio.h>
 #include <openssl/pem.h>
 #include <openssl/rand.h>
-#include <openssl/rsa.h>
 #include <openssl/sha.h>
 #if !defined(OPENSSL_NO_EC)
 #include <openssl/ec.h>
 #endif
-#include <openssl/err.h>
-
-#define piv_log_openssl(C) \
-	do { if (C && C->debug > 0 && C->debug_file != 0) \
-		{ ERR_print_errors_fp(C->debug_file); } \
-	} while(0)
-#endif /* ENABLE_OPENSSL */
+#endif
 
 /* 800-73-4 SM and VCI need: ECC, SM and real OpenSSL >= 1.1 */
 #if defined(ENABLE_OPENSSL) && defined(ENABLE_SM) && !defined(OPENSSL_NO_EC) && !defined(LIBRESSL_VERSION_NUMBER) && OPENSSL_VERSION_NUMBER >= 0x10100000L
@@ -929,6 +921,7 @@ static int piv_encode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 	cmac_ctx = CMAC_CTX_new();
 	if (cmac_ctx == NULL) {
+		sc_log_openssl(card->ctx);
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
@@ -939,7 +932,7 @@ static int piv_encode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu
 	cmac_params[cmac_params_n] = OSSL_PARAM_construct_end();
 	if (mac == NULL
 			|| (cmac_ctx = EVP_MAC_CTX_new(mac)) == NULL) {
-		piv_log_openssl(card->ctx);
+		sc_log_openssl(card->ctx);
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
@@ -956,8 +949,8 @@ static int piv_encode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu
 			|| EVP_EncryptUpdate(ed_ctx, IV, &outli, priv->sm_session.enc_counter, 16) != 1
 			|| EVP_EncryptFinal_ex(ed_ctx, discard, &outdl) != 1
 			|| outdl != 0) {
+		sc_log_openssl(card->ctx);
 		sc_log(card->ctx,"SM encode failed in OpenSSL");
-		piv_log_openssl(card->ctx);
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
@@ -1033,8 +1026,8 @@ static int piv_encode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu
 				|| EVP_EncryptUpdate(ed_ctx, p + outl, &outll, pad, padlen) != 1
 				|| EVP_EncryptFinal_ex(ed_ctx, discard, &outdl) != 1
 				|| outdl != 0) {  /* should not happen */
+			sc_log_openssl(card->ctx);
 			sc_log(card->ctx,"SM _encode failed in OpenSSL");
-			piv_log_openssl(card->ctx);
 			r = SC_ERROR_INTERNAL;
 			goto err;
 		}
@@ -1056,6 +1049,7 @@ static int piv_encode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu
 			|| CMAC_Update(cmac_ctx, header, sizeof(header)) != 1
 			|| CMAC_Update(cmac_ctx, sbuf,  macdatalen) != 1
 			|| CMAC_Final(cmac_ctx, priv->sm_session.C_MCV, &C_MCVlen) != 1) {
+		sc_log_openssl(card->ctx);
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
@@ -1066,7 +1060,7 @@ static int piv_encode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu
 			|| !EVP_MAC_update(cmac_ctx, header, sizeof(header))
 			|| !EVP_MAC_update(cmac_ctx, sbuf,  macdatalen)
 			|| !EVP_MAC_final(cmac_ctx, priv->sm_session.C_MCV, &C_MCVlen, MCVlen)) {
-		piv_log_openssl(card->ctx);
+		sc_log_openssl(card->ctx);
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
@@ -1259,6 +1253,7 @@ static int piv_decode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 	cmac_ctx = CMAC_CTX_new();
 	if (cmac_ctx == NULL) {
+		sc_log_openssl(card->ctx);
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
@@ -1267,7 +1262,7 @@ static int piv_decode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu
 	cmac_params[cmac_params_n++] = OSSL_PARAM_construct_utf8_string("cipher", cs->cipher_cbc_name, 0);
 	cmac_params[cmac_params_n] = OSSL_PARAM_construct_end();
 	if (mac == NULL || (cmac_ctx = EVP_MAC_CTX_new(mac)) == NULL) {
-		piv_log_openssl(card->ctx);
+		sc_log_openssl(card->ctx);
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
@@ -1281,6 +1276,7 @@ static int piv_decode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu
 			|| CMAC_Update(cmac_ctx, priv->sm_session.R_MCV, MCVlen) != 1
 			|| CMAC_Update(cmac_ctx, sm_apdu->resp, macdatalen) != 1
 			|| CMAC_Final(cmac_ctx, priv->sm_session.R_MCV, &R_MCVlen) != 1) {
+		sc_log_openssl(card->ctx);
 		r = SC_ERROR_SM_AUTHENTICATION_FAILED;
 		goto err;
 	}
@@ -1290,7 +1286,7 @@ static int piv_decode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu
 			|| !EVP_MAC_update(cmac_ctx, priv->sm_session.R_MCV, MCVlen)
 			|| !EVP_MAC_update(cmac_ctx, sm_apdu->resp, macdatalen)
 			|| !EVP_MAC_final(cmac_ctx, priv->sm_session.R_MCV, &R_MCVlen, MCVlen)) {
-		piv_log_openssl(card->ctx);
+		sc_log_openssl(card->ctx);
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
@@ -1314,8 +1310,8 @@ static int piv_decode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu
 			|| EVP_EncryptUpdate(ed_ctx, IV, &outli, priv->sm_session.resp_enc_counter, 16) != 1
 			|| EVP_EncryptFinal_ex(ed_ctx, discard, &outdl) != 1
 			|| outdl != 0) {
+		sc_log_openssl(card->ctx);
 		sc_log(card->ctx,"SM encode failed in OpenSSL");
-		piv_log_openssl(card->ctx);
 		r = SC_ERROR_SM_AUTHENTICATION_FAILED;
 		goto err;
 	}
@@ -1365,8 +1361,8 @@ static int piv_decode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu
 				|| EVP_DecryptFinal_ex(ed_ctx, discard, &outdl) != 1
 				|| outdl != 0
 				|| outll != 16) {  /* should not happen */
+			sc_log_openssl(card->ctx);
 			sc_log(card->ctx,"SM _decode failed in OpenSSL");
-			piv_log_openssl(card->ctx);
 			r = SC_ERROR_SM_AUTHENTICATION_FAILED;
 			goto err;
 		}
@@ -1899,8 +1895,8 @@ static int piv_sm_verify_sig(struct sc_card *card, const EVP_MD *type,
 			|| EVP_DigestVerifyInit(md_ctx, NULL, type, NULL, pkey) != 1
 			|| EVP_DigestVerifyUpdate(md_ctx, data, data_size) != 1
 			|| EVP_DigestVerifyFinal(md_ctx, sig, siglen) != 1) {
+		sc_log_openssl(card->ctx);
 		sc_log (card->ctx, "EVP_DigestVerifyFinal failed");
-		piv_log_openssl(card->ctx);
 		r = SC_ERROR_SM_AUTHENTICATION_FAILED;
 		goto err;
 	}
@@ -1999,8 +1995,8 @@ static int piv_sm_verify_certs(struct sc_card *card)
 
 	if ((cert = d2i_X509(NULL, (const u8 **)&cert_blob, cert_bloblen)) == NULL
 			|| (cert_pkey = X509_get0_pubkey(cert)) == NULL) {
+		sc_log_openssl(card->ctx);
 		sc_log(card->ctx,"OpenSSL failed to get pubkey from SM_CERT_SIGNER");
-		piv_log_openssl(card->ctx);
 		r = SC_ERROR_SM_AUTHENTICATION_FAILED;
 		goto err;
 	}
@@ -2025,8 +2021,8 @@ static int piv_sm_verify_certs(struct sc_card *card)
 					priv->sm_in_cvc.publicPoint, priv->sm_in_cvc.publicPointlen, NULL) <= 0
 				|| EC_KEY_set_public_key(in_cvc_eckey, in_cvc_point) <= 0
 				|| EVP_PKEY_set1_EC_KEY(in_cvc_pkey, in_cvc_eckey) != 1) {
+			sc_log_openssl(card->ctx);
 			sc_log(card->ctx, "OpenSSL failed to set EC pubkey, during verify");
-			piv_log_openssl(card->ctx);
 			r = SC_ERROR_SM_AUTHENTICATION_FAILED;
 			goto err;
 		}
@@ -2041,8 +2037,8 @@ static int piv_sm_verify_certs(struct sc_card *card)
 				|| !EVP_PKEY_fromdata_init(in_cvc_pkey_ctx)
 				|| !EVP_PKEY_fromdata(in_cvc_pkey_ctx, &in_cvc_pkey, EVP_PKEY_PUBLIC_KEY, params)
 				|| !in_cvc_pkey) {
+			sc_log_openssl(card->ctx);
 			sc_log(card->ctx, "OpenSSL failed to set EC pubkey, during verify");
-			piv_log_openssl(card->ctx);
 			r = SC_ERROR_SM_AUTHENTICATION_FAILED;
 			goto err;
 		}
@@ -2231,8 +2227,8 @@ static int piv_sm_open(struct sc_card *card)
 			|| (Qehlen = EC_POINT_point2oct(eph_group, EC_KEY_get0_public_key(eph_eckey),
 				POINT_CONVERSION_UNCOMPRESSED, Qeh, Qehlen, NULL)) <= 0
 			|| Qehlen > cs->Qlen) {
+		sc_log_openssl(card->ctx);
 		sc_log(card->ctx,"OpenSSL failed to create ephemeral EC key");
-		piv_log_openssl(card->ctx);
 		r = SC_ERROR_SM_AUTHENTICATION_FAILED;
 		goto err;
 	}
@@ -2250,8 +2246,8 @@ static int piv_sm_open(struct sc_card *card)
 			|| !Qehx
 			|| Qehxlen > cs->Qlen
 			) {
+		sc_log_openssl(card->ctx);
 		sc_log(card->ctx,"OpenSSL failed to create ephemeral EC key");
-		piv_log_openssl(card->ctx);
 		r = SC_ERROR_SM_AUTHENTICATION_FAILED;
 		goto err;
 	}
@@ -2401,8 +2397,8 @@ static int piv_sm_open(struct sc_card *card)
 		if (EVP_DigestInit(hash_ctx,EVP_sha256()) != 1
 				|| EVP_DigestUpdate(hash_ctx, tmpder, tmpderlen) != 1
 				|| EVP_DigestFinal_ex(hash_ctx, hash, NULL) != 1) {
+			sc_log_openssl(card->ctx);
 			sc_log(card->ctx,"IDsicc hash failed");
-			piv_log_openssl(card->ctx);
 			r = SC_ERROR_INTERNAL;
 			goto err;
 		}
@@ -2421,8 +2417,8 @@ static int piv_sm_open(struct sc_card *card)
 				priv->sm_cvc.publicPoint, priv->sm_cvc.publicPointlen, NULL) <= 0
 			|| EC_KEY_set_public_key(Cicc_eckey, Cicc_point) <= 0
 			|| EVP_PKEY_set1_EC_KEY(Cicc_pkey, Cicc_eckey) <= 0) {
+		sc_log_openssl(card->ctx);
 		sc_log(card->ctx,"OpenSSL failed to get card's EC pubkey");
-		piv_log_openssl(card->ctx);
 		r = SC_ERROR_SM_AUTHENTICATION_FAILED;
 		goto err;
 	}
@@ -2437,8 +2433,8 @@ static int piv_sm_open(struct sc_card *card)
 			|| !EVP_PKEY_fromdata_init(Cicc_ctx)
 			|| !EVP_PKEY_fromdata(Cicc_ctx, &Cicc_pkey, EVP_PKEY_PUBLIC_KEY, Cicc_params)
 			|| !Cicc_pkey) {
+		sc_log_openssl(card->ctx);
 		sc_log(card->ctx, "OpenSSL failed to set EC pubkey for Cicc");
-		piv_log_openssl(card->ctx);
 		r = SC_ERROR_SM_AUTHENTICATION_FAILED;
 		goto err;
 	}
@@ -2461,8 +2457,8 @@ static int piv_sm_open(struct sc_card *card)
 			|| (Z = malloc(Zlen)) == NULL
 			|| EVP_PKEY_derive(Z_ctx, Z, &Zlen) <= 0
 			|| Zlen != cs->Zlen) {
+		sc_log_openssl(card->ctx);
 		sc_log(card->ctx,"OpenSSL failed to create secret Z");
-		piv_log_openssl(card->ctx);
 		r = SC_ERROR_SM_AUTHENTICATION_FAILED;
 		goto err;
 	}
@@ -2536,6 +2532,7 @@ static int piv_sm_open(struct sc_card *card)
 		if (EVP_DigestInit(hash_ctx,(*cs->kdf_md)()) != 1
 				|| EVP_DigestUpdate(hash_ctx, kdf_in, kdf_inlen) != 1
 				|| EVP_DigestFinal_ex(hash_ctx, p, &hashlen) != 1) {
+			sc_log_openssl(card->ctx);
 			sc_log(card->ctx,"KDF hash failed");
 			r = SC_ERROR_INTERNAL;
 			goto err;
@@ -2602,6 +2599,7 @@ static int piv_sm_open(struct sc_card *card)
 				|| CMAC_Update(cmac_ctx, MacData, MacDatalen) != 1
 				|| CMAC_Final(cmac_ctx, Check_AuthCryptogram, &Check_Alen) != 1) {
 			r = SC_ERROR_INTERNAL;
+			sc_log_openssl(card->ctx);
 			sc_log(card->ctx,"AES_CMAC failed %d",r);
 			goto err;
 		}
@@ -2616,7 +2614,7 @@ static int piv_sm_open(struct sc_card *card)
 					priv->sm_session.aes_size, cmac_params)
 				|| !EVP_MAC_update( cmac_ctx, MacData, MacDatalen)
 				|| !EVP_MAC_final(cmac_ctx, Check_AuthCryptogram, &Check_Alen, cs->AuthCryptogramlen)) {
-			piv_log_openssl(card->ctx);
+			sc_log_openssl(card->ctx);
 			r = SC_ERROR_INTERNAL;
 			sc_log(card->ctx,"AES_CMAC failed %d",r);
 			goto err;
@@ -2649,9 +2647,10 @@ static int piv_sm_open(struct sc_card *card)
 
 err:
 	priv->sm_flags &= ~PIV_SM_FLAGS_DEFER_OPEN;
-	if (r != 0)
-		 memset(&priv->sm_session, 0, sizeof(piv_sm_session_t));
-	piv_log_openssl(card->ctx); /* catch any not logged above */
+	if (r != 0) {
+		memset(&priv->sm_session, 0, sizeof(piv_sm_session_t));
+		sc_log_openssl(card->ctx); /* catch any not logged above */
+	}
 
 	sc_unlock(card);
 
@@ -3780,14 +3779,15 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 
 	ctx = EVP_CIPHER_CTX_new();
 	if (ctx == NULL) {
+		sc_log_openssl(card->ctx);
 		r = SC_ERROR_OUT_OF_MEMORY;
 		goto err;
 	}
 
 	cipher = get_cipher_for_algo(card, alg_id);
 	if(!cipher) {
+		sc_log_openssl(card->ctx);
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Invalid cipher selector, none found for:  %02x\n", alg_id);
-		piv_log_openssl(card->ctx);
 		r = SC_ERROR_INVALID_ARGUMENTS;
 		goto err;
 	}
@@ -3845,7 +3845,7 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 	/* decrypt the data from the card */
 	if (!EVP_DecryptInit(ctx, cipher, key, NULL)) {
 		/* may fail if des parity of key is wrong. depends on OpenSSL options */
-		piv_log_openssl(card->ctx);
+		sc_log_openssl(card->ctx);
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
@@ -3853,7 +3853,7 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 
 	p = plain_text;
 	if (!EVP_DecryptUpdate(ctx, p, &N, witness_data, (int)witness_len)) {
-		piv_log_openssl(card->ctx);
+		sc_log_openssl(card->ctx);
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
@@ -3861,7 +3861,7 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 	p += tmplen;
 
 	if(!EVP_DecryptFinal(ctx, p, &N)) {
-		piv_log_openssl(card->ctx);
+		sc_log_openssl(card->ctx);
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
@@ -3894,6 +3894,7 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 
 	r = RAND_bytes(nonce, (int)witness_len);
 	if(!r) {
+		sc_log_openssl(card->ctx);
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
 			 "Generating random for nonce (%"SC_FORMAT_LEN_SIZE_T"u : %"SC_FORMAT_LEN_SIZE_T"u)\n",
 			 witness_len, plain_text_len);
@@ -3994,7 +3995,7 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 	EVP_CIPHER_CTX_reset(ctx);
 
 	if (!EVP_DecryptInit(ctx, cipher, key, NULL)) {
-		piv_log_openssl(card->ctx);
+		sc_log_openssl(card->ctx);
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
@@ -4002,7 +4003,7 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 
 	tmp = decrypted_reponse;
 	if (!EVP_DecryptUpdate(ctx, tmp, &N, challenge_response, (int)challenge_response_len)) {
-		piv_log_openssl(card->ctx);
+		sc_log_openssl(card->ctx);
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
@@ -4010,7 +4011,7 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 	tmp += tmplen;
 
 	if(!EVP_DecryptFinal(ctx, tmp, &N)) {
-		piv_log_openssl(card->ctx);
+		sc_log_openssl(card->ctx);
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
@@ -4081,6 +4082,7 @@ static int piv_general_external_authenticate(sc_card_t *card,
 
 	ctx = EVP_CIPHER_CTX_new();
 	if (ctx == NULL) {
+		sc_log_openssl(card->ctx);
 		r = SC_ERROR_OUT_OF_MEMORY;
 		goto err;
 	}
@@ -4089,6 +4091,7 @@ static int piv_general_external_authenticate(sc_card_t *card,
 
 	cipher = get_cipher_for_algo(card, alg_id);
 	if(!cipher) {
+		sc_log_openssl(card->ctx);
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Invalid cipher selector, none found for:  %02x\n", alg_id);
 		r = SC_ERROR_INVALID_ARGUMENTS;
 		goto err;
@@ -4149,8 +4152,8 @@ static int piv_general_external_authenticate(sc_card_t *card,
 
 	/* Encrypt the challenge with the secret */
 	if (!EVP_EncryptInit(ctx, cipher, key, NULL)) {
+		sc_log_openssl(card->ctx);
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Encrypt fail\n");
-		piv_log_openssl(card->ctx);
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
@@ -4164,16 +4167,16 @@ static int piv_general_external_authenticate(sc_card_t *card,
 
 	EVP_CIPHER_CTX_set_padding(ctx,0);
 	if (!EVP_EncryptUpdate(ctx, cipher_text, &outlen, challenge_data, (int)challenge_len)) {
+		sc_log_openssl(card->ctx);
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Encrypt update fail\n");
-		piv_log_openssl(card->ctx);
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
 	cipher_text_len += outlen;
 
 	if (!EVP_EncryptFinal(ctx, cipher_text + cipher_text_len, &outlen)) {
+		sc_log_openssl(card->ctx);
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Final fail\n");
-		piv_log_openssl(card->ctx);
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
@@ -4184,8 +4187,8 @@ static int piv_general_external_authenticate(sc_card_t *card,
 	 * encrypted length
 	 */
 	if (cipher_text_len != tmplen) {
+		sc_log_openssl(card->ctx);
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Length test fail\n");
-		piv_log_openssl(card->ctx);
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}

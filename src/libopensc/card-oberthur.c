@@ -31,10 +31,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-#include <openssl/sha.h>
 #include <openssl/evp.h>
-#include <openssl/rsa.h>
-#include <openssl/opensslv.h>
 
 #include "internal.h"
 #include "cardctl.h"
@@ -1371,11 +1368,18 @@ auth_update_component(struct sc_card *card, struct auth_update_component_info *a
 			alg = sc_evp_cipher(card->ctx, "DES-EDE");
 		else
 			alg = sc_evp_cipher(card->ctx, "DES-ECB");
-		EVP_EncryptInit_ex(ctx, alg, NULL, args->data, NULL);
+		rv = EVP_EncryptInit_ex(ctx, alg, NULL, args->data, NULL);
+		if (rv == 0) {
+			sc_evp_cipher_free(alg);
+			sc_log_openssl(card->ctx);
+			sc_log(card->ctx, "OpenSSL encryption error.");
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
+		}
 		rv = EVP_EncryptUpdate(ctx, out, &outl, in, 8);
 		EVP_CIPHER_CTX_free(ctx);
 		sc_evp_cipher_free(alg);
 		if (rv == 0) {
+			sc_log_openssl(card->ctx);
 			sc_log(card->ctx, "OpenSSL encryption error.");
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 		}

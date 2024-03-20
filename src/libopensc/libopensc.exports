@@ -92,6 +92,7 @@ sc_disconnect_card
 sc_do_log
 sc_do_log_color
 sc_do_log_noframe
+sc_do_log_openssl
 _sc_debug
 _sc_debug_hex
 sc_enum_apps
@@ -361,6 +362,7 @@ _sc_card_add_rsa_alg
 _sc_match_atr
 _sc_match_atr_block
 _sc_log
+_sc_log_openssl
 eac_secret_name
 get_pace_capabilities
 perform_pace

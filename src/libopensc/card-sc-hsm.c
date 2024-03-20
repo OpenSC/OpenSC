@@ -41,8 +41,7 @@
 #include <eac/cv_cert.h>
 #include <eac/eac.h>
 #include <eac/ta.h>
-#include <openssl/bio.h>
-#include <openssl/crypto.h>
+#include <openssl/evp.h>
 #endif
 
 
@@ -497,8 +496,6 @@ static int sc_hsm_soc_biomatch(sc_card_t *card, struct sc_pin_cmd_data *data,
 	LOG_FUNC_RETURN(card->ctx, SC_ERROR_PIN_CODE_INCORRECT);
 }
 
-
-
 #if defined(ENABLE_SM) && defined(ENABLE_OPENPACE)
 
 static int sc_hsm_perform_chip_authentication(sc_card_t *card)
@@ -593,7 +590,11 @@ static int sc_hsm_perform_chip_authentication(sc_card_t *card)
 		goto err;
 	}
 	EVP_PKEY_free(ctx->ca_ctx->ka_ctx->key);
-	EVP_PKEY_up_ref(ctx->ta_ctx->pub_key);
+	if (!EVP_PKEY_up_ref(ctx->ta_ctx->pub_key)) {
+		sc_log_openssl(card->ctx);
+		r = SC_ERROR_INTERNAL;
+		goto err;
+	}
 	ctx->ca_ctx->ka_ctx->key = ctx->ta_ctx->pub_key;
 
 	/* generate keys for CA */

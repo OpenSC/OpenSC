@@ -38,7 +38,6 @@
 
 #ifdef ENABLE_OPENSSL
 #include <openssl/bio.h>
-#include <openssl/crypto.h>
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 #endif
@@ -185,7 +184,7 @@ sc_oberthur_get_friends (unsigned int id, struct crypto_container *ccont)
 
 
 static int
-sc_oberthur_get_certificate_authority(struct sc_pkcs15_der *der, int *out_authority)
+sc_oberthur_get_certificate_authority(sc_context_t *ctx, struct sc_pkcs15_der *der, int *out_authority)
 {
 #ifdef ENABLE_OPENSSL
 	X509	*x;
@@ -206,6 +205,7 @@ sc_oberthur_get_certificate_authority(struct sc_pkcs15_der *der, int *out_author
 	bio = BIO_new(BIO_s_mem());
 	if (!bio) {
 		free(buf_mem.data);
+		sc_log_openssl(ctx);
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
 
@@ -213,8 +213,10 @@ sc_oberthur_get_certificate_authority(struct sc_pkcs15_der *der, int *out_author
 	x = d2i_X509_bio(bio, 0);
 	free(buf_mem.data);
 	BIO_free(bio);
-	if (!x)
+	if (!x) {
+		sc_log_openssl(ctx);
 		return SC_ERROR_INVALID_DATA;
+	}
 
 	bs = (BASIC_CONSTRAINTS *)X509_get_ext_d2i(x, NID_basic_constraints, NULL, NULL);
 	if (out_authority)
@@ -732,7 +734,7 @@ sc_pkcs15emu_oberthur_add_cert(struct sc_pkcs15_card *p15card, unsigned int file
 	cinfo.value.value = cert_blob;
 	cinfo.value.len = cert_len;
 
-	rv = sc_oberthur_get_certificate_authority(&cinfo.value, &cinfo.authority);
+	rv = sc_oberthur_get_certificate_authority(ctx, &cinfo.value, &cinfo.authority);
 	if (rv != SC_SUCCESS) {
 		free(cinfo.value.value);
 		LOG_TEST_RET(ctx, rv, "Failed to add certificate: get certificate attributes error");

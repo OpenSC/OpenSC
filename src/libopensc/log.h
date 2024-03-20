@@ -37,6 +37,7 @@ enum {
 	SC_LOG_DEBUG_SM,		/* secure messaging */
 	SC_LOG_DEBUG_ASN1,		/* asn1.c */
 	SC_LOG_DEBUG_MATCH,		/* card matching */
+	SC_LOG_DEBUG_DEPS,		/* debugging of dependencies, e.g. OpenSSL */
 	SC_LOG_DEBUG_PIN,		/* PIN commands */
 };
 
@@ -68,9 +69,11 @@ enum {
 #if defined(__GNUC__)
 #define sc_debug(ctx, level, format, args...)	sc_do_log(ctx, level, FILENAME, __LINE__, __FUNCTION__, format , ## args)
 #define sc_log(ctx, format, args...)   sc_do_log(ctx, SC_LOG_DEBUG_NORMAL, FILENAME, __LINE__, __FUNCTION__, format , ## args)
+#define sc_log_openssl(ctx)   sc_do_log_openssl(ctx, SC_LOG_DEBUG_DEPS, FILENAME, __LINE__, __FUNCTION__)
 #else
 #define sc_debug _sc_debug
 #define sc_log _sc_log
+#define sc_log_openssl _sc_log_openssl
 #endif
 
 #if defined(__GNUC__)
@@ -93,6 +96,7 @@ void _sc_debug(struct sc_context *ctx, int level, const char *format, ...)
 	__attribute__ ((format (SC_PRINTF_FORMAT, 3, 4)));
 void _sc_log(struct sc_context *ctx, const char *format, ...)
 	__attribute__ ((format (SC_PRINTF_FORMAT, 2, 3)));
+void _sc_log_openssl(struct sc_context *ctx);
 int sc_color_fprintf(int colors, struct sc_context *ctx, FILE * stream, const char * format, ...)
 	__attribute__ ((format (SC_PRINTF_FORMAT, 4, 5)));
 #else
@@ -103,8 +107,13 @@ void sc_do_log_color(struct sc_context *ctx, int level, const char *file, int li
 void sc_do_log_noframe(sc_context_t *ctx, int level, const char *format, va_list args);
 void _sc_debug(struct sc_context *ctx, int level, const char *format, ...);
 void _sc_log(struct sc_context *ctx, const char *format, ...);
+void _sc_log_openssl(struct sc_context *ctx);
 int sc_color_fprintf(int colors, struct sc_context *ctx, FILE * stream, const char * format, ...);
 #endif
+
+void sc_do_log_openssl(struct sc_context *ctx, int level, const char *file, int line,
+		const char *func);
+
 /** 
  * @brief Log binary data to a sc context
  * 

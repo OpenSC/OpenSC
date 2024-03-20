@@ -24,10 +24,9 @@
 #include "fread_to_eof.h"
 #include "npa-tool-cmdline.h"
 #include "sm/sm-eac.h"
-#include "sm/sslutil.h"
 #include "util.h"
-#include <eac/pace.h>
 #include <eac/objects.h>
+#include <eac/pace.h>
 #include <libopensc/card-npa.h>
 #include <libopensc/log.h>
 #include <libopensc/opensc.h>
@@ -598,15 +597,15 @@ main (int argc, char **argv)
 						|| !cvc_cert->body->certificate_authority_reference
 						|| !cvc_cert->body->chat) {
 					fprintf(stderr, "Could not parse certificate.\n");
-					ssl_error(ctx);
+					sc_log_openssl(ctx);
 					r = SC_ERROR_INVALID_DATA;
 					goto err;
 				}
 				pace_input.chat_length = i2d_CVC_CHAT(cvc_cert->body->chat, &certs_chat);
 				if (0 >= (int) pace_input.chat_length) {
 					fprintf(stderr, "Could not parse CHAT.\n");
+					sc_log_openssl(ctx);
 					r = SC_ERROR_INVALID_DATA;
-					ssl_error(ctx);
 					goto err;
 				}
 				pace_input.chat = certs_chat;

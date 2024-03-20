@@ -1609,7 +1609,7 @@ sc_pkcs15_convert_pubkey(struct sc_pkcs15_pubkey *pkcs15_key, void *evp_key)
 			return SC_ERROR_INCOMPATIBLE_KEY;
 		RSA_get0_key(src, &src_n, &src_e, NULL);
 		if (!src_n || !src_e) {
-			free(src);
+			RSA_free(src);
 			return SC_ERROR_INTERNAL;
 		}
 #else

@@ -42,15 +42,6 @@
 
 #include <sys/types.h>
 
-#ifdef ENABLE_OPENSSL
-	/* openssl only needed for card administration */
-#include <openssl/evp.h>
-#include <openssl/bio.h>
-#include <openssl/pem.h>
-#include <openssl/rand.h>
-#include <openssl/rsa.h>
-#endif /* ENABLE_OPENSSL */
-
 #include "internal.h"
 #include "asn1.h"
 #include "cardctl.h"

@@ -33,8 +33,6 @@
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 #include <openssl/err.h>
-#include <openssl/bn.h>
-#include <openssl/rsa.h>
 #include <openssl/evp.h>
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 # include <openssl/core_names.h>
@@ -252,17 +250,20 @@ int sc_pkcs15_decode_prkdf_entry(struct sc_pkcs15_card *p15card,
 			nid = OBJ_obj2nid(object);
 			ASN1_OBJECT_free(object);
 			if (nid == NID_undef) {
+				sc_log_openssl(ctx);
 				r = SC_ERROR_OBJECT_NOT_FOUND;
 				goto err;
 			}
 			group = EC_GROUP_new_by_curve_name(nid);
 			if (!group) {
+				sc_log_openssl(ctx);
 				r = SC_ERROR_INVALID_DATA;
 				goto err;
 			}
 			info.field_length = EC_GROUP_order_bits(group);
 			EC_GROUP_free(group);
 			if (!info.field_length) {
+				sc_log_openssl(ctx);
 				r = SC_ERROR_CORRUPTED_DATA;
 				goto err;
 			}
@@ -495,21 +496,28 @@ sc_pkcs15_prkey_attrs_from_cert(struct sc_pkcs15_card *p15card, struct sc_pkcs15
 	sc_log(ctx, "CertValue(%"SC_FORMAT_LEN_SIZE_T"u) %p",
 	       cert_object->content.len, cert_object->content.value);
 	mem = BIO_new_mem_buf(cert_object->content.value, (int)cert_object->content.len);
-	if (!mem)
+	if (!mem) {
+		sc_log_openssl(ctx);
 		LOG_TEST_RET(ctx, SC_ERROR_INTERNAL, "MEM buffer allocation error");
+	}
 
 	x = d2i_X509_bio(mem, NULL);
-	if (!x)
+	if (!x) {
+		sc_log_openssl(ctx);
 		LOG_TEST_RET(ctx, SC_ERROR_INTERNAL, "x509 parse error");
-
+	}
 	buff = OPENSSL_malloc(i2d_X509(x,NULL) + EVP_MAX_MD_SIZE);
-	if (!buff)
+	if (!buff) {
+		sc_log_openssl(ctx);
 		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "OpenSSL allocation error");
+	}
 
 	ptr = buff;
 	rv = i2d_X509_NAME(X509_get_subject_name(x), &ptr);
-	if (rv <= 0)
+	if (rv <= 0) {
+		sc_log_openssl(ctx);
 		LOG_TEST_RET(ctx, SC_ERROR_INTERNAL, "Get subject name error");
+	}
 
 	key_info->subject.value = malloc(rv);
 	if (!key_info->subject.value)

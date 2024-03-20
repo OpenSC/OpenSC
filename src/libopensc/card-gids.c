@@ -137,11 +137,10 @@ static struct gids_aid gids_aids[] = {
 // stolen from cardmod.h for the cardcf file
 typedef struct _CARD_CACHE_FILE_FORMAT
 {
-    unsigned char bVersion;			// Cache version
-    unsigned char bPinsFreshness;		// Card PIN
-    unsigned short wContainersFreshness;
-    unsigned short wFilesFreshness;
-
+	unsigned char bVersion;	      // Cache version
+	unsigned char bPinsFreshness; // Card PIN
+	unsigned short wContainersFreshness;
+	unsigned short wFilesFreshness;
 } CARD_CACHE_FILE_FORMAT, *PCARD_CACHE_FILE_FORMAT;
 
 struct gids_private_data {
@@ -194,7 +193,7 @@ static int gids_get_identifiers(sc_card_t* card, u8* masterfile, size_t masterfi
 			return 0;
 		}
 	}
-	sc_log(card->ctx,  "file %s %s not found\n", directory, filename);
+	sc_log(card->ctx, "file %s %s not found\n", directory, filename);
 	return SC_ERROR_FILE_NOT_FOUND;
 }
 
@@ -249,7 +248,7 @@ static int gids_get_DO(sc_card_t* card, int fileIdentifier, int dataObjectIdenti
 
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "gids get data failed");
-	LOG_TEST_RET(card->ctx,  sc_check_sw(card, apdu.sw1, apdu.sw2), "invalid return");
+	LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2), "invalid return");
 
 	p = sc_asn1_find_tag(card->ctx, buffer, sizeof(buffer), dataObjectIdentifier, &datasize);
 	if (!p) {
@@ -288,7 +287,7 @@ static int gids_put_DO(sc_card_t* card, int fileIdentifier, int dataObjectIdenti
 
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "gids put data failed");
-	LOG_TEST_RET(card->ctx,  sc_check_sw(card, apdu.sw1, apdu.sw2), "invalid return");
+	LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2), "invalid return");
 
 	return SC_SUCCESS;
 }
@@ -311,13 +310,13 @@ static int gids_select_aid(sc_card_t* card, u8* aid, size_t aidlen, u8* response
 	apdu.datalen = aidlen;
 	apdu.resp = response;
 	apdu.resplen = responselen ? *responselen : 0;
-	apdu.le = response == NULL ? 0 : 256; /* could be 21  for fci */
+	apdu.le = response == NULL ? 0 : 256; /* could be 21 for fci */
 
 	r = sc_transmit_apdu(card, &apdu);
 	if (responselen)
 		*responselen = apdu.resplen;
 	LOG_TEST_RET(card->ctx, r, "gids select failed");
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,  sc_check_sw(card, apdu.sw1, apdu.sw2));
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
 
 // DIRECT FILE MANIPULATION
@@ -477,7 +476,7 @@ static int gids_create_file(sc_card_t *card, char* directory, char* filename) {
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_NOT_ENOUGH_MEMORY);
 	}
 
-	records = ((privatedata->masterfilesize -1)  / sizeof(gids_mf_record_t));
+	records = ((privatedata->masterfilesize - 1) / sizeof(gids_mf_record_t));
 	offset = 1 + sizeof(gids_mf_record_t) * records;
 	memcpy(masterfilebuffer + offset + sizeof(gids_mf_record_t), masterfilebuffer + offset,
 		privatedata->masterfilesize - offset);
@@ -902,7 +901,7 @@ static int gids_logout(sc_card_t *card)
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,  sc_check_sw(card, apdu.sw1, apdu.sw2));
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
 
 // read a public key
@@ -939,12 +938,12 @@ static int gids_read_public_key (struct sc_card *card , unsigned int algorithm,
 
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "gids read public key failed");
-	LOG_TEST_RET(card->ctx,  sc_check_sw(card, apdu.sw1, apdu.sw2), "invalid return");
+	LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2), "invalid return");
 	buffersize = apdu.resplen;
 
 	keytemplate = sc_asn1_find_tag(card->ctx, buffer, buffersize, GIDS_PUBKEY_TAG, &tlen);
 	if (keytemplate == NULL) {
-		sc_log(card->ctx,  "invalid public key data: missing tag");
+		sc_log(card->ctx, "invalid public key data: missing tag");
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 	}
 
@@ -968,7 +967,7 @@ static int gids_read_public_key (struct sc_card *card , unsigned int algorithm,
 		r = sc_pkcs15_encode_pubkey_rsa(card->ctx, &rsa_key, response, responselen);
 		LOG_TEST_RET(card->ctx, r, "failed to read public key: cannot encode RSA public key");
 	} else {
-		sc_log(card->ctx,  "it is not a known public key");
+		sc_log(card->ctx, "it is not a known public key");
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 	}
 
@@ -1024,7 +1023,7 @@ static int gids_select_file(sc_card_t *card, const struct sc_path *in_path,
 
 static int gids_get_pin_policy(struct sc_card *card, struct sc_pin_cmd_data *data) {
 	int r;
-	if (data->pin_type != SC_AC_CHV)   {
+	if (data->pin_type != SC_AC_CHV) {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	r = gids_get_pin_status(card, data->pin_reference, &(data->pin1.tries_left), &(data->pin1.max_tries));
@@ -1075,7 +1074,7 @@ static int gids_read_binary(sc_card_t *card, unsigned int offset,
 			data->buffersize = sizeof(data->buffer) - 4;
 			memcpy(data->buffer, buffer + 4, buffersize);
 		} else {
-			sc_log(card->ctx,  "unknown compression method %d", buffer[0] + (buffer[1] <<8));
+			sc_log(card->ctx, "unknown compression method %d", buffer[0] + (buffer[1] << 8));
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_DATA);
 		}
 		data->state = GIDS_STATE_READ_DATA_PRESENT;
@@ -1184,7 +1183,7 @@ gids_select_key_reference(sc_card_t *card, sc_pkcs15_prkey_info_t* key_info) {
 		// key was specified. Search if the key can be used
 		size_t i = key_info->key_reference - GIDS_FIRST_KEY_IDENTIFIER;
 		if (i > GIDS_MAX_CONTAINER) {
-			sc_log(card->ctx,  "invalid key ref %d", key_info->key_reference);
+			sc_log(card->ctx, "invalid key ref %d", key_info->key_reference);
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 		}
 		if (i > recordsnum) {
@@ -1496,11 +1495,11 @@ static int gids_import_key(sc_card_t *card, sc_pkcs15_object_t *object, sc_pkcs1
 	assert((object->type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_PRKEY);
 
 	if (object->type != SC_PKCS15_TYPE_PRKEY_RSA || key->algorithm != SC_ALGORITHM_RSA) {
-		sc_log(card->ctx,  "GIDS supports RSA keys only (but may support ECC one day).");
+		sc_log(card->ctx, "GIDS supports RSA keys only (but may support ECC one day).");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	if (!key->u.rsa.dmp1.len || !key->u.rsa.dmq1.len || !key->u.rsa.iqmp.len) {
-		sc_log(card->ctx,  "GIDS needs dmp1 & dmq1 & iqmp");
+		sc_log(card->ctx, "GIDS needs dmp1 & dmq1 & iqmp");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	sc_format_asn1_entry(asn1_rsa_priv_coefficients_gids + 0, &version, NULL, 1);
@@ -1770,14 +1769,14 @@ static int gids_initialize_create_file(sc_card_t *card, u8* command, size_t comm
 
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU1 transmit failed");
-	LOG_TEST_RET(card->ctx,  sc_check_sw(card, apdu.sw1, apdu.sw2), "invalid return");
+	LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2), "invalid return");
 
 	// activate file
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, INS_ACTIVATE_FILE, 0x00, 0x00);
 
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU2 transmit failed");
-	LOG_TEST_RET(card->ctx,  sc_check_sw(card, apdu.sw1, apdu.sw2), "invalid return");
+	LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2), "invalid return");
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
@@ -1901,9 +1900,10 @@ static int gids_initialize(sc_card_t *card, sc_cardctl_gids_init_param_t* param)
 	}
 	if (i < 0) {
 		// set a random cardid if not set
-		r = RAND_bytes(param->cardid, sizeof(param->cardid));
-		LOG_TEST_RET(card->ctx, r, "unable to set a random serial number");
-
+		if (RAND_bytes(param->cardid, sizeof(param->cardid)) != 1) {
+			sc_log_openssl(card->ctx);
+			LOG_TEST_RET(card->ctx, SC_ERROR_INTERNAL, "unable to set a random serial number");
+		}
 	}
 #endif
 	r = gids_put_DO(card, CARDID_FI, CARDID_DO, param->cardid, sizeof(param->cardid));
@@ -1917,12 +1917,12 @@ static int gids_initialize(sc_card_t *card, sc_cardctl_gids_init_param_t* param)
 
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
-	LOG_TEST_RET(card->ctx,  sc_check_sw(card, apdu.sw1, apdu.sw2), "invalid return");
+	LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2), "invalid return");
 	// activate file
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, INS_ACTIVATE_FILE, 0x00, 0x00);
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
-	LOG_TEST_RET(card->ctx,  sc_check_sw(card, apdu.sw1, apdu.sw2), "invalid return");
+	LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2), "invalid return");
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
@@ -1962,11 +1962,13 @@ static int gids_authenticate_admin(sc_card_t *card, u8* key) {
 	apdu.datalen = 3;
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
-	LOG_TEST_RET(card->ctx,  sc_check_sw(card, apdu.sw1, apdu.sw2), "invalid return");
+	LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2), "invalid return");
 
 	// generate a challenge
-	r = RAND_bytes(randomR1, 16);
-	LOG_TEST_RET(card->ctx, r, "unable to set computer random");
+	if (RAND_bytes(randomR1, 16) != 1) {
+		sc_log_openssl(card->ctx);
+		LOG_TEST_RET(card->ctx, SC_ERROR_INTERNAL, "unable to set computer random");
+	}
 
 	// send it to the card
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4, INS_GENERAL_AUTHENTICATE, 0x00, 0x00);
@@ -1978,11 +1980,14 @@ static int gids_authenticate_admin(sc_card_t *card, u8* key) {
 	apdu.le = 256;
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
-	LOG_TEST_RET(card->ctx,  sc_check_sw(card, apdu.sw1, apdu.sw2), "invalid return");
+	LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2), "invalid return");
 
 	// compute the half size of the mutual authentication secret
-	r = RAND_bytes(z1, 7);
-	LOG_TEST_RET(card->ctx, r, "unable to set computer random");
+	if (RAND_bytes(z1, 7) != 1) {
+		sc_log_openssl(card->ctx);
+		LOG_TEST_RET(card->ctx, SC_ERROR_INTERNAL, "unable to set computer random");
+	}
+
 	// set the padding
 	z1[7] = 0x80;
 
@@ -1993,22 +1998,26 @@ static int gids_authenticate_admin(sc_card_t *card, u8* key) {
 	// init crypto
 	ctx = EVP_CIPHER_CTX_new();
 	if (ctx == NULL) {
-	    LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
+		sc_log_openssl(card->ctx);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 	}
 	cipher = sc_evp_cipher(card->ctx, "DES-EDE3-CBC");
 	if (!EVP_EncryptInit(ctx, cipher, key, NULL)) {
+		sc_log_openssl(card->ctx);
 		EVP_CIPHER_CTX_free(ctx);
 		sc_evp_cipher_free(cipher);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 	}
 	EVP_CIPHER_CTX_set_padding(ctx,0);
 	if (!EVP_EncryptUpdate(ctx, buffer2, &buffer2size, buffer, sizeof(buffer))) {
+		sc_log_openssl(card->ctx);
 		EVP_CIPHER_CTX_free(ctx);
 		sc_evp_cipher_free(cipher);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 	}
 
-	if(!EVP_EncryptFinal(ctx, buffer2+buffer2size, &buffer2size)) {
+	if (!EVP_EncryptFinal(ctx, buffer2 + buffer2size, &buffer2size)) {
+		sc_log_openssl(card->ctx);
 		EVP_CIPHER_CTX_free(ctx);
 		sc_evp_cipher_free(cipher);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
@@ -2027,52 +2036,58 @@ static int gids_authenticate_admin(sc_card_t *card, u8* key) {
 	apdu.le = 256;
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
-	LOG_TEST_RET(card->ctx,  sc_check_sw(card, apdu.sw1, apdu.sw2), "invalid return");
+	LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2), "invalid return");
 
 	if (apdu.resplen != 44)
 	{
-		sc_log(card->ctx,  "Expecting a response len of 44 - found %d",(int) apdu.resplen);
+		sc_log(card->ctx, "Expecting a response len of 44 - found %d", (int)apdu.resplen);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 	}
 	// init crypto
 	ctx = EVP_CIPHER_CTX_new();
 	if (ctx == NULL) {
-	    LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 	}
 	cipher = sc_evp_cipher(card->ctx, "DES-EDE3-CBC");
 	if (!EVP_DecryptInit(ctx, cipher, key, NULL)) {
+		sc_log_openssl(card->ctx);
 		sc_evp_cipher_free(cipher);
 		EVP_CIPHER_CTX_free(ctx);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 	}
 	EVP_CIPHER_CTX_set_padding(ctx,0);
 	if (!EVP_DecryptUpdate(ctx, buffer3, &buffer3size, apdu.resp + 4, (int)apdu.resplen - 4)) {
-		sc_log(card->ctx,  "unable to decrypt data");
+		sc_log_openssl(card->ctx);
+		sc_log(card->ctx, "unable to decrypt data");
 		sc_evp_cipher_free(cipher);
 		EVP_CIPHER_CTX_free(ctx);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_PIN_CODE_INCORRECT);
 	}
-	if(!EVP_DecryptFinal(ctx, buffer3+buffer3size, &buffer3size)) {
-		sc_log(card->ctx,  "unable to decrypt final data");
+	if (!EVP_DecryptFinal(ctx, buffer3 + buffer3size, &buffer3size)) {
+		sc_log_openssl(card->ctx);
+		sc_log(card->ctx, "unable to decrypt final data");
 		sc_evp_cipher_free(cipher);
 		EVP_CIPHER_CTX_free(ctx);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_PIN_CODE_INCORRECT);
 	}
-	sc_log(card->ctx,  "data has been decrypted using the key");
+	sc_log(card->ctx, "data has been decrypted using the key");
 	if (memcmp(buffer3, randomR1, 16) != 0) {
-		sc_log(card->ctx,  "R1 doesn't match");
+		sc_log_openssl(card->ctx);
+		sc_log(card->ctx, "R1 doesn't match");
 		sc_evp_cipher_free(cipher);
 		EVP_CIPHER_CTX_free(ctx);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_PIN_CODE_INCORRECT);
 	}
 	if (memcmp(buffer3 + 16, randomR2, 16) != 0) {
-		sc_log(card->ctx,  "R2 doesn't match");
+		sc_log_openssl(card->ctx);
+		sc_log(card->ctx, "R2 doesn't match");
 		sc_evp_cipher_free(cipher);
 		EVP_CIPHER_CTX_free(ctx);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_PIN_CODE_INCORRECT);
 	}
 	if (buffer[39] != 0x80) {
-		sc_log(card->ctx,  "Padding not found");
+		sc_log_openssl(card->ctx);
+		sc_log(card->ctx, "Padding not found");
 		sc_evp_cipher_free(cipher);
 		EVP_CIPHER_CTX_free(ctx);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_PIN_CODE_INCORRECT);
