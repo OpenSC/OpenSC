@@ -4721,18 +4721,14 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 	}
 	dwret = constant_time_select_s(good, SCARD_S_SUCCESS, SCARD_F_INTERNAL_ERROR);
 
-	logprintf(pCardData, 2, "decrypted data(%lu):\n",
-		  (unsigned long)pInfo->cbData);
-	loghex(pCardData, 7, pbuf2, pInfo->cbData);
-
 	/*inversion donnees */
 	/* copy data in constant-time way to prevent leak */
 	for (ui = 0; ui < pbufLen; ui++) {
 		unsigned int mask, msg_index, inv_ui;
 		mask = good & constant_time_lt_s(ui, pInfo->cbData); /* ui should be in the bounds of pbuf2 */
 		inv_ui = pInfo->cbData - ui - 1;
-		msg_index = constant_time_select_s(mask, inv_ui, 0);
-		pInfo->pbData[ui] = constant_time_select_8(mask, pbuf2[msg_index], pInfo->pbData[ui]);
+		msg_index = constant_time_select_s(mask, inv_ui, ui); /* do not change data outside the depadded message */
+		pInfo->pbData[ui] = pbuf2[msg_index];
 	}
 
 	pCardData->pfnCspFree(pbuf);
