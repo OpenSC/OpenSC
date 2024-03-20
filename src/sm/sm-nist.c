@@ -1836,7 +1836,7 @@ int sm_nist_start(sc_card_t *card,
 	}
 
 	card->sm_ctx.sm_mode = SM_MODE_TRANSMIT;
-// TODO neeed shared sm_flags or way to test or control from driver
+// TODO need shared sm_flags or way to test or control from driver
 
 // TODO set piv_sm_open here or in driver or add it to  card->sm_ctx.sm_mode
 
@@ -1907,7 +1907,7 @@ nist_sm_encrypt(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	}
 
 	/* first round above encryptes Enc counter with zero IV, and does not save the output */
-	/* input is padded aready */
+	/* input is padded already */
 	if (EVP_CIPHER_CTX_reset(ed_ctx) != 1
 			|| EVP_EncryptInit_ex(ed_ctx, (*cs->cipher_cbc)(), NULL, priv->sm_session.SKenc, IV) != 1
 			|| EVP_CIPHER_CTX_set_padding(ed_ctx,0) != 1 /* i.e no padding */
