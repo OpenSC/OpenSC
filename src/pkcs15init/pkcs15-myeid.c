@@ -537,9 +537,6 @@ myeid_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	struct sc_path *path;
 	int *key_reference;
 	struct sc_file *file = NULL;
-	struct sc_pkcs15_object *pin_object = NULL;
-	struct sc_pkcs15_auth_info *pkcs15_auth_info = NULL;
-	unsigned char sec_attrs[] = {0xFF, 0xFF, 0xFF};
 	int r, ef_structure = 0, pin_reference = -1;
 	size_t keybits = 0;
 	unsigned char prop_info[] = {0x00, 0x00};
@@ -618,38 +615,6 @@ myeid_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 
 	sc_log(ctx, "Path of MyEID key file to create %s",
 			sc_print_path(&file->path));
-
-	if (object->auth_id.len >= 1) {
-		r = sc_pkcs15_find_pin_by_auth_id(p15card, &object->auth_id, &pin_object);
-
-		if (r != SC_SUCCESS)
-			sc_file_free(file);
-		LOG_TEST_RET(ctx, r, "Failed to get pin object by auth_id");
-
-		if (pin_object->type != SC_PKCS15_TYPE_AUTH_PIN) {
-			sc_file_free(file);
-			LOG_TEST_RET(ctx, SC_ERROR_OBJECT_NOT_VALID, "Invalid object returned when locating pin object.");
-		}
-
-		pkcs15_auth_info =  (struct sc_pkcs15_auth_info*) pin_object->data;
-
-		if (pkcs15_auth_info == NULL || pkcs15_auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN) {
-			sc_file_free(file);
-			LOG_TEST_RET(ctx, SC_ERROR_OBJECT_NOT_VALID, "NULL or invalid sc_pkcs15_auth_info in pin object");
-		}
-
-		pin_reference = pkcs15_auth_info->attrs.pin.reference;
-
-		if (pin_reference >= 1 && pin_reference < MYEID_MAX_PINS) {
-			sec_attrs[0] = (pin_reference << 4 | (pin_reference & 0x0F));
-			sec_attrs[1] = (pin_reference << 4 | (pin_reference & 0x0F));
-			sc_file_set_sec_attr(file, sec_attrs, sizeof(sec_attrs));
-		}
-	}
-	else {
-		sc_file_free(file);
-		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Invalid AuthID value for a private key.");
-	}
 
 	/* TODO: fill all proprietary attributes here based on the object */
 
