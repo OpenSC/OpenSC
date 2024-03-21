@@ -90,7 +90,7 @@ static unsigned char PIN_ID[2] = { ENTERSAFE_USER_PIN_ID, ENTERSAFE_SO_PIN_ID };
 /*0x00:plain; 0x01:scp01 sm*/
 #define SM_PLAIN				0x00
 #define SM_SCP01				0x01
-//g_init_key_enc  init key..
+
 static unsigned char g_init_key_enc[16] = {
 	0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C,
 	0x0D, 0x0E, 0x0F, 0x10
@@ -360,7 +360,6 @@ aes128_encrypt_cmac_ft(struct sc_card *card, const unsigned char *key, int keysi
 	EVP_CIPHER *alg = sc_evp_cipher(card->ctx, "AES-128-ECB");
 	r = openssl_enc(alg, key, iv0, data1, 16, out);
 	if (r != SC_SUCCESS) {
-		sc_log_openssl(card->ctx);
 		sc_evp_cipher_free(alg);
 		return r;
 	}
@@ -397,16 +396,21 @@ aes128_encrypt_cmac_ft(struct sc_card *card, const unsigned char *key, int keysi
 	if(length < 16){
 		memcpy(&data2[0],input,length);
 		data2[length] = 0x80;
+	
+		//k2 xor padded data
+		for (int i=0;i<16;i++){
+			data2[i]=data2[i]^k2Bin[offset + i];
+		}
+	}else{
+		memcpy(&data2[0],input,length);
+		//k1 xor padded data
+		for (int i=0;i<16;i++){
+			data2[i]=data2[i]^k1Bin[offset + i];
+		}
 	}
-
-    //k2 xor padded data
-	for (int i=0;i<16;i++){
-		data2[i]=data2[i]^k2Bin[offset + i];
-	}
+	alg = sc_evp_cipher(card->ctx, "AES-128-CBC");
 	r = openssl_enc(alg, key, iv, data2, 16, output);
 	sc_evp_cipher_free(alg);
-	if (r != SC_SUCCESS)
-		sc_log_openssl(card->ctx);
 	return r;
 }
 
@@ -447,19 +451,15 @@ err:
 	EVP_MAC_CTX *ctx = EVP_MAC_CTX_new(mac);
 	if(ctx == NULL){
 		EVP_MAC_CTX_free(ctx);
-		sc_log_openssl(card->ctx);
 		return r;
 	}
 	if(!EVP_MAC_init(ctx, (const unsigned char *)key, keysize/8,params)){
-		sc_log_openssl(card->ctx);
 		goto err;
 	}
 	if(!EVP_MAC_update(ctx, input,length)){
-		sc_log_openssl(card->ctx);
 		goto err;
 	}
 	if(!EVP_MAC_final(ctx, output, &mactlen, 16)) {
-		sc_log_openssl(card->ctx);
 		goto err;
 	}
 	r = SC_SUCCESS;
@@ -479,8 +479,6 @@ aes128_encrypt_ecb(struct sc_card *card, const unsigned char *key, int keysize,
 	int r;
 	r = openssl_enc(alg, key, iv, input, length, output);
 	sc_evp_cipher_free(alg);
-	if (r != SC_SUCCESS)
-		sc_log_openssl(card->ctx);
 	return r;
 }
 
@@ -493,8 +491,6 @@ aes128_encrypt_cbc(struct sc_card *card, const unsigned char *key, int keysize, 
 	int r;
 	r = openssl_enc(alg, key, iv, input, length, output);
 	sc_evp_cipher_free(alg);
-	if (r != SC_SUCCESS)
-		sc_log_openssl(card->ctx);
 	return r;
 }
 
@@ -507,8 +503,6 @@ aes128_decrypt_cbc(struct sc_card *card, const unsigned char *key, int keysize, 
 	int r;
 	r = openssl_dec(alg, key, iv, input, length, output);
 	sc_evp_cipher_free(alg);
-	if (r != SC_SUCCESS)
-		sc_log_openssl(card->ctx);
 	return r;
 }
 
@@ -532,8 +526,6 @@ des3_encrypt_ecb(struct sc_card *card, const unsigned char *key, int keysize,
 
 	r = openssl_enc(alg, bKey, iv, input, length, output);
 	sc_evp_cipher_free(alg);
-	if (r != SC_SUCCESS)
-		sc_log_openssl(card->ctx);
 	return r;
 }
 
@@ -556,8 +548,6 @@ des3_encrypt_cbc(struct sc_card *card, const unsigned char *key, int keysize, un
 
 	r = openssl_enc(EVP_des_ede3_cbc(), bKey, iv, input, length, output);
 	sc_evp_cipher_free(alg);
-	if (r != SC_SUCCESS)
-		sc_log_openssl(card->ctx);
 	return r;
 }
 
@@ -580,8 +570,6 @@ des3_decrypt_cbc(struct sc_card *card, const unsigned char *key, int keysize, un
 
 	r = openssl_dec(alg, bKey, iv, input, length, output);
 	sc_evp_cipher_free(alg);
-	if (r != SC_SUCCESS)
-		sc_log_openssl(card->ctx);
 	return r;
 }
 
@@ -595,8 +583,6 @@ des_encrypt_cbc(struct sc_card *card, const unsigned char *key, int keysize, uns
 
 	r = openssl_enc(alg, key, iv, input, length, output);
 	sc_evp_cipher_free(alg);
-	if (r != SC_SUCCESS)
-		sc_log_openssl(card->ctx);
 	return r;
 }
 
@@ -610,8 +596,6 @@ des_decrypt_cbc(struct sc_card *card, const unsigned char *key, int keysize, uns
 
 	r = openssl_dec(alg, key, iv, input, length, output);
 	sc_evp_cipher_free(alg);
-	if (r != SC_SUCCESS)
-		sc_log_openssl(card->ctx);
 	return r;
 }
 
@@ -658,8 +642,6 @@ sha1_digest(struct sc_card *card, const unsigned char *input, size_t length, uns
 
 	r = openssl_dig(md, input, length, output);
 	sc_evp_md_free(md);
-	if (r != SC_SUCCESS)
-		sc_log_openssl(card->ctx);
 	return r;
 }
 
@@ -671,8 +653,6 @@ sha256_digest(struct sc_card *card, const unsigned char *input, size_t length, u
 
 	r = openssl_dig(md, input, length, output);
 	sc_evp_md_free(md);
-	if (r != SC_SUCCESS)
-		sc_log_openssl(card->ctx);
 	return r;
 }
 
@@ -3357,9 +3337,7 @@ external_key_auth(struct sc_card *card, unsigned char kid,
 	r = hash_data(card, data, datalen, hash, SC_ALGORITHM_ECDSA_HASH_SHA1);
 	LOG_TEST_RET(card->ctx, r, "hash data failed");
 
-	r = des3_encrypt_cbc(card, hash, HASH_LEN, iv, random, 8, tmp_data);
-	LOG_TEST_RET(card->ctx, r, "encryption failed");
-
+	des3_encrypt_cbc(card, hash, HASH_LEN, iv, random, 8, tmp_data);
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x82, 0x01, 0x80 | kid);
 	apdu.lc = apdu.datalen = 8;
 	apdu.data = tmp_data;
@@ -3438,7 +3416,7 @@ epass2003_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries
 
 			data->pin1.max_tries = maxtries;
 		}
-		LOG_TEST_RET(card->ctx, r, "verify pin failed");
+		LOG_TEST_RET(card->ctx, r, "get pin retries failed");
 	}
 	else if (data->cmd == SC_PIN_CMD_UNBLOCK) { /* verify */
 		r = external_key_auth(card, (kid + 1), (unsigned char *)data->pin1.data,
@@ -3448,21 +3426,31 @@ epass2003_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries
 	else if (data->cmd == SC_PIN_CMD_CHANGE || data->cmd == SC_PIN_CMD_UNBLOCK) { /* change */
 		r = external_key_auth(card, kid, (unsigned char *)data->pin1.data,
 				data->pin1.len);
-		LOG_TEST_RET(card->ctx, r, "verify pin failed");
-
-		r = update_secret_key(card, 0x04, kid, data->pin2.data,
+		if(r == SC_SUCCESS)
+		{
+			r = update_secret_key(card, 0x04, kid, data->pin2.data,
 				(unsigned long)data->pin2.len);
-		LOG_TEST_RET(card->ctx, r, "change pin failed");
+		
+			LOG_TEST_RET(card->ctx, r, "change pin failed");
+		}else{
+			if (SC_SUCCESS == get_external_key_retries(card, 0x80 | kid, &retries)) {
+				data->pin1.tries_left = retries;
+				if (tries_left)
+					*tries_left = retries;
+			}
+			LOG_TEST_RET(card->ctx, r, "verify pin failed");
+		}
 	}
 	else {
 		r = external_key_auth(card, kid, (unsigned char *)data->pin1.data,
 				data->pin1.len);
-		LOG_TEST_RET(card->ctx, r, "verify pin failed");
 
-		r = get_external_key_retries(card, 0x80 | kid, &retries);
-		if (retries < pin_low)
-			sc_log(card->ctx, "Verification failed (remaining tries: %d)", retries);
-
+		if (SC_SUCCESS == get_external_key_retries(card, 0x80 | kid, &retries))
+		{
+			data->pin1.tries_left = retries;
+			if (tries_left)
+				*tries_left = retries;
+		}
 		LOG_TEST_RET(card->ctx, r, "verify pin failed");
 	}
 
