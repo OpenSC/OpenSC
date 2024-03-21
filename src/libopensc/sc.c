@@ -275,7 +275,7 @@ int sc_format_oid(struct sc_object_id *oid, const char *in)
 
 	p = in;
 	for (ii=0; ii < SC_MAX_OBJECT_ID_OCTETS; ii++)   {
-		oid->value[ii] = strtol(p, &q, 10);
+		oid->value[ii] = (int)strtol(p, &q, 10);
 		if (!*q)
 			break;
 
@@ -546,7 +546,7 @@ int sc_file_add_acl_entry(sc_file_t *file, unsigned int operation,
 	if (_new == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	_new->method = method;
-	_new->key_ref = key_ref;
+	_new->key_ref = (unsigned)key_ref;
 	_new->next = NULL;
 
 	p = file->acl[operation];

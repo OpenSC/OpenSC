@@ -294,7 +294,7 @@ static int gemsafe_setacl(sc_card_t *card, sc_file_t *file, const u8 *data,
 			cond = *p++;
 		else
 			cond = 0xff;
-		sc_log(ctx, 
+		sc_log(ctx,
 			"DF security byte CREATE DF: %02x\n", cond);
 		r = gemsafe_sc2acl(file, SC_AC_OP_CREATE, cond);
 		if (r < 0)
@@ -303,7 +303,7 @@ static int gemsafe_setacl(sc_card_t *card, sc_file_t *file, const u8 *data,
 			cond = *p;
 		else
 			cond = 0xff;
-		sc_log(ctx, 
+		sc_log(ctx,
 			"DF security byte CREATE EF: %02x\n", cond);
 		/* XXX: opensc doesn't currently separate access conditions for
 		 * CREATE EF and CREATE DF, this should be changed */
@@ -317,7 +317,7 @@ static int gemsafe_setacl(sc_card_t *card, sc_file_t *file, const u8 *data,
 			cond = *p++;
 		else
 			cond = 0xff;
-		sc_log(ctx, 
+		sc_log(ctx,
 			"EF security byte UPDATE/ERASE BINARY: %02x\n", cond);
 		r = gemsafe_sc2acl(file, SC_AC_OP_UPDATE, cond);
 		if (r < 0)
@@ -332,7 +332,7 @@ static int gemsafe_setacl(sc_card_t *card, sc_file_t *file, const u8 *data,
 			cond = *p;
 		else
 			cond = 0xff;
-		sc_log(ctx, 
+		sc_log(ctx,
 			"EF security byte READ BINARY: %02x\n", cond);
 		r = gemsafe_sc2acl(file, SC_AC_OP_READ, cond);
 		if (r < 0)
@@ -356,7 +356,7 @@ static int gemsafe_process_fci(struct sc_card *card, struct sc_file *file,
 	r = iso_ops->process_fci(card, file, buf, len);
 	if (r < 0)
 		return r;
-	sc_log(ctx, 
+	sc_log(ctx,
 		"processing GemSAFE V1 specific FCI information\n");
 
 
@@ -392,7 +392,7 @@ static u8 gemsafe_flags2algref(struct sc_card *card, const struct sc_security_en
 	if (env->operation == SC_SEC_OPERATION_SIGN) {
 		if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA256)
 			ret = GEMSAFEV3_ALG_REF_SHA256;
-		else if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1)
+		else if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01)
 			ret = (card->type == SC_CARD_TYPE_GEMSAFEV1_PTEID ||
 			       card->type == SC_CARD_TYPE_GEMSAFEV1_SEEID) ?
 			      GEMSAFEV3_ALG_REF_FREEFORM :
@@ -400,7 +400,7 @@ static u8 gemsafe_flags2algref(struct sc_card *card, const struct sc_security_en
 		else if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_ISO9796)
 			ret = 0x11;
 	} else if (env->operation == SC_SEC_OPERATION_DECIPHER) {
-		if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1)
+		if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_02)
 			ret = (card->type == SC_CARD_TYPE_GEMSAFEV1_PTEID ||
 			       card->type == SC_CARD_TYPE_GEMSAFEV1_SEEID) ?
 			      GEMSAFEV3_ALG_REF_FREEFORM :
@@ -445,7 +445,7 @@ static int gemsafe_set_security_env(struct sc_card *card,
 		}
 	}
 	if (!(se_env.flags & SC_SEC_ENV_ALG_REF_PRESENT))
-		sc_log(ctx,  "unknown algorithm flags '%x'\n", se_env.algorithm_flags);
+		sc_log(ctx, "unknown algorithm flags '%lx'\n", se_env.algorithm_flags);
 
 	se_env.flags &= ~SC_SEC_ENV_FILE_REF_PRESENT;
 	return iso_ops->set_security_env(card, &se_env, se_num);
@@ -454,7 +454,8 @@ static int gemsafe_set_security_env(struct sc_card *card,
 static int gemsafe_compute_signature(struct sc_card *card, const u8 * data,
 	size_t data_len, u8 * out, size_t outlen)
 {
-	int r, len;
+	int r;
+	size_t len;
 	struct sc_apdu apdu;
 	u8 rbuf[MAX_RESP_BUFFER_SIZE];
 	u8 sbuf[MAX_RESP_BUFFER_SIZE];
@@ -464,7 +465,7 @@ static int gemsafe_compute_signature(struct sc_card *card, const u8 * data,
 
 	/* the card can sign 36 bytes of free form data */
 	if (data_len > 36) {
-		sc_log(ctx, 
+		sc_log(ctx,
 			 "error: input data too long: %"SC_FORMAT_LEN_SIZE_T"u bytes\n",
 			 data_len);
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -512,7 +513,7 @@ static int gemsafe_compute_signature(struct sc_card *card, const u8 * data,
 		len = apdu.resplen > outlen ? outlen : apdu.resplen;
 
 		memcpy(out, apdu.resp, len);
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, len);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, (int)len);
 	}
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
@@ -541,10 +542,10 @@ static int gemsafe_decipher(struct sc_card *card, const u8 * crgram,
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
-		int len = apdu.resplen > outlen ? outlen : apdu.resplen;
+		size_t len = apdu.resplen > outlen ? outlen : apdu.resplen;
 
 		memcpy(out, apdu.resp, len);
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, len);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, (int)len);
 	}
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }

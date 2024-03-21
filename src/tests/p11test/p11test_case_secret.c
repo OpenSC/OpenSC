@@ -30,13 +30,13 @@ static unsigned char *
 pkcs7_pad_message(const unsigned char *message, unsigned long message_length,
                   unsigned long block_len, unsigned long *out_len)
 {
-	int pad_length = block_len - (message_length % block_len);
+	unsigned long pad_length = block_len - (message_length % block_len);
 	unsigned char *pad_message = malloc(message_length + pad_length);
 	if (pad_message == NULL) {
 		return NULL;
 	}
 	memcpy(pad_message, message, message_length);
-	memset(pad_message + message_length, pad_length, pad_length);
+	memset(pad_message + message_length, (int)pad_length, pad_length);
 	*out_len = message_length + pad_length;
 	return pad_message;
 }
@@ -47,9 +47,8 @@ pkcs7_pad_message(const unsigned char *message, unsigned long message_length,
  * NONE of the reasonable mechanisms support multipart encryption/decryption
  *
  * Returns
- *  * 1 for successful Encrypt&Decrypt sequence
- *  * 0 for skipped test (unsupported mechanism, key, ...)
- *  * -1 otherwise.
+ *  * 0 for successful Sign&Verify sequence or skipped test (unsupported mechanism, key, ...)
+ *  * 1 for failure
  *  Serious errors terminate the execution.
  */
 int test_secret_encrypt_decrypt(test_cert_t *o, token_info_t *info, test_mech_t *mech,
@@ -76,7 +75,7 @@ int test_secret_encrypt_decrypt(test_cert_t *o, token_info_t *info, test_mech_t 
 
 	if (o->private_handle == CK_INVALID_HANDLE) {
 		debug_print(" [SKIP %s ] Missing secret key", o->id_str);
-		return 0;
+		return 1;
 	}
 
 	if (o->key_type != CKK_AES) {
@@ -84,9 +83,11 @@ int test_secret_encrypt_decrypt(test_cert_t *o, token_info_t *info, test_mech_t 
 		return 0;
 	}
 
-	/* The CBC mechanisms require parameter with IV */
-	mech->params = &iv;
-	mech->params_len = sizeof(iv);
+	/* The CBC mechanisms require parameter with IV. Not the ECB. */
+	if (mech->mech == CKM_AES_CBC || mech->mech == CKM_AES_CBC_PAD) {
+		mech->params = &iv;
+		mech->params_len = sizeof(iv);
+	}
 	if (mech->mech == CKM_AES_CBC || mech->mech == CKM_AES_ECB) {
 		/* This mechanism requires the blocks to be aligned to block size */
 		message = pkcs7_pad_message(short_message, message_length, 16, &message_length);
@@ -116,7 +117,7 @@ int test_secret_encrypt_decrypt(test_cert_t *o, token_info_t *info, test_mech_t 
 		mech->params_len = 0;
 		free(enc_message);
 		free(message);
-		return -1;
+		return 1;
 	}
 
 	debug_print(" [ KEY %s ] Decrypt message", o->id_str);
@@ -127,19 +128,19 @@ int test_secret_encrypt_decrypt(test_cert_t *o, token_info_t *info, test_mech_t 
 		mech->params = NULL;
 		mech->params_len = 0;
 		free(message);
-		return -1;
+		return 1;
 	}
 
 	if (memcmp(dec_message, message, dec_message_length) == 0
 			&& (unsigned int) dec_message_length == message_length) {
 		debug_print(" [  OK %s ] Text decrypted successfully.", o->id_str);
 		mech->result_flags |= FLAGS_DECRYPT;
-		rv = 1;
+		rv = 0;
 	} else {
 		dec_message[dec_message_length] = '\0';
 		debug_print(" [ ERROR %s ] Text decryption failed. Recovered text: %s",
 			o->id_str, dec_message);
-		rv = 0;
+		rv = 1;
 	}
 	mech->params = NULL;
 	mech->params_len = 0;
@@ -148,15 +149,13 @@ int test_secret_encrypt_decrypt(test_cert_t *o, token_info_t *info, test_mech_t 
 	return rv;
 }
 
-
 /* Perform signature and verification of a message using secret key referenced
  * in the  o  object with mechanism defined by  mech. Message length can be
  * specified using argument  message_length.
  *
  * Returns
- *  * 1 for successful Sign&Verify sequence
- *  * 0 for skipped test (unsupported mechanism, key, ...)
- *  * -1 otherwise.
+ *  * 0 for successful Sign&Verify sequence or skipped test (unsupported mechanism, key, ...)
+ *  * 1 for failure
  *  Serious errors terminate the execution.
  */
 int test_secret_sign_verify(test_cert_t *o, token_info_t *info, test_mech_t *mech,
@@ -171,12 +170,12 @@ int test_secret_sign_verify(test_cert_t *o, token_info_t *info, test_mech_t *mec
 	if (message_length > strlen(MESSAGE_TO_SIGN)) {
 		fail_msg("Truncate (%lu) is longer than the actual message (%lu)",
 			message_length, strlen(MESSAGE_TO_SIGN));
-		return -1;
+		return 0;
 	}
 
 	if (o->private_handle == CK_INVALID_HANDLE) {
 		debug_print(" [SKIP %s ] Missing secret key handle", o->id_str);
-		return 0;
+		return 1;
 	}
 
 	if (o->key_type != CKK_AES) {
@@ -203,7 +202,7 @@ int test_secret_sign_verify(test_cert_t *o, token_info_t *info, test_mech_t *mec
 		mech->params = NULL;
 		mech->params_len = 0;
 		free(message);
-		return rv;
+		return 1;
 	}
 	sign_length = (unsigned long) rv;
 
@@ -214,13 +213,14 @@ int test_secret_sign_verify(test_cert_t *o, token_info_t *info, test_mech_t *mec
 	mech->params_len = 0;
 	free(sign);
 	free(message);
-	return rv;
+	/* the semantics is different in the verify function */
+	return rv == 1 ? 0 : 1;
 }
 
 void secret_tests(void **state)
 {
 	unsigned int i;
-	int j;
+	size_t j;
 	int errors = 0;
 	token_info_t *info = (token_info_t *) *state;
 	test_certs_t objects;
@@ -237,6 +237,8 @@ void secret_tests(void **state)
 	debug_print("Check operations on secret keys.\n");
 	for (i = 0; i < objects.count; i++) {
 		test_cert_t *o = &objects.data[i];
+		if (o->key_type != CKK_AES)
+			continue;
 		/* Ignore if there is missing private key */
 		if (o->private_handle == CK_INVALID_HANDLE)
 			continue;
@@ -312,6 +314,6 @@ void secret_tests(void **state)
 
 	clean_all_objects(&objects);
 	if (errors > 0)
-		P11TEST_FAIL(info, "Not all the derive mechanisms worked.");
+		P11TEST_FAIL(info, "Not all the secret key operation worked.");
 	P11TEST_PASS(info);
 }

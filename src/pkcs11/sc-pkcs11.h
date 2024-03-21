@@ -226,6 +226,7 @@ struct sc_pkcs11_slot {
 	struct sc_app_info *app_info;	/* Application associated to slot */
 	list_t logins;			/* tracks all calls to C_Login if atomic operations are requested */
 	int flags;
+	struct pkcs15_any_object *profile; /* keeps track of the profile object */
 };
 typedef struct sc_pkcs11_slot sc_pkcs11_slot_t;
 
@@ -244,6 +245,11 @@ do {\
                 }\
         }\
 } while(0)
+
+#define SC_LOG(fmt) \
+	do { \
+		sc_log(context, (fmt)); \
+	} while (0)
 
 /* Debug virtual slots. S is slot to be highlighted or NULL
  * C is a comment format string and args It will be preceded by "VSS " */

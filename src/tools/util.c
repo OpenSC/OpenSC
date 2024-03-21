@@ -132,12 +132,12 @@ int util_connect_reader (sc_context_t *ctx, sc_reader_t **reader,
 			}
 			else   {
 				char *endptr = NULL;
-				unsigned int num;
+				long num;
 
 				errno = 0;
 				num = strtol(reader_id, &endptr, 0);
 				if (!errno && endptr && *endptr == '\0')
-					*reader = sc_ctx_get_reader(ctx, num);
+					*reader = sc_ctx_get_reader(ctx, (unsigned)num);
 				else
 					*reader = sc_ctx_get_reader_by_name(ctx, reader_id);
 			}
@@ -198,9 +198,9 @@ util_connect_card(sc_context_t *ctx, sc_card_t **cardp,
 	return util_connect_card_ex(ctx, cardp, reader_id, do_wait, 1);
 }
 
-void util_print_binary(FILE *f, const u8 *buf, int count)
+void util_print_binary(FILE *f, const u8 *buf, size_t count)
 {
-	int i;
+	size_t i;
 
 	for (i = 0; i < count; i++) {
 		unsigned char c = buf[i];
@@ -214,9 +214,9 @@ void util_print_binary(FILE *f, const u8 *buf, int count)
 	(void) fflush(f);
 }
 
-void util_hex_dump(FILE *f, const u8 *in, int len, const char *sep)
+void util_hex_dump(FILE *f, const u8 *in, size_t len, const char *sep)
 {
-	int i;
+	size_t i;
 
 	for (i = 0; i < len; i++) {
 		if (sep != NULL && i)
@@ -492,7 +492,7 @@ util_getpass (char **lineptr, size_t *len, FILE *stream)
 		if (len)
 			*len = MAX_PASS_SIZE;
 	}
-	return i;
+	return (int)i;
 }
 
 size_t

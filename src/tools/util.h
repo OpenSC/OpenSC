@@ -36,8 +36,17 @@ extern "C" {
 # define NORETURN
 #endif
 
-void util_print_binary(FILE *f, const u8 *buf, int count);
-void util_hex_dump(FILE *f, const u8 *in, int len, const char *sep);
+#ifdef _MSC_VER
+# ifndef _SSIZE_T_DEFINED
+#  undef ssize_t
+#  include <BaseTsd.h>
+   typedef _W64 SSIZE_T ssize_t;
+#  define _SSIZE_T_DEFINED
+# endif /* _SSIZE_T_DEFINED */
+#endif /* _MSC_VER */
+
+void util_print_binary(FILE *f, const u8 *buf, size_t count);
+void util_hex_dump(FILE *f, const u8 *in, size_t len, const char *sep);
 void util_hex_dump_asc(FILE *f, const u8 *in, size_t count, int addr);
 void util_print_usage(const char *app_name, const struct option options[],
 	const char *option_help[], const char *args);

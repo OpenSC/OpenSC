@@ -29,15 +29,12 @@ extern "C" {
 #include <libopensc/types.h>
 #include <libopensc/pkcs15.h>
 
-int sc_pkcs15emu_westcos_init_ex(sc_pkcs15_card_t *p15card,	struct sc_aid *);
 int sc_pkcs15emu_openpgp_init_ex(sc_pkcs15_card_t *,	struct sc_aid *);
 int sc_pkcs15emu_starcert_init_ex(sc_pkcs15_card_t *,	struct sc_aid *);
 int sc_pkcs15emu_tcos_init_ex(sc_pkcs15_card_t *,	struct sc_aid *);
-int sc_pkcs15emu_esteid_init_ex(sc_pkcs15_card_t *,	struct sc_aid *);
 int sc_pkcs15emu_esteid2018_init_ex(sc_pkcs15_card_t *,	struct sc_aid *);
 int sc_pkcs15emu_piv_init_ex(sc_pkcs15_card_t *p15card,	struct sc_aid *);
 int sc_pkcs15emu_cac_init_ex(sc_pkcs15_card_t *p15card,	struct sc_aid *);
-int sc_pkcs15emu_gemsafeGPK_init_ex(sc_pkcs15_card_t *p15card,	struct sc_aid *);
 int sc_pkcs15emu_gemsafeV1_init_ex(sc_pkcs15_card_t *p15card,	struct sc_aid *);
 int sc_pkcs15emu_actalis_init_ex(sc_pkcs15_card_t *p15card,	struct sc_aid *);
 int sc_pkcs15emu_atrust_acos_init_ex(sc_pkcs15_card_t *p15card,	struct sc_aid *);

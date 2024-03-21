@@ -26,14 +26,11 @@
 #include "libopensc/log.h"
 #include "libopensc/opensc.h"
 #include "sm-eac.h"
-#include "sslutil.h"
 #include <stdlib.h>
 #include <string.h>
 
 #ifdef ENABLE_OPENSSL
 #include <openssl/evp.h>
-#else
-#define ssl_error(a)
 #endif
 
 char eac_default_flags = 0;
@@ -238,7 +235,7 @@ static int encode_mse_cdata(struct sc_context *ctx, int protocol,
 	if (chat) {
 		encoded_chat_len = i2d_CVC_CHAT((CVC_CHAT *) chat, &encoded_chat);
 		if (encoded_chat_len < 0) {
-			ssl_error(ctx);
+			sc_log_openssl(ctx);
 			r = SC_ERROR_INTERNAL;
 			goto err;
 		}
@@ -624,6 +621,7 @@ get_psec(sc_card_t *card, const char *pin, size_t length_pin, enum s_type pin_id
 			return NULL;
 		}
 		if (0 > EVP_read_pw_string_min(p, 0, EAC_MAX_MRZ_LEN, buf, 0)) {
+			sc_log_openssl(card->ctx);
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not read %s.\n",
 					eac_secret_name(pin_id));
 			return NULL;
@@ -675,8 +673,8 @@ int perform_pace(sc_card_t *card,
 		pp = pace_input.certificate_description;
 		if (!d2i_CVC_CERTIFICATE_DESCRIPTION(&desc,
 					&pp, pace_input.certificate_description_length)) {
+			sc_log_openssl(card->ctx);
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not parse certificate description.");
-			ssl_error(card->ctx);
 			r = SC_ERROR_INTERNAL;
 			goto err;
 		}
@@ -684,8 +682,8 @@ int perform_pace(sc_card_t *card,
 		if (!bio_stdout) {
 			bio_stdout = BIO_new_fp(stdout, BIO_NOCLOSE);
 			if (!bio_stdout) {
+				sc_log_openssl(card->ctx);
 				sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not create output buffer.");
-				ssl_error(card->ctx);
 				r = SC_ERROR_INTERNAL;
 				goto err;
 			}
@@ -694,8 +692,8 @@ int perform_pace(sc_card_t *card,
 		printf("Certificate Description\n");
 		switch(certificate_description_print(bio_stdout, desc, 8)) {
 			case 0:
+				sc_log_openssl(card->ctx);
 				sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not print certificate description.");
-				ssl_error(card->ctx);
 				r = SC_ERROR_INTERNAL;
 				goto err;
 				break;
@@ -730,8 +728,8 @@ int perform_pace(sc_card_t *card,
 		if (!bio_stdout) {
 			bio_stdout = BIO_new_fp(stdout, BIO_NOCLOSE);
 			if (!bio_stdout) {
+				sc_log_openssl(card->ctx);
 				sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not create output buffer.");
-				ssl_error(card->ctx);
 				r = SC_ERROR_INTERNAL;
 				goto err;
 			}
@@ -739,16 +737,16 @@ int perform_pace(sc_card_t *card,
 
 		pp = pace_input.chat;
 		if (!d2i_CVC_CHAT(&chat, &pp, pace_input.chat_length)) {
+			sc_log_openssl(card->ctx);
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not parse card holder authorization template (CHAT).");
-			ssl_error(card->ctx);
 			r = SC_ERROR_INTERNAL;
 			goto err;
 		}
 
 		printf("Card holder authorization template (CHAT)\n");
 		if (!cvc_chat_print(bio_stdout, chat, 8)) {
+			sc_log_openssl(card->ctx);
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not print card holder authorization template (CHAT).");
-			ssl_error(card->ctx);
 			r = SC_ERROR_INTERNAL;
 			goto err;
 		}
@@ -778,8 +776,8 @@ int perform_pace(sc_card_t *card,
 				|| !EAC_CTX_init_ef_cardaccess(pace_output->ef_cardaccess,
 					pace_output->ef_cardaccess_length, eac_ctx)
 				|| !eac_ctx->pace_ctx) {
+			sc_log_openssl(card->ctx);
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not parse EF.CardAccess.");
-			ssl_error(card->ctx);
 			r = SC_ERROR_INTERNAL;
 			goto err;
 		}
@@ -797,7 +795,7 @@ int perform_pace(sc_card_t *card,
 
 		enc_nonce = BUF_MEM_new();
 		if (!enc_nonce) {
-			ssl_error(card->ctx);
+			sc_log_openssl(card->ctx);
 			r = SC_ERROR_OUT_OF_MEMORY;
 			goto err;
 		}
@@ -815,15 +813,15 @@ int perform_pace(sc_card_t *card,
 		sec = get_psec(card, (char *) pace_input.pin, pace_input.pin_length,
 				pace_input.pin_id);
 		if (!sec) {
+			sc_log_openssl(card->ctx);
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not encode PACE secret.");
-			ssl_error(card->ctx);
 			r = SC_ERROR_INTERNAL;
 			goto err;
 		}
 
 		if (!PACE_STEP2_dec_nonce(eac_ctx, sec, enc_nonce)) {
+			sc_log_openssl(card->ctx);
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not decrypt MRTD's nonce.");
-			ssl_error(card->ctx);
 			r = SC_ERROR_INTERNAL;
 			goto err;
 		}
@@ -831,8 +829,8 @@ int perform_pace(sc_card_t *card,
 		mdata_opp = BUF_MEM_new();
 		mdata = PACE_STEP3A_generate_mapping_data(eac_ctx);
 		if (!mdata || !mdata_opp) {
+			sc_log_openssl(card->ctx);
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not generate mapping data.");
-			ssl_error(card->ctx);
 			r = SC_ERROR_INTERNAL;
 			goto err;
 		}
@@ -849,8 +847,8 @@ int perform_pace(sc_card_t *card,
 		sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "Mapping data from MRTD", (u8 *) mdata_opp->data, mdata_opp->length);
 
 		if (!PACE_STEP3A_map_generator(eac_ctx, mdata_opp)) {
+			sc_log_openssl(card->ctx);
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not map generator.");
-			ssl_error(card->ctx);
 			r = SC_ERROR_INTERNAL;
 			goto err;
 		}
@@ -858,9 +856,9 @@ int perform_pace(sc_card_t *card,
 		pub = PACE_STEP3B_generate_ephemeral_key(eac_ctx);
 		pub_opp = BUF_MEM_new();
 		if (!pub || !pub_opp) {
+			sc_log_openssl(card->ctx);
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not generate ephemeral domain parameter or "
 					"ephemeral key pair.");
-			ssl_error(card->ctx);
 			r = SC_ERROR_INTERNAL;
 			goto err;
 		}
@@ -879,17 +877,17 @@ int perform_pace(sc_card_t *card,
 
 		if (!PACE_STEP3B_compute_shared_secret(eac_ctx, pub_opp)
 				|| !PACE_STEP3C_derive_keys(eac_ctx)) {
+			sc_log_openssl(card->ctx);
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not compute ephemeral shared secret or "
 					"derive keys for encryption and authentication.");
-			ssl_error(card->ctx);
 			r = SC_ERROR_INTERNAL;
 			goto err;
 		}
 		token = PACE_STEP3D_compute_authentication_token(eac_ctx, pub_opp);
 		token_opp = BUF_MEM_new();
 		if (!token || !token_opp) {
+			sc_log_openssl(card->ctx);
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not compute authentication token.");
-			ssl_error(card->ctx);
 			r = SC_ERROR_INTERNAL;
 			goto err;
 		}
@@ -908,16 +906,16 @@ int perform_pace(sc_card_t *card,
 		token_opp->max = token_opp->length;
 
 		if (!PACE_STEP3D_verify_authentication_token(eac_ctx, token_opp)) {
+			sc_log_openssl(card->ctx);
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not verify authentication token.");
-			ssl_error(card->ctx);
 			r = SC_ERROR_INTERNAL;
 			goto err;
 		}
 
 		/* Initialize secure channel */
 		if (!EAC_CTX_set_encryption_ctx(eac_ctx, EAC_ID_PACE)) {
+			sc_log_openssl(card->ctx);
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not initialize encryption.");
-			ssl_error(card->ctx);
 			r = SC_ERROR_INTERNAL;
 			goto err;
 		}
@@ -926,8 +924,8 @@ int perform_pace(sc_card_t *card,
 		comp_pub = EAC_Comp(eac_ctx, EAC_ID_PACE, pub);
 		comp_pub_opp = EAC_Comp(eac_ctx, EAC_ID_PACE, pub_opp);
 		if (!comp_pub || !comp_pub_opp) {
+			sc_log_openssl(card->ctx);
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not compress public keys for identification.");
-			ssl_error(card->ctx);
 			r = SC_ERROR_INTERNAL;
 			goto err;
 		}
@@ -1053,8 +1051,8 @@ static int eac_verify(sc_card_t *card,
 	}
 
 	if (0x80 & ASN1_get_object(&cert, &length, &tag, &class, cert_len)) {
+		sc_log_openssl(card->ctx);
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Error decoding Certificate");
-		ssl_error(card->ctx);
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
@@ -1152,8 +1150,8 @@ int perform_terminal_authentication(sc_card_t *card,
 		if (!eac_ctx
 				|| !EAC_CTX_init_ef_cardaccess(ef_cardaccess,
 					ef_cardaccess_length, eac_ctx)) {
+			sc_log_openssl(card->ctx);
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not parse EF.CardAccess.");
-			ssl_error(card->ctx);
 			r = SC_ERROR_INTERNAL;
 			goto err;
 		}
@@ -1178,7 +1176,7 @@ int perform_terminal_authentication(sc_card_t *card,
 		if (!CVC_d2i_CVC_CERT(&cvc_cert, &cert, cert_len) || !cvc_cert
 				|| !cvc_cert->body || !cvc_cert->body->certificate_authority_reference
 				|| !cvc_cert->body->certificate_holder_reference) {
-			ssl_error(card->ctx);
+			sc_log_openssl(card->ctx);
 			r = SC_ERROR_INVALID_DATA;
 			goto err;
 		}
@@ -1206,8 +1204,8 @@ int perform_terminal_authentication(sc_card_t *card,
 
 
 	if (!EAC_CTX_init_ta(eacsmctx->ctx, privkey, privkey_len, cert, cert_len)) {
+		sc_log_openssl(card->ctx);
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not initialize TA.");
-		ssl_error(card->ctx);
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
@@ -1217,8 +1215,8 @@ int perform_terminal_authentication(sc_card_t *card,
 		BUF_MEM_free(eacsmctx->eph_pub_key);
 	eacsmctx->eph_pub_key = TA_STEP3_generate_ephemeral_key(eacsmctx->ctx);
 	if (!eacsmctx->eph_pub_key) {
+		sc_log_openssl(card->ctx);
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not generate CA ephemeral key.");
-		ssl_error(card->ctx);
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
@@ -1235,7 +1233,7 @@ int perform_terminal_authentication(sc_card_t *card,
 
 	nonce = BUF_MEM_create(TA_NONCE_LENGTH);
 	if (!nonce) {
-		ssl_error(card->ctx);
+		sc_log_openssl(card->ctx);
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
@@ -1245,8 +1243,8 @@ int perform_terminal_authentication(sc_card_t *card,
 		goto err;
 	}
 	if (!TA_STEP4_set_nonce(eacsmctx->ctx, nonce)) {
+		sc_log_openssl(card->ctx);
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not set nonce for TA.");
-		ssl_error(card->ctx);
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
@@ -1260,8 +1258,8 @@ int perform_terminal_authentication(sc_card_t *card,
 	signature = TA_STEP5_sign(eacsmctx->ctx, eacsmctx->eph_pub_key,
 			eacsmctx->id_icc, eacsmctx->auxiliary_data);
 	if (!signature) {
+		sc_log_openssl(card->ctx);
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not generate signature.");
-		ssl_error(card->ctx);
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
@@ -1409,8 +1407,8 @@ int perform_chip_authentication(sc_card_t *card,
 	}
 	picc_pubkey = CA_get_pubkey(eacsmctx->ctx, *ef_cardsecurity, *ef_cardsecurity_len);
 	if (!picc_pubkey) {
+		sc_log_openssl(card->ctx);
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not verify EF.CardSecurity.");
-		ssl_error(card->ctx);
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
@@ -1443,8 +1441,8 @@ int perform_chip_authentication_ex(sc_card_t *card, void *eac_ctx,
 
 	picc_pubkey_buf = BUF_MEM_create_init(picc_pubkey, picc_pubkey_len);
 	if (!picc_pubkey_buf) {
+		sc_log_openssl(card->ctx);
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not verify EF.CardSecurity.");
-		ssl_error(card->ctx);
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
@@ -1460,8 +1458,8 @@ int perform_chip_authentication_ex(sc_card_t *card, void *eac_ctx,
 
 	eph_pub_key = CA_STEP2_get_eph_pubkey(ctx);
 	if (!eph_pub_key) {
+		sc_log_openssl(card->ctx);
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not derive keys.");
-		ssl_error(card->ctx);
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
@@ -1473,16 +1471,16 @@ int perform_chip_authentication_ex(sc_card_t *card, void *eac_ctx,
 
 
 	if (!CA_STEP4_compute_shared_secret(ctx, picc_pubkey_buf)) {
+		sc_log_openssl(card->ctx);
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not compute shared secret.");
-		ssl_error(card->ctx);
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
 
 
 	if (!CA_STEP6_derive_keys(ctx, nonce, token)) {
+		sc_log_openssl(card->ctx);
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not derive keys.");
-		ssl_error(card->ctx);
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
@@ -1490,8 +1488,8 @@ int perform_chip_authentication_ex(sc_card_t *card, void *eac_ctx,
 
 	/* Initialize secure channel */
 	if (!EAC_CTX_set_encryption_ctx(ctx, EAC_ID_CA)) {
+		sc_log_openssl(card->ctx);
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not initialize encryption.");
-		ssl_error(card->ctx);
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
@@ -1542,8 +1540,8 @@ eac_sm_encrypt(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	databuf = BUF_MEM_create_init(data, datalen);
 	encbuf = EAC_encrypt(eacsmctx->ctx, databuf);
 	if (!databuf || !encbuf || !encbuf->length) {
+		sc_log_openssl(card->ctx);
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not encrypt data.");
-		ssl_error(card->ctx);
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
@@ -1584,7 +1582,7 @@ eac_sm_decrypt(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	databuf = EAC_decrypt(eacsmctx->ctx, encbuf);
 	if (!encbuf || !databuf || !databuf->length) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not decrypt data.");
-		ssl_error(card->ctx);
+		sc_log_openssl(card->ctx);
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
@@ -1629,9 +1627,9 @@ eac_sm_authenticate(sc_card_t *card, const struct iso_sm_ctx *ctx,
 
 	macbuf = EAC_authenticate(eacsmctx->ctx, inbuf);
 	if (!macbuf || !macbuf->length) {
+		sc_log_openssl(card->ctx);
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
 				"Could not compute message authentication code (MAC).");
-		ssl_error(card->ctx);
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
@@ -1677,9 +1675,9 @@ eac_sm_verify_authentication(sc_card_t *card, const struct iso_sm_ctx *ctx,
 
 	my_mac = EAC_authenticate(eacsmctx->ctx, inbuf);
 	if (!my_mac) {
+		sc_log_openssl(card->ctx);
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
 				"Could not compute message authentication code (MAC) for verification.");
-		ssl_error(card->ctx);
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}

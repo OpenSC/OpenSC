@@ -28,6 +28,7 @@
 #include <strings.h>
 #endif
 #include <ctype.h>
+#include <limits.h>
 
 #include "scconf.h"
 
@@ -157,9 +158,17 @@ const char *scconf_get_str(const scconf_block * block, const char *option, const
 int scconf_get_int(const scconf_block * block, const char *option, int def)
 {
 	const scconf_list *list;
+	long res;
 
 	list = scconf_find_list(block, option);
-	return !list ? def : strtol(list->data, NULL, 0);
+	if (!list) {
+		return def;
+	}
+	res = strtol(list->data, NULL, 0);
+	if (res <= INT_MAX) {
+		return (int)res;
+	}
+	return def;
 }
 
 int scconf_get_bool(const scconf_block * block, const char *option, int def)

@@ -33,6 +33,15 @@ extern "C" {
 #include <assert.h>
 #ifdef _WIN32
 #include <windows.h>
+
+# ifdef _MSC_VER
+#  ifndef _SSIZE_T_DEFINED
+#   undef ssize_t
+#   include <BaseTsd.h>
+    typedef _W64 SSIZE_T ssize_t;
+#   define _SSIZE_T_DEFINED
+#  endif /* _SSIZE_T_DEFINED */
+# endif /* _MSC_VER */
 #endif
 
 #include "common/simclist.h"
@@ -148,15 +157,15 @@ int _sc_match_atr(struct sc_card *card, const struct sc_atr_table *table, int *t
 int _sc_card_add_algorithm(struct sc_card *card, const struct sc_algorithm_info *info);
 int _sc_card_add_symmetric_alg(sc_card_t *card, unsigned int algorithm,
 			       unsigned int key_length, unsigned long flags);
-int _sc_card_add_rsa_alg(struct sc_card *card, unsigned int key_length,
+int _sc_card_add_rsa_alg(struct sc_card *card, size_t key_length,
 		unsigned long flags, unsigned long exponent);
-int _sc_card_add_ec_alg(struct sc_card *card, unsigned int key_length,
+int _sc_card_add_ec_alg(struct sc_card *card, size_t key_length,
 		unsigned long flags, unsigned long ext_flags,
 		struct sc_object_id *curve_oid);
-int _sc_card_add_eddsa_alg(struct sc_card *card, unsigned int key_length,
+int _sc_card_add_eddsa_alg(struct sc_card *card, size_t key_length,
 		unsigned long flags, unsigned long ext_flags,
 		struct sc_object_id *curve_oid);
-int _sc_card_add_xeddsa_alg(struct sc_card *card, unsigned int key_length,
+int _sc_card_add_xeddsa_alg(struct sc_card *card, size_t key_length,
 		unsigned long flags, unsigned long ext_flags,
 		struct sc_object_id *curve_oid);
 
@@ -166,8 +175,8 @@ int _sc_card_add_xeddsa_alg(struct sc_card *card, unsigned int key_length,
 
 int sc_pkcs1_strip_01_padding(struct sc_context *ctx, const u8 *in_dat, size_t in_len,
 		u8 *out_dat, size_t *out_len);
-int sc_pkcs1_strip_02_padding(struct sc_context *ctx, const u8 *data, size_t len,
-		u8 *out_dat, size_t *out_len);
+int sc_pkcs1_strip_02_padding_constant_time(sc_context_t *ctx, unsigned int n, const u8 *data,
+		unsigned int data_len, u8 *out, unsigned int *out_len);
 int sc_pkcs1_strip_digest_info_prefix(unsigned int *algorithm,
 		const u8 *in_dat, size_t in_len, u8 *out_dat, size_t *out_len);
 #ifdef ENABLE_OPENSSL
@@ -215,7 +224,7 @@ int sc_get_encoding_flags(sc_context_t *ctx,
 int sc_mutex_create(const sc_context_t *ctx, void **mutex);
 /**
  * Tries to acquire a lock for a sc_mutex object. Note: Unless
- * sc_mutex_set_mutex_funcs() has been called before this 
+ * sc_mutex_set_mutex_funcs() has been called before this
  * function does nothing and always returns SUCCESS.
  * @param  ctx    sc_context_t object with the thread context
  * @param  mutex  mutex object to lock

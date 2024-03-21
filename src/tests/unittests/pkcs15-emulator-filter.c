@@ -28,17 +28,18 @@ int func(sc_pkcs15_card_t *card, struct sc_aid *aid) {
 	return SC_SUCCESS;
 }
 
+// clang-format off
 struct sc_pkcs15_emulator_handler builtin[] = {
 	{ "openpgp",	&func },
 	{ "starcert",	&func },
 	{ NULL,	NULL }
 };
 struct sc_pkcs15_emulator_handler old[] = {
-	{ "westcos",	&func },
 	{ "cardos",		&func },
 	{ "jcop",		&func },
 	{ NULL, NULL }
 };
+// clang-format on
 
 /* add_emul */
 static void torture_null_add_emul(void **state)
@@ -317,7 +318,7 @@ static void torture_internal_and_name(void **state)
 	for (i = 0; builtin[i].name; i++) {
 		assert_ptr_equal(&builtin[i], filtered_emulators.list_of_handlers[i]);
 	}
-	assert_ptr_equal(&old[1], filtered_emulators.list_of_handlers[i]);
+	assert_ptr_equal(&old[0], filtered_emulators.list_of_handlers[i]);
 	assert_null(filtered_emulators.list_of_handlers[i + 1]);
 }
 

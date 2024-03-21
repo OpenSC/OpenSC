@@ -48,7 +48,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - run: .github/setup-linux.sh
+      - run: .github/setup-linux.sh debug
       - run: .github/build.sh valgrind
       - name: Upload test logs
         uses: actions/upload-artifact@v3
@@ -242,6 +242,7 @@ jobs:
           key: ${{ runner.os }}-${{ github.sha }}
       - run: .github/setup-linux.sh oseid
       - run: .github/test-oseid.sh
+      - run: .github/test-oseid.sh valgrind
 
   ############################################
   ## Ubuntu 22.04 with OpenSSL 3.0 pipeline ##
@@ -333,6 +334,7 @@ jobs:
           key: ${{ runner.os }}-22-${{ github.sha }}
       - run: .github/setup-linux.sh oseid
       - run: .github/test-oseid.sh
+      - run: .github/test-oseid.sh valgrind
 
   #######################
   ## LibreSSL pipeline ##
@@ -348,8 +350,9 @@ jobs:
         with:
           name: libressl-logs
           path: |
-            tests/test-suite.log
             config.log
+            tests/*.log
+            src/tests/unittests/*.log
       - uses: actions/cache@v3
         id: cache-build
         if: ${{ success() }}
@@ -383,6 +386,7 @@ jobs:
           key: ${{ runner.os }}-libressl-${{ github.sha }}
       - run: .github/setup-linux.sh oseid libressl
       - run: .github/test-oseid.sh
+      - run: .github/test-oseid.sh valgrind
 
   ####################
   ## Push artifacts ##

@@ -167,7 +167,7 @@ static int esteid_set_security_env(sc_card_t *card, const sc_security_env_t *env
 	if (env == NULL || env->key_ref_len != 1)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 
-	sc_log(card->ctx, "algo: %d operation: %d keyref: %d", env->algorithm, env->operation, env->key_ref[0]);
+	sc_log(card->ctx, "algo: %lu operation: %d keyref: %d", env->algorithm, env->operation, env->key_ref[0]);
 
 	if (env->algorithm == SC_ALGORITHM_EC && env->operation == SC_SEC_OPERATION_SIGN && env->key_ref[0] == 1) {
 		sc_format_apdu_ex(&apdu, 0x00, 0x22, 0x41, 0xA4, cse_crt_aut, sizeof(cse_crt_aut), NULL, 0);
@@ -190,7 +190,7 @@ static int esteid_compute_signature(sc_card_t *card, const u8 *data, size_t data
 	struct sc_security_env *env = NULL;
 	struct sc_apdu apdu;
 	u8 sbuf[SIGNATURE_PAYLOAD_SIZE];
-	int le = MIN(SC_MAX_APDU_RESP_SIZE, MIN(SIGNATURE_PAYLOAD_SIZE * 2, outlen));
+	size_t le = MIN(SC_MAX_APDU_RESP_SIZE, MIN(SIGNATURE_PAYLOAD_SIZE * 2, outlen));
 
 	LOG_FUNC_CALLED(card->ctx);
 	if (data == NULL || out == NULL || datalen > SIGNATURE_PAYLOAD_SIZE)

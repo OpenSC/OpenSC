@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<refentry id="dtrust-tool">
+	<refmeta>
+		<refentrytitle>dtrust-tool</refentrytitle>
+		<manvolnum>1</manvolnum>
+		<refmiscinfo class="productname">OpenSC</refmiscinfo>
+		<refmiscinfo class="manual">OpenSC Tools</refmiscinfo>
+		<refmiscinfo class="source">opensc</refmiscinfo>
+	</refmeta>
+
+	<refnamediv>
+		<refname>dtrust-tool</refname>
+		<refpurpose>
+			displays information about D-Trust signature cards and remove the transport protection
+		</refpurpose>
+	</refnamediv>
+
+	<refsynopsisdiv>
+		<cmdsynopsis>
+			<command>dtrust-tool</command>
+			<arg choice="opt"><replaceable class="option">OPTIONS</replaceable></arg>
+		</cmdsynopsis>
+	</refsynopsisdiv>
+
+	<refsect1>
+		<title>Description</title>
+		<para>
+			The <command>dtrust-tool</command> utility is used to display information about
+			D-Trust signature cards and to remove the initial transport protection.
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Options</title>
+		<para>
+			<variablelist>
+				<varlistentry>
+					<term>
+						<option>--check-transport-protection</option>,
+						<option>-c</option>
+					</term>
+					<listitem>
+						<para>
+							In the delivery state the card is locked by a so called
+							transport protection. This option allows to check if the
+							transport protection is still in force. The Signature PIN can
+							only be used if the transport protection is removed.
+						</para>
+
+						<para>
+							Initially the transport protection should be intact. If you
+							receive a new card and the transport protection was already
+							broken, don't use that card and contact the producer for
+							further advice.
+						</para>
+
+						<para>
+							If you removed the transport protection, it is normal that
+							<command>dtrust-tool</command> reports the transport protection
+							as broken. This is the normal operation state. It does not mean
+							your card is broken.
+						</para>
+					</listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--help</option>,
+						<option>-h</option>
+					</term>
+					<listitem><para>Print help message on screen.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--reader</option> <replaceable>arg</replaceable>,
+						<option>-r</option> <replaceable>arg</replaceable>
+					</term>
+					<listitem><para>
+						Number of the reader to use. By default, the first reader with a
+						present card is used. If <replaceable>arg</replaceable> is an ATR, the
+						reader with a matching card will be chosen.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--pin-status</option>,
+						<option>-s</option>
+					</term>
+					<listitem><para>
+						Show the status of the various PINs. The Card Holder PIN is used for
+						advanced signatures and decryption. It is only defined for signature
+						cards, but not for sealing cards. The signature PIN is used for
+						qualified signatures. It can only be used if it is unlocked by
+						presenting the Transport PIN. Once the Transport PIN is used, it cannot
+						be used anymore. The PUK is used to unlock PIN which had beend entered
+						incorrectly several times.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--unlock-transport-protection</option>,
+						<option>-u</option>
+					</term>
+					<listitem><para>
+						This command removes the transport protection. If first queries for the
+						Transport PIN and then for the new value of the Signature PIN twice.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--verbose</option>,
+						<option>-v</option>
+					</term>
+					<listitem><para>
+						Causes <command>dtrust-tool</command> to be more verbose. Specify this
+						flag several times to enable debug output in the opensc library.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--wait</option>,
+						<option>-w</option>
+					</term>
+					<listitem><para>
+						Causes <command>dtrust-tool</command> to wait for the token to be
+						inserted into reader.
+					</para></listitem>
+				</varlistentry>
+			</variablelist>
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Authors</title>
+		<para><command>dtrust-tool</command> was written by
+		Mario Haustein <email>mario.haustein@hrz.tu-chemnitz.de</email>.</para>
+	</refsect1>
+</refentry>

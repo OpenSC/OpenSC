@@ -69,7 +69,7 @@ struct awp_crypto_container {
 };
 
 struct awp_lv {
-	unsigned len;
+	size_t len;
 	unsigned char *value;
 };
 

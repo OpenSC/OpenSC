@@ -139,7 +139,7 @@ static int		pgp_get_pubkey(sc_card_t *, unsigned int, u8 *, size_t);
 static int		pgp_get_pubkey_pem(sc_card_t *, unsigned int, u8 *, size_t);
 static int		pgp_enumerate_blob(sc_card_t *card, pgp_blob_t *blob);
 
-
+// clang-format off
 static pgp_do_info_t	pgp1x_objects[] = {	/* OpenPGP card spec 1.1 */
 	{ 0x004f, SIMPLE,      READ_ALWAYS | WRITE_NEVER, NULL,               NULL        },
 	{ 0x005b, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  NULL,               sc_put_data },
@@ -272,6 +272,7 @@ static pgp_do_info_t	pgp34_objects[] = {	/**** OpenPGP card spec 3.4 ****/
 	{ DO_ENCR_SYM, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  pgp_get_pubkey_pem, NULL   },
 	{ 0, 0, 0, NULL, NULL },
 };
+// clang-format on
 
 static pgp_do_info_t	*pgp33_objects = pgp34_objects +  9;
 static pgp_do_info_t 	*pgp30_objects = pgp34_objects + 10;
@@ -356,6 +357,27 @@ pgp_match_card(sc_card_t *card)
 }
 
 
+/* populate MF - add matching blobs listed in the pgp_objects table */
+int populate_blobs_to_mf(sc_card_t *card, struct pgp_priv_data *priv)
+{
+	pgp_do_info_t	*info;
+	for (info = priv->pgp_objects; (info != NULL) && (info->id > 0); info++) {
+		if (((info->access & READ_MASK) != READ_NEVER) && (info->get_fn != NULL)) {
+			pgp_blob_t *child = NULL;
+			sc_file_t *file = sc_file_new();
+
+			child = pgp_new_blob(card, priv->mf, info->id, file);
+
+			/* catch out of memory condition */
+			if (child == NULL) {
+				sc_file_free(file);
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+			}
+		}
+	}
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+}
+
 /**
  * ABI: initialize driver & allocate private data.
  */
@@ -365,7 +387,6 @@ pgp_init(sc_card_t *card)
 	struct pgp_priv_data *priv;
 	sc_path_t	path;
 	sc_file_t	*file = NULL;
-	pgp_do_info_t	*info;
 	int		r, i;
 
 	LOG_FUNC_CALLED(card->ctx);
@@ -467,7 +488,7 @@ pgp_init(sc_card_t *card)
 		priv->ec_curves = ec_curves_openpgp;
 	}
 
-	/* change file path to MF for re-use in MF */
+	/* change file path to MF for reuse in MF */
 	sc_format_path("3f00", &file->path);
 
 	/* set up the root of our fake file tree */
@@ -482,19 +503,10 @@ pgp_init(sc_card_t *card)
 	/* select MF */
 	priv->current = priv->mf;
 
-	/* populate MF - add matching blobs listed in the pgp_objects table */
-	for (info = priv->pgp_objects; (info != NULL) && (info->id > 0); info++) {
-		if (((info->access & READ_MASK) != READ_NEVER) && (info->get_fn != NULL)) {
-			pgp_blob_t *child = NULL;
-
-			child = pgp_new_blob(card, priv->mf, info->id, sc_file_new());
-
-			/* catch out of memory condition */
-			if (child == NULL) {
-				pgp_finish(card);
-				LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
-			}
-		}
+	r = populate_blobs_to_mf(card, priv);
+	if (r < 0) {
+		pgp_finish(card);
+		LOG_FUNC_RETURN(card->ctx, r);
 	}
 
 	/* get card_features from ATR & DOs */
@@ -666,7 +678,7 @@ pgp_parse_algo_attr_blob(sc_card_t *card, const pgp_blob_t *blob,
 }
 
 int _pgp_handle_curve25519(sc_card_t *card,
-	sc_cardctl_openpgp_keygen_info_t key_info, size_t do_num)
+	sc_cardctl_openpgp_keygen_info_t key_info, unsigned int do_num)
 {
 	if (!sc_compare_oid(&key_info.u.ec.oid, &curve25519_oid))
 		return 0;
@@ -676,12 +688,12 @@ int _pgp_handle_curve25519(sc_card_t *card,
 	* keys as far as I know */
 	_sc_card_add_xeddsa_alg(card, key_info.u.ec.key_length,
 	    SC_ALGORITHM_ECDH_CDH_RAW, 0, &key_info.u.ec.oid);
-	sc_log(card->ctx, "DO %zX: Added XEDDSA algorithm (%d), mod_len = %d",
+	sc_log(card->ctx, "DO %uX: Added XEDDSA algorithm (%d), mod_len = %zu",
 	    do_num, SC_ALGORITHM_XEDDSA, key_info.u.ec.key_length);
 	return 1;
 }
 
-int _pgp_add_algo(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t key_info, size_t do_num)
+int _pgp_add_algo(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t key_info, unsigned int do_num)
 {
 	unsigned long flags = 0, ext_flags = 0;
 
@@ -695,7 +707,7 @@ int _pgp_add_algo(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t key_info, si
 			SC_ALGORITHM_ONBOARD_KEY_GEN;	/* key gen on card */
 
 		_sc_card_add_rsa_alg(card, key_info.u.rsa.modulus_len, flags, 0);
-		sc_log(card->ctx, "DO %zX: Added RSA algorithm, mod_len = %"
+		sc_log(card->ctx, "DO %uX: Added RSA algorithm, mod_len = %"
 			SC_FORMAT_LEN_SIZE_T"u",
 			do_num, key_info.u.rsa.modulus_len);
 		break;
@@ -718,7 +730,7 @@ int _pgp_add_algo(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t key_info, si
 
 		_sc_card_add_ec_alg(card, key_info.u.ec.key_length, flags, ext_flags,
 			&key_info.u.ec.oid);
-		sc_log(card->ctx, "DO %zX: Added EC algorithm (%d), mod_len = %d" ,
+		sc_log(card->ctx, "DO %uX: Added EC algorithm (%d), mod_len = %zu" ,
 			do_num, key_info.algorithm, key_info.u.ec.key_length);
 		break;
 	case SC_OPENPGP_KEYALGO_EDDSA:
@@ -729,11 +741,11 @@ int _pgp_add_algo(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t key_info, si
 		_sc_card_add_eddsa_alg(card, key_info.u.ec.key_length,
 			SC_ALGORITHM_EDDSA_RAW, 0, &key_info.u.ec.oid);
 
-		sc_log(card->ctx, "DO %zX: Added EDDSA algorithm (%d), mod_len = %d" ,
+		sc_log(card->ctx, "DO %uX: Added EDDSA algorithm (%d), mod_len = %zu" ,
 			do_num, key_info.algorithm, key_info.u.ec.key_length);
 		break;
 	default:
-		sc_log(card->ctx, "DO %zX: Unknown algorithm ID (%d)" ,
+		sc_log(card->ctx, "DO %uX: Unknown algorithm ID (%d)" ,
 			do_num, key_info.algorithm);
 		/* return "false" if we do not understand algo */
 		return 0;
@@ -752,7 +764,7 @@ pgp_get_card_features(sc_card_t *card)
 	struct pgp_priv_data *priv = DRVDATA(card);
 	u8 *hist_bytes = card->reader->atr_info.hist_bytes;
 	size_t hist_bytes_len = card->reader->atr_info.hist_bytes_len;
-	size_t i;
+	unsigned int i;
 	pgp_blob_t *blob, *blob6e, *blob73, *blobfa;
 	int handled_algos = 0;
 
@@ -921,7 +933,7 @@ pgp_get_card_features(sc_card_t *card)
 		for (i = 0x00c1; i <= 0x00c3; i++) {
 			sc_cardctl_openpgp_keygen_info_t key_info;
 
-			sc_log(card->ctx, "Parsing algorithm attributes DO %zX" , i);
+			sc_log(card->ctx, "Parsing algorithm attributes DO %uX" , i);
 
 			/* OpenPGP card spec 1.1 & 2.x section 4.3.3.6 / v3.x section 4.4.3.7 */
 			if ((pgp_get_blob(card, blob73, i, &blob) >= 0) &&
@@ -971,7 +983,7 @@ pgp_set_blob(pgp_blob_t *blob, const u8 *data, size_t len)
 	blob->status = 0;
 
 	if (len > 0) {
-		void *tmp = calloc(len, 1);
+		void *tmp = calloc(1, len);
 
 		if (tmp == NULL)
 			return SC_ERROR_OUT_OF_MEMORY;
@@ -1887,7 +1899,7 @@ gnuk_write_certificate(sc_card_t *card, const u8 *buf, size_t length)
 		       i+1, i*256, plen);
 
 		/* 1st chunk: P1 = 0x85, further chunks: P1 = chunk no */
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xD6, (i == 0) ? 0x85 : i, 0);
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xD6, (i == 0) ? 0x85 : (int)i, 0);
 		apdu.flags |= SC_APDU_FLAGS_CHAINING;
 		apdu.data = part;
 		apdu.datalen = apdu.lc = plen;
@@ -2184,7 +2196,8 @@ pgp_set_security_env(sc_card_t *card,
 	/* The SC_SEC_ENV_ALG_PRESENT is set always so let it pass for GNUK */
 	if ((env->flags & SC_SEC_ENV_ALG_PRESENT)
 		&& (env->algorithm != SC_ALGORITHM_RSA)
-		&& (priv->bcd_version < OPENPGP_CARD_3_0))
+		&& (priv->bcd_version < OPENPGP_CARD_3_0)
+		&& (card->type != SC_CARD_TYPE_OPENPGP_GNUK))
 		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
 				"only RSA algorithm supported");
 
@@ -2492,7 +2505,7 @@ pgp_update_new_algo_attr(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_
 	pgp_blob_t *algo_blob;
 	const unsigned int tag = 0x00C0 | key_info->key_id;
 	u8 *data;
-	int data_len;
+	size_t data_len;
 	int r = SC_SUCCESS;
 	unsigned int i;
 
@@ -2682,7 +2695,7 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 	sc_log(card->ctx, "pk_packet_len is %"SC_FORMAT_LEN_SIZE_T"u", pk_packet_len);
 
 	fp_buffer_len = 3 + pk_packet_len;
-	p = fp_buffer = calloc(fp_buffer_len, 1);
+	p = fp_buffer = calloc(1, fp_buffer_len);
 	if (p == NULL)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
 
@@ -3062,7 +3075,7 @@ pgp_gen_key(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_info)
 
 	/* buffer to receive response */
 	apdu.resplen = (resplen > 0) ? resplen : apdu_le;
-	apdu.resp = calloc(apdu.resplen, 1);
+	apdu.resp = calloc(1, apdu.resplen);
 	if (apdu.resp == NULL) {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
 	}
@@ -3248,7 +3261,7 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_keystore_info
 		 * e.g. from '01 00 01' to '00 01 00 01' */
 		if (key_info->u.rsa.e_len < SC_OPENPGP_MAX_EXP_BITS) {
 			/* create new buffer */
-			p = calloc(max_e_len_bytes, 1);
+			p = calloc(1, max_e_len_bytes);
 			if (!p)
 				LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
 
@@ -3322,7 +3335,7 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_keystore_info
 	/* data part's length for Extended Header list */
 	len = 2 + tlvlen_7f48 + tlvlen_5f48;
 	/* set data part content */
-	data = calloc(len, 1);
+	data = calloc(1, len);
 	if (data == NULL)
 		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_NOT_ENOUGH_MEMORY, "Not enough memory");
 
@@ -3547,6 +3560,18 @@ pgp_erase_card(sc_card_t *card)
 		default:
 			LOG_TEST_RET(card->ctx, SC_ERROR_NO_CARD_SUPPORT,
 					"Card does not offer life cycle management");
+	}
+
+	if (r == SC_SUCCESS && priv->mf) {
+		pgp_blob_t *new_mf = pgp_new_blob(card, NULL, priv->mf->id, priv->mf->file);
+		if (new_mf == NULL) {
+			LOG_TEST_RET(card->ctx, SC_ERROR_INTERNAL, "Failed to allocate the new MF blob");
+		}
+		priv->mf->file = NULL;
+
+		pgp_free_blobs(priv->mf);
+		priv->mf = new_mf;
+		populate_blobs_to_mf(card, priv);
 	}
 
 	LOG_FUNC_RETURN(card->ctx, r);

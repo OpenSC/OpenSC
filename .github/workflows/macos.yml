@@ -18,7 +18,10 @@ permissions:
 
 jobs:
   build:
-    runs-on: macos-12
+    strategy:
+      matrix:
+        os: [macos-12, macos-14]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
       - run: .github/setup-macos.sh
@@ -33,7 +36,7 @@ jobs:
       - name: Cache build artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: opensc-build-macos
+          name: opensc-build-${{ matrix.os }}
           path:
             OpenSC*.dmg
       - run: .github/cleanup-macos.sh
@@ -49,7 +52,7 @@ jobs:
       - name: Pull build artifacts
         uses: actions/download-artifact@v3
         with:
-          name: opensc-build-macos
+          name: opensc-build-macos-12
       - run: git config --global user.email "builds@github.com"
       - run: git config --global user.name "Github Actions";
       - run: .github/push_artifacts.sh "Github Actions ${GITHUB_REF}"

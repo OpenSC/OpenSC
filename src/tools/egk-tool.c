@@ -34,6 +34,22 @@
 #include <fcntl.h>
 #endif
 
+/*
+ * References:
+ *
+ * Speicherstrukturen der eGK für Gesundheitsanwendungen version 1.6.0 from 18.03.2008
+ * https://fachportal.gematik.de/fileadmin/user_upload/fachportal/files/Spezifikationen/Basis-Rollout/Elektronische_Gesundheitskarte/gematik_eGK_Speicherstrukturen_V1_6_0.pdf
+ *
+ * Spezifikation der elektronischen Gesundheitskarte eGK-Objektsystem version 4.5.0 from 02.10.2019
+ * https://fachportal.gematik.de/fachportal-import/files/gemSpec_eGK_ObjSys_G2_1_V4.5.0.pdf
+ *
+ * Speicherstrukturen der eGK für die Fachanwendung VSDM version 1.2.1 from 19.02.2021
+ * https://fachportal.gematik.de/fachportal-import/files/gemSpec_eGK_Fach_VSDM_V1.2.1.pdf
+ *
+ * Speicherstrukturen der eGK für die Fachanwendung AMTS version 1.2.0 from 26.10.2018
+ * https://www.vesta-gematik.de/standard/formhandler/324/gemSpec_eGK_Fach_AMTS_V1_2_0.pdf
+ */
+
 #ifdef ENABLE_ZLIB
 #include <zlib.h>
 
@@ -43,9 +59,9 @@ int uncompress_gzip(void* uncompressed, size_t *uncompressed_len,
 	z_stream stream;
 	memset(&stream, 0, sizeof stream);
 	stream.total_in = compressed_len;
-	stream.avail_in = compressed_len;
+	stream.avail_in = (unsigned)compressed_len;
 	stream.total_out = *uncompressed_len;
-	stream.avail_out = *uncompressed_len;
+	stream.avail_out = (unsigned)*uncompressed_len;
 	stream.next_in = (Bytef *) compressed;
 	stream.next_out = (Bytef *) uncompressed;
 
@@ -177,7 +193,7 @@ main (int argc, char **argv)
 		goto err;
 
 	if (cmdline.pd_flag
-			&& read_file(card, "D001", &data, &data_len)
+			&& read_file(card, "iD001", &data, &data_len)
 			&& data_len >= 2) {
 		size_t len_pd = (data[0] << 8) | data[1];
 
@@ -195,7 +211,7 @@ main (int argc, char **argv)
 	}
 
 	if ((cmdline.vd_flag || cmdline.gvd_flag)
-			&& read_file(card, "D002", &data, &data_len)
+			&& read_file(card, "iD002", &data, &data_len)
 			&& data_len >= 8) {
 		size_t off_vd  = (data[0] << 8) | data[1];
 		size_t end_vd  = (data[2] << 8) | data[3];
@@ -230,7 +246,7 @@ main (int argc, char **argv)
 	}
 
 	if (cmdline.vsd_status_flag
-			&& read_file(card, "D00C", &data, &data_len)
+			&& read_file(card, "iD00C", &data, &data_len)
 			&& data_len >= 25) {
 		char *status;
 		unsigned int major, minor, fix;

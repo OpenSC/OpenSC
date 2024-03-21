@@ -189,6 +189,7 @@ static int eoi_sm_open(struct sc_card *card)
 	if (!privdata->can[0]) {
 		/* If no CAN is specified in conf, try to decrypt it from enc_can file */
 		r = eoi_decrypt_can(&privdata->enc_can, privdata->can);
+		sc_log_openssl(card->ctx);
 		LOG_TEST_RET(card->ctx, r, "Cannot decrypt CAN");
 	}
 	/* CAN should be 6 chars long */
@@ -291,6 +292,7 @@ static int eoi_init(sc_card_t* card) {
 					strlcpy(privdata->can, can, sizeof(privdata->can));
 			}
 		}
+		free(found_blocks);
 	}
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);

@@ -9,11 +9,11 @@ insert_final_newline = true
 
 [*.{c,h,sh}]
 indent_style = tab
-tab_width = 4
+tab_width = 8
 
 [{Makefile.am,configure.ac}]
 indent_style = tab
-tab_width = 4
+tab_width = 8
 
 [*.{yml,yaml}]
 indent_style = space

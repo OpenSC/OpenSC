@@ -5,18 +5,20 @@
 OpenSC releases are made roughly once a year, unless important security is discovered.
 
 OpenSC does not release micro updates for previously released versions and does not
-backport security fixes into them.
+backport security fixes into them. Only the last release is supported.
 
 | Version  | Supported          |
 | -------- | ------------------ |
-| 0.20.0   | :white_check_mark: |
-| < 0.20.0 | :x:                |
+| 0.25.0   | :white_check_mark: |
+| < 0.25.0 | :x:                |
 
 ## Reporting a Vulnerability
 
 If you discovered security vulnerability in supported version of OpenSC,
-you can either fill an issue in [github](https://github.com/OpenSC/OpenSC/issues)
-(note, that these issues are public!) or you can send email to any recently active
+you can either report it with a button "Report a vulnerability" in
+[Security tab](https://github.com/OpenSC/OpenSC/security/)
+(Do not create normal public issue with security relevant information!)
+or you can send email to any recently active
 project developers frankmorgner(at)gmail.com, deengert(at)gmail.com and/or
 jakuje(at)gmail.com .
 

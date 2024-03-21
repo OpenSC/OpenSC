@@ -101,13 +101,17 @@ struct _sc_driver_entry {
 	void *(*func)(void);
 };
 
+// clang-format off
 static const struct _sc_driver_entry internal_card_drivers[] = {
 	/* The card handled by skeid shares the ATR with other cards running CardOS 5.4.
 	 * In order to prevent the cardos driver from matching skeid cards, skeid driver
 	 * precedes cardos and matches no other CardOS 5.4 card. */
 	{ "skeid",	(void *(*)(void)) sc_get_skeid_driver },
+	/* The card handled by dtrust shares the ATR with other cards running CardOS 5.4.
+	 * In order to prevent the cardos driver from matching dtrust cards, dtrust driver
+	 * precedes cardos and matches no other CardOS 5.4 card. */
+	{ "dtrust",	(void *(*)(void)) sc_get_dtrust_driver },
 	{ "cardos",	(void *(*)(void)) sc_get_cardos_driver },
-	{ "cyberflex",	(void *(*)(void)) sc_get_cyberflex_driver },
 	{ "gemsafeV1",	(void *(*)(void)) sc_get_gemsafeV1_driver },
 	{ "starcos",	(void *(*)(void)) sc_get_starcos_driver },
 	{ "tcos",	(void *(*)(void)) sc_get_tcos_driver },
@@ -168,17 +172,13 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 };
 
 static const struct _sc_driver_entry old_card_drivers[] = {
-	{ "akis",       (void *(*)(void)) sc_get_akis_driver },
 	{ "asepcos",    (void *(*)(void)) sc_get_asepcos_driver },
 	{ "atrust-acos",(void *(*)(void)) sc_get_atrust_acos_driver },
+	{ "cyberflex",	(void *(*)(void)) sc_get_cyberflex_driver },
 	{ "flex",       (void *(*)(void)) sc_get_cryptoflex_driver },
-#ifdef ENABLE_OPENSSL
-    { "gpk",        (void *(*)(void)) sc_get_gpk_driver },
-#endif
-	{ "incrypto34", (void *(*)(void)) sc_get_incrypto34_driver },
-	{ "westcos",    (void *(*)(void)) sc_get_westcos_driver },
 	{ NULL, NULL }
 };
+// clang-format on
 
 struct _sc_ctx_options {
 	struct _sc_driver_entry cdrv[SC_MAX_CARD_DRIVERS];
@@ -388,6 +388,7 @@ load_parameters(sc_context_t *ctx, scconf_block *block, struct _sc_ctx_options *
 	const scconf_list *list;
 	const char *val;
 	int debug;
+	const char *disable_hw_pkcs1_padding;
 #ifdef _WIN32
 	char expanded_val[PATH_MAX];
 	DWORD expanded_len;
@@ -425,6 +426,20 @@ load_parameters(sc_context_t *ctx, scconf_block *block, struct _sc_ctx_options *
 
 	list = scconf_find_list(block, "card_drivers");
 	set_drivers(opts, list);
+
+	/* Disable PKCS#1 v1.5 type 2 (for decryption) depadding on card by default */
+	disable_hw_pkcs1_padding = "decipher";
+	ctx->disable_hw_pkcs1_padding = SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_02;
+	disable_hw_pkcs1_padding = scconf_get_str(block, "disable_hw_pkcs1_padding", disable_hw_pkcs1_padding);
+	if (0 == strcmp(disable_hw_pkcs1_padding, "no")) {
+		ctx->disable_hw_pkcs1_padding = 0;
+	} else if (0 == strcmp(disable_hw_pkcs1_padding, "sign")) {
+		ctx->disable_hw_pkcs1_padding = SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01;
+	} else if (0 == strcmp(disable_hw_pkcs1_padding, "decipher")) {
+		ctx->disable_hw_pkcs1_padding = SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_02;
+	} else if (0 == strcmp(disable_hw_pkcs1_padding, "both")) {
+		ctx->disable_hw_pkcs1_padding = SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01 | SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_02;
+	}
 
 	return err;
 }

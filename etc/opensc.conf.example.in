@@ -19,7 +19,7 @@ app default {
 	# Special values 'stdout' and 'stderr' are recognized.
 	# Default: stderr
 	#
-	# debug_file = @DEBUG_FILE@
+	# debug_file = @DEBUG_FILE@;
 
 	# PKCS#15 initialization / personalization
 	# profiles directory for pkcs15-init.
@@ -816,6 +816,10 @@ app default {
 		notify_pin_bad_text = "GoID ist gesperrt";
 	}
 
+	# Disable PKCS#1 v1.5 padding in HW.
+	# Default: decipher
+	# disable_hw_pkcs1_padding = both;
+
 	secure_messaging local_authentic  {
 		# name of external SM module
 		# module_name = @DEFAULT_SM_MODULE@;
@@ -952,7 +956,7 @@ app default {
 		#
 		# Prefer pkcs15 emulation code before
 		# the normal pkcs15 processing.
-		# Some cards (like esteid and pteid) work in emu-only mode,
+		# Some cards (like pteid) work in emu-only mode,
 		# and do not depend on this option.
 		#
 		# Default: no

@@ -218,7 +218,7 @@
 				<varlistentry>
 					<term><option>--cvc-dir</option> <replaceable>DIRECTORY</replaceable></term>
 					<listitem><para>
-						Specify where to look for the certificate of the 
+						Specify where to look for the certificate of the
 						Country Verifying Certification Authority
 						(<abbrev>CVCA</abbrev>).
 						If not given, it defaults to

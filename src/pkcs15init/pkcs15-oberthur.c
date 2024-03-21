@@ -619,26 +619,32 @@ cosm_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	LOG_TEST_RET(ctx, rv, "Cannot generate key: failed to select private object DF");
 
 	rv = sc_pkcs15init_authenticate(profile, p15card, tmpf, SC_AC_OP_CRYPTO);
-	LOG_TEST_RET(ctx, rv, "Cannot generate key: 'CRYPTO' authentication failed");
+	if (rv != SC_SUCCESS) {
+		sc_file_free(tmpf);
+		LOG_TEST_RET(ctx, rv, "Cannot generate key: 'CRYPTO' authentication failed");
+	}
 
 	rv = sc_pkcs15init_authenticate(profile, p15card, tmpf, SC_AC_OP_CREATE);
-	LOG_TEST_RET(ctx, rv, "Cannot generate key: 'CREATE' authentication failed");
-
 	sc_file_free(tmpf);
+	tmpf = NULL;
+	LOG_TEST_RET(ctx, rv, "Cannot generate key: 'CREATE' authentication failed");
 
 	rv = sc_select_file(p15card->card, &key_info->path, &prkf);
 	LOG_TEST_RET(ctx, rv, "Failed to generate key: cannot select private key file");
 
 	/* In the private key DF create the temporary public RSA file. */
 	rv = cosm_get_temporary_public_key_file(p15card->card, prkf, &tmpf);
-	if (rv != SC_SUCCESS)
+	if (rv != SC_SUCCESS) {
 		sc_file_free(prkf);
-	LOG_TEST_RET(ctx, rv, "Error while getting temporary public key file");
+		LOG_TEST_RET(ctx, rv, "Error while getting temporary public key file");
+	}
 
 	rv = sc_pkcs15init_create_file(profile, p15card, tmpf);
-	if (rv != SC_SUCCESS)
+	if (rv != SC_SUCCESS) {
 		sc_file_free(prkf);
-	LOG_TEST_RET(ctx, rv, "cosm_generate_key() failed to create temporary public key EF");
+		sc_file_free(tmpf);
+		LOG_TEST_RET(ctx, rv, "cosm_generate_key() failed to create temporary public key EF");
+	}
 
 	memset(&args, 0, sizeof(args));
 	args.id_prv = prkf->id;
@@ -714,6 +720,9 @@ cosm_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 	if (object->type != SC_PKCS15_TYPE_PRKEY_RSA)
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Create key failed: RSA only supported");
+
+	if (key_info->path.len < 2)
+		LOG_TEST_RET(ctx, SC_ERROR_OBJECT_NOT_VALID, "The path needs to be at least to bytes long");
 
 	sc_log(ctx,  "create private key ID:%s",  sc_pkcs15_print_id(&key_info->id));
 	/* Here, the path of private key file should be defined.
@@ -834,7 +843,8 @@ cosm_emu_update_tokeninfo(struct sc_profile *profile, struct sc_pkcs15_card *p15
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_file *file = NULL;
-	int rv, flags = 0, label_len;
+	int rv, flags = 0;
+	size_t label_len;
 	unsigned char *buf = NULL;
 
 	SC_FUNC_CALLED(ctx, 1);

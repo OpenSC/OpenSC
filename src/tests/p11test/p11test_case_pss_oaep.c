@@ -266,7 +266,7 @@ int oaep_encrypt_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *me
 	}
 out:
 	EVP_PKEY_CTX_free(pctx);
-	return enc_length;
+	return (int)enc_length;
 }
 
 void fill_oaep_params(CK_RSA_PKCS_OAEP_PARAMS *oaep_params,
@@ -323,7 +323,7 @@ int oaep_encrypt_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 		*enc_message, &enc_message_length);
 	if (rv == CKR_OK) {
 		mech->result_flags |= FLAGS_DECRYPT_OPENSSL;
-		return enc_message_length;
+		return (int)enc_message_length;
 	}
 	debug_print("   C_Encrypt: rv = 0x%.8lX", rv);
 
@@ -452,7 +452,8 @@ int oaep_encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *m
 	return rv;
 }
 
-static int get_max_salt_len(unsigned long bits, CK_MECHANISM_TYPE hash)
+static unsigned long
+get_max_salt_len(unsigned long bits, CK_MECHANISM_TYPE hash)
 {
 	return (bits + 7)/8 - get_hash_length(hash) - 2;
 }
@@ -465,12 +466,12 @@ int fill_pss_params(CK_RSA_PKCS_PSS_PARAMS *pss_params,
 	switch (mech->salt){
 	case -2:
 		/* max possible ( modlen - hashlen -2 ) */
-		pss_params->sLen = get_max_salt_len(o->bits,mech->hash);
+		pss_params->sLen = get_max_salt_len(o->bits, mech->hash);
 		break;
 	case -1:
 		/* digest length */
 		/* will not work with SHA512 and 1024b keys (max is 62b!) */
-		if ((int) get_hash_length(mech->hash) > get_max_salt_len(o->bits, mech->hash)) {
+		if (get_hash_length(mech->hash) > get_max_salt_len(o->bits, mech->hash)) {
 			return -1;
 		}
 		pss_params->sLen = get_hash_length(mech->hash);
@@ -538,14 +539,14 @@ int pss_sign_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 		fprintf(stderr, "  C_Sign: rv = 0x%.8lX\n", rv);
 		return -1;
 	}
-	return sign_length;
+	return (int)sign_length;
 }
 
 int pss_verify_message_openssl(test_cert_t *o, token_info_t *info,
     CK_BYTE *message, CK_ULONG message_length, test_mech_t *mech,
     unsigned char *sign, CK_ULONG sign_length)
 {
-	CK_RV rv = -1;
+	int rv = -1;
 	EVP_PKEY_CTX *pctx = NULL;
 	const CK_BYTE *my_message;
 	CK_BYTE *free_message = NULL;
@@ -762,7 +763,8 @@ void pss_oaep_test(void **state) {
 
 	token_info_t *info = (token_info_t *) *state;
 	unsigned int i;
-	int used, j;
+	int used;
+	size_t j;
 	test_certs_t objects;
 
 	test_certs_init(&objects);
@@ -776,7 +778,7 @@ void pss_oaep_test(void **state) {
 
 	search_for_all_objects(&objects, info);
 
-	debug_print("\nCheck functionality of Sign&Verify and/or Encrypt&Decrypt");
+	debug_print("\nCheck functionality of Sign&Verify and/or Encrypt&Decrypt with RSA/OAEP mechanisms");
 	for (i = 0; i < objects.count; i++) {
 		test_cert_t *o = &objects.data[i];
 		/* do the Sign&Verify and/or Encrypt&Decrypt */
@@ -786,6 +788,10 @@ void pss_oaep_test(void **state) {
 				o->id_str);
 			continue;
 		}
+		/* Do not list non-RSA keys here */
+		if (o->type != EVP_PKEY_RSA)
+			continue;
+
 		fill_object_pss_mechanisms(info, o);
 		for (j = 0; j < o->num_mechs; j++)
 			if (o->mechs[j].mech != CKM_RSA_PKCS_OAEP)

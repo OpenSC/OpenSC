@@ -33,8 +33,6 @@
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 #include <openssl/err.h>
-#include <openssl/bn.h>
-#include <openssl/rsa.h>
 #include <openssl/evp.h>
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 # include <openssl/core_names.h>
@@ -240,7 +238,7 @@ int sc_pkcs15_decode_prkdf_entry(struct sc_pkcs15_card *p15card,
 	else if (asn1_prkey[1].flags & SC_ASN1_PRESENT) {
 		obj->type = SC_PKCS15_TYPE_PRKEY_EC;
 #ifdef ENABLE_OPENSSL
-		if (!info.field_length && ec_domain_len) {
+		if (!(asn1_ecckey_attr[1].flags & SC_ASN1_PRESENT) && (asn1_ecckey_attr[3].flags & SC_ASN1_PRESENT)) {
 			const unsigned char *p = ec_domain;
 			ASN1_OBJECT *object = d2i_ASN1_OBJECT(NULL, &p, ec_domain_len);
 			int nid;
@@ -252,17 +250,20 @@ int sc_pkcs15_decode_prkdf_entry(struct sc_pkcs15_card *p15card,
 			nid = OBJ_obj2nid(object);
 			ASN1_OBJECT_free(object);
 			if (nid == NID_undef) {
+				sc_log_openssl(ctx);
 				r = SC_ERROR_OBJECT_NOT_FOUND;
 				goto err;
 			}
 			group = EC_GROUP_new_by_curve_name(nid);
 			if (!group) {
+				sc_log_openssl(ctx);
 				r = SC_ERROR_INVALID_DATA;
 				goto err;
 			}
 			info.field_length = EC_GROUP_order_bits(group);
 			EC_GROUP_free(group);
 			if (!info.field_length) {
+				sc_log_openssl(ctx);
 				r = SC_ERROR_CORRUPTED_DATA;
 				goto err;
 			}
@@ -494,22 +495,29 @@ sc_pkcs15_prkey_attrs_from_cert(struct sc_pkcs15_card *p15card, struct sc_pkcs15
 
 	sc_log(ctx, "CertValue(%"SC_FORMAT_LEN_SIZE_T"u) %p",
 	       cert_object->content.len, cert_object->content.value);
-	mem = BIO_new_mem_buf(cert_object->content.value, cert_object->content.len);
-	if (!mem)
+	mem = BIO_new_mem_buf(cert_object->content.value, (int)cert_object->content.len);
+	if (!mem) {
+		sc_log_openssl(ctx);
 		LOG_TEST_RET(ctx, SC_ERROR_INTERNAL, "MEM buffer allocation error");
+	}
 
 	x = d2i_X509_bio(mem, NULL);
-	if (!x)
+	if (!x) {
+		sc_log_openssl(ctx);
 		LOG_TEST_RET(ctx, SC_ERROR_INTERNAL, "x509 parse error");
-
+	}
 	buff = OPENSSL_malloc(i2d_X509(x,NULL) + EVP_MAX_MD_SIZE);
-	if (!buff)
+	if (!buff) {
+		sc_log_openssl(ctx);
 		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "OpenSSL allocation error");
+	}
 
 	ptr = buff;
 	rv = i2d_X509_NAME(X509_get_subject_name(x), &ptr);
-	if (rv <= 0)
+	if (rv <= 0) {
+		sc_log_openssl(ctx);
 		LOG_TEST_RET(ctx, SC_ERROR_INTERNAL, "Get subject name error");
+	}
 
 	key_info->subject.value = malloc(rv);
 	if (!key_info->subject.value)
@@ -543,7 +551,7 @@ sc_pkcs15_prkey_attrs_from_cert(struct sc_pkcs15_card *p15card, struct sc_pkcs15
 
 
 void
-sc_pkcs15_free_prkey(struct sc_pkcs15_prkey *key)
+sc_pkcs15_erase_prkey(struct sc_pkcs15_prkey *key)
 {
 	if (!key)
 		return;
@@ -562,14 +570,10 @@ sc_pkcs15_free_prkey(struct sc_pkcs15_prkey *key)
 		free(key->u.gostr3410.d.data);
 		break;
 	case SC_ALGORITHM_EC:
-		if (key->u.ec.params.der.value)
-			free(key->u.ec.params.der.value);
-		if (key->u.ec.params.named_curve)
-			free(key->u.ec.params.named_curve);
-		if (key->u.ec.privateD.data)
-			free(key->u.ec.privateD.data);
-		if (key->u.ec.ecpointQ.value)
-			free(key->u.ec.ecpointQ.value);
+		free(key->u.ec.params.der.value);
+		free(key->u.ec.params.named_curve);
+		free(key->u.ec.privateD.data);
+		free(key->u.ec.ecpointQ.value);
 		break;
 	case SC_ALGORITHM_EDDSA:
 		free(key->u.eddsa.pubkey.value);
@@ -580,8 +584,17 @@ sc_pkcs15_free_prkey(struct sc_pkcs15_prkey *key)
 		key->u.eddsa.value.len = 0;
 		break;
 	}
+	sc_mem_clear(key, sizeof(*key));
 }
 
+void
+sc_pkcs15_free_prkey(struct sc_pkcs15_prkey *key)
+{
+	if (!key)
+		return;
+	sc_pkcs15_erase_prkey(key);
+	free(key);
+}
 
 void sc_pkcs15_free_prkey_info(sc_pkcs15_prkey_info_t *key)
 {
@@ -639,7 +652,8 @@ sc_pkcs15_convert_prkey(struct sc_pkcs15_prkey *pkcs15_key, void *evp_key)
 		RSA_get0_factors(src, &src_p, &src_q);
 		RSA_get0_crt_params(src, &src_dmp1, &src_dmq1, &src_iqmp);
 #else
-		BIGNUM *src_n = NULL, *src_e = NULL, *src_d = NULL, *src_p = NULL, *src_q= NULL, *src_iqmp = NULL, *src_dmp1 = NULL, *src_dmq1 = NULL;
+		BIGNUM *src_n = NULL, *src_e = NULL, *src_d = NULL, *src_p = NULL, *src_q = NULL;
+		BIGNUM *src_iqmp = NULL, *src_dmp1 = NULL, *src_dmq1 = NULL;
 		if (EVP_PKEY_get_bn_param(pk, OSSL_PKEY_PARAM_RSA_N, &src_n) != 1 ||
 			EVP_PKEY_get_bn_param(pk, OSSL_PKEY_PARAM_RSA_E, &src_e) != 1 ||
 			EVP_PKEY_get_bn_param(pk, OSSL_PKEY_PARAM_RSA_D, &src_d) != 1 ||
@@ -648,8 +662,11 @@ sc_pkcs15_convert_prkey(struct sc_pkcs15_prkey *pkcs15_key, void *evp_key)
 			EVP_PKEY_get_bn_param(pk, OSSL_PKEY_PARAM_RSA_EXPONENT1, &src_dmp1) != 1 ||
 			EVP_PKEY_get_bn_param(pk, OSSL_PKEY_PARAM_RSA_EXPONENT2, &src_dmq1) != 1 ||
 			EVP_PKEY_get_bn_param(pk, OSSL_PKEY_PARAM_RSA_COEFFICIENT1, &src_iqmp) != 1) {
-			BN_free(src_n); BN_free(src_e); BN_free(src_d);
-			BN_free(src_p); BN_free(src_q);
+			BN_free(src_n);
+			BN_free(src_e);
+			BN_free(src_d);
+			BN_free(src_p);
+			BN_free(src_q);
 			BN_free(src_dmp1); BN_free(src_dmq1);
 			return SC_ERROR_UNKNOWN;
 		}
@@ -661,9 +678,14 @@ sc_pkcs15_convert_prkey(struct sc_pkcs15_prkey *pkcs15_key, void *evp_key)
 			!sc_pkcs15_convert_bignum(&dst->p, src_p) ||
 			!sc_pkcs15_convert_bignum(&dst->q, src_q)) {
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
-			BN_free(src_n); BN_free(src_e); BN_free(src_d);
-			BN_free(src_p); BN_free(src_q);
-			BN_free(src_iqmp); BN_free(src_dmp1); BN_free(src_dmq1);
+			BN_free(src_n);
+			BN_free(src_e);
+			BN_free(src_d);
+			BN_free(src_p);
+			BN_free(src_q);
+			BN_free(src_iqmp);
+			BN_free(src_dmp1);
+			BN_free(src_dmq1);
 #else
 			RSA_free(src);
 #endif
@@ -677,9 +699,14 @@ sc_pkcs15_convert_prkey(struct sc_pkcs15_prkey *pkcs15_key, void *evp_key)
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 		RSA_free(src);
 #else
-		BN_free(src_n); BN_free(src_e); BN_free(src_d);
-		BN_free(src_p); BN_free(src_q);
-		BN_free(src_iqmp); BN_free(src_dmp1); BN_free(src_dmq1);
+		BN_free(src_n);
+		BN_free(src_e);
+		BN_free(src_d);
+		BN_free(src_p);
+		BN_free(src_q);
+		BN_free(src_iqmp);
+		BN_free(src_dmp1);
+		BN_free(src_dmq1);
 #endif
 		break;
 		}
@@ -768,6 +795,7 @@ sc_pkcs15_convert_prkey(struct sc_pkcs15_prkey *pkcs15_key, void *evp_key)
 		}
 #else
 		dst->params.named_curve = strdup(grp_name);
+		BN_free(src_priv_key);
 #endif
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
@@ -795,6 +823,9 @@ sc_pkcs15_convert_prkey(struct sc_pkcs15_prkey *pkcs15_key, void *evp_key)
 		 * these curves. Get real field_length from OpenSSL.
 		 */
 		dst->params.field_length = EC_GROUP_get_degree(grp);
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+		EC_GROUP_free(grp);
+#endif
 
 		/* Octetstring may need leading zeros if BN is to short */
 		if (dst->privateD.len < (dst->params.field_length + 7) / 8)   {

@@ -22,8 +22,10 @@
 #include "p11test_case_common.h"
 #include "../../libopensc/sc-ossl-compat.h"
 
-char name_buffer[11];
-char flag_buffer[11];
+/* Unsigned long can be up to 16 B long. We print also leading "0x" and we need trailing NULL byte */
+#define FLAG_BUFFER_LEN 19
+char name_buffer[FLAG_BUFFER_LEN];
+char flag_buffer[FLAG_BUFFER_LEN];
 
 void test_certs_init(test_certs_t *objects)
 {
@@ -58,15 +60,29 @@ test_cert_t *
 add_object(test_certs_t *objects, CK_ATTRIBUTE key_id, CK_ATTRIBUTE label)
 {
 	test_cert_t *o = NULL;
-	objects->count = objects->count + 1;
-	if (objects->count > objects->alloc_count) {
+	unsigned int i;
+
+	if (objects->count + 1 > objects->alloc_count) {
 		objects->alloc_count += 8;
 		objects->data = realloc(objects->data, objects->alloc_count * sizeof(test_cert_t));
 		if (objects->data == NULL)
 			return NULL;
 	}
 
-	o = &(objects->data[objects->count - 1]);
+	/* SoftHSM is stupid returning objects in random order. Sort here by key ID
+	 * to provide deterministic JSON output */
+	for (i = 0; i < objects->count; i++) {
+		size_t len = MIN(objects->data[i].key_id_size, key_id.ulValueLen);
+		if (memcmp(key_id.pValue, objects->data[i].key_id, len) <= 0) {
+			break;
+		}
+	}
+	if (i < objects->count) {
+		memmove(&objects->data[i + 1], &objects->data[i], (objects->count - i) * sizeof(test_cert_t));
+	}
+	objects->count = objects->count + 1;
+
+	o = &(objects->data[i]);
 	o->private_handle = CK_INVALID_HANDLE;
 	o->public_handle = CK_INVALID_HANDLE;
 	o->always_auth = 0;
@@ -236,7 +252,7 @@ add_supported_mechs(test_cert_t *o)
  * and store related information
  */
 int callback_certificates(test_certs_t *objects,
-	CK_ATTRIBUTE template[], unsigned int template_size, CK_OBJECT_HANDLE object_handle)
+	CK_ATTRIBUTE template[], unsigned long template_size, CK_OBJECT_HANDLE object_handle)
 {
 	EVP_PKEY *evp = NULL;
 	const u_char *cp = NULL;
@@ -283,7 +299,7 @@ int callback_certificates(test_certs_t *objects,
  * Pair found private keys on the card with existing certificates
  */
 int callback_private_keys(test_certs_t *objects,
-	CK_ATTRIBUTE template[], unsigned int template_size, CK_OBJECT_HANDLE object_handle)
+	CK_ATTRIBUTE template[], unsigned long template_size, CK_OBJECT_HANDLE object_handle)
 {
 	test_cert_t *o = NULL;
 	char *key_id;
@@ -333,7 +349,7 @@ int callback_private_keys(test_certs_t *objects,
  * Pair found public keys on the card with existing certificates
  */
 int callback_public_keys(test_certs_t *objects,
-	CK_ATTRIBUTE template[], unsigned int template_size, CK_OBJECT_HANDLE object_handle)
+	CK_ATTRIBUTE template[], unsigned long template_size, CK_OBJECT_HANDLE object_handle)
 {
 	test_cert_t *o = NULL;
 	char *key_id;
@@ -374,8 +390,8 @@ int callback_public_keys(test_certs_t *objects,
 	/* check if we get the same public key as from the certificate */
 	if (o->key_type == CKK_RSA) {
 		BIGNUM *n = NULL, *e = NULL;
-		n = BN_bin2bn(template[4].pValue, template[4].ulValueLen, NULL);
-		e = BN_bin2bn(template[5].pValue, template[5].ulValueLen, NULL);
+		n = BN_bin2bn(template[4].pValue, (int)template[4].ulValueLen, NULL);
+		e = BN_bin2bn(template[5].pValue, (int)template[5].ulValueLen, NULL);
 		if (o->key != NULL) {
 			int rv;
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
@@ -455,6 +471,7 @@ int callback_public_keys(test_certs_t *objects,
 			 	fail_msg("Unable to store key");
 				return -1;
 			}
+			EVP_PKEY_CTX_free(ctx);
 			OSSL_PARAM_free(params);
 			BN_free(n);
 			BN_free(e);
@@ -519,20 +536,22 @@ int callback_public_keys(test_certs_t *objects,
 			const EC_POINT *cert_point = EC_KEY_get0_public_key(ec);
 			int cert_nid = EC_GROUP_get_curve_name(cert_group);
 #else
-			char curve_name[80]; size_t curve_name_len = 0;
-			unsigned char pubkey[80]; size_t pubkey_len = 0;
+			char curve_name[80];
+			size_t curve_name_len = 0;
+			unsigned char pubkey[256];
+			size_t pubkey_len = 0;
 			int cert_nid = 0;
 			if (EVP_PKEY_get_group_name(o->key, curve_name, sizeof(curve_name), &curve_name_len) != 1 ||
 				(cert_nid = OBJ_txt2nid(curve_name)) == NID_undef ||
 				(cert_group = EC_GROUP_new_by_curve_name(cert_nid)) == NULL) {
-				fprintf(stderr, "Cannot get EC_GROUP from EVP_PKEY");
+				debug_print(" [WARN %s ] Cannot get EC_GROUP from EVP_PKEY", o->id_str);
 				goto ec_out;
 			}
 			cert_point = EC_POINT_new(cert_group);
 			if (!cert_point ||
 				EVP_PKEY_get_octet_string_param(o->key, OSSL_PKEY_PARAM_PUB_KEY, pubkey, sizeof(pubkey), &pubkey_len) != 1 ||
 				EC_POINT_oct2point(cert_group, cert_point, pubkey, pubkey_len, NULL) != 1) {
-				fprintf(stderr, "Cannot get EC_POINT from EVP_PKEY");
+				debug_print(" [WARN %s ] Cannot get EC_POINT from EVP_PKEY", o->id_str);
 				goto ec_out;
 			}
 #endif
@@ -590,7 +609,10 @@ int callback_public_keys(test_certs_t *objects,
 		EC_POINT_free(cert_point);
 #endif
 
-		if (ec_error) return -1;
+		if (ec_error) {
+			debug_print(" [WARN %s ] Failed to check EC public key", o->id_str);
+			return -1;
+		}
 
 	} else if (o->key_type == CKK_EC_EDWARDS
 		|| o->key_type == CKK_EC_MONTGOMERY) {
@@ -735,9 +757,15 @@ int callback_public_keys(test_certs_t *objects,
  * Store any secret keys
  */
 int callback_secret_keys(test_certs_t *objects,
-	CK_ATTRIBUTE template[], unsigned int template_size, CK_OBJECT_HANDLE object_handle)
+	CK_ATTRIBUTE template[], unsigned long template_size, CK_OBJECT_HANDLE object_handle)
 {
 	test_cert_t *o = NULL;
+
+	/* Ignore objects with empty ID and label that are left in SoftHSM after deriving key even after
+	 * destroying them */
+	if (template[13].ulValueLen == 0 && template[1].ulValueLen == 0) {
+		return 0;
+	}
 
 	if ((o = add_object(objects, template[1], template[13])) == NULL)
 		return -1;
@@ -786,7 +814,7 @@ int callback_secret_keys(test_certs_t *objects,
 
 int search_objects(test_certs_t *objects, token_info_t *info,
 	CK_ATTRIBUTE filter[], CK_LONG filter_size, CK_ATTRIBUTE template[], CK_LONG template_size,
-	int (*callback)(test_certs_t *, CK_ATTRIBUTE[], unsigned int, CK_OBJECT_HANDLE))
+	int (*callback)(test_certs_t *, CK_ATTRIBUTE[], unsigned long, CK_OBJECT_HANDLE))
 {
 	CK_RV rv;
 	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
@@ -980,7 +1008,7 @@ void clean_all_objects(test_certs_t *objects) {
 	free(objects->data);
 }
 
-const char *get_mechanism_name(int mech_id)
+const char *get_mechanism_name(unsigned long mech_id)
 {
 	switch (mech_id) {
 		case CKM_RSA_PKCS:
@@ -1136,12 +1164,12 @@ const char *get_mechanism_name(int mech_id)
 		case CKM_AES_KEY_WRAP_PAD:
 			return "AES_KEY_WRAP_PAD";
 		default:
-			sprintf(name_buffer, "0x%.8X", mech_id);
+			sprintf(name_buffer, "0x%.8lX", mech_id);
 			return name_buffer;
 	}
 }
 
-const char *get_mgf_name(int mgf_id)
+const char *get_mgf_name(unsigned long mgf_id)
 {
 	switch (mgf_id) {
 		case CKG_MGF1_SHA1:
@@ -1155,12 +1183,12 @@ const char *get_mgf_name(int mgf_id)
 		case CKG_MGF1_SHA512:
 			return "MGF1_SHA512";
 		default:
-			sprintf(name_buffer, "0x%.8X", mgf_id);
+			sprintf(name_buffer, "0x%.8lX", mgf_id);
 			return name_buffer;
 	}
 }
 
-const char *get_mechanism_flag_name(int mech_id)
+const char *get_mechanism_flag_name(unsigned long mech_id)
 {
 	switch (mech_id) {
 		case CKF_HW:
@@ -1212,9 +1240,28 @@ const char *get_mechanism_flag_name(int mech_id)
 		case CKF_EC_ECPARAMETERS:
 			return "CKF_EC_ECPARAMETERS";
 		default:
-			sprintf(flag_buffer, "0x%.8X", mech_id);
+			sprintf(flag_buffer, "0x%.8lX", mech_id);
 			return flag_buffer;
 	}
+}
+
+const char *
+get_mechanism_all_flag_name(unsigned long mech_id)
+{
+	CK_FLAGS j;
+	static char f_buffer[80];
+
+	f_buffer[0] = '\0';
+	for (j = 1; j <= CKF_EC_COMPRESS; j = j << 1)
+		/* append the name of the mechanism (only for known mechanisms) */
+		if ((mech_id & j) != 0 && strncmp("0x", get_mechanism_flag_name(j), 2)) {
+			snprintf(f_buffer + strlen(f_buffer),
+					sizeof(f_buffer) - strlen(f_buffer), "%s,", get_mechanism_flag_name(j));
+		}
+	/* remove comma at end of string */
+	if ((strlen(f_buffer) > 0) && f_buffer[strlen(f_buffer) - 1] == ',')
+		f_buffer[strlen(f_buffer) - 1] = '\0';
+	return f_buffer;
 }
 
 char *convert_byte_string(unsigned char *id, unsigned long length)
@@ -1271,4 +1318,11 @@ int is_pss_mechanism(CK_MECHANISM_TYPE mech)
 		|| mech == CKM_SHA384_RSA_PKCS_PSS
 		|| mech == CKM_SHA512_RSA_PKCS_PSS
 		|| mech == CKM_SHA224_RSA_PKCS_PSS);
+}
+
+CK_RV
+destroy_tmp_object(token_info_t *info, CK_OBJECT_HANDLE h)
+{
+	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
+	return fp->C_DestroyObject(info->session_handle, h);
 }

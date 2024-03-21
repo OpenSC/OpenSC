@@ -32,6 +32,8 @@
 #endif
 #include "p11test_common.h"
 
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
+
 typedef struct {
 	unsigned char	*key_id;
 	CK_ULONG	key_id_size;
@@ -57,7 +59,7 @@ typedef struct {
 	char 		*value;
 	int			verify_public;
 	test_mech_t	mechs[MAX_MECHS];
-	int			num_mechs;
+	size_t			num_mechs;
 } test_cert_t;
 
 typedef struct {
@@ -72,16 +74,19 @@ void always_authenticate(test_cert_t *o, token_info_t *info);
 
 int search_objects(test_certs_t *objects, token_info_t *info,
 	CK_ATTRIBUTE filter[], CK_LONG filter_size, CK_ATTRIBUTE template[], CK_LONG template_size,
-	int (*callback)(test_certs_t *, CK_ATTRIBUTE[], unsigned int, CK_OBJECT_HANDLE));
+	int (*callback)(test_certs_t *, CK_ATTRIBUTE[], unsigned long, CK_OBJECT_HANDLE));
 void search_for_all_objects(test_certs_t *objects, token_info_t *info);
 void clean_all_objects(test_certs_t *objects);
 
-const char *get_mechanism_name(int mech_id);
-const char *get_mgf_name(int mech_id);
-const char *get_mechanism_flag_name(int flag_id);
+const char *get_mechanism_name(unsigned long mech_id);
+const char *get_mgf_name(unsigned long mech_id);
+const char *get_mechanism_flag_name(unsigned long flag_id);
+const char *get_mechanism_all_flag_name(unsigned long flag_id);
 char *convert_byte_string(unsigned char *id, unsigned long length);
 
 int is_pss_mechanism(CK_MECHANISM_TYPE mech);
+
+CK_RV destroy_tmp_object(token_info_t *info, CK_OBJECT_HANDLE o);
 
 // TODO sanitize inputs
 

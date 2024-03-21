@@ -136,6 +136,7 @@ err:
 	return r;
 }
 
+// clang-format off
 unsigned char dir_content_ref[] = {
 	0x61, 0x32, 0x4F, 0x0F, 0xE8, 0x28, 0xBD, 0x08, 0x0F, 0xA0, 0x00, 0x00,
 	0x01, 0x67, 0x45, 0x53, 0x49, 0x47, 0x4E, 0x50, 0x0F, 0x43, 0x49, 0x41,
@@ -146,6 +147,7 @@ unsigned char dir_content_ref[] = {
 	0x00, 0x07, 0x03, 0x02, 0x61, 0x0C, 0x4F, 0x0A, 0xA0, 0x00, 0x00, 0x01,
 	0x67, 0x45, 0x53, 0x49, 0x47, 0x4E,
 };
+// clang-format on
 
 static int npa_match_card(sc_card_t * card)
 {
@@ -649,6 +651,7 @@ npa_reset_retry_counter(sc_card_t *card, enum s_type pin_id,
 			if (0 > EVP_read_pw_string_min(p,
 						EAC_MIN_PIN_LEN, EAC_MAX_PIN_LEN+1,
 						"Please enter your new PIN: ", 0)) {
+				sc_log_openssl(card->ctx);
 				sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not read new PIN.\n");
 				free(p);
 				return SC_ERROR_INTERNAL;

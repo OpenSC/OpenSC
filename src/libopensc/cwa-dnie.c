@@ -591,6 +591,7 @@ static int dnie_read_certificate(sc_card_t * card, char *certpath, X509 ** cert)
 	buffer2 = buffer;
 	*cert = d2i_X509(NULL, (const unsigned char **)&buffer2, bufferlen);
 	if (*cert == NULL) {	/* received data is not a certificate */
+		sc_log_openssl(card->ctx);
 		res = SC_ERROR_OBJECT_NOT_VALID;
 		msg = "Read data is not a certificate";
 		goto read_cert_end;
@@ -649,6 +650,7 @@ static int dnie_set_channel_data(sc_card_t * card, X509 * icc_intermediate_ca_ce
 	if (issuer) {
 		buf = X509_NAME_oneline(issuer, buf, 0);
 		if (!buf) {
+			sc_log_openssl(card->ctx);
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 		}
 		sc_log(card->ctx, "icc_intermediate_ca_cert issuer %s", buf);
@@ -699,6 +701,7 @@ static int dnie_get_root_ca_pubkey(sc_card_t * card, EVP_PKEY ** root_ca_key)
 	ctx = EVP_PKEY_CTX_new_from_name(card->ctx->ossl3ctx->libctx, "RSA", NULL);
 	if (!ctx) {
 #endif
+		sc_log_openssl(card->ctx);
 		sc_log(card->ctx, "Cannot create data for root CA public key");
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
@@ -718,11 +721,12 @@ static int dnie_get_root_ca_pubkey(sc_card_t * card, EVP_PKEY ** root_ca_key)
 	LOG_TEST_RET(card->ctx, res, "Error getting the card channel data");
 
 	/* compose root_ca_public key with data provided by Dnie Manual */
-	root_ca_rsa_n = BN_bin2bn(data->icc_root_ca.modulus.value, data->icc_root_ca.modulus.len, NULL);
-	root_ca_rsa_e = BN_bin2bn(data->icc_root_ca.exponent.value, data->icc_root_ca.exponent.len, NULL);
+	root_ca_rsa_n = BN_bin2bn(data->icc_root_ca.modulus.value, (int)data->icc_root_ca.modulus.len, NULL);
+	root_ca_rsa_e = BN_bin2bn(data->icc_root_ca.exponent.value, (int)data->icc_root_ca.exponent.len, NULL);
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 	if (RSA_set0_key(root_ca_rsa, root_ca_rsa_n, root_ca_rsa_e, NULL) != 1) {
+		sc_log_openssl(card->ctx);
 		BN_free(root_ca_rsa_n);
 		BN_free(root_ca_rsa_e);
 		EVP_PKEY_free(*root_ca_key);
@@ -732,12 +736,14 @@ static int dnie_get_root_ca_pubkey(sc_card_t * card, EVP_PKEY ** root_ca_key)
 	}
 	res = EVP_PKEY_assign_RSA(*root_ca_key, root_ca_rsa);
 	if (!res) {
+		sc_log_openssl(card->ctx);
 		RSA_free(root_ca_rsa);
 #else
 	if (!(bld = OSSL_PARAM_BLD_new()) ||
 		OSSL_PARAM_BLD_push_BN(bld, OSSL_PKEY_PARAM_RSA_N, root_ca_rsa_n) != 1 ||
 		OSSL_PARAM_BLD_push_BN(bld, OSSL_PKEY_PARAM_RSA_E, root_ca_rsa_e) != 1 ||
 		!(params = OSSL_PARAM_BLD_to_param(bld))) {
+		sc_log_openssl(card->ctx);
 		OSSL_PARAM_BLD_free(bld);
 		OSSL_PARAM_free(params);
 		EVP_PKEY_CTX_free(ctx);
@@ -748,6 +754,7 @@ static int dnie_get_root_ca_pubkey(sc_card_t * card, EVP_PKEY ** root_ca_key)
 
 	if (EVP_PKEY_fromdata_init(ctx) != 1 ||
 		EVP_PKEY_fromdata(ctx, root_ca_key, EVP_PKEY_PUBLIC_KEY, params) != 1) {
+		sc_log_openssl(card->ctx);
 		EVP_PKEY_CTX_free(ctx);
 		OSSL_PARAM_free(params);
 #endif
@@ -871,8 +878,8 @@ static int dnie_get_cvc_ifd_cert_pin(sc_card_t * card, u8 ** cert, size_t * leng
  */
 static int dnie_get_privkey(sc_card_t * card, EVP_PKEY ** ifd_privkey,
                             u8 * modulus, int modulus_len,
-                            u8 * public_exponent, int public_exponent_len,
-                            u8 * private_exponent, int private_exponent_len)
+                            u8 * public_exponent, size_t public_exponent_len,
+                            u8 * private_exponent, size_t private_exponent_len)
 {
 	BIGNUM *ifd_rsa_n = NULL, *ifd_rsa_e = NULL, *ifd_rsa_d = NULL;
 
@@ -897,19 +904,21 @@ static int dnie_get_privkey(sc_card_t * card, EVP_PKEY ** ifd_privkey,
 	LOG_FUNC_CALLED(card->ctx);
 	ctx = EVP_PKEY_CTX_new_from_name(card->ctx->ossl3ctx->libctx, "RSA", NULL);
 
-	if (!ctx) { 
+	if (!ctx) {
 #endif
+		sc_log_openssl(card->ctx);
 		sc_log(card->ctx, "Cannot create data for IFD private key");
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
 
 	/* compose ifd_private key with data provided in Annex 3 of DNIe Manual */
 	ifd_rsa_n = BN_bin2bn(modulus, modulus_len, NULL);
-	ifd_rsa_e = BN_bin2bn(public_exponent, public_exponent_len, NULL);
-	ifd_rsa_d = BN_bin2bn(private_exponent, private_exponent_len, NULL);
+	ifd_rsa_e = BN_bin2bn(public_exponent, (int)public_exponent_len, NULL);
+	ifd_rsa_d = BN_bin2bn(private_exponent, (int)private_exponent_len, NULL);
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 	if (RSA_set0_key(ifd_rsa, ifd_rsa_n, ifd_rsa_e, ifd_rsa_d) != 1) {
+		sc_log_openssl(card->ctx);
 		BN_free(ifd_rsa_n);
 		BN_free(ifd_rsa_e);
 		BN_free(ifd_rsa_d);
@@ -922,12 +931,14 @@ static int dnie_get_privkey(sc_card_t * card, EVP_PKEY ** ifd_privkey,
 	res = EVP_PKEY_assign_RSA(*ifd_privkey, ifd_rsa);
 	if (!res) {
 		RSA_free(ifd_rsa);
+		sc_log_openssl(card->ctx);
 #else
 	if (!(bld = OSSL_PARAM_BLD_new()) ||
 		OSSL_PARAM_BLD_push_BN(bld, OSSL_PKEY_PARAM_RSA_N, ifd_rsa_n) != 1 ||
 		OSSL_PARAM_BLD_push_BN(bld, OSSL_PKEY_PARAM_RSA_E, ifd_rsa_e) != 1 ||
 		OSSL_PARAM_BLD_push_BN(bld, OSSL_PKEY_PARAM_RSA_D, ifd_rsa_d) != 1 ||
 		!(params = OSSL_PARAM_BLD_to_param(bld))) {
+		sc_log_openssl(card->ctx);
 		OSSL_PARAM_BLD_free(bld);
 		OSSL_PARAM_free(params);
 		EVP_PKEY_CTX_free(ctx);
@@ -941,6 +952,7 @@ static int dnie_get_privkey(sc_card_t * card, EVP_PKEY ** ifd_privkey,
 
 	if (EVP_PKEY_fromdata_init(ctx) != 1 ||
 		EVP_PKEY_fromdata(ctx, ifd_privkey, EVP_PKEY_KEYPAIR, params) != 1) {
+		sc_log_openssl(card->ctx);
 		EVP_PKEY_CTX_free(ctx);
 #endif
 		BN_free(ifd_rsa_n);
@@ -980,7 +992,7 @@ static int dnie_get_ifd_privkey(sc_card_t * card, EVP_PKEY ** ifd_privkey)
 	res = dnie_get_channel_data(card, &data);
 	LOG_TEST_RET(card->ctx, res, "Error getting the card channel data");
 
-	return dnie_get_privkey(card, ifd_privkey, data->ifd.modulus.value, data->ifd.modulus.len,
+	return dnie_get_privkey(card, ifd_privkey, data->ifd.modulus.value, (int)data->ifd.modulus.len,
 				data->ifd.exponent.value, data->ifd.exponent.len,
 				data->ifd.private.value, data->ifd.private.len);
 }
@@ -1004,7 +1016,7 @@ static int dnie_get_ifd_privkey_pin(sc_card_t * card, EVP_PKEY ** ifd_privkey)
 	res = dnie_get_channel_data(card, &data);
 	LOG_TEST_RET(card->ctx, res, "Error getting the card channel data");
 
-	return dnie_get_privkey(card, ifd_privkey, data->ifd_pin.modulus.value, data->ifd_pin.modulus.len,
+	return dnie_get_privkey(card, ifd_privkey, data->ifd_pin.modulus.value, (int)data->ifd_pin.modulus.len,
 				data->ifd_pin.exponent.value, data->ifd_pin.exponent.len,
 				data->ifd_pin.private.value, data->ifd_pin.private.len);
 }
@@ -1355,7 +1367,7 @@ void dnie_change_cwa_provider_to_pin(sc_card_t * card)
 }
 
 void dnie_format_apdu(sc_card_t *card, sc_apdu_t *apdu,
-			int cse, int ins, int p1, int p2, int le, int lc,
+			int cse, int ins, int p1, int p2, size_t le, size_t lc,
 			unsigned char * resp, size_t resplen,
 			const unsigned char * data, size_t datalen)
 {

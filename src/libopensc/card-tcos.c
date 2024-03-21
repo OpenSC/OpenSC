@@ -61,7 +61,7 @@ static struct sc_card_driver tcos_drv = {
 static const struct sc_card_operations *iso_ops = NULL;
 
 typedef struct tcos_data_st {
-	unsigned int pad_flags;
+	unsigned long pad_flags;
 	unsigned int next_sign;
 } tcos_data;
 
@@ -338,7 +338,8 @@ static int tcos_select_file(sc_card_t *card,
 	sc_apdu_t apdu;
 	sc_file_t *file=NULL;
 	u8 buf[SC_MAX_APDU_BUFFER_SIZE], pathbuf[SC_MAX_PATH_SIZE], *path = pathbuf;
-	int r, pathlen;
+	int r;
+	size_t pathlen;
 
 	assert(card != NULL && in_path != NULL);
 	ctx=card->ctx;
@@ -494,9 +495,9 @@ static int tcos_set_security_env(sc_card_t *card, const sc_security_env_t *env, 
 			env->key_ref[0], env->key_ref_len);
 	/* Key-Reference 0x80 ?? */
 	default_key= !(env->flags & SC_SEC_ENV_KEY_REF_PRESENT) || (env->key_ref_len==1 && env->key_ref[0]==0x80);
-	sc_log(ctx,
-		"TCOS3:%d PKCS1:%d\n", tcos3,
-		!!(env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1));
+	sc_log(ctx, "TCOS3:%d PKCS1 type 01:%d PKCS1 type 02: %d\n", tcos3,
+			!!(env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01),
+			!!(env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_02));
 
 	data->pad_flags = env->algorithm_flags;
 	data->next_sign = default_key;
@@ -611,7 +612,7 @@ static int tcos_compute_signature(sc_card_t *card, const u8 * data, size_t datal
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 		size_t len = apdu.resplen>outlen ? outlen : apdu.resplen;
 		memcpy(out, apdu.resp, len);
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, len);
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, (int)len);
 	}
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
@@ -634,9 +635,8 @@ static int tcos_decipher(sc_card_t *card, const u8 * crgram, size_t crgram_len, 
 	data = (tcos_data *)card->drv_data;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx,
-		"TCOS3:%d PKCS1:%d\n", tcos3,
-		!!(data->pad_flags & SC_ALGORITHM_RSA_PAD_PKCS1));
+	sc_log(ctx, "TCOS3:%d PKCS1 type 02:%d\n", tcos3,
+			!!(data->pad_flags & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_02));
 
 	sc_format_apdu(card, &apdu, crgram_len > 255 ? SC_APDU_CASE_4_EXT : SC_APDU_CASE_4_SHORT, 0x2A, 0x80, 0x86);
 	apdu.resp = rbuf;
@@ -645,7 +645,7 @@ static int tcos_decipher(sc_card_t *card, const u8 * crgram, size_t crgram_len, 
 
 	apdu.data = sbuf;
 	apdu.lc = apdu.datalen = crgram_len + 1;
-	sbuf[0] = tcos3 ? 0x00 : ((data->pad_flags & SC_ALGORITHM_RSA_PAD_PKCS1) ? 0x81 : 0x02);
+	sbuf[0] = tcos3 ? 0x00 : ((data->pad_flags & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_02) ? 0x81 : 0x02);
 	if (sizeof sbuf - 1 < crgram_len)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	memcpy(sbuf + 1, crgram, crgram_len);
@@ -657,7 +657,7 @@ static int tcos_decipher(sc_card_t *card, const u8 * crgram, size_t crgram_len, 
 		size_t len = (apdu.resplen > outlen) ? outlen : apdu.resplen;
 		unsigned int offset = 0;
 
-		if (tcos3 && (data->pad_flags & SC_ALGORITHM_RSA_PAD_PKCS1)
+		if (tcos3 && (data->pad_flags & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_02)
 				&& len > 2 && apdu.resp[0] == 0 && apdu.resp[1] == 2) {
 			offset = 2;
 			while (offset < len && apdu.resp[offset] != 0)
@@ -666,7 +666,7 @@ static int tcos_decipher(sc_card_t *card, const u8 * crgram, size_t crgram_len, 
 		}
 		if (offset < len)
 		    memcpy(out, apdu.resp + offset, len - offset);
-		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, len - offset);
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, (int)(len - offset));
 	}
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }

@@ -235,13 +235,13 @@ static int openpgp_generate_key_rsa(sc_card_t *card, sc_pkcs15_object_t *obj,
 
 	/* Prepare buffer */
 	key_info.u.rsa.modulus_len = required->modulus_length;
-	key_info.u.rsa.modulus = calloc(BYTES4BITS(required->modulus_length), 1);
+	key_info.u.rsa.modulus = calloc(1, BYTES4BITS(required->modulus_length));
 	if (key_info.u.rsa.modulus == NULL)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
 
 	/* The OpenPGP supports only 32-bit exponent. */
 	key_info.u.rsa.exponent_len = 32;
-	key_info.u.rsa.exponent = calloc(BYTES4BITS(key_info.u.rsa.exponent_len), 1);
+	key_info.u.rsa.exponent = calloc(1, BYTES4BITS(key_info.u.rsa.exponent_len));
 	if (key_info.u.rsa.exponent == NULL) {
 		free(key_info.u.rsa.modulus);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
@@ -253,14 +253,14 @@ static int openpgp_generate_key_rsa(sc_card_t *card, sc_pkcs15_object_t *obj,
 	pubkey->algorithm = SC_ALGORITHM_RSA;
 	sc_log(ctx, "Set output modulus info");
 	pubkey->u.rsa.modulus.len = BYTES4BITS(key_info.u.rsa.modulus_len);
-	pubkey->u.rsa.modulus.data = calloc(pubkey->u.rsa.modulus.len, 1);
+	pubkey->u.rsa.modulus.data = calloc(1, pubkey->u.rsa.modulus.len);
 	if (pubkey->u.rsa.modulus.data == NULL)
 		goto err;
 	memcpy(pubkey->u.rsa.modulus.data, key_info.u.rsa.modulus, BYTES4BITS(key_info.u.rsa.modulus_len));
 
 	sc_log(ctx, "Set output exponent info");
 	pubkey->u.rsa.exponent.len = BYTES4BITS(key_info.u.rsa.exponent_len);
-	pubkey->u.rsa.exponent.data = calloc(pubkey->u.rsa.exponent.len, 1);
+	pubkey->u.rsa.exponent.data = calloc(1, pubkey->u.rsa.exponent.len);
 	if (pubkey->u.rsa.exponent.data == NULL)
 		goto err;
 	memcpy(pubkey->u.rsa.exponent.data, key_info.u.rsa.exponent, pubkey->u.rsa.exponent.len);
@@ -423,7 +423,7 @@ static int openpgp_store_data(struct sc_pkcs15_card *p15card, struct sc_profile 
 {
 	sc_card_t *card = p15card->card;
 	sc_context_t *ctx = card->ctx;
-	sc_file_t *file;
+	sc_file_t *file = NULL;
 	sc_pkcs15_cert_info_t *cinfo;
 	sc_pkcs15_id_t *cid;
 	sc_pkcs15_data_info_t *dinfo;
@@ -520,7 +520,7 @@ static int openpgp_store_data(struct sc_pkcs15_card *p15card, struct sc_profile 
 	default:
 		r = SC_ERROR_NOT_IMPLEMENTED;
 	}
-
+	sc_file_free(file);
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 

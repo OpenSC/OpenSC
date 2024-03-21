@@ -675,7 +675,7 @@ int sc_read_binary(sc_card_t *card, unsigned int idx,
 
 	sc_unlock(card);
 
-	LOG_FUNC_RETURN(card->ctx, count - todo);
+	LOG_FUNC_RETURN(card->ctx, (int)(count - todo));
 }
 
 int sc_write_binary(sc_card_t *card, unsigned int idx,
@@ -723,7 +723,7 @@ int sc_write_binary(sc_card_t *card, unsigned int idx,
 
 	sc_unlock(card);
 
-	LOG_FUNC_RETURN(card->ctx, count - todo);
+	LOG_FUNC_RETURN(card->ctx, (int)(count - todo));
 }
 
 int sc_update_binary(sc_card_t *card, unsigned int idx,
@@ -779,7 +779,7 @@ int sc_update_binary(sc_card_t *card, unsigned int idx,
 
 	sc_unlock(card);
 
-	LOG_FUNC_RETURN(card->ctx, count - todo);
+	LOG_FUNC_RETURN(card->ctx, (int)(count - todo));
 }
 
 
@@ -824,7 +824,7 @@ int sc_erase_binary(struct sc_card *card, unsigned int idx, size_t count,  unsig
 
 	sc_unlock(card);
 
-	LOG_FUNC_RETURN(card->ctx, count - todo);
+	LOG_FUNC_RETURN(card->ctx, (int)(count - todo));
 }
 
 
@@ -999,7 +999,7 @@ int sc_read_record(sc_card_t *card, unsigned int rec_nr, unsigned int idx,
 
 	sc_unlock(card);
 
-	LOG_FUNC_RETURN(card->ctx, count - todo);
+	LOG_FUNC_RETURN(card->ctx, (int)(count - todo));
 }
 
 int sc_write_record(sc_card_t *card, unsigned int rec_nr, const u8 * buf,
@@ -1017,7 +1017,7 @@ int sc_write_record(sc_card_t *card, unsigned int rec_nr, const u8 * buf,
 
 	r = card->ops->write_record(card, rec_nr, buf, count, flags);
 	if (r == SC_SUCCESS) {
-		r = count;
+		r = (int)count;
 	}
 
 	LOG_FUNC_RETURN(card->ctx, r);
@@ -1038,7 +1038,7 @@ int sc_append_record(sc_card_t *card, const u8 * buf, size_t count,
 
 	r = card->ops->append_record(card, buf, count, flags);
 	if (r == SC_SUCCESS) {
-		r = count;
+		r = (int)count;
 	}
 
 	LOG_FUNC_RETURN(card->ctx, r);
@@ -1088,7 +1088,7 @@ int sc_update_record(sc_card_t *card, unsigned int rec_nr, unsigned int idx,
 
 	sc_unlock(card);
 
-	LOG_FUNC_RETURN(card->ctx, count - todo);
+	LOG_FUNC_RETURN(card->ctx, (int)(count - todo));
 }
 
 int sc_delete_record(sc_card_t *card, unsigned int rec_nr)
@@ -1161,7 +1161,7 @@ int _sc_card_add_symmetric_alg(sc_card_t *card, unsigned int algorithm,
 }
 
 static int
-_sc_card_add_ec_alg_int(sc_card_t *card, unsigned int key_length,
+_sc_card_add_ec_alg_int(sc_card_t *card, size_t key_length,
 			unsigned long flags, unsigned long ext_flags,
 			struct sc_object_id *curve_oid,
 			int algorithm)
@@ -1182,7 +1182,7 @@ _sc_card_add_ec_alg_int(sc_card_t *card, unsigned int key_length,
 	return _sc_card_add_algorithm(card, &info);
 }
 
-int  _sc_card_add_ec_alg(sc_card_t *card, unsigned int key_length,
+int  _sc_card_add_ec_alg(sc_card_t *card, size_t key_length,
 			unsigned long flags, unsigned long ext_flags,
 			struct sc_object_id *curve_oid)
 {
@@ -1190,7 +1190,7 @@ int  _sc_card_add_ec_alg(sc_card_t *card, unsigned int key_length,
 		curve_oid, SC_ALGORITHM_EC);
 }
 
-int  _sc_card_add_eddsa_alg(sc_card_t *card, unsigned int key_length,
+int  _sc_card_add_eddsa_alg(sc_card_t *card, size_t key_length,
 			unsigned long flags, unsigned long ext_flags,
 			struct sc_object_id *curve_oid)
 {
@@ -1199,7 +1199,7 @@ int  _sc_card_add_eddsa_alg(sc_card_t *card, unsigned int key_length,
 		curve_oid, SC_ALGORITHM_EDDSA);
 }
 
-int  _sc_card_add_xeddsa_alg(sc_card_t *card, unsigned int key_length,
+int  _sc_card_add_xeddsa_alg(sc_card_t *card, size_t key_length,
 			unsigned long flags, unsigned long ext_flags,
 			struct sc_object_id *curve_oid)
 {
@@ -1208,8 +1208,8 @@ int  _sc_card_add_xeddsa_alg(sc_card_t *card, unsigned int key_length,
 		curve_oid, SC_ALGORITHM_XEDDSA);
 }
 
-sc_algorithm_info_t * sc_card_find_alg(sc_card_t *card,
-		unsigned int algorithm, unsigned int key_length, void *param)
+sc_algorithm_info_t *sc_card_find_alg(sc_card_t *card,
+		unsigned int algorithm, size_t key_length, void *param)
 {
 	int i;
 
@@ -1229,25 +1229,25 @@ sc_algorithm_info_t * sc_card_find_alg(sc_card_t *card,
 	return NULL;
 }
 
-sc_algorithm_info_t * sc_card_find_ec_alg(sc_card_t *card,
-		unsigned int key_length, struct sc_object_id *curve_name)
+sc_algorithm_info_t *sc_card_find_ec_alg(sc_card_t *card,
+		size_t key_length, struct sc_object_id *curve_name)
 {
 	return sc_card_find_alg(card, SC_ALGORITHM_EC, key_length, curve_name);
 }
 
-sc_algorithm_info_t * sc_card_find_eddsa_alg(sc_card_t *card,
-		unsigned int key_length, struct sc_object_id *curve_name)
+sc_algorithm_info_t *sc_card_find_eddsa_alg(sc_card_t *card,
+		size_t key_length, struct sc_object_id *curve_name)
 {
 	return sc_card_find_alg(card, SC_ALGORITHM_EDDSA, key_length, curve_name);
 }
 
-sc_algorithm_info_t * sc_card_find_xeddsa_alg(sc_card_t *card,
-		unsigned int key_length, struct sc_object_id *curve_name)
+sc_algorithm_info_t *sc_card_find_xeddsa_alg(sc_card_t *card,
+		size_t key_length, struct sc_object_id *curve_name)
 {
 	return sc_card_find_alg(card, SC_ALGORITHM_XEDDSA, key_length, curve_name);
 }
 
-int _sc_card_add_rsa_alg(sc_card_t *card, unsigned int key_length,
+int _sc_card_add_rsa_alg(sc_card_t *card, size_t key_length,
 			 unsigned long flags, unsigned long exponent)
 {
 	sc_algorithm_info_t info;
@@ -1256,19 +1256,24 @@ int _sc_card_add_rsa_alg(sc_card_t *card, unsigned int key_length,
 	info.algorithm = SC_ALGORITHM_RSA;
 	info.key_length = key_length;
 	info.flags = flags;
+	/* disable particular PKCS1 v1.5 padding type if also RAW is supported on card */
+	if ((info.flags & (SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_RAW)) == (SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_RAW)) {
+		if (card->ctx->disable_hw_pkcs1_padding & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01)
+			info.flags &= ~SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01;
+		if (card->ctx->disable_hw_pkcs1_padding & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_02)
+			info.flags &= ~SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_02;
+	}
 	info.u._rsa.exponent = exponent;
 
 	return _sc_card_add_algorithm(card, &info);
 }
 
-sc_algorithm_info_t * sc_card_find_rsa_alg(sc_card_t *card,
-		unsigned int key_length)
+sc_algorithm_info_t *sc_card_find_rsa_alg(sc_card_t *card, size_t key_length)
 {
 	return sc_card_find_alg(card, SC_ALGORITHM_RSA, key_length, NULL);
 }
 
-sc_algorithm_info_t * sc_card_find_gostr3410_alg(sc_card_t *card,
-		unsigned int key_length)
+sc_algorithm_info_t *sc_card_find_gostr3410_alg(sc_card_t *card, size_t key_length)
 {
 	return sc_card_find_alg(card, SC_ALGORITHM_GOSTR3410, key_length, NULL);
 }
@@ -1590,7 +1595,7 @@ sc_card_sm_load(struct sc_card *card, const char *module_path, const char *in_mo
 #endif
 	sc_log(ctx, "SM module '%s' located in '%s'", in_module, module_path);
 	if (module_path && strlen(module_path) > 0)   {
-		int sz = strlen(in_module) + strlen(module_path) + 3;
+		size_t sz = strlen(in_module) + strlen(module_path) + 3;
 		module = malloc(sz);
 		if (module)
 			snprintf(module, sz, "%s%c%s", module_path, path_delim, in_module);

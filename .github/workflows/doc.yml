@@ -1,0 +1,40 @@
+---
+name: Make sure HTML files are updated
+
+on:
+  pull_request:
+    paths:
+      - '**.xml'
+      - '**.xml.in'
+      - .github/workflows/doc.yml
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: fedora:latest
+    steps:
+      # Do this before checkout otherwise we will not have a git repository
+      - run: dnf install -y git
+      - uses: actions/checkout@v3
+      - run: .github/setup-fedora.sh
+      # git checkout to revert changes to tests/Makefile.am done by the setup
+      - run: |
+          git config --global --add safe.directory $GITHUB_WORKSPACE &&
+          git checkout tests/Makefile.am &&
+          ./bootstrap &&
+          ./configure --prefix="/usr" --enable-doc &&
+          cd doc/tools &&
+          rm tools.html &&
+          make tools.html &&
+          cd ../files &&
+          rm files.html &&
+          make files.html &&
+          cd ../../ &&
+          git diff --exit-code --color || (
+          echo "The documentation files were changed!"
+          echo -n "Regenerate the HTML files with "
+          echo -n "\`make tools.html\` in \`doc/tools\` and "
+          echo -n "\`make files.html\`in \`doc/files\` or apply the above patch"
+          exit 1
+          )

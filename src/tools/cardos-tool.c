@@ -44,6 +44,7 @@
 
 #include "libopensc/opensc.h"
 #include "libopensc/cards.h"
+#include "libopensc/log.h"
 #include "util.h"
 
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
@@ -446,6 +447,7 @@ static int cardos_sm4h(const unsigned char *in, size_t inlen, unsigned char
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 	if (!legacy_provider) {
 		if (!(legacy_provider = OSSL_PROVIDER_try_load(NULL, "legacy", 1))) {
+			sc_log_openssl(ctx);
 			printf("Failed to load legacy provider, aborting\n");
 			free(mac_input);
 			return 0;
@@ -457,6 +459,7 @@ static int cardos_sm4h(const unsigned char *in, size_t inlen, unsigned char
 	if (!cctx ||
 		!EVP_EncryptInit_ex(cctx, EVP_des_ecb(), NULL, key1, NULL) ||
 		!EVP_CIPHER_CTX_set_padding(cctx, 0)) {
+		sc_log_openssl(ctx);
 		printf("Can not setup context, aborting\n");
 		free(mac_input);
 		EVP_CIPHER_CTX_free(cctx);
@@ -466,6 +469,7 @@ static int cardos_sm4h(const unsigned char *in, size_t inlen, unsigned char
 	/* first block: XOR with IV and encrypt with key A IV is 8 bytes 00 */
 	for (i=0; i < 8; i++) des_in[i] = mac_input[i]^00;
 	if (!EVP_EncryptUpdate(cctx, des_out, &tmplen, des_in, 8)) {
+		sc_log_openssl(ctx);
 		printf("Can not setup context, aborting\n");
 		free(mac_input);
 		EVP_CIPHER_CTX_free(cctx);
@@ -476,6 +480,7 @@ static int cardos_sm4h(const unsigned char *in, size_t inlen, unsigned char
 	for (j=1; j < (mac_input_len / 8); j++) {
 		for (i=0; i < 8; i++) des_in[i] = mac_input[i+j*8]^des_out[i];
 		if (!EVP_EncryptUpdate(cctx, des_out, &tmplen, des_in, 8)) {
+			sc_log_openssl(ctx);
 			printf("Can not encrypt, aborting\n");
 			free(mac_input);
 			EVP_CIPHER_CTX_free(cctx);
@@ -483,6 +488,7 @@ static int cardos_sm4h(const unsigned char *in, size_t inlen, unsigned char
 		}
 	}
 	if (!EVP_EncryptFinal_ex(cctx, des_out + tmplen, &tmplen)) {
+		sc_log_openssl(ctx);
 		printf("Can not encrypt, aborting\n");
 		free(mac_input);
 		EVP_CIPHER_CTX_free(cctx);
@@ -493,6 +499,7 @@ static int cardos_sm4h(const unsigned char *in, size_t inlen, unsigned char
 	/* (a noop if key A and B are the same, e.g. 8 bytes ff */
 	if (!EVP_DecryptInit_ex(cctx, EVP_des_ecb(), NULL, key2, NULL) ||
 		!EVP_CIPHER_CTX_set_padding(cctx, 0)) {
+		sc_log_openssl(ctx);
 		printf("Can not setup context, aborting\n");
 		free(mac_input);
 		EVP_CIPHER_CTX_free(cctx);
@@ -500,12 +507,14 @@ static int cardos_sm4h(const unsigned char *in, size_t inlen, unsigned char
 	}
 	for (i=0; i < 8; i++) des_in[i] = des_out[i];
 	if (!EVP_DecryptUpdate(cctx, des_out, &tmplen, des_in, 8)) {
+		sc_log_openssl(ctx);
 		printf("Can not setup context, aborting\n");
 		free(mac_input);
 		EVP_CIPHER_CTX_free(cctx);
 		return 0;
 	}
 	if (!EVP_EncryptFinal_ex(cctx, des_out + tmplen, &tmplen)) {
+		sc_log_openssl(ctx);
 		printf("Can not encrypt, aborting\n");
 		free(mac_input);
 		EVP_CIPHER_CTX_free(cctx);
@@ -514,6 +523,7 @@ static int cardos_sm4h(const unsigned char *in, size_t inlen, unsigned char
 
 	if (!EVP_EncryptInit_ex(cctx, EVP_des_ecb(), NULL, key1, NULL) ||
 		!EVP_CIPHER_CTX_set_padding(cctx, 0)) {
+		sc_log_openssl(ctx);
 		printf("Can not setup context, aborting\n");
 		free(mac_input);
 		EVP_CIPHER_CTX_free(cctx);
@@ -521,12 +531,14 @@ static int cardos_sm4h(const unsigned char *in, size_t inlen, unsigned char
 	}
 	for (i=0; i < 8; i++) des_in[i] = des_out[i];
 	if (!EVP_EncryptUpdate(cctx, des_out, &tmplen, des_in, 8)) {
+		sc_log_openssl(ctx);
 		printf("Can not encrypt, aborting\n");
 		free(mac_input);
 		EVP_CIPHER_CTX_free(cctx);
 		return 0;
 	}
 	if (!EVP_EncryptFinal_ex(cctx, des_out + tmplen, &tmplen)) {
+		sc_log_openssl(ctx);
 		printf("Can not encrypt, aborting\n");
 		free(mac_input);
 		EVP_CIPHER_CTX_free(cctx);
@@ -568,6 +580,7 @@ static int cardos_sm4h(const unsigned char *in, size_t inlen, unsigned char
 	if (!cctx ||
 		!EVP_EncryptInit_ex(cctx, EVP_des_ede_ecb(), NULL, key, NULL) ||
 		!EVP_CIPHER_CTX_set_padding(cctx, 0)) {
+		sc_log_openssl(ctx);
 		printf("Can not setup context, aborting\n");
 		free(mac_input);
 		free(enc_input);
@@ -580,6 +593,7 @@ static int cardos_sm4h(const unsigned char *in, size_t inlen, unsigned char
 
 	/* encrypt with des2 (triple des, but using keys A-B-A) */
 	if (!EVP_EncryptUpdate(cctx, des_out, &tmplen, des_in, 8)) {
+		sc_log_openssl(ctx);
 		printf("Can not encrypt, aborting\n");
 		free(mac_input);
 		free(enc_input);
@@ -597,6 +611,7 @@ static int cardos_sm4h(const unsigned char *in, size_t inlen, unsigned char
 
 		/* encrypt with des2 (triple des, but using keys A-B-A) */
 		if (!EVP_EncryptUpdate(cctx, des_out, &tmplen, des_in, 8)) {
+			sc_log_openssl(ctx);
 			printf("Can not encrypt, aborting\n");
 			free(mac_input);
 			free(enc_input);

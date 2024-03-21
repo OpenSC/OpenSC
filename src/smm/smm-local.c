@@ -93,7 +93,7 @@ sm_gp_config_get_keyset(struct sc_context *ctx, struct sm_info *sm_info)
 		return SC_ERROR_INVALID_DATA;
 
 	memcpy(gp_keyset->kmc, hex, hex_len);
-	gp_keyset->kmc_len = hex_len;
+	gp_keyset->kmc_len = (unsigned)hex_len;
 
 	return SC_SUCCESS;
 }

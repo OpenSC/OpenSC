@@ -237,7 +237,7 @@ static int setcos_construct_fci_44(sc_card_t *card, const sc_file_t *file, u8 *o
 
 	/* Size (set to 0 for keys/PINs on a Java card) */
 	if (SETCOS_IS_EID_APPLET(card) &&
-	    (file->type == SC_FILE_TYPE_INTERNAL_EF || 
+	    (file->type == SC_FILE_TYPE_INTERNAL_EF ||
 	     (file->type == SC_FILE_TYPE_WORKING_EF && file->ef_structure == 0x22)))
 	     	buf[0] = buf[1] = 0x00;
 	else {
@@ -256,7 +256,7 @@ static int setcos_construct_fci_44(sc_card_t *card, const sc_file_t *file, u8 *o
 		buf[0] = file->shareable ? 0x40 : 0;
 		switch (file->type) {
 		case SC_FILE_TYPE_INTERNAL_EF:				/* RSA keyfile */
-			buf[0] = 0x11;				
+			buf[0] = 0x11;
 			break;
 		case SC_FILE_TYPE_WORKING_EF:
 			if (file->ef_structure == 0x22) {		/* pin-file */
@@ -275,7 +275,7 @@ static int setcos_construct_fci_44(sc_card_t *card, const sc_file_t *file, u8 *o
 				buf[0] |= file->ef_structure & 7;	/* set file-type, only for EF, not for DF objects  */
 			}
 			break;
-		case SC_FILE_TYPE_DF:	
+		case SC_FILE_TYPE_DF:
 			buf[0] = 0x38;
 			break;
 		default:
@@ -340,7 +340,7 @@ static int setcos_construct_fci_44(sc_card_t *card, const sc_file_t *file, u8 *o
 
 static int setcos_construct_fci(sc_card_t *card, const sc_file_t *file, u8 *out, size_t *outlen)
 {
-	if (card->type == SC_CARD_TYPE_SETCOS_44 || 
+	if (card->type == SC_CARD_TYPE_SETCOS_44 ||
 	    card->type == SC_CARD_TYPE_SETCOS_NIDEL ||
 	    SETCOS_IS_EID_APPLET(card))
 		return setcos_construct_fci_44(card, file, out, outlen);
@@ -596,7 +596,7 @@ static int setcos_set_security_env2(sc_card_t *card,
 		apdu.p1 = ((card->type == SC_CARD_TYPE_SETCOS_FINEID_V2) ||
 		           (card->type == SC_CARD_TYPE_SETCOS_FINEID_V2_2048) ||
 		           (card->type == SC_CARD_TYPE_SETCOS_44) ||
-			   (card->type == SC_CARD_TYPE_SETCOS_NIDEL) || 
+			   (card->type == SC_CARD_TYPE_SETCOS_NIDEL) ||
 			   SETCOS_IS_EID_APPLET(card)) ? 0x41 : 0x81;
 		apdu.p2 = 0xB6;
 		break;
@@ -627,7 +627,7 @@ static int setcos_set_security_env2(sc_card_t *card,
 		memcpy(p, env->key_ref, env->key_ref_len);
 		p += env->key_ref_len;
 	}
-	r = p - sbuf;
+	r = (int)(p - sbuf);
 	apdu.lc = r;
 	apdu.datalen = r;
 	apdu.data = sbuf;
@@ -640,13 +640,13 @@ static int setcos_set_security_env2(sc_card_t *card,
 	if (apdu.datalen != 0) {
 		r = sc_transmit_apdu(card, &apdu);
 		if (r) {
-			sc_log(card->ctx, 
+			sc_log(card->ctx,
 				"%s: APDU transmit failed", sc_strerror(r));
 			goto err;
 		}
 		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 		if (r) {
-			sc_log(card->ctx, 
+			sc_log(card->ctx,
 				"%s: Card returned error", sc_strerror(r));
 			goto err;
 		}
@@ -695,7 +695,8 @@ static int setcos_set_security_env(sc_card_t *card,
 		/* potential FIXME: return an error, if an unsupported
 		 * pad or hash was requested, although this shouldn't happen.
 		 */
-		if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1)
+		if ((env->operation == SC_SEC_OPERATION_SIGN && env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01) ||
+				(env->operation == SC_SEC_OPERATION_DECIPHER && env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_02))
 			tmp.algorithm_ref = 0x02;
 		if (tmp.algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA1)
 			tmp.algorithm_ref |= 0x10;
@@ -808,7 +809,7 @@ static void parse_sec_attr_44(sc_file_t *file, const u8 *buf, size_t len)
 			/* Get KeyNumber if available */
 			if(iKeyLen) {
 				int iSC;
-				if (len < 1+(size_t)iACLen)
+				if (len < 1 + iACLen)
 					break;
 				iSC = buf[iOffset+iACLen];
 
@@ -868,7 +869,7 @@ static void parse_sec_attr_44(sc_file_t *file, const u8 *buf, size_t len)
 			}
 
 			/* Encryption key present ? */
-			iPinCount = iACLen > 0 ? iACLen - 1 : 0;
+			iPinCount = iACLen > 0 ? (int)iACLen - 1 : 0;
 
 			if (buf[iOffset] & 0x20) {
 				int iSC;
@@ -943,7 +944,7 @@ static int setcos_list_files(sc_card_t *card, u8 * buf, size_t buflen)
 	int r;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xAA, 0, 0);
-	if (card->type == SC_CARD_TYPE_SETCOS_44 || 
+	if (card->type == SC_CARD_TYPE_SETCOS_44 ||
 	    card->type == SC_CARD_TYPE_SETCOS_NIDEL ||
 	    SETCOS_IS_EID_APPLET(card))
 		apdu.cla = 0x80;
@@ -956,7 +957,7 @@ static int setcos_list_files(sc_card_t *card, u8 * buf, size_t buflen)
 		return 0; /* no files found */
 	if (apdu.resplen == 0)
 		return sc_check_sw(card, apdu.sw1, apdu.sw2);
-	return apdu.resplen;
+	return (int)apdu.resplen;
 }
 
 static int setcos_process_fci(sc_card_t *card, sc_file_t *file,
@@ -1057,7 +1058,7 @@ static int setcos_generate_store_key(sc_card_t *card,
 		sbuf[len++] = 0x92;	/* algo ID: RSA CRT */
 	else
 		sbuf[len++] = 0x9A;	/* algo ID: EXTERNALLY GENERATED RSA CRT */
-	sbuf[len++] = 0x00;	
+	sbuf[len++] = 0x00;
 	sbuf[len++] = data->mod_len / 256;	/* 2 bytes for modulus bitlength */
 	sbuf[len++] = data->mod_len % 256;
 
@@ -1074,7 +1075,7 @@ static int setcos_generate_store_key(sc_card_t *card,
 		sbuf[len++] = data->primeq_len / 256;
 		sbuf[len++] = data->primeq_len % 256;
 		memcpy(sbuf + len, data->primeq, (data->primeq_len + 7) / 8);
-		len += (data->primeq_len + 7) / 8;		
+		len += (data->primeq_len + 7) / 8;
 	}
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x46, 0x00, 0x00);

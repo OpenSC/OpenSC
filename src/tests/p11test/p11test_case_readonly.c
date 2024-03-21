@@ -61,11 +61,10 @@ OSSL_PROVIDER *legacy_provider = NULL;
 
 const unsigned char *const_message = (unsigned char *) MESSAGE_TO_SIGN;
 
-static unsigned char *
-rsa_x_509_pad_message(const unsigned char *message,
-	unsigned long *message_length, test_cert_t *o, int encrypt)
+unsigned char *
+rsa_x_509_pad_message(const unsigned char *message, unsigned long *message_length, test_cert_t *o, int encrypt)
 {
-	int pad_message_length = (o->bits+7)/8;
+	unsigned long pad_message_length = (o->bits+7)/8;
 	unsigned char *pad_message = NULL;
 	size_t padding_len = pad_message_length - (*message_length) - 3;
 
@@ -85,7 +84,7 @@ rsa_x_509_pad_message(const unsigned char *message,
 		memset(pad_message + 2, 0xff, padding_len);
 	} else {
 		pad_message[1] = 0x02;
-		if (RAND_bytes(pad_message + 2, padding_len) != 1) {
+		if (RAND_bytes(pad_message + 2, (int)padding_len) != 1) {
 			debug_print("Cannot generate random bytes.");
 		}
 	}
@@ -102,11 +101,14 @@ int encrypt_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message
 	size_t outlen = 0;
 	EVP_PKEY_CTX *ctx = NULL;
 
-	outlen = EVP_PKEY_size(o->key);
-	*enc_message = malloc(outlen);
+	/* allocate the buffer if none provided */
 	if (*enc_message == NULL) {
-		debug_print("malloc returned null");
-		return -1;
+		outlen = EVP_PKEY_size(o->key);
+		*enc_message = malloc(outlen);
+		if (*enc_message == NULL) {
+			debug_print("malloc returned null");
+			return -1;
+		}
 	}
 
 	/* Prepare padding for RSA_X_509 */
@@ -124,7 +126,7 @@ int encrypt_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message
 		return -1;
 	}
 	EVP_PKEY_CTX_free(ctx);
-	return outlen;
+	return (int)outlen;
 }
 
 int encrypt_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
@@ -163,7 +165,7 @@ int encrypt_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 	rv = fp->C_Encrypt(info->session_handle, message, message_length,
 		*enc_message, &enc_message_length);
 	if (rv == CKR_OK) {
-		return enc_message_length;
+		return (int)enc_message_length;
 	}
 	debug_print("   C_Encrypt: rv = 0x%.8lX", rv);
 
@@ -199,6 +201,7 @@ int decrypt_message(test_cert_t *o, token_info_t *info, CK_BYTE *enc_message,
 		enc_message_length, *dec_message, &dec_message_length);
 	if (rv != CKR_OK) {
 		free(*dec_message);
+		*dec_message = NULL;
 		debug_print("  C_Decrypt: rv = 0x%.8lX\n", rv);
 		return -1;
 	}
@@ -326,7 +329,7 @@ int sign_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 	always_authenticate(o, info);
 
 	if (multipart) {
-		int part = message_length / 3;
+		unsigned long part = message_length / 3;
 		rv = fp->C_SignUpdate(info->session_handle, message, part);
 		if (rv == CKR_MECHANISM_INVALID) {
 			fprintf(stderr, "  Multipart Signature not supported with CKM_%s\n",
@@ -382,7 +385,7 @@ int sign_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 		fprintf(stderr, "  %s: rv = 0x%.8lX\n", name, rv);
 		return -1;
 	}
-	return sign_length;
+	return (int)sign_length;
 }
 
 int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
@@ -391,7 +394,7 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 {
 	CK_RV rv;
 	CK_BYTE *cmp_message = NULL;
-	int cmp_message_length;
+	unsigned long cmp_message_length;
 
 	if (o->type == EVP_PKEY_RSA) {
 		const EVP_MD *md = NULL;
@@ -416,6 +419,7 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 			}
 			mech->result_flags |= FLAGS_SIGN_OPENSSL;
 			debug_print(" [  OK %s ] Signature is valid.", o->id_str);
+			EVP_PKEY_CTX_free(ctx);
 			return 1;
 			break;
 		case CKM_SHA1_RSA_PKCS:
@@ -462,9 +466,10 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 		}
 		mech->result_flags |= FLAGS_SIGN_OPENSSL;
 		debug_print(" [  OK %s ] Signature is valid.", o->id_str);
+		EVP_MD_CTX_free(mdctx);
 		return 1;
 	} else if (o->type == EVP_PKEY_EC) {
-		unsigned int nlen;
+		int nlen;
 		ECDSA_SIG *sig = ECDSA_SIG_new();
 		BIGNUM *r = NULL, *s = NULL;
 		EVP_PKEY_CTX *ctx = NULL;
@@ -472,9 +477,11 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 
 		if (!sig || !ctx) {
 			fprintf(stderr, "Verification failed");
+			EVP_PKEY_CTX_free(ctx);
+			ECDSA_SIG_free(sig);
 			return -1;
 		}
-		nlen = sign_length/2;
+		nlen = (int)sign_length / 2;
 		r = BN_bin2bn(&sign[0], nlen, NULL);
 		s = BN_bin2bn(&sign[nlen], nlen, NULL);
 		ECDSA_SIG_set0(sig, r, s);
@@ -502,17 +509,22 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 			break;
 		default:
 			debug_print(" [SKIP %s ] Skip verify of unknown mechanism", o->id_str);
+			EVP_PKEY_CTX_free(ctx);
+			ECDSA_SIG_free(sig);
 			return 0;
 		}
 		int sig_asn1_len = 0;
 		unsigned char *sig_asn1 = NULL;
 		sig_asn1_len = i2d_ECDSA_SIG(sig, &sig_asn1);
+		ECDSA_SIG_free(sig);
 
 		if (EVP_PKEY_verify_init(ctx) != 1) {
-        	fprintf(stderr, "EVP_PKEY_verify_init\n");
-    	}
+			fprintf(stderr, "EVP_PKEY_verify_init\n");
+		}
 
 		rv = EVP_PKEY_verify(ctx, sig_asn1, sig_asn1_len, cmp_message, cmp_message_length);
+		OPENSSL_free(sig_asn1);
+		EVP_PKEY_CTX_free(ctx);
 		if (rv == 1) {
 			debug_print(" [  OK %s ] EC Signature of length %lu is valid.",
 				o->id_str, message_length);
@@ -578,7 +590,7 @@ int verify_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 		goto openssl_verify;
 	}
 	if (multipart) {
-		int part = message_length / 3;
+		unsigned long part = message_length / 3;
 		/* First part */
 		rv = fp->C_VerifyUpdate(info->session_handle, message, part);
 		if (rv != CKR_OK) {
@@ -690,7 +702,8 @@ void readonly_tests(void **state) {
 
 	token_info_t *info = (token_info_t *) *state;
 	unsigned int i;
-	int used, j;
+	int used;
+	size_t j;
 	test_certs_t objects;
 
 	test_certs_init(&objects);
@@ -704,25 +717,34 @@ void readonly_tests(void **state) {
 		/* do the Sign&Verify and/or Encrypt&Decrypt */
 		used = 0;
 		if (o->private_handle == CK_INVALID_HANDLE) {
-			debug_print(" [SKIP %s ] Missing private key",
-				o->id_str);
+			debug_print(" [SKIP %s ] Missing private key", o->id_str);
 			continue;
 		}
 		/* XXX some keys do not have appropriate flags, but we can use them
 		 * or vice versa */
-		//if (o->sign && o->verify)
-			for (j = 0; j < o->num_mechs; j++)
-				used |= sign_verify_test(&(objects.data[i]), info,
-					&(o->mechs[j]), 32, 0);
+		// if (o->sign && o->verify)
+		for (j = 0; j < o->num_mechs; j++) {
+			test_mech_t *m = &(objects.data[i].mechs[j]);
+			if ((m->usage_flags & CKF_SIGN) == 0) {
+				/* Skip non-signature mechanisms (for example derive ones) */
+				continue;
+			}
+			used |= sign_verify_test(o, info, m, 32, 0);
+		}
 
-		//if (o->encrypt && o->decrypt)
-			for (j = 0; j < o->num_mechs; j++)
-				used |= encrypt_decrypt_test(&(objects.data[i]), info,
-					&(o->mechs[j]), 32, 0);
+		// if (o->encrypt && o->decrypt)
+		for (j = 0; j < o->num_mechs; j++) {
+			test_mech_t *m = &(objects.data[i].mechs[j]);
+			if ((m->usage_flags & CKF_DECRYPT) == 0) {
+				/* Skip non-decrypt mechanisms (for example derive ones) */
+				continue;
+			}
+			used |= encrypt_decrypt_test(o, info, m, 32, 0);
+		}
 
 		if (!used) {
-			debug_print(" [ WARN %s ] Private key with unknown purpose T:%02lX",
-			o->id_str, o->key_type);
+			debug_print(" [WARN %s ] Private key with unknown purpose T:%02lX", o->id_str,
+					o->key_type);
 		}
 	}
 

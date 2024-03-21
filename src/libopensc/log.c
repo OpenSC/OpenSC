@@ -44,6 +44,9 @@
 #ifdef _WIN32
 #include <windows.h>
 #endif
+#ifdef ENABLE_OPENSSL
+#include <openssl/err.h>
+#endif /* ENABLE_OPENSSL */
 
 #include "internal.h"
 
@@ -67,6 +70,38 @@ void sc_do_log_color(sc_context_t *ctx, int level, const char *file, int line, c
 	sc_do_log_va(ctx, level, file, line, func, color, format, ap);
 	va_end(ap);
 }
+
+#ifdef ENABLE_OPENSSL
+void sc_do_log_openssl(sc_context_t *ctx, int level, const char *file, int line, const char *func)
+{
+	BIO *bio = NULL;
+	int length = 0;
+	char *buffer = NULL;
+
+	if ((bio = BIO_new(BIO_s_mem())) == NULL) {
+		sc_do_log(ctx, level, file, line, func, "Cannot log OpenSSL error");
+		goto end;
+	}
+	ERR_print_errors(bio);
+
+	if ((length = BIO_pending(bio)) <= 0 ||
+			(buffer = malloc(length)) == NULL ||
+			BIO_read(bio, buffer, length) <= 0) {
+		sc_do_log(ctx, level, file, line, func, "Cannot log OpenSSL error");
+		goto end;
+	}
+
+	sc_do_log(ctx, level, file, line, func, "OpenSSL error\n%s", buffer);
+end:
+	free(buffer);
+	BIO_free(bio);
+}
+#else
+void sc_do_log_openssl(sc_context_t *ctx, int level, const char *file, int line, const char *func)
+{
+	sc_do_log(ctx, level, file, line, func, "OpenSSL not enabled");
+}
+#endif
 
 void sc_do_log_noframe(sc_context_t *ctx, int level, const char *format, va_list args)
 {
@@ -170,6 +205,11 @@ void _sc_log(struct sc_context *ctx, const char *format, ...)
 	va_start(ap, format);
 	sc_do_log_va(ctx, SC_LOG_DEBUG_NORMAL, NULL, 0, NULL, 0, format, ap);
 	va_end(ap);
+}
+
+void _sc_log_openssl(struct sc_context *ctx)
+{
+	sc_do_log_openssl(ctx, SC_LOG_DEBUG_DEPS, NULL, 0, NULL);
 }
 
 static int is_a_tty(FILE *fp)

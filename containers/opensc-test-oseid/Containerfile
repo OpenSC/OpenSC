@@ -10,4 +10,4 @@ RUN export DEBIAN_FRONTEND=noninteractive; \
 WORKDIR /src
 RUN /src/.github/setup-linux.sh oseid
 RUN /src/.github/build.sh
-CMD /src/.github/test-oseid.sh
+CMD /src/.github/test-oseid.sh valgrind

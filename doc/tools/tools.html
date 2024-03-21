@@ -1,11 +1,11 @@
-<html><head><meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1"><title>OpenSC Manual Pages: Section 1</title><meta name="generator" content="DocBook XSL Stylesheets V1.79.1"><style type="text/css"><!--
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>OpenSC Manual Pages: Section 1</title><meta name="generator" content="DocBook XSL Stylesheets Vsnapshot"><style type="text/css"><!--
 			body {
   font-family: Verdana, Arial;
   font-size: 0.9em;
 }
 
 .title {
-  font-size: 1.5em;
+  font-size: 1.5em; 
   text-align: center;
 }
 
@@ -43,20 +43,20 @@ span.errortext {
   font-style: italic;
 }
 
-		--></style></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="book"><div class="titlepage"><div><div><h1 class="title"><a name="id-1"></a>OpenSC Manual Pages: Section 1</h1></div></div><hr></div><div class="toc"><p><b>Table of Contents</b></p><dl class="toc"><dt><span class="refentrytitle"><a href="#cardos-tool">cardos-tool</a></span><span class="refpurpose"> &#8212; displays information about Card OS-based security tokens or format them
-		</span></dt><dt><span class="refentrytitle"><a href="#cryptoflex-tool">cryptoflex-tool</a></span><span class="refpurpose"> &#8212; utility for manipulating Schlumberger Cryptoflex data structures</span></dt><dt><span class="refentrytitle"><a href="#dnie-tool">dnie-tool</a></span><span class="refpurpose"> &#8212; displays information about DNIe based security tokens</span></dt><dt><span class="refentrytitle"><a href="#egk-tool">egk-tool</a></span><span class="refpurpose"> &#8212; displays information on the German electronic health card (elektronische Gesundheitskarte, <abbr class="abbrev">eGK</abbr>)
-		</span></dt><dt><span class="refentrytitle"><a href="#eidenv">eidenv</a></span><span class="refpurpose"> &#8212; utility for accessing visible data from
-		electronic identity cards</span></dt><dt><span class="refentrytitle"><a href="#gids-tool">gids-tool</a></span><span class="refpurpose"> &#8212; smart card utility for GIDS cards</span></dt><dt><span class="refentrytitle"><a href="#cardos-tool">iasecc-tool</a></span><span class="refpurpose"> &#8212; displays information about IAS/ECC card
-		</span></dt><dt><span class="refentrytitle"><a href="#netkey-tool">netkey-tool</a></span><span class="refpurpose"> &#8212; administrative utility for Netkey E4 cards</span></dt><dt><span class="refentrytitle"><a href="#npa-tool">npa-tool</a></span><span class="refpurpose"> &#8212; displays information on the German eID card (neuer Personalausweis, <abbr class="abbrev">nPA</abbr>).
-		</span></dt><dt><span class="refentrytitle"><a href="#openpgp-tool">openpgp-tool</a></span><span class="refpurpose"> &#8212; utility for accessing visible data OpenPGP smart cards
-		and compatible tokens</span></dt><dt><span class="refentrytitle"><a href="#opensc-asn1">opensc-asn1</a></span><span class="refpurpose"> &#8212; parse ASN.1 data
-		</span></dt><dt><span class="refentrytitle"><a href="#opensc-explorer">opensc-explorer</a></span><span class="refpurpose"> &#8212;
+		--></style></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="book"><div class="titlepage"><div><div><h1 class="title"><a name="id-1"></a>OpenSC Manual Pages: Section 1</h1></div></div><hr></div><div class="toc"><p><b>Table of Contents</b></p><dl class="toc"><dt><span class="refentrytitle"><a href="#cardos-tool">cardos-tool</a></span><span class="refpurpose"> — displays information about Card OS-based security tokens or format them
+		</span></dt><dt><span class="refentrytitle"><a href="#cryptoflex-tool">cryptoflex-tool</a></span><span class="refpurpose"> — utility for manipulating Schlumberger Cryptoflex data structures</span></dt><dt><span class="refentrytitle"><a href="#dnie-tool">dnie-tool</a></span><span class="refpurpose"> — displays information about DNIe based security tokens</span></dt><dt><span class="refentrytitle"><a href="#egk-tool">egk-tool</a></span><span class="refpurpose"> — displays information on the German electronic health card (elektronische Gesundheitskarte, <abbr class="abbrev">eGK</abbr>)
+		</span></dt><dt><span class="refentrytitle"><a href="#eidenv">eidenv</a></span><span class="refpurpose"> — utility for accessing visible data from
+		electronic identity cards</span></dt><dt><span class="refentrytitle"><a href="#gids-tool">gids-tool</a></span><span class="refpurpose"> — smart card utility for GIDS cards</span></dt><dt><span class="refentrytitle"><a href="#cardos-tool">iasecc-tool</a></span><span class="refpurpose"> — displays information about IAS/ECC card
+		</span></dt><dt><span class="refentrytitle"><a href="#netkey-tool">netkey-tool</a></span><span class="refpurpose"> — administrative utility for Netkey E4 cards</span></dt><dt><span class="refentrytitle"><a href="#npa-tool">npa-tool</a></span><span class="refpurpose"> — displays information on the German eID card (neuer Personalausweis, <abbr class="abbrev">nPA</abbr>).
+		</span></dt><dt><span class="refentrytitle"><a href="#openpgp-tool">openpgp-tool</a></span><span class="refpurpose"> — utility for accessing visible data OpenPGP smart cards
+		and compatible tokens</span></dt><dt><span class="refentrytitle"><a href="#opensc-asn1">opensc-asn1</a></span><span class="refpurpose"> — parse ASN.1 data
+		</span></dt><dt><span class="refentrytitle"><a href="#opensc-explorer">opensc-explorer</a></span><span class="refpurpose"> — 
 			generic interactive utility for accessing smart card
 			and similar security token functions
-		</span></dt><dt><span class="refentrytitle"><a href="#opensc-notify">opensc-notify</a></span><span class="refpurpose"> &#8212;  monitor smart card events and send notifications
-		</span></dt><dt><span class="refentrytitle"><a href="#opensc-tool">opensc-tool</a></span><span class="refpurpose"> &#8212; generic smart card utility</span></dt><dt><span class="refentrytitle"><a href="#piv-tool">piv-tool</a></span><span class="refpurpose"> &#8212; smart card utility for HSPD-12 PIV cards</span></dt><dt><span class="refentrytitle"><a href="#pkcs11-tool">pkcs11-tool</a></span><span class="refpurpose"> &#8212; utility for managing and using PKCS #11 security tokens</span></dt><dt><span class="refentrytitle"><a href="#pkcs15-crypt">pkcs15-crypt</a></span><span class="refpurpose"> &#8212; perform crypto operations using PKCS#15 smart cards</span></dt><dt><span class="refentrytitle"><a href="#pkcs15-init">pkcs15-init</a></span><span class="refpurpose"> &#8212; smart card personalization utility</span></dt><dt><span class="refentrytitle"><a href="#pkcs15-tool">pkcs15-tool</a></span><span class="refpurpose"> &#8212; utility for manipulating PKCS #15 data structures
-		on smart cards and similar security tokens</span></dt><dt><span class="refentrytitle"><a href="#sc-hsm-tool">sc-hsm-tool</a></span><span class="refpurpose"> &#8212; smart card utility for SmartCard-HSM</span></dt><dt><span class="refentrytitle"><a href="#westcos-tool">westcos-tool</a></span><span class="refpurpose"> &#8212; utility for manipulating data structures
-			on westcos smart cards</span></dt></dl></div><div class="refentry"><a name="cardos-tool"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>cardos-tool &#8212; displays information about Card OS-based security tokens or format them
+		</span></dt><dt><span class="refentrytitle"><a href="#opensc-notify">opensc-notify</a></span><span class="refpurpose"> —  monitor smart card events and send notifications
+		</span></dt><dt><span class="refentrytitle"><a href="#opensc-tool">opensc-tool</a></span><span class="refpurpose"> — generic smart card utility</span></dt><dt><span class="refentrytitle"><a href="#piv-tool">piv-tool</a></span><span class="refpurpose"> — smart card utility for HSPD-12 PIV cards</span></dt><dt><span class="refentrytitle"><a href="#pkcs11-tool">pkcs11-tool</a></span><span class="refpurpose"> — utility for managing and using PKCS #11 security tokens</span></dt><dt><span class="refentrytitle"><a href="#pkcs15-crypt">pkcs15-crypt</a></span><span class="refpurpose"> — perform crypto operations using PKCS#15 smart cards</span></dt><dt><span class="refentrytitle"><a href="#pkcs15-init">pkcs15-init</a></span><span class="refpurpose"> — smart card personalization utility</span></dt><dt><span class="refentrytitle"><a href="#pkcs15-tool">pkcs15-tool</a></span><span class="refpurpose"> — utility for manipulating PKCS #15 data structures
+		on smart cards and similar security tokens</span></dt><dt><span class="refentrytitle"><a href="#sc-hsm-tool">sc-hsm-tool</a></span><span class="refpurpose"> — smart card utility for SmartCard-HSM</span></dt><dt><span class="refentrytitle"><a href="#westcos-tool">westcos-tool</a></span><span class="refpurpose"> — utility for manipulating data structures
+			on westcos smart cards</span></dt></dl></div><div class="refentry"><a name="cardos-tool"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>cardos-tool — displays information about Card OS-based security tokens or format them
 		</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">cardos-tool</code>  [<em class="replaceable"><code>OPTIONS</code></em>]</p></div></div><div class="refsect1"><a name="id-1.2.4"></a><h2>Description</h2><p>
 			The <span class="command"><strong>cardos-tool</strong></span> utility is used to display information about
 smart cards and similar security tokens based on Siemens Card/OS M4.
@@ -94,7 +94,7 @@ smart cards and similar security tokens based on Siemens Card/OS M4.
 					</span></dt><dd><p>Causes <span class="command"><strong>cardos-tool</strong></span> to wait for the token
 					to be inserted into reader.</p></dd></dl></div><p>
 		</p></div><div class="refsect1"><a name="id-1.2.6"></a><h2>Authors</h2><p><span class="command"><strong>cardos-tool</strong></span> was written by
-		Andreas Jellinghaus <code class="email">&lt;<a class="email" href="mailto:aj@dungeon.inka.de">aj@dungeon.inka.de</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="cryptoflex-tool"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>cryptoflex-tool &#8212; utility for manipulating Schlumberger Cryptoflex data structures</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">cryptoflex-tool</code>  [<em class="replaceable"><code>OPTIONS</code></em>]</p></div></div><div class="refsect1"><a name="id-1.3.4"></a><h2>Description</h2><p>
+		Andreas Jellinghaus <code class="email">&lt;<a class="email" href="mailto:aj@dungeon.inka.de">aj@dungeon.inka.de</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="cryptoflex-tool"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>cryptoflex-tool — utility for manipulating Schlumberger Cryptoflex data structures</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">cryptoflex-tool</code>  [<em class="replaceable"><code>OPTIONS</code></em>]</p></div></div><div class="refsect1"><a name="id-1.3.4"></a><h2>Description</h2><p>
 			<span class="command"><strong>cryptoflex-tool</strong></span> is used to manipulate PKCS
 			data structures on Schlumberger Cryptoflex smart cards. Users
 			can create, list and read PINs and keys stored on the smart card.
@@ -164,7 +164,7 @@ smart cards and similar security tokens based on Siemens Card/OS M4.
 		</p></div><div class="refsect1"><a name="id-1.3.6"></a><h2>See also</h2><p>
 			<span class="citerefentry"><span class="refentrytitle">pkcs15-tool</span>(1)</span>
 		</p></div><div class="refsect1"><a name="id-1.3.7"></a><h2>Authors</h2><p><span class="command"><strong>cryptoflex-tool</strong></span> was written by
-		Juha Yrjölä <code class="email">&lt;<a class="email" href="mailto:juha.yrjola@iki.fi">juha.yrjola@iki.fi</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="dnie-tool"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>dnie-tool &#8212; displays information about DNIe based security tokens</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">dnie-tool</code>  [<em class="replaceable"><code>OPTIONS</code></em>]</p></div></div><div class="refsect1"><a name="id-1.4.4"></a><h2>Description</h2><p>
+		Juha Yrjölä <code class="email">&lt;<a class="email" href="mailto:juha.yrjola@iki.fi">juha.yrjola@iki.fi</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="dnie-tool"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>dnie-tool — displays information about DNIe based security tokens</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">dnie-tool</code>  [<em class="replaceable"><code>OPTIONS</code></em>]</p></div></div><div class="refsect1"><a name="id-1.4.4"></a><h2>Description</h2><p>
 			The <span class="command"><strong>dnie-tool</strong></span> utility is used to display additional information about DNIe, the Spanish National eID card.
 		</p></div><div class="refsect1"><a name="id-1.4.5"></a><h2>Options</h2><p>
 			</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
@@ -220,7 +220,7 @@ smart cards and similar security tokens based on Siemens Card/OS M4.
 					Specify this flag several times
 to enable debug output in the opensc library.</p></dd></dl></div><p>
 		</p></div><div class="refsect1"><a name="id-1.4.6"></a><h2>Authors</h2><p><span class="command"><strong>dnie-tool</strong></span> was written by
-		Juan Antonio Martinez <code class="email">&lt;<a class="email" href="mailto:jonsito@terra.es">jonsito@terra.es</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="egk-tool"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>egk-tool &#8212; displays information on the German electronic health card (elektronische Gesundheitskarte, <abbr class="abbrev">eGK</abbr>)
+		Juan Antonio Martinez <code class="email">&lt;<a class="email" href="mailto:jonsito@terra.es">jonsito@terra.es</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="egk-tool"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>egk-tool — displays information on the German electronic health card (elektronische Gesundheitskarte, <abbr class="abbrev">eGK</abbr>)
 		</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">egk-tool</code>  [<em class="replaceable"><code>OPTIONS</code></em>]</p></div></div><div class="refsect1"><a name="id-1.5.4"></a><h2>Description</h2><p>
 			The <span class="command"><strong>egk-tool</strong></span> utility is used to display information stored on the German elektronic health card (elektronische Gesundheitskarte, <abbr class="abbrev">eGK</abbr>).
 		</p></div><div class="refsect1"><a name="id-1.5.5"></a><h2>Options</h2><p>
@@ -243,16 +243,16 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 						Causes <span class="command"><strong>egk-tool</strong></span> to be more verbose.
 						Specify this flag several times to be more verbose.
 					</p></dd></dl></div><p>
-		</p><div class="refsect2"><a name="id-1.5.5.3"></a><h3>Health Care Application (<abbr class="abbrev">HCA</abbr>)</h3><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="option">--pd</code></span></dt><dd><p>
-						Show 'Persönliche Versicherungsdaten' (XML).
+		</p><div class="refsect2"><a name="id-1.5.5.3"></a><h3>'Gesundheitsanwendung', Health Care Application (<abbr class="abbrev">HCA</abbr>)</h3><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="option">--pd</code></span></dt><dd><p>
+						Show 'Persönliche Versichertendaten' (XML).
 					</p></dd><dt><span class="term"><code class="option">--vd</code></span></dt><dd><p>
-						Show 'Allgemeine Versicherungsdaten' (XML).
+						Show 'Allgemeine Versichertendaten' (XML).
 					</p></dd><dt><span class="term"><code class="option">--gvd</code></span></dt><dd><p>
-						Show 'Geschützte Versicherungsdaten' (XML).
+						Show 'Geschützte Versichertendaten' (XML).
 					</p></dd><dt><span class="term"><code class="option">--vsd-status</code></span></dt><dd><p>
 						Show 'Versichertenstammdaten-Status'.
 					</p></dd></dl></div></div></div><div class="refsect1"><a name="id-1.5.6"></a><h2>Authors</h2><p><span class="command"><strong>egk-tool</strong></span> was written by
-		Frank Morgner <code class="email">&lt;<a class="email" href="mailto:frankmorgner@gmail.com">frankmorgner@gmail.com</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="eidenv"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>eidenv &#8212; utility for accessing visible data from
+		Frank Morgner <code class="email">&lt;<a class="email" href="mailto:frankmorgner@gmail.com">frankmorgner@gmail.com</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="eidenv"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>eidenv — utility for accessing visible data from
 		electronic identity cards</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">eidenv</code>  [<em class="replaceable"><code>OPTIONS</code></em>]</p></div></div><div class="refsect1"><a name="id-1.6.4"></a><h2>Description</h2><p>
 			The <span class="command"><strong>eidenv</strong></span> utility is used for
 			accessing data from electronic identity cards (like
@@ -294,7 +294,7 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 						<code class="option">-w</code>
 					</span></dt><dd><p>Wait for a card to be inserted</p></dd></dl></div><p>
 		</p></div><div class="refsect1"><a name="id-1.6.6"></a><h2>Authors</h2><p><span class="command"><strong>eidenv</strong></span> utility was written by
-		Stef Hoeben and Martin Paljak <code class="email">&lt;<a class="email" href="mailto:martin@martinpaljak.net">martin@martinpaljak.net</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="gids-tool"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>gids-tool &#8212; smart card utility for GIDS cards</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">gids-tool</code>  [<em class="replaceable"><code>OPTIONS</code></em>]</p></div></div><div class="refsect1"><a name="id-1.7.4"></a><p>
+		Stef Hoeben and Martin Paljak <code class="email">&lt;<a class="email" href="mailto:martin@martinpaljak.net">martin@martinpaljak.net</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="gids-tool"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>gids-tool — smart card utility for GIDS cards</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">gids-tool</code>  [<em class="replaceable"><code>OPTIONS</code></em>]</p></div></div><div class="refsect1"><a name="id-1.7.4"></a><p>
 			The <span class="command"><strong>gids-tool</strong></span> utility can be used from the command line to perform
 			miscellaneous smart card operations on a GIDS smart card.
 		</p></div><div class="refsect1"><a name="id-1.7.5"></a><h2>Options</h2><p>
@@ -348,7 +348,7 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 		</p></div><div class="refsect1"><a name="id-1.7.6"></a><h2>See also</h2><p>
 			<span class="citerefentry"><span class="refentrytitle">opensc-tool</span>(1)</span>
 		</p></div><div class="refsect1"><a name="id-1.7.7"></a><h2>Authors</h2><p><span class="command"><strong>gids-tool</strong></span> was written by
-		Vincent Le Toux <code class="email">&lt;<a class="email" href="mailto:vincent.letoux@mysmartlogon.com">vincent.letoux@mysmartlogon.com</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="cardos-tool"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>iasecc-tool &#8212; displays information about IAS/ECC card
+		Vincent Le Toux <code class="email">&lt;<a class="email" href="mailto:vincent.letoux@mysmartlogon.com">vincent.letoux@mysmartlogon.com</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="cardos-tool"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>iasecc-tool — displays information about IAS/ECC card
 		</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">iasecc-tool</code>  [<em class="replaceable"><code>OPTIONS</code></em>]</p></div></div><div class="refsect1"><a name="id-1.8.4"></a><h2>Description</h2><p>
 			The <span class="command"><strong>iasecc-tool</strong></span> utility is used to display information about IAS/ECC v1.0.1 smart cards.
 		</p></div><div class="refsect1"><a name="id-1.8.5"></a><h2>Options</h2><p>
@@ -376,7 +376,7 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 					</span></dt><dd><p>Causes <span class="command"><strong>iasecc-tool</strong></span> to wait for the token
 					to be inserted into reader.</p></dd></dl></div><p>
 		</p></div><div class="refsect1"><a name="id-1.8.6"></a><h2>Authors</h2><p><span class="command"><strong>iasecc-tool</strong></span> was written by
-		Viktor Tarasov <code class="email">&lt;<a class="email" href="mailto:viktor.tarasov@gmail.com">viktor.tarasov@gmail.com</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="netkey-tool"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>netkey-tool &#8212; administrative utility for Netkey E4 cards</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">netkey-tool</code>  [<em class="replaceable"><code>OPTIONS</code></em>] [<em class="replaceable"><code>COMMAND</code></em>]</p></div></div><div class="refsect1"><a name="id-1.9.4"></a><h2>Description</h2><p>The <span class="command"><strong>netkey-tool</strong></span> utility can be used from the
+		Viktor Tarasov <code class="email">&lt;<a class="email" href="mailto:viktor.tarasov@gmail.com">viktor.tarasov@gmail.com</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="netkey-tool"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>netkey-tool — administrative utility for Netkey E4 cards</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">netkey-tool</code>  [<em class="replaceable"><code>OPTIONS</code></em>] [<em class="replaceable"><code>COMMAND</code></em>]</p></div></div><div class="refsect1"><a name="id-1.9.4"></a><h2>Description</h2><p>The <span class="command"><strong>netkey-tool</strong></span> utility can be used from the
     command line to perform some smart card operations with NetKey E4 cards
     that cannot be done easily with other OpenSC-tools, such as changing local
     PINs, storing certificates into empty NetKey E4 cert-files or displaying
@@ -459,11 +459,15 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
     </p></div><div class="refsect1"><a name="id-1.9.8"></a><h2>See also</h2><p>
       <span class="citerefentry"><span class="refentrytitle">opensc-explorer</span>(1)</span>
     </p></div><div class="refsect1"><a name="id-1.9.9"></a><h2>Authors</h2><p><span class="command"><strong>netkey-tool</strong></span> was written by
-    Peter Koch <code class="email">&lt;<a class="email" href="mailto:pk_opensc@web.de">pk_opensc@web.de</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="npa-tool"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>npa-tool &#8212; displays information on the German eID card (neuer Personalausweis, <abbr class="abbrev">nPA</abbr>).
+    Peter Koch <code class="email">&lt;<a class="email" href="mailto:pk_opensc@web.de">pk_opensc@web.de</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="npa-tool"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>npa-tool — displays information on the German eID card (neuer Personalausweis, <abbr class="abbrev">nPA</abbr>).
 		</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">npa-tool</code>  [<em class="replaceable"><code>OPTIONS</code></em>]</p></div></div><div class="refsect1"><a name="id-1.10.4"></a><h2>Description</h2><p>
 			The <span class="command"><strong>npa-tool</strong></span> utility is used to display information
 			stored on the German eID card (neuer Personalausweis, <abbr class="abbrev">nPA</abbr>),
 			and to perform some write and verification operations.
+		</p><p>
+			Extended Access Control version 2 is performed according to ICAO Doc
+			9303 or BSI TR-03110 so that other identity cards and machine
+			readable travel documents (MRTDs) may be read as well.
 		</p></div><div class="refsect1"><a name="id-1.10.5"></a><h2>Options</h2><p>
 			</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
 						<code class="option">--help</code>,
@@ -602,7 +606,7 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 					</p></dd><dt><span class="term"><code class="option">--disable-all-checks</code></span></dt><dd><p>
 						 Disable all checking of fly-by-data. (default=off)
 					</p></dd></dl></div></div></div><div class="refsect1"><a name="id-1.10.6"></a><h2>Authors</h2><p><span class="command"><strong>npa-tool</strong></span> was written by
-		Frank Morgner <code class="email">&lt;<a class="email" href="mailto:frankmorgner@gmail.com">frankmorgner@gmail.com</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="openpgp-tool"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>openpgp-tool &#8212; utility for accessing visible data OpenPGP smart cards
+		Frank Morgner <code class="email">&lt;<a class="email" href="mailto:frankmorgner@gmail.com">frankmorgner@gmail.com</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="openpgp-tool"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>openpgp-tool — utility for accessing visible data OpenPGP smart cards
 		and compatible tokens</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">openpgp-tool</code>  [<em class="replaceable"><code>OPTIONS</code></em>]</p></div></div><div class="refsect1"><a name="id-1.11.4"></a><h2>Description</h2><p>
 			The <span class="command"><strong>openpgp-tool</strong></span> utility is used for
 			accessing data from the OpenPGP v1.1 and v2.0 smart cards
@@ -733,7 +737,7 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 						Wait for a card to be inserted.
 					</p></dd></dl></div><p>
 		</p></div><div class="refsect1"><a name="id-1.11.6"></a><h2>Authors</h2><p><span class="command"><strong>openpgp-tool</strong></span> utility was written by
-		Peter Marschall <code class="email">&lt;<a class="email" href="mailto:peter@adpm.de">peter@adpm.de</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="opensc-asn1"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>opensc-asn1 &#8212; parse ASN.1 data
+		Peter Marschall <code class="email">&lt;<a class="email" href="mailto:peter@adpm.de">peter@adpm.de</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="opensc-asn1"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>opensc-asn1 — parse ASN.1 data
 		</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">opensc-asn1</code>  [<em class="replaceable"><code>OPTIONS</code></em>] [<em class="replaceable"><code>FILES</code></em>]</p></div></div><div class="refsect1"><a name="id-1.12.4"></a><h2>Description</h2><p>
 			The <span class="command"><strong>opensc-asn1</strong></span> utility is used to parse ASN.1 data.
 		</p></div><div class="refsect1"><a name="id-1.12.5"></a><h2>Options</h2><p>
@@ -743,7 +747,7 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 						<code class="option">--version</code>,
 						<code class="option">-V</code></span></dt><dd><p>Print version and exit.</p></dd></dl></div><p>
 		</p></div><div class="refsect1"><a name="id-1.12.6"></a><h2>Authors</h2><p><span class="command"><strong>opensc-asn1</strong></span> was written by
-		Frank Morgner <code class="email">&lt;<a class="email" href="mailto:frankmorgner@gmail.com">frankmorgner@gmail.com</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="opensc-explorer"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>opensc-explorer &#8212;
+		Frank Morgner <code class="email">&lt;<a class="email" href="mailto:frankmorgner@gmail.com">frankmorgner@gmail.com</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="opensc-explorer"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>opensc-explorer — 
 			generic interactive utility for accessing smart card
 			and similar security token functions
 		</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">opensc-explorer</code>  [<em class="replaceable"><code>OPTIONS</code></em>] [<em class="replaceable"><code>SCRIPT</code></em>]</p></div></div><div class="refsect1"><a name="id-1.13.4"></a><h2>Description</h2><p>
@@ -812,14 +816,14 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 			The following commands are supported:
 			</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
 						<span class="command"><strong>#</strong></span>
-						  <em class="replaceable"><code></code></em>...
+						  <em class="replaceable"><code></code></em>... 
 					</span></dt><dd><p>
 							Treat line as a comment.
 							Ignore anything until the end of the line introduced by
 							<code class="literal">#</code>.
 						</p></dd><dt><span class="term">
 						<span class="command"><strong>apdu</strong></span>
-						  <em class="replaceable"><code>data</code></em>...
+						  <em class="replaceable"><code>data</code></em>... 
 					</span></dt><dd><p>
 							Send a custom APDU command to the card.
 							<em class="replaceable"><code>data</code></em> is a series of
@@ -872,7 +876,7 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 							<em class="replaceable"><code>DF-name</code></em>.
 						</p></dd><dt><span class="term">
 						<span class="command"><strong>change</strong></span>
-						  <code class="literal">CHV</code><em class="replaceable"><code>pin-ref</code></em>
+						  <code class="literal">CHV</code><em class="replaceable"><code>pin-ref</code></em> 
 						 [
 							[<em class="replaceable"><code>old-pin</code></em>]
 							<em class="replaceable"><code>new-pin</code></em>
@@ -951,7 +955,7 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 							in double quotes (<code class="literal">"..."</code>).
 						</p></dd><dt><span class="term">
 						<span class="command"><strong>echo</strong></span>
-						  <em class="replaceable"><code>string</code></em>...
+						  <em class="replaceable"><code>string</code></em>... 
 					</span></dt><dd><p>
 							Print the <em class="replaceable"><code>string</code></em>s given.
 						</p></dd><dt><span class="term">
@@ -1207,7 +1211,7 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 		</p></div><div class="refsect1"><a name="id-1.13.7"></a><h2>See also</h2><p>
 			<span class="citerefentry"><span class="refentrytitle">opensc-tool</span>(1)</span>
 		</p></div><div class="refsect1"><a name="id-1.13.8"></a><h2>Authors</h2><p><span class="command"><strong>opensc-explorer</strong></span> was written by
-		Juha Yrjölä <code class="email">&lt;<a class="email" href="mailto:juha.yrjola@iki.fi">juha.yrjola@iki.fi</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="opensc-notify"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>opensc-notify &#8212;  monitor smart card events and send notifications
+		Juha Yrjölä <code class="email">&lt;<a class="email" href="mailto:juha.yrjola@iki.fi">juha.yrjola@iki.fi</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="opensc-notify"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>opensc-notify —  monitor smart card events and send notifications
 		</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">opensc-notify</code>  [<em class="replaceable"><code>OPTIONS</code></em>]</p></div></div><div class="refsect1"><a name="id-1.14.4"></a><h2>Description</h2><p>
 			The <span class="command"><strong>opensc-notify</strong></span> utility is used to
 			monitor smart card events and send the appropriate notification.
@@ -1252,7 +1256,7 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 						See <em class="parameter"><code>notify_pin_bad</code></em>
 						in <code class="filename">opensc.conf</code> (default=off).
 					</p></dd></dl></div></div></div><div class="refsect1"><a name="id-1.14.6"></a><h2>Authors</h2><p><span class="command"><strong>opensc-notify</strong></span> was written by
-		Frank Morgner <code class="email">&lt;<a class="email" href="mailto:frankmorgner@gmail.com">frankmorgner@gmail.com</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="opensc-tool"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>opensc-tool &#8212; generic smart card utility</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">opensc-tool</code>  [<em class="replaceable"><code>OPTIONS</code></em>]</p></div></div><div class="refsect1"><a name="id-1.15.4"></a><h2>Description</h2><p>
+		Frank Morgner <code class="email">&lt;<a class="email" href="mailto:frankmorgner@gmail.com">frankmorgner@gmail.com</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="opensc-tool"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>opensc-tool — generic smart card utility</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">opensc-tool</code>  [<em class="replaceable"><code>OPTIONS</code></em>]</p></div></div><div class="refsect1"><a name="id-1.15.4"></a><h2>Description</h2><p>
 			The <span class="command"><strong>opensc-tool</strong></span> utility can be used from the command line to perform
 			miscellaneous smart card operations such as getting the card ATR or
 			sending arbitrary APDU commands to a card.
@@ -1309,8 +1313,16 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 					but <code class="literal">warm</code> reset is also possible.</p></dd><dt><span class="term">
 						<code class="option">--send-apdu</code> <em class="replaceable"><code>apdu</code></em>,
 						<code class="option">-s</code> <em class="replaceable"><code>apdu</code></em>
-					</span></dt><dd><p>Sends an arbitrary APDU to the card in the format
-					<code class="code">AA:BB:CC:DD:EE:FF...</code>.</p></dd><dt><span class="term">
+					</span></dt><dd><p>
+							Sends an arbitrary APDU to the card in the format
+							<code class="code">AA:BB:CC:DD:EE:FF...</code>. Use this option
+							multiple times to send more than one APDU.
+						</p><p>
+                            The built-in card drivers may send additional APDUs
+                            for detection and initialization. To avoid this
+							behavior, you may additionally specify
+							<code class="option">--card-driver</code> <code class="literal">default</code>.
+						</p></dd><dt><span class="term">
 						<code class="option">--serial</code>
 					</span></dt><dd><p>Print the card serial number (normally the ICCSN).
 					Output is in hex byte format</p></dd><dt><span class="term">
@@ -1324,7 +1336,7 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 		</p></div><div class="refsect1"><a name="id-1.15.6"></a><h2>See also</h2><p>
 			<span class="citerefentry"><span class="refentrytitle">opensc-explorer</span>(1)</span>
 		</p></div><div class="refsect1"><a name="id-1.15.7"></a><h2>Authors</h2><p><span class="command"><strong>opensc-tool</strong></span> was written by
-		Juha Yrjölä <code class="email">&lt;<a class="email" href="mailto:juha.yrjola@iki.fi">juha.yrjola@iki.fi</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="piv-tool"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>piv-tool &#8212; smart card utility for HSPD-12 PIV cards</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">piv-tool</code>  [<em class="replaceable"><code>OPTIONS</code></em>]</p></div></div><div class="refsect1"><a name="id-1.16.4"></a><p>
+		Juha Yrjölä <code class="email">&lt;<a class="email" href="mailto:juha.yrjola@iki.fi">juha.yrjola@iki.fi</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="piv-tool"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>piv-tool — smart card utility for HSPD-12 PIV cards</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">piv-tool</code>  [<em class="replaceable"><code>OPTIONS</code></em>]</p></div></div><div class="refsect1"><a name="id-1.16.4"></a><p>
 			The <span class="command"><strong>piv-tool</strong></span> utility can be used from the command line to perform
 			miscellaneous smart card operations on a HSPD-12 PIV smart card as defined in NIST 800-73-3.
 			It is intended for use with test cards only. It can be used to load objects, and generate
@@ -1340,15 +1352,18 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 					</span></dt><dd><p>Print the name of the inserted card (driver)</p></dd><dt><span class="term">
 						<code class="option">--admin</code> <em class="replaceable"><code>argument</code></em>,
 						<code class="option">-A</code> <em class="replaceable"><code>argument</code></em>
-					</span></dt><dd><p>Authenticate to the card using a 2DES or 3DES key.
+					</span></dt><dd><p>Authenticate to the card using a 2DES, 3DES or AES key.
 					The <em class="replaceable"><code>argument</code></em> of the form
 					</p><pre class="synopsis"> {<code class="literal">A</code>|<code class="literal">M</code>}<code class="literal">:</code><em class="replaceable"><code>ref</code></em><code class="literal">:</code><em class="replaceable"><code>alg</code></em></pre><p>
 					is required, were <code class="literal">A</code> uses "EXTERNAL AUTHENTICATION"
 					and <code class="literal">M</code> uses "MUTUAL AUTHENTICATION".
 					<em class="replaceable"><code>ref</code></em> is normally <code class="literal">9B</code>,
-					and <em class="replaceable"><code>alg</code></em> is <code class="literal">03</code> for 3DES.
-					The key is provided by the card vendor, and the environment variable
-					<code class="varname">PIV_EXT_AUTH_KEY</code> must point to a text file containing
+					and <em class="replaceable"><code>alg</code></em> is <code class="literal">03</code> for 3DES,
+					<code class="literal">01</code> for 2DES, <code class="literal">08</code> for AES-128,
+					<code class="literal">0A</code> for AES-192 or <code class="literal">0C</code> for AES-256.
+					The key is provided by the card vendor. The environment variable
+					<code class="varname">PIV_EXT_AUTH_KEY</code> must point to either a binary file
+					matching the length of the key or a text file containing
 					the key in the format:
 					<code class="code">XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX</code>
 					</p></dd><dt><span class="term">
@@ -1415,7 +1430,7 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 		</p></div><div class="refsect1"><a name="id-1.16.6"></a><h2>See also</h2><p>
 			<span class="citerefentry"><span class="refentrytitle">opensc-tool</span>(1)</span>
 		</p></div><div class="refsect1"><a name="id-1.16.7"></a><h2>Authors</h2><p><span class="command"><strong>piv-tool</strong></span> was written by
-		Douglas E. Engert <code class="email">&lt;<a class="email" href="mailto:deengert@gmail.com">deengert@gmail.com</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="pkcs11-tool"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>pkcs11-tool &#8212; utility for managing and using PKCS #11 security tokens</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">pkcs11-tool</code>  [<em class="replaceable"><code>OPTIONS</code></em>]</p></div></div><div class="refsect1"><a name="id-1.17.4"></a><h2>Description</h2><p>
+		Douglas E. Engert <code class="email">&lt;<a class="email" href="mailto:deengert@gmail.com">deengert@gmail.com</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="pkcs11-tool"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>pkcs11-tool — utility for managing and using PKCS #11 security tokens</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">pkcs11-tool</code>  [<em class="replaceable"><code>OPTIONS</code></em>]</p></div></div><div class="refsect1"><a name="id-1.17.4"></a><h2>Description</h2><p>
 			The <span class="command"><strong>pkcs11-tool</strong></span> utility is used to manage the
 			data objects on smart cards and similar PKCS #11 security tokens.
 			Users can list and read PINs, keys and certificates stored on the
@@ -1476,11 +1491,14 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 						<code class="option">--key-type</code> <em class="replaceable"><code>specification</code></em>
 					</span></dt><dd><p>Specify the type and length (bytes if symmetric) of the key to create,
 					for example RSA:1024, EC:prime256v1, GOSTR3410-2012-256:B,
-					DES:8, DES3:24, AES:16 or GENERIC:64.</p></dd><dt><span class="term">
+					DES:8, DES3:24, AES:16 or GENERIC:64. If the key type was incompletely specified, possible values are listed.</p></dd><dt><span class="term">
 						<code class="option">--usage-sign</code>
 					</span></dt><dd><p>Specify 'sign' key usage flag (sets SIGN in privkey, sets VERIFY in pubkey).</p></dd><dt><span class="term">
 						<code class="option">--usage-decrypt</code>
-					</span></dt><dd><p>Specify 'decrypt' key usage flag (RSA only, set DECRYPT privkey, ENCRYPT in pubkey).</p></dd><dt><span class="term">
+					</span></dt><dd><p>Specify 'decrypt' key usage flag.</p><p>
+							For RSA keys, sets DECRYPT in privkey and ENCRYPT in pubkey. For secret
+							keys, sets both DECRYPT and ENCRYPT.
+						</p></dd><dt><span class="term">
 						<code class="option">--usage-derive</code>
 					</span></dt><dd><p>Specify 'derive' key usage flag (EC only).</p></dd><dt><span class="term">
 						<code class="option">--usage-wrap</code>
@@ -1495,7 +1513,9 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 					</span></dt><dd><p>Display a list of mechanisms supported by the token.</p></dd><dt><span class="term">
 						<code class="option">--list-objects</code>,
 						<code class="option">-O</code>
-					</span></dt><dd><p>Display a list of objects.</p></dd><dt><span class="term">
+					</span></dt><dd><p>Display a list of objects.</p><p>The options <code class="option">--keytype</code>, <code class="option">--label</code>
+						, <code class="option">--id</code> or <code class="option">--application-id</code> can be
+						used to filter the listed objects.</p></dd><dt><span class="term">
 						<code class="option">--list-slots</code>,
 						<code class="option">-L</code>
 					</span></dt><dd><p>Display a list of available slots on the token.</p></dd><dt><span class="term">
@@ -1504,6 +1524,8 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 					</span></dt><dd><p>List slots with tokens.</p></dd><dt><span class="term">
 						<code class="option">--list-interfaces</code>
 					</span></dt><dd><p>List interfaces of PKCS #11 3.0 library.</p></dd><dt><span class="term">
+						<code class="option">--session-rw</code>,
+					</span></dt><dd><p>Forces to open the PKCS#11 session with CKF_RW_SESSION.</p></dd><dt><span class="term">
 						<code class="option">--login</code>,
 						<code class="option">-l</code>
 					</span></dt><dd><p>Authenticate to the token before performing
@@ -1570,6 +1592,12 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 					</span></dt><dd><p>Sign some data.</p></dd><dt><span class="term">
 						<code class="option">--decrypt</code>,
 					</span></dt><dd><p>Decrypt some data.</p></dd><dt><span class="term">
+						<code class="option">--encrypt</code>,
+					</span></dt><dd><p>Encrypt some data.</p></dd><dt><span class="term">
+						<code class="option">--unwrap</code>,
+					</span></dt><dd><p>Unwrap key.</p></dd><dt><span class="term">
+						<code class="option">--wrap</code>,
+					</span></dt><dd><p>Wrap key.</p></dd><dt><span class="term">
 						<code class="option">--derive</code>,
 					</span></dt><dd><p>Derive a secret key using another key and some data.</p></dd><dt><span class="term">
 						<code class="option">--derive-pass-der</code>,
@@ -1578,10 +1606,12 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 					</span></dt><dd><p>Specify how many bytes of salt should
 					be used in RSA-PSS signatures. Accepts two special values:
 					"-1" means salt length equals to digest length,
-					"-2" means use maximum permissible length.
+					"-2" or "-3" means use maximum permissible length.
+					For verify operation "-2" means that the salt length is automatically recovered from signature.
+					The value "-2" for the verify operation is supported for opensc pkcs#11 module only.
 					Default is digest length (-1).</p></dd><dt><span class="term">
 						<code class="option">--slot</code> <em class="replaceable"><code>id</code></em>
-					</span></dt><dd><p>Specify the id of the slot to use.</p></dd><dt><span class="term">
+					</span></dt><dd><p>Specify the id of the slot to use (accepts HEX format with 0x.. prefix or decimal number).</p></dd><dt><span class="term">
 						<code class="option">--slot-description</code> <em class="replaceable"><code>description</code></em>
 					</span></dt><dd><p>Specify the description of the slot to use.</p></dd><dt><span class="term">
 						<code class="option">--slot-index</code> <em class="replaceable"><code>index</code></em>
@@ -1680,25 +1710,108 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 						<code class="option">--allow-sw</code>
 					</span></dt><dd><p>Allow using software mechanisms that do not have the CKF_HW flag set.
 					May be required when using software tokens and emulators.
+					</p></dd><dt><span class="term">
+						<code class="option">--iv</code> <em class="replaceable"><code>data</code></em>
+					</span></dt><dd><p>Initialization vector for symmetric ciphers.
+					The <em class="replaceable"><code>data</code></em> is hexadecimal number, i.e. "000013aa7bffa0".
 					</p></dd></dl></div><p>
 		</p></div><div class="refsect1"><a name="id-1.17.6"></a><h2>Examples</h2><p>
-			To list all certificates on the smart card:
+			Perform a basic functionality test of the card:
+				</p><pre class="programlisting">pkcs11-tool --test --login</pre><p>
+
+			List all certificates on the smart card:
 				</p><pre class="programlisting">pkcs11-tool --list-objects --type cert</pre><p>
 
-			To read the certificate with ID <em class="replaceable"><code>KEY_ID</code></em>
-			in DER format from smart card:
-				</p><pre class="programlisting">pkcs11-tool --read-object --id KEY_ID --type cert --output-file cert.der</pre><p>
+			Read the certificate with ID <code class="varname">CERT_ID</code>
+			in DER format from smart card and convert it to PEM via OpenSSL:
+			</p><pre class="programlisting">
+pkcs11-tool --read-object --id $CERT_ID --type cert \
+					--output-file cert.der
+openssl x509 -inform DER -in cert.der -outform PEM &gt; cert.pem
+			</pre><p>
 
-			To convert the certificate in DER format to PEM format, use OpenSSL
-			tools:
-				</p><pre class="programlisting">openssl x509 -inform DER -in cert.der -outform PEM &gt; cert.pem</pre><p>
+			Write a certificate to token:
+				</p><pre class="programlisting">pkcs11-tool --login --write-object certificate.der --type cert</pre><p>
 
-			To sign some data stored in file <em class="replaceable"><code>data</code></em>
-			using the private key with ID <em class="replaceable"><code>ID</code></em> and
+			Generate new RSA Key pair:
+				</p><pre class="programlisting">pkcs11-tool --login --keypairgen --key-type RSA:2048</pre><p>
+
+			Generate new extractable RSA Key pair:
+				</p><pre class="programlisting">pkcs11-tool --login --keypairgen --key-type RSA:2048 --extractable</pre><p>
+
+			Generate an elliptic curve key pair with OpenSSL and import it to the card as <code class="varname">$ID</code>:
+				</p><pre class="programlisting">openssl genpkey -out EC_private.der -outform DER \
+	-algorithm EC -pkeyopt ec_paramgen_curve:P-521
+pkcs11-tool --write-object EC_private.der --id "$ID" \
+	--type privkey --label "EC private key" -p "$PIN"
+openssl pkey -in EC_private.der -out EC_public.der \
+	-pubout -inform DER -outform DER
+pkcs11-tool --write-object EC_public.der --id "$ID" \
+	--type pubkey  --label "EC public key" -p $PIN</pre><p>
+
+			List private keys:
+				</p><pre class="programlisting">pkcs11-tool --login --list-objects --type privkey</pre><p>
+
+			Sign some data stored in file <code class="filename">data</code>
+			using the private key with ID <code class="varname">ID</code> and
 			using the RSA-PKCS mechanism:
-				</p><pre class="programlisting">pkcs11-tool --sign --id ID --mechanism RSA-PKCS --input-file data --output-file data.sig</pre><p>
+			</p><pre class="programlisting">
+pkcs11-tool --sign --id $ID --mechanism RSA-PKCS \
+	--input-file data --output-file data.sig
+			</pre><p>
+			The same is also possible by piping the data from stdin rather than specifying a input file:
+			</p><pre class="programlisting">
+dd if=data bs=128 count=1 \
+	| pkcs11-tool --sign --id $ID --mechanism RSA-PKCS \
+	&gt; data.sig
+			</pre><p>
+
+			Verify the signed data:
+			</p><pre class="programlisting">
+pkcs11-tool --id ID --verify -m RSA-PKCS \
+	--input-file data --signature-file data.sig
+			</pre><p>
+
+			To encrypt file using the AES key with ID 85 and using mechanism AES-CBC with padding:
+				</p><pre class="programlisting">
+pkcs11-tool --login --encrypt --id 85 -m AES-CBC-PAD \
+	--iv "00000000000000000000000000000000" \
+	-i file.txt -o encrypted_file.data
+				</pre><p>
+			Decipher the encrypted file:
+				</p><pre class="programlisting">
+pkcs11-tool --login --decrypt --id 85 -m AES-CBC-PAD \
+	--iv "00000000000000000000000000000000" \
+	--i encrypted_file.data -o decrypted.txt
+				</pre><p>
+
+			Use the key with ID 75 using mechanism AES-CBC-PAD, with initialization vector
+			"00000000000000000000000000000000" to wrap the key with ID 76 into output file
+			<code class="filename">exported_aes.key</code>
+				</p><pre class="programlisting">
+pkcs11-tool --login --wrap --id 75 --mechanism AES-CBC-PAD \
+	--iv "00000000000000000000000000000000" \
+	--application-id 76 \
+	--output-file exported_aes.key
+				</pre><p>
+			Use the key with ID 22 and mechanism RSA-PKCS to unwrap key from file
+			<code class="filename">aes_wrapped.key</code>. After a successful unwrap operation,
+			a new AES key is created on token. ID of this key is set to 90 and label of this
+			key is set to <code class="literal">unwrapped-key</code>
+			Note: for the MyEID card, the AES key size must be present in key
+			specification i.e. AES:16
+				</p><pre class="programlisting">
+pkcs11-tool --login --unwrap --mechanism RSA-PKCS --id 22 \
+	-i aes_wrapped.key --key-type AES: \
+	--application-id 90 --applicatin-label unwrapped-key
+				</pre><p>
+
+			Use the SO-PIN to initialize or re-set the PIN:
+				</p><pre class="programlisting">
+pkcs11-tool --login --login-type so --init-pin
+				</pre><p>
 		</p></div><div class="refsect1"><a name="id-1.17.7"></a><h2>Authors</h2><p><span class="command"><strong>pkcs11-tool</strong></span> was written by
-		Olaf Kirch <code class="email">&lt;<a class="email" href="mailto:okir@suse.de">okir@suse.de</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="pkcs15-crypt"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>pkcs15-crypt &#8212; perform crypto operations using PKCS#15 smart cards</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">pkcs15-crypt</code>  [<em class="replaceable"><code>OPTIONS</code></em>]</p></div></div><div class="refsect1"><a name="id-1.18.4"></a><h2>Description</h2><p>
+		Olaf Kirch <code class="email">&lt;<a class="email" href="mailto:okir@suse.de">okir@suse.de</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="pkcs15-crypt"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>pkcs15-crypt — perform crypto operations using PKCS#15 smart cards</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">pkcs15-crypt</code>  [<em class="replaceable"><code>OPTIONS</code></em>]</p></div></div><div class="refsect1"><a name="id-1.18.4"></a><h2>Description</h2><p>
 			The <span class="command"><strong>pkcs15-crypt</strong></span> utility can be used from the
 			command line to perform cryptographic operations such as computing
 			digital signatures or decrypting data, using keys stored on a PKCS#15
@@ -1804,7 +1917,7 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 			<span class="citerefentry"><span class="refentrytitle">pkcs15-init</span>(1)</span>,
 			<span class="citerefentry"><span class="refentrytitle">pkcs15-tool</span>(1)</span>
 		</p></div><div class="refsect1"><a name="id-1.18.7"></a><h2>Authors</h2><p><span class="command"><strong>pkcs15-crypt</strong></span> was written by
-		Juha Yrjölä <code class="email">&lt;<a class="email" href="mailto:juha.yrjola@iki.fi">juha.yrjola@iki.fi</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="pkcs15-init"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>pkcs15-init &#8212; smart card personalization utility</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">pkcs15-init</code>  [<em class="replaceable"><code>OPTIONS</code></em>]</p></div></div><div class="refsect1"><a name="id-1.19.5"></a><h2>Description</h2><p>
+		Juha Yrjölä <code class="email">&lt;<a class="email" href="mailto:juha.yrjola@iki.fi">juha.yrjola@iki.fi</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="pkcs15-init"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>pkcs15-init — smart card personalization utility</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">pkcs15-init</code>  [<em class="replaceable"><code>OPTIONS</code></em>]</p></div></div><div class="refsect1"><a name="id-1.19.5"></a><h2>Description</h2><p>
 			The <span class="command"><strong>pkcs15-init</strong></span> utility can be used to create a PKCS #15
 			structure on a smart card, and add key or certificate objects. Details of the
 			structure that will be created are controlled via profiles.
@@ -1871,7 +1984,7 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 				<span class="command"><strong>pkcs15-init</strong></span> lets you generate a new key and store it on the card.
 				You can do this using:
 			</p><p>
-				<span class="command"><strong>pkcs15-init --generate-key " keyspec " --auth-id " nn</strong></span>
+				<span class="command"><strong>pkcs15-init --generate-key "keyspec" --auth-id "nn"</strong></span>
 			</p><p>
 				where <em class="replaceable"><code>keyspec</code></em> describes the algorithm and the parameters
 				of the key to be created. For example, <code class="literal">rsa:2048</code> generates a RSA key
@@ -2153,8 +2266,7 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 							Tells <span class="command"><strong>pkcs15-init</strong></span> to not ask for the transport
 							keys and use default keys, as known by the card driver.
 						</p></dd><dt><span class="term">
-						<code class="option">--sanity-check</code>,
-						<code class="option">-T</code>
+						<code class="option">--sanity-check</code>
 					</span></dt><dd><p>
 							Tells <span class="command"><strong>pkcs15-init</strong></span> to perform a
 							card specific sanity check and possibly update
@@ -2180,9 +2292,18 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 							wait for a card insertion.</p></dd><dt><span class="term">
 						<code class="option">--use-pinpad</code>
 					</span></dt><dd><p>Do not prompt the user; if no PINs supplied, pinpad will be used.</p></dd><dt><span class="term">
+						<code class="option">--auth-id</code> <em class="replaceable"><code>filename</code></em>,
+						<code class="option">-a</code> <em class="replaceable"><code>filename</code></em>
+					</span></dt><dd><p>
+							Specify ID of PIN to use/create
+						</p></dd><dt><span class="term">
 						<code class="option">--puk-id</code> <em class="replaceable"><code>ID</code></em>
 					</span></dt><dd><p>
 							Specify ID of PUK to use/create
+						</p></dd><dt><span class="term">
+						<code class="option">--label</code> <em class="replaceable"><code>LABEL</code></em>
+					</span></dt><dd><p>
+							Specify label for a PIN, key, certificate or data object when creating a new objects. When deleting objects, this can be used to delete object by label.
 						</p></dd><dt><span class="term">
 						<code class="option">--puk-label</code> <em class="replaceable"><code>LABEL</code></em>
 					</span></dt><dd><p>
@@ -2283,7 +2404,7 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 		</p></div><div class="refsect1"><a name="id-1.19.9"></a><h2>See also</h2><p>
 			<span class="citerefentry"><span class="refentrytitle">pkcs15-profile</span>(5)</span>
 		</p></div><div class="refsect1"><a name="id-1.19.10"></a><h2>Authors</h2><p><span class="command"><strong>pkcs15-init</strong></span> was written by
-		Olaf Kirch <code class="email">&lt;<a class="email" href="mailto:okir@suse.de">okir@suse.de</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="pkcs15-tool"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>pkcs15-tool &#8212; utility for manipulating PKCS #15 data structures
+		Olaf Kirch <code class="email">&lt;<a class="email" href="mailto:okir@suse.de">okir@suse.de</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="pkcs15-tool"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>pkcs15-tool — utility for manipulating PKCS #15 data structures
 		on smart cards and similar security tokens</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">pkcs15-tool</code>  [<em class="replaceable"><code>OPTIONS</code></em>]</p></div></div><div class="refsect1"><a name="id-1.20.4"></a><h2>Description</h2><p>
 			The <span class="command"><strong>pkcs15-tool</strong></span> utility is used to manipulate
 			the PKCS #15 data structures on smart cards and similar security
@@ -2292,7 +2413,7 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 			operations that require it.
 		</p></div><div class="refsect1"><a name="id-1.20.5"></a><h2>Options</h2><p>
 			</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
-                                                <code class="option">--version</code>,
+                                                <code class="option">--version</code>
                                         </span></dt><dd><p>Print the OpenSC package release version.</p></dd><dt><span class="term">
 						<code class="option">--aid</code> <em class="replaceable"><code>aid</code></em>
 					</span></dt><dd><p>Specify in a hexadecimal form the AID of the on-card PKCS#15
@@ -2342,16 +2463,11 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 						<code class="option">--list-public-keys</code>
 					</span></dt><dd><p>List all public keys stored on the token, including
 					key name, id, algorithm and length information.</p></dd><dt><span class="term">
-						<code class="option">--short</code>
+						<code class="option">--short</code>,
 						<code class="option">-s</code>
 					</span></dt><dd><p>Output lists in compact format.</p></dd><dt><span class="term">
 						<code class="option">--no-cache</code>
 					</span></dt><dd><p>Disables token data caching.</p></dd><dt><span class="term">
-						<code class="option">--clear-cache</code>
-					</span></dt><dd><p>Removes the user's cache directory. On
-					Windows, this option additionally removes the system's
-					caching directory (requires administrator
-					privileges).</p></dd><dt><span class="term">
 						<code class="option">--clear-cache</code>
 					</span></dt><dd><p>Removes the user's cache directory. On
 					Windows, this option additionally removes the system's
@@ -2371,7 +2487,7 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 					always be in raw binary.</p></dd><dt><span class="term">
 						<code class="option">--read-certificate</code> <em class="replaceable"><code>cert</code></em>
 					</span></dt><dd><p>Reads the certificate with the given id.</p></dd><dt><span class="term">
-						<code class="option">--read-data-object</code> <em class="replaceable"><code>cert</code></em>,
+						<code class="option">--read-data-object</code> <em class="replaceable"><code>data</code></em>,
 						<code class="option">-R</code> <em class="replaceable"><code>data</code></em>
 					</span></dt><dd><p>Reads data object with OID, applicationName or label.
 					The content is printed to standard output in hex notation, unless
@@ -2391,10 +2507,10 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 						</span></dt><dd><p>When used in conjunction with option <code class="option">--read-ssh-key</code> the
 						output format of the public key follows rfc4716.</p></dd><p></p><p> The default output format is a single line (openssh).</p></dd><dt><span class="term">
 						<code class="option">--test-update</code>,
-						<code class="option">-T</code>,
+						<code class="option">-T</code>
 					</span></dt><dd><p>Test if the card needs a security update</p></dd><dt><span class="term">
 						<code class="option">--update</code>,
-						<code class="option">-U</code>,
+						<code class="option">-U</code>
 					</span></dt><dd><p>Update the card with a security update</p></dd><dt><span class="term">
 						<code class="option">--reader</code> <em class="replaceable"><code>arg</code></em>
 					</span></dt><dd><p>
@@ -2413,7 +2529,7 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 					verbose. Specify this flag several times to enable debug output
 					in the OpenSC library.</p></dd><dt><span class="term">
 						<code class="option">--pin</code> <em class="replaceable"><code>pin</code></em>,
-						<code class="option">--new-pin</code> <em class="replaceable"><code>newpin</code></em>
+						<code class="option">--new-pin</code> <em class="replaceable"><code>newpin</code></em>,
 						<code class="option">--puk</code> <em class="replaceable"><code>puk</code></em>
 					</span></dt><dd><p>
 							These options can be used to specify the PIN/PUK values
@@ -2447,7 +2563,7 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 			<span class="citerefentry"><span class="refentrytitle">pkcs15-init</span>(1)</span>,
 			<span class="citerefentry"><span class="refentrytitle">pkcs15-crypt</span>(1)</span>
 		</p></div><div class="refsect1"><a name="id-1.20.7"></a><h2>Authors</h2><p><span class="command"><strong>pkcs15-tool</strong></span> was written by
-		Juha Yrjölä <code class="email">&lt;<a class="email" href="mailto:juha.yrjola@iki.fi">juha.yrjola@iki.fi</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="sc-hsm-tool"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>sc-hsm-tool &#8212; smart card utility for SmartCard-HSM</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">sc-hsm-tool</code>  [<em class="replaceable"><code>OPTIONS</code></em>]</p></div></div><div class="refsect1"><a name="id-1.21.4"></a><p>
+		Juha Yrjölä <code class="email">&lt;<a class="email" href="mailto:juha.yrjola@iki.fi">juha.yrjola@iki.fi</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="sc-hsm-tool"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>sc-hsm-tool — smart card utility for SmartCard-HSM</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">sc-hsm-tool</code>  [<em class="replaceable"><code>OPTIONS</code></em>]</p></div></div><div class="refsect1"><a name="id-1.21.4"></a><p>
 			The <span class="command"><strong>sc-hsm-tool</strong></span> utility can be used from the command line to perform
 			extended maintenance tasks not available via PKCS#11 or other tools in the OpenSC package.
 			It can be used to query the status of a SmartCard-HSM, initialize a device, generate and import
@@ -2457,7 +2573,7 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 						<code class="option">--initialize</code>,
 						<code class="option">-X</code>
 					</span></dt><dd><p>Initialize token, removing all existing keys, certificates and files.</p><p>Use <code class="option">--so-pin</code> to define SO-PIN for first initialization or to verify in subsequent
-					          initializations.</p><p>Use <code class="option">--pin</code> to define the initial user pin value.</p><p>Use <code class="option">--pin-retry</code> to define the maximum number of wrong user PIN presentations.</p><p>Use with <code class="option">--dkek-shares</code> to enable key wrap / unwrap.</p><p>Use with <code class="option">--label</code> to define a token label</p></dd><dt><span class="term">
+					          initializations.</p><p>Use <code class="option">--pin</code> to define the initial user pin value.</p><p>Use <code class="option">--pin-retry</code> to define the maximum number of wrong user PIN presentations.</p><p>Use with <code class="option">--dkek-shares</code> to enable key wrap / unwrap.</p><p>Use with <code class="option">--label</code> to define a token label</p><p>Use with <code class="option">--public-key-auth</code> and <code class="option">--required-pub-keys</code> to require public key authentication for login</p></dd><dt><span class="term">
 						<code class="option">--create-dkek-share</code> <em class="replaceable"><code>filename</code></em>,
 						<code class="option">-C</code> <em class="replaceable"><code>filename</code></em>
 					</span></dt><dd><p>Create a DKEK share encrypted under a password and save it to the file
@@ -2525,6 +2641,38 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 							<em class="replaceable"><code>arg</code></em> is an ATR, the
 							reader with a matching card will be chosen.
 						</p></dd><dt><span class="term">
+						<code class="option">--public-key-auth</code> <em class="replaceable"><code>total-number-of-public-keys</code></em>,
+						<code class="option">-K</code> <em class="replaceable"><code>total-number-of-public-keys</code></em>
+					</span></dt><dd><p>Define the total number of public keys to use for public key authentication when using <code class="option">--initialize</code>.
+							  <code class="option">--public-key-auth</code> is optional, but if it's present, it must be used with <code class="option">--required-pub-keys</code>.
+						</p><p>When the SmartCard-HSM is initialized with these options, it will require M-of-N public key authentication to be used, where
+							<code class="option">--required-pub-keys</code> sets the M and <code class="option">--public-key-auth</code> sets the N. After the initialization,
+							the user should use <code class="option">--register-public-key</code> to register the N public keys before the SmartCard-HSM can be used.
+						</p></dd><dt><span class="term">
+						<code class="option">--required-pub-keys</code> <em class="replaceable"><code>required-number-of-public-keys</code></em>,
+						<code class="option">-n</code> <em class="replaceable"><code>required-number-of-public-keys</code></em>
+					</span></dt><dd><p>Define the required number of public keys to use for public key authentication when using <code class="option">--initialize</code>.
+							  This is the M in M-of-N public key authentication. See <code class="option">--public-key-auth</code> for more information.
+						</p></dd><dt><span class="term">
+						<code class="option">--register-public-key</code> <em class="replaceable"><code>input-public-key-file</code></em>,
+						<code class="option">-g</code> <em class="replaceable"><code>input-public-key-file</code></em>
+					</span></dt><dd><p>Register a public key to be used for M-of-N public key authentication. The file can be exported from
+							  a different SmartCard-HSM with <code class="option">--export-for-pub-key-auth</code>. This can only be used when the
+							  SmartCard-HSM has been initialized with <code class="option">--public-key-auth</code> and <code class="option">--required-pub-keys</code>
+							  and fewer than N public keys have been registered. Use <code class="option">--public-key-auth-status</code> to check the
+							  how many public keys have been registered.
+						</p></dd><dt><span class="term">
+						<code class="option">--export-for-pub-key-auth</code> <em class="replaceable"><code>output-public-key-file</code></em>,
+						<code class="option">-e</code> <em class="replaceable"><code>output-public-key-file</code></em>
+					</span></dt><dd><p>Export a public key to be used for M-of-N public key authentication. This should be used with
+							  <code class="option">--key-reference</code> to choose the key to export. The file should be registered on
+							  another SmartCard-HSM using <code class="option">--register-public-key</code>.
+						</p></dd><dt><span class="term">
+						<code class="option">--public-key-auth-status</code>
+						<code class="option">-S</code>
+					</span></dt><dd><p>Print the public key authentication status. This is only valid if the SmartCard-HSM was initialized
+							  to use M-of-N public key authentication.
+						</p></dd><dt><span class="term">
 						<code class="option">--wait</code>,
 						<code class="option">-w</code>
 					</span></dt><dd><p>Wait for a card to be inserted</p></dd><dt><span class="term">
@@ -2533,10 +2681,10 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 					</span></dt><dd><p>Causes <span class="command"><strong>sc-hsm-tool</strong></span> to be more verbose.
 					Specify this flag several times to enable debug output in the opensc
 					library.</p></dd></dl></div><p>
-		</p></div><div class="refsect1"><a name="id-1.21.6"></a><h2>Examples</h2><p>Create a DKEK share:</p><p><span class="command"><strong>sc-hsm-tool --create-dkek-share dkek-share-1.pbe</strong></span></p><p>Create a DKEK share with random password split up using a (3, 5) threshold scheme:</p><p><span class="command"><strong>sc-hsm-tool --create-dkek-share dkek-share-1.pbe --pwd-shares-threshold 3 --pwd-shares-total 5</strong></span></p><p>Initialize SmartCard-HSM to use a single DKEK share:</p><p><span class="command"><strong>sc-hsm-tool --initialize --so-pin 3537363231383830 --pin 648219 --dkek-shares 1 --label mytoken</strong></span></p><p>Import DKEK share:</p><p><span class="command"><strong>sc-hsm-tool --import-dkek-share dkek-share-1.pbe</strong></span></p><p>Import DKEK share using a password split up using a (3, 5) threshold scheme for encryption:</p><p><span class="command"><strong>sc-hsm-tool --import-dkek-share dkek-share-1.pbe  --pwd-shares-total 3</strong></span></p><p>Wrap referenced key, description and certificate:</p><p><span class="command"><strong>sc-hsm-tool --wrap-key wrap-key.bin --key-reference 1 --pin 648219</strong></span></p><p>Unwrap key into same or in different SmartCard-HSM with the same DKEK:</p><p><span class="command"><strong>sc-hsm-tool --unwrap-key wrap-key.bin --key-reference 10 --pin 648219 --force</strong></span></p></div><div class="refsect1"><a name="id-1.21.7"></a><h2>See also</h2><p>
+		</p></div><div class="refsect1"><a name="id-1.21.6"></a><h2>Examples</h2><p>Create a DKEK share:</p><p><span class="command"><strong>sc-hsm-tool --create-dkek-share dkek-share-1.pbe</strong></span></p><p>Create a DKEK share with random password split up using a (3, 5) threshold scheme:</p><p><span class="command"><strong>sc-hsm-tool --create-dkek-share dkek-share-1.pbe --pwd-shares-threshold 3 --pwd-shares-total 5</strong></span></p><p>Initialize SmartCard-HSM to use a single DKEK share:</p><p><span class="command"><strong>sc-hsm-tool --initialize --so-pin 3537363231383830 --pin 648219 --dkek-shares 1 --label mytoken</strong></span></p><p>Import DKEK share:</p><p><span class="command"><strong>sc-hsm-tool --import-dkek-share dkek-share-1.pbe</strong></span></p><p>Import DKEK share using a password split up using a (3, 5) threshold scheme for encryption:</p><p><span class="command"><strong>sc-hsm-tool --import-dkek-share dkek-share-1.pbe  --pwd-shares-total 3</strong></span></p><p>Wrap referenced key, description and certificate:</p><p><span class="command"><strong>sc-hsm-tool --wrap-key wrap-key.bin --key-reference 1 --pin 648219</strong></span></p><p>Unwrap key into same or in different SmartCard-HSM with the same DKEK:</p><p><span class="command"><strong>sc-hsm-tool --unwrap-key wrap-key.bin --key-reference 10 --pin 648219 --force</strong></span></p><p>Initialize SmartCard-HSM to use M-of-N public key authentication with M=2 and N=5</p><p><span class="command"><strong>sc-hsm-tool --initialize --required-pub-keys 2 --public-key-auth 5</strong></span></p><p>Export a public key for M-of-N public key authentication to a file</p><p><span class="command"><strong>sc-hsm-tool --key-reference 1 --export-for-pub-key-auth ./public_key1.asn1</strong></span></p><p>Register a public key for M-of-N public key authentication from a file</p><p><span class="command"><strong>sc-hsm-tool --register-public-key ./public_key1.asn1</strong></span></p></div><div class="refsect1"><a name="id-1.21.7"></a><h2>See also</h2><p>
 			<span class="citerefentry"><span class="refentrytitle">opensc-tool</span>(1)</span>
 		</p></div><div class="refsect1"><a name="id-1.21.8"></a><h2>Authors</h2><p><span class="command"><strong>sc-hsm-tool</strong></span> was written by
-		Andreas Schwier <code class="email">&lt;<a class="email" href="mailto:andreas.schwier@cardcontact.de">andreas.schwier@cardcontact.de</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="westcos-tool"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>westcos-tool &#8212; utility for manipulating data structures
+		Andreas Schwier <code class="email">&lt;<a class="email" href="mailto:andreas.schwier@cardcontact.de">andreas.schwier@cardcontact.de</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="westcos-tool"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>westcos-tool — utility for manipulating data structures
 			on westcos smart cards</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">westcos-tool</code>  [<em class="replaceable"><code>OPTIONS</code></em>]</p></div></div><div class="refsect1"><a name="id-1.22.4"></a><h2>Description</h2><p>
 			The <span class="command"><strong>westcos-tool</strong></span> utility is used to manipulate
 			the westcos data structures on 2 Ko smart cards / tokens. Users can create PINs,
@@ -2565,7 +2713,7 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 					</span></dt><dd><p>Generate a private key on the card. The card must not have
 					been finalized and a PIN must be installed (i.e. the file for the PIN must
 					have been created, see option <code class="option">-i</code>).
-					By default the key length is 1536 bits. User authentication is required for
+					By default the key length is 2048 bits. User authentication is required for
 					this operation. </p></dd><dt><span class="term">
 						<code class="option">--help</code>,
 						<code class="option">-h</code>

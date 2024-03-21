@@ -56,22 +56,9 @@ enum {
 	SC_CARD_TYPE_FLEX_MULTI,
 	SC_CARD_TYPE_FLEX_CYBER,
 
-	/* gpk driver */
-	SC_CARD_TYPE_GPK_BASE = 3000,
-	SC_CARD_TYPE_GPK_GENERIC,
-	SC_CARD_TYPE_GPK_GPK4000_su256 = 3040,
-	SC_CARD_TYPE_GPK_GPK4000_s,
-	SC_CARD_TYPE_GPK_GPK4000_sp,
-	SC_CARD_TYPE_GPK_GPK4000_sdo,
-	SC_CARD_TYPE_GPK_GPK8000 = 3080,
-	SC_CARD_TYPE_GPK_GPK8000_8K,
-	SC_CARD_TYPE_GPK_GPK8000_16K,
-	SC_CARD_TYPE_GPK_GPK16000 = 3160,
-
 	/* mcrd driver */
 	SC_CARD_TYPE_MCRD_BASE = 5000,
 	SC_CARD_TYPE_MCRD_GENERIC,
-	SC_CARD_TYPE_MCRD_ESTEID_V30,
 
 	/* setcos driver */
 	SC_CARD_TYPE_SETCOS_BASE = 6000,
@@ -120,10 +107,6 @@ enum {
 	SC_CARD_TYPE_BELPIC_GENERIC,
 	SC_CARD_TYPE_BELPIC_EID,
 
-	/* incrypto34 driver */
-	SC_CARD_TYPE_INCRYPTO34_BASE = 13000,
-	SC_CARD_TYPE_INCRYPTO34_GENERIC,
-
 	/* PIV-II type cards */
 	SC_CARD_TYPE_PIV_II_BASE = 14000,
 	SC_CARD_TYPE_PIV_II_GENERIC,
@@ -153,10 +136,6 @@ enum {
 	SC_CARD_TYPE_ASEPCOS_BASE = 17000,
 	SC_CARD_TYPE_ASEPCOS_GENERIC,
 	SC_CARD_TYPE_ASEPCOS_JAVA,
-
-	/* TUBITAK UEKAE cards */
-	SC_CARD_TYPE_AKIS_BASE = 18000,
-	SC_CARD_TYPE_AKIS_GENERIC,
 
 	/* EnterSafe cards */
 	SC_CARD_TYPE_ENTERSAFE_BASE = 19000,
@@ -251,8 +230,7 @@ enum {
 	SC_CARD_TYPE_NPA_ONLINE,
 
 	/* EstEID cards */
-	SC_CARD_TYPE_ESTEID = 35000,
-	SC_CARD_TYPE_ESTEID_2018,
+	SC_CARD_TYPE_ESTEID_2018 = 35000,
 
 	/* Rutoken cards */
 	SC_CARD_TYPE_RUTOKENS = 36000,
@@ -282,14 +260,20 @@ enum {
 
 	/* eOI cards */
 	SC_CARD_TYPE_EOI = 41000,
-	SC_CARD_TYPE_EOI_CONTACTLESS
+	SC_CARD_TYPE_EOI_CONTACTLESS,
+
+	/* D-Trust Signature cards */
+	SC_CARD_TYPE_DTRUST_V4_1_STD = 42000,
+	SC_CARD_TYPE_DTRUST_V4_1_MULTI,
+	SC_CARD_TYPE_DTRUST_V4_1_M100,
+	SC_CARD_TYPE_DTRUST_V4_4_STD,
+	SC_CARD_TYPE_DTRUST_V4_4_MULTI,
 };
 
 extern sc_card_driver_t *sc_get_default_driver(void);
 extern sc_card_driver_t *sc_get_cardos_driver(void);
 extern sc_card_driver_t *sc_get_cryptoflex_driver(void);
 extern sc_card_driver_t *sc_get_cyberflex_driver(void);
-extern sc_card_driver_t *sc_get_gpk_driver(void);
 extern sc_card_driver_t *sc_get_gemsafeV1_driver(void);
 extern sc_card_driver_t *sc_get_mcrd_driver(void);
 extern sc_card_driver_t *sc_get_setcos_driver(void);
@@ -299,15 +283,12 @@ extern sc_card_driver_t *sc_get_openpgp_driver(void);
 extern sc_card_driver_t *sc_get_oberthur_driver(void);
 extern sc_card_driver_t *sc_get_belpic_driver(void);
 extern sc_card_driver_t *sc_get_atrust_acos_driver(void);
-extern sc_card_driver_t *sc_get_incrypto34_driver(void);
 extern sc_card_driver_t *sc_get_piv_driver(void);
 extern sc_card_driver_t *sc_get_muscle_driver(void);
 extern sc_card_driver_t *sc_get_asepcos_driver(void);
-extern sc_card_driver_t *sc_get_akis_driver(void);
 extern sc_card_driver_t *sc_get_entersafe_driver(void);
 extern sc_card_driver_t *sc_get_rutoken_driver(void);
 extern sc_card_driver_t *sc_get_rtecp_driver(void);
-extern sc_card_driver_t *sc_get_westcos_driver(void);
 extern sc_card_driver_t *sc_get_myeid_driver(void);
 extern sc_card_driver_t *sc_get_sc_hsm_driver(void);
 extern sc_card_driver_t *sc_get_itacns_driver(void);
@@ -329,6 +310,7 @@ extern sc_card_driver_t *sc_get_edo_driver(void);
 extern sc_card_driver_t *sc_get_nqApplet_driver(void);
 extern sc_card_driver_t *sc_get_skeid_driver(void);
 extern sc_card_driver_t *sc_get_eoi_driver(void);
+extern sc_card_driver_t *sc_get_dtrust_driver(void);
 
 #ifdef __cplusplus
 }

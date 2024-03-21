@@ -38,7 +38,6 @@
 
 #ifdef ENABLE_OPENSSL
 #include <openssl/bio.h>
-#include <openssl/crypto.h>
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 #endif
@@ -185,7 +184,7 @@ sc_oberthur_get_friends (unsigned int id, struct crypto_container *ccont)
 
 
 static int
-sc_oberthur_get_certificate_authority(struct sc_pkcs15_der *der, int *out_authority)
+sc_oberthur_get_certificate_authority(sc_context_t *ctx, struct sc_pkcs15_der *der, int *out_authority)
 {
 #ifdef ENABLE_OPENSSL
 	X509	*x;
@@ -206,6 +205,7 @@ sc_oberthur_get_certificate_authority(struct sc_pkcs15_der *der, int *out_author
 	bio = BIO_new(BIO_s_mem());
 	if (!bio) {
 		free(buf_mem.data);
+		sc_log_openssl(ctx);
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
 
@@ -213,8 +213,10 @@ sc_oberthur_get_certificate_authority(struct sc_pkcs15_der *der, int *out_author
 	x = d2i_X509_bio(bio, 0);
 	free(buf_mem.data);
 	BIO_free(bio);
-	if (!x)
+	if (!x) {
+		sc_log_openssl(ctx);
 		return SC_ERROR_INVALID_DATA;
+	}
 
 	bs = (BASIC_CONSTRAINTS *)X509_get_ext_d2i(x, NID_basic_constraints, NULL, NULL);
 	if (out_authority)
@@ -262,7 +264,7 @@ sc_oberthur_read_file(struct sc_pkcs15_card *p15card, const char *in_path,
 	else
 		sz = (file->record_length + 2) * file->record_count;
 
-	*out = calloc(sz, 1);
+	*out = calloc(1, sz);
 	if (*out == NULL) {
 		sc_file_free(file);
 		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot read oberthur file");
@@ -272,7 +274,7 @@ sc_oberthur_read_file(struct sc_pkcs15_card *p15card, const char *in_path,
 		rv = sc_read_binary(card, 0, *out, sz, 0);
 	}
 	else	{
-		size_t rec;
+		unsigned int rec;
 		size_t offs = 0;
 		size_t rec_len = file->record_length;
 
@@ -419,7 +421,7 @@ sc_oberthur_parse_containers (struct sc_pkcs15_card *p15card,
 		if (*(buff + offs) != 'R')
 			return SC_ERROR_INVALID_DATA;
 
-		cont = (struct container *)calloc(sizeof(struct container), 1);
+		cont = (struct container *)calloc(1, sizeof(struct container));
 		if (!cont)
 			return SC_ERROR_OUT_OF_MEMORY;
 
@@ -732,7 +734,7 @@ sc_pkcs15emu_oberthur_add_cert(struct sc_pkcs15_card *p15card, unsigned int file
 	cinfo.value.value = cert_blob;
 	cinfo.value.len = cert_len;
 
-	rv = sc_oberthur_get_certificate_authority(&cinfo.value, &cinfo.authority);
+	rv = sc_oberthur_get_certificate_authority(ctx, &cinfo.value, &cinfo.authority);
 	if (rv != SC_SUCCESS) {
 		free(cinfo.value.value);
 		LOG_TEST_RET(ctx, rv, "Failed to add certificate: get certificate attributes error");

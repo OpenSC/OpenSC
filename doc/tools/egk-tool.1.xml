@@ -70,24 +70,24 @@
 		</para>
 
 		<refsect2>
-			<title>Health Care Application (<abbrev>HCA</abbrev>)</title>
+			<title>'Gesundheitsanwendung', Health Care Application (<abbrev>HCA</abbrev>)</title>
 			<variablelist>
 				<varlistentry>
 					<term><option>--pd</option></term>
 					<listitem><para>
-						Show 'Persönliche Versicherungsdaten' (XML).
+						Show 'Persönliche Versichertendaten' (XML).
 					</para></listitem>
 				</varlistentry>
 				<varlistentry>
 					<term><option>--vd</option></term>
 					<listitem><para>
-						Show 'Allgemeine Versicherungsdaten' (XML).
+						Show 'Allgemeine Versichertendaten' (XML).
 					</para></listitem>
 				</varlistentry>
 				<varlistentry>
 					<term><option>--gvd</option></term>
 					<listitem><para>
-						Show 'Geschützte Versicherungsdaten' (XML).
+						Show 'Geschützte Versichertendaten' (XML).
 					</para></listitem>
 				</varlistentry>
 				<varlistentry>

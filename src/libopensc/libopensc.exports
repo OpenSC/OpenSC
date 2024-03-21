@@ -92,6 +92,7 @@ sc_disconnect_card
 sc_do_log
 sc_do_log_color
 sc_do_log_noframe
+sc_do_log_openssl
 _sc_debug
 _sc_debug_hex
 sc_enum_apps
@@ -184,6 +185,7 @@ sc_pkcs15_encode_tokeninfo
 sc_pkcs15_encode_unusedspace
 sc_pkcs15_encrypt_sym
 sc_pkcs15_erase_pubkey
+sc_pkcs15_erase_prkey
 sc_pkcs15_decrypt_sym
 sc_pkcs15_dup_pubkey
 sc_pkcs15_find_cert_by_id
@@ -214,6 +216,7 @@ sc_pkcs15_free_prkey_info
 sc_pkcs15_free_pubkey
 sc_pkcs15_free_pubkey_info
 sc_pkcs15_free_tokeninfo
+sc_pkcs15_free_skey_info
 sc_pkcs15_get_application_by_type
 sc_pkcs15_get_name_from_dn
 sc_pkcs15_get_object_guid
@@ -302,9 +305,7 @@ sc_pkcs15init_get_asepcos_ops
 sc_pkcs15init_get_cardos_ops
 sc_pkcs15init_get_cryptoflex_ops
 sc_pkcs15init_get_cyberflex_ops
-sc_pkcs15init_get_gpk_ops
 sc_pkcs15init_get_gids_ops
-sc_pkcs15init_get_incrypto34_ops
 sc_pkcs15init_get_manufacturer
 sc_pkcs15init_get_muscle_ops
 sc_pkcs15init_get_oberthur_ops
@@ -361,6 +362,7 @@ _sc_card_add_rsa_alg
 _sc_match_atr
 _sc_match_atr_block
 _sc_log
+_sc_log_openssl
 eac_secret_name
 get_pace_capabilities
 perform_pace

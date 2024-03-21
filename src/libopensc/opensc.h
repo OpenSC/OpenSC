@@ -109,13 +109,15 @@ extern "C" {
  * must support at least one of them, and exactly one of them must be selected
  * for a given operation. */
 #define SC_ALGORITHM_RSA_RAW		0x00000001
-#define SC_ALGORITHM_RSA_PADS		0x0000003F
+#define SC_ALGORITHM_RSA_PADS		0x000000FF
 #define SC_ALGORITHM_RSA_PAD_NONE	0x00000001
-#define SC_ALGORITHM_RSA_PAD_PKCS1	0x00000002 /* PKCS#1 v1.5 padding */
 #define SC_ALGORITHM_RSA_PAD_ANSI	0x00000004
 #define SC_ALGORITHM_RSA_PAD_ISO9796	0x00000008
 #define SC_ALGORITHM_RSA_PAD_PSS	0x00000010 /* PKCS#1 v2.0 PSS */
 #define SC_ALGORITHM_RSA_PAD_OAEP	0x00000020 /* PKCS#1 v2.0 OAEP */
+#define SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01	0x00000040 /* PKCS#1 v1.5 padding type 1 */
+#define SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_02	0x00000080 /* PKCS#1 v1.5 padding type 2 */
+#define SC_ALGORITHM_RSA_PAD_PKCS1	(SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01 | SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_02) /* PKCS#1 v1.5 (type 1 or 2) */
 
 /* If the card is willing to produce a cryptogram with the following
  * hash values, set these flags accordingly.  The interpretation of the hash
@@ -238,16 +240,16 @@ struct sc_supported_algo_info {
 typedef struct sc_sec_env_param {
 	unsigned int param_type;
 	void* value;
-	unsigned int value_len;
+	size_t value_len;
 } sc_sec_env_param_t;
 
 
 typedef struct sc_security_env {
 	unsigned long flags;
 	int operation;
-	unsigned int algorithm, algorithm_flags;
+	unsigned long algorithm, algorithm_flags;
 
-	unsigned int algorithm_ref;
+	unsigned long algorithm_ref;
 	struct sc_path file_ref;
 	unsigned char key_ref[8];
 	size_t key_ref_len;
@@ -259,7 +261,7 @@ typedef struct sc_security_env {
 } sc_security_env_t;
 
 struct sc_algorithm_id {
-	unsigned int algorithm;
+	unsigned long algorithm;
 	struct sc_object_id oid;
 	void *params;
 };
@@ -298,15 +300,15 @@ struct sc_ec_parameters {
 
 typedef struct sc_algorithm_info {
 	unsigned int algorithm;
-	unsigned int key_length;
-	unsigned int flags;
+	size_t key_length;
+	unsigned long flags;
 
 	union {
 		struct sc_rsa_info {
 			unsigned long exponent;
 		} _rsa;
 		struct sc_ec_info {
-			unsigned ext_flags;
+			unsigned long ext_flags;
 			struct sc_ec_parameters params;
 		} _ec;
 	} u;
@@ -444,7 +446,7 @@ struct sc_pin_cmd_pin {
 	const char *prompt;	/* Prompt to display */
 
 	const unsigned char *data; /* PIN, set to NULL when using pin pad */
-	int len;		/* set to 0 when using pin pad */
+	size_t len;		/* set to 0 when using pin pad */
 
 	size_t min_length;	/* min length of PIN */
 	size_t max_length;	/* max length of PIN */
@@ -897,6 +899,7 @@ typedef struct sc_context {
 #endif
 
 	unsigned int magic;
+	int disable_hw_pkcs1_padding;
 } sc_context_t;
 
 /* APDU handling functions */
@@ -1374,8 +1377,8 @@ int sc_decipher(struct sc_card *card, const u8 * crgram, size_t crgram_len,
 		u8 * out, size_t outlen);
 int sc_compute_signature(struct sc_card *card, const u8 * data,
 			 size_t data_len, u8 * out, size_t outlen);
-int sc_verify(struct sc_card *card, unsigned int type, int ref, const u8 *buf,
-	      size_t buflen, int *tries_left);
+int sc_verify(struct sc_card *card, unsigned int type, int ref, const u8 *pin,
+		size_t pinlen, int *tries_left);
 /**
  * Resets the security status of the card (i.e. withdraw all granted
  * access rights). Note: not all card operating systems support a logout
@@ -1604,17 +1607,17 @@ void sc_invalidate_cache(struct sc_card *card);
 void sc_print_cache(struct sc_card *card);
 
 struct sc_algorithm_info * sc_card_find_rsa_alg(struct sc_card *card,
-		unsigned int key_length);
+		size_t key_length);
 struct sc_algorithm_info * sc_card_find_ec_alg(struct sc_card *card,
-		unsigned int field_length, struct sc_object_id *curve_oid);
+		size_t field_length, struct sc_object_id *curve_oid);
 struct sc_algorithm_info * sc_card_find_eddsa_alg(struct sc_card *card,
-		unsigned int field_length, struct sc_object_id *curve_oid);
+		size_t field_length, struct sc_object_id *curve_oid);
 struct sc_algorithm_info * sc_card_find_xeddsa_alg(struct sc_card *card,
-		unsigned int field_length, struct sc_object_id *curve_oid);
+		size_t field_length, struct sc_object_id *curve_oid);
 struct sc_algorithm_info * sc_card_find_gostr3410_alg(struct sc_card *card,
-		unsigned int key_length);
+		size_t key_length);
 struct sc_algorithm_info * sc_card_find_alg(sc_card_t *card,
-		unsigned int algorithm, unsigned int key_length, void *param);
+		unsigned int algorithm, size_t key_length, void *param);
 
 scconf_block *sc_match_atr_block(sc_context_t *ctx, struct sc_card_driver *driver, struct sc_atr *atr);
 /**
@@ -1669,7 +1672,7 @@ extern const char *sc_get_version(void);
 
 extern sc_card_driver_t *sc_get_iso7816_driver(void);
 
-/** 
+/**
  * @brief Read a complete EF by short file identifier.
  *
  * @param[in]     card   card
@@ -1736,7 +1739,7 @@ iso7816_build_pin_apdu(struct sc_card *card, struct sc_apdu *apdu,
 /**
  * Free a buffer returned by OpenSC.
  * Use this instead your C libraries free() to free memory allocated by OpenSC.
- * For more details see <https://github.com/OpenSC/OpenSC/issues/2054> 
+ * For more details see <https://github.com/OpenSC/OpenSC/issues/2054>
  *
  * @param[in] p the buffer
  */

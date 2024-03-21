@@ -36,11 +36,15 @@
 #include <time.h>
 
 #include <windows.h>
-#include <Commctrl.h>
+#include <commctrl.h>
+#ifdef __MINGW32__
+#include <mmsystem.h>
+#else
 #include <timeapi.h>
-#include "cardmod.h"
+#endif
 
 #include "common/compat_strlcpy.h"
+#include "common/constant-time.h"
 #include "libopensc/asn1.h"
 #include "libopensc/cardctl.h"
 #include "libopensc/opensc.h"
@@ -85,7 +89,7 @@
 #define MD_FUNC_RETURN(pCardData, level, ...) do { \
 	DWORD _ret = __VA_ARGS__; \
 	logprintf(pCardData, level,\
-		"MD_Function:%s:%d returning with: 0x%08X\n", __FUNCTION__, __LINE__, _ret); \
+		"MD_Function:%s:%d returning with: 0x%08X\n", __FUNCTION__, __LINE__, (unsigned)_ret); \
 	return _ret; \
 	} while(0)
 
@@ -434,8 +438,8 @@ check_card_reader_status(PCARD_DATA pCardData, const char *name)
 	if(!vs)
 		MD_FUNC_RETURN(pCardData, 3, SCARD_E_INVALID_PARAMETER);
 
-	logprintf(pCardData, 7, "sizeof(size_t):%d sizeof(ULONG_PTR):%d sizeof(__int3264):%d sizeof pCardData->hSCardCtx:%d\n",
-		sizeof(size_t), sizeof(ULONG_PTR), sizeof(__int3264), sizeof pCardData->hSCardCtx);
+	logprintf(pCardData, 7, "sizeof(size_t):%u sizeof(ULONG_PTR):%u sizeof(__int3264):%u sizeof pCardData->hSCardCtx:%u\n",
+		(unsigned)sizeof(size_t), (unsigned)sizeof(ULONG_PTR), (unsigned)sizeof(__int3264), (unsigned)sizeof(pCardData->hSCardCtx));
 
 	logprintf(pCardData, 1, "pCardData->hSCardCtx:0x%08"SC_FORMAT_LEN_SIZE_T"X hScard:0x%08"SC_FORMAT_LEN_SIZE_T"X\n",
 		(size_t)pCardData->hSCardCtx,
@@ -619,14 +623,9 @@ md_get_config_str(PCARD_DATA pCardData, enum ui_str id)
 
 	vs = (VENDOR_SPECIFIC*) pCardData->pvVendorSpecific;
 	if (vs->ctx && vs->reader) {
-		const char *preferred_language = NULL;
 		struct sc_atr atr;
 		atr.len = pCardData->cbAtr;
 		memcpy(atr.value, pCardData->pbAtr, atr.len);
-		if (vs->p15card && vs->p15card->tokeninfo
-				&& vs->p15card->tokeninfo->preferred_language) {
-			preferred_language = vs->p15card->tokeninfo->preferred_language;
-		}
 		ret = ui_get_str(vs->ctx, &atr, vs->p15card, id);
 	}
 
@@ -1029,7 +1028,7 @@ md_fs_find_directory(PCARD_DATA pCardData, struct md_directory *parent, char *na
 
 static DWORD
 md_fs_add_directory(PCARD_DATA pCardData, struct md_directory **head, char *name,
-		CARD_FILE_ACCESS_CONDITION acl,
+		CARD_DIRECTORY_ACCESS_CONDITION acl,
 		struct md_directory **out)
 {
 	struct md_directory *new_dir = NULL;
@@ -2190,7 +2189,7 @@ md_fs_init(PCARD_DATA pCardData)
 	if (dwret != SCARD_S_SUCCESS)
 		goto ret_cleanup;
 
-	dwret = md_fs_add_directory(pCardData, &(vs->root.subdirs), "mscp", UserCreateDeleteDirAc, &mscp);
+	dwret = md_fs_add_directory(pCardData, &(vs->root.subdirs), "mscp", (CARD_DIRECTORY_ACCESS_CONDITION)UserCreateDeleteDirAc, &mscp);
 	if (dwret != SCARD_S_SUCCESS)
 		goto ret_cleanup;
 
@@ -3008,7 +3007,6 @@ static HRESULT CALLBACK md_dialog_proc(HWND hWnd, UINT message, WPARAM wParam, L
 					param = GetWindowLongPtr(hWnd, GWLP_USERDATA);
 					if (param) {
 						PCARD_DATA pCardData = (PCARD_DATA)((LONG_PTR*)param)[7];
-						VENDOR_SPECIFIC* vs = (VENDOR_SPECIFIC*) pCardData->pvVendorSpecific;
 
 						int timeout = md_get_pinpad_dlg_timeout(pCardData);
 						if (timeout > 0) {
@@ -3062,7 +3060,6 @@ md_dialog_perform_pin_operation(PCARD_DATA pCardData, int operation, struct sc_p
 {
 	LONG_PTR parameter[12];
 	INT_PTR result = 0;
-	HWND hWndDlg = 0;
 	TASKDIALOGCONFIG tc = {0};
 	int rv = 0;
 	BOOL checked, user_checked;
@@ -4538,13 +4535,15 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 
 {
 	DWORD dwret;
-	int r, opt_crypt_flags = 0;
+	int r, opt_crypt_flags = 0, good = 0;
 	unsigned ui;
 	VENDOR_SPECIFIC *vs;
 	struct sc_pkcs15_prkey_info *prkey_info;
 	BYTE *pbuf = NULL, *pbuf2 = NULL;
 	struct sc_pkcs15_object *pkey = NULL;
 	struct sc_algorithm_info *alg_info = NULL;
+	unsigned int wrong_padding = 0;
+	unsigned int pbufLen = 0;
 
 	MD_FUNC_CALLED(pCardData, 1);
 
@@ -4645,11 +4644,11 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 		goto err;
 	}
 
+	pbufLen = pInfo->cbData;
 	if (alg_info->flags & SC_ALGORITHM_RSA_RAW)   {
 		logprintf(pCardData, 2, "sc_pkcs15_decipher: using RSA-RAW mechanism\n");
-		r = sc_pkcs15_decipher(vs->p15card, pkey, opt_crypt_flags, pbuf, pInfo->cbData, pbuf2, pInfo->cbData, NULL);
-		logprintf(pCardData, 2, "sc_pkcs15_decipher returned %d\n", r);
-
+		r = sc_pkcs15_decipher(vs->p15card, pkey, opt_crypt_flags | SC_ALGORITHM_RSA_RAW, pbuf, pInfo->cbData, pbuf2, pInfo->cbData, NULL);
+		/* do not log return value to not leak it */
 		if (r > 0) {
 			/* Need to handle padding */
 			if (pInfo->dwVersion >= CARD_RSA_KEY_DECRYPT_INFO_VERSION_TWO) {
@@ -4657,17 +4656,13 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 					  "sc_pkcs15_decipher: DECRYPT-INFO dwVersion=%lu\n",
 					  (unsigned long)pInfo->dwVersion);
 				if (pInfo->dwPaddingType == CARD_PADDING_PKCS1)   {
-					size_t temp = pInfo->cbData;
+					unsigned int temp = pInfo->cbData;
 					logprintf(pCardData, 2, "sc_pkcs15_decipher: stripping PKCS1 padding\n");
-					r = sc_pkcs1_strip_02_padding(vs->ctx, pbuf2, pInfo->cbData, pbuf2, &temp);
+					r = sc_pkcs1_strip_02_padding_constant_time(vs->ctx, prkey_info->modulus_length / 8, pbuf2, pInfo->cbData, pbuf2, &temp);
 					pInfo->cbData = (DWORD) temp;
-					if (r < 0)   {
-						logprintf(pCardData, 2, "Cannot strip PKCS1 padding: %i\n", r);
-						pCardData->pfnCspFree(pbuf);
-						pCardData->pfnCspFree(pbuf2);
-						dwret = SCARD_F_INTERNAL_ERROR;
-						goto err;
-					}
+					wrong_padding = constant_time_eq_i(r, SC_ERROR_WRONG_PADDING);
+					/* continue without returning error to not leak that padding is wrong
+					   to prevent time side-channel leak for Marvin attack*/
 				}
 				else if (pInfo->dwPaddingType == CARD_PADDING_OAEP)   {
 					/* TODO: Handle OAEP padding if present - can call PFN_CSP_UNPAD_DATA */
@@ -4680,9 +4675,9 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 			}
 		}
 	}
-	else if (alg_info->flags & SC_ALGORITHM_RSA_PAD_PKCS1)   {
+	else if (alg_info->flags & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_02)   {
 		logprintf(pCardData, 2, "sc_pkcs15_decipher: using RSA_PAD_PKCS1 mechanism\n");
-		r = sc_pkcs15_decipher(vs->p15card, pkey, opt_crypt_flags | SC_ALGORITHM_RSA_PAD_PKCS1,
+		r = sc_pkcs15_decipher(vs->p15card, pkey, opt_crypt_flags | SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_02,
 				pbuf, pInfo->cbData, pbuf2, pInfo->cbData, NULL);
 		logprintf(pCardData, 2, "sc_pkcs15_decipher returned %d\n", r);
 		if (r > 0) {
@@ -4715,28 +4710,38 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 		goto err;
 	}
 
-	if ( r < 0)   {
+	good = constant_time_eq_i(r, 0);
+	/* if no error or padding error, do not return here to prevent Marvin attack */
+	if (!(good | wrong_padding) && r < 0)   {
 		logprintf(pCardData, 2, "sc_pkcs15_decipher error(%i): %s\n", r, sc_strerror(r));
 		pCardData->pfnCspFree(pbuf);
 		pCardData->pfnCspFree(pbuf2);
 		dwret = md_translate_OpenSC_to_Windows_error(r, SCARD_E_INVALID_VALUE);
 		goto err;
 	}
+	dwret = constant_time_select_s(good, SCARD_S_SUCCESS, SCARD_F_INTERNAL_ERROR);
 
 	logprintf(pCardData, 2, "decrypted data(%lu):\n",
 		  (unsigned long)pInfo->cbData);
 	loghex(pCardData, 7, pbuf2, pInfo->cbData);
 
 	/*inversion donnees */
-	for(ui = 0; ui < pInfo->cbData; ui++)
-		pInfo->pbData[ui] = pbuf2[pInfo->cbData-ui-1];
+	/* copy data in constant-time way to prevent leak */
+	for (ui = 0; ui < pbufLen; ui++) {
+		unsigned int mask, msg_index, inv_ui;
+		mask = good & constant_time_lt_s(ui, pInfo->cbData); /* ui should be in the bounds of pbuf2 */
+		inv_ui = pInfo->cbData - ui - 1;
+		msg_index = constant_time_select_s(mask, inv_ui, 0);
+		pInfo->pbData[ui] = constant_time_select_8(mask, pbuf2[msg_index], pInfo->pbData[ui]);
+	}
 
 	pCardData->pfnCspFree(pbuf);
 	pCardData->pfnCspFree(pbuf2);
 
 err:
 	unlock(pCardData);
-	MD_FUNC_RETURN(pCardData, 1, dwret);
+	/* do not log return value to not leak it */
+	return dwret;
 }
 
 
@@ -4747,7 +4752,7 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 	ALG_ID hashAlg;
 	sc_pkcs15_prkey_info_t *prkey_info;
 	BYTE dataToSign[0x200];
-	int opt_crypt_flags;
+	int opt_crypt_flags = 0;
 	size_t dataToSignLen = sizeof(dataToSign);
 	sc_pkcs15_object_t *pkey;
 
@@ -4839,7 +4844,7 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 		 * padding and use the value in aiHashAlg. */
 		logprintf(pCardData, 3, "CARD_PADDING_INFO_PRESENT not set\n");
 
-		opt_crypt_flags = SC_ALGORITHM_RSA_PAD_PKCS1;
+		opt_crypt_flags = SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01; /* turn off later if key is EC */
 		if (hashAlg == CALG_MD5)
 			opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_MD5;
 		else if (hashAlg == CALG_SHA1)
@@ -4866,14 +4871,14 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 				break;
 
 			case CARD_PADDING_PKCS1:
-				opt_crypt_flags = SC_ALGORITHM_RSA_PAD_PKCS1;
+				opt_crypt_flags = SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01;
 				BCRYPT_PKCS1_PADDING_INFO *pkcs1_pinf = (BCRYPT_PKCS1_PADDING_INFO *)pInfo->pPaddingInfo;
 
-				if (!pkcs1_pinf->pszAlgId || wcscmp(pkcs1_pinf->pszAlgId, L"SHAMD5") == 0) {
-					/* hashAlg = CALG_SSL3_SHAMD5; */
-					logprintf(pCardData, 3, "Using CALG_SSL3_SHAMD5  hashAlg\n");
+				if (!pkcs1_pinf->pszAlgId)
+					opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_NONE;
+				else if (wcscmp(pkcs1_pinf->pszAlgId, L"SHAMD5") == 0)
 					opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_MD5_SHA1;
-				} else if (wcscmp(pkcs1_pinf->pszAlgId, BCRYPT_MD5_ALGORITHM) == 0)
+				else if (wcscmp(pkcs1_pinf->pszAlgId, BCRYPT_MD5_ALGORITHM) == 0)
 					opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_MD5;
 				else if (wcscmp(pkcs1_pinf->pszAlgId, BCRYPT_SHA1_ALGORITHM) == 0)
 					opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_SHA1;
@@ -4963,6 +4968,7 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 				dwret = SCARD_E_INVALID_VALUE;
 				goto err;
 		}
+		opt_crypt_flags &= ~SC_ALGORITHM_RSA_PADS; /* EC does not use this */
 	} else {
 		logprintf(pCardData, 0, "invalid private key\n");
 		dwret = SCARD_E_INVALID_VALUE;
@@ -6432,7 +6438,7 @@ DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData,
 		if (dwFlags >= MD_MAX_PINS)
 			MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 
-		if (!vs->pin_objs[dwFlags])
+		if (dwFlags != ROLE_EVERYONE && vs->pin_objs[dwFlags] == NULL)
 			MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 
 		p->PinType = vs->reader->capabilities & SC_READER_CAP_PIN_PAD
@@ -6440,6 +6446,18 @@ DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData,
 			? ExternalPinType : AlphaNumericPinType;
 		p->dwFlags = 0;
 		switch (dwFlags)   {
+			case ROLE_EVERYONE:
+				logprintf(pCardData, 2,
+					"returning info on PIN ROLE_EVERYONE [%lu]\n",
+					(unsigned long)dwFlags);
+				p->PinType = 0;   /* There is no pin, so don't need reader capabilities */
+				p->PinPurpose = 0; /* It can not be PrimaryCardPin */
+				p->PinCachePolicy.dwVersion = PIN_CACHE_POLICY_CURRENT_VERSION;
+				p->PinCachePolicy.PinCachePolicyType = PinCacheNone;
+				p->PinCachePolicy.dwPinCachePolicyInfo = 0;
+				p->dwChangePermission = 0;
+				break;
+
 			case ROLE_ADMIN:
 				logprintf(pCardData, 2,
 					  "returning info on PIN ROLE_ADMIN ( Unblock ) [%lu]\n",
@@ -7224,11 +7242,15 @@ BOOL APIENTRY DllMain( HINSTANCE hinstDLL,
 	{
 	case DLL_PROCESS_ATTACH:
 		g_inst = hinstDLL;
+#ifdef ENABLE_NOTIFY
 		sc_notify_instance = hinstDLL;
 		sc_notify_init();
+#endif
 		break;
 	case DLL_PROCESS_DETACH:
+#ifdef ENABLE_NOTIFY
 		sc_notify_close();
+#endif
 		if (lpReserved == NULL) {
 #if defined(ENABLE_OPENSSL) && defined(OPENSSL_SECURE_MALLOC_SIZE) && !defined(LIBRESSL_VERSION_NUMBER)
 			CRYPTO_secure_malloc_done();

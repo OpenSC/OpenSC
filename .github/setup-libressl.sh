@@ -2,7 +2,7 @@
 
 set -ex -o xtrace
 
-V=libressl-3.7.3
+V=libressl-3.8.1
 
 sudo apt-get remove -y libssl-dev
 

@@ -154,7 +154,7 @@ app <replaceable>application</replaceable> {
 				</term>
 				<listitem><para>
 						PKCS#15 initialization/personalization profiles
-						directory for 
+						directory for
 						<citerefentry>
 							<refentrytitle>pkcs15-init</refentrytitle>
 							<manvolnum>1</manvolnum>.
@@ -329,6 +329,33 @@ app <replaceable>application</replaceable> {
 						For details see <xref linkend="card_atr"/>.
 					</para>
 				</listitem>
+			</varlistentry>
+			<varlistentry>
+				<term>
+					<option>disable_hw_pkcs1_padding = <replaceable>value</replaceable>;</option>
+				</term>
+				<listitem><para>
+						Disabling PKCS#1 v1.5 padding in HW when card supports doing raw RSA operations.
+						Known parameters:
+						<itemizedlist>
+							<listitem><para>
+									<literal>no</literal>: PKCS#1 v1.5 padding is enabled in HW when card supports it.
+							</para></listitem>
+							<listitem><para>
+									<literal>sign</literal>: PKCS#1 v1.5 padding
+								is disabled only for signatures (PKCS#1 v1.5 type 1).
+							</para></listitem>
+							<listitem><para>
+									<literal>decipher</literal>: PKCS#1 v1.5 padding
+								is disabled only for decryption (PKCS#1 v1.5 type 2).
+							</para></listitem>
+							<listitem><para>
+									<literal>both</literal>: PKCS#1 v1.5 padding
+								is disabled both for signatures and decryption (PKCS#1 v1.5 type 1 and 2).
+							</para></listitem>
+						</itemizedlist>
+						(Default: <literal>decipher</literal>).
+				</para></listitem>
 			</varlistentry>
 			<varlistentry>
 				<term>
@@ -673,6 +700,9 @@ app <replaceable>application</replaceable> {
 							card driver will do everything
 							necessary before sending the data
 							(hash code) to the card.
+					</para><para>
+							PKCS#1 v1.5 padding in HW can be globally disabled by option <literal>disable_hw_pkcs1_padding</literal>.
+							When the global option is used to disable padding, the padding will be disabled even though the MyEID-specific option does not turn it off.
 					</para></listitem>
 				</varlistentry>
 
@@ -1210,7 +1240,6 @@ app <replaceable>application</replaceable> {
 							</itemizedlist>
 							(Default: <literal>public</literal>
 							for the following card drivers
-							<literal>akis</literal>,
 							<literal>atrust-acos</literal>,
 							<literal>belpic</literal>,
 							<literal>cac1</literal>,
@@ -1277,8 +1306,8 @@ app <replaceable>application</replaceable> {
 						<para>
                             The PIV-II card driver supports the history object's
                             list of retired keys and certificates if they are
-							readable in the file cache directory. 
-							If the specified object's URL is 
+							readable in the file cache directory.
+							If the specified object's URL is
 							<literal>"http://"</literal><replaceable>DNS name</replaceable><literal>"/"</literal><replaceable>ASCII-HEX OffCardKeyHistoryFile</replaceable>,
 							then the searches for the file name
 							<replaceable>OffCardKeyHistoryFile</replaceable>

@@ -229,7 +229,7 @@ struct sc_pkcs15_prkey_gostr3410 {
 };
 
 struct sc_pkcs15_pubkey {
-	int algorithm;
+	unsigned long algorithm;
 	struct sc_algorithm_id * alg_id;
 
 	/* Decoded key */
@@ -243,7 +243,7 @@ struct sc_pkcs15_pubkey {
 typedef struct sc_pkcs15_pubkey sc_pkcs15_pubkey_t;
 
 struct sc_pkcs15_prkey {
-	unsigned int algorithm;
+	unsigned long algorithm;
 /* TODO do we need:	struct sc_algorithm_id * alg_id; */
 
 	union {
@@ -734,6 +734,7 @@ int sc_pkcs15_pubkey_from_spki_fields(struct sc_context *,
 int sc_pkcs15_encode_prkey(struct sc_context *,
 		struct sc_pkcs15_prkey *, u8 **, size_t *);
 void sc_pkcs15_free_prkey(struct sc_pkcs15_prkey *prkey);
+void sc_pkcs15_erase_prkey(struct sc_pkcs15_prkey *prkey);
 void sc_pkcs15_free_key_params(struct sc_pkcs15_key_params *params);
 
 int sc_pkcs15_read_data_object(struct sc_pkcs15_card *p15card,
@@ -764,7 +765,7 @@ int sc_pkcs15_get_name_from_dn(struct sc_context *ctx,
                               const u8 *dn, size_t dn_len,
                               const struct sc_object_id *type,
                               u8 **name, size_t *name_len);
-int sc_pkcs15_map_usage(unsigned int cert_usage, int algorithm,
+int sc_pkcs15_map_usage(unsigned int cert_usage, unsigned long algorithm,
 			unsigned int *pub_usage_ptr, unsigned int *pr_usage_ptr,
 			int allow_nonrepudiation);
 int sc_pkcs15_get_extension(struct sc_context *ctx,
@@ -921,6 +922,7 @@ void sc_pkcs15_free_pubkey_info(sc_pkcs15_pubkey_info_t *key);
 void sc_pkcs15_free_cert_info(sc_pkcs15_cert_info_t *cert);
 void sc_pkcs15_free_data_info(sc_pkcs15_data_info_t *data);
 void sc_pkcs15_free_auth_info(sc_pkcs15_auth_info_t *auth_info);
+void sc_pkcs15_free_skey_info(sc_pkcs15_skey_info_t *key);
 void sc_pkcs15_free_object(struct sc_pkcs15_object *obj);
 
 /* Generic file i/o */

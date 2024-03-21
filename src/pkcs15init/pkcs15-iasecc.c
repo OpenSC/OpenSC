@@ -37,16 +37,6 @@
 #include <errno.h>
 #include <stdio.h>
 
-#include <openssl/bn.h>
-#include <openssl/evp.h>
-#include <openssl/pem.h>
-#include <openssl/err.h>
-#include <openssl/rand.h>
-#include <openssl/sha.h>
-#include <openssl/rsa.h>
-#include <openssl/x509.h>
-#include <openssl/pkcs12.h>
-
 #include "../libopensc/opensc.h"
 #include "../libopensc/cardctl.h"
 #include "../libopensc/log.h"
@@ -276,6 +266,7 @@ iasecc_pkcs15_select_key_reference(struct sc_profile *profile, struct sc_pkcs15_
 			sc_print_path(&key_info->path));
 
 	rv = sc_select_file(card, &key_info->path, &file);
+	sc_file_free(file);
 	LOG_TEST_RET(ctx, rv, "Cannot select DF to select key reference in");
 
 	/* 1 <= ObjReference <= 31 */
@@ -306,7 +297,6 @@ iasecc_pkcs15_select_key_reference(struct sc_profile *profile, struct sc_pkcs15_
 	key_info->key_reference = idx | IASECC_OBJECT_REF_LOCAL;
 	sc_log(ctx, "selected key reference %i", key_info->key_reference);
 
-	sc_file_free(file);
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 

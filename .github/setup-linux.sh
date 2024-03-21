@@ -2,9 +2,22 @@
 
 set -ex -o xtrace
 
+if [ -x "/bin/sudo" ]; then
+	SUDO="sudo"
+fi
+
+if [ -f "/etc/fedora-release" ]; then
+	. .github/setup-fedora.sh
+	exit 0
+fi
+
 WINE_DEPS=""
 # Generic dependencies
 DEPS="docbook-xsl xsltproc gengetopt help2man pcscd check pcsc-tools libtool make autoconf autoconf-archive automake pkg-config git xxd openssl valgrind"
+
+if [ "$1" == "clang" ]; then
+	DEPS="$DEPS clang"
+fi
 
 # 64bit or 32bit dependencies
 if [ "$1" == "ix86" ]; then
@@ -38,18 +51,18 @@ fi
 # The Github Ubuntu images since 20211122.1 are broken
 # https://github.com/actions/virtual-environments/issues/4589
 if [ "$1" == "mingw" -o "$1" == "mingw32" -o "$1" == "ix86" ]; then
-	sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list
-	sudo apt-get update -qq
-	sudo apt-get purge -yqq libmono* moby* mono* php* libgdiplus libpcre2-posix3 libzip4
-	sudo dpkg --add-architecture i386
+	$SUDO rm -f /etc/apt/sources.list.d/microsoft-prod.list
+	$SUDO apt-get update -qq
+	$SUDO apt-get purge -yqq libmono* moby* mono* php* libgdiplus libpcre2-posix3 libzip4
+	$SUDO dpkg --add-architecture i386
 fi
 
 # make sure we do not get prompts
 export DEBIAN_FRONTEND=noninteractive
 export DEBCONF_NONINTERACTIVE_SEEN=true
-sudo apt-get update -qq
+$SUDO apt-get update -qq
 
-sudo apt-get install -y build-essential $DEPS
+$SUDO apt-get install -y build-essential $DEPS
 
 # install libressl if needed
 if [ "$1" == "libressl" -o "$2" == "libressl" ]; then
@@ -59,10 +72,23 @@ if [ "$1" == "libressl" -o "$2" == "libressl" ]; then
 		cat /tmp/libressl.log
 		exit $RET
 	fi
+elif [ "$1" == "debug" -o "$2" == "debug" ]; then
+	# install debug symbols
+	$SUDO apt-get install -y lsb-core ubuntu-dbgsym-keyring
+	echo "deb http://ddebs.ubuntu.com $(lsb_release -cs) main restricted universe multiverse
+deb http://ddebs.ubuntu.com $(lsb_release -cs)-updates main restricted universe multiverse
+deb http://ddebs.ubuntu.com $(lsb_release -cs)-proposed main restricted universe multiverse" | \
+	$SUDO tee -a /etc/apt/sources.list.d/ddebs.list
+	$SUDO apt-get update -qq
+	DEP="libssl1.1-dbgsym"
+	if [ -f "/usr/lib/x86_64-linux-gnu/libssl.so.3" ]; then
+		DEP="libssl3-dbgsym"
+	fi
+	$SUDO apt-get install -y openssl-dbgsym "$DEP" softhsm2-dbgsym
 fi
 
 if [ "$1" == "mingw" -o "$1" == "mingw32" ]; then
-	sudo apt-get install --allow-downgrades  -y $WINE_DEPS
+	$SUDO apt-get install --allow-downgrades  -y $WINE_DEPS
 	if [ ! -f "$(winepath 'C:/Program Files/Inno Setup 5/ISCC.exe')" ]; then
 		/sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_99.pid --make-pidfile --background --exec /usr/bin/Xvfb -- :99 -ac -screen 0 1280x1024x16
 		export DISPLAY=:99.0

@@ -34,11 +34,6 @@
 #include <string.h>
 #include <stdio.h>
 
-#ifdef ENABLE_OPENSSL
-#include <openssl/x509.h>
-#include <openssl/x509v3.h>
-#endif
-
 #include "internal.h"
 #include "pkcs15.h"
 #include "log.h"
@@ -190,7 +185,7 @@ static int loadFile(const sc_pkcs15_card_t *p15card, const sc_path_t *path,
 static int itacns_add_cert(sc_pkcs15_card_t *p15card,
 	int type, int authority, const sc_path_t *path,
 	const sc_pkcs15_id_t *id, const char *label, int obj_flags,
-	int *ext_info_ok, int *key_usage, int *x_key_usage, int *modulus_len)
+	int *ext_info_ok, int *key_usage, int *x_key_usage, size_t *modulus_len)
 {
 	int r;
 	/* const char *label = "Certificate"; */
@@ -240,7 +235,10 @@ static int itacns_add_cert(sc_pkcs15_card_t *p15card,
 	}
 
 	sc_pkcs15_free_certificate(cert);
-	if (!x509) return SC_SUCCESS;
+	if (!x509) {
+		sc_log_openssl(p15card->card->ctx);
+		return SC_SUCCESS;
+	}
 	X509_check_purpose(x509, -1, 0);
 
 	if(X509_get_extension_flags(x509) & EXFLAG_KUSAGE) {
@@ -262,7 +260,7 @@ static int itacns_add_cert(sc_pkcs15_card_t *p15card,
 
 static int itacns_add_pubkey(sc_pkcs15_card_t *p15card,
 	 const sc_path_t *path, const sc_pkcs15_id_t *id, const char *label,
-	int usage, int ref, int obj_flags, int modulus_len)
+	int usage, int ref, int obj_flags, size_t modulus_len)
 {
 	int r;
 	sc_pkcs15_pubkey_info_t info;
@@ -292,7 +290,7 @@ static int itacns_add_pubkey(sc_pkcs15_card_t *p15card,
 static int itacns_add_prkey(sc_pkcs15_card_t *p15card,
                 const sc_pkcs15_id_t *id,
                 const char *label,
-                int type, unsigned int modulus_length, int usage,
+                int type, size_t modulus_length, int usage,
 		const sc_path_t *path, int ref,
                 const sc_pkcs15_id_t *auth_id, int obj_flags)
 {
@@ -378,7 +376,7 @@ static int hextoint(char *src, unsigned int len)
 		return -1;
 	strncpy(hex, src, len);
 	hex[len] = '\0';
-	res = strtol(hex, &end, 0x10);
+	res = (int)strtol(hex, &end, 0x10);
 	if(end != (char*)&hex[len])
 		return -1;
 	return res;
@@ -579,7 +577,7 @@ static int itacns_add_keyset(sc_pkcs15_card_t *p15card,
 	const char *label, int sec_env, sc_pkcs15_id_t *cert_id,
 	const char *pubkey_path, const char *prkey_path,
 	unsigned int pubkey_usage_flags, unsigned int prkey_usage_flags,
-	u8 pin_ref, int modulus_len)
+	u8 pin_ref, size_t modulus_len)
 {
 	int r;
 	sc_path_t path;
@@ -658,7 +656,8 @@ static int itacns_check_and_add_keyset(sc_pkcs15_card_t *p15card,
 	sc_path_t path;
 	sc_pkcs15_id_t cert_id;
 	int ext_info_ok;
-	int ku = 0, xku = 0, modulus_len = 0;
+	int ku = 0, xku = 0;
+	size_t modulus_len = 0;
 	int pubkey_usage_flags = 0, prkey_usage_flags = 0;
 
 	cert_id.len = 1;
@@ -695,7 +694,7 @@ static int itacns_check_and_add_keyset(sc_pkcs15_card_t *p15card,
 			"Could not read certificate file");
 		if (r < 3)
 			return SC_ERROR_INVALID_DATA;
-		path.index = cert_offset;
+		path.index = (int)cert_offset;
 		path.count = (certlen[1] << 8) + certlen[2];
 		/* If those bytes are 00, then we are probably dealing with an
 		 * empty file. */

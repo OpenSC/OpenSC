@@ -292,7 +292,7 @@ cflex_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_pkcs15_obj
 	case 1024: size = 326; break;
 	case 2048: size = 646; break;
 	default:
-		sc_log(p15card->card->ctx, 
+		sc_log(p15card->card->ctx,
 			 "Unsupported key size %"SC_FORMAT_LEN_SIZE_T"u\n",
 			 key_info->modulus_length);
 		r = SC_ERROR_INVALID_ARGUMENTS;
@@ -328,7 +328,7 @@ cflex_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	struct sc_cardctl_cryptoflex_genkey_info args;
 	sc_card_t *card = p15card->card;
 	sc_pkcs15_prkey_info_t *key_info = (sc_pkcs15_prkey_info_t *) obj->data;
-	unsigned int	keybits;
+	size_t	keybits;
 	unsigned char	raw_pubkey[256];
 	sc_file_t	*prkf = NULL, *pukf = NULL;
 	int		r;
@@ -410,7 +410,7 @@ cflex_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	if (r < 0)
 		goto out;
 
-	r = sc_pkcs15init_update_file(profile, p15card, prkf, keybuf, size);
+	r = sc_pkcs15init_update_file(profile, p15card, prkf, keybuf, (unsigned)size);
 	if (r < 0)
 		goto out;
 
@@ -422,7 +422,7 @@ cflex_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	if (r < 0)
 		goto out;
 
-	r = sc_pkcs15init_update_file(profile, p15card, pukf, keybuf, size);
+	r = sc_pkcs15init_update_file(profile, p15card, pukf, keybuf, (unsigned)size);
 
 out:	sc_file_free(prkf);
 	sc_file_free(pukf);
@@ -571,6 +571,8 @@ cflex_create_pin_file(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	 * necessary */
 	ndummies = cflex_create_dummy_chvs(profile, p15card,
 				file, SC_AC_OP_UPDATE, dummies);
+	if (ndummies < 0)
+		sc_file_free(file);
 	LOG_TEST_RET(ctx, ndummies, "Unable to create dummy CHV file");
 
 	if (!unprotected)   {
@@ -584,8 +586,9 @@ cflex_create_pin_file(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		pin_cmd.pin1.len = sizeof(dummy_pin_value);
 
 		r = sc_pin_cmd(p15card->card, &pin_cmd, NULL);
+		if (r < 0)
+			sc_file_free(file);
 		LOG_TEST_RET(ctx, r, "Cannot verify dummy PIN");
-
 	};
 
 	if (ref == 2)   {
@@ -596,15 +599,16 @@ cflex_create_pin_file(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	}
 
 	r = sc_pkcs15init_create_file(profile, p15card, file);
+	if (r < 0)
+		sc_file_free(file);
 	LOG_TEST_RET(ctx, r, "Failed to create PIN file");
 
 	r = sc_update_binary(p15card->card, 0, buffer, 23, 0);
-	LOG_TEST_RET(ctx, r, "Failed to update PIN file");
-
 	if (r < 0 || file_ret == NULL)
 		sc_file_free(file);
 	else
 		*file_ret = file;
+	LOG_TEST_RET(ctx, r, "Failed to update PIN file");
 
 	/* Delete the dummy CHV files */
 	cflex_delete_dummy_chvs(profile, p15card, ndummies, dummies);

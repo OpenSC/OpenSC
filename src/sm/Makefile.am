@@ -8,7 +8,6 @@ noinst_LTLIBRARIES = libsmiso.la libsmeac.la
 noinst_HEADERS = \
 		 sm-iso-internal.h \
 		 sm-iso.h \
-		 sslutil.h \
 		 sm-eac.h
 
 if ENABLE_OPENSSL

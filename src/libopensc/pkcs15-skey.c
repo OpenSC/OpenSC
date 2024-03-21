@@ -269,3 +269,12 @@ int sc_pkcs15_encode_skdf_entry(struct sc_context *ctx,
 	sc_log(ctx, "Key path %s", sc_print_path(&skey->path));
 	LOG_FUNC_RETURN(ctx, r);
 }
+
+void
+sc_pkcs15_free_skey_info(sc_pkcs15_skey_info_t *info)
+{
+	if (info) {
+		free(info->data.value);
+		free(info);
+	}
+}

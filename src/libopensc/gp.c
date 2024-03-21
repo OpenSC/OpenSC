@@ -64,7 +64,7 @@ gp_select_aid(struct sc_card *card, const struct sc_aid *aid)
 	if (rv < 0)
 		return rv;
 
-	return apdu.resplen;
+	return (int)apdu.resplen;
 }
 
 /* Select the Open Platform Card Manager */
@@ -117,5 +117,5 @@ gp_get_cplc_data(struct sc_card *card, global_platform_cplc_data_t *cplc_data)
 	if ((size_t)apdu.resplen < sizeof(global_platform_cplc_data_t)) {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_CORRUPTED_DATA);
 	}
-	LOG_FUNC_RETURN(card->ctx, apdu.resplen);
+	LOG_FUNC_RETURN(card->ctx, (int)apdu.resplen);
 }

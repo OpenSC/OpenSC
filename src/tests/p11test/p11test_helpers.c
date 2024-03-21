@@ -105,7 +105,7 @@ void logfile_finalize(token_info_t *info)
 
 int group_setup(void **state)
 {
-	token_info_t * info = calloc(sizeof(token_info_t), 1);
+	token_info_t * info = calloc(1, sizeof(token_info_t));
 
 	assert_non_null(info);
 

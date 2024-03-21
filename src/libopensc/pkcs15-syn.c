@@ -35,11 +35,11 @@
 #include "pkcs15-syn.h"
 #include "pkcs15-emulator-filter.h"
 
+// clang-format off
 struct sc_pkcs15_emulator_handler builtin_emulators[] = {
 	{ "openpgp",	sc_pkcs15emu_openpgp_init_ex	},
 	{ "starcert",	sc_pkcs15emu_starcert_init_ex	},
 	{ "tcos",	sc_pkcs15emu_tcos_init_ex	},
-	{ "esteid",	sc_pkcs15emu_esteid_init_ex	},
 	{ "itacns",	sc_pkcs15emu_itacns_init_ex	},
 	{ "PIV-II",     sc_pkcs15emu_piv_init_ex	},
 	{ "cac",        sc_pkcs15emu_cac_init_ex	},
@@ -65,13 +65,12 @@ struct sc_pkcs15_emulator_handler builtin_emulators[] = {
 };
 
 struct sc_pkcs15_emulator_handler old_emulators[] = {
-	{ "westcos",	sc_pkcs15emu_westcos_init_ex	},
-	{ "gemsafeGPK",	sc_pkcs15emu_gemsafeGPK_init_ex	},
 	{ "atrust-acos",sc_pkcs15emu_atrust_acos_init_ex},
 	{ "actalis",	sc_pkcs15emu_actalis_init_ex	},
 	{ "tccardos",	sc_pkcs15emu_tccardos_init_ex	},
 	{ NULL, NULL }
-};	
+};
+// clang-format on
 
 static int parse_emu_block(sc_pkcs15_card_t *, struct sc_aid *, scconf_block *);
 static sc_pkcs15_df_t * sc_pkcs15emu_get_df(sc_pkcs15_card_t *p15card,
@@ -85,7 +84,6 @@ static const char *exfunc_name  = "sc_pkcs15_init_func_ex";
 int sc_pkcs15_is_emulation_only(sc_card_t *card)
 {
 	switch (card->type) {
-		case SC_CARD_TYPE_MCRD_ESTEID_V30:
 		case SC_CARD_TYPE_GEMSAFEV1_PTEID:
 		case SC_CARD_TYPE_OPENPGP_V1:
 		case SC_CARD_TYPE_OPENPGP_V2:

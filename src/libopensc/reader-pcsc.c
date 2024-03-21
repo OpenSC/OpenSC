@@ -238,7 +238,7 @@ static int pcsc_internal_transmit(sc_reader_t *reader,
 	struct pcsc_private_data *priv = reader->drv_data;
 	SCARD_IO_REQUEST sSendPci, sRecvPci;
 	DWORD dwSendLength, dwRecvLength;
-	LONG rv;
+	LONG rv = SCARD_E_INVALID_VALUE;
 	SCARDHANDLE card;
 
 	LOG_FUNC_CALLED(reader->ctx);
@@ -259,13 +259,12 @@ static int pcsc_internal_transmit(sc_reader_t *reader,
 		rv = priv->gpriv->SCardTransmit(card, &sSendPci, sendbuf, dwSendLength,
 				   &sRecvPci, recvbuf, &dwRecvLength);
 	} else {
-		if (priv->gpriv->SCardControlOLD != NULL) {
+		if (priv->gpriv->SCardControlOLD) {
 			rv = priv->gpriv->SCardControlOLD(card, sendbuf, dwSendLength,
 				  recvbuf, &dwRecvLength);
-		}
-		else {
-			rv = priv->gpriv->SCardControl(card, (DWORD) control, sendbuf, dwSendLength,
-				  recvbuf, dwRecvLength, &dwRecvLength);
+		} else if (priv->gpriv->SCardControl) {
+			rv = priv->gpriv->SCardControl(card, (DWORD)control, sendbuf, dwSendLength,
+					recvbuf, dwRecvLength, &dwRecvLength);
 		}
 	}
 
@@ -355,7 +354,7 @@ out:
 static int refresh_attributes(sc_reader_t *reader)
 {
 	struct pcsc_private_data *priv = reader->drv_data;
-	int old_flags = reader->flags;
+	unsigned long old_flags = reader->flags;
 	DWORD state, prev_state;
 	LONG rv;
 
@@ -387,7 +386,7 @@ static int refresh_attributes(sc_reader_t *reader)
 			LOG_FUNC_RETURN(reader->ctx, SC_SUCCESS);
 		}
 
-		/* the system could not detect the reader. It means, the prevoiusly attached reader is disconnected. */
+		/* the system could not detect the reader. It means, the previously attached reader is disconnected. */
 		if (rv == (LONG)SCARD_E_UNKNOWN_READER
 #ifdef SCARD_E_NO_READERS_AVAILABLE
 				|| rv == (LONG)SCARD_E_NO_READERS_AVAILABLE
@@ -477,7 +476,7 @@ static int pcsc_detect_card_presence(sc_reader_t *reader)
 
 	// Return 0 if the card is not present
 	if (reader->flags & SC_READER_CARD_PRESENT)
-		LOG_FUNC_RETURN(reader->ctx, reader->flags);
+		LOG_FUNC_RETURN(reader->ctx, (int)reader->flags);
 	else
 		LOG_FUNC_RETURN(reader->ctx, 0);
 }
@@ -874,9 +873,9 @@ static int pcsc_init(sc_context_t *ctx)
 		gpriv->enable_pace = scconf_get_bool(conf_block, "enable_pace",
 				gpriv->enable_pace);
 		gpriv->force_max_send_size = scconf_get_int(conf_block,
-				"max_send_size", gpriv->force_max_send_size);
+				"max_send_size", (int)gpriv->force_max_send_size);
 		gpriv->force_max_recv_size = scconf_get_int(conf_block,
-				"max_recv_size", gpriv->force_max_recv_size);
+				"max_recv_size", (int)gpriv->force_max_recv_size);
 	}
 
 	if (gpriv->cardmod) {
@@ -1016,7 +1015,7 @@ static unsigned long part10_detect_pace_capabilities(sc_reader_t *reader, SCARDH
 	if (!priv)
 		goto err;
 
-	if (priv->pace_ioctl && priv->gpriv) {
+	if (priv->pace_ioctl && priv->gpriv && priv->gpriv->SCardControl) {
 		if (SCARD_S_SUCCESS != priv->gpriv->SCardControl(card_handle,
 					priv->pace_ioctl, pace_capabilities_buf,
 					sizeof pace_capabilities_buf, rbuf, sizeof(rbuf),
@@ -1051,7 +1050,7 @@ err:
 }
 
 static int
-part10_find_property_by_tag(unsigned char buffer[], int length,
+part10_find_property_by_tag(unsigned char buffer[], DWORD length,
 	int tag_searched);
 /**
  * @brief Detects reader's maximum data size
@@ -1075,7 +1074,7 @@ static size_t part10_detect_max_data(sc_reader_t *reader, SCARDHANDLE card_handl
 	if (!priv)
 		goto err;
 
-	if (priv->get_tlv_properties && priv->gpriv) {
+	if (priv->get_tlv_properties && priv->gpriv && priv->gpriv->SCardControl) {
 		if (SCARD_S_SUCCESS != priv->gpriv->SCardControl(card_handle,
 				priv->get_tlv_properties, NULL, 0, rbuf, sizeof(rbuf), &rcount)) {
 			sc_log(reader->ctx, "PC/SC v2 part 10: Get TLV properties failed!");
@@ -1108,7 +1107,7 @@ static int part10_get_vendor_product(struct sc_reader *reader,
 	if (!priv)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
-	if (priv->get_tlv_properties && priv->gpriv) {
+	if (priv->get_tlv_properties && priv->gpriv && priv->gpriv->SCardControl) {
 		if (SCARD_S_SUCCESS != priv->gpriv->SCardControl(card_handle,
 					priv->get_tlv_properties, NULL, 0, rbuf, sizeof(rbuf),
 					&rcount)) {
@@ -1137,7 +1136,7 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 	sc_context_t *ctx = reader->ctx;
 	struct pcsc_global_private_data *gpriv = (struct pcsc_global_private_data *) ctx->reader_drv_data;
 	struct pcsc_private_data *priv = reader->drv_data;
-	DWORD rcount, i;
+	DWORD rcount = 0, i;
 	u8 buf[256];
 	LONG rv;
 	const char *log_disabled = "but it's disabled in configuration file";
@@ -1147,13 +1146,12 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 
 	sc_log(ctx, "Requesting reader features ... ");
 
-	if (gpriv->SCardControl == NULL)
-		return;
-
-	rv = gpriv->SCardControl(card_handle, CM_IOCTL_GET_FEATURE_REQUEST, NULL, 0, buf, sizeof(buf), &rcount);
-	if (rv != SCARD_S_SUCCESS) {
-		PCSC_TRACE(reader, "SCardControl failed", rv);
-		return;
+	if (gpriv->SCardControl) {
+		rv = gpriv->SCardControl(card_handle, CM_IOCTL_GET_FEATURE_REQUEST, NULL, 0, buf, sizeof(buf), &rcount);
+		if (rv != SCARD_S_SUCCESS) {
+			PCSC_TRACE(reader, "SCardControl failed", rv);
+			return;
+		}
 	}
 
 	if ((rcount % sizeof(PCSC_TLV_STRUCTURE)) != 0
@@ -1221,7 +1219,7 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 	}
 
 	/* Detect display */
-	if (priv->pin_properties_ioctl) {
+	if (priv->pin_properties_ioctl && gpriv->SCardControl) {
 		rcount = sizeof(buf);
 		rv = gpriv->SCardControl(card_handle, priv->pin_properties_ioctl,
 			NULL, 0, buf, sizeof(buf), &rcount);
@@ -1394,7 +1392,7 @@ static int pcsc_detect_readers(sc_context_t *ctx)
 	char *reader_buf = NULL, *reader_name;
 	const char *mszGroups = NULL;
 	int ret = SC_ERROR_INTERNAL;
-	size_t i;
+	unsigned int i;
 
 	LOG_FUNC_CALLED(ctx);
 
@@ -1590,8 +1588,7 @@ static int pcsc_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_re
 	struct pcsc_global_private_data *gpriv = (struct pcsc_global_private_data *)ctx->reader_drv_data;
 	LONG rv;
 	SCARD_READERSTATE *rgReaderStates;
-	size_t i;
-	unsigned int num_watch, count;
+	unsigned int num_watch, count, i;
 	int r = SC_ERROR_INTERNAL, detect_readers = 0, detected_hotplug = 0;
 	DWORD dwtimeout;
 
@@ -1649,7 +1646,7 @@ static int pcsc_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_re
 	else {
 		rgReaderStates = (SCARD_READERSTATE *)(*reader_states);
 		for (num_watch = 0; rgReaderStates[num_watch].szReader; num_watch++)
-			sc_log(ctx, "re-use reader '%s'", rgReaderStates[num_watch].szReader);
+			sc_log(ctx, "reuse reader '%s'", rgReaderStates[num_watch].szReader);
 	}
 #ifndef _WIN32
 	/* Establish a new context, assuming that it is called from a different thread with pcsc-lite */
@@ -1880,8 +1877,8 @@ static int part10_build_verify_pin_block(struct sc_reader *reader, u8 * buf, siz
 	int offset = 0, count = 0;
 	sc_apdu_t *apdu = data->apdu;
 	u8 tmp;
-	unsigned int tmp16;
-	unsigned int off;
+	uint16_t tmp16;
+	size_t off;
 	PIN_VERIFY_STRUCTURE *pin_verify = (PIN_VERIFY_STRUCTURE *)buf;
 
 	/* PIN verification control message */
@@ -1940,7 +1937,7 @@ static int part10_build_verify_pin_block(struct sc_reader *reader, u8 * buf, siz
 	if (!data->pin1.min_length || !data->pin1.max_length)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
-	tmp16 = (data->pin1.min_length << 8 ) + data->pin1.max_length;
+	tmp16 = (((data->pin1.min_length << 8) & 0xFF00) + (data->pin1.max_length & 0xFF));
 	pin_verify->wPINMaxExtraDigit = HOST_TO_CCID_16(tmp16); /* Min Max */
 
 	pin_verify->bEntryValidationCondition = 0x02; /* Keypress only */
@@ -1980,7 +1977,7 @@ static int part10_build_modify_pin_block(struct sc_reader *reader, u8 * buf, siz
 	int offset = 0, count = 0;
 	sc_apdu_t *apdu = data->apdu;
 	u8 tmp;
-	unsigned int tmp16;
+	uint16_t tmp16;
 	PIN_MODIFY_STRUCTURE *pin_modify = (PIN_MODIFY_STRUCTURE *)buf;
 	struct sc_pin_cmd_pin *pin_ref =
 		data->flags & SC_PIN_CMD_IMPLICIT_CHANGE ?
@@ -2032,7 +2029,7 @@ static int part10_build_modify_pin_block(struct sc_reader *reader, u8 * buf, siz
 	if (!pin_ref->min_length || !pin_ref->max_length)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
-	tmp16 = (pin_ref->min_length << 8 ) + pin_ref->max_length;
+	tmp16 = (uint16_t)(((pin_ref->min_length << 8) & 0xFF00) + (pin_ref->max_length & 0xFF));
 	pin_modify->wPINMaxExtraDigit = HOST_TO_CCID_16(tmp16); /* Min Max */
 
 	/* bConfirmPIN flags
@@ -2078,14 +2075,14 @@ static int part10_build_modify_pin_block(struct sc_reader *reader, u8 * buf, siz
 
 /* Find a given PCSC v2 part 10 property */
 static int
-part10_find_property_by_tag(unsigned char buffer[], int length,
+part10_find_property_by_tag(unsigned char buffer[], DWORD length,
 	int tag_searched)
 {
 	unsigned char *p;
 	int found = 0, len, value = -1;
 
 	p = buffer;
-	while (p-buffer < length)
+	while (p-buffer < (long)length)
 	{
 		if (*p++ == tag_searched)
 		{

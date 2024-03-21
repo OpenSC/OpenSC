@@ -31,20 +31,24 @@ pkcs11_derive(test_cert_t *o, token_info_t * info,
 	CK_OBJECT_HANDLE newkey;
 	CK_OBJECT_CLASS newkey_class = CKO_SECRET_KEY;
 	CK_KEY_TYPE newkey_type = CKK_GENERIC_SECRET;
-	CK_ULONG newkey_len = o->bits / 8;
-	CK_BBOOL true = TRUE;
-	CK_BBOOL false = FALSE;
+	CK_ULONG newkey_len = (o->bits + 7) / 8;
+	CK_BYTE newkey_id[] = {0x00, 0xff, 0x31};
+	CK_BYTE newkey_label[] = {"Derived key"};
+	CK_BBOOL _true = TRUE;
+	CK_BBOOL _false = FALSE;
 	CK_ATTRIBUTE template[] = {
-		{CKA_TOKEN, &false, sizeof(false)}, /* session only object */
-		{CKA_CLASS, &newkey_class, sizeof(newkey_class)},
-		{CKA_KEY_TYPE, &newkey_type, sizeof(newkey_type)},
-		{CKA_VALUE_LEN, &newkey_len, sizeof(newkey_len)},
-		{CKA_SENSITIVE, &false, sizeof(false)},
-		{CKA_EXTRACTABLE, &true, sizeof(true)},
-		{CKA_ENCRYPT, &true, sizeof(true)},
-		{CKA_DECRYPT, &true, sizeof(true)},
-		{CKA_WRAP, &true, sizeof(true)},
-		{CKA_UNWRAP, &true, sizeof(true)}
+			{CKA_TOKEN, &_false, sizeof(_false)}, /* session only object */
+			{CKA_CLASS, &newkey_class, sizeof(newkey_class)},
+			{CKA_ID, &newkey_id, sizeof(newkey_id)},
+			{CKA_LABEL, &newkey_label, sizeof(newkey_label)},
+			{CKA_KEY_TYPE, &newkey_type, sizeof(newkey_type)},
+			{CKA_VALUE_LEN, &newkey_len, sizeof(newkey_len)},
+			{CKA_SENSITIVE, &_false, sizeof(_false)},
+			{CKA_EXTRACTABLE, &_true, sizeof(_true)},
+			{CKA_ENCRYPT, &_true, sizeof(_true)},
+			{CKA_DECRYPT, &_true, sizeof(_true)},
+			{CKA_WRAP, &_true, sizeof(_true)},
+			{CKA_UNWRAP, &_true, sizeof(_true)},
 	};
 	CK_ATTRIBUTE get_value = {CKA_VALUE, NULL_PTR, 0};
 	CK_ULONG template_len = 10;
@@ -69,17 +73,20 @@ pkcs11_derive(test_cert_t *o, token_info_t * info,
 		&get_value, 1);
 	if (rv != CKR_OK) {
 		fail_msg("C_GetAttributeValue: rv = 0x%.8lX\n", rv);
+		destroy_tmp_object(info, newkey);
 		return 0;
 	}
 
 	get_value.pValue = malloc(get_value.ulValueLen);
 	if (get_value.pValue == NULL) {
 		fail_msg("malloc failed");
+		destroy_tmp_object(info, newkey);
 		return 0;
 	}
 
 	rv = fp->C_GetAttributeValue(info->session_handle, newkey,
 		&get_value, 1);
+	destroy_tmp_object(info, newkey);
 	if (rv != CKR_OK) {
 		fail_msg("C_GetAttributeValue: rv = 0x%.8lX\n", rv);
 		return 0;
@@ -227,7 +234,7 @@ int test_derive(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 	int nid = 0;
-	const EC_GROUP *group = NULL;
+	EC_GROUP *group = NULL;
 	const EC_POINT *publickey = NULL;
 	EC_KEY *key = NULL;
 #endif
@@ -287,7 +294,7 @@ int test_derive(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 		EVP_PKEY_free(evp_pkey);
 		return 1;
 	}
-	
+
 	/* Get buffer length */
 	if (EVP_PKEY_derive(pctx, NULL, &secret_len) != 1) {
 		debug_print(" [ KEY %s ] EVP_PKEY_derive failed", o->id_str);
@@ -302,7 +309,7 @@ int test_derive(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 		EVP_PKEY_free(evp_pkey);
 		return 1;
 	}
-	
+
 	if (EVP_PKEY_derive(pctx, secret, &secret_len) != 1) {
 		debug_print(" [ KEY %s ] EVP_PKEY_derive failed", o->id_str);
 		EVP_PKEY_CTX_free(pctx);
@@ -311,7 +318,7 @@ int test_derive(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 		return 1;
 	}
 	EVP_PKEY_CTX_free(pctx);
-	
+
 	/* Try to do the same with the card key */
 
 	/* Get length of pub */
@@ -343,7 +350,7 @@ int test_derive(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 	pub_len = EC_POINT_point2oct(group, publickey,
 		POINT_CONVERSION_UNCOMPRESSED, pub, pub_len, NULL);
-
+	EC_GROUP_free(group);
 	if (pub_len == 0) {
 #else
 	if (EVP_PKEY_get_octet_string_param(evp_pkey, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, pub, pub_len, NULL) != 1) {
@@ -375,7 +382,7 @@ int test_derive(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 
 void derive_tests(void **state) {
 	unsigned int i;
-	int j;
+	size_t j;
 	int errors = 0;
 	token_info_t *info = (token_info_t *) *state;
 	test_certs_t objects;
@@ -389,22 +396,21 @@ void derive_tests(void **state) {
 	for (i = 0; i < objects.count; i++) {
 		test_cert_t *o = &objects.data[i];
 		/* Ignore if there is missing private key */
-		if (objects.data[i].private_handle == CK_INVALID_HANDLE)
+		if (o->private_handle == CK_INVALID_HANDLE) {
 			continue;
+		}
 
 		for (j = 0; j < o->num_mechs; j++) {
-			if ((o->mechs[j].usage_flags & CKF_DERIVE) == 0 ||
-				! o->derive_priv)
+			if ((o->mechs[j].usage_flags & CKF_DERIVE) == 0 || !o->derive_priv) {
 				continue;
+			}
 
 			switch (o->key_type) {
 			case CKK_EC:
-				errors += test_derive(&(objects.data[i]), info,
-					&(o->mechs[j]));
+				errors += test_derive(o, info, &(o->mechs[j]));
 				break;
 			case CKK_EC_MONTGOMERY:
-				errors += test_derive_x25519(&(objects.data[i]), info,
-					&(o->mechs[j]));
+				errors += test_derive_x25519(o, info, &(o->mechs[j]));
 				break;
 			default:
 				/* Other keys do not support derivation */

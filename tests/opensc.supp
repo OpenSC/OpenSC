@@ -1,0 +1,77 @@
+{
+   SoftHSM provides us with uninitialized flags
+   Memcheck:Cond
+   fun:supported_mechanisms_test
+   obj:/usr/lib/x86_64-linux-gnu/libcmocka.so.0.7.0
+   fun:_cmocka_run_group_tests
+   fun:main
+}
+{
+   SoftHSM provides us with uninitialized flags
+   Memcheck:Cond
+   fun:get_mechanism_all_flag_name
+   fun:supported_mechanisms_test
+   obj:/usr/lib/x86_64-linux-gnu/libcmocka.so.0.7.0
+   fun:_cmocka_run_group_tests
+   fun:main
+}
+{
+   SoftHSM provides us with uninitialized flags
+   Memcheck:Cond
+   fun:_itoa_word
+   fun:__vfprintf_internal
+   fun:printf
+   fun:supported_mechanisms_test
+   obj:/usr/lib/x86_64-linux-gnu/libcmocka.so.0.7.0
+   fun:_cmocka_run_group_tests
+   fun:main
+}
+{
+   SoftHSM provides us with uninitialized flags
+   Memcheck:Value8
+   fun:_itoa_word
+   fun:__vfprintf_internal
+   fun:printf
+   fun:supported_mechanisms_test
+   obj:/usr/lib/x86_64-linux-gnu/libcmocka.so.0.7.0
+   fun:_cmocka_run_group_tests
+   fun:main
+}
+{
+   SoftHSM provides us with uninitialized flags
+   Memcheck:Value8
+   fun:_itoa_word
+   fun:__vfprintf_internal
+   fun:buffered_vfprintf
+   fun:fprintf
+   fun:print_mech_info
+   fun:C_GetMechanismInfo
+   fun:supported_mechanisms_test
+   obj:/usr/lib/x86_64-linux-gnu/libcmocka.so.0.7.0
+   fun:_cmocka_run_group_tests
+   fun:main
+}
+{
+   SoftHSM provides us with uninitialized flags
+   Memcheck:Cond
+   fun:_itoa_word
+   fun:__vfprintf_internal
+   fun:buffered_vfprintf
+   fun:fprintf
+   fun:print_mech_info
+   fun:C_GetMechanismInfo
+   fun:supported_mechanisms_test
+   obj:/usr/lib/x86_64-linux-gnu/libcmocka.so.0.7.0
+   fun:_cmocka_run_group_tests
+   fun:main
+}
+{
+   SoftHSM provides us with uninitialized flags
+   Memcheck:Cond
+   fun:print_mech_info
+   fun:C_GetMechanismInfo
+   fun:supported_mechanisms_test
+   obj:/usr/lib/x86_64-linux-gnu/libcmocka.so.0.7.0
+   fun:_cmocka_run_group_tests
+   fun:main
+}

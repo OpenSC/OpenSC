@@ -204,7 +204,7 @@ struct sc_pkcs11_framework_ops framework_pkcs15init = {
 	NULL,	/* login */
 	NULL,	/* logout */
 	NULL,	/* change_pin */
-	NULL,	/* inti_token */
+	NULL,	/* init_token */
 	NULL,	/* init_pin */
 	NULL,	/* create_object */
 	NULL,	/* gen_keypair */

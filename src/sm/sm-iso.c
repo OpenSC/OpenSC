@@ -55,16 +55,16 @@ static const struct sc_asn1_entry c_sm_rapdu[] = {
 };
 
 static int
-add_iso_pad(const u8 *data, size_t datalen, int block_size, u8 **padded)
+add_iso_pad(const u8 *data, size_t datalen, size_t block_size, u8 **padded)
 {
 	u8 *p;
-	size_t p_len;
+	int p_len;
 
 	if (!padded)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	/* calculate length of padded message */
-	p_len = (datalen / block_size) * block_size + block_size;
+	p_len = (int)((datalen / block_size) * block_size + block_size);
 
 	p = realloc(*padded, p_len);
 	if (!p)
@@ -101,7 +101,7 @@ add_padding(const struct iso_sm_ctx *ctx, const u8 *data, size_t datalen,
 					*padded = NULL;
 				}
 			}
-			return datalen;
+			return (int)datalen;
 		case SM_ISO_PADDING:
 			return add_iso_pad(data, datalen, ctx->block_length, padded);
 		default:
@@ -140,7 +140,7 @@ rm_padding(u8 padding_indicator, const u8 *data, size_t datalen)
 			return SC_ERROR_NOT_SUPPORTED;
 	}
 
-	return len;
+	return (int)len;
 }
 
 static int format_le(size_t le, struct sc_asn1_entry *le_entry,
@@ -196,7 +196,7 @@ static int prefix_buf(u8 prefix, u8 *buf, size_t buflen, u8 **cat)
 
 	*cat = p;
 
-	return buflen + 1;
+	return (int)buflen + 1;
 }
 
 static int format_data(sc_card_t *card, const struct iso_sm_ctx *ctx,
@@ -482,7 +482,7 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 		if (sm_apdu->resplen > SC_MAX_APDU_RESP_SIZE)
 			sm_apdu->resplen = SC_MAX_APDU_RESP_SIZE;
 	}
-	resp_data = calloc(sm_apdu->resplen, 1);
+	resp_data = calloc(1, sm_apdu->resplen);
 	if (!resp_data) {
 		r = SC_ERROR_OUT_OF_MEMORY;
 		goto err;
@@ -547,7 +547,7 @@ static int sm_decrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 		if (r < 0) {
 			goto err;
 		}
-		
+
 		r = ctx->verify_authentication(card, ctx, mac, mac_len,
 				mac_data, r);
 		if (r < 0)

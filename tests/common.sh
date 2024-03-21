@@ -42,6 +42,7 @@ function generate_key() {
 	ID="$2"
 	LABEL="$3"
 
+	echo "Generate $TYPE key (ID=$ID)"
 	# Generate key pair
 	$PKCS11_TOOL --keypairgen --key-type="$TYPE" --login --pin=$PIN \
 		--module="$P11LIB" --label="$LABEL" --id=$ID
@@ -61,6 +62,8 @@ function generate_key() {
 	# convert it to more digestible PEM format
 	if [[ ${TYPE:0:3} == "RSA" ]]; then
 		openssl rsa -inform DER -outform PEM -in $ID.der -pubin > $ID.pub
+	elif [[ $TYPE == "EC:edwards25519" ]]; then
+		openssl pkey -inform DER -outform PEM -in $ID.der -pubin > $ID.pub
 	else
 		openssl ec -inform DER -outform PEM -in $ID.der -pubin > $ID.pub
 	fi
@@ -68,12 +71,12 @@ function generate_key() {
 }
 
 function softhsm_initialize() {
-	echo "directories.tokendir = .tokens/" > .softhsm2.conf
+	echo "directories.tokendir = $(realpath .tokens)" > .softhsm2.conf
 	if [ -d ".tokens" ]; then
 		rm -rf ".tokens"
 	fi
 	mkdir ".tokens"
-	export SOFTHSM2_CONF=".softhsm2.conf"
+	export SOFTHSM2_CONF=$(realpath ".softhsm2.conf")
 	# Init token
 	softhsm2-util --init-token --slot 0 --label "SC test" --so-pin="$SOPIN" --pin="$PIN"
 }
@@ -91,7 +94,7 @@ function card_setup() {
 	generate_key "EC:secp521r1" "04" "ECC521" || return 1
 	# Generate an HMAC:SHA256 key
 	$PKCS11_TOOL --keygen --key-type="GENERIC:64" --login --pin=$PIN \
-		--module="$P11LIB" --label="HMAC-SHA256"
+		--module="$P11LIB" --label="HMAC-SHA256" --id="05"
 	if [[ "$?" -ne "0" ]]; then
 		echo "Couldn't generate GENERIC key"
 		return 1

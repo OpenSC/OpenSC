@@ -252,7 +252,7 @@ static int format_senv(struct sc_pkcs15_card *p15card,
 			if (skey->key_type != CKK_AES)
 				LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Key type not supported");
 			*alg_info_out = sc_card_find_alg(p15card->card, SC_ALGORITHM_AES,
-			skey->value_len, NULL);
+					skey->value_len, NULL);
 			if (*alg_info_out == NULL) {
 				sc_log(ctx,
 				"Card does not support AES with key length %"SC_FORMAT_LEN_SIZE_T"u",
@@ -307,10 +307,11 @@ int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 	LOG_TEST_RET(ctx, r, "use_key() failed");
 
 	/* Strip any padding */
-	if (pad_flags & SC_ALGORITHM_RSA_PAD_PKCS1) {
-		size_t s = r;
-		r = sc_pkcs1_strip_02_padding(ctx, out, s, out, &s);
-		LOG_TEST_RET(ctx, r, "Invalid PKCS#1 padding");
+	if (pad_flags & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_02) {
+		unsigned int s = r;
+		unsigned int key_size = (unsigned int)alg_info->key_length;
+		r = sc_pkcs1_strip_02_padding_constant_time(ctx, key_size / 8, out, s, out, &s);
+		/* for keeping PKCS#1 v1.5 depadding constant-time, do not log error here */
 	}
 #ifdef ENABLE_OPENSSL
 	if (pad_flags & SC_ALGORITHM_RSA_PAD_OAEP)
@@ -332,7 +333,8 @@ int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 		LOG_TEST_RET(ctx, r, "Invalid OAEP padding");
 	}
 #endif
-	LOG_FUNC_RETURN(ctx, r);
+	/* do not log error code to prevent side channel attack */
+	return r;
 }
 
 /* derive one key from another. RSA can use decipher, so this is for only ECDH
@@ -657,7 +659,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	/* if the card has SC_ALGORITHM_NEED_USAGE set, and the
 	 * key is for signing and decryption, we need to emulate signing */
 
-	sc_log(ctx, "supported algorithm flags 0x%X, private key usage 0x%X", alg_info->flags, prkey->usage);
+	sc_log(ctx, "supported algorithm flags 0x%lX, private key usage 0x%X", alg_info->flags, prkey->usage);
 	if (obj->type == SC_PKCS15_TYPE_PRKEY_RSA) {
 		if ((alg_info->flags & SC_ALGORITHM_NEED_USAGE) &&
 			((prkey->usage & USAGE_ANY_SIGN) &&
@@ -691,10 +693,10 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 		 * succeed by stripping padding if the card only offers higher-level
 		 * signature operations.  The only thing we can strip is the DigestInfo
 		 * block from PKCS1 padding. */
-		if ((flags == (SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE)) &&
-		    !(alg_info->flags & SC_ALGORITHM_RSA_RAW) &&
-		    !(alg_info->flags & SC_ALGORITHM_RSA_HASH_NONE) &&
-		    (alg_info->flags & SC_ALGORITHM_RSA_PAD_PKCS1)) {
+		if ((flags == (SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01 | SC_ALGORITHM_RSA_HASH_NONE)) &&
+			!(alg_info->flags & SC_ALGORITHM_RSA_RAW) &&
+			!(alg_info->flags & SC_ALGORITHM_RSA_HASH_NONE) &&
+			(alg_info->flags & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01)) {
 			unsigned int algo;
 			size_t tmplen = buflen;
 
@@ -728,7 +730,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	/* senv now has flags card or driver will do */
 	senv.algorithm_flags = sec_flags;
 
-	sc_log(ctx, "DEE flags:0x%8.8lx alg_info->flags:0x%8.8x pad:0x%8.8lx sec:0x%8.8lx",
+	sc_log(ctx, "DEE flags:0x%8.8lx alg_info->flags:0x%8.8lx pad:0x%8.8lx sec:0x%8.8lx",
 		flags, alg_info->flags, pad_flags, sec_flags);
 
 	/* add the padding bytes (if necessary) */
@@ -775,7 +777,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	if (obj->type == SC_PKCS15_TYPE_PRKEY_RSA && (unsigned)r < modlen) {
 		memmove(out + modlen - r, out, r);
 		memset(out, 0, modlen - r);
-		r = modlen;
+		r = (int)modlen;
 	}
 
 err:

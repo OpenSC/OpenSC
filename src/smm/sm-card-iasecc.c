@@ -72,7 +72,7 @@ sm_iasecc_get_apdu_read_binary(struct sc_context *ctx, struct sm_info *sm_info, 
 	       cmd_data->offs, cmd_data->count);
 	offs = cmd_data->offs;
 	while (cmd_data->count > data_offs)   {
-		int sz = (cmd_data->count - data_offs) > SM_MAX_DATA_SIZE ? SM_MAX_DATA_SIZE : (cmd_data->count - data_offs);
+		size_t sz = (cmd_data->count - data_offs) > SM_MAX_DATA_SIZE ? SM_MAX_DATA_SIZE : (cmd_data->count - data_offs);
 		struct sc_remote_apdu *rapdu = NULL;
 
  		rv = rdata->alloc(rdata, &rapdu);
@@ -118,7 +118,7 @@ sm_iasecc_get_apdu_update_binary(struct sc_context *ctx, struct sm_info *sm_info
 	       cmd_data->offs, cmd_data->count);
 	offs = cmd_data->offs;
 	while (data_offs < cmd_data->count)   {
-		int sz = (cmd_data->count - data_offs) > SM_MAX_DATA_SIZE ? SM_MAX_DATA_SIZE : (cmd_data->count - data_offs);
+		size_t sz = (cmd_data->count - data_offs) > SM_MAX_DATA_SIZE ? SM_MAX_DATA_SIZE : (cmd_data->count - data_offs);
 		struct sc_remote_apdu *rapdu = NULL;
 
  		rv = rdata->alloc(rdata, &rapdu);
@@ -329,13 +329,14 @@ sm_iasecc_get_apdu_sdo_update(struct sc_context *ctx, struct sm_info *sm_info, s
 		unsigned char *encoded = NULL;
 		size_t encoded_len, offs;
 
-		encoded_len = iasecc_sdo_encode_update_field(ctx, update->sdo_class, update->sdo_ref, &update->fields[ii], &encoded);
-		LOG_TEST_RET(ctx, encoded_len, "SM get 'SDO UPDATE' APDU: encode component error");
+		rv = iasecc_sdo_encode_update_field(ctx, update->sdo_class, update->sdo_ref, &update->fields[ii], &encoded);
+		LOG_TEST_RET(ctx, rv, "SM get 'SDO UPDATE' APDU: encode component error");
+		encoded_len = rv;
 
 		sc_debug(ctx, SC_LOG_DEBUG_SM, "SM IAS/ECC get APDUs: encoded component '%s'", sc_dump_hex(encoded, encoded_len));
 
 		for (offs = 0; offs < encoded_len; )   {
-			int len = (encoded_len - offs) > SM_MAX_DATA_SIZE ? SM_MAX_DATA_SIZE : (encoded_len - offs);
+			size_t len = (encoded_len - offs) > SM_MAX_DATA_SIZE ? SM_MAX_DATA_SIZE : (encoded_len - offs);
 			struct sc_remote_apdu *rapdu = NULL;
 
 		 	rv = rdata->alloc(rdata, &rapdu);
@@ -459,14 +460,15 @@ sm_iasecc_get_apdu_update_rsa(struct sc_context *ctx, struct sm_info *sm_info, s
 			sc_debug(ctx, SC_LOG_DEBUG_SM, "SM IAS/ECC get APDUs: component(num %i:%i) class:%X, ref:%X", jj, ii,
 					to_update[jj]->sdo_class, to_update[jj]->sdo_ref);
 
-			encoded_len = iasecc_sdo_encode_update_field(ctx, to_update[jj]->sdo_class, to_update[jj]->sdo_ref,
+			rv = iasecc_sdo_encode_update_field(ctx, to_update[jj]->sdo_class, to_update[jj]->sdo_ref,
 						&to_update[jj]->fields[ii], &encoded);
-			LOG_TEST_RET(ctx, encoded_len, "SM get 'UPDATE RSA' APDU: cannot encode key component");
+			LOG_TEST_RET(ctx, rv, "SM get 'UPDATE RSA' APDU: cannot encode key component");
+			encoded_len = rv;
 
 			sc_debug(ctx, SC_LOG_DEBUG_SM, "SM IAS/ECC get APDUs: component encoded %s", sc_dump_hex(encoded, encoded_len));
 
 			for (offs = 0; offs < encoded_len; )   {
-				int len = (encoded_len - offs) > SM_MAX_DATA_SIZE ? SM_MAX_DATA_SIZE : (encoded_len - offs);
+				size_t len = (encoded_len - offs) > SM_MAX_DATA_SIZE ? SM_MAX_DATA_SIZE : (encoded_len - offs);
 				struct sc_remote_apdu *rapdu = NULL;
 
 		 		rv = rdata->alloc(rdata, &rapdu);

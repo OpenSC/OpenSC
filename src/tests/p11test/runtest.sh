@@ -21,10 +21,11 @@
 #set -x
 SOPIN="12345678"
 PIN="123456"
-export GNUTLS_PIN=$PIN 
+export GNUTLS_PIN=$PIN
 GENERATE_KEYS=1
 PKCS11_TOOL="../../tools/pkcs11-tool";
-PKCS15_INIT="../../tools/pkcs15-init";
+PKCS15_INIT="env OPENSC_CONF=p11test_opensc.conf ../../tools/pkcs15-init"
+SC_HSM_TOOL="../../tools/sc-hsm-tool";
 
 function generate_sym() {
 	TYPE="$1"
@@ -130,7 +131,7 @@ function card_setup() {
 		"myeid")
 			GENERATE_KEYS=0 # we generate them directly here
 			P11LIB="../../pkcs11/.libs/opensc-pkcs11.so"
-			$PKCS15_INIT --erase-card --so-pin $SOPIN
+			$PKCS15_INIT --erase-card
 			$PKCS15_INIT -C --pin $PIN --puk $SOPIN --so-pin $SOPIN --so-puk $SOPIN
 			$PKCS15_INIT -P -a 1 -l "Basic PIN" --pin $PIN --puk $PIN
 			INIT="$PKCS15_INIT --auth-id 01 --so-pin $SOPIN --pin $PIN"
@@ -140,10 +141,31 @@ function card_setup() {
 			$INIT --store-secret-key /dev/urandom --secret-key-algorithm aes:128 --extractable --id 04 --label="AES128 key" --key-usage=sign,decrypt
 			$PKCS15_INIT -F
 			;;
+		"sc-hsm")
+			GENERATE_KEYS=0 # we generate them directly here
+			SOPIN="3537363231383830"
+			PIN="648219"
+			P11LIB="../../pkcs11/.libs/opensc-pkcs11.so"
+			$SC_HSM_TOOL --initialize --so-pin $SOPIN --pin $PIN
+			$PKCS11_TOOL --module $P11LIB -l --pin $PIN --keypairgen --key-type rsa:2048 --id 10 --label="RSA key"
+			$PKCS11_TOOL --module $P11LIB -l --pin $PIN --keypairgen --key-type EC:prime256v1 --label "EC key"
+			;;
+		"epass2003")
+			GENERATE_KEYS=0 # we generate them directly here
+			P11LIB="../../pkcs11/.libs/opensc-pkcs11.so"
+			PIN="987654"
+			SOPIN="1234567890"
+			$PKCS15_INIT --erase-card -T
+			$PKCS15_INIT --create-pkcs15 -T -p pkcs15+onepin --pin $PIN --puk 1234567890
+			INIT="$PKCS15_INIT --auth-id 01 --so-pin $SOPIN --pin $PIN"
+			$INIT --generate-key ec:prime256v1 --id 01 --label="EC key" --key-usage=sign,keyAgreement
+			$INIT --generate-key rsa:2048 --id 02 --label="RSA key" --key-usage=sign,decrypt
+			$PKCS15_INIT -F
+			;;
 		*)
 			echo "Error: Missing argument."
 			echo "    Usage:"
-			echo "        runtest.sh [softhsm|opencryptoki|myeid|readonly [pkcs-library.so]]"
+			echo "        runtest.sh [softhsm|opencryptoki|myeid|sc-hsm|readonly [pkcs-library.so]]"
 			exit 1;
 			;;
 	esac
@@ -188,7 +210,7 @@ card_setup "$@"
 make p11test || exit
 if [[ "$PKCS11SPY" != "" ]]; then
 	export PKCS11SPY="$P11LIB"
-	$VALGRIND ./p11test -m ../../pkcs11/.libs/pkcs11-spy.so -p $PIN &> /tmp/spy.log
+	$VALGRIND ./p11test -v -m ../../pkcs11/.libs/pkcs11-spy.so -p $PIN &> /tmp/spy.log
 	echo "Output stored in /tmp/spy.log"
 else
 	$VALGRIND ./p11test -v -m "$P11LIB" -o test.json -p $PIN

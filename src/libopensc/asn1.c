@@ -374,7 +374,8 @@ static void print_tags_recursive(const u8 * buf0, const u8 * buf,
 	const u8 *p = buf;
 
 	while (bytesleft >= 2) {
-		unsigned int cla = 0, tag = 0, hlen;
+		unsigned int cla = 0, tag = 0;
+		size_t hlen;
 		const u8 *tagp = p;
 		size_t len;
 
@@ -649,8 +650,7 @@ static int encode_bit_string(const u8 * inbuf, size_t bits_left, u8 **outbuf,
 {
 	const u8 *in = inbuf;
 	u8 *out;
-	size_t bytes;
-	int skipped = 0;
+	size_t bytes, skipped = 0;
 
 	bytes = (bits_left + 7)/8 + 1;
 	*outbuf = out = malloc(bytes);
@@ -659,7 +659,7 @@ static int encode_bit_string(const u8 * inbuf, size_t bits_left, u8 **outbuf,
 	*outlen = bytes;
 	out += 1;
 	while (bits_left) {
-		int i, bits_to_go = 8;
+		size_t i, bits_to_go = 8;
 
 		*out = 0;
 		if (bits_left < 8) {
@@ -978,8 +978,7 @@ static int sc_asn1_decode_utf8string(const u8 *inbuf, size_t inlen,
 int sc_asn1_put_tag(unsigned int tag, const u8 * data, size_t datalen, u8 * out, size_t outlen, u8 **ptr)
 {
 	size_t c = 0;
-	size_t tag_len;
-	size_t ii;
+	unsigned int tag_len, ii;
 	u8 *p = out;
 	u8 tag_char[4] = {0, 0, 0, 0};
 
@@ -1019,7 +1018,7 @@ int sc_asn1_put_tag(unsigned int tag, const u8 * data, size_t datalen, u8 * out,
 	}
 	if (outlen == 0 || out == NULL) {
 		/* Caller only asks for the length that would be written. */
-		return tag_len + (c+1) + datalen;
+		return (int)(tag_len + (c + 1) + datalen);
 	}
 	/* We will write the tag, so check the length. */
 	if (outlen < tag_len + (c+1) + datalen)
@@ -2272,7 +2271,7 @@ int sc_asn1_decode_ecdsa_signature(sc_context_t *ctx, const u8 *data, size_t dat
 		memcpy(*out + fieldsize * i + fieldsize - intlen , pint, intlen);
 		pint += intlen; /* next integer */
 	}
-	r = 2 * fieldsize;
+	r = (int)(2 * fieldsize);
 err:
 	LOG_FUNC_RETURN(ctx, r);
 }

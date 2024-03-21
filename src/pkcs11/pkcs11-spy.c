@@ -1602,6 +1602,21 @@ C_GetInterfaceList(CK_INTERFACE_PTR pInterfacesList, CK_ULONG_PTR pulCount)
 	if (po->version.major < 3) {
 		fprintf(spy_output, "[compat]\n");
 
+		if (pulCount == NULL_PTR)
+			return retne(CKR_ARGUMENTS_BAD);
+
+		if (pInterfacesList == NULL_PTR) {
+			*pulCount = NUM_INTERFACES;
+			spy_dump_ulong_out("*pulCount", *pulCount);
+			return retne(CKR_OK);
+		}
+		spy_dump_ulong_in("*pulCount", *pulCount);
+		if (*pulCount < NUM_INTERFACES) {
+			*pulCount = NUM_INTERFACES;
+			spy_dump_ulong_out("*pulCount", *pulCount);
+			return retne(CKR_BUFFER_TOO_SMALL);
+		}
+
 		memcpy(pInterfacesList, compat_interfaces, NUM_INTERFACES * sizeof(CK_INTERFACE));
 		*pulCount = NUM_INTERFACES;
 
@@ -1657,7 +1672,7 @@ C_GetInterface(CK_UTF8CHAR_PTR pInterfaceName, CK_VERSION_PTR pVersion,
 		(flags & CKF_INTERFACE_FORK_SAFE ? "CKF_INTERFACE_FORK_SAFE" : ""));
 	if (po->version.major >= 3) {
 		rv = po->C_GetInterface(pInterfaceName, pVersion, ppInterface, flags);
-		if (ppInterface != NULL) {
+		if (rv == CKR_OK && ppInterface != NULL) {
 			spy_interface_function_list(*ppInterface);
 		}
 	} else {

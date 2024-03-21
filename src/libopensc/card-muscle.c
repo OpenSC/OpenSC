@@ -149,7 +149,7 @@ static int muscle_create_directory(sc_card_t *card, sc_file_t *file)
 	u8* oid = objectId.id;
 	unsigned id = file->id;
 	unsigned short read_perm = 0, write_perm = 0, delete_perm = 0;
-	int objectSize;
+	size_t objectSize;
 	int r;
 	if(id == 0) /* No null name files */
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -174,7 +174,7 @@ static int muscle_create_directory(sc_card_t *card, sc_file_t *file)
 static int muscle_create_file(sc_card_t *card, sc_file_t *file)
 {
 	mscfs_t *fs = MUSCLE_FS(card);
-	int objectSize = file->size;
+	size_t objectSize = file->size;
 	unsigned short read_perm = 0, write_perm = 0, delete_perm = 0;
 	msc_id objectId;
 	int r;
@@ -236,7 +236,7 @@ static int muscle_update_binary(sc_card_t *card, unsigned int idx, const u8* buf
 		oid[2] = oid[3] = 0;
 	}
 	if(file->size < idx + count) {
-		int newFileSize = idx + count;
+		size_t newFileSize = idx + count;
 		u8* buffer = malloc(newFileSize);
 		if(buffer == NULL) LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 
@@ -277,7 +277,7 @@ static int muscle_delete_mscfs_file(sc_card_t *card, mscfs_file_t *file_data)
 		r = mscfs_check_cache(fs);
 		if(r < 0) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 
-		sc_log(card->ctx, 
+		sc_log(card->ctx,
 			"DELETING Children of: %02X%02X%02X%02X\n",
 			oid[0],oid[1],oid[2],oid[3]);
 		for(x = 0; x < fs->cache.size; x++) {
@@ -286,7 +286,7 @@ static int muscle_delete_mscfs_file(sc_card_t *card, mscfs_file_t *file_data)
 			objectId = childFile->objectId;
 
 			if(0 == memcmp(oid + 2, objectId.id, 2) && !childFile->deleteFile) {
-				sc_log(card->ctx, 
+				sc_log(card->ctx,
 					"DELETING: %02X%02X%02X%02X\n",
 					objectId.id[0],objectId.id[1],
 					objectId.id[2],objectId.id[3]);
@@ -369,7 +369,7 @@ static int select_item(sc_card_t *card, const sc_path_t *path_in, sc_file_t ** f
 {
 	mscfs_t *fs = MUSCLE_FS(card);
 	mscfs_file_t *file_data = NULL;
-	int pathlen = path_in->len;
+	size_t pathlen = path_in->len;
 	int r = 0;
 	int objectIndex;
 	u8* oid;
@@ -532,7 +532,7 @@ static int muscle_list_files(sc_card_t *card, u8 *buf, size_t bufLen)
 		u8* oid = fs->cache.array[x].objectId.id;
 		if (bufLen < 2)
 			break;
-		sc_log(card->ctx, 
+		sc_log(card->ctx,
 			"FILE: %02X%02X%02X%02X\n",
 			oid[0],oid[1],oid[2],oid[3]);
 		if(0 == memcmp(fs->currentPath, oid, 2)) {

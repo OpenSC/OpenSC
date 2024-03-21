@@ -41,8 +41,7 @@
 #include <eac/cv_cert.h>
 #include <eac/eac.h>
 #include <eac/ta.h>
-#include <openssl/bio.h>
-#include <openssl/crypto.h>
+#include <openssl/evp.h>
 #endif
 
 
@@ -151,6 +150,8 @@ static int sc_hsm_select_file_ex(sc_card_t *card,
 	sc_hsm_private_data_t *priv = (sc_hsm_private_data_t *) card->drv_data;
 	sc_file_t *file = NULL;
 	sc_path_t cpath;
+	size_t card_max_recv_size = card->max_recv_size;
+	size_t reader_max_recv_size = card->reader->max_recv_size;
 
 	if (file_out == NULL) {				// Versions before 0.16 of the SmartCard-HSM do not support P2='0C'
 		rv = sc_hsm_select_file_ex(card, in_path, forceselect, &file);
@@ -184,7 +185,11 @@ static int sc_hsm_select_file_ex(sc_card_t *card,
 				&& in_path->aid.len == sc_hsm_aid.len
 				&& !memcmp(in_path->aid.value, sc_hsm_aid.value, sc_hsm_aid.len))) {
 		if (!priv || (priv->dffcp == NULL) || forceselect) {
+			/* Force use of Le = 0x00 in iso7816_select_file as required by SC-HSM */
+			card->max_recv_size = card->reader->max_recv_size = SC_READER_SHORT_APDU_MAX_RECV_SIZE;
 			rv = (*iso_ops->select_file)(card, in_path, file_out);
+			card->max_recv_size = card_max_recv_size;
+			card->reader->max_recv_size = reader_max_recv_size;
 			LOG_TEST_RET(card->ctx, rv, "Could not select SmartCard-HSM application");
 
 			if (priv) {
@@ -213,14 +218,24 @@ static int sc_hsm_select_file_ex(sc_card_t *card,
 			*file_out = file;
 			return SC_SUCCESS;
 		} else {
+			/* Force use of Le = 0x00 in iso7816_select_file as required by SC-HSM */
+			card->max_recv_size = card->reader->max_recv_size = SC_READER_SHORT_APDU_MAX_RECV_SIZE;
 			sc_path_t truncated;
 			memcpy(&truncated, in_path, sizeof truncated);
 			truncated.len = in_path->len - 2;
 			memcpy(truncated.value, in_path->value+2, truncated.len);
-			return (*iso_ops->select_file)(card, &truncated, file_out);
+			rv = (*iso_ops->select_file)(card, &truncated, file_out);
+			card->max_recv_size = card_max_recv_size;
+			card->reader->max_recv_size = reader_max_recv_size;
+			return rv;
 		}
 	}
-	return (*iso_ops->select_file)(card, in_path, file_out);
+	/* Force use of Le = 0x00 in iso7816_select_file as required by SC-HSM */
+	card->max_recv_size = card->reader->max_recv_size = SC_READER_SHORT_APDU_MAX_RECV_SIZE;
+	rv = (*iso_ops->select_file)(card, in_path, file_out);
+	card->max_recv_size = card_max_recv_size;
+	card->reader->max_recv_size = reader_max_recv_size;
+	return rv;
 }
 
 
@@ -265,9 +280,9 @@ static int sc_hsm_match_card(struct sc_card *card)
 
 	// Validate that card returns a FCP with a proprietary tag 85 with value longer than 2 byte (Fixes #1377)
 	if (file != NULL) {
-		i = file->prop_attr_len;
+		size_t sz = file->prop_attr_len;
 		sc_file_free(file);
-		if (i < 2) {
+		if (sz < 2) {
 			return 0;
 		}
 	}
@@ -481,8 +496,6 @@ static int sc_hsm_soc_biomatch(sc_card_t *card, struct sc_pin_cmd_data *data,
 	LOG_FUNC_RETURN(card->ctx, SC_ERROR_PIN_CODE_INCORRECT);
 }
 
-
-
 #if defined(ENABLE_SM) && defined(ENABLE_OPENPACE)
 
 static int sc_hsm_perform_chip_authentication(sc_card_t *card)
@@ -577,7 +590,11 @@ static int sc_hsm_perform_chip_authentication(sc_card_t *card)
 		goto err;
 	}
 	EVP_PKEY_free(ctx->ca_ctx->ka_ctx->key);
-	EVP_PKEY_up_ref(ctx->ta_ctx->pub_key);
+	if (!EVP_PKEY_up_ref(ctx->ta_ctx->pub_key)) {
+		sc_log_openssl(card->ctx);
+		r = SC_ERROR_INTERNAL;
+		goto err;
+	}
 	ctx->ca_ctx->ka_ctx->key = ctx->ta_ctx->pub_key;
 
 	/* generate keys for CA */
@@ -820,7 +837,7 @@ static int sc_hsm_read_binary(sc_card_t *card,
 		LOG_TEST_RET(ctx, r, "Check SW error");
 	}
 
-	LOG_FUNC_RETURN(ctx, apdu.resplen);
+	LOG_FUNC_RETURN(ctx, (int)apdu.resplen);
 }
 
 
@@ -897,7 +914,7 @@ static int sc_hsm_write_ef(sc_card_t *card,
 err:
 	free(cmdbuff);
 
-	LOG_FUNC_RETURN(ctx, count);
+	LOG_FUNC_RETURN(ctx, (int)count);
 }
 
 
@@ -941,7 +958,7 @@ static int sc_hsm_list_files(sc_card_t *card, u8 * buf, size_t buflen)
 	else
 		memcpy(buf, recvbuf, apdu.resplen);
 
-	LOG_FUNC_RETURN(card->ctx, apdu.resplen);
+	LOG_FUNC_RETURN(card->ctx, (int)apdu.resplen);
 }
 
 
@@ -1119,7 +1136,7 @@ static int sc_hsm_compute_signature(sc_card_t *card,
 				LOG_FUNC_RETURN(card->ctx, len);
 			}
 		} else {
-			len = apdu.resplen > outlen ? outlen : apdu.resplen;
+			len = (int)(apdu.resplen > outlen ? outlen : apdu.resplen);
 			memcpy(out, apdu.resp, len);
 		}
 		LOG_FUNC_RETURN(card->ctx, len);
@@ -1164,11 +1181,11 @@ static int sc_hsm_decipher(sc_card_t *card, const u8 * crgram, size_t crgram_len
 			assert(apdu.resplen > 0);
 			len = apdu.resplen - 1 > outlen ? outlen : apdu.resplen - 1;
 			memcpy(out, apdu.resp + 1, len);
-			LOG_FUNC_RETURN(card->ctx, len);
+			LOG_FUNC_RETURN(card->ctx, (int)len);
 		} else {
 			len = apdu.resplen > outlen ? outlen : apdu.resplen;
 			memcpy(out, apdu.resp, len);
-			LOG_FUNC_RETURN(card->ctx, len);
+			LOG_FUNC_RETURN(card->ctx, (int)len);
 		}
 	}
 	else

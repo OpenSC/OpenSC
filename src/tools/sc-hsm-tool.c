@@ -81,6 +81,7 @@ enum {
 	OPT_PASSWORD_SHARES_TOTAL
 };
 
+// clang-format off
 static const struct option options[] = {
 	{ "initialize",				0, NULL,		'X' },
 	{ "create-dkek-share",		1, NULL,		'C' },
@@ -112,6 +113,7 @@ static const struct option options[] = {
 	{ "verbose",				0, NULL,		'v' },
 	{ NULL, 0, NULL, 0 }
 };
+// clang-format on
 
 static const char *option_help[] = {
 	"Initialize token",
@@ -735,7 +737,7 @@ static int recreate_password_from_shares(char **pwd, int *pwdlen, int num_of_pas
 	}
 	binlen = 64;
 	sc_hex_to_bin(inbuf, bin, &binlen);
-	BN_bin2bn(bin, binlen, prime);
+	BN_bin2bn(bin, (int)binlen, prime);
 
 	sp = shares;
 	for (i = 0; i < num_of_password_shares; i++) {
@@ -770,7 +772,7 @@ static int recreate_password_from_shares(char **pwd, int *pwdlen, int num_of_pas
 		}
 		binlen = 64;
 		sc_hex_to_bin(inbuf, bin, &binlen);
-		BN_bin2bn(bin, binlen, (sp->y));
+		BN_bin2bn(bin, (int)binlen, (sp->y));
 
 		sp++;
 	}
@@ -778,7 +780,6 @@ static int recreate_password_from_shares(char **pwd, int *pwdlen, int num_of_pas
 	clearScreen();
 
 	r = reconstructSecret(shares, num_of_password_shares, prime, secret);
-
 	if (r < 0) {
 		printf("\nError during reconstruction of secret. Wrong shares?\n");
 		cleanUpShares(shares, num_of_password_shares);
@@ -844,10 +845,11 @@ static int import_dkek_share(sc_card_t *card, const char *inf, int iter, const c
 		if (num_of_password_shares == -1) {
 			printf("Enter password to decrypt DKEK share : ");
 			util_getpass(&pwd, NULL, stdin);
-			pwdlen = strlen(pwd);
+			pwdlen = (int)strlen(pwd);
 			printf("\n");
 		} else {
 			r = recreate_password_from_shares(&pwd, &pwdlen, num_of_password_shares);
+			sc_log_openssl(card->ctx);
 			if (r < 0) {
 				return -1;
 			}
@@ -855,7 +857,7 @@ static int import_dkek_share(sc_card_t *card, const char *inf, int iter, const c
 
 	} else {
 		pwd = (char *) password;
-		pwdlen = strlen(password);
+		pwdlen = (int)strlen(password);
 	}
 
 	printf("Deciphering DKEK share, please wait...\n");
@@ -867,16 +869,16 @@ static int import_dkek_share(sc_card_t *card, const char *inf, int iter, const c
 	}
 
 	bn_ctx = EVP_CIPHER_CTX_new();
-	EVP_DecryptInit_ex(bn_ctx, EVP_aes_256_cbc(), NULL, key, iv);
-	if (!EVP_DecryptUpdate(bn_ctx, outbuff, &outlen, filebuff + 16, sizeof(filebuff) - 16)) {
+	if (!bn_ctx ||
+			!EVP_DecryptInit_ex(bn_ctx, EVP_aes_256_cbc(), NULL, key, iv) ||
+			!EVP_DecryptUpdate(bn_ctx, outbuff, &outlen, filebuff + 16, sizeof(filebuff) - 16) ||
+			!EVP_DecryptFinal_ex(bn_ctx, outbuff + outlen, &r)) {
+		sc_log_openssl(card->ctx);
+		EVP_CIPHER_CTX_free(bn_ctx);
 		fprintf(stderr, "Error decrypting DKEK share. Password correct ?\n");
 		return -1;
 	}
-
-	if (!EVP_DecryptFinal_ex(bn_ctx, outbuff + outlen, &r)) {
-		fprintf(stderr, "Error decrypting DKEK share. Password correct ?\n");
-		return -1;
-	}
+	EVP_CIPHER_CTX_free(bn_ctx);
 
 	memset(&dkekinfo, 0, sizeof(dkekinfo));
 	memcpy(dkekinfo.dkek_share, outbuff, sizeof(dkekinfo.dkek_share));
@@ -887,7 +889,6 @@ static int import_dkek_share(sc_card_t *card, const char *inf, int iter, const c
 	r = sc_card_ctl(card, SC_CARDCTL_SC_HSM_IMPORT_DKEK_SHARE, (void *)&dkekinfo);
 
 	OPENSSL_cleanse(&dkekinfo.dkek_share, sizeof(dkekinfo.dkek_share));
-	EVP_CIPHER_CTX_free(bn_ctx);
 
 	if (r == SC_ERROR_INS_NOT_SUPPORTED) {			// Not supported or not initialized for key shares
 		fprintf(stderr, "Not supported by card or card not initialized for key share usage\n");
@@ -905,7 +906,7 @@ static int import_dkek_share(sc_card_t *card, const char *inf, int iter, const c
 
 static int print_dkek_share(sc_card_t *card, const char *inf, int iter, const char *password, int num_of_password_shares)
 {
-	// hex output can be used in the SCSH shell with the 
+	// hex output can be used in the SCSH shell with the
 	// decrypt_keyblob.js file
 	sc_cardctl_sc_hsm_dkek_t dkekinfo;
 	EVP_CIPHER_CTX *bn_ctx = NULL;
@@ -945,7 +946,7 @@ static int print_dkek_share(sc_card_t *card, const char *inf, int iter, const ch
 		if (num_of_password_shares == -1) {
 			printf("Enter password to decrypt DKEK share : ");
 			util_getpass(&pwd, NULL, stdin);
-			pwdlen = strlen(pwd);
+			pwdlen = (int)strlen(pwd);
 			printf("\n");
 		} else {
 			r = recreate_password_from_shares(&pwd, &pwdlen, num_of_password_shares);
@@ -956,7 +957,7 @@ static int print_dkek_share(sc_card_t *card, const char *inf, int iter, const ch
 
 	} else {
 		pwd = (char *) password;
-		pwdlen = strlen(password);
+		pwdlen = (int)strlen(password);
 	}
 
 	printf("Deciphering DKEK share, please wait...\n");
@@ -968,16 +969,16 @@ static int print_dkek_share(sc_card_t *card, const char *inf, int iter, const ch
 	}
 
 	bn_ctx = EVP_CIPHER_CTX_new();
-	EVP_DecryptInit_ex(bn_ctx, EVP_aes_256_cbc(), NULL, key, iv);
-	if (!EVP_DecryptUpdate(bn_ctx, outbuff, &outlen, filebuff + 16, sizeof(filebuff) - 16)) {
+	if (!bn_ctx ||
+			!EVP_DecryptInit_ex(bn_ctx, EVP_aes_256_cbc(), NULL, key, iv) ||
+			!EVP_DecryptUpdate(bn_ctx, outbuff, &outlen, filebuff + 16, sizeof(filebuff) - 16) ||
+			!EVP_DecryptFinal_ex(bn_ctx, outbuff + outlen, &r)) {
+		sc_log_openssl(card->ctx);
+		EVP_CIPHER_CTX_free(bn_ctx);
 		fprintf(stderr, "Error decrypting DKEK share. Password correct ?\n");
 		return -1;
 	}
-
-	if (!EVP_DecryptFinal_ex(bn_ctx, outbuff + outlen, &r)) {
-		fprintf(stderr, "Error decrypting DKEK share. Password correct ?\n");
-		return -1;
-	}
+	EVP_CIPHER_CTX_free(bn_ctx);
 
 	memset(&dkekinfo, 0, sizeof(dkekinfo));
 	memcpy(dkekinfo.dkek_share, outbuff, sizeof(dkekinfo.dkek_share));
@@ -994,7 +995,6 @@ static int print_dkek_share(sc_card_t *card, const char *inf, int iter, const ch
 	printf("\n\n");
 
 	OPENSSL_cleanse(&dkekinfo.dkek_share, sizeof(dkekinfo.dkek_share));
-	EVP_CIPHER_CTX_free(bn_ctx);
 
 	if (r == SC_ERROR_INS_NOT_SUPPORTED) {			// Not supported or not initialized for key shares
 		fprintf(stderr, "Not supported by card or card not initialized for key share usage\n");
@@ -1037,7 +1037,7 @@ static void ask_for_password(char **pwd, int *pwdlen)
 			printf("Passwords do not match. Please retry.\n");
 			continue;
 		}
-		*pwdlen = strlen(*pwd);
+		*pwdlen = (int)strlen(*pwd);
 		break;
 	}
 
@@ -1121,6 +1121,8 @@ static int generate_pwd_shares(sc_card_t *card, char **pwd, int *pwdlen, int pas
 	r = sc_get_challenge(card, rngseed, SEED_LENGTH);
 	if (r < 0) {
 		printf("Error generating random seed failed with %s", sc_strerror(r));
+		BN_clear_free(prime);
+		BN_clear_free(secret);
 		OPENSSL_cleanse(*pwd, *pwdlen);
 		free(*pwd);
 		return r;
@@ -1128,6 +1130,9 @@ static int generate_pwd_shares(sc_card_t *card, char **pwd, int *pwdlen, int pas
 
 	r = generatePrime(prime, secret, 64, rngseed, SEED_LENGTH);
 	if (r < 0) {
+		sc_log_openssl(card->ctx);
+		BN_clear_free(prime);
+		BN_clear_free(secret);
 		printf("Error generating valid prime number. Please try again.");
 		OPENSSL_cleanse(*pwd, *pwdlen);
 		free(*pwd);
@@ -1138,7 +1143,10 @@ static int generate_pwd_shares(sc_card_t *card, char **pwd, int *pwdlen, int pas
 	shares = malloc(password_shares_total * sizeof(secret_share_t));
 
 	if (!shares || 0 > createShares(secret, password_shares_threshold, password_shares_total, prime, shares)) {
+		sc_log_openssl(card->ctx);
 		printf("Error generating Shares. Please try again.");
+		BN_clear_free(prime);
+		BN_clear_free(secret);
 		OPENSSL_cleanse(*pwd, *pwdlen);
 		free(*pwd);
 		free(shares);
@@ -1206,7 +1214,7 @@ static int create_dkek_share(sc_card_t *card, const char *outf, int iter, const 
 
 	} else {
 		pwd = (char *) password;
-		pwdlen = strlen(password);
+		pwdlen = (int)strlen(password);
 	}
 
 	if (r < 0) {
@@ -1237,16 +1245,16 @@ static int create_dkek_share(sc_card_t *card, const char *outf, int iter, const 
 	}
 
 	c_ctx = EVP_CIPHER_CTX_new();
-	EVP_EncryptInit_ex(c_ctx, EVP_aes_256_cbc(), NULL, key, iv);
-	if (!EVP_EncryptUpdate(c_ctx, filebuff + 16, &outlen, dkek_share, sizeof(dkek_share))) {
+	if (!c_ctx ||
+			!EVP_EncryptInit_ex(c_ctx, EVP_aes_256_cbc(), NULL, key, iv) ||
+			!EVP_EncryptUpdate(c_ctx, filebuff + 16, &outlen, dkek_share, sizeof(dkek_share)) ||
+			!EVP_EncryptFinal_ex(c_ctx, filebuff + 16 + outlen, &r)) {
+		sc_log_openssl(card->ctx);
+		EVP_CIPHER_CTX_free(c_ctx);
 		fprintf(stderr, "Error encrypting DKEK share\n");
 		return -1;
 	}
-
-	if (!EVP_EncryptFinal_ex(c_ctx, filebuff + 16 + outlen, &r)) {
-		fprintf(stderr, "Error encrypting DKEK share\n");
-		return -1;
-	}
+	EVP_CIPHER_CTX_free(c_ctx);
 
 	out = fopen(outf, "wb");
 
@@ -1264,7 +1272,6 @@ static int create_dkek_share(sc_card_t *card, const char *outf, int iter, const 
 	fclose(out);
 
 	OPENSSL_cleanse(filebuff, sizeof(filebuff));
-	EVP_CIPHER_CTX_free(c_ctx);
 
 	printf("DKEK share created and saved to %s\n", outf);
 	return 0;
@@ -1402,7 +1409,7 @@ static int wrap_key(sc_context_t *ctx, sc_card_t *card, int keyid, const char *o
 			fprintf(stderr, "Error reading PRKD file %s. Skipping.\n", sc_strerror(ef_prkd_len));
 			ef_prkd_len = 0;
 		} else {
-			ef_prkd_len = determineLength(ef_prkd, ef_prkd_len);
+			ef_prkd_len = (int)determineLength(ef_prkd, ef_prkd_len);
 		}
 	}
 
@@ -1421,7 +1428,7 @@ static int wrap_key(sc_context_t *ctx, sc_card_t *card, int keyid, const char *o
 			fprintf(stderr, "Error reading certificate %s. Skipping\n", sc_strerror(ef_cert_len));
 			ef_cert_len = 0;
 		} else {
-			ef_cert_len = determineLength(ef_cert, ef_cert_len);
+			ef_cert_len = (int)determineLength(ef_cert, ef_cert_len);
 		}
 	}
 
@@ -1528,8 +1535,10 @@ static int unwrap_key(sc_card_t *card, int keyid, const char *inf, const char *p
 	u8 fid[2];
 	char *lpin = NULL;
 	unsigned int cla, tag;
-	int r, keybloblen;
+	int r;
+	size_t keybloblen;
 	size_t len, olen, prkd_len, cert_len;
+	ssize_t sz;
 
 	if ((keyid < 1) || (keyid > 255)) {
 		fprintf(stderr, "Invalid key reference (must be 0 < keyid <= 255)\n");
@@ -1548,12 +1557,13 @@ static int unwrap_key(sc_card_t *card, int keyid, const char *inf, const char *p
 		return -1;
 	}
 
-	keybloblen = fread(keyblob, 1, sizeof(keyblob), in);
+	sz = fread(keyblob, 1, sizeof(keyblob), in);
 	fclose(in);
-	if (keybloblen < 0) {
+	if (sz < 0) {
 		perror(inf);
 		return -1;
 	}
+	keybloblen = sz;
 
 	ptr = keyblob;
 	if ((sc_asn1_read_tag(&ptr, keybloblen, &cla, &tag, &len) != SC_SUCCESS)
@@ -1703,7 +1713,8 @@ static int export_key(sc_card_t *card, int keyid, const char *outf)
 	u8 dev_aut_cert[MAX_CERT];
 	u8 dica[MAX_CERT];
 	u8 tag = SC_ASN1_TAG_CONSTRUCTED | SC_ASN1_TAG_SEQUENCE; /* 0x30 */
-	int r = 0, ef_cert_len, dev_aut_cert_len, dica_len, total_certs_len;
+	int r = 0, ef_cert_len, total_certs_len;
+	size_t dev_aut_cert_len, dica_len;
 	u8 *data = NULL, *out = NULL, *ptr;
 	size_t datalen, outlen;
 
@@ -1729,7 +1740,7 @@ static int export_key(sc_card_t *card, int keyid, const char *outf)
 		fprintf(stderr, "Error reading certificate %s. Skipping\n", sc_strerror(ef_cert_len));
 		ef_cert_len = 0;
 	} else {
-		ef_cert_len = determineLength(ef_cert, ef_cert_len);
+		ef_cert_len = (int)determineLength(ef_cert, ef_cert_len);
 	}
 
 	/* C_DevAut */
@@ -1949,10 +1960,10 @@ int main(int argc, char *argv[])
 			action_count++;
 			break;
 		case 'K':
-			opt_num_of_pub_keys = atol(optarg);
+			opt_num_of_pub_keys = (int)atol(optarg);
 			break;
 		case 'n':
-			opt_required_pub_keys = atol(optarg);
+			opt_required_pub_keys = (int)atol(optarg);
 			break;
 		case 'e':
 			do_export_key = 1;
@@ -1978,7 +1989,7 @@ int main(int argc, char *argv[])
 			util_get_pin(optarg, &opt_pin);
 			break;
 		case OPT_RETRY:
-			opt_retry_counter = atol(optarg);
+			opt_retry_counter = (int)atol(optarg);
 			break;
 		case OPT_BIO1:
 			opt_bio1 = optarg;
@@ -1987,19 +1998,19 @@ int main(int argc, char *argv[])
 			opt_bio2 = optarg;
 			break;
 		case OPT_PASSWORD_SHARES_THRESHOLD:
-			opt_password_shares_threshold = atol(optarg);
+			opt_password_shares_threshold = (int)atol(optarg);
 			break;
 		case OPT_PASSWORD_SHARES_TOTAL:
-			opt_password_shares_total = atol(optarg);
+			opt_password_shares_total = (int)atol(optarg);
 			break;
 		case 's':
-			opt_dkek_shares = atol(optarg);
+			opt_dkek_shares = (int)atol(optarg);
 			break;
 		case 'f':
 			opt_force = 1;
 			break;
 		case 'i':
-			opt_key_reference = atol(optarg);
+			opt_key_reference = (int)atol(optarg);
 			break;
 		case 'r':
 			opt_reader = optarg;

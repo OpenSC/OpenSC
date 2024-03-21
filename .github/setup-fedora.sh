@@ -3,7 +3,13 @@
 set -ex -o xtrace
 
 # Generic dependencies
-DEPS="make /usr/bin/xsltproc docbook-style-xsl autoconf automake libtool gcc bash-completion vim-common softhsm openssl diffutils gcc-c++"
+DEPS="make /usr/bin/xsltproc docbook-style-xsl autoconf automake libtool bash-completion vim-common softhsm openssl diffutils"
+
+if [ "$1" == "clang" ]; then
+	DEPS="$DEPS clang"
+else
+	DEPS="$DEPS gcc gcc-c++"
+fi
 
 # 64bit or 32bit dependencies
 if [ "$1" == "ix86" ]; then

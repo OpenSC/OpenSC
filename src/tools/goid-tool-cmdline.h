@@ -105,19 +105,19 @@ struct gengetopt_args_info
   char * new_read_ac_arg;	/**< @brief Access condition for reading newly created DGs (default='sm').  */
   char * new_read_ac_orig;	/**< @brief Access condition for reading newly created DGs original value given at command line.  */
   const char *new_read_ac_help; /**< @brief Access condition for reading newly created DGs help description.  */
-  int* new_read_ac_chatbit_arg;	/**< @brief Required access bits in certificate's CHAT for reading newly created DGs.  */
-  char ** new_read_ac_chatbit_orig;	/**< @brief Required access bits in certificate's CHAT for reading newly created DGs original value given at command line.  */
-  unsigned int new_read_ac_chatbit_min; /**< @brief Required access bits in certificate's CHAT for reading newly created DGs's minimum occurreces */
-  unsigned int new_read_ac_chatbit_max; /**< @brief Required access bits in certificate's CHAT for reading newly created DGs's maximum occurreces */
-  const char *new_read_ac_chatbit_help; /**< @brief Required access bits in certificate's CHAT for reading newly created DGs help description.  */
+  int* new_read_ac_chatbit_arg;	/**< @brief Required access bit in certificate's CHAT for reading newly created DGs.  */
+  char ** new_read_ac_chatbit_orig;	/**< @brief Required access bit in certificate's CHAT for reading newly created DGs original value given at command line.  */
+  unsigned int new_read_ac_chatbit_min; /**< @brief Required access bit in certificate's CHAT for reading newly created DGs's minimum occurreces */
+  unsigned int new_read_ac_chatbit_max; /**< @brief Required access bit in certificate's CHAT for reading newly created DGs's maximum occurreces */
+  const char *new_read_ac_chatbit_help; /**< @brief Required access bit in certificate's CHAT for reading newly created DGs help description.  */
   char * new_write_ac_arg;	/**< @brief Access condition for writing newly created DGs (default='sm').  */
   char * new_write_ac_orig;	/**< @brief Access condition for writing newly created DGs original value given at command line.  */
   const char *new_write_ac_help; /**< @brief Access condition for writing newly created DGs help description.  */
-  int* new_write_ac_chatbit_arg;	/**< @brief Required access bits in certificate's CHAT for reading newly created DGs.  */
-  char ** new_write_ac_chatbit_orig;	/**< @brief Required access bits in certificate's CHAT for reading newly created DGs original value given at command line.  */
-  unsigned int new_write_ac_chatbit_min; /**< @brief Required access bits in certificate's CHAT for reading newly created DGs's minimum occurreces */
-  unsigned int new_write_ac_chatbit_max; /**< @brief Required access bits in certificate's CHAT for reading newly created DGs's maximum occurreces */
-  const char *new_write_ac_chatbit_help; /**< @brief Required access bits in certificate's CHAT for reading newly created DGs help description.  */
+  int* new_write_ac_chatbit_arg;	/**< @brief Required access bit in certificate's CHAT for reading newly created DGs.  */
+  char ** new_write_ac_chatbit_orig;	/**< @brief Required access bit in certificate's CHAT for reading newly created DGs original value given at command line.  */
+  unsigned int new_write_ac_chatbit_min; /**< @brief Required access bit in certificate's CHAT for reading newly created DGs's minimum occurreces */
+  unsigned int new_write_ac_chatbit_max; /**< @brief Required access bit in certificate's CHAT for reading newly created DGs's maximum occurreces */
+  const char *new_write_ac_chatbit_help; /**< @brief Required access bit in certificate's CHAT for reading newly created DGs help description.  */
   
   unsigned int help_given ;	/**< @brief Whether help was given.  */
   unsigned int version_given ;	/**< @brief Whether version was given.  */

@@ -231,12 +231,6 @@
                 <Component Id="flex.profile" Guid="*" Win64="$(var.Win64YesNo)">
                   <File Source="$(var.SOURCE_DIR)\src\pkcs15init\flex.profile"/>
                 </Component>
-                <Component Id="gpk.profile" Guid="*" Win64="$(var.Win64YesNo)">
-                  <File Source="$(var.SOURCE_DIR)\src\pkcs15init\gpk.profile"/>
-                </Component>
-                <Component Id="incrypto34.profile" Guid="*" Win64="$(var.Win64YesNo)">
-                  <File Source="$(var.SOURCE_DIR)\src\pkcs15init\incrypto34.profile"/>
-                </Component>
                 <Component Id="muscle.profile" Guid="*" Win64="$(var.Win64YesNo)">
                   <File Source="$(var.SOURCE_DIR)\src\pkcs15init\muscle.profile"/>
                 </Component>
@@ -263,9 +257,6 @@
                 </Component>
                 <Component Id="starcos.profile" Guid="*" Win64="$(var.Win64YesNo)">
                   <File Source="$(var.SOURCE_DIR)\src\pkcs15init\starcos.profile"/>
-                </Component>
-                <Component Id="westcos.profile" Guid="*" Win64="$(var.Win64YesNo)">
-                  <File Source="$(var.SOURCE_DIR)\src\pkcs15init\westcos.profile"/>
                 </Component>
                 <Component Id="oberthur.profile" Guid="*" Win64="$(var.Win64YesNo)">
                   <File Source="$(var.SOURCE_DIR)\src\pkcs15init\oberthur.profile"/>
@@ -406,8 +397,6 @@
           <ComponentRef Id="npa_tool.exe"/>
           <ComponentRef Id="cyberflex.profile"/>
           <ComponentRef Id="flex.profile"/>
-          <ComponentRef Id="gpk.profile"/>
-          <ComponentRef Id="incrypto34.profile"/>
           <ComponentRef Id="muscle.profile"/>
           <ComponentRef Id="pkcs15.profile"/>
           <ComponentRef Id="asepcos.profile"/>
@@ -417,7 +406,6 @@
           <ComponentRef Id="myeid.profile"/>
           <ComponentRef Id="setcos.profile"/>
           <ComponentRef Id="starcos.profile"/>
-          <ComponentRef Id="westcos.profile"/>
           <ComponentRef Id="oberthur.profile"/>
           <ComponentRef Id="authentic.profile"/>
           <ComponentRef Id="rutoken.profile"/>

@@ -60,6 +60,9 @@ test-driver
 *.res
 *.ggo
 ChangeLog
+.cache
+compile_commands.json
+.dirstamp
 
 doc/tools/*-tool
 doc/tools/eidenv
@@ -88,6 +91,8 @@ src/tools/pkcs11-register
 src/tools/pkcs11-register.plist
 src/tools/pkcs11-register.desktop
 src/tools/opensc-asn1
+src/tools/org.opensc-project.mac.opensc-notify.plist
+src/tools/org.opensc-project.mac.pkcs11-register.plist
 
 win32/OpenSC.iss
 win32/OpenSC.wxs
@@ -98,6 +103,7 @@ win32/OpenSC.wixpdb
 
 MacOSX/build-package
 MacOSX/Distribution*.xml
+MacOSX/resources/Welcome.html
 
 *.dmg
 *.pkg
@@ -127,5 +133,23 @@ src/tests/unittests/openpgp-tool
 src/tests/unittests/pkcs15filter
 src/tests/unittests/simpletlv
 src/tests/unittests/sm
+src/tests/unittests/check_macro_reference_loop
+src/tests/unittests/decode_ecdsa_signature
+src/tests/unittests/hextobin
+
+src/tests/fuzzing/fuzz_asn1_print
+src/tests/fuzzing/fuzz_asn1_sig_value
+src/tests/fuzzing/fuzz_card
+src/tests/fuzzing/fuzz_piv_tool
+src/tests/fuzzing/fuzz_pkcs11
+src/tests/fuzzing/fuzz_pkcs15_crypt
+src/tests/fuzzing/fuzz_pkcs15_decode
+src/tests/fuzzing/fuzz_pkcs15_encode
+src/tests/fuzzing/fuzz_pkcs15_reader
+src/tests/fuzzing/fuzz_pkcs15_tool
+src/tests/fuzzing/fuzz_pkcs15init
+src/tests/fuzzing/fuzz_scconf_parse_string
 
 version.m4.ci
+openssl_arm64
+openssl_bin

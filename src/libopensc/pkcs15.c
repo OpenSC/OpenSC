@@ -550,7 +550,7 @@ sc_pkcs15_get_lastupdate(struct sc_pkcs15_card *p15card)
 	size = file->size ? file->size : 1024;
 	sc_file_free(file);
 
-	content = calloc(size, 1);
+	content = calloc(1, size);
 	if (!content)
 		return NULL;
 
@@ -1080,7 +1080,7 @@ sc_pkcs15_bind_internal(struct sc_pkcs15_card *p15card, struct sc_aid *aid)
 	if (p15card->opts.use_file_cache) {
 		err = sc_pkcs15_read_cached_file(p15card, &tmppath, &buf, &len);
 		if (err == SC_SUCCESS)
-			err = len;
+			err = (int)len;
 	}
 	if (err < 0) {
 		err = sc_read_binary(card, 0, buf, len, 0);
@@ -1154,7 +1154,7 @@ sc_pkcs15_bind_internal(struct sc_pkcs15_card *p15card, struct sc_aid *aid)
 	if (p15card->opts.use_file_cache) {
 		err = sc_pkcs15_read_cached_file(p15card, &tmppath, &buf, &len);
 		if (err == SC_SUCCESS)
-			err = len;
+			err = (int)len;
 	}
 	if (err < 0) {
 		err = sc_read_binary(card, 0, buf, len, 0);
@@ -1227,7 +1227,6 @@ const char *pkcs15_get_default_use_file_cache(struct sc_card *card)
 	 * The following list was initialized with the cards that can't be modified
 	 * with OpenSC i.e. which don't have a profile/driver for pkcs15-init. */
 	const char *card_drivers_with_file_cache[] = {
-		"akis",
 		"atrust-acos",
 		"belpic",
 		"cac1",
@@ -1463,7 +1462,7 @@ __sc_pkcs15_search_objects(struct sc_pkcs15_card *p15card, unsigned int class_ma
 			break;
 	}
 
-	return match_count;
+	return (int)match_count;
 }
 
 
@@ -1985,6 +1984,9 @@ sc_pkcs15_free_object(struct sc_pkcs15_object *obj)
 		break;
 	case SC_PKCS15_TYPE_CERT:
 		sc_pkcs15_free_cert_info((sc_pkcs15_cert_info_t *)obj->data);
+		break;
+	case SC_PKCS15_TYPE_SKEY:
+		sc_pkcs15_free_skey_info((sc_pkcs15_skey_info_t *)obj->data);
 		break;
 	case SC_PKCS15_TYPE_DATA_OBJECT:
 		sc_pkcs15_free_data_info((sc_pkcs15_data_info_t *)obj->data);
@@ -2577,7 +2579,7 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 			len = head-data;
 		}
 		else if (file->ef_structure == SC_FILE_EF_LINEAR_VARIABLE) {
-			r = sc_read_record(p15card->card, in_path->index, offset, data, len, SC_RECORD_BY_REC_NR);
+			r = sc_read_record(p15card->card, in_path->index, (unsigned)offset, data, len, SC_RECORD_BY_REC_NR);
 			if (r < 0) {
 				goto fail_unlock;
 			}
@@ -2586,7 +2588,7 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 		}
 		else {
 			unsigned long flags = 0;
-			r = sc_read_binary(p15card->card, offset, data, len, &flags);
+			r = sc_read_binary(p15card->card, (unsigned)offset, data, len, &flags);
 			if (r < 0) {
 				goto fail_unlock;
 			}
@@ -2980,7 +2982,8 @@ sc_pkcs15_get_object_guid(struct sc_pkcs15_card *p15card, const struct sc_pkcs15
 	struct sc_serial_number serialnr;
 	struct sc_pkcs15_id  id;
 	unsigned char guid_bin[SC_PKCS15_MAX_ID_SIZE + SC_MAX_SERIALNR];
-	int rv, guid_bin_size;
+	int rv;
+	size_t guid_bin_size;
 
 	LOG_FUNC_CALLED(ctx);
 	if(!out || !out_size)

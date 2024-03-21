@@ -307,6 +307,7 @@ sc_pkcs15_verify_pin(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *pi
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_PIN_REFERENCE);
 	auth_info = (struct sc_pkcs15_auth_info *)pin_obj->data;
 
+	/* Check the provided pin matches pin requirements */
 	r = _validate_pin(p15card, auth_info, pinlen);
 
 	if (r)
@@ -771,12 +772,12 @@ void sc_pkcs15_pincache_add(struct sc_pkcs15_card *p15card, struct sc_pkcs15_obj
 
 		if (sc_pkcs15_compare_id(&obj->auth_id, &auth_info->auth_id)) {
 			/* Caching is refused, if the protected object requires user consent */
-		    if (!p15card->opts.pin_cache_ignore_user_consent) {
-			if (obj->user_consent > 0) {
-				sc_log(ctx, "caching refused (user consent)");
-				return;
+			if (!p15card->opts.pin_cache_ignore_user_consent) {
+				if (obj->user_consent > 0) {
+					sc_log(ctx, "caching refused (user consent)");
+					return;
+				}
 			}
-		    }
 		}
 
 		obj = obj->next;

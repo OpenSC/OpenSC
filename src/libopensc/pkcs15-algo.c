@@ -45,7 +45,8 @@ asn1_decode_des_params(sc_context_t *ctx, void **paramp,
 {
 	struct sc_asn1_entry asn1_des_iv[2];
 	u8	iv[8];
-	int	ivlen = 8, r;
+	size_t ivlen = 8;
+	int r;
 
 	sc_copy_asn1_entry(c_asn1_des_iv, asn1_des_iv);
 	sc_format_asn1_entry(asn1_des_iv + 0, iv, &ivlen, 0);
@@ -285,7 +286,7 @@ asn1_decode_ec_params(sc_context_t *ctx, void **paramp,
 	if (r < 0)
 		return r;
 
-	ecp = calloc(sizeof(struct sc_ec_parameters), 1);
+	ecp = calloc(1, sizeof(struct sc_ec_parameters));
 	if (ecp == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 
@@ -532,10 +533,10 @@ sc_asn1_encode_algorithm_id(struct sc_context *ctx, u8 **buf, size_t *len,
 	u8 *tmp;
 
 	LOG_FUNC_CALLED(ctx);
-        sc_log(ctx, "type of algorithm to encode: %i", id->algorithm);
+        sc_log(ctx, "type of algorithm to encode: %lu", id->algorithm);
 	alg_info = sc_asn1_get_algorithm_info(id);
 	if (alg_info == NULL) {
-		sc_log(ctx, "Cannot encode unknown algorithm %u", id->algorithm);
+		sc_log(ctx, "Cannot encode unknown algorithm %lu", id->algorithm);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 

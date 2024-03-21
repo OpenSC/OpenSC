@@ -31,10 +31,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-#include <openssl/sha.h>
 #include <openssl/evp.h>
-#include <openssl/rsa.h>
-#include <openssl/opensslv.h>
 
 #include "internal.h"
 #include "cardctl.h"
@@ -64,7 +61,7 @@ static const struct sc_atr_table oberthur_atrs[] = {
 };
 
 struct auth_senv {
-	unsigned int algorithm;
+	unsigned long algorithm;
 	int key_file_id;
 	size_t key_size;
 };
@@ -83,7 +80,7 @@ struct auth_update_component_info {
 	enum SC_CARDCTL_OBERTHUR_KEY_TYPE  type;
 	unsigned int    component;
 	unsigned char   *data;
-	unsigned int    len;
+	size_t    len;
 };
 
 
@@ -105,7 +102,7 @@ static const char *nameAidAuthentIC_V5 = "AuthentIC v5";
 #define PUBKEY_2048_ASN1_SIZE	0x10E
 
 static unsigned char rsa_der[PUBKEY_2048_ASN1_SIZE];
-static int rsa_der_len = 0;
+static size_t rsa_der_len = 0;
 
 static struct sc_file *auth_current_ef = NULL,  *auth_current_df = NULL;
 static struct sc_card_operations auth_ops;
@@ -606,7 +603,7 @@ auth_list_files(struct sc_card *card, unsigned char *buf, size_t buflen)
 	buflen = buflen < apdu.resplen ? buflen : apdu.resplen;
 	memcpy(buf, rbuf, buflen);
 
-	LOG_FUNC_RETURN(card->ctx, buflen);
+	LOG_FUNC_RETURN(card->ctx, (int)buflen);
 }
 
 
@@ -737,7 +734,8 @@ encode_file_structure_V5(struct sc_card *card, const struct sc_file *file,
 				 unsigned char *buf, size_t *buflen)
 {
 	size_t ii;
-	int rv=0, size;
+	int rv = 0;
+	size_t size;
 	unsigned char *p = buf;
 	unsigned char  ops[8] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
@@ -963,7 +961,7 @@ auth_create_file(struct sc_card *card, struct sc_file *file)
 	LOG_TEST_RET(card->ctx, rv, "File structure encoding failed");
 
 	if (file->type != SC_FILE_TYPE_DF && file->ef_structure != SC_FILE_EF_TRANSPARENT)
-		rec_nr = file->record_count;
+		rec_nr = (int)file->record_count;
 	else
 		rec_nr = 0;
 
@@ -989,6 +987,7 @@ auth_create_file(struct sc_card *card, struct sc_file *file)
 		tmp_path.len = 2;
 		rv = auth_select_file(card, &tmp_path, &df_file);
 		sc_log(card->ctx, "rv %i", rv);
+		sc_file_free(df_file);
 	}
 
 	sc_file_free(auth_current_ef);
@@ -1018,7 +1017,7 @@ auth_set_security_env(struct sc_card *card,
 
 	LOG_FUNC_CALLED(card->ctx);
 	sc_log(card->ctx,
-	       "op %i; path %s; key_ref 0x%X; algos 0x%X; flags 0x%lX",
+	       "op %i; path %s; key_ref 0x%X; algos 0x%lX; flags 0x%lX",
 	       env->operation, sc_print_path(&env->file_ref), env->key_ref[0],
 	       env->algorithm_flags, env->flags);
 
@@ -1031,7 +1030,7 @@ auth_set_security_env(struct sc_card *card,
 	case SC_ALGORITHM_DES:
 	case SC_ALGORITHM_3DES:
 		sc_log(card->ctx,
-		       "algo SC_ALGORITHM_xDES: ref %X, flags %lX",
+		       "algo SC_ALGORITHM_xDES: ref %lX, flags %lX",
 		       env->algorithm_ref, env->flags);
 
 		if (env->operation == SC_SEC_OPERATION_DECIPHER)   {
@@ -1146,7 +1145,7 @@ auth_compute_signature(struct sc_card *card, const unsigned char *in, size_t ile
 
 	memcpy(out, apdu.resp, apdu.resplen);
 
-	LOG_FUNC_RETURN(card->ctx, apdu.resplen);
+	LOG_FUNC_RETURN(card->ctx, (int)apdu.resplen);
 }
 
 
@@ -1156,7 +1155,8 @@ auth_decipher(struct sc_card *card, const unsigned char *in, size_t inlen,
 {
 	struct sc_apdu apdu;
 	unsigned char resp[SC_MAX_APDU_BUFFER_SIZE];
-	int rv, _inlen = inlen;
+	int rv;
+	size_t _inlen = inlen;
 
 	LOG_FUNC_CALLED(card->ctx);
 	sc_log(card->ctx,
@@ -1213,7 +1213,7 @@ auth_decipher(struct sc_card *card, const unsigned char *in, size_t inlen,
 		outlen = apdu.resplen;
 
 	memcpy(out, apdu.resp, outlen);
-	rv = outlen;
+	rv = (int)outlen;
 
 done:
 	LOG_FUNC_RETURN(card->ctx, rv);
@@ -1243,7 +1243,7 @@ auth_encode_exponent(unsigned long exponent, unsigned char *buff, size_t buff_le
 	if (ii==buff_len)
 		return 0;
 	else
-		return ii;
+		return (int)ii;
 }
 
 
@@ -1287,9 +1287,9 @@ auth_generate_key(struct sc_card *card, int use_sm,
 	apdu.datalen = rv + 4;
 
 	rv = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(card->ctx, rv, "APDU transmit failed");
+	LOG_TEST_GOTO_ERR(card->ctx, rv, "APDU transmit failed");
 	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	LOG_TEST_RET(card->ctx, rv, "Card returned error");
+	LOG_TEST_GOTO_ERR(card->ctx, rv, "Card returned error");
 
 	memset(&tmp_path, 0, sizeof(struct sc_path));
 	tmp_path.type = SC_PATH_TYPE_FILE_ID;
@@ -1297,17 +1297,19 @@ auth_generate_key(struct sc_card *card, int use_sm,
 	memcpy(tmp_path.value, sbuf, 2);
 
 	rv = auth_select_file(card, &tmp_path, NULL);
-	LOG_TEST_RET(card->ctx, rv, "cannot select public key");
+	LOG_TEST_GOTO_ERR(card->ctx, rv, "cannot select public key");
 
 	rv = auth_read_component(card, SC_CARDCTL_OBERTHUR_KEY_RSA_PUBLIC,
 			1, apdu.resp, data->key_bits/8);
-	LOG_TEST_RET(card->ctx, rv, "auth_read_component() returned error");
+	LOG_TEST_GOTO_ERR(card->ctx, rv, "auth_read_component() returned error");
 
 	apdu.resplen = rv;
 
 	if (data->pubkey)   {
-		if (data->pubkey_len < apdu.resplen)
-			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+		if (data->pubkey_len < apdu.resplen) {
+			rv = SC_ERROR_INVALID_ARGUMENTS;
+			LOG_TEST_GOTO_ERR(card->ctx, rv, "invalid length received");
+		}
 
 		memcpy(data->pubkey,apdu.resp,apdu.resplen);
 	}
@@ -1318,6 +1320,9 @@ auth_generate_key(struct sc_card *card, int use_sm,
 	sc_log(card->ctx, "resulted public key len %"SC_FORMAT_LEN_SIZE_T"u",
 	       apdu.resplen);
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+err:
+	free(apdu.resp);
+	return rv;
 }
 
 
@@ -1333,7 +1338,7 @@ auth_update_component(struct sc_card *card, struct auth_update_component_info *a
 	if (args->len > sizeof(sbuf) || args->len > 0x100)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-	sc_log(card->ctx, "nn %i; len %i", args->component, args->len);
+	sc_log(card->ctx, "nn %i; len %zu", args->component, args->len);
 	ins = 0xD8;
 	p1 = args->component;
 	p2 = 0x04;
@@ -1355,7 +1360,7 @@ auth_update_component(struct sc_card *card, struct auth_update_component_info *a
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 		ctx = EVP_CIPHER_CTX_new();
-		if (ctx == NULL) 
+		if (ctx == NULL)
 		    LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 
 		p2 = 0;
@@ -1363,11 +1368,18 @@ auth_update_component(struct sc_card *card, struct auth_update_component_info *a
 			alg = sc_evp_cipher(card->ctx, "DES-EDE");
 		else
 			alg = sc_evp_cipher(card->ctx, "DES-ECB");
-		EVP_EncryptInit_ex(ctx, alg, NULL, args->data, NULL);
+		rv = EVP_EncryptInit_ex(ctx, alg, NULL, args->data, NULL);
+		if (rv == 0) {
+			sc_evp_cipher_free(alg);
+			sc_log_openssl(card->ctx);
+			sc_log(card->ctx, "OpenSSL encryption error.");
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
+		}
 		rv = EVP_EncryptUpdate(ctx, out, &outl, in, 8);
 		EVP_CIPHER_CTX_free(ctx);
 		sc_evp_cipher_free(alg);
 		if (rv == 0) {
+			sc_log_openssl(card->ctx);
 			sc_log(card->ctx, "OpenSSL encryption error.");
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 		}
@@ -1517,7 +1529,7 @@ auth_read_component(struct sc_card *card, enum SC_CARDCTL_OBERTHUR_KEY_TYPE type
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_WRONG_LENGTH);
 
 	memcpy(out, apdu.resp, apdu.resplen);
-	LOG_FUNC_RETURN(card->ctx, apdu.resplen);
+	LOG_FUNC_RETURN(card->ctx, (int)apdu.resplen);
 }
 
 
@@ -1914,7 +1926,7 @@ auth_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left
 	if (data->pin_type != SC_AC_CHV)
 		LOG_TEST_RET(card->ctx, SC_ERROR_NOT_SUPPORTED, "auth_pin_cmd() unsupported PIN type");
 
-	sc_log(card->ctx, "PIN CMD:%i; reference:%i; pin1:%p/%i, pin2:%p/%i", data->cmd,
+	sc_log(card->ctx, "PIN CMD:%i; reference:%i; pin1:%p/%zu, pin2:%p/%zu", data->cmd,
 			data->pin_reference, data->pin1.data, data->pin1.len,
 			data->pin2.data, data->pin2.len);
 	switch (data->cmd) {
@@ -2053,7 +2065,7 @@ write_publickey (struct sc_card *card, unsigned int offset,
 
 	sc_log(card->ctx, "der_size %"SC_FORMAT_LEN_SIZE_T"u", der_size);
 	if (offset + len < der_size + 2)
-		LOG_FUNC_RETURN(card->ctx, len);
+		LOG_FUNC_RETURN(card->ctx, (int)len);
 
 	rv = sc_pkcs15_decode_pubkey_rsa(card->ctx, &key, rsa_der, rsa_der_len);
 	rsa_der_len = 0;
@@ -2076,7 +2088,7 @@ write_publickey (struct sc_card *card, unsigned int offset,
 	rv = auth_update_component(card, &args);
 	LOG_TEST_RET(card->ctx, rv, "Update component failed");
 
-	LOG_FUNC_RETURN(card->ctx, len);
+	LOG_FUNC_RETURN(card->ctx, (int)len);
 }
 
 
@@ -2126,6 +2138,7 @@ auth_read_binary(struct sc_card *card, unsigned int offset,
 		unsigned char *buf, size_t count, unsigned long *flags)
 {
 	int rv;
+	size_t sz;
 	struct sc_pkcs15_bignum bn[2];
 	unsigned char *out = NULL;
 	bn[0].data = NULL;
@@ -2194,10 +2207,11 @@ auth_read_binary(struct sc_card *card, unsigned int offset,
 				rv = SC_ERROR_UNKNOWN_DATA_RECEIVED;
 				goto err;
 			}
-			rv = ((out_len - offset) > count) ? count : (out_len - offset);
-			memcpy(buf, out + offset, rv);
+			sz = MIN(out_len - offset, count);
+			memcpy(buf, out + offset, sz);
 
-			sc_log_hex(card->ctx, "write_publickey", buf, rv);
+			sc_log_hex(card->ctx, "write_publickey", buf, sz);
+			rv = (int)sz;
 		}
 	}
 	else {
@@ -2246,7 +2260,7 @@ auth_read_record(struct sc_card *card, unsigned int nr_rec, unsigned int idx,
 	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(card->ctx, rv, "Card returned error");
 
-	LOG_FUNC_RETURN(card->ctx, apdu.resplen);
+	LOG_FUNC_RETURN(card->ctx, (int)apdu.resplen);
 }
 
 
