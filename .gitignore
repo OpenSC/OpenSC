@@ -60,6 +60,9 @@ test-driver
 *.res
 *.ggo
 ChangeLog
+.cache
+compile_commands.json
+.dirstamp
 
 doc/tools/*-tool
 doc/tools/eidenv
