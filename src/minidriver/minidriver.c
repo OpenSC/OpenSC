@@ -4710,7 +4710,7 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 		goto err;
 	}
 
-	good = constant_time_eq_i(r, 0);
+	good = constant_time_ge(r, 1);
 	/* if no error or padding error, do not return here to prevent Marvin attack */
 	if (!(good | wrong_padding) && r < 0)   {
 		logprintf(pCardData, 2, "sc_pkcs15_decipher error(%i): %s\n", r, sc_strerror(r));
@@ -4724,11 +4724,13 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 	/*inversion donnees */
 	/* copy data in constant-time way to prevent leak */
 	for (ui = 0; ui < pbufLen; ui++) {
-		unsigned int mask, msg_index, inv_ui;
-		mask = good & constant_time_lt_s(ui, pInfo->cbData); /* ui should be in the bounds of pbuf2 */
-		inv_ui = pInfo->cbData - ui - 1;
-		msg_index = constant_time_select_s(mask, inv_ui, ui); /* do not change data outside the depadded message */
-		pInfo->pbData[ui] = pbuf2[msg_index];
+		unsigned int mask, inv_ui;
+		unsigned char msg_byte, orig_byte;
+		mask = good & constant_time_lt_s(ui, pInfo->cbData);	 /* ui should be in bounds of decrypted message */
+		inv_ui = pInfo->cbData - ui - 1;			 /* compute inversed ui index */
+		msg_byte = pbuf2[constant_time_select(mask, inv_ui, 0)]; /* if in range of decrypted message, read on inversed index otherwise read some bogus value */
+		orig_byte = pInfo->pbData[ui];
+		pInfo->pbData[ui] = constant_time_select_s(mask, msg_byte, orig_byte); /* store message byte only if in correct range */
 	}
 
 	pCardData->pfnCspFree(pbuf);
