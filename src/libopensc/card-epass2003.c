@@ -3438,7 +3438,7 @@ epass2003_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries
 				if (tries_left)
 					*tries_left = retries;
 			}
-			LOG_TEST_RET(card->ctx, r, "verify pin failed");
+			LOG_TEST_RET(card->ctx, r, "change pin failed");
 		}
 	}
 	else {
