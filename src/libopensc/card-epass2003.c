@@ -360,6 +360,7 @@ aes128_encrypt_cmac_ft(struct sc_card *card, const unsigned char *key, int keysi
 	EVP_CIPHER *alg = sc_evp_cipher(card->ctx, "AES-128-ECB");
 	r = openssl_enc(alg, key, iv0, data1, 16, out);
 	if (r != SC_SUCCESS) {
+		sc_log_openssl(card->ctx);
 		sc_evp_cipher_free(alg);
 		return r;
 	}
@@ -401,15 +402,23 @@ aes128_encrypt_cmac_ft(struct sc_card *card, const unsigned char *key, int keysi
 		for (int i=0;i<16;i++){
 			data2[i]=data2[i]^k2Bin[offset + i];
 		}
-	}else{
+	}else if(length ==16){
 		memcpy(&data2[0],input,length);
 		//k1 xor padded data
 		for (int i=0;i<16;i++){
 			data2[i]=data2[i]^k1Bin[offset + i];
 		}
+	}else{
+		memcpy(&data2[0],input,16);
+		//k1 xor padded data
+		for (int i=0;i<16;i++){
+			data2[i]=data2[i]^k1Bin[offset + i];
 	}
 	alg = sc_evp_cipher(card->ctx, "AES-128-CBC");
 	r = openssl_enc(alg, key, iv, data2, 16, output);
+	if( r!=SC_SUCCESS){
+    	sc_log_openssl(card->ctx);
+ 	}
 	sc_evp_cipher_free(alg);
 	return r;
 }
@@ -3425,8 +3434,7 @@ epass2003_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries
 	else if (data->cmd == SC_PIN_CMD_CHANGE || data->cmd == SC_PIN_CMD_UNBLOCK) { /* change */
 		r = external_key_auth(card, kid, (unsigned char *)data->pin1.data,
 				data->pin1.len);
-		if(r == SC_SUCCESS)
-		{
+		if(r == SC_SUCCESS){
 			r = update_secret_key(card, 0x04, kid, data->pin2.data,
 				(unsigned long)data->pin2.len);
 		
@@ -3444,8 +3452,7 @@ epass2003_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries
 		r = external_key_auth(card, kid, (unsigned char *)data->pin1.data,
 				data->pin1.len);
 
-		if (SC_SUCCESS == get_external_key_retries(card, 0x80 | kid, &retries))
-		{
+		if (SC_SUCCESS == get_external_key_retries(card, 0x80 | kid, &retries)){
 			data->pin1.tries_left = retries;
 			if (tries_left)
 				*tries_left = retries;
@@ -3453,8 +3460,7 @@ epass2003_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries
 		LOG_TEST_RET(card->ctx, r, "verify pin failed");
 	}
 
-	if (r == SC_SUCCESS)
-	{
+	if (r == SC_SUCCESS){
 		data->pin1.logged_in = SC_PIN_STATE_LOGGED_IN;
 	}
 	return r;
