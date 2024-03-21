@@ -3389,7 +3389,6 @@ epass2003_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries
 	int r;
 	u8 kid;
 	u8 retries = 0;
-	//u8 pin_low = 3;
 	unsigned char maxtries = 0;
 
 	LOG_FUNC_CALLED(card->ctx);
