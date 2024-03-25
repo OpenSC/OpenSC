@@ -450,6 +450,21 @@ spy_dump_mechanism_in(const char *name, CK_MECHANISM_PTR pMechanism)
 			break;
 		}
 		break;
+	case CKM_AES_CCM:
+		if (pMechanism->pParameter != NULL) {
+			CK_CCM_PARAMS *param = (CK_CCM_PARAMS *)pMechanism->pParameter;
+			snprintf(param_name, sizeof(param_name), "%s->pParameter->ulDataLen", name);
+			spy_dump_ulong_in(param_name, param->ulDataLen);
+			snprintf(param_name, sizeof(param_name), "%s->pParameter->pNonce[ulNonceLen]", name);
+			spy_dump_string_in(param_name, param->pNonce, param->ulNonceLen);
+			snprintf(param_name, sizeof(param_name), "%s->pParameter->pAAD[ulAADLen]", name);
+			spy_dump_string_in(param_name, param->pAAD, param->ulAADLen);
+			fprintf(spy_output, "[in] %s->pParameter->ulMacLen = %lu\n", name, param->ulMACLen);
+		} else {
+			fprintf(spy_output, "[in] %s->pParameter = NULL\n", name);
+			break;
+		}
+		break;
 	case CKM_ECDH1_DERIVE:
 	case CKM_ECDH1_COFACTOR_DERIVE:
 		if (pMechanism->pParameter != NULL) {

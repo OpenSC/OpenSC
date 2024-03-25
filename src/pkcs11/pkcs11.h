@@ -934,6 +934,15 @@ typedef struct CK_GCM_PARAMS {
 	unsigned long ulTagBits;
 } CK_GCM_PARAMS;
 
+typedef struct CK_CCM_PARAMS {
+	unsigned long ulDataLen;
+	unsigned char *pNonce;
+	unsigned long ulNonceLen;
+	unsigned char *pAAD;
+	unsigned long ulAADLen;
+	unsigned long ulMACLen;
+} CK_CCM_PARAMS;
+
 /* EDDSA */
 typedef struct CK_EDDSA_PARAMS {
 	unsigned char phFlag;
