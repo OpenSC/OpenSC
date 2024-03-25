@@ -293,8 +293,10 @@ openssl_enc(const EVP_CIPHER * cipher, const unsigned char *key, const unsigned 
 	ctx = EVP_CIPHER_CTX_new();
 	if (ctx == NULL)
 		goto out;
-	EVP_EncryptInit_ex(ctx, cipher, NULL, key, iv_tmp);
-	EVP_CIPHER_CTX_set_padding(ctx, 0);
+
+	if (!EVP_EncryptInit_ex(ctx, cipher, NULL, key, iv_tmp) ||
+			!EVP_CIPHER_CTX_set_padding(ctx, 0))
+		goto out;
 
 	if (!EVP_EncryptUpdate(ctx, output, &outl, input, (int)length))
 		goto out;
@@ -304,8 +306,7 @@ openssl_enc(const EVP_CIPHER * cipher, const unsigned char *key, const unsigned 
 
 	r = SC_SUCCESS;
 out:
-	if (ctx)
-		EVP_CIPHER_CTX_free(ctx);
+	EVP_CIPHER_CTX_free(ctx);
 	return r;
 }
 
@@ -323,8 +324,10 @@ openssl_dec(const EVP_CIPHER * cipher, const unsigned char *key, const unsigned 
 	ctx = EVP_CIPHER_CTX_new();
 	if (ctx == NULL)
 		goto out;
-	EVP_DecryptInit_ex(ctx, cipher, NULL, key, iv_tmp);
-	EVP_CIPHER_CTX_set_padding(ctx, 0);
+
+	if (!EVP_DecryptInit_ex(ctx, cipher, NULL, key, iv_tmp) ||
+			!EVP_CIPHER_CTX_set_padding(ctx, 0))
+		goto out;
 
 	if (!EVP_DecryptUpdate(ctx, output, &outl, input, (int)length))
 		goto out;
@@ -334,8 +337,7 @@ openssl_dec(const EVP_CIPHER * cipher, const unsigned char *key, const unsigned 
 
 	r = SC_SUCCESS;
 out:
-	if (ctx)
-		EVP_CIPHER_CTX_free(ctx);
+	EVP_CIPHER_CTX_free(ctx);
 	return r;
 }
 
