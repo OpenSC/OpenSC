@@ -69,6 +69,14 @@ int test_secret_encrypt_decrypt(test_cert_t *o, token_info_t *info, test_mech_t 
 		.ulAADLen = sizeof(aad),
 		.ulTagBits = 128,
 	};
+	CK_CCM_PARAMS ccm_params = {
+			.ulDataLen = message_length,
+			.pNonce = (void *)iv,
+			.ulNonceLen = 13,
+			.pAAD = aad,
+			.ulAADLen = sizeof(aad),
+			.ulMACLen = 16,
+	};
 	int dec_message_length = 0;
 	unsigned char *enc_message = NULL;
 	int enc_message_length, rv;
@@ -83,29 +91,40 @@ int test_secret_encrypt_decrypt(test_cert_t *o, token_info_t *info, test_mech_t 
 		return 0;
 	}
 
-	/* The CBC mechanisms require parameter with IV. Not the ECB. */
-	if (mech->mech == CKM_AES_CBC || mech->mech == CKM_AES_CBC_PAD) {
+	switch (mech->mech) {
+	case CKM_AES_CBC:
+	case CKM_AES_CBC_PAD:
+	case CKM_AES_CTS:
+	case CKM_AES_OFB:
+	case CKM_AES_CFB8:
+	case CKM_AES_CFB128:
 		mech->params = &iv;
 		mech->params_len = sizeof(iv);
+		break;
+	case CKM_AES_CTR:
+		mech->params = &ctr_params;
+		mech->params_len = sizeof(ctr_params);
+		break;
+	case CKM_AES_GCM:
+		mech->params = &gcm_params;
+		mech->params_len = sizeof(gcm_params);
+		break;
+	case CKM_AES_CCM:
+		mech->params = &ccm_params;
+		mech->params_len = sizeof(ccm_params);
+		break;
+	case CKM_AES_ECB:
+		/* No parameters needed */
+		break;
+	default:
+		debug_print(" [SKIP %s ] Unknown mechanism %s", o->id_str, get_mechanism_name(mech->mech));
+		return 0;
 	}
 	if (mech->mech == CKM_AES_CBC || mech->mech == CKM_AES_ECB) {
 		/* This mechanism requires the blocks to be aligned to block size */
 		message = pkcs7_pad_message(short_message, message_length, 16, &message_length);
-	} else if (mech->mech == CKM_AES_CBC_PAD || mech->mech == CKM_AES_CTS) {
-		message = (CK_BYTE *) strndup(MESSAGE_TO_SIGN, message_length);
-	} else if (mech->mech == CKM_AES_CTR) {
-		/* The CTR requires counter block + counter bits */
-		mech->params = &ctr_params;
-		mech->params_len = sizeof(ctr_params);
-		message = (CK_BYTE *) strndup(MESSAGE_TO_SIGN, message_length);
-	} else if (mech->mech == CKM_AES_GCM) {
-		/* The GCM requires GCM parameter */
-		mech->params = &gcm_params;
-		mech->params_len = sizeof(gcm_params);
-		message = (CK_BYTE *) strndup(MESSAGE_TO_SIGN, message_length);
 	} else {
-		debug_print(" [SKIP %s ] Unknown mechanism", o->id_str);
-		return 0;
+		message = (CK_BYTE *)strndup(MESSAGE_TO_SIGN, message_length);
 	}
 
 	debug_print(" [ KEY %s ] Encrypt message using CKM_%s",
