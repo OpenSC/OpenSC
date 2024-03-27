@@ -18,6 +18,7 @@ torture_long_output_buffer(void **state)
 	unsigned char result_msg[] = {'m', 's', 'g'};
 	int r = sc_pkcs1_strip_02_padding_constant_time(NULL, n, in, in_len, out, &out_len);
 	assert_int_equal(r, 3);
+	assert_int_equal(r, (int)out_len);
 	assert_memory_equal(out, result_msg, r);
 	free(out);
 }
@@ -34,6 +35,7 @@ torture_short_output_buffer(void **state)
 	unsigned int out_len = 1;
 	unsigned char *out = calloc(out_len, sizeof(unsigned char));
 	int r = sc_pkcs1_strip_02_padding_constant_time(NULL, n, in, in_len, out, &out_len);
+	assert_int_equal((int)out_len, 1);
 	assert_int_equal(r, SC_ERROR_WRONG_PADDING);
 	free(out);
 }
@@ -52,6 +54,7 @@ torture_short_message_correct_padding(void **state)
 	unsigned char result_msg[] = {'m', 's', 'g'};
 	int r = sc_pkcs1_strip_02_padding_constant_time(NULL, n, in, in_len, out, &out_len);
 	assert_int_equal(r, 3);
+	assert_int_equal(r, (int)out_len);
 	assert_memory_equal(out, result_msg, r);
 	free(out);
 }
@@ -68,6 +71,7 @@ torture_missing_first_zero(void **state)
 	unsigned int out_len = 10;
 	unsigned char *out = calloc(out_len, sizeof(unsigned char));
 	int r = sc_pkcs1_strip_02_padding_constant_time(NULL, n, in, in_len, out, &out_len);
+	assert_int_equal((int)out_len, 10);
 	assert_int_equal(r, SC_ERROR_WRONG_PADDING);
 	free(out);
 }
@@ -84,6 +88,7 @@ torture_missing_two(void **state)
 	unsigned int out_len = 10;
 	unsigned char *out = calloc(out_len, sizeof(unsigned char));
 	int r = sc_pkcs1_strip_02_padding_constant_time(NULL, n, in, in_len, out, &out_len);
+	assert_int_equal((int)out_len, 10);
 	assert_int_equal(r, SC_ERROR_WRONG_PADDING);
 	free(out);
 }
@@ -100,6 +105,7 @@ torture_short_padding(void **state)
 	unsigned int out_len = 10;
 	unsigned char *out = calloc(out_len, sizeof(unsigned char));
 	int r = sc_pkcs1_strip_02_padding_constant_time(NULL, n, in, in_len, out, &out_len);
+	assert_int_equal((int)out_len, 10);
 	assert_int_equal(r, SC_ERROR_WRONG_PADDING);
 	free(out);
 }
@@ -115,6 +121,7 @@ torture_missing_second_zero(void **state)
 	unsigned int out_len = 10;
 	unsigned char *out = calloc(out_len, sizeof(unsigned char));
 	int r = sc_pkcs1_strip_02_padding_constant_time(NULL, n, in, in_len, out, &out_len);
+	assert_int_equal((int)out_len, 10);
 	assert_int_equal(r, SC_ERROR_WRONG_PADDING);
 	free(out);
 }
@@ -130,6 +137,7 @@ torture_missing_message(void **state)
 	unsigned int out_len = 11;
 	unsigned char *out = calloc(out_len, sizeof(unsigned char));
 	int r = sc_pkcs1_strip_02_padding_constant_time(NULL, n, in, in_len, out, &out_len);
+	assert_int_equal((int)out_len, 11);
 	assert_int_equal(r, SC_ERROR_WRONG_PADDING);
 	free(out);
 }
@@ -148,6 +156,7 @@ torture_one_byte_message(void **state)
 	unsigned char result_msg[] = {'m'};
 	int r = sc_pkcs1_strip_02_padding_constant_time(NULL, n, in, in_len, out, &out_len);
 	assert_int_equal(r, 1);
+	assert_int_equal(r, (int)out_len);
 	assert_memory_equal(out, result_msg, r);
 	free(out);
 }
@@ -166,6 +175,7 @@ torture_longer_padding(void **state)
 	unsigned char result_msg[] = {0x9d, 0x98, 0x3d, 0xca, 0xa9, 0xa7, 0x11, 0x0a};
 	int r = sc_pkcs1_strip_02_padding_constant_time(NULL, n, in, in_len, out, &out_len);
 	assert_int_equal(r, 8);
+	assert_int_equal(r, (int)out_len);
 	assert_memory_equal(out, result_msg, r);
 	free(out);
 }
@@ -181,6 +191,7 @@ torture_empty_message(void **state)
 	unsigned int out_len = 8;
 	unsigned char *out = calloc(out_len, sizeof(unsigned char));
 	int r = sc_pkcs1_strip_02_padding_constant_time(NULL, n, in, in_len, out, &out_len);
+	assert_int_equal((int)out_len, 0);
 	assert_int_equal(r, 0);
 	free(out);
 }
