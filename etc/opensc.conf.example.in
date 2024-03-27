@@ -948,7 +948,7 @@ app default {
 		# How to handle a PIN-protected certificate
 		# Valid values: protect, declassify, ignore.
 		# Default: ignore in tokend, protect otherwise
-		# private_certificate = declassify;
+		# pin_protected_certificate = declassify;
 
 		# Enable pkcs15 emulation.
 		# Default: yes

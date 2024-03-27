@@ -586,7 +586,7 @@ typedef struct sc_pkcs15_card {
 		int use_pin_cache;
 		int pin_cache_counter;
 		int pin_cache_ignore_user_consent;
-		int private_certificate;
+		int pin_protected_certificate;
 	} opts;
 
 	unsigned int magic;
@@ -612,7 +612,7 @@ typedef struct sc_pkcs15_card {
 #define SC_PKCS15_OPTS_CACHE_PUBLIC_FILES		1
 #define SC_PKCS15_OPTS_CACHE_ALL_FILES			2
 
-/* suitable for struct sc_pkcs15_card.opts.private_certificate */
+/* suitable for struct sc_pkcs15_card.opts.pin_protected_certificate */
 #define SC_PKCS15_CARD_OPTS_PRIV_CERT_PROTECT		0
 #define SC_PKCS15_CARD_OPTS_PRIV_CERT_IGNORE		1
 #define SC_PKCS15_CARD_OPTS_PRIV_CERT_DECLASSIFY	2

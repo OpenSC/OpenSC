@@ -1268,7 +1268,7 @@ sc_pkcs15_bind(struct sc_card *card, struct sc_aid *aid,
 	scconf_block *conf_block = NULL;
 	int r, emu_first, enable_emu;
 	const char *use_file_cache;
-	const char *private_certificate;
+	const char *pin_protected_certificate, *private_certificate;
 
 	if (card == NULL || p15card_out == NULL) {
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -1289,12 +1289,11 @@ sc_pkcs15_bind(struct sc_card *card, struct sc_aid *aid,
 	p15card->opts.pin_cache_counter = 10;
 	p15card->opts.pin_cache_ignore_user_consent = 0;
 	if (0 == strcmp(ctx->app_name, "tokend")) {
-		private_certificate = "ignore";
-		p15card->opts.private_certificate = SC_PKCS15_CARD_OPTS_PRIV_CERT_IGNORE;
+		pin_protected_certificate = "ignore";
 	} else {
-		private_certificate = "protect";
-		p15card->opts.private_certificate = SC_PKCS15_CARD_OPTS_PRIV_CERT_PROTECT;
+		pin_protected_certificate = "protect";
 	}
+	private_certificate = "";
 
 	conf_block = sc_get_conf_block(ctx, "framework", "pkcs15", 1);
 	if (conf_block) {
@@ -1303,6 +1302,8 @@ sc_pkcs15_bind(struct sc_card *card, struct sc_aid *aid,
 		p15card->opts.pin_cache_counter = scconf_get_int(conf_block, "pin_cache_counter", p15card->opts.pin_cache_counter);
 		p15card->opts.pin_cache_ignore_user_consent = scconf_get_bool(conf_block, "pin_cache_ignore_user_consent",
 				p15card->opts.pin_cache_ignore_user_consent);
+		pin_protected_certificate = scconf_get_str(conf_block, "pin_protected_certificate", pin_protected_certificate);
+		/* read also the old value to keep backward compatibility */
 		private_certificate = scconf_get_str(conf_block, "private_certificate", private_certificate);
 	}
 
@@ -1314,16 +1315,24 @@ sc_pkcs15_bind(struct sc_card *card, struct sc_aid *aid,
 		p15card->opts.use_file_cache = SC_PKCS15_OPTS_CACHE_NO_FILES;
 	}
 
-	if (0 == strcmp(private_certificate, "protect")) {
-		p15card->opts.private_certificate = SC_PKCS15_CARD_OPTS_PRIV_CERT_PROTECT;
-	} else if (0 == strcmp(private_certificate, "ignore")) {
-		p15card->opts.private_certificate = SC_PKCS15_CARD_OPTS_PRIV_CERT_IGNORE;
-	} else if (0 == strcmp(private_certificate, "declassify")) {
-		p15card->opts.private_certificate = SC_PKCS15_CARD_OPTS_PRIV_CERT_DECLASSIFY;
+	if (0 == strcmp(pin_protected_certificate, "protect")) {
+		p15card->opts.pin_protected_certificate = SC_PKCS15_CARD_OPTS_PRIV_CERT_PROTECT;
+	} else if (0 == strcmp(pin_protected_certificate, "ignore")) {
+		p15card->opts.pin_protected_certificate = SC_PKCS15_CARD_OPTS_PRIV_CERT_IGNORE;
+	} else if (0 == strcmp(pin_protected_certificate, "declassify")) {
+		p15card->opts.pin_protected_certificate = SC_PKCS15_CARD_OPTS_PRIV_CERT_DECLASSIFY;
 	}
-	sc_log(ctx, "PKCS#15 options: use_file_cache=%d use_pin_cache=%d pin_cache_counter=%d pin_cache_ignore_user_consent=%d private_certificate=%d",
-			p15card->opts.use_file_cache, p15card->opts.use_pin_cache,p15card->opts.pin_cache_counter,
-			p15card->opts.pin_cache_ignore_user_consent, p15card->opts.private_certificate);
+	/* overwrite pin_protected_certificate when private_certificate set */
+	if (0 == strcmp(private_certificate, "protect")) {
+		p15card->opts.pin_protected_certificate = SC_PKCS15_CARD_OPTS_PRIV_CERT_PROTECT;
+	} else if (0 == strcmp(private_certificate, "ignore")) {
+		p15card->opts.pin_protected_certificate = SC_PKCS15_CARD_OPTS_PRIV_CERT_IGNORE;
+	} else if (0 == strcmp(private_certificate, "declassify")) {
+		p15card->opts.pin_protected_certificate = SC_PKCS15_CARD_OPTS_PRIV_CERT_DECLASSIFY;
+	}
+	sc_log(ctx, "PKCS#15 options: use_file_cache=%d use_pin_cache=%d pin_cache_counter=%d pin_cache_ignore_user_consent=%d pin_protected_certificate=%d",
+			p15card->opts.use_file_cache, p15card->opts.use_pin_cache, p15card->opts.pin_cache_counter,
+			p15card->opts.pin_cache_ignore_user_consent, p15card->opts.pin_protected_certificate);
 
 	r = sc_lock(card);
 	if (r) {

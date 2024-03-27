@@ -1350,7 +1350,7 @@ app <replaceable>application</replaceable> {
 				</varlistentry>
 				<varlistentry>
 					<term>
-						<option>private_certificate = <replaceable>value</replaceable>;</option>
+						<option>pin_protected_certificate = <replaceable>value</replaceable>;</option>
 					</term>
 					<listitem><para>
 							How to handle a PIN-protected certificate. Known
