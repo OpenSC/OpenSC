@@ -55,6 +55,9 @@ else
 	# normal procedure
 
 	CONFIGURE_FLAGS="--disable-dependency-tracking --enable-doc"
+	if [ "$1" != "clang-tidy" ]; then
+		CONFIGURE_FLAGS="$CONFIGURE_FLAGS CLANGTIDY=/bin/no-clang-tidy"
+	fi
 	if [ "$1" == "piv-sm" ]; then
 		CONFIGURE_FLAGS="$CONFIGURE_FLAGS --enable-piv-sm"
 	fi

@@ -339,7 +339,7 @@ jobs:
           path: ./*
           key: ${{ runner.os }}-${{ github.sha }}
       - run: .github/setup-linux.sh clang-tidy
-      - run: .github/build.sh
+      - run: .github/build.sh clang-tidy
 
   test-cac:
     runs-on: ubuntu-20.04
