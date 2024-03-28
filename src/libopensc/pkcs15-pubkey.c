@@ -517,6 +517,7 @@ sc_pkcs15_encode_pukdf_entry(struct sc_context *ctx, const struct sc_pkcs15_obje
 	return r;
 }
 
+// clang-format off
 #define C_ASN1_PUBLIC_KEY_SIZE 2
 static struct sc_asn1_entry c_asn1_public_key[C_ASN1_PUBLIC_KEY_SIZE] = {
 		{ "publicKeyCoefficients", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
@@ -536,15 +537,15 @@ static struct sc_asn1_entry c_asn1_gostr3410_pub_coefficients[C_ASN1_GOSTR3410_P
 		{ NULL, 0, 0, 0, NULL, NULL }
 };
 
-
 /* older incorrect implementation may have encoded as OCTET STRING */
 /* accept either */
 #define C_ASN1_EC_POINTQ_SIZE 3
 static struct sc_asn1_entry c_asn1_ec_pointQ[C_ASN1_EC_POINTQ_SIZE] = {
-		{ "ecpointQ", SC_ASN1_BIT_STRING_NI, SC_ASN1_TAG_BIT_STRING, SC_ASN1_OPTIONAL | SC_ASN1_ALLOC, NULL, NULL },
-		{ "ecpointQ-OS",SC_ASN1_OCTET_STRING, SC_ASN1_TAG_OCTET_STRING, SC_ASN1_OPTIONAL | SC_ASN1_ALLOC, NULL, NULL },
+		{ "ecpointQ",    SC_ASN1_BIT_STRING_NI, SC_ASN1_TAG_BIT_STRING,   SC_ASN1_OPTIONAL | SC_ASN1_ALLOC, NULL, NULL },
+		{ "ecpointQ-OS", SC_ASN1_OCTET_STRING,  SC_ASN1_TAG_OCTET_STRING, SC_ASN1_OPTIONAL | SC_ASN1_ALLOC, NULL, NULL },
 		{ NULL, 0, 0, 0, NULL, NULL }
 };
+// clang-format on
 
 int
 sc_pkcs15_decode_pubkey_rsa(sc_context_t *ctx, struct sc_pkcs15_pubkey_rsa *key,
@@ -643,7 +644,7 @@ sc_pkcs15_decode_pubkey_ec(sc_context_t *ctx,
 {
 	int r;
 	u8 * ecpoint_data = NULL;
-	size_t ecpoint_len;
+	size_t ecpoint_len = 0;
 	struct sc_asn1_entry asn1_ec_pointQ[C_ASN1_EC_POINTQ_SIZE];
 
 	LOG_FUNC_CALLED(ctx);
@@ -651,10 +652,9 @@ sc_pkcs15_decode_pubkey_ec(sc_context_t *ctx,
 	sc_format_asn1_entry(asn1_ec_pointQ + 0, &ecpoint_data, &ecpoint_len, 1);
 	sc_format_asn1_entry(asn1_ec_pointQ + 1, &ecpoint_data, &ecpoint_len, 1);
 	r = sc_asn1_decode_choice(ctx, asn1_ec_pointQ, buf, buflen, NULL, NULL);
-	if (r < 0 || ecpoint_len == 0) {
+	if (r < 0 || ecpoint_len == 0 || ecpoint_data == NULL) {
 		free(ecpoint_data);
-		/* TODO DEE fix if r == 0 */
-		LOG_TEST_RET(ctx, r, "ASN.1 decoding failed");
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ASN1_OBJECT);
 	}
 
 	if (*ecpoint_data != 0x04) {
@@ -675,17 +675,17 @@ sc_pkcs15_encode_pubkey_ec(sc_context_t *ctx, struct sc_pkcs15_pubkey_ec *key,
 		u8 **buf, size_t *buflen)
 {
 	struct sc_asn1_entry asn1_ec_pointQ[C_ASN1_EC_POINTQ_SIZE];
-	size_t  key_len;
+	size_t key_len;
 	volatile int gdb_test = 0; /* so can reset via gdb for testing new  way */
 
 	LOG_FUNC_CALLED(ctx);
 	sc_copy_asn1_entry(c_asn1_ec_pointQ, asn1_ec_pointQ);
 
 	if (gdb_test == 1) {
-		key_len  = key->ecpointQ.len * 8; /* encode in bit string */
+		key_len = key->ecpointQ.len * 8; /* encode in bit string */
 		sc_format_asn1_entry(asn1_ec_pointQ + 0, key->ecpointQ.value, &key_len, 1);
 	} else {
-		key_len  = key->ecpointQ.len;
+		key_len = key->ecpointQ.len;
 		sc_format_asn1_entry(asn1_ec_pointQ + 1, key->ecpointQ.value, &key_len, 1);
 	}
 
@@ -704,8 +704,8 @@ sc_pkcs15_decode_pubkey_eddsa(sc_context_t *ctx,
 		const u8 *buf, size_t buflen)
 {
 	int r;
-	u8 * ecpoint_data = NULL;
-	size_t ecpoint_len;
+	u8 *ecpoint_data = NULL;
+	size_t ecpoint_len = 0;
 	struct sc_asn1_entry asn1_ec_pointQ[C_ASN1_EC_POINTQ_SIZE];
 
 	LOG_FUNC_CALLED(ctx);
@@ -713,16 +713,15 @@ sc_pkcs15_decode_pubkey_eddsa(sc_context_t *ctx,
 	sc_format_asn1_entry(asn1_ec_pointQ + 0, &ecpoint_data, &ecpoint_len, 1);
 	sc_format_asn1_entry(asn1_ec_pointQ + 1, &ecpoint_data, &ecpoint_len, 1);
 	r = sc_asn1_decode_choice(ctx, asn1_ec_pointQ, buf, buflen, NULL, NULL);
-	if (r < 0 || ecpoint_data == NULL) {
+	if (r < 0 || ecpoint_len == 0 || ecpoint_data == NULL) {
 		free(ecpoint_data);
-		/* TODO DEE fix if r == 0 */
-		LOG_TEST_RET(ctx, r, "ASN.1 decoding failed");
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ASN1_OBJECT);
 	}
 
 	key->ecpointQ.len = ecpoint_len;
 	key->ecpointQ.value = ecpoint_data;
 	key->params.field_length = ecpoint_len * 8;
-		
+
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
@@ -1156,24 +1155,18 @@ sc_pkcs15_erase_pubkey(struct sc_pkcs15_pubkey *key)
 	}
 	switch (key->algorithm) {
 	case SC_ALGORITHM_RSA:
-		if (key->u.rsa.modulus.data)
-			free(key->u.rsa.modulus.data);
-		if (key->u.rsa.exponent.data)
-			free(key->u.rsa.exponent.data);
+		free(key->u.rsa.modulus.data);
+		free(key->u.rsa.exponent.data);
 		break;
 	case SC_ALGORITHM_GOSTR3410:
-		if (key->u.gostr3410.xy.data)
-			free(key->u.gostr3410.xy.data);
+		free(key->u.gostr3410.xy.data);
 		break;
 	case SC_ALGORITHM_EC:
 	case SC_ALGORITHM_EDDSA:
 	case SC_ALGORITHM_XEDDSA:
-		if (key->u.ec.params.der.value)
-			free(key->u.ec.params.der.value);
-		if (key->u.ec.params.named_curve)
-			free(key->u.ec.params.named_curve);
-		if (key->u.ec.ecpointQ.value)
-			free(key->u.ec.ecpointQ.value);
+		free(key->u.ec.params.der.value);
+		free(key->u.ec.params.named_curve);
+		free(key->u.ec.ecpointQ.value);
 		break;
 	}
 	sc_mem_clear(key, sizeof(*key));
@@ -1448,12 +1441,13 @@ sc_pkcs15_pubkey_from_spki_file(struct sc_context *ctx, char * filename,
 	LOG_FUNC_RETURN(ctx, r);
 }
 
-
+// clang-format off
 static struct ec_curve_info {
 	const char *name;
 	const char *oid_str;
 	const char *oid_encoded;
 	size_t size;
+
 } ec_curve_infos[] = {
 		{"secp192r1",		"1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192},
 		{"prime192v1",		"1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192},
@@ -1476,10 +1470,10 @@ static struct ec_curve_info {
 		{"secp521r1",		"1.3.132.0.35", "06052B81040023", 521},
 		{"nistp521",		"1.3.132.0.35", "06052B81040023", 521},
 
-		{"brainpoolP192r1",	"1.3.36.3.3.2.8.1.1.3", "06092B2403030208010103", 192},
-		{"brainpoolP224r1",	"1.3.36.3.3.2.8.1.1.5", "06092B2403030208010105", 224},
-		{"brainpoolP256r1",	"1.3.36.3.3.2.8.1.1.7", "06092B2403030208010107", 256},
-		{"brainpoolP320r1",	"1.3.36.3.3.2.8.1.1.9", "06092B2403030208010109", 320},
+		{"brainpoolP192r1",	"1.3.36.3.3.2.8.1.1.3",  "06092B2403030208010103", 192},
+		{"brainpoolP224r1",	"1.3.36.3.3.2.8.1.1.5",  "06092B2403030208010105", 224},
+		{"brainpoolP256r1",	"1.3.36.3.3.2.8.1.1.7",  "06092B2403030208010107", 256},
+		{"brainpoolP320r1",	"1.3.36.3.3.2.8.1.1.9",  "06092B2403030208010109", 320},
 		{"brainpoolP384r1",	"1.3.36.3.3.2.8.1.1.11", "06092B240303020801010B", 384},
 		{"brainpoolP512r1",	"1.3.36.3.3.2.8.1.1.13", "06092B240303020801010D", 512},
 
@@ -1488,8 +1482,8 @@ static struct ec_curve_info {
 
 		/* OpenPGP extensions by Yubikey and GNUK are not defined in RFCs but we know the oid written to card */
 
-		{"edwards25519",	"1.3.6.1.4.1.11591.15.1", "06092B06010401DA470F01", 255},
-		{"curve25519",		"1.3.6.1.4.1.3029.1.5.1", "060a2B060104019755010501", 255},
+		{"edwards25519",	"1.3.6.1.4.1.11591.15.1", "06092B06010401DA470F01",   255},
+		{"curve25519",		"1.3.6.1.4.1.3029.1.5.1", "060A2B060104019755010501", 255},
 
 		/* RFC 8410 defined curves */
 		{"X25519",              "1.3.101.110", "06032b656e", 255},
@@ -1500,10 +1494,9 @@ static struct ec_curve_info {
 		{"cv25519",		"1.3.101.110", "06032b656e", 255},
 		{"ed25519",		"1.3.101.112", "06032b6570", 255},
 
-
 		{NULL, NULL, NULL, 0}, /* Do not touch this */
 };
-
+// clang-format on
 
 int
 sc_pkcs15_fix_ec_parameters(struct sc_context *ctx, struct sc_ec_parameters *ecparams)
@@ -1515,43 +1508,43 @@ sc_pkcs15_fix_ec_parameters(struct sc_context *ctx, struct sc_ec_parameters *ecp
 
 	/* In PKCS#11 EC parameters arrives in DER encoded form */
 	if (ecparams->der.value && ecparams->der.len && ecparams->der.len > 2) {
+		/* caller provided a der version of OID */
 		switch (ecparams->der.value[0]) {
-			case 0x06:  /* OID */
-				for (ii=0; ec_curve_infos[ii].name; ii++) {
-					struct sc_object_id id;
-					unsigned char *buf = NULL;
-					size_t len = 0;
+		case 0x06: /* OID */
+			for (ii = 0; ec_curve_infos[ii].name; ii++) {
+				struct sc_object_id id;
+				unsigned char *buf = NULL;
+				size_t len = 0;
 
-					sc_format_oid(&id, ec_curve_infos[ii].oid_str);
-					sc_encode_oid (ctx, &id, &buf, &len);
+				sc_format_oid(&id, ec_curve_infos[ii].oid_str);
+				sc_encode_oid(ctx, &id, &buf, &len);
 
-					if (ecparams->der.len == len && !memcmp(ecparams->der.value, buf, len)) {
-						free(buf);
-						break;
-					}
+				if (ecparams->der.len == len && !memcmp(ecparams->der.value, buf, len)) {
 					free(buf);
+					break; /* found ec_curve_infos[ii] */
 				}
-				break;
+				free(buf); /* ii points at {NULL, NULL, NULL, 0} entry */
+			}
+			break;
 
-			case 0x13:  /* printable string  max of 127 */
-				if (ecparams->der.value[1] != ecparams->der.len - 2) {
-					sc_log(ctx, "Unsupported ec params");
-					LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
-				}
-				for (ii=0; ec_curve_infos[ii].name; ii++) {
-					size_t len = strlen(ec_curve_infos[ii].name);
-					if (ecparams->der.len - 2 != len
-						|| memcmp(ec_curve_infos[ii].name, ecparams->der.value + 2, len) != 0)
-						continue;
-					/* force replacement of printable string to allow mapping */
-					mapped = 1;
-					break;
-				}
-				break;
-
-			default:
+		case 0x13: /* printable string  max of 127  as per PKCS11 V 3.0 for experimental curves */
+			if (ecparams->der.value[1] != ecparams->der.len - 2) {
 				sc_log(ctx, "Unsupported ec params");
 				LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
+			}
+			for (ii = 0; ec_curve_infos[ii].name; ii++) {
+				size_t len = strlen(ec_curve_infos[ii].name);
+				if (ecparams->der.len - 2 != len || memcmp(ec_curve_infos[ii].name, ecparams->der.value + 2, len) != 0)
+					continue;
+				/* force replacement of printable string to allow mapping */
+				mapped = 1;
+				break;
+			}
+			break;
+
+		default:
+			sc_log(ctx, "Unsupported ec params");
+			LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 		}
 
 		if (!ec_curve_infos[ii].name)
@@ -1562,7 +1555,7 @@ sc_pkcs15_fix_ec_parameters(struct sc_context *ctx, struct sc_ec_parameters *ecp
 			free(ecparams->named_curve);
 			ecparams->named_curve = NULL;
 		}
-			
+
 		if (!ecparams->named_curve) {
 			ecparams->named_curve = strdup(ec_curve_infos[ii].name);
 			if (!ecparams->named_curve)
@@ -1589,9 +1582,9 @@ sc_pkcs15_fix_ec_parameters(struct sc_context *ctx, struct sc_ec_parameters *ecp
 				LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 			}
 		}
-	}
-	else if (ecparams->named_curve) {	/* it can be name of curve or OID in ASCII form */
-		for (ii=0; ec_curve_infos[ii].name; ii++) {
+	} else if (ecparams->named_curve) { /* it can be name of curve or OID in ASCII form */
+		/* caller did not provide an OID, look for a name or oid_string */
+		for (ii = 0; ec_curve_infos[ii].name; ii++) {
 			if (!strcmp(ec_curve_infos[ii].name, ecparams->named_curve))
 				break;
 			if (!strcmp(ec_curve_infos[ii].oid_str, ecparams->named_curve))
@@ -1608,11 +1601,11 @@ sc_pkcs15_fix_ec_parameters(struct sc_context *ctx, struct sc_ec_parameters *ecp
 		ecparams->field_length = ec_curve_infos[ii].size;
 
 		if (!ecparams->der.value || !ecparams->der.len)   {
+			/* if caller did not provide der OID, fill in */
 			rv = sc_encode_oid (ctx, &ecparams->id, &ecparams->der.value, &ecparams->der.len);
 			LOG_TEST_RET(ctx, rv, "Cannot encode object ID");
 		}
-	}
-	else
+	} else
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_IMPLEMENTED, "EC parameters has to be presented as a named curve or explicit data");
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
