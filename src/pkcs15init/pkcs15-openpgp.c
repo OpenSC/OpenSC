@@ -288,7 +288,6 @@ static int openpgp_generate_key_ec(sc_card_t *card, sc_pkcs15_object_t *obj,
 	sc_pkcs15_id_t *kid = &(required->id);
 	const struct sc_ec_parameters *info_ec =
 	    (struct sc_ec_parameters *) required->params.data;
-	unsigned int i;
 	int r;
 
 	LOG_FUNC_CALLED(ctx);
@@ -317,16 +316,14 @@ static int openpgp_generate_key_ec(sc_card_t *card, sc_pkcs15_object_t *obj,
 			   ? SC_OPENPGP_KEYALGO_ECDH /* ECDH for slot 2 only */
 			   : SC_OPENPGP_KEYALGO_ECDSA; /* ECDSA for slot 1 and 3 */
 
-	/* extract oid the way we need to import it to OpenPGP Card */
+	/* DEE NO extract oid the way we need to import it to OpenPGP Card */
+	/* TODO DEE pass the oid. will convert to asn1 before writing */
+	/* TODO DEE not sure id test for der.len >2 is needed */
+	/* copying info_ec.id works for any EC ECDH EdDSA keys */
 	if (info_ec->der.len > 2)
-		key_info.u.ec.oid_len = info_ec->der.value[1];
+		key_info.u.ec.oid = info_ec->id;  /* copy sc_object_id */
 	else
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
-
-	for (i=0; (i < key_info.u.ec.oid_len) && (i+2 < info_ec->der.len); i++){
-		key_info.u.ec.oid.value[i] = info_ec->der.value[i+2];
-	}
-	key_info.u.ec.oid.value[key_info.u.ec.oid_len] = -1;
 
 	/* Prepare buffer */
 	key_info.u.ec.ecpoint_len = required->field_length;
@@ -340,6 +337,7 @@ static int openpgp_generate_key_ec(sc_card_t *card, sc_pkcs15_object_t *obj,
 
 	/* set pubkey according to response of card */
 	sc_log(ctx, "Set output ecpoint info");
+	/* TODO DEE may need changes for ECDH and EdDSA or XEDDSA */
 	pubkey->algorithm = SC_ALGORITHM_EC;
 	pubkey->u.ec.ecpointQ.len = key_info.u.ec.ecpoint_len;
 	pubkey->u.ec.ecpointQ.value = malloc(key_info.u.ec.ecpoint_len);
@@ -385,8 +383,9 @@ static int openpgp_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 		r = openpgp_generate_key_ec(card, obj, pubkey);
 		break;
 	case SC_PKCS15_TYPE_PRKEY_EDDSA:
-		if (card->type != SC_CARD_TYPE_OPENPGP_GNUK) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "EdDSA is not supported on this card");
+	case SC_PKCS15_TYPE_PRKEY_XEDDSA:
+		if (card->type != SC_CARD_TYPE_OPENPGP_GNUK && card->type < SC_CARD_TYPE_OPENPGP_V3) {
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "EdDSA or XEDDSA are not supported on this card");
 			return SC_ERROR_NOT_SUPPORTED;
 		}
 		r = openpgp_generate_key_ec(card, obj, pubkey);

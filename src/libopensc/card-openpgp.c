@@ -89,8 +89,8 @@ static struct sc_card_driver pgp_drv = {
 
 static pgp_ec_curves_t  ec_curves_openpgp34[] = {
 	/* OpenPGP 3.4+ Ed25519 and Curve25519 */
-	{{{1, 3, 6, 1, 4, 1, 3029, 1, 5, 1, -1}}, 256}, /* curve25519 for encryption => CKK_EC_MONTGOMERY */
-	{{{1, 3, 6, 1, 4, 1, 11591, 15, 1, -1}}, 256}, /* ed25519 for signatures => CKK_EC_EDWARDS */
+	{{{1, 3, 6, 1, 4, 1, 3029, 1, 5, 1, -1}}, 255}, /* curve25519 for encryption => CKK_EC_MONTGOMERY */
+	{{{1, 3, 6, 1, 4, 1, 11591, 15, 1, -1}}, 255}, /* ed25519 for signatures => CKK_EC_EDWARDS */
 	/* v3.0+ supports: [RFC 4880 & 6637] 0x12 = ECDH, 0x13 = ECDSA */
 	{{{1, 2, 840, 10045, 3, 1, 7, -1}}, 256}, /* ansiX9p256r1 */
 	{{{1, 3, 132, 0, 34, -1}}, 384}, /* ansiX9p384r1 */
@@ -101,6 +101,14 @@ static pgp_ec_curves_t  ec_curves_openpgp34[] = {
 	{{{-1}}, 0} /* This entry must not be touched. */
 };
 
+#ifdef ENABLE_OPENSSL
+static pgp_ec_curves_alt_t ec_curves_alt[] = {
+	{{{1, 3, 6, 1, 4, 1, 3029, 1, 5, 1, -1}}, {{1 ,3 ,101, 110, -1}}, 255}, /* curve25519 CKK_EC_MONTGOMERY X25519 */
+	{{{1, 3, 6, 1, 4, 1, 11591, 15, 1, -1}}, {{1, 3, 101, 112, -1}}, 255}, /* ed25519 CKK_EC_EDWARDS Ed25519 */
+	{{{-1}}, {{-1}}, 0} /* This entry must not be touched. */
+};
+#endif /* ENABLE_OPENSSL */
+
 static pgp_ec_curves_t *ec_curves_openpgp = ec_curves_openpgp34 + 2;
 
 struct sc_object_id curve25519_oid = {{1, 3, 6, 1, 4, 1, 3029, 1, 5, 1, -1}};
@@ -109,8 +117,8 @@ struct sc_object_id curve25519_oid = {{1, 3, 6, 1, 4, 1, 3029, 1, 5, 1, -1}};
 static pgp_ec_curves_t	ec_curves_gnuk[] = {
 	{{{1, 2, 840, 10045, 3, 1, 7, -1}}, 256}, /* ansiX9p256r1 */
 	{{{1, 3, 132, 0, 10, -1}}, 256}, /* secp256k1 */
-	{{{1, 3, 6, 1, 4, 1, 3029, 1, 5, 1, -1}}, 256}, /* curve25519 for encryption => CKK_EC_MONTGOMERY */
-	{{{1, 3, 6, 1, 4, 1, 11591, 15, 1, -1}}, 256}, /* ed25519 for signatures => CKK_EC_EDWARDS */
+	{{{1, 3, 6, 1, 4, 1, 3029, 1, 5, 1, -1}}, 255}, /* curve25519 for encryption => CKK_EC_MONTGOMERY */
+	{{{1, 3, 6, 1, 4, 1, 11591, 15, 1, -1}}, 255}, /* ed25519 for signatures => CKK_EC_EDWARDS */
 	{{{-1}}, 0} /* This entry must not be touched. */
 };
 
@@ -687,7 +695,7 @@ int _pgp_handle_curve25519(sc_card_t *card,
 	* OpenPGP card supports only derivation using these
 	* keys as far as I know */
 	_sc_card_add_xeddsa_alg(card, key_info.u.ec.key_length,
-	    SC_ALGORITHM_ECDH_CDH_RAW, 0, &key_info.u.ec.oid);
+	    SC_ALGORITHM_ECDH_CDH_RAW | SC_ALGORITHM_ONBOARD_KEY_GEN, 0, &key_info.u.ec.oid);
 	sc_log(card->ctx, "DO %uX: Added XEDDSA algorithm (%d), mod_len = %zu",
 	    do_num, SC_ALGORITHM_XEDDSA, key_info.u.ec.key_length);
 	return 1;
@@ -739,7 +747,7 @@ int _pgp_add_algo(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t key_info, un
 		if (_pgp_handle_curve25519(card, key_info, do_num))
 			break;
 		_sc_card_add_eddsa_alg(card, key_info.u.ec.key_length,
-			SC_ALGORITHM_EDDSA_RAW, 0, &key_info.u.ec.oid);
+			SC_ALGORITHM_EDDSA_RAW | SC_ALGORITHM_ONBOARD_KEY_GEN, 0, &key_info.u.ec.oid);
 
 		sc_log(card->ctx, "DO %uX: Added EDDSA algorithm (%d), mod_len = %zu" ,
 			do_num, key_info.algorithm, key_info.u.ec.key_length);
@@ -1709,8 +1717,8 @@ pgp_get_pubkey_pem(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 				/* In EDDSA key case we do not have to care about OIDs
 				 * as we support only one for now */
 				p15pubkey.algorithm = SC_ALGORITHM_EDDSA;
-				p15pubkey.u.eddsa.pubkey.value = pubkey_blob->data;
-				p15pubkey.u.eddsa.pubkey.len = pubkey_blob->len;
+				p15pubkey.u.ec.ecpointQ.value = pubkey_blob->data;
+				p15pubkey.u.ec.ecpointQ.len = pubkey_blob->len;
 				/* PKCS#11 3.0: 2.3.5 Edwards EC public keys only support the use
 				 * of the curveName selection to specify a curve name as defined
 				 * in [RFC 8032] */
@@ -1720,8 +1728,8 @@ pgp_get_pubkey_pem(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 				/* This yields either EC(DSA) key or EC_MONTGOMERY (curve25519) key */
 				if (sc_compare_oid(&key_info.u.ec.oid, &curve25519_oid)) {
 					p15pubkey.algorithm = SC_ALGORITHM_XEDDSA;
-					p15pubkey.u.eddsa.pubkey.value = pubkey_blob->data;
-					p15pubkey.u.eddsa.pubkey.len = pubkey_blob->len;
+					p15pubkey.u.ec.ecpointQ.value = pubkey_blob->data;
+					p15pubkey.u.ec.ecpointQ.len = pubkey_blob->len;
 					/* PKCS#11 3.0 2.3.7 Montgomery EC public keys only support
 					 * the use of the curveName selection to specify a curve
 					 * name as defined in [RFC7748] */
@@ -1762,14 +1770,12 @@ pgp_get_pubkey_pem(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 		p15pubkey.u.rsa.modulus.len = 0;
 		p15pubkey.u.rsa.exponent.data  = NULL;
 		p15pubkey.u.rsa.exponent.len = 0;
-	} else if (p15pubkey.algorithm == SC_ALGORITHM_EC) {
+	} else if (p15pubkey.algorithm == SC_ALGORITHM_EC
+			|| p15pubkey.algorithm == SC_ALGORITHM_EDDSA
+			|| p15pubkey.algorithm == SC_ALGORITHM_XEDDSA) {
 		p15pubkey.u.ec.ecpointQ.value = NULL;
 		p15pubkey.u.ec.ecpointQ.len = 0;
 		/* p15pubkey.u.ec.params.der and named_curve will be freed by sc_pkcs15_erase_pubkey */
-	} else if (p15pubkey.algorithm == SC_ALGORITHM_EDDSA
-		|| p15pubkey.algorithm == SC_ALGORITHM_XEDDSA) {
-		p15pubkey.u.eddsa.pubkey.value = NULL;
-		p15pubkey.u.eddsa.pubkey.len = 0;
 	}
 	sc_pkcs15_erase_pubkey(&p15pubkey);
 
@@ -2502,7 +2508,7 @@ static int
 pgp_update_new_algo_attr(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_info)
 {
 	struct pgp_priv_data *priv = DRVDATA(card);
-	pgp_blob_t *algo_blob;
+	pgp_blob_t *algo_blob = NULL;
 	const unsigned int tag = 0x00C0 | key_info->key_id;
 	u8 *data;
 	size_t data_len;
@@ -2516,19 +2522,46 @@ pgp_update_new_algo_attr(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_
 
 	if (priv->ext_caps & EXT_CAP_ALG_ATTR_CHANGEABLE) {
 		/* ECDSA and ECDH */
+		/* TODO -DEE could map new OIDs to old OID needed for card here */
 		if (key_info->algorithm == SC_OPENPGP_KEYALGO_ECDH
 				|| key_info->algorithm == SC_OPENPGP_KEYALGO_ECDSA
 				|| key_info->algorithm == SC_OPENPGP_KEYALGO_EDDSA){
-			data_len = key_info->u.ec.oid_len+1;
+			/* Note OpenPGP or current cards do not support 448 size keys yet */
+			unsigned char *aoid = NULL; /* ASN1 */
+			size_t aoid_len;
+			struct sc_object_id *scoid = NULL;
+
+			scoid = &key_info->u.ec.oid;
+			/* 
+			 * Current OpenPGP cards use pre RFC8410 OIDs for ECDH and EdDSA
+			 * so convert to older versions of the OIDs. 
+			 * TODO if newer cards or OpenPGP specs accept RFC8410 code 
+			 * will be needed here to not do the conversion
+			 */
+			for (i = 0; ec_curves_alt[i].size > 0; i++) {
+				if (sc_compare_oid(scoid, &ec_curves_alt[i].oid_alt)) {
+					scoid = &ec_curves_alt[i].oid;
+					break;
+				}
+			}
+			
+			r = sc_encode_oid(card->ctx, scoid, &aoid, &aoid_len);
+			LOG_TEST_RET(card->ctx, r, "invalid ec oid");
+			if (aoid == NULL || aoid_len < 3 || aoid[1] > 127) {
+				free(aoid);
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
+			}
+
+			data_len = aoid_len + 1 - 2; /* +1 for algorithm -2 drop 06 len */
 			data = malloc(data_len);
-			if (!data)
+			if (!data) {
+				free(aoid);
 				LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
+			}
 
 			data[0] = key_info->algorithm;
-			/* oid.value is type int, therefore we need to loop over the values */
-			for (i=0; i < key_info->u.ec.oid_len; i++){
-				data[i+1] = key_info->u.ec.oid.value[i];
-			}
+			for (i = 0; i < aoid_len - 2; i++)
+				data[i+1] = aoid[i+2];
 		}
 
 		/* RSA */
@@ -2852,7 +2885,7 @@ pgp_update_pubkey_blob(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_in
 		memset(&p15pubkey, 0, sizeof(p15pubkey));
 		p15pubkey.algorithm = SC_ALGORITHM_EC;
 		p15pubkey.u.ec.ecpointQ.value = key_info->u.ec.ecpoint;
-		p15pubkey.u.ec.ecpointQ.len = key_info->u.ec.ecpoint_len;
+		p15pubkey.u.ec.ecpointQ.len = BYTES4BITS(key_info->u.ec.ecpoint_len);
 	}
 	else
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
@@ -3024,10 +3057,8 @@ pgp_gen_key(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_info)
 
 	/* protect incompatible cards against non-RSA */
 	if (key_info->algorithm != SC_OPENPGP_KEYALGO_RSA
+		&& card->type != SC_CARD_TYPE_OPENPGP_GNUK
 		&& priv->bcd_version < OPENPGP_CARD_3_0)
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
-	if (key_info->algorithm == SC_OPENPGP_KEYALGO_EDDSA
-		&& card->type != SC_CARD_TYPE_OPENPGP_GNUK)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 
 	/* set Control Reference Template for key */
