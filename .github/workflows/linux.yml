@@ -17,11 +17,27 @@ permissions:
   contents: read  #  to fetch code (actions/checkout)
 
 
+env:
+  BASE_DEPS: |
+    build-essential docbook-xsl xsltproc gengetopt help2man pcscd check
+    pcsc-tools libtool make autoconf autoconf-archive automake pkg-config
+    git xxd openssl valgrind socat gawk
+    libglib2.0-dev libnss3-dev gnutls-bin libusb-dev libudev-dev flex
+    libnss3-tools
+    libpcsclite-dev libcmocka-dev libssl-dev zlib1g-dev libreadline-dev softhsm2
+  JAVA_DEPS: |
+    ant openjdk-8-jdk maven cmake
+
 jobs:
   build:
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v4
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: ${{ env.BASE_DEPS }}
+          version: apt-20-base
+          execute_install_scripts: true
       - run: .github/setup-linux.sh
       - run: .github/build.sh dist
       - name: Upload test logs
@@ -48,6 +64,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: ${{ env.BASE_DEPS }}
+          version: apt-latest-base
+          execute_install_scripts: true
       - run: .github/setup-linux.sh debug
       - run: .github/build.sh valgrind
       - name: Upload test logs
@@ -63,6 +84,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: ${{ env.BASE_DEPS }}
+          version: apt-latest-base
+          execute_install_scripts: true
       - run: .github/setup-linux.sh
       - run: .github/build.sh no-shared valgrind
 
@@ -70,6 +96,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: ${{ env.BASE_DEPS }}
+          version: apt-latest-base
+          execute_install_scripts: true
       - run: .github/setup-linux.sh
       - run: .github/build.sh no-openssl valgrind
 
@@ -77,6 +108,11 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v4
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: ${{ env.BASE_DEPS }}
+          version: apt-20-base
+          execute_install_scripts: true
       - run: .github/setup-linux.sh ix86
       - run: .github/build.sh ix86
 
@@ -84,7 +120,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: .github/setup-linux.sh mingw
+      - run: .github/setup-linux.sh mingw force-install
       - run: .github/build.sh mingw
       - name: Cache build artifacts
         uses: actions/upload-artifact@v3
@@ -97,6 +133,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: ${{ env.BASE_DEPS }}
+          version: apt-latest-base
+          execute_install_scripts: true
       - run: .github/setup-linux.sh mingw32
       - run: .github/build.sh mingw32
       - name: Cache build artifacts
@@ -110,6 +151,11 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v4
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: ${{ env.BASE_DEPS }} ${{ env.JAVA_DEPS }}
+          version: apt-20-java
+          execute_install_scripts: true
       - run: .github/setup-linux.sh
       - run: .github/build.sh piv-sm dist
       - name: Upload test logs
@@ -131,6 +177,11 @@ jobs:
     needs: [build]
     steps:
       - uses: actions/checkout@v4
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: ${{ env.BASE_DEPS }} ${{ env.JAVA_DEPS }}
+          version: apt-20-java
+          execute_install_scripts: true
       - uses: actions/cache@v4
         id: cache-build
         with:
@@ -145,6 +196,11 @@ jobs:
     needs: [build-piv-sm]
     steps:
       - uses: actions/checkout@v4
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: ${{ env.BASE_DEPS }} ${{ env.JAVA_DEPS }}
+          version: apt-20-java
+          execute_install_scripts: true
       - uses: actions/cache@v4
         id: cache-build
         with:
@@ -159,6 +215,11 @@ jobs:
     needs: [build]
     steps:
       - uses: actions/checkout@v4
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: ${{ env.BASE_DEPS }} ${{ env.JAVA_DEPS }}
+          version: apt-20-java
+          execute_install_scripts: true
       - uses: actions/cache@v4
         id: cache-build
         with:
@@ -173,6 +234,11 @@ jobs:
     needs: [build]
     steps:
       - uses: actions/checkout@v4
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: ${{ env.BASE_DEPS }} ${{ env.JAVA_DEPS }}
+          version: apt-20-java
+          execute_install_scripts: true
       - uses: actions/cache@v4
         id: cache-build
         with:
@@ -187,6 +253,11 @@ jobs:
     needs: [build]
     steps:
       - uses: actions/checkout@v4
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: ${{ env.BASE_DEPS }} ${{ env.JAVA_DEPS }}
+          version: apt-20-java
+          execute_install_scripts: true
       - uses: actions/cache@v4
         id: cache-build
         with:
@@ -201,6 +272,11 @@ jobs:
     needs: [build]
     steps:
       - uses: actions/checkout@v4
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: ${{ env.BASE_DEPS }}
+          version: apt-20-base
+          execute_install_scripts: true
       - uses: actions/cache@v4
         id: cache-build
         with:
@@ -215,6 +291,11 @@ jobs:
     needs: [build]
     steps:
       - uses: actions/checkout@v4
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: ${{ env.BASE_DEPS }}
+          version: apt-20-base
+          execute_install_scripts: true
       - uses: actions/cache@v4
         id: cache-build
         with:
@@ -228,6 +309,11 @@ jobs:
     needs: [build]
     steps:
       - uses: actions/checkout@v4
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: ${{ env.BASE_DEPS }}
+          version: apt-20-base
+          execute_install_scripts: true
       - uses: actions/cache@v4
         id: cache-build
         with:
@@ -242,6 +328,11 @@ jobs:
     needs: [build]
     steps:
       - uses: actions/checkout@v4
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: ${{ env.BASE_DEPS }}
+          version: apt-20-base
+          execute_install_scripts: true
       - uses: actions/cache@v4
         id: cache-build
         with:
@@ -258,6 +349,11 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: ${{ env.BASE_DEPS }}
+          version: apt-22-base
+          execute_install_scripts: true
       - run: .github/setup-linux.sh
       - run: .github/build.sh dist valgrind
       - uses: actions/upload-artifact@v3
@@ -285,6 +381,11 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: ${{ env.BASE_DEPS }} ${{ env.JAVA_DEPS }}
+          version: apt-22-java
+          execute_install_scripts: true
       - run: .github/setup-linux.sh
       - run: .github/build.sh piv-sm dist valgrind
       - uses: actions/upload-artifact@v3
@@ -306,6 +407,11 @@ jobs:
     needs: [build-ubuntu-22-piv-sm]
     steps:
       - uses: actions/checkout@v4
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: ${{ env.BASE_DEPS }} ${{ env.JAVA_DEPS }}
+          version: apt-22-java
+          execute_install_scripts: true
       - uses: actions/cache@v4
         id: cache-build
         with:
@@ -320,6 +426,11 @@ jobs:
     needs: [build-ubuntu-22]
     steps:
       - uses: actions/checkout@v4
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: ${{ env.BASE_DEPS }} ${{ env.JAVA_DEPS }}
+          version: apt-22-java
+          execute_install_scripts: true
       - uses: actions/cache@v4
         id: cache-build
         with:
@@ -334,6 +445,11 @@ jobs:
     needs: [build-ubuntu-22]
     steps:
       - uses: actions/checkout@v4
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: ${{ env.BASE_DEPS }}
+          version: apt-22-base
+          execute_install_scripts: true
       - uses: actions/cache@v4
         id: cache-build
         with:
@@ -350,6 +466,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: ${{ env.BASE_DEPS }}
+          version: apt-latest-base
+          execute_install_scripts: true
       - run: .github/setup-linux.sh libressl
       - run: .github/build.sh dist libressl valgrind
       - uses: actions/upload-artifact@v3
@@ -372,6 +493,11 @@ jobs:
     needs: [build-libressl]
     steps:
       - uses: actions/checkout@v4
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: ${{ env.BASE_DEPS }}
+          version: apt-latest-base
+          execute_install_scripts: true
       - uses: actions/cache@v4
         id: cache-build
         with:
@@ -386,6 +512,11 @@ jobs:
     needs: [build-libressl]
     steps:
       - uses: actions/checkout@v4
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: ${{ env.BASE_DEPS }}
+          version: apt-latest-base
+          execute_install_scripts: true
       - uses: actions/cache@v4
         id: cache-build
         with:

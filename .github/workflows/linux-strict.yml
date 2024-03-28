@@ -45,6 +45,11 @@ env:
     -Wno-format-pedantic
     -Wno-pedantic
     -Wno-incompatible-function-pointer-types
+  BASE_DEPS: |
+    build-essential docbook-xsl xsltproc gengetopt help2man pcscd check
+    pcsc-tools libtool make autoconf autoconf-archive automake pkg-config
+    git xxd openssl valgrind socat gawk
+    libpcsclite-dev libcmocka-dev libssl-dev zlib1g-dev libreadline-dev softhsm2
 
 
 jobs:
@@ -65,7 +70,7 @@ jobs:
     container: ${{ matrix.container }}
     steps:
       - uses: actions/checkout@v4
-      - run: .github/setup-linux.sh ${{ matrix.compiler }}
+      - run: .github/setup-linux.sh ${{ matrix.compiler }} force-install
       - run: .github/build.sh dist
         env:
           CC: ${{ matrix.compiler }}
