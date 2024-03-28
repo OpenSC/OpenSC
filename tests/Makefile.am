@@ -42,14 +42,17 @@ TESTS = \
         test-duplicate-symbols.sh \
         test-pkcs11-tool-test.sh \
         test-pkcs11-tool-test-threads.sh \
-        test-pkcs11-tool-sign-verify.sh \
         test-pkcs11-tool-allowed-mechanisms.sh \
-        test-pkcs11-tool-sym-crypt-test.sh \
+        test-pkcs11-tool-sym-crypt-test.sh
+if ENABLE_OPENSSL
+TESTS += \
+        test-pkcs11-tool-sign-verify.sh \
         test-pkcs11-tool-unwrap-wrap-test.sh \
         test-pkcs11-tool-import.sh
 if ENABLE_TESTS
 if ENABLE_SHARED
 TESTS += test-p11test.sh
+endif
 endif
 endif
 XFAIL_TESTS = \

@@ -66,6 +66,13 @@ jobs:
       - run: .github/setup-linux.sh
       - run: .github/build.sh no-shared valgrind
 
+  build-no-openssl:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: .github/setup-linux.sh
+      - run: .github/build.sh no-openssl valgrind
+
   build-ix86:
     runs-on: ubuntu-20.04
     steps:

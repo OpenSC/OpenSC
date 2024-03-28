@@ -106,7 +106,7 @@ sc_pkcs11_copy_mechanism(sc_pkcs11_mechanism_type_t *mt,
 	*new_mt = calloc(1, sizeof(sc_pkcs11_mechanism_type_t));
 	if (!(*new_mt))
 		return CKR_HOST_MEMORY;
-	
+
 	memcpy(*new_mt, mt, sizeof(sc_pkcs11_mechanism_type_t));
 	/* mech_data needs specific function for making copy*/
 	if (mt->copy_mech_data
@@ -114,7 +114,7 @@ sc_pkcs11_copy_mechanism(sc_pkcs11_mechanism_type_t *mt,
 		free(*new_mt);
 		return rv;
 	}
-	
+
 	return CKR_OK;
 }
 
@@ -864,7 +864,6 @@ sc_pkcs11_verify_final(sc_pkcs11_operation_t *operation,
 
 	if (key_type != CKK_GOSTR3410)
 		attr.type = CKA_SPKI;
-		
 
 	rv = key->ops->get_attribute(operation->session, key, &attr);
 	if (rv != CKR_OK)
@@ -1769,7 +1768,7 @@ CK_RV copy_hash_signature_info(const void *mech_data, void **new_data)
 	*new_data = calloc(1, sizeof(struct hash_signature_info));
 	if (!(*new_data))
 		return CKR_HOST_MEMORY;
-	
+
 	memcpy(*new_data, mech_data, sizeof(struct hash_signature_info));
 	return CKR_OK;
 }
@@ -1789,33 +1788,37 @@ sc_pkcs11_register_sign_and_hash_mechanism(struct sc_pkcs11_card *p11card,
 	CK_MECHANISM_INFO mech_info;
 	CK_RV rv;
 
+	LOG_FUNC_CALLED(p11card->card->ctx);
+	sc_log(p11card->card->ctx, "mech = %lx, hash_mech = %lx", mech, hash_mech);
+
 	if (!sign_type)
-		return CKR_MECHANISM_INVALID;
+		LOG_FUNC_RETURN(p11card->card->ctx, CKR_MECHANISM_INVALID);
 	mech_info = sign_type->mech_info;
 
 	if (!(hash_type = sc_pkcs11_find_mechanism(p11card, hash_mech, CKF_DIGEST)))
-		return CKR_MECHANISM_INVALID;
+		LOG_FUNC_RETURN(p11card->card->ctx, CKR_MECHANISM_INVALID);
 
 	/* These hash-based mechs can only be used for sign/verify */
 	mech_info.flags &= (CKF_SIGN | CKF_SIGN_RECOVER | CKF_VERIFY | CKF_VERIFY_RECOVER);
 
 	info = calloc(1, sizeof(*info));
 	if (!info)
-		return CKR_HOST_MEMORY;
+		LOG_FUNC_RETURN(p11card->card->ctx, CKR_HOST_MEMORY);
 
 	info->mech = mech;
 	info->hash_type = hash_type;
 	info->sign_mech = sign_type->mech;
 	info->hash_mech = hash_mech;
 
-	new_type = sc_pkcs11_new_fw_mechanism(mech, &mech_info, sign_type->key_types[0], info, free_info, copy_hash_signature_info);
+	new_type = sc_pkcs11_new_fw_mechanism(mech, &mech_info, sign_type->key_types[0],
+			info, free_info, copy_hash_signature_info);
 	if (!new_type) {
 		free_info(info);
-		return CKR_HOST_MEMORY;
+		LOG_FUNC_RETURN(p11card->card->ctx, CKR_HOST_MEMORY);
 	}
 
 	rv = sc_pkcs11_register_mechanism(p11card, new_type, NULL);
 	sc_pkcs11_free_mechanism(&new_type);
 
-	return rv;
+	LOG_FUNC_RETURN(p11card->card->ctx, (int)rv);
 }
