@@ -643,7 +643,7 @@ sc_pkcs15_decode_pubkey_ec(sc_context_t *ctx,
 {
 	int r;
 	u8 * ecpoint_data = NULL;
-	size_t ecpoint_len;
+	size_t ecpoint_len = 0;
 	struct sc_asn1_entry asn1_ec_pointQ[C_ASN1_EC_POINTQ_SIZE];
 
 	LOG_FUNC_CALLED(ctx);
@@ -651,10 +651,9 @@ sc_pkcs15_decode_pubkey_ec(sc_context_t *ctx,
 	sc_format_asn1_entry(asn1_ec_pointQ + 0, &ecpoint_data, &ecpoint_len, 1);
 	sc_format_asn1_entry(asn1_ec_pointQ + 1, &ecpoint_data, &ecpoint_len, 1);
 	r = sc_asn1_decode_choice(ctx, asn1_ec_pointQ, buf, buflen, NULL, NULL);
-	if (r < 0 || ecpoint_len == 0) {
+	if (r < 0 || ecpoint_len == 0 || ecpoint_data == NULL) {
 		free(ecpoint_data);
-		/* TODO DEE fix if r == 0 */
-		LOG_TEST_RET(ctx, r, "ASN.1 decoding failed");
+		LOG_FUNC_RETURN(ctx,SC_ERROR_INVALID_ASN1_OBJECT);
 	}
 
 	if (*ecpoint_data != 0x04) {
@@ -705,7 +704,7 @@ sc_pkcs15_decode_pubkey_eddsa(sc_context_t *ctx,
 {
 	int r;
 	u8 * ecpoint_data = NULL;
-	size_t ecpoint_len;
+	size_t ecpoint_len = 0;
 	struct sc_asn1_entry asn1_ec_pointQ[C_ASN1_EC_POINTQ_SIZE];
 
 	LOG_FUNC_CALLED(ctx);
@@ -713,10 +712,9 @@ sc_pkcs15_decode_pubkey_eddsa(sc_context_t *ctx,
 	sc_format_asn1_entry(asn1_ec_pointQ + 0, &ecpoint_data, &ecpoint_len, 1);
 	sc_format_asn1_entry(asn1_ec_pointQ + 1, &ecpoint_data, &ecpoint_len, 1);
 	r = sc_asn1_decode_choice(ctx, asn1_ec_pointQ, buf, buflen, NULL, NULL);
-	if (r < 0 || ecpoint_data == NULL) {
+	if (r < 0 || ecpoint_len == 0 || ecpoint_data == NULL) {
 		free(ecpoint_data);
-		/* TODO DEE fix if r == 0 */
-		LOG_TEST_RET(ctx, r, "ASN.1 decoding failed");
+		LOG_FUNC_RETURN(ctx,SC_ERROR_INVALID_ASN1_OBJECT);
 	}
 
 	key->ecpointQ.len = ecpoint_len;
