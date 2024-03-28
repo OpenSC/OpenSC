@@ -11,6 +11,11 @@ if [ -f "/etc/fedora-release" ]; then
 	exit 0
 fi
 
+FORCE_INSTALL=0
+if [ "$1" == "force-install" -o "$2" == "force-install" ]; then
+	FORCE_INSTALL=1
+fi
+
 WINE_DEPS=""
 # Generic dependencies
 DEPS="docbook-xsl xsltproc gengetopt help2man pcscd check pcsc-tools libtool make autoconf autoconf-archive automake pkg-config git xxd openssl valgrind"
@@ -22,6 +27,7 @@ fi
 # 64bit or 32bit dependencies
 if [ "$1" == "ix86" ]; then
 	DEPS="$DEPS gcc-multilib libpcsclite-dev:i386 libcmocka-dev:i386 libssl-dev:i386 zlib1g-dev:i386 libreadline-dev:i386 softhsm2:i386"
+	FORCE_INSTALL=1
 else
 	DEPS="$DEPS libpcsclite-dev libcmocka-dev libssl-dev zlib1g-dev libreadline-dev softhsm2"
 fi
@@ -46,6 +52,7 @@ elif [ "$1" == "mingw" -o "$1" == "mingw32" ]; then
 	elif [ "$1" == "mingw32" ]; then
 		WINE_DEPS="$WINE_DEPS binutils-mingw-w64-i686 gcc-mingw-w64-i686"
 	fi
+	FORCE_INSTALL=1
 fi
 
 # The Github Ubuntu images since 20211122.1 are broken
@@ -57,12 +64,14 @@ if [ "$1" == "mingw" -o "$1" == "mingw32" -o "$1" == "ix86" ]; then
 	$SUDO dpkg --add-architecture i386
 fi
 
-# make sure we do not get prompts
-export DEBIAN_FRONTEND=noninteractive
-export DEBCONF_NONINTERACTIVE_SEEN=true
-$SUDO apt-get update -qq
+if [ -z "$GITHUB_ACTIONS" -o "$FORCE_INSTALL" = "1" ]; then
+	# make sure we do not get prompts
+	export DEBIAN_FRONTEND=noninteractive
+	export DEBCONF_NONINTERACTIVE_SEEN=true
+	$SUDO apt-get update -qq
 
-$SUDO apt-get install -y build-essential $DEPS
+	$SUDO apt-get install -y build-essential $DEPS
+fi
 
 # install libressl if needed
 if [ "$1" == "libressl" -o "$2" == "libressl" ]; then

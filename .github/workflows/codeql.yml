@@ -8,7 +8,7 @@ on:
     branches: [ "master" ]
   schedule:
     - cron: '30 16 * * 0'
-    
+
 permissions: {}
 jobs:
   analyze:
@@ -34,8 +34,8 @@ jobs:
       with:
         languages: ${{ matrix.language }}
         config-file: ./.github/.codeql.yml
-        
-    - run: .github/setup-linux.sh
+
+    - run: .github/setup-linux.sh force-install
     - run: .github/build.sh
 
     - name: Perform CodeQL Analysis
