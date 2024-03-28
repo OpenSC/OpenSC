@@ -6681,6 +6681,11 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 		if (rc != CKR_OK)
 			return rc;
 
+#ifdef ENABLE_OPENSSL
+		/* sc_pkcs11_register_sign_and_hash_mechanism expects software hash */
+		/* All hashes are in OpenSSL
+		 * Either the card set the hashes or we helped it above */
+
 		if (rsa_flags & SC_ALGORITHM_RSA_HASH_SHA1) {
 			rc = sc_pkcs11_register_sign_and_hash_mechanism(p11card,
 				CKM_SHA1_RSA_PKCS_PSS, CKM_SHA_1, registered_mt);
@@ -6711,6 +6716,7 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 			if (rc != CKR_OK)
 				return rc;
 		}
+#endif /* ENABLE_OPENSSL */
 		mech_info.flags = old_flags;
 	}
 
