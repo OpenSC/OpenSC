@@ -27,6 +27,7 @@ env:
     libpcsclite-dev libcmocka-dev libssl-dev zlib1g-dev libreadline-dev softhsm2
   JAVA_DEPS: |
     ant openjdk-8-jdk maven cmake
+  JCARDSIM: https://github.com/Jakuje/jcardsim.git
 
 jobs:
   build:
@@ -187,6 +188,12 @@ jobs:
         with:
           path: ./*
           key: ${{ runner.os }}-${{ github.sha }}
+      - run: git clone $JCARDSIM
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'semeru'
+          java-version: '8'
+          cache: 'maven'
       - run: .github/setup-linux.sh piv
       - run: .github/test-piv.sh
       - run: .github/test-piv.sh valgrind
@@ -206,6 +213,12 @@ jobs:
         with:
           path: ./*
           key: ${{ runner.os }}-piv-sm-${{ github.sha }}
+      - run: git clone $JCARDSIM
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'semeru'
+          java-version: '8'
+          cache: 'maven'
       - run: .github/setup-linux.sh piv
       - run: .github/test-piv.sh
       - run: .github/test-piv.sh valgrind
@@ -220,6 +233,12 @@ jobs:
           packages: ${{ env.BASE_DEPS }} ${{ env.JAVA_DEPS }}
           version: apt-20-java
           execute_install_scripts: true
+      - run: git clone $JCARDSIM
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'semeru'
+          java-version: '8'
+          cache: 'maven'
       - uses: actions/cache@v4
         id: cache-build
         with:
@@ -244,6 +263,12 @@ jobs:
         with:
           path: ./*
           key: ${{ runner.os }}-${{ github.sha }}
+      - run: git clone $JCARDSIM
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'semeru'
+          java-version: '8'
+          cache: 'maven'
       - run: .github/setup-linux.sh isoapplet
       - run: .github/test-isoapplet.sh v1
       - run: .github/test-isoapplet.sh v1 valgrind
@@ -263,6 +288,12 @@ jobs:
         with:
           path: ./*
           key: ${{ runner.os }}-${{ github.sha }}
+      - run: git clone $JCARDSIM
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'semeru'
+          java-version: '8'
+          cache: 'maven'
       - run: .github/setup-linux.sh gidsapplet
       - run: .github/test-gidsapplet.sh
       - run: .github/test-gidsapplet.sh valgrind
@@ -274,7 +305,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: awalsh128/cache-apt-pkgs-action@latest
         with:
-          packages: ${{ env.BASE_DEPS }}
+          packages: ${{ env.BASE_DEPS }} %{{ env.JAVA_DEPS }}
           version: apt-20-base
           execute_install_scripts: true
       - uses: actions/cache@v4
@@ -282,6 +313,12 @@ jobs:
         with:
           path: ./*
           key: ${{ runner.os }}-${{ github.sha }}
+      - run: git clone $JCARDSIM
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'semeru'
+          java-version: '8'
+          cache: 'maven'
       - run: .github/setup-linux.sh openpgp
       - run: .github/test-openpgp.sh
       - run: .github/test-openpgp.sh valgrind
@@ -417,6 +454,12 @@ jobs:
         with:
           path: ./*
           key: ${{ runner.os }}-22-piv-sm-${{ github.sha }}
+      - run: git clone $JCARDSIM
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'semeru'
+          java-version: '8'
+          cache: 'maven'
       - run: .github/setup-linux.sh piv
       - run: .github/test-piv.sh
       - run: .github/test-piv.sh valgrind
