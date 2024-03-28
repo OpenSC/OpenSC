@@ -1154,23 +1154,17 @@ sc_pkcs15_erase_pubkey(struct sc_pkcs15_pubkey *key)
 	}
 	switch (key->algorithm) {
 	case SC_ALGORITHM_RSA:
-		if (key->u.rsa.modulus.data)
 			free(key->u.rsa.modulus.data);
-		if (key->u.rsa.exponent.data)
 			free(key->u.rsa.exponent.data);
 		break;
 	case SC_ALGORITHM_GOSTR3410:
-		if (key->u.gostr3410.xy.data)
 			free(key->u.gostr3410.xy.data);
 		break;
 	case SC_ALGORITHM_EC:
 	case SC_ALGORITHM_EDDSA:
 	case SC_ALGORITHM_XEDDSA:
-		if (key->u.ec.params.der.value)
 			free(key->u.ec.params.der.value);
-		if (key->u.ec.params.named_curve)
 			free(key->u.ec.params.named_curve);
-		if (key->u.ec.ecpointQ.value)
 			free(key->u.ec.ecpointQ.value);
 		break;
 	}
