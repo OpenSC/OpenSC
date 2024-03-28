@@ -2,12 +2,15 @@
 
 set -ex -o xtrace
 
-# Select the right java
-sudo update-java-alternatives -s java-1.8.0-openjdk-amd64
-sudo update-alternatives --get-selections | grep ^java
-export PATH="/usr/lib/jvm/java-8-openjdk-amd64/bin/:$PATH"
-export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/
-env | grep -i openjdk
+# github already selected the right java in https://github.com/actions/setup-java
+if [ -z "$GITHUB_ACTIONS" ]; then
+	# Select the right java
+	sudo update-java-alternatives -s java-1.8.0-openjdk-amd64
+	sudo update-alternatives --get-selections | grep ^java
+	export PATH="/usr/lib/jvm/java-8-openjdk-amd64/bin/:$PATH"
+	export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/
+fi
+env | grep -i JAVA
 
 # VSmartcard
 ./.github/setup-vsmartcard.sh
@@ -25,8 +28,7 @@ if [ ! -d "jcardsim" ]; then
 	git clone https://github.com/Jakuje/jcardsim.git
 fi
 pushd jcardsim
-env | grep -i openjdk
-export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/
+env | grep -i JAVA
 if [ ! -f target/jcardsim-3.0.5-SNAPSHOT.jar ]; then
 	mvn initialize && mvn clean install
 fi
