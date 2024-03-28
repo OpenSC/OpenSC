@@ -64,6 +64,9 @@ else
 	if [ "$1" == "no-shared" ]; then
 		CONFIGURE_FLAGS="$CONFIGURE_FLAGS --disable-shared"
 	fi
+	if [ "$1" == "no-openssl" ]; then
+		CONFIGURE_FLAGS="$CONFIGURE_FLAGS --disable-openssl"
+	fi
 	export CFLAGS="-DDEBUG_PROFILE=1 $CFLAGS"
 	./configure $CONFIGURE_FLAGS
 	make -j 4 V=1
