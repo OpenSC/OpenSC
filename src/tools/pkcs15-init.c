@@ -720,6 +720,7 @@ static const struct alg_spec alg_types_sym[] = {
 	{ NULL, -1, 0 }
 };
 
+// clang-format off
 /* RSA can have a number , default is 2048 */
 /* EC require a curve name */
 /* EDDSA and XEDDSA  without a size require a size or curve name or OID */
@@ -744,6 +745,7 @@ static const struct alg_spec alg_types_asym[] = {
 
 	{ NULL, -1, 0 }
 };
+// clang-format on
 
 static int
 parse_alg_spec(const struct alg_spec *types, const char *spec, unsigned int *keybits, struct sc_pkcs15_prkey *prkey)
@@ -767,22 +769,18 @@ parse_alg_spec(const struct alg_spec *types, const char *spec, unsigned int *key
 
 	if (*spec == '/' || *spec == '-' || *spec == ':')
 		spec++;
-	
+
 	/* if we have everything for EDDSA or XEDDSA */
 	if (*spec == 0x00 && *keybits && (algorithm == SC_ALGORITHM_EDDSA || algorithm == SC_ALGORITHM_XEDDSA) && prkey) {
 		prkey->u.ec.params.named_curve = strdup(types[types_idx].spec); /* correct case */
-		*keybits =  types[types_idx].keybits;
+		*keybits = types[types_idx].keybits;
 		return algorithm;
 	}
 
 	if (*spec)   {
-		if (isalpha((unsigned char)*spec)
-			&& algorithm == SC_ALGORITHM_EC && prkey)
+		if (isalpha((unsigned char)*spec) && algorithm == SC_ALGORITHM_EC && prkey)
 			prkey->u.ec.params.named_curve = strdup(spec);
-		else 
-		if (isalpha((unsigned char)*spec)
-				&& (algorithm == SC_ALGORITHM_EDDSA || algorithm == SC_ALGORITHM_XEDDSA)
-				&& prkey) {
+		else if (isalpha((unsigned char)*spec) && (algorithm == SC_ALGORITHM_EDDSA || algorithm == SC_ALGORITHM_XEDDSA) && prkey) {
 			prkey->u.ec.params.named_curve = strdup(types[types_idx].spec); /* copy correct case */
 		} else {
 			*keybits = (unsigned)strtoul(spec, &end, 10);
