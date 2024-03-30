@@ -2005,7 +2005,13 @@ pkcs11-tool --login --login-type so --init-pin
 				where <em class="replaceable"><code>keyspec</code></em> describes the algorithm and the parameters
 				of the key to be created. For example, <code class="literal">rsa:2048</code> generates a RSA key
 				with 2048-bit modulus. If you are generating an EC key, the curve designation must
-				be specified, for example <code class="literal">ec:prime256v1</code>. For symmetric key,
+				be specified, for example <code class="literal">ec:prime256v1</code>.
+				The following curves do not need parameters:
+				Edwards 25519 curves use one of these equivalent names: Ed25519(preferred), ed25519 or edwards25519
+				and for the 448 curve use: Ed448.
+				For Montgomery 25519 curves use one of these equivalent names: X25519(preferred), cv25519 or curve25519
+				and for the 448 curve use: X448.
+				For symmetric key,
 				the length of key is specified in bytes, for example  <code class="literal">AES:32</code>
 				or <code class="literal">DES3:24</code>.
 			</p><p>
