@@ -3384,8 +3384,7 @@ pkcs15_gen_keypair(struct sc_pkcs11_slot *slot, CK_MECHANISM_PTR pMechanism,
 		if (rv != CKR_OK)
 			keybits = 1024; /* Default key size */
 		/* TODO: check allowed values of keybits */
-	}
-	else if (keytype == CKK_EC ||  keytype == CKK_EC_EDWARDS || keytype == CKK_EC_MONTGOMERY)   {
+	} else if (keytype == CKK_EC || keytype == CKK_EC_EDWARDS || keytype == CKK_EC_MONTGOMERY) {
 		struct sc_lv_data *der = &keygen_args.prkey_args.key.u.ec.params.der;
 		void *ptr = NULL;
 
@@ -3396,25 +3395,21 @@ pkcs15_gen_keypair(struct sc_pkcs11_slot *slot, CK_MECHANISM_PTR pMechanism,
 			sc_unlock(p11card->card);
 			return rv;
 		}
-
 	}
 
 	if (keytype == CKK_EC) {
 		keygen_args.prkey_args.key.algorithm = SC_ALGORITHM_EC;
 		pub_args.key.algorithm               = SC_ALGORITHM_EC;
-	}
-	else if (keytype == CKK_EC_EDWARDS) {
+	} else if (keytype == CKK_EC_EDWARDS) {
 		keygen_args.prkey_args.key.algorithm = SC_ALGORITHM_EDDSA;
 		keygen_args.prkey_args.usage |= SC_PKCS15_PRKEY_USAGE_SIGN;
-		pub_args.key.algorithm               = SC_ALGORITHM_EDDSA;
-	}
-	else if (keytype == CKK_EC_MONTGOMERY) {
+		pub_args.key.algorithm = SC_ALGORITHM_EDDSA;
+	} else if (keytype == CKK_EC_MONTGOMERY) {
 		keygen_args.prkey_args.key.algorithm = SC_ALGORITHM_XEDDSA;
 		/* Can not sign. To created a cert, see: openssl x509 -force_pubkey */
 		keygen_args.prkey_args.usage |= SC_PKCS15_PRKEY_USAGE_DERIVE;
-		pub_args.key.algorithm               = SC_ALGORITHM_XEDDSA;
-	}
-	else   {
+		pub_args.key.algorithm = SC_ALGORITHM_XEDDSA;
+	} else {
 		/* CKA_KEY_TYPE is set, but keytype isn't correct */
 		rv = CKR_ATTRIBUTE_VALUE_INVALID;
 		goto kpgen_done;
@@ -5061,28 +5056,24 @@ pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session, void *object, CK_
 	case CKA_VALUE:
 	case CKA_SPKI:
 	case CKA_PUBLIC_KEY_INFO:
-	
 
-		if (attr->type != CKA_SPKI && attr->type != CKA_PUBLIC_KEY_INFO
-				&& pubkey->pub_info && pubkey->pub_info->direct.raw.value && pubkey->pub_info->direct.raw.len)   {
+		if (attr->type != CKA_SPKI && attr->type != CKA_PUBLIC_KEY_INFO && pubkey->pub_info && pubkey->pub_info->direct.raw.value && pubkey->pub_info->direct.raw.len) {
 			check_attribute_buffer(attr, pubkey->pub_info->direct.raw.len);
 			memcpy(attr->pValue, pubkey->pub_info->direct.raw.value, pubkey->pub_info->direct.raw.len);
-		}
-		else if (pubkey->pub_info && pubkey->pub_info->direct.spki.value && pubkey->pub_info->direct.spki.len)   {
+		} else if (pubkey->pub_info && pubkey->pub_info->direct.spki.value && pubkey->pub_info->direct.spki.len) {
 			check_attribute_buffer(attr, pubkey->pub_info->direct.spki.len);
 			memcpy(attr->pValue, pubkey->pub_info->direct.spki.value, pubkey->pub_info->direct.spki.len);
-		}
-		else if (pubkey->pub_data)   {
+		} else if (pubkey->pub_data) {
 			unsigned char *value = NULL;
 			size_t len;
 
 			if (attr->type != CKA_SPKI && attr->type != CKA_PUBLIC_KEY_INFO) {
 				if (sc_pkcs15_encode_pubkey(context, pubkey->pub_data, &value, &len))
 					return sc_to_cryptoki_error(SC_ERROR_INTERNAL, "C_GetAttributeValue");
-				} else {
-					if (sc_pkcs15_encode_pubkey_as_spki(context, pubkey->pub_data, &value, &len))
+			} else {
+				if (sc_pkcs15_encode_pubkey_as_spki(context, pubkey->pub_data, &value, &len))
 					return sc_to_cryptoki_error(SC_ERROR_INTERNAL, "C_GetAttributeValue");
-				}
+			}
 
 			if (attr->pValue == NULL_PTR) {
 				attr->ulValueLen = len;
@@ -5098,17 +5089,13 @@ pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session, void *object, CK_
 			memcpy(attr->pValue, value, len);
 
 			free(value);
-		}
-		else if (attr->type != CKA_SPKI && attr->type != CKA_PUBLIC_KEY_INFO
-				&& pubkey->base.p15_object && pubkey->base.p15_object->content.value && pubkey->base.p15_object->content.len)   {
+		} else if (attr->type != CKA_SPKI && attr->type != CKA_PUBLIC_KEY_INFO && pubkey->base.p15_object && pubkey->base.p15_object->content.value && pubkey->base.p15_object->content.len) {
 			check_attribute_buffer(attr, pubkey->base.p15_object->content.len);
 			memcpy(attr->pValue, pubkey->base.p15_object->content.value, pubkey->base.p15_object->content.len);
-		}
-		else if (cert && cert->cert_data) {
+		} else if (cert && cert->cert_data) {
 			check_attribute_buffer(attr, cert->cert_data->data.len);
 			memcpy(attr->pValue, cert->cert_data->data.value, cert->cert_data->data.len);
-		}
-		else   {
+		} else {
 			return CKR_ATTRIBUTE_TYPE_INVALID;
 		}
 		break;
