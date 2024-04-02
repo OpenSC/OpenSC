@@ -262,6 +262,14 @@ AC_ARG_ENABLE(
 )
 
 AC_ARG_ENABLE(
+	[nist-sm],
+	[AS_HELP_STRING([--enable-nist-sm],[enable SM in PIV card driver using sm/sm_nist  linkage @<:@disabled@:>@])],
+	,
+	[enable_nist_sm="yes"]
+)
+
+
+AC_ARG_ENABLE(
 	[man],
 	[AS_HELP_STRING([--disable-man],[disable installation of manuals @<:@enabled for none Windows@:>@])],
 	,
@@ -869,6 +877,10 @@ if  test "${enable_piv_sm}" = "yes"; then
 	else
 		AC_MSG_ERROR([ENABLE_PIV_SM requires ENABLE_SM and ENABLE_OPENSSL])
 	fi
+fi
+
+if  test "${enable_nist_sm}" = "yes"; then
+	AC_DEFINE([ENABLE_NIST_SM], [1], [Enable NIST SM])
 fi
 
 if test "${enable_openct}" = "yes"; then
