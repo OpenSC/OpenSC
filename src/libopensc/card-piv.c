@@ -49,11 +49,10 @@
 #endif
 #endif
 
-<<<<<<< HEAD
 #include "internal.h"
 
 /* 800-73-4 SM and VCI need: ECC, SM and OpenSSL or LibreSSL */
-=======
+
 #ifdef ENABLE_NIST_SM
 #include "sm/sm-nist.h"
 #endif
@@ -68,6 +67,12 @@
 #include "asn1.h"
 #include "cardctl.h"
 #include "simpletlv.h"
+
+/* TODO internal includes config.h ! */
+/* TODO During testing of ENABLE_NIST_SM, ENABLE_PIV_SM should not be set. */
+#if defined(ENABLE_PIV_SM) && defined(ENABLE_NIST_SM)
+#undef ENABLE_PIV_SM
+#endif  /* defined(ENABLE_PIV_SM) */
 
 enum {
 	PIV_OBJ_CCC = 0,
