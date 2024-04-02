@@ -240,6 +240,8 @@ static const struct sc_card_error piv_sm_errors[] = {
 	{0, 0, NULL}
 };
 
+/* TODO not the same piv_private_data as in card-piv.c */
+/* needs name changed and added to sm-nist.h */
 typedef struct piv_private_data {
 	int magic;
 	cipher_suite_t *cs; /* active cypher_suite */
