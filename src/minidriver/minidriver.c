@@ -513,9 +513,12 @@ get_pin_by_name(PCARD_DATA pCardData, struct sc_pkcs15_card *p15card, int role, 
 	if (!conf_block)
 		MD_FUNC_RETURN(pCardData, 1, SCARD_F_INTERNAL_ERROR);
 
-	memset(str_path, 0, sizeof(str_path));
-	sc_bin_to_hex(p15card->app->path.value, p15card->app->path.len, str_path, sizeof(str_path), 0);
-	blocks = scconf_find_blocks(p15card->card->ctx->conf, conf_block, "application", str_path);
+	if ( p15card->app != NULL ) {
+		memset(str_path, 0, sizeof(str_path));
+		sc_bin_to_hex(p15card->app->path.value, p15card->app->path.len, str_path, sizeof(str_path), 0);
+		blocks = scconf_find_blocks(p15card->card->ctx->conf, conf_block, "application", str_path);
+	}
+	
 	if (blocks)   {
 		if (blocks[0]) {
 			pin = (char *)scconf_get_str(blocks[0], pin_type, NULL);
