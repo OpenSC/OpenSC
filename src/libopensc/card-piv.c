@@ -186,13 +186,13 @@ enum {
 #define PIV_CS_CS2		0x27
 #define PIV_CS_CS7		0x2E
 
-#if defined(ENABLE_NIST_SM) || defined(ENABLE_PIV_SM)
 #ifdef USE_OPENSSL3_LIBCTX
 #define PIV_LIBCTX card->ctx->ossl3ctx->libctx
 #else
 #define PIV_LIBCTX NULL
 #endif
 
+#if defined(ENABLE_PIV_SM)
 	/* Table 14 and other constants */
 	typedef struct cipher_suite {
 		u8 id; /* taken from AID "AC" tag */
@@ -225,6 +225,8 @@ enum {
 	} cipher_suite_t;
 
 // clang-fromat off
+
+
 #define PIV_CSS_SIZE 2
 static cipher_suite_t css[PIV_CSS_SIZE] = {
 		{PIV_CS_CS2, 256, NID_X9_62_prime256v1, {{1, 2, 840, 10045, 3, 1, 7, -1}},
@@ -247,6 +249,7 @@ static cipher_suite_t css[PIV_CSS_SIZE] = {
 		"aes-256-cbc", "aes-256-ecb",
 		"secp384r1"}
 	};
+#endif /* ENABLE_PIV_SM */
 // clang-format on
 
 /* 800-73-4  4.1.5 Card Verifiable Certificates */
@@ -290,7 +293,6 @@ typedef struct piv_cvc {
 #define PIV_SM_GET_DATA_IN_CLEAR		0x00004000lu	/* OK to do this GET DATA in the clear */
 #define PIV_SM_FLAGS_SM_CERT_SIGNER_COMPRESSED	0x00008000lu	/* compressed */
 #define PIV_SM_CONTACTLESS                      0x00010000lu    /* contacless */
-#endif /* ENABLE_PIV_SM */
 
 typedef struct piv_sm_session {
 	/* set by piv_sm_open  or sm-nist */
@@ -365,6 +367,9 @@ static const struct sc_asn1_entry c_asn1_sm_response[C_ASN1_PIV_SM_RESPONSE_SIZE
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
+#endif /* ENABLE_PIV_SM */
+
+#if defined(ENABLE_NIST_SM) || defined(ENABLE_PIV_SM)
 /*
  * SW internal apdu response table.
  *
@@ -378,7 +383,7 @@ static const struct sc_card_error piv_sm_errors[] = {
 	{0x6988, SC_ERROR_SM_INVALID_SESSION_KEY, "SM Data Object incorrect"}, /* other process interference */
 	{0, 0, NULL}
 };
-#endif /* ENABLE_PIV_SM */
+#endif /* defined(ENABLE_NIST_SM) || defined(ENABLE_PIV_SM */
 
 /* 800-73-4 3.3.2 Discovery Object - PIN Usage Policy */
 #define PIV_PP_PIN		0x00004000u
@@ -5940,7 +5945,7 @@ static int piv_init(sc_card_t *card)
 		{
 			u8 *signer_cert = 0;
 			size_t signer_cert_len = 0;
-			size_t sm_in_len = 0;
+//			size_t sm_in_len = 0;
 
 			if (priv->init_flags & PIV_INIT_CONTACTLESS)
 				priv->sm_flags |= PIV_SM_CONTACTLESS;
