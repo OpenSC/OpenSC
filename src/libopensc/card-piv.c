@@ -1634,6 +1634,7 @@ static int piv_decode_cvc(sc_card_t * card, u8 **buf, size_t *buflen,
 
 #endif /* ENABLE_PIV_SM */
 
+#if defined(ENABLE_NIST_SM) || defined(ENABLE_PIV_SM)
 static int piv_parse_pairing_code(sc_card_t *card, const char *option)
 {
 	size_t i;
@@ -1650,6 +1651,7 @@ static int piv_parse_pairing_code(sc_card_t *card, const char *option)
 	}
 	return SC_SUCCESS;
 }
+#endif /* defined(ENABLE_NIST_SM) || defined(ENABLE_PIV_SM) */
 
 static int piv_load_options(sc_card_t *card)
 {
