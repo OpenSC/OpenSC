@@ -218,6 +218,7 @@ static const struct sc_asn1_entry c_asn1_piv_cvc[C_ASN1_PIV_CVC_SIZE] = {
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
+#if 0
 #define C_ASN1_PIV_SM_RESPONSE_SIZE 4
 static const struct sc_asn1_entry c_asn1_sm_response[C_ASN1_PIV_SM_RESPONSE_SIZE] = {
 	{ "encryptedData",      SC_ASN1_CALLBACK,   SC_ASN1_CTX | 7,        SC_ASN1_OPTIONAL,       NULL, NULL },
@@ -225,7 +226,9 @@ static const struct sc_asn1_entry c_asn1_sm_response[C_ASN1_PIV_SM_RESPONSE_SIZE
 	{ "mac",                SC_ASN1_CALLBACK,   SC_ASN1_CTX | 0x0E,     0,                      NULL, NULL },
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
+#endif /* 0 */
 
+#if 0
 /*
  * SW internal apdu response table.
  *
@@ -239,6 +242,7 @@ static const struct sc_card_error piv_sm_errors[] = {
 	{0x6988, SC_ERROR_SM_INVALID_SESSION_KEY, "SM Data Object incorrect"}, /* other process interference */
 	{0, 0, NULL}
 };
+#endif /* 0 */
 
 /* TODO not the same piv_private_data as in card-piv.c */
 /* needs name changed and added to sm-nist.h */
@@ -285,13 +289,13 @@ static int piv_get_asn1_obj(sc_context_t *ctx, void *arg,  const u8 *obj, size_t
 static int piv_sm_open(struct sc_card *card);
 //static int piv_decode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu);
 // TODO is piv_sm_close needed
-static int piv_sm_close(sc_card_t *card);
+// static int piv_sm_close(sc_card_t *card);
 static void piv_clear_cvc_content(piv_cvc_t *cvc);
 static void piv_clear_sm_session(piv_sm_session_t *session);
 static int piv_decode_cvc(sc_card_t * card, u8 **buf, size_t *buflen, piv_cvc_t *cvc);
-static int piv_parse_pairing_code(sc_card_t *card, const char *option);
+// TODO   static int piv_parse_pairing_code(sc_card_t *card, const char *option);
 static int Q2OS(int fsize, u8 *Q, size_t Qlen, u8 * OS, size_t *OSlen);
-static int piv_send_vci_pairing_code(struct sc_card *card, u8 *paring_code);
+// TODO comment for now static int piv_send_vci_pairing_code(struct sc_card *card, u8 *paring_code);
 static int piv_sm_verify_sig(struct sc_card *card, const EVP_MD *type,
 		EVP_PKEY *pkey, u8 *data, size_t data_size,
 		unsigned char *sig, size_t siglen);
@@ -324,6 +328,8 @@ static int Q2OS(int fsize, u8 *Q, size_t Qlen, u8 * OS, size_t *OSlen)
 	return 0;
 }
 
+#if 0
+/*  TODO Should card driver do thisa?  */
 /*
  * if needed, send VCI pairing code to card just after the
  * SM key establishment. Called from piv_sm_open under same lock
@@ -350,7 +356,6 @@ static int piv_send_vci_pairing_code(struct sc_card *card, u8 *paring_code)
 	plain.data = paring_code;
 	plain.resp = NULL;
 	plain.resplen = plain.le = 0;
-#if 0
 //TODO Needs work to send with or without SM
 	memset(&sm_apdu,0,sizeof(sm_apdu));
 	/* build sm_apdu and set alloc sm_apdu.resp */
@@ -372,13 +377,13 @@ static int piv_send_vci_pairing_code(struct sc_card *card, u8 *paring_code)
 	r = piv_decode_apdu(card, &plain, &sm_apdu);
 	free(sm_apdu.resp);
 	LOG_TEST_RET(card->ctx, r, "piv_decode_apdu failed");
-#endif /* TODO */
 	r = sc_check_sw(card, plain.sw1, plain.sw2);
 	if (r < 0)
 		r = SC_ERROR_PIN_CODE_INCORRECT;
 
 	LOG_FUNC_RETURN(card->ctx, r);
 }
+#endif /* TODO */
 
 /* Verify one signature using pubkey */
 static int piv_sm_verify_sig(struct sc_card *card, const EVP_MD *type,
@@ -425,11 +430,11 @@ static int piv_sm_verify_certs(struct sc_card *card)
 	piv_private_data_t * priv = PIV_PRIV_FROM_CARD;
 	cipher_suite_t *cs = priv->cs;
 	int r = 0;
-	u8 *cert_blob = NULL; /* do not free */
-	size_t cert_bloblen = 0;
+//	u8 *cert_blob = NULL; /* do not free */
+//	size_t cert_bloblen = 0;
 
-	u8 *rbuf; /* do not free*/
-	size_t rbuflen;
+//	u8 *rbuf; /* do not free*/
+//	size_t rbuflen;
 	EVP_PKEY *cert_pkey =  NULL; /* do not free */
 	EVP_PKEY *in_cvc_pkey = NULL;
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
@@ -635,7 +640,7 @@ err:
 static int piv_sm_open(struct sc_card *card)
 {
 	piv_private_data_t * priv = PIV_PRIV_FROM_CARD;
-	struct iso_sm_ctx *sctx = NULL;
+//	struct iso_sm_ctx *sctx = NULL;
 	cipher_suite_t *cs = priv->cs;
 	int r = 0;
 	int i;
@@ -1164,6 +1169,7 @@ static int piv_sm_open(struct sc_card *card)
 		}
 	}
 
+#if 0 
 	/* VCI only needed for contactless */
 	if (*priv->sm_flags & PIV_SM_CONTACTLESS) {
 		/* Is pairing code required? */
@@ -1173,6 +1179,7 @@ static int piv_sm_open(struct sc_card *card)
 				goto err;
 		}
 	}
+#endif /* 0 */
 
 	r = 0;
 	*priv->sm_flags |= PIV_SM_FLAGS_SM_IS_ACTIVE;
@@ -1528,7 +1535,7 @@ err:
 }
 #endif
 
-
+#if 0
 static int piv_sm_close(sc_card_t *card)
 {
 	int r = 0;
@@ -1555,6 +1562,7 @@ static int piv_sm_close(sc_card_t *card)
 
 	LOG_FUNC_RETURN(card->ctx, r);
 }
+#endif /* 0 */
 
 static void piv_clear_cvc_content(piv_cvc_t *cvc)
 {
@@ -1676,6 +1684,7 @@ static int piv_decode_cvc(sc_card_t * card, u8 **buf, size_t *buflen,
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
+#if 0
 static int nist_parse_pairing_code(sc_card_t *card, const char *option)
 {
 	size_t i;
@@ -1695,6 +1704,7 @@ static int nist_parse_pairing_code(sc_card_t *card, const char *option)
 	}
 	return SC_SUCCESS;
 }
+#endif /* 0 */
 
 static piv_private_data_t *piv_private_data_create()
 {
@@ -1720,7 +1730,7 @@ int sm_nist_start(sc_card_t *card,
 	int i;
 	struct iso_sm_ctx *sctx = NULL;
 	struct piv_private_data *priv = NULL;
-	u8 *p = 0;
+//	u8 *p = 0;
 
 
 	sctx = iso_sm_ctx_create();
@@ -1789,7 +1799,7 @@ int sm_nist_start(sc_card_t *card,
 			goto err;
 		}
 	}
-	*priv->sm_flags & PIV_SM_FLAGS_SM_IN_CVC_PRESENT;
+	*priv->sm_flags |= PIV_SM_FLAGS_SM_IN_CVC_PRESENT;
 
 	if (sm_in_cvc_der && sm_in_cvc_len) {
 		u8 *pp = sm_in_cvc_der;
@@ -1865,7 +1875,7 @@ nist_sm_encrypt(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	u8 zeros[16] = {0x00};
 	int outli = 0;
 	int outl = 0;
-	int outll = 0;
+//	int outll = 0;
 	int outdl = 0;
 	u8 discard[16];
 
@@ -1887,7 +1897,7 @@ nist_sm_encrypt(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	ed_ctx = EVP_CIPHER_CTX_new();
 	if (ed_ctx == NULL) {
 		r = SC_ERROR_INTERNAL;
-		goto err;u8 IV[16];
+		goto err;
 	}
 
 	/* first round encryptes Enc counter with zero IV, to create a new IV */
@@ -1896,7 +1906,7 @@ nist_sm_encrypt(sc_card_t *card, const struct iso_sm_ctx *ctx,
 			|| EVP_EncryptUpdate(ed_ctx, IV, &outli, priv->sm_session.enc_counter, 16) != 1
 			|| EVP_EncryptFinal_ex(ed_ctx, discard, &outdl) != 1
 			|| outdl != 0) {
-		u8 IV[16];sc_log(card->ctx,"SM encode failed in OpenSSL");
+		sc_log(card->ctx,"SM encode failed in OpenSSL");
 		sc_log_openssl(card->ctx);
 		r = SC_ERROR_INTERNAL;
 		goto err;
@@ -1936,14 +1946,14 @@ nist_sm_decrypt(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	cipher_suite_t *cs;
 	u8 zeros[16] = {0};
 	u8 IV[16];
-	u8 *p = NULL;
+//	u8 *p = NULL;
 	u8 *out = NULL;
 	int outl = 0;
 	int outli = 0;
 	int outdl = 0;
-	u8 lastb[16];
+//	u8 lastb[16];
 	u8 discard[8];
-	u8 *q = NULL;
+//	u8 *q = NULL;
 	EVP_CIPHER_CTX *ed_ctx = NULL;
 
 	if (!card)
@@ -2008,7 +2018,7 @@ nist_sm_authenticate(sc_card_t *card, const struct iso_sm_ctx *ctx,
 		const u8 *data, size_t datalen, u8 **macdata)
 {
 
-	u8 *p = NULL;
+//	u8 *p = NULL;
 	int r;
 	piv_private_data_t  *priv = NULL;
 	cipher_suite_t *cs = NULL;
@@ -2101,13 +2111,13 @@ nist_sm_verify_authentication(sc_card_t *card, const struct iso_sm_ctx *ctx,
 		const u8 *rmac, size_t rmaclen,
 		const u8 *macdata, size_t macdatalen)
 {
-	u8 *p = NULL;
+//	u8 *p = NULL;
 	int r;
 	piv_private_data_t  *priv = NULL;
 	cipher_suite_t *cs = NULL;
 	int MCVlen = 16;
 	size_t R_MCVlen = 0;
-	size_t C_MCVlen = 16; /* debugging*/
+//	size_t C_MCVlen = 16; /* debugging*/
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 	CMAC_CTX *cmac_ctx  = NULL;
