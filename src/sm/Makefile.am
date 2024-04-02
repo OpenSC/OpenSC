@@ -8,7 +8,6 @@ noinst_LTLIBRARIES = libsmiso.la libsmeac.la libsmnist.la
 noinst_HEADERS = \
 		 sm-iso-internal.h \
 		 sm-iso.h \
-		 sslutil.h \
 		 sm-nist.h \
 		 sm-eac.h
 
