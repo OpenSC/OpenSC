@@ -28,6 +28,7 @@ env:
   JAVA_DEPS: |
     ant openjdk-8-jdk maven cmake
   JCARDSIM: https://github.com/Jakuje/jcardsim.git
+  LIBRESSL_VERSION: 3.8.1
 
 jobs:
   build:
@@ -514,6 +515,13 @@ jobs:
           packages: ${{ env.BASE_DEPS }}
           version: apt-latest-base
           execute_install_scripts: true
+      - name: Restore LibreSSL build
+        uses: actions/cache/restore@v4
+        id: libressl-cache
+        with:
+          path: |
+            libressl-${{ env.LIBRESSL_VERSION }}/
+          key: libressl-${{ env.LIBRESSL_VERSION }}
       - run: .github/setup-linux.sh libressl
       - run: .github/build.sh dist libressl valgrind
       - uses: actions/upload-artifact@v3
@@ -530,6 +538,13 @@ jobs:
         with:
           path: ./*
           key: ${{ runner.os }}-libressl-${{ github.sha }}
+      - if: ${{ steps.libressl-cache.outputs.cache-hit != 'true' }}
+        name: Cache LibreSSL build
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            libressl-${{ env.LIBRESSL_VERSION }}/
+          key: libressl-${{ env.LIBRESSL_VERSION }}
 
   test-cac-libressl:
     runs-on: ubuntu-latest
