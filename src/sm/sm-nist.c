@@ -622,7 +622,7 @@ static int piv_sm_general_io(sc_card_t *card, int ins, int p1, int p2,
 		goto err;
 	}
 
-	r = apdu.resplen;
+	r = (int)apdu.resplen;
 
 err:
 	sc_unlock(card);
@@ -1130,7 +1130,7 @@ static int piv_sm_open(struct sc_card *card)
 
 		memcpy(p, Qeh_OS, Qeh_OSlen);
 		p += Qeh_OSlen;
-		MacDatalen = p - MacData;
+		MacDatalen = (int)(p - MacData);
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 		if ((cmac_ctx = CMAC_CTX_new()) == NULL
@@ -1226,7 +1226,7 @@ static void piv_inc(u8 *counter, size_t size)
 	unsigned int c = 1;
 	unsigned int b;
 	int i;
-	for (i = size - 1; c != 0 && i >= 0; i--){
+	for (i = (int)size - 1; c != 0 && i >= 0; i--){
 			b = c + counter[i];
 			counter[i] = b & 0xff;
 			c = b>>8;
@@ -1790,7 +1790,7 @@ int sm_nist_start(sc_card_t *card,
 #endif /* ENABLE_ZLIB */
 		}
 		
-		len = cert_blob_len;
+		len = (int)cert_blob_len;
 		p = cert_blob;
 		if ((priv->signer_cert = d2i_X509(NULL, &p, len)) == NULL) {
 			sc_log(card->ctx,"OpenSSL failed to parse CERTIFICATE SIGNER");
@@ -1917,7 +1917,7 @@ nist_sm_encrypt(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	if (EVP_CIPHER_CTX_reset(ed_ctx) != 1
 			|| EVP_EncryptInit_ex(ed_ctx, (*cs->cipher_cbc)(), NULL, priv->sm_session.SKenc, IV) != 1
 			|| EVP_CIPHER_CTX_set_padding(ed_ctx,0) != 1 /* i.e no padding */
-			|| EVP_EncryptUpdate(ed_ctx, out ,&outl, data, datalen) != 1
+			|| EVP_EncryptUpdate(ed_ctx, out ,&outl, data, (int)datalen) != 1
 			|| EVP_EncryptFinal_ex(ed_ctx, discard, &outdl) != 1
 			|| outdl != 0) {  /* should not happen */
 		sc_log(card->ctx,"SM _encode failed in OpenSSL");
@@ -1928,7 +1928,7 @@ nist_sm_encrypt(sc_card_t *card, const struct iso_sm_ctx *ctx,
 
 	*enc = out;
 	out = NULL;
-	r = datalen;
+	r = (int)datalen;
 
 err:
 	EVP_CIPHER_CTX_free(ed_ctx);
@@ -1994,7 +1994,7 @@ nist_sm_decrypt(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	if (EVP_CIPHER_CTX_reset(ed_ctx) != 1
 			|| EVP_DecryptInit_ex(ed_ctx, (*cs->cipher_cbc)(), NULL, priv->sm_session.SKenc, IV) != 1
 			|| EVP_CIPHER_CTX_set_padding(ed_ctx,0) != 1
-			|| EVP_DecryptUpdate(ed_ctx, out ,&outl, enc, enclen) != 1
+			|| EVP_DecryptUpdate(ed_ctx, out ,&outl, enc, (int)enclen) != 1
 			|| EVP_DecryptFinal_ex(ed_ctx, discard, &outdl) != 1
 			|| outdl != 0) {  /* should not happen */
 		sc_log(card->ctx,"SM _decode failed in OpenSSL");
@@ -2005,7 +2005,7 @@ nist_sm_decrypt(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	
 	*data = out;
 	out = NULL;
-	r = enclen;
+	r = (int)enclen;
 
 err:
 	free(out);
