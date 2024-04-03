@@ -455,15 +455,14 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 		mac_data = p;
 		memcpy(mac_data + mac_data_len, asn1, asn1_len);
 		mac_data_len += asn1_len;
-		if (ctx->do_not_pad_macdata)
-			r = mac_data_len;
-		else 
+		if (ctx->do_not_pad_macdata == 0) {
 			r = add_padding(ctx, mac_data, mac_data_len, &mac_data);
+			if (r < 0) {
+				goto err;
+			}
 
-		if (r < 0) {
-			goto err;
+			mac_data_len = r;
 		}
-		mac_data_len = r;
 	}
 	sc_log_hex(card->ctx, "Data to authenticate", mac_data, mac_data_len);
 
@@ -551,7 +550,7 @@ static int sm_decrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 	struct sc_asn1_entry sm_rapdu[5];
 	struct sc_asn1_entry my_sm_rapdu[5];
 	u8 sw[2], mac[8], fdata[SC_MAX_EXT_APDU_BUFFER_SIZE];
-	size_t sw_len = sizeof sw, mac_len = sizeof mac, fdata_len = sizeof fdata,
+	size_t sw_len = sizeof sw, mac_len = sizeof mac, mac_data_len, fdata_len = sizeof fdata,
 		   buf_len, asn1_len, fdata_offset = 0;
 	const u8 *buf;
 	u8 *data = NULL, *mac_data = NULL, *asn1 = NULL;
@@ -582,17 +581,19 @@ static int sm_decrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 			goto err;
 
 		if (ctx->do_not_pad_macdata) {
-			r = asn1_len;
+			mac_data_len = asn1_len;
 			mac_data = asn1;
-		} else
+		} else {
 			r = add_padding(ctx, asn1, asn1_len, &mac_data);
+			if (r < 0) {
+				goto err;
+			}
 
-		if (r < 0) {
-			goto err;
+			mac_data_len = r;
 		}
 
 		r = ctx->verify_authentication(card, ctx, mac, mac_len,
-				mac_data, r);
+				mac_data, mac_data_len);
 		if (r < 0)
 			goto err;
 	} else {
