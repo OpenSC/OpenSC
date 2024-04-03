@@ -2891,9 +2891,9 @@ static int piv_find_aid(sc_card_t * card)
 	const u8 *csai; /* Cipher Suite Algorithm Identifier */
 	size_t csailen;
 	size_t resplen = sizeof(rbuf);
-#if defined(ENABLE_NIST_SM) || defined(ENABLE_PIV_SM)
+#if defined(ENABLE_PIV_SM)
 	int found_csai = 0;
-#endif /* defined(ENABLE_NIST_SM) || defined(ENABLE_PIV_SM) */
+#endif /* defined(ENABLE_PIV_SM) */
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -2926,7 +2926,6 @@ static int piv_find_aid(sc_card_t * card)
 #if defined(ENABLE_NIST_SM)
 						if (*csai == 0x27 || *csai ==  0x2E) {
 							priv->csID = *csai;
-							found_csai++;
 							priv->init_flags |= PIV_INIT_AID_AC;
 						}
 #elif  defined(ENABLE_PIV_SM)
