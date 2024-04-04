@@ -15,11 +15,6 @@ if [ "$GITHUB_EVENT_NAME" == "pull_request" ]; then
 	else
 		SUFFIX="$GITHUB_BASE_REF-pr$PR_NUMBER"
 	fi
-else
-	BRANCH=$(echo $GITHUB_REF | awk 'BEGIN { FS = "/" } ; { print $3 }')
-	if [ "$BRANCH" != "master" ]; then
-		SUFFIX="$BRANCH"
-	fi
 fi
 if [ -n "$SUFFIX" ]; then
 	./bootstrap.ci -s "$SUFFIX"
