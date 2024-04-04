@@ -169,8 +169,10 @@ authentic_pkcs15_erase_card(struct sc_profile *profile, struct sc_pkcs15_card *p
 			rv = sc_pkcs15_get_objects(p15card, obj_type, objs, 32);
 			LOG_TEST_RET(ctx, rv, "Failed to get PKCS#15 objects to remove");
 
-			for (ii=0; ii<rv; ii++)
+			for (ii=0; ii<rv; ii++) {
 				sc_pkcs15_remove_object(p15card, objs[ii]);
+				sc_pkcs15_free_object(objs[ii]);
+			}
 		}
 
 		rv = sc_select_file(p15card->card, &df->path, &file);
