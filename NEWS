@@ -1,5 +1,14 @@
 NEWS for OpenSC -- History of user visible changes
 
+# New in 0.25.0; 2024-04-05
+
+## General improvements
+* Add missing file to dist tarball to build documentation (#3063)
+
+## minidriver
+* Fix RSA decryption with PKCS#1 v1.5 padding (#3077)
+* Fix crash when app is not set (#3084)
+
 # New in 0.25.0; 2024-03-06
 ## Security
 * [CVE-2023-5992](https://github.com/OpenSC/OpenSC/wiki/CVE-2023-5992): Side-channel leaks while stripping encryption PKCS#1.5 padding in OpenSC (#2948)
