@@ -5350,6 +5350,7 @@ piv_finish(sc_card_t *card)
 		piv_clear_sm_session(&priv->sm_session);
 #endif /* USE_PIV_SM */
 
+		free(priv->cert_signer_der);
 		free(priv);
 		card->drv_data = NULL; /* priv */
 	}
@@ -5927,7 +5928,7 @@ static int piv_init(sc_card_t *card)
 
 		/* If SM did not start, or is not expected to start, continue on without it */
 	}
-#endif /* USE_PIV_SM */
+#endif /* defined(USE_PIV_SM) || defined(USE_SM_NIST) */
 
 	/*
 	 * 800-73-3 cards may have a history object
