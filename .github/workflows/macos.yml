@@ -23,7 +23,7 @@ jobs:
         os: [macos-12, macos-14]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - run: .github/setup-macos.sh
         env:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
@@ -48,7 +48,7 @@ jobs:
     runs-on: macos-12
     needs: [build]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Pull build artifacts
         uses: actions/download-artifact@v3
         with:
