@@ -21,7 +21,7 @@ jobs:
   build:
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - run: .github/setup-linux.sh
       - run: .github/build.sh dist
       - name: Upload test logs
@@ -32,7 +32,7 @@ jobs:
           path: |
             tests/*.log
             src/tests/unittests/*.log
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         id: cache-build
         with:
           path: ./*
@@ -47,7 +47,7 @@ jobs:
   valgrind:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - run: .github/setup-linux.sh debug
       - run: .github/build.sh valgrind
       - name: Upload test logs
@@ -62,28 +62,28 @@ jobs:
   build-no-shared:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - run: .github/setup-linux.sh
       - run: .github/build.sh no-shared valgrind
 
   build-no-openssl:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - run: .github/setup-linux.sh
       - run: .github/build.sh no-openssl valgrind
 
   build-ix86:
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - run: .github/setup-linux.sh ix86
       - run: .github/build.sh ix86
 
   build-mingw:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - run: .github/setup-linux.sh mingw
       - run: .github/build.sh mingw
       - name: Cache build artifacts
@@ -96,7 +96,7 @@ jobs:
   build-mingw32:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - run: .github/setup-linux.sh mingw32
       - run: .github/build.sh mingw32
       - name: Cache build artifacts
@@ -109,7 +109,7 @@ jobs:
   build-piv-sm:
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - run: .github/setup-linux.sh
       - run: .github/build.sh piv-sm dist
       - name: Upload test logs
@@ -120,7 +120,7 @@ jobs:
           path: |
             tests/*.log
             src/tests/unittests/*.log
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         id: cache-build
         with:
           path: ./*
@@ -130,8 +130,8 @@ jobs:
     runs-on: ubuntu-20.04
     needs: [build]
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/cache@v3
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
         id: cache-build
         with:
           path: ./*
@@ -144,8 +144,8 @@ jobs:
     runs-on: ubuntu-20.04
     needs: [build-piv-sm]
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/cache@v3
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
         id: cache-build
         with:
           path: ./*
@@ -158,8 +158,8 @@ jobs:
     runs-on: ubuntu-20.04
     needs: [build]
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/cache@v3
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
         id: cache-build
         with:
           path: ./*
@@ -172,8 +172,8 @@ jobs:
     runs-on: ubuntu-20.04
     needs: [build]
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/cache@v3
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
         id: cache-build
         with:
           path: ./*
@@ -186,8 +186,8 @@ jobs:
     runs-on: ubuntu-20.04
     needs: [build]
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/cache@v3
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
         id: cache-build
         with:
           path: ./*
@@ -200,8 +200,8 @@ jobs:
     runs-on: ubuntu-20.04
     needs: [build]
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/cache@v3
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
         id: cache-build
         with:
           path: ./*
@@ -214,8 +214,8 @@ jobs:
     runs-on: ubuntu-20.04
     needs: [build]
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/cache@v3
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
         id: cache-build
         with:
           path: ./*
@@ -227,8 +227,8 @@ jobs:
     runs-on: ubuntu-20.04
     needs: [build]
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/cache@v3
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
         id: cache-build
         with:
           path: ./*
@@ -241,8 +241,8 @@ jobs:
     runs-on: ubuntu-20.04
     needs: [build]
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/cache@v3
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
         id: cache-build
         with:
           path: ./*
@@ -257,7 +257,7 @@ jobs:
   build-ubuntu-22:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - run: .github/setup-linux.sh
       - run: .github/build.sh dist valgrind
       - uses: actions/upload-artifact@v3
@@ -267,7 +267,7 @@ jobs:
           path: |
             tests/*.log
             src/tests/unittests/*.log
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         id: cache-build
         if: ${{ success() }}
         with:
@@ -284,7 +284,7 @@ jobs:
   build-ubuntu-22-piv-sm:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - run: .github/setup-linux.sh
       - run: .github/build.sh piv-sm dist valgrind
       - uses: actions/upload-artifact@v3
@@ -294,7 +294,7 @@ jobs:
           path: |
             tests/*.log
             src/tests/unittests/*.log
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         id: cache-build
         if: ${{ success() }}
         with:
@@ -305,8 +305,8 @@ jobs:
     runs-on: ubuntu-22.04
     needs: [build-ubuntu-22-piv-sm]
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/cache@v3
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
         id: cache-build
         with:
           path: ./*
@@ -319,8 +319,8 @@ jobs:
     runs-on: ubuntu-22.04
     needs: [build-ubuntu-22]
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/cache@v3
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
         id: cache-build
         with:
           path: ./*
@@ -333,8 +333,8 @@ jobs:
     runs-on: ubuntu-22.04
     needs: [build-ubuntu-22]
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/cache@v3
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
         id: cache-build
         with:
           path: ./*
@@ -349,7 +349,7 @@ jobs:
   build-libressl:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - run: .github/setup-linux.sh libressl
       - run: .github/build.sh dist libressl valgrind
       - uses: actions/upload-artifact@v3
@@ -360,7 +360,7 @@ jobs:
             config.log
             tests/*.log
             src/tests/unittests/*.log
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         id: cache-build
         if: ${{ success() }}
         with:
@@ -371,8 +371,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build-libressl]
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/cache@v3
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
         id: cache-build
         with:
           path: ./*
@@ -385,8 +385,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build-libressl]
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/cache@v3
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
         id: cache-build
         with:
           path: ./*
@@ -402,8 +402,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build, build-mingw]
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/cache@v3
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
         id: cache-build
         with:
           path: ./*

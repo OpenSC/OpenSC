@@ -21,7 +21,7 @@ jobs:
     container:
       image: fedora:latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - run: .github/setup-fedora.sh
       - run: .github/build.sh dist
       - name: Upload test logs
@@ -38,6 +38,6 @@ jobs:
     container:
       image: fedora:latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - run: .github/setup-fedora.sh ix86
       - run: .github/build.sh ix86

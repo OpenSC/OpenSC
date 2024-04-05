@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Packit SRPM
     steps:
-        - uses: actions/checkout@v3
+        - uses: actions/checkout@v4
           with:
               fetch-depth: 0
         - uses: packit/actions/srpm@main
@@ -30,7 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Packit RPM
     steps:
-        - uses: actions/checkout@v3
+        - uses: actions/checkout@v4
           with:
               fetch-depth: 0
         - uses: ./.github/actions/packit
