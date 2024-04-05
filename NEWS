@@ -1,6 +1,6 @@
 NEWS for OpenSC -- History of user visible changes
 
-# New in 0.25.0; 2024-04-05
+# New in 0.25.1; 2024-04-05
 
 ## General improvements
 * Add missing file to dist tarball to build documentation (#3063)
