@@ -167,8 +167,6 @@ struct iso_sm_ctx {
 	u8 padding_indicator;
 	/** @brief if 1 use tag 87 */
 	u8 padding_tag;
-	/** @brief if 1 do not pad data to to be mac'ed */
-	u8  do_not_pad_macdata;
 	/** @brief do_not_split_apdu into multiple apdus */
 	u8  use_sm_chaining;
 	/** @brief get response is always in clear */
@@ -238,6 +236,8 @@ struct iso_sm_ctx *iso_sm_ctx_create(void);
 int iso_sm_start(struct sc_card *card, struct iso_sm_ctx *sctx);
 
 int iso_sm_close(struct sc_card *card);
+
+int iso_add_80_pad(const u8 *data, size_t datalen, size_t block_size, u8 **padded);
 
 #ifdef  __cplusplus
 }

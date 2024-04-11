@@ -54,8 +54,8 @@ static const struct sc_asn1_entry c_sm_rapdu[] = {
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
-static int
-add_iso_pad(const u8 *data, size_t datalen, size_t block_size, u8 **padded)
+int
+iso_add_80_pad(const u8 *data, size_t datalen, size_t block_size, u8 **padded)
 {
 	u8 *p;
 	int p_len;
@@ -103,7 +103,7 @@ add_padding(const struct iso_sm_ctx *ctx, const u8 *data, size_t datalen,
 			}
 			return (int)datalen;
 		case SM_ISO_PADDING:
-			return add_iso_pad(data, datalen, ctx->block_length, padded);
+			return iso_add_80_pad(data, datalen, ctx->block_length, padded);
 		default:
 			return SC_ERROR_INVALID_ARGUMENTS;
 	}
@@ -455,14 +455,6 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 		mac_data = p;
 		memcpy(mac_data + mac_data_len, asn1, asn1_len);
 		mac_data_len += asn1_len;
-		if (ctx->do_not_pad_macdata == 0) {
-			r = add_padding(ctx, mac_data, mac_data_len, &mac_data);
-			if (r < 0) {
-				goto err;
-			}
-
-			mac_data_len = r;
-		}
 	}
 	sc_log_hex(card->ctx, "Data to authenticate", mac_data, mac_data_len);
 
@@ -551,9 +543,9 @@ static int sm_decrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 	struct sc_asn1_entry my_sm_rapdu[5];
 	u8 sw[2], mac[8], fdata[SC_MAX_EXT_APDU_BUFFER_SIZE];
 	size_t sw_len = sizeof sw, mac_len = sizeof mac, mac_data_len, fdata_len = sizeof fdata,
-		   buf_len, asn1_len, fdata_offset = 0;
+		   buf_len, fdata_offset = 0;
 	const u8 *buf;
-	u8 *data = NULL, *mac_data = NULL, *asn1 = NULL;
+	u8 *data = NULL, *mac_data = NULL;
 
 	sc_copy_asn1_entry(c_sm_rapdu, sm_rapdu);
 	sc_format_asn1_entry(sm_rapdu + 0, fdata, &fdata_len, 0);
@@ -576,21 +568,9 @@ static int sm_decrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 		sc_copy_asn1_entry(sm_rapdu, my_sm_rapdu);
 		sc_copy_asn1_entry(&c_sm_rapdu[3], &my_sm_rapdu[3]);
 
-		r = sc_asn1_encode(card->ctx, my_sm_rapdu, &asn1, &asn1_len);
+		r = sc_asn1_encode(card->ctx, my_sm_rapdu, &mac_data, &mac_data_len);
 		if (r < 0)
 			goto err;
-
-		if (ctx->do_not_pad_macdata) {
-			mac_data_len = asn1_len;
-			mac_data = asn1;
-		} else {
-			r = add_padding(ctx, asn1, asn1_len, &mac_data);
-			if (r < 0) {
-				goto err;
-			}
-
-			mac_data_len = r;
-		}
 
 		r = ctx->verify_authentication(card, ctx, mac, mac_len,
 				mac_data, mac_data_len);
@@ -660,8 +640,6 @@ static int sm_decrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 	r = SC_SUCCESS;
 
 err:
-	if (asn1 != mac_data)
-		free(asn1);
 	free(mac_data);
 	if (data) {
 		sc_mem_clear(data, buf_len);

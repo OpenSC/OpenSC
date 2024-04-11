@@ -1825,7 +1825,6 @@ int sm_nist_start(sc_card_t *card,
 	sctx->clear_free = nist_sm_clear_free;
 	sctx->padding_indicator = SM_ISO_PADDING;
 	sctx->padding_tag = 1;
-	sctx->do_not_pad_macdata = 1;
 	sctx->use_sm_chaining = 1;
 	sctx->get_response_in_clear = 1;
 	sctx->block_length = 16; /* 800-73-4 uses 16 for both cipher suites */
