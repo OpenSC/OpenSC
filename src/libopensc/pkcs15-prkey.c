@@ -569,7 +569,8 @@ sc_pkcs15_erase_prkey(struct sc_pkcs15_prkey *key)
 	case SC_ALGORITHM_GOSTR3410:
 		free(key->u.gostr3410.d.data);
 		break;
-	case SC_ALGORITHM_EC: /* EC, Edwards and Montgomery use common ec params */
+	case SC_ALGORITHM_EC:
+		/* EC, Edwards and Montgomery use common ec params */
 		free(key->u.ec.params.der.value);
 		free(key->u.ec.params.named_curve);
 		free(key->u.ec.privateD.data);
