@@ -2558,8 +2558,8 @@ pgp_update_new_algo_attr(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_
 		}
 
 		pgp_set_blob(algo_blob, data, data_len);
+		r = pgp_put_data(card, tag, data, data_len);
 		free(data);
-		r = pgp_put_data(card, tag, algo_blob->data, data_len);
 		/* Note: Don't use pgp_set_blob to set data, because it won't touch the real DO */
 		LOG_TEST_RET(card->ctx, r, "Cannot set new algorithm attributes");
 	} else {
