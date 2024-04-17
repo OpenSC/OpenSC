@@ -1502,7 +1502,7 @@ int
 sc_pkcs15_fix_ec_parameters(struct sc_context *ctx, struct sc_ec_parameters *ecparams)
 {
 	int rv, ii;
-	int mapped = 0;
+	int mapped_string = 0; /* der is printable string that can be replaced with der of OID */
 
 	LOG_FUNC_CALLED(ctx);
 
@@ -1510,7 +1510,7 @@ sc_pkcs15_fix_ec_parameters(struct sc_context *ctx, struct sc_ec_parameters *ecp
 	if (ecparams->der.value && ecparams->der.len && ecparams->der.len > 2) {
 		/* caller provided a der version of OID */
 		switch (ecparams->der.value[0]) {
-		case 0x06: /* OID */
+		case 0x06: /* der.value is an OID */
 			for (ii = 0; ec_curve_infos[ii].name; ii++) {
 				struct sc_object_id id;
 				unsigned char *buf = NULL;
@@ -1536,8 +1536,8 @@ sc_pkcs15_fix_ec_parameters(struct sc_context *ctx, struct sc_ec_parameters *ecp
 				size_t len = strlen(ec_curve_infos[ii].name);
 				if (ecparams->der.len - 2 != len || memcmp(ec_curve_infos[ii].name, ecparams->der.value + 2, len) != 0)
 					continue;
-				/* force replacement of printable string to allow mapping */
-				mapped = 1;
+				/* found replacement of printable string to OID */
+				mapped_string = 1;
 				break;
 			}
 			break;
@@ -1551,7 +1551,7 @@ sc_pkcs15_fix_ec_parameters(struct sc_context *ctx, struct sc_ec_parameters *ecp
 			LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Unsupported named curve");
 
 		sc_log(ctx, "Found known curve '%s'", ec_curve_infos[ii].name);
-		if (mapped) {
+		if (mapped_string) { /* free der of printable string replace below with OID */
 			free(ecparams->named_curve);
 			ecparams->named_curve = NULL;
 		}
@@ -1564,14 +1564,14 @@ sc_pkcs15_fix_ec_parameters(struct sc_context *ctx, struct sc_ec_parameters *ecp
 			sc_log(ctx, "Curve name: '%s'", ecparams->named_curve);
 		}
 
-		if (!sc_valid_oid(&ecparams->id) || mapped)
+		if (!sc_valid_oid(&ecparams->id) || mapped_string)
 			sc_format_oid(&ecparams->id, ec_curve_infos[ii].oid_str);
 
 		ecparams->field_length = ec_curve_infos[ii].size;
 		sc_log(ctx, "Curve length %"SC_FORMAT_LEN_SIZE_T"u",
 		       ecparams->field_length);
-		if (mapped) {
-			/* replace the printable string version with the mapped oid */
+		if (mapped_string) {
+			/* replace the printable string version with the oid */
 			free(ecparams->der.value);
 			ecparams->der.len = strlen(ec_curve_infos[ii].oid_encoded) / 2;
 			ecparams->der.value = malloc(ecparams->der.len);
