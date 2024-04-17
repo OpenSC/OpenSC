@@ -5226,8 +5226,6 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 			{CKA_KEY_TYPE,  &newkey_type,	sizeof(newkey_type) },
 			{CKA_SENSITIVE,	&_false,	sizeof(_false)      },
 			{CKA_EXTRACTABLE, &_true,	sizeof(_true)       },
-			{CKA_WRAP,	&_true,		sizeof(_true)	    },
-			{CKA_UNWRAP,	&_true,		sizeof(_true)	    },
 	   };
 //clang-format on
 	int n_attrs = 7;
