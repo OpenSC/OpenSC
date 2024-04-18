@@ -415,7 +415,6 @@ static struct sc_asn1_pkcs15_algorithm_info algorithm_table[] = {
 			asn1_encode_ec_params,
 			asn1_free_ec_params},
 #endif
-/* TODO: -DEE Not clear if we need the next five or not */
 #ifdef SC_ALGORITHM_ECDSA_SHA1
 	/* Note RFC 3279 says no ecParameters */
 		{SC_ALGORITHM_ECDSA_SHA1, {{1, 2, 840, 10045, 4, 1, -1}}, NULL, NULL, NULL},
@@ -448,17 +447,34 @@ static struct sc_asn1_pkcs15_algorithm_info algorithm_table[] = {
 #ifdef SC_ALGORITHM_EDDSA
 	/* aka Ed25519 */
 	/* RFC 8410, needed to parse/create X509 certs/pubkeys  */
-	/* TODO DEE add asn1_decode_ec_params, asn1_encode_ec_params,asn1_free_ec_params */
-		{SC_ALGORITHM_EDDSA, {{1, 3, 101, 112, -1}}, NULL, NULL, NULL}, /* Ed25119 */
-		{SC_ALGORITHM_EDDSA, {{1, 3, 6, 1, 4, 1, 11591, 15, 1, -1}}, NULL, NULL, NULL}, /* Ed25519 OID used by OpenPGP */
-		{SC_ALGORITHM_EDDSA, {{1, 3, 101, 113, -1}}, NULL, NULL, NULL}, /* Ed448 */
+		{SC_ALGORITHM_EDDSA, {{1, 3, 101, 112, -1}},
+			asn1_decode_ec_params,
+			asn1_encode_ec_params,
+			asn1_free_ec_params}, /* Ed25119 */
+		{SC_ALGORITHM_EDDSA, {{1, 3, 6, 1, 4, 1, 11591, 15, 1, -1}},
+			asn1_decode_ec_params,
+			asn1_encode_ec_params,
+			asn1_free_ec_params}, /* Ed25519 OID used by OpenPGP */
+		{SC_ALGORITHM_EDDSA, {{1, 3, 101, 113, -1}},
+			asn1_decode_ec_params,
+			asn1_encode_ec_params,
+			asn1_free_ec_params}, /* Ed448 */
 #endif
 #ifdef SC_ALGORITHM_XEDDSA
 	/* aka curve25519 */
-	/* RFC 8410, needed to parse/create X509 certs/pubkeys  no ec_parms*/
-		{SC_ALGORITHM_XEDDSA, {{1, 3, 101, 110, -1}}, NULL, NULL, NULL}, /* X25519 */
-		{SC_ALGORITHM_XEDDSA, {{1, 3, 6, 1, 4, 1, 3029, 1, 5, 1 - 1}}, NULL, NULL, NULL}, /* X25519 OID used by OpenPGP */
-		{SC_ALGORITHM_XEDDSA, {{1, 3, 101, 111, -1}}, NULL, NULL, NULL}, /* X448 */
+	/* RFC 8410, needed to parse/create X509 certs/pubkeys  ec_parms*/
+		{SC_ALGORITHM_XEDDSA, {{1, 3, 101, 110, -1}},
+			asn1_decode_ec_params,
+			asn1_encode_ec_params,
+			asn1_free_ec_params}, /* X25519 */
+		{SC_ALGORITHM_XEDDSA, {{1, 3, 6, 1, 4, 1, 3029, 1, 5, 1 - 1}},
+			asn1_decode_ec_params,
+			asn1_encode_ec_params,
+			asn1_free_ec_params}, /* X25519 OID used by OpenPGP */
+		{SC_ALGORITHM_XEDDSA, {{1, 3, 101, 111, -1}},
+			asn1_decode_ec_params,
+			asn1_encode_ec_params,
+			asn1_free_ec_params}, /* X448 */
 #endif
 		{-1, {{-1}}, NULL, NULL, NULL}
 };
