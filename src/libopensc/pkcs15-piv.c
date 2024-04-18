@@ -1168,7 +1168,8 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		prkey_obj.user_consent = prkeys[i].user_consent; /* only Sign key */
 
 		r = sc_card_ctl(p15card->card, SC_CARDCTL_PIV_YK_PIN_POLICY, &pin_policy);
-		if (r == SC_SUCCESS) switch (pin_policy) {
+		if (r == SC_SUCCESS) {
+			switch (pin_policy) {
 			case 0x01:
 				prkey_obj.flags &= ~SC_PKCS15_CO_FLAG_PRIVATE;
 				sc_log(card->ctx, "PIN is never checked");
@@ -1187,6 +1188,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 			default:
 				sc_pkcs15_format_id(prkeys[i].auth_id, &prkey_obj.auth_id);
 				break;
+			}
 		} else
 			sc_pkcs15_format_id(prkeys[i].auth_id, &prkey_obj.auth_id);
 

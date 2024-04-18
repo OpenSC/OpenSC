@@ -4433,8 +4433,7 @@ piv_yk_get_metadata(sc_card_t *card, u8 slot, u8 *pin_policy, u8 *touch_policy)
 	if (priv->yk_pin[i].slot == 0x00) {
 		/* initialize this entry */
 		sc_format_apdu_ex(&apdu, 0x00, 0xF7, 0x00, slot, NULL, 0, resp, sizeof resp);
-		if (SC_SUCCESS == sc_transmit_apdu(card, &apdu) && SC_SUCCESS == sc_check_sw(card, apdu.sw1, apdu.sw2)
-				&& SC_SUCCESS == piv_yk_metadata_get_policy(card->ctx, resp, apdu.resplen, &priv->yk_pin[i].policy, &priv->yk_pin[i].touch)) {
+		if (SC_SUCCESS == sc_transmit_apdu(card, &apdu) && SC_SUCCESS == sc_check_sw(card, apdu.sw1, apdu.sw2) && SC_SUCCESS == piv_yk_metadata_get_policy(card->ctx, resp, apdu.resplen, &priv->yk_pin[i].policy, &priv->yk_pin[i].touch)) {
 			sc_log(card->ctx, "PIN policy for slot 0x%02X: 0x%02X (touch 0x%02X)",
 					slot, priv->yk_pin[i].policy, priv->yk_pin[i].touch);
 			priv->yk_pin[i].slot = slot;
