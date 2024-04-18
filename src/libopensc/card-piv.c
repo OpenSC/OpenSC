@@ -22,6 +22,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include "errors.h"
 #if HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -4384,7 +4385,7 @@ static int piv_get_pin_preference(sc_card_t *card, int *pin_ref)
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
-static void
+static int
 piv_yk_metadata_get_policy(sc_context_t *ctx, u8 *buf, size_t buflen, u8 *pin, u8 *touch)
 {
 	size_t policylen;
@@ -4392,12 +4393,14 @@ piv_yk_metadata_get_policy(sc_context_t *ctx, u8 *buf, size_t buflen, u8 *pin, u
 	if (policy && policylen == 2) {
 		*pin = policy[0];
 		*touch = policy[1];
+		return SC_SUCCESS;
 	} else {
 		sc_log(ctx, "Yubikey PIN policy not found");
+		return SC_ERROR_DATA_OBJECT_NOT_FOUND;
 	}
 }
 
-static void
+static int
 piv_yk_get_metadata(sc_card_t *card, u8 slot, u8 *pin_policy, u8 *touch_policy)
 {
 	sc_apdu_t apdu;
@@ -4414,7 +4417,7 @@ piv_yk_get_metadata(sc_card_t *card, u8 slot, u8 *pin_policy, u8 *touch_policy)
 	if (priv->yubico_version < 0x00050300) {
 		if (priv->yubico_version != 0)
 			sc_log(card->ctx, "Yubikey's PIN and touch policy not available");
-		return;
+		return SC_ERROR_NOT_SUPPORTED;
 	}
 
 	for (i = 0; i < (sizeof(priv->yk_pin) / sizeof(*priv->yk_pin) - 1); i++) {
@@ -4430,30 +4433,33 @@ piv_yk_get_metadata(sc_card_t *card, u8 slot, u8 *pin_policy, u8 *touch_policy)
 	if (priv->yk_pin[i].slot == 0x00) {
 		/* initialize this entry */
 		sc_format_apdu_ex(&apdu, 0x00, 0xF7, 0x00, slot, NULL, 0, resp, sizeof resp);
-		if (SC_SUCCESS == sc_transmit_apdu(card, &apdu) && SC_SUCCESS == sc_check_sw(card, apdu.sw1, apdu.sw2)) {
-			piv_yk_metadata_get_policy(card->ctx, resp, apdu.resplen,
-					&priv->yk_pin[i].policy,
-					&priv->yk_pin[i].touch);
+		if (SC_SUCCESS == sc_transmit_apdu(card, &apdu) && SC_SUCCESS == sc_check_sw(card, apdu.sw1, apdu.sw2)
+				&& SC_SUCCESS == piv_yk_metadata_get_policy(card->ctx, resp, apdu.resplen, &priv->yk_pin[i].policy, &priv->yk_pin[i].touch)) {
 			sc_log(card->ctx, "PIN policy for slot 0x%02X: 0x%02X (touch 0x%02X)",
 					slot, priv->yk_pin[i].policy, priv->yk_pin[i].touch);
 			priv->yk_pin[i].slot = slot;
+		} else {
+			sc_log(card->ctx, "Could not get Yubikey's PIN and touch policy");
+			return SC_ERROR_INVALID_DATA;
 		}
+	} else if (priv->yk_pin[i].slot != slot) {
+		sc_log(card->ctx, "No free slot found");
+		return SC_ERROR_INTERNAL;
 	}
 
-	if (priv->yk_pin[i].slot == slot) {
-		if (pin_policy)
-			*pin_policy = priv->yk_pin[i].policy;
-		if (touch_policy)
-			*touch_policy = priv->yk_pin[i].touch;
-	}
+	if (pin_policy)
+		*pin_policy = priv->yk_pin[i].policy;
+	if (touch_policy)
+		*touch_policy = priv->yk_pin[i].touch;
+
+	return SC_SUCCESS;
 }
 
 static int
 piv_yk_pin_policy(sc_card_t *card, u8 *ptr)
 {
 	u8 slot = *ptr;
-	piv_yk_get_metadata(card, slot, ptr, NULL);
-	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+	LOG_FUNC_RETURN(card->ctx, piv_yk_get_metadata(card, slot, ptr, NULL));
 }
 
 static int piv_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
