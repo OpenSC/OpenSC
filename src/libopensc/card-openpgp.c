@@ -2520,7 +2520,6 @@ pgp_update_new_algo_attr(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_
 
 	if (priv->ext_caps & EXT_CAP_ALG_ATTR_CHANGEABLE) {
 		/* ECDSA and ECDH */
-		/* TODO -DEE could map new OIDs to old OID needed for card here */
 		if (key_info->algorithm == SC_OPENPGP_KEYALGO_ECDH
 				|| key_info->algorithm == SC_OPENPGP_KEYALGO_ECDSA
 				|| key_info->algorithm == SC_OPENPGP_KEYALGO_EDDSA){
@@ -2533,8 +2532,6 @@ pgp_update_new_algo_attr(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_
 			/*
 			 * Current OpenPGP cards use pre RFC8410 OIDs for ECDH and EdDSA
 			 * so convert to older versions of the OIDs.
-			 * TODO if newer cards or OpenPGP specs accept RFC8410 code
-			 * will be needed here to not do the conversion
 			 */
 			for (i = 0; ec_curves_alt[i].size > 0; i++) {
 				if (sc_compare_oid(scoid, &ec_curves_alt[i].oid_alt)) {
