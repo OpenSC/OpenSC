@@ -621,6 +621,7 @@ static void		generate_random(CK_SESSION_HANDLE session);
 static CK_RV		find_object_with_attributes(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE *out,
 				CK_ATTRIBUTE *attrs, CK_ULONG attrsLen, CK_ULONG obj_index);
 static CK_ULONG		get_private_key_length(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE prkey);
+static const char *percent_encode(CK_UTF8CHAR *, size_t);
 
 /* win32 needs this in open(2) */
 #ifndef O_BINARY
@@ -1681,6 +1682,15 @@ static void show_token(CK_SLOT_ID slot)
 	printf("  serial num         : %s\n", p11_utf8_to_local(info.serialNumber,
 			sizeof(info.serialNumber)));
 	printf("  pin min/max        : %lu/%lu\n", info.ulMinPinLen, info.ulMaxPinLen);
+	printf("  uri                : pkcs11:model=");
+	printf("%s", percent_encode(info.model, sizeof(info.model)));
+	printf(";manufacturer=");
+	printf("%s", percent_encode(info.manufacturerID, sizeof(info.manufacturerID)));
+	printf(";serial=");
+	printf("%s", percent_encode(info.serialNumber, sizeof(info.serialNumber)));
+	printf(";token=");
+	printf("%s", percent_encode(info.label, sizeof(info.label)));
+	printf("\n");
 }
 
 static void list_mechs(CK_SLOT_ID slot)
@@ -8290,6 +8300,62 @@ static const char *p11_utf8_to_local(CK_UTF8CHAR *string, size_t len)
 		buffer[n] = string[m++];
 	}
 	buffer[n] = '\0';
+	return buffer;
+}
+
+static CK_BBOOL
+p11_is_percent_format_reserved_char(CK_UTF8CHAR c)
+{
+	switch (c) {
+	case ' ':
+	case '!':
+	case '"':
+	case '#':
+	case '$':
+	case '%':
+	case '&':
+	case '\'':
+	case '(':
+	case ')':
+	case '*':
+	case '+':
+	case ',':
+	case '/':
+	case ':':
+	case ';':
+	case '=':
+	case '?':
+	case '@':
+	case '[':
+	case ']':
+		return CK_TRUE;
+	}
+	return CK_FALSE;
+}
+
+static const char *
+percent_encode(CK_UTF8CHAR *string, size_t len)
+{
+	static char buffer[1024];
+	size_t output_index, input_index;
+
+	while (len && string[len - 1] == ' ')
+		len--;
+
+	for (output_index = input_index = 0; output_index < sizeof(buffer) - 3;
+			output_index++) {
+		if (input_index >= len) {
+			break;
+		}
+		if (p11_is_percent_format_reserved_char(string[input_index])) {
+			snprintf(&buffer[output_index], 4, "%%%x", string[input_index]);
+			output_index += 2;
+		} else {
+			buffer[output_index] = string[input_index];
+		}
+		input_index++;
+	}
+	buffer[output_index] = '\0';
 	return buffer;
 }
 
