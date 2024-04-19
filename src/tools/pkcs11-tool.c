@@ -4872,7 +4872,8 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 	CK_BBOOL _true = TRUE;
 	CK_BBOOL _false = FALSE;
 	CK_OBJECT_HANDLE newkey = 0;
-//clang-format off
+
+	// clang-format off
 	CK_ATTRIBUTE newkey_template[20] = {
 			{CKA_TOKEN,	&_false,	sizeof(_false)	    }, /* session only object */
 			{CKA_CLASS,	&newkey_class,	sizeof(newkey_class)},
@@ -4880,7 +4881,7 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 			{CKA_SENSITIVE,	&_false,	sizeof(_false)      },
 			{CKA_EXTRACTABLE, &_true,	sizeof(_true)       },
 	   };
-//clang-format on
+	// clang-format on
 	int n_attrs = 7;
 	CK_ECDH1_DERIVE_PARAMS ecdh_parms;
 	CK_RV rv;
@@ -5207,11 +5208,9 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 			if (ksize > 3 && (bytes[0] == 0x03 || bytes[0] == 0x04)) {
 				if (bytes[1] <= 127 && ksize == (unsigned long)(bytes[1] + 2)) {
 					body_len = ksize - 2;
-				} else
-				if (bytes[1] == 0x81 && size == ((unsigned long)bytes[2] + 3)) {
+				} else if (bytes[1] == 0x81 && size == ((unsigned long)bytes[2] + 3)) {
 					body_len = ksize - 3;
-				} else
-				if (bytes[1] == 0x82 && size == ((unsigned long)(bytes[2] << 8) + (unsigned long)bytes[3] + 4)) {
+				} else if (bytes[1] == 0x82 && size == ((unsigned long)(bytes[2] << 8) + (unsigned long)bytes[3] + 4)) {
 					body_len = ksize - 4;
 				}
 			}
