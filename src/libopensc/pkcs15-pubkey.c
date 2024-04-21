@@ -1508,6 +1508,7 @@ sc_pkcs15_fix_ec_parameters(struct sc_context *ctx, struct sc_ec_parameters *ecp
 
 	/* In PKCS#11 EC parameters arrives in DER encoded form */
 	if (ecparams->der.value && ecparams->der.len && ecparams->der.len > 2) {
+		
 		/* caller provided a der version of OID */
 		switch (ecparams->der.value[0]) {
 		case 0x06: /* der.value is an OID */
@@ -1527,18 +1528,28 @@ sc_pkcs15_fix_ec_parameters(struct sc_context *ctx, struct sc_ec_parameters *ecp
 			}
 			break;
 
-		case 0x13: /* printable string  max of 127  as per PKCS11 V 3.0 for experimental curves */
-			if (ecparams->der.value[1] != ecparams->der.len - 2) {
-				sc_log(ctx, "Unsupported ec params");
-				LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
-			}
-			for (ii = 0; ec_curve_infos[ii].name; ii++) {
-				size_t len = strlen(ec_curve_infos[ii].name);
-				if (ecparams->der.len - 2 != len || memcmp(ec_curve_infos[ii].name, ecparams->der.value + 2, len) != 0)
-					continue;
-				/* found replacement of printable string to OID */
-				mapped_string = 1;
-				break;
+		case 0x13:
+			/* printable string as per PKCS11 V 3.0 for experimental curves */
+			{
+				int r_tag;
+				const u8 *body = ecparams->der.value;
+				size_t len = ecparams->der.len;
+				unsigned int cla_out, tag_out;
+				size_t bodylen;
+
+				r_tag = sc_asn1_read_tag(&body, len, &cla_out, &tag_out, &bodylen);
+				if (r_tag != SC_SUCCESS || tag_out != 0x13) {
+					sc_log(ctx, "Invalid printable string");
+					LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
+				}
+				for (ii = 0; ec_curve_infos[ii].name; ii++) {
+					size_t len = strlen(ec_curve_infos[ii].name);
+					if (bodylen != len || memcmp(ec_curve_infos[ii].name, body, len) != 0)
+						continue;
+					/* found replacement of printable string to OID */
+					mapped_string = 1;
+					break;
+				}
 			}
 			break;
 
