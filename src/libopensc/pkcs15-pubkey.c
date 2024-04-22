@@ -1446,55 +1446,56 @@ static struct ec_curve_info {
 	const char *name;
 	const char *oid_str;
 	const char *oid_encoded;
+	const unsigned int key_type;
 	size_t size;
 
 } ec_curve_infos[] = {
-		{"secp192r1",		"1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192},
-		{"prime192v1",		"1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192},
-		{"nistp192",		"1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192},
-		{"ansiX9p192r1",	"1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192},
+		{"secp192r1",		"1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192, SC_ALGORITHM_EC},
+		{"prime192v1",		"1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192, SC_ALGORITHM_EC},
+		{"nistp192",		"1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192, SC_ALGORITHM_EC},
+		{"ansiX9p192r1",	"1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192, SC_ALGORITHM_EC},
 
-		{"secp224r1",		"1.3.132.0.33", "06052b81040021", 224},
-		{"nistp224",		"1.3.132.0.33", "06052b81040021", 224},
+		{"secp224r1",		"1.3.132.0.33", "06052b81040021", 224, SC_ALGORITHM_EC},
+		{"nistp224",		"1.3.132.0.33", "06052b81040021", 224, SC_ALGORITHM_EC},
 
-		{"secp256r1",		"1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256},
-		{"prime256v1",		"1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256},
-		{"nistp256",		"1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256},
-		{"ansiX9p256r1",	"1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256},
+		{"secp256r1",		"1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256, SC_ALGORITHM_EC},
+		{"prime256v1",		"1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256, SC_ALGORITHM_EC},
+		{"nistp256",		"1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256, SC_ALGORITHM_EC},
+		{"ansiX9p256r1",	"1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256, SC_ALGORITHM_EC},
 
-		{"secp384r1",		"1.3.132.0.34", "06052B81040022", 384},
-		{"prime384v1",		"1.3.132.0.34", "06052B81040022", 384},
-		{"nistp384",		"1.3.132.0.34", "06052B81040022", 384},
-		{"ansiX9p384r1",	"1.3.132.0.34", "06052B81040022", 384},
+		{"secp384r1",		"1.3.132.0.34", "06052B81040022", 384, SC_ALGORITHM_EC},
+		{"prime384v1",		"1.3.132.0.34", "06052B81040022", 384, SC_ALGORITHM_EC},
+		{"nistp384",		"1.3.132.0.34", "06052B81040022", 384, SC_ALGORITHM_EC},
+		{"ansiX9p384r1",	"1.3.132.0.34", "06052B81040022", 384, SC_ALGORITHM_EC},
 
-		{"secp521r1",		"1.3.132.0.35", "06052B81040023", 521},
-		{"nistp521",		"1.3.132.0.35", "06052B81040023", 521},
+		{"secp521r1",		"1.3.132.0.35", "06052B81040023", 521, SC_ALGORITHM_EC},
+		{"nistp521",		"1.3.132.0.35", "06052B81040023", 521, SC_ALGORITHM_EC},
 
-		{"brainpoolP192r1",	"1.3.36.3.3.2.8.1.1.3",  "06092B2403030208010103", 192},
-		{"brainpoolP224r1",	"1.3.36.3.3.2.8.1.1.5",  "06092B2403030208010105", 224},
-		{"brainpoolP256r1",	"1.3.36.3.3.2.8.1.1.7",  "06092B2403030208010107", 256},
-		{"brainpoolP320r1",	"1.3.36.3.3.2.8.1.1.9",  "06092B2403030208010109", 320},
-		{"brainpoolP384r1",	"1.3.36.3.3.2.8.1.1.11", "06092B240303020801010B", 384},
-		{"brainpoolP512r1",	"1.3.36.3.3.2.8.1.1.13", "06092B240303020801010D", 512},
+		{"brainpoolP192r1",	"1.3.36.3.3.2.8.1.1.3",  "06092B2403030208010103", 192, SC_ALGORITHM_EC},
+		{"brainpoolP224r1",	"1.3.36.3.3.2.8.1.1.5",  "06092B2403030208010105", 224, SC_ALGORITHM_EC},
+		{"brainpoolP256r1",	"1.3.36.3.3.2.8.1.1.7",  "06092B2403030208010107", 256, SC_ALGORITHM_EC},
+		{"brainpoolP320r1",	"1.3.36.3.3.2.8.1.1.9",  "06092B2403030208010109", 320, SC_ALGORITHM_EC},
+		{"brainpoolP384r1",	"1.3.36.3.3.2.8.1.1.11", "06092B240303020801010B", 384, SC_ALGORITHM_EC},
+		{"brainpoolP512r1",	"1.3.36.3.3.2.8.1.1.13", "06092B240303020801010D", 512, SC_ALGORITHM_EC},
 
-		{"secp192k1",		"1.3.132.0.31", "06052B8104001F", 192},
-		{"secp256k1",		"1.3.132.0.10", "06052B8104000A", 256},
+		{"secp192k1",		"1.3.132.0.31", "06052B8104001F", 192, SC_ALGORITHM_EC},
+		{"secp256k1",		"1.3.132.0.10", "06052B8104000A", 256, SC_ALGORITHM_EC},
 
 		/* OpenPGP extensions by Yubikey and GNUK are not defined in RFCs but we know the oid written to card */
 
-		{"edwards25519",	"1.3.6.1.4.1.11591.15.1", "06092B06010401DA470F01",   255},
-		{"curve25519",		"1.3.6.1.4.1.3029.1.5.1", "060A2B060104019755010501", 255},
+		{"edwards25519",	"1.3.6.1.4.1.11591.15.1", "06092B06010401DA470F01",   255, SC_ALGORITHM_EDDSA},
+		{"curve25519",		"1.3.6.1.4.1.3029.1.5.1", "060A2B060104019755010501", 255, SC_ALGORITHM_XEDDSA},
 
 		/* RFC 8410 defined curves */
-		{"X25519",              "1.3.101.110", "06032b656e", 255},
-		{"X448",		"1.3.101.111", "06032b656f", 448},
-		{"Ed25519",             "1.3.101.112", "06032b6570", 255},
-		{"Ed448",		"1.3.101.113", "06032b6571", 448},
+		{"X25519",              "1.3.101.110", "06032b656e", 255, SC_ALGORITHM_XEDDSA},
+		{"X448",		"1.3.101.111", "06032b656f", 448, SC_ALGORITHM_XEDDSA},
+		{"Ed25519",             "1.3.101.112", "06032b6570", 255, SC_ALGORITHM_EDDSA},
+		{"Ed448",		"1.3.101.113", "06032b6571", 448, SC_ALGORITHM_EDDSA},
 		/* GnuPG openpgp curves as used in gnupg-card are equivalent to RFC8410 OIDs */
-		{"cv25519",		"1.3.101.110", "06032b656e", 255},
-		{"ed25519",		"1.3.101.112", "06032b6570", 255},
+		{"cv25519",		"1.3.101.110", "06032b656e", 255, SC_ALGORITHM_XEDDSA},
+		{"ed25519",		"1.3.101.112", "06032b6570", 255, SC_ALGORITHM_EDDSA},
 
-		{NULL, NULL, NULL, 0}, /* Do not touch this */
+		{NULL, NULL, NULL, 0, 0}, /* Do not touch this */
 };
 // clang-format on
 
@@ -1579,8 +1580,9 @@ sc_pkcs15_fix_ec_parameters(struct sc_context *ctx, struct sc_ec_parameters *ecp
 			sc_format_oid(&ecparams->id, ec_curve_infos[ii].oid_str);
 
 		ecparams->field_length = ec_curve_infos[ii].size;
-		sc_log(ctx, "Curve length %"SC_FORMAT_LEN_SIZE_T"u",
-		       ecparams->field_length);
+		ecparams->key_type = ec_curve_infos[ii].key_type;
+		sc_log(ctx, "Curve length %"SC_FORMAT_LEN_SIZE_T"u key_type %d",
+		       ecparams->field_length, ecparams->key_type);
 		if (mapped_string) {
 			/* replace the printable string version with the oid */
 			free(ecparams->der.value);
