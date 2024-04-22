@@ -88,23 +88,23 @@ static struct sc_card_driver pgp_drv = {
 
 static pgp_ec_curves_t ec_curves_openpgp34[] = {
 	/* OpenPGP 3.4+ Ed25519 and Curve25519 */
-		{{{1, 3, 6, 1, 4, 1, 3029, 1, 5, 1, -1}}, 255}, /* curve25519 for encryption => CKK_EC_MONTGOMERY */
-		{{{1, 3, 6, 1, 4, 1, 11591, 15, 1, -1}},	 255}, /* ed25519 for signatures => CKK_EC_EDWARDS */
+		{{{1, 3, 6, 1, 4, 1, 3029, 1, 5, 1, -1}}, 255, SC_ALGORITHM_XEDDSA}, /* curve25519 for encryption => CKK_EC_MONTGOMERY */
+		{{{1, 3, 6, 1, 4, 1, 11591, 15, 1, -1}},  255, SC_ALGORITHM_EDDSA}, /* ed25519 for signatures => CKK_EC_EDWARDS */
 	/* v3.0+ supports: [RFC 4880 & 6637] 0x12 = ECDH, 0x13 = ECDSA */
-		{{{1, 2, 840, 10045, 3, 1, 7, -1}},	    256}, /* ansiX9p256r1 */
-		{{{1, 3, 132, 0, 34, -1}},		   384}, /* ansiX9p384r1 */
-		{{{1, 3, 132, 0, 35, -1}},		   521}, /* ansiX9p521r1 */
-		{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 7, -1}},	256}, /* brainpoolP256r1 */
-		{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 11, -1}},	 384}, /* brainpoolP384r1 */
-		{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 13, -1}},	 512}, /* brainpoolP512r1 */
-		{{{-1}},				  0  }	/* This entry must not be touched. */
+		{{{1, 2, 840, 10045, 3, 1, 7, -1}},	  256, SC_ALGORITHM_EC}, /* ansiX9p256r1 */
+		{{{1, 3, 132, 0, 34, -1}},		  384, SC_ALGORITHM_EC}, /* ansiX9p384r1 */
+		{{{1, 3, 132, 0, 35, -1}},		  521, SC_ALGORITHM_EC}, /* ansiX9p521r1 */
+		{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 7, -1}},   256, SC_ALGORITHM_EC}, /* brainpoolP256r1 */
+		{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 11, -1}},  384, SC_ALGORITHM_EC}, /* brainpoolP384r1 */
+		{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 13, -1}},  512, SC_ALGORITHM_EC}, /* brainpoolP512r1 */
+		{{{-1}},				  0, 0  }	/* This entry must not be touched. */
 };
 
 #ifdef ENABLE_OPENSSL
 static pgp_ec_curves_alt_t ec_curves_alt[] = {
 		{{{1, 3, 6, 1, 4, 1, 3029, 1, 5, 1, -1}}, {{1, 3, 101, 110, -1}}, 255}, /* curve25519 CKK_EC_MONTGOMERY X25519 */
-		{{{1, 3, 6, 1, 4, 1, 11591, 15, 1, -1}},	 {{1, 3, 101, 112, -1}}, 255}, /* ed25519 CKK_EC_EDWARDS Ed25519 */
-		{{{-1}},				  {{-1}},		 0  }	/* This entry must not be touched. */
+		{{{1, 3, 6, 1, 4, 1, 11591, 15, 1, -1}},  {{1, 3, 101, 112, -1}}, 255}, /* ed25519 CKK_EC_EDWARDS Ed25519 */
+		{{{-1}},				  {{-1}},		  0  }	/* This entry must not be touched. */
 };
 #endif /* ENABLE_OPENSSL */
 
@@ -114,11 +114,11 @@ struct sc_object_id curve25519_oid = {{1, 3, 6, 1, 4, 1, 3029, 1, 5, 1, -1}};
 
 /* Gnuk supports NIST, SECG and Curve25519 since version 1.2 */
 static pgp_ec_curves_t ec_curves_gnuk[] = {
-		{{{1, 2, 840, 10045, 3, 1, 7, -1}},	    256}, /* ansiX9p256r1 */
-		{{{1, 3, 132, 0, 10, -1}},		   256}, /* secp256k1 */
-		{{{1, 3, 6, 1, 4, 1, 3029, 1, 5, 1, -1}}, 255}, /* curve25519 for encryption => CKK_EC_MONTGOMERY */
-		{{{1, 3, 6, 1, 4, 1, 11591, 15, 1, -1}},	 255}, /* ed25519 for signatures => CKK_EC_EDWARDS */
-		{{{-1}},				  0  }	/* This entry must not be touched. */
+		{{{1, 2, 840, 10045, 3, 1, 7, -1}},	256, SC_ALGORITHM_EC}, /* ansiX9p256r1 */
+		{{{1, 3, 132, 0, 10, -1}},		256, SC_ALGORITHM_EC}, /* secp256k1 */
+		{{{1, 3, 6, 1, 4, 1, 3029, 1, 5, 1, -1}}, 255, SC_ALGORITHM_XEDDSA}, /* curve25519 for encryption => CKK_EC_MONTGOMERY */
+		{{{1, 3, 6, 1, 4, 1, 11591, 15, 1, -1}}, 255, SC_ALGORITHM_EDDSA}, /* ed25519 for signatures => CKK_EC_EDWARDS */
+		{{{-1}},				 0, 0}	/* This entry must not be touched. */
 };
 
 /*

@@ -163,6 +163,7 @@ typedef struct pgp_blob {
 typedef struct _pgp_ec_curves {
 	struct sc_object_id oid;
 	size_t size;
+	unsigned int key_type;
 } pgp_ec_curves_t;
 
 #ifdef ENABLE_OPENSSL
