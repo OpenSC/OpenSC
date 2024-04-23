@@ -803,7 +803,7 @@ static int atrust_acos_check_sw(struct sc_card *card, unsigned int sw1,
 
 	sc_log(card->ctx,  "sw1 = 0x%02x, sw2 = 0x%02x\n", sw1, sw2);
 
-	if (sw1 == 0x90)
+	if (sw1 == 0x90 && sw2 == 0x00)
 		return SC_SUCCESS;
 	if (sw1 == 0x63 && (sw2 & ~0x0fU) == 0xc0 )
 	{
