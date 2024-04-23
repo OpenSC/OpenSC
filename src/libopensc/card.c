@@ -1537,8 +1537,8 @@ int sc_copy_ec_params(struct sc_ec_parameters *dst, struct sc_ec_parameters *src
 		memcpy(dst->der.value, src->der.value, src->der.len);
 		dst->der.len = src->der.len;
 	}
-	src->type = dst->type;
-	src->field_length = dst->field_length;
+	dst->type = src->type;
+	dst->field_length = src->field_length;
 
 	return SC_SUCCESS;
 }
