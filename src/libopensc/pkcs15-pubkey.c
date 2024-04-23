@@ -1446,8 +1446,8 @@ static struct ec_curve_info {
 	const char *name;
 	const char *oid_str;
 	const char *oid_encoded;
-	const unsigned int key_type;
 	size_t size;
+	const unsigned int key_type;
 
 } ec_curve_infos[] = {
 		{"secp192r1",		"1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192, SC_ALGORITHM_EC},
@@ -1509,7 +1509,7 @@ sc_pkcs15_fix_ec_parameters(struct sc_context *ctx, struct sc_ec_parameters *ecp
 
 	/* In PKCS#11 EC parameters arrives in DER encoded form */
 	if (ecparams->der.value && ecparams->der.len && ecparams->der.len > 2) {
-		
+
 		/* caller provided a der version of OID */
 		switch (ecparams->der.value[0]) {
 		case 0x06: /* der.value is an OID */
@@ -1582,7 +1582,7 @@ sc_pkcs15_fix_ec_parameters(struct sc_context *ctx, struct sc_ec_parameters *ecp
 		ecparams->field_length = ec_curve_infos[ii].size;
 		ecparams->key_type = ec_curve_infos[ii].key_type;
 		sc_log(ctx, "Curve length %"SC_FORMAT_LEN_SIZE_T"u key_type %d",
-		       ecparams->field_length, ecparams->key_type);
+				ecparams->field_length, ecparams->key_type);
 		if (mapped_string) {
 			/* replace the printable string version with the oid */
 			free(ecparams->der.value);
@@ -1612,8 +1612,13 @@ sc_pkcs15_fix_ec_parameters(struct sc_context *ctx, struct sc_ec_parameters *ecp
 		LOG_TEST_RET(ctx, rv, "Invalid OID format");
 
 		ecparams->field_length = ec_curve_infos[ii].size;
+		ecparams->key_type = ec_curve_infos[ii].key_type;
+		sc_log(ctx, "Curve length %"SC_FORMAT_LEN_SIZE_T"u key_type %d",
+				ecparams->field_length, ecparams->key_type);
 
 		if (!ecparams->der.value || !ecparams->der.len)   {
+			free(ecparams->der.value); /* just in case */
+			ecparams->der.value = NULL;
 			/* if caller did not provide der OID, fill in */
 			rv = sc_encode_oid (ctx, &ecparams->id, &ecparams->der.value, &ecparams->der.len);
 			LOG_TEST_RET(ctx, rv, "Cannot encode object ID");
