@@ -1167,6 +1167,7 @@ _sc_card_add_ec_alg_int(sc_card_t *card, size_t key_length,
 			int algorithm)
 {
 	sc_algorithm_info_t info;
+	int r;
 
 	memset(&info, 0, sizeof(info));
 	sc_init_oid(&info.u._ec.params.id);
@@ -1176,10 +1177,18 @@ _sc_card_add_ec_alg_int(sc_card_t *card, size_t key_length,
 	info.flags = flags;
 
 	info.u._ec.ext_flags = ext_flags;
-	if (curve_oid)
+	if (curve_oid) {
 		info.u._ec.params.id = *curve_oid;
+		r = sc_encode_oid(card->ctx, &info.u._ec.params.id, &info.u._ec.params.der.value, &info.u._ec.params.der.len);
+		LOG_TEST_GOTO_ERR(card->ctx, r, "sc_encode_oid failed");
+		r = sc_pkcs15_fix_ec_parameters(card->ctx, &info.u._ec.params);
+		LOG_TEST_GOTO_ERR(card->ctx, r, "sc_pkcs15_fix_ec_parameters failed");
+	}
 
-	return _sc_card_add_algorithm(card, &info);
+	r = _sc_card_add_algorithm(card, &info);
+err:
+	free(info.u._ec.params.der.value);
+	return  r;
 }
 
 int  _sc_card_add_ec_alg(sc_card_t *card, size_t key_length,
