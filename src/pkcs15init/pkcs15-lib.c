@@ -2563,7 +2563,6 @@ check_keygen_params_consistency(struct sc_card *card,
 	LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 }
 
-
 /*
  * Check whether the card has native crypto support for this key.
  */
@@ -2575,13 +2574,21 @@ check_key_compatibility(struct sc_pkcs15_card *p15card, unsigned long alg,
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_algorithm_info *info;
 	unsigned int count;
+	unsigned long talg = alg;
 
 	LOG_FUNC_CALLED(ctx);
+
+	if (alg == SC_ALGORITHM_EDDSA || alg == SC_ALGORITHM_XEDDSA)
+		talg = SC_ALGORITHM_EC;  /* really testing ecparams */
+
 	count = p15card->card->algorithm_count;
 	for (info = p15card->card->algorithms; count--; info++) {
 		/* don't check flags if none was specified */
-		if (info->algorithm != alg || info->key_length != key_length)
-			continue;
+
+		if (alg != SC_ALGORITHM_EDDSA && alg != SC_ALGORITHM_XEDDSA) {
+			if (info->algorithm != alg || info->key_length != key_length)
+				continue;
+		}
 		if (flags != 0 && ((info->flags & flags) != flags))
 			continue;
 
@@ -2600,8 +2607,7 @@ check_key_compatibility(struct sc_pkcs15_card *p15card, unsigned long alg,
 				if (info->u._rsa.exponent != exponent)
 					continue;
 			}
-		}
-		else if (alg == SC_ALGORITHM_EC)   {
+		} else if (talg == SC_ALGORITHM_EC) { /* includes EDDSA and XEDDSA */
 			if (!sc_valid_oid(&prkey->u.ec.params.id))
 				if (sc_pkcs15_fix_ec_parameters(ctx, &prkey->u.ec.params))
 					LOG_FUNC_RETURN(ctx, SC_ERROR_OBJECT_NOT_VALID);
