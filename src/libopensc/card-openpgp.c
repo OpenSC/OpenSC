@@ -35,7 +35,7 @@
  * https://gnupg.org/ftp/specs/OpenPGP-smart-card-application-3.4.pdf
  */
 
-#if HAVE_CONFIG_H
+#ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
 

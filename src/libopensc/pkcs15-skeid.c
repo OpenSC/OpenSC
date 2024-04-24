@@ -20,7 +20,7 @@
  * based on the PKCS15 emulation layer for EstEID card by Martin Paljak
  */
 
-#if HAVE_CONFIG_H
+#ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
 

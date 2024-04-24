@@ -17,7 +17,7 @@
 /* Initially written by David Mattes (david.mattes@boeing.com) */
 /* Portuguese eID card support by Joao Poupino (joao.poupino@ist.utl.pt) */
 
-#if HAVE_CONFIG_H
+#ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
 
