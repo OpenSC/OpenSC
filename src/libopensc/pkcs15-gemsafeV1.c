@@ -17,7 +17,7 @@
 /* Initially written by David Mattes <david.mattes@boeing.com> */
 /* Support for multiple key containers by Lukas Wunner <lukas@wunner.de> */
 
-#if HAVE_CONFIG_H
+#ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
 

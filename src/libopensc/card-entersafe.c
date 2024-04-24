@@ -16,7 +16,7 @@
 
 /* Initially written by Weitao Sun (weitao@ftsafe.com) 2008 */
 
-#if HAVE_CONFIG_H
+#ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
 #ifdef ENABLE_OPENSSL	/* empty file without openssl */
