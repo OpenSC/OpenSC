@@ -389,7 +389,7 @@ CK_RV
 card_detect_all(void)
 {
 	unsigned int i, j;
-	const unsigned int event_mask = SC_EVENT_CARD_EVENTS|SC_EVENT_READER_EVENTS;
+	const unsigned int event_mask = SC_EVENT_CARD_EVENTS | SC_EVENT_READER_EVENTS;
 	unsigned int events = 0;
 	sc_reader_t *event_reader = NULL;
 	int r;
