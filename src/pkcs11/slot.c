@@ -42,9 +42,9 @@ void _debug_virtual_slots(sc_pkcs11_slot_t *p)
 		slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, i);
 		if (slot) {
 			_sc_debug(context, 10,
-				"VSS %s[%d] 0x%2.2lx 0x%4.4x %d  %d  %d %4.4lx  %p %p %.64s",
+				"VSS %s[%d] 0x%2.2lx 0x%4.4x %d  %d %4.4lx  %p %p %.64s",
 				((slot == p) ? "*" : " "),
-				i, slot->id, slot->flags, slot->login_user, slot->events, slot->nsessions,
+				i, slot->id, slot->flags, slot->login_user, slot->nsessions,
 				slot->slot_info.flags,
 				slot->reader, slot->p11card,
 				slot->slot_info.slotDescription);
@@ -452,7 +452,6 @@ CK_RV slot_allocate(struct sc_pkcs11_slot ** slot, struct sc_pkcs11_card * p11ca
 		return CKR_FUNCTION_FAILED;
 	sc_log(context, "Allocated slot 0x%lx for card in reader %s", tmp_slot->id, p11card->reader->name);
 	tmp_slot->p11card = p11card;
-	tmp_slot->events = SC_EVENT_CARD_INSERTED;
 	*slot = tmp_slot;
 	return CKR_OK;
 }
@@ -477,15 +476,7 @@ CK_RV slot_get_token(CK_SLOT_ID id, struct sc_pkcs11_slot ** slot)
 	if (rv != CKR_OK)
 		return rv;
 
-	if (!((*slot)->slot_info.flags & CKF_TOKEN_PRESENT)) {
-		if ((*slot)->reader == NULL)
-			return CKR_TOKEN_NOT_PRESENT;
-		sc_log(context, "Slot(id=0x%lX): get token: now detect card", id);
-		rv = card_detect((*slot)->reader);
-		if (rv != CKR_OK)
-			return rv;
-	}
-
+	card_detect_all();
 	if (!((*slot)->slot_info.flags & CKF_TOKEN_PRESENT)) {
 		sc_log(context, "card detected, but slot not presenting token");
 		return CKR_TOKEN_NOT_PRESENT;
@@ -497,16 +488,12 @@ CK_RV slot_get_token(CK_SLOT_ID id, struct sc_pkcs11_slot ** slot)
 CK_RV slot_token_removed(CK_SLOT_ID id)
 {
 	CK_RV rv;
-	int token_was_present;
 	struct sc_pkcs11_slot *slot;
 	struct sc_pkcs11_object *object;
 
-	sc_log(context, "slot_token_removed(0x%lx)", id);
 	rv = slot_get_slot(id, &slot);
 	if (rv != CKR_OK)
 		return rv;
-
-	token_was_present = (slot->slot_info.flags & CKF_TOKEN_PRESENT);
 
 	/* Terminate active sessions */
 	sc_pkcs11_close_all_sessions(id);
@@ -532,38 +519,29 @@ CK_RV slot_token_removed(CK_SLOT_ID id)
 	slot->profile = NULL;
 	pop_all_login_states(slot);
 
-	if (token_was_present)
-		slot->events = SC_EVENT_CARD_REMOVED;
-
 	memset(&slot->token_info, 0, sizeof slot->token_info);
 
 	return CKR_OK;
 }
 
 /* Called from C_WaitForSlotEvent */
-CK_RV slot_find_changed(CK_SLOT_ID_PTR idp, int mask)
+CK_RV slot_find_changed(CK_SLOT_ID_PTR idp)
 {
+	CK_RV rv = CKR_NO_EVENT;
 	unsigned int i;
 	LOG_FUNC_CALLED(context);
 
 	card_detect_all();
 	for (i=0; i<list_size(&virtual_slots); i++) {
 		sc_pkcs11_slot_t *slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, i);
-		sc_log(context, "slot 0x%lx token: %lu events: 0x%02X",
+		sc_log(context, "slot 0x%lx token: %lu present: 0x%02lX",
 		       slot->id, (slot->slot_info.flags & CKF_TOKEN_PRESENT),
-		       slot->events);
-		if ((slot->events & SC_EVENT_CARD_INSERTED)
-				&& !(slot->slot_info.flags & CKF_TOKEN_PRESENT)) {
-			/* If a token has not been initialized, clear the inserted event */
-			slot->events &= ~SC_EVENT_CARD_INSERTED;
-		}
-		sc_log(context, "mask: 0x%02X events: 0x%02X result: %d", mask, slot->events, (slot->events & mask));
-
-		if (slot->events & mask) {
-			slot->events &= ~mask;
+		       slot->events & CKF_TOKEN_PRESENT);
+		if ((slot->events & CKF_TOKEN_PRESENT) != (slot->slot_info.flags & CKF_TOKEN_PRESENT)) {
 			*idp = slot->id;
-			LOG_FUNC_RETURN(context, CKR_OK);
+			rv = CKR_OK;
 		}
+		slot->events = slot->slot_info.flags;
 	}
-	LOG_FUNC_RETURN(context, CKR_NO_EVENT);
+	LOG_FUNC_RETURN(context, rv);
 }

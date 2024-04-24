@@ -52,7 +52,7 @@ void Sleep(unsigned int Milliseconds)
 void notify_daemon()
 {
 	int r;
-	const unsigned int event_mask = SC_EVENT_CARD_EVENTS|SC_EVENT_READER_EVENTS;
+	const unsigned int event_mask = SC_EVENT_CARD_EVENTS | SC_EVENT_READER_EVENTS;
 	unsigned int event;
 	struct sc_reader *event_reader = NULL;
 	void *reader_states = NULL;
