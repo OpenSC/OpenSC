@@ -886,13 +886,6 @@ fi
 
 if test "${enable_pcsc}" = "yes"; then
 	if test "${WIN32}" != "yes"; then
-		PKG_CHECK_EXISTS(
-			[libpcsclite],
-			[PKG_CHECK_MODULES([PCSC], [libpcsclite >= 1.8.22],
-				[AC_DEFINE([PCSCLITE_GOOD], [1], [Sufficient version of PCSC-Lite with all the required features])],
-				[:]
-			)]
-		)
 		if test -z "${PCSC_CFLAGS}"; then
 			case "${host}" in
 				*-*-darwin*)
