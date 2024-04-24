@@ -1188,7 +1188,7 @@ _sc_card_add_ec_alg_int(sc_card_t *card, size_t key_length,
 	r = _sc_card_add_algorithm(card, &info);
 err:
 	free(info.u._ec.params.der.value);
-	return  r;
+	return r;
 }
 
 int  _sc_card_add_ec_alg(sc_card_t *card, size_t key_length,
@@ -1539,6 +1539,7 @@ int sc_copy_ec_params(struct sc_ec_parameters *dst, struct sc_ec_parameters *src
 	}
 	dst->type = src->type;
 	dst->field_length = src->field_length;
+	dst->key_type = src->key_type;
 
 	return SC_SUCCESS;
 }
