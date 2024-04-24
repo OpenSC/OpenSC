@@ -220,7 +220,6 @@ struct sc_pkcs11_slot {
 	void *fw_data;			/* Framework specific data */  /* TODO: get know how it used */
 	list_t objects;			/* Objects in this slot */
 	unsigned int nsessions;		/* Number of sessions using this slot */
-	sc_timestamp_t slot_state_expires;
 
 	int fw_data_idx;		/* Index of framework data */
 	struct sc_app_info *app_info;	/* Application associated to slot */
@@ -393,6 +392,7 @@ extern struct sc_pkcs11_config sc_pkcs11_conf;
 extern list_t sessions;
 extern list_t virtual_slots;
 extern list_t cards;
+extern void *reader_states;
 
 /* Framework definitions */
 extern struct sc_pkcs11_framework_ops framework_pkcs15;
@@ -412,7 +412,6 @@ CK_RV card_removed(sc_reader_t *reader);
 CK_RV card_detect_all(void);
 CK_RV create_slot(sc_reader_t *reader);
 void init_slot_info(CK_SLOT_INFO_PTR pInfo, sc_reader_t *reader);
-CK_RV card_detect(sc_reader_t *reader);
 CK_RV slot_get_slot(CK_SLOT_ID id, struct sc_pkcs11_slot **);
 CK_RV slot_get_token(CK_SLOT_ID id, struct sc_pkcs11_slot **);
 CK_RV slot_token_removed(CK_SLOT_ID id);
