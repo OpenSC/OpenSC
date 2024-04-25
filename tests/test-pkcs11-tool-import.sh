@@ -1,7 +1,14 @@
 #!/bin/bash
-SOURCE_PATH=${SOURCE_PATH:-..}
 
-source $SOURCE_PATH/tests/common.sh
+if [ -z "$MESON_BUILD_ROOT" ]; then
+	SOURCE_PATH=${SOURCE_PATH:-..}
+	BUILD_PATH=${BUILD_PATH:-..}
+else
+	SOURCE_PATH="$MESON_SOURCE_ROOT"
+	BUILD_PATH="$MESON_BUILD_ROOT"
+fi
+
+source "$SOURCE_PATH/tests/common.sh"
 
 echo "======================================================="
 echo "Setup SoftHSM"
@@ -35,7 +42,7 @@ for KEYTYPE in "RSA" "EC"; do
     openssl pkey -in "${KEYTYPE}_private.der" -out "${KEYTYPE}_public.der" -pubout -inform DER -outform DER
     assert $? "Failed to convert private $KEYTYPE key to public"
     $PKCS11_TOOL --write-object "${KEYTYPE}_public.der" --id "$ID" --type pubkey --label "$KEYTYPE" \
-        -p $PIN --module $P11LIB
+        -p $PIN --module "$P11LIB"
     assert $? "Failed to write public $KEYTYPE key"
     # certificate import already tested in all other tests
 

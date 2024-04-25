@@ -1,6 +1,14 @@
 #!/bin/bash
-SOURCE_PATH=${SOURCE_PATH:-..}
-source $SOURCE_PATH/tests/common.sh
+
+if [ -z "$MESON_BUILD_ROOT" ]; then
+	SOURCE_PATH=${SOURCE_PATH:-..}
+	BUILD_PATH=${BUILD_PATH:-..}
+else
+	SOURCE_PATH="$MESON_SOURCE_ROOT"
+	BUILD_PATH="$MESON_BUILD_ROOT"
+fi
+
+source "$SOURCE_PATH/tests/common.sh"
 
 echo "======================================================="
 echo "Setup SoftHSM"

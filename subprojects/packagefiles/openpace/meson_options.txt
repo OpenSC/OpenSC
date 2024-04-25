@@ -1,0 +1,2 @@
+option('cv_certificates_path', type: 'string', value: '')
+option('x509_certificates_path', type: 'string', value: '')

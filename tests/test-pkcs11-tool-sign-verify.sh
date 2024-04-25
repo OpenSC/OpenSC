@@ -1,7 +1,13 @@
 #!/bin/bash
-SOURCE_PATH=${SOURCE_PATH:-..}
+if [ -z "$MESON_BUILD_ROOT" ]; then
+	SOURCE_PATH=${SOURCE_PATH:-..}
+	BUILD_PATH=${BUILD_PATH:-..}
+else
+	SOURCE_PATH="$MESON_SOURCE_ROOT"
+	BUILD_PATH="$MESON_BUILD_ROOT"
+fi
 
-source $SOURCE_PATH/tests/common.sh
+source "$SOURCE_PATH/tests/common.sh"
 
 echo "======================================================="
 echo "Setup SoftHSM"
@@ -38,7 +44,7 @@ for HASH in "" "SHA1" "SHA224" "SHA256" "SHA384" "SHA512"; do
         echo "======================================================="
         echo "$METHOD: Sign & Verify (KEY $SIGN_KEY)"
         echo "======================================================="
-        $PKCS11_TOOL --id $SIGN_KEY -s -p $PIN -m $METHOD --module $P11LIB \
+        $PKCS11_TOOL --id $SIGN_KEY -s -p $PIN -m $METHOD --module "$P11LIB" \
                --input-file data --output-file data.sig
         assert $? "Failed to Sign data"
 
@@ -58,7 +64,7 @@ for HASH in "" "SHA1" "SHA224" "SHA256" "SHA384" "SHA512"; do
         fi
 
         # pkcs11-tool verification
-        $PKCS11_TOOL --id $SIGN_KEY --verify -m $METHOD --module $P11LIB \
+        $PKCS11_TOOL --id $SIGN_KEY --verify -m $METHOD --module "$P11LIB" \
                --input-file data --signature-file data.sig
         assert $? "Failed to Verify signature using pkcs11-tool"
         rm data.sig
@@ -90,7 +96,7 @@ for HASH in "" "SHA1" "SHA224" "SHA256" "SHA384" "SHA512"; do
             VERIFY_DGEST="-${HASH,,*}"
             VERIFY_OPTS="-sigopt rsa_mgf1_md:${HASH,,*}"
         fi
-        $PKCS11_TOOL --id $SIGN_KEY -s -p $PIN -m $METHOD --module $P11LIB \
+        $PKCS11_TOOL --id $SIGN_KEY -s -p $PIN -m $METHOD --module "$P11LIB" \
                $HASH_ALGORITM --salt-len=-1 \
                --input-file data.hash --output-file data.sig
         assert $? "Failed to Sign data"
@@ -106,7 +112,7 @@ for HASH in "" "SHA1" "SHA224" "SHA256" "SHA384" "SHA512"; do
         fi
 
         # pkcs11-tool verification
-        $PKCS11_TOOL --id $SIGN_KEY --verify -m $METHOD --module $P11LIB \
+        $PKCS11_TOOL --id $SIGN_KEY --verify -m $METHOD --module "$P11LIB" \
                $HASH_ALGORITM --salt-len=-1 \
                --input-file data.hash --signature-file data.sig
         assert $? "Failed to Verify signature using pkcs11-tool"
@@ -175,7 +181,7 @@ for HASH in "" "SHA1" "SHA224" "SHA256" "SHA384" "SHA512"; do
         #       -pubin -out data.crypt
         assert $? "Failed to encrypt data using OpenSSL"
         $PKCS11_TOOL --id $ENC_KEY --decrypt -p $PIN -m $METHOD \
-               --module $P11LIB --input-file data.crypt > data.decrypted
+               --module "$P11LIB" --input-file data.crypt > data.decrypted
         diff data{,.decrypted}
         assert $? "The decrypted data do not match the original"
         rm data.{crypt,decrypted}
@@ -197,10 +203,10 @@ for SIGN_KEY in "03" "04"; do
     echo "$METHOD: Sign & Verify (KEY $SIGN_KEY)"
     echo "======================================================="
     openssl dgst -binary -sha256 data > data.hash
-    $PKCS11_TOOL --id $SIGN_KEY -s -p $PIN -m $METHOD --module $P11LIB \
+    $PKCS11_TOOL --id $SIGN_KEY -s -p $PIN -m $METHOD --module "$P11LIB" \
         --input-file data.hash --output-file data.sig
     assert $? "Failed to Sign data"
-    $PKCS11_TOOL --id $SIGN_KEY -s -p $PIN -m $METHOD --module $P11LIB \
+    $PKCS11_TOOL --id $SIGN_KEY -s -p $PIN -m $METHOD --module "$P11LIB" \
         --input-file data.hash --output-file data.sig.openssl \
         --signature-format openssl
     assert $? "Failed to Sign data into OpenSSL format"
@@ -211,7 +217,7 @@ for SIGN_KEY in "03" "04"; do
     assert $? "Failed to Verify signature using OpenSSL"
 
     # pkcs11-tool verification
-    $PKCS11_TOOL --id $SIGN_KEY --verify -m $METHOD --module $P11LIB \
+    $PKCS11_TOOL --id $SIGN_KEY --verify -m $METHOD --module "$P11LIB" \
            --input-file data.hash --signature-file data.sig
     assert $? "Failed to Verify signature using pkcs11-tool"
     rm data.sig{,.openssl} data.hash
@@ -230,10 +236,10 @@ for MECHANISM in "SHA-1-HMAC" "SHA256-HMAC" "SHA384-HMAC" "SHA512-HMAC"; do
 	echo "======================================================="
 
 	$PKCS11_TOOL --login --pin=$PIN --sign --mechanism=$MECHANISM \
-		--input-file=data.msg --output-file=data.sig --module $P11LIB
+		--input-file=data.msg --output-file=data.sig --module "$P11LIB"
 	assert $? "Failed to Sign data"
 	$PKCS11_TOOL --login --pin=$PIN --verify --mechanism=$MECHANISM \
-		--input-file=data.msg --signature-file=data.sig --module $P11LIB
+		--input-file=data.msg --signature-file=data.sig --module "$P11LIB"
 	assert $? "Failed to Verify signature using pkcs11-tool"
 	rm data.sig
 done;
