@@ -1682,8 +1682,8 @@ static void show_token(CK_SLOT_ID slot)
 	printf("  serial num         : %s\n", p11_utf8_to_local(info.serialNumber,
 			sizeof(info.serialNumber)));
 	printf("  pin min/max        : %lu/%lu\n", info.ulMinPinLen, info.ulMaxPinLen);
-	printf("  uri                : pkcs11:model=");
-	printf("%s", percent_encode(info.model, sizeof(info.model)));
+	printf("  uri                : pkcs11:");
+	printf("model=%s", percent_encode(info.model, sizeof(info.model)));
 	printf(";manufacturer=");
 	printf("%s", percent_encode(info.manufacturerID, sizeof(info.manufacturerID)));
 	printf(";serial=");
