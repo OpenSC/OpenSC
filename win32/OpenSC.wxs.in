@@ -28,7 +28,7 @@
            Version="@OPENSC_VERSION_MAJOR@.@OPENSC_VERSION_MINOR@.@OPENSC_VERSION_FIX@.@OPENSC_VERSION_REVISION@"
            Manufacturer="@OPENSC_VS_FF_COMPANY_NAME@">
     <Package Platform="$(var.Platform)"
-             Description="@VS_FF_PRODUCT_NAME@ Installer"
+             Description="@OPENSC_VS_FF_PRODUCT_NAME@ Installer"
              Comments="@OPENSC_VS_FF_COMMENTS@"
              Manufacturer="@OPENSC_VS_FF_COMPANY_NAME@"
              InstallerVersion="300"
@@ -40,7 +40,7 @@
     <WixVariable Id="WixUIBannerBmp" Value="bannrbmp.bmp"/>
     <WixVariable Id="WixUIDialogBmp" Value="dlgbmp.bmp"/>
     <!-- Links in info -->
-    <Property Id="ARPHELPLINK" Value="@PRODUCT_BUGREPORT@"/>
+    <Property Id="ARPHELPLINK" Value="@PACKAGE_BUGREPORT@"/>
     <Property Id="ARPURLINFOABOUT" Value="@OPENSC_VS_FF_PRODUCT_URL@"/>
     <Property Id="ARPURLUPDATEINFO" Value="@OPENSC_VS_FF_PRODUCT_UPDATES@"/>
     <Property Id="ARPCONTACT" Value="@OPENSC_VS_FF_COMPANY_URL@"/>
