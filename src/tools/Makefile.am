@@ -9,7 +9,6 @@ endif
 do_subst = $(SED) \
 	   -e 's,[@]bindir[@],$(bindir),g' \
 	   -e 's,[@]CVCDIR[@],$(CVCDIR),g' \
-	   -e 's,[@]PACKAGE[@],$(PACKAGE),g' \
 	   -e 's,[@]PACKAGE_BUGREPORT[@],$(PACKAGE_BUGREPORT),g' \
 	   -e 's,[@]PACKAGE_NAME[@],$(PACKAGE_NAME),g' \
 	   -e 's,[@]PACKAGE_TARNAME[@],$(PACKAGE_TARNAME),g' \

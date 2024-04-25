@@ -25,6 +25,7 @@
 #ifdef HAVE_SYS_TIME_H
 #include <sys/time.h>
 #endif
+#include <sys/timeb.h>
 
 #ifdef PKCS11_THREAD_LOCKING
 #if defined(HAVE_PTHREAD)
@@ -587,7 +588,7 @@ out:
 
 static sc_timestamp_t get_current_time(void)
 {
-#if HAVE_GETTIMEOFDAY
+#ifdef HAVE_GETTIMEOFDAY
 	struct timeval tv;
 	struct timezone tz;
 	sc_timestamp_t curr;

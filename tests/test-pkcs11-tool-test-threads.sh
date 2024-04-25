@@ -1,5 +1,4 @@
 #!/bin/bash
-SOURCE_PATH=${SOURCE_PATH:-..}
 
 TOKENTYPE=$1
 
@@ -11,15 +10,27 @@ elif [ "${TOKENTYPE}" != "softhsm" ]; then
     exit 1
 fi
 
-source $SOURCE_PATH/tests/common.sh $TOKENTYPE
+if [ -z "$MESON_BUILD_ROOT" ]; then
+	SOURCE_PATH=${SOURCE_PATH:-..}
+	BUILD_PATH=${BUILD_PATH:-..}
+else
+	SOURCE_PATH="$MESON_SOURCE_ROOT"
+	BUILD_PATH="$MESON_BUILD_ROOT"
+fi
 
-# Test our PKCS #11 module here
-P11LIB="../src/pkcs11/.libs/opensc-pkcs11.so"
+source "$SOURCE_PATH/tests/common.sh" $TOKENTYPE
+
+if [ -z "$MESON_BUILD_ROOT" ]; then
+	P11LIB="../src/pkcs11/.libs/opensc-pkcs11.so"
+	OPENSC_TOOL="../src/tools/opensc-tool"
+else
+	P11LIB="$MESON_BUILD_ROOT/src/pkcs11/libopensc-pkcs11.so"
+	OPENSC_TOOL="$MESON_BUILD_ROOT/src/tools/opensc-tool"
+fi
 
 echo "======================================================="
 echo "Test pkcs11 threads IN "
 echo "======================================================="
-OPENSC_TOOL="../src/tools/opensc-tool"
 echo "check for opensc-tool"
 if [[ -f $OPENSC_TOOL ]] ; then
 echo "trying opensc-tool -a"

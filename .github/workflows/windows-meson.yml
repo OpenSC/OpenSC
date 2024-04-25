@@ -1,0 +1,54 @@
+name: Windows (meson)
+
+on:
+  pull_request:
+    branches: master
+
+permissions:
+  contents: read  #  to fetch code (actions/checkout)
+
+jobs:
+  build:
+    runs-on: ${{ matrix.image }}
+    strategy:
+      matrix:
+        platform: [x86, x64]
+        configuration: [Light, Release]
+        image: [windows-2022]
+    steps:
+      - name: Install Meson
+        run: python -m pip install meson ninja
+      - name: Install gengetopt
+        shell: C:\shells\msys2bash.cmd {0}
+        run: pacman -S --noconfirm --needed --noprogressbar gengetopt
+      - name: Install CPDK
+        run: choco install windows-cryptographic-provider-development-kit -y
+      - name: Install Wix 5
+        run: |
+          dotnet tool install --global wix
+          wix extension add -g WixToolset.UI.wixext
+          wix extension add -g WixToolset.Util.wixext
+      - uses: actions/checkout@v4
+      - name: Setup dev env
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{ matrix.platform }}
+      - name: Configure project (release)
+        if: matrix.configuration == 'Release'
+        run: |
+          $env:Path += ";C:\msys64\usr\bin"
+          meson setup -Dbackend=ninja -Dbuildtype=release '-Dcomponents=pkcs11,tools,sm,minidriver' '-Dstatic_components=pkcs11,sm,minidriver' -Ddriver=pcsc -Dopenpace=enabled -Dopenssl=enabled -Dzlib=enabled --force-fallback-for=openssl '-Dopenpace:cv_certificates_path=%PROGRAMFILES%\\OpenSC Project\\OpenSC\\cvc' '-Dopenpace:x509_certificates_path=%PROGRAMFILES%\\OpenSC Project\\OpenSC\\x509' build/
+      - name: Configure project (light)
+        if: matrix.configuration == 'Light'
+        run: |
+          $env:Path += ";C:\msys64\usr\bin"
+          meson setup -Dbackend=ninja -Dbuildtype=release '-Dcomponents=pkcs11,tools,sm,minidriver' '-Dstatic_components=pkcs11,sm,minidriver' -Ddriver=pcsc -Dopenpace=disabled -Dopenssl=disabled build/
+      - name: Build project
+        run: |
+          meson compile -C build/ -v
+          meson compile -C build/ -v msi
+      - name: Archive artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: msi_${{ matrix.image }}_${{ matrix.platform }}_${{ matrix.configuration }}
+          path: build/*.msi

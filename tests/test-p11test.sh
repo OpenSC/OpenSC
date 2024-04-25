@@ -1,5 +1,4 @@
 #!/bin/bash
-SOURCE_PATH=${SOURCE_PATH:-..}
 
 TOKENTYPE=$1
 
@@ -11,7 +10,19 @@ elif [ "${TOKENTYPE}" == "" ]; then
     echo "No tokentype provided, running with SoftHSM"
 fi
 
-source $SOURCE_PATH/tests/common.sh $TOKENTYPE
+if [ -z "$MESON_BUILD_ROOT" ]; then
+	SOURCE_PATH=${SOURCE_PATH:-..}
+	BUILD_PATH=${BUILD_PATH:-..}
+	P11TEST="./../src/tests/p11test/p11test"
+	PKCS11SPY_MODULE="../src/pkcs11/.libs/pkcs11-spy.so"
+else
+	SOURCE_PATH="$MESON_SOURCE_ROOT"
+	BUILD_PATH="$MESON_BUILD_ROOT"
+	P11TEST="$MESON_BUILD_ROOT/src/tests/p11test/p11test"
+	PKCS11SPY_MODULE="$MESON_BUILD_ROOT/src/pkcs11/libpkcs11-spy.so"
+fi
+
+source "$SOURCE_PATH/tests/common.sh" $TOKENTYPE
 
 echo "======================================================="
 echo "Setup $TOKENTYPE"
@@ -27,7 +38,7 @@ assert $? "Failed to set up card"
 echo "======================================================="
 echo "Run p11test"
 echo "======================================================="
-$VALGRIND ./../src/tests/p11test/p11test -v -m $P11LIB -o $TOKENTYPE.json -p $PIN
+$VALGRIND "$P11TEST" -v -m $P11LIB -o $TOKENTYPE.json -p $PIN
 assert $? "Failed running tests"
 
 # Run the input through sed to skip the mechanism part:
@@ -51,7 +62,7 @@ echo "======================================================="
 echo "Run p11test with PKCS11SPY"
 echo "======================================================="
 export PKCS11SPY="$P11LIB"
-$VALGRIND ./../src/tests/p11test/p11test -v -m ../src/pkcs11/.libs/pkcs11-spy.so -o $TOKENTYPE.json -p $PIN
+$VALGRIND "$P11TEST" -v -m "$PKCS11SPY_MODULE" -o $TOKENTYPE.json -p $PIN
 assert $? "Failed running tests"
 
 diff -U3 <(filter_log $REF_FILE) <(filter_log $TOKENTYPE.json)

@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <windows.h>
 #include <winscard.h>
-#include <sys/timeb.h>
 #include <sys/stat.h>
 
 #ifdef _MSC_VER 

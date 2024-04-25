@@ -1,12 +1,17 @@
 #!/bin/bash
 ## from OpenSC/src/tests/p11test/runtest.sh
-BUILD_PATH=${BUILD_PATH:-..}
 
 TOKENTYPE=$1
 
 # run valgrind with all the switches we are interested in
 if [ -n "$VALGRIND" -a -n "$LOG_COMPILER" ]; then
     VALGRIND="$LOG_COMPILER"
+fi
+
+if [ -z "$MESON_BUILD_ROOT" ]; then
+	BUILD_PATH=${BUILD_PATH:-..}
+else
+	BUILD_PATH="$MESON_BUILD_ROOT"
 fi
 
 export SOPIN="12345678"

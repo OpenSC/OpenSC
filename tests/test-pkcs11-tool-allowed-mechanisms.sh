@@ -1,5 +1,4 @@
 #!/bin/bash
-SOURCE_PATH=${SOURCE_PATH:-..}
 
 TOKENTYPE=$1
 
@@ -11,7 +10,15 @@ elif [ "${TOKENTYPE}" == "" ]; then
     echo "No tokentype provided, running with SoftHSM"
 fi
 
-source $SOURCE_PATH/tests/common.sh $TOKENTYPE
+if [ -z "$MESON_BUILD_ROOT" ]; then
+	SOURCE_PATH=${SOURCE_PATH:-..}
+	BUILD_PATH=${BUILD_PATH:-..}
+else
+	SOURCE_PATH="$MESON_SOURCE_ROOT"
+	BUILD_PATH="$MESON_BUILD_ROOT"
+fi
+
+source "$SOURCE_PATH/tests/common.sh" $TOKENTYPE
 
 echo "======================================================="
 echo "Setup $TOKENTYPE"

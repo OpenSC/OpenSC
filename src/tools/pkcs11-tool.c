@@ -89,8 +89,12 @@
 #endif
 #endif
 
+#ifdef ENABLE_PKCS11
+#ifndef HAVE_P11KIT
 #ifndef ENABLE_SHARED
 extern CK_FUNCTION_LIST_3_0 pkcs11_function_list_3_0;
+#endif
+#endif
 #endif
 
 #if defined(_WIN32) || defined(HAVE_PTHREAD)
@@ -1244,10 +1248,14 @@ int main(int argc, char * argv[])
 		opt_module = expanded_val;
 #endif
 
+#ifdef ENABLE_PKCS11
+#ifndef HAVE_P11KIT
 #ifndef ENABLE_SHARED
 	if (strcmp(opt_module, DEFAULT_PKCS11_PROVIDER) == 0)
 		p11 = &pkcs11_function_list_3_0;
 	else
+#endif
+#endif
 #endif
 	{
 		CK_FUNCTION_LIST_PTR p11_v2 = NULL;

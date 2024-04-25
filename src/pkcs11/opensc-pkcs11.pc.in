@@ -5,5 +5,5 @@ includedir=@includedir@
 
 Name: OpenSC smartcard framework
 Description: OpenSC PKCS#11 module
-Version: @VERSION@
+Version: @PACKAGE_VERSION@
 Libs: -L${libdir} -lopensc-pkcs11
