@@ -2559,6 +2559,7 @@ check_keygen_params_consistency(struct sc_card *card,
 				     alg == SC_ALGORITHM_XEDDSA))
 		/* allocated in sc_pkcs15_fix_ec_parameters */
 		free(prkey->key.u.ec.params.der.value);
+		prkey->key.u.ec.params.der.value = NULL;
 
 	LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 }
@@ -2579,7 +2580,7 @@ check_key_compatibility(struct sc_pkcs15_card *p15card, unsigned long alg,
 	LOG_FUNC_CALLED(ctx);
 
 	if (alg == SC_ALGORITHM_EDDSA || alg == SC_ALGORITHM_XEDDSA)
-		talg = SC_ALGORITHM_EC;  /* really testing ecparams */
+		talg = SC_ALGORITHM_EC; /* really testing ecparams */
 
 	count = p15card->card->algorithm_count;
 	for (info = p15card->card->algorithms; count--; info++) {
