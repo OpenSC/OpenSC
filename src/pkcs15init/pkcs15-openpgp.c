@@ -309,24 +309,23 @@ static int openpgp_generate_key_ec(sc_card_t *card, sc_pkcs15_object_t *obj,
 
 	if (!key_info.key_id)
 		key_info.key_id = kid->value[0];
-
-
+	key_info.key_type = pubkey->algorithm;
 	/* set algorithm id based on key reference and key type */
 	switch (pubkey->algorithm) {
 	case SC_ALGORITHM_EC:
 		key_info.algorithm = (key_info.key_id == SC_OPENPGP_KEY_ENCR)
-				? SC_OPENPGP_KEYALGO_ECDH /* ECDH for slot 2 only */
-				: SC_OPENPGP_KEYALGO_ECDSA; /* ECDSA for slot 1 and 3 */
+					? SC_OPENPGP_KEYALGO_ECDH   /* ECDH for slot 2 only */
+					: SC_OPENPGP_KEYALGO_ECDSA; /* ECDSA for slot 1 and 3 */
 		break;
 	case SC_ALGORITHM_EDDSA:
-		key_info.algorithm = SC_OPENPGP_KEYALGO_EDDSA; /* oly sign */
+		key_info.algorithm = SC_OPENPGP_KEYALGO_EDDSA; /* only sign */
 		break;
-	case  SC_ALGORITHM_XEDDSA:
+	case SC_ALGORITHM_XEDDSA:
 		/* TODO  may need to look at MSE, and how sign XEDDSA certificate */
-		key_info.algorithm = SC_OPENPGP_KEYALGO_ECDH;  /* but could be be used to sign too */
+		key_info.algorithm = SC_OPENPGP_KEYALGO_ECDH; /* but could be be used to sign too */
 		break;
 	}
-	
+
 	/* copying info_ec.id works for any EC ECDH EdDSA keys */
 	if (info_ec->der.len > 2)
 		key_info.u.ec.oid = info_ec->id; /* copy sc_object_id */
@@ -335,7 +334,7 @@ static int openpgp_generate_key_ec(sc_card_t *card, sc_pkcs15_object_t *obj,
 
 	/* Prepare buffer */
 	key_info.u.ec.ecpoint_len = required->field_length;
-	key_info.u.ec.ecpoint = malloc(key_info.u.ec.ecpoint_len);
+	key_info.u.ec.ecpoint = malloc(BYTES4BITS(key_info.u.ec.ecpoint_len));
 	if (key_info.u.ec.ecpoint == NULL)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
 
@@ -346,12 +345,7 @@ static int openpgp_generate_key_ec(sc_card_t *card, sc_pkcs15_object_t *obj,
 	/* set pubkey according to response of card */
 	sc_log(ctx, "Set output ecpoint info");
 
-	/* TODO DEE may need changes for ECDH and EdDSA or XEDDSA */
-	
-
-
-
-	pubkey->algorithm = SC_ALGORITHM_EC;
+	pubkey->algorithm = key_info.key_type;
 	pubkey->u.ec.ecpointQ.len = key_info.u.ec.ecpoint_len;
 	pubkey->u.ec.ecpointQ.value = malloc(key_info.u.ec.ecpoint_len);
 	if (pubkey->u.ec.ecpointQ.value == NULL)

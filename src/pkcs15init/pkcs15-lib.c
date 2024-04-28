@@ -2556,10 +2556,11 @@ check_keygen_params_consistency(struct sc_card *card,
 
 	if (prkey && (alg == SC_ALGORITHM_EC ||
 				     alg == SC_ALGORITHM_EDDSA ||
-				     alg == SC_ALGORITHM_XEDDSA))
+				     alg == SC_ALGORITHM_XEDDSA)) {
 		/* allocated in sc_pkcs15_fix_ec_parameters */
 		free(prkey->key.u.ec.params.der.value);
 		prkey->key.u.ec.params.der.value = NULL;
+	}
 
 	LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 }
