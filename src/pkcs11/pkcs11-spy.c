@@ -1035,8 +1035,11 @@ C_Encrypt(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG  ulDataLen,
 	spy_dump_ulong_in("hSession", hSession);
 	spy_dump_string_in("pData[ulDataLen]", pData, ulDataLen);
 	rv = po->C_Encrypt(hSession, pData, ulDataLen, pEncryptedData, pulEncryptedDataLen);
-	if (rv == CKR_OK)
+	if (rv == CKR_OK) {
 		spy_dump_string_out("pEncryptedData[*pulEncryptedDataLen]", pEncryptedData, *pulEncryptedDataLen);
+	} else if (rv == CKR_BUFFER_TOO_SMALL) {
+		spy_dump_ulong_out("pulEncryptedDataLen", *pulEncryptedDataLen);
+	}
 	return retne(rv);
 }
 
@@ -1063,9 +1066,12 @@ C_EncryptFinal(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pLastEncryptedPart, CK_UL
 	enter("C_EncryptFinal");
 	spy_dump_ulong_in("hSession", hSession);
 	rv = po->C_EncryptFinal(hSession, pLastEncryptedPart, pulLastEncryptedPartLen);
-	if (rv == CKR_OK)
+	if (rv == CKR_OK) {
 		spy_dump_string_out("pLastEncryptedPart[*pulLastEncryptedPartLen]", pLastEncryptedPart,
 				*pulLastEncryptedPartLen);
+	} else if (rv == CKR_BUFFER_TOO_SMALL) {
+		spy_dump_ulong_out("pulLastEncryptedPartLen", *pulLastEncryptedPartLen);
+	}
 
 	return retne(rv);
 }
@@ -1093,8 +1099,11 @@ C_Decrypt(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pEncryptedData, CK_ULONG  ulEn
 	spy_dump_ulong_in("hSession", hSession);
 	spy_dump_string_in("pEncryptedData[ulEncryptedDataLen]", pEncryptedData, ulEncryptedDataLen);
 	rv = po->C_Decrypt(hSession, pEncryptedData, ulEncryptedDataLen, pData, pulDataLen);
-	if (rv == CKR_OK)
+	if (rv == CKR_OK) {
 		spy_dump_string_out("pData[*pulDataLen]", pData, *pulDataLen);
+	} else if (rv == CKR_BUFFER_TOO_SMALL) {
+		spy_dump_ulong_out("pulDataLen", *pulDataLen);
+	}
 
 	return retne(rv);
 }
@@ -1123,8 +1132,11 @@ C_DecryptFinal(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pLastPart, CK_ULONG_PTR p
 	enter("C_DecryptFinal");
 	spy_dump_ulong_in("hSession", hSession);
 	rv = po->C_DecryptFinal(hSession, pLastPart, pulLastPartLen);
-	if (rv == CKR_OK)
+	if (rv == CKR_OK) {
 		spy_dump_string_out("pLastPart[*pulLastPartLen]", pLastPart, *pulLastPartLen);
+	} else if (rv == CKR_BUFFER_TOO_SMALL) {
+		spy_dump_ulong_out("pulLastPartLen", *pulLastPartLen);
+	}
 
 	return retne(rv);
 }
@@ -1218,8 +1230,11 @@ C_Sign(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG  ulDataLen,
 	spy_dump_ulong_in("hSession", hSession);
 	spy_dump_string_in("pData[ulDataLen]", pData, ulDataLen);
 	rv = po->C_Sign(hSession, pData, ulDataLen, pSignature, pulSignatureLen);
-	if (rv == CKR_OK)
+	if (rv == CKR_OK) {
 		spy_dump_string_out("pSignature[*pulSignatureLen]", pSignature, *pulSignatureLen);
+	} else if (rv == CKR_BUFFER_TOO_SMALL) {
+		spy_dump_ulong_out("pulSignatureLen", *pulSignatureLen);
+	}
 
 	return retne(rv);
 }
@@ -1244,8 +1259,11 @@ C_SignFinal(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pSignature, CK_ULONG_PTR pul
 	enter("C_SignFinal");
 	spy_dump_ulong_in("hSession", hSession);
 	rv = po->C_SignFinal(hSession, pSignature, pulSignatureLen);
-	if (rv == CKR_OK)
+	if (rv == CKR_OK) {
 		spy_dump_string_out("pSignature[*pulSignatureLen]", pSignature, *pulSignatureLen);
+	} else if (rv == CKR_BUFFER_TOO_SMALL) {
+		spy_dump_ulong_out("pulSignatureLen", *pulSignatureLen);
+	}
 
 	return retne(rv);
 }
@@ -1273,8 +1291,11 @@ C_SignRecover(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG  ulDataLen
 	spy_dump_ulong_in("hSession", hSession);
 	spy_dump_string_in("pData[ulDataLen]", pData, ulDataLen);
 	rv = po->C_SignRecover(hSession, pData, ulDataLen, pSignature, pulSignatureLen);
-	if (rv == CKR_OK)
+	if (rv == CKR_OK) {
 		spy_dump_string_out("pSignature[*pulSignatureLen]", pSignature, *pulSignatureLen);
+	} else if (rv == CKR_BUFFER_TOO_SMALL) {
+		spy_dump_ulong_out("pulSignatureLen", *pulSignatureLen);
+	}
 	return retne(rv);
 }
 
@@ -1477,8 +1498,11 @@ C_WrapKey(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism,
 	spy_dump_ulong_in("hWrappingKey", hWrappingKey);
 	spy_dump_ulong_in("hKey", hKey);
 	rv = po->C_WrapKey(hSession, pMechanism, hWrappingKey, hKey, pWrappedKey, pulWrappedKeyLen);
-	if (rv == CKR_OK)
+	if (rv == CKR_OK) {
 		spy_dump_string_out("pWrappedKey[*pulWrappedKeyLen]", pWrappedKey, *pulWrappedKeyLen);
+	} else if (rv == CKR_BUFFER_TOO_SMALL) {
+		spy_dump_ulong_out("pulWrappedKeyLen", *pulWrappedKeyLen);
+	}
 
 	return retne(rv);
 }
