@@ -33,7 +33,8 @@ function generate_sym() {
 
 	# Generate key
 	$PKCS11_TOOL --keygen --key-type="$TYPE" --login --pin=$PIN \
-		--extractable --module="$P11LIB" --label="$LABEL" --id=$ID
+		--extractable --usage-wrap --usage-decrypt \
+		--module="$P11LIB" --label="$LABEL" --id=$ID
 
 	if [[ "$?" -ne "0" ]]; then
 		echo "Couldn't generate $TYPE key pair"
@@ -51,7 +52,8 @@ function generate_cert() {
 
 	# Generate key pair
 	$PKCS11_TOOL --keypairgen --key-type="$TYPE" --login --pin=$PIN \
-		--extractable --module="$P11LIB" --label="$LABEL" --id=$ID
+		--extractable --usage-wrap --usage-sign --usage-decrypt \
+		--module="$P11LIB" --label="$LABEL" --id=$ID
 
 	if [[ "$?" -ne "0" ]]; then
 		echo "Couldn't generate $TYPE key pair"
