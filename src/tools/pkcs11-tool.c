@@ -1648,6 +1648,43 @@ static void list_slots(int tokens, int refresh, int print)
 	}
 }
 
+static const char *
+copy_key_value_to_uri(const char *key, const char *value, CK_BBOOL last)
+{
+	static char URI[1024];
+	static size_t shift = 0;
+	if (key && (shift + strlen(key) < sizeof(URI))) {
+		strcpy(&URI[shift], key);
+		shift += strlen(key);
+	}
+	if (value && (shift + strlen(value) < sizeof(URI))) {
+		strcpy(&URI[shift], value);
+		shift += strlen(value);
+	}
+	if (key && value && !last && shift < sizeof(URI)) {
+		URI[shift++] = ';';
+	}
+	if (last && shift < sizeof(URI)) {
+		URI[shift] = '\0';
+		shift = 0;
+	}
+	return URI;
+}
+
+static const char *
+get_uri(CK_TOKEN_INFO_PTR info)
+{
+	copy_key_value_to_uri("pkcs11:", NULL, CK_FALSE);
+	const char *model = percent_encode(info->model, sizeof(info->model));
+	copy_key_value_to_uri("model=", model, CK_FALSE);
+	const char *manufacturer = percent_encode(info->manufacturerID, sizeof(info->manufacturerID));
+	copy_key_value_to_uri("manufacturer=", manufacturer, CK_FALSE);
+	const char *serial = percent_encode(info->serialNumber, sizeof(info->serialNumber));
+	copy_key_value_to_uri("serial=", serial, CK_FALSE);
+	const char *token = percent_encode(info->label, sizeof(info->label));
+	return copy_key_value_to_uri("token=", token, CK_TRUE);
+}
+
 static void show_token(CK_SLOT_ID slot)
 {
 	CK_TOKEN_INFO	info;
@@ -1682,14 +1719,7 @@ static void show_token(CK_SLOT_ID slot)
 	printf("  serial num         : %s\n", p11_utf8_to_local(info.serialNumber,
 			sizeof(info.serialNumber)));
 	printf("  pin min/max        : %lu/%lu\n", info.ulMinPinLen, info.ulMaxPinLen);
-	printf("  uri                : pkcs11:");
-	printf("model=%s", percent_encode(info.model, sizeof(info.model)));
-	printf(";manufacturer=");
-	printf("%s", percent_encode(info.manufacturerID, sizeof(info.manufacturerID)));
-	printf(";serial=");
-	printf("%s", percent_encode(info.serialNumber, sizeof(info.serialNumber)));
-	printf(";token=");
-	printf("%s", percent_encode(info.label, sizeof(info.label)));
+	printf("  uri                : %s", get_uri(&info));
 	printf("\n");
 }
 
@@ -5045,13 +5075,14 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 {
 	CK_MECHANISM_TYPE_PTR mechs = NULL;
 	CK_KEY_TYPE	key_type = getKEY_TYPE(sess, obj);
-	CK_ULONG	size = 0;
+	CK_ULONG size, idsize = 0;
 	unsigned char	*id, *oid, *value;
 	const char      *sepa;
 	char		*label;
 	char		*unique_id;
 	int		pub = 1;
 	int		sec = 0;
+	CK_TOKEN_INFO info;
 
 	switch(getCLASS(sess, obj)) {
 		case CKO_PRIVATE_KEY:
@@ -5243,17 +5274,15 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 
 	if ((label = getLABEL(sess, obj, NULL)) != NULL) {
 		printf("  label:      %s\n", label);
-		free(label);
 	}
 
-	if ((id = getID(sess, obj, &size)) != NULL && size) {
+	if ((id = getID(sess, obj, &idsize)) != NULL && idsize) {
 		unsigned int	n;
 
 		printf("  ID:         ");
-		for (n = 0; n < size; n++)
+		for (n = 0; n < idsize; n++)
 			printf("%02x", id[n]);
 		printf("\n");
-		free(id);
 	}
 
 	printf("  Usage:      ");
@@ -5355,7 +5384,26 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 		printf("  Unique ID:  %s\n", unique_id);
 		free(unique_id);
 	}
-
+	get_token_info(opt_slot, &info);
+	printf("  uri:        %s", get_uri(&info));
+	if (id != NULL && idsize) {
+		printf(";id=%%");
+		for (unsigned int n = 0; n < idsize; n++)
+			printf("%02x", id[n]);
+		free(id);
+	}
+	if (label != NULL) {
+		const char *pelabel = percent_encode((unsigned char *)label, strlen(label));
+		printf(";object=%s", pelabel);
+		free(label);
+	}
+	if (sec) {
+		printf(";type=secret-key\n");
+	} else if (pub) {
+		printf(";type=public\n");
+	} else {
+		printf(";type=private\n");
+	}
 	suppress_warn = 0;
 }
 
@@ -5363,6 +5411,7 @@ static void show_cert(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 {
 	CK_CERTIFICATE_TYPE	cert_type = getCERTIFICATE_TYPE(sess, obj);
 	CK_ULONG	size;
+	CK_TOKEN_INFO info;
 	unsigned char	*id;
 	char		*label;
 	char		*unique_id;
@@ -5389,7 +5438,6 @@ static void show_cert(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 
 	if ((label = getLABEL(sess, obj, NULL)) != NULL) {
 		printf("  label:      %s\n", label);
-		free(label);
 	}
 
 #if defined(ENABLE_OPENSSL)
@@ -5433,37 +5481,49 @@ static void show_cert(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 		for (n = 0; n < size; n++)
 			printf("%02x", id[n]);
 		printf("\n");
-		free(id);
 	}
 	if ((unique_id = getUNIQUE_ID(sess, obj, NULL)) != NULL) {
 		printf("  Unique ID:  %s\n", unique_id);
 		free(unique_id);
 	}
+	get_token_info(opt_slot, &info);
+	printf("  uri:        %s", get_uri(&info));
+	if (id != NULL && size) {
+		printf(";id=%%");
+		for (unsigned int n = 0; n < size; n++)
+			printf("%02x", id[n]);
+		free(id);
+	}
+	if (label != NULL) {
+		const char *pelabel = percent_encode((unsigned char *)label, strlen(label));
+		printf(";object=%s", pelabel);
+		free(label);
+	}
+	printf(";type=cert\n");
 }
 
 static void show_dobj(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 {
 	unsigned char *oid_buf;
 	char *label;
+	char *application;
 	CK_ULONG    size = 0;
+	CK_TOKEN_INFO info;
 
 	suppress_warn = 1;
 	printf("Data object %u\n", (unsigned int) obj);
 	printf("  label:          ");
 	if ((label = getLABEL(sess, obj, NULL)) != NULL) {
 		printf("'%s'\n", label);
-		free(label);
-	}
-	else   {
+	} else {
 		printf("<empty>\n");
 	}
 
 	printf("  application:    ");
-	if ((label = getAPPLICATION(sess, obj, NULL)) != NULL) {
-		printf("'%s'\n", label);
-		free(label);
-	}
-	else   {
+	if ((application = getAPPLICATION(sess, obj, NULL)) != NULL) {
+		printf("'%s'\n", application);
+		free(application);
+	} else {
 		printf("<empty>\n");
 	}
 
@@ -5494,8 +5554,16 @@ static void show_dobj(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 		printf(" private");
 	if (!getMODIFIABLE(sess, obj) && !getPRIVATE(sess, obj))
 		printf("<empty>");
+	printf("\n");
 
-	printf ("\n");
+	get_token_info(opt_slot, &info);
+	printf("  uri:            %s", get_uri(&info));
+	if (label != NULL) {
+		const char *pelabel = percent_encode((unsigned char *)label, strlen(label));
+		printf(";object=%s", pelabel);
+		free(label);
+	}
+	printf(";type=data\n");
 	suppress_warn = 0;
 }
 
@@ -8337,6 +8405,7 @@ static const char *
 percent_encode(CK_UTF8CHAR *string, size_t len)
 {
 	static char buffer[1024];
+	memset(buffer, 0, 1024);
 	size_t output_index, input_index;
 
 	while (len && string[len - 1] == ' ')

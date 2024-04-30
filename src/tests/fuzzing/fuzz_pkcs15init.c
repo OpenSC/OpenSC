@@ -109,7 +109,7 @@ int fuzz_get_reader_data(const uint8_t *from, size_t from_size, const uint8_t **
     size_t i = 0;
     while(i < from_size - 1 && from[i] != '\0')
         i++;
-        
+
     if (from[i] != '\0')
         return 0;
 
@@ -126,6 +126,7 @@ void do_init_app(struct sc_profile *profile, struct sc_pkcs15_card *p15card, sc_
     int                           so_puk_disabled = 0;
 
     memset(&init_args, 0, sizeof(init_args));
+    memset(&info, 0, sizeof(info));
     sc_pkcs15init_get_pin_info(profile, SC_PKCS15INIT_SO_PIN, &info);
     if ((info.attrs.pin.flags & SC_PKCS15_PIN_FLAG_UNBLOCK_DISABLED) &&
         (info.attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN))
@@ -150,7 +151,7 @@ void do_store_pin(struct sc_profile *profile, struct sc_pkcs15_card *p15card, sc
     struct sc_pkcs15init_pinargs pin_args;
     char   pin_id[SC_PKCS15_MAX_ID_SIZE] = "1\0";
     sc_pkcs15init_set_p15card(profile, p15card);
-    
+
     memcpy(pin, "1234555678\0", 11); /* Set new pin */
     memset(&pin_args, 0, sizeof(pin_args));
 
@@ -363,6 +364,6 @@ end:
     if (card)
 	    sc_disconnect_card(card);
     sc_release_context(ctx);
-        
+
     return 0;
 }
