@@ -1152,9 +1152,12 @@ print_interfaces_list(FILE *f, CK_INTERFACE_PTR pInterfacesList, CK_ULONG ulCoun
 
 	if (pInterfacesList) {
 		for (i = 0; i < ulCount; i++) {
-			fprintf(f, "Interface '%s' flags=%lx\n",
-				pInterfacesList[i].pInterfaceName,
-				pInterfacesList[i].flags);
+			CK_INTERFACE_PTR in = &pInterfacesList[i];
+			fprintf(f, "Interface '%s' version=%d.%d flags=%lx\n",
+					in->pInterfaceName,
+					((CK_VERSION *)(in->pFunctionList))->major,
+					((CK_VERSION *)(in->pFunctionList))->minor,
+					in->flags);
 		}
 	}
 	else {

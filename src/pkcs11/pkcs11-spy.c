@@ -51,6 +51,9 @@ static CK_FUNCTION_LIST_PTR pkcs11_spy = NULL;
 static CK_FUNCTION_LIST_3_0_PTR pkcs11_spy_3_0 = NULL;
 /* Real Module Function List */
 static CK_FUNCTION_LIST_3_0_PTR po = NULL;
+/* Real module interface list */
+static CK_INTERFACE_PTR orig_interfaces = NULL;
+static unsigned long num_orig_interfaces = 0;
 /* Dynamic Module Handle */
 static void *modhandle = NULL;
 /* Spy module output */
@@ -1666,17 +1669,30 @@ C_GetInterfaceList(CK_INTERFACE_PTR pInterfacesList, CK_ULONG_PTR pulCount)
 	}
 	rv = po->C_GetInterfaceList(pInterfacesList, pulCount);
 	if (rv == CKR_OK) {
-		spy_dump_desc_out("pInterfacesList");
+		spy_dump_desc_out("pInterfacesList (original)");
 		print_interfaces_list(spy_output, pInterfacesList, *pulCount);
-		spy_dump_ulong_out("*pulCount", *pulCount);
 
-		/* Now, replace function lists of known interfaces (PKCS 11, v 2.x and 3.0) */
 		if (pInterfacesList != NULL) {
 			unsigned long i;
+			/* Record the module interface so we can transparently proxy the GetInterface calls */
+			free(orig_interfaces);
+			num_orig_interfaces = 0;
+			orig_interfaces = malloc(*pulCount * sizeof(CK_INTERFACE));
+			if (orig_interfaces == NULL) {
+				return CKR_HOST_MEMORY;
+			}
+			memcpy(orig_interfaces, pInterfacesList, *pulCount * sizeof(CK_INTERFACE));
+			num_orig_interfaces = *pulCount;
+
+			/* Now, replace function lists of known interfaces (PKCS 11, v 2.x and 3.0) */
 			for (i = 0; i < *pulCount; i++) {
 				spy_interface_function_list(&pInterfacesList[i]);
 			}
 		}
+
+		spy_dump_desc_out("pInterfacesList (faked)");
+		print_interfaces_list(spy_output, pInterfacesList, *pulCount);
+		spy_dump_ulong_out("*pulCount", *pulCount);
 	}
 	return retne(rv);
 }
@@ -1710,6 +1726,25 @@ C_GetInterface(CK_UTF8CHAR_PTR pInterfaceName, CK_VERSION_PTR pVersion,
 	fprintf(spy_output, "[in] flags = %s\n",
 		(flags & CKF_INTERFACE_FORK_SAFE ? "CKF_INTERFACE_FORK_SAFE" : ""));
 	if (po->version.major >= 3) {
+		/* We can not assume the version we told the caller matches the version in the underlying
+		 * pkcs11 module so map it back to the known ones */
+		CK_VERSION in_version;
+		if ((pInterfaceName == NULL || strcmp((char *)pInterfaceName, "PKCS 11") == 0) && pVersion) {
+			for (unsigned long i = 0; i < num_orig_interfaces; i++) {
+				CK_VERSION *v = (CK_VERSION *)orig_interfaces[i].pFunctionList;
+				/* We found the same major version. Copy the minor and call it a day */
+				if (v->major == pVersion->major) {
+					in_version.major = v->major;
+					in_version.minor = v->minor;
+					pVersion = &in_version;
+					fprintf(spy_output, "[in] pVersion = %d.%d (faked)\n",
+							pVersion->major, pVersion->minor);
+					break;
+				}
+			}
+			/* If not found, see what we will get */
+		}
+
 		rv = po->C_GetInterface(pInterfaceName, pVersion, ppInterface, flags);
 		if (rv == CKR_OK && ppInterface != NULL) {
 			spy_interface_function_list(*ppInterface);
