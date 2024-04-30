@@ -811,6 +811,8 @@ int callback_secret_keys(test_certs_t *objects,
 		/* pass the pointer to our structure */
 		o->value = template[10].pValue;
 		template[10].pValue = NULL;
+		/* if there is CKA_VALUE_LEN it will be rewritten later */
+		o->bits = template[10].ulValueLen * 8;
 	}
 
 	if (template[11].pValue != NULL && template[11].ulValueLen > 0) {
