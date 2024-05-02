@@ -82,6 +82,7 @@ const char *get_mechanism_name(unsigned long mech_id);
 const char *get_mgf_name(unsigned long mech_id);
 const char *get_mechanism_flag_name(unsigned long flag_id);
 const char *get_mechanism_all_flag_name(unsigned long flag_id);
+const char *get_key_type(test_cert_t *key);
 char *convert_byte_string(unsigned char *id, unsigned long length);
 
 int is_pss_mechanism(CK_MECHANISM_TYPE mech);
