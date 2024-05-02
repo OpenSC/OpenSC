@@ -197,8 +197,8 @@ test_wrap(test_cert_t *o, token_info_t *info, test_cert_t *key, test_mech_t *mec
 		return 0;
 	}
 
-	debug_print(" [ KEY %s ] Wrap a key [%s] using CKM_%s", o->id_str, key->id_str,
-	            get_mechanism_name(mech->mech));
+	debug_print(" [ KEY %s ] Wrap a key [%s] (%s) using CKM_%s", o->id_str, key->id_str,
+			get_key_type(key), get_mechanism_name(mech->mech));
 	/* RSA mechanisms */
 	switch (mech->mech) {
 	case CKM_RSA_X_509:

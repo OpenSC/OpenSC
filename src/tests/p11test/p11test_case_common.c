@@ -1244,6 +1244,26 @@ const char *get_mgf_name(unsigned long mgf_id)
 	}
 }
 
+const char *
+get_key_type(test_cert_t * key)
+{
+	switch (key->key_type) {
+	case CKK_RSA:
+		return "RSA";
+	case CKK_EC:
+		return "EC";
+	case CKK_EC_EDWARDS:
+		return "EC_EDWARDS";
+	case CKK_EC_MONTGOMERY:
+		return "EC_MONTGOMERY";
+	case CKK_AES:
+		return "AES";
+	default:
+		sprintf(name_buffer, "0x%.8lX", key->key_type);
+		return name_buffer;
+	}
+}
+
 const char *get_mechanism_flag_name(unsigned long mech_id)
 {
 	switch (mech_id) {
