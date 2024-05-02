@@ -34,14 +34,766 @@
 			card initialization, such as location of PIN files, key references etc.
 			Profiles currently reside in <filename class="directory">@pkgdatadir@</filename>
 		</para>
+		<para>
+			Basic PKCS#15 terminology:
+			<orderedlist>
+				<listitem><para>
+						MF (Master File) is root of the filesystem hierarchy
+				</para></listitem>
+				<listitem><para>
+						DF(PKCS#15) is directory containing the PKCS#15 files and directories
+				</para></listitem>
+				<listitem><para>
+						EF(ODF) (Object Directory File) is elementary file containing pointers 
+						to other elementary files (PrKDFs, PuKDFs, SKDFs, CDFs, DODFs, AODFs)
+				</para></listitem>
+				<listitem><para>
+						PrKDF (Private Key Directory File) is elementary file containing
+						pointers to the private keys and additional information about the private keys
+				</para></listitem>
+				<listitem><para>
+						PubKDF (Public Key Directory File) is elementary file containing pointers to the public
+						keys and additional information about the public keys
+				</para></listitem>
+				<listitem><para>
+						CDF (Certificate Directory File) is elementary file containing pointers to the
+						certificates and additional information about the certificates
+				</para></listitem>
+				<listitem><para>
+						EF(TokenInfo) is elementary file with generic information about the card
+				</para></listitem>
+			</orderedlist>
+		</para>
 	</refsect1>
 
-	<refsect1>
-		<title>Syntax</title>
+<refsect1>
+		<title>Syntax and semantics</title>
 		<para>
-			This section should contain information about the profile syntax. Will add
-			this soonishly.
+			The block syntax of profile files is in general similar to the configuration file.
+			The profile file, is composed of blocks, which, in general, have the following format:
+			<programlisting>
+<replaceable>key</replaceable><arg choice="opt" rep="repeat">, <replaceable>name</replaceable></arg> {
+	<replaceable>block_contents</replaceable>
+}
+			</programlisting>
+			<replaceable>block_contents</replaceable> is one or more
+			<replaceable>block_item</replaceable>s where a
+			<replaceable>block_item</replaceable> is one of
+			<itemizedlist>
+				<listitem><para>
+						# <replaceable>comment string</replaceable>
+				</para></listitem>
+				<listitem><para>
+						<replaceable>key</replaceable><arg choice="opt" rep="repeat">, <replaceable>name</replaceable></arg> = <replaceable>value</replaceable>;
+				</para></listitem>
+				<listitem><para>
+						<replaceable>block</replaceable>
+				</para></listitem>
+			</itemizedlist>
 		</para>
+		<para>
+			At the root level, the profile contains several configuration blocks.
+			The block keys are as follows:
+			<itemizedlist>
+				<listitem><para>
+						<literal>cardinfo</literal>: Configuration for general information about card.
+				</para></listitem>
+				<listitem><para>
+						<literal>pkcs15</literal>: Control for some of the general aspects of the PKCS#15 put onto the card.
+				</para></listitem>
+				<listitem><para>
+						<literal>option</literal>: Profile options to modify the behavior of profile.
+				</para></listitem>
+				<listitem><para>
+						<literal>PIN</literal>: Configuration and limits for particular PIN type.
+				</para></listitem>
+				<listitem><para>
+						<literal>filesystem</literal>: Specification for filesystem that is to be created on the card.
+				</para></listitem>
+				<listitem><para>
+						<literal>macros</literal>
+				</para></listitem>
+			</itemizedlist>
+		</para>
+		<refsect2 id="profile">
+			<title>Profile file configuration</title>
+
+			<refsect3>
+				<title>Configuration of Card Information</title>
+				<variablelist>
+					<varlistentry>
+						<term>
+							<option>cardinfo {
+								<replaceable>block_contents</replaceable>
+								}
+							</option>
+						</term>
+						<listitem><para>
+								Configuration for general information about card:
+							</para>
+							<variablelist>
+								<varlistentry>
+									<term>
+										<option>label = <replaceable>name</replaceable>;</option>
+									</term>
+									<listitem><para>
+											Card label (Default: <literal>OpenSC Card</literal>).
+									</para></listitem>
+								</varlistentry>
+								<varlistentry>
+									<term>
+										<option>manufacturer = <replaceable>name</replaceable>;</option>
+									</term>
+									<listitem><para>
+											Card manufacturer (Default: <literal>OpenSC Project</literal>).
+									</para></listitem>
+								</varlistentry>
+								<varlistentry>
+									<term>
+										<option>min-pin-length = <replaceable>int</replaceable>;</option>
+									</term>
+									<listitem><para>
+											Minimal length of PIN (Default: <literal>4</literal>).
+									</para></listitem>
+								</varlistentry>
+								<varlistentry>
+									<term>
+										<option>max-pin-length = <replaceable>int</replaceable>;</option>
+									</term>
+									<listitem><para>
+											Maximal length of PIN, should be overridden in the per-card profile
+											(Default: <literal>8</literal>).
+									</para></listitem>
+								</varlistentry>
+								<varlistentry>
+									<term>
+										<option>pin-encoding = <replaceable>value</replaceable>;</option>
+									</term>
+									<listitem><para>
+											Encoding type of PIN. Known parameters:
+											<itemizedlist>
+												<listitem><para>
+														<literal>BCD</literal>:
+														binary-coded decimal
+												</para></listitem>
+												<listitem><para>
+														<literal>ascii-numeric</literal>:
+														ASCII numerical values
+												</para></listitem>
+												<listitem><para>
+														<literal>utf8</literal>
+												</para></listitem>
+												<listitem><para>
+														<literal>half-nibble-bcd</literal>
+												</para></listitem>
+												<listitem><para>
+														<literal>iso9564-1</literal>
+												</para></listitem>
+											</itemizedlist>
+											(Default: <literal>ascii-numeric</literal>).
+									</para></listitem>
+								</varlistentry>
+								<varlistentry>
+									<term>
+										<option>pin-pad-char = <replaceable>value</replaceable>;</option>
+									</term>
+									<listitem><para>
+											Character used for padding the PIN when needed (Default: <literal>0x00</literal>).
+									</para></listitem>
+								</varlistentry>
+								<varlistentry>
+									<term>
+										<option>pin-domains = <replaceable>bool</replaceable>;</option>
+									</term>
+									<listitem><para>
+											Some cards need to keep all their PINs in separate directories.
+        									The particular keys in that domain will be put below the DF of the specified PIN.
+											(Default: <literal>no</literal>)
+									</para></listitem>
+								</varlistentry>
+							</variablelist>
+						</listitem>
+					</varlistentry>
+				</variablelist>
+			</refsect3>
+
+			<refsect3>
+				<title>Configuration of PKCS#15</title>
+				<variablelist>
+					<varlistentry>
+						<term>
+							<option>pkcs15 {
+								<replaceable>block_contents</replaceable>
+								}
+							</option>
+						</term>
+						<listitem><para>
+								Control for some of the general aspects of the PKCS#15 put onto the card.
+								Parameters in this block are:
+							</para>
+							<variablelist>
+								<varlistentry>
+									<term>
+										<option>direct-certificates = <replaceable>bool</replaceable>;</option>
+									</term>
+									<listitem><para>
+											The PKCS#15 system must contain at least one CDF, it contains the certificates
+											directly or references to certificates. This options defines whether the certificates
+											should be put directly in the CDF itself or not (Default: <literal>no</literal>).
+									</para></listitem>
+								</varlistentry>
+								<varlistentry>
+									<term>
+										<option>encode-df-length = <replaceable>bool</replaceable>;</option>
+									</term>
+									<listitem><para>
+											Save length of DF into ODF file. Useful if we store certificates directly in the CDF
+											for better better performance and robustness (Default: <literal>no</literal>).
+									</para></listitem>
+								</varlistentry>
+								<varlistentry>
+									<term>
+										<option>do-last-update = <replaceable>value</replaceable>;</option>
+									</term>
+									<listitem><para>
+											Store information about last update in the EF(TokenInfo) (Default: <literal>yes</literal>).
+									</para></listitem>
+								</varlistentry>
+								<varlistentry>
+									<term>
+										<option>pkcs15-id-style = <replaceable>value</replaceable>;</option>
+									</term>
+									<listitem><para>
+											Method to calculate ID of the crypto objects. Known parameters:
+											<itemizedlist>
+												<listitem><para>
+														<literal>native</literal>:
+														'E' + number_of_present_objects_of_the_same_type
+												</para></listitem>
+												<listitem><para>
+														<literal>mozilla</literal>:
+														SHA1(modulus) for RSA
+												</para></listitem>
+												<listitem><para>
+														<literal>rfc2459</literal>
+														SHA1(SequenceASN1 of public key components as ASN1 integers)
+												</para></listitem>
+												(Default: <literal>native</literal>)
+											</itemizedlist>
+									</para></listitem>
+								</varlistentry>
+								<varlistentry>
+									<term>
+										<option>minidriver-support-style = <replaceable>value</replaceable>;</option>
+									</term>
+									<listitem><para>
+											Style of pkcs15-init support of minidriver. Known parameters:
+											<itemizedlist>
+												<listitem><para>
+														<literal>none</literal>
+												</para></listitem>
+												<listitem><para>
+														<literal>gemalto</literal>
+												</para></listitem>
+											</itemizedlist>
+											(Default: <literal>none</literal>)
+									</para></listitem>
+								</varlistentry>
+							</variablelist>
+						</listitem>
+					</varlistentry>
+				</variablelist>
+			</refsect3>
+
+			<refsect3>
+				<title>Configuration of Profile Option</title>
+				<variablelist>
+					<varlistentry>
+						<term>
+							<option>option <replaceable>name</replaceable> {
+								<replaceable>block_contents</replaceable>
+								}
+							</option>
+							<para>
+								The <literal>name</literal> specifies profile options to modify the behavior of profile, it can be
+							</para>
+							<para>
+								<itemizedlist>
+									<listitem><para>
+											<literal>default</literal>:
+											option specifies default settings and this block with option is always processed,
+									</para></listitem>
+									<listitem><para>
+											<literal>onepin</literal>:
+											option for using 1 user PIN, creation/deletion/generation is controlled by the user PIN and thus by the user (as a result, only 1 user PIN is possible),
+									</para></listitem>
+									<listitem><para>
+											<literal>small</literal>
+											option suitable for cards with small memory.
+									</para></listitem>
+								</itemizedlist>
+							</para>
+							<para>
+								The options are used by <literal>pkcs15-init</literal> tool by <literal>--profile name, -p name</literal>:
+							</para>
+							<para>
+								<itemizedlist>
+									<listitem><para>
+											<literal>pkcs15+default</literal>:
+											the default (not needed to specify it)
+									</para></listitem>
+									<listitem><para>
+											<literal>pkcs15+onepin</literal>:
+											for the onepin profile option
+									</para></listitem>
+									<listitem><para>
+											<literal>pkcs15+small</literal>
+											for the small profile option
+									</para></listitem>
+								</itemizedlist>
+							</para>
+							<para>
+								The option block can contain following sub-blocks:
+							</para>
+						</term>
+						<listitem>
+							<variablelist>
+								<varlistentry>
+									<term>
+										<option>macros { block_contents }</option>
+									</term>
+									<listitem><para>
+											Macros are specified in form of <literal>name = value;</literal> pairs.
+									</para></listitem>
+								</varlistentry>
+								<varlistentry>
+									<term>
+										<option>pkcs15 { block_contents }</option>
+									</term>
+									<listitem><para>
+											Inner block for configuration of PKCS#15 structure.
+									</para></listitem>
+								</varlistentry>
+							</variablelist>
+						</listitem>
+					</varlistentry>
+				</variablelist>
+			</refsect3>
+
+			<refsect3>
+				<title>Configuration of PINs</title>
+				<variablelist>
+					<varlistentry>
+						<term>
+							<option>PIN <replaceable>name</replaceable> {
+								<replaceable>block_contents</replaceable>
+								}
+							</option>
+							<para>
+								The <literal>name</literal> specifies PIN type, it can be
+							</para>
+							<para>
+								<itemizedlist>
+									<listitem><para>
+											<literal>pin</literal> or <literal>user-pin</literal>
+											(no need to set file path or reference as it is done dynamically)
+									</para></listitem>
+									<listitem><para>
+											<literal>puk</literal> or <literal>user-puk</literal>
+									</para></listitem>
+									<listitem><para>
+											<literal>sopin</literal> or <literal>so-pin</literal>
+									</para></listitem>
+									<listitem><para>
+											<literal>sopuk</literal> or <literal>so-puk</literal>
+									</para></listitem>
+								</itemizedlist>
+							</para>
+						</term>
+						<listitem><para>
+								Known parameters are:
+							</para>
+							<variablelist>
+								<varlistentry>
+									<term>
+										<option>attempts = <replaceable>int</replaceable>;</option>
+									</term>
+									<listitem><para>
+											Defines number of attempts for the given PIN (Default: <literal>3</literal>).
+									</para></listitem>
+								</varlistentry>
+								<varlistentry>
+									<term>
+										<option>flags = <replaceable>value...</replaceable>;</option>
+									</term>
+									<listitem><para>
+											Flags define properties of the PIN. Possible flags:
+											<itemizedlist>
+												<listitem><para>
+														<literal>case-sensitive</literal>
+												</para></listitem>
+												<listitem><para>
+														<literal>local</literal>
+												</para></listitem>
+												<listitem><para>
+														<literal>change-disabled</literal>
+												</para></listitem>
+												<listitem><para>
+														<literal>unblock-disabled</literal>
+												</para></listitem>
+												<listitem><para>
+														<literal>initialized</literal>
+												</para></listitem>
+												<listitem><para>
+														<literal>needs-padding</literal>
+												</para></listitem>
+												<listitem><para>
+														<literal>unblockingPin</literal>
+												</para></listitem>
+												<listitem><para>
+														<literal>soPin</literal>
+												</para></listitem>
+												<listitem><para>
+														<literal>disable-allowed</literal>
+												</para></listitem>
+												<listitem><para>
+														<literal>integrity-protected</literal>
+												</para></listitem>
+												<listitem><para>
+														<literal>confidentiality-protected</literal>
+												</para></listitem>
+												<listitem><para>
+														<literal>exchangeRefData</literal>
+												</para></listitem>
+											</itemizedlist>
+											(Default: <literal>local,initialized,needs-padding</literal>).
+									</para></listitem>
+								</varlistentry>
+								<varlistentry>
+									<term>
+										<option>auth-id = <replaceable>value</replaceable>;</option>
+									</term>
+									<listitem><para>
+											Value used for auth ID (Default: <literal>0</literal>).
+									</para></listitem>
+								</varlistentry>
+								<varlistentry>
+									<term>
+										<option>min-length = <replaceable>int</replaceable>;</option>
+									</term>
+									<listitem><para>
+											Minimal length of PIN (Default: value <literal>min-pin-length</literal> set in <literal>cardinfo</literal> block).
+									</para></listitem>
+								</varlistentry>
+								<varlistentry>
+									<term>
+										<option>max-length = <replaceable>int</replaceable>;</option>
+									</term>
+									<listitem><para>
+											Maximal length of PIN (Default: value <literal>max-pin-length</literal> set in <literal>cardinfo</literal> block).
+									</para></listitem>
+								</varlistentry>
+								<varlistentry>
+									<term>
+										<option>reference = <replaceable>int</replaceable>;</option>
+									</term>
+									<listitem><para>
+											Value of reference of the PIN (Default: set in particular card driver).
+									</para></listitem>
+								</varlistentry>
+								<varlistentry>
+									<term>
+										<option>file = <replaceable>name</replaceable>;</option>
+									</term>
+									<listitem><para>
+											File with PIN, obsolete option (Default: None).
+									</para></listitem>
+								</varlistentry>
+								<varlistentry>
+									<term>
+										<option>offset = <replaceable>int</replaceable>;</option>
+									</term>
+									<listitem><para>
+											Offset of PIN in PIN file, obsolete option (Default: <literal>0</literal>).
+									</para></listitem>
+								</varlistentry>
+								<varlistentry>
+									<term>
+										<option>encoding = <replaceable>value</replaceable>;</option>
+									</term>
+									<listitem><para>
+											Encoding type of PIN. Possible values:
+											<itemizedlist>
+												<listitem><para>
+														<literal>BCD</literal>
+												</para></listitem>
+												<listitem><para>
+														<literal>ascii-numeric</literal>
+												</para></listitem>
+												<listitem><para>
+														<literal>utf8</literal>
+												</para></listitem>
+												<listitem><para>
+														<literal>half-nibble-bcd</literal>
+												</para></listitem>
+												<listitem><para>
+														<literal>iso9564-1</literal>
+												</para></listitem>
+											</itemizedlist>
+											(Default: value <literal>pin-encoding</literal> set in <literal>cardinfo</literal> block).
+									</para></listitem>
+								</varlistentry>
+								<varlistentry>
+									<term>
+										<option>stored-length = <replaceable>int</replaceable>;</option>
+									</term>
+									<listitem><para>
+											(Default: value <literal>max-pin-length</literal> set in <literal>cardinfo</literal> block).
+									</para></listitem>
+								</varlistentry>
+								<varlistentry>
+									<term>
+										<option>max-unlocks = <replaceable>int</replaceable>;</option>
+									</term>
+									<listitem><para>
+											(Default: <literal>0</literal>).
+									</para></listitem>
+								</varlistentry>
+							</variablelist>
+						</listitem>
+					</varlistentry>
+				</variablelist>
+				<para>
+					Values in this block can be set by macros. That allows to specify the particular values with the usage of option.
+				</para>
+			</refsect3>
+
+			<refsect3>
+				<title>Configuration of Filesystem</title>
+				<option>filesystem {
+					<replaceable>block_contents</replaceable>
+					}
+				</option>
+				<para>
+					This block contains the specification for filesystem that is to be created on the card.
+					The <literal>filesystem</literal> consists of several nested blocks representing <literal>DF</literal> and <literal>EF</literal> files.
+					When the DFs or EFs are specified in card specific profile, this is added to the file system info specified in the main profile.
+				</para>
+				<variablelist>
+					<varlistentry>
+						<term>
+							<option>EF <replaceable>name</replaceable> {
+								<replaceable>block_contents</replaceable>
+								}
+							</option>
+							<para>
+								This block defines elementary file in PKCS#15 file hierarchy.
+								The name can be one of:
+								<itemizedlist>
+									<listitem><para>
+											<literal>PKCS15-TokenInfo</literal>
+									</para></listitem>
+									<listitem><para>
+											<literal>PKCS15-ODF</literal>
+									</para></listitem>
+									<listitem><para>
+											<literal>PKCS15-UnusedSpace</literal>
+									</para></listitem>
+									<listitem><para>
+											<literal>PKCS15-PRKDF</literal>
+									</para></listitem>
+									<listitem><para>
+											<literal>PKCS15-PUKDF</literal>
+									</para></listitem>
+									<listitem><para>
+											<literal>PKCS15-PUKDF-TRUSTED</literal>
+									</para></listitem>
+									<listitem><para>
+											<literal>PKCS15-SKDF</literal>
+									</para></listitem>
+									<listitem><para>
+											<literal>PKCS15-CDF</literal>
+									</para></listitem>
+									<listitem><para>
+											<literal>PKCS15-CDF-TRUSTED</literal>
+									</para></listitem>
+									<listitem><para>
+											<literal>PKCS15-CDF-USEFUL</literal>
+									</para></listitem>
+									<listitem><para>
+											<literal>PKCS15-DODF</literal>
+									</para></listitem>
+									<listitem><para>
+											<literal>PKCS15-AODF</literal>
+									</para></listitem>
+								</itemizedlist>
+							</para>
+							<para>
+								The <literal>EF</literal> block can contain:
+							</para>
+						</term>
+						<listitem>
+							<variablelist>
+								<varlistentry>
+									<term>
+										<option>type = <replaceable>EF</replaceable>;</option>
+									</term>
+									<listitem><para>
+											Type must match type of file.
+									</para></listitem>
+								</varlistentry>
+								<varlistentry>
+									<term>
+										<option>acl = <replaceable>value</replaceable>;</option>
+									</term>
+									<listitem><para>
+											Value of ACL (Access Control List) (Default: <literal>NONE</literal>)
+									</para></listitem>
+								</varlistentry>
+								<varlistentry>
+									<term>
+										<option>file-id = <replaceable>EF</replaceable>;</option>
+									</term>
+									<listitem><para>
+											File ID, relative path.
+									</para></listitem>
+								</varlistentry>
+								<varlistentry>
+									<term>
+										<option>structure = <replaceable>value</replaceable>;</option>
+									</term>
+									<listitem><para>
+											File structure is one of:
+											<itemizedlist>
+												<listitem><para>
+														<literal>TRANSPARENT</literal>
+												</para></listitem>
+												<listitem><para>
+														<literal>LINEAR-FIXED</literal>
+												</para></listitem>
+												<listitem><para>
+														<literal>LINEAR-FIXED-TLV</literal>
+												</para></listitem>
+												<listitem><para>
+														<literal>LINEAR-VARIABLE</literal>
+												</para></listitem>
+												<listitem><para>
+														<literal>LINEAR-VARIABLE-TLV</literal>
+												</para></listitem>
+												<listitem><para>
+														<literal>CYCLIC</literal>
+												</para></listitem>
+												<listitem><para>
+														<literal>CYCLIC-TLV</literal>
+												</para></listitem>
+											</itemizedlist>
+									</para></listitem>
+								</varlistentry>
+							</variablelist>
+						</listitem>
+					</varlistentry>
+					<varlistentry>
+						<term>
+							<option>DF <replaceable>name</replaceable> {
+								<replaceable>block_contents</replaceable>
+								}
+							</option>
+							<para>
+								This block defines directory file in PKCS#15 file hierarchy.
+								The name can be one of:
+								<itemizedlist>
+									<listitem><para>
+											<literal>MF</literal>
+									</para></listitem>
+									<listitem><para>
+											<literal>PKCS15-AppDF</literal>
+									</para></listitem>
+									<listitem><para>
+											Special cases for those DFs handled separately by the PKCS15 logic
+									</para></listitem>
+								</itemizedlist>
+							</para>
+							<para>
+								The <literal>DF</literal> block can contain:
+							</para>
+						</term>
+						<listitem>
+							<variablelist>
+								<varlistentry>
+									<term>
+										<option>type = <replaceable>DF</replaceable>;</option>
+									</term>
+									<listitem><para>
+											Type must match type of file.
+									</para></listitem>
+								</varlistentry>
+								<varlistentry>
+									<term>
+										<option>path = <replaceable>value</replaceable>;</option>
+									</term>
+									<listitem><para>
+											Specification of path of the directory file.
+									</para></listitem>
+								</varlistentry>
+								<varlistentry>
+									<term>
+										<option>file-id = <replaceable>value</replaceable>;</option>
+									</term>
+									<listitem><para>
+											File ID, relative path.
+									</para></listitem>
+								</varlistentry>
+								<varlistentry>
+									<term>
+										<option>aid = <replaceable>value</replaceable>;</option>
+									</term>
+									<listitem><para>
+											Value of AID, in <literal>XX:XX:XX:...:XX:XX:XX</literal> notation.
+									</para></listitem>
+								</varlistentry>
+								<varlistentry>
+									<term>
+										<option>acl = <replaceable>value</replaceable>;</option>
+									</term>
+									<listitem><para>
+											Type must match type of file.
+									</para></listitem>
+								</varlistentry>
+								<varlistentry>
+									<term>
+										<option>size = <replaceable>int</replaceable>;</option>
+									</term>
+									<listitem><para>
+											Size of the file in bytes.
+									</para></listitem>
+								</varlistentry>
+								<varlistentry>
+									<term>
+										<option>EF <replaceable>name</replaceable> { block_contents }</option>
+									</term>
+									<listitem><para>
+											Block specifying nested elementary file.
+									</para></listitem>
+								</varlistentry>
+							</variablelist>
+						<para>
+							Typically, the root <literal>DF</literal> is <literal>MF</literal>.
+						</para>
+						<para>
+							It is mandatory that profile file contains <literal>DF</literal> entry for <literal>MF</literal> (Master File).
+							Otherwise the profile file is incomplete and cannot be used.
+						</para>
+						</listitem>
+					</varlistentry>
+				</variablelist>
+				<para>
+					The <literal>DF</literal> can contain other <literal>DF</literal> or <literal>MF</literal> blocks.
+					For examples how the filesystem structure may look like,
+					please refer to <literal>pkcs15.profile</literal> or any other present profile file.
+				</para>
+			</refsect3>
+
+		</refsect2>
 	</refsect1>
 
 	<refsect1>
