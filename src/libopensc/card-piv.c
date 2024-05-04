@@ -22,6 +22,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include "errors.h"
 #if HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -60,10 +61,11 @@
 #include "compression.h"
 #endif
 
-#include "internal.h"
 #include "asn1.h"
 #include "cardctl.h"
+#include "internal.h"
 #include "simpletlv.h"
+#include "ui/notify.h"
 
 enum {
 	PIV_OBJ_CCC = 0,
@@ -414,6 +416,11 @@ typedef struct piv_private_data {
 	unsigned int card_issues; /* card_issues flags for this card */
 	int object_test_verify; /* Can test this object to set verification state of card */
 	int yubico_version; /* 3 byte version number of NEO or Yubikey4  as integer */
+	struct {
+		u8 slot;
+		u8 policy;
+		u8 touch;
+	} yk_pin[26];
 	unsigned int ccc_flags;	    /* From  CCC indicate if CAC card */
 	unsigned int pin_policy; /* from discovery */
 	unsigned int init_flags;
@@ -4378,6 +4385,82 @@ static int piv_get_pin_preference(sc_card_t *card, int *pin_ref)
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
+static int
+piv_yk_metadata_get_policy(sc_context_t *ctx, u8 *buf, size_t buflen, u8 *pin, u8 *touch)
+{
+	size_t policylen;
+	const u8 *policy = sc_asn1_find_tag(ctx, buf, buflen, 0x02, &policylen);
+	if (policy && policylen == 2) {
+		*pin = policy[0];
+		*touch = policy[1];
+		return SC_SUCCESS;
+	} else {
+		sc_log(ctx, "Yubikey PIN policy not found");
+		return SC_ERROR_DATA_OBJECT_NOT_FOUND;
+	}
+}
+
+static int
+piv_yk_get_metadata(sc_card_t *card, u8 slot, u8 *pin_policy, u8 *touch_policy)
+{
+	sc_apdu_t apdu;
+	u8 resp[100];
+	size_t i;
+	piv_private_data_t *priv = PIV_DATA(card);
+
+	/* initialize with the default behaviour */
+	if (pin_policy)
+		*pin_policy = 0x00;
+	if (touch_policy)
+		*touch_policy = 0x00;
+
+	if (priv->yubico_version < 0x00050300) {
+		if (priv->yubico_version != 0)
+			sc_log(card->ctx, "Yubikey's PIN and touch policy not available");
+		return SC_ERROR_NOT_SUPPORTED;
+	}
+
+	for (i = 0; i < (sizeof(priv->yk_pin) / sizeof(*priv->yk_pin) - 1); i++) {
+		if (priv->yk_pin[i].slot == 0x00)
+			/* reached the last initialized entry */
+			break;
+
+		if (priv->yk_pin[i].slot == slot)
+			/* metadata already initialized */
+			break;
+	}
+
+	if (priv->yk_pin[i].slot == 0x00) {
+		/* initialize this entry */
+		sc_format_apdu_ex(&apdu, 0x00, 0xF7, 0x00, slot, NULL, 0, resp, sizeof resp);
+		if (SC_SUCCESS == sc_transmit_apdu(card, &apdu) && SC_SUCCESS == sc_check_sw(card, apdu.sw1, apdu.sw2) && SC_SUCCESS == piv_yk_metadata_get_policy(card->ctx, resp, apdu.resplen, &priv->yk_pin[i].policy, &priv->yk_pin[i].touch)) {
+			sc_log(card->ctx, "PIN policy for slot 0x%02X: 0x%02X (touch 0x%02X)",
+					slot, priv->yk_pin[i].policy, priv->yk_pin[i].touch);
+			priv->yk_pin[i].slot = slot;
+		} else {
+			sc_log(card->ctx, "Could not get Yubikey's PIN and touch policy");
+			return SC_ERROR_INVALID_DATA;
+		}
+	} else if (priv->yk_pin[i].slot != slot) {
+		sc_log(card->ctx, "No free slot found");
+		return SC_ERROR_INTERNAL;
+	}
+
+	if (pin_policy)
+		*pin_policy = priv->yk_pin[i].policy;
+	if (touch_policy)
+		*touch_policy = priv->yk_pin[i].touch;
+
+	return SC_SUCCESS;
+}
+
+static int
+piv_yk_pin_policy(sc_card_t *card, u8 *ptr)
+{
+	u8 slot = *ptr;
+	LOG_FUNC_RETURN(card->ctx, piv_yk_get_metadata(card, slot, ptr, NULL));
+}
+
 static int piv_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 {
 	piv_private_data_t * priv = PIV_DATA(card);
@@ -4414,6 +4497,9 @@ static int piv_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 			break;
 		case SC_CARDCTL_PIV_OBJECT_PRESENT:
 			return piv_is_object_present(card, ptr);
+			break;
+		case SC_CARDCTL_PIV_YK_PIN_POLICY:
+			return piv_yk_pin_policy(card, ptr);
 			break;
 	}
 
@@ -4527,6 +4613,22 @@ static int piv_restore_security_env(sc_card_t *card, int se_num)
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
+static void
+piv_yk_notify_touch_policy(sc_card_t *card, u8 key_ref)
+{
+	u8 touch_policy;
+	const char *title = "Touch your Yubikey to continue";
+
+	piv_yk_get_metadata(card, key_ref, NULL, &touch_policy);
+	switch (touch_policy) {
+	case 0x02:
+		sc_notify(title, "Touching the token is required for unlocking the key");
+		break;
+	case 0x03:
+		sc_notify(title, "Touching the token is required unlocking the key (needed again after 15 seconds)");
+		break;
+	}
+}
 
 static int piv_validate_general_authentication(sc_card_t *card,
 					const u8 * data, size_t datalen,
@@ -4589,6 +4691,7 @@ static int piv_validate_general_authentication(sc_card_t *card,
 	}
 	/* EC alg_id was already set */
 
+	piv_yk_notify_touch_policy(card, priv->key_ref);
 	r = piv_general_io(card, 0x87, real_alg_id, priv->key_ref,
 			sbuf, p - sbuf, rbuf, sizeof rbuf);
 	if (r < 0)
@@ -4627,6 +4730,7 @@ piv_compute_signature(sc_card_t *card, const u8 * data, size_t datalen,
 	u8 rbuf[128]; /* For EC conversions  384 will fit */
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
 	/* The PIV returns a DER SEQUENCE{INTEGER, INTEGER}
 	 * Which may have leading 00 to force a positive integer
 	 * But PKCS11 just wants 2* field_length in bytes
@@ -5493,7 +5597,7 @@ static int piv_match_card_continued(sc_card_t *card)
 			apdu.resplen = sizeof(yubico_version_buf);
 			apdu.le = apdu.resplen;
 			r2 = sc_transmit_apdu(card, &apdu); /* on error yubico_version == 0 */
-			if (r2 >= 3) {
+			if (r2 == SC_SUCCESS && apdu.resplen == 3) {
 				priv->yubico_version = (yubico_version_buf[0]<<16) | (yubico_version_buf[1] <<8) | yubico_version_buf[2];
 				sc_log(card->ctx, "Yubico card->type=%d, r=0x%08x version=0x%08x", card->type, r, priv->yubico_version);
 			}

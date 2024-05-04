@@ -1150,6 +1150,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 	for (i = 0; i < PIV_NUM_KEYS; i++) {
 		struct sc_pkcs15_prkey_info prkey_info;
 		struct sc_pkcs15_object     prkey_obj;
+		u8 pin_policy = prkeys[i].ref;
 
 		memset(&prkey_info, 0, sizeof(prkey_info));
 		memset(&prkey_obj,  0, sizeof(prkey_obj));
@@ -1166,7 +1167,29 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		prkey_obj.flags = prkeys[i].obj_flags;
 		prkey_obj.user_consent = prkeys[i].user_consent; /* only Sign key */
 
-		if (prkeys[i].auth_id)
+		r = sc_card_ctl(p15card->card, SC_CARDCTL_PIV_YK_PIN_POLICY, &pin_policy);
+		if (r == SC_SUCCESS) {
+			switch (pin_policy) {
+			case 0x01:
+				prkey_obj.flags &= ~SC_PKCS15_CO_FLAG_PRIVATE;
+				sc_log(card->ctx, "PIN is never checked");
+				break;
+			case 0x02:
+				prkey_obj.user_consent = 0;
+				sc_pkcs15_format_id(prkeys[i].auth_id, &prkey_obj.auth_id);
+				sc_log(card->ctx, "PIN is checked once for the session");
+				break;
+			case 0x03:
+				prkey_obj.user_consent = 1;
+				sc_pkcs15_format_id(prkeys[i].auth_id, &prkey_obj.auth_id);
+				sc_log(card->ctx, "PIN is verified just before operation");
+				break;
+			case 0x00:
+			default:
+				sc_pkcs15_format_id(prkeys[i].auth_id, &prkey_obj.auth_id);
+				break;
+			}
+		} else
 			sc_pkcs15_format_id(prkeys[i].auth_id, &prkey_obj.auth_id);
 
 		/*
