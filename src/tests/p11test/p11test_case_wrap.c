@@ -172,6 +172,9 @@ test_wrap(test_cert_t *o, token_info_t *info, test_cert_t *key, test_mech_t *mec
 		.ulAADLen = sizeof(aad),
 		.ulTagBits = 128,
 	};
+	/* It is very unclear from the PKCS#11 specs what
+	 * value we should provide here to DataLen for
+	 * wrapping and unwrapping operation. */
 	CK_CCM_PARAMS ccm_params = {
 			.ulDataLen = key->bits,
 			.pNonce = (void *)iv,
