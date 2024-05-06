@@ -148,6 +148,8 @@ AX_CODE_COVERAGE()
 
 AX_CHECK_COMPILE_FLAG([-Wunknown-warning-option], [have_unknown_warning_option="yes"], [have_unknown_warning_option="no"])
 AM_CONDITIONAL([HAVE_UNKNOWN_WARNING_OPTION], [test "${have_unknown_warning_option}" = "yes"])
+AX_CHECK_COMPILE_FLAG([-Wshorten-64-to-32], [have_shorten_warning_option="yes"], [have_shorten_warning_option="no"])
+AM_CONDITIONAL([HAVE_SHORTEN_WARNING_OPTION], [test "${have_shorten_warning_option}" = "yes"])
 
 AX_VALGRIND_CHECK()
 
@@ -1013,6 +1015,7 @@ fi
 AC_ARG_VAR([GENGETOPT],
            [absolute path to gengetopt used for command line parsing of npa-tool])
 AC_PATH_PROG(GENGETOPT, gengetopt, not found)
+AM_CONDITIONAL([ENABLE_GENGETOPT], [test "${GENGETOPT}" != "not found"])
 AC_ARG_VAR([CLANGTIDY],
            [absolute path to clang-tidy used for static code analysis])
 AC_PATH_PROG(CLANGTIDY, clang-tidy, not found)
@@ -1250,6 +1253,7 @@ PIV SM support:          ${enable_piv_sm}
 DNIe UI support:         ${enable_dnie_ui}
 Notification support:    ${enable_notify}
 Code coverage:           ${enable_code_coverage}
+gengetopt:               ${GENGETOPT}
 
 PC/SC default provider:  ${DEFAULT_PCSC_PROVIDER}
 PKCS11 default provider: $(eval eval eval echo "${DEFAULT_PKCS11_PROVIDER}")
