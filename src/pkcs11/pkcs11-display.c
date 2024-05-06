@@ -754,6 +754,7 @@ type_spec ck_attribute_specs[] = {
   { CKA_SUBJECT           , "CKA_SUBJECT          ", print_generic, NULL },
 #endif
   { CKA_ID                , "CKA_ID               ", print_generic, NULL },
+  { CKA_UNIQUE_ID         , "CKA_UNIQUE_ID        ", print_generic, NULL },
   { CKA_SENSITIVE         , "CKA_SENSITIVE        ", print_boolean, NULL },
   { CKA_ENCRYPT           , "CKA_ENCRYPT          ", print_boolean, NULL },
   { CKA_DECRYPT           , "CKA_DECRYPT          ", print_boolean, NULL },
