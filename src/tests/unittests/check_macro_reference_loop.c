@@ -143,6 +143,23 @@ static void torture_macro_loop_indirect_nonprintable(void **state)
 }
 #endif /* 0 */
 
+/*
+ *A reproducer for https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=68061
+ */
+static void torture_macro_loop_long_name(void **state)
+{
+	scconf_list value1 = { .data = "$second" };
+	scconf_list value2 = { .data = "$dtBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBCBBBBe" };
+	scconf_list value3 = { .data = "$second" };
+	sc_macro_t macro3 = { .name = "dtBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBCBBBBe", .value = &value3 };
+	sc_macro_t macro2 = { .name = "second", .value = &value2, .next = &macro3 };
+	sc_macro_t macro1 = { .name = "first", .value = &value1, .next = &macro2 };
+	sc_profile_t profile = { .macro_list = &macro1 };
+
+	int r = check_macro_reference_loop("first", &macro1, &profile, 10);
+	assert_int_equal(r, 1);
+}
+
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
@@ -154,6 +171,7 @@ int main(void)
 		cmocka_unit_test(torture_macro_loop_inner_string),
 		cmocka_unit_test(torture_macro_loop_indirect),
 		cmocka_unit_test(torture_macro_loop_indirect_multivalue),
+		cmocka_unit_test(torture_macro_loop_long_name),
 	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }
