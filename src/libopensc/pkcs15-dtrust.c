@@ -47,22 +47,29 @@ _dtrust_parse_df(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *df)
 	if (df->type != SC_PKCS15_PRKDF)
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 
-	switch (p15card->card->type) {
-	/* Cards with EC keys, don't encode the curve size in the
-	 * private key directory file. We need to set the field_length
-	 * element after parsing the private key directory file. */
-	case SC_CARD_TYPE_DTRUST_V4_1_MULTI:
-	case SC_CARD_TYPE_DTRUST_V4_1_M100:
-	case SC_CARD_TYPE_DTRUST_V4_4_MULTI:
-		rv = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PRKEY, pkobjs, sizeof(pkobjs) / sizeof(pkobjs[0]));
-		LOG_TEST_RET(ctx, rv, "Cannot get PRKEY objects list");
+	rv = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PRKEY, pkobjs, sizeof(pkobjs) / sizeof(pkobjs[0]));
+	LOG_TEST_RET(ctx, rv, "Cannot get PRKEY objects list");
 
-		count = rv;
-		for (i = 0; i < count; i++) {
-			prkey_info = (struct sc_pkcs15_prkey_info *)pkobjs[i]->data;
+	count = rv;
+	for (i = 0; i < count; i++) {
+		prkey_info = (struct sc_pkcs15_prkey_info *)pkobjs[i]->data;
+
+		switch (p15card->card->type) {
+		/* Cards with EC keys, don't encode the curve size in the
+		 * private key directory file. We need to set the field_length
+		 * element after parsing the private key directory file. */
+		case SC_CARD_TYPE_DTRUST_V4_1_MULTI:
+		case SC_CARD_TYPE_DTRUST_V4_1_M100:
+		case SC_CARD_TYPE_DTRUST_V4_4_MULTI:
 			prkey_info->field_length = 256;
+			break;
+
+		case SC_CARD_TYPE_DTRUST_V5_1_MULTI:
+		case SC_CARD_TYPE_DTRUST_V5_1_M100:
+		case SC_CARD_TYPE_DTRUST_V5_4_MULTI:
+			prkey_info->field_length = 384;
+			break;
 		}
-		break;
 	}
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
@@ -74,7 +81,7 @@ dtrust_pkcs15emu_detect_card(sc_pkcs15_card_t *p15card)
 	if (p15card->card->type < SC_CARD_TYPE_DTRUST_V4_1_STD)
 		return SC_ERROR_WRONG_CARD;
 
-	if (p15card->card->type > SC_CARD_TYPE_DTRUST_V4_4_MULTI)
+	if (p15card->card->type > SC_CARD_TYPE_DTRUST_V5_4_MULTI)
 		return SC_ERROR_WRONG_CARD;
 
 	return SC_SUCCESS;
