@@ -184,19 +184,13 @@ static int
 _dtrust_get_serialnr(sc_card_t *card)
 {
 	int r;
-	u8 buf[32];
 
-	r = sc_get_data(card, 0x0181, buf, 32);
-	LOG_TEST_RET(card->ctx, r, "querying serial number failed");
-
-	if (r != 8) {
-		sc_log(card->ctx, "unexpected response to GET DATA serial number");
-		return SC_ERROR_INTERNAL;
+	card->serialnr.len = SC_MAX_SERIALNR;
+	r = sc_parse_ef_gdo(card, card->serialnr.value, &card->serialnr.len, NULL, 0);
+	if (r < 0) {
+		card->serialnr.len = 0;
+		return r;
 	}
-
-	/* cache serial number */
-	memcpy(card->serialnr.value, buf, 8);
-	card->serialnr.len = 8;
 
 	return SC_SUCCESS;
 }
