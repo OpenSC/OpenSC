@@ -1888,8 +1888,10 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card, struct sc_profile
 		key.u.rsa.modulus.data = NULL;
 		key.u.rsa.exponent.data = NULL;
 		// copy RSA params
-		if (!(key.u.rsa.modulus.data = malloc(keyargs->key.u.rsa.modulus.len)))
-			LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Failed to copy RSA public key parameters");
+		if (!(key.u.rsa.modulus.data = malloc(keyargs->key.u.rsa.modulus.len))) {
+			r = SC_ERROR_OUT_OF_MEMORY;
+			LOG_TEST_GOTO_ERR(ctx, r, "Failed to copy RSA public key parameters");
+		}
 		memcpy(key.u.rsa.modulus.data, keyargs->key.u.rsa.modulus.data, keyargs->key.u.rsa.modulus.len);
 		if (!(key.u.rsa.exponent.data = malloc(keyargs->key.u.rsa.exponent.len))) {
 			r = SC_ERROR_OUT_OF_MEMORY;
@@ -1902,8 +1904,10 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card, struct sc_profile
 	case SC_ALGORITHM_GOSTR3410:
 		key.u.gostr3410.xy.data = NULL;
 		// copy GOSTR params
-		if (!(key.u.gostr3410.xy.data = malloc(keyargs->key.u.gostr3410.xy.len)))
-			LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Failed to copy GOSTR public key parameters");
+		if (!(key.u.gostr3410.xy.data = malloc(keyargs->key.u.gostr3410.xy.len))) {
+			r = SC_ERROR_OUT_OF_MEMORY;
+			LOG_TEST_GOTO_ERR(ctx, r, "Failed to copy GOSTR public key parameters");
+		}
 		memcpy(key.u.gostr3410.xy.data, keyargs->key.u.gostr3410.xy.data, keyargs->key.u.gostr3410.xy.len);
 		keybits = SC_PKCS15_GOSTR3410_KEYSIZE;
 		type = SC_PKCS15_TYPE_PUBKEY_GOSTR3410;
@@ -1912,14 +1916,15 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card, struct sc_profile
 		type = SC_PKCS15_TYPE_PUBKEY_EC;
 
 		r = sc_copy_ec_params(&key.u.ec.params, &keyargs->key.u.ec.params);
-		LOG_TEST_RET(ctx, r, "Failed to copy EC public key parameters");
+		LOG_TEST_GOTO_ERR(ctx, r, "Failed to copy EC public key parameters");
 		r = sc_pkcs15_fix_ec_parameters(ctx, &key.u.ec.params);
 		LOG_TEST_GOTO_ERR(ctx, r, "Failed to fix EC public key parameters");
 
 		keybits = key.u.ec.params.field_length;
 		break;
 	default:
-		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Unsupported key algorithm.");
+		r = SC_ERROR_NOT_SUPPORTED;
+		LOG_TEST_GOTO_ERR(ctx, r, "Unsupported key algorithm.");
 	}
 
 	if ((usage = keyargs->usage) == 0) {
@@ -1933,8 +1938,10 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card, struct sc_profile
 
 	/* Set up the pkcs15 object. */
 	object = sc_pkcs15init_new_object(type, label, &keyargs->auth_id, NULL);
-	if (object == NULL)
-		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate new public key object");
+	if (object == NULL) {
+		r = SC_ERROR_OUT_OF_MEMORY;
+		LOG_TEST_GOTO_ERR(ctx, r, "Cannot allocate new public key object");
+	}
 
 	key_info = (struct sc_pkcs15_pubkey_info *) object->data;
 	key_info->usage = usage;
