@@ -527,12 +527,14 @@ wrap_tests(void **state)
 	test_certs_t objects;
 	test_cert_t *aes_key = NULL, *aes2_key = NULL;
 	test_cert_t *rsa_key = NULL, *rsa2_key = NULL;
+	test_cert_t *ec_key = NULL;
 
 	test_certs_init(&objects);
 
 	P11TEST_START(info);
 	search_for_all_objects(&objects, info);
 
+	/* Find keys to wrap */
 	for (i = 0; i < objects.count; i++) {
 		test_cert_t *o = &objects.data[i];
 		if (aes_key == NULL && o->key_type == CKK_AES && o->extractable) {
@@ -543,6 +545,8 @@ wrap_tests(void **state)
 			rsa_key = o;
 		} else if (rsa2_key == NULL && o->key_type == CKK_RSA && o->extractable) {
 			rsa2_key = o;
+		} else if (ec_key == NULL && o->key_type == CKK_EC && o->extractable) {
+			ec_key = o;
 		}
 	}
 
@@ -574,6 +578,9 @@ wrap_tests(void **state)
 				if (aes_key) {
 					errors += test_wrap(o, info, aes_key, &(o->mechs[j]));
 				}
+				if (ec_key) {
+					errors += test_wrap(o, info, ec_key, &(o->mechs[j]));
+				}
 				errors += test_unwrap_aes(o, info, &(o->mechs[j]));
 				break;
 			case CKK_AES:
@@ -586,10 +593,14 @@ wrap_tests(void **state)
 				if (rsa_key) {
 					errors += test_wrap(o, info, rsa_key, &(o->mechs[j]));
 				}
+				/* TODO differentiate the RSA and EC key */
+				if (ec_key) {
+					errors += test_wrap(o, info, ec_key, &(o->mechs[j]));
+				}
 				// errors += test_unwrap_aes(o, info, &(o->mechs[j]));
 				break;
 			default:
-				/* Other keys do not support derivation */
+				/* Other keys do not support wrapping */
 				break;
 			}
 		}
