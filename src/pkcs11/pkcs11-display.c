@@ -245,6 +245,7 @@ print_print(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR
 	fprintf(f, "\n");
 }
 
+// clang-format off
 static enum_specs ck_cls_s[] = {
   { CKO_DATA             , "CKO_DATA             " },
   { CKO_CERTIFICATE      , "CKO_CERTIFICATE      " },
@@ -866,6 +867,7 @@ type_spec ck_attribute_specs[] = {
   { CKA_CERT_SHA1_HASH, "CKA_CERT_SHA1_HASH(Netsc)                     ", print_generic, NULL },
   { CKA_CERT_MD5_HASH, "CKA_CERT_MD5_HASH(Netsc)                       ", print_generic, NULL },
 };
+// clang-format on
 
 CK_ULONG ck_attribute_num = sizeof(ck_attribute_specs)/sizeof(type_spec);
 
