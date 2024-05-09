@@ -186,6 +186,10 @@ function card_setup() {
 		generate_cert "RSA:1024" "01" "RSA_auth" 1
 		# Generate 2048b RSA Key pair
 		generate_cert "RSA:2048" "02" "RSA2048" 1
+		# Generate 3082b RSA Key pair
+		generate_cert "RSA:3072" "09" "RSA3072" 1
+		# Generate 4096 RSA Key pair
+		generate_cert "RSA:4096" "10" "RSA4096" 1
 		if [[ $ECC_KEYS -eq 1 ]]; then
 			# Generate 256b ECC Key pair
 			generate_cert "EC:secp256r1" "03" "ECC_auth" 1
