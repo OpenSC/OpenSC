@@ -16,7 +16,7 @@ BuildRequires:  /usr/bin/xsltproc
 BuildRequires:  docbook-style-xsl
 BuildRequires:  autoconf automake libtool gcc
 BuildRequires:  bash-completion
-BuildRequires:  zlib-devel
+BuildRequires:  zlib-ng-devel
 # For tests
 BuildRequires:  libcmocka-devel
 BuildRequires:  vim-common
