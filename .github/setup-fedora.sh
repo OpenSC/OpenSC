@@ -13,9 +13,9 @@ fi
 
 # 64bit or 32bit dependencies
 if [ "$1" == "ix86" ]; then
-	DEPS="$DEPS pcsc-lite-devel*.i686 readline-devel*.i686 openssl-devel*.i686 zlib-devel*.i686 libcmocka-devel*.i686 glibc-devel*i686"
+	DEPS="$DEPS pcsc-lite-devel*.i686 readline-devel*.i686 openssl-devel*.i686 zlib-ng-devel*.i686 libcmocka-devel*.i686 glibc-devel*i686"
 else
-	DEPS="$DEPS pcsc-lite-devel readline-devel openssl-devel zlib-devel libcmocka-devel"
+	DEPS="$DEPS pcsc-lite-devel readline-devel openssl-devel zlib-ng-devel libcmocka-devel"
 fi
 
 sudo dnf install -y $DEPS
