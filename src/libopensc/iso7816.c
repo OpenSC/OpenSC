@@ -119,9 +119,9 @@ iso7816_check_sw(struct sc_card *card, unsigned int sw1, unsigned int sw2)
 	}
 	if (sw1 == 0x90 && sw2 == 0x00)
 		return SC_SUCCESS;
-	if (sw1 == 0x63U && (sw2 & ~0x0fU) == 0xc0U ) {
-			sc_log(card->ctx, "PIN not verified (remaining tries: %d)", (sw2 & 0x0f));
-			return SC_ERROR_PIN_CODE_INCORRECT;
+	if (sw1 == 0x63U && (sw2 & ~0x0fU) == 0xc0U) {
+		sc_log(card->ctx, "PIN not verified (remaining tries: %d)", (sw2 & 0x0f));
+		return SC_ERROR_PIN_CODE_INCORRECT;
 	}
 	for (i = 0; i < err_count; i++)   {
 		if (iso7816_errors[i].SWs == ((sw1 << 8) | sw2)) {

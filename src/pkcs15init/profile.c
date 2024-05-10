@@ -2001,14 +2001,16 @@ static struct block	root_ops = {
 };
 
 static int
-is_macro_character(char c) {
+is_macro_character(char c)
+{
 	if (isalnum(c) || c == '-' || c == '_')
 		return 1;
 	return 0;
 }
 
 static int
-get_inner_word(char *str, char word[WORD_SIZE]) {
+get_inner_word(char *str, char word[WORD_SIZE])
+{
 	char *inner = NULL;
 	size_t len = 0;
 
