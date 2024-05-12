@@ -61,6 +61,10 @@ static const struct sc_atr_table idprime_atrs[] = {
 	  "ff:ff:00:ff:ff:ff:ff:00:ff:ff:ff:ff:ff:ff:00:00:00:00:ff:ff:ff:ff:ff:ff:00",
 	  "based Gemalto IDPrime 930",
 	  SC_CARD_TYPE_IDPRIME_930, 0, NULL },
+	{ "3b:7f:96:00:00:80:31:80:65:b0:85:03:00:ef:12:0f:fe:82:90:00",
+	  "ff:ff:00:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:00:00:ff:ff:ff",
+	  "Gemalto IDPrime 840",
+	  SC_CARD_TYPE_IDPRIME_840, 0, NULL },
 	{ "3b:7f:96:00:00:80:31:80:65:b0:85:59:56:fb:12:0f:fe:82:90:00",
 	  "ff:ff:00:ff:ff:ff:ff:ff:ff:ff:ff:00:00:00:ff:00:00:ff:ff:ff",
 	  "Gemalto IDPrime 940",
@@ -68,11 +72,7 @@ static const struct sc_atr_table idprime_atrs[] = {
 	{ "3b:7f:96:00:00:80:31:80:65:b0:85:05:00:39:12:0f:fe:82:90:00",
 	  "ff:ff:00:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:00:00:ff:ff:ff",
 	  "Gemalto IDPrime 940C",
-	  SC_CARD_TYPE_IDPRIME_940, 0, NULL },
-	{ "3b:7f:96:00:00:80:31:80:65:b0:85:03:00:ef:12:0f:fe:82:90:00",
-	  "ff:ff:00:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:00:00:ff:ff:ff",
-	  "Gemalto IDPrime 840",
-	  SC_CARD_TYPE_IDPRIME_840, 0, NULL },
+	  SC_CARD_TYPE_IDPRIME_940, 0, NULL },	
 	{ "3b:7f:96:00:00:80:31:80:65:b0:84:41:3d:f6:12:0f:fe:82:90:00",
 	  "ff:ff:00:ff:ff:ff:ff:ff:ff:ff:00:00:00:00:ff:00:00:ff:ff:ff",
 	  "Gemalto IDPrime MD 8840, 3840, 3810, 840, 830 and MD 940 Cards",
@@ -652,7 +652,10 @@ static int idprime_init(sc_card_t *card)
 	if (card->type == SC_CARD_TYPE_IDPRIME_930
 	    || card->type == SC_CARD_TYPE_IDPRIME_940) {
 		_sc_card_add_rsa_alg(card, 4096, flags, 0);
-
+	}
+	if (card->type == SC_CARD_TYPE_IDPRIME_930
+	    || card->type == SC_CARD_TYPE_IDPRIME_940
+	    || card->type == SC_CARD_TYPE_IDPRIME_840) {
 		/* Set up algorithm info for EC */
 		flags = SC_ALGORITHM_ECDSA_RAW | SC_ALGORITHM_ECDSA_HASH_NONE;
 		ext_flags = SC_ALGORITHM_EXT_EC_F_P
