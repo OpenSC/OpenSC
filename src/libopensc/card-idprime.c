@@ -653,9 +653,9 @@ static int idprime_init(sc_card_t *card)
 	    || card->type == SC_CARD_TYPE_IDPRIME_940) {
 		_sc_card_add_rsa_alg(card, 4096, flags, 0);
 	}
-	if (card->type == SC_CARD_TYPE_IDPRIME_930
-	    || card->type == SC_CARD_TYPE_IDPRIME_940
-	    || card->type == SC_CARD_TYPE_IDPRIME_840) {
+	if (card->type == SC_CARD_TYPE_IDPRIME_930 ||
+		card->type == SC_CARD_TYPE_IDPRIME_940 ||
+		card->type == SC_CARD_TYPE_IDPRIME_840) {
 		/* Set up algorithm info for EC */
 		flags = SC_ALGORITHM_ECDSA_RAW | SC_ALGORITHM_ECDSA_HASH_NONE;
 		ext_flags = SC_ALGORITHM_EXT_EC_F_P
