@@ -39,7 +39,7 @@ static int
 parse_x509_cert(sc_context_t *ctx, struct sc_pkcs15_der *der, struct sc_pkcs15_cert *cert)
 {
 	int r;
-	struct sc_algorithm_id sig_alg;
+	struct sc_algorithm_id sig_alg = {0};
 	struct sc_pkcs15_pubkey *pubkey = NULL;
 	unsigned char *serial = NULL, *issuer = NULL, *subject = NULL, *buf =  der->value;
 	size_t serial_len = 0, issuer_len = 0, subject_len = 0, data_len = 0, buflen = der->len;
