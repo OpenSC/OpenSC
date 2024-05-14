@@ -2549,6 +2549,7 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 			}
 		}
 
+		free(data);
 		data = malloc(len);
 		if (data == NULL) {
 			r = SC_ERROR_OUT_OF_MEMORY;
