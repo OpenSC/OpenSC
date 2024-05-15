@@ -102,24 +102,6 @@ struct mcrd_priv_data {
 
 #define DRVDATA(card) ((struct mcrd_priv_data *) ((card)->drv_data))
 
-// Control Reference Template Tag for Key Agreement (ISO 7816-4:2013 Table 54)
-static const struct sc_asn1_entry c_asn1_control[] = {
-	{ "control", SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_CTX | 0xA6, 0, NULL, NULL },
-	{ NULL, 0, 0, 0, NULL, NULL }
-};
-
-// Ephemeral public key Template Tag (ISO 7816-8:2016 Table 3)
-static const struct sc_asn1_entry c_asn1_ephermal[] = {
-	{ "ephemeral", SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_APP | 0x7F49, 0, NULL, NULL },
-	{ NULL, 0, 0, 0, NULL, NULL }
-};
-
-// External Public Key
-static const struct sc_asn1_entry c_asn1_public[] = {
-	{ "publicKey", SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 0x86, 0, NULL, NULL },
-	{ NULL, 0, 0, 0, NULL, NULL }
-};
-
 static int load_special_files(sc_card_t * card);
 static int select_part(sc_card_t * card, u8 kind, unsigned short int fid, sc_file_t ** file);
 
@@ -950,7 +932,6 @@ static int mcrd_set_security_env(sc_card_t * card,
 
 	switch (env->operation) {
 	case SC_SEC_OPERATION_DECIPHER:
-	case SC_SEC_OPERATION_DERIVE:
 		sc_log(card->ctx, "Using keyref %d to decipher\n", env->key_ref[0]);
 		mcrd_delete_ref_to_authkey(card);
 		mcrd_delete_ref_to_signkey(card);
@@ -966,7 +947,6 @@ static int mcrd_set_security_env(sc_card_t * card,
 	sbuf[3] = env->key_ref[0];
 	switch (env->operation) {
 	case SC_SEC_OPERATION_DECIPHER:
-	case SC_SEC_OPERATION_DERIVE:
 		sc_format_apdu_ex(&apdu, 0x00, 0x22, 0x41, 0xB8, sbuf, 5, NULL, 0);
 		break;
 	case SC_SEC_OPERATION_SIGN:
@@ -1043,55 +1023,6 @@ static int mcrd_compute_signature(sc_card_t * card,
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, (int)apdu.resplen);
 }
 
-static int mcrd_decipher(struct sc_card *card,
-						 const u8 * crgram, size_t crgram_len,
-						 u8 * out, size_t outlen)
-{
-	sc_security_env_t *env = NULL;
-	int r = 0;
-	size_t sbuf_len = 0;
-	sc_apdu_t apdu;
-	u8 *sbuf = NULL;
-	struct sc_asn1_entry asn1_control[2], asn1_ephermal[2], asn1_public[2];
-
-	if (card == NULL || crgram == NULL || out == NULL)
-		return SC_ERROR_INVALID_ARGUMENTS;
-	env = &DRVDATA(card)->sec_env;
-
-	LOG_FUNC_CALLED(card->ctx);
-	if (env->operation != SC_SEC_OPERATION_DERIVE)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, iso_ops->decipher(card, crgram, crgram_len, out, outlen));
-	if (crgram_len > 255)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
-
-	sc_log(card->ctx,
-		 "Will derive (%d) for %"SC_FORMAT_LEN_SIZE_T"u (0x%02"SC_FORMAT_LEN_SIZE_T"x) bytes using key %d algorithm %lu flags %lu\n",
-		 env->operation, crgram_len, crgram_len, env->key_ref[0],
-		 env->algorithm, env->algorithm_flags);
-
-	// Encode TLV
-	sc_copy_asn1_entry(c_asn1_control, asn1_control);
-	sc_copy_asn1_entry(c_asn1_ephermal, asn1_ephermal);
-	sc_copy_asn1_entry(c_asn1_public, asn1_public);
-	sc_format_asn1_entry(asn1_public + 0, (void*)crgram, &crgram_len, 1);
-	sc_format_asn1_entry(asn1_ephermal + 0, &asn1_public, NULL, 1);
-	sc_format_asn1_entry(asn1_control + 0, &asn1_ephermal, NULL, 1);
-	r = sc_asn1_encode(card->ctx, asn1_control, &sbuf, &sbuf_len);
-	LOG_TEST_RET(card->ctx, r, "Error encoding TLV.");
-
-	// Create APDU
-	sc_format_apdu_ex(&apdu, 0x00, 0x2A, 0x80, 0x86, sbuf, sbuf_len, out, MIN(0x80U, outlen));
-	r = sc_transmit_apdu(card, &apdu);
-	sc_mem_clear(sbuf, sbuf_len);
-	free(sbuf);
-	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
-
-	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	LOG_TEST_RET(card->ctx, r, "Card returned error");
-
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, (int)apdu.resplen);
-}
-
 /* added by -mp, to give pin information in the card driver (pkcs15emu->driver needed) */
 static int mcrd_pin_cmd(sc_card_t * card, struct sc_pin_cmd_data *data,
 			int *tries_left)
@@ -1127,7 +1058,6 @@ static struct sc_card_driver *sc_get_driver(void)
 	mcrd_ops.select_file = mcrd_select_file;
 	mcrd_ops.set_security_env = mcrd_set_security_env;
 	mcrd_ops.compute_signature = mcrd_compute_signature;
-	mcrd_ops.decipher = mcrd_decipher;
 	mcrd_ops.pin_cmd = mcrd_pin_cmd;
 	mcrd_ops.logout = mcrd_logout;
 
