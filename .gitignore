@@ -73,6 +73,7 @@ doc/tools/pkcs15-init
 doc/tools/opensc-asn1
 doc/tools/opensc-notify
 doc/files/opensc.conf.5.xml
+doc/files/pkcs15-profile.5.xml
 
 etc/opensc.conf.example
 src/common/compat_getopt_main
