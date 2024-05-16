@@ -1657,7 +1657,7 @@ void sc_remote_data_init(struct sc_remote_data *rdata);
  * Clear ec_params
  * @ecp
  */
-void sc_clear_ec_params( struct sc_ec_parameters *);
+void sc_clear_ec_params(struct sc_ec_parameters *);
 
 /**
  * Copy and allocate if needed EC parameters data
