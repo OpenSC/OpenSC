@@ -4584,12 +4584,24 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 			n_privkey_attr++;
 		}
 #if !defined(OPENSSL_NO_EC)
-#ifdef EVP_PKEY_ED448
-		else if ((pk_type == EVP_PKEY_EC) || (pk_type == EVP_PKEY_ED25519) || (pk_type == EVP_PKEY_ED448)) {
-#else
-		else if ((pk_type == EVP_PKEY_EC) || (pk_type == EVP_PKEY_ED25519)) {
+/*  aappeas the precompiler */
+#ifndef EVP_PKEY_ED448
+#define EVP_PKEY_ED448 EVP_PKEY_ED25519
 #endif
-			type = (pk_type == EVP_PKEY_EC) ? CKK_EC : CKK_EC_EDWARDS;
+#ifndef EVP_PKEY_X448
+#define EVP_PKEY_X448 EVP_PKEY_X25519
+#endif
+
+		else if ((pk_type == EVP_PKEY_EC) ||
+				(pk_type == EVP_PKEY_ED25519) || (pk_type == EVP_PKEY_ED448) ||
+				(pk_type == EVP_PKEY_X25519) || (pk_type == EVP_PKEY_X448)) {
+
+			if ((pk_type == EVP_PKEY_ED25519) || (pk_type == EVP_PKEY_ED448))
+				type = CKK_EC_EDWARDS;
+			else if ((pk_type == EVP_PKEY_X25519) || (pk_type == EVP_PKEY_X448))
+				type = CKK_EC_MONTGOMERY;
+			else
+				type = CKK_EC;
 
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_KEY_TYPE, &type, sizeof(type));
 			n_privkey_attr++;
@@ -4597,8 +4609,7 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 			n_privkey_attr++;
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_VALUE, gost.private.value, gost.private.len);
 			n_privkey_attr++;
-		}
-		else if (pk_type == NID_id_GostR3410_2001)   {
+		} else if (pk_type == NID_id_GostR3410_2001) {
 			type = CKK_GOSTR3410;
 
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_KEY_TYPE, &type, sizeof(type));
@@ -4625,12 +4636,11 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 #if !defined(OPENSSL_NO_EC)
 		else if (pk_type == EVP_PKEY_EC)
 			type = CKK_EC;
-#ifdef EVP_PKEY_ED448
 		else if ((pk_type == EVP_PKEY_ED25519) || (pk_type == EVP_PKEY_ED448))
-#else
-		else if (pk_type == EVP_PKEY_ED25519)
-#endif
 			type = CKK_EC_EDWARDS;
+		else if ((pk_type == EVP_PKEY_ED25519) || (pk_type == EVP_PKEY_ED448))
+			type = CKK_EC_MONTGOMERY;
+
 		else if (pk_type == NID_id_GostR3410_2001)
 			type = CKK_GOSTR3410;
 #endif
@@ -4694,12 +4704,16 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 			n_pubkey_attr++;
 		}
 #if !defined(OPENSSL_NO_EC)
-#ifdef EVP_PKEY_ED448
-		else if ((pk_type == EVP_PKEY_EC) || (pk_type == EVP_PKEY_ED25519) || (pk_type == EVP_PKEY_ED448)) {
-#else
-		else if ((pk_type == EVP_PKEY_EC) || (pk_type == EVP_PKEY_ED25519)) {
-#endif
-			type = (pk_type == EVP_PKEY_EC) ? CKK_EC : CKK_EC_EDWARDS;
+		else if ((pk_type == EVP_PKEY_EC) ||
+				(pk_type == EVP_PKEY_ED25519) || (pk_type == EVP_PKEY_ED448) ||
+				(pk_type == EVP_PKEY_X25519) || (pk_type == EVP_PKEY_X448)) {
+
+			if ((pk_type == EVP_PKEY_ED25519) || (pk_type == EVP_PKEY_ED448))
+				type = CKK_EC_EDWARDS;
+			else if ((pk_type == EVP_PKEY_X25519) || (pk_type == EVP_PKEY_X448))
+				type = CKK_EC_MONTGOMERY;
+			else
+				type = CKK_EC;
 
 			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_KEY_TYPE, &type, sizeof(type));
 			n_pubkey_attr++;
@@ -4707,8 +4721,7 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 			n_pubkey_attr++;
 			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_EC_POINT, gost.public.value, gost.public.len);
 			n_pubkey_attr++;
-		}
-		else if (pk_type == NID_id_GostR3410_2001) {
+		} else if (pk_type == NID_id_GostR3410_2001) {
 			type = CKK_GOSTR3410;
 
 			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_KEY_TYPE, &type, sizeof(type));
@@ -5230,7 +5243,7 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 			{CKA_EXTRACTABLE, &_true,	sizeof(_true)       },
 	   };
 	// clang-format on
-	int n_attrs = 7;
+	int n_attrs = 5;
 	CK_ECDH1_DERIVE_PARAMS ecdh_parms;
 	CK_RV rv;
 	BIO *bio_in = NULL;
@@ -5719,7 +5732,9 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 				/*
 				 * EDDSA and XEDDSA in PKCS11 and only one coordinate
 				 */
-				ksize = (body_len) * 8;
+				 /* TODO rebase on changes in master in this area */
+				ksize = (body_len) * 8 - 1;
+				size = body_len;
 			}
 
 			if (ksize)
@@ -6497,6 +6512,10 @@ static int read_object(CK_SESSION_HANDLE session)
 			/* TODO DEE should be in BIT STRING accept both */
 			a = value;
 			os = d2i_ASN1_OCTET_STRING(NULL, &a, (long)len);
+			if (!os) {
+				os = d2i_ASN1_BIT_STRING(NULL, &a, (long)&len);
+				len = (len + 7) / 8;
+			}
 			if (!os) {
 				util_fatal("cannot decode EC_POINT");
 			}
