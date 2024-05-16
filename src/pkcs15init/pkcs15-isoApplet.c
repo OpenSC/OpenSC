@@ -571,17 +571,7 @@ out:
 			free(pubkey->alg_id);
 			pubkey->alg_id = NULL;
 		}
-		if(pubkey->u.ec.params.der.value)
-		{
-			free(pubkey->u.ec.params.der.value);
-			pubkey->u.ec.params.der.value = NULL;
-			pubkey->u.ec.params.der.len = 0;
-		}
-		if(pubkey->u.ec.params.named_curve)
-		{
-			free(pubkey->u.ec.params.named_curve);
-			pubkey->u.ec.params.named_curve = NULL;
-		}
+		sc_clear_ec_params(&pubkey->u.ec.params);
 		if(pubkey->u.ec.ecpointQ.value)
 		{
 			free(pubkey->u.ec.ecpointQ.value);
