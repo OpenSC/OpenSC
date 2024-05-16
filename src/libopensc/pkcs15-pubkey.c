@@ -545,6 +545,14 @@ static struct sc_asn1_entry c_asn1_ec_pointQ[C_ASN1_EC_POINTQ_SIZE] = {
 		{ "ecpointQ-OS", SC_ASN1_OCTET_STRING,  SC_ASN1_TAG_OCTET_STRING, SC_ASN1_OPTIONAL | SC_ASN1_ALLOC, NULL, NULL },
 		{ NULL, 0, 0, 0, NULL, NULL }
 };
+
+/*  See RFC8410 */
+#define C_ASN1_EDDSA_PUBKEY_SIZE 3
+static struct sc_asn1_entry c_asn1_eddsa_pubkey[C_ASN1_EDDSA_PUBKEY_SIZE] = {
+		{ "ecpointQ", SC_ASN1_BIT_STRING_NI,    SC_ASN1_TAG_BIT_STRING,	  SC_ASN1_OPTIONAL | SC_ASN1_ALLOC, NULL, NULL },
+		{ "ecpointQ-OS", SC_ASN1_OCTET_STRING,  SC_ASN1_TAG_OCTET_STRING, SC_ASN1_OPTIONAL | SC_ASN1_ALLOC, NULL, NULL },
+		{ NULL, 0, 0, 0, NULL, NULL }
+};
 // clang-format on
 
 int
@@ -676,7 +684,7 @@ sc_pkcs15_encode_pubkey_ec(sc_context_t *ctx, struct sc_pkcs15_pubkey_ec *key,
 {
 	struct sc_asn1_entry asn1_ec_pointQ[C_ASN1_EC_POINTQ_SIZE];
 	size_t key_len;
-	volatile int gdb_test = 0; /* so can reset via gdb for testing new  way */
+	volatile int gdb_test = 1; /* so can reset via gdb for testing new  way */
 
 	LOG_FUNC_CALLED(ctx);
 	sc_copy_asn1_entry(c_asn1_ec_pointQ, asn1_ec_pointQ);
@@ -725,15 +733,18 @@ sc_pkcs15_decode_pubkey_eddsa(sc_context_t *ctx,
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
-/*
- * all "ec" keys uses same pubkey format, keep this external entrypoint
- */
 int
 sc_pkcs15_encode_pubkey_eddsa(sc_context_t *ctx, struct sc_pkcs15_pubkey_ec *key,
 		u8 **buf, size_t *buflen)
 {
-	/* same format */
-	return sc_pkcs15_encode_pubkey_ec(ctx, key, buf, buflen);
+	struct sc_asn1_entry asn1_eddsa_pubkey[C_ASN1_EDDSA_PUBKEY_SIZE];
+
+	LOG_FUNC_CALLED(ctx);
+	sc_copy_asn1_entry(c_asn1_eddsa_pubkey, asn1_eddsa_pubkey);
+	sc_format_asn1_entry(asn1_eddsa_pubkey + 0, key->ecpointQ.value, &key->ecpointQ.len, 1);
+
+	LOG_FUNC_RETURN(ctx,
+			sc_asn1_encode(ctx, asn1_eddsa_pubkey, buf, buflen));
 }
 
 int
@@ -1109,6 +1120,12 @@ sc_pkcs15_dup_pubkey(struct sc_context *ctx, struct sc_pkcs15_pubkey *key, struc
 		memcpy(pubkey->u.ec.ecpointQ.value, key->u.ec.ecpointQ.value, key->u.ec.ecpointQ.len);
 		pubkey->u.ec.ecpointQ.len = key->u.ec.ecpointQ.len;
 
+		if (key->u.ec.params.named_curve) {
+			rv = sc_pkcs15_fix_ec_parameters(ctx, &key->u.ec.params);
+			if (rv)
+				break;
+		}
+
 		pubkey->u.ec.params.der.value = malloc(key->u.ec.params.der.len);
 		if (!pubkey->u.ec.params.der.value) {
 			rv = SC_ERROR_OUT_OF_MEMORY;
@@ -1117,14 +1134,16 @@ sc_pkcs15_dup_pubkey(struct sc_context *ctx, struct sc_pkcs15_pubkey *key, struc
 		memcpy(pubkey->u.ec.params.der.value, key->u.ec.params.der.value, key->u.ec.params.der.len);
 		pubkey->u.ec.params.der.len = key->u.ec.params.der.len;
 
-		if (key->u.ec.params.named_curve){
-			pubkey->u.ec.params.named_curve = strdup(key->u.ec.params.named_curve);
-			if (!pubkey->u.ec.params.named_curve)
-				rv = SC_ERROR_OUT_OF_MEMORY;
-		}
-		else {
-			sc_log(ctx, "named_curve parameter missing");
-			rv = SC_ERROR_NOT_SUPPORTED;
+		/* RFC4810 no named_curve */
+		if ((key->algorithm != SC_ALGORITHM_EDDSA) && (key->algorithm != SC_ALGORITHM_XEDDSA)) {
+			if (key->u.ec.params.named_curve) {
+				pubkey->u.ec.params.named_curve = strdup(key->u.ec.params.named_curve);
+				if (!pubkey->u.ec.params.named_curve)
+					rv = SC_ERROR_OUT_OF_MEMORY;
+			} else {
+				sc_log(ctx, "named_curve parameter missing");
+				rv = SC_ERROR_NOT_SUPPORTED;
+			}
 		}
 
 		break;
@@ -1581,7 +1600,7 @@ sc_pkcs15_fix_ec_parameters(struct sc_context *ctx, struct sc_ec_parameters *ecp
 
 		ecparams->field_length = ec_curve_infos[ii].size;
 		ecparams->key_type = ec_curve_infos[ii].key_type;
-		sc_log(ctx, "Curve length %"SC_FORMAT_LEN_SIZE_T"u key_type %d",
+		sc_log(ctx, "Curve length %" SC_FORMAT_LEN_SIZE_T "u key_type %d",
 				ecparams->field_length, ecparams->key_type);
 		if (mapped_string) {
 			/* replace the printable string version with the oid */
@@ -1613,7 +1632,7 @@ sc_pkcs15_fix_ec_parameters(struct sc_context *ctx, struct sc_ec_parameters *ecp
 
 		ecparams->field_length = ec_curve_infos[ii].size;
 		ecparams->key_type = ec_curve_infos[ii].key_type;
-		sc_log(ctx, "Curve length %"SC_FORMAT_LEN_SIZE_T"u key_type %d",
+		sc_log(ctx, "Curve length %" SC_FORMAT_LEN_SIZE_T "u key_type %d",
 				ecparams->field_length, ecparams->key_type);
 
 		if (!ecparams->der.value || !ecparams->der.len)   {
