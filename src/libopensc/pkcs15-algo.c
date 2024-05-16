@@ -574,6 +574,7 @@ sc_asn1_encode_algorithm_id(struct sc_context *ctx, u8 **buf, size_t *len,
 	/* no parameters, write NULL tag */
 	/* If it's EDDSA/XEDDSA, according to RFC8410, params
 	 * MUST be absent */
+	/* PKCS11 3.0 list them under ec_params */
 	if (id->algorithm != SC_ALGORITHM_EDDSA &&
 	    id->algorithm != SC_ALGORITHM_XEDDSA &&
 	    (!id->params || !alg_info->encode))
