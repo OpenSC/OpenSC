@@ -1,6 +1,6 @@
 MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
 
-dist_noinst_DATA = pkcs15-profile.5.xml opensc.conf.5.xml.in files.xml
+dist_noinst_DATA = pkcs15-profile.5.xml.in opensc.conf.5.xml.in files.xml
 if ENABLE_DOC
 html_DATA = files.html
 endif
@@ -21,7 +21,13 @@ opensc.conf.5.xml opensc.conf.5: $(srcdir)/opensc.conf.5.xml.in
 		< $< > opensc.conf.5.xml
 	$(AM_V_GEN)$(XSLTPROC) --nonet --path "$(srcdir)/..:$(xslstylesheetsdir)/manpages" --xinclude -o $@ man.xsl opensc.conf.5.xml 2>/dev/null
 
-files.html: $(srcdir)/files.xml $(wildcard $(srcdir)/*.5.xml) opensc.conf.5.xml
+pkcs15-profile.5.xml pkcs15-profile.5: $(srcdir)/pkcs15-profile.5.xml.in
+	@sed \
+		-e 's|@pkgdatadir[@]|$(pkgdatadir)|g' \
+		< $< > pkcs15-profile.5.xml
+	$(AM_V_GEN)$(XSLTPROC) --nonet --path "$(srcdir)/..:$(xslstylesheetsdir)/manpages" --xinclude -o $@ man.xsl pkcs15-profile.5.xml 2>/dev/null
+
+files.html: $(srcdir)/files.xml $(wildcard $(srcdir)/*.5.xml) opensc.conf.5.xml pkcs15-profile.5.xml
 	$(AM_V_GEN)$(XSLTPROC) --nonet --path "$(builddir):$(srcdir)/..:$(xslstylesheetsdir)/html" --xinclude -o $@ html.xsl $< 2>/dev/null
 
 %.5: $(srcdir)/%.5.xml
@@ -29,4 +35,4 @@ files.html: $(srcdir)/files.xml $(wildcard $(srcdir)/*.5.xml) opensc.conf.5.xml
 	| $(XSLTPROC) --nonet --path "$(srcdir)/..:$(xslstylesheetsdir)/manpages" --xinclude -o $@ man.xsl - 2>/dev/null
 
 clean-local:
-	-rm -rf $(html_DATA) $(man5_MANS) opensc.conf.5.xml
+	-rm -rf $(html_DATA) $(man5_MANS) *.5.xml
