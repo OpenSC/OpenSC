@@ -163,11 +163,10 @@ static void sc_card_free(sc_card_t *card)
 		int i;
 		for (i=0; i<card->algorithm_count; i++)   {
 			struct sc_algorithm_info *info = (card->algorithms + i);
-			if (info->algorithm == SC_ALGORITHM_EC) {
-				struct sc_ec_parameters ep = info->u._ec.params;
-
-				free(ep.named_curve);
-				free(ep.der.value);
+			if (info->algorithm == SC_ALGORITHM_EC ||
+					info->algorithm == SC_ALGORITHM_EDDSA ||
+					info->algorithm == SC_ALGORITHM_XEDDSA) {
+				sc_clear_ec_params(&info->u._ec.params);
 			}
 		}
 		free(card->algorithms);
@@ -1186,8 +1185,9 @@ _sc_card_add_ec_alg_int(sc_card_t *card, size_t key_length,
 	}
 
 	r = _sc_card_add_algorithm(card, &info);
+	return r;
 err:
-	free(info.u._ec.params.der.value);
+	sc_clear_ec_params(&info.u._ec.params);
 	return r;
 }
 
@@ -1225,13 +1225,13 @@ sc_algorithm_info_t *sc_card_find_alg(sc_card_t *card,
 	for (i = 0; i < card->algorithm_count; i++) {
 		sc_algorithm_info_t *info = &card->algorithms[i];
 
-		if (info->algorithm != algorithm)
-			continue;
 		if (param && (info->algorithm == SC_ALGORITHM_EC ||
 			info->algorithm == SC_ALGORITHM_EDDSA ||
 			info->algorithm == SC_ALGORITHM_XEDDSA)) {
 			if (sc_compare_oid((struct sc_object_id *)param, &info->u._ec.params.id))
 				return info;
+		} else if (info->algorithm != algorithm) {
+			continue;
 		} else if (info->key_length == key_length)
 			return info;
 	}
@@ -1514,6 +1514,17 @@ void sc_print_cache(struct sc_card *card)
 		       card->cache.current_df->path.type,
 		       card->cache.current_df->path.aid.len,
 		       sc_print_path(&card->cache.current_df->path));
+}
+
+void
+sc_clear_ec_params(struct sc_ec_parameters *ecp)
+{
+	if (ecp) {
+		free(ecp->named_curve);
+		free(ecp->der.value);
+		memset(ecp, 0, sizeof(struct sc_ec_parameters));
+	}
+	return;
 }
 
 int sc_copy_ec_params(struct sc_ec_parameters *dst, struct sc_ec_parameters *src)
