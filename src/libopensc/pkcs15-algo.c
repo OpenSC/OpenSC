@@ -349,10 +349,10 @@ asn1_free_ec_params(void *params)
 
 static struct sc_asn1_pkcs15_algorithm_info algorithm_table[] = {
 #ifdef SC_ALGORITHM_SHA1
-	/* hmacWithSHA1 */
+		/* hmacWithSHA1 */
 		{SC_ALGORITHM_SHA1, {{1, 2, 840, 113549, 2, 7, -1}}, NULL, NULL, NULL},
 		{SC_ALGORITHM_SHA1, {{1, 3, 6, 1, 5, 5, 8, 1, 2, -1}}, NULL, NULL, NULL},
- /* SHA1 */
+		/* SHA1 */
 		{SC_ALGORITHM_SHA1, {{1, 3, 14, 3, 2, 26, -1}}, NULL, NULL, NULL},
 #endif
 #ifdef SC_ALGORITHM_MD5
@@ -416,11 +416,11 @@ static struct sc_asn1_pkcs15_algorithm_info algorithm_table[] = {
 			asn1_free_ec_params},
 #endif
 #ifdef SC_ALGORITHM_ECDSA_SHA1
-	/* Note RFC 3279 says no ecParameters */
+		/* Note RFC 3279 says no ecParameters */
 		{SC_ALGORITHM_ECDSA_SHA1, {{1, 2, 840, 10045, 4, 1, -1}}, NULL, NULL, NULL},
 #endif
 #ifdef SC_ALGORITHM_ECDSA_SHA224
-	/* These next 4 are defined in RFC 5758 */
+		/* These next 4 are defined in RFC 5758 */
 		{SC_ALGORITHM_ECDSA_SHA224, {{1, 2, 840, 10045, 4, 3, 1, -1}},
 			asn1_decode_ec_params,
 			asn1_encode_ec_params,
@@ -445,8 +445,8 @@ static struct sc_asn1_pkcs15_algorithm_info algorithm_table[] = {
 			asn1_free_ec_params},
 #endif
 #ifdef SC_ALGORITHM_EDDSA
-	/* aka Ed25519 */
-	/* RFC 8410, needed to parse/create X509 certs/pubkeys  */
+		/* aka Ed25519 */
+		/* RFC 8410, needed to parse/create X509 certs/pubkeys  */
 		{SC_ALGORITHM_EDDSA, {{1, 3, 101, 112, -1}},
 			asn1_decode_ec_params,
 			asn1_encode_ec_params,
@@ -461,8 +461,8 @@ static struct sc_asn1_pkcs15_algorithm_info algorithm_table[] = {
 			asn1_free_ec_params}, /* Ed448 */
 #endif
 #ifdef SC_ALGORITHM_XEDDSA
-	/* aka curve25519 */
-	/* RFC 8410, needed to parse/create X509 certs/pubkeys  ec_parms*/
+		/* aka curve25519 */
+		/* RFC 8410, needed to parse/create X509 certs/pubkeys  ec_parms*/
 		{SC_ALGORITHM_XEDDSA, {{1, 3, 101, 110, -1}},
 			asn1_decode_ec_params,
 			asn1_encode_ec_params,
@@ -574,6 +574,7 @@ sc_asn1_encode_algorithm_id(struct sc_context *ctx, u8 **buf, size_t *len,
 	/* no parameters, write NULL tag */
 	/* If it's EDDSA/XEDDSA, according to RFC8410, params
 	 * MUST be absent */
+	/* PKCS11 3.0 list them under ec_params */
 	if (id->algorithm != SC_ALGORITHM_EDDSA &&
 	    id->algorithm != SC_ALGORITHM_XEDDSA &&
 	    (!id->params || !alg_info->encode))
