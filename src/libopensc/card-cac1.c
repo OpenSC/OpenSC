@@ -92,12 +92,12 @@ static int cac_cac1_get_certificate(sc_card_t *card, u8 **out_buf, size_t *out_l
 		if (apdu.sw1 != 0x63 || apdu.sw2 < 1)  {
 			/* we've either finished reading, or hit an error, break */
 			r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-			left -= len;
+			left -= apdu.resplen;
 			break;
 		}
 		/* Adjust the lengths */
-		left -= len;
-		out_ptr += len;
+		left -= apdu.resplen;
+		out_ptr += apdu.resplen;
 		len = MIN(left, apdu.sw2);
 	}
 	if (r < 0) {
