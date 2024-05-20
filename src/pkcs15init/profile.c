@@ -1809,7 +1809,7 @@ do_pin_storedlength(struct state *cur, int argc, char **argv)
 static int
 do_pin_flags(struct state *cur, int argc, char **argv)
 {
-	unsigned int	flags;
+	unsigned int	flags = 0;
 	int		i, r;
 
 	if (cur->pin->pin.auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
