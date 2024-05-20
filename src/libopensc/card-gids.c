@@ -250,7 +250,7 @@ static int gids_get_DO(sc_card_t* card, int fileIdentifier, int dataObjectIdenti
 	LOG_TEST_RET(card->ctx, r, "gids get data failed");
 	LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2), "invalid return");
 
-	p = sc_asn1_find_tag(card->ctx, buffer, sizeof(buffer), dataObjectIdentifier, &datasize);
+	p = sc_asn1_find_tag(card->ctx, buffer, apdu.resplen, dataObjectIdentifier, &datasize);
 	if (!p) {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_FILE_NOT_FOUND);
 	}
