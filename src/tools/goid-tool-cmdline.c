@@ -1048,6 +1048,8 @@ void update_multiple_arg(void *field, char ***orig_field,
 
   if (prev_given && list) {
     *orig_field = (char **) realloc (*orig_field, (field_given + prev_given) * sizeof (char *));
+    if (!*orig_field)
+      return;
 
     switch(arg_type) {
     case ARG_INT:
