@@ -394,7 +394,7 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 {
 	CK_RV rv;
 	CK_BYTE *cmp_message = NULL;
-	unsigned int cmp_message_length;
+	unsigned int cmp_message_length = 0;
 
 	if (o->type == EVP_PKEY_RSA) {
 		const EVP_MD *md = NULL;
