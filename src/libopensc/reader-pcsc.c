@@ -276,11 +276,15 @@ static int pcsc_internal_transmit(sc_reader_t *reader,
 		case SCARD_E_INVALID_HANDLE:
 		case SCARD_E_INVALID_VALUE:
 		case SCARD_E_READER_UNAVAILABLE:
-			pcsc_connect(reader);
+			LOG_TEST_RET(reader->ctx,
+					pcsc_connect(reader),
+					"Could not connect to card after reattached reader.");
 			/* return failure so that upper layers will be notified */
 			return SC_ERROR_READER_REATTACHED;
 		case SCARD_W_RESET_CARD:
-			pcsc_reconnect(reader, SCARD_LEAVE_CARD);
+			LOG_TEST_RET(reader->ctx,
+					pcsc_reconnect(reader, SCARD_LEAVE_CARD),
+					"Could not reconnect to card after reattached reader.");
 			/* return failure so that upper layers will be notified */
 			return SC_ERROR_CARD_RESET;
 		default:
@@ -680,7 +684,6 @@ static int pcsc_disconnect(sc_reader_t * reader)
 static int pcsc_lock(sc_reader_t *reader)
 {
 	LONG rv;
-	int r;
 	struct pcsc_private_data *priv = reader->drv_data;
 
 	if (priv->gpriv->cardmod)
@@ -702,23 +705,15 @@ static int pcsc_lock(sc_reader_t *reader)
 			/* This is returned in case of the same reader was re-attached */
 		case SCARD_E_INVALID_HANDLE:
 		case SCARD_E_READER_UNAVAILABLE:
-			r = pcsc_connect(reader);
-			if (r != SC_SUCCESS) {
-				sc_log(reader->ctx, "pcsc_connect failed (%d)",
-						r);
-				return r;
-			}
+			LOG_TEST_RET(reader->ctx,
+					pcsc_connect(reader),
+					"Could not connect to card after reattached reader.");
 			/* return failure so that upper layers will be notified and try to lock again */
 			return SC_ERROR_READER_REATTACHED;
 		case SCARD_W_RESET_CARD:
-			/* try to reconnect if the card was reset by some other application */
-			PCSC_TRACE(reader, "SCardBeginTransaction calling pcsc_reconnect", rv);
-			r = pcsc_reconnect(reader, SCARD_LEAVE_CARD);
-			if (r != SC_SUCCESS) {
-				sc_log(reader->ctx,
-						"pcsc_reconnect failed (%d)", r);
-				return r;
-			}
+			LOG_TEST_RET(reader->ctx,
+					pcsc_reconnect(reader, SCARD_LEAVE_CARD),
+					"Could not reconnect to card after reattached reader.");
 			/* return failure so that upper layers will be notified and try to lock again */
 			return SC_ERROR_CARD_RESET;
 		case SCARD_S_SUCCESS:
