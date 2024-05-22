@@ -3408,11 +3408,11 @@ piv_put_data(sc_card_t *card, int tag, const u8 *buf, size_t buf_len)
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	tag_len = piv_objects[tag].tag_len;
-	sbuflen = sc_asn1_put_tag(0x5c, piv_objects[tag].tag_value, tag_len, NULL, 0, NULL);
-	if (sbuflen <= 0) {
+	r = sc_asn1_put_tag(0x5c, piv_objects[tag].tag_value, tag_len, NULL, 0, NULL);
+	if (r <= 0) {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 	}
-	sbuflen += buf_len;
+	sbuflen = r + buf_len;
 	if (!(sbuf = malloc(sbuflen))) {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 	}
