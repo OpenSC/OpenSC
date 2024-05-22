@@ -148,7 +148,6 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	 * put the muscle driver first to cope with this bug. */
 	{ "muscle",	(void *(*)(void)) sc_get_muscle_driver },
 	{ "sc-hsm",	(void *(*)(void)) sc_get_sc_hsm_driver },
-	{ "mcrd",	(void *(*)(void)) sc_get_mcrd_driver },
 	{ "setcos",	(void *(*)(void)) sc_get_setcos_driver },
 	{ "PIV-II",	(void *(*)(void)) sc_get_piv_driver },
 	{ "cac",	(void *(*)(void)) sc_get_cac_driver },
@@ -176,6 +175,7 @@ static const struct _sc_driver_entry old_card_drivers[] = {
 	{ "atrust-acos",(void *(*)(void)) sc_get_atrust_acos_driver },
 	{ "cyberflex",	(void *(*)(void)) sc_get_cyberflex_driver },
 	{ "flex",       (void *(*)(void)) sc_get_cryptoflex_driver },
+	{ "mcrd",       (void *(*)(void)) sc_get_mcrd_driver },
 	{ NULL, NULL }
 };
 // clang-format on
