@@ -314,6 +314,13 @@ AC_ARG_ENABLE(
 	[enable_cmocka="detect"]
 )
 
+AC_ARG_ENABLE(
+	[libxml],
+	[AS_HELP_STRING([--enable-libxml],[Build PKCS#11 test tool in src/tests/pkcs11-test directory @<:@detect@:>@])],
+	,
+	[enable_libxml2="detect"]
+)
+
 AC_ARG_WITH(
 	[xsl-stylesheetsdir],
 	[AS_HELP_STRING([--with-xsl-stylesheetsdir=PATH],[docbook xsl-stylesheets for svn build @<:@detect@:>@])],
@@ -625,6 +632,11 @@ AC_CHECK_HEADER([cmocka.h],, [have_cmocka="no"],
 #include <setjmp.h>
 ])
 
+have_libxml2="yes"
+PKG_CHECK_MODULES([LIBXML2], [libxml2 >= 2.10.0],,
+	[PKG_CHECK_MODULES([LIBXML2], [libxml-2.0 >= 2.10.0], [have_libxml2="yes"], [have_libxml2="no"])]
+)
+
 AC_ARG_VAR([ZLIB_CFLAGS], [C compiler flags for zlib])
 AC_ARG_VAR([ZLIB_LIBS], [linker flags for zlib])
 if test -z "${ZLIB_LIBS}"; then
@@ -757,6 +769,12 @@ fi
 if test "${enable_cmocka}" = "yes"; then
 	if test "${have_cmocka}" != "yes"; then
 		AC_MSG_ERROR([Tests required, but cmocka is not available])
+	fi
+fi
+
+if test "${enable_libxml2}" = "yes"; then
+	if test "${have_libxml2}" != "yes"; then
+		AC_MSG_ERROR([Tests required, but libxml2 is not available])
 	fi
 fi
 
