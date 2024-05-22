@@ -1240,7 +1240,7 @@ app <replaceable>application</replaceable> {
 							</itemizedlist>
 							(Default: <literal>public</literal>
 							for the following card drivers
-							<literal>atrust-acos</literal>,
+							<literal>atrust-acos</literal> (deactivated driver),
 							<literal>belpic</literal>,
 							<literal>cac1</literal>,
 							<literal>cac</literal>,
@@ -1248,14 +1248,14 @@ app <replaceable>application</replaceable> {
 							<literal>dnie</literal>,
 							<literal>edo</literal>,
 							<literal>esteid2018</literal>,
-							<literal>flex</literal>,
-							<literal>cyberflex</literal>,
+							<literal>flex</literal> (deactivated driver),
+							<literal>cyberflex</literal> (deactivated driver),
 							<literal>gemsafeV1</literal>,
 							<literal>idprime</literal>,
 							<literal>itacns</literal>,
 							<literal>jpki</literal>,
 							<literal>MaskTech</literal>,
-							<literal>mcrd</literal>,
+							<literal>mcrd</literal> (deactivated driver),
 							<literal>npa</literal>,
 							<literal>nqapplet</literal>,
 							<literal>tcos</literal> and otherwise <literal>no</literal>).
