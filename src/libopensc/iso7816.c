@@ -1003,7 +1003,7 @@ iso7816_set_security_env(struct sc_card *card,
 		*p++ = env->algorithm_ref & 0xFF;
 	}
 	if (env->flags & SC_SEC_ENV_FILE_REF_PRESENT) {
-		if (env->file_ref.len > 0xFF)
+		if (env->file_ref.len > SC_MAX_PATH_SIZE)
 			return SC_ERROR_INVALID_ARGUMENTS;
 		if (sizeof(sbuf) - (p - sbuf) < env->file_ref.len + 2)
 			return SC_ERROR_OFFSET_TOO_LARGE;
