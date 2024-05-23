@@ -316,7 +316,7 @@ AC_ARG_ENABLE(
 
 AC_ARG_ENABLE(
 	[libxml],
-	[AS_HELP_STRING([--enable-libxml],[Build PKCS#11 test tool in src/tests/pkcs11-test directory @<:@detect@:>@])],
+	[AS_HELP_STRING([--enable-libxml],[Build PKCS#11 test tool in src/tests/pkcs11test directory @<:@detect@:>@])],
 	,
 	[enable_libxml2="detect"]
 )
@@ -1210,7 +1210,7 @@ AC_CONFIG_FILES([
 	src/tests/Makefile
 	src/tests/regression/Makefile
 	src/tests/p11test/Makefile
-	src/tests/pkcs11-test/Makefile
+	src/tests/pkcs11test/Makefile
 	src/tests/fuzzing/Makefile
 	src/tests/unittests/Makefile
 	src/tools/Makefile
