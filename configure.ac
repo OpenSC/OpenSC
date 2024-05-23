@@ -772,6 +772,14 @@ if test "${enable_cmocka}" = "yes"; then
 	fi
 fi
 
+if test "${enable_libxml2}" = "detect"; then
+	if test "${have_libxml2}" = "yes"; then
+		enable_libxml2="yes"
+	else
+		enable_libxml2="no"
+	fi
+fi
+
 if test "${enable_libxml2}" = "yes"; then
 	if test "${have_libxml2}" != "yes"; then
 		AC_MSG_ERROR([Tests required, but libxml2 is not available])
@@ -1165,6 +1173,7 @@ AM_CONDITIONAL([ENABLE_DNIE_UI], [test "${enable_dnie_ui}" = "yes"])
 AM_CONDITIONAL([ENABLE_NPATOOL], [test "${ENABLE_NPATOOL}" = "yes"])
 AM_CONDITIONAL([ENABLE_AUTOSTART], [test "${enable_autostart}" = "yes"])
 AM_CONDITIONAL([ENABLE_CMOCKA], [test "${enable_cmocka}" = "yes"])
+AM_CONDITIONAL([ENABLE_LIBXML2], [test "${enable_libxml2}" = "yes"])
 AM_CONDITIONAL([GIT_CHECKOUT], [test "${GIT_CHECKOUT}" = "yes"])
 AM_CONDITIONAL([ENABLE_FUZZING], [test "${enable_fuzzing}" = "yes"])
 AM_CONDITIONAL([ENABLE_SHARED], [test "${enable_shared}" = "yes"])
@@ -1201,6 +1210,7 @@ AC_CONFIG_FILES([
 	src/tests/Makefile
 	src/tests/regression/Makefile
 	src/tests/p11test/Makefile
+	src/tests/pkcs11-test/Makefile
 	src/tests/fuzzing/Makefile
 	src/tests/unittests/Makefile
 	src/tools/Makefile
