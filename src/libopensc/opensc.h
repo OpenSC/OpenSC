@@ -251,7 +251,7 @@ typedef struct sc_security_env {
 
 	unsigned long algorithm_ref;
 	struct sc_path file_ref;
-	unsigned char key_ref[8];
+	unsigned char key_ref[SC_MAX_KEYREF_SIZE];
 	size_t key_ref_len;
 	struct sc_path target_file_ref; /* target key file in unwrap operation */
 

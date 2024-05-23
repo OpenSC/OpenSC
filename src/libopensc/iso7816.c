@@ -1021,7 +1021,7 @@ iso7816_set_security_env(struct sc_card *card,
 			*p++ = 0x83;
 		else
 			*p++ = 0x84;
-		if (env->key_ref_len > 0xFF)
+		if (env->key_ref_len > SC_MAX_KEYREF_SIZE)
 			return SC_ERROR_INVALID_ARGUMENTS;
 		*p++ = env->key_ref_len & 0xFF;
 		memcpy(p, env->key_ref, env->key_ref_len);
