@@ -45,41 +45,72 @@ static struct sc_card_driver idprime_drv = {
 /* This ATR says, there is no EF.DIR nor EF.ATR so ISO discovery mechanisms
  * are not useful here */
 static const struct sc_atr_table idprime_atrs[] = {
+	/* known ATRs for IDPrime 3810:
+	 * 3b:7f:96:00:00:80:31:80:65:b0:84:41:3d:f6:12:0f:fe:82:90:00    Jakuje/xhanulik
+	 */
 	{ "3b:7f:96:00:00:80:31:80:65:b0:84:41:3d:f6:12:0f:fe:82:90:00",
 	  "ff:ff:00:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:00:00:ff:ff:ff",
 	  "Gemalto IDPrime 3810",
 	  SC_CARD_TYPE_IDPRIME_3810, 0, NULL },
+	/* known ATRs for IDPrime 930:
+	 * 3b:7f:96:00:00:80:31:80:65:b0:84:56:51:10:12:0f:fe:82:90:00    Jakuje/xhanulik
+	 */
 	{ "3b:7f:96:00:00:80:31:80:65:b0:84:56:51:10:12:0f:fe:82:90:00",
 	  "ff:ff:00:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:00:00:ff:ff:ff",
 	  "Gemalto IDPrime 830",
 	  SC_CARD_TYPE_IDPRIME_830, 0, NULL },
+	/* known ATRs for IDPrime 930:
+	 * 3b:7f:96:00:00:80:31:80:65:b0:84:61:60:fb:12:0f:fd:82:90:00    Jakuje/xhanulik
+	 */
 	{ "3b:7f:96:00:00:80:31:80:65:b0:84:61:60:fb:12:0f:fe:82:90:00",
 	  "ff:ff:00:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:00:00:ff:ff:ff",
 	  "Gemalto IDPrime 930/3930",
 	  SC_CARD_TYPE_IDPRIME_930, 0, NULL },
+	/* known ATRs:
+	 * 3b:ff:96:00:00:81:31:fe:43:80:31:80:65:b0:84:65:66:fb:12:01:78:82:90:00:85    metsma
+	 */
 	{ "3b:ff:96:00:00:81:31:fe:43:80:31:80:65:b0:84:65:66:fb:12:01:78:82:90:00:85",
 	  "ff:ff:00:ff:ff:ff:ff:00:ff:ff:ff:ff:ff:ff:00:00:00:00:ff:ff:ff:ff:ff:ff:00",
-	  "based Gemalto IDPrime 930",
+	  "based Gemalto IDPrime 930 (eToken 5110+ FIPS)",
 	  SC_CARD_TYPE_IDPRIME_930, 0, NULL },
+	/* known ATR for IDPrime 940: Placing in front of the 940 as its mask overlaps this one!
+	 * 3b:7f:96:00:00:80:31:80:65:b0:85:03:00:ef:12:0f:fe:82:90:00   msetina
+	 */
 	{ "3b:7f:96:00:00:80:31:80:65:b0:85:03:00:ef:12:0f:fe:82:90:00",
 	  "ff:ff:00:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:00:00:ff:ff:ff",
 	  "Gemalto IDPrime 840",
 	  SC_CARD_TYPE_IDPRIME_840, 0, NULL },
+	/* known ATR for IDPrime 940:
+	 * 3b:7f:96:00:00:80:31:80:65:b0:85:59:56:fb:12:0f:fe:82:90:00    Jakuje/xhanulik, msetina, kirichkov
+	 */
 	{ "3b:7f:96:00:00:80:31:80:65:b0:85:59:56:fb:12:0f:fe:82:90:00",
 	  "ff:ff:00:ff:ff:ff:ff:ff:ff:ff:ff:00:00:00:ff:00:00:ff:ff:ff",
 	  "Gemalto IDPrime 940",
 	  SC_CARD_TYPE_IDPRIME_940, 0, NULL },
+	/* Known ATRs:
+	 * 3b:7f:96:00:00:80:31:80:65:b0:85:05:00:39:12:0f:fe:82:90:00    vbonamy
+	 */
 	{ "3b:7f:96:00:00:80:31:80:65:b0:85:05:00:39:12:0f:fe:82:90:00",
 	  "ff:ff:00:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:00:00:ff:ff:ff",
 	  "Gemalto IDPrime 940C",
-	  SC_CARD_TYPE_IDPRIME_940, 0, NULL },	
+	  SC_CARD_TYPE_IDPRIME_940, 0, NULL },
+	/* Known ATRs for IDPrime 940 (eToken 5110)
+	 * 3b:ff:96:00:00:81:31:fe:43:80:31:80:65:b0:85:59:56:fb:12:0f:fe:82:90:00:00    metsma, jurajsarinay
+	 */
+	{ "3b:ff:96:00:00:81:31:fe:43:80:31:80:65:b0:85:59:56:fb:12:0f:fe:82:90:00:00",
+	  "ff:ff:00:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:00:00:00:00:ff:ff:ff:ff:ff:ff:00",
+	  "Gemalto IDPrime MD 940 (eToken 5110)",
+	  SC_CARD_TYPE_IDPRIME_940, 0, NULL },
 	{ "3b:7f:96:00:00:80:31:80:65:b0:84:41:3d:f6:12:0f:fe:82:90:00",
 	  "ff:ff:00:ff:ff:ff:ff:ff:ff:ff:00:00:00:00:ff:00:00:ff:ff:ff",
 	  "Gemalto IDPrime MD 8840, 3840, 3810, 840, 830 and MD 940 Cards",
 	  SC_CARD_TYPE_IDPRIME_GENERIC, 0, NULL },
-	{ "3b:ff:96:00:00:81:31:fe:43:80:31:80:65:b0:85:59:56:fb:12:0f:fe:82:90:00:00",
+	/* Known ATRs: Overlaps partially with 930 and 940
+	 * 3b:ff:96:00:00:81:31:80:43:80:31:80:65:b0:85:03:00:ef:12:0f:fe:82:90:00:66    metsma
+	 */
+	{ "3b:ff:96:00:00:81:31:80:43:80:31:80:65:b0:85:03:00:ef:12:0f:fe:82:90:00:66",
 	  "ff:ff:00:ff:ff:ff:ff:00:ff:ff:ff:ff:ff:ff:00:00:00:00:ff:ff:ff:ff:ff:ff:00",
-	  "Gemalto IDPrime MD 8840, 3840, 3810, 840 and 830 Cards",
+	  "Gemalto IDPrime MD 8840, 3840, 3810, 840 and 830 Cards (eToken)",
 	  SC_CARD_TYPE_IDPRIME_GENERIC, 0, NULL },
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
