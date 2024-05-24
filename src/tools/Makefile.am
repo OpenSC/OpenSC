@@ -129,6 +129,8 @@ goid_tool_CFLAGS += -Wno-unknown-warning-option
 endif
 
 dtrust_tool_SOURCES = dtrust-tool.c util.c
+dtrust_tool_LDADD = $(OPENPACE_LIBS)
+dtrust_tool_CFLAGS = $(OPENPACE_CFLAGS)
 
 opensc_asn1_SOURCES = opensc-asn1.c fread_to_eof.c opensc-asn1-cmdline.c
 if HAVE_UNKNOWN_WARNING_OPTION
