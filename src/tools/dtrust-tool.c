@@ -28,6 +28,7 @@
 #include "libopensc/cards.h"
 #include "libopensc/errors.h"
 
+#include "sm/sm-eac.h"
 #include "util.h"
 
 static const char *app_name = "dtrust-tool";
@@ -60,6 +61,48 @@ static int opt_wait = 0, verbose = 0;
 static int opt_status = 0;
 static int opt_check = 0;
 static int opt_unlock = 0;
+
+int
+verify_pace(sc_card_t *card, int ref, const char *pin_label)
+{
+	int r;
+	char *pin = NULL;
+	size_t pin_len = 0;
+	struct establish_pace_channel_input pace_input;
+	struct establish_pace_channel_output pace_output;
+
+	printf("Enter %s:", pin_label);
+	r = util_getpass(&pin, &pin_len, stdin);
+	if (r < 0 || pin == NULL) {
+		printf("Unable to get PIN.\n");
+		return -1;
+	}
+
+	memset(&pace_input, 0, sizeof pace_input);
+	memset(&pace_output, 0, sizeof pace_output);
+
+	pace_input.pin_id = ref;
+	pace_input.pin = (unsigned char *)pin;
+	pace_input.pin_length = strlen(pin);
+
+	r = perform_pace(card, pace_input, &pace_output, EAC_TR_VERSION_2_02);
+
+	sc_mem_clear(pin, pin_len);
+	free(pin);
+
+	free(pace_output.ef_cardaccess);
+	free(pace_output.recent_car);
+	free(pace_output.previous_car);
+	free(pace_output.id_icc);
+	free(pace_output.id_pcd);
+
+	if (r) {
+		printf("Error verifying CAN.\n");
+		return -1;
+	}
+
+	return 0;
+}
 
 void
 pin_status(sc_card_t *card, int ref, const char *pin_label)
@@ -275,6 +318,19 @@ main(int argc, char *argv[])
 	r = util_connect_card(ctx, &card, opt_reader, opt_wait);
 	if (r)
 		goto out;
+
+	if (card->type == SC_CARD_TYPE_DTRUST_V5_1_STD ||
+			card->type == SC_CARD_TYPE_DTRUST_V5_1_MULTI ||
+			card->type == SC_CARD_TYPE_DTRUST_V5_1_M100 ||
+			card->type == SC_CARD_TYPE_DTRUST_V5_4_STD ||
+			card->type == SC_CARD_TYPE_DTRUST_V5_4_MULTI) {
+		/* D-Trust Card 5 requires PACE authentication with CAN */
+		if (opt_status || opt_check) {
+			r = verify_pace(card, PACE_CAN, "CAN");
+			if (r)
+				goto out;
+		}
+	}
 
 	/*
 	 * We have to select the QES app to verify and change the QES PIN.
