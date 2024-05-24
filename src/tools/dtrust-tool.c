@@ -105,7 +105,7 @@ verify_pace(sc_card_t *card, int ref, const char *pin_label)
 }
 
 void
-pin_status(sc_card_t *card, int ref, const char *pin_label)
+pin_status(sc_card_t *card, int ref, const char *pin_label, unsigned char transport)
 {
 	int r;
 	struct sc_pin_cmd_data data;
@@ -127,9 +127,12 @@ pin_status(sc_card_t *card, int ref, const char *pin_label)
 		printf("%s: not usable (transport protection still in force)\n", pin_label);
 	else if (r == SC_ERROR_AUTH_METHOD_BLOCKED)
 		printf("%s: blocked (use PUK to unblock PIN)\n", pin_label);
-	else if (r == SC_ERROR_REF_DATA_NOT_USABLE)
-		printf("%s: not usable (transport protection already broken)\n", pin_label);
-	else
+	else if (r == SC_ERROR_REF_DATA_NOT_USABLE) {
+		if (transport)
+			printf("%s: not usable (transport protection already broken)\n", pin_label);
+		else
+			printf("%s: not usable\n", pin_label);
+	} else
 		fprintf(stderr, "%s: status query failed (%s).\n", pin_label, sc_strerror(r));
 }
 
@@ -337,7 +340,7 @@ main(int argc, char *argv[])
 		case SC_CARD_TYPE_DTRUST_V4_1_STD:
 		case SC_CARD_TYPE_DTRUST_V4_1_MULTI:
 		case SC_CARD_TYPE_DTRUST_V4_1_M100:
-			pin_status(card, 0x03, "Card Holder PIN");
+			pin_status(card, 0x03, "Card Holder PIN", 0);
 			/* FALLTHRU */
 
 		case SC_CARD_TYPE_DTRUST_V4_4_STD:
@@ -348,9 +351,9 @@ main(int argc, char *argv[])
 			if (r)
 				goto out;
 
-			pin_status(card, 0x04, "Card Holder PUK");
-			pin_status(card, 0x87, "Signature PIN");
-			pin_status(card, 0x8B, "Transport PIN");
+			pin_status(card, 0x04, "Card Holder PUK", 0);
+			pin_status(card, 0x87, "Signature PIN", 0);
+			pin_status(card, 0x8B, "Transport PIN", 1);
 			break;
 
 		case SC_CARD_TYPE_DTRUST_V5_1_STD:
@@ -362,8 +365,8 @@ main(int argc, char *argv[])
 			if (r)
 				goto out;
 
-			pin_status(card, 0x91, "Authentication PIN");
-			pin_status(card, 0x0C, "Transport PIN (Authentication)");
+			pin_status(card, 0x91, "Authentication PIN", 0);
+			pin_status(card, 0x0C, "Transport PIN (Authentication)", 1);
 			/* FALLTHRU */
 
 		case SC_CARD_TYPE_DTRUST_V5_4_STD:
@@ -374,9 +377,9 @@ main(int argc, char *argv[])
 			if (r)
 				goto out;
 
-			pin_status(card, 0x04, "Card Holder PUK");
-			pin_status(card, 0x87, "Signature PIN");
-			pin_status(card, 0x0B, "Transport PIN (Signature)");
+			pin_status(card, 0x04, "Card Holder PUK", 0);
+			pin_status(card, 0x87, "Signature PIN", 0);
+			pin_status(card, 0x0B, "Transport PIN (Signature)", 1);
 			break;
 		}
 	}
