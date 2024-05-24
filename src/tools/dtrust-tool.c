@@ -332,22 +332,53 @@ main(int argc, char *argv[])
 		}
 	}
 
-	/*
-	 * We have to select the QES app to verify and change the QES PIN.
-	 */
-	sc_format_path("3F000101", &path);
-	r = sc_select_file(card, &path, NULL);
-	if (r)
-		goto out;
-
 	if (opt_status) {
-		if (card->type == SC_CARD_TYPE_DTRUST_V4_1_STD ||
-				card->type == SC_CARD_TYPE_DTRUST_V4_1_MULTI ||
-				card->type == SC_CARD_TYPE_DTRUST_V4_1_M100)
+		switch (card->type) {
+		case SC_CARD_TYPE_DTRUST_V4_1_STD:
+		case SC_CARD_TYPE_DTRUST_V4_1_MULTI:
+		case SC_CARD_TYPE_DTRUST_V4_1_M100:
 			pin_status(card, 0x03, "Card Holder PIN");
-		pin_status(card, 0x04, "Card Holder PUK");
-		pin_status(card, 0x87, "Signature PIN");
-		pin_status(card, 0x8B, "Transport PIN");
+			/* FALLTHRU */
+
+		case SC_CARD_TYPE_DTRUST_V4_4_STD:
+		case SC_CARD_TYPE_DTRUST_V4_4_MULTI:
+			/* We have to select the QES app to verify and change the Signature PIN. */
+			sc_format_path("3F000101", &path);
+			r = sc_select_file(card, &path, NULL);
+			if (r)
+				goto out;
+
+			pin_status(card, 0x04, "Card Holder PUK");
+			pin_status(card, 0x87, "Signature PIN");
+			pin_status(card, 0x8B, "Transport PIN");
+			break;
+
+		case SC_CARD_TYPE_DTRUST_V5_1_STD:
+		case SC_CARD_TYPE_DTRUST_V5_1_MULTI:
+		case SC_CARD_TYPE_DTRUST_V5_1_M100:
+			/* We have to select the eSign app to verify and change the Authentication PIN. */
+			sc_format_path("3F000102", &path);
+			r = sc_select_file(card, &path, NULL);
+			if (r)
+				goto out;
+
+			pin_status(card, 0x91, "Authentication PIN");
+			pin_status(card, 0x0C, "Transport PIN (Authentication)");
+			/* FALLTHRU */
+
+		case SC_CARD_TYPE_DTRUST_V5_4_STD:
+		case SC_CARD_TYPE_DTRUST_V5_4_MULTI:
+			/* We have to select the QES app to verify and change the Signature PIN. */
+			sc_format_path("3F000101", &path);
+			r = sc_select_file(card, &path, NULL);
+			if (r)
+				goto out;
+
+			pin_status(card, 0x04, "Card Holder PUK");
+			pin_status(card, 0x87, "Signature PIN");
+			pin_status(card, 0x0B, "Transport PIN (Signature)");
+			break;
+		}
 	}
 
 	if (opt_check)
