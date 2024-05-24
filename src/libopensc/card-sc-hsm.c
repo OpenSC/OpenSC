@@ -1074,7 +1074,7 @@ static int sc_hsm_set_security_env(sc_card_t *card,
 static int sc_hsm_decode_ecdsa_signature(sc_card_t *card,
 					const u8 * data, size_t datalen,
 					u8 * out, size_t outlen,
-					int key_size) {
+					size_t key_size) {
 
 	int r;
 	size_t fieldsizebytes = (key_size + 7) >> 3;
