@@ -248,6 +248,7 @@ typedef struct sc_security_env {
 	unsigned long flags;
 	int operation;
 	unsigned long algorithm, algorithm_flags;
+	int key_size;
 
 	unsigned long algorithm_ref;
 	struct sc_path file_ref;
