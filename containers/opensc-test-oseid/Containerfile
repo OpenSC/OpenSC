@@ -1,6 +1,6 @@
 FROM ubuntu:latest
 RUN apt update
-# Install sudo to mimic Github Actions runnner
+# Install sudo to mimic Github Actions runner
 # Install tzdata to avoid messing up with interactive prompts later
 RUN export DEBIAN_FRONTEND=noninteractive; \
     export DEBCONF_NONINTERACTIVE_SEEN=true; \
