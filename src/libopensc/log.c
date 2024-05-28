@@ -75,7 +75,7 @@ void sc_do_log_color(sc_context_t *ctx, int level, const char *file, int line, c
 void sc_do_log_openssl(sc_context_t *ctx, int level, const char *file, int line, const char *func)
 {
 	BIO *bio = NULL;
-	int length = 0;
+	int length, rc;
 	char *buffer = NULL;
 
 	if ((bio = BIO_new(BIO_s_mem())) == NULL) {
@@ -84,10 +84,21 @@ void sc_do_log_openssl(sc_context_t *ctx, int level, const char *file, int line,
 	}
 	ERR_print_errors(bio);
 
-	if ((length = BIO_pending(bio)) <= 0 ||
-			(buffer = malloc(length)) == NULL ||
-			BIO_read(bio, buffer, length) <= 0) {
-		sc_do_log(ctx, level, file, line, func, "Cannot log OpenSSL error");
+	length = BIO_pending(bio);
+	if (length <= 0) {
+		/* no error? */
+		goto end;
+	}
+	/* trailing null byte */
+	buffer = malloc(length + 1);
+	if (buffer == NULL) {
+		sc_do_log(ctx, level, file, line, func, "No memory!");
+		goto end;
+	}
+	rc = BIO_read(bio, buffer, length);
+	buffer[length] = '\0';
+	if (rc <= 0) {
+		sc_do_log(ctx, level, file, line, func, "Cannot read OpenSSL error");
 		goto end;
 	}
 
