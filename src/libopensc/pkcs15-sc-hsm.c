@@ -1077,7 +1077,7 @@ static int sc_pkcs15emu_sc_hsm_add_prkd(sc_pkcs15_card_t * p15card, u8 keyid) {
 	int r;
 
 	if (keyid == 0) {
-		// Device authentication key doe not have PKCS#15 meta data
+		// Device authentication key does not have PKCS#15 meta data
 		return SC_SUCCESS;
 	}
 
