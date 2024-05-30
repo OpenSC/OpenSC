@@ -6009,6 +6009,8 @@ piv_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 			 * immediately before a digital signature key operation.  This
 			 * ensures cardholder participation every time the private key is
 			 * used for digital signature generation */
+			/* FIXME condition should be refined to something like: IF logged in
+			 * with "PIN Always"/"OCC Always" THEN avoid unnecessary APDUs */
 			LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 		}
 	}
@@ -6154,6 +6156,21 @@ static int piv_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
 				priv ? "PIV_STATE_MATCH" : "priv==NULL");
 		r = 0; /* do nothing, piv_match will take care of it */
+		goto err;
+	}
+
+	if (was_reset == 0 && priv->logged_in == SC_PIN_STATE_LOGGED_IN) {
+		/* Avoid status requests when the user is logged in to handle NIST
+		 * 800-73-4 Part 2:
+		 * The PKI cryptographic function (see Table 4b) is protected with
+		 * a “PIN Always” or “OCC Always” access rule. In other words, the
+		 * PIN or OCC data must be submitted and verified every time
+		 * immediately before a digital signature key operation.  This
+		 * ensures cardholder participation every time the private key is
+		 * used for digital signature generation */
+		/* FIXME condition should be refined to something like: IF logged in
+		 * with "PIN Always"/"OCC Always" THEN avoid unnecessary APDUs */
+		r = SC_SUCCESS;
 		goto err;
 	}
 
