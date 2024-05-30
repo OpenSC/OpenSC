@@ -1123,7 +1123,7 @@ static int sc_hsm_compute_signature(sc_card_t *card,
 		int len;
 
 		if ((priv->algorithm & 0xF0) == ALGO_EC_RAW) {
-			len = sc_hsm_decode_ecdsa_signature(card, apdu.resp, apdu.resplen, out, outlen, priv->env->key_size);
+			len = sc_hsm_decode_ecdsa_signature(card, apdu.resp, apdu.resplen, out, outlen, priv->env->key_size_bits);
 			if (len < 0) {
 				LOG_FUNC_RETURN(card->ctx, len);
 			}
