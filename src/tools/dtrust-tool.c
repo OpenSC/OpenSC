@@ -63,20 +63,11 @@ static int opt_check = 0;
 static int opt_unlock = 0;
 
 int
-verify_pace(sc_card_t *card, int ref, const char *pin_label)
+verify_pace(sc_card_t *card, int ref, const char *pin)
 {
 	int r;
-	char *pin = NULL;
-	size_t pin_len = 0;
 	struct establish_pace_channel_input pace_input;
 	struct establish_pace_channel_output pace_output;
-
-	printf("Enter %s:", pin_label);
-	r = util_getpass(&pin, &pin_len, stdin);
-	if (r < 0 || pin == NULL) {
-		printf("Unable to get PIN.\n");
-		return -1;
-	}
 
 	memset(&pace_input, 0, sizeof pace_input);
 	memset(&pace_output, 0, sizeof pace_output);
@@ -87,21 +78,69 @@ verify_pace(sc_card_t *card, int ref, const char *pin_label)
 
 	r = perform_pace(card, pace_input, &pace_output, EAC_TR_VERSION_2_02);
 
-	sc_mem_clear(pin, pin_len);
-	free(pin);
-
 	free(pace_output.ef_cardaccess);
 	free(pace_output.recent_car);
 	free(pace_output.previous_car);
 	free(pace_output.id_icc);
 	free(pace_output.id_pcd);
 
-	if (r) {
-		printf("Error verifying CAN.\n");
+	return r;
+}
+
+int
+get_pin(char **pin, const char *label, unsigned char check)
+{
+	int r;
+	char *pin2 = NULL;
+	size_t len1 = 0;
+	size_t len2 = 0;
+
+	r = -1;
+
+	if (pin == NULL)
 		return -1;
+
+	*pin = NULL;
+
+	printf("Enter %s:", label);
+	r = util_getpass(pin, &len1, stdin);
+	if (r < 0 || *pin == NULL) {
+		fprintf(stderr, "Unable to get PIN");
+		goto fail;
 	}
 
-	return 0;
+	if (!check)
+		return 0;
+
+	printf("Enter %s again:", label);
+	r = util_getpass(&pin2, &len2, stdin);
+	if (r < 0 || pin2 == NULL) {
+		fprintf(stderr, "Unable to get PIN");
+		goto fail;
+	}
+
+	r = strcmp(*pin, pin2);
+	if (r)
+		fprintf(stderr, "PINs doesn't match.\n");
+
+	/* Free repeated PIN in any case. */
+	if (pin2 != NULL) {
+		sc_mem_clear(pin2, len2);
+		free(pin2);
+	}
+
+	if (r == 0)
+		return 0;
+
+fail:
+	/* Free PIN only in case of an error. */
+	if (*pin != NULL) {
+		sc_mem_clear(*pin, len1);
+		free(*pin);
+		*pin = NULL;
+	}
+
+	return -1;
 }
 
 void
@@ -180,11 +219,7 @@ unlock_transport_protection(sc_card_t *card)
 	struct sc_pin_cmd_data data;
 	int r;
 	char *tpin = NULL;
-	char *qespin1 = NULL;
-	char *qespin2 = NULL;
-	size_t tpin_len = 0;
-	size_t qespin1_len = 0;
-	size_t qespin2_len = 0;
+	char *qespin = NULL;
 	int tries_left;
 
 	memset(&data, 0, sizeof(data));
@@ -202,35 +237,18 @@ unlock_transport_protection(sc_card_t *card)
 		data.pin2.prompt = "Enter Signature PIN";
 		data.flags |= SC_PIN_CMD_USE_PINPAD;
 	} else {
-		printf("Enter Transport PIN:");
-		r = util_getpass(&tpin, &tpin_len, stdin);
-		if (r < 0 || tpin == NULL) {
-			fprintf(stderr, "Unable to get PIN");
-			return;
-		}
-
-		printf("Enter new Signature PIN:");
-		r = util_getpass(&qespin1, &qespin1_len, stdin);
-		if (r < 0 || qespin1 == NULL) {
-			fprintf(stderr, "Unable to get PIN");
+		r = get_pin(&tpin, "Transport PIN", 0);
+		if (r < 0)
 			goto fail;
-		}
 
-		printf("Enter new Signature PIN again:");
-		r = util_getpass(&qespin2, &qespin1_len, stdin);
-		if (r < 0 || qespin2 == NULL) {
-			fprintf(stderr, "Unable to get PIN");
+		r = get_pin(&qespin, "new Signature PIN", 1);
+		if (r < 0)
 			goto fail;
-		}
 
-		if (strcmp(qespin1, qespin2)) {
-			fprintf(stderr, "New signature PINs doesn't match.\n");
-			goto fail;
-		}
 		data.pin1.data = (u8 *)tpin;
 		data.pin1.len = strlen(tpin);
-		data.pin2.data = (u8 *)qespin1;
-		data.pin2.len = strlen(qespin1);
+		data.pin2.data = (u8 *)qespin;
+		data.pin2.len = strlen(qespin);
 	}
 
 	r = sc_pin_cmd(card, &data, &tries_left);
@@ -243,18 +261,13 @@ unlock_transport_protection(sc_card_t *card)
 		printf("Can't change pin: %s\n", sc_strerror(r));
 
 fail:
-	if (qespin2 != NULL) {
-		sc_mem_clear(qespin2, qespin2_len);
-		free(qespin2);
-	}
-
-	if (qespin1 != NULL) {
-		sc_mem_clear(qespin1, qespin1_len);
-		free(qespin1);
+	if (qespin != NULL) {
+		sc_mem_clear(qespin, strlen(qespin));
+		free(qespin);
 	}
 
 	if (tpin != NULL) {
-		sc_mem_clear(tpin, tpin_len);
+		sc_mem_clear(tpin, strlen(tpin));
 		free(tpin);
 	}
 }
@@ -266,6 +279,7 @@ main(int argc, char *argv[])
 	sc_context_param_t ctx_param;
 	sc_card_t *card = NULL;
 	sc_context_t *ctx = NULL;
+	char *can = NULL;
 	sc_path_t path;
 
 	while (1) {
@@ -329,9 +343,15 @@ main(int argc, char *argv[])
 			card->type == SC_CARD_TYPE_DTRUST_V5_4_MULTI) {
 		/* D-Trust Card 5 requires PACE authentication with CAN */
 		if (opt_status || opt_check) {
-			r = verify_pace(card, PACE_CAN, "CAN");
-			if (r)
+			r = get_pin(&can, "CAN", 0);
+			if (r < 0)
 				goto out;
+
+			r = verify_pace(card, PACE_CAN, can);
+			if (r) {
+				printf("Error verifying CAN.\n");
+				goto out;
+			}
 		}
 	}
 
@@ -416,6 +436,11 @@ main(int argc, char *argv[])
 	}
 
 out:
+	if (can != NULL) {
+		sc_mem_clear(can, strlen(can));
+		free(can);
+	}
+
 	if (card) {
 		sc_unlock(card);
 		sc_disconnect_card(card);
