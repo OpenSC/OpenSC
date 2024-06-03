@@ -56,6 +56,19 @@ static const struct sc_atr_table dtrust_atrs[] = {
 	 * as it is identical to that of CardOS v5.4 and therefore already included.
 	 * Any new ATR may need an entry in minidriver_registration[]. */
 	{ "3b:d2:18:00:81:31:fe:58:c9:04:11", NULL, NULL, SC_CARD_TYPE_DTRUST_V4_1_STD, 0, NULL },
+
+
+	/* D-Trust Signature Card v5.1 and v5.4 - CardOS 6.0
+	 *
+	 * These cards are dual interface cards. Thus they have separate ATRs. */
+
+	/* contact based */
+	{ "3b:d2:18:00:81:31:fe:58:cb:01:16", NULL, NULL, SC_CARD_TYPE_DTRUST_V5_1_STD, 0, NULL },
+
+	/* contactless */
+	{ "3b:82:80:01:cb:01:c9",             NULL, NULL, SC_CARD_TYPE_DTRUST_V5_1_STD, 0, NULL },
+	{ "07:78:77:74:03:cb:01:09",          NULL, NULL, SC_CARD_TYPE_DTRUST_V5_1_STD, 0, NULL },
+
 	{ NULL,                               NULL, NULL, 0,                            0, NULL }
 };
 // clang-format on
@@ -81,16 +94,26 @@ _dtrust_match_cardos(sc_card_t *card)
 	r = sc_get_data(card, 0x0182, buf, 32);
 	LOG_TEST_RET(card->ctx, r, "OS version check failed");
 
-	if (r != 2 || buf[0] != 0xc9 || buf[1] != 0x04)
-		return SC_ERROR_WRONG_CARD;
+	if (card->type == SC_CARD_TYPE_DTRUST_V4_1_STD) {
+		if (r != 2 || buf[0] != 0xc9 || buf[1] != 0x04)
+			return SC_ERROR_WRONG_CARD;
+	} else if (card->type == SC_CARD_TYPE_DTRUST_V5_1_STD) {
+		if (r != 2 || buf[0] != 0xcb || buf[1] != 0x01)
+			return SC_ERROR_WRONG_CARD;
+	}
 
 	/* check product name */
 	r = sc_get_data(card, 0x0180, buf, 32);
 	LOG_TEST_RET(card->ctx, r, "Product name check failed");
 
 	prodlen = (size_t)r;
-	if (prodlen != strlen("CardOS V5.4     2019") + 1 || memcmp(buf, "CardOS V5.4     2019", prodlen))
-		return SC_ERROR_WRONG_CARD;
+	if (card->type == SC_CARD_TYPE_DTRUST_V4_1_STD) {
+		if (prodlen != strlen("CardOS V5.4     2019") + 1 || memcmp(buf, "CardOS V5.4     2019", prodlen))
+			return SC_ERROR_WRONG_CARD;
+	} else if (card->type == SC_CARD_TYPE_DTRUST_V5_1_STD) {
+		if (prodlen != strlen("CardOS V6.0 2021") + 1 || memcmp(buf, "CardOS V6.0 2021", prodlen))
+			return SC_ERROR_WRONG_CARD;
+	}
 
 	return SC_SUCCESS;
 }
@@ -138,18 +161,33 @@ _dtrust_match_profile(sc_card_t *card)
 	 * on the production process, but aren't relevant for determining the
 	 * card profile.
 	 */
-	if (plen >= 27 && !memcmp(pp, "D-TRUST Card 4.1 Std. RSA 2", 27))
-		card->type = SC_CARD_TYPE_DTRUST_V4_1_STD;
-	else if (plen >= 28 && !memcmp(pp, "D-TRUST Card 4.1 Multi ECC 2", 28))
-		card->type = SC_CARD_TYPE_DTRUST_V4_1_MULTI;
-	else if (plen >= 27 && !memcmp(pp, "D-TRUST Card 4.1 M100 ECC 2", 27))
-		card->type = SC_CARD_TYPE_DTRUST_V4_1_M100;
-	else if (plen >= 27 && !memcmp(pp, "D-TRUST Card 4.4 Std. RSA 2", 27))
-		card->type = SC_CARD_TYPE_DTRUST_V4_4_STD;
-	else if (plen >= 28 && !memcmp(pp, "D-TRUST Card 4.4 Multi ECC 2", 28))
-		card->type = SC_CARD_TYPE_DTRUST_V4_4_MULTI;
-	else
-		return SC_ERROR_WRONG_CARD;
+	if (card->type == SC_CARD_TYPE_DTRUST_V4_1_STD) {
+		if (plen >= 27 && !memcmp(pp, "D-TRUST Card 4.1 Std. RSA 2", 27))
+			card->type = SC_CARD_TYPE_DTRUST_V4_1_STD;
+		else if (plen >= 28 && !memcmp(pp, "D-TRUST Card 4.1 Multi ECC 2", 28))
+			card->type = SC_CARD_TYPE_DTRUST_V4_1_MULTI;
+		else if (plen >= 27 && !memcmp(pp, "D-TRUST Card 4.1 M100 ECC 2", 27))
+			card->type = SC_CARD_TYPE_DTRUST_V4_1_M100;
+		else if (plen >= 27 && !memcmp(pp, "D-TRUST Card 4.4 Std. RSA 2", 27))
+			card->type = SC_CARD_TYPE_DTRUST_V4_4_STD;
+		else if (plen >= 28 && !memcmp(pp, "D-TRUST Card 4.4 Multi ECC 2", 28))
+			card->type = SC_CARD_TYPE_DTRUST_V4_4_MULTI;
+		else
+			return SC_ERROR_WRONG_CARD;
+	} else if (card->type == SC_CARD_TYPE_DTRUST_V5_1_STD) {
+		if (plen >= 27 && !memcmp(pp, "D-TRUST Card 5.1 Std. RSA 2", 27))
+			card->type = SC_CARD_TYPE_DTRUST_V5_1_STD;
+		else if (plen >= 28 && !memcmp(pp, "D-TRUST Card 5.1 Multi ECC 2", 28))
+			card->type = SC_CARD_TYPE_DTRUST_V5_1_MULTI;
+		else if (plen >= 27 && !memcmp(pp, "D-TRUST Card 5.1 M100 ECC 2", 27))
+			card->type = SC_CARD_TYPE_DTRUST_V5_1_M100;
+		else if (plen >= 27 && !memcmp(pp, "D-TRUST Card 5.4 Std. RSA 2", 27))
+			card->type = SC_CARD_TYPE_DTRUST_V5_4_STD;
+		else if (plen >= 28 && !memcmp(pp, "D-TRUST Card 5.4 Multi ECC 2", 28))
+			card->type = SC_CARD_TYPE_DTRUST_V5_4_MULTI;
+		else
+			return SC_ERROR_WRONG_CARD;
+	}
 
 	name = malloc(plen + 1);
 	if (name == NULL)
@@ -175,7 +213,7 @@ dtrust_match_card(sc_card_t *card)
 	if (_dtrust_match_profile(card) != SC_SUCCESS)
 		return 0;
 
-	sc_log(card->ctx, "D-Trust Signature Card (CardOS 5.4)");
+	sc_log(card->ctx, "D-Trust Signature Card");
 
 	return 1;
 }
@@ -184,19 +222,13 @@ static int
 _dtrust_get_serialnr(sc_card_t *card)
 {
 	int r;
-	u8 buf[32];
 
-	r = sc_get_data(card, 0x0181, buf, 32);
-	LOG_TEST_RET(card->ctx, r, "querying serial number failed");
-
-	if (r != 8) {
-		sc_log(card->ctx, "unexpected response to GET DATA serial number");
-		return SC_ERROR_INTERNAL;
+	card->serialnr.len = SC_MAX_SERIALNR;
+	r = sc_parse_ef_gdo(card, card->serialnr.value, &card->serialnr.len, NULL, 0);
+	if (r < 0) {
+		card->serialnr.len = 0;
+		return r;
 	}
-
-	/* cache serial number */
-	memcpy(card->serialnr.value, buf, 8);
-	card->serialnr.len = 8;
 
 	return SC_SUCCESS;
 }
@@ -241,6 +273,8 @@ dtrust_init(sc_card_t *card)
 	switch (card->type) {
 	case SC_CARD_TYPE_DTRUST_V4_1_STD:
 	case SC_CARD_TYPE_DTRUST_V4_4_STD:
+	case SC_CARD_TYPE_DTRUST_V5_1_STD:
+	case SC_CARD_TYPE_DTRUST_V5_4_STD:
 		flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
 		flags |= SC_ALGORITHM_RSA_PAD_PSS;
 		flags |= SC_ALGORITHM_RSA_PAD_OAEP;
@@ -260,6 +294,9 @@ dtrust_init(sc_card_t *card)
 	case SC_CARD_TYPE_DTRUST_V4_1_MULTI:
 	case SC_CARD_TYPE_DTRUST_V4_1_M100:
 	case SC_CARD_TYPE_DTRUST_V4_4_MULTI:
+	case SC_CARD_TYPE_DTRUST_V5_1_MULTI:
+	case SC_CARD_TYPE_DTRUST_V5_1_M100:
+	case SC_CARD_TYPE_DTRUST_V5_4_MULTI:
 		flags |= SC_ALGORITHM_ECDH_CDH_RAW;
 		flags |= SC_ALGORITHM_ECDSA_HASH_SHA256;
 		ext_flags = SC_ALGORITHM_EXT_EC_NAMEDCURVE;
