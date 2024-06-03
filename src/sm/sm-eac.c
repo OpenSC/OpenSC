@@ -634,6 +634,9 @@ get_psec(sc_card_t *card, const char *pin, size_t length_pin, enum s_type pin_id
 		pin = p;
 	}
 
+	if (pin_id != PACE_PIN && pin_id != PACE_CAN && pin_id != PACE_MRZ && pin_id != PACE_PUK)
+		pin_id = PACE_RAW;
+
 	r = PACE_SEC_new(pin, length_pin, pin_id);
 
 	if (p) {
