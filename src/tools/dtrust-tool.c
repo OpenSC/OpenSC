@@ -167,19 +167,19 @@ unlock_transport_protection(sc_card_t *card)
 		r = util_getpass(&qespin1, &qespin1_len, stdin);
 		if (r < 0 || qespin1 == NULL) {
 			fprintf(stderr, "Unable to get PIN");
-			goto fail_qespin1;
+			goto fail;
 		}
 
 		printf("Enter new Signature PIN again:");
 		r = util_getpass(&qespin2, &qespin1_len, stdin);
 		if (r < 0 || qespin2 == NULL) {
 			fprintf(stderr, "Unable to get PIN");
-			goto fail_qespin2;
+			goto fail;
 		}
 
 		if (strcmp(qespin1, qespin2)) {
 			fprintf(stderr, "New signature PINs doesn't match.\n");
-			goto fail_qespin2;
+			goto fail;
 		}
 		data.pin1.data = (u8 *)tpin;
 		data.pin1.len = strlen(tpin);
@@ -196,18 +196,17 @@ unlock_transport_protection(sc_card_t *card)
 	else
 		printf("Can't change pin: %s\n", sc_strerror(r));
 
+fail:
 	if (qespin2 != NULL) {
 		sc_mem_clear(qespin2, qespin2_len);
 		free(qespin2);
 	}
 
-fail_qespin2:
 	if (qespin1 != NULL) {
 		sc_mem_clear(qespin1, qespin1_len);
 		free(qespin1);
 	}
 
-fail_qespin1:
 	if (tpin != NULL) {
 		sc_mem_clear(tpin, tpin_len);
 		free(tpin);
