@@ -20,7 +20,7 @@
 
 #include <windows.h>
 
-HWND create_invisible_window(LPCTSTR lpszClassName,
+static HWND create_invisible_window(LPCTSTR lpszClassName,
 		LRESULT (CALLBACK* WndProc)(HWND, UINT, WPARAM, LPARAM),
 		HINSTANCE hInstance)
 {
