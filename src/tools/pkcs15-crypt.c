@@ -215,7 +215,7 @@ static int sign(struct sc_pkcs15_object *obj)
 {
 	u8 buf[1024], out[1024];
 	struct sc_pkcs15_prkey_info *key = (struct sc_pkcs15_prkey_info *) obj->data;
-	int r;
+	int r, flags;
 	size_t c, len;
 
 	if (opt_input == NULL) {
@@ -238,7 +238,8 @@ static int sign(struct sc_pkcs15_object *obj)
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
-	r = sc_pkcs15_compute_signature(p15card, obj, opt_crypt_flags, buf, c, out, len, NULL);
+	flags = opt_crypt_flags & ~SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_02;
+	r = sc_pkcs15_compute_signature(p15card, obj, flags, buf, c, out, len, NULL);
 	if (r < 0) {
 		fprintf(stderr, "Compute signature failed: %s\n", sc_strerror(r));
 		return 1;
@@ -270,7 +271,7 @@ static int sign(struct sc_pkcs15_object *obj)
 static int decipher(struct sc_pkcs15_object *obj)
 {
 	u8 buf[1024], out[1024];
-	int r, len;
+	int r, len, flags;
 	size_t c;
 
 	if (opt_input == NULL) {
@@ -286,7 +287,8 @@ static int decipher(struct sc_pkcs15_object *obj)
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
-	r = sc_pkcs15_decipher(p15card, obj, opt_crypt_flags & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_02, buf, c, out, len, NULL);
+	flags = opt_crypt_flags & ~SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01;
+	r = sc_pkcs15_decipher(p15card, obj, flags, buf, c, out, len, NULL);
 	if (r < 0) {
 		fprintf(stderr, "Decrypt failed: %s\n", sc_strerror(r));
 		return 1;
