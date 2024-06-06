@@ -9,7 +9,7 @@ TARGETS = opensc-tool.exe opensc-explorer.exe pkcs15-tool.exe pkcs15-crypt.exe \
 		opensc-notify.exe egk-tool.exe goid-tool.exe dtrust-tool paccess-tool.exe \
 		opensc-asn1.exe pkcs11-register.exe $(PROGRAMS_OPENSSL) $(PROGRAMS_OPENPACE)
 
-OBJECTS = util.obj versioninfo-tools.res
+OBJECTS = util.obj tools.res
 
 LIBS = $(TOPDIR)\src\common\common.lib \
 	   $(TOPDIR)\src\scconf\scconf.lib \
@@ -22,52 +22,42 @@ all: $(TARGETS)
 
 $(TARGETS): $(OBJECTS) $(LIBS)
 
-opensc-notify.exe: opensc-notify-cmdline.obj versioninfo-opensc-notify.res $(LIBS)
+opensc-notify.exe: opensc-notify-cmdline.obj opensc-notify-x.res $(LIBS)
 	cl $(COPTS) /c $*.c
-	link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj opensc-notify-cmdline.obj versioninfo-opensc-notify.res $(LIBS) gdi32.lib shell32.lib User32.lib ws2_32.lib shlwapi.lib
-	mt -manifest exe.manifest -outputresource:$@;1
+	link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj opensc-notify-cmdline.obj opensc-notify-x.res $(LIBS) gdi32.lib shell32.lib User32.lib ws2_32.lib shlwapi.lib
 
 npa-tool.exe: npa-tool-cmdline.obj fread_to_eof.obj $(OBJECTS) $(LIBS)
 	cl $(COPTS) /c $*.c
 	link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj npa-tool-cmdline.obj fread_to_eof.obj $(OBJECTS) $(LIBS) $(OPENPACE_LIB) $(OPENSSL_LIB) gdi32.lib shell32.lib User32.lib ws2_32.lib shlwapi.lib
-	mt -manifest exe.manifest -outputresource:$@;1
 
 egk-tool.exe: egk-tool-cmdline.obj $(OBJECTS) $(LIBS)
 	cl $(COPTS) /c $*.c
 	link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj egk-tool-cmdline.obj $(OBJECTS) $(LIBS) $(ZLIB_LIB) gdi32.lib shell32.lib User32.lib ws2_32.lib shlwapi.lib
-	mt -manifest exe.manifest -outputresource:$@;1
 
 goid-tool.exe: goid-tool-cmdline.obj fread_to_eof.obj $(OBJECTS) $(LIBS)
 	cl $(COPTS) /c $*.c
 	link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj goid-tool-cmdline.obj fread_to_eof.obj $(OBJECTS) $(LIBS) $(OPENPACE_LIB) $(OPENSSL_LIB) gdi32.lib shell32.lib User32.lib ws2_32.lib shlwapi.lib
-	mt -manifest exe.manifest -outputresource:$@;1
 
-opensc-asn1.exe: opensc-asn1-cmdline.obj fread_to_eof.obj versioninfo-tools.res $(LIBS)
+opensc-asn1.exe: opensc-asn1-cmdline.obj fread_to_eof.obj tools.res $(LIBS)
 	cl $(COPTS) /c $*.c
-	link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj opensc-asn1-cmdline.obj fread_to_eof.obj versioninfo-tools.res $(LIBS) gdi32.lib shell32.lib User32.lib ws2_32.lib shlwapi.lib
-	mt -manifest exe.manifest -outputresource:$@;1
+	link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj opensc-asn1-cmdline.obj fread_to_eof.obj tools.res $(LIBS) gdi32.lib shell32.lib User32.lib ws2_32.lib shlwapi.lib
 
-pkcs11-register.exe: pkcs11-register-cmdline.obj fread_to_eof.obj $(LIBS)
+pkcs11-register.exe: pkcs11-register-cmdline.obj fread_to_eof.obj tools.res $(LIBS)
 	cl $(COPTS) /c $*.c
-	link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj pkcs11-register-cmdline.obj fread_to_eof.obj versioninfo-tools.res $(LIBS) gdi32.lib shell32.lib User32.lib ws2_32.lib shlwapi.lib
-	mt -manifest exe.manifest -outputresource:$@;1
+	link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj pkcs11-register-cmdline.obj fread_to_eof.obj tools.res $(LIBS) gdi32.lib shell32.lib User32.lib ws2_32.lib shlwapi.lib
 
-pkcs15-tool.exe: pkcs15-tool.obj $(TOPDIR)\src\pkcs11\pkcs11-display.obj
+pkcs15-tool.exe: pkcs15-tool.obj tools.res $(TOPDIR)\src\pkcs11\pkcs11-display.obj
 	cl $(COPTS) /c $*.c
 	link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj $(TOPDIR)\src\pkcs11\pkcs11-display.obj $(OBJECTS) $(LIBS) $(OPENSSL_LIB) gdi32.lib shell32.lib User32.lib ws2_32.lib shlwapi.lib
-	mt -manifest exe.manifest -outputresource:$@;1
 
-openpgp-tool.exe: openpgp-tool-helpers.obj $(LIBS)
+openpgp-tool.exe: openpgp-tool-helpers.obj tools.res $(LIBS)
 	cl $(COPTS) /c $*.c
 	link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj openpgp-tool-helpers.obj $(OBJECTS) $(LIBS) gdi32.lib shell32.lib User32.lib ws2_32.lib shlwapi.lib
-	mt -manifest exe.manifest -outputresource:$@;1
 
 sc-hsm-tool.exe: sc-hsm-tool.obj fread_to_eof.obj $(OBJECTS) $(LIBS)
 	cl $(COPTS) /c $*.c
 	link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj sc-hsm-tool.obj fread_to_eof.obj $(OBJECTS) $(LIBS) $(OPENSSL_LIB) gdi32.lib shell32.lib User32.lib ws2_32.lib
-	mt -manifest exe.manifest -outputresource:$@;1
 
 .c.exe:
 	cl $(COPTS) /c $<
 	link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj $(OBJECTS) $(LIBS) $(OPENSSL_LIB) gdi32.lib shell32.lib User32.lib ws2_32.lib shlwapi.lib
-	mt -manifest exe.manifest -outputresource:$@;1

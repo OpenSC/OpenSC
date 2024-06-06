@@ -38,7 +38,7 @@ OBJECTS			= \
 	pkcs15-esteid2018.obj pkcs15-idprime.obj pkcs15-nqApplet.obj \
 	pkcs15-starcos-esign.obj pkcs15-skeid.obj pkcs15-eoi.obj compression.obj sm.obj \
 	aux-data.obj \
-	$(TOPDIR)\win32\versioninfo.res
+	libopensc.res
 LIBS = $(TOPDIR)\src\scconf\scconf.lib \
 	   $(TOPDIR)\src\common\common.lib \
 	   $(TOPDIR)\src\common\libscdl.lib \
@@ -48,7 +48,7 @@ LIBS = $(TOPDIR)\src\scconf\scconf.lib \
 	   $(TOPDIR)\src\sm\libsmeac.lib \
 	   $(TOPDIR)\src\pkcs15init\pkcs15init.lib
 
-all: $(TOPDIR)\win32\versioninfo.res $(TARGET)
+all: libopensc.res $(TARGET)
 
 !INCLUDE $(TOPDIR)\win32\Make.rules.mak
 
@@ -57,7 +57,6 @@ opensc.dll: $(OBJECTS) $(LIBS)
 	echo EXPORTS >> $*.def
 	type lib$*.exports >> $*.def
 	link $(LINKFLAGS) /dll /def:$*.def /implib:$*.lib /out:opensc.dll $(OBJECTS) $(LIBS) $(OPENPACE_LIB) $(OPENSSL_LIB) $(ZLIB_LIB) gdi32.lib Comctl32.lib Shell32.lib user32.lib advapi32.lib ws2_32.lib shlwapi.lib
-	if EXIST opensc.dll.manifest mt -manifest opensc.dll.manifest -outputresource:opensc.dll;2
 
 opensc_a.lib: $(OBJECTS)
 	lib $(LIBFLAGS) /out:opensc_a.lib $(OBJECTS)

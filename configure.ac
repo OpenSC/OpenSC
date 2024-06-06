@@ -980,6 +980,15 @@ if test "${enable_sm}" = "yes"; then
 	esac
 fi
 
+case "${host}" in
+       *-winnt*|*-cygwin*)
+                       win_abs_top_srcdir="$(cygpath --windows $(realpath ${srcdir}))"
+                       ;;
+       *)
+                       win_abs_top_srcdir="$(realpath ${srcdir})"
+                       ;;
+esac
+
 if test "${with_pkcs11_provider}" = "detect"; then
 	if test "${WIN32}" != "yes"; then
 		DEFAULT_PKCS11_PROVIDER="${libdir}/opensc-pkcs11${DYN_LIB_EXT}"
@@ -1126,6 +1135,7 @@ AC_SUBST([PROFILE_DIR_DEFAULT])
 AC_SUBST([OPTIONAL_NOTIFY_CFLAGS])
 AC_SUBST([OPTIONAL_NOTIFY_LIBS])
 AC_SUBST([TIDY_CHECKS])
+AC_SUBST([win_abs_top_srcdir])
 
 AM_CONDITIONAL([ENABLE_MAN], [test "${enable_man}" = "yes"])
 AM_CONDITIONAL([ENABLE_THREAD_LOCKING], [test "${enable_thread_locking}" = "yes"])
@@ -1173,27 +1183,29 @@ AC_CONFIG_FILES([
 	src/common/Makefile
 	src/ui/Makefile
 	src/libopensc/Makefile
+	src/libopensc/libopensc.rc
 	src/sm/Makefile
 	src/pkcs11/Makefile
-	src/pkcs11/versioninfo-pkcs11.rc
-	src/pkcs11/versioninfo-pkcs11-spy.rc
+	src/pkcs11/opensc-pkcs11.rc
+	src/pkcs11/opensc-pkcs11-spy.rc
 	src/pkcs11/opensc-pkcs11.pc
 	src/pkcs15init/Makefile
 	src/scconf/Makefile
 	src/tests/Makefile
+	src/tests/tests.rc
 	src/tests/regression/Makefile
 	src/tests/p11test/Makefile
 	src/tests/fuzzing/Makefile
 	src/tests/unittests/Makefile
 	src/tools/Makefile
-	src/tools/versioninfo-tools.rc
-	src/tools/versioninfo-opensc-notify.rc
+	src/tools/tools.rc
+	src/tools/opensc-notify-x.rc
 	src/smm/Makefile
+	src/smm/smm-local.rc
 	src/minidriver/Makefile
-	src/minidriver/versioninfo-minidriver.rc
+	src/minidriver/opensc-minidriver.rc
 	src/minidriver/opensc-minidriver.inf
 	win32/Makefile
-	win32/versioninfo.rc
 	win32/versioninfo-customactions.rc
 	win32/winconfig.h
 	win32/OpenSC.iss

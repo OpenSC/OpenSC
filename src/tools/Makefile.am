@@ -21,8 +21,8 @@ do_subst = $(SED) \
 	   -e 's,[@]VDFORMAT[@],$(VDFORMAT),g' \
 	   -e 's,[@]X509DIR[@],$(X509DIR),g'
 
-MAINTAINERCLEANFILES = $(srcdir)/Makefile.in $(srcdir)/versioninfo-tools.rc $(srcdir)/versioninfo-opensc-notify.rc
-EXTRA_DIST = Makefile.mak versioninfo-tools.rc.in versioninfo-opensc-notify.rc.in goid-tool.ggo.in npa-tool.ggo.in opensc-notify.ggo.in egk-tool.ggo.in opensc-asn1.ggo.in org.opensc.notify.desktop.in exe.manifest pkcs11-register.desktop.in org.opensc-project.mac.pkcs11-register.plist.in org.opensc-project.mac.opensc-notify.plist.in
+MAINTAINERCLEANFILES = $(srcdir)/Makefile.in $(srcdir)/tools.rc $(srcdir)/opensc-notify-x.rc
+EXTRA_DIST = Makefile.mak tools.rc.in opensc-notify-x.rc.in goid-tool.ggo.in npa-tool.ggo.in opensc-notify.ggo.in egk-tool.ggo.in opensc-asn1.ggo.in org.opensc.notify.desktop.in tools.manifest pkcs11-register.desktop.in org.opensc-project.mac.pkcs11-register.plist.in org.opensc-project.mac.opensc-notify.plist.in
 
 noinst_HEADERS = util.h fread_to_eof.h \
 	egk-tool-cmdline.h goid-tool-cmdline.h npa-tool-cmdline.h \
@@ -149,24 +149,24 @@ cmdline:
 
 if WIN32
 LIBS += -lshlwapi
-opensc_tool_SOURCES += versioninfo-tools.rc
-piv_tool_SOURCES += versioninfo-tools.rc
-opensc_explorer_SOURCES += versioninfo-tools.rc
-pkcs15_tool_SOURCES += versioninfo-tools.rc
-pkcs11_tool_SOURCES += versioninfo-tools.rc
-pkcs11_register_SOURCES += versioninfo-tools.rc
-pkcs15_crypt_SOURCES += versioninfo-tools.rc
-cryptoflex_tool_SOURCES += versioninfo-tools.rc
-pkcs15_init_SOURCES += versioninfo-tools.rc
-cardos_tool_SOURCES += versioninfo-tools.rc
-eidenv_SOURCES += versioninfo-tools.rc
-netkey_tool_SOURCES += versioninfo-tools.rc
-westcos_tool_SOURCES += versioninfo-tools.rc
-openpgp_tool_SOURCES += versioninfo-tools.rc
-iasecc_tool_SOURCES += versioninfo-tools.rc
-sc_hsm_tool_SOURCES += versioninfo-tools.rc
-gids_tool_SOURCES += versioninfo-tools.rc
-opensc_notify_SOURCES += versioninfo-opensc-notify.rc
+opensc_tool_SOURCES += tools.rc
+piv_tool_SOURCES += tools.rc
+opensc_explorer_SOURCES += tools.rc
+pkcs15_tool_SOURCES += tools.rc
+pkcs11_tool_SOURCES += tools.rc
+pkcs11_register_SOURCES += tools.rc
+pkcs15_crypt_SOURCES += tools.rc
+cryptoflex_tool_SOURCES += tools.rc
+pkcs15_init_SOURCES += tools.rc
+cardos_tool_SOURCES += tools.rc
+eidenv_SOURCES += tools.rc
+netkey_tool_SOURCES += tools.rc
+westcos_tool_SOURCES += tools.rc
+openpgp_tool_SOURCES += tools.rc
+iasecc_tool_SOURCES += tools.rc
+sc_hsm_tool_SOURCES += tools.rc
+gids_tool_SOURCES += tools.rc
+opensc_notify_SOURCES += opensc-notify-x.rc
 endif
 
 applicationsdir = $(datadir)/applications
