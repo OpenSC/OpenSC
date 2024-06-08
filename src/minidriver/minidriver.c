@@ -233,6 +233,9 @@ typedef struct _VENDOR_SPECIFIC
 	struct md_dh_agreement* dh_agreements;
 	BYTE allocatedAgreements;
 
+	/* if any key used with the MD_ROLE_USER_SIGN has user_consent set PinCacheAlwaysPrompt */
+	int need_pin_always;
+
 	CRITICAL_SECTION hScard_lock;
 } VENDOR_SPECIFIC;
 
@@ -1887,6 +1890,12 @@ md_set_cmapfile(PCARD_DATA pCardData, struct md_file *file)
 						  ii,
 						  cont->flags & CONTAINER_MAP_DEFAULT_CONTAINER ?
 						  " (default)" : "");
+
+					/* set flag that at least one key that uses the sign key needs PinCacheAlwaysPrompt */
+					logprintf(pCardData, 7, "key_obj->user_consent: %d\n", (int) key_obj->user_consent);
+					if (key_obj->user_consent)
+						vs->need_pin_always = 1;
+					logprintf(pCardData, 7, "vs->need_pin_always %d\n", (int) vs->need_pin_always);
 
 					if (pin_mode < pin_mode_n) {
 						pin_mode = pin_mode_n;
@@ -5999,6 +6008,16 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 		if (pcbSessionPin) *pcbSessionPin = 0;
 		if (ppbSessionPin) *ppbSessionPin = NULL;
 		logprintf(pCardData, 2, "standard pin verification");
+		/*
+		 * TODO the use of auth_method being overridden to do session pin 
+		 * conflicts with framework-pkcs15.c use of auth_method  SC_AC_CONTEXT_SPECIFIC
+		 * for a different purpose. But needs to be reviewed 
+		 */
+		if (PinId == MD_ROLE_USER_SIGN && vs->need_pin_always) {
+			logprintf(pCardData, 7, "Setting SC_AC_CONTEXT_SPECIFIC cbPinData: %lu old auth_method: %0x auth_id:%x \n",
+					(unsigned long) cbPinData, (unsigned int) auth_info->auth_method, (unsigned char) auth_info->auth_id.value[0]);
+			auth_info->auth_method = SC_AC_CONTEXT_SPECIFIC;
+		}
 		r = md_dialog_perform_pin_operation(pCardData, SC_PIN_CMD_VERIFY, vs->p15card, pin_obj, (const u8 *) pbPinData, cbPinData, NULL, NULL, DisplayPinpadUI, PinId);
 	}
 
@@ -6475,16 +6494,28 @@ DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData,
 					  "returning info on normal PIN [%lu]\n",
 					  (unsigned long)dwFlags);
 
-				if (dwFlags == ROLE_USER)
+				if (dwFlags == ROLE_USER) {
+					p->PinCachePolicy.PinCachePolicyType = PinCacheNormal;
 					p->PinPurpose = PrimaryCardPin;
-				else if (dwFlags == MD_ROLE_USER_SIGN)
+				}
+				else if (dwFlags == MD_ROLE_USER_SIGN) {
+					logprintf(pCardData, 7, "vs->need_pin_always %d\n", (int) vs->need_pin_always);
+					if (vs->need_pin_always) {
+						p->PinCachePolicy.PinCachePolicyType = PinCacheAlwaysPrompt;
+						logprintf(pCardData, 7, "Setting PinCacheAlwaysPrompt\n");
+					}
+					else
+					p->PinCachePolicy.PinCachePolicyType = PinCacheNormal;
+
 					p->PinPurpose = DigitalSignaturePin;
-				else
+				}
+				else {
 					p->PinPurpose = AuthenticationPin;
+					p->PinCachePolicy.PinCachePolicyType = PinCacheNormal;
+				}
 
 				p->PinCachePolicy.dwVersion = PIN_CACHE_POLICY_CURRENT_VERSION;
 				p->PinCachePolicy.dwPinCachePolicyInfo = 0;
-				p->PinCachePolicy.PinCachePolicyType = PinCacheNormal;
 				p->dwChangePermission = CREATE_PIN_SET(dwFlags);
 				p->dwUnblockPermission = CREATE_PIN_SET(ROLE_ADMIN);
 				break;
