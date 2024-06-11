@@ -5531,6 +5531,8 @@ static void show_dobj(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 	char *application;
 	CK_ULONG    size = 0;
 	CK_TOKEN_INFO info;
+	CK_BBOOL modifiable = 0;
+	CK_BBOOL private = 0;
 
 	suppress_warn = 1;
 	printf("Data object %u\n", (unsigned int) obj);
@@ -5570,11 +5572,13 @@ static void show_dobj(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 	}
 
 	printf("  flags:          ");
-	if (getMODIFIABLE(sess, obj))
+	modifiable = getMODIFIABLE(sess, obj);
+	if (modifiable)
 		printf(" modifiable");
-	if (getPRIVATE(sess, obj))
+	private = getPRIVATE(sess, obj);
+	if (private)
 		printf(" private");
-	if (!getMODIFIABLE(sess, obj) && !getPRIVATE(sess, obj))
+	if (!modifiable && !private)
 		printf("<empty>");
 	printf("\n");
 
