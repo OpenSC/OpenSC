@@ -2541,9 +2541,9 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	if (rv == CKR_OK)
 		printf("Signature is valid\n");
 	else if (rv == CKR_SIGNATURE_INVALID)
-		printf("Invalid signature\n");
+		util_fatal("Invalid signature");
 	else
-		printf("Cryptoki returned error: %s\n", CKR2Str(rv));
+		util_fatal("Signature verification failed: rv = %s (0x%0x)\n", CKR2Str(rv), (unsigned int)rv);
 }
 
 static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
