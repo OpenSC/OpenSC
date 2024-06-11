@@ -1416,9 +1416,11 @@ int main(int argc, char * argv[])
 			find_object_flags(session, mf_flags, &object,
 				opt_object_id_len ? opt_object_id : NULL,
 				opt_object_id_len, 0);
-		} else if (!find_object(session, CKO_SECRET_KEY, &object,
-				 opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, 0))
-			util_fatal("Secret key not found");
+		} else if (!find_object(session, CKO_PUBLIC_KEY, &object,
+					   opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, 0))
+			if (!find_object(session, CKO_SECRET_KEY, &object,
+					    opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, 0))
+				util_fatal("Public/Secret key not found");
 	}
 
 	if (do_verify) {
