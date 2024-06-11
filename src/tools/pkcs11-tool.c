@@ -3160,13 +3160,17 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	if (opt_is_private != 0) {
 		FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_PRIVATE,
 			&_true, sizeof(_true));
-		n_pubkey_attr++;
+		FILL_ATTR(privateKeyTemplate[n_privkey_attr], CKA_PRIVATE,
+				&_true, sizeof(_true));
 	}
 	else {
 		FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_PRIVATE,
 			&_false, sizeof(_false));
-		n_pubkey_attr++;
+		FILL_ATTR(privateKeyTemplate[n_privkey_attr], CKA_PRIVATE,
+				&_false, sizeof(_false));
 	}
+	n_pubkey_attr++;
+	n_privkey_attr++;
 
 	if (opt_always_auth != 0) {
 		FILL_ATTR(privateKeyTemplate[n_privkey_attr], CKA_ALWAYS_AUTHENTICATE,
@@ -4191,7 +4195,11 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 		n_privkey_attr++;
 		FILL_ATTR(privkey_templ[n_privkey_attr], CKA_TOKEN, &_true, sizeof(_true));
 		n_privkey_attr++;
-		FILL_ATTR(privkey_templ[n_privkey_attr], CKA_PRIVATE, &_true, sizeof(_true));
+		if (opt_is_private != 0) {
+			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_PRIVATE, &_true, sizeof(_true));
+		} else {
+			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_PRIVATE, &_false, sizeof(_false));
+		}
 		n_privkey_attr++;
 		FILL_ATTR(privkey_templ[n_privkey_attr], CKA_SENSITIVE, &_true, sizeof(_true));
 		n_privkey_attr++;
