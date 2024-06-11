@@ -2601,6 +2601,72 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		util_fatal("Signature verification failed: rv = %s (0x%0x)\n", CKR2Str(rv), (unsigned int)rv);
 }
 
+static void
+build_rsa_oaep_params(
+		CK_RSA_PKCS_OAEP_PARAMS *oaep_params,
+		CK_MECHANISM *mech,
+		char *param,
+		int param_len)
+{
+	/* An RSA-OAEP mechanism needs parameters */
+
+	/* set "default" MGF and hash algorithms. We can overwrite MGF later */
+	oaep_params->hashAlg = opt_hash_alg;
+	switch (opt_hash_alg) {
+	case CKM_SHA_1:
+		oaep_params->mgf = CKG_MGF1_SHA1;
+		break;
+	case CKM_SHA224:
+		oaep_params->mgf = CKG_MGF1_SHA224;
+		break;
+	case CKM_SHA3_224:
+		oaep_params->mgf = CKG_MGF1_SHA3_224;
+		break;
+	case CKM_SHA3_256:
+		oaep_params->mgf = CKG_MGF1_SHA3_256;
+		break;
+	case CKM_SHA3_384:
+		oaep_params->mgf = CKG_MGF1_SHA3_384;
+		break;
+	case CKM_SHA3_512:
+		oaep_params->mgf = CKG_MGF1_SHA3_512;
+		break;
+	default:
+		printf("hash-algorithm %s unknown, defaulting to CKM_SHA256\n", p11_mechanism_to_name(opt_hash_alg));
+		oaep_params->hashAlg = CKM_SHA256;
+		/* fall through */
+	case CKM_SHA256:
+		oaep_params->mgf = CKG_MGF1_SHA256;
+		break;
+	case CKM_SHA384:
+		oaep_params->mgf = CKG_MGF1_SHA384;
+		break;
+	case CKM_SHA512:
+		oaep_params->mgf = CKG_MGF1_SHA512;
+		break;
+	}
+
+	if (opt_mgf != 0) {
+		oaep_params->mgf = opt_mgf;
+	} else {
+		printf("mgf not set, defaulting to %s\n", p11_mgf_to_name(oaep_params->mgf));
+	}
+
+	oaep_params->source = CKZ_DATA_SPECIFIED;
+	oaep_params->pSourceData = param;
+	oaep_params->ulSourceDataLen = param_len;
+
+	mech->pParameter = oaep_params;
+	mech->ulParameterLen = sizeof(*oaep_params);
+
+	printf("OAEP parameters: hashAlg=%s, mgf=%s, source_type=%lu, source_ptr=%p, source_len=%lu\n",
+			p11_mechanism_to_name(oaep_params->hashAlg),
+			p11_mgf_to_name(oaep_params->mgf),
+			oaep_params->source,
+			oaep_params->pSourceData,
+			oaep_params->ulSourceDataLen);
+}
+
 static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		CK_OBJECT_HANDLE key)
 {
@@ -2624,7 +2690,6 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	fprintf(stderr, "Using decrypt algorithm %s\n", p11_mechanism_to_name(opt_mechanism));
 	memset(&mech, 0, sizeof(mech));
 	mech.mechanism = opt_mechanism;
-	oaep_params.hashAlg = 0;
 
 	if (opt_hash_alg != 0 && opt_mechanism != CKM_RSA_PKCS_OAEP)
 		util_fatal("The hash-algorithm is applicable only to "
@@ -2634,39 +2699,7 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	/* set "default" MGF and hash algorithms. We can overwrite MGF later */
 	switch (opt_mechanism) {
 	case CKM_RSA_PKCS_OAEP:
-		oaep_params.hashAlg = opt_hash_alg;
-		switch (opt_hash_alg) {
-		case CKM_SHA_1:
-			oaep_params.mgf = CKG_MGF1_SHA1;
-			break;
-		case CKM_SHA224:
-			oaep_params.mgf = CKG_MGF1_SHA224;
-			break;
-		case CKM_SHA3_224:
-			oaep_params.mgf = CKG_MGF1_SHA3_224;
-			break;
-		case CKM_SHA3_256:
-			oaep_params.mgf = CKG_MGF1_SHA3_256;
-			break;
-		case CKM_SHA3_384:
-			oaep_params.mgf = CKG_MGF1_SHA3_384;
-			break;
-		case CKM_SHA3_512:
-			oaep_params.mgf = CKG_MGF1_SHA3_512;
-			break;
-		default:
-			oaep_params.hashAlg = CKM_SHA256;
-			/* fall through */
-		case CKM_SHA256:
-			oaep_params.mgf = CKG_MGF1_SHA256;
-			break;
-		case CKM_SHA384:
-			oaep_params.mgf = CKG_MGF1_SHA384;
-			break;
-		case CKM_SHA512:
-			oaep_params.mgf = CKG_MGF1_SHA512;
-			break;
-		}
+		build_rsa_oaep_params(&oaep_params, &mech, NULL, 0);
 		break;
 	case CKM_RSA_X_509:
 	case CKM_RSA_PKCS:
@@ -2694,29 +2727,6 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		break;
 	default:
 		util_fatal("Mechanism %s illegal or not supported\n", p11_mechanism_to_name(opt_mechanism));
-	}
-
-
-	/* If an RSA-OAEP mechanism, it needs parameters */
-	if (oaep_params.hashAlg) {
-		if (opt_mgf != 0)
-			oaep_params.mgf = opt_mgf;
-
-		/* These settings are compatible with OpenSSL 1.0.2L and 1.1.0+ */
-		oaep_params.source = 0UL;  /* empty encoding parameter (label) */
-		oaep_params.pSourceData = NULL; /* PKCS#11 standard: this must be NULLPTR */
-		oaep_params.ulSourceDataLen = 0; /* PKCS#11 standard: this must be 0 */
-
-		mech.pParameter = &oaep_params;
-		mech.ulParameterLen = sizeof(oaep_params);
-
-		fprintf(stderr, "OAEP parameters: hashAlg=%s, mgf=%s, source_type=%lu, source_ptr=%p, source_len=%lu\n",
-			p11_mechanism_to_name(oaep_params.hashAlg),
-			p11_mgf_to_name(oaep_params.mgf),
-			oaep_params.source,
-			oaep_params.pSourceData,
-			oaep_params.ulSourceDataLen);
-
 	}
 
 	if (opt_input == NULL)
@@ -2790,6 +2800,7 @@ static void encrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	unsigned char	in_buffer[1024], out_buffer[1024];
 	CK_MECHANISM	mech;
 	CK_RV		rv;
+	CK_RSA_PKCS_OAEP_PARAMS oaep_params;
 	CK_ULONG	in_len, out_len;
 	int		fd_in, fd_out;
 	ssize_t sz;
@@ -2807,7 +2818,14 @@ static void encrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	memset(&mech, 0, sizeof(mech));
 	mech.mechanism = opt_mechanism;
 
+	if (opt_hash_alg != 0 && opt_mechanism != CKM_RSA_PKCS_OAEP)
+		util_fatal("The hash-algorithm is applicable only to "
+			   "RSA-PKCS-OAEP mechanism");
+
 	switch (opt_mechanism) {
+	case CKM_RSA_PKCS_OAEP:
+		build_rsa_oaep_params(&oaep_params, &mech, NULL, 0);
+		break;
 	case CKM_AES_ECB:
 		mech.pParameter = NULL;
 		mech.ulParameterLen = 0;
@@ -7509,8 +7527,7 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 	CK_ULONG	encrypted_len, data_len;
 	int             failed;
 	CK_RV           rv;
-	int             pad;
-	CK_MECHANISM_TYPE hash_alg = CKM_SHA256;
+	int pad;
 	CK_RSA_PKCS_MGF_TYPE mgf = CKG_MGF1_SHA256;
 	CK_RSA_PKCS_OAEP_PARAMS oaep_params;
 
@@ -7538,50 +7555,11 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 		max_in_len = mod_len-11;
 		in_len = 10;
 		break;
-	case CKM_RSA_PKCS_OAEP: {
-		if (opt_hash_alg != 0) {
-			hash_alg = opt_hash_alg;
-		}
-		switch (hash_alg) {
-		case CKM_SHA_1:
-			mgf = CKG_MGF1_SHA1;
-			break;
-		case CKM_SHA224:
-			mgf = CKG_MGF1_SHA224;
-			break;
-		default:
-			printf("hash-algorithm %s unknown, defaulting to CKM_SHA256\n", p11_mechanism_to_name(hash_alg));
-			/* fall through */
-		case CKM_SHA256:
-			mgf = CKG_MGF1_SHA256;
-			break;
-		case CKM_SHA384:
-			mgf = CKG_MGF1_SHA384;
-			break;
-		case CKM_SHA512:
-			mgf = CKG_MGF1_SHA512;
-			break;
-		case CKM_SHA3_224:
-			mgf = CKG_MGF1_SHA3_224;
-			break;
-		case CKM_SHA3_256:
-			mgf = CKG_MGF1_SHA3_256;
-			break;
-		case CKM_SHA3_384:
-			mgf = CKG_MGF1_SHA3_384;
-			break;
-		case CKM_SHA3_512:
-			mgf = CKG_MGF1_SHA3_512;
-			break;
-		}
-		if (opt_mgf != 0) {
-			mgf = opt_mgf;
-		} else {
-			printf("mgf not set, defaulting to %s\n", p11_mgf_to_name(mgf));
-		}
+	case CKM_RSA_PKCS_OAEP:
+		build_rsa_oaep_params(&oaep_params, &mech, param, param_len);
 
 		pad = RSA_PKCS1_OAEP_PADDING;
-		size_t len = 2+2*hash_length(hash_alg);
+		size_t len = 2 + 2 * hash_length(oaep_params.hashAlg);
 		if (len >= mod_len) {
 			printf("Incompatible mechanism and key size\n");
 			return 0;
@@ -7590,7 +7568,6 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 		max_in_len = mod_len-len;
 		in_len = 10;
 		break;
-	}
 	case CKM_RSA_X_509:
 		pad = RSA_NO_PADDING;
 		/* input length equals modulus length */
@@ -7637,15 +7614,15 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 	if (mech_type == CKM_RSA_PKCS_OAEP) {
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L
 		const EVP_MD *md;
-		switch (hash_alg) {
+		switch (oaep_params.hashAlg) {
 		case CKM_SHA_1:
 			md = EVP_sha1();
 			break;
 		case CKM_SHA224:
 			md = EVP_sha224();
 			break;
-		default: /* it should not happen, hash_alg is checked earlier */
-			/* fall through */
+		default: /* it should not happen, oaep_params.hashAlg is checked earlier */
+			 /* fall through */
 		case CKM_SHA256:
 			md = EVP_sha256();
 			break;
@@ -7726,7 +7703,7 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 			}
 		}
 #else
-		if (hash_alg != CKM_SHA_1) {
+		if (oaep_params.hashAlg != CKM_SHA_1) {
 			printf("This version of OpenSSL only supports SHA1 for OAEP, returning\n");
 			return 0;
 		}
@@ -7744,34 +7721,8 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 	EVP_PKEY_free(pkey);
 	encrypted_len = out_len;
 
-	/* set "default" MGF and hash algorithms. We can overwrite MGF later */
 	switch (mech_type) {
 	case CKM_RSA_PKCS_OAEP:
-		oaep_params.hashAlg = hash_alg;
-		oaep_params.mgf = mgf;
-
-		oaep_params.source = 0UL;  /* empty encoding parameter (label) */
-		oaep_params.pSourceData = NULL; /* PKCS#11 standard: this must be NULLPTR */
-		oaep_params.ulSourceDataLen = 0; /* PKCS#11 standard: this must be 0 */
-
-		fprintf(stderr, "OAEP parameters: hashAlg=%s, mgf=%s, ",
-			p11_mechanism_to_name(oaep_params.hashAlg),
-			p11_mgf_to_name(oaep_params.mgf));
-
-		if (param != NULL && param_len > 0) {
-			oaep_params.source = CKZ_DATA_SPECIFIED;
-			oaep_params.pSourceData = param;
-			oaep_params.ulSourceDataLen = param_len;
-			fprintf(stderr, "encoding parameter (Label) present, length %d\n", param_len);
-		} else {
-			fprintf(stderr, "encoding parameter (Label) not present\n");
-		}
-
-		mech.pParameter = &oaep_params;
-		mech.ulParameterLen = sizeof(oaep_params);
-
-
-
 		break;
 	case CKM_RSA_X_509:
 	case CKM_RSA_PKCS:
