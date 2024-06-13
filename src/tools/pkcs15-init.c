@@ -2504,11 +2504,16 @@ static size_t determine_filesize(const char *filename)
 {
 	FILE *fp;
 	long ll;
+	int rc;
 
-	if ((fp = fopen(filename,"rb")) == NULL)
+	fp = fopen(filename,"rb");
+	if (fp == NULL)
 		util_fatal("Unable to open %s: %m", filename);
 
-	fseek(fp,0L,SEEK_END);
+	rc = fseek(fp, 0L, SEEK_END);
+	if (rc != 0)
+		util_fatal("Unable seek in the opened file %s", filename);
+
 	ll = ftell(fp);
 	if (ll == -1l)
 		util_fatal("fseek/ftell error");
