@@ -1108,6 +1108,17 @@ pkcs15_add_object(struct sc_pkcs11_slot *slot, struct pkcs15_any_object *obj,
 	obj->base.flags &= ~SC_PKCS11_OBJECT_RECURS;
 }
 
+static unsigned int
+get_num_slots(struct sc_card *card)
+{
+	unsigned int i;
+	for (i = 0; i < list_size(&virtual_slots); i++) {
+		sc_pkcs11_slot_t *slot = (sc_pkcs11_slot_t *)list_get_at(&virtual_slots, i);
+		if (slot && slot->p11card && slot->p11card->card == card)
+			return slot->p11card->num_slots;
+	}
+	return 0;
+}
 
 static void
 pkcs15_init_slot(struct sc_pkcs15_card *p15card, struct sc_pkcs11_slot *slot,
@@ -1159,7 +1170,7 @@ pkcs15_init_slot(struct sc_pkcs15_card *p15card, struct sc_pkcs11_slot *slot,
 			size_t pin_len = 0;
 			if (auth->label[0] && strncmp(auth->label, "PIN", 4) != 0)
 				pin_len = strlen(auth->label);
-			if (pin_len) {
+			if (pin_len && get_num_slots(p15card->card) > 1) {
 				size_t tokeninfo_len = 0;
 				if (p15card->tokeninfo && p15card->tokeninfo->label)
 					tokeninfo_len = strlen(p15card->tokeninfo->label);
@@ -1624,6 +1635,10 @@ pkcs15_create_tokens(struct sc_pkcs11_card *p11card, struct sc_app_info *app_inf
 	}
 	sc_log(context, "create slots flags 0x%X", cs_flags);
 
+	if (p11card) {
+		p11card->num_slots = 0;
+	}
+
 	/* Find out framework data corresponding to the given application */
 	fw_data = get_fw_data(p11card, app_info, &idx);
 	if (!fw_data)   {
@@ -1681,6 +1696,13 @@ pkcs15_create_tokens(struct sc_pkcs11_card *p11card, struct sc_app_info *app_inf
 		sc_log(context, "Found %d authentication objects", auth_count);
 
 		for (i = 0; i < auth_count; i++) {
+			struct sc_pkcs15_auth_info *pin_info = (struct sc_pkcs15_auth_info *)auths[i]->data;
+			if (!_is_slot_auth_object(pin_info))
+				continue;
+			p11card->num_slots++;
+		}
+
+		for (i = 0; i < auth_count; i++) {
 			struct sc_pkcs15_auth_info *pin_info = (struct sc_pkcs15_auth_info*)auths[i]->data;
 			struct sc_pkcs11_slot *islot = NULL;
 
@@ -1703,6 +1725,10 @@ pkcs15_create_tokens(struct sc_pkcs11_card *p11card, struct sc_app_info *app_inf
 		}
 	}
 	else   {
+		if (auth_user_pin && (cs_flags & SC_PKCS11_SLOT_FOR_PIN_USER))
+			p11card->num_slots++;
+		if (auth_sign_pin && (cs_flags & SC_PKCS11_SLOT_FOR_PIN_SIGN))
+			p11card->num_slots++;
 		sc_log(context, "User/Sign PINs %p/%p", auth_user_pin, auth_sign_pin);
 		if (auth_user_pin && (cs_flags & SC_PKCS11_SLOT_FOR_PIN_USER)) {
 			/* For the UserPIN of the first slot create slot */
