@@ -700,6 +700,15 @@
 					</para></listitem>
 				</varlistentry>
 
+				<varlistentry>
+					<term>
+						<option>--mac-general-param</option> <replaceable>num</replaceable>
+					</term>
+					<listitem><para>Sets the length of the MAC for the general-length MACing mechanisms
+					to <replaceable>num</replaceable> bytes.
+					</para></listitem>
+				</varlistentry>
+
 			</variablelist>
 		</para>
 	</refsect1>
