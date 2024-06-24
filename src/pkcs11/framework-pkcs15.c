@@ -415,6 +415,8 @@ pkcs15_init_token_info(struct sc_pkcs15_card *p15card, CK_TOKEN_INFO_PTR pToken)
 
 	if (model)
 		strcpy_bp(pToken->model, model, sizeof(pToken->model));
+	else if (sc_card_ctl(p15card->card, SC_CARDCTL_GET_MODEL, &model) == SC_SUCCESS)
+		strcpy_bp(pToken->model, model, sizeof(pToken->model));
 	else if (p15card->flags & SC_PKCS15_CARD_FLAG_EMULATED)
 		strcpy_bp(pToken->model, "PKCS#15 emulated", sizeof(pToken->model));
 	else
