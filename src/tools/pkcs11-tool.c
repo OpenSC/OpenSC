@@ -212,7 +212,8 @@ enum {
 	OPT_OBJECT_INDEX,
 	OPT_ALLOW_SW,
 	OPT_LIST_INTERFACES,
-	OPT_IV
+	OPT_IV,
+	OPT_MAC_GEN_PARAM,
 };
 
 // clang-format off
@@ -300,6 +301,7 @@ static const struct option options[] = {
 	{ "generate-random",	1, NULL,		OPT_GENERATE_RANDOM },
 	{ "allow-sw",		0, NULL,		OPT_ALLOW_SW },
 	{ "iv",			1, NULL,		OPT_IV },
+	{ "mac-general-param",	1, NULL, 		OPT_MAC_GEN_PARAM},
 
 	{ NULL, 0, NULL, 0 }
 };
@@ -389,6 +391,7 @@ static const char *option_help[] = {
 	"Generate given amount of random data",
 	"Allow using software mechanisms (without CKF_HW)",
 	"Initialization vector",
+		"Specify the value <arg> of the mechanism parameter CK_MAC_GENERAL_PARAMS",
 };
 
 static const char *	app_name = "pkcs11-tool"; /* for utils.c */
@@ -448,6 +451,7 @@ static int		opt_salt_len_given = 0; /* 0 - not given, 1 - given with input param
 static int		opt_always_auth = 0;
 static CK_FLAGS		opt_allow_sw = CKF_HW;
 static const char *	opt_iv = NULL;
+static unsigned long opt_mac_gen_param = 0;
 
 static void *module = NULL;
 static CK_FUNCTION_LIST_3_0_PTR p11 = NULL;
@@ -1076,6 +1080,14 @@ int main(int argc, char * argv[])
 			break;
 		case OPT_UNDESTROYABLE:
 			opt_is_destroyable = 0;
+			break;
+		case OPT_MAC_GEN_PARAM:
+			if (optarg != NULL) {
+				char *end_ptr;
+				opt_mac_gen_param = strtoul(optarg, &end_ptr, 10);
+			} else {
+				util_fatal("--mac-general-param option needs a decimal value argument");
+			}
 			break;
 		case OPT_TEST_HOTPLUG:
 			opt_test_hotplug = 1;
@@ -2308,6 +2320,7 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	unsigned char	in_buffer[1025], sig_buffer[512];
 	CK_MECHANISM	mech;
 	CK_RSA_PKCS_PSS_PARAMS pss_params;
+	CK_MAC_GENERAL_PARAMS mac_gen_param;
 	CK_RV		rv;
 	CK_ULONG	sig_len;
 	int		fd;
@@ -2336,6 +2349,16 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		util_fatal("For %s mechanism, message size (got %z bytes) "
 			"must be equal to specified digest length (%lu)\n",
 			p11_mechanism_to_name(opt_mechanism), sz, hashlen);
+	} else if (opt_mechanism == CKM_AES_CMAC_GENERAL) {
+		if (opt_mac_gen_param == 0 || opt_mac_gen_param > 16) {
+			util_fatal("For %s mechanism, the option --mac-general-param "
+				   "is mandatory and its value must be comprised between 1 and "
+				   "16 (>=8 recommended).\n",
+					p11_mechanism_to_name(opt_mechanism));
+		}
+		mac_gen_param = opt_mac_gen_param;
+		mech.pParameter = &mac_gen_param;
+		mech.ulParameterLen = sizeof(CK_MAC_GENERAL_PARAMS);
 	}
 
 	rv = CKR_CANCEL;
@@ -2415,6 +2438,7 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	unsigned char	in_buffer[1025], sig_buffer[512];
 	CK_MECHANISM	mech;
 	CK_RSA_PKCS_PSS_PARAMS pss_params;
+	CK_MAC_GENERAL_PARAMS mac_gen_param;
 	CK_RV		rv;
 	CK_ULONG	sig_len;
 	int		fd, fd2;
@@ -2504,6 +2528,16 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		util_fatal("For %s mechanism, message size (got %z bytes)"
 			" must be equal to specified digest length (%lu)\n",
 			p11_mechanism_to_name(opt_mechanism), sz, hashlen);
+	} else if (opt_mechanism == CKM_AES_CMAC_GENERAL) {
+		if (opt_mac_gen_param == 0 || opt_mac_gen_param > 16) {
+			util_fatal("For %s mechanism, the option --mac-general-param "
+				   "is mandatory and its value must be comprised between 1 and "
+				   "16 (>=8 recommended).\n",
+					p11_mechanism_to_name(opt_mechanism));
+		}
+		mac_gen_param = opt_mac_gen_param;
+		mech.pParameter = &mac_gen_param;
+		mech.ulParameterLen = sizeof(CK_MAC_GENERAL_PARAMS);
 	}
 
 	rv = CKR_CANCEL;
@@ -8741,6 +8775,7 @@ static struct mech_info	p11_mechanisms[] = {
 	{ CKM_AES_CTR,		"AES-CTR", NULL, MF_UNKNOWN },
 	{ CKM_AES_GCM,		"AES-GCM", NULL, MF_UNKNOWN },
 	{ CKM_AES_CMAC,		"AES-CMAC", NULL, (MF_SIGN | MF_VERIFY | MF_CKO_SECRET_KEY) },
+	{ CKM_AES_CMAC_GENERAL,	"AES-CMAC-GENERAL", NULL, (MF_SIGN | MF_VERIFY | MF_CKO_SECRET_KEY) },
 	{ CKM_DES_ECB_ENCRYPT_DATA, "DES-ECB-ENCRYPT-DATA", NULL, MF_UNKNOWN },
 	{ CKM_DES_CBC_ENCRYPT_DATA, "DES-CBC-ENCRYPT-DATA", NULL, MF_UNKNOWN },
 	{ CKM_DES3_ECB_ENCRYPT_DATA, "DES3-ECB-ENCRYPT-DATA", NULL, MF_UNKNOWN },

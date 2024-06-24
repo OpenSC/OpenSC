@@ -966,6 +966,10 @@ typedef struct CK_AES_CTR_PARAMS {
 
 typedef CK_AES_CTR_PARAMS *CK_AES_CTR_PARAMS_PTR;
 
+typedef unsigned long CK_MAC_GENERAL_PARAMS;
+
+typedef CK_MAC_GENERAL_PARAMS *CK_MAC_GENERAL_PARAMS_PTR;
+
 typedef unsigned long ck_rv_t;
 
 
