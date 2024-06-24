@@ -45,6 +45,8 @@ static struct {
 	{384, {{1, 3, 132, 0, 34, -1}}}
 };
 
+static char *eoi_model = "ChipDocLite";
+
 /* The description of the driver. */
 static struct sc_card_driver eoi_drv =
 {
@@ -417,6 +419,25 @@ static int eoi_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *
 	LOG_FUNC_RETURN(card->ctx, sc_get_iso7816_driver()->ops->pin_cmd(card, data, tries_left));
 }
 
+static int
+eoi_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
+{
+	int r = SC_SUCCESS;
+
+	LOG_FUNC_CALLED(card->ctx);
+	switch (cmd) {
+	case SC_CARDCTL_GET_MODEL:
+		if (!ptr)
+			r = SC_ERROR_INVALID_ARGUMENTS;
+		else
+			*(char **)ptr = eoi_model;
+		break;
+	default:
+		r = sc_get_iso7816_driver()->ops->card_ctl(card, cmd, ptr);
+	}
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+
 #define ALREADY_PROCESSED 0x80000000
 
 static int eoi_set_security_env(struct sc_card *card, const struct sc_security_env *env, int se_num)
@@ -545,6 +566,7 @@ struct sc_card_driver *sc_get_eoi_driver(void)
 	eoi_ops.select_file = eoi_select_file;
 	eoi_ops.logout = eoi_logout;
 	eoi_ops.pin_cmd = eoi_pin_cmd;
+	eoi_ops.card_ctl = eoi_card_ctl;
 	eoi_ops.set_security_env = eoi_set_security_env;
 	eoi_ops.compute_signature = eoi_compute_signature;
 
