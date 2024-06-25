@@ -1382,9 +1382,10 @@ int main(int argc, char * argv[])
 				opt_object_id_len ? opt_object_id : NULL,
 				opt_object_id_len, 0);
 		} else if (!find_object(session, CKO_PRIVATE_KEY, &object,
-					opt_object_id_len ? opt_object_id : NULL,
-					opt_object_id_len, 0))
-			util_fatal("Private key not found");
+					   opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, 0))
+			if (!find_object(session, CKO_SECRET_KEY, &object,
+					    opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, 0))
+				util_fatal("Private/secret key not found");
 	}
 
 	if (do_decrypt) {
