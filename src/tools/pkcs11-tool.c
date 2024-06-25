@@ -3428,6 +3428,14 @@ gen_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE *hSecretKey
 			n_attr++;
 		}
 
+		if (opt_key_usage_derive != 0) {
+			FILL_ATTR(keyTemplate[n_attr], CKA_DERIVE, &_true, sizeof(_true));
+			n_attr++;
+		} else {
+			FILL_ATTR(keyTemplate[n_attr], CKA_DERIVE, &_false, sizeof(_false));
+			n_attr++;
+		}
+
 		FILL_ATTR(keyTemplate[n_attr], CKA_VALUE_LEN, &key_length, sizeof(key_length));
 		n_attr++;
 
@@ -4571,6 +4579,14 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 			FILL_ATTR(seckey_templ[n_seckey_attr], CKA_SIGN, &_true, sizeof(_true));
 			n_seckey_attr++;
 			FILL_ATTR(seckey_templ[n_seckey_attr], CKA_VERIFY, &_true, sizeof(_true));
+			n_seckey_attr++;
+		}
+
+		if (opt_key_usage_derive != 0) {
+			FILL_ATTR(seckey_templ[n_seckey_attr], CKA_DERIVE, &_true, sizeof(_true));
+			n_seckey_attr++;
+		} else {
+			FILL_ATTR(seckey_templ[n_seckey_attr], CKA_DERIVE, &_false, sizeof(_false));
 			n_seckey_attr++;
 		}
 
