@@ -74,7 +74,7 @@ libopensc_la_SOURCES = $(libopensc_la_SOURCES_BASE) \
 libopensc_static_la_SOURCES = $(libopensc_la_SOURCES_BASE)
 
 if WIN32
-libopensc_la_SOURCES += $(top_builddir)/win32/versioninfo.rc
+libopensc_la_SOURCES += libopensc.rc
 endif
 libopensc_la_LIBADD = $(OPENPACE_LIBS) $(OPTIONAL_OPENSSL_LIBS) \
 	$(OPTIONAL_OPENCT_LIBS) $(OPTIONAL_ZLIB_LIBS) \

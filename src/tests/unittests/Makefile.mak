@@ -7,7 +7,7 @@ OBJECTS = asn1.obj \
 	pkcs15-emulator-filter.obj \
 	check_macro_reference_loop.obj \
 	strip_pkcs1_2_padding.obj \
-	$(TOPDIR)\win32\versioninfo.res
+	$(TOPDIR)\src\tests\tests.res
 
 all: $(TARGETS)
 
@@ -18,4 +18,3 @@ $(TARGETS): $(OBJECTS) $(LIBS)
 .c.exe:
 	cl $(COPTS) /c $<
 	link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj $(OBJECTS) $(LIBS)
-	if EXIST $@.manifest mt -manifest $@.manifest -outputresource:$@;1

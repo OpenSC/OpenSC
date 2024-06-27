@@ -38,14 +38,29 @@ pkcs15filter_SOURCES = pkcs15-emulator-filter.c
 openpgp_tool_SOURCES = openpgp-tool.c $(top_builddir)/src/tools/openpgp-tool-helpers.c
 hextobin_SOURCES = hextobin.c
 decode_ecdsa_signature_SOURCES = decode_ecdsa_signature.c
-check_macro_reference_loop = check_macro_reference_loop.c
-strip_pkcs1_2_padding = strip_pkcs1_2_padding.c
+check_macro_reference_loop_SOURCES = check_macro_reference_loop.c
+strip_pkcs1_2_padding_SOURCES = strip_pkcs1_2_padding.c
+
+if WIN32
+asn1_SOURCES += $(top_builddir)/src/tests/tests.rc
+simpletlv_SOURCES += $(top_builddir)/src/tests/tests.rc
+cachedir_SOURCES += $(top_builddir)/src/tests/tests.rc
+pkcs15filter_SOURCES += $(top_builddir)/src/tests/tests.rc
+openpgp_tool_SOURCES += $(top_builddir)/src/tests/tests.rc
+hextobin_SOURCES += $(top_builddir)/src/tests/tests.rc
+decode_ecdsa_signature_SOURCES += $(top_builddir)/src/tests/tests.rc
+check_macro_reference_loop_SOURCES += $(top_builddir)/src/tests/tests.rc
+strip_pkcs1_2_padding_SOURCES += $(top_builddir)/src/tests/tests.rc
+endif
 
 if ENABLE_ZLIB
 noinst_PROGRAMS += compression
 TESTS += compression
 
 compression_SOURCES = compression.c
+if WIN32
+compression_SOURCES += $(top_builddir)/src/tests/tests.rc
+endif
 compression_LDADD = $(LDADD) $(OPTIONAL_ZLIB_LIBS)
 endif
 
@@ -54,6 +69,9 @@ noinst_PROGRAMS += sm
 TESTS += sm
 
 sm_SOURCES = sm.c
+if WIN32
+sm_SOURCES += $(top_builddir)/src/tests/tests.rc
+endif
 sm_LDADD = $(top_builddir)/src/sm/libsm.la $(LDADD)
 endif
 

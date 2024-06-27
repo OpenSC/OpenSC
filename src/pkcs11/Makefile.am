@@ -1,7 +1,7 @@
 include $(top_srcdir)/win32/ltrc.inc
 
-MAINTAINERCLEANFILES = $(srcdir)/Makefile.in $(srcdir)/versioninfo-pkcs11.rc $(srcdir)/versioninfo-pkcs11-spy.rc
-EXTRA_DIST = Makefile.mak versioninfo-pkcs11.rc.in versioninfo-pkcs11-spy.rc.in opensc-pkcs11.pc.in opensc-pkcs11.dll.manifest
+MAINTAINERCLEANFILES = $(srcdir)/Makefile.in $(srcdir)/opensc-pkcs11.rc $(srcdir)/opensc-pkcs11-spy.rc
+EXTRA_DIST = Makefile.mak opensc-pkcs11.rc.in opensc-pkcs11-spy.rc.in opensc-pkcs11.pc.in opensc-pkcs11.dll.manifest
 
 if ENABLE_SHARED
 lib_LTLIBRARIES = opensc-pkcs11.la pkcs11-spy.la
@@ -55,8 +55,8 @@ pkcs11_spy_la_LDFLAGS = $(AM_LDFLAGS) \
 	-module -shared -avoid-version -no-undefined
 
 if WIN32
-opensc_pkcs11_la_SOURCES += versioninfo-pkcs11.rc
-pkcs11_spy_la_SOURCES += versioninfo-pkcs11-spy.rc
+opensc_pkcs11_la_SOURCES += opensc-pkcs11.rc
+pkcs11_spy_la_SOURCES += opensc-pkcs11-spy.rc
 pkcs11_spy_la_LIBADD += -lshlwapi
 endif
 

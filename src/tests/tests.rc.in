@@ -27,7 +27,7 @@ BEGIN
 			VALUE "ProductName", "@OPENSC_VS_FF_PRODUCT_NAME@"
 			VALUE "ProductVersion", "@OPENSC_VERSION_MAJOR@,@OPENSC_VERSION_MINOR@,@OPENSC_VERSION_FIX@,@OPENSC_VERSION_REVISION@"
 			VALUE "SpecialBuild", ""
-			VALUE "FileDescription", "OpenSC PKCS#11 module"
+			VALUE "FileDescription", "OpenSC test"
 		END
 	END
 	BLOCK "VarFileInfo"
@@ -36,3 +36,8 @@ BEGIN
 	END
 END
 
+#ifndef __MINGW32__
+1 RT_MANIFEST "@win_abs_top_srcdir@\\src\\tests\\tests.manifest"
+#else
+1 RT_MANIFEST "@win_abs_top_srcdir@/src/tests/tests.manifest"
+#endif

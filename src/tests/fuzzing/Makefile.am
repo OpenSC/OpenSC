@@ -55,3 +55,18 @@ fuzz_pkcs11_LDADD = \
 	$(top_builddir)/src/common/libpkcs11.la \
 	$(OPTIONAL_OPENSSL_LIBS) \
 	$(top_builddir)/src/pkcs11/libopensc-pkcs11.la
+
+if WIN32
+fuzz_asn1_print_SOURCES += $(top_builddir)/src/tests/tests.rc
+fuzz_asn1_sig_value_SOURCES += $(top_builddir)/src/tests/tests.rc
+fuzz_pkcs15_decode_SOURCES += $(top_builddir)/src/tests/tests.rc
+fuzz_pkcs15_reader_SOURCES += $(top_builddir)/src/tests/tests.rc
+fuzz_scconf_parse_string_SOURCES += $(top_builddir)/src/tests/tests.rc
+fuzz_pkcs15init_SOURCES += $(top_builddir)/src/tests/tests.rc
+fuzz_pkcs15_encode_SOURCES += $(top_builddir)/src/tests/tests.rc
+fuzz_card_SOURCES += $(top_builddir)/src/tests/tests.rc
+fuzz_piv_tool_SOURCES += $(top_builddir)/src/tests/tests.rc
+fuzz_pkcs15_tool_SOURCES += $(top_builddir)/src/tests/tests.rc
+fuzz_pkcs15_crypt_SOURCES += $(top_builddir)/src/tests/tests.rc
+fuzz_pkcs11_SOURCES += $(top_builddir)/src/tests/tests.rc
+endif

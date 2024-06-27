@@ -12,7 +12,7 @@ OBJECTS = p11test_loader.obj \
 	p11test_case_wait.obj \
 	p11test_case_pss_oaep.obj \
 	p11test_helpers.obj \
-	$(TOPDIR)\win32\versioninfo.res
+	$(TOPDIR)\src\tests\tests.res
 
 all: $(TARGETS)
 
@@ -23,4 +23,3 @@ $(TARGETS): $(OBJECTS) $(LIBS)
 .c.exe:
 	cl $(COPTS) /c $<
 	link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj $(OBJECTS) $(LIBS)
-	if EXIST $@.manifest mt -manifest $@.manifest -outputresource:$@;1
