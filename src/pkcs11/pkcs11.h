@@ -372,6 +372,7 @@ typedef unsigned long ck_key_type_t;
 #define CKK_GOST28147		(0x32UL)
 #define CKK_EC_EDWARDS		(0x40UL)
 #define CKK_EC_MONTGOMERY	(0x41UL)
+#define CKK_HKDF		(0x42UL)
 #define CKK_VENDOR_DEFINED	(1UL << 31)
 
 /*
@@ -813,7 +814,9 @@ typedef unsigned long ck_mechanism_type_t;
 #define CKM_AES_KEY_WRAP		(0x2109UL)
 #define CKM_AES_KEY_WRAP_PAD		(0x210AUL)
 #define CKM_XEDDSA			(0x4029UL)
-
+#define CKM_HKDF_DERIVE			(0x402AUL)
+#define CKM_HKDF_DATA			(0x402BUL)
+#define CKM_HKDF_KEY_GEN		(0x402CUL)
 
 #define CKM_VENDOR_DEFINED		(1UL << 31)
 
@@ -1725,6 +1728,22 @@ typedef void **CK_VOID_PTR_PTR;
 #define TRUE 1
 #endif
 #endif
+
+typedef struct CK_HKDF_PARAMS {
+	CK_BBOOL bExtract;
+	CK_BBOOL bExpand;
+	CK_MECHANISM_TYPE prfHashMechanism;
+	CK_ULONG ulSaltType;
+	CK_BYTE_PTR pSalt;
+	CK_ULONG ulSaltLen;
+	CK_OBJECT_HANDLE hSaltKey;
+	CK_BYTE_PTR pInfo;
+	CK_ULONG ulInfoLen;
+} CK_HKDF_PARAMS;
+
+#define CKF_HKDF_SALT_NULL 0x00000001UL
+#define CKF_HKDF_SALT_DATA 0x00000002UL
+#define CKF_HKDF_SALT_KEY  0x00000004UL
 
 typedef struct ck_version CK_VERSION;
 typedef struct ck_version *CK_VERSION_PTR;
