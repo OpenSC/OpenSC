@@ -1893,9 +1893,10 @@ md_set_cmapfile(PCARD_DATA pCardData, struct md_file *file)
 
 					/* set flag that at least one key that uses the sign key needs PinCacheAlwaysPrompt */
 					logprintf(pCardData, 7, "key_obj->user_consent: %d\n", (int) key_obj->user_consent);
-					if (key_obj->user_consent)
+					if (key_obj->user_consent) {
 						vs->need_pin_always = 1;
-					logprintf(pCardData, 7, "vs->need_pin_always %d\n", (int) vs->need_pin_always);
+						logprintf(pCardData, 7, "vs->need_pin_always %d\n", (int) vs->need_pin_always);
+					}
 
 					if (pin_mode < pin_mode_n) {
 						pin_mode = pin_mode_n;
