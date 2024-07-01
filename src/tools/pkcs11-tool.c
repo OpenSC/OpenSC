@@ -2543,9 +2543,9 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	if (rv == CKR_OK)
 		printf("Signature is valid\n");
 	else if (rv == CKR_SIGNATURE_INVALID)
-		printf("Invalid signature\n");
+		util_fatal("Invalid signature");
 	else
-		printf("Cryptoki returned error: %s\n", CKR2Str(rv));
+		util_fatal("Signature verification failed: rv = %s (0x%0x)\n", CKR2Str(rv), (unsigned int)rv);
 }
 
 static void
@@ -4035,17 +4035,15 @@ static void gost_info_free(struct gostkey_info gost)
 }
 #endif
 
-#define MAX_OBJECT_SIZE	5000
-
 /* Currently for certificates (-type cert), private keys (-type privkey),
    public keys (-type pubkey) and data objects (-type data). */
 static CK_RV write_object(CK_SESSION_HANDLE session)
 {
 	CK_BBOOL _true = TRUE;
 	CK_BBOOL _false = FALSE;
-	unsigned char contents[MAX_OBJECT_SIZE + 1];
+	unsigned char *contents = NULL;
 	ssize_t contents_len = 0;
-	unsigned char certdata[MAX_OBJECT_SIZE];
+	unsigned char *certdata = NULL;
 	ssize_t certdata_len = 0;
 	FILE *f;
 	CK_OBJECT_HANDLE cert_obj, privkey_obj, pubkey_obj, seckey_obj, data_obj;
@@ -4058,6 +4056,7 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 	CK_OBJECT_CLASS clazz;
 	CK_CERTIFICATE_TYPE cert_type;
 	CK_KEY_TYPE type = CKK_RSA;
+	size_t ret = 0;
 #ifdef ENABLE_OPENSSL
 	struct x509cert_info cert;
 	struct rsakey_info rsa;
@@ -4070,25 +4069,43 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 	memset(&gost,  0, sizeof(gost));
 #endif
 
-	memset(contents, 0, sizeof(contents));
-	memset(certdata, 0, sizeof(certdata));
-
 	f = fopen(opt_file_to_write, "rb");
 	if (f == NULL)
 		util_fatal("Couldn't open file \"%s\"", opt_file_to_write);
-	contents_len = fread(contents, 1, sizeof(contents) - 1, f);
+	if (fseek(f, 0L, SEEK_END) != 0)
+		util_fatal("Couldn't set file position to the end of the file \"%s\"", opt_file_to_write);
+	contents_len = ftell(f);
 	if (contents_len < 0)
+		util_fatal("Couldn't get file position \"%s\"", opt_file_to_write);
+	contents = malloc(contents_len + 1);
+	if (contents == NULL)
+		util_fatal("malloc() failure\n");
+	if (fseek(f, 0L, SEEK_SET) != 0)
+		util_fatal("Couldn't set file position to the beginning of the file \"%s\"", opt_file_to_write);
+	ret = fread(contents, 1, contents_len, f);
+	if (ret != (size_t)contents_len)
 		util_fatal("Couldn't read from file \"%s\"", opt_file_to_write);
 	fclose(f);
 	contents[contents_len] = '\0';
 
 	if (opt_attr_from_file) {
-		if (!(f = fopen(opt_attr_from_file, "rb")))
+		f = fopen(opt_attr_from_file, "rb");
+		if (f == NULL)
 			util_fatal("Couldn't open file \"%s\"", opt_attr_from_file);
-		certdata_len = fread(certdata, 1, sizeof(certdata) - 1, f);
-		fclose(f);
+		if (fseek(f, 0L, SEEK_END) != 0)
+			util_fatal("Couldn't set file position to the end of the file \"%s\"", opt_attr_from_file);
+		certdata_len = ftell(f);
 		if (certdata_len < 0)
+			util_fatal("Couldn't get file position \"%s\"", opt_attr_from_file);
+		certdata = malloc(certdata_len + 1);
+		if (certdata == NULL)
+			util_fatal("malloc() failure\n");
+		if (fseek(f, 0L, SEEK_SET) != 0)
+			util_fatal("Couldn't set file position to the beginning of the file \"%s\"", opt_attr_from_file);
+		ret = fread(certdata, 1, certdata_len, f);
+		if (ret != (size_t)certdata_len)
 			util_fatal("Couldn't read from file \"%s\"", opt_attr_from_file);
+		fclose(f);
 		certdata[certdata_len] = '\0';
 		need_to_parse_certdata = 1;
 	}
@@ -4103,7 +4120,10 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 			util_fatal("No OpenSSL support, cannot parse certificate");
 #endif
 		} else {
-			memcpy(certdata, contents, MAX_OBJECT_SIZE);
+			certdata = malloc(contents_len + 1);
+			if (certdata == NULL)
+				util_fatal("malloc() failure\n");
+			memcpy(certdata, contents, contents_len + 1);
 			certdata_len = contents_len;
 			need_to_parse_certdata = 1;
 		}
@@ -4441,7 +4461,7 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 		FILL_ATTR(seckey_templ[0], CKA_CLASS, &clazz, sizeof(clazz));
 		FILL_ATTR(seckey_templ[1], CKA_KEY_TYPE, &type, sizeof(type));
 		FILL_ATTR(seckey_templ[2], CKA_TOKEN, &_true, sizeof(_true));
-		FILL_ATTR(seckey_templ[3], CKA_VALUE, &contents, contents_len);
+		FILL_ATTR(seckey_templ[3], CKA_VALUE, contents, contents_len);
 		n_seckey_attr = 4;
 
 		if (opt_is_private != 0) {
@@ -4504,7 +4524,7 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 		clazz = CKO_DATA;
 		FILL_ATTR(data_templ[0], CKA_CLASS, &clazz, sizeof(clazz));
 		FILL_ATTR(data_templ[1], CKA_TOKEN, &_true, sizeof(_true));
-		FILL_ATTR(data_templ[2], CKA_VALUE, &contents, contents_len);
+		FILL_ATTR(data_templ[2], CKA_VALUE, contents, contents_len);
 
 		n_data_attr = 3;
 
@@ -4595,6 +4615,8 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 	EVP_PKEY_free(evp_key);
 #endif /* ENABLE_OPENSSL */
 
+	free(contents);
+	free(certdata);
 	if (oid_buf)
 		free(oid_buf);
 	return 1;
@@ -5529,6 +5551,8 @@ static void show_dobj(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 	char *application;
 	CK_ULONG    size = 0;
 	CK_TOKEN_INFO info;
+	CK_BBOOL modifiable = 0;
+	CK_BBOOL private = 0;
 
 	suppress_warn = 1;
 	printf("Data object %u\n", (unsigned int) obj);
@@ -5568,11 +5592,13 @@ static void show_dobj(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 	}
 
 	printf("  flags:          ");
-	if (getMODIFIABLE(sess, obj))
+	modifiable = getMODIFIABLE(sess, obj);
+	if (modifiable)
 		printf(" modifiable");
-	if (getPRIVATE(sess, obj))
+	private = getPRIVATE(sess, obj);
+	if (private)
 		printf(" private");
-	if (!getMODIFIABLE(sess, obj) && !getPRIVATE(sess, obj))
+	if (!modifiable && !private)
 		printf("<empty>");
 	printf("\n");
 

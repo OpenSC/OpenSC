@@ -1076,6 +1076,11 @@ static int sc_pkcs15emu_sc_hsm_add_prkd(sc_pkcs15_card_t * p15card, u8 keyid) {
 	size_t len;
 	int r;
 
+	if (keyid == 0) {
+		// Device authentication key does not have PKCS#15 meta data
+		return SC_SUCCESS;
+	}
+
 	fid[0] = PRKD_PREFIX;
 	fid[1] = keyid;
 
@@ -1106,6 +1111,10 @@ static int sc_pkcs15emu_sc_hsm_add_prkd(sc_pkcs15_card_t * p15card, u8 keyid) {
 	if (prkd.type == SC_PKCS15_TYPE_PRKEY_RSA) {
 		r = sc_pkcs15emu_add_rsa_prkey(p15card, &prkd, key_info);
 	} else {
+		if (key_info->field_length == 528) {
+			// Fix a bug for secp521 key generated with OpenSCDP
+			key_info->field_length = 521;
+		}
 		r = sc_pkcs15emu_add_ec_prkey(p15card, &prkd, key_info);
 	}
 

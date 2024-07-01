@@ -423,7 +423,7 @@ static int gen_key(const char * key_info)
 			BN_free(newkey_e);
 			return -1;
 		}
-		params = OSSL_PARAM_BLD_to_param(bld);
+
 		BN_free(newkey_n);
 		BN_free(newkey_e);
 
