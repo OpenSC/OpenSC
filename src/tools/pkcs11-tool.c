@@ -20,12 +20,13 @@
 
 #include "config.h"
 
+#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <stdlib.h>
 #include <limits.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #ifndef _WIN32
 #include <sys/types.h>
@@ -215,7 +216,9 @@ enum {
 	OPT_IV,
 	OPT_MAC_GEN_PARAM,
 	OPT_AAD,
-	OPT_TAG_BITS
+	OPT_TAG_BITS,
+	OPT_SALT_FILE,
+	OPT_INFO_FILE
 };
 
 // clang-format off
@@ -306,6 +309,8 @@ static const struct option options[] = {
 	{ "mac-general-param",	1, NULL, 		OPT_MAC_GEN_PARAM},
 	{ "aad", 		1, NULL, 		OPT_AAD	},
 	{ "tag-bits-len", 	1, NULL, 		OPT_TAG_BITS},
+	{ "salt-file", 		1, NULL,		OPT_SALT_FILE},
+	{ "info-file",		1, NULL,		OPT_INFO_FILE},
 
 	{ NULL, 0, NULL, 0 }
 };
@@ -398,6 +403,8 @@ static const char *option_help[] = {
 		"Specify the value <arg> of the mechanism parameter CK_MAC_GENERAL_PARAMS",
 		"Specify additional authenticated data for AEAD ciphers as a hex string",
 		"Specify the required length (in bits) for the authentication tag for AEAD ciphers",
+		"Specify the file containing the salt for HKDF (optional)",
+		"Specify the file containing the info for HKDF (optional)",
 };
 
 static const char *	app_name = "pkcs11-tool"; /* for utils.c */
@@ -460,6 +467,8 @@ static const char *	opt_iv = NULL;
 static unsigned long opt_mac_gen_param = 0;
 static const char *opt_aad = NULL;
 static unsigned long opt_tag_bits = 0;
+static const char *opt_salt_file = NULL;
+static const char *opt_info_file = NULL;
 
 static void *module = NULL;
 static CK_FUNCTION_LIST_3_0_PTR p11 = NULL;
@@ -1181,6 +1190,12 @@ int main(int argc, char * argv[])
 			break;
 		case OPT_IV:
 			opt_iv = optarg;
+			break;
+		case OPT_SALT_FILE:
+			opt_salt_file = optarg;
+			break;
+		case OPT_INFO_FILE:
+			opt_info_file = optarg;
 			break;
 		default:
 			util_print_usage_and_die(app_name, options, option_help, NULL);
@@ -3399,7 +3414,25 @@ gen_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE *hSecretKey
 			FILL_ATTR(keyTemplate[n_attr], CKA_KEY_TYPE, &key_type, sizeof(key_type));
 			n_attr++;
 		}
-		else {
+
+		else if (strncasecmp(type, "HKDF:", strlen("HKDF:")) == 0) {
+			CK_MECHANISM_TYPE mtypes[] = {CKM_HKDF_KEY_GEN};
+			size_t mtypes_num = sizeof(mtypes) / sizeof(mtypes[0]);
+			const char *size = type + strlen("HKDF:");
+
+			key_type = CKK_HKDF;
+
+			if (!opt_mechanism_used)
+				if (!find_mechanism(slot, CKF_GENERATE, mtypes, mtypes_num, &opt_mechanism))
+					util_fatal("Generate Key mechanism not supported\n");
+
+			key_length = (unsigned long)atol(size);
+			if (key_length == 0)
+				util_fatal("Unknown key type %s, expecting HKDF:<nbytes>", type);
+
+			FILL_ATTR(keyTemplate[n_attr], CKA_KEY_TYPE, &key_type, sizeof(key_type));
+			n_attr++;
+		} else {
 			util_fatal("Unknown key type %s", type);
 		}
 
@@ -3562,7 +3595,9 @@ unwrap_key(CK_SESSION_HANDLE session)
 		} else if (strncasecmp(opt_key_type, "GENERIC:", strlen("GENERIC:")) == 0) {
 			length = opt_key_type + strlen("GENERIC:");
 			key_type = CKK_GENERIC_SECRET;
-
+		} else if (strncasecmp(opt_key_type, "HKDF:", strlen("HKDF:")) == 0) {
+			length = opt_key_type + strlen("HKDF:");
+			key_type = CKK_HKDF;
 		} else {
 			util_fatal("Unsupported key type %s", opt_key_type);
 		}
@@ -4546,6 +4581,8 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 				type = CKK_DES3;
 			else if (strncasecmp(opt_key_type, "GENERIC:", strlen("GENERIC:")) == 0)
 				type = CKK_GENERIC_SECRET;
+			else if (strncasecmp(opt_key_type, "HKDF:", strlen("HKDF:")) == 0)
+				type = CKK_HKDF;
 			else
 				util_fatal("Unknown key type: 0x%lX", type);
 		}
@@ -5168,6 +5205,156 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 #endif /* ENABLE_OPENSSL  && !OPENSSL_NO_EC && !OPENSSL_NO_ECDSA */
 }
 
+static CK_BBOOL s_true = TRUE;
+static CK_BBOOL s_false = FALSE;
+
+static void
+fill_attributes_seckey(CK_ATTRIBUTE *template, int *n_attrs, int max_attrs)
+{
+	assert(*n_attrs < max_attrs);
+	FILL_ATTR(template[*n_attrs], CKA_PRIVATE, opt_is_private ? &s_true : &s_false, sizeof(CK_BBOOL));
+	(*n_attrs)++;
+
+	assert(*n_attrs < max_attrs);
+	FILL_ATTR(template[*n_attrs], CKA_SENSITIVE, opt_is_sensitive ? &s_true : &s_false, sizeof(CK_BBOOL));
+	(*n_attrs)++;
+
+	assert(*n_attrs < max_attrs);
+	FILL_ATTR(template[*n_attrs], CKA_EXTRACTABLE, opt_is_extractable ? &s_true : &s_false, sizeof(CK_BBOOL));
+	(*n_attrs)++;
+
+	if (opt_key_usage_default || opt_key_usage_decrypt) {
+		assert(*n_attrs < max_attrs);
+		FILL_ATTR(template[*n_attrs], CKA_ENCRYPT, &s_true, sizeof(CK_BBOOL));
+		(*n_attrs)++;
+		assert(*n_attrs < max_attrs);
+		FILL_ATTR(template[*n_attrs], CKA_DECRYPT, &s_true, sizeof(CK_BBOOL));
+		(*n_attrs)++;
+	}
+
+	assert(*n_attrs < max_attrs);
+	FILL_ATTR(template[*n_attrs], CKA_WRAP, opt_key_usage_wrap ? &s_true : &s_false, sizeof(CK_BBOOL));
+	(*n_attrs)++;
+
+	assert(*n_attrs < max_attrs);
+	FILL_ATTR(template[*n_attrs], CKA_UNWRAP, opt_key_usage_wrap ? &s_true : &s_false, sizeof(CK_BBOOL));
+	(*n_attrs)++;
+
+	assert(*n_attrs < max_attrs);
+	FILL_ATTR(template[*n_attrs], CKA_SIGN, opt_key_usage_sign ? &s_true : &s_false, sizeof(CK_BBOOL));
+	(*n_attrs)++;
+
+	assert(*n_attrs < max_attrs);
+	FILL_ATTR(template[*n_attrs], CKA_VERIFY, opt_key_usage_sign ? &s_true : &s_false, sizeof(CK_BBOOL));
+	(*n_attrs)++;
+
+	assert(*n_attrs < max_attrs);
+	FILL_ATTR(template[*n_attrs], CKA_DERIVE, opt_key_usage_derive ? &s_true : &s_false, sizeof(CK_BBOOL));
+	(*n_attrs)++;
+}
+
+static CK_OBJECT_HANDLE
+derive_hkdf(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
+{
+	CK_MECHANISM mech;
+	CK_KEY_TYPE key_type = CKK_GENERIC_SECRET;
+	CK_ULONG key_length = hash_length(opt_hash_alg);
+	CK_OBJECT_HANDLE newkey = 0;
+	CK_ATTRIBUTE template[13] = {
+			{CKA_TOKEN,	    &s_false,    sizeof(s_false)   }, /* session only object */
+			{CKA_KEY_TYPE,  &key_type,	  sizeof(key_type)  },
+			{CKA_VALUE_LEN, &key_length, sizeof(key_length)}
+	};
+	int n_attrs = 3;
+	CK_RV rv;
+	CK_HKDF_PARAMS hkdf_params;
+	void *salt = NULL;
+	ssize_t salt_len = 0;
+	void *info = NULL;
+	ssize_t info_len = 0;
+
+	if (opt_key_type != NULL) {
+		if (strncasecmp(opt_key_type, "GENERIC:", strlen("GENERIC:")) != 0) {
+			util_fatal("Generic key type expected\n");
+		}
+		const char *size = opt_key_type + strlen("GENERIC:");
+		key_length = (unsigned long)atol(size);
+		if (key_length == 0)
+			util_fatal("Unknown key type %s, expecting GENERIC:<nbytes>", opt_key_type);
+	}
+
+	fill_attributes_seckey(template, &n_attrs, ARRAY_SIZE(template));
+
+	if (opt_salt_file != NULL) {
+		FILE *f;
+
+		f = fopen(opt_salt_file, "rb");
+		if (f == NULL)
+			util_fatal("Cannot open %s: %m", opt_salt_file);
+		if (fseek(f, 0L, SEEK_END) != 0)
+			util_fatal("Couldn't set file position to the end of the file \"%s\"", opt_salt_file);
+		salt_len = ftell(f);
+		if (salt_len < 0)
+			util_fatal("Couldn't get file position \"%s\"", opt_salt_file);
+		salt = malloc(salt_len);
+		if (salt == NULL)
+			util_fatal("malloc() failure\n");
+		if (fseek(f, 0L, SEEK_SET) != 0)
+			util_fatal("Couldn't set file position to the beginning of the file \"%s\"", opt_salt_file);
+		size_t ret = fread(salt, 1, salt_len, f);
+		if (ret != (size_t)salt_len)
+			util_fatal("Couldn't read from file \"%s\"", opt_salt_file);
+		fclose(f);
+	}
+	if (opt_info_file != NULL) {
+		FILE *f;
+
+		f = fopen(opt_info_file, "rb");
+		if (f == NULL)
+			util_fatal("Cannot open %s: %m", opt_info_file);
+		if (fseek(f, 0L, SEEK_END) != 0)
+			util_fatal("Couldn't set file position to the end of the file \"%s\"", opt_info_file);
+		info_len = ftell(f);
+		if (info_len < 0)
+			util_fatal("Couldn't get file position \"%s\"", opt_info_file);
+		info = malloc(info_len);
+		if (info == NULL)
+			util_fatal("malloc() failure\n");
+		if (fseek(f, 0L, SEEK_SET) != 0)
+			util_fatal("Couldn't set file position to the beginning of the file \"%s\"", opt_info_file);
+		size_t ret = fread(info, 1, info_len, f);
+		if (ret != (size_t)info_len)
+			util_fatal("Couldn't read from file \"%s\"", opt_info_file);
+		fclose(f);
+	}
+
+	memset(&hkdf_params, 0, sizeof(hkdf_params));
+	hkdf_params.bExtract = TRUE;
+	hkdf_params.bExpand = TRUE;
+	hkdf_params.prfHashMechanism = opt_hash_alg;
+	if (salt == NULL) {
+		hkdf_params.ulSaltType = CKF_HKDF_SALT_NULL;
+	} else {
+		hkdf_params.ulSaltType = CKF_HKDF_SALT_DATA;
+	}
+	hkdf_params.pSalt = salt;
+	hkdf_params.ulSaltLen = (CK_ULONG)salt_len;
+	hkdf_params.hSaltKey = CK_INVALID_HANDLE;
+	hkdf_params.pInfo = info;
+	hkdf_params.ulInfoLen = (CK_ULONG)info_len;
+
+	mech.mechanism = CKM_HKDF_DERIVE;
+	mech.pParameter = &hkdf_params;
+	mech.ulParameterLen = sizeof(hkdf_params);
+
+	rv = p11->C_DeriveKey(session, &mech, key, template, n_attrs, &newkey);
+	if (rv != CKR_OK)
+		p11_fatal("C_DeriveKey", rv);
+
+	free(salt);
+	free(info);
+	return newkey;
+}
 
 static void
 derive_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
@@ -5186,6 +5373,9 @@ derive_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
 	case CKM_ECDH1_COFACTOR_DERIVE:
 	case CKM_ECDH1_DERIVE:
 		derived_key= derive_ec_key(session, key, opt_mechanism);
+		break;
+	case CKM_HKDF_DERIVE:
+		derived_key = derive_hkdf(session, key);
 		break;
 	default:
 		util_fatal("mechanism not supported for derive");
@@ -5381,12 +5571,15 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 	case CKK_AES:
 	case CKK_DES:
 	case CKK_DES3:
+	case CKK_HKDF:
 		if (key_type == CKK_AES)
 			printf("; AES");
 		else if (key_type == CKK_DES)
 			printf("; DES");
 		else if (key_type == CKK_DES3)
 			printf("; DES3");
+		else if (key_type == CKK_HKDF)
+			printf("; HKDF");
 		else
 			printf("; Generic secret");
 		size = getVALUE_LEN(sess, obj);
@@ -8717,6 +8910,9 @@ static struct mech_info	p11_mechanisms[] = {
 	{ CKM_IDEA_MAC_GENERAL,	"IDEA-MAC-GENERAL", NULL, MF_UNKNOWN },
 	{ CKM_IDEA_CBC_PAD,	"IDEA-CBC-PAD", NULL, MF_UNKNOWN },
 	{ CKM_GENERIC_SECRET_KEY_GEN,"GENERIC-SECRET-KEY-GEN", NULL, MF_UNKNOWN },
+	{ CKM_HKDF_KEY_GEN,	"HKDF-KEY-GEN", NULL, MF_UNKNOWN },
+	{ CKM_HKDF_DATA,	"HKDF-DATA", NULL, MF_UNKNOWN },
+	{ CKM_HKDF_DERIVE,	"HKDF-DERIVE", NULL, MF_UNKNOWN },
 	{ CKM_CONCATENATE_BASE_AND_KEY,"CONCATENATE-BASE-AND-KEY", NULL, MF_UNKNOWN },
 	{ CKM_CONCATENATE_BASE_AND_DATA,"CONCATENATE-BASE-AND-DATA", NULL, MF_UNKNOWN },
 	{ CKM_CONCATENATE_DATA_AND_BASE,"CONCATENATE-DATA-AND-BASE", NULL, MF_UNKNOWN },
