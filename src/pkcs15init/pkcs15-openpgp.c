@@ -117,9 +117,8 @@ static int openpgp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 {
 	sc_card_t *card = p15card->card;
 	sc_pkcs15_prkey_info_t *kinfo = (sc_pkcs15_prkey_info_t *) obj->data;
-	sc_cardctl_openpgp_keystore_info_t key_info;
+	sc_cardctl_openpgp_keystore_info_t key_info = {0};
 	int r;
-	unsigned int i;
 
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -140,7 +139,10 @@ static int openpgp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		r = sc_card_ctl(card, SC_CARDCTL_OPENPGP_STORE_KEY, &key_info);
 		break;
 	case SC_PKCS15_TYPE_PRKEY_EC:
-		if (card->type < SC_CARD_TYPE_OPENPGP_V3) {
+	case SC_PKCS15_TYPE_PRKEY_EDDSA:
+	case SC_PKCS15_TYPE_PRKEY_XEDDSA:
+		if (card->type != SC_CARD_TYPE_OPENPGP_GNUK &&
+				card->type < SC_CARD_TYPE_OPENPGP_V3) {
 			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "only RSA is supported on this card");
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 		}
@@ -151,35 +153,14 @@ static int openpgp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		key_info.key_id = kinfo->id.value[0];
 		key_info.u.ec.privateD = key->u.ec.privateD.data;
 		key_info.u.ec.privateD_len = key->u.ec.privateD.len;
-		key_info.u.ec.ecpointQ = key->u.ec.ecpointQ.value;
-		key_info.u.ec.ecpointQ_len = key->u.ec.ecpointQ.len;
-		/* extract oid the way we need to import it to OpenPGP Card */
-		if (key->u.ec.params.der.len > 2)
-			key_info.u.ec.oid_len = key->u.ec.params.der.value[1];
-		else
-			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
-
-		for (i=0; (i < key_info.u.ec.oid_len) && (i+2 < key->u.ec.params.der.len); i++){
-			key_info.u.ec.oid.value[i] = key->u.ec.params.der.value[i+2];
+		if (key->u.ec.ecpointQ.len) {
+			key_info.u.ec.ecpointQ = malloc(key->u.ec.ecpointQ.len);
+			if (!key_info.u.ec.ecpointQ)
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+			memcpy(&key_info.u.ec.ecpointQ, key->u.ec.ecpointQ.value, key->u.ec.ecpointQ.len);
 		}
-		key_info.u.ec.oid.value[key_info.u.ec.oid_len] = -1;
-		r = sc_card_ctl(card, SC_CARDCTL_OPENPGP_STORE_KEY, &key_info);
-		break;
-	case SC_PKCS15_TYPE_PRKEY_EDDSA:
-		if (card->type != SC_CARD_TYPE_OPENPGP_GNUK) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "EdDSA keys not supported on this card");
-			LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
-		}
-		memset(&key_info, 0, sizeof(sc_cardctl_openpgp_keystore_info_t));
-		key_info.algorithm = (kinfo->id.value[0] == SC_OPENPGP_KEY_ENCR)
-				   ? SC_OPENPGP_KEYALGO_ECDH /* ECDH for slot 2 only */
-				   : SC_OPENPGP_KEYALGO_EDDSA; /* EdDSA for slot 1 and 3 */
-		key_info.key_id = kinfo->id.value[0];
-		/* TODO Test -- might not work */
-		key_info.u.ec.privateD = key->u.ec.privateD.data;
-		key_info.u.ec.privateD_len = key->u.ec.privateD.len;
-		key_info.u.ec.ecpointQ = key->u.ec.ecpointQ.value;
 		key_info.u.ec.ecpointQ_len = key->u.ec.ecpointQ.len;
+		key_info.u.ec.oid = key->u.ec.params.id;
 		r = sc_card_ctl(card, SC_CARDCTL_OPENPGP_STORE_KEY, &key_info);
 		break;
 	default:
@@ -286,9 +267,8 @@ static int openpgp_generate_key_ec(sc_card_t *card, sc_pkcs15_object_t *obj,
 	sc_cardctl_openpgp_keygen_info_t key_info;
 	sc_pkcs15_prkey_info_t *required = (sc_pkcs15_prkey_info_t *)obj->data;
 	sc_pkcs15_id_t *kid = &(required->id);
-	const struct sc_ec_parameters *info_ec =
-	    (struct sc_ec_parameters *) required->params.data;
-	unsigned int i;
+	struct sc_ec_parameters *info_ec =
+			(struct sc_ec_parameters *)required->params.data;
 	int r;
 
 	LOG_FUNC_CALLED(ctx);
@@ -310,29 +290,42 @@ static int openpgp_generate_key_ec(sc_card_t *card, sc_pkcs15_object_t *obj,
 
 	if (!key_info.key_id)
 		key_info.key_id = kid->value[0];
+	key_info.key_type = pubkey->algorithm;
+	/* set algorithm id based on key reference and key type */
+	switch (pubkey->algorithm) {
+		/* EC is in 04||x||y format
+		 * (field_length + 7)/8 * 2 + 1 in bytes
+		 * len is ecpoint length + format byte
+		 * see section 7.2.14 of 3.3.1 specs
+		 * EDDSA and XEDDSA have no format byte and one number
+		 * (field_length + 7)/8 in bytes
+		 */
 
+	case SC_ALGORITHM_EC:
+		key_info.algorithm = (key_info.key_id == SC_OPENPGP_KEY_ENCR)
+						     ? SC_OPENPGP_KEYALGO_ECDH	 /* ECDH for slot 2 only */
+						     : SC_OPENPGP_KEYALGO_ECDSA; /* ECDSA for slot 1 and 3 */
+		key_info.u.ec.ecpoint_len = 1 + 2 * BYTES4BITS(required->field_length);
+		break;
+	case SC_ALGORITHM_EDDSA:
+		key_info.algorithm = SC_OPENPGP_KEYALGO_EDDSA; /* only sign */
+		key_info.u.ec.ecpoint_len = BYTES4BITS(required->field_length);
+		break;
+	case SC_ALGORITHM_XEDDSA:
+		/* TODO  may need to look at MSE, and how sign XEDDSA certificate */
+		key_info.algorithm = SC_OPENPGP_KEYALGO_ECDH; /* but could be used to sign too */
+		key_info.u.ec.ecpoint_len = BYTES4BITS(required->field_length);
+		break;
+	}
 
-	/* set algorithm id based on key reference */
-	key_info.algorithm = (key_info.key_id == SC_OPENPGP_KEY_ENCR)
-			   ? SC_OPENPGP_KEYALGO_ECDH /* ECDH for slot 2 only */
-			   : SC_OPENPGP_KEYALGO_ECDSA; /* ECDSA for slot 1 and 3 */
-
-	/* extract oid the way we need to import it to OpenPGP Card */
+	/* copying info_ec.id works for any EC ECDH EdDSA keys */
 	if (info_ec->der.len > 2)
-		key_info.u.ec.oid_len = info_ec->der.value[1];
+		key_info.u.ec.oid = info_ec->id; /* copy sc_object_id */
 	else
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-	for (i=0; (i < key_info.u.ec.oid_len) && (i+2 < info_ec->der.len); i++){
-		key_info.u.ec.oid.value[i] = info_ec->der.value[i+2];
-	}
-	key_info.u.ec.oid.value[key_info.u.ec.oid_len] = -1;
-
-	/* Prepare buffer */
-	key_info.u.ec.ecpoint_len = required->field_length;
-	key_info.u.ec.ecpoint = malloc(key_info.u.ec.ecpoint_len);
-	if (key_info.u.ec.ecpoint == NULL)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
+	/* save expected length */
+	key_info.u.ec.ecpoint_len = BYTES4BITS(required->field_length);
 
 	/* generate key on card */
 	r = sc_card_ctl(card, SC_CARDCTL_OPENPGP_GENERATE_KEY, &key_info);
@@ -340,11 +333,13 @@ static int openpgp_generate_key_ec(sc_card_t *card, sc_pkcs15_object_t *obj,
 
 	/* set pubkey according to response of card */
 	sc_log(ctx, "Set output ecpoint info");
-	pubkey->algorithm = SC_ALGORITHM_EC;
+
+	pubkey->algorithm = key_info.key_type;
 	pubkey->u.ec.ecpointQ.len = key_info.u.ec.ecpoint_len;
 	pubkey->u.ec.ecpointQ.value = malloc(key_info.u.ec.ecpoint_len);
 	if (pubkey->u.ec.ecpointQ.value == NULL)
-		goto err;
+		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
+
 	memcpy(pubkey->u.ec.ecpointQ.value, key_info.u.ec.ecpoint, key_info.u.ec.ecpoint_len);
 
 err:
@@ -385,8 +380,9 @@ static int openpgp_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 		r = openpgp_generate_key_ec(card, obj, pubkey);
 		break;
 	case SC_PKCS15_TYPE_PRKEY_EDDSA:
-		if (card->type != SC_CARD_TYPE_OPENPGP_GNUK) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "EdDSA is not supported on this card");
+	case SC_PKCS15_TYPE_PRKEY_XEDDSA:
+		if (card->type != SC_CARD_TYPE_OPENPGP_GNUK && card->type < SC_CARD_TYPE_OPENPGP_V3) {
+			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "EdDSA or XEDDSA are not supported on this card");
 			return SC_ERROR_NOT_SUPPORTED;
 		}
 		r = openpgp_generate_key_ec(card, obj, pubkey);

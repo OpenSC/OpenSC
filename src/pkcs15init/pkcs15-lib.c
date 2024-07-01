@@ -176,10 +176,7 @@ static void sc_pkcs15init_free_ec_params(void *ptr)
 {
 	struct sc_ec_parameters *ecparams = (struct sc_ec_parameters *)ptr;
 	if (ecparams) {
-		if (ecparams->der.value)
-			free(ecparams->der.value);
-		if (ecparams->named_curve)
-			free(ecparams->named_curve);
+		sc_clear_ec_params(ecparams);
 		free(ecparams);
 	}
 }
@@ -1303,10 +1300,12 @@ sc_pkcs15init_init_prkdf(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 		keyinfo_gostparams->gostr3410 = keyargs->params.gost.gostr3410;
 		keyinfo_gostparams->gostr3411 = keyargs->params.gost.gostr3411;
 		keyinfo_gostparams->gost28147 = keyargs->params.gost.gost28147;
-	}
-	else if (key->algorithm == SC_ALGORITHM_EC)  {
+	} else if (key->algorithm == SC_ALGORITHM_EC ||
+			key->algorithm == SC_ALGORITHM_EDDSA ||
+			key->algorithm == SC_ALGORITHM_XEDDSA) {
 		/* keyargs->key.u.ec.params.der.value is allocated in keyargs, which is on stack */
 		struct sc_ec_parameters *ecparams = &keyargs->key.u.ec.params;
+
 		new_ecparams = calloc(1, sizeof(struct sc_ec_parameters));
 		if (!new_ecparams) {
 			r = SC_ERROR_OUT_OF_MEMORY;
@@ -1603,9 +1602,9 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 		pubkey_args.params.gost = keygen_args->prkey_args.params.gost;
 		r = sc_copy_gost_params(&(pubkey_args.key.u.gostr3410.params), &(keygen_args->prkey_args.key.u.gostr3410.params));
 		LOG_TEST_GOTO_ERR(ctx, r, "Cannot allocate GOST parameters");
-	}
-	else if (algorithm == SC_ALGORITHM_EC)   {
-		/* needs to be freed in case of failure when pubkey is not set yet */
+	} else if (algorithm == SC_ALGORITHM_EC ||
+			algorithm == SC_ALGORITHM_EDDSA ||
+			algorithm == SC_ALGORITHM_XEDDSA) {
 		r = sc_copy_ec_params(&pubkey_args.key.u.ec.params, &keygen_args->prkey_args.key.u.ec.params);
 		LOG_TEST_GOTO_ERR(ctx, r, "Cannot allocate EC parameters");
 	}
@@ -1630,7 +1629,6 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 		if (iid.len)
 			key_info->id = iid;
 	}
-
 	pubkey = &pubkey_args.key;
 	if (!pubkey->alg_id)   {
 		pubkey->alg_id = calloc(1, sizeof(struct sc_algorithm_id));
@@ -1673,11 +1671,6 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 err:
 	sc_pkcs15_free_object(object);
 	sc_pkcs15_erase_pubkey(&pubkey_args.key);
-	if (algorithm == SC_ALGORITHM_EC) {
-		/* allocated in check_keygen_params_consistency() */
-		free(keygen_args->prkey_args.key.u.ec.params.der.value);
-		keygen_args->prkey_args.key.u.ec.params.der.value = NULL;
-	}
 	LOG_FUNC_RETURN(ctx, r);
 }
 
@@ -1913,12 +1906,28 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card, struct sc_profile
 		type = SC_PKCS15_TYPE_PUBKEY_GOSTR3410;
 		break;
 	case SC_ALGORITHM_EC:
-		type = SC_PKCS15_TYPE_PUBKEY_EC;
+	case SC_ALGORITHM_EDDSA:
+	case SC_ALGORITHM_XEDDSA:
 
 		r = sc_copy_ec_params(&key.u.ec.params, &keyargs->key.u.ec.params);
 		LOG_TEST_GOTO_ERR(ctx, r, "Failed to copy EC public key parameters");
 		r = sc_pkcs15_fix_ec_parameters(ctx, &key.u.ec.params);
 		LOG_TEST_GOTO_ERR(ctx, r, "Failed to fix EC public key parameters");
+
+		if (keyargs->key.u.ec.ecpointQ.value) {
+			key.u.ec.ecpointQ.value = malloc(keyargs->key.u.ec.ecpointQ.len);
+			if (!key.u.ec.ecpointQ.value) {
+				r = SC_ERROR_OUT_OF_MEMORY;
+				LOG_TEST_GOTO_ERR(ctx, r, "Failed to copy EC... public key parameters");
+			}
+		}
+
+		if (key.algorithm == SC_ALGORITHM_EC)
+			type = SC_PKCS15_TYPE_PUBKEY_EC;
+		else if (key.algorithm == SC_ALGORITHM_EDDSA)
+			type = SC_PKCS15_TYPE_PUBKEY_EDDSA;
+		else if (key.algorithm == SC_ALGORITHM_XEDDSA)
+			type = SC_PKCS15_TYPE_PUBKEY_XEDDSA;
 
 		keybits = key.u.ec.params.field_length;
 		break;
@@ -1960,8 +1969,10 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card, struct sc_profile
 		keyinfo_gostparams->gostr3410 = keyargs->params.gost.gostr3410;
 		keyinfo_gostparams->gostr3411 = keyargs->params.gost.gostr3411;
 		keyinfo_gostparams->gost28147 = keyargs->params.gost.gost28147;
-	}
-	else if (key.algorithm == SC_ALGORITHM_EC)   {
+	} else if (key.algorithm == SC_ALGORITHM_EC ||
+			key.algorithm == SC_ALGORITHM_EDDSA ||
+			key.algorithm == SC_ALGORITHM_XEDDSA) {
+		/* TODO if EC don't write the 0x04 byte to card */
 		key_info->field_length = keybits;
 		if (key.u.ec.params.der.value) {
 			key_info->params.data = malloc(key.u.ec.params.der.len);
@@ -2526,7 +2537,9 @@ check_keygen_params_consistency(struct sc_card *card,
 	struct sc_context *ctx = card->ctx;
 	int i, rv;
 
-	if (alg == SC_ALGORITHM_EC && prkey)   {
+	if (prkey && (alg == SC_ALGORITHM_EC ||
+				     alg == SC_ALGORITHM_EDDSA ||
+				     alg == SC_ALGORITHM_XEDDSA)) {
 		struct sc_ec_parameters *ecparams = &prkey->key.u.ec.params;
 
 		rv = sc_pkcs15_fix_ec_parameters(ctx, ecparams);
@@ -2549,13 +2562,16 @@ check_keygen_params_consistency(struct sc_card *card,
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 	}
 
-	if (alg == SC_ALGORITHM_EC && prkey)
+	if (prkey && (alg == SC_ALGORITHM_EC ||
+				     alg == SC_ALGORITHM_EDDSA ||
+				     alg == SC_ALGORITHM_XEDDSA)) {
 		/* allocated in sc_pkcs15_fix_ec_parameters */
 		free(prkey->key.u.ec.params.der.value);
+		prkey->key.u.ec.params.der.value = NULL;
+	}
 
 	LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 }
-
 
 /*
  * Check whether the card has native crypto support for this key.
@@ -2568,13 +2584,21 @@ check_key_compatibility(struct sc_pkcs15_card *p15card, unsigned long alg,
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_algorithm_info *info;
 	unsigned int count;
+	unsigned long talg = alg;
 
 	LOG_FUNC_CALLED(ctx);
+
+	if (alg == SC_ALGORITHM_EDDSA || alg == SC_ALGORITHM_XEDDSA)
+		talg = SC_ALGORITHM_EC; /* really testing ecparams */
+
 	count = p15card->card->algorithm_count;
 	for (info = p15card->card->algorithms; count--; info++) {
 		/* don't check flags if none was specified */
-		if (info->algorithm != alg || info->key_length != key_length)
-			continue;
+
+		if (alg != SC_ALGORITHM_EDDSA && alg != SC_ALGORITHM_XEDDSA) {
+			if (info->algorithm != alg || info->key_length != key_length)
+				continue;
+		}
 		if (flags != 0 && ((info->flags & flags) != flags))
 			continue;
 
@@ -2593,8 +2617,7 @@ check_key_compatibility(struct sc_pkcs15_card *p15card, unsigned long alg,
 				if (info->u._rsa.exponent != exponent)
 					continue;
 			}
-		}
-		else if (alg == SC_ALGORITHM_EC)   {
+		} else if (talg == SC_ALGORITHM_EC) { /* includes EDDSA and XEDDSA */
 			if (!sc_valid_oid(&prkey->u.ec.params.id))
 				if (sc_pkcs15_fix_ec_parameters(ctx, &prkey->u.ec.params))
 					LOG_FUNC_RETURN(ctx, SC_ERROR_OBJECT_NOT_VALID);
@@ -2754,8 +2777,10 @@ prkey_bits(struct sc_pkcs15_card *p15card, struct sc_pkcs15_prkey *key)
 		}
 		return SC_PKCS15_GOSTR3410_KEYSIZE;
 	case SC_ALGORITHM_EC:
-		sc_log(ctx, "Private EC key length %"SC_FORMAT_LEN_SIZE_T"u",
-		       key->u.ec.params.field_length);
+	case SC_ALGORITHM_EDDSA:
+	case SC_ALGORITHM_XEDDSA:
+		sc_log(ctx, "Private EC type key length %" SC_FORMAT_LEN_SIZE_T "u",
+				key->u.ec.params.field_length);
 		if (key->u.ec.params.field_length == 0)   {
 			sc_log(ctx, "Invalid EC key length");
 			return SC_ERROR_OBJECT_NOT_VALID;
@@ -2779,6 +2804,10 @@ key_pkcs15_algo(struct sc_pkcs15_card *p15card, unsigned long algorithm)
 		return SC_PKCS15_TYPE_PRKEY_GOSTR3410;
 	case SC_ALGORITHM_EC:
 		return SC_PKCS15_TYPE_PRKEY_EC;
+	case SC_ALGORITHM_EDDSA:
+		return SC_PKCS15_TYPE_PRKEY_EDDSA;
+	case SC_ALGORITHM_XEDDSA:
+		return SC_PKCS15_TYPE_PRKEY_XEDDSA;
 	case SC_ALGORITHM_DES:
 		return SC_PKCS15_TYPE_SKEY_DES;
 	case SC_ALGORITHM_3DES:
