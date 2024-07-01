@@ -113,6 +113,48 @@ for HASH in "" "SHA1" "SHA224" "SHA256" "SHA384" "SHA512"; do
         rm data.{sig,hash}
     done
 
+    METHOD="RSA-PKCS-OAEP"
+    # RSA-PKCS-OAEP works only on small data (input length <= k-2-2hLen)
+    # generate small data:
+    head -c 64 </dev/urandom > data
+    for ENC_KEY in "01" "02"; do
+        # SoftHSM only supports SHA1 for both hashAlg and mgf
+        if [[ -z $HASH ]]; then
+        	continue
+        elif [[ "$HASH" != "SHA1" ]]; then
+        	continue
+        fi
+        echo
+        echo "======================================================="
+        echo "$METHOD: Encrypt & Decrypt (KEY $ENC_KEY)"
+        echo "======================================================="
+        # OpenSSL Encryption
+        # pkeyutl does not work with libressl
+        openssl rsautl -encrypt -oaep -inkey $ENC_KEY.pub -in data -pubin -out data.crypt
+        assert $? "Failed to encrypt data using OpenSSL"
+        $PKCS11_TOOL --id $ENC_KEY --decrypt -p $PIN --module $P11LIB \
+               -m $METHOD --hash-algorithm "SHA-1" --mgf "MGF1-SHA1" \
+               --input-file data.crypt --output-file data.decrypted
+        assert $? "Failed to decrypt data using pkcs11-tool"
+        diff data{,.decrypted}
+        assert $? "The decrypted data do not match the original"
+        rm data.{crypt,decrypted}
+
+        $PKCS11_TOOL --id $ENC_KEY --encrypt -p $PIN --module $P11LIB \
+               -m $METHOD --hash-algorithm "SHA-1" --mgf "MGF1-SHA1" \
+               --input-file data --output-file data.crypt
+        assert $? "Failed to encrypt data using pkcs11-tool"
+        # It would be better to decrypt with OpenSSL but we can't read the
+        # private key with the pkcs11-tool (yet)
+        $PKCS11_TOOL --id $ENC_KEY --decrypt -p $PIN --module $P11LIB \
+               -m $METHOD --hash-algorithm "SHA-1" --mgf "MGF1-SHA1" \
+               --input-file data.crypt --output-file data.decrypted
+        assert $? "Failed to decrypt data using pkcs11-tool"
+        diff data{,.decrypted}
+        assert $? "The decrypted data do not match the original"
+        rm data.{crypt,decrypted}
+    done
+
     # Skip hashed algorithms (do not support encryption & decryption)
     if [[ ! -z "$HASH" ]]; then
         continue;
