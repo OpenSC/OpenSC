@@ -33,6 +33,7 @@
 #include <openssl/conf.h>
 #include <openssl/opensslconf.h> /* for OPENSSL_NO_* */
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
+#define OPENSSL_NO_ENGINE
 #include <openssl/core_names.h>
 #include <openssl/param_build.h>
 #endif
@@ -258,7 +259,6 @@ sc_pkcs11_register_openssl_mechanisms(struct sc_pkcs11_card *p11card)
  * Engine support is being deprecated in 3.0. OpenSC loads GOST as engine.
  * When GOST developers convert to provider, we can load the provider
  */
-#if OPENSSL_VERSION_NUMBER < 0x30000000L
 #if !defined(OPENSSL_NO_ENGINE)
 	ENGINE *e;
 /* crypto locking removed in 1.1 */
@@ -304,7 +304,6 @@ sc_pkcs11_register_openssl_mechanisms(struct sc_pkcs11_card *p11card)
 		CRYPTO_set_locking_callback(locking_cb);
 #endif
 #endif /* !defined(OPENSSL_NO_ENGINE) */
-#endif /* OPENSSL_VERSION_NUMBER < 0x30000000L */
 
 	openssl_sha1_mech.mech_data = sc_evp_md(context, "sha1");
 	openssl_sha1_mech.free_mech_data = ossl_md_free;
