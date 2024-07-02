@@ -41,7 +41,9 @@
 #include <openssl/ec.h>
 #endif /* OPENSSL_NO_EC */
 #ifndef OPENSSL_NO_ENGINE
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 #include <openssl/engine.h>
+#endif
 #endif /* OPENSSL_NO_ENGINE */
 #include <openssl/asn1.h>
 #include <openssl/crypto.h>
