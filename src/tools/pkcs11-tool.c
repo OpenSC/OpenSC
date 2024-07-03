@@ -214,6 +214,8 @@ enum {
 	OPT_LIST_INTERFACES,
 	OPT_IV,
 	OPT_MAC_GEN_PARAM,
+	OPT_AAD,
+	OPT_TAG_BITS
 };
 
 // clang-format off
@@ -302,6 +304,8 @@ static const struct option options[] = {
 	{ "allow-sw",		0, NULL,		OPT_ALLOW_SW },
 	{ "iv",			1, NULL,		OPT_IV },
 	{ "mac-general-param",	1, NULL, 		OPT_MAC_GEN_PARAM},
+	{ "aad", 		1, NULL, 		OPT_AAD	},
+	{ "tag-bits-len", 	1, NULL, 		OPT_TAG_BITS},
 
 	{ NULL, 0, NULL, 0 }
 };
@@ -392,6 +396,8 @@ static const char *option_help[] = {
 	"Allow using software mechanisms (without CKF_HW)",
 	"Initialization vector",
 		"Specify the value <arg> of the mechanism parameter CK_MAC_GENERAL_PARAMS",
+		"Specify additional authenticated data for AEAD ciphers as a hex string",
+		"Specify the required length (in bits) for the authentication tag for AEAD ciphers",
 };
 
 static const char *	app_name = "pkcs11-tool"; /* for utils.c */
@@ -452,6 +458,8 @@ static int		opt_always_auth = 0;
 static CK_FLAGS		opt_allow_sw = CKF_HW;
 static const char *	opt_iv = NULL;
 static unsigned long opt_mac_gen_param = 0;
+static const char *opt_aad = NULL;
+static unsigned long opt_tag_bits = 0;
 
 static void *module = NULL;
 static CK_FUNCTION_LIST_3_0_PTR p11 = NULL;
@@ -604,7 +612,7 @@ static void		p11_perror(const char *, CK_RV);
 static const char *	CKR2Str(CK_ULONG res);
 static int		p11_test(CK_SESSION_HANDLE session);
 static int test_card_detection(int);
-static CK_BYTE_PTR	get_iv(const char * iv_input, size_t *iv_size);
+static CK_BYTE_PTR hex_string_to_byte_array(const char *iv_input, size_t *iv_size, const char *buffer_name);
 static void		pseudo_randomize(unsigned char *data, size_t dataLen);
 static CK_SESSION_HANDLE test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
 static void		test_ec(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
@@ -1087,6 +1095,17 @@ int main(int argc, char * argv[])
 				opt_mac_gen_param = strtoul(optarg, &end_ptr, 10);
 			} else {
 				util_fatal("--mac-general-param option needs a decimal value argument");
+			}
+			break;
+		case OPT_AAD:
+			opt_aad = optarg;
+			break;
+		case OPT_TAG_BITS:
+			if (optarg != NULL) {
+				char *end_ptr;
+				opt_tag_bits = strtoul(optarg, &end_ptr, 10);
+			} else {
+				util_fatal("--tag-bits-len option needs a decimal value argument");
 			}
 			break;
 		case OPT_TEST_HOTPLUG:
@@ -2587,11 +2606,14 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	CK_MECHANISM	mech;
 	CK_RV		rv;
 	CK_RSA_PKCS_OAEP_PARAMS oaep_params;
+	CK_GCM_PARAMS gcm_params = {0};
 	CK_ULONG	in_len, out_len;
 	int		fd_in, fd_out;
 	CK_BYTE_PTR	iv = NULL;
 	size_t		iv_size = 0;
 	ssize_t sz;
+	CK_BYTE_PTR aad = NULL;
+	size_t aad_size = 0;
 
 	if (!opt_mechanism_used)
 		if (!find_mechanism(slot, CKF_DECRYPT|opt_allow_sw, NULL, 0, &opt_mechanism))
@@ -2653,9 +2675,20 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	case CKM_AES_CBC:
 	case CKM_AES_CBC_PAD:
 		iv_size = 16;
-		iv = get_iv(opt_iv, &iv_size);
+		iv = hex_string_to_byte_array(opt_iv, &iv_size, "IV");
 		mech.pParameter = iv;
 		mech.ulParameterLen = iv_size;
+		break;
+	case CKM_AES_GCM:
+		iv = hex_string_to_byte_array(opt_iv, &iv_size, "IV");
+		gcm_params.pIv = iv;
+		gcm_params.ulIvLen = iv_size;
+		aad = hex_string_to_byte_array(opt_aad, &aad_size, "AAD");
+		gcm_params.pAAD = aad;
+		gcm_params.ulAADLen = aad_size;
+		gcm_params.ulTagBits = opt_tag_bits;
+		mech.pParameter = &gcm_params;
+		mech.ulParameterLen = sizeof(gcm_params);
 		break;
 	default:
 		util_fatal("Mechanism %s illegal or not supported\n", p11_mechanism_to_name(opt_mechanism));
@@ -2746,6 +2779,7 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		close(fd_out);
 
 	free(iv);
+	free(aad);
 }
 
 static void encrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
@@ -2757,8 +2791,11 @@ static void encrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	CK_ULONG	in_len, out_len;
 	int		fd_in, fd_out;
 	ssize_t sz;
+	CK_GCM_PARAMS gcm_params = {0};
 	CK_BYTE_PTR	iv = NULL;
 	size_t		iv_size = 0;
+	CK_BYTE_PTR aad = NULL;
+	size_t aad_size = 0;
 
 	if (!opt_mechanism_used)
 		if (!find_mechanism(slot, CKF_ENCRYPT | opt_allow_sw, NULL, 0, &opt_mechanism))
@@ -2776,9 +2813,20 @@ static void encrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	case CKM_AES_CBC:
 	case CKM_AES_CBC_PAD:
 		iv_size = 16;
-		iv = get_iv(opt_iv, &iv_size);
+		iv = hex_string_to_byte_array(opt_iv, &iv_size, "IV");
 		mech.pParameter = iv;
 		mech.ulParameterLen = iv_size;
+		break;
+	case CKM_AES_GCM:
+		iv = hex_string_to_byte_array(opt_iv, &iv_size, "IV");
+		gcm_params.pIv = iv;
+		gcm_params.ulIvLen = iv_size;
+		aad = hex_string_to_byte_array(opt_aad, &aad_size, "AAD");
+		gcm_params.pAAD = aad;
+		gcm_params.ulAADLen = aad_size;
+		gcm_params.ulTagBits = opt_tag_bits;
+		mech.pParameter = &gcm_params;
+		mech.ulParameterLen = sizeof(gcm_params);
 		break;
 	default:
 		util_fatal("Mechanism %s illegal or not supported\n", p11_mechanism_to_name(opt_mechanism));
@@ -2847,6 +2895,7 @@ static void encrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		close(fd_out);
 
 	free(iv);
+	free(aad);
 }
 
 
@@ -3471,7 +3520,7 @@ unwrap_key(CK_SESSION_HANDLE session)
 
 	if (opt_mechanism == CKM_AES_CBC || opt_mechanism == CKM_AES_CBC_PAD) {
 		iv_size = 16;
-		iv = get_iv(opt_iv, &iv_size);
+		iv = hex_string_to_byte_array(opt_iv, &iv_size, "IV");
 		mechanism.pParameter = iv;
 		mechanism.ulParameterLen = iv_size;
 	}
@@ -3584,7 +3633,7 @@ wrap_key(CK_SESSION_HANDLE session)
 	mechanism.ulParameterLen = 0;
 	if (opt_mechanism == CKM_AES_CBC || opt_mechanism == CKM_AES_CBC_PAD) {
 		iv_size = 16;
-		iv = get_iv(opt_iv, &iv_size);
+		iv = hex_string_to_byte_array(opt_iv, &iv_size, "IV");
 		mechanism.pParameter = iv;
 		mechanism.ulParameterLen = iv_size;
 	}
@@ -8508,35 +8557,52 @@ static void p11_perror(const char *msg, CK_RV rv)
 {
 	fprintf(stderr, "  ERR: %s failed: %s (0x%0x)\n", msg, CKR2Str(rv), (unsigned int) rv);
 }
-static CK_BYTE_PTR get_iv(const char *iv_input, size_t *iv_size)
+
+#define MAX_HEX_STR_LEN (1U << 16) // Arbitrary, GCM IV and AAD can theoretically be much bigger
+static CK_BYTE_PTR
+hex_string_to_byte_array(const char *hex_input, size_t *input_size, const char *buffer_name)
 {
-	CK_BYTE_PTR iv;
-	size_t size = *iv_size;
+	CK_BYTE_PTR array;
+	size_t size = 0;
 
-	/* no IV supplied on command line */
-	if (!iv_input) {
-		*iv_size = 0;
+	/* no hex string supplied on command line */
+	if (!hex_input) {
+		*input_size = 0;
 		return NULL;
 	}
 
-	iv = calloc(*iv_size, sizeof(CK_BYTE));
-	if (!iv) {
-		fprintf(stderr, "Warning, out of memory, IV will not be used.\n");
-		*iv_size = 0;
+	/* If no length is provided, determine the length of the hex string */
+	if (*input_size == 0) {
+		size = strnlen(hex_input, MAX_HEX_STR_LEN);
+		if (size % 2 != 0) {
+			fprintf(stderr, "Odd length, provided %s is an invalid hex string.\n", buffer_name);
+			return NULL;
+		}
+		*input_size = size / 2;
+	}
+
+	size = *input_size;
+
+	array = calloc(*input_size, sizeof(CK_BYTE));
+	if (!array) {
+		fprintf(stderr, "Warning, out of memory, %s will not be used.\n", buffer_name);
+		*input_size = 0;
 		return NULL;
 	}
 
-	if (sc_hex_to_bin(iv_input, iv, &size)) {
-		fprintf(stderr, "Warning, unable to parse IV, IV will not be used.\n");
-		*iv_size = 0;
-		free(iv);
+	if (sc_hex_to_bin(hex_input, array, &size)) {
+		fprintf(stderr, "Warning, unable to parse %s, %s will not be used.\n",
+				buffer_name, buffer_name);
+		*input_size = 0;
+		free(array);
 		return NULL;
 	}
 
-	if (*iv_size != size)
-		fprintf(stderr, "Warning: IV string is too short, IV will be padded from the right by zeros.\n");
+	if (*input_size != size)
+		fprintf(stderr, "Warning: %s string is too short, %s will be padded from the right by zeros.\n",
+				buffer_name, buffer_name);
 
-	return iv;
+	return array;
 }
 
 static void pseudo_randomize(unsigned char *data, size_t dataLen)
