@@ -3129,7 +3129,8 @@ pgp_build_tlv(sc_context_t *ctx, unsigned int tag, u8 *data, size_t len, u8 **ou
 	while ((tag >> 8*highest_order) != 0) {
 		highest_order++;
 	}
-	highest_order--;
+	if (highest_order != 0)
+		highest_order--;
 
 	/* restore class bits in output */
 	if (highest_order < 4)
