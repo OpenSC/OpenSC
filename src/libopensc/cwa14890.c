@@ -1600,24 +1600,28 @@ int cwa_encode_apdu(sc_card_t * card,
 			goto encode_end;
 		}
 	} else if ((0xff & from->le) > 0) {
-
-	/* if le byte is declared, compose and add Le TLV */
-	/* FIXME: For DNIe we must not send the le bytes
-	  when le == 256 but this goes against the standard
-	  and might break other cards reusing this code */
-        /* NOTE: In FNMT MultiPKCS11 code this is an if, i.e.,
-           the le is only sent if no data (lc) is set.
-           In DNIe 3.0 pin verification sending both TLV return
-           69 88 "SM Data Object incorrect". For the moment it is
-           fixed sendind le=0 in pin verification apdu */
-	    u8 le = 0xff & from->le;
-	    res = cwa_compose_tlv(card, 0x97, 1, &le, &ccbuf, &cclen);
-	    if (res != SC_SUCCESS) {
-		msg = "Encode APDU compose_tlv(0x97) failed";
-		goto encode_end;
-	    }
+		/* if le byte is declared, compose and add Le TLV */
+		/* FIXME: For DNIe we must not send the le bytes
+		   when le == 256 but this goes against the standard
+		   and might break other cards reusing this code */
+		/* NOTE: In FNMT MultiPKCS11 code this is an if, i.e.,
+		   the le is only sent if no data (lc) is set.
+		   In DNIe 3.0 pin verification sending both TLV return
+		   69 88 "SM Data Object incorrect". For the moment it is
+		   fixed sendind le=0 in pin verification apdu */
+		u8 le = 0xff & from->le;
+		res = cwa_compose_tlv(card, 0x97, 1, &le, &ccbuf, &cclen);
+		if (res != SC_SUCCESS) {
+			msg = "Encode APDU compose_tlv(0x97) failed";
+			goto encode_end;
+		}
 	}
 	/* copy current data to apdu buffer (skip header and header padding) */
+	if (cclen < 8) {
+		res = SC_ERROR_INTERNAL;
+		msg = "Incorrect checksum length";
+		goto encode_end;
+	}
 	memcpy(apdubuf, ccbuf + 8, cclen - 8);
 	apdulen = cclen - 8;
 	/* pad again ccbuffer to compute CC */
