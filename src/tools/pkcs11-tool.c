@@ -2301,6 +2301,8 @@ parse_pss_params(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key,
 			unsigned long modlen = 0;
 
 			modlen = (get_private_key_length(session, key) + 7) / 8;
+			if (modlen == 0)
+				util_fatal("Incorrect length of private key");
 			switch (opt_salt_len) {
 			case -1: /* salt size equals to digest size */
 				pss_params->sLen = hashlen;
