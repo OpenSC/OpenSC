@@ -3911,7 +3911,7 @@ sc_pkcs15init_verify_secret(struct sc_profile *profile, struct sc_pkcs15_card *p
 		sc_log(ctx, "Symbolic PIN resolved to PIN(type:CHV,reference:%i)", reference);
 	}
 
-	if (path && path->len)   {
+	if (path && path->len && path->len <= SC_MAX_PATH_SIZE) {
 		struct sc_path tmp_path = *path;
 		int iter;
 		r = SC_ERROR_OBJECT_NOT_FOUND;
