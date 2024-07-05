@@ -3548,8 +3548,11 @@ unwrap_key(CK_SESSION_HANDLE session)
 	unsigned char in_buffer[1024];
 	CK_ULONG wrapped_key_length;
 	CK_BYTE_PTR pWrappedKey;
+	CK_GCM_PARAMS gcm_params = {0};
 	CK_BYTE_PTR iv = NULL;
 	size_t iv_size = 0;
+	CK_BYTE_PTR aad = NULL;
+	size_t aad_size = 0;
 	CK_OBJECT_HANDLE hUnwrappingKey;
 	ssize_t sz;
 
@@ -3579,11 +3582,28 @@ unwrap_key(CK_SESSION_HANDLE session)
 		close(fd);
 	pWrappedKey = in_buffer;
 
-	if (opt_mechanism == CKM_AES_CBC || opt_mechanism == CKM_AES_CBC_PAD) {
+	switch (opt_mechanism) {
+	case CKM_AES_CBC:
+	case CKM_AES_CBC_PAD:
 		iv_size = 16;
 		iv = hex_string_to_byte_array(opt_iv, &iv_size, "IV");
 		mechanism.pParameter = iv;
 		mechanism.ulParameterLen = iv_size;
+		break;
+	case CKM_AES_GCM:
+		iv = hex_string_to_byte_array(opt_iv, &iv_size, "IV");
+		gcm_params.pIv = iv;
+		gcm_params.ulIvLen = iv_size;
+		aad = hex_string_to_byte_array(opt_aad, &aad_size, "AAD");
+		gcm_params.pAAD = aad;
+		gcm_params.ulAADLen = aad_size;
+		gcm_params.ulTagBits = opt_tag_bits;
+		mechanism.pParameter = &gcm_params;
+		mechanism.ulParameterLen = sizeof(gcm_params);
+		break;
+	default:
+		// Nothing to do with other mechanisms.
+		break;
 	}
 
 	if (opt_key_type != NULL) {
@@ -3665,6 +3685,7 @@ unwrap_key(CK_SESSION_HANDLE session)
 		p11_fatal("C_UnwrapKey", rv);
 
 	free(iv);
+	free(aad);
 	printf("Key unwrapped\n");
 	show_object(session, hSecretKey);
 	return 1;
@@ -3683,8 +3704,11 @@ wrap_key(CK_SESSION_HANDLE session)
 	size_t hkey_id_len;
 	int fd;
 	ssize_t sz;
+	CK_GCM_PARAMS gcm_params = {0};
 	CK_BYTE_PTR iv = NULL;
 	size_t iv_size = 0;
+	CK_BYTE_PTR aad = NULL;
+	size_t aad_size = 0;
 
 	if (NULL == opt_application_id)
 		util_fatal("Use --application-id to specify secret key (to be wrapped)");
@@ -3694,11 +3718,29 @@ wrap_key(CK_SESSION_HANDLE session)
 	mechanism.mechanism = opt_mechanism;
 	mechanism.pParameter = NULL_PTR;
 	mechanism.ulParameterLen = 0;
-	if (opt_mechanism == CKM_AES_CBC || opt_mechanism == CKM_AES_CBC_PAD) {
+
+	switch (opt_mechanism) {
+	case CKM_AES_CBC:
+	case CKM_AES_CBC_PAD:
 		iv_size = 16;
 		iv = hex_string_to_byte_array(opt_iv, &iv_size, "IV");
 		mechanism.pParameter = iv;
 		mechanism.ulParameterLen = iv_size;
+		break;
+	case CKM_AES_GCM:
+		iv = hex_string_to_byte_array(opt_iv, &iv_size, "IV");
+		gcm_params.pIv = iv;
+		gcm_params.ulIvLen = iv_size;
+		aad = hex_string_to_byte_array(opt_aad, &aad_size, "AAD");
+		gcm_params.pAAD = aad;
+		gcm_params.ulAADLen = aad_size;
+		gcm_params.ulTagBits = opt_tag_bits;
+		mechanism.pParameter = &gcm_params;
+		mechanism.ulParameterLen = sizeof(gcm_params);
+		break;
+	default:
+		// Nothing to do with other mechanisms.
+		break;
 	}
 
 	hkey_id_len = sizeof(hkey_id);
@@ -3731,6 +3773,7 @@ wrap_key(CK_SESSION_HANDLE session)
 	if (fd != 1)
 		close(fd);
 	free(iv);
+	free(aad);
 	return 1;
 }
 
