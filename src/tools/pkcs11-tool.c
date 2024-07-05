@@ -351,7 +351,7 @@ static const char *option_help[] = {
 		"Unlock User PIN (without '--login' unlock in logged in session; otherwise '--login-type' has to be 'context-specific')",
 		"Key pair generation",
 		"Key generation",
-		"Specify the type and length (bytes if symmetric) of the key to create, for example rsa:1024, EC:prime256v1, EC:ed25519, EC:curve25519, GOSTR3410-2012-256:B, AES:16 or GENERIC:64",
+		"Specify the type and (not always compulsory) flavour (byte-wise symmetric key length, bit-wise asymmetric key length, elliptic curve identifier, etc.) of the key to create, for example RSA:2048, EC:prime256v1, GOSTR3410-2012-256:B, DES:8, DES3:24, AES:16, AES: or GENERIC:64",
 		"Specify 'sign' key usage flag (sets SIGN in privkey, sets VERIFY in pubkey)",
 		"Specify 'decrypt' key usage flag (sets DECRYPT in privkey and ENCRYPT in pubkey for RSA, sets both DECRYPT and ENCRYPT for secret keys)",
 		"Specify 'derive' key usage flag (EC only)",
@@ -3529,15 +3529,15 @@ static int
 unwrap_key(CK_SESSION_HANDLE session)
 {
 	CK_MECHANISM mechanism;
-	CK_OBJECT_CLASS secret_key_class = CKO_SECRET_KEY;
+	CK_OBJECT_CLASS class = CKO_SECRET_KEY;
 	CK_BBOOL _true = TRUE;
 	CK_BBOOL _false = FALSE;
 	CK_KEY_TYPE key_type = CKK_AES;
 	CK_ULONG key_length;
 	const char *length;
 	CK_ATTRIBUTE keyTemplate[20] = {
-		{CKA_CLASS, &secret_key_class, sizeof(secret_key_class)},
-		{CKA_TOKEN, &_true, sizeof(_true)},
+			{CKA_CLASS, &class, sizeof(class)},
+			{CKA_TOKEN, &_true, sizeof(_true)},
 	};
 	CK_BYTE object_id[100];
 	size_t id_len;
@@ -3545,7 +3545,7 @@ unwrap_key(CK_SESSION_HANDLE session)
 	int n_attr = 2;
 	CK_RV rv;
 	int fd;
-	unsigned char in_buffer[1024];
+	unsigned char in_buffer[2048];
 	CK_ULONG wrapped_key_length;
 	CK_BYTE_PTR pWrappedKey;
 	CK_GCM_PARAMS gcm_params = {0};
@@ -3606,59 +3606,78 @@ unwrap_key(CK_SESSION_HANDLE session)
 		break;
 	}
 
-	if (opt_key_type != NULL) {
-		if (strncasecmp(opt_key_type, "AES:", strlen("AES:")) == 0) {
-			length = opt_key_type + strlen("AES:");
-			key_type = CKK_AES;
+	if (opt_key_type == NULL) {
+		util_fatal("Key type must be specified");
+	}
 
-		} else if (strncasecmp(opt_key_type, "GENERIC:", strlen("GENERIC:")) == 0) {
-			length = opt_key_type + strlen("GENERIC:");
-			key_type = CKK_GENERIC_SECRET;
-		} else if (strncasecmp(opt_key_type, "HKDF:", strlen("HKDF:")) == 0) {
-			length = opt_key_type + strlen("HKDF:");
-			key_type = CKK_HKDF;
-		} else {
-			util_fatal("Unsupported key type %s", opt_key_type);
-		}
+	if (strncasecmp(opt_key_type, "AES:", strlen("AES:")) == 0) {
+		length = opt_key_type + strlen("AES:");
+	} else if (strncasecmp(opt_key_type, "GENERIC:", strlen("GENERIC:")) == 0) {
+		length = opt_key_type + strlen("GENERIC:");
+		key_type = CKK_GENERIC_SECRET;
+	} else if (strncasecmp(opt_key_type, "HKDF:", strlen("HKDF:")) == 0) {
+		length = opt_key_type + strlen("HKDF:");
+		key_type = CKK_HKDF;
+	} else if (strncasecmp(opt_key_type, "RSA:", strlen("RSA:")) == 0) {
+		length = "0"; // No key length for RSA keys
+		key_type = CKK_RSA;
+		class = CKO_PRIVATE_KEY;
+	} else if (strncasecmp(opt_key_type, "EC:", strlen("EC:")) == 0) {
+		length = "0"; // No key length for EC keys
+		key_type = CKK_EC;
+		class = CKO_PRIVATE_KEY;
+	} else {
+		util_fatal("Unsupported key type %s", opt_key_type);
+	}
 
-		FILL_ATTR(keyTemplate[n_attr], CKA_KEY_TYPE, &key_type, sizeof(key_type));
-		n_attr++;
+	FILL_ATTR(keyTemplate[n_attr], CKA_KEY_TYPE, &key_type, sizeof(key_type));
+	n_attr++;
 
-		if (opt_is_sensitive != 0) {
-			FILL_ATTR(keyTemplate[n_attr], CKA_SENSITIVE, &_true, sizeof(_true));
-			n_attr++;
-		} else {
-			FILL_ATTR(keyTemplate[n_attr], CKA_SENSITIVE, &_false, sizeof(_false));
-			n_attr++;
-		}
+	if (opt_is_sensitive != 0) {
+		FILL_ATTR(keyTemplate[n_attr], CKA_SENSITIVE, &_true, sizeof(_true));
+	} else {
+		FILL_ATTR(keyTemplate[n_attr], CKA_SENSITIVE, &_false, sizeof(_false));
+	}
+	n_attr++;
 
-		if (opt_key_usage_default || opt_key_usage_decrypt) {
+	if (opt_key_usage_default || opt_key_usage_decrypt) {
+		if (class != CKO_PRIVATE_KEY) {
 			FILL_ATTR(keyTemplate[n_attr], CKA_ENCRYPT, &_true, sizeof(_true));
 			n_attr++;
-			FILL_ATTR(keyTemplate[n_attr], CKA_DECRYPT, &_true, sizeof(_true));
-			n_attr++;
 		}
-		if (opt_key_usage_wrap) {
+		FILL_ATTR(keyTemplate[n_attr], CKA_DECRYPT, &_true, sizeof(_true));
+		n_attr++;
+	}
+	if (opt_key_usage_wrap) {
+		if (class != CKO_PRIVATE_KEY) {
 			FILL_ATTR(keyTemplate[n_attr], CKA_WRAP, &_true, sizeof(_true));
 			n_attr++;
-			FILL_ATTR(keyTemplate[n_attr], CKA_UNWRAP, &_true, sizeof(_true));
+		}
+		FILL_ATTR(keyTemplate[n_attr], CKA_UNWRAP, &_true, sizeof(_true));
+		n_attr++;
+	}
+	if (opt_key_usage_sign) {
+		if (class != CKO_PRIVATE_KEY) {
+			FILL_ATTR(keyTemplate[n_attr], CKA_VERIFY, &_true, sizeof(_true));
 			n_attr++;
 		}
+		FILL_ATTR(keyTemplate[n_attr], CKA_SIGN, &_true, sizeof(_true));
+		n_attr++;
+	}
 
-		if (opt_is_extractable != 0) {
-			FILL_ATTR(keyTemplate[n_attr], CKA_EXTRACTABLE, &_true, sizeof(_true));
-			n_attr++;
-		} else {
-			FILL_ATTR(keyTemplate[n_attr], CKA_EXTRACTABLE, &_false, sizeof(_true));
-			n_attr++;
-		}
-		/* softhsm2 does not allow to attribute CKA_VALUE_LEN, but MyEID card must have this attribute
-                   specified. We set CKA_VALUE_LEN only if the user sets it in the key specification. */
-		key_length = (unsigned long)atol(length);
-		if (key_length != 0) {
-			FILL_ATTR(keyTemplate[n_attr], CKA_VALUE_LEN, &key_length, sizeof(key_length));
-			n_attr++;
-		}
+	if (opt_is_extractable != 0) {
+		FILL_ATTR(keyTemplate[n_attr], CKA_EXTRACTABLE, &_true, sizeof(_true));
+	} else {
+		FILL_ATTR(keyTemplate[n_attr], CKA_EXTRACTABLE, &_false, sizeof(_false));
+	}
+	n_attr++;
+
+	/* softhsm2 does not allow to attribute CKA_VALUE_LEN, but MyEID card must have this attribute
+				specified. We set CKA_VALUE_LEN only if the user sets it in the key specification. */
+	key_length = (unsigned long)atol(length);
+	if (key_length != 0) {
+		FILL_ATTR(keyTemplate[n_attr], CKA_VALUE_LEN, &key_length, sizeof(key_length));
+		n_attr++;
 	}
 
 	if (opt_application_label != NULL) {
@@ -3748,13 +3767,14 @@ wrap_key(CK_SESSION_HANDLE session)
 		util_fatal("Invalid application-id \"%s\"\n", opt_application_id);
 
 	if (!find_object(session, CKO_SECRET_KEY, &hkey, hkey_id_len ? hkey_id : NULL, hkey_id_len, 0))
-		util_fatal("Secret key (to be wrapped) not found");
+		if (!find_object(session, CKO_PRIVATE_KEY, &hkey, hkey_id_len ? hkey_id : NULL, hkey_id_len, 0))
+			util_fatal("Key to be wrapped not found");
 
 	if (!find_object(session, CKO_PUBLIC_KEY, &hWrappingKey,
 			 opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, 0))
 		if (!find_object(session, CKO_SECRET_KEY, &hWrappingKey,
 				 opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, 0))
-			util_fatal("Public/secret key (wrapping key) not found");
+			util_fatal("Wrapping key not found");
 
 	rv = p11->C_WrapKey(session, &mechanism, hWrappingKey, hkey, pWrappedKey, &pulWrappedKeyLen);
 	if (rv != CKR_OK)
