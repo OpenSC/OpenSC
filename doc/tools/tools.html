@@ -1489,9 +1489,9 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 						<code class="option">--keygen</code>
 					</span></dt><dd><p>Generate a new key.</p></dd><dt><span class="term">
 						<code class="option">--key-type</code> <em class="replaceable"><code>specification</code></em>
-					</span></dt><dd><p>Specify the type and length (bytes if symmetric) of the key to create,
-					for example RSA:1024, EC:prime256v1, GOSTR3410-2012-256:B,
-					DES:8, DES3:24, AES:16 or GENERIC:64. If the key type was incompletely specified, possible values are listed.</p></dd><dt><span class="term">
+					</span></dt><dd><p>Specify the type and (not always compulsory) flavour (byte-wise symmetric key length, bit-wise asymmetric key length,
+					elliptic curve identifier, etc.) of the key to create, for example RSA:2048, EC:prime256v1, GOSTR3410-2012-256:B,
+					DES:8, DES3:24, AES:16, AES: or GENERIC:64. If the key type was incompletely specified, possible values are listed.</p></dd><dt><span class="term">
 						<code class="option">--usage-sign</code>
 					</span></dt><dd><p>Specify 'sign' key usage flag (sets SIGN in privkey, sets VERIFY in pubkey).</p></dd><dt><span class="term">
 						<code class="option">--usage-decrypt</code>
