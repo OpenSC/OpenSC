@@ -1152,6 +1152,8 @@ construct_mac_tlv_case1(struct sc_card *card, unsigned char *apdu_buf, size_t da
 			LOG_TEST_RET(card->ctx, r, "aes128_encrypt_cmac_ft failed");
 			memcpy(mac_tlv + 2, &mac[0 /*ulmacLen-16*/], 8);
 		} else {
+			if (mac_len < 16)
+				LOG_TEST_RET(card->ctx, SC_ERROR_INTERNAL, "incorrect mac length");
 			r = aes128_encrypt_cbc(card, exdata->sk_mac, 16, icv, apdu_buf, mac_len, mac);
 			LOG_TEST_RET(card->ctx, r, "aes128_encrypt_cbc failed");
 			memcpy(mac_tlv + 2, &mac[mac_len - 16], 8);
@@ -1159,6 +1161,8 @@ construct_mac_tlv_case1(struct sc_card *card, unsigned char *apdu_buf, size_t da
 	} else {
 		unsigned char iv[EVP_MAX_IV_LENGTH] = {0};
 		unsigned char tmp[8] = {0};
+		if (mac_len < 8)
+			LOG_TEST_RET(card->ctx, SC_ERROR_INTERNAL, "incorrect mac length");
 		r = des_encrypt_cbc(card, exdata->sk_mac, 8, icv, apdu_buf, mac_len, mac);
 		LOG_TEST_RET(card->ctx, r, "des_encrypt_cbc  failed");
 		r = des_decrypt_cbc(card, &exdata->sk_mac[8], 8, iv, &mac[mac_len - 8], 8, tmp);
