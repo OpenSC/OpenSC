@@ -94,14 +94,14 @@ static void fixup_transceive_length(const struct sc_card *card,
 
 static int cardos_match_card(sc_card_t *card)
 {
-	unsigned char atr[SC_MAX_ATR_SIZE];
+	unsigned char atr[SC_MAX_ATR_SIZE] = { 0 };
 	int i;
 
 	i = _sc_match_atr(card, cardos_atrs, &card->type);
 	if (i < 0)
 		return 0;
 
-	memcpy(atr, card->atr.value, sizeof(atr));
+	memcpy(atr, card->atr.value, card->atr.len);
 
 	/* Do not change card type for CIE! */
 	if (card->type == SC_CARD_TYPE_CARDOS_CIE_V1)
@@ -114,8 +114,8 @@ static int cardos_match_card(sc_card_t *card)
 		return 1;
 	if (card->type == SC_CARD_TYPE_CARDOS_M4_2) {
 		int rv;
-		sc_apdu_t apdu;
-		u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
+		sc_apdu_t apdu = { 0 };
+		u8 rbuf[SC_MAX_APDU_BUFFER_SIZE] = { 0 };
 		/* first check some additional ATR bytes */
 		if ((atr[4] != 0xff && atr[4] != 0x02) ||
 		    (atr[6] != 0x10 && atr[6] != 0x0a) ||
