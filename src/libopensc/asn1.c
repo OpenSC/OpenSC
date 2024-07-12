@@ -68,7 +68,7 @@ int sc_asn1_read_tag(const u8 ** buf, size_t buflen, unsigned int *cla_out,
 
 	*buf = NULL;
 
-	if (left == 0 || !p)
+	if (left == 0 || !p || buflen == 0)
 		return SC_ERROR_INVALID_ASN1_OBJECT;
 	if (*p == 0xff || *p == 0) {
 		/* end of data reached */
@@ -83,6 +83,8 @@ int sc_asn1_read_tag(const u8 ** buf, size_t buflen, unsigned int *cla_out,
 	 */
 	cla = (*p & SC_ASN1_TAG_CLASS) | (*p & SC_ASN1_TAG_CONSTRUCTED);
 	tag = *p & SC_ASN1_TAG_PRIMITIVE;
+	if (left < 1)
+		return SC_ERROR_INVALID_ASN1_OBJECT;
 	p++;
 	left--;
 	if (tag == SC_ASN1_TAG_PRIMITIVE) {

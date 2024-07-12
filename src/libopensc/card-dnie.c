@@ -1172,12 +1172,16 @@ static int dnie_compose_and_send_apdu(sc_card_t *card, const u8 *path, size_t pa
 
 	if (file_out) {
 		/* finally process FCI response */
+		size_t len = apdu.resp[1];
 		sc_file_free(*file_out);
 		*file_out = sc_file_new();
 		if (*file_out == NULL) {
 			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 		}
-		res = card->ops->process_fci(card, *file_out, apdu.resp + 2, apdu.resp[1]);
+		if (apdu.resplen - 2 < len || len < 1) {
+			LOG_FUNC_RETURN(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
+		}
+		res = card->ops->process_fci(card, *file_out, apdu.resp + 2, len);
 	}
 	LOG_FUNC_RETURN(ctx, res);
 }
@@ -1935,7 +1939,7 @@ static int dnie_process_fci(struct sc_card *card,
 	int *op = df_acl;
 	int n = 0;
 	sc_context_t *ctx = NULL;
-	if ((card == NULL) || (card->ctx == NULL) || (file == NULL))
+	if ((card == NULL) || (card->ctx == NULL) || (file == NULL) || buflen == 0)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	ctx = card->ctx;
 	LOG_FUNC_CALLED(ctx);
