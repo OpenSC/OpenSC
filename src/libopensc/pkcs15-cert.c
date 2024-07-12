@@ -169,7 +169,7 @@ sc_pkcs15_get_name_from_dn(struct sc_context *ctx, const u8 *dn, size_t dn_len,
 	for (next_ava = rdn, next_ava_len = rdn_len; next_ava_len; ) {
 		const u8 *ava, *dummy, *oidp;
 		struct sc_object_id oid;
-		size_t ava_len, dummy_len, oid_len;
+		size_t ava_len = 0, dummy_len, oid_len = 0;
 
 		/* unwrap the set and point to the next ava */
 		ava = sc_asn1_skip_tag(ctx, &next_ava, &next_ava_len, SC_ASN1_TAG_SET | SC_ASN1_CONS, &ava_len);
