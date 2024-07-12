@@ -230,6 +230,7 @@ static int gids_get_DO(sc_card_t* card, int fileIdentifier, int dataObjectIdenti
 	size_t datasize = 0;
 	const u8* p;
 	u8 buffer[MAX_GIDS_FILE_SIZE];
+	size_t buffer_len = sizeof(buffer);
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	sc_log(card->ctx,
@@ -243,14 +244,15 @@ static int gids_get_DO(sc_card_t* card, int fileIdentifier, int dataObjectIdenti
 	apdu.data = data;
 	apdu.datalen = 04;
 	apdu.resp = buffer;
-	apdu.resplen = sizeof(buffer);
+	apdu.resplen = buffer_len;
 	apdu.le = 256;
 
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "gids get data failed");
 	LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2), "invalid return");
+	buffer_len = apdu.resplen;
 
-	p = sc_asn1_find_tag(card->ctx, buffer, apdu.resplen, dataObjectIdentifier, &datasize);
+	p = sc_asn1_find_tag(card->ctx, buffer, buffer_len, dataObjectIdentifier, &datasize);
 	if (!p) {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_FILE_NOT_FOUND);
 	}
