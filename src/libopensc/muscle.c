@@ -92,33 +92,34 @@ int msc_partial_read_object(sc_card_t *card, msc_id objectId, int offset, u8 *da
 	apdu.resp = data;
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
-	if(apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
+	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00 && dataLength <= apdu.resplen)
 		return (int)dataLength;
-	if(apdu.sw1 == 0x9C) {
-		if(apdu.sw2 == 0x07) {
+	if (apdu.sw1 == 0x9C) {
+		if (apdu.sw2 == 0x07) {
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_FILE_NOT_FOUND);
-		} else if(apdu.sw2 == 0x06) {
+		} else if (apdu.sw2 == 0x06) {
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_NOT_ALLOWED);
-		} else if(apdu.sw2 == 0x0F) {
+		} else if (apdu.sw2 == 0x0F) {
 			/* GUESSED */
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
 		}
 	}
 	sc_log(card->ctx,
 		"got strange SWs: 0x%02X 0x%02X\n", apdu.sw1, apdu.sw2);
-	return (int)dataLength;
-
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_UNKNOWN_DATA_RECEIVED);
 }
 
 int msc_read_object(sc_card_t *card, msc_id objectId, int offset, u8 *data, size_t dataLength)
 {
-	int r;
+	int r = 0;
 	unsigned int i;
 	size_t max_read_unit = MSC_MAX_READ;
 
-	for(i = 0; i < dataLength; i += max_read_unit) {
+	for (i = 0; i < dataLength; i += r) {
 		r = msc_partial_read_object(card, objectId, offset + i, data + i, MIN(dataLength - i, max_read_unit));
 		LOG_TEST_RET(card->ctx, r, "Error in partial object read");
+		if (r == 0)
+			break;
 	}
 	return (int)dataLength;
 }
