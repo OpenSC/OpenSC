@@ -145,11 +145,46 @@ assert $? "Fail/pkcs11-tool encrypt"
 cmp  aes_ciphertext_pkcs11.data aes_ciphertext_openssl.data >/dev/null 2>/dev/null
 assert $? "Fail, AES-CBC - wrong encrypt"
 
+ID3="87"
+echo "======================================================="
+echo " AES-GCM, compare with test vectors"
+echo " plaintext vector, pkcs11-tool encrypt, compare to ciphertext & tag vector"
+echo " ciphertext & tag vector, pkcs11-tool decrypt, compare to plaintext vector"
+echo "======================================================="
+# Command line OpenSSL does not support AES GCM, we have to compare with validated test vectors.
+# The test vectors come from https://github.com/google/boringssl/blob/master/crypto/cipher_extra/test/cipher_tests.txt lines 354-360.
+KEY="feffe9928665731c6d6a8f9467308308"
+IV="cafebabefacedbaddecaf888"
+PT="d9313225f88406e5a55909c5aff5269a86a7a9531534f7da2e4c303d8a318a721c3c0c95956809532fcf0e2449a6b525b16aedf5aa0de657ba637b39"
+CT="42831ec2217774244b7221b784d0d49ce3aa212f2c02a4e035c17e2329aca12e21d514b25466931c7d8f6a5aac84aa051ba30b396a0aac973d58e091"
+AAD="feedfacedeadbeeffeedfacedeadbeefabaddad2"
+TAG="5bc94fbc3221a5db94fae95ae7121a47"
+
+echo -n $KEY | xxd -r -p > gcm_128.key
+echo -n $PT | xxd -r -p > gcm_vector_plain.data
+echo -n $CT | xxd -r -p > gcm_vector_ct_tag.data
+echo -n $TAG | xxd -r -p >> gcm_vector_ct_tag.data
+
+softhsm2-util --import gcm_128.key --aes --token "SC test" --pin "$PIN" --label import_aes_gcm_128 --id "$ID3" >/dev/null
+assert $? "Fail, unable to import key"
+
+$PKCS11_TOOL --module="$P11LIB" --pin "$PIN" --encrypt --id "$ID3" -m AES-GCM --iv "$IV" --aad "$AAD" \
+	--tag-bits-len 128 --input-file gcm_vector_plain.data --output-file gcm_test_ct_tag.data 2>/dev/null
+assert $? "Fail/pkcs11-tool encrypt"
+cmp gcm_vector_ct_tag.data gcm_test_ct_tag.data >/dev/null 2>&1
+assert $? "Fail, AES-GCM - wrong encrypt"
+
+$PKCS11_TOOL --module="$P11LIB" --pin "$PIN" --decrypt --id "$ID3" -m AES-GCM --iv "$IV" --aad "$AAD" \
+	--tag-bits-len 128 --input-file gcm_vector_ct_tag.data --output-file gcm_test_plain.data 2>/dev/null
+assert $? "Fail/pkcs11-tool decrypt"
+cmp gcm_vector_plain.data gcm_test_plain.data >/dev/null 2>&1
+assert $? "Fail, AES-GCM - wrong decrypt"
+
 echo "======================================================="
 echo "Cleanup"
 echo "======================================================="
 softhsm_cleanup
 
 rm objects.list
-rm aes_128.key aes_plain.data aes_plain_test.data aes_ciphertext_openssl.data aes_ciphertext_pkcs11.data aes_plain_pkcs11.data
+rm aes_128.key aes_plain.data aes_plain_test.data aes_ciphertext_openssl.data aes_ciphertext_pkcs11.data aes_plain_pkcs11.data gcm_128.key gcm_vector_plain.data gcm_test_plain.data gcm_vector_ct_tag.data gcm_test_ct_tag.data
 exit $ERRORS

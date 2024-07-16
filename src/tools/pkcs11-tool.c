@@ -212,7 +212,10 @@ enum {
 	OPT_OBJECT_INDEX,
 	OPT_ALLOW_SW,
 	OPT_LIST_INTERFACES,
-	OPT_IV
+	OPT_IV,
+	OPT_MAC_GEN_PARAM,
+	OPT_AAD,
+	OPT_TAG_BITS
 };
 
 // clang-format off
@@ -300,95 +303,101 @@ static const struct option options[] = {
 	{ "generate-random",	1, NULL,		OPT_GENERATE_RANDOM },
 	{ "allow-sw",		0, NULL,		OPT_ALLOW_SW },
 	{ "iv",			1, NULL,		OPT_IV },
+	{ "mac-general-param",	1, NULL, 		OPT_MAC_GEN_PARAM},
+	{ "aad", 		1, NULL, 		OPT_AAD	},
+	{ "tag-bits-len", 	1, NULL, 		OPT_TAG_BITS},
 
 	{ NULL, 0, NULL, 0 }
 };
 // clang-format on
 
 static const char *option_help[] = {
-	"Specify the module to load (default:" DEFAULT_PKCS11_PROVIDER ")",
-	"Show global token information",
-	"List available slots",
-	"List slots with tokens",
-	"List mechanisms supported by the token",
-	"Show objects on token",
-	"List interfaces of PKCS #11 3.0 library",
+		"Specify the module to load (default:" DEFAULT_PKCS11_PROVIDER ")",
+		"Show global token information",
+		"List available slots",
+		"List slots with tokens",
+		"List mechanisms supported by the token",
+		"Show objects on token",
+		"List interfaces of PKCS #11 3.0 library",
 
-	"Sign some data",
-	"Verify a signature of some data",
-	"Decrypt some data",
-	"Encrypt some data",
-	"Unwrap key",
-	"Wrap key",
-	"Hash some data",
-	"Derive a secret key using another key and some data",
-	"Derive ECDHpass DER encoded pubkey for compatibility with some PKCS#11 implementations",
-	"Specify mechanism (use -M for a list of supported mechanisms), or by hexadecimal, e.g., 0x80001234",
-	"Specify hash algorithm used with RSA-PKCS-PSS signature and RSA-PKCS-OAEP decryption",
-	"Specify MGF (Message Generation Function) used for RSA-PSS signature and RSA-OAEP decryption (possible values are MGF1-SHA1 to MGF1-SHA512)",
-	"Specify how many bytes should be used for salt in RSA-PSS signatures (default is digest size)",
+		"Sign some data",
+		"Verify a signature of some data",
+		"Decrypt some data",
+		"Encrypt some data",
+		"Unwrap key",
+		"Wrap key",
+		"Hash some data",
+		"Derive a secret key using another key and some data",
+		"Derive ECDHpass DER encoded pubkey for compatibility with some PKCS#11 implementations",
+		"Specify mechanism (use -M for a list of supported mechanisms), or by hexadecimal, e.g., 0x80001234",
+		"Specify hash algorithm used with RSA-PKCS-PSS signature and RSA-PKCS-OAEP decryption",
+		"Specify MGF (Message Generation Function) used for RSA-PSS signature and RSA-OAEP decryption (possible values are MGF1-SHA1 to MGF1-SHA512)",
+		"Specify how many bytes should be used for salt in RSA-PSS signatures (default is digest size)",
 
-	"Forces to open the PKCS#11 session with CKF_RW_SESSION",
-	"Log into the token first",
-	"Specify login type ('so', 'user', 'context-specific'; default:'user')",
-	"Supply User PIN on the command line (if used in scripts: careful!)",
-	"Supply User PUK on the command line",
-	"Supply new User PIN on the command line",
-	"Supply SO PIN on the command line (if used in scripts: careful!)",
-	"Initialize the token, its label and its SO PIN (use with --label and --so-pin)",
-	"Initialize the User PIN (use with --pin and --login)",
-	"Change User PIN",
-	"Unlock User PIN (without '--login' unlock in logged in session; otherwise '--login-type' has to be 'context-specific')",
-	"Key pair generation",
-	"Key generation",
-	"Specify the type and length (bytes if symmetric) of the key to create, for example rsa:1024, EC:prime256v1, EC:ed25519, EC:curve25519, GOSTR3410-2012-256:B, AES:16 or GENERIC:64",
-	"Specify 'sign' key usage flag (sets SIGN in privkey, sets VERIFY in pubkey)",
-	"Specify 'decrypt' key usage flag (sets DECRYPT in privkey and ENCRYPT in pubkey for RSA, sets both DECRYPT and ENCRYPT for secret keys)",
-	"Specify 'derive' key usage flag (EC only)",
-	"Specify 'wrap' key usage flag",
-	"Write an object (key, cert, data) to the card",
-	"Get object's CKA_VALUE attribute (use with --type)",
-	"Delete an object (use with --type cert/data/privkey/pubkey/secrkey)",
-	"Specify the application label of the data object (use with --type data)",
-	"Specify the application ID of the data object (use with --type data)",
-	"Specify the issuer in hexadecimal format (use with --type cert)",
-	"Specify the subject in hexadecimal format (use with --type cert/privkey/pubkey)",
-	"Specify the type of object (e.g. cert, privkey, pubkey, secrkey, data)",
-	"Specify the ID of the object",
-	"Specify the label of the object",
-	"Specify the ID of the slot to use (accepts HEX format with 0x.. prefix or decimal number)",
-	"Specify the description of the slot to use",
-	"Specify the index of the slot to use",
-	"Specify the index of the object to use",
-	"Specify the token label of the slot to use",
-	"Set the CKA_ID of an object, <args>= the (new) CKA_ID",
-	"Use <arg> to create some attributes when writing an object",
-	"Specify the input file",
-	"Specify the file with signature for verification",
-	"Specify the output file",
-	"Format for ECDSA signature <arg>: 'rs' (default), 'sequence', 'openssl'",
-	"Specify the comma-separated list of allowed mechanisms when creating an object.",
+		"Forces to open the PKCS#11 session with CKF_RW_SESSION",
+		"Log into the token first",
+		"Specify login type ('so', 'user', 'context-specific'; default:'user')",
+		"Supply User PIN on the command line (if used in scripts: careful!)",
+		"Supply User PUK on the command line",
+		"Supply new User PIN on the command line",
+		"Supply SO PIN on the command line (if used in scripts: careful!)",
+		"Initialize the token, its label and its SO PIN (use with --label and --so-pin)",
+		"Initialize the User PIN (use with --pin and --login)",
+		"Change User PIN",
+		"Unlock User PIN (without '--login' unlock in logged in session; otherwise '--login-type' has to be 'context-specific')",
+		"Key pair generation",
+		"Key generation",
+		"Specify the type and length (bytes if symmetric) of the key to create, for example rsa:1024, EC:prime256v1, EC:ed25519, EC:curve25519, GOSTR3410-2012-256:B, AES:16 or GENERIC:64",
+		"Specify 'sign' key usage flag (sets SIGN in privkey, sets VERIFY in pubkey)",
+		"Specify 'decrypt' key usage flag (sets DECRYPT in privkey and ENCRYPT in pubkey for RSA, sets both DECRYPT and ENCRYPT for secret keys)",
+		"Specify 'derive' key usage flag (EC only)",
+		"Specify 'wrap' key usage flag",
+		"Write an object (key, cert, data) to the card",
+		"Get object's CKA_VALUE attribute (use with --type)",
+		"Delete an object (use with --type cert/data/privkey/pubkey/secrkey)",
+		"Specify the application label of the data object (use with --type data)",
+		"Specify the application ID of the data object (use with --type data)",
+		"Specify the issuer in hexadecimal format (use with --type cert)",
+		"Specify the subject in hexadecimal format (use with --type cert/privkey/pubkey)",
+		"Specify the type of object (e.g. cert, privkey, pubkey, secrkey, data)",
+		"Specify the ID of the object",
+		"Specify the label of the object",
+		"Specify the ID of the slot to use (accepts HEX format with 0x.. prefix or decimal number)",
+		"Specify the description of the slot to use",
+		"Specify the index of the slot to use",
+		"Specify the index of the object to use",
+		"Specify the token label of the slot to use",
+		"Set the CKA_ID of an object, <args>= the (new) CKA_ID",
+		"Use <arg> to create some attributes when writing an object",
+		"Specify the input file",
+		"Specify the file with signature for verification",
+		"Specify the output file",
+		"Format for ECDSA signature <arg>: 'rs' (default), 'sequence', 'openssl'",
+		"Specify the comma-separated list of allowed mechanisms when creating an object.",
 
-	"Test (best used with the --login or --pin option)",
-	"Test hotplug capabilities (C_GetSlotList + C_WaitForSlotEvent)",
-	"Test Mozilla-like key pair gen and cert req, <arg>=certfile",
-	"Verbose operation. (Set OPENSC_DEBUG to enable OpenSC specific debugging)",
-	"Set the CKA_PRIVATE attribute (object is only viewable after a login)",
-	"Set the CKA_SENSITIVE attribute (object cannot be revealed in plaintext)",
-	"Set the CKA_EXTRACTABLE attribute (object can be extracted)",
-	"Set the CKA_DESTROYABLE attribute to false (object cannot be destroyed)",
-	"Set the CKA_ALWAYS_AUTHENTICATE attribute to a key object (require PIN verification for each use)",
-	"Test EC (best used with the --login or --pin option)",
+		"Test (best used with the --login or --pin option)",
+		"Test hotplug capabilities (C_GetSlotList + C_WaitForSlotEvent)",
+		"Test Mozilla-like key pair gen and cert req, <arg>=certfile",
+		"Verbose operation. (Set OPENSC_DEBUG to enable OpenSC specific debugging)",
+		"Set the CKA_PRIVATE attribute (object is only viewable after a login)",
+		"Set the CKA_SENSITIVE attribute (object cannot be revealed in plaintext)",
+		"Set the CKA_EXTRACTABLE attribute (object can be extracted)",
+		"Set the CKA_DESTROYABLE attribute to false (object cannot be destroyed)",
+		"Set the CKA_ALWAYS_AUTHENTICATE attribute to a key object (require PIN verification for each use)",
+		"Test EC (best used with the --login or --pin option)",
 #ifndef _WIN32
-	"Test forking and calling C_Initialize() in the child",
+		"Test forking and calling C_Initialize() in the child",
 #endif
-	"Call C_initialize() with CKF_OS_LOCKING_OK.",
+		"Call C_initialize() with CKF_OS_LOCKING_OK.",
 #if defined(_WIN32) || defined(HAVE_PTHREAD)
-	"Test threads. Multiple times to start additional threads, arg is string or 2 byte commands",
+		"Test threads. Multiple times to start additional threads, arg is string or 2 byte commands",
 #endif
-	"Generate given amount of random data",
-	"Allow using software mechanisms (without CKF_HW)",
-	"Initialization vector",
+		"Generate given amount of random data",
+		"Allow using software mechanisms (without CKF_HW)",
+		"Initialization vector",
+		"Specify the value <arg> of the mechanism parameter CK_MAC_GENERAL_PARAMS",
+		"Specify additional authenticated data for AEAD ciphers as a hex string",
+		"Specify the required length (in bits) for the authentication tag for AEAD ciphers",
 };
 
 static const char *	app_name = "pkcs11-tool"; /* for utils.c */
@@ -448,6 +457,9 @@ static int		opt_salt_len_given = 0; /* 0 - not given, 1 - given with input param
 static int		opt_always_auth = 0;
 static CK_FLAGS		opt_allow_sw = CKF_HW;
 static const char *	opt_iv = NULL;
+static unsigned long opt_mac_gen_param = 0;
+static const char *opt_aad = NULL;
+static unsigned long opt_tag_bits = 0;
 
 static void *module = NULL;
 static CK_FUNCTION_LIST_3_0_PTR p11 = NULL;
@@ -600,7 +612,7 @@ static void		p11_perror(const char *, CK_RV);
 static const char *	CKR2Str(CK_ULONG res);
 static int		p11_test(CK_SESSION_HANDLE session);
 static int test_card_detection(int);
-static CK_BYTE_PTR	get_iv(const char * iv_input, size_t *iv_size);
+static CK_BYTE_PTR hex_string_to_byte_array(const char *iv_input, size_t *iv_size, const char *buffer_name);
 static void		pseudo_randomize(unsigned char *data, size_t dataLen);
 static CK_SESSION_HANDLE test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
 static void		test_ec(CK_SLOT_ID slot, CK_SESSION_HANDLE session);
@@ -1076,6 +1088,25 @@ int main(int argc, char * argv[])
 			break;
 		case OPT_UNDESTROYABLE:
 			opt_is_destroyable = 0;
+			break;
+		case OPT_MAC_GEN_PARAM:
+			if (optarg != NULL) {
+				char *end_ptr;
+				opt_mac_gen_param = strtoul(optarg, &end_ptr, 10);
+			} else {
+				util_fatal("--mac-general-param option needs a decimal value argument");
+			}
+			break;
+		case OPT_AAD:
+			opt_aad = optarg;
+			break;
+		case OPT_TAG_BITS:
+			if (optarg != NULL) {
+				char *end_ptr;
+				opt_tag_bits = strtoul(optarg, &end_ptr, 10);
+			} else {
+				util_fatal("--tag-bits-len option needs a decimal value argument");
+			}
 			break;
 		case OPT_TEST_HOTPLUG:
 			opt_test_hotplug = 1;
@@ -2308,6 +2339,7 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	unsigned char	in_buffer[1025], sig_buffer[512];
 	CK_MECHANISM	mech;
 	CK_RSA_PKCS_PSS_PARAMS pss_params;
+	CK_MAC_GENERAL_PARAMS mac_gen_param;
 	CK_RV		rv;
 	CK_ULONG	sig_len;
 	int		fd;
@@ -2336,6 +2368,16 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		util_fatal("For %s mechanism, message size (got %z bytes) "
 			"must be equal to specified digest length (%lu)\n",
 			p11_mechanism_to_name(opt_mechanism), sz, hashlen);
+	} else if (opt_mechanism == CKM_AES_CMAC_GENERAL) {
+		if (opt_mac_gen_param == 0 || opt_mac_gen_param > 16) {
+			util_fatal("For %s mechanism, the option --mac-general-param "
+				   "is mandatory and its value must be comprised between 1 and "
+				   "16 (>=8 recommended).\n",
+					p11_mechanism_to_name(opt_mechanism));
+		}
+		mac_gen_param = opt_mac_gen_param;
+		mech.pParameter = &mac_gen_param;
+		mech.ulParameterLen = sizeof(CK_MAC_GENERAL_PARAMS);
 	}
 
 	rv = CKR_CANCEL;
@@ -2415,6 +2457,7 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	unsigned char	in_buffer[1025], sig_buffer[512];
 	CK_MECHANISM	mech;
 	CK_RSA_PKCS_PSS_PARAMS pss_params;
+	CK_MAC_GENERAL_PARAMS mac_gen_param;
 	CK_RV		rv;
 	CK_ULONG	sig_len;
 	int		fd, fd2;
@@ -2504,6 +2547,16 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		util_fatal("For %s mechanism, message size (got %z bytes)"
 			" must be equal to specified digest length (%lu)\n",
 			p11_mechanism_to_name(opt_mechanism), sz, hashlen);
+	} else if (opt_mechanism == CKM_AES_CMAC_GENERAL) {
+		if (opt_mac_gen_param == 0 || opt_mac_gen_param > 16) {
+			util_fatal("For %s mechanism, the option --mac-general-param "
+				   "is mandatory and its value must be comprised between 1 and "
+				   "16 (>=8 recommended).\n",
+					p11_mechanism_to_name(opt_mechanism));
+		}
+		mac_gen_param = opt_mac_gen_param;
+		mech.pParameter = &mac_gen_param;
+		mech.ulParameterLen = sizeof(CK_MAC_GENERAL_PARAMS);
 	}
 
 	rv = CKR_CANCEL;
@@ -2541,9 +2594,9 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	if (rv == CKR_OK)
 		printf("Signature is valid\n");
 	else if (rv == CKR_SIGNATURE_INVALID)
-		printf("Invalid signature\n");
+		util_fatal("Invalid signature");
 	else
-		printf("Cryptoki returned error: %s\n", CKR2Str(rv));
+		util_fatal("Signature verification failed: rv = %s (0x%0x)\n", CKR2Str(rv), (unsigned int)rv);
 }
 
 static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
@@ -2553,11 +2606,14 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	CK_MECHANISM	mech;
 	CK_RV		rv;
 	CK_RSA_PKCS_OAEP_PARAMS oaep_params;
+	CK_GCM_PARAMS gcm_params = {0};
 	CK_ULONG	in_len, out_len;
 	int		fd_in, fd_out;
 	CK_BYTE_PTR	iv = NULL;
 	size_t		iv_size = 0;
 	ssize_t sz;
+	CK_BYTE_PTR aad = NULL;
+	size_t aad_size = 0;
 
 	if (!opt_mechanism_used)
 		if (!find_mechanism(slot, CKF_DECRYPT|opt_allow_sw, NULL, 0, &opt_mechanism))
@@ -2619,9 +2675,20 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	case CKM_AES_CBC:
 	case CKM_AES_CBC_PAD:
 		iv_size = 16;
-		iv = get_iv(opt_iv, &iv_size);
+		iv = hex_string_to_byte_array(opt_iv, &iv_size, "IV");
 		mech.pParameter = iv;
 		mech.ulParameterLen = iv_size;
+		break;
+	case CKM_AES_GCM:
+		iv = hex_string_to_byte_array(opt_iv, &iv_size, "IV");
+		gcm_params.pIv = iv;
+		gcm_params.ulIvLen = iv_size;
+		aad = hex_string_to_byte_array(opt_aad, &aad_size, "AAD");
+		gcm_params.pAAD = aad;
+		gcm_params.ulAADLen = aad_size;
+		gcm_params.ulTagBits = opt_tag_bits;
+		mech.pParameter = &gcm_params;
+		mech.ulParameterLen = sizeof(gcm_params);
 		break;
 	default:
 		util_fatal("Mechanism %s illegal or not supported\n", p11_mechanism_to_name(opt_mechanism));
@@ -2712,6 +2779,7 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		close(fd_out);
 
 	free(iv);
+	free(aad);
 }
 
 static void encrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
@@ -2723,8 +2791,11 @@ static void encrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	CK_ULONG	in_len, out_len;
 	int		fd_in, fd_out;
 	ssize_t sz;
+	CK_GCM_PARAMS gcm_params = {0};
 	CK_BYTE_PTR	iv = NULL;
 	size_t		iv_size = 0;
+	CK_BYTE_PTR aad = NULL;
+	size_t aad_size = 0;
 
 	if (!opt_mechanism_used)
 		if (!find_mechanism(slot, CKF_ENCRYPT | opt_allow_sw, NULL, 0, &opt_mechanism))
@@ -2742,9 +2813,20 @@ static void encrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	case CKM_AES_CBC:
 	case CKM_AES_CBC_PAD:
 		iv_size = 16;
-		iv = get_iv(opt_iv, &iv_size);
+		iv = hex_string_to_byte_array(opt_iv, &iv_size, "IV");
 		mech.pParameter = iv;
 		mech.ulParameterLen = iv_size;
+		break;
+	case CKM_AES_GCM:
+		iv = hex_string_to_byte_array(opt_iv, &iv_size, "IV");
+		gcm_params.pIv = iv;
+		gcm_params.ulIvLen = iv_size;
+		aad = hex_string_to_byte_array(opt_aad, &aad_size, "AAD");
+		gcm_params.pAAD = aad;
+		gcm_params.ulAADLen = aad_size;
+		gcm_params.ulTagBits = opt_tag_bits;
+		mech.pParameter = &gcm_params;
+		mech.ulParameterLen = sizeof(gcm_params);
 		break;
 	default:
 		util_fatal("Mechanism %s illegal or not supported\n", p11_mechanism_to_name(opt_mechanism));
@@ -2813,6 +2895,7 @@ static void encrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		close(fd_out);
 
 	free(iv);
+	free(aad);
 }
 
 
@@ -3441,7 +3524,7 @@ unwrap_key(CK_SESSION_HANDLE session)
 
 	if (opt_mechanism == CKM_AES_CBC || opt_mechanism == CKM_AES_CBC_PAD) {
 		iv_size = 16;
-		iv = get_iv(opt_iv, &iv_size);
+		iv = hex_string_to_byte_array(opt_iv, &iv_size, "IV");
 		mechanism.pParameter = iv;
 		mechanism.ulParameterLen = iv_size;
 	}
@@ -3554,7 +3637,7 @@ wrap_key(CK_SESSION_HANDLE session)
 	mechanism.ulParameterLen = 0;
 	if (opt_mechanism == CKM_AES_CBC || opt_mechanism == CKM_AES_CBC_PAD) {
 		iv_size = 16;
-		iv = get_iv(opt_iv, &iv_size);
+		iv = hex_string_to_byte_array(opt_iv, &iv_size, "IV");
 		mechanism.pParameter = iv;
 		mechanism.ulParameterLen = iv_size;
 	}
@@ -4019,17 +4102,15 @@ static void gost_info_free(struct gostkey_info gost)
 }
 #endif
 
-#define MAX_OBJECT_SIZE	5000
-
 /* Currently for certificates (-type cert), private keys (-type privkey),
    public keys (-type pubkey) and data objects (-type data). */
 static CK_RV write_object(CK_SESSION_HANDLE session)
 {
 	CK_BBOOL _true = TRUE;
 	CK_BBOOL _false = FALSE;
-	unsigned char contents[MAX_OBJECT_SIZE + 1];
+	unsigned char *contents = NULL;
 	ssize_t contents_len = 0;
-	unsigned char certdata[MAX_OBJECT_SIZE];
+	unsigned char *certdata = NULL;
 	ssize_t certdata_len = 0;
 	FILE *f;
 	CK_OBJECT_HANDLE cert_obj, privkey_obj, pubkey_obj, seckey_obj, data_obj;
@@ -4042,6 +4123,7 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 	CK_OBJECT_CLASS clazz;
 	CK_CERTIFICATE_TYPE cert_type;
 	CK_KEY_TYPE type = CKK_RSA;
+	size_t ret = 0;
 #ifdef ENABLE_OPENSSL
 	struct x509cert_info cert;
 	struct rsakey_info rsa;
@@ -4054,25 +4136,43 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 	memset(&gost,  0, sizeof(gost));
 #endif
 
-	memset(contents, 0, sizeof(contents));
-	memset(certdata, 0, sizeof(certdata));
-
 	f = fopen(opt_file_to_write, "rb");
 	if (f == NULL)
 		util_fatal("Couldn't open file \"%s\"", opt_file_to_write);
-	contents_len = fread(contents, 1, sizeof(contents) - 1, f);
+	if (fseek(f, 0L, SEEK_END) != 0)
+		util_fatal("Couldn't set file position to the end of the file \"%s\"", opt_file_to_write);
+	contents_len = ftell(f);
 	if (contents_len < 0)
+		util_fatal("Couldn't get file position \"%s\"", opt_file_to_write);
+	contents = malloc(contents_len + 1);
+	if (contents == NULL)
+		util_fatal("malloc() failure\n");
+	if (fseek(f, 0L, SEEK_SET) != 0)
+		util_fatal("Couldn't set file position to the beginning of the file \"%s\"", opt_file_to_write);
+	ret = fread(contents, 1, contents_len, f);
+	if (ret != (size_t)contents_len)
 		util_fatal("Couldn't read from file \"%s\"", opt_file_to_write);
 	fclose(f);
 	contents[contents_len] = '\0';
 
 	if (opt_attr_from_file) {
-		if (!(f = fopen(opt_attr_from_file, "rb")))
+		f = fopen(opt_attr_from_file, "rb");
+		if (f == NULL)
 			util_fatal("Couldn't open file \"%s\"", opt_attr_from_file);
-		certdata_len = fread(certdata, 1, sizeof(certdata) - 1, f);
-		fclose(f);
+		if (fseek(f, 0L, SEEK_END) != 0)
+			util_fatal("Couldn't set file position to the end of the file \"%s\"", opt_attr_from_file);
+		certdata_len = ftell(f);
 		if (certdata_len < 0)
+			util_fatal("Couldn't get file position \"%s\"", opt_attr_from_file);
+		certdata = malloc(certdata_len + 1);
+		if (certdata == NULL)
+			util_fatal("malloc() failure\n");
+		if (fseek(f, 0L, SEEK_SET) != 0)
+			util_fatal("Couldn't set file position to the beginning of the file \"%s\"", opt_attr_from_file);
+		ret = fread(certdata, 1, certdata_len, f);
+		if (ret != (size_t)certdata_len)
 			util_fatal("Couldn't read from file \"%s\"", opt_attr_from_file);
+		fclose(f);
 		certdata[certdata_len] = '\0';
 		need_to_parse_certdata = 1;
 	}
@@ -4087,7 +4187,10 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 			util_fatal("No OpenSSL support, cannot parse certificate");
 #endif
 		} else {
-			memcpy(certdata, contents, MAX_OBJECT_SIZE);
+			certdata = malloc(contents_len + 1);
+			if (certdata == NULL)
+				util_fatal("malloc() failure\n");
+			memcpy(certdata, contents, contents_len + 1);
 			certdata_len = contents_len;
 			need_to_parse_certdata = 1;
 		}
@@ -4429,7 +4532,7 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 		FILL_ATTR(seckey_templ[0], CKA_CLASS, &clazz, sizeof(clazz));
 		FILL_ATTR(seckey_templ[1], CKA_KEY_TYPE, &type, sizeof(type));
 		FILL_ATTR(seckey_templ[2], CKA_TOKEN, &_true, sizeof(_true));
-		FILL_ATTR(seckey_templ[3], CKA_VALUE, &contents, contents_len);
+		FILL_ATTR(seckey_templ[3], CKA_VALUE, contents, contents_len);
 		n_seckey_attr = 4;
 
 		if (opt_is_private != 0) {
@@ -4492,7 +4595,7 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 		clazz = CKO_DATA;
 		FILL_ATTR(data_templ[0], CKA_CLASS, &clazz, sizeof(clazz));
 		FILL_ATTR(data_templ[1], CKA_TOKEN, &_true, sizeof(_true));
-		FILL_ATTR(data_templ[2], CKA_VALUE, &contents, contents_len);
+		FILL_ATTR(data_templ[2], CKA_VALUE, contents, contents_len);
 
 		n_data_attr = 3;
 
@@ -4583,6 +4686,8 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 	EVP_PKEY_free(evp_key);
 #endif /* ENABLE_OPENSSL */
 
+	free(contents);
+	free(certdata);
 	if (oid_buf)
 		free(oid_buf);
 	return 1;
@@ -5517,6 +5622,8 @@ static void show_dobj(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 	char *application;
 	CK_ULONG    size = 0;
 	CK_TOKEN_INFO info;
+	CK_BBOOL modifiable = 0;
+	CK_BBOOL private = 0;
 
 	suppress_warn = 1;
 	printf("Data object %u\n", (unsigned int) obj);
@@ -5556,11 +5663,13 @@ static void show_dobj(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 	}
 
 	printf("  flags:          ");
-	if (getMODIFIABLE(sess, obj))
+	modifiable = getMODIFIABLE(sess, obj);
+	if (modifiable)
 		printf(" modifiable");
-	if (getPRIVATE(sess, obj))
+	private = getPRIVATE(sess, obj);
+	if (private)
 		printf(" private");
-	if (!getMODIFIABLE(sess, obj) && !getPRIVATE(sess, obj))
+	if (!modifiable && !private)
 		printf("<empty>");
 	printf("\n");
 
@@ -8456,35 +8565,52 @@ static void p11_perror(const char *msg, CK_RV rv)
 {
 	fprintf(stderr, "  ERR: %s failed: %s (0x%0x)\n", msg, CKR2Str(rv), (unsigned int) rv);
 }
-static CK_BYTE_PTR get_iv(const char *iv_input, size_t *iv_size)
+
+#define MAX_HEX_STR_LEN (1U << 16) // Arbitrary, GCM IV and AAD can theoretically be much bigger
+static CK_BYTE_PTR
+hex_string_to_byte_array(const char *hex_input, size_t *input_size, const char *buffer_name)
 {
-	CK_BYTE_PTR iv;
-	size_t size = *iv_size;
+	CK_BYTE_PTR array;
+	size_t size = 0;
 
-	/* no IV supplied on command line */
-	if (!iv_input) {
-		*iv_size = 0;
+	/* no hex string supplied on command line */
+	if (!hex_input) {
+		*input_size = 0;
 		return NULL;
 	}
 
-	iv = calloc(*iv_size, sizeof(CK_BYTE));
-	if (!iv) {
-		fprintf(stderr, "Warning, out of memory, IV will not be used.\n");
-		*iv_size = 0;
+	/* If no length is provided, determine the length of the hex string */
+	if (*input_size == 0) {
+		size = strnlen(hex_input, MAX_HEX_STR_LEN);
+		if (size % 2 != 0) {
+			fprintf(stderr, "Odd length, provided %s is an invalid hex string.\n", buffer_name);
+			return NULL;
+		}
+		*input_size = size / 2;
+	}
+
+	size = *input_size;
+
+	array = calloc(*input_size, sizeof(CK_BYTE));
+	if (!array) {
+		fprintf(stderr, "Warning, out of memory, %s will not be used.\n", buffer_name);
+		*input_size = 0;
 		return NULL;
 	}
 
-	if (sc_hex_to_bin(iv_input, iv, &size)) {
-		fprintf(stderr, "Warning, unable to parse IV, IV will not be used.\n");
-		*iv_size = 0;
-		free(iv);
+	if (sc_hex_to_bin(hex_input, array, &size)) {
+		fprintf(stderr, "Warning, unable to parse %s, %s will not be used.\n",
+				buffer_name, buffer_name);
+		*input_size = 0;
+		free(array);
 		return NULL;
 	}
 
-	if (*iv_size != size)
-		fprintf(stderr, "Warning: IV string is too short, IV will be padded from the right by zeros.\n");
+	if (*input_size != size)
+		fprintf(stderr, "Warning: %s string is too short, %s will be padded from the right by zeros.\n",
+				buffer_name, buffer_name);
 
-	return iv;
+	return array;
 }
 
 static void pseudo_randomize(unsigned char *data, size_t dataLen)
@@ -8723,6 +8849,7 @@ static struct mech_info	p11_mechanisms[] = {
 	{ CKM_AES_CTR,		"AES-CTR", NULL, MF_UNKNOWN },
 	{ CKM_AES_GCM,		"AES-GCM", NULL, MF_UNKNOWN },
 	{ CKM_AES_CMAC,		"AES-CMAC", NULL, (MF_SIGN | MF_VERIFY | MF_CKO_SECRET_KEY) },
+	{ CKM_AES_CMAC_GENERAL,	"AES-CMAC-GENERAL", NULL, (MF_SIGN | MF_VERIFY | MF_CKO_SECRET_KEY) },
 	{ CKM_DES_ECB_ENCRYPT_DATA, "DES-ECB-ENCRYPT-DATA", NULL, MF_UNKNOWN },
 	{ CKM_DES_CBC_ENCRYPT_DATA, "DES-CBC-ENCRYPT-DATA", NULL, MF_UNKNOWN },
 	{ CKM_DES3_ECB_ENCRYPT_DATA, "DES3-ECB-ENCRYPT-DATA", NULL, MF_UNKNOWN },

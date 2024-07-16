@@ -1116,7 +1116,7 @@ sc_card_ctl(sc_card_t *card, unsigned long cmd, void *args)
 	if (card == NULL) {
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
-	LOG_FUNC_CALLED(card->ctx);
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "called with cmd=%lu\n", cmd);
 
 	if (card->ops->card_ctl != NULL)
 		r = card->ops->card_ctl(card, cmd, args);

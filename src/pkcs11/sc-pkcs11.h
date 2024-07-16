@@ -201,6 +201,9 @@ struct sc_pkcs11_card {
 	/* List of supported mechanisms */
 	struct sc_pkcs11_mechanism_type **mechanisms;
 	unsigned int nmechanisms;
+
+	/* Number of virtual slots the card occupies */
+	unsigned int num_slots;
 };
 
 /* If the slot did already show with `C_GetSlotList`, then we need to keep this

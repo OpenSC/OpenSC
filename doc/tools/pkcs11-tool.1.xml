@@ -700,6 +700,33 @@
 					</para></listitem>
 				</varlistentry>
 
+				<varlistentry>
+					<term>
+						<option>--mac-general-param</option> <replaceable>num</replaceable>
+					</term>
+					<listitem><para>Sets the length of the MAC for the general-length MACing mechanisms
+					to <replaceable>num</replaceable> bytes.
+					</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--aad</option> <replaceable>data</replaceable>
+					</term>
+					<listitem><para>Additional authenticated data for AEAD ciphers.
+					The <replaceable>data</replaceable> is an hexadecimal number.
+					</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--tag-bits-len</option> <replaceable>num</replaceable>
+					</term>
+					<listitem><para>Sets the length of the tag for AEAD ciphers to
+					<replaceable>num</replaceable> bits.
+					</para></listitem>
+				</varlistentry>
+
 			</variablelist>
 		</para>
 	</refsect1>

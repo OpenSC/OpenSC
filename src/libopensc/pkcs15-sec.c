@@ -200,6 +200,7 @@ static int format_senv(struct sc_pkcs15_card *p15card,
 				LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 			}
 			senv_out->algorithm = SC_ALGORITHM_RSA;
+			senv_out->key_size_bits = prkey->modulus_length;
 			break;
 
 		case SC_PKCS15_TYPE_PRKEY_GOSTR3410:
@@ -211,6 +212,7 @@ static int format_senv(struct sc_pkcs15_card *p15card,
 				LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 			}
 			senv_out->algorithm = SC_ALGORITHM_GOSTR3410;
+			senv_out->key_size_bits = prkey->modulus_length;
 			break;
 
 		case SC_PKCS15_TYPE_PRKEY_EDDSA:
@@ -222,6 +224,7 @@ static int format_senv(struct sc_pkcs15_card *p15card,
 				LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 			}
 			senv_out->algorithm = SC_ALGORITHM_EDDSA;
+			senv_out->key_size_bits = prkey->field_length;
 			break;
 
 		case SC_PKCS15_TYPE_PRKEY_XEDDSA:
@@ -233,6 +236,7 @@ static int format_senv(struct sc_pkcs15_card *p15card,
 				LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 			}
 			senv_out->algorithm = SC_ALGORITHM_XEDDSA;
+			senv_out->key_size_bits = prkey->field_length;
 			break;
 
 		case SC_PKCS15_TYPE_PRKEY_EC:
@@ -244,6 +248,7 @@ static int format_senv(struct sc_pkcs15_card *p15card,
 				LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 			}
 			senv_out->algorithm = SC_ALGORITHM_EC;
+			senv_out->key_size_bits = prkey->field_length;
 
 			senv_out->flags |= SC_SEC_ENV_ALG_REF_PRESENT;
 			senv_out->algorithm_ref = prkey->field_length;
@@ -260,6 +265,7 @@ static int format_senv(struct sc_pkcs15_card *p15card,
 				LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 			}
 			senv_out->algorithm = SC_ALGORITHM_AES;
+			senv_out->key_size_bits = skey->value_len;
 			break;
 			/* add other crypto types here */
 		default:

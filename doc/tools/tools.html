@@ -1714,6 +1714,18 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 						<code class="option">--iv</code> <em class="replaceable"><code>data</code></em>
 					</span></dt><dd><p>Initialization vector for symmetric ciphers.
 					The <em class="replaceable"><code>data</code></em> is hexadecimal number, i.e. "000013aa7bffa0".
+					</p></dd><dt><span class="term">
+						<code class="option">--mac-general-param</code> <em class="replaceable"><code>num</code></em>
+					</span></dt><dd><p>Sets the length of the MAC for the general-length MACing mechanisms
+					to <em class="replaceable"><code>num</code></em> bytes.
+					</p></dd><dt><span class="term">
+						<code class="option">--aad</code> <em class="replaceable"><code>data</code></em>
+					</span></dt><dd><p>Additional authenticated data for AEAD ciphers.
+					The <em class="replaceable"><code>data</code></em> is an hexadecimal number.
+					</p></dd><dt><span class="term">
+						<code class="option">--tag-bits-len</code> <em class="replaceable"><code>num</code></em>
+					</span></dt><dd><p>Sets the length of the tag for AEAD ciphers to
+					<em class="replaceable"><code>num</code></em> bits.
 					</p></dd></dl></div><p>
 		</p></div><div class="refsect1"><a name="id-1.17.6"></a><h2>Examples</h2><p>
 			Perform a basic functionality test of the card:

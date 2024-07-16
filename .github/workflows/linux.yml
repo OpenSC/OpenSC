@@ -43,7 +43,7 @@ jobs:
       - run: .github/setup-linux.sh
       - run: .github/build.sh dist
       - name: Upload test logs
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: ubuntu-test-logs
@@ -56,7 +56,7 @@ jobs:
           path: ./*
           key: ${{ runner.os }}-${{ github.sha }}
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: opensc-build
           path:
@@ -74,7 +74,7 @@ jobs:
       - run: .github/setup-linux.sh debug
       - run: .github/build.sh valgrind
       - name: Upload test logs
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: ubuntu-valgrind-logs
@@ -125,7 +125,7 @@ jobs:
       - run: .github/setup-linux.sh mingw force-install
       - run: .github/build.sh mingw
       - name: Cache build artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: opensc-build-mingw
           path:
@@ -143,7 +143,7 @@ jobs:
       - run: .github/setup-linux.sh mingw32
       - run: .github/build.sh mingw32
       - name: Cache build artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: opensc-build-mingw32
           path:
@@ -161,7 +161,7 @@ jobs:
       - run: .github/setup-linux.sh
       - run: .github/build.sh piv-sm dist
       - name: Upload test logs
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: ubuntu-piv-sm-test-logs
@@ -394,7 +394,7 @@ jobs:
           execute_install_scripts: true
       - run: .github/setup-linux.sh
       - run: .github/build.sh dist valgrind
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: ubuntu-22-test-logs
@@ -408,10 +408,10 @@ jobs:
           path: ./*
           key: ${{ runner.os }}-22-${{ github.sha }}
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: ${{ success() }}
         with:
-          name: opensc-build
+          name: opensc-22-build
           path:
             opensc*.tar.gz
 
@@ -426,7 +426,7 @@ jobs:
           execute_install_scripts: true
       - run: .github/setup-linux.sh
       - run: .github/build.sh piv-sm dist valgrind
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: ubuntu-22-piv-sm-test-logs
@@ -524,7 +524,7 @@ jobs:
           key: libressl-${{ env.LIBRESSL_VERSION }}
       - run: .github/setup-linux.sh libressl
       - run: .github/build.sh dist libressl valgrind
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: libressl-logs
@@ -598,7 +598,7 @@ jobs:
           path: ./*
           key: ${{ runner.os }}-${{ github.sha }}
       - name: Pull mingw build artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: opensc-build-mingw
       - run: git config --global user.email "builds@github.com"

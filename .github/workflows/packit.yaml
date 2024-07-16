@@ -21,7 +21,7 @@ jobs:
               fetch-depth: 0
         - uses: packit/actions/srpm@main
         - name: Upload build artifacts
-          uses: actions/upload-artifact@v3
+          uses: actions/upload-artifact@v4
           with:
               name: opensc-srpm
               path:
@@ -35,7 +35,7 @@ jobs:
               fetch-depth: 0
         - uses: ./.github/actions/packit
         - name: Upload build artifacts
-          uses: actions/upload-artifact@v3
+          uses: actions/upload-artifact@v4
           with:
               name: opensc-rpm
               path:

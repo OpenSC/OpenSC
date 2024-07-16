@@ -98,8 +98,8 @@ parse_dir_record(sc_card_t *card, u8 ** buf, size_t *buflen, int rec_nr)
 		sc_bin_to_hex(aid.value, aid.len, aid_str, sizeof(aid_str), 0);
 		blocks = scconf_find_blocks(card->ctx->conf, conf_block, "application", aid_str);
 		if (blocks)   {
-			ignore_app = (blocks[0] && scconf_get_str(blocks[0], "disable", 0));
-                        free(blocks);
+			ignore_app = (blocks[0] && scconf_get_bool(blocks[0], "disable", 0));
+			free(blocks);
 		 }
 
 		if (ignore_app)   {
