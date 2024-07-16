@@ -727,6 +727,20 @@
 					</para></listitem>
 				</varlistentry>
 
+				<varlistentry>
+					<term>
+						<option>--salt-file</option> <replaceable>filename</replaceable>
+					</term>
+					<listitem><para>Specify the file containing the salt for HKDF (optional)</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--info-file</option> <replaceable>filename</replaceable>
+					</term>
+					<listitem><para>Specify the file containing the info for HKDF (optional)</para></listitem>
+				</varlistentry>
+
 			</variablelist>
 		</para>
 	</refsect1>
