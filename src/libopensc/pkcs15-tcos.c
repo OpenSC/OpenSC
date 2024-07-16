@@ -62,7 +62,8 @@ static int insert_cert(
 			"Select(%s) failed\n", path);
 		return 1;
 	}
-	if(sc_read_binary(card, 0, cert, sizeof(cert), 0)<0){
+	r = sc_read_binary(card, 0, cert, sizeof(cert), 0);
+	if (r <= 0){
 		sc_log(ctx, 
 			"ReadBinary(%s) failed\n", path);
 		return 2;
