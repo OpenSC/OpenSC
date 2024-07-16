@@ -1293,10 +1293,10 @@ static int cac_parse_aid(sc_card_t *card, cac_private_data_t *priv, const u8 *ai
 	/* Call without OID set will just select the AID without subsequent
 	 * OID selection, which we need to figure out just now
 	 */
-	cac_select_file_by_type(card, &new_object.path, NULL);
+	r = cac_select_file_by_type(card, &new_object.path, NULL);
+	LOG_TEST_RET(card->ctx, r, "Cannot select AID");
 	r = cac_get_properties(card, &prop);
-	if (r < 0)
-		return SC_ERROR_INTERNAL;
+	LOG_TEST_RET(card->ctx, r, "Cannot get CAC properties");
 
 	for (i = 0; i < prop.num_objects; i++) {
 		/* don't fail just because we have more certs than we can support */
