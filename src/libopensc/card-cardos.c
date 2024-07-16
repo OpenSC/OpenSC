@@ -1281,7 +1281,7 @@ cardos_lifecycle_get(sc_card_t *card, int *mode)
 	LOG_TEST_RET(card->ctx, r, "Card returned error");
 
 	if (apdu.resplen < 1) {
-		LOG_TEST_RET(card->ctx, r, "Lifecycle byte not in response");
+		LOG_TEST_RET(card->ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Lifecycle byte not in response");
 	}
 
 	r = SC_SUCCESS;
