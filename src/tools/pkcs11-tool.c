@@ -7528,7 +7528,6 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 	int             failed;
 	CK_RV           rv;
 	int pad;
-	CK_RSA_PKCS_MGF_TYPE mgf = CKG_MGF1_SHA256;
 	CK_RSA_PKCS_OAEP_PARAMS oaep_params;
 
 	printf("    %s: ", p11_mechanism_to_name(mech_type));
@@ -7651,17 +7650,13 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 			printf("set md failed, returning\n");
 			return 0;
 		}
-		switch (mgf) {
+		switch (oaep_params.mgf) {
 		case CKG_MGF1_SHA1:
 			md = EVP_sha1();
 			break;
 		case CKG_MGF1_SHA224:
 			md = EVP_sha224();
 			break;
-		default:
-			printf("mgf %s unknown, defaulting to CKG_MGF1_SHA256\n", p11_mgf_to_name(mgf));
-			mgf = CKG_MGF1_SHA256;
-			/* fall through */
 		case CKG_MGF1_SHA256:
 			md = EVP_sha256();
 			break;
