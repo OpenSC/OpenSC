@@ -4428,7 +4428,7 @@ static int piv_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 	const u8 *p;
 	size_t out_len = 0;
 	int r;
-	unsigned int tag_out, cla_out;
+	unsigned int tag_out = 0, cla_out = 0;
 	piv_private_data_t * priv = PIV_DATA(card);
 
 	LOG_FUNC_CALLED(card->ctx);
