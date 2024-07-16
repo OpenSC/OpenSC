@@ -2759,7 +2759,6 @@ epass2003_create_file(struct sc_card *card, sc_file_t * file)
 	apdu.lc = len;
 	apdu.datalen = len;
 	apdu.data = sbuf;
-
 	r = sc_transmit_apdu_t(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
@@ -3122,6 +3121,7 @@ epass2003_erase_card(struct sc_card *card)
 	static const unsigned char mf_path[2] = { 0x3f, 0x00 };
 	sc_apdu_t apdu;
 	int r;
+	int saved_sm_mode = 0;
 
 	LOG_FUNC_CALLED(card->ctx);
 	sc_invalidate_cache(card);
@@ -3131,7 +3131,13 @@ epass2003_erase_card(struct sc_card *card)
 	apdu.cla = 0x80;
 	apdu.data = install_magic_pin;
 	apdu.datalen = apdu.lc = sizeof(install_magic_pin);
+
+	saved_sm_mode = card->sm_ctx.sm_mode;
+        card->sm_ctx.sm_mode = 0;
+
 	r = sc_transmit_apdu(card, &apdu);
+	card->sm_ctx.sm_mode = saved_sm_mode;
+
 	LOG_TEST_RET(card->ctx, r, "APDU install magic pin failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(card->ctx, r, "install magic pin failed");
