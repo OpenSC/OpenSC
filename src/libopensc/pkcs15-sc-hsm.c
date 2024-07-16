@@ -386,7 +386,7 @@ int sc_pkcs15emu_sc_hsm_decode_cvc(sc_pkcs15_card_t * p15card,
 	struct sc_asn1_entry asn1_cvcert[C_ASN1_CVCERT_SIZE];
 	struct sc_asn1_entry asn1_cvc_body[C_ASN1_CVC_BODY_SIZE];
 	struct sc_asn1_entry asn1_cvc_pubkey[C_ASN1_CVC_PUBKEY_SIZE];
-	unsigned int cla,tag;
+	unsigned int cla = 0, tag = 0;
 	size_t taglen;
 	const u8 *tbuf;
 	int r;
