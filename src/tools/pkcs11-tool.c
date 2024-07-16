@@ -20,7 +20,6 @@
 
 #include "config.h"
 
-#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -5188,49 +5187,34 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 static CK_BBOOL s_true = TRUE;
 static CK_BBOOL s_false = FALSE;
 
+#define FILL_ATTR_EX(attr, index, max, typ, val, len) \
+	{ \
+		if (*(index) >= max) { \
+			util_fatal("Template is too small"); \
+		} \
+		(attr)[*(index)].type = (typ); \
+		(attr)[*(index)].pValue = (val); \
+		(attr)[*(index)].ulValueLen = (len); \
+		(*(index))++; \
+	}
+
 static void
 fill_attributes_seckey(CK_ATTRIBUTE *template, int *n_attrs, int max_attrs)
 {
-	assert(*n_attrs < max_attrs);
-	FILL_ATTR(template[*n_attrs], CKA_PRIVATE, opt_is_private ? &s_true : &s_false, sizeof(CK_BBOOL));
-	(*n_attrs)++;
-
-	assert(*n_attrs < max_attrs);
-	FILL_ATTR(template[*n_attrs], CKA_SENSITIVE, opt_is_sensitive ? &s_true : &s_false, sizeof(CK_BBOOL));
-	(*n_attrs)++;
-
-	assert(*n_attrs < max_attrs);
-	FILL_ATTR(template[*n_attrs], CKA_EXTRACTABLE, opt_is_extractable ? &s_true : &s_false, sizeof(CK_BBOOL));
-	(*n_attrs)++;
+	FILL_ATTR_EX(template, n_attrs, max_attrs, CKA_PRIVATE, opt_is_private ? &s_true : &s_false, sizeof(CK_BBOOL));
+	FILL_ATTR_EX(template, n_attrs, max_attrs, CKA_SENSITIVE, opt_is_sensitive ? &s_true : &s_false, sizeof(CK_BBOOL));
+	FILL_ATTR_EX(template, n_attrs, max_attrs, CKA_EXTRACTABLE, opt_is_extractable ? &s_true : &s_false, sizeof(CK_BBOOL));
 
 	if (opt_key_usage_default || opt_key_usage_decrypt) {
-		assert(*n_attrs < max_attrs);
-		FILL_ATTR(template[*n_attrs], CKA_ENCRYPT, &s_true, sizeof(CK_BBOOL));
-		(*n_attrs)++;
-		assert(*n_attrs < max_attrs);
-		FILL_ATTR(template[*n_attrs], CKA_DECRYPT, &s_true, sizeof(CK_BBOOL));
-		(*n_attrs)++;
+		FILL_ATTR_EX(template, n_attrs, max_attrs, CKA_ENCRYPT, &s_true, sizeof(CK_BBOOL));
+		FILL_ATTR_EX(template, n_attrs, max_attrs, CKA_DECRYPT, &s_true, sizeof(CK_BBOOL));
 	}
 
-	assert(*n_attrs < max_attrs);
-	FILL_ATTR(template[*n_attrs], CKA_WRAP, opt_key_usage_wrap ? &s_true : &s_false, sizeof(CK_BBOOL));
-	(*n_attrs)++;
-
-	assert(*n_attrs < max_attrs);
-	FILL_ATTR(template[*n_attrs], CKA_UNWRAP, opt_key_usage_wrap ? &s_true : &s_false, sizeof(CK_BBOOL));
-	(*n_attrs)++;
-
-	assert(*n_attrs < max_attrs);
-	FILL_ATTR(template[*n_attrs], CKA_SIGN, opt_key_usage_sign ? &s_true : &s_false, sizeof(CK_BBOOL));
-	(*n_attrs)++;
-
-	assert(*n_attrs < max_attrs);
-	FILL_ATTR(template[*n_attrs], CKA_VERIFY, opt_key_usage_sign ? &s_true : &s_false, sizeof(CK_BBOOL));
-	(*n_attrs)++;
-
-	assert(*n_attrs < max_attrs);
-	FILL_ATTR(template[*n_attrs], CKA_DERIVE, opt_key_usage_derive ? &s_true : &s_false, sizeof(CK_BBOOL));
-	(*n_attrs)++;
+	FILL_ATTR_EX(template, n_attrs, max_attrs, CKA_WRAP, opt_key_usage_wrap ? &s_true : &s_false, sizeof(CK_BBOOL));
+	FILL_ATTR_EX(template, n_attrs, max_attrs, CKA_UNWRAP, opt_key_usage_wrap ? &s_true : &s_false, sizeof(CK_BBOOL));
+	FILL_ATTR_EX(template, n_attrs, max_attrs, CKA_SIGN, opt_key_usage_sign ? &s_true : &s_false, sizeof(CK_BBOOL));
+	FILL_ATTR_EX(template, n_attrs, max_attrs, CKA_VERIFY, opt_key_usage_sign ? &s_true : &s_false, sizeof(CK_BBOOL));
+	FILL_ATTR_EX(template, n_attrs, max_attrs, CKA_DERIVE, opt_key_usage_derive ? &s_true : &s_false, sizeof(CK_BBOOL));
 }
 
 static CK_OBJECT_HANDLE
