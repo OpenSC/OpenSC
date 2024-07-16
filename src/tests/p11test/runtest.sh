@@ -52,7 +52,7 @@ function generate_cert() {
 
 	# Generate key pair
 	$PKCS11_TOOL --keypairgen --key-type="$TYPE" --login --pin=$PIN \
-		--extractable --usage-wrap --usage-sign --usage-decrypt \
+		--extractable --usage-wrap --usage-sign --usage-decrypt --usage-derive \
 		--module="$P11LIB" --label="$LABEL" --id=$ID
 
 	if [[ "$?" -ne "0" ]]; then
