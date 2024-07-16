@@ -1726,7 +1726,11 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 						<code class="option">--tag-bits-len</code> <em class="replaceable"><code>num</code></em>
 					</span></dt><dd><p>Sets the length of the tag for AEAD ciphers to
 					<em class="replaceable"><code>num</code></em> bits.
-					</p></dd></dl></div><p>
+					</p></dd><dt><span class="term">
+						<code class="option">--salt-file</code> <em class="replaceable"><code>filename</code></em>
+					</span></dt><dd><p>Specify the file containing the salt for HKDF (optional)</p></dd><dt><span class="term">
+						<code class="option">--info-file</code> <em class="replaceable"><code>filename</code></em>
+					</span></dt><dd><p>Specify the file containing the info for HKDF (optional)</p></dd></dl></div><p>
 		</p></div><div class="refsect1"><a name="id-1.17.6"></a><h2>Examples</h2><p>
 			Perform a basic functionality test of the card:
 				</p><pre class="programlisting">pkcs11-tool --test --login</pre><p>
