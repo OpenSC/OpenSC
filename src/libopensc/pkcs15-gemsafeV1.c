@@ -169,6 +169,7 @@ static int gemsafe_get_cert_len(sc_card_t *card)
 	size_t objlen;
 	int certlen;
 	unsigned int ind, i=0;
+	int read_len;
 
 	sc_format_path(GEMSAFE_PATH, &path);
 	r = sc_select_file(card, &path, &file);
@@ -177,9 +178,11 @@ static int gemsafe_get_cert_len(sc_card_t *card)
 	sc_file_free(file);
 
 	/* Initial read */
-	r = sc_read_binary(card, 0, ibuf, GEMSAFE_READ_QUANTUM, 0);
-	if (r < 0)
+	read_len = sc_read_binary(card, 0, ibuf, GEMSAFE_READ_QUANTUM, 0);
+	if (read_len <= 2) {
+		sc_log(card->ctx, "Invalid size of object data: %d", read_len);
 		return SC_ERROR_INTERNAL;
+	}
 
 	/* Actual stored object size is encoded in first 2 bytes
 	 * (allocated EF space is much greater!)
@@ -208,7 +211,7 @@ static int gemsafe_get_cert_len(sc_card_t *card)
 	 * the private key.
 	 */
 	ind = 2; /* skip length */
-	while (ibuf[ind] == 0x01 && i < gemsafe_cert_max) {
+	while (ind + 1 < (size_t)read_len && ibuf[ind] == 0x01 && i < gemsafe_cert_max) {
 		if (ibuf[ind+1] == 0xFE) {
 			gemsafe_prkeys[i].ref = ibuf[ind+4];
 			sc_log(card->ctx, "Key container %d is allocated and uses key_ref %d",
@@ -235,7 +238,7 @@ static int gemsafe_get_cert_len(sc_card_t *card)
 	/* Read entire file, then dissect in memory.
 	 * Gemalto ClassicClient seems to do it the same way.
 	 */
-	iptr = ibuf + GEMSAFE_READ_QUANTUM;
+	iptr = ibuf + read_len;
 	while ((size_t)(iptr - ibuf) < objlen) {
 		r = sc_read_binary(card, (unsigned)(iptr - ibuf), iptr,
 				   MIN(GEMSAFE_READ_QUANTUM, objlen - (iptr - ibuf)), 0);
@@ -243,7 +246,14 @@ static int gemsafe_get_cert_len(sc_card_t *card)
 			sc_log(card->ctx, "Could not read cert object");
 			return SC_ERROR_INTERNAL;
 		}
-		iptr += GEMSAFE_READ_QUANTUM;
+		if (r == 0)
+			break;
+		read_len += r;
+		iptr += r;
+	}
+	if ((size_t)read_len < objlen) {
+		sc_log(card->ctx, "Could not read cert object");
+		return SC_ERROR_INTERNAL;
 	}
 
 	/* Search buffer for certificates, they start with 0x3082. */
