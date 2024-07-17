@@ -195,6 +195,8 @@ jpki_select_file(struct sc_card *card,
 		u8 buf[4];
 		rc = sc_read_binary(card, 0, buf, 4, 0);
 		LOG_TEST_RET(card->ctx, rc, "SW Check failed");
+		if (rc < 4)
+			LOG_TEST_RET(card->ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Received data too short");
 		file = sc_file_new();
 		if (!file) {
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
