@@ -3831,13 +3831,15 @@ sc_pkcs15init_get_transport_key(struct sc_profile *profile, struct sc_pkcs15_car
 	if (callbacks.get_key)   {
 		rv = callbacks.get_key(profile, type, reference, defbuf, defsize, pinbuf, pinsize);
 		LOG_TEST_RET(ctx, rv, "Cannot get key");
-	}
-	else if (rv >= 0)  {
+	} else if (rv >= 0) {
 		if (*pinsize < defsize)
 			LOG_TEST_RET(ctx, SC_ERROR_BUFFER_TOO_SMALL, "Get transport key error");
 
 		memcpy(pinbuf, data.key_data, data.len);
 		*pinsize = data.len;
+	} else {
+		/* pinbuf and pinsize were not filled */
+		LOG_TEST_RET(ctx, SC_ERROR_INTERNAL, "Get transport key error");
 	}
 
 	memset(&auth_info, 0, sizeof(auth_info));
