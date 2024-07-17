@@ -268,11 +268,15 @@ epass2003_check_sw(struct sc_card *card, unsigned int sw1, unsigned int sw2)
 static int
 sc_transmit_apdu_t(sc_card_t *card, sc_apdu_t *apdu)
 {
+	int r;
 	size_t resplen = apdu->resplen;
-	int r = sc_transmit_apdu(card, apdu);
-	if ( ((0x69 == apdu->sw1) && (0x85 == apdu->sw2)) || ((0x69 == apdu->sw1) && (0x88 == apdu->sw2)))
+
+	r = sc_transmit_apdu(card, apdu);
+	if (apdu && (((0x69 == apdu->sw1) && (0x85 == apdu->sw2)) || ((0x69 == apdu->sw1) && (0x88 == apdu->sw2))))
 	{
-		epass2003_refresh(card);
+		r = epass2003_refresh(card);
+		LOG_TEST_RET(card->ctx, r, "epass2003_refresh failed");
+		
 		/* renew old resplen */
 		apdu->resplen = resplen;
 		r = sc_transmit_apdu(card, apdu);
@@ -962,8 +966,8 @@ epass2003_refresh(struct sc_card *card)
 		card->sm_ctx.sm_mode = 0;
 		memset(exdata->icv_mac, 0, sizeof(exdata->icv_mac));
 		r = mutual_auth(card, g_init_key_enc, g_init_key_mac);
-		card->sm_ctx.sm_mode = SM_MODE_TRANSMIT;
 		LOG_TEST_RET(card->ctx, r, "mutual_auth failed");
+		card->sm_ctx.sm_mode = SM_MODE_TRANSMIT;
 	}
 
 	return r;
@@ -1766,6 +1770,7 @@ static int epass2003_match_card(struct sc_card *card)
 static int
 epass2003_init(struct sc_card *card)
 {
+	int r = 0;
 	unsigned int flags;
 	unsigned int ext_flags;
 	unsigned char data[SC_MAX_APDU_BUFFER_SIZE] = { 0 };
@@ -1827,9 +1832,10 @@ epass2003_init(struct sc_card *card)
 	card->sm_ctx.ops.free_sm_apdu = epass2003_sm_free_wrapped_apdu;
 
 	/* FIXME (VT): rather then set/unset 'g_sm', better to implement filter for APDUs to be wrapped */
-	epass2003_refresh(card);
-
-	card->sm_ctx.sm_mode = SM_MODE_TRANSMIT;
+	r =epass2003_refresh(card);
+	if (r < 0) {
+		sc_log(card->ctx, "epass2003_refresh failed: %d continue without SM", r);
+	}
 
 	flags = SC_ALGORITHM_ONBOARD_KEY_GEN | SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_HASH_NONE;
 
