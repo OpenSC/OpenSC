@@ -531,10 +531,15 @@ int sc_pkcs15emu_tcos_init_ex(
 	/* get the card serial number */
 	r = sc_card_ctl(card, SC_CARDCTL_GET_SERIALNR, &serialnr);
 	if (r < 0) {
-		sc_log(ctx,  "unable to get ICCSN\n");
+		sc_log(ctx, "unable to get ICCSN");
 		return SC_ERROR_WRONG_CARD;
 	}
-	sc_bin_to_hex(serialnr.value, serialnr.len , serial, sizeof(serial), 0);
+	r = sc_bin_to_hex(serialnr.value, serialnr.len, serial, sizeof(serial), 0);
+	if (r != SC_SUCCESS) {
+		sc_log(ctx, "serial number invalid");
+		return SC_ERROR_INTERNAL;
+	}
+
 	serial[19] = '\0';
 	set_string(&p15card->tokeninfo->serial_number, serial);
 
