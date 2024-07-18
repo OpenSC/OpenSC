@@ -318,15 +318,24 @@ iasecc_se_parse(struct sc_card *card, unsigned char *data, size_t data_len, stru
 
 	LOG_FUNC_CALLED(ctx);
 
+	if (data_len < 1)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
+
 	if (*data == IASECC_SDO_TEMPLATE_TAG)   {
 		size_size = iasecc_parse_size(data + 1, data_len - 1, &size);
 		LOG_TEST_RET(ctx, size_size, "parse error: invalid size data of IASECC_SDO_TEMPLATE");
+
+		if (data_len - 1 < size)
+			LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
 
 		data += size_size + 1;
 		data_len = size;
 		sc_log(ctx,
 		       "IASECC_SDO_TEMPLATE: size %"SC_FORMAT_LEN_SIZE_T"u, size_size %d",
 		       size, size_size);
+
+		if (data_len < 3)
+			LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
 
 		if (*data != IASECC_SDO_TAG_HEADER)
 			LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
