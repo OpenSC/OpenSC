@@ -670,6 +670,8 @@ static int starcos_write_pukey(sc_profile_t *profile, sc_card_t *card,
 		return r;
 	len = tfile->size;
 	sc_file_free(tfile);
+	if (len == 0)
+		return SC_ERROR_INTERNAL;
 	buf = malloc(len);
 	if (!buf)
 		return SC_ERROR_OUT_OF_MEMORY;
@@ -684,7 +686,7 @@ static int starcos_write_pukey(sc_profile_t *profile, sc_card_t *card,
 	if (num_keys == 0xff)
 		num_keys = 0;
 	/* encode public key */
-	keylen  = starcos_encode_pukey(rsa, NULL, kinfo);
+	keylen = starcos_encode_pukey(rsa, NULL, kinfo);
 	if (!keylen) {
 		free(buf);
 		return SC_ERROR_INTERNAL;
