@@ -145,7 +145,7 @@ auth_select_aid(struct sc_card *card)
 {
 	struct sc_apdu apdu;
 	unsigned char apdu_resp[SC_MAX_APDU_BUFFER_SIZE];
-	struct auth_private_data *data =  (struct auth_private_data *) card->drv_data;
+	struct auth_private_data *data = (struct auth_private_data *)card->drv_data;
 	int rv, ii;
 	struct sc_path tmp_path;
 
@@ -162,6 +162,9 @@ auth_select_aid(struct sc_card *card)
 
 	rv = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, rv, "APDU transmit failed");
+	if (apdu.resplen < 20) {
+		LOG_TEST_RET(card->ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Serial number has incorrect length");
+	}
 	card->serialnr.len = 4;
 	memcpy(card->serialnr.value, apdu.resp+15, 4);
 
