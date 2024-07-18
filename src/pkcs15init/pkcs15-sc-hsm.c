@@ -140,7 +140,7 @@ static int sc_hsm_determine_free_id(struct sc_pkcs15_card *p15card, u8 range)
 	LOG_TEST_RET(card->ctx, filelistlength, "Could not enumerate file and key identifier");
 
 	for (j = 0; j < 256; j++) {
-		for (i = 0; i < filelistlength; i += 2) {
+		for (i = 0; i + 1 < filelistlength; i += 2) {
 			if ((filelist[i] == range) && (filelist[i + 1] == j)) {
 				break;
 			}
