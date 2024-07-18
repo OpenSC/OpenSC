@@ -760,6 +760,9 @@ iasecc_sdo_parse(struct sc_card *card, unsigned char *data, size_t data_len, str
 
 	LOG_FUNC_CALLED(ctx);
 
+	if (data == NULL || data_len < 2)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
+
 	if (*data == IASECC_SDO_TEMPLATE_TAG)   {
 		size_size = iasecc_parse_size(data + 1, data_len - 1, &size);
 		LOG_TEST_RET(ctx, size_size, "parse error: invalid size data of IASECC_SDO_TEMPLATE");
