@@ -1688,6 +1688,7 @@ static int coolkey_rsa_op(sc_card_t *card, const u8 * data, size_t datalen,
 	u8 key_number;
 	size_t params_len;
 	u8 buf[MAX_COMPUTE_BUF + 2];
+	size_t buf_len;
 	u8 *buf_out;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
@@ -1728,8 +1729,6 @@ static int coolkey_rsa_op(sc_card_t *card, const u8 * data, size_t datalen,
 		ushort2bebytes(params.init.buf_len, 0);
 	} else {
 		/* The data fits in APDU. Copy it to the params object */
-		size_t buf_len;
-
 		params.init.location = COOLKEY_CRYPT_LOCATION_APDU;
 
 		params_len = sizeof(params.init) + datalen;
@@ -1749,6 +1748,7 @@ static int coolkey_rsa_op(sc_card_t *card, const u8 * data, size_t datalen,
 	if (r < 0) {
 		goto done;
 	}
+	buf_len = crypt_out_len_p;
 
 	if (datalen > MAX_COMPUTE_BUF) {
 		u8 len_buf[2];
@@ -1767,7 +1767,12 @@ static int coolkey_rsa_op(sc_card_t *card, const u8 * data, size_t datalen,
 					priv->nonce, sizeof(priv->nonce));
 
 	} else {
-		size_t out_length = bebytes2ushort(buf);
+		size_t out_length;
+		if (buf_len < 2) {
+			r = SC_ERROR_WRONG_LENGTH;
+			goto done;
+		}
+		out_length = bebytes2ushort(buf);
 		if (out_length > sizeof buf - 2) {
 			r = SC_ERROR_WRONG_LENGTH;
 			goto done;
