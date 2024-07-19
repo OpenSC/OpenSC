@@ -378,14 +378,29 @@ static int refresh_attributes(sc_reader_t *reader)
 
 	if (rv != SCARD_S_SUCCESS) {
 		if (rv == (LONG)SCARD_E_TIMEOUT) {
-			/* Timeout, no change from previous recorded state. Make sure that
-			 * changed flag is not set. */
-			reader->flags &= ~SC_READER_CARD_CHANGED;
+			DWORD readers_len = 0, cstate = 0, prot, atr_len = SC_MAX_ATR_SIZE;
+			unsigned char atr[SC_MAX_ATR_SIZE];
+
 			/* Make sure to preserve the CARD_PRESENT flag if the reader was
 			 * reattached and we called the refresh_attributes too recently */
 			if (priv->reader_state.dwEventState & SCARD_STATE_PRESENT) {
 				reader->flags |= SC_READER_CARD_PRESENT;
 			}
+
+			/* Timeout should denote no change from previous recorded state,
+			 * but check for valid card handle */
+			reader->flags &= ~SC_READER_CARD_CHANGED;
+			if (priv->pcsc_card != 0) {
+				/* When reader is removed between two subsequent calls to refresh_attributes,
+				 * SCardGetStatusChange does not notice the change, test the card handle with SCardStatus */
+				rv = priv->gpriv->SCardStatus(priv->pcsc_card, NULL, &readers_len, &cstate, &prot, atr, &atr_len);
+
+				if (rv == (LONG)SCARD_W_REMOVED_CARD || rv == (LONG)SCARD_E_INVALID_VALUE || rv == (LONG)SCARD_E_INVALID_HANDLE)
+					reader->flags |= SC_READER_CARD_CHANGED;
+				/* If this happens, card must be reconnected, otherwise SCardGetStatusChange() will still return timeout
+				 * and card handle will be invalid. */
+			}
+
 			LOG_FUNC_RETURN(reader->ctx, SC_SUCCESS);
 		}
 
@@ -395,7 +410,13 @@ static int refresh_attributes(sc_reader_t *reader)
 				|| rv == (LONG)SCARD_E_NO_READERS_AVAILABLE
 #endif
 				|| rv == (LONG)SCARD_E_SERVICE_STOPPED) {
- 			reader->flags &= ~(SC_READER_CARD_PRESENT);
+			/* Set flag when state changes */
+			if (reader->flags & SC_READER_REMOVED) {
+				reader->flags &= ~SC_READER_CARD_CHANGED;
+			} else {
+				reader->flags |= SC_READER_CARD_CHANGED;
+			}
+ 			reader->flags &= ~SC_READER_CARD_PRESENT;
 			reader->flags |= SC_READER_REMOVED;
 			priv->gpriv->removed_reader = reader;
  			SC_FUNC_RETURN(reader->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
@@ -420,7 +441,7 @@ static int refresh_attributes(sc_reader_t *reader)
 		SC_FUNC_RETURN(reader->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
 	}
 
-	reader->flags &= ~(SC_READER_CARD_CHANGED|SC_READER_CARD_INUSE|SC_READER_CARD_EXCLUSIVE);
+	reader->flags &= ~(SC_READER_CARD_CHANGED|SC_READER_CARD_INUSE|SC_READER_CARD_EXCLUSIVE|SC_READER_REMOVED);
 
 	if (state & SCARD_STATE_PRESENT) {
 		reader->flags |= SC_READER_CARD_PRESENT;
