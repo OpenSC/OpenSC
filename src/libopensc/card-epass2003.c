@@ -1125,7 +1125,7 @@ construct_mac_tlv(struct sc_card *card, unsigned char *apdu_buf, size_t data_tlv
 	return 0;
 }
 
-/* MAC(TLV case 1 */
+/* MAC(TLV case 1) */
 static int
 construct_mac_tlv_case1(struct sc_card *card, unsigned char *apdu_buf, size_t data_tlv_len, size_t le_tlv_len,
 	unsigned char *mac_tlv, size_t * mac_tlv_len, const unsigned char key_type)
