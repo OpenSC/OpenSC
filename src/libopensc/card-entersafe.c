@@ -1424,6 +1424,8 @@ static int entersafe_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 	r = entersafe_transmit_apdu(card, &apdu, 0, 0, 0, 0);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2), "EnterSafe get SN failed");
+	if (apdu.resplen != 8)
+		LOG_TEST_RET(card->ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Invalid length of SN");
 
 	card->serialnr.len = serial->len = 8;
 	memcpy(card->serialnr.value, rbuf, 8);
