@@ -48,7 +48,7 @@ PIN user-pin {
     auth-id     = 2;
     reference   = 2;
     attempts    = 5;
-    min-length  = 4;
+    min-length  = 6;
     max-length  = 32;
     flags       = case-sensitive, initialized;
 }
