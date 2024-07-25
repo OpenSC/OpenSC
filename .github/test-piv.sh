@@ -55,19 +55,19 @@ $VALGRIND opensc-tool -n
 
 PIN="123456"
 yubico-piv-tool -v 9999 -r 'Virtual PCD 00 00' -P "$PIN" -s 9e -a generate -A RSA2048 | tee 9e.pub
-yubico-piv-tool -v 9999 -r 'Virtual PCD 00 00' -P "$PIN" -s 9e -S'/CN=barCard/OU=test/O=example.com/' -averify -aselfsign < 9e.pub | tee 9e.cert
+yubico-piv-tool -v 9999 -r 'Virtual PCD 00 00' -P "$PIN" -s 9e -S'/CN=barCard/OU=test/O=example.com/' -averify-pin -aselfsign < 9e.pub | tee 9e.cert
 yubico-piv-tool -v 9999 -r 'Virtual PCD 00 00' -P "$PIN" -s 9e -aimport-certificate < 9e.cert
 
 yubico-piv-tool -v 9999 -r 'Virtual PCD 00 00' -P "$PIN" -s 9a -a generate -A RSA2048 | tee 9a.pub
-yubico-piv-tool -v 9999 -r 'Virtual PCD 00 00' -P "$PIN" -s 9a -S'/CN=bar/OU=test/O=example.com/' -averify -aselfsign < 9a.pub | tee 9a.cert
+yubico-piv-tool -v 9999 -r 'Virtual PCD 00 00' -P "$PIN" -s 9a -S'/CN=bar/OU=test/O=example.com/' -averify-pin -aselfsign < 9a.pub | tee 9a.cert
 yubico-piv-tool -v 9999 -r 'Virtual PCD 00 00' -P "$PIN" -s 9a -aimport-certificate < 9a.cert
 
 yubico-piv-tool -v 9999 -r 'Virtual PCD 00 00' -P "$PIN" -s 9c -a generate -A ECCP256 | tee 9c.pub
-yubico-piv-tool -v 9999 -r 'Virtual PCD 00 00' -P "$PIN" -s 9c -S'/CN=bar/OU=test/O=example.com/' -averify -aselfsign < 9c.pub | tee 9c.cert
+yubico-piv-tool -v 9999 -r 'Virtual PCD 00 00' -P "$PIN" -s 9c -S'/CN=bar/OU=test/O=example.com/' -averify-pin -aselfsign < 9c.pub | tee 9c.cert
 yubico-piv-tool -v 9999 -r 'Virtual PCD 00 00' -P "$PIN" -s 9c -aimport-certificate < 9c.cert
 
 yubico-piv-tool -v 9999 -r 'Virtual PCD 00 00' -P "$PIN" -s 9d -a generate -A ECCP256 | tee 9d.pub
-yubico-piv-tool -v 9999 -r 'Virtual PCD 00 00' -P "$PIN" -s 9d -S'/CN=bar/OU=test/O=example.com/' -averify -aselfsign < 9d.pub | tee 9d.cert
+yubico-piv-tool -v 9999 -r 'Virtual PCD 00 00' -P "$PIN" -s 9d -S'/CN=bar/OU=test/O=example.com/' -averify-pin -aselfsign < 9d.pub | tee 9d.cert
 yubico-piv-tool -v 9999 -r 'Virtual PCD 00 00' -P "$PIN" -s 9d -aimport-certificate < 9d.cert
 
 $VALGRIND pkcs11-tool -l -O -p "$PIN"
