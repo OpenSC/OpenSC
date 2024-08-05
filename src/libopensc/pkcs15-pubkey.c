@@ -517,6 +517,7 @@ sc_pkcs15_encode_pukdf_entry(struct sc_context *ctx, const struct sc_pkcs15_obje
 	return r;
 }
 
+// clang-format off
 #define C_ASN1_PUBLIC_KEY_SIZE 2
 static struct sc_asn1_entry c_asn1_public_key[C_ASN1_PUBLIC_KEY_SIZE] = {
 		{ "publicKeyCoefficients", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
@@ -536,18 +537,23 @@ static struct sc_asn1_entry c_asn1_gostr3410_pub_coefficients[C_ASN1_GOSTR3410_P
 		{ NULL, 0, 0, 0, NULL, NULL }
 };
 
-#define C_ASN1_EC_POINTQ_SIZE 2
+/* older incorrect implementation may have encoded as OCTET STRING */
+/* accept either */
+#define C_ASN1_EC_POINTQ_SIZE 3
 static struct sc_asn1_entry c_asn1_ec_pointQ[C_ASN1_EC_POINTQ_SIZE] = {
-		{ "ecpointQ", SC_ASN1_OCTET_STRING, SC_ASN1_TAG_OCTET_STRING, SC_ASN1_ALLOC, NULL, NULL },
+		{ "ecpointQ",    SC_ASN1_BIT_STRING_NI, SC_ASN1_TAG_BIT_STRING,   SC_ASN1_OPTIONAL | SC_ASN1_ALLOC, NULL, NULL },
+		{ "ecpointQ-OS", SC_ASN1_OCTET_STRING,  SC_ASN1_TAG_OCTET_STRING, SC_ASN1_OPTIONAL | SC_ASN1_ALLOC, NULL, NULL },
 		{ NULL, 0, 0, 0, NULL, NULL }
 };
 
-#define C_ASN1_EDDSA_PUBKEY_SIZE 2
+/*  See RFC8410 */
+#define C_ASN1_EDDSA_PUBKEY_SIZE 3
 static struct sc_asn1_entry c_asn1_eddsa_pubkey[C_ASN1_EDDSA_PUBKEY_SIZE] = {
-		{ "pubkey", SC_ASN1_OCTET_STRING, SC_ASN1_TAG_OCTET_STRING, SC_ASN1_ALLOC, NULL, NULL },
+		{ "ecpointQ", SC_ASN1_BIT_STRING_NI,    SC_ASN1_TAG_BIT_STRING,	  SC_ASN1_OPTIONAL | SC_ASN1_ALLOC, NULL, NULL },
+		{ "ecpointQ-OS", SC_ASN1_OCTET_STRING,  SC_ASN1_TAG_OCTET_STRING, SC_ASN1_OPTIONAL | SC_ASN1_ALLOC, NULL, NULL },
 		{ NULL, 0, 0, 0, NULL, NULL }
 };
-
+// clang-format on
 
 int
 sc_pkcs15_decode_pubkey_rsa(sc_context_t *ctx, struct sc_pkcs15_pubkey_rsa *key,
@@ -636,7 +642,8 @@ sc_pkcs15_encode_pubkey_gostr3410(sc_context_t *ctx,
 }
 
 /*
- * We are storing the ec_pointQ as u8 string. not as DER
+ * We are storing the ec_pointQ as u8 string not as DER
+ * Will accept either BIT STRING or OCTET STRING
  */
 int
 sc_pkcs15_decode_pubkey_ec(sc_context_t *ctx,
@@ -645,19 +652,20 @@ sc_pkcs15_decode_pubkey_ec(sc_context_t *ctx,
 {
 	int r;
 	u8 * ecpoint_data = NULL;
-	size_t ecpoint_len;
+	size_t ecpoint_len = 0;
 	struct sc_asn1_entry asn1_ec_pointQ[C_ASN1_EC_POINTQ_SIZE];
 
 	LOG_FUNC_CALLED(ctx);
 	sc_copy_asn1_entry(c_asn1_ec_pointQ, asn1_ec_pointQ);
 	sc_format_asn1_entry(asn1_ec_pointQ + 0, &ecpoint_data, &ecpoint_len, 1);
-	r = sc_asn1_decode(ctx, asn1_ec_pointQ, buf, buflen, NULL, NULL);
-	if (r < 0) {
+	sc_format_asn1_entry(asn1_ec_pointQ + 1, &ecpoint_data, &ecpoint_len, 1);
+	r = sc_asn1_decode_choice(ctx, asn1_ec_pointQ, buf, buflen, NULL, NULL);
+	if (r < 0 || ecpoint_len == 0 || ecpoint_data == NULL) {
 		free(ecpoint_data);
-		LOG_TEST_RET(ctx, r, "ASN.1 decoding failed");
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ASN1_OBJECT);
 	}
 
-	if (ecpoint_len == 0 || *ecpoint_data != 0x04) {
+	if (*ecpoint_data != 0x04) {
 		free(ecpoint_data);
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Supported only uncompressed EC pointQ value");
 	}
@@ -665,11 +673,6 @@ sc_pkcs15_decode_pubkey_ec(sc_context_t *ctx,
 	key->ecpointQ.len = ecpoint_len;
 	key->ecpointQ.value = ecpoint_data;
 
-	/*
-	 * Only get here if raw point is stored in pkcs15 without curve name
-	 * spki has the curvename, so we can get the field_length
-	 * Following only true for curves that are multiple of 8
-	 */
 	key->params.field_length = (ecpoint_len - 1)/2 * 8;
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
@@ -680,56 +683,69 @@ sc_pkcs15_encode_pubkey_ec(sc_context_t *ctx, struct sc_pkcs15_pubkey_ec *key,
 		u8 **buf, size_t *buflen)
 {
 	struct sc_asn1_entry asn1_ec_pointQ[C_ASN1_EC_POINTQ_SIZE];
+	size_t key_len;
+	volatile int gdb_test = 1; /* so can reset via gdb for testing new  way */
 
 	LOG_FUNC_CALLED(ctx);
 	sc_copy_asn1_entry(c_asn1_ec_pointQ, asn1_ec_pointQ);
-	sc_format_asn1_entry(asn1_ec_pointQ + 0, key->ecpointQ.value, &key->ecpointQ.len, 1);
+
+	if (gdb_test == 1) {
+		key_len = key->ecpointQ.len * 8; /* encode in bit string */
+		sc_format_asn1_entry(asn1_ec_pointQ + 0, key->ecpointQ.value, &key_len, 1);
+	} else {
+		key_len = key->ecpointQ.len;
+		sc_format_asn1_entry(asn1_ec_pointQ + 1, key->ecpointQ.value, &key_len, 1);
+	}
 
 	LOG_FUNC_RETURN(ctx,
 			sc_asn1_encode(ctx, asn1_ec_pointQ, buf, buflen));
 }
 
 /*
- * EdDSA keys are just byte strings. For now only
- * for Ed25519 keys 32B length are supported
+ * all "ec" keys uses same pubkey format, keep this external entrypoint
+ * keys are just byte strings.
+ *  will accept in either BIT STRING or OCTET STRING
  */
 int
 sc_pkcs15_decode_pubkey_eddsa(sc_context_t *ctx,
-		struct sc_pkcs15_pubkey_eddsa *key,
+		struct sc_pkcs15_pubkey_ec *key,
 		const u8 *buf, size_t buflen)
 {
 	int r;
-	u8 * pubkey = NULL;
-	size_t pubkey_len;
-	struct sc_asn1_entry asn1_eddsa_pubkey[C_ASN1_EDDSA_PUBKEY_SIZE];
+	u8 *ecpoint_data = NULL;
+	size_t ecpoint_len = 0;
+	struct sc_asn1_entry asn1_ec_pointQ[C_ASN1_EC_POINTQ_SIZE];
 
 	LOG_FUNC_CALLED(ctx);
-	sc_copy_asn1_entry(c_asn1_eddsa_pubkey, asn1_eddsa_pubkey);
-	sc_format_asn1_entry(asn1_eddsa_pubkey + 0, &pubkey, &pubkey_len, 1);
-	r = sc_asn1_decode(ctx, asn1_eddsa_pubkey, buf, buflen, NULL, NULL);
-	if (r < 0)
-		LOG_TEST_RET(ctx, r, "ASN.1 decoding failed");
+	sc_copy_asn1_entry(c_asn1_ec_pointQ, asn1_ec_pointQ);
+	sc_format_asn1_entry(asn1_ec_pointQ + 0, &ecpoint_data, &ecpoint_len, 1);
+	sc_format_asn1_entry(asn1_ec_pointQ + 1, &ecpoint_data, &ecpoint_len, 1);
+	r = sc_asn1_decode_choice(ctx, asn1_ec_pointQ, buf, buflen, NULL, NULL);
+	if (r < 0 || ecpoint_len == 0 || ecpoint_data == NULL) {
+		free(ecpoint_data);
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ASN1_OBJECT);
+	}
 
-	key->pubkey.len = pubkey_len;
-	key->pubkey.value = pubkey;
+	key->ecpointQ.len = ecpoint_len;
+	key->ecpointQ.value = ecpoint_data;
+	key->params.field_length = ecpoint_len * 8;
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
 int
-sc_pkcs15_encode_pubkey_eddsa(sc_context_t *ctx, struct sc_pkcs15_pubkey_eddsa *key,
+sc_pkcs15_encode_pubkey_eddsa(sc_context_t *ctx, struct sc_pkcs15_pubkey_ec *key,
 		u8 **buf, size_t *buflen)
 {
 	struct sc_asn1_entry asn1_eddsa_pubkey[C_ASN1_EDDSA_PUBKEY_SIZE];
 
 	LOG_FUNC_CALLED(ctx);
 	sc_copy_asn1_entry(c_asn1_eddsa_pubkey, asn1_eddsa_pubkey);
-	sc_format_asn1_entry(asn1_eddsa_pubkey + 0, key->pubkey.value, &key->pubkey.len, 1);
+	sc_format_asn1_entry(asn1_eddsa_pubkey + 0, key->ecpointQ.value, &key->ecpointQ.len, 1);
 
 	LOG_FUNC_RETURN(ctx,
 			sc_asn1_encode(ctx, asn1_eddsa_pubkey, buf, buflen));
 }
-
 
 int
 sc_pkcs15_encode_pubkey(sc_context_t *ctx, struct sc_pkcs15_pubkey *key,
@@ -741,9 +757,8 @@ sc_pkcs15_encode_pubkey(sc_context_t *ctx, struct sc_pkcs15_pubkey *key,
 		return sc_pkcs15_encode_pubkey_gostr3410(ctx, &key->u.gostr3410, buf, len);
 	if (key->algorithm == SC_ALGORITHM_EC)
 		return sc_pkcs15_encode_pubkey_ec(ctx, &key->u.ec, buf, len);
-	if (key->algorithm == SC_ALGORITHM_EDDSA ||
-		key->algorithm == SC_ALGORITHM_XEDDSA) /* XXX encoding is the same here */
-		return sc_pkcs15_encode_pubkey_eddsa(ctx, &key->u.eddsa, buf, len);
+	if (key->algorithm == SC_ALGORITHM_EDDSA || key->algorithm == SC_ALGORITHM_XEDDSA)
+		return sc_pkcs15_encode_pubkey_eddsa(ctx, &key->u.ec, buf, len);
 
 	sc_log(ctx, "Encoding of public key type %lu not supported", key->algorithm);
 	LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
@@ -789,6 +804,8 @@ sc_pkcs15_encode_pubkey_as_spki(sc_context_t *ctx, struct sc_pkcs15_pubkey *pubk
 
 	switch (pubkey->algorithm) {
 	case SC_ALGORITHM_EC:
+	case SC_ALGORITHM_EDDSA:
+	case SC_ALGORITHM_XEDDSA:
 		/*
 		 * most keys, but not EC have only one encoding.
 		 * For a SPKI, the ecpoint is placed directly in the
@@ -826,14 +843,6 @@ sc_pkcs15_encode_pubkey_as_spki(sc_context_t *ctx, struct sc_pkcs15_pubkey *pubk
 		r = sc_pkcs15_encode_pubkey(ctx, pubkey, &pkey.value, &pkey.len);
 		key_len = pkey.len * 8;
 		break;
-	case SC_ALGORITHM_EDDSA:
-	case SC_ALGORITHM_XEDDSA:
-		/* For a SPKI, the pubkey is placed directly in the BIT STRING */
-		pkey.value = malloc(pubkey->u.eddsa.pubkey.len);
-		memcpy(pkey.value, pubkey->u.eddsa.pubkey.value, pubkey->u.eddsa.pubkey.len);
-		// Should be pkey.len = 0 there?
-		key_len = pubkey->u.eddsa.pubkey.len * 8;
-		break;
 	default:
 		r = sc_pkcs15_encode_pubkey(ctx, pubkey, &pkey.value, &pkey.len);
 		key_len = pkey.len * 8;
@@ -867,9 +876,8 @@ sc_pkcs15_decode_pubkey(sc_context_t *ctx, struct sc_pkcs15_pubkey *key,
 		return sc_pkcs15_decode_pubkey_gostr3410(ctx, &key->u.gostr3410, buf, len);
 	if (key->algorithm == SC_ALGORITHM_EC)
 		return sc_pkcs15_decode_pubkey_ec(ctx, &key->u.ec, buf, len);
-	if (key->algorithm == SC_ALGORITHM_EDDSA ||
-		key->algorithm == SC_ALGORITHM_XEDDSA)
-		return sc_pkcs15_decode_pubkey_eddsa(ctx, &key->u.eddsa, buf, len);
+	if (key->algorithm == SC_ALGORITHM_EDDSA || key->algorithm == SC_ALGORITHM_XEDDSA)
+		return sc_pkcs15_decode_pubkey_eddsa(ctx, &key->u.ec, buf, len);
 
 	sc_log(ctx, "Decoding of public key type %lu not supported", key->algorithm);
 	return SC_ERROR_NOT_SUPPORTED;
@@ -1030,6 +1038,13 @@ sc_pkcs15_pubkey_from_prvkey(struct sc_context *ctx, struct sc_pkcs15_prkey *prv
 	case SC_ALGORITHM_GOSTR3410:
 		break;
 	case SC_ALGORITHM_EC:
+	case SC_ALGORITHM_EDDSA:
+	case SC_ALGORITHM_XEDDSA:
+		/* Copy pubkey */
+		if (prvkey->u.ec.ecpointQ.value == NULL || prvkey->u.ec.ecpointQ.len <= 0) {
+			sc_pkcs15_free_pubkey(pubkey);
+			LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
+		}
 		pubkey->u.ec.ecpointQ.value = malloc(prvkey->u.ec.ecpointQ.len);
 		if (!pubkey->u.ec.ecpointQ.value) {
 			sc_pkcs15_free_pubkey(pubkey);
@@ -1037,22 +1052,6 @@ sc_pkcs15_pubkey_from_prvkey(struct sc_context *ctx, struct sc_pkcs15_prkey *prv
 		}
 		memcpy(pubkey->u.ec.ecpointQ.value, prvkey->u.ec.ecpointQ.value, prvkey->u.ec.ecpointQ.len);
 		pubkey->u.ec.ecpointQ.len = prvkey->u.ec.ecpointQ.len;
-		break;
-	case SC_ALGORITHM_EDDSA:
-	case SC_ALGORITHM_XEDDSA:
-		/* Copy pubkey */
-		if (prvkey->u.eddsa.pubkey.value == NULL || prvkey->u.eddsa.pubkey.len <= 0) {
-			sc_pkcs15_free_pubkey(pubkey);
-			LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
-		}
-		pubkey->u.eddsa.pubkey.value = malloc(prvkey->u.eddsa.pubkey.len);
-		if (!pubkey->u.eddsa.pubkey.value) {
-			sc_pkcs15_free_pubkey(pubkey);
-			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
-		}
-		memcpy(pubkey->u.eddsa.pubkey.value, prvkey->u.eddsa.pubkey.value, prvkey->u.eddsa.pubkey.len);
-		pubkey->u.eddsa.pubkey.len = prvkey->u.eddsa.pubkey.len;
-
 		break;
 	default:
 		sc_log(ctx, "Unsupported private key algorithm");
@@ -1111,6 +1110,8 @@ sc_pkcs15_dup_pubkey(struct sc_context *ctx, struct sc_pkcs15_pubkey *key, struc
 	case SC_ALGORITHM_GOSTR3410:
 		break;
 	case SC_ALGORITHM_EC:
+	case SC_ALGORITHM_EDDSA:
+	case SC_ALGORITHM_XEDDSA:
 		pubkey->u.ec.ecpointQ.value = malloc(key->u.ec.ecpointQ.len);
 		if (!pubkey->u.ec.ecpointQ.value) {
 			rv = SC_ERROR_OUT_OF_MEMORY;
@@ -1118,6 +1119,12 @@ sc_pkcs15_dup_pubkey(struct sc_context *ctx, struct sc_pkcs15_pubkey *key, struc
 		}
 		memcpy(pubkey->u.ec.ecpointQ.value, key->u.ec.ecpointQ.value, key->u.ec.ecpointQ.len);
 		pubkey->u.ec.ecpointQ.len = key->u.ec.ecpointQ.len;
+
+		if (key->u.ec.params.named_curve) {
+			rv = sc_pkcs15_fix_ec_parameters(ctx, &key->u.ec.params);
+			if (rv)
+				break;
+		}
 
 		pubkey->u.ec.params.der.value = malloc(key->u.ec.params.der.len);
 		if (!pubkey->u.ec.params.der.value) {
@@ -1127,27 +1134,17 @@ sc_pkcs15_dup_pubkey(struct sc_context *ctx, struct sc_pkcs15_pubkey *key, struc
 		memcpy(pubkey->u.ec.params.der.value, key->u.ec.params.der.value, key->u.ec.params.der.len);
 		pubkey->u.ec.params.der.len = key->u.ec.params.der.len;
 
-		if (key->u.ec.params.named_curve){
-			pubkey->u.ec.params.named_curve = strdup(key->u.ec.params.named_curve);
-			if (!pubkey->u.ec.params.named_curve)
-				rv = SC_ERROR_OUT_OF_MEMORY;
+		/* RFC4810 no named_curve */
+		if ((key->algorithm != SC_ALGORITHM_EDDSA) && (key->algorithm != SC_ALGORITHM_XEDDSA)) {
+			if (key->u.ec.params.named_curve) {
+				pubkey->u.ec.params.named_curve = strdup(key->u.ec.params.named_curve);
+				if (!pubkey->u.ec.params.named_curve)
+					rv = SC_ERROR_OUT_OF_MEMORY;
+			} else {
+				sc_log(ctx, "named_curve parameter missing");
+				rv = SC_ERROR_NOT_SUPPORTED;
+			}
 		}
-		else {
-			sc_log(ctx, "named_curve parameter missing");
-			rv = SC_ERROR_NOT_SUPPORTED;
-		}
-
-		break;
-	case SC_ALGORITHM_EDDSA:
-	case SC_ALGORITHM_XEDDSA:
-		/* Copy pubkey */
-		pubkey->u.eddsa.pubkey.value = malloc(key->u.eddsa.pubkey.len);
-		if (!pubkey->u.eddsa.pubkey.value) {
-			rv = SC_ERROR_OUT_OF_MEMORY;
-			break;
-		}
-		memcpy(pubkey->u.eddsa.pubkey.value, key->u.eddsa.pubkey.value, key->u.eddsa.pubkey.len);
-		pubkey->u.eddsa.pubkey.len = key->u.eddsa.pubkey.len;
 
 		break;
 	default:
@@ -1177,28 +1174,18 @@ sc_pkcs15_erase_pubkey(struct sc_pkcs15_pubkey *key)
 	}
 	switch (key->algorithm) {
 	case SC_ALGORITHM_RSA:
-		if (key->u.rsa.modulus.data)
-			free(key->u.rsa.modulus.data);
-		if (key->u.rsa.exponent.data)
-			free(key->u.rsa.exponent.data);
+		free(key->u.rsa.modulus.data);
+		free(key->u.rsa.exponent.data);
 		break;
 	case SC_ALGORITHM_GOSTR3410:
-		if (key->u.gostr3410.xy.data)
-			free(key->u.gostr3410.xy.data);
+		free(key->u.gostr3410.xy.data);
 		break;
 	case SC_ALGORITHM_EC:
-		if (key->u.ec.params.der.value)
-			free(key->u.ec.params.der.value);
-		if (key->u.ec.params.named_curve)
-			free(key->u.ec.params.named_curve);
-		if (key->u.ec.ecpointQ.value)
-			free(key->u.ec.ecpointQ.value);
-		break;
 	case SC_ALGORITHM_EDDSA:
 	case SC_ALGORITHM_XEDDSA:
-		free(key->u.eddsa.pubkey.value);
-		key->u.eddsa.pubkey.value = NULL;
-		key->u.eddsa.pubkey.len = 0;
+		free(key->u.ec.params.der.value);
+		free(key->u.ec.params.named_curve);
+		free(key->u.ec.ecpointQ.value);
 		break;
 	}
 	sc_mem_clear(key, sizeof(*key));
@@ -1404,9 +1391,9 @@ sc_pkcs15_pubkey_from_spki_fields(struct sc_context *ctx, struct sc_pkcs15_pubke
 	} else if (pk_alg.algorithm == SC_ALGORITHM_EDDSA ||
 		   pk_alg.algorithm == SC_ALGORITHM_XEDDSA) {
 		/* EDDSA/XEDDSA public key is not encapsulated into BIT STRING -- it's a BIT STRING */
-		pubkey->u.eddsa.pubkey.value = malloc(pk.len);
-		memcpy(pubkey->u.eddsa.pubkey.value, pk.value, pk.len);
-		pubkey->u.eddsa.pubkey.len = pk.len;
+		pubkey->u.ec.ecpointQ.value = malloc(pk.len);
+		memcpy(pubkey->u.ec.ecpointQ.value, pk.value, pk.len);
+		pubkey->u.ec.ecpointQ.len = pk.len;
 	} else {
 		/* Public key is expected to be encapsulated into BIT STRING */
 		r = sc_pkcs15_decode_pubkey(ctx, pubkey, pk.value, pk.len);
@@ -1473,82 +1460,134 @@ sc_pkcs15_pubkey_from_spki_file(struct sc_context *ctx, char * filename,
 	LOG_FUNC_RETURN(ctx, r);
 }
 
-
+// clang-format off
 static struct ec_curve_info {
 	const char *name;
 	const char *oid_str;
 	const char *oid_encoded;
 	size_t size;
+	const unsigned int key_type;
+
 } ec_curve_infos[] = {
-		{"secp192r1",		"1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192},
-		{"prime192v1",		"1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192},
-		{"nistp192",		"1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192},
-		{"ansiX9p192r1",	"1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192},
+		{"secp192r1",		"1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192, SC_ALGORITHM_EC},
+		{"prime192v1",		"1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192, SC_ALGORITHM_EC},
+		{"nistp192",		"1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192, SC_ALGORITHM_EC},
+		{"ansiX9p192r1",	"1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192, SC_ALGORITHM_EC},
 
-		{"secp224r1",		"1.3.132.0.33", "06052b81040021", 224},
-		{"nistp224",		"1.3.132.0.33", "06052b81040021", 224},
+		{"secp224r1",		"1.3.132.0.33", "06052b81040021", 224, SC_ALGORITHM_EC},
+		{"nistp224",		"1.3.132.0.33", "06052b81040021", 224, SC_ALGORITHM_EC},
 
-		{"secp256r1",		"1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256},
-		{"prime256v1",		"1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256},
-		{"nistp256",		"1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256},
-		{"ansiX9p256r1",	"1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256},
+		{"secp256r1",		"1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256, SC_ALGORITHM_EC},
+		{"prime256v1",		"1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256, SC_ALGORITHM_EC},
+		{"nistp256",		"1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256, SC_ALGORITHM_EC},
+		{"ansiX9p256r1",	"1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256, SC_ALGORITHM_EC},
 
-		{"secp384r1",		"1.3.132.0.34", "06052B81040022", 384},
-		{"prime384v1",		"1.3.132.0.34", "06052B81040022", 384},
-		{"nistp384",		"1.3.132.0.34", "06052B81040022", 384},
-		{"ansiX9p384r1",	"1.3.132.0.34", "06052B81040022", 384},
+		{"secp384r1",		"1.3.132.0.34", "06052B81040022", 384, SC_ALGORITHM_EC},
+		{"prime384v1",		"1.3.132.0.34", "06052B81040022", 384, SC_ALGORITHM_EC},
+		{"nistp384",		"1.3.132.0.34", "06052B81040022", 384, SC_ALGORITHM_EC},
+		{"ansiX9p384r1",	"1.3.132.0.34", "06052B81040022", 384, SC_ALGORITHM_EC},
 
-		{"secp521r1",		"1.3.132.0.35", "06052B81040023", 521},
-		{"nistp521",		"1.3.132.0.35", "06052B81040023", 521},
+		{"secp521r1",		"1.3.132.0.35", "06052B81040023", 521, SC_ALGORITHM_EC},
+		{"nistp521",		"1.3.132.0.35", "06052B81040023", 521, SC_ALGORITHM_EC},
 
-		{"brainpoolP192r1",	"1.3.36.3.3.2.8.1.1.3", "06092B2403030208010103", 192},
-		{"brainpoolP224r1",	"1.3.36.3.3.2.8.1.1.5", "06092B2403030208010105", 224},
-		{"brainpoolP256r1",	"1.3.36.3.3.2.8.1.1.7", "06092B2403030208010107", 256},
-		{"brainpoolP320r1",	"1.3.36.3.3.2.8.1.1.9", "06092B2403030208010109", 320},
-		{"brainpoolP384r1",	"1.3.36.3.3.2.8.1.1.11", "06092B240303020801010B", 384},
-		{"brainpoolP512r1",	"1.3.36.3.3.2.8.1.1.13", "06092B240303020801010D", 512},
+		{"brainpoolP192r1",	"1.3.36.3.3.2.8.1.1.3",  "06092B2403030208010103", 192, SC_ALGORITHM_EC},
+		{"brainpoolP224r1",	"1.3.36.3.3.2.8.1.1.5",  "06092B2403030208010105", 224, SC_ALGORITHM_EC},
+		{"brainpoolP256r1",	"1.3.36.3.3.2.8.1.1.7",  "06092B2403030208010107", 256, SC_ALGORITHM_EC},
+		{"brainpoolP320r1",	"1.3.36.3.3.2.8.1.1.9",  "06092B2403030208010109", 320, SC_ALGORITHM_EC},
+		{"brainpoolP384r1",	"1.3.36.3.3.2.8.1.1.11", "06092B240303020801010B", 384, SC_ALGORITHM_EC},
+		{"brainpoolP512r1",	"1.3.36.3.3.2.8.1.1.13", "06092B240303020801010D", 512, SC_ALGORITHM_EC},
 
-		{"secp192k1",		"1.3.132.0.31", "06052B8104001F", 192},
-		{"secp256k1",		"1.3.132.0.10", "06052B8104000A", 256},
+		{"secp192k1",		"1.3.132.0.31", "06052B8104001F", 192, SC_ALGORITHM_EC},
+		{"secp256k1",		"1.3.132.0.10", "06052B8104000A", 256, SC_ALGORITHM_EC},
 
-		{"ed25519",		"1.3.6.1.4.1.11591.15.1", "06092B06010401DA470F01", 255},
-		{"curve25519",		"1.3.6.1.4.1.3029.1.5.1", "060A2B060104019755010501", 255},
+		/* OpenPGP extensions by Yubikey and GNUK are not defined in RFCs but we know the oid written to card */
 
-		{NULL, NULL, NULL, 0}, /* Do not touch this */
+		{"edwards25519",	"1.3.6.1.4.1.11591.15.1", "06092B06010401DA470F01",   255, SC_ALGORITHM_EDDSA},
+		{"curve25519",		"1.3.6.1.4.1.3029.1.5.1", "060A2B060104019755010501", 255, SC_ALGORITHM_XEDDSA},
+
+		/* RFC 8410 defined curves */
+		{"X25519",              "1.3.101.110", "06032b656e", 255, SC_ALGORITHM_XEDDSA},
+		{"X448",		"1.3.101.111", "06032b656f", 448, SC_ALGORITHM_XEDDSA},
+		{"Ed25519",             "1.3.101.112", "06032b6570", 255, SC_ALGORITHM_EDDSA},
+		{"Ed448",		"1.3.101.113", "06032b6571", 448, SC_ALGORITHM_EDDSA},
+		/* GnuPG openpgp curves as used in gnupg-card are equivalent to RFC8410 OIDs */
+		{"cv25519",		"1.3.101.110", "06032b656e", 255, SC_ALGORITHM_XEDDSA},
+		{"ed25519",		"1.3.101.112", "06032b6570", 255, SC_ALGORITHM_EDDSA},
+
+		{NULL, NULL, NULL, 0, 0}, /* Do not touch this */
 };
-
+// clang-format on
 
 int
 sc_pkcs15_fix_ec_parameters(struct sc_context *ctx, struct sc_ec_parameters *ecparams)
 {
 	int rv, ii;
+	int mapped_string = 0; /* der is printable string that can be replaced with der of OID */
 
 	LOG_FUNC_CALLED(ctx);
 
 	/* In PKCS#11 EC parameters arrives in DER encoded form */
-	if (ecparams->der.value && ecparams->der.len)   {
-		for (ii=0; ec_curve_infos[ii].name; ii++)   {
-			struct sc_object_id id;
-			unsigned char *buf = NULL;
-			size_t len = 0;
+	if (ecparams->der.value && ecparams->der.len && ecparams->der.len > 2) {
 
-			sc_format_oid(&id, ec_curve_infos[ii].oid_str);
-			sc_encode_oid (ctx, &id, &buf, &len);
+		/* caller provided a der version of OID */
+		switch (ecparams->der.value[0]) {
+		case 0x06: /* der.value is an OID */
+			for (ii = 0; ec_curve_infos[ii].name; ii++) {
+				struct sc_object_id id;
+				unsigned char *buf = NULL;
+				size_t len = 0;
 
-			if (ecparams->der.len == len && !memcmp(ecparams->der.value, buf, len))   {
-				free(buf);
-				break;
+				sc_format_oid(&id, ec_curve_infos[ii].oid_str);
+				sc_encode_oid(ctx, &id, &buf, &len);
+
+				if (ecparams->der.len == len && !memcmp(ecparams->der.value, buf, len)) {
+					free(buf);
+					break; /* found ec_curve_infos[ii] */
+				}
+				free(buf); /* ii points at {NULL, NULL, NULL, 0} entry */
 			}
+			break;
 
-			free(buf);
+		case 0x13:
+			/* printable string as per PKCS11 V 3.0 for experimental curves */
+			{
+				int r_tag;
+				const u8 *body = ecparams->der.value;
+				size_t len = ecparams->der.len;
+				unsigned int cla_out, tag_out;
+				size_t bodylen;
+
+				r_tag = sc_asn1_read_tag(&body, len, &cla_out, &tag_out, &bodylen);
+				if (r_tag != SC_SUCCESS || tag_out != 0x13) {
+					sc_log(ctx, "Invalid printable string");
+					LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
+				}
+				for (ii = 0; ec_curve_infos[ii].name; ii++) {
+					size_t len = strlen(ec_curve_infos[ii].name);
+					if (bodylen != len || memcmp(ec_curve_infos[ii].name, body, len) != 0)
+						continue;
+					/* found replacement of printable string to OID */
+					mapped_string = 1;
+					break;
+				}
+			}
+			break;
+
+		default:
+			sc_log(ctx, "Unsupported ec params");
+			LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 		}
 
-		/* TODO: support of explicit EC parameters form */
 		if (!ec_curve_infos[ii].name)
 			LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Unsupported named curve");
 
 		sc_log(ctx, "Found known curve '%s'", ec_curve_infos[ii].name);
-		if (!ecparams->named_curve)   {
+		if (mapped_string) { /* free der of printable string replace below with OID */
+			free(ecparams->named_curve);
+			ecparams->named_curve = NULL;
+		}
+
+		if (!ecparams->named_curve) {
 			ecparams->named_curve = strdup(ec_curve_infos[ii].name);
 			if (!ecparams->named_curve)
 				LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
@@ -1556,21 +1595,34 @@ sc_pkcs15_fix_ec_parameters(struct sc_context *ctx, struct sc_ec_parameters *ecp
 			sc_log(ctx, "Curve name: '%s'", ecparams->named_curve);
 		}
 
-		if (!sc_valid_oid(&ecparams->id))
+		if (!sc_valid_oid(&ecparams->id) || mapped_string)
 			sc_format_oid(&ecparams->id, ec_curve_infos[ii].oid_str);
 
 		ecparams->field_length = ec_curve_infos[ii].size;
-		sc_log(ctx, "Curve length %"SC_FORMAT_LEN_SIZE_T"u",
-		       ecparams->field_length);
-	}
-	else if (ecparams->named_curve)   {	/* it can be name of curve or OID in ASCII form */
-		for (ii=0; ec_curve_infos[ii].name; ii++)   {
+		ecparams->key_type = ec_curve_infos[ii].key_type;
+		sc_log(ctx, "Curve length %" SC_FORMAT_LEN_SIZE_T "u key_type %d",
+				ecparams->field_length, ecparams->key_type);
+		if (mapped_string) {
+			/* replace the printable string version with the oid */
+			free(ecparams->der.value);
+			ecparams->der.len = strlen(ec_curve_infos[ii].oid_encoded) / 2;
+			ecparams->der.value = malloc(ecparams->der.len);
+			if (!ecparams->der.value)
+				LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+			if (sc_hex_to_bin(ec_curve_infos[ii].oid_encoded, ecparams->der.value, &ecparams->der.len) < 0) {
+				free(ecparams->der.value);
+				LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+			}
+		}
+	} else if (ecparams->named_curve) { /* it can be name of curve or OID in ASCII form */
+		/* caller did not provide an OID, look for a name or oid_string */
+		for (ii = 0; ec_curve_infos[ii].name; ii++) {
 			if (!strcmp(ec_curve_infos[ii].name, ecparams->named_curve))
 				break;
 			if (!strcmp(ec_curve_infos[ii].oid_str, ecparams->named_curve))
 				break;
 		}
-		if (!ec_curve_infos[ii].name)   {
+		if (!ec_curve_infos[ii].name) {
 			sc_log(ctx, "Named curve '%s' not supported", ecparams->named_curve);
 			LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 		}
@@ -1579,13 +1631,18 @@ sc_pkcs15_fix_ec_parameters(struct sc_context *ctx, struct sc_ec_parameters *ecp
 		LOG_TEST_RET(ctx, rv, "Invalid OID format");
 
 		ecparams->field_length = ec_curve_infos[ii].size;
+		ecparams->key_type = ec_curve_infos[ii].key_type;
+		sc_log(ctx, "Curve length %" SC_FORMAT_LEN_SIZE_T "u key_type %d",
+				ecparams->field_length, ecparams->key_type);
 
 		if (!ecparams->der.value || !ecparams->der.len)   {
+			free(ecparams->der.value); /* just in case */
+			ecparams->der.value = NULL;
+			/* if caller did not provide der OID, fill in */
 			rv = sc_encode_oid (ctx, &ecparams->id, &ecparams->der.value, &ecparams->der.len);
 			LOG_TEST_RET(ctx, rv, "Cannot encode object ID");
 		}
-	}
-	else
+	} else
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_IMPLEMENTED, "EC parameters has to be presented as a named curve or explicit data");
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
