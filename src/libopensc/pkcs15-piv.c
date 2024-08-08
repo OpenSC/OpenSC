@@ -71,6 +71,7 @@ typedef struct pdata_st {
 	int         tries_left;
 	const unsigned char  pad_char;
 	int         obj_flags;
+	int         cardmod; /* only use with cardmod minidriver */
 } pindata;
 
 typedef struct pubdata_st {
@@ -385,17 +386,30 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		  SC_PKCS15_PIN_FLAG_INITIALIZED |
 		  SC_PKCS15_PIN_FLAG_LOCAL,
 		  -1, 0xFF,
-		  SC_PKCS15_CO_FLAG_PRIVATE },
+		  SC_PKCS15_CO_FLAG_PRIVATE, 0},
+
 		{ "02", "PIV PUK", "", 0x81,
 		  SC_PKCS15_PIN_TYPE_ASCII_NUMERIC,
 		  8, 4, 8,
 		  SC_PKCS15_PIN_FLAG_NEEDS_PADDING |
 		  SC_PKCS15_PIN_FLAG_INITIALIZED |
-		  SC_PKCS15_PIN_FLAG_LOCAL | SC_PKCS15_PIN_FLAG_SO_PIN |
+		  SC_PKCS15_PIN_FLAG_SO_PIN |
 		  SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN,
 		  -1, 0xFF,
-		  SC_PKCS15_CO_FLAG_PRIVATE },
-		{ NULL, NULL, NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+		  SC_PKCS15_CO_FLAG_PRIVATE, 0},
+
+		/* only used with minidriver */
+		{ "03", "PIN", "", 0x80,
+		  /* used in minidriver as the sign key and for 9C key */
+		  /* label, flag  and ref will change if using global pin */
+		  SC_PKCS15_PIN_TYPE_ASCII_NUMERIC,
+		  8, 4, 8,
+		  SC_PKCS15_PIN_FLAG_NEEDS_PADDING |
+		  SC_PKCS15_PIN_FLAG_INITIALIZED |
+		  SC_PKCS15_PIN_FLAG_LOCAL,
+		  -1, 0xFF,
+		  SC_PKCS15_CO_FLAG_PRIVATE, 1}, /* only use if cardmod */
+		{ NULL, NULL, NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 	};
 	// clang-format on
 
@@ -540,7 +554,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 					SC_PKCS15_PRKEY_USAGE_NONREPUDIATION,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_SIGN |
 					SC_PKCS15_PRKEY_USAGE_NONREPUDIATION,
-			"", 0x9C, "01", SC_PKCS15_CO_FLAG_PRIVATE, 1},
+			"", 0x9C, "01", SC_PKCS15_CO_FLAG_PRIVATE, 1}, /* use sign pin and user_consent */
 		{ "03", "KEY MAN key",
 				/*RSA*/SC_PKCS15_PRKEY_USAGE_DECRYPT | SC_PKCS15_PRKEY_USAGE_UNWRAP,
 				/*EC*/SC_PKCS15_PRKEY_USAGE_DERIVE,
@@ -952,6 +966,10 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		const char * label;
 		int pin_ref;
 
+		/* the SignPIN is only used with minidriver */
+		if (pins[i].cardmod && (strcmp(card->ctx->app_name, "cardmod") != 0))
+			continue;
+
 		memset(&pin_info, 0, sizeof(pin_info));
 		memset(&pin_obj,  0, sizeof(pin_obj));
 
@@ -968,17 +986,17 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		sc_format_path(pins[i].path, &pin_info.path);
 
 		label = pins[i].label;
-		if (i == 0 &&
+		if ((i == 0 || pins[i].cardmod) &&
 			sc_card_ctl(card, SC_CARDCTL_PIV_PIN_PREFERENCE,
 					&pin_ref) == 0 &&
 				pin_ref == 0x00) { /* must be 80 for PIV pin, or 00 for Global PIN */
 			pin_info.attrs.pin.reference = pin_ref;
-			pin_info.attrs.pin.flags &= ~SC_PKCS15_PIN_FLAG_LOCAL;
 			label = "Global PIN";
 		}
+
 		strncpy(pin_obj.label, label, SC_PKCS15_MAX_LABEL_SIZE - 1);
 		pin_obj.flags = pins[i].obj_flags;
-		if (i == 0 && pin_info.attrs.pin.reference == 0x80) {
+		if ((i == 0 || pins[i].cardmod)) {
 			/*
 			 * according to description of "RESET RETRY COUNTER"
 			 * command in specs PUK can only unblock PIV PIN
@@ -1015,7 +1033,6 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		strncpy(pubkey_obj.label, pubkeys[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
 
 		pubkey_obj.flags = pubkeys[i].obj_flags;
-
 
 		if (pubkeys[i].auth_id)
 			sc_pkcs15_format_id(pubkeys[i].auth_id, &pubkey_obj.auth_id);
@@ -1168,6 +1185,10 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 
 		if (prkeys[i].auth_id)
 			sc_pkcs15_format_id(prkeys[i].auth_id, &prkey_obj.auth_id);
+
+		/* If using minidriver, use Sign PIN  for 9C key */
+		if (prkey_obj.user_consent && (strcmp(card->ctx->app_name, "cardmod") == 0))
+			sc_pkcs15_format_id("03", &prkey_obj.auth_id);
 
 		/*
 		 * When no cert is present and a pubkey in a file was found,
