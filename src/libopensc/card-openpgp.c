@@ -2903,6 +2903,9 @@ pgp_parse_and_set_pubkey_output(sc_card_t *card, u8* data, size_t data_len,
 
 		/* RSA modulus */
 		if (tag == 0x0081) {
+			if (key_info->algorithm != SC_OPENPGP_KEYALGO_RSA) {
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
+			}
 			if ((BYTES4BITS(key_info->u.rsa.modulus_len) < len)  /* modulus_len is in bits */
 				|| key_info->u.rsa.modulus == NULL) {
 
@@ -2918,6 +2921,9 @@ pgp_parse_and_set_pubkey_output(sc_card_t *card, u8* data, size_t data_len,
 		}
 		/* RSA public exponent */
 		else if (tag == 0x0082) {
+			if (key_info->algorithm != SC_OPENPGP_KEYALGO_RSA) {
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
+			}
 			if ((BYTES4BITS(key_info->u.rsa.exponent_len) < len)  /* exponent_len is in bits */
 				|| key_info->u.rsa.exponent == NULL) {
 
@@ -2933,6 +2939,10 @@ pgp_parse_and_set_pubkey_output(sc_card_t *card, u8* data, size_t data_len,
 		}
 		/* ECC public key */
 		else if (tag == 0x0086) {
+			if (key_info->algorithm != SC_OPENPGP_KEYALGO_ECDSA &&
+					key_info->algorithm != SC_OPENPGP_KEYALGO_ECDH) {
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
+			}
 			/* set the output data */
 			/* len is ecpoint length + format byte
 			 * see section 7.2.14 of 3.3.1 specs */
