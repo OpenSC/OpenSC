@@ -2781,14 +2781,21 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 	/* update the blob containing fingerprints (00C5) */
 	sc_log(card->ctx, "Updating fingerprint blob 00C5.");
 	fpseq_blob = pgp_find_blob(card, 0x00C5);
-	if (fpseq_blob == NULL)
-		LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot find blob 00C5");
+	if (fpseq_blob == NULL) {
+		r = SC_ERROR_OUT_OF_MEMORY;
+		LOG_TEST_GOTO_ERR(card->ctx, r, "Cannot find blob 00C5");
+	}
+	if (20 * key_info->key_id > fpseq_blob->len) {
+		r = SC_ERROR_OBJECT_NOT_VALID;
+		LOG_TEST_GOTO_ERR(card->ctx, r, "The 00C5 blob is not large enough");
+	}
 
 	/* save the fingerprints sequence */
 	newdata = malloc(fpseq_blob->len);
-	if (newdata == NULL)
-		LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_OUT_OF_MEMORY,
-			"Not enough memory to update fingerprint blob 00C5");
+	if (newdata == NULL) {
+		r = SC_ERROR_OUT_OF_MEMORY;
+		LOG_TEST_GOTO_ERR(card->ctx, r, "Not enough memory to update fingerprint blob 00C5");
+	}
 
 	memcpy(newdata, fpseq_blob->data, fpseq_blob->len);
 	/* move p to the portion holding the fingerprint of the current key */
