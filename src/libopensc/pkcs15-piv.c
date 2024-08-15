@@ -900,6 +900,8 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 				break;
 
 			case SC_ALGORITHM_EC:
+			case SC_ALGORITHM_EDDSA:
+			case SC_ALGORITHM_XEDDSA:
 				ckis[i].pubkey_len = cert_out->key->u.ec.params.field_length;
 				if (ckis[i].cert_keyUsage_present) {
 					if (ckis[i].cert_keyUsage & SC_X509_DIGITAL_SIGNATURE) {
@@ -1099,7 +1101,9 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 					ckis[i].pubkey_from_file = 1;
 					break;
 				case SC_ALGORITHM_EC:
-					ckis[i].key_alg = SC_ALGORITHM_EC;
+				case SC_ALGORITHM_EDDSA:
+				case SC_ALGORITHM_XEDDSA:
+					ckis[i].key_alg = p15_key->algorithm;
 					ckis[i].pubkey_len = p15_key->u.ec.params.field_length;
 					ckis[i].pubkey_found = 1;
 					ckis[i].pubkey_from_file = 1;
@@ -1138,6 +1142,8 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 				ckis[i].pubkey_found = 1;
 				break;
 			case SC_ALGORITHM_EC:
+			case SC_ALGORITHM_EDDSA:
+			case SC_ALGORITHM_XEDDSA:
 				if (ckis[i].cert_keyUsage_present) {
 					pubkey_info.usage = ckis[i].pub_usage;
 				} else {
@@ -1148,7 +1154,14 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 				strncpy(pubkey_obj.label, pubkeys[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
 
 				/* should not fail */
-				r = sc_pkcs15emu_add_ec_pubkey(p15card, &pubkey_obj, &pubkey_info);
+
+				if (ckis[i].key_alg == SC_ALGORITHM_EDDSA)
+					r = sc_pkcs15emu_add_eddsa_pubkey(p15card, &pubkey_obj, &pubkey_info);
+				else if (ckis[i].key_alg == SC_ALGORITHM_XEDDSA)
+					r = sc_pkcs15emu_add_xeddsa_pubkey(p15card, &pubkey_obj, &pubkey_info);
+				else
+					r = sc_pkcs15emu_add_ec_pubkey(p15card, &pubkey_obj, &pubkey_info);
+
 				LOG_TEST_GOTO_ERR(card->ctx, r, "Failed to add EC pubkey");
 
 				ckis[i].pubkey_found = 1;
@@ -1219,6 +1232,8 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 				r = sc_pkcs15emu_add_rsa_prkey(p15card, &prkey_obj, &prkey_info);
 				break;
 			case SC_ALGORITHM_EC:
+			case SC_ALGORITHM_EDDSA:
+			case SC_ALGORITHM_XEDDSA:
 				if (ckis[i].cert_keyUsage_present) {
 					prkey_info.usage  |= ckis[i].priv_usage;
 					/* If retired key and non gov cert has NONREPUDIATION, treat as user_consent */
@@ -1231,7 +1246,13 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 				prkey_info.field_length = ckis[i].pubkey_len;
 				sc_log(card->ctx, "DEE added key_alg %2.2lx prkey_obj.flags %8.8x",
 					 ckis[i].key_alg, prkey_obj.flags);
-				r = sc_pkcs15emu_add_ec_prkey(p15card, &prkey_obj, &prkey_info);
+
+				if (ckis[i].key_alg == SC_ALGORITHM_EDDSA)
+					r = sc_pkcs15emu_add_eddsa_prkey(p15card, &prkey_obj, &prkey_info);
+				else if (ckis[i].key_alg == SC_ALGORITHM_XEDDSA)
+					r = sc_pkcs15emu_add_xeddsa_prkey(p15card, &prkey_obj, &prkey_info);
+				else
+					r = sc_pkcs15emu_add_ec_prkey(p15card, &prkey_obj, &prkey_info);
 				break;
 			default:
 				sc_log(card->ctx, "Unsupported key_alg %lu", ckis[i].key_alg);
