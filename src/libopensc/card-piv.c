@@ -3,7 +3,7 @@
  * card-default.c: Support for cards with no driver
  *
  * Copyright (C) 2001, 2002  Juha Yrjölä <juha.yrjola@iki.fi>
- * Copyright (C) 2005-2023  Douglas E. Engert <deengert@gmail.com>
+ * Copyright (C) 2005-2024  Douglas E. Engert <deengert@gmail.com>
  * Copyright (C) 2006, Identity Alliance, Thomas Harning <thomas.harning@identityalliance.com>
  * Copyright (C) 2007, EMC, Russell Larner <rlarner@rsa.com>
  *
@@ -39,7 +39,7 @@
 #endif
 
 #ifdef ENABLE_OPENSSL
-	/* openssl needed for card administration and SM */
+/* openssl needed for card administration and SM */
 #include <openssl/evp.h>
 #include <openssl/pem.h>
 #include <openssl/rand.h>
@@ -544,10 +544,13 @@ static const struct sc_atr_table piv_atrs[] = {
 static struct piv_supported_ec_curves {
 	struct sc_object_id oid;
 	size_t size;
+	unsigned int key_type;
 } ec_curves[] = {
-	{{{1, 2, 840, 10045, 3, 1, 7, -1}},     256}, /* secp256r1, nistp256, prime256v1, ansiX9p256r1 */
-	{{{1, 3, 132, 0, 34, -1}},              384}, /* secp384r1, nistp384, prime384v1, ansiX9p384r1 */
-	{{{-1}}, 0} /* This entry must not be touched. */
+		{{{1, 2, 840, 10045, 3, 1, 7, -1}}, 256, SC_ALGORITHM_EC	}, /* secp256r1, nistp256, prime256v1, ansiX9p256r1 */
+		{{{1, 3, 132, 0, 34, -1}},	   384, SC_ALGORITHM_EC    }, /* secp384r1, nistp384, prime384v1, ansiX9p384r1 */
+		{{{1, 3, 101, 112, -1}},		 255, SC_ALGORITHM_EDDSA }, /* RFC8410 OID equivalent to ed25519 */
+		{{{1, 3, 101, 110, -1}},		 255, SC_ALGORITHM_XEDDSA}, /* RFC8410 OID equivalent to curve25519 */
+		{{{-1}},			    0,   0		     }  /* This entry must not be touched. */
 };
 
 /* all have same AID */
@@ -573,6 +576,8 @@ static struct piv_aid piv_aids[] = {
 #define CI_NO_RSA2048			    0x00010000U /* does not have RSA 2048 */
 #define CI_NO_EC384			    0x00020000U /* does not have EC 384 */
 #define CI_NO_EC			    0x00040000U /* No EC at all */
+#define CI_RSA_4096			    0x00080000U /* Card supports rsa 4096 */
+#define CI_25519			    0x00100000U /* Card supports ED25519 and X25519 */
 
 /*
  * Flags in the piv_object:
@@ -2720,12 +2725,21 @@ static int piv_generate_key(sc_card_t *card,
 		case 0x05: keydata->key_bits = 3072; break;
 		case 0x06: keydata->key_bits = 1024; break;
 		case 0x07: keydata->key_bits = 2048; break;
+		case 0x16:
+			keydata->key_bits = 4096;
+			break;
 		case 0x11: keydata->key_bits = 0;
-			keydata->ecparam = 0; /* we only support prime256v1 for 11 */
+			keydata->ecparam = 0; /* we only support prime256v1 */
 			keydata->ecparam_len =0;
 			break;
 		case 0x14: keydata->key_bits = 0;
 			keydata->ecparam = 0; /* we only support secp384r1 */
+			keydata->ecparam_len = 0;
+			break;
+		case 0xE0:
+		case 0xE1:
+			keydata->key_bits = 0;
+			keydata->ecparam = 0;
 			keydata->ecparam_len = 0;
 			break;
 		default:
@@ -2780,8 +2794,11 @@ static int piv_generate_key(sc_card_t *card,
 				keydata->pubkey_len = taglen;
 				memcpy (keydata->pubkey, tag, taglen);
 			}
-		}
-		else { /* must be EC */
+			//		} else if (keydata->key_algid == 0xE0 || keydata->key_algid == 0xE1) {
+			//			/* TODO DEE need to look at what gets returned */
+			/* TODO assume same as EC with tag 86 */
+
+		} else { /* must be EC */
 			tag = sc_asn1_find_tag(card->ctx, cp, in_len, 0x86, &taglen);
 			if (tag != NULL && taglen > 0) {
 				keydata->ecpoint = malloc(taglen);
@@ -2793,7 +2810,8 @@ static int piv_generate_key(sc_card_t *card,
 		}
 
 		/* TODO: -DEE Could add key to cache so could use engine to generate key,
-		 * and sign req in single operation */
+		 * and sign req in single operation or write temporary selfsigned
+		 * certificate with new public key */
 		r = 0;
 	}
 
@@ -4512,6 +4530,12 @@ piv_set_security_env(sc_card_t *card, const sc_security_env_t *env, int se_num)
 			}
 		} else
 			r = SC_ERROR_NO_CARD_SUPPORT;
+	} else if (env->algorithm == SC_ALGORITHM_EDDSA) {
+		priv->alg_id = 0xE0;
+		priv->key_size = 255;
+	} else if (env->algorithm == SC_ALGORITHM_XEDDSA) {
+		priv->alg_id = 0xE1;
+		priv->key_size = 255;
 	} else
 		r = SC_ERROR_NO_CARD_SUPPORT;
 	priv->key_ref = env->key_ref[0];
@@ -4541,6 +4565,7 @@ static int piv_validate_general_authentication(sc_card_t *card,
 	unsigned int cla, tag;
 	unsigned int real_alg_id, op_tag;
 
+	/* TODO check for 4096 keys */
 	u8 sbuf[4096]; /* needs work. for 3072 keys, needs 384+10 or so */
 	size_t sbuflen = sizeof(sbuf);
 	u8 rbuf[4096];
@@ -4561,6 +4586,7 @@ static int piv_validate_general_authentication(sc_card_t *card,
 	}
 	if (priv->operation == SC_SEC_OPERATION_DERIVE
 			&& priv->algorithm == SC_ALGORITHM_EC) {
+		/* TODO add code for X25519 */
 		op_tag = 0x85;
 	} else {
 		op_tag = 0x81;
@@ -4583,11 +4609,14 @@ static int piv_validate_general_authentication(sc_card_t *card,
 			case 128: real_alg_id = 0x06; break;
 			case 256: real_alg_id = 0x07; break;
 			case 384: real_alg_id = 0x05; break;
+			case 512:
+				real_alg_id = 0x16;
+				break;
 			default:
 				SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_NO_CARD_SUPPORT);
 		}
 	}
-	/* EC alg_id was already set */
+	/* EC and ED alg_id was already set */
 
 	r = piv_general_io(card, 0x87, real_alg_id, priv->key_ref,
 			sbuf, p - sbuf, rbuf, sizeof rbuf);
@@ -4649,6 +4678,18 @@ piv_compute_signature(sc_card_t *card, const u8 * data, size_t datalen,
 			goto err;
 
 		r = sc_asn1_decode_ecdsa_signature(card->ctx, rbuf, r, nLen, &out, outlen);
+		/* Yubikey 5.7.x supports ED25519 */
+	} else if (priv->alg_id == 0xE0) {
+		nLen = (priv->key_size + 7) / 8;
+		if (outlen < nLen) {
+			sc_log(card->ctx,
+					" output too small for ED signature %" SC_FORMAT_LEN_SIZE_T "u < %" SC_FORMAT_LEN_SIZE_T "u",
+					outlen, nLen);
+			r = SC_ERROR_INVALID_DATA;
+			goto err;
+		}
+		r = piv_validate_general_authentication(card, data, datalen, out, outlen);
+
 	} else { /* RSA is all set */
 		r = piv_validate_general_authentication(card, data, datalen, out, outlen);
 	}
@@ -5500,7 +5541,7 @@ static int piv_match_card_continued(sc_card_t *card)
 			apdu.resplen = sizeof(yubico_version_buf);
 			apdu.le = apdu.resplen;
 			r2 = sc_transmit_apdu(card, &apdu); /* on error yubico_version == 0 */
-			if (r2 >= 3) {
+			if (apdu.resplen == 3) {
 				priv->yubico_version = (yubico_version_buf[0]<<16) | (yubico_version_buf[1] <<8) | yubico_version_buf[2];
 				sc_log(card->ctx, "Yubico card->type=%d, r=0x%08x version=0x%08x", card->type, r, priv->yubico_version);
 			}
@@ -5615,6 +5656,9 @@ static int piv_match_card_continued(sc_card_t *card)
 				| CI_LEAKS_FILE_NOT_FOUND;
 			if (priv->yubico_version  < 0x00040302)
 				priv->card_issues |= CI_VERIFY_LC0_FAIL;
+			/* TODO may need to relocate when I get card to test */
+			if (priv->yubico_version >= 0x00050700)
+				priv->card_issues |= CI_RSA_4096 | CI_25519;
 			break;
 
 		case SC_CARD_TYPE_PIV_II_GI_DE:
@@ -5698,6 +5742,8 @@ static int piv_init(sc_card_t *card)
 	int r = 0;
 	piv_private_data_t * priv = PIV_DATA(card);
 	unsigned long flags;
+	unsigned long flags_eddsa;
+	unsigned long flags_xeddsa;
 	unsigned long ext_flags;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
@@ -5746,15 +5792,28 @@ static int piv_init(sc_card_t *card)
 	_sc_card_add_rsa_alg(card, 1024, flags, 0); /* mandatory */
 	_sc_card_add_rsa_alg(card, 2048, flags, 0); /* optional */
 	_sc_card_add_rsa_alg(card, 3072, flags, 0); /* optional */
+	if (priv->card_issues & CI_RSA_4096)
+		_sc_card_add_rsa_alg(card, 4096, flags, 0); /* some Yubikeys support this */
 
 	if (!(priv->card_issues & CI_NO_EC)) {
 		int i;
 		flags = SC_ALGORITHM_ECDSA_RAW | SC_ALGORITHM_ECDH_CDH_RAW | SC_ALGORITHM_ECDSA_HASH_NONE;
 		ext_flags = SC_ALGORITHM_EXT_EC_NAMEDCURVE | SC_ALGORITHM_EXT_EC_UNCOMPRESES;
+		flags_eddsa = SC_ALGORITHM_EDDSA_RAW;
+		flags_xeddsa = SC_ALGORITHM_XEDDSA_RAW;
 
 		for (i = 0; ec_curves[i].oid.value[0] >= 0; i++) {
-			if (!(priv->card_issues & CI_NO_EC384 && ec_curves[i].size == 384))
-				_sc_card_add_ec_alg(card, ec_curves[i].size, flags, ext_flags, &ec_curves[i].oid);
+			if (ec_curves[i].key_type == SC_ALGORITHM_EC) {
+				if (!(priv->card_issues & CI_NO_EC384 && ec_curves[i].size == 384))
+					_sc_card_add_ec_alg(card, ec_curves[i].size, flags, ext_flags, &ec_curves[i].oid);
+
+			} else if (priv->card_issues & CI_25519) {
+				if (ec_curves[i].key_type == SC_ALGORITHM_EDDSA) {
+					_sc_card_add_eddsa_alg(card, ec_curves[i].size, flags_eddsa, ext_flags, &ec_curves[i].oid);
+				} else if (ec_curves[i].key_type == SC_ALGORITHM_XEDDSA) {
+					_sc_card_add_xeddsa_alg(card, ec_curves[i].size, flags_xeddsa, ext_flags, &ec_curves[i].oid);
+				}
+			}
 		}
 	}
 
