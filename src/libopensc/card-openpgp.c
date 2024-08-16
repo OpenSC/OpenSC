@@ -2785,7 +2785,7 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 		r = SC_ERROR_OUT_OF_MEMORY;
 		LOG_TEST_GOTO_ERR(card->ctx, r, "Cannot find blob 00C5");
 	}
-	if (20 * key_info->key_id > fpseq_blob->len) {
+	if (20U * key_info->key_id > fpseq_blob->len) {
 		r = SC_ERROR_OBJECT_NOT_VALID;
 		LOG_TEST_GOTO_ERR(card->ctx, r, "The 00C5 blob is not large enough");
 	}
