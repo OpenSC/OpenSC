@@ -2961,6 +2961,7 @@ pgp_parse_and_set_pubkey_output(sc_card_t *card, u8* data, size_t data_len,
 					LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
 			}
 			memcpy(key_info->u.ec.ecpoint, part + 1, len - 1);
+			key_info->u.ec.ecpoint_len = len - 1;
 		}
 
 		/* go to next part to parse */
