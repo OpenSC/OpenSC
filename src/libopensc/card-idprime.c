@@ -441,11 +441,16 @@ static int idprime_process_index(sc_card_t *card, idprime_private_data_t *priv, 
 
 			container = (idprime_container_t *) list_seek(&priv->containers, &cert_id);
 			if (!container) {
-				/* Object is added, but missing private key */
+				/* Container map missing container with certificate ID */
 				sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "No corresponding container with private key found for certificate with id=%d", cert_id);
-				sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Adding certificate with fd=%d", new_object.fd);
-				idprime_add_object_to_list(&priv->pki_list, &new_object);
-				continue;
+				if (card->type != SC_CARD_TYPE_IDPRIME_940) {
+					/* For cards other than the 940, we don't know how to recognize
+					certificates missing keys other than to check
+					that there is a corresponding entry in the container map.*/
+					sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Adding certificate with fd=%d", new_object.fd);
+					idprime_add_object_to_list(&priv->pki_list, &new_object);
+					continue;
+				}
 			}
 
 			switch (card->type) {
@@ -461,7 +466,10 @@ static int idprime_process_index(sc_card_t *card, idprime_private_data_t *priv, 
 			case SC_CARD_TYPE_IDPRIME_940: {
 					idprime_keyref_t *keyref = (idprime_keyref_t *) list_seek(&priv->keyrefmap, &cert_id);
 					if (!keyref) {
-						sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "No corresponding key reference found for certificate with id=%d, skipping", cert_id);
+						/* Key reference file does not contain record of the key for given certificate */
+						sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "No corresponding key reference found for certificate with id=%d", cert_id);
+						sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Adding certificate with fd=%d", new_object.fd);
+						idprime_add_object_to_list(&priv->pki_list, &new_object);
 						continue;
 					}
 					new_object.key_reference = keyref->key_reference;
@@ -476,8 +484,14 @@ static int idprime_process_index(sc_card_t *card, idprime_private_data_t *priv, 
 				break;
 			}
 			new_object.valid_key_ref = 1;
-			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Found certificate with fd=%d, key_ref=%d corresponding to container \"%s\"",
-				new_object.fd, new_object.key_reference, container->guid);
+			if (container != NULL) {
+				sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Found certificate with fd=%d, key_ref=%d corresponding to container \"%s\"",
+					new_object.fd, new_object.key_reference, container->guid);
+			} else {
+				sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Found certificate with fd=%d, key_ref=%d without corresponding container",
+					new_object.fd, new_object.key_reference);
+			}
+
 			idprime_add_object_to_list(&priv->pki_list, &new_object);
 
 		/* This looks like non-standard extension listing pkcs11 token info label in my card */
