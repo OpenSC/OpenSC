@@ -574,7 +574,7 @@ static int idprime_init(sc_card_t *card)
 		LOG_FUNC_RETURN(card->ctx, r);
 	}
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Index file found");
+	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Container file found");
 
 	r = idprime_process_containermap(card, priv, r);
 	if (r != SC_SUCCESS) {
