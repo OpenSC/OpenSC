@@ -738,10 +738,12 @@ sc_pkcs15_encode_pubkey_eddsa(sc_context_t *ctx, struct sc_pkcs15_pubkey_ec *key
 		u8 **buf, size_t *buflen)
 {
 	struct sc_asn1_entry asn1_eddsa_pubkey[C_ASN1_EDDSA_PUBKEY_SIZE];
+	size_t key_len;
 
 	LOG_FUNC_CALLED(ctx);
+	key_len = key->ecpointQ.len * 8; /* in bits */
 	sc_copy_asn1_entry(c_asn1_eddsa_pubkey, asn1_eddsa_pubkey);
-	sc_format_asn1_entry(asn1_eddsa_pubkey + 0, key->ecpointQ.value, &key->ecpointQ.len, 1);
+	sc_format_asn1_entry(asn1_eddsa_pubkey + 0, key->ecpointQ.value, &key_len, 1);
 
 	LOG_FUNC_RETURN(ctx,
 			sc_asn1_encode(ctx, asn1_eddsa_pubkey, buf, buflen));
@@ -1390,7 +1392,16 @@ sc_pkcs15_pubkey_from_spki_fields(struct sc_context *ctx, struct sc_pkcs15_pubke
 		pubkey->u.ec.ecpointQ.len = pk.len;
 	} else if (pk_alg.algorithm == SC_ALGORITHM_EDDSA ||
 		   pk_alg.algorithm == SC_ALGORITHM_XEDDSA) {
-		/* EDDSA/XEDDSA public key is not encapsulated into BIT STRING -- it's a BIT STRING */
+		/* 
+		 * SPKI will have OID, EDDSA can have ED25519 or ED448 with different sizes 
+		 * EDDSA/XEDDSA public key is not encapsulated into BIT STRING -- it's a BIT STRING
+		 * no params, but oid is the params.
+		 */
+		r = sc_encode_oid(ctx, &pk_alg.oid, &pubkey->u.ec.params.der.value, &pubkey->u.ec.params.der.len);
+		LOG_TEST_GOTO_ERR(ctx, r, "failed to encode (X)EDDSA oid");
+		r = sc_pkcs15_fix_ec_parameters(ctx, &pubkey->u.ec.params);
+		LOG_TEST_GOTO_ERR(ctx, r, "failed to fix EC parameters");
+
 		pubkey->u.ec.ecpointQ.value = malloc(pk.len);
 		memcpy(pubkey->u.ec.ecpointQ.value, pk.value, pk.len);
 		pubkey->u.ec.ecpointQ.len = pk.len;
