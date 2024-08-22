@@ -86,6 +86,7 @@ static struct sc_card_driver pgp_drv = {
 	NULL, 0, NULL
 };
 
+// clang-format off
 static pgp_ec_curves_t ec_curves_openpgp34[] = {
 	/* OpenPGP 3.4+ Ed25519 and Curve25519 */
 		{{{1, 3, 6, 1, 4, 1, 3029, 1, 5, 1, -1}}, 255, SC_ALGORITHM_XEDDSA}, /* curve25519 for encryption => CKK_EC_MONTGOMERY */
@@ -106,6 +107,7 @@ static pgp_ec_curves_alt_t ec_curves_alt[] = {
 		{{{1, 3, 6, 1, 4, 1, 11591, 15, 1, -1}},  {{1, 3, 101, 112, -1}}, 255}, /* ed25519 CKK_EC_EDWARDS Ed25519 */
 		{{{-1}},				  {{-1}},		  0  }	/* This entry must not be touched. */
 };
+
 #endif /* ENABLE_OPENSSL */
 
 static pgp_ec_curves_t *ec_curves_openpgp = ec_curves_openpgp34 + 2;
@@ -114,12 +116,13 @@ struct sc_object_id curve25519_oid = {{1, 3, 6, 1, 4, 1, 3029, 1, 5, 1, -1}};
 
 /* Gnuk supports NIST, SECG and Curve25519 since version 1.2 */
 static pgp_ec_curves_t ec_curves_gnuk[] = {
-		{{{1, 2, 840, 10045, 3, 1, 7, -1}},	256, SC_ALGORITHM_EC}, /* ansiX9p256r1 */
-		{{{1, 3, 132, 0, 10, -1}},		256, SC_ALGORITHM_EC}, /* secp256k1 */
+		{{{1, 2, 840, 10045, 3, 1, 7, -1}},	  256, SC_ALGORITHM_EC},     /* ansiX9p256r1 */
+		{{{1, 3, 132, 0, 10, -1}},		  256, SC_ALGORITHM_EC},     /* secp256k1 */
 		{{{1, 3, 6, 1, 4, 1, 3029, 1, 5, 1, -1}}, 255, SC_ALGORITHM_XEDDSA}, /* curve25519 for encryption => CKK_EC_MONTGOMERY */
-		{{{1, 3, 6, 1, 4, 1, 11591, 15, 1, -1}}, 255, SC_ALGORITHM_EDDSA}, /* ed25519 for signatures => CKK_EC_EDWARDS */
-		{{{-1}},				 0, 0}	/* This entry must not be touched. */
+		{{{1, 3, 6, 1, 4, 1, 11591, 15, 1, -1}},  255, SC_ALGORITHM_EDDSA},  /* ed25519 for signatures => CKK_EC_EDWARDS */
+		{{{-1}},				  0,   0}		     /* This entry must not be touched. */
 };
+// clang-format on
 
 /*
  * The OpenPGP card doesn't have a file system, instead everything
@@ -2585,10 +2588,9 @@ pgp_update_new_algo_attr(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 		}
 
-		pgp_set_blob(algo_blob, data, data_len);
+		r = pgp_put_data(card, tag, data, data_len);
+		/* Note: pgp_put_data calls pgp_set_blob */
 		free(data);
-		r = pgp_put_data(card, tag, algo_blob->data, data_len);
-		/* Note: Don't use pgp_set_blob to set data, because it won't touch the real DO */
 		LOG_TEST_RET(card->ctx, r, "Cannot set new algorithm attributes");
 	} else {
 		sc_cardctl_openpgp_keygen_info_t old_key_info;
@@ -2693,8 +2695,9 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 
 	}
 	/* ECC */
-	else if (key_info->algorithm == SC_OPENPGP_KEYALGO_ECDH
-		|| key_info->algorithm == SC_OPENPGP_KEYALGO_ECDSA) {
+	else if (key_info->algorithm == SC_OPENPGP_KEYALGO_ECDH || /* also includes XEDDSA */
+		 key_info->algorithm == SC_OPENPGP_KEYALGO_ECDSA ||
+		 key_info->algorithm == SC_OPENPGP_KEYALGO_EDDSA) {
 		if (key_info->u.ec.ecpoint == NULL || (key_info->u.ec.ecpoint_len) == 0) {
 			sc_log(card->ctx, "Error: ecpoint required!");
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
@@ -2707,7 +2710,7 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 				+ 1   /* algorithm */
 				+ 1   /* oid len */
 				+ (key_info->u.ec.oid_len) /* oid */
-				+ (key_info->u.ec.ecpoint_len); /* ecpoint */
+				+ BYTES4BITS(key_info->u.ec.ecpoint_len); /* ecpoint */
 
 		/* KDF parameters for ECDH */
 		if (key_info->algorithm == SC_OPENPGP_KEYALGO_ECDH) {
@@ -2757,9 +2760,9 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 		memcpy(p, key_info->u.rsa.exponent, bytes_length);
 	}
 	/* ECC */
-	else if (key_info->algorithm == SC_OPENPGP_KEYALGO_ECDH
-		|| key_info->algorithm == SC_OPENPGP_KEYALGO_ECDSA
-		|| key_info->algorithm == SC_OPENPGP_KEYALGO_EDDSA) {
+	else if (key_info->algorithm == SC_OPENPGP_KEYALGO_ECDH || /* includes XEDDSA */
+			key_info->algorithm == SC_OPENPGP_KEYALGO_ECDSA ||
+			key_info->algorithm == SC_OPENPGP_KEYALGO_EDDSA) {
 		/* Algorithm ID, see https://tools.ietf.org/html/rfc6637#section-5 */
 		*p = key_info->algorithm + 6;
 		p += 1;
@@ -2767,13 +2770,13 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 		p += 1;
 		memcpy(p, key_info->u.ec.oid.value, key_info->u.ec.oid_len);
 		p += key_info->u.ec.oid_len;
-		memcpy(p, key_info->u.ec.ecpoint, key_info->u.ec.ecpoint_len);
+		memcpy(p, key_info->u.ec.ecpoint, BYTES4BITS(key_info->u.ec.ecpoint_len));
 
 		/* KDF parameters for ECDH */
 		if (key_info->algorithm == SC_OPENPGP_KEYALGO_ECDH) {
 			/* https://tools.ietf.org/html/rfc6637#section-8
 			 * This is copied from GnuPG's ecdh_params() function in app-openpgp.c */
-			p += key_info->u.ec.ecpoint_len;
+			p += BYTES4BITS(key_info->u.ec.ecpoint_len);
 			*p = 0x03; /* number of bytes following */
 			p += 1;
 			*p = 0x01; /* version of this format */
@@ -2882,10 +2885,12 @@ pgp_update_pubkey_blob(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *key_in
 		p15pubkey.u.rsa.exponent.len  = BYTES4BITS(key_info->u.rsa.exponent_len);
 	}
 	/* ECC */
-	else if (key_info->algorithm == SC_OPENPGP_KEYALGO_ECDH
-			|| key_info->algorithm == SC_OPENPGP_KEYALGO_ECDSA){
+	/* TODO FIXME? */
+	else if (key_info->algorithm == SC_OPENPGP_KEYALGO_ECDH || /* includes XEDDSA */
+			key_info->algorithm == SC_OPENPGP_KEYALGO_ECDSA ||
+			key_info->algorithm == SC_OPENPGP_KEYALGO_EDDSA) {
 		memset(&p15pubkey, 0, sizeof(p15pubkey));
-		p15pubkey.algorithm = SC_ALGORITHM_EC;
+		p15pubkey.algorithm = key_info->key_type;
 		p15pubkey.u.ec.ecpointQ.value = key_info->u.ec.ecpoint;
 		p15pubkey.u.ec.ecpointQ.len = BYTES4BITS(key_info->u.ec.ecpoint_len);
 	}
@@ -2979,10 +2984,27 @@ pgp_parse_and_set_pubkey_output(sc_card_t *card, u8* data, size_t data_len,
 				LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
 			}
 			/* set the output data */
-			/* len is ecpoint length + format byte
-			 * see section 7.2.14 of 3.3.1 specs */
-			if ((key_info->u.ec.ecpoint_len) != (len - 1)
-				|| key_info->u.ec.ecpoint == NULL) {
+			/* EC is in 04||x||y format 
+			 * (field_length + 7)/8 * 2 + 1 in bytes
+			 * len is ecpoint length + format byte
+			 * see section 7.2.14 of 3.3.1 specs
+			 * EDDSA and XEDDSA have no format byte and one number
+			 * (field_length + 7)/8 in bytes
+			 */
+			switch(key_info->key_type) {
+			case SC_ALGORITHM_EC:
+				len = 1 + BYTES4BITS((key_info->u.ec.ecpoint_len * 2));
+				break;
+			case SC_ALGORITHM_EDDSA:
+			case SC_ALGORITHM_XEDDSA:
+				len = BYTES4BITS(key_info->u.ec.ecpoint_len);
+				break;
+			default:
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
+			}
+
+			/* FIXME is this redundent? */
+			if (key_info->u.ec.ecpoint  == NULL || len != BYTES4BITS(key_info->u.ec.ecpoint_len)) {
 				free(key_info->u.ec.ecpoint);
 				key_info->u.ec.ecpoint = malloc(len);
 				if (key_info->u.ec.ecpoint == NULL)
@@ -3023,6 +3045,7 @@ pgp_update_card_algorithms(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *ke
 	/* protect incompatible cards against non-RSA */
 	if (key_info->algorithm != SC_OPENPGP_KEYALGO_RSA
 		&& priv->bcd_version < OPENPGP_CARD_3_0)
+		/* TODO GUNK needs test here? */
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 
 	if (id > card->algorithm_count) {
@@ -3039,8 +3062,10 @@ pgp_update_card_algorithms(sc_card_t *card, sc_cardctl_openpgp_keygen_info_t *ke
 		algo->algorithm = SC_ALGORITHM_RSA;
 		algo->key_length = (unsigned int)key_info->u.rsa.modulus_len;
 	}
-	else if (key_info->algorithm == SC_OPENPGP_KEYALGO_ECDH
-		|| key_info->algorithm == SC_OPENPGP_KEYALGO_ECDSA) {
+	/* TODO FIXME */
+	else if (key_info->algorithm == SC_OPENPGP_KEYALGO_ECDH || /* includes XEDDSA */
+			key_info->algorithm == SC_OPENPGP_KEYALGO_ECDSA ||
+			key_info->algorithm == SC_OPENPGP_KEYALGO_EDDSA) {
 		algo->algorithm = SC_ALGORITHM_EC;
 		algo->key_length = (unsigned int)((key_info->u.ec.ecpoint_len));
 	}
@@ -3482,8 +3507,9 @@ pgp_store_key(sc_card_t *card, sc_cardctl_openpgp_keystore_info_t *key_info)
 			LOG_FUNC_RETURN(card->ctx,SC_ERROR_INVALID_ARGUMENTS);
 	}
 	/* ECC */
-	else if (key_info->algorithm == SC_OPENPGP_KEYALGO_ECDH
-		|| key_info->algorithm == SC_OPENPGP_KEYALGO_ECDSA){
+	else if (key_info->algorithm == SC_OPENPGP_KEYALGO_ECDSA ||
+			key_info->algorithm == SC_OPENPGP_KEYALGO_ECDH ||  /* includes XEDDSA */
+			key_info->algorithm == SC_OPENPGP_KEYALGO_EDDSA){
 		memset(&pubkey, 0, sizeof(pubkey));
 		pubkey.key_id = key_info->key_id;
 		pubkey.algorithm = key_info->algorithm;
