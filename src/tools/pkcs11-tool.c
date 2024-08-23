@@ -5241,9 +5241,13 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 			{CKA_KEY_TYPE,  &newkey_type,	sizeof(newkey_type) },
 			{CKA_SENSITIVE,	&_false,	sizeof(_false)      },
 			{CKA_EXTRACTABLE, &_true,	sizeof(_true)       },
+			{CKA_ENCRYPT, &_true,		sizeof(_true)       },
+			{CKA_DECRYPT, &_true,		sizeof(_true)       },
+			{CKA_WRAP, &_true,		sizeof(_true)       },
+			{CKA_UNWRAP, &_true,		sizeof(_true)       }
 	   };
 	// clang-format on
-	int n_attrs = 5;
+	int n_attrs = 9;
 	CK_ECDH1_DERIVE_PARAMS ecdh_parms;
 	CK_RV rv;
 	BIO *bio_in = NULL;
@@ -5254,8 +5258,8 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 	unsigned char * der = NULL;
 	unsigned char * derp = NULL;
 	size_t  der_size = 0;
-	EVP_PKEY *pkey = NULL;
-	int key_id = 0; /* nid of peer key */
+	EVP_PKEY *pkey = NULL; /* peer key */
+	int key_id = 0; /* nid of peer key must match nid of key */
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 	EC_KEY *eckey = NULL;
 	const EC_GROUP *ecgroup = NULL;
@@ -5285,9 +5289,11 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 		util_fatal("Cannot read peer EC key from %s", opt_input);
 
 	key_id = EVP_PKEY_id(pkey);
+	if (key_id == 0)
+		util_fatal("Unknown key type of peer key");
 
 	switch (key_id) {
-	case EVP_PKEY_EC: /* CKK_EC*/
+	case EVP_PKEY_EC: /* CKK_EC need to get curves of pkey and key */
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 		eckey = EVP_PKEY_get0_EC_KEY(pkey);
@@ -5305,26 +5311,37 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 		key_len = BYTES4BITS(EC_GROUP_get_degree(ecgroup));
 		FILL_ATTR(newkey_template[n_attrs], CKA_VALUE_LEN, &key_len, sizeof(key_len));
 		n_attrs++;
-		break;
-	}
 
-	if (opt_allowed_mechanisms_len > 0) {
-		FILL_ATTR(newkey_template[n_attrs],
-			CKA_ALLOWED_MECHANISMS, opt_allowed_mechanisms,
-			sizeof(CK_MECHANISM_TYPE) * opt_allowed_mechanisms_len);
-		n_attrs++;
-	}
+		if (opt_allowed_mechanisms_len > 0) {
+			FILL_ATTR(newkey_template[n_attrs],
+				CKA_ALLOWED_MECHANISMS, opt_allowed_mechanisms,
+				sizeof(CK_MECHANISM_TYPE) * opt_allowed_mechanisms_len);
+			n_attrs++;
+		}
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
-	switch (key_id) {
-	case EVP_PKEY_EC:
-		buf_size = EC_POINT_point2oct(ecgroup, ecpoint, POINT_CONVERSION_UNCOMPRESSED, NULL, 0, NULL);
+		buf_size = EC_POINT_point2oct(ecgroup, ecpoint, POINT_CONVERSION_UNCOMPRESSED, NULL,	    0, NULL);
 		buf = (unsigned char *)malloc(buf_size);
 		if (buf == NULL)
-			util_fatal("malloc() failure\n");
+		util_fatal("malloc() failure\n");
 		buf_size = EC_POINT_point2oct(ecgroup, ecpoint, POINT_CONVERSION_UNCOMPRESSED, buf, buf_size, NULL);
+#else
+		EC_GROUP_free(ecgroup);
+		EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, NULL, 0, &buf_size);
+		if ((buf = (unsigned char *)malloc(buf_size)) == NULL)
+		util_fatal("malloc() failure\n");
+
+		if (EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, buf, buf_size, NULL) != 1) {
+			free(buf);
+			util_fatal("Failed to parse other EC key from %s", opt_input);
+		}
+#endif
+		if (mech_mech != CKM_ECDH1_DERIVE && mech_mech != CKM_ECDH1_COFACTOR_DERIVE)
+			util_fatal("Peer key %s not usable with %s", "CKK_EC", p11_mechanism_to_name(mech_mech));
 		break;
-	case EVP_PKEY_X25519:
+	
+#if defined(EVP_PKEY_X25519)
+	case EVP_PKEY_X25519: /* "CKK_EC_MONTGOMERY */
 #if defined(EVP_PKEY_X448)
 	case EVP_PKEY_X448:
 #endif
@@ -5335,34 +5352,11 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 		if (buf == NULL)
 			util_fatal("malloc() failure\n");
 		EVP_PKEY_get_raw_public_key(pkey, buf, &buf_size);
-		break;
-	default:
-		util_fatal("Unknown EVP_PKEY_id\n");
-	}
-#else
-	EC_GROUP_free(ecgroup);
-	EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, NULL, 0, &buf_size);
-	if ((buf = (unsigned char *)malloc(buf_size)) == NULL)
-	    util_fatal("malloc() failure\n");
-
-	if (EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, buf, buf_size, NULL) != 1) {
-		free(buf);
-		util_fatal("Failed to parse peer EC key from %s", opt_input);
-	}
-#endif
-
-	switch (key_id) {
-	case EVP_PKEY_EC: /* CKK_EC*/
-		if (mech_mech != CKM_ECDH1_DERIVE && mech_mech != CKM_ECDH1_COFACTOR_DERIVE)
-			util_fatal("Peer key %s not usable with %s", "CKK_EC", p11_mechanism_to_name(mech_mech));
-		break;
-	case EVP_PKEY_X25519: /* "CKK_EC_MONTGOMERY */
-#if defined(EVP_PKEY_X448)
-	case EVP_PKEY_X448:
-#endif
+	
 		if (mech_mech != CKM_ECDH1_DERIVE)
 			util_fatal("Peer key %s not usable with %s", "CKK_EC_MONTGOMERY", p11_mechanism_to_name(mech_mech));
 		break;
+#endif /* defined(EVP_PKEY_X25519) */
 	default:
 		util_fatal("Peer key not usable with derive or unknown %i", key_id);
 		break;
@@ -5696,27 +5690,36 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 		}
 		if (pub) {
 			unsigned char *bytes = NULL;
+			unsigned char *body;
+
 			unsigned long ksize = 0;
 			unsigned int n;
 			unsigned long body_len = 0;
 
-			bytes = getEC_POINT(sess, obj, &ksize);
+			bytes = getEC_POINT(sess, obj, &size);
 			/*
 			 * simple parse of DER BIT STRING 0x03 or OCTET STRING 0x04
 			 * good to 65K bytes
 			 */
-			if (ksize > 3 && (bytes[0] == 0x03 || bytes[0] == 0x04)) {
-				if (bytes[1] <= 127 && ksize == (unsigned long)(bytes[1] + 2)) {
-					body_len = ksize - 2;
+			if (size > 3 && (bytes[0] == 0x03 || bytes[0] == 0x04)) {
+				if (bytes[1] <= 127 && size == (unsigned long)(bytes[1] + 2)) {
+					body_len = size - 2;
+					body = bytes + 2;
 				} else if (bytes[1] == 0x81 && size == ((unsigned long)bytes[2] + 3)) {
-					body_len = ksize - 3;
+					body_len = size - 3;
+					body = bytes + 3;
 				} else if (bytes[1] == 0x82 && size == ((unsigned long)(bytes[2] << 8) + (unsigned long)bytes[3] + 4)) {
-					body_len = ksize - 4;
+					body_len = size - 4;
+					body = bytes + 4;
+				} else {
+					body_len = 0; /* some problem with size */
 				}
 			}
 			/* With BIT STRING remove unused bits in last byte indicator */
-			if (body_len > 0 && bytes[0] == 0x03)
+			if (body_len > 0 && bytes[0] == 0x03) {
 				body_len--;
+				body++;
+			}
 
 			if (key_type == CKK_EC && body_len > 0) {
 				/*
@@ -5728,13 +5731,14 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 				 * Do simple size calculation based on DER encoding
 				 */
 				ksize = (body_len - 1) * 4;
+
 			} else if (body_len > 0) {
 				/*
 				 * EDDSA and XEDDSA in PKCS11 and only one coordinate
 				 */
-				 /* TODO rebase on changes in master in this area */
-				ksize = (body_len) * 8 - 1;
-				size = body_len;
+				ksize = (body_len) * 8;
+				if (ksize == 256)
+					ksize--; /* as 25519 uses 255 as bits */
 			}
 
 			if (ksize)
@@ -5742,18 +5746,19 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 			else
 				printf("  EC_POINT size unknown");
 
-			if (bytes) {
+			if (bytes && body) {
 				if ((CK_LONG)size > 0) { /* Will print the point here */
 					printf("  EC_POINT:   ");
-					for (n = 0; n < size; n++)
-						printf("%02x", bytes[n]);
+					for (n = 0; n < body_len; n++)
+						printf("%02x", body[n]);
 					printf("\n");
 				}
-				free(bytes);
 			}
+			free(bytes);
 			bytes = NULL;
+			size = 0;
 			bytes = getEC_PARAMS(sess, obj, &size);
-			if (bytes){
+			if (bytes) {
 				if ((CK_LONG)size > 0) {
 					struct sc_object_id oid;
 
@@ -6402,9 +6407,14 @@ static int read_object(CK_SESSION_HANDLE session)
 
 			value = getEC_POINT(session, obj, &len);
 			/* PKCS#11-compliant modules should return ASN1_OCTET_STRING */
-			/* TODO DEE Should be returned encoded in BIT STRING, Need to accept both */
+			/* DEE Should be returned encoded in BIT STRING, Need to accept both */
 			a = value;
 			os = d2i_ASN1_OCTET_STRING(NULL, &a, (long)len);
+			if (!os) {
+				os = d2i_ASN1_BIT_STRING(NULL, &a, (long)len);
+				len = (len + 7) / 8;
+			}
+			
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 			group = EC_KEY_get0_group(EVP_PKEY_get0_EC_KEY(pkey));
 #else
@@ -6509,11 +6519,11 @@ static int read_object(CK_SESSION_HANDLE session)
 
 			value = getEC_POINT(session, obj, &len);
 			/* PKCS#11-compliant modules should return ASN1_OCTET_STRING */
-			/* TODO DEE should be in BIT STRING accept both */
+			/* DEE should be in BIT STRING accept both */
 			a = value;
 			os = d2i_ASN1_OCTET_STRING(NULL, &a, (long)len);
 			if (!os) {
-				os = d2i_ASN1_BIT_STRING(NULL, &a, (long)&len);
+				os = d2i_ASN1_BIT_STRING(NULL, &a, (long)len);
 				len = (len + 7) / 8;
 			}
 			if (!os) {
