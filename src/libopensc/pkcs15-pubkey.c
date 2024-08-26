@@ -537,7 +537,7 @@ static struct sc_asn1_entry c_asn1_gostr3410_pub_coefficients[C_ASN1_GOSTR3410_P
 		{ NULL, 0, 0, 0, NULL, NULL }
 };
 
-/* older incorrect implementation may have encoded as OCTET STRING */
+/* PKCS15 raw uses OCTET STRING, SPKI uses BIT STRING */
 /* accept either */
 #define C_ASN1_EC_POINTQ_SIZE 3
 static struct sc_asn1_entry c_asn1_ec_pointQ[C_ASN1_EC_POINTQ_SIZE] = {
@@ -684,7 +684,17 @@ sc_pkcs15_encode_pubkey_ec(sc_context_t *ctx, struct sc_pkcs15_pubkey_ec *key,
 {
 	struct sc_asn1_entry asn1_ec_pointQ[C_ASN1_EC_POINTQ_SIZE];
 	size_t key_len;
-	volatile int gdb_test = 1; /* so can reset via gdb for testing new  way */
+	/*
+	 * PKCS15 uses RAW vs SPKI for pub key, and in raw uses OCTET STRING
+	 * PKCS11 does not define CKA_VALUE for a pub key
+	 * But some PKCS11 modules define a CKA_VALUE for a public key 
+	 * and PKCS11 says ECPOINT is encoded as "DER-encoding of ANSI X9.62 ECPoint value Q"  
+	 * But ANSI X9.62 (early draft at least) says encode as BIT STRING
+	 * IETF encodes in SubjectPublicKeyInfo (SPKI) in BIT STRING
+	 * PKCS11 V3 does add CKA_PUBLIC_KEY_INFO as SPKI
+	 * For now return as OCTET STRING.
+	 */
+	volatile int gdb_test = 0; /* 0 - OCTET STRING (PKCS15 RAW) 1 - BIT STRING (SPKI) */
 
 	LOG_FUNC_CALLED(ctx);
 	sc_copy_asn1_entry(c_asn1_ec_pointQ, asn1_ec_pointQ);
