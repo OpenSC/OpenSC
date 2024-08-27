@@ -541,16 +541,16 @@ static struct sc_asn1_entry c_asn1_gostr3410_pub_coefficients[C_ASN1_GOSTR3410_P
 /* accept either */
 #define C_ASN1_EC_POINTQ_SIZE 3
 static struct sc_asn1_entry c_asn1_ec_pointQ[C_ASN1_EC_POINTQ_SIZE] = {
-		{ "ecpointQ",    SC_ASN1_BIT_STRING_NI, SC_ASN1_TAG_BIT_STRING,   SC_ASN1_OPTIONAL | SC_ASN1_ALLOC, NULL, NULL },
 		{ "ecpointQ-OS", SC_ASN1_OCTET_STRING,  SC_ASN1_TAG_OCTET_STRING, SC_ASN1_OPTIONAL | SC_ASN1_ALLOC, NULL, NULL },
+		{ "ecpointQ-BS", SC_ASN1_BIT_STRING_NI, SC_ASN1_TAG_BIT_STRING,   SC_ASN1_OPTIONAL | SC_ASN1_ALLOC, NULL, NULL },
 		{ NULL, 0, 0, 0, NULL, NULL }
 };
 
 /*  See RFC8410 */
 #define C_ASN1_EDDSA_PUBKEY_SIZE 3
 static struct sc_asn1_entry c_asn1_eddsa_pubkey[C_ASN1_EDDSA_PUBKEY_SIZE] = {
-		{ "ecpointQ", SC_ASN1_BIT_STRING_NI,    SC_ASN1_TAG_BIT_STRING,	  SC_ASN1_OPTIONAL | SC_ASN1_ALLOC, NULL, NULL },
 		{ "ecpointQ-OS", SC_ASN1_OCTET_STRING,  SC_ASN1_TAG_OCTET_STRING, SC_ASN1_OPTIONAL | SC_ASN1_ALLOC, NULL, NULL },
+		{ "ecpointQ-BS", SC_ASN1_BIT_STRING_NI, SC_ASN1_TAG_BIT_STRING,	  SC_ASN1_OPTIONAL | SC_ASN1_ALLOC, NULL, NULL },
 		{ NULL, 0, 0, 0, NULL, NULL }
 };
 // clang-format on
@@ -657,13 +657,19 @@ sc_pkcs15_decode_pubkey_ec(sc_context_t *ctx,
 
 	LOG_FUNC_CALLED(ctx);
 	sc_copy_asn1_entry(c_asn1_ec_pointQ, asn1_ec_pointQ);
-	sc_format_asn1_entry(asn1_ec_pointQ + 0, &ecpoint_data, &ecpoint_len, 1);
-	sc_format_asn1_entry(asn1_ec_pointQ + 1, &ecpoint_data, &ecpoint_len, 1);
+	sc_format_asn1_entry(asn1_ec_pointQ + 0, &ecpoint_data, &ecpoint_len, 0);
+	sc_format_asn1_entry(asn1_ec_pointQ + 1, &ecpoint_data, &ecpoint_len, 0);
 	r = sc_asn1_decode_choice(ctx, asn1_ec_pointQ, buf, buflen, NULL, NULL);
 	if (r < 0 || ecpoint_len == 0 || ecpoint_data == NULL) {
 		free(ecpoint_data);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ASN1_OBJECT);
 	}
+
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "ecpoint_len:%" SC_FORMAT_LEN_SIZE_T "u", ecpoint_len);
+	/* if from bit string */
+	if (asn1_ec_pointQ[1].flags & SC_ASN1_PRESENT)
+		ecpoint_len = (ecpoint_len + 7) / 8; /* bits to bytes */
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "ecpoint_len:%" SC_FORMAT_LEN_SIZE_T "u", ecpoint_len);
 
 	if (*ecpoint_data != 0x04) {
 		free(ecpoint_data);
@@ -687,10 +693,10 @@ sc_pkcs15_encode_pubkey_ec(sc_context_t *ctx, struct sc_pkcs15_pubkey_ec *key,
 	/*
 	 * PKCS15 uses RAW vs SPKI for pub key, and in raw uses OCTET STRING
 	 * PKCS11 does not define CKA_VALUE for a pub key
-	 * But some PKCS11 modules define a CKA_VALUE for a public key 
-	 * and PKCS11 says ECPOINT is encoded as "DER-encoding of ANSI X9.62 ECPoint value Q"  
+	 * But some PKCS11 modules define a CKA_VALUE for a public key
+	 * and PKCS11 says ECPOINT is encoded as "DER-encoding of ANSI X9.62 ECPoint value Q"
 	 * But ANSI X9.62 (early draft at least) says encode as BIT STRING
-	 * IETF encodes in SubjectPublicKeyInfo (SPKI) in BIT STRING
+	 * IETF encodes it in SubjectPublicKeyInfo (SPKI) in BIT STRING
 	 * PKCS11 V3 does add CKA_PUBLIC_KEY_INFO as SPKI
 	 * For now return as OCTET STRING.
 	 */
@@ -699,11 +705,11 @@ sc_pkcs15_encode_pubkey_ec(sc_context_t *ctx, struct sc_pkcs15_pubkey_ec *key,
 	LOG_FUNC_CALLED(ctx);
 	sc_copy_asn1_entry(c_asn1_ec_pointQ, asn1_ec_pointQ);
 
-	if (gdb_test == 1) {
-		key_len = key->ecpointQ.len * 8; /* encode in bit string */
+	if (gdb_test == 0) {
+		key_len = key->ecpointQ.len;
 		sc_format_asn1_entry(asn1_ec_pointQ + 0, key->ecpointQ.value, &key_len, 1);
 	} else {
-		key_len = key->ecpointQ.len;
+		key_len = key->ecpointQ.len * 8; /* encode in bit string */
 		sc_format_asn1_entry(asn1_ec_pointQ + 1, key->ecpointQ.value, &key_len, 1);
 	}
 
@@ -736,6 +742,9 @@ sc_pkcs15_decode_pubkey_eddsa(sc_context_t *ctx,
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ASN1_OBJECT);
 	}
 
+	if (asn1_ec_pointQ[1].flags & SC_ASN1_PRESENT)
+		ecpoint_len = (ecpoint_len + 7) / 8;
+
 	key->ecpointQ.len = ecpoint_len;
 	key->ecpointQ.value = ecpoint_data;
 	key->params.field_length = ecpoint_len * 8;
@@ -743,6 +752,9 @@ sc_pkcs15_decode_pubkey_eddsa(sc_context_t *ctx,
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
+/* This is a change from  previous code that used OCTET STRING
+ * But RFC 8410 and PKCS11 use BITSTRING.
+ */
 int
 sc_pkcs15_encode_pubkey_eddsa(sc_context_t *ctx, struct sc_pkcs15_pubkey_ec *key,
 		u8 **buf, size_t *buflen)
@@ -753,7 +765,7 @@ sc_pkcs15_encode_pubkey_eddsa(sc_context_t *ctx, struct sc_pkcs15_pubkey_ec *key
 	LOG_FUNC_CALLED(ctx);
 	key_len = key->ecpointQ.len * 8; /* in bits */
 	sc_copy_asn1_entry(c_asn1_eddsa_pubkey, asn1_eddsa_pubkey);
-	sc_format_asn1_entry(asn1_eddsa_pubkey + 0, key->ecpointQ.value, &key_len, 1);
+	sc_format_asn1_entry(asn1_eddsa_pubkey + 1, key->ecpointQ.value, &key_len, 1);
 
 	LOG_FUNC_RETURN(ctx,
 			sc_asn1_encode(ctx, asn1_eddsa_pubkey, buf, buflen));
@@ -1402,8 +1414,8 @@ sc_pkcs15_pubkey_from_spki_fields(struct sc_context *ctx, struct sc_pkcs15_pubke
 		pubkey->u.ec.ecpointQ.len = pk.len;
 	} else if (pk_alg.algorithm == SC_ALGORITHM_EDDSA ||
 		   pk_alg.algorithm == SC_ALGORITHM_XEDDSA) {
-		/* 
-		 * SPKI will have OID, EDDSA can have ED25519 or ED448 with different sizes 
+		/*
+		 * SPKI will have OID, EDDSA can have ED25519 or ED448 with different sizes
 		 * EDDSA/XEDDSA public key is not encapsulated into BIT STRING -- it's a BIT STRING
 		 * no params, but oid is the params.
 		 */
@@ -1659,6 +1671,7 @@ sc_pkcs15_fix_ec_parameters(struct sc_context *ctx, struct sc_ec_parameters *ecp
 		if (!ecparams->der.value || !ecparams->der.len)   {
 			free(ecparams->der.value); /* just in case */
 			ecparams->der.value = NULL;
+			ecparams->der.len = 0;
 			/* if caller did not provide der OID, fill in */
 			rv = sc_encode_oid (ctx, &ecparams->id, &ecparams->der.value, &ecparams->der.len);
 			LOG_TEST_RET(ctx, rv, "Cannot encode object ID");
