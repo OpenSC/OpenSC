@@ -2026,7 +2026,9 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card, struct sc_profile
 	LOG_TEST_GOTO_ERR(ctx, r, "SPKI encode public key error");
 
 	/* Now create key file and store key */
-	if (type == SC_PKCS15_TYPE_PUBKEY_EC)
+	if (type == SC_PKCS15_TYPE_PUBKEY_EC ||
+			type == SC_PKCS15_TYPE_PUBKEY_EDDSA ||
+			type == SC_PKCS15_TYPE_PUBKEY_XEDDSA)
 		r = sc_pkcs15init_store_data(p15card, profile, object, &key_info->direct.spki, &key_info->path);
 	else
 		r = sc_pkcs15init_store_data(p15card, profile, object, &object->content, &key_info->path);
@@ -2050,6 +2052,7 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card, struct sc_profile
 
 err:
 	sc_pkcs15_erase_pubkey(&key);
+	sc_clear_ec_params(&keyargs->key.u.ec.params);
 	sc_pkcs15_free_object(object);
 	LOG_FUNC_RETURN(ctx, r);
 }
