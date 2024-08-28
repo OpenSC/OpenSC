@@ -4583,6 +4583,7 @@ static int piv_validate_general_authentication(sc_card_t *card,
 			case 128: real_alg_id = 0x06; break;
 			case 256: real_alg_id = 0x07; break;
 			case 384: real_alg_id = 0x05; break;
+			case 512: real_alg_id = 0x16; break;
 			default:
 				SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_NO_CARD_SUPPORT);
 		}
@@ -5739,6 +5740,7 @@ static int piv_init(sc_card_t *card)
 	_sc_card_add_rsa_alg(card, 1024, flags, 0); /* mandatory */
 	_sc_card_add_rsa_alg(card, 2048, flags, 0); /* optional */
 	_sc_card_add_rsa_alg(card, 3072, flags, 0); /* optional */
+	_sc_card_add_rsa_alg(card, 4096, flags, 0); /* optional */
 
 	if (!(priv->card_issues & CI_NO_EC)) {
 		int i;
