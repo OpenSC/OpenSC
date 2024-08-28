@@ -1,5 +1,78 @@
 NEWS for OpenSC -- History of user visible changes
 
+# New in 0.26.0; 2024-09-11
+
+## Security
+* CVE-2024-45615: Usage of uninitialized values in libopensc and pkcs15init (#3225)
+* CVE-2024-45616: Uninitialized values after incorrect check or usage of APDU response values in libopensc (#3225)
+* CVE-2024-45617: Uninitialized values after incorrect or missing checking return values of functions in libopensc (#3225)
+* CVE-2024-45618: Uninitialized values after incorrect or missing checking return values of functions in pkcs15init (#3225)
+* CVE-2024-45619: Incorrect handling length of buffers or files in libopensc (#3225)
+* CVE-2024-45620: Incorrect handling of the length of buffers or files in pkcs15init (#3225)
+* CVE-2024-8443: Heap buffer overflow in OpenPGP driver when generating key (#3219)
+
+## General improvements
+* Fix reselection of DF after error in PKCS#15 layer (#3067)
+* Unify OpenSSL logging throughout code (#2922)
+* Extend the p11test to support kryoptic (#3141)
+* Fix for error in PCSC reconnection (#3150)
+* Fixed various issues reported by OSS-Fuzz and Coverity in drivers, PKCS#11 and PKCS#15 layer
+
+## PKCS#15
+* Documentation for PKCS#15 profile files (#3132)
+
+## minidriver
+* Support PinCacheAlwaysPrompt usable for PIV cards (#3167)
+
+## pkcs11-tool
+* Show URI when listing token information (#3125) and objects (#3130)
+* Do not limit size of objects to 5000 bytes (#3174)
+* Add support for AES CMAC (#3184)
+* Add support for Add support for AES GCM encryption (#3195)
+* Add support for RSA OAEP encryption (#3175)
+* Add support for HKDF (#3193)
+* Implement better support for wrapping and unwrapping (#3198)
+* Add support for EdDSA sign and verify (#2979)
+
+## pkcs15-crypt
+* Fix PKCS#1 encoding function to correctly detect padding type (#3075)
+
+## piv-tool
+* Fix RSA key generation (#3158)
+* Avoid possible state change when matching unknown card (#3112)
+
+## sc-hsm-tool
+* Cleanse buffer with plaintext key share (#3226)
+
+## pkcs11-register
+* Fix pkcs11-register defaults on macOS and Windows (#3053)
+
+## IDPrime
+* Fix identification of IDPrime 840 cards (#3146)
+* Fix container mapping for IDPrime 940 cards (#3220)
+* Reorder ATRs for matching cards (#3154)
+
+## OpenPGP
+* Fix state tracking after erasing card (#3024)
+
+## Belpic
+* Disable Applet V1.8 (#3109)
+
+## MICARDO
+* Deactivate driver (#3152)
+
+## SmartCard-HSM
+* Fix signing with secp521r1 signature (#3157)
+
+## eOI
+* Set model via `sc_card_ctl` function (#3189)
+
+## Rutoken
+* increase the minimum PIN size to support Rutoken ECP BIO (#3208)
+
+# JPKI
+* Adjust parameters for public key in PKCS#15 emulator (#3182)
+
 # New in 0.25.1; 2024-04-05
 
 ## General improvements
