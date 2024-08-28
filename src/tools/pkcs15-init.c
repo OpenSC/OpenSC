@@ -1258,6 +1258,7 @@ do_store_public_key(struct sc_profile *profile, EVP_PKEY *pkey)
 		sc_pkcs15_erase_pubkey(&(args.key));
 		sc_unlock(g_p15card->card);
 	}
+	sc_pkcs15_erase_pubkey(&(args.key));
 
 	return r;
 }
