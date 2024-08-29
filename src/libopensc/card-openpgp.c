@@ -3032,7 +3032,7 @@ pgp_parse_and_set_pubkey_output(sc_card_t *card, u8* data, size_t data_len,
 			}
 
 			/* FIXME is this redundant? */
-			if (key_info->u.ec.ecpoint  == NULL || len != BYTES4BITS(key_info->u.ec.ecpoint_len)) {
+			if (key_info->u.ec.ecpoint == NULL || len != BYTES4BITS(key_info->u.ec.ecpoint_len)) {
 				free(key_info->u.ec.ecpoint);
 				key_info->u.ec.ecpoint = malloc(len);
 				if (key_info->u.ec.ecpoint == NULL)
@@ -3487,11 +3487,11 @@ pgp_store_key(sc_card_t *card, sc_cardctl_openpgp_keystore_info_t *key_info)
 
 	LOG_FUNC_CALLED(card->ctx);
 
-	/* PKCS11 loads privkey separately from pubkey as two different operations 
+	/* PKCS11 loads privkey separately from pubkey as two different operations
 	 * So this routine will be called twice to create two different objects.
 	 * pkcs15init only calls once, with both.
 	 * OpenPGP 4.3.1 says modulus and ecpointQ are optional when
-	 * creating the extended header. 
+	 * creating the extended header.
 	 * So we can tell the difference and only do appropriate parts of this
 	 * routine.
 	 */
