@@ -1311,17 +1311,8 @@ sc_pkcs15init_init_prkdf(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 			r = SC_ERROR_OUT_OF_MEMORY;
 			LOG_TEST_GOTO_ERR(ctx, r, "Cannot allocate memory for EC parameters");
 		}
-		/* copy ecparams into allocated one
-		 * it will be freed with the corresponding object */
-		memcpy(new_ecparams, ecparams, sizeof(struct sc_ec_parameters));
-
-		new_ecparams->named_curve = strdup(ecparams->named_curve);
-		new_ecparams->der.value = malloc(ecparams->der.len);
-		if (!new_ecparams->named_curve || !new_ecparams->der.value) {
-			r = SC_ERROR_OUT_OF_MEMORY;
-			LOG_TEST_GOTO_ERR(ctx, r, "Cannot allocate memory for EC parameters");
-		}
-		memcpy(new_ecparams->der.value, ecparams->der.value, ecparams->der.len);
+		r = sc_copy_ec_params(new_ecparams, &keyargs->key.u.ec.params);
+		LOG_TEST_GOTO_ERR(ctx, r, "Cannot copy EC parameters");
 
 		key_info->params.data = new_ecparams;
 		key_info->params.free_params = sc_pkcs15init_free_ec_params;
@@ -1362,8 +1353,7 @@ sc_pkcs15init_init_prkdf(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 
 err:
 	if (new_ecparams) {
-		free(new_ecparams->named_curve);
-		free(new_ecparams->der.value);
+		sc_clear_ec_params(new_ecparams);
 		free(new_ecparams);
 		key_info->params.data = NULL;
 	}
@@ -1550,7 +1540,7 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 	r = check_keygen_params_consistency(p15card->card,
 		algorithm, &keygen_args->prkey_args,
 		&keybits);
-	LOG_TEST_RET(ctx, r, "Invalid key size");
+	LOG_TEST_GOTO_ERR(ctx, r, "Invalid key size");
 
 	if (check_key_compatibility(p15card, algorithm,
 			&keygen_args->prkey_args.key, keygen_args->prkey_args.x509_usage,
@@ -1914,14 +1904,6 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card, struct sc_profile
 		r = sc_pkcs15_fix_ec_parameters(ctx, &key.u.ec.params);
 		LOG_TEST_GOTO_ERR(ctx, r, "Failed to fix EC public key parameters");
 
-		if (keyargs->key.u.ec.ecpointQ.value) {
-			key.u.ec.ecpointQ.value = malloc(keyargs->key.u.ec.ecpointQ.len);
-			if (!key.u.ec.ecpointQ.value) {
-				r = SC_ERROR_OUT_OF_MEMORY;
-				LOG_TEST_GOTO_ERR(ctx, r, "Failed to copy EC... public key parameters");
-			}
-		}
-
 		if (key.algorithm == SC_ALGORITHM_EC)
 			type = SC_PKCS15_TYPE_PUBKEY_EC;
 		else if (key.algorithm == SC_ALGORITHM_EDDSA)
@@ -1937,10 +1919,15 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card, struct sc_profile
 	}
 
 	if ((usage = keyargs->usage) == 0) {
+		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Setting default usage to verify");
 		usage = SC_PKCS15_PRKEY_USAGE_VERIFY;
-		if (keyargs->x509_usage)
+		if (keyargs->x509_usage) {
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Setting usage from keyargs->x509_usage");
 			usage = sc_pkcs15init_map_usage(keyargs->x509_usage, 0);
+		}
 	}
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Usage: 0x%X", usage);
+
 	label = keyargs->label;
 	if (!label)
 		label = "Public Key";
@@ -1972,8 +1959,13 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card, struct sc_profile
 	} else if (key.algorithm == SC_ALGORITHM_EC ||
 			key.algorithm == SC_ALGORITHM_EDDSA ||
 			key.algorithm == SC_ALGORITHM_XEDDSA) {
-		/* TODO if EC don't write the 0x04 byte to card */
 		key_info->field_length = keybits;
+		/* only SC_ALGORITHM_EC has ec_params with the EC curveName OID
+		 * that becomes part of the SPKI algo params.
+		 * EDDSA and XEDDSA ec_params have the OID of the EDDSA or XEDDSA
+		 * which is used as the alg OID. But we still copy here
+		 * as the asn1 routines will do the right thing based on key.algorithm.
+		 */
 		if (key.u.ec.params.der.value) {
 			key_info->params.data = malloc(key.u.ec.params.der.len);
 			if (!key_info->params.data) {
@@ -1987,7 +1979,7 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card, struct sc_profile
 			key.u.ec.ecpointQ.value = malloc(keyargs->key.u.ec.ecpointQ.len);
 			if (!key.u.ec.ecpointQ.value) {
 				r = SC_ERROR_OUT_OF_MEMORY;
-				LOG_TEST_GOTO_ERR(ctx, r, "Cannot allocate EC params");
+				LOG_TEST_GOTO_ERR(ctx, r, "Cannot allocate EC public key");
 			}
 			key.u.ec.ecpointQ.len = keyargs->key.u.ec.ecpointQ.len;
 			memcpy(key.u.ec.ecpointQ.value, keyargs->key.u.ec.ecpointQ.value, key.u.ec.ecpointQ.len);
@@ -2052,7 +2044,6 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card, struct sc_profile
 
 err:
 	sc_pkcs15_erase_pubkey(&key);
-	sc_clear_ec_params(&keyargs->key.u.ec.params);
 	sc_pkcs15_free_object(object);
 	LOG_FUNC_RETURN(ctx, r);
 }
