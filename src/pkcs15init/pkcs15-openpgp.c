@@ -248,7 +248,9 @@ static int openpgp_generate_key_rsa(sc_card_t *card, sc_pkcs15_object_t *obj,
 
 err:
 	free(key_info.u.rsa.modulus);
+	key_info.u.rsa.modulus = NULL;
 	free(key_info.u.rsa.exponent);
+	key_info.u.rsa.exponent = NULL;
 	LOG_FUNC_RETURN(ctx, r);
 }
 
