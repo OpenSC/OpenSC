@@ -200,9 +200,8 @@ sc_pkcs15emu_jpki_init(sc_pkcs15_card_t * p15card)
 			"Digital Signature Public Key"
 		};
 		static int jpki_pubkey_flags[2] = {
-			0,
-			SC_PKCS15_CO_FLAG_PRIVATE
-		};
+				0,
+				SC_PKCS15_CO_FLAG_PRIVATE};
 		static int jpki_pubkey_auth_id[2] = {0, 2};
 		struct sc_pkcs15_pubkey_info pubkey_info;
 		struct sc_pkcs15_object pubkey_obj;
