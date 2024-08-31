@@ -4257,6 +4257,90 @@ parse_ec_pkey(EVP_PKEY *pkey, int private, struct gostkey_info *gost)
 
 	return 0;
 }
+
+#ifdef ENABLE_OPENSSL
+/* return PKCS11 key type based on OpenSSL EVP_PKEY type
+ * which are support by PKCS11 and OpenSSL used when compiling
+ * PKCS11 returns CKK_EC_EDWARDS for both ED25529 and X448
+ * and CKK_EC_MONTGOMERY for X25519 and X448, use pk_type.
+ */
+static CK_RV
+evp_pkey2ck_key_type(EVP_PKEY *pkey, CK_KEY_TYPE *type, int *pk_type)
+{
+	if (!pkey || !pk_type || !type)
+		return CKR_GENERAL_ERROR;
+
+	*pk_type = EVP_PKEY_base_id(pkey);
+
+#if defined(EVP_PKEY_RSA)
+	if (*pk_type == EVP_PKEY_RSA) {
+		*type = CKK_RSA;
+		return CKR_OK;
+	}
+#endif
+
+#if defined(EVP_PKEY_EC)
+	if (*pk_type == EVP_PKEY_EC) {
+		*type = CKK_EC;
+		return CKR_OK;
+	}
+#endif
+
+#if defined(EVP_PKEY_ED25519)
+	if (*pk_type == EVP_PKEY_ED25519) {
+		*type = CKK_EC_EDWARDS;
+		return CKR_OK;
+	}
+#endif
+
+#if defined(EVP_PKEY_ED448)
+	if (*pk_type == EVP_PKEY_ED448) {
+		*type = CKK_EC_EDWARDS;
+		return CKR_OK;
+	}
+#endif
+
+#if defined(EVP_PKEY_X25519)
+	if (*pk_type == EVP_PKEY_X25519) {
+		*type = CKK_EC_MONTGOMERY;
+		return CKR_OK;
+	}
+#endif
+
+#if defined(EVP_PKEY_X448)
+	if (*pk_type == EVP_PKEY_X448) {
+		*type = CKK_EC_MONTGOMERY;
+		return CKR_OK;
+	}
+#endif
+
+#if defined(NID_id_GostR3410_2001)
+	if (*pk_type == NID_id_GostR3410_2001) {
+		*type = CKK_GOSTR3410;
+		return CKR_OK;
+	}
+#endif
+
+#if defined(EVP_PKEY_GOSTR3411)
+	if (*pk_type == EVP_PKEY_GOSTR3411) {
+		*type = CKK_GOSTR3411;
+		return CKR_OK;
+	}
+#endif
+
+#if defined(EVP_PKEY_GOST28147)
+	if (*pk_type == EVP_PKEY_GOST28147) {
+		*type = CKK_GOST28147;
+		return CKR_OK;
+	}
+#endif
+	/* unsupported by OpenSSL, PKCS11 or this program */
+	*type = -1;
+	*pk_type = -1;
+	return CKR_FUNCTION_NOT_SUPPORTED;
+}
+#endif /* ENABLE_OPENSSL */
+
 static int
 parse_ed_pkey(EVP_PKEY *pkey, int pk_type, int private, struct gostkey_info *gost)
 {
@@ -4426,6 +4510,7 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 #ifdef ENABLE_OPENSSL
 		int is_private = opt_object_class == CKO_PRIVATE_KEY;
 		int rv;
+		CK_KEY_TYPE type;
 
 		rv = do_read_key(contents, contents_len, is_private, &evp_key);
 		if (rv) {
@@ -4435,25 +4520,21 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 				util_fatal("Cannot read public key");
 		}
 
-		pk_type = EVP_PKEY_base_id(evp_key);
+		/* get CK_TYPE from EVP_PKEY if both supported by OpenSSL and PKCS11 */
+		if (evp_pkey2ck_key_type(evp_key, &type, &pk_type) != CKR_OK)
+			util_fatal("Key type not supported by OpenSSL and/or PKCS11");
 
-		if (pk_type == EVP_PKEY_RSA)   {
+		if (type == CKK_RSA) {
 			rv = parse_rsa_pkey(evp_key, is_private, &rsa);
 		}
 #if !defined(OPENSSL_NO_EC)
-		else if (pk_type == NID_id_GostR3410_2001)   {
+		else if (type == NID_id_GostR3410_2001) {
 			rv = parse_gost_pkey(evp_key, is_private, &gost);
 			type = CKK_GOSTR3410;
-		} else if (pk_type == EVP_PKEY_EC) {
+		} else if (type == CKK_EC) {
 			rv = parse_ec_pkey(evp_key, is_private, &gost);
-			type = CKK_EC;
-#ifdef EVP_PKEY_ED448
-		} else if ((pk_type == EVP_PKEY_ED25519) || (pk_type == EVP_PKEY_ED448)) {
-#else
-		} else if (pk_type == EVP_PKEY_ED25519) {
-#endif
+		} else if (type == CKK_EC_EDWARDS) {
 			rv = parse_ed_pkey(evp_key, pk_type, is_private, &gost);
-			type = CKK_EC_EDWARDS;
 		}
 #endif
 		else
@@ -4560,10 +4641,11 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_SUBJECT, cert.subject, cert.subject_len);
 			n_privkey_attr++;
 		}
-		pk_type = EVP_PKEY_base_id(evp_key);
 
-		if (pk_type == EVP_PKEY_RSA)   {
-			type = CKK_RSA;
+		if (evp_pkey2ck_key_type(evp_key, &type, &pk_type) != CKR_OK)
+			util_fatal("Key type not supported by OpenSSL and/or PKCS11");
+
+		if (type == CKK_RSA) {
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_KEY_TYPE, &type, sizeof(type));
 			n_privkey_attr++;
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_MODULUS, rsa.modulus, rsa.modulus_len);
@@ -4583,34 +4665,15 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_COEFFICIENT, rsa.coefficient, rsa.coefficient_len);
 			n_privkey_attr++;
 		}
-#if !defined(OPENSSL_NO_EC)
-/*  aappeas the precompiler */
-#ifndef EVP_PKEY_ED448
-#define EVP_PKEY_ED448 EVP_PKEY_ED25519
-#endif
-#ifndef EVP_PKEY_X448
-#define EVP_PKEY_X448 EVP_PKEY_X25519
-#endif
 
-		else if ((pk_type == EVP_PKEY_EC) ||
-				(pk_type == EVP_PKEY_ED25519) || (pk_type == EVP_PKEY_ED448) ||
-				(pk_type == EVP_PKEY_X25519) || (pk_type == EVP_PKEY_X448)) {
-
-			if ((pk_type == EVP_PKEY_ED25519) || (pk_type == EVP_PKEY_ED448))
-				type = CKK_EC_EDWARDS;
-			else if ((pk_type == EVP_PKEY_X25519) || (pk_type == EVP_PKEY_X448))
-				type = CKK_EC_MONTGOMERY;
-			else
-				type = CKK_EC;
-
+		else if ((type == CKK_EC) || (type == CKK_EC_EDWARDS) || (type = CKK_EC_MONTGOMERY)) {
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_KEY_TYPE, &type, sizeof(type));
 			n_privkey_attr++;
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_EC_PARAMS, gost.param_oid.value, gost.param_oid.len);
 			n_privkey_attr++;
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_VALUE, gost.private.value, gost.private.len);
 			n_privkey_attr++;
-		} else if (pk_type == NID_id_GostR3410_2001) {
-			type = CKK_GOSTR3410;
+		} else if (type == CKK_GOSTR3410) {
 
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_KEY_TYPE, &type, sizeof(type));
 			n_privkey_attr++;
@@ -4623,30 +4686,16 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 				return rv;
 			n_privkey_attr++;
 		}
-
-#endif
+#else
+		util_fatal("No OpenSSL support, cannot write private key");
 #endif
 		break;
 	case CKO_PUBLIC_KEY:
 		clazz = CKO_PUBLIC_KEY;
-#ifdef ENABLE_OPENSSL
-		pk_type = EVP_PKEY_base_id(evp_key);
-		if (pk_type == EVP_PKEY_RSA)
-			type = CKK_RSA;
-#if !defined(OPENSSL_NO_EC)
-		else if (pk_type == EVP_PKEY_EC)
-			type = CKK_EC;
-		else if ((pk_type == EVP_PKEY_ED25519) || (pk_type == EVP_PKEY_ED448))
-			type = CKK_EC_EDWARDS;
-		else if ((pk_type == EVP_PKEY_ED25519) || (pk_type == EVP_PKEY_ED448))
-			type = CKK_EC_MONTGOMERY;
 
-		else if (pk_type == NID_id_GostR3410_2001)
-			type = CKK_GOSTR3410;
-#endif
-		else
-			util_fatal("Unsupported public key type: 0x%X", pk_type);
-#endif
+#ifdef ENABLE_OPENSSL
+		if (evp_pkey2ck_key_type(evp_key, &type, &pk_type) != CKR_OK)
+			util_fatal("Key type not supported by OpenSSL and/or PKCS11");
 
 		n_pubkey_attr = 0;
 		FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_CLASS, &clazz, sizeof(clazz));
@@ -4686,15 +4735,12 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 			n_pubkey_attr++;
 		}
 
-#ifdef ENABLE_OPENSSL
 		if (cert.subject_len != 0) {
 			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_SUBJECT, cert.subject, cert.subject_len);
 			n_pubkey_attr++;
 		}
-		pk_type = EVP_PKEY_base_id(evp_key);
 
-		if (pk_type == EVP_PKEY_RSA) {
-			type = CKK_RSA;
+		if (type == CKK_RSA) {
 			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_KEY_TYPE, &type, sizeof(type));
 			n_pubkey_attr++;
 			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_MODULUS,
@@ -4704,16 +4750,7 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 			n_pubkey_attr++;
 		}
 #if !defined(OPENSSL_NO_EC)
-		else if ((pk_type == EVP_PKEY_EC) ||
-				(pk_type == EVP_PKEY_ED25519) || (pk_type == EVP_PKEY_ED448) ||
-				(pk_type == EVP_PKEY_X25519) || (pk_type == EVP_PKEY_X448)) {
-
-			if ((pk_type == EVP_PKEY_ED25519) || (pk_type == EVP_PKEY_ED448))
-				type = CKK_EC_EDWARDS;
-			else if ((pk_type == EVP_PKEY_X25519) || (pk_type == EVP_PKEY_X448))
-				type = CKK_EC_MONTGOMERY;
-			else
-				type = CKK_EC;
+		else if ((type == CKK_EC) || (type == CKK_EC_EDWARDS) || (type == CKK_EC_MONTGOMERY)) {
 
 			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_KEY_TYPE, &type, sizeof(type));
 			n_pubkey_attr++;
@@ -4736,6 +4773,8 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 			n_pubkey_attr++;
 		}
 #endif
+#else
+		util_fatal("No OpenSSL support, cannot write public key");
 #endif
 		break;
 	case CKO_SECRET_KEY:
@@ -5259,7 +5298,7 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 	unsigned char * derp = NULL;
 	size_t  der_size = 0;
 	EVP_PKEY *pkey = NULL; /* peer key */
-	int key_id = 0; /* nid of peer key must match nid of key */
+	int key_id = 0;	       /* nid of peer key must match nid of key */
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 	EC_KEY *eckey = NULL;
 	const EC_GROUP *ecgroup = NULL;
@@ -5303,7 +5342,9 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 		if (!ecpoint || !ecgroup)
 			util_fatal("Failed to parse peer EC key from %s", opt_input);
 #else
-		if (EVP_PKEY_get_group_name(pkey, name, sizeof(name), &len) != 1 || (nid = OBJ_txt2nid(name)) == NID_undef || (ecgroup = EC_GROUP_new_by_curve_name(nid)) == NULL)
+		if (EVP_PKEY_get_group_name(pkey, name, sizeof(name), &len) != 1 ||
+				(nid = OBJ_txt2nid(name)) == NID_undef ||
+				(ecgroup = EC_GROUP_new_by_curve_name(nid)) == NULL)
 			util_fatal("Failed to parse peer EC key from %s", opt_input);
 #endif
 
@@ -5314,22 +5355,22 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 
 		if (opt_allowed_mechanisms_len > 0) {
 			FILL_ATTR(newkey_template[n_attrs],
-				CKA_ALLOWED_MECHANISMS, opt_allowed_mechanisms,
-				sizeof(CK_MECHANISM_TYPE) * opt_allowed_mechanisms_len);
+					CKA_ALLOWED_MECHANISMS, opt_allowed_mechanisms,
+					sizeof(CK_MECHANISM_TYPE) * opt_allowed_mechanisms_len);
 			n_attrs++;
 		}
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
-		buf_size = EC_POINT_point2oct(ecgroup, ecpoint, POINT_CONVERSION_UNCOMPRESSED, NULL,	    0, NULL);
+		buf_size = EC_POINT_point2oct(ecgroup, ecpoint, POINT_CONVERSION_UNCOMPRESSED, NULL, 0, NULL);
 		buf = (unsigned char *)malloc(buf_size);
 		if (buf == NULL)
-		util_fatal("malloc() failure\n");
+			util_fatal("malloc() failure\n");
 		buf_size = EC_POINT_point2oct(ecgroup, ecpoint, POINT_CONVERSION_UNCOMPRESSED, buf, buf_size, NULL);
 #else
 		EC_GROUP_free(ecgroup);
 		EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, NULL, 0, &buf_size);
 		if ((buf = (unsigned char *)malloc(buf_size)) == NULL)
-		util_fatal("malloc() failure\n");
+			util_fatal("malloc() failure\n");
 
 		if (EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, buf, buf_size, NULL) != 1) {
 			free(buf);
@@ -5339,7 +5380,7 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 		if (mech_mech != CKM_ECDH1_DERIVE && mech_mech != CKM_ECDH1_COFACTOR_DERIVE)
 			util_fatal("Peer key %s not usable with %s", "CKK_EC", p11_mechanism_to_name(mech_mech));
 		break;
-	
+
 #if defined(EVP_PKEY_X25519)
 	case EVP_PKEY_X25519: /* "CKK_EC_MONTGOMERY */
 #if defined(EVP_PKEY_X448)
@@ -5352,7 +5393,7 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 		if (buf == NULL)
 			util_fatal("malloc() failure\n");
 		EVP_PKEY_get_raw_public_key(pkey, buf, &buf_size);
-	
+
 		if (mech_mech != CKM_ECDH1_DERIVE)
 			util_fatal("Peer key %s not usable with %s", "CKK_EC_MONTGOMERY", p11_mechanism_to_name(mech_mech));
 		break;
@@ -6414,7 +6455,7 @@ static int read_object(CK_SESSION_HANDLE session)
 				os = d2i_ASN1_BIT_STRING(NULL, &a, (long)len);
 				len = (len + 7) / 8;
 			}
-			
+
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 			group = EC_KEY_get0_group(EVP_PKEY_get0_EC_KEY(pkey));
 #else
