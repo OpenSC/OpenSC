@@ -921,7 +921,6 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 
 	sc_print_cache(card);
 	if ((!iasecc_is_cpx(card)) &&
-	    (card->type != SC_CARD_TYPE_IASECC_GEMALTO) &&
 	    (path->type != SC_PATH_TYPE_DF_NAME
 			&& lpath.len >= 2
 			&& lpath.value[0] == 0x3F && lpath.value[1] == 0x00))   {
@@ -1019,7 +1018,6 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 			    card->type == SC_CARD_TYPE_IASECC_AMOS ||
 			    card->type == SC_CARD_TYPE_IASECC_MI ||
 			    card->type == SC_CARD_TYPE_IASECC_MI2 ||
-			    card->type == SC_CARD_TYPE_IASECC_GEMALTO ||
 			    iasecc_is_cpx(card)
 			    )   {
 				apdu.p2 = 0x04;
@@ -1031,7 +1029,6 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 			    card->type == SC_CARD_TYPE_IASECC_AMOS ||
 			    card->type == SC_CARD_TYPE_IASECC_MI ||
 			    card->type == SC_CARD_TYPE_IASECC_MI2 ||
-			    card->type == SC_CARD_TYPE_IASECC_GEMALTO ||
 			    iasecc_is_cpx(card)) {
 				apdu.p2 = 0x04;
 			}
@@ -1046,7 +1043,6 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 			if (card->type == SC_CARD_TYPE_IASECC_AMOS ||
 			    card->type == SC_CARD_TYPE_IASECC_MI2 ||
 			    card->type == SC_CARD_TYPE_IASECC_OBERTHUR ||
-			    card->type == SC_CARD_TYPE_IASECC_GEMALTO ||
 			    iasecc_is_cpx(card)) {
 				apdu.p2 = 0x04;
 			}
