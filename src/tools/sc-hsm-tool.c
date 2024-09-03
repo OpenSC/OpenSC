@@ -1271,7 +1271,7 @@ static int create_dkek_share(sc_card_t *card, const char *outf, int iter, const 
 
 	fclose(out);
 
-	OPENSSL_cleanse(filebuff, sizeof(filebuff));
+	OPENSSL_cleanse(dkek_share, sizeof(dkek_share));
 
 	printf("DKEK share created and saved to %s\n", outf);
 	return 0;
