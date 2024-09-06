@@ -6,6 +6,13 @@ if [ -z "$GH_TOKEN" ]; then
     exit 0
 fi
 
+# Check the GH_TOKEN is not expired
+curl --fail --silent -XGET -H "authorization: token $GH_TOKEN" 'https://api.github.com/repos/OpenSC/Nightly'
+if [ 0 -eq "$?" ]; then
+    echo "The GH_TOKEN is expired -- please renew it!"
+    exit 1
+fi
+
 BUILDPATH=${PWD}
 BRANCH="`git log --max-count=1 --date=short --abbrev=8 --pretty=format:"%cd_%h"`"
 
