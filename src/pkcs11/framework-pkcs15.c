@@ -2814,11 +2814,18 @@ pkcs15_create_public_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 		case CKA_EC_POINT:
 			switch (key_type) {
 			case CKK_EC:
-				if (sc_pkcs15_decode_pubkey_ec(p11card->card->ctx, ec, attr->pValue, attr->ulValueLen) < 0)
+				if (sc_pkcs15_decode_pubkey_ec(p11card->card->ctx, ec, attr->pValue, attr->ulValueLen) < 0) {
+					free(ec->ecpointQ.value);
+					ec->ecpointQ.value = NULL;
+					ec->ecpointQ.len = 0;
+					sc_clear_ec_params(&ec->params);
 					return CKR_ATTRIBUTE_VALUE_INVALID;
+				}
+
 				break;
 			case CKK_EC_EDWARDS:
 			case CKK_EC_MONTGOMERY:
+				/* TODO my need to decode here too to support OS vs BS */
 				/* Difference between 25519 and 448 versions set by ec->ecpointQ.len below */
 				ec->ecpointQ.value = calloc(1, attr->ulValueLen);
 				ec->ecpointQ.len = attr->ulValueLen;
@@ -2891,6 +2898,7 @@ pkcs15_create_public_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 			key_type == CKK_EC_EDWARDS ||
 			key_type == CKK_EC_MONTGOMERY) {
 		sc_clear_ec_params(&ec->params);
+		free(ec->ecpointQ.value);
 	}
 	if (rc < 0)
 		return sc_to_cryptoki_error(rc, "C_CreateObject");
