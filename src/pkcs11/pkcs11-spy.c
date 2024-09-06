@@ -211,6 +211,7 @@ init_spy(void)
 	pkcs11_spy_3_0 = allocate_function_list(1);
 	if (pkcs11_spy_3_0 == NULL) {
 		free(pkcs11_spy);
+		pkcs11_spy = NULL;
 		return CKR_HOST_MEMORY;
 	}
 
@@ -295,6 +296,9 @@ init_spy(void)
 	if (module == NULL) {
 		fprintf(spy_output, "Error: no module specified. Please set PKCS11SPY environment.\n");
 		free(pkcs11_spy);
+		pkcs11_spy = NULL;
+		free(pkcs11_spy_3_0);
+		pkcs11_spy_3_0 = NULL;
 		return CKR_DEVICE_ERROR;
 	}
 	modhandle = C_LoadModule(module, &po_v2);
@@ -305,6 +309,7 @@ init_spy(void)
 	else {
 		po = NULL;
 		free(pkcs11_spy);
+		free(pkcs11_spy_3_0);
 		rv = CKR_GENERAL_ERROR;
 	}
 
