@@ -75,3 +75,25 @@
    fun:_cmocka_run_group_tests
    fun:main
 }
+{
+   OpenSC SPY does not cleanup the function_lists
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:malloc
+   fun:allocate_function_list
+   fun:init_spy
+   fun:C_GetInterface
+   fun:C_LoadModule
+   fun:main
+}
+{
+   OpenSC SPY does not cleanup Interfaces
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:calloc
+   fun:C_LoadModule
+   fun:init_spy
+   fun:C_GetInterface
+   fun:C_LoadModule
+   fun:main
+}
