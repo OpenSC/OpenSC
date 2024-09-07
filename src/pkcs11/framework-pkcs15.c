@@ -2869,13 +2869,18 @@ pkcs15_create_public_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 	if (key_type == CKK_EC_EDWARDS) {
 		if (ec->ecpointQ.len == 32)
 			ec->params.id = oid_ED25519;
-		else
+		else if (ec->ecpointQ.len == 56)
 			ec->params.id = oid_ED448;
+		else
+			return CKR_ATTRIBUTE_VALUE_INVALID;
+
 	} else if (key_type == CKK_EC_MONTGOMERY) {
 		if (ec->ecpointQ.len == 32)
 			ec->params.id = oid_X25519;
-		else
+		else if (ec->ecpointQ.len == 56)
 			ec->params.id = oid_X448;
+		else
+			return CKR_ATTRIBUTE_VALUE_INVALID;
 	}
 
 	if (key_type == CKK_RSA) {
@@ -3450,13 +3455,20 @@ pkcs15_gen_keypair(struct sc_pkcs11_slot *slot, CK_MECHANISM_PTR pMechanism,
 		struct sc_lv_data *der = &keygen_args.prkey_args.key.u.ec.params.der;
 		void *ptr = NULL;
 
-		der->len = sizeof(struct sc_object_id);
 		rv = attr_find_and_allocate_ptr(pPubTpl, ulPubCnt, CKA_EC_PARAMS, &ptr, &der->len);
 		der->value = (unsigned char *) ptr;
 		if (rv != CKR_OK)   {
 			sc_unlock(p11card->card);
 			return rv;
 		}
+		if (sc_pkcs15_fix_ec_parameters(context, &keygen_args.prkey_args.key.u.ec.params) < 0) {
+			rv = CKR_CURVE_NOT_SUPPORTED;
+			goto kpgen_done;
+		}
+	} else {
+		/* CKA_KEY_TYPE is set, but keytype isn't correct */
+		rv = CKR_ATTRIBUTE_VALUE_INVALID;
+		goto kpgen_done;
 	}
 
 	if (keytype == CKK_EC) {
@@ -3471,10 +3483,6 @@ pkcs15_gen_keypair(struct sc_pkcs11_slot *slot, CK_MECHANISM_PTR pMechanism,
 		/* Can not sign. To created a cert, see: openssl x509 -force_pubkey */
 		keygen_args.prkey_args.usage |= SC_PKCS15_PRKEY_USAGE_DERIVE;
 		pub_args.key.algorithm = SC_ALGORITHM_XEDDSA;
-	} else {
-		/* CKA_KEY_TYPE is set, but keytype isn't correct */
-		rv = CKR_ATTRIBUTE_VALUE_INVALID;
-		goto kpgen_done;
 	}
 
 	id.len = SC_PKCS15_MAX_ID_SIZE;
@@ -3569,6 +3577,7 @@ pkcs15_gen_keypair(struct sc_pkcs11_slot *slot, CK_MECHANISM_PTR pMechanism,
 	rv = sc_pkcs15_dup_pubkey(context, ((struct pkcs15_pubkey_object *)pub_any_obj)->pub_data, &priv_prk_obj->pub_data);
 
 kpgen_done:
+	sc_pkcs15_erase_prkey(&keygen_args.prkey_args.key);
 	sc_pkcs15init_unbind(profile);
 	sc_unlock(p11card->card);
 
