@@ -326,9 +326,6 @@ static int openpgp_generate_key_ec(sc_card_t *card, sc_pkcs15_object_t *obj,
 	else
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-	/* save expected length */
-	key_info.u.ec.ecpoint_len = BYTES4BITS(required->field_length);
-
 	/* generate key on card */
 	r = sc_card_ctl(card, SC_CARDCTL_OPENPGP_GENERATE_KEY, &key_info);
 	LOG_TEST_GOTO_ERR(card->ctx, r, "on-card EC key generation failed");
@@ -339,8 +336,10 @@ static int openpgp_generate_key_ec(sc_card_t *card, sc_pkcs15_object_t *obj,
 	pubkey->algorithm = key_info.key_type;
 	pubkey->u.ec.ecpointQ.len = key_info.u.ec.ecpoint_len;
 	pubkey->u.ec.ecpointQ.value = malloc(key_info.u.ec.ecpoint_len);
-	if (pubkey->u.ec.ecpointQ.value == NULL)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
+	if (pubkey->u.ec.ecpointQ.value == NULL) {
+		r = SC_ERROR_NOT_ENOUGH_MEMORY;
+		goto err;
+	}
 
 	memcpy(pubkey->u.ec.ecpointQ.value, key_info.u.ec.ecpoint, key_info.u.ec.ecpoint_len);
 
