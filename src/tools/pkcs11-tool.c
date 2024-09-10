@@ -2201,7 +2201,6 @@ match_ec_curve_by_params(const unsigned char *ec_params, CK_ULONG ec_params_size
 	sc_bin_to_hex(ec_params, ec_params_size, ecpbuf, sizeof(ecpbuf), 0);
 
 	for (size_t i = 0; ec_curve_infos[i].name != NULL; ++i) {
-
 		if (strcmp(ec_curve_infos[i].ec_params, ecpbuf) == 0) {
 			return &ec_curve_infos[i];
 		}
