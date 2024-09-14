@@ -718,9 +718,9 @@ sc_pkcs15_encode_pubkey_ec(sc_context_t *ctx, struct sc_pkcs15_pubkey_ec *key,
 }
 
 /*
- * all "ec" keys uses same pubkey format, keep this external entrypoint
+ * all "ec" keys use same pubkey format, keep this external entrypoint
  * keys are just byte strings.
- *  will accept in either BIT STRING or OCTET STRING
+ * will accept in either BIT STRING or OCTET STRING
  */
 int
 sc_pkcs15_decode_pubkey_eddsa(sc_context_t *ctx,
@@ -1497,57 +1497,57 @@ sc_pkcs15_pubkey_from_spki_file(struct sc_context *ctx, char * filename,
 static struct ec_curve_info {
 	const char *name;
 	const char *oid_str;
-	const char *oid_encoded;
+	const struct sc_pkcs15_der oid_der;
 	size_t size;
 	const unsigned int key_type;
 
 } ec_curve_infos[] = {
-		{"secp192r1",		"1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192, SC_ALGORITHM_EC},
-		{"prime192v1",		"1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192, SC_ALGORITHM_EC},
-		{"nistp192",		"1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192, SC_ALGORITHM_EC},
-		{"ansiX9p192r1",	"1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192, SC_ALGORITHM_EC},
+		{"secp192r1",		"1.2.840.10045.3.1.1", {(u8 *)"\x06\x08\x2A\x86\x48\xCE\x3D\x03\x01\x01", 10}, 192, SC_ALGORITHM_EC},
+		{"prime192v1",		"1.2.840.10045.3.1.1", {(u8 *)"\x06\x08\x2A\x86\x48\xCE\x3D\x03\x01\x01", 10}, 192, SC_ALGORITHM_EC},
+		{"nistp192",		"1.2.840.10045.3.1.1", {(u8 *)"\x06\x08\x2A\x86\x48\xCE\x3D\x03\x01\x01", 10}, 192, SC_ALGORITHM_EC},
+		{"ansiX9p192r1",	"1.2.840.10045.3.1.1", {(u8 *)"\x06\x08\x2A\x86\x48\xCE\x3D\x03\x01\x01", 10}, 192, SC_ALGORITHM_EC},
 
-		{"secp224r1",		"1.3.132.0.33", "06052b81040021", 224, SC_ALGORITHM_EC},
-		{"nistp224",		"1.3.132.0.33", "06052b81040021", 224, SC_ALGORITHM_EC},
+		{"secp224r1",		"1.3.132.0.33", {(u8 *)"\x06\x05\x2b\x81\x04\x00\x21", 7}, 224, SC_ALGORITHM_EC},
+		{"nistp224",		"1.3.132.0.33", {(u8 *)"\x06\x05\x2b\x81\x04\x00\x21", 7}, 224, SC_ALGORITHM_EC},
 
-		{"secp256r1",		"1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256, SC_ALGORITHM_EC},
-		{"prime256v1",		"1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256, SC_ALGORITHM_EC},
-		{"nistp256",		"1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256, SC_ALGORITHM_EC},
-		{"ansiX9p256r1",	"1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256, SC_ALGORITHM_EC},
+		{"secp256r1",		"1.2.840.10045.3.1.7", {(u8 *)"\x06\x08\x2A\x86\x48\xCE\x3D\x03\x01\x07", 10}, 256, SC_ALGORITHM_EC},
+		{"prime256v1",		"1.2.840.10045.3.1.7", {(u8 *)"\x06\x08\x2A\x86\x48\xCE\x3D\x03\x01\x07", 10}, 256, SC_ALGORITHM_EC},
+		{"nistp256",		"1.2.840.10045.3.1.7", {(u8 *)"\x06\x08\x2A\x86\x48\xCE\x3D\x03\x01\x07", 10}, 256, SC_ALGORITHM_EC},
+		{"ansiX9p256r1",	"1.2.840.10045.3.1.7", {(u8 *)"\x06\x08\x2A\x86\x48\xCE\x3D\x03\x01\x07", 10}, 256, SC_ALGORITHM_EC},
 
-		{"secp384r1",		"1.3.132.0.34", "06052B81040022", 384, SC_ALGORITHM_EC},
-		{"prime384v1",		"1.3.132.0.34", "06052B81040022", 384, SC_ALGORITHM_EC},
-		{"nistp384",		"1.3.132.0.34", "06052B81040022", 384, SC_ALGORITHM_EC},
-		{"ansiX9p384r1",	"1.3.132.0.34", "06052B81040022", 384, SC_ALGORITHM_EC},
+		{"secp384r1",		"1.3.132.0.34", {(u8 *)"\x06\x05\x2B\x81\x04\x00\x22", 7}, 384, SC_ALGORITHM_EC},
+		{"prime384v1",		"1.3.132.0.34", {(u8 *)"\x06\x05\x2B\x81\x04\x00\x22", 7}, 384, SC_ALGORITHM_EC},
+		{"nistp384",		"1.3.132.0.34", {(u8 *)"\x06\x05\x2B\x81\x04\x00\x22", 7}, 384, SC_ALGORITHM_EC},
+		{"ansiX9p384r1",	"1.3.132.0.34", {(u8 *)"\x06\x05\x2B\x81\x04\x00\x22", 7}, 384, SC_ALGORITHM_EC},
 
-		{"secp521r1",		"1.3.132.0.35", "06052B81040023", 521, SC_ALGORITHM_EC},
-		{"nistp521",		"1.3.132.0.35", "06052B81040023", 521, SC_ALGORITHM_EC},
+		{"secp521r1",		"1.3.132.0.35", {(u8 *)"\x06\x05\x2B\x81\x04\x00\x23", 7}, 521, SC_ALGORITHM_EC},
+		{"nistp521",		"1.3.132.0.35", {(u8 *)"\x06\x05\x2B\x81\x04\x00\x23", 7}, 521, SC_ALGORITHM_EC},
 
-		{"brainpoolP192r1",	"1.3.36.3.3.2.8.1.1.3",  "06092B2403030208010103", 192, SC_ALGORITHM_EC},
-		{"brainpoolP224r1",	"1.3.36.3.3.2.8.1.1.5",  "06092B2403030208010105", 224, SC_ALGORITHM_EC},
-		{"brainpoolP256r1",	"1.3.36.3.3.2.8.1.1.7",  "06092B2403030208010107", 256, SC_ALGORITHM_EC},
-		{"brainpoolP320r1",	"1.3.36.3.3.2.8.1.1.9",  "06092B2403030208010109", 320, SC_ALGORITHM_EC},
-		{"brainpoolP384r1",	"1.3.36.3.3.2.8.1.1.11", "06092B240303020801010B", 384, SC_ALGORITHM_EC},
-		{"brainpoolP512r1",	"1.3.36.3.3.2.8.1.1.13", "06092B240303020801010D", 512, SC_ALGORITHM_EC},
+		{"brainpoolP192r1",	"1.3.36.3.3.2.8.1.1.3", {(u8 *)"\x06\x09\x2B\x24\x03\x03\x02\x08\x01\x01\x03", 11}, 192, SC_ALGORITHM_EC},
+		{"brainpoolP224r1",	"1.3.36.3.3.2.8.1.1.5", {(u8 *)"\x06\x09\x2B\x24\x03\x03\x02\x08\x01\x01\x05", 11}, 224, SC_ALGORITHM_EC},
+		{"brainpoolP256r1",	"1.3.36.3.3.2.8.1.1.7", {(u8 *)"\x06\x09\x2B\x24\x03\x03\x02\x08\x01\x01\x07", 11}, 256, SC_ALGORITHM_EC},
+		{"brainpoolP320r1",	"1.3.36.3.3.2.8.1.1.9", {(u8 *)"\x06\x09\x2B\x24\x03\x03\x02\x08\x01\x01\x09", 11}, 320, SC_ALGORITHM_EC},
+		{"brainpoolP384r1",	"1.3.36.3.3.2.8.1.1.11", {(u8 *)"\x06\x09\x2B\x24\x03\x03\x02\x08\x01\x01\x0B", 11}, 384, SC_ALGORITHM_EC},
+		{"brainpoolP512r1",	"1.3.36.3.3.2.8.1.1.13", {(u8 *)"\x06\x09\x2B\x24\x03\x03\x02\x08\x01\x01\x0D", 11}, 512, SC_ALGORITHM_EC},
 
-		{"secp192k1",		"1.3.132.0.31", "06052B8104001F", 192, SC_ALGORITHM_EC},
-		{"secp256k1",		"1.3.132.0.10", "06052B8104000A", 256, SC_ALGORITHM_EC},
+		{"secp192k1",		"1.3.132.0.31", {(u8 *)"\x06\x05\x2B\x81\x04\x00\x1F", 7}, 192, SC_ALGORITHM_EC},
+		{"secp256k1",		"1.3.132.0.10", {(u8 *)"\x06\x05\x2B\x81\x04\x00\x0A", 7}, 256, SC_ALGORITHM_EC},
 
 		/* OpenPGP extensions by Yubikey and GNUK are not defined in RFCs but we know the oid written to card */
 
-		{"edwards25519",	"1.3.6.1.4.1.11591.15.1", "06092B06010401DA470F01",   255, SC_ALGORITHM_EDDSA},
-		{"curve25519",		"1.3.6.1.4.1.3029.1.5.1", "060A2B060104019755010501", 255, SC_ALGORITHM_XEDDSA},
+		{"edwards25519",	"1.3.6.1.4.1.11591.15.1", {(u8 *)"\x06\x09\x2B\x06\x01\x04\x01\xDA\x47\x0F\x01", 11}, 255, SC_ALGORITHM_EDDSA},
+		{"curve25519",		"1.3.6.1.4.1.3029.1.5.1", {(u8 *)"\x06\x0A\x2B\x06\x01\x04\x01\x97\x55\x01\x05\x01", 12}, 255, SC_ALGORITHM_XEDDSA},
 
 		/* RFC 8410 defined curves */
-		{"X25519",              "1.3.101.110", "06032b656e", 255, SC_ALGORITHM_XEDDSA},
-		{"X448",		"1.3.101.111", "06032b656f", 448, SC_ALGORITHM_XEDDSA},
-		{"Ed25519",             "1.3.101.112", "06032b6570", 255, SC_ALGORITHM_EDDSA},
-		{"Ed448",		"1.3.101.113", "06032b6571", 448, SC_ALGORITHM_EDDSA},
+		{"X25519",              "1.3.101.110", {(u8 *)"\x06\x03\x2b\x65\x6e", 5}, 255, SC_ALGORITHM_XEDDSA},
+		{"X448",		"1.3.101.111", {(u8 *)"\x06\x03\x2b\x65\x6f", 5}, 448, SC_ALGORITHM_XEDDSA},
+		{"Ed25519",             "1.3.101.112", {(u8 *)"\x06\x03\x2b\x65\x70", 5}, 255, SC_ALGORITHM_EDDSA},
+		{"Ed448",		"1.3.101.113", {(u8 *)"\x06\x03\x2b\x65\x71", 5}, 448, SC_ALGORITHM_EDDSA},
 		/* GnuPG openpgp curves as used in gnupg-card are equivalent to RFC8410 OIDs */
-		{"cv25519",		"1.3.101.110", "06032b656e", 255, SC_ALGORITHM_XEDDSA},
-		{"ed25519",		"1.3.101.112", "06032b6570", 255, SC_ALGORITHM_EDDSA},
+		{"cv25519",		"1.3.101.110", {(u8 *)"\x06\x03\x2b\x65\x6e", 5}, 255, SC_ALGORITHM_XEDDSA},
+		{"ed25519",		"1.3.101.112", {(u8 *)"\x06\x03\x2b\x65\x70", 5}, 255, SC_ALGORITHM_EDDSA},
 
-		{NULL, NULL, NULL, 0, 0}, /* Do not touch this */
+		{NULL, NULL, {NULL, 0}, 0, 0}, /* Do not touch this */
 };
 // clang-format on
 
@@ -1562,22 +1562,14 @@ sc_pkcs15_fix_ec_parameters(struct sc_context *ctx, struct sc_ec_parameters *ecp
 	/* In PKCS#11 EC parameters arrives in DER encoded form */
 	if (ecparams->der.value && ecparams->der.len && ecparams->der.len > 2) {
 
-		/* caller provided a der version of OID */
 		switch (ecparams->der.value[0]) {
 		case 0x06: /* der.value is an OID */
 			for (ii = 0; ec_curve_infos[ii].name; ii++) {
-				struct sc_object_id id;
-				unsigned char *buf = NULL;
-				size_t len = 0;
+				size_t len = ec_curve_infos[ii].oid_der.len;
 
-				sc_format_oid(&id, ec_curve_infos[ii].oid_str);
-				sc_encode_oid(ctx, &id, &buf, &len);
-
-				if (ecparams->der.len == len && !memcmp(ecparams->der.value, buf, len)) {
-					free(buf);
+				if (ecparams->der.len == len &&
+						memcmp(ecparams->der.value, ec_curve_infos[ii].oid_der.value, len) == 0)
 					break; /* found ec_curve_infos[ii] */
-				}
-				free(buf); /* ii points at {NULL, NULL, NULL, 0} entry */
 			}
 			break;
 
@@ -1611,16 +1603,17 @@ sc_pkcs15_fix_ec_parameters(struct sc_context *ctx, struct sc_ec_parameters *ecp
 			LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 		}
 
-		if (!ec_curve_infos[ii].name)
+		if (ec_curve_infos[ii].name == NULL) /* end of ec_curve_info */
 			LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Unsupported named curve");
 
+		/* ii points to entry with matching oid_der or a mapped entry with replacement oid_der */
 		sc_log(ctx, "Found known curve '%s'", ec_curve_infos[ii].name);
-		if (mapped_string) { /* free der of printable string replace below with OID */
+		if (mapped_string) { /* free previous name if any replace below with new name */
 			free(ecparams->named_curve);
 			ecparams->named_curve = NULL;
 		}
 
-		if (!ecparams->named_curve) {
+		if (!ecparams->named_curve) { /* if present,keep the name as some curves have multiple names */
 			ecparams->named_curve = strdup(ec_curve_infos[ii].name);
 			if (!ecparams->named_curve)
 				LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
@@ -1628,8 +1621,8 @@ sc_pkcs15_fix_ec_parameters(struct sc_context *ctx, struct sc_ec_parameters *ecp
 			sc_log(ctx, "Curve name: '%s'", ecparams->named_curve);
 		}
 
-		if (!sc_valid_oid(&ecparams->id) || mapped_string)
-			sc_format_oid(&ecparams->id, ec_curve_infos[ii].oid_str);
+		/* fill in object_id based on oid_der */
+		sc_format_oid(&ecparams->id, ec_curve_infos[ii].oid_str);
 
 		ecparams->field_length = ec_curve_infos[ii].size;
 		ecparams->key_type = ec_curve_infos[ii].key_type;
@@ -1637,15 +1630,14 @@ sc_pkcs15_fix_ec_parameters(struct sc_context *ctx, struct sc_ec_parameters *ecp
 				ecparams->field_length, ecparams->key_type);
 		if (mapped_string) {
 			/* replace the printable string version with the oid */
-			free(ecparams->der.value);
-			ecparams->der.len = strlen(ec_curve_infos[ii].oid_encoded) / 2;
-			ecparams->der.value = malloc(ecparams->der.len);
-			if (!ecparams->der.value)
-				LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
-			if (sc_hex_to_bin(ec_curve_infos[ii].oid_encoded, ecparams->der.value, &ecparams->der.len) < 0) {
+			if (ecparams->der.value)
 				free(ecparams->der.value);
-				LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+			ecparams->der.len = ec_curve_infos[ii].oid_der.len;
+			ecparams->der.value = malloc(ecparams->der.len);
+			if (ecparams->der.value == NULL) {
+				LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 			}
+			memcpy(ecparams->der.value, ec_curve_infos[ii].oid_der.value, ecparams->der.len);
 		}
 	} else if (ecparams->named_curve) { /* it can be name of curve or OID in ASCII form */
 		/* caller did not provide an OID, look for a name or oid_string */
@@ -1668,11 +1660,11 @@ sc_pkcs15_fix_ec_parameters(struct sc_context *ctx, struct sc_ec_parameters *ecp
 		sc_log(ctx, "Curve length %" SC_FORMAT_LEN_SIZE_T "u key_type %d",
 				ecparams->field_length, ecparams->key_type);
 
-		if (!ecparams->der.value || !ecparams->der.len)   {
+		if (ecparams->der.value == NULL || ecparams->der.len == 0) {
 			free(ecparams->der.value); /* just in case */
 			ecparams->der.value = NULL;
 			ecparams->der.len = 0;
-			/* if caller did not provide der OID, fill in */
+			/* if caller did not provide valid der OID, fill in */
 			rv = sc_encode_oid (ctx, &ecparams->id, &ecparams->der.value, &ecparams->der.len);
 			LOG_TEST_RET(ctx, rv, "Cannot encode object ID");
 		}
