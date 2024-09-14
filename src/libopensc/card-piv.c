@@ -2725,7 +2725,7 @@ static int piv_generate_key(sc_card_t *card,
 		case 0x05: keydata->key_bits = 3072; break;
 		case 0x06: keydata->key_bits = 1024; break;
 		case 0x07: keydata->key_bits = 2048; break;
-		case 0x16:
+		case 0x16: /* Yubico 5.7 support for 4096 */
 			keydata->key_bits = 4096;
 			break;
 		case 0x11: keydata->key_bits = 0;
@@ -2736,8 +2736,8 @@ static int piv_generate_key(sc_card_t *card,
 			keydata->ecparam = 0; /* we only support secp384r1 */
 			keydata->ecparam_len = 0;
 			break;
-		case 0xE0:
-		case 0xE1:
+		case 0xE0: /* Yubico 5.7 support for EDDSA 25519 */
+		case 0xE1: /* Yubico 5.7 support for XEDDSA 25519 */
 			keydata->key_bits = 0;
 			keydata->ecparam = 0;
 			keydata->ecparam_len = 0;
