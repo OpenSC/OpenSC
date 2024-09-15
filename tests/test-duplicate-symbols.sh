@@ -1,7 +1,11 @@
 #!/bin/bash
-SOURCE_PATH=${SOURCE_PATH:-..}
 
-EXPORTS=`find "${SOURCE_PATH}" -name "*exports"`
+if [ -z "$MESON_BUILD_ROOT" ]; then
+	SOURCE_PATH=${SOURCE_PATH:-..}
+	EXPORTS=`find "${SOURCE_PATH}" -name "*exports"`
+else
+	EXPORTS=`find "${MESON_BUILD_ROOT}" -name "*symbols"`
+fi
 
 ERRORS=0
 for E in $EXPORTS; do
