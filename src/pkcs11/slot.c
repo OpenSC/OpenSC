@@ -389,8 +389,18 @@ CK_RV
 card_detect_all(void)
 {
 	unsigned int i, j;
+	const unsigned int event_mask = SC_EVENT_CARD_EVENTS | SC_EVENT_READER_EVENTS;
+	unsigned int events = 0;
+	sc_reader_t *event_reader = NULL;
+	int r;
 
 	sc_log(context, "Detect all cards");
+	r = sc_wait_for_event(context, event_mask, &event_reader, &events, 1, &reader_states);
+	if ((SC_SUCCESS == r && events == 0) || SC_ERROR_EVENT_TIMEOUT == r) {
+		sc_log(context, "No state change since last call, skipping card detection");
+		return CKR_OK;
+	}
+
 	/* Detect cards in all initialized readers */
 	for (i=0; i< sc_ctx_get_reader_count(context); i++) {
 		sc_reader_t *reader = sc_ctx_get_reader(context, i);
@@ -474,15 +484,7 @@ CK_RV slot_get_token(CK_SLOT_ID id, struct sc_pkcs11_slot ** slot)
 	if (rv != CKR_OK)
 		return rv;
 
-	if (!((*slot)->slot_info.flags & CKF_TOKEN_PRESENT)) {
-		if ((*slot)->reader == NULL)
-			return CKR_TOKEN_NOT_PRESENT;
-		sc_log(context, "Slot(id=0x%lX): get token: now detect card", id);
-		rv = card_detect((*slot)->reader);
-		if (rv != CKR_OK)
-			return rv;
-	}
-
+	card_detect_all();
 	if (!((*slot)->slot_info.flags & CKF_TOKEN_PRESENT)) {
 		sc_log(context, "card detected, but slot not presenting token");
 		return CKR_TOKEN_NOT_PRESENT;
