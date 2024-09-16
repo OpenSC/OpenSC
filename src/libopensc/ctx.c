@@ -134,7 +134,6 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "dnie",       (void *(*)(void)) sc_get_dnie_driver },
 #endif
 	{ "masktech",	(void *(*)(void)) sc_get_masktech_driver },
-	{ "esteid2018",	(void *(*)(void)) sc_get_esteid2018_driver },
 	{ "idprime",	(void *(*)(void)) sc_get_idprime_driver },
 #if defined(ENABLE_SM) && defined(ENABLE_OPENPACE)
 	{ "edo",        (void *(*)(void)) sc_get_edo_driver },
@@ -142,6 +141,8 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 
 /* Here should be placed drivers that need some APDU transactions in the
  * driver's `match_card()` function. */
+	{ "esteid2018",	(void *(*)(void)) sc_get_esteid2018_driver },
+	{ "esteid2025",	(void *(*)(void)) sc_get_esteid2025_driver },
 	{ "coolkey",	(void *(*)(void)) sc_get_coolkey_driver },
 	/* MUSCLE card applet returns 9000 on whatever AID is selected, see
 	 * https://github.com/JavaCardOS/MuscleCard-Applet/blob/master/musclecard/src/com/musclecard/CardEdge/CardEdge.java#L326

@@ -1234,6 +1234,7 @@ const char *pkcs15_get_default_use_file_cache(struct sc_card *card)
 			"coolkey",
 			"edo",
 			"esteid2018",
+			"esteid2025",
 			"flex",
 			"cyberflex",
 			"gemsafeV1",
