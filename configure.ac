@@ -1199,7 +1199,6 @@ AC_CONFIG_FILES([
 	MacOSX/Makefile
 	MacOSX/build-package
 	MacOSX/Distribution.xml
-	MacOSX/Distribution_universal.xml
 	MacOSX/resources/Welcome.html
 ])
 

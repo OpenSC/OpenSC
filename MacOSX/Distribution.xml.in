@@ -5,12 +5,12 @@ https://developer.apple.com/library/mac/documentation/DeveloperTools/Reference/I
 -->
 <installer-gui-script minSpecVersion="2">
     <allowed-os-versions>
-      <os-version min="10.10"/>
+      <os-version min="10.13"/>
     </allowed-os-versions>
     <background file="background.jpg" mime-type="image/jpeg" scaling="tofit"/>
     <welcome file="Welcome.html" mime-type="text/html"/>
     <title>@PACKAGE_STRING@</title>
-    <options customize="allow" require-scripts="false" rootVolumeOnly="true"/>
+    <options customize="allow" hostArchitectures="arm64,x86_64" require-scripts="false" rootVolumeOnly="true"/>
     <choices-outline>
         <line choice="default" />
         <line choice="startup" />
