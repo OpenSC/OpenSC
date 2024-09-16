@@ -100,7 +100,7 @@ enum {
 	SC_CARD_TYPE_OBERTHUR_32K_BIO,
 	SC_CARD_TYPE_OBERTHUR_64K,
 	/* Oberthur 'COSMO v7' with applet 'AuthentIC v3.2' */
-        SC_CARD_TYPE_OBERTHUR_AUTHENTIC_3_2 = 11100,
+	SC_CARD_TYPE_OBERTHUR_AUTHENTIC_3_2 = 11100,
 
 	/* belpic driver */
 	SC_CARD_TYPE_BELPIC_BASE = 12000,
@@ -191,9 +191,9 @@ enum {
 
 	/* Spanish DNIe card */
 	SC_CARD_TYPE_DNIE_BASE = 27000,
-	SC_CARD_TYPE_DNIE_BLANK, /* ATR LC byte: 00 */
-	SC_CARD_TYPE_DNIE_ADMIN, /* ATR LC byte: 01 */
-	SC_CARD_TYPE_DNIE_USER,  /* ATR LC byte: 03 */
+	SC_CARD_TYPE_DNIE_BLANK,      /* ATR LC byte: 00 */
+	SC_CARD_TYPE_DNIE_ADMIN,      /* ATR LC byte: 01 */
+	SC_CARD_TYPE_DNIE_USER,	      /* ATR LC byte: 03 */
 	SC_CARD_TYPE_DNIE_TERMINATED, /* ATR LC byte: 0F */
 
 	/* JavaCards with isoApplet */
@@ -231,6 +231,7 @@ enum {
 
 	/* EstEID cards */
 	SC_CARD_TYPE_ESTEID_2018 = 35000,
+	SC_CARD_TYPE_ESTEID_2025,
 
 	/* Rutoken cards */
 	SC_CARD_TYPE_RUTOKENS = 36000,
@@ -305,6 +306,7 @@ extern sc_card_driver_t *sc_get_cac_driver(void);
 extern sc_card_driver_t *sc_get_cac1_driver(void);
 extern sc_card_driver_t *sc_get_npa_driver(void);
 extern sc_card_driver_t *sc_get_esteid2018_driver(void);
+extern sc_card_driver_t *sc_get_esteid2025_driver(void);
 extern sc_card_driver_t *sc_get_idprime_driver(void);
 extern sc_card_driver_t *sc_get_edo_driver(void);
 extern sc_card_driver_t *sc_get_nqApplet_driver(void);
