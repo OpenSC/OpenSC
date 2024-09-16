@@ -2,7 +2,6 @@ MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
 EXTRA_DIST = build \
 	build-package.in \
 	Distribution.xml.in \
-	Distribution_universal.xml.in \
 	libtool-bundle \
 	opensc-uninstall \
 	resources \
