@@ -1242,6 +1242,7 @@ app <replaceable>application</replaceable> {
 							<literal>dnie</literal>,
 							<literal>edo</literal>,
 							<literal>esteid2018</literal>,
+							<literal>esteid2025</literal>,
 							<literal>flex</literal> (deactivated driver),
 							<literal>cyberflex</literal> (deactivated driver),
 							<literal>gemsafeV1</literal>,
