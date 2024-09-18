@@ -206,8 +206,8 @@ void do_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
         if (algorithms[i] == SC_ALGORITHM_EC) /* strdup called also in parse_alg_spec() */
             keygen_args.prkey_args.key.u.ec.params.named_curve = strdup("prime256v1");
         sc_pkcs15init_generate_key(p15card, profile, &keygen_args, keybits[i], NULL);
-        if (algorithms[i] == SC_ALGORITHM_EC)
-            free(keygen_args.prkey_args.key.u.ec.params.named_curve);
+	/* clear the keygen prkey by algorithms which includes the pubkey and ec_params */
+	sc_pkcs15_erase_prkey(&keygen_args.prkey_args.key);
     }
 }
 

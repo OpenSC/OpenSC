@@ -883,6 +883,7 @@ typedef struct sc_cardctl_piv_genkey_info_st {
 typedef struct sc_cardctl_openpgp_keygen_info {
 	u8 key_id;		/* SC_OPENPGP_KEY_... */
 	u8 algorithm;		/* SC_OPENPGP_KEYALGO_... */
+	unsigned long key_type; /* SC_ALGORITHM_... */
 	union {
 		struct {
 			u8 keyformat;		/* SC_OPENPGP_KEYFORMAT_RSA_... */
