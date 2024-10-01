@@ -61,6 +61,7 @@ struct sc_pkcs15_emulator_handler builtin_emulators[] = {
 	{ "nqapplet",   sc_pkcs15emu_nqapplet_init_ex },
 	{ "esign",      sc_pkcs15emu_starcos_esign_init_ex },
 	{ "eOI",        sc_pkcs15emu_eoi_init_ex },
+	{ "dtrust",     sc_pkcs15emu_dtrust_init_ex },
 	{ NULL, NULL }
 };
 
@@ -113,6 +114,11 @@ int sc_pkcs15_is_emulation_only(sc_card_t *card)
 		case SC_CARD_TYPE_SKEID_V3:
 		case SC_CARD_TYPE_EOI:
 		case SC_CARD_TYPE_EOI_CONTACTLESS:
+		case SC_CARD_TYPE_DTRUST_V4_1_STD:
+		case SC_CARD_TYPE_DTRUST_V4_4_STD:
+		case SC_CARD_TYPE_DTRUST_V4_1_MULTI:
+		case SC_CARD_TYPE_DTRUST_V4_1_M100:
+		case SC_CARD_TYPE_DTRUST_V4_4_MULTI:
 			return 1;
 		default:
 			return 0;
