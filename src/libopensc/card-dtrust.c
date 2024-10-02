@@ -256,12 +256,10 @@ dtrust_init(sc_card_t *card)
 		r = SC_SUCCESS;
 		break;
 
-	/* Untested due to lacking hardware */
 	case SC_CARD_TYPE_DTRUST_V4_1_MULTI:
 	case SC_CARD_TYPE_DTRUST_V4_1_M100:
 	case SC_CARD_TYPE_DTRUST_V4_4_MULTI:
-		flags |= SC_ALGORITHM_ECDH_CDH_RAW;
-		flags |= SC_ALGORITHM_ECDSA_HASH_SHA256;
+		flags |= SC_ALGORITHM_ECDSA_RAW;
 		ext_flags = SC_ALGORITHM_EXT_EC_NAMEDCURVE;
 		for (unsigned int i = 0; dtrust_curves[i].oid.value[0] >= 0; i++) {
 			_sc_card_add_ec_alg(card, dtrust_curves[i].size, flags, ext_flags, &dtrust_curves[i].oid);
@@ -372,6 +370,8 @@ dtrust_set_security_env(sc_card_t *card,
 			default:
 				return SC_ERROR_NOT_SUPPORTED;
 			}
+		} else if (env->algorithm_flags & SC_ALGORITHM_ECDSA_RAW) {
+			se_num = 0x21;
 		} else {
 			return SC_ERROR_NOT_SUPPORTED;
 		}

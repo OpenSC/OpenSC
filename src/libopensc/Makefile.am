@@ -58,7 +58,7 @@ libopensc_la_SOURCES_BASE = \
 	pkcs15-oberthur.c pkcs15-itacns.c pkcs15-gemsafeV1.c pkcs15-sc-hsm.c \
 	pkcs15-coolkey.c pkcs15-din-66291.c pkcs15-idprime.c pkcs15-nqApplet.c \
 	pkcs15-dnie.c pkcs15-gids.c pkcs15-iasecc.c pkcs15-jpki.c pkcs15-esteid2018.c \
-	pkcs15-starcos-esign.c pkcs15-skeid.c pkcs15-eoi.c compression.c sm.c \
+	pkcs15-starcos-esign.c pkcs15-skeid.c pkcs15-eoi.c pkcs15-dtrust.c compression.c sm.c \
 	aux-data.c
 
 if ENABLE_CRYPTOTOKENKIT
@@ -140,7 +140,7 @@ TIDY_FILES = \
 	pkcs15-oberthur.c pkcs15-itacns.c pkcs15-sc-hsm.c \
 	pkcs15-coolkey.c pkcs15-din-66291.c pkcs15-idprime.c pkcs15-nqApplet.c \
 	pkcs15-dnie.c pkcs15-gids.c pkcs15-iasecc.c pkcs15-jpki.c pkcs15-esteid2018.c \
-	pkcs15-starcos-esign.c pkcs15-skeid.c compression.c sm.c \
+	pkcs15-starcos-esign.c pkcs15-skeid.c pkcs15-dtrust.c compression.c sm.c \
 	aux-data.c \
 	#$(SOURCES)
 
