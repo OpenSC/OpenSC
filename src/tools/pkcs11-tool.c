@@ -126,6 +126,7 @@ static struct ec_curve_info {
 
 	{"prime256v1",   "1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256, 0},
 	{"secp256r1",    "1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256, 0},
+	{"nistp256",     "1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256, 0},
 	{"ansiX9p256r1", "1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256, 0},
 	{"frp256v1",	 "1.2.250.1.223.101.256.1", "060a2a817a01815f65820001", 256, 0},
 
@@ -2187,6 +2188,19 @@ static int unlock_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess, int login_type)
 	printf("PIN successfully changed\n");
 
 	return 0;
+}
+
+/* return matching ec_curve_info or NULL based on name */
+static struct ec_curve_info *
+match_ec_curve_by_name(const char *name)
+{
+	for (size_t i = 0; ec_curve_infos[i].name != NULL; ++i) {
+		if (strcmp(ec_curve_infos[i].name, name) == 0) {
+			return &ec_curve_infos[i];
+		}
+	}
+ 
+	return NULL;
 }
 
 /* return matching ec_curve_info or NULL based on ec_params */
@@ -4259,18 +4273,22 @@ parse_ec_pkey(EVP_PKEY *pkey, int private, struct gostkey_info *gost)
 }
 
 #ifdef ENABLE_OPENSSL
-/* return PKCS11 key type based on OpenSSL EVP_PKEY type
- * which are support by PKCS11 and OpenSSL used when compiling
- * PKCS11 returns CKK_EC_EDWARDS for both ED25529 and X448
- * and CKK_EC_MONTGOMERY for X25519 and X448, use pk_type.
+/* Return PKCS11 key type based on OpenSSL EVP_PKEY type
+ * which are support by PKCS11 and OpenSSL used when compiling.
+ * PKCS11 defines CKK_EC_EDWARDS for both Ed25529 and X448
+ * and CKK_EC_MONTGOMERY for X25519 and X448.
+ * If requested, return pointer to struct ec_curve_info containing OID and size
  */
+
 static CK_RV
-evp_pkey2ck_key_type(EVP_PKEY *pkey, CK_KEY_TYPE *type, int *pk_type)
+evp_pkey2ck_key_type(EVP_PKEY *pkey, CK_KEY_TYPE *type, int *pk_type, struct ec_curve_info **ec_curve_info)
 {
 	if (!pkey || !pk_type || !type)
 		return CKR_GENERAL_ERROR;
 
 	*pk_type = EVP_PKEY_base_id(pkey);
+	if (ec_curve_info)
+		*ec_curve_info = NULL;
 
 #if defined(EVP_PKEY_RSA)
 	if (*pk_type == EVP_PKEY_RSA) {
@@ -4289,6 +4307,9 @@ evp_pkey2ck_key_type(EVP_PKEY *pkey, CK_KEY_TYPE *type, int *pk_type)
 #if defined(EVP_PKEY_ED25519)
 	if (*pk_type == EVP_PKEY_ED25519) {
 		*type = CKK_EC_EDWARDS;
+		if (ec_curve_info == NULL)
+			goto err;
+		*ec_curve_info = match_ec_curve_by_name("Ed25519");
 		return CKR_OK;
 	}
 #endif
@@ -4296,6 +4317,9 @@ evp_pkey2ck_key_type(EVP_PKEY *pkey, CK_KEY_TYPE *type, int *pk_type)
 #if defined(EVP_PKEY_ED448)
 	if (*pk_type == EVP_PKEY_ED448) {
 		*type = CKK_EC_EDWARDS;
+		if (ec_curve_info == NULL)
+			goto err;
+		*ec_curve_info = match_ec_curve_by_name("Ed448");
 		return CKR_OK;
 	}
 #endif
@@ -4303,6 +4327,9 @@ evp_pkey2ck_key_type(EVP_PKEY *pkey, CK_KEY_TYPE *type, int *pk_type)
 #if defined(EVP_PKEY_X25519)
 	if (*pk_type == EVP_PKEY_X25519) {
 		*type = CKK_EC_MONTGOMERY;
+		if (ec_curve_info == NULL)
+			goto err;
+		*ec_curve_info = match_ec_curve_by_name("X25519");
 		return CKR_OK;
 	}
 #endif
@@ -4310,6 +4337,9 @@ evp_pkey2ck_key_type(EVP_PKEY *pkey, CK_KEY_TYPE *type, int *pk_type)
 #if defined(EVP_PKEY_X448)
 	if (*pk_type == EVP_PKEY_X448) {
 		*type = CKK_EC_MONTGOMERY;
+		if (ec_curve_info == NULL)
+			goto err;
+		*ec_curve_info = match_ec_curve_by_name("X448");
 		return CKR_OK;
 	}
 #endif
@@ -4334,6 +4364,7 @@ evp_pkey2ck_key_type(EVP_PKEY *pkey, CK_KEY_TYPE *type, int *pk_type)
 		return CKR_OK;
 	}
 #endif
+err:
 	/* unsupported by OpenSSL, PKCS11 or this program */
 	*type = -1;
 	*pk_type = -1;
@@ -4341,23 +4372,27 @@ evp_pkey2ck_key_type(EVP_PKEY *pkey, CK_KEY_TYPE *type, int *pk_type)
 }
 #endif /* ENABLE_OPENSSL */
 
+/*  Edwards and Montogmery keys have the same format */
 static int
-parse_ed_pkey(EVP_PKEY *pkey, int pk_type, int private, struct gostkey_info *gost)
+parse_ed_mont_pkey(EVP_PKEY *pkey, int type, int pk_type, struct ec_curve_info *ec_info, int private, struct gostkey_info *gost)
 {
-	static unsigned char ec_params_ed25519[] = {0x06, 0x03, 0x2b, 0x65, 0x70};
-	static unsigned char ec_params_ed448[] = {0x06, 0x03, 0x2b, 0x65, 0x71};
-	unsigned char *ec_params = (pk_type == EVP_PKEY_ED25519) ? ec_params_ed25519 : ec_params_ed448;
-	size_t ec_params_size = (pk_type == EVP_PKEY_ED25519) ? sizeof(ec_params_ed25519) : sizeof(ec_params_ed448);
+	
+	size_t ec_params_size;
 	unsigned char *key;
 	size_t key_size;
 
-	/* set EC_PARAMS value */
+	/* set EC_PARAMS value
+	 * The param passed is DER of an OID or a PRINTABLE STRING as defines in PKCS11 3.0 
+	 * ec_info containes these and all have one byte tag and one byte length.
+	 */
+
+	ec_params_size = ec_info->ec_params[1] + 2;
 	gost->param_oid.value = OPENSSL_malloc(ec_params_size);
 	if (gost->param_oid.value == NULL) {
 		return -1;
 	}
 	gost->param_oid.len = ec_params_size;
-	memcpy(gost->param_oid.value, ec_params, ec_params_size);
+	memcpy(gost->param_oid.value, ec_info->ec_params, ec_params_size);
 
 	if (private) {
 		if (EVP_PKEY_get_raw_private_key(pkey, NULL, &key_size) != 1) {
@@ -4429,6 +4464,7 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 	struct gostkey_info gost;
 	EVP_PKEY *evp_key = NULL;
 	int pk_type;
+	struct ec_curve_info *ec_info = NULL;
 
 	memset(&cert, 0, sizeof(cert));
 	memset(&rsa,  0, sizeof(rsa));
@@ -4511,6 +4547,7 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 		int is_private = opt_object_class == CKO_PRIVATE_KEY;
 		int rv;
 		CK_KEY_TYPE type;
+		struct ec_curve_info *ec_info;
 
 		rv = do_read_key(contents, contents_len, is_private, &evp_key);
 		if (rv) {
@@ -4521,7 +4558,7 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 		}
 
 		/* get CK_TYPE from EVP_PKEY if both supported by OpenSSL and PKCS11 */
-		if (evp_pkey2ck_key_type(evp_key, &type, &pk_type) != CKR_OK)
+		if (evp_pkey2ck_key_type(evp_key, &type, &pk_type, &ec_info) != CKR_OK)
 			util_fatal("Key type not supported by OpenSSL and/or PKCS11");
 
 		if (type == CKK_RSA) {
@@ -4533,8 +4570,8 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 			type = CKK_GOSTR3410;
 		} else if (type == CKK_EC) {
 			rv = parse_ec_pkey(evp_key, is_private, &gost);
-		} else if (type == CKK_EC_EDWARDS) {
-			rv = parse_ed_pkey(evp_key, pk_type, is_private, &gost);
+		} else if (type == CKK_EC_EDWARDS || type == CKK_EC_MONTGOMERY) {
+			rv = parse_ed_mont_pkey(evp_key, type, pk_type, ec_info, is_private, &gost);
 		}
 #endif
 		else
@@ -4642,7 +4679,7 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 			n_privkey_attr++;
 		}
 
-		if (evp_pkey2ck_key_type(evp_key, &type, &pk_type) != CKR_OK)
+		if (evp_pkey2ck_key_type(evp_key, &type, &pk_type,&ec_info) != CKR_OK)
 			util_fatal("Key type not supported by OpenSSL and/or PKCS11");
 
 		if (type == CKK_RSA) {
@@ -4694,7 +4731,7 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 		clazz = CKO_PUBLIC_KEY;
 
 #ifdef ENABLE_OPENSSL
-		if (evp_pkey2ck_key_type(evp_key, &type, &pk_type) != CKR_OK)
+		if (evp_pkey2ck_key_type(evp_key, &type, &pk_type, &ec_info) != CKR_OK)
 			util_fatal("Key type not supported by OpenSSL and/or PKCS11");
 
 		n_pubkey_attr = 0;
