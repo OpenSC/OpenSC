@@ -122,7 +122,7 @@ void do_init_app(struct sc_profile *profile, struct sc_pkcs15_card *p15card, sc_
                  unsigned char *so_pin, unsigned char *so_puk)
 {
     struct sc_pkcs15init_initargs init_args;
-    sc_pkcs15_auth_info_t         info;
+    sc_pkcs15_auth_info_t info = {0};
     int                           so_puk_disabled = 0;
 
     memset(&init_args, 0, sizeof(init_args));
